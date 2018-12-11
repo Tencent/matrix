@@ -1,0 +1,167 @@
+[
+  {
+    "id": "3015b5d242d2f75d130b0211fd1f8789",
+    "sql": "",
+    "type": 6
+  },
+  {
+    "id": "b308ff1bbdc6370eeb703193028a600c",
+    "sql": "",
+    "type": 4
+  },
+  {
+    "id": "642313ace3abf8226b2e8816147fde03",
+    "sql": "",
+    "type": 8
+  },
+  {
+    "id": "1c25212e36e6fb28676dd61cc73d0877",
+    "sql": "select * from testtable",
+    "type": 5
+  },
+  {
+    "id": "6fee8e20a4a7cfd4220c87456df51455",
+    "sql": "select name from testtable where age>10",
+    "type": 1
+  },
+  {
+    "id": "5ec70b156e12864550bb17364811c26a",
+    "sql": "select name from testtableredundantindex where age&2 != 0",
+    "type": 1
+  },
+  {
+    "id": "6537464212b83a7392f0f1c8ddb97f0b",
+    "sql": "select name from testtableredundantindex where name like 'j%'",
+    "type": 1
+  },
+  {
+    "id": "c6c5374b1bf96d8532612b47989cf1cd",
+    "sql": "select id from testtable where age = 10 union select id from testtableredundantindex where age > 10",
+    "type": 1
+  },
+  {
+    "id": "530597a33d271fc0547d180315f2a846",
+    "sql": "select name from testtable order by age",
+    "type": 2
+  },
+  {
+    "id": "67774536ce5bd47273faaaf0276c5a30",
+    "sql": "select name from testtableredundantindex where gender=1 and age=5",
+    "type": 3
+  },
+  {
+    "id": "54fe7871d533e340b76328c191635ad8",
+    "sql": "select name, case when age>=18 then 'adult' else 'child' end lifestage from testtableredundantindex where age > 20 order by age,name,gender",
+    "type": 2
+  },
+  {
+    "id": "6a3ad6b5944752ec0eb7c64d5d314c0f",
+    "sql": "select name,age,gender from testtableredundantindex where age > 10 and age < 20 or id between 30 and 40 or id = 1000 order by name,age,gender desc limit 10 offset 2;",
+    "type": 3
+  },
+  {
+    "id": "604ca966dd32407b582dd8cd53c65000",
+    "sql": "select name,age,gender from testtableredundantindex where age > 10 and age < 20 or id between 30 and 40 or id = 1000 order by name,age,gender desc limit 10 offset 2;",
+    "type": 2
+  },
+  {
+    "id": "9aced503987a0e01317893471abebd78",
+    "sql": "select * from (select * from testtable where age = 18 order by age limit 10) as tb where age = 18 union select m.* from testtable as m, testtableredundantindex as c where m.age = c.age;",
+    "type": 1
+  },
+  {
+    "id": "6dc88da2fe179abeafcf4deae704484c",
+    "sql": "select * from (select * from testtable where age = 18 order by age limit 10) as tb where age = 18 union select m.* from testtable as m, testtableredundantindex as c where m.age = c.age;",
+    "type": 5
+  },
+  {
+    "id": "15ecb8cae33c3f1b88ea740f4386d868",
+    "sql": "select name from testtable where name not like 'rt%' or name like 'rc%' and age > 20 group by name order by age;",
+    "type": 2
+  },
+  {
+    "id": "77ae457f6b78d8f40e58484cbabf3cca",
+    "sql": "select name from testtable where name not like 'rt%' or name like 'rc%' and age > 20 group by name order by age;",
+    "type": 1
+  },
+  {
+    "id": "78f900eb4483c68d1c9b2f09aa9c4ab9",
+    "sql": "select name from testtable where id = (select id from testtableredundantindex where name = 'hello world')",
+    "type": 3
+  },
+  {
+    "id": "2cdd09ca095f9fff8a0ddfda06607eb3",
+    "sql": "select * from testtable where name = 'rc' union select * from testtablewithoutrowid union select * from testtableautoincrement",
+    "type": 1
+  },
+  {
+    "id": "ac038863193b6585daebce178b539d86",
+    "sql": "select * from testtable where name = 'rc' union select * from testtablewithoutrowid union select * from testtableautoincrement",
+    "type": 5
+  },
+  {
+    "id": "a36d8cd71f9bc1be42823b86af6aa8b2",
+    "sql": "select name from testtable where not exists(select * from testtableredundantindex where testtable.age = testtableredundantindex.age);",
+    "type": 1
+  },
+  {
+    "id": "2330e3988a69a42be1fdc9d52d723a10",
+    "sql": "select name from testtable where not exists(select * from testtableredundantindex where testtable.age = testtableredundantindex.age);",
+    "type": 5
+  },
+  {
+    "id": "10e440b3a87925e77335fe83e28edae2",
+    "sql": "select name from testtable where age glob '2*';",
+    "type": 1
+  },
+  {
+    "id": "922dc4c66c381a59f101bd757d8e885c",
+    "sql": "select distinct name from testtable group by name having count(name) < 2;",
+    "type": 2
+  },
+  {
+    "id": "56473545490eea65c1fd016647311301",
+    "sql": "select distinct name from testtable group by name having count(name) < 2;",
+    "type": 1
+  },
+  {
+    "id": "671933cf8d2bcb6efeb1a87c312e1937",
+    "sql": "select rowid from contact where name = 'rr' or age > 12",
+    "type": 3
+  },
+  {
+    "id": "e3c91791d2456b25ec783e872e231922",
+    "sql": "select t1.name ,t2.age from testtable as t1,testtableredundantindex as t2 where t1.id = t2.id and (t1.age=23 or t2.age=12);",
+    "type": 1
+  },
+  {
+    "id": "a11915bb6a2a8d732950d9420d69ceab",
+    "sql": "select t1.name ,t2.age from testtable as t1,testtableredundantindex as t2 where t1.id = t2.id and (t1.age=23 or t2.age=12);",
+    "type": 3
+  },
+  {
+    "id": "98f6c00140e978145a2a9c0986b2696b",
+    "sql": "select t1.name ,t2.age from testtable as t1,testtableredundantindex as t2 where t1.id = t2.id and (t1.age=23 and t2.age=12);",
+    "type": 3
+  },
+  {
+    "id": "cbd37b763bc07056a886d5a8254b1e55",
+    "sql": "select name,age from contact where name like 'w%' and age > 12",
+    "type": 3
+  },
+  {
+    "id": "699317bf4eadd4526c67d33c012bb209",
+    "sql": "select name,age from contact where name >= 'rc' and age&2=1",
+    "type": 3
+  },
+  {
+    "id": "42fba826321da4cd384aaaa92f2d673c",
+    "sql": "select name,age from contact where name = 'r' or age > 12  or status = 1",
+    "type": 3
+  },
+  {
+    "id": "b336319262b35f87644d9f13e54b3e6b",
+    "sql": "",
+    "type": 7
+  }
+]

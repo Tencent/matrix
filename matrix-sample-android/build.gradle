@@ -1,0 +1,45 @@
+
+buildscript {
+    repositories {
+        mavenLocal()
+        google()
+        maven {
+            url "http://maven.oa.com/nexus/content/repositories/android"
+        }
+        maven {
+            url "http://maven.oa.com/nexus/content/repositories/jcenter"
+        }
+        maven {
+            url "http://maven.oa.com/nexus/content/repositories/thirdparty"
+        }
+        maven {
+            url "http://maven.oa.com/nexus/content/repositories/thirdparty-snapshots"
+        }
+        maven {
+            url "http://maven.oa.com/nexus/content/repositories/google-maven/"
+        }
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:3.0.0'
+        classpath ("com.tencent.matrix:matrix-gradle-plugin:${MATRIX_VERSION}") { changing = true }
+    }
+}
+
+allprojects {
+    repositories {
+        mavenLocal()
+        maven {
+            url "http://maven.oa.com/nexus/content/repositories/android"
+        }
+        maven {
+            url "http://maven.oa.com/nexus/content/repositories/jcenter"
+        }
+        maven {
+            url "http://maven.oa.com/nexus/content/repositories/thirdparty"
+        }
+        maven {
+            url "http://maven.oa.com/nexus/content/repositories/thirdparty-snapshots"
+        }
+    }
+}
+

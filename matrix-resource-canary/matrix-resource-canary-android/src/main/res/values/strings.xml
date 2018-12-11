@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">matrix-memory-canary</string>
+    <string name="resource_canary_wait_for_heapdump_message">Dumping heap snapshot...</string>
+</resources>

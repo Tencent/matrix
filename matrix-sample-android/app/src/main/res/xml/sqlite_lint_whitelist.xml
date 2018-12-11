@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<whilte-list>
+    <checker name="ExplainQueryPlanChecker">
+        <element>select from sqlite_master where type='table'</element>
+        <element>select Id from testTable where age = ?</element>
+        <element>select name from testTableRedundantIndex where gender = ? and age = ?</element>
+        <element>select testTable.name from testTable, testTableAutoIncrement where testTableAutoIncrement.age=testTable.age</element>
+        <element>testTable</element>
+    </checker>
+    <checker name="AvoidAutoIncrementChecker">
+        <element>testTable</element>
+        <element>testTableAutoIncrement</element>
+    </checker>
+
+    <checker name="AvoidSelectAllChecker">
+        <element>select * from testTable order by age</element>
+    </checker>
+
+    <checker name="WithoutRowIdBetterChecker">
+        <element>testTableWithoutRowid</element>
+    </checker>
+
+    <checker name="PreparedStatementBetterChecker">
+        <element>insert into testTable(Id,name,age) values(?,?,?)</element>
+    </checker>
+
+    <checker name="RedundantIndexChecker">
+        <element>testTableRedundantIndex</element>
+    </checker>
+</whilte-list>

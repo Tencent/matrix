@@ -1,0 +1,82 @@
+buildscript {
+    repositories {
+        mavenLocal()
+        google()
+        jcenter()
+    }
+
+    dependencies {
+        // classpath
+        classpath 'com.android.tools.build:gradle:3.0.0'
+        classpath 'com.jfrog.bintray.gradle:gradle-bintray-plugin:1.7.3'
+        classpath "com.github.dcendents:android-maven-gradle-plugin:1.5"
+    }
+
+
+}
+
+allprojects {
+    repositories {
+        mavenLocal()
+        google()
+        jcenter()
+    }
+
+    tasks.withType(Javadoc).all {
+        enabled = false // TODO:
+        options.setEncoding('UTF-8')
+    }
+}
+
+
+ext {
+    // For android sub-projects
+    minSdkVersion = 19
+    targetSdkVersion = 23
+    compileSdkVersion = 26
+    buildToolsVersion = '27.0.3'
+
+    javaVersion = JavaVersion.VERSION_1_7
+
+    GROUP = 'com.tencent.matrix'
+    VERSION_NAME = "${VERSION_NAME_PREFIX}${VERSION_NAME_SUFFIX}"
+
+    POM_PACKAGING = "pom"
+    POM_DESCRIPTION = "matrix"
+
+    POM_URL = "http://git.code.oa.com/matrix/matrix-android"
+    POM_SCM_URL = "http://git.code.oa.com/matrix/matrix-android.git"
+    POM_ISSUE_URL = 'http://git.code.oa.com/matrix/matrix-android/issues'
+
+    POM_LICENCE_NAME = "BSD License"
+    POM_LICENCE_URL = "https://opensource.org/licenses/BSD-3-Clause"
+    POM_LICENCE_DIST = "repo"
+
+    POM_DEVELOPER_ID = "Tencent Wechat"
+    POM_DEVELOPER_NAME = "Tencent Wechat, Inc."
+
+    BINTRAY_LICENCE = ['BSD 3-Clause']
+    BINTRAY_ORGANIZATION = "matrix"
+}
+
+// Build sample project
+// TODO: Failed on Linux jenkins node, to be fixed later
+task buildSampleProject() {
+    group = "build"
+    doLast {
+        exec {
+            commandLine "${rootDir}/matrix-sample-android/gradlew", "--no-daemon", "-p", "${rootDir}/matrix-sample-android", "assembleRelease"
+        }
+    }
+}
+
+// Generate version.txt automatic
+task generateVersionTxt() {
+    doLast {
+        // Write down to version.txt
+        def file = new File("${buildDir}/outputs/version.txt")
+        file.createNewFile()
+        file.write(rootProject.ext.VERSION_NAME)
+    }
+}
+

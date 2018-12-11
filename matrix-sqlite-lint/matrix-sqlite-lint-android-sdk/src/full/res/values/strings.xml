@@ -1,0 +1,14 @@
+<resources>
+    <string name="app_name">SqliteLint</string>
+    <string name="diagnosis_level_tips">提示</string>
+    <string name="diagnosis_level_suggestion">建议</string>
+    <string name="diagnosis_level_warning">警告</string>
+    <string name="diagnosis_level_error">严重</string>
+
+    <string name="check_result_title">检测结果-%s</string>
+    <string name="checked_database_list_title">检测数据库列表</string>
+    <string name="diagnosis_detail_title">检测结果详细</string>
+    <string name="diagnosis_detail_btn_title">详细>></string>
+
+    <string name="diagnosis_ext_info_title">相关栈信息:\n%s</string>
+</resources>

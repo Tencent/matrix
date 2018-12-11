@@ -1,0 +1,26 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+          package="com.tencent.sqlitelint">
+
+    <application>
+        <activity
+            android:name="com.tencent.sqlitelint.behaviour.alert.CheckedDatabaseListActivity"
+            android:exported="true"
+            android:icon="@drawable/sqlite_lint_icon"
+            android:label="SQLiteLint"
+            android:taskAffinity="com.tencent.sqlitelint">
+        </activity>
+
+        <activity
+            android:name="com.tencent.sqlitelint.behaviour.alert.CheckResultActivity"
+            android:launchMode="singleTop"
+            android:taskAffinity="com.tencent.sqlitelint">
+        </activity>
+
+        <activity
+            android:name="com.tencent.sqlitelint.behaviour.alert.IssueDetailActivity"
+            android:launchMode="singleTop"
+            android:taskAffinity="com.tencent.sqlitelint">
+        </activity>
+    </application>
+
+</manifest>

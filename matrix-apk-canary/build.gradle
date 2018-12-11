@@ -1,0 +1,61 @@
+import org.gradle.api.internal.artifacts.configurations.DefaultConfiguration
+
+apply plugin: 'java'
+
+sourceCompatibility = rootProject.ext.javaVersion
+targetCompatibility = rootProject.ext.javaVersion
+
+version rootProject.ext.VERSION_NAME
+group rootProject.ext.GROUP
+
+dependencies {
+    implementation fileTree(include: ['*.jar'], dir: 'libs')
+    implementation 'com.google.code.gson:gson:2.7'
+    implementation project(':matrix-commons')
+    implementation 'com.android.tools:common:25.1.0'
+}
+
+project.afterEvaluate {
+    def canBeResolvedField = DefaultConfiguration.class.getDeclaredField('canBeResolved')
+    canBeResolvedField.setAccessible(true)
+    canBeResolvedField.set(configurations.implementation, true)
+}
+
+jar {
+    manifest {
+        attributes 'Main-Class': 'com.tencent.matrix.apk.ApkChecker'
+        attributes 'Manifest-Version': version
+    }
+    from {
+        exclude 'META-INF/MANIFEST.MF'
+        exclude 'META-INF/*.SF'
+        exclude 'META-INF/*.DSA'
+        exclude 'META-INF/*.RSA'
+        configurations.implementation.resolve().collect { 
+            it.isDirectory() ? it : zipTree(it)
+        }
+    }
+    from {
+        exclude 'META-INF/MANIFEST.MF'
+        exclude 'META-INF/*.SF'
+        exclude 'META-INF/*.DSA'
+        exclude 'META-INF/*.RSA'
+        configurations.runtime.resolve().collect {
+            it.isDirectory() ? it : zipTree(it)
+        }
+    }
+}
+
+// copy the jar to work directory
+task buildApkCheckJar(type: Copy, dependsOn: [build, jar]) {
+    group = "matrix"
+    from('build/libs') {
+        include '*.jar'
+        exclude '*-javadoc.jar'
+        exclude '*-sources.jar'
+    }
+    into(project.file("tools_output"))
+}
+
+apply from: rootProject.file('gradle/java-publish.gradle')
+

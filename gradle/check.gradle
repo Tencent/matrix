@@ -1,0 +1,91 @@
+// ignore sample project check
+if (project.name.contains("sample") || project.name.contains("example")) { return; }
+
+apply plugin: 'checkstyle'
+
+checkstyle {
+    configFile rootProject.file('checkstyle.xml')
+    toolVersion '6.12.1'
+    ignoreFailures false
+    showViolations true
+}
+
+task('checkstyle', type: Checkstyle) {
+    source 'src/main/java'
+    include '**/*.java'
+    exclude '**/gen/**'
+    group 'verification'
+    classpath = files()
+}
+
+check.dependsOn('checkstyle')
+
+
+apply plugin: 'pmd'
+
+pmd {
+    toolVersion '5.4.0'
+}
+
+task pmd(type: Pmd) {
+    targetJdk = TargetJdk.VERSION_1_7
+
+    description 'Run pmd'
+    group 'verification'
+
+    // If ruleSets is not empty, it seems to contain some
+    // defaults which override rules in the ruleset file...
+    ruleSets = []
+    ruleSetFiles = rootProject.files('pmd-ruleset.xml')
+    source = fileTree('src/main/java')
+    ignoreFailures = false
+
+    reports {
+        xml.enabled = false
+        html.enabled = true
+    }
+}
+
+check.dependsOn('pmd')
+
+apply plugin: 'findbugs'
+
+findbugs {
+    toolVersion "3.0.1"
+    ignoreFailures false
+    effort "default"
+    reportLevel "high"
+    excludeFilter rootProject.file("findbugs-exclude.xml")
+}
+
+def isAndroidProject = project.plugins.hasPlugin('com.android.application') \
+                       || project.plugins.hasPlugin('com.android.library')
+
+task findbugs(type: FindBugs) {
+    description 'Run findbugs'
+    group 'verification'
+
+    //if (new File("$projectDir.absolutePath/build/intermediates/classes").exists()) {
+    if (isAndroidProject) {
+        classes = files("$projectDir.absolutePath/build/intermediates/classes")
+    } else {
+        classes = files("$projectDir.absolutePath/build/classes")
+    }
+
+    include '**/*.java', '**/*.groovy'
+    exclude '**/gen/**'
+    source = fileTree('src/main/java/')
+    classpath = files()
+
+    reports {
+        xml.enabled = false
+        html.enabled = true
+        html {
+            destination new File("$projectDir.absolutePath/build/reports/findbugs/findbugs.html")
+        }
+    }
+}
+
+check.dependsOn('findbugs')
+
+project.tasks.getByName('findbugs').mustRunAfter assemble

@@ -1,0 +1,3 @@
+[package]
+-keeppackage facebook/
+-keeppackage com/squareup/

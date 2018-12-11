@@ -1,0 +1,87 @@
+{
+  "--apk":"/Users/williamjin/SampleApplication/app/build/outputs/apk/release/AndResGuard_app-release-unsigned/app-release-unsigned_unsigned.apk",
+  "--mappingTxt":"/Users/williamjin/SampleApplication/app/build/outputs/mapping/release/mapping.txt",
+  "--resMappingTxt":"/Users/williamjin/SampleApplication/app/build/outputs/apk/release/AndResGuard_app-release-unsigned/resource_mapping_app-release-unsigned.txt",
+  "--output":"/Users/williamjin/SampleApplication/app/build/outputs/apk-checker-result",
+  "--format":"mm.html,mm.json",
+  "--formatConfig":
+  [
+    {
+      "name":"-countMethod",
+      "group":
+      [
+        {
+          "name":"Android System",
+          "package":"android"
+        },
+        {
+          "name":"java system",
+          "package":"java"
+        },
+        {
+          "name":"com.tencent.test.$",
+          "package":"com.tencent.test.$"
+        }
+      ]
+    }
+  ],
+  "options": [
+    {
+      "name":"-manifest"
+    },
+    {
+      "name":"-fileSize",
+      "--min":"10",
+      "--order":"desc",
+      "--suffix":"png, jpg, jpeg, gif, arsc"
+    },
+    {
+      "name":"-countMethod",
+      "--group":"package"
+    },
+    {
+      "name":"-checkResProguard"
+    },
+    {
+      "name":"-findNonAlphaPng",
+      "--min":"10"
+    },
+    {
+      "name":"-checkMultiLibrary"
+    },
+    {
+      "name":"-uncompressedFile",
+      "--suffix":"png, jpg, jpeg, gif, arsc"
+    },
+    {
+      "name":"-countR"
+    },
+    {
+      "name":"-duplicatedFile"
+    },
+    {
+      "name":"-checkMultiSTL",
+      "--toolnm":"/Users/williamjin/Library/Android/sdk/ndk-bundle/toolchains/arm-linux-androideabi-4.9/prebuilt/darwin-x86_64/bin/arm-linux-androideabi-nm"
+    },
+    {
+      "name":"-unusedResources",
+      "--rTxt":"/Users/williamjin/SampleApplication/app/build/intermediates/symbols/release/R.txt",
+      "--ignoreResources"
+      :["R.raw.*",
+        "R.style.*",
+        "R.styleable.*",
+        "R.attr.*",
+        "R.id.*",
+        "R.string.ignore_*"
+      ]
+    },
+    {
+      "name":"-unusedAssets",
+      "--ignoreAssets":["*.so" ]
+    },
+    {
+      "name":"-unstrippedSo",
+      "--toolnm":"/Users/williamjin/Library/Android/sdk/ndk-bundle/toolchains/arm-linux-androideabi-4.9/prebuilt/darwin-x86_64/bin/arm-linux-androideabi-nm"
+    }
+  ]
+}
