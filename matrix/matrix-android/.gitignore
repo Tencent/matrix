@@ -1,0 +1,11 @@
+*.iml
+.gradle
+/local.properties
+.DS_Store
+**/build/
+/captures
+**/.externalNativeBuild/
+.idea/
+**/.*
+**/bin/
+/gradle/oss-android-template.gradle

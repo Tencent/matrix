@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+    <Button
+        android:id="@+id/total"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:gravity="left"
+        android:onClick="onClick"
+        android:padding="16dp"
+        android:text="全部算一遍" />
+
+    <Button
+        android:id="@+id/app_cpu"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:gravity="left"
+        android:onClick="onClick"
+        android:padding="16dp"
+        android:text="获取App的CPU占用" />
+
+    <Button
+        android:id="@+id/total_mem"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:gravity="left"
+        android:onClick="onClick"
+        android:padding="16dp"
+        android:text="获取总内存" />
+
+    <Button
+        android:id="@+id/app_mem"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:gravity="left"
+        android:onClick="onClick"
+        android:padding="16dp"
+        android:text="获取App的内存占用" />
+
+    <Button
+        android:id="@+id/add_mem"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:gravity="left"
+        android:onClick="onClick"
+        android:padding="16dp"
+        android:text="增加 10M 内存" />
+</LinearLayout>

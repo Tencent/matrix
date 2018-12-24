@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:gravity="center_horizontal"
+    android:orientation="vertical"
+    android:paddingLeft="10dp"
+    android:paddingTop="80dp"
+    android:paddingRight="10dp"
+    android:paddingBottom="80dp">
+
+    <Button
+        android:id="@+id/test_fps"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:minWidth="200dp"
+        android:onClick="testFps"
+        android:text="fps" />
+
+    <Button
+        android:id="@+id/test_enter"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:minWidth="200dp"
+        android:onClick="testEnter"
+        android:text="activity enter" />
+
+    <Button
+        android:id="@+id/test_anr"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:minWidth="200dp"
+        android:onClick="testANR"
+        android:text="anr" />
+
+    <Button
+        android:id="@+id/test_evil_method"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:minWidth="200dp"
+        android:onClick="testJank"
+        android:text="evil_method" />
+</LinearLayout>

@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:gravity="center_horizontal"
+    android:orientation="vertical"
+    android:paddingLeft="10dp"
+    android:paddingTop="80dp"
+    android:paddingRight="10dp"
+    android:paddingBottom="80dp"
+    tools:context="com.tencent.matrix.sample.MainActivity">
+
+    <Button
+        android:id="@+id/test_trace"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_below="@+id/test_leak"
+        android:layout_alignParentStart="true"
+        android:layout_alignParentLeft="true"
+        android:layout_weight="1"
+        android:text="trace_canary"
+        android:textSize="20dp" />
+
+    <Button
+        android:id="@+id/test_io"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_below="@+id/test_trace"
+        android:layout_alignParentStart="true"
+        android:layout_alignParentLeft="true"
+        android:layout_weight="1"
+        android:text="io_canary"
+        android:textSize="20dp" />
+
+    <Button
+        android:id="@+id/test_sqlite_lint"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_below="@+id/test_io"
+        android:layout_alignParentStart="true"
+        android:layout_alignParentLeft="true"
+        android:layout_weight="1"
+        android:text="sqlite_lint"
+        android:textSize="20dp" />
+
+    <Button
+        android:id="@+id/test_leak"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:text="resource_canary"
+        android:textSize="20dp" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:padding="5dp"
+        android:text="Test Resource canary need Enter and exit the page a few seconds later to get the issue result\nPS:Will only be published once, if you need to publish again, you need to restart the app."
+        android:textSize="16sp" />
+
+</LinearLayout>

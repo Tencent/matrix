@@ -1,0 +1,28 @@
+
+buildscript {
+    repositories {
+        google()
+        mavenLocal()
+        jcenter()
+        maven {
+           url "https://dl.bintray.com/matrix/maven/"
+        }
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:3.0.0'
+        classpath ("com.tencent.matrix:matrix-gradle-plugin:${MATRIX_VERSION}") { changing = true }
+    }
+}
+
+allprojects {
+    repositories {
+        mavenLocal()
+        jcenter()
+        google()
+
+        maven {
+            url "https://dl.bintray.com/matrix/maven/"
+        }
+    }
+}
+

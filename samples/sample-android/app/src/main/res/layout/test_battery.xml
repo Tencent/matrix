@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+    <Button
+        android:id="@+id/wake_lock_acquire"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:gravity="left"
+        android:onClick="onClick"
+        android:padding="16dp"
+        android:text="wake_lock_acquirer" />
+
+    <Button
+        android:id="@+id/wake_lock_release"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:gravity="left"
+        android:onClick="onClick"
+        android:padding="16dp"
+        android:text="wake_lock_release" />
+
+    <Button
+        android:id="@+id/set_alarm"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:gravity="left"
+        android:onClick="onClick"
+        android:padding="16dp"
+        android:text="set_alarm" />
+
+    <Button
+        android:id="@+id/cancel_alarm"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:gravity="left"
+        android:onClick="onClick"
+        android:padding="16dp"
+        android:text="cancel_alarm" />
+</LinearLayout>
