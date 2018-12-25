@@ -83,13 +83,13 @@
 
 ``` gradle
   dependencies {
-    compile group: "com.tencent.matrix", name: "matrix-android-lib", version: MATRIX_VERSION, changing: true
-    compile group: "com.tencent.matrix", name: "matrix-android-commons", version: MATRIX_VERSION, changing: true
-    compile group: "com.tencent.matrix", name: "matrix-trace-canary", version: MATRIX_VERSION, changing: true
-    compile group: "com.tencent.matrix", name: "matrix-resource-canary-android", version: MATRIX_VERSION, changing: true
-    compile group: "com.tencent.matrix", name: "matrix-resource-canary-common", version: MATRIX_VERSION, changing: true
-    compile group: "com.tencent.matrix", name: "matrix-io-canary", version: MATRIX_VERSION, changing: true
-    compile group: "com.tencent.matrix", name: "matrix-sqlite-lint-android-sdk", version: MATRIX_VERSION, changing: true
+    implementation group: "com.tencent.matrix", name: "matrix-android-lib", version: MATRIX_VERSION, changing: true
+    implementation group: "com.tencent.matrix", name: "matrix-android-commons", version: MATRIX_VERSION, changing: true
+    implementation group: "com.tencent.matrix", name: "matrix-trace-canary", version: MATRIX_VERSION, changing: true
+    implementation group: "com.tencent.matrix", name: "matrix-resource-canary-android", version: MATRIX_VERSION, changing: true
+    implementation group: "com.tencent.matrix", name: "matrix-resource-canary-common", version: MATRIX_VERSION, changing: true
+    implementation group: "com.tencent.matrix", name: "matrix-io-canary", version: MATRIX_VERSION, changing: true
+    implementation group: "com.tencent.matrix", name: "matrix-sqlite-lint-android-sdk", version: MATRIX_VERSION, changing: true
   }
   
   apply plugin: 'com.tencent.matrix-plugin'
@@ -134,32 +134,32 @@
 
     @Override
     public String get(String key, String defStr) {
-        //TODO here return default value which is inside sdk, you can change it as you wish. matrix-sdk-key in class    MatrixEnum.
+        //hook to change default values
     }
 
     @Override
     public int get(String key, int defInt) {
-         //TODO here return default value which is inside sdk, you can change it as you wish. matrix-sdk-key in class    MatrixEnum.
+      //hook to change default values
     }
 
     @Override
     public long get(String key, long defLong) {
-        //TODO here return default value which is inside sdk, you can change it as you wish. matrix-sdk-key in class MatrixEnum.
+        //hook to change default values
     }
 
     @Override
     public boolean get(String key, boolean defBool) {
-        //TODO here return default value which is inside sdk, you can change it as you wish. matrix-sdk-key in class MatrixEnum.
+        //hook to change default values
     }
 
     @Override
     public float get(String key, float defFloat) {
-        //TODO here return default value which is inside sdk, you can change it as you wish. matrix-sdk-key in class MatrixEnum.
+        //hook to change default values
     }
 }
 
 ```
-6. Init Matrix in the onCreate of your application. 
+6. Init Matrix in the ```onCreate``` of your application. 
 ``` java 
   Matrix.Builder builder = new Matrix.Builder(application); // build matrix
   builder.patchListener(new TestPluginListener(this)); // add general pluginListener
@@ -230,7 +230,7 @@ Learn more about [Matrix-APKChecker](https://github.com/Tencent/matrix/wiki/Matr
 
 Any problem?
 
-1. Learn more from [Sample](https://github.com/Tencent/matrix/tree/dev/samples/sample-android)
+1. Learn more from [Sample](https://github.com/Tencent/matrix/tree/master/samples/sample-android)
 2. [Source Code](https://github.com/Tencent/matrix/tree/master)
 3. [Wiki](https://github.com/Tencent/matrix/wiki) 或 [FAQ](https://github.com/Tencent/Matrix/wiki/Matrix-%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98)
 4. Contact us for help
@@ -253,47 +253,47 @@ Matrix is under the BSD license. See the [LICENSE](https://github.com/Tencent/Ma
 Matrix 的目标是建立统一的应用性能接入框架，通过各种性能监控方案，对性能监控项的异常数据进行采集和分析，输出相应的问题分析、定位与优化建议，从而帮助开发者开发出更高质量的应用。
 
 Matrix 当前监控范围包括：应用安装包大小，帧率变化，启动耗时，卡顿，慢方法，SQLite 操作优化，文件读写，内存泄漏等等。
-- APKChecker:
+- APK Checker:
   针对 APK 安装包的分析检测工具，根据一系列设定好的规则，检测 APK 是否存在特定的问题，并输出较为详细的检测结果报告，用于分析排查问题以及版本追踪
-- ResourceCanary:
+- Resource Canary:
   基于 WeakReference 的特性和 [Square Haha](https://github.com/square/haha) 库开发的 Activity 泄漏和 Bitmap 重复创建检测工具
-- TraceCanary:
+- Trace Canary:
   监控界面流畅性、启动耗时、页面切换耗时、慢函数及卡顿等问题
-- SQLiteLint:
+- SQLite Lint:
   按官方最佳实践自动化检测 SQLite 语句的使用质量
-- IOCanary:
+- IO Canary:
   检测文件 IO 问题，包括：文件 IO 监控和 Closeable Leak 监控
 
 ## 特性
 
 与常规的 APM 工具相比，Matrix 拥有以下特点：
 
-### APKChecker
+### APK Checker
 
 - 具有更好的可用性：JAR 包方式提供，更方便应用到持续集成系统中，从而追踪和对比每个 APK 版本之间的变化
 - 更多的检查分析功能：除具备 APKAnalyzer 的功能外，还支持统计 APK 中包含的 R 类、检查是否有多个动态库静态链接了 STL 、搜索 APK 中包含的无用资源，以及支持自定义检查规则等
 - 输出的检查结果更加详实：支持可视化的 HTML 格式，便于分析处理的 JSON ，自定义输出等等
 
-### ResourceCanary
+### Resource Canary
 
 - 分离了检测和分析部分，便于在不打断自动化测试的前提下持续输出分析后的检测结果
 - 对检测部分生成的 Hprof 文件进行了裁剪，移除了大部分无用数据，降低了传输 Hprof 文件的开销
 - 增加了重复 Bitmap 对象检测，方便通过减少冗余 Bitmap 数量，降低内存消耗
 
-### TraceCanary
+### Trace Canary
 
 - 编译期动态修改字节码, 高性能记录执行耗时与调用堆栈
 - 准确的定位到发生卡顿的函数，提供执行堆栈、执行耗时、执行次数等信息，帮助快速解决卡顿问题
 - 自动涵盖卡顿、启动耗时、页面切换、慢函数检测等多个流畅性指标
 
-### SQLiteLint
+### SQLite Lint
 
 - 接入简单，代码无侵入
 - 数据量无关，开发、测试阶段即可发现SQLite性能隐患
 - 检测算法基于最佳实践，高标准把控SQLite质量*
 - 底层是 C++ 实现，支持多平台扩展
 
-### IOCanary
+### IO Canary
 
 - 接入简单，代码无侵入
 - 性能、泄漏全面监控，对 IO 质量心中有数
@@ -321,13 +321,13 @@ Matrix 当前监控范围包括：应用安装包大小，帧率变化，启动�
 3. 接着，在 app/build.gradle 文件中添加 Matrix 各模块的依赖，如：
 ``` gradle
   dependencies {
-    compile group: "com.tencent.matrix", name: "matrix-android-lib", version: MATRIX_VERSION, changing: true
-    compile group: "com.tencent.matrix", name: "matrix-android-commons", version: MATRIX_VERSION, changing: true
-    compile group: "com.tencent.matrix", name: "matrix-trace-canary", version: MATRIX_VERSION, changing: true
-    compile group: "com.tencent.matrix", name: "matrix-resource-canary-android", version: MATRIX_VERSION, changing: true
-    compile group: "com.tencent.matrix", name: "matrix-resource-canary-common", version: MATRIX_VERSION, changing: true
-    compile group: "com.tencent.matrix", name: "matrix-io-canary", version: MATRIX_VERSION, changing: true
-    compile group: "com.tencent.matrix", name: "matrix-sqlite-lint-android-sdk", version: MATRIX_VERSION, changing: true
+    implementation group: "com.tencent.matrix", name: "matrix-android-lib", version: MATRIX_VERSION, changing: true
+    implementation group: "com.tencent.matrix", name: "matrix-android-commons", version: MATRIX_VERSION, changing: true
+    implementation group: "com.tencent.matrix", name: "matrix-trace-canary", version: MATRIX_VERSION, changing: true
+    implementation group: "com.tencent.matrix", name: "matrix-resource-canary-android", version: MATRIX_VERSION, changing: true
+    implementation group: "com.tencent.matrix", name: "matrix-resource-canary-common", version: MATRIX_VERSION, changing: true
+    implementation group: "com.tencent.matrix", name: "matrix-io-canary", version: MATRIX_VERSION, changing: true
+    implementation group: "com.tencent.matrix", name: "matrix-sqlite-lint-android-sdk", version: MATRIX_VERSION, changing: true
   }
 
   apply plugin: 'com.tencent.matrix-plugin'
@@ -371,27 +371,27 @@ Matrix 当前监控范围包括：应用安装包大小，帧率变化，启动�
 
     @Override
     public String get(String key, String defStr) {
-        //TODO here return default value which is inside sdk, you can change it as you wish. matrix-sdk-key in class    MatrixEnum.
+        //hook to change default values
     }
 
     @Override
     public int get(String key, int defInt) {
-         //TODO here return default value which is inside sdk, you can change it as you wish. matrix-sdk-key in class    MatrixEnum.
+         //hook to change default values
     }
 
     @Override
     public long get(String key, long defLong) {
-        //TODO here return default value which is inside sdk, you can change it as you wish. matrix-sdk-key in class MatrixEnum.
+        //hook to change default values
     }
 
     @Override
     public boolean get(String key, boolean defBool) {
-        //TODO here return default value which is inside sdk, you can change it as you wish. matrix-sdk-key in class MatrixEnum.
+        //hook to change default values
     }
 
     @Override
     public float get(String key, float defFloat) {
-        //TODO here return default value which is inside sdk, you can change it as you wish. matrix-sdk-key in class MatrixEnum.
+        //hook to change default values
     }
 }
 
@@ -472,7 +472,7 @@ Options:
 
 还有其他问题？
 
-1. 查看[示例](https://github.com/Tencent/matrix/tree/dev/samples/sample-android)；
+1. 查看[示例](https://github.com/Tencent/matrix/tree/master/samples/sample-android)；
 2. 阅读[源码](https://github.com/Tencent/matrix/tree/master)；
 3. 阅读 [Wiki](https://github.com/Tencent/matrix/wiki) 或 [FAQ](https://github.com/Tencent/Matrix/wiki/Matrix-%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98)；
 4. 联系我们。
