@@ -13,7 +13,7 @@
 
 - **Resource Canary:**
 
-  Detect the activity leak and bitmap duplication using WeakReference and [Square Haha](https://github.com/square/haha) 
+  Detect the activity leak and bitmap duplication basing on WeakReference and [Square Haha](https://github.com/square/haha) 
 
 - **Trace Canary:**
 
@@ -30,13 +30,13 @@
 ## Features
 ### APK Checker
 
-- **Easy-to-use.** Matrix provides a  JAR tool, which is more convinient to apply to your integration systems. 
+- **Easy-to-use.** Matrix provides a  JAR tool, which is more convenient to apply to your integration systems. 
 - **More features.** In addition to APK Analyzer, Matrix find out the R redundancies, the dynamic libraries statically linked STL, unused resources, and supports custom checking rules.
 - **Visual Outputs.** supports HTML and JSON outputs.
 
 ### Resource Canary
 
-- **Separated detection and analysis.** Make it possible to used in automated test and in release versions (monitor only).
+- **Separated detection and analysis.** Make possible to use in automated test and in release versions (monitor only).
 - **Pruned Hprof.** Remove the useless data in hprof and easier to upload.
 - **Detection of duplicate bitmap.** 
 
