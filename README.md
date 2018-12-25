@@ -68,9 +68,16 @@
 
 2. Add matrix-gradle-plugin in your build.gradle:
 ``` gradle 
+  repositories {
+    maven {
+      url "https://dl.bintray.com/matrix/maven/"
+    }
+  }
+
   dependencies {
       classpath ("com.tencent.matrix:matrix-gradle-plugin:${MATRIX_VERSION}") { changing = true }
   }
+ 
 ```
 3. Add dependencies to your app/build.gradle.
 
@@ -178,10 +185,10 @@ You can get more about Matrix output at the wiki [The output of Matrix](https://
 
 ### APK Checker Usage
 
- APK Checker can run independently in Jar mode, usage:
+ APK Checker can run independently in Jar ([matrix-apk-canary-0.4.7.jar](https://dl.bintray.com/matrix/maven/com/tencent/matrix/matrix-apk-canary/0.4.7/matrix-apk-canary-0.4.7.jar))  mode, usage:
 
 ```shell
-java -jar ApkChecker.jar
+java -jar matrix-apk-canary-0.4.7.jar
 Usages: 
     --config CONFIG-FILE-PATH
 or
@@ -301,6 +308,12 @@ Matrix 当前监控范围包括：应用安装包大小，帧率变化，启动�
 
 2. 在你项目根目录下的 build.gradle 文件添加 Matrix 依赖，如：
 ``` gradle 
+  repositories {
+    maven {
+      url "https://dl.bintray.com/matrix/maven/"
+    }
+  }
+
   dependencies {
       classpath ("com.tencent.matrix:matrix-gradle-plugin:${MATRIX_VERSION}") { changing = true }
   }
@@ -410,10 +423,10 @@ Matrix 分析后的输出字段的含义请查看 [Matrix 输出内容的含义�
 
 ### APK Checker
 
-APK Check 以独立的 jar 包提供，你可以运行：
+APK Check 以独立的 jar 包提供 如版本 0.4.7 ([matrix-apk-canary-0.4.7.jar](https://dl.bintray.com/matrix/maven/com/tencent/matrix/matrix-apk-canary/0.4.7/matrix-apk-canary-0.4.7.jar))，你可以运行：
 
 ```cmd
-java -jar ApkChecker.jar
+java -jar matrix-apk-canary-0.4.7.jar
 ```
 
 查看 Usages 来使用它。
