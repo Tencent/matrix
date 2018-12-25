@@ -5,11 +5,11 @@
 
 (中文版本请参看[这里](#matrix_cn))  
 
-**Matrix** is an APM (Application Performance Manage) used in Wechat to monitor, locate and analyse performance problems. It is a **plugin style**, **no-intrusion** solution on Android.  It includes:
+**Matrix** is an APM (Application Performance Manage) used in Wechat to monitor, locate and analyse performance problems. It is a **plugin style**, **non-invasive** solution on Android.  It includes:
 
 - **APK Checker:**
 
-  Analyse the APK package, give suggestions of reducing the APK size; Compare two APK and find out the most significant growth
+  Analyse the APK package, give suggestions of reducing the APK's size; Compare two APK and find out the most significant increment on size
 
 - **Resource Canary:**
 
@@ -25,71 +25,64 @@
 
 - **IO Canary:**
 
-  Detect the file IO issues, including performance of file io and closeable leak 
+  Detect the file IO issues, including performance of file IO and closeable leak 
 
 ## Features
 ### APK Checker
 
-- **Easy-to-use.** Matrix provides a  JAR tool, which is more convinient to apply to your integration systems. 
-- **More features.** In addition to APK Analyzer, Matrix find out the R redundancies, the dynamic libraries statically linked STL, unused resources, and supports custom checking rules.
+- **Easy-to-use.** Matrix provides a  JAR tool, which is convinient to apply to your integration systems. 
+- **More features.** In addition to APK Analyzer, Matrix finds out the R redundancies, dynamic libraries statically linking STL, unused resources, and supports custom checking rules.
 - **Visual Outputs.** supports HTML and JSON outputs.
 
 ### Resource Canary
 
-- **Separated detection and analysis.** Make it possible to used in automated test and in release versions (monitor only).
-- **Pruned Hprof.** Remove the useless data in hprof and easier to upload.
-- **Detection of duplicate bitmap.** 
+- **Separated detection and analysis.** Makes it possible to be used in automated test and release versions (monitor only).
+- **Pruned Hprof.** Remove useless data in hprof and easier to upload.
+- **Detection of duplicated bitmap.** 
 
 ### Trace Canary
 
-- **High performance.** Dynamically modify bytecode at compile time, record function cost and stack with little performance loss.
-- **Accurate stack of ui-block.** Provide informations such as stack, function cost, execution times to solve the problem of ui-block quickly.
+- **High performance.** Dynamically modify bytecode at compile time, record function cost and call stack with little performance loss.
+- **Accurate call stack of ui-block.** Provide informations such as call stack, function cost, execution times to solve the problem of ui-block quickly.
 - **Non-hack.** High compatibility to Android versions.
 - **More features.** Automatically covers multiple fluency indicators such as ui-block, startup time, activity switching, slow function detection.
 
 ### SQLite Lint
 
-- **Easy-to-use.** No code intrusion.
+- **Easy-to-use.** Non-invasive.
 - **High applicability.** Regardless of the amount of data, you can discover SQLite performance problems during development and testing.
-- **High standards.** Detection algorithms based on best practices, make the quality of SQLite statement high quality.
-- **May support multi-platform.** C++ implementation make it possible to support multi-platform.
+- **High standards.** Detection algorithms based on best practices, make SQLite statements to the highest quality.
+- **May support multi-platform.** Implementing in C++ makes it possible to support multi-platform.
 
 ### IO Canary
-- **Easy-to-use.** No code intrusion.
-- **More feature.** Including performance of file io and closeable leak.
+- **Easy-to-use.** Non-invasive.
+- **More feature.** Including performance of file IO and closeable leak.
 - **Compatible with Android P.**
 
 ## Getting Started
 
-1. Configure Matrix version in gradle.properties.
+1. Configure `MATRIX_VERSION` in gradle.properties.
 ``` gradle
   MATRIX_VERSION=0.4.7
 ```
 
-2. Add matrix-gradle-plugin in your build.gradle:
+2. Add `matrix-gradle-plugin` in your build.gradle:
 ``` gradle 
-  repositories {
-    maven {
-      url "https://dl.bintray.com/matrix/maven/"
-    }
-  }
-
   dependencies {
       classpath ("com.tencent.matrix:matrix-gradle-plugin:${MATRIX_VERSION}") { changing = true }
   }
- 
 ```
 3. Add dependencies to your app/build.gradle.
 
 ``` gradle
   dependencies {
-    implementation group: "com.tencent.matrix", name: "matrix-android-lib", version: MATRIX_VERSION, changing: true
-    implementation group: "com.tencent.matrix", name: "matrix-android-commons", version: MATRIX_VERSION, changing: true
-    implementation group: "com.tencent.matrix", name: "matrix-trace-canary", version: MATRIX_VERSION, changing: true
-    implementation group: "com.tencent.matrix", name: "matrix-resource-canary-android", version: MATRIX_VERSION, changing: true
-    implementation group: "com.tencent.matrix", name: "matrix-resource-canary-common", version: MATRIX_VERSION, changing: true
-    implementation group: "com.tencent.matrix", name: "matrix-io-canary", version: MATRIX_VERSION, changing: true
-    implementation group: "com.tencent.matrix", name: "matrix-sqlite-lint-android-sdk", version: MATRIX_VERSION, changing: true
+    compile group: "com.tencent.matrix", name: "matrix-android-lib", version: MATRIX_VERSION, changing: true
+    compile group: "com.tencent.matrix", name: "matrix-android-commons", version: MATRIX_VERSION, changing: true
+    compile group: "com.tencent.matrix", name: "matrix-trace-canary", version: MATRIX_VERSION, changing: true
+    compile group: "com.tencent.matrix", name: "matrix-resource-canary-android", version: MATRIX_VERSION, changing: true
+    compile group: "com.tencent.matrix", name: "matrix-resource-canary-common", version: MATRIX_VERSION, changing: true
+    compile group: "com.tencent.matrix", name: "matrix-io-canary", version: MATRIX_VERSION, changing: true
+    compile group: "com.tencent.matrix", name: "matrix-sqlite-lint-android-sdk", version: MATRIX_VERSION, changing: true
   }
   
   apply plugin: 'com.tencent.matrix-plugin'
@@ -102,7 +95,7 @@
   }
 ```
 
-4. Implement PluginListener to receive data processed by Matrix.
+4. Implement `PluginListener` to receive data processed by Matrix.
 
 ``` java
   public class TestPluginListener extends DefaultPluginListener {
@@ -122,7 +115,7 @@
 }
 ```
 
-5. Implement DynamicConfig to change parametes of Matrix.
+5. Implement `DynamicConfig` to change parametes of Matrix.
 ``` java
   public class DynamicConfigImplDemo implements IDynamicConfig {
     public DynamicConfigImplDemo() {}
@@ -134,32 +127,32 @@
 
     @Override
     public String get(String key, String defStr) {
-        //hook to change default values
+        //TODO here return default value which is inside sdk, you can change it as you wish. matrix-sdk-key in class    MatrixEnum.
     }
 
     @Override
     public int get(String key, int defInt) {
-      //hook to change default values
+         //TODO here return default value which is inside sdk, you can change it as you wish. matrix-sdk-key in class    MatrixEnum.
     }
 
     @Override
     public long get(String key, long defLong) {
-        //hook to change default values
+        //TODO here return default value which is inside sdk, you can change it as you wish. matrix-sdk-key in class MatrixEnum.
     }
 
     @Override
     public boolean get(String key, boolean defBool) {
-        //hook to change default values
+        //TODO here return default value which is inside sdk, you can change it as you wish. matrix-sdk-key in class MatrixEnum.
     }
 
     @Override
     public float get(String key, float defFloat) {
-        //hook to change default values
+        //TODO here return default value which is inside sdk, you can change it as you wish. matrix-sdk-key in class MatrixEnum.
     }
 }
 
 ```
-6. Init Matrix in the ```onCreate``` of your application. 
+6. Init Matrix in the `onCreate` of your application. 
 ``` java 
   Matrix.Builder builder = new Matrix.Builder(application); // build matrix
   builder.patchListener(new TestPluginListener(this)); // add general pluginListener
@@ -185,10 +178,10 @@ You can get more about Matrix output at the wiki [The output of Matrix](https://
 
 ### APK Checker Usage
 
- APK Checker can run independently in Jar ([matrix-apk-canary-0.4.7.jar](https://dl.bintray.com/matrix/maven/com/tencent/matrix/matrix-apk-canary/0.4.7/matrix-apk-canary-0.4.7.jar))  mode, usage:
+ APK Checker can be run independently in Jar mode, usage:
 
 ```shell
-java -jar matrix-apk-canary-0.4.7.jar
+java -jar ApkChecker.jar
 Usages: 
     --config CONFIG-FILE-PATH
 or
@@ -230,9 +223,9 @@ Learn more about [Matrix-APKChecker](https://github.com/Tencent/matrix/wiki/Matr
 
 Any problem?
 
-1. Learn more from [Sample](https://github.com/Tencent/matrix/tree/master/samples/sample-android)
+1. Learn more from [Sample](https://github.com/Tencent/matrix/tree/dev/samples/sample-android)
 2. [Source Code](https://github.com/Tencent/matrix/tree/master)
-3. [Wiki](https://github.com/Tencent/matrix/wiki) 或 [FAQ](https://github.com/Tencent/Matrix/wiki/Matrix-%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98)
+3. [Wiki](https://github.com/Tencent/matrix/wiki) & [FAQ](https://github.com/Tencent/Matrix/wiki/Matrix-%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98)
 4. Contact us for help
 
 ## Contributing
@@ -253,47 +246,47 @@ Matrix is under the BSD license. See the [LICENSE](https://github.com/Tencent/Ma
 Matrix 的目标是建立统一的应用性能接入框架，通过各种性能监控方案，对性能监控项的异常数据进行采集和分析，输出相应的问题分析、定位与优化建议，从而帮助开发者开发出更高质量的应用。
 
 Matrix 当前监控范围包括：应用安装包大小，帧率变化，启动耗时，卡顿，慢方法，SQLite 操作优化，文件读写，内存泄漏等等。
-- APK Checker:
+- APKChecker:
   针对 APK 安装包的分析检测工具，根据一系列设定好的规则，检测 APK 是否存在特定的问题，并输出较为详细的检测结果报告，用于分析排查问题以及版本追踪
-- Resource Canary:
+- ResourceCanary:
   基于 WeakReference 的特性和 [Square Haha](https://github.com/square/haha) 库开发的 Activity 泄漏和 Bitmap 重复创建检测工具
-- Trace Canary:
+- TraceCanary:
   监控界面流畅性、启动耗时、页面切换耗时、慢函数及卡顿等问题
-- SQLite Lint:
+- SQLiteLint:
   按官方最佳实践自动化检测 SQLite 语句的使用质量
-- IO Canary:
+- IOCanary:
   检测文件 IO 问题，包括：文件 IO 监控和 Closeable Leak 监控
 
 ## 特性
 
 与常规的 APM 工具相比，Matrix 拥有以下特点：
 
-### APK Checker
+### APKChecker
 
 - 具有更好的可用性：JAR 包方式提供，更方便应用到持续集成系统中，从而追踪和对比每个 APK 版本之间的变化
 - 更多的检查分析功能：除具备 APKAnalyzer 的功能外，还支持统计 APK 中包含的 R 类、检查是否有多个动态库静态链接了 STL 、搜索 APK 中包含的无用资源，以及支持自定义检查规则等
 - 输出的检查结果更加详实：支持可视化的 HTML 格式，便于分析处理的 JSON ，自定义输出等等
 
-### Resource Canary
+### ResourceCanary
 
 - 分离了检测和分析部分，便于在不打断自动化测试的前提下持续输出分析后的检测结果
 - 对检测部分生成的 Hprof 文件进行了裁剪，移除了大部分无用数据，降低了传输 Hprof 文件的开销
 - 增加了重复 Bitmap 对象检测，方便通过减少冗余 Bitmap 数量，降低内存消耗
 
-### Trace Canary
+### TraceCanary
 
 - 编译期动态修改字节码, 高性能记录执行耗时与调用堆栈
 - 准确的定位到发生卡顿的函数，提供执行堆栈、执行耗时、执行次数等信息，帮助快速解决卡顿问题
 - 自动涵盖卡顿、启动耗时、页面切换、慢函数检测等多个流畅性指标
 
-### SQLite Lint
+### SQLiteLint
 
 - 接入简单，代码无侵入
 - 数据量无关，开发、测试阶段即可发现SQLite性能隐患
 - 检测算法基于最佳实践，高标准把控SQLite质量*
 - 底层是 C++ 实现，支持多平台扩展
 
-### IO Canary
+### IOCanary
 
 - 接入简单，代码无侵入
 - 性能、泄漏全面监控，对 IO 质量心中有数
@@ -308,12 +301,6 @@ Matrix 当前监控范围包括：应用安装包大小，帧率变化，启动�
 
 2. 在你项目根目录下的 build.gradle 文件添加 Matrix 依赖，如：
 ``` gradle 
-  repositories {
-    maven {
-      url "https://dl.bintray.com/matrix/maven/"
-    }
-  }
-
   dependencies {
       classpath ("com.tencent.matrix:matrix-gradle-plugin:${MATRIX_VERSION}") { changing = true }
   }
@@ -321,13 +308,13 @@ Matrix 当前监控范围包括：应用安装包大小，帧率变化，启动�
 3. 接着，在 app/build.gradle 文件中添加 Matrix 各模块的依赖，如：
 ``` gradle
   dependencies {
-    implementation group: "com.tencent.matrix", name: "matrix-android-lib", version: MATRIX_VERSION, changing: true
-    implementation group: "com.tencent.matrix", name: "matrix-android-commons", version: MATRIX_VERSION, changing: true
-    implementation group: "com.tencent.matrix", name: "matrix-trace-canary", version: MATRIX_VERSION, changing: true
-    implementation group: "com.tencent.matrix", name: "matrix-resource-canary-android", version: MATRIX_VERSION, changing: true
-    implementation group: "com.tencent.matrix", name: "matrix-resource-canary-common", version: MATRIX_VERSION, changing: true
-    implementation group: "com.tencent.matrix", name: "matrix-io-canary", version: MATRIX_VERSION, changing: true
-    implementation group: "com.tencent.matrix", name: "matrix-sqlite-lint-android-sdk", version: MATRIX_VERSION, changing: true
+    compile group: "com.tencent.matrix", name: "matrix-android-lib", version: MATRIX_VERSION, changing: true
+    compile group: "com.tencent.matrix", name: "matrix-android-commons", version: MATRIX_VERSION, changing: true
+    compile group: "com.tencent.matrix", name: "matrix-trace-canary", version: MATRIX_VERSION, changing: true
+    compile group: "com.tencent.matrix", name: "matrix-resource-canary-android", version: MATRIX_VERSION, changing: true
+    compile group: "com.tencent.matrix", name: "matrix-resource-canary-common", version: MATRIX_VERSION, changing: true
+    compile group: "com.tencent.matrix", name: "matrix-io-canary", version: MATRIX_VERSION, changing: true
+    compile group: "com.tencent.matrix", name: "matrix-sqlite-lint-android-sdk", version: MATRIX_VERSION, changing: true
   }
 
   apply plugin: 'com.tencent.matrix-plugin'
@@ -371,27 +358,27 @@ Matrix 当前监控范围包括：应用安装包大小，帧率变化，启动�
 
     @Override
     public String get(String key, String defStr) {
-        //hook to change default values
+        //TODO here return default value which is inside sdk, you can change it as you wish. matrix-sdk-key in class    MatrixEnum.
     }
 
     @Override
     public int get(String key, int defInt) {
-         //hook to change default values
+         //TODO here return default value which is inside sdk, you can change it as you wish. matrix-sdk-key in class    MatrixEnum.
     }
 
     @Override
     public long get(String key, long defLong) {
-        //hook to change default values
+        //TODO here return default value which is inside sdk, you can change it as you wish. matrix-sdk-key in class MatrixEnum.
     }
 
     @Override
     public boolean get(String key, boolean defBool) {
-        //hook to change default values
+        //TODO here return default value which is inside sdk, you can change it as you wish. matrix-sdk-key in class MatrixEnum.
     }
 
     @Override
     public float get(String key, float defFloat) {
-        //hook to change default values
+        //TODO here return default value which is inside sdk, you can change it as you wish. matrix-sdk-key in class MatrixEnum.
     }
 }
 
@@ -423,10 +410,10 @@ Matrix 分析后的输出字段的含义请查看 [Matrix 输出内容的含义�
 
 ### APK Checker
 
-APK Check 以独立的 jar 包提供 如版本 0.4.7 ([matrix-apk-canary-0.4.7.jar](https://dl.bintray.com/matrix/maven/com/tencent/matrix/matrix-apk-canary/0.4.7/matrix-apk-canary-0.4.7.jar))，你可以运行：
+APK Check 以独立的 jar 包提供，你可以运行：
 
 ```cmd
-java -jar matrix-apk-canary-0.4.7.jar
+java -jar ApkChecker.jar
 ```
 
 查看 Usages 来使用它。
@@ -472,7 +459,7 @@ Options:
 
 还有其他问题？
 
-1. 查看[示例](https://github.com/Tencent/matrix/tree/master/samples/sample-android)；
+1. 查看[示例](https://github.com/Tencent/matrix/tree/dev/samples/sample-android)；
 2. 阅读[源码](https://github.com/Tencent/matrix/tree/master)；
 3. 阅读 [Wiki](https://github.com/Tencent/matrix/wiki) 或 [FAQ](https://github.com/Tencent/Matrix/wiki/Matrix-%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98)；
 4. 联系我们。
