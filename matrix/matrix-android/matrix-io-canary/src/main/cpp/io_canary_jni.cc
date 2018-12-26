@@ -309,6 +309,7 @@ namespace iocanary {
                         __android_log_print(ANDROID_LOG_WARN, kTag, "doHook hook read failed, try __read_chk");
                         if (!elfhook_replace(soinfo, "__read_chk", (void*)ProxyRead, (void**)&original_read)) {
                             __android_log_print(ANDROID_LOG_WARN, kTag, "doHook hook failed: __read_chk");
+                            elfhook_close(soinfo);
                             return false;
                         }
                     }
@@ -317,6 +318,7 @@ namespace iocanary {
                         __android_log_print(ANDROID_LOG_WARN, kTag, "doHook hook write failed, try __write_chk");
                         if (!elfhook_replace(soinfo, "__write_chk", (void*)ProxyWrite, (void**)&original_write)) {
                             __android_log_print(ANDROID_LOG_WARN, kTag, "doHook hook failed: __write_chk");
+                            elfhook_close(soinfo);
                             return false;
                         }
                     }
@@ -346,6 +348,8 @@ namespace iocanary {
                 elfhook_replace(soinfo, "__read_chk", (void*) original_read, nullptr);
                 elfhook_replace(soinfo, "__write_chk", (void*) original_write, nullptr);
                 elfhook_replace(soinfo, "close", (void*) original_close, nullptr);
+
+                elfhook_close(soinfo);
             }
             return true;
         }
