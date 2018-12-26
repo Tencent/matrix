@@ -5,7 +5,7 @@
 
 (中文版本请参看[这里](#matrix_cn))  
 
-**Matrix** is an APM (Application Performance Manage) used in Wechat to monitor, locate and analyse performance problems. It is a **plugin style**, **no-intrusion** solution on Android.  It includes:
+**Matrix** is an APM (Application Performance Manage) used in Wechat to monitor, locate and analyse performance problems. It is a **plugin style**, **non-invasive** solution on Android.  It includes:
 
 - **APK Checker:**
 
