@@ -423,7 +423,7 @@ Matrix 分析后的输出字段的含义请查看 [Matrix 输出内容的含义�
 
 ### APK Checker
 
-APK Check 以独立的 jar 包提供 如版本 0.4.7 ([matrix-apk-canary-0.4.10.jar](https://dl.bintray.com/matrix/maven/com/tencent/matrix/matrix-apk-canary/0.4.10/matrix-apk-canary-0.4.10.jar))，你可以运行：
+APK Check 以独立的 jar 包提供 ([matrix-apk-canary-0.4.10.jar](https://dl.bintray.com/matrix/maven/com/tencent/matrix/matrix-apk-canary/0.4.10/matrix-apk-canary-0.4.10.jar))，你可以运行：
 
 ```cmd
 java -jar matrix-apk-canary-0.4.10.jar
