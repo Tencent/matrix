@@ -90,7 +90,7 @@ publishing {
             artifactId = POM_ARTIFACT_ID
             version = version
 
-            // artifact sourcesJar
+            artifact sourcesJar
             artifact javadocJar
 
             // append additional configurations
