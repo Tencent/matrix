@@ -161,7 +161,7 @@ android.libraryVariants.all { variant ->
 
             from components.findByName("android${variant.name.capitalize()}")
 
-            // artifact sourcesJar
+            artifact sourcesJar
             artifact javadocJar
             artifact jniSymbolsJar
 
