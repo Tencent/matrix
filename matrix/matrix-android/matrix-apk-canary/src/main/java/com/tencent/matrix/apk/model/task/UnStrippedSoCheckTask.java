@@ -96,16 +96,17 @@ public class UnStrippedSoCheckTask extends ApkTask {
         Process process = processBuilder.start();
         BufferedReader reader = new BufferedReader(new InputStreamReader(process.getErrorStream()));
         String line = reader.readLine();
+        boolean result = false;
         if (!Util.isNullOrNil(line)) {
             //Log.d(TAG, "%s", line);
             String[] columns = line.split(":");
             if (columns.length == 3 && columns[2].trim().equalsIgnoreCase("no symbols")) {
-                return true;
+                result = true;
             }
         }
         reader.close();
         process.waitFor();
-        return false;
+        return result;
     }
 
     @Override
