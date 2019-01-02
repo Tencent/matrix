@@ -3,7 +3,7 @@ jobs:
   test:
     working_directory: ~/repo/matrix/matrix-android
     docker:
-      - image: reactnativecommunity/react-native-android
+      - image: circleci/android:api-27-ndk-r17b
     steps:
       - checkout
       - run:
