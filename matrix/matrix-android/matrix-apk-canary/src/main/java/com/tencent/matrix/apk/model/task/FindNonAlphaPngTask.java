@@ -97,7 +97,7 @@ public class FindNonAlphaPngTask extends ApkTask {
                 }
             } else if (file.isFile() && file.getName().endsWith(ApkConstants.PNG_FILE_SUFFIX) && !file.getName().endsWith(ApkConstants.NINE_PNG)) {
                 BufferedImage bufferedImage = ImageIO.read(file);
-                if (!bufferedImage.getColorModel().hasAlpha()) {
+                if (bufferedImage != null && bufferedImage.getColorModel() != null && !bufferedImage.getColorModel().hasAlpha()) {
                     String filename = file.getAbsolutePath().substring(inputFile.getAbsolutePath().length() + 1);
                     if (entryNameMap.containsKey(filename)) {
                         filename = entryNameMap.get(filename);
