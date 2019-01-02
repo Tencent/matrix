@@ -10,6 +10,7 @@ jobs:
           name: Build
           command: |
             pwd
+            chmod +x gradlew
             ./gradlew assemble
       - run:
           name: Check
