@@ -1,7 +1,7 @@
 version: 2
 jobs:
   test:
-    working_directory: ~/repo/matrix/matrix-android
+    working_directory: ~/repo/matrix/matrix/matrix-android
     docker:
       - image: circleci/android:api-27-ndk-r17b
     steps:
@@ -9,8 +9,6 @@ jobs:
       - run:
           name: Build
           command: |
-            pwd
-            chmod +x gradlew
             ./gradlew assemble
       - run:
           name: Check
