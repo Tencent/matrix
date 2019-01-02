@@ -21,6 +21,7 @@
 #include "sqlite_lint.h"
 #include "loader.h"
 #include "jni_helper.h"
+#include <string.h>
 
 namespace sqlitelint {
     static JavaVM *kJvm;
