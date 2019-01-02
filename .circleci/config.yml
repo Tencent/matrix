@@ -1,0 +1,23 @@
+version: 2
+jobs:
+  test:
+    working_directory: ~/repo
+    docker:
+      - image: reactnativecommunity/react-native-android
+    steps:
+      - checkout
+      - run: cd matrix/matrix-android
+      - run:
+        name: Build
+        command: |
+          ./gradlew assemble
+      - run:
+        name: Check
+        command: |
+          ./gradlew checkstyle
+
+workflows:
+  version: 2
+  build_and_test:
+    jobs:
+      - test
