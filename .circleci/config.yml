@@ -9,6 +9,7 @@ jobs:
       - run:
           name: Build
           command: |
+            pwd
             ./gradlew assemble
       - run:
           name: Check
