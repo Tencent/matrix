@@ -8,13 +8,13 @@ jobs:
       - checkout
       - run: cd matrix/matrix-android
       - run:
-        name: Build
-        command: |
-          ./gradlew assemble
+          name: Build
+          command: |
+            ./gradlew assemble
       - run:
-        name: Check
-        command: |
-          ./gradlew checkstyle
+          name: Check
+          command: |
+            ./gradlew checkstyle
 
 workflows:
   version: 2
