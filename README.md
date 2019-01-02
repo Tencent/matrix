@@ -9,7 +9,7 @@
 
 - **APK Checker:**
 
-  Analyse the APK package, give suggestions of reducing the APK size; Compare two APK and find out the most significant growth
+  Analyse the APK package, give suggestions of reducing the APK's size; Compare two APK and find out the most significant increment on size
 
 - **Resource Canary:**
 
@@ -25,12 +25,12 @@
 
 - **IO Canary:**
 
-  Detect the file IO issues, including performance of file io and closeable leak 
+  Detect the file IO issues, including performance of file IO and closeable leak 
 
 ## Features
 ### APK Checker
 
-- **Easy-to-use.** Matrix provides a  JAR tool, which is more convenient to apply to your integration systems. 
+- **Easy-to-use.** Matrix provides a JAR tool, which is more convenient to apply to your integration systems. 
 - **More features.** In addition to APK Analyzer, Matrix find out the R redundancies, the dynamic libraries statically linked STL, unused resources, and supports custom checking rules.
 - **Visual Outputs.** supports HTML and JSON outputs.
 
@@ -42,38 +42,32 @@
 
 ### Trace Canary
 
-- **High performance.** Dynamically modify bytecode at compile time, record function cost and stack with little performance loss.
-- **Accurate stack of ui-block.** Provide informations such as stack, function cost, execution times to solve the problem of ui-block quickly.
+- **High performance.** Dynamically modify bytecode at compile time, record function cost and call stack with little performance loss.
+- **Accurate call stack of ui-block.** Provide informations such as call stack, function cost, execution times to solve the problem of ui-block quickly.
 - **Non-hack.** High compatibility to Android versions.
 - **More features.** Automatically covers multiple fluency indicators such as ui-block, startup time, activity switching, slow function detection.
 
 ### SQLite Lint
 
-- **Easy-to-use.** No code intrusion.
+- **Easy-to-use.** Non-invasive.
 - **High applicability.** Regardless of the amount of data, you can discover SQLite performance problems during development and testing.
-- **High standards.** Detection algorithms based on best practices, make the quality of SQLite statement high quality.
-- **May support multi-platform.** C++ implementation make it possible to support multi-platform.
+- **High standards.** Detection algorithms based on best practices, make SQLite statements to the highest quality.
+- **May support multi-platform.** Implementing in C++ makes it possible to support multi-platform.
 
 ### IO Canary
-- **Easy-to-use.** No code intrusion.
-- **More feature.** Including performance of file io and closeable leak.
+- **Easy-to-use.** Non-invasive.
+- **More feature.** Including performance of file IO and closeable leak.
 - **Compatible with Android P.**
 
 ## Getting Started
 
-1. Configure Matrix version in gradle.properties.
+1. Configure `MATRIX_VERSION` in gradle.properties.
 ``` gradle
-  MATRIX_VERSION=0.4.7
+  MATRIX_VERSION=0.4.10
 ```
 
-2. Add matrix-gradle-plugin in your build.gradle:
+2. Add `matrix-gradle-plugin` in your build.gradle:
 ``` gradle 
-  repositories {
-    maven {
-      url "https://dl.bintray.com/matrix/maven/"
-    }
-  }
-
   dependencies {
       classpath ("com.tencent.matrix:matrix-gradle-plugin:${MATRIX_VERSION}") { changing = true }
   }
@@ -102,7 +96,7 @@
   }
 ```
 
-4. Implement PluginListener to receive data processed by Matrix.
+4. Implement `PluginListener` to receive data processed by Matrix.
 
 ``` java
   public class TestPluginListener extends DefaultPluginListener {
@@ -122,7 +116,7 @@
 }
 ```
 
-5. Implement DynamicConfig to change parametes of Matrix.
+5. Implement `DynamicConfig` to change parametes of Matrix.
 ``` java
   public class DynamicConfigImplDemo implements IDynamicConfig {
     public DynamicConfigImplDemo() {}
@@ -158,8 +152,8 @@
     }
 }
 
-```
 6. Init Matrix in the ```onCreate``` of your application. 
+
 ``` java 
   Matrix.Builder builder = new Matrix.Builder(application); // build matrix
   builder.patchListener(new TestPluginListener(this)); // add general pluginListener
@@ -185,7 +179,8 @@ You can get more about Matrix output at the wiki [The output of Matrix](https://
 
 ### APK Checker Usage
 
- APK Checker can run independently in Jar ([matrix-apk-canary-0.4.10.jar](https://dl.bintray.com/matrix/maven/com/tencent/matrix/matrix-apk-canary/0.4.10/matrix-apk-canary-0.4.10.jar))  mode, usage:
+APK Checker can run independently in Jar ([matrix-apk-canary-0.4.10.jar](https://jcenter.bintray.com/com/tencent/matrix/matrix-apk-canary/0.4.10/matrix-apk-canary-0.4.10.jar)）  mode, usage:
+
 
 ```shell
 java -jar matrix-apk-canary-0.4.10.jar
@@ -232,7 +227,7 @@ Any problem?
 
 1. Learn more from [Sample](https://github.com/Tencent/matrix/tree/master/samples/sample-android)
 2. [Source Code](https://github.com/Tencent/matrix/tree/master)
-3. [Wiki](https://github.com/Tencent/matrix/wiki) 或 [FAQ](https://github.com/Tencent/Matrix/wiki/Matrix-%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98)
+3. [Wiki](https://github.com/Tencent/matrix/wiki) & [FAQ](https://github.com/Tencent/Matrix/wiki/Matrix-%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98)
 4. Contact us for help
 
 ## Contributing
@@ -303,17 +298,11 @@ Matrix 当前监控范围包括：应用安装包大小，帧率变化，启动�
 
 1. 在你项目根目录下的 gradle.properties 中配置要依赖的 Matrix 版本号，如：
 ``` gradle
-  MATRIX_VERSION=0.4.7
+  MATRIX_VERSION=0.4.10
 ```
 
 2. 在你项目根目录下的 build.gradle 文件添加 Matrix 依赖，如：
 ``` gradle 
-  repositories {
-    maven {
-      url "https://dl.bintray.com/matrix/maven/"
-    }
-  }
-
   dependencies {
       classpath ("com.tencent.matrix:matrix-gradle-plugin:${MATRIX_VERSION}") { changing = true }
   }
@@ -423,7 +412,7 @@ Matrix 分析后的输出字段的含义请查看 [Matrix 输出内容的含义�
 
 ### APK Checker
 
-APK Check 以独立的 jar 包提供 ([matrix-apk-canary-0.4.10.jar](https://dl.bintray.com/matrix/maven/com/tencent/matrix/matrix-apk-canary/0.4.10/matrix-apk-canary-0.4.10.jar))，你可以运行：
+APK Check 以独立的 jar 包提供 ([matrix-apk-canary-0.4.10.jar](https://jcenter.bintray.com/com/tencent/matrix/matrix-apk-canary/0.4.10/matrix-apk-canary-0.4.10.jar)），你可以运行：
 
 ```cmd
 java -jar matrix-apk-canary-0.4.10.jar

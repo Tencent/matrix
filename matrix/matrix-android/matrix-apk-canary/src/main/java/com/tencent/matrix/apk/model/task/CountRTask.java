@@ -114,6 +114,7 @@ public class CountRTask extends ApkTask {
             for (RandomAccessFile dexFile : dexFileList) {
                 DexData dexData = new DexData(dexFile);
                 dexData.load();
+                dexFile.close();
                 ClassRef[] defClassRefs = dexData.getInternalReferences();
                 for (ClassRef classRef : defClassRefs) {
                     String className = ApkUtil.getNormalClassName(classRef.getName());

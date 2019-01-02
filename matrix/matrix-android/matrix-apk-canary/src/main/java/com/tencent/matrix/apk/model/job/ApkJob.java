@@ -464,7 +464,12 @@ public final class ApkJob {
             ApkTask unzipTask = TaskFactory.factory(TaskFactory.TASK_TYPE_UNZIP, jobConfig, new HashMap<String, String>());
             preTasks.add(unzipTask);
             for (String format : jobConfig.getOutputFormatList()) {
-                jobResults.add(JobResultFactory.factory(format, jobConfig));
+                JobResult result = JobResultFactory.factory(format, jobConfig);
+                if (result != null) {
+                    jobResults.add(result);
+                } else {
+                    Log.w(TAG, "Unknown output format name '%s' !", format);
+                }
             }
             execute();
         } else {

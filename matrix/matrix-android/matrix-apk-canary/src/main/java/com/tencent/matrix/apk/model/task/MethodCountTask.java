@@ -204,6 +204,7 @@ public class MethodCountTask extends ApkTask {
             for (int i = 0; i < dexFileList.size(); i++) {
                 RandomAccessFile dexFile = dexFileList.get(i);
                 countDex(dexFile);
+                dexFile.close();
                 int totalInternalMethods = sumOfValue(classInternalMethod);
                 int totalExternalMethods = sumOfValue(classExternalMethod);
                 JsonObject jsonObject = new JsonObject();

@@ -15,7 +15,7 @@ android {
                 cppFlags "-std=gnu++11 -frtti -fexceptions"
             }
             ndk {
-                abiFilters "armeabi"
+                abiFilters "armeabi", "armeabi-v7a", "arm64-v8a", "x86", "x86_64"
             }
         }
     }
