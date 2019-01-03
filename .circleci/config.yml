@@ -3,17 +3,17 @@ jobs:
   test:
     working_directory: ~/repo/matrix/matrix/matrix-android
     docker:
-      - image: circleci/android:api-27-ndk-r17b
+      - image: gengjiawen/android-ndk:android-ndk-r16b
     steps:
       - checkout
       - run:
           name: Build
           command: |
             ./gradlew assemble
-      - run:
-          name: Check
-          command: |
-            ./gradlew checkstyle
+#      - run:
+#          name: Check
+#          command: |
+#            ./gradlew checkstyle
 
 workflows:
   version: 2
