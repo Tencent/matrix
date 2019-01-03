@@ -151,6 +151,7 @@
         //hook to change default values
     }
 }
+```
 
 6. Init Matrix in the ```onCreate``` of your application. 
 
