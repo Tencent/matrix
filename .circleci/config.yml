@@ -1,7 +1,7 @@
 version: 2
 jobs:
   test:
-    working_directory: ~/repo/matrix/matrix/matrix-android
+    working_directory: ~/repo
     docker:
       - image: gengjiawen/android-ndk:android-ndk-r16b
     steps:
@@ -9,6 +9,7 @@ jobs:
       - run:
           name: Build
           command: |
+            cd ./matrix/matrix-android
             ./gradlew assemble
 #      - run:
 #          name: Check
