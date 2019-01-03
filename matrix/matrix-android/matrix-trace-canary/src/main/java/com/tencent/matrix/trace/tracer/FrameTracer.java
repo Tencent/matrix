@@ -30,9 +30,7 @@ import java.util.LinkedList;
 
 /**
  * Created by caichongyang on 2017/5/26.
- *
- **/
-
+ */
 public class FrameTracer extends BaseTracer implements ViewTreeObserver.OnDrawListener {
     private static final String TAG = "Matrix.FrameTracer";
     private boolean isDrawing;
@@ -69,17 +67,11 @@ public class FrameTracer extends BaseTracer implements ViewTreeObserver.OnDrawLi
 
                 }
             }
-
         }
     }
 
     @Override
     public void onChange(final Activity activity, final Fragment fragment) {
-        if (null == activity || null == fragment) {
-            MatrixLog.e(TAG, "Empty Parameters");
-            return;
-        }
-
         super.onChange(activity, fragment);
         MatrixLog.i(TAG, "[onChange] activity:%s", activity.getClass().getName());
         if (null != activity.getWindow() && null != activity.getWindow().getDecorView()) {
@@ -91,7 +83,6 @@ public class FrameTracer extends BaseTracer implements ViewTreeObserver.OnDrawLi
                 }
             });
         }
-
     }
 
     @Override
