@@ -31,7 +31,10 @@ import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.HashMap;
@@ -133,7 +136,12 @@ public class MethodTracer {
                     FileUtil.copyFileUsingStream(classFile, changedFileOutput);
                 }
             } catch (Exception e) {
-                e.printStackTrace();
+                Log.e(TAG, "[innerTraceMethodFromSrc] input:%s e:%s", input.getName(), e);
+                try {
+                    Files.copy(input.toPath(), output.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                } catch (Exception e1) {
+                    e1.printStackTrace();
+                }
             } finally {
                 try {
                     is.close();
@@ -172,7 +180,12 @@ public class MethodTracer {
                 }
             }
         } catch (Exception e) {
-            Log.e(TAG, "[traceMethodFromJar] err! %s", output.getAbsolutePath());
+            Log.e(TAG, "[innerTraceMethodFromJar] input:%s e:%s", input.getName(), e);
+            try {
+                Files.copy(input.toPath(), output.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            } catch (Exception e1) {
+                e1.printStackTrace();
+            }
         } finally {
             try {
                 if (zipOutputStream != null) {
