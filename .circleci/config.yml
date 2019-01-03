@@ -7,8 +7,13 @@ jobs:
     steps:
       - checkout
       - run:
+          name: Envinfo
+          command: |
+            npm i -g envinfo && envinfo
+      - run:
           name: Build
           command: |
+            apt udpate && apt install lib32ncurses5 -y
             cd ./matrix/matrix-android
             ./gradlew assemble
 #      - run:
