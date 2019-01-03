@@ -13,7 +13,7 @@ jobs:
       - run:
           name: Build
           command: |
-            apt udpate && apt install libncurses5 -y
+            apt update && apt install libncurses5 -y
             cd ./matrix/matrix-android
             ./gradlew assemble
 #      - run:
