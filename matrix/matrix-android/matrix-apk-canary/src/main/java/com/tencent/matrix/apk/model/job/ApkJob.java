@@ -504,7 +504,7 @@ public final class ApkJob {
                     }
                 }
             }
-            executor.shutdown();
+            executor.shutdownNow();
 
             for (JobResult jobResult : jobResults) {
                 jobResult.output();
