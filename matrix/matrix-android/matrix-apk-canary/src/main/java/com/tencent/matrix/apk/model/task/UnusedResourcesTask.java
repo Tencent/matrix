@@ -298,16 +298,35 @@ public class UnusedResourcesTask extends ApkTask {
     }
 
     /*
+
+        1. const
+
+        const v6, 0x7f0c0061
+
+        2. sget
+
         sget v6, Lcom/tencent/mm/R$string;->chatting_long_click_menu_revoke_msg:I
         sget v1, Lcom/tencent/mm/libmmui/R$id;->property_anim:I
+
+        3. sput
+
         sput-object v0, Lcom/tencent/mm/plugin_welab_api/R$styleable;->ActionBar:[I   //define resource in R.java
-        const v6, 0x7f0c0061
+
+        4. array-data
+
+        :array_0
+        .array-data 4
+            0x7f0a0022
+            0x7f0a0023
+        .end array-data
+
     */
 
     private void readSmaliLines(String[] lines) {
         if (lines == null) {
             return;
         }
+        boolean arrayData = false;
         for (String line : lines) {
             line = line.trim();
             if (!Util.isNullOrNil(line)) {
@@ -333,6 +352,18 @@ public class UnusedResourcesTask extends ApkTask {
                             } else {
                                 resourceRefSet.add(resourceRef);
                             }
+                        }
+                    }
+                } else if (line.startsWith(".array-data 4")) {
+                    arrayData = true;
+                } else if (line.startsWith(".end array-data")) {
+                    arrayData = false;
+                } else  {
+                    if (arrayData) {
+                        final String resId = parseResourceId(line);
+                        if (!Util.isNullOrNil(resId) && resourceDefMap.containsKey(resId)) {
+                            Log.d(TAG, "array field resource, %s", resId);
+                            resourceRefSet.add(resourceDefMap.get(resId));
                         }
                     }
                 }
