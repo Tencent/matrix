@@ -81,7 +81,7 @@ public class UnzipTask extends ApkTask {
         if (Util.isNullOrNil(config.getApkPath())) {
             throw new TaskInitException(TAG + "---APK-FILE-PATH can not be null!");
         }
-        Log.d(TAG, "inputPath:%s", config.getApkPath());
+        Log.i(TAG, "inputPath:%s", config.getApkPath());
         inputFile = new File(config.getApkPath());
         if (!inputFile.exists()) {
             throw new TaskInitException(TAG + "---'" + config.getApkPath() + "' is not exist!");
@@ -89,7 +89,7 @@ public class UnzipTask extends ApkTask {
         if (Util.isNullOrNil(config.getUnzipPath())) {
             throw new TaskInitException(TAG + "---APK-UNZIP-PATH can not be null!");
         }
-        Log.d(TAG, "outputPath:%s", config.getUnzipPath());
+        Log.i(TAG, "outputPath:%s", config.getUnzipPath());
         outputFile = new File(config.getUnzipPath());
 
         if (!Util.isNullOrNil(config.getMappingFilePath())) {
@@ -121,7 +121,7 @@ public class UnzipTask extends ApkTask {
                             afterClass = pair[1].trim();
                             afterClass = afterClass.substring(0, afterClass.length() - 1);
                             if (!Util.isNullOrNil(beforeClass) && !Util.isNullOrNil(afterClass)) {
-//                                Log.d(TAG, "before:%s,after:%s", beforeClass, afterClass);
+                                Log.d(TAG, "before:%s,after:%s", beforeClass, afterClass);
                                 proguardClassMap.put(afterClass, beforeClass);
                             }
                         }
@@ -164,7 +164,7 @@ public class UnzipTask extends ApkTask {
                             String before = columns[0].trim();
                             String after = columns[1].trim();
                             if (!Util.isNullOrNil(before) && !Util.isNullOrNil(after)) {
-                                //Log.d(TAG, "%s->%s", before, after);
+                                Log.d(TAG, "%s->%s", before, after);
                                 resDirMap.put(after, before);
                             }
                         }
@@ -174,7 +174,7 @@ public class UnzipTask extends ApkTask {
                             String before = parseResourceNameFromResguard(columns[0].trim());
                             String after = parseResourceNameFromResguard(columns[1].trim());
                             if (!Util.isNullOrNil(before) && !Util.isNullOrNil(after)) {
-//                                Log.d(TAG, "%s->%s", before, after);
+                                Log.d(TAG, "%s->%s", before, after);
                                 resguardMap.put(after, before);
                             }
                         }
@@ -287,7 +287,7 @@ public class UnzipTask extends ApkTask {
         try {
             ZipFile zipFile = new ZipFile(inputFile);
             if (outputFile.isDirectory() && outputFile.exists()) {
-                Log.d(TAG, "%s exists, delete it.", outputFile.getAbsolutePath());
+                Log.i(TAG, "%s exists, delete it.", outputFile.getAbsolutePath());
                 FileUtils.deleteDirectory(outputFile);
             } else if (outputFile.isFile()) {
                 throw new TaskExecuteException(TAG + "---File '" + outputFile.getAbsolutePath() + "' is already exists!");

@@ -74,7 +74,7 @@ public class CountClassTask extends ApkTask {
             throw new TaskInitException(TAG + "---APK-UNZIP-PATH can not be null!");
         }
 
-        Log.d(TAG, "input path:%s", inputPath);
+        Log.i(TAG, "input path:%s", inputPath);
 
         inputFile = new File(inputPath);
         if (!inputFile.exists()) {
@@ -135,7 +135,7 @@ public class CountClassTask extends ApkTask {
                 }
                 JsonObject jsonObject = new JsonObject();
                 jsonObject.addProperty("dex-file", dexFileNameList.get(i));
-                //Log.d(TAG, "dex %s, classes %s", dexFileNameList.get(i), classNameSet.toString());
+                Log.d(TAG, "dex %s, classes %s", dexFileNameList.get(i), classNameSet.toString());
 
                 Map<String, Set<String>> packageClass = new HashMap<>();
                 if (JobConstants.GROUP_PACKAGE.equals(group)) {

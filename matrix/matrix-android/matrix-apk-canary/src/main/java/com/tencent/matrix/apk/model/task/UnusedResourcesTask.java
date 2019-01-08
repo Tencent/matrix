@@ -252,7 +252,7 @@ public class UnusedResourcesTask extends ApkTask {
                             afterClass = pair[1].trim();
                             afterClass = afterClass.substring(0, afterClass.length() - 1);
                             if (!Util.isNullOrNil(beforeClass) && !Util.isNullOrNil(afterClass) && ApkUtil.isRClassName(ApkUtil.getPureClassName(beforeClass))) {
-//                                Log.d(TAG, "before:%s,after:%s", beforeClass, afterClass);
+                                Log.d(TAG, "before:%s,after:%s", beforeClass, afterClass);
                                 readRField = true;
                             } else {
                                 readRField = false;
@@ -269,7 +269,7 @@ public class UnusedResourcesTask extends ApkTask {
                                 if (!Util.isNullOrNil(key) && !Util.isNullOrNil(value)) {
                                     String[] field = key.split(" ");
                                     if (field.length == 2) {
-//                                        Log.d(TAG, "%s -> %s", afterClass.replace('$', '.') + "." + value, getPureClassName(beforeClass).replace('$', '.') + "." + field[1]);
+                                        Log.d(TAG, "%s -> %s", afterClass.replace('$', '.') + "." + value, ApkUtil.getPureClassName(beforeClass).replace('$', '.') + "." + field[1]);
                                         rclassProguardMap.put(afterClass.replace('$', '.') + "." + value, ApkUtil.getPureClassName(beforeClass).replace('$', '.') + "." + field[1]);
                                     }
                                 }
@@ -321,7 +321,7 @@ public class UnusedResourcesTask extends ApkTask {
                     if (columns.length == 3) {
                         final String resourceRef = parseResourceNameFromProguard(columns[2]);
                         if (!Util.isNullOrNil(resourceRef)) {
-                            //Log.d(TAG, "find resource reference %s", resourceRef);
+                            Log.d(TAG, "find resource reference %s", resourceRef);
                             if (styleableMap.containsKey(resourceRef)) {
                                 //reference of R.styleable.XXX
                                 for (String attr : styleableMap.get(resourceRef)) {
@@ -431,14 +431,14 @@ public class UnusedResourcesTask extends ApkTask {
             readMappingTxtFile();
             readResourceTxtFile();
             unusedResSet.addAll(resourceDefMap.values());
-            Log.d(TAG, "find resource declarations %d items.", unusedResSet.size());
+            Log.i(TAG, "find resource declarations %d items.", unusedResSet.size());
             decodeCode();
-            Log.d(TAG, "find resource references in classes: %d items.", resourceRefSet.size());
+            Log.i(TAG, "find resource references in classes: %d items.", resourceRefSet.size());
             decodeResources();
-            Log.d(TAG, "find resource references %d items.", resourceRefSet.size());
+            Log.i(TAG, "find resource references %d items.", resourceRefSet.size());
             unusedResSet.removeAll(resourceRefSet);
-            Log.d(TAG, "find unused references %d items", unusedResSet.size());
-//            Log.d(TAG, "find unused references %s", unusedResSet.toString());
+            Log.i(TAG, "find unused references %d items", unusedResSet.size());
+            Log.d(TAG, "find unused references %s", unusedResSet.toString());
             JsonArray jsonArray = new JsonArray();
             for (String name : unusedResSet) {
                 jsonArray.add(name);

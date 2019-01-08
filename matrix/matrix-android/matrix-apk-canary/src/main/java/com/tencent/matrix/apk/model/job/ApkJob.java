@@ -254,6 +254,10 @@ public final class ApkJob {
                 }
             }
 
+            if (config.has(JobConstants.PARAM_LOG_LEVEL)) {
+                Log.setLogLevel(config.get(JobConstants.PARAM_LOG_LEVEL).getAsString());
+            }
+
             if (config.has(JobConstants.PARAM_MAPPING_TXT) && !Util.isNullOrNil(config.get(JobConstants.PARAM_MAPPING_TXT).getAsString())) {
                 jobConfig.setMappingFilePath(config.get(JobConstants.PARAM_MAPPING_TXT).getAsString());
             }
@@ -416,6 +420,10 @@ public final class ApkJob {
                 if (globalParams.containsKey(JobConstants.PARAM_FORMAT_CONFIG)) {
                     JsonElement jsonElement = new JsonParser().parse(globalParams.get(JobConstants.PARAM_FORMAT_CONFIG));
                     jobConfig.setOutputConfig((JsonArray) jsonElement);
+                }
+
+                if (globalParams.containsKey(JobConstants.PARAM_LOG_LEVEL)) {
+                    Log.setLogLevel(globalParams.get(JobConstants.PARAM_LOG_LEVEL));
                 }
 
             }
