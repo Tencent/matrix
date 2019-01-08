@@ -56,7 +56,7 @@ public class ResProguardCheckTask extends ApkTask {
         if (Util.isNullOrNil(inputPath)) {
             throw new TaskInitException(TAG + "---APK-UNZIP-PATH can not be null!");
         }
-        Log.d(TAG, "inputPath:%s", inputPath);
+        Log.i(TAG, "inputPath:%s", inputPath);
         inputFile = new File(inputPath);
         if (!inputFile.exists()) {
             throw new TaskInitException(TAG + "---APK-UNZIP-PATH '" + inputPath + "' is not exist!");
@@ -78,7 +78,7 @@ public class ResProguardCheckTask extends ApkTask {
             }
             long startTime = System.currentTimeMillis();
             if (resDir.exists() && resDir.isDirectory()) {
-                Log.d(TAG, "find resource directory " + resDir.getAbsolutePath());
+                Log.i(TAG, "find resource directory " + resDir.getAbsolutePath());
                 ((TaskJsonResult) taskResult).add("hasResProguard", true);
             } else {
                 resDir = new File(inputFile, ApkConstants.RESOURCE_DIR_NAME);

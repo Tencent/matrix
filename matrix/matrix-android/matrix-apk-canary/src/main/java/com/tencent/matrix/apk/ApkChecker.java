@@ -39,7 +39,7 @@ public final class ApkChecker {
         "Usages:\n\n"
             + JobConstants.PARAM_CONFIG + " CONFIG-FILE-PATH\n\n"
             + "or\n\n"
-            + "[" + JobConstants.PARAM_INPUT + " INPUT-DIR-PATH] [" + JobConstants.PARAM_APK + " APK-FILE-PATH] [" + JobConstants.PARAM_UNZIP + " APK-UNZIP-PATH] [" + JobConstants.PARAM_MAPPING_TXT + " MAPPING-FILE-PATH] [" + JobConstants.PARAM_RES_MAPPING_TXT + " RESGUARD-MAPPING-FILE-PATH] [" + JobConstants.PARAM_OUTPUT + " OUTPUT-PATH] [" + JobConstants.PARAM_FORMAT + " OUTPUT-FORMAT] [" + JobConstants.PARAM_FORMAT_JAR + " OUTPUT-FORMAT-JAR] [" + JobConstants.PARAM_FORMAT_CONFIG + " OUTPUT-FORMAT-CONFIG (json-array format)] [Options]\n\n"
+            + "[" + JobConstants.PARAM_INPUT + " INPUT-DIR-PATH] [" + JobConstants.PARAM_APK + " APK-FILE-PATH] [" + JobConstants.PARAM_UNZIP + " APK-UNZIP-PATH] [" + JobConstants.PARAM_MAPPING_TXT + " MAPPING-FILE-PATH] [" + JobConstants.PARAM_RES_MAPPING_TXT + " RESGUARD-MAPPING-FILE-PATH] [" + JobConstants.PARAM_OUTPUT + " OUTPUT-PATH] [" + JobConstants.PARAM_FORMAT + " OUTPUT-FORMAT] [" + JobConstants.PARAM_FORMAT_JAR + " OUTPUT-FORMAT-JAR] [" + JobConstants.PARAM_FORMAT_CONFIG + " OUTPUT-FORMAT-CONFIG (json-array format)] [" + JobConstants.PARAM_LOG_LEVEL + " LOG-LEVEL (v,d,i,w,e)] [Options]\n\n"
             + "Options:\n"
                 + JobConstants.OPTION_MANIFEST + "\n"
                 + "     Read package info from the AndroidManifest.xml.\n"

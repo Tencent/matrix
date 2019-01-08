@@ -83,7 +83,7 @@ public class UnusedAssetsTask extends ApkTask {
         }
         if (params.containsKey(JobConstants.PARAM_IGNORE_ASSETS_LIST) && !Util.isNullOrNil(params.get(JobConstants.PARAM_IGNORE_ASSETS_LIST))) {
             String[] ignoreAssets = params.get(JobConstants.PARAM_IGNORE_ASSETS_LIST).split(",");
-            Log.d(TAG, "ignore assets %d", ignoreAssets.length);
+            Log.i(TAG, "ignore assets %d", ignoreAssets.length);
             for (String ignore : ignoreAssets) {
                 ignoreSet.add(Util.globToRegexp(ignore));
             }
@@ -106,7 +106,7 @@ public class UnusedAssetsTask extends ApkTask {
                 if (file.isDirectory()) {
                     findAssetsFile(file);
                 } else {
-                    //Log.d(TAG, "find asset file %s", file.getAbsolutePath());
+                    Log.d(TAG, "find asset file %s", file.getAbsolutePath());
                     assetsPathSet.add(file.getAbsolutePath());
                 }
             }
@@ -155,7 +155,7 @@ public class UnusedAssetsTask extends ApkTask {
 
     private boolean ignoreAsset(String name) {
         for (String pattern : ignoreSet) {
-            //Log.d(TAG, "pattern %s", pattern);
+            Log.d(TAG, "pattern %s", pattern);
             if (name.matches(pattern)) {
                 return true;
             }
@@ -169,7 +169,7 @@ public class UnusedAssetsTask extends ApkTask {
             int index = path.indexOf(rootPath);
             if (index >= 0) {
                 String relativePath = path.substring(index + rootPath.length() + 1);
-                //Log.d(TAG, "assets %s", relativePath);
+                Log.d(TAG, "assets %s", relativePath);
                 relativeAssetsSet.add(relativePath);
                 if (ignoreAsset(relativePath)) {
                     Log.d(TAG, "ignore assets %s", relativePath);
@@ -190,9 +190,9 @@ public class UnusedAssetsTask extends ApkTask {
             File assetDir = new File(inputFile, ApkConstants.ASSETS_DIR_NAME);
             findAssetsFile(assetDir);
             generateAssetsSet(assetDir.getAbsolutePath());
-            Log.d(TAG, "find all assets count: %d", assetsPathSet.size());
+            Log.i(TAG, "find all assets count: %d", assetsPathSet.size());
             decodeCode();
-            Log.d(TAG, "find reference assets count: %d", assetRefSet.size());
+            Log.i(TAG, "find reference assets count: %d", assetRefSet.size());
             assetsPathSet.removeAll(assetRefSet);
             JsonArray jsonArray = new JsonArray();
             for (String name : assetsPathSet) {

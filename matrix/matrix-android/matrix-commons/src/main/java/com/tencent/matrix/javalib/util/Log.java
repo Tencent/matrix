@@ -26,36 +26,54 @@ import java.io.StringWriter;
 
 public class Log {
 
+    public static final int LOG_LEVEL_VERBOSE = 0;
+    public static final int LOG_LEVEL_DEBUG = 1;
+    public static final int LOG_LEVEL_INFO = 2;
+    public static final int LOG_LEVEL_WARN = 3;
+    public static final int LOG_LEVEL_ERROR = 4;
+
     private static LogImp debugLog = new LogImp() {
+
+        private int level = LOG_LEVEL_INFO;
 
         @Override
         public void v(final String tag, final String msg, final Object... obj) {
-            String log = obj == null ? msg : String.format(msg, obj);
-            System.out.println(String.format("[VERBOSE][%s]%s", tag, log));
-        }
-
-        @Override
-        public void i(final String tag, final String msg, final Object... obj) {
-            String log = obj == null ? msg : String.format(msg, obj);
-            System.out.println(String.format("[INFO][%s]%s", tag, log));
+            if (level == LOG_LEVEL_VERBOSE) {
+                String log = obj == null ? msg : String.format(msg, obj);
+                System.out.println(String.format("[VERBOSE][%s]%s", tag, log));
+            }
         }
 
         @Override
         public void d(final String tag, final String msg, final Object... obj) {
-            String log = obj == null ? msg : String.format(msg, obj);
-            System.out.println(String.format("[DEBUG][%s]%s", tag, log));
+            if (level <= LOG_LEVEL_DEBUG) {
+                String log = obj == null ? msg : String.format(msg, obj);
+                System.out.println(String.format("[DEBUG][%s]%s", tag, log));
+            }
+        }
+
+        @Override
+        public void i(final String tag, final String msg, final Object... obj) {
+            if (level <= LOG_LEVEL_INFO) {
+                String log = obj == null ? msg : String.format(msg, obj);
+                System.out.println(String.format("[INFO][%s]%s", tag, log));
+            }
         }
 
         @Override
         public void w(final String tag, final String msg, final Object... obj) {
-            String log = obj == null ? msg : String.format(msg, obj);
-            System.out.println(String.format("[WARN][%s]%s", tag, log));
+            if (level <= LOG_LEVEL_WARN) {
+                String log = obj == null ? msg : String.format(msg, obj);
+                System.out.println(String.format("[WARN][%s]%s", tag, log));
+            }
         }
 
         @Override
         public void e(final String tag, final String msg, final Object... obj) {
-            String log = obj == null ? msg : String.format(msg, obj);
-            System.out.println(String.format("[ERROR][%s]%s", tag, log));
+            if (level <= LOG_LEVEL_ERROR) {
+                String log = obj == null ? msg : String.format(msg, obj);
+                System.out.println(String.format("[ERROR][%s]%s", tag, log));
+            }
         }
 
         @Override
@@ -70,10 +88,15 @@ public class Log {
             log += "  " + sw.toString();
             System.out.println(String.format("[ERROR][%s]%s", tag, log));
         }
+
+        @Override
+        public void setLogLevel(int logLevel) {
+            this.level = logLevel;
+        }
     };
 
     private static LogImp logImp = debugLog;
-
+    private static int level = LOG_LEVEL_INFO;
     private Log() {
     }
 
@@ -83,6 +106,21 @@ public class Log {
 
     public static LogImp getImpl() {
         return logImp;
+    }
+
+    public static void setLogLevel(String logLevel) {
+        if (logLevel.equals("v")) {
+            level = LOG_LEVEL_VERBOSE;
+        } else if (logLevel.equals("d")) {
+            level = LOG_LEVEL_DEBUG;
+        } else if (logLevel.equals("i")) {
+            level = LOG_LEVEL_INFO;
+        } else if (logLevel.equals("w")) {
+            level = LOG_LEVEL_WARN;
+        } else if (logLevel.equals("e")) {
+            level = LOG_LEVEL_ERROR;
+        }
+        getImpl().setLogLevel(level);
     }
 
     public static void v(final String tag, final String msg, final Object... obj) {
@@ -134,6 +172,8 @@ public class Log {
         void e(final String tag, final String msg, final Object... obj);
 
         void printErrStackTrace(String tag, Throwable tr, final String format, final Object... obj);
+
+        void setLogLevel(int logLevel);
 
     }
 }
