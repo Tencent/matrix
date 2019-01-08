@@ -51,6 +51,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.Stack;
+
 import brut.androlib.AndrolibException;
 
 
@@ -75,6 +77,7 @@ public class UnusedResourcesTask extends ApkTask {
     private final Set<String> unusedResSet;
     private final Set<String> ignoreSet;
     private final Map<String, Set<String>> nonValueReferences;
+    private Stack<String> visitPath;
 
     public UnusedResourcesTask(JobConfig config, Map<String, String> params) {
         super(config, params);
@@ -88,6 +91,7 @@ public class UnusedResourcesTask extends ApkTask {
         resourceRefSet = new HashSet<>();
         unusedResSet = new HashSet<>();
         nonValueReferences = new HashMap<>();
+        visitPath = new Stack<String>();
     }
 
     @Override
@@ -394,13 +398,20 @@ public class UnusedResourcesTask extends ApkTask {
         return false;
     }
 
-    private void readChildReference(String resource) {
+    private void readChildReference(String resource) throws IllegalStateException {
         if (nonValueReferences.containsKey(resource)) {
+            visitPath.push(resource);
             Set<String> childReference = nonValueReferences.get(resource);
             unusedResSet.removeAll(childReference);
             for (String reference : childReference) {
-                readChildReference(reference);
+                if (!visitPath.contains(reference)) {
+                    readChildReference(reference);
+                } else {
+                    visitPath.push(reference);
+                    throw new IllegalStateException("Found resource cycle! " + visitPath.toString());
+                }
             }
+            visitPath.pop();
         }
     }
 
