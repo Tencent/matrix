@@ -158,10 +158,6 @@ public class UnusedResourcesTask extends ApkTask {
 
     private String parseResourceNameFromProguard(String entry) {
         if (!Util.isNullOrNil(entry)) {
-            // sget v6, Lcom/tencent/mm/R$string;->chatting_long_click_menu_revoke_msg:I
-            // sget v1, Lcom/tencent/mm/libmmui/R$id;->property_anim:I
-            // sput-object v0, Lcom/tencent/mm/plugin_welab_api/R$styleable;->ActionBar:[I
-            // const v6, 0x7f0c0061
             String[] columns = entry.split("->");
             if (columns.length == 2) {
                 int index = columns[1].indexOf(':');
@@ -291,6 +287,13 @@ public class UnusedResourcesTask extends ApkTask {
 
         }
     }
+
+    /*
+        sget v6, Lcom/tencent/mm/R$string;->chatting_long_click_menu_revoke_msg:I
+        sget v1, Lcom/tencent/mm/libmmui/R$id;->property_anim:I
+        sput-object v0, Lcom/tencent/mm/plugin_welab_api/R$styleable;->ActionBar:[I   //define resource in R.java
+        const v6, 0x7f0c0061
+    */
 
     private void readSmaliLines(String[] lines) {
         if (lines == null) {
