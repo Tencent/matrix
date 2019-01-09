@@ -52,7 +52,7 @@ public class MultiLibCheckTask extends ApkTask {
         super.init();
         String inputPath = config.getUnzipPath();
         if (!Util.isNullOrNil(inputPath)) {
-            Log.d(TAG, "inputPath:%s", inputPath);
+            Log.i(TAG, "inputPath:%s", inputPath);
             libDir = new File(inputPath, "lib");
         } else {
             throw new TaskInitException(TAG + "---APK-UNZIP-PATH can not be null!");
