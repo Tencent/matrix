@@ -71,7 +71,7 @@ public class MultiSTLCheckTask extends ApkTask {
             while (matcher.find()) {
                 if (!Util.isNullOrNil(matcher.group())) {
                     String env = System.getenv(matcher.group().substring(1));
-                    //Log.d(TAG, "%s -> %s", matcher.group().substring(1), env);
+                    Log.d(TAG, "%s -> %s", matcher.group().substring(1), env);
                     if (!Util.isNullOrNil(env)) {
                         toolnmPath = toolnmPath.replace(matcher.group(), env);
                     }
@@ -83,7 +83,7 @@ public class MultiSTLCheckTask extends ApkTask {
             throw new TaskInitException(TAG + "---Can not find the tool 'nm'!");
         }
         if (!Util.isNullOrNil(inputPath)) {
-            Log.d(TAG, "inputPath:%s", inputPath);
+            Log.i(TAG, "inputPath:%s", inputPath);
             libDir = new File(inputPath, "lib");
         } else {
             throw new TaskInitException(TAG + "---APK-UNZIP-PATH can not be null!");
@@ -98,7 +98,7 @@ public class MultiSTLCheckTask extends ApkTask {
         String line = reader.readLine();
         while (line != null) {
             String[] columns = line.split(" ");
-//            Log.d(TAG, "%s", line);
+            Log.d(TAG, "%s", line);
             if (columns.length >= 3 && columns[1].equals("T") && columns[2].startsWith("std::")) {
                 return true;
             }
@@ -134,7 +134,7 @@ public class MultiSTLCheckTask extends ApkTask {
             }
             for (File libFile : libFiles) {
                 if (isStlLinked(libFile)) {
-                    Log.d(TAG, "lib: %s has stl link", libFile.getName());
+                    Log.i(TAG, "lib: %s has stl link", libFile.getName());
 
                     jsonArray.add(libFile.getName());
                 }

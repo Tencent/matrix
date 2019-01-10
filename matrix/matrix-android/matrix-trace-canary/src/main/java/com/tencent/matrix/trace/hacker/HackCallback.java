@@ -20,6 +20,8 @@ import android.os.Handler;
 import android.os.Message;
 
 import com.tencent.matrix.trace.core.MethodBeat;
+import com.tencent.matrix.util.MatrixLog;
+
 
 /**
  * Created by caichongyang on 2017/5/26.
@@ -42,7 +44,7 @@ public class HackCallback implements Handler.Callback {
 
     @Override
     public boolean handleMessage(Message msg) {
-//        MatrixLog.i(TAG, "[handleMessage] msg.what:%s begin:%s", msg.what, System.currentTimeMillis());
+        MatrixLog.i(TAG, "[handleMessage] msg.what:%s begin:%s", msg.what, System.currentTimeMillis());
         if (msg.what == LAUNCH_ACTIVITY) {
             Hacker.isEnterAnimationComplete = false;
         } else if (msg.what == ENTER_ANIMATION_COMPLETE) {

@@ -538,13 +538,14 @@ public class EvilMethodTracer extends BaseTracer implements LazyScheduler.ILazyT
     private void getKey(TreeNode root, StringBuilder builder) {
         if (mAnalyseStackList.isEmpty()) {
             Iterator<TreeNode> iterator = root.mChildNodes.iterator();
+            int count = 0;
             while (iterator.hasNext()) {
+                if (count > Constants.MAX_LIMIT_ANALYSE_STACK_KEY_NUM) {
+                    break;
+                }
                 mAnalyseStackList.add(iterator.next().mItem);
+                count++;
             }
-        }
-
-        if (mAnalyseStackList.size() > Constants.MAX_LIMIT_ANALYSE_STACK_KEY_NUM) {
-            mAnalyseStackList.subList(0, Constants.MAX_LIMIT_ANALYSE_STACK_KEY_NUM);
         }
 
         for (MethodItem methodItem : mAnalyseStackList) {

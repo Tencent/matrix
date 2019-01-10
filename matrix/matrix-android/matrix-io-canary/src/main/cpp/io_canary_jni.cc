@@ -102,7 +102,7 @@ namespace iocanary {
             }
 
             JNIEnv* env;
-            bool attached;
+            bool attached = false;
             jint j_ret = kJvm->GetEnv((void**)&env, JNI_VERSION_1_6);
             if (j_ret == JNI_EDETACHED) {
                 jint jAttachRet = kJvm->AttachCurrentThread(&env, nullptr);
@@ -278,12 +278,12 @@ namespace iocanary {
 
         JNIEXPORT void JNICALL
         Java_com_tencent_matrix_iocanary_core_IOCanaryJniBridge_enableDetector(JNIEnv *env, jclass type, jint detector_type) {
-            iocanary::IOCanary::Get().RegisterDetector(DetectorType(detector_type));
+            iocanary::IOCanary::Get().RegisterDetector(static_cast<DetectorType>(detector_type));
         }
 
         JNIEXPORT void JNICALL
         Java_com_tencent_matrix_iocanary_core_IOCanaryJniBridge_setConfig(JNIEnv *env, jclass type, jint key, jlong val) {
-            iocanary::IOCanary::Get().SetConfig(IOCanaryConfigKey(key), val);
+            iocanary::IOCanary::Get().SetConfig(static_cast<IOCanaryConfigKey>(key), val);
         }
 
         JNIEXPORT jboolean JNICALL

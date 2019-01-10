@@ -58,7 +58,7 @@ public class ManifestAnalyzeTask extends ApkTask {
         if (Util.isNullOrNil(inputPath)) {
             throw new TaskInitException(TAG + "---APK-UNZIP-PATH can not be null!");
         }
-        Log.d(TAG, "inputPath:%s", inputPath);
+        Log.i(TAG, "inputPath:%s", inputPath);
         inputFile = new File(inputPath, ApkConstants.MANIFEST_FILE_NAME);
         if (!inputFile.exists()) {
             throw new TaskInitException(TAG + "---Manifest file '" + inputPath + File.separator + ApkConstants.MANIFEST_FILE_NAME + "' is not exist!");
@@ -82,7 +82,7 @@ public class ManifestAnalyzeTask extends ApkTask {
             }
             long startTime = System.currentTimeMillis();
             JsonObject jsonObject = manifestParser.parse();
-//            Log.d(TAG, jsonObject.toString());
+            Log.d(TAG, jsonObject.toString());
             ((TaskJsonResult) taskResult).add("manifest", jsonObject);
             taskResult.setStartTime(startTime);
             taskResult.setEndTime(System.currentTimeMillis());

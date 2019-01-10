@@ -71,7 +71,7 @@ public class UnStrippedSoCheckTask extends ApkTask {
             while (matcher.find()) {
                 if (!Util.isNullOrNil(matcher.group())) {
                     String env = System.getenv(matcher.group().substring(1));
-                    //Log.d(TAG, "%s -> %s", matcher.group().substring(1), env);
+                    Log.d(TAG, "%s -> %s", matcher.group().substring(1), env);
                     if (!Util.isNullOrNil(env)) {
                         toolnmPath = toolnmPath.replace(matcher.group(), env);
                     }
@@ -83,7 +83,7 @@ public class UnStrippedSoCheckTask extends ApkTask {
             throw new TaskInitException(TAG + "---Can not find the tool 'nm'!");
         }
         if (!Util.isNullOrNil(inputPath)) {
-            Log.d(TAG, "inputPath:%s", inputPath);
+            Log.i(TAG, "inputPath:%s", inputPath);
             libDir = new File(inputPath, "lib");
         } else {
             throw new TaskInitException(TAG + "---APK-UNZIP-PATH can not be null!");
@@ -96,16 +96,17 @@ public class UnStrippedSoCheckTask extends ApkTask {
         Process process = processBuilder.start();
         BufferedReader reader = new BufferedReader(new InputStreamReader(process.getErrorStream()));
         String line = reader.readLine();
+        boolean result = false;
         if (!Util.isNullOrNil(line)) {
-            //Log.d(TAG, "%s", line);
+            Log.d(TAG, "%s", line);
             String[] columns = line.split(":");
             if (columns.length == 3 && columns[2].trim().equalsIgnoreCase("no symbols")) {
-                return true;
+                result = true;
             }
         }
         reader.close();
         process.waitFor();
-        return false;
+        return result;
     }
 
     @Override
@@ -133,7 +134,7 @@ public class UnStrippedSoCheckTask extends ApkTask {
             }
             for (File libFile : libFiles) {
                 if (!isSoStripped(libFile)) {
-                    Log.d(TAG, "lib: %s is not stripped", libFile.getName());
+                    Log.i(TAG, "lib: %s is not stripped", libFile.getName());
 
                     jsonArray.add(libFile.getName());
                 }

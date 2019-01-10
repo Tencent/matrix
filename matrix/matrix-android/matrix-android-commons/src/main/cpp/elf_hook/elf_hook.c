@@ -262,6 +262,8 @@ static int compileAbiToElfMachine() {
     return EM_MIPS;
 #elif defined(__x86_64__)
     return EM_X86_64;
+#else //TODO add more abi here
+    return EM_NONE
 #endif
 }
 
