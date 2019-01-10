@@ -127,7 +127,7 @@ public class TraceConfig implements IDefaultConfig {
     }
 
     public long getWarmStartUpThresholdMs() {
-        return mDynamicConfig.get(IDynamicConfig.ExptEnum.clicfg_matrix_trace_app_start_up_threshold.name(), Constants.DEFAULT_STARTUP_THRESHOLD_MS_WARM);
+        return mDynamicConfig.get(IDynamicConfig.ExptEnum.clicfg_matrix_trace_warm_app_start_up_threshold.name(), Constants.DEFAULT_STARTUP_THRESHOLD_MS_WARM);
     }
 
     public String getSplashActivityName() {
@@ -135,7 +135,7 @@ public class TraceConfig implements IDefaultConfig {
     }
 
     public float getFrameRefreshRate() {
-        return mDynamicConfig.get(IDynamicConfig.ExptEnum.clicfg_matrix_trace_app_start_up_threshold.name(), Constants.DEFAULT_DEVICE_REFRESH_RATE);
+        return mDynamicConfig.get(IDynamicConfig.ExptEnum.clicfg_matrix_trace_fps_frame_fresh_threshold.name(), Constants.DEFAULT_DEVICE_REFRESH_RATE);
     }
 
     public boolean isHasSplashActivityName() {
