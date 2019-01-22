@@ -333,9 +333,14 @@ public abstract class MatrixJobIntentService extends Service {
                 if (mParams == null) {
                     return null;
                 }
-                work = mParams.dequeueWork();
+                try {
+                    work = mParams.dequeueWork();
+                } catch (Throwable thr) {
+                    MatrixLog.printErrStackTrace(TAG, thr, "exception occurred.");
+                    return null;
+                }
             }
-            if (work != null) {
+            if (work != null && work.getIntent() != null) {
                 work.getIntent().setExtrasClassLoader(mService.getClassLoader());
                 return new WrapperWorkItem(work);
             } else {
