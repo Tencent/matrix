@@ -1,6 +1,18 @@
 buildscript {
     repositories {
         mavenLocal()
+        maven {
+            url "http://maven.oa.com/nexus/content/repositories/jcenter"
+        }
+        maven {
+            url uri('http://maven.oa.com/nexus/content/repositories/thirdparty-snapshots')   // oa内网maven仓库
+        }
+        maven {
+            url uri('http://maven.oa.com/nexus/content/repositories/thirdparty/')   // oa内网maven仓库
+        }
+        maven {
+            url "http://maven.oa.com/nexus/content/repositories/google-maven/"
+        }
         google()
         jcenter()
     }
@@ -21,6 +33,18 @@ buildscript {
 allprojects {
     repositories {
         mavenLocal()
+        maven {
+            url "http://maven.oa.com/nexus/content/repositories/jcenter"
+        }
+        maven {
+            url uri('http://maven.oa.com/nexus/content/repositories/thirdparty-snapshots')   // oa内网maven仓库
+        }
+        maven {
+            url uri('http://maven.oa.com/nexus/content/repositories/thirdparty/')   // oa内网maven仓库
+        }
+        maven {
+            url "http://maven.oa.com/nexus/content/repositories/google-maven/"
+        }
         google()
         jcenter()
     }

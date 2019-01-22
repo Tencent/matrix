@@ -153,7 +153,7 @@ public class UnusedAssetsTask extends ApkTask {
                     assetFileName = assetFileName.substring(1, assetFileName.length() - 1);
                     if (!Util.isNullOrNil(assetFileName)) {
                         for (String path : assetsPathSet) {
-                            if (path.endsWith(assetFileName)) {
+                            if (assetFileName.endsWith(path)) {
                                 assetRefSet.add(path);
                             }
                         }
