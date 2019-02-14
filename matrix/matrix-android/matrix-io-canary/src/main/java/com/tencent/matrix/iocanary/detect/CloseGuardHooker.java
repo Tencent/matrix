@@ -20,7 +20,7 @@ package com.tencent.matrix.iocanary.detect;
 import com.tencent.matrix.report.IssuePublisher;
 import com.tencent.matrix.util.MatrixLog;
 
-import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 
 /**
@@ -73,31 +73,16 @@ public final class CloseGuardHooker {
      */
     private boolean tryHook() {
         try {
-            /*Class<?> vmPolicyCls = Class.forName("android.os.StrictMode$VmPolicy");
-            Field fieldMask = vmPolicyCls.getDeclaredField("mask");
-            fieldMask.setAccessible(true);
-            StrictMode.VmPolicy policy = StrictMode.getVmPolicy();
-            int mask = fieldMask.getInt(policy);
-            Log.i(TAG, "tryHook detectLeakedClosableObjects mask:%d enable: %b", mask, (mask&DETECT_VM_CLOSABLE_LEAKS)>0);
-            fieldMask.setInt(policy, mask|1040);
-
-            StrictMode.setVmPolicy(policy);*/
-
-            /* Enable the strict mode to detect the closeable leak */
-//            sOriginalPolicy = StrictMode.getVmPolicy();
-//            StrictMode.VmPolicy.Builder builder = new StrictMode.VmPolicy.Builder(sOriginalPolicy);
-//            StrictMode.setVmPolicy(builder.detectLeakedClosableObjects().build());
-
             Class<?> closeGuardCls = Class.forName("dalvik.system.CloseGuard");
             Class<?> closeGuardReporterCls = Class.forName("dalvik.system.CloseGuard$Reporter");
-            Field fieldREPORTER = closeGuardCls.getDeclaredField("REPORTER");
-            Field fieldENABLED = closeGuardCls.getDeclaredField("ENABLED");
+            Method methodGetReporter = closeGuardCls.getDeclaredMethod("getReporter");
+            Method methodSetReporter = closeGuardCls.getDeclaredMethod("setReporter", closeGuardReporterCls);
+            Method methodSetEnabled = closeGuardCls.getDeclaredMethod("setEnabled", boolean.class);
 
-            fieldREPORTER.setAccessible(true);
-            fieldENABLED.setAccessible(true);
+            sOriginalReporter = methodGetReporter.invoke(null);
 
-            sOriginalReporter = fieldREPORTER.get(null);
-            fieldENABLED.set(null, true);
+            methodSetEnabled.invoke(null, true);
+
             // open matrix close guard also
             MatrixCloseGuard.setEnabled(true);
 
@@ -106,11 +91,10 @@ public final class CloseGuardHooker {
                 return false;
             }
 
-            fieldREPORTER.set(null, Proxy.newProxyInstance(classLoader,
+            methodSetReporter.invoke(null, Proxy.newProxyInstance(classLoader,
                 new Class<?>[]{closeGuardReporterCls},
                 new IOCloseLeakDetector(issueListener, sOriginalReporter)));
 
-            fieldREPORTER.setAccessible(false);
             return true;
         } catch (Throwable e) {
             MatrixLog.e(TAG, "tryHook exp=%s", e);
@@ -122,16 +106,13 @@ public final class CloseGuardHooker {
     private boolean tryUnHook() {
         try {
             Class<?> closeGuardCls = Class.forName("dalvik.system.CloseGuard");
-            Field fieldREPORTER = closeGuardCls.getDeclaredField("REPORTER");
-            fieldREPORTER.setAccessible(true);
-            fieldREPORTER.set(null, sOriginalReporter);
+            Class<?> closeGuardReporterCls = Class.forName("dalvik.system.CloseGuard$Reporter");
+            Method methodSetReporter = closeGuardCls.getDeclaredMethod("setReporter", closeGuardReporterCls);
+            Method methodSetEnabled = closeGuardCls.getDeclaredMethod("setEnabled", boolean.class);
 
-            Field fieldENABLED = closeGuardCls.getDeclaredField("ENABLED");
-            fieldENABLED.setAccessible(true);
-            fieldENABLED.set(null, false);
+            methodSetReporter.invoke(null, sOriginalReporter);
 
-            fieldREPORTER.setAccessible(false);
-
+            methodSetEnabled.invoke(null, false);
             // close matrix close guard also
             MatrixCloseGuard.setEnabled(false);
 
