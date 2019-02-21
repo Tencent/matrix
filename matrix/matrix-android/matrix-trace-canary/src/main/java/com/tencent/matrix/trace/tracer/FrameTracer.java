@@ -53,19 +53,11 @@ public class FrameTracer extends BaseTracer implements ViewTreeObserver.OnDrawLi
         }
         isDrawing = false;
         final int droppedCount = (int) ((frameNanos - lastFrameNanos) / REFRESH_RATE_MS);
-        if (droppedCount > 1) {
-            for (final IDoFrameListener listener : mDoFrameListenerList) {
-                listener.doFrameSync(lastFrameNanos, frameNanos, getScene(), droppedCount);
-                if (null != listener.getHandler()) {
-                    listener.getHandler().post(new Runnable() {
-                        @Override
-                        public void run() {
-                            listener.getHandler().post(new AsyncDoFrameTask(listener,
-                                    lastFrameNanos, frameNanos, getScene(), droppedCount));
-                        }
-                    });
-
-                }
+        for (final IDoFrameListener listener : mDoFrameListenerList) {
+            listener.doFrameSync(lastFrameNanos, frameNanos, getScene(), droppedCount);
+            if (null != listener.getHandler()) {
+                listener.getHandler().post(new AsyncDoFrameTask(listener,
+                        lastFrameNanos, frameNanos, getScene(), droppedCount));
             }
         }
     }
