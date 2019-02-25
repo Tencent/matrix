@@ -73,5 +73,11 @@ public final class VersionCodes {
 
     public static final int N = 24;
 
-    public static final int O = 25;
+    public static final int Nougat_MR1 = 25;
+
+    public static final int O = 26;
+
+    public static final int Oreo_MR1 = 27;
+
+    public static final int Pie = 28;
 }
