@@ -24,7 +24,7 @@ import android.os.Message;
 import android.support.v4.app.Fragment;
 
 import com.tencent.matrix.trace.constants.Constants;
-import com.tencent.matrix.trace.hacker.Hacker;
+import com.tencent.matrix.trace.hacker.StartUpHacker;
 import com.tencent.matrix.trace.listeners.IMethodBeat;
 import com.tencent.matrix.trace.listeners.IMethodBeatListener;
 import com.tencent.matrix.util.MatrixHandlerThread;
@@ -92,7 +92,7 @@ public class MethodBeat implements IMethodBeat, ApplicationLifeObserver.IObserve
     });
 
     static {
-        Hacker.hackSysHandlerCallback();
+        StartUpHacker.hackSysHandlerCallback();
         sCurrentDiffTime = sLastDiffTime = System.nanoTime() / Constants.TIME_MILLIS_TO_NANO;
         sReleaseBufferHandler.sendEmptyMessageDelayed(RELEASE_BUFFER_MSG_ID, Constants.DEFAULT_RELEASE_BUFFER_DELAY);
     }
