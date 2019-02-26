@@ -1,5 +1,5 @@
 
-cd /home/android/hudson/workspace/open-check/build/repositories/matrix/matrix/matrix-android
+cd ./matrix/matrix-android
 
 ./gradlew clean compileDebugJavaWithJavac -PforCoverity --no-daemon
 ./gradlew :matrix-io-canary:build

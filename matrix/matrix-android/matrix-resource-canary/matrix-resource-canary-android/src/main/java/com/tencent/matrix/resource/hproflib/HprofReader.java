@@ -46,6 +46,9 @@ public class HprofReader {
     private void acceptHeader(HprofVisitor hv) throws IOException {
         final String text = IOUtil.readNullTerminatedString(mStreamIn);
         final int idSize = IOUtil.readBEInt(mStreamIn);
+        if (idSize <= 0 || idSize >= (Integer.MAX_VALUE >> 1)) {
+            throw new IOException("bad idSize: " + idSize);
+        }
         final long timestamp = IOUtil.readBELong(mStreamIn);
         mIdSize = idSize;
         hv.visitHeader(text, idSize, timestamp);

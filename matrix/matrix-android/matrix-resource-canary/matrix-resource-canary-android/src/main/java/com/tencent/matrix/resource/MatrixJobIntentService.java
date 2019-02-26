@@ -193,20 +193,24 @@ public abstract class MatrixJobIntentService extends Service {
         void enqueueWork(Intent work) {
             Intent intent = new Intent(work);
             intent.setComponent(mComponentName);
-            if (mContext.startService(intent) != null) {
-                synchronized (this) {
-                    if (!mLaunchingService) {
-                        mLaunchingService = true;
-                        if (!mServiceProcessing && mLaunchWakeLock != null) {
-                            // If the service is not already holding the wake lock for
-                            // itself, acquire it now to keep the system running until
-                            // we get this work dispatched.  We use a timeout here to
-                            // protect against whatever problem may cause it to not get
-                            // the work.
-                            mLaunchWakeLock.acquire(60 * 1000);
+            try {
+                if (mContext.startService(intent) != null) {
+                    synchronized (this) {
+                        if (!mLaunchingService) {
+                            mLaunchingService = true;
+                            if (!mServiceProcessing && mLaunchWakeLock != null) {
+                                // If the service is not already holding the wake lock for
+                                // itself, acquire it now to keep the system running until
+                                // we get this work dispatched.  We use a timeout here to
+                                // protect against whatever problem may cause it to not get
+                                // the work.
+                                mLaunchWakeLock.acquire(60 * 1000);
+                            }
                         }
                     }
                 }
+            } catch (Throwable thr) {
+                MatrixLog.printErrStackTrace(TAG, thr, "Exception occurred.");
             }
         }
 
@@ -333,9 +337,14 @@ public abstract class MatrixJobIntentService extends Service {
                 if (mParams == null) {
                     return null;
                 }
-                work = mParams.dequeueWork();
+                try {
+                    work = mParams.dequeueWork();
+                } catch (Throwable thr) {
+                    MatrixLog.printErrStackTrace(TAG, thr, "exception occurred.");
+                    return null;
+                }
             }
-            if (work != null) {
+            if (work != null && work.getIntent() != null) {
                 work.getIntent().setExtrasClassLoader(mService.getClassLoader());
                 return new WrapperWorkItem(work);
             } else {

@@ -68,7 +68,13 @@ public class AndroidHeapDumper {
             return null;
         }
 
-        if (!hprofFile.getParentFile().canWrite()) {
+        final File hprofDir = hprofFile.getParentFile();
+        if (hprofDir == null) {
+            MatrixLog.w(TAG, "hprof file path: %s does not indicate a full path.", hprofFile.getAbsolutePath());
+            return null;
+        }
+
+        if (!hprofDir.canWrite()) {
             MatrixLog.w(TAG, "hprof file path: %s cannot be written.", hprofFile.getAbsolutePath());
             return null;
         }
