@@ -25,6 +25,7 @@ public class Constants {
     public static final int BUFFER_SIZE = 100 * 10000; // 7.6M
     public static final int BUFFER_TMP_SIZE = 10000; // 70kB
     public static final int TIME_UPDATE_CYCLE_MS = 5;
+    public static final int FILTER_STACK_LIMIT_COUNT = 60;
     public static final long DEFAULT_EVIL_METHOD_THRESHOLD_MS = 1000L;
     public static final int DEFAULT_FPS_TIME_SLICE_ALIVE_MS = 6 * 1000;
     public static final float DEFAULT_DEVICE_REFRESH_RATE = 16.666667f;
@@ -39,7 +40,8 @@ public class Constants {
     public static final int DEFAULT_STARTUP_THRESHOLD_MS_WARM = 6 * 1000;
     public static final int DEFAULT_STARTUP_THRESHOLD_MS = 8 * 1000;
     public static final int DEFAULT_RELEASE_BUFFER_DELAY = 30 * 1000;
-    public static final int MAX_EVIL_METHOD_STACK = 20;
+    public static final int MAX_EVIL_METHOD_STACK = 30;
+    public static final int MAX_STACK_COUNT_KET = 10;
     public static final int MIN_EVIL_METHOD_RUN_COUNT = 5;
     public static final int MAX_EVIL_METHOD_DUR_TIME = DEFAULT_ANR + 1 * 1000;
     public static final int MAX_EVIL_METHOD_TRY_COUNT = 20;

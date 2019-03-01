@@ -16,16 +16,21 @@
 
 package sample.tencent.matrix.trace;
 
+import android.animation.Animator;
+import android.animation.AnimatorListenerAdapter;
+import android.animation.ValueAnimator;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.Debug;
+import android.os.SystemClock;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewTreeObserver;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
 
@@ -51,11 +56,11 @@ public class TestTraceMainActivity extends Activity {
         IssueFilter.setCurrentFilter(IssueFilter.ISSUE_TRACE);
 
         Plugin plugin = Matrix.with().getPluginByClass(TracePlugin.class);
-        if(!plugin.isPluginStarted()) {
+        if (!plugin.isPluginStarted()) {
             MatrixLog.i(TAG, "plugin-trace start");
             plugin.start();
         }
-        if(!Matrix.with().getPluginByClass(TracePlugin.class).getEvilMethodTracer().isCreated()) {
+        if (!Matrix.with().getPluginByClass(TracePlugin.class).getEvilMethodTracer().isCreated()) {
             Matrix.with().getPluginByClass(TracePlugin.class).getEvilMethodTracer().onCreate();
         }
     }
@@ -64,7 +69,7 @@ public class TestTraceMainActivity extends Activity {
     protected void onDestroy() {
         super.onDestroy();
         Plugin plugin = Matrix.with().getPluginByClass(TracePlugin.class);
-        if(plugin.isPluginStarted()) {
+        if (plugin.isPluginStarted()) {
             MatrixLog.i(TAG, "plugin-trace stop");
             plugin.stop();
         }
@@ -87,12 +92,26 @@ public class TestTraceMainActivity extends Activity {
         }
     }
 
-    public void testANR(View view) {
-        try {
-            Thread.sleep(5200);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
+    public void testANR(final View view) {
+//        final ViewTreeObserver.OnDrawListener listener = new ViewTreeObserver.OnDrawListener() {
+//            @Override
+//            public void onDraw() {
+//                SystemClock.sleep(5200);
+//            }
+//        };
+//        view.getViewTreeObserver().addOnDrawListener(listener);
+
+        long start = System.nanoTime();
+        for (int i = 0; i < 100000; i++) {
+            System.nanoTime();
         }
+        MatrixLog.i(TAG, "nanoTime Cost:%s", System.nanoTime() - start);
+
+        start = System.nanoTime();
+        for (int i = 0; i < 100000; i++) {
+            SystemClock.currentThreadTimeMillis();
+        }
+        MatrixLog.i(TAG, "currentThreadTimeMillis Cost:%s", System.nanoTime() - start);
     }
 
     private void tryHeavyMethod() {

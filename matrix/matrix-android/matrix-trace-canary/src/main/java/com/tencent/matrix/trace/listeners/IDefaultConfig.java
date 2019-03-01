@@ -24,6 +24,8 @@ public interface IDefaultConfig {
 
     boolean isFPSEnable();
 
+    boolean isDebug();
+
     boolean isMethodTraceEnable();
 
     boolean isTargetScene(String scene);

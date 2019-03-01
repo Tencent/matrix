@@ -25,8 +25,8 @@ import com.tencent.matrix.trace.TracePlugin;
 import com.tencent.matrix.trace.config.SharePluginInfo;
 import com.tencent.matrix.trace.config.TraceConfig;
 import com.tencent.matrix.trace.constants.Constants;
-import com.tencent.matrix.trace.core.MethodBeat;
-import com.tencent.matrix.trace.hacker.StartUpHacker;
+import com.tencent.matrix.trace.core.OldMethodBeat;
+import com.tencent.matrix.trace.hacker.ActivityThreadHacker;
 import com.tencent.matrix.trace.listeners.IMethodBeatListener;
 import com.tencent.matrix.util.DeviceUtil;
 import com.tencent.matrix.util.MatrixHandlerThread;
@@ -122,9 +122,9 @@ public class StartUpTracer extends BaseTracer implements IMethodBeatListener {
 
         boolean isWarnStartUp = isWarmStartUp(firstActivityStartTime);
         long activityCost = activityEndTime - firstActivityStartTime;
-        long appCreateTime = StartUpHacker.sApplicationCreateEndTime - StartUpHacker.sApplicationCreateBeginTime;
-        long betweenCost = firstActivityStartTime - StartUpHacker.sApplicationCreateEndTime;
-        long allCost = activityEndTime - StartUpHacker.sApplicationCreateBeginTime;
+        long appCreateTime = ActivityThreadHacker.sApplicationCreateEndTime - ActivityThreadHacker.sApplicationCreateBeginTime;
+        long betweenCost = firstActivityStartTime - ActivityThreadHacker.sApplicationCreateEndTime;
+        long allCost = activityEndTime - ActivityThreadHacker.sApplicationCreateBeginTime;
 
         if (isWarnStartUp) {
             betweenCost = 0;
@@ -145,21 +145,21 @@ public class StartUpTracer extends BaseTracer implements IMethodBeatListener {
         EvilMethodTracer tracer = getTracer(EvilMethodTracer.class);
         if (null != tracer) {
             long thresholdMs = isWarnStartUp ? mTraceConfig.getWarmStartUpThresholdMs() : mTraceConfig.getStartUpThresholdMs();
-            int startIndex = isWarnStartUp ? mFirstActivityIndex : StartUpHacker.sApplicationCreateBeginMethodIndex;
+            int startIndex = isWarnStartUp ? mFirstActivityIndex : ActivityThreadHacker.sApplicationCreateBeginMethodIndex;
             int curIndex = getMethodBeat().getCurIndex();
             if (allCost > thresholdMs) {
                 MatrixLog.i(TAG, "appCreateTime[%s] is over threshold![%s], dump stack! index[%s:%s]", appCreateTime, thresholdMs, startIndex, curIndex);
                 EvilMethodTracer evilMethodTracer = getTracer(EvilMethodTracer.class);
                 if (null != evilMethodTracer) {
-                    evilMethodTracer.handleBuffer(EvilMethodTracer.Type.STARTUP, startIndex, curIndex, MethodBeat.getBuffer(), appCreateTime, Constants.SUBTYPE_STARTUP_APPLICATION);
+                    evilMethodTracer.handleBuffer(EvilMethodTracer.Type.STARTUP, startIndex, curIndex, OldMethodBeat.getBuffer(), appCreateTime, Constants.SUBTYPE_STARTUP_APPLICATION);
                 }
             }
         }
 
         MatrixLog.i(TAG, "[onActivityEntered] firstActivity:%s appCreateTime:%dms betweenCost:%dms activityCreate:%dms splashCost:%dms allCost:%sms isWarnStartUp:%b ApplicationCreateScene:%s",
-                mFirstActivityName, appCreateTime, betweenCost, activityCost, splashCost, allCost, isWarnStartUp, StartUpHacker.sApplicationCreateScene);
+                mFirstActivityName, appCreateTime, betweenCost, activityCost, splashCost, allCost, isWarnStartUp, ActivityThreadHacker.sApplicationCreateScene);
 
-        mHandler.post(new StartUpReportTask(activityName, appCreateTime, activityCost, betweenCost, splashCost, allCost, isWarnStartUp, StartUpHacker.sApplicationCreateScene));
+        mHandler.post(new StartUpReportTask(activityName, appCreateTime, activityCost, betweenCost, splashCost, allCost, isWarnStartUp, ActivityThreadHacker.sApplicationCreateScene));
 
         mFirstActivityMap.clear();
         mActivityEnteredMap.clear();
@@ -199,7 +199,7 @@ public class StartUpTracer extends BaseTracer implements IMethodBeatListener {
     }
 
     private boolean isWarmStartUp(long time) {
-        return time - StartUpHacker.sApplicationCreateEndTime > Constants.LIMIT_WARM_THRESHOLD_MS;
+        return time - ActivityThreadHacker.sApplicationCreateEndTime > Constants.LIMIT_WARM_THRESHOLD_MS;
     }
 
     private class StartUpReportTask implements Runnable {

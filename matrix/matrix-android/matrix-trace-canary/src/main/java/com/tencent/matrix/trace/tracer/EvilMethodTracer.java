@@ -83,7 +83,7 @@ public class EvilMethodTracer extends BaseTracer implements LazyScheduler.ILazyT
     public void onCreate() {
         super.onCreate();
         if (!getMethodBeat().isRealTrace()) {
-            MatrixLog.e(TAG, "MethodBeat don't work, maybe it's wrong in trace Build!");
+            MatrixLog.e(TAG, "OldMethodBeat don't work, maybe it's wrong in trace Build!");
             onDestroy();
             return;
         }
@@ -402,6 +402,8 @@ public class EvilMethodTracer extends BaseTracer implements LazyScheduler.ILazyT
                 addMethodItem(resultStack, methodItem);
             }
             MatrixLog.i(TAG, "resultStack:%s", resultStack);
+
+
             LinkedList<MethodItem> finalResultStack = new LinkedList<>();
             TreeNode root = stackToTree(resultStack);
             int round = 1;

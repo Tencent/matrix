@@ -26,8 +26,8 @@ import com.tencent.matrix.trace.TracePlugin;
 import com.tencent.matrix.trace.config.TraceConfig;
 import com.tencent.matrix.trace.core.ApplicationLifeObserver;
 import com.tencent.matrix.trace.core.FrameBeat;
-import com.tencent.matrix.trace.core.MethodBeat;
-import com.tencent.matrix.trace.hacker.StartUpHacker;
+import com.tencent.matrix.trace.core.OldMethodBeat;
+import com.tencent.matrix.trace.hacker.ActivityThreadHacker;
 import com.tencent.matrix.trace.listeners.IFrameBeatListener;
 import com.tencent.matrix.trace.listeners.IMethodBeatListener;
 import com.tencent.matrix.util.MatrixLog;
@@ -50,7 +50,7 @@ public abstract class BaseTracer extends IssuePublisher implements ApplicationLi
     private boolean isBackground = true;
     private String mScene;
     private boolean isCreated = false;
-    private static final MethodBeat sMethodBeat = new MethodBeat();
+    private static final OldMethodBeat S_OLD_METHOD_BEAT = new OldMethodBeat();
     private static final HashMap<Class<BaseTracer>, BaseTracer> sTracerMap = new HashMap<>();
 
     BaseTracer(TracePlugin plugin) {
@@ -67,8 +67,8 @@ public abstract class BaseTracer extends IssuePublisher implements ApplicationLi
         return mPlugin;
     }
 
-    public static MethodBeat getMethodBeat() {
-        return sMethodBeat;
+    public static OldMethodBeat getMethodBeat() {
+        return S_OLD_METHOD_BEAT;
     }
 
     protected boolean isBackground() {
@@ -76,7 +76,7 @@ public abstract class BaseTracer extends IssuePublisher implements ApplicationLi
     }
 
     protected boolean isEnterAnimationComplete() {
-        return StartUpHacker.isEnterAnimationComplete;
+        return ActivityThreadHacker.isEnterAnimationComplete;
     }
 
     protected String getScene() {

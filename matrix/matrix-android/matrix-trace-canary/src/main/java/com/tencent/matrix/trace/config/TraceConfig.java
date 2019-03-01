@@ -42,20 +42,29 @@ public class TraceConfig implements IDefaultConfig {
     private final boolean mDefaultFpsEnable;
     private final boolean mDefaultMethodTraceEnable;
     private final boolean mDefaultStartupEnable;
+    private final boolean isDebug;
     private final String mDefaultSplashActivity;
 
-    private TraceConfig(IDynamicConfig dynamicConfig, boolean enableFps, boolean methodTraceEnable, boolean startupEnable, String splashActivity) {
+    private TraceConfig(IDynamicConfig dynamicConfig, boolean enableFps, boolean methodTraceEnable, boolean startupEnable, String splashActivity, boolean isDebug) {
         this.mDynamicConfig = dynamicConfig;
         this.mDefaultFpsEnable = enableFps;
         this.mDefaultMethodTraceEnable = methodTraceEnable;
         this.mDefaultStartupEnable = startupEnable;
         this.mDefaultSplashActivity = splashActivity;
-        MatrixLog.i(TAG, "enableFps:%b, methodTraceEnable:%b startupEnable:%b splashActivity:%s", enableFps, methodTraceEnable, startupEnable, splashActivity);
+        this.isDebug = isDebug;
+        MatrixLog.i(TAG, "enableFps:%b, methodTraceEnable:%b startupEnable:%b splashActivity:%s isDebug:%s", enableFps, methodTraceEnable, startupEnable, splashActivity, isDebug);
     }
+
+
 
     @Override
     public boolean isFPSEnable() {
         return mDynamicConfig.get(IDynamicConfig.ExptEnum.clicfg_matrix_trace_fps_enable.name(), mDefaultFpsEnable);
+    }
+
+    @Override
+    public boolean isDebug() {
+        return isDebug;
     }
 
     @Override
@@ -150,6 +159,7 @@ public class TraceConfig implements IDefaultConfig {
         private boolean mFPSEnable;
         private boolean mMethodTraceEnable;
         private boolean mStartupEnable;
+        private boolean isDebug;
         private String mSplashActivity;
 
         public Builder dynamicConfig(IDynamicConfig dynamicConfig) {
@@ -172,6 +182,11 @@ public class TraceConfig implements IDefaultConfig {
             return this;
         }
 
+        public Builder isDebug(boolean isDebug) {
+            this.isDebug = isDebug;
+            return this;
+        }
+
         public Builder splashActivity(String splashActivity) {
             this.mSplashActivity = splashActivity;
             return this;
@@ -179,7 +194,7 @@ public class TraceConfig implements IDefaultConfig {
 
 
         public TraceConfig build() {
-            return new TraceConfig(mDyConfig, mFPSEnable, mMethodTraceEnable, mStartupEnable, mSplashActivity);
+            return new TraceConfig(mDyConfig, mFPSEnable, mMethodTraceEnable, mStartupEnable, mSplashActivity, isDebug);
         }
 
     }

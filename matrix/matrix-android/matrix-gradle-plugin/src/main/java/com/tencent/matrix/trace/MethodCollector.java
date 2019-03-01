@@ -69,6 +69,8 @@ public class MethodCollector {
     private final AtomicInteger mMethodId = new AtomicInteger(0);
     private final MappingCollector mMappingCollector;
     private int mIncrementCount, mIgnoreCount;
+    private static final int METHOD_ID_MAX = 0xFFFFF;
+    public static final int METHOD_ID_DISPATCH = METHOD_ID_MAX - 1;
 
     public MethodCollector(TraceBuildConfig config, MappingCollector mappingCollector) {
         this.mCollectedMethodMap = new HashMap<>();
@@ -182,6 +184,11 @@ public class MethodCollector {
             methodMapFile.getParentFile().mkdirs();
         }
         List<TraceMethod> methodList = new ArrayList<>();
+
+        TraceMethod extra = TraceMethod.create(METHOD_ID_DISPATCH, Opcodes.ACC_PUBLIC, "android.os.Handler",
+                "dispatchMessage", "(Landroid.os.Message;)V");
+        mCollectedMethodMap.put(extra.getMethodName(), extra);
+
         methodList.addAll(mCollectedMethodMap.values());
         Log.i(TAG, "[saveCollectedMethod] size:%s path:%s", mCollectedMethodMap.size(), methodMapFile.getAbsolutePath());
 

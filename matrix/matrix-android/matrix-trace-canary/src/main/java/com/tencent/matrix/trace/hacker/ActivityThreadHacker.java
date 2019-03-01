@@ -21,7 +21,7 @@ import android.os.Handler;
 import android.os.Message;
 import android.os.SystemClock;
 
-import com.tencent.matrix.trace.core.MethodBeat;
+import com.tencent.matrix.trace.core.OldMethodBeat;
 import com.tencent.matrix.util.MatrixLog;
 
 import java.lang.reflect.Field;
@@ -31,8 +31,8 @@ import java.util.List;
 /**
  * Created by caichongyang on 2017/5/26.
  **/
-public class StartUpHacker {
-    private static final String TAG = "Matrix.StartUpHacker";
+public class ActivityThreadHacker {
+    private static final String TAG = "Matrix.ActivityThreadHacker";
     public static boolean isEnterAnimationComplete = false;
     public static long sApplicationCreateBeginTime = 0L;
     public static int sApplicationCreateBeginMethodIndex = 0;
@@ -43,7 +43,7 @@ public class StartUpHacker {
     public static void hackSysHandlerCallback() {
         try {
             sApplicationCreateBeginTime = SystemClock.uptimeMillis();
-            sApplicationCreateBeginMethodIndex = MethodBeat.getCurIndex();
+            sApplicationCreateBeginMethodIndex = OldMethodBeat.getCurIndex();
             Class<?> forName = Class.forName("android.app.ActivityThread");
             Field field = forName.getDeclaredField("sCurrentActivityThread");
             field.setAccessible(true);
@@ -86,15 +86,15 @@ public class StartUpHacker {
             }
             boolean isLaunchActivity = isLaunchActivity(msg);
             if (isLaunchActivity) {
-                StartUpHacker.isEnterAnimationComplete = false;
+                ActivityThreadHacker.isEnterAnimationComplete = false;
             } else if (msg.what == ENTER_ANIMATION_COMPLETE) {
-                StartUpHacker.isEnterAnimationComplete = true;
+                ActivityThreadHacker.isEnterAnimationComplete = true;
             }
             if (!isCreated) {
                 if (isLaunchActivity || msg.what == CREATE_SERVICE || msg.what == RECEIVER) {
-                    StartUpHacker.sApplicationCreateEndTime = SystemClock.uptimeMillis();
-                    StartUpHacker.sApplicationCreateEndMethodIndex = MethodBeat.getCurIndex();
-                    StartUpHacker.sApplicationCreateScene = msg.what;
+                    ActivityThreadHacker.sApplicationCreateEndTime = SystemClock.uptimeMillis();
+                    ActivityThreadHacker.sApplicationCreateEndMethodIndex = OldMethodBeat.getCurIndex();
+                    ActivityThreadHacker.sApplicationCreateScene = msg.what;
                     isCreated = true;
                 }
             }

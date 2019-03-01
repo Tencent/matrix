@@ -27,10 +27,12 @@ import com.tencent.matrix.trace.config.SharePluginInfo;
 import com.tencent.matrix.trace.config.TraceConfig;
 import com.tencent.matrix.trace.core.ApplicationLifeObserver;
 import com.tencent.matrix.trace.core.FrameBeat;
+import com.tencent.matrix.trace.tracer.AnrTracer;
 import com.tencent.matrix.trace.tracer.EvilMethodTracer;
 import com.tencent.matrix.trace.tracer.FPSTracer;
 import com.tencent.matrix.trace.tracer.FrameTracer;
 import com.tencent.matrix.trace.tracer.StartUpTracer;
+import com.tencent.matrix.trace.util.TraceDataUtils;
 import com.tencent.matrix.util.MatrixLog;
 
 /**
@@ -74,6 +76,11 @@ public class TracePlugin extends Plugin {
         if (mTraceConfig.isMethodTraceEnable()) {
             mEvilMethodTracer = new EvilMethodTracer(this, mTraceConfig);
         }
+
+//        UIThreadMonitor.getMonitor().onStart();
+
+        TraceDataUtils.testStructuredDataToTree();
+
     }
 
     @Override
@@ -86,7 +93,7 @@ public class TracePlugin extends Plugin {
         new Handler(Looper.getMainLooper()).post(new Runnable() {
             @Override
             public void run() {
-                FrameBeat.getInstance().onCreate();
+//                FrameBeat.getMonitor().onCreate();
             }
         });
 
@@ -102,6 +109,9 @@ public class TracePlugin extends Plugin {
         if (null != mStartUpTracer) {
             mStartUpTracer.onCreate();
         }
+
+        new AnrTracer(mTraceConfig).onStartTrace();
+
 
 
     }

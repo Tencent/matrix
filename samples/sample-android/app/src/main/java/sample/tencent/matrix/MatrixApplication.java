@@ -18,6 +18,8 @@ package sample.tencent.matrix;
 
 import android.app.Application;
 import android.content.Context;
+import android.os.Build;
+import android.os.Debug;
 
 import com.tencent.matrix.Matrix;
 import com.tencent.matrix.iocanary.IOCanaryPlugin;
@@ -71,6 +73,7 @@ public class MatrixApplication extends Application {
                 .enableFPS(fpsEnable)
                 .enableMethodTrace(traceEnable)
                 .enableStartUp(traceEnable)
+                .isDebug(true)
                 .splashActivity("sample.tencent.matrix.SplashActivity")
                 .build();
 
