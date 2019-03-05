@@ -19,6 +19,7 @@ package sample.tencent.matrix.issue;
 import android.content.Context;
 import android.graphics.Color;
 import android.os.Bundle;
+import android.os.Environment;
 import android.support.annotation.Nullable;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
@@ -32,9 +33,17 @@ import android.widget.Toast;
 
 import com.tencent.matrix.report.Issue;
 
+import org.json.JSONException;
+
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 
 import sample.tencent.matrix.R;
 
@@ -43,6 +52,7 @@ public class IssuesListActivity extends AppCompatActivity {
     private final static int toastCount = 3;
     private static int currToastCount = 0;
     private RecyclerView recyclerView;
+    private final static File methodFilePath = new File(Environment.getExternalStorageDirectory(), "Debug.methodmap");
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -153,7 +163,69 @@ public class IssuesListActivity extends AppCompatActivity {
                 hideIssue();
         }
 
+        public void readMappingFile(Map<Integer, String> methoMap) {
+            BufferedReader reader = null;
+            String tempString = null;
+            try {
+                reader = new BufferedReader(new FileReader(methodFilePath));
+                while ((tempString = reader.readLine()) != null) {
+                    String[] contents = tempString.split(",");
+                    methoMap.put(Integer.parseInt(contents[0]), contents[2].replace('\n', ' '));
+                }
+                reader.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            } finally {
+                if (reader != null) {
+                    try {
+                        reader.close();
+                    } catch (IOException e1) {
+                    }
+                }
+            }
+        }
+
+
         public void showIssue(Issue issue) {
+            String key = "stack";
+            if(issue.getContent().has(key)){
+                try {
+                    String stack = issue.getContent().getString(key);
+                    Map<Integer, String> map = new HashMap<>();
+                    readMappingFile(map);
+
+                    if(map.size() > 0) {
+                        StringBuilder stringBuilder = new StringBuilder(" ");
+
+                        String[] lines = stack.split("\n");
+                        for (String line : lines) {
+                            String[] args = line.split(",");
+                            int method = Integer.parseInt(args[1]);
+                            boolean isContainKey = map.containsKey(method);
+                            if (!isContainKey) {
+                                System.out.print("error!!!");
+                                continue;
+                            }
+
+                            args[1] = map.get(method);
+                            stringBuilder.append(args[0]);
+                            stringBuilder.append(",");
+                            stringBuilder.append(args[1]);
+                            stringBuilder.append(",");
+                            stringBuilder.append(args[2]);
+                            stringBuilder.append(",");
+                            stringBuilder.append(args[3] + "\n");
+                        }
+
+                        issue.getContent().remove(key);
+                        issue.getContent().put(key, stringBuilder.toString());
+                    }
+
+                }catch (JSONException ex){
+                    System.out.println(ex.getMessage());
+                }
+            }
+
             tvContent.setText(ParseIssueUtil.parseIssue(issue, true));
             tvContent.setVisibility(View.VISIBLE);
             isShow = true;
