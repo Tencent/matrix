@@ -323,7 +323,7 @@ public class UnusedResourcesTask extends ApkTask {
             if (!Util.isNullOrNil(line)) {
                 if (line.startsWith("const")) {
                     String[] columns = line.split(",");
-                    if (columns.length == 2) {
+                    if (columns.length >= 2) {
                         final String resId = parseResourceId(columns[1].trim());
                         if (!Util.isNullOrNil(resId) && resourceDefMap.containsKey(resId)) {
                             resourceRefSet.add(resourceDefMap.get(resId));
@@ -331,7 +331,7 @@ public class UnusedResourcesTask extends ApkTask {
                     }
                 } else if (line.startsWith("sget")) {
                     String[] columns = line.split(" ");
-                    if (columns.length == 3) {
+                    if (columns.length >= 3) {
                         final String resourceRef = parseResourceNameFromProguard(columns[2]);
                         if (!Util.isNullOrNil(resourceRef)) {
                             Log.d(TAG, "find resource reference %s", resourceRef);
