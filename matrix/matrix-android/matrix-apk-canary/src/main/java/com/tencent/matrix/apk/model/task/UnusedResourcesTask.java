@@ -331,9 +331,9 @@ public class UnusedResourcesTask extends ApkTask {
             line = line.trim();
             if (!Util.isNullOrNil(line)) {
                 if (line.startsWith("const")) {
-                    String[] columns = line.split(",");
+                    String[] columns = line.split(" ");
                     if (columns.length >= 2) {
-                        final String resId = parseResourceId(columns[1].trim());
+                        final String resId = parseResourceId(columns[2].trim());
                         if (!Util.isNullOrNil(resId) && resourceDefMap.containsKey(resId)) {
                             resourceRefSet.add(resourceDefMap.get(resId));
                         }
