@@ -41,6 +41,7 @@ public final class JobConstants {
     public static final String PARAM_MAPPING_TXT = "--mappingTxt";
     public static final String PARAM_RES_MAPPING_TXT = "--resMappingTxt";
     public static final String PARAM_IGNORE_ASSETS_LIST = "--ignoreAssets";
+    public static final String PARAM_LOG_LEVEL = "--log";
 
     public static final String OPTION_MANIFEST = "-manifest";
     public static final String OPTION_FILE_SIZE = "-fileSize";

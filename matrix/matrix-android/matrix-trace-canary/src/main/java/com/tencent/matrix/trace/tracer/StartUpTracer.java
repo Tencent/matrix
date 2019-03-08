@@ -18,6 +18,7 @@ package com.tencent.matrix.trace.tracer;
 
 import android.app.Activity;
 import android.os.Handler;
+import android.os.SystemClock;
 import android.text.TextUtils;
 
 import com.tencent.matrix.trace.TracePlugin;
@@ -25,7 +26,7 @@ import com.tencent.matrix.trace.config.SharePluginInfo;
 import com.tencent.matrix.trace.config.TraceConfig;
 import com.tencent.matrix.trace.constants.Constants;
 import com.tencent.matrix.trace.core.MethodBeat;
-import com.tencent.matrix.trace.hacker.Hacker;
+import com.tencent.matrix.trace.hacker.StartUpHacker;
 import com.tencent.matrix.trace.listeners.IMethodBeatListener;
 import com.tencent.matrix.util.DeviceUtil;
 import com.tencent.matrix.util.MatrixHandlerThread;
@@ -46,7 +47,7 @@ public class StartUpTracer extends BaseTracer implements IMethodBeatListener {
     private static final String TAG = "Matrix.StartUpTracer";
     private final TraceConfig mTraceConfig;
     private boolean isFirstActivityCreate = true;
-    private String mFirstActivityName = "";
+    private String mFirstActivityName = null;
     private static int mFirstActivityIndex;
     private final HashMap<String, Long> mFirstActivityMap = new HashMap<>();
     private final HashMap<String, Long> mActivityEnteredMap = new HashMap<>();
@@ -75,8 +76,8 @@ public class StartUpTracer extends BaseTracer implements IMethodBeatListener {
             String activityName = activity.getComponentName().getClassName();
             mFirstActivityIndex = getMethodBeat().getCurIndex();
             mFirstActivityName = activityName;
-            mFirstActivityMap.put(activityName, System.currentTimeMillis());
-            MatrixLog.i(TAG, "[onActivityCreated] first activity:%s index:%s", mFirstActivityName, mFirstActivityIndex);
+            mFirstActivityMap.put(activityName, SystemClock.uptimeMillis());
+            MatrixLog.i(TAG, "[onActivityCreated] first activity:%s index:%s local time:%s", mFirstActivityName, mFirstActivityIndex, System.currentTimeMillis());
             getMethodBeat().lockBuffer(true);
         }
     }
@@ -89,14 +90,14 @@ public class StartUpTracer extends BaseTracer implements IMethodBeatListener {
 
     @Override
     public void onActivityEntered(Activity activity, boolean isFocus, int nowIndex, long[] buffer) {
-        if (!isFirstActivityCreate || mFirstActivityName == null) {
+        if (mFirstActivityName == null) {
             isFirstActivityCreate = false;
             getMethodBeat().lockBuffer(false);
             return;
         }
         String activityName = activity.getComponentName().getClassName();
         if (!mActivityEnteredMap.containsKey(activityName) || isFocus) {
-            mActivityEnteredMap.put(activityName, System.currentTimeMillis());
+            mActivityEnteredMap.put(activityName, SystemClock.uptimeMillis());
         }
         if (!isFocus) {
             MatrixLog.i(TAG, "[onActivityEntered] isFocus false,activityName:%s", activityName);
@@ -111,19 +112,19 @@ public class StartUpTracer extends BaseTracer implements IMethodBeatListener {
         getMethodBeat().lockBuffer(false);
 
         long activityEndTime = getValueFromMap(mActivityEnteredMap, activityName);
-        long firstActivityStart = getValueFromMap(mFirstActivityMap, mFirstActivityName);
-        if (activityEndTime <= 0 || firstActivityStart <= 0) {
-            MatrixLog.w(TAG, "[onActivityEntered] error activityCost! [%s:%s]", activityEndTime, firstActivityStart);
+        long firstActivityStartTime = getValueFromMap(mFirstActivityMap, mFirstActivityName);
+        if (activityEndTime <= 0 || firstActivityStartTime <= 0) {
+            MatrixLog.w(TAG, "[onActivityEntered] error activityCost! [%s:%s]", activityEndTime, firstActivityStartTime);
             mFirstActivityMap.clear();
             mActivityEnteredMap.clear();
             return;
         }
 
-        boolean isWarnStartUp = isWarmStartUp(firstActivityStart);
-        long activityCost = activityEndTime - firstActivityStart;
-        long appCreateTime = Hacker.sApplicationCreateEndTime - Hacker.sApplicationCreateBeginTime;
-        long betweenCost = firstActivityStart - Hacker.sApplicationCreateEndTime;
-        long allCost = activityEndTime - Hacker.sApplicationCreateBeginTime;
+        boolean isWarnStartUp = isWarmStartUp(firstActivityStartTime);
+        long activityCost = activityEndTime - firstActivityStartTime;
+        long appCreateTime = StartUpHacker.sApplicationCreateEndTime - StartUpHacker.sApplicationCreateBeginTime;
+        long betweenCost = firstActivityStartTime - StartUpHacker.sApplicationCreateEndTime;
+        long allCost = activityEndTime - StartUpHacker.sApplicationCreateBeginTime;
 
         if (isWarnStartUp) {
             betweenCost = 0;
@@ -132,23 +133,19 @@ public class StartUpTracer extends BaseTracer implements IMethodBeatListener {
         long splashCost = 0;
         if (mTraceConfig.isHasSplashActivityName()) {
             long tmp = getValueFromMap(mActivityEnteredMap, mTraceConfig.getSplashActivityName());
-
             splashCost = tmp == 0 ? 0 : getValueFromMap(mActivityEnteredMap, activityName) - tmp;
         }
-        if (appCreateTime <= 0) {
-            MatrixLog.e(TAG, "[onActivityEntered] appCreateTime is wrong! appCreateTime:%s", appCreateTime);
+        if (appCreateTime <= 0 || (mTraceConfig.isHasSplashActivityName() && splashCost < 0)) {
+            MatrixLog.e(TAG, "[onActivityEntered] is wrong! appCreateTime:%s isHasSplashActivityName:%s splashCost:%s", appCreateTime, mTraceConfig.isHasSplashActivityName(), splashCost);
             mFirstActivityMap.clear();
             mActivityEnteredMap.clear();
             return;
         }
-        if (mTraceConfig.isHasSplashActivityName() && splashCost < 0) {
-            MatrixLog.e(TAG, "splashCost < 0! splashCost:%s", splashCost);
-            return;
-        }
+
         EvilMethodTracer tracer = getTracer(EvilMethodTracer.class);
         if (null != tracer) {
             long thresholdMs = isWarnStartUp ? mTraceConfig.getWarmStartUpThresholdMs() : mTraceConfig.getStartUpThresholdMs();
-            int startIndex = isWarnStartUp ? mFirstActivityIndex : Hacker.sApplicationCreateBeginMethodIndex;
+            int startIndex = isWarnStartUp ? mFirstActivityIndex : StartUpHacker.sApplicationCreateBeginMethodIndex;
             int curIndex = getMethodBeat().getCurIndex();
             if (allCost > thresholdMs) {
                 MatrixLog.i(TAG, "appCreateTime[%s] is over threshold![%s], dump stack! index[%s:%s]", appCreateTime, thresholdMs, startIndex, curIndex);
@@ -157,13 +154,12 @@ public class StartUpTracer extends BaseTracer implements IMethodBeatListener {
                     evilMethodTracer.handleBuffer(EvilMethodTracer.Type.STARTUP, startIndex, curIndex, MethodBeat.getBuffer(), appCreateTime, Constants.SUBTYPE_STARTUP_APPLICATION);
                 }
             }
-
         }
 
         MatrixLog.i(TAG, "[onActivityEntered] firstActivity:%s appCreateTime:%dms betweenCost:%dms activityCreate:%dms splashCost:%dms allCost:%sms isWarnStartUp:%b ApplicationCreateScene:%s",
-                mFirstActivityName, appCreateTime, betweenCost, activityCost, splashCost, allCost, isWarnStartUp, Hacker.sApplicationCreateScene);
+                mFirstActivityName, appCreateTime, betweenCost, activityCost, splashCost, allCost, isWarnStartUp, StartUpHacker.sApplicationCreateScene);
 
-        mHandler.post(new StartUpReportTask(activityName, appCreateTime, activityCost, betweenCost, splashCost, allCost, isWarnStartUp, Hacker.sApplicationCreateScene));
+        mHandler.post(new StartUpReportTask(activityName, appCreateTime, activityCost, betweenCost, splashCost, allCost, isWarnStartUp, StartUpHacker.sApplicationCreateScene));
 
         mFirstActivityMap.clear();
         mActivityEnteredMap.clear();
@@ -203,7 +199,7 @@ public class StartUpTracer extends BaseTracer implements IMethodBeatListener {
     }
 
     private boolean isWarmStartUp(long time) {
-        return time - Hacker.sApplicationCreateEndTime > Constants.LIMIT_WARM_THRESHOLD_MS;
+        return time - StartUpHacker.sApplicationCreateEndTime > Constants.LIMIT_WARM_THRESHOLD_MS;
     }
 
     private class StartUpReportTask implements Runnable {

@@ -1,0 +1,28 @@
+version: 2
+jobs:
+  test:
+    working_directory: ~/repo
+    docker:
+      - image: gengjiawen/android-ndk:android-ndk-r16b
+    steps:
+      - checkout
+      - run:
+          name: Envinfo
+          command: |
+            npm i -g envinfo && envinfo
+      - run:
+          name: Build
+          command: |
+            apt update && apt install libncurses5 -y
+            cd ./matrix/matrix-android
+            ./gradlew assemble
+#      - run:
+#          name: Check
+#          command: |
+#            ./gradlew checkstyle
+
+workflows:
+  version: 2
+  build_and_test:
+    jobs:
+      - test

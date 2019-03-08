@@ -30,9 +30,7 @@ import java.util.LinkedList;
 
 /**
  * Created by caichongyang on 2017/5/26.
- *
- **/
-
+ */
 public class FrameTracer extends BaseTracer implements ViewTreeObserver.OnDrawListener {
     private static final String TAG = "Matrix.FrameTracer";
     private boolean isDrawing;
@@ -55,31 +53,17 @@ public class FrameTracer extends BaseTracer implements ViewTreeObserver.OnDrawLi
         }
         isDrawing = false;
         final int droppedCount = (int) ((frameNanos - lastFrameNanos) / REFRESH_RATE_MS);
-        if (droppedCount > 1) {
-            for (final IDoFrameListener listener : mDoFrameListenerList) {
-                listener.doFrameSync(lastFrameNanos, frameNanos, getScene(), droppedCount);
-                if (null != listener.getHandler()) {
-                    listener.getHandler().post(new Runnable() {
-                        @Override
-                        public void run() {
-                            listener.getHandler().post(new AsyncDoFrameTask(listener,
-                                    lastFrameNanos, frameNanos, getScene(), droppedCount));
-                        }
-                    });
-
-                }
+        for (final IDoFrameListener listener : mDoFrameListenerList) {
+            listener.doFrameSync(lastFrameNanos, frameNanos, getScene(), droppedCount);
+            if (null != listener.getHandler()) {
+                listener.getHandler().post(new AsyncDoFrameTask(listener,
+                        lastFrameNanos, frameNanos, getScene(), droppedCount));
             }
-
         }
     }
 
     @Override
     public void onChange(final Activity activity, final Fragment fragment) {
-        if (null == activity || null == fragment) {
-            MatrixLog.e(TAG, "Empty Parameters");
-            return;
-        }
-
         super.onChange(activity, fragment);
         MatrixLog.i(TAG, "[onChange] activity:%s", activity.getClass().getName());
         if (null != activity.getWindow() && null != activity.getWindow().getDecorView()) {
@@ -91,7 +75,6 @@ public class FrameTracer extends BaseTracer implements ViewTreeObserver.OnDrawLi
                 }
             });
         }
-
     }
 
     @Override

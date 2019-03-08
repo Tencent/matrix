@@ -33,6 +33,7 @@ namespace iocanary {
     }
 
     IOCanary::IOCanary() {
+        exit_ = false;
         std::thread detect_thread(&IOCanary::Detect, this);
         detect_thread.detach();
     }

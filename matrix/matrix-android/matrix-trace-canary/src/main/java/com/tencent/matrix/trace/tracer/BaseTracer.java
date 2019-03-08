@@ -27,7 +27,7 @@ import com.tencent.matrix.trace.config.TraceConfig;
 import com.tencent.matrix.trace.core.ApplicationLifeObserver;
 import com.tencent.matrix.trace.core.FrameBeat;
 import com.tencent.matrix.trace.core.MethodBeat;
-import com.tencent.matrix.trace.hacker.Hacker;
+import com.tencent.matrix.trace.hacker.StartUpHacker;
 import com.tencent.matrix.trace.listeners.IFrameBeatListener;
 import com.tencent.matrix.trace.listeners.IMethodBeatListener;
 import com.tencent.matrix.util.MatrixLog;
@@ -76,7 +76,7 @@ public abstract class BaseTracer extends IssuePublisher implements ApplicationLi
     }
 
     protected boolean isEnterAnimationComplete() {
-        return Hacker.isEnterAnimationComplete;
+        return StartUpHacker.isEnterAnimationComplete;
     }
 
     protected String getScene() {

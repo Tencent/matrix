@@ -28,6 +28,7 @@ import com.tencent.matrix.apk.model.result.TaskJsonResult;
 import com.tencent.matrix.apk.model.result.TaskResult;
 import com.tencent.matrix.apk.model.result.TaskResultFactory;
 import com.tencent.matrix.javalib.util.FileUtil;
+import com.tencent.matrix.javalib.util.Log;
 import com.tencent.matrix.javalib.util.Util;
 
 import java.io.File;
@@ -116,7 +117,7 @@ public class UncompressedFileTask extends ApkTask {
                             compressSizeMap.put(suffix, compressSizeMap.get(suffix) + size.getSecond());
                         }
                     } else {
-//                        Log.d(TAG, "file: %s, filter by suffix.", entry.getKey());
+                        Log.d(TAG, "file: %s, filter by suffix.", entry.getKey());
                     }
                 }
             }

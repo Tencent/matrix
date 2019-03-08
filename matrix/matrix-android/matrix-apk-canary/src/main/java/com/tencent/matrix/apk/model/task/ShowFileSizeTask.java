@@ -69,7 +69,7 @@ public class ShowFileSizeTask extends ApkTask {
         if (Util.isNullOrNil(inputPath)) {
             throw new TaskInitException(TAG + "---APK-UNZIP-PATH can not be null!");
         }
-        Log.d(TAG, "inputPath:%s", inputPath);
+        Log.i(TAG, "inputPath:%s", inputPath);
         inputFile = new File(inputPath);
         if (!inputFile.exists()) {
             throw new TaskInitException(TAG + "---APK-UNZIP-PATH '" + inputPath + "' is not exist!");
@@ -125,10 +125,10 @@ public class ShowFileSizeTask extends ApkTask {
                         if (filterSuffix.isEmpty() || filterSuffix.contains(suffix)) {
                             entryList.add(Pair.of(entry.getKey(), size.getFirst()));
                         } else {
-//                            Log.d(TAG, "file: %s, filter by suffix.", entry.getKey());
+                            Log.d(TAG, "file: %s, filter by suffix.", entry.getKey());
                         }
                     } else {
-//                        Log.d(TAG, "file:%s, size:%d B, downlimit:%d KB", entry.getKey(), size.getFirst(), downLimit);
+                        Log.d(TAG, "file:%s, size:%d B, downlimit:%d KB", entry.getKey(), size.getFirst(), downLimit);
                     }
                 }
             }

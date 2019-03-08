@@ -43,6 +43,7 @@ public interface IDynamicConfig {
         clicfg_matrix_trace_evil_method_enable,
 
         clicfg_matrix_trace_app_start_up_threshold,
+        clicfg_matrix_trace_warm_app_start_up_threshold,
         clicfg_matrix_trace_fps_frame_fresh_threshold,
         clicfg_matrix_trace_min_evil_method_run_cnt,
         clicfg_matrix_trace_min_evil_method_dur_time,
