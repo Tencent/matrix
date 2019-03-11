@@ -197,6 +197,7 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
     private void dispatchBegin() {
         token = dispatchTimeMs[0] = SystemClock.uptimeMillis();
         dispatchTimeMs[2] = SystemClock.currentThreadTimeMillis();
+        AppMethodBeat.i(AppMethodBeat.METHOD_ID_DISPATCH);
 
         synchronized (observers) {
             for (IFrameObserver observer : observers) {
@@ -235,6 +236,7 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
             doFrameEnd(token);
             addFrameCallback(CALLBACK_INPUT, this, true);
         }
+        AppMethodBeat.o(AppMethodBeat.METHOD_ID_DISPATCH);
 
         this.isBelongFrame = false;
         dispatchTimeMs[3] = SystemClock.currentThreadTimeMillis();

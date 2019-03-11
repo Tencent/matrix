@@ -20,7 +20,6 @@ import org.json.JSONObject;
 
 import java.util.LinkedList;
 import java.util.List;
-import java.util.ListIterator;
 
 public class EvilMethodTracer extends Tracer implements UIThreadMonitor.ILooperObserver {
 
@@ -124,20 +123,14 @@ public class EvilMethodTracer extends Tracer implements UIThreadMonitor.ILooperO
             });
 
             String stackKey = TraceDataUtils.getTreeKey(stack, Constants.MAX_LIMIT_ANALYSE_STACK_KEY_NUM);
-            MatrixLog.w(TAG, printEvil(stack, stackKey, usage, queueCost[0], queueCost[1], queueCost[2], cost)); // for logcat
+
+            StringBuilder reportBuilder = new StringBuilder();
+            StringBuilder logcatBuilder = new StringBuilder();
+            long stackCost = Math.max(cost, TraceDataUtils.stackToString(stack, reportBuilder, logcatBuilder));
+
+            MatrixLog.w(TAG, printEvil(logcatBuilder, stack.size(), stackKey, usage, queueCost[0], queueCost[1], queueCost[2], cost)); // for logcat
 
             // report
-            ListIterator<MethodItem> listIterator = stack.listIterator();
-            StringBuilder reportBuilder = new StringBuilder();
-            long stackCost = cost; // fix cost
-            while (listIterator.hasNext()) {
-                MethodItem item = listIterator.next();
-                reportBuilder.append(item.toString()).append('\n');
-                if (stackCost < item.durTime) {
-                    stackCost = item.durTime;
-                }
-            }
-
             try {
                 TracePlugin plugin = Matrix.with().getPluginByClass(TracePlugin.class);
                 JSONObject jsonObject = new JSONObject();
@@ -165,7 +158,7 @@ public class EvilMethodTracer extends Tracer implements UIThreadMonitor.ILooperO
             analyse();
         }
 
-        private String printEvil(LinkedList<MethodItem> stack, String stackKey, String usage, long inputCost,
+        private String printEvil(StringBuilder stack, long stackSize, String stackKey, String usage, long inputCost,
                                  long animationCost, long traversalCost, long allCost) {
             StringBuilder print = new StringBuilder();
             print.append(String.format(" \n>>>>>>>>>>>>>>>>>>>>> maybe happens Jankiness!(%sms) <<<<<<<<<<<<<<<<<<<<<\n", allCost));
@@ -177,13 +170,11 @@ public class EvilMethodTracer extends Tracer implements UIThreadMonitor.ILooperO
             print.append("|*   animationCost: ").append(animationCost).append("\n");
             print.append("|*   traversalCost: ").append(traversalCost).append("\n");
             print.append("|* [Trace]").append("\n");
-            print.append("|*   StackSize: ").append(stack.size()).append("\n");
+            print.append("|*   StackSize: ").append(stackSize).append("\n");
             print.append("|*   StackKey: ").append(stackKey).append("\n");
 
             if (config.isDebug()) {
-                TraceDataUtils.TreeNode root = new TraceDataUtils.TreeNode();
-                TraceDataUtils.stackToTree(stack, root);
-                TraceDataUtils.printTree(root, print);
+                print.append(stack.toString());
             }
 
             print.append("=========================================================================");

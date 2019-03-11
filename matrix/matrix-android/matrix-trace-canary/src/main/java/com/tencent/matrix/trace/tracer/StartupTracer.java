@@ -125,6 +125,7 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, App
             data = AppMethodBeat.getInstance().copyData(ActivityThreadHacker.sLastLaunchActivityMethodIndex);
             ActivityThreadHacker.sLastLaunchActivityMethodIndex.release();
         }
+
         MatrixHandlerThread.getDefaultHandler().post(new AnalyseTask(data, applicationCost, firstScreenCost, allCost, isWarmStartUp));
 
     }
@@ -169,34 +170,56 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, App
                 }
             });
 
-            StringBuilder print = new StringBuilder();
-            TraceDataUtils.TreeNode root = new TraceDataUtils.TreeNode();
-            TraceDataUtils.stackToTree(stack, root);
-            if (config.isDebug()) {
-                String stackKey = TraceDataUtils.getTreeKey(stack, Constants.MAX_LIMIT_ANALYSE_STACK_KEY_NUM);
-                print.append("stackKey:").append(stackKey).append("\n");
+            StringBuilder reportBuilder = new StringBuilder();
+            StringBuilder logcatBuilder = new StringBuilder();
+            long stackCost = Math.max(allCost, TraceDataUtils.stackToString(stack, reportBuilder, logcatBuilder));
+            String stackKey = TraceDataUtils.getTreeKey(stack, Constants.MAX_LIMIT_ANALYSE_STACK_KEY_NUM);
+
+            if ((allCost > config.getColdStartupThresholdMs() && !isWarmStartUp)
+                    || (allCost > config.getWarmStartupThresholdMs() && isWarmStartUp)) {
+                // logcat
+                MatrixLog.w(TAG, "stackKey:%s \n%s", stackKey, logcatBuilder.toString());
             }
-            TraceDataUtils.printTree(root, print);
-            MatrixLog.i(TAG, print.toString());     // for logcat
 
             // report
-            report(applicationCost, firstScreenCost, allCost, isWarmStartUp);
+            report(applicationCost, firstScreenCost, reportBuilder, stackKey, stackCost, isWarmStartUp);
         }
 
-        private void report(long applicationCost, long firstScreenCost, long allCost, boolean isWarmStartUp) {
-            JSONObject jsonObject = new JSONObject();
+        private void report(long applicationCost, long firstScreenCost, StringBuilder reportBuilder, String stackKey, long allCost, boolean isWarmStartUp) {
+            TracePlugin plugin = Matrix.with().getPluginByClass(TracePlugin.class);
             try {
-                jsonObject = DeviceUtil.getDeviceInfo(jsonObject, Matrix.with().getApplication());
-                jsonObject.put(SharePluginInfo.STAGE_APPLICATION_CREATE, applicationCost);
-                jsonObject.put(SharePluginInfo.STAGE_FIRST_ACTIVITY_CREATE, firstScreenCost);
-                jsonObject.put(SharePluginInfo.STAGE_STARTUP_DURATION, allCost);
-                jsonObject.put(SharePluginInfo.ISSUE_IS_WARM_START_UP, isWarmStartUp);
+                JSONObject costObject = new JSONObject();
+                costObject = DeviceUtil.getDeviceInfo(costObject, Matrix.with().getApplication());
+                costObject.put(SharePluginInfo.STAGE_APPLICATION_CREATE, applicationCost);
+                costObject.put(SharePluginInfo.STAGE_FIRST_ACTIVITY_CREATE, firstScreenCost);
+                costObject.put(SharePluginInfo.STAGE_STARTUP_DURATION, allCost);
+                costObject.put(SharePluginInfo.ISSUE_IS_WARM_START_UP, isWarmStartUp);
                 Issue issue = new Issue();
                 issue.setTag(SharePluginInfo.TAG_PLUGIN_STARTUP);
-                issue.setContent(jsonObject);
-                Matrix.with().getPluginByClass(TracePlugin.class).onDetectIssue(issue);
+                issue.setContent(costObject);
+                plugin.onDetectIssue(issue);
             } catch (JSONException e) {
                 MatrixLog.e(TAG, "[JSONException for StartUpReportTask error: %s", e);
+            }
+
+            if ((allCost > config.getColdStartupThresholdMs() && !isWarmStartUp)
+                    || (allCost > config.getWarmStartupThresholdMs() && isWarmStartUp)) {
+                try {
+                    JSONObject jsonObject = new JSONObject();
+                    jsonObject = DeviceUtil.getDeviceInfo(jsonObject, Matrix.with().getApplication());
+                    jsonObject.put(SharePluginInfo.ISSUE_STACK_TYPE, Constants.Type.STARTUP);
+                    jsonObject.put(SharePluginInfo.ISSUE_COST, allCost);
+                    jsonObject.put(SharePluginInfo.ISSUE_STACK, reportBuilder.toString());
+                    jsonObject.put(SharePluginInfo.ISSUE_STACK_KEY, stackKey);
+                    jsonObject.put(SharePluginInfo.ISSUE_IS_WARM_START_UP, isWarmStartUp);
+                    Issue issue = new Issue();
+                    issue.setTag(SharePluginInfo.TAG_PLUGIN_EVIL_METHOD);
+                    issue.setContent(jsonObject);
+                    plugin.onDetectIssue(issue);
+
+                } catch (JSONException e) {
+                    MatrixLog.e(TAG, "[JSONException error: %s", e);
+                }
             }
         }
     }

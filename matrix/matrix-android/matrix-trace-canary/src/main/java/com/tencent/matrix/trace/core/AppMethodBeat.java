@@ -5,7 +5,6 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.SystemClock;
-import android.util.Printer;
 
 import com.tencent.matrix.trace.constants.Constants;
 import com.tencent.matrix.trace.hacker.ActivityThreadHacker;
@@ -14,7 +13,6 @@ import com.tencent.matrix.trace.util.Utils;
 import com.tencent.matrix.util.MatrixHandlerThread;
 import com.tencent.matrix.util.MatrixLog;
 
-import java.lang.reflect.Field;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -62,24 +60,6 @@ public class AppMethodBeat implements BeatLifecycle {
 
     public static AppMethodBeat getInstance() {
         return sInstance;
-    }
-
-    public AppMethodBeat() {
-        final Printer printer = reflectObject(Looper.getMainLooper(), "mLogging");
-        Looper.getMainLooper().setMessageLogging(new Printer() {
-            @Override
-            public void println(String x) {
-                if (null != printer) {
-                    printer.println(x);
-                }
-                AppMethodBeat.this.isHandleMessageEnd = !isHandleMessageEnd;
-                if (!isHandleMessageEnd) {
-                    AppMethodBeat.i(AppMethodBeat.METHOD_ID_DISPATCH); // begin
-                } else {
-                    AppMethodBeat.o(AppMethodBeat.METHOD_ID_DISPATCH); // end
-                }
-            }
-        });
     }
 
     @Override
@@ -362,19 +342,6 @@ public class AppMethodBeat implements BeatLifecycle {
             MatrixLog.i(TAG, "[copyData] [%s:%s] cost:%sms", Math.max(0, startRecord.index), endRecord.index, System.currentTimeMillis() - current);
         }
     }
-
-    private <T> T reflectObject(Object instance, String name) {
-        try {
-            Field field = instance.getClass().getDeclaredField(name);
-            field.setAccessible(true);
-            return (T) field.get(instance);
-        } catch (Exception e) {
-            e.printStackTrace();
-            MatrixLog.e(TAG, e.toString());
-        }
-        return null;
-    }
-
 
     public void printIndexRecord() {
         StringBuilder ss = new StringBuilder(" \n");

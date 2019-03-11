@@ -114,6 +114,7 @@ public class MatrixApplication extends Application {
         tracePlugin.start();
 
         MatrixLog.i("Matrix.HackCallback", "end:%s", System.currentTimeMillis());
+        SystemClock.sleep(8000);
     }
 
 

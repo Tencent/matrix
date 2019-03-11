@@ -47,8 +47,11 @@ public class TraceDataUtils {
 
             if (isIn(trueId)) {
                 rawData.push(trueId);
+                int methodId = getMethodId(trueId); // in
+                MatrixLog.i(TAG, "in :%s", methodId);
             } else {
                 int methodId = getMethodId(trueId); // out
+                MatrixLog.i(TAG, "out :%s", methodId);
                 if (!rawData.isEmpty()) {
                     long in = rawData.pop();
                     while (getMethodId(in) != methodId) {
@@ -107,11 +110,12 @@ public class TraceDataUtils {
         if (!resultStack.isEmpty()) {
             last = resultStack.peek();
         }
-        if (null != last && last.methodId == item.methodId && last.depth == item.depth) {
-            last.mergeMore(item.durTime);
-        } else {
-            resultStack.push(item);
-        }
+        resultStack.push(item);
+//        if (null != last && last.methodId == item.methodId && last.depth == item.depth) {
+//            last.mergeMore(item.durTime);
+//        } else {
+//            resultStack.push(item);
+//        }
     }
 
     /**
@@ -149,6 +153,24 @@ public class TraceDataUtils {
         }
         return count;
     }
+
+
+    public static long stackToString(LinkedList<MethodItem> stack, StringBuilder reportBuilder, StringBuilder logcatBuilder) {
+        logcatBuilder.append("|*   TraceStack:[id count cost] ").append("\n");
+        ListIterator<MethodItem> listIterator = stack.listIterator();
+        long stackCost = 0; // fix cost
+        while (listIterator.hasNext()) {
+            MethodItem item = listIterator.next();
+            reportBuilder.append(item.toString()).append('\n');
+            logcatBuilder.append("|*        ").append(item.print()).append('\n');
+
+            if (stackCost < item.durTime) {
+                stackCost = item.durTime;
+            }
+        }
+        return stackCost;
+    }
+
 
     public static int countTreeNode(TreeNode node) {
         int count = node.children.size();

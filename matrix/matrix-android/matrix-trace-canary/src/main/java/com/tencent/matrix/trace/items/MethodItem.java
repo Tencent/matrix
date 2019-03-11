@@ -18,10 +18,6 @@ public class MethodItem {
         return depth + "," + methodId + "," + count + "," + durTime;
     }
 
-    public String getKey() {
-        return depth + "," + methodId + "," + count;
-    }
-
     public void mergeMore(long cost) {
         count++;
         durTime += cost;

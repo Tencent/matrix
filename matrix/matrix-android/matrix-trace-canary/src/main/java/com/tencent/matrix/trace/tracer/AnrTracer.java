@@ -23,7 +23,6 @@ import org.json.JSONObject;
 
 import java.util.LinkedList;
 import java.util.List;
-import java.util.ListIterator;
 
 
 public class AnrTracer extends Tracer implements UIThreadMonitor.ILooperObserver {
@@ -138,19 +137,13 @@ public class AnrTracer extends Tracer implements UIThreadMonitor.ILooperObserver
 
             String stackKey = TraceDataUtils.getTreeKey(stack, Constants.MAX_LIMIT_ANALYSE_STACK_KEY_NUM);
 
-            MatrixLog.w(TAG, printAnr(status, stack, stackKey, dumpStack, inputCost, animationCost, traversalCost)); // for logcat
+            StringBuilder reportBuilder = new StringBuilder();
+            StringBuilder logcatBuilder = new StringBuilder();
+            long stackCost = Math.max(Constants.DEFAULT_ANR, TraceDataUtils.stackToString(stack, reportBuilder, logcatBuilder));
+
+            MatrixLog.w(TAG, printAnr(status, reportBuilder, stack.size(), stackKey, dumpStack, inputCost, animationCost, traversalCost)); // for logcat
 
             // report
-            ListIterator<MethodItem> listIterator = stack.listIterator();
-            StringBuilder reportBuilder = new StringBuilder();
-            long stackCost = Constants.DEFAULT_ANR; // fix cost
-            while (listIterator.hasNext()) {
-                MethodItem item = listIterator.next();
-                reportBuilder.append(item.toString()).append('\n');
-                if (stackCost < item.durTime) {
-                    stackCost = item.durTime;
-                }
-            }
             try {
                 TracePlugin plugin = Matrix.with().getPluginByClass(TracePlugin.class);
                 JSONObject jsonObject = new JSONObject();
@@ -171,7 +164,7 @@ public class AnrTracer extends Tracer implements UIThreadMonitor.ILooperObserver
 
         }
 
-        private String printAnr(Thread.State state, LinkedList<MethodItem> stack, String stackKey, String dumpStack, long inputCost, long animationCost, long traversalCost) {
+        private String printAnr(Thread.State state, StringBuilder stack, long stackSize, String stackKey, String dumpStack, long inputCost, long animationCost, long traversalCost) {
             StringBuilder print = new StringBuilder();
             print.append(" \n>>>>>>>>>>>>>>>>>>>>>>> maybe happens ANR(5s)! <<<<<<<<<<<<<<<<<<<<<<<\n");
             print.append("|* [Memory]").append("\n");  // todo
@@ -183,13 +176,11 @@ public class AnrTracer extends Tracer implements UIThreadMonitor.ILooperObserver
             print.append("|*   State: ").append(state).append("\n");
             print.append("|*   Stack: ").append(dumpStack);
             print.append("|* [Trace]").append("\n");
-            print.append("|*   StackSize: ").append(stack.size()).append("\n");
+            print.append("|*   StackSize: ").append(stackSize).append("\n");
             print.append("|*   StackKey: ").append(stackKey).append("\n");
 
             if (traceConfig.isDebug()) {
-                TraceDataUtils.TreeNode root = new TraceDataUtils.TreeNode();
-                TraceDataUtils.stackToTree(stack, root);
-                TraceDataUtils.printTree(root, print);
+                print.append(stack.toString());
             }
 
             print.append("=========================================================================");
