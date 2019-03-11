@@ -20,7 +20,6 @@ import android.os.Handler;
 
 /**
  * Created by caichongyang on 2017/5/26.
- *
  **/
 public class IDoFrameListener {
     private Handler mHandler;
@@ -43,6 +42,10 @@ public class IDoFrameListener {
 
     }
 
+    public void doFrameAsync(String focusedActivityName, long frameCost, int droppedFrames) {
+
+    }
+
     /**
      * Sync exec
      *
@@ -53,7 +56,13 @@ public class IDoFrameListener {
 
     }
 
+    public void doFrameSync(String focusedActivityName, long frameCost, int droppedFrames) {
+
+    }
+
     public Handler getHandler() {
         return mHandler;
     }
+
+
 }

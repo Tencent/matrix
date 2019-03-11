@@ -16,35 +16,22 @@
 
 package sample.tencent.matrix.trace;
 
-import android.animation.Animator;
-import android.animation.AnimatorListenerAdapter;
-import android.animation.ValueAnimator;
 import android.app.Activity;
-import android.app.AlertDialog;
-import android.app.Dialog;
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.Debug;
 import android.os.SystemClock;
-import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.view.View;
-import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
-import android.widget.ArrayAdapter;
-import android.widget.ListView;
 
 import com.tencent.matrix.Matrix;
 import com.tencent.matrix.plugin.Plugin;
 import com.tencent.matrix.trace.TracePlugin;
-import com.tencent.matrix.trace.constants.Constants;
 import com.tencent.matrix.util.MatrixLog;
-
-import java.util.Random;
 
 import sample.tencent.matrix.R;
 import sample.tencent.matrix.issue.IssueFilter;
-import sample.tencent.matrix.issue.IssuesMap;
 
 public class TestTraceMainActivity extends Activity {
     private static String TAG = "Matrix.TestTraceMainActivity";
@@ -59,9 +46,6 @@ public class TestTraceMainActivity extends Activity {
         if (!plugin.isPluginStarted()) {
             MatrixLog.i(TAG, "plugin-trace start");
             plugin.start();
-        }
-        if (!Matrix.with().getPluginByClass(TracePlugin.class).getEvilMethodTracer().isCreated()) {
-            Matrix.with().getPluginByClass(TracePlugin.class).getEvilMethodTracer().onCreate();
         }
     }
 
@@ -86,42 +70,19 @@ public class TestTraceMainActivity extends Activity {
         overridePendingTransition(R.anim.slide_right_in, 0);
     }
 
-    public void testJank(View view) {
+    public void testJankiess(View view) {
         for (int i = 0; i < 30; i++) {
             tryHeavyMethod();
         }
     }
 
+
     public void testANR(final View view) {
-//        final ViewTreeObserver.OnDrawListener listener = new ViewTreeObserver.OnDrawListener() {
-//            @Override
-//            public void onDraw() {
-//                SystemClock.sleep(5200);
-//            }
-//        };
-//        view.getViewTreeObserver().addOnDrawListener(listener);
-
-        long start = System.nanoTime();
-        for (int i = 0; i < 100000; i++) {
-            System.nanoTime();
-        }
-        MatrixLog.i(TAG, "nanoTime Cost:%s", System.nanoTime() - start);
-
-        start = System.nanoTime();
-        for (int i = 0; i < 100000; i++) {
-            SystemClock.currentThreadTimeMillis();
-        }
-        MatrixLog.i(TAG, "currentThreadTimeMillis Cost:%s", System.nanoTime() - start);
+        SystemClock.sleep(5200);
     }
 
     private void tryHeavyMethod() {
         Debug.getMemoryInfo(new Debug.MemoryInfo());
-    }
-
-    private void testMuch(int count) {
-        if (count % 2 == 0) {
-            System.nanoTime();
-        }
     }
 
 }

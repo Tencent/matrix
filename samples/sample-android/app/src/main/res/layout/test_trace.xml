@@ -42,6 +42,6 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
         android:minWidth="200dp"
-        android:onClick="testJank"
+        android:onClick="testJankiess"
         android:text="evil_method" />
 </LinearLayout>

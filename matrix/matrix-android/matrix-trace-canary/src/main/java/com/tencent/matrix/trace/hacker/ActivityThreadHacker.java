@@ -21,7 +21,7 @@ import android.os.Handler;
 import android.os.Message;
 import android.os.SystemClock;
 
-import com.tencent.matrix.trace.core.OldMethodBeat;
+import com.tencent.matrix.trace.core.AppMethodBeat;
 import com.tencent.matrix.util.MatrixLog;
 
 import java.lang.reflect.Field;
@@ -33,17 +33,17 @@ import java.util.List;
  **/
 public class ActivityThreadHacker {
     private static final String TAG = "Matrix.ActivityThreadHacker";
-    public static boolean isEnterAnimationComplete = false;
-    public static long sApplicationCreateBeginTime = 0L;
-    public static int sApplicationCreateBeginMethodIndex = 0;
-    public static long sApplicationCreateEndTime = 0L;
-    public static int sApplicationCreateEndMethodIndex = 0;
+    private static long sApplicationCreateBeginTime = 0L;
+    private static long sApplicationCreateEndTime = 0L;
+    public static long sLastLaunchActivityTime = 0L;
+    public static AppMethodBeat.IndexRecord sLastLaunchActivityMethodIndex = new AppMethodBeat.IndexRecord();
+    public static AppMethodBeat.IndexRecord sApplicationCreateBeginMethodIndex = new AppMethodBeat.IndexRecord();
     public static int sApplicationCreateScene = -100;
 
     public static void hackSysHandlerCallback() {
         try {
             sApplicationCreateBeginTime = SystemClock.uptimeMillis();
-            sApplicationCreateBeginMethodIndex = OldMethodBeat.getCurIndex();
+            sApplicationCreateBeginMethodIndex = AppMethodBeat.getInstance().maskIndex("ApplicationCreateBeginMethodIndex");
             Class<?> forName = Class.forName("android.app.ActivityThread");
             Field field = forName.getDeclaredField("sCurrentActivityThread");
             field.setAccessible(true);
@@ -65,12 +65,11 @@ public class ActivityThreadHacker {
 
     private final static class HackCallback implements Handler.Callback {
         private static final int LAUNCH_ACTIVITY = 100;
-        private static final int ENTER_ANIMATION_COMPLETE = 149;
         private static final int CREATE_SERVICE = 114;
         private static final int RECEIVER = 113;
         public static final int EXECUTE_TRANSACTION = 159; // for Android 9.0
         private static boolean isCreated = false;
-        private static int hasPrint = 20;
+        private static int hasPrint = 10;
 
         private final Handler.Callback mOriginalCallback;
 
@@ -86,34 +85,36 @@ public class ActivityThreadHacker {
             }
             boolean isLaunchActivity = isLaunchActivity(msg);
             if (isLaunchActivity) {
-                ActivityThreadHacker.isEnterAnimationComplete = false;
-            } else if (msg.what == ENTER_ANIMATION_COMPLETE) {
-                ActivityThreadHacker.isEnterAnimationComplete = true;
+                ActivityThreadHacker.sLastLaunchActivityTime = SystemClock.uptimeMillis();
+                ActivityThreadHacker.sLastLaunchActivityMethodIndex = AppMethodBeat.getInstance().maskIndex("LastLaunchActivityMethodIndex");
             }
+
             if (!isCreated) {
-                if (isLaunchActivity || msg.what == CREATE_SERVICE || msg.what == RECEIVER) {
+                if (isLaunchActivity || msg.what == CREATE_SERVICE || msg.what == RECEIVER) { // todo for provider
                     ActivityThreadHacker.sApplicationCreateEndTime = SystemClock.uptimeMillis();
-                    ActivityThreadHacker.sApplicationCreateEndMethodIndex = OldMethodBeat.getCurIndex();
                     ActivityThreadHacker.sApplicationCreateScene = msg.what;
+                    AppMethodBeat.onApplicationAttached(sApplicationCreateBeginTime, sApplicationCreateEndTime, sApplicationCreateScene);
                     isCreated = true;
                 }
             }
-            if (null == mOriginalCallback) {
-                return false;
-            }
-            return mOriginalCallback.handleMessage(msg);
+
+            return null == mOriginalCallback ? false : mOriginalCallback.handleMessage(msg);
         }
+
+        private Method method = null;
 
         private boolean isLaunchActivity(Message msg) {
             if (Build.VERSION.SDK_INT > Build.VERSION_CODES.O) {
                 if (msg.what == EXECUTE_TRANSACTION && msg.obj != null) {
                     try {
-                        Class clazz = Class.forName("android.app.servertransaction.ClientTransaction");
-                        Method method = clazz.getDeclaredMethod("getCallbacks");
-                        method.setAccessible(true);
+                        if (null == method) {
+                            Class clazz = Class.forName("android.app.servertransaction.ClientTransaction");
+                            method = clazz.getDeclaredMethod("getCallbacks");
+                            method.setAccessible(true);
+                        }
                         List list = (List) method.invoke(msg.obj);
                         if (!list.isEmpty()) {
-                            return list.get(0).getClass().getName().equals("android.app.servertransaction.LaunchActivityItem");
+                            return list.get(0).getClass().getName().endsWith(".LaunchActivityItem");
                         }
                     } catch (Exception e) {
                         MatrixLog.e(TAG, "[isLaunchActivity] %s", e);

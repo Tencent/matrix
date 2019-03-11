@@ -4,29 +4,41 @@ import android.app.Activity;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
+import android.os.SystemClock;
+import android.util.Printer;
 
 import com.tencent.matrix.trace.constants.Constants;
 import com.tencent.matrix.trace.hacker.ActivityThreadHacker;
+import com.tencent.matrix.trace.listeners.IAppMethodBeatListener;
+import com.tencent.matrix.trace.util.Utils;
 import com.tencent.matrix.util.MatrixHandlerThread;
 import com.tencent.matrix.util.MatrixLog;
 
-public class MethodBeat implements BeatLifecycle {
+import java.lang.reflect.Field;
+import java.util.HashSet;
+import java.util.Set;
 
-    private static final String TAG = "Matrix.MethodBeat";
-    private static MethodBeat sInstance = new MethodBeat();
+public class AppMethodBeat implements BeatLifecycle {
+
+    private static final String TAG = "Matrix.AppMethodBeat";
+    private static AppMethodBeat sInstance = new AppMethodBeat();
     private static volatile boolean isAlive = false;
     private static long[] sBuffer = new long[Constants.BUFFER_SIZE];
     private static int sIndex = 0;
     private static int sLastIndex = -1;
     private static volatile boolean isRealTrace = false;
     private static boolean assertIn = false;
-    private volatile static long sCurrentDiffTime = System.nanoTime() / Constants.TIME_MILLIS_TO_NANO;
+    private volatile static long sCurrentDiffTime = SystemClock.uptimeMillis();
     private volatile static long sLastDiffTime = sCurrentDiffTime;
     private static Thread sMainThread = Looper.getMainLooper().getThread();
     private static HandlerThread sTimerUpdateThread = MatrixHandlerThread.getNewHandlerThread("matrix_time_update_thread");
     private static Handler sTimeUpdateHandler = new Handler(sTimerUpdateThread.getLooper());
     private static final int METHOD_ID_MAX = 0xFFFFF;
     public static final int METHOD_ID_DISPATCH = METHOD_ID_MAX - 1;
+    private static Set<String> sFocusActivitySet = new HashSet<>();
+    private static String sFocusedActivity = "";
+    private static HashSet<IAppMethodBeatListener> listeners = new HashSet<>();
+    private boolean isHandleMessageEnd = true;
 
     static {
         sTimeUpdateHandler.postDelayed(new Runnable() {
@@ -40,7 +52,7 @@ public class MethodBeat implements BeatLifecycle {
     private static Runnable sUpdateDiffTimeRunnable = new Runnable() {
         @Override
         public void run() {
-            long currentTime = System.nanoTime() / Constants.TIME_MILLIS_TO_NANO;
+            long currentTime = SystemClock.uptimeMillis();
             sCurrentDiffTime = currentTime - sLastDiffTime;
             if (isAlive) {
                 sTimeUpdateHandler.postDelayed(this, Constants.TIME_UPDATE_CYCLE_MS);
@@ -48,20 +60,44 @@ public class MethodBeat implements BeatLifecycle {
         }
     };
 
-    public static MethodBeat getInstance() {
+    public static AppMethodBeat getInstance() {
         return sInstance;
+    }
+
+    public AppMethodBeat() {
+        final Printer printer = reflectObject(Looper.getMainLooper(), "mLogging");
+        Looper.getMainLooper().setMessageLogging(new Printer() {
+            @Override
+            public void println(String x) {
+                if (null != printer) {
+                    printer.println(x);
+                }
+                AppMethodBeat.this.isHandleMessageEnd = !isHandleMessageEnd;
+                if (!isHandleMessageEnd) {
+                    AppMethodBeat.i(AppMethodBeat.METHOD_ID_DISPATCH); // begin
+                } else {
+                    AppMethodBeat.o(AppMethodBeat.METHOD_ID_DISPATCH); // end
+                }
+            }
+        });
     }
 
     @Override
     public void onStart() {
-        assert sBuffer != null;
-        this.isAlive = true;
-        updateDiffTime();
+        if (!isAlive) {
+            assert sBuffer != null;
+            this.isAlive = true;
+            updateDiffTime();
+            MatrixLog.i(TAG, "[onStart] %s", Utils.getStack());
+        }
     }
 
     @Override
     public void onStop() {
-        this.isAlive = false;
+        if (isAlive) {
+            MatrixLog.i(TAG, "[onStop] %s", Utils.getStack());
+            this.isAlive = false;
+        }
     }
 
     private static void realRelease() {
@@ -103,7 +139,7 @@ public class MethodBeat implements BeatLifecycle {
 
         if (Thread.currentThread() == sMainThread) {
             if (assertIn) {
-                android.util.Log.e(TAG, "ERROR!!! MethodBeat.i Recursive calls!!!");
+                android.util.Log.e(TAG, "ERROR!!! AppMethodBeat.i Recursive calls!!!");
                 return;
             }
             assertIn = true;
@@ -112,7 +148,6 @@ public class MethodBeat implements BeatLifecycle {
             } else {
                 sIndex = -1;
             }
-            sLastIndex = sIndex;
             ++sIndex;
             assertIn = false;
         }
@@ -133,7 +168,6 @@ public class MethodBeat implements BeatLifecycle {
             } else {
                 sIndex = -1;
             }
-            sLastIndex = sIndex;
             ++sIndex;
         }
     }
@@ -145,7 +179,38 @@ public class MethodBeat implements BeatLifecycle {
      * @param isFocus  this window if has focus
      */
     public static void at(Activity activity, boolean isFocus) {
+        String activityName = activity.getClass().getName();
+        if (isFocus) {
+            sFocusedActivity = activityName;
+            if (!sFocusActivitySet.add(activityName)) {
+                MatrixLog.w(TAG, "[at] maybe wrong! why has two same focused activity[%s]!", activityName);
+            }
+            synchronized (listeners) {
+                for (IAppMethodBeatListener listener : listeners) {
+                    listener.onActivityFocused(activityName);
+                }
+            }
+        } else {
+            if (sFocusedActivity.equals(activityName)) {
+                sFocusedActivity = "";
+            }
+            sFocusActivitySet.remove(activityName);
+        }
 
+        MatrixLog.i(TAG, "[at] Activity[%s] has %s focus!", activityName, isFocus ? "attach" : "detach");
+    }
+
+    public static void onApplicationAttached(long beginMs, long endMs, int scene) {
+        synchronized (listeners) {
+            for (IAppMethodBeatListener listener : listeners) {
+                listener.onApplicationCreated(beginMs, endMs, scene);
+            }
+        }
+    }
+
+
+    public static String getFocusedActivity() {
+        return sFocusedActivity;
     }
 
     /**
@@ -164,45 +229,53 @@ public class MethodBeat implements BeatLifecycle {
         trueId |= sCurrentDiffTime & 0x7FFFFFFFFFFL;
         sBuffer[index] = trueId;
         checkPileup(index);
+        sLastIndex = index;
+    }
+
+    public void addListener(IAppMethodBeatListener listener) {
+        synchronized (listeners) {
+            listeners.add(listener);
+        }
+    }
+
+    public void removeListener(IAppMethodBeatListener listener) {
+        synchronized (listeners) {
+            listeners.remove(listener);
+        }
     }
 
     private static IndexRecord sIndexRecordHead = null;
 
-    public IndexRecord maskIndex() {
+    public IndexRecord maskIndex(String source) {
         if (sIndexRecordHead == null) {
             sIndexRecordHead = new IndexRecord(sIndex - 1);
+            sIndexRecordHead.source = source;
             return sIndexRecordHead;
         } else {
             IndexRecord indexRecord = new IndexRecord(sIndex - 1);
+            indexRecord.source = source;
             IndexRecord record = sIndexRecordHead;
             IndexRecord last = null;
-            for (; record != null; last = record, record = record.next) {
-                if (indexRecord.index < record.index) {
-                    IndexRecord tmp = record.next;
-                    record.next = indexRecord;
-                    indexRecord.next = tmp;
+            while (record != null) {
+                if (indexRecord.index <= record.index) {
+                    if (null == last) {
+                        IndexRecord tmp = sIndexRecordHead;
+                        sIndexRecordHead = indexRecord;
+                        indexRecord.next = tmp;
+                    } else {
+                        IndexRecord tmp = last.next;
+                        last.next = indexRecord;
+                        indexRecord.next = tmp;
+                    }
                     return indexRecord;
                 }
+                last = record;
+                record = record.next;
             }
-            last.next = indexRecord;
-            return indexRecord;
-        }
-    }
 
-    public void clearIndex(int index) {
-        IndexRecord record = sIndexRecordHead;
-        IndexRecord last = null;
-        while (null != record) {
-            if (record.index == index) {
-                if (null != last) {
-                    last.next = record.next;
-                } else {
-                    sIndexRecordHead = record.next;
-                }
-                record.next = null;
-            }
-            last = record;
-            record = record.next;
+            last.next = indexRecord;
+
+            return indexRecord;
         }
     }
 
@@ -212,20 +285,26 @@ public class MethodBeat implements BeatLifecycle {
             if (indexRecord.index == index || (indexRecord.index == -1 && sLastIndex == Constants.BUFFER_SIZE - 1)) {
                 indexRecord.isValid = false;
                 sIndexRecordHead = indexRecord = indexRecord.next;
+                MatrixLog.w(TAG, "[checkPileup] index:%s", index);
             } else {
                 break;
             }
         }
     }
 
-    public final class IndexRecord {
+    public static final class IndexRecord {
         public IndexRecord(int index) {
             this.index = index;
+        }
+
+        public IndexRecord() {
+            this.isValid = false;
         }
 
         public int index;
         private IndexRecord next;
         public boolean isValid = true;
+        public String source;
 
         public void release() {
             isValid = false;
@@ -245,36 +324,66 @@ public class MethodBeat implements BeatLifecycle {
                 record = record.next;
             }
         }
-    }
 
-    public long[] copyData(IndexRecord start) {
-        return copyData(start, new IndexRecord(sIndex - 1));
-    }
-
-    public long[] copyData(IndexRecord start, IndexRecord end) {
-
-        long current = System.currentTimeMillis();
-        try {
-            if (start.isValid && end.isValid) {
-                int length;
-                long[] data = new long[0];
-                if (end.index > start.index) {
-                    length = end.index - start.index + 1;
-                    data = new long[length];
-                    System.arraycopy(sBuffer, start.index, data, 0, length);
-                } else if (end.index < start.index) {
-                    length = 1 + start.index + sBuffer.length - end.index;
-                    data = new long[length];
-                    System.arraycopy(sBuffer, start.index, data, 0, start.index + 1);
-                    System.arraycopy(sBuffer, 0, data, start.index + 1, end.index + 1);
-                }
-                return data;
-            }
-            return new long[0];
-        } finally {
-            MatrixLog.i(TAG, "[copyData] cost:%sms", System.currentTimeMillis() - current);
+        @Override
+        public String toString() {
+            return "index:" + index + ",\tisValid:" + isValid + " source:" + source;
         }
     }
 
+    public long[] copyData(IndexRecord startRecord) {
+        return copyData(startRecord, new IndexRecord(sIndex - 1));
+    }
+
+    public long[] copyData(IndexRecord startRecord, IndexRecord endRecord) {
+
+        long current = System.currentTimeMillis();
+        long[] data = new long[0];
+        try {
+            if (startRecord.isValid && endRecord.isValid) {
+                int length;
+                int start = Math.max(0, startRecord.index);
+                int end = Math.max(0, endRecord.index);
+
+                if (end > start) {
+                    length = end - start + 1;
+                    data = new long[length];
+                    System.arraycopy(sBuffer, start, data, 0, length);
+                } else if (end < start) {
+                    length = 1 + start + (sBuffer.length - end);
+                    data = new long[length];
+                    System.arraycopy(sBuffer, start, data, 0, start + 1);
+                    System.arraycopy(sBuffer, 0, data, start + 1, end + 1);
+                }
+                return data;
+            }
+            return data;
+        } finally {
+            MatrixLog.i(TAG, "[copyData] [%s:%s] cost:%sms", Math.max(0, startRecord.index), endRecord.index, System.currentTimeMillis() - current);
+        }
+    }
+
+    private <T> T reflectObject(Object instance, String name) {
+        try {
+            Field field = instance.getClass().getDeclaredField(name);
+            field.setAccessible(true);
+            return (T) field.get(instance);
+        } catch (Exception e) {
+            e.printStackTrace();
+            MatrixLog.e(TAG, e.toString());
+        }
+        return null;
+    }
+
+
+    public void printIndexRecord() {
+        StringBuilder ss = new StringBuilder(" \n");
+        IndexRecord record = sIndexRecordHead;
+        while (null != record) {
+            ss.append(record).append("\n");
+            record = record.next;
+        }
+        MatrixLog.i(TAG, "[printIndexRecord] %s", ss.toString());
+    }
 
 }

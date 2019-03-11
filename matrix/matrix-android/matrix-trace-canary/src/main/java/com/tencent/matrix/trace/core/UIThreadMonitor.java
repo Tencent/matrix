@@ -12,16 +12,16 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.HashSet;
 
-public class UIThreadMonitor implements BeatLifecycle, Runnable, Printer {
+public class UIThreadMonitor implements BeatLifecycle, Runnable {
 
     public interface IFrameObserver {
-        void doFrame(long start, long end, long frameCostNs, long inputCostNs, long animationCostNs, long traversalCostNs);
+        void doFrame(String focusedActivityName, long start, long end, long frameCostMs, long inputCostNs, long animationCostNs, long traversalCostNs);
     }
 
     public interface ILooperObserver extends IFrameObserver {
-        void dispatchBegin(long beginNs, long token);
+        void dispatchBegin(long beginMs, long cpuBeginMs, long token);
 
-        void dispatchEnd(long beginNs, long endMs, long token);
+        void dispatchEnd(long beginMs, long cpuBeginMs, long endMs, long cpuEndMs, long token, boolean isBelongFrame);
     }
 
     private static final String TAG = "Matrix.UIThreadMonitor";
@@ -29,9 +29,9 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable, Printer {
     private static final boolean isDebug = true;
     private volatile boolean isAlive = false;
     private boolean isHandleMessageEnd = true;
-    private long[] dispatchTimeMs = new long[2];
+    private long[] dispatchTimeMs = new long[4];
     private HashSet<IFrameObserver> observers = new HashSet<>();
-    private long token = 0L;
+    private volatile long token = 0L;
     private boolean isBelongFrame = false;
 
     /**
@@ -65,7 +65,8 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable, Printer {
     private final Method addInputQueue;
     private final Method addAnimationQueue;
     private final Choreographer choreographer;
-    private int[] typeFlags = new int[CALLBACK_LAST + 1];
+    private final long frameIntervalNanos;
+    private int[] queueStatus = new int[CALLBACK_LAST + 1];
     private long[] queueCost = new long[CALLBACK_LAST + 1];
     private static final int DO_QUEUE_DEFAULT = 0;
     private static final int DO_QUEUE_BEGIN = 1;
@@ -84,6 +85,7 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable, Printer {
         addInputQueue = reflectChoreographerMethod(callbackQueues[CALLBACK_INPUT], ADD_CALLBACK, long.class, Object.class, Object.class);
         addAnimationQueue = reflectChoreographerMethod(callbackQueues[CALLBACK_ANIMATION], ADD_CALLBACK, long.class, Object.class, Object.class);
         addTraversalQueue = reflectChoreographerMethod(callbackQueues[CALLBACK_TRAVERSAL], ADD_CALLBACK, long.class, Object.class, Object.class);
+        frameIntervalNanos = reflectObject(choreographer, "mFrameIntervalNanos");
         final Printer printer = reflectObject(Looper.getMainLooper(), "mLogging");
         Looper.getMainLooper().setMessageLogging(new Printer() {
             @Override
@@ -91,14 +93,20 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable, Printer {
                 if (null != printer) {
                     printer.println(x);
                 }
-                UIThreadMonitor.this.println(x);
+                UIThreadMonitor.this.isHandleMessageEnd = !isHandleMessageEnd;
+                if (!isHandleMessageEnd) {
+                    dispatchBegin();
+                } else {
+                    dispatchEnd();
+                }
             }
         });
+
         if (isDebug) {
             addObserver(new IFrameObserver() {
                 @Override
-                public void doFrame(long start, long end, long frameCost, long inputCost, long animationCost, long traversalCost) {
-                    MatrixLog.i(TAG, "frame cost:%sns %s | %s | %s", frameCost, inputCost, animationCost, traversalCost);
+                public void doFrame(String focusedActivityName, long start, long end, long frameCostMs, long inputCost, long animationCost, long traversalCost) {
+                    MatrixLog.i(TAG, "activityName[%s] frame cost:%sns [%s|%s|%s]", focusedActivityName, frameCostMs, inputCost, animationCost, traversalCost);
                 }
             });
         }
@@ -134,6 +142,9 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable, Printer {
         }
     }
 
+    public long getFrameIntervalNanos() {
+        return frameIntervalNanos;
+    }
 
     public void addObserver(IFrameObserver observer) {
         if (!isAlive) {
@@ -157,9 +168,8 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable, Printer {
         if (token != this.token) {
             return -1;
         }
-        return typeFlags[type] == DO_QUEUE_END ? queueCost[type] : 0;
+        return queueStatus[type] == DO_QUEUE_END ? queueCost[type] : 0;
     }
-
 
     private <T> T reflectObject(Object instance, String name) {
         try {
@@ -185,15 +195,14 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable, Printer {
     }
 
     private void dispatchBegin() {
-        token = dispatchTimeMs[0] = System.nanoTime();
-
-        MethodBeat.i(MethodBeat.METHOD_ID_DISPATCH);
+        token = dispatchTimeMs[0] = SystemClock.uptimeMillis();
+        dispatchTimeMs[2] = SystemClock.currentThreadTimeMillis();
 
         synchronized (observers) {
             for (IFrameObserver observer : observers) {
                 if (observer instanceof ILooperObserver) {
                     ILooperObserver looperObserver = (ILooperObserver) observer;
-                    looperObserver.dispatchBegin(dispatchTimeMs[0], token);
+                    looperObserver.dispatchBegin(dispatchTimeMs[0], dispatchTimeMs[2], token);
                 }
             }
         }
@@ -204,18 +213,18 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable, Printer {
     }
 
     private void doFrameEnd(long token) {
-        for (int i : typeFlags) {
+        for (int i : queueStatus) {
             if (i != DO_QUEUE_END) {
                 throw new RuntimeException(String.format("UIThreadMonitor happens type[%s] != DO_QUEUE_END", i));
             }
         }
-        typeFlags = new int[CALLBACK_LAST + 1];
+        queueStatus = new int[CALLBACK_LAST + 1];
 
         long start = token;
-        long end = System.nanoTime();
+        long end = SystemClock.uptimeMillis();
         synchronized (observers) {
             for (IFrameObserver observer : observers) {
-                observer.doFrame(start, end, end - start, queueCost[CALLBACK_INPUT], queueCost[CALLBACK_ANIMATION], queueCost[CALLBACK_TRAVERSAL]);
+                observer.doFrame(AppMethodBeat.getFocusedActivity(), start, end, end - start, queueCost[CALLBACK_INPUT], queueCost[CALLBACK_ANIMATION], queueCost[CALLBACK_TRAVERSAL]);
             }
         }
     }
@@ -228,15 +237,14 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable, Printer {
         }
 
         this.isBelongFrame = false;
-        dispatchTimeMs[1] = System.nanoTime();
-
-        MethodBeat.o(MethodBeat.METHOD_ID_DISPATCH);
+        dispatchTimeMs[3] = SystemClock.currentThreadTimeMillis();
+        dispatchTimeMs[1] = SystemClock.uptimeMillis();
 
         synchronized (observers) {
             for (IFrameObserver observer : observers) {
                 if (observer instanceof ILooperObserver) {
                     ILooperObserver looperObserver = (ILooperObserver) observer;
-                    looperObserver.dispatchEnd(dispatchTimeMs[0], dispatchTimeMs[1], token);
+                    looperObserver.dispatchEnd(dispatchTimeMs[0], dispatchTimeMs[2], dispatchTimeMs[1], dispatchTimeMs[3], token, isBelongFrame);
                 }
             }
         }
@@ -244,12 +252,12 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable, Printer {
     }
 
     private void doQueueBegin(int type) {
-        typeFlags[type] = DO_QUEUE_BEGIN;
+        queueStatus[type] = DO_QUEUE_BEGIN;
         queueCost[type] = System.nanoTime();
     }
 
     private void doQueueEnd(int type) {
-        typeFlags[type] = DO_QUEUE_END;
+        queueStatus[type] = DO_QUEUE_END;
         queueCost[type] = System.nanoTime() - queueCost[type];
     }
 
@@ -259,17 +267,6 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable, Printer {
             MatrixLog.i(TAG, "[onStart] %s", Utils.getStack());
             this.isAlive = true;
             addFrameCallback(CALLBACK_INPUT, this, true);
-        }
-    }
-
-
-    @Override
-    public void println(String x) {
-        this.isHandleMessageEnd = !isHandleMessageEnd;
-        if (!isHandleMessageEnd) {
-            dispatchBegin();
-        } else {
-            dispatchEnd();
         }
     }
 

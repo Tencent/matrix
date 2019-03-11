@@ -1,21 +1,32 @@
 package com.tencent.matrix.trace.tracer;
 
 import android.os.Handler;
+import android.os.Looper;
 
+import com.tencent.matrix.Matrix;
+import com.tencent.matrix.report.Issue;
+import com.tencent.matrix.trace.TracePlugin;
+import com.tencent.matrix.trace.config.SharePluginInfo;
 import com.tencent.matrix.trace.config.TraceConfig;
 import com.tencent.matrix.trace.constants.Constants;
-import com.tencent.matrix.trace.core.MethodBeat;
+import com.tencent.matrix.trace.core.AppMethodBeat;
 import com.tencent.matrix.trace.core.UIThreadMonitor;
 import com.tencent.matrix.trace.items.MethodItem;
 import com.tencent.matrix.trace.util.TraceDataUtils;
+import com.tencent.matrix.trace.util.Utils;
+import com.tencent.matrix.util.DeviceUtil;
 import com.tencent.matrix.util.MatrixHandlerThread;
 import com.tencent.matrix.util.MatrixLog;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.util.LinkedList;
 import java.util.List;
+import java.util.ListIterator;
 
 
-public class AnrTracer implements ITracer, UIThreadMonitor.ILooperObserver {
+public class AnrTracer extends Tracer implements UIThreadMonitor.ILooperObserver {
 
     private static final String TAG = "Matrix.AnrTracer";
     private Handler anrHandler;
@@ -24,43 +35,49 @@ public class AnrTracer implements ITracer, UIThreadMonitor.ILooperObserver {
 
     public AnrTracer(TraceConfig traceConfig) {
         this.traceConfig = traceConfig;
-        this.anrHandler = new Handler(MatrixHandlerThread.getDefaultHandlerThread().getLooper());
     }
 
     @Override
-    public void onStartTrace() {
-        UIThreadMonitor.getMonitor().addObserver(this);
-    }
-
-    @Override
-    public void onCloseTrace() {
-        UIThreadMonitor.getMonitor().removeObserver(this);
-        if (null != anrTask) {
-            anrTask.getBeginRecord().release();
+    public void onAlive() {
+        if (traceConfig.isAnrTraceEnable()) {
+            UIThreadMonitor.getMonitor().addObserver(this);
+            this.anrHandler = new Handler(MatrixHandlerThread.getDefaultHandlerThread().getLooper());
         }
     }
 
     @Override
-    public void dispatchBegin(long beginNs, long token) {
-        anrTask = new AnrHandleTask(MethodBeat.getInstance().maskIndex(), token);
-        if (traceConfig.isDebug()) {
-            MatrixLog.d(TAG, "* [dispatchBegin] token:%s index:%s", token, anrTask.beginRecord.index);
+    public void onDead() {
+        if (traceConfig.isAnrTraceEnable()) {
+            UIThreadMonitor.getMonitor().removeObserver(this);
+            if (null != anrTask) {
+                anrTask.getBeginRecord().release();
+            }
+            anrHandler.removeCallbacksAndMessages(null);
+        }
+    }
+
+    @Override
+    public void dispatchBegin(long beginMs, long cpuBeginMs, long token) {
+        anrTask = new AnrHandleTask(AppMethodBeat.getInstance().maskIndex("AnrTracer#dispatchBegin"), token);
+        if (traceConfig.isDevEnv()) {
+            MatrixLog.v(TAG, "* [dispatchBegin] token:%s index:%s", token, anrTask.beginRecord.index);
         }
         anrHandler.postDelayed(anrTask, Constants.DEFAULT_ANR);
     }
 
     @Override
-    public void doFrame(long start, long end, long frameCost, long inputCost, long animationCost, long traversalCost) {
-        if (traceConfig.isDebug()) {
-            MatrixLog.d(TAG, "--> [doFrame] frameCost:%s [%s:%s:%s]", frameCost, inputCost, animationCost, traversalCost);
+    public void doFrame(String focusedActivityName, long start, long end, long frameCostMs, long inputCost, long animationCost, long traversalCost) {
+        if (traceConfig.isDevEnv()) {
+            MatrixLog.v(TAG, "--> [doFrame] activityName:%s frameCost:%sms [%s:%s:%s]ns", focusedActivityName, frameCostMs, inputCost, animationCost, traversalCost);
         }
     }
 
 
     @Override
-    public void dispatchEnd(long beginNs, long endNs, long token) {
-        if (traceConfig.isDebug()) {
-            MatrixLog.d(TAG, "[dispatchEnd] token:%s cost:%sns", token, endNs - beginNs);
+    public void dispatchEnd(long beginMs, long cpuBeginMs, long endMs, long cpuEndMs, long token, boolean isBelongFrame) {
+        if (traceConfig.isDevEnv()) {
+            MatrixLog.v(TAG, "[dispatchEnd] token:%s cost:%sms cpu:%sms usage:%s",
+                    token, endMs - beginMs, cpuEndMs - cpuBeginMs, Utils.calculateCpuUsage(cpuEndMs - cpuBeginMs, endMs - beginMs));
         }
         if (null != anrTask) {
             anrTask.getBeginRecord().release();
@@ -71,14 +88,14 @@ public class AnrTracer implements ITracer, UIThreadMonitor.ILooperObserver {
 
     class AnrHandleTask implements Runnable {
 
-        MethodBeat.IndexRecord beginRecord;
+        AppMethodBeat.IndexRecord beginRecord;
         long token;
 
-        public MethodBeat.IndexRecord getBeginRecord() {
+        public AppMethodBeat.IndexRecord getBeginRecord() {
             return beginRecord;
         }
 
-        AnrHandleTask(MethodBeat.IndexRecord record, long token) {
+        AnrHandleTask(AppMethodBeat.IndexRecord record, long token) {
             this.beginRecord = record;
             this.token = token;
         }
@@ -86,56 +103,98 @@ public class AnrTracer implements ITracer, UIThreadMonitor.ILooperObserver {
         @Override
         public void run() {
             anrTask = null;
+            long[] data = AppMethodBeat.getInstance().copyData(beginRecord);
+            beginRecord.release();
+
+            Thread.State status = Looper.getMainLooper().getThread().getState();
+            String dumpStack = Utils.getStack(Looper.getMainLooper().getThread().getStackTrace(), "|*        ");
+
             UIThreadMonitor monitor = UIThreadMonitor.getMonitor();
             long inputCost = monitor.getQueueCost(UIThreadMonitor.CALLBACK_INPUT, token);
             long animationCost = monitor.getQueueCost(UIThreadMonitor.CALLBACK_ANIMATION, token);
             long traversalCost = monitor.getQueueCost(UIThreadMonitor.CALLBACK_TRAVERSAL, token);
 
-            MatrixLog.w(TAG, ">>>>>> maybe happens ANR! [%s:%s:%s]", inputCost, animationCost, traversalCost);
-
-            long[] data = MethodBeat.getInstance().copyData(beginRecord);
-            beginRecord.release();
-
-            if (data.length <= 0) {
-                MatrixLog.w(TAG, "data.length is 0!");
-                return;
-            }
-
             LinkedList<MethodItem> stack = new LinkedList();
             TraceDataUtils.structuredDataToStack(data, stack);
-            TraceDataUtils.trimStack(stack, Constants.MAX_EVIL_METHOD_STACK, new TraceDataUtils.IStructuredDataFilter() {
+            TraceDataUtils.trimStack(stack, Constants.TARGET_EVIL_METHOD_STACK, new TraceDataUtils.IStructuredDataFilter() {
                 @Override
                 public boolean isFilter(long during, int filterCount) {
                     return during < filterCount * Constants.TIME_UPDATE_CYCLE_MS;
                 }
 
                 @Override
-                public int getFilterLimitCount() {
-                    return Constants.FILTER_STACK_LIMIT_COUNT;
+                public int getFilterMaxCount() {
+                    return Constants.FILTER_STACK_MAX_COUNT;
                 }
 
                 @Override
                 public void fallback(List<MethodItem> stack, int size) {
-                    MatrixLog.w(TAG, "[fallback] size:%s targetSize:%s stack:%s", size, Constants.MAX_EVIL_METHOD_STACK, stack);
-                    List list = stack.subList(0, Constants.MAX_EVIL_METHOD_STACK);
+                    MatrixLog.w(TAG, "[fallback] size:%s targetSize:%s stack:%s", size, Constants.TARGET_EVIL_METHOD_STACK, stack);
+                    List list = stack.subList(0, Constants.TARGET_EVIL_METHOD_STACK);
                     stack.clear();
                     stack.addAll(list);
                 }
             });
 
             String stackKey = TraceDataUtils.getTreeKey(stack, Constants.MAX_LIMIT_ANALYSE_STACK_KEY_NUM);
-            StringBuilder ss = new StringBuilder()
-                    .append("stackSize:").append(stack.size()).append("\n")
-                    .append("stackKey:").append(stackKey).append("\n");
+
+            MatrixLog.w(TAG, printAnr(status, stack, stackKey, dumpStack, inputCost, animationCost, traversalCost)); // for logcat
+
+            // report
+            ListIterator<MethodItem> listIterator = stack.listIterator();
+            StringBuilder reportBuilder = new StringBuilder();
+            long stackCost = Constants.DEFAULT_ANR; // fix cost
+            while (listIterator.hasNext()) {
+                MethodItem item = listIterator.next();
+                reportBuilder.append(item.toString()).append('\n');
+                if (stackCost < item.durTime) {
+                    stackCost = item.durTime;
+                }
+            }
+            try {
+                TracePlugin plugin = Matrix.with().getPluginByClass(TracePlugin.class);
+                JSONObject jsonObject = new JSONObject();
+                jsonObject = DeviceUtil.getDeviceInfo(jsonObject, Matrix.with().getApplication());
+                jsonObject.put(SharePluginInfo.ISSUE_STACK_TYPE, Constants.Type.ANR);
+                jsonObject.put(SharePluginInfo.ISSUE_COST, stackCost);
+                jsonObject.put(SharePluginInfo.ISSUE_STACK, reportBuilder.toString());
+                jsonObject.put(SharePluginInfo.ISSUE_STACK_KEY, stackKey);
+
+                Issue issue = new Issue();
+                issue.setTag(SharePluginInfo.TAG_PLUGIN_EVIL_METHOD);
+                issue.setContent(jsonObject);
+                plugin.onDetectIssue(issue);
+
+            } catch (JSONException e) {
+                MatrixLog.e(TAG, "[JSONException error: %s", e);
+            }
+
+        }
+
+        private String printAnr(Thread.State state, LinkedList<MethodItem> stack, String stackKey, String dumpStack, long inputCost, long animationCost, long traversalCost) {
+            StringBuilder print = new StringBuilder();
+            print.append(" \n>>>>>>>>>>>>>>>>>>>>>>> maybe happens ANR(5s)! <<<<<<<<<<<<<<<<<<<<<<<\n");
+            print.append("|* [Memory]").append("\n");  // todo
+            print.append("|* [doFrame]").append("\n");
+            print.append("|*   inputCost: ").append(inputCost).append("\n");
+            print.append("|*   animationCost: ").append(animationCost).append("\n");
+            print.append("|*   traversalCost: ").append(traversalCost).append("\n");
+            print.append("|* [Thread]").append("\n");
+            print.append("|*   State: ").append(state).append("\n");
+            print.append("|*   Stack: ").append(dumpStack);
+            print.append("|* [Trace]").append("\n");
+            print.append("|*   StackSize: ").append(stack.size()).append("\n");
+            print.append("|*   StackKey: ").append(stackKey).append("\n");
 
             if (traceConfig.isDebug()) {
                 TraceDataUtils.TreeNode root = new TraceDataUtils.TreeNode();
                 TraceDataUtils.stackToTree(stack, root);
-                TraceDataUtils.printTree(root, 0, ss);
+                TraceDataUtils.printTree(root, print);
             }
 
-            MatrixLog.i(TAG, ss.toString());
-
+            print.append("=========================================================================");
+            return print.toString();
         }
+
     }
 }

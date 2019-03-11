@@ -264,7 +264,7 @@ public class MethodCollector {
                     if (methodField.length > 2) {
                         traceMethod.desc = methodField[2].replace("/", ".");
                     }
-                    if (mMethodId.get() < traceMethod.id) {
+                    if (mMethodId.get() < traceMethod.id && traceMethod.id != METHOD_ID_DISPATCH) {
                         mMethodId.set(traceMethod.id);
                     }
                     if (mTraceConfig.isNeedTrace(traceMethod.className, mMappingCollector)) {

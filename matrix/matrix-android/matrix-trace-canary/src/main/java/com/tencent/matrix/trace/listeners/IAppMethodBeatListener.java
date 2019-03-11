@@ -16,17 +16,12 @@
 
 package com.tencent.matrix.trace.listeners;
 
-import android.app.Activity;
-
 /**
  * Created by caichongyang on 2017/5/27.
  */
 
-public interface IMethodBeatListener {
+public interface IAppMethodBeatListener {
+    void onApplicationCreated(long beginMs, long endMs, int scene);
 
-    void pushFullBuffer(int start, int end, long[] buffer);
-
-    void onActivityEntered(Activity activity, boolean isFocus, int nowIndex, long[] buffer);
-
-    void onApplicationCreated(long startTime, long endTime);
+    void onActivityFocused(String activity);
 }

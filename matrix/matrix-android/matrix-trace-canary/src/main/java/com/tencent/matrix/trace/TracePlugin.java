@@ -18,37 +18,29 @@ package com.tencent.matrix.trace;
 
 import android.app.Application;
 import android.os.Build;
-import android.os.Handler;
-import android.os.Looper;
 
 import com.tencent.matrix.plugin.Plugin;
 import com.tencent.matrix.plugin.PluginListener;
 import com.tencent.matrix.trace.config.SharePluginInfo;
 import com.tencent.matrix.trace.config.TraceConfig;
-import com.tencent.matrix.trace.core.ApplicationLifeObserver;
-import com.tencent.matrix.trace.core.FrameBeat;
+import com.tencent.matrix.trace.core.AppMethodBeat;
 import com.tencent.matrix.trace.tracer.AnrTracer;
 import com.tencent.matrix.trace.tracer.EvilMethodTracer;
-import com.tencent.matrix.trace.tracer.FPSTracer;
 import com.tencent.matrix.trace.tracer.FrameTracer;
-import com.tencent.matrix.trace.tracer.StartUpTracer;
-import com.tencent.matrix.trace.util.TraceDataUtils;
+import com.tencent.matrix.trace.tracer.StartupTracer;
 import com.tencent.matrix.util.MatrixLog;
 
 /**
  * Created by caichongyang on 2017/5/20.
- * <p>The TracePlugin includes two parts,
- * {@link FPSTracer}\{@link EvilMethodTracer}
- * </p>
  */
 public class TracePlugin extends Plugin {
     private static final String TAG = "Matrix.TracePlugin";
 
     private final TraceConfig mTraceConfig;
-    private FPSTracer mFPSTracer;
     private EvilMethodTracer mEvilMethodTracer;
+    private StartupTracer mStartupTracer;
     private FrameTracer mFrameTracer;
-    private StartUpTracer mStartUpTracer;
+    private AnrTracer mAnrTracer;
 
     public TracePlugin(TraceConfig config) {
         this.mTraceConfig = config;
@@ -64,22 +56,13 @@ public class TracePlugin extends Plugin {
             return;
         }
 
-        ApplicationLifeObserver.init(app);
-        mFrameTracer = new FrameTracer(this);
-        if (mTraceConfig.isMethodTraceEnable()) {
-            mStartUpTracer = new StartUpTracer(this, mTraceConfig);
-        }
-        if (mTraceConfig.isFPSEnable()) {
-            mFPSTracer = new FPSTracer(this, mTraceConfig);
-        }
+        mStartupTracer = new StartupTracer(mTraceConfig);
 
-        if (mTraceConfig.isMethodTraceEnable()) {
-            mEvilMethodTracer = new EvilMethodTracer(this, mTraceConfig);
-        }
+        mFrameTracer = new FrameTracer(mTraceConfig);
 
-//        UIThreadMonitor.getMonitor().onStart();
+        mAnrTracer = new AnrTracer(mTraceConfig);
 
-        TraceDataUtils.testStructuredDataToTree();
+        mEvilMethodTracer = new EvilMethodTracer(mTraceConfig);
 
     }
 
@@ -90,30 +73,15 @@ public class TracePlugin extends Plugin {
             return;
         }
 
-        new Handler(Looper.getMainLooper()).post(new Runnable() {
-            @Override
-            public void run() {
-//                FrameBeat.getMonitor().onCreate();
-            }
-        });
+        AppMethodBeat.getInstance().onStart();
 
-        if (null != mFPSTracer) {
-            mFPSTracer.onCreate();
-        }
-        if (null != mEvilMethodTracer) {
-            mEvilMethodTracer.onCreate();
-        }
-        if (null != mFrameTracer) {
-            mFrameTracer.onCreate();
-        }
-        if (null != mStartUpTracer) {
-            mStartUpTracer.onCreate();
-        }
+        mAnrTracer.onStartTrace();
 
-        new AnrTracer(mTraceConfig).onStartTrace();
+        mFrameTracer.onStartTrace();
 
+        mEvilMethodTracer.onStartTrace();
 
-
+        mStartupTracer.onStartTrace();
     }
 
     @Override
@@ -122,19 +90,17 @@ public class TracePlugin extends Plugin {
         if (!isSupported()) {
             return;
         }
-        FrameBeat.getInstance().onDestroy();
-        if (null != mFPSTracer) {
-            mFPSTracer.onDestroy();
-        }
-        if (null != mEvilMethodTracer) {
-            mEvilMethodTracer.onDestroy();
-        }
-        if (null != mFrameTracer) {
-            mFrameTracer.onDestroy();
-        }
-        if (null != mStartUpTracer) {
-            mStartUpTracer.onDestroy();
-        }
+
+        AppMethodBeat.getInstance().onStop();
+
+        mAnrTracer.onCloseTrace();
+
+        mFrameTracer.onCloseTrace();
+
+        mEvilMethodTracer.onCloseTrace();
+
+        mStartupTracer.onCloseTrace();
+
     }
 
     @Override
@@ -151,15 +117,4 @@ public class TracePlugin extends Plugin {
         return mFrameTracer;
     }
 
-    public EvilMethodTracer getEvilMethodTracer() {
-        return mEvilMethodTracer;
-    }
-
-    public StartUpTracer getStartUpTracer() {
-        return mStartUpTracer;
-    }
-
-    public FPSTracer getFPSTracer() {
-        return mFPSTracer;
-    }
 }

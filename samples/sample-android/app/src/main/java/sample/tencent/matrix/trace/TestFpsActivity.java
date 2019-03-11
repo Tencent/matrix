@@ -76,10 +76,10 @@ public class TestFpsActivity extends Activity {
         setContentView(R.layout.test_fps_layout);
 
         IssueFilter.setCurrentFilter(IssueFilter.ISSUE_TRACE);
-        if(!Matrix.with().getPluginByClass(TracePlugin.class).getFPSTracer().isCreated()) {
-            Matrix.with().getPluginByClass(TracePlugin.class).getFPSTracer().onCreate();
-        }
-        Matrix.with().getPluginByClass(TracePlugin.class).getFrameTracer().register(mDoFrameListener);
+
+        Matrix.with().getPluginByClass(TracePlugin.class).getFrameTracer().onStartTrace();
+        Matrix.with().getPluginByClass(TracePlugin.class).getFrameTracer().addListener(mDoFrameListener);
+
         time = System.currentTimeMillis();
         mListView = (ListView) findViewById(R.id.list_view);
         String[] data = new String[200];
@@ -110,7 +110,7 @@ public class TestFpsActivity extends Activity {
     protected void onDestroy() {
         super.onDestroy();
         MatrixLog.i(TAG, "[onDestroy] count:" + count + " time:" + (System.currentTimeMillis() - time) + "");
-        Matrix.with().getPluginByClass(TracePlugin.class).getFrameTracer().unregister(mDoFrameListener);
-        Matrix.with().getPluginByClass(TracePlugin.class).getFPSTracer().onDestroy();
+        Matrix.with().getPluginByClass(TracePlugin.class).getFrameTracer().removeListener(mDoFrameListener);
+        Matrix.with().getPluginByClass(TracePlugin.class).getFrameTracer().onCloseTrace();
     }
 }

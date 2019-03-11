@@ -82,7 +82,7 @@ public abstract class Plugin implements IPlugin, IssuePublisher.OnIssueDetectLis
         //MatrixLog.e(TAG, "detect issue:%s", issue);
         pluginListener.onReportIssue(issue);
     }
-
+    @Override
     public Application getApplication() {
         return application;
     }

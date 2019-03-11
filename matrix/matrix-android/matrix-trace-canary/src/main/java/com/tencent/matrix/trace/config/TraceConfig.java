@@ -16,18 +16,15 @@
 
 package com.tencent.matrix.trace.config;
 
-import android.app.Activity;
-import android.support.annotation.NonNull;
-import android.support.v4.app.Fragment;
-import android.text.TextUtils;
-
-import com.tencent.matrix.util.MatrixLog;
-import com.tencent.mrs.plugin.IDynamicConfig;
 import com.tencent.matrix.trace.constants.Constants;
 import com.tencent.matrix.trace.listeners.IDefaultConfig;
-//import com.tencent.matrix.util.DeviceUtil;
+import com.tencent.matrix.util.MatrixLog;
+import com.tencent.mrs.plugin.IDynamicConfig;
 
+import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Set;
+
 
 /**
  * Created by caichongyang on 17/5/18.
@@ -38,28 +35,38 @@ import java.util.HashSet;
 
 public class TraceConfig implements IDefaultConfig {
     private static final String TAG = "Matrix.TraceConfig";
-    private final IDynamicConfig mDynamicConfig;
-    private final boolean mDefaultFpsEnable;
-    private final boolean mDefaultMethodTraceEnable;
-    private final boolean mDefaultStartupEnable;
-    private final boolean isDebug;
-    private final String mDefaultSplashActivity;
+    public IDynamicConfig dynamicConfig;
+    public boolean defaultFpsEnable;
+    public boolean defaultMethodTraceEnable;
+    public boolean defaultStartupEnable;
+    public boolean defaultAnrEnable;
+    public boolean isDebug;
+    public boolean isDevEnv = true;
+    public String careActivities;
+    public Set<String> careActivitiesSet;
 
-    private TraceConfig(IDynamicConfig dynamicConfig, boolean enableFps, boolean methodTraceEnable, boolean startupEnable, String splashActivity, boolean isDebug) {
-        this.mDynamicConfig = dynamicConfig;
-        this.mDefaultFpsEnable = enableFps;
-        this.mDefaultMethodTraceEnable = methodTraceEnable;
-        this.mDefaultStartupEnable = startupEnable;
-        this.mDefaultSplashActivity = splashActivity;
-        this.isDebug = isDebug;
-        MatrixLog.i(TAG, "enableFps:%b, methodTraceEnable:%b startupEnable:%b splashActivity:%s isDebug:%s", enableFps, methodTraceEnable, startupEnable, splashActivity, isDebug);
+
+    private TraceConfig() {
+
     }
 
-
+    @Override
+    public String toString() {
+        StringBuilder ss = new StringBuilder(" \n");
+        ss.append("# TraceConfig\n");
+        ss.append("* isDebug:\t").append(isDebug).append("\n");
+        ss.append("* isDevEnv:\t").append(isDevEnv).append("\n");
+        ss.append("* defaultFpsEnable:\t").append(defaultFpsEnable).append("\n");
+        ss.append("* defaultMethodTraceEnable:\t").append(defaultMethodTraceEnable).append("\n");
+        ss.append("* defaultStartupEnable:\t").append(defaultStartupEnable).append("\n");
+        ss.append("* defaultAnrEnable:\t").append(defaultAnrEnable).append("\n");
+        ss.append("* careActivities:\t").append(careActivities).append("\n");
+        return ss.toString();
+    }
 
     @Override
     public boolean isFPSEnable() {
-        return mDynamicConfig.get(IDynamicConfig.ExptEnum.clicfg_matrix_trace_fps_enable.name(), mDefaultFpsEnable);
+        return dynamicConfig.get(IDynamicConfig.ExptEnum.clicfg_matrix_trace_fps_enable.name(), defaultFpsEnable);
     }
 
     @Override
@@ -68,133 +75,109 @@ public class TraceConfig implements IDefaultConfig {
     }
 
     @Override
-    public boolean isMethodTraceEnable() {
-        return mDynamicConfig.get(IDynamicConfig.ExptEnum.clicfg_matrix_trace_evil_method_enable.name(), mDefaultMethodTraceEnable);
+
+    public boolean isDevEnv() {
+        return isDevEnv;
     }
 
     @Override
-    public String toString() {
-        return String.format("fpsEnable:%s,methodTraceEnable:%s,sceneSet:%s,fpsTimeSliceMs:%s,EvilThresholdNano:%sns,frameRefreshRate:%s",
-                isFPSEnable(), isMethodTraceEnable(), getDynamicCareSceneSet(), getTimeSliceMs(), getEvilThresholdNano(), getFrameRefreshRate());
+    public boolean isEvilMethodTraceEnable() {
+        return null == dynamicConfig
+                ? defaultMethodTraceEnable
+                : dynamicConfig.get(IDynamicConfig.ExptEnum.clicfg_matrix_trace_evil_method_enable.name(), defaultMethodTraceEnable);
+    }
+
+    public boolean isStartupEnable() {
+        return dynamicConfig == null
+                ? defaultStartupEnable
+                : dynamicConfig.get(IDynamicConfig.ExptEnum.clicfg_matrix_trace_startup_enable.name(), defaultStartupEnable);
     }
 
     @Override
-    public boolean isTargetScene(String scene) {
-        final String careSceneSet = getDynamicCareSceneSet();
-        if ("".equals(careSceneSet)) { // "" means 'all'
-            return true;
+    public boolean isAnrTraceEnable() {
+        return dynamicConfig == null
+                ? defaultAnrEnable
+                : dynamicConfig.get(IDynamicConfig.ExptEnum.clicfg_matrix_trace_anr_enable.name(), defaultAnrEnable);
+    }
+
+
+    public Set<String> getCareActivities() {
+        if (null == careActivitiesSet) {
+            careActivitiesSet = (null == dynamicConfig
+                    ? new HashSet<>(Arrays.asList(careActivities))
+                    : new HashSet<>(Arrays.asList(dynamicConfig.get(IDynamicConfig.ExptEnum.clicfg_matrix_trace_care_scene_set.name(), careActivities).split(";"))));
         }
-
-        String[] vecScene = careSceneSet.split(";");
-        HashSet<String> sceneSet = new HashSet<>();
-        for (String tScene : vecScene) {
-            if (!"".equals(tScene)) {
-                sceneSet.add(tScene);
-            }
-        }
-
-        return sceneSet.contains(scene);
+        return careActivitiesSet;
     }
 
-    private String getDynamicCareSceneSet() {
-        return mDynamicConfig.get(IDynamicConfig.ExptEnum.clicfg_matrix_trace_care_scene_set.name(), Constants.DEFAULT_CARE_SCENE_SET);
+
+    public int getEvilThresholdMs() {
+        return null == dynamicConfig
+                ? Constants.DEFAULT_EVIL_METHOD_THRESHOLD_MS
+                : dynamicConfig.get(IDynamicConfig.ExptEnum.clicfg_matrix_trace_evil_method_threshold.name(), Constants.DEFAULT_EVIL_METHOD_THRESHOLD_MS);
     }
 
-    public static String getSceneForString(@NonNull Activity activity, Fragment fragment) {
-        if (null == activity) {
-            return "null";
-        }
-        return activity.getClass().getName() + (fragment == null ? "" : "&" + fragment.getClass().getName());
+    public int getTimeSliceMs() {
+        return null == dynamicConfig
+                ? Constants.DEFAULT_FPS_TIME_SLICE_ALIVE_MS
+                : dynamicConfig.get(IDynamicConfig.ExptEnum.clicfg_matrix_trace_fps_time_slice.name(), Constants.DEFAULT_FPS_TIME_SLICE_ALIVE_MS);
     }
 
-    public long getEvilThresholdNano() {
-//        String name = IDynamicConfig.ExptEnum.clicfg_matrix_trace_evil_method_threshold.name();
-//        long real = mDynamicConfig.get(IDynamicConfig.ExptEnum.clicfg_matrix_trace_evil_method_threshold.name(), Constants.DEFAULT_EVIL_METHOD_THRESHOLD_MS) * Constants.TIME_MILLIS_TO_NANO;
-//        MatrixLog.i(TAG, "name:%s , default:%d, real:%d", name, Constants.DEFAULT_EVIL_METHOD_THRESHOLD_MS, real / Constants.TIME_MILLIS_TO_NANO);
-//        return real;
-        return mDynamicConfig.get(IDynamicConfig.ExptEnum.clicfg_matrix_trace_evil_method_threshold.name(), Constants.DEFAULT_EVIL_METHOD_THRESHOLD_MS) * Constants.TIME_MILLIS_TO_NANO;
+
+    public int getColdStartupThresholdMs() {
+        return null == dynamicConfig
+                ? Constants.DEFAULT_STARTUP_THRESHOLD_MS_COLD
+                : dynamicConfig.get(IDynamicConfig.ExptEnum.clicfg_matrix_trace_app_start_up_threshold.name(), Constants.DEFAULT_STARTUP_THRESHOLD_MS_COLD);
     }
 
-    public long getTimeSliceMs() {
-        return mDynamicConfig.get(IDynamicConfig.ExptEnum.clicfg_matrix_trace_fps_time_slice.name(), Constants.DEFAULT_FPS_TIME_SLICE_ALIVE_MS);
+    public int getWarmStartupThresholdMs() {
+        return null == dynamicConfig
+                ? Constants.DEFAULT_STARTUP_THRESHOLD_MS_WARM
+                : dynamicConfig.get(IDynamicConfig.ExptEnum.clicfg_matrix_trace_warm_app_start_up_threshold.name(), Constants.DEFAULT_STARTUP_THRESHOLD_MS_WARM);
     }
 
-//    public int getDeviceLevel(Context context) {
-//        return 0 == mDeviceLevel ? mDeviceLevel = DeviceUtil.getLevel(context).getValue() : mDeviceLevel;
-//    }
-
-    public long getFPSReportInterval() {
-        return mDynamicConfig.get(IDynamicConfig.ExptEnum.clicfg_matrix_trace_fps_report_threshold.name(), Constants.DEFAULT_REPORT);
-    }
-
-    public long getLoadActivityThresholdMs() {
-        return mDynamicConfig.get(IDynamicConfig.ExptEnum.clicfg_matrix_trace_load_activity_threshold.name(), Constants.DEFAULT_ENTER_ACTIVITY_THRESHOLD_MS);
-    }
-
-    public long getStartUpThresholdMs() {
-        return mDynamicConfig.get(IDynamicConfig.ExptEnum.clicfg_matrix_trace_app_start_up_threshold.name(), Constants.DEFAULT_STARTUP_THRESHOLD_MS);
-    }
-
-    public long getWarmStartUpThresholdMs() {
-        return mDynamicConfig.get(IDynamicConfig.ExptEnum.clicfg_matrix_trace_warm_app_start_up_threshold.name(), Constants.DEFAULT_STARTUP_THRESHOLD_MS_WARM);
-    }
-
-    public String getSplashActivityName() {
-        return mDynamicConfig.get(IDynamicConfig.ExptEnum.clicfg_matrix_trace_splash_activity_name.name(), mDefaultSplashActivity);
-    }
-
-    public float getFrameRefreshRate() {
-        return mDynamicConfig.get(IDynamicConfig.ExptEnum.clicfg_matrix_trace_fps_frame_fresh_threshold.name(), Constants.DEFAULT_DEVICE_REFRESH_RATE);
-    }
-
-    public boolean isHasSplashActivityName() {
-        if (TextUtils.isEmpty(mDefaultSplashActivity)) {
-            return false;
-        }
-        return !TextUtils.isEmpty(mDynamicConfig.get(IDynamicConfig.ExptEnum.clicfg_matrix_trace_splash_activity_name.name(), mDefaultSplashActivity));
-    }
 
     public static class Builder {
-        private IDynamicConfig mDyConfig;
-        private boolean mFPSEnable;
-        private boolean mMethodTraceEnable;
-        private boolean mStartupEnable;
-        private boolean isDebug;
-        private String mSplashActivity;
+        private TraceConfig config = new TraceConfig();
 
         public Builder dynamicConfig(IDynamicConfig dynamicConfig) {
-            this.mDyConfig = dynamicConfig;
+            config.dynamicConfig = dynamicConfig;
             return this;
         }
 
-        public Builder enableFPS(boolean enableFps) {
-            this.mFPSEnable = enableFps;
+        public Builder enableFPS(boolean enable) {
+            config.defaultFpsEnable = enable;
             return this;
         }
 
-        public Builder enableMethodTrace(boolean enableMethodTrace) {
-            this.mMethodTraceEnable = enableMethodTrace;
+        public Builder enableEvilMethodTrace(boolean enable) {
+            config.defaultMethodTraceEnable = enable;
             return this;
         }
 
-        public Builder enableStartUp(boolean enableStartup) {
-            this.mStartupEnable = enableStartup;
+        public Builder enableAnrTrace(boolean enable) {
+            config.defaultAnrEnable = enable;
+            return this;
+        }
+
+        public Builder enableStartup(boolean enable) {
+            config.defaultStartupEnable = enable;
             return this;
         }
 
         public Builder isDebug(boolean isDebug) {
-            this.isDebug = isDebug;
+            config.isDebug = isDebug;
             return this;
         }
 
-        public Builder splashActivity(String splashActivity) {
-            this.mSplashActivity = splashActivity;
+        public Builder careActivities(String activities) {
+            config.careActivities = activities;
             return this;
         }
-
 
         public TraceConfig build() {
-            return new TraceConfig(mDyConfig, mFPSEnable, mMethodTraceEnable, mStartupEnable, mSplashActivity, isDebug);
+            MatrixLog.i(TAG, config.toString());
+            return config;
         }
 
     }

@@ -20,6 +20,7 @@ import android.app.Application;
 import android.content.Context;
 import android.os.Build;
 import android.os.Debug;
+import android.os.SystemClock;
 
 import com.tencent.matrix.Matrix;
 import com.tencent.matrix.iocanary.IOCanaryPlugin;
@@ -32,6 +33,8 @@ import com.tencent.matrix.util.MatrixLog;
 import com.tencent.sqlitelint.SQLiteLint;
 import com.tencent.sqlitelint.SQLiteLintPlugin;
 import com.tencent.sqlitelint.config.SQLiteLintConfig;
+
+import java.util.HashSet;
 
 import sample.tencent.matrix.config.DynamicConfigImplDemo;
 import sample.tencent.matrix.listener.TestPluginListener;
@@ -71,10 +74,11 @@ public class MatrixApplication extends Application {
         TraceConfig traceConfig = new TraceConfig.Builder()
                 .dynamicConfig(dynamicConfig)
                 .enableFPS(fpsEnable)
-                .enableMethodTrace(traceEnable)
-                .enableStartUp(traceEnable)
+                .enableEvilMethodTrace(traceEnable)
+                .enableAnrTrace(traceEnable)
+                .enableStartup(traceEnable)
+                .careActivities("sample.tencent.matrix.MainActivity;")
                 .isDebug(true)
-                .splashActivity("sample.tencent.matrix.SplashActivity")
                 .build();
 
         TracePlugin tracePlugin = (new TracePlugin(traceConfig));
@@ -108,8 +112,6 @@ public class MatrixApplication extends Application {
 
         //start only startup tracer, close other tracer.
         tracePlugin.start();
-        //only stop at sample app, in your app do not call onDestroy
-        tracePlugin.getFPSTracer().onDestroy();
 
         MatrixLog.i("Matrix.HackCallback", "end:%s", System.currentTimeMillis());
     }

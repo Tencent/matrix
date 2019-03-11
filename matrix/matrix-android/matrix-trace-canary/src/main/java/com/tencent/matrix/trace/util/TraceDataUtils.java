@@ -1,7 +1,7 @@
 package com.tencent.matrix.trace.util;
 
 import com.tencent.matrix.trace.constants.Constants;
-import com.tencent.matrix.trace.core.MethodBeat;
+import com.tencent.matrix.trace.core.AppMethodBeat;
 import com.tencent.matrix.trace.items.MethodItem;
 import com.tencent.matrix.util.MatrixLog;
 
@@ -17,28 +17,32 @@ public class TraceDataUtils {
     public interface IStructuredDataFilter {
         boolean isFilter(long during, int filterCount);
 
-        int getFilterLimitCount();
+        int getFilterMaxCount();
 
         void fallback(List<MethodItem> stack, int size);
     }
 
     public static void structuredDataToStack(long[] buffer, LinkedList<MethodItem> result) {
+        structuredDataToStack(buffer, result, true);
+    }
+
+    public static void structuredDataToStack(long[] buffer, LinkedList<MethodItem> result, boolean isStrict) {
 
         LinkedList<Long> rawData = new LinkedList<>();
-        boolean isBegin = false;
+        boolean isBegin = !isStrict;
         for (long trueId : buffer) {
             if (0 == trueId) {
                 continue;
             }
+            if (isStrict) {
+                if (isIn(trueId) && AppMethodBeat.METHOD_ID_DISPATCH == getMethodId(trueId)) {
+                    isBegin = true;
+                }
 
-            if (isIn(trueId) && MethodBeat.METHOD_ID_DISPATCH == getMethodId(trueId)) {
-                isBegin = true;
-            } else {
-                MatrixLog.d(TAG, "never begin! pass this method[%s]", getMethodId(trueId));
-            }
-
-            if (!isBegin) {
-                continue;
+                if (!isBegin) {
+                    MatrixLog.d(TAG, "never begin! pass this method[%s]", getMethodId(trueId));
+                    continue;
+                }
             }
 
             if (isIn(trueId)) {
@@ -55,7 +59,7 @@ public class TraceDataUtils {
                     long outTime = getTime(trueId);
                     long inTime = getTime(in);
                     long during = outTime - inTime;
-                    if (during < 0 || during >= Constants.MAX_EVIL_METHOD_DUR_TIME) {
+                    if (during < 0) {
                         MatrixLog.e(TAG, "[structuredDataToStack] trace during invalid:%d", during);
                         rawData.clear();
                         result.clear();
@@ -186,72 +190,78 @@ public class TraceDataUtils {
         }
     }
 
-    public static void printTree(TreeNode root, int depth, StringBuilder ss) {
+    public static void printTree(TreeNode root, StringBuilder print) {
+        print.append("|*   TraceStack: ").append("\n");
+        printTree(root, 0, print, "|*        ");
+    }
 
-        StringBuilder empty = new StringBuilder();
-        for (int i = 0; i < depth; i++) {
+    public static void printTree(TreeNode root, int depth, StringBuilder ss, String prefixStr) {
+
+        StringBuilder empty = new StringBuilder(prefixStr);
+
+        for (int i = 0; i <= depth; i++) {
             empty.append("    ");
         }
         for (int i = 0; i < root.children.size(); i++) {
             TreeNode node = root.children.get(i);
             ss.append(empty.toString()).append(node.item.methodId).append("[").append(node.item.durTime).append("]").append("\n");
             if (!node.children.isEmpty()) {
-                printTree(node, depth + 1, ss);
+                printTree(node, depth + 1, ss, prefixStr);
             }
         }
     }
 
 
-    public static void trimStack(List<MethodItem> stack, int limitCount, IStructuredDataFilter filter) {
-        if (0 > limitCount) {
+    public static void trimStack(List<MethodItem> stack, int targetCount, IStructuredDataFilter filter) {
+        if (0 > targetCount) {
             stack.clear();
             return;
         }
 
         int filterCount = 1;
         int curStackSize = stack.size();
-        while (curStackSize > limitCount) {
+        while (curStackSize > targetCount) {
             Iterator<MethodItem> iterator = stack.iterator();
             while (iterator.hasNext()) {
                 MethodItem item = iterator.next();
                 if (filter.isFilter(item.durTime, filterCount)) {
                     iterator.remove();
                     curStackSize--;
-                    if (curStackSize <= limitCount) {
+                    if (curStackSize <= targetCount) {
                         return;
                     }
                 }
             }
             curStackSize = stack.size();
             filterCount++;
-            if (filter.getFilterLimitCount() < filterCount) {
+            if (filter.getFilterMaxCount() < filterCount) {
                 break;
             }
         }
         int size = stack.size();
-        if (size > limitCount) {
+        if (size > targetCount) {
             filter.fallback(stack, size);
         }
     }
 
-    public static String getTreeKey(List<MethodItem> stack, final int limitCount) {
+    public static String getTreeKey(List<MethodItem> stack, final int targetCount) {
         StringBuilder ss = new StringBuilder();
         final List<MethodItem> tmp = new LinkedList<>(stack);
-        trimStack(tmp, limitCount, new TraceDataUtils.IStructuredDataFilter() {
+        trimStack(tmp, targetCount, new TraceDataUtils.IStructuredDataFilter() {
             @Override
             public boolean isFilter(long during, int filterCount) {
                 return during < filterCount * Constants.TIME_UPDATE_CYCLE_MS;
             }
 
             @Override
-            public int getFilterLimitCount() {
-                return Constants.FILTER_STACK_LIMIT_COUNT;
+            public int getFilterMaxCount() {
+                return Constants.FILTER_STACK_MAX_COUNT;
             }
 
             @Override
             public void fallback(List<MethodItem> stack, int size) {
-                MatrixLog.w(TAG, "[getTreeKey] size:%s targetSize:%s stack:%s", size, limitCount, tmp);
-                List list = tmp.subList(0, limitCount);
+                MatrixLog.w(TAG, "[getTreeKey] size:%s targetSize:%s stack:%s", size, targetCount, tmp);
+                List list = tmp.subList(0, targetCount);
                 tmp.clear();
                 tmp.addAll(list);
             }
@@ -304,7 +314,7 @@ public class TraceDataUtils {
          /*        8[15]
          **/
         StringBuilder ss = new StringBuilder("print tree\n");
-        printTree(root, 0, ss);
+        printTree(root, ss);
         MatrixLog.i(TAG, ss.toString());
     }
 

@@ -1,33 +1,21 @@
-/*
- * Tencent is pleased to support the open source community by making wechat-matrix available.
- * Copyright (C) 2018 THL A29 Limited, a Tencent company. All rights reserved.
- * Licensed under the BSD 3-Clause License (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      https://opensource.org/licenses/BSD-3-Clause
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 package com.tencent.matrix.trace.tracer;
 
 import android.app.Activity;
-import android.os.Handler;
+import android.app.Application;
+import android.os.Bundle;
 import android.os.SystemClock;
-import android.text.TextUtils;
 
+import com.tencent.matrix.Matrix;
+import com.tencent.matrix.report.Issue;
 import com.tencent.matrix.trace.TracePlugin;
 import com.tencent.matrix.trace.config.SharePluginInfo;
 import com.tencent.matrix.trace.config.TraceConfig;
 import com.tencent.matrix.trace.constants.Constants;
-import com.tencent.matrix.trace.core.OldMethodBeat;
+import com.tencent.matrix.trace.core.AppMethodBeat;
 import com.tencent.matrix.trace.hacker.ActivityThreadHacker;
-import com.tencent.matrix.trace.listeners.IMethodBeatListener;
+import com.tencent.matrix.trace.items.MethodItem;
+import com.tencent.matrix.trace.listeners.IAppMethodBeatListener;
+import com.tencent.matrix.trace.util.TraceDataUtils;
 import com.tencent.matrix.util.DeviceUtil;
 import com.tencent.matrix.util.MatrixHandlerThread;
 import com.tencent.matrix.util.MatrixLog;
@@ -35,212 +23,217 @@ import com.tencent.matrix.util.MatrixLog;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
 
 /**
- * Created by caichongyang on 2017/5/26.
+ * Created by caichongyang on 2019/3/04.
+ * <p>
+ * firstMethod.i       LAUNCH_ACTIVITY   onWindowFocusChange   LAUNCH_ACTIVITY    onWindowFocusChange
+ * ^                         ^                   ^                     ^                  ^
+ * |                         |                   |                     |                  |
+ * |---------app---------|---|---firstActivity---|---------...---------|---careActivity---|
+ * |<--applicationCost-->|
+ * |<----firstScreenCost---->|
+ * |<---------------------------allCost(cold)------------------------->|
+ * .                         |<--allCost(warm)-->|
  *
- * |----app----|--between--|--firstAc---|---secondAc----|
+ * </p>
  */
 
-public class StartUpTracer extends BaseTracer implements IMethodBeatListener {
-    private static final String TAG = "Matrix.StartUpTracer";
-    private final TraceConfig mTraceConfig;
-    private boolean isFirstActivityCreate = true;
-    private String mFirstActivityName = null;
-    private static int mFirstActivityIndex;
-    private final HashMap<String, Long> mFirstActivityMap = new HashMap<>();
-    private final HashMap<String, Long> mActivityEnteredMap = new HashMap<>();
-    private final Handler mHandler;
+public class StartupTracer extends Tracer implements IAppMethodBeatListener, Application.ActivityLifecycleCallbacks {
 
-    public StartUpTracer(TracePlugin plugin, TraceConfig config) {
-        super(plugin);
-        this.mTraceConfig = config;
-        this.mHandler = new Handler(MatrixHandlerThread.getDefaultHandlerThread().getLooper());
+    private static final String TAG = "Matrix.StartupTracer";
+    private final TraceConfig config;
+    private long eggBrokenMs = 0;
+    private long applicationCreateEnd = 0;
+    private long applicationCost = 0;
+    private long firstScreenCost = 0;
+    private long coldCost = 0;
+    private int activeActivityCount;
+
+
+    public StartupTracer(TraceConfig config) {
+        this.config = config;
     }
 
     @Override
-    protected boolean isEnableMethodBeat() {
-        return true;
-    }
-
-    @Override
-    protected String getTag() {
-        return SharePluginInfo.TAG_PLUGIN_STARTUP;
-    }
-
-    @Override
-    public void onActivityCreated(Activity activity) {
-        super.onActivityCreated(activity);
-        if (isFirstActivityCreate && mFirstActivityMap.isEmpty()) {
-            String activityName = activity.getComponentName().getClassName();
-            mFirstActivityIndex = getMethodBeat().getCurIndex();
-            mFirstActivityName = activityName;
-            mFirstActivityMap.put(activityName, SystemClock.uptimeMillis());
-            MatrixLog.i(TAG, "[onActivityCreated] first activity:%s index:%s local time:%s", mFirstActivityName, mFirstActivityIndex, System.currentTimeMillis());
-            getMethodBeat().lockBuffer(true);
+    protected void onAlive() {
+        if (config.isStartupEnable()) {
+            AppMethodBeat.getInstance().addListener(this);
+            Matrix.with().getApplication().registerActivityLifecycleCallbacks(this);
         }
     }
 
     @Override
-    public void onBackground(Activity activity) {
-        super.onBackground(activity);
-        isFirstActivityCreate = true;
+    protected void onDead() {
+        if (config.isStartupEnable()) {
+            AppMethodBeat.getInstance().removeListener(this);
+            Matrix.with().getApplication().unregisterActivityLifecycleCallbacks(this);
+        }
+    }
+
+
+    @Override
+    public void onApplicationCreated(long beginMs, long endMs, int scene) {
+        this.eggBrokenMs = beginMs;
+        this.applicationCreateEnd = endMs;
+        this.applicationCost = endMs - beginMs;
     }
 
     @Override
-    public void onActivityEntered(Activity activity, boolean isFocus, int nowIndex, long[] buffer) {
-        if (mFirstActivityName == null) {
-            isFirstActivityCreate = false;
-            getMethodBeat().lockBuffer(false);
-            return;
-        }
-        String activityName = activity.getComponentName().getClassName();
-        if (!mActivityEnteredMap.containsKey(activityName) || isFocus) {
-            mActivityEnteredMap.put(activityName, SystemClock.uptimeMillis());
-        }
-        if (!isFocus) {
-            MatrixLog.i(TAG, "[onActivityEntered] isFocus false,activityName:%s", activityName);
-            return;
-        }
-
-        if (mTraceConfig.isHasSplashActivityName() && activityName.equals(mTraceConfig.getSplashActivityName())) {
-            MatrixLog.i(TAG, "[onActivityEntered] has splash activity! %s", mTraceConfig.getSplashActivityName());
-            return;
-        }
-
-        getMethodBeat().lockBuffer(false);
-
-        long activityEndTime = getValueFromMap(mActivityEnteredMap, activityName);
-        long firstActivityStartTime = getValueFromMap(mFirstActivityMap, mFirstActivityName);
-        if (activityEndTime <= 0 || firstActivityStartTime <= 0) {
-            MatrixLog.w(TAG, "[onActivityEntered] error activityCost! [%s:%s]", activityEndTime, firstActivityStartTime);
-            mFirstActivityMap.clear();
-            mActivityEnteredMap.clear();
-            return;
-        }
-
-        boolean isWarnStartUp = isWarmStartUp(firstActivityStartTime);
-        long activityCost = activityEndTime - firstActivityStartTime;
-        long appCreateTime = ActivityThreadHacker.sApplicationCreateEndTime - ActivityThreadHacker.sApplicationCreateBeginTime;
-        long betweenCost = firstActivityStartTime - ActivityThreadHacker.sApplicationCreateEndTime;
-        long allCost = activityEndTime - ActivityThreadHacker.sApplicationCreateBeginTime;
-
-        if (isWarnStartUp) {
-            betweenCost = 0;
-            allCost = activityCost;
-        }
-        long splashCost = 0;
-        if (mTraceConfig.isHasSplashActivityName()) {
-            long tmp = getValueFromMap(mActivityEnteredMap, mTraceConfig.getSplashActivityName());
-            splashCost = tmp == 0 ? 0 : getValueFromMap(mActivityEnteredMap, activityName) - tmp;
-        }
-        if (appCreateTime <= 0 || (mTraceConfig.isHasSplashActivityName() && splashCost < 0)) {
-            MatrixLog.e(TAG, "[onActivityEntered] is wrong! appCreateTime:%s isHasSplashActivityName:%s splashCost:%s", appCreateTime, mTraceConfig.isHasSplashActivityName(), splashCost);
-            mFirstActivityMap.clear();
-            mActivityEnteredMap.clear();
-            return;
-        }
-
-        EvilMethodTracer tracer = getTracer(EvilMethodTracer.class);
-        if (null != tracer) {
-            long thresholdMs = isWarnStartUp ? mTraceConfig.getWarmStartUpThresholdMs() : mTraceConfig.getStartUpThresholdMs();
-            int startIndex = isWarnStartUp ? mFirstActivityIndex : ActivityThreadHacker.sApplicationCreateBeginMethodIndex;
-            int curIndex = getMethodBeat().getCurIndex();
-            if (allCost > thresholdMs) {
-                MatrixLog.i(TAG, "appCreateTime[%s] is over threshold![%s], dump stack! index[%s:%s]", appCreateTime, thresholdMs, startIndex, curIndex);
-                EvilMethodTracer evilMethodTracer = getTracer(EvilMethodTracer.class);
-                if (null != evilMethodTracer) {
-                    evilMethodTracer.handleBuffer(EvilMethodTracer.Type.STARTUP, startIndex, curIndex, OldMethodBeat.getBuffer(), appCreateTime, Constants.SUBTYPE_STARTUP_APPLICATION);
-                }
+    public void onActivityFocused(String activity) {
+        long allCost = 0;
+        boolean isWarmStartUp = false;
+        if (isColdStartup()) {
+            if (firstScreenCost == 0) {
+                this.firstScreenCost = SystemClock.uptimeMillis() - eggBrokenMs;
             }
+            if (config.getCareActivities().contains(activity)) {
+                allCost = coldCost = SystemClock.uptimeMillis() - eggBrokenMs;
+            } else if (config.getCareActivities().isEmpty()) {
+                MatrixLog.i(TAG, "default care activity[%s]", activity);
+                allCost = coldCost = firstScreenCost;
+            } else {
+                MatrixLog.w(TAG, "pass this activity[%s] in duration of startup!", activity);
+            }
+        } else if (isWarmStartUp = isWarmStartUp()) {
+            allCost = SystemClock.uptimeMillis() - ActivityThreadHacker.sLastLaunchActivityTime;
         }
 
-        MatrixLog.i(TAG, "[onActivityEntered] firstActivity:%s appCreateTime:%dms betweenCost:%dms activityCreate:%dms splashCost:%dms allCost:%sms isWarnStartUp:%b ApplicationCreateScene:%s",
-                mFirstActivityName, appCreateTime, betweenCost, activityCost, splashCost, allCost, isWarnStartUp, ActivityThreadHacker.sApplicationCreateScene);
-
-        mHandler.post(new StartUpReportTask(activityName, appCreateTime, activityCost, betweenCost, splashCost, allCost, isWarnStartUp, ActivityThreadHacker.sApplicationCreateScene));
-
-        mFirstActivityMap.clear();
-        mActivityEnteredMap.clear();
-        isFirstActivityCreate = false;
-        mFirstActivityName = null;
-        onDestroy();
-
-    }
-
-    @Override
-    public void onCreate() {
-        if (!isHasDestroy) {
-            super.onCreate();
+        if (allCost > 0) {
+            analyse(applicationCost, firstScreenCost, allCost, isWarmStartUp);
         }
     }
 
-    private static boolean isHasDestroy = false;
-
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
-        isHasDestroy = true;
+    private boolean isColdStartup() {
+        return coldCost == 0;
     }
 
-    long getValueFromMap(HashMap<String, Long> map, String key) {
-        if (null == map || key == null || !map.containsKey(key)) {
-            MatrixLog.w(TAG, "[getValueFromMap] key:%s", TextUtils.isEmpty(key) ? "null" : key);
-            return 0;
+    private boolean isWarmStartUp() {
+        return activeActivityCount > 1 ? false : (SystemClock.uptimeMillis() - ActivityThreadHacker.sLastLaunchActivityTime > Constants.LIMIT_WARM_THRESHOLD_MS ? false : true);
+    }
+
+    private void analyse(long applicationCost, long firstScreenCost, long allCost, boolean isWarmStartUp) {
+        MatrixLog.i(TAG, "[report] applicationCost:%s firstScreenCost:%s allCost:%s isWarmStartUp:%s", applicationCost, firstScreenCost, allCost, isWarmStartUp);
+        long[] data = new long[0];
+        if (!isWarmStartUp && allCost >= config.getColdStartupThresholdMs()) { // for cold startup
+            data = AppMethodBeat.getInstance().copyData(ActivityThreadHacker.sApplicationCreateBeginMethodIndex);
+            ActivityThreadHacker.sApplicationCreateBeginMethodIndex.release();
+
+        } else if (isWarmStartUp && allCost >= config.getWarmStartupThresholdMs()) {
+            data = AppMethodBeat.getInstance().copyData(ActivityThreadHacker.sLastLaunchActivityMethodIndex);
+            ActivityThreadHacker.sLastLaunchActivityMethodIndex.release();
         }
-        return map.get(key);
+        MatrixHandlerThread.getDefaultHandler().post(new AnalyseTask(data, applicationCost, firstScreenCost, allCost, isWarmStartUp));
+
     }
 
-    @Override
-    public void onApplicationCreated(long startTime, long endTime) {
-        long cost = endTime - startTime;
-        MatrixLog.i(TAG, "[onApplicationCreated] application create cost:%dms startTime:%s endTime:%s", cost, startTime, endTime);
-    }
+    private class AnalyseTask implements Runnable {
 
-    private boolean isWarmStartUp(long time) {
-        return time - ActivityThreadHacker.sApplicationCreateEndTime > Constants.LIMIT_WARM_THRESHOLD_MS;
-    }
-
-    private class StartUpReportTask implements Runnable {
-        long appCost;
-        long activityCost;
-        long betweenCost;
-        long splashCost;
+        long[] data;
+        long applicationCost;
+        long firstScreenCost;
         long allCost;
-        int scene;
-        String activityName;
         boolean isWarmStartUp;
 
-        StartUpReportTask(String activityName, long appCost, long activityCost, long betweenCost, long splashCost, long allCost, boolean isWarmStartUp, int scene) {
-            this.appCost = appCost;
-            this.activityCost = activityCost;
-            this.betweenCost = betweenCost;
-            this.splashCost = splashCost;
+        AnalyseTask(long[] data, long applicationCost, long firstScreenCost, long allCost, boolean isWarmStartUp) {
+            this.data = data;
+            this.applicationCost = applicationCost;
+            this.firstScreenCost = firstScreenCost;
             this.allCost = allCost;
-            this.activityName = activityName;
             this.isWarmStartUp = isWarmStartUp;
-            this.scene = scene;
         }
 
         @Override
         public void run() {
+            LinkedList<MethodItem> stack = new LinkedList();
+            TraceDataUtils.structuredDataToStack(data, stack, false);
+            TraceDataUtils.trimStack(stack, Constants.TARGET_EVIL_METHOD_STACK / 4, new TraceDataUtils.IStructuredDataFilter() {
+                @Override
+                public boolean isFilter(long during, int filterCount) {
+                    return during < filterCount * Constants.TIME_UPDATE_CYCLE_MS;
+                }
+
+                @Override
+                public int getFilterMaxCount() {
+                    return Constants.FILTER_STACK_MAX_COUNT;
+                }
+
+                @Override
+                public void fallback(List<MethodItem> stack, int size) {
+                    MatrixLog.w(TAG, "[fallback] size:%s targetSize:%s stack:%s", size, Constants.TARGET_EVIL_METHOD_STACK, stack);
+                    List list = stack.subList(0, Constants.TARGET_EVIL_METHOD_STACK);
+                    stack.clear();
+                    stack.addAll(list);
+                }
+            });
+
+            StringBuilder print = new StringBuilder();
+            TraceDataUtils.TreeNode root = new TraceDataUtils.TreeNode();
+            TraceDataUtils.stackToTree(stack, root);
+            if (config.isDebug()) {
+                String stackKey = TraceDataUtils.getTreeKey(stack, Constants.MAX_LIMIT_ANALYSE_STACK_KEY_NUM);
+                print.append("stackKey:").append(stackKey).append("\n");
+            }
+            TraceDataUtils.printTree(root, print);
+            MatrixLog.i(TAG, print.toString());     // for logcat
+
+            // report
+            report(applicationCost, firstScreenCost, allCost, isWarmStartUp);
+        }
+
+        private void report(long applicationCost, long firstScreenCost, long allCost, boolean isWarmStartUp) {
             JSONObject jsonObject = new JSONObject();
             try {
-                jsonObject = DeviceUtil.getDeviceInfo(jsonObject, getPlugin().getApplication());
-
-                jsonObject.put(SharePluginInfo.STAGE_APPLICATION_CREATE, appCost);
-                jsonObject.put(SharePluginInfo.STAGE_FIRST_ACTIVITY_CREATE, activityCost);
-                jsonObject.put(SharePluginInfo.STAGE_BETWEEN_APP_AND_ACTIVITY, betweenCost);
-                jsonObject.put(SharePluginInfo.STAGE_SPLASH_ACTIVITY_DURATION, splashCost);
+                jsonObject = DeviceUtil.getDeviceInfo(jsonObject, Matrix.with().getApplication());
+                jsonObject.put(SharePluginInfo.STAGE_APPLICATION_CREATE, applicationCost);
+                jsonObject.put(SharePluginInfo.STAGE_FIRST_ACTIVITY_CREATE, firstScreenCost);
                 jsonObject.put(SharePluginInfo.STAGE_STARTUP_DURATION, allCost);
-                jsonObject.put(SharePluginInfo.ISSUE_SCENE, activityName);
                 jsonObject.put(SharePluginInfo.ISSUE_IS_WARM_START_UP, isWarmStartUp);
-                jsonObject.put(SharePluginInfo.STAGE_APPLICATION_CREATE_SCENE, scene);
-                sendReport(jsonObject, SharePluginInfo.TAG_PLUGIN_STARTUP);
+                Issue issue = new Issue();
+                issue.setTag(SharePluginInfo.TAG_PLUGIN_STARTUP);
+                issue.setContent(jsonObject);
+                Matrix.with().getPluginByClass(TracePlugin.class).onDetectIssue(issue);
             } catch (JSONException e) {
                 MatrixLog.e(TAG, "[JSONException for StartUpReportTask error: %s", e);
             }
         }
+    }
+
+
+    @Override
+    public void onActivityCreated(Activity activity, Bundle savedInstanceState) {
+        activeActivityCount++;
+    }
+
+    @Override
+    public void onActivityDestroyed(Activity activity) {
+        activeActivityCount--;
+    }
+
+    @Override
+    public void onActivityStarted(Activity activity) {
+
+    }
+
+    @Override
+    public void onActivityResumed(Activity activity) {
+
+    }
+
+    @Override
+    public void onActivityPaused(Activity activity) {
+
+    }
+
+    @Override
+    public void onActivityStopped(Activity activity) {
+
+    }
+
+    @Override
+    public void onActivitySaveInstanceState(Activity activity, Bundle outState) {
+
     }
 }
