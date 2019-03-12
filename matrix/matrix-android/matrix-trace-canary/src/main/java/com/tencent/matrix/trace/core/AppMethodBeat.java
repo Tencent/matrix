@@ -1,8 +1,6 @@
 package com.tencent.matrix.trace.core;
 
 import android.app.Activity;
-import android.app.Fragment;
-import android.app.FragmentManager;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
@@ -16,7 +14,6 @@ import com.tencent.matrix.util.MatrixHandlerThread;
 import com.tencent.matrix.util.MatrixLog;
 
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
 public class AppMethodBeat implements BeatLifecycle {
@@ -110,6 +107,9 @@ public class AppMethodBeat implements BeatLifecycle {
      * @param methodId
      */
     public static void i(int methodId) {
+        if (!isAlive) {
+            return;
+        }
         if (methodId >= METHOD_ID_MAX) {
             return;
         }
@@ -141,6 +141,9 @@ public class AppMethodBeat implements BeatLifecycle {
      * @param methodId
      */
     public static void o(int methodId) {
+        if (!isAlive) {
+            return;
+        }
         if (methodId >= METHOD_ID_MAX) {
             return;
         }

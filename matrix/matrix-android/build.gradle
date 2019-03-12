@@ -83,4 +83,3 @@ task generateVersionTxt() {
         file.write(rootProject.ext.VERSION_NAME)
     }
 }
-

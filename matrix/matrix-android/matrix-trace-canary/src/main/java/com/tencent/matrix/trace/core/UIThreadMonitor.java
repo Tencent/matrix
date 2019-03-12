@@ -86,17 +86,26 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
         addAnimationQueue = reflectChoreographerMethod(callbackQueues[CALLBACK_ANIMATION], ADD_CALLBACK, long.class, Object.class, Object.class);
         addTraversalQueue = reflectChoreographerMethod(callbackQueues[CALLBACK_TRAVERSAL], ADD_CALLBACK, long.class, Object.class, Object.class);
         frameIntervalNanos = reflectObject(choreographer, "mFrameIntervalNanos");
-        final Printer printer = reflectObject(Looper.getMainLooper(), "mLogging");
+        final Printer originPrinter = reflectObject(Looper.getMainLooper(), "mLogging");
         Looper.getMainLooper().setMessageLogging(new Printer() {
+            boolean hasDispatchBegin = false;
+
             @Override
             public void println(String x) {
-                if (null != printer) {
-                    printer.println(x);
+                if (null != originPrinter) {
+                    originPrinter.println(x);
                 }
                 UIThreadMonitor.this.isHandleMessageEnd = !isHandleMessageEnd;
+
+                if (!isAlive && !hasDispatchBegin) {
+                    return;
+                }
+
                 if (!isHandleMessageEnd) {
+                    hasDispatchBegin = true;
                     dispatchBegin();
                 } else {
+                    hasDispatchBegin = false;
                     dispatchEnd();
                 }
             }
