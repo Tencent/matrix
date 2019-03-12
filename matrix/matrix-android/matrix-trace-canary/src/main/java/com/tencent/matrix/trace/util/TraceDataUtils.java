@@ -86,7 +86,7 @@ public class TraceDataUtils {
             }
         }
 
-        while (!rawData.isEmpty()) {
+        while (!rawData.isEmpty() && isStrict) {
             long trueId = rawData.pop();
             int methodId = getMethodId(trueId);
             boolean isIn = isIn(trueId);
@@ -162,7 +162,8 @@ public class TraceDataUtils {
 
 
     public static long stackToString(LinkedList<MethodItem> stack, StringBuilder reportBuilder, StringBuilder logcatBuilder) {
-        logcatBuilder.append("|*   TraceStack:[id count cost] ").append("\n");
+        logcatBuilder.append("|*   TraceStack:").append("\n");
+        logcatBuilder.append("|*        [id count cost]").append("\n");
         Iterator<MethodItem> listIterator = stack.iterator();
         long stackCost = 0; // fix cost
         while (listIterator.hasNext()) {

@@ -1,6 +1,8 @@
 package com.tencent.matrix.trace.core;
 
 import android.app.Activity;
+import android.app.Fragment;
+import android.app.FragmentManager;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
@@ -14,6 +16,7 @@ import com.tencent.matrix.util.MatrixHandlerThread;
 import com.tencent.matrix.util.MatrixLog;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 public class AppMethodBeat implements BeatLifecycle {
@@ -34,7 +37,7 @@ public class AppMethodBeat implements BeatLifecycle {
     private static final int METHOD_ID_MAX = 0xFFFFF;
     public static final int METHOD_ID_DISPATCH = METHOD_ID_MAX - 1;
     private static Set<String> sFocusActivitySet = new HashSet<>();
-    private static String sFocusedActivity = "";
+    private static String sFocusedActivity = "default";
     private static HashSet<IAppMethodBeatListener> listeners = new HashSet<>();
 
     static {
@@ -171,7 +174,7 @@ public class AppMethodBeat implements BeatLifecycle {
             }
         } else {
             if (sFocusedActivity.equals(activityName)) {
-                sFocusedActivity = "";
+                sFocusedActivity = "default";
             }
             sFocusActivitySet.remove(activityName);
         }
