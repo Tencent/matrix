@@ -150,7 +150,7 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, App
         public void run() {
             LinkedList<MethodItem> stack = new LinkedList();
             TraceDataUtils.structuredDataToStack(data, stack, false);
-            TraceDataUtils.trimStack(stack, Constants.TARGET_EVIL_METHOD_STACK / 4, new TraceDataUtils.IStructuredDataFilter() {
+            TraceDataUtils.trimStack(stack, Constants.TARGET_EVIL_METHOD_STACK, new TraceDataUtils.IStructuredDataFilter() {
                 @Override
                 public boolean isFilter(long during, int filterCount) {
                     return during < filterCount * Constants.TIME_UPDATE_CYCLE_MS;

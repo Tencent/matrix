@@ -27,7 +27,8 @@ public class TraceDataUtils {
     }
 
     public static void structuredDataToStack(long[] buffer, LinkedList<MethodItem> result, boolean isStrict) {
-
+        long lastInId = 0L;
+        int depth = 0;
         LinkedList<Long> rawData = new LinkedList<>();
         boolean isBegin = !isStrict;
         for (long trueId : buffer) {
@@ -44,21 +45,27 @@ public class TraceDataUtils {
                     continue;
                 }
             }
-
+            MatrixLog.d(TAG, "%s %s", getMethodId(trueId), isIn(trueId));
             if (isIn(trueId)) {
+                lastInId = getMethodId(trueId);
+                if (lastInId == AppMethodBeat.METHOD_ID_DISPATCH) {
+                    depth = 0;
+                }
+                depth++;
                 rawData.push(trueId);
-                int methodId = getMethodId(trueId); // in
-                MatrixLog.i(TAG, "in :%s", methodId);
             } else {
                 int methodId = getMethodId(trueId); // out
-                MatrixLog.i(TAG, "out :%s", methodId);
                 if (!rawData.isEmpty()) {
                     long in = rawData.pop();
-                    while (getMethodId(in) != methodId) {
+                    depth--;
+                    while (getMethodId(in) != methodId && !rawData.isEmpty()) {
                         MatrixLog.w(TAG, "[structuredDataToStack] method[%s] not match in! pop[%s] to continue find!", in, methodId);
                         in = rawData.pop();
+                        depth--;
                     }
-
+                    if (lastInId == methodId && methodId == AppMethodBeat.METHOD_ID_DISPATCH) {
+                        continue;
+                    }
                     long outTime = getTime(trueId);
                     long inTime = getTime(in);
                     long during = outTime - inTime;
@@ -71,7 +78,7 @@ public class TraceDataUtils {
                     if (during < Constants.TIME_UPDATE_CYCLE_MS) {
                         continue;
                     }
-                    MethodItem methodItem = new MethodItem(methodId, (int) during, rawData.size());
+                    MethodItem methodItem = new MethodItem(methodId, (int) during, depth);
                     addMethodItem(result, methodItem);
                 } else {
                     MatrixLog.w(TAG, "[structuredDataToStack] method[%s] not found in! ", methodId);
@@ -110,12 +117,11 @@ public class TraceDataUtils {
         if (!resultStack.isEmpty()) {
             last = resultStack.peek();
         }
-        resultStack.push(item);
-//        if (null != last && last.methodId == item.methodId && last.depth == item.depth) {
-//            last.mergeMore(item.durTime);
-//        } else {
-//            resultStack.push(item);
-//        }
+        if (null != last && last.methodId == item.methodId && last.depth == item.depth && 0 != item.depth) {
+            last.mergeMore(item.durTime);
+        } else {
+            resultStack.push(item);
+        }
     }
 
     /**
@@ -157,7 +163,7 @@ public class TraceDataUtils {
 
     public static long stackToString(LinkedList<MethodItem> stack, StringBuilder reportBuilder, StringBuilder logcatBuilder) {
         logcatBuilder.append("|*   TraceStack:[id count cost] ").append("\n");
-        ListIterator<MethodItem> listIterator = stack.listIterator();
+        Iterator<MethodItem> listIterator = stack.iterator();
         long stackCost = 0; // fix cost
         while (listIterator.hasNext()) {
             MethodItem item = listIterator.next();
@@ -249,9 +255,9 @@ public class TraceDataUtils {
                 if (filter.isFilter(item.durTime, filterCount)) {
                     iterator.remove();
                     curStackSize--;
-                    if (curStackSize <= targetCount) {
-                        return;
-                    }
+//                    if (curStackSize <= targetCount) {
+//                        return;
+//                    }
                 }
             }
             curStackSize = stack.size();

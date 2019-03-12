@@ -36,7 +36,6 @@ public class AppMethodBeat implements BeatLifecycle {
     private static Set<String> sFocusActivitySet = new HashSet<>();
     private static String sFocusedActivity = "";
     private static HashSet<IAppMethodBeatListener> listeners = new HashSet<>();
-    private boolean isHandleMessageEnd = true;
 
     static {
         sTimeUpdateHandler.postDelayed(new Runnable() {

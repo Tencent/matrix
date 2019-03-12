@@ -79,11 +79,11 @@ public class ActivityThreadHacker {
 
         @Override
         public boolean handleMessage(Message msg) {
+            boolean isLaunchActivity = isLaunchActivity(msg);
             if (hasPrint > 0) {
-                MatrixLog.i(TAG, "[handleMessage] msg.what:%s begin:%s", msg.what, SystemClock.uptimeMillis());
+                MatrixLog.i(TAG, "[handleMessage] msg.what:%s begin:%s isLaunchActivity:%s", msg.what, SystemClock.uptimeMillis(), isLaunchActivity);
                 hasPrint--;
             }
-            boolean isLaunchActivity = isLaunchActivity(msg);
             if (isLaunchActivity) {
                 ActivityThreadHacker.sLastLaunchActivityTime = SystemClock.uptimeMillis();
                 ActivityThreadHacker.sLastLaunchActivityMethodIndex = AppMethodBeat.getInstance().maskIndex("LastLaunchActivityMethodIndex");
@@ -104,7 +104,8 @@ public class ActivityThreadHacker {
         private Method method = null;
 
         private boolean isLaunchActivity(Message msg) {
-            if (Build.VERSION.SDK_INT > Build.VERSION_CODES.O) {
+            if (Build.VERSION.SDK_INT > Build.VERSION_CODES.O_MR1) {
+                MatrixLog.i(TAG, "[isLaunchActivity] Build.VERSION.SDK_INT > Build.VERSION_CODES.O");
                 if (msg.what == EXECUTE_TRANSACTION && msg.obj != null) {
                     try {
                         if (null == method) {
@@ -120,7 +121,7 @@ public class ActivityThreadHacker {
                         MatrixLog.e(TAG, "[isLaunchActivity] %s", e);
                     }
                 }
-                return false;
+                return msg.what == LAUNCH_ACTIVITY;
             } else {
                 return msg.what == LAUNCH_ACTIVITY;
             }
