@@ -184,7 +184,7 @@ void kscrash_innerHandleSignalCallback(siginfo_t *info)
 
 + (BOOL)p_isDumpTypeRelatedToFOOM:(EDumpType)dumType
 {
-    return dumType == EDumpType_MainThreadBlock || dumType == EDumpType_CPUBlock || dumType == EDumpType_CPUIntervalHigh;
+    return dumType == EDumpType_MainThreadBlock || dumType == EDumpType_CPUBlock;
 }
 
 - (void)onBlockMonitor:(WCBlockMonitorMgr *)bmMgr beginDump:(EDumpType)dumpType blockTime:(uint64_t)blockTime

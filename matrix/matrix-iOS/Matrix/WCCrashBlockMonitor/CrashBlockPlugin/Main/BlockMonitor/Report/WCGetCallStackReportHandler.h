@@ -35,4 +35,8 @@
                                     withDumpType:(EDumpType)dumpType
                                        withScene:(NSString *)scene;
 
++ (NSData *)getReportJsonDataWithPowerConsumeStack:(NSArray <NSDictionary *>*)PowerConsumeStackArray
+                                     withReportID:(NSString *)reportID
+                                     withDumpType:(EDumpType)dumpType;
+
 @end

@@ -7,6 +7,10 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		1110CEAE228D8BF7002E7353 /* WCPowerConsumeStackCollector.h in Headers */ = {isa = PBXBuildFile; fileRef = 1110CEAC228D8BF6002E7353 /* WCPowerConsumeStackCollector.h */; };
+		1110CEAF228D8BF7002E7353 /* WCPowerConsumeStackCollector.h in Headers */ = {isa = PBXBuildFile; fileRef = 1110CEAC228D8BF6002E7353 /* WCPowerConsumeStackCollector.h */; };
+		1110CEB0228D8BF7002E7353 /* WCPowerConsumeStackCollector.mm in Sources */ = {isa = PBXBuildFile; fileRef = 1110CEAD228D8BF6002E7353 /* WCPowerConsumeStackCollector.mm */; };
+		1110CEB1228D8BF7002E7353 /* WCPowerConsumeStackCollector.mm in Sources */ = {isa = PBXBuildFile; fileRef = 1110CEAD228D8BF6002E7353 /* WCPowerConsumeStackCollector.mm */; };
 		1110E02A2243388500A873F9 /* WCFilterStackHandler.h in Headers */ = {isa = PBXBuildFile; fileRef = 1110E0282243388500A873F9 /* WCFilterStackHandler.h */; };
 		1110E02B2243388500A873F9 /* WCFilterStackHandler.mm in Sources */ = {isa = PBXBuildFile; fileRef = 1110E0292243388500A873F9 /* WCFilterStackHandler.mm */; };
 		1110E02D22433D2B00A873F9 /* WCFilterStackHandler.h in Headers */ = {isa = PBXBuildFile; fileRef = 1110E0282243388500A873F9 /* WCFilterStackHandler.h */; };
@@ -532,6 +536,8 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		1110CEAC228D8BF6002E7353 /* WCPowerConsumeStackCollector.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = WCPowerConsumeStackCollector.h; sourceTree = "<group>"; };
+		1110CEAD228D8BF6002E7353 /* WCPowerConsumeStackCollector.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = WCPowerConsumeStackCollector.mm; sourceTree = "<group>"; };
 		1110E0282243388500A873F9 /* WCFilterStackHandler.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = WCFilterStackHandler.h; sourceTree = "<group>"; };
 		1110E0292243388500A873F9 /* WCFilterStackHandler.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = WCFilterStackHandler.mm; sourceTree = "<group>"; };
 		11203FA920EE10A20022FF96 /* MatrixDeviceInfo.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MatrixDeviceInfo.h; sourceTree = "<group>"; };
@@ -1187,6 +1193,8 @@
 			children = (
 				114E687020AAC0CE0045083D /* WCCPUHandler.h */,
 				114E687120AAC0CE0045083D /* WCCPUHandler.mm */,
+				1110CEAC228D8BF6002E7353 /* WCPowerConsumeStackCollector.h */,
+				1110CEAD228D8BF6002E7353 /* WCPowerConsumeStackCollector.mm */,
 				114E687F20AAC0CE0045083D /* WCGetMainThreadUtil.h */,
 				114E688020AAC0CE0045083D /* WCGetMainThreadUtil.mm */,
 				114E687420AAC0CE0045083D /* WCMainThreadHandler.h */,
@@ -1473,6 +1481,7 @@
 				116461052111AF190069B5DE /* KSDate.h in Headers */,
 				116461062111AF190069B5DE /* Optional.h in Headers */,
 				BB77AD4A22368582008C67D9 /* prettywriter.h in Headers */,
+				1110CEAE228D8BF7002E7353 /* WCPowerConsumeStackCollector.h in Headers */,
 				BB77AD8622368582008C67D9 /* dtoa.h in Headers */,
 				116461182111AF190069B5DE /* KSCrashMonitorType.h in Headers */,
 				116461072111AF190069B5DE /* KSCrashMonitor_System.h in Headers */,
@@ -1642,6 +1651,7 @@
 				1166068521369E1E00F4ED74 /* KSCrash.h in Headers */,
 				1166068B21369E1E00F4ED74 /* NSError+SimpleConstructor.h in Headers */,
 				1166068C21369E1E00F4ED74 /* NSApplicationEvent.h in Headers */,
+				1110CEAF228D8BF7002E7353 /* WCPowerConsumeStackCollector.h in Headers */,
 				1166068D21369E1E00F4ED74 /* Demangle.h in Headers */,
 				BB77AD0C22368582008C67D9 /* dyld_image_info.h in Headers */,
 				1166068E21369E1E00F4ED74 /* KSDate.h in Headers */,
@@ -1897,6 +1907,7 @@
 				93DD5874225F3731005C267C /* bundle_name_helper.mm in Sources */,
 				116460C52111AF190069B5DE /* KSJSONCodec.c in Sources */,
 				116460C62111AF190069B5DE /* KSSysCtl.c in Sources */,
+				1110CEB0228D8BF7002E7353 /* WCPowerConsumeStackCollector.mm in Sources */,
 				116460C72111AF190069B5DE /* KSCrashMonitor_NSException.m in Sources */,
 				BB77ACFA22368582008C67D9 /* memory_report_generator.cpp in Sources */,
 				116460C92111AF190069B5DE /* KSCrashC.c in Sources */,
@@ -2003,6 +2014,7 @@
 				93DD5875225F3731005C267C /* bundle_name_helper.mm in Sources */,
 				1166065221369E1E00F4ED74 /* KSCrashMonitor_NSException.m in Sources */,
 				1110E0322243741500A873F9 /* WCFilterStackHandler.mm in Sources */,
+				1110CEB1228D8BF7002E7353 /* WCPowerConsumeStackCollector.mm in Sources */,
 				BB77ACFC22368582008C67D9 /* memory_report_generator.cpp in Sources */,
 				1166065421369E1E00F4ED74 /* KSCrashC.c in Sources */,
 				1166065521369E1E00F4ED74 /* KSCrashReport.c in Sources */,

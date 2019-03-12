@@ -105,7 +105,7 @@ KSStackCursor *kscrash_pointThreadCallback(void)
     return g_PointMainThreadArray;
 }
 
-@interface WCBlockMonitorMgr () {
+@interface WCBlockMonitorMgr () <WCCPUHandlerDelegate> {
     NSThread *m_monitorThread;
     BOOL m_bStop;
 
@@ -233,8 +233,9 @@ KSStackCursor *kscrash_pointThreadCallback(void)
     m_bInSuspend = YES;
     
     m_bTrackCPU = YES;
-    m_cpuHandler = [[WCCPUHandler alloc] init];
-
+    m_cpuHandler = [[WCCPUHandler alloc] initWithCPULimit:[_monitorConfigHandler getPowerConsumeCPULimit]];
+    m_cpuHandler.delegate = self;
+    
     g_filterSameStack = [_monitorConfigHandler getShouldFilterSameStack];
     g_triggerdFilterSameCnt = [_monitorConfigHandler getTriggerFilterCount];
     
@@ -583,19 +584,12 @@ KSStackCursor *kscrash_pointThreadCallback(void)
         MatrixInfo(@"mb[%f]", cpuUsage);;
     }
     
-    if (cpuUsage > 100.0f) {
-        MatrixInfo(@"check cpu over usage 100.0f, %f", cpuUsage);
-    }
-    
     if (m_bTrackCPU) {
         unsigned long long checkPeriod = [WCBlockMonitorMgr diffTime:&g_lastCheckTime endTime:&tvCur];
         gettimeofday(&g_lastCheckTime, NULL);
-        if ([m_cpuHandler cultivateCpuUsage:cpuUsage periodTime:(float)checkPeriod / 1000000]) {
+        if ([m_cpuHandler cultivateCpuUsage:cpuUsage periodTime:(float)checkPeriod / 1000000 getPowerConsume:[_monitorConfigHandler getShouldGetPowerConsumeStack]]) {
             MatrixInfo(@"exceed cpu average usage");
             BM_SAFE_CALL_SELECTOR_NO_RETURN(_delegate, @selector(onBlockMonitorIntervalCPUTooHigh:), onBlockMonitorIntervalCPUTooHigh:self)
-            if ([_monitorConfigHandler getShouldGetCPUIntervalHighLog]) {
-                return EDumpType_CPUIntervalHigh;
-            }
         }
         if (cpuUsage > g_CPUUsagePercent) {
             MatrixInfo(@"check cpu over usage dump %f", cpuUsage);
@@ -962,7 +956,27 @@ void myInitializetionRunLoopEndCallback(CFRunLoopObserverRef observer, CFRunLoop
 {
     return [m_cpuHandler isBackgroundCPUTooSmall];
 }
-    
+
+// ============================================================================
+#pragma mark - WCCPUHandlerDelegate
+// ============================================================================
+
+- (void)cpuHandlerOnGetPowerConsumeStackTree:(NSArray <NSDictionary *> *)stackTree
+{
+    dispatch_async(m_asyncDumpQueue, ^{
+        if (stackTree == nil) {
+            MatrixInfo(@"save battery cost stack log, but stack tree is empty");
+            return;
+        }
+        MatrixInfo(@"save battery cost stack log");
+        NSString *reportID = [[NSUUID UUID] UUIDString];
+        NSData *reportData = [WCGetCallStackReportHandler getReportJsonDataWithPowerConsumeStack:stackTree
+                                                                                   withReportID:reportID
+                                                                                   withDumpType:EDumpType_PowerConsume];
+        [WCDumpInterface saveDump:reportData withReportType:EDumpType_PowerConsume withReportID:reportID];
+    });
+}
+
 // ============================================================================
 #pragma mark - Utility
 // ============================================================================

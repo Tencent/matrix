@@ -27,21 +27,25 @@
 #endif
 
 #import "MatrixLogDef.h"
+#import "WCPowerConsumeStackCollector.h"
 
-#define kForegroundOverEightySecLimit 60  // foreground CPU over 80%.
-#define kBakcgroundOverEightySecLimit 60  // background CPU over 80%.
-#define TICK_TOCK_COUNT 60
+static float kOverCPULimit = 80.;
+static float kOverCPULimitSecLimit = 60.;
+static int TICK_TOCK_COUNT = 60;
 
-@interface WCCPUHandler () {
+@interface WCCPUHandler () <WCPowerConsumeStackCollectorDelegate> {
     NSUInteger m_tickTok;
+
+    float m_totalCPUCost;
+    float m_totalTrackingTime;
+    BOOL m_bTracking;
     
-    BOOL m_bLastOverEighty;
-    float m_foregroundOverEightyTotalSec;
-    float m_backgroundOverEightyTotalSec;
     float m_backgroundTotalCPU;
     float m_backgroundTotalSec;
     BOOL m_background;
     volatile BOOL m_backgroundCPUTooSmall;
+    
+    WCPowerConsumeStackCollector *m_costStackCollector;
 }
 
 @end
@@ -50,18 +54,28 @@
 
 - (id)init
 {
+    return [self initWithCPULimit:80.];
+}
+
+- (id)initWithCPULimit:(float)cpuLimit
+{
     self = [super init];
     if (self) {
+        kOverCPULimit = cpuLimit;
+        
         m_tickTok = 0;
-        m_bLastOverEighty = NO;
-        m_foregroundOverEightyTotalSec = 0;
-        m_backgroundOverEightyTotalSec = 0;
+        m_bTracking = NO;
+        
+        m_totalTrackingTime = 0.;
+        m_totalCPUCost = 0.;
         
         m_background = NO;
         m_backgroundTotalCPU = 0.;
         m_backgroundTotalSec = 0.;
         m_backgroundCPUTooSmall = NO;
         
+        m_costStackCollector = [[WCPowerConsumeStackCollector alloc] init];
+        m_costStackCollector.delegate = self;
 #if !TARGET_OS_OSX
         [[NSNotificationCenter defaultCenter] addObserver:self
                                                  selector:@selector(willEnterForeground)
@@ -94,7 +108,7 @@
 }
 
 // ============================================================================
-#pragma mark - CPU Related -
+#pragma mark - CPU Related
 // ============================================================================
 
 - (BOOL)isBackgroundCPUTooSmall
@@ -104,53 +118,76 @@
 
 - (BOOL)cultivateCpuUsage:(float)cpuUsage periodTime:(float)periodSec
 {
+    return [self cultivateCpuUsage:cpuUsage periodTime:periodSec getPowerConsume:NO];
+}
+
+// run on the check child thread
+- (BOOL)cultivateCpuUsage:(float)cpuUsage periodTime:(float)periodSec getPowerConsume:(BOOL)bGetStack
+{
     [self cultivateBackgroundCpu:cpuUsage periodTime:periodSec];
 
+    if (periodSec < 0 || periodSec > 5.) {
+        MatrixDebug(@"abnormal period sec : %f", periodSec);
+        return NO;
+    }
+    
     if (m_tickTok > 0) {
         m_tickTok -= 1; // Annealing algorithm
         if (m_tickTok == 0) {
             MatrixInfo(@"tick tok over");
         }
+        return NO;
     }
 
-    if (cpuUsage > 80. && m_tickTok == 0 && m_bLastOverEighty == NO) {
+    if (cpuUsage > kOverCPULimit && m_bTracking == NO) {
         MatrixInfo(@"start track cpu usage");
-        m_foregroundOverEightyTotalSec = 0;
-        m_backgroundOverEightyTotalSec = 0;
-        m_bLastOverEighty = YES;
-    }
-    if (cpuUsage <= 80. && m_bLastOverEighty == YES) {
-        MatrixInfo(@"stop track cpu usage");
-        m_foregroundOverEightyTotalSec = 0;
-        m_backgroundOverEightyTotalSec = 0;
-        m_bLastOverEighty = NO;
+        m_totalCPUCost = 0.;
+        m_totalTrackingTime = 0.;
+        m_bTracking = YES;
     }
     
-    BOOL exceedLimit = NO;
-    if (m_bLastOverEighty && m_tickTok == 0) {
-        if (m_background) {
-            m_foregroundOverEightyTotalSec = 0;
-            m_backgroundOverEightyTotalSec += periodSec;
-            if (m_backgroundOverEightyTotalSec > kBakcgroundOverEightySecLimit) {
-                MatrixInfo(@"background, exceed cpu limit");
-                exceedLimit = YES;
-            }
-        } else {
-            m_backgroundOverEightyTotalSec = 0;
-            m_foregroundOverEightyTotalSec += periodSec;
-            if (m_foregroundOverEightyTotalSec > kForegroundOverEightySecLimit) {
-                MatrixInfo(@"foreground, exceed cpu limit");
-                exceedLimit = YES;
-            }
-        }
+    if (m_bTracking == NO) {
+        return NO;
     }
-    if (exceedLimit) {
-        m_foregroundOverEightyTotalSec = 0;
-        m_backgroundOverEightyTotalSec = 0;
-        m_tickTok += TICK_TOCK_COUNT;
+    
+    m_totalTrackingTime += periodSec;
+    m_totalCPUCost += periodSec * cpuUsage;
+
+    if (bGetStack && (cpuUsage > (kOverCPULimit/2.))) { // for performance, just cpu over kOverCPULimit/2. then get stack
+        [m_costStackCollector getPowerConsumeStack];
     }
 
-    return exceedLimit;
+    float halfCPUZone = kOverCPULimit * m_totalTrackingTime / 2.;
+    
+    if (m_totalCPUCost < halfCPUZone) {
+        MatrixInfo(@"stop track cpu usage");
+        m_totalCPUCost = 0.;
+        m_totalTrackingTime = 0.;
+        m_bTracking = NO;
+        return NO;
+    }
+    
+    if (m_totalTrackingTime >= kOverCPULimitSecLimit) {
+        BOOL exceedLimit = NO;
+        float fullCPUZone = halfCPUZone + halfCPUZone;
+        if (m_totalCPUCost > fullCPUZone) {
+            MatrixInfo(@"exceed cpu limit");
+            exceedLimit = YES;
+        }
+        
+        if (exceedLimit) {
+            if (bGetStack) {
+                [m_costStackCollector makeConclusion];
+            }
+            m_totalCPUCost = 0;
+            m_totalTrackingTime = 0.;
+            m_bTracking = NO;
+            m_tickTok += TICK_TOCK_COUNT;
+        }
+        return exceedLimit;
+    }
+    
+    return NO;
 }
 
 - (void)cultivateBackgroundCpu:(float)cpuUsage periodTime:(float)periodSec
@@ -224,9 +261,19 @@
     } // for each thread
 
     kr = vm_deallocate(mach_task_self(), (vm_offset_t) thread_list, thread_count * sizeof(thread_t));
-    assert(kr == KERN_SUCCESS);
 
     return tot_cpu;
+}
+
+// ============================================================================
+#pragma mark - WCPowerConsumeStackCollectorDelegate
+// ============================================================================
+
+- (void)powerConsumeStackCollectorConclude:(NSArray <NSDictionary *> *)stackTree
+{
+    if (_delegate != nil && [_delegate respondsToSelector:@selector(cpuHandlerOnGetPowerConsumeStackTree:)]) {
+        [_delegate cpuHandlerOnGetPowerConsumeStackTree:stackTree];
+    }
 }
 
 @end
