@@ -26,6 +26,7 @@ import com.tencent.matrix.trace.config.TraceConfig;
 import com.tencent.matrix.trace.constants.Constants;
 import com.tencent.matrix.trace.core.ApplicationLifeObserver;
 import com.tencent.matrix.trace.schedule.LazyScheduler;
+import com.tencent.matrix.trace.util.TraceDataUtils;
 import com.tencent.matrix.trace.util.ViewUtil;
 import com.tencent.matrix.util.DeviceUtil;
 import com.tencent.matrix.util.MatrixHandlerThread;
@@ -37,6 +38,7 @@ import org.json.JSONObject;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.ListIterator;
 
 /**
@@ -343,7 +345,7 @@ public class EvilMethodTracer extends BaseTracer implements LazyScheduler.ILazyT
 
         private void analyse(long[] buffer) {
             LinkedList<Long> rawData = new LinkedList<>();
-            LinkedList<MethodItem> resultStack = new LinkedList<>();
+            final LinkedList<MethodItem> resultStack = new LinkedList<>();
 
             for (long trueId : buffer) {
                 if (isIn(trueId)) {
@@ -402,24 +404,27 @@ public class EvilMethodTracer extends BaseTracer implements LazyScheduler.ILazyT
                 addMethodItem(resultStack, methodItem);
             }
             MatrixLog.i(TAG, "resultStack:%s", resultStack);
-            LinkedList<MethodItem> finalResultStack = new LinkedList<>();
-            TreeNode root = stackToTree(resultStack);
-            int round = 1;
-            while (true) {
-                boolean ret = trimResultStack(root, analyseExtraInfo, 0, (.1f * (float) round));
-                if (ret) {
-                    MatrixLog.e(TAG, "type:%s [stack result is empty after trim, just ignore]", analyseExtraInfo.type.name());
-                    return;
-                }
-                if (countTreeNode(root) <= Constants.MAX_EVIL_METHOD_STACK) {
-                    break;
+
+            TraceDataUtils.trimStack(resultStack, Constants.MAX_EVIL_METHOD_STACK, new TraceDataUtils.IStructuredDataFilter() {
+                @Override
+                public boolean isFilter(long during, int filterCount) {
+                    return during < filterCount * Constants.TIME_UPDATE_CYCLE_MS;
                 }
 
-                round++;
-                if (round > 3) {
-                    break;
+                @Override
+                public int getFilterMaxCount() {
+                    return Constants.MAX_EVIL_METHOD_STACK;
                 }
-            }
+
+                @Override
+                public void fallback(List<MethodItem> stack, int size) {
+                    resultStack.clear();
+                    resultStack.addAll(stack.subList(0, Math.min(size - 1, Constants.MAX_EVIL_METHOD_STACK));
+                }
+            });
+
+            LinkedList<MethodItem> finalResultStack = new LinkedList<>();
+            TreeNode root = stackToTree(resultStack);
 
             makeKey(root, analyseExtraInfo);
 
@@ -595,9 +600,9 @@ public class EvilMethodTracer extends BaseTracer implements LazyScheduler.ILazyT
     }
 
 
-    private static final class MethodItem {
+    public static final class MethodItem {
         int methodId;
-        int durTime;
+        public int durTime;
         int depth;
         int count = 1;
 
