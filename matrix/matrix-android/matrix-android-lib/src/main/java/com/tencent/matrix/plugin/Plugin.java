@@ -174,4 +174,8 @@ public abstract class Plugin implements IPlugin, IssuePublisher.OnIssueDetectLis
         isSupported = false;
     }
 
+    public JSONObject getJsonInfo() {
+        return new JSONObject();
+    }
+
 }
