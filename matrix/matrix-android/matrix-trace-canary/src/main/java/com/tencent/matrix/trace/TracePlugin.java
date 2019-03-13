@@ -18,6 +18,7 @@ package com.tencent.matrix.trace;
 
 import android.app.Application;
 import android.os.Build;
+import android.os.Looper;
 
 import com.tencent.matrix.plugin.Plugin;
 import com.tencent.matrix.plugin.PluginListener;
@@ -28,6 +29,7 @@ import com.tencent.matrix.trace.tracer.AnrTracer;
 import com.tencent.matrix.trace.tracer.EvilMethodTracer;
 import com.tencent.matrix.trace.tracer.FrameTracer;
 import com.tencent.matrix.trace.tracer.StartupTracer;
+import com.tencent.matrix.util.MatrixHandlerThread;
 import com.tencent.matrix.util.MatrixLog;
 
 /**
@@ -55,15 +57,6 @@ public class TracePlugin extends Plugin {
             unSupportPlugin();
             return;
         }
-
-        mStartupTracer = new StartupTracer(mTraceConfig);
-
-        mFrameTracer = new FrameTracer(mTraceConfig);
-
-        mAnrTracer = new AnrTracer(mTraceConfig);
-
-        mEvilMethodTracer = new EvilMethodTracer(mTraceConfig);
-
     }
 
     @Override
@@ -73,15 +66,39 @@ public class TracePlugin extends Plugin {
             return;
         }
 
-        AppMethodBeat.getInstance().onStart();
+        Runnable runnable = new Runnable() {
+            @Override
+            public void run() {
+                AppMethodBeat.getInstance().onStart();
+                if (null == mAnrTracer) {
+                    mAnrTracer = new AnrTracer(mTraceConfig);
+                }
+                mAnrTracer.onStartTrace();
 
-        mAnrTracer.onStartTrace();
+                if (null == mFrameTracer) {
+                    mFrameTracer = new FrameTracer(mTraceConfig);
+                }
+                mFrameTracer.onStartTrace();
 
-        mFrameTracer.onStartTrace();
+                if (null == mEvilMethodTracer) {
+                    mEvilMethodTracer = new EvilMethodTracer(mTraceConfig);
+                }
+                mEvilMethodTracer.onStartTrace();
 
-        mEvilMethodTracer.onStartTrace();
+                if (null == mStartupTracer) {
+                    mStartupTracer = new StartupTracer(mTraceConfig);
+                }
+                mStartupTracer.onStartTrace();
+            }
+        };
 
-        mStartupTracer.onStartTrace();
+        if (Thread.currentThread() == Looper.getMainLooper().getThread()) {
+            runnable.run();
+        } else {
+            MatrixLog.w(TAG, "start TracePlugin in Thread[%s] but not in mainThread!", Thread.currentThread().getId());
+            MatrixHandlerThread.getDefaultMainHandler().post(runnable);
+        }
+
     }
 
     @Override
@@ -91,15 +108,28 @@ public class TracePlugin extends Plugin {
             return;
         }
 
-        AppMethodBeat.getInstance().onStop();
+        Runnable runnable = new Runnable() {
+            @Override
+            public void run() {
+                AppMethodBeat.getInstance().onStop();
 
-        mAnrTracer.onCloseTrace();
+                mAnrTracer.onCloseTrace();
 
-        mFrameTracer.onCloseTrace();
+                mFrameTracer.onCloseTrace();
 
-        mEvilMethodTracer.onCloseTrace();
+                mEvilMethodTracer.onCloseTrace();
 
-        mStartupTracer.onCloseTrace();
+                mStartupTracer.onCloseTrace();
+            }
+        };
+
+        if (Thread.currentThread() == Looper.getMainLooper().getThread()) {
+            runnable.run();
+        } else {
+            MatrixLog.w(TAG, "stop TracePlugin in Thread[%s] but not in mainThread!", Thread.currentThread().getId());
+            MatrixHandlerThread.getDefaultMainHandler().post(runnable);
+        }
+
 
     }
 

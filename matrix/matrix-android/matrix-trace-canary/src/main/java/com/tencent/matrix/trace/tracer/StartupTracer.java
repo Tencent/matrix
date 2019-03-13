@@ -45,9 +45,6 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, App
 
     private static final String TAG = "Matrix.StartupTracer";
     private final TraceConfig config;
-    private long eggBrokenMs = 0;
-    private long applicationCreateEnd = 0;
-    private long applicationCost = 0;
     private long firstScreenCost = 0;
     private long coldCost = 0;
     private int activeActivityCount;
@@ -73,24 +70,16 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, App
         }
     }
 
-
-    @Override
-    public void onApplicationCreated(long beginMs, long endMs, int scene) {
-        this.eggBrokenMs = beginMs;
-        this.applicationCreateEnd = endMs;
-        this.applicationCost = endMs - beginMs;
-    }
-
     @Override
     public void onActivityFocused(String activity) {
         long allCost = 0;
         boolean isWarmStartUp = false;
         if (isColdStartup()) {
             if (firstScreenCost == 0) {
-                this.firstScreenCost = SystemClock.uptimeMillis() - eggBrokenMs;
+                this.firstScreenCost = SystemClock.uptimeMillis() - ActivityThreadHacker.getEggBrokenTime();
             }
             if (config.getCareActivities().contains(activity)) {
-                allCost = coldCost = SystemClock.uptimeMillis() - eggBrokenMs;
+                allCost = coldCost = SystemClock.uptimeMillis() - ActivityThreadHacker.getEggBrokenTime();
             } else if (config.getCareActivities().isEmpty()) {
                 MatrixLog.i(TAG, "default care activity[%s]", activity);
                 allCost = coldCost = firstScreenCost;
@@ -98,11 +87,11 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, App
                 MatrixLog.w(TAG, "pass this activity[%s] in duration of startup!", activity);
             }
         } else if (isWarmStartUp = isWarmStartUp()) {
-            allCost = SystemClock.uptimeMillis() - ActivityThreadHacker.sLastLaunchActivityTime;
+            allCost = SystemClock.uptimeMillis() - ActivityThreadHacker.getLastLaunchActivityTime();
         }
 
         if (allCost > 0) {
-            analyse(applicationCost, firstScreenCost, allCost, isWarmStartUp);
+            analyse(ActivityThreadHacker.getApplicationCost(), firstScreenCost, allCost, isWarmStartUp);
         }
     }
 
@@ -111,7 +100,7 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, App
     }
 
     private boolean isWarmStartUp() {
-        return activeActivityCount > 1 ? false : (SystemClock.uptimeMillis() - ActivityThreadHacker.sLastLaunchActivityTime > Constants.LIMIT_WARM_THRESHOLD_MS ? false : true);
+        return activeActivityCount > 1 ? false : (SystemClock.uptimeMillis() - ActivityThreadHacker.getLastLaunchActivityTime() > Constants.LIMIT_WARM_THRESHOLD_MS ? false : true);
     }
 
     private void analyse(long applicationCost, long firstScreenCost, long allCost, boolean isWarmStartUp) {

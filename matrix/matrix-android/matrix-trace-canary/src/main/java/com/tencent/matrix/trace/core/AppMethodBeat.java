@@ -107,9 +107,6 @@ public class AppMethodBeat implements BeatLifecycle {
      * @param methodId
      */
     public static void i(int methodId) {
-        if (!isAlive) {
-            return;
-        }
         if (methodId >= METHOD_ID_MAX) {
             return;
         }
@@ -118,6 +115,10 @@ public class AppMethodBeat implements BeatLifecycle {
         }
 
         isRealTrace = true;
+
+        if (!isAlive) {
+            return;
+        }
 
         if (Thread.currentThread() == sMainThread) {
             if (assertIn) {
@@ -183,14 +184,6 @@ public class AppMethodBeat implements BeatLifecycle {
         }
 
         MatrixLog.i(TAG, "[at] Activity[%s] has %s focus!", activityName, isFocus ? "attach" : "detach");
-    }
-
-    public static void onApplicationAttached(long beginMs, long endMs, int scene) {
-        synchronized (listeners) {
-            for (IAppMethodBeatListener listener : listeners) {
-                listener.onApplicationCreated(beginMs, endMs, scene);
-            }
-        }
     }
 
 

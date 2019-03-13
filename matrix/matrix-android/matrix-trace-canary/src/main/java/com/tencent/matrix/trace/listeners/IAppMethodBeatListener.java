@@ -21,7 +21,6 @@ package com.tencent.matrix.trace.listeners;
  */
 
 public interface IAppMethodBeatListener {
-    void onApplicationCreated(long beginMs, long endMs, int scene);
 
     void onActivityFocused(String activity);
 }

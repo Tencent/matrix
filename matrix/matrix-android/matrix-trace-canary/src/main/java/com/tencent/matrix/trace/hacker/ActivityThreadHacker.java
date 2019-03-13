@@ -35,7 +35,7 @@ public class ActivityThreadHacker {
     private static final String TAG = "Matrix.ActivityThreadHacker";
     private static long sApplicationCreateBeginTime = 0L;
     private static long sApplicationCreateEndTime = 0L;
-    public static long sLastLaunchActivityTime = 0L;
+    private static long sLastLaunchActivityTime = 0L;
     public static AppMethodBeat.IndexRecord sLastLaunchActivityMethodIndex = new AppMethodBeat.IndexRecord();
     public static AppMethodBeat.IndexRecord sApplicationCreateBeginMethodIndex = new AppMethodBeat.IndexRecord();
     public static int sApplicationCreateScene = -100;
@@ -62,6 +62,19 @@ public class ActivityThreadHacker {
             MatrixLog.e(TAG, "hook system handler err! %s", e.getCause().toString());
         }
     }
+
+    public static long getApplicationCost() {
+        return ActivityThreadHacker.sApplicationCreateEndTime - ActivityThreadHacker.sApplicationCreateBeginTime;
+    }
+
+    public static long getEggBrokenTime() {
+        return ActivityThreadHacker.sApplicationCreateBeginTime;
+    }
+
+    public static long getLastLaunchActivityTime() {
+        return ActivityThreadHacker.sLastLaunchActivityTime;
+    }
+
 
     private final static class HackCallback implements Handler.Callback {
         private static final int LAUNCH_ACTIVITY = 100;
@@ -93,7 +106,6 @@ public class ActivityThreadHacker {
                 if (isLaunchActivity || msg.what == CREATE_SERVICE || msg.what == RECEIVER) { // todo for provider
                     ActivityThreadHacker.sApplicationCreateEndTime = SystemClock.uptimeMillis();
                     ActivityThreadHacker.sApplicationCreateScene = msg.what;
-                    AppMethodBeat.onApplicationAttached(sApplicationCreateBeginTime, sApplicationCreateEndTime, sApplicationCreateScene);
                     isCreated = true;
                 }
             }
