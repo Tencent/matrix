@@ -394,4 +394,52 @@ public class DeviceUtil {
         return Debug.getNativeHeapAllocatedSize() / 1024;   //in KB
     }
 
+    public static long getVmSize() {
+        String status = String.format("/proc/%s/status", getAppId());
+        try {
+            String content = getStringFromFile(status).trim();
+            String[] args = content.split("\n");
+            if (args.length > 12) {
+                String size = args[12].split(":")[1].trim();
+                return Long.parseLong(size.split(" ")[0]) * 1024L;
+            }
+        } catch (Exception e) {
+            return -1;
+        }
+        return -1;
+    }
+
+    protected static String convertStreamToString(InputStream is) throws Exception {
+        BufferedReader reader = null;
+        StringBuilder sb = new StringBuilder();
+        try {
+            reader = new BufferedReader(new InputStreamReader(is));
+            String line = null;
+            while ((line = reader.readLine()) != null) {
+                sb.append(line).append('\n');
+            }
+        } finally {
+            if (null != reader) {
+                reader.close();
+            }
+        }
+
+        return sb.toString();
+    }
+
+    protected static String getStringFromFile(String filePath) throws Exception {
+        File fl = new File(filePath);
+        FileInputStream fin = null;
+        String ret;
+        try {
+            fin = new FileInputStream(fl);
+            ret = convertStreamToString(fin);
+        } finally {
+            if (null != fin) {
+                fin.close();
+            }
+        }
+        return ret;
+    }
+
 }
