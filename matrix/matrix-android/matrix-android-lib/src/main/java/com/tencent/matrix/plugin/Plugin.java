@@ -146,7 +146,7 @@ public abstract class Plugin implements IPlugin, IssuePublisher.OnIssueDetectLis
     }
 
     @Override
-    public void onForeground(boolean isForground) {
+    public void onForeground(boolean isForeground) {
 
     }
 
