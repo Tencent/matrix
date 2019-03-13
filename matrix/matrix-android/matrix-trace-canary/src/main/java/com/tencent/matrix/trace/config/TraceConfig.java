@@ -41,7 +41,7 @@ public class TraceConfig implements IDefaultConfig {
     public boolean defaultStartupEnable;
     public boolean defaultAnrEnable;
     public boolean isDebug;
-    public boolean isDevEnv = true;
+    public boolean isDevEnv;
     public String careActivities;
     public Set<String> careActivitiesSet;
 
@@ -167,6 +167,11 @@ public class TraceConfig implements IDefaultConfig {
 
         public Builder isDebug(boolean isDebug) {
             config.isDebug = isDebug;
+            return this;
+        }
+
+        public Builder isDevEnv(boolean isDevEnv) {
+            config.isDevEnv = isDevEnv;
             return this;
         }
 

@@ -401,7 +401,7 @@ public class DeviceUtil {
             String[] args = content.split("\n");
             if (args.length > 12) {
                 String size = args[12].split(":")[1].trim();
-                return Long.parseLong(size.split(" ")[0]) * 1024L;
+                return Long.parseLong(size.split(" ")[0]); // in KB
             }
         } catch (Exception e) {
             return -1;

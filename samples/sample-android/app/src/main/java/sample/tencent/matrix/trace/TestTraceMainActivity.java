@@ -78,7 +78,14 @@ public class TestTraceMainActivity extends Activity {
 
 
     public void testANR(final View view) {
-        SystemClock.sleep(5200);
+        for (long i = 0; i < 5000l; i++) {
+            testInnerSleep();
+            MatrixLog.i(TAG, "I:" + i);
+        }
+    }
+
+    public void testInnerSleep() {
+        SystemClock.sleep(1);
     }
 
     private void tryHeavyMethod() {

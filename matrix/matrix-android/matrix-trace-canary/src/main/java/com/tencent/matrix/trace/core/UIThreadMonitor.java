@@ -5,6 +5,7 @@ import android.os.SystemClock;
 import android.util.Printer;
 import android.view.Choreographer;
 
+import com.tencent.matrix.trace.config.TraceConfig;
 import com.tencent.matrix.trace.util.Utils;
 import com.tencent.matrix.util.MatrixLog;
 
@@ -59,6 +60,7 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
     private static final int CALLBACK_LAST = CALLBACK_TRAVERSAL;
 
     private final static UIThreadMonitor sInstance = new UIThreadMonitor();
+    private TraceConfig config;
     private final Object callbackQueueLock;
     private final Object[] callbackQueues;
     private final Method addTraversalQueue;
@@ -74,6 +76,10 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
 
     public static UIThreadMonitor getMonitor() {
         return sInstance;
+    }
+
+    public void setConfig(TraceConfig config) {
+        this.config = config;
     }
 
     private UIThreadMonitor() {
@@ -111,7 +117,7 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
             }
         });
 
-        if (isDebug) {
+        if (config.isDevEnv()) {
             addObserver(new IFrameObserver() {
                 @Override
                 public void doFrame(String focusedActivityName, long start, long end, long frameCostMs, long inputCost, long animationCost, long traversalCost) {
@@ -307,7 +313,7 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
             }, true);
 
         } finally {
-            if (isDebug) {
+            if (config.isDevEnv()) {
                 MatrixLog.d(TAG, "[run] inner cost:%sns", System.nanoTime() - start);
             }
         }

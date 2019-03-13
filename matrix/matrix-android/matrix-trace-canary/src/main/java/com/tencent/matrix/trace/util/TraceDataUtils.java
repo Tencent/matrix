@@ -45,7 +45,6 @@ public class TraceDataUtils {
                     continue;
                 }
             }
-            MatrixLog.d(TAG, "%s %s", getMethodId(trueId), isIn(trueId));
             if (isIn(trueId)) {
                 lastInId = getMethodId(trueId);
                 if (lastInId == AppMethodBeat.METHOD_ID_DISPATCH) {
@@ -75,9 +74,7 @@ public class TraceDataUtils {
                         result.clear();
                         return;
                     }
-                    if (during < Constants.TIME_UPDATE_CYCLE_MS) {
-                        continue;
-                    }
+
                     MethodItem methodItem = new MethodItem(methodId, (int) during, depth);
                     addMethodItem(result, methodItem);
                 } else {

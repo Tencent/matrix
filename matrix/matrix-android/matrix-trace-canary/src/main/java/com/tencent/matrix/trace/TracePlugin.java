@@ -25,6 +25,7 @@ import com.tencent.matrix.plugin.PluginListener;
 import com.tencent.matrix.trace.config.SharePluginInfo;
 import com.tencent.matrix.trace.config.TraceConfig;
 import com.tencent.matrix.trace.core.AppMethodBeat;
+import com.tencent.matrix.trace.core.UIThreadMonitor;
 import com.tencent.matrix.trace.tracer.AnrTracer;
 import com.tencent.matrix.trace.tracer.EvilMethodTracer;
 import com.tencent.matrix.trace.tracer.FrameTracer;
@@ -69,6 +70,7 @@ public class TracePlugin extends Plugin {
         Runnable runnable = new Runnable() {
             @Override
             public void run() {
+                UIThreadMonitor.getMonitor().setConfig(mTraceConfig);
                 AppMethodBeat.getInstance().onStart();
                 if (null == mAnrTracer) {
                     mAnrTracer = new AnrTracer(mTraceConfig);

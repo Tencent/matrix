@@ -105,6 +105,7 @@ public class AnrTracer extends Tracer implements UIThreadMonitor.ILooperObserver
             long[] data = AppMethodBeat.getInstance().copyData(beginRecord);
             beginRecord.release();
 
+            long[] memoryInfo = dumpMemory();
             Thread.State status = Looper.getMainLooper().getThread().getState();
             String dumpStack = Utils.getStack(Looper.getMainLooper().getThread().getStackTrace(), "|*        ");
 
@@ -141,7 +142,7 @@ public class AnrTracer extends Tracer implements UIThreadMonitor.ILooperObserver
             StringBuilder logcatBuilder = new StringBuilder();
             long stackCost = Math.max(Constants.DEFAULT_ANR, TraceDataUtils.stackToString(stack, reportBuilder, logcatBuilder));
 
-            MatrixLog.w(TAG, printAnr(status, reportBuilder, stack.size(), stackKey, dumpStack, inputCost, animationCost, traversalCost)); // for logcat
+            MatrixLog.w(TAG, printAnr(memoryInfo, status, logcatBuilder, stack.size(), stackKey, dumpStack, inputCost, animationCost, traversalCost)); // for logcat
 
             // report
             try {
@@ -151,7 +152,12 @@ public class AnrTracer extends Tracer implements UIThreadMonitor.ILooperObserver
                 jsonObject.put(SharePluginInfo.ISSUE_STACK_TYPE, Constants.Type.ANR);
                 jsonObject.put(SharePluginInfo.ISSUE_COST, stackCost);
                 jsonObject.put(SharePluginInfo.ISSUE_STACK, reportBuilder.toString());
-                jsonObject.put(SharePluginInfo.ISSUE_STACK_KEY, stackKey);
+                // memory info
+                JSONObject memJsonObject = new JSONObject();
+                memJsonObject.put(SharePluginInfo.ISSUE_MEMORY_DALVIK, memoryInfo[0]);
+                memJsonObject.put(SharePluginInfo.ISSUE_MEMORY_NATIVIE, memoryInfo[1]);
+                memJsonObject.put(SharePluginInfo.ISSUE_MEMORY_VMSIZE, memoryInfo[2]);
+                jsonObject.put(SharePluginInfo.ISSUE_MEMORY, memJsonObject);
 
                 Issue issue = new Issue();
                 issue.setTag(SharePluginInfo.TAG_PLUGIN_EVIL_METHOD);
@@ -164,10 +170,13 @@ public class AnrTracer extends Tracer implements UIThreadMonitor.ILooperObserver
 
         }
 
-        private String printAnr(Thread.State state, StringBuilder stack, long stackSize, String stackKey, String dumpStack, long inputCost, long animationCost, long traversalCost) {
+        private String printAnr(long[] memoryInfo, Thread.State state, StringBuilder stack, long stackSize, String stackKey, String dumpStack, long inputCost, long animationCost, long traversalCost) {
             StringBuilder print = new StringBuilder();
             print.append(" \n>>>>>>>>>>>>>>>>>>>>>>> maybe happens ANR(5s)! <<<<<<<<<<<<<<<<<<<<<<<\n");
             print.append("|* [Memory]").append("\n");  // todo
+            print.append("|*   DalvikHeap: ").append(memoryInfo[0]).append("kb\n");
+            print.append("|*   NativeHeap: ").append(memoryInfo[1]).append("kb\n");
+            print.append("|*   VmSize: ").append(memoryInfo[2]).append("kb\n");
             print.append("|* [doFrame]").append("\n");
             print.append("|*   inputCost: ").append(inputCost).append("\n");
             print.append("|*   animationCost: ").append(animationCost).append("\n");
@@ -187,5 +196,13 @@ public class AnrTracer extends Tracer implements UIThreadMonitor.ILooperObserver
             return print.toString();
         }
 
+    }
+
+    private long[] dumpMemory() {
+        long[] memory = new long[3];
+        memory[0] = DeviceUtil.getDalvikHeap();
+        memory[1] = DeviceUtil.getNativeHeap();
+        memory[2] = DeviceUtil.getVmSize();
+        return memory;
     }
 }
