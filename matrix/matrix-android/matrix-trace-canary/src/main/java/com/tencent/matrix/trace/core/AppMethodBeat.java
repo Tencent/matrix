@@ -169,12 +169,11 @@ public class AppMethodBeat implements BeatLifecycle {
         String activityName = activity.getClass().getName();
         if (isFocus) {
             sFocusedActivity = activityName;
-            if (!sFocusActivitySet.add(activityName)) {
-                MatrixLog.w(TAG, "[at] maybe wrong! why has two same focused activity[%s]!", activityName);
-            }
-            synchronized (listeners) {
-                for (IAppMethodBeatListener listener : listeners) {
-                    listener.onActivityFocused(activityName);
+            if (sFocusActivitySet.add(activityName)) {
+                synchronized (listeners) {
+                    for (IAppMethodBeatListener listener : listeners) {
+                        listener.onActivityFocused(activityName);
+                    }
                 }
             }
         } else {
@@ -264,7 +263,7 @@ public class AppMethodBeat implements BeatLifecycle {
             if (indexRecord.index == index || (indexRecord.index == -1 && sLastIndex == Constants.BUFFER_SIZE - 1)) {
                 indexRecord.isValid = false;
                 sIndexRecordHead = indexRecord = indexRecord.next;
-                MatrixLog.w(TAG, "[checkPileup] index:%s", index);
+                MatrixLog.w(TAG, "[checkPileup] %s", indexRecord.toString());
             } else {
                 break;
             }
