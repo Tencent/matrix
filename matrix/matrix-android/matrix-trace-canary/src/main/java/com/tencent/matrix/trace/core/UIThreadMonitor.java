@@ -61,13 +61,13 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
 
     private final static UIThreadMonitor sInstance = new UIThreadMonitor();
     private TraceConfig config;
-    private final Object callbackQueueLock;
-    private final Object[] callbackQueues;
-    private final Method addTraversalQueue;
-    private final Method addInputQueue;
-    private final Method addAnimationQueue;
-    private final Choreographer choreographer;
-    private final long frameIntervalNanos;
+    private Object callbackQueueLock;
+    private Object[] callbackQueues;
+    private Method addTraversalQueue;
+    private Method addInputQueue;
+    private Method addAnimationQueue;
+    private Choreographer choreographer;
+    private long frameIntervalNanos;
     private int[] queueStatus = new int[CALLBACK_LAST + 1];
     private long[] queueCost = new long[CALLBACK_LAST + 1];
     private static final int DO_QUEUE_DEFAULT = 0;
@@ -78,12 +78,9 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
         return sInstance;
     }
 
-    public void setConfig(TraceConfig config) {
-        this.config = config;
-    }
-
-    private UIThreadMonitor() {
+    public void init(TraceConfig config) {
         assert Thread.currentThread() == Looper.getMainLooper().getThread();
+        this.config = config;
         choreographer = Choreographer.getInstance();
         callbackQueueLock = reflectObject(choreographer, "mLock");
         callbackQueues = reflectObject(choreographer, "mCallbackQueues");

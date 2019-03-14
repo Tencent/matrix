@@ -92,6 +92,11 @@ public class ActivityThreadHacker {
 
         @Override
         public boolean handleMessage(Message msg) {
+
+            if (!AppMethodBeat.isRealTrace()) {
+                return null == mOriginalCallback ? false : mOriginalCallback.handleMessage(msg);
+            }
+
             boolean isLaunchActivity = isLaunchActivity(msg);
             if (hasPrint > 0) {
                 MatrixLog.i(TAG, "[handleMessage] msg.what:%s begin:%s isLaunchActivity:%s", msg.what, SystemClock.uptimeMillis(), isLaunchActivity);
@@ -100,6 +105,7 @@ public class ActivityThreadHacker {
             if (isLaunchActivity) {
                 ActivityThreadHacker.sLastLaunchActivityTime = SystemClock.uptimeMillis();
                 ActivityThreadHacker.sLastLaunchActivityMethodIndex = AppMethodBeat.getInstance().maskIndex("LastLaunchActivityMethodIndex");
+                AppMethodBeat.getInstance().onStart();
             }
 
             if (!isCreated) {

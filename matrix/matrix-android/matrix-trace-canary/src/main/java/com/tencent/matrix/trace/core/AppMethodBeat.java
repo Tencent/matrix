@@ -79,6 +79,10 @@ public class AppMethodBeat implements BeatLifecycle {
         }
     }
 
+    public static boolean isRealTrace() {
+        return isRealTrace;
+    }
+
     private static void realRelease() {
         if (!isRealTrace) {
             MatrixLog.i(TAG, "[realRelease] timestamp:%s", System.currentTimeMillis());
@@ -108,7 +112,7 @@ public class AppMethodBeat implements BeatLifecycle {
      */
     public static void i(int methodId) {
 
-        if (!isAlive) {
+        if (!isAlive && isRealTrace) {
             return;
         }
 

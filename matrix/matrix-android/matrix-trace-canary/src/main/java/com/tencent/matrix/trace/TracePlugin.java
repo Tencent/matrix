@@ -70,8 +70,11 @@ public class TracePlugin extends Plugin {
         Runnable runnable = new Runnable() {
             @Override
             public void run() {
-                UIThreadMonitor.getMonitor().setConfig(mTraceConfig);
+
+                UIThreadMonitor.getMonitor().init(mTraceConfig);
+
                 AppMethodBeat.getInstance().onStart();
+
                 if (null == mAnrTracer) {
                     mAnrTracer = new AnrTracer(mTraceConfig);
                 }
@@ -113,6 +116,7 @@ public class TracePlugin extends Plugin {
         Runnable runnable = new Runnable() {
             @Override
             public void run() {
+
                 AppMethodBeat.getInstance().onStop();
 
                 mAnrTracer.onCloseTrace();
@@ -132,7 +136,20 @@ public class TracePlugin extends Plugin {
             MatrixHandlerThread.getDefaultMainHandler().post(runnable);
         }
 
+    }
 
+    @Override
+    public void onForeground(boolean isForeground) {
+        super.onForeground(isForeground);
+        if (!isSupported()) {
+            return;
+        }
+
+        if (isForeground) {
+
+        } else {
+
+        }
     }
 
     @Override
