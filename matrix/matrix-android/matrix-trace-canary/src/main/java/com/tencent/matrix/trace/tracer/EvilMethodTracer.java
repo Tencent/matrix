@@ -128,7 +128,7 @@ public class EvilMethodTracer extends Tracer implements UIThreadMonitor.ILooperO
             StringBuilder logcatBuilder = new StringBuilder();
             long stackCost = Math.max(cost, TraceDataUtils.stackToString(stack, reportBuilder, logcatBuilder));
 
-            MatrixLog.w(TAG, printEvil(logcatBuilder, stack.size(), stackKey, usage, queueCost[0], queueCost[1], queueCost[2], cost)); // for logcat
+            MatrixLog.w(TAG, "", printEvil(logcatBuilder, stack.size(), stackKey, usage, queueCost[0], queueCost[1], queueCost[2], cost)); // for logcat
 
             // report
             try {

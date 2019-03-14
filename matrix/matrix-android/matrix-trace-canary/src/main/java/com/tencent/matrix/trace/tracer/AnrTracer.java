@@ -148,7 +148,7 @@ public class AnrTracer extends Tracer implements UIThreadMonitor.ILooperObserver
             StringBuilder logcatBuilder = new StringBuilder();
             long stackCost = Math.max(Constants.DEFAULT_ANR, TraceDataUtils.stackToString(stack, reportBuilder, logcatBuilder));
 
-            MatrixLog.w(TAG, printAnr(memoryInfo, status, logcatBuilder, stack.size(), stackKey, dumpStack, inputCost, animationCost, traversalCost)); // for logcat
+            MatrixLog.w(TAG, "", printAnr(memoryInfo, status, logcatBuilder, stack.size(), stackKey, dumpStack, inputCost, animationCost, traversalCost)); // for logcat
 
             // report
             try {
