@@ -42,7 +42,9 @@ public class SharePluginInfo {
     public static final String ISSUE_CPU_USAGE = "usage";
     public static final String ISSUE_STACK_TYPE = "detail";
     public static final String ISSUE_IS_WARM_START_UP = "is_warm_start_up";
+    public static final String ISSUE_SUB_TYPE = "subType";
     public static final String STAGE_APPLICATION_CREATE = "application_create";
+    public static final String STAGE_APPLICATION_CREATE_SCENE = "application_create_scene";
     public static final String STAGE_FIRST_ACTIVITY_CREATE = "first_activity_create";
     public static final String STAGE_STARTUP_DURATION = "startup_duration";
 }

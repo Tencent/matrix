@@ -30,6 +30,10 @@ import com.tencent.matrix.plugin.Plugin;
 import com.tencent.matrix.trace.TracePlugin;
 import com.tencent.matrix.util.MatrixLog;
 
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+
 import sample.tencent.matrix.R;
 import sample.tencent.matrix.issue.IssueFilter;
 
@@ -47,6 +51,21 @@ public class TestTraceMainActivity extends Activity {
             MatrixLog.i(TAG, "plugin-trace start");
             plugin.start();
         }
+
+        List<String> list = new LinkedList<>();
+        list.add("0");
+        list.add("1");
+        list.add("2");
+        list.add("3");
+        list.add("4");
+        list.add("5");
+
+        Iterator iterator = list.listIterator(list.size() - 2);
+        while (iterator.hasNext()) {
+            iterator.next();
+            iterator.remove();
+        }
+        MatrixLog.i(TAG, "list:%s", list);
     }
 
     @Override

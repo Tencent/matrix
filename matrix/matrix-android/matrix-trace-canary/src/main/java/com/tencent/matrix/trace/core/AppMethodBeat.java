@@ -269,8 +269,8 @@ public class AppMethodBeat implements BeatLifecycle {
         while (indexRecord != null) {
             if (indexRecord.index == index || (indexRecord.index == -1 && sLastIndex == Constants.BUFFER_SIZE - 1)) {
                 indexRecord.isValid = false;
-                sIndexRecordHead = indexRecord = indexRecord.next;
                 MatrixLog.w(TAG, "[checkPileup] %s", indexRecord.toString());
+                sIndexRecordHead = indexRecord = indexRecord.next;
             } else {
                 break;
             }
@@ -335,10 +335,10 @@ public class AppMethodBeat implements BeatLifecycle {
                     data = new long[length];
                     System.arraycopy(sBuffer, start, data, 0, length);
                 } else if (end < start) {
-                    length = 1 + start + (sBuffer.length - end);
+                    length = 1 + end + (sBuffer.length - start);
                     data = new long[length];
-                    System.arraycopy(sBuffer, start, data, 0, start + 1);
-                    System.arraycopy(sBuffer, 0, data, start + 1, end + 1);
+                    System.arraycopy(sBuffer, start, data, 0, sBuffer.length - start);
+                    System.arraycopy(sBuffer, 0, data, sBuffer.length - start, end + 1);
                 }
                 return data;
             }

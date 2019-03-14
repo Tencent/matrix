@@ -23,6 +23,7 @@ import com.tencent.matrix.util.MatrixLog;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -116,7 +117,7 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, App
             ActivityThreadHacker.sLastLaunchActivityMethodIndex.release();
         }
 
-        MatrixHandlerThread.getDefaultHandler().post(new AnalyseTask(data, applicationCost, firstScreenCost, allCost, isWarmStartUp));
+        MatrixHandlerThread.getDefaultHandler().post(new AnalyseTask(data, applicationCost, firstScreenCost, allCost, isWarmStartUp, ActivityThreadHacker.sApplicationCreateScene));
 
     }
 
@@ -127,9 +128,11 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, App
         long firstScreenCost;
         long allCost;
         boolean isWarmStartUp;
+        int scene;
 
-        AnalyseTask(long[] data, long applicationCost, long firstScreenCost, long allCost, boolean isWarmStartUp) {
+        AnalyseTask(long[] data, long applicationCost, long firstScreenCost, long allCost, boolean isWarmStartUp, int scene) {
             this.data = data;
+            this.scene = scene;
             this.applicationCost = applicationCost;
             this.firstScreenCost = firstScreenCost;
             this.allCost = allCost;
@@ -154,9 +157,12 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, App
                 @Override
                 public void fallback(List<MethodItem> stack, int size) {
                     MatrixLog.w(TAG, "[fallback] size:%s targetSize:%s stack:%s", size, Constants.TARGET_EVIL_METHOD_STACK, stack);
-                    List list = stack.subList(0, Constants.TARGET_EVIL_METHOD_STACK);
-                    stack.clear();
-                    stack.addAll(list);
+                    Iterator iterator = stack.listIterator(Constants.TARGET_EVIL_METHOD_STACK);
+                    while (iterator.hasNext()) {
+                        iterator.next();
+                        iterator.remove();
+                    }
+
                 }
             });
 
@@ -172,15 +178,16 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, App
             }
 
             // report
-            report(applicationCost, firstScreenCost, reportBuilder, stackKey, stackCost, isWarmStartUp);
+            report(applicationCost, firstScreenCost, reportBuilder, stackKey, stackCost, isWarmStartUp, scene);
         }
 
-        private void report(long applicationCost, long firstScreenCost, StringBuilder reportBuilder, String stackKey, long allCost, boolean isWarmStartUp) {
+        private void report(long applicationCost, long firstScreenCost, StringBuilder reportBuilder, String stackKey, long allCost, boolean isWarmStartUp, int scene) {
             TracePlugin plugin = Matrix.with().getPluginByClass(TracePlugin.class);
             try {
                 JSONObject costObject = new JSONObject();
                 costObject = DeviceUtil.getDeviceInfo(costObject, Matrix.with().getApplication());
                 costObject.put(SharePluginInfo.STAGE_APPLICATION_CREATE, applicationCost);
+                costObject.put(SharePluginInfo.STAGE_APPLICATION_CREATE_SCENE, scene);
                 costObject.put(SharePluginInfo.STAGE_FIRST_ACTIVITY_CREATE, firstScreenCost);
                 costObject.put(SharePluginInfo.STAGE_STARTUP_DURATION, allCost);
                 costObject.put(SharePluginInfo.ISSUE_IS_WARM_START_UP, isWarmStartUp);
@@ -201,7 +208,7 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, App
                     jsonObject.put(SharePluginInfo.ISSUE_COST, allCost);
                     jsonObject.put(SharePluginInfo.ISSUE_STACK, reportBuilder.toString());
                     jsonObject.put(SharePluginInfo.ISSUE_STACK_KEY, stackKey);
-                    jsonObject.put(SharePluginInfo.ISSUE_IS_WARM_START_UP, isWarmStartUp);
+                    jsonObject.put(SharePluginInfo.ISSUE_SUB_TYPE, isWarmStartUp ? 2 : 1);
                     Issue issue = new Issue();
                     issue.setTag(SharePluginInfo.TAG_PLUGIN_EVIL_METHOD);
                     issue.setContent(jsonObject);

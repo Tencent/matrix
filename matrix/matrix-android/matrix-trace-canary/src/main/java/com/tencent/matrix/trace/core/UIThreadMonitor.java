@@ -262,6 +262,8 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
         dispatchTimeMs[3] = SystemClock.currentThreadTimeMillis();
         dispatchTimeMs[1] = SystemClock.uptimeMillis();
 
+        AppMethodBeat.o(AppMethodBeat.METHOD_ID_DISPATCH);
+
         synchronized (observers) {
             for (IFrameObserver observer : observers) {
                 if (observer instanceof ILooperObserver) {
@@ -270,8 +272,6 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
                 }
             }
         }
-
-        AppMethodBeat.o(AppMethodBeat.METHOD_ID_DISPATCH);
 
     }
 

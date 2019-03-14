@@ -21,6 +21,7 @@ import com.tencent.matrix.util.MatrixLog;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -135,9 +136,11 @@ public class AnrTracer extends Tracer implements UIThreadMonitor.ILooperObserver
                 @Override
                 public void fallback(List<MethodItem> stack, int size) {
                     MatrixLog.w(TAG, "[fallback] size:%s targetSize:%s stack:%s", size, Constants.TARGET_EVIL_METHOD_STACK, stack);
-                    List list = stack.subList(0, Constants.TARGET_EVIL_METHOD_STACK);
-                    stack.clear();
-                    stack.addAll(list);
+                    Iterator iterator = stack.listIterator(Constants.TARGET_EVIL_METHOD_STACK);
+                    while (iterator.hasNext()) {
+                        iterator.next();
+                        iterator.remove();
+                    }
                 }
             });
 

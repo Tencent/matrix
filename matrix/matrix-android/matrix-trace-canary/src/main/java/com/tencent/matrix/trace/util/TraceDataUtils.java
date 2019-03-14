@@ -202,10 +202,6 @@ public class TraceDataUtils {
             this.father = father;
         }
 
-        public TreeNode() {
-
-        }
-
         private int depth() {
             return null == item ? 0 : item.depth;
         }
@@ -256,9 +252,6 @@ public class TraceDataUtils {
                 if (filter.isFilter(item.durTime, filterCount)) {
                     iterator.remove();
                     curStackSize--;
-//                    if (curStackSize <= targetCount) {
-//                        return;
-//                    }
                 }
             }
             curStackSize = stack.size();
@@ -289,10 +282,12 @@ public class TraceDataUtils {
 
             @Override
             public void fallback(List<MethodItem> stack, int size) {
-                MatrixLog.w(TAG, "[getTreeKey] size:%s targetSize:%s stack:%s", size, targetCount, tmp);
-                List list = tmp.subList(0, targetCount);
-                tmp.clear();
-                tmp.addAll(list);
+                MatrixLog.w(TAG, "[getTreeKey] size:%s targetSize:%s", size, targetCount);
+                Iterator iterator = tmp.listIterator(targetCount);
+                while (iterator.hasNext()) {
+                    iterator.next();
+                    iterator.remove();
+                }
             }
         });
         for (MethodItem item : tmp) {
@@ -300,62 +295,5 @@ public class TraceDataUtils {
         }
         return ss.toString();
     }
-
-    /**
-     * for Test
-     */
-
-    private static final int TEST_LENGTH = 16;
-
-    public static void testStructuredDataToTree() {
-        long[] data = new long[TEST_LENGTH];
-        data[0] = testMergeData(1, true, 0);
-        data[1] = testMergeData(2, true, 0);
-        data[2] = testMergeData(3, true, 0);
-        data[3] = testMergeData(4, true, 0);
-        data[4] = testMergeData(4, false, 10);
-        data[5] = testMergeData(3, false, 20);
-        data[6] = testMergeData(5, true, 35);
-        data[7] = testMergeData(6, true, 35);
-        data[8] = testMergeData(6, false, 50);
-        data[9] = testMergeData(7, true, 55);
-        data[10] = testMergeData(7, false, 70);
-        data[11] = testMergeData(5, false, 80);
-        data[12] = testMergeData(2, false, 70);
-        data[13] = testMergeData(8, true, 90);
-        data[14] = testMergeData(8, false, 105);
-        data[15] = testMergeData(1, false, 200);
-        TreeNode root = new TreeNode();
-        LinkedList<MethodItem> stack = new LinkedList();
-        structuredDataToStack(data, stack);
-        String stackKey = getTreeKey(stack, 5);
-
-        stackToTree(stack, root);
-        MatrixLog.i(TAG, "[testStructuredDataToTree] stackKey:%s size:%s count:%s", stackKey, stack.size(), countTreeNode(root));
-        /**
-         /*    1[200]
-         /*        2[70]
-         /*            3[20]
-         /*                4[10]
-         /*            5[45]
-         /*                6[15]
-         /*                7[15]
-         /*        8[15]
-         **/
-        StringBuilder ss = new StringBuilder("print tree\n");
-        printTree(root, ss);
-        MatrixLog.i(TAG, ss.toString());
-    }
-
-    private static long testMergeData(int methodId, boolean isIn, long time) {
-        long trueId = 0L;
-        if (isIn) {
-            trueId |= 1L << 63;
-        }
-        trueId |= (long) methodId << 43;
-        trueId |= time & 0x7FFFFFFFFFFL;
-        return trueId;
-    }
-
 
 }
