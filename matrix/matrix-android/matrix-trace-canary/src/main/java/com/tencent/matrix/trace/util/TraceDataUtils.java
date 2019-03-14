@@ -31,6 +31,7 @@ public class TraceDataUtils {
         int depth = 0;
         LinkedList<Long> rawData = new LinkedList<>();
         boolean isBegin = !isStrict;
+        int maxCost = 0;
         for (long trueId : buffer) {
             if (0 == trueId) {
                 continue;
@@ -76,7 +77,7 @@ public class TraceDataUtils {
                     }
 
                     MethodItem methodItem = new MethodItem(methodId, (int) during, depth);
-                    addMethodItem(result, methodItem);
+                    maxCost = Math.max(maxCost, addMethodItem(result, methodItem));
                 } else {
                     MatrixLog.w(TAG, "[structuredDataToStack] method[%s] not found in! ", methodId);
                 }
@@ -92,7 +93,7 @@ public class TraceDataUtils {
                 MatrixLog.e(TAG, "[structuredDataToStack] why has out Method[%s]? is wrong! ", methodId);
                 continue;
             }
-            MethodItem methodItem = new MethodItem(methodId, Constants.DEFAULT_ANR, rawData.size());
+            MethodItem methodItem = new MethodItem(methodId, Math.max(maxCost, Constants.DEFAULT_ANR), rawData.size());
             addMethodItem(result, methodItem);
         }
     }
@@ -109,15 +110,17 @@ public class TraceDataUtils {
         return (int) ((trueId >> 43) & 0xFFFFFL);
     }
 
-    private static void addMethodItem(LinkedList<MethodItem> resultStack, MethodItem item) {
+    private static int addMethodItem(LinkedList<MethodItem> resultStack, MethodItem item) {
         MethodItem last = null;
         if (!resultStack.isEmpty()) {
             last = resultStack.peek();
         }
         if (null != last && last.methodId == item.methodId && last.depth == item.depth && 0 != item.depth) {
             last.mergeMore(item.durTime);
+            return last.durTime;
         } else {
             resultStack.push(item);
+            return item.durTime;
         }
     }
 

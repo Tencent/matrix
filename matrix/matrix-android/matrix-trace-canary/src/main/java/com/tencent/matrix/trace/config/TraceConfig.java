@@ -18,7 +18,6 @@ package com.tencent.matrix.trace.config;
 
 import com.tencent.matrix.trace.constants.Constants;
 import com.tencent.matrix.trace.listeners.IDefaultConfig;
-import com.tencent.matrix.util.MatrixLog;
 import com.tencent.mrs.plugin.IDynamicConfig;
 
 import java.util.Arrays;
@@ -66,7 +65,9 @@ public class TraceConfig implements IDefaultConfig {
 
     @Override
     public boolean isFPSEnable() {
-        return dynamicConfig.get(IDynamicConfig.ExptEnum.clicfg_matrix_trace_fps_enable.name(), defaultFpsEnable);
+        return null == dynamicConfig
+                ? defaultFpsEnable
+                : dynamicConfig.get(IDynamicConfig.ExptEnum.clicfg_matrix_trace_fps_enable.name(), defaultFpsEnable);
     }
 
     @Override
@@ -181,7 +182,6 @@ public class TraceConfig implements IDefaultConfig {
         }
 
         public TraceConfig build() {
-            MatrixLog.i(TAG, config.toString());
             return config;
         }
 

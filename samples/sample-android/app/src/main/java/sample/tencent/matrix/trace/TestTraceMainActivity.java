@@ -80,7 +80,6 @@ public class TestTraceMainActivity extends Activity {
     public void testANR(final View view) {
         for (long i = 0; i < 5000l; i++) {
             testInnerSleep();
-            MatrixLog.i(TAG, "I:" + i);
         }
     }
 

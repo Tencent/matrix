@@ -56,6 +56,7 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, App
 
     @Override
     protected void onAlive() {
+        MatrixLog.i(TAG, "[onAlive] isStartupEnable:%s", config.isStartupEnable());
         if (config.isStartupEnable()) {
             AppMethodBeat.getInstance().addListener(this);
             Matrix.with().getApplication().registerActivityLifecycleCallbacks(this);

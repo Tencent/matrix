@@ -39,20 +39,20 @@ import com.tencent.matrix.util.MatrixLog;
 public class TracePlugin extends Plugin {
     private static final String TAG = "Matrix.TracePlugin";
 
-    private final TraceConfig mTraceConfig;
-    private EvilMethodTracer mEvilMethodTracer;
-    private StartupTracer mStartupTracer;
-    private FrameTracer mFrameTracer;
-    private AnrTracer mAnrTracer;
+    private final TraceConfig traceConfig;
+    private EvilMethodTracer evilMethodTracer;
+    private StartupTracer startupTracer;
+    private FrameTracer frameTracer;
+    private AnrTracer anrTracer;
 
     public TracePlugin(TraceConfig config) {
-        this.mTraceConfig = config;
+        this.traceConfig = config;
     }
 
     @Override
     public void init(Application app, PluginListener listener) {
         super.init(app, listener);
-        MatrixLog.i(TAG, "trace plugin init, trace config: %s", mTraceConfig.toString());
+        MatrixLog.i(TAG, "trace plugin init, trace config: %s", traceConfig.toString());
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN) {
             MatrixLog.e(TAG, "[FrameBeat] API is low Build.VERSION_CODES.JELLY_BEAN(16), TracePlugin is not supported");
             unSupportPlugin();
@@ -64,36 +64,33 @@ public class TracePlugin extends Plugin {
     public void start() {
         super.start();
         if (!isSupported()) {
+            MatrixLog.w(TAG, "[start] Plugin is unSupported!");
             return;
         }
-
+        MatrixLog.w(TAG, "start!");
         Runnable runnable = new Runnable() {
             @Override
             public void run() {
 
-                UIThreadMonitor.getMonitor().init(mTraceConfig);
+                if (!UIThreadMonitor.getMonitor().isInit()) {
+                    UIThreadMonitor.getMonitor().init(traceConfig);
+                    anrTracer = new AnrTracer(traceConfig);
+                    frameTracer = new FrameTracer(traceConfig);
+                    evilMethodTracer = new EvilMethodTracer(traceConfig);
+                    startupTracer = new StartupTracer(traceConfig);
+                }
 
                 AppMethodBeat.getInstance().onStart();
 
-                if (null == mAnrTracer) {
-                    mAnrTracer = new AnrTracer(mTraceConfig);
-                }
-                mAnrTracer.onStartTrace();
+                UIThreadMonitor.getMonitor().onStart();
 
-                if (null == mFrameTracer) {
-                    mFrameTracer = new FrameTracer(mTraceConfig);
-                }
-                mFrameTracer.onStartTrace();
+                anrTracer.onStartTrace();
 
-                if (null == mEvilMethodTracer) {
-                    mEvilMethodTracer = new EvilMethodTracer(mTraceConfig);
-                }
-                mEvilMethodTracer.onStartTrace();
+                frameTracer.onStartTrace();
 
-                if (null == mStartupTracer) {
-                    mStartupTracer = new StartupTracer(mTraceConfig);
-                }
-                mStartupTracer.onStartTrace();
+                evilMethodTracer.onStartTrace();
+
+                startupTracer.onStartTrace();
             }
         };
 
@@ -110,22 +107,26 @@ public class TracePlugin extends Plugin {
     public void stop() {
         super.stop();
         if (!isSupported()) {
+            MatrixLog.w(TAG, "[stop] Plugin is unSupported!");
             return;
         }
-
+        MatrixLog.w(TAG, "stop!");
         Runnable runnable = new Runnable() {
             @Override
             public void run() {
 
                 AppMethodBeat.getInstance().onStop();
 
-                mAnrTracer.onCloseTrace();
+                UIThreadMonitor.getMonitor().onStop();
 
-                mFrameTracer.onCloseTrace();
+                anrTracer.onCloseTrace();
 
-                mEvilMethodTracer.onCloseTrace();
+                frameTracer.onCloseTrace();
 
-                mStartupTracer.onCloseTrace();
+                evilMethodTracer.onCloseTrace();
+
+                startupTracer.onCloseTrace();
+
             }
         };
 
@@ -144,12 +145,6 @@ public class TracePlugin extends Plugin {
         if (!isSupported()) {
             return;
         }
-
-        if (isForeground) {
-
-        } else {
-
-        }
     }
 
     @Override
@@ -163,7 +158,7 @@ public class TracePlugin extends Plugin {
     }
 
     public FrameTracer getFrameTracer() {
-        return mFrameTracer;
+        return frameTracer;
     }
 
 }

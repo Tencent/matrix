@@ -36,7 +36,7 @@ public class Constants {
     public static final int DEFAULT_DROPPED_FROZEN = 42;
 
     public static final int DEFAULT_STARTUP_THRESHOLD_MS_WARM = 4 * 1000;
-    public static final int DEFAULT_STARTUP_THRESHOLD_MS_COLD = 8 * 1000;
+    public static final int DEFAULT_STARTUP_THRESHOLD_MS_COLD = 10 * 1000;
 
     public static final int DEFAULT_RELEASE_BUFFER_DELAY = 30 * 1000;
     public static final int TARGET_EVIL_METHOD_STACK = 30;

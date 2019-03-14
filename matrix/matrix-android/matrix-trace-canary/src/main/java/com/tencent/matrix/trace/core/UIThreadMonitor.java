@@ -27,7 +27,6 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
 
     private static final String TAG = "Matrix.UIThreadMonitor";
     private static final String ADD_CALLBACK = "addCallbackLocked";
-    private static final boolean isDebug = true;
     private volatile boolean isAlive = false;
     private boolean isHandleMessageEnd = true;
     private long[] dispatchTimeMs = new long[4];
@@ -67,19 +66,27 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
     private Method addInputQueue;
     private Method addAnimationQueue;
     private Choreographer choreographer;
-    private long frameIntervalNanos;
+    private long frameIntervalNanos = 16666666;
     private int[] queueStatus = new int[CALLBACK_LAST + 1];
     private long[] queueCost = new long[CALLBACK_LAST + 1];
     private static final int DO_QUEUE_DEFAULT = 0;
     private static final int DO_QUEUE_BEGIN = 1;
     private static final int DO_QUEUE_END = 2;
+    private boolean isInit = false;
 
     public static UIThreadMonitor getMonitor() {
         return sInstance;
     }
 
+    public boolean isInit() {
+        return isInit;
+    }
+
     public void init(TraceConfig config) {
-        assert Thread.currentThread() == Looper.getMainLooper().getThread();
+        if (Thread.currentThread() != Looper.getMainLooper().getThread()) {
+            throw new AssertionError("must be init in main thread!");
+        }
+        this.isInit = true;
         this.config = config;
         choreographer = Choreographer.getInstance();
         callbackQueueLock = reflectObject(choreographer, "mLock");
@@ -118,7 +125,7 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
             addObserver(new IFrameObserver() {
                 @Override
                 public void doFrame(String focusedActivityName, long start, long end, long frameCostMs, long inputCost, long animationCost, long traversalCost) {
-                    MatrixLog.i(TAG, "activityName[%s] frame cost:%sns [%s|%s|%s]", focusedActivityName, frameCostMs, inputCost, animationCost, traversalCost);
+                    MatrixLog.i(TAG, "activityName[%s] frame cost:%sms [%s|%s|%s]ns", focusedActivityName, frameCostMs, inputCost, animationCost, traversalCost);
                 }
             });
         }
@@ -226,6 +233,9 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
     }
 
     private void doFrameEnd(long token) {
+
+        doQueueEnd(CALLBACK_TRAVERSAL);
+
         for (int i : queueStatus) {
             if (i != DO_QUEUE_END) {
                 throw new RuntimeException(String.format("UIThreadMonitor happens type[%s] != DO_QUEUE_END", i));
@@ -240,17 +250,15 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
                 observer.doFrame(AppMethodBeat.getFocusedActivity(), start, end, end - start, queueCost[CALLBACK_INPUT], queueCost[CALLBACK_ANIMATION], queueCost[CALLBACK_TRAVERSAL]);
             }
         }
+        addFrameCallback(CALLBACK_INPUT, this, true);
+        this.isBelongFrame = false;
     }
 
     private void dispatchEnd() {
         if (isBelongFrame) {
-            doQueueEnd(CALLBACK_TRAVERSAL);
             doFrameEnd(token);
-            addFrameCallback(CALLBACK_INPUT, this, true);
         }
-        AppMethodBeat.o(AppMethodBeat.METHOD_ID_DISPATCH);
 
-        this.isBelongFrame = false;
         dispatchTimeMs[3] = SystemClock.currentThreadTimeMillis();
         dispatchTimeMs[1] = SystemClock.uptimeMillis();
 
@@ -262,6 +270,8 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
                 }
             }
         }
+
+        AppMethodBeat.o(AppMethodBeat.METHOD_ID_DISPATCH);
 
     }
 
@@ -311,7 +321,7 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
 
         } finally {
             if (config.isDevEnv()) {
-                MatrixLog.d(TAG, "[run] inner cost:%sns", System.nanoTime() - start);
+                MatrixLog.d(TAG, "[UIThreadMonitor#run] inner cost:%sns", System.nanoTime() - start);
             }
         }
     }

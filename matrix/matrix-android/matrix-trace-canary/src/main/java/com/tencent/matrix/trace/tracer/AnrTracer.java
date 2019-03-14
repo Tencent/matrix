@@ -105,15 +105,20 @@ public class AnrTracer extends Tracer implements UIThreadMonitor.ILooperObserver
             long[] data = AppMethodBeat.getInstance().copyData(beginRecord);
             beginRecord.release();
 
+            // memory
             long[] memoryInfo = dumpMemory();
+
+            // Thread state
             Thread.State status = Looper.getMainLooper().getThread().getState();
             String dumpStack = Utils.getStack(Looper.getMainLooper().getThread().getStackTrace(), "|*        ");
 
+            // frame
             UIThreadMonitor monitor = UIThreadMonitor.getMonitor();
             long inputCost = monitor.getQueueCost(UIThreadMonitor.CALLBACK_INPUT, token);
             long animationCost = monitor.getQueueCost(UIThreadMonitor.CALLBACK_ANIMATION, token);
             long traversalCost = monitor.getQueueCost(UIThreadMonitor.CALLBACK_TRAVERSAL, token);
 
+            // trace
             LinkedList<MethodItem> stack = new LinkedList();
             TraceDataUtils.structuredDataToStack(data, stack);
             TraceDataUtils.trimStack(stack, Constants.TARGET_EVIL_METHOD_STACK, new TraceDataUtils.IStructuredDataFilter() {
@@ -136,6 +141,7 @@ public class AnrTracer extends Tracer implements UIThreadMonitor.ILooperObserver
                 }
             });
 
+            // stackKey
             String stackKey = TraceDataUtils.getTreeKey(stack, Constants.MAX_LIMIT_ANALYSE_STACK_KEY_NUM);
 
             StringBuilder reportBuilder = new StringBuilder();

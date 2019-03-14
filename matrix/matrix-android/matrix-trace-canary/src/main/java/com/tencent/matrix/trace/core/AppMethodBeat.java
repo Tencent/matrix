@@ -179,15 +179,18 @@ public class AppMethodBeat implements BeatLifecycle {
                         listener.onActivityFocused(activityName);
                     }
                 }
+                MatrixLog.i(TAG, "[at] Activity[%s] has %s focus!", activityName, isFocus ? "attach" : "detach");
             }
         } else {
             if (sFocusedActivity.equals(activityName)) {
                 sFocusedActivity = "default";
             }
-            sFocusActivitySet.remove(activityName);
+            if (sFocusActivitySet.remove(activityName)) {
+                MatrixLog.i(TAG, "[at] Activity[%s] has %s focus!", activityName, isFocus ? "attach" : "detach");
+            }
         }
 
-        MatrixLog.i(TAG, "[at] Activity[%s] has %s focus!", activityName, isFocus ? "attach" : "detach");
+
     }
 
 
