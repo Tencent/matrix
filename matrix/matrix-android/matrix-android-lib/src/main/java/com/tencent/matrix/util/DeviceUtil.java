@@ -34,6 +34,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.RandomAccessFile;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
@@ -399,9 +400,21 @@ public class DeviceUtil {
         try {
             String content = getStringFromFile(status).trim();
             String[] args = content.split("\n");
+            for (String str : args) {
+                if (str.startsWith("VmSize")) {
+                    Pattern p = Pattern.compile("\\d+");
+                    Matcher matcher = p.matcher(str);
+                    if (matcher.find()) {
+                        return Long.parseLong(matcher.group());
+                    }
+                }
+            }
             if (args.length > 12) {
-                String size = args[12].split(":")[1].trim();
-                return Long.parseLong(size.split(" ")[0]); // in KB
+                Pattern p = Pattern.compile("\\d+");
+                Matcher matcher = p.matcher(args[12]);
+                if (matcher.find()) {
+                    return Long.parseLong(matcher.group());
+                }
             }
         } catch (Exception e) {
             return -1;

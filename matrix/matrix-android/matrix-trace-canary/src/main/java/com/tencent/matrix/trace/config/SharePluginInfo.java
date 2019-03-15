@@ -35,9 +35,9 @@ public class SharePluginInfo {
     public static final String ISSUE_STACK = "stack";
     public static final String ISSUE_STACK_KEY = "stackKey";
     public static final String ISSUE_MEMORY = "memory";
-    public static final String ISSUE_MEMORY_NATIVIE = "native_heap";
+    public static final String ISSUE_MEMORY_NATIVE = "native_heap";
     public static final String ISSUE_MEMORY_DALVIK = "dalvik_heap";
-    public static final String ISSUE_MEMORY_VMSIZE = "vm_size";
+    public static final String ISSUE_MEMORY_VM_SIZE = "vm_size";
     public static final String ISSUE_COST = "cost";
     public static final String ISSUE_CPU_USAGE = "usage";
     public static final String ISSUE_STACK_TYPE = "detail";

@@ -88,12 +88,12 @@ public class MatrixTraceTransform extends BaseProxyTransform {
     }
 
     @Override
-    public String getName() {
+    String getName() {
         return "MatrixTraceTransform"
     }
 
     @Override
-    public void transform(TransformInvocation transformInvocation) throws TransformException, InterruptedException, IOException {
+    void transform(TransformInvocation transformInvocation) throws TransformException, InterruptedException, IOException {
         long start = System.currentTimeMillis()
         final boolean isIncremental = transformInvocation.isIncremental() && this.isIncremental()
         final File rootOutput = new File(project.matrix.output, "classes/${getName()}/")
@@ -103,9 +103,9 @@ public class MatrixTraceTransform extends BaseProxyTransform {
         final TraceBuildConfig traceConfig = initConfig()
         Log.i("Matrix." + getName(), "[transform] isIncremental:%s rootOutput:%s", isIncremental, rootOutput.getAbsolutePath())
         final MappingCollector mappingCollector = new MappingCollector()
-        File mappingFile = new File(traceConfig.getMappingPath());
+        File mappingFile = new File(traceConfig.getMappingPath())
         if (mappingFile.exists() && mappingFile.isFile()) {
-            MappingReader mappingReader = new MappingReader(mappingFile);
+            MappingReader mappingReader = new MappingReader(mappingFile)
             mappingReader.read(mappingCollector)
         }
 
@@ -125,6 +125,8 @@ public class MatrixTraceTransform extends BaseProxyTransform {
 
         MethodCollector methodCollector = new MethodCollector(traceConfig, mappingCollector)
         HashMap<String, TraceMethod> collectedMethodMap = methodCollector.collect(scrInputMap.keySet().toList(), jarInputMap.keySet().toList())
+
+
         MethodTracer methodTracer = new MethodTracer(traceConfig, collectedMethodMap, methodCollector.getCollectedClassExtendMap())
         methodTracer.trace(scrInputMap, jarInputMap)
         origTransform.transform(transformInvocation)

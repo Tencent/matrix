@@ -164,8 +164,8 @@ public class AnrTracer extends Tracer implements UIThreadMonitor.ILooperObserver
                 // memory info
                 JSONObject memJsonObject = new JSONObject();
                 memJsonObject.put(SharePluginInfo.ISSUE_MEMORY_DALVIK, memoryInfo[0]);
-                memJsonObject.put(SharePluginInfo.ISSUE_MEMORY_NATIVIE, memoryInfo[1]);
-                memJsonObject.put(SharePluginInfo.ISSUE_MEMORY_VMSIZE, memoryInfo[2]);
+                memJsonObject.put(SharePluginInfo.ISSUE_MEMORY_NATIVE, memoryInfo[1]);
+                memJsonObject.put(SharePluginInfo.ISSUE_MEMORY_VM_SIZE, memoryInfo[2]);
                 jsonObject.put(SharePluginInfo.ISSUE_MEMORY, memJsonObject);
 
                 Issue issue = new Issue();
