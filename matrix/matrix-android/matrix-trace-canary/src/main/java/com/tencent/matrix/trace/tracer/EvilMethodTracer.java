@@ -418,8 +418,12 @@ public class EvilMethodTracer extends BaseTracer implements LazyScheduler.ILazyT
 
                 @Override
                 public void fallback(List<MethodItem> stack, int size) {
-                    resultStack.clear();
-                    resultStack.addAll(stack.subList(0, Math.min(size - 1, Constants.MAX_EVIL_METHOD_STACK)));
+                    MatrixLog.w(TAG, "[fallback] size:%s", size);
+                    Iterator iterator = stack.listIterator(Constants.MAX_EVIL_METHOD_STACK);
+                    while (iterator.hasNext()) {
+                        iterator.next();
+                        iterator.remove();
+                    }
                 }
             });
 
