@@ -421,6 +421,7 @@ public class EvilMethodTracer extends BaseTracer implements LazyScheduler.ILazyT
                     MatrixLog.w(TAG, "[fallback] size:%s", size);
                     Iterator iterator = stack.listIterator(Constants.MAX_EVIL_METHOD_STACK);
                     while (iterator.hasNext()) {
+                        iterator.next();
                         iterator.remove();
                     }
                 }
