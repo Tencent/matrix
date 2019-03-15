@@ -113,6 +113,11 @@ public class MethodBeat implements IMethodBeat, ApplicationLifeObserver.IObserve
      * @param methodId
      */
     public static void i(int methodId) {
+
+        if(isRealTrace && !isCreated){
+            return;
+        }
+
         if (isBackground) {
             return;
         }
@@ -166,6 +171,11 @@ public class MethodBeat implements IMethodBeat, ApplicationLifeObserver.IObserve
      * @param methodId
      */
     public static void o(int methodId) {
+
+        if(isRealTrace && !isCreated){
+            return;
+        }
+
         if (isBackground || null == sBuffer) {
             return;
         }
