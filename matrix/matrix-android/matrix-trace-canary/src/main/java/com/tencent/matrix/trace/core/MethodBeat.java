@@ -114,7 +114,7 @@ public class MethodBeat implements IMethodBeat, ApplicationLifeObserver.IObserve
      */
     public static void i(int methodId) {
 
-        if(isRealTrace && !isCreated){
+        if (isRealTrace && !isCreated) {
             return;
         }
 
@@ -172,7 +172,7 @@ public class MethodBeat implements IMethodBeat, ApplicationLifeObserver.IObserve
      */
     public static void o(int methodId) {
 
-        if(isRealTrace && !isCreated){
+        if (isRealTrace && !isCreated) {
             return;
         }
 
