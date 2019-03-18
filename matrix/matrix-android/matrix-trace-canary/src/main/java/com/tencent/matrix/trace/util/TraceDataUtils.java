@@ -252,6 +252,9 @@ public class TraceDataUtils {
                 if (filter.isFilter(item.durTime, filterCount)) {
                     iterator.remove();
                     curStackSize--;
+                    if (curStackSize <= targetCount) {
+                        return;
+                    }
                 }
             }
             curStackSize = stack.size();
