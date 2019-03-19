@@ -37,4 +37,7 @@ public class TraceBuildConstants {
                     "[package]\n"
                     + "-keeppackage android/\n"
                     + "-keeppackage com/tencent/matrix/\n";
+
+    private static final int METHOD_ID_MAX = 0xFFFFF;
+    public static final int METHOD_ID_DISPATCH = METHOD_ID_MAX - 1;
 }
