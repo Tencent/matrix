@@ -120,7 +120,7 @@ public class MethodCollector {
 
         File classFile;
 
-        public CollectSrcTask(File classFile) {
+        CollectSrcTask(File classFile) {
             this.classFile = classFile;
         }
 
@@ -149,7 +149,7 @@ public class MethodCollector {
 
         File fromJar;
 
-        public CollectJarTask(File jarFile) {
+        CollectJarTask(File jarFile) {
             this.fromJar = jarFile;
         }
 
@@ -236,7 +236,7 @@ public class MethodCollector {
 
         methodList.addAll(collectedMethodMap.values());
 
-        Log.i(TAG, "[saveCollectedMethod] size:%s path:%s", collectedMethodMap.size(), methodMapFile.getAbsolutePath());
+        Log.i(TAG, "[saveCollectedMethod] size:%s incrementCount:%s path:%s", collectedMethodMap.size(), incrementCount.get(), methodMapFile.getAbsolutePath());
 
         Collections.sort(methodList, new Comparator<TraceMethod>() {
             @Override

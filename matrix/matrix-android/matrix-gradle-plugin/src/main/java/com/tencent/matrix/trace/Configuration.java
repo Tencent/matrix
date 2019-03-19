@@ -63,14 +63,14 @@ public class Configuration {
 
     @Override
     public String toString() {
-        return "\n# Configuration" + "\n" +
-                "|* packageName:\t" + packageName + "\n" +
-                "|* mappingDir:\t" + mappingDir + "\n" +
-                "|* baseMethodMapPath:\t" + baseMethodMapPath + "\n" +
-                "|* methodMapFilePath:\t" + methodMapFilePath + "\n" +
-                "|* ignoreMethodMapFilePath:\t" + ignoreMethodMapFilePath + "\n" +
-                "|* blackListFilePath:\t" + blackListFilePath + "\n" +
-                "|* traceClassOut:\t" + traceClassOut + "\n";
+        return "\n# Configuration" + "\n"
+                + "|* packageName:\t" + packageName + "\n"
+                + "|* mappingDir:\t" + mappingDir + "\n"
+                + "|* baseMethodMapPath:\t" + baseMethodMapPath + "\n"
+                + "|* methodMapFilePath:\t" + methodMapFilePath + "\n"
+                + "|* ignoreMethodMapFilePath:\t" + ignoreMethodMapFilePath + "\n"
+                + "|* blackListFilePath:\t" + blackListFilePath + "\n"
+                + "|* traceClassOut:\t" + traceClassOut + "\n";
     }
 
     public static class Builder {

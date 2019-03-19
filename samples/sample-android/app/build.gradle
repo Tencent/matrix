@@ -63,7 +63,7 @@ apply plugin: 'com.tencent.matrix-plugin'
 matrix {
     trace {
         enable = true
-        baseMethodMapFile = "${project.buildDir}/matrix_output/Debug.methodmap"
+        baseMethodMapFile = "${project.projectDir}/matrixTrace/methodMapping.txt"
         blackListFile = "${project.projectDir}/matrixTrace/blackMethodList.txt"
     }
 }

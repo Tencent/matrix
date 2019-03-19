@@ -229,7 +229,7 @@ public class MatrixTraceTransform extends Transform {
         final ConcurrentHashMap<String, TraceMethod> collectedMethodMap;
         private final AtomicInteger methodId;
 
-        public ParseMappingTask(MappingCollector mappingCollector, ConcurrentHashMap<String, TraceMethod> collectedMethodMap, AtomicInteger methodId) {
+        ParseMappingTask(MappingCollector mappingCollector, ConcurrentHashMap<String, TraceMethod> collectedMethodMap, AtomicInteger methodId) {
             this.mappingCollector = mappingCollector;
             this.collectedMethodMap = collectedMethodMap;
             this.methodId = methodId;
@@ -248,10 +248,10 @@ public class MatrixTraceTransform extends Transform {
                 config.parseBlackFile(mappingCollector);
 
                 File baseMethodMapFile = new File(config.baseMethodMapPath);
-                getMethodFromBaseMethod(baseMethodMapFile);
+                getMethodFromBaseMethod(baseMethodMapFile, collectedMethodMap);
                 retraceMethodMap(mappingCollector, collectedMethodMap);
 
-                Log.i(TAG, "[ParseMappingTask#run] cost:%s %s method from %s", System.currentTimeMillis() - start, collectedMethodMap.size(), config.baseMethodMapPath);
+                Log.i(TAG, "[ParseMappingTask#run] cost:%sms, collect %s method from %s", System.currentTimeMillis() - start, collectedMethodMap.size(), config.baseMethodMapPath);
 
             } catch (IOException e) {
                 e.printStackTrace();
@@ -273,7 +273,7 @@ public class MatrixTraceTransform extends Transform {
             retraceMethodMap.clear();
         }
 
-        private void getMethodFromBaseMethod(File baseMethodFile) {
+        private void getMethodFromBaseMethod(File baseMethodFile, ConcurrentHashMap<String, TraceMethod> collectedMethodMap) {
             if (!baseMethodFile.exists()) {
                 Log.w(TAG, "[getMethodFromBaseMethod] not exist!%s", baseMethodFile.getAbsolutePath());
                 return;
@@ -299,7 +299,7 @@ public class MatrixTraceTransform extends Transform {
                         if (methodField.length > 2) {
                             traceMethod.desc = methodField[2].replace("/", ".");
                         }
-
+                        collectedMethodMap.put(traceMethod.getMethodName(), traceMethod);
                         if (methodId.get() < traceMethod.id && traceMethod.id != TraceBuildConstants.METHOD_ID_DISPATCH) {
                             methodId.set(traceMethod.id);
                         }
@@ -324,7 +324,7 @@ public class MatrixTraceTransform extends Transform {
         boolean isIncremental;
         String traceClassOut;
 
-        public CollectDirectoryInputTask(Map<File, File> dirInputOutMap, DirectoryInput directoryInput, boolean isIncremental) {
+        CollectDirectoryInputTask(Map<File, File> dirInputOutMap, DirectoryInput directoryInput, boolean isIncremental) {
             this.dirInputOutMap = dirInputOutMap;
             this.directoryInput = directoryInput;
             this.isIncremental = isIncremental;
@@ -396,7 +396,7 @@ public class MatrixTraceTransform extends Transform {
         Map<File, File> jarInputOutMap;
         Map<File, File> dirInputOutMap;
 
-        public CollectJarInputTask(JarInput inputJar, boolean isIncremental, Map<File, File> jarInputOutMap, Map<File, File> dirInputOutMap) {
+        CollectJarInputTask(JarInput inputJar, boolean isIncremental, Map<File, File> jarInputOutMap, Map<File, File> dirInputOutMap) {
             this.inputJar = inputJar;
             this.isIncremental = isIncremental;
             this.jarInputOutMap = jarInputOutMap;
