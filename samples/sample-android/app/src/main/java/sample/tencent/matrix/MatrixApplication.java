@@ -79,6 +79,7 @@ public class MatrixApplication extends Application {
                 .enableStartup(traceEnable)
                 .careActivities("sample.tencent.matrix.MainActivity;")
                 .isDebug(true)
+                .isDevEnv(true)
                 .build();
 
         TracePlugin tracePlugin = (new TracePlugin(traceConfig));

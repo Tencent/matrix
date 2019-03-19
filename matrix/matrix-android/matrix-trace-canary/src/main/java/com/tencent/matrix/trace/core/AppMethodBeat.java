@@ -5,6 +5,7 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.SystemClock;
+import android.util.Printer;
 
 import com.tencent.matrix.trace.constants.Constants;
 import com.tencent.matrix.trace.hacker.ActivityThreadHacker;
@@ -13,6 +14,7 @@ import com.tencent.matrix.trace.util.Utils;
 import com.tencent.matrix.util.MatrixHandlerThread;
 import com.tencent.matrix.util.MatrixLog;
 
+import java.lang.reflect.Field;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -36,6 +38,8 @@ public class AppMethodBeat implements BeatLifecycle {
     private static Set<String> sFocusActivitySet = new HashSet<>();
     private static String sFocusedActivity = "default";
     private static HashSet<IAppMethodBeatListener> listeners = new HashSet<>();
+    private static Object updateTimeLock = new Object();
+    private static boolean isPauseUpdateTime = false;
 
     static {
         sTimeUpdateHandler.postDelayed(new Runnable() {
@@ -46,13 +50,25 @@ public class AppMethodBeat implements BeatLifecycle {
         }, Constants.DEFAULT_RELEASE_BUFFER_DELAY);
     }
 
+    /**
+     * update time runnable
+     */
     private static Runnable sUpdateDiffTimeRunnable = new Runnable() {
         @Override
         public void run() {
-            long currentTime = SystemClock.uptimeMillis();
-            sCurrentDiffTime = currentTime - sLastDiffTime;
-            if (isAlive) {
-                sTimeUpdateHandler.postDelayed(this, Constants.TIME_UPDATE_CYCLE_MS);
+            try {
+                while (true) {
+                    while (!isPauseUpdateTime) {
+                        long currentTime = SystemClock.uptimeMillis();
+                        sCurrentDiffTime = currentTime - sLastDiffTime;
+                        SystemClock.sleep(Constants.TIME_UPDATE_CYCLE_MS);
+                    }
+                    synchronized (updateTimeLock) {
+                        updateTimeLock.wait();
+                    }
+                }
+            } catch (InterruptedException e) {
+                MatrixLog.e(TAG, "" + e.toString());
             }
         }
     };
@@ -66,7 +82,6 @@ public class AppMethodBeat implements BeatLifecycle {
         if (!isAlive) {
             assert sBuffer != null;
             this.isAlive = true;
-            updateDiffTime();
             MatrixLog.i(TAG, "[onStart] %s", Utils.getStack());
         }
     }
@@ -94,16 +109,51 @@ public class AppMethodBeat implements BeatLifecycle {
 
     private static void realExecute() {
         MatrixLog.i(TAG, "[realExecute] timestamp:%s", System.currentTimeMillis());
-        updateDiffTime();
-        ActivityThreadHacker.hackSysHandlerCallback();
-    }
 
-    private static void updateDiffTime() {
+        sCurrentDiffTime = SystemClock.uptimeMillis() - sLastDiffTime;
+
         sTimeUpdateHandler.removeCallbacksAndMessages(null);
-        sUpdateDiffTimeRunnable.run();
         sTimeUpdateHandler.postDelayed(sUpdateDiffTimeRunnable, Constants.TIME_UPDATE_CYCLE_MS);
+
+        ActivityThreadHacker.hackSysHandlerCallback();
+        final Printer originPrinter = reflectObject(Looper.getMainLooper(), "mLogging");
+        Looper.getMainLooper().setMessageLogging(new Printer() {
+            boolean hasDispatchBegin = false;
+            boolean isHandleMessageEnd = true;
+
+            @Override
+            public void println(String x) {
+                if (null != originPrinter) {
+                    originPrinter.println(x);
+                }
+                isHandleMessageEnd = !isHandleMessageEnd;
+
+                if (!isAlive && !hasDispatchBegin) {
+                    return;
+                }
+
+                if (!isHandleMessageEnd) {
+                    hasDispatchBegin = true;
+                    dispatchBegin();
+                } else {
+                    hasDispatchBegin = false;
+                    dispatchEnd();
+                }
+            }
+        });
     }
 
+    private static void dispatchBegin() {
+        sCurrentDiffTime = SystemClock.uptimeMillis() - sLastDiffTime;
+        isPauseUpdateTime = false;
+        synchronized (updateTimeLock) {
+            updateTimeLock.notifyAll();
+        }
+    }
+
+    private static void dispatchEnd() {
+        isPauseUpdateTime = true;
+    }
 
     /**
      * hook method when it's called in.
@@ -356,6 +406,18 @@ public class AppMethodBeat implements BeatLifecycle {
             record = record.next;
         }
         MatrixLog.i(TAG, "[printIndexRecord] %s", ss.toString());
+    }
+
+    private static <T> T reflectObject(Object instance, String name) {
+        try {
+            Field field = instance.getClass().getDeclaredField(name);
+            field.setAccessible(true);
+            return (T) field.get(instance);
+        } catch (Exception e) {
+            e.printStackTrace();
+            MatrixLog.e(TAG, e.toString());
+        }
+        return null;
     }
 
 }

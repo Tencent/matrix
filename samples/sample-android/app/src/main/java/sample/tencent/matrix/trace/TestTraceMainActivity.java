@@ -24,10 +24,12 @@ import android.os.SystemClock;
 import android.support.annotation.Nullable;
 import android.view.View;
 import android.view.ViewTreeObserver;
+import android.widget.Toast;
 
 import com.tencent.matrix.Matrix;
 import com.tencent.matrix.plugin.Plugin;
 import com.tencent.matrix.trace.TracePlugin;
+import com.tencent.matrix.trace.core.AppMethodBeat;
 import com.tencent.matrix.util.MatrixLog;
 
 import java.util.Iterator;
@@ -85,6 +87,20 @@ public class TestTraceMainActivity extends Activity {
         for (long i = 0; i < 5000l; i++) {
             testInnerSleep();
         }
+    }
+
+    private boolean isStop = false;
+
+    public void stopAppMethodBeat(View view) {
+        AppMethodBeat appMethodBeat = Matrix.with().getPluginByClass(TracePlugin.class).getAppMethodBeat();
+        if (isStop) {
+            Toast.makeText(this, "start AppMethodBeat", Toast.LENGTH_LONG).show();
+            appMethodBeat.onStart();
+        } else {
+            Toast.makeText(this, "stop AppMethodBeat", Toast.LENGTH_LONG).show();
+            appMethodBeat.onStop();
+        }
+        isStop = !isStop;
     }
 
     public void testInnerSleep() {

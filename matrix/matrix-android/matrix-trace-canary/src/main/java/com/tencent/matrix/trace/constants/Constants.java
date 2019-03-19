@@ -38,7 +38,7 @@ public class Constants {
     public static final int DEFAULT_STARTUP_THRESHOLD_MS_WARM = 4 * 1000;
     public static final int DEFAULT_STARTUP_THRESHOLD_MS_COLD = 10 * 1000;
 
-    public static final int DEFAULT_RELEASE_BUFFER_DELAY = 30 * 1000;
+    public static final int DEFAULT_RELEASE_BUFFER_DELAY = 15 * 1000;
     public static final int TARGET_EVIL_METHOD_STACK = 30;
     public static final int MAX_LIMIT_ANALYSE_STACK_KEY_NUM = 10;
 

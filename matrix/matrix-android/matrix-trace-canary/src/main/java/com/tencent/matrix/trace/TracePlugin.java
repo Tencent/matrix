@@ -161,4 +161,27 @@ public class TracePlugin extends Plugin {
         return frameTracer;
     }
 
+    public AppMethodBeat getAppMethodBeat() {
+        return AppMethodBeat.getInstance();
+    }
+
+    public AnrTracer getAnrTracer() {
+        return anrTracer;
+    }
+
+    public EvilMethodTracer getEvilMethodTracer() {
+        return evilMethodTracer;
+    }
+
+    public StartupTracer getStartupTracer() {
+        return startupTracer;
+    }
+
+    public UIThreadMonitor getUIThreadMonitor() {
+        if (UIThreadMonitor.getMonitor().isInit()) {
+            return UIThreadMonitor.getMonitor();
+        } else {
+            return null;
+        }
+    }
 }

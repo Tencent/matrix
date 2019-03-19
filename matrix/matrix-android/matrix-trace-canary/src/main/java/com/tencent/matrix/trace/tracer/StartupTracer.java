@@ -142,46 +142,50 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, App
         @Override
         public void run() {
             LinkedList<MethodItem> stack = new LinkedList();
-            TraceDataUtils.structuredDataToStack(data, stack, false);
-            TraceDataUtils.trimStack(stack, Constants.TARGET_EVIL_METHOD_STACK, new TraceDataUtils.IStructuredDataFilter() {
-                @Override
-                public boolean isFilter(long during, int filterCount) {
-                    return during < filterCount * Constants.TIME_UPDATE_CYCLE_MS;
-                }
-
-                @Override
-                public int getFilterMaxCount() {
-                    return Constants.FILTER_STACK_MAX_COUNT;
-                }
-
-                @Override
-                public void fallback(List<MethodItem> stack, int size) {
-                    MatrixLog.w(TAG, "[fallback] size:%s targetSize:%s stack:%s", size, Constants.TARGET_EVIL_METHOD_STACK, stack);
-                    Iterator iterator = stack.listIterator(Constants.TARGET_EVIL_METHOD_STACK);
-                    while (iterator.hasNext()) {
-                        iterator.next();
-                        iterator.remove();
+            if (data.length > 0) {
+                TraceDataUtils.structuredDataToStack(data, stack, false);
+                TraceDataUtils.trimStack(stack, Constants.TARGET_EVIL_METHOD_STACK, new TraceDataUtils.IStructuredDataFilter() {
+                    @Override
+                    public boolean isFilter(long during, int filterCount) {
+                        return during < filterCount * Constants.TIME_UPDATE_CYCLE_MS;
                     }
 
-                }
-            });
+                    @Override
+                    public int getFilterMaxCount() {
+                        return Constants.FILTER_STACK_MAX_COUNT;
+                    }
+
+                    @Override
+                    public void fallback(List<MethodItem> stack, int size) {
+                        MatrixLog.w(TAG, "[fallback] size:%s targetSize:%s stack:%s", size, Constants.TARGET_EVIL_METHOD_STACK, stack);
+                        Iterator iterator = stack.listIterator(Constants.TARGET_EVIL_METHOD_STACK);
+                        while (iterator.hasNext()) {
+                            iterator.next();
+                            iterator.remove();
+                        }
+
+                    }
+                });
+            }
 
             StringBuilder reportBuilder = new StringBuilder();
             StringBuilder logcatBuilder = new StringBuilder();
             long stackCost = Math.max(allCost, TraceDataUtils.stackToString(stack, reportBuilder, logcatBuilder));
             String stackKey = TraceDataUtils.getTreeKey(stack, Constants.MAX_LIMIT_ANALYSE_STACK_KEY_NUM);
 
+            // for logcat
             if ((allCost > config.getColdStartupThresholdMs() && !isWarmStartUp)
                     || (allCost > config.getWarmStartupThresholdMs() && isWarmStartUp)) {
-                // logcat
                 MatrixLog.w(TAG, "stackKey:%s \n%s", stackKey, logcatBuilder.toString());
             }
 
             // report
-            report(applicationCost, firstScreenCost, reportBuilder, stackKey, stackCost, isWarmStartUp, scene);
+            report(applicationCost, firstScreenCost, reportBuilder, stackKey, stackCost, stack.size(), isWarmStartUp, scene);
         }
 
-        private void report(long applicationCost, long firstScreenCost, StringBuilder reportBuilder, String stackKey, long allCost, boolean isWarmStartUp, int scene) {
+        private void report(long applicationCost, long firstScreenCost, StringBuilder reportBuilder, String stackKey,
+                            long allCost, int stackSize, boolean isWarmStartUp, int scene) {
+
             TracePlugin plugin = Matrix.with().getPluginByClass(TracePlugin.class);
             try {
                 JSONObject costObject = new JSONObject();
@@ -199,8 +203,15 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, App
                 MatrixLog.e(TAG, "[JSONException for StartUpReportTask error: %s", e);
             }
 
+
             if ((allCost > config.getColdStartupThresholdMs() && !isWarmStartUp)
                     || (allCost > config.getWarmStartupThresholdMs() && isWarmStartUp)) {
+
+                if (stackSize <= 0) {
+                    MatrixLog.w(TAG, "[AnalyseTask#report] stack size is zero! may by AppMethodBeat is not working!");
+                    return;
+                }
+
                 try {
                     JSONObject jsonObject = new JSONObject();
                     jsonObject = DeviceUtil.getDeviceInfo(jsonObject, Matrix.with().getApplication());

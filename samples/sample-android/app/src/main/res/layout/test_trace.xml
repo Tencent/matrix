@@ -44,4 +44,14 @@
         android:minWidth="200dp"
         android:onClick="testJankiess"
         android:text="evil_method" />
+
+    <Button
+        android:id="@+id/test_stop_app_method_beat"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:minWidth="200dp"
+        android:onClick="stopAppMethodBeat"
+        android:text="start/stop AppMethodBeat" />
+
 </LinearLayout>

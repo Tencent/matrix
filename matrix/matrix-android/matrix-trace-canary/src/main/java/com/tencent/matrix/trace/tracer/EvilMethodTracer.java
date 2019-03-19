@@ -102,28 +102,30 @@ public class EvilMethodTracer extends Tracer implements UIThreadMonitor.ILooperO
         void analyse() {
             String usage = Utils.calculateCpuUsage(cpuCost, cost);
             LinkedList<MethodItem> stack = new LinkedList();
-            TraceDataUtils.structuredDataToStack(data, stack);
-            TraceDataUtils.trimStack(stack, Constants.TARGET_EVIL_METHOD_STACK, new TraceDataUtils.IStructuredDataFilter() {
-                @Override
-                public boolean isFilter(long during, int filterCount) {
-                    return during < filterCount * Constants.TIME_UPDATE_CYCLE_MS;
-                }
-
-                @Override
-                public int getFilterMaxCount() {
-                    return Constants.FILTER_STACK_MAX_COUNT;
-                }
-
-                @Override
-                public void fallback(List<MethodItem> stack, int size) {
-                    MatrixLog.w(TAG, "[fallback] size:%s targetSize:%s stack:%s", size, Constants.TARGET_EVIL_METHOD_STACK, stack);
-                    Iterator iterator = stack.listIterator(Constants.TARGET_EVIL_METHOD_STACK);
-                    while (iterator.hasNext()) {
-                        iterator.next();
-                        iterator.remove();
+            if (data.length > 0) {
+                TraceDataUtils.structuredDataToStack(data, stack);
+                TraceDataUtils.trimStack(stack, Constants.TARGET_EVIL_METHOD_STACK, new TraceDataUtils.IStructuredDataFilter() {
+                    @Override
+                    public boolean isFilter(long during, int filterCount) {
+                        return during < filterCount * Constants.TIME_UPDATE_CYCLE_MS;
                     }
-                }
-            });
+
+                    @Override
+                    public int getFilterMaxCount() {
+                        return Constants.FILTER_STACK_MAX_COUNT;
+                    }
+
+                    @Override
+                    public void fallback(List<MethodItem> stack, int size) {
+                        MatrixLog.w(TAG, "[fallback] size:%s targetSize:%s stack:%s", size, Constants.TARGET_EVIL_METHOD_STACK, stack);
+                        Iterator iterator = stack.listIterator(Constants.TARGET_EVIL_METHOD_STACK);
+                        while (iterator.hasNext()) {
+                            iterator.next();
+                            iterator.remove();
+                        }
+                    }
+                });
+            }
 
             String stackKey = TraceDataUtils.getTreeKey(stack, Constants.MAX_LIMIT_ANALYSE_STACK_KEY_NUM);
 
@@ -131,7 +133,12 @@ public class EvilMethodTracer extends Tracer implements UIThreadMonitor.ILooperO
             StringBuilder logcatBuilder = new StringBuilder();
             long stackCost = Math.max(cost, TraceDataUtils.stackToString(stack, reportBuilder, logcatBuilder));
 
-            MatrixLog.w(TAG, "", printEvil(logcatBuilder, stack.size(), stackKey, usage, queueCost[0], queueCost[1], queueCost[2], cost)); // for logcat
+            MatrixLog.w(TAG, "%s", printEvil(logcatBuilder, stack.size(), stackKey, usage, queueCost[0], queueCost[1], queueCost[2], cost)); // for logcat
+
+            if (stack.size() <= 0) {
+                MatrixLog.w(TAG, "[AnalyseTask#analyse] stack size is zero! may by AppMethodBeat is not working!");
+                return;
+            }
 
             // report
             try {

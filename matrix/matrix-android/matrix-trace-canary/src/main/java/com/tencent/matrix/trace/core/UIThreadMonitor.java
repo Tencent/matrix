@@ -287,6 +287,9 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
 
     @Override
     public void onStart() {
+        if (!isInit) {
+            throw new RuntimeException("never init!");
+        }
         if (!isAlive) {
             MatrixLog.i(TAG, "[onStart] %s", Utils.getStack());
             this.isAlive = true;
@@ -329,6 +332,9 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
 
     @Override
     public void onStop() {
+        if (!isInit) {
+            throw new RuntimeException("never init!");
+        }
         if (isAlive) {
             this.isAlive = false;
             MatrixLog.i(TAG, "[onStop] %s", Utils.getStack());
