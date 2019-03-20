@@ -19,6 +19,7 @@ package com.tencent.matrix.trace;
 import com.tencent.matrix.javalib.util.FileUtil;
 import com.tencent.matrix.javalib.util.Log;
 import com.tencent.matrix.trace.item.TraceMethod;
+import com.tencent.matrix.trace.retrace.MappingCollector;
 
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassVisitor;
@@ -63,9 +64,11 @@ public class MethodTracer {
     private final ConcurrentHashMap<String, TraceMethod> collectedMethodMap;
     private final ConcurrentHashMap<String, String> collectedClassExtendMap;
     private final ExecutorService executor;
+    private MappingCollector mappingCollector;
 
-    public MethodTracer(ExecutorService executor, Configuration config, ConcurrentHashMap<String, TraceMethod> collectedMap, ConcurrentHashMap<String, String> collectedClassExtendMap) {
+    public MethodTracer(ExecutorService executor, MappingCollector mappingCollector, Configuration config, ConcurrentHashMap<String, TraceMethod> collectedMap, ConcurrentHashMap<String, String> collectedClassExtendMap) {
         this.configuration = config;
+        this.mappingCollector = mappingCollector;
         this.executor = executor;
         this.collectedClassExtendMap = collectedClassExtendMap;
         this.collectedMethodMap = collectedMap;
@@ -272,7 +275,7 @@ public class MethodTracer {
 
         @Override
         public void visitEnd() {
-            if (!hasWindowFocusMethod && isActivityOrSubClass(className, collectedClassExtendMap)) {
+            if (!hasWindowFocusMethod && isActivityOrSubClass(className, collectedClassExtendMap) && MethodCollector.isNeedTrace(configuration, className, mappingCollector)) {
                 insertWindowFocusChangeMethod(cv);
             }
             super.visitEnd();
@@ -328,7 +331,7 @@ public class MethodTracer {
         protected void onMethodExit(int opcode) {
             TraceMethod traceMethod = collectedMethodMap.get(methodName);
             if (traceMethod != null) {
-                if (hasWindowFocusMethod && isActivityOrSubClass(className, collectedClassExtendMap)) {
+                if (hasWindowFocusMethod && isActivityOrSubClass(className, collectedClassExtendMap) && MethodCollector.isNeedTrace(configuration, traceMethod.className, mappingCollector)) {
                     TraceMethod windowFocusChangeMethod = TraceMethod.create(-1, Opcodes.ACC_PUBLIC, className,
                             TraceBuildConstants.MATRIX_TRACE_ON_WINDOW_FOCUS_METHOD, TraceBuildConstants.MATRIX_TRACE_ON_WINDOW_FOCUS_METHOD_ARGS);
                     if (windowFocusChangeMethod.equals(traceMethod)) {

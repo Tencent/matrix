@@ -32,7 +32,7 @@ android {
         }
         debug {
             debuggable true
-            minifyEnabled false
+            minifyEnabled true
             signingConfig signingConfigs.debug
         }
     }

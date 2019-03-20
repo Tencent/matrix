@@ -29,10 +29,10 @@ public class Configuration {
         this.traceClassOut = Util.nullAsNil(traceClassOut);
     }
 
-    public void parseBlackFile(MappingCollector processor) {
+    public int parseBlackFile(MappingCollector processor) {
         File blackFile = new File(blackListFilePath);
         if (!blackFile.exists()) {
-            return;
+            return blackSet.size();
         }
 
         String blackStr = TraceBuildConstants.DEFAULT_BLACK_TRACE + FileUtil.readFileAsString(blackFile.getAbsolutePath());
@@ -54,12 +54,15 @@ public class Configuration {
                 if (black.startsWith("-keepclass ")) {
                     black = black.replace("-keepclass ", "");
                     blackSet.add(processor.proguardClassName(black, black));
+                    blackSet.add(black);
                 } else if (black.startsWith("-keeppackage ")) {
                     black = black.replace("-keeppackage ", "");
                     blackSet.add(processor.proguardPackageName(black, black));
+                    blackSet.add(black);
                 }
             }
         }
+        return blackSet.size();
     }
 
     @Override

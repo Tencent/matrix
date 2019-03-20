@@ -105,7 +105,6 @@ public class ActivityThreadHacker {
             if (isLaunchActivity) {
                 ActivityThreadHacker.sLastLaunchActivityTime = SystemClock.uptimeMillis();
                 ActivityThreadHacker.sLastLaunchActivityMethodIndex = AppMethodBeat.getInstance().maskIndex("LastLaunchActivityMethodIndex");
-                AppMethodBeat.getInstance().onStart();
             }
 
             if (!isCreated) {

@@ -64,7 +64,7 @@ public class MatrixTraceTransform extends Transform {
     private static final String TAG = "MatrixTraceTransform";
     private Configuration config;
     private Transform origTransform;
-    private ExecutorService executor = Executors.newFixedThreadPool(10);
+    private ExecutorService executor = Executors.newFixedThreadPool(16);
 
     public static void inject(Project project, MatrixTraceExtension extension, VariantScope variantScope) {
 
@@ -216,7 +216,7 @@ public class MatrixTraceTransform extends Transform {
          * step 3
          */
         start = System.currentTimeMillis();
-        MethodTracer methodTracer = new MethodTracer(executor, config, methodCollector.getCollectedMethodMap(), methodCollector.getCollectedClassExtendMap());
+        MethodTracer methodTracer = new MethodTracer(executor, mappingCollector, config, methodCollector.getCollectedMethodMap(), methodCollector.getCollectedClassExtendMap());
         methodTracer.trace(dirInputOutMap, jarInputOutMap);
         Log.i(TAG, "[doTransform] Step(3)[Trace]... cost:%sms", System.currentTimeMillis() - start);
 
@@ -245,13 +245,13 @@ public class MatrixTraceTransform extends Transform {
                     MappingReader mappingReader = new MappingReader(mappingFile);
                     mappingReader.read(mappingCollector);
                 }
-                config.parseBlackFile(mappingCollector);
+                int size = config.parseBlackFile(mappingCollector);
 
                 File baseMethodMapFile = new File(config.baseMethodMapPath);
                 getMethodFromBaseMethod(baseMethodMapFile, collectedMethodMap);
                 retraceMethodMap(mappingCollector, collectedMethodMap);
 
-                Log.i(TAG, "[ParseMappingTask#run] cost:%sms, collect %s method from %s", System.currentTimeMillis() - start, collectedMethodMap.size(), config.baseMethodMapPath);
+                Log.i(TAG, "[ParseMappingTask#run] cost:%sms, black size:%s, collect %s method from %s", System.currentTimeMillis() - start, size, collectedMethodMap.size(), config.baseMethodMapPath);
 
             } catch (IOException e) {
                 e.printStackTrace();

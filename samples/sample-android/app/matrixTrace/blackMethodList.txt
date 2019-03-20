@@ -1,3 +1,6 @@
 [package]
 -keeppackage facebook/
 -keeppackage com/squareup/
+-keeppackage sample/tencent/matrix/trace
+[class]
+-keepclass sample/tencent/matrix/MainActivity
