@@ -437,7 +437,7 @@ public class MatrixTraceTransform extends Transform {
                 }
 
             } else {
-                Log.i(TAG,"Special case for WeChat AutoDex. Its rootInput jar file is actually a txt file contains path list.");
+                Log.i(TAG, "Special case for WeChat AutoDex. Its rootInput jar file is actually a txt file contains path list.");
                 // Special case for WeChat AutoDex. Its rootInput jar file is actually
                 // a txt file contains path list.
                 BufferedReader br = null;
@@ -450,18 +450,18 @@ public class MatrixTraceTransform extends Transform {
                         // src jar.
                         final File realJarInput = new File(realJarInputFullPath);
                         // dest jar, moved to extra guard intermediate output dir.
-                        File realJarOutput = new File(traceClassOut, realJarInput.getName());
+                        final File realJarOutput = new File(traceClassOut, getUniqueJarName(realJarInput));
 
                         if (realJarInput.exists() && IOUtil.isRealZipOrJar(realJarInput)) {
                             jarInputOutMap.put(realJarInput, realJarOutput);
                         } else {
                             realJarOutput.delete();
                             if (realJarInput.exists() && realJarInput.isDirectory()) {
-                                realJarOutput = new File(traceClassOut, realJarInput.getName());
+                                File realJarOutputDir = new File(traceClassOut, realJarInput.getName());
                                 if (!realJarOutput.exists()) {
                                     realJarOutput.mkdirs();
                                 }
-                                dirInputOutMap.put(realJarInput, realJarOutput);
+                                dirInputOutMap.put(realJarInput, realJarOutputDir);
                             }
 
                         }
