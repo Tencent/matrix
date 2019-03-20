@@ -191,7 +191,7 @@ public class MethodTracer {
                 }
             }
         } catch (Exception e) {
-            Log.e(TAG, "[innerTraceMethodFromJar] input:%s e:%s output:%s", input.getName(), output, e);
+            Log.e(TAG, "[innerTraceMethodFromJar] input:%s output:%s e:%s", input.getName(), output, e);
             try {
                 Files.copy(input.toPath(), output.toPath(), StandardCopyOption.REPLACE_EXISTING);
             } catch (Exception e1) {

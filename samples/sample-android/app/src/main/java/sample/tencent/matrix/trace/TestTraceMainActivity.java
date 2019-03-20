@@ -77,9 +77,7 @@ public class TestTraceMainActivity extends Activity {
     }
 
     public void testJankiess(View view) {
-        for (int i = 0; i < 30; i++) {
-            tryHeavyMethod();
-        }
+        A();
     }
 
 
@@ -87,6 +85,40 @@ public class TestTraceMainActivity extends Activity {
         for (long i = 0; i < 5000l; i++) {
             testInnerSleep();
         }
+    }
+
+    private void A() {
+        B();
+        G();
+        SystemClock.sleep(800);
+    }
+
+    private void B() {
+        C();
+        F();
+        SystemClock.sleep(200);
+    }
+
+    private void C() {
+        D();
+        E();
+        SystemClock.sleep(100);
+    }
+
+    private void D() {
+        SystemClock.sleep(20);
+    }
+
+    private void E() {
+        SystemClock.sleep(20);
+    }
+
+    private void F() {
+        SystemClock.sleep(20);
+    }
+
+    private void G() {
+        SystemClock.sleep(20);
     }
 
     private boolean isStop = false;

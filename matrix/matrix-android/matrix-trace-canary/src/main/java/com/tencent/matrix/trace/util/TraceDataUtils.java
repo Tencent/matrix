@@ -246,9 +246,9 @@ public class TraceDataUtils {
         int filterCount = 1;
         int curStackSize = stack.size();
         while (curStackSize > targetCount) {
-            Iterator<MethodItem> iterator = stack.iterator();
-            while (iterator.hasNext()) {
-                MethodItem item = iterator.next();
+            ListIterator<MethodItem> iterator = stack.listIterator(stack.size());
+            while (iterator.hasPrevious()) {
+                MethodItem item = iterator.previous();
                 if (filter.isFilter(item.durTime, filterCount)) {
                     iterator.remove();
                     curStackSize--;

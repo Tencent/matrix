@@ -335,14 +335,9 @@ public class MatrixTraceTransform extends Transform {
         public void run() {
             try {
                 handle();
-            } catch (IOException e) {
+            } catch (Exception e) {
                 e.printStackTrace();
-            } catch (IllegalAccessException e) {
-                e.printStackTrace();
-            } catch (NoSuchFieldException e) {
-                e.printStackTrace();
-            } catch (ClassNotFoundException e) {
-                e.printStackTrace();
+                Log.e("Matrix." + getName(), "%s", e.toString());
             }
         }
 
@@ -387,6 +382,7 @@ public class MatrixTraceTransform extends Transform {
             } else {
                 dirInputOutMap.put(dirInput, dirOutput);
             }
+            replaceFile(directoryInput, dirOutput);
         }
     }
 
@@ -407,14 +403,9 @@ public class MatrixTraceTransform extends Transform {
         public void run() {
             try {
                 handle();
-            } catch (IllegalAccessException e) {
+            } catch (Exception e) {
                 e.printStackTrace();
-            } catch (NoSuchFieldException e) {
-                e.printStackTrace();
-            } catch (ClassNotFoundException e) {
-                e.printStackTrace();
-            } catch (IOException e) {
-                e.printStackTrace();
+                Log.e("Matrix." + getName(), "%s", e.toString());
             }
         }
 
@@ -423,6 +414,12 @@ public class MatrixTraceTransform extends Transform {
 
             final File jarInput = inputJar.getFile();
             final File jarOutput = new File(traceClassOut, getUniqueJarName(jarInput));
+            if (jarOutput.exists()) {
+                jarOutput.delete();
+            }
+            if (!jarOutput.getParentFile().exists()) {
+                jarOutput.getParentFile().mkdirs();
+            }
 
             if (IOUtil.isRealZipOrJar(jarInput)) {
                 if (isIncremental) {

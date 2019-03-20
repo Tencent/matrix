@@ -104,7 +104,7 @@ public class EvilMethodTracer extends Tracer implements UIThreadMonitor.ILooperO
             LinkedList<MethodItem> stack = new LinkedList();
             if (data.length > 0) {
                 TraceDataUtils.structuredDataToStack(data, stack);
-                TraceDataUtils.trimStack(stack, Constants.TARGET_EVIL_METHOD_STACK, new TraceDataUtils.IStructuredDataFilter() {
+                TraceDataUtils.trimStack(stack, 5, new TraceDataUtils.IStructuredDataFilter() {
                     @Override
                     public boolean isFilter(long during, int filterCount) {
                         return during < filterCount * Constants.TIME_UPDATE_CYCLE_MS;
