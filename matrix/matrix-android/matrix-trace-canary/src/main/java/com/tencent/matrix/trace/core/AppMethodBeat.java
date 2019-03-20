@@ -120,7 +120,9 @@ public class AppMethodBeat implements BeatLifecycle {
         sHandler.postDelayed(checkOutTimeRunnable = new Runnable() {
             @Override
             public void run() {
-                isOutTimeToStart = true;
+                if (!isAlive) {
+                    isOutTimeToStart = true;
+                }
             }
         }, Constants.DEFAULT_RELEASE_BUFFER_DELAY);
 
