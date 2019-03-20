@@ -1,6 +1,7 @@
 package com.tencent.matrix.trace;
 
 import com.tencent.matrix.javalib.util.FileUtil;
+import com.tencent.matrix.javalib.util.Util;
 import com.tencent.matrix.trace.retrace.MappingCollector;
 
 import java.io.File;
@@ -20,12 +21,12 @@ public class Configuration {
     Configuration(String packageName, String mappingDir, String baseMethodMapPath, String methodMapFilePath,
                   String ignoreMethodMapFilePath, String blackListFilePath, String traceClassOut) {
         this.packageName = packageName;
-        this.mappingDir = mappingDir;
-        this.baseMethodMapPath = baseMethodMapPath;
-        this.methodMapFilePath = methodMapFilePath;
-        this.ignoreMethodMapFilePath = ignoreMethodMapFilePath;
-        this.blackListFilePath = blackListFilePath;
-        this.traceClassOut = traceClassOut;
+        this.mappingDir = Util.nullAsNil(mappingDir);
+        this.baseMethodMapPath = Util.nullAsNil(baseMethodMapPath);
+        this.methodMapFilePath = Util.nullAsNil(methodMapFilePath);
+        this.ignoreMethodMapFilePath = Util.nullAsNil(ignoreMethodMapFilePath);
+        this.blackListFilePath = Util.nullAsNil(blackListFilePath);
+        this.traceClassOut = Util.nullAsNil(traceClassOut);
     }
 
     public void parseBlackFile(MappingCollector processor) {

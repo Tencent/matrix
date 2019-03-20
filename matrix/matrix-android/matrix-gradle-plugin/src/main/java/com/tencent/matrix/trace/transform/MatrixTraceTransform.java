@@ -114,7 +114,7 @@ public class MatrixTraceTransform extends Transform {
 
     private static String[] getTransformTaskName(String customDexTransformName, String buildTypeSuffix) {
         if (!Util.isNullOrNil(customDexTransformName)) {
-            return new String[]{customDexTransformName + "For" + "buildTypeSuffix"};
+            return new String[]{customDexTransformName + "For" + buildTypeSuffix};
         } else {
             String[] names = new String[]{
                     "transformClassesWithDexBuilderFor" + buildTypeSuffix,
@@ -357,7 +357,7 @@ public class MatrixTraceTransform extends Transform {
             }
 
             if (!dirInput.exists() && dirOutput.exists()) {
-                if (dirInput.isDirectory()) {
+                if (dirOutput.isDirectory()) {
                     FileUtils.deleteFolder(dirOutput);
                 } else {
                     FileUtils.delete(dirOutput);
@@ -437,6 +437,7 @@ public class MatrixTraceTransform extends Transform {
                 }
 
             } else {
+                Log.i(TAG,"Special case for WeChat AutoDex. Its rootInput jar file is actually a txt file contains path list.");
                 // Special case for WeChat AutoDex. Its rootInput jar file is actually
                 // a txt file contains path list.
                 BufferedReader br = null;
