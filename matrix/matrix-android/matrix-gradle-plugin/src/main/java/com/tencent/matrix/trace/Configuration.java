@@ -54,11 +54,9 @@ public class Configuration {
                 if (black.startsWith("-keepclass ")) {
                     black = black.replace("-keepclass ", "");
                     blackSet.add(processor.proguardClassName(black, black));
-                    blackSet.add(black);
                 } else if (black.startsWith("-keeppackage ")) {
                     black = black.replace("-keeppackage ", "");
                     blackSet.add(processor.proguardPackageName(black, black));
-                    blackSet.add(black);
                 }
             }
         }

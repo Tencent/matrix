@@ -276,7 +276,7 @@ public class MethodTracer {
         @Override
         public void visitEnd() {
             if (!hasWindowFocusMethod && isActivityOrSubClass(className, collectedClassExtendMap) && MethodCollector.isNeedTrace(configuration, className, mappingCollector)) {
-                insertWindowFocusChangeMethod(cv);
+                insertWindowFocusChangeMethod(cv, className);
             }
             super.visitEnd();
         }
@@ -335,7 +335,7 @@ public class MethodTracer {
                     TraceMethod windowFocusChangeMethod = TraceMethod.create(-1, Opcodes.ACC_PUBLIC, className,
                             TraceBuildConstants.MATRIX_TRACE_ON_WINDOW_FOCUS_METHOD, TraceBuildConstants.MATRIX_TRACE_ON_WINDOW_FOCUS_METHOD_ARGS);
                     if (windowFocusChangeMethod.equals(traceMethod)) {
-                        traceWindowFocusChangeMethod(mv);
+                        traceWindowFocusChangeMethod(mv, className);
                     }
                 }
 
@@ -360,13 +360,13 @@ public class MethodTracer {
         }
     }
 
-    private void traceWindowFocusChangeMethod(MethodVisitor mv) {
+    private void traceWindowFocusChangeMethod(MethodVisitor mv, String classname) {
         mv.visitVarInsn(Opcodes.ALOAD, 0);
         mv.visitVarInsn(Opcodes.ILOAD, 1);
         mv.visitMethodInsn(Opcodes.INVOKESTATIC, TraceBuildConstants.MATRIX_TRACE_CLASS, "at", "(Landroid/app/Activity;Z)V", false);
     }
 
-    private void insertWindowFocusChangeMethod(ClassVisitor cv) {
+    private void insertWindowFocusChangeMethod(ClassVisitor cv, String classname) {
         MethodVisitor methodVisitor = cv.visitMethod(Opcodes.ACC_PUBLIC, TraceBuildConstants.MATRIX_TRACE_ON_WINDOW_FOCUS_METHOD,
                 TraceBuildConstants.MATRIX_TRACE_ON_WINDOW_FOCUS_METHOD_ARGS, null, null);
         methodVisitor.visitCode();
@@ -374,7 +374,7 @@ public class MethodTracer {
         methodVisitor.visitVarInsn(Opcodes.ILOAD, 1);
         methodVisitor.visitMethodInsn(Opcodes.INVOKESPECIAL, TraceBuildConstants.MATRIX_TRACE_ACTIVITY_CLASS, TraceBuildConstants.MATRIX_TRACE_ON_WINDOW_FOCUS_METHOD,
                 TraceBuildConstants.MATRIX_TRACE_ON_WINDOW_FOCUS_METHOD_ARGS, false);
-        traceWindowFocusChangeMethod(methodVisitor);
+        traceWindowFocusChangeMethod(methodVisitor, classname);
         methodVisitor.visitInsn(Opcodes.RETURN);
         methodVisitor.visitMaxs(2, 2);
         methodVisitor.visitEnd();

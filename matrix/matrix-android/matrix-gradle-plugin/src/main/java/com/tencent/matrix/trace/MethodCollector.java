@@ -419,6 +419,7 @@ public class MethodCollector {
             if (null != mappingCollector) {
                 clsName = mappingCollector.originalClassName(clsName, clsName);
             }
+            clsName = clsName.replaceAll("/", ".");
             for (String packageName : configuration.blackSet) {
                 if (clsName.startsWith(packageName.replaceAll("/", "."))) {
                     isNeed = false;
