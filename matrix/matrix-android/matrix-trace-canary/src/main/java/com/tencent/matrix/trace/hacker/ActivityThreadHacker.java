@@ -57,7 +57,7 @@ public class ActivityThreadHacker {
             Handler.Callback originalCallback = (Handler.Callback) callbackField.get(handler);
             HackCallback callback = new HackCallback(originalCallback);
             callbackField.set(handler, callback);
-            MatrixLog.i(TAG, "hook system handler completed. start:%s", sApplicationCreateBeginTime);
+            MatrixLog.i(TAG, "hook system handler completed. start:%s SDK_INT:%s", sApplicationCreateBeginTime, Build.VERSION.SDK_INT);
         } catch (Exception e) {
             MatrixLog.e(TAG, "hook system handler err! %s", e.getCause().toString());
         }
@@ -122,7 +122,6 @@ public class ActivityThreadHacker {
 
         private boolean isLaunchActivity(Message msg) {
             if (Build.VERSION.SDK_INT > Build.VERSION_CODES.O_MR1) {
-                MatrixLog.i(TAG, "[isLaunchActivity] Build.VERSION.SDK_INT > Build.VERSION_CODES.O");
                 if (msg.what == EXECUTE_TRANSACTION && msg.obj != null) {
                     try {
                         if (null == method) {

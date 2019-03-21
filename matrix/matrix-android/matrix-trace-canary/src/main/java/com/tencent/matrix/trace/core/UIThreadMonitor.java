@@ -56,6 +56,11 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
      */
     public static final int CALLBACK_TRAVERSAL = 2;
 
+    /**
+     * never do queue end code
+     */
+    public static final int DO_QUEUE_END_ERROR = -100;
+
     private static final int CALLBACK_LAST = CALLBACK_TRAVERSAL;
 
     private final static UIThreadMonitor sInstance = new UIThreadMonitor();
@@ -238,7 +243,10 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
 
         for (int i : queueStatus) {
             if (i != DO_QUEUE_END) {
-                throw new RuntimeException(String.format("UIThreadMonitor happens type[%s] != DO_QUEUE_END", i));
+                queueCost[i] = DO_QUEUE_END_ERROR;
+                if (config.isDevEnv) {
+                    throw new RuntimeException(String.format("UIThreadMonitor happens type[%s] != DO_QUEUE_END", i));
+                }
             }
         }
         queueStatus = new int[CALLBACK_LAST + 1];
