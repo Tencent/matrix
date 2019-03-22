@@ -137,7 +137,7 @@ public class AnrTracer extends Tracer implements UIThreadMonitor.ILooperObserver
                     @Override
                     public void fallback(List<MethodItem> stack, int size) {
                         MatrixLog.w(TAG, "[fallback] size:%s targetSize:%s stack:%s", size, Constants.TARGET_EVIL_METHOD_STACK, stack);
-                        Iterator iterator = stack.listIterator(Constants.TARGET_EVIL_METHOD_STACK);
+                        Iterator iterator = stack.listIterator(Math.min(size, Constants.TARGET_EVIL_METHOD_STACK));
                         while (iterator.hasNext()) {
                             iterator.next();
                             iterator.remove();
@@ -153,11 +153,6 @@ public class AnrTracer extends Tracer implements UIThreadMonitor.ILooperObserver
             long stackCost = Math.max(Constants.DEFAULT_ANR, TraceDataUtils.stackToString(stack, reportBuilder, logcatBuilder));
 
             MatrixLog.w(TAG, "%s", printAnr(memoryInfo, status, logcatBuilder, stack.size(), stackKey, dumpStack, inputCost, animationCost, traversalCost)); // for logcat
-
-            if (stack.size() <= 0) {
-                MatrixLog.w(TAG, "[AnrHandleTask#run] stack size is zero! may by AppMethodBeat is not working!");
-                return;
-            }
 
             // report
             try {

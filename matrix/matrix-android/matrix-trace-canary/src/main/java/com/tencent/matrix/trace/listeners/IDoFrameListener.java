@@ -32,27 +32,8 @@ public class IDoFrameListener {
         this.mHandler = handler;
     }
 
-    /**
-     * ASync exec
-     *
-     * @param scene         current scene
-     * @param droppedFrames dropped the count of Frame between last frame and current frame
-     */
-    public void doFrameAsync(long lastFrameNanos, long frameNanos, String scene, int droppedFrames) {
-
-    }
 
     public void doFrameAsync(String focusedActivityName, long frameCost, int droppedFrames) {
-
-    }
-
-    /**
-     * Sync exec
-     *
-     * @param scene         current scene
-     * @param droppedFrames dropped the count of Frame between last frame and current frame
-     */
-    public void doFrameSync(long lastFrameNanos, long frameNanos, String scene, int droppedFrames) {
 
     }
 

@@ -45,6 +45,7 @@ public class TraceDataUtils {
                     MatrixLog.d(TAG, "never begin! pass this method[%s]", getMethodId(trueId));
                     continue;
                 }
+
             }
             if (isIn(trueId)) {
                 lastInId = getMethodId(trueId);
@@ -96,6 +97,26 @@ public class TraceDataUtils {
             MethodItem methodItem = new MethodItem(methodId, Math.max(maxCost, Constants.DEFAULT_ANR), rawData.size());
             addMethodItem(result, methodItem);
         }
+
+        LinkedList<MethodItem> list = new LinkedList<>();
+        MethodItem last = null;
+        for (MethodItem item : result) {
+            if (null != last) {
+                int index = list.indexOf(last);
+                if (last.depth == item.depth) {
+                    list.add(index, item);
+                } else {
+                    list.add(index + 1, item);
+                }
+
+            } else {
+                list.add(item);
+            }
+            last = item;
+        }
+        result.clear();
+        result.addAll(list);
+
     }
 
     private static boolean isIn(long trueId) {
@@ -286,7 +307,7 @@ public class TraceDataUtils {
             @Override
             public void fallback(List<MethodItem> stack, int size) {
                 MatrixLog.w(TAG, "[getTreeKey] size:%s targetSize:%s", size, targetCount);
-                Iterator iterator = tmp.listIterator(targetCount);
+                Iterator iterator = stack.listIterator(Math.min(size, targetCount));
                 while (iterator.hasNext()) {
                     iterator.next();
                     iterator.remove();

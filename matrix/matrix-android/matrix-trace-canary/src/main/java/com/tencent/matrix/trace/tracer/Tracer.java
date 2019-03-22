@@ -9,7 +9,7 @@ public abstract class Tracer implements ITracer {
     protected abstract void onDead();
 
     @Override
-    final public void onStartTrace() {
+    final synchronized public void onStartTrace() {
         if (!isAlive) {
             this.isAlive = true;
             onAlive();
@@ -17,7 +17,7 @@ public abstract class Tracer implements ITracer {
     }
 
     @Override
-    final public void onCloseTrace() {
+    final synchronized public void onCloseTrace() {
         if (isAlive) {
             this.isAlive = false;
             onDead();

@@ -118,7 +118,7 @@ public class EvilMethodTracer extends Tracer implements UIThreadMonitor.ILooperO
                     @Override
                     public void fallback(List<MethodItem> stack, int size) {
                         MatrixLog.w(TAG, "[fallback] size:%s targetSize:%s stack:%s", size, Constants.TARGET_EVIL_METHOD_STACK, stack);
-                        Iterator iterator = stack.listIterator(Constants.TARGET_EVIL_METHOD_STACK);
+                        Iterator iterator = stack.listIterator(Math.min(size, Constants.TARGET_EVIL_METHOD_STACK));
                         while (iterator.hasNext()) {
                             iterator.next();
                             iterator.remove();
@@ -134,11 +134,6 @@ public class EvilMethodTracer extends Tracer implements UIThreadMonitor.ILooperO
             long stackCost = Math.max(cost, TraceDataUtils.stackToString(stack, reportBuilder, logcatBuilder));
 
             MatrixLog.w(TAG, "%s", printEvil(logcatBuilder, stack.size(), stackKey, usage, queueCost[0], queueCost[1], queueCost[2], cost)); // for logcat
-
-            if (stack.size() <= 0) {
-                MatrixLog.w(TAG, "[AnalyseTask#analyse] stack size is zero! may by AppMethodBeat is not working!");
-                return;
-            }
 
             // report
             try {

@@ -22,11 +22,16 @@ public class AppMethodBeat implements BeatLifecycle {
 
     private static final String TAG = "Matrix.AppMethodBeat";
     private static AppMethodBeat sInstance = new AppMethodBeat();
-    private static volatile boolean isAlive = false;
+    private static final int STATUS_STARTED = 1;
+    private static final int STATUS_READY = 0;
+    private static final int STATUS_STOPPED = -1;
+    private static final int STATUS_OUT_TIME_START = -2;
+    private static final int STATUS_DEFAULT = Integer.MAX_VALUE;
+    private static volatile int status = STATUS_DEFAULT;
+
     private static long[] sBuffer = new long[Constants.BUFFER_SIZE];
     private static int sIndex = 0;
     private static int sLastIndex = -1;
-    private static volatile boolean isRealTrace = false;
     private static boolean assertIn = false;
     private volatile static long sCurrentDiffTime = SystemClock.uptimeMillis();
     private volatile static long sLastDiffTime = sCurrentDiffTime;
@@ -81,28 +86,35 @@ public class AppMethodBeat implements BeatLifecycle {
 
     @Override
     public void onStart() {
-        if (!isAlive) {
+        if (status <= STATUS_READY) {
             sHandler.removeCallbacks(checkOutTimeRunnable);
-            assert sBuffer != null;
-            this.isAlive = true;
+            if (sBuffer == null) {
+                throw new RuntimeException(TAG + " sBuffer == null");
+            }
+            this.status = STATUS_STARTED;
             MatrixLog.i(TAG, "[onStart] %s", Utils.getStack());
         }
     }
 
     @Override
     public void onStop() {
-        if (isAlive) {
+        if (status > STATUS_READY) {
             MatrixLog.i(TAG, "[onStop] %s", Utils.getStack());
-            this.isAlive = false;
+            this.status = STATUS_STOPPED;
         }
     }
 
+    @Override
+    public boolean isAlive() {
+        return status >= STATUS_STARTED;
+    }
+
     public static boolean isRealTrace() {
-        return isRealTrace;
+        return status >= STATUS_READY;
     }
 
     private static void realRelease() {
-        if (!isRealTrace) {
+        if (status != STATUS_READY) {
             MatrixLog.i(TAG, "[realRelease] timestamp:%s", System.currentTimeMillis());
             sHandler.removeCallbacksAndMessages(null);
             sTimerUpdateThread.quit();
@@ -120,9 +132,7 @@ public class AppMethodBeat implements BeatLifecycle {
         sHandler.postDelayed(checkOutTimeRunnable = new Runnable() {
             @Override
             public void run() {
-                if (!isAlive) {
-                    isOutTimeToStart = true;
-                }
+                status = STATUS_OUT_TIME_START;
             }
         }, Constants.DEFAULT_RELEASE_BUFFER_DELAY);
 
@@ -139,7 +149,7 @@ public class AppMethodBeat implements BeatLifecycle {
                 }
                 isHandleMessageEnd = !isHandleMessageEnd;
 
-                if (!isAlive && !hasDispatchBegin) {
+                if (status < 0 && !hasDispatchBegin) {
                     return;
                 }
 
@@ -173,18 +183,17 @@ public class AppMethodBeat implements BeatLifecycle {
      */
     public static void i(int methodId) {
 
-        if (!isAlive && isRealTrace && isOutTimeToStart) {
+        if (status < 0) {
             return;
         }
 
         if (methodId >= METHOD_ID_MAX) {
             return;
         }
-        if (!isRealTrace) {
+        if (status == STATUS_DEFAULT) {
             realExecute();
+            status = STATUS_READY;
         }
-
-        isRealTrace = true;
 
         if (Thread.currentThread() == sMainThread) {
             if (assertIn) {
@@ -208,9 +217,10 @@ public class AppMethodBeat implements BeatLifecycle {
      * @param methodId
      */
     public static void o(int methodId) {
-        if (!isAlive) {
+        if (status < 0) {
             return;
         }
+
         if (methodId >= METHOD_ID_MAX) {
             return;
         }

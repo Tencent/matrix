@@ -138,6 +138,31 @@ public class TraceConfig implements IDefaultConfig {
     }
 
 
+    public int getFrozenThreshold() {
+        return null == dynamicConfig
+                ? Constants.DEFAULT_DROPPED_FROZEN
+                : dynamicConfig.get(IDynamicConfig.ExptEnum.clicfg_matrix_fps_dropped_frozen.name(), Constants.DEFAULT_DROPPED_FROZEN);
+    }
+
+    public int getHighThreshold() {
+        return null == dynamicConfig
+                ? Constants.DEFAULT_DROPPED_HIGH
+                : dynamicConfig.get(IDynamicConfig.ExptEnum.clicfg_matrix_fps_dropped_high.name(), Constants.DEFAULT_DROPPED_HIGH);
+    }
+
+    public int getMiddleThreshold() {
+        return null == dynamicConfig
+                ? Constants.DEFAULT_DROPPED_MIDDLE
+                : dynamicConfig.get(IDynamicConfig.ExptEnum.clicfg_matrix_fps_dropped_middle.name(), Constants.DEFAULT_DROPPED_MIDDLE);
+    }
+
+    public int getNormalThreshold() {
+        return null == dynamicConfig
+                ? Constants.DEFAULT_DROPPED_NORMAL
+                : dynamicConfig.get(IDynamicConfig.ExptEnum.clicfg_matrix_fps_dropped_normal.name(), Constants.DEFAULT_DROPPED_NORMAL);
+    }
+
+
     public static class Builder {
         private TraceConfig config = new TraceConfig();
 

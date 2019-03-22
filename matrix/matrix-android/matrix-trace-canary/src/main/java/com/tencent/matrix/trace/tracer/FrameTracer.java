@@ -146,16 +146,17 @@ public class FrameTracer extends Tracer implements UIThreadMonitor.IFrameObserve
             sumFrameCost += (droppedFrames + 1) * frameIntervalCost / Constants.TIME_MILLIS_TO_NANO;
             sumDroppedFrames += droppedFrames;
             sumFrame++;
-            if (droppedFrames >= Constants.DEFAULT_DROPPED_FROZEN) {
+
+            if (droppedFrames >= config.getFrozenThreshold()) {
                 dropLevel[DropStatus.DROPPED_FROZEN.index]++;
                 dropSum[DropStatus.DROPPED_FROZEN.index] += droppedFrames;
-            } else if (droppedFrames >= Constants.DEFAULT_DROPPED_HIGH) {
+            } else if (droppedFrames >= config.getHighThreshold()) {
                 dropLevel[DropStatus.DROPPED_HIGH.index]++;
                 dropSum[DropStatus.DROPPED_HIGH.index] += droppedFrames;
-            } else if (droppedFrames >= Constants.DEFAULT_DROPPED_MIDDLE) {
+            } else if (droppedFrames >= config.getMiddleThreshold()) {
                 dropLevel[DropStatus.DROPPED_MIDDLE.index]++;
                 dropSum[DropStatus.DROPPED_MIDDLE.index] += droppedFrames;
-            } else if (droppedFrames >= Constants.DEFAULT_DROPPED_NORMAL) {
+            } else if (droppedFrames >= config.getNormalThreshold()) {
                 dropLevel[DropStatus.DROPPED_NORMAL.index]++;
                 dropSum[DropStatus.DROPPED_NORMAL.index] += droppedFrames;
             } else {

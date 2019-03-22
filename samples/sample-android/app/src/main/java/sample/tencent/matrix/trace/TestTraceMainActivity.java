@@ -89,19 +89,22 @@ public class TestTraceMainActivity extends Activity {
 
     private void A() {
         B();
-        G();
+        H();
+        I();
+        J();
         SystemClock.sleep(800);
     }
 
     private void B() {
         C();
-        F();
+        G();
         SystemClock.sleep(200);
     }
 
     private void C() {
         D();
         E();
+        F();
         SystemClock.sleep(100);
     }
 
@@ -118,6 +121,18 @@ public class TestTraceMainActivity extends Activity {
     }
 
     private void G() {
+        SystemClock.sleep(20);
+    }
+
+    private void H() {
+        SystemClock.sleep(20);
+    }
+
+    private void I() {
+        SystemClock.sleep(20);
+    }
+
+    private void J() {
         SystemClock.sleep(20);
     }
 

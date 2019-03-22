@@ -158,7 +158,7 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, App
                     @Override
                     public void fallback(List<MethodItem> stack, int size) {
                         MatrixLog.w(TAG, "[fallback] size:%s targetSize:%s stack:%s", size, Constants.TARGET_EVIL_METHOD_STACK, stack);
-                        Iterator iterator = stack.listIterator(Constants.TARGET_EVIL_METHOD_STACK);
+                        Iterator iterator = stack.listIterator(Math.min(size, Constants.TARGET_EVIL_METHOD_STACK));
                         while (iterator.hasNext()) {
                             iterator.next();
                             iterator.remove();
@@ -180,11 +180,11 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, App
             }
 
             // report
-            report(applicationCost, firstScreenCost, reportBuilder, stackKey, stackCost, stack.size(), isWarmStartUp, scene);
+            report(applicationCost, firstScreenCost, reportBuilder, stackKey, stackCost, isWarmStartUp, scene);
         }
 
         private void report(long applicationCost, long firstScreenCost, StringBuilder reportBuilder, String stackKey,
-                            long allCost, int stackSize, boolean isWarmStartUp, int scene) {
+                            long allCost, boolean isWarmStartUp, int scene) {
 
             TracePlugin plugin = Matrix.with().getPluginByClass(TracePlugin.class);
             try {
@@ -206,11 +206,6 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, App
 
             if ((allCost > config.getColdStartupThresholdMs() && !isWarmStartUp)
                     || (allCost > config.getWarmStartupThresholdMs() && isWarmStartUp)) {
-
-                if (stackSize <= 0) {
-                    MatrixLog.w(TAG, "[AnalyseTask#report] stack size is zero! may by AppMethodBeat is not working!");
-                    return;
-                }
 
                 try {
                     JSONObject jsonObject = new JSONObject();
