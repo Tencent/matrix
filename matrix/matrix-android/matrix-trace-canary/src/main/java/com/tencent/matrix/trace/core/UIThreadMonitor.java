@@ -6,6 +6,7 @@ import android.util.Printer;
 import android.view.Choreographer;
 
 import com.tencent.matrix.trace.config.TraceConfig;
+import com.tencent.matrix.trace.listeners.LooperObserver;
 import com.tencent.matrix.trace.util.Utils;
 import com.tencent.matrix.util.MatrixLog;
 
@@ -17,12 +18,6 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
 
     public interface IFrameObserver {
         void doFrame(String focusedActivityName, long start, long end, long frameCostMs, long inputCostNs, long animationCostNs, long traversalCostNs);
-    }
-
-    public interface ILooperObserver extends IFrameObserver {
-        void dispatchBegin(long beginMs, long cpuBeginMs, long token);
-
-        void dispatchEnd(long beginMs, long cpuBeginMs, long endMs, long cpuEndMs, long token, boolean isBelongFrame);
     }
 
     private static final String TAG = "Matrix.UIThreadMonitor";
@@ -236,9 +231,11 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
 
         synchronized (observers) {
             for (IFrameObserver observer : observers) {
-                if (observer instanceof ILooperObserver) {
-                    ILooperObserver looperObserver = (ILooperObserver) observer;
-                    looperObserver.dispatchBegin(dispatchTimeMs[0], dispatchTimeMs[2], token);
+                if (observer instanceof LooperObserver) {
+                    LooperObserver looperObserver = (LooperObserver) observer;
+                    if (!looperObserver.isDispatchBegin()) {
+                        looperObserver.dispatchBegin(dispatchTimeMs[0], dispatchTimeMs[2], token);
+                    }
                 }
             }
         }
@@ -266,7 +263,14 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
         long end = SystemClock.uptimeMillis();
         synchronized (observers) {
             for (IFrameObserver observer : observers) {
-                observer.doFrame(AppMethodBeat.getFocusedActivity(), start, end, end - start, queueCost[CALLBACK_INPUT], queueCost[CALLBACK_ANIMATION], queueCost[CALLBACK_TRAVERSAL]);
+                if (observer instanceof LooperObserver) {
+                    LooperObserver looperObserver = (LooperObserver) observer;
+                    if (looperObserver.isDispatchBegin()) {
+                        observer.doFrame(AppMethodBeat.getFocusedActivity(), start, end, end - start, queueCost[CALLBACK_INPUT], queueCost[CALLBACK_ANIMATION], queueCost[CALLBACK_TRAVERSAL]);
+                    }
+                } else {
+                    observer.doFrame(AppMethodBeat.getFocusedActivity(), start, end, end - start, queueCost[CALLBACK_INPUT], queueCost[CALLBACK_ANIMATION], queueCost[CALLBACK_TRAVERSAL]);
+                }
             }
         }
 
@@ -287,9 +291,11 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
 
         synchronized (observers) {
             for (IFrameObserver observer : observers) {
-                if (observer instanceof ILooperObserver) {
-                    ILooperObserver looperObserver = (ILooperObserver) observer;
-                    looperObserver.dispatchEnd(dispatchTimeMs[0], dispatchTimeMs[2], dispatchTimeMs[1], dispatchTimeMs[3], token, isBelongFrame);
+                if (observer instanceof LooperObserver) {
+                    LooperObserver looperObserver = (LooperObserver) observer;
+                    if (looperObserver.isDispatchBegin()) {
+                        looperObserver.dispatchEnd(dispatchTimeMs[0], dispatchTimeMs[2], dispatchTimeMs[1], dispatchTimeMs[3], token, isBelongFrame);
+                    }
                 }
             }
         }

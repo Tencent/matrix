@@ -22,7 +22,7 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 
-public class EvilMethodTracer extends Tracer implements UIThreadMonitor.ILooperObserver {
+public class EvilMethodTracer extends Tracer {
 
     private static final String TAG = "Matrix.EvilMethodTracer";
     private final TraceConfig config;
@@ -51,6 +51,7 @@ public class EvilMethodTracer extends Tracer implements UIThreadMonitor.ILooperO
 
     @Override
     public void dispatchBegin(long beginMs, long cpuBeginMs, long token) {
+        super.dispatchBegin(beginMs, cpuBeginMs, token);
         indexRecord = AppMethodBeat.getInstance().maskIndex("EvilMethodTracer#dispatchBegin");
     }
 
@@ -65,6 +66,7 @@ public class EvilMethodTracer extends Tracer implements UIThreadMonitor.ILooperO
 
     @Override
     public void dispatchEnd(long beginMs, long cpuBeginMs, long endMs, long cpuEndMs, long token, boolean isBelongFrame) {
+        super.dispatchEnd(beginMs, cpuBeginMs, endMs, cpuEndMs, token, isBelongFrame);
         long start = System.currentTimeMillis();
         try {
             long dispatchCost = endMs - beginMs;

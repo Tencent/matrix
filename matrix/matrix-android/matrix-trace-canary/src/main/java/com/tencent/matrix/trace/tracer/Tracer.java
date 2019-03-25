@@ -1,6 +1,8 @@
 package com.tencent.matrix.trace.tracer;
 
-public abstract class Tracer implements ITracer {
+import com.tencent.matrix.trace.listeners.LooperObserver;
+
+public abstract class Tracer extends LooperObserver implements ITracer {
 
     private volatile boolean isAlive = false;
 
@@ -28,4 +30,7 @@ public abstract class Tracer implements ITracer {
     public boolean isAlive() {
         return isAlive;
     }
+
+
+
 }

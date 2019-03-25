@@ -8,15 +8,18 @@ public class Utils {
     }
 
     public static String getStack(StackTraceElement[] trace) {
-        return getStack(trace, "");
+        return getStack(trace, "", -1);
     }
 
-    public static String getStack(StackTraceElement[] trace, String preFixStr) {
+    public static String getStack(StackTraceElement[] trace, String preFixStr, int limit) {
         if ((trace == null) || (trace.length < 3)) {
             return "";
         }
+        if (limit < 0) {
+            limit = Integer.MAX_VALUE;
+        }
         StringBuilder t = new StringBuilder(" \n");
-        for (int i = 3; i < trace.length - 3; i++) {
+        for (int i = 3; i < trace.length - 3 && i < limit; i++) {
             t.append(preFixStr);
             t.append("at ");
             t.append(trace[i].getClassName());

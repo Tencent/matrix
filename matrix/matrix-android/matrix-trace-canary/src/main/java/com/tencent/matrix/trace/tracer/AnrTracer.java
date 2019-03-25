@@ -26,7 +26,7 @@ import java.util.LinkedList;
 import java.util.List;
 
 
-public class AnrTracer extends Tracer implements UIThreadMonitor.ILooperObserver {
+public class AnrTracer extends Tracer {
 
     private static final String TAG = "Matrix.AnrTracer";
     private Handler anrHandler;
@@ -58,6 +58,7 @@ public class AnrTracer extends Tracer implements UIThreadMonitor.ILooperObserver
 
     @Override
     public void dispatchBegin(long beginMs, long cpuBeginMs, long token) {
+        super.dispatchBegin(beginMs, cpuBeginMs, token);
         anrTask = new AnrHandleTask(AppMethodBeat.getInstance().maskIndex("AnrTracer#dispatchBegin"), token);
         if (traceConfig.isDevEnv()) {
             MatrixLog.v(TAG, "* [dispatchBegin] token:%s index:%s", token, anrTask.beginRecord.index);
@@ -75,6 +76,7 @@ public class AnrTracer extends Tracer implements UIThreadMonitor.ILooperObserver
 
     @Override
     public void dispatchEnd(long beginMs, long cpuBeginMs, long endMs, long cpuEndMs, long token, boolean isBelongFrame) {
+        super.dispatchEnd(beginMs, cpuBeginMs, endMs, cpuEndMs, token, isBelongFrame);
         if (traceConfig.isDevEnv()) {
             MatrixLog.v(TAG, "[dispatchEnd] token:%s cost:%sms cpu:%sms usage:%s",
                     token, endMs - beginMs, cpuEndMs - cpuBeginMs, Utils.calculateCpuUsage(cpuEndMs - cpuBeginMs, endMs - beginMs));
@@ -111,7 +113,7 @@ public class AnrTracer extends Tracer implements UIThreadMonitor.ILooperObserver
 
             // Thread state
             Thread.State status = Looper.getMainLooper().getThread().getState();
-            String dumpStack = Utils.getStack(Looper.getMainLooper().getThread().getStackTrace(), "|*        ");
+            String dumpStack = Utils.getStack(Looper.getMainLooper().getThread().getStackTrace(), "|*        ", 12);
 
             // frame
             UIThreadMonitor monitor = UIThreadMonitor.getMonitor();
