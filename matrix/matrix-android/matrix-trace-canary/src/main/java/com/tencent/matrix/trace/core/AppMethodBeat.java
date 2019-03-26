@@ -5,7 +5,6 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.SystemClock;
-import android.util.Printer;
 
 import com.tencent.matrix.trace.constants.Constants;
 import com.tencent.matrix.trace.hacker.ActivityThreadHacker;
@@ -137,29 +136,20 @@ public class AppMethodBeat implements BeatLifecycle {
         }, Constants.DEFAULT_RELEASE_BUFFER_DELAY);
 
         ActivityThreadHacker.hackSysHandlerCallback();
-        final Printer originPrinter = reflectObject(Looper.getMainLooper(), "mLogging");
-        Looper.getMainLooper().setMessageLogging(new Printer() {
-            boolean hasDispatchBegin = false;
-            boolean isHandleMessageEnd = true;
+        LooperMonitor.register(new LooperMonitor.LooperDispatchListener() {
+            @Override
+            public boolean isValid() {
+                return status >= 0;
+            }
 
             @Override
-            public void println(String x) {
-                if (null != originPrinter) {
-                    originPrinter.println(x);
-                }
-                isHandleMessageEnd = !isHandleMessageEnd;
+            public void dispatchStart() {
+                AppMethodBeat.dispatchBegin();
+            }
 
-                if (status < 0 && !hasDispatchBegin) {
-                    return;
-                }
-
-                if (!isHandleMessageEnd) {
-                    hasDispatchBegin = true;
-                    dispatchBegin();
-                } else {
-                    hasDispatchBegin = false;
-                    dispatchEnd();
-                }
+            @Override
+            public void dispatchEnd() {
+                AppMethodBeat.dispatchEnd();
             }
         });
     }
@@ -428,6 +418,7 @@ public class AppMethodBeat implements BeatLifecycle {
         }
         MatrixLog.i(TAG, "[printIndexRecord] %s", ss.toString());
     }
+
 
     private static <T> T reflectObject(Object instance, String name) {
         try {

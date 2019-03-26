@@ -1,14 +1,21 @@
 package com.tencent.matrix.trace.tracer;
 
 import com.tencent.matrix.trace.listeners.LooperObserver;
+import com.tencent.matrix.util.MatrixLog;
 
 public abstract class Tracer extends LooperObserver implements ITracer {
 
     private volatile boolean isAlive = false;
+    private static final String TAG = "Matrix.Tracer";
 
-    protected abstract void onAlive();
+    protected void onAlive() {
+        MatrixLog.i(TAG, "onAlive");
 
-    protected abstract void onDead();
+    }
+
+    protected void onDead() {
+        MatrixLog.i(TAG, "onDead");
+    }
 
     @Override
     final synchronized public void onStartTrace() {
@@ -30,7 +37,6 @@ public abstract class Tracer extends LooperObserver implements ITracer {
     public boolean isAlive() {
         return isAlive;
     }
-
 
 
 }

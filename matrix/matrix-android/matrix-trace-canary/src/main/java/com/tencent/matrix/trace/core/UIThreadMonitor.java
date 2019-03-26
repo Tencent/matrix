@@ -2,7 +2,6 @@ package com.tencent.matrix.trace.core;
 
 import android.os.Looper;
 import android.os.SystemClock;
-import android.util.Printer;
 import android.view.Choreographer;
 
 import com.tencent.matrix.trace.config.TraceConfig;
@@ -97,29 +96,23 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
         addAnimationQueue = reflectChoreographerMethod(callbackQueues[CALLBACK_ANIMATION], ADD_CALLBACK, long.class, Object.class, Object.class);
         addTraversalQueue = reflectChoreographerMethod(callbackQueues[CALLBACK_TRAVERSAL], ADD_CALLBACK, long.class, Object.class, Object.class);
         frameIntervalNanos = reflectObject(choreographer, "mFrameIntervalNanos");
-        final Printer originPrinter = reflectObject(Looper.getMainLooper(), "mLogging");
-        Looper.getMainLooper().setMessageLogging(new Printer() {
-            boolean hasDispatchBegin = false;
+
+        LooperMonitor.register(new LooperMonitor.LooperDispatchListener() {
+            @Override
+            public boolean isValid() {
+                return isAlive;
+            }
 
             @Override
-            public void println(String x) {
-                if (null != originPrinter) {
-                    originPrinter.println(x);
-                }
-                UIThreadMonitor.this.isHandleMessageEnd = !isHandleMessageEnd;
-
-                if (!isAlive && !hasDispatchBegin) {
-                    return;
-                }
-
-                if (!isHandleMessageEnd) {
-                    hasDispatchBegin = true;
-                    dispatchBegin();
-                } else {
-                    hasDispatchBegin = false;
-                    dispatchEnd();
-                }
+            public void dispatchStart() {
+                UIThreadMonitor.this.dispatchBegin();
             }
+
+            @Override
+            public void dispatchEnd() {
+                UIThreadMonitor.this.dispatchEnd();
+            }
+
         });
 
         if (config.isDevEnv()) {
