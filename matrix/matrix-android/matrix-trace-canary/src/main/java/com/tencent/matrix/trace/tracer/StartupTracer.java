@@ -49,6 +49,7 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, App
     private long firstScreenCost = 0;
     private long coldCost = 0;
     private int activeActivityCount;
+    private boolean hasShowSplashActivity;
 
 
     public StartupTracer(TraceConfig config) {
@@ -80,13 +81,17 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, App
             if (firstScreenCost == 0) {
                 this.firstScreenCost = SystemClock.uptimeMillis() - ActivityThreadHacker.getEggBrokenTime();
             }
-            if (config.getCareActivities().contains(activity)) {
+            if (hasShowSplashActivity) {
                 allCost = coldCost = SystemClock.uptimeMillis() - ActivityThreadHacker.getEggBrokenTime();
-            } else if (config.getCareActivities().isEmpty()) {
-                MatrixLog.i(TAG, "default care activity[%s]", activity);
-                allCost = coldCost = firstScreenCost;
             } else {
-                MatrixLog.w(TAG, "pass this activity[%s] in duration of startup!", activity);
+                if (config.getSplashActivities().contains(activity)) {
+                    hasShowSplashActivity = true;
+                } else if (config.getSplashActivities().isEmpty()) {
+                    MatrixLog.i(TAG, "default care activity[%s]", activity);
+                    allCost = coldCost = firstScreenCost;
+                } else {
+                    MatrixLog.w(TAG, "pass this activity[%s] in duration of startup!", activity);
+                }
             }
         } else if (isWarmStartUp = isWarmStartUp()) {
             allCost = SystemClock.uptimeMillis() - ActivityThreadHacker.getLastLaunchActivityTime();

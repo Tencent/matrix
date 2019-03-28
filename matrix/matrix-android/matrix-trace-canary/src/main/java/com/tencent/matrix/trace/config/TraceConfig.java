@@ -41,8 +41,8 @@ public class TraceConfig implements IDefaultConfig {
     public boolean defaultAnrEnable;
     public boolean isDebug;
     public boolean isDevEnv;
-    public String careActivities;
-    public Set<String> careActivitiesSet;
+    public String splashActivities;
+    public Set<String> splashActivitiesSet;
 
 
     private TraceConfig() {
@@ -59,7 +59,7 @@ public class TraceConfig implements IDefaultConfig {
         ss.append("* defaultMethodTraceEnable:\t").append(defaultMethodTraceEnable).append("\n");
         ss.append("* defaultStartupEnable:\t").append(defaultStartupEnable).append("\n");
         ss.append("* defaultAnrEnable:\t").append(defaultAnrEnable).append("\n");
-        ss.append("* careActivities:\t").append(careActivities).append("\n");
+        ss.append("* splashActivities:\t").append(splashActivities).append("\n");
         return ss.toString();
     }
 
@@ -102,13 +102,13 @@ public class TraceConfig implements IDefaultConfig {
     }
 
 
-    public Set<String> getCareActivities() {
-        if (null == careActivitiesSet) {
-            careActivitiesSet = (null == dynamicConfig
-                    ? new HashSet<>(Arrays.asList(careActivities))
-                    : new HashSet<>(Arrays.asList(dynamicConfig.get(IDynamicConfig.ExptEnum.clicfg_matrix_trace_care_scene_set.name(), careActivities).split(";"))));
+    public Set<String> getSplashActivities() {
+        if (null == splashActivitiesSet) {
+            splashActivitiesSet = (null == dynamicConfig
+                    ? new HashSet<>(Arrays.asList(splashActivities))
+                    : new HashSet<>(Arrays.asList(dynamicConfig.get(IDynamicConfig.ExptEnum.clicfg_matrix_trace_care_scene_set.name(), splashActivities).split(";"))));
         }
-        return careActivitiesSet;
+        return splashActivitiesSet;
     }
 
 
@@ -201,8 +201,8 @@ public class TraceConfig implements IDefaultConfig {
             return this;
         }
 
-        public Builder careActivities(String activities) {
-            config.careActivities = activities;
+        public Builder splashActivities(String activities) {
+            config.splashActivities = activities;
             return this;
         }
 

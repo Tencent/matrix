@@ -77,7 +77,7 @@ public class MatrixApplication extends Application {
                 .enableEvilMethodTrace(traceEnable)
                 .enableAnrTrace(traceEnable)
                 .enableStartup(traceEnable)
-                .careActivities("sample.tencent.matrix.MainActivity;")
+                .splashActivities("sample.tencent.matrix.SplashActivity;")
                 .isDebug(true)
                 .isDevEnv(true)
                 .build();

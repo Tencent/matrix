@@ -21,12 +21,15 @@ public class AppMethodBeat implements BeatLifecycle {
 
     private static final String TAG = "Matrix.AppMethodBeat";
     private static AppMethodBeat sInstance = new AppMethodBeat();
-    private static final int STATUS_STARTED = 1;
-    private static final int STATUS_READY = 0;
-    private static final int STATUS_STOPPED = -1;
-    private static final int STATUS_OUT_TIME_START = -2;
     private static final int STATUS_DEFAULT = Integer.MAX_VALUE;
+    private static final int STATUS_STARTED = 2;
+    private static final int STATUS_READY = 1;
+    private static final int STATUS_STOPPED = -1;
+    private static final int STATUS_EXPIRED_START = -2;
+    private static final int STATUS_OUT_RELEASE = -3;
+
     private static volatile int status = STATUS_DEFAULT;
+    private static Object statusLock = new Object();
 
     private static long[] sBuffer = new long[Constants.BUFFER_SIZE];
     private static int sIndex = 0;
@@ -44,8 +47,7 @@ public class AppMethodBeat implements BeatLifecycle {
     private static HashSet<IAppMethodBeatListener> listeners = new HashSet<>();
     private static Object updateTimeLock = new Object();
     private static boolean isPauseUpdateTime = false;
-    private static volatile boolean isOutTimeToStart = false;
-    private static Runnable checkOutTimeRunnable = null;
+    private static Runnable checkStartExpiredRunnable = null;
 
     static {
         sHandler.postDelayed(new Runnable() {
@@ -85,21 +87,29 @@ public class AppMethodBeat implements BeatLifecycle {
 
     @Override
     public void onStart() {
-        if (status <= STATUS_READY) {
-            sHandler.removeCallbacks(checkOutTimeRunnable);
-            if (sBuffer == null) {
-                throw new RuntimeException(TAG + " sBuffer == null");
+        synchronized (statusLock) {
+            if (status < STATUS_STARTED && status >= STATUS_EXPIRED_START) {
+                sHandler.removeCallbacks(checkStartExpiredRunnable);
+                if (sBuffer == null) {
+                    throw new RuntimeException(TAG + " sBuffer == null");
+                }
+                MatrixLog.i(TAG, "[onStart] preStatus:%s", status, Utils.getStack());
+                this.status = STATUS_STARTED;
+            } else {
+                MatrixLog.w(TAG, "[onStart] current status:%s", status);
             }
-            this.status = STATUS_STARTED;
-            MatrixLog.i(TAG, "[onStart] %s", Utils.getStack());
         }
     }
 
     @Override
     public void onStop() {
-        if (status > STATUS_READY) {
-            MatrixLog.i(TAG, "[onStop] %s", Utils.getStack());
-            this.status = STATUS_STOPPED;
+        synchronized (statusLock) {
+            if (status == STATUS_STARTED) {
+                MatrixLog.i(TAG, "[onStop] %s", Utils.getStack());
+                this.status = STATUS_STOPPED;
+            } else {
+                MatrixLog.w(TAG, "[onStop] current status:%s", status);
+            }
         }
     }
 
@@ -113,11 +123,14 @@ public class AppMethodBeat implements BeatLifecycle {
     }
 
     private static void realRelease() {
-        if (status != STATUS_READY) {
-            MatrixLog.i(TAG, "[realRelease] timestamp:%s", System.currentTimeMillis());
-            sHandler.removeCallbacksAndMessages(null);
-            sTimerUpdateThread.quit();
-            sBuffer = null;
+        synchronized (statusLock) {
+            if (status == STATUS_DEFAULT) {
+                MatrixLog.i(TAG, "[realRelease] timestamp:%s", System.currentTimeMillis());
+                sHandler.removeCallbacksAndMessages(null);
+                sTimerUpdateThread.quit();
+                sBuffer = null;
+                status = STATUS_OUT_RELEASE;
+            }
         }
     }
 
@@ -128,10 +141,14 @@ public class AppMethodBeat implements BeatLifecycle {
 
         sHandler.removeCallbacksAndMessages(null);
         sHandler.postDelayed(sUpdateDiffTimeRunnable, Constants.TIME_UPDATE_CYCLE_MS);
-        sHandler.postDelayed(checkOutTimeRunnable = new Runnable() {
+        sHandler.postDelayed(checkStartExpiredRunnable = new Runnable() {
             @Override
             public void run() {
-                status = STATUS_OUT_TIME_START;
+                synchronized (statusLock) {
+                    if (status == STATUS_DEFAULT || status == STATUS_READY) {
+                        status = STATUS_EXPIRED_START;
+                    }
+                }
             }
         }, Constants.DEFAULT_RELEASE_BUFFER_DELAY);
 
@@ -139,7 +156,7 @@ public class AppMethodBeat implements BeatLifecycle {
         LooperMonitor.register(new LooperMonitor.LooperDispatchListener() {
             @Override
             public boolean isValid() {
-                return status >= 0;
+                return status >= STATUS_READY;
             }
 
             @Override
@@ -173,16 +190,18 @@ public class AppMethodBeat implements BeatLifecycle {
      */
     public static void i(int methodId) {
 
-        if (status < 0) {
+        if (status <= STATUS_STOPPED) {
             return;
         }
-
         if (methodId >= METHOD_ID_MAX) {
             return;
         }
-        if (status == STATUS_DEFAULT) {
-            realExecute();
-            status = STATUS_READY;
+
+        synchronized (statusLock) {
+            if (status == STATUS_DEFAULT) {
+                realExecute();
+                status = STATUS_READY;
+            }
         }
 
         if (Thread.currentThread() == sMainThread) {
@@ -207,10 +226,10 @@ public class AppMethodBeat implements BeatLifecycle {
      * @param methodId
      */
     public static void o(int methodId) {
-        if (status < 0) {
+
+        if (status <= STATUS_STOPPED) {
             return;
         }
-
         if (methodId >= METHOD_ID_MAX) {
             return;
         }

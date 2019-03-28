@@ -49,7 +49,6 @@ public class LooperMonitor implements MessageQueue.IdleHandler {
     private static void resetPrinter() {
         final Printer originPrinter = reflectObject(Looper.getMainLooper(), "mLogging");
         if (originPrinter == printer && null != printer) {
-            MatrixLog.v(TAG, "[resetPrinter] self printer is right!");
             return;
         }
         if (null != printer) {

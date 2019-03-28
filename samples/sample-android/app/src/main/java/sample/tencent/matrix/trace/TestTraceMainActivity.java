@@ -22,6 +22,7 @@ import android.os.Bundle;
 import android.os.Debug;
 import android.os.SystemClock;
 import android.support.annotation.Nullable;
+import android.util.Log;
 import android.view.View;
 import android.view.ViewTreeObserver;
 import android.widget.Toast;
@@ -53,6 +54,19 @@ public class TestTraceMainActivity extends Activity {
             MatrixLog.i(TAG, "plugin-trace start");
             plugin.start();
         }
+
+        long start = System.nanoTime();
+        int count = 0;
+        synchronized (TAG) {
+            for (int i = 0; i < 1000000; i++) {
+                count += 1;
+
+                String s = "1232131";
+                String s1 = "1232131" + s;
+
+            }
+        }
+        Log.i(TAG, "---->" + (System.nanoTime() - start));
     }
 
     @Override
@@ -82,7 +96,7 @@ public class TestTraceMainActivity extends Activity {
 
 
     public void testANR(final View view) {
-        for (long i = 0; i < 5000l; i++) {
+        for (long i = 0; i < 1l; i++) {
             testInnerSleep();
         }
     }
@@ -133,7 +147,7 @@ public class TestTraceMainActivity extends Activity {
     }
 
     private void J() {
-        SystemClock.sleep(20);
+        SystemClock.sleep(2);
     }
 
     private boolean isStop = false;
@@ -151,7 +165,7 @@ public class TestTraceMainActivity extends Activity {
     }
 
     public void testInnerSleep() {
-        SystemClock.sleep(1);
+        SystemClock.sleep(6000);
     }
 
     private void tryHeavyMethod() {
