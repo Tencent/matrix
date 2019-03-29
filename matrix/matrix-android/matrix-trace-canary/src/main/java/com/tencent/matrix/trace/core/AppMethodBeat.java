@@ -197,10 +197,12 @@ public class AppMethodBeat implements BeatLifecycle {
             return;
         }
 
-        synchronized (statusLock) {
-            if (status == STATUS_DEFAULT) {
-                realExecute();
-                status = STATUS_READY;
+        if (status == STATUS_DEFAULT) {
+            synchronized (statusLock) {
+                if (status == STATUS_DEFAULT) {
+                    realExecute();
+                    status = STATUS_READY;
+                }
             }
         }
 
