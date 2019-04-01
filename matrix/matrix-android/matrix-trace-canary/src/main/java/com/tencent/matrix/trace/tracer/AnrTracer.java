@@ -166,6 +166,7 @@ public class AnrTracer extends Tracer {
                 jsonObject = DeviceUtil.getDeviceInfo(jsonObject, Matrix.with().getApplication());
                 jsonObject.put(SharePluginInfo.ISSUE_STACK_TYPE, Constants.Type.ANR);
                 jsonObject.put(SharePluginInfo.ISSUE_COST, stackCost);
+                jsonObject.put(SharePluginInfo.ISSUE_STACK_KEY, stackKey);
                 jsonObject.put(SharePluginInfo.ISSUE_STACK, reportBuilder.toString());
                 // memory info
                 JSONObject memJsonObject = new JSONObject();
