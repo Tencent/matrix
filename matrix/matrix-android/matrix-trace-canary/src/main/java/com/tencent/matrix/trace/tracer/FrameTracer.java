@@ -45,7 +45,7 @@ public class FrameTracer extends Tracer implements UIThreadMonitor.IFrameObserve
 
     public void removeListener(IDoFrameListener listener) {
         synchronized (listeners) {
-            listeners.add(listener);
+            listeners.remove(listener);
         }
     }
 

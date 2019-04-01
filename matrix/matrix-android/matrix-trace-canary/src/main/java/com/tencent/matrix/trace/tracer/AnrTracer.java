@@ -111,6 +111,9 @@ public class AnrTracer extends Tracer {
             // memory
             long[] memoryInfo = dumpMemory();
 
+            // sql
+
+
             // Thread state
             Thread.State status = Looper.getMainLooper().getThread().getState();
             String dumpStack = Utils.getStack(Looper.getMainLooper().getThread().getStackTrace(), "|*        ", 12);
