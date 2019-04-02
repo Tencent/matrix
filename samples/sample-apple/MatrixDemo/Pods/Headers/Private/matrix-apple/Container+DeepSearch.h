@@ -1,1 +1,0 @@
-../../../matrix-apple/matrix/matrix-apple/Matrix/WCCrashBlockMonitor/KSCrash/Reporting/Filters/Tools/Container+DeepSearch.h

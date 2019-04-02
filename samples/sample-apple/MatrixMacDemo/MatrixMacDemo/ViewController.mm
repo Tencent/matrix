@@ -15,7 +15,7 @@
  */
 
 #import "ViewController.h"
-#import <matrix-apple/MatrixTester.h>
+#import <matrix-wechat/MatrixTester.h>
 #import "MacMatrixManager.h"
 
 @interface TestContact : NSObject

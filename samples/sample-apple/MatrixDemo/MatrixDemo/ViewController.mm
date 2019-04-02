@@ -18,8 +18,8 @@
 #import "MatrixHandler.h"
 #import "SlowTestViewController.h"
 #import <exception>
-#import <matrix-apple/WCCrashReportInterpreter.h>
-#import <matrix-apple/MatrixTester.h>
+#import <matrix-wechat/WCCrashReportInterpreter.h>
+#import <matrix-wechat/MatrixTester.h>
 #import "TestCrashViewController.h"
 #import "TestLagViewController.h"
 #import "TestOOMViewController.h"

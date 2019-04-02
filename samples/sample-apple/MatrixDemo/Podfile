@@ -2,5 +2,5 @@ platform :ios, '9.0'
 
 target 'MatrixDemo' do
 	# use_frameworks!
-	pod 'matrix-apple'
+	pod 'matrix-wechat'
 end

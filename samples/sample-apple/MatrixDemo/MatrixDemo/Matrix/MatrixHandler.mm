@@ -15,7 +15,7 @@
  */
 
 #import "MatrixHandler.h"
-#import <matrix-apple/WCCrashBlockFileHandler.h>
+#import <matrix-wechat/WCCrashBlockFileHandler.h>
 #import <UIKit/UIKit.h>
 #import "AppDelegate.h"
 #import "TextViewController.h"

@@ -15,7 +15,7 @@
  */
 
 #import "TestLagViewController.h"
-#import <matrix-apple/MatrixTester.h>
+#import <matrix-wechat/MatrixTester.h>
 #import "Utility.h"
 #import "MatrixHandler.h"
 

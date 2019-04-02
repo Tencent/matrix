@@ -1,6 +1,0 @@
-framework module Matrix {
-  umbrella header "matrix-apple-umbrella.h"
-
-  export *
-  module * { export * }
-}

@@ -1,7 +1,7 @@
 # Acknowledgements
 This application makes use of the following third party libraries:
 
-## matrix-apple
+## matrix-wechat
 
 Tencent is pleased to support the open source community by making wechat-matrix available.
 

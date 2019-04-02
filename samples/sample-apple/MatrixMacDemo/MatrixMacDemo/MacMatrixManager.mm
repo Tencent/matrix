@@ -15,8 +15,8 @@
  */
 
 #import "MacMatrixManager.h"
-#import <matrix-apple/Matrix.h>
-#import <matrix-apple/WCCrashBlockFileHandler.h>
+#import <matrix-wechat/Matrix.h>
+#import <matrix-wechat/WCCrashBlockFileHandler.h>
 #import "IssueDetailViewController.h"
 
 @interface MacMatrixManager () <MatrixAdapterDelegate, MatrixPluginListenerDelegate>
