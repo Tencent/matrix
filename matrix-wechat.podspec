@@ -2,7 +2,7 @@
 #pod lib lint --verbose --skip-import-validation --allow-warnings matrix.podspec
 
 Pod::Spec.new do |matrix|
-  matrix.name             = 'matrix-apple'
+  matrix.name             = 'matrix-wechat'
   matrix.version          = '0.5.1'
   matrix.summary          = 'Matrix for iOS/macOS is a performance probe tool developed and used by WeChat.'
   matrix.description      = <<-DESC
@@ -58,13 +58,13 @@ Pod::Spec.new do |matrix|
       "matrix/matrix-apple/Matrix/WCCrashBlockMonitor/CrashBlockPlugin/Main/BlockMonitor/WCBlockTypeDef.h","matrix/matrix-apple/Matrix/WCCrashBlockMonitor/CrashBlockPlugin/Main/BlockMonitor/WCBlockMonitorConfiguration.h",
       "matrix/matrix-apple/Matrix/WCCrashBlockMonitor/KSCrash/Recording/KSCrashReportWriter.h", "matrix/matrix-apple/Matrix/WCCrashBlockMonitor/KSCrash/Recording/Tools/KSMachineContext.h",
       "matrix/matrix-apple/Matrix/WCCrashBlockMonitor/KSCrash/Recording/Tools/KSThread.h","matrix/matrix-apple/Matrix/WCCrashBlockMonitor/KSCrash/Recording/Tools/KSStackCursor.h"]
-    arc.dependency  'matrix-apple/matrixNonARC1'
+    arc.dependency  'matrix-wechat/matrixNonARC1'
   end
 
   matrix.subspec 'matrixNonARC2' do |non_arc2|
     non_arc2.requires_arc = false
     non_arc2.source_files = non_arc_files_2
-    non_arc2.dependency 'matrix-apple/matrixARC'
+    non_arc2.dependency 'matrix-wechat/matrixARC'
   end
 
 end
