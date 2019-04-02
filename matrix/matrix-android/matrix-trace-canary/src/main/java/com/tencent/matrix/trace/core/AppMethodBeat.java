@@ -66,9 +66,8 @@ public class AppMethodBeat implements BeatLifecycle {
         public void run() {
             try {
                 while (true) {
-                    while (!isPauseUpdateTime) {
-                        long currentTime = SystemClock.uptimeMillis();
-                        sCurrentDiffTime = currentTime - sLastDiffTime;
+                    while (!isPauseUpdateTime && status > STATUS_STOPPED) {
+                        sCurrentDiffTime = SystemClock.uptimeMillis() - sLastDiffTime;
                         SystemClock.sleep(Constants.TIME_UPDATE_CYCLE_MS);
                     }
                     synchronized (updateTimeLock) {
@@ -117,6 +116,7 @@ public class AppMethodBeat implements BeatLifecycle {
     public boolean isAlive() {
         return status >= STATUS_STARTED;
     }
+
 
     public static boolean isRealTrace() {
         return status >= STATUS_READY;
@@ -174,6 +174,7 @@ public class AppMethodBeat implements BeatLifecycle {
     private static void dispatchBegin() {
         sCurrentDiffTime = SystemClock.uptimeMillis() - sLastDiffTime;
         isPauseUpdateTime = false;
+
         synchronized (updateTimeLock) {
             updateTimeLock.notifyAll();
         }

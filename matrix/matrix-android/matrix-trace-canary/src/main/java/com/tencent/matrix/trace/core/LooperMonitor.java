@@ -67,10 +67,10 @@ public class LooperMonitor implements MessageQueue.IdleHandler {
 
                 if (!isHandleMessageEnd) {
                     hasDispatchBegin = true;
-                    dispatch(true);
+                    dispatch(true, false);
                 } else {
+                    dispatch(false, hasDispatchBegin);
                     hasDispatchBegin = false;
-                    dispatch(false);
                 }
             }
         });
@@ -83,9 +83,9 @@ public class LooperMonitor implements MessageQueue.IdleHandler {
     }
 
 
-    private static void dispatch(boolean isBegin) {
+    private static void dispatch(boolean isBegin, boolean isHard) {
         for (LooperDispatchListener listener : listeners) {
-            if (listener.isValid()) {
+            if (isHard || listener.isValid()) {
                 if (isBegin) {
                     listener.dispatchStart();
                 } else {

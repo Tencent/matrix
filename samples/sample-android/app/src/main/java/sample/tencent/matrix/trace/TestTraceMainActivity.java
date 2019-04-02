@@ -31,6 +31,7 @@ import com.tencent.matrix.Matrix;
 import com.tencent.matrix.plugin.Plugin;
 import com.tencent.matrix.trace.TracePlugin;
 import com.tencent.matrix.trace.core.AppMethodBeat;
+import com.tencent.matrix.trace.view.FrameDecorator;
 import com.tencent.matrix.util.MatrixLog;
 
 import java.util.Iterator;
@@ -42,6 +43,7 @@ import sample.tencent.matrix.issue.IssueFilter;
 
 public class TestTraceMainActivity extends Activity {
     private static String TAG = "Matrix.TestTraceMainActivity";
+    FrameDecorator decorator;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -54,19 +56,8 @@ public class TestTraceMainActivity extends Activity {
             MatrixLog.i(TAG, "plugin-trace start");
             plugin.start();
         }
-
-        long start = System.nanoTime();
-        int count = 0;
-        synchronized (TAG) {
-            for (int i = 0; i < 1000000; i++) {
-                count += 1;
-
-                String s = "1232131";
-                String s1 = "1232131" + s;
-
-            }
-        }
-        Log.i(TAG, "---->" + (System.nanoTime() - start));
+        decorator = FrameDecorator.create(this);
+        decorator.show();
     }
 
     @Override
@@ -77,6 +68,7 @@ public class TestTraceMainActivity extends Activity {
             MatrixLog.i(TAG, "plugin-trace stop");
             plugin.stop();
         }
+        decorator.dismiss();
     }
 
     public void testEnter(View view) {

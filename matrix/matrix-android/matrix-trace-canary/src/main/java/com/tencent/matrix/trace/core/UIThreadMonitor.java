@@ -131,9 +131,6 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
 
         if (callbackExist[type]) {
             MatrixLog.w(TAG, "[addFrameCallback] this type %s callback has exist!", type);
-            if (config.isDevEnv) {
-                throw new RuntimeException(String.format("repeatedly added callback type[%s] ", type));
-            }
             return;
         }
 
@@ -368,4 +365,5 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
     public boolean isAlive() {
         return isAlive;
     }
+
 }
