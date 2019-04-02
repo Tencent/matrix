@@ -3,14 +3,15 @@
 [![license](http://img.shields.io/badge/license-BSD3-brightgreen.svg?style=flat)](https://github.com/Tencent/matrix/blob/master/LICENSE)[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/Tencent/matrix/pulls)[![WeChat Approved](https://img.shields.io/badge/Wechat%20Approved-0.4.7-red.svg)](https://github.com/Tencent/matrix/wiki)
 
 (中文版本请参看[这里](#matrix_cn))  
-[Matrix for iOS/macOS 中文版](#matrix_ios_cn)
-[Matrix for android 中文版](#matrix_android_cn)
-[Matrix for iOS/macOS](#matrix_ios_en)
-[Matrix for android ](#matrix_android_en)
+
+[Matrix for iOS/macOS 中文版](#matrix_ios_cn)  
+[Matrix for android 中文版](#matrix_android_cn)   
+[Matrix for iOS/macOS](#matrix_ios_en)   
+[Matrix for android ](#matrix_android_en)   
 
 **Matrix** is an APM (Application Performance Manage) used in Wechat to monitor, locate and analyse performance problems. It is a **plugin style**, **non-invasive** solution and is currently available on iOS, macOS and Android.
 
-# <a name='matrix-ios-en'> Matrix for iOS/macOS </a>
+# <a name='matrix_ios_en'> Matrix for iOS/macOS </a>
 
 The monitoring scope of the current tool includes: crash, lag, and out-of-memory, which includes the following two plugins:
 
