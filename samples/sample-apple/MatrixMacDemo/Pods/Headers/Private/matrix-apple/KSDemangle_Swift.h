@@ -1,0 +1,1 @@
+../../../matrix-apple/matrix/matrix-apple/Matrix/WCCrashBlockMonitor/KSCrash/Recording/Tools/KSDemangle_Swift.h

@@ -1,0 +1,24 @@
+PODS:
+  - matrix-apple (0.5.0.2):
+    - matrix-apple/matrixARC (= 0.5.0.2)
+    - matrix-apple/matrixNonARC1 (= 0.5.0.2)
+    - matrix-apple/matrixNonARC2 (= 0.5.0.2)
+  - matrix-apple/matrixARC (0.5.0.2):
+    - matrix-apple/matrixNonARC1
+  - matrix-apple/matrixNonARC1 (0.5.0.2)
+  - matrix-apple/matrixNonARC2 (0.5.0.2):
+    - matrix-apple/matrixARC
+
+DEPENDENCIES:
+  - matrix-apple
+
+SPEC REPOS:
+  https://github.com/cocoapods/specs.git:
+    - matrix-apple
+
+SPEC CHECKSUMS:
+  matrix-apple: 77232ab41f3ecab8b41b785dec77ff6d86403090
+
+PODFILE CHECKSUM: 5ae15b79ff6a4159c513bbc6a19c919b8267b347
+
+COCOAPODS: 1.6.1

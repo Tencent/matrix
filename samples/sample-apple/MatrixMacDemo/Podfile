@@ -1,0 +1,5 @@
+platform :osx, '10.10'
+
+target 'MatrixMacDemo' do
+	pod 'matrix-apple'
+end

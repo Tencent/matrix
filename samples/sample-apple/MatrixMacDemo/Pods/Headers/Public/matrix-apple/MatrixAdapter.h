@@ -1,0 +1,1 @@
+../../../matrix-apple/matrix/matrix-apple/Matrix/Matrix/Log/MatrixAdapter.h

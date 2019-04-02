@@ -1,0 +1,1 @@
+../../../matrix-apple/matrix/matrix-apple/Matrix/WCMemoryStat/MemoryLogger/ObjectEvent/nsobject_hook.h
