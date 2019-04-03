@@ -28,14 +28,19 @@ public class EvilMethodTracer extends Tracer {
     private final TraceConfig config;
     private AppMethodBeat.IndexRecord indexRecord;
     private long[] queueTypeCosts = new long[3];
+    private long evilThresholdMs;
+    private boolean isEvilMethodTraceEnable;
 
     public EvilMethodTracer(TraceConfig config) {
         this.config = config;
+        this.evilThresholdMs = config.getEvilThresholdMs();
+        this.isEvilMethodTraceEnable = config.isEvilMethodTraceEnable();
     }
 
     @Override
     public void onAlive() {
-        if (config.isEvilMethodTraceEnable()) {
+        super.onAlive();
+        if (isEvilMethodTraceEnable) {
             UIThreadMonitor.getMonitor().addObserver(this);
         }
 
@@ -43,7 +48,8 @@ public class EvilMethodTracer extends Tracer {
 
     @Override
     public void onDead() {
-        if (config.isEvilMethodTraceEnable()) {
+        super.onDead();
+        if (isEvilMethodTraceEnable) {
             UIThreadMonitor.getMonitor().removeObserver(this);
         }
     }
@@ -67,10 +73,10 @@ public class EvilMethodTracer extends Tracer {
     @Override
     public void dispatchEnd(long beginMs, long cpuBeginMs, long endMs, long cpuEndMs, long token, boolean isBelongFrame) {
         super.dispatchEnd(beginMs, cpuBeginMs, endMs, cpuEndMs, token, isBelongFrame);
-        long start = System.currentTimeMillis();
+        long start = config.isDevEnv() ? System.currentTimeMillis() : 0;
         try {
             long dispatchCost = endMs - beginMs;
-            if (dispatchCost >= config.getEvilThresholdMs()) {
+            if (dispatchCost >= evilThresholdMs) {
                 long[] data = AppMethodBeat.getInstance().copyData(indexRecord);
                 long[] queueCosts = new long[3];
                 System.arraycopy(queueTypeCosts, 0, queueCosts, 0, 3);

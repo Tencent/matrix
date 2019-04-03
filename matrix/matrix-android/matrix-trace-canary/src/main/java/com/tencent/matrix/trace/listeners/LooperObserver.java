@@ -2,9 +2,7 @@ package com.tencent.matrix.trace.listeners;
 
 import android.support.annotation.CallSuper;
 
-import com.tencent.matrix.trace.core.UIThreadMonitor;
-
-public abstract class LooperObserver implements UIThreadMonitor.IFrameObserver {
+public abstract class LooperObserver  {
 
     private boolean isDispatchBegin = false;
 
@@ -13,7 +11,6 @@ public abstract class LooperObserver implements UIThreadMonitor.IFrameObserver {
         isDispatchBegin = true;
     }
 
-    @Override
     public void doFrame(String focusedActivityName, long start, long end, long frameCostMs, long inputCostNs, long animationCostNs, long traversalCostNs) {
 
     }

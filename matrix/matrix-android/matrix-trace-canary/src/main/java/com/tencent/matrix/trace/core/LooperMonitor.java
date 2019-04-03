@@ -3,6 +3,7 @@ package com.tencent.matrix.trace.core;
 import android.os.Build;
 import android.os.Looper;
 import android.os.MessageQueue;
+import android.support.annotation.CallSuper;
 import android.util.Printer;
 
 import com.tencent.matrix.util.MatrixLog;
@@ -17,13 +18,23 @@ public class LooperMonitor implements MessageQueue.IdleHandler {
     private static Printer printer;
 
 
-    public interface LooperDispatchListener {
+    public abstract static class LooperDispatchListener {
 
-        boolean isValid();
+        boolean isHasDispatchStart = false;
 
-        void dispatchStart();
+        boolean isValid() {
+            return false;
+        }
 
-        void dispatchEnd();
+        @CallSuper
+        void dispatchStart() {
+            this.isHasDispatchStart = true;
+        }
+
+        @CallSuper
+        void dispatchEnd() {
+            this.isHasDispatchStart = false;
+        }
     }
 
     private static final LooperMonitor monitor = new LooperMonitor();
@@ -55,7 +66,6 @@ public class LooperMonitor implements MessageQueue.IdleHandler {
             MatrixLog.w(TAG, "[resetPrinter] maybe looper printer was replace other!");
         }
         Looper.getMainLooper().setMessageLogging(printer = new Printer() {
-            boolean hasDispatchBegin = false;
             boolean isHandleMessageEnd = true;
 
             @Override
@@ -64,14 +74,7 @@ public class LooperMonitor implements MessageQueue.IdleHandler {
                     originPrinter.println(x);
                 }
                 isHandleMessageEnd = !isHandleMessageEnd;
-
-                if (!isHandleMessageEnd) {
-                    hasDispatchBegin = true;
-                    dispatch(true, false);
-                } else {
-                    dispatch(false, hasDispatchBegin);
-                    hasDispatchBegin = false;
-                }
+                dispatch(!isHandleMessageEnd);
             }
         });
     }
@@ -83,16 +86,24 @@ public class LooperMonitor implements MessageQueue.IdleHandler {
     }
 
 
-    private static void dispatch(boolean isBegin, boolean isHard) {
+    private static void dispatch(boolean isBegin) {
+
         for (LooperDispatchListener listener : listeners) {
-            if (isHard || listener.isValid()) {
+            if (listener.isValid()) {
                 if (isBegin) {
-                    listener.dispatchStart();
+                    if (!listener.isHasDispatchStart) {
+                        listener.dispatchStart();
+                    }
                 } else {
-                    listener.dispatchEnd();
+                    if (listener.isHasDispatchStart) {
+                        listener.dispatchEnd();
+                    }
                 }
+            } else if (!isBegin && listener.isHasDispatchStart) {
+                listener.dispatchEnd();
             }
         }
+
     }
 
     private static <T> T reflectObject(Object instance, String name) {

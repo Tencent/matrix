@@ -32,14 +32,17 @@ public class AnrTracer extends Tracer {
     private Handler anrHandler;
     private final TraceConfig traceConfig;
     private volatile AnrHandleTask anrTask;
+    private boolean isAnrTraceEnable;
 
     public AnrTracer(TraceConfig traceConfig) {
         this.traceConfig = traceConfig;
+        this.isAnrTraceEnable = traceConfig.isAnrTraceEnable();
     }
 
     @Override
     public void onAlive() {
-        if (traceConfig.isAnrTraceEnable()) {
+        super.onAlive();
+        if (isAnrTraceEnable) {
             UIThreadMonitor.getMonitor().addObserver(this);
             this.anrHandler = new Handler(MatrixHandlerThread.getDefaultHandlerThread().getLooper());
         }
@@ -47,7 +50,8 @@ public class AnrTracer extends Tracer {
 
     @Override
     public void onDead() {
-        if (traceConfig.isAnrTraceEnable()) {
+        super.onDead();
+        if (isAnrTraceEnable) {
             UIThreadMonitor.getMonitor().removeObserver(this);
             if (null != anrTask) {
                 anrTask.getBeginRecord().release();

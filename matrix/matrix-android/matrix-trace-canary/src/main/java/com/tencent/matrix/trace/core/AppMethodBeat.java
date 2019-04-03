@@ -5,7 +5,6 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.SystemClock;
-import android.util.Log;
 
 import com.tencent.matrix.trace.constants.Constants;
 import com.tencent.matrix.trace.hacker.ActivityThreadHacker;
@@ -162,11 +161,13 @@ public class AppMethodBeat implements BeatLifecycle {
 
             @Override
             public void dispatchStart() {
+                super.dispatchStart();
                 AppMethodBeat.dispatchBegin();
             }
 
             @Override
             public void dispatchEnd() {
+                super.dispatchEnd();
                 AppMethodBeat.dispatchEnd();
             }
         });

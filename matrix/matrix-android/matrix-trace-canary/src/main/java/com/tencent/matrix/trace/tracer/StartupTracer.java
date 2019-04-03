@@ -26,6 +26,7 @@ import org.json.JSONObject;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Created by caichongyang on 2019/3/04.
@@ -50,16 +51,25 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, App
     private long coldCost = 0;
     private int activeActivityCount;
     private boolean hasShowSplashActivity;
+    private boolean isStartupEnable;
+    private Set<String> splashActivities;
+    private long coldStartupThresholdMs;
+    private long warmStartupThresholdMs;
 
 
     public StartupTracer(TraceConfig config) {
         this.config = config;
+        this.isStartupEnable = config.isStartupEnable();
+        this.splashActivities = config.getSplashActivities();
+        this.coldStartupThresholdMs = config.getColdStartupThresholdMs();
+        this.warmStartupThresholdMs = config.getWarmStartupThresholdMs();
     }
 
     @Override
     protected void onAlive() {
-        MatrixLog.i(TAG, "[onAlive] isStartupEnable:%s", config.isStartupEnable());
-        if (config.isStartupEnable()) {
+        super.onAlive();
+        MatrixLog.i(TAG, "[onAlive] isStartupEnable:%s", isStartupEnable);
+        if (isStartupEnable) {
             AppMethodBeat.getInstance().addListener(this);
             Matrix.with().getApplication().registerActivityLifecycleCallbacks(this);
         }
@@ -67,7 +77,8 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, App
 
     @Override
     protected void onDead() {
-        if (config.isStartupEnable()) {
+        super.onDead();
+        if (isStartupEnable) {
             AppMethodBeat.getInstance().removeListener(this);
             Matrix.with().getApplication().unregisterActivityLifecycleCallbacks(this);
         }
@@ -84,9 +95,9 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, App
             if (hasShowSplashActivity) {
                 allCost = coldCost = SystemClock.uptimeMillis() - ActivityThreadHacker.getEggBrokenTime();
             } else {
-                if (config.getSplashActivities().contains(activity)) {
+                if (splashActivities.contains(activity)) {
                     hasShowSplashActivity = true;
-                } else if (config.getSplashActivities().isEmpty()) {
+                } else if (splashActivities.isEmpty()) {
                     MatrixLog.i(TAG, "default care activity[%s]", activity);
                     allCost = coldCost = firstScreenCost;
                 } else {
@@ -113,11 +124,11 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, App
     private void analyse(long applicationCost, long firstScreenCost, long allCost, boolean isWarmStartUp) {
         MatrixLog.i(TAG, "[report] applicationCost:%s firstScreenCost:%s allCost:%s isWarmStartUp:%s", applicationCost, firstScreenCost, allCost, isWarmStartUp);
         long[] data = new long[0];
-        if (!isWarmStartUp && allCost >= config.getColdStartupThresholdMs()) { // for cold startup
+        if (!isWarmStartUp && allCost >= coldStartupThresholdMs) { // for cold startup
             data = AppMethodBeat.getInstance().copyData(ActivityThreadHacker.sApplicationCreateBeginMethodIndex);
             ActivityThreadHacker.sApplicationCreateBeginMethodIndex.release();
 
-        } else if (isWarmStartUp && allCost >= config.getWarmStartupThresholdMs()) {
+        } else if (isWarmStartUp && allCost >= warmStartupThresholdMs) {
             data = AppMethodBeat.getInstance().copyData(ActivityThreadHacker.sLastLaunchActivityMethodIndex);
             ActivityThreadHacker.sLastLaunchActivityMethodIndex.release();
         }
@@ -179,8 +190,8 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, App
             String stackKey = TraceDataUtils.getTreeKey(stack, Constants.MAX_LIMIT_ANALYSE_STACK_KEY_NUM);
 
             // for logcat
-            if ((allCost > config.getColdStartupThresholdMs() && !isWarmStartUp)
-                    || (allCost > config.getWarmStartupThresholdMs() && isWarmStartUp)) {
+            if ((allCost > coldStartupThresholdMs && !isWarmStartUp)
+                    || (allCost > warmStartupThresholdMs && isWarmStartUp)) {
                 MatrixLog.w(TAG, "stackKey:%s \n%s", stackKey, logcatBuilder.toString());
             }
 
@@ -209,8 +220,8 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, App
             }
 
 
-            if ((allCost > config.getColdStartupThresholdMs() && !isWarmStartUp)
-                    || (allCost > config.getWarmStartupThresholdMs() && isWarmStartUp)) {
+            if ((allCost > coldStartupThresholdMs && !isWarmStartUp)
+                    || (allCost > warmStartupThresholdMs && isWarmStartUp)) {
 
                 try {
                     JSONObject jsonObject = new JSONObject();
