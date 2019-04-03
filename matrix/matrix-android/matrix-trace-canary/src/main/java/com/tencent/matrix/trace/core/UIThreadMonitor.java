@@ -22,7 +22,6 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
     private static final String TAG = "Matrix.UIThreadMonitor";
     private static final String ADD_CALLBACK = "addCallbackLocked";
     private volatile boolean isAlive = false;
-    private boolean isHandleMessageEnd = true;
     private long[] dispatchTimeMs = new long[4];
     private HashSet<IFrameObserver> observers = new HashSet<>();
     private volatile long token = 0L;
@@ -365,5 +364,6 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
     public boolean isAlive() {
         return isAlive;
     }
+
 
 }

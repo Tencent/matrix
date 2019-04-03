@@ -145,6 +145,10 @@ public class TracePlugin extends Plugin {
         if (!isSupported()) {
             return;
         }
+
+        if (frameTracer != null) {
+            frameTracer.onForeground(isForeground);
+        }
     }
 
     @Override

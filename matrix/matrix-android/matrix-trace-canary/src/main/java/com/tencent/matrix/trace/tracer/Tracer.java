@@ -9,12 +9,12 @@ public abstract class Tracer extends LooperObserver implements ITracer {
     private static final String TAG = "Matrix.Tracer";
 
     protected void onAlive() {
-        MatrixLog.i(TAG, "onAlive");
+        MatrixLog.i(TAG, "[onAlive] %s", this.getClass().getSimpleName());
 
     }
 
     protected void onDead() {
-        MatrixLog.i(TAG, "onDead");
+        MatrixLog.i(TAG, "[onDead] %s", this.getClass().getSimpleName());
     }
 
     @Override
@@ -38,5 +38,15 @@ public abstract class Tracer extends LooperObserver implements ITracer {
         return isAlive;
     }
 
+    private volatile boolean isForeground;
 
+
+    @Override
+    public void onForeground(boolean isForeground) {
+        this.isForeground = isForeground;
+    }
+
+    public boolean isForeground() {
+        return isForeground;
+    }
 }

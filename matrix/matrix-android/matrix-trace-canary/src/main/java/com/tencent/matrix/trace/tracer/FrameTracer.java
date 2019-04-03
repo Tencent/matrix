@@ -91,6 +91,10 @@ public class FrameTracer extends Tracer implements UIThreadMonitor.IFrameObserve
             if (cost > (frameIntervalNanos / Constants.TIME_MILLIS_TO_NANO)) {
                 MatrixLog.w(TAG, "[notifyListener] warm! maybe do heavy work in doFrameSync,but you can replace with doFrameAsync! cost:%sms", cost);
             }
+            if (config.isDebug() && !isForeground()) {
+                MatrixLog.w(TAG, "[notifyListener] why doFrame in background!");
+            }
+
         }
     }
 

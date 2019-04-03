@@ -8,5 +8,5 @@ public interface ITracer {
 
     void onCloseTrace();
 
-
+    void onForeground(boolean isForeground);
 }

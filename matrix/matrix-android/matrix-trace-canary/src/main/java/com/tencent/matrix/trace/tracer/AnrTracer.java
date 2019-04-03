@@ -59,6 +59,9 @@ public class AnrTracer extends Tracer {
     @Override
     public void dispatchBegin(long beginMs, long cpuBeginMs, long token) {
         super.dispatchBegin(beginMs, cpuBeginMs, token);
+        if (null != anrTask) {
+            anrHandler.removeCallbacks(anrTask);
+        }
         anrTask = new AnrHandleTask(AppMethodBeat.getInstance().maskIndex("AnrTracer#dispatchBegin"), token);
         if (traceConfig.isDevEnv()) {
             MatrixLog.v(TAG, "* [dispatchBegin] token:%s index:%s", token, anrTask.beginRecord.index);
@@ -112,7 +115,6 @@ public class AnrTracer extends Tracer {
             long[] memoryInfo = dumpMemory();
 
             // sql
-
 
             // Thread state
             Thread.State status = Looper.getMainLooper().getThread().getState();

@@ -5,6 +5,7 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.SystemClock;
+import android.util.Log;
 
 import com.tencent.matrix.trace.constants.Constants;
 import com.tencent.matrix.trace.hacker.ActivityThreadHacker;
@@ -404,7 +405,6 @@ public class AppMethodBeat implements BeatLifecycle {
     }
 
     public long[] copyData(IndexRecord startRecord, IndexRecord endRecord) {
-
         long current = System.currentTimeMillis();
         long[] data = new long[0];
         try {
@@ -425,6 +425,9 @@ public class AppMethodBeat implements BeatLifecycle {
                 }
                 return data;
             }
+            return data;
+        } catch (Exception e) {
+            MatrixLog.e(TAG, e.toString());
             return data;
         } finally {
             MatrixLog.i(TAG, "[copyData] [%s:%s] cost:%sms", Math.max(0, startRecord.index), endRecord.index, System.currentTimeMillis() - current);
