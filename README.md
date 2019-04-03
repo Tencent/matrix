@@ -104,7 +104,7 @@ curBuilder.pluginListener = <object conforms to MatrixPluginListenerDelegate>;
 
 Each plugin added to `MatrixBuilder` will call back the corresponding event via `pluginListener`.
 
-**Important: Get the monitoring data of the Matrix via `onReportIssue:`, the data format info refrence to [Matrix for iOS/macOS Data Format Description](data-format-info-en)**
+**Important: Get the monitoring data of the Matrix via `onReportIssue:`, the data format info refrence to [Matrix for iOS/macOS Data Format Description](https://github.com/Tencent/matrix/wiki/Matrix-for-iOS-macOS-Data-Format-Description)**
 
 ## Tutorials
 
@@ -285,7 +285,7 @@ At this point, Matrix has been integrated into the app and is beginning to colle
 For more Matrix configurations, look at the [sample](https://github.com/Tencent/matrix/tree/dev/samples/sample-android).
 
 Note:
-You can get more about Matrix output at the wiki [The output of Matrix](https://github.com/Tencent/matrix/wiki/Matrix--%E8%BE%93%E5%87%BA%E5%86%85%E5%AE%B9%E7%9A%84%E5%90%AB%E4%B9%89%E8%A7%A3%E6%9E%90); 
+You can get more about Matrix output at the wiki [The output of Matrix](https://github.com/Tencent/matrix/wiki/Matrix-Android--data-format); 
 
 #### APK Checker Usage
 
@@ -328,7 +328,7 @@ Options:
      Find out the unstripped shared library file.
 ```
 
-Learn more about [Matrix-APKChecker](https://github.com/Tencent/matrix/wiki/Matrix-ApkChecker#matrix-apkchecker-%E7%9A%84%E4%BD%BF%E7%94%A8) 
+Learn more about [Matrix-APKChecker](https://github.com/Tencent/matrix/wiki/Matrix-Android-ApkChecker) 
 
 
 # Support
@@ -449,7 +449,7 @@ curBuilder.pluginListener = <一个遵循 MatrixPluginListenerDelegate 的对象
 
 各个添加到 MatrixBuilder 的 plugin 会将对应的事件通过 pluginListener 回调。
 
-**重要：通过 `onReportIssue:` 获得 Matrix 处理后的数据，监控数据格式详见：[Matrix for iOS/macOS 数据格式说明](data-format-info)**
+**重要：通过 `onReportIssue:` 获得 Matrix 处理后的数据，监控数据格式详见：[Matrix for iOS/macOS 数据格式说明](https://github.com/Tencent/matrix/wiki/Matrix-for-iOS-macOS-%E6%95%B0%E6%8D%AE%E6%A0%BC%E5%BC%8F%E8%AF%B4%E6%98%8E)**
 
 ## Demo
 
@@ -620,7 +620,7 @@ Matrix-android 当前监控范围包括：应用安装包大小，帧率变化�
 至此，Matrix就已成功集成到你的项目中，并且开始收集和分析性能相关异常数据，如仍有疑问，请查看 [示例](https://github.com/Tencent/Matrix/tree/dev/samples/sample-android/).
 
 PS：
-Matrix 分析后的输出字段的含义请查看 [Matrix 输出内容的含义解析](https://github.com/Tencent/matrix/wiki/Matrix--%E8%BE%93%E5%87%BA%E5%86%85%E5%AE%B9%E7%9A%84%E5%90%AB%E4%B9%89%E8%A7%A3%E6%9E%90)
+Matrix 分析后的输出字段的含义请查看 [Matrix 输出内容的含义解析](https://github.com/Tencent/matrix/wiki/Matrix-Android--data-format)
 
 #### APK Checker
 
@@ -667,7 +667,7 @@ Options:
      Find out the unstripped shared library file.
 ```
 
-由于篇幅影响，此次不再赘述，我们在 [Matrix-APKChecker](https://github.com/Tencent/matrix/wiki/Matrix-ApkChecker#matrix-apkchecker-%E7%9A%84%E4%BD%BF%E7%94%A8) 中进行了详细说明。
+由于篇幅影响，此次不再赘述，我们在 [Matrix-APKChecker](https://github.com/Tencent/matrix/wiki/Matrix-Android-ApkChecker) 中进行了详细说明。
 
 
 # Support
