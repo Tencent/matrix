@@ -1,0 +1,38 @@
+TARGET_NAME = MatrixiOS
+PRODUCT_NAME = Matrix
+PROJECT_DIR = ./Matrix
+PROJECT_NAME = $(PROJECT_DIR)/Matrix.xcodeproj
+FRAMEWORK_NAME = $(PRODUCT_NAME).framework
+SIMULATOR_FRAMEWORK = $(PRODUCT_NAME)_iphonesimulator.framework
+GENEIC_DEVICE_FRAMEWORK = $(PRODUCT_NAME)_iphoneos.framework
+MAC_FRAMEWORK = $(PRODUCT_NAME)_macos.framework
+
+OLD_STATIC_DIR = ./build
+IOS_UNIVERSAL_DIR = ./build_ios
+MACOS_UNIVERSAL_DIR = ./build_macos
+CONFIGURATION = Release
+BUILD_DIR = $(shell pwd)
+
+.PHONY:lib
+
+lib:
+	rm -rf "$(OLD_STATIC_DIR)"
+	rm -rf "$(SIMULATOR_FRAMEWORK)" "$(GENEIC_DEVICE_FRAMEWORK)" "$(PROJECT_DIR)/build" 
+	
+	xcodebuild -version
+	
+	xcodebuild -project "$(PROJECT_NAME)" -target "$(TARGET_NAME)" -configuration Release -sdk iphonesimulator VALID_ARCHS="arm64 armv7 i386 x86_64" CONFIGURATION_BUILD_DIR="$(BUILD_DIR)"
+	mv "$(FRAMEWORK_NAME)" "$(SIMULATOR_FRAMEWORK)"
+
+	xcodebuild -project "$(PROJECT_NAME)" -target "$(TARGET_NAME)" -configuration Release -sdk iphoneos VALID_ARCHS="arm64 armv7 i386 x86_64" CONFIGURATION_BUILD_DIR="$(BUILD_DIR)"
+	mv "$(FRAMEWORK_NAME)" "$(GENEIC_DEVICE_FRAMEWORK)"
+
+	lipo -create -output "$(PRODUCT_NAME)_universal" "$(SIMULATOR_FRAMEWORK)/$(PRODUCT_NAME)" "$(GENEIC_DEVICE_FRAMEWORK)/$(PRODUCT_NAME)"
+	mv "$(PRODUCT_NAME)_universal" "$(GENEIC_DEVICE_FRAMEWORK)/$(PRODUCT_NAME)"
+	mv "$(GENEIC_DEVICE_FRAMEWORK)" "$(FRAMEWORK_NAME)"
+
+	rm -rf "$(SIMULATOR_FRAMEWORK)" "$(GENEIC_DEVICE_FRAMEWORK)" "$(PROJECT_DIR)/build" 
+	rm -rf "$(IOS_UNIVERSAL_DIR)"
+
+	mkdir "$(IOS_UNIVERSAL_DIR)"
+	mv "$(FRAMEWORK_NAME)" "$(IOS_UNIVERSAL_DIR)/$(FRAMEWORK_NAME)"

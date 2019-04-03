@@ -1,0 +1,31 @@
+TARGET_NAME = MatrixMac
+PRODUCT_NAME = Matrix
+PROJECT_DIR = ./Matrix
+PROJECT_NAME = $(PROJECT_DIR)/Matrix.xcodeproj
+FRAMEWORK_NAME = $(PRODUCT_NAME).framework
+SIMULATOR_FRAMEWORK = $(PRODUCT_NAME)_iphonesimulator.framework
+GENEIC_DEVICE_FRAMEWORK = $(PRODUCT_NAME)_iphoneos.framework
+MAC_FRAMEWORK = $(PRODUCT_NAME)_macos.framework
+
+OLD_STATIC_DIR = ./build
+IOS_UNIVERSAL_DIR = ./build_ios
+MACOS_UNIVERSAL_DIR = ./build_macos
+CONFIGURATION = Release
+BUILD_DIR = $(shell pwd)
+
+.PHONY:lib
+
+lib:
+	rm -rf "$(PROJECT_DIR)/build" 
+	
+	xcodebuild -version
+
+	rm -rf "$(MAC_FRAMEWORK)" "$(MAC_DSYM)"
+	xcodebuild -project "$(PROJECT_NAME)" -target "$(TARGET_NAME)" -configuration Release -sdk macosx VALID_ARCHS="x86_64" CONFIGURATION_BUILD_DIR="$(BUILD_DIR)"
+	mv "$(FRAMEWORK_NAME)" "$(MAC_FRAMEWORK)"
+	
+	rm -rf "$(PROJECT_DIR)/build"
+	rm -rf "$(MACOS_UNIVERSAL_DIR)"
+
+	mkdir "$(MACOS_UNIVERSAL_DIR)"
+	mv "$(MAC_FRAMEWORK)" "$(MACOS_UNIVERSAL_DIR)/$(FRAMEWORK_NAME)"
