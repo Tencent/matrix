@@ -71,7 +71,7 @@ public class LooperMonitor implements MessageQueue.IdleHandler {
                 if (null != originPrinter) {
                     originPrinter.println(x);
                 }
-                dispatch(x.charAt(0) == '<');
+                dispatch(x.charAt(0) == '>');
             }
         });
     }
