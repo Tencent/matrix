@@ -66,15 +66,12 @@ public class LooperMonitor implements MessageQueue.IdleHandler {
             MatrixLog.w(TAG, "[resetPrinter] maybe looper printer was replace other!");
         }
         Looper.getMainLooper().setMessageLogging(printer = new Printer() {
-            boolean isHandleMessageEnd = true;
-
             @Override
             public void println(String x) {
                 if (null != originPrinter) {
                     originPrinter.println(x);
                 }
-                isHandleMessageEnd = !isHandleMessageEnd;
-                dispatch(!isHandleMessageEnd);
+                dispatch(x.charAt(0) == '<');
             }
         });
     }
