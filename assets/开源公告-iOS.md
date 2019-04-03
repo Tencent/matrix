@@ -1,6 +1,6 @@
 # Matrix for iOS/macOS 正式开源了
 
-Matrix for iOS/macOS 是一款微信团队研发并日常使用的性能探针工具，目前集成在 iOS 和 macOS 微信的 APM（Application Performance Manage）平台中使用。Matrix for iOS/macOS 的目标是建立一套 iOS 和 macOS 平台上统一的应用性能接入框架，通过对性能监控项的异常数据进行采集，帮助开发者开发出更高质量的应用，从而提升应用的用户体验。
+Matrix for iOS/macOS 是一款微信团队研发并日常使用的性能探针工具，目前集成在 iOS 和 macOS 微信的 APM（Application Performance Manage）平台中使用。Matrix for iOS/macOS 建立了一套 iOS 和 macOS 平台上统一的应用性能接入框架，通过对性能监控项的异常数据进行采集，帮助开发者开发出更高质量的应用，从而提升应用的用户体验。
 
 Matrix for iOS/macOS 的各个插件已经在微信内部稳定运行了几年，现在作为 Matrix 项目的一部分将其开源：https://github.com/Tencent/matrix/tree/master/matrix/matrix-iOS。
 
