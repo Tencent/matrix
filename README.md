@@ -44,10 +44,10 @@ The monitoring scope of the current tool includes: crash, lag, and out-of-memory
 
 * **Install with static framework**
   1. Get source code of Matrix;
-  2. Open terminal, execute `make` in the `matrix/matrix-apple` directory to compile and generate static library. After compiling, the iOS platform library is in the `matrix/matrix-apple/build_ios` directory, and the macOS platform library is in the `matrix/matrix-apple/build_macos` directory.
+  2. Open terminal, execute `make` in the `matrix/matrix-iOS` directory to compile and generate static library. After compiling, the iOS platform library is in the `matrix/matrix-iOS/build_ios` directory, and the macOS platform library is in the `matrix/matrix-iOS/build_macos` directory.
   3. Link with static framework in the project:
-    * iOS : Use `Matrix.framework` under the `matrix/matrix-apple/build_ios` path, link `Matrix.framework` to the project as a static library;
-    * macOS : Use `Matrix.framework` under the `matrix/matrix-apple/build_macos` path, link `Matrix.framework` to the project as a static library.
+    * iOS : Use `Matrix.framework` under the `matrix/matrix-iOS/build_ios` path, link `Matrix.framework` to the project as a static library;
+    * macOS : Use `Matrix.framework` under the `matrix/matrix-iOS/build_macos` path, link `Matrix.framework` to the project as a static library.
   4. Add `#import <Matrix/Matrix.h>`, then you can use the performance probe tool of WeChat.
 
 #### Start the plugins
@@ -390,10 +390,10 @@ Matrix 通过接入各种性能监控方案，对性能监控项的异常数据�
 
 * **通过静态库安装**
   1. 获取 Matrix 源码；
-  2. 打开命令行，在 `matrix/matrix-apple` 代码目录下执行 `make` 进行编译生成静态库；编译完成后，iOS 平台的库在 `matrix/matrix-apple/build_ios` 目录下，macOS 平台的库在 `matrix/matrix-apple/build_macos` 目录下；
+  2. 打开命令行，在 `matrix/matrix-iOS` 代码目录下执行 `make` 进行编译生成静态库；编译完成后，iOS 平台的库在 `matrix/matrix-iOS/build_ios` 目录下，macOS 平台的库在 `matrix/matrix-iOS/build_macos` 目录下；
   3. 工程引入静态库：
-    * iOS 平台：使用 `matrix/matrix-apple/build_ios` 路径下的 `Matrix.framework`，将 `Matrix.framework` 以静态库的方式引入工程；
-    * macOS 平台：使用 `matrix/matrix-apple/build_macos` 路径下的 `Matrix.framework`，将 `Matrix.framework` 以静态库的方式引入工程。
+    * iOS 平台：使用 `matrix/matrix-iOS/build_ios` 路径下的 `Matrix.framework`，将 `Matrix.framework` 以静态库的方式引入工程；
+    * macOS 平台：使用 `matrix/matrix-iOS/build_macos` 路径下的 `Matrix.framework`，将 `Matrix.framework` 以静态库的方式引入工程。
   4. 添加头文件 `#import <Matrix/Matrix.h>`，就可以接入微信的性能探针工具了！
 
 
