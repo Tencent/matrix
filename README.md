@@ -9,7 +9,7 @@
 [Matrix for iOS/macOS](#matrix_ios_en)   
 [Matrix for android ](#matrix_android_en)   
 
-**Matrix** is an APM (Application Performance Manage) used in Wechat to monitor, locate and analyse performance problems. It is a **plugin style**, **non-invasive** solution and is currently available on iOS, macOS and Android.
+**Matrix** is an APM (Application Performance Manager) used in Wechat to monitor, locate and analyse performance problems. It is a **plugin style**, **non-invasive** solution and is currently available on iOS, macOS and Android.
 
 # <a name='matrix_ios_en'> Matrix for iOS/macOS </a>
 
