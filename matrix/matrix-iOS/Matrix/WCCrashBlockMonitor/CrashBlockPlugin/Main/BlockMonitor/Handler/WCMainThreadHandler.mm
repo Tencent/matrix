@@ -15,7 +15,7 @@
  */
 
 #import "WCMainThreadHandler.h"
-#import <libkern/OSAtomic.h>
+#import <pthread.h>
 #import "MatrixLogDef.h"
 
 #define STACK_PER_MAX_COUNT 100 // the max address count of one stack
@@ -26,7 +26,7 @@ static uint64_t g_tailPoint;
 static size_t *g_topStackAddressRepeatArray;
 
 @interface WCMainThreadHandler () {
-    OSSpinLock m_threadLock;
+    pthread_mutex_t m_threadLock;
     int m_cycleArrayCount;
 }
 
@@ -58,7 +58,7 @@ static size_t *g_topStackAddressRepeatArray;
 
         g_tailPoint = 0;
 
-        m_threadLock = OS_SPINLOCK_INIT;
+        pthread_mutex_init(&m_threadLock, NULL);
     }
     return self;
 }
@@ -95,7 +95,7 @@ static size_t *g_topStackAddressRepeatArray;
         return;
     }
 
-    OSSpinLockLock(&m_threadLock);
+    pthread_mutex_lock(&m_threadLock);
     if (g_mainThreadStackCycleArray[g_tailPoint] != NULL) {
         free(g_mainThreadStackCycleArray[g_tailPoint]);
     }
@@ -116,7 +116,7 @@ static size_t *g_topStackAddressRepeatArray;
     }
 
     g_tailPoint = (g_tailPoint + 1) % m_cycleArrayCount;
-    OSSpinLockUnlock(&m_threadLock);
+    pthread_mutex_unlock(&m_threadLock);
 }
 
 - (size_t)getLastMainThreadStackCount
@@ -133,7 +133,7 @@ static size_t *g_topStackAddressRepeatArray;
 
 - (KSStackCursor *)getPointStackCursor
 {
-    OSSpinLockLock(&m_threadLock);
+    pthread_mutex_lock(&m_threadLock);
     size_t maxValue = 0;
     for (int i = 0; i < m_cycleArrayCount; i++) {
         size_t currentValue = g_topStackAddressRepeatArray[i];
@@ -161,10 +161,10 @@ static size_t *g_topStackAddressRepeatArray;
         }
         KSStackCursor *pointCursor = (KSStackCursor *) malloc(sizeof(KSStackCursor));
         kssc_initWithBacktrace(pointCursor, pointThreadStack, (int) stackCount, 0);
-        OSSpinLockUnlock(&m_threadLock);
+        pthread_mutex_unlock(&m_threadLock);
         return pointCursor;
     }
-    OSSpinLockUnlock(&m_threadLock);
+    pthread_mutex_unlock(&m_threadLock);
     return NULL;
     /* Old
      OSSpinLockLock(&m_threadLock);
@@ -211,7 +211,7 @@ static size_t *g_topStackAddressRepeatArray;
         return NULL;
     }
     stackSize = 0;
-    OSSpinLockLock(&m_threadLock);
+    pthread_mutex_lock(&m_threadLock);
     for (int i = 0; i < limitCount; i++) {
         uint64_t trueIndex = (g_tailPoint + m_cycleArrayCount - i - 1) % m_cycleArrayCount;
         if (g_mainThreadStackCycleArray[trueIndex] == NULL) {
@@ -232,7 +232,7 @@ static size_t *g_topStackAddressRepeatArray;
         kssc_initWithBacktrace(currentStackCursor, currentThreadStack, (int) currentStackCount, 0);
         allStackCursor[i] = currentStackCursor;
     }
-    OSSpinLockUnlock(&m_threadLock);
+    pthread_mutex_unlock(&m_threadLock);
     return allStackCursor;
 }
 
@@ -244,7 +244,7 @@ static size_t *g_topStackAddressRepeatArray;
         return NULL;
     }
     stackSize = 0;
-    OSSpinLockLock(&m_threadLock);
+    pthread_mutex_lock(&m_threadLock);
     for (int i = 0; i < m_cycleArrayCount; i++) {
         uint64_t trueIndex = (g_tailPoint + m_cycleArrayCount - i - 1) % m_cycleArrayCount;
         if (g_mainThreadStackCycleArray[trueIndex] == NULL) {
@@ -265,7 +265,7 @@ static size_t *g_topStackAddressRepeatArray;
         kssc_initWithBacktrace(currentStackCursor, currentThreadStack, (int) currentStackCount, 0);
         allStackCursor[i] = currentStackCursor;
     }
-    OSSpinLockUnlock(&m_threadLock);
+    pthread_mutex_unlock(&m_threadLock);
     return allStackCursor;
 }
 
