@@ -652,6 +652,8 @@ public class AlarmDetector extends IssuePublisher {
                 MatrixLog.w(TAG, "load : exp:%s", e);
             } catch (ClassNotFoundException e) {
                 MatrixLog.w(TAG, "load : exp:%s", e);
+            } catch (Exception e) {
+                MatrixLog.w(TAG, "load: exp:%s", e);
             } finally {
                 try {
                     if (ois != null) {
