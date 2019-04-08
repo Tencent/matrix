@@ -187,7 +187,7 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, App
             StringBuilder reportBuilder = new StringBuilder();
             StringBuilder logcatBuilder = new StringBuilder();
             long stackCost = Math.max(allCost, TraceDataUtils.stackToString(stack, reportBuilder, logcatBuilder));
-            String stackKey = TraceDataUtils.getTreeKey(stack, Constants.MAX_LIMIT_ANALYSE_STACK_KEY_NUM);
+            String stackKey = TraceDataUtils.getTreeKey(stack, stackCost);
 
             // for logcat
             if ((allCost > coldStartupThresholdMs && !isWarmStartUp)

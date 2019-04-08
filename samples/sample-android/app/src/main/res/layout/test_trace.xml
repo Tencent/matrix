@@ -54,7 +54,4 @@
         android:onClick="stopAppMethodBeat"
         android:text="start/stop AppMethodBeat" />
 
-    <ProgressBar
-        android:layout_width="40dp"
-        android:layout_height="40dp" />
 </LinearLayout>

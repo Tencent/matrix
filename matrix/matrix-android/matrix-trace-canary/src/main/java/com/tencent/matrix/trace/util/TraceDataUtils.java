@@ -5,6 +5,8 @@ import com.tencent.matrix.trace.core.AppMethodBeat;
 import com.tencent.matrix.trace.items.MethodItem;
 import com.tencent.matrix.util.MatrixLog;
 
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -137,6 +139,7 @@ public class TraceDataUtils {
             last = resultStack.peek();
         }
         if (null != last && last.methodId == item.methodId && last.depth == item.depth && 0 != item.depth) {
+            item.durTime = item.durTime == Constants.DEFAULT_ANR ? last.durTime : item.durTime;
             last.mergeMore(item.durTime);
             return last.durTime;
         } else {
@@ -290,6 +293,7 @@ public class TraceDataUtils {
         }
     }
 
+    @Deprecated
     public static String getTreeKey(List<MethodItem> stack, final int targetCount) {
         StringBuilder ss = new StringBuilder();
         final List<MethodItem> tmp = new LinkedList<>(stack);
@@ -319,5 +323,37 @@ public class TraceDataUtils {
         }
         return ss.toString();
     }
+
+    public static String getTreeKey(List<MethodItem> stack, long stackCost) {
+        StringBuilder ss = new StringBuilder();
+        long allLimit = (long) (stackCost * Constants.FILTER_STACK_KEY_ALL_PERCENT);
+
+        List<MethodItem> sortList = new LinkedList<>();
+
+        for (MethodItem item : stack) {
+            if (item.durTime >= allLimit) {
+                sortList.add(item);
+            }
+        }
+
+        Collections.sort(sortList, new Comparator<MethodItem>() {
+            @Override
+            public int compare(MethodItem o1, MethodItem o2) {
+                return Long.compare((o2.depth + 1) * o2.durTime, (o1.depth + 1) * o1.durTime);
+            }
+        });
+
+        if (sortList.isEmpty() && !stack.isEmpty()) {
+            sortList.add(stack.get(0));
+        } else if (!sortList.isEmpty()) {
+            sortList = sortList.subList(0, 1);
+        }
+
+        for (MethodItem item : sortList) {
+            ss.append(item.methodId + "|");
+        }
+        return ss.toString();
+    }
+
 
 }

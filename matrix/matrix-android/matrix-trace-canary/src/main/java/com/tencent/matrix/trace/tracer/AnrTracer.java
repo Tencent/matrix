@@ -2,6 +2,7 @@ package com.tencent.matrix.trace.tracer;
 
 import android.os.Handler;
 import android.os.Looper;
+import android.os.SystemClock;
 
 import com.tencent.matrix.Matrix;
 import com.tencent.matrix.report.Issue;
@@ -112,6 +113,7 @@ public class AnrTracer extends Tracer {
         @Override
         public void run() {
             anrTask = null;
+            long curTime = SystemClock.uptimeMillis();
             long[] data = AppMethodBeat.getInstance().copyData(beginRecord);
             beginRecord.release();
 
@@ -156,14 +158,14 @@ public class AnrTracer extends Tracer {
                     }
                 });
             }
-            // stackKey
-            String stackKey = TraceDataUtils.getTreeKey(stack, Constants.MAX_LIMIT_ANALYSE_STACK_KEY_NUM);
 
             StringBuilder reportBuilder = new StringBuilder();
             StringBuilder logcatBuilder = new StringBuilder();
             long stackCost = Math.max(Constants.DEFAULT_ANR, TraceDataUtils.stackToString(stack, reportBuilder, logcatBuilder));
 
-            MatrixLog.w(TAG, "%s", printAnr(memoryInfo, status, logcatBuilder, stack.size(), stackKey, dumpStack, inputCost, animationCost, traversalCost)); // for logcat
+            // stackKey
+            String stackKey = TraceDataUtils.getTreeKey(stack, stackCost);
+            MatrixLog.w(TAG, "%s \npostTime:%s curTime:%s", printAnr(memoryInfo, status, logcatBuilder, stack.size(), stackKey, dumpStack, inputCost, animationCost, traversalCost), token, curTime); // for logcat
 
             // report
             try {

@@ -66,12 +66,26 @@ public class LooperMonitor implements MessageQueue.IdleHandler {
             MatrixLog.w(TAG, "[resetPrinter] maybe looper printer was replace other!");
         }
         Looper.getMainLooper().setMessageLogging(printer = new Printer() {
+            boolean isHasChecked = false;
+            boolean isValid = false;
+
             @Override
             public void println(String x) {
+                MatrixLog.i(TAG, "printer:%s", x);
                 if (null != originPrinter) {
                     originPrinter.println(x);
                 }
-                dispatch(x.charAt(0) == '>');
+
+                if (!isHasChecked) {
+                    isValid = x.charAt(0) == '>' || x.charAt(0) == '<';
+                    isHasChecked = true;
+                    MatrixLog.e(TAG, "[println] Printer is inValid! x:%s", x);
+                }
+
+                if (isValid) {
+                    dispatch(x.charAt(0) == '>');
+                }
+
             }
         });
     }
