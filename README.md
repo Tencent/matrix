@@ -15,7 +15,7 @@
 
 The monitoring scope of the current tool includes: crash, lag, and out-of-memory, which includes the following two plugins:
 
-* **WCCrashBlockMonitorPlugin：** Based on [KSCrash](https://github.com/kstenerud/KSCrash) framework, it features cutting-edge lag stack capture capabilities with crash cpature.
+* **WCCrashBlockMonitorPlugin：** Based on [KSCrash](https://github.com/kstenerud/KSCrash) framework, it features cutting-edge lag stack capture capabilities with crash capture.
 
 * **WCMemoryStatPlugin：** A performance-optimized out-of-memory monitoring tool that captures memory allocation and the callstack of an application's out-of-memory event.
 
@@ -104,7 +104,7 @@ curBuilder.pluginListener = <object conforms to MatrixPluginListenerDelegate>;
 
 Each plugin added to `MatrixBuilder` will call back the corresponding event via `pluginListener`.
 
-**Important: Get the monitoring data of the Matrix via `onReportIssue:`, the data format info refrence to [Matrix for iOS/macOS Data Format Description](https://github.com/Tencent/matrix/wiki/Matrix-for-iOS-macOS-Data-Format-Description)**
+**Important: Get the monitoring data of the Matrix via `onReportIssue:`, the data format info reference to [Matrix for iOS/macOS Data Format Description](https://github.com/Tencent/matrix/wiki/Matrix-for-iOS-macOS-Data-Format-Description)**
 
 ## Tutorials
 
@@ -225,7 +225,7 @@ At this point, Matrix has been integrated into the app and is beginning to colle
 }
 ```
 
-5. Implement `DynamicConfig` to change parametes of Matrix.
+5. Implement `DynamicConfig` to change parameters of Matrix.
 ``` java
   public class DynamicConfigImplDemo implements IDynamicConfig {
     public DynamicConfigImplDemo() {}
