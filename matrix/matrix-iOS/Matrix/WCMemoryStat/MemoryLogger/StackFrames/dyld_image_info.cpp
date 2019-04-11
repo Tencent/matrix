@@ -31,7 +31,7 @@
 
 #include "dyld_image_info.h"
 #include "logger_internal.h"
-#include "bundleNameHelper.h"
+#include "bundle_name_helper.h"
 
 #pragma mark -
 #pragma mark Defines

@@ -15,7 +15,7 @@
  */
 
 #import <Foundation/Foundation.h>
-#import "bundleNameHelper.h"
+#import "bundle_name_helper.h"
 
 const char *getAppBundleName() {
     

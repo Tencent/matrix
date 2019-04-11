@@ -383,10 +383,10 @@
 		1177FFF32137A53300FDFEB4 /* MatrixTester.mm in Sources */ = {isa = PBXBuildFile; fileRef = 1177FFE421379FE800FDFEB4 /* MatrixTester.mm */; };
 		11B438EE21F17C6600A0A8C3 /* WCCrashBlockMonitorPlugin+Upload.h in Headers */ = {isa = PBXBuildFile; fileRef = 11B438EC21F17C6600A0A8C3 /* WCCrashBlockMonitorPlugin+Upload.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		11B438F121F17C7000A0A8C3 /* WCCrashBlockMonitorPlugin+Upload.h in Headers */ = {isa = PBXBuildFile; fileRef = 11B438EC21F17C6600A0A8C3 /* WCCrashBlockMonitorPlugin+Upload.h */; settings = {ATTRIBUTES = (Public, ); }; };
-		93DD5872225F3731005C267C /* bundleNameHelper.h in Headers */ = {isa = PBXBuildFile; fileRef = 93DD5870225F3731005C267C /* bundleNameHelper.h */; };
-		93DD5873225F3731005C267C /* bundleNameHelper.h in Headers */ = {isa = PBXBuildFile; fileRef = 93DD5870225F3731005C267C /* bundleNameHelper.h */; };
-		93DD5874225F3731005C267C /* bundleNameHelper.mm in Sources */ = {isa = PBXBuildFile; fileRef = 93DD5871225F3731005C267C /* bundleNameHelper.mm */; };
-		93DD5875225F3731005C267C /* bundleNameHelper.mm in Sources */ = {isa = PBXBuildFile; fileRef = 93DD5871225F3731005C267C /* bundleNameHelper.mm */; };
+		93DD5872225F3731005C267C /* bundle_name_helper.h in Headers */ = {isa = PBXBuildFile; fileRef = 93DD5870225F3731005C267C /* bundle_name_helper.h */; };
+		93DD5873225F3731005C267C /* bundle_name_helper.h in Headers */ = {isa = PBXBuildFile; fileRef = 93DD5870225F3731005C267C /* bundle_name_helper.h */; };
+		93DD5874225F3731005C267C /* bundle_name_helper.mm in Sources */ = {isa = PBXBuildFile; fileRef = 93DD5871225F3731005C267C /* bundle_name_helper.mm */; };
+		93DD5875225F3731005C267C /* bundle_name_helper.mm in Sources */ = {isa = PBXBuildFile; fileRef = 93DD5871225F3731005C267C /* bundle_name_helper.mm */; };
 		BB30255921B0D8B900F9C9F5 /* WCMemoryStatConfig.h in Headers */ = {isa = PBXBuildFile; fileRef = BB30255521B0D8B900F9C9F5 /* WCMemoryStatConfig.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		BB30255A21B0D8B900F9C9F5 /* WCMemoryStatConfig.h in Headers */ = {isa = PBXBuildFile; fileRef = BB30255521B0D8B900F9C9F5 /* WCMemoryStatConfig.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		BB30256221B0D8B900F9C9F5 /* WCMemoryStatConfig.mm in Sources */ = {isa = PBXBuildFile; fileRef = BB30255621B0D8B900F9C9F5 /* WCMemoryStatConfig.mm */; };
@@ -726,8 +726,8 @@
 		11B438EC21F17C6600A0A8C3 /* WCCrashBlockMonitorPlugin+Upload.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "WCCrashBlockMonitorPlugin+Upload.h"; sourceTree = "<group>"; };
 		11E683E52103231D00E4EADC /* NSApplicationEvent.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = NSApplicationEvent.h; sourceTree = "<group>"; };
 		11E683E62103231D00E4EADC /* NSApplicationEvent.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = NSApplicationEvent.mm; sourceTree = "<group>"; };
-		93DD5870225F3731005C267C /* bundleNameHelper.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = bundleNameHelper.h; sourceTree = "<group>"; };
-		93DD5871225F3731005C267C /* bundleNameHelper.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = bundleNameHelper.mm; sourceTree = "<group>"; };
+		93DD5870225F3731005C267C /* bundle_name_helper.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = bundle_name_helper.h; sourceTree = "<group>"; };
+		93DD5871225F3731005C267C /* bundle_name_helper.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = bundle_name_helper.mm; sourceTree = "<group>"; };
 		BB30255521B0D8B900F9C9F5 /* WCMemoryStatConfig.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = WCMemoryStatConfig.h; sourceTree = "<group>"; };
 		BB30255621B0D8B900F9C9F5 /* WCMemoryStatConfig.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = WCMemoryStatConfig.mm; sourceTree = "<group>"; };
 		BB30256921B0DAAB00F9C9F5 /* WCMemoryStatPlugin.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = WCMemoryStatPlugin.h; sourceTree = "<group>"; };
@@ -1341,8 +1341,8 @@
 				BB77ACB922368582008C67D9 /* dyld_image_info.cpp */,
 				BB77ACBB22368582008C67D9 /* stack_frames_db.h */,
 				BB77ACBA22368582008C67D9 /* stack_frames_db.cpp */,
-				93DD5870225F3731005C267C /* bundleNameHelper.h */,
-				93DD5871225F3731005C267C /* bundleNameHelper.mm */,
+				93DD5870225F3731005C267C /* bundle_name_helper.h */,
+				93DD5871225F3731005C267C /* bundle_name_helper.mm */,
 			);
 			path = StackFrames;
 			sourceTree = "<group>";
@@ -1446,7 +1446,7 @@
 				116461082111AF190069B5DE /* WCCrashBlockMonitorDelegate.h in Headers */,
 				116461392111AF190069B5DE /* WCCrashBlockMonitorPlugin.h in Headers */,
 				116461512111AF190069B5DE /* WCCrashBlockMonitorConfig.h in Headers */,
-				93DD5872225F3731005C267C /* bundleNameHelper.h in Headers */,
+				93DD5872225F3731005C267C /* bundle_name_helper.h in Headers */,
 				1164615B2111AF190069B5DE /* WCCrashBlockFileHandler.h in Headers */,
 				1164611C2111AF190069B5DE /* WCBlockMonitorConfiguration.h in Headers */,
 				1164615A2111AF190069B5DE /* WCBlockTypeDef.h in Headers */,
@@ -1615,7 +1615,7 @@
 				1166069121369E1E00F4ED74 /* WCCrashBlockMonitorDelegate.h in Headers */,
 				11B438F121F17C7000A0A8C3 /* WCCrashBlockMonitorPlugin+Upload.h in Headers */,
 				116606C221369E1E00F4ED74 /* WCCrashBlockMonitorPlugin.h in Headers */,
-				93DD5873225F3731005C267C /* bundleNameHelper.h in Headers */,
+				93DD5873225F3731005C267C /* bundle_name_helper.h in Headers */,
 				116606DA21369E1E00F4ED74 /* WCCrashBlockMonitorConfig.h in Headers */,
 				116606E421369E1E00F4ED74 /* WCCrashBlockFileHandler.h in Headers */,
 				116606E321369E1E00F4ED74 /* WCBlockTypeDef.h in Headers */,
@@ -1894,7 +1894,7 @@
 				BB77AD2622368582008C67D9 /* object_event_handler.cpp in Sources */,
 				116460C32111AF190069B5DE /* KSStackCursor.c in Sources */,
 				116460C42111AF190069B5DE /* WCBlockMonitorMgr.mm in Sources */,
-				93DD5874225F3731005C267C /* bundleNameHelper.mm in Sources */,
+				93DD5874225F3731005C267C /* bundle_name_helper.mm in Sources */,
 				116460C52111AF190069B5DE /* KSJSONCodec.c in Sources */,
 				116460C62111AF190069B5DE /* KSSysCtl.c in Sources */,
 				116460C72111AF190069B5DE /* KSCrashMonitor_NSException.m in Sources */,
@@ -2000,7 +2000,7 @@
 				1166064F21369E1E00F4ED74 /* WCBlockMonitorMgr.mm in Sources */,
 				1166065021369E1E00F4ED74 /* KSJSONCodec.c in Sources */,
 				1166065121369E1E00F4ED74 /* KSSysCtl.c in Sources */,
-				93DD5875225F3731005C267C /* bundleNameHelper.mm in Sources */,
+				93DD5875225F3731005C267C /* bundle_name_helper.mm in Sources */,
 				1166065221369E1E00F4ED74 /* KSCrashMonitor_NSException.m in Sources */,
 				1110E0322243741500A873F9 /* WCFilterStackHandler.mm in Sources */,
 				BB77ACFC22368582008C67D9 /* memory_report_generator.cpp in Sources */,
