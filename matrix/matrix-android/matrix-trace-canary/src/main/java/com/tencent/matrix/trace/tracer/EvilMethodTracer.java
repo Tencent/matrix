@@ -80,7 +80,7 @@ public class EvilMethodTracer extends Tracer {
                 long[] data = AppMethodBeat.getInstance().copyData(indexRecord);
                 long[] queueCosts = new long[3];
                 System.arraycopy(queueTypeCosts, 0, queueCosts, 0, 3);
-                MatrixHandlerThread.getDefaultHandler().post(new AnalyseTask(data, queueCosts, cpuEndMs - cpuBeginMs, endMs - beginMs));
+                MatrixHandlerThread.getDefaultHandler().post(new AnalyseTask(data, queueCosts, cpuEndMs - cpuBeginMs, endMs - beginMs, endMs));
             }
         } finally {
             indexRecord.release();
@@ -97,21 +97,23 @@ public class EvilMethodTracer extends Tracer {
         long[] data;
         long cpuCost;
         long cost;
+        long endMs;
 
 
-        AnalyseTask(long[] data, long[] queueCost, long cpuCost, long cost) {
+        AnalyseTask(long[] data, long[] queueCost, long cpuCost, long cost, long endMs) {
 
             this.cost = cost;
             this.cpuCost = cpuCost;
             this.data = data;
             this.queueCost = queueCost;
+            this.endMs = endMs;
         }
 
         void analyse() {
             String usage = Utils.calculateCpuUsage(cpuCost, cost);
             LinkedList<MethodItem> stack = new LinkedList();
             if (data.length > 0) {
-                TraceDataUtils.structuredDataToStack(data, stack);
+                TraceDataUtils.structuredDataToStack(data, stack, true, endMs);
                 TraceDataUtils.trimStack(stack, Constants.TARGET_EVIL_METHOD_STACK, new TraceDataUtils.IStructuredDataFilter() {
                     @Override
                     public boolean isFilter(long during, int filterCount) {

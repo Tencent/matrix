@@ -36,7 +36,7 @@ public class AppMethodBeat implements BeatLifecycle {
     private static int sLastIndex = -1;
     private static boolean assertIn = false;
     private volatile static long sCurrentDiffTime = SystemClock.uptimeMillis();
-    private volatile static long sLastDiffTime = sCurrentDiffTime;
+    private volatile static long sDiffTime = sCurrentDiffTime;
     private static Thread sMainThread = Looper.getMainLooper().getThread();
     private static HandlerThread sTimerUpdateThread = MatrixHandlerThread.getNewHandlerThread("matrix_time_update_thread");
     private static Handler sHandler = new Handler(sTimerUpdateThread.getLooper());
@@ -67,7 +67,7 @@ public class AppMethodBeat implements BeatLifecycle {
             try {
                 while (true) {
                     while (!isPauseUpdateTime && status > STATUS_STOPPED) {
-                        sCurrentDiffTime = SystemClock.uptimeMillis() - sLastDiffTime;
+                        sCurrentDiffTime = SystemClock.uptimeMillis() - sDiffTime;
                         SystemClock.sleep(Constants.TIME_UPDATE_CYCLE_MS);
                     }
                     synchronized (updateTimeLock) {
@@ -137,7 +137,7 @@ public class AppMethodBeat implements BeatLifecycle {
     private static void realExecute() {
         MatrixLog.i(TAG, "[realExecute] timestamp:%s", System.currentTimeMillis());
 
-        sCurrentDiffTime = SystemClock.uptimeMillis() - sLastDiffTime;
+        sCurrentDiffTime = SystemClock.uptimeMillis() - sDiffTime;
 
         sHandler.removeCallbacksAndMessages(null);
         sHandler.postDelayed(sUpdateDiffTimeRunnable, Constants.TIME_UPDATE_CYCLE_MS);
@@ -174,7 +174,7 @@ public class AppMethodBeat implements BeatLifecycle {
     }
 
     private static void dispatchBegin() {
-        sCurrentDiffTime = SystemClock.uptimeMillis() - sLastDiffTime;
+        sCurrentDiffTime = SystemClock.uptimeMillis() - sDiffTime;
         isPauseUpdateTime = false;
 
         synchronized (updateTimeLock) {
@@ -433,6 +433,10 @@ public class AppMethodBeat implements BeatLifecycle {
         } finally {
             MatrixLog.i(TAG, "[copyData] [%s:%s] cost:%sms", Math.max(0, startRecord.index), endRecord.index, System.currentTimeMillis() - current);
         }
+    }
+
+    public static long getDiffTime() {
+        return sDiffTime;
     }
 
     public void printIndexRecord() {

@@ -22,9 +22,12 @@ import com.tencent.matrix.util.MatrixLog;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Set;
 
 
 public class AnrTracer extends Tracer {
@@ -34,6 +37,11 @@ public class AnrTracer extends Tracer {
     private final TraceConfig traceConfig;
     private volatile AnrHandleTask anrTask;
     private boolean isAnrTraceEnable;
+    private IAnrListener anrListener;
+
+    public interface IAnrListener {
+        void happens(long token, long cost);
+    }
 
     public AnrTracer(TraceConfig traceConfig) {
         this.traceConfig = traceConfig;
@@ -95,6 +103,9 @@ public class AnrTracer extends Tracer {
         }
     }
 
+    public void setAnrListener(IAnrListener anrListener) {
+        this.anrListener = anrListener;
+    }
 
     class AnrHandleTask implements Runnable {
 
@@ -114,13 +125,15 @@ public class AnrTracer extends Tracer {
         public void run() {
             anrTask = null;
             long curTime = SystemClock.uptimeMillis();
+            long preTime = token;
             long[] data = AppMethodBeat.getInstance().copyData(beginRecord);
             beginRecord.release();
 
+            if (null != anrListener) {
+                anrListener.happens(token, preTime - curTime);
+            }
             // memory
             long[] memoryInfo = dumpMemory();
-
-            // sql
 
             // Thread state
             Thread.State status = Looper.getMainLooper().getThread().getState();
@@ -135,7 +148,7 @@ public class AnrTracer extends Tracer {
             // trace
             LinkedList<MethodItem> stack = new LinkedList();
             if (data.length > 0) {
-                TraceDataUtils.structuredDataToStack(data, stack);
+                TraceDataUtils.structuredDataToStack(data, stack, true, curTime);
                 TraceDataUtils.trimStack(stack, Constants.TARGET_EVIL_METHOD_STACK, new TraceDataUtils.IStructuredDataFilter() {
                     @Override
                     public boolean isFilter(long during, int filterCount) {

@@ -159,7 +159,7 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, App
         public void run() {
             LinkedList<MethodItem> stack = new LinkedList();
             if (data.length > 0) {
-                TraceDataUtils.structuredDataToStack(data, stack, false);
+                TraceDataUtils.structuredDataToStack(data, stack, false, -1);
                 TraceDataUtils.trimStack(stack, Constants.TARGET_EVIL_METHOD_STACK, new TraceDataUtils.IStructuredDataFilter() {
                     @Override
                     public boolean isFilter(long during, int filterCount) {

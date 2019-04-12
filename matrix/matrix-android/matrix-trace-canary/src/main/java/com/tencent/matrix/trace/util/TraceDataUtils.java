@@ -24,16 +24,12 @@ public class TraceDataUtils {
         void fallback(List<MethodItem> stack, int size);
     }
 
-    public static void structuredDataToStack(long[] buffer, LinkedList<MethodItem> result) {
-        structuredDataToStack(buffer, result, true);
-    }
-
-    public static void structuredDataToStack(long[] buffer, LinkedList<MethodItem> result, boolean isStrict) {
+    public static void structuredDataToStack(long[] buffer, LinkedList<MethodItem> result, boolean isStrict, long endTime) {
         long lastInId = 0L;
         int depth = 0;
         LinkedList<Long> rawData = new LinkedList<>();
         boolean isBegin = !isStrict;
-        int maxCost = 0;
+
         for (long trueId : buffer) {
             if (0 == trueId) {
                 continue;
@@ -78,9 +74,8 @@ public class TraceDataUtils {
                         result.clear();
                         return;
                     }
-
                     MethodItem methodItem = new MethodItem(methodId, (int) during, depth);
-                    maxCost = Math.max(maxCost, addMethodItem(result, methodItem));
+                    addMethodItem(result, methodItem);
                 } else {
                     MatrixLog.w(TAG, "[structuredDataToStack] method[%s] not found in! ", methodId);
                 }
@@ -91,12 +86,13 @@ public class TraceDataUtils {
             long trueId = rawData.pop();
             int methodId = getMethodId(trueId);
             boolean isIn = isIn(trueId);
+            long inTime = getTime(trueId) + AppMethodBeat.getDiffTime();
             MatrixLog.w(TAG, "[structuredDataToStack] has never out method[%s], isIn:%s, rawData size:%s", methodId, isIn, rawData.size());
             if (!isIn) {
                 MatrixLog.e(TAG, "[structuredDataToStack] why has out Method[%s]? is wrong! ", methodId);
                 continue;
             }
-            MethodItem methodItem = new MethodItem(methodId, Math.max(maxCost, Constants.DEFAULT_ANR), rawData.size());
+            MethodItem methodItem = new MethodItem(methodId, (int) (endTime - inTime), rawData.size());
             addMethodItem(result, methodItem);
         }
 
