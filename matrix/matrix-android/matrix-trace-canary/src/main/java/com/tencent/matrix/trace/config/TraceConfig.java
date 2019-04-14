@@ -65,9 +65,7 @@ public class TraceConfig implements IDefaultConfig {
 
     @Override
     public boolean isFPSEnable() {
-        return null == dynamicConfig
-                ? defaultFpsEnable
-                : dynamicConfig.get(IDynamicConfig.ExptEnum.clicfg_matrix_trace_fps_enable.name(), defaultFpsEnable);
+        return defaultFpsEnable;
     }
 
     @Override
@@ -83,22 +81,16 @@ public class TraceConfig implements IDefaultConfig {
 
     @Override
     public boolean isEvilMethodTraceEnable() {
-        return null == dynamicConfig
-                ? defaultMethodTraceEnable
-                : dynamicConfig.get(IDynamicConfig.ExptEnum.clicfg_matrix_trace_evil_method_enable.name(), defaultMethodTraceEnable);
+        return defaultMethodTraceEnable;
     }
 
     public boolean isStartupEnable() {
-        return dynamicConfig == null
-                ? defaultStartupEnable
-                : dynamicConfig.get(IDynamicConfig.ExptEnum.clicfg_matrix_trace_startup_enable.name(), defaultStartupEnable);
+        return defaultStartupEnable;
     }
 
     @Override
     public boolean isAnrTraceEnable() {
-        return dynamicConfig == null
-                ? defaultAnrEnable
-                : dynamicConfig.get(IDynamicConfig.ExptEnum.clicfg_matrix_trace_anr_enable.name(), defaultAnrEnable);
+        return defaultAnrEnable;
     }
 
 

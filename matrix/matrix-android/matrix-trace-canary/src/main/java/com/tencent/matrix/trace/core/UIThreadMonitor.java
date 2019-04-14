@@ -339,7 +339,7 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
     @Override
     public synchronized void onStop() {
         if (!isInit) {
-            throw new RuntimeException("never init!");
+            throw new RuntimeException("UIThreadMonitor is never init!");
         }
         if (isAlive) {
             this.isAlive = false;

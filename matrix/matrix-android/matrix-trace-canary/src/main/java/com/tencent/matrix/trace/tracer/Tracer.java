@@ -12,13 +12,13 @@ public abstract class Tracer extends LooperObserver implements ITracer {
 
     @CallSuper
     protected void onAlive() {
-        MatrixLog.i(TAG, "[onAlive] %s", this.getClass().getSimpleName());
+        MatrixLog.i(TAG, "[onAlive] %s", this.getClass().getName());
 
     }
 
     @CallSuper
     protected void onDead() {
-        MatrixLog.i(TAG, "[onDead] %s", this.getClass().getSimpleName());
+        MatrixLog.i(TAG, "[onDead] %s", this.getClass().getName());
     }
 
     @Override

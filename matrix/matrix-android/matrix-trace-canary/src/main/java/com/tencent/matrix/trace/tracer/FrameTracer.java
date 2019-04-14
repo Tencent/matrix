@@ -21,12 +21,13 @@ import org.json.JSONObject;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.concurrent.TimeUnit;
 
 public class FrameTracer extends Tracer {
 
     private static final String TAG = "Matrix.FrameTracer";
     private HashSet<IDoFrameListener> listeners = new HashSet<>();
-    private final long frameIntervalNanos;
+    private final long frameIntervalMs;
     private final TraceConfig config;
     private long timeSliceMs;
     private boolean isFPSEnable;
@@ -34,10 +35,11 @@ public class FrameTracer extends Tracer {
     private long highThreshold;
     private long middleThreshold;
     private long normalThreshold;
+    private long backgroundFrameCount;
 
     public FrameTracer(TraceConfig config) {
         this.config = config;
-        this.frameIntervalNanos = UIThreadMonitor.getMonitor().getFrameIntervalNanos();
+        this.frameIntervalMs = TimeUnit.MILLISECONDS.convert(UIThreadMonitor.getMonitor().getFrameIntervalNanos(), TimeUnit.NANOSECONDS);
         this.timeSliceMs = config.getTimeSliceMs();
         this.isFPSEnable = config.isFPSEnable();
         this.frozenThreshold = config.getFrozenThreshold();
@@ -45,6 +47,7 @@ public class FrameTracer extends Tracer {
         this.normalThreshold = config.getNormalThreshold();
         this.middleThreshold = config.getMiddleThreshold();
 
+        MatrixLog.i(TAG, "[init] frameIntervalMs:%s isFPSEnable:%s", frameIntervalMs, isFPSEnable);
         if (isFPSEnable) {
             addListener(new FPSCollector());
         }
@@ -81,12 +84,23 @@ public class FrameTracer extends Tracer {
         notifyListener(focusedActivityName, frameCostMs);
     }
 
+    @Override
+    public void onForeground(boolean isForeground) {
+        super.onForeground(isForeground);
+        if (isForeground) {
+            if (backgroundFrameCount > 300) {
+                MatrixLog.e(TAG, "wrong! why do frame[%s] in background!!!", backgroundFrameCount);
+            }
+            backgroundFrameCount = 0;
+        }
+    }
+
     private void notifyListener(final String focusedActivityName, final long frameCostMs) {
         long start = System.currentTimeMillis();
         try {
             synchronized (listeners) {
                 for (final IDoFrameListener listener : listeners) {
-                    final int dropFrame = (int) (frameCostMs / (frameIntervalNanos / Constants.TIME_MILLIS_TO_NANO));
+                    final int dropFrame = (int) (frameCostMs / frameIntervalMs);
                     listener.doFrameSync(focusedActivityName, frameCostMs, dropFrame);
                     if (null != listener.getHandler()) {
                         listener.getHandler().post(new Runnable() {
@@ -103,13 +117,12 @@ public class FrameTracer extends Tracer {
             if (config.isDevEnv()) {
                 MatrixLog.v(TAG, "[notifyListener] cost:%sms", cost);
             }
-            if (cost > (frameIntervalNanos / Constants.TIME_MILLIS_TO_NANO)) {
+            if (cost > frameIntervalMs) {
                 MatrixLog.w(TAG, "[notifyListener] warm! maybe do heavy work in doFrameSync,but you can replace with doFrameAsync! cost:%sms", cost);
             }
             if (config.isDebug() && !isForeground()) {
-                MatrixLog.w(TAG, "[notifyListener] why doFrame in background!");
+                backgroundFrameCount++;
             }
-
         }
     }
 
