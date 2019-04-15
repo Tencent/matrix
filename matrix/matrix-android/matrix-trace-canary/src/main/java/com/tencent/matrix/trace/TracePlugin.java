@@ -58,6 +58,14 @@ public class TracePlugin extends Plugin {
             unSupportPlugin();
             return;
         }
+
+        anrTracer = new AnrTracer(traceConfig);
+
+        frameTracer = new FrameTracer(traceConfig);
+
+        evilMethodTracer = new EvilMethodTracer(traceConfig);
+
+        startupTracer = new StartupTracer(traceConfig);
     }
 
     @Override
@@ -74,10 +82,6 @@ public class TracePlugin extends Plugin {
 
                 if (!UIThreadMonitor.getMonitor().isInit()) {
                     UIThreadMonitor.getMonitor().init(traceConfig);
-                    anrTracer = new AnrTracer(traceConfig);
-                    frameTracer = new FrameTracer(traceConfig);
-                    evilMethodTracer = new EvilMethodTracer(traceConfig);
-                    startupTracer = new StartupTracer(traceConfig);
                 }
 
                 AppMethodBeat.getInstance().onStart();

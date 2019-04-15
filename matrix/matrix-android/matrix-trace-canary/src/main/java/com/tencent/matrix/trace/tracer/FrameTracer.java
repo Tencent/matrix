@@ -39,7 +39,7 @@ public class FrameTracer extends Tracer {
 
     public FrameTracer(TraceConfig config) {
         this.config = config;
-        this.frameIntervalMs = TimeUnit.MILLISECONDS.convert(UIThreadMonitor.getMonitor().getFrameIntervalNanos(), TimeUnit.NANOSECONDS);
+        this.frameIntervalMs = TimeUnit.MILLISECONDS.convert(UIThreadMonitor.getMonitor().getFrameIntervalNanos(), TimeUnit.NANOSECONDS) + 1;
         this.timeSliceMs = config.getTimeSliceMs();
         this.isFPSEnable = config.isFPSEnable();
         this.frozenThreshold = config.getFrozenThreshold();

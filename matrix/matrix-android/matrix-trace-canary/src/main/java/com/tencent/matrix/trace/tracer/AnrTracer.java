@@ -22,12 +22,9 @@ import com.tencent.matrix.util.MatrixLog;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.util.Collections;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Set;
 
 
 public class AnrTracer extends Tracer {
@@ -130,7 +127,7 @@ public class AnrTracer extends Tracer {
             beginRecord.release();
 
             if (null != anrListener) {
-                anrListener.happens(token, preTime - curTime);
+                anrListener.happens(token, curTime - preTime);
             }
             // memory
             long[] memoryInfo = dumpMemory();
@@ -197,6 +194,7 @@ public class AnrTracer extends Tracer {
                 jsonObject.put(SharePluginInfo.ISSUE_MEMORY, memJsonObject);
 
                 Issue issue = new Issue();
+                issue.setKey(token + "");
                 issue.setTag(SharePluginInfo.TAG_PLUGIN_EVIL_METHOD);
                 issue.setContent(jsonObject);
                 plugin.onDetectIssue(issue);
