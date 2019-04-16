@@ -137,7 +137,6 @@ public class EvilMethodTracer extends Tracer {
                 });
             }
 
-
             StringBuilder reportBuilder = new StringBuilder();
             StringBuilder logcatBuilder = new StringBuilder();
             long stackCost = Math.max(cost, TraceDataUtils.stackToString(stack, reportBuilder, logcatBuilder));
