@@ -1,0 +1,6 @@
+platform :osx, '10.10'
+
+target 'MatrixMacDemo' do
+	# use_frameworks!
+	pod 'matrix-wechat'
+end

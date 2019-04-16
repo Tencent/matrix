@@ -1,0 +1,1 @@
+../../../matrix-wechat/matrix/matrix-apple/Matrix/WCCrashBlockMonitor/KSCrash/Reporting/Filters/Tools/NSData+GZip.h
