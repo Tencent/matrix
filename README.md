@@ -354,12 +354,12 @@ Matrix is under the BSD license. See the [LICENSE](https://github.com/Tencent/Ma
 ![Matrix-icon](assets/img/readme/header.png)
 [![license](http://img.shields.io/badge/license-BSD3-brightgreen.svg?style=flat)](https://github.com/Tencent/matrix/blob/master/LICENSE)[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/Tencent/matrix/pulls)  [![WeChat Approved](https://img.shields.io/badge/Wechat%20Approved-0.5.1-red.svg)](https://github.com/Tencent/matrix/wiki)
 
-**Matrix** 是一款微信研发并日常使用的应用性能接入框架，支持iOS, macOS和Android。
+**Matrix** 是一款微信团队研发并日常使用的应用性能接入框架，支持iOS, macOS和Android。
 Matrix 通过接入各种性能监控方案，对性能监控项的异常数据进行采集和分析，输出相应的问题分析、定位与优化建议，从而帮助开发者开发出更高质量的应用。
 
 # <a name='matrix_ios_cn'>Matrix for iOS/macOS </a>
 
-当前工具监控范围包括：崩溃、卡顿和爆内存，包含以下两款插件：
+Matrix-iOS 当前工具监控范围包括：崩溃、卡顿和爆内存，包含以下两款插件：
 
 * **WCCrashBlockMonitorPlugin：** 基于 [KSCrash](https://github.com/kstenerud/KSCrash) 框架开发，具有业界领先的卡顿堆栈捕获能力，同时兼备崩溃捕获能力。
 
