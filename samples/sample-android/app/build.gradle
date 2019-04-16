@@ -2,8 +2,8 @@ apply plugin: 'com.android.application'
 
 
 android {
-    compileSdkVersion 24
-    buildToolsVersion "27.0.3"
+    compileSdkVersion 28
+    buildToolsVersion "28.0.2"
 
     signingConfigs {
         debug {
@@ -14,7 +14,7 @@ android {
     defaultConfig {
         applicationId "sample.tencent.matrix"
         minSdkVersion 19
-        targetSdkVersion 23
+        targetSdkVersion 28
         versionCode 1
         versionName "1.0"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
@@ -63,7 +63,7 @@ apply plugin: 'com.tencent.matrix-plugin'
 matrix {
     trace {
         enable = true
-        baseMethodMapFile = "${project.buildDir}/matrix_output/Debug.methodmap"
+        baseMethodMapFile = "${project.projectDir}/matrixTrace/methodMapping.txt"
         blackListFile = "${project.projectDir}/matrixTrace/blackMethodList.txt"
     }
 }

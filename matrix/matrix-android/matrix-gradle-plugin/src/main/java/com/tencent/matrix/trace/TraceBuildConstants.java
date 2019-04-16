@@ -21,7 +21,7 @@ package com.tencent.matrix.trace;
  */
 public class TraceBuildConstants {
 
-    public final static String MATRIX_TRACE_CLASS = "com/tencent/matrix/trace/core/MethodBeat";
+    public final static String MATRIX_TRACE_CLASS = "com/tencent/matrix/trace/core/AppMethodBeat";
     public final static String MATRIX_TRACE_ON_WINDOW_FOCUS_METHOD = "onWindowFocusChanged";
     public final static String MATRIX_TRACE_ATTACH_BASE_CONTEXT = "attachBaseContext";
     public final static String MATRIX_TRACE_ATTACH_BASE_CONTEXT_ARGS = "(Landroid/content/Context;)V";
@@ -30,11 +30,14 @@ public class TraceBuildConstants {
     public final static String MATRIX_TRACE_ACTIVITY_CLASS = "android/app/Activity";
     public final static String MATRIX_TRACE_V7_ACTIVITY_CLASS = "android/support/v7/app/AppCompatActivity";
     public final static String MATRIX_TRACE_APPLICATION_CLASS = "android/app/Application";
-    public final static String MATRIX_TRACE_METHOD_BEAT_CLASS = "com/tencent/matrix/trace/core/MethodBeat";
+    public final static String MATRIX_TRACE_METHOD_BEAT_CLASS = "com/tencent/matrix/trace/core/AppMethodBeat";
     public final static String MATRIX_TRACE_ON_WINDOW_FOCUS_METHOD_ARGS = "(Z)V";
     public static final String[] UN_TRACE_CLASS = {"R.class", "R$", "Manifest", "BuildConfig"};
     public final static String DEFAULT_BLACK_TRACE =
                     "[package]\n"
                     + "-keeppackage android/\n"
                     + "-keeppackage com/tencent/matrix/\n";
+
+    private static final int METHOD_ID_MAX = 0xFFFFF;
+    public static final int METHOD_ID_DISPATCH = METHOD_ID_MAX - 1;
 }

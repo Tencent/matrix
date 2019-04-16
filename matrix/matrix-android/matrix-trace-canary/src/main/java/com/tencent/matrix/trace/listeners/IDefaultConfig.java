@@ -24,8 +24,12 @@ public interface IDefaultConfig {
 
     boolean isFPSEnable();
 
-    boolean isMethodTraceEnable();
+    boolean isEvilMethodTraceEnable();
 
-    boolean isTargetScene(String scene);
+    boolean isAnrTraceEnable();
+
+    boolean isDebug();
+
+    boolean isDevEnv();
 
 }
