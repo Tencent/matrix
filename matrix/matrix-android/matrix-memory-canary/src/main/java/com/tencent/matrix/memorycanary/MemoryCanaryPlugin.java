@@ -25,6 +25,8 @@ import com.tencent.matrix.plugin.Plugin;
 import com.tencent.matrix.plugin.PluginListener;
 import com.tencent.matrix.util.MatrixLog;
 
+import org.json.JSONObject;
+
 import java.util.HashSet;
 
 /**
@@ -95,5 +97,10 @@ public class MemoryCanaryPlugin extends Plugin {
 
         super.onForeground(isForground);
         mCore.onForeground(isForground);
+    }
+
+    @Override
+    public JSONObject getJsonInfo() {
+        return mCore.getJsonInfo();
     }
 }

@@ -577,13 +577,17 @@ public class AlarmDetector extends IssuePublisher {
         if (bytes == null) {
             return null;
         }
-
-        Parcel p = Parcel.obtain();
-        p.unmarshall(bytes, 0, bytes.length);
-        p.setDataPosition(0);
-        Intent intent =  Intent.CREATOR.createFromParcel(p);
-        p.recycle();
-        return intent;
+        try {
+            Parcel p = Parcel.obtain();
+            p.unmarshall(bytes, 0, bytes.length);
+            p.setDataPosition(0);
+            Intent intent = Intent.CREATOR.createFromParcel(p);
+            p.recycle();
+            return intent;
+        } catch (java.lang.IllegalStateException e) {
+            MatrixLog.e(TAG, "[bytesToIntent] %s", e);
+        }
+        return null;
     }
 
     private static final class InfoWrapper implements Serializable {
@@ -652,6 +656,8 @@ public class AlarmDetector extends IssuePublisher {
                 MatrixLog.w(TAG, "load : exp:%s", e);
             } catch (ClassNotFoundException e) {
                 MatrixLog.w(TAG, "load : exp:%s", e);
+            } catch (Exception e) {
+                MatrixLog.w(TAG, "load: exp:%s", e);
             } finally {
                 try {
                     if (ois != null) {
