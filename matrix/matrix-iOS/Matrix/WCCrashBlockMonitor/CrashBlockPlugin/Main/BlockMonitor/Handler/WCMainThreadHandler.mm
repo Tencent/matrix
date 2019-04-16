@@ -96,6 +96,7 @@ static size_t *g_topStackAddressRepeatArray;
     }
 
     pthread_mutex_lock(&m_threadLock);
+  
     if (g_mainThreadStackCycleArray[g_tailPoint] != NULL) {
         free(g_mainThreadStackCycleArray[g_tailPoint]);
     }
@@ -244,6 +245,7 @@ static size_t *g_topStackAddressRepeatArray;
         return NULL;
     }
     stackSize = 0;
+
     pthread_mutex_lock(&m_threadLock);
     for (int i = 0; i < m_cycleArrayCount; i++) {
         uint64_t trueIndex = (g_tailPoint + m_cycleArrayCount - i - 1) % m_cycleArrayCount;

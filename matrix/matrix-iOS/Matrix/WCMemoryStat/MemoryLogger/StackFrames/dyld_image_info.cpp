@@ -119,14 +119,14 @@ static void __add_info_for_image(const struct mach_header *header, intptr_t slid
 	dyld_image_info image_info = {0};
 	bool is_wechat_image = false;
     
-    const char *app_bundle_name = getAppBundleName();
-    char *app_name = new char(strlen(app_bundle_name) * 2 + 7);
-    char *app_bundle = new char(strlen(app_bundle_name) + 7);
-    strcpy(app_name, "/");
-    strcat(app_name, app_bundle_name);
-    strcat(app_name, ".app/");
-    strcpy(app_bundle, app_name);
-    strcat(app_name, app_bundle_name);
+  const char *app_bundle_name = getAppBundleName();
+  char *app_name = new char(strlen(app_bundle_name) * 2 + 7);
+  char *app_bundle = new char(strlen(app_bundle_name) + 7);
+  strcpy(app_name, "/");
+  strcat(app_name, app_bundle_name);
+  strcat(app_name, ".app/");
+  strcpy(app_bundle, app_name);
+  strcat(app_name, app_bundle_name);
 	
 	segment_command_t *cur_seg_cmd = NULL;
 	uintptr_t cur = (uintptr_t)header + sizeof(mach_header_t);
@@ -150,12 +150,12 @@ static void __add_info_for_image(const struct mach_header *header, intptr_t slid
 			Dl_info info = {0};
 			if (dladdr(header, &info) != 0 && info.dli_fname) {
 				if (strlen(info.dli_fname) > strlen(app_name) && !memcmp(info.dli_fname + strlen(info.dli_fname) - strlen(app_name), app_name, strlen(app_name))) {
-					is_wechat_image = true;
+				  is_wechat_image = true;
 				}
 				if (strrchr(info.dli_fname, '/') != NULL) {
 					strncpy(image_info.image_name, strrchr(info.dli_fname, '/'), sizeof(image_info.image_name));
 				}
-				
+        
 				image_info.is_app_image = (strstr(info.dli_fname, app_bundle) != NULL);
 			}
 		}
