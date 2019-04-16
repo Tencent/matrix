@@ -26,11 +26,11 @@ typedef enum : NSUInteger {
     MatrixAppRebootTypeQuitByExit,
     MatrixAppRebootTypeQuitByUser,
     MatrixAppRebootTypeAppSuspendOOM, // OOM, out of memory
-    MatrixAppRebootTypeAppSuspendCrash,
     MatrixAppRebootTypeAppBackgroundOOM,
     MatrixAppRebootTypeAppForegroundOOM,
-    MatrixAppRebootTypeAppForegroundDeadLoop,
     MatrixAppRebootTypeOtherReason,
+    MatrixAppRebootTypeAppForegroundDeadLoop,
+    MatrixAppRebootTypeAppSuspendCrash,
 } MatrixAppRebootType;
 
 #endif /* MatrixAppRebootType_h */
