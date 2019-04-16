@@ -64,7 +64,7 @@ public class DynamicConfigImplDemo implements IDynamicConfig {
         }
 
         if (MatrixEnum.clicfg_matrix_trace_fps_time_slice.name().equals(key)) {
-            return 1000;
+            return 12000;
         }
 
         return defInt;

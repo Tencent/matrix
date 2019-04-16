@@ -143,14 +143,46 @@ public class ActivityRefWatcher extends FilePublisher implements Watcher {
     }
 
     private final Application.ActivityLifecycleCallbacks mRemovedActivityMonitor = new ActivityLifeCycleCallbacksAdapter() {
+        private int mAppStatusCounter = 0;
+        private int mUIConfigChangeCounter = 0;
+
         @Override
         public void onActivityCreated(Activity activity, Bundle savedInstanceState) {
             mCurrentCreatedActivityCount.incrementAndGet();
         }
 
         @Override
+        public void onActivityStarted(Activity activity) {
+            if (mAppStatusCounter <= 0) {
+                MatrixLog.i(TAG, "we are in foreground, start watcher task.");
+                mDetectExecutor.executeInBackground(mScanDestroyedActivitiesTask);
+            }
+            if (mUIConfigChangeCounter < 0) {
+                ++mUIConfigChangeCounter;
+            } else {
+                ++mAppStatusCounter;
+            }
+        }
+
+        @Override
+        public void onActivityStopped(Activity activity) {
+            if (activity.isChangingConfigurations()) {
+                --mUIConfigChangeCounter;
+            } else {
+                --mAppStatusCounter;
+                if (mAppStatusCounter <= 0) {
+                    MatrixLog.i(TAG, "we are in background, stop watcher task.");
+                    mDetectExecutor.clearTasks();
+                }
+            }
+        }
+
+        @Override
         public void onActivityDestroyed(Activity activity) {
             pushDestroyedActivityInfo(activity);
+            synchronized (mDestroyedActivityInfos) {
+                mDestroyedActivityInfos.notifyAll();
+            }
         }
     };
 
@@ -215,13 +247,20 @@ public class ActivityRefWatcher extends FilePublisher implements Watcher {
 
         @Override
         public Status execute() {
+            // If destroyed activity list is empty, just wait to save power.
+            while (mDestroyedActivityInfos.isEmpty()) {
+                synchronized (mDestroyedActivityInfos) {
+                    try {
+                        mDestroyedActivityInfos.wait();
+                    } catch (Throwable ignored) {
+                        // Ignored.
+                    }
+                }
+            }
+
             // Fake leaks will be generated when debugger is attached.
             if (Debug.isDebuggerConnected() && !mResourcePlugin.getConfig().getDetectDebugger()) {
                 MatrixLog.w(TAG, "debugger is connected, to avoid fake result, detection was delayed.");
-                return Status.RETRY;
-            }
-
-            if (mDestroyedActivityInfos.isEmpty()) {
                 return Status.RETRY;
             }
 

@@ -14,32 +14,20 @@
  * limitations under the License.
  */
 
-package com.tencent.matrix.trace.listeners;
+package com.tencent.matrix.plugin;
 
 /**
- * Created by caichongyang on 2017/5/26.
+ * Created by zhouzhijie on 2019/3/13.
  */
-
-public interface IMethodBeat {
-
-    void registerListener(IMethodBeatListener listener);
-
-    void unregisterListener(IMethodBeatListener listener);
-
-    boolean isHasListeners();
-
-    void resetIndex();
-
-    void onCreate();
-
-    void onDestroy();
-
-    boolean isRealTrace();
-
-    long getLastDiffTime();
-
-    void lockBuffer(boolean isLock);
-
-    boolean isLockBuffer();
-
+public class PluginShareConstants {
+    public static class MemoryCanaryShareKeys {
+        public static final String SYSTEM_MEMORY = "sysMem";
+        public static final String MEM_CLASS = "memClass";
+        public static final String AVAILABLE = "available";
+        public static final String DALVIK_HEAP = "dalvikHeap";
+        public static final String NATIVE_HEAP = "nativeHeap";
+        public static final String MEM_FREE = "memfree";
+        public static final String IS_LOW = "islow";
+        public static final String VM_SIZE = "vmSize";
+    }
 }

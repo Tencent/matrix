@@ -26,6 +26,7 @@ import com.tencent.matrix.report.IssuePublisher;
 import com.tencent.matrix.util.DeviceUtil;
 import com.tencent.matrix.util.MatrixHandlerThread;
 import com.tencent.matrix.util.MatrixLog;
+import com.tencent.matrix.plugin.PluginShareConstants;
 
 import android.app.Activity;
 import android.app.Application;
@@ -507,5 +508,26 @@ public class MemoryCanaryCore implements IssuePublisher.OnIssueDetectListener {
         } else {
             return getFib(n - 1) + getFib(n - 2);
         }
+    }
+
+    public JSONObject getJsonInfo() {
+        JSONObject json = new JSONObject();
+
+        long dalvikHeap = DeviceUtil.getDalvikHeap();
+        long nativeHeap = DeviceUtil.getNativeHeap();
+        try {
+            json.put(PluginShareConstants.MemoryCanaryShareKeys.DALVIK_HEAP, dalvikHeap);
+            json.put(PluginShareConstants.MemoryCanaryShareKeys.NATIVE_HEAP, nativeHeap);
+            json.put(PluginShareConstants.MemoryCanaryShareKeys.SYSTEM_MEMORY, mTotalMemory);
+            json.put(PluginShareConstants.MemoryCanaryShareKeys.MEM_CLASS, mMemoryClass);
+            json.put(PluginShareConstants.MemoryCanaryShareKeys.AVAILABLE, DeviceUtil.getAvailMemory(mContext));
+            json.put(PluginShareConstants.MemoryCanaryShareKeys.MEM_FREE, DeviceUtil.getMemFree());
+            json.put(PluginShareConstants.MemoryCanaryShareKeys.IS_LOW, DeviceUtil.isLowMemory(mContext));
+            json.put(PluginShareConstants.MemoryCanaryShareKeys.VM_SIZE, DeviceUtil.getVmSize());
+        } catch (JSONException e) {
+            MatrixLog.e(TAG, "getJsonInfo exception:" + e.getMessage());
+        }
+
+        return json;
     }
 }

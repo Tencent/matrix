@@ -128,7 +128,7 @@ public class Matrix {
         private final Application    application;
         private       PluginListener pluginListener;
 
-        private HashSet<Plugin> plugins;
+        private HashSet<Plugin> plugins = new HashSet<>();
 
         public Builder(Application app) {
             if (app == null) {
@@ -138,9 +138,6 @@ public class Matrix {
         }
 
         public Builder plugin(Plugin plugin) {
-            if (plugins == null) {
-                plugins = new HashSet<>();
-            }
             String tag = plugin.getTag();
             for (Plugin exist : plugins) {
                 if (tag.equals(exist.getTag())) {
