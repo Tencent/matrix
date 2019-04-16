@@ -26,7 +26,6 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 
-
 public class AnrTracer extends Tracer {
 
     private static final String TAG = "Matrix.AnrTracer";
@@ -34,11 +33,6 @@ public class AnrTracer extends Tracer {
     private final TraceConfig traceConfig;
     private volatile AnrHandleTask anrTask;
     private boolean isAnrTraceEnable;
-    private IAnrListener anrListener;
-
-    public interface IAnrListener {
-        void happens(long token, long cost);
-    }
 
     public AnrTracer(TraceConfig traceConfig) {
         this.traceConfig = traceConfig;
@@ -118,13 +112,9 @@ public class AnrTracer extends Tracer {
         public void run() {
             anrTask = null;
             long curTime = SystemClock.uptimeMillis();
-            long preTime = token;
             long[] data = AppMethodBeat.getInstance().copyData(beginRecord);
             beginRecord.release();
 
-            if (null != anrListener) {
-                anrListener.happens(token, curTime - preTime);
-            }
             // memory
             long[] memoryInfo = dumpMemory();
 
