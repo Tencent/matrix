@@ -13,7 +13,6 @@ import com.tencent.matrix.trace.util.Utils;
 import com.tencent.matrix.util.MatrixHandlerThread;
 import com.tencent.matrix.util.MatrixLog;
 
-import java.lang.reflect.Field;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -447,19 +446,6 @@ public class AppMethodBeat implements BeatLifecycle {
             record = record.next;
         }
         MatrixLog.i(TAG, "[printIndexRecord] %s", ss.toString());
-    }
-
-
-    private static <T> T reflectObject(Object instance, String name) {
-        try {
-            Field field = instance.getClass().getDeclaredField(name);
-            field.setAccessible(true);
-            return (T) field.get(instance);
-        } catch (Exception e) {
-            e.printStackTrace();
-            MatrixLog.e(TAG, e.toString());
-        }
-        return null;
     }
 
 }

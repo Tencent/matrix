@@ -178,15 +178,15 @@ public class EvilMethodTracer extends Tracer {
             StringBuilder print = new StringBuilder();
             print.append(String.format(" \n>>>>>>>>>>>>>>>>>>>>> maybe happens Jankiness!(%sms) <<<<<<<<<<<<<<<<<<<<<\n", allCost));
             print.append("|* [CPU]").append("\n");
-            print.append("|*   usage: ").append(usage).append("\n");
+            print.append("|*\tusage: ").append(usage).append("\n");
             print.append("|* [Memory]").append("\n");  // todo
             print.append("|* [doFrame]").append("\n");
-            print.append("|*   inputCost: ").append(inputCost).append("\n");
-            print.append("|*   animationCost: ").append(animationCost).append("\n");
-            print.append("|*   traversalCost: ").append(traversalCost).append("\n");
+            print.append("|*\tinputCost: ").append(inputCost).append("\n");
+            print.append("|*\tanimationCost: ").append(animationCost).append("\n");
+            print.append("|*\ttraversalCost: ").append(traversalCost).append("\n");
             print.append("|* [Trace]").append("\n");
-            print.append("|*   StackSize: ").append(stackSize).append("\n");
-            print.append("|*   StackKey: ").append(stackKey).append("\n");
+            print.append("|*\tStackSize: ").append(stackSize).append("\n");
+            print.append("|*\tStackKey: ").append(stackKey).append("\n");
 
             if (config.isDebug()) {
                 print.append(stack.toString());

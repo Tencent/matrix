@@ -100,10 +100,6 @@ public class AnrTracer extends Tracer {
         }
     }
 
-    public void setAnrListener(IAnrListener anrListener) {
-        this.anrListener = anrListener;
-    }
-
     class AnrHandleTask implements Runnable {
 
         AppMethodBeat.IndexRecord beginRecord;
@@ -134,7 +130,7 @@ public class AnrTracer extends Tracer {
 
             // Thread state
             Thread.State status = Looper.getMainLooper().getThread().getState();
-            String dumpStack = Utils.getStack(Looper.getMainLooper().getThread().getStackTrace(), "|*        ", 12);
+            String dumpStack = Utils.getStack(Looper.getMainLooper().getThread().getStackTrace(), "|*\t\t", 12);
 
             // frame
             UIThreadMonitor monitor = UIThreadMonitor.getMonitor();
@@ -209,19 +205,19 @@ public class AnrTracer extends Tracer {
             StringBuilder print = new StringBuilder();
             print.append(" \n>>>>>>>>>>>>>>>>>>>>>>> maybe happens ANR(5s)! <<<<<<<<<<<<<<<<<<<<<<<\n");
             print.append("|* [Memory]").append("\n");  // todo
-            print.append("|*   DalvikHeap: ").append(memoryInfo[0]).append("kb\n");
-            print.append("|*   NativeHeap: ").append(memoryInfo[1]).append("kb\n");
-            print.append("|*   VmSize: ").append(memoryInfo[2]).append("kb\n");
+            print.append("|*\tDalvikHeap: ").append(memoryInfo[0]).append("kb\n");
+            print.append("|*\tNativeHeap: ").append(memoryInfo[1]).append("kb\n");
+            print.append("|*\tVmSize: ").append(memoryInfo[2]).append("kb\n");
             print.append("|* [doFrame]").append("\n");
-            print.append("|*   inputCost: ").append(inputCost).append("\n");
-            print.append("|*   animationCost: ").append(animationCost).append("\n");
-            print.append("|*   traversalCost: ").append(traversalCost).append("\n");
+            print.append("|*\tinputCost: ").append(inputCost).append("\n");
+            print.append("|*\tanimationCost: ").append(animationCost).append("\n");
+            print.append("|*\ttraversalCost: ").append(traversalCost).append("\n");
             print.append("|* [Thread]").append("\n");
-            print.append("|*   State: ").append(state).append("\n");
-            print.append("|*   Stack: ").append(dumpStack);
+            print.append("|*\tState: ").append(state).append("\n");
+            print.append("|*\tStack: ").append(dumpStack);
             print.append("|* [Trace]").append("\n");
-            print.append("|*   StackSize: ").append(stackSize).append("\n");
-            print.append("|*   StackKey: ").append(stackKey).append("\n");
+            print.append("|*\tStackSize: ").append(stackSize).append("\n");
+            print.append("|*\tStackKey: ").append(stackKey).append("\n");
 
             if (traceConfig.isDebug()) {
                 print.append(stack.toString());
