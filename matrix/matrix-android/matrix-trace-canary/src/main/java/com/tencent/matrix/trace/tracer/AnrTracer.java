@@ -194,7 +194,7 @@ public class AnrTracer extends Tracer {
         private String printAnr(long[] memoryInfo, Thread.State state, StringBuilder stack, long stackSize, String stackKey, String dumpStack, long inputCost, long animationCost, long traversalCost) {
             StringBuilder print = new StringBuilder();
             print.append(" \n>>>>>>>>>>>>>>>>>>>>>>> maybe happens ANR(5s)! <<<<<<<<<<<<<<<<<<<<<<<\n");
-            print.append("|* [Memory]").append("\n");  // todo
+            print.append("|* [Memory]").append("\n");
             print.append("|*\tDalvikHeap: ").append(memoryInfo[0]).append("kb\n");
             print.append("|*\tNativeHeap: ").append(memoryInfo[1]).append("kb\n");
             print.append("|*\tVmSize: ").append(memoryInfo[2]).append("kb\n");
