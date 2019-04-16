@@ -126,6 +126,12 @@ static void updateThreadList()
         }
         free(allQueueNames);
     }
+    
+    for (mach_msg_type_number_t i = 0; i < allThreadsCount; i++)
+    {
+        mach_port_deallocate(mach_task_self(), threads[i]);
+    }
+    vm_deallocate(mach_task_self(), (vm_address_t)threads, sizeof(thread_t) * allThreadsCount);
 }
 
 static void* monitorCachedData(__unused void* const userData)

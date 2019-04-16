@@ -1,9 +1,12 @@
+import com.google.gson.JsonArray
+import com.google.gson.Gson
+
 apply plugin: 'com.android.application'
 
 
 android {
-    compileSdkVersion 24
-    buildToolsVersion "27.0.3"
+    compileSdkVersion 28
+    buildToolsVersion "28.0.2"
 
     signingConfigs {
         debug {
@@ -14,7 +17,7 @@ android {
     defaultConfig {
         applicationId "sample.tencent.matrix"
         minSdkVersion 19
-        targetSdkVersion 23
+        targetSdkVersion 28
         versionCode 1
         versionName "1.0"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
@@ -36,6 +39,45 @@ android {
             signingConfig signingConfigs.debug
         }
     }
+
+    applicationVariants.all { variant ->
+        if (variant.name.equalsIgnoreCase("debug")) {
+            packageDebug.doLast {
+                ProcessBuilder processBuilder = new ProcessBuilder();
+                println configurations.apkCheckerDependency.getAt(0).getAbsolutePath()
+                processBuilder.command("java",
+                        "-jar", configurations.apkCheckerDependency.getAt(0).getAbsolutePath(),
+                        "--apk", variant.outputs.first().outputFile.getAbsolutePath(),
+                        "--output", project.getProjectDir().getAbsolutePath() + "/unused_resources",
+                        "--format", "json",
+                        "-unusedResources", "--rTxt", project.getBuildDir().getAbsolutePath() + "/intermediates/symbols/${variant.name}/R.txt");
+                Process process = processBuilder.start();
+                process.waitFor();
+                File outputFile = new File(project.getProjectDir().getAbsolutePath() + "/unused_resources.json");
+                if (outputFile.exists()) {
+                    Gson gson = new Gson();
+                    JsonArray jsonArray = gson.fromJson(outputFile.text, JsonArray.class);
+                    for (int i = 0; i < jsonArray.size(); i++) {
+                        if (jsonArray.get(i).asJsonObject.get("taskType").asInt == 12) {
+                            JsonArray resList = jsonArray.get(i).asJsonObject.get("unused-resources").asJsonArray;
+                            for (int j = 0; j < resList.size(); j++) {
+                                project.ext.unusedResourcesSet.add(resList.get(j).asString);
+                            }
+                            println "find unused resources:\n" + unusedResourcesSet
+                            break;
+                        }
+                    }
+                    outputFile.delete();
+                }
+            }
+        }
+    }
+}
+
+ext.unusedResourcesSet = new HashSet<String>();
+
+configurations {
+    apkCheckerDependency
 }
 
 
@@ -52,6 +94,7 @@ dependencies {
 
     compile 'com.android.support:appcompat-v7:24.0.0'
     compile 'com.android.support:recyclerview-v7:24.0.0'
+    apkCheckerDependency group: "com.tencent.matrix", name: "matrix-apk-canary", version:MATRIX_VERSION, changing: true
 
     testCompile 'junit:junit:4.12'
     androidTestCompile('com.android.support.test.espresso:espresso-core:2.2.2', {
@@ -63,7 +106,16 @@ apply plugin: 'com.tencent.matrix-plugin'
 matrix {
     trace {
         enable = true
-        baseMethodMapFile = "${project.buildDir}/matrix_output/Debug.methodmap"
+        baseMethodMapFile = "${project.projectDir}/matrixTrace/methodMapping.txt"
         blackListFile = "${project.projectDir}/matrixTrace/blackMethodList.txt"
+    }
+    removeUnusedResources {
+        enable true
+        variant = "debug"
+        needSign true
+        shrinkArsc true
+        apksignerPath = "${android.getSdkDirectory().getAbsolutePath()}/build-tools/${android.getBuildToolsVersion()}/apksigner"
+        unusedResources = project.ext.unusedResourcesSet
+        ignoreResources = ["R.id.*", "R.bool.*"]
     }
 }

@@ -40,7 +40,8 @@ public class IssuesMap {
     }
 
     public static int getCount() {
-        return issues.get(IssueFilter.getCurrentFilter()).size();
+        List list = issues.get(IssueFilter.getCurrentFilter());
+        return null == list ? 0 : list.size();
     }
 
     public static void clear() {

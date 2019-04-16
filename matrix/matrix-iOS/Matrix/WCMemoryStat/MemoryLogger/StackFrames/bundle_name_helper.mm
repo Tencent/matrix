@@ -1,6 +1,6 @@
 /*
  * Tencent is pleased to support the open source community by making wechat-matrix available.
- * Copyright (C) 2018 THL A29 Limited, a Tencent company. All rights reserved.
+ * Copyright (C) 2019 THL A29 Limited, a Tencent company. All rights reserved.
  * Licensed under the BSD 3-Clause License (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -14,19 +14,15 @@
  * limitations under the License.
  */
 
-package com.tencent.matrix.trace.listeners;
+#import <Foundation/Foundation.h>
+#import "bundle_name_helper.h"
 
-/**
- * Created by caichongyang on 17/5/18.
- */
-
-public interface IFrameBeat {
-
-    void onCreate();
-
-    void onDestroy();
-
-    void addListener(IFrameBeatListener listener);
-
-    void removeListener(IFrameBeatListener listener);
+const char *getAppBundleName() {
+    
+    NSString *bundleName = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleName"];
+    if (!bundleName) {
+        return "";
+    }
+    
+    return [bundleName cStringUsingEncoding:NSUTF8StringEncoding];
 }

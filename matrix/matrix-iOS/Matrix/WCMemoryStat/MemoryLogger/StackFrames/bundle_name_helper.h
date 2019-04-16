@@ -1,6 +1,6 @@
 /*
  * Tencent is pleased to support the open source community by making wechat-matrix available.
- * Copyright (C) 2018 THL A29 Limited, a Tencent company. All rights reserved.
+ * Copyright (C) 2019 THL A29 Limited, a Tencent company. All rights reserved.
  * Licensed under the BSD 3-Clause License (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -14,32 +14,4 @@
  * limitations under the License.
  */
 
-package com.tencent.matrix.trace.listeners;
-
-/**
- * Created by caichongyang on 2017/5/26.
- */
-
-public interface IMethodBeat {
-
-    void registerListener(IMethodBeatListener listener);
-
-    void unregisterListener(IMethodBeatListener listener);
-
-    boolean isHasListeners();
-
-    void resetIndex();
-
-    void onCreate();
-
-    void onDestroy();
-
-    boolean isRealTrace();
-
-    long getLastDiffTime();
-
-    void lockBuffer(boolean isLock);
-
-    boolean isLockBuffer();
-
-}
+const char *getAppBundleName();

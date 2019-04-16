@@ -32,6 +32,7 @@ public class MappingCollector implements MappingProcessor {
     private final static int DEFAULT_CAPACITY = 2000;
     public HashMap<String, String> mObfuscatedRawClassMap = new HashMap<>(DEFAULT_CAPACITY);
     public HashMap<String, String> mRawObfuscatedClassMap = new HashMap<>(DEFAULT_CAPACITY);
+    public HashMap<String, String> mRawObfuscatedPackageMap = new HashMap<>(DEFAULT_CAPACITY);
     private final Map<String, Map<String, Set<MethodInfo>>> mObfuscatedClassMethodMap = new HashMap<>();
     private final Map<String, Map<String, Set<MethodInfo>>> mOriginalClassMethodMap = new HashMap<>();
 
@@ -39,6 +40,7 @@ public class MappingCollector implements MappingProcessor {
     public boolean processClassMapping(String className, String newClassName) {
         this.mObfuscatedRawClassMap.put(newClassName, className);
         this.mRawObfuscatedClassMap.put(className, newClassName);
+        this.mRawObfuscatedPackageMap.put(className.substring(0, className.lastIndexOf('.')), newClassName.substring(0, newClassName.lastIndexOf('.')));
         return true;
     }
 
@@ -85,6 +87,14 @@ public class MappingCollector implements MappingProcessor {
             return mRawObfuscatedClassMap.get(originalClassName);
         } else {
             return defaultClassName;
+        }
+    }
+
+    public String proguardPackageName(String originalPackage, String defaultPackage) {
+        if (mRawObfuscatedPackageMap.containsKey(originalPackage)) {
+            return mRawObfuscatedPackageMap.get(originalPackage);
+        } else {
+            return defaultPackage;
         }
     }
 

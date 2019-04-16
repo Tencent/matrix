@@ -34,18 +34,17 @@ public class SharePluginInfo {
     public static final String ISSUE_FPS = "fps";
     public static final String ISSUE_STACK = "stack";
     public static final String ISSUE_STACK_KEY = "stackKey";
+    public static final String ISSUE_MEMORY = "memory";
+    public static final String ISSUE_MEMORY_NATIVE = "native_heap";
+    public static final String ISSUE_MEMORY_DALVIK = "dalvik_heap";
+    public static final String ISSUE_MEMORY_VM_SIZE = "vm_size";
     public static final String ISSUE_COST = "cost";
+    public static final String ISSUE_CPU_USAGE = "usage";
     public static final String ISSUE_STACK_TYPE = "detail";
-    public static final String ISSUE_SUB_TYPE = "subType";
-    public static final String ISSUE_VIEW_INFO = "viewInfo";
-    public static final String ISSUE_VIEW_DEEP = "viewDeep";
-    public static final String ISSUE_VIEW_COUNT = "viewCount";
-    public static final String ISSUE_VIEW_ACTIVITY = "activity";
     public static final String ISSUE_IS_WARM_START_UP = "is_warm_start_up";
-    public static final String STAGE_APPLICATION_CREATE_SCENE = "application_create_scene";
+    public static final String ISSUE_SUB_TYPE = "subType";
     public static final String STAGE_APPLICATION_CREATE = "application_create";
+    public static final String STAGE_APPLICATION_CREATE_SCENE = "application_create_scene";
     public static final String STAGE_FIRST_ACTIVITY_CREATE = "first_activity_create";
-    public static final String STAGE_SPLASH_ACTIVITY_DURATION = "splash_activity_duration";
     public static final String STAGE_STARTUP_DURATION = "startup_duration";
-    public static final String STAGE_BETWEEN_APP_AND_ACTIVITY = "stage_between_app_and_activity";
 }

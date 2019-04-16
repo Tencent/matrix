@@ -1,6 +1,6 @@
 ![Matrix-icon](assets/img/readme/header.png)
 
-[![license](http://img.shields.io/badge/license-BSD3-brightgreen.svg?style=flat)](https://github.com/Tencent/matrix/blob/master/LICENSE)[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/Tencent/matrix/pulls)[![WeChat Approved](https://img.shields.io/badge/Wechat%20Approved-0.4.7-red.svg)](https://github.com/Tencent/matrix/wiki)
+[![license](http://img.shields.io/badge/license-BSD3-brightgreen.svg?style=flat)](https://github.com/Tencent/matrix/blob/master/LICENSE)[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/Tencent/matrix/pulls)[![WeChat Approved](https://img.shields.io/badge/Wechat%20Approved-0.5.1-red.svg)](https://github.com/Tencent/matrix/wiki)
 
 (中文版本请参看[这里](#matrix_cn))  
 
@@ -15,7 +15,7 @@
 
 The monitoring scope of the current tool includes: crash, lag, and out-of-memory, which includes the following two plugins:
 
-* **WCCrashBlockMonitorPlugin：** Based on [KSCrash](https://github.com/kstenerud/KSCrash) framework, it features cutting-edge lag stack capture capabilities with crash cpature.
+* **WCCrashBlockMonitorPlugin：** Based on [KSCrash](https://github.com/kstenerud/KSCrash) framework, it features cutting-edge lag stack capture capabilities with crash capture.
 
 * **WCMemoryStatPlugin：** A performance-optimized out-of-memory monitoring tool that captures memory allocation and the callstack of an application's out-of-memory event.
 
@@ -104,7 +104,7 @@ curBuilder.pluginListener = <object conforms to MatrixPluginListenerDelegate>;
 
 Each plugin added to `MatrixBuilder` will call back the corresponding event via `pluginListener`.
 
-**Important: Get the monitoring data of the Matrix via `onReportIssue:`, the data format info refrence to [Matrix for iOS/macOS Data Format Description](https://github.com/Tencent/matrix/wiki/Matrix-for-iOS-macOS-Data-Format-Description)**
+**Important: Get the monitoring data of the Matrix via `onReportIssue:`, the data format info reference to [Matrix for iOS/macOS Data Format Description](https://github.com/Tencent/matrix/wiki/Matrix-for-iOS-macOS-Data-Format-Description)**
 
 ## Tutorials
 
@@ -172,7 +172,7 @@ At this point, Matrix has been integrated into the app and is beginning to colle
 
 1. Configure `MATRIX_VERSION` in gradle.properties.
 ``` gradle
-  MATRIX_VERSION=0.4.10
+  MATRIX_VERSION=0.5.1
 ```
 
 2. Add `matrix-gradle-plugin` in your build.gradle:
@@ -225,7 +225,7 @@ At this point, Matrix has been integrated into the app and is beginning to colle
 }
 ```
 
-5. Implement `DynamicConfig` to change parametes of Matrix.
+5. Implement `DynamicConfig` to change parameters of Matrix.
 ``` java
   public class DynamicConfigImplDemo implements IDynamicConfig {
     public DynamicConfigImplDemo() {}
@@ -289,11 +289,11 @@ You can get more about Matrix output at the wiki [The output of Matrix](https://
 
 #### APK Checker Usage
 
-APK Checker can run independently in Jar ([matrix-apk-canary-0.4.10.jar](https://jcenter.bintray.com/com/tencent/matrix/matrix-apk-canary/0.4.10/matrix-apk-canary-0.4.10.jar)）  mode, usage:
+APK Checker can run independently in Jar ([matrix-apk-canary-0.5.1.jar](https://jcenter.bintray.com/com/tencent/matrix/matrix-apk-canary/0.5.1/matrix-apk-canary-0.5.1.jar)）  mode, usage:
 
 
 ```shell
-java -jar matrix-apk-canary-0.4.10.jar
+java -jar matrix-apk-canary-0.5.1.jar
 Usages: 
     --config CONFIG-FILE-PATH
 or
@@ -352,14 +352,14 @@ Matrix is under the BSD license. See the [LICENSE](https://github.com/Tencent/Ma
 
 # <a name="matrix_cn">Matrix</a>
 ![Matrix-icon](assets/img/readme/header.png)
-[![license](http://img.shields.io/badge/license-BSD3-brightgreen.svg?style=flat)](https://github.com/Tencent/matrix/blob/master/LICENSE)[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/Tencent/matrix/pulls)  [![WeChat Approved](https://img.shields.io/badge/Wechat%20Approved-0.4.7-red.svg)](https://github.com/Tencent/matrix/wiki)
+[![license](http://img.shields.io/badge/license-BSD3-brightgreen.svg?style=flat)](https://github.com/Tencent/matrix/blob/master/LICENSE)[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/Tencent/matrix/pulls)  [![WeChat Approved](https://img.shields.io/badge/Wechat%20Approved-0.5.1-red.svg)](https://github.com/Tencent/matrix/wiki)
 
-**Matrix** 是一款微信研发并日常使用的应用性能接入框架，支持iOS, macOS和Android。
+**Matrix** 是一款微信团队研发并日常使用的应用性能接入框架，支持iOS, macOS和Android。
 Matrix 通过接入各种性能监控方案，对性能监控项的异常数据进行采集和分析，输出相应的问题分析、定位与优化建议，从而帮助开发者开发出更高质量的应用。
 
 # <a name='matrix_ios_cn'>Matrix for iOS/macOS </a>
 
-当前工具监控范围包括：崩溃、卡顿和爆内存，包含以下两款插件：
+Matrix-iOS 当前工具监控范围包括：崩溃、卡顿和爆内存，包含以下两款插件：
 
 * **WCCrashBlockMonitorPlugin：** 基于 [KSCrash](https://github.com/kstenerud/KSCrash) 框架开发，具有业界领先的卡顿堆栈捕获能力，同时兼备崩溃捕获能力。
 
@@ -510,7 +510,7 @@ Matrix-android 当前监控范围包括：应用安装包大小，帧率变化�
 
 1. 在你项目根目录下的 gradle.properties 中配置要依赖的 Matrix 版本号，如：
 ``` gradle
-  MATRIX_VERSION=0.4.10
+  MATRIX_VERSION=0.5.1
 ```
 
 2. 在你项目根目录下的 build.gradle 文件添加 Matrix 依赖，如：
@@ -624,10 +624,10 @@ Matrix 分析后的输出字段的含义请查看 [Matrix 输出内容的含义�
 
 #### APK Checker
 
-APK Check 以独立的 jar 包提供 ([matrix-apk-canary-0.4.10.jar](https://jcenter.bintray.com/com/tencent/matrix/matrix-apk-canary/0.4.10/matrix-apk-canary-0.4.10.jar)），你可以运行：
+APK Check 以独立的 jar 包提供 ([matrix-apk-canary-0.5.1.jar](https://jcenter.bintray.com/com/tencent/matrix/matrix-apk-canary/0.5.1/matrix-apk-canary-0.5.1.jar)），你可以运行：
 
 ```cmd
-java -jar matrix-apk-canary-0.4.10.jar
+java -jar matrix-apk-canary-0.5.1.jar
 ```
 
 查看 Usages 来使用它。
