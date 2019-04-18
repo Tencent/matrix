@@ -132,6 +132,7 @@
                 if (bSuccess) {
                     MatrixInfo(@"delete crash: reportID: %@", issue.issueID);
                     [WCCrashBlockFileHandler deleteCrashDataWithReportID:issue.issueID];
+                    [self delayReportCrash];
                 }
                 [self removeReportIDFromUploadingArray:issue.issueID];
             } else {
