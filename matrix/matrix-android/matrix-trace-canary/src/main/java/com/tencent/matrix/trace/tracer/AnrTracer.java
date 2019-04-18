@@ -114,6 +114,7 @@ public class AnrTracer extends Tracer {
             long curTime = SystemClock.uptimeMillis();
             long[] data = AppMethodBeat.getInstance().copyData(beginRecord);
             beginRecord.release();
+            String scene = AppMethodBeat.getFocusedActivity();
 
             // memory
             long[] memoryInfo = dumpMemory();
@@ -171,6 +172,7 @@ public class AnrTracer extends Tracer {
                 jsonObject.put(SharePluginInfo.ISSUE_STACK_TYPE, Constants.Type.ANR);
                 jsonObject.put(SharePluginInfo.ISSUE_COST, stackCost);
                 jsonObject.put(SharePluginInfo.ISSUE_STACK_KEY, stackKey);
+                jsonObject.put(SharePluginInfo.ISSUE_SCENE, scene);
                 jsonObject.put(SharePluginInfo.ISSUE_STACK, reportBuilder.toString());
                 // memory info
                 JSONObject memJsonObject = new JSONObject();

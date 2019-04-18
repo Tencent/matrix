@@ -80,7 +80,8 @@ public class EvilMethodTracer extends Tracer {
                 long[] data = AppMethodBeat.getInstance().copyData(indexRecord);
                 long[] queueCosts = new long[3];
                 System.arraycopy(queueTypeCosts, 0, queueCosts, 0, 3);
-                MatrixHandlerThread.getDefaultHandler().post(new AnalyseTask(data, queueCosts, cpuEndMs - cpuBeginMs, endMs - beginMs, endMs));
+                String scene = AppMethodBeat.getFocusedActivity();
+                MatrixHandlerThread.getDefaultHandler().post(new AnalyseTask(scene, data, queueCosts, cpuEndMs - cpuBeginMs, endMs - beginMs, endMs));
             }
         } finally {
             indexRecord.release();
@@ -98,10 +99,12 @@ public class EvilMethodTracer extends Tracer {
         long cpuCost;
         long cost;
         long endMs;
+        String scene;
 
 
-        AnalyseTask(long[] data, long[] queueCost, long cpuCost, long cost, long endMs) {
+        AnalyseTask(String scene, long[] data, long[] queueCost, long cpuCost, long cost, long endMs) {
 
+            this.scene = scene;
             this.cost = cost;
             this.cpuCost = cpuCost;
             this.data = data;
@@ -154,6 +157,7 @@ public class EvilMethodTracer extends Tracer {
                 jsonObject.put(SharePluginInfo.ISSUE_STACK_TYPE, Constants.Type.NORMAL);
                 jsonObject.put(SharePluginInfo.ISSUE_COST, stackCost);
                 jsonObject.put(SharePluginInfo.ISSUE_CPU_USAGE, usage);
+                jsonObject.put(SharePluginInfo.ISSUE_SCENE, scene);
                 jsonObject.put(SharePluginInfo.ISSUE_STACK, reportBuilder.toString());
                 jsonObject.put(SharePluginInfo.ISSUE_STACK_KEY, stackKey);
 
