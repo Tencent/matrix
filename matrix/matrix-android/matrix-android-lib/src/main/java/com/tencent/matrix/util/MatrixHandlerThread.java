@@ -72,7 +72,7 @@ public class MatrixHandlerThread {
     }
 
     public static HandlerThread getNewHandlerThread(String name) {
-        for (Iterator<HandlerThread> i = handlerThreads.iterator(); i.hasNext(); ) {
+        for (Iterator<HandlerThread> i = handlerThreads.iterator(); i.hasNext();) {
             HandlerThread element = i.next();
             if (!element.isAlive()) {
                 i.remove();
@@ -112,15 +112,21 @@ public class MatrixHandlerThread {
                     hashMap.put(content, info);
                 }
                 ++info.count;
-                MatrixLog.v(TAG, "Content:%s", content);
             }
         }
 
         @Override
         public void onForeground(boolean isForeground) {
             this.isForeground = isForeground;
+
             if (isForeground) {
-                LinkedList<Info> list = new LinkedList<>(hashMap.values());
+                long start = System.currentTimeMillis();
+                LinkedList<Info> list = new LinkedList<>();
+                for (Info info : hashMap.values()) {
+                    if (info.count > 1) {
+                        list.add(info);
+                    }
+                }
                 Collections.sort(list, new Comparator<Info>() {
                     @Override
                     public int compare(Info o1, Info o2) {
@@ -128,7 +134,9 @@ public class MatrixHandlerThread {
                     }
                 });
                 hashMap.clear();
-                MatrixLog.i(TAG, "matrix default thread has exec in background! %s", list);
+                if (!list.isEmpty()) {
+                    MatrixLog.i(TAG, "matrix default thread has exec in background! %s cost:%s", list, System.currentTimeMillis() - start);
+                }
             } else {
                 hashMap.clear();
             }

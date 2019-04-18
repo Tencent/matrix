@@ -1,5 +1,9 @@
 apply plugin: 'com.android.application'
 
+configurations.all {
+    // check for updates every build
+    resolutionStrategy.cacheChangingModulesFor 0, 'seconds'
+}
 
 android {
     compileSdkVersion 28
@@ -36,6 +40,7 @@ android {
             signingConfig signingConfigs.debug
         }
     }
+
 }
 
 
@@ -47,11 +52,12 @@ dependencies {
     compile group: "com.tencent.matrix", name: "matrix-resource-canary-android", version: MATRIX_VERSION, changing: true
     compile group: "com.tencent.matrix", name: "matrix-resource-canary-common", version: MATRIX_VERSION, changing: true
     compile group: "com.tencent.matrix", name: "matrix-io-canary", version: MATRIX_VERSION, changing: true
+    compile group: "com.tencent.matrix", name: "matrix-thread-canary", version: MATRIX_VERSION, changing: true
     compile group: "com.tencent.matrix", name: "matrix-sqlite-lint-android-sdk", version: MATRIX_VERSION, changing: true
     releaseCompile group: "com.tencent.matrix", name: "matrix-sqlite-lint-android-sdk-no-op", version: MATRIX_VERSION, changing: true
 
-    compile 'com.android.support:appcompat-v7:24.0.0'
-    compile 'com.android.support:recyclerview-v7:24.0.0'
+    compile 'com.android.support:appcompat-v7:28.0.0'
+    compile 'com.android.support:recyclerview-v7:28.0.0'
 
     testCompile 'junit:junit:4.12'
     androidTestCompile('com.android.support.test.espresso:espresso-core:2.2.2', {

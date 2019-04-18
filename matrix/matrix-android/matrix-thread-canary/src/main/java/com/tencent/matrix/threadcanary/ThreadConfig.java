@@ -45,19 +45,19 @@ public final class ThreadConfig {
     }
 
     public static final class Builder {
-        private IDynamicConfig mDynamicConig;
+        private IDynamicConfig mDynamicConfig;
 
         public Builder() {
 
         }
 
         public Builder dynamicConfig(IDynamicConfig config) {
-            this.mDynamicConig = config;
+            this.mDynamicConfig = config;
             return this;
         }
 
         public ThreadConfig build() {
-            return new ThreadConfig(mDynamicConig);
+            return new ThreadConfig(mDynamicConfig);
         }
     }
 }

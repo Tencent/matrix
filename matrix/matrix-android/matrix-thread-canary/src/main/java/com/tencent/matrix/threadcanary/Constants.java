@@ -2,14 +2,16 @@ package com.tencent.matrix.threadcanary;
 
 public class Constants {
     public static final String TAG_PLUGIN = "Thread";
+    public static final String REPORT_KEY_THREAD_GROUP_COUNT = "thread_group_count";
+    public static final String REPORT_KEY_THREAD_GROUP_LIST = "thread_group_list";
+    public static final String REPORT_KEY_THREAD_GROUP_NAME = "thread_group_name";
     public static final String REPORT_KEY_THREAD_COUNT = "thread_count";
-    public static final String REPORT_KEY_THREAD_LIST = "thread_list";
-    public static final String REPORT_KEY_THREAD_IS_SYSTEM = "thread_info_is_system";
-    public static final String REPORT_KEY_THREAD_INFO_NAME = "thread_info_name";
-    public static final String REPORT_KEY_THREAD_INFO_TID = "thread_info_tid";
-    public static final String REPORT_KEY_THREAD_INFO_STATE = "thread_info_state";
-    public static final String REPORT_KEY_THREAD_INFO_JIFFIES = "thread_info_jiffies";
-    public static final String REPORT_KEY_THREAD_INFO_BIG_STACK_SIZE = "thread_info_big_stack_size";
-    public static final String REPORT_KEY_THREAD_INFO_BIG_VIRTUAL_SIZE = "thread_info_big_virtual_size";
+    public static final String REPORT_KEY_THREAD_GROUP_THREAD_COUNT = "count";
+    public static final String REPORT_KEY_THREAD_GROUP_THREAD_LIST = "list";
+    public static final String REPORT_KEY_THREAD_INFO_TID = "tid";
+    public static final String REPORT_KEY_THREAD_INFO_STATE = "state";
+    public static final String REPORT_KEY_THREAD_INFO_JIFFIES = "jiffies";
+    public static final String REPORT_KEY_THREAD_INFO_STACK = "stack";
+    public static final String REPORT_KEY_THREAD_INFO_STACK_MD5 = "stack_md5";
 
 }

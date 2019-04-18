@@ -35,14 +35,14 @@ import org.json.JSONObject;
 public abstract class Plugin implements IPlugin, IssuePublisher.OnIssueDetectListener, IAppForeground {
     private static final String TAG = "Matrix.Plugin";
 
-    public static final int PLUGIN_CREATE    = 0x00;
-    public static final int PLUGIN_INITED    = 0x01;
-    public static final int PLUGIN_STARTED   = 0x02;
-    public static final int PLUGIN_STOPPED   = 0x04;
+    public static final int PLUGIN_CREATE = 0x00;
+    public static final int PLUGIN_INITED = 0x01;
+    public static final int PLUGIN_STARTED = 0x02;
+    public static final int PLUGIN_STOPPED = 0x04;
     public static final int PLUGIN_DESTROYED = 0x08;
 
     private PluginListener pluginListener;
-    private Application    application;
+    private Application application;
 
     private boolean isSupported = true;
 
@@ -85,6 +85,7 @@ public abstract class Plugin implements IPlugin, IssuePublisher.OnIssueDetectLis
         //MatrixLog.e(TAG, "detect issue:%s", issue);
         pluginListener.onReportIssue(issue);
     }
+
     @Override
     public Application getApplication() {
         return application;
@@ -153,6 +154,11 @@ public abstract class Plugin implements IPlugin, IssuePublisher.OnIssueDetectLis
 
     }
 
+    public boolean isForeground() {
+        return AppForegroundDelegate.INSTANCE.isAppForeground();
+    }
+
+
     public int getStatus() {
         return status;
     }
@@ -161,7 +167,7 @@ public abstract class Plugin implements IPlugin, IssuePublisher.OnIssueDetectLis
         return (status == PLUGIN_STARTED);
     }
 
-    public boolean isPluginStoped() {
+    public boolean isPluginStopped() {
         return (status == PLUGIN_STOPPED);
     }
 
