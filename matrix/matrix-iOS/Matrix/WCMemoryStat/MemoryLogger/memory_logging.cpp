@@ -41,6 +41,10 @@
 #include "dyld_image_info.h"
 #include "stack_frames_db.h"
 
+#ifdef DEBUG
+#define USE_PRIVATE_API
+#endif
+
 #pragma mark -
 #pragma mark Constants/Globals
 
@@ -518,7 +522,11 @@ void disable_memory_logging(void)
 	
 	disable_object_event_logger();
 	malloc_logger = NULL;
-	*syscall_logger = NULL;
+#ifdef USE_PRIVATE_API
+    if (syscall_logger != NULL) {
+        *syscall_logger = NULL;
+    }
+#endif
 	// avoid that after the memory monitoring stops, there are still some events being written.
 	reset_write_index(event_buffer);
 	// make current logging invalid

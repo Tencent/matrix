@@ -28,6 +28,10 @@
 #pragma mark -
 #pragma mark Types
 
+#ifdef DEBUG
+#define USE_PRIVATE_API
+#endif
+
 struct object_type {
 	uint32_t type;
 	char name[59];
@@ -385,9 +389,15 @@ bool prepare_object_event_logger(const char *log_dir)
 
 void disable_object_event_logger()
 {
-	*object_set_last_allocation_event_name_funcion = NULL;
-	*object_record_allocation_event_enable = false;
+#ifdef USE_PRIVATE_API
+    if (object_set_last_allocation_event_name_funcion != NULL) {
+        *object_set_last_allocation_event_name_funcion = NULL;
+    }
+    if (object_record_allocation_event_enable != NULL) {
+        *object_record_allocation_event_enable = false;
+    }
 	//nsobject_hook_alloc_method();
+#endif
 }
 
 object_type_file *open_object_type_file(const char *event_dir)
