@@ -153,6 +153,19 @@ public class TracePlugin extends Plugin {
         if (frameTracer != null) {
             frameTracer.onForeground(isForeground);
         }
+
+        if (anrTracer != null) {
+            anrTracer.onForeground(isForeground);
+        }
+
+        if (evilMethodTracer != null) {
+            evilMethodTracer.onForeground(isForeground);
+        }
+
+        if (startupTracer != null) {
+            startupTracer.onForeground(isForeground);
+        }
+
     }
 
     @Override

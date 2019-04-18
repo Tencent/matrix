@@ -18,6 +18,8 @@ package com.tencent.matrix.plugin;
 
 import android.app.Application;
 
+import com.tencent.matrix.AppForegroundDelegate;
+import com.tencent.matrix.listeners.IAppForeground;
 import com.tencent.matrix.report.Issue;
 import com.tencent.matrix.report.IssuePublisher;
 import com.tencent.matrix.util.MatrixLog;
@@ -30,7 +32,7 @@ import org.json.JSONObject;
  * Created by zhangshaowen on 17/5/17.
  */
 
-public abstract class Plugin implements IPlugin, IssuePublisher.OnIssueDetectListener {
+public abstract class Plugin implements IPlugin, IssuePublisher.OnIssueDetectListener, IAppForeground {
     private static final String TAG = "Matrix.Plugin";
 
     public static final int PLUGIN_CREATE    = 0x00;
@@ -54,6 +56,7 @@ public abstract class Plugin implements IPlugin, IssuePublisher.OnIssueDetectLis
         status = PLUGIN_INITED;
         this.application = app;
         this.pluginListener = listener;
+        AppForegroundDelegate.INSTANCE.addListener(this);
     }
 
     @Override

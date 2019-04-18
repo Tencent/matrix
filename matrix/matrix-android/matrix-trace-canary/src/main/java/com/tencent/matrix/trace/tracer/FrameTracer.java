@@ -35,7 +35,6 @@ public class FrameTracer extends Tracer {
     private long highThreshold;
     private long middleThreshold;
     private long normalThreshold;
-    private long backgroundFrameCount;
 
     public FrameTracer(TraceConfig config) {
         this.config = config;
@@ -80,20 +79,11 @@ public class FrameTracer extends Tracer {
 
     @Override
     public void doFrame(String focusedActivityName, long start, long end, long frameCostMs, long inputCostNs, long animationCostNs, long traversalCostNs) {
-
-        notifyListener(focusedActivityName, frameCostMs);
-    }
-
-    @Override
-    public void onForeground(boolean isForeground) {
-        super.onForeground(isForeground);
-        if (isForeground) {
-            if (backgroundFrameCount > 300) {
-                MatrixLog.e(TAG, "wrong! why do frame[%s] in background!!!", backgroundFrameCount);
-            }
-            backgroundFrameCount = 0;
+        if (isForeground()) {
+            notifyListener(focusedActivityName, frameCostMs);
         }
     }
+
 
     private void notifyListener(final String focusedActivityName, final long frameCostMs) {
         long start = System.currentTimeMillis();
@@ -119,9 +109,6 @@ public class FrameTracer extends Tracer {
             }
             if (cost > frameIntervalMs) {
                 MatrixLog.w(TAG, "[notifyListener] warm! maybe do heavy work in doFrameSync,but you can replace with doFrameAsync! cost:%sms", cost);
-            }
-            if (config.isDebug() && !isForeground()) {
-                backgroundFrameCount++;
             }
         }
     }
