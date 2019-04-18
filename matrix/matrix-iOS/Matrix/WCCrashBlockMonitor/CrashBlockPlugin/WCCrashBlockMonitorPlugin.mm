@@ -273,8 +273,8 @@
 {
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(3 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
         switch (self.pluginConfig.reportStrategy) {
-            case EWCCrashBlockReportStrategy_Default:
-                [self reportTodayOneTypeLag];
+            case EWCCrashBlockReportStrategy_Auto:
+                [self autoReportLag];
                 break;
             case EWCCrashBlockReportStrategy_All:
                 [self reportAllLagFile];
@@ -292,12 +292,14 @@
 {
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(2 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
         switch (self.pluginConfig.reportStrategy) {
-            case EWCCrashBlockReportStrategy_Manual:
-                // do nothing
+            case EWCCrashBlockReportStrategy_Auto:
+                [self autoReportCrash];
                 break;
-            case EWCCrashBlockReportStrategy_Default:
             case EWCCrashBlockReportStrategy_All:
                 [self reportCrash];
+                break;
+            case EWCCrashBlockReportStrategy_Manual:
+                // do nothing
                 break;
             default:
                 break;
@@ -316,6 +318,21 @@
 // ============================================================================
 #pragma mark - Crash
 // ============================================================================
+
+- (void)autoReportCrash
+{
+    dispatch_async(self.pluginReportQueue, ^{
+        if ([WCCrashBlockFileHandler hasCrashReport]) {
+            if (self.reportDelegate) {
+                if ([self.reportDelegate isReportCrashLimit:self]) {
+                    MatrixInfo(@"report crash limit");
+                    return;
+                }
+            }
+            [self reportCrash];
+        }
+    });
+}
 
 - (void)reportCrash
 {
@@ -355,6 +372,27 @@
 // ============================================================================
 #pragma mark - Lag & Lag File
 // ============================================================================
+
+- (void)autoReportLag
+{
+    dispatch_async(self.pluginReportQueue, ^{
+        if (self.reportDelegate) {
+            if ([self.reportDelegate isReportLagLimit:self]) {
+                MatrixInfo(@"report lag limit");
+                return;
+            }
+            if ([self.reportDelegate isCanAutoReportLag:self] == NO) {
+                MatrixInfo(@"can not auto report lag");
+                return;
+            }
+            if ([self.reportDelegate isNetworkAllowAutoReportLag:self] == NO) {
+                MatrixInfo(@"report lag, network not allow");
+                return;
+            }
+        }
+        [self reportTodayOneTypeLag];
+    });
+}
 
 - (void)reportAllLagFile
 {

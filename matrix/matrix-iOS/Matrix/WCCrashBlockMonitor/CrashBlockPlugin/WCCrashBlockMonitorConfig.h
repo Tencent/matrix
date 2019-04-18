@@ -22,7 +22,7 @@
 #import "KSCrashReportWriter.h"
 
 typedef NS_ENUM(NSUInteger, EWCCrashBlockReportStrategy) {
-    EWCCrashBlockReportStrategy_Default = 0, 
+    EWCCrashBlockReportStrategy_Auto = 0, 
     EWCCrashBlockReportStrategy_All = 1,
     EWCCrashBlockReportStrategy_Manual = 2,
 };
