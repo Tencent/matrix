@@ -221,10 +221,10 @@ void kscrash_innerHandleSignalCallback(siginfo_t *info)
     }
 }
 
-- (NSDictionary *)onBlockMonitor:(WCBlockMonitorMgr *)bmMgr getUserInfoForFPSDumpWithDumpType:(EDumpType)dumpType
+- (NSDictionary *)onBlockMonitor:(WCBlockMonitorMgr *)bmMgr getCustomUserInfoForDumpType:(EDumpType)dumpType
 {
-    if (_delegate != nil && [_delegate respondsToSelector:@selector(onCrashBlockMonitorGetUserInfoForFPSWithDumpType:)]) {
-        return [_delegate onCrashBlockMonitorGetUserInfoForFPSWithDumpType:dumpType];
+    if (_delegate != nil && [_delegate respondsToSelector:@selector(onCrashBlockMonitorGetCustomUserInfoForDumpType:)]) {
+        return [_delegate onCrashBlockMonitorGetCustomUserInfoForDumpType:dumpType];
     }
     return nil;
 }

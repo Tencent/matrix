@@ -305,8 +305,8 @@ KSStackCursor *kscrash_pointThreadCallback(void)
 
 - (NSDictionary *)getUserInfoForCurrentDumpForDumpType:(EDumpType)dumpType
 {
-    if (_delegate != nil && [_delegate respondsToSelector:@selector(onBlockMonitor:getUserInfoForFPSDumpWithDumpType:)]) {
-        return [_delegate onBlockMonitor:self getUserInfoForFPSDumpWithDumpType:dumpType];
+    if (_delegate != nil && [_delegate respondsToSelector:@selector(onBlockMonitor:getCustomUserInfoForDumpType:)]) {
+        return [_delegate onBlockMonitor:self getCustomUserInfoForDumpType:dumpType];
     }
     return nil;
 }
