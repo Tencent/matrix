@@ -113,8 +113,13 @@ public final class IOUtil {
 
     public static String readNullTerminatedString(InputStream in) throws IOException {
         final StringBuilder sb = new StringBuilder();
+        int charCount = 0;
         for (int c = in.read(); c != 0; c = in.read()) {
             sb.append((char) c);
+            ++charCount;
+            if (charCount > 2048) {
+                throw IOException("Bad string data which causes result to be too long.");
+            }
         }
         return sb.toString();
     }
