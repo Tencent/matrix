@@ -437,3 +437,13 @@ void kscrash_setCustomVersion(const char* fullVersion, const char* shortVersion)
         }
     }
 }
+
+const char* kscrash_getCustomShortVersion()
+{
+    return g_customShorVersion;
+}
+
+const char* kscrash_getCustomFullVersion()
+{
+    return g_customFullVersion;
+}

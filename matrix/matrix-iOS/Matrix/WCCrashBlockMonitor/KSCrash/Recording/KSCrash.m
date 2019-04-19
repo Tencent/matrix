@@ -297,38 +297,47 @@ static NSString* getBasePath()
     NSMutableDictionary* dict = [NSMutableDictionary new];
 
 #define COPY_STRING(A) if (fakeEvent.System.A) dict[@#A] = [NSString stringWithUTF8String:fakeEvent.System.A]
+#define COPY_STRING_TO_KEY(A, key) if (fakeEvent.System.A) dict[@key] = [NSString stringWithUTF8String:fakeEvent.System.A]
+
 #define COPY_PRIMITIVE(A) dict[@#A] = @(fakeEvent.System.A)
-    COPY_STRING(systemName);
-    COPY_STRING(systemVersion);
-    COPY_STRING(machine);
-    COPY_STRING(model);
-    COPY_STRING(kernelVersion);
-    COPY_STRING(osVersion);
-    COPY_PRIMITIVE(isJailbroken);
-    COPY_STRING(bootTime);
-    COPY_STRING(appStartTime);
-    COPY_STRING(executablePath);
-    COPY_STRING(executableName);
-    COPY_STRING(bundleID);
-    COPY_STRING(bundleName);
-    COPY_STRING(bundleVersion);
-    COPY_STRING(bundleShortVersion);
-    COPY_STRING(appID);
-    COPY_STRING(cpuArchitecture);
-    COPY_PRIMITIVE(cpuType);
-    COPY_PRIMITIVE(cpuSubType);
-    COPY_PRIMITIVE(binaryCPUType);
-    COPY_PRIMITIVE(binaryCPUSubType);
-    COPY_STRING(timezone);
-    COPY_STRING(processName);
-    COPY_PRIMITIVE(processID);
-    COPY_PRIMITIVE(parentProcessID);
-    COPY_STRING(deviceAppHash);
-    COPY_STRING(buildType);
-    COPY_PRIMITIVE(storageSize);
-    COPY_PRIMITIVE(memorySize);
-    COPY_PRIMITIVE(freeMemory);
-    COPY_PRIMITIVE(usableMemory);
+#define COPY_PRIMITIVE_TO_KEY(A, key) dict[@key] = @(fakeEvent.System.A)
+
+    COPY_STRING_TO_KEY(systemName, KSCrashField_SystemName);
+    COPY_STRING_TO_KEY(systemVersion, KSCrashField_SystemVersion);
+    COPY_STRING_TO_KEY(machine, KSCrashField_Machine);
+    COPY_STRING_TO_KEY(model, KSCrashField_Model);
+    COPY_STRING_TO_KEY(kernelVersion, KSCrashField_KernelVersion);
+    COPY_STRING_TO_KEY(osVersion, KSCrashField_OSVersion);
+    COPY_PRIMITIVE_TO_KEY(isJailbroken, KSCrashField_Jailbroken);
+    COPY_STRING_TO_KEY(bootTime, KSCrashField_BootTime);
+    COPY_STRING_TO_KEY(appStartTime, KSCrashField_AppStartTime);
+    COPY_STRING_TO_KEY(executablePath, KSCrashField_ExecutablePath);
+    COPY_STRING_TO_KEY(executableName, KSCrashField_Executable);
+    COPY_STRING_TO_KEY(bundleID, KSCrashField_BundleID);
+    COPY_STRING_TO_KEY(bundleName, KSCrashField_BundleName);
+    
+    if (kscrash_getCustomShortVersion() != NULL &&
+        kscrash_getCustomFullVersion() != NULL) {
+        dict[@KSCrashField_BundleVersion] = [NSString stringWithUTF8String:kscrash_getCustomFullVersion()];
+        dict[@KSCrashField_BundleShortVersion] = [NSString stringWithUTF8String:kscrash_getCustomShortVersion()];
+    } else {
+        COPY_STRING_TO_KEY(bundleVersion, KSCrashField_BundleVersion);
+        COPY_STRING_TO_KEY(bundleShortVersion, KSCrashField_BundleShortVersion);
+    }
+
+    COPY_STRING_TO_KEY(appID, KSCrashField_AppUUID);
+    COPY_STRING_TO_KEY(cpuArchitecture, KSCrashField_CPUArch);
+    COPY_PRIMITIVE_TO_KEY(cpuType, KSCrashField_CPUType);
+    COPY_PRIMITIVE_TO_KEY(cpuSubType, KSCrashField_CPUSubType);
+    COPY_PRIMITIVE_TO_KEY(binaryCPUType, KSCrashField_BinaryCPUType);
+    COPY_PRIMITIVE_TO_KEY(binaryCPUSubType, KSCrashField_BinaryCPUSubType);
+    COPY_STRING_TO_KEY(timezone, KSCrashField_TimeZone);
+    COPY_STRING_TO_KEY(processName, KSCrashField_ProcessName);
+    COPY_PRIMITIVE_TO_KEY(processID, KSCrashField_ProcessID);
+    COPY_PRIMITIVE_TO_KEY(parentProcessID, KSCrashField_ParentProcessID);
+    COPY_STRING_TO_KEY(deviceAppHash, KSCrashField_DeviceAppHash);
+    COPY_STRING_TO_KEY(buildType, KSCrashField_BuildType);
+    COPY_PRIMITIVE_TO_KEY(storageSize, KSCrashField_Storage);
 
     return dict;
 }

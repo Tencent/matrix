@@ -247,6 +247,10 @@ void kscrash_deleteAllReports(void);
 
 void kscrash_setCustomVersion(const char* fullVersion, const char* shortVersion);
 
+const char* kscrash_getCustomShortVersion(void);
+
+const char* kscrash_getCustomFullVersion(void);
+
 #ifdef __cplusplus
 }
 #endif
