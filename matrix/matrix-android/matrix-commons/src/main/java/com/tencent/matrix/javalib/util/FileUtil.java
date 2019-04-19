@@ -212,6 +212,9 @@ public class FileUtil {
     }
 
     public static String readFileAsString(String filePath) {
+        if (!new File(filePath).exists()) {
+            return "";
+        }
         StringBuffer fileData = new StringBuffer();
         Reader fileReader = null;
         InputStream inputStream = null;
@@ -226,8 +229,8 @@ public class FileUtil {
             }
         } catch (Exception e) {
             Log.e(TAG, "file op readFileAsString e type:%s, e msg:%s, filePath:%s",
-                e.getClass().getSimpleName(), e.getMessage(), filePath);
-
+                    e.getClass().getSimpleName(), e.getMessage(), filePath);
+            return "";
         } finally {
             try {
                 closeQuietly(fileReader);

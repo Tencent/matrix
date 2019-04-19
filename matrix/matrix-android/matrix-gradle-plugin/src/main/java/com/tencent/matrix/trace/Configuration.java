@@ -30,12 +30,7 @@ public class Configuration {
     }
 
     public int parseBlackFile(MappingCollector processor) {
-        File blackFile = new File(blackListFilePath);
-        if (!blackFile.exists()) {
-            return blackSet.size();
-        }
-
-        String blackStr = TraceBuildConstants.DEFAULT_BLACK_TRACE + FileUtil.readFileAsString(blackFile.getAbsolutePath());
+        String blackStr = TraceBuildConstants.DEFAULT_BLACK_TRACE + FileUtil.readFileAsString(blackListFilePath);
 
         String[] blackArray = blackStr.trim().replace("/", ".").split("\n");
 
