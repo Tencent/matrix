@@ -29,6 +29,7 @@ public enum AppForegroundDelegate {
 
     private Set<IAppForeground> listeners = Collections.synchronizedSet(new HashSet<IAppForeground>());
     private boolean isAppForeground = false;
+    private String foregroundActivity = "default";
     private Controller controller = new Controller();
     private boolean isInited = false;
 
@@ -43,6 +44,9 @@ public enum AppForegroundDelegate {
 
     }
 
+    public String getForegroundActivity() {
+        return foregroundActivity;
+    }
 
     private void onDispatchForeground(String activity) {
         if (isAppForeground || !isInited) {
@@ -127,7 +131,7 @@ public enum AppForegroundDelegate {
 
         @Override
         public void onActivityResumed(Activity activity) {
-
+            foregroundActivity = activity.getClass().getName();
         }
 
         @Override

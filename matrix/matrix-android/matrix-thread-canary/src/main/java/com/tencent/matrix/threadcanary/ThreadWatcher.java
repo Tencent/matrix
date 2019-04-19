@@ -5,6 +5,7 @@ import android.os.HandlerThread;
 import android.os.Process;
 import android.os.SystemClock;
 
+import com.tencent.matrix.AppForegroundDelegate;
 import com.tencent.matrix.plugin.Plugin;
 import com.tencent.matrix.report.Issue;
 import com.tencent.matrix.util.MatrixHandlerThread;
@@ -29,6 +30,8 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class ThreadWatcher extends Plugin {
 
@@ -37,14 +40,27 @@ public class ThreadWatcher extends Plugin {
     private DumpThreadJiffiesTask checkThreadTask;
     private List<List<ThreadGroupInfo>> pendingReport = new LinkedList<>();
     private long checkTime;
+    private long checkBgTime;
     private long reportTime;
+    private int limitCount;
     private Handler handler;
-    private static boolean isTest = false;
 
     public ThreadWatcher(ThreadConfig config) {
         this.threadConfig = config;
-        this.checkTime = isTest ? 3000 : config.getCheckTime();
-        this.reportTime = isTest ? 10000 : config.getReportTime();
+        this.checkTime = config.getCheckTime();
+        this.reportTime = config.getReportTime();
+        this.limitCount = config.getThreadLimitCount();
+        this.checkBgTime = config.getCheckBgTime();
+        this.checkThreadTask = new DumpThreadJiffiesTask();
+        this.handler = new Handler(MatrixHandlerThread.getDefaultHandlerThread().getLooper());
+    }
+
+    public ThreadWatcher(ThreadConfig config, int limitCount) {
+        this.threadConfig = config;
+        this.checkTime = config.getCheckTime();
+        this.reportTime = config.getReportTime();
+        this.limitCount = limitCount;
+        this.checkBgTime = config.getCheckBgTime();
         this.checkThreadTask = new DumpThreadJiffiesTask();
         this.handler = new Handler(MatrixHandlerThread.getDefaultHandlerThread().getLooper());
     }
@@ -93,9 +109,12 @@ public class ThreadWatcher extends Plugin {
 
         @Override
         public void run() {
-            MatrixLog.i(TAG, "[DumpThreadJiffiesTask] run...");
+            int processThreadCount = getProcessThreadCount();
+            MatrixLog.i(TAG, "[DumpThreadJiffiesTask] run...[%s] limit:%s", processThreadCount, limitCount);
+            if (limitCount >= processThreadCount) {
+                return;
+            }
             final Map<Long, ThreadInfo> appThreadsMap = getAppThreadsMap(mThreadFilter);
-
             List<ThreadInfo> linuxThreads = getThreadsInfo(new IThreadInfoIterator() {
                 @Override
                 public void next(ThreadInfo threadInfo) {
@@ -151,10 +170,22 @@ public class ThreadWatcher extends Plugin {
                 }
                 pendingReport.add(threadGroupInfoList);
             }
-            handler.postDelayed(this, checkTime);
+            handler.postDelayed(this, AppForegroundDelegate.INSTANCE.isAppForeground() ? checkTime : checkBgTime);
         }
     }
 
+    @Override
+    public void onForeground(boolean isForeground) {
+        super.onForeground(isForeground);
+        handler.removeCallbacksAndMessages(null);
+        if (null != checkThreadTask) {
+            if (isForeground) {
+                handler.postDelayed(checkThreadTask, checkTime);
+            } else {
+                handler.postDelayed(checkThreadTask, checkBgTime);
+            }
+        }
+    }
 
     private long lastReportTime = SystemClock.uptimeMillis();
 
@@ -198,6 +229,27 @@ public class ThreadWatcher extends Plugin {
 
     public interface IThreadFilter {
         boolean isFilter(ThreadInfo threadInfo);
+    }
+
+    public static int getProcessThreadCount() {
+        String status = String.format("/proc/%s/status", Process.myPid());
+        try {
+            String content = getStringFromFile(status).trim();
+            String[] args = content.split("\n");
+            for (String str : args) {
+                if (str.startsWith("Threads")) {
+                    Pattern p = Pattern.compile("\\d+");
+                    Matcher matcher = p.matcher(str);
+                    if (matcher.find()) {
+                        return Integer.parseInt(matcher.group());
+                    }
+                }
+            }
+            MatrixLog.w(TAG, "[getProcessThreadCount] Wrong!", args[24]);
+            return Integer.parseInt(args[24].trim());
+        } catch (Exception e) {
+            return 0;
+        }
     }
 
     private static HashMap<Long, ThreadInfo> getAppThreadsMap(IThreadFilter filter) {

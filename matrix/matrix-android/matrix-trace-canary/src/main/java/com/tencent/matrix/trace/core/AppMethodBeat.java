@@ -6,6 +6,7 @@ import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.SystemClock;
 
+import com.tencent.matrix.AppForegroundDelegate;
 import com.tencent.matrix.trace.constants.Constants;
 import com.tencent.matrix.trace.hacker.ActivityThreadHacker;
 import com.tencent.matrix.trace.listeners.IAppMethodBeatListener;
@@ -42,7 +43,6 @@ public class AppMethodBeat implements BeatLifecycle {
     private static final int METHOD_ID_MAX = 0xFFFFF;
     public static final int METHOD_ID_DISPATCH = METHOD_ID_MAX - 1;
     private static Set<String> sFocusActivitySet = new HashSet<>();
-    private static String sFocusedActivity = "default";
     private static HashSet<IAppMethodBeatListener> listeners = new HashSet<>();
     private static Object updateTimeLock = new Object();
     private static boolean isPauseUpdateTime = false;
@@ -256,7 +256,6 @@ public class AppMethodBeat implements BeatLifecycle {
     public static void at(Activity activity, boolean isFocus) {
         String activityName = activity.getClass().getName();
         if (isFocus) {
-            sFocusedActivity = activityName;
             if (sFocusActivitySet.add(activityName)) {
                 synchronized (listeners) {
                     for (IAppMethodBeatListener listener : listeners) {
@@ -266,9 +265,7 @@ public class AppMethodBeat implements BeatLifecycle {
                 MatrixLog.i(TAG, "[at] Activity[%s] has %s focus!", activityName, isFocus ? "attach" : "detach");
             }
         } else {
-            if (sFocusedActivity.equals(activityName)) {
-                sFocusedActivity = "default";
-            }
+
             if (sFocusActivitySet.remove(activityName)) {
                 MatrixLog.i(TAG, "[at] Activity[%s] has %s focus!", activityName, isFocus ? "attach" : "detach");
             }
@@ -279,7 +276,7 @@ public class AppMethodBeat implements BeatLifecycle {
 
 
     public static String getFocusedActivity() {
-        return sFocusedActivity;
+        return AppForegroundDelegate.INSTANCE.getForegroundActivity();
     }
 
     /**
