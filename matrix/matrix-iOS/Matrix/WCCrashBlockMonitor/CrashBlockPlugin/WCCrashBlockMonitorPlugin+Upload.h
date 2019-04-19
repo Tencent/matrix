@@ -34,6 +34,11 @@
 #pragma mark - Lag & Lag File
 // ============================================================================
 
++ (BOOL)haveLagFiles;
++ (BOOL)haveLagFilesOnDate:(NSString *)nsDate;
++ (BOOL)haveLagFilesOnType:(EDumpType)dumpType;
++ (BOOL)haveLagFilesOnDate:(NSString *)nsDate onType:(EDumpType)dumpType;
+
 // Importantly, the use of reportCntLimit.
 // use a little count of reportCntLimit to seperate the MatrixIssue,
 // then we can decrease the data size of one MatrixIssue,

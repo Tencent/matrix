@@ -374,6 +374,26 @@
 #pragma mark - Lag & Lag File
 // ============================================================================
 
++ (BOOL)haveLagFiles
+{
+    return [WCCrashBlockFileHandler haveLagFiles];
+}
+
++ (BOOL)haveLagFilesOnDate:(NSString *)nsDate
+{
+    return [WCCrashBlockFileHandler haveLagFilesOnDate:nsDate];
+}
+
++ (BOOL)haveLagFilesOnType:(EDumpType)dumpType
+{
+    return [WCCrashBlockFileHandler haveLagFilesOnType:dumpType];
+}
+
++ (BOOL)haveLagFilesOnDate:(NSString *)nsDate onType:(EDumpType)dumpType
+{
+    return [WCCrashBlockFileHandler haveLagFilesOnDate:nsDate onType:dumpType];
+}
+
 - (void)autoReportLag
 {
     dispatch_async(self.pluginReportQueue, ^{
