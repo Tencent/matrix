@@ -10,4 +10,6 @@ dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
 }
 
-apply from: rootProject.file('gradle/java-publish.gradle')
+//apply from: rootProject.file('gradle/java-publish.gradle')
+//for uploading to WeChat maven serve
+apply from: rootProject.file('gradle/WeChatPublish.gradle')

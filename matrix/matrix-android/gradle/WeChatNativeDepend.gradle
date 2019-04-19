@@ -1,0 +1,509 @@
+//////////////////////////////////////////////////////////////
+//  使用方法：
+//  1. 将此脚本放到repo根目录/gradle/下。
+//
+//  2. 在主模块和所有依赖模块的build.gradle中增加：
+//    apply from: rootProject.file('gradle/WeChatNativeDepend.gradle')
+//
+//  3. 在依赖模块的build.gradle中指定需要导出的头文件路径，一般只需在defaultConfig中配置：
+//    android {
+//      defaultConfig {
+//        externalNativeBuild {
+//          exportHeaders {
+//              from('path/to/headers/you/want/to/export') {
+//                include '**/*.h'
+//                exclude '**/not-to-expose.h'
+//              }
+//          }
+//        }
+//      }
+//    }
+//
+//  4. buildTypes和productFlavors中的externalNativeBuild也可以指定要导出的头文件路径，规则同上。
+//
+//  5. 编译脚本中增加include路径和ld路径，以Android.mk为例：
+//       LOCAL_C_INCLUDES := $(EXT_DEP)/include
+//       LOCAL_LDLIBS := -L$(EXT_DEP)/lib/$(TARGET_ARCH_ABI)/ -l依赖so的名称，如为libxx.so，则这里输入xx
+//////////////////////////////////////////////////////////////
+
+
+//////////////////////////////////////////////////////////////
+//  Constant Declarations
+//////////////////////////////////////////////////////////////
+
+project.ext.ANDROID_APP_PLUGIN_ID = 'com.android.application'
+project.ext.ANDROID_LIB_PLUGIN_ID = 'com.android.library'
+
+project.ext.NATIVE_DEPENDENCY_ROOT_NAME = 'native_deps'
+project.ext.EXPORTED_NATIVE_ARTIFACTS_DIR_NAME = 'exported_native_artifacts'
+project.ext.HEADERS_DIR_NAME = 'include'
+project.ext.PREBUILTS_DIR_NAME = 'lib'
+project.ext.EXTRACTED_NATIVE_DEPENDENCIES_DIR_NAME = 'extracted_native_dependencies'
+project.ext.AAR_JNI_DIRENTRY_NAME = 'jni'
+project.ext.AAR_HEADERS_DIRENTRY_NAME = 'jni/include'
+
+project.ext.ATTR_ARTIFACT_TYPE = Attribute.of('artifactType', String)
+project.ext.ATTR_USAGE_VALUE_NATIVE_API = project.objects.named(Usage, 'native-api')
+project.ext.ATTR_USAGE_VALUE_JAVA_API = project.objects.named(Usage, Usage.JAVA_API)
+
+//////////////////////////////////////////////////////////////
+
+
+//////////////////////////////////////////////////////////////
+//  Entry Codes
+//////////////////////////////////////////////////////////////
+
+if (project.pluginManager.hasPlugin(ANDROID_APP_PLUGIN_ID)) {
+    handleAndroidApplication()
+} else if (project.pluginManager.hasPlugin(ANDROID_LIB_PLUGIN_ID)) {
+    handleAndroidLibrary()
+} else {
+    throw new GradleException("[-] Either ${ANDROID_APP_PLUGIN_ID} or ${ANDROID_LIB_PLUGIN_ID} "
+            + "should be applied when use this script.")
+}
+
+//////////////////////////////////////////////////////////////
+
+
+//////////////////////////////////////////////////////////////
+//  Helper Methods & Structs Declarations
+//////////////////////////////////////////////////////////////
+
+def handleAndroidApplication() {
+    injectNativeDependenciesPath()
+    generateAndInjectBuildInfoModule()
+    
+    cleanExtractNativeDepsDir()
+    generateBuildInfoHeader(true)
+    
+    project.afterEvaluate {
+        extractNativeDependencies(project.android.applicationVariants)
+        generateBuildInfoHeader(false)
+    }
+}
+
+def handleAndroidLibrary() {
+    mountExtension()
+    injectNativeDependenciesPath()
+    generateAndInjectBuildInfoModule()
+    
+    cleanExtractNativeDepsDir()
+    generateBuildInfoHeader(true)
+    
+    project.afterEvaluate {
+        def libVariants = project.android.libraryVariants
+        libVariants.each { variant ->
+            copyExportedHeaders(variant)
+            mountCopyNativePrebuiltsAction(variant)
+            propergateNativeArtifacts(variant)
+        }
+        extractNativeDependencies(libVariants)
+        generateBuildInfoHeader(false)
+    }
+}
+
+def mountExtension() {
+    def extensionCreator = new Action<ExtensionAware>() {
+        @Override
+        void execute(ExtensionAware extensionAware) {
+            extensionAware.extensions.create('exportHeaders', ExportedHeadersExtension)
+        }
+    }
+    extensionCreator.execute(project.android.defaultConfig.externalNativeBuildOptions)
+    project.android.buildTypes.all { buildType ->
+        extensionCreator.execute(buildType.externalNativeBuildOptions)
+    }
+    project.android.productFlavors.all { flavor ->
+        extensionCreator.execute(flavor.externalNativeBuildOptions)
+    }
+}
+
+def copyExportedHeaders(targetVariant) {
+    def exportedArtifactsDir = getExportedNativeArtifactsDir(targetVariant)
+    def exportedHeadersDir = new File(exportedArtifactsDir, HEADERS_DIR_NAME)
+    if (!exportedHeadersDir.exists()) {
+        exportedHeadersDir.mkdirs()
+    } else {
+        GFileUtils.cleanDirectory(exportedHeadersDir)
+    }
+    def headerFilters = getExportedHeaderFilters(targetVariant)
+    copy {
+        exclude exportedHeadersDir.absolutePath
+        duplicatesStrategy DuplicatesStrategy.FAIL
+        includeEmptyDirs false
+        headerFilters.each { filter ->
+            from(getUniformedPath(filter.dirPath)) {
+                filter.includePatterns.each { pattern -> include pattern }
+                filter.excludePatterns.each { pattern -> exclude pattern }
+            }
+            rename { name ->
+                return name.replace(filter.dirPath, '')
+            }
+        }
+        into exportedHeadersDir
+    }
+}
+
+def getUniformedPath(path) {
+    return (File.separator != '/') ? path.replace(File.separator, '/') : path
+}
+
+def getExportedHeaderFilters(targetVariant) {
+    Set<HeaderFilter> includeFilters = []
+    def exportedFilterFetcher = { ExtensionAware target ->
+        def exportedHeaderExt = target.extensions.findByName('exportHeaders')
+        if(exportedHeaderExt) {
+            return ((ExportedHeadersExtension) exportedHeaderExt).headerFilters
+        }
+    }
+    includeFilters.addAll(exportedFilterFetcher(project.android.defaultConfig.externalNativeBuildOptions))
+    includeFilters.addAll(exportedFilterFetcher(targetVariant.buildType.buildType.externalNativeBuildOptions))
+    targetVariant.productFlavors*.each { flavor ->
+        includeFilters.addAll(exportedFilterFetcher(flavor.productFlavor.externalNativeBuildOptions))
+    }
+    return includeFilters
+}
+
+def mountCopyNativePrebuiltsAction(targetVariant) {
+    def exportedArtifactsDir = getExportedNativeArtifactsDir(targetVariant)
+    def exportedHeadersDir = new File(exportedArtifactsDir, HEADERS_DIR_NAME)
+    def exportedPrebuiltsDir = new File(exportedArtifactsDir, PREBUILTS_DIR_NAME)
+    if (!exportedPrebuiltsDir.exists()) {
+        exportedPrebuiltsDir.mkdirs()
+    }
+    def bundleTask = targetVariant.getPackageLibrary() as Zip
+    targetVariant.getExternalNativeBuildTasks().each { nativeBuildTask ->
+        nativeBuildTask.doLast {
+            GFileUtils.cleanDirectory(exportedPrebuiltsDir)
+            copy {
+                duplicatesStrategy DuplicatesStrategy.FAIL
+                includeEmptyDirs = false
+                from(nativeBuildTask.getObjFolder()) {
+                    include '**/*.so'
+                    include '**/*.a'
+                }
+                into exportedPrebuiltsDir
+            }
+        }
+    }
+    bundleTask.with {
+        from(exportedPrebuiltsDir) {
+            // 'so' file is automatically packaged into the AAR.
+            exclude '**/*.so'
+            into AAR_JNI_DIRENTRY_NAME
+        }
+        from(exportedHeadersDir) {
+            into AAR_HEADERS_DIRENTRY_NAME
+        }
+    }
+}
+
+def propergateNativeArtifacts(targetVariant) {
+    def apiElements = targetVariant.variantData.variantDependency.apiElements
+    def apiElementsAttrs = apiElements.attributes
+    def nativeAPIElements = project.configurations.maybeCreate(targetVariant.name + 'NativeAPIElement')
+    nativeAPIElements.setCanBeResolved(false)
+    nativeAPIElements.extendsFrom apiElements
+    nativeAPIElements.attributes { myAttrs ->
+        apiElementsAttrs.keySet().each { agpAttr ->
+            if (agpAttr.type == Usage) {
+                // replace this attribute so that our produce configuration can
+                // only be matched by our consumer.
+                myAttrs.attribute(agpAttr, ATTR_USAGE_VALUE_NATIVE_API)
+            } else {
+                myAttrs.attribute(agpAttr, apiElementsAttrs.getAttribute(agpAttr))
+            }
+        }
+    }
+    nativeAPIElements.outgoing.variants { variants ->
+        variants.create(EXPORTED_NATIVE_ARTIFACTS_DIR_NAME) { variant ->
+            def exportedArtifactsDir = getExportedNativeArtifactsDir(targetVariant)
+            variant.artifact(exportedArtifactsDir) { artifact ->
+                artifact.setType(EXPORTED_NATIVE_ARTIFACTS_DIR_NAME)
+            }
+        }
+    }
+}
+
+def injectNativeDependenciesPath() {
+    def extractedNativeDepsDir = getExtractedNativeDependenciesDir()
+
+    def ndkBuildOpt = project.android.defaultConfig.externalNativeBuild.ndkBuild
+    def cmakeOpt = project.android.defaultConfig.externalNativeBuild.cmake
+    ndkBuildOpt.getArguments().add('EXT_DEP=' + extractedNativeDepsDir.absolutePath)
+    cmakeOpt.getArguments().add('-DEXT_DEP=' + extractedNativeDepsDir.absolutePath)
+}
+
+def generateBuildInfoHeader(boolean stubOnly) {
+    def hasBuildRevision = project.hasProperty('WX_BUILD_REVISION')
+    def hasBuildBranch = project.hasProperty('WX_BUILD_BRANCH')
+    def hasBuildTime = project.hasProperty('WX_BUILD_TIME')
+    def hasBuildJob = project.hasProperty('WX_BUILD_JOB')
+    def hasBuildVersion = project.extensions.findByName('wechatPublish') != null
+    
+    def extractedNativeDepsDir = getExtractedNativeDependenciesDir()
+    def exportedHeadersDir = new File(extractedNativeDepsDir, HEADERS_DIR_NAME)
+    def buildInfoHeaderDir = new File(exportedHeadersDir, 'build-info')
+    if (!buildInfoHeaderDir.exists()) {
+        buildInfoHeaderDir.mkdirs()
+    }
+    def buildInfoHeaderFile = new File(buildInfoHeaderDir, 'build-info.h')
+    buildInfoHeaderFile.withPrintWriter { pw ->
+        pw.println('#ifndef __MM_AUTOGENARATED_BUILD_INFO_H__')
+        pw.println('#define __MM_AUTOGENARATED_BUILD_INFO_H__')
+        if (!stubOnly && hasBuildVersion) {
+            pw.println("#define WX_BUILD_VERSION \"${wechatPublish.fullVersion}\"")
+        } else {
+            pw.println("#define WX_BUILD_VERSION \"\"")
+        }
+        if (!stubOnly && hasBuildRevision) {
+            pw.println("#define WX_BUILD_REVISION \"${WX_BUILD_REVISION.replace('\"', '')}\"")
+        } else {
+            pw.println("#define WX_BUILD_REVISION \"\"")
+        }
+        if (!stubOnly && hasBuildBranch) {
+            pw.println("#define WX_BUILD_BRANCH \"${WX_BUILD_BRANCH.replace('\"', '')}\"")
+        } else {
+            pw.println("#define WX_BUILD_BRANCH \"\"")
+        }
+        if (!stubOnly && hasBuildTime) {
+            pw.println("#define WX_BUILD_TIME \"${WX_BUILD_TIME.replace('\"', '')}\"")
+        } else {
+            pw.println("#define WX_BUILD_TIME \"\"")
+        }
+        if (!stubOnly && hasBuildJob) {
+            pw.println("#define WX_BUILD_JOB \"${WX_BUILD_JOB.replace('\"', '')}\"")
+        } else {
+            pw.println("#define WX_BUILD_JOB \"\"")
+        }
+        pw.println('#endif //__MM_AUTOGENARATED_BUILD_INFO_H__')
+    }
+}
+
+def cleanExtractNativeDepsDir() {
+    def extractedNativeDepsDir = getExtractedNativeDependenciesDir()
+    if (extractedNativeDepsDir.exists()) {
+        GFileUtils.cleanDirectory(extractedNativeDepsDir)
+    }
+}
+
+def extractNativeDependencies(targetVariants) {
+    def extractedNativeDepsDir = getExtractedNativeDependenciesDir()
+
+    def attrSchema = project.dependencies.attributesSchema
+    def attrMatchingStrategy = attrSchema.attribute(Usage.USAGE_ATTRIBUTE)
+    attrMatchingStrategy.compatibilityRules.add(NativeRuntimeAttrCompatibilityRules, { config -> config.setParams(project) })
+    
+    targetVariants.all { variant ->
+        def compileClasspath = variant.variantData.getVariantDependency().compileClasspath
+        def compileClasspathAttrs = compileClasspath.attributes
+        def nativeCompileClasspath = project.configurations.maybeCreate(variant.name + 'NativeCompileClasspath')
+        nativeCompileClasspath.setCanBeConsumed(false)
+        nativeCompileClasspath.setVisible(false)
+        nativeCompileClasspath.extendsFrom compileClasspath
+        nativeCompileClasspath.attributes { myAttrs ->
+            compileClasspathAttrs.keySet().each { agpAttr ->
+                if (agpAttr.type == Usage) {
+                    myAttrs.attribute(agpAttr, ATTR_USAGE_VALUE_NATIVE_API)
+                } else {
+                    myAttrs.attribute(agpAttr, compileClasspathAttrs.getAttribute(agpAttr))
+                }
+            }
+        }
+        def projectNativeDepDirs = nativeCompileClasspath.incoming.artifactView { config ->
+            config.attributes { attrs ->
+                attrs.attribute(ATTR_ARTIFACT_TYPE, EXPORTED_NATIVE_ARTIFACTS_DIR_NAME)
+            }
+        }.getArtifacts().artifactFiles.files
+        def aarDepDirs = nativeCompileClasspath.incoming.artifactView { config ->
+            config.attributes { attrs ->
+                attrs.attribute(ATTR_ARTIFACT_TYPE, 'android-exploded-aar')
+            }
+        }.getArtifacts().artifactFiles.files
+        projectNativeDepDirs.each { projDir ->
+            copy {
+                duplicatesStrategy DuplicatesStrategy.FAIL
+                includeEmptyDirs false
+                from new File(projDir, HEADERS_DIR_NAME)
+                into new File(extractedNativeDepsDir, HEADERS_DIR_NAME)
+            }
+        }
+        aarDepDirs.each { extractedAarDir ->
+            copy {
+                duplicatesStrategy DuplicatesStrategy.FAIL
+                includeEmptyDirs false
+                from new File(extractedAarDir, AAR_HEADERS_DIRENTRY_NAME)
+                into new File(extractedNativeDepsDir, HEADERS_DIR_NAME)
+            }
+        }
+        variant.getExternalNativeBuildTasks().each { nativeBuildTask ->
+            nativeBuildTask.doFirst {
+                projectNativeDepDirs.each { projDir ->
+                    copy {
+                        duplicatesStrategy DuplicatesStrategy.FAIL
+                        includeEmptyDirs false
+                        from(projDir) {
+                            include "**/${PREBUILTS_DIR_NAME}/**"
+                        }
+                        into extractedNativeDepsDir
+                    }
+                }
+                aarDepDirs.each { extractedAarDir ->
+                    copy {
+                        duplicatesStrategy DuplicatesStrategy.FAIL
+                        includeEmptyDirs false
+                        from(new File(extractedAarDir, AAR_JNI_DIRENTRY_NAME)) {
+                            include '**/*.so'
+                            include '**/*.a'
+                        }
+                        into new File(extractedNativeDepsDir, PREBUILTS_DIR_NAME)
+                    }
+                }
+            }
+        }
+    }
+}
+
+def generateAndInjectBuildInfoModule() {
+    def hasBuildRevision = project.hasProperty('WX_BUILD_REVISION')
+    def hasBuildBranch = project.hasProperty('WX_BUILD_BRANCH')
+    def hasBuildTime = project.hasProperty('WX_BUILD_TIME')
+    def hasBuildJob = project.hasProperty('WX_BUILD_JOB')
+    def hasBuildVersion = project.extensions.findByName('wechatPublish') != null
+
+    if (!hasBuildRevision && !hasBuildBranch && !hasBuildTime && !hasBuildJob) {
+        System.err.println("[!] There's no any build-info values, skip generating build-info module.")
+        return
+    }
+    
+    def nativeModuleDir = new File(project.buildDir, "generated/native-modules/")
+    def buildInfoModuleDir = new File(nativeModuleDir, 'build-info')
+    if (!buildInfoModuleDir.exists()) {
+        buildInfoModuleDir.mkdirs()
+    } else {
+        GFileUtils.cleanDirectory(buildInfoModuleDir)
+    }
+    def makeFilePath = new File(buildInfoModuleDir, 'Android.mk')
+    def cmakeInitFilePath = new File(buildInfoModuleDir, 'Init.cmake')
+
+    def ndkBuildOpts = project.android.defaultConfig.externalNativeBuildOptions.ndkBuild
+    ndkBuildOpts.arguments "BUILD_SHARED_LIBRARY=${makeFilePath.absolutePath}"
+
+    def cmakeBuildOpts = project.android.defaultConfig.externalNativeBuildOptions.cmake
+    cmakeBuildOpts.arguments "-DCMAKE_USER_MAKE_RULES_OVERRIDE=${cmakeInitFilePath.absolutePath}"
+
+    def assemblyFilePath = new File(buildInfoModuleDir, 'build-info.S')
+    assemblyFilePath.createNewFile()
+    project.afterEvaluate {
+        assemblyFilePath.withPrintWriter { pw ->
+            pw.println('.section .comment')
+            pw.println('.global WX_BUILD_INFO')
+            pw.println('WX_BUILD_INFO:')
+            if (hasBuildVersion)
+                pw.println(".string \"WX_BUILD_VERSION: ${wechatPublish.fullVersion}\"")
+            if (hasBuildRevision)
+                pw.println(".string \"WX_BUILD_REVISION: ${WX_BUILD_REVISION.replace('\"', '')}\"")
+            if (hasBuildBranch)
+                pw.println(".string \"WX_BUILD_BRANCH: ${WX_BUILD_BRANCH.replace('\"', '')}\"")
+            if (hasBuildTime)
+                pw.println(".string \"WX_BUILD_TIME: ${WX_BUILD_TIME.replace('\"', '')}\"")
+            if (hasBuildJob)
+                pw.println(".string \"WX_BUILD_JOB: ${WX_BUILD_JOB.replace('\"', '')}\"")
+        }
+    }
+
+    makeFilePath.withPrintWriter { pw ->
+        pw.println("BUILD_INFO_SRC := ")
+        pw.println("LOCAL_SRC_FILES += ${assemblyFilePath.absolutePath.replace('\\', '/')}")
+        pw.println('include $(BUILD_SYSTEM)/build-shared-library.mk')
+    }
+
+    cmakeInitFilePath.withPrintWriter { pw ->
+        pw.println('if(NOT RUN)')
+        pw.println('  set(RUN 1)')
+        pw.println('  enable_language(ASM)')
+        pw.println('  function(add_library name type)')
+        pw.println('    if(type STREQUAL "SHARED")')
+        pw.println("      _add_library(\${ARGV} ${assemblyFilePath.absolutePath.replace('\\', '/')})")
+        pw.println('    else()')
+        pw.println('      _add_library(${ARGV})')
+        pw.println('    endif()')
+        pw.println('  endfunction(add_library)')
+        pw.println('endif()')
+    }
+}
+
+def getNativeDependencyRoot() {
+    return new File(project.buildDir, "intermediates/${NATIVE_DEPENDENCY_ROOT_NAME}")
+}
+
+def getExportedNativeArtifactsDir(targetVariant) {
+    return new File(getNativeDependencyRoot(), "${EXPORTED_NATIVE_ARTIFACTS_DIR_NAME}/${targetVariant.dirName}")
+}
+
+def getExtractedNativeDependenciesDir() {
+    return new File(getNativeDependencyRoot(), EXTRACTED_NATIVE_DEPENDENCIES_DIR_NAME)
+}
+
+class NativeRuntimeAttrCompatibilityRules implements AttributeCompatibilityRule<Usage> {
+    def project
+
+    @javax.inject.Inject
+    NativeRuntimeAttrCompatibilityRules(project) {
+        this.project = project
+    }
+
+    @Override
+    void execute(CompatibilityCheckDetails<Usage> details) {
+        def consumerValue = details.getConsumerValue()
+        def producerValue = details.getProducerValue()
+        if (producerValue.equals(consumerValue)) {
+            details.compatible()
+        } else if (consumerValue.equals(project.ext.ATTR_USAGE_VALUE_NATIVE_API)
+                && producerValue.equals(project.ext.ATTR_USAGE_VALUE_JAVA_API)) {
+            details.compatible()
+        }
+    }
+}
+
+class ExportedHeadersExtension {
+    Set<HeaderFilter> headerFilters = []
+
+    def from(String path) {
+        headerFilters.add(new HeaderFilter(path))
+    }
+
+    def from(String path, Action<HeaderFilter> configAction) {
+        def headerFilter = new HeaderFilter(path)
+        configAction.execute(headerFilter)
+        headerFilters.add(headerFilter)
+    }
+
+    def from(File file) {
+        from(file.absolutePath)
+    }
+
+    def from(File file, Action<HeaderFilter> configAction) {
+        from(file.absolutePath, configAction)
+    }
+}
+
+class HeaderFilter {
+    String dirPath
+    Set<String> includePatterns = []
+    Set<String> excludePatterns = []
+
+    HeaderFilter(String dirPath) {
+        this.dirPath = dirPath
+    }
+
+    def include(String pattern) {
+        includePatterns.add(pattern)
+    }
+
+    def exclude(String pattern) {
+        excludePatterns.add(pattern)
+    }
+}
+
+//////////////////////////////////////////////////////////////
