@@ -217,7 +217,7 @@ public class WakeLockDetector extends IssuePublisher {
             wakeLockAggregation = entry.getValue();
             statisticalTimeFrame = now - wakeLockAggregation.sinceTime;
             currentHours = (int) (statisticalTimeFrame / 3600000L) + 1;
-            currentHours = currentHours <=0?1:currentHours;
+            currentHours = currentHours <= 0 ? 1 : currentHours;
 //            averageAcquireCnt1H = wakeLockAggregation.totalAcquireCnt / currentHours;
             averageAcquireCntWhenScreenOff1H = wakeLockAggregation.totalAcquireCntWhenScreenOff / currentHours;
             averageHoldTime1H = wakeLockAggregation.totalHoldTimeWhenScreenOff / currentHours;
