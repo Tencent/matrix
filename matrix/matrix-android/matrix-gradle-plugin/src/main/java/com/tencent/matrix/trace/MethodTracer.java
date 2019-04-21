@@ -134,7 +134,7 @@ public class MethodTracer {
                 if (MethodCollector.isNeedTraceFile(classFile.getName())) {
                     is = new FileInputStream(classFile);
                     ClassReader classReader = new ClassReader(is);
-                    ClassWriter classWriter = new ClassWriter(ClassWriter.COMPUTE_MAXS);
+                    ClassWriter classWriter = new ClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
                     ClassVisitor classVisitor = new TraceClassAdapter(Opcodes.ASM5, classWriter);
                     classReader.accept(classVisitor, ClassReader.EXPAND_FRAMES);
                     is.close();
@@ -180,7 +180,7 @@ public class MethodTracer {
                 if (MethodCollector.isNeedTraceFile(zipEntryName)) {
                     InputStream inputStream = zipFile.getInputStream(zipEntry);
                     ClassReader classReader = new ClassReader(inputStream);
-                    ClassWriter classWriter = new ClassWriter(ClassWriter.COMPUTE_MAXS);
+                    ClassWriter classWriter = new ClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
                     ClassVisitor classVisitor = new TraceClassAdapter(Opcodes.ASM5, classWriter);
                     classReader.accept(classVisitor, ClassReader.EXPAND_FRAMES);
                     byte[] data = classWriter.toByteArray();
