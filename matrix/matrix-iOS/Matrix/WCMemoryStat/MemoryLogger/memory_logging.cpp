@@ -206,7 +206,8 @@ void __memory_event_callback(uint32_t type_flags, uintptr_t zone_ptr, uintptr_t 
 
 void __update_object_event(uint64_t address, uint32_t new_type)
 {
-	if (current_thread_id() == working_thread_id || !logging_is_enable) {
+    thread_id curr_thread = current_thread_id();
+	if (curr_thread == working_thread_id || curr_thread == g_matrix_block_monitor_dumping_thread_id || !logging_is_enable) {
 		return;
 	}
 	
