@@ -174,8 +174,8 @@ public class AnrTracer extends Tracer {
                 jsonObject.put(SharePluginInfo.ISSUE_COST, stackCost);
                 jsonObject.put(SharePluginInfo.ISSUE_STACK_KEY, stackKey);
                 jsonObject.put(SharePluginInfo.ISSUE_SCENE, scene);
-                jsonObject.put(SharePluginInfo.ISSUE_STACK, reportBuilder.toString());
-                jsonObject.put(SharePluginInfo.ISSUE_UI_STACK, Utils.getStack(stackTrace));
+                jsonObject.put(SharePluginInfo.ISSUE_TRACE_STACK, reportBuilder.toString());
+                jsonObject.put(SharePluginInfo.ISSUE_THREAD_STACK, Utils.getStack(stackTrace));
                 // memory info
                 JSONObject memJsonObject = new JSONObject();
                 memJsonObject.put(SharePluginInfo.ISSUE_MEMORY_DALVIK, memoryInfo[0]);
