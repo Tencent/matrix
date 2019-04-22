@@ -103,8 +103,11 @@ public class MatrixHandlerThread {
                 return;
             }
             if (x.charAt(0) == '>') {
-                int start = x.indexOf("to ") + 3;
-                int end = x.lastIndexOf(": ");
+                int start = x.indexOf("} ");
+                int end = x.indexOf("@", start);
+                if (start < 0 || end < 0) {
+                    return;
+                }
                 String content = x.substring(start, end);
                 Info info = hashMap.get(content);
                 if (info == null) {
@@ -119,7 +122,7 @@ public class MatrixHandlerThread {
         @Override
         public void onForeground(boolean isForeground) {
             this.isForeground = isForeground;
-
+            MatrixLog.d(TAG, "onForeground:%s", isForeground);
             if (isForeground) {
                 long start = System.currentTimeMillis();
                 LinkedList<Info> list = new LinkedList<>();
