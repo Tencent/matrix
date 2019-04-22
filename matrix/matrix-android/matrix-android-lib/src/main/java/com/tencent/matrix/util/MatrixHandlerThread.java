@@ -48,6 +48,7 @@ public class MatrixHandlerThread {
     private static volatile Handler defaultHandler;
     private static volatile Handler defaultMainHandler = new Handler(Looper.getMainLooper());
     private static HashSet<HandlerThread> handlerThreads = new HashSet<>();
+    public static boolean isDebug = false;
 
     public static Handler getDefaultMainHandler() {
         return defaultMainHandler;
@@ -60,8 +61,8 @@ public class MatrixHandlerThread {
                 defaultHandlerThread = new HandlerThread(MATRIX_THREAD_NAME);
                 defaultHandlerThread.start();
                 defaultHandler = new Handler(defaultHandlerThread.getLooper());
-                defaultHandlerThread.getLooper().setMessageLogging(new LooperPrinter());
-                MatrixLog.w(TAG, "create default handler thread, we should use these thread normal");
+                defaultHandlerThread.getLooper().setMessageLogging(isDebug ? new LooperPrinter() : null);
+                MatrixLog.w(TAG, "create default handler thread, we should use these thread normal, isDebug:%s", isDebug);
             }
             return defaultHandlerThread;
         }
