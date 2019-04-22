@@ -426,7 +426,7 @@ public class AppMethodBeat implements BeatLifecycle {
                 return data;
             }
             return data;
-        } catch (Exception e) {
+        } catch (OutOfMemoryError e) {
             MatrixLog.e(TAG, e.toString());
             return data;
         } finally {
