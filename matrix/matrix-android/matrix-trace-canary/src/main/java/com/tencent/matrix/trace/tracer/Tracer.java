@@ -2,6 +2,7 @@ package com.tencent.matrix.trace.tracer;
 
 import android.support.annotation.CallSuper;
 
+import com.tencent.matrix.AppForegroundDelegate;
 import com.tencent.matrix.trace.listeners.LooperObserver;
 import com.tencent.matrix.util.MatrixLog;
 
@@ -38,19 +39,16 @@ public abstract class Tracer extends LooperObserver implements ITracer {
     }
 
     @Override
+    public void onForeground(boolean isForeground) {
+
+    }
+
+    @Override
     public boolean isAlive() {
         return isAlive;
     }
 
-    private volatile boolean isForeground;
-
-
-    @Override
-    public void onForeground(boolean isForeground) {
-        this.isForeground = isForeground;
-    }
-
     public boolean isForeground() {
-        return isForeground;
+        return AppForegroundDelegate.INSTANCE.isAppForeground();
     }
 }

@@ -1,6 +1,8 @@
 package com.tencent.matrix.trace.tracer;
 
-public interface ITracer {
+import com.tencent.matrix.listeners.IAppForeground;
+
+public interface ITracer extends IAppForeground {
 
     boolean isAlive();
 
@@ -8,5 +10,4 @@ public interface ITracer {
 
     void onCloseTrace();
 
-    void onForeground(boolean isForeground);
 }

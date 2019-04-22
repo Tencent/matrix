@@ -100,7 +100,7 @@ public class BatteryCanaryPlugin extends Plugin {
             return;
         }
 
-        if (!isForground && isPluginStoped() && stoppedForForeground) {
+        if (!isForground && isPluginStopped() && stoppedForForeground) {
             super.start();
             mCore.start();
         }
