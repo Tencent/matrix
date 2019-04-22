@@ -51,4 +51,5 @@ public class SharePluginInfo {
     public static final String ISSUE_APP_USS = "uss";
     public static final String ISSUE_MEM_FREE = "memfree";
     public static final String ISSUE_IS_LOW = "islow";
+    public static final String ISSUE_VMSIZE = "vmsize";
 }
