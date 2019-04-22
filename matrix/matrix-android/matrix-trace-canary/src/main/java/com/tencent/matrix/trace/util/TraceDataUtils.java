@@ -182,14 +182,14 @@ public class TraceDataUtils {
 
 
     public static long stackToString(LinkedList<MethodItem> stack, StringBuilder reportBuilder, StringBuilder logcatBuilder) {
-        logcatBuilder.append("|*   TraceStack:").append("\n");
-        logcatBuilder.append("|*        [id count cost]").append("\n");
+        logcatBuilder.append("|*\tTraceStack:").append("\n");
+        logcatBuilder.append("|*\t\t[id count cost]").append("\n");
         Iterator<MethodItem> listIterator = stack.iterator();
         long stackCost = 0; // fix cost
         while (listIterator.hasNext()) {
             MethodItem item = listIterator.next();
             reportBuilder.append(item.toString()).append('\n');
-            logcatBuilder.append("|*        ").append(item.print()).append('\n');
+            logcatBuilder.append("|*\t\t").append(item.print()).append('\n');
 
             if (stackCost < item.durTime) {
                 stackCost = item.durTime;

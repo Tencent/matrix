@@ -33,6 +33,7 @@ public class SharePluginInfo {
     public static final String ISSUE_DROP_SUM = "dropSum";
     public static final String ISSUE_FPS = "fps";
     public static final String ISSUE_STACK = "stack";
+    public static final String ISSUE_UI_STACK = "uiStack";
     public static final String ISSUE_STACK_KEY = "stackKey";
     public static final String ISSUE_MEMORY = "memory";
     public static final String ISSUE_MEMORY_NATIVE = "native_heap";

@@ -121,7 +121,8 @@ public class AnrTracer extends Tracer {
 
             // Thread state
             Thread.State status = Looper.getMainLooper().getThread().getState();
-            String dumpStack = Utils.getStack(Looper.getMainLooper().getThread().getStackTrace(), "|*\t\t", 12);
+            StackTraceElement[] stackTrace = Looper.getMainLooper().getThread().getStackTrace();
+            String dumpStack = Utils.getStack(stackTrace, "|*\t\t", 12);
 
             // frame
             UIThreadMonitor monitor = UIThreadMonitor.getMonitor();
@@ -174,6 +175,7 @@ public class AnrTracer extends Tracer {
                 jsonObject.put(SharePluginInfo.ISSUE_STACK_KEY, stackKey);
                 jsonObject.put(SharePluginInfo.ISSUE_SCENE, scene);
                 jsonObject.put(SharePluginInfo.ISSUE_STACK, reportBuilder.toString());
+                jsonObject.put(SharePluginInfo.ISSUE_UI_STACK, Utils.getStack(stackTrace));
                 // memory info
                 JSONObject memJsonObject = new JSONObject();
                 memJsonObject.put(SharePluginInfo.ISSUE_MEMORY_DALVIK, memoryInfo[0]);
