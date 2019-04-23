@@ -35,6 +35,9 @@ group = rootProject.ext.GROUP
 apply from: rootProject.file('gradle/WeChatPublish.gradle')
 apply from: rootProject.file('gradle/WeChatNativeDepend.gradle')
 
+wechatPublish {
+    artifactId=POM_ARTIFACT_ID
+}
 
 //apply plugin: 'matrix-trace-plugin'
 //matrixTrace {
