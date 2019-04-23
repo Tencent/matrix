@@ -228,7 +228,7 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, App
                     jsonObject = DeviceUtil.getDeviceInfo(jsonObject, Matrix.with().getApplication());
                     jsonObject.put(SharePluginInfo.ISSUE_STACK_TYPE, Constants.Type.STARTUP);
                     jsonObject.put(SharePluginInfo.ISSUE_COST, allCost);
-                    jsonObject.put(SharePluginInfo.ISSUE_STACK, reportBuilder.toString());
+                    jsonObject.put(SharePluginInfo.ISSUE_TRACE_STACK, reportBuilder.toString());
                     jsonObject.put(SharePluginInfo.ISSUE_STACK_KEY, stackKey);
                     jsonObject.put(SharePluginInfo.ISSUE_SUB_TYPE, isWarmStartUp ? 2 : 1);
                     Issue issue = new Issue();
