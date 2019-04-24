@@ -2,13 +2,14 @@ package com.tencent.matrix;
 
 import android.app.Activity;
 import android.app.Application;
+import android.content.ComponentCallbacks2;
+import android.content.res.Configuration;
 import android.os.Bundle;
 
 import com.tencent.matrix.listeners.IAppForeground;
 import com.tencent.matrix.util.MatrixLog;
 
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -32,7 +33,7 @@ public enum AppForegroundDelegate {
             return;
         }
         this.isInited = true;
-
+        application.registerComponentCallbacks(controller);
         application.registerActivityLifecycleCallbacks(controller);
 
     }
@@ -83,72 +84,20 @@ public enum AppForegroundDelegate {
     }
 
 
-    private final class Controller implements Application.ActivityLifecycleCallbacks {
+    private final class Controller implements Application.ActivityLifecycleCallbacks, ComponentCallbacks2 {
 
-        private int activeCount = 0;
-        private int ignoreCount = 0;
-        private HashMap<String, Integer> checkMap = new HashMap<>();
 
         @Override
         public void onActivityStarted(Activity activity) {
-            String name = activity.getClass().getName();
-            MatrixLog.d(TAG, "onActivityStarted:%s", name);
-            if (!isValid(name, true)) {
-                return;
-            }
-
-            if (activeCount <= 0) {
-                onDispatchForeground(name);
-            }
-            if (ignoreCount < 0) {
-                MatrixLog.w(TAG, "[onActivityStarted] activity[%s] has changed Configurations!", name);
-                ignoreCount++;
-            } else {
-                activeCount++;
+            if (!isAppForeground) {
+                onDispatchForeground(activity.getClass().getCanonicalName());
             }
         }
 
 
         @Override
         public void onActivityStopped(Activity activity) {
-            String name = activity.getClass().getName();
-            MatrixLog.d(TAG, "onActivityStopped:%s", name);
-            if (!isValid(name, false)) {
-                return;
-            }
 
-            if (null != activity && activity.isChangingConfigurations()) {
-                MatrixLog.w(TAG, "[onActivityStopped] activity[%s] is changing Configurations!", name);
-                ignoreCount--;
-            } else {
-                activeCount--;
-                if (activeCount <= 0) {
-                    onDispatchBackground(name);
-                }
-            }
-        }
-
-
-        private boolean isValid(String name, boolean isStart) {
-            if (isStart) {
-                Integer integer = checkMap.get(name);
-                if (integer == null) {
-                    checkMap.put(name, 1);
-                } else {
-                    int count = integer;
-                    checkMap.put(name, ++count);
-                }
-            } else {
-                Integer integer = checkMap.get(name);
-                if (integer == null || integer == 0) {
-                    MatrixLog.w(TAG, "pass onActivityStopped:%s", name);
-                    return false;
-                } else {
-                    int count = integer;
-                    checkMap.put(name, --count);
-                }
-            }
-            return true;
         }
 
 
@@ -159,7 +108,7 @@ public enum AppForegroundDelegate {
 
         @Override
         public void onActivityResumed(Activity activity) {
-            foregroundActivity = activity.getClass().getName();
+            foregroundActivity = activity.getClass().getCanonicalName();
         }
 
         @Override
@@ -178,6 +127,23 @@ public enum AppForegroundDelegate {
         }
 
 
+        @Override
+        public void onConfigurationChanged(Configuration newConfig) {
+
+        }
+
+        @Override
+        public void onLowMemory() {
+
+        }
+
+        @Override
+        public void onTrimMemory(int level) {
+            MatrixLog.i(TAG, "[onTrimMemory] level:%s", level);
+            if (level == TRIM_MEMORY_UI_HIDDEN) {
+                onDispatchBackground(foregroundActivity);
+            }
+        }
     }
 
 
