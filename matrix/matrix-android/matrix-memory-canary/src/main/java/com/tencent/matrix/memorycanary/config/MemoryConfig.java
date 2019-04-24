@@ -19,8 +19,6 @@ package com.tencent.matrix.memorycanary.config;
 import com.tencent.matrix.util.MatrixLog;
 import com.tencent.mrs.plugin.IDynamicConfig;
 
-import java.util.HashSet;
-
 /**
  * @author zhouzhijie
  * Created by zhouzhijie on 2018/9/12.
@@ -37,7 +35,6 @@ public final class MemoryConfig {
     private static final int DEFAULT_MIDDLE_MIN_SPAN = 500;
     private static final int DEFAULT_HIGH_MIN_SPAN = 500;
     private static final float DEFAULT_THRESHOLD = 0.9f;
-    private static final String DEFAULT_SPECIAL_ACTIVITIES = "";
 
     private final IDynamicConfig mDynamicConfig;
 
@@ -64,24 +61,6 @@ public final class MemoryConfig {
 
     public static int getDefaultHighMinSpan() {
         return DEFAULT_HIGH_MIN_SPAN;
-    }
-
-    public HashSet<String> getSpecialActivities() {
-        String strActivities = mDynamicConfig.get(IDynamicConfig.ExptEnum.clicfg_matrix_memory_special_activities.name(), DEFAULT_SPECIAL_ACTIVITIES);
-        if (strActivities == null || "".equals(strActivities)) {
-            return null;
-        }
-
-        String[] vecActivities = strActivities.split(";");
-        HashSet<String> result = new HashSet<>();
-        for (String activity : vecActivities) {
-            if ("".equals(activity)) {
-                continue;
-            }
-
-            result.add(activity);
-        }
-        return result;
     }
 
 //
