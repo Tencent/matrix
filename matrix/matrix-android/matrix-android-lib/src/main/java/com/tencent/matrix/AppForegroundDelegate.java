@@ -8,18 +8,11 @@ import com.tencent.matrix.listeners.IAppForeground;
 import com.tencent.matrix.util.MatrixLog;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
 
 
-/**
- * 应用前后台监控
- * <p>
- * 注意：
- * 1、如果应用在前台时，启动了另外一个进程，新启动的进程会接收切到前台的事件；
- * 2、只要是属于微信进程内的任意一个界面在前台，则认为当前应用处于前台，不单纯针对某个进程；
- * 3、前后台事件通知，所有进程都会接收到；
- */
 public enum AppForegroundDelegate {
 
     INSTANCE;
@@ -94,15 +87,21 @@ public enum AppForegroundDelegate {
 
         private int activeCount = 0;
         private int ignoreCount = 0;
-
+        private HashMap<String, Integer> checkMap = new HashMap<>();
 
         @Override
         public void onActivityStarted(Activity activity) {
+            String name = activity.getClass().getName();
+            MatrixLog.d(TAG, "onActivityStarted:%s", name);
+            if (!isValid(name, true)) {
+                return;
+            }
+
             if (activeCount <= 0) {
-                onDispatchForeground(activity.getClass().getName());
+                onDispatchForeground(name);
             }
             if (ignoreCount < 0) {
-                MatrixLog.w(TAG, "[onActivityStarted] activity[%s] has changed Configurations!", activity.getClass().getName());
+                MatrixLog.w(TAG, "[onActivityStarted] activity[%s] has changed Configurations!", name);
                 ignoreCount++;
             } else {
                 activeCount++;
@@ -112,17 +111,46 @@ public enum AppForegroundDelegate {
 
         @Override
         public void onActivityStopped(Activity activity) {
+            String name = activity.getClass().getName();
+            MatrixLog.d(TAG, "onActivityStopped:%s", name);
+            if (!isValid(name, false)) {
+                return;
+            }
+
             if (null != activity && activity.isChangingConfigurations()) {
-                MatrixLog.w(TAG, "[onActivityStopped] activity[%s] is changing Configurations!", activity.getClass().getName());
+                MatrixLog.w(TAG, "[onActivityStopped] activity[%s] is changing Configurations!", name);
                 ignoreCount--;
             } else {
                 activeCount--;
                 if (activeCount <= 0) {
-                    onDispatchBackground(activity.getClass().getName());
-                    activeCount = 0; // fix status
+                    onDispatchBackground(name);
                 }
             }
         }
+
+
+        private boolean isValid(String name, boolean isStart) {
+            if (isStart) {
+                Integer integer = checkMap.get(name);
+                if (integer == null) {
+                    checkMap.put(name, 1);
+                } else {
+                    int count = integer;
+                    checkMap.put(name, ++count);
+                }
+            } else {
+                Integer integer = checkMap.get(name);
+                if (integer == null || integer == 0) {
+                    MatrixLog.w(TAG, "pass onActivityStopped:%s", name);
+                    return false;
+                } else {
+                    int count = integer;
+                    checkMap.put(name, --count);
+                }
+            }
+            return true;
+        }
+
 
         @Override
         public void onActivityCreated(Activity activity, Bundle savedInstanceState) {

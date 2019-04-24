@@ -7,10 +7,10 @@ import java.util.HashSet;
 public final class ThreadConfig {
     public static final String TAG = "Matrix.ThreadConfig";
 
-    private static final long DEFAULT_CHECK_TIME = 20 * 60 * 1000L;
+    private static final long DEFAULT_CHECK_TIME = 10 * 60 * 1000L;
     private static final long DEFAULT_CHECK_TIME_IN_BACKGROUND = DEFAULT_CHECK_TIME * 2;
     private static final int DEFAULT_LIMIT_THREAD_COUNT = 40;
-    private static final long DEFAULT_REPORT_TIME = 2 * 60 * 60 * 1000L;
+    private static final long DEFAULT_REPORT_TIME = 30 * 60 * 1000L;
     private static final String DEFAULT_FILTER_SET = "";
 
     private final IDynamicConfig mDynamicConfig;
