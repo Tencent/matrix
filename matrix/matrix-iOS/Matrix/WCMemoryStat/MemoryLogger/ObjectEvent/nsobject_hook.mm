@@ -18,10 +18,13 @@
 #import <objc/runtime.h>
 #import "nsobject_hook.h"
 #import "object_event_handler.h"
+#include <pthread/pthread.h>
 
 #if __has_feature(objc_arc)
 #error This file must be compiled with MRR. Use -fno-objc-arc flag.
 #endif
+
+extern mach_port_t g_matrix_block_monitor_dumping_thread_id;
 
 #pragma mark -
 #pragma mark NSObject ObjectEventLogging
@@ -37,7 +40,10 @@
 + (id)event_logging_alloc
 {
 	id object = [self event_logging_alloc];
-	nsobject_set_last_allocation_event_name(object, class_getName(self.class));
+    if (pthread_mach_thread_np(pthread_self()) == g_matrix_block_monitor_dumping_thread_id) {
+        return object;
+    }
+    nsobject_set_last_allocation_event_name(object, class_getName(self.class));
 	return object;
 }
 
