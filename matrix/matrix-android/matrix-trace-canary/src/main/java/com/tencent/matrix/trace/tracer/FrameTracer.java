@@ -219,6 +219,10 @@ public class FrameTracer extends Tracer {
 
             } catch (JSONException e) {
                 MatrixLog.e(TAG, "json error", e);
+            } finally {
+                sumFrame = 0;
+                sumDroppedFrames = 0;
+                sumFrameCost = 0;
             }
         }
 

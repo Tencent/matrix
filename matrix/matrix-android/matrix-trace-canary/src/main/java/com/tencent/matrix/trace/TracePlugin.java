@@ -205,4 +205,8 @@ public class TracePlugin extends Plugin {
             return null;
         }
     }
+
+    public TraceConfig getTraceConfig() {
+        return traceConfig;
+    }
 }

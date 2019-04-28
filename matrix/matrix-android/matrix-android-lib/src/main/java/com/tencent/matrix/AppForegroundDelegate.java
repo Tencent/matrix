@@ -4,13 +4,18 @@ import android.app.Activity;
 import android.app.Application;
 import android.content.ComponentCallbacks2;
 import android.content.res.Configuration;
+import android.os.Build;
 import android.os.Bundle;
+import android.util.ArrayMap;
 
 import com.tencent.matrix.listeners.IAppForeground;
 import com.tencent.matrix.util.MatrixLog;
 
+import java.lang.reflect.Field;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 
@@ -41,7 +46,7 @@ public enum AppForegroundDelegate {
     public String getForegroundActivity() {
         return foregroundActivity;
     }
-
+f
     private void onDispatchForeground(String activity) {
         if (isAppForeground || !isInited) {
             return;
@@ -97,7 +102,9 @@ public enum AppForegroundDelegate {
 
         @Override
         public void onActivityStopped(Activity activity) {
-
+            if (getTopActivityName() == null) {
+                onDispatchBackground(foregroundActivity);
+            }
         }
 
 
@@ -140,10 +147,47 @@ public enum AppForegroundDelegate {
         @Override
         public void onTrimMemory(int level) {
             MatrixLog.i(TAG, "[onTrimMemory] level:%s", level);
-            if (level == TRIM_MEMORY_UI_HIDDEN) {
+            if (level == TRIM_MEMORY_UI_HIDDEN && isAppForeground) { // fallback
                 onDispatchBackground(foregroundActivity);
             }
         }
+    }
+
+    public static String getTopActivityName() {
+        long start = System.currentTimeMillis();
+        try {
+            Class activityThreadClass = Class.forName("android.app.ActivityThread");
+            Object activityThread = activityThreadClass.getMethod("currentActivityThread").invoke(null);
+            Field activitiesField = activityThreadClass.getDeclaredField("mActivities");
+            activitiesField.setAccessible(true);
+
+            Map<Object, Object> activities;
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.KITKAT) {
+                activities = (HashMap<Object, Object>) activitiesField.get(activityThread);
+            } else {
+                activities = (ArrayMap<Object, Object>) activitiesField.get(activityThread);
+            }
+            if (activities.size() < 1) {
+                return null;
+            }
+            for (Object activityRecord : activities.values()) {
+                Class activityRecordClass = activityRecord.getClass();
+                Field pausedField = activityRecordClass.getDeclaredField("paused");
+                pausedField.setAccessible(true);
+                if (!pausedField.getBoolean(activityRecord)) {
+                    Field activityField = activityRecordClass.getDeclaredField("activity");
+                    activityField.setAccessible(true);
+                    Activity activity = (Activity) activityField.get(activityRecord);
+                    return activity.getClass().getCanonicalName();
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            long cost = System.currentTimeMillis() - start;
+            MatrixLog.d(TAG, "[getTopActivityName] Cost:%s", cost);
+        }
+        return null;
     }
 
 

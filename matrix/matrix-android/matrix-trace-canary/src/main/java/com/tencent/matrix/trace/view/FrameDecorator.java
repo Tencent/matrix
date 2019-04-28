@@ -176,6 +176,11 @@ public class FrameDecorator extends IDoFrameListener implements IAppForeground {
             updateView(view.fpsView10, fps);
             lastCost[2] = sumFrameCost;
             lastFrames[2] = sumFrames;
+
+            sumFrameCost = 0;
+            sumFrames = 0;
+            lastCost = new long[3];
+            lastFrames = new long[3];
         }
     }
 
