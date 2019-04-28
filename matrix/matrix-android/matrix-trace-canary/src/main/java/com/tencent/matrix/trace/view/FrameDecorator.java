@@ -26,9 +26,10 @@ import com.tencent.matrix.trace.core.UIThreadMonitor;
 import com.tencent.matrix.trace.listeners.IDoFrameListener;
 import com.tencent.matrix.trace.tracer.FrameTracer;
 import com.tencent.matrix.util.MatrixHandlerThread;
+import com.tencent.matrix.util.MatrixLog;
 
 public class FrameDecorator extends IDoFrameListener implements IAppForeground {
-
+    private static final String TAG = "Matrix.FrameDecorator";
     private WindowManager windowManager;
     private WindowManager.LayoutParams layoutParam;
     private boolean isShowing;
@@ -47,6 +48,7 @@ public class FrameDecorator extends IDoFrameListener implements IAppForeground {
         view.addOnAttachStateChangeListener(new View.OnAttachStateChangeListener() {
             @Override
             public void onViewAttachedToWindow(View v) {
+                MatrixLog.i(TAG, "onViewAttachedToWindow");
                 if (Matrix.isInstalled()) {
                     TracePlugin tracePlugin = Matrix.with().getPluginByClass(TracePlugin.class);
                     if (null != tracePlugin) {
@@ -58,6 +60,7 @@ public class FrameDecorator extends IDoFrameListener implements IAppForeground {
 
             @Override
             public void onViewDetachedFromWindow(View v) {
+                MatrixLog.i(TAG, "onViewDetachedFromWindow");
                 if (Matrix.isInstalled()) {
                     TracePlugin tracePlugin = Matrix.with().getPluginByClass(TracePlugin.class);
                     if (null != tracePlugin) {
@@ -310,6 +313,7 @@ public class FrameDecorator extends IDoFrameListener implements IAppForeground {
 
     @Override
     public void onForeground(final boolean isForeground) {
+        MatrixLog.i(TAG, "[onForeground] isForeground:%s", isForeground);
         if (!isEnable) {
             return;
         }
