@@ -16,7 +16,6 @@
 
 package com.tencent.matrix.memorycanary.core;
 
-import com.tencent.matrix.memorycanary.IFragmentActivity;
 import com.tencent.matrix.memorycanary.MemoryCanaryPlugin;
 import com.tencent.matrix.memorycanary.config.MemoryConfig;
 import com.tencent.matrix.memorycanary.config.SharePluginInfo;
@@ -42,7 +41,6 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.HashMap;
-import java.util.HashSet;
 
 /**
  * Created by astrozhou on 2018/9/18.
@@ -50,7 +48,7 @@ import java.util.HashSet;
 public class MemoryCanaryCore implements IssuePublisher.OnIssueDetectListener {
 
     public static class MatrixMemoryInfo {
-        MatrixMemoryInfo(int activity) {
+        MatrixMemoryInfo(final String activity) {
             mDalvikHeap = mNativeHeap = mJavaHeap = mNativePss = mGraphics = mStack = mCode = mOther = mTotalPss = mTotalUss = -1;
             mActivity = activity;
         }
@@ -65,10 +63,10 @@ public class MemoryCanaryCore implements IssuePublisher.OnIssueDetectListener {
         public int mOther;
         public int mTotalPss;
         public int mTotalUss;
-        public int mActivity;
+        public String mActivity;
     }
 
-    private static final String TAG = "MemoryCanaryCore";
+    private static final String TAG = "Matrix.MemoryCanaryCore";
     private static final String JAVA_HEAP = "summary.java-heap";
     private static final String NATIVE_HEAP = "summary.native-heap";
     private static final String CODE_MEM = "summary.code";
@@ -79,11 +77,13 @@ public class MemoryCanaryCore implements IssuePublisher.OnIssueDetectListener {
     private static final int LOW_JAVA_HEAP_FLAG = 1;
     private static final int LOW_NATIVE_HEAP_FLAG = 2;
     private static final int LOW_MEMORY_TRIM = 3;
+    private static final int LOW_VMSIZE_FLAG = 4;
 
     private static final int STEP_FACTOR = 60 * 1000;
     private static final int MAX_STEP = 30 * STEP_FACTOR;
     private static final int NATIVE_HEAP_LIMIT = 500 * 1024;
     private static final int TRIM_MEMORY_SPAN = 10 * 60 * 1000;
+    private static final int VMSIZE_LIMIT = 4 * 1024 * 1024; //4GB
 
     private final MemoryCanaryPlugin mPlugin;
     private boolean mIsOpen = false;
@@ -94,40 +94,32 @@ public class MemoryCanaryCore implements IssuePublisher.OnIssueDetectListener {
     private final Handler mHandler;
     private final Context mContext;
     private final MemoryConfig mConfig;
-    private final long mStartTime;
+    private long mStartTime;
     private long mNextReportTime;
     private int mNextReportFactor;
-    private long mLastTime;
-    private final HashMap<Integer, String> mActivityMap;
-    private final HashSet<String> mSpecialActivityName;
-    private final HashSet<Integer> mSpecialActivity;
     private boolean mIsForeground = true;
-    private int mShowingActivity = 0;
-    private int mDetectFibFactor = 1;
-    private final HashMap<Integer, Long> mTrimedFlags;
+    private String mShowingActivity;
+    private HashMap<Integer, Long> mTrimedFlags;
     private final Runnable mDelayCheck = new Runnable() {
         @Override
         public void run() {
-            detectAppMemoryInfo(0, false, 0);
+            detectAppMemoryInfo(false, 0);
+        }
+    };
+    private final Runnable mNormalCheck = new Runnable() {
+        @Override
+        public void run() {
+            detectAppMemoryInfo(false, 0);
         }
     };
 
     private final Application.ActivityLifecycleCallbacks mActivityLifecycleCallback = new Application.ActivityLifecycleCallbacks() {
         @Override
         public void onActivityCreated(Activity activity, Bundle bundle) {
-            if (!mActivityMap.containsKey(activity.getClass().hashCode())) {
-                mActivityMap.put(activity.getClass().hashCode(), activity.getClass().getSimpleName());
-                if (mSpecialActivityName.contains(activity.getClass().getSimpleName())) {
-                    mSpecialActivity.add(activity.getClass().hashCode());
-                }
-            }
-
-            MatrixLog.d(TAG, "activity create:" + activity.getClass().getSimpleName());
         }
 
         @Override
         public void onActivityStarted(final Activity activity) {
-            onShow(activity);
         }
 
         @Override
@@ -161,9 +153,15 @@ public class MemoryCanaryCore implements IssuePublisher.OnIssueDetectListener {
         public void onTrimMemory(final int i) {
             switch (i) {
                 case TRIM_MEMORY_RUNNING_CRITICAL:
-                    break;
-                case TRIM_MEMORY_COMPLETE:
-                    break;
+                case TRIM_MEMORY_COMPLETE: {
+                    long memFree = DeviceUtil.getMemFree(mContext);
+                    long threshold = DeviceUtil.getLowMemoryThresold(mContext);
+                    if (memFree >= (2 * threshold)) {
+                        MatrixLog.i(TAG, "onTrimMemory level:%d, but memFree > 2*threshold, memFree:%d, threshold:%d", i, memFree, threshold);
+                        return;
+                    }
+                }
+                break;
                 default:
                     return;
             }
@@ -171,7 +169,7 @@ public class MemoryCanaryCore implements IssuePublisher.OnIssueDetectListener {
             mHandler.post(new Runnable() {
                 @Override
                 public void run() {
-                    detectAppMemoryInfo(mShowingActivity, true, i);
+                    detectAppMemoryInfo(true, i);
                 }
             });
         }
@@ -186,7 +184,7 @@ public class MemoryCanaryCore implements IssuePublisher.OnIssueDetectListener {
             mHandler.post(new Runnable() {
                 @Override
                 public void run() {
-                    detectAppMemoryInfo(mShowingActivity, true, LOW_MEMORY_TRIM);
+                    detectAppMemoryInfo(true, LOW_MEMORY_TRIM);
                 }
             });
         }
@@ -197,25 +195,6 @@ public class MemoryCanaryCore implements IssuePublisher.OnIssueDetectListener {
         mPlugin = plugin;
         mContext = plugin.getApplication();
         mConfig = plugin.getConfig();
-
-        mStartTime = System.currentTimeMillis();
-        mNextReportFactor = 1;
-        mNextReportTime = mStartTime + getFib(mNextReportFactor) * STEP_FACTOR;
-        mHandler.postDelayed(mDelayCheck, (getFib(mNextReportFactor) * STEP_FACTOR));
-        mActivityMap = new HashMap<>();
-        mSpecialActivity = new HashSet<>();
-        mSpecialActivityName = new HashSet<>();
-        mTrimedFlags = new HashMap<>();
-        mLastTime = 0;
-    }
-
-    public void addSpecial(final String activity) {
-        mSpecialActivityName.add(activity);
-    }
-
-    private void clear() {
-        mLastTime = 0;
-        mActivityMap.clear();
     }
 
     public void start() {
@@ -227,12 +206,20 @@ public class MemoryCanaryCore implements IssuePublisher.OnIssueDetectListener {
 
         mIsOpen = true;
 
+        mStartTime = System.currentTimeMillis();
+        mNextReportFactor = 1;
+        mNextReportTime = mStartTime + getNextDelay() - 5000;
+        MatrixLog.d(TAG, "next report delay:%d, starttime:%d", getNextDelay(), mStartTime);
+        mHandler.postDelayed(mDelayCheck, getNextDelay());
+        mTrimedFlags = new HashMap<>();
+
         //all in kb
         mTotalMemory = DeviceUtil.getTotalMemory(mContext) / 1024;
         mLowMemoryThreshold = DeviceUtil.getLowMemoryThresold(mContext) / 1024;
         mMemoryClass = DeviceUtil.getMemoryClass(mContext);
-        if (mLowMemoryThreshold >= mTotalMemory || mLowMemoryThreshold == 0) {
+        if (mLowMemoryThreshold >= mTotalMemory || mLowMemoryThreshold <= 0 || mMemoryClass <= (100 * 1024) || mTotalMemory <= 0) {
             mIsOpen = false;
+            return;
         }
 
         ((Application) mContext).registerActivityLifecycleCallbacks(mActivityLifecycleCallback);
@@ -242,29 +229,6 @@ public class MemoryCanaryCore implements IssuePublisher.OnIssueDetectListener {
     public void stop() {
         ((Application) mContext).unregisterActivityLifecycleCallbacks(mActivityLifecycleCallback);
         mContext.unregisterComponentCallbacks(mComponentCallback);
-
-        if (!mIsOpen) {
-            return;
-        }
-
-        clear();
-    }
-
-    public void onForeground(boolean bIsForeground) {
-        mIsForeground = bIsForeground;
-        if (!mIsOpen) {
-            return;
-        }
-
-        if (!mIsForeground) {
-            mHandler.post(new Runnable() {
-                @Override
-                public void run() {
-                    mDetectFibFactor = 1;
-                    detectAppMemoryInfo(0, false, 0);
-                }
-            });
-        }
     }
 
     @Override
@@ -278,74 +242,40 @@ public class MemoryCanaryCore implements IssuePublisher.OnIssueDetectListener {
             return;
         }
 
-        int hashCode = activity.getClass().hashCode();
-        if (mSpecialActivity.contains(hashCode)) {
-            if (!(activity instanceof IFragmentActivity)) {
-                return;
-            }
-
-            hashCode = ((IFragmentActivity) activity).hashCodeOfCurrentFragment();
-            String name = ((IFragmentActivity) activity).fragmentName();
-            if (!mActivityMap.containsKey(hashCode)) {
-                mActivityMap.put(hashCode, name);
-            }
-        }
-        if (mShowingActivity == hashCode) {
-            return;
-        }
-
-        mHandler.removeCallbacksAndMessages(null);
+        mHandler.removeCallbacks(mNormalCheck);
 
         MatrixLog.d(TAG, "activity on show:" + activity.getClass().getSimpleName());
+        mShowingActivity = activity.getClass().getSimpleName();
 
-        mShowingActivity = hashCode;
-        mDetectFibFactor = 1;
-
-        if ((System.currentTimeMillis() - mLastTime) < ((mLevel == DeviceUtil.LEVEL.BEST || mLevel == DeviceUtil.LEVEL.HIGH) ? mConfig.getHighMinSpan() : mConfig.getMiddleMinSpan())) {
-            return; //too frequent, ignore once
-        }
-
-        final int hashCodeTmp = hashCode;
-        mHandler.post(new Runnable() {
-            @Override
-            public void run() {
-                detectAppMemoryInfo(hashCodeTmp, false, 0);
-            }
-        });
-        mLastTime = System.currentTimeMillis();
+        mHandler.postDelayed(mNormalCheck, 1000);
     }
 
-    private void detectAppMemoryInfo(final int activity, boolean bDetectAll, int flag) {
+    private void detectAppMemoryInfo(boolean bDetectAll, int flag) {
         if (!bDetectAll) {
-            detectRuntimeMemoryInfo(activity);
+            detectRuntimeMemoryInfo();
         } else {
-            detectAppMemoryInfoImpl(activity, flag);
-        }
-
-        if (!bDetectAll && activity == mShowingActivity && (mIsForeground || mDetectFibFactor <= 8)) {
-            long nextDetect = getFib(mDetectFibFactor) * 1000L;
-            mDetectFibFactor += 1;
-            mHandler.postDelayed(new Runnable() {
-                @Override
-                public void run() {
-                    detectAppMemoryInfo(activity, false, 0);
-                }
-            }, nextDetect);
+            detectAppMemoryInfoImpl(flag);
         }
     }
 
-    private void detectRuntimeMemoryInfo(int activity) {
+    private void detectRuntimeMemoryInfo() {
         long dalvikHeap = DeviceUtil.getDalvikHeap();
         long nativeHeap = DeviceUtil.getNativeHeap();
-        //MatrixLog.d(TAG, "current dalvik heap:" + dalvikHeap + ", native heap:" + nativeHeap);
+        MatrixLog.d(TAG, "current dalvik heap:" + dalvikHeap + ", native heap:" + nativeHeap);
+
         double ratio = ((double) dalvikHeap / (double) (mMemoryClass));
         if (ratio >= mConfig.getThreshold()) {
-            detectAppMemoryInfoImpl(activity, LOW_JAVA_HEAP_FLAG);
+            detectAppMemoryInfoImpl(LOW_JAVA_HEAP_FLAG);
             return;
         }
         ratio = ((double) nativeHeap / (double) NATIVE_HEAP_LIMIT);
         if (ratio >= mConfig.getThreshold()) {
-            detectAppMemoryInfoImpl(activity, LOW_NATIVE_HEAP_FLAG);
+            detectAppMemoryInfoImpl(LOW_NATIVE_HEAP_FLAG);
+            return;
+        }
+        ratio = ((double) DeviceUtil.getVmSize() / (double) VMSIZE_LIMIT);
+        if (ratio >= mConfig.getThreshold()) {
+            detectAppMemoryInfoImpl(LOW_VMSIZE_FLAG);
             return;
         }
 
@@ -361,6 +291,12 @@ public class MemoryCanaryCore implements IssuePublisher.OnIssueDetectListener {
         issue.setContent(json);
 
         try {
+            long span = System.currentTimeMillis() - mStartTime;
+            if (span < 0) {
+                MatrixLog.e(TAG, "wrong time, curr:%d, start:%d", System.currentTimeMillis(), mStartTime);
+                return;
+            }
+
             json.put(SharePluginInfo.ISSUE_STARTED_TIME, (int) (System.currentTimeMillis() - mStartTime) / (60 * 1000));
 
             long start = System.currentTimeMillis();
@@ -368,9 +304,9 @@ public class MemoryCanaryCore implements IssuePublisher.OnIssueDetectListener {
             if (memoryInfo != null) {
                 long cost = System.currentTimeMillis() - start;
                 MatrixLog.i(TAG, "get app memory cost:" + cost);
-                MatrixMemoryInfo appInfo = new MatrixMemoryInfo(activity);
+                MatrixMemoryInfo appInfo = new MatrixMemoryInfo(mShowingActivity);
                 makeMatrixMemoryInfo(memoryInfo, appInfo);
-                fillMemoryInfo(json, appInfo, SharePluginInfo.ISSUE_APP_MEM, mActivityMap.containsKey(activity) ? mActivityMap.get(activity) : "");
+                fillMemoryInfo(json, appInfo, SharePluginInfo.ISSUE_APP_MEM, mShowingActivity);
                 json.put(SharePluginInfo.ISSUE_FOREGROUND, mIsForeground ? 1 : 0);
             }
         } catch (Exception e) {
@@ -380,21 +316,21 @@ public class MemoryCanaryCore implements IssuePublisher.OnIssueDetectListener {
         onDetectIssue(issue);
 
         mNextReportFactor += 1;
-        int factor = getFib(mNextReportFactor) * STEP_FACTOR;
-        factor = Math.min(factor, MAX_STEP);
-        mNextReportTime += factor;
+        long delay = getNextDelay();
+        delay = Math.min(delay, MAX_STEP);
+        mNextReportTime = System.currentTimeMillis() + delay - 5000;
         mHandler.removeCallbacks(mDelayCheck);
-        mHandler.postDelayed(mDelayCheck, factor);
+        mHandler.postDelayed(mDelayCheck, delay);
     }
 
     //call when memory low
-    private void detectAppMemoryInfoImpl(int activity, int flag) {
+    private void detectAppMemoryInfoImpl(int flag) {
         if (flag == 0) {
             return;
         }
 
         if (mTrimedFlags.containsKey(flag) && (System.currentTimeMillis() - mTrimedFlags.get(flag)) < TRIM_MEMORY_SPAN) {
-            MatrixLog.w(TAG, "trim memory too freq activity:%d, flag:%d", activity, flag);
+            MatrixLog.w(TAG, "trim memory too freq activity:%s, flag:%d", mShowingActivity, flag);
             return;
         }
 
@@ -408,7 +344,7 @@ public class MemoryCanaryCore implements IssuePublisher.OnIssueDetectListener {
         MatrixLog.i(TAG, "get app memory cost:" + cost);
 
         //ontrimmemory or use too much memory
-        MatrixMemoryInfo matrixMemoryInfo = new MatrixMemoryInfo(activity);
+        MatrixMemoryInfo matrixMemoryInfo = new MatrixMemoryInfo(mShowingActivity);
         makeMatrixMemoryInfo(memoryInfo, matrixMemoryInfo);
 
         Issue issue = new Issue();
@@ -421,10 +357,10 @@ public class MemoryCanaryCore implements IssuePublisher.OnIssueDetectListener {
             json.put(SharePluginInfo.ISSUE_THRESHOLD, mLowMemoryThreshold);
             json.put(SharePluginInfo.ISSUE_MEM_CLASS, mMemoryClass);
             json.put(SharePluginInfo.ISSUE_AVAILABLE, DeviceUtil.getAvailMemory(mContext));
-            fillMemoryInfo(json, matrixMemoryInfo, SharePluginInfo.ISSUE_APP_MEM, mActivityMap.containsKey(activity) ? mActivityMap.get(activity) : "");
+            fillMemoryInfo(json, matrixMemoryInfo, SharePluginInfo.ISSUE_APP_MEM, mShowingActivity);
             json.put(SharePluginInfo.ISSUE_FOREGROUND, mIsForeground ? 1 : 0);
             json.put(SharePluginInfo.ISSUE_TRIM_FLAG, flag);
-            json.put(SharePluginInfo.ISSUE_MEM_FREE, DeviceUtil.getMemFree());
+            json.put(SharePluginInfo.ISSUE_MEM_FREE, DeviceUtil.getMemFree(mContext));
             json.put(SharePluginInfo.ISSUE_IS_LOW, DeviceUtil.isLowMemory(mContext));
             mTrimedFlags.put(flag, System.currentTimeMillis());
         } catch (Exception e) {
@@ -493,19 +429,22 @@ public class MemoryCanaryCore implements IssuePublisher.OnIssueDetectListener {
         matrixMemoryInfo.mDalvikHeap = (int) DeviceUtil.getDalvikHeap();
         matrixMemoryInfo.mNativeHeap = (int) DeviceUtil.getNativeHeap();
 
-        String name = mActivityMap.containsKey(matrixMemoryInfo.mActivity) ? mActivityMap.get(matrixMemoryInfo.mActivity) : "null";
-        MatrixLog.i(TAG, "activity:" + name + ", totalpss:" + matrixMemoryInfo.mTotalPss + ", uss:" + matrixMemoryInfo.mTotalUss + ", java:" + matrixMemoryInfo.mJavaHeap
+        MatrixLog.i(TAG, "activity:" + mShowingActivity + ", totalpss:" + matrixMemoryInfo.mTotalPss + ", uss:" + matrixMemoryInfo.mTotalUss + ", java:" + matrixMemoryInfo.mJavaHeap
                 + " , Native:" + matrixMemoryInfo.mNativePss + ", code:" + matrixMemoryInfo.mCode + ", stack:" + matrixMemoryInfo.mStack
                 + ", Graphics:" + matrixMemoryInfo.mGraphics + ", other:" + matrixMemoryInfo.mOther);
     }
 
+    private long getNextDelay() {
+        return (getFib(mNextReportFactor) - getFib(mNextReportFactor - 1)) * STEP_FACTOR;
+    }
+
     private int getFib(int n) {
-        if (n < 0) {
-            return -1;
-        } else if (n == 0) {
+        if (n <= 0) {
             return 0;
-        } else if (n == 1 || n == 2) {
+        } else if (n == 1) {
             return 1;
+        } else if (n == 2) {
+            return 2;
         } else {
             return getFib(n - 1) + getFib(n - 2);
         }
@@ -522,7 +461,7 @@ public class MemoryCanaryCore implements IssuePublisher.OnIssueDetectListener {
             json.put(PluginShareConstants.MemoryCanaryShareKeys.SYSTEM_MEMORY, mTotalMemory);
             json.put(PluginShareConstants.MemoryCanaryShareKeys.MEM_CLASS, mMemoryClass);
             json.put(PluginShareConstants.MemoryCanaryShareKeys.AVAILABLE, DeviceUtil.getAvailMemory(mContext));
-            json.put(PluginShareConstants.MemoryCanaryShareKeys.MEM_FREE, DeviceUtil.getMemFree());
+            json.put(PluginShareConstants.MemoryCanaryShareKeys.MEM_FREE, DeviceUtil.getMemFree(mContext));
             json.put(PluginShareConstants.MemoryCanaryShareKeys.IS_LOW, DeviceUtil.isLowMemory(mContext));
             json.put(PluginShareConstants.MemoryCanaryShareKeys.VM_SIZE, DeviceUtil.getVmSize());
         } catch (JSONException e) {

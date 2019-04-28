@@ -57,5 +57,10 @@ task buildApkCheckJar(type: Copy, dependsOn: [build, jar]) {
     into(project.file("tools_output"))
 }
 
-apply from: rootProject.file('gradle/java-publish.gradle')
+//apply from: rootProject.file('gradle/java-publish.gradle')
+//for uploading to WeChat maven serve
+apply from: rootProject.file('gradle/WeChatPublish.gradle')
+wechatPublish {
+    artifactId=POM_ARTIFACT_ID
+}
 

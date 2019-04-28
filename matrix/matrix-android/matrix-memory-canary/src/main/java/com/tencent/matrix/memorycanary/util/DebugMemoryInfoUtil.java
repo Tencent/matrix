@@ -11,7 +11,7 @@ import java.lang.reflect.Method;
  * Created by astrozhou on 2018/9/19.
  */
 public class DebugMemoryInfoUtil {
-    private static final String TAG = "DebugMemoryInfoUtil";
+    private static final String TAG = "Matrix.DebugMemoryInfoUtil";
     private static Method getMemoryStatMethod = null;
 
     public static int getMemoryStat(String statName, final Debug.MemoryInfo memoryInfo) {
