@@ -46,7 +46,7 @@ public enum AppForegroundDelegate {
     public String getForegroundActivity() {
         return foregroundActivity;
     }
-f
+
     private void onDispatchForeground(String activity) {
         if (isAppForeground || !isInited) {
             return;
