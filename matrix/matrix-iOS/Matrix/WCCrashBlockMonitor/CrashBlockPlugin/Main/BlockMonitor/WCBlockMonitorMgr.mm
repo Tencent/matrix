@@ -617,7 +617,6 @@ KSStackCursor *kscrash_pointThreadCallback(void)
         if (stack) {
             for (size_t i = 0; i < nSum; i++) {
                 vecCallStack[i] = stack[i];
-                stackFeat += stack[i];
             }
             stackFeat = kssymbolicate_symboladdress(stack[0]);
         } else {
@@ -627,7 +626,6 @@ KSStackCursor *kscrash_pointThreadCallback(void)
         [WCGetMainThreadUtil getCurrentMainThreadStack:^(NSUInteger pc) {
             if (nSum < WXGBackTraceMaxEntries) {
                 vecCallStack[nSum] = pc;
-                stackFeat += pc;
             }
             if (nSum == 0) {
                 stackFeat = kssymbolicate_symboladdress(pc);
