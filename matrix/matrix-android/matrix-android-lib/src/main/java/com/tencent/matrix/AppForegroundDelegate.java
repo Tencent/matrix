@@ -6,6 +6,10 @@ import android.content.ComponentCallbacks2;
 import android.content.res.Configuration;
 import android.os.Build;
 import android.os.Bundle;
+import android.support.annotation.NonNull;
+import android.support.v4.app.FragmentActivity;
+import android.support.v4.app.Fragment;
+import android.support.v4.app.FragmentManager;
 import android.util.ArrayMap;
 
 import com.tencent.matrix.listeners.IAppForeground;
@@ -15,6 +19,7 @@ import java.lang.reflect.Field;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -28,7 +33,7 @@ public enum AppForegroundDelegate {
 
     private Set<IAppForeground> listeners = Collections.synchronizedSet(new HashSet<IAppForeground>());
     private boolean isAppForeground = false;
-    private String foregroundActivity = "default";
+    private String visibleScene = "default";
     private Controller controller = new Controller();
     private boolean isInited = false;
 
@@ -43,8 +48,8 @@ public enum AppForegroundDelegate {
 
     }
 
-    public String getForegroundActivity() {
-        return foregroundActivity;
+    public String getVisibleScene() {
+        return visibleScene;
     }
 
     private void onDispatchForeground(String activity) {
@@ -91,6 +96,14 @@ public enum AppForegroundDelegate {
 
     private final class Controller implements Application.ActivityLifecycleCallbacks, ComponentCallbacks2 {
 
+        private FragmentManager.FragmentLifecycleCallbacks fragmentLifecycleCallbacks = new FragmentManager.FragmentLifecycleCallbacks() {
+
+            @Override
+            public void onFragmentResumed(@NonNull FragmentManager fm, @NonNull Fragment f) {
+                super.onFragmentResumed(fm, f);
+                MatrixLog.i(TAG, "[FragmentResumed] %s", visibleScene = getVisibleScene(f.getActivity()));
+            }
+        };
 
         @Override
         public void onActivityStarted(Activity activity) {
@@ -102,20 +115,33 @@ public enum AppForegroundDelegate {
 
         @Override
         public void onActivityStopped(Activity activity) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                if (activity instanceof FragmentActivity) {
+                    FragmentActivity supportActivity = (FragmentActivity) activity;
+                    supportActivity.getSupportFragmentManager().unregisterFragmentLifecycleCallbacks(fragmentLifecycleCallbacks);
+
+                }
+            }
             if (getTopActivityName() == null) {
-                onDispatchBackground(foregroundActivity);
+                onDispatchBackground(visibleScene);
             }
         }
 
 
         @Override
         public void onActivityCreated(Activity activity, Bundle savedInstanceState) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                if (activity instanceof FragmentActivity) {
+                    FragmentActivity supportActivity = (FragmentActivity) activity;
+                    supportActivity.getSupportFragmentManager().registerFragmentLifecycleCallbacks(fragmentLifecycleCallbacks, true);
 
+                }
+            }
         }
 
         @Override
         public void onActivityResumed(Activity activity) {
-            foregroundActivity = activity.getClass().getCanonicalName();
+            visibleScene = getVisibleScene(activity);
         }
 
         @Override
@@ -148,7 +174,7 @@ public enum AppForegroundDelegate {
         public void onTrimMemory(int level) {
             MatrixLog.i(TAG, "[onTrimMemory] level:%s", level);
             if (level == TRIM_MEMORY_UI_HIDDEN && isAppForeground) { // fallback
-                onDispatchBackground(foregroundActivity);
+                onDispatchBackground(visibleScene);
             }
         }
     }
@@ -188,6 +214,22 @@ public enum AppForegroundDelegate {
             MatrixLog.d(TAG, "[getTopActivityName] Cost:%s", cost);
         }
         return null;
+    }
+
+    public static String getVisibleScene(Activity activity) {
+        if (activity instanceof FragmentActivity) {
+            FragmentActivity fragmentActivity = (FragmentActivity) activity;
+            FragmentManager fragmentManager = fragmentActivity.getSupportFragmentManager();
+            List<Fragment> fragments = fragmentManager.getFragments();
+            if (fragments != null) {
+                for (Fragment fragment : fragments) {
+                    if (fragment != null && fragment.isVisible()) {
+                        return activity.getClass().getName() + "#" + fragment.getClass().getSimpleName();
+                    }
+                }
+            }
+        }
+        return activity.getClass().getName();
     }
 
 

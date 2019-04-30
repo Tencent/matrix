@@ -80,7 +80,7 @@ public class EvilMethodTracer extends Tracer {
                 long[] data = AppMethodBeat.getInstance().copyData(indexRecord);
                 long[] queueCosts = new long[3];
                 System.arraycopy(queueTypeCosts, 0, queueCosts, 0, 3);
-                String scene = AppMethodBeat.getFocusedActivity();
+                String scene = AppMethodBeat.getVisibleScene();
                 MatrixHandlerThread.getDefaultHandler().post(new AnalyseTask(scene, data, queueCosts, cpuEndMs - cpuBeginMs, endMs - beginMs, endMs));
             }
         } finally {

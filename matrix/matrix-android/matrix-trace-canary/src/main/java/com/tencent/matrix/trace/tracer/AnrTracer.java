@@ -46,7 +46,6 @@ public class AnrTracer extends Tracer {
         if (isAnrTraceEnable) {
             UIThreadMonitor.getMonitor().addObserver(this);
             HandlerThread thread = MatrixHandlerThread.getNewHandlerThread("Matrix#AnrTracer");
-            thread.start();
             this.anrHandler = new Handler(thread.getLooper());
         }
     }
@@ -118,7 +117,7 @@ public class AnrTracer extends Tracer {
             long curTime = SystemClock.uptimeMillis();
             long[] data = AppMethodBeat.getInstance().copyData(beginRecord);
             beginRecord.release();
-            String scene = AppMethodBeat.getFocusedActivity();
+            String scene = AppMethodBeat.getVisibleScene();
 
             // memory
             long[] memoryInfo = dumpMemory();

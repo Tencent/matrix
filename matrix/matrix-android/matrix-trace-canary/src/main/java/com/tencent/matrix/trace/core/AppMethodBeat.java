@@ -262,21 +262,17 @@ public class AppMethodBeat implements BeatLifecycle {
                         listener.onActivityFocused(activityName);
                     }
                 }
-                MatrixLog.i(TAG, "[at] Activity[%s] has %s focus!", activityName, isFocus ? "attach" : "detach");
+                MatrixLog.i(TAG, "[at] visibleScene[%s] has %s focus!", getVisibleScene(), isFocus ? "attach" : "detach");
             }
         } else {
-
             if (sFocusActivitySet.remove(activityName)) {
-                MatrixLog.i(TAG, "[at] Activity[%s] has %s focus!", activityName, isFocus ? "attach" : "detach");
+                MatrixLog.i(TAG, "[at] visibleScene[%s] has %s focus!", getVisibleScene(), isFocus ? "attach" : "detach");
             }
         }
-
-
     }
 
-
-    public static String getFocusedActivity() {
-        return AppForegroundDelegate.INSTANCE.getForegroundActivity();
+    public static String getVisibleScene() {
+        return AppForegroundDelegate.INSTANCE.getVisibleScene();
     }
 
     /**

@@ -334,6 +334,7 @@ class WeChatAndroidLibraryPublishExtension extends WeChatPublishExtension {
             def flavorName = variant.flavorName
             def variantOnlyName = variantName.substring(flavorName.length(), variantName.length())
                     .uncapitalize()
+            def hasFlavor = variant.flavorName != null && !variant.flavorName.isEmpty()
 
             if (flavorName == defaultFlavor)
                 flavorName = ''
@@ -437,8 +438,26 @@ class WeChatAndroidLibraryPublishExtension extends WeChatPublishExtension {
 
                         groupId this.groupId
                         version this.fullVersion
-                        artifactId flavorName.empty ?
-                                this.artifactId : "${this.artifactId}-${flavorName}"
+
+                        if (hasFlavor) {
+                            def currFlavor = variant.productFlavors.get(0)
+                            def actualArtifactIdSuffix = ''
+                            if (currFlavor.ext.has('artifactIdSuffix')) {
+                                actualArtifactIdSuffix = currFlavor.ext.artifactIdSuffix
+                                int firstNotBarPos = 0
+                                while (firstNotBarPos < actualArtifactIdSuffix.length()
+                                        && actualArtifactIdSuffix.charAt(firstNotBarPos) == '-') {
+                                    ++firstNotBarPos
+                                }
+                                actualArtifactIdSuffix = actualArtifactIdSuffix.substring(firstNotBarPos)
+                            } else {
+                                actualArtifactIdSuffix = flavorName
+                            }
+                            artifactId actualArtifactIdSuffix.empty ?
+                                    this.artifactId : "${this.artifactId}-${actualArtifactIdSuffix}"
+                        } else {
+                            artifactId this.artifactId
+                        }
 
                         pom {
                             packaging 'aar'

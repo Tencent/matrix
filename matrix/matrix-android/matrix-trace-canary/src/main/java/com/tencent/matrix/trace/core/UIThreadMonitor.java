@@ -248,7 +248,7 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
         synchronized (observers) {
             for (LooperObserver observer : observers) {
                 if (observer.isDispatchBegin()) {
-                    observer.doFrame(AppMethodBeat.getFocusedActivity(), start, end, end - start, queueCost[CALLBACK_INPUT], queueCost[CALLBACK_ANIMATION], queueCost[CALLBACK_TRAVERSAL]);
+                    observer.doFrame(AppMethodBeat.getVisibleScene(), start, end, end - start, queueCost[CALLBACK_INPUT], queueCost[CALLBACK_ANIMATION], queueCost[CALLBACK_TRAVERSAL]);
                 }
             }
         }
