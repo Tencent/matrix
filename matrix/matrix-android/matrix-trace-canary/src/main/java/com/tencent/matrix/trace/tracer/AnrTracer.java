@@ -1,6 +1,7 @@
 package com.tencent.matrix.trace.tracer;
 
 import android.os.Handler;
+import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.SystemClock;
 
@@ -44,7 +45,9 @@ public class AnrTracer extends Tracer {
         super.onAlive();
         if (isAnrTraceEnable) {
             UIThreadMonitor.getMonitor().addObserver(this);
-            this.anrHandler = new Handler(MatrixHandlerThread.getDefaultHandlerThread().getLooper());
+            HandlerThread thread = MatrixHandlerThread.getNewHandlerThread("Matrix#AnrTracer");
+            thread.start();
+            this.anrHandler = new Handler(thread.getLooper());
         }
     }
 
@@ -57,6 +60,7 @@ public class AnrTracer extends Tracer {
                 anrTask.getBeginRecord().release();
             }
             anrHandler.removeCallbacksAndMessages(null);
+            anrHandler.getLooper().quit();
         }
     }
 

@@ -287,6 +287,9 @@ public class AppMethodBeat implements BeatLifecycle {
      * @param isIn
      */
     private static void mergeData(int methodId, int index, boolean isIn) {
+        if (methodId == AppMethodBeat.METHOD_ID_DISPATCH) {
+            sCurrentDiffTime = SystemClock.uptimeMillis() - sDiffTime;
+        }
         long trueId = 0L;
         if (isIn) {
             trueId |= 1L << 63;
