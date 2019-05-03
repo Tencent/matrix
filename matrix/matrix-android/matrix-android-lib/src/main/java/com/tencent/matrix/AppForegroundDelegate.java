@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.app.Application;
 import android.content.ComponentCallbacks2;
 import android.content.res.Configuration;
+import android.graphics.Rect;
 import android.os.Build;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
@@ -19,6 +20,7 @@ import java.lang.reflect.Field;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -52,12 +54,12 @@ public enum AppForegroundDelegate {
         return visibleScene;
     }
 
-    private void onDispatchForeground(String activity) {
+    private void onDispatchForeground(String visibleScene) {
         if (isAppForeground || !isInited) {
             return;
         }
 
-        MatrixLog.i(TAG_CARE, "onForeground... activity[%s]", activity);
+        MatrixLog.i(TAG_CARE, "onForeground... visibleScene[%s]", visibleScene);
         try {
             for (IAppForeground listener : listeners) {
                 listener.onForeground(true);
@@ -67,11 +69,11 @@ public enum AppForegroundDelegate {
         }
     }
 
-    private void onDispatchBackground(String activity) {
+    private void onDispatchBackground(String visibleScene) {
         if (!isAppForeground || !isInited) {
             return;
         }
-        MatrixLog.i(TAG_CARE, "onBackground... activity[%s]", activity);
+        MatrixLog.i(TAG_CARE, "onBackground... visibleScene[%s]", visibleScene);
         try {
             for (IAppForeground listener : listeners) {
                 listener.onForeground(false);
@@ -108,7 +110,7 @@ public enum AppForegroundDelegate {
         @Override
         public void onActivityStarted(Activity activity) {
             if (!isAppForeground) {
-                onDispatchForeground(activity.getClass().getCanonicalName());
+                onDispatchForeground(visibleScene);
             }
         }
 
@@ -221,12 +223,23 @@ public enum AppForegroundDelegate {
             FragmentActivity fragmentActivity = (FragmentActivity) activity;
             FragmentManager fragmentManager = fragmentActivity.getSupportFragmentManager();
             List<Fragment> fragments = fragmentManager.getFragments();
+            List<Fragment> visibleFragments = new LinkedList<>();
+            Rect rect = new Rect();
             if (fragments != null) {
                 for (Fragment fragment : fragments) {
-                    if (fragment != null && fragment.isVisible()) {
-                        return activity.getClass().getName() + "#" + fragment.getClass().getSimpleName();
+                    if (fragment != null && fragment.getView() != null) {
+                        fragment.getView().getGlobalVisibleRect(rect);
+                        long rate = rect.width() * rect.height();
+                        if (rate > rect.width() || rate > rect.height()) {
+                            visibleFragments.add(fragment);
+                        }
                     }
                 }
+                StringBuilder ss = new StringBuilder(activity.getClass().getName());
+                for (Fragment fragment : visibleFragments) {
+                    ss.append("#").append(fragment.getClass().getSimpleName());
+                }
+                return ss.toString();
             }
         }
         return activity.getClass().getName();

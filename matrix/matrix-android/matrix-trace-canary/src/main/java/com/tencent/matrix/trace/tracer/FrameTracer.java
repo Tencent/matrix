@@ -1,6 +1,7 @@
 package com.tencent.matrix.trace.tracer;
 
 import android.os.Handler;
+import android.os.SystemClock;
 
 import com.tencent.matrix.Matrix;
 import com.tencent.matrix.report.Issue;
@@ -85,30 +86,34 @@ public class FrameTracer extends Tracer {
     }
 
 
-    private void notifyListener(final String focusedActivityName, final long frameCostMs) {
+    private void notifyListener(final String visibleScene, final long frameCostMs) {
         long start = System.currentTimeMillis();
         try {
             synchronized (listeners) {
                 for (final IDoFrameListener listener : listeners) {
+                    if (config.isDevEnv()) {
+                        listener.time = SystemClock.uptimeMillis();
+                    }
                     final int dropFrame = (int) (frameCostMs / frameIntervalMs);
-                    listener.doFrameSync(focusedActivityName, frameCostMs, dropFrame);
+                    listener.doFrameSync(visibleScene, frameCostMs, dropFrame);
                     if (null != listener.getHandler()) {
                         listener.getHandler().post(new Runnable() {
                             @Override
                             public void run() {
-                                listener.doFrameAsync(focusedActivityName, frameCostMs, dropFrame);
+                                listener.doFrameAsync(visibleScene, frameCostMs, dropFrame);
                             }
                         });
+                    }
+                    if (config.isDevEnv()) {
+                        listener.time = SystemClock.uptimeMillis() - listener.time;
+                        MatrixLog.d(TAG, "[notifyListener] cost:%sms listener:%s", listener.time, listener);
                     }
                 }
             }
         } finally {
             long cost = System.currentTimeMillis() - start;
-            if (config.isDevEnv()) {
-                MatrixLog.v(TAG, "[notifyListener] cost:%sms", cost);
-            }
-            if (cost > frameIntervalMs) {
-                MatrixLog.w(TAG, "[notifyListener] warm! maybe do heavy work in doFrameSync,but you can replace with doFrameAsync! cost:%sms", cost);
+            if (config.isDebug() && cost > frameIntervalMs) {
+                MatrixLog.w(TAG, "[notifyListener] warm! maybe do heavy work in doFrameSync! size:%s cost:%sms", listeners.size(), cost);
             }
         }
     }

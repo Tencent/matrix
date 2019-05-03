@@ -35,6 +35,7 @@ public class FrameDecorator extends IDoFrameListener implements IAppForeground {
     private boolean isShowing;
     private FloatFrameView view;
     private static Handler mainHandler = new Handler(Looper.getMainLooper());
+    private Handler handler;
     private static FrameDecorator instance;
     private static Object lock = new Object();
     private View.OnClickListener clickListener;
@@ -177,8 +178,6 @@ public class FrameDecorator extends IDoFrameListener implements IAppForeground {
         if (duration >= 10 * 1000) {
             final float fps = Math.min(60.f, 1000.f * collectFrame / duration);
             updateView(view.fpsView10, fps);
-            lastCost[2] = sumFrameCost;
-            lastFrames[2] = sumFrames;
 
             sumFrameCost = 0;
             sumFrames = 0;
@@ -206,7 +205,10 @@ public class FrameDecorator extends IDoFrameListener implements IAppForeground {
 
     @Override
     public Handler getHandler() {
-        return MatrixHandlerThread.getDefaultHandler();
+        if (handler == null || !handler.getLooper().getThread().isAlive()) {
+            handler = new Handler(MatrixHandlerThread.getDefaultHandlerThread().getLooper());
+        }
+        return handler;
     }
 
     public static FrameDecorator get() {
