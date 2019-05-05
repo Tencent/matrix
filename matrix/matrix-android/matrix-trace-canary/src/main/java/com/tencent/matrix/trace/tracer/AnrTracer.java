@@ -66,9 +66,6 @@ public class AnrTracer extends Tracer {
     @Override
     public void dispatchBegin(long beginMs, long cpuBeginMs, long token) {
         super.dispatchBegin(beginMs, cpuBeginMs, token);
-        if (null != anrTask) {
-            anrHandler.removeCallbacks(anrTask);
-        }
         anrTask = new AnrHandleTask(AppMethodBeat.getInstance().maskIndex("AnrTracer#dispatchBegin"), token);
         if (traceConfig.isDevEnv()) {
             MatrixLog.v(TAG, "* [dispatchBegin] token:%s index:%s", token, anrTask.beginRecord.index);
@@ -113,7 +110,6 @@ public class AnrTracer extends Tracer {
 
         @Override
         public void run() {
-            anrTask = null;
             long curTime = SystemClock.uptimeMillis();
             long[] data = AppMethodBeat.getInstance().copyData(beginRecord);
             beginRecord.release();

@@ -43,7 +43,7 @@ public class Matrix {
         this.application = app;
         this.pluginListener = listener;
         this.plugins = plugins;
-        AppForegroundDelegate.INSTANCE.init(application);
+        AppActiveMatrixDelegate.INSTANCE.init(application);
         for (Plugin plugin : plugins) {
             plugin.init(application, pluginListener);
             pluginListener.onInit(plugin);

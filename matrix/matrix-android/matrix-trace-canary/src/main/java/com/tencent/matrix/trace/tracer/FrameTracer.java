@@ -130,22 +130,22 @@ public class FrameTracer extends Tracer {
         }
 
         @Override
-        public void doFrameAsync(String focusedActivityName, long frameCost, int droppedFrames) {
-            super.doFrameAsync(focusedActivityName, frameCost, droppedFrames);
-            if (Utils.isEmpty(focusedActivityName)) {
+        public void doFrameAsync(String visibleScene, long frameCost, int droppedFrames) {
+            super.doFrameAsync(visibleScene, frameCost, droppedFrames);
+            if (Utils.isEmpty(visibleScene)) {
                 return;
             }
 
-            FrameCollectItem item = map.get(focusedActivityName);
+            FrameCollectItem item = map.get(visibleScene);
             if (null == item) {
-                item = new FrameCollectItem(focusedActivityName);
-                map.put(focusedActivityName, item);
+                item = new FrameCollectItem(visibleScene);
+                map.put(visibleScene, item);
             }
 
             item.collect(droppedFrames);
 
             if (item.sumFrameCost >= timeSliceMs) { // report
-                map.remove(focusedActivityName);
+                map.remove(visibleScene);
                 item.report();
             }
         }
@@ -153,7 +153,7 @@ public class FrameTracer extends Tracer {
     }
 
     private class FrameCollectItem {
-        String focusedActivityName;
+        String visibleScene;
         long sumFrameCost;
         int sumFrame = 0;
         int sumDroppedFrames;
@@ -161,8 +161,8 @@ public class FrameTracer extends Tracer {
         int[] dropLevel = new int[DropStatus.values().length];
         int[] dropSum = new int[DropStatus.values().length];
 
-        FrameCollectItem(String focusedActivityName) {
-            this.focusedActivityName = focusedActivityName;
+        FrameCollectItem(String visibleScene) {
+            this.visibleScene = visibleScene;
         }
 
         void collect(int droppedFrames) {
@@ -212,7 +212,7 @@ public class FrameTracer extends Tracer {
                 JSONObject resultObject = new JSONObject();
                 resultObject = DeviceUtil.getDeviceInfo(resultObject, plugin.getApplication());
 
-                resultObject.put(SharePluginInfo.ISSUE_SCENE, focusedActivityName);
+                resultObject.put(SharePluginInfo.ISSUE_SCENE, visibleScene);
                 resultObject.put(SharePluginInfo.ISSUE_DROP_LEVEL, dropLevelObject);
                 resultObject.put(SharePluginInfo.ISSUE_DROP_SUM, dropSumObject);
                 resultObject.put(SharePluginInfo.ISSUE_FPS, fps);
@@ -234,7 +234,7 @@ public class FrameTracer extends Tracer {
 
         @Override
         public String toString() {
-            return "focusedActivityName=" + focusedActivityName
+            return "visibleScene=" + visibleScene
                     + ", sumFrame=" + sumFrame
                     + ", sumDroppedFrames=" + sumDroppedFrames
                     + ", sumFrameCost=" + sumFrameCost

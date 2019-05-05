@@ -6,7 +6,7 @@ import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.SystemClock;
 
-import com.tencent.matrix.AppForegroundDelegate;
+import com.tencent.matrix.AppActiveMatrixDelegate;
 import com.tencent.matrix.trace.constants.Constants;
 import com.tencent.matrix.trace.hacker.ActivityThreadHacker;
 import com.tencent.matrix.trace.listeners.IAppMethodBeatListener;
@@ -272,7 +272,7 @@ public class AppMethodBeat implements BeatLifecycle {
     }
 
     public static String getVisibleScene() {
-        return AppForegroundDelegate.INSTANCE.getVisibleScene();
+        return AppActiveMatrixDelegate.INSTANCE.getVisibleScene();
     }
 
     /**
@@ -426,7 +426,7 @@ public class AppMethodBeat implements BeatLifecycle {
             MatrixLog.e(TAG, e.toString());
             return data;
         } finally {
-            MatrixLog.i(TAG, "[copyData] [%s:%s] cost:%sms", Math.max(0, startRecord.index), endRecord.index, System.currentTimeMillis() - current);
+            MatrixLog.i(TAG, "[copyData] [%s:%s] length:%s cost:%sms", Math.max(0, startRecord.index), endRecord.index, data.length, System.currentTimeMillis() - current);
         }
     }
 

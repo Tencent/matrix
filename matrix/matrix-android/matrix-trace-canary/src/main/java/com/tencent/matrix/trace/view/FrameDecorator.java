@@ -17,7 +17,7 @@ import android.view.WindowManager;
 import android.view.animation.AccelerateInterpolator;
 import android.widget.TextView;
 
-import com.tencent.matrix.AppForegroundDelegate;
+import com.tencent.matrix.AppActiveMatrixDelegate;
 import com.tencent.matrix.Matrix;
 import com.tencent.matrix.listeners.IAppForeground;
 import com.tencent.matrix.trace.TracePlugin;
@@ -45,7 +45,7 @@ public class FrameDecorator extends IDoFrameListener implements IAppForeground {
     @SuppressLint("ClickableViewAccessibility")
     private FrameDecorator(Context context, final FloatFrameView view) {
         this.view = view;
-        AppForegroundDelegate.INSTANCE.addListener(this);
+        AppActiveMatrixDelegate.INSTANCE.addListener(this);
         view.addOnAttachStateChangeListener(new View.OnAttachStateChangeListener() {
             @Override
             public void onViewAttachedToWindow(View v) {

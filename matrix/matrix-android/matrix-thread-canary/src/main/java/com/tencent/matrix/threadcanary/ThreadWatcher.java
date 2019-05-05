@@ -5,7 +5,7 @@ import android.os.HandlerThread;
 import android.os.Process;
 import android.os.SystemClock;
 
-import com.tencent.matrix.AppForegroundDelegate;
+import com.tencent.matrix.AppActiveMatrixDelegate;
 import com.tencent.matrix.plugin.Plugin;
 import com.tencent.matrix.report.Issue;
 import com.tencent.matrix.util.MatrixHandlerThread;
@@ -170,7 +170,7 @@ public class ThreadWatcher extends Plugin {
                 }
                 pendingReport.add(threadGroupInfoList);
             }
-            handler.postDelayed(this, AppForegroundDelegate.INSTANCE.isAppForeground() ? checkTime : checkBgTime);
+            handler.postDelayed(this, AppActiveMatrixDelegate.INSTANCE.isAppForeground() ? checkTime : checkBgTime);
         }
     }
 

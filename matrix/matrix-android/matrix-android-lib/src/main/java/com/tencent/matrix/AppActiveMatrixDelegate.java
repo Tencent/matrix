@@ -4,13 +4,10 @@ import android.app.Activity;
 import android.app.Application;
 import android.content.ComponentCallbacks2;
 import android.content.res.Configuration;
-import android.graphics.Rect;
 import android.os.Build;
 import android.os.Bundle;
-import android.support.annotation.NonNull;
 import android.support.v4.app.FragmentActivity;
-import android.support.v4.app.Fragment;
-import android.support.v4.app.FragmentManager;
+import android.text.TextUtils;
 import android.util.ArrayMap;
 
 import com.tencent.matrix.listeners.IAppForeground;
@@ -20,17 +17,15 @@ import java.lang.reflect.Field;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 
-public enum AppForegroundDelegate {
+public enum AppActiveMatrixDelegate {
 
     INSTANCE;
 
-    private static final String TAG = "Matrix.AppForegroundDelegate";
+    private static final String TAG = "Matrix.AppActiveMatrixDelegate";
     private static final String TAG_CARE = "Matrix.AppForeground";
 
     private Set<IAppForeground> listeners = Collections.synchronizedSet(new HashSet<IAppForeground>());
@@ -38,6 +33,7 @@ public enum AppForegroundDelegate {
     private String visibleScene = "default";
     private Controller controller = new Controller();
     private boolean isInited = false;
+    private String currentFragmentName;
 
     public void init(Application application) {
         if (isInited) {
@@ -47,7 +43,15 @@ public enum AppForegroundDelegate {
         this.isInited = true;
         application.registerComponentCallbacks(controller);
         application.registerActivityLifecycleCallbacks(controller);
+    }
 
+    public String getCurrentFragmentName() {
+        return currentFragmentName;
+    }
+
+    public void setCurrentFragmentName(String fragmentName) {
+        MatrixLog.i(TAG, "[setCurrentFragmentName] fragmentName:%s", fragmentName);
+        this.currentFragmentName = fragmentName;
     }
 
     public String getVisibleScene() {
@@ -98,17 +102,9 @@ public enum AppForegroundDelegate {
 
     private final class Controller implements Application.ActivityLifecycleCallbacks, ComponentCallbacks2 {
 
-        private FragmentManager.FragmentLifecycleCallbacks fragmentLifecycleCallbacks = new FragmentManager.FragmentLifecycleCallbacks() {
-
-            @Override
-            public void onFragmentResumed(@NonNull FragmentManager fm, @NonNull Fragment f) {
-                super.onFragmentResumed(fm, f);
-                MatrixLog.i(TAG, "[FragmentResumed] %s", visibleScene = getVisibleScene(f.getActivity()));
-            }
-        };
-
         @Override
         public void onActivityStarted(Activity activity) {
+            visibleScene = getVisibleScene(activity);
             if (!isAppForeground) {
                 onDispatchForeground(visibleScene);
             }
@@ -117,33 +113,25 @@ public enum AppForegroundDelegate {
 
         @Override
         public void onActivityStopped(Activity activity) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                if (activity instanceof FragmentActivity) {
-                    FragmentActivity supportActivity = (FragmentActivity) activity;
-                    supportActivity.getSupportFragmentManager().unregisterFragmentLifecycleCallbacks(fragmentLifecycleCallbacks);
-
-                }
-            }
+            visibleScene = getVisibleScene(activity);
             if (getTopActivityName() == null) {
-                onDispatchBackground(visibleScene);
+                onDispatchBackground(visibleScene = getVisibleScene(activity));
             }
         }
 
 
         @Override
         public void onActivityCreated(Activity activity, Bundle savedInstanceState) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                if (activity instanceof FragmentActivity) {
-                    FragmentActivity supportActivity = (FragmentActivity) activity;
-                    supportActivity.getSupportFragmentManager().registerFragmentLifecycleCallbacks(fragmentLifecycleCallbacks, true);
 
-                }
-            }
+        }
+
+        @Override
+        public void onActivityDestroyed(Activity activity) {
+
         }
 
         @Override
         public void onActivityResumed(Activity activity) {
-            visibleScene = getVisibleScene(activity);
         }
 
         @Override
@@ -155,12 +143,6 @@ public enum AppForegroundDelegate {
         public void onActivitySaveInstanceState(Activity activity, Bundle outState) {
 
         }
-
-        @Override
-        public void onActivityDestroyed(Activity activity) {
-
-        }
-
 
         @Override
         public void onConfigurationChanged(Configuration newConfig) {
@@ -218,29 +200,14 @@ public enum AppForegroundDelegate {
         return null;
     }
 
-    public static String getVisibleScene(Activity activity) {
+    public String getVisibleScene(Activity activity) {
         if (activity instanceof FragmentActivity) {
-            FragmentActivity fragmentActivity = (FragmentActivity) activity;
-            FragmentManager fragmentManager = fragmentActivity.getSupportFragmentManager();
-            List<Fragment> fragments = fragmentManager.getFragments();
-            List<Fragment> visibleFragments = new LinkedList<>();
-            Rect rect = new Rect();
-            if (fragments != null) {
-                for (Fragment fragment : fragments) {
-                    if (fragment != null && fragment.getView() != null) {
-                        fragment.getView().getGlobalVisibleRect(rect);
-                        long rate = rect.width() * rect.height();
-                        if (rate > rect.width() || rate > rect.height()) {
-                            visibleFragments.add(fragment);
-                        }
-                    }
-                }
-                StringBuilder ss = new StringBuilder(activity.getClass().getName());
-                for (Fragment fragment : visibleFragments) {
-                    ss.append("#").append(fragment.getClass().getSimpleName());
-                }
-                return ss.toString();
+            StringBuilder ss = new StringBuilder(activity.getClass().getName());
+            if (!TextUtils.isEmpty(currentFragmentName)) {
+                ss.append("#").append(currentFragmentName);
             }
+            return ss.toString();
+
         }
         return activity.getClass().getName();
     }
