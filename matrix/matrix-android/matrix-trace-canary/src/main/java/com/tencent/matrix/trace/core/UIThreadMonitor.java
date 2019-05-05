@@ -81,7 +81,6 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
         if (Thread.currentThread() != Looper.getMainLooper().getThread()) {
             throw new AssertionError("must be init in main thread!");
         }
-        this.isInit = true;
         this.config = config;
         choreographer = Choreographer.getInstance();
         callbackQueueLock = reflectObject(choreographer, "mLock");
@@ -120,8 +119,8 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
                 }
             });
         }
-
         MatrixLog.i(TAG, "[UIThreadMonitor] %s %s %s %s %s frameIntervalNanos:%s", callbackQueueLock == null, callbackQueues == null, addInputQueue == null, addTraversalQueue == null, addAnimationQueue == null, frameIntervalNanos);
+        this.isInit = true;
     }
 
     private synchronized void addFrameCallback(int type, Runnable callback, boolean isAddHeader) {
