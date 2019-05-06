@@ -1,5 +1,7 @@
 package com.tencent.matrix.trace.util;
 
+import com.tencent.matrix.util.DeviceUtil;
+
 public class Utils {
 
     public static String getStack() {
@@ -48,5 +50,20 @@ public class Utils {
         return null == str || str.equals("");
     }
 
-
+    public static int[] getProcessPriority(int pid) {
+        String name = String.format("/proc/%s/stat", pid);
+        int priority = Integer.MIN_VALUE;
+        int nice = Integer.MAX_VALUE;
+        try {
+            String content = DeviceUtil.getStringFromFile(name).trim();
+            String[] args = content.split(" ");
+            if (args.length <= 19) {
+                priority = Integer.parseInt(args[17].trim());
+                nice = Integer.parseInt(args[18].trim());
+            }
+        } catch (Exception e) {
+            return new int[]{priority, nice};
+        }
+        return new int[]{priority, nice};
+    }
 }

@@ -87,7 +87,8 @@ public class TraceDataUtils {
             int methodId = getMethodId(trueId);
             boolean isIn = isIn(trueId);
             long inTime = getTime(trueId) + AppMethodBeat.getDiffTime();
-            MatrixLog.w(TAG, "[structuredDataToStack] has never out method[%s], isIn:%s, rawData size:%s", methodId, isIn, rawData.size());
+            MatrixLog.w(TAG, "[structuredDataToStack] has never out method[%s], isIn:%s, inTime:%s, endTime:%s,rawData size:%s",
+                    methodId, isIn, inTime, endTime, rawData.size());
             if (!isIn) {
                 MatrixLog.e(TAG, "[structuredDataToStack] why has out Method[%s]? is wrong! ", methodId);
                 continue;

@@ -1,5 +1,7 @@
 package com.tencent.matrix.trace.tracer;
 
+import android.os.Process;
+
 import com.tencent.matrix.Matrix;
 import com.tencent.matrix.report.Issue;
 import com.tencent.matrix.trace.TracePlugin;
@@ -81,7 +83,7 @@ public class EvilMethodTracer extends Tracer {
                 long[] queueCosts = new long[3];
                 System.arraycopy(queueTypeCosts, 0, queueCosts, 0, 3);
                 String scene = AppMethodBeat.getVisibleScene();
-                MatrixHandlerThread.getDefaultHandler().post(new AnalyseTask(scene, data, queueCosts, cpuEndMs - cpuBeginMs, endMs - beginMs, endMs));
+                MatrixHandlerThread.getDefaultHandler().post(new AnalyseTask(isForeground(), scene, data, queueCosts, cpuEndMs - cpuBeginMs, endMs - beginMs, endMs));
             }
         } finally {
             indexRecord.release();
@@ -100,10 +102,10 @@ public class EvilMethodTracer extends Tracer {
         long cost;
         long endMs;
         String scene;
+        boolean isForeground;
 
-
-        AnalyseTask(String scene, long[] data, long[] queueCost, long cpuCost, long cost, long endMs) {
-
+        AnalyseTask(boolean isForeground, String scene, long[] data, long[] queueCost, long cpuCost, long cost, long endMs) {
+            this.isForeground = isForeground;
             this.scene = scene;
             this.cost = cost;
             this.cpuCost = cpuCost;
@@ -113,6 +115,9 @@ public class EvilMethodTracer extends Tracer {
         }
 
         void analyse() {
+
+            // process
+            int[] processStat = Utils.getProcessPriority(Process.myPid());
             String usage = Utils.calculateCpuUsage(cpuCost, cost);
             LinkedList<MethodItem> stack = new LinkedList();
             if (data.length > 0) {
@@ -146,7 +151,7 @@ public class EvilMethodTracer extends Tracer {
             long stackCost = Math.max(cost, TraceDataUtils.stackToString(stack, reportBuilder, logcatBuilder));
             String stackKey = TraceDataUtils.getTreeKey(stack, stackCost);
 
-            MatrixLog.w(TAG, "%s", printEvil(logcatBuilder, stack.size(), stackKey, usage, queueCost[0], queueCost[1], queueCost[2], cost)); // for logcat
+            MatrixLog.w(TAG, "%s", printEvil(processStat, isForeground, logcatBuilder, stack.size(), stackKey, usage, queueCost[0], queueCost[1], queueCost[2], cost)); // for logcat
 
             // report
             try {
@@ -177,10 +182,14 @@ public class EvilMethodTracer extends Tracer {
             analyse();
         }
 
-        private String printEvil(StringBuilder stack, long stackSize, String stackKey, String usage, long inputCost,
+        private String printEvil(int[] processStat, boolean isForeground, StringBuilder stack, long stackSize, String stackKey, String usage, long inputCost,
                                  long animationCost, long traversalCost, long allCost) {
             StringBuilder print = new StringBuilder();
             print.append(String.format(" \n>>>>>>>>>>>>>>>>>>>>> maybe happens Jankiness!(%sms) <<<<<<<<<<<<<<<<<<<<<\n", allCost));
+            print.append("|* [ProcessStat]").append("\n");
+            print.append("|*\tPriority: ").append(processStat[0]);
+            print.append("|*\tNice: ").append(processStat[1]);
+            print.append("|*\tForeground: ").append(isForeground);
             print.append("|* [CPU]").append("\n");
             print.append("|*\tusage: ").append(usage).append("\n");
             print.append("|* [Memory]").append("\n");  // todo

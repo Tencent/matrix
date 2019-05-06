@@ -3,6 +3,7 @@ package com.tencent.matrix.trace.tracer;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
+import android.os.Process;
 import android.os.SystemClock;
 
 import com.tencent.matrix.Matrix;
@@ -111,6 +112,9 @@ public class AnrTracer extends Tracer {
         @Override
         public void run() {
             long curTime = SystemClock.uptimeMillis();
+            boolean isForeground = isForeground();
+            // process
+            int[] processStat = Utils.getProcessPriority(Process.myPid());
             long[] data = AppMethodBeat.getInstance().copyData(beginRecord);
             beginRecord.release();
             String scene = AppMethodBeat.getVisibleScene();
@@ -162,7 +166,9 @@ public class AnrTracer extends Tracer {
 
             // stackKey
             String stackKey = TraceDataUtils.getTreeKey(stack, stackCost);
-            MatrixLog.w(TAG, "%s \npostTime:%s curTime:%s", printAnr(memoryInfo, status, logcatBuilder, stack.size(), stackKey, dumpStack, inputCost, animationCost, traversalCost), token, curTime); // for logcat
+            MatrixLog.w(TAG, "%s \npostTime:%s curTime:%s",
+                    printAnr(processStat, memoryInfo, status, logcatBuilder, isForeground, stack.size(),
+                            stackKey, dumpStack, inputCost, animationCost, traversalCost), token, curTime); // for logcat
 
             // report
             try {
@@ -175,6 +181,9 @@ public class AnrTracer extends Tracer {
                 jsonObject.put(SharePluginInfo.ISSUE_SCENE, scene);
                 jsonObject.put(SharePluginInfo.ISSUE_TRACE_STACK, reportBuilder.toString());
                 jsonObject.put(SharePluginInfo.ISSUE_THREAD_STACK, Utils.getStack(stackTrace));
+                jsonObject.put(SharePluginInfo.ISSUE_PROCESS_PRIORITY, processStat[0]);
+                jsonObject.put(SharePluginInfo.ISSUE_PROCESS_NICE, processStat[1]);
+                jsonObject.put(SharePluginInfo.ISSUE_PROCESS_FOREGROUND, isForeground);
                 // memory info
                 JSONObject memJsonObject = new JSONObject();
                 memJsonObject.put(SharePluginInfo.ISSUE_MEMORY_DALVIK, memoryInfo[0]);
@@ -194,10 +203,15 @@ public class AnrTracer extends Tracer {
 
         }
 
-        private String printAnr(long[] memoryInfo, Thread.State state, StringBuilder stack, long stackSize, String stackKey, String dumpStack, long inputCost, long animationCost, long traversalCost) {
+        private String printAnr(int[] processStat, long[] memoryInfo, Thread.State state, StringBuilder stack, boolean isForeground,
+                                long stackSize, String stackKey, String dumpStack, long inputCost, long animationCost, long traversalCost) {
             StringBuilder print = new StringBuilder();
             print.append(" \n>>>>>>>>>>>>>>>>>>>>>>> maybe happens ANR(5s)! <<<<<<<<<<<<<<<<<<<<<<<\n");
-            print.append("|* [Memory]").append("\n");  // todo
+            print.append("|* [ProcessStat]").append("\n");
+            print.append("|*\tPriority: ").append(processStat[0]);
+            print.append("|*\tNice: ").append(processStat[1]);
+            print.append("|*\tForeground: ").append(isForeground);
+            print.append("|* [Memory]").append("\n");
             print.append("|*\tDalvikHeap: ").append(memoryInfo[0]).append("kb\n");
             print.append("|*\tNativeHeap: ").append(memoryInfo[1]).append("kb\n");
             print.append("|*\tVmSize: ").append(memoryInfo[2]).append("kb\n");
