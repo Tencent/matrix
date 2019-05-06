@@ -57,7 +57,7 @@ public class Utils {
         try {
             String content = DeviceUtil.getStringFromFile(name).trim();
             String[] args = content.split(" ");
-            if (args.length <= 19) {
+            if (args.length >= 19) {
                 priority = Integer.parseInt(args[17].trim());
                 nice = Integer.parseInt(args[18].trim());
             }
