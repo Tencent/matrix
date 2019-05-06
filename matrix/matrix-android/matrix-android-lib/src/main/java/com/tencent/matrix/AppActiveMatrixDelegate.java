@@ -34,6 +34,7 @@ public enum AppActiveMatrixDelegate {
     private Controller controller = new Controller();
     private boolean isInited = false;
     private String currentFragmentName;
+    private String currentActivityName;
 
     public void init(Application application) {
         if (isInited) {
@@ -52,6 +53,7 @@ public enum AppActiveMatrixDelegate {
     public void setCurrentFragmentName(String fragmentName) {
         MatrixLog.i(TAG, "[setCurrentFragmentName] fragmentName:%s", fragmentName);
         this.currentFragmentName = fragmentName;
+        updateScene(fragmentName);
     }
 
     public String getVisibleScene() {
@@ -104,18 +106,18 @@ public enum AppActiveMatrixDelegate {
 
         @Override
         public void onActivityStarted(Activity activity) {
-            visibleScene = getVisibleScene(activity);
+            currentActivityName = activity.getClass().getName();
+            updateScene(activity);
             if (!isAppForeground) {
-                onDispatchForeground(visibleScene);
+                onDispatchForeground(getVisibleScene());
             }
         }
 
 
         @Override
         public void onActivityStopped(Activity activity) {
-            visibleScene = getVisibleScene(activity);
             if (getTopActivityName() == null) {
-                onDispatchBackground(visibleScene = getVisibleScene(activity));
+                onDispatchBackground(getVisibleScene());
             }
         }
 
@@ -132,6 +134,7 @@ public enum AppActiveMatrixDelegate {
 
         @Override
         public void onActivityResumed(Activity activity) {
+
         }
 
         @Override
@@ -161,6 +164,24 @@ public enum AppActiveMatrixDelegate {
                 onDispatchBackground(visibleScene);
             }
         }
+    }
+
+    private void updateScene(Activity activity) {
+        StringBuilder ss = new StringBuilder(activity.getClass().getName());
+        if (activity instanceof FragmentActivity) {
+            if (!TextUtils.isEmpty(currentFragmentName)) {
+                ss.append("#").append(currentFragmentName);
+            }
+        }
+        visibleScene = ss.toString();
+    }
+
+    private void updateScene(String currentFragmentName) {
+        StringBuilder ss = new StringBuilder(currentFragmentName);
+        if (!TextUtils.isEmpty(currentFragmentName)) {
+            ss.append("#").append(currentFragmentName);
+        }
+        visibleScene = ss.toString();
     }
 
     public static String getTopActivityName() {
@@ -199,18 +220,5 @@ public enum AppActiveMatrixDelegate {
         }
         return null;
     }
-
-    public String getVisibleScene(Activity activity) {
-        if (activity instanceof FragmentActivity) {
-            StringBuilder ss = new StringBuilder(activity.getClass().getName());
-            if (!TextUtils.isEmpty(currentFragmentName)) {
-                ss.append("#").append(currentFragmentName);
-            }
-            return ss.toString();
-
-        }
-        return activity.getClass().getName();
-    }
-
 
 }
