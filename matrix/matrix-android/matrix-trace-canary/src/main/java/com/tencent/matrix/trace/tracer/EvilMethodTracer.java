@@ -187,19 +187,19 @@ public class EvilMethodTracer extends Tracer {
             StringBuilder print = new StringBuilder();
             print.append(String.format(" \n>>>>>>>>>>>>>>>>>>>>> maybe happens Jankiness!(%sms) <<<<<<<<<<<<<<<<<<<<<\n", allCost));
             print.append("|* [ProcessStat]").append("\n");
-            print.append("|*\tPriority: ").append(processStat[0]);
-            print.append("|*\tNice: ").append(processStat[1]);
-            print.append("|*\tForeground: ").append(isForeground);
+            print.append("|*\t\tPriority: ").append(processStat[0]).append("\n");
+            print.append("|*\t\tNice: ").append(processStat[1]).append("\n");
+            print.append("|*\t\tForeground: ").append(isForeground).append("\n");
             print.append("|* [CPU]").append("\n");
-            print.append("|*\tusage: ").append(usage).append("\n");
+            print.append("|*\t\tusage: ").append(usage).append("\n");
             print.append("|* [Memory]").append("\n");  // todo
             print.append("|* [doFrame]").append("\n");
-            print.append("|*\tinputCost: ").append(inputCost).append("\n");
-            print.append("|*\tanimationCost: ").append(animationCost).append("\n");
-            print.append("|*\ttraversalCost: ").append(traversalCost).append("\n");
+            print.append("|*\t\tinputCost: ").append(inputCost).append("\n");
+            print.append("|*\t\tanimationCost: ").append(animationCost).append("\n");
+            print.append("|*\t\ttraversalCost: ").append(traversalCost).append("\n");
             print.append("|* [Trace]").append("\n");
-            print.append("|*\tStackSize: ").append(stackSize).append("\n");
-            print.append("|*\tStackKey: ").append(stackKey).append("\n");
+            print.append("|*\t\tStackSize: ").append(stackSize).append("\n");
+            print.append("|*\t\tStackKey: ").append(stackKey).append("\n");
 
             if (config.isDebug()) {
                 print.append(stack.toString());
