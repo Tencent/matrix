@@ -1,9 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="wrap_content"
-    android:layout_height="wrap_content"
-    android:background="@android:color/transparent"
-    android:orientation="vertical">
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="60dp"
+    android:layout_height="200dp"
+    android:background="@android:color/transparent">
 
     <LinearLayout
         android:layout_width="wrap_content"
@@ -33,89 +32,102 @@
     <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="3dp"
-        android:orientation="vertical">
+        android:background="@android:color/transparent"
+        android:orientation="vertical"
+        android:visibility="gone">
 
-        <TextView
+
+        <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:gravity="left"
-            android:minWidth="40dp"
-            android:paddingLeft="3dp"
-            android:text="200 ms"
-            android:textColor="@android:color/darker_gray"
-            android:textSize="8dp" />
+            android:layout_marginTop="3dp"
+            android:orientation="vertical">
 
-        <TextView
-            android:id="@+id/fps_view"
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:gravity="left"
+                android:minWidth="40dp"
+                android:paddingLeft="3dp"
+                android:text="200 ms"
+                android:textColor="@android:color/darker_gray"
+                android:textSize="8dp" />
+
+            <TextView
+                android:id="@+id/fps_view"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:minWidth="70dp"
+                android:paddingLeft="3dp"
+                android:paddingBottom="3dp"
+                android:text="60.00 FPS"
+                android:textColor="@android:color/holo_green_dark"
+                android:textSize="12dp"
+                android:textStyle="bold" />
+
+
+        </LinearLayout>
+
+
+        <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:minWidth="70dp"
-            android:paddingLeft="3dp"
-            android:paddingBottom="3dp"
-            android:text="60.00 FPS"
-            android:textColor="@android:color/holo_green_dark"
-            android:textSize="12dp"
-            android:textStyle="bold" />
+            android:orientation="vertical">
 
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:gravity="left"
+                android:minWidth="40dp"
+                android:paddingLeft="3dp"
+                android:text="5 s"
+                android:textColor="@android:color/darker_gray"
+                android:textSize="8dp" />
 
+            <TextView
+                android:id="@+id/fps_view_5"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:minWidth="70dp"
+                android:paddingLeft="2dp"
+                android:text="60.00 FPS"
+                android:textColor="@android:color/holo_green_dark"
+                android:textSize="12dp" />
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:gravity="left"
+                android:minWidth="40dp"
+                android:paddingLeft="2dp"
+                android:paddingBottom="2dp"
+                android:text="10 s"
+                android:textColor="@android:color/darker_gray"
+                android:textSize="8dp" />
+
+            <TextView
+                android:id="@+id/fps_view_10"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:minWidth="70dp"
+                android:paddingLeft="2dp"
+                android:paddingBottom="2dp"
+                android:text="60.00 FPS"
+                android:textColor="@android:color/holo_green_dark"
+                android:textSize="12dp" />
+
+        </LinearLayout>
     </LinearLayout>
 
-
-    <LinearLayout
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:orientation="vertical">
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:gravity="left"
-            android:minWidth="40dp"
-            android:paddingLeft="3dp"
-            android:text="5 s"
-            android:textColor="@android:color/darker_gray"
-            android:textSize="8dp" />
-
-        <TextView
-            android:id="@+id/fps_view_5"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:minWidth="70dp"
-            android:paddingLeft="2dp"
-            android:text="60.00 FPS"
-            android:textColor="@android:color/holo_green_dark"
-            android:textSize="12dp" />
-
-    </LinearLayout>
-
-    <LinearLayout
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:orientation="vertical">
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:gravity="left"
-            android:minWidth="40dp"
-            android:paddingLeft="2dp"
-            android:paddingBottom="2dp"
-            android:text="10 s"
-            android:textColor="@android:color/darker_gray"
-            android:textSize="8dp" />
-
-        <TextView
-            android:id="@+id/fps_view_10"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:minWidth="70dp"
-            android:paddingLeft="2dp"
-            android:paddingBottom="2dp"
-            android:text="60.00 FPS"
-            android:textColor="@android:color/holo_green_dark"
-            android:textSize="12dp" />
-
-    </LinearLayout>
-
-</LinearLayout>
+    <view
+        class="com.tencent.matrix.trace.view.FloatFrameView$LineChartView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+</FrameLayout>
