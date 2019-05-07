@@ -9,8 +9,10 @@ import com.tencent.matrix.trace.listeners.LooperObserver;
 import com.tencent.matrix.trace.util.Utils;
 import com.tencent.matrix.util.MatrixLog;
 
+import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.util.Arrays;
 import java.util.HashSet;
 
 public class UIThreadMonitor implements BeatLifecycle, Runnable {
@@ -124,9 +126,8 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
     }
 
     private synchronized void addFrameCallback(int type, Runnable callback, boolean isAddHeader) {
-
         if (callbackExist[type]) {
-            MatrixLog.w(TAG, "[addFrameCallback] this type %s callback has exist!", type);
+            MatrixLog.w(TAG, "[addFrameCallback] this type %s callback has exist! isAddHeader:%s", type, isAddHeader);
             return;
         }
 
@@ -285,7 +286,7 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
     private void doQueueEnd(int type) {
         queueStatus[type] = DO_QUEUE_END;
         queueCost[type] = System.nanoTime() - queueCost[type];
-        synchronized (callbackExist) {
+        synchronized (this) {
             callbackExist[type] = false;
         }
     }
@@ -296,8 +297,11 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
             throw new RuntimeException("never init!");
         }
         if (!isAlive) {
-            MatrixLog.i(TAG, "[onStart] %s", Utils.getStack());
+            MatrixLog.i(TAG, "[onStart] callbackExist:%s %s", Arrays.toString(callbackExist), Utils.getStack());
             this.isAlive = true;
+            callbackExist = new boolean[CALLBACK_LAST + 1];
+            queueStatus = new int[CALLBACK_LAST + 1];
+            queueCost = new long[CALLBACK_LAST + 1];
             addFrameCallback(CALLBACK_INPUT, this, true);
         }
     }
@@ -342,7 +346,7 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
         }
         if (isAlive) {
             this.isAlive = false;
-            MatrixLog.i(TAG, "[onStop] %s", Utils.getStack());
+            MatrixLog.i(TAG, "[onStop] callbackExist:%s %s", Arrays.toString(callbackExist), Utils.getStack());
         }
     }
 
