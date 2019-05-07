@@ -334,12 +334,11 @@ class WeChatAndroidLibraryPublishExtension extends WeChatPublishExtension {
             def flavorName = variant.flavorName
             def variantOnlyName = variantName.substring(flavorName.length(), variantName.length())
                     .uncapitalize()
-            def hasFlavor = variant.flavorName != null && !variant.flavorName.isEmpty()
 
+            def hasFlavor = variant.flavorName != null && !variant.flavorName.isEmpty()
             if (flavorName == defaultFlavor)
                 flavorName = ''
             def cFlavorName = flavorName.capitalize()
-
             if (!publishAllFlavors && !flavorName.empty && !publishFlavors.contains(flavorName))
                 return
 

@@ -134,9 +134,9 @@ public class FrameDecorator extends IDoFrameListener implements IAppForeground {
     }
 
     long sumFrameCost;
-    long[] lastCost = new long[3];
+    long[] lastCost = new long[1];
     long sumFrames;
-    long[] lastFrames = new long[3];
+    long[] lastFrames = new long[1];
 
 
     Runnable updateDefaultRunnable = new Runnable() {
@@ -158,31 +158,11 @@ public class FrameDecorator extends IDoFrameListener implements IAppForeground {
         if (duration >= 200) {
             final float fps = Math.min(60.f, 1000.f * collectFrame / duration);
             updateView(view.fpsView, fps);
+            view.chartView.addFps((int) fps);
             lastCost[0] = sumFrameCost;
             lastFrames[0] = sumFrames;
             mainHandler.removeCallbacks(updateDefaultRunnable);
             mainHandler.postDelayed(updateDefaultRunnable, 130);
-        }
-
-        duration = sumFrameCost - lastCost[1];
-        collectFrame = sumFrames - lastFrames[1];
-        if (duration >= 5 * 1000) {
-            final float fps = Math.min(60.f, 1000.f * collectFrame / duration);
-            updateView(view.fpsView5, fps);
-            lastCost[1] = sumFrameCost;
-            lastFrames[1] = sumFrames;
-        }
-
-        duration = sumFrameCost - lastCost[2];
-        collectFrame = sumFrames - lastFrames[2];
-        if (duration >= 10 * 1000) {
-            final float fps = Math.min(60.f, 1000.f * collectFrame / duration);
-            updateView(view.fpsView10, fps);
-
-            sumFrameCost = 0;
-            sumFrames = 0;
-            lastCost = new long[3];
-            lastFrames = new long[3];
         }
     }
 
@@ -198,7 +178,6 @@ public class FrameDecorator extends IDoFrameListener implements IAppForeground {
                 } else {
                     view.setTextColor(view.getResources().getColor(android.R.color.holo_red_dark));
                 }
-
             }
         });
     }
