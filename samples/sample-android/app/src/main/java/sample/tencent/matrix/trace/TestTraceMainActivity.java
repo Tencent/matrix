@@ -26,9 +26,10 @@ import android.os.SystemClock;
 import android.provider.Settings;
 import android.support.annotation.Nullable;
 import android.view.View;
+import android.webkit.PermissionRequest;
 import android.widget.Toast;
 
-import com.tencent.matrix.AppActiveMatrixDelegate;
+import com.tencent.matrix.AppForegroundDelegate;
 import com.tencent.matrix.Matrix;
 import com.tencent.matrix.listeners.IAppForeground;
 import com.tencent.matrix.plugin.Plugin;
@@ -37,8 +38,12 @@ import com.tencent.matrix.trace.core.AppMethodBeat;
 import com.tencent.matrix.trace.view.FrameDecorator;
 import com.tencent.matrix.util.MatrixLog;
 
+import java.security.Permission;
+
 import sample.tencent.matrix.R;
 import sample.tencent.matrix.issue.IssueFilter;
+
+import static android.Manifest.permission.SYSTEM_ALERT_WINDOW;
 
 public class TestTraceMainActivity extends Activity implements IAppForeground {
     private static String TAG = "Matrix.TestTraceMainActivity";
@@ -63,7 +68,7 @@ public class TestTraceMainActivity extends Activity implements IAppForeground {
             decorator.show();
         }
 
-        AppActiveMatrixDelegate.INSTANCE.addListener(this);
+        AppForegroundDelegate.INSTANCE.addListener(this);
     }
 
 
@@ -92,7 +97,7 @@ public class TestTraceMainActivity extends Activity implements IAppForeground {
         if (canDrawOverlays()) {
             decorator.dismiss();
         }
-        AppActiveMatrixDelegate.INSTANCE.removeListener(this);
+        AppForegroundDelegate.INSTANCE.removeListener(this);
     }
 
     private boolean canDrawOverlays() {
