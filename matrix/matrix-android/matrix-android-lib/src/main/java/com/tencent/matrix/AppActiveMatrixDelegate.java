@@ -177,7 +177,7 @@ public enum AppActiveMatrixDelegate {
     }
 
     private void updateScene(String currentFragmentName) {
-        StringBuilder ss = new StringBuilder(currentActivityName);
+        StringBuilder ss = new StringBuilder(currentActivityName == null ? "?" : currentActivityName);
         if (!TextUtils.isEmpty(currentFragmentName)) {
             ss.append("#").append(currentFragmentName);
         }
