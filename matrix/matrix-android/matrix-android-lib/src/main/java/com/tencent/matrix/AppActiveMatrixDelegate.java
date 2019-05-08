@@ -6,7 +6,6 @@ import android.content.ComponentCallbacks2;
 import android.content.res.Configuration;
 import android.os.Build;
 import android.os.Bundle;
-import android.support.v4.app.FragmentActivity;
 import android.text.TextUtils;
 import android.util.ArrayMap;
 
@@ -26,8 +25,6 @@ public enum AppActiveMatrixDelegate {
     INSTANCE;
 
     private static final String TAG = "Matrix.AppActiveMatrixDelegate";
-    private static final String TAG_CARE = "Matrix.AppForeground";
-
     private Set<IAppForeground> listeners = Collections.synchronizedSet(new HashSet<IAppForeground>());
     private boolean isAppForeground = false;
     private String visibleScene = "default";
@@ -50,6 +47,10 @@ public enum AppActiveMatrixDelegate {
         return currentFragmentName;
     }
 
+    /**
+     * must set after {@link Activity#onStart()}
+     * @param fragmentName
+     */
     public void setCurrentFragmentName(String fragmentName) {
         MatrixLog.i(TAG, "[setCurrentFragmentName] fragmentName:%s", fragmentName);
         this.currentFragmentName = fragmentName;
@@ -65,7 +66,7 @@ public enum AppActiveMatrixDelegate {
             return;
         }
 
-        MatrixLog.i(TAG_CARE, "onForeground... visibleScene[%s]", visibleScene);
+        MatrixLog.i(TAG, "onForeground... visibleScene[%s]", visibleScene);
         try {
             for (IAppForeground listener : listeners) {
                 listener.onForeground(true);
@@ -79,7 +80,7 @@ public enum AppActiveMatrixDelegate {
         if (!isAppForeground || !isInited) {
             return;
         }
-        MatrixLog.i(TAG_CARE, "onBackground... visibleScene[%s]", visibleScene);
+        MatrixLog.i(TAG, "onBackground... visibleScene[%s]", visibleScene);
         try {
             for (IAppForeground listener : listeners) {
                 listener.onForeground(false);
@@ -106,7 +107,6 @@ public enum AppActiveMatrixDelegate {
 
         @Override
         public void onActivityStarted(Activity activity) {
-            currentActivityName = activity.getClass().getName();
             updateScene(activity);
             if (!isAppForeground) {
                 onDispatchForeground(getVisibleScene());
@@ -167,13 +167,7 @@ public enum AppActiveMatrixDelegate {
     }
 
     private void updateScene(Activity activity) {
-        StringBuilder ss = new StringBuilder(activity.getClass().getName());
-        if (activity instanceof FragmentActivity) {
-            if (!TextUtils.isEmpty(currentFragmentName)) {
-                ss.append("#").append(currentFragmentName);
-            }
-        }
-        visibleScene = ss.toString();
+        visibleScene = currentActivityName = activity.getClass().getName();
     }
 
     private void updateScene(String currentFragmentName) {
@@ -209,7 +203,7 @@ public enum AppActiveMatrixDelegate {
                     Field activityField = activityRecordClass.getDeclaredField("activity");
                     activityField.setAccessible(true);
                     Activity activity = (Activity) activityField.get(activityRecord);
-                    return activity.getClass().getCanonicalName();
+                    return activity.getClass().getName();
                 }
             }
         } catch (Exception e) {
