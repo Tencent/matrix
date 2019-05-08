@@ -71,7 +71,7 @@ public class AnrTracer extends Tracer {
         if (traceConfig.isDevEnv()) {
             MatrixLog.v(TAG, "* [dispatchBegin] token:%s index:%s", token, anrTask.beginRecord.index);
         }
-        anrHandler.postDelayed(anrTask, Constants.DEFAULT_ANR);
+        anrHandler.postDelayed(anrTask, Constants.DEFAULT_ANR - (SystemClock.uptimeMillis() - token));
     }
 
     @Override
@@ -168,7 +168,7 @@ public class AnrTracer extends Tracer {
             String stackKey = TraceDataUtils.getTreeKey(stack, stackCost);
             MatrixLog.w(TAG, "%s \npostTime:%s curTime:%s",
                     printAnr(processStat, memoryInfo, status, logcatBuilder, isForeground, stack.size(),
-                            stackKey, dumpStack, inputCost, animationCost, traversalCost), token, curTime); // for logcat
+                            stackKey, dumpStack, inputCost, animationCost, traversalCost, stackCost), token, curTime); // for logcat
 
             // report
             try {
@@ -204,9 +204,9 @@ public class AnrTracer extends Tracer {
         }
 
         private String printAnr(int[] processStat, long[] memoryInfo, Thread.State state, StringBuilder stack, boolean isForeground,
-                                long stackSize, String stackKey, String dumpStack, long inputCost, long animationCost, long traversalCost) {
+                                long stackSize, String stackKey, String dumpStack, long inputCost, long animationCost, long traversalCost, long stackCost) {
             StringBuilder print = new StringBuilder();
-            print.append(" \n>>>>>>>>>>>>>>>>>>>>>>> maybe happens ANR(5s)! <<<<<<<<<<<<<<<<<<<<<<<\n");
+            print.append(String.format(" \n>>>>>>>>>>>>>>>>>>>>>>> maybe happens ANR(%s ms)! <<<<<<<<<<<<<<<<<<<<<<<\n", stackCost));
             print.append("|* [ProcessStat]").append("\n");
             print.append("|*\t\tPriority: ").append(processStat[0]).append("\n");
             print.append("|*\t\tNice: ").append(processStat[1]).append("\n");

@@ -66,4 +66,8 @@ public class Utils {
         }
         return new int[]{priority, nice};
     }
+
+    public static String formatTime(final long timestamp) {
+        return new java.text.SimpleDateFormat("[yy-MM-dd HH:mm:ss]").format(new java.util.Date(timestamp));
+    }
 }

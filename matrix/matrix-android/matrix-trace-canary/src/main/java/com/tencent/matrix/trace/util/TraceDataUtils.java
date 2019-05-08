@@ -5,6 +5,7 @@ import com.tencent.matrix.trace.core.AppMethodBeat;
 import com.tencent.matrix.trace.items.MethodItem;
 import com.tencent.matrix.util.MatrixLog;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Iterator;
@@ -96,26 +97,10 @@ public class TraceDataUtils {
             MethodItem methodItem = new MethodItem(methodId, (int) (endTime - inTime), rawData.size());
             addMethodItem(result, methodItem);
         }
-
-        LinkedList<MethodItem> list = new LinkedList<>();
-        MethodItem last = null;
-        for (MethodItem item : result) {
-            if (null != last) {
-                int index = list.indexOf(last);
-                if (last.depth == item.depth) {
-                    list.add(index, item);
-                } else {
-                    list.add(index + 1, item);
-                }
-
-            } else {
-                list.add(item);
-            }
-            last = item;
-        }
+        TreeNode root = new TreeNode(null, null);
+        stackToTree(result, root);
         result.clear();
-        result.addAll(list);
-
+        treeToStack(root, result);
     }
 
     private static boolean isIn(long trueId) {
@@ -144,6 +129,31 @@ public class TraceDataUtils {
             return item.durTime;
         }
     }
+
+    private static void rechange(TreeNode root) {
+        if (root.children.isEmpty()) {
+            return;
+        }
+        TreeNode[] nodes = new TreeNode[root.children.size()];
+        root.children.toArray(nodes);
+        root.children.clear();
+        for (TreeNode node : nodes) {
+            root.children.addFirst(node);
+            rechange(node);
+        }
+    }
+
+    private static void treeToStack(TreeNode root, LinkedList<MethodItem> list) {
+
+        for (int i = 0; i < root.children.size(); i++) {
+            TreeNode node = root.children.get(i);
+            list.add(node.item);
+            if (!node.children.isEmpty()) {
+                treeToStack(node, list);
+            }
+        }
+    }
+
 
     /**
      * Structured the method stack as a tree Data structure

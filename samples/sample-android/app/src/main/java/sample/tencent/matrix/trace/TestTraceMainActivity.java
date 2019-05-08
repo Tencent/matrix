@@ -136,8 +136,7 @@ public class TestTraceMainActivity extends Activity implements IAppForeground {
     private void A() {
         B();
         H();
-        I();
-        J();
+        L();
         SystemClock.sleep(800);
     }
 
@@ -172,6 +171,9 @@ public class TestTraceMainActivity extends Activity implements IAppForeground {
 
     private void H() {
         SystemClock.sleep(20);
+        I();
+        J();
+        K();
     }
 
     private void I() {
@@ -179,7 +181,16 @@ public class TestTraceMainActivity extends Activity implements IAppForeground {
     }
 
     private void J() {
-        SystemClock.sleep(2);
+        SystemClock.sleep(6);
+    }
+
+    private void K() {
+        SystemClock.sleep(10);
+    }
+
+
+    private void L() {
+        SystemClock.sleep(10000);
     }
 
     private boolean isStop = false;
