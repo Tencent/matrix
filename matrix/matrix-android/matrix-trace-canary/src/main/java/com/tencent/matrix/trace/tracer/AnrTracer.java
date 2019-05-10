@@ -170,6 +170,11 @@ public class AnrTracer extends Tracer {
                     printAnr(processStat, memoryInfo, status, logcatBuilder, isForeground, stack.size(),
                             stackKey, dumpStack, inputCost, animationCost, traversalCost, stackCost), token, curTime); // for logcat
 
+            if (stackCost >= Constants.DEFAULT_ANR_INVALID || processStat[0] > 10) {
+                MatrixLog.w(TAG, "The checked anr task was not executed on time. " +
+                        "The possible reason is that the current process has a low priority. just pass this report");
+                return;
+            }
             // report
             try {
                 TracePlugin plugin = Matrix.with().getPluginByClass(TracePlugin.class);
