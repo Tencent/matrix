@@ -106,6 +106,9 @@ public class FrameDecorator extends IDoFrameListener implements IAppForeground {
                         ((ValueAnimator) animator).addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
                             @Override
                             public void onAnimationUpdate(ValueAnimator animation) {
+                                if(!isShowing){
+                                    return;
+                                }
                                 int value = (int) animation.getAnimatedValue("trans");
                                 layoutParam.x = value;
                                 windowManager.updateViewLayout(v, layoutParam);
