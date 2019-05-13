@@ -52,7 +52,7 @@
 		116460C72111AF190069B5DE /* KSCrashMonitor_NSException.m in Sources */ = {isa = PBXBuildFile; fileRef = 114E67FE20AAC0CE0045083D /* KSCrashMonitor_NSException.m */; };
 		116460C92111AF190069B5DE /* KSCrashC.c in Sources */ = {isa = PBXBuildFile; fileRef = 114E67E220AAC0CE0045083D /* KSCrashC.c */; };
 		116460CA2111AF190069B5DE /* KSCrashReport.c in Sources */ = {isa = PBXBuildFile; fileRef = 114E67E820AAC0CE0045083D /* KSCrashReport.c */; };
-		116460CB2111AF190069B5DE /* NSData+GZip.m in Sources */ = {isa = PBXBuildFile; fileRef = 114E685220AAC0CE0045083D /* NSData+GZip.m */; };
+		116460CB2111AF190069B5DE /* NSData+KarlGZip.m in Sources */ = {isa = PBXBuildFile; fileRef = 114E685220AAC0CE0045083D /* NSData+KarlGZip.m */; };
 		116460CC2111AF190069B5DE /* KSCrashReportFixer.c in Sources */ = {isa = PBXBuildFile; fileRef = 114E67EB20AAC0CE0045083D /* KSCrashReportFixer.c */; };
 		116460CD2111AF190069B5DE /* WCBlockMonitorConfiguration.mm in Sources */ = {isa = PBXBuildFile; fileRef = 114E686820AAC0CE0045083D /* WCBlockMonitorConfiguration.mm */; };
 		116460CE2111AF190069B5DE /* KSString.c in Sources */ = {isa = PBXBuildFile; fileRef = 114E683A20AAC0CE0045083D /* KSString.c */; };
@@ -95,7 +95,7 @@
 		116460FA2111AF190069B5DE /* KSCrashMonitor_Signal.h in Headers */ = {isa = PBXBuildFile; fileRef = 114E680020AAC0CE0045083D /* KSCrashMonitor_Signal.h */; };
 		116460FB2111AF190069B5DE /* KSSysCtl.h in Headers */ = {isa = PBXBuildFile; fileRef = 114E683F20AAC0CE0045083D /* KSSysCtl.h */; };
 		116460FC2111AF190069B5DE /* KSCrash.h in Headers */ = {isa = PBXBuildFile; fileRef = 114E67E020AAC0CE0045083D /* KSCrash.h */; };
-		116460FE2111AF190069B5DE /* NSData+GZip.h in Headers */ = {isa = PBXBuildFile; fileRef = 114E685120AAC0CE0045083D /* NSData+GZip.h */; };
+		116460FE2111AF190069B5DE /* NSData+KarlGZip.h in Headers */ = {isa = PBXBuildFile; fileRef = 114E685120AAC0CE0045083D /* NSData+KarlGZip.h */; };
 		116460FF2111AF190069B5DE /* KSJSONCodec.h in Headers */ = {isa = PBXBuildFile; fileRef = 114E682120AAC0CE0045083D /* KSJSONCodec.h */; };
 		116461002111AF190069B5DE /* KSDemangle_CPP.h in Headers */ = {isa = PBXBuildFile; fileRef = 114E681720AAC0CE0045083D /* KSDemangle_CPP.h */; };
 		116461012111AF190069B5DE /* None.h in Headers */ = {isa = PBXBuildFile; fileRef = 114E67D420AAC0CE0045083D /* None.h */; };
@@ -231,7 +231,7 @@
 		1166065221369E1E00F4ED74 /* KSCrashMonitor_NSException.m in Sources */ = {isa = PBXBuildFile; fileRef = 114E67FE20AAC0CE0045083D /* KSCrashMonitor_NSException.m */; };
 		1166065421369E1E00F4ED74 /* KSCrashC.c in Sources */ = {isa = PBXBuildFile; fileRef = 114E67E220AAC0CE0045083D /* KSCrashC.c */; };
 		1166065521369E1E00F4ED74 /* KSCrashReport.c in Sources */ = {isa = PBXBuildFile; fileRef = 114E67E820AAC0CE0045083D /* KSCrashReport.c */; };
-		1166065621369E1E00F4ED74 /* NSData+GZip.m in Sources */ = {isa = PBXBuildFile; fileRef = 114E685220AAC0CE0045083D /* NSData+GZip.m */; };
+		1166065621369E1E00F4ED74 /* NSData+KarlGZip.m in Sources */ = {isa = PBXBuildFile; fileRef = 114E685220AAC0CE0045083D /* NSData+KarlGZip.m */; };
 		1166065721369E1E00F4ED74 /* KSCrashReportFixer.c in Sources */ = {isa = PBXBuildFile; fileRef = 114E67EB20AAC0CE0045083D /* KSCrashReportFixer.c */; };
 		1166065821369E1E00F4ED74 /* WCBlockMonitorConfiguration.mm in Sources */ = {isa = PBXBuildFile; fileRef = 114E686820AAC0CE0045083D /* WCBlockMonitorConfiguration.mm */; };
 		1166065921369E1E00F4ED74 /* KSString.c in Sources */ = {isa = PBXBuildFile; fileRef = 114E683A20AAC0CE0045083D /* KSString.c */; };
@@ -274,7 +274,7 @@
 		1166068321369E1E00F4ED74 /* KSCrashMonitor_Signal.h in Headers */ = {isa = PBXBuildFile; fileRef = 114E680020AAC0CE0045083D /* KSCrashMonitor_Signal.h */; };
 		1166068421369E1E00F4ED74 /* KSSysCtl.h in Headers */ = {isa = PBXBuildFile; fileRef = 114E683F20AAC0CE0045083D /* KSSysCtl.h */; };
 		1166068521369E1E00F4ED74 /* KSCrash.h in Headers */ = {isa = PBXBuildFile; fileRef = 114E67E020AAC0CE0045083D /* KSCrash.h */; };
-		1166068721369E1E00F4ED74 /* NSData+GZip.h in Headers */ = {isa = PBXBuildFile; fileRef = 114E685120AAC0CE0045083D /* NSData+GZip.h */; };
+		1166068721369E1E00F4ED74 /* NSData+KarlGZip.h in Headers */ = {isa = PBXBuildFile; fileRef = 114E685120AAC0CE0045083D /* NSData+KarlGZip.h */; };
 		1166068821369E1E00F4ED74 /* KSJSONCodec.h in Headers */ = {isa = PBXBuildFile; fileRef = 114E682120AAC0CE0045083D /* KSJSONCodec.h */; };
 		1166068921369E1E00F4ED74 /* KSDemangle_CPP.h in Headers */ = {isa = PBXBuildFile; fileRef = 114E681720AAC0CE0045083D /* KSDemangle_CPP.h */; };
 		1166068A21369E1E00F4ED74 /* None.h in Headers */ = {isa = PBXBuildFile; fileRef = 114E67D420AAC0CE0045083D /* None.h */; };
@@ -671,8 +671,8 @@
 		114E684E20AAC0CE0045083D /* Container+DeepSearch.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "Container+DeepSearch.h"; sourceTree = "<group>"; };
 		114E684F20AAC0CE0045083D /* Container+DeepSearch.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = "Container+DeepSearch.m"; sourceTree = "<group>"; };
 		114E685020AAC0CE0045083D /* KSVarArgs.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = KSVarArgs.h; sourceTree = "<group>"; };
-		114E685120AAC0CE0045083D /* NSData+GZip.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "NSData+GZip.h"; sourceTree = "<group>"; };
-		114E685220AAC0CE0045083D /* NSData+GZip.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = "NSData+GZip.m"; sourceTree = "<group>"; };
+		114E685120AAC0CE0045083D /* NSData+KarlGZip.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "NSData+KarlGZip.h"; sourceTree = "<group>"; };
+		114E685220AAC0CE0045083D /* NSData+KarlGZip.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = "NSData+KarlGZip.m"; sourceTree = "<group>"; };
 		114E685520AAC0CE0045083D /* Demangle.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Demangle.cpp; sourceTree = "<group>"; };
 		114E685620AAC0CE0045083D /* Demangle.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Demangle.h; sourceTree = "<group>"; };
 		114E685720AAC0CE0045083D /* DemangleNodes.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DemangleNodes.h; sourceTree = "<group>"; };
@@ -1108,8 +1108,8 @@
 				114E684E20AAC0CE0045083D /* Container+DeepSearch.h */,
 				114E684F20AAC0CE0045083D /* Container+DeepSearch.m */,
 				114E685020AAC0CE0045083D /* KSVarArgs.h */,
-				114E685120AAC0CE0045083D /* NSData+GZip.h */,
-				114E685220AAC0CE0045083D /* NSData+GZip.m */,
+				114E685120AAC0CE0045083D /* NSData+KarlGZip.h */,
+				114E685220AAC0CE0045083D /* NSData+KarlGZip.m */,
 			);
 			path = Tools;
 			sourceTree = "<group>";
@@ -1458,7 +1458,7 @@
 				BB77ADCE22368582008C67D9 /* memory_report_generator.h in Headers */,
 				116461352111AF190069B5DE /* WCCrashBlockJsonUtil.h in Headers */,
 				BB77AD5622368582008C67D9 /* filereadstream.h in Headers */,
-				116460FE2111AF190069B5DE /* NSData+GZip.h in Headers */,
+				116460FE2111AF190069B5DE /* NSData+KarlGZip.h in Headers */,
 				BB77ADBE22368582008C67D9 /* pointer.h in Headers */,
 				BB77ADAE22368582008C67D9 /* writer.h in Headers */,
 				BB77ADBA22368582008C67D9 /* memorybuffer.h in Headers */,
@@ -1625,7 +1625,7 @@
 				1166068421369E1E00F4ED74 /* KSSysCtl.h in Headers */,
 				BB77ACF422368582008C67D9 /* sb_tree.h in Headers */,
 				BB77ADD022368582008C67D9 /* memory_report_generator.h in Headers */,
-				1166068721369E1E00F4ED74 /* NSData+GZip.h in Headers */,
+				1166068721369E1E00F4ED74 /* NSData+KarlGZip.h in Headers */,
 				BB77ADC022368582008C67D9 /* pointer.h in Headers */,
 				116606BE21369E1E00F4ED74 /* WCCrashBlockJsonUtil.h in Headers */,
 				116606DF21369E1E00F4ED74 /* KSCrashMonitorContext.h in Headers */,
@@ -1901,7 +1901,7 @@
 				BB77ACFA22368582008C67D9 /* memory_report_generator.cpp in Sources */,
 				116460C92111AF190069B5DE /* KSCrashC.c in Sources */,
 				116460CA2111AF190069B5DE /* KSCrashReport.c in Sources */,
-				116460CB2111AF190069B5DE /* NSData+GZip.m in Sources */,
+				116460CB2111AF190069B5DE /* NSData+KarlGZip.m in Sources */,
 				BB9DCC6E21B7772900E6DD1E /* MatrixAppRebootAnalyzer.mm in Sources */,
 				116460CC2111AF190069B5DE /* KSCrashReportFixer.c in Sources */,
 				BB30257621B0DAAB00F9C9F5 /* WCMemoryStatPlugin.mm in Sources */,
@@ -2006,7 +2006,7 @@
 				BB77ACFC22368582008C67D9 /* memory_report_generator.cpp in Sources */,
 				1166065421369E1E00F4ED74 /* KSCrashC.c in Sources */,
 				1166065521369E1E00F4ED74 /* KSCrashReport.c in Sources */,
-				1166065621369E1E00F4ED74 /* NSData+GZip.m in Sources */,
+				1166065621369E1E00F4ED74 /* NSData+KarlGZip.m in Sources */,
 				BB9DCC6F21B7772900E6DD1E /* MatrixAppRebootAnalyzer.mm in Sources */,
 				1166065721369E1E00F4ED74 /* KSCrashReportFixer.c in Sources */,
 				BB30257721B0DAAB00F9C9F5 /* WCMemoryStatPlugin.mm in Sources */,
