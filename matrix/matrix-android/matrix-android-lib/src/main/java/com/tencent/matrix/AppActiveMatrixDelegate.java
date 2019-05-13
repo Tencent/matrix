@@ -31,7 +31,6 @@ public enum AppActiveMatrixDelegate {
     private Controller controller = new Controller();
     private boolean isInited = false;
     private String currentFragmentName;
-    private String currentActivityName;
 
     public void init(Application application) {
         if (isInited) {
@@ -49,6 +48,7 @@ public enum AppActiveMatrixDelegate {
 
     /**
      * must set after {@link Activity#onStart()}
+     *
      * @param fragmentName
      */
     public void setCurrentFragmentName(String fragmentName) {
@@ -167,14 +167,12 @@ public enum AppActiveMatrixDelegate {
     }
 
     private void updateScene(Activity activity) {
-        visibleScene = currentActivityName = activity.getClass().getName();
+        visibleScene = activity.getClass().getName();
     }
 
     private void updateScene(String currentFragmentName) {
-        StringBuilder ss = new StringBuilder(currentActivityName == null ? "?" : currentActivityName);
-        if (!TextUtils.isEmpty(currentFragmentName)) {
-            ss.append("#").append(currentFragmentName);
-        }
+        StringBuilder ss = new StringBuilder();
+        ss.append(TextUtils.isEmpty(currentFragmentName) ? "?" : currentFragmentName);
         visibleScene = ss.toString();
     }
 
