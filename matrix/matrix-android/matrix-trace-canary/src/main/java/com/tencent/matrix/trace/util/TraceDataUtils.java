@@ -350,10 +350,10 @@ public class TraceDataUtils {
             }
         });
 
-        MethodItem root = stack.get(0);
         if (sortList.isEmpty() && !stack.isEmpty()) {
+            MethodItem root = stack.get(0);
             sortList.add(root);
-        } else if (sortList.size() > 1 && sortList.peek().methodId == root.methodId) {
+        } else if (sortList.size() > 1 && sortList.peek().methodId == AppMethodBeat.METHOD_ID_DISPATCH) {
             sortList.removeFirst();
         }
 
