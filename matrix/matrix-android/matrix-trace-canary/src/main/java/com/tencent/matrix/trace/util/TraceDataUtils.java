@@ -335,7 +335,7 @@ public class TraceDataUtils {
         StringBuilder ss = new StringBuilder();
         long allLimit = (long) (stackCost * Constants.FILTER_STACK_KEY_ALL_PERCENT);
 
-        List<MethodItem> sortList = new LinkedList<>();
+        LinkedList<MethodItem> sortList = new LinkedList<>();
 
         for (MethodItem item : stack) {
             if (item.durTime >= allLimit) {
@@ -350,14 +350,16 @@ public class TraceDataUtils {
             }
         });
 
+        MethodItem root = stack.get(0);
         if (sortList.isEmpty() && !stack.isEmpty()) {
-            sortList.add(stack.get(0));
-        } else if (!sortList.isEmpty()) {
-            sortList = sortList.subList(0, 1);
+            sortList.add(root);
+        } else if (sortList.size() > 1 && sortList.peek().methodId == root.methodId) {
+            sortList.removeFirst();
         }
 
         for (MethodItem item : sortList) {
             ss.append(item.methodId + "|");
+            break;
         }
         return ss.toString();
     }
