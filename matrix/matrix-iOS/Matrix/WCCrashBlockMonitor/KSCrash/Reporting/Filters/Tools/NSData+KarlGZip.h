@@ -31,7 +31,7 @@
 /**
  * GNU zip/unzip support for NSData.
  */
-@interface NSData (GZip)
+@interface NSData (KarlGZip)
 
 /**
  * Gzip the data in this object (no header).
