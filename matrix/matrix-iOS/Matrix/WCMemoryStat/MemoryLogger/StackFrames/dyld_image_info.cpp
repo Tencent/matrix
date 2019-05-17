@@ -80,6 +80,9 @@ bool is_ios9_plus = true;
 static dyld_image_info app_image_info = {0}; // Infos of all app images including embeded frameworks
 static dyld_image_info mmap_func_info = {0};
 
+static const char *g_app_bundle_name = bundleHelperGetAppBundleName();
+static const char *g_app_name = bundleHelperGetAppName();
+
 #pragma mark -
 #pragma mark DYLD
 
@@ -117,17 +120,8 @@ static void __add_info_for_image(const struct mach_header *header, intptr_t slid
 	}
 	
 	dyld_image_info image_info = {0};
-	bool is_wechat_image = false;
+	bool is_current_app_image = false;
     
-  const char *app_bundle_name = getAppBundleName();
-  char *app_name = new char(strlen(app_bundle_name) * 2 + 7);
-  char *app_bundle = new char(strlen(app_bundle_name) + 7);
-  strcpy(app_name, "/");
-  strcat(app_name, app_bundle_name);
-  strcat(app_name, ".app/");
-  strcpy(app_bundle, app_name);
-  strcat(app_name, app_bundle_name);
-	
 	segment_command_t *cur_seg_cmd = NULL;
 	uintptr_t cur = (uintptr_t)header + sizeof(mach_header_t);
 	for (int i = 0; i < header->ncmds; ++i, cur += cur_seg_cmd->cmdsize) {
@@ -149,14 +143,14 @@ static void __add_info_for_image(const struct mach_header *header, intptr_t slid
 
 			Dl_info info = {0};
 			if (dladdr(header, &info) != 0 && info.dli_fname) {
-				if (strlen(info.dli_fname) > strlen(app_name) && !memcmp(info.dli_fname + strlen(info.dli_fname) - strlen(app_name), app_name, strlen(app_name))) {
-				  is_wechat_image = true;
+				if (strlen(info.dli_fname) > strlen(g_app_name) && !memcmp(info.dli_fname + strlen(info.dli_fname) - strlen(g_app_name), g_app_name, strlen(g_app_name))) {
+                    is_current_app_image = true;
 				}
 				if (strrchr(info.dli_fname, '/') != NULL) {
 					strncpy(image_info.image_name, strrchr(info.dli_fname, '/'), sizeof(image_info.image_name));
 				}
         
-				image_info.is_app_image = (strstr(info.dli_fname, app_bundle) != NULL);
+				image_info.is_app_image = (strstr(info.dli_fname, g_app_bundle_name) != NULL);
 			}
 		}
 	}
@@ -180,7 +174,7 @@ static void __add_info_for_image(const struct mach_header *header, intptr_t slid
 	if (image_info.is_app_image) {
 		app_image_info.vm_str = (app_image_info.vm_str == 0 ? image_info.vm_str : MIN(app_image_info.vm_str, image_info.vm_str));
 		app_image_info.vm_end = (app_image_info.vm_end == 0 ? image_info.vm_end : MAX(app_image_info.vm_end, image_info.vm_end));
-		if (is_wechat_image) {
+		if (is_current_app_image) {
 			memcpy(app_image_info.uuid, image_info.uuid, sizeof(image_info.uuid));
 		}
 	}
