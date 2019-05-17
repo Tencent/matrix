@@ -17,12 +17,18 @@
 #import <Foundation/Foundation.h>
 #import "bundle_name_helper.h"
 
-const char *getAppBundleName() {
-    
+const char *bundleHelperGetAppBundleName() {
     NSString *bundleName = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleName"];
     if (!bundleName) {
         return "";
     }
-    
-    return [bundleName cStringUsingEncoding:NSUTF8StringEncoding];
+    return [[NSString stringWithFormat:@"/%@.app/", bundleName] cStringUsingEncoding:NSUTF8StringEncoding];
+}
+
+const char *bundleHelperGetAppName() {
+    NSString *bundleName = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleName"];
+    if (!bundleName) {
+        return "";
+    }
+    return [[NSString stringWithFormat:@"/%@.app/%@", bundleName, bundleName] cStringUsingEncoding:NSUTF8StringEncoding];
 }
