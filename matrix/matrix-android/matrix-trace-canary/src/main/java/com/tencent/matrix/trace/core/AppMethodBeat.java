@@ -177,7 +177,7 @@ public class AppMethodBeat implements BeatLifecycle {
         isPauseUpdateTime = false;
 
         synchronized (updateTimeLock) {
-            updateTimeLock.notifyAll();
+            updateTimeLock.notify();
         }
     }
 
@@ -262,11 +262,11 @@ public class AppMethodBeat implements BeatLifecycle {
                         listener.onActivityFocused(activityName);
                     }
                 }
-                MatrixLog.i(TAG, "[at] visibleScene[%s] has %s focus!", getVisibleScene(), isFocus ? "attach" : "detach");
+                MatrixLog.i(TAG, "[at] visibleScene[%s] has %s focus!", getVisibleScene(), "attach");
             }
         } else {
             if (sFocusActivitySet.remove(activityName)) {
-                MatrixLog.i(TAG, "[at] visibleScene[%s] has %s focus!", getVisibleScene(), isFocus ? "attach" : "detach");
+                MatrixLog.i(TAG, "[at] visibleScene[%s] has %s focus!", getVisibleScene(), "detach");
             }
         }
     }

@@ -178,6 +178,9 @@ public class AnrTracer extends Tracer {
             // report
             try {
                 TracePlugin plugin = Matrix.with().getPluginByClass(TracePlugin.class);
+                if (null == plugin) {
+                    return;
+                }
                 JSONObject jsonObject = new JSONObject();
                 jsonObject = DeviceUtil.getDeviceInfo(jsonObject, Matrix.with().getApplication());
                 jsonObject.put(SharePluginInfo.ISSUE_STACK_TYPE, Constants.Type.ANR);
@@ -211,7 +214,7 @@ public class AnrTracer extends Tracer {
         private String printAnr(int[] processStat, long[] memoryInfo, Thread.State state, StringBuilder stack, boolean isForeground,
                                 long stackSize, String stackKey, String dumpStack, long inputCost, long animationCost, long traversalCost, long stackCost) {
             StringBuilder print = new StringBuilder();
-            print.append(String.format(" \n>>>>>>>>>>>>>>>>>>>>>>> maybe happens ANR(%s ms)! <<<<<<<<<<<<<<<<<<<<<<<\n", stackCost));
+            print.append(String.format("-\n>>>>>>>>>>>>>>>>>>>>>>> maybe happens ANR(%s ms)! <<<<<<<<<<<<<<<<<<<<<<<\n", stackCost));
             print.append("|* [ProcessStat]").append("\n");
             print.append("|*\t\tPriority: ").append(processStat[0]).append("\n");
             print.append("|*\t\tNice: ").append(processStat[1]).append("\n");

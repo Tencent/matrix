@@ -229,8 +229,8 @@ public class FrameDecorator extends IDoFrameListener implements IAppForeground {
 
     private void initLayoutParams(Context context) {
         windowManager = (WindowManager) context.getApplicationContext().getSystemService(Context.WINDOW_SERVICE);
-        windowManager.getDefaultDisplay().getMetrics(displayMetrics);
         try {
+            windowManager.getDefaultDisplay().getMetrics(displayMetrics);
             DisplayMetrics metrics = new DisplayMetrics();
             windowManager.getDefaultDisplay().getMetrics(metrics);
             layoutParam = new WindowManager.LayoutParams();

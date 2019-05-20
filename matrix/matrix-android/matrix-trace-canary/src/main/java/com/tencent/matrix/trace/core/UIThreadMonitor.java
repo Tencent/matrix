@@ -297,9 +297,11 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
             throw new RuntimeException("never init!");
         }
         if (!isAlive) {
-            MatrixLog.i(TAG, "[onStart] callbackExist:%s %s", Arrays.toString(callbackExist), Utils.getStack());
             this.isAlive = true;
-            callbackExist = new boolean[CALLBACK_LAST + 1];
+            synchronized (this) {
+                MatrixLog.i(TAG, "[onStart] callbackExist:%s %s", Arrays.toString(callbackExist), Utils.getStack());
+                callbackExist = new boolean[CALLBACK_LAST + 1];
+            }
             queueStatus = new int[CALLBACK_LAST + 1];
             queueCost = new long[CALLBACK_LAST + 1];
             addFrameCallback(CALLBACK_INPUT, this, true);

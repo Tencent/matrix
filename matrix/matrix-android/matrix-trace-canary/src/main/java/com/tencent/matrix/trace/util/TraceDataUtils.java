@@ -346,7 +346,7 @@ public class TraceDataUtils {
         Collections.sort(sortList, new Comparator<MethodItem>() {
             @Override
             public int compare(MethodItem o1, MethodItem o2) {
-                return Long.compare((o2.depth + 1) * o2.durTime, (o1.depth + 1) * o1.durTime);
+                return Integer.compare((o2.depth + 1) * o2.durTime, (o1.depth + 1) * o1.durTime);
             }
         });
 

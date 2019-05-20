@@ -195,6 +195,9 @@ public class FrameTracer extends Tracer {
 
             try {
                 TracePlugin plugin = Matrix.with().getPluginByClass(TracePlugin.class);
+                if(null == plugin){
+                    return;
+                }
                 JSONObject dropLevelObject = new JSONObject();
                 dropLevelObject.put(DropStatus.DROPPED_FROZEN.name(), dropLevel[DropStatus.DROPPED_FROZEN.index]);
                 dropLevelObject.put(DropStatus.DROPPED_HIGH.name(), dropLevel[DropStatus.DROPPED_HIGH.index]);

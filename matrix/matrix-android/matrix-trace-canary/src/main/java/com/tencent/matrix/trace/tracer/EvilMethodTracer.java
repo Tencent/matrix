@@ -162,6 +162,9 @@ public class EvilMethodTracer extends Tracer {
             // report
             try {
                 TracePlugin plugin = Matrix.with().getPluginByClass(TracePlugin.class);
+                if (null == plugin) {
+                    return;
+                }
                 JSONObject jsonObject = new JSONObject();
                 jsonObject = DeviceUtil.getDeviceInfo(jsonObject, Matrix.with().getApplication());
 
@@ -191,7 +194,7 @@ public class EvilMethodTracer extends Tracer {
         private String printEvil(int[] processStat, boolean isForeground, StringBuilder stack, long stackSize, String stackKey, String usage, long inputCost,
                                  long animationCost, long traversalCost, long allCost) {
             StringBuilder print = new StringBuilder();
-            print.append(String.format(" \n>>>>>>>>>>>>>>>>>>>>> maybe happens Jankiness!(%sms) <<<<<<<<<<<<<<<<<<<<<\n", allCost));
+            print.append(String.format("-\n>>>>>>>>>>>>>>>>>>>>> maybe happens Jankiness!(%sms) <<<<<<<<<<<<<<<<<<<<<\n", allCost));
             print.append("|* [ProcessStat]").append("\n");
             print.append("|*\t\tPriority: ").append(processStat[0]).append("\n");
             print.append("|*\t\tNice: ").append(processStat[1]).append("\n");
