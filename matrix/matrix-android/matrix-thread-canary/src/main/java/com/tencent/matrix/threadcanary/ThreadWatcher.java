@@ -5,7 +5,7 @@ import android.os.HandlerThread;
 import android.os.Process;
 import android.os.SystemClock;
 
-import com.tencent.matrix.AppForegroundDelegate;
+import com.tencent.matrix.AppActiveMatrixDelegate;
 import com.tencent.matrix.plugin.Plugin;
 import com.tencent.matrix.report.Issue;
 import com.tencent.matrix.util.MatrixHandlerThread;
@@ -170,7 +170,7 @@ public class ThreadWatcher extends Plugin {
                 }
                 pendingReport.add(threadGroupInfoList);
             }
-            handler.postDelayed(this, AppForegroundDelegate.INSTANCE.isAppForeground() ? checkTime : checkBgTime);
+            handler.postDelayed(this, AppActiveMatrixDelegate.INSTANCE.isAppForeground() ? checkTime : checkBgTime);
         }
     }
 
@@ -288,8 +288,8 @@ public class ThreadWatcher extends Plugin {
         void next(ThreadInfo info);
     }
 
-    public static List<ThreadInfo> getThreadsInfo(IThreadInfoIterator iterator, IThreadFilter filter) {
-        List<ThreadInfo> set = new LinkedList<>();
+    private static List<ThreadInfo> getThreadsInfo(IThreadInfoIterator iterator, IThreadFilter filter) {
+        List<ThreadInfo> list = new LinkedList<>();
         String threadDir = String.format("/proc/%s/task/", Process.myPid());
         File dirFile = new File(threadDir);
         if (dirFile.isDirectory()) {
@@ -304,9 +304,11 @@ public class ThreadWatcher extends Plugin {
                         threadInfo.name = args[1].replace("(", "").replace(")", "");
                         threadInfo.state = args[2].replace("'", "");
                         threadInfo.jiffies = getJiffies(threadInfo.tid);
-                        if (!filter.isFilter(threadInfo)) {
-                            set.add(threadInfo);
-                            iterator.next(threadInfo);
+                        if (null != filter && !filter.isFilter(threadInfo)) {
+                            list.add(threadInfo);
+                            if (null != iterator) {
+                                iterator.next(threadInfo);
+                            }
                         }
                     }
                 } catch (Exception e) {
@@ -314,8 +316,27 @@ public class ThreadWatcher extends Plugin {
                 }
             }
         }
-        return set;
+        return list;
     }
+
+    public Map<String, ThreadGroupInfo> getAllThreads() {
+        final Map<String, ThreadGroupInfo> map = new HashMap<>();
+        getThreadsInfo(new IThreadInfoIterator() {
+            @Override
+            public void next(ThreadInfo info) {
+                String key = info.name.replaceAll("-?[0-9]\\d*", "?");
+                ThreadGroupInfo groupInfo = map.get(key);
+                if (groupInfo == null) {
+                    groupInfo = new ThreadGroupInfo(key);
+                    map.put(key, groupInfo);
+                }
+                groupInfo.list.add(info);
+            }
+        }, null);
+
+        return map;
+    }
+
 
     public static String stackTraceToString(final StackTraceElement[] stackTrace) {
 
@@ -384,7 +405,7 @@ public class ThreadWatcher extends Plugin {
         return ret;
     }
 
-    private static class ThreadInfo {
+    public static class ThreadInfo {
         String name;
         long tid;
         boolean isHandlerThread;

@@ -6,7 +6,7 @@ import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.SystemClock;
 
-import com.tencent.matrix.AppForegroundDelegate;
+import com.tencent.matrix.AppActiveMatrixDelegate;
 import com.tencent.matrix.trace.constants.Constants;
 import com.tencent.matrix.trace.hacker.ActivityThreadHacker;
 import com.tencent.matrix.trace.listeners.IAppMethodBeatListener;
@@ -177,7 +177,7 @@ public class AppMethodBeat implements BeatLifecycle {
         isPauseUpdateTime = false;
 
         synchronized (updateTimeLock) {
-            updateTimeLock.notifyAll();
+            updateTimeLock.notify();
         }
     }
 
@@ -262,21 +262,17 @@ public class AppMethodBeat implements BeatLifecycle {
                         listener.onActivityFocused(activityName);
                     }
                 }
-                MatrixLog.i(TAG, "[at] Activity[%s] has %s focus!", activityName, isFocus ? "attach" : "detach");
+                MatrixLog.i(TAG, "[at] visibleScene[%s] has %s focus!", getVisibleScene(), "attach");
             }
         } else {
-
             if (sFocusActivitySet.remove(activityName)) {
-                MatrixLog.i(TAG, "[at] Activity[%s] has %s focus!", activityName, isFocus ? "attach" : "detach");
+                MatrixLog.i(TAG, "[at] visibleScene[%s] has %s focus!", getVisibleScene(), "detach");
             }
         }
-
-
     }
 
-
-    public static String getFocusedActivity() {
-        return AppForegroundDelegate.INSTANCE.getForegroundActivity();
+    public static String getVisibleScene() {
+        return AppActiveMatrixDelegate.INSTANCE.getVisibleScene();
     }
 
     /**
@@ -287,6 +283,9 @@ public class AppMethodBeat implements BeatLifecycle {
      * @param isIn
      */
     private static void mergeData(int methodId, int index, boolean isIn) {
+        if (methodId == AppMethodBeat.METHOD_ID_DISPATCH) {
+            sCurrentDiffTime = SystemClock.uptimeMillis() - sDiffTime;
+        }
         long trueId = 0L;
         if (isIn) {
             trueId |= 1L << 63;
@@ -427,7 +426,7 @@ public class AppMethodBeat implements BeatLifecycle {
             MatrixLog.e(TAG, e.toString());
             return data;
         } finally {
-            MatrixLog.i(TAG, "[copyData] [%s:%s] cost:%sms", Math.max(0, startRecord.index), endRecord.index, System.currentTimeMillis() - current);
+            MatrixLog.i(TAG, "[copyData] [%s:%s] length:%s cost:%sms", Math.max(0, startRecord.index), endRecord.index, data.length, System.currentTimeMillis() - current);
         }
     }
 

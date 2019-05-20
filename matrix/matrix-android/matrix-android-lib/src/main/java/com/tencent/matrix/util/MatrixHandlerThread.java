@@ -21,7 +21,7 @@ import android.os.HandlerThread;
 import android.os.Looper;
 import android.util.Printer;
 
-import com.tencent.matrix.AppForegroundDelegate;
+import com.tencent.matrix.AppActiveMatrixDelegate;
 import com.tencent.matrix.listeners.IAppForeground;
 
 import java.util.Collections;
@@ -93,8 +93,8 @@ public class MatrixHandlerThread {
         private boolean isForeground;
 
         LooperPrinter() {
-            AppForegroundDelegate.INSTANCE.addListener(this);
-            this.isForeground = AppForegroundDelegate.INSTANCE.isAppForeground();
+            AppActiveMatrixDelegate.INSTANCE.addListener(this);
+            this.isForeground = AppActiveMatrixDelegate.INSTANCE.isAppForeground();
         }
 
         @Override

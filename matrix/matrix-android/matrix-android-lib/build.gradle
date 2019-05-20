@@ -23,7 +23,8 @@ dependencies {
     testImplementation 'junit:junit:4.12'
 
     androidTestImplementation 'com.android.support.test:runner:1.0.1'
-
+    implementation 'com.android.support:appcompat-v7:28.0.0'
+    androidTestImplementation 'com.android.support:support-annotations:28.0.0'
     api 'com.android.support:support-annotations:27.0.2'
 }
 
@@ -34,18 +35,6 @@ group = rootProject.ext.GROUP
 //for uploading to WeChat maven serve
 apply from: rootProject.file('gradle/WeChatPublish.gradle')
 apply from: rootProject.file('gradle/WeChatNativeDepend.gradle')
-
 wechatPublish {
     artifactId=POM_ARTIFACT_ID
 }
-
-//apply plugin: 'matrix-trace-plugin'
-//matrixTrace {
-//    packageName = "com.tencent.matrix"
-//    baseMethodMap = "${rootProject.buildDir}/outputs/matrix-trace/Release.methodmap"
-//    methodMapDir = "${rootProject.buildDir}/outputs/matrix-trace"
-//    mappingPath = "${project.buildDir}/outputs/mapping/release/mapping.txt"
-//    jarDir = "${project.buildDir}/intermediates/transforms/proguard/release/jars/3/1f/main.jar"
-//    blackListDir = "${rootProject.rootDir}/matrixTrace/blackMethodList.txt"
-//}
-
