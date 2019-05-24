@@ -128,7 +128,7 @@ public class TestSQLiteLintActivity extends AppCompatActivity {
     private Map<String, SQLiteLintIssue> foundIssueMap = new HashMap<>();
     private JSONArray issueJsonArray = new JSONArray();
     private boolean isCalibrationMode = false;
-    
+
     private void doTest() {
         String[] list = TestSQLiteLintHelper.getTestSqlList();
         /**
@@ -144,7 +144,8 @@ public class TestSQLiteLintActivity extends AppCompatActivity {
          *     cost = (int) (System.currentTimeMillis() - start);
          *     SQLiteLint.notifySqlExecution(dbPath, sql, cost);
          * }
-         * else if use {@link SQLiteLint.SqlExecutionCallbackMode#HOOK}, the usage will be the following below:
+         * else if use {@link SQLiteLint.SqlExecutionCallbackMode#HOOK}, no need to care about {@link SQLiteLint#notifySqlExecution(String, String, int)}
+         * like following below. 
          */
         for (String sql : list) {
             Cursor cursor = TestDBHelper.get().getReadableDatabase().rawQuery(sql, null);
@@ -192,20 +193,10 @@ public class TestSQLiteLintActivity extends AppCompatActivity {
         SQLiteLintAndroidCoreManager.INSTANCE.addBehavior(behaviour, TestDBHelper.get().getReadableDatabase().getPath());
         TestSQLiteLintHelper.initIssueList(this, issueMap);
         doTest();
-        //testParser();
     }
 
     private void stopTest() {
         SQLiteLintAndroidCoreManager.INSTANCE.removeBehavior(behaviour, TestDBHelper.get().getReadableDatabase().getPath());
-    }
-
-    private void testParser() {
-        SQLiteLintAndroidCoreManager.INSTANCE.removeBehavior(behaviour, TestDBHelper.get().getReadableDatabase().getPath());
-        String[] list = TestSQLiteLintHelper.getTestParserList();
-        for (String sql : list) {
-            MatrixLog.i(TAG, "testParser, sql = " + sql);
-            SQLiteLint.notifySqlExecution(TestDBHelper.get().getWritableDatabase().getPath(), sql, 10);
-        }
     }
 
     private void startDBCreateTest() {
@@ -224,10 +215,6 @@ public class TestSQLiteLintActivity extends AppCompatActivity {
             plugin.start();
         }
 
-        /*SQLiteLint.Options.Builder builder = new SQLiteLint.Options.Builder();
-        builder.setAlertBehaviour(true).setReportBehaviour(true);
-        SQLiteLint.InstallEnv installEnv = new SQLiteLint.InstallEnv(TestDBHelper.get().getWritableDatabase().getPath(),
-                new SimpleSQLiteExecutionDelegate(TestDBHelper.get().getWritableDatabase()), SQLiteLint.SqlExecutionCallbackMode.CUSTOM_NOTIFY);*/
         plugin.addConcernedDB(new SQLiteLintConfig.ConcernDb(TestDBHelper.get().getWritableDatabase())
                 //.setWhiteListXml(R.xml.sqlite_lint_whitelist)//disable white list by default
                 .enableAllCheckers());
