@@ -122,8 +122,8 @@ public class IssueStorage {
             return issueList;
         }
 
-        String querySql = String.format("SELECT * FROM %s where %s='%s' ORDER BY %s DESC", TABLE_NAME, COLUMN_DB_PATH, dbLabel, COLUMN_CREATE_TIME);
-        Cursor cursor = SQLiteLintDbHelper.INSTANCE.getDatabase().rawQuery(querySql, null);
+        String querySql = String.format("SELECT * FROM %s where %s=? ORDER BY %s DESC", TABLE_NAME, COLUMN_DB_PATH, COLUMN_CREATE_TIME);
+        Cursor cursor = SQLiteLintDbHelper.INSTANCE.getDatabase().rawQuery(querySql, new String[]{dbLabel});
         try {
             while (cursor.moveToNext()) {
                 issueList.add(issueConvertFromCursor(cursor));
