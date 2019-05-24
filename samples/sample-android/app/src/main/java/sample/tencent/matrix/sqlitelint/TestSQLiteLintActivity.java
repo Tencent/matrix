@@ -128,6 +128,35 @@ public class TestSQLiteLintActivity extends AppCompatActivity {
     private Map<String, SQLiteLintIssue> foundIssueMap = new HashMap<>();
     private JSONArray issueJsonArray = new JSONArray();
     private boolean isCalibrationMode = false;
+    
+    private void doTest() {
+        String[] list = TestSQLiteLintHelper.getTestSqlList();
+        /**
+         * if use {@link SQLiteLint.SqlExecutionCallbackMode#CUSTOM_NOTIFY}, need SQLiteLint.notifySqlExecution, for example:
+         * long start;
+         * int cost;
+         * final String dbPath = TestDBHelper.get().getWritableDatabase().getPath();
+         * for (String sql : list) {
+         *     start = System.currentTimeMillis();
+         *     Cursor cursor = TestDBHelper.get().getReadableDatabase().rawQuery(sql, null);
+         *     cursor.moveToFirst();
+         *     cursor.close();
+         *     cost = (int) (System.currentTimeMillis() - start);
+         *     SQLiteLint.notifySqlExecution(dbPath, sql, cost);
+         * }
+         * else if use {@link SQLiteLint.SqlExecutionCallbackMode#HOOK}, the usage will be the following below:
+         */
+        for (String sql : list) {
+            Cursor cursor = TestDBHelper.get().getReadableDatabase().rawQuery(sql, null);
+            cursor.moveToFirst();
+            cursor.close();
+        }
+
+        deleteAll();
+        insert();
+        batchInsert(40);
+    }
+
     private BaseBehaviour behaviour = new BaseBehaviour() {
 
         @Override
@@ -157,26 +186,13 @@ public class TestSQLiteLintActivity extends AppCompatActivity {
         }
     };
 
-    private void doTest() {
-        String[] list = TestSQLiteLintHelper.getTestSqlList();
-
-        for (String sql : list) {
-            Cursor cursor = TestDBHelper.get().getReadableDatabase().rawQuery(sql, null);
-            cursor.moveToFirst();
-            cursor.close();
-        }
-        deleteAll();
-        insert();
-        batchInsert(40);
-    }
-
     private void startTest() {
 
         MatrixLog.d(TAG, "start test, please wait");
         SQLiteLintAndroidCoreManager.INSTANCE.addBehavior(behaviour, TestDBHelper.get().getReadableDatabase().getPath());
         TestSQLiteLintHelper.initIssueList(this, issueMap);
         doTest();
-        testParser();
+        //testParser();
     }
 
     private void stopTest() {
