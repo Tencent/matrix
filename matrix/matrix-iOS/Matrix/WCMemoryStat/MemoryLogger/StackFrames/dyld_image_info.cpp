@@ -120,8 +120,8 @@ static void __add_info_for_image(const struct mach_header *header, intptr_t slid
 	bool is_wechat_image = false;
     
   const char *app_bundle_name = getAppBundleName();
-  char *app_name = new char(strlen(app_bundle_name) * 2 + 7);
-  char *app_bundle = new char(strlen(app_bundle_name) + 7);
+  char *app_name = new char[strlen(app_bundle_name) * 2 + 7];
+  char *app_bundle = new char[strlen(app_bundle_name) + 7];
   strcpy(app_name, "/");
   strcat(app_name, app_bundle_name);
   strcat(app_name, ".app/");
