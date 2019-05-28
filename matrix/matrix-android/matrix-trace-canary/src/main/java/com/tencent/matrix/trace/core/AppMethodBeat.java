@@ -200,7 +200,7 @@ public class AppMethodBeat implements BeatLifecycle {
         }
 
         if (status == STATUS_DEFAULT) {
-            synchronized (statusLock) {
+            synchronized (statunnnnnnnsLock) {
                 if (status == STATUS_DEFAULT) {
                     realExecute();
                     status = STATUS_READY;
@@ -426,7 +426,7 @@ public class AppMethodBeat implements BeatLifecycle {
                 return data;
             }
             return data;
-        } catch (Exception e) {
+        } catch (OutOfMemoryError e) {
             MatrixLog.e(TAG, e.toString());
             return data;
         } finally {

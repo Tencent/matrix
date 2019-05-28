@@ -56,7 +56,7 @@ public class DefaultPluginListener implements PluginListener {
 
     @Override
     public void onReportIssue(Issue issue) {
-        MatrixLog.i(TAG, "report issue content: %s", issue);
+        MatrixLog.i(TAG, "report issue content: %s", issue == null ? "" : issue);
     }
 
 }

@@ -68,7 +68,7 @@ static size_t *g_topStackAddressRepeatArray;
     return [self initWithCycleArrayCount:10];
 }
 
-- (void)freeMainThreadCycleArray
+- (void)dealloc
 {
     for (uint32_t i = 0; i < m_cycleArrayCount; i++) {
         if (g_mainThreadStackCycleArray[i] != NULL) {
@@ -76,13 +76,21 @@ static size_t *g_topStackAddressRepeatArray;
             g_mainThreadStackCycleArray[i] = NULL;
         }
     }
-    free(g_mainThreadStackCycleArray);
-    g_mainThreadStackCycleArray = NULL;
-}
-- (void)dealloc
-{
-    [self freeMainThreadCycleArray];
-    free(g_mainThreadStackCount);
+    
+    if (g_mainThreadStackCycleArray != NULL) {
+        free(g_mainThreadStackCycleArray);
+        g_mainThreadStackCycleArray = NULL;
+    }
+    
+    if (g_mainThreadStackCount != NULL) {
+        free(g_mainThreadStackCount);
+        g_mainThreadStackCount = NULL;
+    }
+    
+    if (g_topStackAddressRepeatArray != NULL) {
+        free(g_topStackAddressRepeatArray);
+        g_topStackAddressRepeatArray = NULL;
+    }
 }
 
 - (void)addThreadStack:(uintptr_t *)stackArray andStackCount:(size_t)stackCount

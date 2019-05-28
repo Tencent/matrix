@@ -4,7 +4,6 @@ import com.tencent.matrix.javalib.util.FileUtil;
 import com.tencent.matrix.javalib.util.Util;
 import com.tencent.matrix.trace.retrace.MappingCollector;
 
-import java.io.File;
 import java.util.HashSet;
 
 public class Configuration {
@@ -30,13 +29,7 @@ public class Configuration {
     }
 
     public int parseBlackFile(MappingCollector processor) {
-        File blackFile = new File(blackListFilePath);
-        if (!blackFile.exists()) {
-            return blackSet.size();
-        }
-
-        String blackStr = TraceBuildConstants.DEFAULT_BLACK_TRACE + FileUtil.readFileAsString(blackFile.getAbsolutePath());
-
+        String blackStr = TraceBuildConstants.DEFAULT_BLACK_TRACE + FileUtil.readFileAsString(blackListFilePath);
         String[] blackArray = blackStr.trim().replace("/", ".").split("\n");
 
         if (blackArray != null) {

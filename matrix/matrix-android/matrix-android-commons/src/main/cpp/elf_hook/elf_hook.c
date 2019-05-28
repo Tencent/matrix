@@ -498,7 +498,7 @@ static int locate_symbol(const loaded_soinfo *soinfo, const char *name, Elf_Sym 
 static void clear_cache(void *addr) {
     unsigned long soff = ((unsigned long) addr) & PAGE_MASK;
     unsigned long eoff = soff + getpagesize();
-    syscall(0xf0002, soff, eoff);
+    __builtin___clear_cache(soff, eoff);
 }
 
 static int replace_elf_rel_segment(const loaded_soinfo *soinfo, Elf_Addr rel_addr, size_t rel_count,

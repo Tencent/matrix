@@ -16,11 +16,14 @@
 
 package com.tencent.matrix.trace.config;
 
+import android.text.TextUtils;
+
 import com.tencent.matrix.trace.constants.Constants;
 import com.tencent.matrix.trace.listeners.IDefaultConfig;
 import com.tencent.mrs.plugin.IDynamicConfig;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -43,7 +46,6 @@ public class TraceConfig implements IDefaultConfig {
     public boolean isDevEnv;
     public String splashActivities;
     public Set<String> splashActivitiesSet;
-
 
     private TraceConfig() {
 
@@ -96,11 +98,23 @@ public class TraceConfig implements IDefaultConfig {
 
     public Set<String> getSplashActivities() {
         if (null == splashActivitiesSet) {
-            splashActivitiesSet = (null == dynamicConfig
-                    ? new HashSet<>(Arrays.asList(splashActivities))
-                    : new HashSet<>(Arrays.asList(dynamicConfig.get(IDynamicConfig.ExptEnum.clicfg_matrix_trace_care_scene_set.name(), splashActivities).split(";"))));
+            splashActivitiesSet = (dynamicConfig == null)
+                    ? createSplashHashSet(splashActivities)
+                    : createSplashHashSet(dynamicConfig.get(IDynamicConfig.ExptEnum.clicfg_matrix_trace_care_scene_set.name(), splashActivities)) ;
         }
         return splashActivitiesSet;
+    }
+
+
+    private static Set<String> createSplashHashSet(String rawString) {
+        Set<String> splashHashSet ;
+        if ( rawString != null ) {
+            splashHashSet = new HashSet<>(Arrays.asList(rawString.split(";")) ) ;
+        } else {
+            splashHashSet = new HashSet<>(Collections.<String>emptyList()) ;
+        }
+        return splashHashSet;
+
     }
 
 
