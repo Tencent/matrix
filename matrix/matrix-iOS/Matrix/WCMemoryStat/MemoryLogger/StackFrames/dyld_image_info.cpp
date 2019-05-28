@@ -151,6 +151,7 @@ static void __add_info_for_image(const struct mach_header *header, intptr_t slid
 				}
         
 				image_info.is_app_image = (strstr(info.dli_fname, g_app_bundle_name) != NULL);
+
 			}
 		}
 	}

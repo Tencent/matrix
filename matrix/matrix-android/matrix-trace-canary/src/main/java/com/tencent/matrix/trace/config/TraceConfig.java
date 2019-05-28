@@ -47,7 +47,6 @@ public class TraceConfig implements IDefaultConfig {
     public String splashActivities;
     public Set<String> splashActivitiesSet;
 
-
     private TraceConfig() {
 
     }
@@ -115,6 +114,7 @@ public class TraceConfig implements IDefaultConfig {
             splashHashSet = new HashSet<>(Collections.<String>emptyList()) ;
         }
         return splashHashSet;
+
     }
 
 
