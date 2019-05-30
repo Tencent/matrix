@@ -17,7 +17,7 @@ import android.view.WindowManager;
 import android.view.animation.AccelerateInterpolator;
 import android.widget.TextView;
 
-import com.tencent.matrix.AppForegroundDelegate;
+import com.tencent.matrix.AppActiveMatrixDelegate;
 import com.tencent.matrix.Matrix;
 import com.tencent.matrix.listeners.IAppForeground;
 import com.tencent.matrix.trace.TracePlugin;
@@ -35,6 +35,7 @@ public class FrameDecorator extends IDoFrameListener implements IAppForeground {
     private boolean isShowing;
     private FloatFrameView view;
     private static Handler mainHandler = new Handler(Looper.getMainLooper());
+    private Handler handler;
     private static FrameDecorator instance;
     private static Object lock = new Object();
     private View.OnClickListener clickListener;
@@ -44,7 +45,7 @@ public class FrameDecorator extends IDoFrameListener implements IAppForeground {
     @SuppressLint("ClickableViewAccessibility")
     private FrameDecorator(Context context, final FloatFrameView view) {
         this.view = view;
-        AppForegroundDelegate.INSTANCE.addListener(this);
+        AppActiveMatrixDelegate.INSTANCE.addListener(this);
         view.addOnAttachStateChangeListener(new View.OnAttachStateChangeListener() {
             @Override
             public void onViewAttachedToWindow(View v) {
@@ -105,6 +106,9 @@ public class FrameDecorator extends IDoFrameListener implements IAppForeground {
                         ((ValueAnimator) animator).addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
                             @Override
                             public void onAnimationUpdate(ValueAnimator animation) {
+                                if(!isShowing){
+                                    return;
+                                }
                                 int value = (int) animation.getAnimatedValue("trans");
                                 layoutParam.x = value;
                                 windowManager.updateViewLayout(v, layoutParam);
@@ -133,9 +137,9 @@ public class FrameDecorator extends IDoFrameListener implements IAppForeground {
     }
 
     long sumFrameCost;
-    long[] lastCost = new long[3];
+    long[] lastCost = new long[1];
     long sumFrames;
-    long[] lastFrames = new long[3];
+    long[] lastFrames = new long[1];
 
 
     Runnable updateDefaultRunnable = new Runnable() {
@@ -157,33 +161,11 @@ public class FrameDecorator extends IDoFrameListener implements IAppForeground {
         if (duration >= 200) {
             final float fps = Math.min(60.f, 1000.f * collectFrame / duration);
             updateView(view.fpsView, fps);
+            view.chartView.addFps((int) fps);
             lastCost[0] = sumFrameCost;
             lastFrames[0] = sumFrames;
             mainHandler.removeCallbacks(updateDefaultRunnable);
             mainHandler.postDelayed(updateDefaultRunnable, 130);
-        }
-
-        duration = sumFrameCost - lastCost[1];
-        collectFrame = sumFrames - lastFrames[1];
-        if (duration >= 5 * 1000) {
-            final float fps = Math.min(60.f, 1000.f * collectFrame / duration);
-            updateView(view.fpsView5, fps);
-            lastCost[1] = sumFrameCost;
-            lastFrames[1] = sumFrames;
-        }
-
-        duration = sumFrameCost - lastCost[2];
-        collectFrame = sumFrames - lastFrames[2];
-        if (duration >= 10 * 1000) {
-            final float fps = Math.min(60.f, 1000.f * collectFrame / duration);
-            updateView(view.fpsView10, fps);
-            lastCost[2] = sumFrameCost;
-            lastFrames[2] = sumFrames;
-
-            sumFrameCost = 0;
-            sumFrames = 0;
-            lastCost = new long[3];
-            lastFrames = new long[3];
         }
     }
 
@@ -199,14 +181,16 @@ public class FrameDecorator extends IDoFrameListener implements IAppForeground {
                 } else {
                     view.setTextColor(view.getResources().getColor(android.R.color.holo_red_dark));
                 }
-
             }
         });
     }
 
     @Override
     public Handler getHandler() {
-        return MatrixHandlerThread.getDefaultHandler();
+        if (handler == null || !handler.getLooper().getThread().isAlive()) {
+            handler = new Handler(MatrixHandlerThread.getDefaultHandlerThread().getLooper());
+        }
+        return handler;
     }
 
     public static FrameDecorator get() {
@@ -245,8 +229,8 @@ public class FrameDecorator extends IDoFrameListener implements IAppForeground {
 
     private void initLayoutParams(Context context) {
         windowManager = (WindowManager) context.getApplicationContext().getSystemService(Context.WINDOW_SERVICE);
-        windowManager.getDefaultDisplay().getMetrics(displayMetrics);
         try {
+            windowManager.getDefaultDisplay().getMetrics(displayMetrics);
             DisplayMetrics metrics = new DisplayMetrics();
             windowManager.getDefaultDisplay().getMetrics(metrics);
             layoutParam = new WindowManager.LayoutParams();

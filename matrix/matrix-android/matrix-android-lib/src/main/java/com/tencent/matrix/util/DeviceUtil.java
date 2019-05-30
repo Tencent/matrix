@@ -397,7 +397,7 @@ public class DeviceUtil {
         return -1;
     }
 
-    protected static String convertStreamToString(InputStream is) throws Exception {
+    public static String convertStreamToString(InputStream is) throws Exception {
         BufferedReader reader = null;
         StringBuilder sb = new StringBuilder();
         try {
@@ -415,7 +415,7 @@ public class DeviceUtil {
         return sb.toString();
     }
 
-    protected static String getStringFromFile(String filePath) throws Exception {
+    public static String getStringFromFile(String filePath) throws Exception {
         File fl = new File(filePath);
         FileInputStream fin = null;
         String ret;

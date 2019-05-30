@@ -26,6 +26,7 @@ import com.tencent.matrix.util.MatrixHandlerThread;
 public class IDoFrameListener {
 
     private Handler handler;
+    public long time;
 
     public IDoFrameListener() {
 
@@ -36,11 +37,11 @@ public class IDoFrameListener {
     }
 
 
-    public void doFrameAsync(String focusedActivityName, long frameCost, int droppedFrames) {
+    public void doFrameAsync(String visibleScene, long frameCost, int droppedFrames) {
 
     }
 
-    public void doFrameSync(String focusedActivityName, long frameCost, int droppedFrames) {
+    public void doFrameSync(String visibleScene, long frameCost, int droppedFrames) {
 
     }
 

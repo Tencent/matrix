@@ -1,7 +1,9 @@
 package com.tencent.matrix.trace.tracer;
 
 import android.os.Handler;
+import android.os.HandlerThread;
 import android.os.Looper;
+import android.os.Process;
 import android.os.SystemClock;
 
 import com.tencent.matrix.Matrix;
@@ -44,7 +46,8 @@ public class AnrTracer extends Tracer {
         super.onAlive();
         if (isAnrTraceEnable) {
             UIThreadMonitor.getMonitor().addObserver(this);
-            this.anrHandler = new Handler(MatrixHandlerThread.getDefaultHandlerThread().getLooper());
+            HandlerThread thread = MatrixHandlerThread.getNewHandlerThread("Matrix#AnrTracer");
+            this.anrHandler = new Handler(thread.getLooper());
         }
     }
 
@@ -57,20 +60,18 @@ public class AnrTracer extends Tracer {
                 anrTask.getBeginRecord().release();
             }
             anrHandler.removeCallbacksAndMessages(null);
+            anrHandler.getLooper().quit();
         }
     }
 
     @Override
     public void dispatchBegin(long beginMs, long cpuBeginMs, long token) {
         super.dispatchBegin(beginMs, cpuBeginMs, token);
-        if (null != anrTask) {
-            anrHandler.removeCallbacks(anrTask);
-        }
         anrTask = new AnrHandleTask(AppMethodBeat.getInstance().maskIndex("AnrTracer#dispatchBegin"), token);
         if (traceConfig.isDevEnv()) {
             MatrixLog.v(TAG, "* [dispatchBegin] token:%s index:%s", token, anrTask.beginRecord.index);
         }
-        anrHandler.postDelayed(anrTask, Constants.DEFAULT_ANR);
+        anrHandler.postDelayed(anrTask, Constants.DEFAULT_ANR - (SystemClock.uptimeMillis() - token));
     }
 
     @Override
@@ -110,11 +111,13 @@ public class AnrTracer extends Tracer {
 
         @Override
         public void run() {
-            anrTask = null;
             long curTime = SystemClock.uptimeMillis();
+            boolean isForeground = isForeground();
+            // process
+            int[] processStat = Utils.getProcessPriority(Process.myPid());
             long[] data = AppMethodBeat.getInstance().copyData(beginRecord);
             beginRecord.release();
-            String scene = AppMethodBeat.getFocusedActivity();
+            String scene = AppMethodBeat.getVisibleScene();
 
             // memory
             long[] memoryInfo = dumpMemory();
@@ -163,11 +166,21 @@ public class AnrTracer extends Tracer {
 
             // stackKey
             String stackKey = TraceDataUtils.getTreeKey(stack, stackCost);
-            MatrixLog.w(TAG, "%s \npostTime:%s curTime:%s", printAnr(memoryInfo, status, logcatBuilder, stack.size(), stackKey, dumpStack, inputCost, animationCost, traversalCost), token, curTime); // for logcat
+            MatrixLog.w(TAG, "%s \npostTime:%s curTime:%s",
+                    printAnr(processStat, memoryInfo, status, logcatBuilder, isForeground, stack.size(),
+                            stackKey, dumpStack, inputCost, animationCost, traversalCost, stackCost), token, curTime); // for logcat
 
+            if (stackCost >= Constants.DEFAULT_ANR_INVALID || processStat[0] > 10) {
+                MatrixLog.w(TAG, "The checked anr task was not executed on time. " +
+                        "The possible reason is that the current process has a low priority. just pass this report");
+                return;
+            }
             // report
             try {
                 TracePlugin plugin = Matrix.with().getPluginByClass(TracePlugin.class);
+                if (null == plugin) {
+                    return;
+                }
                 JSONObject jsonObject = new JSONObject();
                 jsonObject = DeviceUtil.getDeviceInfo(jsonObject, Matrix.with().getApplication());
                 jsonObject.put(SharePluginInfo.ISSUE_STACK_TYPE, Constants.Type.ANR);
@@ -176,6 +189,9 @@ public class AnrTracer extends Tracer {
                 jsonObject.put(SharePluginInfo.ISSUE_SCENE, scene);
                 jsonObject.put(SharePluginInfo.ISSUE_TRACE_STACK, reportBuilder.toString());
                 jsonObject.put(SharePluginInfo.ISSUE_THREAD_STACK, Utils.getStack(stackTrace));
+                jsonObject.put(SharePluginInfo.ISSUE_PROCESS_PRIORITY, processStat[0]);
+                jsonObject.put(SharePluginInfo.ISSUE_PROCESS_NICE, processStat[1]);
+                jsonObject.put(SharePluginInfo.ISSUE_PROCESS_FOREGROUND, isForeground);
                 // memory info
                 JSONObject memJsonObject = new JSONObject();
                 memJsonObject.put(SharePluginInfo.ISSUE_MEMORY_DALVIK, memoryInfo[0]);
@@ -195,23 +211,28 @@ public class AnrTracer extends Tracer {
 
         }
 
-        private String printAnr(long[] memoryInfo, Thread.State state, StringBuilder stack, long stackSize, String stackKey, String dumpStack, long inputCost, long animationCost, long traversalCost) {
+        private String printAnr(int[] processStat, long[] memoryInfo, Thread.State state, StringBuilder stack, boolean isForeground,
+                                long stackSize, String stackKey, String dumpStack, long inputCost, long animationCost, long traversalCost, long stackCost) {
             StringBuilder print = new StringBuilder();
-            print.append(" \n>>>>>>>>>>>>>>>>>>>>>>> maybe happens ANR(5s)! <<<<<<<<<<<<<<<<<<<<<<<\n");
-            print.append("|* [Memory]").append("\n");  // todo
-            print.append("|*\tDalvikHeap: ").append(memoryInfo[0]).append("kb\n");
-            print.append("|*\tNativeHeap: ").append(memoryInfo[1]).append("kb\n");
-            print.append("|*\tVmSize: ").append(memoryInfo[2]).append("kb\n");
+            print.append(String.format("-\n>>>>>>>>>>>>>>>>>>>>>>> maybe happens ANR(%s ms)! <<<<<<<<<<<<<<<<<<<<<<<\n", stackCost));
+            print.append("|* [ProcessStat]").append("\n");
+            print.append("|*\t\tPriority: ").append(processStat[0]).append("\n");
+            print.append("|*\t\tNice: ").append(processStat[1]).append("\n");
+            print.append("|*\t\tForeground: ").append(isForeground).append("\n");
+            print.append("|* [Memory]").append("\n");
+            print.append("|*\t\tDalvikHeap: ").append(memoryInfo[0]).append("kb\n");
+            print.append("|*\t\tNativeHeap: ").append(memoryInfo[1]).append("kb\n");
+            print.append("|*\t\tVmSize: ").append(memoryInfo[2]).append("kb\n");
             print.append("|* [doFrame]").append("\n");
-            print.append("|*\tinputCost: ").append(inputCost).append("\n");
-            print.append("|*\tanimationCost: ").append(animationCost).append("\n");
-            print.append("|*\ttraversalCost: ").append(traversalCost).append("\n");
+            print.append("|*\t\tinputCost: ").append(inputCost).append("\n");
+            print.append("|*\t\tanimationCost: ").append(animationCost).append("\n");
+            print.append("|*\t\ttraversalCost: ").append(traversalCost).append("\n");
             print.append("|* [Thread]").append("\n");
-            print.append("|*\tState: ").append(state).append("\n");
-            print.append("|*\tStack: ").append(dumpStack);
+            print.append("|*\t\tState: ").append(state).append("\n");
+            print.append("|*\t\tStack: ").append(dumpStack);
             print.append("|* [Trace]").append("\n");
-            print.append("|*\tStackSize: ").append(stackSize).append("\n");
-            print.append("|*\tStackKey: ").append(stackKey).append("\n");
+            print.append("|*\t\tStackSize: ").append(stackSize).append("\n");
+            print.append("|*\t\tStackKey: ").append(stackKey).append("\n");
 
             if (traceConfig.isDebug()) {
                 print.append(stack.toString());

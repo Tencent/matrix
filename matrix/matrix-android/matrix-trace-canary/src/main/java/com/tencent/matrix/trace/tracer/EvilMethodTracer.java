@@ -1,5 +1,7 @@
 package com.tencent.matrix.trace.tracer;
 
+import android.os.Process;
+
 import com.tencent.matrix.Matrix;
 import com.tencent.matrix.report.Issue;
 import com.tencent.matrix.trace.TracePlugin;
@@ -80,8 +82,8 @@ public class EvilMethodTracer extends Tracer {
                 long[] data = AppMethodBeat.getInstance().copyData(indexRecord);
                 long[] queueCosts = new long[3];
                 System.arraycopy(queueTypeCosts, 0, queueCosts, 0, 3);
-                String scene = AppMethodBeat.getFocusedActivity();
-                MatrixHandlerThread.getDefaultHandler().post(new AnalyseTask(scene, data, queueCosts, cpuEndMs - cpuBeginMs, endMs - beginMs, endMs));
+                String scene = AppMethodBeat.getVisibleScene();
+                MatrixHandlerThread.getDefaultHandler().post(new AnalyseTask(isForeground(), scene, data, queueCosts, cpuEndMs - cpuBeginMs, endMs - beginMs, endMs));
             }
         } finally {
             indexRecord.release();
@@ -100,10 +102,10 @@ public class EvilMethodTracer extends Tracer {
         long cost;
         long endMs;
         String scene;
+        boolean isForeground;
 
-
-        AnalyseTask(String scene, long[] data, long[] queueCost, long cpuCost, long cost, long endMs) {
-
+        AnalyseTask(boolean isForeground, String scene, long[] data, long[] queueCost, long cpuCost, long cost, long endMs) {
+            this.isForeground = isForeground;
             this.scene = scene;
             this.cost = cost;
             this.cpuCost = cpuCost;
@@ -113,6 +115,9 @@ public class EvilMethodTracer extends Tracer {
         }
 
         void analyse() {
+
+            // process
+            int[] processStat = Utils.getProcessPriority(Process.myPid());
             String usage = Utils.calculateCpuUsage(cpuCost, cost);
             LinkedList<MethodItem> stack = new LinkedList();
             if (data.length > 0) {
@@ -146,11 +151,20 @@ public class EvilMethodTracer extends Tracer {
             long stackCost = Math.max(cost, TraceDataUtils.stackToString(stack, reportBuilder, logcatBuilder));
             String stackKey = TraceDataUtils.getTreeKey(stack, stackCost);
 
-            MatrixLog.w(TAG, "%s", printEvil(logcatBuilder, stack.size(), stackKey, usage, queueCost[0], queueCost[1], queueCost[2], cost)); // for logcat
+            MatrixLog.w(TAG, "%s", printEvil(processStat, isForeground, logcatBuilder, stack.size(), stackKey, usage, queueCost[0], queueCost[1], queueCost[2], cost)); // for logcat
+
+            if (stackCost >= Constants.DEFAULT_ANR_INVALID || processStat[0] > 10) {
+                MatrixLog.w(TAG, "The checked anr task was not executed on time. " +
+                        "The possible reason is that the current process has a low priority. just pass this report");
+                return;
+            }
 
             // report
             try {
                 TracePlugin plugin = Matrix.with().getPluginByClass(TracePlugin.class);
+                if (null == plugin) {
+                    return;
+                }
                 JSONObject jsonObject = new JSONObject();
                 jsonObject = DeviceUtil.getDeviceInfo(jsonObject, Matrix.with().getApplication());
 
@@ -177,20 +191,24 @@ public class EvilMethodTracer extends Tracer {
             analyse();
         }
 
-        private String printEvil(StringBuilder stack, long stackSize, String stackKey, String usage, long inputCost,
+        private String printEvil(int[] processStat, boolean isForeground, StringBuilder stack, long stackSize, String stackKey, String usage, long inputCost,
                                  long animationCost, long traversalCost, long allCost) {
             StringBuilder print = new StringBuilder();
-            print.append(String.format(" \n>>>>>>>>>>>>>>>>>>>>> maybe happens Jankiness!(%sms) <<<<<<<<<<<<<<<<<<<<<\n", allCost));
+            print.append(String.format("-\n>>>>>>>>>>>>>>>>>>>>> maybe happens Jankiness!(%sms) <<<<<<<<<<<<<<<<<<<<<\n", allCost));
+            print.append("|* [ProcessStat]").append("\n");
+            print.append("|*\t\tPriority: ").append(processStat[0]).append("\n");
+            print.append("|*\t\tNice: ").append(processStat[1]).append("\n");
+            print.append("|*\t\tForeground: ").append(isForeground).append("\n");
             print.append("|* [CPU]").append("\n");
-            print.append("|*\tusage: ").append(usage).append("\n");
+            print.append("|*\t\tusage: ").append(usage).append("\n");
             print.append("|* [Memory]").append("\n");  // todo
             print.append("|* [doFrame]").append("\n");
-            print.append("|*\tinputCost: ").append(inputCost).append("\n");
-            print.append("|*\tanimationCost: ").append(animationCost).append("\n");
-            print.append("|*\ttraversalCost: ").append(traversalCost).append("\n");
+            print.append("|*\t\tinputCost: ").append(inputCost).append("\n");
+            print.append("|*\t\tanimationCost: ").append(animationCost).append("\n");
+            print.append("|*\t\ttraversalCost: ").append(traversalCost).append("\n");
             print.append("|* [Trace]").append("\n");
-            print.append("|*\tStackSize: ").append(stackSize).append("\n");
-            print.append("|*\tStackKey: ").append(stackKey).append("\n");
+            print.append("|*\t\tStackSize: ").append(stackSize).append("\n");
+            print.append("|*\t\tStackKey: ").append(stackKey).append("\n");
 
             if (config.isDebug()) {
                 print.append(stack.toString());

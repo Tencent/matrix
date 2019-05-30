@@ -203,6 +203,9 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, App
                             long allCost, boolean isWarmStartUp, int scene) {
 
             TracePlugin plugin = Matrix.with().getPluginByClass(TracePlugin.class);
+            if (null == plugin) {
+                return;
+            }
             try {
                 JSONObject costObject = new JSONObject();
                 costObject = DeviceUtil.getDeviceInfo(costObject, Matrix.with().getApplication());
