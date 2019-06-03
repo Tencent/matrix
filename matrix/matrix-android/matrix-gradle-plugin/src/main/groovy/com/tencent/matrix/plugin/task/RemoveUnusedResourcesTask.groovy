@@ -237,7 +237,9 @@ public class RemoveUnusedResourcesTask extends DefaultTask {
                     //Log.d(TAG, "styleable %s", styleableMap.keySet().size());
                     String newResTxtFile = resTxtFile.getParentFile().getAbsolutePath() + "/" + resTxtFile.getName().substring(0, resTxtFile.getName().indexOf('.')) + "_shrinked.txt";
                     shrinkResourceTxtFile(newResTxtFile, resourceMap, styleableMap);
-                    new File(newResTxtFile).renameTo(resTxtFile);
+
+                    //Other plugins such as "Tinker" may depend on the R.txt file, so we should not modify R.txt directly .
+                    //new File(newResTxtFile).renameTo(resTxtFile);
                 }
 
             } finally {
