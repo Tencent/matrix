@@ -19,6 +19,8 @@ package com.tencent.matrix.resource;
 import android.app.Activity;
 import android.app.Application;
 import android.os.Build;
+import android.os.Handler;
+import android.os.Looper;
 
 import com.tencent.matrix.plugin.Plugin;
 import com.tencent.matrix.plugin.PluginListener;
@@ -27,6 +29,8 @@ import com.tencent.matrix.resource.config.SharePluginInfo;
 import com.tencent.matrix.resource.watcher.ActivityLifeCycleCallbacksAdapter;
 import com.tencent.matrix.resource.watcher.ActivityRefWatcher;
 import com.tencent.matrix.util.MatrixLog;
+
+import java.lang.ref.WeakReference;
 
 /**
  * Created by tangyinsheng on 2017/6/2.
@@ -37,6 +41,7 @@ public class ResourcePlugin extends Plugin {
 
     private final ResourceConfig mConfig;
     private ActivityRefWatcher mWatcher = null;
+    private static Handler mHandler = new Handler(Looper.getMainLooper());
 
     public ResourcePlugin(ResourceConfig config) {
         mConfig = config;
@@ -47,8 +52,19 @@ public class ResourcePlugin extends Plugin {
         application.registerActivityLifecycleCallbacks(new ActivityLifeCycleCallbacksAdapter() {
             @Override
             public void onActivityDestroyed(Activity activity) {
-                ActivityLeakFixer.fixInputMethodManagerLeak(activity);
-                ActivityLeakFixer.unbindDrawables(activity);
+                final WeakReference<Activity> activityWeakReference = new WeakReference<Activity>(activity);
+                mHandler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        Activity leakActivity = activityWeakReference.get();
+                        if(leakActivity == null){
+                            return;
+                        }
+                        ActivityLeakFixer.fixInputMethodManagerLeak(leakActivity);
+                        ActivityLeakFixer.unbindDrawables(leakActivity);
+                    }
+                });
+
             }
         });
     }
