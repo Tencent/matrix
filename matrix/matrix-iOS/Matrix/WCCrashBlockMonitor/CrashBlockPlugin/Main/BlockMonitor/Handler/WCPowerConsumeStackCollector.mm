@@ -316,6 +316,12 @@
         assert(0);
     }
     mainFrame.repeatCount += 1;
+    
+    if (mainFrame.childAddressFrame == nil || [mainFrame.childAddressFrame count] == 0) {
+        mainFrame.childAddressFrame = mergedFrame.childAddressFrame;
+        return; // full with mergedFrame.childeAddressFrame
+    }
+    
     [self p_mergedAddressFrameArray:mainFrame.childAddressFrame with:mergedFrame.childAddressFrame];
 }
 
