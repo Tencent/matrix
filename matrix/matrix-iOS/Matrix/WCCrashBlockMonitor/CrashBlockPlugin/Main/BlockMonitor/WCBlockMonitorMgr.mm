@@ -32,6 +32,7 @@
 #import "WCCrashBlockMonitorPlugin.h"
 #import "WCFilterStackHandler.h"
 #import "KSSymbolicator.h"
+#import "WCPowerConsumeStackCollector.h"
 
 #if !TARGET_OS_OSX
 #import <UIKit/UIKit.h>
@@ -105,7 +106,7 @@ KSStackCursor *kscrash_pointThreadCallback(void)
     return g_PointMainThreadArray;
 }
 
-@interface WCBlockMonitorMgr () <WCCPUHandlerDelegate> {
+@interface WCBlockMonitorMgr () <WCPowerConsumeStackCollectorDelegate> {
     NSThread *m_monitorThread;
     BOOL m_bStop;
 
@@ -144,6 +145,7 @@ KSStackCursor *kscrash_pointThreadCallback(void)
     BOOL m_bTrackCPU;
     
     WCFilterStackHandler *m_stackHandler;
+    WCPowerConsumeStackCollector *m_powerConsumeStackCollector;
 }
 
 @property (nonatomic, strong) WCBlockMonitorConfigHandler *monitorConfigHandler;
@@ -233,9 +235,16 @@ KSStackCursor *kscrash_pointThreadCallback(void)
     m_bInSuspend = YES;
     
     m_bTrackCPU = YES;
-    m_cpuHandler = [[WCCPUHandler alloc] initWithCPULimit:[_monitorConfigHandler getPowerConsumeCPULimit]];
-    m_cpuHandler.delegate = self;
     
+    m_cpuHandler = [[WCCPUHandler alloc] initWithCPULimit:[_monitorConfigHandler getPowerConsumeCPULimit]];
+    
+    if ([_monitorConfigHandler getShouldGetPowerConsumeStack]) {
+        m_powerConsumeStackCollector = [[WCPowerConsumeStackCollector alloc] initWithCPULimit:[_monitorConfigHandler getPowerConsumeCPULimit]];
+        m_powerConsumeStackCollector.delegate = self;
+    } else {
+        m_powerConsumeStackCollector = nil;
+    }
+
     g_filterSameStack = [_monitorConfigHandler getShouldFilterSameStack];
     g_triggerdFilterSameCnt = [_monitorConfigHandler getTriggerFilterCount];
     
@@ -578,7 +587,12 @@ KSStackCursor *kscrash_pointThreadCallback(void)
     
     // 2. cpu usage
     
-    float cpuUsage = [WCCPUHandler getCurrentCpuUsage];
+    float cpuUsage = 0.;
+    if (m_powerConsumeStackCollector == nil) {
+        cpuUsage = [WCPowerConsumeStackCollector getCurrentCPUUsage];
+    } else {
+        cpuUsage = [m_powerConsumeStackCollector getCPUUsageAndPowerConsumeStack];
+    }
     
     if ([_monitorConfigHandler getShouldPrintCPUUsage] && cpuUsage > 40.0f) {
         MatrixInfo(@"mb[%f]", cpuUsage);;
@@ -587,8 +601,11 @@ KSStackCursor *kscrash_pointThreadCallback(void)
     if (m_bTrackCPU) {
         unsigned long long checkPeriod = [WCBlockMonitorMgr diffTime:&g_lastCheckTime endTime:&tvCur];
         gettimeofday(&g_lastCheckTime, NULL);
-        if ([m_cpuHandler cultivateCpuUsage:cpuUsage periodTime:(float)checkPeriod / 1000000 getPowerConsume:[_monitorConfigHandler getShouldGetPowerConsumeStack]]) {
+        if ([m_cpuHandler cultivateCpuUsage:cpuUsage periodTime:(float)checkPeriod/1000000]) {
             MatrixInfo(@"exceed cpu average usage");
+            if (m_powerConsumeStackCollector) {
+                [m_powerConsumeStackCollector makeConclusion];
+            }
             BM_SAFE_CALL_SELECTOR_NO_RETURN(_delegate, @selector(onBlockMonitorIntervalCPUTooHigh:), onBlockMonitorIntervalCPUTooHigh:self)
         }
         if (cpuUsage > g_CPUUsagePercent) {
@@ -956,10 +973,10 @@ void myInitializetionRunLoopEndCallback(CFRunLoopObserverRef observer, CFRunLoop
 }
 
 // ============================================================================
-#pragma mark - WCCPUHandlerDelegate
+#pragma mark - WCPowerConsumeStackCollectorDelegate
 // ============================================================================
 
-- (void)cpuHandlerOnGetPowerConsumeStackTree:(NSArray <NSDictionary *> *)stackTree
+- (void)powerConsumeStackCollectorConclude:(NSArray <NSDictionary *> *)stackTree
 {
     dispatch_async(m_asyncDumpQueue, ^{
         if (stackTree == nil) {
@@ -969,8 +986,8 @@ void myInitializetionRunLoopEndCallback(CFRunLoopObserverRef observer, CFRunLoop
         MatrixInfo(@"save battery cost stack log");
         NSString *reportID = [[NSUUID UUID] UUIDString];
         NSData *reportData = [WCGetCallStackReportHandler getReportJsonDataWithPowerConsumeStack:stackTree
-                                                                                   withReportID:reportID
-                                                                                   withDumpType:EDumpType_PowerConsume];
+                                                                                    withReportID:reportID
+                                                                                    withDumpType:EDumpType_PowerConsume];
         [WCDumpInterface saveDump:reportData withReportType:EDumpType_PowerConsume withReportID:reportID];
     });
 }

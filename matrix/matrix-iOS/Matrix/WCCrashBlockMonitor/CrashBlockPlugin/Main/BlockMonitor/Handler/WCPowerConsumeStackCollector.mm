@@ -25,6 +25,7 @@
 #import "KSSymbolicator.h"
 #import "KSThread.h"
 #import "MatrixLogDef.h"
+#import "KSMachineContext.h"
 
 // ============================================================================
 #pragma mark - WCAddressFrame
@@ -346,6 +347,8 @@
 #pragma mark - WCPowerConsumeStackCollector
 // ============================================================================
 
+static float kGetPowerStackCPULimit = 80.;
+
 @interface WCPowerConsumeStackCollector ()
 
 @property (nonatomic, strong) WCStackTracePool *stackTracePool;
@@ -354,27 +357,18 @@
 
 @implementation WCPowerConsumeStackCollector
 
-- (id)init
+- (id)initWithCPULimit:(float)cpuLimit
 {
     self = [super init];
     if (self) {
-        _stackTracePool = [[WCStackTracePool alloc] initWithMaxStackTraceCount:60 withLimitRepeat:10];
+        kGetPowerStackCPULimit = cpuLimit;
+        _stackTracePool = [[WCStackTracePool alloc] initWithMaxStackTraceCount:100 withLimitRepeat:10];
     }
     return self;
 }
 
 - (void)makeConclusion
 {
-    // Test case
-    //    NSArray *stack1 = @[@1, @2, @3, @4];
-    //    NSArray *stack2 = @[@2, @3, @4, @5];
-    //    NSArray *stack3 = @[@1, @3, @4, @5];
-    //    NSArray *stack4 = @[@1, @2, @3, @5];
-    //
-    //    [_stackTracePool addStackTrace:[stack1 mutableCopy]];
-    //    [_stackTracePool addStackTrace:[stack2 mutableCopy]];
-    //    [_stackTracePool addStackTrace:[stack3 mutableCopy]];
-    //    [_stackTracePool addStackTrace:[stack4 mutableCopy]];
     WCStackTracePool *handlePool = _stackTracePool;
     _stackTracePool = [[WCStackTracePool alloc] initWithMaxStackTraceCount:100 withLimitRepeat:10];
     
@@ -386,58 +380,158 @@
     });
 }
 
-- (void)getPowerConsumeStack
+- (float)getCPUUsageAndPowerConsumeStack
 {
     kern_return_t kr;
-
-    thread_act_array_t threads;
-    mach_msg_type_number_t thread_count;
-    kr = task_threads(mach_task_self(), &threads, &thread_count);
+    task_info_data_t tinfo;
+    mach_msg_type_number_t task_info_count;
     
+    task_info_count = TASK_INFO_MAX;
+    kr = task_info(mach_task_self(), TASK_BASIC_INFO, (task_info_t)tinfo, &task_info_count);
     if (kr != KERN_SUCCESS) {
-        return;
+        return -1;
     }
     
-    thread_t thread_self = mach_thread_self();    
-    thread_info_data_t thinfo;
-    mach_msg_type_number_t thread_info_count;
-    thread_basic_info_t basic_info_th;
+    thread_array_t thread_list;
+    mach_msg_type_number_t thread_count;
     
-    for (mach_msg_type_number_t i = 0; i < thread_count; i++) {
-        thread_t current_thread = threads[i];
-        if (current_thread != thread_self) {
-            float current_thread_cpu = -1;
-            thread_info_count = THREAD_INFO_MAX;
-            if (thread_info(current_thread, THREAD_BASIC_INFO,(thread_info_t)thinfo, &thread_info_count) == KERN_SUCCESS) {
-                basic_info_th = (thread_basic_info_t) thinfo;
-                if (!(basic_info_th->flags & TH_FLAGS_IDLE)) {
-                    current_thread_cpu = basic_info_th->cpu_usage / (float) TH_USAGE_SCALE * 100.0;
-                }
-            }
-            size_t maxEntries = 100;
-            int backTraceLength = 0;
-
-            size_t stackBytes = sizeof(uintptr_t) * maxEntries;
-            uintptr_t *stackArray = (uintptr_t *) malloc(stackBytes);
-            if (stackArray == NULL) {
-                continue;
-            }
-            memset(stackArray, 0, stackBytes);
-            
-            kr = thread_suspend(current_thread);
-            if (kr == KERN_SUCCESS) {
-                uintptr_t backtrace_buffer[maxEntries];
-                backTraceLength = kssc_backtraceCurrentThread(current_thread, backtrace_buffer, (int)maxEntries);
-                for (int i = 0; i < backTraceLength; i++) {
-                    stackArray[i] = backtrace_buffer[i];
-                }
-                thread_resume(current_thread);
-            }
-            [_stackTracePool addThreadStack:stackArray andLength:(size_t)backTraceLength];
+    // get threads in the task
+    kr = task_threads(mach_task_self(), &thread_list, &thread_count);
+    if (kr != KERN_SUCCESS) {
+        return -1;
+    }
+    
+    long tot_sec = 0;
+    long tot_usec = 0;
+    float tot_cpu = 0;
+    
+    thread_t *cost_cpu_thread_list = (thread_t *)malloc(sizeof(thread_t) * thread_count);
+    mach_msg_type_number_t cost_cpu_thread_count = 0;
+    int cost_cpu_j = 0;
+    
+    for (int j = 0; j < thread_count; j++) {
+        thread_t current_thread = thread_list[j];
+        
+        thread_info_data_t thinfo;
+        mach_msg_type_number_t thread_info_count = THREAD_INFO_MAX;
+        kr = thread_info(current_thread, THREAD_BASIC_INFO, (thread_info_t)thinfo, &thread_info_count);
+        if (kr != KERN_SUCCESS) {
+            return -1;
         }
-        mach_port_deallocate(mach_task_self(), current_thread);
+        
+        thread_basic_info_t basic_info_th = (thread_basic_info_t)thinfo;
+        float cur_cpu = 0;
+        long cur_sec = 0;
+        long cur_usec = 0;
+        
+        if (!(basic_info_th->flags & TH_FLAGS_IDLE)) {
+            cur_sec = basic_info_th->user_time.seconds + basic_info_th->system_time.seconds;
+            tot_sec = tot_sec + cur_sec;
+            cur_usec = basic_info_th->system_time.microseconds + basic_info_th->system_time.microseconds;
+            tot_usec = tot_usec + cur_usec;
+            cur_cpu = basic_info_th->cpu_usage / (float) TH_USAGE_SCALE * 100.0;
+            tot_cpu = tot_cpu + cur_cpu;
+        }
+        
+        if (cur_cpu > 5.) {
+            cost_cpu_thread_list[cost_cpu_j] = current_thread;
+            cost_cpu_j ++;
+            cost_cpu_thread_count ++;
+        }
     }
-    vm_deallocate(mach_task_self(), (vm_address_t) threads, sizeof(thread_t) * thread_count);
+    
+    if (tot_cpu > kGetPowerStackCPULimit && cost_cpu_thread_count > 0) {
+        do { // get power-consuming stack
+            size_t maxEntries = 100;
+            int *trace_length_matrix = (int *)malloc(sizeof(int) * cost_cpu_thread_count);
+            if (trace_length_matrix == NULL) {
+                break;
+            }
+            
+            uintptr_t **stack_matrix = (uintptr_t **)malloc(sizeof(uintptr_t *) * cost_cpu_thread_count);
+            if (stack_matrix == NULL) {
+                break;
+            }
+            BOOL have_null = NO;
+            for (int i = 0; i < cost_cpu_thread_count; i++) {
+                stack_matrix[i] = (uintptr_t *)malloc(sizeof(uintptr_t) * maxEntries);
+                if (stack_matrix == NULL) {
+                    have_null = YES;
+                }
+            }
+            if (have_null) {
+                for (int i = 0; i < cost_cpu_thread_count; i++) {
+                    if (stack_matrix[i] != NULL) {
+                        free(stack_matrix[i]);
+                    }
+                }
+                free(stack_matrix);
+                break;
+            }
+            
+            ksmc_suspendEnvironment();
+            for (int i = 0; i < cost_cpu_thread_count; i++) {
+                thread_t current_thread = cost_cpu_thread_list[i];
+                uintptr_t backtrace_buffer[maxEntries];
+                trace_length_matrix[i] = kssc_backtraceCurrentThread(current_thread, backtrace_buffer, (int)maxEntries);
+                for (int j = 0; j < trace_length_matrix[i]; j++) {
+                    stack_matrix[i][j] = backtrace_buffer[j];
+                }
+            }
+            ksmc_resumeEnvironment();
+
+            for (int i = 0; i < cost_cpu_thread_count; i++) {
+                [_stackTracePool addThreadStack:stack_matrix[i] andLength:(size_t)trace_length_matrix[i]];
+            }
+            free(trace_length_matrix);
+        } while (0);
+    }
+    
+    kr = vm_deallocate(mach_task_self(), (vm_offset_t) thread_list, thread_count * sizeof(thread_t));
+    free(cost_cpu_thread_list);
+    return tot_cpu;
+}
+
++ (float)getCurrentCPUUsage
+{
+    kern_return_t kr;
+    task_info_data_t tinfo;
+    mach_msg_type_number_t task_info_count;
+    
+    task_info_count = TASK_INFO_MAX;
+    kr = task_info(mach_task_self(), TASK_BASIC_INFO, (task_info_t) tinfo, &task_info_count);
+    if (kr != KERN_SUCCESS) {
+        return -1;
+    }
+    
+    thread_array_t thread_list;
+    mach_msg_type_number_t thread_count;
+    kr = task_threads(mach_task_self(), &thread_list, &thread_count);
+    if (kr != KERN_SUCCESS) {
+        return -1;
+    }
+    
+    long tot_sec = 0;
+    long tot_usec = 0;
+    float tot_cpu = 0;
+    
+    for (int j = 0; j < thread_count; j++) {
+        thread_info_data_t thinfo;
+        mach_msg_type_number_t thread_info_count = THREAD_INFO_MAX;
+        kr = thread_info(thread_list[j], THREAD_BASIC_INFO, (thread_info_t)thinfo, &thread_info_count);
+        if (kr != KERN_SUCCESS) {
+            return -1;
+        }
+        thread_basic_info_t basic_info_th = (thread_basic_info_t)thinfo;
+        if (!(basic_info_th->flags & TH_FLAGS_IDLE)) {
+            tot_sec = tot_sec + basic_info_th->user_time.seconds + basic_info_th->system_time.seconds;
+            tot_usec = tot_usec + basic_info_th->system_time.microseconds + basic_info_th->system_time.microseconds;
+            tot_cpu = tot_cpu + basic_info_th->cpu_usage / (float) TH_USAGE_SCALE * 100.0;
+        }
+    }
+    
+    kr = vm_deallocate(mach_task_self(), (vm_offset_t) thread_list, thread_count * sizeof(thread_t));
+    return tot_cpu;
 }
 
 @end

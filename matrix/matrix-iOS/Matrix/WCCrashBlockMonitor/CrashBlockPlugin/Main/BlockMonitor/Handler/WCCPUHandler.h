@@ -16,34 +16,17 @@
 
 #import <Foundation/Foundation.h>
 
-@protocol WCCPUHandlerDelegate <NSObject>
-
-- (void)cpuHandlerOnGetPowerConsumeStackTree:(NSArray <NSDictionary *> *)stackTree;
-
-@end
-
 @interface WCCPUHandler : NSObject
-
-@property (nonatomic, weak) id<WCCPUHandlerDelegate> delegate;
 
 - (id)initWithCPULimit:(float)cpuLimit;
 
 
 - (BOOL)cultivateCpuUsage:(float)cpuUsage periodTime:(float)periodSec;
-- (BOOL)cultivateCpuUsage:(float)cpuUsage periodTime:(float)periodSec getPowerConsume:(BOOL)bGetStack;
 
 /**
  * if the CPU occupied too little when it is in the background
  * @return BOOL
  */
 - (BOOL)isBackgroundCPUTooSmall;
-
-/**
- *  get current CPU usage
- *
- *  @return current cpu usage. Single core is full 100%, dual core is full 200%, and so on.
- */
-+ (float)getCurrentCpuUsage;
-
 
 @end

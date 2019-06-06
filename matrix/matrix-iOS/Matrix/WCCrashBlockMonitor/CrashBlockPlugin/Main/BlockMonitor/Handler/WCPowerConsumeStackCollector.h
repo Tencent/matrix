@@ -53,7 +53,15 @@
 
 @property (nonatomic, weak) id<WCPowerConsumeStackCollectorDelegate> delegate;
 
-- (void)getPowerConsumeStack;
+- (id)initWithCPULimit:(float)cpuLimit;
 - (void)makeConclusion;
+- (float)getCPUUsageAndPowerConsumeStack;
+
+/**
+ *  get current CPU usage
+ *
+ *  @return current cpu usage. Single core is full 100%, dual core is full 200%, and so on.
+ */
++ (float)getCurrentCPUUsage;
 
 @end
