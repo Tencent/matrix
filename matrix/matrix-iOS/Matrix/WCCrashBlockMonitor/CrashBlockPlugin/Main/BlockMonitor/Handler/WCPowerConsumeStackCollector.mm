@@ -113,6 +113,25 @@
     }
 }
 
+- (WCAddressFrame *)tryFoundAddressFrameWithAddress:(uintptr_t)toFindAddress
+{
+    if (self.address == toFindAddress) {
+        return self;
+    } else {
+        if (self.childAddressFrame == nil || [self.childAddressFrame count] == 0) {
+            return nil;
+        } else {
+            for (WCAddressFrame *frame in self.childAddressFrame) {
+                WCAddressFrame *foundFrame = [frame tryFoundAddressFrameWithAddress:toFindAddress];
+                if (foundFrame != nil) {
+                    return foundFrame;
+                }
+            }
+            return nil;
+        }
+    }
+}
+
 @end
 
 // ============================================================================
@@ -124,6 +143,7 @@
 {
     uintptr_t **m_stackCyclePool;
     size_t *m_stackCount;
+    float *m_stackCPU;
     uint64_t m_poolTailPoint;
     size_t m_maxStackCount;
 }
@@ -159,7 +179,11 @@
         if (m_stackCount != NULL) {
             memset(m_stackCount, 0, countArrayBytes);
         }
-        
+        size_t cpuArrayBytes = m_maxStackCount * sizeof(float);
+        m_stackCPU = (float *) malloc(cpuArrayBytes);
+        if (m_stackCPU != NULL) {
+            memset(m_stackCPU, 0, cpuArrayBytes);
+        }
         m_poolTailPoint = 0;
     }
     return self;
@@ -181,9 +205,13 @@
         free(m_stackCount);
         m_stackCount = NULL;
     }
+    if (m_stackCPU != NULL) {
+        free(m_stackCPU);
+        m_stackCPU = NULL;
+    }
 }
 
-- (void)addThreadStack:(uintptr_t *)stackArray andLength:(size_t)stackCount
+- (void)addThreadStack:(uintptr_t *)stackArray andLength:(size_t)stackCount andCPU:(float)stackCPU
 {
     if (stackArray == NULL) {
         return;
@@ -199,6 +227,7 @@
     }
     m_stackCyclePool[m_poolTailPoint] = stackArray;
     m_stackCount[m_poolTailPoint] = stackCount;
+    m_stackCPU[m_poolTailPoint] = stackCPU;
     
     m_poolTailPoint = (m_poolTailPoint + 1) % m_maxStackCount;
 }
@@ -210,7 +239,7 @@
     for (int i = 0; i < m_maxStackCount; i++) {
         uintptr_t *curStack = m_stackCyclePool[i];
         size_t curLength = m_stackCount[i];
-        WCAddressFrame *curAddressFrame = [self p_getAddressFrameWithStackTraces:curStack length:curLength];
+        WCAddressFrame *curAddressFrame = [self p_getAddressFrameWithStackTraces:curStack length:curLength cpu:m_stackCPU[i]];
         [self p_addAddressFrame:curAddressFrame];
     }
     
@@ -263,16 +292,18 @@
     return [currentInfoDict copy];
 }
 
-- (WCAddressFrame *)p_getAddressFrameWithStackTraces:(uintptr_t *)stackTrace length:(size_t)traceLength
+- (WCAddressFrame *)p_getAddressFrameWithStackTraces:(uintptr_t *)stackTrace length:(size_t)traceLength cpu:(float)stackCPU
 {
     if (stackTrace == NULL || traceLength== 0) {
         return nil;
     }
     WCAddressFrame *headAddressFrame = nil;
     WCAddressFrame *currentParentFrame = nil;
+    
+    uint32_t repeatWeight = (uint32_t)(stackCPU / 5.);
     for (int i = 0; i < traceLength; i++) {
         uintptr_t address = stackTrace[i];
-        WCAddressFrame *curFrame = [[WCAddressFrame alloc] initWithAddress:address withRepeatCount:1];
+        WCAddressFrame *curFrame = [[WCAddressFrame alloc] initWithAddress:address withRepeatCount:repeatWeight];
         if (currentParentFrame == nil) {
             headAddressFrame = curFrame;
             currentParentFrame = curFrame;
@@ -297,8 +328,8 @@
     } else {
         WCAddressFrame *foundAddressFrame = nil;
         for (WCAddressFrame *tmpFrame in _parentAddressFrame) {
-            if (tmpFrame.address == addressFrame.address) {
-                foundAddressFrame = tmpFrame;
+            foundAddressFrame = [tmpFrame tryFoundAddressFrameWithAddress:addressFrame.address];
+            if (foundAddressFrame != nil) {
                 break;
             }
         }
@@ -315,7 +346,7 @@
     if (mainFrame.address != mergedFrame.address) {
         assert(0);
     }
-    mainFrame.repeatCount += 1;
+    mainFrame.repeatCount += mergedFrame.repeatCount;
     
     if (mainFrame.childAddressFrame == nil || [mainFrame.childAddressFrame count] == 0) {
         mainFrame.childAddressFrame = mergedFrame.childAddressFrame;
@@ -412,9 +443,13 @@ static float kGetPowerStackCPULimit = 80.;
     float tot_cpu = 0;
     
     thread_t *cost_cpu_thread_list = (thread_t *)malloc(sizeof(thread_t) * thread_count);
+    float *cost_cpu_value_list = (float *)malloc(sizeof(float) * thread_count);
+    
     mach_msg_type_number_t cost_cpu_thread_count = 0;
     int cost_cpu_j = 0;
     
+    const thread_t thisThread = (thread_t)ksthread_self();
+
     for (int j = 0; j < thread_count; j++) {
         thread_t current_thread = thread_list[j];
         
@@ -439,8 +474,9 @@ static float kGetPowerStackCPULimit = 80.;
             tot_cpu = tot_cpu + cur_cpu;
         }
         
-        if (cur_cpu > 5.) {
+        if (cur_cpu > 5. && current_thread != thisThread) {
             cost_cpu_thread_list[cost_cpu_j] = current_thread;
+            cost_cpu_value_list[cost_cpu_j] = cur_cpu;
             cost_cpu_j ++;
             cost_cpu_thread_count ++;
         }
@@ -453,7 +489,6 @@ static float kGetPowerStackCPULimit = 80.;
             if (trace_length_matrix == NULL) {
                 break;
             }
-            
             uintptr_t **stack_matrix = (uintptr_t **)malloc(sizeof(uintptr_t *) * cost_cpu_thread_count);
             if (stack_matrix == NULL) {
                 break;
@@ -487,7 +522,7 @@ static float kGetPowerStackCPULimit = 80.;
             ksmc_resumeEnvironment();
 
             for (int i = 0; i < cost_cpu_thread_count; i++) {
-                [_stackTracePool addThreadStack:stack_matrix[i] andLength:(size_t)trace_length_matrix[i]];
+                [_stackTracePool addThreadStack:stack_matrix[i] andLength:(size_t)trace_length_matrix[i] andCPU:cost_cpu_value_list[i]];
             }
             free(trace_length_matrix);
         } while (0);
@@ -495,6 +530,7 @@ static float kGetPowerStackCPULimit = 80.;
     
     kr = vm_deallocate(mach_task_self(), (vm_offset_t) thread_list, thread_count * sizeof(thread_t));
     free(cost_cpu_thread_list);
+    free(cost_cpu_value_list);
     return tot_cpu;
 }
 

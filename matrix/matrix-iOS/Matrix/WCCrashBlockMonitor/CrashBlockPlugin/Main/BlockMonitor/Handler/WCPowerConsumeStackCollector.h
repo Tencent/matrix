@@ -34,7 +34,7 @@
 @interface WCStackTracePool : NSObject
 
 - (id)initWithMaxStackTraceCount:(NSUInteger)maxStackTraceCount withLimitRepeat:(NSUInteger)limitRepeatCount;
-- (void)addThreadStack:(uintptr_t *)stackArray andLength:(size_t)stackCount;
+- (void)addThreadStack:(uintptr_t *)stackArray andLength:(size_t)stackCount andCPU:(float)stackCPU;
 - (NSArray <NSDictionary *>*)makeCallTree;
 
 @end
