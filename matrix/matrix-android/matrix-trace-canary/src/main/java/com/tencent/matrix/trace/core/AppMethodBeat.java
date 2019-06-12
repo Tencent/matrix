@@ -329,7 +329,9 @@ public class AppMethodBeat implements BeatLifecycle {
                         indexRecord.next = tmp;
                     } else {
                         IndexRecord tmp = last.next;
-                        last.next = indexRecord;
+                        if (null != last.next) {
+                            last.next = indexRecord;
+                        }
                         indexRecord.next = tmp;
                     }
                     return indexRecord;
