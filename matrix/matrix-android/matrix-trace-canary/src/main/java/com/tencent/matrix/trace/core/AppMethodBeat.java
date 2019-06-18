@@ -47,6 +47,24 @@ public class AppMethodBeat implements BeatLifecycle {
     private static Object updateTimeLock = new Object();
     private static boolean isPauseUpdateTime = false;
     private static Runnable checkStartExpiredRunnable = null;
+    private static LooperMonitor.LooperDispatchListener looperMonitorListener = new LooperMonitor.LooperDispatchListener() {
+        @Override
+        public boolean isValid() {
+            return status >= STATUS_READY;
+        }
+
+        @Override
+        public void dispatchStart() {
+            super.dispatchStart();
+            AppMethodBeat.dispatchBegin();
+        }
+
+        @Override
+        public void dispatchEnd() {
+            super.dispatchEnd();
+            AppMethodBeat.dispatchEnd();
+        }
+    };
 
     static {
         sHandler.postDelayed(new Runnable() {
@@ -126,6 +144,7 @@ public class AppMethodBeat implements BeatLifecycle {
             if (status == STATUS_DEFAULT) {
                 MatrixLog.i(TAG, "[realRelease] timestamp:%s", System.currentTimeMillis());
                 sHandler.removeCallbacksAndMessages(null);
+                LooperMonitor.unregister(looperMonitorListener);
                 sTimerUpdateThread.quit();
                 sBuffer = null;
                 status = STATUS_OUT_RELEASE;
@@ -144,6 +163,7 @@ public class AppMethodBeat implements BeatLifecycle {
             @Override
             public void run() {
                 synchronized (statusLock) {
+                    MatrixLog.i(TAG, "[startExpired] timestamp:%s status:%s", System.currentTimeMillis(), status);
                     if (status == STATUS_DEFAULT || status == STATUS_READY) {
                         status = STATUS_EXPIRED_START;
                     }
@@ -152,24 +172,7 @@ public class AppMethodBeat implements BeatLifecycle {
         }, Constants.DEFAULT_RELEASE_BUFFER_DELAY);
 
         ActivityThreadHacker.hackSysHandlerCallback();
-        LooperMonitor.register(new LooperMonitor.LooperDispatchListener() {
-            @Override
-            public boolean isValid() {
-                return status >= STATUS_READY;
-            }
-
-            @Override
-            public void dispatchStart() {
-                super.dispatchStart();
-                AppMethodBeat.dispatchBegin();
-            }
-
-            @Override
-            public void dispatchEnd() {
-                super.dispatchEnd();
-                AppMethodBeat.dispatchEnd();
-            }
-        });
+        LooperMonitor.register(looperMonitorListener);
     }
 
     private static void dispatchBegin() {

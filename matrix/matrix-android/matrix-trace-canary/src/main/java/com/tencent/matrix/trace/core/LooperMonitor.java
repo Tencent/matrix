@@ -88,7 +88,7 @@ public class LooperMonitor implements MessageQueue.IdleHandler {
 
                 if (isValid) {
                     dispatch(x.charAt(0) == '>');
-                    if (MatrixHandlerThread.isDebug && !AppActiveMatrixDelegate.INSTANCE.isAppForeground()) {
+                    if (MatrixHandlerThread.isDebug && !AppActiveMatrixDelegate.INSTANCE.isAppForeground() && x.charAt(0) == '>') {
                         MatrixLog.i(TAG, x);
                     }
                 }
@@ -100,6 +100,15 @@ public class LooperMonitor implements MessageQueue.IdleHandler {
     public static void register(LooperDispatchListener listener) {
         synchronized (listeners) {
             listeners.add(listener);
+        }
+    }
+
+    public static void unregister(LooperDispatchListener listener) {
+        if (null == listener) {
+            return;
+        }
+        synchronized (listeners) {
+            listeners.remove(listener);
         }
     }
 
