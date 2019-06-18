@@ -60,6 +60,8 @@ static uint32_t g_triggerdFilterSameCnt = 0;
 
 #define APP_SHOULD_SUSPEND 180 * BM_MicroFormat_Second
 
+#define PRINT_MEMORY_USE_INTERVAL 5
+
 #define __timercmp(tvp, uvp, cmp) \
     (((tvp)->tv_sec == (uvp)->tv_sec) ? ((tvp)->tv_usec cmp(uvp)->tv_usec) : ((tvp)->tv_sec cmp(uvp)->tv_sec))
 
@@ -146,6 +148,8 @@ KSStackCursor *kscrash_pointThreadCallback(void)
     
     WCFilterStackHandler *m_stackHandler;
     WCPowerConsumeStackCollector *m_powerConsumeStackCollector;
+    
+    uint32_t m_printMemoryTickTok;
 }
 
 @property (nonatomic, strong) WCBlockMonitorConfigHandler *monitorConfigHandler;
@@ -228,6 +232,12 @@ KSStackCursor *kscrash_pointThreadCallback(void)
     g_enterBackground = {0, 0};
     gettimeofday(&g_lastCheckTime, NULL);
     
+    if ([_monitorConfigHandler getShouldPrintMemoryUse]) {
+        m_printMemoryTickTok = 0;
+    } else {
+        m_printMemoryTickTok = 6;
+    }
+
     g_MainThreadCount = [_monitorConfigHandler getMainThreadCount];
     m_pointMainThreadHandler = [[WCMainThreadHandler alloc] initWithCycleArrayCount:g_MainThreadCount];
     g_StackMaxCount = [m_pointMainThreadHandler getStackMaxCount];
@@ -617,7 +627,24 @@ KSStackCursor *kscrash_pointThreadCallback(void)
         }
     }
 
-    // 3. no lag
+    // 3. print memory
+    
+    if (m_printMemoryTickTok < PRINT_MEMORY_USE_INTERVAL) {
+        if ((m_printMemoryTickTok % PRINT_MEMORY_USE_INTERVAL) == 0) {
+            int64_t footprint = [WCBlockMonitorMgr getFootprintResidentMemory];
+            int64_t footprintMB = footprint / 1024 / 1024;
+            if (footprintMB > 200) {
+                MatrixInfo(@"check memory footprint %llu MB", footprintMB);
+            }
+            MatrixDebug(@"check memory footprint %llu MB", footprintMB);
+        }
+        m_printMemoryTickTok += 1;
+        if (m_printMemoryTickTok == PRINT_MEMORY_USE_INTERVAL) {
+            m_printMemoryTickTok = 0;
+        }
+    }
+    
+    // 4. no lag
     return EDumpType_Unlag;
 }
 
@@ -999,6 +1026,20 @@ void myInitializetionRunLoopEndCallback(CFRunLoopObserverRef observer, CFRunLoop
 + (unsigned long long)diffTime:(struct timeval *)tvStart endTime:(struct timeval *)tvEnd
 {
     return 1000000 * (tvEnd->tv_sec - tvStart->tv_sec) + tvEnd->tv_usec - tvStart->tv_usec;
+}
+
++ (int64_t)getFootprintResidentMemory
+{
+    int64_t memoryUsageInByte = 0;
+    task_vm_info_data_t vmInfo;
+    mach_msg_type_number_t count = TASK_VM_INFO_COUNT;
+    kern_return_t kernelReturn = task_info(mach_task_self(), TASK_VM_INFO, (task_info_t) &vmInfo, &count);
+    if(kernelReturn == KERN_SUCCESS) {
+        memoryUsageInByte = (int64_t) vmInfo.phys_footprint;
+    } else {
+        MatrixError(@"Error with task_info(): %s", mach_error_string(kernelReturn));
+    }
+    return memoryUsageInByte;
 }
 
 @end

@@ -33,5 +33,6 @@
 - (float)getPowerConsumeCPULimit;
 - (BOOL)getShouldFilterSameStack;
 - (uint32_t)getTriggerFilterCount;
+- (BOOL)getShouldPrintMemoryUse;
 
 @end

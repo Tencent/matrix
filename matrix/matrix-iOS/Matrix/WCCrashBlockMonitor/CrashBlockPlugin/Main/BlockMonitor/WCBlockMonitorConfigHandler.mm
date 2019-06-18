@@ -116,4 +116,9 @@
     return m_currentConfiguration.triggerToBeFilteredCount;
 }
 
+- (BOOL)getShouldPrintMemoryUse
+{
+    return m_currentConfiguration.bPrintMemomryUse;
+}
+
 @end

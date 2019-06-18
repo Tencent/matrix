@@ -68,4 +68,7 @@ const static int g_defaultFrameDropCount = 8;
 /// define the count that a stack can be captured in one day, see above "bFilterSameStack"
 @property (nonatomic, assign) uint32_t triggerToBeFilteredCount;
 
+/// enable printing the memory use
+@property (nonatomic, assign) BOOL bPrintMemomryUse;
+
 @end

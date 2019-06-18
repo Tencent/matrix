@@ -31,6 +31,7 @@
 #define kPowerConsumeCPULimit "PowerConsumeCPULimit"
 #define kFilterSameStack "FilterSameStack"
 #define kTriggerFilteredCount "TriggerFilteredCount"
+#define kPrintMemoryUsage "PrintMemoryUse"
 
 @implementation WCBlockMonitorConfiguration
 
@@ -49,6 +50,7 @@
     configuration.powerConsumeStackCPULimit = g_defaultPowerConsumeCPULimit;
     configuration.bFilterSameStack = NO;
     configuration.triggerToBeFilteredCount = 10;
+    configuration.bPrintMemomryUse = NO;
     return configuration;
 }
 
@@ -68,6 +70,7 @@
         _powerConsumeStackCPULimit = [aDecoder decodeFloatForKey:@kPowerConsumeCPULimit];
         _bFilterSameStack = [aDecoder decodeBoolForKey:@kFilterSameStack];
         _triggerToBeFilteredCount = (uint32_t)[aDecoder decodeInt32ForKey:@kTriggerFilteredCount];
+        _bPrintMemomryUse = [aDecoder decodeBoolForKey:@kPrintMemoryUsage];
     }
     return self;
 }
@@ -86,6 +89,7 @@
     [aCoder encodeFloat:_powerConsumeStackCPULimit forKey:@kPowerConsumeCPULimit];
     [aCoder encodeBool:_bFilterSameStack forKey:@kFilterSameStack];
     [aCoder encodeInt32:_triggerToBeFilteredCount forKey:@kTriggerFilteredCount];
+    [aCoder encodeBool:_bPrintMemomryUse forKey:@kPrintMemoryUsage];
 }
 
 - (NSString *)description
@@ -93,11 +97,13 @@
     return [NSString stringWithFormat:@"RunLoopTimeOut[%u],CheckPeriodTime[%d],\
             \nMainThreadHandle[%d],PerStackInterval[%d],MainThreadCount[%d],\
             \nCPUUsagePercent[%f],PrintCPU[%d],GetCPUHighLog[%d],GetPowerConsumeStack[%d],\
-            \nPowerConsumeCPULimit[%f],FilterSameStact[%d],TriggerBeFilteredCount[%u]",
+            \nPowerConsumeCPULimit[%f],FilterSameStact[%d],TriggerBeFilteredCount[%u],\
+            \nPrintMemory[%d]",
             self.checkPeriodTime, self.runloopTimeOut,
             self.bMainThreadHandle, self.perStackInterval, self.mainThreadCount,
             self.limitCPUPercent, self.bPrintCPUUsage, self.bGetCPUHighLog, self.bGetPowerConsumeStack,
-            self.powerConsumeStackCPULimit, self.bFilterSameStack, self.triggerToBeFilteredCount];
+            self.powerConsumeStackCPULimit, self.bFilterSameStack, self.triggerToBeFilteredCount,
+            self.bPrintMemomryUse];
 }
 
 @end
