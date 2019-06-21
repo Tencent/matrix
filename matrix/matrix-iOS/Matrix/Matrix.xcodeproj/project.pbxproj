@@ -387,6 +387,10 @@
 		1177FFF32137A53300FDFEB4 /* MatrixTester.mm in Sources */ = {isa = PBXBuildFile; fileRef = 1177FFE421379FE800FDFEB4 /* MatrixTester.mm */; };
 		11B438EE21F17C6600A0A8C3 /* WCCrashBlockMonitorPlugin+Upload.h in Headers */ = {isa = PBXBuildFile; fileRef = 11B438EC21F17C6600A0A8C3 /* WCCrashBlockMonitorPlugin+Upload.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		11B438F121F17C7000A0A8C3 /* WCCrashBlockMonitorPlugin+Upload.h in Headers */ = {isa = PBXBuildFile; fileRef = 11B438EC21F17C6600A0A8C3 /* WCCrashBlockMonitorPlugin+Upload.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		11B71A4B22F45A1F004A7212 /* KSCrash_fishhook.c in Sources */ = {isa = PBXBuildFile; fileRef = 11B71A4922F45A1F004A7212 /* KSCrash_fishhook.c */; };
+		11B71A4C22F45A1F004A7212 /* KSCrash_fishhook.h in Headers */ = {isa = PBXBuildFile; fileRef = 11B71A4A22F45A1F004A7212 /* KSCrash_fishhook.h */; };
+		11B71A4D22F45A35004A7212 /* KSCrash_fishhook.c in Sources */ = {isa = PBXBuildFile; fileRef = 11B71A4922F45A1F004A7212 /* KSCrash_fishhook.c */; };
+		11B71A4E22F45A39004A7212 /* KSCrash_fishhook.h in Headers */ = {isa = PBXBuildFile; fileRef = 11B71A4A22F45A1F004A7212 /* KSCrash_fishhook.h */; };
 		93DD5872225F3731005C267C /* bundle_name_helper.h in Headers */ = {isa = PBXBuildFile; fileRef = 93DD5870225F3731005C267C /* bundle_name_helper.h */; };
 		93DD5873225F3731005C267C /* bundle_name_helper.h in Headers */ = {isa = PBXBuildFile; fileRef = 93DD5870225F3731005C267C /* bundle_name_helper.h */; };
 		93DD5874225F3731005C267C /* bundle_name_helper.mm in Sources */ = {isa = PBXBuildFile; fileRef = 93DD5871225F3731005C267C /* bundle_name_helper.mm */; };
@@ -730,6 +734,8 @@
 		1177FFE321379FE800FDFEB4 /* MatrixTester.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MatrixTester.h; sourceTree = "<group>"; };
 		1177FFE421379FE800FDFEB4 /* MatrixTester.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = MatrixTester.mm; sourceTree = "<group>"; };
 		11B438EC21F17C6600A0A8C3 /* WCCrashBlockMonitorPlugin+Upload.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "WCCrashBlockMonitorPlugin+Upload.h"; sourceTree = "<group>"; };
+		11B71A4922F45A1F004A7212 /* KSCrash_fishhook.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = KSCrash_fishhook.c; sourceTree = "<group>"; };
+		11B71A4A22F45A1F004A7212 /* KSCrash_fishhook.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = KSCrash_fishhook.h; sourceTree = "<group>"; };
 		11E683E52103231D00E4EADC /* NSApplicationEvent.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = NSApplicationEvent.h; sourceTree = "<group>"; };
 		11E683E62103231D00E4EADC /* NSApplicationEvent.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = NSApplicationEvent.mm; sourceTree = "<group>"; };
 		93DD5870225F3731005C267C /* bundle_name_helper.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = bundle_name_helper.h; sourceTree = "<group>"; };
@@ -1000,6 +1006,8 @@
 				114E67F620AAC0CE0045083D /* KSCrashMonitor_AppState.h */,
 				114E67F720AAC0CE0045083D /* KSCrashMonitor_CPPException.cpp */,
 				114E67F820AAC0CE0045083D /* KSCrashMonitor_CPPException.h */,
+				11B71A4A22F45A1F004A7212 /* KSCrash_fishhook.h */,
+				11B71A4922F45A1F004A7212 /* KSCrash_fishhook.c */,
 				114E67F920AAC0CE0045083D /* KSCrashMonitor_Deadlock.h */,
 				114E67FA20AAC0CE0045083D /* KSCrashMonitor_Deadlock.m */,
 				114E67FB20AAC0CE0045083D /* KSCrashMonitor_MachException.c */,
@@ -1532,6 +1540,7 @@
 				1164612A2111AF190069B5DE /* WCDumpReportTaskData.h in Headers */,
 				1164612D2111AF190069B5DE /* KSCrashMonitor_NSException.h in Headers */,
 				BB77AD1222368582008C67D9 /* memory_logging.h in Headers */,
+				11B71A4C22F45A1F004A7212 /* KSCrash_fishhook.h in Headers */,
 				BB77AD5222368582008C67D9 /* encodedstream.h in Headers */,
 				116461302111AF190069B5DE /* KSCrashMonitor_AppState.h in Headers */,
 				116461312111AF190069B5DE /* WCCPUHandler.h in Headers */,
@@ -1702,6 +1711,7 @@
 				116606B321369E1E00F4ED74 /* WCDumpReportTaskData.h in Headers */,
 				116606B621369E1E00F4ED74 /* KSCrashMonitor_NSException.h in Headers */,
 				BB77AD1422368582008C67D9 /* memory_logging.h in Headers */,
+				11B71A4E22F45A39004A7212 /* KSCrash_fishhook.h in Headers */,
 				BB77AD5422368582008C67D9 /* encodedstream.h in Headers */,
 				116606B921369E1E00F4ED74 /* KSCrashMonitor_AppState.h in Headers */,
 				116606BA21369E1E00F4ED74 /* WCCPUHandler.h in Headers */,
@@ -1924,6 +1934,7 @@
 				116460D12111AF190069B5DE /* WCGetCallStackReportHandler.mm in Sources */,
 				116460D22111AF190069B5DE /* MatrixPluginConfig.mm in Sources */,
 				116460D32111AF190069B5DE /* KSSignalInfo.c in Sources */,
+				11B71A4B22F45A1F004A7212 /* KSCrash_fishhook.c in Sources */,
 				116460D42111AF190069B5DE /* KSCrashMonitor_System.m in Sources */,
 				116460D52111AF190069B5DE /* KSFileUtils.c in Sources */,
 				BB77ACFE22368582008C67D9 /* dyld_image_info.cpp in Sources */,
@@ -2031,6 +2042,7 @@
 				1166065D21369E1E00F4ED74 /* MatrixPluginConfig.mm in Sources */,
 				1166065E21369E1E00F4ED74 /* KSSignalInfo.c in Sources */,
 				1166065F21369E1E00F4ED74 /* KSCrashMonitor_System.m in Sources */,
+				11B71A4D22F45A35004A7212 /* KSCrash_fishhook.c in Sources */,
 				1166066021369E1E00F4ED74 /* KSFileUtils.c in Sources */,
 				BB77AD0022368582008C67D9 /* dyld_image_info.cpp in Sources */,
 				1166066121369E1E00F4ED74 /* WCCrashReportInfoUtil.mm in Sources */,
