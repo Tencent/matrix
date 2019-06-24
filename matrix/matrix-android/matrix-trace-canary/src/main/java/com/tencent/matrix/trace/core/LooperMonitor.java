@@ -6,9 +6,6 @@ import android.os.MessageQueue;
 import android.support.annotation.CallSuper;
 import android.util.Printer;
 
-import com.tencent.matrix.AppActiveMatrixDelegate;
-import com.tencent.matrix.Matrix;
-import com.tencent.matrix.util.MatrixHandlerThread;
 import com.tencent.matrix.util.MatrixLog;
 
 import java.lang.reflect.Field;
@@ -19,7 +16,7 @@ public class LooperMonitor implements MessageQueue.IdleHandler {
     private static final HashSet<LooperDispatchListener> listeners = new HashSet<>();
     private static final String TAG = "Matrix.LooperMonitor";
     private static Printer printer;
-
+    public static Printer testPrinter = null;
 
     public abstract static class LooperDispatchListener {
 
@@ -88,8 +85,8 @@ public class LooperMonitor implements MessageQueue.IdleHandler {
 
                 if (isValid) {
                     dispatch(x.charAt(0) == '>');
-                    if (MatrixHandlerThread.isDebug && !AppActiveMatrixDelegate.INSTANCE.isAppForeground() && x.charAt(0) == '>') {
-                        MatrixLog.i(TAG, x);
+                    if (null != testPrinter) {
+                        testPrinter.println(x);
                     }
                 }
 
