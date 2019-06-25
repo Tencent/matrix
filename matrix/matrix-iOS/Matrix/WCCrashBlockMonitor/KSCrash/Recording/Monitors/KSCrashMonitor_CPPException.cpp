@@ -109,8 +109,8 @@ void my_cxa_throw(void* thrown_exception, std::type_info* tinfo, void (*dest)(vo
     {
         kssc_initSelfThread(&g_stackCursor, 1);
         g_capturedStackCursor = true;
+        KSLOG_DEBUG("Trapped C++ Stack");
     }
-    KSLOG_DEBUG("Trapped C++ Stack");
     return orig_cxa_throw(thrown_exception, tinfo, dest);
 }
 
@@ -125,9 +125,9 @@ static void CPPExceptionTerminate(void)
         name = tinfo->name();
     }
     KSLOG_DEBUG("name:%s capured:%d", name, g_capturedStackCursor);
-    // if (name == NULL || strcmp(name, "NSException") != 0)
     // 之前判断是否是cpp exception的条件，继承自NSException的NSException会被当做cpp exception处理
-    if(g_capturedStackCursor == true)
+    // if (name == NULL || strcmp(name, "NSException") != 0
+    if (g_capturedStackCursor && (name == NULL || strcmp(name, "NSException") != 0))
     {
         kscm_notifyFatalExceptionCaptured(false);
         KSCrash_MonitorContext* crashContext = &g_monitorContext;
