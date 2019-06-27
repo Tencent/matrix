@@ -24,7 +24,9 @@ import android.os.Bundle;
 import android.os.Debug;
 import android.os.SystemClock;
 import android.provider.Settings;
+
 import android.support.annotation.Nullable;
+import android.util.Log;
 import android.view.View;
 import android.webkit.PermissionRequest;
 import android.widget.Toast;
@@ -49,6 +51,7 @@ public class TestTraceMainActivity extends Activity implements IAppForeground {
     private static String TAG = "Matrix.TestTraceMainActivity";
     FrameDecorator decorator;
     private static final int PERMISSION_REQUEST_CODE = 0x02;
+
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -205,8 +208,37 @@ public class TestTraceMainActivity extends Activity implements IAppForeground {
         SystemClock.sleep(6000);
     }
 
-    private void tryHeavyMethod() {
-        Debug.getMemoryInfo(new Debug.MemoryInfo());
+    private void A() {
+        B();
+        H();
+        I();
+        J();
+        SystemClock.sleep(800);
+    }
+
+    private void B() {
+        C();
+        G();
+        SystemClock.sleep(200);
+    }
+
+    private void C() {
+        D();
+        E();
+        F();
+        SystemClock.sleep(100);
+    }
+
+    private void D() {
+        SystemClock.sleep(20);
+    }
+
+    private void E() {
+        SystemClock.sleep(20);
+    }
+
+    private void F() {
+        SystemClock.sleep(20);
     }
 
     @Override
@@ -219,5 +251,14 @@ public class TestTraceMainActivity extends Activity implements IAppForeground {
         } else {
             decorator.show();
         }
+        isStop = !isStop;
+    }
+
+    public void testInnerSleep() {
+        SystemClock.sleep(6000);
+    }
+
+    private void tryHeavyMethod() {
+        Debug.getMemoryInfo(new Debug.MemoryInfo());
     }
 }
