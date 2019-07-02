@@ -435,7 +435,13 @@ public class MemoryCanaryCore implements IssuePublisher.OnIssueDetectListener {
     }
 
     private long getNextDelay() {
-        return (getFib(mNextReportFactor) - getFib(mNextReportFactor - 1)) * STEP_FACTOR;
+        long start = System.currentTimeMillis();
+        long delay = (getFib(mNextReportFactor) - getFib(mNextReportFactor - 1)) * STEP_FACTOR;
+        long cost = System.currentTimeMillis() - start;
+        if (cost > 1000) {
+            MatrixLog.e(TAG, "[getNextDelay] cost time[%s] too long!", cost);
+        }
+        return delay;
     }
 
     private int getFib(int n) {
