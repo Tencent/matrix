@@ -5,6 +5,7 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.SystemClock;
+import android.util.Log;
 
 import com.tencent.matrix.AppActiveMatrixDelegate;
 import com.tencent.matrix.trace.constants.Constants;
@@ -20,6 +21,7 @@ import java.util.Set;
 public class AppMethodBeat implements BeatLifecycle {
 
     private static final String TAG = "Matrix.AppMethodBeat";
+    public static final boolean isDev = false;
     private static AppMethodBeat sInstance = new AppMethodBeat();
     private static final int STATUS_DEFAULT = Integer.MAX_VALUE;
     private static final int STATUS_STARTED = 2;
@@ -286,6 +288,9 @@ public class AppMethodBeat implements BeatLifecycle {
      * @param isIn
      */
     private static void mergeData(int methodId, int index, boolean isIn) {
+        if (isDev) {
+            Log.v(TAG, String.format("methodId:%d index:%d isIn:%b", methodId, index, isIn));
+        }
         if (methodId == AppMethodBeat.METHOD_ID_DISPATCH) {
             sCurrentDiffTime = SystemClock.uptimeMillis() - sDiffTime;
         }
