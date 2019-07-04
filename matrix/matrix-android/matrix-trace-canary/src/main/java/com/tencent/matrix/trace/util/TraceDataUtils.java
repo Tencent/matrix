@@ -61,15 +61,15 @@ public class TraceDataUtils {
                     long in = rawData.pop();
                     depth--;
                     int inMethodId;
-                    while ((inMethodId = getMethodId(in)) != methodId && !rawData.isEmpty()) {
+                    while ((inMethodId = getMethodId(in)) != methodId && inMethodId != AppMethodBeat.METHOD_ID_DISPATCH && !rawData.isEmpty()) {
                         MatrixLog.w(TAG, "[structuredDataToStack] outMethod[%s] not match inMethod[%s]! pop to continue find! inSize:%s", methodId, inMethodId, rawData.size());
                         in = rawData.pop();
                         depth--;
                     }
-                    if (lastInId == methodId && methodId == AppMethodBeat.METHOD_ID_DISPATCH) {
-                        MatrixLog.w(TAG, "[structuredDataToStack] continue..., inSize:%s", rawData.size());
-                        continue;
+                    if (inMethodId == AppMethodBeat.METHOD_ID_DISPATCH) {
+                        MatrixLog.w(TAG, "[structuredDataToStack] [%s:%s] not found finally!, inSize:%s", inMethodId, methodId, rawData.size());
                     }
+
                     long outTime = getTime(trueId);
                     long inTime = getTime(in);
                     long during = outTime - inTime;
