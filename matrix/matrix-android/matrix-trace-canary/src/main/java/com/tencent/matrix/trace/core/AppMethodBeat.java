@@ -21,7 +21,7 @@ import java.util.Set;
 public class AppMethodBeat implements BeatLifecycle {
 
     private static final String TAG = "Matrix.AppMethodBeat";
-    public static final boolean isDev = false;
+    public static boolean isDev = false;
     private static AppMethodBeat sInstance = new AppMethodBeat();
     private static final int STATUS_DEFAULT = Integer.MAX_VALUE;
     private static final int STATUS_STARTED = 2;
