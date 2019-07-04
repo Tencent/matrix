@@ -84,6 +84,7 @@ public class MemoryCanaryCore implements IssuePublisher.OnIssueDetectListener {
     private static final int NATIVE_HEAP_LIMIT = 500 * 1024;
     private static final int TRIM_MEMORY_SPAN = 10 * 60 * 1000;
     private static final int VMSIZE_LIMIT = 4 * 1024 * 1024; //4GB
+    private static final int MAX_COST = 3000;
 
     private final MemoryCanaryPlugin mPlugin;
     private boolean mIsOpen = false;
@@ -251,6 +252,9 @@ public class MemoryCanaryCore implements IssuePublisher.OnIssueDetectListener {
     }
 
     private void detectAppMemoryInfo(boolean bDetectAll, int flag) {
+        if(!mIsOpen)
+            return;
+
         if (!bDetectAll) {
             detectRuntimeMemoryInfo();
         } else {
@@ -304,6 +308,10 @@ public class MemoryCanaryCore implements IssuePublisher.OnIssueDetectListener {
             if (memoryInfo != null) {
                 long cost = System.currentTimeMillis() - start;
                 MatrixLog.i(TAG, "get app memory cost:" + cost);
+                if(cost > MAX_COST) {
+                    mIsOpen = false;
+                    return;
+                }
                 MatrixMemoryInfo appInfo = new MatrixMemoryInfo(mShowingActivity);
                 makeMatrixMemoryInfo(memoryInfo, appInfo);
                 fillMemoryInfo(json, appInfo, SharePluginInfo.ISSUE_APP_MEM, mShowingActivity);
@@ -342,6 +350,10 @@ public class MemoryCanaryCore implements IssuePublisher.OnIssueDetectListener {
 
         long cost = System.currentTimeMillis() - start;
         MatrixLog.i(TAG, "get app memory cost:" + cost);
+        if(cost > MAX_COST) {
+            mIsOpen = false;
+            return;
+        }
 
         //ontrimmemory or use too much memory
         MatrixMemoryInfo matrixMemoryInfo = new MatrixMemoryInfo(mShowingActivity);
