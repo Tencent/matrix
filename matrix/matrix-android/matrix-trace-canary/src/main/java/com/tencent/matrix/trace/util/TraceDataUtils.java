@@ -1,5 +1,7 @@
 package com.tencent.matrix.trace.util;
 
+import android.util.Log;
+
 import com.tencent.matrix.trace.constants.Constants;
 import com.tencent.matrix.trace.core.AppMethodBeat;
 import com.tencent.matrix.trace.items.MethodItem;
@@ -60,11 +62,12 @@ public class TraceDataUtils {
                     depth--;
                     int inMethodId = getMethodId(in);
                     while (inMethodId != methodId && !rawData.isEmpty()) {
-                        MatrixLog.w(TAG, "[structuredDataToStack] method[%s] not match in! pop[%s] to continue find!", methodId, inMethodId);
+                        MatrixLog.w(TAG, "[structuredDataToStack] outMethod[%s] not match inMethod[%s]! pop to continue find! inSize:%s", methodId, inMethodId, rawData.size());
                         in = rawData.pop();
                         depth--;
                     }
                     if (lastInId == methodId && methodId == AppMethodBeat.METHOD_ID_DISPATCH) {
+                        MatrixLog.w(TAG, "[structuredDataToStack] continue..., inSize:%s", rawData.size());
                         continue;
                     }
                     long outTime = getTime(trueId);
@@ -117,6 +120,9 @@ public class TraceDataUtils {
     }
 
     private static int addMethodItem(LinkedList<MethodItem> resultStack, MethodItem item) {
+        if (AppMethodBeat.isDev) {
+            Log.v(TAG, "method:" + item);
+        }
         MethodItem last = null;
         if (!resultStack.isEmpty()) {
             last = resultStack.peek();
