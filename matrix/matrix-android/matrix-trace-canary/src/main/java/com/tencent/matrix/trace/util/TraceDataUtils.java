@@ -60,8 +60,8 @@ public class TraceDataUtils {
                 if (!rawData.isEmpty()) {
                     long in = rawData.pop();
                     depth--;
-                    int inMethodId = getMethodId(in);
-                    while (inMethodId != methodId && !rawData.isEmpty()) {
+                    int inMethodId;
+                    while ((inMethodId = getMethodId(in)) != methodId && !rawData.isEmpty()) {
                         MatrixLog.w(TAG, "[structuredDataToStack] outMethod[%s] not match inMethod[%s]! pop to continue find! inSize:%s", methodId, inMethodId, rawData.size());
                         in = rawData.pop();
                         depth--;
