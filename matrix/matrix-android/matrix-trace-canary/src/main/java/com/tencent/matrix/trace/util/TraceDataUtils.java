@@ -7,7 +7,6 @@ import com.tencent.matrix.trace.core.AppMethodBeat;
 import com.tencent.matrix.trace.items.MethodItem;
 import com.tencent.matrix.util.MatrixLog;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Iterator;
@@ -56,19 +55,16 @@ public class TraceDataUtils {
                 depth++;
                 rawData.push(trueId);
             } else {
-                int methodId = getMethodId(trueId); // out
+                int outMethodId = getMethodId(trueId);
                 if (!rawData.isEmpty()) {
-                    long in = rawData.pop();
+                    long in = rawData.peek();
+                    int inMethodId = getMethodId(in);
+                    if (inMethodId != outMethodId) {
+                        MatrixLog.e(TAG, "inMethodId[%s] != outMethodId[%s] throw this outMethodId!");
+                        continue;
+                    }
+                    in = rawData.pop();
                     depth--;
-                    int inMethodId;
-                    while ((inMethodId = getMethodId(in)) != methodId && inMethodId != AppMethodBeat.METHOD_ID_DISPATCH && !rawData.isEmpty()) {
-                        MatrixLog.w(TAG, "[structuredDataToStack] outMethod[%s] not match inMethod[%s]! pop to continue find! inSize:%s", methodId, inMethodId, rawData.size());
-                        in = rawData.pop();
-                        depth--;
-                    }
-                    if (inMethodId == AppMethodBeat.METHOD_ID_DISPATCH) {
-                        MatrixLog.w(TAG, "[structuredDataToStack] [%s:%s] not found finally!, inSize:%s", inMethodId, methodId, rawData.size());
-                    }
 
                     long outTime = getTime(trueId);
                     long inTime = getTime(in);
@@ -79,10 +75,10 @@ public class TraceDataUtils {
                         result.clear();
                         return;
                     }
-                    MethodItem methodItem = new MethodItem(methodId, (int) during, depth);
+                    MethodItem methodItem = new MethodItem(outMethodId, (int) during, depth);
                     addMethodItem(result, methodItem);
                 } else {
-                    MatrixLog.w(TAG, "[structuredDataToStack] method[%s] not found in! ", methodId);
+                    MatrixLog.w(TAG, "[structuredDataToStack] method[%s] not found in! ", outMethodId);
                 }
             }
         }

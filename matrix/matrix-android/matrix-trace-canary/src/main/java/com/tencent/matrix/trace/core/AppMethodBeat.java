@@ -212,7 +212,7 @@ public class AppMethodBeat implements BeatLifecycle {
             }
         }
 
-        if (Thread.currentThread() == sMainThread) {
+        if (Thread.currentThread().getId() == sMainThread.getId()) {
             if (assertIn) {
                 android.util.Log.e(TAG, "ERROR!!! AppMethodBeat.i Recursive calls!!!");
                 return;
@@ -241,7 +241,7 @@ public class AppMethodBeat implements BeatLifecycle {
         if (methodId >= METHOD_ID_MAX) {
             return;
         }
-        if (Thread.currentThread() == sMainThread) {
+        if (Thread.currentThread().getId() == sMainThread.getId()) {
             if (sIndex < Constants.BUFFER_SIZE) {
                 mergeData(methodId, sIndex, false);
             } else {
