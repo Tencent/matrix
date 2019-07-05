@@ -60,7 +60,7 @@ public class TraceDataUtils {
                     long in = rawData.peek();
                     int inMethodId = getMethodId(in);
                     if (inMethodId != outMethodId) {
-                        MatrixLog.e(TAG, "inMethodId[%s] != outMethodId[%s] throw this outMethodId!");
+                        MatrixLog.e(TAG, "inMethodId[%s] != outMethodId[%s] throw this outMethodId!", inMethodId, outMethodId);
                         continue;
                     }
                     in = rawData.pop();
