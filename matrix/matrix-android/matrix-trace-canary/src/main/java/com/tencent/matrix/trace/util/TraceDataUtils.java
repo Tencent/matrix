@@ -57,14 +57,24 @@ public class TraceDataUtils {
             } else {
                 int outMethodId = getMethodId(trueId);
                 if (!rawData.isEmpty()) {
-                    long in = rawData.peek();
-                    int inMethodId = getMethodId(in);
-                    if (inMethodId != outMethodId) {
+                    long in = rawData.pop();
+                    depth--;
+                    int inMethodId;
+                    LinkedList<Long> tmp = new LinkedList<>();
+                    tmp.add(in);
+                    while ((inMethodId = getMethodId(in)) != outMethodId && !rawData.isEmpty()) {
+                        MatrixLog.w(TAG, "pop inMethodId[%s] to continue match ouMethodId[%s]", inMethodId, outMethodId);
+                        in = rawData.pop();
+                        depth--;
+                        tmp.add(in);
+                    }
+
+                    if (inMethodId != outMethodId && inMethodId == AppMethodBeat.METHOD_ID_DISPATCH) {
                         MatrixLog.e(TAG, "inMethodId[%s] != outMethodId[%s] throw this outMethodId!", inMethodId, outMethodId);
+                        rawData.addAll(tmp);
+                        depth += rawData.size();
                         continue;
                     }
-                    in = rawData.pop();
-                    depth--;
 
                     long outTime = getTime(trueId);
                     long inTime = getTime(in);
