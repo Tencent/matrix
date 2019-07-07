@@ -230,6 +230,7 @@ public class MemoryCanaryCore implements IssuePublisher.OnIssueDetectListener {
     public void stop() {
         ((Application) mContext).unregisterActivityLifecycleCallbacks(mActivityLifecycleCallback);
         mContext.unregisterComponentCallbacks(mComponentCallback);
+        mIsOpen = false;
     }
 
     @Override
