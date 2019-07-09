@@ -10,13 +10,14 @@ import com.tencent.matrix.util.MatrixLog;
 
 import java.lang.reflect.Field;
 import java.util.HashSet;
+import java.util.Objects;
 
 public class LooperMonitor implements MessageQueue.IdleHandler {
 
-    private static final HashSet<LooperDispatchListener> listeners = new HashSet<>();
+    private final HashSet<LooperDispatchListener> listeners = new HashSet<>();
     private static final String TAG = "Matrix.LooperMonitor";
     private static Printer printer;
-
+    private Looper looper;
 
     public abstract static class LooperDispatchListener {
 
@@ -26,28 +27,58 @@ public class LooperMonitor implements MessageQueue.IdleHandler {
             return false;
         }
 
-        @CallSuper
-        void dispatchStart() {
-            this.isHasDispatchStart = true;
+
+        public void dispatchStart() {
+
         }
 
         @CallSuper
-        void dispatchEnd() {
+        public void onDispatchStart(String x) {
+            this.isHasDispatchStart = true;
+            dispatchStart();
+        }
+
+        @CallSuper
+        public void onDispatchEnd(String x) {
             this.isHasDispatchStart = false;
+            dispatchEnd();
+        }
+
+
+        public void dispatchEnd() {
         }
     }
 
-    private static final LooperMonitor monitor = new LooperMonitor();
+    private static final LooperMonitor mainMonitor = new LooperMonitor();
 
-    private LooperMonitor() {
+    public static void register(LooperDispatchListener listener) {
+        synchronized (mainMonitor.listeners) {
+            mainMonitor.listeners.add(listener);
+        }
+    }
+
+    public static void unregister(LooperDispatchListener listener) {
+        synchronized (mainMonitor.listeners) {
+            mainMonitor.listeners.remove(listener);
+        }
+    }
+
+    public LooperMonitor(Looper looper) {
+        this.looper = looper;
+        Objects.requireNonNull(looper);
         resetPrinter();
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            Looper.getMainLooper().getQueue().addIdleHandler(this);
+            looper.getQueue().addIdleHandler(this);
         } else {
-            MessageQueue queue = reflectObject(Looper.getMainLooper(), "mQueue");
+            MessageQueue queue = reflectObject(looper, "mQueue");
             queue.addIdleHandler(this);
         }
+
+    }
+
+    private LooperMonitor() {
+        this(Looper.getMainLooper());
     }
 
     @Override
@@ -57,15 +88,15 @@ public class LooperMonitor implements MessageQueue.IdleHandler {
     }
 
 
-    private static void resetPrinter() {
-        final Printer originPrinter = reflectObject(Looper.getMainLooper(), "mLogging");
+    private void resetPrinter() {
+        final Printer originPrinter = reflectObject(looper, "mLogging");
         if (originPrinter == printer && null != printer) {
             return;
         }
         if (null != printer) {
             MatrixLog.w(TAG, "[resetPrinter] maybe looper printer was replace other!");
         }
-        Looper.getMainLooper().setMessageLogging(printer = new Printer() {
+        looper.setMessageLogging(printer = new Printer() {
             boolean isHasChecked = false;
             boolean isValid = false;
 
@@ -91,16 +122,10 @@ public class LooperMonitor implements MessageQueue.IdleHandler {
         });
     }
 
-    public static void register(LooperDispatchListener listener) {
-        synchronized (listeners) {
-            listeners.add(listener);
-        }
-    }
 
+    private void dispatch(boolean isBegin) {
 
-    private static void dispatch(boolean isBegin) {
-
-        for (LooperDispatchListener listener : listeners) {
+        for (LooperDispatchListener listener : mainMonitor.listeners) {
             if (listener.isValid()) {
                 if (isBegin) {
                     if (!listener.isHasDispatchStart) {
