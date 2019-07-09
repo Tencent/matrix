@@ -16,7 +16,7 @@ public class LooperMonitor implements MessageQueue.IdleHandler {
     private static final HashSet<LooperDispatchListener> listeners = new HashSet<>();
     private static final String TAG = "Matrix.LooperMonitor";
     private static Printer printer;
-
+    public static Printer testPrinter = null;
 
     public abstract static class LooperDispatchListener {
 
@@ -85,6 +85,9 @@ public class LooperMonitor implements MessageQueue.IdleHandler {
 
                 if (isValid) {
                     dispatch(x.charAt(0) == '>');
+                    if (null != testPrinter) {
+                        testPrinter.println(x);
+                    }
                 }
 
             }
@@ -94,6 +97,15 @@ public class LooperMonitor implements MessageQueue.IdleHandler {
     public static void register(LooperDispatchListener listener) {
         synchronized (listeners) {
             listeners.add(listener);
+        }
+    }
+
+    public static void unregister(LooperDispatchListener listener) {
+        if (null == listener) {
+            return;
+        }
+        synchronized (listeners) {
+            listeners.remove(listener);
         }
     }
 
