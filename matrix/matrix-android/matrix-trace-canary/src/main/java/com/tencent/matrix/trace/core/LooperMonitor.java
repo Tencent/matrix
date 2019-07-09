@@ -16,7 +16,7 @@ public class LooperMonitor implements MessageQueue.IdleHandler {
 
     private final HashSet<LooperDispatchListener> listeners = new HashSet<>();
     private static final String TAG = "Matrix.LooperMonitor";
-    private static Printer printer;
+    private static LooperPrinter printer;
     private Looper looper;
 
     public abstract static class LooperDispatchListener {
@@ -55,6 +55,25 @@ public class LooperMonitor implements MessageQueue.IdleHandler {
         synchronized (mainMonitor.listeners) {
             mainMonitor.listeners.add(listener);
         }
+    }
+
+    public void addListener(LooperDispatchListener listener) {
+        synchronized (listeners) {
+            listeners.add(listener);
+        }
+    }
+
+    public void removeListener(LooperDispatchListener listener) {
+        synchronized (listeners) {
+            listeners.remove(listener);
+        }
+    }
+
+    public void onRelease() {
+        synchronized (listeners) {
+            listeners.clear();
+        }
+        looper.setMessageLogging(printer.origin);
     }
 
     public static void unregister(LooperDispatchListener listener) {
@@ -96,30 +115,37 @@ public class LooperMonitor implements MessageQueue.IdleHandler {
         if (null != printer) {
             MatrixLog.w(TAG, "[resetPrinter] maybe looper printer was replace other!");
         }
-        looper.setMessageLogging(printer = new Printer() {
-            boolean isHasChecked = false;
-            boolean isValid = false;
+        looper.setMessageLogging(printer = new LooperPrinter(originPrinter));
+    }
 
-            @Override
-            public void println(String x) {
-                if (null != originPrinter) {
-                    originPrinter.println(x);
-                }
+    class LooperPrinter implements Printer {
+        public Printer origin;
+        boolean isHasChecked = false;
+        boolean isValid = false;
 
-                if (!isHasChecked) {
-                    isValid = x.charAt(0) == '>' || x.charAt(0) == '<';
-                    isHasChecked = true;
-                    if (!isValid) {
-                        MatrixLog.e(TAG, "[println] Printer is inValid! x:%s", x);
-                    }
-                }
+        public LooperPrinter(Printer printer) {
+            this.origin = printer;
+        }
 
-                if (isValid) {
-                    dispatch(x.charAt(0) == '>');
-                }
-
+        @Override
+        public void println(String x) {
+            if (null != origin) {
+                origin.println(x);
             }
-        });
+
+            if (!isHasChecked) {
+                isValid = x.charAt(0) == '>' || x.charAt(0) == '<';
+                isHasChecked = true;
+                if (!isValid) {
+                    MatrixLog.e(TAG, "[println] Printer is inValid! x:%s", x);
+                }
+            }
+
+            if (isValid) {
+                dispatch(x.charAt(0) == '>');
+            }
+
+        }
     }
 
 
