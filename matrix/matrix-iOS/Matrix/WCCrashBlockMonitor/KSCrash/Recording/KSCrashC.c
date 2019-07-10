@@ -211,7 +211,7 @@ KSCrashMonitorType kscrash_install(const char* appName, const char* const instal
     }
     kslog_setLogFilename(g_consoleLogPath, true);
     
-//    ksccd_init(60);
+    ksccd_init(60);
 
     kscm_setEventCallback(onCrash);
     kscm_setUserDumpHandler(onUserDump);
