@@ -105,7 +105,7 @@ static Monitor g_monitors[] =
 };
 static int g_monitorsCount = sizeof(g_monitors) / sizeof(*g_monitors);
 
-KSCrashMonitorType g_activeMonitors = KSCrashMonitorTypeNone;
+static KSCrashMonitorType g_activeMonitors = KSCrashMonitorTypeNone;
 
 static bool g_handlingFatalException = false;
 static bool g_crashedDuringExceptionHandling = false;

@@ -47,7 +47,8 @@
 static KSThread g_reservedThreads[10];
 static int g_reservedThreadsMaxIndex = sizeof(g_reservedThreads) / sizeof(g_reservedThreads[0]) - 1;
 static int g_reservedThreadsCount = 0;
-
+static thread_act_array_t g_suspendedThreads = NULL;
+static mach_msg_type_number_t g_suspendedThreadsCount = 0;
 
 
 static inline bool isStackOverflow(const KSMachineContext* const context)
@@ -173,18 +174,16 @@ void ksmc_suspendEnvironment()
     kern_return_t kr;
     const task_t thisTask = mach_task_self();
     const thread_t thisThread = (thread_t)ksthread_self();
-    thread_act_array_t threads;
-    mach_msg_type_number_t numThreads;
     
-    if((kr = task_threads(thisTask, &threads, &numThreads)) != KERN_SUCCESS)
+    if((kr = task_threads(thisTask, &g_suspendedThreads, &g_suspendedThreadsCount)) != KERN_SUCCESS)
     {
         KSLOG_ERROR("task_threads: %s", mach_error_string(kr));
         return;
     }
     
-    for(mach_msg_type_number_t i = 0; i < numThreads; i++)
+    for(mach_msg_type_number_t i = 0; i < g_suspendedThreadsCount; i++)
     {
-        thread_t thread = threads[i];
+        thread_t thread = g_suspendedThreads[i];
         if(thread != thisThread && !isThreadInList(thread, g_reservedThreads, g_reservedThreadsCount))
         {
             if((kr = thread_suspend(thread)) != KERN_SUCCESS)
@@ -194,12 +193,6 @@ void ksmc_suspendEnvironment()
             }
         }
     }
-    
-    for(mach_msg_type_number_t i = 0; i < numThreads; i++)
-    {
-        mach_port_deallocate(thisTask, threads[i]);
-    }
-    vm_deallocate(thisTask, (vm_address_t)threads, sizeof(thread_t) * numThreads);
     
     KSLOG_DEBUG("Suspend complete.");
 #endif
@@ -212,18 +205,16 @@ void ksmc_resumeEnvironment()
     kern_return_t kr;
     const task_t thisTask = mach_task_self();
     const thread_t thisThread = (thread_t)ksthread_self();
-    thread_act_array_t threads;
-    mach_msg_type_number_t numThreads;
     
-    if((kr = task_threads(thisTask, &threads, &numThreads)) != KERN_SUCCESS)
+    if(g_suspendedThreads == NULL || g_suspendedThreadsCount == 0)
     {
-        KSLOG_ERROR("task_threads: %s", mach_error_string(kr));
+        KSLOG_ERROR("we should call ksmc_suspendEnvironment() first");
         return;
     }
     
-    for(mach_msg_type_number_t i = 0; i < numThreads; i++)
+    for(mach_msg_type_number_t i = 0; i < g_suspendedThreadsCount; i++)
     {
-        thread_t thread = threads[i];
+        thread_t thread = g_suspendedThreads[i];
         if(thread != thisThread && !isThreadInList(thread, g_reservedThreads, g_reservedThreadsCount))
         {
             if((kr = thread_resume(thread)) != KERN_SUCCESS)
@@ -234,12 +225,14 @@ void ksmc_resumeEnvironment()
         }
     }
     
-    for(mach_msg_type_number_t i = 0; i < numThreads; i++)
+    for(mach_msg_type_number_t i = 0; i < g_suspendedThreadsCount; i++)
     {
-        mach_port_deallocate(thisTask, threads[i]);
+        mach_port_deallocate(thisTask, g_suspendedThreads[i]);
     }
-    vm_deallocate(thisTask, (vm_address_t)threads, sizeof(thread_t) * numThreads);
-
+    vm_deallocate(thisTask, (vm_address_t)g_suspendedThreads, sizeof(thread_t) * g_suspendedThreadsCount);
+    g_suspendedThreads = NULL;
+    g_suspendedThreadsCount = 0;
+    
     KSLOG_DEBUG("Resume complete.");
 #endif
 }

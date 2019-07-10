@@ -147,13 +147,13 @@ static const char* g_blockBaseClassName = "NSBlock";
 //======================================================================
 
 #if SUPPORT_TAGGED_POINTERS
-bool isTaggedPointer(const void* pointer) {return (((uintptr_t)pointer) & TAG_MASK) != 0; }
-int getTaggedSlot(const void* pointer) { return (int)((((uintptr_t)pointer) >> TAG_SLOT_SHIFT) & TAG_SLOT_MASK); }
-uintptr_t getTaggedPayload(const void* pointer) { return (((uintptr_t)pointer) << TAG_PAYLOAD_LSHIFT) >> TAG_PAYLOAD_RSHIFT; }
+static bool isTaggedPointer(const void* pointer) {return (((uintptr_t)pointer) & TAG_MASK) != 0; }
+static int getTaggedSlot(const void* pointer) { return (int)((((uintptr_t)pointer) >> TAG_SLOT_SHIFT) & TAG_SLOT_MASK); }
+static uintptr_t getTaggedPayload(const void* pointer) { return (((uintptr_t)pointer) << TAG_PAYLOAD_LSHIFT) >> TAG_PAYLOAD_RSHIFT; }
 #else
-bool isTaggedPointer(__unused const void* pointer) { return false; }
-int getTaggedSlot(__unused const void* pointer) { return 0; }
-uintptr_t getTaggedPayload(const void* pointer) { return (uintptr_t)pointer; }
+static bool isTaggedPointer(__unused const void* pointer) { return false; }
+static int getTaggedSlot(__unused const void* pointer) { return 0; }
+static uintptr_t getTaggedPayload(const void* pointer) { return (uintptr_t)pointer; }
 #endif
 
 /** Get class data for a tagged pointer.
@@ -180,19 +180,26 @@ static bool isValidTaggedPointer(const void* object)
     return false;
 }
 
-const struct class_t* decodeIsaPointer(const void* const isaPointer)
+static const struct class_t* decodeIsaPointer(const void* const isaPointer)
 {
 #if ISA_TAG_MASK
     uintptr_t isa = (uintptr_t)isaPointer;
     if(isa & ISA_TAG_MASK)
     {
+#if defined(__arm64__)
+        if (floor(kCFCoreFoundationVersionNumber) <= kCFCoreFoundationVersionNumber_iOS_8_x_Max) {
+            return (const struct class_t*)(isa & ISA_MASK_OLD);
+        }
         return (const struct class_t*)(isa & ISA_MASK);
+#else
+        return (const struct class_t*)(isa & ISA_MASK);
+#endif
     }
 #endif
     return (const struct class_t*)isaPointer;
 }
 
-const void* getIsaPointer(const void* const objectOrClassPtr)
+static const void* getIsaPointer(const void* const objectOrClassPtr)
 {
     // This is wrong. Should not get class data here.
 //    if(ksobjc_isTaggedPointer(objectOrClassPtr))

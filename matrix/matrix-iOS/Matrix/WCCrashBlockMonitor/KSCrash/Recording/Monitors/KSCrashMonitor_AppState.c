@@ -193,7 +193,7 @@ static double timeSince(double timeInSeconds)
  *
  * @return true if the operation was successful.
  */
-bool loadState(const char* const path)
+static bool loadState(const char* const path)
 {
     // Stop if the file doesn't exist.
     // This is expected on the first run of the app.
@@ -249,7 +249,7 @@ bool loadState(const char* const path)
  *
  * @return true if the operation was successful.
  */
-bool saveState(const char* const path)
+static bool saveState(const char* const path)
 {
     int fd = open(path, O_RDWR | O_CREAT | O_TRUNC, 0644);
     if(fd < 0)
@@ -321,6 +321,26 @@ done:
     return true;
 }
 
+static void updateAppState(void)
+{
+    const double duration = timeSince(g_state.appStateTransitionTime);
+    g_state.appStateTransitionTime = getCurentTime();
+    
+    if(g_state.applicationIsActive)
+    {
+        KSLOG_TRACE("Updating activeDurationSinceLaunch: %f and activeDurationSinceLastCrash: %f with duration: %f",
+                    g_state.activeDurationSinceLaunch, g_state.activeDurationSinceLastCrash, duration);
+        g_state.activeDurationSinceLaunch += duration;
+        g_state.activeDurationSinceLastCrash += duration;
+    }
+    else if(!g_state.applicationIsInForeground)
+    {
+        KSLOG_TRACE("Updating backgroundDurationSinceLaunch: %f and backgroundDurationSinceLastCrash: %f with duration: %f",
+                    g_state.backgroundDurationSinceLaunch, g_state.backgroundDurationSinceLastCrash, duration);
+        g_state.backgroundDurationSinceLaunch += duration;
+        g_state.backgroundDurationSinceLastCrash += duration;
+    }
+}
 
 // ============================================================================
 #pragma mark - API -
@@ -329,7 +349,6 @@ done:
 void kscrashstate_initialize(const char* const stateFilePath)
 {
     g_stateFilePath = strdup(stateFilePath);
-    memset(&g_state, 0, sizeof(g_state));
     loadState(g_stateFilePath);
     
     g_state.appLaunchTimeStamp = (unsigned int)time(NULL);
@@ -355,10 +374,19 @@ bool kscrashstate_reset()
         g_state.launchesSinceLastCrash++;
         g_state.sessionsSinceLastCrash++;
         g_state.applicationIsInForeground = true;
-        
+
         return saveState(g_stateFilePath);
     }
     return false;
+}
+
+void kscrashstate_notifyObjCLoad(void)
+{
+    KSLOG_TRACE("KSCrash has been loaded!");
+    memset(&g_state, 0, sizeof(g_state));
+    g_state.applicationIsInForeground = false;
+    g_state.applicationIsActive = true;
+    g_state.appStateTransitionTime = getCurentTime();
 }
 
 void kscrashstate_notifyAppActive(const bool isActive)
@@ -368,11 +396,14 @@ void kscrashstate_notifyAppActive(const bool isActive)
         g_state.applicationIsActive = isActive;
         if(isActive)
         {
+            KSLOG_TRACE("Updating transition time from: %f to: %f", g_state.appStateTransitionTime, getCurentTime());
             g_state.appStateTransitionTime = getCurentTime();
         }
         else
         {
             double duration = timeSince(g_state.appStateTransitionTime);
+            KSLOG_TRACE("Updating activeDurationSinceLaunch: %f and activeDurationSinceLastCrash: %f with duration: %f",
+                        g_state.activeDurationSinceLaunch, g_state.activeDurationSinceLastCrash, duration);
             g_state.activeDurationSinceLaunch += duration;
             g_state.activeDurationSinceLastCrash += duration;
         }
@@ -389,6 +420,8 @@ void kscrashstate_notifyAppInForeground(const bool isInForeground)
         if(isInForeground)
         {
             double duration = getCurentTime() - g_state.appStateTransitionTime;
+            KSLOG_TRACE("Updating backgroundDurationSinceLaunch: %f and backgroundDurationSinceLastCrash: %f with duration: %f",
+                        g_state.backgroundDurationSinceLaunch, g_state.backgroundDurationSinceLastCrash, duration);
             g_state.backgroundDurationSinceLaunch += duration;
             g_state.backgroundDurationSinceLastCrash += duration;
             g_state.sessionsSinceLastCrash++;
@@ -407,30 +440,18 @@ void kscrashstate_notifyAppTerminate(void)
     if(g_isEnabled)
     {
         const char* const stateFilePath = g_stateFilePath;
-
-        const double duration = timeSince(g_state.appStateTransitionTime);
-        g_state.backgroundDurationSinceLastCrash += duration;
+        updateAppState();
         saveState(stateFilePath);
     }
 }
 
 void kscrashstate_notifyAppCrash(void)
 {
+    KSLOG_TRACE("Trying to update AppState. g_isEnabled: %d", g_isEnabled);
     if(g_isEnabled)
     {
         const char* const stateFilePath = g_stateFilePath;
-
-        const double duration = timeSince(g_state.appStateTransitionTime);
-        if(g_state.applicationIsActive)
-        {
-            g_state.activeDurationSinceLaunch += duration;
-            g_state.activeDurationSinceLastCrash += duration;
-        }
-        else if(!g_state.applicationIsInForeground)
-        {
-            g_state.backgroundDurationSinceLaunch += duration;
-            g_state.backgroundDurationSinceLastCrash += duration;
-        }
+        updateAppState();
         g_state.crashedThisLaunch = true;
         saveState(stateFilePath);
     }
@@ -463,6 +484,7 @@ static void addContextualInfoToEvent(KSCrash_MonitorContext* eventContext)
 {
     if(g_isEnabled)
     {
+        updateAppState();
         eventContext->AppState.activeDurationSinceLastCrash = g_state.activeDurationSinceLastCrash;
         eventContext->AppState.activeDurationSinceLaunch = g_state.activeDurationSinceLaunch;
         eventContext->AppState.applicationIsActive = g_state.applicationIsActive;

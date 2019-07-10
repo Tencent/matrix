@@ -89,6 +89,16 @@ void kscrash_setUserInfoJSON(const char* const userInfoJSON);
  */
 void kscrash_setDeadlockWatchdogInterval(double deadlockWatchdogInterval);
 
+/** If true, attempt to fetch dispatch queue names for each running thread.
+ *
+ * WARNING: There is a chance that this will crash on a ksthread_getQueueName() call!
+ *
+ * Enable at your own risk.
+ *
+ * Default: false
+ */
+void kscrash_setSearchQueueNames(bool searchQueueNames);
+
 /** If true, introspect memory contents during a crash.
  * Any Objective-C objects or C strings near the stack pointer or referenced by
  * cpu registers or exceptions will be recorded in the crash report, along with
@@ -183,6 +193,10 @@ void kscrash_reportUserExceptionWithSelfDefinedPath(const char* name,
                                                     int dumpType);
     
 #pragma mark -- Notifications --
+
+/** Notify the crash reporter of KSCrash being added to Objective-C runtime system.
+ */
+void kscrash_notifyObjCLoad(void);
 
 /** Notify the crash reporter of the application active state.
  *
