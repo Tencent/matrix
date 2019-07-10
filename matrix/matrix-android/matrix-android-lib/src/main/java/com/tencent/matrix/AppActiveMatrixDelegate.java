@@ -10,6 +10,7 @@ import android.text.TextUtils;
 import android.util.ArrayMap;
 
 import com.tencent.matrix.listeners.IAppForeground;
+import com.tencent.matrix.util.MatrixHandlerThread;
 import com.tencent.matrix.util.MatrixLog;
 
 import java.lang.reflect.Field;
@@ -29,15 +30,15 @@ public enum AppActiveMatrixDelegate {
     private boolean isAppForeground = false;
     private String visibleScene = "default";
     private Controller controller = new Controller();
-    private boolean isInited = false;
+    private boolean isInit = false;
     private String currentFragmentName;
 
     public void init(Application application) {
-        if (isInited) {
+        if (isInit) {
             MatrixLog.e(TAG, "has inited!");
             return;
         }
-        this.isInited = true;
+        this.isInit = true;
         application.registerComponentCallbacks(controller);
         application.registerActivityLifecycleCallbacks(controller);
     }
@@ -62,32 +63,42 @@ public enum AppActiveMatrixDelegate {
     }
 
     private void onDispatchForeground(String visibleScene) {
-        if (isAppForeground || !isInited) {
+        if (isAppForeground || !isInit) {
             return;
         }
 
         MatrixLog.i(TAG, "onForeground... visibleScene[%s]", visibleScene);
-        try {
-            for (IAppForeground listener : listeners) {
-                listener.onForeground(true);
+        MatrixHandlerThread.getDefaultHandler().post(new Runnable() {
+            @Override
+            public void run() {
+                isAppForeground = true;
+
+                for (IAppForeground listener : listeners) {
+                    listener.onForeground(true);
+                }
             }
-        } finally {
-            isAppForeground = true;
-        }
+        });
+
     }
 
     private void onDispatchBackground(String visibleScene) {
-        if (!isAppForeground || !isInited) {
+        if (!isAppForeground || !isInit) {
             return;
         }
+
         MatrixLog.i(TAG, "onBackground... visibleScene[%s]", visibleScene);
-        try {
-            for (IAppForeground listener : listeners) {
-                listener.onForeground(false);
+
+        MatrixHandlerThread.getDefaultHandler().post(new Runnable() {
+            @Override
+            public void run() {
+                isAppForeground = false;
+                for (IAppForeground listener : listeners) {
+                    listener.onForeground(false);
+                }
             }
-        } finally {
-            isAppForeground = false;
-        }
+        });
+
+
     }
 
     public boolean isAppForeground() {

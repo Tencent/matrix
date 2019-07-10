@@ -4,6 +4,7 @@ import android.os.Handler;
 import android.os.Message;
 import android.os.Process;
 import android.os.SystemClock;
+import android.support.annotation.NonNull;
 import android.util.SparseArray;
 
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitor;
@@ -20,7 +21,7 @@ import java.util.Set;
 public class JiffiesMonitorPlugin implements IBatteryMonitorPlugin, Handler.Callback {
 
     private static final String TAG = "Matrix.JiffiesMonitorPlugin";
-    private static final long WAIT_TIME = 2 * 60 * 1000;
+    private static long WAIT_TIME;
     private static final int MSG_ID_JIFFIES_START = 0x1;
     private static final int MSG_ID_JIFFIES_END = 0x2;
     private Handler handler;
@@ -31,6 +32,7 @@ public class JiffiesMonitorPlugin implements IBatteryMonitorPlugin, Handler.Call
     public void onInstall(BatteryMonitor monitor) {
         this.monitor = monitor;
         handler = new Handler(MatrixHandlerThread.getDefaultHandlerThread().getLooper(), this);
+        WAIT_TIME = monitor.getConfig().greyTime;
     }
 
     @Override
@@ -47,16 +49,18 @@ public class JiffiesMonitorPlugin implements IBatteryMonitorPlugin, Handler.Call
         if (!isForeground) {
             Message message = Message.obtain(handler);
             message.what = MSG_ID_JIFFIES_START;
-            message.arg1 = (int) (SystemClock.uptimeMillis() / 1000);
-            message.arg2 = (int) (System.currentTimeMillis() / 1000);
             handler.sendMessageDelayed(message, WAIT_TIME);
         } else if (!handler.hasMessages(MSG_ID_JIFFIES_START)) {
             Message message = Message.obtain(handler);
             message.what = MSG_ID_JIFFIES_END;
-            message.arg1 = (int) (SystemClock.uptimeMillis() / 1000);
-            message.arg2 = (int) (System.currentTimeMillis() / 1000);
+
             handler.sendMessageAtFrontOfQueue(message);
         }
+    }
+
+    @Override
+    public int weight() {
+        return Integer.MAX_VALUE;
     }
 
 
@@ -70,12 +74,13 @@ public class JiffiesMonitorPlugin implements IBatteryMonitorPlugin, Handler.Call
             lastProcessInfo = processInfo;
             return true;
         } else if (msg.what == MSG_ID_JIFFIES_END) {
+            if (null == lastProcessInfo) {
+                return true;
+            }
             ProcessInfo processInfo = getProcessInfo();
             processInfo.threadInfo.addAll(getThreadsInfo(processInfo.pid));
             processInfo.upTime = SystemClock.uptimeMillis();
             processInfo.time = System.currentTimeMillis();
-            Objects.requireNonNull(lastProcessInfo, "error! why lastProcessInfo is null!");
-
             JiffiesResult result = calculateDiff(lastProcessInfo, processInfo);
             printResult(result);
             if (null != monitor.getConfig().printer) {
@@ -111,7 +116,6 @@ public class JiffiesMonitorPlugin implements IBatteryMonitorPlugin, Handler.Call
             } else {
                 threadResult.threadState = 2;
                 threadResult.jiffiesDiff = threadResult.threadInfo.jiffies - info.jiffies;
-                threadResult.threadInfo = null; // reset
             }
         }
 
@@ -128,16 +132,16 @@ public class JiffiesMonitorPlugin implements IBatteryMonitorPlugin, Handler.Call
     }
 
     public static class JiffiesResult {
-        long jiffiesDiff;
-        long jiffiesDiff2;
-        long timeDiff;
-        long upTimeDiff;
-        LinkedList<ThreadResult> threadResults = new LinkedList<>();
+        public long jiffiesDiff;
+        public long jiffiesDiff2;
+        public long timeDiff;
+        public long upTimeDiff;
+        public LinkedList<ThreadResult> threadResults = new LinkedList<>();
     }
 
-    static class ThreadResult implements Comparable<ThreadResult> {
-        ThreadInfo threadInfo;
-        long jiffiesDiff;
+    public static class ThreadResult implements Comparable<ThreadResult> {
+        public ThreadInfo threadInfo;
+        public long jiffiesDiff;
         int threadState = 1; // 1 new, 2 keeping, 3 quit
 
         private ThreadResult(ThreadInfo threadInfo, int threadState) {
@@ -147,6 +151,22 @@ public class JiffiesMonitorPlugin implements IBatteryMonitorPlugin, Handler.Call
 
         static ThreadResult obtain(ThreadInfo threadInfo, int state) {
             return new ThreadResult(threadInfo, state);
+        }
+
+        @NonNull
+        @Override
+        public String toString() {
+            StringBuilder ss = new StringBuilder();
+            String state;
+            if (threadState == 1) {
+                state = "+";
+            } else if (threadState == 2) {
+                state = "~";
+            } else {
+                state = "-";
+            }
+            ss.append("(").append(state).append(")").append(threadInfo.name).append("(").append(threadInfo.tid).append(")\t").append(jiffiesDiff).append(" jiffies");
+            return ss.toString();
         }
 
         @Override
@@ -257,10 +277,10 @@ public class JiffiesMonitorPlugin implements IBatteryMonitorPlugin, Handler.Call
         }
     }
 
-    private class ThreadInfo {
-        int tid;
-        String name;
-        long jiffies;
+    public class ThreadInfo {
+        public int tid;
+        public String name;
+        public long jiffies;
 
         @Override
         public String toString() {

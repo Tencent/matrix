@@ -1,0 +1,1 @@
+../../../matrix-wechat/matrix/matrix-apple/Matrix/Matrix/Util/MatrixBaseModel.h

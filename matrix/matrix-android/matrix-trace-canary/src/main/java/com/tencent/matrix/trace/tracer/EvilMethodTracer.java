@@ -95,6 +95,10 @@ public class EvilMethodTracer extends Tracer {
         }
     }
 
+    public void modifyEvilThresholdMs(long evilThresholdMs) {
+        this.evilThresholdMs = evilThresholdMs;
+    }
+
     private class AnalyseTask implements Runnable {
         long[] queueCost;
         long[] data;

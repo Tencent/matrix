@@ -18,6 +18,7 @@ package com.tencent.matrix.batterycanary.core;
 
 import android.os.Environment;
 import android.os.IBinder;
+import android.os.SystemClock;
 import android.os.WorkSource;
 
 import com.tencent.matrix.batterycanary.config.BatteryConfig;
@@ -65,6 +66,7 @@ public class WakeLockDetector extends IssuePublisher {
 
     public interface IDelegate {
         void addDetectTask(Runnable detectTask, long delayInMillis);
+
         boolean isScreenOn();
     }
 
@@ -171,11 +173,11 @@ public class WakeLockDetector extends IssuePublisher {
         WakeLockInfo wakeLockInfo;
         String issueKey;
         //imprecisely but acceptable
-        final long now = System.currentTimeMillis();
+        final long nowUptimeMillis = SystemClock.uptimeMillis();
         while (it.hasNext()) {
             entry = it.next();
             wakeLockInfo = entry.getValue();
-            if ((now - wakeLockInfo.acquireTime) >= mWakeLockOnceHoldTimeThreshold) {
+            if ((nowUptimeMillis - wakeLockInfo.uptimeMillis) >= mWakeLockOnceHoldTimeThreshold) {
                 issueKey = String.format("%s:%d", wakeLockInfo.tag, SharePluginInfo.IssueType.ISSUE_WAKE_LOCK_ONCE_TOO_LONG);
                 if (isPublished(issueKey)) {
                     MatrixLog.v(TAG, "detectWakeLockOnceHoldTime issue already published: %s", issueKey);
@@ -187,7 +189,7 @@ public class WakeLockDetector extends IssuePublisher {
                         content.put(SharePluginInfo.ISSUE_BATTERY_SUB_TAG, SharePluginInfo.SUB_TAG_WAKE_LOCK);
                         content.put(SharePluginInfo.ISSUE_WAKE_LOCK_TAG, wakeLockInfo.tag);
                         content.put(SharePluginInfo.ISSUE_WAKE_FLAGS, wakeLockInfo.flags);
-                        content.put(SharePluginInfo.ISSUE_WAKE_HOLD_TIME, (now - wakeLockInfo.acquireTime));
+                        content.put(SharePluginInfo.ISSUE_WAKE_HOLD_TIME, (nowUptimeMillis - wakeLockInfo.uptimeMillis));
                         content.put(SharePluginInfo.ISSUE_WAKE_LOCK_STACK_HISTORY, wakeLockInfo.stackTraceHistory);
                     } catch (JSONException e) {
                         MatrixLog.e(TAG, "json content error: %s", e);
@@ -215,6 +217,7 @@ public class WakeLockDetector extends IssuePublisher {
             wakeLockAggregation = entry.getValue();
             statisticalTimeFrame = now - wakeLockAggregation.sinceTime;
             currentHours = (int) (statisticalTimeFrame / 3600000L) + 1;
+            currentHours = currentHours <= 0 ? 1 : currentHours;
 //            averageAcquireCnt1H = wakeLockAggregation.totalAcquireCnt / currentHours;
             averageAcquireCntWhenScreenOff1H = wakeLockAggregation.totalAcquireCntWhenScreenOff / currentHours;
             averageHoldTime1H = wakeLockAggregation.totalHoldTimeWhenScreenOff / currentHours;
@@ -282,6 +285,7 @@ public class WakeLockDetector extends IssuePublisher {
     private static final class WakeLockInfo {
         final String tokenId;
         final long acquireTime;
+        final long uptimeMillis;
         final String tag;
         final int flags;
         StackTraceHistory stackTraceHistory;
@@ -291,6 +295,7 @@ public class WakeLockDetector extends IssuePublisher {
             this.tag = tag;
             this.flags = flags;
             this.acquireTime = acquireTime;
+            this.uptimeMillis = SystemClock.uptimeMillis();
             stackTraceHistory = new StackTraceHistory();
         }
     }
@@ -327,7 +332,7 @@ public class WakeLockDetector extends IssuePublisher {
             }
             currentWakeLocks.put(tokenId, true);
             if (lastCaledHoldTime < 0) {
-                lastCaledHoldTime = System.currentTimeMillis();
+                lastCaledHoldTime = SystemClock.uptimeMillis();
             }
         }
 
@@ -347,7 +352,7 @@ public class WakeLockDetector extends IssuePublisher {
             if (lastCaledHoldTime < 0) {
                 return;
             }
-            final long now = System.currentTimeMillis();
+            final long now = SystemClock.uptimeMillis();
             totalHoldTime = totalHoldTime + (now - lastCaledHoldTime);
             if (!lastScreenOn) {
                 totalHoldTimeWhenScreenOff += (now - lastCaledHoldTime);

@@ -1,11 +1,12 @@
 package com.tencent.matrix.trace.util;
 
+import android.util.Log;
+
 import com.tencent.matrix.trace.constants.Constants;
 import com.tencent.matrix.trace.core.AppMethodBeat;
 import com.tencent.matrix.trace.items.MethodItem;
 import com.tencent.matrix.util.MatrixLog;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Iterator;
@@ -54,18 +55,27 @@ public class TraceDataUtils {
                 depth++;
                 rawData.push(trueId);
             } else {
-                int methodId = getMethodId(trueId); // out
+                int outMethodId = getMethodId(trueId);
                 if (!rawData.isEmpty()) {
                     long in = rawData.pop();
                     depth--;
-                    while (getMethodId(in) != methodId && !rawData.isEmpty()) {
-                        MatrixLog.w(TAG, "[structuredDataToStack] method[%s] not match in! pop[%s] to continue find!", in, methodId);
+                    int inMethodId;
+                    LinkedList<Long> tmp = new LinkedList<>();
+                    tmp.add(in);
+                    while ((inMethodId = getMethodId(in)) != outMethodId && !rawData.isEmpty()) {
+                        MatrixLog.w(TAG, "pop inMethodId[%s] to continue match ouMethodId[%s]", inMethodId, outMethodId);
                         in = rawData.pop();
                         depth--;
+                        tmp.add(in);
                     }
-                    if (lastInId == methodId && methodId == AppMethodBeat.METHOD_ID_DISPATCH) {
+
+                    if (inMethodId != outMethodId && inMethodId == AppMethodBeat.METHOD_ID_DISPATCH) {
+                        MatrixLog.e(TAG, "inMethodId[%s] != outMethodId[%s] throw this outMethodId!", inMethodId, outMethodId);
+                        rawData.addAll(tmp);
+                        depth += rawData.size();
                         continue;
                     }
+
                     long outTime = getTime(trueId);
                     long inTime = getTime(in);
                     long during = outTime - inTime;
@@ -75,10 +85,10 @@ public class TraceDataUtils {
                         result.clear();
                         return;
                     }
-                    MethodItem methodItem = new MethodItem(methodId, (int) during, depth);
+                    MethodItem methodItem = new MethodItem(outMethodId, (int) during, depth);
                     addMethodItem(result, methodItem);
                 } else {
-                    MatrixLog.w(TAG, "[structuredDataToStack] method[%s] not found in! ", methodId);
+                    MatrixLog.w(TAG, "[structuredDataToStack] method[%s] not found in! ", outMethodId);
                 }
             }
         }
@@ -116,6 +126,9 @@ public class TraceDataUtils {
     }
 
     private static int addMethodItem(LinkedList<MethodItem> resultStack, MethodItem item) {
+        if (AppMethodBeat.isDev) {
+            Log.v(TAG, "method:" + item);
+        }
         MethodItem last = null;
         if (!resultStack.isEmpty()) {
             last = resultStack.peek();

@@ -45,6 +45,11 @@ public class WakeLockMonitorPlugin implements IBatteryMonitorPlugin, PowerManage
     }
 
     @Override
+    public int weight() {
+        return Integer.MIN_VALUE;
+    }
+
+    @Override
     public void onAcquireWakeLock(IBinder token, int flags, final String tag, final String packageName, WorkSource workSource, String historyTag) {
         MatrixLog.i(TAG, "[onAcquireWakeLock] token=%s flags=%s tag=%s historyTag=%s packageName=%s workSource=%s stack=%s"
                 , token.hashCode(), flags, tag, historyTag, packageName, workSource, BatteryCanaryUtil.stackTraceToString(new Throwable().getStackTrace()));

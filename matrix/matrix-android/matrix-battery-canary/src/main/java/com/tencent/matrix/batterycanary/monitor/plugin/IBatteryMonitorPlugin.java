@@ -12,4 +12,7 @@ public interface IBatteryMonitorPlugin {
     void onTurnOff();
 
     void onAppForeground(boolean isForeground);
+
+    int weight();
+
 }
