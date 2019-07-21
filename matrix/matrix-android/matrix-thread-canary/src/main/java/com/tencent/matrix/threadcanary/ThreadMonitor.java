@@ -42,6 +42,8 @@ public class ThreadMonitor extends Plugin {
     private final ThreadMonitorConfig threadMonitorConfig;
     private DumpThreadJiffiesTask checkThreadTask;
     private List<List<ThreadGroupInfo>> pendingReport = new LinkedList<>();
+    private static long[] threadTraceBucket = new long[0];  // long = tid << 32| methodId
+    private static int bucketLength = 0;
     private long checkTime;
     private long checkBgTime;
     private long reportTime;
@@ -88,6 +90,26 @@ public class ThreadMonitor extends Plugin {
     public void start() {
         super.start();
         MatrixLog.i(TAG, "start!");
+        threadTraceBucket = new long[6666];
+        bucketLength = threadTraceBucket.length;
+        AppMethodBeat.sMethodEnterListener = new AppMethodBeat.MethodEnterListener() {
+            @Override
+            public void enter(int method) {
+                int threadId = (int) Thread.currentThread().getId();
+                if (threadId < bucketLength) {
+                    if (threadTraceBucket[threadId] == 0) {
+                        synchronized (threadTraceBucket) {
+                            if (threadTraceBucket[threadId] == 0) {
+                                long tid = Process.myTid();
+                                long trueId = tid << 32;
+                                trueId = trueId | method;
+                                threadTraceBucket[threadId] = trueId;
+                            }
+                        }
+                    }
+                }
+            }
+        };
         MatrixHandlerThread.getDefaultMainHandler().post(new Runnable() {
             @Override
             public void run() {
@@ -101,8 +123,13 @@ public class ThreadMonitor extends Plugin {
         super.stop();
         MatrixLog.i(TAG, "stop!");
         handler.removeCallbacks(checkThreadTask);
+        AppMethodBeat.sMethodEnterListener = null;
+        threadTraceBucket = new long[0];
     }
 
+    public static long[] getThreadTraceBucket() {
+        return threadTraceBucket;
+    }
 
     private class DumpThreadJiffiesTask implements Runnable {
         private final long mainTid = Process.myPid();
@@ -129,6 +156,7 @@ public class ThreadMonitor extends Plugin {
                             threadInfo.name = appThreadInfo.name.replaceAll("-?[0-9]\\d*", "?");
                         }
                         threadInfo.stackTrace = appThreadInfo.stackTrace;
+                        threadInfo.isHandlerThread = appThreadInfo.isHandlerThread;
                         threadInfo.target = appThreadInfo.target;
                     } else {
                         threadInfo.name = threadInfo.name.replaceAll("-?[0-9]\\d*", "?");
@@ -221,6 +249,7 @@ public class ThreadMonitor extends Plugin {
                     threadObj.put(Constants.REPORT_KEY_THREAD_INFO_TID, threadInfo.tid);
                     threadObj.put(Constants.REPORT_KEY_THREAD_INFO_STATE, threadInfo.state);
                     threadObj.put(Constants.REPORT_KEY_THREAD_INFO_STACK, threadInfo.stackTrace);
+                    threadObj.put(Constants.REPORT_KEY_THREAD_INFO_IS_HANDLER, threadInfo.isHandlerThread);
                     threadObj.put(Constants.REPORT_KEY_THREAD_INFO_TARGET, threadInfo.target);
                 }
             }
@@ -266,22 +295,25 @@ public class ThreadMonitor extends Plugin {
             if (null != filter && filter.isFilter(threadInfo)) {
                 continue;
             }
-            long trueId = AppMethodBeat.getThreadTraceBucket()[(int) thread.getId()];
+            long trueId = getThreadTraceBucket()[(int) thread.getId()];
             long methodId = trueId & 0xFFFFFFFFL;
             long tid = trueId >> 32 & 0xFFFFFFFFL;
             threadInfo.stackTrace = (int) methodId;
-            try {
-                Object target = ReflectUtils.get(Thread.class, "target", thread);
-                if (null != target) {
-                    threadInfo.target = target.getClass().getName();
+            if (!(thread instanceof HandlerThread)) {
+                try {
+                    Object target = ReflectUtils.get(Thread.class, "target", thread);
+                    if (null != target) {
+                        threadInfo.target = target.getClass().getName();
+                    }
+                } catch (Exception e) {
+                    MatrixLog.e(TAG, MatrixUtil.printException(e));
                 }
-            } catch (Exception e) {
-                MatrixLog.e(TAG, MatrixUtil.printException(e));
             }
             if (tid == 0) {
-                MatrixLog.w(TAG, "[getAppThreadsMap] it can't track this thread. name=%s id=%s tid=%s stackTrace=%s target=%s", thread.getName(), thread.getId(), tid, methodId, threadInfo.target);
+                MatrixLog.w(TAG, "[getAppThreadsMap] it can't track this thread. %s", threadInfo);
                 if (thread instanceof HandlerThread) {
                     tid = ((HandlerThread) thread).getThreadId();
+                    threadInfo.isHandlerThread = true;
                 }
             }
             threadInfo.tid = (int) tid;
@@ -403,7 +435,7 @@ public class ThreadMonitor extends Plugin {
 
         @Override
         public String toString() {
-            return String.format("%s %s %s %s", name, tid, state, isHandlerThread);
+            return String.format("name=%s tid=%s state=%s isHandlerThread=%s target=%s", name, tid, state, isHandlerThread, target);
         }
     }
 

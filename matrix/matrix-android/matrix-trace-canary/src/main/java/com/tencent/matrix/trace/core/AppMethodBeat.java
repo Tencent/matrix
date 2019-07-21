@@ -20,6 +20,10 @@ import java.util.Set;
 
 public class AppMethodBeat implements BeatLifecycle {
 
+    public interface MethodEnterListener {
+        void enter(int method);
+    }
+
     private static final String TAG = "Matrix.AppMethodBeat";
     public static boolean isDev = false;
     private static AppMethodBeat sInstance = new AppMethodBeat();
@@ -31,16 +35,15 @@ public class AppMethodBeat implements BeatLifecycle {
     private static final int STATUS_OUT_RELEASE = -3;
 
     private static volatile int status = STATUS_DEFAULT;
-    private static Object statusLock = new Object();
-
+    private final static Object statusLock = new Object();
+    public static MethodEnterListener sMethodEnterListener;
     private static long[] sBuffer = new long[Constants.BUFFER_SIZE];
-    private static final long[] threadTraceBucket = new long[6666]; // head of 32 bit tid, end of 32 bit methodId
     private static int sIndex = 0;
     private static int sLastIndex = -1;
     private static boolean assertIn = false;
     private volatile static long sCurrentDiffTime = SystemClock.uptimeMillis();
     private volatile static long sDiffTime = sCurrentDiffTime;
-    private static Thread sMainThread = Looper.getMainLooper().getThread();
+    private static long sMainThreadId = Looper.getMainLooper().getThread().getId();
     private static HandlerThread sTimerUpdateThread = MatrixHandlerThread.getNewHandlerThread("matrix_time_update_thread");
     private static Handler sHandler = new Handler(sTimerUpdateThread.getLooper());
     private static final int METHOD_ID_MAX = 0xFFFFF;
@@ -198,6 +201,10 @@ public class AppMethodBeat implements BeatLifecycle {
      */
     public static void i(int methodId) {
 
+        if (sMethodEnterListener != null) {
+            sMethodEnterListener.enter(methodId);
+        }
+
         if (status <= STATUS_STOPPED) {
             return;
         }
@@ -213,8 +220,8 @@ public class AppMethodBeat implements BeatLifecycle {
                 }
             }
         }
-        long currentThreadId = Thread.currentThread().getId();
-        if (currentThreadId == sMainThread.getId()) {
+
+        if (Thread.currentThread().getId() == sMainThreadId) {
             if (assertIn) {
                 android.util.Log.e(TAG, "ERROR!!! AppMethodBeat.i Recursive calls!!!");
                 return;
@@ -227,30 +234,8 @@ public class AppMethodBeat implements BeatLifecycle {
             }
             ++sIndex;
             assertIn = false;
-        } else {
-            collectOtherThreadTrace((int) currentThreadId, methodId);
         }
     }
-
-    public static long[] getThreadTraceBucket() {
-        return threadTraceBucket;
-    }
-
-    private static void collectOtherThreadTrace(int currentThreadId, int methodId) {
-        if (currentThreadId < threadTraceBucket.length) {
-            if (threadTraceBucket[currentThreadId] == 0) {
-                synchronized (threadTraceBucket) {
-                    if (threadTraceBucket[currentThreadId] == 0) {
-                        long tid = Process.myTid();
-                        long trueId = tid << 32;
-                        trueId = trueId | methodId;
-                        threadTraceBucket[currentThreadId] = trueId;
-                    }
-                }
-            }
-        }
-    }
-
 
     /**
      * hook method when it's called out.
@@ -258,14 +243,13 @@ public class AppMethodBeat implements BeatLifecycle {
      * @param methodId
      */
     public static void o(int methodId) {
-
         if (status <= STATUS_STOPPED) {
             return;
         }
         if (methodId >= METHOD_ID_MAX) {
             return;
         }
-        if (Thread.currentThread().getId() == sMainThread.getId()) {
+        if (Thread.currentThread().getId() == sMainThreadId) {
             if (sIndex < Constants.BUFFER_SIZE) {
                 mergeData(methodId, sIndex, false);
             } else {
