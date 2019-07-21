@@ -19,8 +19,6 @@ package sample.tencent.matrix;
 import android.app.Application;
 import android.content.Context;
 import android.os.HandlerThread;
-import android.os.Process;
-import android.util.LongSparseArray;
 
 import com.tencent.matrix.Matrix;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitor;
@@ -30,8 +28,8 @@ import com.tencent.matrix.iocanary.IOCanaryPlugin;
 import com.tencent.matrix.iocanary.config.IOConfig;
 import com.tencent.matrix.resource.ResourcePlugin;
 import com.tencent.matrix.resource.config.ResourceConfig;
-import com.tencent.matrix.threadcanary.ThreadConfig;
-import com.tencent.matrix.threadcanary.ThreadWatcher;
+import com.tencent.matrix.threadcanary.ThreadMonitor;
+import com.tencent.matrix.threadcanary.ThreadMonitorConfig;
 import com.tencent.matrix.trace.TracePlugin;
 import com.tencent.matrix.trace.config.TraceConfig;
 import com.tencent.matrix.util.MatrixHandlerThread;
@@ -39,8 +37,6 @@ import com.tencent.matrix.util.MatrixLog;
 import com.tencent.sqlitelint.SQLiteLint;
 import com.tencent.sqlitelint.SQLiteLintPlugin;
 import com.tencent.sqlitelint.config.SQLiteLintConfig;
-
-import java.util.List;
 
 import sample.tencent.matrix.config.DynamicConfigImplDemo;
 import sample.tencent.matrix.listener.TestPluginListener;
@@ -114,8 +110,8 @@ public class MatrixApplication extends Application {
             SQLiteLintPlugin sqLiteLintPlugin = new SQLiteLintPlugin(config);
             builder.plugin(sqLiteLintPlugin);
 
-            ThreadWatcher threadWatcher = new ThreadWatcher(new ThreadConfig.Builder().dynamicConfig(dynamicConfig).build());
-            builder.plugin(threadWatcher);
+            ThreadMonitor threadMonitor = new ThreadMonitor(new ThreadMonitorConfig.Builder().dynamicConfig(dynamicConfig).build());
+            builder.plugin(threadMonitor);
 
             BatteryMonitor batteryMonitor = new BatteryMonitor(new BatteryMonitor.Builder()
                     .installPlugin(LooperTaskMonitorPlugin.class)
@@ -140,9 +136,10 @@ public class MatrixApplication extends Application {
 
         //start only startup tracer, close other tracer.
         tracePlugin.start();
-        Matrix.with().getPluginByClass(ThreadWatcher.class).start();
+        Matrix.with().getPluginByClass(ThreadMonitor.class).start();
         Matrix.with().getPluginByClass(BatteryMonitor.class).start();
         MatrixLog.i("Matrix.HackCallback", "end:%s", System.currentTimeMillis());
+
     }
 
 

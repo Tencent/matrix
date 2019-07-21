@@ -11,5 +11,6 @@ public class Constants {
     public static final String REPORT_KEY_THREAD_INFO_TID = "tid";
     public static final String REPORT_KEY_THREAD_INFO_STATE = "state";
     public static final String REPORT_KEY_THREAD_INFO_STACK = "stack";
+    public static final String REPORT_KEY_THREAD_INFO_TARGET = "target";
     public static final int MAX_PENDING_THREAD_REPORT = 10;
 }

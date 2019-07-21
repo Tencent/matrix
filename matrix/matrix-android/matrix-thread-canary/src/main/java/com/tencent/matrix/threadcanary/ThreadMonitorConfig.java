@@ -4,8 +4,8 @@ import com.tencent.mrs.plugin.IDynamicConfig;
 
 import java.util.HashSet;
 
-public final class ThreadConfig {
-    public static final String TAG = "Matrix.ThreadConfig";
+public final class ThreadMonitorConfig {
+    public static final String TAG = "Matrix.ThreadMonitorConfig";
 
     private static final long DEFAULT_CHECK_TIME = 10 * 60 * 1000L;
     private static final long DEFAULT_CHECK_TIME_IN_BACKGROUND = DEFAULT_CHECK_TIME * 2;
@@ -15,7 +15,7 @@ public final class ThreadConfig {
 
     private final IDynamicConfig mDynamicConfig;
 
-    private ThreadConfig(IDynamicConfig dynamicConfig) {
+    private ThreadMonitorConfig(IDynamicConfig dynamicConfig) {
         this.mDynamicConfig = dynamicConfig;
     }
 
@@ -67,8 +67,8 @@ public final class ThreadConfig {
             return this;
         }
 
-        public ThreadConfig build() {
-            return new ThreadConfig(mDynamicConfig);
+        public ThreadMonitorConfig build() {
+            return new ThreadMonitorConfig(mDynamicConfig);
         }
     }
 }

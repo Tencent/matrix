@@ -155,6 +155,24 @@ public final class MatrixUtil {
         return sb.toString();
     }
 
+    public static String printException(Exception e) {
+        final StackTraceElement[] stackTrace = e.getStackTrace();
+        if ((stackTrace == null)) {
+            return "";
+        }
+
+        StringBuilder t = new StringBuilder(e.toString());
+        for (int i = 2; i < stackTrace.length; i++) {
+            t.append('[');
+            t.append(stackTrace[i].getClassName());
+            t.append(':');
+            t.append(stackTrace[i].getMethodName());
+            t.append("(" + stackTrace[i].getLineNumber() + ")]");
+            t.append("\n");
+        }
+        return t.toString();
+    }
+
     /**
      * Closes the given {@code Closeable}. Suppresses any IO exceptions.
      */
