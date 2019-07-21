@@ -155,7 +155,7 @@ public class EvilMethodTracer extends Tracer {
             long stackCost = Math.max(cost, TraceDataUtils.stackToString(stack, reportBuilder, logcatBuilder));
             String stackKey = TraceDataUtils.getTreeKey(stack, stackCost);
 
-            MatrixLog.w(TAG, "%s", printEvil(processStat, isForeground, logcatBuilder, stack.size(), stackKey, usage, queueCost[0], queueCost[1], queueCost[2], cost)); // for logcat
+            MatrixLog.w(TAG, "%s", printEvil(scene, processStat, isForeground, logcatBuilder, stack.size(), stackKey, usage, queueCost[0], queueCost[1], queueCost[2], cost)); // for logcat
 
             if (stackCost >= Constants.DEFAULT_ANR_INVALID || processStat[0] > 10) {
                 MatrixLog.w(TAG, "The checked anr task was not executed on time. " +
@@ -195,17 +195,17 @@ public class EvilMethodTracer extends Tracer {
             analyse();
         }
 
-        private String printEvil(int[] processStat, boolean isForeground, StringBuilder stack, long stackSize, String stackKey, String usage, long inputCost,
+        private String printEvil(String scene, int[] processStat, boolean isForeground, StringBuilder stack, long stackSize, String stackKey, String usage, long inputCost,
                                  long animationCost, long traversalCost, long allCost) {
             StringBuilder print = new StringBuilder();
             print.append(String.format("-\n>>>>>>>>>>>>>>>>>>>>> maybe happens Jankiness!(%sms) <<<<<<<<<<<<<<<<<<<<<\n", allCost));
+            print.append("|* scene: ").append(scene).append("\n");
             print.append("|* [ProcessStat]").append("\n");
             print.append("|*\t\tPriority: ").append(processStat[0]).append("\n");
             print.append("|*\t\tNice: ").append(processStat[1]).append("\n");
             print.append("|*\t\tForeground: ").append(isForeground).append("\n");
             print.append("|* [CPU]").append("\n");
             print.append("|*\t\tusage: ").append(usage).append("\n");
-            print.append("|* [Memory]").append("\n");  // todo
             print.append("|* [doFrame]").append("\n");
             print.append("|*\t\tinputCost: ").append(inputCost).append("\n");
             print.append("|*\t\tanimationCost: ").append(animationCost).append("\n");
