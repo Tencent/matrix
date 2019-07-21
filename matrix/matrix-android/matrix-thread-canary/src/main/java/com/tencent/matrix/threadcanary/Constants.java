@@ -10,8 +10,6 @@ public class Constants {
     public static final String REPORT_KEY_THREAD_GROUP_THREAD_LIST = "list";
     public static final String REPORT_KEY_THREAD_INFO_TID = "tid";
     public static final String REPORT_KEY_THREAD_INFO_STATE = "state";
-    public static final String REPORT_KEY_THREAD_INFO_JIFFIES = "jiffies";
     public static final String REPORT_KEY_THREAD_INFO_STACK = "stack";
-    public static final String REPORT_KEY_THREAD_INFO_STACK_MD5 = "stack_md5";
-
+    public static final int MAX_PENDING_THREAD_REPORT = 10;
 }

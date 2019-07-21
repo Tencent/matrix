@@ -4,13 +4,14 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Process;
 import android.os.SystemClock;
+import android.util.LongSparseArray;
 
 import com.tencent.matrix.AppActiveMatrixDelegate;
 import com.tencent.matrix.plugin.Plugin;
 import com.tencent.matrix.report.Issue;
+import com.tencent.matrix.trace.core.AppMethodBeat;
 import com.tencent.matrix.util.MatrixHandlerThread;
 import com.tencent.matrix.util.MatrixLog;
-import com.tencent.matrix.util.MatrixUtil;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -25,7 +26,6 @@ import java.io.InputStreamReader;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -114,19 +114,20 @@ public class ThreadWatcher extends Plugin {
             if (limitCount >= processThreadCount) {
                 return;
             }
-            final Map<Long, ThreadInfo> appThreadsMap = getAppThreadsMap(mThreadFilter);
-            List<ThreadInfo> linuxThreads = getThreadsInfo(new IThreadInfoIterator() {
+            final LongSparseArray<ThreadInfo> appThreadsMap = getAppThreadsMap(mThreadFilter);
+            List<ThreadInfo> linuxThreads = getLinuxThreadsInfo(new IThreadInfoIterator() {
                 @Override
                 public void next(ThreadInfo threadInfo) {
                     ThreadInfo appThreadInfo = appThreadsMap.get(threadInfo.tid);
-                    threadInfo.name = threadInfo.name.replaceAll("-?[0-9]\\d*", "?");
                     if (null != appThreadInfo) {
                         if (threadInfo.tid == mainTid) {
                             threadInfo.name = "main";
                         } else {
-                            appThreadInfo.name = threadInfo.name = appThreadInfo.name.replaceAll("-?[0-9]\\d*", "?");
+                            appThreadInfo.name = appThreadInfo.name.replaceAll("-?[0-9]\\d*", "?");
                         }
-                        threadInfo.stack = appThreadInfo.stack;
+                        threadInfo.stackTrace = appThreadInfo.stackTrace;
+                    } else {
+                        appThreadInfo.name = threadInfo.name.replaceAll("-?[0-9]\\d*", "?");
                     }
                 }
             }, new IThreadFilter() {
@@ -165,7 +166,7 @@ public class ThreadWatcher extends Plugin {
                 lastReportTime = time;
                 pendingReport.clear();
             } else {
-                if (pendingReport.size() >= 8) {
+                if (pendingReport.size() >= Constants.MAX_PENDING_THREAD_REPORT) {
                     pendingReport.remove(0);
                 }
                 pendingReport.add(threadGroupInfoList);
@@ -215,14 +216,12 @@ public class ThreadWatcher extends Plugin {
                     threadListObj.put(threadObj);
                     threadObj.put(Constants.REPORT_KEY_THREAD_INFO_TID, threadInfo.tid);
                     threadObj.put(Constants.REPORT_KEY_THREAD_INFO_STATE, threadInfo.state);
-                    threadObj.put(Constants.REPORT_KEY_THREAD_INFO_JIFFIES, threadInfo.jiffies);
-                    threadObj.put(Constants.REPORT_KEY_THREAD_INFO_STACK, threadInfo.stack);
-                    threadObj.put(Constants.REPORT_KEY_THREAD_INFO_STACK_MD5, threadInfo.stackMD5);
+                    threadObj.put(Constants.REPORT_KEY_THREAD_INFO_STACK, threadInfo.stackTrace);
                 }
             }
             jsonObject.put(Constants.REPORT_KEY_THREAD_COUNT, threadCount);
         } catch (JSONException e) {
-            MatrixLog.e(TAG, "%s %s", e, stackTraceToString(e.getStackTrace()));
+            MatrixLog.e(TAG, e.toString());
         }
         onDetectIssue(issue);
     }
@@ -252,9 +251,8 @@ public class ThreadWatcher extends Plugin {
         }
     }
 
-    private static HashMap<Long, ThreadInfo> getAppThreadsMap(IThreadFilter filter) {
-        HashSet<String> stackMD5Set = new HashSet<>();
-        HashMap<Long, ThreadInfo> map = new HashMap<>();
+    private static LongSparseArray<ThreadInfo> getAppThreadsMap(IThreadFilter filter) {
+        LongSparseArray<ThreadInfo> map = new LongSparseArray<>();
         Map<Thread, StackTraceElement[]> stacks = Thread.getAllStackTraces();
         Set<Thread> set = stacks.keySet();
         for (Thread thread : set) {
@@ -263,22 +261,14 @@ public class ThreadWatcher extends Plugin {
             if (null != filter && filter.isFilter(threadInfo)) {
                 continue;
             }
-            if (thread.getState() == Thread.State.RUNNABLE) {
-                threadInfo.stack = stackTraceToString(thread.getStackTrace());
-                threadInfo.stackMD5 = MatrixUtil.getMD5String(threadInfo.stack);
-            }
-            if (stackMD5Set.contains(threadInfo.stackMD5)) {
-                threadInfo.stack = "";
-            } else {
-                stackMD5Set.add(threadInfo.stackMD5);
-            }
-            if (thread instanceof HandlerThread) {
-                threadInfo.isHandlerThread = true;
-                map.put((long) ((HandlerThread) thread).getThreadId(), threadInfo);
-            } else {
-                threadInfo.isHandlerThread = false;
-                map.put(thread.getId(), threadInfo);
-            }
+            long trueId = AppMethodBeat.getThreadTraceBucket()[(int) thread.getId()];
+            long methodId = trueId & 0xFFFFFFFFL;
+            long tid = trueId >> 32 & 0xFFFFFFFFL;
+            threadInfo.tid = (int) tid;
+            threadInfo.stackTrace = (int) methodId;
+            MatrixLog.i(TAG, "[getAppThreadsMap] tid=%s stackTrace=%s", tid, methodId);
+            map.put(threadInfo.tid, threadInfo);
+            threadInfo.isHandlerThread = thread instanceof HandlerThread;
         }
         return map;
     }
@@ -288,7 +278,7 @@ public class ThreadWatcher extends Plugin {
         void next(ThreadInfo info);
     }
 
-    private static List<ThreadInfo> getThreadsInfo(IThreadInfoIterator iterator, IThreadFilter filter) {
+    private static List<ThreadInfo> getLinuxThreadsInfo(IThreadInfoIterator iterator, IThreadFilter filter) {
         List<ThreadInfo> list = new LinkedList<>();
         String threadDir = String.format("/proc/%s/task/", Process.myPid());
         File dirFile = new File(threadDir);
@@ -303,7 +293,6 @@ public class ThreadWatcher extends Plugin {
                         threadInfo.tid = Long.parseLong(args[0]);
                         threadInfo.name = args[1].replace("(", "").replace(")", "");
                         threadInfo.state = args[2].replace("'", "");
-                        threadInfo.jiffies = getJiffies(threadInfo.tid);
                         if (null != filter && !filter.isFilter(threadInfo)) {
                             list.add(threadInfo);
                             if (null != iterator) {
@@ -312,7 +301,7 @@ public class ThreadWatcher extends Plugin {
                         }
                     }
                 } catch (Exception e) {
-                    MatrixLog.e(TAG, "%s %s", e, stackTraceToString(e.getStackTrace()));
+                    MatrixLog.e(TAG, e.toString());
                 }
             }
         }
@@ -321,7 +310,7 @@ public class ThreadWatcher extends Plugin {
 
     public Map<String, ThreadGroupInfo> getAllThreads() {
         final Map<String, ThreadGroupInfo> map = new HashMap<>();
-        getThreadsInfo(new IThreadInfoIterator() {
+        getLinuxThreadsInfo(new IThreadInfoIterator() {
             @Override
             public void next(ThreadInfo info) {
                 String key = info.name.replaceAll("-?[0-9]\\d*", "?");
@@ -336,41 +325,6 @@ public class ThreadWatcher extends Plugin {
 
         return map;
     }
-
-
-    public static String stackTraceToString(final StackTraceElement[] stackTrace) {
-
-        if ((stackTrace == null)) {
-            return "";
-        }
-
-        StringBuilder t = new StringBuilder();
-        for (int i = 2; i < stackTrace.length; i++) {
-            t.append('[');
-            t.append(stackTrace[i].getClassName());
-            t.append(':');
-            t.append(stackTrace[i].getMethodName());
-            t.append("(" + stackTrace[i].getLineNumber() + ")]");
-            t.append("\n");
-        }
-        return t.toString();
-    }
-
-    public static long getJiffies(long tid) {
-        String schedStat = String.format("/proc/%s/task/%s/schedstat", Process.myPid(), tid);
-        try {
-            String content = getStringFromFile(schedStat);
-            if (null == content) {
-                return -1L;
-            }
-            String[] info = content.replaceAll("\n", "").split(" ");
-            return Long.parseLong(info[2]);
-
-        } catch (Exception e) {
-            return -2L;
-        }
-    }
-
 
     public static String convertStreamToString(InputStream is) throws IOException {
         BufferedReader reader = null;
@@ -410,9 +364,7 @@ public class ThreadWatcher extends Plugin {
         long tid;
         boolean isHandlerThread;
         String state;
-        long jiffies;
-        String stack;
-        String stackMD5;
+        int stackTrace;
 
         @Override
         public boolean equals(Object obj) {
@@ -431,7 +383,7 @@ public class ThreadWatcher extends Plugin {
 
         @Override
         public String toString() {
-            return String.format("%s %s %s %s %s", name, tid, state, jiffies, isHandlerThread);
+            return String.format("%s %s %s %s", name, tid, state, isHandlerThread);
         }
     }
 

@@ -47,6 +47,7 @@ public class Constants {
 
     public static final int LIMIT_WARM_THRESHOLD_MS = 5 * 1000;
 
+
     public enum Type {
         NORMAL, ANR, STARTUP
     }

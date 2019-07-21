@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
+import android.os.Process;
 import android.os.SystemClock;
 
 import com.tencent.matrix.AppActiveMatrixDelegate;
@@ -33,6 +34,7 @@ public class AppMethodBeat implements BeatLifecycle {
     private static Object statusLock = new Object();
 
     private static long[] sBuffer = new long[Constants.BUFFER_SIZE];
+    private static final long[] threadTraceBucket = new long[6666]; // head of 32 bit tid, end of 32 bit methodId
     private static int sIndex = 0;
     private static int sLastIndex = -1;
     private static boolean assertIn = false;
@@ -211,8 +213,8 @@ public class AppMethodBeat implements BeatLifecycle {
                 }
             }
         }
-
-        if (Thread.currentThread().getId() == sMainThread.getId()) {
+        long currentThreadId = Thread.currentThread().getId();
+        if (currentThreadId == sMainThread.getId()) {
             if (assertIn) {
                 android.util.Log.e(TAG, "ERROR!!! AppMethodBeat.i Recursive calls!!!");
                 return;
@@ -225,8 +227,30 @@ public class AppMethodBeat implements BeatLifecycle {
             }
             ++sIndex;
             assertIn = false;
+        } else {
+            collectOtherThreadTrace((int) currentThreadId, methodId);
         }
     }
+
+    public static long[] getThreadTraceBucket() {
+        return threadTraceBucket;
+    }
+
+    private static void collectOtherThreadTrace(int currentThreadId, int methodId) {
+        if (currentThreadId < threadTraceBucket.length) {
+            if (threadTraceBucket[currentThreadId] == 0) {
+                synchronized (threadTraceBucket) {
+                    if (threadTraceBucket[currentThreadId] == 0) {
+                        long tid = Process.myTid();
+                        long trueId = tid << 32;
+                        trueId = trueId | methodId;
+                        threadTraceBucket[currentThreadId] = trueId;
+                    }
+                }
+            }
+        }
+    }
+
 
     /**
      * hook method when it's called out.
