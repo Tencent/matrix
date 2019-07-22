@@ -1,0 +1,126 @@
+#
+# Buck generated
+#
+buck_gen/
+**/buck-out
+**/buck-cache
+**/.buckd
+**/BUCK
+**/sim_*
+
+#
+# Visual Studio Code
+#
+**/.vscode
+
+#
+# Eclipse
+#
+**/.settings
+**/.externalToolBuilders
+
+#
+# IntelliJ IDEA
+#
+**/.idea/
+*.iws
+*.ipr
+*.iml
+
+#
+# and Android Studio
+#
+build/
+**/build/
+.gradle/
+**/local.properties
+reports/
+captures/
+
+#
+# Python
+#
+*.pyc
+
+#
+# OSX files
+#
+**/.DS_Store
+
+#
+# SCM
+#
+**/.svn
+
+#
+# Proguard
+#
+app/proguard/
+wear/wear_mapping.txt
+
+#
+# other generated
+#
+**/gen
+**/bin
+**/classes
+out/A
+.metadata
+*__.proto
+TagMapping.txt
+*.apk
+LinearAllocXmlResult.xml
+app/SECONDARY_DEX_PATTERN_LIST
+.#
+_temp_preload_/
+
+#
+# modulelized projects
+#
+release-tools/
+devops-tools/
+libmmui_kit/
+libwxperf/
+libxweb/
+group-kinda-lib/kinda/
+lib-magicbrush/
+wechat-sdk/
+splash/
+**/libmmglide/
+**/libmmsubsamplingimage/
+weui-native-android/
+
+
+.api/
+
+wechat_protocol_rsa_public_keys/
+#
+# language sync
+#
+pre-compile-tools/language_sync/amm_language
+pre-compile-tools/language_sync/res
+app/res/values-*/
+wear/res/values-*/
+
+builder-quick/
+quick-build.bat
+libxweb
+check_string_res_dir.txt
+
+#
+# node
+#
+**/node_modules/
+
+configuration.txt
+developing.properties
+last_build_success_sha.txt
+
+group-kinda-lib/kinda
+group-netmock/kinda-proto/
+group-netmock/plugin-netmock/autogen/
+
+
+**/.project
+
+**/.externalNativeBuild/
