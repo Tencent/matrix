@@ -20,6 +20,8 @@
 
 #define STACK_PER_MAX_COUNT 100 // the max address count of one stack
 
+#define SHORTEST_LENGTH_OF_STACK 10
+
 static uintptr_t **g_mainThreadStackCycleArray;
 static size_t *g_mainThreadStackCount;
 static uint64_t g_tailPoint;
@@ -144,17 +146,26 @@ static size_t *g_topStackAddressRepeatArray;
 {
     pthread_mutex_lock(&m_threadLock);
     size_t maxValue = 0;
+    BOOL trueStack = NO;
     for (int i = 0; i < m_cycleArrayCount; i++) {
         size_t currentValue = g_topStackAddressRepeatArray[i];
-        if (currentValue > maxValue) {
+        int stackCount = (int) g_mainThreadStackCount[i];
+        // find the stack with the most repeat times and its stackcount is no less than SHORTEST_LENGTH_OF_STACK
+        if (currentValue > maxValue && stackCount > SHORTEST_LENGTH_OF_STACK) {
             maxValue = currentValue;
+            trueStack = YES;
         }
+    }
+    
+    if (!trueStack) {
+        return NULL;
     }
 
     size_t currentIndex = (g_tailPoint + m_cycleArrayCount - 1) % m_cycleArrayCount;
     for (int i = 0; i < m_cycleArrayCount; i++) {
         int trueIndex = (g_tailPoint + m_cycleArrayCount - i - 1) % m_cycleArrayCount;
-        if (g_topStackAddressRepeatArray[trueIndex] == maxValue) {
+        int stackCount = (int) g_mainThreadStackCount[trueIndex];
+        if (g_topStackAddressRepeatArray[trueIndex] == maxValue && stackCount > SHORTEST_LENGTH_OF_STACK) {
             currentIndex = trueIndex;
             break;
         }
