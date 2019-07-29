@@ -176,6 +176,9 @@ typedef enum
 /* Callback used to write point thread */
 @property(nonatomic,readwrite,assign) KSReportWritePointThreadCallback onWritePointThread;
 
+/* Callback used to write the repeat number of point thread */
+@property(nonatomic,readwrite,assign) KSReportWritePointThreadRepeatNumberCallback onWritePointThreadRepeatNumber;
+
 /** Add a copy of KSCrash's console log messages to the crash report.
  */
 @property(nonatomic,readwrite,assign) BOOL addConsoleLogToReport;

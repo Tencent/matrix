@@ -79,6 +79,11 @@ void kscrashreport_setUserSectionWriteCallback(const KSReportWriteCallback userS
  */
 void kscrashreport_setPointThreadWriteCallback(const KSReportWritePointThreadCallback pointThreadWriteCallback);
 
+/**
+ * Use to add point thread repeat number
+ **/
+void kscrashreport_setPointThreadRepeatNumberWriteCallback(const KSReportWritePointThreadRepeatNumberCallback pointThreadRepeatNumberWriteCallback);
+
 // ============================================================================
 #pragma mark - Main API -
 // ============================================================================

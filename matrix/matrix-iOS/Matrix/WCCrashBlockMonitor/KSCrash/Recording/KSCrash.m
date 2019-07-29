@@ -139,6 +139,7 @@ static NSString* getBasePath()
 @synthesize onCrash = _onCrash;
 @synthesize onHandleSignalCallBack = _onHandleSignalCallBack;
 @synthesize onWritePointThread = _onWritePointThread;
+@synthesize onWritePointThreadRepeatNumber = _onWritePointThreadRepeatNumber;
 @synthesize bundleName = _bundleName;
 @synthesize basePath = _basePath;
 @synthesize introspectMemory = _introspectMemory;
@@ -275,6 +276,12 @@ static NSString* getBasePath()
 {
     _onWritePointThread = onWritePointThread;
     kscrash_setPointThreadCallback(onWritePointThread);
+}
+
+- (void) setOnWritePointThreadRepeatNumber:(KSReportWritePointThreadRepeatNumberCallback)onWritePointThreadRepeatNumber
+{
+    _onWritePointThreadRepeatNumber = onWritePointThreadRepeatNumber;
+    kscrash_setPointThreadRepeatNumberCallback(onWritePointThreadRepeatNumber);
 }
 
 - (void) setIntrospectMemory:(BOOL) introspectMemory

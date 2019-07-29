@@ -89,6 +89,7 @@
 #define KSCrashField_ObjectName            "object_name"
 #define KSCrashField_SymbolAddr            "symbol_addr"
 #define KSCrashField_SymbolName            "symbol_name"
+#define KSCrashField_RepeatCount           "repeat_count"
 
 
 #pragma mark - Stack Dump -

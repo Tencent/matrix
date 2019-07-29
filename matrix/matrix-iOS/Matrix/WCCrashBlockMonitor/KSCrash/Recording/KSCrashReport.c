@@ -115,6 +115,7 @@ static const char* g_userInfoJSON;
 static KSCrash_IntrospectionRules g_introspectionRules;
 static KSReportWriteCallback g_userSectionWriteCallback;
 static KSReportWritePointThreadCallback g_pointThreadWriteCallback;
+static KSReportWritePointThreadRepeatNumberCallback g_pointThreadRepeatNumberWriteCallback;
 
 #pragma mark Callbacks
 
@@ -892,10 +893,12 @@ static uint32_t g_tailPoint = 0;
  *
  * @param stackCursor The stack cursor to read from.
  */
-static void writeBacktrace(const KSCrashReportWriter* const writer,
-                           const char* const key,
-                           KSStackCursor* stackCursor)
+static void writeBacktraceWithCount(const KSCrashReportWriter* const writer,
+                                     const char* const key,
+                                     KSStackCursor* stackCursor,
+                                     bool isRepeatCount)
 {
+    int* stackRepeatCountArray = g_pointThreadRepeatNumberWriteCallback();
     writer->beginObject(writer, key);
     {
         writer->beginArray(writer, KSCrashField_Contents);
@@ -944,6 +947,9 @@ static void writeBacktrace(const KSCrashReportWriter* const writer,
                         writer->addUIntegerElement(writer, KSCrashField_SymbolAddr, stackCursor->stackEntry.symbolAddress);
                     }
                     writer->addUIntegerElement(writer, KSCrashField_InstructionAddr, stackCursor->stackEntry.address);
+                    if (isRepeatCount) {
+                        writer->addIntegerElement(writer, KSCrashField_RepeatCount, *(stackRepeatCountArray + g_tailPoint - 1));
+                    }
                 }
                 writer->endContainer(writer);
             }
@@ -953,7 +959,13 @@ static void writeBacktrace(const KSCrashReportWriter* const writer,
     }
     writer->endContainer(writer);
 }
-                              
+
+static void writeBacktrace(const KSCrashReportWriter* const writer,
+                           const char* const key,
+                           KSStackCursor* stackCursor)
+{
+    writeBacktraceWithCount(writer, key, stackCursor, false);
+}
 
 #pragma mark Stack
 
@@ -1278,7 +1290,7 @@ static void writeAllThreads(const KSCrashReportWriter* const writer,
             if (stackCursor != NULL) {
                 writer->beginObject(writer, NULL);
                 {
-                    writeBacktrace(writer, KSCrashField_Backtrace, stackCursor);
+                    writeBacktraceWithCount(writer, KSCrashField_Backtrace, stackCursor, true);
                     writer->addIntegerElement(writer, KSCrashField_Index, 0);
                     const char* name = "HandledThread";
                     if(name != NULL)
@@ -1921,4 +1933,10 @@ void kscrashreport_setPointThreadWriteCallback(const KSReportWritePointThreadCal
 {
     KSLOG_TRACE("Set pointThreadWriteCallback to %p", pointThreadWriteCallback);
     g_pointThreadWriteCallback = pointThreadWriteCallback;
+}
+
+void kscrashreport_setPointThreadRepeatNumberWriteCallback(const KSReportWritePointThreadRepeatNumberCallback pointThreadRepeatNumberWriteCallback)
+{
+    KSLOG_TRACE("Set pointThreadRepeatNumberWriteCallback to %p", pointThreadRepeatNumberWriteCallback);
+    g_pointThreadRepeatNumberWriteCallback = pointThreadRepeatNumberWriteCallback;
 }

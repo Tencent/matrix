@@ -250,6 +250,8 @@ typedef void (*KSReportWriteCallback)(const KSCrashReportWriter* writer);
 typedef void (*KSCrashSentryHandleSignal)(siginfo_t *info);
 
 typedef KSStackCursor* (*KSReportWritePointThreadCallback)(void);
+    
+typedef int* (*KSReportWritePointThreadRepeatNumberCallback)(void);
 
 #ifdef __cplusplus
 }
