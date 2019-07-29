@@ -54,6 +54,7 @@ static NSUInteger g_CurrentThreadCount = 0;
 static BOOL g_MainThreadHandle = NO;
 static int g_MainThreadCount = 0;
 static KSStackCursor *g_PointMainThreadArray = NULL;
+static int *g_PointMainThreadRepeatCountArray = NULL;
 
 static BOOL g_filterSameStack = NO;
 static uint32_t g_triggerdFilterSameCnt = 0;
@@ -106,6 +107,11 @@ void exitCallBack()
 KSStackCursor *kscrash_pointThreadCallback(void)
 {
     return g_PointMainThreadArray;
+}
+
+int *kscrash_pointThreadRepeatNumberCallback(void)
+{
+    return g_PointMainThreadRepeatCountArray;
 }
 
 @interface WCBlockMonitorMgr () <WCPowerConsumeStackCollectorDelegate> {
@@ -203,6 +209,9 @@ KSStackCursor *kscrash_pointThreadCallback(void)
     [[NSNotificationCenter defaultCenter] removeObserver:self];
     if (g_PointMainThreadArray != NULL) {
         free(g_PointMainThreadArray);
+    }
+    if (g_PointMainThreadRepeatCountArray != NULL) {
+        free(g_PointMainThreadRepeatCountArray);
     }
 }
 
@@ -461,6 +470,7 @@ KSStackCursor *kscrash_pointThreadCallback(void)
                                         g_PointMainThreadArray = NULL;
                                     }
                                     g_PointMainThreadArray = [m_pointMainThreadHandler getPointStackCursor];
+                                    g_PointMainThreadRepeatCountArray = [m_pointMainThreadHandler getPointStackRepeatCount];
                                     m_potenHandledLagFile = [self dumpFileWithType:dumpType];
                                     BM_SAFE_CALL_SELECTOR_NO_RETURN(_delegate,
                                                                     @selector(onBlockMonitor:getDumpFile:withDumpType:),

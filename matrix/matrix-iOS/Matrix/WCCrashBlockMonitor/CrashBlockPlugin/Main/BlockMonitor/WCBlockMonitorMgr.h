@@ -40,6 +40,9 @@
 // Get the most time-consuming stack recently
 KSStackCursor *kscrash_pointThreadCallback(void);
 
+// Get the repeat number of stack
+int *kscrash_pointThreadRepeatNumberCallback(void);
+
 @interface WCBlockMonitorMgr : NSObject
 
 @property (nonatomic, weak) id<WCBlockMonitorDelegate> delegate;

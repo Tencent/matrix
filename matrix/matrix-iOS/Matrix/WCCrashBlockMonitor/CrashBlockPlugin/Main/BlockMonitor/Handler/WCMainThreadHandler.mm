@@ -26,6 +26,7 @@ static uintptr_t **g_mainThreadStackCycleArray;
 static size_t *g_mainThreadStackCount;
 static uint64_t g_tailPoint;
 static size_t *g_topStackAddressRepeatArray;
+static int *g_mainThreadStackRepeatCountArray;
 
 @interface WCMainThreadHandler () {
     pthread_mutex_t m_threadLock;
@@ -93,6 +94,11 @@ static size_t *g_topStackAddressRepeatArray;
         free(g_topStackAddressRepeatArray);
         g_topStackAddressRepeatArray = NULL;
     }
+    
+    if (g_mainThreadStackRepeatCountArray != NULL) {
+        free(g_mainThreadStackRepeatCountArray);
+        g_mainThreadStackRepeatCountArray = NULL;
+    }
 }
 
 - (void)addThreadStack:(uintptr_t *)stackArray andStackCount:(size_t)stackCount
@@ -150,8 +156,7 @@ static size_t *g_topStackAddressRepeatArray;
     for (int i = 0; i < m_cycleArrayCount; i++) {
         size_t currentValue = g_topStackAddressRepeatArray[i];
         int stackCount = (int) g_mainThreadStackCount[i];
-        // find the stack with the most repeat times and its stackcount is no less than SHORTEST_LENGTH_OF_STACK
-        if (currentValue > maxValue && stackCount > SHORTEST_LENGTH_OF_STACK) {
+        if (currentValue >= maxValue && stackCount > SHORTEST_LENGTH_OF_STACK) {
             maxValue = currentValue;
             trueStack = YES;
         }
@@ -171,9 +176,31 @@ static size_t *g_topStackAddressRepeatArray;
         }
     }
 
+    // current count of point stack
     size_t stackCount = g_mainThreadStackCount[currentIndex];
     size_t pointThreadSize = sizeof(uintptr_t) * stackCount;
     uintptr_t *pointThreadStack = (uintptr_t *) malloc(pointThreadSize);
+    
+    size_t repeatCountArrayBytes = stackCount * sizeof(int);
+    g_mainThreadStackRepeatCountArray = (int *) malloc(repeatCountArrayBytes);
+    if (g_mainThreadStackRepeatCountArray != NULL) {
+        memset(g_mainThreadStackRepeatCountArray, 0, repeatCountArrayBytes);
+    }
+    
+    // calculate the repeat count
+    for (size_t i = 0; i < stackCount; i++) {
+        for (int innerIndex = 0; innerIndex < m_cycleArrayCount; innerIndex++) {
+            size_t innerStackCount = g_mainThreadStackCount[innerIndex];
+            for (size_t idx = 0; idx < innerStackCount; idx++) {
+                
+                // point stack i_th address compare to others
+                if (g_mainThreadStackCycleArray[currentIndex][i] == g_mainThreadStackCycleArray[innerIndex][idx]) {
+                    g_mainThreadStackRepeatCountArray[i] += 1;
+                }
+            }
+        }
+    }
+    
     if (pointThreadStack != NULL) {
         memset(pointThreadStack, 0, pointThreadSize);
         for (size_t idx = 0; idx < stackCount; idx++) {
@@ -221,6 +248,11 @@ static size_t *g_topStackAddressRepeatArray;
      }
      OSSpinLockUnlock(&m_threadLock);
      return NULL;*/
+}
+
+- (int *)getPointStackRepeatCount
+{
+    return g_mainThreadStackRepeatCountArray;
 }
 
 - (KSStackCursor **)getStackCursorWithLimit:(int)limitCount withReturnSize:(NSUInteger &)stackSize

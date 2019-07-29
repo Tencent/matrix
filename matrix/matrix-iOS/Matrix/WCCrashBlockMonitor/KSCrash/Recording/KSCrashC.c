@@ -274,6 +274,11 @@ void kscrash_setPointThreadCallback(const KSReportWritePointThreadCallback onWri
     kscrashreport_setPointThreadWriteCallback(onWritePointThread);
 }
 
+void kscrash_setPointThreadRepeatNumberCallback(const KSReportWritePointThreadRepeatNumberCallback onWritePointThreadRepeatNumber)
+{
+    kscrashreport_setPointThreadRepeatNumberWriteCallback(onWritePointThreadRepeatNumber);
+}
+
 void kscrash_setHandleSignalCallback(const KSCrashSentryHandleSignal onHandleSignal)
 {
     kscm_setHandleSignal(onHandleSignal);

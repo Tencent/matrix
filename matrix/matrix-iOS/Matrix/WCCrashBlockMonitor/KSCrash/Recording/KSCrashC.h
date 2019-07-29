@@ -134,6 +134,8 @@ void kscrash_setInnerHandleSignalCallback(const KSCrashSentryHandleSignal onInne
 void kscrash_setHandleSignalCallback(const KSCrashSentryHandleSignal onHandleSignal);
 
 void kscrash_setPointThreadCallback(const KSReportWritePointThreadCallback onWritePointThread);
+    
+void kscrash_setPointThreadRepeatNumberCallback(const KSReportWritePointThreadRepeatNumberCallback onWritePointThreadRepeatNumber);
 
 /** Set if KSLOG console messages should be appended to the report.
  *
