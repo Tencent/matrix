@@ -11,7 +11,7 @@ extern "C" {
 #endif
 
 JNIEXPORT jstring JNICALL
-Java_com_tencent_mm_performance_fd_FDDumpBridge_getFdPathName(JNIEnv
+Java_com_tencent_mm_performance_jni_fd_FDDumpBridge_getFdPathName(JNIEnv
                                                               *env, jclass type,
                                                               jstring path_) {
     const char *path = env->GetStringUTFChars(path_, 0);

@@ -1,4 +1,4 @@
-package com.tencent.mm.performance.fd;
+package com.tencent.mm.performance.jni.fd;
 
 /**
  * Created by Yves on 2019-07-22
