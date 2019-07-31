@@ -22,11 +22,11 @@
 //
 
 #include <jni.h>
+#include <xhook.h>
 #include "sqlite_lint.h"
 #include "lemon/sqlite3.h"
 #include "com_tencent_sqlitelint_util_SLog.h"
 #include "jni_helper.h"
-#include "elf_hook.h"
 
 namespace sqlitelint {
 
@@ -95,19 +95,15 @@ namespace sqlitelint {
             LOGW("SQLiteLintHooker_nativeDoHook kInitSuc failed");
             return false;
         }
-        loaded_soinfo* soinfo = elfhook_open("libandroid_runtime.so");
-        if (!soinfo) {
-            LOGW("Failure to open libandroid_runtime.so");
-            return false;
-        }
-        if (!elfhook_replace(soinfo, "sqlite3_profile", (void*)hooked_sqlite3_profile, (void**)&original_sqlite3_profile)) {
-            LOGW("Failure to hook sqlite3_profile");
-            elfhook_close(soinfo);
-            soinfo = nullptr;
-            return false;
-        }
-        elfhook_close(soinfo);
-        soinfo = nullptr;
+        xhook_register(".*/libandroid_runtime\\.so$", "sqlite3_profile", (void*)hooked_sqlite3_profile, (void**)&original_sqlite3_profile);
+
+        #ifndef NDEBUG
+        xhook_enable_sigsegv_protection(0);
+        #else
+        xhook_enable_sigsegv_protection(1);
+        #endif
+
+        xhook_refresh(0);
 
         kStop = false;
 
