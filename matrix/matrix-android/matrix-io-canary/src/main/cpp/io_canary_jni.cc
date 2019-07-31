@@ -22,9 +22,12 @@
 
 #include <jni.h>
 #include <cstddef>
+#include <cstring>
 #include <android/log.h>
 #include <assert.h>
-#include "elf_hook.h"
+#include <xhook.h>
+#include <string>
+#include <algorithm>
 #include "comm/io_canary_utils.h"
 #include "core/io_canary.h"
 
@@ -286,6 +289,19 @@ namespace iocanary {
             iocanary::IOCanary::Get().SetConfig(static_cast<IOCanaryConfigKey>(key), val);
         }
 
+        static std::string BuildPatternFromName(const std::string& name) {
+            std::string result(".*/");
+            for (int i = 0; i < name.length(); ++i) {
+                if (name[i] == '.') {
+                    result += "\\.";
+                } else {
+                    result += name[i];
+                }
+            }
+            result += '$';
+            return result;
+        }
+
         JNIEXPORT jboolean JNICALL
         Java_com_tencent_matrix_iocanary_core_IOCanaryJniBridge_doHook(JNIEnv *env, jclass type) {
             __android_log_print(ANDROID_LOG_INFO, kTag, "doHook");
@@ -294,42 +310,32 @@ namespace iocanary {
                 const char* so_name = TARGET_MODULES[i];
                 __android_log_print(ANDROID_LOG_INFO, kTag, "try to hook function in %s.", so_name);
 
-                loaded_soinfo* soinfo = elfhook_open(so_name);
-                if (!soinfo) {
-                    __android_log_print(ANDROID_LOG_WARN, kTag, "Failure to open %s, try next.", so_name);
-                    continue;
-                }
+                // Convert name into form like: .*/libxxx\\.so$
+                std::string soPattern = BuildPatternFromName(so_name);
 
-                elfhook_replace(soinfo, "open", (void*)ProxyOpen, (void**)&original_open);
-                elfhook_replace(soinfo, "open64", (void*)ProxyOpen64, (void**)&original_open64);
+                xhook_register(soPattern.c_str(), "open", (void*)ProxyOpen, (void**)&original_open);
+                xhook_register(soPattern.c_str(), "open64", (void*)ProxyOpen64, (void**)&original_open64);
 
                 bool is_libjavacore = (strstr(so_name, "libjavacore.so") != nullptr);
                 if (is_libjavacore) {
-                    if (!elfhook_replace(soinfo, "read", (void*)ProxyRead, (void**)&original_read)) {
-                        __android_log_print(ANDROID_LOG_WARN, kTag, "doHook hook read failed, try __read_chk");
-                        if (!elfhook_replace(soinfo, "__read_chk", (void*)ProxyRead, (void**)&original_read)) {
-                            __android_log_print(ANDROID_LOG_WARN, kTag, "doHook hook failed: __read_chk");
-                            elfhook_close(soinfo);
-                            return false;
-                        }
-                    }
-
-                    if (!elfhook_replace(soinfo, "write", (void*)ProxyWrite, (void**)&original_write)) {
-                        __android_log_print(ANDROID_LOG_WARN, kTag, "doHook hook write failed, try __write_chk");
-                        if (!elfhook_replace(soinfo, "__write_chk", (void*)ProxyWrite, (void**)&original_write)) {
-                            __android_log_print(ANDROID_LOG_WARN, kTag, "doHook hook failed: __write_chk");
-                            elfhook_close(soinfo);
-                            return false;
-                        }
-                    }
+                    xhook_register(soPattern.c_str(), "read", (void*)ProxyRead, (void**)&original_read);
+                    xhook_register(soPattern.c_str(), "__read_chk", (void*)ProxyRead, (void**)&original_read);
+                    xhook_register(soPattern.c_str(), "write", (void*)ProxyWrite, (void**)&original_write);
+                    xhook_register(soPattern.c_str(), "__write_chk", (void*)ProxyWrite, (void**)&original_write);
                 }
 
-                elfhook_replace(soinfo, "close", (void*)ProxyClose, (void**)&original_close);
-
-                elfhook_close(soinfo);
+                xhook_register(soPattern.c_str(), "close", (void*)ProxyClose, (void**)&original_close);
             }
 
-            return true;
+            #ifndef NDEBUG
+            xhook_enable_sigsegv_protection(0);
+            #else
+            xhook_enable_sigsegv_protection(1);
+            #endif
+
+            xhook_refresh(0);
+
+            return JNI_TRUE;
         }
 
         JNIEXPORT jboolean JNICALL
@@ -337,19 +343,17 @@ namespace iocanary {
         __android_log_print(ANDROID_LOG_INFO, kTag, "doUnHook");
             for (int i = 0; i < TARGET_MODULE_COUNT; ++i) {
                 const char* so_name = TARGET_MODULES[i];
-                loaded_soinfo* soinfo = elfhook_open(so_name);
-                if (!soinfo) {
-                    continue;
-                }
-                elfhook_replace(soinfo, "open", (void*) original_open, nullptr);
-                elfhook_replace(soinfo, "open64", (void*) original_open64, nullptr);
-                elfhook_replace(soinfo, "read", (void*) original_read, nullptr);
-                elfhook_replace(soinfo, "write", (void*) original_write, nullptr);
-                elfhook_replace(soinfo, "__read_chk", (void*) original_read, nullptr);
-                elfhook_replace(soinfo, "__write_chk", (void*) original_write, nullptr);
-                elfhook_replace(soinfo, "close", (void*) original_close, nullptr);
 
-                elfhook_close(soinfo);
+                // Convert name into form like: .*/libxxx\\.so$
+                std::string soPattern = BuildPatternFromName(so_name);
+
+                xhook_register(soPattern.c_str(), "open", (void*)original_open, (void**) NULL);
+                xhook_register(soPattern.c_str(), "open64", (void*)original_open64, (void**) NULL);
+                xhook_register(soPattern.c_str(), "read", (void*)original_read, (void**) NULL);
+                xhook_register(soPattern.c_str(), "__read_chk", (void*)original_read, (void**) NULL);
+                xhook_register(soPattern.c_str(), "write", (void*)original_write, (void**) NULL);
+                xhook_register(soPattern.c_str(), "__write_chk", (void*)original_write, (void**) NULL);
+                xhook_register(soPattern.c_str(), "close", (void*)original_close, (void**) NULL);
             }
             return true;
         }
