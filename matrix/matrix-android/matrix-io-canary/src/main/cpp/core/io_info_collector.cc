@@ -96,7 +96,7 @@ namespace iocanary {
 
         info_map_[fd]->op_cnt_ ++;
         info_map_[fd]->op_size_ += op_size;
-        info_map_[fd]->rw_cost_μs_ += rw_cost;
+        info_map_[fd]->rw_cost_us_ += rw_cost;
 
         if (rw_cost > info_map_[fd]->max_once_rw_cost_time_μs_) {
             info_map_[fd]->max_once_rw_cost_time_μs_ = rw_cost;
