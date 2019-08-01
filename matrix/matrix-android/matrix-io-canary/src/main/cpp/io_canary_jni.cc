@@ -38,7 +38,9 @@ namespace iocanary {
     static int (*original_open) (const char *pathname, int flags, mode_t mode);
     static int (*original_open64) (const char *pathname, int flags, mode_t mode);
     static ssize_t (*original_read) (int fd, void *buf, size_t size);
+    static ssize_t (*original_read_chk) (int fd, void* buf, size_t count, size_t buf_size);
     static ssize_t (*original_write) (int fd, const void *buf, size_t size);
+    static ssize_t (*original_write_chk) (int fd, const void* buf, size_t count, size_t buf_size);
     static int (*original_close) (int fd);
 
     static bool kInitSuc = false;
@@ -134,7 +136,7 @@ namespace iocanary {
                 jlong file_size = issue.file_io_info_.file_size_;
                 jint op_cnt = issue.file_io_info_.op_cnt_;
                 jlong buffer_size = issue.file_io_info_.buffer_size_;
-                jlong op_cost_time = issue.file_io_info_.rw_cost_μs_/1000;
+                jlong op_cost_time = issue.file_io_info_.rw_cost_us_/1000;
                 jint op_type = issue.file_io_info_.op_type_;
                 jlong op_size = issue.file_io_info_.op_size_;
                 jstring thread_name = env->NewStringUTF(issue.file_io_info_.java_context_.thread_name_.c_str());
@@ -233,11 +235,29 @@ namespace iocanary {
 
             size_t ret = original_read(fd, buf, size);
 
-            long read_cost_μs = GetTickCountMicros() - start;
+            long read_cost_us = GetTickCountMicros() - start;
 
-            //__android_log_print(ANDROID_LOG_DEBUG, kTag, "ProxyRead fd:%d buf:%p size:%d ret:%d cost:%d", fd, buf, size, ret, read_cost_μs);
+            //__android_log_print(ANDROID_LOG_DEBUG, kTag, "ProxyRead fd:%d buf:%p size:%d ret:%d cost:%d", fd, buf, size, ret, read_cost_us);
 
-            iocanary::IOCanary::Get().OnRead(fd, buf, size, ret, read_cost_μs);
+            iocanary::IOCanary::Get().OnRead(fd, buf, size, ret, read_cost_us);
+
+            return ret;
+        }
+
+        ssize_t ProxyReadChk(int fd, void* buf, size_t count, size_t buf_size) {
+            if(!IsMainThread()) {
+                return original_read_chk(fd, buf, count, buf_size);
+            }
+
+            int64_t start = GetTickCountMicros();
+
+            ssize_t ret = original_read_chk(fd, buf, count, buf_size);
+
+            long read_cost_us = GetTickCountMicros() - start;
+
+            //__android_log_print(ANDROID_LOG_DEBUG, kTag, "ProxyRead fd:%d buf:%p size:%d ret:%d cost:%d", fd, buf, size, ret, read_cost_us);
+
+            iocanary::IOCanary::Get().OnRead(fd, buf, count, ret, read_cost_us);
 
             return ret;
         }
@@ -254,11 +274,29 @@ namespace iocanary {
 
             size_t ret = original_write(fd, buf, size);
 
-            long write_cost_μs = GetTickCountMicros() - start;
+            long write_cost_us = GetTickCountMicros() - start;
 
-            //__android_log_print(ANDROID_LOG_DEBUG, kTag, "ProxyWrite fd:%d buf:%p size:%d ret:%d cost:%d", fd, buf, size, ret, write_cost_μs);
+            //__android_log_print(ANDROID_LOG_DEBUG, kTag, "ProxyWrite fd:%d buf:%p size:%d ret:%d cost:%d", fd, buf, size, ret, write_cost_us);
 
-            iocanary::IOCanary::Get().OnWrite(fd, buf, size, ret, write_cost_μs);
+            iocanary::IOCanary::Get().OnWrite(fd, buf, size, ret, write_cost_us);
+
+            return ret;
+        }
+
+        ssize_t ProxyWriteChk(int fd, const void* buf, size_t count, size_t buf_size) {
+            if(!IsMainThread()) {
+                return original_write_chk(fd, buf, count, buf_size);
+            }
+
+            int64_t start = GetTickCountMicros();
+
+            ssize_t ret = original_write_chk(fd, buf, count, buf_size);
+
+            long write_cost_us = GetTickCountMicros() - start;
+
+            //__android_log_print(ANDROID_LOG_DEBUG, kTag, "ProxyWrite fd:%d buf:%p size:%d ret:%d cost:%d", fd, buf, size, ret, write_cost_us);
+
+            iocanary::IOCanary::Get().OnWrite(fd, buf, count, ret, write_cost_us);
 
             return ret;
         }
@@ -289,19 +327,6 @@ namespace iocanary {
             iocanary::IOCanary::Get().SetConfig(static_cast<IOCanaryConfigKey>(key), val);
         }
 
-        static std::string BuildPatternFromName(const std::string& name) {
-            std::string result(".*/");
-            for (int i = 0; i < name.length(); ++i) {
-                if (name[i] == '.') {
-                    result += "\\.";
-                } else {
-                    result += name[i];
-                }
-            }
-            result += '$';
-            return result;
-        }
-
         JNIEXPORT jboolean JNICALL
         Java_com_tencent_matrix_iocanary_core_IOCanaryJniBridge_doHook(JNIEnv *env, jclass type) {
             __android_log_print(ANDROID_LOG_INFO, kTag, "doHook");
@@ -310,30 +335,40 @@ namespace iocanary {
                 const char* so_name = TARGET_MODULES[i];
                 __android_log_print(ANDROID_LOG_INFO, kTag, "try to hook function in %s.", so_name);
 
-                // Convert name into form like: .*/libxxx\\.so$
-                std::string soPattern = BuildPatternFromName(so_name);
+                void* soinfo = xhook_elf_open(so_name);
+                if (!soinfo) {
+                    __android_log_print(ANDROID_LOG_WARN, kTag, "Failure to open %s, try next.", so_name);
+                    continue;
+                }
 
-                xhook_register(soPattern.c_str(), "open", (void*)ProxyOpen, (void**)&original_open);
-                xhook_register(soPattern.c_str(), "open64", (void*)ProxyOpen64, (void**)&original_open64);
+                xhook_hook_symbol(soinfo, "open", (void*)ProxyOpen, (void**)&original_open);
+                xhook_hook_symbol(soinfo, "open64", (void*)ProxyOpen64, (void**)&original_open64);
 
                 bool is_libjavacore = (strstr(so_name, "libjavacore.so") != nullptr);
                 if (is_libjavacore) {
-                    xhook_register(soPattern.c_str(), "read", (void*)ProxyRead, (void**)&original_read);
-                    xhook_register(soPattern.c_str(), "__read_chk", (void*)ProxyRead, (void**)&original_read);
-                    xhook_register(soPattern.c_str(), "write", (void*)ProxyWrite, (void**)&original_write);
-                    xhook_register(soPattern.c_str(), "__write_chk", (void*)ProxyWrite, (void**)&original_write);
+                    if (xhook_hook_symbol(soinfo, "read", (void*)ProxyRead, (void**)&original_read) != 0) {
+                        __android_log_print(ANDROID_LOG_WARN, kTag, "doHook hook read failed, try __read_chk");
+                        if (xhook_hook_symbol(soinfo, "__read_chk", (void*)ProxyReadChk, (void**)&original_read_chk) != 0) {
+                            __android_log_print(ANDROID_LOG_WARN, kTag, "doHook hook failed: __read_chk");
+                            xhook_elf_close(soinfo);
+                            return JNI_FALSE;
+                        }
+                    }
+
+                    if (xhook_hook_symbol(soinfo, "write", (void*)ProxyWrite, (void**)&original_write) != 0) {
+                        __android_log_print(ANDROID_LOG_WARN, kTag, "doHook hook write failed, try __write_chk");
+                        if (xhook_hook_symbol(soinfo, "__write_chk", (void*)ProxyWriteChk, (void**)&original_write_chk) != 0) {
+                            __android_log_print(ANDROID_LOG_WARN, kTag, "doHook hook failed: __write_chk");
+                            xhook_elf_close(soinfo);
+                            return JNI_FALSE;
+                        }
+                    }
                 }
 
-                xhook_register(soPattern.c_str(), "close", (void*)ProxyClose, (void**)&original_close);
+                xhook_hook_symbol(soinfo, "close", (void*)ProxyClose, (void**)&original_close);
+
+                xhook_elf_close(soinfo);
             }
-
-            #ifndef NDEBUG
-            xhook_enable_sigsegv_protection(0);
-            #else
-            xhook_enable_sigsegv_protection(1);
-            #endif
-
-            xhook_refresh(0);
 
             return JNI_TRUE;
         }
@@ -343,19 +378,21 @@ namespace iocanary {
         __android_log_print(ANDROID_LOG_INFO, kTag, "doUnHook");
             for (int i = 0; i < TARGET_MODULE_COUNT; ++i) {
                 const char* so_name = TARGET_MODULES[i];
+                void* soinfo = xhook_elf_open(so_name);
+                if (!soinfo) {
+                    continue;
+                }
+                xhook_hook_symbol(soinfo, "open", (void*) original_open, nullptr);
+                xhook_hook_symbol(soinfo, "open64", (void*) original_open64, nullptr);
+                xhook_hook_symbol(soinfo, "read", (void*) original_read, nullptr);
+                xhook_hook_symbol(soinfo, "write", (void*) original_write, nullptr);
+                xhook_hook_symbol(soinfo, "__read_chk", (void*) original_read_chk, nullptr);
+                xhook_hook_symbol(soinfo, "__write_chk", (void*) original_write_chk, nullptr);
+                xhook_hook_symbol(soinfo, "close", (void*) original_close, nullptr);
 
-                // Convert name into form like: .*/libxxx\\.so$
-                std::string soPattern = BuildPatternFromName(so_name);
-
-                xhook_register(soPattern.c_str(), "open", (void*)original_open, (void**) NULL);
-                xhook_register(soPattern.c_str(), "open64", (void*)original_open64, (void**) NULL);
-                xhook_register(soPattern.c_str(), "read", (void*)original_read, (void**) NULL);
-                xhook_register(soPattern.c_str(), "__read_chk", (void*)original_read, (void**) NULL);
-                xhook_register(soPattern.c_str(), "write", (void*)original_write, (void**) NULL);
-                xhook_register(soPattern.c_str(), "__write_chk", (void*)original_write, (void**) NULL);
-                xhook_register(soPattern.c_str(), "close", (void*)original_close, (void**) NULL);
+                xhook_elf_close(soinfo);
             }
-            return true;
+            return JNI_TRUE;
         }
 
         static bool InitJniEnv(JavaVM *vm) {

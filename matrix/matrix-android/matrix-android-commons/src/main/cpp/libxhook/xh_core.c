@@ -654,3 +654,158 @@ void xh_core_enable_sigsegv_protection(int flag)
 {
     xh_core_sigsegv_enable = (flag ? 1 : 0);
 }
+
+void* xh_core_elf_open(const char *path_suffix) {
+    char line[512];
+    FILE* fp;
+    uintptr_t  base_addr;
+    char perm[5];
+    unsigned long offset;
+    int pathname_pos;
+    char *pathname;
+    size_t pathname_len;
+    xh_core_map_info_t *mi;
+    size_t path_suffix_len;
+    int found;
+
+    if (path_suffix == NULL)
+    {
+        return NULL;
+    }
+
+    if(NULL == (fp = fopen("/proc/self/maps", "r")))
+    {
+        XH_LOG_ERROR("fopen /proc/self/maps failed");
+        return NULL;
+    }
+
+    path_suffix_len = strlen(path_suffix);
+    if (path_suffix_len == 0)
+    {
+        return NULL;
+    }
+
+    found = 0;
+    while(fgets(line, sizeof(line), fp))
+    {
+        if(sscanf(line, "%"PRIxPTR"-%*lx %4s %lx %*x:%*x %*d%n", &base_addr, perm, &offset, &pathname_pos) != 3) continue;
+
+        //check permission
+        if(perm[0] != 'r') continue;
+        if(perm[3] != 'p') continue; //do not touch the shared memory
+
+        //check offset
+        //
+        //We are trying to find ELF header in memory.
+        //It can only be found at the beginning of a mapped memory regions
+        //whose offset is 0.
+        if(0 != offset) continue;
+
+        //get pathname
+        while(isspace(line[pathname_pos]) && pathname_pos < (int)(sizeof(line) - 1))
+            pathname_pos += 1;
+        if(pathname_pos >= (int)(sizeof(line) - 1)) continue;
+        pathname = line + pathname_pos;
+        pathname_len = strlen(pathname);
+        if(0 == pathname_len) continue;
+        if(pathname[pathname_len - 1] == '\n')
+        {
+            pathname[pathname_len - 1] = '\0';
+            pathname_len -= 1;
+        }
+        if(0 == pathname_len) continue;
+        if('[' == pathname[0]) continue;
+        if (path_suffix_len > pathname_len) continue;
+
+        if (strncmp(pathname + path_suffix_len, path_suffix, path_suffix_len) != 0)
+        {
+            continue;
+        }
+
+        if (0 != xh_core_check_elf_header(base_addr, pathname)) continue;
+
+        found = 1;
+        break;
+    }
+
+    if (found != 1)
+    {
+        return NULL;
+    }
+
+    mi = malloc(sizeof(xh_core_map_info_t));
+    if (mi == NULL)
+    {
+        return NULL;
+    }
+    memset(mi, 0, sizeof(xh_core_map_info_t));
+
+    if ((mi->pathname = strdup(pathname)) == NULL)
+    {
+        free(mi);
+        mi = NULL;
+        return NULL;
+    }
+
+    mi->base_addr = base_addr;
+
+    return mi;
+}
+
+static int xh_core_hook_single_sym_impl(xh_core_map_info_t *mi, const char *symbol, void *new_func,
+                                        void **old_func)
+{
+    int ret;
+
+    if (mi == NULL || symbol == NULL || new_func == NULL)
+    {
+        return XH_ERRNO_INVAL;
+    }
+
+    //init
+    ret = xh_elf_init(&(mi->elf), mi->base_addr, mi->pathname);
+    if (ret != 0)
+    {
+        return ret;
+    }
+
+    //hook single.
+    return xh_elf_hook(&(mi->elf), symbol, new_func, old_func);
+}
+
+int xh_core_hook_symbol(void* h_lib, const char* symbol, void* new_func, void** old_func) {
+    int ret;
+    xh_core_map_info_t* mi = (xh_core_map_info_t*) h_lib;
+
+    if(!xh_core_sigsegv_enable)
+    {
+        return xh_core_hook_single_sym_impl(mi, symbol, new_func, old_func);
+    }
+    else
+    {
+        ret = XH_ERRNO_UNKNOWN;
+        xh_core_sigsegv_flag = 1;
+        if(0 == sigsetjmp(xh_core_sigsegv_env, 1))
+        {
+            ret = xh_core_hook_single_sym_impl(mi, symbol, new_func, old_func);
+        }
+        else
+        {
+            ret = XH_ERRNO_SEGVERR;
+            XH_LOG_WARN("catch SIGSEGV when init or hook: %s", mi->pathname);
+        }
+        xh_core_sigsegv_flag = 0;
+        return ret;
+    }
+}
+
+void xh_core_elf_close(void *h_lib) {
+    if (h_lib == NULL) return;
+
+    xh_core_map_info_t* mi = h_lib;
+    if (mi->pathname != NULL) {
+        free(mi->pathname);
+    }
+
+    free(mi);
+}
