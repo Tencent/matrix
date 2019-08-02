@@ -31,9 +31,7 @@ import android.view.View;
 import android.webkit.PermissionRequest;
 import android.widget.Toast;
 
-import com.tencent.matrix.AppForegroundDelegate;
 import com.tencent.matrix.Matrix;
-import com.tencent.matrix.listeners.IAppForeground;
 import com.tencent.matrix.plugin.Plugin;
 import com.tencent.matrix.trace.TracePlugin;
 import com.tencent.matrix.trace.core.AppMethodBeat;
@@ -47,7 +45,7 @@ import sample.tencent.matrix.issue.IssueFilter;
 
 import static android.Manifest.permission.SYSTEM_ALERT_WINDOW;
 
-public class TestTraceMainActivity extends Activity implements IAppForeground {
+public class TestTraceMainActivity extends Activity  {
     private static String TAG = "Matrix.TestTraceMainActivity";
     FrameDecorator decorator;
     private static final int PERMISSION_REQUEST_CODE = 0x02;
@@ -70,8 +68,6 @@ public class TestTraceMainActivity extends Activity implements IAppForeground {
         } else {
             decorator.show();
         }
-
-        AppForegroundDelegate.INSTANCE.addListener(this);
     }
 
 
@@ -100,7 +96,6 @@ public class TestTraceMainActivity extends Activity implements IAppForeground {
         if (canDrawOverlays()) {
             decorator.dismiss();
         }
-        AppForegroundDelegate.INSTANCE.removeListener(this);
     }
 
     private boolean canDrawOverlays() {
@@ -204,44 +199,7 @@ public class TestTraceMainActivity extends Activity implements IAppForeground {
         isStop = !isStop;
     }
 
-    public void testInnerSleep() {
-        SystemClock.sleep(6000);
-    }
 
-    private void A() {
-        B();
-        H();
-        I();
-        J();
-        SystemClock.sleep(800);
-    }
-
-    private void B() {
-        C();
-        G();
-        SystemClock.sleep(200);
-    }
-
-    private void C() {
-        D();
-        E();
-        F();
-        SystemClock.sleep(100);
-    }
-
-    private void D() {
-        SystemClock.sleep(20);
-    }
-
-    private void E() {
-        SystemClock.sleep(20);
-    }
-
-    private void F() {
-        SystemClock.sleep(20);
-    }
-
-    @Override
     public void onForeground(boolean isForeground) {
         if (!canDrawOverlays()) {
             return;
