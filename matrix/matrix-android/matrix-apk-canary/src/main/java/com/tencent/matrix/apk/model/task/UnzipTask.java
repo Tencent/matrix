@@ -16,6 +16,7 @@
 
 package com.tencent.matrix.apk.model.task;
 
+import com.android.utils.Pair;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.tencent.matrix.apk.model.exception.TaskExecuteException;
@@ -24,7 +25,6 @@ import com.tencent.matrix.apk.model.job.JobConfig;
 import com.tencent.matrix.apk.model.result.TaskJsonResult;
 import com.tencent.matrix.apk.model.result.TaskResult;
 import com.tencent.matrix.apk.model.result.TaskResultFactory;
-import com.android.utils.Pair;
 import com.tencent.matrix.javalib.util.FileUtil;
 import com.tencent.matrix.javalib.util.Log;
 import com.tencent.matrix.javalib.util.Util;
@@ -43,6 +43,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
+
 import static com.tencent.matrix.apk.model.result.TaskResultFactory.TASK_RESULT_TYPE_JSON;
 import static com.tencent.matrix.apk.model.task.TaskFactory.TASK_TYPE_UNZIP;
 
@@ -63,6 +64,7 @@ public class UnzipTask extends ApkTask {
     private final Map<String, String> resguardMap;
     private final Map<String, String> resDirMap;
     private final Map<String, String> entryNameMap;
+    private final Map<String, Long> entryNameCrcMap;
     private final Map<String, Pair<Long, Long>> entrySizeMap;
 
     public UnzipTask(JobConfig config, Map<String, String> params) {
@@ -73,6 +75,7 @@ public class UnzipTask extends ApkTask {
         resDirMap = new HashMap<>();
         entryNameMap = new HashMap<>();
         entrySizeMap = new HashMap<>();
+        entryNameCrcMap = new HashMap<>();
     }
 
     @Override
@@ -154,7 +157,7 @@ public class UnzipTask extends ApkTask {
                 boolean readPathStart = false;
                 while (line != null) {
                     if (line.trim().equals("res path mapping:")) {
-                      readPathStart = true;
+                        readPathStart = true;
                     } else if (line.trim().equals("res id mapping:")) {
                         readResStart = true;
                         readPathStart = false;
@@ -215,7 +218,7 @@ public class UnzipTask extends ApkTask {
                 suffix = filename.substring(suffixIndex);
             }
             if (resguardMap.containsKey(resource)) {
-                int lastIndex =  resguardMap.get(resource).lastIndexOf('.');
+                int lastIndex = resguardMap.get(resource).lastIndexOf('.');
                 if (lastIndex >= 0) {
                     filename = resguardMap.get(resource).substring(lastIndex + 1) + suffix;
                 }
@@ -321,11 +324,13 @@ public class UnzipTask extends ApkTask {
                     jsonArray.add(fileItem);
                     entrySizeMap.put(outEntryName, Pair.of(entry.getSize(), entry.getCompressedSize()));
                     entryNameMap.put(entry.getName(), outEntryName);
+                    entryNameCrcMap.put(entry.getName(), entry.getCrc());
                 }
             }
 
             config.setEntrySizeMap(entrySizeMap);
             config.setEntryNameMap(entryNameMap);
+            config.setEntryNameCrcMap(entryNameCrcMap);
             ((TaskJsonResult) taskResult).add("entries", jsonArray);
             taskResult.setStartTime(startTime);
             taskResult.setEndTime(System.currentTimeMillis());

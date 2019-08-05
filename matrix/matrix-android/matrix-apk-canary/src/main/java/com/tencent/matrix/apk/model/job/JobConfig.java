@@ -42,6 +42,7 @@ public final class JobConfig {
     private Map<String, String> resguardMap;
     private Map<String, Pair<Long, Long>> entrySizeMap;
     private Map<String, String> entryNameMap;
+    private Map<String, Long> entryNameCrcMap;
 
     public String getInputDir() {
         return inputDir;
@@ -129,6 +130,14 @@ public final class JobConfig {
 
     public void setEntryNameMap(Map<String, String> entryNameMap) {
         this.entryNameMap = entryNameMap;
+    }
+
+    public Map<String, Long> getEntryNameCrcMap() {
+        return entryNameCrcMap;
+    }
+
+    public void setEntryNameCrcMap(Map<String, Long> entryNameCrcMap) {
+        this.entryNameCrcMap = entryNameCrcMap;
     }
 
     public JsonArray getOutputConfig() {

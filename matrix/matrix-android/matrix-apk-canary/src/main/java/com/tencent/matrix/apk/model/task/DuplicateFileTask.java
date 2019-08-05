@@ -16,6 +16,7 @@
 
 package com.tencent.matrix.apk.model.task;
 
+import com.android.utils.Pair;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.tencent.matrix.apk.model.exception.TaskExecuteException;
@@ -24,15 +25,12 @@ import com.tencent.matrix.apk.model.job.JobConfig;
 import com.tencent.matrix.apk.model.result.TaskJsonResult;
 import com.tencent.matrix.apk.model.result.TaskResult;
 import com.tencent.matrix.apk.model.result.TaskResultFactory;
-import com.android.utils.Pair;
 import com.tencent.matrix.javalib.util.Util;
 
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -49,10 +47,11 @@ public class DuplicateFileTask extends ApkTask {
     private static final String TAG = "Matrix.DuplicateFileTask";
 
     private File inputFile;
-    private Map<String, List<String>> md5Map;
-    private List<Pair<String, Long>> fileSizeList;
+    private Map<Long, List<String>> crcMap;
+    private List<Pair<Long, Long>> fileSizeList;
     private Map<String, Pair<Long, Long>> entrySizeMap;
     private Map<String, String> entryNameMap;
+    private Map<String, Long> entryNameCrcMap;
 
     public DuplicateFileTask(JobConfig config, Map<String, String> params) {
         super(config, params);
@@ -72,46 +71,43 @@ public class DuplicateFileTask extends ApkTask {
         } else if (!inputFile.isDirectory()) {
             throw new TaskInitException(TAG + "---APK-UNZIP-PATH '" + inputPath + "' is not directory!");
         }
-        md5Map = new HashMap<>();
+        crcMap = new HashMap<>();
         fileSizeList = new ArrayList<>();
         entrySizeMap = config.getEntrySizeMap();
         entryNameMap = config.getEntryNameMap();
+        entryNameCrcMap = config.getEntryNameCrcMap();
     }
 
-    private void computeMD5(File file) throws NoSuchAlgorithmException, IOException {
+    private void computeCrc(File file) throws IOException {
         if (file != null) {
             if (file.isDirectory()) {
                 File[] files = file.listFiles();
                 for (File resFile : files) {
-                    computeMD5(resFile);
+                    computeCrc(resFile);
                 }
             } else {
-                MessageDigest msgDigest = MessageDigest.getInstance("MD5");
-                BufferedInputStream inputStream = new BufferedInputStream(new FileInputStream(file));
-                byte[] buffer = new byte[512];
-                int readSize = 0;
-                long totalRead = 0;
-                while ((readSize = inputStream.read(buffer)) > 0) {
-                    msgDigest.update(buffer, 0, readSize);
-                    totalRead += readSize;
-                }
-                inputStream.close();
-                if (totalRead > 0) {
-                    final String md5 = Util.byteArrayToHex(msgDigest.digest());
-                    String filename = file.getAbsolutePath().substring(inputFile.getAbsolutePath().length() + 1);
-                    if (entryNameMap.containsKey(filename)) {
-                        filename = entryNameMap.get(filename);
-                    }
-                    if (!md5Map.containsKey(md5)) {
-                        md5Map.put(md5, new ArrayList<String>());
-                        if (entrySizeMap.containsKey(filename)) {
-                            fileSizeList.add(Pair.of(md5, entrySizeMap.get(filename).getFirst()));
-                        } else {
-                            fileSizeList.add(Pair.of(md5, totalRead));
+                String filename = file.getAbsolutePath().substring(inputFile.getAbsolutePath().length() + 1);
+                String entryName = entryNameMap.get(filename);
+                filename = entryName != null ? entryName : filename;
+                Long crcValue = entryNameCrcMap.get(filename);
+
+                if (!crcMap.containsKey(crcValue)) {
+                    crcMap.put(crcValue, new ArrayList<String>());
+                    if (entrySizeMap.containsKey(filename)) {
+                        fileSizeList.add(Pair.of(crcValue, entrySizeMap.get(filename).getFirst()));
+                    } else {
+                        BufferedInputStream inputStream = new BufferedInputStream(new FileInputStream(file));
+                        byte[] buffer = new byte[512];
+                        int readSize;
+                        long totalRead = 0;
+                        while ((readSize = inputStream.read(buffer)) > 0) {
+                            totalRead += readSize;
                         }
+                        inputStream.close();
+                        fileSizeList.add(Pair.of(crcValue, totalRead));
                     }
-                    md5Map.get(md5).add(filename);
                 }
+                crcMap.get(crcValue).add(filename);
             }
         }
     }
@@ -124,30 +120,22 @@ public class DuplicateFileTask extends ApkTask {
             long startTime = System.currentTimeMillis();
             JsonArray jsonArray = new JsonArray();
 
-            computeMD5(inputFile);
+            computeCrc(inputFile);
 
-            Collections.sort(fileSizeList, new Comparator<Pair<String, Long>>() {
+            Collections.sort(fileSizeList, new Comparator<Pair<Long, Long>>() {
                 @Override
-                public int compare(Pair<String, Long> entry1, Pair<String, Long> entry2) {
-                    long file1Len = entry1.getSecond();
-                    long file2Len = entry2.getSecond();
-                    if (file1Len < file2Len) {
-                        return 1;
-                    } else if (file1Len > file2Len) {
-                        return -1;
-                    } else {
-                        return 0;
-                    }
+                public int compare(Pair<Long, Long> entry1, Pair<Long, Long> entry2) {
+                    return Long.compare(entry1.getSecond(), entry2.getSecond());
                 }
             });
 
-            for (Pair<String, Long> entry : fileSizeList) {
-                if (md5Map.get(entry.getFirst()).size() > 1) {
+            for (Pair<Long, Long> entry : fileSizeList) {
+                if (crcMap.get(entry.getFirst()).size() > 1) {
                     JsonObject jsonObject = new JsonObject();
-                    jsonObject.addProperty("md5", entry.getFirst());
+                    jsonObject.addProperty("crc", entry.getFirst());
                     jsonObject.addProperty("size", entry.getSecond());
                     JsonArray jsonFiles = new JsonArray();
-                    for (String filename : md5Map.get(entry.getFirst())) {
+                    for (String filename : crcMap.get(entry.getFirst())) {
                         jsonFiles.add(filename);
                     }
                     jsonObject.add("files", jsonFiles);
