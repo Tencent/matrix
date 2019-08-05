@@ -97,8 +97,8 @@
                     case EDumpType_CPUBlock:
                         dumpTypeDes = @"CPU Too High";
                         break;
-                    case EDumpType_CPUIntervalHigh:
-                        dumpTypeDes = @"CPU Interval High";
+                    case EDumpType_PowerConsume:
+                        dumpTypeDes = @"Power Consume";
                         break;
                     case EDumpType_LaunchBlock:
                         dumpTypeDes = @"Launching Main Thread Block";

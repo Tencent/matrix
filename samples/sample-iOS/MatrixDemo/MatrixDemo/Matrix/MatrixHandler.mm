@@ -69,6 +69,9 @@ void kscrash_crashCallback(const KSCrashReportWriter *writer)
     blockMonitorConfig.bMainThreadHandle = YES;
     blockMonitorConfig.bFilterSameStack = YES;
     blockMonitorConfig.triggerToBeFilteredCount = 10;
+    blockMonitorConfig.bGetCPUHighLog = NO;
+    blockMonitorConfig.bGetPowerConsumeStack = YES;
+    
     crashBlockConfig.blockMonitorConfiguration = blockMonitorConfig;
     
     WCCrashBlockMonitorPlugin *crashBlockPlugin = [[WCCrashBlockMonitorPlugin alloc] init];
@@ -127,8 +130,8 @@ void kscrash_crashCallback(const KSCrashReportWriter *writer)
                     case EDumpType_CPUBlock:
                         dumpTypeDes = @"CPU Too High";
                         break;
-                    case EDumpType_CPUIntervalHigh:
-                        dumpTypeDes = @"CPU Interval High";
+                    case EDumpType_PowerConsume:
+                        dumpTypeDes = @"Power Consume";
                         break;
                     case EDumpType_LaunchBlock:
                         dumpTypeDes = @"Launching Main Thread Block";
