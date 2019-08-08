@@ -34,6 +34,8 @@ void ksccd_init(int pollingIntervalInSeconds);
 void ksccd_freeze(void);
 void ksccd_unfreeze(void);
 
+void ksccd_setSearchQueueNames(bool searchQueueNames);
+
 KSThread* ksccd_getAllThreads(int* threadCount);
 
 const char* ksccd_getThreadName(KSThread thread);

@@ -26,6 +26,7 @@
 @property (nonatomic, strong) UIButton *startBlockMonitorBtn;
 @property (nonatomic, strong) UIButton *stopBlockMonitorBtn;
 @property (nonatomic, strong) UIButton *costCPUBtn;
+@property (nonatomic, strong) UIButton *costCPUOneMinuteBtn;
 @property (nonatomic, strong) UIButton *testResponseBtn;
 
 @property (nonatomic, assign) BOOL bCostCPUNow;
@@ -100,6 +101,13 @@
 
     contentY = contentY + btnHeight + btnGap;
     
+    _costCPUOneMinuteBtn = [Utility genBigRedButtonWithFrame:CGRectMake(contentX, contentY, btnWidth, btnHeight)];
+    [_costCPUOneMinuteBtn addTarget:self action:@selector(costCPUOneMinute) forControlEvents:UIControlEventTouchUpInside];
+    [_costCPUOneMinuteBtn setTitle:@"Cost CPU One Minute" forState:UIControlStateNormal];
+    [_mainScrollView addSubview:_costCPUOneMinuteBtn];
+
+    contentY = contentY + btnHeight + btnGap;
+
     _startBlockMonitorBtn = [Utility genBigGreenButtonWithFrame:CGRectMake(contentX, contentY, btnWidth, btnHeight)];
     [_startBlockMonitorBtn addTarget:self action:@selector(startBlockMonitor) forControlEvents:UIControlEventTouchUpInside];
     [_startBlockMonitorBtn setTitle:@"Start Block Monitor" forState:UIControlStateNormal];
@@ -143,6 +151,19 @@
         [_costCPUBtn setTitle:@"Stop Cost CPU A Lot" forState:UIControlStateNormal];
     }
     [self.maTester costCPUALot];
+}
+
+- (void)costCPUOneMinute
+{
+    [self.maTester costCPUALot];
+    
+    UIAlertController *alertController = [UIAlertController alertControllerWithTitle:@"Warning" message:@"high cpu now" preferredStyle:UIAlertControllerStyleAlert];
+    [self presentViewController:alertController animated:YES completion:nil];
+
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(60 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        [self.maTester costCPUALot];
+        [alertController dismissViewControllerAnimated:YES completion:nil];
+    });
 }
 
 - (void)startBlockMonitor

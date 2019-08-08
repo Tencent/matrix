@@ -35,7 +35,7 @@
         self.onAppendAdditionalInfoCallBack = NULL;
         self.onHandleSignalCallBack = NULL;
         self.blockMonitorConfiguration= [WCBlockMonitorConfiguration defaultConfig];
-        self.reportStrategy = EWCCrashBlockReportStrategy_Default;
+        self.reportStrategy = EWCCrashBlockReportStrategy_All;
     }
     return self;
 }

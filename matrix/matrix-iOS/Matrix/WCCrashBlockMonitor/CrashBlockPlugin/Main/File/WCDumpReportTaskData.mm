@@ -23,7 +23,7 @@ const NSDictionary *WXGDumpReportTypeConfig = @{
                                                 IntNumberObject(EDumpType_MainThreadBlock) : IntNumberObject(EReportPriority_High),
                                                 IntNumberObject(EDumpType_BlockThreadTooMuch) : IntNumberObject(EReportPriority_High),
                                                 IntNumberObject(EDumpType_LaunchBlock) : IntNumberObject(EReportPriority_High),
-                                                IntNumberObject(EDumpType_CPUIntervalHigh) : IntNumberObject(EReportPriority_Default),
+                                                IntNumberObject(EDumpType_PowerConsume) : IntNumberObject(EReportPriority_High),
                                                 IntNumberObject(EDumpType_BackgroundMainThreadBlock) : IntNumberObject(EReportPriority_Low),
                                                 IntNumberObject(EDumpType_CPUBlock) : IntNumberObject(EReportPriority_Low),
                                                 };

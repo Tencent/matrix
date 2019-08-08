@@ -142,6 +142,14 @@ int kscpu_stackGrowDirection(void);
  * @param destinationContext The context to fill.
  */
 void kscpu_getState(struct KSMachineContext* destinationContext);
+
+/** Strip PAC from an instruction pointer.
+ *
+ * @param ip PAC encoded instruction pointer.
+ *
+ * @return Instruction pointer without PAC.
+ */
+uintptr_t kscpu_normaliseInstructionPointer(uintptr_t ip);
     
 #ifdef __cplusplus
 }

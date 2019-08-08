@@ -55,6 +55,9 @@ typedef enum
 
 #pragma mark - Configuration -
 
+/** Init KSCrash instance with custom base path. */
+- (id) initWithBasePath:(NSString *)basePath;
+
 /** A dictionary containing any info you'd like to appear in crash reports. Must
  * contain only JSON-safe data: NSString for keys, and NSDictionary, NSArray,
  * NSString, NSDate, and NSNumber for values.
@@ -103,6 +106,16 @@ typedef enum
  * Default: 0
  */
 @property(nonatomic,readwrite,assign) double deadlockWatchdogInterval;
+
+/** If YES, attempt to fetch dispatch queue names for each running thread.
+ *
+ * WARNING: There is a chance that this will crash on a ksthread_getQueueName() call!
+ *
+ * Enable at your own risk.
+ *
+ * Default: NO
+ */
+@property(nonatomic,readwrite,assign) BOOL searchQueueNames;
 
 /** If YES, introspect memory contents during a crash.
  * Any Objective-C objects or C strings near the stack pointer or referenced by
@@ -175,6 +188,8 @@ typedef enum
 /** Which languages to demangle when getting stack traces (default KSCrashDemangleLanguageAll) */
 @property(nonatomic,readwrite,assign) KSCrashDemangleLanguage demangleLanguages;
 
+/** Exposes the uncaughtExceptionHandler if set from KSCrash. Is nil if debugger is running. **/
+@property (nonatomic, assign) NSUncaughtExceptionHandler *uncaughtExceptionHandler;
 
 #pragma mark - Information -
 

@@ -290,13 +290,15 @@ void *__memory_logging_event_writing_thread(void *param)
 				if (curr_event->stack_size > 0) {
 					stack_identifier = add_stack_frames_in_table(stack_frames_writer, curr_event->stacks + curr_event->num_hot_to_skip, curr_event->stack_size - curr_event->num_hot_to_skip); // unique stack in memory
 				} else {
+					log_internal_without_this_thread(0);
+					
 					__malloc_printf("Data corrupted!");
 					
 					//__malloc_lock_unlock(&working_thread_lock);
 					// Restore abort()?
 					//abort();
-					report_error(MS_ERRC_DATA_CORRUPTED);
 					disable_memory_logging();
+					report_error(MS_ERRC_DATA_CORRUPTED);
 					break;
 				}
 				// Try to get vm memory type from type_flags

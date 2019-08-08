@@ -80,16 +80,16 @@ static int dirContentsCount(const char* path)
     DIR* dir = opendir(path);
     if(dir == NULL)
     {
-        KSLOG_ERROR("Error reading directory %s: %s", strerror(errno));
+        KSLOG_ERROR("Error reading directory %s: %s", path, strerror(errno));
         return 0;
     }
-    
+
     struct dirent* ent;
     while((ent = readdir(dir)))
     {
         count++;
     }
-    
+
     closedir(dir);
     return count;
 }
@@ -106,10 +106,10 @@ static void dirContents(const char* path, char*** entries, int* count)
     dir = opendir(path);
     if(dir == NULL)
     {
-        KSLOG_ERROR("Error reading directory %s: %s", strerror(errno));
+        KSLOG_ERROR("Error reading directory %s: %s", path, strerror(errno));
         goto done;
     }
-    
+
     entryList = calloc((unsigned)entryCount, sizeof(char*));
     struct dirent* ent;
     int index = 0;
@@ -123,7 +123,7 @@ static void dirContents(const char* path, char*** entries, int* count)
         entryList[index] = strdup(ent->d_name);
         index++;
     }
-    
+
 done:
     if(dir != NULL)
     {
@@ -158,7 +158,7 @@ static bool deletePathContents(const char* path, bool deleteTopLevelPathAlso)
     struct stat statStruct = {0};
     if(stat(path, &statStruct) != 0)
     {
-        KSLOG_ERROR("Could not stat %s: %s", strerror(errno));
+        KSLOG_ERROR("Could not stat %s: %s", path, strerror(errno));
         return false;
     }
     if(S_ISDIR(statStruct.st_mode))
@@ -166,13 +166,13 @@ static bool deletePathContents(const char* path, bool deleteTopLevelPathAlso)
         char** entries = NULL;
         int entryCount = 0;
         dirContents(path, &entries, &entryCount);
-        
+
         int bufferLength = KSFU_MAX_PATH_LENGTH;
         char* pathBuffer = malloc((unsigned)bufferLength);
         snprintf(pathBuffer, bufferLength, "%s/", path);
         char* pathPtr = pathBuffer + strlen(pathBuffer);
         int pathRemainingLength = bufferLength - (int)(pathPtr - pathBuffer);
-        
+
         for(int i = 0; i < entryCount; i++)
         {
             char* entry = entries[i];
@@ -182,7 +182,7 @@ static bool deletePathContents(const char* path, bool deleteTopLevelPathAlso)
                 deletePathContents(pathBuffer, true);
             }
         }
-        
+
         free(pathBuffer);
         freeDirListing(entries, entryCount);
         if(deleteTopLevelPathAlso)
@@ -416,7 +416,7 @@ bool ksfu_makePath(const char* absolutePath)
         goto done;
     }
     isSuccessful = true;
-    
+
 done:
     free(pathCopy);
     return isSuccessful;
@@ -437,11 +437,15 @@ bool ksfu_removeFile(const char* path, bool mustExist)
 
 bool ksfu_deleteContentsOfPath(const char* path)
 {
+    if(path == NULL)
+    {
+        return false;
+    }
     if(!canDeletePath(path))
     {
         return false;
     }
-    
+
     return deletePathContents(path, false);
 }
 
@@ -558,7 +562,7 @@ int ksfu_readBufferedReader(KSBufferedReader* reader, char* dstBuffer, int byteC
         bytesConsumed += bytesToCopy;
         bytesRemaining -= bytesToCopy;
     }
-    
+
     return bytesConsumed;
 }
 
@@ -601,7 +605,7 @@ bool ksfu_readBufferedReaderUntilChar(KSBufferedReader* reader, int ch, char* ds
             }
         }
     }
-    
+
     *length = bytesConsumed;
     return false;
 }

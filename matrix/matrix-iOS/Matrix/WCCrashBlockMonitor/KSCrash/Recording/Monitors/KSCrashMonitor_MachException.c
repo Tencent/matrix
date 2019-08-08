@@ -434,6 +434,7 @@ static void uninstallExceptionHandler()
         g_secondaryPThread = 0;
     }
     
+    g_exceptionPort = MACH_PORT_NULL;
     KSLOG_DEBUG("Mach exception handlers uninstalled.");
 }
 

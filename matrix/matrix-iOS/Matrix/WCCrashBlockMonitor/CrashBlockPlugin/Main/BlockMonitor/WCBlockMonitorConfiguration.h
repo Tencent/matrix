@@ -24,6 +24,7 @@ const static useconds_t g_defaultRunLoopTimeOut = 2 * BM_MicroFormat_Second;
 const static useconds_t g_defaultCheckPeriodTime = 1 * BM_MicroFormat_Second;
 const static useconds_t g_defaultPerStackInterval = 50 * BM_MicroFormat_MillSecond;
 const static float g_defaultCPUUsagePercent = 80.;
+const static float g_defaultPowerConsumeCPULimit = 80.;
 const static int g_defaultMainThreadCount = 10;
 const static int g_defaultFrameDropCount = 8;
 
@@ -55,13 +56,19 @@ const static int g_defaultFrameDropCount = 8;
 /// enable get the log of CPU that CPU too high ( current CPU usage > limitCPUPercent * cpu_count )
 @property (nonatomic, assign) BOOL bGetCPUHighLog;
 
-/// enable get the interval high log (experimental, default to NO)
-@property (nonatomic, assign) BOOL bGetIntervalHighLog;
+/// enable get the "cost cpu" callstack
+@property (nonatomic, assign) BOOL bGetPowerConsumeStack;
+
+/// define the value of CPU considered to be power consuming
+@property (nonatomic, assign) float powerConsumeStackCPULimit;
 
 /// enable to filter the same stack in one day, the stack be captured over "triggerToBeFilteredCount" times would be filtered
 @property (nonatomic, assign) BOOL bFilterSameStack;
 
 /// define the count that a stack can be captured in one day, see above "bFilterSameStack"
 @property (nonatomic, assign) uint32_t triggerToBeFilteredCount;
+
+/// enable printing the memory use
+@property (nonatomic, assign) BOOL bPrintMemomryUse;
 
 @end

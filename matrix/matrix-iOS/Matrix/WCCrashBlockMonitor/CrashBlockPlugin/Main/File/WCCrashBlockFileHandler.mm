@@ -21,6 +21,7 @@
 #import "MatrixLogDef.h"
 #import "MatrixPathUtil.h"
 #import "WCCrashBlockJsonUtil.h"
+#import "WCDumpReportTaskData.h"
 
 @implementation WCCrashBlockFileHandler
 
@@ -230,6 +231,51 @@ static NSString *g_userDumpCachePath = nil;
         return [NSString stringWithFormat:@"-%lu", (unsigned long) type];
     }
     return [NSString stringWithFormat:@"%@-%lu", limitDate, (unsigned long) type];
+}
+
++ (BOOL)haveLagFiles
+{
+    for (NSNumber *type in WXGDumpReportTypeConfig) {
+        if (type == nil) {
+            continue;
+        }
+        if ([WCCrashBlockFileHandler haveLagFilesOnType:EDumpType([type intValue])]) {
+            return YES;
+        }
+    }
+    return NO;
+}
+
++ (BOOL)haveLagFilesOnDate:(NSString *)nsDate
+{
+    for (NSNumber *type in WXGDumpReportTypeConfig) {
+        if (type == nil) {
+            continue;
+        }
+        if ([WCCrashBlockFileHandler haveLagFilesOnDate:nsDate onType:EDumpType([type intValue])]) {
+            return YES;
+        }
+    }
+    return NO;
+}
+
++ (BOOL)haveLagFilesOnType:(EDumpType)dumpType
+{
+    NSArray *reportIDArray = [[KSCrash sharedInstance] allReportIDWithPath:[WCCrashBlockFileHandler diretoryOfUserDumpWithType:dumpType]];
+    return [reportIDArray count] > 0;
+}
+
++ (BOOL)haveLagFilesOnDate:(NSString *)nsDate onType:(EDumpType)dumpType
+{
+    NSString *fileSuffix = [WCCrashBlockFileHandler p_getFileSuffixWithType:dumpType withDate:nsDate];
+    NSArray *reportIDArray = [[KSCrash sharedInstance] allReportIDWithPath:[WCCrashBlockFileHandler diretoryOfUserDumpWithType:dumpType]];
+    NSMutableArray *arrResult = [[NSMutableArray alloc] init];
+    for (NSString *reportID in reportIDArray) {
+        if ([reportID hasSuffix:fileSuffix]) {
+            [arrResult addObject:reportID];
+        }
+    }
+    return [arrResult count] > 0;
 }
 
 // ============================================================================
