@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:background="@android:color/transparent"
+    android:orientation="vertical">
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <ImageView
+            android:layout_width="8dp"
+            android:layout_height="8dp"
+            android:layout_marginLeft="2dp"
+            android:background="@drawable/ic_launcher" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginLeft="2dp"
+            android:gravity="left"
+            android:text="Matrix"
+            android:textColor="@android:color/darker_gray"
+            android:textSize="8dp"
+            android:textStyle="bold" />
+
+
+    </LinearLayout>
+
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="3dp"
+        android:layout_marginBottom="3dp"
+        android:orientation="vertical">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="left"
+            android:minWidth="40dp"
+            android:paddingLeft="3dp"
+            android:text="200 ms"
+            android:textColor="@android:color/darker_gray"
+            android:textSize="8dp" />
+
+        <TextView
+            android:id="@+id/fps_view"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:minWidth="60dp"
+            android:paddingLeft="3dp"
+            android:paddingBottom="3dp"
+            android:text="60.00 FPS"
+            android:textColor="@android:color/holo_green_dark"
+            android:textSize="12dp"
+            android:textStyle="bold" />
+
+
+    </LinearLayout>
+
+
+    <view
+        android:id="@+id/chart"
+        class="com.tencent.matrix.trace.view.FloatFrameView$LineChartView"
+        android:layout_width="match_parent"
+        android:layout_height="160dp"
+        android:layout_marginLeft="2dp" />
+</LinearLayout>

@@ -111,7 +111,7 @@ public class SQLiteLintIssue implements Parcelable {
         }
 
         SQLiteLintIssue d = (SQLiteLintIssue) o;
-        return d.id.equals(((SQLiteLintIssue) o).id);
+        return d.id.equals(id);
     }
 
     @Override

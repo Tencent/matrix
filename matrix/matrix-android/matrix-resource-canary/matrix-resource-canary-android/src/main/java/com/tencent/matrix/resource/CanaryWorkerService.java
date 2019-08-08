@@ -64,11 +64,16 @@ public class CanaryWorkerService extends MatrixJobIntentService {
         if (intent != null) {
             final String action = intent.getAction();
             if (ACTION_SHRINK_HPROF.equals(action)) {
-                final HeapDump heapDump = (HeapDump) intent.getSerializableExtra(EXTRA_PARAM_HEAPDUMP);
-                if (heapDump != null) {
-                    doShrinkHprofAndReport(heapDump);
-                } else {
-                    MatrixLog.e(TAG, "failed to deserialize heap dump, give up shrinking and reporting.");
+                try {
+                    intent.setExtrasClassLoader(this.getClassLoader());
+                    final HeapDump heapDump = (HeapDump) intent.getSerializableExtra(EXTRA_PARAM_HEAPDUMP);
+                    if (heapDump != null) {
+                        doShrinkHprofAndReport(heapDump);
+                    } else {
+                        MatrixLog.e(TAG, "failed to deserialize heap dump, give up shrinking and reporting.");
+                    }
+                } catch (Throwable thr) {
+                    MatrixLog.printErrStackTrace(TAG, thr,  "failed to deserialize heap dump, give up shrinking and reporting.");
                 }
             }
         }

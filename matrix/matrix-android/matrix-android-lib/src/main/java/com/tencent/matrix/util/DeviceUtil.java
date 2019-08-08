@@ -34,6 +34,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.RandomAccessFile;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
@@ -79,7 +80,7 @@ public class DeviceUtil {
             oldObj.put(DEVICE_MACHINE, getLevel(context));
             oldObj.put(DEVICE_CPU, getAppCpuRate());
             oldObj.put(DEVICE_MEMORY, getTotalMemory(context));
-            oldObj.put(DEVICE_MEMORY_FREE, getMemFree());
+            oldObj.put(DEVICE_MEMORY_FREE, getMemFree(context));
 
         } catch (JSONException e) {
             MatrixLog.e(TAG, "[JSONException for stack, error: %s", e);
@@ -190,6 +191,11 @@ public class DeviceUtil {
 
     //return in KB
     public static long getAvailMemory(Context context) {
+        Runtime runtime = Runtime.getRuntime();
+        return runtime.freeMemory() / 1024;   //in KB
+    }
+
+    public static long getMemFree(Context context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
             ActivityManager.MemoryInfo memInfo = new ActivityManager.MemoryInfo();
             ActivityManager am = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
@@ -203,7 +209,7 @@ public class DeviceUtil {
                 String line = bufferedReader.readLine();
                 while (null != line) {
                     String[] args = line.split("\\s+");
-                    if ("MemFree:".equals(args[0])) {
+                    if ("MemAvailable:".equals(args[0])) {
                         availMemory = Integer.parseInt(args[1]) * 1024L;
                         break;
                     } else {
@@ -224,36 +230,6 @@ public class DeviceUtil {
             }
             return availMemory / 1024;
         }
-    }
-
-    public static long getMemFree() {
-        long availMemory = INVALID;
-        BufferedReader bufferedReader = null;
-        try {
-            bufferedReader = new BufferedReader(new InputStreamReader(new FileInputStream(MEMORY_FILE_PATH), "UTF-8"));
-            String line = bufferedReader.readLine();
-            while (null != line) {
-                String[] args = line.split("\\s+");
-                if ("MemFree:".equals(args[0])) {
-                    availMemory = Integer.parseInt(args[1]) * 1024L;
-                    break;
-                } else {
-                    line = bufferedReader.readLine();
-                }
-            }
-
-        } catch (Exception e) {
-            MatrixLog.i(TAG, "[getAvailMemory] error! %s", e.toString());
-        } finally {
-            try {
-                if (null != bufferedReader) {
-                    bufferedReader.close();
-                }
-            } catch (Exception e) {
-                MatrixLog.i(TAG, "close reader %s", e.toString());
-            }
-        }
-        return availMemory / 1024;
     }
 
     public static double getAppCpuRate() {
@@ -392,6 +368,66 @@ public class DeviceUtil {
 
     public static long getNativeHeap() {
         return Debug.getNativeHeapAllocatedSize() / 1024;   //in KB
+    }
+
+    public static long getVmSize() {
+        String status = String.format("/proc/%s/status", getAppId());
+        try {
+            String content = getStringFromFile(status).trim();
+            String[] args = content.split("\n");
+            for (String str : args) {
+                if (str.startsWith("VmSize")) {
+                    Pattern p = Pattern.compile("\\d+");
+                    Matcher matcher = p.matcher(str);
+                    if (matcher.find()) {
+                        return Long.parseLong(matcher.group());
+                    }
+                }
+            }
+            if (args.length > 12) {
+                Pattern p = Pattern.compile("\\d+");
+                Matcher matcher = p.matcher(args[12]);
+                if (matcher.find()) {
+                    return Long.parseLong(matcher.group());
+                }
+            }
+        } catch (Exception e) {
+            return -1;
+        }
+        return -1;
+    }
+
+    public static String convertStreamToString(InputStream is) throws Exception {
+        BufferedReader reader = null;
+        StringBuilder sb = new StringBuilder();
+        try {
+            reader = new BufferedReader(new InputStreamReader(is));
+            String line = null;
+            while ((line = reader.readLine()) != null) {
+                sb.append(line).append('\n');
+            }
+        } finally {
+            if (null != reader) {
+                reader.close();
+            }
+        }
+
+        return sb.toString();
+    }
+
+    public static String getStringFromFile(String filePath) throws Exception {
+        File fl = new File(filePath);
+        FileInputStream fin = null;
+        String ret;
+        try {
+            fin = new FileInputStream(fl);
+            ret = convertStreamToString(fin);
+        } finally {
+            if (null != fin) {
+                fin.close();
+            }
+        }
+        return ret;
     }
 
 }

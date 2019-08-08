@@ -23,6 +23,9 @@ import android.app.Application;
  */
 
 public interface IPlugin {
+
+    Application getApplication();
+
     void init(Application application, PluginListener pluginListener);
 
     void start();

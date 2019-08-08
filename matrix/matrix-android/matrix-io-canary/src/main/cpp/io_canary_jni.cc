@@ -102,7 +102,7 @@ namespace iocanary {
             }
 
             JNIEnv* env;
-            bool attached;
+            bool attached = false;
             jint j_ret = kJvm->GetEnv((void**)&env, JNI_VERSION_1_6);
             if (j_ret == JNI_EDETACHED) {
                 jint jAttachRet = kJvm->AttachCurrentThread(&env, nullptr);
@@ -278,12 +278,12 @@ namespace iocanary {
 
         JNIEXPORT void JNICALL
         Java_com_tencent_matrix_iocanary_core_IOCanaryJniBridge_enableDetector(JNIEnv *env, jclass type, jint detector_type) {
-            iocanary::IOCanary::Get().RegisterDetector(DetectorType(detector_type));
+            iocanary::IOCanary::Get().RegisterDetector(static_cast<DetectorType>(detector_type));
         }
 
         JNIEXPORT void JNICALL
         Java_com_tencent_matrix_iocanary_core_IOCanaryJniBridge_setConfig(JNIEnv *env, jclass type, jint key, jlong val) {
-            iocanary::IOCanary::Get().SetConfig(IOCanaryConfigKey(key), val);
+            iocanary::IOCanary::Get().SetConfig(static_cast<IOCanaryConfigKey>(key), val);
         }
 
         JNIEXPORT jboolean JNICALL
@@ -309,6 +309,7 @@ namespace iocanary {
                         __android_log_print(ANDROID_LOG_WARN, kTag, "doHook hook read failed, try __read_chk");
                         if (!elfhook_replace(soinfo, "__read_chk", (void*)ProxyRead, (void**)&original_read)) {
                             __android_log_print(ANDROID_LOG_WARN, kTag, "doHook hook failed: __read_chk");
+                            elfhook_close(soinfo);
                             return false;
                         }
                     }
@@ -317,6 +318,7 @@ namespace iocanary {
                         __android_log_print(ANDROID_LOG_WARN, kTag, "doHook hook write failed, try __write_chk");
                         if (!elfhook_replace(soinfo, "__write_chk", (void*)ProxyWrite, (void**)&original_write)) {
                             __android_log_print(ANDROID_LOG_WARN, kTag, "doHook hook failed: __write_chk");
+                            elfhook_close(soinfo);
                             return false;
                         }
                     }
@@ -346,6 +348,8 @@ namespace iocanary {
                 elfhook_replace(soinfo, "__read_chk", (void*) original_read, nullptr);
                 elfhook_replace(soinfo, "__write_chk", (void*) original_write, nullptr);
                 elfhook_replace(soinfo, "close", (void*) original_close, nullptr);
+
+                elfhook_close(soinfo);
             }
             return true;
         }

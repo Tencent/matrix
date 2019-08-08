@@ -19,6 +19,7 @@ package com.tencent.matrix.trace;
 import com.tencent.matrix.javalib.util.FileUtil;
 import com.tencent.matrix.javalib.util.Log;
 import com.tencent.matrix.trace.item.TraceMethod;
+import com.tencent.matrix.trace.retrace.MappingCollector;
 
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassVisitor;
@@ -32,11 +33,17 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Enumeration;
-import java.util.HashMap;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
@@ -53,43 +60,53 @@ public class MethodTracer {
 
     private static final String TAG = "Matrix.MethodTracer";
     private static AtomicInteger traceMethodCount = new AtomicInteger();
-    private final TraceBuildConfig mTraceConfig;
-    private final HashMap<String, TraceMethod> mCollectedMethodMap;
-    private final HashMap<String, String> mCollectedClassExtendMap;
-    private final LinkedList<String> mApplicationClazz = new LinkedList<>();
+    private final Configuration configuration;
+    private final ConcurrentHashMap<String, TraceMethod> collectedMethodMap;
+    private final ConcurrentHashMap<String, String> collectedClassExtendMap;
+    private final ExecutorService executor;
+    private MappingCollector mappingCollector;
 
-    MethodTracer(TraceBuildConfig config, HashMap<String, TraceMethod> collectedMap, HashMap<String, String> collectedClassExtendMap) {
-        this.mTraceConfig = config;
-        this.mCollectedClassExtendMap = collectedClassExtendMap;
-        this.mCollectedMethodMap = collectedMap;
-        StringBuffer stringBuffer = new StringBuffer();
-        for (String clazz : mCollectedClassExtendMap.keySet()) {
-            if (mTraceConfig.isApplicationOrSubClass(clazz, mCollectedClassExtendMap)) {
-                mApplicationClazz.add(clazz);
-                stringBuffer.append(clazz).append(',');
-            }
+    public MethodTracer(ExecutorService executor, MappingCollector mappingCollector, Configuration config, ConcurrentHashMap<String, TraceMethod> collectedMap, ConcurrentHashMap<String, String> collectedClassExtendMap) {
+        this.configuration = config;
+        this.mappingCollector = mappingCollector;
+        this.executor = executor;
+        this.collectedClassExtendMap = collectedClassExtendMap;
+        this.collectedMethodMap = collectedMap;
+    }
+
+
+    public void trace(Map<File, File> srcFolderList, Map<File, File> dependencyJarList) throws ExecutionException, InterruptedException {
+        List<Future> futures = new LinkedList<>();
+        traceMethodFromSrc(srcFolderList, futures);
+        traceMethodFromJar(dependencyJarList, futures);
+        for (Future future : futures) {
+            future.get();
         }
-        Log.i(TAG, "[MethodTracer] ApplicationClazz:%s", stringBuffer.toString());
+        futures.clear();
     }
 
-
-    public void trace(Map<File, File> srcFolderList, Map<File, File> dependencyJarList) {
-        traceMethodFromSrc(srcFolderList);
-        traceMethodFromJar(dependencyJarList);
-    }
-
-    private void traceMethodFromSrc(Map<File, File> srcMap) {
+    private void traceMethodFromSrc(Map<File, File> srcMap, List<Future> futures) {
         if (null != srcMap) {
             for (Map.Entry<File, File> entry : srcMap.entrySet()) {
-                innerTraceMethodFromSrc(entry.getKey(), entry.getValue());
+                futures.add(executor.submit(new Runnable() {
+                    @Override
+                    public void run() {
+                        innerTraceMethodFromSrc(entry.getKey(), entry.getValue());
+                    }
+                }));
             }
         }
     }
 
-    private void traceMethodFromJar(Map<File, File> dependencyMap) {
+    private void traceMethodFromJar(Map<File, File> dependencyMap, List<Future> futures) {
         if (null != dependencyMap) {
             for (Map.Entry<File, File> entry : dependencyMap.entrySet()) {
-                innerTraceMethodFromJar(entry.getKey(), entry.getValue());
+                futures.add(executor.submit(new Runnable() {
+                    @Override
+                    public void run() {
+                        innerTraceMethodFromJar(entry.getKey(), entry.getValue());
+                    }
+                }));
             }
         }
     }
@@ -114,7 +131,7 @@ public class MethodTracer {
                 }
                 changedFileOutput.createNewFile();
 
-                if (mTraceConfig.isNeedTraceClass(classFile.getName())) {
+                if (MethodCollector.isNeedTraceFile(classFile.getName())) {
                     is = new FileInputStream(classFile);
                     ClassReader classReader = new ClassReader(is);
                     ClassWriter classWriter = new ClassWriter(ClassWriter.COMPUTE_MAXS);
@@ -133,7 +150,12 @@ public class MethodTracer {
                     FileUtil.copyFileUsingStream(classFile, changedFileOutput);
                 }
             } catch (Exception e) {
-                e.printStackTrace();
+                Log.e(TAG, "[innerTraceMethodFromSrc] input:%s e:%s", input.getName(), e);
+                try {
+                    Files.copy(input.toPath(), output.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                } catch (Exception e1) {
+                    e1.printStackTrace();
+                }
             } finally {
                 try {
                     is.close();
@@ -155,7 +177,7 @@ public class MethodTracer {
             while (enumeration.hasMoreElements()) {
                 ZipEntry zipEntry = enumeration.nextElement();
                 String zipEntryName = zipEntry.getName();
-                if (mTraceConfig.isNeedTraceClass(zipEntryName)) {
+                if (MethodCollector.isNeedTraceFile(zipEntryName)) {
                     InputStream inputStream = zipFile.getInputStream(zipEntry);
                     ClassReader classReader = new ClassReader(inputStream);
                     ClassWriter classWriter = new ClassWriter(ClassWriter.COMPUTE_MAXS);
@@ -172,7 +194,12 @@ public class MethodTracer {
                 }
             }
         } catch (Exception e) {
-            Log.e(TAG, "[traceMethodFromJar] err! %s", output.getAbsolutePath());
+            Log.e(TAG, "[innerTraceMethodFromJar] input:%s output:%s e:%s", input.getName(), output, e);
+            try {
+                Files.copy(input.toPath(), output.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            } catch (Exception e1) {
+                e1.printStackTrace();
+            }
         } finally {
             try {
                 if (zipOutputStream != null) {
@@ -214,7 +241,6 @@ public class MethodTracer {
 
         private String className;
         private boolean isABSClass = false;
-        private boolean isMethodBeatClass = false;
         private boolean hasWindowFocusMethod = false;
 
         TraceClassAdapter(int i, ClassVisitor classVisitor) {
@@ -228,9 +254,7 @@ public class MethodTracer {
             if ((access & Opcodes.ACC_ABSTRACT) > 0 || (access & Opcodes.ACC_INTERFACE) > 0) {
                 this.isABSClass = true;
             }
-            if (mTraceConfig.isMethodBeatClass(className, mCollectedClassExtendMap)) {
-                isMethodBeatClass = true;
-            }
+
         }
 
         @Override
@@ -240,22 +264,19 @@ public class MethodTracer {
                 return super.visitMethod(access, name, desc, signature, exceptions);
             } else {
                 if (!hasWindowFocusMethod) {
-                    hasWindowFocusMethod = mTraceConfig.isWindowFocusChangeMethod(name, desc);
+                    hasWindowFocusMethod = MethodCollector.isWindowFocusChangeMethod(name, desc);
                 }
                 MethodVisitor methodVisitor = cv.visitMethod(access, name, desc, signature, exceptions);
                 return new TraceMethodAdapter(api, methodVisitor, access, name, desc, this.className,
-                        hasWindowFocusMethod, isMethodBeatClass);
+                        hasWindowFocusMethod);
             }
         }
 
 
         @Override
         public void visitEnd() {
-            TraceMethod traceMethod = TraceMethod.create(-1, Opcodes.ACC_PUBLIC, className,
-                    TraceBuildConstants.MATRIX_TRACE_ON_WINDOW_FOCUS_METHOD, TraceBuildConstants.MATRIX_TRACE_ON_WINDOW_FOCUS_METHOD_ARGS);
-            if (!hasWindowFocusMethod && mTraceConfig.isActivityOrSubClass(className, mCollectedClassExtendMap)
-                    && mCollectedMethodMap.containsKey(traceMethod.getMethodName())) {
-                insertWindowFocusChangeMethod(cv);
+            if (!hasWindowFocusMethod && isActivityOrSubClass(className, collectedClassExtendMap) && MethodCollector.isNeedTrace(configuration, className, mappingCollector)) {
+                insertWindowFocusChangeMethod(cv, className);
             }
             super.visitEnd();
         }
@@ -267,14 +288,12 @@ public class MethodTracer {
         private final String name;
         private final String className;
         private final boolean hasWindowFocusMethod;
-        private final boolean isMethodBeatClass;
 
         protected TraceMethodAdapter(int api, MethodVisitor mv, int access, String name, String desc, String className,
-                                     boolean hasWindowFocusMethod, boolean isMethodBeatClass) {
+                                     boolean hasWindowFocusMethod) {
             super(api, mv, access, name, desc);
             TraceMethod traceMethod = TraceMethod.create(0, access, className, name, desc);
             this.methodName = traceMethod.getMethodName();
-            this.isMethodBeatClass = isMethodBeatClass;
             this.hasWindowFocusMethod = hasWindowFocusMethod;
             this.className = className;
             this.name = name;
@@ -282,7 +301,7 @@ public class MethodTracer {
 
         @Override
         protected void onMethodEnter() {
-            TraceMethod traceMethod = mCollectedMethodMap.get(methodName);
+            TraceMethod traceMethod = collectedMethodMap.get(methodName);
             if (traceMethod != null) {
                 traceMethodCount.incrementAndGet();
                 mv.visitLdcInsn(traceMethod.id);
@@ -294,7 +313,7 @@ public class MethodTracer {
         /*@Override
         public void visitMethodInsn(int opcode, String owner, String name, String desc, boolean itf) {
             String nativeMethodName = owner.replace("/", ".") + "." + name;
-            TraceMethod traceMethod = mCollectedMethodMap.get(nativeMethodName);
+            TraceMethod traceMethod = collectedMethodMap.get(nativeMethodName);
             if (traceMethod != null && traceMethod.isNativeMethod()) {
                 traceMethodCount.incrementAndGet();
                 mv.visitLdcInsn(traceMethod.id);
@@ -310,14 +329,13 @@ public class MethodTracer {
 
         @Override
         protected void onMethodExit(int opcode) {
-            TraceMethod traceMethod = mCollectedMethodMap.get(methodName);
+            TraceMethod traceMethod = collectedMethodMap.get(methodName);
             if (traceMethod != null) {
-                if (hasWindowFocusMethod && mTraceConfig.isActivityOrSubClass(className, mCollectedClassExtendMap)
-                        && mCollectedMethodMap.containsKey(traceMethod.getMethodName())) {
+                if (hasWindowFocusMethod && isActivityOrSubClass(className, collectedClassExtendMap) && MethodCollector.isNeedTrace(configuration, traceMethod.className, mappingCollector)) {
                     TraceMethod windowFocusChangeMethod = TraceMethod.create(-1, Opcodes.ACC_PUBLIC, className,
                             TraceBuildConstants.MATRIX_TRACE_ON_WINDOW_FOCUS_METHOD, TraceBuildConstants.MATRIX_TRACE_ON_WINDOW_FOCUS_METHOD_ARGS);
                     if (windowFocusChangeMethod.equals(traceMethod)) {
-                        traceWindowFocusChangeMethod(mv);
+                        traceWindowFocusChangeMethod(mv, className);
                     }
                 }
 
@@ -328,51 +346,27 @@ public class MethodTracer {
         }
     }
 
-    private void traceApplicationContext(MethodVisitor mv, TraceMethod traceMethod) {
-        mv.visitVarInsn(Opcodes.ALOAD, 0);
-        mv.visitLdcInsn(traceMethod.methodName);
-        mv.visitLdcInsn(traceMethod.desc);
-        mv.visitMethodInsn(Opcodes.INVOKESTATIC, TraceBuildConstants.MATRIX_TRACE_CLASS, "trace", "(Ljava/lang/Object;Ljava/lang/String;Ljava/lang/String;)V", false);
+    private boolean isActivityOrSubClass(String className, ConcurrentHashMap<String, String> mCollectedClassExtendMap) {
+        className = className.replace(".", "/");
+        boolean isActivity = className.equals(TraceBuildConstants.MATRIX_TRACE_ACTIVITY_CLASS) || className.equals(TraceBuildConstants.MATRIX_TRACE_V7_ACTIVITY_CLASS);
+        if (isActivity) {
+            return true;
+        } else {
+            if (!mCollectedClassExtendMap.containsKey(className)) {
+                return false;
+            } else {
+                return isActivityOrSubClass(mCollectedClassExtendMap.get(className), mCollectedClassExtendMap);
+            }
+        }
     }
 
-    private void traceWindowFocusChangeMethod(MethodVisitor mv) {
+    private void traceWindowFocusChangeMethod(MethodVisitor mv, String classname) {
         mv.visitVarInsn(Opcodes.ALOAD, 0);
         mv.visitVarInsn(Opcodes.ILOAD, 1);
         mv.visitMethodInsn(Opcodes.INVOKESTATIC, TraceBuildConstants.MATRIX_TRACE_CLASS, "at", "(Landroid/app/Activity;Z)V", false);
     }
 
-    private void insertApplicationOnCreateMethod(ClassVisitor cv, String className) {
-        MethodVisitor methodVisitor = cv.visitMethod(Opcodes.ACC_PUBLIC, TraceBuildConstants.MATRIX_TRACE_APPLICATION_ON_CREATE,
-                TraceBuildConstants.MATRIX_TRACE_APPLICATION_ON_CREATE_ARGS, null, null);
-        methodVisitor.visitCode();
-        methodVisitor.visitVarInsn(Opcodes.ALOAD, 0);
-        methodVisitor.visitMethodInsn(Opcodes.INVOKESPECIAL, TraceBuildConstants.MATRIX_TRACE_APPLICATION_CLASS, TraceBuildConstants.MATRIX_TRACE_APPLICATION_ON_CREATE,
-                TraceBuildConstants.MATRIX_TRACE_APPLICATION_ON_CREATE_ARGS, false);
-        TraceMethod applicationOnCreate = TraceMethod.create(-1, Opcodes.ACC_PUBLIC, className,
-                TraceBuildConstants.MATRIX_TRACE_APPLICATION_ON_CREATE, TraceBuildConstants.MATRIX_TRACE_APPLICATION_ON_CREATE_ARGS);
-        traceApplicationContext(methodVisitor, applicationOnCreate);
-        methodVisitor.visitInsn(Opcodes.RETURN);
-        methodVisitor.visitMaxs(1, 1);
-        methodVisitor.visitEnd();
-    }
-
-    private void insertAttachBaseContextMethod(ClassVisitor cv, String className) {
-        MethodVisitor methodVisitor = cv.visitMethod(Opcodes.ACC_PUBLIC, TraceBuildConstants.MATRIX_TRACE_ATTACH_BASE_CONTEXT,
-                TraceBuildConstants.MATRIX_TRACE_ATTACH_BASE_CONTEXT_ARGS, null, null);
-        methodVisitor.visitCode();
-        methodVisitor.visitVarInsn(Opcodes.ALOAD, 0);
-        methodVisitor.visitVarInsn(Opcodes.ALOAD, 1);
-        methodVisitor.visitMethodInsn(Opcodes.INVOKESPECIAL, TraceBuildConstants.MATRIX_TRACE_APPLICATION_CLASS, TraceBuildConstants.MATRIX_TRACE_ATTACH_BASE_CONTEXT,
-                TraceBuildConstants.MATRIX_TRACE_ATTACH_BASE_CONTEXT_ARGS, false);
-        TraceMethod attachBaseContextMethod = TraceMethod.create(-1, Opcodes.ACC_PUBLIC, className,
-                TraceBuildConstants.MATRIX_TRACE_ATTACH_BASE_CONTEXT, TraceBuildConstants.MATRIX_TRACE_ATTACH_BASE_CONTEXT_ARGS);
-        traceApplicationContext(methodVisitor, attachBaseContextMethod);
-        methodVisitor.visitInsn(Opcodes.RETURN);
-        methodVisitor.visitMaxs(2, 2);
-        methodVisitor.visitEnd();
-    }
-
-    private void insertWindowFocusChangeMethod(ClassVisitor cv) {
+    private void insertWindowFocusChangeMethod(ClassVisitor cv, String classname) {
         MethodVisitor methodVisitor = cv.visitMethod(Opcodes.ACC_PUBLIC, TraceBuildConstants.MATRIX_TRACE_ON_WINDOW_FOCUS_METHOD,
                 TraceBuildConstants.MATRIX_TRACE_ON_WINDOW_FOCUS_METHOD_ARGS, null, null);
         methodVisitor.visitCode();
@@ -380,7 +374,7 @@ public class MethodTracer {
         methodVisitor.visitVarInsn(Opcodes.ILOAD, 1);
         methodVisitor.visitMethodInsn(Opcodes.INVOKESPECIAL, TraceBuildConstants.MATRIX_TRACE_ACTIVITY_CLASS, TraceBuildConstants.MATRIX_TRACE_ON_WINDOW_FOCUS_METHOD,
                 TraceBuildConstants.MATRIX_TRACE_ON_WINDOW_FOCUS_METHOD_ARGS, false);
-        traceWindowFocusChangeMethod(methodVisitor);
+        traceWindowFocusChangeMethod(methodVisitor, classname);
         methodVisitor.visitInsn(Opcodes.RETURN);
         methodVisitor.visitMaxs(2, 2);
         methodVisitor.visitEnd();

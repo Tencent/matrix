@@ -22,6 +22,7 @@ import com.tencent.matrix.resource.hproflib.model.Type;
 import com.tencent.matrix.resource.hproflib.utils.IOUtil;
 
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.OutputStream;
 
 /**
@@ -42,6 +43,9 @@ public class HprofWriter extends HprofVisitor {
     @Override
     public void visitHeader(String text, int idSize, long timestamp) {
         try {
+            if (idSize <= 0 || idSize >= (Integer.MAX_VALUE >> 1)) {
+                throw new IOException("bad idSize: " + idSize);
+            }
             mIdSize = idSize;
             IOUtil.writeNullTerminatedString(mStreamOut, text);
             IOUtil.writeBEInt(mStreamOut, idSize);

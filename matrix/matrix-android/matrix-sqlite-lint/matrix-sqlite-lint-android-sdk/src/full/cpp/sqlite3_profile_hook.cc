@@ -102,6 +102,8 @@ namespace sqlitelint {
         }
         if (!elfhook_replace(soinfo, "sqlite3_profile", (void*)hooked_sqlite3_profile, (void**)&original_sqlite3_profile)) {
             LOGW("Failure to hook sqlite3_profile");
+            elfhook_close(soinfo);
+            soinfo = nullptr;
             return false;
         }
         elfhook_close(soinfo);

@@ -17,32 +17,33 @@
 package sample.tencent.matrix.trace;
 
 import android.app.Activity;
-import android.app.AlertDialog;
-import android.app.Dialog;
 import android.content.Intent;
+import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Debug;
-import android.support.annotation.NonNull;
+import android.os.SystemClock;
+import android.provider.Settings;
 import android.support.annotation.Nullable;
 import android.view.View;
-import android.view.ViewGroup;
-import android.widget.ArrayAdapter;
-import android.widget.ListView;
+import android.widget.Toast;
 
+import com.tencent.matrix.AppActiveMatrixDelegate;
 import com.tencent.matrix.Matrix;
+import com.tencent.matrix.listeners.IAppForeground;
 import com.tencent.matrix.plugin.Plugin;
 import com.tencent.matrix.trace.TracePlugin;
-import com.tencent.matrix.trace.constants.Constants;
+import com.tencent.matrix.trace.core.AppMethodBeat;
+import com.tencent.matrix.trace.view.FrameDecorator;
 import com.tencent.matrix.util.MatrixLog;
-
-import java.util.Random;
 
 import sample.tencent.matrix.R;
 import sample.tencent.matrix.issue.IssueFilter;
-import sample.tencent.matrix.issue.IssuesMap;
 
-public class TestTraceMainActivity extends Activity {
+public class TestTraceMainActivity extends Activity implements IAppForeground {
     private static String TAG = "Matrix.TestTraceMainActivity";
+    FrameDecorator decorator;
+    private static final int PERMISSION_REQUEST_CODE = 0x02;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -51,24 +52,64 @@ public class TestTraceMainActivity extends Activity {
         IssueFilter.setCurrentFilter(IssueFilter.ISSUE_TRACE);
 
         Plugin plugin = Matrix.with().getPluginByClass(TracePlugin.class);
-        if(!plugin.isPluginStarted()) {
+        if (!plugin.isPluginStarted()) {
             MatrixLog.i(TAG, "plugin-trace start");
             plugin.start();
         }
-        if(!Matrix.with().getPluginByClass(TracePlugin.class).getEvilMethodTracer().isCreated()) {
-            Matrix.with().getPluginByClass(TracePlugin.class).getEvilMethodTracer().onCreate();
+        decorator = FrameDecorator.create(this);
+        if (!canDrawOverlays()) {
+            requestWindowPermission();
+        } else {
+            decorator.show();
+        }
+
+        AppActiveMatrixDelegate.INSTANCE.addListener(this);
+    }
+
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        MatrixLog.i(TAG, "requestCode:%s resultCode:%s", requestCode, resultCode);
+        if (requestCode == PERMISSION_REQUEST_CODE) {
+            if (canDrawOverlays()) {
+                decorator.show();
+            } else {
+                Toast.makeText(this, "fail to request ACTION_MANAGE_OVERLAY_PERMISSION", Toast.LENGTH_LONG).show();
+            }
         }
     }
+
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
         Plugin plugin = Matrix.with().getPluginByClass(TracePlugin.class);
-        if(plugin.isPluginStarted()) {
+        if (plugin.isPluginStarted()) {
             MatrixLog.i(TAG, "plugin-trace stop");
             plugin.stop();
         }
+        if (canDrawOverlays()) {
+            decorator.dismiss();
+        }
+        AppActiveMatrixDelegate.INSTANCE.removeListener(this);
     }
+
+    private boolean canDrawOverlays() {
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            return Settings.canDrawOverlays(this);
+        } else {
+            return true;
+        }
+    }
+
+    private void requestWindowPermission() {
+        Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                Uri.parse("package:" + getPackageName()));
+        startActivityForResult(intent, PERMISSION_REQUEST_CODE);
+    }
+
 
     public void testEnter(View view) {
         Intent intent = new Intent(this, TestEnterActivity.class);
@@ -81,28 +122,108 @@ public class TestTraceMainActivity extends Activity {
         overridePendingTransition(R.anim.slide_right_in, 0);
     }
 
-    public void testJank(View view) {
-        for (int i = 0; i < 30; i++) {
-            tryHeavyMethod();
+    public void testJankiess(View view) {
+        A();
+    }
+
+
+    public void testANR(final View view) {
+        for (long i = 0; i < 1l; i++) {
+            testInnerSleep();
         }
     }
 
-    public void testANR(View view) {
-        try {
-            Thread.sleep(5200);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
+    private void A() {
+        B();
+        H();
+        L();
+        SystemClock.sleep(800);
+    }
+
+    private void B() {
+        C();
+        G();
+        SystemClock.sleep(200);
+    }
+
+    private void C() {
+        D();
+        E();
+        F();
+        SystemClock.sleep(100);
+    }
+
+    private void D() {
+        SystemClock.sleep(20);
+    }
+
+    private void E() {
+        SystemClock.sleep(20);
+    }
+
+    private void F() {
+        SystemClock.sleep(20);
+    }
+
+    private void G() {
+        SystemClock.sleep(20);
+    }
+
+    private void H() {
+        SystemClock.sleep(20);
+        I();
+        J();
+        K();
+    }
+
+    private void I() {
+        SystemClock.sleep(20);
+    }
+
+    private void J() {
+        SystemClock.sleep(6);
+    }
+
+    private void K() {
+        SystemClock.sleep(10);
+    }
+
+
+    private void L() {
+        SystemClock.sleep(10000);
+    }
+
+    private boolean isStop = false;
+
+    public void stopAppMethodBeat(View view) {
+        AppMethodBeat appMethodBeat = Matrix.with().getPluginByClass(TracePlugin.class).getAppMethodBeat();
+        if (isStop) {
+            Toast.makeText(this, "start AppMethodBeat", Toast.LENGTH_LONG).show();
+            appMethodBeat.onStart();
+        } else {
+            Toast.makeText(this, "stop AppMethodBeat", Toast.LENGTH_LONG).show();
+            appMethodBeat.onStop();
         }
+        isStop = !isStop;
+    }
+
+    public void testInnerSleep() {
+        SystemClock.sleep(6000);
     }
 
     private void tryHeavyMethod() {
         Debug.getMemoryInfo(new Debug.MemoryInfo());
     }
 
-    private void testMuch(int count) {
-        if (count % 2 == 0) {
-            System.nanoTime();
+    @Override
+    public void onForeground(boolean isForeground) {
+        if (!canDrawOverlays()) {
+            return;
+        }
+        if (!isForeground) {
+            decorator.dismiss();
+        } else {
+            decorator.show();
         }
     }
-
 }

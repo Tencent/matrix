@@ -18,91 +18,97 @@ package com.tencent.matrix.trace;
 
 import android.app.Application;
 import android.os.Build;
-import android.os.Handler;
 import android.os.Looper;
 
 import com.tencent.matrix.plugin.Plugin;
 import com.tencent.matrix.plugin.PluginListener;
 import com.tencent.matrix.trace.config.SharePluginInfo;
 import com.tencent.matrix.trace.config.TraceConfig;
-import com.tencent.matrix.trace.core.ApplicationLifeObserver;
-import com.tencent.matrix.trace.core.FrameBeat;
+import com.tencent.matrix.trace.core.AppMethodBeat;
+import com.tencent.matrix.trace.core.UIThreadMonitor;
+import com.tencent.matrix.trace.tracer.AnrTracer;
 import com.tencent.matrix.trace.tracer.EvilMethodTracer;
-import com.tencent.matrix.trace.tracer.FPSTracer;
 import com.tencent.matrix.trace.tracer.FrameTracer;
-import com.tencent.matrix.trace.tracer.StartUpTracer;
+import com.tencent.matrix.trace.tracer.StartupTracer;
+import com.tencent.matrix.util.MatrixHandlerThread;
 import com.tencent.matrix.util.MatrixLog;
 
 /**
  * Created by caichongyang on 2017/5/20.
- * <p>The TracePlugin includes two parts,
- * {@link FPSTracer}\{@link EvilMethodTracer}
- * </p>
  */
 public class TracePlugin extends Plugin {
     private static final String TAG = "Matrix.TracePlugin";
 
-    private final TraceConfig mTraceConfig;
-    private FPSTracer mFPSTracer;
-    private EvilMethodTracer mEvilMethodTracer;
-    private FrameTracer mFrameTracer;
-    private StartUpTracer mStartUpTracer;
+    private final TraceConfig traceConfig;
+    private EvilMethodTracer evilMethodTracer;
+    private StartupTracer startupTracer;
+    private FrameTracer frameTracer;
+    private AnrTracer anrTracer;
 
     public TracePlugin(TraceConfig config) {
-        this.mTraceConfig = config;
+        this.traceConfig = config;
     }
 
     @Override
     public void init(Application app, PluginListener listener) {
         super.init(app, listener);
-        MatrixLog.i(TAG, "trace plugin init, trace config: %s", mTraceConfig.toString());
+        MatrixLog.i(TAG, "trace plugin init, trace config: %s", traceConfig.toString());
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN) {
             MatrixLog.e(TAG, "[FrameBeat] API is low Build.VERSION_CODES.JELLY_BEAN(16), TracePlugin is not supported");
             unSupportPlugin();
             return;
         }
 
-        ApplicationLifeObserver.init(app);
-        mFrameTracer = new FrameTracer(this);
-        if (mTraceConfig.isMethodTraceEnable()) {
-            mStartUpTracer = new StartUpTracer(this, mTraceConfig);
-        }
-        if (mTraceConfig.isFPSEnable()) {
-            mFPSTracer = new FPSTracer(this, mTraceConfig);
-        }
+        anrTracer = new AnrTracer(traceConfig);
 
-        if (mTraceConfig.isMethodTraceEnable()) {
-            mEvilMethodTracer = new EvilMethodTracer(this, mTraceConfig);
-        }
+        frameTracer = new FrameTracer(traceConfig);
+
+        evilMethodTracer = new EvilMethodTracer(traceConfig);
+
+        startupTracer = new StartupTracer(traceConfig);
     }
 
     @Override
     public void start() {
         super.start();
         if (!isSupported()) {
+            MatrixLog.w(TAG, "[start] Plugin is unSupported!");
             return;
         }
-
-        new Handler(Looper.getMainLooper()).post(new Runnable() {
+        MatrixLog.w(TAG, "start!");
+        Runnable runnable = new Runnable() {
             @Override
             public void run() {
-                FrameBeat.getInstance().onCreate();
+
+                if (!UIThreadMonitor.getMonitor().isInit()) {
+                    try {
+                        UIThreadMonitor.getMonitor().init(traceConfig);
+                    } catch (java.lang.RuntimeException e) {
+                        MatrixLog.e(TAG, "[start] RuntimeException:%s", e);
+                        return;
+                    }
+                }
+
+                AppMethodBeat.getInstance().onStart();
+
+                UIThreadMonitor.getMonitor().onStart();
+
+                anrTracer.onStartTrace();
+
+                frameTracer.onStartTrace();
+
+                evilMethodTracer.onStartTrace();
+
+                startupTracer.onStartTrace();
             }
-        });
+        };
 
-        if (null != mFPSTracer) {
-            mFPSTracer.onCreate();
+        if (Thread.currentThread() == Looper.getMainLooper().getThread()) {
+            runnable.run();
+        } else {
+            MatrixLog.w(TAG, "start TracePlugin in Thread[%s] but not in mainThread!", Thread.currentThread().getId());
+            MatrixHandlerThread.getDefaultMainHandler().post(runnable);
         }
-        if (null != mEvilMethodTracer) {
-            mEvilMethodTracer.onCreate();
-        }
-        if (null != mFrameTracer) {
-            mFrameTracer.onCreate();
-        }
-        if (null != mStartUpTracer) {
-            mStartUpTracer.onCreate();
-        }
-
 
     }
 
@@ -110,21 +116,61 @@ public class TracePlugin extends Plugin {
     public void stop() {
         super.stop();
         if (!isSupported()) {
+            MatrixLog.w(TAG, "[stop] Plugin is unSupported!");
             return;
         }
-        FrameBeat.getInstance().onDestroy();
-        if (null != mFPSTracer) {
-            mFPSTracer.onDestroy();
+        MatrixLog.w(TAG, "stop!");
+        Runnable runnable = new Runnable() {
+            @Override
+            public void run() {
+
+                AppMethodBeat.getInstance().onStop();
+
+                UIThreadMonitor.getMonitor().onStop();
+
+                anrTracer.onCloseTrace();
+
+                frameTracer.onCloseTrace();
+
+                evilMethodTracer.onCloseTrace();
+
+                startupTracer.onCloseTrace();
+
+            }
+        };
+
+        if (Thread.currentThread() == Looper.getMainLooper().getThread()) {
+            runnable.run();
+        } else {
+            MatrixLog.w(TAG, "stop TracePlugin in Thread[%s] but not in mainThread!", Thread.currentThread().getId());
+            MatrixHandlerThread.getDefaultMainHandler().post(runnable);
         }
-        if (null != mEvilMethodTracer) {
-            mEvilMethodTracer.onDestroy();
+
+    }
+
+    @Override
+    public void onForeground(boolean isForeground) {
+        super.onForeground(isForeground);
+        if (!isSupported()) {
+            return;
         }
-        if (null != mFrameTracer) {
-            mFrameTracer.onDestroy();
+
+        if (frameTracer != null) {
+            frameTracer.onForeground(isForeground);
         }
-        if (null != mStartUpTracer) {
-            mStartUpTracer.onDestroy();
+
+        if (anrTracer != null) {
+            anrTracer.onForeground(isForeground);
         }
+
+        if (evilMethodTracer != null) {
+            evilMethodTracer.onForeground(isForeground);
+        }
+
+        if (startupTracer != null) {
+            startupTracer.onForeground(isForeground);
+        }
+
     }
 
     @Override
@@ -138,18 +184,34 @@ public class TracePlugin extends Plugin {
     }
 
     public FrameTracer getFrameTracer() {
-        return mFrameTracer;
+        return frameTracer;
+    }
+
+    public AppMethodBeat getAppMethodBeat() {
+        return AppMethodBeat.getInstance();
+    }
+
+    public AnrTracer getAnrTracer() {
+        return anrTracer;
     }
 
     public EvilMethodTracer getEvilMethodTracer() {
-        return mEvilMethodTracer;
+        return evilMethodTracer;
     }
 
-    public StartUpTracer getStartUpTracer() {
-        return mStartUpTracer;
+    public StartupTracer getStartupTracer() {
+        return startupTracer;
     }
 
-    public FPSTracer getFPSTracer() {
-        return mFPSTracer;
+    public UIThreadMonitor getUIThreadMonitor() {
+        if (UIThreadMonitor.getMonitor().isInit()) {
+            return UIThreadMonitor.getMonitor();
+        } else {
+            return null;
+        }
+    }
+
+    public TraceConfig getTraceConfig() {
+        return traceConfig;
     }
 }

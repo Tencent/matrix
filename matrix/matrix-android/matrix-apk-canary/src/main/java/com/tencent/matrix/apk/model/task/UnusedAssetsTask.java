@@ -36,9 +36,7 @@ import org.jf.dexlib2.Opcodes;
 import org.jf.dexlib2.dexbacked.DexBackedDexFile;
 import org.jf.dexlib2.iface.ClassDef;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.RandomAccessFile;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -56,7 +54,6 @@ public class UnusedAssetsTask extends ApkTask {
 
     private File inputFile;
     private final List<String> dexFileNameList;
-    private final List<RandomAccessFile> dexFileList;
     private final Set<String> ignoreSet;
     private final Set<String> assetsPathSet;
     private final Set<String> assetRefSet;
@@ -66,7 +63,6 @@ public class UnusedAssetsTask extends ApkTask {
         type = TaskFactory.TASK_TYPE_UNUSED_ASSETS;
         dexFileNameList = new ArrayList<>();
         ignoreSet = new HashSet<>();
-        dexFileList = new ArrayList<>();
         assetsPathSet = new HashSet<>();
         assetRefSet = new HashSet<>();
     }
@@ -94,18 +90,12 @@ public class UnusedAssetsTask extends ApkTask {
         }
 
         File[] files = inputFile.listFiles();
-        try {
-            if (files != null) {
-                for (File file : files) {
-                    if (file.isFile() && file.getName().endsWith(ApkConstants.DEX_FILE_SUFFIX)) {
-                        dexFileNameList.add(file.getName());
-                        RandomAccessFile randomAccessFile = new RandomAccessFile(file, "rw");
-                        dexFileList.add(randomAccessFile);
-                    }
+        if (files != null) {
+            for (File file : files) {
+                if (file.isFile() && file.getName().endsWith(ApkConstants.DEX_FILE_SUFFIX)) {
+                    dexFileNameList.add(file.getName());
                 }
             }
-        } catch (FileNotFoundException e) {
-            throw new TaskInitException(e.getMessage(), e);
         }
     }
 

@@ -18,6 +18,8 @@ package com.tencent.matrix.plugin;
 
 import android.app.Application;
 
+import com.tencent.matrix.AppActiveMatrixDelegate;
+import com.tencent.matrix.listeners.IAppForeground;
 import com.tencent.matrix.report.Issue;
 import com.tencent.matrix.report.IssuePublisher;
 import com.tencent.matrix.util.MatrixLog;
@@ -30,17 +32,17 @@ import org.json.JSONObject;
  * Created by zhangshaowen on 17/5/17.
  */
 
-public abstract class Plugin implements IPlugin, IssuePublisher.OnIssueDetectListener {
+public abstract class Plugin implements IPlugin, IssuePublisher.OnIssueDetectListener, IAppForeground {
     private static final String TAG = "Matrix.Plugin";
 
-    public static final int PLUGIN_CREATE    = 0x00;
-    public static final int PLUGIN_INITED    = 0x01;
-    public static final int PLUGIN_STARTED   = 0x02;
-    public static final int PLUGIN_STOPPED   = 0x04;
+    public static final int PLUGIN_CREATE = 0x00;
+    public static final int PLUGIN_INITED = 0x01;
+    public static final int PLUGIN_STARTED = 0x02;
+    public static final int PLUGIN_STOPPED = 0x04;
     public static final int PLUGIN_DESTROYED = 0x08;
 
     private PluginListener pluginListener;
-    private Application    application;
+    private Application application;
 
     private boolean isSupported = true;
 
@@ -54,6 +56,7 @@ public abstract class Plugin implements IPlugin, IssuePublisher.OnIssueDetectLis
         status = PLUGIN_INITED;
         this.application = app;
         this.pluginListener = listener;
+        AppActiveMatrixDelegate.INSTANCE.addListener(this);
     }
 
     @Override
@@ -83,6 +86,7 @@ public abstract class Plugin implements IPlugin, IssuePublisher.OnIssueDetectLis
         pluginListener.onReportIssue(issue);
     }
 
+    @Override
     public Application getApplication() {
         return application;
     }
@@ -146,9 +150,14 @@ public abstract class Plugin implements IPlugin, IssuePublisher.OnIssueDetectLis
     }
 
     @Override
-    public void onForeground(boolean isForground) {
+    public void onForeground(boolean isForeground) {
 
     }
+
+    public boolean isForeground() {
+        return AppActiveMatrixDelegate.INSTANCE.isAppForeground();
+    }
+
 
     public int getStatus() {
         return status;
@@ -158,7 +167,7 @@ public abstract class Plugin implements IPlugin, IssuePublisher.OnIssueDetectLis
         return (status == PLUGIN_STARTED);
     }
 
-    public boolean isPluginStoped() {
+    public boolean isPluginStopped() {
         return (status == PLUGIN_STOPPED);
     }
 
@@ -172,6 +181,10 @@ public abstract class Plugin implements IPlugin, IssuePublisher.OnIssueDetectLis
 
     public void unSupportPlugin() {
         isSupported = false;
+    }
+
+    public JSONObject getJsonInfo() {
+        return new JSONObject();
     }
 
 }

@@ -41,10 +41,8 @@ import org.xmlpull.v1.XmlPullParserException;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
-import java.io.RandomAccessFile;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -69,7 +67,6 @@ public class UnusedResourcesTask extends ApkTask {
     private File mappingTxt;
     private File resMappingTxt;
     private final List<String> dexFileNameList;
-    private final List<RandomAccessFile> dexFileList;
     private final Map<String, String> rclassProguardMap;
     private final Map<String, String> resourceDefMap;
     private final Map<String, Set<String>> styleableMap;
@@ -84,7 +81,6 @@ public class UnusedResourcesTask extends ApkTask {
         type = TaskFactory.TASK_TYPE_UNUSED_RESOURCES;
         dexFileNameList = new ArrayList<>();
         ignoreSet = new HashSet<>();
-        dexFileList = new ArrayList<>();
         rclassProguardMap = new HashMap<>();
         resourceDefMap = new HashMap<>();
         styleableMap = new HashMap<>();
@@ -135,19 +131,14 @@ public class UnusedResourcesTask extends ApkTask {
         }
 
         File[] files = inputFile.listFiles();
-        try {
-            if (files != null) {
-                for (File file : files) {
-                    if (file.isFile() && file.getName().endsWith(ApkConstants.DEX_FILE_SUFFIX)) {
-                        dexFileNameList.add(file.getName());
-                        RandomAccessFile randomAccessFile = new RandomAccessFile(file, "rw");
-                        dexFileList.add(randomAccessFile);
-                    }
+        if (files != null) {
+            for (File file : files) {
+                if (file.isFile() && file.getName().endsWith(ApkConstants.DEX_FILE_SUFFIX)) {
+                    dexFileNameList.add(file.getName());
                 }
             }
-        } catch (FileNotFoundException e) {
-            throw new TaskInitException(e.getMessage(), e);
         }
+
     }
 
     private String parseResourceId(String resId) {

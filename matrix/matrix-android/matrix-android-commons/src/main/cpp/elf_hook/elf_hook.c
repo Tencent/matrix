@@ -262,6 +262,8 @@ static int compileAbiToElfMachine() {
     return EM_MIPS;
 #elif defined(__x86_64__)
     return EM_X86_64;
+#else //TODO add more abi here
+    return EM_NONE
 #endif
 }
 
@@ -496,7 +498,7 @@ static int locate_symbol(const loaded_soinfo *soinfo, const char *name, Elf_Sym 
 static void clear_cache(void *addr) {
     unsigned long soff = ((unsigned long) addr) & PAGE_MASK;
     unsigned long eoff = soff + getpagesize();
-    syscall(0xf0002, soff, eoff);
+    __builtin___clear_cache(soff, eoff);
 }
 
 static int replace_elf_rel_segment(const loaded_soinfo *soinfo, Elf_Addr rel_addr, size_t rel_count,

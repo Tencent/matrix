@@ -208,18 +208,28 @@ public final class ActivityLeakFixer {
         }
 
         if (view.getBackground() != null) {
-            try {
-                view.getBackground().setCallback(null);
-                view.setBackgroundDrawable(null);
-            } catch (Throwable ignored) {
-                // Ignored.
-            }
-        }
+            view.addOnAttachStateChangeListener(new View.OnAttachStateChangeListener() {
+                @Override
+                public void onViewAttachedToWindow(View v) {
 
-        try {
-            view.destroyDrawingCache();
-        } catch (Throwable thr) {
-            // Ignored.
+                }
+
+                @Override
+                public void onViewDetachedFromWindow(View v) {
+                    try {
+                        v.getBackground().setCallback(null);
+                        v.setBackgroundDrawable(null);
+                    } catch (Throwable ignored) {
+                        // Ignored.
+                    }
+                    try {
+                        v.destroyDrawingCache();
+                    } catch (Throwable thr) {
+                        // Ignored.
+                    }
+                    v.removeOnAttachStateChangeListener(this);
+                }
+            });
         }
     }
 

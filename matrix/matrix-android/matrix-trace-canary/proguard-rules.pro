@@ -1,2 +1,2 @@
 
--keep class com.tencent.matrix.trace.core.MethodBeat { *; }
+-keep class com.tencent.matrix.trace.core.AppMethodBeat { *; }

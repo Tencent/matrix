@@ -19,9 +19,17 @@ package com.tencent.matrix.util;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
+import android.util.Printer;
 
+import com.tencent.matrix.AppActiveMatrixDelegate;
+import com.tencent.matrix.listeners.IAppForeground;
+
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Created by zhangshaowen on 17/7/5.
@@ -40,6 +48,7 @@ public class MatrixHandlerThread {
     private static volatile Handler defaultHandler;
     private static volatile Handler defaultMainHandler = new Handler(Looper.getMainLooper());
     private static HashSet<HandlerThread> handlerThreads = new HashSet<>();
+    public static boolean isDebug = false;
 
     public static Handler getDefaultMainHandler() {
         return defaultMainHandler;
@@ -52,7 +61,8 @@ public class MatrixHandlerThread {
                 defaultHandlerThread = new HandlerThread(MATRIX_THREAD_NAME);
                 defaultHandlerThread.start();
                 defaultHandler = new Handler(defaultHandlerThread.getLooper());
-                MatrixLog.w(TAG, "create default handler thread, we should use these thread normal");
+                defaultHandlerThread.getLooper().setMessageLogging(isDebug ? new LooperPrinter() : null);
+                MatrixLog.w(TAG, "create default handler thread, we should use these thread normal, isDebug:%s", isDebug);
             }
             return defaultHandlerThread;
         }
@@ -75,5 +85,76 @@ public class MatrixHandlerThread {
         handlerThreads.add(handlerThread);
         MatrixLog.w(TAG, "warning: create new handler thread with name %s, alive thread size:%d", name, handlerThreads.size());
         return handlerThread;
+    }
+
+    private static final class LooperPrinter implements Printer, IAppForeground {
+
+        private ConcurrentHashMap<String, Info> hashMap = new ConcurrentHashMap<>();
+        private boolean isForeground;
+
+        LooperPrinter() {
+            AppActiveMatrixDelegate.INSTANCE.addListener(this);
+            this.isForeground = AppActiveMatrixDelegate.INSTANCE.isAppForeground();
+        }
+
+        @Override
+        public void println(String x) {
+            if (isForeground) {
+                return;
+            }
+            if (x.charAt(0) == '>') {
+                int start = x.indexOf("} ");
+                int end = x.indexOf("@", start);
+                if (start < 0 || end < 0) {
+                    return;
+                }
+                String content = x.substring(start, end);
+                Info info = hashMap.get(content);
+                if (info == null) {
+                    info = new Info();
+                    info.key = content;
+                    hashMap.put(content, info);
+                }
+                ++info.count;
+            }
+        }
+
+        @Override
+        public void onForeground(boolean isForeground) {
+            this.isForeground = isForeground;
+            MatrixLog.d(TAG, "onForeground:%s", isForeground);
+            if (isForeground) {
+                long start = System.currentTimeMillis();
+                LinkedList<Info> list = new LinkedList<>();
+                for (Info info : hashMap.values()) {
+                    if (info.count > 1) {
+                        list.add(info);
+                    }
+                }
+                Collections.sort(list, new Comparator<Info>() {
+                    @Override
+                    public int compare(Info o1, Info o2) {
+                        return o2.count - o1.count;
+                    }
+                });
+                hashMap.clear();
+                if (!list.isEmpty()) {
+                    MatrixLog.i(TAG, "matrix default thread has exec in background! %s cost:%s", list, System.currentTimeMillis() - start);
+                }
+            } else {
+                hashMap.clear();
+            }
+        }
+
+        class Info {
+            String key;
+            int count;
+
+            @Override
+            public String toString() {
+                return key + ":" + count;
+            }
+        }
+
     }
 }
