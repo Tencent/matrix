@@ -18,6 +18,9 @@
 
 @interface WCCPUHandler : NSObject
 
+- (id)initWithCPULimit:(float)cpuLimit;
+
+
 - (BOOL)cultivateCpuUsage:(float)cpuUsage periodTime:(float)periodSec;
 
 /**
@@ -25,13 +28,5 @@
  * @return BOOL
  */
 - (BOOL)isBackgroundCPUTooSmall;
-
-/**
- *  get current CPU usage
- *
- *  @return current cpu usage. Single core is full 100%, dual core is full 200%, and so on.
- */
-+ (float)getCurrentCpuUsage;
-
 
 @end

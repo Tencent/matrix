@@ -46,12 +46,14 @@ NAME { \
 // and objc4-680/runtime/objc-msg-arm64.s
 // ======================================================================
 
+// Use ISA_MASK_OLD before iOS 9, in and after iOS 9, use ISA_MASK
 #if __x86_64__
 #   define ISA_TAG_MASK 1UL
 #   define ISA_MASK     0x00007ffffffffff8UL
 #elif defined(__arm64__)
 #   define ISA_TAG_MASK 1UL
-#   define ISA_MASK     0x00000001fffffff8UL
+#   define ISA_MASK_OLD 0x00000001fffffff8UL
+#   define ISA_MASK     0x0000000ffffffff8UL
 #else
 #   define ISA_TAG_MASK 0UL
 #   define ISA_MASK     ~1UL

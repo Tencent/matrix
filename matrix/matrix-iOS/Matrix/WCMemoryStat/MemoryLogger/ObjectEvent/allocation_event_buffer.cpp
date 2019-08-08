@@ -30,6 +30,7 @@ struct allocation_event_buffer {
 	
 	volatile int64_t read_index;
 	volatile int64_t write_index;
+	bool is_index_reset;
 	uint8_t buffer[STACK_LOGGING_EVENT_BUFFER_SIZE + 1024]; // make sure sizeof(memory_logging_event) is smaller than 1024 bytes
 };
 
@@ -72,6 +73,7 @@ allocation_event_buffer *open_or_create_allocation_event_buffer(const char *even
 			event_buffer = (allocation_event_buffer *)buff;
 			event_buffer->read_index = 0;
 			event_buffer->write_index = 0;
+			event_buffer->is_index_reset = false;
 		} else {
 			void *buff = inter_mmap(NULL, fs, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 			if (buff == MAP_FAILED) {
@@ -102,6 +104,7 @@ allocation_event_buffer *open_or_create_allocation_event_buffer_static()
 	event_buffer->fs = 0;
 	event_buffer->read_index = 0;
 	event_buffer->write_index = 0;
+	event_buffer->is_index_reset = false;
 	event_buffer->lock = __malloc_lock_init();
 	
 	return event_buffer;
@@ -130,6 +133,12 @@ void append_event_to_buffer(allocation_event_buffer *event_buff, memory_logging_
 	
 	while (event_buff->write_index - event_buff->read_index > (STACK_LOGGING_EVENT_BUFFER_SIZE - sizeof(memory_logging_event)) - write_size) {
 		usleep(2000);
+		if (event_buff->is_index_reset) {
+			event_buff->is_index_reset = false;
+			event_buff->read_index = 0;
+			event_buff->write_index = 0;
+			break;
+		}
 	}
 	
 	int64_t start_index = (event_buff->write_index & (STACK_LOGGING_EVENT_BUFFER_SIZE - 1)); // must be 2^n
@@ -178,4 +187,5 @@ void reset_write_index(allocation_event_buffer *event_buff)
 {
 	event_buff->read_index = 0;
 	event_buff->write_index = 0;
+	event_buff->is_index_reset = true;
 }

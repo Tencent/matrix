@@ -76,6 +76,8 @@ public interface IDynamicConfig {
 
         //thread
         clicfg_matrix_thread_check_time,
+        clicfg_matrix_thread_check_bg_time,
+        clicfg_matrix_thread_limit_count,
         clicfg_matrix_thread_report_time,
         clicfg_matrix_thread_contain_sys,
         clicfg_matrix_thread_filter_thread_set,

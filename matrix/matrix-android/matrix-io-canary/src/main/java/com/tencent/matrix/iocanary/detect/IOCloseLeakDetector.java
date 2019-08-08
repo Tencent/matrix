@@ -72,7 +72,7 @@ public class IOCloseLeakDetector extends IssuePublisher implements InvocationHan
                 }
                 ioIssue.setContent(content);
                 publishIssue(ioIssue);
-                MatrixLog.d(TAG, "close leak issue publish, key:%s", stackKey);
+                MatrixLog.i(TAG, "close leak issue publish, key:%s", stackKey);
                 markPublished(stackKey);
             }
 

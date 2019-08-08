@@ -16,6 +16,11 @@
 
 #import "MatrixPluginConfig.h"
 
+typedef NS_ENUM(NSUInteger, EWCMemStatReportStrategy) {
+    EWCMemStatReportStrategy_Auto = 0,
+    EWCMemStatReportStrategy_Manual = 1,
+};
+
 @interface WCMemoryStatConfig : MatrixPluginConfig
 
 + (WCMemoryStatConfig *)defaultConfiguration;
@@ -30,5 +35,7 @@
 // the stack also be saved. Default to 8
 @property (nonatomic, assign) int skipMaxStackDepth;
 
+
+@property (nonatomic, assign) EWCMemStatReportStrategy reportStrategy;
 
 @end
