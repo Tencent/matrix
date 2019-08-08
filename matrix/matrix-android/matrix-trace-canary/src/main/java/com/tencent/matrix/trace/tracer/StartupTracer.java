@@ -3,7 +3,6 @@ package com.tencent.matrix.trace.tracer;
 import android.app.Activity;
 import android.app.Application;
 import android.os.Bundle;
-import android.os.SystemClock;
 
 import com.tencent.matrix.Matrix;
 import com.tencent.matrix.report.Issue;
@@ -27,6 +26,8 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
+
+import static android.os.SystemClock.uptimeMillis;
 
 /**
  * Created by caichongyang on 2019/3/04.
@@ -90,10 +91,10 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, App
         boolean isWarmStartUp = false;
         if (isColdStartup()) {
             if (firstScreenCost == 0) {
-                this.firstScreenCost = SystemClock.uptimeMillis() - ActivityThreadHacker.getEggBrokenTime();
+                this.firstScreenCost = uptimeMillis() - ActivityThreadHacker.getEggBrokenTime();
             }
             if (hasShowSplashActivity) {
-                allCost = coldCost = SystemClock.uptimeMillis() - ActivityThreadHacker.getEggBrokenTime();
+                allCost = coldCost = uptimeMillis() - ActivityThreadHacker.getEggBrokenTime();
             } else {
                 if (splashActivities.contains(activity)) {
                     hasShowSplashActivity = true;
@@ -105,7 +106,7 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, App
                 }
             }
         } else if (isWarmStartUp = isWarmStartUp()) {
-            allCost = SystemClock.uptimeMillis() - ActivityThreadHacker.getLastLaunchActivityTime();
+            allCost = uptimeMillis() - ActivityThreadHacker.getLastLaunchActivityTime();
         }
 
         if (allCost > 0) {
@@ -118,7 +119,7 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, App
     }
 
     private boolean isWarmStartUp() {
-        return activeActivityCount > 1 ? false : (SystemClock.uptimeMillis() - ActivityThreadHacker.getLastLaunchActivityTime() > Constants.LIMIT_WARM_THRESHOLD_MS ? false : true);
+        return activeActivityCount <= 1 && (uptimeMillis() - ActivityThreadHacker.getLastLaunchActivityTime() <= Constants.LIMIT_WARM_THRESHOLD_MS);
     }
 
     private void analyse(long applicationCost, long firstScreenCost, long allCost, boolean isWarmStartUp) {
@@ -203,6 +204,9 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, App
                             long allCost, boolean isWarmStartUp, int scene) {
 
             TracePlugin plugin = Matrix.with().getPluginByClass(TracePlugin.class);
+            if (null == plugin) {
+                return;
+            }
             try {
                 JSONObject costObject = new JSONObject();
                 costObject = DeviceUtil.getDeviceInfo(costObject, Matrix.with().getApplication());
@@ -228,7 +232,7 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, App
                     jsonObject = DeviceUtil.getDeviceInfo(jsonObject, Matrix.with().getApplication());
                     jsonObject.put(SharePluginInfo.ISSUE_STACK_TYPE, Constants.Type.STARTUP);
                     jsonObject.put(SharePluginInfo.ISSUE_COST, allCost);
-                    jsonObject.put(SharePluginInfo.ISSUE_STACK, reportBuilder.toString());
+                    jsonObject.put(SharePluginInfo.ISSUE_TRACE_STACK, reportBuilder.toString());
                     jsonObject.put(SharePluginInfo.ISSUE_STACK_KEY, stackKey);
                     jsonObject.put(SharePluginInfo.ISSUE_SUB_TYPE, isWarmStartUp ? 2 : 1);
                     Issue issue = new Issue();

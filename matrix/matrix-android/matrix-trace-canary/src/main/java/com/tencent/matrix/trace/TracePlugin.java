@@ -81,7 +81,12 @@ public class TracePlugin extends Plugin {
             public void run() {
 
                 if (!UIThreadMonitor.getMonitor().isInit()) {
-                    UIThreadMonitor.getMonitor().init(traceConfig);
+                    try {
+                        UIThreadMonitor.getMonitor().init(traceConfig);
+                    } catch (java.lang.RuntimeException e) {
+                        MatrixLog.e(TAG, "[start] RuntimeException:%s", e);
+                        return;
+                    }
                 }
 
                 AppMethodBeat.getInstance().onStart();
@@ -153,6 +158,19 @@ public class TracePlugin extends Plugin {
         if (frameTracer != null) {
             frameTracer.onForeground(isForeground);
         }
+
+        if (anrTracer != null) {
+            anrTracer.onForeground(isForeground);
+        }
+
+        if (evilMethodTracer != null) {
+            evilMethodTracer.onForeground(isForeground);
+        }
+
+        if (startupTracer != null) {
+            startupTracer.onForeground(isForeground);
+        }
+
     }
 
     @Override
@@ -191,5 +209,9 @@ public class TracePlugin extends Plugin {
         } else {
             return null;
         }
+    }
+
+    public TraceConfig getTraceConfig() {
+        return traceConfig;
     }
 }

@@ -1,6 +1,7 @@
 package com.tencent.matrix.trace.tracer;
 
 import android.os.Handler;
+import android.os.SystemClock;
 
 import com.tencent.matrix.Matrix;
 import com.tencent.matrix.report.Issue;
@@ -35,7 +36,6 @@ public class FrameTracer extends Tracer {
     private long highThreshold;
     private long middleThreshold;
     private long normalThreshold;
-    private long backgroundFrameCount;
 
     public FrameTracer(TraceConfig config) {
         this.config = config;
@@ -80,48 +80,40 @@ public class FrameTracer extends Tracer {
 
     @Override
     public void doFrame(String focusedActivityName, long start, long end, long frameCostMs, long inputCostNs, long animationCostNs, long traversalCostNs) {
-
-        notifyListener(focusedActivityName, frameCostMs);
-    }
-
-    @Override
-    public void onForeground(boolean isForeground) {
-        super.onForeground(isForeground);
-        if (isForeground) {
-            if (backgroundFrameCount > 300) {
-                MatrixLog.e(TAG, "wrong! why do frame[%s] in background!!!", backgroundFrameCount);
-            }
-            backgroundFrameCount = 0;
+        if (isForeground()) {
+            notifyListener(focusedActivityName, frameCostMs);
         }
     }
 
-    private void notifyListener(final String focusedActivityName, final long frameCostMs) {
+
+    private void notifyListener(final String visibleScene, final long frameCostMs) {
         long start = System.currentTimeMillis();
         try {
             synchronized (listeners) {
                 for (final IDoFrameListener listener : listeners) {
+                    if (config.isDevEnv()) {
+                        listener.time = SystemClock.uptimeMillis();
+                    }
                     final int dropFrame = (int) (frameCostMs / frameIntervalMs);
-                    listener.doFrameSync(focusedActivityName, frameCostMs, dropFrame);
+                    listener.doFrameSync(visibleScene, frameCostMs, dropFrame);
                     if (null != listener.getHandler()) {
                         listener.getHandler().post(new Runnable() {
                             @Override
                             public void run() {
-                                listener.doFrameAsync(focusedActivityName, frameCostMs, dropFrame);
+                                listener.doFrameAsync(visibleScene, frameCostMs, dropFrame);
                             }
                         });
+                    }
+                    if (config.isDevEnv()) {
+                        listener.time = SystemClock.uptimeMillis() - listener.time;
+                        MatrixLog.d(TAG, "[notifyListener] cost:%sms listener:%s", listener.time, listener);
                     }
                 }
             }
         } finally {
             long cost = System.currentTimeMillis() - start;
-            if (config.isDevEnv()) {
-                MatrixLog.v(TAG, "[notifyListener] cost:%sms", cost);
-            }
-            if (cost > frameIntervalMs) {
-                MatrixLog.w(TAG, "[notifyListener] warm! maybe do heavy work in doFrameSync,but you can replace with doFrameAsync! cost:%sms", cost);
-            }
-            if (config.isDebug() && !isForeground()) {
-                backgroundFrameCount++;
+            if (config.isDebug() && cost > frameIntervalMs) {
+                MatrixLog.w(TAG, "[notifyListener] warm! maybe do heavy work in doFrameSync! size:%s cost:%sms", listeners.size(), cost);
             }
         }
     }
@@ -138,22 +130,22 @@ public class FrameTracer extends Tracer {
         }
 
         @Override
-        public void doFrameAsync(String focusedActivityName, long frameCost, int droppedFrames) {
-            super.doFrameAsync(focusedActivityName, frameCost, droppedFrames);
-            if (Utils.isEmpty(focusedActivityName)) {
+        public void doFrameAsync(String visibleScene, long frameCost, int droppedFrames) {
+            super.doFrameAsync(visibleScene, frameCost, droppedFrames);
+            if (Utils.isEmpty(visibleScene)) {
                 return;
             }
 
-            FrameCollectItem item = map.get(focusedActivityName);
+            FrameCollectItem item = map.get(visibleScene);
             if (null == item) {
-                item = new FrameCollectItem(focusedActivityName);
-                map.put(focusedActivityName, item);
+                item = new FrameCollectItem(visibleScene);
+                map.put(visibleScene, item);
             }
 
             item.collect(droppedFrames);
 
             if (item.sumFrameCost >= timeSliceMs) { // report
-                map.remove(focusedActivityName);
+                map.remove(visibleScene);
                 item.report();
             }
         }
@@ -161,7 +153,7 @@ public class FrameTracer extends Tracer {
     }
 
     private class FrameCollectItem {
-        String focusedActivityName;
+        String visibleScene;
         long sumFrameCost;
         int sumFrame = 0;
         int sumDroppedFrames;
@@ -169,8 +161,8 @@ public class FrameTracer extends Tracer {
         int[] dropLevel = new int[DropStatus.values().length];
         int[] dropSum = new int[DropStatus.values().length];
 
-        FrameCollectItem(String focusedActivityName) {
-            this.focusedActivityName = focusedActivityName;
+        FrameCollectItem(String visibleScene) {
+            this.visibleScene = visibleScene;
         }
 
         void collect(int droppedFrames) {
@@ -203,6 +195,9 @@ public class FrameTracer extends Tracer {
 
             try {
                 TracePlugin plugin = Matrix.with().getPluginByClass(TracePlugin.class);
+                if (null == plugin) {
+                    return;
+                }
                 JSONObject dropLevelObject = new JSONObject();
                 dropLevelObject.put(DropStatus.DROPPED_FROZEN.name(), dropLevel[DropStatus.DROPPED_FROZEN.index]);
                 dropLevelObject.put(DropStatus.DROPPED_HIGH.name(), dropLevel[DropStatus.DROPPED_HIGH.index]);
@@ -220,7 +215,7 @@ public class FrameTracer extends Tracer {
                 JSONObject resultObject = new JSONObject();
                 resultObject = DeviceUtil.getDeviceInfo(resultObject, plugin.getApplication());
 
-                resultObject.put(SharePluginInfo.ISSUE_SCENE, focusedActivityName);
+                resultObject.put(SharePluginInfo.ISSUE_SCENE, visibleScene);
                 resultObject.put(SharePluginInfo.ISSUE_DROP_LEVEL, dropLevelObject);
                 resultObject.put(SharePluginInfo.ISSUE_DROP_SUM, dropSumObject);
                 resultObject.put(SharePluginInfo.ISSUE_FPS, fps);
@@ -232,13 +227,17 @@ public class FrameTracer extends Tracer {
 
             } catch (JSONException e) {
                 MatrixLog.e(TAG, "json error", e);
+            } finally {
+                sumFrame = 0;
+                sumDroppedFrames = 0;
+                sumFrameCost = 0;
             }
         }
 
 
         @Override
         public String toString() {
-            return "focusedActivityName=" + focusedActivityName
+            return "visibleScene=" + visibleScene
                     + ", sumFrame=" + sumFrame
                     + ", sumDroppedFrames=" + sumDroppedFrames
                     + ", sumFrameCost=" + sumFrameCost

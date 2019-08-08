@@ -60,7 +60,9 @@ public class Issue {
 
     @Override
     public String toString() {
-        return String.format("tag[%s]type[%d];key[%s];content[%s]", tag, type, key, content);
+        String strContent = "";
+        if (null != content) strContent = content.toString();
+        return String.format("tag[%s]type[%d];key[%s];content[%s]", tag, type, key, strContent);
     }
 
     public void setKey(String key) {

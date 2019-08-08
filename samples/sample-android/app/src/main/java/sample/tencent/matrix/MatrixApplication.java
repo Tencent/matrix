@@ -18,12 +18,17 @@ package sample.tencent.matrix;
 
 import android.app.Application;
 import android.content.Context;
+import android.os.Build;
+import android.os.Debug;
+import android.os.SystemClock;
 
 import com.tencent.matrix.Matrix;
 import com.tencent.matrix.iocanary.IOCanaryPlugin;
 import com.tencent.matrix.iocanary.config.IOConfig;
 import com.tencent.matrix.resource.ResourcePlugin;
 import com.tencent.matrix.resource.config.ResourceConfig;
+import com.tencent.matrix.threadcanary.ThreadConfig;
+import com.tencent.matrix.threadcanary.ThreadWatcher;
 import com.tencent.matrix.trace.TracePlugin;
 import com.tencent.matrix.trace.config.TraceConfig;
 import com.tencent.matrix.util.MatrixLog;
@@ -31,9 +36,10 @@ import com.tencent.sqlitelint.SQLiteLint;
 import com.tencent.sqlitelint.SQLiteLintPlugin;
 import com.tencent.sqlitelint.config.SQLiteLintConfig;
 
+import java.util.HashSet;
+
 import sample.tencent.matrix.config.DynamicConfigImplDemo;
 import sample.tencent.matrix.listener.TestPluginListener;
-import sample.tencent.matrix.sqlitelint.TestSQLiteLintActivity;
 
 /**
  * Created by caichongyang on 17/5/18.
@@ -46,15 +52,9 @@ public class MatrixApplication extends Application {
 
     private static SQLiteLintConfig initSQLiteLintConfig() {
         try {
-            /**
-             * HOOK模式下，SQLiteLint会自己去获取所有已执行的sql语句及其耗时(by hooking sqlite3_profile)
-             * @see 而另一个模式：SQLiteLint.SqlExecutionCallbackMode.CUSTOM_NOTIFY , 则需要调用 {@link SQLiteLint#notifySqlExecution(String, String, int)}来通知
-             * SQLiteLint 需要分析的、已执行的sql语句及其耗时
-             * @see TestSQLiteLintActivity#doTest()
-             */
-            return new SQLiteLintConfig(SQLiteLint.SqlExecutionCallbackMode.HOOK);
+            return new SQLiteLintConfig(SQLiteLint.SqlExecutionCallbackMode.CUSTOM_NOTIFY);
         } catch (Throwable t) {
-            return new SQLiteLintConfig(SQLiteLint.SqlExecutionCallbackMode.HOOK);
+            return new SQLiteLintConfig(SQLiteLint.SqlExecutionCallbackMode.CUSTOM_NOTIFY);
         }
     }
 
@@ -109,13 +109,18 @@ public class MatrixApplication extends Application {
             SQLiteLintConfig config = initSQLiteLintConfig();
             SQLiteLintPlugin sqLiteLintPlugin = new SQLiteLintPlugin(config);
             builder.plugin(sqLiteLintPlugin);
+
+            ThreadWatcher threadWatcher = new ThreadWatcher(new ThreadConfig.Builder().dynamicConfig(dynamicConfig).build());
+            builder.plugin(threadWatcher);
+
+
         }
 
         Matrix.init(builder.build());
 
         //start only startup tracer, close other tracer.
         tracePlugin.start();
-
+        Matrix.with().getPluginByClass(ThreadWatcher.class).start();
         MatrixLog.i("Matrix.HackCallback", "end:%s", System.currentTimeMillis());
     }
 
