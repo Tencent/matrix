@@ -36,6 +36,7 @@
 //#define KSLogger_LocalLevel TRACE
 #include "KSLogger.h"
 
+#define KSPACStrippingMask_ARM64e 0x0000000fffffffff
 
 static const char* g_registerNames[] =
 {
@@ -161,5 +162,9 @@ int kscpu_stackGrowDirection(void)
     return -1;
 }
 
+uintptr_t kscpu_normaliseInstructionPointer(uintptr_t ip)
+{
+    return ip & KSPACStrippingMask_ARM64e;
+}
 
 #endif

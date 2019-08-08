@@ -28,16 +28,17 @@
 
 #import "MatrixLogDef.h"
 
-#define kForegroundOverEightySecLimit 60  // foreground CPU over 80%.
-#define kBakcgroundOverEightySecLimit 60  // background CPU over 80%.
-#define TICK_TOCK_COUNT 60
+static float kOverCPULimit = 80.;
+static float kOverCPULimitSecLimit = 60.;
+static int TICK_TOCK_COUNT = 60;
 
 @interface WCCPUHandler () {
     NSUInteger m_tickTok;
+
+    float m_totalCPUCost;
+    float m_totalTrackingTime;
+    BOOL m_bTracking;
     
-    BOOL m_bLastOverEighty;
-    float m_foregroundOverEightyTotalSec;
-    float m_backgroundOverEightyTotalSec;
     float m_backgroundTotalCPU;
     float m_backgroundTotalSec;
     BOOL m_background;
@@ -50,12 +51,20 @@
 
 - (id)init
 {
+    return [self initWithCPULimit:80.];
+}
+
+- (id)initWithCPULimit:(float)cpuLimit
+{
     self = [super init];
     if (self) {
+        kOverCPULimit = cpuLimit;
+        
         m_tickTok = 0;
-        m_bLastOverEighty = NO;
-        m_foregroundOverEightyTotalSec = 0;
-        m_backgroundOverEightyTotalSec = 0;
+        m_bTracking = NO;
+        
+        m_totalTrackingTime = 0.;
+        m_totalCPUCost = 0.;
         
         m_background = NO;
         m_backgroundTotalCPU = 0.;
@@ -94,7 +103,7 @@
 }
 
 // ============================================================================
-#pragma mark - CPU Related -
+#pragma mark - CPU Related
 // ============================================================================
 
 - (BOOL)isBackgroundCPUTooSmall
@@ -102,55 +111,66 @@
     return m_backgroundCPUTooSmall;
 }
 
+// run on the check child thread
 - (BOOL)cultivateCpuUsage:(float)cpuUsage periodTime:(float)periodSec
 {
     [self cultivateBackgroundCpu:cpuUsage periodTime:periodSec];
 
+    if (periodSec < 0 || periodSec > 5.) {
+        MatrixDebug(@"abnormal period sec : %f", periodSec);
+        return NO;
+    }
+    
     if (m_tickTok > 0) {
         m_tickTok -= 1; // Annealing algorithm
         if (m_tickTok == 0) {
             MatrixInfo(@"tick tok over");
         }
+        return NO;
     }
 
-    if (cpuUsage > 80. && m_tickTok == 0 && m_bLastOverEighty == NO) {
+    if (cpuUsage > kOverCPULimit && m_bTracking == NO) {
         MatrixInfo(@"start track cpu usage");
-        m_foregroundOverEightyTotalSec = 0;
-        m_backgroundOverEightyTotalSec = 0;
-        m_bLastOverEighty = YES;
-    }
-    if (cpuUsage <= 80. && m_bLastOverEighty == YES) {
-        MatrixInfo(@"stop track cpu usage");
-        m_foregroundOverEightyTotalSec = 0;
-        m_backgroundOverEightyTotalSec = 0;
-        m_bLastOverEighty = NO;
+        m_totalCPUCost = 0.;
+        m_totalTrackingTime = 0.;
+        m_bTracking = YES;
     }
     
-    BOOL exceedLimit = NO;
-    if (m_bLastOverEighty && m_tickTok == 0) {
-        if (m_background) {
-            m_foregroundOverEightyTotalSec = 0;
-            m_backgroundOverEightyTotalSec += periodSec;
-            if (m_backgroundOverEightyTotalSec > kBakcgroundOverEightySecLimit) {
-                MatrixInfo(@"background, exceed cpu limit");
-                exceedLimit = YES;
-            }
-        } else {
-            m_backgroundOverEightyTotalSec = 0;
-            m_foregroundOverEightyTotalSec += periodSec;
-            if (m_foregroundOverEightyTotalSec > kForegroundOverEightySecLimit) {
-                MatrixInfo(@"foreground, exceed cpu limit");
-                exceedLimit = YES;
-            }
-        }
+    if (m_bTracking == NO) {
+        return NO;
     }
-    if (exceedLimit) {
-        m_foregroundOverEightyTotalSec = 0;
-        m_backgroundOverEightyTotalSec = 0;
-        m_tickTok += TICK_TOCK_COUNT;
-    }
+    
+    m_totalTrackingTime += periodSec;
+    m_totalCPUCost += periodSec * cpuUsage;
 
-    return exceedLimit;
+    float halfCPUZone = kOverCPULimit * m_totalTrackingTime / 2.;
+    
+    if (m_totalCPUCost < halfCPUZone) {
+        MatrixInfo(@"stop track cpu usage");
+        m_totalCPUCost = 0.;
+        m_totalTrackingTime = 0.;
+        m_bTracking = NO;
+        return NO;
+    }
+    
+    if (m_totalTrackingTime >= kOverCPULimitSecLimit) {
+        BOOL exceedLimit = NO;
+        float fullCPUZone = halfCPUZone + halfCPUZone;
+        if (m_totalCPUCost > fullCPUZone) {
+            MatrixInfo(@"exceed cpu limit");
+            exceedLimit = YES;
+        }
+        
+        if (exceedLimit) {
+            m_totalCPUCost = 0;
+            m_totalTrackingTime = 0.;
+            m_bTracking = NO;
+            m_tickTok += TICK_TOCK_COUNT;
+        }
+        return exceedLimit;
+    }
+    
+    return NO;
 }
 
 - (void)cultivateBackgroundCpu:(float)cpuUsage periodTime:(float)periodSec
@@ -171,62 +191,6 @@
     }
     m_backgroundTotalCPU += cpuUsage * periodSec;
     m_backgroundTotalSec += periodSec;
-}
-
-
-+ (float)getCurrentCpuUsage
-{
-    kern_return_t kr;
-    task_info_data_t tinfo;
-    mach_msg_type_number_t task_info_count;
-
-    task_info_count = TASK_INFO_MAX;
-    kr = task_info(mach_task_self(), TASK_BASIC_INFO, (task_info_t) tinfo, &task_info_count);
-    if (kr != KERN_SUCCESS) {
-        return -1;
-    }
-
-    thread_array_t thread_list;
-    mach_msg_type_number_t thread_count;
-
-    thread_info_data_t thinfo;
-    mach_msg_type_number_t thread_info_count;
-
-    thread_basic_info_t basic_info_th;
-
-    // get threads in the task
-    kr = task_threads(mach_task_self(), &thread_list, &thread_count);
-    if (kr != KERN_SUCCESS) {
-        return -1;
-    }
-
-    long tot_sec = 0;
-    long tot_usec = 0;
-    float tot_cpu = 0;
-    int j;
-
-    for (j = 0; j < thread_count; j++) {
-        thread_info_count = THREAD_INFO_MAX;
-        kr = thread_info(thread_list[j], THREAD_BASIC_INFO,
-                         (thread_info_t) thinfo, &thread_info_count);
-        if (kr != KERN_SUCCESS) {
-            return -1;
-        }
-
-        basic_info_th = (thread_basic_info_t) thinfo;
-
-        if (!(basic_info_th->flags & TH_FLAGS_IDLE)) {
-            tot_sec = tot_sec + basic_info_th->user_time.seconds + basic_info_th->system_time.seconds;
-            tot_usec = tot_usec + basic_info_th->system_time.microseconds + basic_info_th->system_time.microseconds;
-            tot_cpu = tot_cpu + basic_info_th->cpu_usage / (float) TH_USAGE_SCALE * 100.0;
-        }
-
-    } // for each thread
-
-    kr = vm_deallocate(mach_task_self(), (vm_offset_t) thread_list, thread_count * sizeof(thread_t));
-    assert(kr == KERN_SUCCESS);
-
-    return tot_cpu;
 }
 
 @end

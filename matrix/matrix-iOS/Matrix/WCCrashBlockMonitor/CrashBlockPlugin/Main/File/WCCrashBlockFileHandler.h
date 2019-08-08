@@ -30,21 +30,22 @@
 + (void)deleteCrashDataWithReportID:(NSString *)reportID;
 
 + (NSArray *)getAllCrashReportPath;
-
 + (NSArray *)getAllCrashReportID;
 
 // ============================================================================
 #pragma mark - Lag File
 // ============================================================================
 
-+ (NSString *)diretoryOfUserDump;
++ (BOOL)haveLagFiles;
++ (BOOL)haveLagFilesOnDate:(NSString *)nsDate;
++ (BOOL)haveLagFilesOnType:(EDumpType)dumpType;
++ (BOOL)haveLagFilesOnDate:(NSString *)nsDate onType:(EDumpType)dumpType;
 
++ (NSString *)diretoryOfUserDump;
 + (NSString *)diretoryOfUserDumpWithType:(EDumpType)type;
 
 + (NSArray *)getLagReportIDWithType:(EDumpType)dumpType withDate:(NSString *)limitDate;
-
 + (NSData *)getLagDataWithReportID:(NSString *)reportID andReportType:(EDumpType)dumpType;
-
 + (NSData *)getLagDataWithReportIDArray:(NSArray *)reportIDArray andReportType:(EDumpType)dumpType;
 
 + (void)deleteLagDataWithReportID:(NSString *)reportID andReportType:(EDumpType)dumpType;

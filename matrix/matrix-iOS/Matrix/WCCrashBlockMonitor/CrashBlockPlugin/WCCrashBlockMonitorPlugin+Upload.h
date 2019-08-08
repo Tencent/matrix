@@ -34,6 +34,11 @@
 #pragma mark - Lag & Lag File
 // ============================================================================
 
++ (BOOL)haveLagFiles;
++ (BOOL)haveLagFilesOnDate:(NSString *)nsDate;
++ (BOOL)haveLagFilesOnType:(EDumpType)dumpType;
++ (BOOL)haveLagFilesOnDate:(NSString *)nsDate onType:(EDumpType)dumpType;
+
 // Importantly, the use of reportCntLimit.
 // use a little count of reportCntLimit to seperate the MatrixIssue,
 // then we can decrease the data size of one MatrixIssue,
@@ -46,16 +51,11 @@
  */
 - (void)reportAllLagFile;
 
-- (void)reportAllLagFileWithLimitReportCountInOneIssue:(NSUInteger)reportCntLimit;
-
 /**
  * @brief report all type of lag file on the specified date
  * @param nsDate the given date (format: yyyy-MM-dd)
  */
 - (void)reportAllLagFileOnDate:(NSString *)nsDate;
-
-- (void)reportAllLagFileOnDate:(NSString *)nsDate
-withLimitReportCountInOneIssue:(NSUInteger)reportCntLimit;
 
 /**
  * @brief report a specified type of lag on the given data.
@@ -64,30 +64,5 @@ withLimitReportCountInOneIssue:(NSUInteger)reportCntLimit;
  */
 - (void)reportOneTypeLag:(EDumpType)dumpType
                   onDate:(NSString *)nsDate;
-
-- (void)reportOneTypeLag:(EDumpType)dumpType
-                  onDate:(NSString *)nsDate
-withLimitReportCountInOneIssue:(NSUInteger)reportCntLimit;
-
-
-// Importantly, the method will report just one type of lag at today one time.
-// The reporting of lag files is in order, the high priority will be reported firstly,
-// If you care about the priority, see WCDumpReportTypeTaskData's WXGDumpReportTypeConfig.
-
-/**
- * @brief report the lag generated today with the limit type configuration
- * @param limitConfigStr The type limited to report
- * note.
- * according to EDumpType, if set the limitConfigStr = @"2001,2002",
- * EDumpType_KS_MainThreadBlock(2001),EDumpType_KS_BackgroundMainThreadBlock(2002) would not be reported
- * if set the limitConfig = @"" or nil, then none is limited
- */
-- (void)reportTodayOneTypeLagWithlimitUploadConfig:(NSString *)limitConfigStr;
-
-- (void)reportTodayOneTypeLagWithlimitUploadConfig:(NSString *)limitConfigStr
-                    withLimitReportCountInOneIssue:(NSUInteger)reportCntLimit;
-
-- (void)reportTodayOneTypeLag;
-
 
 @end

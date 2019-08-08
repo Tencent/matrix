@@ -24,6 +24,20 @@
 #define CustomStackString "stack_string"
 #define CustomReportField "scene"
 
+static NSString* g_bundleName = nil;
+
+static NSString* getBundleName()
+{
+    if (g_bundleName == nil) {
+        g_bundleName = [[[NSBundle mainBundle] infoDictionary] objectForKey:@"CFBundleName"];
+    }
+    if (g_bundleName == nil)
+    {
+        g_bundleName = @"Unknown";
+    }
+    return g_bundleName;
+}
+
 @implementation WCGetCallStackReportHandler
 
 + (NSData *)getReportJsonDataWithCallStackArray:(KSStackCursor **)stackCursorArray
@@ -143,6 +157,7 @@
     NSMutableDictionary *reportDictionary = [[NSMutableDictionary alloc] init];
     [reportDictionary setValue:@"0.5" forKey:@KSCrashField_Version];
     [reportDictionary setValue:reportID forKey:@KSCrashField_ID];
+    [reportDictionary setValue:getBundleName() forKey:@KSCrashField_ProcessName];
     [reportDictionary setValue:[NSNumber numberWithLong:timestamp] forKey:@KSCrashField_Timestamp];
     [reportDictionary setValue:@"custom" forKey:@KSCrashField_Type];
     return [reportDictionary copy];
@@ -167,6 +182,28 @@
     NSDictionary *userDic = [[WCBlockMonitorMgr shareInstance] getUserInfoForCurrentDumpForDumpType:dumpType];
     [reportDictionary setValue:userDic forKey:@KSCrashExcType_User];
     [reportDictionary setValue:callStackString forKey:@CustomStackString];
+    NSData *jsonData = [WCCrashBlockJsonUtil jsonEncode:reportDictionary withError:nil];
+    return jsonData;
+}
+
++ (NSData *)getReportJsonDataWithPowerConsumeStack:(NSArray <NSDictionary *> *)PowerConsumeStackArray
+                                     withReportID:(NSString *)reportID
+                                     withDumpType:(EDumpType)dumpType;
+{
+    if (PowerConsumeStackArray == nil || [PowerConsumeStackArray count] == 0) {
+        return nil;
+    }
+    NSMutableDictionary *reportDictionary = [NSMutableDictionary dictionary];
+    [reportDictionary setValue:[WCGetCallStackReportHandler getCustomReportInfoWithReportID:reportID]
+                        forKey:@KSCrashField_Report];
+    [reportDictionary setValue:[[WCCrashReportInfoUtil sharedInstance] getBinaryImages]
+                        forKey:@KSCrashField_BinaryImages];
+    [reportDictionary setValue:[[WCCrashReportInfoUtil sharedInstance] getSystemInfo]
+                        forKey:@KSCrashField_System];
+    NSDictionary *userDic = [[WCBlockMonitorMgr shareInstance] getUserInfoForCurrentDumpForDumpType:dumpType];
+    [reportDictionary setValue:userDic forKey:@KSCrashExcType_User];
+    [reportDictionary setValue:[NSNumber numberWithInt:dumpType] forKey:@KSCrashField_DumpType];
+    [reportDictionary setValue:PowerConsumeStackArray forKey:@CustomStackString];
     NSData *jsonData = [WCCrashBlockJsonUtil jsonEncode:reportDictionary withError:nil];
     return jsonData;
 }

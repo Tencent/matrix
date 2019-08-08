@@ -187,9 +187,9 @@ void i_kslog_logCBasic(const char* fmt, ...);
 
 
 /* Back up any existing defines by the same name */
-#ifdef NONE
-    #define KSLOG_BAK_NONE NONE
-    #undef NONE
+#ifdef KS_NONE
+    #define KSLOG_BAK_NONE KS_NONE
+    #undef KS_NONE
 #endif
 #ifdef ERROR
     #define KSLOG_BAK_ERROR ERROR
@@ -220,7 +220,7 @@ void i_kslog_logCBasic(const char* fmt, ...);
 #define KSLogger_Level_Debug 40
 #define KSLogger_Level_Trace 50
 
-#define NONE  KSLogger_Level_None
+#define KS_NONE  KSLogger_Level_None
 #define ERROR KSLogger_Level_Error
 #define WARN  KSLogger_Level_Warn
 #define INFO  KSLogger_Level_Info
