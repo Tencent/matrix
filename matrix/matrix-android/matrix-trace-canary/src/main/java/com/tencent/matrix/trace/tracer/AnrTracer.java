@@ -167,7 +167,7 @@ public class AnrTracer extends Tracer {
             // stackKey
             String stackKey = TraceDataUtils.getTreeKey(stack, stackCost);
             MatrixLog.w(TAG, "%s \npostTime:%s curTime:%s",
-                    printAnr(processStat, memoryInfo, status, logcatBuilder, isForeground, stack.size(),
+                    printAnr(scene, processStat, memoryInfo, status, logcatBuilder, isForeground, stack.size(),
                             stackKey, dumpStack, inputCost, animationCost, traversalCost, stackCost), token, curTime); // for logcat
 
             if (stackCost >= Constants.DEFAULT_ANR_INVALID || processStat[0] > 10) {
@@ -211,10 +211,11 @@ public class AnrTracer extends Tracer {
 
         }
 
-        private String printAnr(int[] processStat, long[] memoryInfo, Thread.State state, StringBuilder stack, boolean isForeground,
+        private String printAnr(String scene, int[] processStat, long[] memoryInfo, Thread.State state, StringBuilder stack, boolean isForeground,
                                 long stackSize, String stackKey, String dumpStack, long inputCost, long animationCost, long traversalCost, long stackCost) {
             StringBuilder print = new StringBuilder();
             print.append(String.format("-\n>>>>>>>>>>>>>>>>>>>>>>> maybe happens ANR(%s ms)! <<<<<<<<<<<<<<<<<<<<<<<\n", stackCost));
+            print.append("|* scene: ").append(scene).append("\n");
             print.append("|* [ProcessStat]").append("\n");
             print.append("|*\t\tPriority: ").append(processStat[0]).append("\n");
             print.append("|*\t\tNice: ").append(processStat[1]).append("\n");

@@ -96,9 +96,16 @@ public class TraceConfig implements IDefaultConfig {
 
     public Set<String> getSplashActivities() {
         if (null == splashActivitiesSet) {
-            splashActivitiesSet = (null == dynamicConfig
-                    ? new HashSet<>(Arrays.asList(splashActivities))
-                    : new HashSet<>(Arrays.asList(dynamicConfig.get(IDynamicConfig.ExptEnum.clicfg_matrix_trace_care_scene_set.name(), splashActivities).split(";"))));
+            splashActivitiesSet = new HashSet<>();
+            if (null == splashActivities) {
+                return splashActivitiesSet;
+            }
+            if (null == dynamicConfig) {
+                splashActivitiesSet.addAll(Arrays.asList(splashActivities.split(";")));
+            } else {
+                splashActivities = dynamicConfig.get(IDynamicConfig.ExptEnum.clicfg_matrix_trace_care_scene_set.name(), splashActivities);
+                splashActivitiesSet.addAll(Arrays.asList(splashActivities.split(";")));
+            }
         }
         return splashActivitiesSet;
     }

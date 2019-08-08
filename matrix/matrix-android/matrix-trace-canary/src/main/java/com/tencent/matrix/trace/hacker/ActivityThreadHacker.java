@@ -94,7 +94,7 @@ public class ActivityThreadHacker {
         public boolean handleMessage(Message msg) {
 
             if (!AppMethodBeat.isRealTrace()) {
-                return null == mOriginalCallback ? false : mOriginalCallback.handleMessage(msg);
+                return null != mOriginalCallback && mOriginalCallback.handleMessage(msg);
             }
 
             boolean isLaunchActivity = isLaunchActivity(msg);
@@ -115,7 +115,7 @@ public class ActivityThreadHacker {
                 }
             }
 
-            return null == mOriginalCallback ? false : mOriginalCallback.handleMessage(msg);
+            return null != mOriginalCallback && mOriginalCallback.handleMessage(msg);
         }
 
         private Method method = null;

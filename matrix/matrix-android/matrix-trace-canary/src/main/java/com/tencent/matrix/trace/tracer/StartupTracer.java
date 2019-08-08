@@ -28,6 +28,8 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 
+import static android.os.SystemClock.*;
+
 /**
  * Created by caichongyang on 2019/3/04.
  * <p>
@@ -90,10 +92,10 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, App
         boolean isWarmStartUp = false;
         if (isColdStartup()) {
             if (firstScreenCost == 0) {
-                this.firstScreenCost = SystemClock.uptimeMillis() - ActivityThreadHacker.getEggBrokenTime();
+                this.firstScreenCost = uptimeMillis() - ActivityThreadHacker.getEggBrokenTime();
             }
             if (hasShowSplashActivity) {
-                allCost = coldCost = SystemClock.uptimeMillis() - ActivityThreadHacker.getEggBrokenTime();
+                allCost = coldCost = uptimeMillis() - ActivityThreadHacker.getEggBrokenTime();
             } else {
                 if (splashActivities.contains(activity)) {
                     hasShowSplashActivity = true;
@@ -105,7 +107,7 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, App
                 }
             }
         } else if (isWarmStartUp = isWarmStartUp()) {
-            allCost = SystemClock.uptimeMillis() - ActivityThreadHacker.getLastLaunchActivityTime();
+            allCost = uptimeMillis() - ActivityThreadHacker.getLastLaunchActivityTime();
         }
 
         if (allCost > 0) {
@@ -118,7 +120,7 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, App
     }
 
     private boolean isWarmStartUp() {
-        return activeActivityCount > 1 ? false : (SystemClock.uptimeMillis() - ActivityThreadHacker.getLastLaunchActivityTime() > Constants.LIMIT_WARM_THRESHOLD_MS ? false : true);
+        return activeActivityCount <= 1 && (uptimeMillis() - ActivityThreadHacker.getLastLaunchActivityTime() <= Constants.LIMIT_WARM_THRESHOLD_MS);
     }
 
     private void analyse(long applicationCost, long firstScreenCost, long allCost, boolean isWarmStartUp) {
