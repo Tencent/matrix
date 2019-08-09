@@ -3,7 +3,7 @@ apply plugin: 'com.android.library'
 apply from: rootProject.file('gradle/WeChatPublish.gradle')
 
 group 'com.tencent.mm'
-version '1.0.2'
+version '1.0.4'
 artifactId = 'wxperf-jni'
 
 android {
@@ -19,7 +19,7 @@ android {
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
 
         ndk {
-            abiFilters 'armeabi-v7a'
+            abiFilters 'armeabi-v7a', 'arm64-v8a'
         }
     }
 
