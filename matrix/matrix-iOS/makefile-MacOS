@@ -1,4 +1,4 @@
-TARGET_NAME = MatrixMac
+TARGET_NAME = Matrix
 PRODUCT_NAME = Matrix
 PROJECT_DIR = ./Matrix
 PROJECT_NAME = $(PROJECT_DIR)/Matrix.xcodeproj
