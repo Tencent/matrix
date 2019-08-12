@@ -73,7 +73,7 @@ public class Issue {
         this.tag = tag;
     }
 
-    public Integer getType() {
+    public int getType() {
         return type;
     }
 
