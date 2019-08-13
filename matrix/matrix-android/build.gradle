@@ -1,13 +1,31 @@
 buildscript {
     repositories {
+
+        maven {
+            url "http://maven.mmclient.oa.com/nexus/content/repositories/android/"
+        }
+        maven {
+            url "http://maven.mmclient.oa.com/nexus/content/repositories/thirdparty"
+        }
+        maven {
+            url "http://maven.mmclient.oa.com/nexus/content/repositories/thirdparty-snapshots"
+        }
+        maven {
+            url "http://maven.mmclient.oa.com/nexus/content/repositories/jcenter"
+        }
+        maven {
+            url "http://maven.mmclient.oa.com/nexus/content/repositories/google-maven/"
+        }
+
         mavenLocal()
         google()
         jcenter()
+
     }
 
     dependencies {
         // classpath
-        classpath 'com.android.tools.build:gradle:3.0.0'
+        classpath 'com.android.tools.build:gradle:3.2.1'
         classpath 'com.jfrog.bintray.gradle:gradle-bintray-plugin:1.7.3'
         classpath 'digital.wup:android-maven-publish:3.2.0'
     }
@@ -20,6 +38,23 @@ buildscript {
 
 allprojects {
     repositories {
+
+        maven {
+            url "http://maven.mmclient.oa.com/nexus/content/repositories/android"
+        }
+        maven {
+            url "http://maven.mmclient.oa.com/nexus/content/repositories/thirdparty"
+        }
+        maven {
+            url "http://maven.mmclient.oa.com/nexus/content/repositories/thirdparty-snapshots"
+        }
+        maven {
+            url "http://maven.mmclient.oa.com/nexus/content/repositories/jcenter"
+        }
+        maven {
+            url "http://maven.mmclient.oa.com/nexus/content/repositories/google-maven/"
+        }
+
         mavenLocal()
         google()
         jcenter()
