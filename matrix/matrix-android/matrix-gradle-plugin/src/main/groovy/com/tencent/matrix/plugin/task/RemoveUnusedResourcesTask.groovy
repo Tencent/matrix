@@ -81,11 +81,13 @@ public class RemoveUnusedResourcesTask extends DefaultTask {
 
         project.extensions.android.applicationVariants.all { variant ->
             if (variant.name.equalsIgnoreCase(variantName)) {
-                String unsignedApkPath = variant.outputs.first().outputFile.getAbsolutePath();
-                Log.i(TAG, "original apk file %s", unsignedApkPath);
-                long startTime = System.currentTimeMillis();
-                removeUnusedResources(unsignedApkPath, project.getBuildDir().getAbsolutePath() + "/intermediates/symbols/${variant.name}/R.txt", variant.variantData.variantConfiguration.signingConfig);
-                Log.i(TAG, "cost time %f s" , (System.currentTimeMillis() - startTime) / 1000.0f );
+                variant.outputs.forEach { output ->
+                    String unsignedApkPath = output.outputFile.getAbsolutePath();
+                    Log.i(RemoveUnusedResourcesTask.TAG, "original apk file %s", unsignedApkPath);
+                    long startTime = System.currentTimeMillis();
+                    removeUnusedResources(unsignedApkPath, project.getBuildDir().getAbsolutePath() + "/intermediates/symbols/${variant.name}/R.txt", variant.variantData.variantConfiguration.signingConfig);
+                    Log.i(RemoveUnusedResourcesTask.TAG, "cost time %f s" , (System.currentTimeMillis() - startTime) / 1000.0f );
+                }
             }
         }
     }
