@@ -10,6 +10,9 @@ android {
         versionName "1.0"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
 
+        ndk {
+            abiFilters 'armeabi-v7a'//, 'arm64-v8a'
+        }
     }
     buildTypes {
         release {
@@ -18,11 +21,16 @@ android {
         }
     }
 
-//    sourceSets {
-//        main {
-//            jniLibs.srcDirs = ['jni/armeabi-v7a/']
-//        }
-//    }
+    // Encapsulates your external native build configurations.
+    externalNativeBuild {
+
+        // Encapsulates your CMake build configurations.
+        cmake {
+
+            // Provides a relative path to your CMake build script.
+            path "CMakeLists.txt"
+        }
+    }
 }
 
 dependencies {
@@ -33,4 +41,5 @@ dependencies {
     androidTestImplementation 'com.android.support.test:runner:1.0.2'
     androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.2'
     implementation 'com.tencent.mm:wxperf:1.0.0-SNAPSHOT'
+    implementation project(':wxperf')
 }

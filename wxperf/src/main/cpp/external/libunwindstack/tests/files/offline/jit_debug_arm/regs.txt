@@ -1,0 +1,16 @@
+r0: dfe7c0f8
+r1: 0
+r2: 0
+r3: 40000000
+r4: e051ffb4
+r5: 0
+r6: e051ffc0
+r7: ede514e8
+r8: ff85d1a8
+r9: ed9210c0
+r10: 58
+r11: 0
+ip: edb26d04
+sp: ff85d180
+lr: edaff5af
+pc: dfe66a5e

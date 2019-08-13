@@ -1,0 +1,338 @@
+//
+// Copyright (C) 2017 The Android Open Source Project
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+
+cc_defaults {
+    name: "libunwindstack_flags",
+
+    host_supported: true,
+
+    cflags: [
+        "-Wall",
+        "-Werror",
+        "-Wextra",
+    ],
+
+    target: {
+        darwin: {
+            enabled: false,
+        },
+        linux_bionic: {
+            enabled: true,
+        },
+    },
+}
+
+cc_library {
+    name: "libunwindstack",
+    vendor_available: true,
+    vndk: {
+        enabled: true,
+        support_system_process: true,
+    },
+    defaults: ["libunwindstack_flags"],
+    export_include_dirs: ["include"],
+
+    srcs: [
+        "ArmExidx.cpp",
+        "DwarfCfa.cpp",
+        "DwarfEhFrameWithHdr.cpp",
+        "DwarfMemory.cpp",
+        "DwarfOp.cpp",
+        "DwarfSection.cpp",
+        "Elf.cpp",
+        "ElfInterface.cpp",
+        "ElfInterfaceArm.cpp",
+        "JitDebug.cpp",
+        "Log.cpp",
+        "MapInfo.cpp",
+        "Maps.cpp",
+        "Memory.cpp",
+        "Regs.cpp",
+        "RegsArm.cpp",
+        "RegsArm64.cpp",
+        "RegsX86.cpp",
+        "RegsX86_64.cpp",
+        "RegsMips.cpp",
+        "RegsMips64.cpp",
+        "Unwinder.cpp",
+        "Symbols.cpp",
+    ],
+
+    cflags: [
+        "-Wexit-time-destructors",
+    ],
+
+    target: {
+        // Always disable optimizations for host to make it easier to debug.
+        host: {
+            cflags: [
+                "-O0",
+                "-g",
+            ],
+        },
+        vendor: {
+            cflags: ["-DNO_LIBDEXFILE_SUPPORT"],
+            exclude_static_libs: ["libunwindstack_dex"],
+            exclude_shared_libs: ["libdexfile"],
+        },
+    },
+    whole_static_libs: ["libunwindstack_dex"],
+
+    arch: {
+        x86: {
+            srcs: ["AsmGetRegsX86.S"],
+        },
+        x86_64: {
+            srcs: ["AsmGetRegsX86_64.S"],
+        },
+        mips: {
+            srcs: ["AsmGetRegsMips.S"],
+        },
+        mips64: {
+            srcs: ["AsmGetRegsMips64.S"],
+        },
+    },
+
+    shared_libs: [
+        "libbase",
+        "libdexfile",
+        "liblog",
+        "liblzma",
+    ],
+}
+
+// Isolate the dex file processing into a separate library. Currently,
+// it is necessary to add art include directories directly, which also
+// adds the art elf.h file in the include path, overriding the system one.
+// Work to isolate libdexfile is b/72216369.
+cc_library_static {
+    name: "libunwindstack_dex",
+    vendor_available: false,
+    defaults: ["libunwindstack_flags"],
+
+    cflags: [
+        "-Wexit-time-destructors",
+    ],
+
+    srcs: [
+        "DexFile.cpp",
+        "DexFiles.cpp",
+    ],
+    target: {
+        // Always disable optimizations for host to make it easier to debug.
+        host: {
+            cflags: [
+                "-O0",
+                "-g",
+            ],
+        },
+    },
+
+    shared_libs: [
+        "libbase",
+        "libdexfile",
+    ],
+    local_include_dirs: ["include"],
+    allow_undefined_symbols: true,
+
+    // libdexfile will eventually properly export headers, for now include
+    // these directly.
+    include_dirs: [
+        "art/runtime",
+    ],
+}
+
+//-------------------------------------------------------------------------
+// Unit Tests
+//-------------------------------------------------------------------------
+cc_test_library {
+    name: "libunwindstack_dex_test",
+    vendor_available: false,
+    defaults: ["libunwindstack_flags"],
+
+    shared: {
+        enabled: false,
+    },
+
+    srcs: [
+        "tests/DexFileTest.cpp",
+        "tests/DexFilesTest.cpp",
+    ],
+    local_include_dirs: ["include"],
+    allow_undefined_symbols: true,
+
+    shared_libs: [
+        "libbase",
+        "libunwindstack",
+        "libdexfile",
+    ],
+
+    // libdexfile will eventually properly export headers, for now include
+    // these directly.
+    include_dirs: [
+        "art/runtime",
+    ],
+}
+
+cc_test {
+    name: "libunwindstack_test",
+    defaults: ["libunwindstack_flags"],
+
+    srcs: [
+        "tests/ArmExidxDecodeTest.cpp",
+        "tests/ArmExidxExtractTest.cpp",
+        "tests/DwarfCfaLogTest.cpp",
+        "tests/DwarfCfaTest.cpp",
+        "tests/DwarfDebugFrameTest.cpp",
+        "tests/DwarfEhFrameTest.cpp",
+        "tests/DwarfEhFrameWithHdrTest.cpp",
+        "tests/DwarfMemoryTest.cpp",
+        "tests/DwarfOpLogTest.cpp",
+        "tests/DwarfOpTest.cpp",
+        "tests/DwarfSectionTest.cpp",
+        "tests/DwarfSectionImplTest.cpp",
+        "tests/ElfCacheTest.cpp",
+        "tests/ElfFake.cpp",
+        "tests/ElfInterfaceArmTest.cpp",
+        "tests/ElfInterfaceTest.cpp",
+        "tests/ElfTest.cpp",
+        "tests/ElfTestUtils.cpp",
+        "tests/JitDebugTest.cpp",
+        "tests/LogFake.cpp",
+        "tests/MapInfoGetElfTest.cpp",
+        "tests/MapInfoGetLoadBiasTest.cpp",
+        "tests/MapsTest.cpp",
+        "tests/MemoryBufferTest.cpp",
+        "tests/MemoryFake.cpp",
+        "tests/MemoryFileTest.cpp",
+        "tests/MemoryLocalTest.cpp",
+        "tests/MemoryOfflineBufferTest.cpp",
+        "tests/MemoryOfflineTest.cpp",
+        "tests/MemoryRangeTest.cpp",
+        "tests/MemoryRemoteTest.cpp",
+        "tests/MemoryTest.cpp",
+        "tests/RegsIterateTest.cpp",
+        "tests/RegsStepIfSignalHandlerTest.cpp",
+        "tests/RegsTest.cpp",
+        "tests/SymbolsTest.cpp",
+        "tests/UnwindOfflineTest.cpp",
+        "tests/UnwindTest.cpp",
+        "tests/UnwinderTest.cpp",
+    ],
+
+    cflags: [
+        "-O0",
+        "-g",
+    ],
+
+    shared_libs: [
+        "libbase",
+        "liblog",
+        "liblzma",
+        "libunwindstack",
+    ],
+
+    static_libs: [
+        "libgmock",
+    ],
+
+    whole_static_libs: ["libunwindstack_dex_test"],
+
+    data: [
+        "tests/files/elf32.xz",
+        "tests/files/elf64.xz",
+        "tests/files/offline/art_quick_osr_stub_arm/*",
+        "tests/files/offline/bad_eh_frame_hdr_arm64/*",
+        "tests/files/offline/debug_frame_first_x86/*",
+        "tests/files/offline/eh_frame_hdr_begin_x86_64/*",
+        "tests/files/offline/jit_debug_arm/*",
+        "tests/files/offline/jit_debug_x86/*",
+        "tests/files/offline/gnu_debugdata_arm/*",
+        "tests/files/offline/offset_arm/*",
+        "tests/files/offline/straddle_arm/*",
+        "tests/files/offline/straddle_arm64/*",
+    ],
+}
+
+//-------------------------------------------------------------------------
+// Tools
+//-------------------------------------------------------------------------
+cc_defaults {
+    name: "libunwindstack_tools",
+    defaults: ["libunwindstack_flags"],
+
+    shared_libs: [
+        "libunwindstack",
+        "libbase",
+        "liblzma",
+    ],
+}
+
+cc_binary {
+    name: "unwind",
+    defaults: ["libunwindstack_tools"],
+
+    srcs: [
+        "tools/unwind.cpp",
+    ],
+}
+
+cc_binary {
+    name: "unwind_info",
+    defaults: ["libunwindstack_tools"],
+
+    srcs: [
+        "tools/unwind_info.cpp",
+    ],
+}
+
+cc_binary {
+    name: "unwind_symbols",
+    defaults: ["libunwindstack_tools"],
+
+    srcs: [
+        "tools/unwind_symbols.cpp",
+    ],
+}
+
+cc_binary {
+    name: "unwind_for_offline",
+    defaults: ["libunwindstack_tools"],
+
+    srcs: [
+        "tools/unwind_for_offline.cpp",
+    ],
+}
+
+cc_binary {
+    name: "unwind_reg_info",
+    defaults: ["libunwindstack_tools"],
+
+    srcs: [
+        "tools/unwind_reg_info.cpp",
+    ],
+}
+
+// Generates the elf data for use in the tests for .gnu_debugdata frames.
+// Once these files are generated, use the xz command to compress the data.
+cc_binary_host {
+    name: "gen_gnudebugdata",
+    defaults: ["libunwindstack_flags"],
+
+    srcs: [
+        "tests/GenGnuDebugdata.cpp",
+    ],
+}

@@ -1,0 +1,96 @@
+#include <jni.h>
+#include <malloc.h>
+
+#include <android/log.h>
+#include <dlfcn.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <errno.h>
+#include <cstring>
+
+#define LOGD(TAG, FMT, args...) __android_log_print(ANDROID_LOG_DEBUG, TAG, FMT, ##args)
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+/*
+ * Class:     com_example_meminfo_JNIObj
+ * Method:    allocMem
+ * Signature: ()V
+ */
+JNIEXPORT void JNICALL
+Java_com_tencent_mm_libwxperf_JNIObj_doSomeThing(JNIEnv *env, jobject instance) {
+    LOGD("Yves-sample", ">>>>>>>>>>>>>>>>>>begin");
+//    LOGD("Yves-sample", "malloc size = 9012111");
+//    malloc(9012);
+    int *p = (int *)malloc(10 * sizeof(int));
+    for (int i = 0; i < 10; ++i) {
+        p[i] = 11;
+    }
+    for (int i = 0; i < 10; ++i) {
+        LOGD("Yves-sample", "----- %d", p[i]);
+    }
+//    free(p);
+    LOGD("Yves-sample", "<<<<<<<<<<<<<<<<<<<<end");
+
+}
+
+JNIEXPORT void JNICALL
+Java_com_tencent_mm_libwxperf_JNIObj_dump(JNIEnv *env, jobject instance, jstring libPath) {
+    LOGD("Yves-sample", ">>>>>>>>>>>>>>>>>>begin dump");
+    typedef void (*FN_DUMP)();
+    const char * path = env->GetStringUTFChars(libPath, 0);
+    void *handle = dlopen(path, RTLD_LAZY);
+    env->ReleaseStringUTFChars(libPath, path);
+    if (handle != nullptr) {
+        LOGD("Yves-sample","so not null");
+        auto p = (FN_DUMP)dlsym(handle, "dump");
+        if (p != nullptr) {
+            LOGD("Yves-sample","dump func not null");
+            p();
+        }
+    }
+//    int err;
+//    errno = 0;
+//    FILE *file = fopen("/sdcard/memory_hook_fopen.log", "w+");
+//    err = errno;
+//    LOGD("Yves-sample", "fopen: errno = %s", strerror(err));
+//    if (file) {
+//        fputs("fputs\n", file);
+//        err = errno;
+//        LOGD("Yves-sample", "fopen: errno = %s", strerror(err));
+//        fflush(file);
+//        fclose(file);
+//    }
+////
+////
+////
+//    errno = 0;
+//
+//    int fd = TEMP_FAILURE_RETRY(open("/sdcard/memory_hook.log", O_RDWR | O_CREAT));
+//    err = errno;
+//    LOGD("Yves-sample", "open fd = %d, errno = %s %d", fd, strerror(err),err);
+//    if (fd != -1) {
+//        write(fd, "abbbbbbbb\n",10);
+//        close(fd);
+//    }
+//    err = errno;
+//    LOGD("Yves-sample", "write fd = %d, errno = %s", fd, strerror(err));
+//
+////    int fd2 = open("/data/data/com.tencent.mm.libwxperf/cache/memory_hook.log", O_RDWR | O_CREAT);
+////    err = errno;
+////    LOGD("Yves-sample", "open fd = %d, errno = %s", fd2, strerror(err));
+////    if (fd2 != -1) {
+////        write(fd2, "aaaaaa\n", 7);
+////    }
+////    err = errno;
+////    LOGD("Yves-sample", "write fd = %d, errno = %s", fd2, strerror(err));
+////    close(fd2);
+//
+//
+//    LOGD("Yves-sample", "<<<<<<<<<<<<<<<<<<<<end dump");
+}
+
+#ifdef __cplusplus
+}
+#endif

@@ -10,18 +10,40 @@ cmake_minimum_required(VERSION 3.4.1)
 # and CMake builds them for you. When you build your app, Gradle
 # automatically packages shared libraries with your APK.
 
-file(GLOB cpp_src "src/main/cpp/fd/*.cpp")
+set(TARGET wxperf)
+
+set(SOURCE_DIR src/main/cpp)
+
+set(
+        SOURCE_FILES
+        ${SOURCE_DIR}/fd/FDInfoReader.cpp
+        ${SOURCE_DIR}/memory/MemoryHookJNI.cpp
+        ${SOURCE_DIR}/memory/MemoryHook.cpp
+        ${SOURCE_DIR}/memory/lock.cpp
+        ${SOURCE_DIR}/memory/StackTrace.cpp
+        ${SOURCE_DIR}/memory/utils.cpp
+)
 
 add_library( # Specifies the name of the library.
-             wxperf
+        wxperf
 
-             # Sets the library as a shared library.
-             SHARED
+        # Sets the library as a shared library.
+        SHARED
 
-             # Provides a relative path to your source file(s).
-             ${cpp_src}
-#            src/main/cpp/fd/FDInfoReader.cpp
+        # Provides a relative path to your source file(s).
+        ${SOURCE_FILES}
+        #            src/main/cpp/fd/FDInfoReader.cpp
         )
+
+add_subdirectory(${SOURCE_DIR}/external/libxhook)
+add_subdirectory(${SOURCE_DIR}/external/libunwindstack)
+
+target_include_directories(
+        wxperf
+        PRIVATE ${SOURCE_DIR}/include
+        PRIVATE ${SOURCE_DIR}/external/libxhook
+        PRIVATE ${SOURCE_DIR}/external/libunwindstack/include
+)
 
 # Searches for a specified prebuilt library and stores the path as a
 # variable. Because CMake includes system libraries in the search path by
@@ -30,19 +52,20 @@ add_library( # Specifies the name of the library.
 # completing its build.
 
 find_library( # Sets the name of the path variable.
-              log-lib
+        log-lib
 
-              # Specifies the name of the NDK library that
-              # you want CMake to locate.
-              log )
+        # Specifies the name of the NDK library that
+        # you want CMake to locate.
+        log)
 
 # Specifies libraries CMake should link to your target library. You
 # can link multiple libraries, such as libraries you define in this
 # build script, prebuilt third-party libraries, or system libraries.
 
 target_link_libraries( # Specifies the target library.
-                       wxperf
-
-                       # Links the target library to the log library
-                       # included in the NDK.
-                       ${log-lib} )
+        wxperf
+        xhook
+        unwindstack
+        # Links the target library to the log library
+        # included in the NDK.
+        ${log-lib})

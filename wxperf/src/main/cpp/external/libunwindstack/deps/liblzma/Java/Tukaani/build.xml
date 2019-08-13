@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!--
+    build.xml
+
+    Author: Lasse Collin <lasse.collin@tukaani.org>
+
+    This file has been put into the public domain.
+    You can do whatever you want with this file.
+-->
+
+<project name="XZ" default="jar">
+
+    <property file="build.properties"/>
+
+    <target name="clean"
+            description="Deletes generated files except 'extdoc/package-list'">
+        <delete dir="${build_dir}"/>
+    </target>
+
+    <target name="distclean" depends="clean"
+            description="Deletes all generated files">
+        <delete dir="extdoc"/>
+    </target>
+
+    <target name="dist" description="Creates a source package (.zip)">
+        <mkdir dir="${dist_dir}"/>
+        <zip destfile="${dist_file}">
+            <fileset dir="." includesfile="fileset-misc.txt"/>
+            <fileset dir="." includesfile="fileset-src.txt"/>
+        </zip>
+    </target>
+
+    <target name="doc"
+            description="Generates HTML documentation with javadoc">
+        <mkdir dir="${doc_dir}"/>
+        <mkdir dir="${extdoc_dir}"/>
+        <get src="${extdoc_url}/package-list"
+             dest="${extdoc_dir}/package-list" skipexisting="true"/>
+        <javadoc sourcepath="${src_dir}" destdir="${doc_dir}"
+                 source="${sourcever}" packagenames="org.tukaani.xz"
+                 windowtitle="XZ data compression"
+                 linkoffline="${extdoc_url} ${extdoc_dir}"/>
+    </target>
+
+    <target name="compile" description="Compiles the classes">
+        <mkdir dir="${classes_dir}"/>
+        <javac srcdir="." sourcepath="${src_dir}" destdir="${classes_dir}"
+               includeAntRuntime="false" debug="${debug}"
+               source="${sourcever}" includesfile="fileset-src.txt"
+               excludes="**/package-info.java">
+            <compilerarg compiler="modern" value="-Xlint"/>
+        </javac>
+    </target>
+
+    <target name="jar" depends="compile"
+            description="Creates JAR packages">
+        <mkdir dir="${jar_dir}"/>
+
+        <jar destfile="${jar_dir}/xz.jar" basedir="${classes_dir}"
+             includes="org/tukaani/xz/**">
+            <manifest>
+                <attribute name="Implementation-Title" value="${title}"/>
+                <attribute name="Implementation-Version" value="${version}"/>
+                <attribute name="Implementation-URL" value="${homepage}"/>
+                <attribute name="Sealed" value="true"/>
+                <!-- Attributes required for OSGi bundles. -->
+                <attribute name="Bundle-ManifestVersion" value="2"/>
+                <attribute name="Bundle-SymbolicName" value="org.tukaani.xz"/>
+                <attribute name="Bundle-Version" value="${version}"/>
+                <attribute name="Export-Package" value="org.tukaani.xz"/>
+                <attribute name="Bundle-Name" value="${title}"/>
+                <attribute name="Bundle-DocURL" value="${homepage}"/>
+            </manifest>
+        </jar>
+
+        <jar destfile="${jar_dir}/XZEncDemo.jar" basedir="${classes_dir}"
+             includes="XZEncDemo.class">
+            <manifest>
+                <attribute name="Main-Class" value="XZEncDemo"/>
+                <attribute name="Class-Path" value="xz.jar"/>
+            </manifest>
+        </jar>
+
+        <jar destfile="${jar_dir}/XZDecDemo.jar" basedir="${classes_dir}"
+             includes="XZDecDemo.class">
+            <manifest>
+                <attribute name="Main-Class" value="XZDecDemo"/>
+                <attribute name="Class-Path" value="xz.jar"/>
+            </manifest>
+        </jar>
+
+        <jar destfile="${jar_dir}/XZSeekEncDemo.jar" basedir="${classes_dir}"
+             includes="XZSeekEncDemo.class">
+            <manifest>
+                <attribute name="Main-Class" value="XZSeekEncDemo"/>
+                <attribute name="Class-Path" value="xz.jar"/>
+            </manifest>
+        </jar>
+
+        <jar destfile="${jar_dir}/XZSeekDecDemo.jar" basedir="${classes_dir}"
+             includes="XZSeekDecDemo.class">
+            <manifest>
+                <attribute name="Main-Class" value="XZSeekDecDemo"/>
+                <attribute name="Class-Path" value="xz.jar"/>
+            </manifest>
+        </jar>
+
+        <jar destfile="${jar_dir}/LZMADecDemo.jar" basedir="${classes_dir}"
+             includes="LZMADecDemo.class">
+            <manifest>
+                <attribute name="Main-Class" value="LZMADecDemo"/>
+                <attribute name="Class-Path" value="xz.jar"/>
+            </manifest>
+        </jar>
+    </target>
+
+    <!-- It's an ugly quick hack. Maybe some day there will be a cleaner
+         version (e.g. by using Maven). -->
+    <target name="maven" depends="dist, doc, jar"
+            description="Creates the files for a Maven repository">
+        <mkdir dir="${maven_dir}"/>
+
+        <copy file="${pom_template}" tofile="${maven_dir}/xz-${version}.pom"
+              overwrite="true">
+            <filterset>
+                <filter token="VERSION" value="${version}"/>
+                <filter token="TITLE" value="${title}"/>
+                <filter token="HOMEPAGE" value="${homepage}"/>
+            </filterset>
+        </copy>
+
+        <copy file="${jar_dir}/xz.jar" tofile="${maven_dir}/xz-${version}.jar"
+              preservelastmodified="true" overwrite="true"/>
+
+        <jar destfile="${maven_dir}/xz-${version}-javadoc.jar"
+             basedir="${doc_dir}"/>
+
+        <jar destfile="${maven_dir}/xz-${version}-sources.jar"
+             basedir="${src_dir}" includes="org/tukaani/xz/**"/>
+    </target>
+
+</project>

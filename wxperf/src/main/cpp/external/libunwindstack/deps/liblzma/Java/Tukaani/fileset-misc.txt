@@ -1,0 +1,11 @@
+README
+NEWS
+COPYING
+THANKS
+build.xml
+build.properties
+fileset-src.txt
+fileset-misc.txt
+.gitignore
+maven/README
+maven/pom_template.xml

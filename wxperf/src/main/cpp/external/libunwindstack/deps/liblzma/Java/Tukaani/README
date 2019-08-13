@@ -1,0 +1,50 @@
+
+XZ for Java
+===========
+
+Introduction
+
+    This aims to be a complete implementation of XZ data compression
+    in pure Java. Features:
+      - Full support for the .xz file format specification version 1.0.4
+      - Single-threaded streamed compression and decompression
+      - Single-threaded decompression with limited random access support
+      - Raw streams (no .xz headers) for advanced users, including LZMA2
+        with preset dictionary
+
+    Threading is planned but it is unknown when it will be implemented.
+
+    For the latest source code, see the project home page:
+
+        http://tukaani.org/xz/java.html
+
+    The source code is compatible with Java 1.4 and later.
+
+Building
+
+    It is recommended to use Apache Ant. Type "ant" to compile the
+    classes and create the .jar files. Type "ant doc" to build the
+    javadoc HTML documentation. Note that building the documentation
+    will download a small file named "package-list" from Oracle to
+    enable linking to the documentation of the standard Java classes.
+
+    If you cannot or don't want to use Ant, just compile all .java
+    files under the "src" directory.
+
+Demo programs
+
+    You can test compression with XZEncDemo, which compresses from
+    standard input to standard output:
+
+        java -jar build/jar/XZEncDemo.jar < foo.txt > foo.txt.xz
+
+    You can test decompression with XZDecDemo, which decompresses to
+    standard output:
+
+        java -jar build/jar/XZDecDemo.jar foo.txt.xz
+
+Reporting bugs
+
+    Report bugs to <lasse.collin@tukaani.org> or visit the IRC channel
+    #tukaani on Freenode and talk to Larhzu.
+
