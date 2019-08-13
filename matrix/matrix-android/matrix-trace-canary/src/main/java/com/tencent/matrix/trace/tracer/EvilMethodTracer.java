@@ -157,12 +157,6 @@ public class EvilMethodTracer extends Tracer {
 
             MatrixLog.w(TAG, "%s", printEvil(scene, processStat, isForeground, logcatBuilder, stack.size(), stackKey, usage, queueCost[0], queueCost[1], queueCost[2], cost)); // for logcat
 
-            if (stackCost >= Constants.DEFAULT_ANR_INVALID || processStat[0] > 10) {
-                MatrixLog.w(TAG, "The checked anr task was not executed on time. " +
-                        "The possible reason is that the current process has a low priority. just pass this report");
-                return;
-            }
-
             // report
             try {
                 TracePlugin plugin = Matrix.with().getPluginByClass(TracePlugin.class);
