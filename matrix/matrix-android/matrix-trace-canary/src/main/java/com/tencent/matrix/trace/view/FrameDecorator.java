@@ -37,7 +37,7 @@ public class FrameDecorator extends IDoFrameListener implements IAppForeground {
     private static Handler mainHandler = new Handler(Looper.getMainLooper());
     private Handler handler;
     private static FrameDecorator instance;
-    private static Object lock = new Object();
+    private static final Object lock = new Object();
     private View.OnClickListener clickListener;
     private DisplayMetrics displayMetrics = new DisplayMetrics();
     private boolean isEnable = true;
