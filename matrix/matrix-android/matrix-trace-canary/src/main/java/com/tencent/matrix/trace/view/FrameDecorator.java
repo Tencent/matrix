@@ -197,7 +197,7 @@ public class FrameDecorator extends IDoFrameListener implements IAppForeground {
         return instance;
     }
 
-    public static FrameDecorator create(final Context context) {
+    public static FrameDecorator instance(final Context context) {
         if (instance == null) {
             if (Thread.currentThread() == Looper.getMainLooper().getThread()) {
                 instance = new FrameDecorator(context, new FloatFrameView(context));
