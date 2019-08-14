@@ -217,6 +217,10 @@ public class ActivityRefWatcher extends FilePublisher implements Watcher {
         MatrixLog.i(TAG, "watcher is destroyed.");
     }
 
+    public AndroidHeapDumper getHeapDumper() {
+        return mHeapDumper;
+    }
+
     private void pushDestroyedActivityInfo(Activity activity) {
         final String activityName = activity.getClass().getName();
         if (isPublished(activityName)) {
