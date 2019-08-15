@@ -165,14 +165,22 @@ static void do_it(std::unordered_map<void *, size_t>::iterator __begin,
 }
 
 void dump() {
-    LOGD("Yves.dump", "~~~~~~ dump begin ~~~~~~");
+    LOGD("Yves.dump",
+         ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> memory dump begin <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
 
+    // fixme hard coding
     FILE *log_file = fopen("/sdcard/memory_hook.log", "w+");
     if (!log_file) {
         LOGE("Yves.dump", "open file failed");
         return;
     }
 
+    if (!m_size_of_caller) {
+        LOGE("Yves.dump", "caller: nothing dump");
+        fflush(log_file);
+        fclose(log_file);
+        return;
+    }
     LOGD("Yves.dump", "caller count = %zu", m_size_of_caller->size());
     fprintf(log_file, "caller count = %zu\n", m_size_of_caller->size());
 
@@ -200,11 +208,18 @@ void dump() {
 
     for (auto i = caller_alloc_size_of_so.begin(); i != caller_alloc_size_of_so.end(); ++i) {
         LOGD("Yves.dump", "so = %s, caller alloc size = %zu", i->first.c_str(), i->second);
-        fprintf(log_file, "caller alloc size = %10zu, so = %s\n", i->second, i->first.c_str());
+        fprintf(log_file, "caller alloc size = %10zu b, so = %s\n", i->second, i->first.c_str());
     }
 
     std::unordered_map<std::string, size_t> stack_alloc_size_of_so;
     std::unordered_map<std::string, std::vector<std::pair<size_t, std::string>>> stacktrace_of_so;
+
+    if (!m_size_of_hash || !m_stacktrace_of_hash) {
+        LOGE("Yves-dump", "stacktrace: nothing dump");
+        fflush(log_file);
+        fclose(log_file);
+        return;
+    }
 
     LOGD("Yves.dump", "hash count = %zu", m_size_of_hash->size());
     fprintf(log_file, "hash count = %zu\n", m_size_of_hash->size());
@@ -225,9 +240,11 @@ void dump() {
                 std::string so_name = std::string(stack_info.dli_fname);
 
                 stack_builder << "      | "
+                              << "#pc " << it->pc << " "
                               << (stack_info.dli_sname ? stack_info.dli_sname : "null")
                               << " (" << stack_info.dli_fname << ")"
                               << std::endl;
+                // fixme hard coding
                 if (so_name.find("com.tencent.mm") == std::string::npos ||
                     so_name.find("libwxperf.so") != std::string::npos ||
                     !custom_so_name.empty()) {
@@ -237,8 +254,8 @@ void dump() {
                 custom_so_name = so_name;
                 stack_alloc_size_of_so[custom_so_name] += size;
 
-                LOGD("Yves.dump", "so = %s, remaining size = %zu", so_name.c_str(), size);
-                fprintf(log_file, "so = %s, remaining size = %zu\n", so_name.c_str(), size);
+//                LOGD("Yves.dump", "so = %s, remaining size = %zu", so_name.c_str(), size);
+//                fprintf(log_file, "so = %s, remaining size = %zu\n", so_name.c_str(), size);
             }
 
             std::pair<size_t, std::string> stack_size_pair(size, stack_builder.str());
@@ -250,8 +267,9 @@ void dump() {
         auto so_name = i->first;
         auto so_alloc_size = i->second;
 
-        LOGD("Yves.dump", "\nmalloc size of so (%s) : size = %zu", so_name.c_str(), so_alloc_size);
-        fprintf(log_file, "\nmalloc size of so (%s) : size = %zu\n", so_name.c_str(),
+        LOGD("Yves.dump", "\nmalloc size of so (%s) : remaining size = %zu", so_name.c_str(),
+             so_alloc_size);
+        fprintf(log_file, "\nmalloc size of so (%s) : remaining size = %zu\n", so_name.c_str(),
                 so_alloc_size);
 
         for (auto it_stack = stacktrace_of_so[so_name].begin();
@@ -270,7 +288,8 @@ void dump() {
     fflush(log_file);
     fclose(log_file);
 
-    LOGD("Yves.dump", "~~~~~~ dump end ~~~~~~");
+    LOGD("Yves.dump",
+         ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> memory dump end <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
 }
 
 void init_if_necessary() {
