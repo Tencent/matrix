@@ -1,7 +1,5 @@
 package com.tencent.mm.performance.jni.memory;
 
-import android.os.Build;
-
 import com.tencent.mm.performance.jni.BuildConfig;
 import com.tencent.mm.performance.jni.LibWxPerfManager;
 
@@ -23,13 +21,39 @@ public class MemoryHook {
     }
 
     public static void hook(String[] hookSoList, String[] ignoreSoList) {
+        hook(hookSoList, ignoreSoList, 0);
+    }
 
+    public static void hook(String[] hookSoList, String[] ignoreSoList, int traceThreshold) {
+        hook(hookSoList, ignoreSoList, traceThreshold, 0, 1);
+    }
+
+    /**
+     * @param hookSoList
+     * @param ignoreSoList
+     * @param minSize
+     * @param maxSize      0 表示不限制
+     * @param sampling
+     */
+    public static void hook(String[] hookSoList, String[] ignoreSoList, int minSize, int maxSize, double sampling) {
         if (hookSoList != null && hookSoList.length > 0) {
             xhookRegisterNative(hookSoList);
         }
 
         if (ignoreSoList != null && ignoreSoList.length > 0) {
             xhookIgnoreNative(ignoreSoList);
+        }
+
+        if (minSize < 0 || (maxSize != 0 && maxSize < minSize)) {
+            throw new IllegalArgumentException("sizes should not be negative and maxSize should be 0 or greater than minSize");
+        }
+
+        if (minSize > 0 && (maxSize == 0 || maxSize >= minSize)) {
+            setSampleSizeRangeNative(minSize, maxSize);
+        }
+
+        if (0 <= sampling && sampling <= 1) {
+            setSamplingNative(sampling);
         }
 
         enableStacktraceNative(true);
@@ -55,11 +79,19 @@ public class MemoryHook {
         xhookRefreshNative(true);
     }
 
-    public static native void xhookRegisterNative(String[] hookSoList);
-
-    public static native void xhookIgnoreNative(String[] ignoreSoList);
-
     public static native void dump();
+
+    public static native void groupByMemorySize(boolean enable);
+
+    private static native void xhookIgnoreNative(String[] ignoreSoList);
+
+//    private static native void setTraceSizeThresholdNative(int threshold);
+
+    private static native void setSamplingNative(double sampling);
+
+    private static native void setSampleSizeRangeNative(int minSize, int maxSize);
+
+    private static native void xhookRegisterNative(String[] hookSoList);
 
     private static native void enableStacktraceNative(boolean enable);
 

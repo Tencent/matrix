@@ -37,7 +37,15 @@ extern ANDROID_DLOPEN p_oldfun;
 
 JNIEXPORT void dump();
 
-JNIEXPORT void enableStacktrace(bool enable);
+JNIEXPORT void enableStacktrace(bool);
+
+JNIEXPORT void enableGroupBySize(bool);
+
+JNIEXPORT void setSampleSizeRange(size_t, size_t);
+
+JNIEXPORT void setSampling(double);
+
+//JNIEXPORT void setTraceSizeThreshold(size_t __threshold);
 
 static uint64_t stacktrace_hash(uint64_t *);
 

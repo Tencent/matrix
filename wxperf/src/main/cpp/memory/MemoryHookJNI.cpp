@@ -16,8 +16,6 @@ static void hook(const char *regex) {
     xhook_register(regex, "calloc", (void *) h_calloc, NULL);
     xhook_register(regex, "realloc", (void *) h_realloc, NULL);
     xhook_register(regex, "free", (void *) h_free, NULL);
-//    xhook_register(regex, "__loader_android_dlopen_ext", (void *) h_dlopen,
-//                   (void **) &p_oldfun);
 }
 
 static void ignore(const char *regex) {
@@ -114,6 +112,43 @@ Java_com_tencent_mm_performance_jni_memory_MemoryHook_dump(JNIEnv *env, jclass t
 
 }
 
+//JNIEXPORT void JNICALL
+//Java_com_tencent_mm_performance_jni_memory_MemoryHook_setTraceSizeThresholdNative(JNIEnv *env,
+//                                                                            jclass type,
+//                                                                            jint threshold) {
+//
+//    setTraceSizeThreshold((size_t)threshold);
+//
+//}
+
+JNIEXPORT void JNICALL
+Java_com_tencent_mm_performance_jni_memory_MemoryHook_groupByMemorySize(JNIEnv *env, jclass type,
+                                                                        jboolean enable) {
+
+    enableGroupBySize(enable);
+
+}
+
+JNIEXPORT void JNICALL
+Java_com_tencent_mm_performance_jni_memory_MemoryHook_setSamplingNative(JNIEnv *env, jclass type,
+                                                                        jdouble sampling) {
+
+    setSampling(sampling);
+
+}
+
+JNIEXPORT void JNICALL
+Java_com_tencent_mm_performance_jni_memory_MemoryHook_setSampleSizeRangeNative(JNIEnv *env,
+                                                                               jclass type,
+                                                                               jint minSize,
+                                                                               jint maxSize) {
+
+    setSampleSizeRange((size_t)minSize, (size_t)maxSize);
+
+}
+
 #ifdef __cplusplus
 }
 #endif
+
+

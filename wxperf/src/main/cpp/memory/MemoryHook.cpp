@@ -6,28 +6,49 @@
 #include <dlfcn.h>
 #include <unistd.h>
 #include <unordered_map>
+#include <unordered_set>
 #include <random>
 #include <xhook.h>
 #include <sstream>
+#include <cxxabi.h>
 #include "MemoryHook.h"
 #include "lock.h"
 #include "StackTrace.h"
 #include "utils.h"
 #include "unwindstack/Unwinder.h"
-#include <cxxabi.h>
 
 std::unordered_map<void *, size_t> *m_size_of_caller;
 std::unordered_map<void *, size_t> *m_size_of_pointer;
 std::unordered_map<void *, void *> *m_caller_of_pointer;
+std::unordered_map<void *, std::unordered_set<void *>> *m_pointers_of_caller;
 
 std::unordered_map<void *, uint64_t> *m_pc_hash_of_pointer;
 std::unordered_map<uint64_t, size_t> *m_size_of_hash;
 std::unordered_map<uint64_t, std::vector<unwindstack::FrameData> *> *m_stacktrace_of_hash;
 
 bool is_stacktrace_enabled = false;
+bool is_group_by_size_enabled = false;
 
-void enableStacktrace(bool enable) {
-    is_stacktrace_enabled = enable;
+size_t m_sample_size_min = 0;
+size_t m_sample_size_max = 0;
+
+double m_sampling = 1;
+
+void enableStacktrace(bool __enable) {
+    is_stacktrace_enabled = __enable;
+}
+
+void enableGroupBySize(bool __enable) {
+    is_group_by_size_enabled = __enable;
+}
+
+void setSampleSizeRange(size_t __min, size_t __max) {
+    m_sample_size_min = __min;
+    m_sample_size_max = __max;
+}
+
+void setSampling(double __sampling) {
+    m_sampling = __sampling;
 }
 
 static inline void on_acquire_memory(void *__caller, void *__ptr, size_t __byte_count) {
@@ -38,9 +59,23 @@ static inline void on_acquire_memory(void *__caller, void *__ptr, size_t __byte_
     (*m_size_of_pointer)[__ptr] = __byte_count;
     (*m_caller_of_pointer)[__ptr] = __caller;
 
-    if (is_stacktrace_enabled) {
+    if (is_group_by_size_enabled) {
+        (*m_pointers_of_caller)[__caller].insert(__ptr);
+    }
+
+
+    if (is_stacktrace_enabled &&
+        (m_sample_size_min == 0 || __byte_count >= m_sample_size_min) &&
+        (m_sample_size_max == 0 || __byte_count <= m_sample_size_max)) {
+
+        int r = rand();
+
+        if (r > m_sampling * RAND_MAX) {
+            return;
+        }
+
         auto stack_frames = new std::vector<unwindstack::FrameData>;
-        unwindstack::do_unwind((*stack_frames));
+        unwindstack::do_unwind(*stack_frames);
 
         if (!stack_frames->empty()) {
             uint64_t stack_hash = hash((*stack_frames));
@@ -52,7 +87,7 @@ static inline void on_acquire_memory(void *__caller, void *__ptr, size_t __byte_
     }
 }
 
-inline void on_release_memory(void *caller, void *__ptr) {
+inline void on_release_memory(void *__caller, void *__ptr) {
     init_if_necessary();
     // with caller
 
@@ -63,14 +98,17 @@ inline void on_release_memory(void *caller, void *__ptr) {
 
     auto ptr_size = m_size_of_pointer->at(__ptr);
     if (m_caller_of_pointer->count(__ptr)) {
-        auto caller = m_caller_of_pointer->at(__ptr);
-        if (m_size_of_caller->count(caller)) {
-            auto caller_size = m_size_of_caller->at(caller);
+        auto alloc_caller = m_caller_of_pointer->at(__ptr);
+        if (m_size_of_caller->count(alloc_caller)) {
+            auto caller_size = m_size_of_caller->at(alloc_caller);
             if (caller_size > ptr_size) {
-                (*m_size_of_caller)[caller] = caller_size - ptr_size;
+                (*m_size_of_caller)[alloc_caller] = caller_size - ptr_size;
             } else {
-                m_size_of_caller->erase(caller);
+                m_size_of_caller->erase(alloc_caller);
             }
+        }
+        if (is_group_by_size_enabled) {
+            (*m_pointers_of_caller)[alloc_caller].erase(__ptr);
         }
     }
 
@@ -149,6 +187,7 @@ void *h_dlopen(const char *filename,
 
     unwindstack::update_maps();
     xhook_refresh(false);
+    srand((unsigned int) time(NULL));
 //    LOGD("Yves.dlopen", "dlopen %s", filename);
     return ret;
 }
@@ -169,6 +208,8 @@ void dump() {
     LOGD("Yves.dump",
          ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> memory dump begin <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
 
+    /******************************* caller so ********************************/
+
     // fixme hard coding
     FILE *log_file = fopen("/sdcard/memory_hook.log", "w+");
     if (!log_file) {
@@ -186,17 +227,13 @@ void dump() {
     fprintf(log_file, "caller count = %zu\n", m_size_of_caller->size());
 
     std::unordered_map<std::string, size_t> caller_alloc_size_of_so;
+    std::unordered_map<std::string, std::map<size_t, size_t>> same_size_count_of_so;
 
     for (auto i = m_size_of_caller->begin(); i != m_size_of_caller->end(); ++i) {
         auto caller = i->first;
         auto size = i->second;
         Dl_info dl_info;
         dladdr(caller, &dl_info);
-
-//        LOGD("Yves.dump", "key = %p, value = %zu, caller so = %s, caller function = %s",
-//             caller, size, dl_info.dli_fname, dl_info.dli_sname);
-//        fprintf(log_file, "key = %p, value = %zu, caller so = %s, caller function = %s\n",
-//                caller, size, dl_info.dli_fname, dl_info.dli_sname);
 
         if (dl_info.dli_fname) {
             // fixme hard coding
@@ -206,6 +243,15 @@ void dump() {
 //                LOGD("Yves.dump", "===> so name = %s", dl_info.dli_fname);
 //                caller_alloc_size_of_so["other.so"] += size;
 //            }
+
+            if (is_group_by_size_enabled) {
+                auto pointers = (*m_pointers_of_caller)[caller];
+                for (auto p = pointers.begin(); p != pointers.end(); ++p) {
+                    size_t ptr_size = (*m_size_of_pointer)[*p];
+                    same_size_count_of_so[dl_info.dli_fname][ptr_size]++;
+                }
+            }
+
         }
     }
 
@@ -221,7 +267,33 @@ void dump() {
     for (auto i = result_sort_by_size.rbegin(); i != result_sort_by_size.rend(); ++i) {
         LOGD("Yves.dump", "so = %s, caller alloc size = %zu", i->second.c_str(), i->first);
         fprintf(log_file, "caller alloc size = %10zu b, so = %s\n", i->first, i->second.c_str());
+
+        if (is_group_by_size_enabled) {
+            auto count_of_size = same_size_count_of_so[i->second];
+            std::multimap<size_t, std::pair<size_t, size_t>> result_sort_by_mul;
+            std::transform(count_of_size.begin(),
+                           count_of_size.end(),
+                           std::inserter(result_sort_by_mul, result_sort_by_mul.begin()),
+                           [](std::pair<size_t, size_t> src) {
+                               return std::pair<size_t, std::pair<size_t, size_t >>(
+                                       src.first * src.second,
+                                       std::pair<size_t, size_t>(src.first, src.second));
+                           });
+            int lines = 20; // fixme hard coding
+            LOGD("Yves.dump", "top %d size * count:", lines);
+            fprintf(log_file, "top %d size * count:\n", lines);
+
+            for (auto sc = result_sort_by_mul.rbegin();
+                 sc != result_sort_by_mul.rend() && lines; ++sc, --lines) {
+                auto size = sc->second.first;
+                auto count = sc->second.second;
+                LOGD("Yves.dump", "   size = %10zu b, count = %zu", size, count);
+                fprintf(log_file, "   size = %10zu b, count = %zu\n", size, count);
+            }
+        }
     }
+
+    /******************************* stacktrace ********************************/
 
     std::unordered_map<std::string, size_t> stack_alloc_size_of_so;
     std::unordered_map<std::string, std::vector<std::pair<size_t, std::string>>> stacktrace_of_so;
@@ -252,7 +324,8 @@ void dump() {
                 std::string so_name = std::string(stack_info.dli_fname);
 
                 int status = 0;
-                char *demangled_name = abi::__cxa_demangle(stack_info.dli_sname, nullptr, 0, &status);
+                char *demangled_name = abi::__cxa_demangle(stack_info.dli_sname, nullptr, 0,
+                                                           &status);
 
                 stack_builder << "      | "
                               << "#pc " << it->pc << " "
@@ -269,8 +342,6 @@ void dump() {
                 custom_so_name = so_name;
                 stack_alloc_size_of_so[custom_so_name] += size;
 
-//                LOGD("Yves.dump", "so = %s, remaining size = %zu", so_name.c_str(), size);
-//                fprintf(log_file, "so = %s, remaining size = %zu\n", so_name.c_str(), size);
             }
 
             std::pair<size_t, std::string> stack_size_pair(size, stack_builder.str());
@@ -335,6 +406,10 @@ void init_if_necessary() {
 
     if (!m_stacktrace_of_hash) {
         m_stacktrace_of_hash = new std::unordered_map<uint64_t, std::vector<unwindstack::FrameData> *>;
+    }
+
+    if (!m_pointers_of_caller) {
+        m_pointers_of_caller = new std::unordered_map<void *, std::unordered_set<void *>>;
     }
 }
 
