@@ -31,9 +31,9 @@ public class MemoryHook {
     /**
      * @param hookSoList
      * @param ignoreSoList
-     * @param minSize
-     * @param maxSize      0 表示不限制
-     * @param sampling
+     * @param minSize      >= 0, 0 表示不限制
+     * @param maxSize      0 或 > minSize, 0 表示不限制
+     * @param sampling     [0,1]
      */
     public static void hook(String[] hookSoList, String[] ignoreSoList, int minSize, int maxSize, double sampling) {
         if (hookSoList != null && hookSoList.length > 0) {

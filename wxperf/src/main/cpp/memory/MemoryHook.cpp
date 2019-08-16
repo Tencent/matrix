@@ -280,8 +280,8 @@ void dump() {
                                        std::pair<size_t, size_t>(src.first, src.second));
                            });
             int lines = 20; // fixme hard coding
-            LOGD("Yves.dump", "top %d size * count:", lines);
-            fprintf(log_file, "top %d size * count:\n", lines);
+            LOGD("Yves.dump", "top %d (size * count):", lines);
+            fprintf(log_file, "top %d (size * count):\n", lines);
 
             for (auto sc = result_sort_by_mul.rbegin();
                  sc != result_sort_by_mul.rend() && lines; ++sc, --lines) {
@@ -315,7 +315,7 @@ void dump() {
         if (m_stacktrace_of_hash->count(hash)) {
             auto stacktrace = m_stacktrace_of_hash->find(hash)->second;
 
-            std::string custom_so_name;
+            std::string caller_so_name;
             std::stringstream stack_builder;
             for (auto it = stacktrace->begin(); it != stacktrace->end(); ++it) {
                 Dl_info stack_info;
@@ -335,17 +335,17 @@ void dump() {
                 // fixme hard coding
                 if (/*so_name.find("com.tencent.mm") == std::string::npos ||*/
                         so_name.find("libwxperf.so") != std::string::npos ||
-                        !custom_so_name.empty()) {
+                        !caller_so_name.empty()) {
                     continue;
                 }
 
-                custom_so_name = so_name;
-                stack_alloc_size_of_so[custom_so_name] += size;
+                caller_so_name = so_name;
+                stack_alloc_size_of_so[caller_so_name] += size;
 
             }
 
             std::pair<size_t, std::string> stack_size_pair(size, stack_builder.str());
-            stacktrace_of_so[custom_so_name].push_back(stack_size_pair);
+            stacktrace_of_so[caller_so_name].push_back(stack_size_pair);
         }
     }
 

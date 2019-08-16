@@ -76,6 +76,7 @@ namespace unwindstack {
         Unwinder unwinder(16, localMaps, regs, process_memory);
         JitDebug jit_debug(process_memory);
         unwinder.SetJitDebug(&jit_debug, regs->Arch());
+        unwinder.SetResolveNames(false);
         unwinder.Unwind();
 
 //        for (size_t i = 0; i < unwinder.NumFrames(); i++) {
