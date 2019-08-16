@@ -198,17 +198,28 @@ void dump() {
 //                caller, size, dl_info.dli_fname, dl_info.dli_sname);
 
         if (dl_info.dli_fname) {
-            if (std::string(dl_info.dli_fname).find("com.tencent.mm") != std::string::npos) {
-                caller_alloc_size_of_so[dl_info.dli_fname] += size;
-            } else {
-                caller_alloc_size_of_so["other.so"] += size;
-            }
+            // fixme hard coding
+//            if (std::string(dl_info.dli_fname).find("com.tencent.mm") != std::string::npos) {
+            caller_alloc_size_of_so[dl_info.dli_fname] += size;
+//            } else {
+//                LOGD("Yves.dump", "===> so name = %s", dl_info.dli_fname);
+//                caller_alloc_size_of_so["other.so"] += size;
+//            }
         }
     }
 
-    for (auto i = caller_alloc_size_of_so.begin(); i != caller_alloc_size_of_so.end(); ++i) {
-        LOGD("Yves.dump", "so = %s, caller alloc size = %zu", i->first.c_str(), i->second);
-        fprintf(log_file, "caller alloc size = %10zu b, so = %s\n", i->second, i->first.c_str());
+    std::multimap<size_t, std::string> result_sort_by_size;
+
+    std::transform(caller_alloc_size_of_so.begin(),
+                   caller_alloc_size_of_so.end(),
+                   std::inserter(result_sort_by_size, result_sort_by_size.begin()),
+                   [](std::pair<std::string, size_t> src) {
+                       return std::pair<size_t, std::string>(src.second, src.first);
+                   });
+
+    for (auto i = result_sort_by_size.rbegin(); i != result_sort_by_size.rend(); ++i) {
+        LOGD("Yves.dump", "so = %s, caller alloc size = %zu", i->second.c_str(), i->first);
+        fprintf(log_file, "caller alloc size = %10zu b, so = %s\n", i->first, i->second.c_str());
     }
 
     std::unordered_map<std::string, size_t> stack_alloc_size_of_so;
@@ -245,9 +256,9 @@ void dump() {
                               << " (" << stack_info.dli_fname << ")"
                               << std::endl;
                 // fixme hard coding
-                if (so_name.find("com.tencent.mm") == std::string::npos ||
-                    so_name.find("libwxperf.so") != std::string::npos ||
-                    !custom_so_name.empty()) {
+                if (/*so_name.find("com.tencent.mm") == std::string::npos ||*/
+                        so_name.find("libwxperf.so") != std::string::npos ||
+                        !custom_so_name.empty()) {
                     continue;
                 }
 
