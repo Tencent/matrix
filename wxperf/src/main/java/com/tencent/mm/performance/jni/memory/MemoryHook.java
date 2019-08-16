@@ -18,8 +18,11 @@ public class MemoryHook {
 //        xhookIgnoreNative(regex);
 //    }
 
-    public static void hook(String[] hookSoList, String[] ignoreSoList) {
+    static {
         LibWxPerfManager.INSTANCE.init();
+    }
+
+    public static void hook(String[] hookSoList, String[] ignoreSoList) {
 
         if (hookSoList != null && hookSoList.length > 0) {
             xhookRegisterNative(hookSoList);
@@ -36,7 +39,6 @@ public class MemoryHook {
     }
 
     public static void hook() {
-        LibWxPerfManager.INSTANCE.init();
 
         enableStacktraceNative(false);
         xhookInitNative();

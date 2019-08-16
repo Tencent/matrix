@@ -14,6 +14,7 @@
 #include "StackTrace.h"
 #include "utils.h"
 #include "unwindstack/Unwinder.h"
+#include <cxxabi.h>
 
 std::unordered_map<void *, size_t> *m_size_of_caller;
 std::unordered_map<void *, size_t> *m_size_of_pointer;
@@ -250,9 +251,12 @@ void dump() {
 
                 std::string so_name = std::string(stack_info.dli_fname);
 
+                int status = 0;
+                char *demangled_name = abi::__cxa_demangle(stack_info.dli_sname, nullptr, 0, &status);
+
                 stack_builder << "      | "
                               << "#pc " << it->pc << " "
-                              << (stack_info.dli_sname ? stack_info.dli_sname : "null")
+                              << (demangled_name ? demangled_name : "(null)")
                               << " (" << stack_info.dli_fname << ")"
                               << std::endl;
                 // fixme hard coding
