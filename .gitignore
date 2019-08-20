@@ -74,22 +74,6 @@ app/SECONDARY_DEX_PATTERN_LIST
 .#
 _temp_preload_/
 
-#
-# modulelized projects
-#
-release-tools/
-devops-tools/
-libmmui_kit/
-libwxperf/
-libxweb/
-group-kinda-lib/kinda/
-lib-magicbrush/
-wechat-sdk/
-splash/
-**/libmmglide/
-**/libmmsubsamplingimage/
-weui-native-android/
-
 
 .api/
 
