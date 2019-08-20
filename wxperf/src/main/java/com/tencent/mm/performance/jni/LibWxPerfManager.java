@@ -1,7 +1,7 @@
 package com.tencent.mm.performance.jni;
 
 /**
- * Created by Yves on 2019-08-08
+ * Created by Yves on 2019-08-20
  */
 public class LibWxPerfManager {
 
@@ -18,5 +18,9 @@ public class LibWxPerfManager {
         } catch (Exception e) {
             isLibLoaded = false;
         }
+    }
+
+    public boolean initOk() {
+        return isLibLoaded;
     }
 }

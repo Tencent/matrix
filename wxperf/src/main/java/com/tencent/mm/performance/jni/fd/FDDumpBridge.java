@@ -7,10 +7,16 @@ import com.tencent.mm.performance.jni.LibWxPerfManager;
  */
 public class FDDumpBridge {
 
-    public static String getFdPathName(String path) {
+    static {
         LibWxPerfManager.INSTANCE.init();
+    }
+
+    public static String getFdPathName(String path) {
+        if (!LibWxPerfManager.INSTANCE.initOk()) {
+            return null;
+        }
         return getFdPathNameNative(path);
     }
 
-    public static native String getFdPathNameNative(String path);
+    private static native String getFdPathNameNative(String path);
 }
