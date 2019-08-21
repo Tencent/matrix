@@ -74,6 +74,7 @@ static inline void on_acquire_memory(void *__caller, void *__ptr, size_t __byte_
             return;
         }
 
+        LOGD("Yves", "do unwind");
         auto stack_frames = new std::vector<unwindstack::FrameData>;
         unwindstack::do_unwind(*stack_frames);
 
@@ -160,7 +161,18 @@ void *h_realloc(void *__ptr, size_t __byte_count) {
 
     GET_CALLER_ADDR(caller)
 
-    on_acquire_memory(caller, p, __byte_count);
+    // If ptr is NULL, then the call is equivalent to malloc(size), for all values of size;
+    // if size is equal to zero, and ptr is not NULL, then the call is equivalent to free(ptr).
+    // Unless ptr is NULL, it must have been returned by an earlier call to malloc(), calloc() or realloc().
+    // If the area pointed to was moved, a free(ptr) is done.
+    if (!__ptr || (!__byte_count)) {
+        on_release_memory(caller, __ptr);
+    } else if (__ptr != p) {
+        on_release_memory(caller, __ptr);
+        on_acquire_memory(caller, p, __byte_count);
+    } else {
+        on_acquire_memory(caller, p, __byte_count);
+    }
 
     release_lock();
     return p;
