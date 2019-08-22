@@ -140,6 +140,9 @@ static NSString* getBasePath()
 @synthesize onHandleSignalCallBack = _onHandleSignalCallBack;
 @synthesize onWritePointThread = _onWritePointThread;
 @synthesize onWritePointThreadRepeatNumber = _onWritePointThreadRepeatNumber;
+@synthesize onWritePointCpuHighThread = _onWritePointCpuHighThread;
+@synthesize onWritePointCpuHighThreadCount = _onWritePointCpuHighThreadCount;
+@synthesize onWritePointCpuHighThreadValue =_onWritePointCpuHighThreadValue;
 @synthesize bundleName = _bundleName;
 @synthesize basePath = _basePath;
 @synthesize introspectMemory = _introspectMemory;
@@ -282,6 +285,25 @@ static NSString* getBasePath()
 {
     _onWritePointThreadRepeatNumber = onWritePointThreadRepeatNumber;
     kscrash_setPointThreadRepeatNumberCallback(onWritePointThreadRepeatNumber);
+}
+
+- (void) setOnWritePointCpuHighThread:(KSReportWritePointCpuHighThreadCallback)onWritePointCpuHighThread
+{
+    _onWritePointCpuHighThread = onWritePointCpuHighThread;
+    kscrash_setPointCpuHighThreadCallback(onWritePointCpuHighThread);
+    
+}
+
+- (void) setOnWritePointCpuHighThreadCount:(KSReportWritePointCpuHighThreadCountCallback)onWritePointCpuHighThreadCount
+{
+    _onWritePointCpuHighThreadCount = onWritePointCpuHighThreadCount;
+    kscrash_setPointCpuHighThreadCountCallback(onWritePointCpuHighThreadCount);
+}
+
+- (void) setOnWritePointCpuHighThreadValue:(KSReportWritePointCpuHighThreadValueCallback)onWritePointCpuHighThreadValue
+{
+    _onWritePointCpuHighThreadValue = onWritePointCpuHighThreadValue;
+    kscrash_setPointCpuHighThreadValueCallback(onWritePointCpuHighThreadValue);
 }
 
 - (void) setIntrospectMemory:(BOOL) introspectMemory

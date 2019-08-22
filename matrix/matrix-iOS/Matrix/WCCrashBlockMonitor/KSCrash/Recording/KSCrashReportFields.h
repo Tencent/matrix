@@ -70,6 +70,7 @@
 #define KSCrashField_Type                  "type"
 #define KSCrashField_UUID                  "uuid"
 #define KSCrashField_Value                 "value"
+#define KSCrashFiled_CPUUsage              "cpu_usage"
 
 #define KSCrashField_Error                 "error"
 #define KSCrashField_JSONData              "json_data"

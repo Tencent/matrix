@@ -136,6 +136,12 @@ void kscrash_setHandleSignalCallback(const KSCrashSentryHandleSignal onHandleSig
 void kscrash_setPointThreadCallback(const KSReportWritePointThreadCallback onWritePointThread);
     
 void kscrash_setPointThreadRepeatNumberCallback(const KSReportWritePointThreadRepeatNumberCallback onWritePointThreadRepeatNumber);
+    
+void kscrash_setPointCpuHighThreadCallback(const KSReportWritePointCpuHighThreadCallback onWritePointCpuHighThread);
+
+void kscrash_setPointCpuHighThreadCountCallback(const KSReportWritePointCpuHighThreadCountCallback onWritePointCpuHighThreadCount);
+    
+void kscrash_setPointCpuHighThreadValueCallback(const KSReportWritePointCpuHighThreadValueCallback onWritePointCpuHighThreadValue);
 
 /** Set if KSLOG console messages should be appended to the report.
  *

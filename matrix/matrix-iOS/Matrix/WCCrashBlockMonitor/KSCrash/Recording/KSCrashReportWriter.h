@@ -252,6 +252,12 @@ typedef void (*KSCrashSentryHandleSignal)(siginfo_t *info);
 typedef KSStackCursor* (*KSReportWritePointThreadCallback)(void);
     
 typedef int* (*KSReportWritePointThreadRepeatNumberCallback)(void);
+    
+typedef KSStackCursor** (*KSReportWritePointCpuHighThreadCallback)(void);
+
+typedef int (*KSReportWritePointCpuHighThreadCountCallback)(void);
+    
+typedef float* (*KSReportWritePointCpuHighThreadValueCallback)(void);
 
 #ifdef __cplusplus
 }
