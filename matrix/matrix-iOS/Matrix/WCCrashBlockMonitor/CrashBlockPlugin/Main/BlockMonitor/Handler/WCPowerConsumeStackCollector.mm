@@ -38,6 +38,7 @@
 #define INSTRUCTION_ADDRESS "instruction_address"
 #define SAMPLE_COUNT "sample"
 #define CHILE_FRAME "child"
+#define MAX_STACK_TRACE_COUNT 100
 
 @interface WCAddressFrame ()
 {
@@ -150,7 +151,6 @@
 
 /* conlusion */
 @property (nonatomic, strong) NSMutableArray <WCAddressFrame *>*parentAddressFrame;
-@property (nonatomic, assign) NSUInteger limitRepeatCount;
 
 @end
 
@@ -158,14 +158,13 @@
 
 - (id)init
 {
-    return [self initWithMaxStackTraceCount:10 withLimitRepeat:10];
+    return [self initWithMaxStackTraceCount:10];
 }
 
-- (id)initWithMaxStackTraceCount:(NSUInteger)maxStackTraceCount withLimitRepeat:(NSUInteger)limitRepeatCount
+- (id)initWithMaxStackTraceCount:(NSUInteger)maxStackTraceCount
 {
     self = [super init];
     if (self) {
-        _limitRepeatCount = limitRepeatCount;
         
         m_maxStackCount = (size_t)maxStackTraceCount;
         
@@ -256,13 +255,13 @@
         }];
     }
     
-    for (WCAddressFrame *addressFrame in self.parentAddressFrame) {
-        if (addressFrame.repeatCount >= _limitRepeatCount) {
-            [addressFrame symbolicate];
-            NSDictionary *curDict = [self p_getInfoDictFromAddressFrame:addressFrame];
-            [addressDictArray addObject:curDict];
-        }
+    for (int i = 0; i < [self.parentAddressFrame count] && i < 2; i++) {
+        WCAddressFrame *addressFrame = self.parentAddressFrame[i];
+        [addressFrame symbolicate];
+        NSDictionary *curDict = [self p_getInfoDictFromAddressFrame:addressFrame];
+        [addressDictArray addObject:curDict];
     }
+    
     return [addressDictArray copy];
 }
 
@@ -399,7 +398,7 @@ static float kGetPowerStackCPULimit = 80.;
     self = [super init];
     if (self) {
         kGetPowerStackCPULimit = cpuLimit;
-        _stackTracePool = [[WCStackTracePool alloc] initWithMaxStackTraceCount:100 withLimitRepeat:10];
+        _stackTracePool = [[WCStackTracePool alloc] initWithMaxStackTraceCount:MAX_STACK_TRACE_COUNT];
     }
     return self;
 }
@@ -407,7 +406,7 @@ static float kGetPowerStackCPULimit = 80.;
 - (void)makeConclusion
 {
     WCStackTracePool *handlePool = _stackTracePool;
-    _stackTracePool = [[WCStackTracePool alloc] initWithMaxStackTraceCount:100 withLimitRepeat:10];
+    _stackTracePool = [[WCStackTracePool alloc] initWithMaxStackTraceCount:MAX_STACK_TRACE_COUNT];
     
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
         NSArray <NSDictionary *>*stackTree = [handlePool makeCallTree];
