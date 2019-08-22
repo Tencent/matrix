@@ -116,6 +116,9 @@ static KSCrash_IntrospectionRules g_introspectionRules;
 static KSReportWriteCallback g_userSectionWriteCallback;
 static KSReportWritePointThreadCallback g_pointThreadWriteCallback;
 static KSReportWritePointThreadRepeatNumberCallback g_pointThreadRepeatNumberWriteCallback;
+static KSReportWritePointCpuHighThreadCallback g_pointCpuHighThreadCallback;
+static KSReportWritePointCpuHighThreadCountCallback g_pointCpuHighThreadCountCallback;
+static KSReportWritePointCpuHighThreadValueCallback g_pointCpuHighThreadValueCallback;
 
 #pragma mark Callbacks
 
@@ -1280,9 +1283,39 @@ static void writeAllThreads(const KSCrashReportWriter* const writer,
     int threadCount = ksmc_getThreadCount(context);
     KSMC_NEW_CONTEXT(machineContext);
 
+    int dumpType = crash->userException.userDumpType;
     // Fetch info for all threads.
     writer->beginArray(writer, key);
     {
+        // CPU High Lag
+        if (dumpType == 2003) {
+            if (g_pointCpuHighThreadCallback != NULL && g_pointCpuHighThreadCountCallback != NULL && g_pointCpuHighThreadValueCallback != NULL) {
+                KSStackCursor** cpuHighThreadArray = g_pointCpuHighThreadCallback();
+                int cpuHighThreadArrayCount = g_pointCpuHighThreadCountCallback();
+                float* cpuHighThreadValueArray = g_pointCpuHighThreadValueCallback();
+                
+                KSLOG_DEBUG("Writing %d threads.", cpuHighThreadArrayCount);
+                
+                for (int i = 0; i < cpuHighThreadArrayCount; i++) {
+                    KSStackCursor *stackCursor = cpuHighThreadArray[i];
+                    if (stackCursor != NULL) {
+                        writer->beginObject(writer, NULL);
+                        {
+                            writeBacktraceWithCount(writer, KSCrashField_Backtrace, stackCursor, false);
+                            writer->addFloatingPointElement(writer, KSCrashFiled_CPUUsage, cpuHighThreadValueArray[i]);
+                            writer->addIntegerElement(writer, KSCrashField_Index, i);
+                            writer->addBooleanElement(writer, KSCrashField_Crashed, false);
+                            writer->addBooleanElement(writer, KSCrashField_CurrentThread, false);
+                        }
+                        writer->endContainer(writer);
+                    }
+                }
+            }
+            writer->endContainer(writer);
+            return;
+        }
+        
+        // Lag
         KSLOG_DEBUG("Writing %d threads.", threadCount);
         
         if (g_pointThreadWriteCallback != NULL) {
@@ -1939,4 +1972,22 @@ void kscrashreport_setPointThreadRepeatNumberWriteCallback(const KSReportWritePo
 {
     KSLOG_TRACE("Set pointThreadRepeatNumberWriteCallback to %p", pointThreadRepeatNumberWriteCallback);
     g_pointThreadRepeatNumberWriteCallback = pointThreadRepeatNumberWriteCallback;
+}
+
+void kscrashreport_setPointCpuHighThreadWriteCallback(const KSReportWritePointCpuHighThreadCallback pointCpuHighThreadWriteCallback)
+{
+    KSLOG_TRACE("Set pointCpuHighThreadWriteCallback to %p", pointCpuHighThreadWriteCallback);
+    g_pointCpuHighThreadCallback = pointCpuHighThreadWriteCallback;
+}
+
+void kscrashreport_setPointCpuHighThreadCountWriteCallback(const KSReportWritePointCpuHighThreadCountCallback pointCpuHighThreadCountWriteCallback)
+{
+    KSLOG_TRACE("Set pointCpuHighThreadCountWriteCallback to %p", pointCpuHighThreadCountWriteCallback);
+    g_pointCpuHighThreadCountCallback = pointCpuHighThreadCountWriteCallback;
+}
+
+void kscrashreport_setPointCpuHighThreadValueWriteCallback(const KSReportWritePointCpuHighThreadValueCallback pointCpuHighThreadValueWriteCallback)
+{
+    KSLOG_TRACE("Set pointCpuHighThreadValueWriteCallback to %p", pointCpuHighThreadValueWriteCallback);
+    g_pointCpuHighThreadValueCallback = pointCpuHighThreadValueWriteCallback;
 }

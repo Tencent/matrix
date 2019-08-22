@@ -179,6 +179,15 @@ typedef enum
 /* Callback used to write the repeat number of point thread */
 @property(nonatomic,readwrite,assign) KSReportWritePointThreadRepeatNumberCallback onWritePointThreadRepeatNumber;
 
+/* Callback used to write the cpu high thread stack */
+@property(nonatomic,readwrite,assign) KSReportWritePointCpuHighThreadCallback onWritePointCpuHighThread;
+
+/* Callback used to write the count of cpu high thread stack */
+@property(nonatomic,readwrite,assign) KSReportWritePointCpuHighThreadCountCallback onWritePointCpuHighThreadCount;
+
+/* Callback used to write the cpu cost of each thread */
+@property(nonatomic,readwrite,assign) KSReportWritePointCpuHighThreadValueCallback onWritePointCpuHighThreadValue;
+
 /** Add a copy of KSCrash's console log messages to the crash report.
  */
 @property(nonatomic,readwrite,assign) BOOL addConsoleLogToReport;

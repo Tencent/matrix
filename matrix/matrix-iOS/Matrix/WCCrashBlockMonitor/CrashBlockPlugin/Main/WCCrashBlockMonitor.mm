@@ -78,6 +78,9 @@ void kscrash_innerHandleSignalCallback(siginfo_t *info)
     handler.onInnerHandleSignalCallBack = kscrash_innerHandleSignalCallback;
     handler.onWritePointThread = kscrash_pointThreadCallback;
     handler.onWritePointThreadRepeatNumber = kscrash_pointThreadRepeatNumberCallback;
+    handler.onWritePointCpuHighThread = kscrash_pointCPUHighThreadCallback;
+    handler.onWritePointCpuHighThreadCount = kscrash_pointCpuHighThreadCountCallback;
+    handler.onWritePointCpuHighThreadValue = kscrash_pointCpuHighThreadArrayCallBack;
 
     BOOL ret = [handler install];
     if (!ret) {

@@ -33,6 +33,7 @@
 #import "WCFilterStackHandler.h"
 #import "KSSymbolicator.h"
 #import "WCPowerConsumeStackCollector.h"
+#import "MatrixAsyncHook.h"
 
 #if !TARGET_OS_OSX
 #import <UIKit/UIKit.h>
@@ -55,6 +56,9 @@ static BOOL g_MainThreadHandle = NO;
 static int g_MainThreadCount = 0;
 static KSStackCursor *g_PointMainThreadArray = NULL;
 static int *g_PointMainThreadRepeatCountArray = NULL;
+static KSStackCursor **g_PointCPUHighThreadArray = NULL;
+static int g_PointCpuHighThreadCount = 0;
+static float *g_PointCpuHighThreadValueArray = NULL;
 
 static BOOL g_filterSameStack = NO;
 static uint32_t g_triggerdFilterSameCnt = 0;
@@ -112,6 +116,21 @@ KSStackCursor *kscrash_pointThreadCallback(void)
 int *kscrash_pointThreadRepeatNumberCallback(void)
 {
     return g_PointMainThreadRepeatCountArray;
+}
+
+KSStackCursor **kscrash_pointCPUHighThreadCallback(void)
+{
+    return g_PointCPUHighThreadArray;
+}
+
+int kscrash_pointCpuHighThreadCountCallback(void)
+{
+    return g_PointCpuHighThreadCount;
+}
+
+float *kscrash_pointCpuHighThreadArrayCallBack(void)
+{
+    return g_PointCpuHighThreadValueArray;
 }
 
 @interface WCBlockMonitorMgr () <WCPowerConsumeStackCollectorDelegate> {
@@ -215,6 +234,32 @@ int *kscrash_pointThreadRepeatNumberCallback(void)
     }
 }
 
+- (void)freeCpuHighThreadArray
+{
+    for (int i = 0; i < g_PointCpuHighThreadCount; i++) {
+        if (g_PointCPUHighThreadArray[i] != NULL) {
+            KSStackCursor_Backtrace_Context *context = (KSStackCursor_Backtrace_Context *) g_PointCPUHighThreadArray[i]->context;
+            if (context->backtrace != NULL) {
+                free((uintptr_t *) context->backtrace);
+            }
+            free(g_PointCPUHighThreadArray[i]);
+            g_PointCPUHighThreadArray[i] = NULL;
+        }
+    }
+    
+    if (g_PointCPUHighThreadArray != NULL) {
+        free(g_PointCPUHighThreadArray);
+        g_PointCPUHighThreadArray = NULL;
+    }
+    
+    if (g_PointCpuHighThreadValueArray != NULL) {
+        free(g_PointCpuHighThreadValueArray);
+        g_PointCpuHighThreadValueArray = NULL;
+    }
+    
+    g_PointCpuHighThreadCount = 0;
+}
+
 // ============================================================================
 #pragma mark - Public method
 // ============================================================================
@@ -232,6 +277,8 @@ int *kscrash_pointThreadRepeatNumberCallback(void)
          andCheckPeriodTime:[_monitorConfigHandler getCheckPeriodTime]];
     [self setCPUUsagePercent:[_monitorConfigHandler getCPUUsagePercent]];
     [self setPerStackInterval:[_monitorConfigHandler getPerStackInterval]];
+    
+    [[MatrixAsyncHook sharedInstance] beginHook];
 
     m_nIntervalTime = 1;
     m_nLastTimeInterval = 1;
@@ -495,7 +542,21 @@ int *kscrash_pointThreadRepeatNumberCallback(void)
                                                                 onBlockMonitor:self dumpType:dumpType filter:filterType);
                             }
                         }
-                    } else {
+                    } else if (EDumpType_CPUBlock == dumpType) {
+                        //1. get cpu high stack cursor
+                        if (m_powerConsumeStackCollector) {
+                            if (g_PointCPUHighThreadArray != NULL) {
+                                [self freeCpuHighThreadArray];
+                            }
+                            g_PointCPUHighThreadArray = [m_powerConsumeStackCollector getCPUStackCursor];
+                            g_PointCpuHighThreadCount = [m_powerConsumeStackCollector getCurrentCpuHighStackNumber];
+                            g_PointCpuHighThreadValueArray = [m_powerConsumeStackCollector getCpuHighThreadValueArray];
+                        }
+                        //2. dump file with type
+                        m_potenHandledLagFile = [self dumpFileWithType:dumpType];
+                        [self freeCpuHighThreadArray];
+                    }
+                    else {
                         m_potenHandledLagFile = [self dumpFileWithType:dumpType];
                     }
                 } else {
@@ -632,7 +693,9 @@ int *kscrash_pointThreadRepeatNumberCallback(void)
             MatrixInfo(@"check cpu over usage dump %f", cpuUsage);
             BM_SAFE_CALL_SELECTOR_NO_RETURN(_delegate, @selector(onBlockMonitorCurrentCPUTooHigh:), onBlockMonitorCurrentCPUTooHigh:self)
             if ([_monitorConfigHandler getShouldGetCPUHighLog]) {
-                return EDumpType_CPUBlock;
+                if (m_powerConsumeStackCollector && [m_powerConsumeStackCollector isCPUHighBlock]) {
+                    return EDumpType_CPUBlock;
+                }
             }
         }
     }
