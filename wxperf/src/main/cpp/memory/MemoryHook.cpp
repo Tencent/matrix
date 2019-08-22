@@ -340,7 +340,7 @@ void dump() {
                                                            &status);
 
                 stack_builder << "      | "
-                              << "#pc " << it->pc << " "
+                              << "#pc " << std::hex << it->rel_pc << " "
                               << (demangled_name ? demangled_name : "(null)")
                               << " (" << stack_info.dli_fname << ")"
                               << std::endl;
