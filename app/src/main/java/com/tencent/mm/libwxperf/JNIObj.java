@@ -16,8 +16,8 @@ public class JNIObj {
         }
     }
 
-//    public native void doSomeThing();
-//    public native void dump(String libPath);
+    public native void doSomeThing();
+    public native void dump(String libPath);
 
     public static void onDumpFinished(String res) {
 

@@ -13,6 +13,9 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+int count = 0;
+
 /*
  * Class:     com_example_meminfo_JNIObj
  * Method:    allocMem
@@ -30,7 +33,10 @@ Java_com_tencent_mm_libwxperf_JNIObj_doSomeThing(JNIEnv *env, jobject instance) 
     for (int i = 0; i < 10; ++i) {
         LOGD("Yves-sample", "----- %d", p[i]);
     }
-//    free(p);
+    count++;
+    if (count % 2) {
+        free(p);
+    }
     LOGD("Yves-sample", "<<<<<<<<<<<<<<<<<<<<end");
 
 }
@@ -38,18 +44,18 @@ Java_com_tencent_mm_libwxperf_JNIObj_doSomeThing(JNIEnv *env, jobject instance) 
 JNIEXPORT void JNICALL
 Java_com_tencent_mm_libwxperf_JNIObj_dump(JNIEnv *env, jobject instance, jstring libPath) {
     LOGD("Yves-sample", ">>>>>>>>>>>>>>>>>>begin dump");
-    typedef void (*FN_DUMP)();
-    const char * path = env->GetStringUTFChars(libPath, 0);
-    void *handle = dlopen(path, RTLD_LAZY);
-    env->ReleaseStringUTFChars(libPath, path);
-    if (handle != nullptr) {
-        LOGD("Yves-sample","so not null");
-        auto p = (FN_DUMP)dlsym(handle, "dump");
-        if (p != nullptr) {
-            LOGD("Yves-sample","dump func not null");
-            p();
-        }
-    }
+//    typedef void (*FN_DUMP)();
+//    const char * path = env->GetStringUTFChars(libPath, 0);
+//    void *handle = dlopen(path, RTLD_LAZY);
+//    env->ReleaseStringUTFChars(libPath, path);
+//    if (handle != nullptr) {
+//        LOGD("Yves-sample","so not null");
+//        auto p = (FN_DUMP)dlsym(handle, "dump");
+//        if (p != nullptr) {
+//            LOGD("Yves-sample","dump func not null");
+//            p();
+//        }
+//    }
 //    int err;
 //    errno = 0;
 //    FILE *file = fopen("/sdcard/memory_hook_fopen.log", "w+");

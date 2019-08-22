@@ -93,21 +93,28 @@ inline void on_release_memory(void *__caller, void *__ptr) {
     // with caller
 
     if (!m_size_of_pointer->count(__ptr)) {
-//        LOGD("Yves.ERROR", "can NOT find size of given pointer(%p), caller(%p)", __ptr, caller);
+//        LOGD("Yves.ERROR", "can NOT find size of given pointer(%p), caller(%p)",
+//                __ptr, m_caller_of_pointer->count(__ptr) ? (void *)m_size_of_caller->at(__ptr) : 0);
         return;
     }
 
     auto ptr_size = m_size_of_pointer->at(__ptr);
     if (m_caller_of_pointer->count(__ptr)) {
         auto alloc_caller = m_caller_of_pointer->at(__ptr);
+
         if (m_size_of_caller->count(alloc_caller)) {
             auto caller_size = m_size_of_caller->at(alloc_caller);
+
             if (caller_size > ptr_size) {
                 (*m_size_of_caller)[alloc_caller] = caller_size - ptr_size;
             } else {
                 m_size_of_caller->erase(alloc_caller);
+                if (is_group_by_size_enabled) {
+                    m_pointers_of_caller->erase(alloc_caller);
+                }
             }
         }
+
         if (is_group_by_size_enabled) {
             (*m_pointers_of_caller)[alloc_caller].erase(__ptr);
         }
@@ -165,13 +172,15 @@ void *h_realloc(void *__ptr, size_t __byte_count) {
     // if size is equal to zero, and ptr is not NULL, then the call is equivalent to free(ptr).
     // Unless ptr is NULL, it must have been returned by an earlier call to malloc(), calloc() or realloc().
     // If the area pointed to was moved, a free(ptr) is done.
-    if (!__ptr || (!__byte_count)) {
-        on_release_memory(caller, __ptr);
-    } else if (__ptr != p) {
-        on_release_memory(caller, __ptr);
+    if (!__ptr) { // malloc
         on_acquire_memory(caller, p, __byte_count);
     } else {
-        on_acquire_memory(caller, p, __byte_count);
+        if (!__byte_count) { // free
+            on_release_memory(caller, __ptr);
+        } else if (__ptr != p) { // moved
+            on_release_memory(caller, __ptr);
+            on_acquire_memory(caller, p, __byte_count);
+        }
     }
 
     release_lock();
@@ -221,6 +230,8 @@ void dump() {
          ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> memory dump begin <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
 
     /******************************* caller so ********************************/
+
+    acquire_lock();
 
     // fixme hard coding
     FILE *log_file = fopen("/sdcard/memory_hook.log", "w+");
@@ -386,6 +397,7 @@ void dump() {
     fflush(log_file);
     fclose(log_file);
 
+    release_lock();
     LOGD("Yves.dump",
          ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> memory dump end <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
 }

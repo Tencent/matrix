@@ -71,6 +71,18 @@ public class MemoryHook {
         xhookRefreshNative(false);
     }
 
+    @Deprecated
+    public static void hook(String[] hookSoList) {
+        if (hookSoList != null && hookSoList.length > 0) {
+            xhookRegisterNative(hookSoList);
+        }
+
+        enableStacktraceNative(false);
+        xhookEnableDebugNative(true);
+        xhookEnableSigSegvProtectionNative(!BuildConfig.DEBUG);
+        xhookRefreshNative(false);
+    }
+
     public static void refresh() {
         xhookRefreshNative(false);
     }
