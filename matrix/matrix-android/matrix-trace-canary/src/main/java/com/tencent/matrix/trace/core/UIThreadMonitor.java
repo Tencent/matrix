@@ -111,7 +111,9 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
             }
 
         });
-
+        this.isInit = true;
+        MatrixLog.i(TAG, "[UIThreadMonitor] %s %s %s %s %s frameIntervalNanos:%s", callbackQueueLock == null, callbackQueues == null, addInputQueue == null, addTraversalQueue == null, addAnimationQueue == null, frameIntervalNanos);
+        
         if (config.isDevEnv()) {
             addObserver(new LooperObserver() {
                 @Override
@@ -119,9 +121,7 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
                     MatrixLog.i(TAG, "activityName[%s] frame cost:%sms [%s|%s|%s]ns", focusedActivityName, frameCostMs, inputCost, animationCost, traversalCost);
                 }
             });
-        }
-        MatrixLog.i(TAG, "[UIThreadMonitor] %s %s %s %s %s frameIntervalNanos:%s", callbackQueueLock == null, callbackQueues == null, addInputQueue == null, addTraversalQueue == null, addAnimationQueue == null, frameIntervalNanos);
-        this.isInit = true;
+        }        
     }
 
     private synchronized void addFrameCallback(int type, Runnable callback, boolean isAddHeader) {
