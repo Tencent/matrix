@@ -51,6 +51,41 @@ void setSampling(double __sampling) {
     m_sampling = __sampling;
 }
 
+static inline void init_if_necessary() {
+    if (!m_size_of_caller) {
+        LOGD("Yves", "init size of caller");
+        m_size_of_caller = new std::unordered_map<void *, size_t>;
+    }
+
+    if (!m_size_of_pointer) {
+        m_size_of_pointer = new std::unordered_map<void *, size_t>;
+    }
+
+    if (!m_caller_of_pointer) {
+        m_caller_of_pointer = new std::unordered_map<void *, void *>;
+    }
+
+    if (!m_pc_hash_of_pointer) {
+        m_pc_hash_of_pointer = new std::unordered_map<void *, uint64_t>;
+    }
+//
+//    if (!m_size_of_so) {
+//        m_size_of_so = new std::unordered_map<std::string, size_t>;
+//    }
+
+    if (!m_size_of_hash) {
+        m_size_of_hash = new std::unordered_map<uint64_t, size_t>;
+    }
+
+    if (!m_stacktrace_of_hash) {
+        m_stacktrace_of_hash = new std::unordered_map<uint64_t, std::vector<unwindstack::FrameData> *>;
+    }
+
+    if (!m_pointers_of_caller) {
+        m_pointers_of_caller = new std::unordered_map<void *, std::unordered_set<void *>>;
+    }
+}
+
 static inline void on_acquire_memory(void *__caller, void *__ptr, size_t __byte_count) {
 //    LOGD("Yves", "on acquire memory, ptr = (%p)", __ptr);
     init_if_necessary();
@@ -200,6 +235,7 @@ void h_free(void *__ptr) {
 
 ANDROID_DLOPEN p_oldfun;
 
+
 void *h_dlopen(const char *filename,
                int flag,
                const void *extinfo,
@@ -212,7 +248,6 @@ void *h_dlopen(const char *filename,
 //    LOGD("Yves.dlopen", "dlopen %s", filename);
     return ret;
 }
-
 
 static void do_it(std::unordered_map<void *, size_t>::iterator __begin,
                   std::unordered_map<void *, size_t>::iterator __end) {
@@ -287,9 +322,11 @@ void dump() {
                        return std::pair<size_t, std::string>(src.second, src.first);
                    });
 
+    size_t caller_total_size = 0;
     for (auto i = result_sort_by_size.rbegin(); i != result_sort_by_size.rend(); ++i) {
         LOGD("Yves.dump", "so = %s, caller alloc size = %zu", i->second.c_str(), i->first);
         fprintf(log_file, "caller alloc size = %10zu b, so = %s\n", i->first, i->second.c_str());
+        caller_total_size += i->first;
 
         if (is_group_by_size_enabled) {
             auto count_of_size = same_size_count_of_so[i->second];
@@ -315,6 +352,13 @@ void dump() {
             }
         }
     }
+
+    LOGD("Yves.dump", "\n---------------------------------------------------");
+    fprintf(log_file, "\n---------------------------------------------------\n");
+    LOGD("Yves.dump", "| caller total size = %zu b", caller_total_size);
+    fprintf(log_file, "| caller total size = %zu b\n", caller_total_size);
+    LOGD("Yves.dump", "---------------------------------------------------\n");
+    fprintf(log_file, "---------------------------------------------------\n\n");
 
     /******************************* stacktrace ********************************/
 
@@ -400,41 +444,6 @@ void dump() {
     release_lock();
     LOGD("Yves.dump",
          ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> memory dump end <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
-}
-
-void init_if_necessary() {
-    if (!m_size_of_caller) {
-        LOGD("Yves", "init size of caller");
-        m_size_of_caller = new std::unordered_map<void *, size_t>;
-    }
-
-    if (!m_size_of_pointer) {
-        m_size_of_pointer = new std::unordered_map<void *, size_t>;
-    }
-
-    if (!m_caller_of_pointer) {
-        m_caller_of_pointer = new std::unordered_map<void *, void *>;
-    }
-
-    if (!m_pc_hash_of_pointer) {
-        m_pc_hash_of_pointer = new std::unordered_map<void *, uint64_t>;
-    }
-//
-//    if (!m_size_of_so) {
-//        m_size_of_so = new std::unordered_map<std::string, size_t>;
-//    }
-
-    if (!m_size_of_hash) {
-        m_size_of_hash = new std::unordered_map<uint64_t, size_t>;
-    }
-
-    if (!m_stacktrace_of_hash) {
-        m_stacktrace_of_hash = new std::unordered_map<uint64_t, std::vector<unwindstack::FrameData> *>;
-    }
-
-    if (!m_pointers_of_caller) {
-        m_pointers_of_caller = new std::unordered_map<void *, std::unordered_set<void *>>;
-    }
 }
 
 

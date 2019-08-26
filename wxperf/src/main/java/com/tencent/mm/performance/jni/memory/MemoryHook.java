@@ -5,6 +5,7 @@ import com.tencent.mm.performance.jni.LibWxPerfManager;
 
 /**
  * Created by Yves on 2019-08-08
+ * fixme 接口重构
  */
 public class MemoryHook {
 
@@ -77,6 +78,7 @@ public class MemoryHook {
             xhookRegisterNative(hookSoList);
         }
 
+        xhookIgnoreNative(null);
         enableStacktraceNative(false);
         xhookEnableDebugNative(true);
         xhookEnableSigSegvProtectionNative(!BuildConfig.DEBUG);

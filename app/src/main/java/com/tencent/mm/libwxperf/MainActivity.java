@@ -34,6 +34,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 jniObj.doSomeThing();
+                jniObj.nullptr(null);
             }
         });
 

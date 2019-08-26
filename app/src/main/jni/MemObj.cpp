@@ -42,6 +42,17 @@ Java_com_tencent_mm_libwxperf_JNIObj_doSomeThing(JNIEnv *env, jobject instance) 
 }
 
 JNIEXPORT void JNICALL
+Java_com_tencent_mm_libwxperf_JNIObj_nullptr(JNIEnv *env, jobject instance, jobjectArray ss) {
+
+    if (!ss) {
+        LOGD("Yves.debug", "ss is null");
+    } else {
+        LOGD("Yves.debug", "ss is not null");
+    }
+
+}
+
+JNIEXPORT void JNICALL
 Java_com_tencent_mm_libwxperf_JNIObj_dump(JNIEnv *env, jobject instance, jstring libPath) {
     LOGD("Yves-sample", ">>>>>>>>>>>>>>>>>>begin dump");
 //    typedef void (*FN_DUMP)();

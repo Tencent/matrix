@@ -51,6 +51,16 @@ JNIEXPORT void JNICALL
 Java_com_tencent_mm_performance_jni_memory_MemoryHook_xhookIgnoreNative(JNIEnv *env, jclass type,
                                                                         jobjectArray ignoreSoList) {
 
+    xhook_ignore(".*libwxperf\\.so$", NULL);
+    xhook_ignore(".*liblog\\.so$", NULL);
+    xhook_ignore(".*libc\\.so$", NULL);
+    xhook_ignore(".*libc++_shared\\.so$", NULL);
+
+
+    if (!ignoreSoList) {
+        return;
+    }
+
     jsize size = env->GetArrayLength(ignoreSoList);
 
     for (int i = 0; i < size; ++i) {
@@ -59,11 +69,6 @@ Java_com_tencent_mm_performance_jni_memory_MemoryHook_xhookIgnoreNative(JNIEnv *
         ignore(regex);
         env->ReleaseStringUTFChars(jregex, regex);
     }
-
-    xhook_ignore(".*libwxperf\\.so$", NULL);
-    xhook_ignore(".*liblog\\.so$", NULL);
-    xhook_ignore(".*libc\\.so$", NULL);
-    xhook_ignore(".*libc++_shared\\.so$", NULL);
 }
 
 JNIEXPORT void JNICALL
@@ -79,6 +84,7 @@ Java_com_tencent_mm_performance_jni_memory_MemoryHook_xhookInitNative(JNIEnv *en
     xhook_ignore(".*libwxperf\\.so$", NULL);
     xhook_ignore(".*liblog\\.so$", NULL);
     xhook_ignore(".*libc\\.so$", NULL);
+    xhook_ignore(".*libc++_shared\\.so$", NULL);
 }
 
 JNIEXPORT void JNICALL
@@ -150,5 +156,3 @@ Java_com_tencent_mm_performance_jni_memory_MemoryHook_setSampleSizeRangeNative(J
 #ifdef __cplusplus
 }
 #endif
-
-

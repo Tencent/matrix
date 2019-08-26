@@ -21,8 +21,6 @@ JNIEXPORT void *h_calloc(size_t __item_count, size_t __item_size);
 JNIEXPORT void *h_realloc(void *__ptr, size_t __byte_count);
 JNIEXPORT void h_free(void *__ptr);
 
-JNIEXPORT void init_if_necessary();
-
 JNIEXPORT void *h_dlopen(const char *filename,
                          int flag,
                          const void *extinfo,
