@@ -25,16 +25,23 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        MemoryHook.hook();
-        MemoryHook.groupByMemorySize(true);
+//        MemoryHook.hook();
+//        MemoryHook.groupByMemorySize(true);
+        MemoryHook.INSTANCE
+                .addHookSo(".*libnative-lib\\.so$")
+                .enableStacktrace(true)
+                .hook();
 
-        final JNIObj jniObj = new JNIObj();
+
+
 
         findViewById(R.id.button).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                final JNIObj jniObj = new JNIObj();
                 jniObj.doSomeThing();
                 jniObj.nullptr(null);
+                jniObj.dump(null);
             }
         });
 
@@ -42,7 +49,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
 //                jniObj.
-                MemoryHook.dump();
+//                MemoryHook.dump();
             }
         });
 

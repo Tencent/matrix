@@ -6,6 +6,7 @@
 #define MEMINFO_MEMORYHOOK_H
 
 #include <cstddef>
+#include <string>
 #include "log.h"
 #include <jni.h>
 
@@ -33,7 +34,7 @@ typedef void *(*ANDROID_DLOPEN)(const char *filename,
 
 extern ANDROID_DLOPEN p_oldfun;
 
-JNIEXPORT void dump();
+JNIEXPORT void dump(std::string path = "/sdcard/memory_hook.log");
 
 JNIEXPORT void enableStacktrace(bool);
 

@@ -53,7 +53,15 @@ Java_com_tencent_mm_libwxperf_JNIObj_nullptr(JNIEnv *env, jobject instance, jobj
 }
 
 JNIEXPORT void JNICALL
-Java_com_tencent_mm_libwxperf_JNIObj_dump(JNIEnv *env, jobject instance, jstring libPath) {
+Java_com_tencent_mm_libwxperf_JNIObj_dump(JNIEnv *env, jobject instance, jstring path_) {
+
+    const char *path = env->GetStringUTFChars(path_, 0);
+
+    LOGD("Yves.debug", "path = %s", path);
+//    dump();
+
+    env->ReleaseStringUTFChars(path_, path);
+
     LOGD("Yves-sample", ">>>>>>>>>>>>>>>>>>begin dump");
 //    typedef void (*FN_DUMP)();
 //    const char * path = env->GetStringUTFChars(libPath, 0);

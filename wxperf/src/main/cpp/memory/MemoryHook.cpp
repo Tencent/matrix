@@ -245,7 +245,7 @@ void *h_dlopen(const char *filename,
     unwindstack::update_maps();
     xhook_refresh(false);
     srand((unsigned int) time(NULL));
-//    LOGD("Yves.dlopen", "dlopen %s", filename);
+    LOGD("Yves.dlopen", "dlopen %s", filename);
     return ret;
 }
 
@@ -260,7 +260,7 @@ static void do_it(std::unordered_map<void *, size_t>::iterator __begin,
     }
 }
 
-void dump() {
+void dump(std::string path) {
     LOGD("Yves.dump",
          ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> memory dump begin <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
 
@@ -268,10 +268,11 @@ void dump() {
 
     acquire_lock();
 
-    // fixme hard coding
-    FILE *log_file = fopen("/sdcard/memory_hook.log", "w+");
+    FILE *log_file = fopen(path.c_str(), "w+");
+    LOGD("Yves.dump", "dump path = %s", path.c_str());
     if (!log_file) {
         LOGE("Yves.dump", "open file failed");
+        release_lock();
         return;
     }
 
@@ -279,6 +280,7 @@ void dump() {
         LOGE("Yves.dump", "caller: nothing dump");
         fflush(log_file);
         fclose(log_file);
+        release_lock();
         return;
     }
     LOGD("Yves.dump", "caller count = %zu", m_size_of_caller->size());
@@ -369,6 +371,7 @@ void dump() {
         LOGE("Yves-dump", "stacktrace: nothing dump");
         fflush(log_file);
         fclose(log_file);
+        release_lock();
         return;
     }
 
