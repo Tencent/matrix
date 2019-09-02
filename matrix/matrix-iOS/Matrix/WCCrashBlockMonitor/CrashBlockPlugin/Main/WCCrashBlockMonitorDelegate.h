@@ -40,7 +40,7 @@
 - (void)onCrashBlockMonitorIntervalCPUTooHigh;
 
 /// get extra info for FrameDropDump file.
-- (NSDictionary *)onCrashBlockMonitorGetUserInfoForFPSWithDumpType:(EDumpType)dumpType;
+- (NSDictionary *)onCrashBlockMonitorGetCustomUserInfoForDumpType:(EDumpType)dumpType;
 
 @end
 

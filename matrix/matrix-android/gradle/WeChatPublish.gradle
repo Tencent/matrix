@@ -395,13 +395,25 @@ class WeChatAndroidLibraryPublishExtension extends WeChatPublishExtension {
 
             def externalNativeBuildTask = project.tasks.findByName(
                     "externalNativeBuild${cVariantName}")
-            def nativeSymbolZipTask = null
+            Zip nativeSymbolZipTask = null
             if (externalNativeBuildTask != null) {
                 nativeSymbolZipTask = project.task("nativeSymbolZip${cVariantName}", type: Zip) {
                     classifier = "${variantOnlyName}Symbols"
                     from externalNativeBuildTask.objFolder
                     include '*/*.so'
                     dependsOn externalNativeBuildTask
+                }
+
+                externalNativeBuildTask.doLast {
+                    // If externalNativeBuild generates no shared library files,
+                    // remove symbols artifact from the publication.
+                    if (nativeSymbolZipTask.inputs.sourceFiles.empty) {
+                        def publication = project.publishing.publications
+                                .getByName("${publicationName}${cFlavorName}")
+                        publication.artifacts.removeIf {
+                            it.file == nativeSymbolZipTask.archivePath
+                        }
+                    }
                 }
             }
 

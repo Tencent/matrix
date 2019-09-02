@@ -21,9 +21,13 @@
 //
 //  4. buildTypes和productFlavors中的externalNativeBuild也可以指定要导出的头文件路径，规则同上。
 //
-//  5. 编译脚本中增加include路径和ld路径，以Android.mk为例：
-//       LOCAL_C_INCLUDES := $(EXT_DEP)/include
-//       LOCAL_LDLIBS := -L$(EXT_DEP)/lib/$(TARGET_ARCH_ABI)/ -l依赖so的名称，如为libxx.so，则这里输入xx
+//  5. 编译脚本中增加include路径和ld路径。
+//       Android.mk:
+//         LOCAL_C_INCLUDES := $(EXT_DEP)/include
+//         LOCAL_LDLIBS := -L$(EXT_DEP)/lib/$(TARGET_ARCH_ABI)/ -l依赖so的名称，如为libxx.so，则这里输入xx
+//       CMakeLists.txt:
+//         TARGET_INCLUDE_DIRECTORIES(your-target PRIVATE ${EXT_DEP}/include)
+//         TARGET_LINK_LIBRARIES(your-target PRIVATE ${EXT_DEP}/lib/${ANDROID_ABI}/依赖的so名称
 //////////////////////////////////////////////////////////////
 
 
@@ -43,8 +47,53 @@ project.ext.AAR_JNI_DIRENTRY_NAME = 'jni'
 project.ext.AAR_HEADERS_DIRENTRY_NAME = 'jni/include'
 
 project.ext.ATTR_ARTIFACT_TYPE = Attribute.of('artifactType', String)
-project.ext.ATTR_USAGE_VALUE_NATIVE_API = project.objects.named(Usage, 'native-api')
-project.ext.ATTR_USAGE_VALUE_JAVA_API = project.objects.named(Usage, Usage.JAVA_API)
+
+//////////////////////////////////////////////////////////////
+
+
+//////////////////////////////////////////////////////////////
+//  DSL Definitions
+//////////////////////////////////////////////////////////////
+
+class ExportedHeadersExtension {
+    Set<HeaderFilter> headerFilters = []
+
+    def from(String path) {
+        headerFilters.add(new HeaderFilter(path))
+    }
+
+    def from(String path, Action<HeaderFilter> configAction) {
+        def headerFilter = new HeaderFilter(path)
+        configAction.execute(headerFilter)
+        headerFilters.add(headerFilter)
+    }
+
+    def from(File file) {
+        from(file.absolutePath)
+    }
+
+    def from(File file, Action<HeaderFilter> configAction) {
+        from(file.absolutePath, configAction)
+    }
+}
+
+class HeaderFilter {
+    String dirPath
+    Set<String> includePatterns = []
+    Set<String> excludePatterns = []
+
+    HeaderFilter(String dirPath) {
+        this.dirPath = dirPath
+    }
+
+    def include(String pattern) {
+        includePatterns.add(pattern)
+    }
+
+    def exclude(String pattern) {
+        excludePatterns.add(pattern)
+    }
+}
 
 //////////////////////////////////////////////////////////////
 
@@ -66,39 +115,66 @@ if (project.pluginManager.hasPlugin(ANDROID_APP_PLUGIN_ID)) {
 
 
 //////////////////////////////////////////////////////////////
-//  Helper Methods & Structs Declarations
+//  Helper Methods
 //////////////////////////////////////////////////////////////
+def getGenerateOpsAnchorTask() {
+    final List<String> startTaskNames = gradle.startParameter.taskNames
+    if (startTaskNames.isEmpty()) {
+        return null
+    }
+    final String firstTaskName = startTaskNames.get(0)
+    return firstTaskName.equals('clean') || firstTaskName.endsWith(':clean')
+            ? project.tasks.findByName(firstTaskName)
+            : project.tasks.findByName('preBuild')
+}
 
 def handleAndroidApplication() {
     injectNativeDependenciesPath()
-    generateAndInjectBuildInfoModule()
-    
-    cleanExtractNativeDepsDir()
+    injectBuildInfoModule()
     generateBuildInfoHeader(true)
     
-    project.afterEvaluate {
-        extractNativeDependencies(project.android.applicationVariants)
+    def generateAction = {
+        generateBuildInfoModule()
         generateBuildInfoHeader(false)
+        extractNativeDependencies(project.android.applicationVariants)
+    }
+
+    def anchorTask = getGenerateOpsAnchorTask()
+    if (anchorTask != null) {
+        anchorTask.doLast generateAction
+    } else {
+        project.afterEvaluate generateAction
     }
 }
 
 def handleAndroidLibrary() {
     mountExtension()
     injectNativeDependenciesPath()
-    generateAndInjectBuildInfoModule()
-    
-    cleanExtractNativeDepsDir()
+    injectBuildInfoModule()
     generateBuildInfoHeader(true)
-    
+
+    def libVariants = project.android.libraryVariants
     project.afterEvaluate {
-        def libVariants = project.android.libraryVariants
+        libVariants.each { variant ->
+            exposeNativeArtifacts(variant)
+        }
+    }
+    
+    def generateAction = {
+        generateBuildInfoModule()
+        generateBuildInfoHeader(false)
         libVariants.each { variant ->
             copyExportedHeaders(variant)
             mountCopyNativePrebuiltsAction(variant)
-            propergateNativeArtifacts(variant)
         }
         extractNativeDependencies(libVariants)
-        generateBuildInfoHeader(false)
+    }
+
+    def anchorTask = getGenerateOpsAnchorTask()
+    if (anchorTask != null) {
+        anchorTask.doLast generateAction
+    } else {
+        project.afterEvaluate generateAction
     }
 }
 
@@ -118,13 +194,29 @@ def mountExtension() {
     }
 }
 
+def getUniformedPath(path) {
+    return (File.separator != '/') ? path.replace(File.separator, '/') : path
+}
+
+def getNativeDependencyRoot() {
+    return new File(project.buildDir, "intermediates/${NATIVE_DEPENDENCY_ROOT_NAME}")
+}
+
+def getExportedNativeArtifactsDir(targetVariant) {
+    return new File(getNativeDependencyRoot(), "${EXPORTED_NATIVE_ARTIFACTS_DIR_NAME}/${targetVariant.dirName}")
+}
+
+def getExtractedNativeDependenciesDir() {
+    return new File(getNativeDependencyRoot(), EXTRACTED_NATIVE_DEPENDENCIES_DIR_NAME)
+}
+
 def copyExportedHeaders(targetVariant) {
     def exportedArtifactsDir = getExportedNativeArtifactsDir(targetVariant)
     def exportedHeadersDir = new File(exportedArtifactsDir, HEADERS_DIR_NAME)
     if (!exportedHeadersDir.exists()) {
         exportedHeadersDir.mkdirs()
     } else {
-        GFileUtils.cleanDirectory(exportedHeadersDir)
+        org.gradle.util.GFileUtils.cleanDirectory(exportedHeadersDir)
     }
     def headerFilters = getExportedHeaderFilters(targetVariant)
     copy {
@@ -142,10 +234,6 @@ def copyExportedHeaders(targetVariant) {
         }
         into exportedHeadersDir
     }
-}
-
-def getUniformedPath(path) {
-    return (File.separator != '/') ? path.replace(File.separator, '/') : path
 }
 
 def getExportedHeaderFilters(targetVariant) {
@@ -174,7 +262,7 @@ def mountCopyNativePrebuiltsAction(targetVariant) {
     def bundleTask = targetVariant.getPackageLibrary() as Zip
     targetVariant.getExternalNativeBuildTasks().each { nativeBuildTask ->
         nativeBuildTask.doLast {
-            GFileUtils.cleanDirectory(exportedPrebuiltsDir)
+            org.gradle.util.GFileUtils.cleanDirectory(exportedPrebuiltsDir)
             copy {
                 duplicatesStrategy DuplicatesStrategy.FAIL
                 includeEmptyDirs = false
@@ -198,30 +286,12 @@ def mountCopyNativePrebuiltsAction(targetVariant) {
     }
 }
 
-def propergateNativeArtifacts(targetVariant) {
-    def apiElements = targetVariant.variantData.variantDependency.apiElements
-    def apiElementsAttrs = apiElements.attributes
-    def nativeAPIElements = project.configurations.maybeCreate(targetVariant.name + 'NativeAPIElement')
-    nativeAPIElements.setCanBeResolved(false)
-    nativeAPIElements.extendsFrom apiElements
-    nativeAPIElements.attributes { myAttrs ->
-        apiElementsAttrs.keySet().each { agpAttr ->
-            if (agpAttr.type == Usage) {
-                // replace this attribute so that our produce configuration can
-                // only be matched by our consumer.
-                myAttrs.attribute(agpAttr, ATTR_USAGE_VALUE_NATIVE_API)
-            } else {
-                myAttrs.attribute(agpAttr, apiElementsAttrs.getAttribute(agpAttr))
-            }
-        }
-    }
-    nativeAPIElements.outgoing.variants { variants ->
-        variants.create(EXPORTED_NATIVE_ARTIFACTS_DIR_NAME) { variant ->
-            def exportedArtifactsDir = getExportedNativeArtifactsDir(targetVariant)
-            variant.artifact(exportedArtifactsDir) { artifact ->
-                artifact.setType(EXPORTED_NATIVE_ARTIFACTS_DIR_NAME)
-            }
-        }
+def exposeNativeArtifacts(targetVariant) {
+    def apiElements = configurations.findByName("${targetVariant.name}ApiElements")
+    def exposedVariant = apiElements.outgoing.variants.create(EXPORTED_NATIVE_ARTIFACTS_DIR_NAME)
+    def exportedArtifactsDir = getExportedNativeArtifactsDir(targetVariant)
+    exposedVariant.artifact(exportedArtifactsDir) { artifact ->
+        artifact.setType(EXPORTED_NATIVE_ARTIFACTS_DIR_NAME)
     }
 }
 
@@ -229,8 +299,9 @@ def injectNativeDependenciesPath() {
     def extractedNativeDepsDir = getExtractedNativeDependenciesDir()
 
     def ndkBuildOpt = project.android.defaultConfig.externalNativeBuild.ndkBuild
-    def cmakeOpt = project.android.defaultConfig.externalNativeBuild.cmake
     ndkBuildOpt.getArguments().add('EXT_DEP=' + extractedNativeDepsDir.absolutePath)
+
+    def cmakeOpt = project.android.defaultConfig.externalNativeBuild.cmake
     cmakeOpt.getArguments().add('-DEXT_DEP=' + extractedNativeDepsDir.absolutePath)
 }
 
@@ -240,7 +311,7 @@ def generateBuildInfoHeader(boolean stubOnly) {
     def hasBuildTime = project.hasProperty('WX_BUILD_TIME')
     def hasBuildJob = project.hasProperty('WX_BUILD_JOB')
     def hasBuildVersion = project.extensions.findByName('wechatPublish') != null
-    
+
     def extractedNativeDepsDir = getExtractedNativeDependenciesDir()
     def exportedHeadersDir = new File(extractedNativeDepsDir, HEADERS_DIR_NAME)
     def buildInfoHeaderDir = new File(exportedHeadersDir, 'build-info')
@@ -280,46 +351,20 @@ def generateBuildInfoHeader(boolean stubOnly) {
     }
 }
 
-def cleanExtractNativeDepsDir() {
-    def extractedNativeDepsDir = getExtractedNativeDependenciesDir()
-    if (extractedNativeDepsDir.exists()) {
-        GFileUtils.cleanDirectory(extractedNativeDepsDir)
-    }
-}
-
 def extractNativeDependencies(targetVariants) {
     def extractedNativeDepsDir = getExtractedNativeDependenciesDir()
 
-    def attrSchema = project.dependencies.attributesSchema
-    def attrMatchingStrategy = attrSchema.attribute(Usage.USAGE_ATTRIBUTE)
-    attrMatchingStrategy.compatibilityRules.add(NativeRuntimeAttrCompatibilityRules, { config -> config.setParams(project) })
-    
-    targetVariants.all { variant ->
-        def compileClasspath = variant.variantData.getVariantDependency().compileClasspath
-        def compileClasspathAttrs = compileClasspath.attributes
-        def nativeCompileClasspath = project.configurations.maybeCreate(variant.name + 'NativeCompileClasspath')
-        nativeCompileClasspath.setCanBeConsumed(false)
-        nativeCompileClasspath.setVisible(false)
-        nativeCompileClasspath.extendsFrom compileClasspath
-        nativeCompileClasspath.attributes { myAttrs ->
-            compileClasspathAttrs.keySet().each { agpAttr ->
-                if (agpAttr.type == Usage) {
-                    myAttrs.attribute(agpAttr, ATTR_USAGE_VALUE_NATIVE_API)
-                } else {
-                    myAttrs.attribute(agpAttr, compileClasspathAttrs.getAttribute(agpAttr))
-                }
-            }
-        }
-        def projectNativeDepDirs = nativeCompileClasspath.incoming.artifactView { config ->
-            config.attributes { attrs ->
-                attrs.attribute(ATTR_ARTIFACT_TYPE, EXPORTED_NATIVE_ARTIFACTS_DIR_NAME)
-            }
+    targetVariants.each { targetVariant ->
+        def compileClasspath = configurations.findByName("${targetVariant.name}CompileClasspath")
+
+        def projectNativeDepDirs = compileClasspath.incoming.artifactView { config ->
+            config.attributes.attribute(ATTR_ARTIFACT_TYPE, EXPORTED_NATIVE_ARTIFACTS_DIR_NAME)
+        }.artifacts.artifactFiles.files
+
+        def aarPaths = compileClasspath.incoming.artifactView { config ->
+            config.attributes.attribute(ATTR_ARTIFACT_TYPE, 'aar')
         }.getArtifacts().artifactFiles.files
-        def aarDepDirs = nativeCompileClasspath.incoming.artifactView { config ->
-            config.attributes { attrs ->
-                attrs.attribute(ATTR_ARTIFACT_TYPE, 'android-exploded-aar')
-            }
-        }.getArtifacts().artifactFiles.files
+
         projectNativeDepDirs.each { projDir ->
             copy {
                 duplicatesStrategy DuplicatesStrategy.FAIL
@@ -328,15 +373,24 @@ def extractNativeDependencies(targetVariants) {
                 into new File(extractedNativeDepsDir, HEADERS_DIR_NAME)
             }
         }
-        aarDepDirs.each { extractedAarDir ->
+
+        aarPaths.each { aarPath ->
             copy {
                 duplicatesStrategy DuplicatesStrategy.FAIL
                 includeEmptyDirs false
-                from new File(extractedAarDir, AAR_HEADERS_DIRENTRY_NAME)
+                from zipTree(aarPath)
                 into new File(extractedNativeDepsDir, HEADERS_DIR_NAME)
+                eachFile { details ->
+                    if (details.path.endsWith('.h')) {
+                        details.path = details.path - AAR_HEADERS_DIRENTRY_NAME - '/'
+                    } else {
+                        details.exclude()
+                    }
+                }
             }
         }
-        variant.getExternalNativeBuildTasks().each { nativeBuildTask ->
+
+        targetVariant.getExternalNativeBuildTasks().each { nativeBuildTask ->
             nativeBuildTask.doFirst {
                 projectNativeDepDirs.each { projDir ->
                     copy {
@@ -348,15 +402,20 @@ def extractNativeDependencies(targetVariants) {
                         into extractedNativeDepsDir
                     }
                 }
-                aarDepDirs.each { extractedAarDir ->
+
+                aarPaths.each { aarPath ->
                     copy {
                         duplicatesStrategy DuplicatesStrategy.FAIL
                         includeEmptyDirs false
-                        from(new File(extractedAarDir, AAR_JNI_DIRENTRY_NAME)) {
-                            include '**/*.so'
-                            include '**/*.a'
-                        }
+                        from zipTree(aarPath)
                         into new File(extractedNativeDepsDir, PREBUILTS_DIR_NAME)
+                        eachFile { details ->
+                            if (details.path.endsWith('.so') || details.path.endsWith('.a')) {
+                                details.path = (details.path - AAR_JNI_DIRENTRY_NAME - '/')
+                            } else {
+                                details.exclude()
+                            }
+                        }
                     }
                 }
             }
@@ -364,60 +423,74 @@ def extractNativeDependencies(targetVariants) {
     }
 }
 
-def generateAndInjectBuildInfoModule() {
+def injectBuildInfoModule() {
     def hasBuildRevision = project.hasProperty('WX_BUILD_REVISION')
     def hasBuildBranch = project.hasProperty('WX_BUILD_BRANCH')
     def hasBuildTime = project.hasProperty('WX_BUILD_TIME')
     def hasBuildJob = project.hasProperty('WX_BUILD_JOB')
-    def hasBuildVersion = project.extensions.findByName('wechatPublish') != null
+
+    if (!hasBuildRevision && !hasBuildBranch && !hasBuildTime && !hasBuildJob) {
+        System.err.println("[!] There's no any build-info values, skip injecting build-info module.")
+        return
+    }
+
+    def nativeModuleDir = new File(project.buildDir, "generated/native-modules/")
+    def buildInfoModuleDir = new File(nativeModuleDir, 'build-info')
+
+    def makeFilePath = new File(buildInfoModuleDir, 'Android.mk')
+    def ndkBuildOpts = project.android.defaultConfig.externalNativeBuildOptions.ndkBuild
+    ndkBuildOpts.arguments "BUILD_SHARED_LIBRARY=${makeFilePath.absolutePath}"
+
+    def cmakeInitFilePath = new File(buildInfoModuleDir, 'Init.cmake')
+    def cmakeBuildOpts = project.android.defaultConfig.externalNativeBuildOptions.cmake
+    cmakeBuildOpts.arguments "-DCMAKE_USER_MAKE_RULES_OVERRIDE=${cmakeInitFilePath.absolutePath}"
+}
+
+def generateBuildInfoModule() {
+    def hasBuildRevision = project.hasProperty('WX_BUILD_REVISION')
+    def hasBuildBranch = project.hasProperty('WX_BUILD_BRANCH')
+    def hasBuildTime = project.hasProperty('WX_BUILD_TIME')
+    def hasBuildJob = project.hasProperty('WX_BUILD_JOB')
 
     if (!hasBuildRevision && !hasBuildBranch && !hasBuildTime && !hasBuildJob) {
         System.err.println("[!] There's no any build-info values, skip generating build-info module.")
         return
     }
-    
+
     def nativeModuleDir = new File(project.buildDir, "generated/native-modules/")
     def buildInfoModuleDir = new File(nativeModuleDir, 'build-info')
     if (!buildInfoModuleDir.exists()) {
         buildInfoModuleDir.mkdirs()
     } else {
-        GFileUtils.cleanDirectory(buildInfoModuleDir)
+        org.gradle.util.GFileUtils.cleanDirectory(buildInfoModuleDir)
     }
-    def makeFilePath = new File(buildInfoModuleDir, 'Android.mk')
-    def cmakeInitFilePath = new File(buildInfoModuleDir, 'Init.cmake')
 
-    def ndkBuildOpts = project.android.defaultConfig.externalNativeBuildOptions.ndkBuild
-    ndkBuildOpts.arguments "BUILD_SHARED_LIBRARY=${makeFilePath.absolutePath}"
-
-    def cmakeBuildOpts = project.android.defaultConfig.externalNativeBuildOptions.cmake
-    cmakeBuildOpts.arguments "-DCMAKE_USER_MAKE_RULES_OVERRIDE=${cmakeInitFilePath.absolutePath}"
-
+    def hasBuildVersion = project.extensions.findByName('wechatPublish') != null
     def assemblyFilePath = new File(buildInfoModuleDir, 'build-info.S')
-    assemblyFilePath.createNewFile()
-    project.afterEvaluate {
-        assemblyFilePath.withPrintWriter { pw ->
-            pw.println('.section .comment')
-            pw.println('.global WX_BUILD_INFO')
-            pw.println('WX_BUILD_INFO:')
-            if (hasBuildVersion)
-                pw.println(".string \"WX_BUILD_VERSION: ${wechatPublish.fullVersion}\"")
-            if (hasBuildRevision)
-                pw.println(".string \"WX_BUILD_REVISION: ${WX_BUILD_REVISION.replace('\"', '')}\"")
-            if (hasBuildBranch)
-                pw.println(".string \"WX_BUILD_BRANCH: ${WX_BUILD_BRANCH.replace('\"', '')}\"")
-            if (hasBuildTime)
-                pw.println(".string \"WX_BUILD_TIME: ${WX_BUILD_TIME.replace('\"', '')}\"")
-            if (hasBuildJob)
-                pw.println(".string \"WX_BUILD_JOB: ${WX_BUILD_JOB.replace('\"', '')}\"")
-        }
+    assemblyFilePath.withPrintWriter { pw ->
+        pw.println('.section .comment')
+        pw.println('.global WX_BUILD_INFO')
+        pw.println('WX_BUILD_INFO:')
+        if (hasBuildVersion)
+            pw.println(".string \"WX_BUILD_VERSION: ${wechatPublish.fullVersion}\"")
+        if (hasBuildRevision)
+            pw.println(".string \"WX_BUILD_REVISION: ${WX_BUILD_REVISION.replace('\"', '')}\"")
+        if (hasBuildBranch)
+            pw.println(".string \"WX_BUILD_BRANCH: ${WX_BUILD_BRANCH.replace('\"', '')}\"")
+        if (hasBuildTime)
+            pw.println(".string \"WX_BUILD_TIME: ${WX_BUILD_TIME.replace('\"', '')}\"")
+        if (hasBuildJob)
+            pw.println(".string \"WX_BUILD_JOB: ${WX_BUILD_JOB.replace('\"', '')}\"")
     }
 
+    def makeFilePath = new File(buildInfoModuleDir, 'Android.mk')
     makeFilePath.withPrintWriter { pw ->
         pw.println("BUILD_INFO_SRC := ")
         pw.println("LOCAL_SRC_FILES += ${assemblyFilePath.absolutePath.replace('\\', '/')}")
         pw.println('include $(BUILD_SYSTEM)/build-shared-library.mk')
     }
 
+    def cmakeInitFilePath = new File(buildInfoModuleDir, 'Init.cmake')
     cmakeInitFilePath.withPrintWriter { pw ->
         pw.println('if(NOT RUN)')
         pw.println('  set(RUN 1)')
@@ -430,79 +503,6 @@ def generateAndInjectBuildInfoModule() {
         pw.println('    endif()')
         pw.println('  endfunction(add_library)')
         pw.println('endif()')
-    }
-}
-
-def getNativeDependencyRoot() {
-    return new File(project.buildDir, "intermediates/${NATIVE_DEPENDENCY_ROOT_NAME}")
-}
-
-def getExportedNativeArtifactsDir(targetVariant) {
-    return new File(getNativeDependencyRoot(), "${EXPORTED_NATIVE_ARTIFACTS_DIR_NAME}/${targetVariant.dirName}")
-}
-
-def getExtractedNativeDependenciesDir() {
-    return new File(getNativeDependencyRoot(), EXTRACTED_NATIVE_DEPENDENCIES_DIR_NAME)
-}
-
-class NativeRuntimeAttrCompatibilityRules implements AttributeCompatibilityRule<Usage> {
-    def project
-
-    @javax.inject.Inject
-    NativeRuntimeAttrCompatibilityRules(project) {
-        this.project = project
-    }
-
-    @Override
-    void execute(CompatibilityCheckDetails<Usage> details) {
-        def consumerValue = details.getConsumerValue()
-        def producerValue = details.getProducerValue()
-        if (producerValue.equals(consumerValue)) {
-            details.compatible()
-        } else if (consumerValue.equals(project.ext.ATTR_USAGE_VALUE_NATIVE_API)
-                && producerValue.equals(project.ext.ATTR_USAGE_VALUE_JAVA_API)) {
-            details.compatible()
-        }
-    }
-}
-
-class ExportedHeadersExtension {
-    Set<HeaderFilter> headerFilters = []
-
-    def from(String path) {
-        headerFilters.add(new HeaderFilter(path))
-    }
-
-    def from(String path, Action<HeaderFilter> configAction) {
-        def headerFilter = new HeaderFilter(path)
-        configAction.execute(headerFilter)
-        headerFilters.add(headerFilter)
-    }
-
-    def from(File file) {
-        from(file.absolutePath)
-    }
-
-    def from(File file, Action<HeaderFilter> configAction) {
-        from(file.absolutePath, configAction)
-    }
-}
-
-class HeaderFilter {
-    String dirPath
-    Set<String> includePatterns = []
-    Set<String> excludePatterns = []
-
-    HeaderFilter(String dirPath) {
-        this.dirPath = dirPath
-    }
-
-    def include(String pattern) {
-        includePatterns.add(pattern)
-    }
-
-    def exclude(String pattern) {
-        excludePatterns.add(pattern)
     }
 }
 

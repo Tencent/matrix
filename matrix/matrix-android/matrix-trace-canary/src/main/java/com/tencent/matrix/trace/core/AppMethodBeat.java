@@ -4,7 +4,6 @@ import android.app.Activity;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
-import android.os.Process;
 import android.os.SystemClock;
 
 import com.tencent.matrix.AppActiveMatrixDelegate;

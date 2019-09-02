@@ -93,9 +93,14 @@
     return m_currentConfiguration.bGetCPUHighLog;
 }
 
-- (BOOL)getShouldGetCPUIntervalHighLog
+- (BOOL)getShouldGetPowerConsumeStack
 {
-    return m_currentConfiguration.bGetIntervalHighLog;
+    return m_currentConfiguration.bGetPowerConsumeStack;
+}
+
+- (float)getPowerConsumeCPULimit
+{
+    return m_currentConfiguration.powerConsumeStackCPULimit;
 }
 
 - (BOOL)getShouldFilterSameStack
@@ -109,6 +114,11 @@
         m_currentConfiguration.triggerToBeFilteredCount = 1;
     }
     return m_currentConfiguration.triggerToBeFilteredCount;
+}
+
+- (BOOL)getShouldPrintMemoryUse
+{
+    return m_currentConfiguration.bPrintMemomryUse;
 }
 
 @end

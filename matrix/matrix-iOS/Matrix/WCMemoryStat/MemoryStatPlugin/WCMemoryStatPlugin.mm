@@ -26,6 +26,12 @@
 #import "logger_internal.h"
 #import "dyld_image_info.h"
 
+#if !TARGET_OS_OSX
+#import <UIKit/UIKit.h>
+#else
+#import <AppKit/AppKit.h>
+#endif
+
 #define g_matrix_memory_stat_plguin_tag "MemoryStat"
 
 @interface WCMemoryStatPlugin () {
@@ -56,7 +62,7 @@
         }
         
         self.pluginReportQueue = dispatch_queue_create("matrix.memorystat", DISPATCH_QUEUE_SERIAL);
-
+        
         [self deplayTryReportOOMInfo];
     }
     return self;
@@ -69,6 +75,9 @@
 - (void)deplayTryReportOOMInfo
 {
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(2 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        if (self.pluginConfig != nil && self.pluginConfig.reportStrategy == EWCMemStatReportStrategy_Manual) {
+            return;
+        }
         NSDictionary *customInfo = nil;
         if (self.delegate != nil && [self.delegate respondsToSelector:@selector(onMemoryStatPluginGetCustomInfo:)]) {
             customInfo = [self.delegate onMemoryStatPluginGetCustomInfo:self];

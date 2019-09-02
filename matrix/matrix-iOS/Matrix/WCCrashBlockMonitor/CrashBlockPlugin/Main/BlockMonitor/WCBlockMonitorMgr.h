@@ -31,7 +31,7 @@
 - (void)onBlockMonitor:(WCBlockMonitorMgr *)bmMgr beginDump:(EDumpType)dumpType blockTime:(uint64_t)blockTime;
 - (void)onBlockMonitor:(WCBlockMonitorMgr *)bmMgr dumpType:(EDumpType)dumpType filter:(EFilterType)filterType;
 - (void)onBlockMonitor:(WCBlockMonitorMgr *)bmMgr getDumpFile:(NSString *)dumpFile withDumpType:(EDumpType)dumpType;
-- (NSDictionary *)onBlockMonitor:(WCBlockMonitorMgr *)bmMgr getUserInfoForFPSDumpWithDumpType:(EDumpType)dumpType;
+- (NSDictionary *)onBlockMonitor:(WCBlockMonitorMgr *)bmMgr getCustomUserInfoForDumpType:(EDumpType)dumpType;
 - (void)onBlockMonitorCurrentCPUTooHigh:(WCBlockMonitorMgr *)bmMgr;
 - (void)onBlockMonitorIntervalCPUTooHigh:(WCBlockMonitorMgr *)bmMgr;
 
