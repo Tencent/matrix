@@ -135,23 +135,36 @@ static NSString* getBasePath()
 @synthesize deleteBehaviorAfterSendAll = _deleteBehaviorAfterSendAll;
 @synthesize monitoring = _monitoring;
 @synthesize deadlockWatchdogInterval = _deadlockWatchdogInterval;
+@synthesize searchQueueNames = _searchQueueNames;
 @synthesize onCrash = _onCrash;
 @synthesize onHandleSignalCallBack = _onHandleSignalCallBack;
 @synthesize onWritePointThread = _onWritePointThread;
 @synthesize bundleName = _bundleName;
 @synthesize basePath = _basePath;
 @synthesize introspectMemory = _introspectMemory;
-@synthesize catchZombies = _catchZombies;
 @synthesize doNotIntrospectClasses = _doNotIntrospectClasses;
 @synthesize demangleLanguages = _demangleLanguages;
 @synthesize addConsoleLogToReport = _addConsoleLogToReport;
 @synthesize printPreviousLog = _printPreviousLog;
 @synthesize maxReportCount = _maxReportCount;
+@synthesize uncaughtExceptionHandler = _uncaughtExceptionHandler;
 
 
 // ============================================================================
 #pragma mark - Lifecycle -
 // ============================================================================
+
++ (void)load
+{
+    [[self class] classDidBecomeLoaded];
+}
+
++ (void)initialize
+{
+    if (self == [KSCrash class]) {
+        [[self class] subscribeToNotifications];
+    }
+}
 
 + (instancetype) sharedInstance
 {
@@ -166,10 +179,15 @@ static NSString* getBasePath()
 
 - (id) init
 {
+    return [self initWithBasePath:getBasePath()];
+}
+
+- (id) initWithBasePath:(NSString *)basePath
+{
     if((self = [super init]))
     {
         self.bundleName = getBundleName();
-        self.basePath = getBasePath();
+        self.basePath = basePath;
         if(self.basePath == nil)
         {
             KSLOG_ERROR(@"Failed to initialize crash handler. Crash reporting disabled.");
@@ -179,6 +197,7 @@ static NSString* getBasePath()
         self.introspectMemory = YES;
         self.catchZombies = NO;
         self.maxReportCount = 5;
+        self.searchQueueNames = NO;
         self.monitoring = KSCrashMonitorTypeProductionSafeMinimal;
     }
     return self;
@@ -228,6 +247,12 @@ static NSString* getBasePath()
     kscrash_setDeadlockWatchdogInterval(deadlockWatchdogInterval);
 }
 
+- (void) setSearchQueueNames:(BOOL) searchQueueNames
+{
+    _searchQueueNames = searchQueueNames;
+    kscrash_setSearchQueueNames(searchQueueNames);
+}
+
 - (void) setOnCrash:(KSReportWriteCallback) onCrash
 {
     _onCrash = onCrash;
@@ -258,10 +283,21 @@ static NSString* getBasePath()
     kscrash_setIntrospectMemory(introspectMemory);
 }
 
+- (BOOL) catchZombies
+{
+    return (self.monitoring & KSCrashMonitorTypeZombie) != 0;
+}
+
 - (void) setCatchZombies:(BOOL)catchZombies
 {
-    _catchZombies = catchZombies;
-    self.monitoring |= KSCrashMonitorTypeZombie;
+    if(catchZombies)
+    {
+        self.monitoring |= KSCrashMonitorTypeZombie;
+    }
+    else
+    {
+        self.monitoring &= (KSCrashMonitorType)~KSCrashMonitorTypeZombie;
+    }
 }
 
 - (void) setDoNotIntrospectClasses:(NSArray *)doNotIntrospectClasses
@@ -297,38 +333,47 @@ static NSString* getBasePath()
     NSMutableDictionary* dict = [NSMutableDictionary new];
 
 #define COPY_STRING(A) if (fakeEvent.System.A) dict[@#A] = [NSString stringWithUTF8String:fakeEvent.System.A]
+#define COPY_STRING_TO_KEY(A, key) if (fakeEvent.System.A) dict[@key] = [NSString stringWithUTF8String:fakeEvent.System.A]
+
 #define COPY_PRIMITIVE(A) dict[@#A] = @(fakeEvent.System.A)
-    COPY_STRING(systemName);
-    COPY_STRING(systemVersion);
-    COPY_STRING(machine);
-    COPY_STRING(model);
-    COPY_STRING(kernelVersion);
-    COPY_STRING(osVersion);
-    COPY_PRIMITIVE(isJailbroken);
-    COPY_STRING(bootTime);
-    COPY_STRING(appStartTime);
-    COPY_STRING(executablePath);
-    COPY_STRING(executableName);
-    COPY_STRING(bundleID);
-    COPY_STRING(bundleName);
-    COPY_STRING(bundleVersion);
-    COPY_STRING(bundleShortVersion);
-    COPY_STRING(appID);
-    COPY_STRING(cpuArchitecture);
-    COPY_PRIMITIVE(cpuType);
-    COPY_PRIMITIVE(cpuSubType);
-    COPY_PRIMITIVE(binaryCPUType);
-    COPY_PRIMITIVE(binaryCPUSubType);
-    COPY_STRING(timezone);
-    COPY_STRING(processName);
-    COPY_PRIMITIVE(processID);
-    COPY_PRIMITIVE(parentProcessID);
-    COPY_STRING(deviceAppHash);
-    COPY_STRING(buildType);
-    COPY_PRIMITIVE(storageSize);
-    COPY_PRIMITIVE(memorySize);
-    COPY_PRIMITIVE(freeMemory);
-    COPY_PRIMITIVE(usableMemory);
+#define COPY_PRIMITIVE_TO_KEY(A, key) dict[@key] = @(fakeEvent.System.A)
+
+    COPY_STRING_TO_KEY(systemName, KSCrashField_SystemName);
+    COPY_STRING_TO_KEY(systemVersion, KSCrashField_SystemVersion);
+    COPY_STRING_TO_KEY(machine, KSCrashField_Machine);
+    COPY_STRING_TO_KEY(model, KSCrashField_Model);
+    COPY_STRING_TO_KEY(kernelVersion, KSCrashField_KernelVersion);
+    COPY_STRING_TO_KEY(osVersion, KSCrashField_OSVersion);
+    COPY_PRIMITIVE_TO_KEY(isJailbroken, KSCrashField_Jailbroken);
+    COPY_STRING_TO_KEY(bootTime, KSCrashField_BootTime);
+    COPY_STRING_TO_KEY(appStartTime, KSCrashField_AppStartTime);
+    COPY_STRING_TO_KEY(executablePath, KSCrashField_ExecutablePath);
+    COPY_STRING_TO_KEY(executableName, KSCrashField_Executable);
+    COPY_STRING_TO_KEY(bundleID, KSCrashField_BundleID);
+    COPY_STRING_TO_KEY(bundleName, KSCrashField_BundleName);
+    
+    if (kscrash_getCustomShortVersion() != NULL &&
+        kscrash_getCustomFullVersion() != NULL) {
+        dict[@KSCrashField_BundleVersion] = [NSString stringWithUTF8String:kscrash_getCustomFullVersion()];
+        dict[@KSCrashField_BundleShortVersion] = [NSString stringWithUTF8String:kscrash_getCustomShortVersion()];
+    } else {
+        COPY_STRING_TO_KEY(bundleVersion, KSCrashField_BundleVersion);
+        COPY_STRING_TO_KEY(bundleShortVersion, KSCrashField_BundleShortVersion);
+    }
+
+    COPY_STRING_TO_KEY(appID, KSCrashField_AppUUID);
+    COPY_STRING_TO_KEY(cpuArchitecture, KSCrashField_CPUArch);
+    COPY_PRIMITIVE_TO_KEY(cpuType, KSCrashField_CPUType);
+    COPY_PRIMITIVE_TO_KEY(cpuSubType, KSCrashField_CPUSubType);
+    COPY_PRIMITIVE_TO_KEY(binaryCPUType, KSCrashField_BinaryCPUType);
+    COPY_PRIMITIVE_TO_KEY(binaryCPUSubType, KSCrashField_BinaryCPUSubType);
+    COPY_STRING_TO_KEY(timezone, KSCrashField_TimeZone);
+    COPY_STRING_TO_KEY(processName, KSCrashField_ProcessName);
+    COPY_PRIMITIVE_TO_KEY(processID, KSCrashField_ProcessID);
+    COPY_PRIMITIVE_TO_KEY(parentProcessID, KSCrashField_ParentProcessID);
+    COPY_STRING_TO_KEY(deviceAppHash, KSCrashField_DeviceAppHash);
+    COPY_STRING_TO_KEY(buildType, KSCrashField_BuildType);
+    COPY_PRIMITIVE_TO_KEY(storageSize, KSCrashField_Storage);
 
     return dict;
 }
@@ -347,49 +392,6 @@ static NSString* getBasePath()
         return false;
     }
 
-#if KSCRASH_HAS_UIAPPLICATION
-    NSNotificationCenter* nCenter = [NSNotificationCenter defaultCenter];
-    [nCenter addObserver:self
-                selector:@selector(applicationDidBecomeActive)
-                    name:UIApplicationDidBecomeActiveNotification
-                  object:nil];
-    [nCenter addObserver:self
-                selector:@selector(applicationWillResignActive)
-                    name:UIApplicationWillResignActiveNotification
-                  object:nil];
-    [nCenter addObserver:self
-                selector:@selector(applicationDidEnterBackground)
-                    name:UIApplicationDidEnterBackgroundNotification
-                  object:nil];
-    [nCenter addObserver:self
-                selector:@selector(applicationWillEnterForeground)
-                    name:UIApplicationWillEnterForegroundNotification
-                  object:nil];
-    [nCenter addObserver:self
-                selector:@selector(applicationWillTerminate)
-                    name:UIApplicationWillTerminateNotification
-                  object:nil];
-#endif
-#if KSCRASH_HAS_NSEXTENSION
-    NSNotificationCenter* nCenter = [NSNotificationCenter defaultCenter];
-    [nCenter addObserver:self
-                selector:@selector(applicationDidBecomeActive)
-                    name:NSExtensionHostDidBecomeActiveNotification
-                  object:nil];
-    [nCenter addObserver:self
-                selector:@selector(applicationWillResignActive)
-                    name:NSExtensionHostWillResignActiveNotification
-                  object:nil];
-    [nCenter addObserver:self
-                selector:@selector(applicationDidEnterBackground)
-                    name:NSExtensionHostDidEnterBackgroundNotification
-                  object:nil];
-    [nCenter addObserver:self
-                selector:@selector(applicationWillEnterForeground)
-                    name:NSExtensionHostWillEnterForegroundNotification
-                  object:nil];
-#endif
-    
     return true;
 }
 
@@ -786,27 +788,78 @@ SYNTHESIZE_CRASH_STATE_PROPERTY(BOOL, crashedLastLaunch)
 #pragma mark - Notifications -
 // ============================================================================
 
-- (void) applicationDidBecomeActive
++ (void) subscribeToNotifications
+{
+#if KSCRASH_HAS_UIAPPLICATION
+    NSNotificationCenter* nCenter = [NSNotificationCenter defaultCenter];
+    [nCenter addObserver:self
+                selector:@selector(applicationDidBecomeActive)
+                    name:UIApplicationDidBecomeActiveNotification
+                  object:nil];
+    [nCenter addObserver:self
+                selector:@selector(applicationWillResignActive)
+                    name:UIApplicationWillResignActiveNotification
+                  object:nil];
+    [nCenter addObserver:self
+                selector:@selector(applicationDidEnterBackground)
+                    name:UIApplicationDidEnterBackgroundNotification
+                  object:nil];
+    [nCenter addObserver:self
+                selector:@selector(applicationWillEnterForeground)
+                    name:UIApplicationWillEnterForegroundNotification
+                  object:nil];
+    [nCenter addObserver:self
+                selector:@selector(applicationWillTerminate)
+                    name:UIApplicationWillTerminateNotification
+                  object:nil];
+#endif
+#if KSCRASH_HAS_NSEXTENSION
+    NSNotificationCenter* nCenter = [NSNotificationCenter defaultCenter];
+    [nCenter addObserver:self
+                selector:@selector(applicationDidBecomeActive)
+                    name:NSExtensionHostDidBecomeActiveNotification
+                  object:nil];
+    [nCenter addObserver:self
+                selector:@selector(applicationWillResignActive)
+                    name:NSExtensionHostWillResignActiveNotification
+                  object:nil];
+    [nCenter addObserver:self
+                selector:@selector(applicationDidEnterBackground)
+                    name:NSExtensionHostDidEnterBackgroundNotification
+                  object:nil];
+    [nCenter addObserver:self
+                selector:@selector(applicationWillEnterForeground)
+                    name:NSExtensionHostWillEnterForegroundNotification
+                  object:nil];
+#endif
+}
+
++ (void) classDidBecomeLoaded
+{
+    kscrash_notifyObjCLoad();
+}
+
++ (void) applicationDidBecomeActive
 {
     kscrash_notifyAppActive(true);
 }
 
-- (void) applicationWillResignActive
++ (void) applicationWillResignActive
 {
     kscrash_notifyAppActive(false);
 }
 
-- (void) applicationDidEnterBackground
++ (void) applicationDidEnterBackground
 {
     kscrash_notifyAppInForeground(false);
 }
 
-- (void) applicationWillEnterForeground
++ (void) applicationWillEnterForeground
 {
     kscrash_notifyAppInForeground(true);
 }
 
-- (void) applicationWillTerminate
++ (void) applicationWillTerminate
 {
     kscrash_notifyAppTerminate();
 }
@@ -814,8 +867,7 @@ SYNTHESIZE_CRASH_STATE_PROPERTY(BOOL, crashedLastLaunch)
 @end
 
 
-//! Project version number for KSCrashFramework.
-const double KSCrashFrameworkVersionNumber = 1.158;
+const double KSCrashFrameworkVersionNumber = 1.1519;
 
 //! Project version string for KSCrashFramework.
-const unsigned char KSCrashFrameworkVersionString[] = "1.15.8";
+const unsigned char KSCrashFrameworkVersionString[] = "1.15.19";

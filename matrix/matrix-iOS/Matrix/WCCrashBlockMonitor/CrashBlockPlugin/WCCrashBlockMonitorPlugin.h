@@ -31,9 +31,22 @@ typedef NS_ENUM(NSUInteger, EMCrashBlockReportType) {
 #define g_crash_block_monitor_custom_dump_type "dumptype"
 #define g_crash_block_monitor_custom_report_id "reportID"
 
+@class WCCrashBlockMonitorPlugin;
+
+@protocol WCCrashBlockMonitorPluginReportDelegate <NSObject>
+
+- (BOOL)isReportCrashLimit:(WCCrashBlockMonitorPlugin *)plugin;
+- (BOOL)isReportLagLimit:(WCCrashBlockMonitorPlugin *)plugin;
+- (BOOL)isCanAutoReportLag:(WCCrashBlockMonitorPlugin *)plugin;
+- (BOOL)isNetworkAllowAutoReportLag:(WCCrashBlockMonitorPlugin *)plugin;
+
+@end
+
 @interface WCCrashBlockMonitorPlugin : MatrixPlugin
 
 @property (nonatomic, strong) WCCrashBlockMonitorConfig *pluginConfig;
+
+@property (nonatomic, weak) id<WCCrashBlockMonitorPluginReportDelegate> reportDelegate;
 
 // ============================================================================
 #pragma mark - Utility

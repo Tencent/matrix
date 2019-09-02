@@ -29,11 +29,27 @@
 
 #define g_matrix_crash_block_plguin_tag "MatrixCrashBlock"
 
+#define kTodayOneTypeFilesLimit 3
+#define kReportCountLimitInOneIssue 3
+#define kReportMuchCountLimit 20
+
+typedef NS_ENUM(NSUInteger, EDumpUploadType) {
+    EDumpUploadType_None = 0,
+    EDumpUploadType_All = 1,
+    EDumpUploadType_SpecificType = 2,
+    EDumpUploadType_Today = 3,
+};
+
 @interface WCCrashBlockMonitorPlugin ()
 
 @property (nonatomic, strong) WCCrashBlockMonitor *cbMonitor;
-@property (nonatomic, strong) NSMutableArray *uploadingFileIDArray;
+@property (nonatomic, strong) NSMutableArray *uploadingLagFileIDArray;
+@property (nonatomic, strong) NSMutableArray *uploadingCrashFileIDArray;
 @property (nonatomic, strong) dispatch_queue_t pluginReportQueue;
+
+@property (nonatomic, assign) EDumpUploadType dumpUploadType;
+@property (nonatomic, assign) EDumpType currentUploadType;
+@property (nonatomic, copy) NSString *currentUploadDate;
 
 @end
 
@@ -49,8 +65,12 @@
 {
     self = [super init];
     if (self) {
-        self.uploadingFileIDArray = [[NSMutableArray alloc] init];
+        self.uploadingLagFileIDArray = [[NSMutableArray alloc] init];
+        self.uploadingCrashFileIDArray = [[NSMutableArray alloc] init];
         self.pluginReportQueue = dispatch_queue_create("matrix.crashblock", DISPATCH_QUEUE_SERIAL);
+        self.dumpUploadType = EDumpUploadType_None;
+        self.currentUploadType = EDumpType_Unlag;
+        self.currentUploadDate = @"";
     }
     return self;
 }
@@ -133,7 +153,12 @@
                     MatrixInfo(@"delete crash: reportID: %@", issue.issueID);
                     [WCCrashBlockFileHandler deleteCrashDataWithReportID:issue.issueID];
                 }
-                [self removeReportIDFromUploadingArray:issue.issueID];
+                [self removeCrashFromUploadingArray:issue.issueID];
+                if (bSuccess) {
+                    if ([self.uploadingCrashFileIDArray count] < 1) {
+                        [self delayReportCrash];
+                    }
+                }
             } else {
                 NSDictionary *customInfo = [issue customInfo];
                 if (customInfo == nil) {
@@ -142,15 +167,30 @@
                 NSNumber *dumpType = customInfo[@g_crash_block_monitor_custom_dump_type];
                 NSArray *reportIDS = customInfo[@g_crash_block_monitor_custom_report_id];
 
-                if (bSuccess) {
-                    MatrixInfo(@"delete lag: dumpType: %d, reportIDS: %@", [dumpType intValue], reportIDS)
-                }
                 if (dumpType != nil && reportIDS != nil && [reportIDS count] > 0) {
                     for (NSString *reportID in reportIDS) {
                         if (bSuccess) {
                             [WCCrashBlockFileHandler deleteLagDataWithReportID:reportID andReportType:EDumpType([dumpType intValue])];
                         }
-                        [self removeReportIDFromUploadingArray:reportID];
+                        [self removeLagFromUploadingArray:reportID];
+                    }
+                }
+                if (bSuccess) {
+                    MatrixInfo(@"delete lag: dumpType: %d, reportIDS: %@", [dumpType intValue], reportIDS)
+                    if ([self.uploadingLagFileIDArray count] < 1) {
+                        if (self.dumpUploadType == EDumpUploadType_All) {
+                            self.dumpUploadType = EDumpUploadType_None;
+                            [self reportAllLagFileOnDate:self.currentUploadDate];
+                        }
+                        if (self.dumpUploadType == EDumpUploadType_SpecificType) {
+                            self.dumpUploadType = EDumpUploadType_None;
+                            [self reportOneTypeLag:self.currentUploadType onDate:self.currentUploadDate];
+                        }
+                        if (self.dumpUploadType == EDumpUploadType_Today) {
+                            self.dumpUploadType = EDumpUploadType_None;
+                            // just autoUpload will use today
+                        }
+
                     }
                 }
             }
@@ -235,9 +275,9 @@
 #pragma mark - ReportID Uploading
 // ============================================================================
 
-- (BOOL)isFileReportIDUploading:(NSString *)reportID
+- (BOOL)isLagUploading:(NSString *)reportID
 {
-    for (NSString *exReportID in self.uploadingFileIDArray) {
+    for (NSString *exReportID in self.uploadingLagFileIDArray) {
         if ([reportID isEqualToString:exReportID]) {
             return YES;
         }
@@ -245,25 +285,56 @@
     return NO;
 }
 
-- (void)addReportIDToUploadingArray:(NSString *)reportID
+- (void)addLagToUploadingArray:(NSString *)reportID
 {
     if (reportID == nil || [reportID length] == 0) {
         return;
     }
-    if ([self isFileReportIDUploading:reportID] == NO) {
+    if ([self isLagUploading:reportID] == NO) {
         MatrixInfo(@"add file report id uploading: %@", reportID);
-        [self.uploadingFileIDArray addObject:reportID];
+        [self.uploadingLagFileIDArray addObject:reportID];
     }
 }
 
-- (void)removeReportIDFromUploadingArray:(NSString *)reportID
+- (void)removeLagFromUploadingArray:(NSString *)reportID
 {
     if (reportID == nil || [reportID length] == 0) {
         return;
     }
     MatrixInfo(@"remove file report id from uploading array: %@", reportID);
-    [self.uploadingFileIDArray removeObject:reportID];
+    [self.uploadingLagFileIDArray removeObject:reportID];
 }
+
+- (BOOL)isCrashUploading:(NSString *)reportID
+{
+    for (NSString *exReportID in self.uploadingCrashFileIDArray) {
+        if ([reportID isEqualToString:exReportID]) {
+            return YES;
+        }
+    }
+    return NO;
+}
+
+- (void)addCrashToUploadingArray:(NSString *)reportID
+{
+    if (reportID == nil || [reportID length] == 0) {
+        return;
+    }
+    if ([self isCrashUploading:reportID] == NO) {
+        MatrixInfo(@"add file report id uploading: %@", reportID);
+        [self.uploadingCrashFileIDArray addObject:reportID];
+    }
+}
+
+- (void)removeCrashFromUploadingArray:(NSString *)reportID
+{
+    if (reportID == nil || [reportID length] == 0) {
+        return;
+    }
+    MatrixInfo(@"remove file report id from uploading array: %@", reportID);
+    [self.uploadingCrashFileIDArray removeObject:reportID];
+}
+
 
 // ============================================================================
 #pragma mark - Report Issue
@@ -273,8 +344,8 @@
 {
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(3 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
         switch (self.pluginConfig.reportStrategy) {
-            case EWCCrashBlockReportStrategy_Default:
-                [self reportTodayOneTypeLag];
+            case EWCCrashBlockReportStrategy_Auto:
+                [self autoReportLag];
                 break;
             case EWCCrashBlockReportStrategy_All:
                 [self reportAllLagFile];
@@ -292,12 +363,14 @@
 {
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(2 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
         switch (self.pluginConfig.reportStrategy) {
-            case EWCCrashBlockReportStrategy_Manual:
-                // do nothing
+            case EWCCrashBlockReportStrategy_Auto:
+                [self autoReportCrash];
                 break;
-            case EWCCrashBlockReportStrategy_Default:
             case EWCCrashBlockReportStrategy_All:
                 [self reportCrash];
+                break;
+            case EWCCrashBlockReportStrategy_Manual:
+                // do nothing
                 break;
             default:
                 break;
@@ -317,6 +390,21 @@
 #pragma mark - Crash
 // ============================================================================
 
+- (void)autoReportCrash
+{
+    dispatch_async(self.pluginReportQueue, ^{
+        if ([WCCrashBlockFileHandler hasCrashReport]) {
+            if (self.reportDelegate) {
+                if ([self.reportDelegate isReportCrashLimit:self]) {
+                    MatrixInfo(@"report crash limit");
+                    return;
+                }
+            }
+            [self reportCrash];
+        }
+    });
+}
+
 - (void)reportCrash
 {
     dispatch_async(self.pluginReportQueue, ^{
@@ -327,11 +415,11 @@
                 return;
             }
             NSString *newestReportID = crashDataDic[@"reportID"];
-            if ([self isFileReportIDUploading:newestReportID]) {
+            if ([self isCrashUploading:newestReportID]) {
                 MatrixInfo(@"report id uploading: %@", newestReportID);
                 return;
             }
-            [self addReportIDToUploadingArray:newestReportID];
+            [self addCrashToUploadingArray:newestReportID];
             NSData *crashData = crashDataDic[@"crashData"];
             MatrixIssue *issue = [[MatrixIssue alloc] init];
             issue.issueTag = [WCCrashBlockMonitorPlugin getTag];
@@ -356,44 +444,87 @@
 #pragma mark - Lag & Lag File
 // ============================================================================
 
-- (void)reportAllLagFile
++ (BOOL)haveLagFiles
 {
-    [self reportAllLagFileWithLimitReportCountInOneIssue:3];
+    return [WCCrashBlockFileHandler haveLagFiles];
 }
 
-- (void)reportAllLagFileWithLimitReportCountInOneIssue:(NSUInteger)reportCntLimit
++ (BOOL)haveLagFilesOnDate:(NSString *)nsDate
 {
-    [self reportAllLagFileOnDate:@""
-  withLimitReportCountInOneIssue:reportCntLimit];
+    return [WCCrashBlockFileHandler haveLagFilesOnDate:nsDate];
 }
 
-- (void)reportAllLagFileOnDate:(NSString *)nsDate
++ (BOOL)haveLagFilesOnType:(EDumpType)dumpType
 {
-    [self reportAllLagFileOnDate:nsDate withLimitReportCountInOneIssue:3];
+    return [WCCrashBlockFileHandler haveLagFilesOnType:dumpType];
 }
 
-- (void)reportAllLagFileOnDate:(NSString *)nsDate
-withLimitReportCountInOneIssue:(NSUInteger)reportCntLimit
++ (BOOL)haveLagFilesOnDate:(NSString *)nsDate onType:(EDumpType)dumpType
+{
+    return [WCCrashBlockFileHandler haveLagFilesOnDate:nsDate onType:dumpType];
+}
+
+- (void)autoReportLag
 {
     dispatch_async(self.pluginReportQueue, ^{
+        if (self.reportDelegate) {
+            if ([self.reportDelegate isReportLagLimit:self]) {
+                MatrixInfo(@"report lag limit");
+                return;
+            }
+            if ([self.reportDelegate isCanAutoReportLag:self] == NO) {
+                MatrixInfo(@"can not auto report lag");
+                return;
+            }
+            if ([self.reportDelegate isNetworkAllowAutoReportLag:self] == NO) {
+                MatrixInfo(@"report lag, network not allow");
+                return;
+            }
+        }
+        [self reportTodayOneTypeLag];
+    });
+}
+
+- (void)reportAllLagFile
+{
+    [self reportAllLagFileOnDate:@""];
+}
+
+- (void)reportAllLagFileOnDate:(NSString *)nsDate
+{
+    dispatch_async(self.pluginReportQueue, ^{
+        if (self.dumpUploadType != EDumpUploadType_None) {
+            MatrixInfo(@"uploading lag, return");
+            return;
+        }
         NSArray *reportDataArray = [WCDumpReportDataProvider getAllTypeReportDataWithDate:nsDate];
         if (reportDataArray == nil || [reportDataArray count] <= 0) {
             MatrixInfo(@"no lag can upload");
             return;
         }
-        MatrixInfo(@"report lag on date: %@, limit: %lu report data:\n %@", nsDate, (unsigned long) reportCntLimit, reportDataArray);
+        MatrixInfo(@"report lag on date: %@,  report data:\n %@", nsDate, reportDataArray);
 
         NSMutableArray *matrixIssueArray = [[NSMutableArray alloc] init];
         for (WCDumpReportTaskData *taskData in reportDataArray) {
             if (taskData == nil || [taskData.m_uploadFilesArray count] == 0) {
                 continue;
             }
+            if ([taskData.m_uploadFilesArray count] >= kReportMuchCountLimit) { // prevent from out-of-memory
+                NSMutableArray *trimFilesArray = [[NSMutableArray alloc] init];
+                for (NSUInteger i = 0; i < kReportMuchCountLimit; i++) {
+                    [trimFilesArray addObject:taskData.m_uploadFilesArray[i]];
+                }
+                taskData.m_uploadFilesArray = trimFilesArray;
+            }
             NSArray *matrixIssue = [self getMatrixIssueFromReportTaskData:taskData
-                                                       withReportCntLimit:reportCntLimit
                                                            withReportType:EMCrashBlockReportType_Lag
                                                               quickUpload:NO];
             [matrixIssueArray addObjectsFromArray:matrixIssue];
         }
+        
+        self.dumpUploadType = EDumpUploadType_All;
+        self.currentUploadDate = nsDate;
+        
         NSArray *retIssueArray = [matrixIssueArray copy];
         for (MatrixIssue *issue in retIssueArray) {
             MatrixInfo(@"report dump : %@", issue);
@@ -407,31 +538,42 @@ withLimitReportCountInOneIssue:(NSUInteger)reportCntLimit
 - (void)reportOneTypeLag:(EDumpType)dumpType
                   onDate:(NSString *)nsDate
 {
-    [self reportOneTypeLag:dumpType onDate:nsDate withLimitReportCountInOneIssue:3];
-}
-
-- (void)reportOneTypeLag:(EDumpType)dumpType
-                  onDate:(NSString *)nsDate
-withLimitReportCountInOneIssue:(NSUInteger)reportCntLimit
-{
     dispatch_async(self.pluginReportQueue, ^{
-        MatrixInfo(@"report lag one type %lu on date %@ limit: %lu", (unsigned long) dumpType, nsDate, (unsigned long) reportCntLimit);
-        NSArray *reportDataArray = [WCDumpReportDataProvider getReportDataWithType:EDumpType_LaunchBlock onDate:nsDate];
+        if (self.dumpUploadType != EDumpUploadType_None) {
+            MatrixInfo(@"uploading lag, return");
+            return;
+        }
+        
+        NSArray *reportDataArray = [WCDumpReportDataProvider getReportDataWithType:dumpType onDate:nsDate];
         if (reportDataArray == nil || [reportDataArray count] <= 0) {
             MatrixInfo(@"no lag can upload");
             return;
         }
+        
+        MatrixInfo(@"report lag one type %lu on date %@ ", (unsigned long) dumpType, nsDate);
+
         NSMutableArray *matrixIssueArray = [[NSMutableArray alloc] init];
         for (WCDumpReportTaskData *taskData in reportDataArray) {
             if (taskData == nil || [taskData.m_uploadFilesArray count] == 0) {
                 continue;
             }
+            if ([taskData.m_uploadFilesArray count] >= kReportMuchCountLimit) { // prevent from out-of-memory
+                NSMutableArray *trimFilesArray = [[NSMutableArray alloc] init];
+                for (NSUInteger i = 0; i < kReportMuchCountLimit; i++) {
+                    [trimFilesArray addObject:taskData.m_uploadFilesArray[i]];
+                }
+                taskData.m_uploadFilesArray = trimFilesArray;
+            }
             NSArray *matrixIssue = [self getMatrixIssueFromReportTaskData:taskData
-                                                       withReportCntLimit:reportCntLimit
                                                            withReportType:EMCrashBlockReportType_Lag
                                                               quickUpload:NO];
             [matrixIssueArray addObjectsFromArray:matrixIssue];
         }
+        
+        self.dumpUploadType = EDumpUploadType_SpecificType;
+        self.currentUploadType = dumpType;
+        self.currentUploadDate = nsDate;
+
         NSArray *retIssueArray = [matrixIssueArray copy];
         for (MatrixIssue *issue in retIssueArray) {
             MatrixInfo(@"report dump : %@", issue);
@@ -450,13 +592,18 @@ withLimitReportCountInOneIssue:(NSUInteger)reportCntLimit
 - (void)reportTodayOneTypeLagWithlimitUploadConfig:(NSString *)limitConfigStr
 {
     [self reportTodayOneTypeLagWithlimitUploadConfig:limitConfigStr
-                      withLimitReportCountInOneIssue:3];
+                                withLimitReportCount:kTodayOneTypeFilesLimit];
 }
 
 - (void)reportTodayOneTypeLagWithlimitUploadConfig:(NSString *)limitConfigStr
-                    withLimitReportCountInOneIssue:(NSUInteger)reportCntLimit
+                              withLimitReportCount:(NSUInteger)reportCntLimit
 {
     dispatch_async(self.pluginReportQueue, ^{
+        if (self.dumpUploadType != EDumpUploadType_None) {
+            MatrixInfo(@"uploading lag, return");
+            return;
+        }
+        
         WCDumpReportTaskData *reportData = [WCDumpReportDataProvider getTodayOneReportDataWithLimitType:limitConfigStr];
         if (reportData == nil || [reportData.m_uploadFilesArray count] == 0) {
             MatrixInfo(@"no lag can upload");
@@ -474,10 +621,11 @@ withLimitReportCountInOneIssue:(NSUInteger)reportCntLimit
                    limitConfigStr, (unsigned long) reportCntLimit, (unsigned long) [limitFilesArray count], (unsigned long) [reportData.m_uploadFilesArray count]);
         reportData.m_uploadFilesArray = limitFilesArray;
         NSArray *matrixIssueArray = [self getMatrixIssueFromReportTaskData:reportData
-                                                        withReportCntLimit:reportCntLimit
                                                             withReportType:EMCrashBlockReportType_Lag
                                                                quickUpload:NO];
         
+        self.dumpUploadType = EDumpUploadType_Today;
+
         for (MatrixIssue *issue in matrixIssueArray) {
             MatrixInfo(@"report dump : %@", issue);
             dispatch_async(dispatch_get_main_queue(), ^{
@@ -492,7 +640,6 @@ withLimitReportCountInOneIssue:(NSUInteger)reportCntLimit
 // ============================================================================
 
 - (NSArray *)getMatrixIssueFromReportTaskData:(WCDumpReportTaskData *)taskData
-                           withReportCntLimit:(NSUInteger)reportCount
                                withReportType:(int)reportType
                                   quickUpload:(BOOL)bQuick
 {
@@ -504,11 +651,11 @@ withLimitReportCountInOneIssue:(NSUInteger)reportCntLimit
             for (NSUInteger index = 0; index < dumpItems.count; index++) {
                 NSString *fileReportID = dumpItems[index];
                 if (fileReportID != nil && [fileReportID length] > 0) {
-                    if ([self isFileReportIDUploading:fileReportID]) {
+                    if ([self isLagUploading:fileReportID]) {
                         MatrixInfo(@"report id uploading: %@", fileReportID);
                         continue;
                     }
-                    [self addReportIDToUploadingArray:fileReportID];
+                    [self addLagToUploadingArray:fileReportID];
                     MatrixIssue *currentIssue = [[MatrixIssue alloc] init];
                     currentIssue.reportType = reportType;
                     currentIssue.issueTag = [WCCrashBlockMonitorPlugin getTag];
@@ -526,7 +673,7 @@ withLimitReportCountInOneIssue:(NSUInteger)reportCntLimit
         } else {
             NSMutableArray *currentUploadingItems = [[NSMutableArray alloc] init];
             for (NSUInteger index = 0; index < dumpItems.count; index++) {
-                if (currentUploadingItems.count >= reportCount) {
+                if (currentUploadingItems.count >= kReportCountLimitInOneIssue) {
                     MatrixIssue *currentIssue = [[MatrixIssue alloc] init];
                     currentIssue.reportType = reportType;
                     currentIssue.issueID = [currentUploadingItems firstObject];
@@ -544,11 +691,11 @@ withLimitReportCountInOneIssue:(NSUInteger)reportCntLimit
                 }
                 NSString *fileReportID = dumpItems[index];
                 if (fileReportID != nil && [fileReportID length] > 0) {
-                    if ([self isFileReportIDUploading:fileReportID]) {
+                    if ([self isLagUploading:fileReportID]) {
                         MatrixInfo(@"report id uploading: %@", fileReportID);
                         continue;
                     }
-                    [self addReportIDToUploadingArray:fileReportID];
+                    [self addLagToUploadingArray:fileReportID];
                     [currentUploadingItems addObject:dumpItems[index]];
                 }
             }
