@@ -88,6 +88,7 @@ static inline void init_if_necessary() {
 
 static inline void on_acquire_memory(void *__caller, void *__ptr, size_t __byte_count) {
 //    LOGD("Yves", "on acquire memory, ptr = (%p)", __ptr);
+    acquire_lock();
     init_if_necessary();
 
     (*m_size_of_caller)[__caller] += __byte_count;
@@ -106,6 +107,7 @@ static inline void on_acquire_memory(void *__caller, void *__ptr, size_t __byte_
         int r = rand();
 
         if (r > m_sampling * RAND_MAX) {
+            release_lock();
             return;
         }
 
@@ -121,15 +123,18 @@ static inline void on_acquire_memory(void *__caller, void *__ptr, size_t __byte_
             (*m_size_of_hash)[stack_hash] += __byte_count;
         }
     }
+    release_lock();
 }
 
 inline void on_release_memory(void *__caller, void *__ptr) {
+    acquire_lock();
     init_if_necessary();
     // with caller
 
     if (!m_size_of_pointer->count(__ptr)) {
 //        LOGD("Yves.ERROR", "can NOT find size of given pointer(%p), caller(%p)",
 //                __ptr, m_caller_of_pointer->count(__ptr) ? (void *)m_size_of_caller->at(__ptr) : 0);
+        release_lock();
         return;
     }
 
@@ -167,40 +172,41 @@ inline void on_release_memory(void *__caller, void *__ptr) {
             }
         }
     }
+    release_lock();
 }
 
 void *h_malloc(size_t __byte_count) {
-    acquire_lock();
 
     void *ptr = malloc(__byte_count);
 
+//    acquire_lock();
     GET_CALLER_ADDR(caller)
 
     on_acquire_memory(caller, ptr, __byte_count);
 
-    release_lock();
+//    release_lock();
     return ptr;
 }
 
 void *h_calloc(size_t __item_count, size_t __item_size) {
-    acquire_lock();
     void *p = calloc(__item_count, __item_size);
 
+//    acquire_lock();
     GET_CALLER_ADDR(caller)
 
     size_t byte_count = __item_size * __item_count;
 
     on_acquire_memory(caller, p, byte_count);
 
-    release_lock();
+//    release_lock();
     return p;
 }
 
 void *h_realloc(void *__ptr, size_t __byte_count) {
-    acquire_lock();
 
     void *p = realloc(__ptr, __byte_count);
 
+//    acquire_lock();
     GET_CALLER_ADDR(caller)
 
     // If ptr is NULL, then the call is equivalent to malloc(size), for all values of size;
@@ -218,19 +224,19 @@ void *h_realloc(void *__ptr, size_t __byte_count) {
         }
     }
 
-    release_lock();
+//    release_lock();
     return p;
 }
 
 void h_free(void *__ptr) {
-    acquire_lock();
+//    acquire_lock();
 
     GET_CALLER_ADDR(caller);
 
     on_release_memory(caller, __ptr);
 
     free(__ptr);
-    release_lock();
+//    release_lock();
 }
 
 ANDROID_DLOPEN p_oldfun;
