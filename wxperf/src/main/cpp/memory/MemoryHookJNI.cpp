@@ -97,6 +97,7 @@ Java_com_tencent_mm_performance_jni_memory_MemoryHook_xhookClearNative(JNIEnv *e
 JNIEXPORT jint JNICALL
 Java_com_tencent_mm_performance_jni_memory_MemoryHook_xhookRefreshNative(JNIEnv *env, jobject instance,
                                                                          jboolean async) {
+    unwindstack::update_maps();
     return xhook_refresh(async);
 }
 
