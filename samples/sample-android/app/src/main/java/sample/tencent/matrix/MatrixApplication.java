@@ -18,25 +18,18 @@ package sample.tencent.matrix;
 
 import android.app.Application;
 import android.content.Context;
-import android.os.Build;
-import android.os.Debug;
-import android.os.SystemClock;
 
 import com.tencent.matrix.Matrix;
 import com.tencent.matrix.iocanary.IOCanaryPlugin;
 import com.tencent.matrix.iocanary.config.IOConfig;
 import com.tencent.matrix.resource.ResourcePlugin;
 import com.tencent.matrix.resource.config.ResourceConfig;
-import com.tencent.matrix.threadcanary.ThreadConfig;
-import com.tencent.matrix.threadcanary.ThreadWatcher;
 import com.tencent.matrix.trace.TracePlugin;
 import com.tencent.matrix.trace.config.TraceConfig;
 import com.tencent.matrix.util.MatrixLog;
 import com.tencent.sqlitelint.SQLiteLint;
 import com.tencent.sqlitelint.SQLiteLintPlugin;
 import com.tencent.sqlitelint.config.SQLiteLintConfig;
-
-import java.util.HashSet;
 
 import sample.tencent.matrix.config.DynamicConfigImplDemo;
 import sample.tencent.matrix.listener.TestPluginListener;
@@ -110,9 +103,6 @@ public class MatrixApplication extends Application {
             SQLiteLintPlugin sqLiteLintPlugin = new SQLiteLintPlugin(config);
             builder.plugin(sqLiteLintPlugin);
 
-            ThreadWatcher threadWatcher = new ThreadWatcher(new ThreadConfig.Builder().dynamicConfig(dynamicConfig).build());
-            builder.plugin(threadWatcher);
-
 
         }
 
@@ -120,7 +110,6 @@ public class MatrixApplication extends Application {
 
         //start only startup tracer, close other tracer.
         tracePlugin.start();
-        Matrix.with().getPluginByClass(ThreadWatcher.class).start();
         MatrixLog.i("Matrix.HackCallback", "end:%s", System.currentTimeMillis());
     }
 
