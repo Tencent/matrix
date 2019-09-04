@@ -75,18 +75,20 @@ public class LooperMonitor implements MessageQueue.IdleHandler {
     }
 
     public void onRelease() {
-        synchronized (listeners) {
-            listeners.clear();
+        if (null != looper) {
+            synchronized (listeners) {
+                listeners.clear();
+            }
+            MatrixLog.d(TAG, "[onRelease] %s, origin printer:%s", looper.getThread(), printer.origin);
+            looper.setMessageLogging(printer.origin);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                looper.getQueue().removeIdleHandler(this);
+            } else {
+                MessageQueue queue = reflectObject(looper, "mQueue");
+                queue.removeIdleHandler(this);
+            }
+            looper = null;
         }
-        MatrixLog.d(TAG, "[onRelease] %s, origin printer:%s", looper.getThread(), printer.origin);
-        looper.setMessageLogging(printer.origin);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            looper.getQueue().removeIdleHandler(this);
-        } else {
-            MessageQueue queue = reflectObject(looper, "mQueue");
-            queue.removeIdleHandler(this);
-        }
-        looper = null;
     }
 
     public static void unregister(LooperDispatchListener listener) {

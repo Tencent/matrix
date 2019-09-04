@@ -34,7 +34,9 @@ public class BatteryPrinter implements BatteryMonitor.Printer {
             sb.append("| -> ").append(threadResult).append("\n");
             List<LooperTaskMonitorPlugin.TaskTraceInfo> threadTasks = tasks.get(threadResult.threadInfo.tid);
             if (null != threadTasks && !threadTasks.isEmpty()) {
-                sb.append("|\t\t").append(threadTasks).append("\n");
+                for (LooperTaskMonitorPlugin.TaskTraceInfo task : threadTasks.subList(0, Math.min(10, threadTasks.size()))) {
+                    sb.append("|\t\t").append(task).append("\n");
+                }
             }
         }
         sb.append("**********************************************************************************************");

@@ -94,18 +94,14 @@ public class ThreadMonitor extends Plugin {
         bucketLength = threadTraceBucket.length;
         AppMethodBeat.sMethodEnterListener = new AppMethodBeat.MethodEnterListener() {
             @Override
-            public void enter(int method) {
-                int threadId = (int) Thread.currentThread().getId();
+            public void enter(int method, long threadId) {
                 if (threadId < bucketLength) {
-                    if (threadTraceBucket[threadId] == 0) {
-                        synchronized (threadTraceBucket) {
-                            if (threadTraceBucket[threadId] == 0) {
-                                long tid = Process.myTid();
-                                long trueId = tid << 32;
-                                trueId = trueId | method;
-                                threadTraceBucket[threadId] = trueId;
-                            }
-                        }
+                    // Don't care about thread security
+                    if (threadTraceBucket[(int) threadId] == 0) {
+                        long tid = Process.myTid();
+                        long trueId = tid << 32;
+                        trueId = trueId | method;
+                        threadTraceBucket[(int) threadId] = trueId;
                     }
                 }
             }

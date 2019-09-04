@@ -20,7 +20,7 @@ import java.util.Set;
 public class AppMethodBeat implements BeatLifecycle {
 
     public interface MethodEnterListener {
-        void enter(int method);
+        void enter(int method, long threadId);
     }
 
     private static final String TAG = "Matrix.AppMethodBeat";
@@ -200,10 +200,6 @@ public class AppMethodBeat implements BeatLifecycle {
      */
     public static void i(int methodId) {
 
-        if (sMethodEnterListener != null) {
-            sMethodEnterListener.enter(methodId);
-        }
-
         if (status <= STATUS_STOPPED) {
             return;
         }
@@ -220,7 +216,12 @@ public class AppMethodBeat implements BeatLifecycle {
             }
         }
 
-        if (Thread.currentThread().getId() == sMainThreadId) {
+        long threadId = Thread.currentThread().getId();
+        if (sMethodEnterListener != null) {
+            sMethodEnterListener.enter(methodId, threadId);
+        }
+
+        if (threadId == sMainThreadId) {
             if (assertIn) {
                 android.util.Log.e(TAG, "ERROR!!! AppMethodBeat.i Recursive calls!!!");
                 return;

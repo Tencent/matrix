@@ -1,7 +1,5 @@
 package com.tencent.matrix.threadcanary;
 
-import com.tencent.mrs.plugin.IDynamicConfig;
-
 import java.util.HashSet;
 
 public final class ThreadMonitorConfig {
@@ -13,31 +11,32 @@ public final class ThreadMonitorConfig {
     private static final long DEFAULT_REPORT_TIME = 30 * 60 * 1000L;
     private static final String DEFAULT_FILTER_SET = "";
 
-    private final IDynamicConfig mDynamicConfig;
+    private long checkTime = DEFAULT_CHECK_TIME;
+    private long checkBgTime = DEFAULT_CHECK_TIME_IN_BACKGROUND;
+    private int threadLimitCount = DEFAULT_LIMIT_THREAD_COUNT;
+    private long reportTime = DEFAULT_REPORT_TIME;
+    private String filterThreadSet = DEFAULT_FILTER_SET;
 
-    private ThreadMonitorConfig(IDynamicConfig dynamicConfig) {
-        this.mDynamicConfig = dynamicConfig;
-    }
 
     public long getCheckTime() {
-        return mDynamicConfig.get(IDynamicConfig.ExptEnum.clicfg_matrix_thread_check_time.name(), DEFAULT_CHECK_TIME);
+        return checkTime;
     }
 
     public long getCheckBgTime() {
-        return mDynamicConfig.get(IDynamicConfig.ExptEnum.clicfg_matrix_thread_check_bg_time.name(), DEFAULT_CHECK_TIME_IN_BACKGROUND);
+        return checkBgTime;
     }
 
     public int getThreadLimitCount() {
-        return mDynamicConfig.get(IDynamicConfig.ExptEnum.clicfg_matrix_thread_limit_count.name(), DEFAULT_LIMIT_THREAD_COUNT);
+        return threadLimitCount;
     }
 
     public long getReportTime() {
-        return mDynamicConfig.get(IDynamicConfig.ExptEnum.clicfg_matrix_thread_report_time.name(), DEFAULT_REPORT_TIME);
+        return reportTime;
     }
 
 
     public HashSet<String> getFilterThreadSet() {
-        final String filterSets = mDynamicConfig.get(IDynamicConfig.ExptEnum.clicfg_matrix_thread_filter_thread_set.name(), DEFAULT_FILTER_SET);
+        final String filterSets = filterThreadSet;
         if ("".equals(filterSets)) {
             return null;
         }
@@ -56,19 +55,40 @@ public final class ThreadMonitorConfig {
     }
 
     public static final class Builder {
-        private IDynamicConfig mDynamicConfig;
+
+        ThreadMonitorConfig config = new ThreadMonitorConfig();
 
         public Builder() {
 
         }
 
-        public Builder dynamicConfig(IDynamicConfig config) {
-            this.mDynamicConfig = config;
+        public Builder setCheckTime(long checkTime) {
+            config.checkTime = checkTime;
+            return this;
+        }
+
+        public Builder setCheckBgTime(long checkBgTime) {
+            config.checkBgTime = checkBgTime;
+            return this;
+        }
+
+        public Builder setReportTime(long reportTime) {
+            config.reportTime = reportTime;
+            return this;
+        }
+
+        public Builder setThreadLimitCount(int threadLimitCount) {
+            config.threadLimitCount = threadLimitCount;
+            return this;
+        }
+
+        public Builder setFilterThreadSet(String filterThreadSet) {
+            config.filterThreadSet = filterThreadSet;
             return this;
         }
 
         public ThreadMonitorConfig build() {
-            return new ThreadMonitorConfig(mDynamicConfig);
+            return config;
         }
     }
 }

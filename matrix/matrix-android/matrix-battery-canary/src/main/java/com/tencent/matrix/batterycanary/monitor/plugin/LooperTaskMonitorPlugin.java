@@ -110,6 +110,9 @@ public class LooperTaskMonitorPlugin implements IBatteryMonitorPlugin {
         LooperMonitor looperMonitor;
         synchronized (looperMonitorArray) {
             looperMonitor = looperMonitorArray.get(thread.getId());
+            if(null != looperMonitor){
+                looperMonitorArray.remove(thread.getId());
+            }
         }
         LinkedList<TaskTraceInfo> list = new LinkedList<>();
         if (null != looperMonitor) {
