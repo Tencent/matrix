@@ -10,7 +10,7 @@
 #include <unwindstack/RegsGetLocal.h>
 #include <unwindstack/Unwinder.h>
 #include <unwindstack/JitDebug.h>
-#include "logger.h"
+#include "log.h"
 
 namespace unwindstack {
 

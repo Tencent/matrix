@@ -1,10 +1,9 @@
 apply plugin: 'com.android.library'
 
 apply from: rootProject.file('gradle/WeChatPublish.gradle')
-apply from: rootProject.file('gradle/WeChatNativeDepend.gradle')
 
 group 'com.tencent.mm'
-version '1.1.1'
+version '1.1.0'
 artifactId = 'wxperf-jni'
 
 android {
@@ -43,7 +42,6 @@ android {
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
 
-    implementation 'com.tencent.stubs:logger-native:1.1-646'
     implementation 'com.android.support:appcompat-v7:28.0.0'
     testImplementation 'junit:junit:4.12'
     androidTestImplementation 'com.android.support.test:runner:1.0.2'

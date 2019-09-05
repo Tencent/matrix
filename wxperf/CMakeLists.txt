@@ -43,7 +43,6 @@ target_include_directories(
         PRIVATE ${SOURCE_DIR}/include
         PRIVATE ${SOURCE_DIR}/external/libxhook
         PRIVATE ${SOURCE_DIR}/external/libunwindstack/include
-        PRIVATE ${EXT_DEP}/include
 )
 
 # Searches for a specified prebuilt library and stores the path as a
@@ -69,6 +68,4 @@ target_link_libraries( # Specifies the target library.
         unwindstack
         # Links the target library to the log library
         # included in the NDK.
-        ${log-lib}
-        ${EXT_DEP}/lib/${ANDROID_ABI}/liblogger.a
-        )
+        ${log-lib})

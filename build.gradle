@@ -19,9 +19,7 @@ allprojects {
         mavenLocal()
         google()
         jcenter()
-        maven {
-            url "http://maven.mmclient.oa.com/nexus/content/repositories/wechat-releases/"
-        }
+        
     }
 }
 
