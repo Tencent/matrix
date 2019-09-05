@@ -79,7 +79,7 @@ public class LooperMonitor implements MessageQueue.IdleHandler {
             synchronized (listeners) {
                 listeners.clear();
             }
-            MatrixLog.d(TAG, "[onRelease] %s, origin printer:%s", looper.getThread(), printer.origin);
+            MatrixLog.i(TAG, "[onRelease] %s, origin printer:%s", looper.getThread(), printer.origin);
             looper.setMessageLogging(printer.origin);
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 looper.getQueue().removeIdleHandler(this);
@@ -88,6 +88,7 @@ public class LooperMonitor implements MessageQueue.IdleHandler {
                 queue.removeIdleHandler(this);
             }
             looper = null;
+            printer = null;
         }
     }
 
@@ -152,6 +153,9 @@ public class LooperMonitor implements MessageQueue.IdleHandler {
         public void println(String x) {
             if (null != origin) {
                 origin.println(x);
+                if (origin == this) {
+                    throw new RuntimeException(TAG + " origin == this");
+                }
             }
 
             if (!isHasChecked) {
