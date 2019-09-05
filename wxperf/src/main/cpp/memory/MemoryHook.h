@@ -7,8 +7,8 @@
 
 #include <cstddef>
 #include <string>
-#include "log.h"
 #include <jni.h>
+#include <logger.h>
 
 #ifdef __cplusplus
 extern "C" {

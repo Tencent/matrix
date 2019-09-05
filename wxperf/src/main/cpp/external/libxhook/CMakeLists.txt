@@ -13,10 +13,12 @@ find_library(
 target_include_directories(
         xhook
         PUBLIC .
+        PRIVATE ${EXT_DEP}/include
 )
 
 target_link_libraries(
         xhook
         ${log-lib}
+        ${EXT_DEP}/lib/${ANDROID_ABI}/liblogger.a
 )
 

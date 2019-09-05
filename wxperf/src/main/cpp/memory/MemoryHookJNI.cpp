@@ -160,6 +160,11 @@ Java_com_tencent_mm_performance_jni_memory_MemoryHook_dumpNative(JNIEnv *env, jo
     }
 }
 
+JNIEXPORT jint JNI_OnLoad(JavaVM* vm, void* reserved) {
+    stubs_initLogger(vm);
+    return JNI_VERSION_1_6;
+}
+
 #ifdef __cplusplus
 }
 #endif
