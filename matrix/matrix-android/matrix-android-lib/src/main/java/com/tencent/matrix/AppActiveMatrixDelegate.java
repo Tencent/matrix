@@ -68,6 +68,9 @@ public enum AppActiveMatrixDelegate {
         }
 
         MatrixLog.i(TAG, "onForeground... visibleScene[%s]", visibleScene);
+        if (MatrixHandlerThread.getDefaultHandler() == null) {
+            MatrixHandlerThread.getDefaultHandlerThread();
+        }
         MatrixHandlerThread.getDefaultHandler().post(new Runnable() {
             @Override
             public void run() {
