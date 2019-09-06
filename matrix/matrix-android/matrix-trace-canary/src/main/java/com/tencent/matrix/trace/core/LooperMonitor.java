@@ -52,10 +52,20 @@ public class LooperMonitor implements MessageQueue.IdleHandler {
 
     private static final LooperMonitor mainMonitor = new LooperMonitor();
 
-    public static void register(LooperDispatchListener listener) {
+    static void register(LooperDispatchListener listener) {
         synchronized (mainMonitor.listeners) {
             mainMonitor.listeners.add(listener);
         }
+    }
+
+    static void unregister(LooperDispatchListener listener) {
+        synchronized (mainMonitor.listeners) {
+            mainMonitor.listeners.remove(listener);
+        }
+    }
+
+    public HashSet<LooperDispatchListener> getListeners() {
+        return listeners;
     }
 
     public void addListener(LooperDispatchListener listener) {
@@ -64,52 +74,17 @@ public class LooperMonitor implements MessageQueue.IdleHandler {
         }
     }
 
-    public HashSet<LooperDispatchListener> getListeners() {
-        return listeners;
-    }
-
     public void removeListener(LooperDispatchListener listener) {
         synchronized (listeners) {
             listeners.remove(listener);
         }
     }
 
-    public void onRelease() {
-        if (null != looper) {
-            synchronized (listeners) {
-                listeners.clear();
-            }
-            MatrixLog.i(TAG, "[onRelease] %s, origin printer:%s", looper.getThread(), printer.origin);
-            looper.setMessageLogging(printer.origin);
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                looper.getQueue().removeIdleHandler(this);
-            } else {
-                MessageQueue queue = reflectObject(looper, "mQueue");
-                queue.removeIdleHandler(this);
-            }
-            looper = null;
-            printer = null;
-        }
-    }
-
-    public static void unregister(LooperDispatchListener listener) {
-        synchronized (mainMonitor.listeners) {
-            mainMonitor.listeners.remove(listener);
-        }
-    }
-
     public LooperMonitor(Looper looper) {
-        this.looper = looper;
         Objects.requireNonNull(looper);
+        this.looper = looper;
         resetPrinter();
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            looper.getQueue().addIdleHandler(this);
-        } else {
-            MessageQueue queue = reflectObject(looper, "mQueue");
-            queue.addIdleHandler(this);
-        }
-
+        addIdleHandler(looper);
     }
 
     private LooperMonitor() {
@@ -122,23 +97,51 @@ public class LooperMonitor implements MessageQueue.IdleHandler {
         return true;
     }
 
+    public synchronized void onRelease() {
+        if (printer != null) {
+            synchronized (listeners) {
+                listeners.clear();
+            }
+            MatrixLog.i(TAG, "[onRelease] %s, origin printer:%s", looper.getThread(), printer.origin);
+            looper.setMessageLogging(printer.origin);
 
-    private void resetPrinter() {
-        if (null == looper) {
-            MatrixLog.w(TAG, "looper is null!");
-            return;
+            removeIdleHandler(looper);
+            looper = null;
+            printer = null;
         }
+    }
+
+    private synchronized void resetPrinter() {
         final Printer originPrinter = reflectObject(looper, "mLogging");
         if (originPrinter == printer && null != printer) {
             return;
         }
         if (null != printer) {
             MatrixLog.w(TAG, "maybe %s's printer[%s] was replace other[%s]!",
-                    looper.getThread(), printer, originPrinter);
+                    looper.getThread().getName(), printer, originPrinter);
         }
         looper.setMessageLogging(printer = new LooperPrinter(originPrinter));
-        MatrixLog.i(TAG, "reset printer, originPrinter[%s] in %s", originPrinter, looper.getThread());
+        MatrixLog.i(TAG, "reset printer, originPrinter[%s] in %s", originPrinter, looper.getThread().getName());
     }
+
+    private synchronized void removeIdleHandler(Looper looper) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            looper.getQueue().removeIdleHandler(this);
+        } else {
+            MessageQueue queue = reflectObject(looper, "mQueue");
+            queue.removeIdleHandler(this);
+        }
+    }
+
+    private synchronized void addIdleHandler(Looper looper) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            looper.getQueue().addIdleHandler(this);
+        } else {
+            MessageQueue queue = reflectObject(looper, "mQueue");
+            queue.addIdleHandler(this);
+        }
+    }
+
 
     class LooperPrinter implements Printer {
         public Printer origin;

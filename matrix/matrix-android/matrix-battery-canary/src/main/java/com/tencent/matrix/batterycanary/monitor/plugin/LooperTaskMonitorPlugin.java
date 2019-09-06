@@ -18,7 +18,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class LooperTaskMonitorPlugin implements IBatteryMonitorPlugin {
 
@@ -43,7 +42,7 @@ public class LooperTaskMonitorPlugin implements IBatteryMonitorPlugin {
     @Override
     public void onTurnOff() {
         MatrixLog.i(TAG, "onTurnOff");
-        unbindLooperMonitor();
+        onUnbindLooperMonitor();
     }
 
     @Override
@@ -56,9 +55,9 @@ public class LooperTaskMonitorPlugin implements IBatteryMonitorPlugin {
                     Looper looper = ((HandlerThread) thread).getLooper();
                     if (null != looper) {
                         if (!isForeground) {
-                            bindLooperMonitor(thread, looper);
+                            onBindLooperMonitor(thread, looper);
                         } else {
-                            List<TaskTraceInfo> list = unbindLooperMonitor(thread);
+                            List<TaskTraceInfo> list = onUnbindLooperMonitor(thread);
                             if (batteryMonitor.getConfig().printer != null && !list.isEmpty()) {
                                 batteryMonitor.getConfig().printer.onTaskTrace(thread, list);
                             }
@@ -86,7 +85,7 @@ public class LooperTaskMonitorPlugin implements IBatteryMonitorPlugin {
         }
     }
 
-    public void bindLooperMonitor(Thread thread, Looper looper) {
+    public void onBindLooperMonitor(Thread thread, Looper looper) {
         LooperMonitor looperMonitor = new LooperMonitor(looper);
         synchronized (taskTracers) {
             looperMonitor.addListener(new Observer(taskTracers.get(thread.getId())));
@@ -96,7 +95,7 @@ public class LooperTaskMonitorPlugin implements IBatteryMonitorPlugin {
         }
     }
 
-    private void unbindLooperMonitor() {
+    private void onUnbindLooperMonitor() {
         synchronized (looperMonitorArray) {
             for (int i = 0; i < looperMonitorArray.size(); i++) {
                 LooperMonitor looperMonitor = looperMonitorArray.valueAt(i);
@@ -106,7 +105,7 @@ public class LooperTaskMonitorPlugin implements IBatteryMonitorPlugin {
         }
     }
 
-    public LinkedList<TaskTraceInfo> unbindLooperMonitor(Thread thread) {
+    public LinkedList<TaskTraceInfo> onUnbindLooperMonitor(Thread thread) {
         LooperMonitor looperMonitor;
         synchronized (looperMonitorArray) {
             looperMonitor = looperMonitorArray.get(thread.getId());
