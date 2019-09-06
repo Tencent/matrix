@@ -4,7 +4,6 @@ import android.os.Build;
 import android.os.Looper;
 import android.os.MessageQueue;
 import android.support.annotation.CallSuper;
-import android.util.Log;
 import android.util.Printer;
 
 import com.tencent.matrix.util.MatrixLog;
@@ -102,9 +101,8 @@ public class LooperMonitor implements MessageQueue.IdleHandler {
             synchronized (listeners) {
                 listeners.clear();
             }
-            MatrixLog.i(TAG, "[onRelease] %s, origin printer:%s", looper.getThread(), printer.origin);
+            MatrixLog.v(TAG, "[onRelease] %s, origin printer:%s", looper.getThread(), printer.origin);
             looper.setMessageLogging(printer.origin);
-
             removeIdleHandler(looper);
             looper = null;
             printer = null;
@@ -117,11 +115,13 @@ public class LooperMonitor implements MessageQueue.IdleHandler {
             return;
         }
         if (null != printer) {
-            MatrixLog.w(TAG, "maybe %s's printer[%s] was replace other[%s]!",
+            MatrixLog.w(TAG, "maybe thread:%s printer[%s] was replace other[%s]!",
                     looper.getThread().getName(), printer, originPrinter);
         }
         looper.setMessageLogging(printer = new LooperPrinter(originPrinter));
-        MatrixLog.i(TAG, "reset printer, originPrinter[%s] in %s", originPrinter, looper.getThread().getName());
+        if (null != originPrinter) {
+            MatrixLog.i(TAG, "reset printer, originPrinter[%s] in %s", originPrinter, looper.getThread().getName());
+        }
     }
 
     private synchronized void removeIdleHandler(Looper looper) {

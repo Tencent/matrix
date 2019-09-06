@@ -25,6 +25,7 @@ public class LooperTaskMonitorPlugin implements IBatteryMonitorPlugin {
     private static final String TAG = "Matrix.LooperTaskMonitorPlugin";
     private LongSparseArray<LooperMonitor> looperMonitorArray;
     private LongSparseArray<ITaskTracer> taskTracers;
+    private static final int MAX_CHAT_COUNT = 60;
 
     @Override
     public void onInstall(BatteryMonitor monitor) {
@@ -86,12 +87,14 @@ public class LooperTaskMonitorPlugin implements IBatteryMonitorPlugin {
     }
 
     public void onBindLooperMonitor(Thread thread, Looper looper) {
-        LooperMonitor looperMonitor = new LooperMonitor(looper);
-        synchronized (taskTracers) {
-            looperMonitor.addListener(new Observer(taskTracers.get(thread.getId())));
-        }
         synchronized (looperMonitorArray) {
-            looperMonitorArray.put(thread.getId(), looperMonitor);
+            if (looperMonitorArray.get(thread.getId()) == null) {
+                LooperMonitor looperMonitor = new LooperMonitor(looper);
+                looperMonitorArray.put(thread.getId(), looperMonitor);
+                synchronized (taskTracers) {
+                    looperMonitor.addListener(new Observer(taskTracers.get(thread.getId())));
+                }
+            }
         }
     }
 
@@ -109,7 +112,7 @@ public class LooperTaskMonitorPlugin implements IBatteryMonitorPlugin {
         LooperMonitor looperMonitor;
         synchronized (looperMonitorArray) {
             looperMonitor = looperMonitorArray.get(thread.getId());
-            if(null != looperMonitor){
+            if (null != looperMonitor) {
                 looperMonitorArray.remove(thread.getId());
             }
         }
@@ -154,8 +157,13 @@ public class LooperTaskMonitorPlugin implements IBatteryMonitorPlugin {
                 return;
             }
             super.onDispatchStart(x);
-            int begin = x.indexOf("to ");
-            onTaskTrace(Thread.currentThread(), x.substring(begin + 3));
+            int begin = x.indexOf("to ") + 3;
+            int last = x.lastIndexOf('@');
+            if (last < 0) {
+                last = x.lastIndexOf(':');
+            }
+            int end = Math.max(last - MAX_CHAT_COUNT, begin);
+            onTaskTrace(Thread.currentThread(), x.substring(end));
         }
 
         protected void onTaskTrace(Thread thread, String helpfulStr) {
