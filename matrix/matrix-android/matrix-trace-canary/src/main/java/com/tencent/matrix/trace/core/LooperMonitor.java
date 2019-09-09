@@ -52,15 +52,11 @@ public class LooperMonitor implements MessageQueue.IdleHandler {
     private static final LooperMonitor mainMonitor = new LooperMonitor();
 
     static void register(LooperDispatchListener listener) {
-        synchronized (mainMonitor.listeners) {
-            mainMonitor.listeners.add(listener);
-        }
+        mainMonitor.addListener(listener);
     }
 
     static void unregister(LooperDispatchListener listener) {
-        synchronized (mainMonitor.listeners) {
-            mainMonitor.listeners.remove(listener);
-        }
+        mainMonitor.removeListener(listener);
     }
 
     public HashSet<LooperDispatchListener> getListeners() {
@@ -101,7 +97,7 @@ public class LooperMonitor implements MessageQueue.IdleHandler {
             synchronized (listeners) {
                 listeners.clear();
             }
-            MatrixLog.v(TAG, "[onRelease] %s, origin printer:%s", looper.getThread(), printer.origin);
+            MatrixLog.v(TAG, "[onRelease] %s, origin printer:%s", looper.getThread().getName(), printer.origin);
             looper.setMessageLogging(printer.origin);
             removeIdleHandler(looper);
             looper = null;

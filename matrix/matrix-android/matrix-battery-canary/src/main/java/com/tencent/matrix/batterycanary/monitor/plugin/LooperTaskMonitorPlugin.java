@@ -23,16 +23,13 @@ public class LooperTaskMonitorPlugin implements IBatteryMonitorPlugin {
 
     private BatteryMonitor batteryMonitor;
     private static final String TAG = "Matrix.LooperTaskMonitorPlugin";
-    private LongSparseArray<LooperMonitor> looperMonitorArray;
-    private LongSparseArray<ITaskTracer> taskTracers;
+    private final LongSparseArray<LooperMonitor> looperMonitorArray = new LongSparseArray<>();
     private static final int MAX_CHAT_COUNT = 60;
 
     @Override
     public void onInstall(BatteryMonitor monitor) {
         MatrixLog.i(TAG, "onInstall");
         this.batteryMonitor = monitor;
-        this.looperMonitorArray = new LongSparseArray<>();
-        this.taskTracers = new LongSparseArray<>();
     }
 
     @Override
@@ -74,26 +71,11 @@ public class LooperTaskMonitorPlugin implements IBatteryMonitorPlugin {
         return 0;
     }
 
-    public void addTaskTracer(Thread thread, ITaskTracer taskTracer) {
-        synchronized (taskTracers) {
-            taskTracers.put(thread.getId(), taskTracer);
-        }
-    }
-
-    public void removeTaskTracer(Thread thread) {
-        synchronized (taskTracers) {
-            taskTracers.remove(thread.getId());
-        }
-    }
 
     public void onBindLooperMonitor(Thread thread, Looper looper) {
         synchronized (looperMonitorArray) {
             if (looperMonitorArray.get(thread.getId()) == null) {
-                LooperMonitor looperMonitor = new LooperMonitor(looper);
-                looperMonitorArray.put(thread.getId(), looperMonitor);
-                synchronized (taskTracers) {
-                    looperMonitor.addListener(new Observer(taskTracers.get(thread.getId())));
-                }
+                looperMonitorArray.put(thread.getId(), new LooperMonitor(looper));
             }
         }
     }
@@ -101,8 +83,7 @@ public class LooperTaskMonitorPlugin implements IBatteryMonitorPlugin {
     private void onUnbindLooperMonitor() {
         synchronized (looperMonitorArray) {
             for (int i = 0; i < looperMonitorArray.size(); i++) {
-                LooperMonitor looperMonitor = looperMonitorArray.valueAt(i);
-                looperMonitor.onRelease();
+                looperMonitorArray.valueAt(i).onRelease();
             }
             looperMonitorArray.clear();
         }
@@ -120,7 +101,9 @@ public class LooperTaskMonitorPlugin implements IBatteryMonitorPlugin {
         if (null != looperMonitor) {
             for (LooperMonitor.LooperDispatchListener listener : looperMonitor.getListeners()) {
                 if (listener instanceof Observer) {
-                    list.addAll(((Observer) listener).map.values());
+                    Map<String, TaskTraceInfo> taskMap = ((Observer) listener).map;
+                    list.addAll(taskMap.values());
+                    taskMap.clear();
                     Collections.sort(list, new Comparator<TaskTraceInfo>() {
                         @Override
                         public int compare(TaskTraceInfo o1, TaskTraceInfo o2) {
