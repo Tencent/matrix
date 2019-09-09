@@ -557,7 +557,7 @@ KSStackCursor *kscrash_pointThreadCallback(void)
     m_blockDiffTime = 0;
 
     if (tmp_g_bRun && tmp_g_tvRun.tv_sec && tmp_g_tvRun.tv_usec && __timercmp(&tmp_g_tvRun, &tvCur, <) && diff > g_RunLoopTimeOut) {
-        m_blockDiffTime = tvCur.tv_sec - tmp_g_tvRun.tv_sec;
+        m_blockDiffTime = diff;
 #if TARGET_OS_OSX
         MatrixInfo(@"check run loop time out %u bRun %d runloopActivity %lu block diff time %llu",
                    g_RunLoopTimeOut, g_bRun, g_runLoopActivity, diff);
@@ -589,7 +589,7 @@ KSStackCursor *kscrash_pointThreadCallback(void)
     
 #if TARGET_OS_OSX
     if (tmp_g_bEventStart && tmp_g_tvEvent.tv_sec && tmp_g_tvEvent.tv_usec && __timercmp(&tmp_g_tvEvent, &tvCur, <) && eventDiff > g_RunLoopTimeOut) {
-        m_blockDiffTime = tvCur.tv_usec - tmp_g_tvEvent.tv_sec;
+        m_blockDiffTime = eventDiff;
         MatrixInfo(@"check event time out %u bRun %d",g_RunLoopTimeOut, g_eventStart);
         return EDumpType_MainThreadBlock;
     }
