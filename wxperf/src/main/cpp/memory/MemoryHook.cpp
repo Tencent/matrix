@@ -248,7 +248,9 @@ void *h_dlopen(const char *filename,
                const void *caller_addr) {
     void *ret = (*p_oldfun)(filename, flag, extinfo, caller_addr);
 
-    unwindstack::update_maps();
+    if (is_stacktrace_enabled) {
+        unwindstack::update_maps();
+    }
     xhook_refresh(false);
     srand((unsigned int) time(NULL));
     LOGD("Yves.dlopen", "dlopen %s", filename);
