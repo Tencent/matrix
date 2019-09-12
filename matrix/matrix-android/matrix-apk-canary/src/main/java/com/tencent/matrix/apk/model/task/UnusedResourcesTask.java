@@ -332,7 +332,7 @@ public class UnusedResourcesTask extends ApkTask {
                 } else if (line.startsWith("sget")) {
                     String[] columns = line.split(" ");
                     if (columns.length >= 3) {
-                        final String resourceRef = parseResourceNameFromProguard(columns[2]);
+                        final String resourceRef = parseResourceNameFromProguard(columns[2].trim());
                         if (!Util.isNullOrNil(resourceRef)) {
                             Log.d(TAG, "find resource reference %s", resourceRef);
                             if (styleableMap.containsKey(resourceRef)) {
@@ -351,10 +351,13 @@ public class UnusedResourcesTask extends ApkTask {
                     arrayData = false;
                 } else  {
                     if (arrayData) {
-                        final String resId = parseResourceId(line);
-                        if (!Util.isNullOrNil(resId) && resourceDefMap.containsKey(resId)) {
-                            Log.d(TAG, "array field resource, %s", resId);
-                            resourceRefSet.add(resourceDefMap.get(resId));
+                        String[] columns = line.split(" ");
+                        if (columns.length > 0) {
+                            final String resId = parseResourceId(columns[0].trim());
+                            if (!Util.isNullOrNil(resId) && resourceDefMap.containsKey(resId)) {
+                                Log.d(TAG, "array field resource, %s", resId);
+                                resourceRefSet.add(resourceDefMap.get(resId));
+                            }
                         }
                     }
                 }
