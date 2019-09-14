@@ -121,7 +121,7 @@ public class FrameTracer extends Tracer {
 
     private class FPSCollector extends IDoFrameListener {
 
-        private Handler frameHandler = new Handler(MatrixHandlerThread.getDefaultHandlerThread().getLooper());
+        private Handler frameHandler = new Handler(MatrixHandlerThread.getNewHandlerThread("frametracker").getLooper());
         private HashMap<String, FrameCollectItem> map = new HashMap<>();
 
         @Override

@@ -188,7 +188,7 @@ public class FrameDecorator extends IDoFrameListener implements IAppForeground {
     @Override
     public Handler getHandler() {
         if (handler == null || !handler.getLooper().getThread().isAlive()) {
-            handler = new Handler(MatrixHandlerThread.getDefaultHandlerThread().getLooper());
+            handler = new Handler(MatrixHandlerThread.getNewHandlerThread("framedecorator").getLooper());
         }
         return handler;
     }
