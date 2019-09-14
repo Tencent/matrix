@@ -132,7 +132,7 @@ public class ActivityRefWatcher extends FilePublisher implements Watcher {
         this.mResourcePlugin = resourcePlugin;
         final ResourceConfig config = resourcePlugin.getConfig();
         final Context context = app;
-        HandlerThread handlerThread = MatrixHandlerThread.getDefaultHandlerThread();
+        HandlerThread handlerThread = MatrixHandlerThread.getNewHandlerThread("activity_ref_watcher_thread");
         mDetectExecutor = componentFactory.createDetectExecutor(config, handlerThread);
         mMaxRedetectTimes = config.getMaxRedetectTimes();
         mDumpStorageManager = componentFactory.createDumpStorageManager(context);
