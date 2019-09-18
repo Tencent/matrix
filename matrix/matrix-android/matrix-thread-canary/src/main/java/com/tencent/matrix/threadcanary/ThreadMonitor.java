@@ -281,6 +281,50 @@ public class ThreadMonitor extends Plugin {
         }
     }
 
+    public static List<ThreadGroupInfo> getThreadList() {
+        final LongSparseArray<ThreadInfo> appThreadsMap = getAppThreadsMap(null);
+        List<ThreadInfo> linuxThreads = getLinuxThreadsInfo(new IThreadInfoIterator() {
+            @Override
+            public void next(ThreadInfo threadInfo) {
+                ThreadInfo appThreadInfo = appThreadsMap.get(threadInfo.tid);
+                if (null != appThreadInfo) {
+                    threadInfo.name = appThreadInfo.name.replaceAll("-?[0-9]\\d*", "?");
+                    threadInfo.stackTrace = appThreadInfo.stackTrace;
+                    threadInfo.isHandlerThread = appThreadInfo.isHandlerThread;
+                    threadInfo.target = appThreadInfo.target;
+                } else {
+                    threadInfo.name = threadInfo.name.replaceAll("-?[0-9]\\d*", "?");
+                }
+            }
+        }, new IThreadFilter() {
+            @Override
+            public boolean isFilter(ThreadInfo threadInfo) {
+                return false;
+            }
+        });
+
+        HashMap<String, ThreadGroupInfo> threadGroupInfoMap = new HashMap<>();
+
+        for (ThreadInfo threadInfo : linuxThreads) {
+            ThreadGroupInfo groupInfo = threadGroupInfoMap.get(threadInfo.name);
+            if (null == groupInfo) {
+                groupInfo = new ThreadGroupInfo(threadInfo.name);
+                threadGroupInfoMap.put(threadInfo.name, groupInfo);
+            }
+            groupInfo.list.add(threadInfo);
+        }
+
+        List<ThreadGroupInfo> threadGroupInfoList = new LinkedList<>(threadGroupInfoMap.values());
+
+        Collections.sort(threadGroupInfoList, new Comparator<ThreadGroupInfo>() {
+            @Override
+            public int compare(ThreadGroupInfo o1, ThreadGroupInfo o2) {
+                return Long.compare(o2.getSize(), o1.getSize());
+            }
+        });
+        return threadGroupInfoList;
+    }
+
     private static LongSparseArray<ThreadInfo> getAppThreadsMap(IThreadFilter filter) {
         LongSparseArray<ThreadInfo> map = new LongSparseArray<>();
         Map<Thread, StackTraceElement[]> stacks = Thread.getAllStackTraces();
