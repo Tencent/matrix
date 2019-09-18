@@ -507,7 +507,7 @@ public class ThreadMonitor extends Plugin {
 
         @Override
         public String toString() {
-            return name + " " + list + " " + getSize();
+            return name + " size=" + getSize();
         }
     }
 
