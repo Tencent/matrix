@@ -15,7 +15,7 @@ public class LibWxPerfManager {
                 System.loadLibrary("wxperf");
                 isLibLoaded = true;
             }
-        } catch (Exception e) {
+        } catch (Throwable e) {
             isLibLoaded = false;
         }
     }

@@ -69,3 +69,9 @@ target_link_libraries( # Specifies the target library.
         # Links the target library to the log library
         # included in the NDK.
         ${log-lib})
+
+TARGET_COMPILE_OPTIONS(
+        wxperf
+        PRIVATE $<$<COMPILE_LANGUAGE:C>:-std=c99>
+        PRIVATE $<$<COMPILE_LANGUAGE:CXX>:-std=c++17 -fno-exceptions -fno-rtti>
+)

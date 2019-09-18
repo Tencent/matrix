@@ -9,13 +9,15 @@
 #include <string>
 #include "log.h"
 #include <jni.h>
+#include <new>
+#include "MemoryHookCXX.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 #define GET_CALLER_ADDR(__caller_addr) \
-    void * __caller_addr = __builtin_return_address(0);
+    void * __caller_addr = __builtin_return_address(0)
 
 JNIEXPORT void *h_malloc(size_t __byte_count);
 JNIEXPORT void *h_calloc(size_t __item_count, size_t __item_size);
@@ -27,13 +29,6 @@ JNIEXPORT void *h_dlopen(const char *filename,
                          const void *extinfo,
                          const void *caller_addr);
 
-typedef void *(*ANDROID_DLOPEN)(const char *filename,
-                                int flag,
-                                const void *extinfo,
-                                const void *caller_addr);
-
-extern ANDROID_DLOPEN p_oldfun;
-
 JNIEXPORT void dump(std::string path = "/sdcard/memory_hook.log");
 
 JNIEXPORT void enableStacktrace(bool);
@@ -44,11 +39,14 @@ JNIEXPORT void setSampleSizeRange(size_t, size_t);
 
 JNIEXPORT void setSampling(double);
 
-//JNIEXPORT void setTraceSizeThreshold(size_t __threshold);
-
 static uint64_t stacktrace_hash(uint64_t *);
 
+typedef void *(*ANDROID_DLOPEN)(const char *filename,
+                                int flag,
+                                const void *extinfo,
+                                const void *caller_addr);
 
+extern ANDROID_DLOPEN orig_dlopen;
 
 #endif //MEMINFO_MEMORYHOOK_H
 

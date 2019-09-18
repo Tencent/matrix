@@ -32,16 +32,14 @@ public class MainActivity extends AppCompatActivity {
                 .enableStacktrace(true)
                 .hook();
 
-
-
-
         findViewById(R.id.button).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 final JNIObj jniObj = new JNIObj();
                 jniObj.doSomeThing();
-                jniObj.nullptr(null);
-                jniObj.dump(null);
+//                jniObj.nullptr(null);
+//                jniObj.dump(null);
+                MemoryHook.INSTANCE.dump("/sdcard/memory_hook.log");
             }
         });
 

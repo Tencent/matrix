@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <cstring>
+#include <vector>
 
 #define LOGD(TAG, FMT, args...) __android_log_print(ANDROID_LOG_DEBUG, TAG, FMT, ##args)
 
@@ -26,17 +27,26 @@ Java_com_tencent_mm_libwxperf_JNIObj_doSomeThing(JNIEnv *env, jobject instance) 
     LOGD("Yves-sample", ">>>>>>>>>>>>>>>>>>begin");
 //    LOGD("Yves-sample", "malloc size = 9012111");
 //    malloc(9012);
-    int *p = (int *)malloc(10 * sizeof(int));
-    for (int i = 0; i < 10; ++i) {
-        p[i] = 11;
-    }
-    for (int i = 0; i < 10; ++i) {
-        LOGD("Yves-sample", "----- %d", p[i]);
-    }
-    count++;
-    if (count % 2) {
-        free(p);
-    }
+//    int *p = (int *)malloc(10 * sizeof(int));
+//    for (int i = 0; i < 10; ++i) {
+//        p[i] = 11;
+//    }
+//    for (int i = 0; i < 10; ++i) {
+//        LOGD("Yves-sample", "----- %d", p[i]);
+//    }
+//    count++;
+//    if (count % 2) {
+//        free(p);
+//    }
+
+    int * pi = new int;
+    pi = new int;
+    pi = new int;
+    pi = new int;
+
+    *pi = 10;
+    LOGD("Yves-sample", " pi = %d", *pi);
+
     LOGD("Yves-sample", "<<<<<<<<<<<<<<<<<<<<end");
 
 }

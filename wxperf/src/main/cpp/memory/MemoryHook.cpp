@@ -180,7 +180,7 @@ void *h_malloc(size_t __byte_count) {
     void *ptr = malloc(__byte_count);
 
 //    acquire_lock();
-    GET_CALLER_ADDR(caller)
+    GET_CALLER_ADDR(caller);
 
     on_acquire_memory(caller, ptr, __byte_count);
 
@@ -192,7 +192,7 @@ void *h_calloc(size_t __item_count, size_t __item_size) {
     void *p = calloc(__item_count, __item_size);
 
 //    acquire_lock();
-    GET_CALLER_ADDR(caller)
+    GET_CALLER_ADDR(caller);
 
     size_t byte_count = __item_size * __item_count;
 
@@ -207,7 +207,7 @@ void *h_realloc(void *__ptr, size_t __byte_count) {
     void *p = realloc(__ptr, __byte_count);
 
 //    acquire_lock();
-    GET_CALLER_ADDR(caller)
+    GET_CALLER_ADDR(caller);
 
     // If ptr is NULL, then the call is equivalent to malloc(size), for all values of size;
     // if size is equal to zero, and ptr is not NULL, then the call is equivalent to free(ptr).
@@ -239,14 +239,14 @@ void h_free(void *__ptr) {
 //    release_lock();
 }
 
-ANDROID_DLOPEN p_oldfun;
+ANDROID_DLOPEN orig_dlopen;
 
 
 void *h_dlopen(const char *filename,
                int flag,
                const void *extinfo,
                const void *caller_addr) {
-    void *ret = (*p_oldfun)(filename, flag, extinfo, caller_addr);
+    void *ret = (*orig_dlopen)(filename, flag, extinfo, caller_addr);
 
     if (is_stacktrace_enabled) {
         unwindstack::update_maps();
@@ -457,14 +457,230 @@ void dump(std::string path) {
          ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> memory dump end <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
 }
 
+#ifdef __LP32__
 
-//uint64_t stacktrace_hash(uint64_t *stacktrace, size_t size) {
-//    uint64_t sum = 0;
-//
-//    for (int i = 0; i < size; ++i) {
-//        sum += stacktrace[i];
-//    }
-//
-//    return sum;
-//}
+DEFINE_HOOK_FUN(void*, _Znwj, size_t size) {
+    
+}
 
+DEFINE_HOOK_FUN(void*, _ZnwjSt11align_val_t, size_t size, std::align_val_t align_val) {
+    
+}
+
+DEFINE_HOOK_FUN(void*, _ZnwjSt11align_val_tRKSt9nothrow_t, size_t size,
+                    std::align_val_t align_val, std::nothrow_t const& nothrow) {
+    
+}
+
+DEFINE_HOOK_FUN(void*, _ZnwjRKSt9nothrow_t, size_t size, std::nothrow_t const& nothrow) {
+    
+}
+
+DEFINE_HOOK_FUN(void*, _Znaj, size_t size) {
+    
+}
+
+DEFINE_HOOK_FUN(void*, _ZnajSt11align_val_t, size_t size, std::align_val_t align_val) {
+    
+}
+
+DEFINE_HOOK_FUN(void*, _ZnajSt11align_val_tRKSt9nothrow_t, size_t size,
+                    std::align_val_t align_val, std::nothrow_t const& nothrow) {
+    
+}
+
+DEFINE_HOOK_FUN(void*, _ZnajRKSt9nothrow_t, size_t size, std::nothrow_t const& nothrow) {
+    
+}
+
+DEFINE_HOOK_ORIG(void, _ZdaPvj, void* ptr, size_t size) {
+
+}
+
+DEFINE_HOOK_ORIG(void, _ZdaPvjSt11align_val_t, void* ptr, size_t size,
+                    std::align_val_t align_val) {
+
+}
+
+DEFINE_HOOK_ORIG(void, _ZdlPvj, void* ptr, size_t size) {
+
+}
+
+DEFINE_HOOK_ORIG(void, _ZdlPvjSt11align_val_t, void* ptr, size_t size,
+                    std::align_val_t align_val) {
+
+}
+
+#else
+
+ORIGINAL_FUNC_PTR(_Znwm);
+
+DEFINE_HOOK_FUN(void*, _Znwm, size_t size) {
+    void * p = ORIGINAL_FUNC_NAME(_Znwm)(size);
+    DO_HOOK_ACQUIRE(p, size);
+    return p;
+}
+
+ORIGINAL_FUNC_PTR(_ZnwmSt11align_val_t);
+
+DEFINE_HOOK_FUN(void*, _ZnwmSt11align_val_t, size_t size, std::align_val_t align_val) {
+    void * p = ORIGINAL_FUNC_NAME(_ZnwmSt11align_val_t)(size, align_val);
+    DO_HOOK_ACQUIRE(p, size);
+    return p;
+}
+
+ORIGINAL_FUNC_PTR(_ZnwmSt11align_val_tRKSt9nothrow_t);
+
+DEFINE_HOOK_FUN(void*, _ZnwmSt11align_val_tRKSt9nothrow_t, size_t size,
+                  std::align_val_t align_val, std::nothrow_t const& nothrow) {
+//    DO_HOOK_ACQUIRE(_ZnwmSt11align_val_tRKSt9nothrow_t, size,align_val,nothrow)
+    void * p = ORIGINAL_FUNC_NAME(_ZnwmSt11align_val_tRKSt9nothrow_t)(size,align_val,nothrow);
+    DO_HOOK_ACQUIRE(p, size);
+    return p;
+}
+
+ORIGINAL_FUNC_PTR(_ZnwmRKSt9nothrow_t);
+
+DEFINE_HOOK_FUN(void*, _ZnwmRKSt9nothrow_t, size_t size, std::nothrow_t const& nothrow) {
+//    DO_HOOK_ACQUIRE(_ZnwmRKSt9nothrow_t, size, nothrow)
+    void * p = ORIGINAL_FUNC_NAME(_Znwm)(size);
+    DO_HOOK_ACQUIRE(p, size);
+    return p;
+}
+
+ORIGINAL_FUNC_PTR(_Znam);
+
+DEFINE_HOOK_FUN(void*, _Znam, size_t size) {
+    void * p = ORIGINAL_FUNC_NAME(_Znam)(size);
+    DO_HOOK_ACQUIRE(p, size);
+    return p;
+}
+
+ORIGINAL_FUNC_PTR(_ZnamSt11align_val_t);
+
+DEFINE_HOOK_FUN(void*, _ZnamSt11align_val_t, size_t size, std::align_val_t align_val) {
+    void * p = ORIGINAL_FUNC_NAME(_ZnamSt11align_val_t)(size,align_val);
+    DO_HOOK_ACQUIRE(p, size);
+    return p;
+}
+
+ORIGINAL_FUNC_PTR(_ZnamSt11align_val_tRKSt9nothrow_t);
+
+DEFINE_HOOK_FUN(void*, _ZnamSt11align_val_tRKSt9nothrow_t, size_t size,
+                  std::align_val_t align_val, std::nothrow_t const& nothrow) {
+    void * p = ORIGINAL_FUNC_NAME(_ZnamSt11align_val_tRKSt9nothrow_t)(size, align_val, nothrow);
+    DO_HOOK_ACQUIRE(p, size);
+    return p;
+}
+
+ORIGINAL_FUNC_PTR(_ZnamRKSt9nothrow_t);
+
+DEFINE_HOOK_FUN(void*, _ZnamRKSt9nothrow_t, size_t size, std::nothrow_t const& nothrow) {
+    void * p = ORIGINAL_FUNC_NAME(_ZnamRKSt9nothrow_t)(size, nothrow);
+    DO_HOOK_ACQUIRE(p, size);
+    return p;
+}
+
+ORIGINAL_FUNC_PTR(_ZdlPv);
+
+DEFINE_HOOK_FUN(void, _ZdlPv, void* p) {
+    DO_HOOK_RELEASE(p);
+    ORIGINAL_FUNC_NAME(_ZdlPv)(p);
+}
+
+ORIGINAL_FUNC_PTR(_ZdlPvSt11align_val_t);
+
+DEFINE_HOOK_FUN(void, _ZdlPvSt11align_val_t, void* ptr, std::align_val_t align_val) {
+    DO_HOOK_RELEASE(ptr);
+    ORIGINAL_FUNC_NAME(_ZdlPvSt11align_val_t)(ptr, align_val);
+}
+
+ORIGINAL_FUNC_PTR(_ZdlPvSt11align_val_tRKSt9nothrow_t);
+
+DEFINE_HOOK_FUN(void, _ZdlPvSt11align_val_tRKSt9nothrow_t, void* ptr,
+                  std::align_val_t align_val, std::nothrow_t const& nothrow) {
+    DO_HOOK_RELEASE(ptr);
+    ORIGINAL_FUNC_NAME(_ZdlPvSt11align_val_tRKSt9nothrow_t)(ptr, align_val, nothrow);
+}
+
+ORIGINAL_FUNC_PTR(_ZdlPvRKSt9nothrow_t);
+
+DEFINE_HOOK_FUN(void, _ZdlPvRKSt9nothrow_t, void* ptr, std::nothrow_t const& nothrow) {
+    DO_HOOK_RELEASE(ptr);
+    ORIGINAL_FUNC_NAME(_ZdlPvRKSt9nothrow_t)(ptr, nothrow);
+}
+
+ORIGINAL_FUNC_PTR(_ZdlPvm);
+
+DEFINE_HOOK_FUN(void, _ZdlPvm, void* ptr, size_t size) {
+    DO_HOOK_RELEASE(ptr);
+    ORIGINAL_FUNC_NAME(_ZdlPvm)(ptr, size);
+}
+
+ORIGINAL_FUNC_PTR(_ZdlPvmSt11align_val_t);
+
+DEFINE_HOOK_FUN(void, _ZdlPvmSt11align_val_t, void* ptr, size_t size,
+                  std::align_val_t align_val) {
+    DO_HOOK_RELEASE(ptr);
+    ORIGINAL_FUNC_NAME(_ZdlPvmSt11align_val_t)(ptr, size, align_val);
+}
+
+ORIGINAL_FUNC_PTR(_ZdaPv);
+
+DEFINE_HOOK_FUN(void, _ZdaPv, void* ptr) {
+    DO_HOOK_RELEASE(ptr);
+    ORIGINAL_FUNC_NAME(_ZdaPv)(ptr);
+}
+
+ORIGINAL_FUNC_PTR(_ZdaPvSt11align_val_t);
+
+DEFINE_HOOK_FUN(void, _ZdaPvSt11align_val_t, void* ptr, std::align_val_t align_val) {
+    DO_HOOK_RELEASE(ptr);
+    ORIGINAL_FUNC_NAME(_ZdaPvSt11align_val_t)(ptr, align_val);
+}
+
+ORIGINAL_FUNC_PTR(_ZdaPvSt11align_val_tRKSt9nothrow_t);
+
+DEFINE_HOOK_FUN(void, _ZdaPvSt11align_val_tRKSt9nothrow_t, void* ptr,
+                  std::align_val_t align_val, std::nothrow_t const& nothrow) {
+    DO_HOOK_RELEASE(ptr);
+    ORIGINAL_FUNC_NAME(_ZdaPvSt11align_val_tRKSt9nothrow_t)(ptr, align_val, nothrow);
+}
+
+ORIGINAL_FUNC_PTR(_ZdaPvRKSt9nothrow_t);
+
+DEFINE_HOOK_FUN(void, _ZdaPvRKSt9nothrow_t, void* ptr, std::nothrow_t const& nothrow) {
+    DO_HOOK_RELEASE(ptr);
+    ORIGINAL_FUNC_NAME(_ZdaPvRKSt9nothrow_t)(ptr, nothrow);
+}
+
+ORIGINAL_FUNC_PTR(_ZdaPvm);
+
+DEFINE_HOOK_FUN(void, _ZdaPvm, void* ptr, size_t size) {
+    DO_HOOK_RELEASE(ptr);
+    ORIGINAL_FUNC_NAME(_ZdaPvm)(ptr, size);
+}
+
+ORIGINAL_FUNC_PTR(_ZdaPvmSt11align_val_t);
+
+DEFINE_HOOK_FUN(void, _ZdaPvmSt11align_val_t, void* ptr, size_t size,
+                  std::align_val_t align_val) {
+    DO_HOOK_RELEASE(ptr);
+    ORIGINAL_FUNC_NAME(_ZdaPvmSt11align_val_t)(ptr, size, align_val);
+}
+
+#endif
+
+ORIGINAL_FUNC_PTR(strdup);
+
+DEFINE_HOOK_FUN(char*, strdup, const char* str) {
+    char * p = ORIGINAL_FUNC_NAME(strdup)(str);
+    return p;
+}
+
+ORIGINAL_FUNC_PTR(strndup);
+
+DEFINE_HOOK_FUN(char*, strndup, const char* str, size_t n) {
+    char * p = ORIGINAL_FUNC_NAME(strndup)(str, n);
+    return p;
+}
