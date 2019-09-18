@@ -335,7 +335,12 @@ public class ThreadMonitor extends Plugin {
             if (null != filter && filter.isFilter(threadInfo)) {
                 continue;
             }
-            long trueId = getThreadTraceBucket()[(int) thread.getId()];
+            if (thread instanceof HandlerThread) {
+                threadInfo.tid = ((HandlerThread) thread).getThreadId();
+                map.put(threadInfo.tid, threadInfo);
+                threadInfo.isHandlerThread = true;
+            }
+ /*         long trueId = getThreadTraceBucket()[(int) thread.getId()];
             long methodId = trueId & 0xFFFFFFFFL;
             long tid = trueId >> 32 & 0xFFFFFFFFL;
             threadInfo.stackTrace = (int) methodId;
@@ -348,18 +353,11 @@ public class ThreadMonitor extends Plugin {
                 } catch (Exception e) {
                     MatrixLog.e(TAG, MatrixUtil.printException(e));
                 }
+            } else {
+                threadInfo.tid = ((HandlerThread) thread).getThreadId();
+                threadInfo.isHandlerThread = true;
             }
-            if (tid == 0) {
-                MatrixLog.w(TAG, "[getAppThreadsMap] it can't track this thread. %s", threadInfo);
-                if (thread instanceof HandlerThread) {
-                    tid = ((HandlerThread) thread).getThreadId();
-                    threadInfo.isHandlerThread = true;
-                }
-            }
-            threadInfo.tid = (int) tid;
-
-            map.put(threadInfo.tid, threadInfo);
-            threadInfo.isHandlerThread = thread instanceof HandlerThread;
+*/
         }
         return map;
     }
@@ -475,7 +473,7 @@ public class ThreadMonitor extends Plugin {
 
         @Override
         public String toString() {
-            return String.format("name=%s tid=%s state=%s isHandlerThread=%s target=%s", name, tid, state, isHandlerThread, target);
+            return String.format("name=%s tid=%s state=%s isHandlerThread=%s", name, tid, state, isHandlerThread);
         }
     }
 
