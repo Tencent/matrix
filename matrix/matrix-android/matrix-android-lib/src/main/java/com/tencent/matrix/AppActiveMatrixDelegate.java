@@ -14,7 +14,6 @@ import com.tencent.matrix.util.MatrixHandlerThread;
 import com.tencent.matrix.util.MatrixLog;
 
 import java.lang.reflect.Field;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -26,7 +25,7 @@ public enum AppActiveMatrixDelegate {
     INSTANCE;
 
     private static final String TAG = "Matrix.AppActiveMatrixDelegate";
-    private Set<IAppForeground> listeners = Collections.synchronizedSet(new HashSet<IAppForeground>());
+    private final Set<IAppForeground> listeners = new HashSet();
     private boolean isAppForeground = false;
     private String visibleScene = "default";
     private Controller controller = new Controller();
@@ -75,9 +74,10 @@ public enum AppActiveMatrixDelegate {
             @Override
             public void run() {
                 isAppForeground = true;
-
-                for (IAppForeground listener : listeners) {
-                    listener.onForeground(true);
+                synchronized (listeners) {
+                    for (IAppForeground listener : listeners) {
+                        listener.onForeground(true);
+                    }
                 }
             }
         });
@@ -95,8 +95,10 @@ public enum AppActiveMatrixDelegate {
             @Override
             public void run() {
                 isAppForeground = false;
-                for (IAppForeground listener : listeners) {
-                    listener.onForeground(false);
+                synchronized (listeners) {
+                    for (IAppForeground listener : listeners) {
+                        listener.onForeground(false);
+                    }
                 }
             }
         });
@@ -109,11 +111,15 @@ public enum AppActiveMatrixDelegate {
     }
 
     public void addListener(IAppForeground listener) {
-        listeners.add(listener);
+        synchronized (listeners) {
+            listeners.add(listener);
+        }
     }
 
     public void removeListener(IAppForeground listener) {
-        listeners.remove(listener);
+        synchronized (listeners) {
+            listeners.remove(listener);
+        }
     }
 
 
@@ -122,9 +128,7 @@ public enum AppActiveMatrixDelegate {
         @Override
         public void onActivityStarted(Activity activity) {
             updateScene(activity);
-            if (!isAppForeground) {
-                onDispatchForeground(getVisibleScene());
-            }
+            onDispatchForeground(getVisibleScene());
         }
 
 
