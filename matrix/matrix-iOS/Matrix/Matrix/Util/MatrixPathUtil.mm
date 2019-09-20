@@ -19,10 +19,15 @@
 #import <sys/stat.h>
 #import <sys/time.h>
 
+static NSString* g_matrixCacheRootPath = nil;
+
 @implementation MatrixPathUtil
 
 + (NSString *)matrixCacheRootPath
 {
+    if (g_matrixCacheRootPath.length > 0) {
+        return g_matrixCacheRootPath;
+    }
     static NSString *s_rootPath;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
@@ -37,41 +42,29 @@
 
 + (NSString *)crashBlockPluginCachePath
 {
-    static NSString *s_rootPath;
-    static dispatch_once_t onceToken;
-    dispatch_once(&onceToken, ^{
-        s_rootPath = [[self matrixCacheRootPath] stringByAppendingPathComponent:@"CrashBlock"];
-        if ([[NSFileManager defaultManager] fileExistsAtPath:s_rootPath] == NO) {
-            [[NSFileManager defaultManager] createDirectoryAtPath:s_rootPath withIntermediateDirectories:YES attributes:nil error:nil];
-        }
-    });
-    return s_rootPath;
+    NSString *rootPath = [[self matrixCacheRootPath] stringByAppendingPathComponent:@"CrashBlock"];
+    if ([[NSFileManager defaultManager] fileExistsAtPath:rootPath] == NO) {
+        [[NSFileManager defaultManager] createDirectoryAtPath:rootPath withIntermediateDirectories:YES attributes:nil error:nil];
+    }
+    return rootPath;
 }
 
 + (NSString *)appRebootAnalyzerCachePath
 {
-    static NSString *s_rootPath;
-    static dispatch_once_t onceToken;
-    dispatch_once(&onceToken, ^{
-        s_rootPath = [[self matrixCacheRootPath] stringByAppendingPathComponent:@"AppReboot"];
-        if ([[NSFileManager defaultManager] fileExistsAtPath:s_rootPath] == NO) {
-            [[NSFileManager defaultManager] createDirectoryAtPath:s_rootPath withIntermediateDirectories:YES attributes:nil error:nil];
-        }
-    });
-    return s_rootPath;
+    NSString *rootPath = [[self matrixCacheRootPath] stringByAppendingPathComponent:@"AppReboot"];
+    if ([[NSFileManager defaultManager] fileExistsAtPath:rootPath] == NO) {
+        [[NSFileManager defaultManager] createDirectoryAtPath:rootPath withIntermediateDirectories:YES attributes:nil error:nil];
+    }
+    return rootPath;
 }
 
 + (NSString *)memoryStatPluginCachePath
 {
-    static NSString *s_rootPath;
-    static dispatch_once_t onceToken;
-    dispatch_once(&onceToken, ^{
-        s_rootPath = [[self matrixCacheRootPath] stringByAppendingPathComponent:@"MemoryStat"];
-        if ([[NSFileManager defaultManager] fileExistsAtPath:s_rootPath] == NO) {
-            [[NSFileManager defaultManager] createDirectoryAtPath:s_rootPath withIntermediateDirectories:YES attributes:nil error:nil];
-        }
-    });
-    return s_rootPath;
+    NSString *rootPath = [[self matrixCacheRootPath] stringByAppendingPathComponent:@"MemoryStat"];
+    if ([[NSFileManager defaultManager] fileExistsAtPath:rootPath] == NO) {
+        [[NSFileManager defaultManager] createDirectoryAtPath:rootPath withIntermediateDirectories:YES attributes:nil error:nil];
+    }
+    return rootPath;
 }
 
 // ============================================================================
@@ -130,6 +123,14 @@
         }
     }
     return latestTime;
+}
+
++ (void)setMatrixCacheRootPath:(NSString *)path {
+    if (path.length < 1) {
+        return;
+    }
+    g_matrixCacheRootPath = path;
+    MatrixInfo(@"set matrix cache root path: %@", g_matrixCacheRootPath);
 }
 
 @end
