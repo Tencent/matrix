@@ -11,7 +11,7 @@ extern "C" {
 #endif
 
 static void registerCXXFun(const char *lib_pattern) {
-#ifdef __LP32__
+#ifndef __LP64__
 
     xhook_register(lib_pattern, "_Znwj", (void*) HANDLER_FUNC_NAME(_Znwj), (void**) &ORIGINAL_FUNC_NAME(_Znwj));
     xhook_register(lib_pattern, "_ZnwjSt11align_val_t", (void*) HANDLER_FUNC_NAME(_ZnwjSt11align_val_t), (void**) &ORIGINAL_FUNC_NAME(_ZnwjSt11align_val_t));
@@ -22,6 +22,11 @@ static void registerCXXFun(const char *lib_pattern) {
     xhook_register(lib_pattern, "_ZnajSt11align_val_tRKSt9nothrow_t", (void*) HANDLER_FUNC_NAME(_ZnajSt11align_val_tRKSt9nothrow_t), (void**) &ORIGINAL_FUNC_NAME(_ZnajSt11align_val_tRKSt9nothrow_t));
     xhook_register(lib_pattern, "_ZnajRKSt9nothrow_t", (void*) HANDLER_FUNC_NAME(_ZnajRKSt9nothrow_t), (void**) &ORIGINAL_FUNC_NAME(_ZnajRKSt9nothrow_t));
 
+    xhook_register(lib_pattern, "_ZdlPvj", (void*) HANDLER_FUNC_NAME(_ZdlPvj), (void**) &ORIGINAL_FUNC_NAME(_ZdlPvj));
+    xhook_register(lib_pattern, "_ZdlPvjSt11align_val_t", (void*) HANDLER_FUNC_NAME(_ZdlPvjSt11align_val_t), (void**) &ORIGINAL_FUNC_NAME(_ZdlPvjSt11align_val_t));
+
+    xhook_register(lib_pattern, "_ZdaPvj", (void*) HANDLER_FUNC_NAME(_ZdaPvj), (void**) &ORIGINAL_FUNC_NAME(_ZdaPvj));
+    xhook_register(lib_pattern, "_ZdaPvjSt11align_val_t", (void*) HANDLER_FUNC_NAME(_ZdaPvjSt11align_val_t), (void**) &ORIGINAL_FUNC_NAME(_ZdaPvjSt11align_val_t));
 #else
 
     xhook_register(lib_pattern, "_Znwm", (void*) HANDLER_FUNC_NAME(_Znwm), (void**) &ORIGINAL_FUNC_NAME(_Znwm));
@@ -33,6 +38,11 @@ static void registerCXXFun(const char *lib_pattern) {
     xhook_register(lib_pattern, "_ZnamSt11align_val_tRKSt9nothrow_t", (void*) HANDLER_FUNC_NAME(_ZnamSt11align_val_tRKSt9nothrow_t), (void**) &ORIGINAL_FUNC_NAME(_ZnamSt11align_val_tRKSt9nothrow_t));
     xhook_register(lib_pattern, "_ZnamRKSt9nothrow_t", (void*) HANDLER_FUNC_NAME(_ZnamRKSt9nothrow_t), (void**) &ORIGINAL_FUNC_NAME(_ZnamRKSt9nothrow_t));
 
+    xhook_register(lib_pattern, "_ZdlPvm", (void*) HANDLER_FUNC_NAME(_ZdlPvm), (void**) &ORIGINAL_FUNC_NAME(_ZdlPvm));
+    xhook_register(lib_pattern, "_ZdlPvmSt11align_val_t", (void*) HANDLER_FUNC_NAME(_ZdlPvmSt11align_val_t), (void**) &ORIGINAL_FUNC_NAME(_ZdlPvmSt11align_val_t));
+
+    xhook_register(lib_pattern, "_ZdaPvm", (void*) HANDLER_FUNC_NAME(_ZdaPvm), (void**) &ORIGINAL_FUNC_NAME(_ZdaPvm));
+    xhook_register(lib_pattern, "_ZdaPvmSt11align_val_t", (void*) HANDLER_FUNC_NAME(_ZdaPvmSt11align_val_t), (void**) &ORIGINAL_FUNC_NAME(_ZdaPvmSt11align_val_t));
 #endif
 
     xhook_register(lib_pattern, "_ZdlPv", (void*) HANDLER_FUNC_NAME(_ZdlPv), (void**) &ORIGINAL_FUNC_NAME(_ZdlPv));
@@ -40,38 +50,12 @@ static void registerCXXFun(const char *lib_pattern) {
     xhook_register(lib_pattern, "_ZdlPvSt11align_val_tRKSt9nothrow_t", (void*) HANDLER_FUNC_NAME(_ZdlPvSt11align_val_tRKSt9nothrow_t), (void**) &ORIGINAL_FUNC_NAME(_ZdlPvSt11align_val_tRKSt9nothrow_t));
     xhook_register(lib_pattern, "_ZdlPvRKSt9nothrow_t", (void*) HANDLER_FUNC_NAME(_ZdlPvRKSt9nothrow_t), (void**) &ORIGINAL_FUNC_NAME(_ZdlPvRKSt9nothrow_t));
 
-#ifdef __LP32__
-
-    xhook_register(lib_pattern, "_ZdlPvj", (void*) HANDLER_FUNC_NAME(_ZdlPvj), (void**) &ORIGINAL_FUNC_NAME(_ZdlPvj));
-    xhook_register(lib_pattern, "_ZdlPvjSt11align_val_t", (void*) HANDLER_FUNC_NAME(_ZdlPvjSt11align_val_t), (void**) &ORIGINAL_FUNC_NAME(_ZdlPvjSt11align_val_t));
-
-#else
-
-    xhook_register(lib_pattern, "_ZdlPvm", (void*) HANDLER_FUNC_NAME(_ZdlPvm), (void**) &ORIGINAL_FUNC_NAME(_ZdlPvm));
-    xhook_register(lib_pattern, "_ZdlPvmSt11align_val_t", (void*) HANDLER_FUNC_NAME(_ZdlPvmSt11align_val_t), (void**) &ORIGINAL_FUNC_NAME(_ZdlPvmSt11align_val_t));
-
-#endif
-
     xhook_register(lib_pattern, "_ZdaPv", (void*) HANDLER_FUNC_NAME(_ZdaPv), (void**) &ORIGINAL_FUNC_NAME(_ZdaPv));
     xhook_register(lib_pattern, "_ZdaPvSt11align_val_t", (void*) HANDLER_FUNC_NAME(_ZdaPvSt11align_val_t), (void**) &ORIGINAL_FUNC_NAME(_ZdaPvSt11align_val_t));
     xhook_register(lib_pattern, "_ZdaPvSt11align_val_tRKSt9nothrow_t", (void*) HANDLER_FUNC_NAME(_ZdaPvSt11align_val_tRKSt9nothrow_t), (void**) &ORIGINAL_FUNC_NAME(_ZdaPvSt11align_val_tRKSt9nothrow_t));
     xhook_register(lib_pattern, "_ZdaPvRKSt9nothrow_t", (void*) HANDLER_FUNC_NAME(_ZdaPvRKSt9nothrow_t), (void**) &ORIGINAL_FUNC_NAME(_ZdaPvRKSt9nothrow_t));
 
-#ifdef __LP32__
-
-    xhook_register(lib_pattern, "_ZdaPvj", (void*) HANDLER_FUNC_NAME(_ZdaPvj), (void**) &ORIGINAL_FUNC_NAME(_ZdaPvj));
-    xhook_register(lib_pattern, "_ZdaPvjSt11align_val_t", (void*) HANDLER_FUNC_NAME(_ZdaPvjSt11align_val_t), (void**) &ORIGINAL_FUNC_NAME(_ZdaPvjSt11align_val_t));
-
-#else
-
-    xhook_register(lib_pattern, "_ZdaPvm", (void*) HANDLER_FUNC_NAME(_ZdaPvm), (void**) &ORIGINAL_FUNC_NAME(_ZdaPvm));
-    xhook_register(lib_pattern, "_ZdaPvmSt11align_val_t", (void*) HANDLER_FUNC_NAME(_ZdaPvmSt11align_val_t), (void**) &ORIGINAL_FUNC_NAME(_ZdaPvmSt11align_val_t));
-
-#endif
-
-
     xhook_register(lib_pattern, "strdup", (void*) HANDLER_FUNC_NAME(strdup), (void**) &ORIGINAL_FUNC_NAME(strdup));
-
     xhook_register(lib_pattern, "strndup", (void*) HANDLER_FUNC_NAME(strndup), (void**) &ORIGINAL_FUNC_NAME(strndup));
 }
 
@@ -80,6 +64,7 @@ static void hook(const char *regex) {
     xhook_register(regex, "calloc", (void *) h_calloc, NULL);
     xhook_register(regex, "realloc", (void *) h_realloc, NULL);
     xhook_register(regex, "free", (void *) h_free, NULL);
+    registerCXXFun(regex);
 }
 
 static void ignore(const char *regex) {
@@ -119,6 +104,7 @@ Java_com_tencent_mm_performance_jni_memory_MemoryHook_xhookIgnoreNative(JNIEnv *
     xhook_ignore(".*libc\\.so$", NULL);
     xhook_ignore(".*libc++_shared\\.so$", NULL);
     xhook_ignore(".*libstlport_shared\\.so$", NULL);
+//    xhook_ignore(".*libart\\.so$", NULL);
 
 
     if (!ignoreSoList) {

@@ -457,58 +457,102 @@ void dump(std::string path) {
          ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> memory dump end <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
 }
 
-#ifdef __LP32__
+#ifndef __LP64__
+
+ORIGINAL_FUNC_PTR(_Znwj);
 
 DEFINE_HOOK_FUN(void*, _Znwj, size_t size) {
-    
+    void * p = ORIGINAL_FUNC_NAME(_Znwj)(size);
+    DO_HOOK_ACQUIRE(p, size);
+    return p;
 }
 
+ORIGINAL_FUNC_PTR(_ZnwjSt11align_val_t);
+
 DEFINE_HOOK_FUN(void*, _ZnwjSt11align_val_t, size_t size, std::align_val_t align_val) {
-    
+    void * p = ORIGINAL_FUNC_NAME(_ZnwjSt11align_val_t)(size, align_val);
+    DO_HOOK_ACQUIRE(p, size);
+    return p;
 }
+
+ORIGINAL_FUNC_PTR(_ZnwjSt11align_val_tRKSt9nothrow_t);
 
 DEFINE_HOOK_FUN(void*, _ZnwjSt11align_val_tRKSt9nothrow_t, size_t size,
                     std::align_val_t align_val, std::nothrow_t const& nothrow) {
-    
+    void * p = ORIGINAL_FUNC_NAME(_ZnwjSt11align_val_tRKSt9nothrow_t)(size, align_val, nothrow);
+    DO_HOOK_ACQUIRE(p, size);
+    return p;
 }
+
+ORIGINAL_FUNC_PTR(_ZnwjRKSt9nothrow_t);
 
 DEFINE_HOOK_FUN(void*, _ZnwjRKSt9nothrow_t, size_t size, std::nothrow_t const& nothrow) {
-    
+    void * p = ORIGINAL_FUNC_NAME(_ZnwjRKSt9nothrow_t)(size, nothrow);
+    DO_HOOK_ACQUIRE(p, size);
+    return p;
 }
+
+ORIGINAL_FUNC_PTR(_Znaj);
 
 DEFINE_HOOK_FUN(void*, _Znaj, size_t size) {
-    
+    void * p = ORIGINAL_FUNC_NAME(_Znaj)(size);
+    DO_HOOK_ACQUIRE(p, size);
+    return p;
 }
 
+ORIGINAL_FUNC_PTR(_ZnajSt11align_val_t);
+
 DEFINE_HOOK_FUN(void*, _ZnajSt11align_val_t, size_t size, std::align_val_t align_val) {
-    
+    void * p = ORIGINAL_FUNC_NAME(_ZnajSt11align_val_t)(size, align_val);
+    DO_HOOK_ACQUIRE(p, size);
+    return p;
 }
+
+ORIGINAL_FUNC_PTR(_ZnajSt11align_val_tRKSt9nothrow_t);
 
 DEFINE_HOOK_FUN(void*, _ZnajSt11align_val_tRKSt9nothrow_t, size_t size,
                     std::align_val_t align_val, std::nothrow_t const& nothrow) {
-    
+    void * p = ORIGINAL_FUNC_NAME(_ZnajSt11align_val_tRKSt9nothrow_t)(size, align_val, nothrow);
+    DO_HOOK_ACQUIRE(p, size);
+    return p;
 }
+
+ORIGINAL_FUNC_PTR(_ZnajRKSt9nothrow_t);
 
 DEFINE_HOOK_FUN(void*, _ZnajRKSt9nothrow_t, size_t size, std::nothrow_t const& nothrow) {
-    
+    void * p = ORIGINAL_FUNC_NAME(_ZnajRKSt9nothrow_t)(size, nothrow);
+    DO_HOOK_ACQUIRE(p, size);
+    return p;
 }
 
-DEFINE_HOOK_ORIG(void, _ZdaPvj, void* ptr, size_t size) {
+ORIGINAL_FUNC_PTR(_ZdaPvj);
 
+DEFINE_HOOK_FUN(void, _ZdaPvj, void* ptr, size_t size) {
+    DO_HOOK_RELEASE(ptr);
+    ORIGINAL_FUNC_NAME(_ZdaPvj)(ptr, size);
 }
 
-DEFINE_HOOK_ORIG(void, _ZdaPvjSt11align_val_t, void* ptr, size_t size,
+ORIGINAL_FUNC_PTR(_ZdaPvjSt11align_val_t);
+
+DEFINE_HOOK_FUN(void, _ZdaPvjSt11align_val_t, void* ptr, size_t size,
                     std::align_val_t align_val) {
-
+    DO_HOOK_RELEASE(ptr);
+    ORIGINAL_FUNC_NAME(_ZdaPvjSt11align_val_t)(ptr, size, align_val);
 }
 
-DEFINE_HOOK_ORIG(void, _ZdlPvj, void* ptr, size_t size) {
+ORIGINAL_FUNC_PTR(_ZdlPvj);
 
+DEFINE_HOOK_FUN(void, _ZdlPvj, void* ptr, size_t size) {
+    DO_HOOK_RELEASE(ptr);
+    ORIGINAL_FUNC_NAME(_ZdlPvj)(ptr, size);
 }
 
-DEFINE_HOOK_ORIG(void, _ZdlPvjSt11align_val_t, void* ptr, size_t size,
+ORIGINAL_FUNC_PTR(_ZdlPvjSt11align_val_t);
+
+DEFINE_HOOK_FUN(void, _ZdlPvjSt11align_val_t, void* ptr, size_t size,
                     std::align_val_t align_val) {
-
+    DO_HOOK_RELEASE(ptr);
+    ORIGINAL_FUNC_NAME(_ZdlPvjSt11align_val_t)(ptr, size, align_val);
 }
 
 #else
@@ -581,35 +625,6 @@ DEFINE_HOOK_FUN(void*, _ZnamRKSt9nothrow_t, size_t size, std::nothrow_t const& n
     return p;
 }
 
-ORIGINAL_FUNC_PTR(_ZdlPv);
-
-DEFINE_HOOK_FUN(void, _ZdlPv, void* p) {
-    DO_HOOK_RELEASE(p);
-    ORIGINAL_FUNC_NAME(_ZdlPv)(p);
-}
-
-ORIGINAL_FUNC_PTR(_ZdlPvSt11align_val_t);
-
-DEFINE_HOOK_FUN(void, _ZdlPvSt11align_val_t, void* ptr, std::align_val_t align_val) {
-    DO_HOOK_RELEASE(ptr);
-    ORIGINAL_FUNC_NAME(_ZdlPvSt11align_val_t)(ptr, align_val);
-}
-
-ORIGINAL_FUNC_PTR(_ZdlPvSt11align_val_tRKSt9nothrow_t);
-
-DEFINE_HOOK_FUN(void, _ZdlPvSt11align_val_tRKSt9nothrow_t, void* ptr,
-                  std::align_val_t align_val, std::nothrow_t const& nothrow) {
-    DO_HOOK_RELEASE(ptr);
-    ORIGINAL_FUNC_NAME(_ZdlPvSt11align_val_tRKSt9nothrow_t)(ptr, align_val, nothrow);
-}
-
-ORIGINAL_FUNC_PTR(_ZdlPvRKSt9nothrow_t);
-
-DEFINE_HOOK_FUN(void, _ZdlPvRKSt9nothrow_t, void* ptr, std::nothrow_t const& nothrow) {
-    DO_HOOK_RELEASE(ptr);
-    ORIGINAL_FUNC_NAME(_ZdlPvRKSt9nothrow_t)(ptr, nothrow);
-}
-
 ORIGINAL_FUNC_PTR(_ZdlPvm);
 
 DEFINE_HOOK_FUN(void, _ZdlPvm, void* ptr, size_t size) {
@@ -625,34 +640,7 @@ DEFINE_HOOK_FUN(void, _ZdlPvmSt11align_val_t, void* ptr, size_t size,
     ORIGINAL_FUNC_NAME(_ZdlPvmSt11align_val_t)(ptr, size, align_val);
 }
 
-ORIGINAL_FUNC_PTR(_ZdaPv);
 
-DEFINE_HOOK_FUN(void, _ZdaPv, void* ptr) {
-    DO_HOOK_RELEASE(ptr);
-    ORIGINAL_FUNC_NAME(_ZdaPv)(ptr);
-}
-
-ORIGINAL_FUNC_PTR(_ZdaPvSt11align_val_t);
-
-DEFINE_HOOK_FUN(void, _ZdaPvSt11align_val_t, void* ptr, std::align_val_t align_val) {
-    DO_HOOK_RELEASE(ptr);
-    ORIGINAL_FUNC_NAME(_ZdaPvSt11align_val_t)(ptr, align_val);
-}
-
-ORIGINAL_FUNC_PTR(_ZdaPvSt11align_val_tRKSt9nothrow_t);
-
-DEFINE_HOOK_FUN(void, _ZdaPvSt11align_val_tRKSt9nothrow_t, void* ptr,
-                  std::align_val_t align_val, std::nothrow_t const& nothrow) {
-    DO_HOOK_RELEASE(ptr);
-    ORIGINAL_FUNC_NAME(_ZdaPvSt11align_val_tRKSt9nothrow_t)(ptr, align_val, nothrow);
-}
-
-ORIGINAL_FUNC_PTR(_ZdaPvRKSt9nothrow_t);
-
-DEFINE_HOOK_FUN(void, _ZdaPvRKSt9nothrow_t, void* ptr, std::nothrow_t const& nothrow) {
-    DO_HOOK_RELEASE(ptr);
-    ORIGINAL_FUNC_NAME(_ZdaPvRKSt9nothrow_t)(ptr, nothrow);
-}
 
 ORIGINAL_FUNC_PTR(_ZdaPvm);
 
@@ -683,4 +671,63 @@ ORIGINAL_FUNC_PTR(strndup);
 DEFINE_HOOK_FUN(char*, strndup, const char* str, size_t n) {
     char * p = ORIGINAL_FUNC_NAME(strndup)(str, n);
     return p;
+}
+
+ORIGINAL_FUNC_PTR(_ZdlPv);
+
+DEFINE_HOOK_FUN(void, _ZdlPv, void* p) {
+    DO_HOOK_RELEASE(p);
+    ORIGINAL_FUNC_NAME(_ZdlPv)(p);
+}
+
+ORIGINAL_FUNC_PTR(_ZdlPvSt11align_val_t);
+
+DEFINE_HOOK_FUN(void, _ZdlPvSt11align_val_t, void* ptr, std::align_val_t align_val) {
+    DO_HOOK_RELEASE(ptr);
+    ORIGINAL_FUNC_NAME(_ZdlPvSt11align_val_t)(ptr, align_val);
+}
+
+ORIGINAL_FUNC_PTR(_ZdlPvSt11align_val_tRKSt9nothrow_t);
+
+DEFINE_HOOK_FUN(void, _ZdlPvSt11align_val_tRKSt9nothrow_t, void* ptr,
+                std::align_val_t align_val, std::nothrow_t const& nothrow) {
+    DO_HOOK_RELEASE(ptr);
+    ORIGINAL_FUNC_NAME(_ZdlPvSt11align_val_tRKSt9nothrow_t)(ptr, align_val, nothrow);
+}
+
+ORIGINAL_FUNC_PTR(_ZdlPvRKSt9nothrow_t);
+
+DEFINE_HOOK_FUN(void, _ZdlPvRKSt9nothrow_t, void* ptr, std::nothrow_t const& nothrow) {
+    DO_HOOK_RELEASE(ptr);
+    ORIGINAL_FUNC_NAME(_ZdlPvRKSt9nothrow_t)(ptr, nothrow);
+}
+
+
+ORIGINAL_FUNC_PTR(_ZdaPv);
+
+DEFINE_HOOK_FUN(void, _ZdaPv, void* ptr) {
+    DO_HOOK_RELEASE(ptr);
+    ORIGINAL_FUNC_NAME(_ZdaPv)(ptr);
+}
+
+ORIGINAL_FUNC_PTR(_ZdaPvSt11align_val_t);
+
+DEFINE_HOOK_FUN(void, _ZdaPvSt11align_val_t, void* ptr, std::align_val_t align_val) {
+    DO_HOOK_RELEASE(ptr);
+    ORIGINAL_FUNC_NAME(_ZdaPvSt11align_val_t)(ptr, align_val);
+}
+
+ORIGINAL_FUNC_PTR(_ZdaPvSt11align_val_tRKSt9nothrow_t);
+
+DEFINE_HOOK_FUN(void, _ZdaPvSt11align_val_tRKSt9nothrow_t, void* ptr,
+                std::align_val_t align_val, std::nothrow_t const& nothrow) {
+    DO_HOOK_RELEASE(ptr);
+    ORIGINAL_FUNC_NAME(_ZdaPvSt11align_val_tRKSt9nothrow_t)(ptr, align_val, nothrow);
+}
+
+ORIGINAL_FUNC_PTR(_ZdaPvRKSt9nothrow_t);
+
+DEFINE_HOOK_FUN(void, _ZdaPvRKSt9nothrow_t, void* ptr, std::nothrow_t const& nothrow) {
+    DO_HOOK_RELEASE(ptr);
+    ORIGINAL_FUNC_NAME(_ZdaPvRKSt9nothrow_t)(ptr, nothrow);
 }
