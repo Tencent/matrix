@@ -87,9 +87,14 @@ static inline void init_if_necessary() {
 }
 
 static inline void on_acquire_memory(void *__caller, void *__ptr, size_t __byte_count) {
-//    LOGD("Yves", "on acquire memory, ptr = (%p)", __ptr);
     acquire_lock();
     init_if_necessary();
+//    LOGD("Yves", "+++++++++on acquire memory, ptr = (%p), size = (%zu)", __ptr, __byte_count);
+
+    if (m_size_of_pointer->count(__ptr) && m_size_of_pointer->at(__ptr) == __byte_count) {
+        release_lock();
+        return;
+    }
 
     (*m_size_of_caller)[__caller] += __byte_count;
     (*m_size_of_pointer)[__ptr] = __byte_count;
@@ -129,6 +134,7 @@ static inline void on_acquire_memory(void *__caller, void *__ptr, size_t __byte_
 inline void on_release_memory(void *__caller, void *__ptr) {
     acquire_lock();
     init_if_necessary();
+//    LOGD("Yves", "---------on release memory, ptr = (%p)", __ptr);
     // with caller
 
     if (!m_size_of_pointer->count(__ptr)) {
@@ -139,6 +145,7 @@ inline void on_release_memory(void *__caller, void *__ptr) {
     }
 
     auto ptr_size = m_size_of_pointer->at(__ptr);
+    m_size_of_pointer->erase(__ptr);
     if (m_caller_of_pointer->count(__ptr)) {
         auto alloc_caller = m_caller_of_pointer->at(__ptr);
 
