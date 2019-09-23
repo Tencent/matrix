@@ -14,6 +14,24 @@
 #define FUNC_TYPE(sym) fn_##sym##_t
 #define ORIGINAL_FUNC_PTR(sym) FUNC_TYPE(sym) ORIGINAL_FUNC_NAME(sym)
 
+#define CALL_ORIGIN_FUNC_RET(retType, ret ,sym, params...) \
+    if (!ORIGINAL_FUNC_NAME(sym)) { \
+        void *handle = dlopen("libc++_shared.so", RTLD_LAZY); \
+        if (handle) { \
+            ORIGINAL_FUNC_NAME(sym) = (FUNC_TYPE(sym))dlsym(RTLD_NEXT, #sym); \
+        } \
+    } \
+    retType ret = ORIGINAL_FUNC_NAME(sym)(params)
+
+#define CALL_ORIGIN_FUNC_VOID(sym, params...) \
+    if (!ORIGINAL_FUNC_NAME(sym)) { \
+        void *handle = dlopen("libc++_shared.so", RTLD_LAZY); \
+        if (handle) { \
+            ORIGINAL_FUNC_NAME(sym) = (FUNC_TYPE(sym))dlsym(RTLD_NEXT, #sym); \
+        } \
+    } \
+    ORIGINAL_FUNC_NAME(sym)(params)
+
 #define DECLARE_HOOK_ORIG(ret, sym, params...) \
     typedef ret (*FUNC_TYPE(sym))(params); \
     ret HANDLER_FUNC_NAME(sym)(params); \
