@@ -20,6 +20,7 @@ import android.widget.TextView;
 import com.tencent.matrix.AppActiveMatrixDelegate;
 import com.tencent.matrix.Matrix;
 import com.tencent.matrix.listeners.IAppForeground;
+import com.tencent.matrix.trace.R;
 import com.tencent.matrix.trace.TracePlugin;
 import com.tencent.matrix.trace.constants.Constants;
 import com.tencent.matrix.trace.core.UIThreadMonitor;
@@ -135,6 +136,16 @@ public class FrameDecorator extends IDoFrameListener implements IAppForeground {
     public void setClickListener(View.OnClickListener clickListener) {
         this.clickListener = clickListener;
     }
+
+    public void setExtraInfo(String info) {
+        if (getView() != null) {
+            TextView textView = getView().findViewById(R.id.extra_info);
+            if (null != textView) {
+                textView.setText(info);
+            }
+        }
+    }
+
 
     long sumFrameCost;
     long[] lastCost = new long[1];

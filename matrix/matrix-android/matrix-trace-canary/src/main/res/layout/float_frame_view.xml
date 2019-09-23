@@ -39,12 +39,12 @@
         android:orientation="vertical">
 
         <TextView
+            android:id="@+id/extra_info"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:gravity="left"
             android:minWidth="40dp"
             android:paddingLeft="3dp"
-            android:text="200 ms"
             android:textColor="@color/dark_text"
             android:textSize="8dp" />
 
