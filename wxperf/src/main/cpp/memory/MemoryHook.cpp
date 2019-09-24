@@ -17,6 +17,10 @@
 #include "utils.h"
 #include "unwindstack/Unwinder.h"
 
+extern "C" typedef struct {
+    // todo
+} ptr_meta_t;
+
 std::unordered_map<void *, size_t> *m_size_of_caller;
 std::unordered_map<void *, size_t> *m_size_of_pointer;
 std::unordered_map<void *, void *> *m_caller_of_pointer;
@@ -148,6 +152,7 @@ inline void on_release_memory(void *__caller, void *__ptr) {
     m_size_of_pointer->erase(__ptr);
     if (m_caller_of_pointer->count(__ptr)) {
         auto alloc_caller = m_caller_of_pointer->at(__ptr);
+        m_caller_of_pointer->erase(__ptr);
 
         if (m_size_of_caller->count(alloc_caller)) {
             auto caller_size = m_size_of_caller->at(alloc_caller);
