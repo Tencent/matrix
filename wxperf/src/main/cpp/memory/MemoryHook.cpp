@@ -71,7 +71,7 @@ void setSampling(double __sampling) {
     m_sampling = __sampling;
 }
 
-//static inline void init_if_necessary() {
+static inline void init_if_necessary() {
 //    if (!m_size_of_caller) {
 //        LOGD("Yves", "init size of caller");
 //        m_size_of_caller = new std::unordered_map<void *, size_t>;
@@ -104,7 +104,16 @@ void setSampling(double __sampling) {
 //    if (!m_pointers_of_caller) {
 //        m_pointers_of_caller = new std::unordered_map<void *, std::unordered_set<void *>>;
 //    }
-//}
+//    if (!m_ptr_meta) {
+//        m_ptr_meta = new std::unordered_map<void *, ptr_meta_t>;
+//    }
+//    if (!m_caller_meta) {
+//        m_caller_meta = new std::unordered_map<void *, caller_meta_t>;
+//    }
+//    if (!m_stack_meta) {
+//        m_stack_meta = new std::unordered_map<uint64_t, stack_meta_t>;
+//    }
+}
 
 //static inline void on_acquire_memory_old(void *__caller, void *__ptr, size_t __byte_count) {
 //    acquire_lock();
@@ -207,8 +216,10 @@ void setSampling(double __sampling) {
 static inline void on_acquire_memory(void *__caller, void *__ptr, size_t __byte_count) {
     acquire_lock();
 
+    init_if_necessary();
+
     if (m_ptr_meta.count(__ptr) && m_ptr_meta.at(__ptr).size == __byte_count) { // 检查是否重复记录同一个指针
-        LOGE("Yves", "!!!!!!!! redundant pointer and size!!!!!!!");
+//        LOGE("Yves", "!!!!!!!! redundant pointer and size!!!!!!!");
         release_lock();
         return;
     }
@@ -249,6 +260,8 @@ static inline void on_acquire_memory(void *__caller, void *__ptr, size_t __byte_
 inline void on_release_memory(void *__caller, void *__ptr) {
     acquire_lock();
 
+    init_if_necessary();
+
     if (!m_ptr_meta.count(__ptr)) { // 指针未记录
         release_lock();
         return;
@@ -261,7 +274,8 @@ inline void on_release_memory(void *__caller, void *__ptr) {
 //    assert(ptr_meta.size);
 
     if (!ptr_meta.caller || !m_caller_meta.count(ptr_meta.caller)) {
-        LOGE("Yves.debug", " caller null or meta not exist? %zu", m_caller_meta.count(ptr_meta.caller));
+        // todo why ?
+//        LOGE("Yves.debug", " caller null or meta not exist? %zu", m_caller_meta.count(ptr_meta.caller));
         release_lock();
         return;
     }
@@ -596,8 +610,10 @@ void dump(std::string path) {
     std::unordered_map<std::string, size_t> caller_alloc_size_of_so;
     std::unordered_map<std::string, std::map<size_t, size_t>> same_size_count_of_so;
 
+//    LOGE("Yves.debug", "caller so begin");
     // 按 so 聚类
     for (auto i = m_caller_meta.begin(); i != m_caller_meta.end(); ++i) {
+//        LOGE("Yves.debug", "so sum loop");
         auto caller = i->first;
         auto caller_meta = i->second;
 
@@ -611,11 +627,18 @@ void dump(std::string path) {
 
         // 按 size 聚类
         for (auto p = caller_meta.pointers.begin(); p != caller_meta.pointers.end(); ++p) {
-            auto ptr_meta = m_ptr_meta.at(*p);
-            same_size_count_of_so[dl_info.dli_fname][ptr_meta.size]++;
+//            LOGE("Yves.debug", "size sum loop");
+            if (m_ptr_meta.count(*p)) {
+                auto ptr_meta = m_ptr_meta.at(*p);
+                same_size_count_of_so[dl_info.dli_fname][ptr_meta.size]++;
+            } else {
+                // fixme why ?
+//                LOGE("Yves.debug", "ptr_meta not found !!!");
+            }
         }
     }
 
+//    LOGE("Yves.debug", "begin sort");
     // 排序 so
     std::multimap<size_t, std::string> result_sort_by_size;
 
@@ -625,6 +648,7 @@ void dump(std::string path) {
                    [](std::pair<std::string, size_t> src) {
                        return std::pair<size_t, std::string>(src.second, src.first);
                    });
+//    LOGE("Yves.debug", "sort end");
 
     size_t caller_total_size = 0;
     for (auto i = result_sort_by_size.rbegin(); i != result_sort_by_size.rend(); ++i) {
@@ -665,7 +689,7 @@ void dump(std::string path) {
 
     fprintf(log_file, "<void *, ptr_meta_t> m_ptr_meta [%zu * %zu = (%zu)]\n<void *, caller_meta_t> m_caller_meta [%zu * %zu = (%zu)]\n<uint64_t, stack_meta_t> m_stack_meta [%zu * %zu = (%zu)]\n\n",
             sizeof(ptr_meta_t) + sizeof(void *), m_ptr_meta.size(),(sizeof(ptr_meta_t) + sizeof(void *)) * m_ptr_meta.size(),
-            sizeof(m_caller_meta) + sizeof(void *), m_caller_meta.size(),(sizeof(m_caller_meta) + sizeof(void *)) * m_caller_meta.size(),
+            sizeof(caller_meta_t) + sizeof(void *), m_caller_meta.size(),(sizeof(caller_meta_t) + sizeof(void *)) * m_caller_meta.size(),
             sizeof(stack_meta_t) + sizeof(uint64_t), m_stack_meta.size(), (sizeof(stack_meta_t) + sizeof(uint64_t)) * m_stack_meta.size());
 
     /******************************* stacktrace ********************************/

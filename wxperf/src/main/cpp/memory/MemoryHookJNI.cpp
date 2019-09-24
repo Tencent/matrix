@@ -131,7 +131,7 @@ Java_com_tencent_mm_performance_jni_memory_MemoryHook_xhookInitNative(JNIEnv *en
     xhook_ignore(".*libwxperf\\.so$", NULL);
     xhook_ignore(".*liblog\\.so$", NULL);
     xhook_ignore(".*libc\\.so$", NULL);
-//    xhook_ignore(".*libc\\+\\+\\.so$", NULL);
+    xhook_ignore(".*libc\\+\\+\\.so$", NULL);
     xhook_ignore(".*libc\\+\\+_shared\\.so$", NULL);
     xhook_ignore(".*libstlport_shared\\.so$", NULL);
     xhook_ignore(".*libm\\.so$", NULL);
