@@ -119,7 +119,7 @@ Java_com_tencent_mm_performance_jni_memory_MemoryHook_xhookInitNative(JNIEnv *en
 //    xhook_register(".*\\.so$", "calloc", (void *) h_calloc, NULL);
 //    xhook_register(".*\\.so$", "realloc", (void *) h_realloc, NULL);
 //    xhook_register(".*\\.so$", "free", (void *) h_free, NULL);
-////    xhook_register(".*\\.so$", "dlopen", (void *)h_dlopen, NULL);
+//    xhook_register(".*\\.so$", "dlopen", (void *)h_dlopen, NULL);
 //    xhook_register(".*\\.so$", "__loader_android_dlopen_ext", (void *) h_dlopen,
 //                   (void **) &p_oldfun);
 //
@@ -131,8 +131,10 @@ Java_com_tencent_mm_performance_jni_memory_MemoryHook_xhookInitNative(JNIEnv *en
     xhook_ignore(".*libwxperf\\.so$", NULL);
     xhook_ignore(".*liblog\\.so$", NULL);
     xhook_ignore(".*libc\\.so$", NULL);
+//    xhook_ignore(".*libc\\+\\+\\.so$", NULL);
     xhook_ignore(".*libc\\+\\+_shared\\.so$", NULL);
     xhook_ignore(".*libstlport_shared\\.so$", NULL);
+    xhook_ignore(".*libm\\.so$", NULL);
     //    xhook_ignore(".*libart\\.so$", NULL);
 
     xhook_register(".*\\.so$", "__loader_android_dlopen_ext", (void *) h_dlopen,

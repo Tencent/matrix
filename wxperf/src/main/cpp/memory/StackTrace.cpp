@@ -73,7 +73,7 @@ namespace unwindstack {
         }
 
         auto process_memory = Memory::CreateProcessMemory(getpid());
-        Unwinder unwinder(128, localMaps, regs, process_memory);
+        Unwinder unwinder(16, localMaps, regs, process_memory);
         JitDebug jit_debug(process_memory);
         unwinder.SetJitDebug(&jit_debug, regs->Arch());
         unwinder.SetResolveNames(false);
