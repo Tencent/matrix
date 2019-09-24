@@ -456,6 +456,9 @@ void dump(std::string path) {
         }
     }
 
+    fprintf(log_file, "m_size_of_caller[%zu]\nm_size_of_pointer[%zu]\nm_caller_of_pointer[%zu]\nm_pointers_of_caller[%zu]\nm_pc_hash_of_pointer[%zu]\nm_size_of_hash[%zu]\nm_stacktrace_of_hash[%zu]\n",
+            m_size_of_caller->size(), m_size_of_pointer->size(), m_caller_of_pointer->size(), m_pointers_of_caller->size(), m_pc_hash_of_pointer->size(), m_size_of_hash->size(), m_stacktrace_of_hash->size());
+
     fflush(log_file);
     fclose(log_file);
 
