@@ -1,22 +1,6 @@
 buildscript {
     repositories {
 
-        maven {
-            url "http://maven.mmclient.oa.com/nexus/content/repositories/android/"
-        }
-        maven {
-            url "http://maven.mmclient.oa.com/nexus/content/repositories/thirdparty"
-        }
-        maven {
-            url "http://maven.mmclient.oa.com/nexus/content/repositories/thirdparty-snapshots"
-        }
-        maven {
-            url "http://maven.mmclient.oa.com/nexus/content/repositories/jcenter"
-        }
-        maven {
-            url "http://maven.mmclient.oa.com/nexus/content/repositories/google-maven/"
-        }
-
         mavenLocal()
         google()
         jcenter()
@@ -38,22 +22,6 @@ buildscript {
 
 allprojects {
     repositories {
-
-        maven {
-            url "http://maven.mmclient.oa.com/nexus/content/repositories/android"
-        }
-        maven {
-            url "http://maven.mmclient.oa.com/nexus/content/repositories/thirdparty"
-        }
-        maven {
-            url "http://maven.mmclient.oa.com/nexus/content/repositories/thirdparty-snapshots"
-        }
-        maven {
-            url "http://maven.mmclient.oa.com/nexus/content/repositories/jcenter"
-        }
-        maven {
-            url "http://maven.mmclient.oa.com/nexus/content/repositories/google-maven/"
-        }
 
         mavenLocal()
         google()
