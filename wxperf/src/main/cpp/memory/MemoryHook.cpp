@@ -224,13 +224,15 @@ static inline void on_acquire_memory(void *__caller, void *__ptr, size_t __byte_
         return;
     }
 //    LOGD("Yves.debug", "on acquire ptr = %p", __ptr);
-    ptr_meta_t& ptr_meta = m_ptr_meta[__ptr];
+    ptr_meta_t &ptr_meta = m_ptr_meta[__ptr];
     ptr_meta.size = __byte_count;
     ptr_meta.caller = __caller;
 
-    caller_meta_t& caller_meta = m_caller_meta[__caller];
-    caller_meta.pointers.insert(__ptr);
-    caller_meta.total_size += __byte_count;
+    if (__caller) {
+        caller_meta_t &caller_meta = m_caller_meta[__caller];
+        caller_meta.pointers.insert(__ptr);
+        caller_meta.total_size += __byte_count;
+    }
 
     if (is_stacktrace_enabled &&
         (m_sample_size_min == 0 || __byte_count >= m_sample_size_min) &&
@@ -248,11 +250,12 @@ static inline void on_acquire_memory(void *__caller, void *__ptr, size_t __byte_
         if (!stack_frames->empty()) {
             uint64_t stack_hash = hash(*stack_frames);
             ptr_meta.stack_hash = stack_hash;
-            stack_meta_t& stack_meta = m_stack_meta[stack_hash];
+            stack_meta_t &stack_meta = m_stack_meta[stack_hash];
             stack_meta.size += __byte_count;
             stack_meta.p_stacktraces = stack_frames;
         }
     }
+
 
     release_lock();
 }
@@ -270,22 +273,15 @@ inline void on_release_memory(void *__caller, void *__ptr) {
 //    LOGD("Yves.debug", "on release ptr = %p", __ptr);
 
     ptr_meta_t& ptr_meta = m_ptr_meta.at(__ptr);
-//    assert(ptr_meta.caller);
-//    assert(ptr_meta.size);
 
-    if (!ptr_meta.caller || !m_caller_meta.count(ptr_meta.caller)) {
-        // todo why ?
-//        LOGE("Yves.debug", " caller null or meta not exist? %zu", m_caller_meta.count(ptr_meta.caller));
-        release_lock();
-        return;
-    }
-
-    caller_meta_t& caller_meta = m_caller_meta.at(ptr_meta.caller);
-    if (caller_meta.total_size > ptr_meta.size) { // 减去 caller 的 size
-        caller_meta.total_size -= ptr_meta.size;
-        caller_meta.pointers.erase(__ptr);
-    } else { // 删除 size 为 0 的 caller
-        m_caller_meta.erase(ptr_meta.caller);
+    if (ptr_meta.caller && m_caller_meta.count(ptr_meta.caller)) {
+        caller_meta_t &caller_meta = m_caller_meta.at(ptr_meta.caller);
+        if (caller_meta.total_size > ptr_meta.size) { // 减去 caller 的 size
+            caller_meta.total_size -= ptr_meta.size;
+            caller_meta.pointers.erase(__ptr);
+        } else { // 删除 size 为 0 的 caller
+            m_caller_meta.erase(ptr_meta.caller);
+        }
     }
 
     if (is_stacktrace_enabled && ptr_meta.stack_hash) {

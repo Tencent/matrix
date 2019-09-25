@@ -58,7 +58,7 @@ public class MemoryHook {
         return this;
     }
 
-    public MemoryHook addIgnoreso(String... regexArr) {
+    public MemoryHook addIgnoreSo(String... regexArr) {
         for (String s : regexArr) {
             if (s == null || s.length() <= 0) {
                 continue;
