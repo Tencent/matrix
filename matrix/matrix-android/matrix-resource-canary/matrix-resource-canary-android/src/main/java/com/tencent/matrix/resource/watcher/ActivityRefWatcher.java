@@ -68,6 +68,15 @@ public class ActivityRefWatcher extends FilePublisher implements Watcher {
 
     private final ConcurrentLinkedQueue<DestroyedActivityInfo> mDestroyedActivityInfos;
     private final AtomicLong                                   mCurrentCreatedActivityCount;
+    private IActivityLeakCallback activityLeakCallback = null;
+
+    public void setActivityLeakCallback(IActivityLeakCallback activityLeakCallback) {
+        this.activityLeakCallback = activityLeakCallback;
+    }
+
+    interface IActivityLeakCallback {
+        void onLeak(String activity, int count);
+    }
 
     public static class ComponentFactory {
 
@@ -303,6 +312,10 @@ public class ActivityRefWatcher extends FilePublisher implements Watcher {
                             + "exists in %s times detection with %s created activities during destroy, wait for next detection to confirm.",
                         destroyedActivityInfo.mKey, destroyedActivityInfo.mDetectedCount, createdActivityCountFromDestroy);
                     continue;
+                }
+
+                if (null != activityLeakCallback) {
+                    activityLeakCallback.onLeak(destroyedActivityInfo.mActivityName, destroyedActivityInfo.mDetectedCount);
                 }
 
                 MatrixLog.i(TAG, "activity with key [%s] was suspected to be a leaked instance.", destroyedActivityInfo.mKey);
