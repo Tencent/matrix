@@ -280,6 +280,7 @@ inline void on_release_memory(void *__caller, void *__ptr) {
             caller_meta.total_size -= ptr_meta.size;
             caller_meta.pointers.erase(__ptr);
         } else { // 删除 size 为 0 的 caller
+            caller_meta.pointers.clear(); // 造成卡顿, 是否有其他方法
             m_caller_meta.erase(ptr_meta.caller);
         }
     }
