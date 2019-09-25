@@ -69,6 +69,9 @@ public class MatrixHandlerThread {
     }
 
     public static Handler getDefaultHandler() {
+        if (defaultHandler == null) {
+            getDefaultHandlerThread();
+        }
         return defaultHandler;
     }
 
