@@ -289,6 +289,7 @@ inline void on_release_memory(void *__caller, void *__ptr) {
         if (stack_meta.size > ptr_meta.size) { // 减去同堆栈的 size
             stack_meta.size -= ptr_meta.size;
         } else { // 删除 size 为 0 的堆栈
+            delete stack_meta.p_stacktraces;
             m_stack_meta.erase(ptr_meta.stack_hash);
         }
     }
