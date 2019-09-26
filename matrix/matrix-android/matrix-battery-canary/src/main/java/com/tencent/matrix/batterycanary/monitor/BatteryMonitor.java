@@ -45,6 +45,11 @@ public class BatteryMonitor extends Plugin {
     }
 
     @Override
+    public String getTag() {
+        return "BatteryMonitor";
+    }
+
+    @Override
     public void start() {
         super.start();
         if (!isTurnOn) {

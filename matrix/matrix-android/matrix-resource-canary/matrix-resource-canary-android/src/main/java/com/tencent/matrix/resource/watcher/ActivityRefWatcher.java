@@ -74,7 +74,7 @@ public class ActivityRefWatcher extends FilePublisher implements Watcher {
         this.activityLeakCallback = activityLeakCallback;
     }
 
-    interface IActivityLeakCallback {
+    public interface IActivityLeakCallback {
         void onLeak(String activity, int count);
     }
 
