@@ -6,6 +6,7 @@ import android.content.ComponentCallbacks2;
 import android.content.res.Configuration;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
 import android.text.TextUtils;
 import android.util.ArrayMap;
 
@@ -24,13 +25,14 @@ public enum AppActiveMatrixDelegate {
 
     INSTANCE;
 
-    private static final String TAG = "Matrix.AppActiveMatrixDelegate";
+    private static final String TAG = "Matrix.AppActiveDelegate";
     private final Set<IAppForeground> listeners = new HashSet();
     private boolean isAppForeground = false;
     private String visibleScene = "default";
     private Controller controller = new Controller();
     private boolean isInit = false;
     private String currentFragmentName;
+    private Handler handler;
 
     public void init(Application application) {
         if (isInit) {
@@ -40,6 +42,7 @@ public enum AppActiveMatrixDelegate {
         this.isInit = true;
         application.registerComponentCallbacks(controller);
         application.registerActivityLifecycleCallbacks(controller);
+        this.handler = new Handler(MatrixHandlerThread.getDefaultHandlerThread().getLooper());
     }
 
     public String getCurrentFragmentName() {
@@ -67,10 +70,7 @@ public enum AppActiveMatrixDelegate {
         }
 
         MatrixLog.i(TAG, "onForeground... visibleScene[%s]", visibleScene);
-        if (MatrixHandlerThread.getDefaultHandler() == null) {
-            MatrixHandlerThread.getDefaultHandlerThread();
-        }
-        MatrixHandlerThread.getDefaultHandler().post(new Runnable() {
+        handler.post(new Runnable() {
             @Override
             public void run() {
                 isAppForeground = true;
@@ -91,7 +91,7 @@ public enum AppActiveMatrixDelegate {
 
         MatrixLog.i(TAG, "onBackground... visibleScene[%s]", visibleScene);
 
-        MatrixHandlerThread.getDefaultHandler().post(new Runnable() {
+        handler.post(new Runnable() {
             @Override
             public void run() {
                 isAppForeground = false;
