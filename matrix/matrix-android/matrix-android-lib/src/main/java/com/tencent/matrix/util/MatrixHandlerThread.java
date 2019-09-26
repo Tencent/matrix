@@ -22,6 +22,7 @@ import android.os.Looper;
 import android.util.Printer;
 
 import com.tencent.matrix.AppActiveMatrixDelegate;
+import com.tencent.matrix.Matrix;
 import com.tencent.matrix.listeners.IAppForeground;
 
 import java.util.Collections;
@@ -122,7 +123,6 @@ public class MatrixHandlerThread {
         @Override
         public void onForeground(boolean isForeground) {
             this.isForeground = isForeground;
-            MatrixLog.d(TAG, "onForeground:%s", isForeground);
             if (isForeground) {
                 long start = System.currentTimeMillis();
                 LinkedList<Info> list = new LinkedList<>();
