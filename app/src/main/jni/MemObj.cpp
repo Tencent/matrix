@@ -40,11 +40,262 @@ Java_com_tencent_mm_libwxperf_JNIObj_doSomeThing(JNIEnv *env, jobject instance) 
 //    }
 
     int * pi = new int;
-    pi = new int;
-    pi = new int;
-    pi = new int;
+//    pi = new int;
+//    pi = new int;
+//    pi = new int;
 
-    *pi = 10;
+    int LEN = 10000;
+
+    int * p_arr[LEN];
+
+    for (int i = 0; i < LEN; ++i) {
+        p_arr[i] = NULL;
+    }
+
+#define ALLOC \
+    arr = new int[1 * 10];\
+    memset(arr, 1, 1 * 10);\
+    p_arr[i++] = arr;
+
+    for (int i = 0; i < LEN - 200;) {
+        int *
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+        ALLOC
+
+
+    }
+
+//    LOGD("Yves-sample", "sleep");
+//    sleep(3);
+//    LOGD("Yves-sample", "awake");
+
+
+    for (int i = 0; i < LEN; ++i) {
+        int *arr = p_arr[i];
+//        LOGD("Yves-sample", "aar = %p", arr);
+        if (arr) {
+            delete[] arr;
+        }
+    }
+
+    *pi = count++;
     LOGD("Yves-sample", " pi = %d", *pi);
 
     LOGD("Yves-sample", "<<<<<<<<<<<<<<<<<<<<end");

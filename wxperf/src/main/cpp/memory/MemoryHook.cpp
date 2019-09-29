@@ -6,7 +6,7 @@
 #include <dlfcn.h>
 #include <unistd.h>
 #include <unordered_map>
-#include <unordered_set>
+#include <set>
 #include <random>
 #include <xhook.h>
 #include <sstream>
@@ -25,7 +25,7 @@ extern "C" typedef struct {
 
 extern "C" typedef struct {
     size_t total_size;
-    std::unordered_set<void *> pointers;
+    std::set<void *> pointers;
 } caller_meta_t;
 
 extern "C" typedef struct {
@@ -33,9 +33,9 @@ extern "C" typedef struct {
     std::vector<unwindstack::FrameData> *p_stacktraces;
 } stack_meta_t;
 
-std::unordered_map<void *, ptr_meta_t> m_ptr_meta;
-std::unordered_map<void *, caller_meta_t> m_caller_meta;
-std::unordered_map<uint64_t, stack_meta_t> m_stack_meta;
+std::map<void *, ptr_meta_t> m_ptr_meta;
+std::map<void *, caller_meta_t> m_caller_meta;
+std::map<uint64_t, stack_meta_t> m_stack_meta;
 
 //std::unordered_map<void *, size_t> *m_size_of_caller;
 //std::unordered_map<void *, size_t> *m_size_of_pointer;
@@ -219,7 +219,6 @@ static inline void on_acquire_memory(void *__caller, void *__ptr, size_t __byte_
     init_if_necessary();
 
     if (m_ptr_meta.count(__ptr) && m_ptr_meta.at(__ptr).size == __byte_count) { // 检查是否重复记录同一个指针
-//        LOGE("Yves", "!!!!!!!! redundant pointer and size!!!!!!!");
         release_lock();
         return;
     }
@@ -270,8 +269,6 @@ inline void on_release_memory(void *__caller, void *__ptr) {
         return;
     }
 
-//    LOGD("Yves.debug", "on release ptr = %p", __ptr);
-
     ptr_meta_t& ptr_meta = m_ptr_meta.at(__ptr);
 
     if (ptr_meta.caller && m_caller_meta.count(ptr_meta.caller)) {
@@ -280,7 +277,9 @@ inline void on_release_memory(void *__caller, void *__ptr) {
             caller_meta.total_size -= ptr_meta.size;
             caller_meta.pointers.erase(__ptr);
         } else { // 删除 size 为 0 的 caller
-            caller_meta.pointers.clear(); // 造成卡顿, 是否有其他方法
+            std::set<void *> empty_set;
+            empty_set.swap(caller_meta.pointers);
+//            caller_meta.pointers.clear(); // 造成卡顿, 是否有其他方法
             m_caller_meta.erase(ptr_meta.caller);
         }
     }

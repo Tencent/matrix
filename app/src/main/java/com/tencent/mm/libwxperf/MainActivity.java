@@ -2,6 +2,7 @@ package com.tencent.mm.libwxperf;
 
 import android.Manifest;
 import android.content.pm.PackageManager;
+import android.nfc.Tag;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Process;
@@ -29,14 +30,18 @@ public class MainActivity extends AppCompatActivity {
 //        MemoryHook.groupByMemorySize(true);
         MemoryHook.INSTANCE
                 .addHookSo(".*libnative-lib\\.so$")
-                .enableStacktrace(true)
+                .enableStacktrace(false)
                 .hook();
+
+        Log.d(TAG, " pid = " + Process.myPid() + " tid = " + Thread.currentThread().getId());
 
         findViewById(R.id.button).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 final JNIObj jniObj = new JNIObj();
-                jniObj.doSomeThing();
+                for (int i = 0; i < 1000; i++) {
+                    jniObj.doSomeThing();
+                }
 //                jniObj.nullptr(null);
 //                jniObj.dump(null);
                 MemoryHook.INSTANCE.dump("/sdcard/memory_hook.log");
