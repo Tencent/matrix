@@ -10,6 +10,8 @@
 extern "C" {
 #endif
 
+bool enable_mmap_hook = false;
+
 static void registerCXXFun(const char *lib_pattern) {
 #ifndef __LP64__
 
@@ -65,6 +67,13 @@ static void hook(const char *regex) {
     xhook_register(regex, "realloc", (void *) h_realloc, NULL);
     xhook_register(regex, "free", (void *) h_free, NULL);
     registerCXXFun(regex);
+    if (enable_mmap_hook) {
+        xhook_register(regex, "mmap", (void *) h_mmap, NULL);
+        xhook_register(regex, "munmap", (void *) h_munmap, NULL);
+#if __ANDROID_API__ >= __ANDROID_API_L__
+        xhook_register(regex, "mmap64", (void *) h_mmap64, NULL);
+#endif
+    }
 }
 
 static void ignore(const char *regex) {
@@ -155,13 +164,6 @@ Java_com_tencent_mm_performance_jni_memory_MemoryHook_xhookEnableSigSegvProtecti
 }
 
 JNIEXPORT void JNICALL
-Java_com_tencent_mm_performance_jni_memory_MemoryHook_dump(JNIEnv *env, jobject instance) {
-
-//    dump();
-
-}
-
-JNIEXPORT void JNICALL
 Java_com_tencent_mm_performance_jni_memory_MemoryHook_groupByMemorySize(JNIEnv *env, jobject instance,
                                                                         jboolean enable) {
 
@@ -193,11 +195,19 @@ Java_com_tencent_mm_performance_jni_memory_MemoryHook_dumpNative(JNIEnv *env, jo
 
     if (jpath_) {
         const char *path = env->GetStringUTFChars(jpath_, 0);
-        dump(path);
+        dump(enable_mmap_hook, path);
         env->ReleaseStringUTFChars(jpath_, path);
     } else {
-        dump();
+        dump(enable_mmap_hook);
     }
+}
+
+JNIEXPORT void JNICALL
+Java_com_tencent_mm_performance_jni_memory_MemoryHook_enableMmapHookNative(JNIEnv *env, jobject instance,
+                                                                     jboolean enable) {
+
+    enable_mmap_hook = enable;
+
 }
 
 #ifdef __cplusplus

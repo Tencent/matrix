@@ -18,7 +18,7 @@
     if (!ORIGINAL_FUNC_NAME(sym)) { \
         void *handle = dlopen("libc++_shared.so", RTLD_LAZY); \
         if (handle) { \
-            ORIGINAL_FUNC_NAME(sym) = (FUNC_TYPE(sym))dlsym(RTLD_NEXT, #sym); \
+            ORIGINAL_FUNC_NAME(sym) = (FUNC_TYPE(sym))dlsym(handle, #sym); \
         } \
     } \
     retType ret = ORIGINAL_FUNC_NAME(sym)(params)
@@ -27,7 +27,7 @@
     if (!ORIGINAL_FUNC_NAME(sym)) { \
         void *handle = dlopen("libc++_shared.so", RTLD_LAZY); \
         if (handle) { \
-            ORIGINAL_FUNC_NAME(sym) = (FUNC_TYPE(sym))dlsym(RTLD_NEXT, #sym); \
+            ORIGINAL_FUNC_NAME(sym) = (FUNC_TYPE(sym))dlsym(handle, #sym); \
         } \
     } \
     ORIGINAL_FUNC_NAME(sym)(params)
@@ -45,8 +45,7 @@
     on_acquire_memory(caller, p, size);
 
 #define DO_HOOK_RELEASE(p) \
-    GET_CALLER_ADDR(caller); \
-    on_release_memory(caller, p)
+    on_release_memory(p)
 
 //#define DO_HOOK_RELEASE(sym, p, params...) \
 //    GET_CALLER_ADDR(caller); \

@@ -8,6 +8,7 @@
 #include <errno.h>
 #include <cstring>
 #include <vector>
+#include <sys/mman.h>
 
 #define LOGD(TAG, FMT, args...) __android_log_print(ANDROID_LOG_DEBUG, TAG, FMT, ##args)
 
@@ -16,6 +17,22 @@ extern "C" {
 #endif
 
 int count = 0;
+
+JNIEXPORT void JNICALL
+Java_com_tencent_mm_libwxperf_JNIObj_doMmap(JNIEnv *env, jobject instance) {
+
+    void *p_mmap = mmap(NULL, 1024, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
+    LOGD("Yves-debug", "map ptr = %p", p_mmap);
+    munmap(p_mmap, 1024);
+
+    p_mmap = mmap(NULL, 1024, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
+    LOGD("Yves-debug", "map ptr = %p", p_mmap);
+
+    munmap(p_mmap, 1024);
+
+    p_mmap = mmap(NULL, 1024, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
+    LOGD("Yves-debug", "map ptr = %p", p_mmap);
+}
 
 /*
  * Class:     com_example_meminfo_JNIObj
@@ -51,6 +68,8 @@ Java_com_tencent_mm_libwxperf_JNIObj_doSomeThing(JNIEnv *env, jobject instance) 
     for (int i = 0; i < LEN; ++i) {
         p_arr[i] = NULL;
     }
+
+    void *p_mmap = mmap(NULL, 1024, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
 
 #define ALLOC \
     arr = new int[1 * 10];\

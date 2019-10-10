@@ -27,11 +27,11 @@
         app:layout_constraintTop_toBottomOf="@+id/main_tv_hello" />
 
     <Button
-        android:id="@+id/button2"
+        android:id="@+id/btn_mmap"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginBottom="73dp"
-        android:text="Dump"
+        android:text="mmap"
         android:textAllCaps="false"
         app:layout_constraintBottom_toTopOf="@+id/main_tv_hello"
         app:layout_constraintEnd_toEndOf="parent"

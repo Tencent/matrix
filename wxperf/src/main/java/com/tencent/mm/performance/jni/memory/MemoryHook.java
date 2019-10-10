@@ -106,6 +106,11 @@ public class MemoryHook {
         return this;
     }
 
+    public MemoryHook enableMmapHook(boolean enable) {
+        enableMmapHookNative(enable);
+        return this;
+    }
+
     public void hook() {
         xhookRegisterNative(mHookSoSet.toArray(new String[0]));
         xhookIgnoreNative(mIgnoreSoSet.toArray(new String[0]));
@@ -129,89 +134,21 @@ public class MemoryHook {
         dumpNative(into);
     }
 
-//    @Deprecated
-//    public static void hook(String[] hookSoList, String[] ignoreSoList) {
-//        hook(hookSoList, ignoreSoList, 0);
-//    }
-//
-//    @Deprecated
-//    public static void hook(String[] hookSoList, String[] ignoreSoList, int traceThreshold) {
-//        hook(hookSoList, ignoreSoList, traceThreshold, 0, 1);
-//    }
-//
-//    public static void hook(String[] hookSoList, String[] ignoreSoList, int minSize, int maxSize, double sampling) {
-//        if (hookSoList != null && hookSoList.length > 0) {
-//            xhookRegisterNative(hookSoList);
-//        }
-//
-//        if (ignoreSoList != null && ignoreSoList.length > 0) {
-//            xhookIgnoreNative(ignoreSoList);
-//        }
-//
-//        if (minSize < 0 || (maxSize != 0 && maxSize < minSize)) {
-//            throw new IllegalArgumentException("sizes should not be negative and maxSize should be 0 or greater than minSize");
-//        }
-//
-//        if (minSize > 0 && (maxSize == 0 || maxSize >= minSize)) {
-//            setSampleSizeRangeNative(minSize, maxSize);
-//        }
-//
-//        if (0 <= sampling && sampling <= 1) {
-//            setSamplingNative(sampling);
-//        }
-//
-//        enableStacktraceNative(true);
-//        xhookEnableDebugNative(true);
-//        xhookEnableSigSegvProtectionNative(!BuildConfig.DEBUG);
-//        xhookRefreshNative(false);
-//    }
-//
-//    @Deprecated
-//    public static void hooked() {
-//
-//        enableStacktraceNative(false);
-//        xhookInitNative();
-//        xhookEnableDebugNative(true);
-//        xhookEnableSigSegvProtectionNative(!BuildConfig.DEBUG);
-//        xhookRefreshNative(false);
-//    }
-//
-//    @Deprecated
-//    public static void hook(String[] hookSoList) {
-//        if (hookSoList != null && hookSoList.length > 0) {
-//            xhookRegisterNative(hookSoList);
-//        }
-//
-//        xhookIgnoreNative(null);
-//        enableStacktraceNative(false);
-//        xhookEnableDebugNative(true);
-//        xhookEnableSigSegvProtectionNative(!BuildConfig.DEBUG);
-//        xhookRefreshNative(false);
-//    }
-//
-//    public static void refresh() {
-//        xhookRefreshNative(false);
-//    }
-//
-//    public static void refreshAsync() {
-//        xhookRefreshNative(true);
-//    }
-//
-//    private static native void dump();
-
     private native void dumpNative(String path);
 
     private native void groupByMemorySize(boolean enable);
-
-    private native void xhookIgnoreNative(String[] ignoreSoList);
 
     private native void setSamplingNative(double sampling);
 
     private native void setSampleSizeRangeNative(int minSize, int maxSize);
 
+    private native void enableStacktraceNative(boolean enable);
+
+    private native void enableMmapHookNative(boolean enable);
+
     private native void xhookRegisterNative(String[] hookSoList);
 
-    private native void enableStacktraceNative(boolean enable);
+    private native void xhookIgnoreNative(String[] ignoreSoList);
 
     private native void xhookInitNative();
 
