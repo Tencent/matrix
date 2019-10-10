@@ -25,6 +25,7 @@ import android.os.Debug;
 import android.os.SystemClock;
 import android.provider.Settings;
 import android.support.annotation.Nullable;
+import android.util.Log;
 import android.view.View;
 import android.widget.Toast;
 
@@ -128,9 +129,11 @@ public class TestTraceMainActivity extends Activity implements IAppForeground {
 
 
     public void testANR(final View view) {
-        for (long i = 0; i < 1l; i++) {
+       /* for (long i = 0; i < 1l; i++) {
             testInnerSleep();
-        }
+        }*/
+
+        evilMethod5(true);
     }
 
     private void A() {
@@ -205,6 +208,24 @@ public class TestTraceMainActivity extends Activity implements IAppForeground {
             appMethodBeat.onStop();
         }
         isStop = !isStop;
+    }
+
+    public void evilMethod5(boolean is) {
+        try {
+            if (is) {
+                Thread.sleep(800);
+                throw new AssertionArrayException();
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            Log.i("", "");
+        }
+        return;
+    }
+
+    class AssertionArrayException extends  Exception {
+
     }
 
     public void testInnerSleep() {
