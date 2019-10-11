@@ -4,9 +4,6 @@ buildscript {
         mavenLocal()
         google()
         jcenter()
-//        maven {
-//           url "https://dl.bintray.com/matrix/maven/"
-//        }
     }
     dependencies {
         classpath 'com.android.tools.build:gradle:3.5.0'
@@ -21,9 +18,5 @@ allprojects {
         mavenLocal()
         jcenter()
         google()
-
-//        maven {
-//            url "https://dl.bintray.com/matrix/maven/"
-//        }
     }
 }
