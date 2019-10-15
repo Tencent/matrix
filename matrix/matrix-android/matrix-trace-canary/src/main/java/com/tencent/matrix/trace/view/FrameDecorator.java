@@ -20,6 +20,7 @@ import android.widget.TextView;
 import com.tencent.matrix.AppActiveMatrixDelegate;
 import com.tencent.matrix.Matrix;
 import com.tencent.matrix.listeners.IAppForeground;
+import com.tencent.matrix.trace.R;
 import com.tencent.matrix.trace.TracePlugin;
 import com.tencent.matrix.trace.constants.Constants;
 import com.tencent.matrix.trace.core.UIThreadMonitor;
@@ -37,7 +38,7 @@ public class FrameDecorator extends IDoFrameListener implements IAppForeground {
     private static Handler mainHandler = new Handler(Looper.getMainLooper());
     private Handler handler;
     private static FrameDecorator instance;
-    private static Object lock = new Object();
+    private static final Object lock = new Object();
     private View.OnClickListener clickListener;
     private DisplayMetrics displayMetrics = new DisplayMetrics();
     private boolean isEnable = true;
@@ -136,6 +137,16 @@ public class FrameDecorator extends IDoFrameListener implements IAppForeground {
         this.clickListener = clickListener;
     }
 
+    public void setExtraInfo(String info) {
+        if (getView() != null) {
+            TextView textView = getView().findViewById(R.id.extra_info);
+            if (null != textView) {
+                textView.setText(info);
+            }
+        }
+    }
+
+
     long sumFrameCost;
     long[] lastCost = new long[1];
     long sumFrames;
@@ -197,7 +208,7 @@ public class FrameDecorator extends IDoFrameListener implements IAppForeground {
         return instance;
     }
 
-    public static FrameDecorator create(final Context context) {
+    public static FrameDecorator getInstance(final Context context) {
         if (instance == null) {
             if (Thread.currentThread() == Looper.getMainLooper().getThread()) {
                 instance = new FrameDecorator(context, new FloatFrameView(context));

@@ -27,6 +27,7 @@ dependencies {
     androidTestImplementation 'com.android.support.test:runner:1.0.1'
 
     implementation project(':matrix-android-lib')
+    compile project(path: ':matrix-trace-canary')
 }
 
 version = rootProject.ext.VERSION_NAME
