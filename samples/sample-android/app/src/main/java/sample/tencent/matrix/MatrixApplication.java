@@ -18,14 +18,22 @@ package sample.tencent.matrix;
 
 import android.app.Application;
 import android.content.Context;
+import android.os.HandlerThread;
 
 import com.tencent.matrix.Matrix;
+import com.tencent.matrix.batterycanary.monitor.BatteryMonitor;
+import com.tencent.matrix.batterycanary.monitor.plugin.JiffiesMonitorPlugin;
+import com.tencent.matrix.batterycanary.monitor.plugin.LooperTaskMonitorPlugin;
+import com.tencent.matrix.batterycanary.monitor.plugin.WakeLockMonitorPlugin;
 import com.tencent.matrix.iocanary.IOCanaryPlugin;
 import com.tencent.matrix.iocanary.config.IOConfig;
 import com.tencent.matrix.resource.ResourcePlugin;
 import com.tencent.matrix.resource.config.ResourceConfig;
+import com.tencent.matrix.threadcanary.ThreadMonitor;
+import com.tencent.matrix.threadcanary.ThreadMonitorConfig;
 import com.tencent.matrix.trace.TracePlugin;
 import com.tencent.matrix.trace.config.TraceConfig;
+import com.tencent.matrix.util.MatrixHandlerThread;
 import com.tencent.matrix.util.MatrixLog;
 import com.tencent.sqlitelint.SQLiteLint;
 import com.tencent.sqlitelint.SQLiteLintPlugin;
@@ -103,14 +111,37 @@ public class MatrixApplication extends Application {
             SQLiteLintPlugin sqLiteLintPlugin = new SQLiteLintPlugin(config);
             builder.plugin(sqLiteLintPlugin);
 
+            ThreadMonitor threadMonitor = new ThreadMonitor(new ThreadMonitorConfig.Builder().dynamicConfig(dynamicConfig).build());
+            builder.plugin(threadMonitor);
 
+            BatteryMonitor batteryMonitor = new BatteryMonitor(new BatteryMonitor.Builder()
+                    .installPlugin(LooperTaskMonitorPlugin.class)
+                    .installPlugin(JiffiesMonitorPlugin.class)
+                    .installPlugin(WakeLockMonitorPlugin.class)
+                    .disableAppForegroundNotifyByMatrix(false)
+                    .wakelockTimeout(2 * 60 * 1000)
+                    .greyJiffiesTime(2 * 1000)
+                    .build()
+            );
+            builder.plugin(batteryMonitor);
+
+
+            MatrixHandlerThread.getDefaultHandler().postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    MatrixHandlerThread.getDefaultHandler().postDelayed(this, 200);
+                }
+            }, 2000);
         }
 
         Matrix.init(builder.build());
 
         //start only startup tracer, close other tracer.
         tracePlugin.start();
+        Matrix.with().getPluginByClass(ThreadMonitor.class).start();
+        Matrix.with().getPluginByClass(BatteryMonitor.class).start();
         MatrixLog.i("Matrix.HackCallback", "end:%s", System.currentTimeMillis());
+
     }
 
 

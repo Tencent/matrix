@@ -398,7 +398,7 @@ public class MemoryCanaryCore implements IssuePublisher.OnIssueDetectListener {
         inner.put(SharePluginInfo.ISSUE_DALVIK_HEAP, matrixMemoryInfo.mDalvikHeap);
         inner.put(SharePluginInfo.ISSUE_NATIVE_HEAP, matrixMemoryInfo.mNativeHeap);
         inner.put(SharePluginInfo.ISSUE_VMSIZE, DeviceUtil.getVmSize());
-        if (!activity.isEmpty()) {
+        if (null != activity && !activity.isEmpty()) {
             inner.put(SharePluginInfo.ISSUE_ACTIVITY, activity);
         }
         json.put(tag, inner);

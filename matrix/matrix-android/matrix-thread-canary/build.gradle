@@ -26,6 +26,7 @@ dependencies {
 
     testImplementation 'junit:junit:4.12'
     implementation project(':matrix-android-lib')
+    implementation project(path: ':matrix-trace-canary')
 }
 
 version = rootProject.ext.VERSION_NAME

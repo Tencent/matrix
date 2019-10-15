@@ -72,7 +72,7 @@ public abstract class Plugin implements IPlugin, IssuePublisher.OnIssueDetectLis
             if (issue.getTag() != null) {
                 content.put(Issue.ISSUE_REPORT_TAG, issue.getTag());
             }
-            if (issue.getType() != null) {
+            if (issue.getType() != 0) {
                 content.put(Issue.ISSUE_REPORT_TYPE, issue.getType());
             }
             content.put(Issue.ISSUE_REPORT_PROCESS, MatrixUtil.getProcessName(application));
