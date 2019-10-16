@@ -75,7 +75,7 @@ namespace sqlitelint {
         }
 
         while (queue_.empty()) {
-            sInfo("Lint::TakeSqlInfo queue empty and wait");
+//            sInfo("Lint::TakeSqlInfo queue empty and wait");
             queue_cv_.wait(lock);
             if (exit_) {
                 return -1;
