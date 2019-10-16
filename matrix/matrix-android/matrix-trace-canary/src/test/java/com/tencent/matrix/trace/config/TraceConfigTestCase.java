@@ -60,12 +60,11 @@ public class TraceConfigTestCase extends TestCase {
                 return super.get(key, defStr);
             }
         }).build() ;
-
         Set<String> activities = config.getSplashActivities() ;
         assertNotNull(activities);
-//        assertEquals(2, activities.size());
-//        assertTrue( activities.contains("com.tencent.matrix.SplashActivity1"));
-//        assertTrue( activities.contains("com.tencent.matrix.SplashActivity2"));
+        assertEquals(2, activities.size());
+        assertTrue( activities.contains("com.tencent.matrix.SplashActivity1"));
+        assertTrue( activities.contains("com.tencent.matrix.SplashActivity2"));
     }
 
 
@@ -81,9 +80,9 @@ public class TraceConfigTestCase extends TestCase {
 
         Set<String> activities = config.getSplashActivities() ;
         assertNotNull(activities);
-//        assertEquals(2, activities.size());
-//        assertTrue( activities.contains("com.tencent.matrix.SplashActivity1"));
-//        assertTrue( activities.contains("com.tencent.matrix.SplashActivity2"));
+        assertEquals(2, activities.size());
+        assertTrue( activities.contains("com.tencent.matrix.SplashActivity1"));
+        assertTrue( activities.contains("com.tencent.matrix.SplashActivity2"));
     }
 
     /**
