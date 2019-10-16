@@ -230,7 +230,8 @@ public class AppMethodBeat implements BeatLifecycle {
             if (sIndex < Constants.BUFFER_SIZE) {
                 mergeData(methodId, sIndex, true);
             } else {
-                sIndex = -1;
+                sIndex = 0;
+                mergeData(methodId, sIndex, true);
             }
             ++sIndex;
             assertIn = false;
@@ -253,7 +254,8 @@ public class AppMethodBeat implements BeatLifecycle {
             if (sIndex < Constants.BUFFER_SIZE) {
                 mergeData(methodId, sIndex, false);
             } else {
-                sIndex = -1;
+                sIndex = 0;
+                mergeData(methodId, sIndex, false);
             }
             ++sIndex;
         }
