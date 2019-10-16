@@ -202,7 +202,7 @@ static NSString* getBundleName()
                         forKey:@KSCrashField_System];
     NSDictionary *userDic = [[WCBlockMonitorMgr shareInstance] getUserInfoForCurrentDumpForDumpType:dumpType];
     [reportDictionary setValue:userDic forKey:@KSCrashExcType_User];
-    [reportDictionary setValue:[NSNumber numberWithInt:dumpType] forKey:@KSCrashField_DumpType];
+    [reportDictionary setValue:[NSNumber numberWithUnsignedInteger:dumpType] forKey:@KSCrashField_DumpType];
     [reportDictionary setValue:PowerConsumeStackArray forKey:@CustomStackString];
     NSData *jsonData = [WCCrashBlockJsonUtil jsonEncode:reportDictionary withError:nil];
     return jsonData;
