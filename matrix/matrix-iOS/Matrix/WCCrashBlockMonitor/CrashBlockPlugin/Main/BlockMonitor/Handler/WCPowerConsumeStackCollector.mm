@@ -50,6 +50,7 @@ struct StackInfo
 #define CHILE_FRAME "child"
 #define MAX_STACK_TRACE_COUNT 100
 #define FLOAT_THRESHOLD 0.000001
+#define MAX_STACK_TRACE_IN_LOG 50
 
 @interface WCAddressFrame ()
 {
@@ -311,7 +312,7 @@ struct StackInfo
     WCAddressFrame *currentParentFrame = nil;
     
     uint32_t repeatWeight = (uint32_t)(stackCPU / 5.);
-    for (int i = 0; i < traceLength; i++) {
+    for (int i = 0; i < traceLength && i < MAX_STACK_TRACE_IN_LOG; i++) {
         uintptr_t address = stackTrace[i];
         WCAddressFrame *curFrame = [[WCAddressFrame alloc] initWithAddress:address withRepeatCount:repeatWeight];
         if (currentParentFrame == nil) {
