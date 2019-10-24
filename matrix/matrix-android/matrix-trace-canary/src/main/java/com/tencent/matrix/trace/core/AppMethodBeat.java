@@ -48,8 +48,8 @@ public class AppMethodBeat implements BeatLifecycle {
     private static final int METHOD_ID_MAX = 0xFFFFF;
     public static final int METHOD_ID_DISPATCH = METHOD_ID_MAX - 1;
     private static Set<String> sFocusActivitySet = new HashSet<>();
-    private static HashSet<IAppMethodBeatListener> listeners = new HashSet<>();
-    private static Object updateTimeLock = new Object();
+    private static final HashSet<IAppMethodBeatListener> listeners = new HashSet<>();
+    private static final Object updateTimeLock = new Object();
     private static boolean isPauseUpdateTime = false;
     private static Runnable checkStartExpiredRunnable = null;
     private static LooperMonitor.LooperDispatchListener looperMonitorListener = new LooperMonitor.LooperDispatchListener() {
@@ -115,7 +115,7 @@ public class AppMethodBeat implements BeatLifecycle {
                     throw new RuntimeException(TAG + " sBuffer == null");
                 }
                 MatrixLog.i(TAG, "[onStart] preStatus:%s", status, Utils.getStack());
-                this.status = STATUS_STARTED;
+                status = STATUS_STARTED;
             } else {
                 MatrixLog.w(TAG, "[onStart] current status:%s", status);
             }
@@ -127,7 +127,7 @@ public class AppMethodBeat implements BeatLifecycle {
         synchronized (statusLock) {
             if (status == STATUS_STARTED) {
                 MatrixLog.i(TAG, "[onStop] %s", Utils.getStack());
-                this.status = STATUS_STOPPED;
+                status = STATUS_STOPPED;
             } else {
                 MatrixLog.w(TAG, "[onStop] current status:%s", status);
             }
@@ -416,7 +416,7 @@ public class AppMethodBeat implements BeatLifecycle {
         return copyData(startRecord, new IndexRecord(sIndex - 1));
     }
 
-    public long[] copyData(IndexRecord startRecord, IndexRecord endRecord) {
+    private long[] copyData(IndexRecord startRecord, IndexRecord endRecord) {
         long current = System.currentTimeMillis();
         long[] data = new long[0];
         try {
