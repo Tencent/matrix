@@ -275,7 +275,7 @@ public class MethodTracer {
 
         @Override
         public void visitEnd() {
-            if (!hasWindowFocusMethod && isActivityOrSubClass(className, collectedClassExtendMap) && MethodCollector.isNeedTrace(configuration, className, mappingCollector)) {
+            if (!isABSClass && !hasWindowFocusMethod && isActivityOrSubClass(className, collectedClassExtendMap) && MethodCollector.isNeedTrace(configuration, className, mappingCollector)) {
                 insertWindowFocusChangeMethod(cv, className);
             }
             super.visitEnd();
