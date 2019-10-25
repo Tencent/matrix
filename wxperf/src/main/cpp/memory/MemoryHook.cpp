@@ -414,6 +414,9 @@ static inline void dump_stacks_unsafe(FILE *log_file,
                           << (demangled_name ? demangled_name : "(null)")
                           << " (" << stack_info.dli_fname << ")"
                           << std::endl;
+
+            free(demangled_name);
+
             // fixme hard coding
             if (/*so_name.find("com.tencent.mm") == std::string::npos ||*/
                     so_name.find("libwxperf.so") != std::string::npos ||
