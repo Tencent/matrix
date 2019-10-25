@@ -29,7 +29,7 @@ public class MainActivity extends AppCompatActivity {
 //        MemoryHook.groupByMemorySize(true);
         MemoryHook.INSTANCE
                 .addHookSo(".*libnative-lib\\.so$")
-                .enableStacktrace(false)
+                .enableStacktrace(true)
                 .enableMmapHook(true)
                 .hook();
 
