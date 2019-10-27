@@ -16,6 +16,9 @@
 
 package com.tencent.matrix.resource.config;
 
+import android.app.PendingIntent;
+import android.content.Intent;
+
 import com.tencent.mrs.plugin.IDynamicConfig;
 
 import java.util.concurrent.TimeUnit;
@@ -27,19 +30,25 @@ import java.util.concurrent.TimeUnit;
 public final class ResourceConfig {
     public static final String TAG = "Matrix.ResourceConfig";
 
+    public enum DumpMode {
+        NO_DUMP, AUTO_DUMP, MANUAL_DUMP
+    }
+
     private static final long DEFAULT_DETECT_INTERVAL_MILLIS = TimeUnit.MINUTES.toMillis(1);
     private static final int DEFAULT_MAX_REDETECT_TIMES = 3;
-    private static final boolean DEFAULT_DUMP_HPROF_ON = false;
+    private static final DumpMode DEFAULT_DUMP_HPROF_MODE = DumpMode.MANUAL_DUMP;
 
     private final IDynamicConfig mDynamicConfig;
-    private final boolean mDumpHprof;
+    private final DumpMode mDumpHprofMode;
     private final boolean mDetectDebugger;
+    private final Intent mContentIntent;
 
 
-    private ResourceConfig(IDynamicConfig dynamicConfig, boolean dumpHProf, boolean detectDebuger) {
+    private ResourceConfig(IDynamicConfig dynamicConfig, DumpMode dumpHprofMode, boolean detectDebuger, Intent pendingIntent) {
         this.mDynamicConfig = dynamicConfig;
-        this.mDumpHprof = dumpHProf;
+        this.mDumpHprofMode = dumpHprofMode;
         mDetectDebugger = detectDebuger;
+        mContentIntent = pendingIntent;
     }
 
     public long getScanIntervalMillis() {
@@ -50,8 +59,12 @@ public final class ResourceConfig {
         return mDynamicConfig.get(IDynamicConfig.ExptEnum.clicfg_matrix_resource_max_detect_times.name(), DEFAULT_MAX_REDETECT_TIMES);
     }
 
-    public boolean getDumpHprof() {
-        return mDumpHprof;
+    public DumpMode getDumpHprofMode() {
+        return mDumpHprofMode;
+    }
+
+    public Intent getNotificationContentIntent() {
+        return mContentIntent;
     }
 
     public boolean getDetectDebugger() {
@@ -60,8 +73,9 @@ public final class ResourceConfig {
 
     public static final class Builder {
 
-        private boolean mDumpHprof = DEFAULT_DUMP_HPROF_ON;
+        private DumpMode mDefaultDumpHprofMode = DEFAULT_DUMP_HPROF_MODE;
         private IDynamicConfig dynamicConfig;
+        private Intent mContentIntent;
         private boolean mDetectDebugger = false;
 
         public Builder dynamicConfig(IDynamicConfig dynamicConfig) {
@@ -69,8 +83,8 @@ public final class ResourceConfig {
             return this;
         }
 
-        public Builder setDumpHprof(boolean enabled) {
-            mDumpHprof = enabled;
+        public Builder setAutoDumpHprofMode(DumpMode mode) {
+            mDefaultDumpHprofMode = mode;
             return this;
         }
 
@@ -79,8 +93,13 @@ public final class ResourceConfig {
             return this;
         }
 
+        public Builder setNotificationContentIntent(Intent intent) {
+            mContentIntent = intent;
+            return this;
+        }
+
         public ResourceConfig build() {
-            return new ResourceConfig(dynamicConfig, mDumpHprof, mDetectDebugger);
+            return new ResourceConfig(dynamicConfig, mDefaultDumpHprofMode, mDetectDebugger, mContentIntent);
         }
     }
 }
