@@ -201,7 +201,7 @@ public class ActivityRefWatcher extends FilePublisher implements Watcher, IAppFo
 
     private void pushDestroyedActivityInfo(Activity activity) {
         final String activityName = activity.getClass().getName();
-        if (isPublished(activityName)) {
+        if (!mResourcePlugin.getConfig().getDetectDebugger() && isPublished(activityName)) {
             MatrixLog.d(TAG, "activity leak with name %s had published, just ignore", activityName);
             return;
         }
