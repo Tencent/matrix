@@ -259,7 +259,7 @@ public class ActivityRefWatcher extends FilePublisher implements Watcher, IAppFo
 
             while (infoIt.hasNext()) {
                 final DestroyedActivityInfo destroyedActivityInfo = infoIt.next();
-                if (isPublished(destroyedActivityInfo.mActivityName)) {
+                if (!mResourcePlugin.getConfig().getDetectDebugger() && isPublished(destroyedActivityInfo.mActivityName)) {
                     MatrixLog.v(TAG, "activity with key [%s] was already published.", destroyedActivityInfo.mActivityName);
                     infoIt.remove();
                     continue;
