@@ -60,7 +60,6 @@ public class MatrixHandlerThread {
             if (null == defaultHandlerThread) {
                 defaultHandlerThread = new HandlerThread(MATRIX_THREAD_NAME);
                 defaultHandlerThread.start();
-                defaultHandler = new Handler(defaultHandlerThread.getLooper());
                 defaultHandlerThread.getLooper().setMessageLogging(isDebug ? new LooperPrinter() : null);
                 MatrixLog.w(TAG, "create default handler thread, we should use these thread normal, isDebug:%s", isDebug);
             }
@@ -69,6 +68,13 @@ public class MatrixHandlerThread {
     }
 
     public static Handler getDefaultHandler() {
+        if (null == defaultHandler) {
+            synchronized (MatrixHandlerThread.class) {
+                if (null == defaultHandler) {
+                    defaultHandler = new Handler(getDefaultHandlerThread().getLooper());
+                }
+            }
+        }
         return defaultHandler;
     }
 
