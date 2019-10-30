@@ -21,8 +21,10 @@ import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.os.Build;
 import android.os.Debug;
 import android.os.HandlerThread;
@@ -83,6 +85,8 @@ public class ActivityRefWatcher extends FilePublisher implements Watcher, IAppFo
     private final AtomicLong                                   mCurrentCreatedActivityCount;
     private IActivityLeakCallback activityLeakCallback = null;
     private Intent mContentIntent;
+    private volatile boolean isSlience = false;
+    private BroadcastReceiver mBroadcastReceiver;
     private final static int NOTIFICATION_ID = 0x110;
 
     public void setActivityLeakCallback(IActivityLeakCallback activityLeakCallback) {
@@ -145,6 +149,7 @@ public class ActivityRefWatcher extends FilePublisher implements Watcher, IAppFo
     public void onForeground(boolean isForeground) {
         if (isForeground) {
             MatrixLog.i(TAG, "we are in foreground, start watcher task.");
+            this.isSlience = false;
             mDetectExecutor.executeInBackground(mScanDestroyedActivitiesTask);
         } else {
             MatrixLog.i(TAG, "we are in background, stop watcher task.");
@@ -171,6 +176,18 @@ public class ActivityRefWatcher extends FilePublisher implements Watcher, IAppFo
             AppActiveMatrixDelegate.INSTANCE.addListener(this);
             scheduleDetectProcedure();
             MatrixLog.i(TAG, "watcher is started.");
+            if (mDumpHprofMode == ResourceConfig.DumpMode.SILENCE_DUMP) {
+                IntentFilter filter = new IntentFilter();
+                filter.addAction(Intent.ACTION_SCREEN_OFF);
+                app.getApplicationContext().registerReceiver(mBroadcastReceiver = new BroadcastReceiver() {
+                    @Override
+                    public void onReceive(Context context, Intent intent) {
+                        if (intent.getAction().equals(Intent.ACTION_SCREEN_OFF)) {
+                            isSlience = true;
+                        }
+                    }
+                }, filter);
+            }
         }
     }
 
@@ -186,6 +203,10 @@ public class ActivityRefWatcher extends FilePublisher implements Watcher, IAppFo
             app.unregisterActivityLifecycleCallbacks(mRemovedActivityMonitor);
             AppActiveMatrixDelegate.INSTANCE.removeListener(this);
             unscheduleDetectProcedure();
+            if (mDumpHprofMode == ResourceConfig.DumpMode.SILENCE_DUMP) {
+                isSlience = false;
+                app.getApplicationContext().unregisterReceiver(mBroadcastReceiver);
+            }
         }
     }
 
@@ -289,6 +310,23 @@ public class ActivityRefWatcher extends FilePublisher implements Watcher, IAppFo
                 }
 
                 MatrixLog.i(TAG, "activity with key [%s] was suspected to be a leaked instance.", destroyedActivityInfo.mKey);
+
+                if (mDumpHprofMode == ResourceConfig.DumpMode.SILENCE_DUMP) {
+                    if (isSlience) {
+                        final File hprofFile = mHeapDumper.dumpHeap();
+                        if (hprofFile != null) {
+                            markPublished(destroyedActivityInfo.mActivityName);
+                            final HeapDump heapDump = new HeapDump(hprofFile, destroyedActivityInfo.mKey, destroyedActivityInfo.mActivityName);
+                            mHeapDumpHandler.process(heapDump);
+                            infoIt.remove();
+                        } else {
+                            MatrixLog.i(TAG, "heap dump for further analyzing activity with key [%s] was failed, just ignore.",
+                                    destroyedActivityInfo.mKey);
+                            infoIt.remove();
+                        }
+                    }
+                } else
+
                 if (mDumpHprofMode == ResourceConfig.DumpMode.AUTO_DUMP) {
                     final File hprofFile = mHeapDumper.dumpHeap();
                     if (hprofFile != null) {

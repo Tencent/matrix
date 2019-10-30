@@ -16,7 +16,6 @@
 
 package com.tencent.matrix.resource.config;
 
-import android.app.PendingIntent;
 import android.content.Intent;
 
 import com.tencent.mrs.plugin.IDynamicConfig;
@@ -31,7 +30,7 @@ public final class ResourceConfig {
     public static final String TAG = "Matrix.ResourceConfig";
 
     public enum DumpMode {
-        NO_DUMP, AUTO_DUMP, MANUAL_DUMP
+        NO_DUMP, AUTO_DUMP, MANUAL_DUMP, SILENCE_DUMP
     }
 
     private static final long DEFAULT_DETECT_INTERVAL_MILLIS = TimeUnit.MINUTES.toMillis(1);
