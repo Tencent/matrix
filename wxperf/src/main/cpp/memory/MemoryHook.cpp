@@ -279,7 +279,9 @@ void *h_dlopen(const char *filename,
     void *ret = (*orig_dlopen)(filename, flag, extinfo, caller_addr);
 
     if (is_stacktrace_enabled) {
+        acquire_lock();
         unwindstack::update_maps();
+        release_lock();
     }
     xhook_refresh(false);
     srand((unsigned int) time(NULL));
