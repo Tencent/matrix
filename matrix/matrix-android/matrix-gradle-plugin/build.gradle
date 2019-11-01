@@ -35,5 +35,9 @@ compileGroovy {
     targetCompatibility = 1.7
 }
 
-apply from: rootProject.file('gradle/java-publish.gradle')
+//apply from: rootProject.file('gradle/java-publish.gradle')
 
+apply from: rootProject.file('gradle/WeChatPublish.gradle')
+wechatPublish {
+    artifactId=POM_ARTIFACT_ID
+}
