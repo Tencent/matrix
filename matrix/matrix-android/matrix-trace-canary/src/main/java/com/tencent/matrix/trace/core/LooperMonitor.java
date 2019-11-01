@@ -3,10 +3,13 @@ package com.tencent.matrix.trace.core;
 import android.os.Build;
 import android.os.Looper;
 import android.os.MessageQueue;
+import android.os.SystemClock;
 import android.support.annotation.CallSuper;
+import android.util.Log;
 import android.util.Printer;
 
 import com.tencent.matrix.util.MatrixLog;
+import com.tencent.matrix.util.ReflectUtils;
 
 import java.lang.reflect.Field;
 import java.util.HashSet;
@@ -18,6 +21,8 @@ public class LooperMonitor implements MessageQueue.IdleHandler {
     private static final String TAG = "Matrix.LooperMonitor";
     private LooperPrinter printer;
     private Looper looper;
+    private static final long CHECK_TIME = 60 * 1000L;
+    private long lastCheckPrinterTime = 0;
 
     public abstract static class LooperDispatchListener {
 
@@ -88,7 +93,10 @@ public class LooperMonitor implements MessageQueue.IdleHandler {
 
     @Override
     public boolean queueIdle() {
-        resetPrinter();
+        if (SystemClock.uptimeMillis() - lastCheckPrinterTime >= CHECK_TIME) {
+            resetPrinter();
+            lastCheckPrinterTime = SystemClock.uptimeMillis();
+        }
         return true;
     }
 
@@ -105,11 +113,22 @@ public class LooperMonitor implements MessageQueue.IdleHandler {
         }
     }
 
+    private static boolean isReflectLoggingError = false;
+
     private synchronized void resetPrinter() {
-        final Printer originPrinter = reflectObject(looper, "mLogging");
-        if (originPrinter == printer && null != printer) {
-            return;
+        Printer originPrinter = null;
+        try {
+            if (!isReflectLoggingError) {
+                originPrinter = ReflectUtils.get(looper.getClass(), "mLogging", looper);
+                if (originPrinter == printer && null != printer) {
+                    return;
+                }
+            }
+        } catch (Exception e) {
+            isReflectLoggingError = true;
+            Log.e(TAG, "[resetPrinter] %s", e);
         }
+
         if (null != printer) {
             MatrixLog.w(TAG, "maybe thread:%s printer[%s] was replace other[%s]!",
                     looper.getThread().getName(), printer, originPrinter);
@@ -124,8 +143,13 @@ public class LooperMonitor implements MessageQueue.IdleHandler {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             looper.getQueue().removeIdleHandler(this);
         } else {
-            MessageQueue queue = reflectObject(looper, "mQueue");
-            queue.removeIdleHandler(this);
+            try {
+                MessageQueue queue = ReflectUtils.get(looper.getClass(), "mQueue", looper);
+                queue.removeIdleHandler(this);
+            } catch (Exception e) {
+                Log.e(TAG, "[removeIdleHandler] %s", e);
+            }
+
         }
     }
 
@@ -133,8 +157,12 @@ public class LooperMonitor implements MessageQueue.IdleHandler {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             looper.getQueue().addIdleHandler(this);
         } else {
-            MessageQueue queue = reflectObject(looper, "mQueue");
-            queue.addIdleHandler(this);
+            try {
+                MessageQueue queue = ReflectUtils.get(looper.getClass(), "mQueue", looper);
+                queue.addIdleHandler(this);
+            } catch (Exception e) {
+                Log.e(TAG, "[removeIdleHandler] %s", e);
+            }
         }
     }
 
@@ -193,16 +221,5 @@ public class LooperMonitor implements MessageQueue.IdleHandler {
 
     }
 
-    private static <T> T reflectObject(Object instance, String name) {
-        try {
-            Field field = instance.getClass().getDeclaredField(name);
-            field.setAccessible(true);
-            return (T) field.get(instance);
-        } catch (Exception e) {
-            e.printStackTrace();
-            MatrixLog.e(TAG, e.toString());
-        }
-        return null;
-    }
 
 }

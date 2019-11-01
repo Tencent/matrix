@@ -128,6 +128,36 @@ public class TestSQLiteLintActivity extends AppCompatActivity {
     private Map<String, SQLiteLintIssue> foundIssueMap = new HashMap<>();
     private JSONArray issueJsonArray = new JSONArray();
     private boolean isCalibrationMode = false;
+
+    private void doTest() {
+        String[] list = TestSQLiteLintHelper.getTestSqlList();
+        /**
+         * if use {@link SQLiteLint.SqlExecutionCallbackMode#CUSTOM_NOTIFY}, need SQLiteLint.notifySqlExecution, for example:
+         * long start;
+         * int cost;
+         * final String dbPath = TestDBHelper.get().getWritableDatabase().getPath();
+         * for (String sql : list) {
+         *     start = System.currentTimeMillis();
+         *     Cursor cursor = TestDBHelper.get().getReadableDatabase().rawQuery(sql, null);
+         *     cursor.moveToFirst();
+         *     cursor.close();
+         *     cost = (int) (System.currentTimeMillis() - start);
+         *     SQLiteLint.notifySqlExecution(dbPath, sql, cost);
+         * }
+         * else if use {@link SQLiteLint.SqlExecutionCallbackMode#HOOK}, no need to care about {@link SQLiteLint#notifySqlExecution(String, String, int)}
+         * like following below. 
+         */
+        for (String sql : list) {
+            Cursor cursor = TestDBHelper.get().getReadableDatabase().rawQuery(sql, null);
+            cursor.moveToFirst();
+            cursor.close();
+        }
+
+        deleteAll();
+        insert();
+        batchInsert(40);
+    }
+
     private BaseBehaviour behaviour = new BaseBehaviour() {
 
         @Override
@@ -157,39 +187,16 @@ public class TestSQLiteLintActivity extends AppCompatActivity {
         }
     };
 
-    private void doTest() {
-        String[] list = TestSQLiteLintHelper.getTestSqlList();
-
-        for (String sql : list) {
-            Cursor cursor = TestDBHelper.get().getReadableDatabase().rawQuery(sql, null);
-            cursor.moveToFirst();
-            cursor.close();
-        }
-        deleteAll();
-        insert();
-        batchInsert(40);
-    }
-
     private void startTest() {
 
         MatrixLog.d(TAG, "start test, please wait");
         SQLiteLintAndroidCoreManager.INSTANCE.addBehavior(behaviour, TestDBHelper.get().getReadableDatabase().getPath());
         TestSQLiteLintHelper.initIssueList(this, issueMap);
         doTest();
-        testParser();
     }
 
     private void stopTest() {
         SQLiteLintAndroidCoreManager.INSTANCE.removeBehavior(behaviour, TestDBHelper.get().getReadableDatabase().getPath());
-    }
-
-    private void testParser() {
-        SQLiteLintAndroidCoreManager.INSTANCE.removeBehavior(behaviour, TestDBHelper.get().getReadableDatabase().getPath());
-        String[] list = TestSQLiteLintHelper.getTestParserList();
-        for (String sql : list) {
-            MatrixLog.i(TAG, "testParser, sql = " + sql);
-            SQLiteLint.notifySqlExecution(TestDBHelper.get().getWritableDatabase().getPath(), sql, 10);
-        }
     }
 
     private void startDBCreateTest() {
@@ -208,10 +215,6 @@ public class TestSQLiteLintActivity extends AppCompatActivity {
             plugin.start();
         }
 
-        /*SQLiteLint.Options.Builder builder = new SQLiteLint.Options.Builder();
-        builder.setAlertBehaviour(true).setReportBehaviour(true);
-        SQLiteLint.InstallEnv installEnv = new SQLiteLint.InstallEnv(TestDBHelper.get().getWritableDatabase().getPath(),
-                new SimpleSQLiteExecutionDelegate(TestDBHelper.get().getWritableDatabase()), SQLiteLint.SqlExecutionCallbackMode.CUSTOM_NOTIFY);*/
         plugin.addConcernedDB(new SQLiteLintConfig.ConcernDb(TestDBHelper.get().getWritableDatabase())
                 //.setWhiteListXml(R.xml.sqlite_lint_whitelist)//disable white list by default
                 .enableAllCheckers());

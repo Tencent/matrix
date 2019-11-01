@@ -87,7 +87,7 @@
     <!-- 是否开启文件IO重复读监控，默认为true -->
     <FileIORepeatReadEnable>true</FileIORepeatReadEnable>
     <!-- 指定重复读次数阈值，默认为5次 -->
-    <FileIORepeatReadEnable>5</FileIORepeatReadEnable>
+    <FileIORepeatReadThreshold>5</FileIORepeatReadThreshold>
     <!-- 是否开启CloseableLeak监控，默认为true -->
     <CloseableLeakEnable>true</CloseableLeakEnable>
 </IOCanary>

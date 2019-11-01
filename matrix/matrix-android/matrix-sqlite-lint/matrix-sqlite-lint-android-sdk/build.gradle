@@ -16,7 +16,7 @@ android {
                 arguments "-Dplatform=android"
             }
             ndk {
-                abiFilters "armeabi", "armeabi-v7a", "x86", "arm64-v8a", "x86_64"
+                abiFilters "armeabi-v7a", "x86", "arm64-v8a", "x86_64"
             }
         }
     }
@@ -69,13 +69,7 @@ dependencies {
 version = rootProject.ext.VERSION_NAME
 group = rootProject.ext.GROUP
 
-//apply from: rootProject.file('gradle/android-publish.gradle')
-//for uploading to WeChat maven serve
-apply from: rootProject.file('gradle/WeChatPublish.gradle')
-apply from: rootProject.file('gradle/WeChatNativeDepend.gradle')
-wechatPublish {
-    artifactId=POM_ARTIFACT_ID
-}
+apply from: rootProject.file('gradle/android-publish.gradle')
 
 // TODO: disable externalNativeBuild for stub flavor
 afterEvaluate {

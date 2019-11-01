@@ -61,7 +61,7 @@ public class Issue {
     @Override
     public String toString() {
         String strContent = "";
-        if(null != content) strContent = content.toString();
+        if (null != content) strContent = content.toString();
         return String.format("tag[%s]type[%d];key[%s];content[%s]", tag, type, key, strContent);
     }
 

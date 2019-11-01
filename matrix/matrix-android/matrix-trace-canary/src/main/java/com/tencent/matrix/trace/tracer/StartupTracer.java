@@ -3,7 +3,6 @@ package com.tencent.matrix.trace.tracer;
 import android.app.Activity;
 import android.app.Application;
 import android.os.Bundle;
-import android.os.SystemClock;
 
 import com.tencent.matrix.Matrix;
 import com.tencent.matrix.report.Issue;
@@ -28,7 +27,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 
-import static android.os.SystemClock.*;
+import static android.os.SystemClock.uptimeMillis;
 
 /**
  * Created by caichongyang on 2019/3/04.

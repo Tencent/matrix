@@ -14,7 +14,6 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import com.tencent.matrix.trace.R;
-import com.tencent.matrix.util.MatrixLog;
 
 import java.util.LinkedList;
 
@@ -166,12 +165,12 @@ public class FloatFrameView extends LinearLayout {
         class LineInfo {
             private float[] linePoint = new float[4];
 
-            public LineInfo(int fps) {
+            LineInfo(int fps) {
                 this.fps = fps;
 
                 color = getColor(fps);
                 linePoint[0] = width; // startX
-                linePoint[2] = (60 - fps) * (lineContentWidth) / 60 + padding;// endX
+                linePoint[2] = (60 - fps) * (lineContentWidth) / 60 + padding; // endX
 
             }
 
@@ -179,8 +178,8 @@ public class FloatFrameView extends LinearLayout {
                 if (paint.getColor() != color) {
                     paint.setColor(color);
                 }
-                linePoint[1] = (1 + index) * linePadding;// startY
-                linePoint[3] = linePoint[1];// endY
+                linePoint[1] = (1 + index) * linePadding; // startY
+                linePoint[3] = linePoint[1]; // endY
                 canvas.drawLine(linePoint[0], linePoint[1], linePoint[2], linePoint[3], paint);
             }
 

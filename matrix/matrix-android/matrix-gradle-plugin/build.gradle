@@ -35,9 +35,5 @@ compileGroovy {
     targetCompatibility = 1.7
 }
 
-//apply from: rootProject.file('gradle/java-publish.gradle')
-//for uploading to WeChat maven serve
-apply from: rootProject.file('gradle/WeChatPublish.gradle')
-wechatPublish {
-    artifactId=POM_ARTIFACT_ID
-}
+apply from: rootProject.file('gradle/java-publish.gradle')
+
