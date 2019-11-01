@@ -20,7 +20,7 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
     private static final String ADD_CALLBACK = "addCallbackLocked";
     private volatile boolean isAlive = false;
     private long[] dispatchTimeMs = new long[4];
-    private HashSet<LooperObserver> observers = new HashSet<>();
+    private final HashSet<LooperObserver> observers = new HashSet<>();
     private volatile long token = 0L;
     private boolean isBelongFrame = false;
 
