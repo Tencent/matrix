@@ -28,8 +28,8 @@ dependencies {
     api 'com.android.support:support-annotations:27.0.2'
 }
 
-//version = rootProject.ext.VERSION_NAME
-//group = rootProject.ext.GROUP
+version = rootProject.ext.VERSION_NAME
+group = rootProject.ext.GROUP
 //
 //apply from: rootProject.file('gradle/android-publish.gradle')
 

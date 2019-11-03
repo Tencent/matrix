@@ -28,9 +28,9 @@ dependencies {
     implementation project(':matrix-android-lib')
 }
 
-//version = rootProject.ext.VERSION_NAME
-//group = rootProject.ext.GROUP
-//
+version = rootProject.ext.VERSION_NAME
+group = rootProject.ext.GROUP
+
 //apply from: rootProject.file('gradle/android-publish.gradle')
 
 //for uploading to WeChat maven serve
