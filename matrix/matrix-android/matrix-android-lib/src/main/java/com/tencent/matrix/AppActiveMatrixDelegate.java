@@ -40,9 +40,9 @@ public enum AppActiveMatrixDelegate {
             return;
         }
         this.isInit = true;
+        this.handler = new Handler(MatrixHandlerThread.getDefaultHandlerThread().getLooper());
         application.registerComponentCallbacks(controller);
         application.registerActivityLifecycleCallbacks(controller);
-        this.handler = new Handler(MatrixHandlerThread.getDefaultHandlerThread().getLooper());
     }
 
     public String getCurrentFragmentName() {
