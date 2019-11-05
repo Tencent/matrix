@@ -245,7 +245,7 @@ public class FrameTracer extends Tracer {
         }
     }
 
-    private enum DropStatus {
+    public enum DropStatus {
         DROPPED_FROZEN(4), DROPPED_HIGH(3), DROPPED_MIDDLE(2), DROPPED_NORMAL(1), DROPPED_BEST(0);
         int index;
 
