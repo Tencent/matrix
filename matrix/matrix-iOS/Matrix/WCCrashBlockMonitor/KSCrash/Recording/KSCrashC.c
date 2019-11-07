@@ -72,7 +72,7 @@ static bool g_shouldPrintPreviousLog = false;
 static char g_consoleLogPath[KSFU_MAX_PATH_LENGTH];
 static KSCrashMonitorType g_monitoring = KSCrashMonitorTypeProductionSafeMinimal;
 static char g_lastCrashReportFilePath[KSFU_MAX_PATH_LENGTH];
-static char *g_customShorVersion = NULL;
+static char *g_customShortVersion = NULL;
 static char *g_customFullVersion = NULL;
 static KSApplicationState g_lastApplicationState = KSApplicationStateNone;
 
@@ -130,8 +130,8 @@ static void onCrash(struct KSCrash_MonitorContext* monitorContext)
 
     monitorContext->consoleLogPath = g_shouldAddConsoleLogToReport ? g_consoleLogPath : NULL;
 
-    if (g_customShorVersion != NULL && g_customFullVersion != NULL) {
-        monitorContext->UserDefinedVersion.bundleShortVersion = g_customShorVersion;
+    if (g_customShortVersion != NULL && g_customFullVersion != NULL) {
+        monitorContext->UserDefinedVersion.bundleShortVersion = g_customShortVersion;
         monitorContext->UserDefinedVersion.bundleVersion = g_customFullVersion;
     } else {
         monitorContext->UserDefinedVersion.bundleShortVersion = NULL;
@@ -161,8 +161,8 @@ static void onUserDump(struct KSCrash_MonitorContext* monitorContext, const char
     
     monitorContext->consoleLogPath = g_shouldAddConsoleLogToReport ? g_consoleLogPath : NULL;
     
-    if (g_customShorVersion != NULL && g_customFullVersion != NULL) {
-        monitorContext->UserDefinedVersion.bundleShortVersion = g_customShorVersion;
+    if (g_customShortVersion != NULL && g_customFullVersion != NULL) {
+        monitorContext->UserDefinedVersion.bundleShortVersion = g_customShortVersion;
         monitorContext->UserDefinedVersion.bundleVersion = g_customFullVersion;
     } else {
         monitorContext->UserDefinedVersion.bundleShortVersion = "unknown";
@@ -466,20 +466,20 @@ void kscrash_setCustomVersion(const char* fullVersion, const char* shortVersion)
     if (g_customFullVersion != NULL) {
         free(g_customFullVersion);
     }
-    if (g_customShorVersion != NULL) {
-        free(g_customShorVersion);
+    if (g_customShortVersion != NULL) {
+        free(g_customShortVersion);
     }
     
     if (shortVersion != NULL && strlen(shortVersion) > 0) {
         size_t length = strlen(shortVersion) + 1;
-        g_customShorVersion = (char *)malloc(sizeof(char) * length);
-        if (g_customShorVersion != NULL) {
-            strlcpy(g_customShorVersion, shortVersion, length);
+        g_customShortVersion = (char *)malloc(sizeof(char) * length);
+        if (g_customShortVersion != NULL) {
+            strlcpy(g_customShortVersion, shortVersion, length);
         }
     } else {
-        g_customShorVersion = (char *)malloc(sizeof(char) * 5);
-        if (g_customShorVersion != NULL) {
-            strlcpy(g_customShorVersion, "null", 5);
+        g_customShortVersion = (char *)malloc(sizeof(char) * 5);
+        if (g_customShortVersion != NULL) {
+            strlcpy(g_customShortVersion, "null", 5);
         }
     }
     if (fullVersion != NULL && strlen(fullVersion) > 0) {
@@ -498,7 +498,7 @@ void kscrash_setCustomVersion(const char* fullVersion, const char* shortVersion)
 
 const char* kscrash_getCustomShortVersion()
 {
-    return g_customShorVersion;
+    return g_customShortVersion;
 }
 
 const char* kscrash_getCustomFullVersion()

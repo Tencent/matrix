@@ -14,7 +14,6 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import com.tencent.matrix.trace.R;
-import com.tencent.matrix.util.MatrixLog;
 
 import java.util.LinkedList;
 
@@ -59,7 +58,7 @@ public class FloatFrameView extends LinearLayout {
         private int greenColor = getContext().getResources().getColor(android.R.color.holo_green_dark);
         private int orangeColor = getContext().getResources().getColor(android.R.color.holo_orange_dark);
         private int redColor = getContext().getResources().getColor(android.R.color.holo_red_dark);
-        private int grayColor = getContext().getResources().getColor(android.R.color.darker_gray);
+        private int grayColor = getContext().getResources().getColor(R.color.dark_text);
         float padding = 10 * getContext().getResources().getDisplayMetrics().density;
         float width;
         float lineContentWidth;
@@ -118,10 +117,12 @@ public class FloatFrameView extends LinearLayout {
 
         public void addFps(int fps) {
             LineInfo linePoint = new LineInfo(fps);
-            if (lines.size() >= LINE_COUNT) {
-                lines.removeLast();
+            synchronized (lines) {
+                if (lines.size() >= LINE_COUNT) {
+                    lines.removeLast();
+                }
+                lines.addFirst(linePoint);
             }
-            lines.addFirst(linePoint);
             postInvalidate();
         }
 
@@ -130,26 +131,27 @@ public class FloatFrameView extends LinearLayout {
             super.draw(canvas);
             int index = 1;
             int sumFps = 0;
-            for (LineInfo lineInfo : lines) {
-                sumFps += lineInfo.fps;
-                lineInfo.draw(canvas, index);
-                if (index % 25 == 0 || index == 0) {
-                    Path path = new Path();
-                    float pathY = lineInfo.linePoint[1];
-                    path.moveTo(0, pathY);
-                    path.lineTo(getMeasuredHeight(), pathY);
-                    canvas.drawPath(path, tipLinePaint);
-                    tipPaint.setColor(grayColor);
-                    canvas.drawText(index / 5 + "s", 0, pathY + textSize, tipPaint);
-                    if (index > 0) {
-                        int aver = sumFps / index;
-                        tipPaint.setColor(getColor(aver));
-                        canvas.drawText(aver + " FPS", 0, pathY - textSize / 2, tipPaint);
+            synchronized (lines) {
+                for (LineInfo lineInfo : lines) {
+                    sumFps += lineInfo.fps;
+                    lineInfo.draw(canvas, index);
+                    if (index % 25 == 0 || index == 0) {
+                        Path path = new Path();
+                        float pathY = lineInfo.linePoint[1];
+                        path.moveTo(0, pathY);
+                        path.lineTo(getMeasuredHeight(), pathY);
+                        canvas.drawPath(path, tipLinePaint);
+                        tipPaint.setColor(grayColor);
+                        canvas.drawText(index / 5 + "s", 0, pathY + textSize, tipPaint);
+                        if (index > 0) {
+                            int aver = sumFps / index;
+                            tipPaint.setColor(getColor(aver));
+                            canvas.drawText(aver + " FPS", 0, pathY - textSize / 2, tipPaint);
+                        }
                     }
+                    index++;
                 }
-                index++;
             }
-
             tipPaint.setColor(grayColor);
             levelLinePaint.setColor(greenColor);
             canvas.drawPath(topPath, levelLinePaint);
@@ -163,12 +165,12 @@ public class FloatFrameView extends LinearLayout {
         class LineInfo {
             private float[] linePoint = new float[4];
 
-            public LineInfo(int fps) {
+            LineInfo(int fps) {
                 this.fps = fps;
 
                 color = getColor(fps);
                 linePoint[0] = width; // startX
-                linePoint[2] = (60 - fps) * (lineContentWidth) / 60 + padding;// endX
+                linePoint[2] = (60 - fps) * (lineContentWidth) / 60 + padding; // endX
 
             }
 
@@ -176,8 +178,8 @@ public class FloatFrameView extends LinearLayout {
                 if (paint.getColor() != color) {
                     paint.setColor(color);
                 }
-                linePoint[1] = (1 + index) * linePadding;// startY
-                linePoint[3] = linePoint[1];// endY
+                linePoint[1] = (1 + index) * linePadding; // startY
+                linePoint[3] = linePoint[1]; // endY
                 canvas.drawLine(linePoint[0], linePoint[1], linePoint[2], linePoint[3], paint);
             }
 

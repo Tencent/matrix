@@ -14,4 +14,6 @@
  * limitations under the License.
  */
 
-const char *getAppBundleName();
+const char *bundleHelperGetAppBundleName();
+
+const char *bundleHelperGetAppName();

@@ -59,8 +59,5 @@ if (check_private_only) {
 
 } else {
     // Publish to public repositories
-//    apply from: rootProject.file('gradle/android-publish.gradle')
-    //for uploading to WeChat maven serve
-    apply from: rootProject.file('gradle/WeChatPublish.gradle')
-    apply from: rootProject.file('gradle/WeChatNativeDepend.gradle')
+    apply from: rootProject.file('gradle/android-publish.gradle')
 }

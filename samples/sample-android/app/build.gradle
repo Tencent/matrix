@@ -50,6 +50,8 @@ configurations {
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
     implementation group: "com.tencent.matrix", name: "matrix-commons", version: MATRIX_VERSION, changing: true
+    implementation group: "com.tencent.matrix", name: "matrix-thread-canary", version: MATRIX_VERSION, changing: true
+    implementation group: "com.tencent.matrix", name: "matrix-battery-canary", version: MATRIX_VERSION, changing: true
     implementation group: "com.tencent.matrix", name: "matrix-android-lib", version: MATRIX_VERSION, changing: true
     implementation group: "com.tencent.matrix", name: "matrix-android-commons", version: MATRIX_VERSION, changing: true
     implementation group: "com.tencent.matrix", name: "matrix-trace-canary", version: MATRIX_VERSION, changing: true
@@ -84,6 +86,8 @@ matrix {
         shrinkArsc true
         deDuplicate true
         apkCheckerPath = "${project.configurations.apkCheckerDependency.getAt(0).getAbsolutePath()}"
+        //Notice: You need to modify the  value of $apksignerPath on different platform. the value below only suitable for Mac Platform,
+        //if on Windows, you may have to  replace apksigner with apksigner.bat.
         apksignerPath = "${android.getSdkDirectory().getAbsolutePath()}/build-tools/${android.getBuildToolsVersion()}/apksigner"
         ignoreResources = ["R.id.*", "R.bool.*"]
     }

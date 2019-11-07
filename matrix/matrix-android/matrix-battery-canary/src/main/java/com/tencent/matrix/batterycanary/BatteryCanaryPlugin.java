@@ -21,6 +21,7 @@ import android.app.Application;
 import com.tencent.matrix.batterycanary.config.BatteryConfig;
 import com.tencent.matrix.batterycanary.config.SharePluginInfo;
 import com.tencent.matrix.batterycanary.core.BatteryCanaryCore;
+import com.tencent.matrix.batterycanary.monitor.BatteryMonitor;
 import com.tencent.matrix.batterycanary.util.BatteryCanaryUtil;
 import com.tencent.matrix.plugin.Plugin;
 import com.tencent.matrix.plugin.PluginListener;

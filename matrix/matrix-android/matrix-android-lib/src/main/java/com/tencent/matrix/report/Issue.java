@@ -27,7 +27,7 @@ import org.json.JSONObject;
  */
 
 public class Issue {
-    private Integer    type;
+    private int        type;
     private String     tag;
     private String     key;
     private JSONObject content;
@@ -61,7 +61,7 @@ public class Issue {
     @Override
     public String toString() {
         String strContent = "";
-        if(null != content) strContent = content.toString();
+        if (null != content) strContent = content.toString();
         return String.format("tag[%s]type[%d];key[%s];content[%s]", tag, type, key, strContent);
     }
 
@@ -73,7 +73,7 @@ public class Issue {
         this.tag = tag;
     }
 
-    public Integer getType() {
+    public int getType() {
         return type;
     }
 

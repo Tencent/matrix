@@ -9,7 +9,6 @@ import com.tencent.matrix.trace.listeners.LooperObserver;
 import com.tencent.matrix.trace.util.Utils;
 import com.tencent.matrix.util.MatrixLog;
 
-import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Arrays;
@@ -21,7 +20,7 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
     private static final String ADD_CALLBACK = "addCallbackLocked";
     private volatile boolean isAlive = false;
     private long[] dispatchTimeMs = new long[4];
-    private HashSet<LooperObserver> observers = new HashSet<>();
+    private final HashSet<LooperObserver> observers = new HashSet<>();
     private volatile long token = 0L;
     private boolean isBelongFrame = false;
 
@@ -112,7 +111,9 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
             }
 
         });
-
+        this.isInit = true;
+        MatrixLog.i(TAG, "[UIThreadMonitor] %s %s %s %s %s frameIntervalNanos:%s", callbackQueueLock == null, callbackQueues == null, addInputQueue == null, addTraversalQueue == null, addAnimationQueue == null, frameIntervalNanos);
+        
         if (config.isDevEnv()) {
             addObserver(new LooperObserver() {
                 @Override
@@ -120,9 +121,7 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
                     MatrixLog.i(TAG, "activityName[%s] frame cost:%sms [%s|%s|%s]ns", focusedActivityName, frameCostMs, inputCost, animationCost, traversalCost);
                 }
             });
-        }
-        MatrixLog.i(TAG, "[UIThreadMonitor] %s %s %s %s %s frameIntervalNanos:%s", callbackQueueLock == null, callbackQueues == null, addInputQueue == null, addTraversalQueue == null, addAnimationQueue == null, frameIntervalNanos);
-        this.isInit = true;
+        }        
     }
 
     private synchronized void addFrameCallback(int type, Runnable callback, boolean isAddHeader) {

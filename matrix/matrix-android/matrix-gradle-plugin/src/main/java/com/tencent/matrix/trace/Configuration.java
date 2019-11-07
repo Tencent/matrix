@@ -4,7 +4,6 @@ import com.tencent.matrix.javalib.util.FileUtil;
 import com.tencent.matrix.javalib.util.Util;
 import com.tencent.matrix.trace.retrace.MappingCollector;
 
-import java.io.File;
 import java.util.HashSet;
 
 public class Configuration {
