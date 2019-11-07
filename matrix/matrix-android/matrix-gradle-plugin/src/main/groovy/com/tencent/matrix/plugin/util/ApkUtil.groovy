@@ -40,20 +40,52 @@ public class ApkUtil {
         return ""
     }
 
-    static String entryToResouceName(String entry) {
+    static String entryToResourceName(String entry) {
         String resourceName = "";
         if (!Util.isNullOrNil(entry)) {
-            String typeName = entry.substring(4, entry.lastIndexOf('/'))
+            String typeName = getEntryResourceType(entry)
             String resName = entry.substring(entry.lastIndexOf('/') + 1, entry.indexOf('.'))
             if (!Util.isNullOrNil(typeName) && !Util.isNullOrNil(resName)) {
+                resourceName = "R." + typeName + "." + resName
+            }
+        }
+        return resourceName
+    }
+
+    static String getEntryResourceType(String entry) {
+        if (!Util.isNullOrNil(entry)) {
+            String typeName = entry.substring(4, entry.lastIndexOf('/'))
+            if (!Util.isNullOrNil(typeName)) {
                 int index = typeName.indexOf('-')
                 if (index >= 0) {
                     typeName = typeName.substring(0, index)
                 }
-                resourceName = "R." + typeName + "." + resName;
+                return typeName
             }
         }
-        return resourceName;
+        return ""
+    }
+
+    static boolean isSameResourceType(Set<String> entries) {
+        String resType = ""
+        for (String entry : entries) {
+            if (!Util.isNullOrNil(entry)) {
+                if (Util.isNullOrNil(resType)) {
+                    resType = getEntryResourceType(entry)
+                    continue
+                }
+                if (!resType.equals(getEntryResourceType(entry))) {
+                    return false
+                }
+            } else {
+                return false
+            }
+        }
+        if (Util.isNullOrNil(resType)) {
+            return false
+        } else {
+            return true
+        }
     }
 
     static byte[] readFileContent(InputStream inputStream) throws IOException {

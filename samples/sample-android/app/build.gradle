@@ -82,6 +82,7 @@ matrix {
         variant = "debug"
         needSign true
         shrinkArsc true
+        deDuplicate true
         apkCheckerPath = "${project.configurations.apkCheckerDependency.getAt(0).getAbsolutePath()}"
         apksignerPath = "${android.getSdkDirectory().getAbsolutePath()}/build-tools/${android.getBuildToolsVersion()}/apksigner"
         ignoreResources = ["R.id.*", "R.bool.*"]

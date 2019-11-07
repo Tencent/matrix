@@ -19,6 +19,7 @@ package com.tencent.matrix.plugin.task
 import com.android.build.gradle.internal.dsl.SigningConfig
 import com.google.gson.Gson
 import com.google.gson.JsonArray
+import com.google.gson.JsonObject
 import com.tencent.matrix.javalib.util.Log
 import com.tencent.matrix.javalib.util.Util
 import com.tencent.matrix.plugin.util.ApkUtil
@@ -41,11 +42,19 @@ import java.util.zip.ZipOutputStream
 
 public class RemoveUnusedResourcesTask extends DefaultTask {
 
-    private static final String TAG = "Matrix.MatrixPlugin.RemoveUnusedResourcesTask";
+    static final String TAG = "Matrix.MatrixPlugin.RemoveUnusedResourcesTask"
 
-    public static final String BUILD_VARIANT = "build_variant";
+    public static final String BUILD_VARIANT = "build_variant"
 
     public Set<String> ignoreResources = new HashSet<>()
+
+    Map<String, Integer> resourceMap = new HashMap()
+    File resTxtFile
+    Map<String, Pair<String, Integer>[]> styleableMap = new HashMap()
+    Set<String> unusedResources = new HashSet<String>()
+    Map<String, Set<String>> dupResources = new HashMap()
+
+    public static final ARSC_FILE_NAME = "resources.arsc"
 
     RemoveUnusedResourcesTask() {
     }
@@ -69,25 +78,32 @@ public class RemoveUnusedResourcesTask extends DefaultTask {
             if (variant.name.equalsIgnoreCase(variantName)) {
                 variant.outputs.forEach { output ->
                     String unsignedApkPath = output.outputFile.getAbsolutePath()
-                    Log.i(RemoveUnusedResourcesTask.TAG, "original apk file %s", unsignedApkPath)
+                    Log.i(TAG, "original apk file %s", unsignedApkPath)
                     long startTime = System.currentTimeMillis()
                     String rTxtFile = project.getBuildDir().getAbsolutePath() + "/intermediates/symbols/${variant.name}/R.txt"
                     String mappingTxtFile = project.getBuildDir().getAbsolutePath() + "/outputs/mapping/${variant.name}/mapping.txt"
-                    Set<String> unusedResources = findUnusedResources(unsignedApkPath, rTxtFile, mappingTxtFile)
-                    Log.i(RemoveUnusedResourcesTask.TAG, "find %d unused resources:\n %s", unusedResources.size(), unusedResources)
-                    Log.i(RemoveUnusedResourcesTask.TAG, "find unused resources cost time %f s ", (System.currentTimeMillis() - startTime) / 1000.0f)
-                    if (unusedResources.size() > 0) {
+                    findUnusedResources(unsignedApkPath, rTxtFile, mappingTxtFile, unusedResources, dupResources)
+                    Log.i(TAG, "find %d unused resources:\n %s", unusedResources.size(), unusedResources)
+                    Log.i(TAG, "find %d duplicated resources", dupResources.size())
+                    for(String md5 : dupResources.keySet()) {
+                        Log.i(TAG, "md5:%s, files:%s", md5, dupResources.get(md5))
+                    }
+                    Log.i(TAG, "find unused resources cost time %f s ", (System.currentTimeMillis() - startTime) / 1000.0f)
+
+                    resTxtFile = new File(rTxtFile)
+                    readResourceTxtFile(resTxtFile)
+
+                    if (dupResources.size() > 0 || unusedResources.size() > 0) {
                         startTime = System.currentTimeMillis()
-                        removeUnusedResources(unusedResources, unsignedApkPath, rTxtFile, variant.variantData.variantConfiguration.signingConfig)
-                        Log.i(RemoveUnusedResourcesTask.TAG, "remove unused resources cost time %f s", (System.currentTimeMillis() - startTime) / 1000.0f)
+                        removeUnusedResources(unsignedApkPath, variant.variantData.variantConfiguration.signingConfig)
+                        Log.i(TAG, "remove duplicated resources & unused resources cost time %f s", (System.currentTimeMillis() - startTime) / 1000.0f)
                     }
                 }
             }
         }
     }
 
-    Set<String> findUnusedResources(String originalApk, String rTxtFile, String mappingTxtFile) {
-        Set<String> unusedResources = new HashSet<String>()
+    void findUnusedResources(String originalApk, String rTxtFile, String mappingTxtFile, Set<String> unusedResources, Map<String, Set<String>> dupResources) {
         ProcessBuilder processBuilder = new ProcessBuilder()
         String apkChecker = project.extensions.matrix.removeUnusedResources.apkCheckerPath
 
@@ -96,48 +112,67 @@ public class RemoveUnusedResourcesTask extends DefaultTask {
                 throw new GradleException("the path of Matrix-ApkChecker " + apkChecker + " is not exist!")
             }
             String tempOutput = project.getBuildDir().getAbsolutePath() + "/apk_checker"
+            ArrayList<String> commandList = new ArrayList<>()
+            commandList.add("java")
+            commandList.add("-jar")
+            commandList.add(apkChecker)
+            commandList.add("--apk")
+            commandList.add(originalApk)
+            commandList.add("--output")
+            commandList.add(tempOutput)
+
             if (new File(mappingTxtFile).exists()) {
-                processBuilder.command("java",
-                        "-jar", apkChecker,
-                        "--apk", originalApk,
-                        "--output", tempOutput,
-                        "--mappingTxt", mappingTxtFile,
-                        "--format", "json",
-                        "-unusedResources", "--rTxt", rTxtFile )
-            } else {
-                processBuilder.command("java",
-                        "-jar", apkChecker,
-                        "--apk", originalApk,
-                        "--output", tempOutput,
-                        "--format", "json",
-                        "-unusedResources", "--rTxt", rTxtFile )
+                commandList.add("--mappingTxt")
+                commandList.add(mappingTxtFile)
             }
+
+            commandList.add("--format")
+            commandList.add("json")
+            commandList.add("-unusedResources")
+            commandList.add("--rTxt")
+            commandList.add(rTxtFile)
+
+            if (project.extensions.matrix.removeUnusedResources.deDuplicate) {
+                commandList.add("-duplicatedFile")
+            }
+
+            processBuilder.command(commandList)
             Process process = processBuilder.start()
             println process.text
             process.waitFor()
             File outputFile = new File(project.getBuildDir().getAbsolutePath() + "/apk_checker.json")
             if (outputFile.exists()) {
                 Gson gson = new Gson()
-                JsonArray jsonArray = gson.fromJson(outputFile.text, JsonArray.class);
+                JsonArray jsonArray = gson.fromJson(outputFile.text, JsonArray.class)
                 for (int i = 0; i < jsonArray.size(); i++) {
                     if (jsonArray.get(i).asJsonObject.get("taskType").asInt == 12) {
                         JsonArray resList = jsonArray.get(i).asJsonObject.get("unused-resources").asJsonArray
                         for (int j = 0; j < resList.size(); j++) {
                             unusedResources.add(resList.get(j).asString)
                         }
-                        break
+                    }
+                    if (jsonArray.get(i).asJsonObject.get("taskType").asInt == 10) {
+                        JsonArray dupList = jsonArray.get(i).asJsonObject.get("files").asJsonArray
+                        for (int k = 0; k < dupList.size(); k++) {
+                            JsonObject dupObj = dupList.get(k).asJsonObject
+                            String md5 = dupObj.get("md5")
+                            dupResources.put(md5, new HashSet())
+                            JsonArray fileList = dupObj.get("files").asJsonArray
+                            for (int m = 0; m < fileList.size(); m++) {
+                                dupResources.get(md5).add(fileList.get(m).getAsString())
+                            }
+                        }
                     }
                 }
-                outputFile.delete()
+                //outputFile.delete()
             }
         } else {
             throw new GradleException("the path of Matrix-ApkChecker not found!")
         }
-        return unusedResources
     }
 
-    void removeUnusedResources(Set<String> unusedResources, String originalApk, String rTxtFile, SigningConfig signingConfig) {
-        ZipOutputStream zipOutputStream = null;
+    void removeUnusedResources(String originalApk, SigningConfig signingConfig) {
+        ZipOutputStream zipOutputStream = null
         boolean needSign = project.extensions.matrix.removeUnusedResources.needSign
         boolean shrinkArsc = project.extensions.matrix.removeUnusedResources.shrinkArsc
         String apksigner = project.extensions.matrix.removeUnusedResources.apksignerPath
@@ -153,12 +188,12 @@ public class RemoveUnusedResourcesTask extends DefaultTask {
         try {
             try {
                 File inputFile = new File(originalApk)
-                Set<String> ignoreRes = project.extensions.matrix.removeUnusedResources.ignoreResources;
+                Set<String> ignoreRes = project.extensions.matrix.removeUnusedResources.ignoreResources
                 for (String res : ignoreRes) {
                     ignoreResources.add(Util.globToRegexp(res))
                 }
                 Iterator<String> iterator = unusedResources.iterator()
-                String res = null;
+                String res = null
                 while (iterator.hasNext()) {
                     res = iterator.next()
                     if (ignoreResource(res)) {
@@ -168,7 +203,7 @@ public class RemoveUnusedResourcesTask extends DefaultTask {
                 }
                 Log.i(TAG, "unused resources count:%d", unusedResources.size())
 
-                String outputApk = inputFile.getParentFile().getAbsolutePath() + "/" + inputFile.getName().substring(0, inputFile.getName().indexOf('.')) + "_shrinked.apk";
+                String outputApk = inputFile.getParentFile().getAbsolutePath() + "/" + inputFile.getName().substring(0, inputFile.getName().indexOf('.')) + "_shrinked.apk"
 
                 File outputFile = new File(outputApk)
                 if (outputFile.exists()) {
@@ -181,11 +216,6 @@ public class RemoveUnusedResourcesTask extends DefaultTask {
 
                 zipOutputStream = new ZipOutputStream(new FileOutputStream(outputFile))
 
-                Map<String, Integer> resourceMap = new HashMap()
-                Map<String, Pair<String, Integer>[]> styleableMap = new HashMap()
-                File resTxtFile = new File(rTxtFile)
-                readResourceTxtFile(resTxtFile, resourceMap, styleableMap)
-
 
                 Map<String, Integer> removeResources = new HashMap<>()
                 for (String resName : unusedResources) {
@@ -194,14 +224,97 @@ public class RemoveUnusedResourcesTask extends DefaultTask {
                     }
                 }
 
+                Map<String, String> replaceResources = new HashMap<>()
+                for (String md5 : dupResources.keySet()) {
+                    Set<String> dupFileList = dupResources.get(md5)
+                    Map<String, String> dupResName = new HashMap<>()
+                    for (String file : dupFileList) {
+                        if (!file.startsWith("res/")) {
+                            Log.w(TAG, " %s is not resource file!", file)
+                            continue
+                        } else {
+                            dupResName.put(file, ApkUtil.entryToResourceName(file))
+                        }
+                    }
+                    if (dupResName.size() > 0) {
+                        if (!ApkUtil.isSameResourceType(dupResName.keySet())) {
+                            Log.w(TAG, "the type of duplicated resources %s are not same!", dupFileList)
+                            continue
+                        } else {
+                            Iterator itera = dupResName.keySet().iterator()
+                            while(itera.hasNext()) {
+                                String resFile = itera.next()
+                                if (!resourceMap.containsKey(dupResName.get(resFile))) {
+                                    Log.w(TAG, "can not find duplicated resources %s!", resFile)
+                                    itera.remove()
+                                }
+                            }
+
+                            if (dupResName.size() > 1) {
+                                itera  = dupResName.keySet().iterator()
+                                String target = itera.next()
+                                while (itera.hasNext()) {
+                                    String dup = itera.next()
+                                    Log.i(TAG, "replace %s with %s", dup, target)
+                                    replaceResources.put(dup, target)
+                                }
+                            }
+                        }
+                    }
+                }
+
+                ZipEntry arsc = zipInputFile.getEntry(ARSC_FILE_NAME)
+
+                if (arsc != null) {
+                    if ((shrinkArsc && unusedResources.size() > 0) || replaceResources.size() > 0) {
+                        File srcArscFile = new File(inputFile.getParentFile().getAbsolutePath() + "/" + ARSC_FILE_NAME)
+                        File destArscFile = new File(inputFile.getParentFile().getAbsolutePath() + "/" + "shrinked_" + ARSC_FILE_NAME)
+                        if (srcArscFile.exists()) {
+                            srcArscFile.delete()
+                            srcArscFile.createNewFile()
+                        }
+                        ApkUtil.unzipEntry(zipInputFile, arsc, srcArscFile)
+
+                        ArscReader reader = new ArscReader(srcArscFile.getAbsolutePath())
+                        ResTable resTable = reader.readResourceTable()
+                        for (String resName : removeResources.keySet()) {
+                            ArscUtil.removeResource(resTable, removeResources.get(resName), resName)
+                        }
+                        if (replaceResources.size() > 0) {
+                            Iterator replaceIterator = replaceResources.keySet().iterator()
+                            while (replaceIterator.hasNext()) {
+                                String sourceFile = replaceIterator.next()
+                                String sourceRes = ApkUtil.entryToResourceName(sourceFile)
+                                int sourceId = resourceMap.get(sourceRes)
+                                String targetFile = replaceResources.get(sourceFile)
+                                String targetRes = ApkUtil.entryToResourceName(targetFile)
+                                int targetId = resourceMap.get(targetRes)
+                                boolean success = ArscUtil.replaceFileResource(resTable, sourceId, sourceFile, targetId, targetFile)
+                                if (!success) {
+                                    Log.w(TAG, "replace %s(%s) with %s(%s) failed!", sourceRes, sourceFile, targetRes, targetFile)
+                                    replaceIterator.remove()
+                                }
+                            }
+                        }
+                        ArscWriter writer = new ArscWriter(destArscFile.getAbsolutePath())
+                        writer.writeResTable(resTable)
+                        Log.i(TAG, "shrink resources.arsc size %f KB", (srcArscFile.length() - destArscFile.length()) / 1024.0)
+                        ApkUtil.addZipEntry(zipOutputStream, arsc, destArscFile)
+                    } else {
+                        ApkUtil.addZipEntry(zipOutputStream, arsc, zipInputFile)
+                    }
+                }
 
                 for (ZipEntry zipEntry : zipInputFile.entries()) {
                     if (zipEntry.name.startsWith("res/")) {
-                        String resourceName = ApkUtil.entryToResouceName(zipEntry.name)
+                        String resourceName = ApkUtil.entryToResourceName(zipEntry.name)
                         if (!Util.isNullOrNil(resourceName)) {
                             if (removeResources.containsKey(resourceName)) {
                                 Log.i(TAG, "remove unused resource %s", resourceName)
-                                continue;
+                                continue
+                            } else if (replaceResources.containsKey(zipEntry.name)) {
+                                Log.i(TAG, "remove duplicated resource %s", zipEntry.name)
+                                continue
                             } else {
                                 ApkUtil.addZipEntry(zipOutputStream, zipEntry, zipInputFile)
                             }
@@ -210,29 +323,9 @@ public class RemoveUnusedResourcesTask extends DefaultTask {
                         }
                     } else {
                         if (needSign && zipEntry.name.startsWith("META-INF/")) {
-                            continue;
-                        } else {
-                            if (shrinkArsc && zipEntry.name.equalsIgnoreCase("resources.arsc") && unusedResources.size() > 0) {
-                                File srcArscFile = new File(inputFile.getParentFile().getAbsolutePath() + "/resources.arsc")
-                                File destArscFile = new File(inputFile.getParentFile().getAbsolutePath() + "/resources_shrinked.arsc")
-                                if (srcArscFile.exists()) {
-                                    srcArscFile.delete()
-                                    srcArscFile.createNewFile()
-                                }
-                                ApkUtil.unzipEntry(zipInputFile, zipEntry, srcArscFile)
-
-                                ArscReader reader = new ArscReader(srcArscFile.getAbsolutePath())
-                                ResTable resTable = reader.readResourceTable()
-                                for (String resName : removeResources.keySet()) {
-                                    ArscUtil.removeResource(resTable, removeResources.get(resName), resName)
-                                }
-                                ArscWriter writer = new ArscWriter(destArscFile.getAbsolutePath())
-                                writer.writeResTable(resTable)
-                                Log.i(TAG, "shrink resources.arsc size %f KB", (srcArscFile.length() - destArscFile.length()) / 1024.0)
-                                ApkUtil.addZipEntry(zipOutputStream, zipEntry, destArscFile)
-                            } else {
-                                ApkUtil.addZipEntry(zipOutputStream, zipEntry, zipInputFile)
-                            }
+                            continue
+                        } else if (!zipEntry.name.equals(ARSC_FILE_NAME)) {
+                            ApkUtil.addZipEntry(zipOutputStream, zipEntry, zipInputFile)
                         }
                     }
                 }
@@ -341,17 +434,17 @@ public class RemoveUnusedResourcesTask extends DefaultTask {
         }
     }
 
-    private void readResourceTxtFile(File resTxtFile, Map<String, Integer> resourceMap, Map<String, Pair<String, Integer>[]> styleableMap) throws IOException {
+    void readResourceTxtFile(File resTxtFile) throws IOException {
         BufferedReader bufferedReader = new BufferedReader(new FileReader(resTxtFile))
         String line = bufferedReader.readLine()
-        boolean styleable = false;
-        String styleableName = "";
+        boolean styleable = false
+        String styleableName = ""
         ArrayList<String> styleableAttrs = new ArrayList<>()
         try {
             while (line != null) {
                 String[] columns = line.split(" ")
                 if (columns.length >= 4) {
-                    final String resourceName = "R." + columns[1] + "." + columns[2];
+                    final String resourceName = "R." + columns[1] + "." + columns[2]
                     if (!columns[0].endsWith("[]") && columns[3].startsWith("0x")) {
                         if (styleable) {
                             styleable = false
@@ -366,7 +459,7 @@ public class RemoveUnusedResourcesTask extends DefaultTask {
                             if (columns.length > 5) {
                                 styleableAttrs.clear()
                                 styleable = true
-                                styleableName = "R." + columns[1] + "." + columns[2];
+                                styleableName = "R." + columns[1] + "." + columns[2]
                                 for (int i = 4; i < columns.length - 1; i++) {
                                     if (columns[i].endsWith(",")) {
                                         styleableAttrs.add(columns[i].substring(0, columns[i].length() - 1))
@@ -379,7 +472,7 @@ public class RemoveUnusedResourcesTask extends DefaultTask {
                         } else {
                             if (styleable && !Util.isNullOrNil(styleableName)) {
                                 final int index = Integer.parseInt(columns[3])
-                                final String name = "R." + columns[1] + "." + columns[2];
+                                final String name = "R." + columns[1] + "." + columns[2]
                                 styleableMap.get(styleableName)[index] = new Pair<String, Integer>(name, Integer.decode(ApkUtil.parseResourceId(styleableAttrs.get(index))))
                             }
                         }
