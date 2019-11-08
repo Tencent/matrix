@@ -27,8 +27,9 @@ class MatrixDelUnusedResConfiguration {
     String variant
     boolean needSign
     boolean shrinkArsc
+    boolean deDuplicate
+    String apkCheckerPath
     String apksignerPath
-    Set<String> unusedResources
     Set<String> ignoreResources
 
     MatrixDelUnusedResConfiguration() {
@@ -36,8 +37,8 @@ class MatrixDelUnusedResConfiguration {
         variant = ""
         needSign = false
         shrinkArsc = false
+        apkCheckerPath = ""
         apksignerPath = ""
-        unusedResources = new HashSet<>()
         ignoreResources = new HashSet<>()
     }
 
@@ -47,8 +48,9 @@ class MatrixDelUnusedResConfiguration {
            | variant = ${variant}
            | needSign = ${needSign}
            | shrinkArsc = ${shrinkArsc}
+           | deDuplicate = ${deDuplicate}
+           | apkCheckerPath = ${apkCheckerPath}
            | apkSignerPath = ${apksignerPath}
-           | unusedResources = ${unusedResources}
            | ignoreResources = ${ignoreResources}
         """.stripMargin()
     }
