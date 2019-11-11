@@ -57,6 +57,15 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        findViewById(R.id.btn_realloc).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                JNIObj jniObj = new JNIObj();
+                jniObj.reallocTest();
+                MemoryHook.INSTANCE.dump("/sdcard/memory_hook.log");
+            }
+        });
+
         checkPermission();
 //        if (checkPermission()) {
             Log.d(TAG, "onCreate: path = " + Environment.getExternalStorageDirectory().getAbsolutePath());

@@ -70,6 +70,7 @@ static void hook(const char *regex) {
     if (enable_mmap_hook) {
         xhook_register(regex, "mmap", (void *) h_mmap, NULL);
         xhook_register(regex, "munmap", (void *) h_munmap, NULL);
+        xhook_register(regex, "mremap", (void *) h_mremap, NULL);
 #if __ANDROID_API__ >= __ANDROID_API_L__
         xhook_register(regex, "mmap64", (void *) h_mmap64, NULL);
 #endif

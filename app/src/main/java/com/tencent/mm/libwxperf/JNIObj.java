@@ -16,6 +16,8 @@ public class JNIObj {
         }
     }
 
+    public native void reallocTest();
+
     public native void doSomeThing();
 
     public native void doMmap();
