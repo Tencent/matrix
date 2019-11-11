@@ -217,14 +217,15 @@ void *h_realloc(void *__ptr, size_t __byte_count) {
     // If the area pointed to was moved, a free(ptr) is done.
     if (!__ptr) { // malloc
         on_acquire_memory(caller, p, __byte_count);
-    } else {
-        if (!__byte_count) { // free
-            on_release_memory(__ptr);
-        } else if (__ptr != p) { // moved
-            on_release_memory(__ptr);
-            on_acquire_memory(caller, p, __byte_count);
-        }
+        return p;
+    } else if (!__byte_count) { // free
+        on_release_memory(__ptr);
+        return p;
     }
+
+    // whatever has been moved or not, record anyway, because using realloc to shrink an allocation is allowed.
+    on_release_memory(__ptr);
+    on_acquire_memory(caller, p, __byte_count);
 
     return p;
 }
@@ -246,6 +247,9 @@ void*h_mmap(void* __addr, size_t __size, int __prot, int __flags, int __fd, off_
 
 void *h_mmap(void *__addr, size_t __size, int __prot, int __flags, int __fd, off_t __offset) {
     void *p = mmap(__addr, __size, __prot, __flags, __fd, __offset);
+    if (p == MAP_FAILED) {
+        return p;// just return
+    }
     GET_CALLER_ADDR(caller);
     on_mmap_memory(caller, p, __size);
     return p;
@@ -258,6 +262,9 @@ void *h_mmap(void *__addr, size_t __size, int __prot, int __flags, int __fd, off
 void *h_mmap64(void *__addr, size_t __size, int __prot, int __flags, int __fd,
                off64_t __offset) __INTRODUCED_IN(21) {
     void *p = mmap64(__addr, __size, __prot, __flags, __fd, __offset);
+    if (p == MAP_FAILED) {
+        return p;// just return
+    }
     GET_CALLER_ADDR(caller);
     on_mmap_memory(caller, p, __size);
     return p;
@@ -265,7 +272,28 @@ void *h_mmap64(void *__addr, size_t __size, int __prot, int __flags, int __fd,
 
 #endif
 
-JNIEXPORT int h_munmap(void *__addr, size_t __size) {
+void* h_mremap(void* __old_addr, size_t __old_size, size_t __new_size, int __flags, ...) {
+    void * new_address = nullptr;
+    if ((__flags & MREMAP_FIXED) != 0) {
+        va_list ap;
+        va_start(ap, __flags);
+        new_address = va_arg(ap, void *);
+        va_end(ap);
+    }
+    void *p = mremap(__old_addr, __old_size, __new_size, __flags, new_address);
+    if (p == MAP_FAILED) {
+        return p; // just return
+    }
+
+    GET_CALLER_ADDR(caller);
+
+    on_munmap_memory(__old_addr);
+    on_mmap_memory(caller, p, __new_size);
+
+    return p;
+}
+
+int h_munmap(void *__addr, size_t __size) {
     on_munmap_memory(__addr);
     return munmap(__addr, __size);
 }

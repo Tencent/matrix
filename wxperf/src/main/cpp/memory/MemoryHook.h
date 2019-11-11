@@ -35,6 +35,8 @@ void *h_mmap64(void *__addr, size_t __size, int __prot, int __flags, int __fd,
                off64_t __offset) __INTRODUCED_IN(21);
 #endif
 
+void* h_mremap(void* __old_addr, size_t __old_size, size_t __new_size, int __flags, ...);
+
 int h_munmap(void *__addr, size_t __size);
 
 JNIEXPORT void *h_dlopen(const char *filename,

@@ -32,6 +32,21 @@ Java_com_tencent_mm_libwxperf_JNIObj_doMmap(JNIEnv *env, jobject instance) {
 
     p_mmap = mmap(NULL, 1024, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
     LOGD("Yves-debug", "map ptr = %p", p_mmap);
+
+    p_mmap = mremap(p_mmap, 1024, 2048, MREMAP_MAYMOVE);
+    LOGD("Yves-debug", "remap ptr = %p", p_mmap);
+
+    p_mmap = mremap(p_mmap, 1024, 20480, MREMAP_MAYMOVE);
+    LOGD("Yves-debug", "remap ptr = %p", p_mmap);
+}
+
+JNIEXPORT void JNICALL
+Java_com_tencent_mm_libwxperf_JNIObj_reallocTest(JNIEnv *env, jobject instance) {
+    void *p = malloc(8);
+    LOGD("Yves-debug", "malloc p = %p", p);
+
+    p = realloc(p, 4);
+    LOGD("Yves-debug", "realloc p = %p", p);
 }
 
 /*
