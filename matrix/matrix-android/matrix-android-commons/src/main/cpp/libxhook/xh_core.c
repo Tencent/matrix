@@ -717,7 +717,7 @@ void* xh_core_elf_open(const char *path_suffix) {
         if('[' == pathname[0]) continue;
         if (path_suffix_len > pathname_len) continue;
 
-        if (strncmp(pathname + path_suffix_len, path_suffix, path_suffix_len) != 0)
+        if (strncmp(pathname + pathname_len - path_suffix_len, path_suffix, path_suffix_len) != 0)
         {
             continue;
         }
