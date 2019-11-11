@@ -3,6 +3,7 @@ package com.tencent.matrix.trace.core;
 import android.os.Build;
 import android.os.Looper;
 import android.os.MessageQueue;
+import android.os.SystemClock;
 import android.support.annotation.CallSuper;
 import android.util.Printer;
 
@@ -16,6 +17,8 @@ public class LooperMonitor implements MessageQueue.IdleHandler {
     private static final HashSet<LooperDispatchListener> listeners = new HashSet<>();
     private static final String TAG = "Matrix.LooperMonitor";
     private static Printer printer;
+    private static final long CHECK_TIME = 1 * 60 * 1000;
+    private long lastCheckPrinterTime = 0;
     public static Printer testPrinter = null;
 
     public abstract static class LooperDispatchListener {
@@ -52,46 +55,61 @@ public class LooperMonitor implements MessageQueue.IdleHandler {
 
     @Override
     public boolean queueIdle() {
-        resetPrinter();
+        if (SystemClock.uptimeMillis() - lastCheckPrinterTime >= CHECK_TIME) {
+            resetPrinter();
+            lastCheckPrinterTime = SystemClock.uptimeMillis();
+        }
         return true;
     }
 
+    private static boolean isReflectLoggingError = false;
 
     private static void resetPrinter() {
-        final Printer originPrinter = reflectObject(Looper.getMainLooper(), "mLogging");
-        if (originPrinter == printer && null != printer) {
-            return;
-        }
-        if (null != printer) {
-            MatrixLog.w(TAG, "[resetPrinter] maybe looper printer was replace other!");
-        }
-        Looper.getMainLooper().setMessageLogging(printer = new Printer() {
-            boolean isHasChecked = false;
-            boolean isValid = false;
-
-            @Override
-            public void println(String x) {
-                if (null != originPrinter) {
-                    originPrinter.println(x);
+        Printer originPrinter = null;
+        try {
+            if (!isReflectLoggingError) {
+                originPrinter = reflectObject(Looper.getMainLooper(), "mLogging");
+                if (originPrinter == printer && null != printer) {
+                    return;
                 }
-
-                if (!isHasChecked) {
-                    isValid = x.charAt(0) == '>' || x.charAt(0) == '<';
-                    isHasChecked = true;
-                    if (!isValid) {
-                        MatrixLog.e(TAG, "[println] Printer is inValid! x:%s", x);
-                    }
+                if (null != printer) {
+                    MatrixLog.w(TAG, "[resetPrinter] maybe looper printer was replace other!");
                 }
-
-                if (isValid) {
-                    dispatch(x.charAt(0) == '>');
-                    if (null != testPrinter) {
-                        testPrinter.println(x);
-                    }
-                }
-
             }
-        });
+
+            final Printer finalOriginPrinter = originPrinter;
+            Looper.getMainLooper().setMessageLogging(printer = new Printer() {
+                boolean isHasChecked = false;
+                boolean isValid = false;
+
+                @Override
+                public void println(String x) {
+                    if (null != finalOriginPrinter) {
+                        finalOriginPrinter.println(x);
+                    }
+
+                    if (!isHasChecked) {
+                        isValid = x.charAt(0) == '>' || x.charAt(0) == '<';
+                        isHasChecked = true;
+                        if (!isValid) {
+                            MatrixLog.e(TAG, "[println] Printer is inValid! x:%s", x);
+                        }
+                    }
+
+                    if (isValid) {
+                        dispatch(x.charAt(0) == '>');
+                        if (null != testPrinter) {
+                            testPrinter.println(x);
+                        }
+                    }
+
+                }
+            });
+        } catch (Exception e) {
+            isReflectLoggingError = true;
+            MatrixLog.e(TAG, e.toString());
+        }
+
     }
 
     public static void register(LooperDispatchListener listener) {
@@ -130,16 +148,10 @@ public class LooperMonitor implements MessageQueue.IdleHandler {
 
     }
 
-    private static <T> T reflectObject(Object instance, String name) {
-        try {
-            Field field = instance.getClass().getDeclaredField(name);
-            field.setAccessible(true);
-            return (T) field.get(instance);
-        } catch (Exception e) {
-            e.printStackTrace();
-            MatrixLog.e(TAG, e.toString());
-        }
-        return null;
+    private static <T> T reflectObject(Object instance, String name) throws Exception {
+        Field field = instance.getClass().getDeclaredField(name);
+        field.setAccessible(true);
+        return (T) field.get(instance);
     }
 
 }

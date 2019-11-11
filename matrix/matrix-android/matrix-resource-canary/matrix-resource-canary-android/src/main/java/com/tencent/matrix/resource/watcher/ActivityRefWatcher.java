@@ -180,9 +180,9 @@ public class ActivityRefWatcher extends FilePublisher implements Watcher {
         @Override
         public void onActivityDestroyed(Activity activity) {
             pushDestroyedActivityInfo(activity);
-            synchronized (mDestroyedActivityInfos) {
+       /*     synchronized (mDestroyedActivityInfos) {
                 mDestroyedActivityInfos.notifyAll();
-            }
+            }*/
         }
     };
 
@@ -248,14 +248,15 @@ public class ActivityRefWatcher extends FilePublisher implements Watcher {
         @Override
         public Status execute() {
             // If destroyed activity list is empty, just wait to save power.
-            while (mDestroyedActivityInfos.isEmpty()) {
-                synchronized (mDestroyedActivityInfos) {
+            if (mDestroyedActivityInfos.isEmpty()) {
+               /* synchronized (mDestroyedActivityInfos) {
                     try {
                         mDestroyedActivityInfos.wait();
                     } catch (Throwable ignored) {
                         // Ignored.
                     }
-                }
+                }*/
+                return Status.RETRY;
             }
 
             // Fake leaks will be generated when debugger is attached.
