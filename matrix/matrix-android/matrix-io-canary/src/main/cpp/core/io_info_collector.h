@@ -68,7 +68,7 @@ namespace iocanary {
         int op_cnt_ = 0;
         long buffer_size_ = 0;
         long op_size_ = 0;
-        long rw_cost_μs_ = 0;
+        long rw_cost_us_ = 0;
         long max_continual_rw_cost_time_μs_ = 0;
         long max_once_rw_cost_time_μs_ = 0;
         long current_continual_rw_time_μs_ = 0;
