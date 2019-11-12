@@ -20,14 +20,17 @@
 
 #define STACK_PER_MAX_COUNT 100 // the max address count of one stack
 
-static uintptr_t **g_mainThreadStackCycleArray;
-static size_t *g_mainThreadStackCount;
-static uint64_t g_tailPoint;
-static size_t *g_topStackAddressRepeatArray;
+#define SHORTEST_LENGTH_OF_STACK 10
 
 @interface WCMainThreadHandler () {
     pthread_mutex_t m_threadLock;
     int m_cycleArrayCount;
+    
+    uintptr_t **m_mainThreadStackCycleArray;
+    size_t *m_mainThreadStackCount;
+    uint64_t m_tailPoint;
+    size_t *m_topStackAddressRepeatArray;
+    int *m_mainThreadStackRepeatCountArray;
 }
 
 @end
@@ -41,22 +44,22 @@ static size_t *g_topStackAddressRepeatArray;
         m_cycleArrayCount = cycleArrayCount;
 
         size_t cycleArrayBytes = m_cycleArrayCount * sizeof(uintptr_t *);
-        g_mainThreadStackCycleArray = (uintptr_t **) malloc(cycleArrayBytes);
-        if (g_mainThreadStackCycleArray != NULL) {
-            memset(g_mainThreadStackCycleArray, 0, cycleArrayBytes);
+        m_mainThreadStackCycleArray = (uintptr_t **) malloc(cycleArrayBytes);
+        if (m_mainThreadStackCycleArray != NULL) {
+            memset(m_mainThreadStackCycleArray, 0, cycleArrayBytes);
         }
         size_t countArrayBytes = m_cycleArrayCount * sizeof(size_t);
-        g_mainThreadStackCount = (size_t *) malloc(countArrayBytes);
-        if (g_mainThreadStackCount != NULL) {
-            memset(g_mainThreadStackCount, 0, countArrayBytes);
+        m_mainThreadStackCount = (size_t *) malloc(countArrayBytes);
+        if (m_mainThreadStackCount != NULL) {
+            memset(m_mainThreadStackCount, 0, countArrayBytes);
         }
         size_t addressArrayBytes = m_cycleArrayCount * sizeof(size_t);
-        g_topStackAddressRepeatArray = (size_t *) malloc(addressArrayBytes);
-        if (g_topStackAddressRepeatArray != NULL) {
-            memset(g_topStackAddressRepeatArray, 0, addressArrayBytes);
+        m_topStackAddressRepeatArray = (size_t *) malloc(addressArrayBytes);
+        if (m_topStackAddressRepeatArray != NULL) {
+            memset(m_topStackAddressRepeatArray, 0, addressArrayBytes);
         }
 
-        g_tailPoint = 0;
+        m_tailPoint = 0;
 
         pthread_mutex_init(&m_threadLock, NULL);
     }
@@ -71,25 +74,30 @@ static size_t *g_topStackAddressRepeatArray;
 - (void)dealloc
 {
     for (uint32_t i = 0; i < m_cycleArrayCount; i++) {
-        if (g_mainThreadStackCycleArray[i] != NULL) {
-            free(g_mainThreadStackCycleArray[i]);
-            g_mainThreadStackCycleArray[i] = NULL;
+        if (m_mainThreadStackCycleArray[i] != NULL) {
+            free(m_mainThreadStackCycleArray[i]);
+            m_mainThreadStackCycleArray[i] = NULL;
         }
     }
     
-    if (g_mainThreadStackCycleArray != NULL) {
-        free(g_mainThreadStackCycleArray);
-        g_mainThreadStackCycleArray = NULL;
+    if (m_mainThreadStackCycleArray != NULL) {
+        free(m_mainThreadStackCycleArray);
+        m_mainThreadStackCycleArray = NULL;
     }
     
-    if (g_mainThreadStackCount != NULL) {
-        free(g_mainThreadStackCount);
-        g_mainThreadStackCount = NULL;
+    if (m_mainThreadStackCount != NULL) {
+        free(m_mainThreadStackCount);
+        m_mainThreadStackCount = NULL;
     }
     
-    if (g_topStackAddressRepeatArray != NULL) {
-        free(g_topStackAddressRepeatArray);
-        g_topStackAddressRepeatArray = NULL;
+    if (m_topStackAddressRepeatArray != NULL) {
+        free(m_topStackAddressRepeatArray);
+        m_topStackAddressRepeatArray = NULL;
+    }
+    
+    if (m_mainThreadStackRepeatCountArray != NULL) {
+        free(m_mainThreadStackRepeatCountArray);
+        m_mainThreadStackRepeatCountArray = NULL;
     }
 }
 
@@ -99,74 +107,104 @@ static size_t *g_topStackAddressRepeatArray;
         return;
     }
 
-    if (g_mainThreadStackCycleArray == NULL || g_mainThreadStackCount == NULL) {
+    if (m_mainThreadStackCycleArray == NULL || m_mainThreadStackCount == NULL) {
         return;
     }
 
     pthread_mutex_lock(&m_threadLock);
   
-    if (g_mainThreadStackCycleArray[g_tailPoint] != NULL) {
-        free(g_mainThreadStackCycleArray[g_tailPoint]);
+    if (m_mainThreadStackCycleArray[m_tailPoint] != NULL) {
+        free(m_mainThreadStackCycleArray[m_tailPoint]);
     }
-    g_mainThreadStackCycleArray[g_tailPoint] = stackArray;
-    g_mainThreadStackCount[g_tailPoint] = stackCount;
+    m_mainThreadStackCycleArray[m_tailPoint] = stackArray;
+    m_mainThreadStackCount[m_tailPoint] = stackCount;
 
-    uint64_t lastTailPoint = (g_tailPoint + m_cycleArrayCount - 1) % m_cycleArrayCount;
+    uint64_t lastTailPoint = (m_tailPoint + m_cycleArrayCount - 1) % m_cycleArrayCount;
     uintptr_t lastTopStack = 0;
-    if (g_mainThreadStackCycleArray[lastTailPoint] != NULL) {
-        lastTopStack = g_mainThreadStackCycleArray[lastTailPoint][0];
+    if (m_mainThreadStackCycleArray[lastTailPoint] != NULL) {
+        lastTopStack = m_mainThreadStackCycleArray[lastTailPoint][0];
     }
     uintptr_t currentTopStackAddr = stackArray[0];
     if (lastTopStack == currentTopStackAddr) {
-        size_t lastRepeatCount = g_topStackAddressRepeatArray[lastTailPoint];
-        g_topStackAddressRepeatArray[g_tailPoint] = lastRepeatCount + 1;
+        size_t lastRepeatCount = m_topStackAddressRepeatArray[lastTailPoint];
+        m_topStackAddressRepeatArray[m_tailPoint] = lastRepeatCount + 1;
     } else {
-        g_topStackAddressRepeatArray[g_tailPoint] = 0;
+        m_topStackAddressRepeatArray[m_tailPoint] = 0;
     }
 
-    g_tailPoint = (g_tailPoint + 1) % m_cycleArrayCount;
+    m_tailPoint = (m_tailPoint + 1) % m_cycleArrayCount;
     pthread_mutex_unlock(&m_threadLock);
 }
 
 - (size_t)getLastMainThreadStackCount
 {
-    uint64_t lastPoint = (g_tailPoint + m_cycleArrayCount - 1) % m_cycleArrayCount;
-    return g_mainThreadStackCount[lastPoint];
+    uint64_t lastPoint = (m_tailPoint + m_cycleArrayCount - 1) % m_cycleArrayCount;
+    return m_mainThreadStackCount[lastPoint];
 }
 
 - (uintptr_t *)getLastMainThreadStack
 {
-    uint64_t lastPoint = (g_tailPoint + m_cycleArrayCount - 1) % m_cycleArrayCount;
-    return g_mainThreadStackCycleArray[lastPoint];
+    uint64_t lastPoint = (m_tailPoint + m_cycleArrayCount - 1) % m_cycleArrayCount;
+    return m_mainThreadStackCycleArray[lastPoint];
 }
 
 - (KSStackCursor *)getPointStackCursor
 {
     pthread_mutex_lock(&m_threadLock);
     size_t maxValue = 0;
+    BOOL trueStack = NO;
     for (int i = 0; i < m_cycleArrayCount; i++) {
-        size_t currentValue = g_topStackAddressRepeatArray[i];
-        if (currentValue > maxValue) {
+        size_t currentValue = m_topStackAddressRepeatArray[i];
+        int stackCount = (int) m_mainThreadStackCount[i];
+        if (currentValue >= maxValue && stackCount > SHORTEST_LENGTH_OF_STACK) {
             maxValue = currentValue;
+            trueStack = YES;
         }
     }
+    
+    if (!trueStack) {
+        return NULL;
+    }
 
-    size_t currentIndex = (g_tailPoint + m_cycleArrayCount - 1) % m_cycleArrayCount;
+    size_t currentIndex = (m_tailPoint + m_cycleArrayCount - 1) % m_cycleArrayCount;
     for (int i = 0; i < m_cycleArrayCount; i++) {
-        int trueIndex = (g_tailPoint + m_cycleArrayCount - i - 1) % m_cycleArrayCount;
-        if (g_topStackAddressRepeatArray[trueIndex] == maxValue) {
+        int trueIndex = (m_tailPoint + m_cycleArrayCount - i - 1) % m_cycleArrayCount;
+        int stackCount = (int) m_mainThreadStackCount[trueIndex];
+        if (m_topStackAddressRepeatArray[trueIndex] == maxValue && stackCount > SHORTEST_LENGTH_OF_STACK) {
             currentIndex = trueIndex;
             break;
         }
     }
 
-    size_t stackCount = g_mainThreadStackCount[currentIndex];
+    // current count of point stack
+    size_t stackCount = m_mainThreadStackCount[currentIndex];
     size_t pointThreadSize = sizeof(uintptr_t) * stackCount;
     uintptr_t *pointThreadStack = (uintptr_t *) malloc(pointThreadSize);
+    
+    size_t repeatCountArrayBytes = stackCount * sizeof(int);
+    m_mainThreadStackRepeatCountArray = (int *) malloc(repeatCountArrayBytes);
+    if (m_mainThreadStackRepeatCountArray != NULL) {
+        memset(m_mainThreadStackRepeatCountArray, 0, repeatCountArrayBytes);
+    }
+    
+    // calculate the repeat count
+    for (size_t i = 0; i < stackCount; i++) {
+        for (int innerIndex = 0; innerIndex < m_cycleArrayCount; innerIndex++) {
+            size_t innerStackCount = m_mainThreadStackCount[innerIndex];
+            for (size_t idx = 0; idx < innerStackCount; idx++) {
+                
+                // point stack i_th address compare to others
+                if (m_mainThreadStackCycleArray[currentIndex][i] == m_mainThreadStackCycleArray[innerIndex][idx]) {
+                    m_mainThreadStackRepeatCountArray[i] += 1;
+                }
+            }
+        }
+    }
+    
     if (pointThreadStack != NULL) {
         memset(pointThreadStack, 0, pointThreadSize);
         for (size_t idx = 0; idx < stackCount; idx++) {
-            pointThreadStack[idx] = g_mainThreadStackCycleArray[currentIndex][idx];
+            pointThreadStack[idx] = m_mainThreadStackCycleArray[currentIndex][idx];
         }
         KSStackCursor *pointCursor = (KSStackCursor *) malloc(sizeof(KSStackCursor));
         kssc_initWithBacktrace(pointCursor, pointThreadStack, (int) stackCount, 0);
@@ -177,9 +215,9 @@ static size_t *g_topStackAddressRepeatArray;
     return NULL;
     /* Old
      OSSpinLockLock(&m_threadLock);
-     uint64_t lastPoint = (g_tailPoint + m_cycleArrayCount - 1) % m_cycleArrayCount;
-     uintptr_t *lastStack = g_mainThreadStackCycleArray[lastPoint];
-     uint64_t lastStackCount = g_mainThreadStackCount[lastPoint];
+     uint64_t lastPoint = (m_tailPoint + m_cycleArrayCount - 1) % m_cycleArrayCount;
+     uintptr_t *lastStack = m_mainThreadStackCycleArray[lastPoint];
+     uint64_t lastStackCount = m_mainThreadStackCount[lastPoint];
      if (lastStack == NULL || lastStackCount == 0) {
      return NULL;
      }
@@ -212,6 +250,11 @@ static size_t *g_topStackAddressRepeatArray;
      return NULL;*/
 }
 
+- (int *)getPointStackRepeatCount
+{
+    return m_mainThreadStackRepeatCountArray;
+}
+
 - (KSStackCursor **)getStackCursorWithLimit:(int)limitCount withReturnSize:(NSUInteger &)stackSize
 {
     KSStackCursor **allStackCursor = (KSStackCursor **) malloc(sizeof(KSStackCursor *) * limitCount);
@@ -222,12 +265,12 @@ static size_t *g_topStackAddressRepeatArray;
     stackSize = 0;
     pthread_mutex_lock(&m_threadLock);
     for (int i = 0; i < limitCount; i++) {
-        uint64_t trueIndex = (g_tailPoint + m_cycleArrayCount - i - 1) % m_cycleArrayCount;
-        if (g_mainThreadStackCycleArray[trueIndex] == NULL) {
-            MatrixDebug(@"g_mainThreadStackCycleArray == NULL");
+        uint64_t trueIndex = (m_tailPoint + m_cycleArrayCount - i - 1) % m_cycleArrayCount;
+        if (m_mainThreadStackCycleArray[trueIndex] == NULL) {
+            MatrixDebug(@"m_mainThreadStackCycleArray == NULL");
             break;
         }
-        size_t currentStackCount = g_mainThreadStackCount[trueIndex];
+        size_t currentStackCount = m_mainThreadStackCount[trueIndex];
         uintptr_t *currentThreadStack = (uintptr_t *) malloc(sizeof(uintptr_t) * currentStackCount);
         if (currentThreadStack == NULL) {
             MatrixDebug(@"currentThreadStack == NULL");
@@ -235,7 +278,7 @@ static size_t *g_topStackAddressRepeatArray;
         }
         stackSize++;
         for (int j = 0; j < currentStackCount; j++) {
-            currentThreadStack[j] = g_mainThreadStackCycleArray[trueIndex][j];
+            currentThreadStack[j] = m_mainThreadStackCycleArray[trueIndex][j];
         }
         KSStackCursor *currentStackCursor = (KSStackCursor *) malloc(sizeof(KSStackCursor));
         kssc_initWithBacktrace(currentStackCursor, currentThreadStack, (int) currentStackCount, 0);
@@ -256,12 +299,12 @@ static size_t *g_topStackAddressRepeatArray;
 
     pthread_mutex_lock(&m_threadLock);
     for (int i = 0; i < m_cycleArrayCount; i++) {
-        uint64_t trueIndex = (g_tailPoint + m_cycleArrayCount - i - 1) % m_cycleArrayCount;
-        if (g_mainThreadStackCycleArray[trueIndex] == NULL) {
-            MatrixDebug(@"g_mainThreadStackCycleArray == NULL");
+        uint64_t trueIndex = (m_tailPoint + m_cycleArrayCount - i - 1) % m_cycleArrayCount;
+        if (m_mainThreadStackCycleArray[trueIndex] == NULL) {
+            MatrixDebug(@"m_mainThreadStackCycleArray == NULL");
             break;
         }
-        size_t currentStackCount = g_mainThreadStackCount[trueIndex];
+        size_t currentStackCount = m_mainThreadStackCount[trueIndex];
         uintptr_t *currentThreadStack = (uintptr_t *) malloc(sizeof(uintptr_t) * currentStackCount);
         if (currentThreadStack == NULL) {
             MatrixDebug(@"currentThreadStack == NULL");
@@ -269,7 +312,7 @@ static size_t *g_topStackAddressRepeatArray;
         }
         stackSize++;
         for (int j = 0; j < currentStackCount; j++) {
-            currentThreadStack[j] = g_mainThreadStackCycleArray[trueIndex][j];
+            currentThreadStack[j] = m_mainThreadStackCycleArray[trueIndex][j];
         }
         KSStackCursor *currentStackCursor = (KSStackCursor *) malloc(sizeof(KSStackCursor));
         kssc_initWithBacktrace(currentStackCursor, currentThreadStack, (int) currentStackCount, 0);
@@ -283,7 +326,7 @@ static size_t *g_topStackAddressRepeatArray;
 {
     uint32_t repeatCount = 0;
     for (size_t idx = 0; idx < m_cycleArrayCount; idx++) {
-        uintptr_t *stack = g_mainThreadStackCycleArray[idx];
+        uintptr_t *stack = m_mainThreadStackCycleArray[idx];
         repeatCount += [WCMainThreadHandler p_findRepeatCountInStack:stack withAddr:addr];
     }
     return repeatCount;

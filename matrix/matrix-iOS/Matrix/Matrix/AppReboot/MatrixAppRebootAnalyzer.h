@@ -66,4 +66,6 @@
 + (void)setUserScene:(NSString *)scene;
 + (NSString *)userSceneOfLastRun;
 
++ (BOOL)isAfterLastLaunchUserRebootDevice;
+
 @end

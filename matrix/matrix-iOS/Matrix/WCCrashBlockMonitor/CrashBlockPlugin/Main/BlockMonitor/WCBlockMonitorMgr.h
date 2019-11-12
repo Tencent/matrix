@@ -40,6 +40,18 @@
 // Get the most time-consuming stack recently
 KSStackCursor *kscrash_pointThreadCallback(void);
 
+// Get the repeat number of stack
+int *kscrash_pointThreadRepeatNumberCallback(void);
+
+// Get the current stack in High CPU state
+KSStackCursor **kscrash_pointCPUHighThreadCallback(void);
+
+// Get the arrary size of CPU High Threads
+int kscrash_pointCpuHighThreadCountCallback(void);
+
+// Get the CPU cost of each thread
+float *kscrash_pointCpuHighThreadArrayCallBack(void);
+
 @interface WCBlockMonitorMgr : NSObject
 
 @property (nonatomic, weak) id<WCBlockMonitorDelegate> delegate;
