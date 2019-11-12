@@ -15,6 +15,7 @@
  */
 
 #import <Foundation/Foundation.h>
+#import "KSStackCursor_Backtrace.h"
 
 // ============================================================================
 #pragma mark - WCAddressFrame
@@ -33,7 +34,7 @@
 
 @interface WCStackTracePool : NSObject
 
-- (id)initWithMaxStackTraceCount:(NSUInteger)maxStackTraceCount withLimitRepeat:(NSUInteger)limitRepeatCount;
+- (id)initWithMaxStackTraceCount:(NSUInteger)maxStackTraceCount;
 - (void)addThreadStack:(uintptr_t *)stackArray andLength:(size_t)stackCount andCPU:(float)stackCPU;
 - (NSArray <NSDictionary *>*)makeCallTree;
 
@@ -54,12 +55,26 @@
 @property (nonatomic, weak) id<WCPowerConsumeStackCollectorDelegate> delegate;
 
 - (id)initWithCPULimit:(float)cpuLimit;
+
+/** generate the power consume stack tree **/
 - (void)makeConclusion;
+
 - (float)getCPUUsageAndPowerConsumeStack;
+
+/** check cpu high block **/
+- (BOOL)isCPUHighBlock;
+
+/** get cpu high block stack size **/
+- (int)getCurrentCpuHighStackNumber;
+
+/** get cpu high block stack cursor **/
+- (KSStackCursor **)getCPUStackCursor;
+
+/** get cpu high thread value array **/
+- (float *)getCpuHighThreadValueArray;
 
 /**
  *  get current CPU usage
- *
  *  @return current cpu usage. Single core is full 100%, dual core is full 200%, and so on.
  */
 + (float)getCurrentCPUUsage;

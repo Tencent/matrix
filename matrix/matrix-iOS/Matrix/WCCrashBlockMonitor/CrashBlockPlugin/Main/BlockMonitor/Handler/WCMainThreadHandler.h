@@ -29,6 +29,8 @@
 
 - (KSStackCursor *)getPointStackCursor;
 
+- (int *)getPointStackRepeatCount;
+
 - (KSStackCursor **)getStackCursorWithLimit:(int)limitCount withReturnSize:(NSUInteger &)stackSize;
 
 - (KSStackCursor **)getAllStackCursorWithReturnSize:(NSUInteger &)stackSize;

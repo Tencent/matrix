@@ -72,6 +72,8 @@
 /// get the last scene that set in last app running.
 - (NSString *)userSceneOfLastRun;
 
+/// did the device reboot after the app's last launch
+- (BOOL)isAfterLastLaunchUserRebootDevice;
 
 #if !TARGET_OS_OSX
 

@@ -79,6 +79,17 @@ void kscrashreport_setUserSectionWriteCallback(const KSReportWriteCallback userS
  */
 void kscrashreport_setPointThreadWriteCallback(const KSReportWritePointThreadCallback pointThreadWriteCallback);
 
+/**
+ * Use to add point thread repeat number
+ **/
+void kscrashreport_setPointThreadRepeatNumberWriteCallback(const KSReportWritePointThreadRepeatNumberCallback pointThreadRepeatNumberWriteCallback);
+    
+void kscrashreport_setPointCpuHighThreadWriteCallback(const KSReportWritePointCpuHighThreadCallback pointCpuHighThreadWriteCallback);
+    
+void kscrashreport_setPointCpuHighThreadCountWriteCallback(const KSReportWritePointCpuHighThreadCountCallback pointCpuHighThreadCountWriteCallback);
+    
+void kscrashreport_setPointCpuHighThreadValueWriteCallback(const KSReportWritePointCpuHighThreadValueCallback pointCpuHighThreadValueWriteCallback);
+
 // ============================================================================
 #pragma mark - Main API -
 // ============================================================================
