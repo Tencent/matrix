@@ -1,1 +1,0 @@
-../../../matrix-wechat/matrix/matrix-apple/Matrix/WCCrashBlockMonitor/CrashBlockPlugin/WCCrashBlockMonitorPlugin+Upload.h
