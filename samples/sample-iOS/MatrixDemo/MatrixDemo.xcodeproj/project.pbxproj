@@ -394,6 +394,7 @@
 			baseConfigurationReference = 63BCE04FBD2471B8616726E9 /* Pods-MatrixDemo.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = XMVVGSCY2Q;
 				ENABLE_BITCODE = NO;
@@ -402,8 +403,9 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = tencent.MatrixDemo;
+				PRODUCT_BUNDLE_IDENTIFIER = com.tencent.MatrixDemo1;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
@@ -413,6 +415,7 @@
 			baseConfigurationReference = 516B3F0859D2A239C86E9DAD /* Pods-MatrixDemo.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = XMVVGSCY2Q;
 				ENABLE_BITCODE = NO;
@@ -421,8 +424,9 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = tencent.MatrixDemo;
+				PRODUCT_BUNDLE_IDENTIFIER = com.tencent.MatrixDemo1;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;

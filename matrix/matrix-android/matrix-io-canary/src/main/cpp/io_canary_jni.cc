@@ -370,6 +370,7 @@ namespace iocanary {
                 xhook_elf_close(soinfo);
             }
 
+            __android_log_print(ANDROID_LOG_INFO, kTag, "doHook done.");
             return JNI_TRUE;
         }
 

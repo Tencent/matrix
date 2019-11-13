@@ -24,9 +24,14 @@
 #include "KSCrash_fishhook.h"
 
 #include <dlfcn.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/mman.h>
 #include <sys/types.h>
+#include <mach/mach.h>
+#include <mach/vm_map.h>
+#include <mach/vm_region.h>
 #include <mach-o/dyld.h>
 #include <mach-o/loader.h>
 #include <mach-o/nlist.h>
@@ -76,14 +81,41 @@ static int prepend_rebindings(struct ks_rebindings_entry **rebindings_head,
     return 0;
 }
 
+static vm_prot_t get_protection(void *sectionStart) {
+    mach_port_t task = mach_task_self();
+    vm_size_t size = 0;
+    vm_address_t address = (vm_address_t)sectionStart;
+    memory_object_name_t object;
+#if __LP64__
+    mach_msg_type_number_t count = VM_REGION_BASIC_INFO_COUNT_64;
+    vm_region_basic_info_data_64_t info;
+    kern_return_t info_ret = vm_region_64(
+                                          task, &address, &size, VM_REGION_BASIC_INFO_64, (vm_region_info_64_t)&info, &count, &object);
+#else
+    mach_msg_type_number_t count = VM_REGION_BASIC_INFO_COUNT;
+    vm_region_basic_info_data_t info;
+    kern_return_t info_ret = vm_region(task, &address, &size, VM_REGION_BASIC_INFO, (vm_region_info_t)&info, &count, &object);
+#endif
+    if (info_ret == KERN_SUCCESS) {
+        return info.protection;
+    } else {
+        return VM_PROT_READ;
+    }
+}
 static void perform_rebinding_with_section(struct ks_rebindings_entry *rebindings,
                                            section_t *section,
                                            intptr_t slide,
                                            nlist_t *symtab,
                                            char *strtab,
                                            uint32_t *indirect_symtab) {
+    const bool isDataConst = strcmp(section->segname, "__DATA_CONST") == 0;
     uint32_t *indirect_symbol_indices = indirect_symtab + section->reserved1;
     void **indirect_symbol_bindings = (void **)((uintptr_t)slide + section->addr);
+    vm_prot_t oldProtection = VM_PROT_READ;
+    if (isDataConst) {
+        oldProtection = get_protection(rebindings);
+        mprotect(indirect_symbol_bindings, section->size, PROT_READ | PROT_WRITE);
+    }
     for (uint i = 0; i < section->size / sizeof(void *); i++) {
         uint32_t symtab_index = indirect_symbol_indices[i];
         if (symtab_index == INDIRECT_SYMBOL_ABS || symtab_index == INDIRECT_SYMBOL_LOCAL ||
@@ -109,6 +141,19 @@ static void perform_rebinding_with_section(struct ks_rebindings_entry *rebinding
             cur = cur->next;
         }
     symbol_loop:;
+    }
+    if (isDataConst) {
+        int protection = 0;
+        if (oldProtection & VM_PROT_READ) {
+            protection |= PROT_READ;
+        }
+        if (oldProtection & VM_PROT_WRITE) {
+            protection |= PROT_WRITE;
+        }
+        if (oldProtection & VM_PROT_EXECUTE) {
+            protection |= PROT_EXEC;
+        }
+        mprotect(indirect_symbol_bindings, section->size, protection);
     }
 }
 
