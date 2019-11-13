@@ -68,10 +68,16 @@ public class ResTable extends ResChunk {
                 chunkSize += resPackage.getChunkSize();
             }
         }
+        if (chunkSize % 4 != 0) {
+            chunkPadding = 4 - chunkSize % 4;
+            chunkSize += chunkPadding;
+        } else {
+            chunkPadding = 0;
+        }
     }
 
     @Override
-    public byte[] toBytes() throws Exception {
+    public byte[] toBytes() {
         ByteBuffer byteBuffer = ByteBuffer.allocate(chunkSize);
         byteBuffer.order(ByteOrder.LITTLE_ENDIAN);
         byteBuffer.clear();
@@ -79,8 +85,8 @@ public class ResTable extends ResChunk {
         byteBuffer.putShort(headSize);
         byteBuffer.putInt(chunkSize);
         byteBuffer.putInt(packageCount);
-        if (headPadding != null) {
-            byteBuffer.put(headPadding);
+        if (headPadding > 0) {
+            byteBuffer.put(new byte[headPadding]);
         }
         if (globalStringPool != null) {
             byteBuffer.put(globalStringPool.toBytes());
@@ -90,8 +96,8 @@ public class ResTable extends ResChunk {
                 byteBuffer.put(packages[i].toBytes());
             }
         }
-        if (chunkPadding != null) {
-            byteBuffer.put(chunkPadding);
+        if (chunkPadding > 0) {
+            byteBuffer.put(new byte[chunkPadding]);
         }
         byteBuffer.flip();
 

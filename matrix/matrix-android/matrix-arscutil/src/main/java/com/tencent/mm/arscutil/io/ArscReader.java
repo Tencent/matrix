@@ -35,7 +35,9 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Created by jinqiuchen on 18/7/29.
@@ -62,17 +64,14 @@ public class ArscReader {
         resTable.setType(dataInput.readShort());
         Log.d(TAG, "table type %d", resTable.getType());
         resTable.setHeadSize(dataInput.readShort());
-        //Log.d(TAG, "head size %d", resTable.getHeadSize());
+        Log.d(TAG, "head size %d", resTable.getHeadSize());
         resTable.setChunkSize(dataInput.readInt());
-        //Log.d(TAG, "chunk size %f KB", resTable.getChunkSize() / 1024.0f);
+        Log.d(TAG, "chunk size %f KB", resTable.getChunkSize() / 1024.0f);
         resTable.setPackageCount(dataInput.readInt());
         Log.d(TAG, "package count %d", resTable.getPackageCount());
         int headPaddingSize = (int) (resTable.getHeadSize() + headStart - dataInput.getFilePointer());
-        if (headPaddingSize > 0) {
-        	byte[] headPadding = new byte[headPaddingSize];
-        	dataInput.read(headPadding);
-        	resTable.setHeadPadding(headPadding);
-        }
+        Log.d(TAG, "head padding size %d", headPaddingSize);
+        resTable.setHeadPadding(headPaddingSize);
         resTable.setGlobalStringPool(readStringBlock());
         Log.d(TAG, "global string pool pos %d", dataInput.getFilePointer());
         if (resTable.getPackageCount() > 0) {
@@ -83,11 +82,8 @@ public class ArscReader {
             resTable.setPackages(packages);
         }
         int chunkPaddingSize = (int) (resTable.getChunkSize() + headStart - dataInput.getFilePointer());
-        if (chunkPaddingSize > 0) {
-        	byte[] chunkPadding = new byte[chunkPaddingSize];
-            dataInput.read(chunkPadding);
-            resTable.setChunkPadding(chunkPadding);
-        }
+        Log.d(TAG, "chunk padding size %d", chunkPaddingSize);
+        resTable.setChunkPadding(chunkPaddingSize);
         dataInput.close();
         return resTable;
     }
@@ -101,9 +97,9 @@ public class ArscReader {
         resPackage.setType(dataInput.readShort());
         Log.d(TAG, "package type %d", resPackage.getType());
         resPackage.setHeadSize(dataInput.readShort());
-        //Log.d(TAG, "head size %d", resPackage.getHeadSize());
+        Log.d(TAG, "head size %d", resPackage.getHeadSize());
         resPackage.setChunkSize(dataInput.readInt());
-        //Log.d(TAG, "chunk size %d", resPackage.getChunkSize());
+        Log.d(TAG, "chunk size %d", resPackage.getChunkSize());
         resPackage.setId(dataInput.readInt());
         Log.d(TAG, "package id %d", resPackage.getId());
         byte[] buffer = new byte[256];
@@ -119,11 +115,8 @@ public class ArscReader {
         resPackage.setLastPublicName(dataInput.readInt());
         //Log.d(TAG, "lastPublicName index %d", resPackage.getLastPublicName());
         int headPaddingSize = (int) (resPackage.getHeadSize() + headStart - dataInput.getFilePointer());
-        if (headPaddingSize > 0) {
-        	byte[] headPadding = new byte[headPaddingSize];
-            dataInput.read(headPadding);
-            resPackage.setHeadPadding(headPadding);
-        }
+        Log.d(TAG, "head padding size %d", headPaddingSize);
+        resPackage.setHeadPadding(headPaddingSize);
         if (resPackage.getResTypePoolOffset() > 0) {
             dataInput.seek(headStart + resPackage.getResTypePoolOffset());
             ResStringBlock resTypePool = readStringBlock();
@@ -149,11 +142,8 @@ public class ArscReader {
         }
         resPackage.setResTypeArray(resTypeList);
         int chunkPaddingSize = (int) (resPackage.getChunkSize() + headStart - dataInput.getFilePointer());
-        if (chunkPaddingSize > 0) {
-        	 byte[] chunkPadding = new byte[chunkPaddingSize];
-             dataInput.read(chunkPadding);
-             resPackage.setChunkPadding(chunkPadding);
-        }
+        Log.d(TAG, "chunk padding size %d", chunkPaddingSize);
+        resPackage.setChunkPadding(chunkPaddingSize);
         return resPackage;
     }
 
@@ -165,9 +155,9 @@ public class ArscReader {
         resTypeSpec.setType(dataInput.readShort());
         Log.d(TAG, "resTypeSpec type %d", resTypeSpec.getType());
         resTypeSpec.setHeadSize(dataInput.readShort());
-        //Log.d(TAG, "resTypeSpec header size %d", resTypeSpec.getHeadSize());
+        Log.d(TAG, "resTypeSpec header size %d", resTypeSpec.getHeadSize());
         resTypeSpec.setChunkSize(dataInput.readInt());
-        //Log.d(TAG, "resTypeSpec chunk size %d", resTypeSpec.getChunkSize());
+        Log.d(TAG, "resTypeSpec chunk size %d", resTypeSpec.getChunkSize());
         resTypeSpec.setId(dataInput.readByte());
         Log.d(TAG, "resTypeSpec type id %d", resTypeSpec.getId());
         resTypeSpec.setReserved0(dataInput.readByte());
@@ -175,22 +165,16 @@ public class ArscReader {
         resTypeSpec.setEntryCount(dataInput.readInt());
         Log.d(TAG, "resTypeSpec entry count %d", resTypeSpec.getEntryCount());
         int headPaddingSize = (int) (resTypeSpec.getHeadSize() + headStart - dataInput.getFilePointer());
-        if (headPaddingSize > 0) {
-        	 byte[] headPadding = new byte[headPaddingSize];
-             dataInput.read(headPadding);
-             resTypeSpec.setHeadPadding(headPadding);
-        }
+        Log.d(TAG, "head padding size %d", headPaddingSize);
+        resTypeSpec.setHeadPadding(headPaddingSize);
         if (resTypeSpec.getChunkSize() - resTypeSpec.getHeadSize() > 0) {
             byte[] buffer = new byte[resTypeSpec.getChunkSize() - resTypeSpec.getHeadSize()];
             dataInput.read(buffer);
             resTypeSpec.setConfigFlags(buffer);
         }
         int chunkPaddingSize = (int) (resTypeSpec.getChunkSize() + headStart - dataInput.getFilePointer());
-        if (chunkPaddingSize > 0) {
-        	byte[] chunkPadding = new byte[chunkPaddingSize];
-            dataInput.read(chunkPadding);
-            resTypeSpec.setChunkPadding(chunkPadding);
-        }
+        Log.d(TAG, "chunk padding size %d", chunkPaddingSize);
+        resTypeSpec.setChunkPadding(chunkPaddingSize);
         return resTypeSpec;
     }
 
@@ -202,9 +186,9 @@ public class ArscReader {
         resType.setType(dataInput.readShort());
         Log.d(TAG, "resType type %d", resType.getType());
         resType.setHeadSize(dataInput.readShort());
-        //Log.d(TAG, "resType header size %d", resType.getHeadSize());
+        Log.d(TAG, "resType header size %d", resType.getHeadSize());
         resType.setChunkSize(dataInput.readInt());
-        //Log.d(TAG, "resType chunk size %d", resType.getChunkSize());
+        Log.d(TAG, "resType chunk size %d", resType.getChunkSize());
         resType.setId(dataInput.readByte());
         //Log.d(TAG, "resType type id %d", resType.getId());
         resType.setReserved0(dataInput.readByte());
@@ -215,11 +199,8 @@ public class ArscReader {
         //Log.d(TAG, "resType entryTable offset %d", resType.getEntryTableOffset());
         resType.setResConfigFlags(readResConfig());
         int headPaddingSize = (int) (resType.getHeadSize() + headStart - dataInput.getFilePointer());
-        if (headPaddingSize > 0) {
-        	 byte[] headPadding = new byte[headPaddingSize];
-             dataInput.read(headPadding);
-             resType.setHeadPadding(headPadding);
-        }
+        Log.d(TAG, "head padding size %d", headPaddingSize);
+        resType.setHeadPadding(headPaddingSize);
         if (resType.getEntryCount() > 0) {
             List<Integer> resEntryOffsets = new ArrayList<Integer>();
             for (int i = 0; i < resType.getEntryCount(); i++) {
@@ -239,11 +220,8 @@ public class ArscReader {
         }
         resType.setEntryTable(entryTable);
         int chunkPaddingSize = (int) (resType.getChunkSize() + headStart - dataInput.getFilePointer());
-        if (chunkPaddingSize > 0) {
-        	byte[] chunkPadding = new byte[chunkPaddingSize];
-            dataInput.read(chunkPadding);
-            resType.setChunkPadding(chunkPadding);
-        }
+        Log.d(TAG, "chunk padding size %d", chunkPaddingSize);
+        resType.setChunkPadding(chunkPaddingSize);
         return resType;
     }
 
@@ -258,7 +236,10 @@ public class ArscReader {
         Log.d(TAG, "resEntry flag %d", resEntry.getFlag());
         resEntry.setStringPoolIndex(dataInput.readInt());
 
-        Log.d(TAG, "entryName %s", ArscUtil.resolveStringPoolEntry(resPackage.getResNamePool().getStrings().get(resEntry.getStringPoolIndex()).array(), resPackage.getResNamePool().getCharSet()));
+        String entryName = ArscUtil.resolveStringPoolEntry(resPackage.getResNamePool().getStrings().get(resEntry.getStringPoolIndex()).array(), resPackage.getResNamePool().getCharSet());
+        Log.d(TAG, "entryName %s", entryName);
+        resEntry.setEntryName(entryName);
+
         if ((resEntry.getFlag() & ArscConstants.RES_TABLE_ENTRY_FLAG_COMPLEX) == 0) {
             resEntry.setResValue(readResValue());
         } else {
@@ -324,9 +305,9 @@ public class ArscReader {
         stringPool.setType(dataInput.readShort());
         Log.d(TAG, "stringPool type %d", stringPool.getType());
         stringPool.setHeadSize(dataInput.readShort());
-        //Log.d(TAG, "stringPool head size %d", stringPool.getHeadSize());
+        Log.d(TAG, "stringPool head size %d", stringPool.getHeadSize());
         stringPool.setChunkSize(dataInput.readInt());
-        //Log.d(TAG, "stringPool chunk size %d", stringPool.getChunkSize());
+        Log.d(TAG, "stringPool chunk size %d", stringPool.getChunkSize());
         stringPool.setStringCount(dataInput.readInt());
         Log.d(TAG, "stringPool string count %d", stringPool.getStringCount());
         stringPool.setStyleCount(dataInput.readInt());
@@ -338,11 +319,8 @@ public class ArscReader {
         stringPool.setStyleStart(dataInput.readInt());
         Log.d(TAG, "stringPool style start %d", stringPool.getStyleStart());
         int headPaddingSize = (int) (stringPool.getHeadSize() + headStart - dataInput.getFilePointer());
-        if (headPaddingSize > 0) {
-        	 byte[] headPadding = new byte[headPaddingSize];
-             dataInput.read(headPadding);
-             stringPool.setHeadPadding(headPadding);
-        }
+        Log.d(TAG, "head padding size %d", headPaddingSize);
+        stringPool.setHeadPadding(headPaddingSize);
         dataInput.seek(headStart + stringPool.getHeadSize());
         if (stringPool.getStringCount() > 0) {
             List<Integer> stringOffsets = new ArrayList<Integer>();
@@ -361,6 +339,7 @@ public class ArscReader {
         dataInput.seek(headStart + stringPool.getStringStart());
         if (stringPool.getStringCount() > 0) {
             List<ByteBuffer> strings = new ArrayList<ByteBuffer>();
+            Map<String, Integer> stringIntegerMap = new HashMap<>();
             for (int i = 0; i < stringPool.getStringCount(); i++) {
                 byte[] buffer = null;
                 if (i < stringPool.getStringCount() - 1) {
@@ -377,8 +356,10 @@ public class ArscReader {
                 strings.get(i).order(ByteOrder.LITTLE_ENDIAN);
                 strings.get(i).clear();
                 strings.get(i).put(buffer);
+                stringIntegerMap.put(ArscUtil.resolveStringPoolEntry(buffer, stringPool.getCharSet()), i);
             }
             stringPool.setStrings(strings);
+            stringPool.setStringIndexMap(stringIntegerMap);
         }
         if (stringPool.getStyleCount() > 0) {
             byte[] styleBytes = new byte[stringPool.getChunkSize() - stringPool.getStyleStart()];
@@ -387,11 +368,8 @@ public class ArscReader {
         }
 
         int chunkPaddingSize = (int) (stringPool.getChunkSize() + headStart - dataInput.getFilePointer());
-        if (chunkPaddingSize > 0) {
-        	byte[] chunkPadding = new byte[chunkPaddingSize];
-            dataInput.read(chunkPadding);
-            stringPool.setChunkPadding(chunkPadding);
-        }
+        Log.d(TAG, "chunk padding size %d", chunkPaddingSize);
+        stringPool.setChunkPadding(chunkPaddingSize);
         return stringPool;
     }
 }

@@ -16,7 +16,6 @@
 
 package com.tencent.mm.arscutil.data;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.List;
@@ -102,7 +101,7 @@ public class ResType extends ResChunk {
         this.entryTable = entryTable;
     }
 
-    public void refresh() throws IOException {
+    public void refresh()  {
         //校正entryOffsets
         int lastOffset = 0;
         for (int i = 0; i < entryCount; i++) {
@@ -114,7 +113,7 @@ public class ResType extends ResChunk {
         recomputeChunkSize();
     }
 
-    private void recomputeChunkSize() throws IOException {
+    private void recomputeChunkSize() {
         chunkSize = 0;
         chunkSize += headSize;
         int realEntryCount = 0;
@@ -132,11 +131,19 @@ public class ResType extends ResChunk {
         if (realEntryCount == 0) {                    //no entry
             entryCount = 0;
             chunkSize = 0;
+            chunkPadding = 0;
+        } else {
+            if (chunkSize % 4 != 0) {
+                chunkPadding = 4 - chunkSize % 4;
+                chunkSize += chunkPadding;
+            } else {
+                chunkPadding = 0;
+            }
         }
     }
 
     @Override
-    public byte[] toBytes() throws IOException {
+    public byte[] toBytes() {
         ByteBuffer byteBuffer = ByteBuffer.allocate(chunkSize);
         byteBuffer.order(ByteOrder.LITTLE_ENDIAN);
         byteBuffer.clear();
@@ -151,8 +158,8 @@ public class ResType extends ResChunk {
         if (resConfigFlags != null) {
             byteBuffer.put(resConfigFlags.toBytes());
         }
-        if (headPadding != null) {
-            byteBuffer.put(headPadding);
+        if (headPadding > 0) {
+            byteBuffer.put(new byte[headPadding]);
         }
         if (entryOffsets != null) {
             for (int i = 0; i < entryOffsets.size(); i++) {
@@ -168,8 +175,8 @@ public class ResType extends ResChunk {
                 }
             }
         }
-        if (chunkPadding != null) {
-            byteBuffer.put(chunkPadding);
+        if (chunkPadding > 0) {
+            byteBuffer.put(new byte[chunkPadding]);
         }
         byteBuffer.flip();
         return byteBuffer.array();

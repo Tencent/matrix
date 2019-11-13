@@ -16,7 +16,6 @@
 
 package com.tencent.mm.arscutil.data;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
@@ -91,7 +90,7 @@ public class ResValue {
     }
     
 
-    public byte[] toBytes() throws IOException {
+    public byte[] toBytes() {
         ByteBuffer byteBuffer = ByteBuffer.allocate(size);
         byteBuffer.order(ByteOrder.LITTLE_ENDIAN);
         byteBuffer.clear();

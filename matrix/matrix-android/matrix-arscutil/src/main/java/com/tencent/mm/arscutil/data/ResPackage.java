@@ -36,6 +36,8 @@ public class ResPackage extends ResChunk {
     private ResStringBlock resNamePool; // 资源项名称 string pool
     private List<ResChunk> resTypeArray; // 保存资源类型spec或者资源详细信息的数组
 
+    private ResStringBlock resProguardPool;  // 资源名称混淆后的 string pool，写入的时候需要替换resNamePool
+
     public int getId() {
         return id;
     }
@@ -100,6 +102,14 @@ public class ResPackage extends ResChunk {
         this.resNamePool = resNamePool;
     }
 
+    public ResStringBlock getResProguardPool() {
+        return resProguardPool;
+    }
+
+    public void setResProguardPool(ResStringBlock resProguardPool) {
+        this.resProguardPool = resProguardPool;
+    }
+
     public List<ResChunk> getResTypeArray() {
         return resTypeArray;
     }
@@ -109,6 +119,10 @@ public class ResPackage extends ResChunk {
     }
 
     public void refresh() {
+        if (resProguardPool != null) {
+            resNamePool = resProguardPool;
+            resNamePool.refresh();
+        }
         recomputeChunkSize();
     }
 
@@ -128,9 +142,15 @@ public class ResPackage extends ResChunk {
                 }
             }
         }
+        if (chunkSize % 4 != 0) {
+            chunkPadding = 4 - chunkSize % 4;
+            chunkSize += chunkPadding;
+        } else {
+            chunkPadding = 0;
+        }
     }
 
-    public byte[] toBytes() throws Exception {
+    public byte[] toBytes() {
         ByteBuffer byteBuffer = ByteBuffer.allocate(chunkSize);
         byteBuffer.order(ByteOrder.LITTLE_ENDIAN);
         byteBuffer.clear();
@@ -143,8 +163,8 @@ public class ResPackage extends ResChunk {
         byteBuffer.putInt(lastPublicType);
         byteBuffer.putInt(resNamePoolOffset);
         byteBuffer.putInt(lastPublicName);
-        if (headPadding != null) {
-            byteBuffer.put(headPadding);
+        if (headPadding > 0) {
+            byteBuffer.put(new byte[headPadding]);
         }
         if (resTypePool != null) {
             byteBuffer.put(resTypePool.toBytes());
@@ -153,14 +173,14 @@ public class ResPackage extends ResChunk {
             byteBuffer.put(resNamePool.toBytes());
         }
         if (resTypeArray != null && !resTypeArray.isEmpty()) {
-            for (int i = 0; i < resTypeArray.size(); i++) {
-                if (resTypeArray.get(i).chunkSize > 0) {
-                    byteBuffer.put(resTypeArray.get(i).toBytes());
+            for (ResChunk resChunk : resTypeArray) {
+                if (resChunk.chunkSize > 0) {
+                    byteBuffer.put(resChunk.toBytes());
                 }
             }
         }
-        if (chunkPadding != null) {
-            byteBuffer.put(chunkPadding);
+        if (chunkPadding > 0) {
+            byteBuffer.put(new byte[chunkPadding]);
         }
         byteBuffer.flip();
         return byteBuffer.array();

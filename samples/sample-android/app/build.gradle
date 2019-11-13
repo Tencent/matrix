@@ -85,6 +85,7 @@ matrix {
         needSign true
         shrinkArsc true
         deDuplicate true
+        resguard true
         apkCheckerPath = "${project.configurations.apkCheckerDependency.getAt(0).getAbsolutePath()}"
         //Notice: You need to modify the  value of $apksignerPath on different platform. the value below only suitable for Mac Platform,
         //if on Windows, you may have to  replace apksigner with apksigner.bat.

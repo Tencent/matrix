@@ -28,8 +28,9 @@ public abstract class ResChunk {
     protected short headSize; // 头大小, 2 bytes
     protected int chunkSize; // chunk大小, 4 bytes
 
-    protected byte[] headPadding;    //头尾部padding
-    protected byte[] chunkPadding;  //chunk尾部padding
+    //header和chunk都要求4字节对齐，不够在后面补0
+    protected int headPadding;    //头尾部padding
+    protected int chunkPadding;  //chunk尾部padding
 
     public short getType() {
         return type;
@@ -63,22 +64,22 @@ public abstract class ResChunk {
         this.start = start;
     }
 
-    public byte[] getHeadPadding() {
+    public int getHeadPadding() {
         return headPadding;
     }
 
-    public void setHeadPadding(byte[] headPadding) {
+    public void setHeadPadding(int headPadding) {
         this.headPadding = headPadding;
     }
 
-    public byte[] getChunkPadding() {
+    public int getChunkPadding() {
         return chunkPadding;
     }
 
-    public void setChunkPadding(byte[] chunkPadding) {
+    public void setChunkPadding(int chunkPadding) {
         this.chunkPadding = chunkPadding;
     }
     
-    public abstract byte[] toBytes() throws Exception;
+    public abstract byte[] toBytes();
 
 }

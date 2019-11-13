@@ -27,6 +27,7 @@ public class ArscConstants {
 
     public static final int NO_ENTRY_INDEX = 0xFFFFFFFF;
 
+    public static final int RES_STRING_POOL_SORTED_FLAG = 0x1;
     public static final int RES_STRING_POOL_UTF8_FLAG = 0x0100;
 
     public static final short RES_TABLE_ENTRY_FLAG_COMPLEX = 0x0001;
