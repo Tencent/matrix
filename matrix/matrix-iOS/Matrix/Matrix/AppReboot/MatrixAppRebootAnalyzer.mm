@@ -83,7 +83,7 @@ static MatrixAppRebootType s_rebootType = MatrixAppRebootTypeBegin;
 static NSString *s_lastUserScene = @"";
 static NSString *s_lastDumpFileName = @"";
 static uint64_t s_lastAppLaunchTime = 0;
-
+static BOOL s_lastTimeDeviceReboot = NO;
 static dispatch_block_t s_suspendDelayBlock = nil;
 static dispatch_block_t s_foregroundDelayBlock = nil;
 static BOOL s_isSuspendKilled = NO;
@@ -194,7 +194,8 @@ static BOOL s_isSuspendKilled = NO;
 
     s_lastUserScene = info.userScene;
     s_lastAppLaunchTime = info.appLaunchTime;
-
+    s_lastTimeDeviceReboot = [MatrixAppRebootAnalyzer isOSReboot];
+    
     // revert to original state
 
     // save last os version
@@ -220,6 +221,11 @@ static BOOL s_isSuspendKilled = NO;
     info.userScene = @"";
 
     [info saveInfo];
+}
+
++ (BOOL)isAfterLastLaunchUserRebootDevice
+{
+    return s_lastTimeDeviceReboot;
 }
 
 + (MatrixAppRebootType)lastRebootType
