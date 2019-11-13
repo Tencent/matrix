@@ -16,7 +16,6 @@
 
 package com.tencent.matrix.resource.config;
 
-import android.app.PendingIntent;
 import android.content.Intent;
 
 import com.tencent.mrs.plugin.IDynamicConfig;
@@ -31,10 +30,11 @@ public final class ResourceConfig {
     public static final String TAG = "Matrix.ResourceConfig";
 
     public enum DumpMode {
-        NO_DUMP, AUTO_DUMP, MANUAL_DUMP
+        NO_DUMP, AUTO_DUMP, MANUAL_DUMP, SILENCE_DUMP
     }
 
     private static final long DEFAULT_DETECT_INTERVAL_MILLIS = TimeUnit.MINUTES.toMillis(1);
+    private static final long DEFAULT_DETECT_INTERVAL_MILLIS_BG = TimeUnit.MINUTES.toMillis(20);
     private static final int DEFAULT_MAX_REDETECT_TIMES = 3;
     private static final DumpMode DEFAULT_DUMP_HPROF_MODE = DumpMode.MANUAL_DUMP;
 
@@ -53,6 +53,10 @@ public final class ResourceConfig {
 
     public long getScanIntervalMillis() {
         return mDynamicConfig.get(IDynamicConfig.ExptEnum.clicfg_matrix_resource_detect_interval_millis.name(), DEFAULT_DETECT_INTERVAL_MILLIS);
+    }
+
+    public long getBgScanIntervalMillis() {
+        return mDynamicConfig.get(IDynamicConfig.ExptEnum.clicfg_matrix_resource_detect_interval_millis_bg.name(), DEFAULT_DETECT_INTERVAL_MILLIS_BG);
     }
 
     public int getMaxRedetectTimes() {
