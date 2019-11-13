@@ -22,7 +22,6 @@ import android.os.Looper;
 import android.util.Printer;
 
 import com.tencent.matrix.AppActiveMatrixDelegate;
-import com.tencent.matrix.Matrix;
 import com.tencent.matrix.listeners.IAppForeground;
 
 import java.util.Collections;

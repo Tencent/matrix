@@ -48,8 +48,12 @@ public class LooperMonitor implements MessageQueue.IdleHandler {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             Looper.getMainLooper().getQueue().addIdleHandler(this);
         } else {
-            MessageQueue queue = reflectObject(Looper.getMainLooper(), "mQueue");
-            queue.addIdleHandler(this);
+            try {
+                MessageQueue queue = reflectObject(Looper.getMainLooper(), "mQueue");
+                queue.addIdleHandler(this);
+            } catch (Exception ex) {
+                MatrixLog.printErrStackTrace(TAG, ex, "reflectObject mainLoop fail");
+            }
         }
     }
 
