@@ -47,11 +47,13 @@ public class RemoveUnusedResourcesTask extends DefaultTask {
 
     public static final String BUILD_VARIANT = "build_variant"
 
+    //global data
     public Set<String> ignoreResources = new HashSet<>()
-
     Map<String, Integer> resourceMap = new HashMap()
     File resTxtFile
     Map<String, Pair<String, Integer>[]> styleableMap = new HashMap()
+
+    //variant data
     Set<String> unusedResources = new HashSet<String>()
     Map<String, Set<String>> dupResources = new HashMap()
     Map<String, Integer> removeResources = new HashMap<>()
@@ -88,7 +90,7 @@ public class RemoveUnusedResourcesTask extends DefaultTask {
         String variantName = this.inputs.properties.get(BUILD_VARIANT)
         Log.i(TAG, "variant %s, removeResources", variantName)
 
-        String backupPath = project.getBuildDir().getAbsolutePath() + "${File.separator}outputs${File.separator}${BACKUP_DIR_NAME}${File.separator}"
+        String backupPath = project.getBuildDir().canonicalPath + "${File.separator}outputs${File.separator}${BACKUP_DIR_NAME}${File.separator}"
         File backupDir = new File(backupPath)
         backupDir.mkdir()
 
@@ -96,13 +98,15 @@ public class RemoveUnusedResourcesTask extends DefaultTask {
             if (variant.name.equalsIgnoreCase(variantName)) {
                 variant.outputs.forEach { output ->
 
-                    String backupOutputPath = backupPath + output.outputFile.name.substring(0, output.outputFile.name.indexOf('.'))
+                    resetVariantData()
 
-                    String originalApk = output.outputFile.getAbsolutePath()
+                    String backupOutputPath = backupPath + output.outputFile.name.substring(0, output.outputFile.name.indexOf("."))
+
+                    String originalApk = output.outputFile.canonicalPath
                     Log.i(TAG, "original apk file %s", originalApk)
                     long startTime = System.currentTimeMillis()
-                    String rTxtFile = project.getBuildDir().getAbsolutePath() + "${File.separator}intermediates${File.separator}symbols${File.separator}${variant.name}${File.separator}R.txt"
-                    String mappingTxtFile = project.getBuildDir().getAbsolutePath() + "${File.separator}outputs${File.separator}mapping${File.separator}${variant.name}${File.separator}mapping.txt"
+                    String rTxtFile = project.getBuildDir().canonicalPath + "${File.separator}intermediates${File.separator}symbols${File.separator}${variant.name}${File.separator}R.txt"
+                    String mappingTxtFile = project.getBuildDir().canonicalPath + "${File.separator}outputs${File.separator}mapping${File.separator}${variant.name}${File.separator}mapping.txt"
                     findUnusedResources(originalApk, rTxtFile, mappingTxtFile, unusedResources, dupResources)
                     Log.i(TAG, "find %d unused resources:\n %s", unusedResources.size(), unusedResources)
                     Log.i(TAG, "find %d duplicated resources", dupResources.size())
@@ -117,23 +121,39 @@ public class RemoveUnusedResourcesTask extends DefaultTask {
                     prepareResources()
 
                     File inputFile = new File(originalApk)
-                    String outputApk = inputFile.getParentFile().getAbsolutePath() + File.separator + inputFile.getName().substring(0, inputFile.getName().indexOf('.')) + "_shrinked.apk"
+                    String outputApk = inputFile.getParentFile().canonicalPath + File.separator + inputFile.getName().substring(0, inputFile.getName().indexOf(".")) + "_shrinked.apk"
                     File outputFile = new File(outputApk)
                     if (outputFile.exists()) {
                         Log.w(TAG, "output apk file %s is already exists! It will be deleted anyway!", outputApk)
                         outputFile.delete()
-                        outputFile.createNewFile()
                     }
 
                     startTime = System.currentTimeMillis()
                     boolean removeSuccess = removeUnusedResources(inputFile, outputFile)
                     Log.i(TAG, "remove duplicated resources & unused resources success? %s, cost time %f s", removeSuccess, (System.currentTimeMillis() - startTime) / 1000.0f)
 
+                    String alignedApk = inputFile.getParentFile().canonicalPath + File.separator + inputFile.getName().substring(0, inputFile.getName().indexOf(".")) + "_aligned.apk"
 
                     if (removeSuccess) {
                         //resign the apk
                         boolean needSign = project.extensions.matrix.removeUnusedResources.needSign
+                        boolean zipAlign = project.extensions.matrix.removeUnusedResources.zipAlign
                         String apksigner = project.extensions.matrix.removeUnusedResources.apksignerPath
+                        String zipAlignPath = project.extensions.matrix.removeUnusedResources.zipAlignPath
+
+                        if (zipAlign) {
+                            if (Util.isNullOrNil(zipAlignPath)) {
+                                throw new GradleException("need zipAlgn apk but zipAlignPath not found!")
+                            } else if (!new File(zipAlignPath).exists()) {
+                                throw new GradleException("need zipAlignPath apk but zipAlignPath " + zipAlignPath + " is not exist!")
+                            }
+                            Log.i(TAG, "zipAlign apk...")
+                            ApkUtil.zipAlignApk(outputApk, alignedApk, zipAlignPath)
+                            outputFile.delete()
+                            FileUtils.copyFile(new File(alignedApk), outputFile)
+                            new File(alignedApk).delete()
+                        }
+
                         if (needSign) {
                             if (Util.isNullOrNil(apksigner)) {
                                 throw new GradleException("need sign apk but apksigner not found!")
@@ -147,41 +167,32 @@ public class RemoveUnusedResourcesTask extends DefaultTask {
                         }
                         String backApk = backupOutputPath + "${File.separator}backup.apk"
                         FileUtils.copyFile(inputFile, new File(backApk))
-                        outputFile.renameTo(new File(originalApk))
+                        inputFile.delete()
+                        FileUtils.copyFile(outputFile, inputFile)
+                        outputFile.delete()
 
                         //modify R.txt
                         modifyRFile(backupOutputPath)
-                    }
 
-                    //write resource mapping to resguard-mapping.txt
-                    boolean resguard = project.extensions.matrix.removeUnusedResources.resguard
-                    if (resguard) {
-                        File resguardMappingFile = new File(backupOutputPath + File.separator + RESGUARD_MAPPING_FILE_NAME)
-                        resguardMappingFile.createNewFile()
-                        PrintWriter fileWriter = new PrintWriter(resguardMappingFile)
-                        fileWriter.println(RES_PATH_MAPPING_PREFIX)
-                        if (!resDirProguard.isEmpty()) {
-                            for(String srcDir : resDirProguard.keySet()) {
-                                fileWriter.println("    " + srcDir + " -> " + resDirProguard.get(srcDir))
-                            }
+                        //write resource mapping to resguard-mapping.txt
+                        boolean resguard = project.extensions.matrix.removeUnusedResources.resguard
+                        if (resguard) {
+                            writeResguardMappingFile(backupOutputPath)
                         }
-                        fileWriter.println(RES_ID_MAPPING_PREFIX)
-                        if (!resNameProguard.isEmpty()) {
-                            for(String srcRes : resNameProguard.keySet()) {
-                                fileWriter.println("    " + srcRes + " -> " + resNameProguard.get(srcRes))
-                            }
-                        }
-                        fileWriter.println(RES_FILE_MAPPING_PREFIX)
-                        if (!resFileProguard.isEmpty()) {
-                            for (String srcFile : resFileProguard.keySet()) {
-                                fileWriter.println("    " + srcFile + " -> " + resFileProguard.get(srcFile))
-                            }
-                        }
-                        fileWriter.close()
                     }
                 }
             }
         }
+    }
+
+    void resetVariantData() {
+        unusedResources.clear()
+        dupResources.clear()
+        removeResources.clear()
+        dupReplaceResources.clear()
+        resNameProguard.clear()
+        resDirProguard.clear()
+        resFileProguard.clear()
     }
 
     void findUnusedResources(String originalApk, String rTxtFile, String mappingTxtFile, Set<String> unusedResources, Map<String, Set<String>> dupResources) {
@@ -192,7 +203,7 @@ public class RemoveUnusedResourcesTask extends DefaultTask {
             if (!new File(apkChecker).exists()) {
                 throw new GradleException("the path of Matrix-ApkChecker " + apkChecker + " is not exist!")
             }
-            String tempOutput = project.getBuildDir().getAbsolutePath() + "${File.separator}apk_checker"
+            String tempOutput = project.getBuildDir().canonicalPath + "${File.separator}apk_checker"
             ArrayList<String> commandList = new ArrayList<>()
             commandList.add("java")
             commandList.add("-jar")
@@ -221,7 +232,7 @@ public class RemoveUnusedResourcesTask extends DefaultTask {
             Process process = processBuilder.start()
             println process.text
             process.waitFor()
-            File outputFile = new File(project.getBuildDir().getAbsolutePath() + "${File.separator}apk_checker.json")
+            File outputFile = new File(project.getBuildDir().canonicalPath + "${File.separator}apk_checker.json")
             if (outputFile.exists()) {
                 Gson gson = new Gson()
                 JsonArray jsonArray = gson.fromJson(outputFile.text, JsonArray.class)
@@ -338,21 +349,19 @@ public class RemoveUnusedResourcesTask extends DefaultTask {
 
     boolean removeUnusedResources(File inputFile, File outputFile) {
 
-        ZipOutputStream zipOutputStream = null
-
         boolean shrinkArsc = project.extensions.matrix.removeUnusedResources.shrinkArsc
         boolean resguard = project.extensions.matrix.removeUnusedResources.resguard
-        boolean needSign = project.extensions.matrix.removeUnusedResources.needSign
+        boolean use7zip = project.extensions.matrix.removeUnusedResources.use7zip
+        String sevenZip = project.extensions.matrix.removeUnusedResources.sevenZipPath
 
         try {
+
+            ZipOutputStream zipOutputStream = null
+
             try {
 
                 boolean rmUnused = unusedResources.size() > 0
                 boolean rmDuplicated = dupReplaceResources.size() > 0
-
-                ZipFile zipInputFile = new ZipFile(inputFile)
-                zipOutputStream = new ZipOutputStream(new FileOutputStream(outputFile))
-                ZipEntry arsc = zipInputFile.getEntry(ARSC_FILE_NAME)
 
                 Log.i(TAG, "rmUnsed %s, rmDuplicated %s, resguard %s", rmUnused, rmDuplicated, resguard)
 
@@ -360,117 +369,160 @@ public class RemoveUnusedResourcesTask extends DefaultTask {
                     return false
                 }
 
-                File srcArscFile = new File(inputFile.getParentFile().getAbsolutePath() + File.separator + ARSC_FILE_NAME)
-                File destArscFile = new File(inputFile.getParentFile().getAbsolutePath() + File.separator + "shrinked_" + ARSC_FILE_NAME)
-                if (srcArscFile.exists()) {
-                    srcArscFile.delete()
-                    srcArscFile.createNewFile()
+                ZipFile zipInputFile = new ZipFile(inputFile)
+                ZipEntry arsc = zipInputFile.getEntry(ARSC_FILE_NAME)
+
+                File unzipDir = new File(inputFile.getParentFile().canonicalPath + File.separator + inputFile.name.substring(0, inputFile.name.lastIndexOf(".")) + "_unzip")
+                if (unzipDir.exists()) {
+                    unzipDir.deleteDir()
                 }
-                ApkUtil.unzipEntry(zipInputFile, arsc, srcArscFile)
+                unzipDir.mkdir()
 
-                if (rmUnused || rmDuplicated || resguard) {
+                File srcArscFile = new File(unzipDir, ARSC_FILE_NAME)
+                File destArscFile = new File(unzipDir, "shrinked_" + ARSC_FILE_NAME)
 
-                    ArscReader reader = new ArscReader(srcArscFile.getAbsolutePath())
-                    ResTable resTable = reader.readResourceTable()
+                ApkUtil.unzipEntry(zipInputFile, arsc, srcArscFile.canonicalPath)
 
-                    //remove unused resources
-                    if (rmUnused && shrinkArsc) {
-                        for (String resName : removeResources.keySet()) {
-                            ArscUtil.removeResource(resTable, removeResources.get(resName), resName)
+                ArscReader reader = new ArscReader(srcArscFile.canonicalPath)
+                ResTable resTable = reader.readResourceTable()
+
+                //remove unused resources
+                if (rmUnused && shrinkArsc) {
+                    for (String resName : removeResources.keySet()) {
+                        ArscUtil.removeResource(resTable, removeResources.get(resName), resName)
+                    }
+                }
+
+                //remove duplicated resources
+                if (rmDuplicated) {
+                    Iterator replaceIterator = dupReplaceResources.keySet().iterator()
+                    while (replaceIterator.hasNext()) {
+                        String sourceFile = replaceIterator.next()
+                        String sourceRes = ApkUtil.entryToResourceName(sourceFile)
+                        int sourceId = resourceMap.get(sourceRes)
+                        String targetFile = dupReplaceResources.get(sourceFile)
+                        String targetRes = ApkUtil.entryToResourceName(targetFile)
+                        int targetId = resourceMap.get(targetRes)
+                        boolean success = ArscUtil.replaceFileResource(resTable, sourceId, sourceFile, targetId, targetFile)
+                        if (!success) {
+                            Log.w(TAG, "replace %s(%s) with %s(%s) failed!", sourceRes, sourceFile, targetRes, targetFile)
+                            replaceIterator.remove()
                         }
                     }
+                }
 
-                    //remove duplicated resources
-                    if (rmDuplicated) {
-                        Iterator replaceIterator = dupReplaceResources.keySet().iterator()
-                        while (replaceIterator.hasNext()) {
-                            String sourceFile = replaceIterator.next()
-                            String sourceRes = ApkUtil.entryToResourceName(sourceFile)
-                            int sourceId = resourceMap.get(sourceRes)
-                            String targetFile = dupReplaceResources.get(sourceFile)
-                            String targetRes = ApkUtil.entryToResourceName(targetFile)
-                            int targetId = resourceMap.get(targetRes)
-                            boolean success = ArscUtil.replaceFileResource(resTable, sourceId, sourceFile, targetId, targetFile)
-                            if (!success) {
-                                Log.w(TAG, "replace %s(%s) with %s(%s) failed!", sourceRes, sourceFile, targetRes, targetFile)
-                                replaceIterator.remove()
-                            }
+                //proguard resource name
+                if (resguard) {
+                    Iterator resIterator = resourceMap.keySet().iterator()
+                    Map<Integer, String> resIdProguard = new HashMap<>()
+                    while (resIterator.hasNext()) {
+                        String resource = resIterator.next()
+                        if (resNameProguard.containsKey(resource)) {
+                            resIdProguard.put(resourceMap.get(resource), ApkUtil.parseResourceName(resNameProguard.get(resource)))
                         }
                     }
-
-                    //proguard resource name
-                    if (resguard) {
-                        Iterator resIterator = resourceMap.keySet().iterator()
-                        Map<Integer, String> resIdProguard = new HashMap<>()
-                        while (resIterator.hasNext()) {
-                            String resource = resIterator.next()
-                            if (resNameProguard.containsKey(resource)) {
-                                resIdProguard.put(resourceMap.get(resource), ApkUtil.parseResourceName(resNameProguard.get(resource)))
-                            }
-                        }
-                        if (!resIdProguard.isEmpty()) {
-                            ArscUtil.replaceResEntryName(resTable, resIdProguard)
-                        }
+                    if (!resIdProguard.isEmpty()) {
+                        ArscUtil.replaceResEntryName(resTable, resIdProguard)
                     }
+                }
 
-                    ProguardStringBuilder dirProguard = new ProguardStringBuilder()
+                ProguardStringBuilder dirProguard = new ProguardStringBuilder()
 
-                    Map<String, ProguardStringBuilder> dirFileProguard = new HashMap<>()
+                Map<String, ProguardStringBuilder> dirFileProguard = new HashMap<>()
 
-                    for (ZipEntry zipEntry : zipInputFile.entries()) {
-                        if (zipEntry.name.startsWith("res/")) {
-                            String resourceName = ApkUtil.entryToResourceName(zipEntry.name)
-                            if (!Util.isNullOrNil(resourceName)) {
-                                if (removeResources.containsKey(resourceName)) {
-                                    Log.i(TAG, "remove unused resource %s file %s", resourceName, zipEntry.name)
-                                    continue
-                                } else if (dupReplaceResources.containsKey(zipEntry.name)) {
-                                    Log.i(TAG, "remove duplicated resource file %s", zipEntry.name)
-                                    continue
-                                } else {
-                                    if (arsc != null && resguard) {
-                                        String dir = zipEntry.name.substring(0, zipEntry.name.lastIndexOf('/'))
-                                        String suffix = zipEntry.name.substring(zipEntry.name.indexOf('.'))
+                Set<String> compressedEntry = new HashSet<>()
+
+                for (ZipEntry zipEntry : zipInputFile.entries()) {
+
+                    String destFile = unzipDir.canonicalPath + File.separator + zipEntry.name.replace('/' as char, File.separatorChar)
+
+                    if (zipEntry.name.startsWith("res/")) {
+                        String resourceName = ApkUtil.entryToResourceName(zipEntry.name)
+                        if (!Util.isNullOrNil(resourceName)) {
+                            if (removeResources.containsKey(resourceName)) {
+                                Log.i(TAG, "remove unused resource %s file %s", resourceName, zipEntry.name)
+                                continue
+                            } else if (dupReplaceResources.containsKey(zipEntry.name)) {
+                                Log.i(TAG, "remove duplicated resource file %s", zipEntry.name)
+                                continue
+                            } else {
+                                if (arsc != null && resguard) {
+                                    if (resourceMap.containsKey(resourceName)) {
+                                        String dir = zipEntry.name.substring(0, zipEntry.name.lastIndexOf("/"))
+                                        String suffix = zipEntry.name.substring(zipEntry.name.indexOf("."))
+                                        Log.i(TAG, "resource %s dir %s", resourceName, dir)
                                         if (!resDirProguard.containsKey(dir)) {
                                             String proguardDir = dirProguard.generateNextProguardFileName()
                                             resDirProguard.put(dir, RES_DIR_PROGUARD_NAME + "/" + proguardDir)
                                             dirFileProguard.put(dir, new ProguardStringBuilder())
+                                            Log.i(TAG, "dir %s, new proguard builder", dir)
                                         }
                                         resFileProguard.put(zipEntry.name, resDirProguard.get(dir) + "/" + dirFileProguard.get(dir).generateNextProguardFileName() + suffix)
                                         boolean success = ArscUtil.replaceResFileName(resTable, resourceMap.get(resourceName), zipEntry.name, resFileProguard.get(zipEntry.name))
                                         if (success) {
-                                            ApkUtil.addZipEntry(zipOutputStream, zipEntry, resFileProguard.get(zipEntry.name), zipInputFile)
-                                        } else {
-                                            ApkUtil.addZipEntry(zipOutputStream, zipEntry, zipInputFile)
+                                            destFile = unzipDir.canonicalPath + File.separator + resFileProguard.get(zipEntry.name).replace('/' as char, File.separatorChar)
                                         }
-                                    } else {
-                                        ApkUtil.addZipEntry(zipOutputStream, zipEntry, zipInputFile)
                                     }
                                 }
-                            } else {
-                                Log.w(TAG, "parse entry %s resource name failed!", zipEntry.name)
+                                if (zipEntry.getMethod() == ZipEntry.DEFLATED) {
+                                    compressedEntry.add(destFile)
+                                }
+                                Log.i(TAG, "unzip %s to file %s", zipEntry.name, destFile)
+                                ApkUtil.unzipEntry(zipInputFile, zipEntry, destFile)
                             }
                         } else {
-                            if (needSign && zipEntry.name.startsWith("META-INF/")) {
-                                continue
-                            } else if (!zipEntry.name.equals(ARSC_FILE_NAME)) {
-                                ApkUtil.addZipEntry(zipOutputStream, zipEntry, zipInputFile)
+                            Log.w(TAG, "parse entry %s resource name failed!", zipEntry.name)
+                        }
+                    } else {
+                        if (!zipEntry.name.startsWith("META-INF/") && !zipEntry.name.equals(ARSC_FILE_NAME)) {
+                            if (zipEntry.getMethod() == ZipEntry.DEFLATED) {
+                                compressedEntry.add(destFile)
                             }
+                            Log.i(TAG, "unzip %s to file %s", zipEntry.name, destFile)
+                            ApkUtil.unzipEntry(zipInputFile, zipEntry, destFile)
                         }
                     }
-
-                    ArscWriter writer = new ArscWriter(destArscFile.getAbsolutePath())
-                    writer.writeResTable(resTable)
-                    Log.i(TAG, "shrink resources.arsc size %f KB", (srcArscFile.length() - destArscFile.length()) / 1024.0)
-                    ApkUtil.addZipEntry(zipOutputStream, arsc, destArscFile)
-
-                    srcArscFile.delete()
-                    destArscFile.delete()
                 }
 
-                if (zipOutputStream != null) {
-                    zipOutputStream.close()
+                ArscWriter writer = new ArscWriter(destArscFile.canonicalPath)
+                writer.writeResTable(resTable)
+                Log.i(TAG, "shrink resources.arsc size %f KB", (srcArscFile.length() - destArscFile.length()) / 1024.0)
+                srcArscFile.delete()
+                FileUtils.copyFile(destArscFile, srcArscFile)
+                destArscFile.delete()
+
+                if (use7zip) {
+                    if (Util.isNullOrNil(sevenZip)) {
+                        throw new GradleException("use 7zip, but sevenZip not found!")
+                    } else if (!new File(sevenZip).exists()) {
+                        throw new GradleException("use 7zip but the path " + sevenZip + " is not exist!")
+                    }
+                    ApkUtil.sevenZipFile(sevenZip, unzipDir.canonicalPath + "${File.separator}*", outputFile.canonicalPath, false)
+
+                    if (!compressedEntry.isEmpty()) {
+                        Log.i(TAG, "7zip %d DEFLATED files to apk", compressedEntry.size())
+                        File deflateDir = new File(inputFile.getParentFile().canonicalPath + File.separator + inputFile.name.substring(0, inputFile.name.lastIndexOf(".")) + "_deflated")
+                        if (deflateDir.exists()) {
+                            deflateDir.deleteDir()
+                        }
+                        deflateDir.mkdir()
+                        for (String compress : compressedEntry) {
+                            String entry = compress.substring(unzipDir.canonicalPath.length() + 1)
+                            File deflateFile = new File(deflateDir, entry)
+                            deflateFile.parentFile.mkdirs()
+                            deflateFile.createNewFile()
+                            FileUtils.copyFile(new File(compress), deflateFile)
+                        }
+                        ApkUtil.sevenZipFile(sevenZip, deflateDir.canonicalPath + "${File.separator}*", outputFile.canonicalPath, true)
+                        deflateDir.deleteDir()
+                    }
+                } else {
+                    zipOutputStream = new ZipOutputStream(new FileOutputStream(outputFile))
+                    zipFile(zipOutputStream, unzipDir, unzipDir.canonicalPath, compressedEntry)
                 }
+
+                unzipDir.deleteDir()
+
                 Log.i(TAG, "shrink apk size %f KB", (inputFile.length() - outputFile.length()) / 1024.0)
                 return true
 
@@ -482,6 +534,21 @@ public class RemoveUnusedResourcesTask extends DefaultTask {
         } catch (Exception e) {
             Log.printErrStackTrace(TAG, e, "remove unused resources occur error!")
             return false
+        }
+    }
+
+    void zipFile(ZipOutputStream zipOutputStream, File file, String rootDir, Set<String> compressedEntry) {
+        if (file.isDirectory()) {
+            File[] unZipFiles = file.listFiles()
+            for (File subFile : unZipFiles) {
+                zipFile(zipOutputStream, subFile, rootDir, compressedEntry)
+            }
+        } else {
+            ZipEntry zipEntry = new ZipEntry()
+            zipEntry.name = file.canonicalPath.substring(rootDir.length() + 1)
+            Log.i(TAG, "zip file %s -> entry %s", file.canonicalPath, zipEntry.name)
+            zipEntry.setMethod(compressedEntry.contains(file.canonicalPath) ? ZipEntry.DEFLATED : ZipEntry.STORED)
+            ApkUtil.addZipEntry(zipOutputStream, zipEntry, file)
         }
     }
 
@@ -511,5 +578,31 @@ public class RemoveUnusedResourcesTask extends DefaultTask {
             //Other plugins such as "Tinker" may depend on the R.txt file, so we should not modify R.txt directly .
             //new File(newResTxtFile).renameTo(resTxtFile)
         }
+    }
+
+    void writeResguardMappingFile(String backupOutputPath) {
+
+        File resguardMappingFile = new File(backupOutputPath + File.separator + RESGUARD_MAPPING_FILE_NAME)
+        resguardMappingFile.createNewFile()
+        PrintWriter fileWriter = new PrintWriter(resguardMappingFile)
+        fileWriter.println(RES_PATH_MAPPING_PREFIX)
+        if (!resDirProguard.isEmpty()) {
+            for(String srcDir : resDirProguard.keySet()) {
+                fileWriter.println("    " + srcDir + " -> " + resDirProguard.get(srcDir))
+            }
+        }
+        fileWriter.println(RES_ID_MAPPING_PREFIX)
+        if (!resNameProguard.isEmpty()) {
+            for(String srcRes : resNameProguard.keySet()) {
+                fileWriter.println("    " + srcRes + " -> " + resNameProguard.get(srcRes))
+            }
+        }
+        fileWriter.println(RES_FILE_MAPPING_PREFIX)
+        if (!resFileProguard.isEmpty()) {
+            for (String srcFile : resFileProguard.keySet()) {
+                fileWriter.println("    " + srcFile + " -> " + resFileProguard.get(srcFile))
+            }
+        }
+        fileWriter.close()
     }
 }

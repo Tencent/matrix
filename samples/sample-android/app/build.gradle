@@ -1,4 +1,6 @@
 
+apply plugin: 'com.google.osdetector'
+
 apply plugin: 'com.android.application'
 
 configurations.all {
@@ -45,6 +47,7 @@ android {
 
 configurations {
     apkCheckerDependency
+    sevenZipDependency
 }
 
 dependencies {
@@ -70,6 +73,13 @@ dependencies {
     })
 
     apkCheckerDependency ("com.tencent.matrix:matrix-apk-canary:${MATRIX_VERSION}")
+    sevenZipDependency ('com.tencent.mm:SevenZip:1.2.17') {
+        artifact {
+            classifier = project.osdetector.classifier
+            name = "SevenZip"
+            type = 'exe'
+        }
+    }
 }
 
 apply plugin: 'com.tencent.matrix-plugin'
@@ -81,15 +91,19 @@ matrix {
     }
     removeUnusedResources {
         enable true
-        variant = "debug"
+        variant = "release"
         needSign true
         shrinkArsc true
         deDuplicate true
         resguard true
-        apkCheckerPath = "${project.configurations.apkCheckerDependency.getAt(0).getAbsolutePath()}"
+        use7zip = true
+        zipAlign = true
+        apkCheckerPath = "${project.configurations.apkCheckerDependency.resolve().find { it.name.startsWith("matrix-apk-canary") }.getAbsolutePath()}"
+        sevenZipPath = "${project.configurations.sevenZipDependency.resolve().getAt(0).getAbsolutePath()}"
         //Notice: You need to modify the  value of $apksignerPath on different platform. the value below only suitable for Mac Platform,
         //if on Windows, you may have to  replace apksigner with apksigner.bat.
         apksignerPath = "${android.getSdkDirectory().getAbsolutePath()}/build-tools/${android.getBuildToolsVersion()}/apksigner"
+        zipAlignPath = "${android.getSdkDirectory().getAbsolutePath()}/build-tools/${android.getBuildToolsVersion()}/zipalign"
         ignoreResources = ["R.id.*", "R.bool.*"]
     }
 }

@@ -115,8 +115,11 @@ public class ApkUtil {
         return output.toByteArray()
     }
 
-    static void unzipEntry(ZipFile zipFile, ZipEntry zipEntry, File destFile) {
-        BufferedOutputStream outputStream = new BufferedOutputStream(new FileOutputStream(destFile))
+    static void unzipEntry(ZipFile zipFile, ZipEntry zipEntry, String destFile) {
+        File file = new File(destFile)
+        file.getParentFile().mkdirs()
+        file.createNewFile()
+        BufferedOutputStream outputStream = new BufferedOutputStream(new FileOutputStream(file))
         InputStream inputStream = zipFile.getInputStream(zipEntry)
         outputStream.write(readFileContent(inputStream))
         outputStream.close()
@@ -173,6 +176,20 @@ public class ApkUtil {
         zipOutputStream.write(content)
         zipOutputStream.flush()
         zipOutputStream.closeEntry()
+    }
+
+    static void sevenZipFile(String sevenZipPath, String inputFile, String outputFile, boolean deflated) throws GradleException  {
+        if (!new File(sevenZipPath).canExecute()) {
+            new File(sevenZipPath).setExecutable(true)
+        }
+        ProcessBuilder processBuilder = new ProcessBuilder()
+        processBuilder.command(sevenZipPath, "a", "-tzip", outputFile, inputFile, deflated ? "-mx9" : "-mx0")
+        //Log.i(TAG, "%s", processBuilder.command())
+        Process process = processBuilder.start()
+        process.waitForProcessOutput(System.out, System.err)
+        if (process.exitValue() != 0) {
+            throw new GradleException("7zip apk occur error!")
+        }
     }
 
     static void readResourceTxtFile(File resTxtFile, Map<String, Integer> resourceMap, Map<String, Pair<String, Integer>> styleableMap) throws IOException {
@@ -275,19 +292,38 @@ public class ApkUtil {
         }
     }
 
-    static void signApk(String apkFilePath, String apksigner, SigningConfig signingConfig) {
+    static void signApk(String apkFilePath, String apksigner, SigningConfig signingConfig) throws GradleException {
         ProcessBuilder processBuilder = new ProcessBuilder()
-        processBuilder.command(apksigner, "sign", "-v",
+        ArrayList<String> commandList = new ArrayList(Arrays.asList(apksigner, "sign", "-v",
                 "--ks", signingConfig.storeFile.getAbsolutePath(),
                 "--ks-pass", "pass:" + signingConfig.storePassword,
                 "--key-pass", "pass:" + signingConfig.keyPassword,
-                "--ks-key-alias", signingConfig.keyAlias,
-                apkFilePath)
+                "--ks-key-alias", signingConfig.keyAlias))
+
+        if (signingConfig.v1SigningEnabled) {
+            commandList.add("--v1-signing-enabled")
+        }
+
+        if (signingConfig.v2SigningEnabled) {
+            commandList.add("--v2-signing-enabled")
+        }
+        commandList.add(apkFilePath)
+        processBuilder.command(commandList)
         //Log.i(TAG, "%s", processBuilder.command())
         Process process = processBuilder.start()
-        process.waitFor()
+        process.waitForProcessOutput(System.out, System.err)
         if (process.exitValue() != 0) {
-            throw new GradleException(process.getErrorStream().text)
+            throw new GradleException("sign apk occur error!")
+        }
+    }
+    
+    static void zipAlignApk(String inputFile, String outputFile, String zipAlignPath) throws GradleException {
+        ProcessBuilder processBuilder = new ProcessBuilder()
+        processBuilder.command(zipAlignPath, "-f", "4", inputFile, outputFile)
+        Process process = processBuilder.start()
+        process.waitForProcessOutput(System.out, System.err)
+        if (process.exitValue() != 0) {
+            throw new GradleException("zipalign apk occur error!")
         }
     }
 
