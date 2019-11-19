@@ -35,7 +35,6 @@ import com.tencent.matrix.trace.listeners.IDoFrameListener;
 import com.tencent.matrix.util.MatrixLog;
 
 import java.util.Random;
-import java.util.concurrent.Executor;
 
 import sample.tencent.matrix.R;
 import sample.tencent.matrix.issue.IssueFilter;
@@ -55,19 +54,13 @@ public class TestFpsActivity extends Activity {
 
     private int count;
     private long time = System.currentTimeMillis();
-    private IDoFrameListener mDoFrameListener = new IDoFrameListener(new Executor() {
-        Handler handler = new Handler(sHandlerThread.getLooper());
+    private IDoFrameListener mDoFrameListener = new IDoFrameListener(new Handler(sHandlerThread.getLooper())) {
 
         @Override
-        public void execute(Runnable command) {
-            handler.post(command);
-        }
-    }) {
-        @Override
-        public void doFrameAsync(String visibleScene, long taskCost, long frameCostMs, int droppedFrames, boolean isContainsFrame) {
-            super.doFrameAsync(visibleScene, taskCost, frameCostMs, droppedFrames, isContainsFrame);
+        public void doFrameAsync(String focusedActivityName, long frameCost, int droppedFrames) {
+            super.doFrameAsync(focusedActivityName, frameCost, droppedFrames);
             count += droppedFrames;
-            MatrixLog.i(TAG, "[doFrameSync] scene:" + visibleScene + " droppedFrames:" + droppedFrames);
+            MatrixLog.i(TAG, "[doFrameSync] scene:" + focusedActivityName + " droppedFrames:" + droppedFrames);
         }
     };
 
