@@ -37,9 +37,9 @@ import static android.os.SystemClock.uptimeMillis;
  * |                         |                   |                     |                  |
  * |---------app---------|---|---firstActivity---|---------...---------|---careActivity---|
  * |<--applicationCost-->|
- * |<----firstScreenCost---->|
- * |<---------------------------allCost(cold)------------------------->|
- * .                         |<--allCost(warm)-->|
+ * |<--------------firstScreenCost-------------->|
+ * |<---------------------------------------coldCost------------------------------------->|
+ * .                         |<-----warmCost---->|
  *
  * </p>
  */
@@ -51,6 +51,7 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, App
     private long firstScreenCost = 0;
     private long coldCost = 0;
     private int activeActivityCount;
+    private boolean isWarmStartUp;
     private boolean hasShowSplashActivity;
     private boolean isStartupEnable;
     private Set<String> splashActivities;
@@ -87,30 +88,32 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, App
 
     @Override
     public void onActivityFocused(String activity) {
-        long allCost = 0;
-        boolean isWarmStartUp = false;
         if (isColdStartup()) {
             if (firstScreenCost == 0) {
                 this.firstScreenCost = uptimeMillis() - ActivityThreadHacker.getEggBrokenTime();
             }
             if (hasShowSplashActivity) {
-                allCost = coldCost = uptimeMillis() - ActivityThreadHacker.getEggBrokenTime();
+                coldCost = uptimeMillis() - ActivityThreadHacker.getEggBrokenTime();
             } else {
                 if (splashActivities.contains(activity)) {
                     hasShowSplashActivity = true;
                 } else if (splashActivities.isEmpty()) {
-                    MatrixLog.i(TAG, "default care activity[%s]", activity);
-                    allCost = coldCost = firstScreenCost;
+                    MatrixLog.i(TAG, "default splash activity[%s]", activity);
+                    coldCost = firstScreenCost;
                 } else {
-                    MatrixLog.w(TAG, "pass this activity[%s] in duration of startup!", activity);
+                    MatrixLog.w(TAG, "pass this activity[%s] at duration of start up!", activity);
                 }
             }
-        } else if (isWarmStartUp = isWarmStartUp()) {
-            allCost = uptimeMillis() - ActivityThreadHacker.getLastLaunchActivityTime();
-        }
+            if (coldCost > 0) {
+                analyse(ActivityThreadHacker.getApplicationCost(), firstScreenCost, coldCost, false);
+            }
 
-        if (allCost > 0) {
-            analyse(ActivityThreadHacker.getApplicationCost(), firstScreenCost, allCost, isWarmStartUp);
+        } else if (isWarmStartUp()) {
+            isWarmStartUp = false;
+            long warmCost = uptimeMillis() - ActivityThreadHacker.getLastLaunchActivityTime();
+            if (warmCost > 0) {
+                analyse(ActivityThreadHacker.getApplicationCost(), firstScreenCost, warmCost, true);
+            }
         }
     }
 
@@ -119,7 +122,7 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, App
     }
 
     private boolean isWarmStartUp() {
-        return activeActivityCount <= 1 && (uptimeMillis() - ActivityThreadHacker.getLastLaunchActivityTime() <= Constants.LIMIT_WARM_THRESHOLD_MS);
+        return isWarmStartUp;
     }
 
     private void analyse(long applicationCost, long firstScreenCost, long allCost, boolean isWarmStartUp) {
@@ -250,6 +253,9 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, App
 
     @Override
     public void onActivityCreated(Activity activity, Bundle savedInstanceState) {
+        if (activeActivityCount == 0 && coldCost > 0) {
+            isWarmStartUp = true;
+        }
         activeActivityCount++;
     }
 
