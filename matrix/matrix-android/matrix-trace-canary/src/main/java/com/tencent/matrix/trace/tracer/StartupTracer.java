@@ -101,7 +101,7 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, App
                     MatrixLog.i(TAG, "default splash activity[%s]", activity);
                     coldCost = firstScreenCost;
                 } else {
-                    MatrixLog.w(TAG, "pass this activity[%s] at duration of start up!", activity);
+                    MatrixLog.w(TAG, "pass this activity[%s] at duration of start up! splashActivities=%s", activity, splashActivities);
                 }
             }
             if (coldCost > 0) {
