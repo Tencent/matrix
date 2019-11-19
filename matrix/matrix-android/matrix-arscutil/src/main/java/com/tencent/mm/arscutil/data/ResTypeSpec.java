@@ -82,14 +82,14 @@ public class ResTypeSpec extends ResChunk {
         byteBuffer.put(reserved0);
         byteBuffer.putShort(reserved1);
         byteBuffer.putInt(entryCount);
-        if (headPadding != null) {
-            byteBuffer.put(headPadding);
+        if (headPaddingSize > 0) {
+            byteBuffer.put(new byte[headPaddingSize]);
         }
         if (configFlags != null) {
             byteBuffer.put(configFlags);
         }
-        if (chunkPadding != null) {
-            byteBuffer.put(chunkPadding);
+        if (chunkPaddingSize > 0) {
+            byteBuffer.put(new byte[chunkPaddingSize]);
         }
         byteBuffer.flip();
         return byteBuffer.array();

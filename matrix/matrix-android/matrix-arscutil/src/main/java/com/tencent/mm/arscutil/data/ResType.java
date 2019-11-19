@@ -151,8 +151,8 @@ public class ResType extends ResChunk {
         if (resConfigFlags != null) {
             byteBuffer.put(resConfigFlags.toBytes());
         }
-        if (headPadding != null) {
-            byteBuffer.put(headPadding);
+        if (headPaddingSize > 0) {
+            byteBuffer.put(new byte[headPaddingSize]);
         }
         if (entryOffsets != null) {
             for (int i = 0; i < entryOffsets.size(); i++) {
@@ -168,8 +168,8 @@ public class ResType extends ResChunk {
                 }
             }
         }
-        if (chunkPadding != null) {
-            byteBuffer.put(chunkPadding);
+        if (chunkPaddingSize > 0) {
+            byteBuffer.put(new byte[chunkPaddingSize]);
         }
         byteBuffer.flip();
         return byteBuffer.array();

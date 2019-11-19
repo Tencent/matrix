@@ -79,8 +79,8 @@ public class ResTable extends ResChunk {
         byteBuffer.putShort(headSize);
         byteBuffer.putInt(chunkSize);
         byteBuffer.putInt(packageCount);
-        if (headPadding != null) {
-            byteBuffer.put(headPadding);
+        if (headPaddingSize > 0) {
+            byteBuffer.put(new byte[headPaddingSize]);
         }
         if (globalStringPool != null) {
             byteBuffer.put(globalStringPool.toBytes());
@@ -90,8 +90,8 @@ public class ResTable extends ResChunk {
                 byteBuffer.put(packages[i].toBytes());
             }
         }
-        if (chunkPadding != null) {
-            byteBuffer.put(chunkPadding);
+        if (chunkPaddingSize > 0) {
+            byteBuffer.put(new byte[chunkPaddingSize]);
         }
         byteBuffer.flip();
 

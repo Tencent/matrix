@@ -143,8 +143,8 @@ public class ResPackage extends ResChunk {
         byteBuffer.putInt(lastPublicType);
         byteBuffer.putInt(resNamePoolOffset);
         byteBuffer.putInt(lastPublicName);
-        if (headPadding != null) {
-            byteBuffer.put(headPadding);
+        if (headPaddingSize > 0) {
+            byteBuffer.put(new byte[headPaddingSize]);
         }
         if (resTypePool != null) {
             byteBuffer.put(resTypePool.toBytes());
@@ -159,8 +159,8 @@ public class ResPackage extends ResChunk {
                 }
             }
         }
-        if (chunkPadding != null) {
-            byteBuffer.put(chunkPadding);
+        if (chunkPaddingSize > 0) {
+            byteBuffer.put(new byte[chunkPaddingSize]);
         }
         byteBuffer.flip();
         return byteBuffer.array();

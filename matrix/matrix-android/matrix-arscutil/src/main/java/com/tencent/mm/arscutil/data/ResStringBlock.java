@@ -159,8 +159,8 @@ public class ResStringBlock extends ResChunk {
         byteBuffer.putInt(flag);
         byteBuffer.putInt(stringStart);
         byteBuffer.putInt(styleStart);
-        if (headPadding != null) {
-            byteBuffer.put(headPadding);
+        if (headPaddingSize > 0) {
+            byteBuffer.put(new byte[headPaddingSize]);
         }
         if (stringOffsets != null) {
             for (int i = 0; i < stringOffsets.size(); i++) {
@@ -180,8 +180,8 @@ public class ResStringBlock extends ResChunk {
         if (styles != null) {
             byteBuffer.put(styles);
         }
-        if (chunkPadding != null) {
-            byteBuffer.put(chunkPadding);
+        if (chunkPaddingSize > 0) {
+            byteBuffer.put(new byte[chunkPaddingSize]);
         }
         byteBuffer.flip();
         return byteBuffer.array();
