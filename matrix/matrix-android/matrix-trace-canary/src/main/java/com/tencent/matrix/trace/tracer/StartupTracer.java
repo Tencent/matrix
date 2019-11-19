@@ -115,6 +115,7 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, App
                 analyse(ActivityThreadHacker.getApplicationCost(), firstScreenCost, warmCost, true);
             }
         }
+
     }
 
     private boolean isColdStartup() {
