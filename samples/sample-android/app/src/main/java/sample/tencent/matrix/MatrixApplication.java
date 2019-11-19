@@ -100,7 +100,7 @@ public class MatrixApplication extends Application {
             //resource
             builder.plugin(new ResourcePlugin(new ResourceConfig.Builder()
                     .dynamicConfig(dynamicConfig)
-                    .setDumpHprof(false)
+                    .setAutoDumpHprofMode(ResourceConfig.DumpMode.MANUAL_DUMP)
                     .setDetectDebuger(true)     //only set true when in sample, not in your app
                     .build()));
             ResourcePlugin.activityLeakFixer(this);
@@ -118,7 +118,7 @@ public class MatrixApplication extends Application {
             SQLiteLintPlugin sqLiteLintPlugin = new SQLiteLintPlugin(config);
             builder.plugin(sqLiteLintPlugin);
 
-            ThreadMonitor threadMonitor = new ThreadMonitor(new ThreadMonitorConfig.Builder().dynamicConfig(dynamicConfig).build());
+            ThreadMonitor threadMonitor = new ThreadMonitor(new ThreadMonitorConfig.Builder().build());
             builder.plugin(threadMonitor);
 
             BatteryMonitor batteryMonitor = new BatteryMonitor(new BatteryMonitor.Builder()
