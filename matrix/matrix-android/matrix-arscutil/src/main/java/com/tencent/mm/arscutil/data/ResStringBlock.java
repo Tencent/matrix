@@ -16,12 +16,15 @@
 
 package com.tencent.mm.arscutil.data;
 
-import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Created by jinqiuchen on 18/7/29.
@@ -38,6 +41,8 @@ public class ResStringBlock extends ResChunk {
     private List<Integer> styleOffsets; // 记录每个style相对于style列表起始位置的offset
     private List<ByteBuffer> strings; // string列表
     private byte[] styles; // 所有的style
+
+    private Map<String, Integer> stringIndexMap;
 
     public int getStringCount() {
         return stringCount;
@@ -87,6 +92,14 @@ public class ResStringBlock extends ResChunk {
         this.stringOffsets = stringOffsets;
     }
 
+    public Map<String, Integer> getStringIndexMap() {
+        return stringIndexMap;
+    }
+
+    public void setStringIndexMap(Map<String, Integer> stringIndexMap) {
+        this.stringIndexMap = stringIndexMap;
+    }
+
     public List<Integer> getStyleOffsets() {
         return styleOffsets;
     }
@@ -120,34 +133,58 @@ public class ResStringBlock extends ResChunk {
     }
 
     public void refresh() {
-        for (int i = 1; i < stringCount; i++) {
-            stringOffsets.set(i, stringOffsets.get(i - 1) + strings.get(i - 1).limit());
-        }
-        styleStart = stringStart + stringOffsets.get(stringCount - 1) + strings.get(stringCount - 1).limit();
-        recomputeChunkSize();
-    }
-
-    private void recomputeChunkSize() {
         chunkSize = 0;
         chunkSize += headSize;
         if (stringOffsets != null) {
-            chunkSize += stringOffsets.size() * 4;
+            chunkSize += stringCount * 4;
         }
         if (styleOffsets != null) {
-            chunkSize += styleOffsets.size() * 4;
+            chunkSize += styleCount * 4;
+        }
+
+        //need sort string pool
+        if ( (flag & ArscConstants.RES_STRING_POOL_SORTED_FLAG) != 0 && stringIndexMap != null) {
+            List<String> strList = new LinkedList(stringIndexMap.keySet());
+            Collections.sort(strList);
+            List<ByteBuffer> sortedStrings = new ArrayList<>();
+            for (String str : strList) {
+                sortedStrings.add(strings.get(stringIndexMap.get(str)));
+            }
+            strings = sortedStrings;
+        }
+
+        stringStart = 0;
+        stringOffsets.clear();
+        if (stringCount > 0) {
+            stringStart = chunkSize;
+            stringOffsets.add(0);
+            for (int i = 1; i < stringCount; i++) {
+                stringOffsets.add(stringOffsets.get(i - 1) + strings.get(i - 1).limit());
+            }
+            styleStart = 0;
+            if (styleCount > 0) {
+                styleStart = stringStart + stringOffsets.get(stringCount - 1) + strings.get(stringCount - 1).limit();
+            }
         }
         if (strings != null) {
             for (ByteBuffer buffer : strings) {
-                chunkSize += buffer.limit();
+                int strLen = buffer.limit();
+                chunkSize += strLen;
             }
         }
         if (styles != null) {
             chunkSize += styles.length;
         }
+        if (chunkSize % 4 != 0) {
+            chunkPadding = 4 - chunkSize % 4;
+            chunkSize += chunkPadding;
+        } else {
+            chunkPadding = 0;
+        }
     }
 
     @Override
-    public byte[] toBytes() throws UnsupportedEncodingException {
+    public byte[] toBytes()  {
         ByteBuffer byteBuffer = ByteBuffer.allocate(chunkSize);
         byteBuffer.order(ByteOrder.LITTLE_ENDIAN);
         byteBuffer.clear();
@@ -159,8 +196,8 @@ public class ResStringBlock extends ResChunk {
         byteBuffer.putInt(flag);
         byteBuffer.putInt(stringStart);
         byteBuffer.putInt(styleStart);
-        if (headPaddingSize > 0) {
-            byteBuffer.put(new byte[headPaddingSize]);
+        if (headPadding > 0) {
+            byteBuffer.put(new byte[headPadding]);
         }
         if (stringOffsets != null) {
             for (int i = 0; i < stringOffsets.size(); i++) {
@@ -180,8 +217,8 @@ public class ResStringBlock extends ResChunk {
         if (styles != null) {
             byteBuffer.put(styles);
         }
-        if (chunkPaddingSize > 0) {
-            byteBuffer.put(new byte[chunkPaddingSize]);
+        if (chunkPadding > 0) {
+            byteBuffer.put(new byte[chunkPadding]);
         }
         byteBuffer.flip();
         return byteBuffer.array();
