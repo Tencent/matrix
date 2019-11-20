@@ -474,7 +474,7 @@ public class RemoveUnusedResourcesTask extends DefaultTask {
                             Log.w(TAG, "parse entry %s resource name failed!", zipEntry.name)
                         }
                     } else {
-                        if (!zipEntry.name.startsWith("META-INF/") && !zipEntry.name.equals(ARSC_FILE_NAME)) {
+                        if ( (!zipEntry.name.startsWith("META-INF/") || (!zipEntry.name.endsWith(".SF") &&  !zipEntry.name.endsWith(".MF") && !zipEntry.name.endsWith(".RSA"))) && !zipEntry.name.equals(ARSC_FILE_NAME)) {
                             if (zipEntry.getMethod() == ZipEntry.DEFLATED) {
                                 compressedEntry.add(destFile)
                             }
