@@ -274,6 +274,26 @@ void kscrash_setPointThreadCallback(const KSReportWritePointThreadCallback onWri
     kscrashreport_setPointThreadWriteCallback(onWritePointThread);
 }
 
+void kscrash_setPointThreadRepeatNumberCallback(const KSReportWritePointThreadRepeatNumberCallback onWritePointThreadRepeatNumber)
+{
+    kscrashreport_setPointThreadRepeatNumberWriteCallback(onWritePointThreadRepeatNumber);
+}
+
+void kscrash_setPointCpuHighThreadCallback(const KSReportWritePointCpuHighThreadCallback onWritePointCpuHighThread)
+{
+    kscrashreport_setPointCpuHighThreadWriteCallback(onWritePointCpuHighThread);
+}
+
+void kscrash_setPointCpuHighThreadCountCallback(const KSReportWritePointCpuHighThreadCountCallback onWritePointCpuHighThreadCount)
+{
+    kscrashreport_setPointCpuHighThreadCountWriteCallback(onWritePointCpuHighThreadCount);
+}
+
+void kscrash_setPointCpuHighThreadValueCallback(const KSReportWritePointCpuHighThreadValueCallback onWritePointCpuHighThreadValue)
+{
+    kscrashreport_setPointCpuHighThreadValueWriteCallback(onWritePointCpuHighThreadValue);
+}
+
 void kscrash_setHandleSignalCallback(const KSCrashSentryHandleSignal onHandleSignal)
 {
     kscm_setHandleSignal(onHandleSignal);

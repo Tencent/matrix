@@ -53,8 +53,6 @@ configurations {
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
     implementation group: "com.tencent.matrix", name: "matrix-commons", version: MATRIX_VERSION, changing: true
-    implementation group: "com.tencent.matrix", name: "matrix-thread-canary", version: MATRIX_VERSION, changing: true
-    implementation group: "com.tencent.matrix", name: "matrix-battery-canary", version: MATRIX_VERSION, changing: true
     implementation group: "com.tencent.matrix", name: "matrix-android-lib", version: MATRIX_VERSION, changing: true
     implementation group: "com.tencent.matrix", name: "matrix-android-commons", version: MATRIX_VERSION, changing: true
     implementation group: "com.tencent.matrix", name: "matrix-trace-canary", version: MATRIX_VERSION, changing: true

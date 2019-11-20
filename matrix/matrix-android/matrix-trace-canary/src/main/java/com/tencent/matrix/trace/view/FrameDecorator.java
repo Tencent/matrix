@@ -29,6 +29,8 @@ import com.tencent.matrix.trace.tracer.FrameTracer;
 import com.tencent.matrix.util.MatrixHandlerThread;
 import com.tencent.matrix.util.MatrixLog;
 
+import java.util.concurrent.Executor;
+
 public class FrameDecorator extends IDoFrameListener implements IAppForeground {
     private static final String TAG = "Matrix.FrameDecorator";
     private WindowManager windowManager;
@@ -147,13 +149,12 @@ public class FrameDecorator extends IDoFrameListener implements IAppForeground {
     }
 
 
-    long sumFrameCost;
-    long[] lastCost = new long[1];
-    long sumFrames;
-    long[] lastFrames = new long[1];
+    private long sumFrameCost;
+    private long[] lastCost = new long[1];
+    private long sumFrames;
+    private long[] lastFrames = new long[1];
 
-
-    Runnable updateDefaultRunnable = new Runnable() {
+    private Runnable updateDefaultRunnable = new Runnable() {
         @Override
         public void run() {
             view.fpsView.setText("60.00 FPS");
@@ -162,8 +163,8 @@ public class FrameDecorator extends IDoFrameListener implements IAppForeground {
     };
 
     @Override
-    public void doFrameAsync(String focusedActivityName, long frameCost, int droppedFrames) {
-        super.doFrameAsync(focusedActivityName, frameCost, droppedFrames);
+    public void doFrameAsync(String visibleScene, long taskCost, long frameCostMs, int droppedFrames, boolean isContainsFrame) {
+        super.doFrameAsync(visibleScene, taskCost, frameCostMs, droppedFrames, isContainsFrame);
         sumFrameCost += (droppedFrames + 1) * UIThreadMonitor.getMonitor().getFrameIntervalNanos() / Constants.TIME_MILLIS_TO_NANO;
         sumFrames += 1;
         long duration = sumFrameCost - lastCost[0];
@@ -197,7 +198,18 @@ public class FrameDecorator extends IDoFrameListener implements IAppForeground {
     }
 
     @Override
-    public Handler getHandler() {
+    public Executor getExecutor() {
+        return executor;
+    }
+
+    private Executor executor = new Executor() {
+        @Override
+        public void execute(Runnable command) {
+            getHandler().post(command);
+        }
+    };
+
+    private Handler getHandler() {
         if (handler == null || !handler.getLooper().getThread().isAlive()) {
             handler = new Handler(MatrixHandlerThread.getDefaultHandlerThread().getLooper());
         }

@@ -28,4 +28,6 @@
 
 + (void)autoCleanDiretory:(NSString *)folderPath withTimeout:(NSTimeInterval)timeoutSecond;
 
++ (void)setMatrixCacheRootPath:(NSString *)path;
+
 @end

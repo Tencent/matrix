@@ -113,7 +113,7 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
         });
         this.isInit = true;
         MatrixLog.i(TAG, "[UIThreadMonitor] %s %s %s %s %s frameIntervalNanos:%s", callbackQueueLock == null, callbackQueues == null, addInputQueue == null, addTraversalQueue == null, addAnimationQueue == null, frameIntervalNanos);
-        
+
         if (config.isDevEnv()) {
             addObserver(new LooperObserver() {
                 @Override
@@ -121,7 +121,7 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
                     MatrixLog.i(TAG, "activityName[%s] frame cost:%sms [%s|%s|%s]ns", focusedActivityName, frameCostMs, inputCost, animationCost, traversalCost);
                 }
             });
-        }        
+        }
     }
 
     private synchronized void addFrameCallback(int type, Runnable callback, boolean isAddHeader) {
@@ -242,24 +242,26 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
         }
         queueStatus = new int[CALLBACK_LAST + 1];
 
-        long start = token;
-        long end = SystemClock.uptimeMillis();
-        synchronized (observers) {
-            for (LooperObserver observer : observers) {
-                if (observer.isDispatchBegin()) {
-                    observer.doFrame(AppMethodBeat.getVisibleScene(), start, end, end - start, queueCost[CALLBACK_INPUT], queueCost[CALLBACK_ANIMATION], queueCost[CALLBACK_TRAVERSAL]);
-                }
-            }
-        }
-
         addFrameCallback(CALLBACK_INPUT, this, true);
 
         this.isBelongFrame = false;
     }
 
     private void dispatchEnd() {
+
         if (isBelongFrame) {
             doFrameEnd(token);
+        }
+
+        long start = token;
+        long end = SystemClock.uptimeMillis();
+
+        synchronized (observers) {
+            for (LooperObserver observer : observers) {
+                if (observer.isDispatchBegin()) {
+                    observer.doFrame(AppMethodBeat.getVisibleScene(), token, SystemClock.uptimeMillis(), isBelongFrame ? end - start : 0, queueCost[CALLBACK_INPUT], queueCost[CALLBACK_ANIMATION], queueCost[CALLBACK_TRAVERSAL]);
+                }
+            }
         }
 
         dispatchTimeMs[3] = SystemClock.currentThreadTimeMillis();

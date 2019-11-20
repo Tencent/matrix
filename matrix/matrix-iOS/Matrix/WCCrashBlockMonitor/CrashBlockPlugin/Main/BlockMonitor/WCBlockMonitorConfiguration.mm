@@ -46,6 +46,7 @@
     configuration.limitCPUPercent = g_defaultCPUUsagePercent;
     configuration.bPrintCPUUsage = NO;
     configuration.bGetCPUHighLog = NO;
+    
     configuration.bGetPowerConsumeStack = NO;
     configuration.powerConsumeStackCPULimit = g_defaultPowerConsumeCPULimit;
     configuration.bFilterSameStack = NO;

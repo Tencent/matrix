@@ -46,8 +46,7 @@ public class AnrTracer extends Tracer {
         super.onAlive();
         if (isAnrTraceEnable) {
             UIThreadMonitor.getMonitor().addObserver(this);
-            HandlerThread thread = MatrixHandlerThread.getNewHandlerThread("Matrix#AnrTracer");
-            this.anrHandler = new Handler(thread.getLooper());
+            this.anrHandler = new Handler(MatrixHandlerThread.getDefaultHandler().getLooper());
         }
     }
 

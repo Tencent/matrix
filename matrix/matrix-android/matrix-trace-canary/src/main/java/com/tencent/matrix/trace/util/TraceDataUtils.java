@@ -189,14 +189,14 @@ public class TraceDataUtils {
             if (lastNode == null || depth == 0) {
                 root.add(node);
             } else if (lastNode.depth() >= depth) {
-                while (lastNode.depth() > depth) {
+                while (null != lastNode && lastNode.depth() > depth) {
                     lastNode = lastNode.father;
                 }
-                if (lastNode.father != null) {
+                if (lastNode != null && lastNode.father != null) {
                     node.father = lastNode.father;
                     lastNode.father.add(node);
                 }
-            } else if (lastNode.depth() < depth) {
+            } else {
                 lastNode.add(node);
             }
             lastNode = node;
