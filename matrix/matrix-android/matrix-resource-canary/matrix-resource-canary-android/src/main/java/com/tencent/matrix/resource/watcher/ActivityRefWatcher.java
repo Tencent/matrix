@@ -24,6 +24,7 @@ import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
+import android.os.Bundle;
 import android.os.Debug;
 import android.os.HandlerThread;
 import android.support.v4.app.NotificationCompat;
@@ -159,6 +160,12 @@ public class ActivityRefWatcher extends FilePublisher implements Watcher, IAppFo
     }
 
     private final Application.ActivityLifecycleCallbacks mRemovedActivityMonitor = new ActivityLifeCycleCallbacksAdapter() {
+
+        @Override
+        public void onActivityCreated(Activity activity, Bundle savedInstanceState) {
+            mCurrentCreatedActivityCount.incrementAndGet();
+        }
+
         @Override
         public void onActivityDestroyed(Activity activity) {
             pushDestroyedActivityInfo(activity);
