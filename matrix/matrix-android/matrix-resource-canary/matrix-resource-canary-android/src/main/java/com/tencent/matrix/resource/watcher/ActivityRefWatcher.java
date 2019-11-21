@@ -24,7 +24,6 @@ import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
-import android.os.Bundle;
 import android.os.Debug;
 import android.os.HandlerThread;
 import android.support.v4.app.NotificationCompat;
@@ -52,7 +51,6 @@ import java.lang.ref.WeakReference;
 import java.util.Iterator;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.atomic.AtomicLong;
 
 import static android.app.NotificationManager.IMPORTANCE_DEFAULT;
 import static android.os.Build.VERSION.SDK_INT;
@@ -66,7 +64,7 @@ import static android.os.Build.VERSION.SDK_INT;
 public class ActivityRefWatcher extends FilePublisher implements Watcher, IAppForeground {
     private static final String TAG = "Matrix.ActivityRefWatcher";
 
-    private static final int  CREATED_ACTIVITY_COUNT_THRESHOLD = 2;
+    private static final int  CREATED_ACTIVITY_COUNT_THRESHOLD = 1;
     private static final long FILE_CONFIG_EXPIRED_TIME         = 24 * 60 * 60 * 1000;
 
     private static final String ACTIVITY_REFKEY_PREFIX = "MATRIX_RESCANARY_REFKEY_";
@@ -83,7 +81,6 @@ public class ActivityRefWatcher extends FilePublisher implements Watcher, IAppFo
     private final ResourceConfig.DumpMode mDumpHprofMode;
 
     private final ConcurrentLinkedQueue<DestroyedActivityInfo> mDestroyedActivityInfos;
-    private final AtomicLong                                   mCurrentCreatedActivityCount;
     private IActivityLeakCallback activityLeakCallback = null;
     private Intent mContentIntent;
     private final static int NOTIFICATION_ID = 0x110;
@@ -143,7 +140,6 @@ public class ActivityRefWatcher extends FilePublisher implements Watcher, IAppFo
         mHeapDumper = componentFactory.createHeapDumper(context, mDumpStorageManager);
         mHeapDumpHandler = componentFactory.createHeapDumpHandler(context, config);
         mDestroyedActivityInfos = new ConcurrentLinkedQueue<>();
-        mCurrentCreatedActivityCount = new AtomicLong(0);
     }
 
     @Override
@@ -160,11 +156,6 @@ public class ActivityRefWatcher extends FilePublisher implements Watcher, IAppFo
     }
 
     private final Application.ActivityLifecycleCallbacks mRemovedActivityMonitor = new ActivityLifeCycleCallbacksAdapter() {
-
-        @Override
-        public void onActivityCreated(Activity activity, Bundle savedInstanceState) {
-            mCurrentCreatedActivityCount.incrementAndGet();
-        }
 
         @Override
         public void onActivityDestroyed(Activity activity) {
@@ -224,7 +215,7 @@ public class ActivityRefWatcher extends FilePublisher implements Watcher, IAppFo
             .append('_').append(Long.toHexString(uuid.getMostSignificantBits())).append(Long.toHexString(uuid.getLeastSignificantBits()));
         final String key = keyBuilder.toString();
         final DestroyedActivityInfo destroyedActivityInfo
-            = new DestroyedActivityInfo(key, activity, activityName, mCurrentCreatedActivityCount.get());
+            = new DestroyedActivityInfo(key, activity, activityName);
         mDestroyedActivityInfos.add(destroyedActivityInfo);
     }
 
@@ -235,7 +226,6 @@ public class ActivityRefWatcher extends FilePublisher implements Watcher, IAppFo
     private void unscheduleDetectProcedure() {
         mDetectExecutor.clearTasks();
         mDestroyedActivityInfos.clear();
-        mCurrentCreatedActivityCount.set(0);
     }
 
     private final RetryableTask mScanDestroyedActivitiesTask = new RetryableTask() {
@@ -280,14 +270,13 @@ public class ActivityRefWatcher extends FilePublisher implements Watcher, IAppFo
 
                 ++destroyedActivityInfo.mDetectedCount;
 
-                long createdActivityCountFromDestroy = mCurrentCreatedActivityCount.get() - destroyedActivityInfo.mLastCreatedActivityCount;
                 if (destroyedActivityInfo.mDetectedCount < mMaxRedetectTimes
-                    || (createdActivityCountFromDestroy < CREATED_ACTIVITY_COUNT_THRESHOLD && !mResourcePlugin.getConfig().getDetectDebugger())) {
+                    || !mResourcePlugin.getConfig().getDetectDebugger()) {
                     // Although the sentinel tell us the activity should have been recycled,
                     // system may still ignore it, so try again until we reach max retry times.
                     MatrixLog.i(TAG, "activity with key [%s] should be recycled but actually still \n"
-                            + "exists in %s times detection with %s created activities during destroy, wait for next detection to confirm.",
-                        destroyedActivityInfo.mKey, destroyedActivityInfo.mDetectedCount, createdActivityCountFromDestroy);
+                            + "exists in %s times, wait for next detection to confirm.",
+                        destroyedActivityInfo.mKey, destroyedActivityInfo.mDetectedCount);
                     continue;
                 }
 
