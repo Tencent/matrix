@@ -35,13 +35,11 @@ public class DestroyedActivityInfo {
     public final String mActivityName;
 
     public final WeakReference<Activity> mActivityRef;
-    public final long mLastCreatedActivityCount;
     public int mDetectedCount = 0;
 
-    public DestroyedActivityInfo(String key, Activity activity, String activityName, long lastCreatedActivityCount) {
+    public DestroyedActivityInfo(String key, Activity activity, String activityName) {
         mKey = key;
         mActivityName = activityName;
         mActivityRef = new WeakReference<>(activity);
-        mLastCreatedActivityCount = lastCreatedActivityCount;
     }
 }
