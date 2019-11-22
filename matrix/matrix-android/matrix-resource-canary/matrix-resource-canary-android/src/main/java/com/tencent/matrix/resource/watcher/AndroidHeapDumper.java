@@ -91,7 +91,7 @@ public class AndroidHeapDumper {
             Debug.dumpHprofData(hprofFile.getAbsolutePath());
             cancelToast(waitingForToast.get());
             return hprofFile;
-        } catch (IOException e) {
+        } catch (Exception e) {
             MatrixLog.printErrStackTrace(TAG, e, "failed to dump heap into file: %s.", hprofFile.getAbsolutePath());
             return null;
         }
