@@ -11,10 +11,13 @@ dependencies {
     compile project(':matrix-commons')
 }
 
-
-//apply from: rootProject.file('gradle/java-publish.gradle')
-//for uploading to WeChat maven serve
-apply from: rootProject.file('gradle/WeChatPublish.gradle')
-wechatPublish {
-    artifactId=POM_ARTIFACT_ID
+if("External" == rootProject.ext.PUBLISH_CHANNEL) {
+    apply from: rootProject.file('gradle/java-publish.gradle')
+}
+else {
+    //uploading to WeChat maven repo
+    apply from: rootProject.file('gradle/WeChatPublish.gradle')
+    wechatPublish {
+        artifactId = POM_ARTIFACT_ID
+    }
 }

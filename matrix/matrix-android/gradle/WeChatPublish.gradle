@@ -536,3 +536,5 @@ class WeChatAndroidLibraryPublishExtension extends WeChatPublishExtension {
         }
     }
 }
+
+apply from: rootProject.file('gradle/check.gradle')

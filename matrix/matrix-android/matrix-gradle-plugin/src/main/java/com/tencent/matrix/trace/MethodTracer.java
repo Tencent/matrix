@@ -357,9 +357,9 @@ public class MethodTracer {
 
     private boolean isActivityOrSubClass(String className, ConcurrentHashMap<String, String> mCollectedClassExtendMap) {
         className = className.replace(".", "/");
-        boolean isActivity = className.equals(TraceBuildConstants.MATRIX_TRACE_ACTIVITY_CLASS) ||
-                className.equals(TraceBuildConstants.MATRIX_TRACE_V4_ACTIVITY_CLASS) ||
-                className.equals(TraceBuildConstants.MATRIX_TRACE_V7_ACTIVITY_CLASS);
+        boolean isActivity = className.equals(TraceBuildConstants.MATRIX_TRACE_ACTIVITY_CLASS)
+                || className.equals(TraceBuildConstants.MATRIX_TRACE_V4_ACTIVITY_CLASS)
+                || className.equals(TraceBuildConstants.MATRIX_TRACE_V7_ACTIVITY_CLASS);
         if (isActivity) {
             return true;
         } else {
