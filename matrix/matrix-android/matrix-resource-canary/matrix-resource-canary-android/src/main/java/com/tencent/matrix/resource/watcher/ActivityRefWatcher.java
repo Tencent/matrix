@@ -308,7 +308,6 @@ public class ActivityRefWatcher extends FilePublisher implements Watcher, IAppFo
                         infoIt.remove();
                     }
                 } else if (mDumpHprofMode == ResourceConfig.DumpMode.MANUAL_DUMP) {
-                    markPublished(destroyedActivityInfo.mActivityName);
                     NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
                     String dumpingHeapContent = context.getString(R.string.resource_canary_leak_tip);
                     String dumpingHeapTitle = destroyedActivityInfo.mActivityName;
@@ -322,6 +321,9 @@ public class ActivityRefWatcher extends FilePublisher implements Watcher, IAppFo
                             .setContentText(dumpingHeapContent);
                     Notification notification = buildNotification(context, builder);
                     notificationManager.notify(NOTIFICATION_ID, notification);
+
+                    infoIt.remove();
+                    markPublished(destroyedActivityInfo.mActivityName);
                     MatrixLog.i(TAG, "show notification for notify activity leak. %s", destroyedActivityInfo.mActivityName);
                 } else {
                     // Lightweight mode, just report leaked activity name.
