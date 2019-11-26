@@ -1,4 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="dark_text">#999999</color>
+    <color name="best_color">#0eb83a</color>
+    <color name="normal_color">#FFee00</color>
+    <color name="middle_color">#ff8936</color>
+    <color name="high_color">#ff2121</color>
+    <color name="frozen_color">#99FFFF</color>
 </resources>
