@@ -42,22 +42,21 @@ public class ArscConstants {
     public static final int RES_VALUE_DATA_TYPE_FRACTION = 0x06; //The 'data' holds a complex number encoding a fraction of a container.
     public static final int RES_VALUE_DATA_TYPE_DYNAMIC_REFERENCE = 0x07; //The 'data' holds a dynamic ResTable_ref, which needs to be resolved before it can be used like a TYPE_REFERENCE.
     public static final int RES_VALUE_DATA_TYPE_DYNAMIC_ATTRIBUTE = 0x08; // The 'data' holds an attribute resource identifier, which needs to be resolved before it can be used like a TYPE_ATTRIBUTE.
-   
+
     public static final int RES_VALUE_DATA_TYPE_FIRST_INT = 0x10;
-    
+
     public static final int RES_VALUE_DATA_TYPE_INT_DEC = 0x10; //The 'data' is a raw integer value of the form n..n.
     public static final int RES_VALUE_DATA_TYPE_INT_HEX = 0x11; // The 'data' is a raw integer value of the form 0xn..n.
     public static final int RES_VALUE_DATA_TYPE_INT_BOOLEAN = 0x12; // The 'data' is either 0 or 1, for input "false" or "true" respectively.
 
     public static final int RES_VALUE_DATA_TYPE_FIRST_COLOR_INT = 0x1c;
-    
+
     public static final int RES_VALUE_DATA_TYPE_INT_COLOR_ARGB8 = 0x1c; // The 'data' is a raw integer value of the form #aarrggbb.
     public static final int RES_VALUE_DATA_TYPE_INT_COLOR_RGB8 = 0x1d; // The 'data' is a raw integer value of the form #rrggbb.
     public static final int RES_VALUE_DATA_TYPE_INT_COLOR_ARGB4 = 0x1e; //The 'data' is a raw integer value of the form #argb.
     public static final int RES_VALUE_DATA_TYPE_INT_COLOR_RGB4 = 0x1f;     // The 'data' is a raw integer value of the form #rgb.
 
     public static final int RES_VALUE_DATA_TYPE_LAST_COLOR_INT = 0x1f;
-    
+
     public static final int RES_VALUE_DATA_TYPE_LAST_INT = 0x1f;
-            
 }

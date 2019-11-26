@@ -99,17 +99,11 @@ public class MatrixApplication extends Application {
         if (matrixEnable) {
 
             //resource
-            Intent intent = new Intent();
-            ResourceConfig.DumpMode mode = ResourceConfig.DumpMode.AUTO_DUMP;
-            MatrixLog.i(TAG, "Dump Activity Leak Mode=%s", mode);
-            intent.setClassName(this.getPackageName(), "com.tencent.mm.ui.matrix.ManualDumpActivity");
-            ResourceConfig resourceConfig = new ResourceConfig.Builder()
+            builder.plugin(new ResourcePlugin(new ResourceConfig.Builder()
                     .dynamicConfig(dynamicConfig)
-                    .setAutoDumpHprofMode(mode)
-//                .setDetectDebuger(true) //matrix test code
-                    .setNotificationContentIntent(intent)
-                    .build();
-            builder.plugin(new ResourcePlugin(resourceConfig));
+                    .setAutoDumpHprofMode(ResourceConfig.DumpMode.MANUAL_DUMP)
+                    .setDetectDebuger(true)     //only set true when in sample, not in your app
+                    .build()));
             ResourcePlugin.activityLeakFixer(this);
 
             //io
@@ -139,16 +133,11 @@ public class MatrixApplication extends Application {
                     MatrixHandlerThread.getDefaultHandler().postDelayed(this, 200);
                 }
             }, 2000);
-
             // prevent api 19 UnsatisfiedLinkError
             //sqlite
-            SQLiteLintConfig sqlLiteConfig;
-            try {
-                sqlLiteConfig = new SQLiteLintConfig(SQLiteLint.SqlExecutionCallbackMode.CUSTOM_NOTIFY);
-            } catch (Throwable t) {
-                sqlLiteConfig = new SQLiteLintConfig(SQLiteLint.SqlExecutionCallbackMode.CUSTOM_NOTIFY);
-            }
-            builder.plugin(new SQLiteLintPlugin(sqlLiteConfig));
+            SQLiteLintConfig config = initSQLiteLintConfig();
+            SQLiteLintPlugin sqLiteLintPlugin = new SQLiteLintPlugin(config);
+            builder.plugin(sqLiteLintPlugin);
         }
 
         Matrix.init(builder.build());

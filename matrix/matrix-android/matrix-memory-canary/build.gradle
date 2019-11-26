@@ -3,7 +3,8 @@ apply plugin: 'com.android.library'
 android {
     compileSdkVersion rootProject.ext.compileSdkVersion
     buildToolsVersion rootProject.ext.buildToolsVersion
-//    publishNonDefault true
+
+
     defaultConfig {
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
@@ -13,20 +14,19 @@ android {
     buildTypes {
         release {
             minifyEnabled false
-            consumerProguardFiles 'proguard-rules.pro'
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
 }
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
-    implementation 'com.android.support:appcompat-v7:23.0.0'
-    androidTestImplementation 'com.android.support:support-annotations:27.0.2'
-    androidTestImplementation 'com.android.support.test:runner:1.0.1'
+    //implementation 'com.android.support:appcompat-v7:23.0.0'
+    //testImplementation 'junit:junit:4.12'
+    //androidTestImplementation 'com.android.support:support-annotations:27.0.2'
+    //androidTestImplementation 'com.android.support.test:runner:1.0.1'
 
-    testImplementation 'junit:junit:4.12'
     implementation project(':matrix-android-lib')
-    implementation project(path: ':matrix-trace-canary')
 }
 
 version = rootProject.ext.VERSION_NAME
