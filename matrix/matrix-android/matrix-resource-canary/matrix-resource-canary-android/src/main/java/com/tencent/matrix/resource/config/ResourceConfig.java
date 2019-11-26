@@ -35,7 +35,7 @@ public final class ResourceConfig {
 
     private static final long DEFAULT_DETECT_INTERVAL_MILLIS = TimeUnit.MINUTES.toMillis(1);
     private static final long DEFAULT_DETECT_INTERVAL_MILLIS_BG = TimeUnit.MINUTES.toMillis(20);
-    private static final int DEFAULT_MAX_REDETECT_TIMES = 3;
+    private static final int DEFAULT_MAX_REDETECT_TIMES = 10;
     private static final DumpMode DEFAULT_DUMP_HPROF_MODE = DumpMode.MANUAL_DUMP;
 
     private final IDynamicConfig mDynamicConfig;

@@ -30,7 +30,6 @@ import com.tencent.matrix.resource.analyzer.model.HeapDump;
 import com.tencent.matrix.util.MatrixLog;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -91,7 +90,7 @@ public class AndroidHeapDumper {
             Debug.dumpHprofData(hprofFile.getAbsolutePath());
             cancelToast(waitingForToast.get());
             return hprofFile;
-        } catch (IOException e) {
+        } catch (Exception e) {
             MatrixLog.printErrStackTrace(TAG, e, "failed to dump heap into file: %s.", hprofFile.getAbsolutePath());
             return null;
         }
