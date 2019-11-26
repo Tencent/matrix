@@ -1,7 +1,6 @@
 package com.tencent.matrix.trace.tracer;
 
 import android.os.Handler;
-import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.Process;
 import android.os.SystemClock;
@@ -170,8 +169,8 @@ public class AnrTracer extends Tracer {
                             stackKey, dumpStack, inputCost, animationCost, traversalCost, stackCost), token, curTime); // for logcat
 
             if (stackCost >= Constants.DEFAULT_ANR_INVALID) {
-                MatrixLog.w(TAG, "The checked anr task was not executed on time. " +
-                        "The possible reason is that the current process has a low priority. just pass this report");
+                MatrixLog.w(TAG, "The checked anr task was not executed on time. "
+                        + "The possible reason is that the current process has a low priority. just pass this report");
                 return;
             }
             // report

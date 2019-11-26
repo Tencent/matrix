@@ -30,7 +30,6 @@ import com.tencent.matrix.resource.analyzer.model.HeapDump;
 import com.tencent.matrix.util.MatrixLog;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
 /**
