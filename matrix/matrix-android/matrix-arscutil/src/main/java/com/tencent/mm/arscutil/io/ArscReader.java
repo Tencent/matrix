@@ -257,7 +257,7 @@ public class ArscReader {
     }
 
     private ResValue readResValue() throws IOException {
-    	Log.d(TAG,"============ResValue===============");
+        Log.d(TAG, "============ResValue===============");
         ResValue resValue = new ResValue();
         resValue.setSize(dataInput.readShort());
         //Log.d(TAG, "resValue size %d", resValue.getSize());
@@ -266,13 +266,13 @@ public class ArscReader {
         Log.d(TAG, "resValue data type %d", resValue.getDataType());
         resValue.setData(dataInput.readInt());
         //Log.d(TAG, "resValue data %d", resValue.getData());
-              
+
         if (resValue.getDataType() == ArscConstants.RES_VALUE_DATA_TYPE_STRING) {
         	Log.d(TAG,  "resValue string %s", ArscUtil.resolveStringPoolEntry(globalResTable.getGlobalStringPool().getStrings().get(resValue.getData()).array(), globalResTable.getGlobalStringPool().getCharSet()));
         } else {
         	Log.d(TAG, "resValue %s", resValue.printData());
         }
-       
+
         return resValue;
     }
 

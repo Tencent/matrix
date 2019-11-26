@@ -79,7 +79,7 @@ public abstract class ResChunk {
     public void setChunkPadding(int chunkPadding) {
         this.chunkPadding = chunkPadding;
     }
-    
+
     public abstract byte[] toBytes();
 
 }

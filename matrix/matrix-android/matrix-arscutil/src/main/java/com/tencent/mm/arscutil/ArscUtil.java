@@ -16,6 +16,15 @@
 
 package com.tencent.mm.arscutil;
 
+import com.tencent.matrix.javalib.util.Log;
+import com.tencent.mm.arscutil.data.ArscConstants;
+import com.tencent.mm.arscutil.data.ResChunk;
+import com.tencent.mm.arscutil.data.ResEntry;
+import com.tencent.mm.arscutil.data.ResPackage;
+import com.tencent.mm.arscutil.data.ResStringBlock;
+import com.tencent.mm.arscutil.data.ResTable;
+import com.tencent.mm.arscutil.data.ResType;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -28,15 +37,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
-import com.tencent.matrix.javalib.util.Log;
-import com.tencent.mm.arscutil.data.ArscConstants;
-import com.tencent.mm.arscutil.data.ResChunk;
-import com.tencent.mm.arscutil.data.ResEntry;
-import com.tencent.mm.arscutil.data.ResPackage;
-import com.tencent.mm.arscutil.data.ResStringBlock;
-import com.tencent.mm.arscutil.data.ResTable;
-import com.tencent.mm.arscutil.data.ResType;
 
 /**
  * Created by jinqiuchen on 18/7/29.
@@ -82,7 +82,7 @@ public class ArscUtil {
             resultBuf = ByteBuffer.allocate(content.length + 2 + 1);
             resultBuf.order(ByteOrder.LITTLE_ENDIAN);
             if (len > 0xFF) {
-                resultBuf.put( (byte) (((len & 0x7F00) >> 8) | 0x80));
+                resultBuf.put((byte) (((len & 0x7F00) >> 8) | 0x80));
                 resultBuf.put((byte) (len & 0xFF));
             } else {
                 resultBuf.put((byte) (len & 0xFF));
@@ -165,7 +165,7 @@ public class ArscUtil {
     }
 
     public static void removeResource(ResTable resTable, int resourceId, String resourceName) throws IOException {
-    	Log.i(TAG, "try to remove %s (%H)", resourceName, resourceId);
+        Log.i(TAG, "try to remove %s (%H)", resourceName, resourceId);
         ResPackage resPackage = findResPackage(resTable, getPackageId(resourceId));
         if (resPackage != null) {
             List<ResType> resTypeList = findResType(resPackage, resourceId);
@@ -180,9 +180,9 @@ public class ArscUtil {
             resTable.refresh();
         }
     }
-    
+
     public static boolean replaceFileResource(ResTable resTable, int sourceResId, String sourceFile, int targetResId, String targetFile) throws IOException {
-    	int sourcePkgId = getPackageId(sourceResId);
+        int sourcePkgId = getPackageId(sourceResId);
     	int targetPkgId = getPackageId(targetResId);
     	Log.i(TAG, "try to replace %H(%s) with %H(%s)", sourceResId, sourceFile, targetResId, targetFile);
     	if (sourcePkgId == targetPkgId) {
@@ -241,7 +241,7 @@ public class ArscUtil {
     	}
     	return false;
     }
-    
+
     public static void replaceResEntryName(ResTable resTable, Map<Integer, String> resIdProguard) {
         Set<ResPackage> updatePackages = new HashSet<>();
         for (int resId : resIdProguard.keySet()) {
@@ -307,7 +307,7 @@ public class ArscUtil {
         }
         resTable.refresh();
     }
-    
+
     public static boolean replaceResFileName(ResTable resTable, int resId, String srcFileName, String targetFileName) {
     	Log.i(TAG, "try to replace resource (%H) file %s with %s", resId, srcFileName, targetFileName);
     	ResPackage resPackage = findResPackage(resTable, getPackageId(resId));

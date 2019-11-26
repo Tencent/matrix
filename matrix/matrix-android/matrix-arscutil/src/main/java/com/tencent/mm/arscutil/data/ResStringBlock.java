@@ -143,7 +143,7 @@ public class ResStringBlock extends ResChunk {
         }
 
         //need sort string pool
-        if ( (flag & ArscConstants.RES_STRING_POOL_SORTED_FLAG) != 0 && stringIndexMap != null) {
+        if ((flag & ArscConstants.RES_STRING_POOL_SORTED_FLAG) != 0 && stringIndexMap != null) {
             List<String> strList = new LinkedList(stringIndexMap.keySet());
             Collections.sort(strList);
             List<ByteBuffer> sortedStrings = new ArrayList<>();
