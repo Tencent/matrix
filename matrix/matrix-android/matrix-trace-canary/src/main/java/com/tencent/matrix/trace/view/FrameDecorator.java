@@ -216,7 +216,7 @@ public class FrameDecorator extends IDoFrameListener implements IAppForeground {
             lastCost[0] = sumFrameCost;
             lastFrames[0] = sumFrames;
             mainHandler.removeCallbacks(updateDefaultRunnable);
-            mainHandler.postDelayed(updateDefaultRunnable, 130);
+            mainHandler.postDelayed(updateDefaultRunnable, 60);
         }
     }
 
@@ -374,16 +374,12 @@ public class FrameDecorator extends IDoFrameListener implements IAppForeground {
 
     private int getColor(int fps) {
         int color;
-        if (fps >= 60 - Constants.DEFAULT_DROPPED_NORMAL) {
+        if (fps > 56) {
             color = bestColor;
-        } else if (fps >= 60 - Constants.DEFAULT_DROPPED_MIDDLE) {
-            color = normalColor;
-        } else if (fps >= 60 - Constants.DEFAULT_DROPPED_HIGH) {
+        } else if (fps > 40) {
             color = middleColor;
-        } else if (fps >= 60 - Constants.DEFAULT_DROPPED_FROZEN) {
-            color = highColor;
         } else {
-            color = frozenColor;
+            color = highColor;
         }
         return color;
     }

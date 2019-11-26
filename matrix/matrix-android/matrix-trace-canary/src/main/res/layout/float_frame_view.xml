@@ -35,7 +35,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="3dp"
-        android:layout_marginBottom="3dp"
+        android:layout_marginBottom="2dp"
         android:orientation="vertical">
 
         <TextView
@@ -75,7 +75,7 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="4dp"
+        android:layout_marginBottom="2dp"
         android:orientation="horizontal"
         android:weightSum="5">
 
@@ -86,6 +86,7 @@
             android:layout_weight="1"
             android:background="@color/best_color"
             android:gravity="center"
+            android:maxHeight="20dp"
             android:text="0"
             android:textColor="@android:color/white"
             android:textSize="8dp" />
@@ -97,6 +98,7 @@
             android:layout_weight="1"
             android:background="@color/normal_color"
             android:gravity="center"
+            android:maxHeight="20dp"
             android:text="0"
             android:textColor="@android:color/white"
             android:textSize="8dp" />
@@ -108,6 +110,7 @@
             android:layout_weight="1"
             android:background="@color/middle_color"
             android:gravity="center"
+            android:maxHeight="20dp"
             android:text="0"
             android:textColor="@android:color/white"
             android:textSize="8dp" />
@@ -119,6 +122,7 @@
             android:layout_weight="1"
             android:background="@color/high_color"
             android:gravity="center"
+            android:maxHeight="20dp"
             android:text="0"
             android:textColor="@android:color/white"
             android:textSize="8dp" />
@@ -130,6 +134,7 @@
             android:layout_weight="1"
             android:background="@color/frozen_color"
             android:gravity="center"
+            android:maxHeight="20dp"
             android:text="0"
             android:textColor="@android:color/white"
             android:textSize="8dp" />
@@ -139,7 +144,6 @@
         android:id="@+id/chart"
         class="com.tencent.matrix.trace.view.FloatFrameView$LineChartView"
         android:layout_width="match_parent"
-        android:layout_height="130dp"
-        android:layout_marginStart="2dp" />
+        android:layout_height="130dp" />
 
 </LinearLayout>

@@ -129,7 +129,7 @@ public class FloatFrameView extends LinearLayout {
                 linePadding = lineStrokeWidth * 2;
 
                 float rate = lineContentWidth / 60;
-                topTip[0] = Constants.DEFAULT_DROPPED_MIDDLE * rate + padding;
+                topTip[0] = 20 * rate + padding;
                 topTip[1] = lineContentHeight;
                 topPath.moveTo(topTip[0], lineContentHeight);
                 topPath.lineTo(topTip[0], 0);
@@ -175,7 +175,7 @@ public class FloatFrameView extends LinearLayout {
                 }
             }
             tipPaint.setColor(grayColor);
-            levelLinePaint.setColor(normalColor);
+            levelLinePaint.setColor(middleColor);
             canvas.drawPath(topPath, levelLinePaint);
 //            canvas.drawText(String.format("%d FPS", (60 - Constants.DEFAULT_DROPPED_MIDDLE)), topTip[0] - textSize / 2, topTip[1], tipPaint);
 
@@ -213,16 +213,12 @@ public class FloatFrameView extends LinearLayout {
 
         private int getColor(int fps) {
             int color;
-            if (fps >= 60 - Constants.DEFAULT_DROPPED_NORMAL) {
+            if (fps > 56) {
                 color = bestColor;
-            } else if (fps >= 60 - Constants.DEFAULT_DROPPED_MIDDLE) {
-                color = normalColor;
-            } else if (fps >= 60 - Constants.DEFAULT_DROPPED_HIGH) {
+            } else if (fps > 40) {
                 color = middleColor;
-            } else if (fps >= 60 - Constants.DEFAULT_DROPPED_FROZEN) {
-                color = highColor;
             } else {
-                color = frozenColor;
+                color = highColor;
             }
             return color;
         }
