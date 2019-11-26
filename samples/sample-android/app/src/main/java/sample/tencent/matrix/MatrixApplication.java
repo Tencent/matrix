@@ -18,14 +18,13 @@ package sample.tencent.matrix;
 
 import android.app.Application;
 import android.content.Context;
+import android.content.Intent;
 
 import com.tencent.matrix.Matrix;
 import com.tencent.matrix.iocanary.IOCanaryPlugin;
 import com.tencent.matrix.iocanary.config.IOConfig;
 import com.tencent.matrix.resource.ResourcePlugin;
 import com.tencent.matrix.resource.config.ResourceConfig;
-import com.tencent.matrix.threadcanary.ThreadConfig;
-import com.tencent.matrix.threadcanary.ThreadWatcher;
 import com.tencent.matrix.trace.TracePlugin;
 import com.tencent.matrix.trace.config.TraceConfig;
 import com.tencent.matrix.util.MatrixLog;
@@ -92,11 +91,17 @@ public class MatrixApplication extends Application {
         if (matrixEnable) {
 
             //resource
-            builder.plugin(new ResourcePlugin(new ResourceConfig.Builder()
+            Intent intent = new Intent();
+            ResourceConfig.DumpMode mode = ResourceConfig.DumpMode.AUTO_DUMP;
+            MatrixLog.i(TAG, "Dump Activity Leak Mode=%s", mode);
+            intent.setClassName(this.getPackageName(), "com.tencent.mm.ui.matrix.ManualDumpActivity");
+            ResourceConfig resourceConfig = new ResourceConfig.Builder()
                     .dynamicConfig(dynamicConfig)
-                    .setDumpHprof(false)
-                    .setDetectDebuger(true)     //only set true when in sample, not in your app
-                    .build()));
+                    .setAutoDumpHprofMode(mode)
+//                .setDetectDebuger(true) //matrix test code
+                    .setNotificationContentIntent(intent)
+                    .build();
+            builder.plugin(new ResourcePlugin(resourceConfig));
             ResourcePlugin.activityLeakFixer(this);
 
             //io
@@ -108,22 +113,19 @@ public class MatrixApplication extends Application {
 
             // prevent api 19 UnsatisfiedLinkError
             //sqlite
-            SQLiteLintConfig config = initSQLiteLintConfig();
-            SQLiteLintPlugin sqLiteLintPlugin = new SQLiteLintPlugin(config);
-            builder.plugin(sqLiteLintPlugin);
-
-            ThreadWatcher threadWatcher = new ThreadWatcher(new ThreadConfig.Builder().dynamicConfig(dynamicConfig).build());
-            builder.plugin(threadWatcher);
-
-
+            SQLiteLintConfig sqlLiteConfig;
+            try {
+                sqlLiteConfig = new SQLiteLintConfig(SQLiteLint.SqlExecutionCallbackMode.CUSTOM_NOTIFY);
+            } catch (Throwable t) {
+                sqlLiteConfig = new SQLiteLintConfig(SQLiteLint.SqlExecutionCallbackMode.CUSTOM_NOTIFY);
+            }
+            builder.plugin(new SQLiteLintPlugin(sqlLiteConfig));
         }
 
         Matrix.init(builder.build());
 
         //start only startup tracer, close other tracer.
         tracePlugin.start();
-        Matrix.with().getPluginByClass(ThreadWatcher.class).start();
-        MatrixLog.i("Matrix.HackCallback", "end:%s", System.currentTimeMillis());
     }
 
 

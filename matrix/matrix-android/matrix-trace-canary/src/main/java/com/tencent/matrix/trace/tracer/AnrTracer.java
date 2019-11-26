@@ -1,7 +1,6 @@
 package com.tencent.matrix.trace.tracer;
 
 import android.os.Handler;
-import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.Process;
 import android.os.SystemClock;
@@ -46,8 +45,7 @@ public class AnrTracer extends Tracer {
         super.onAlive();
         if (isAnrTraceEnable) {
             UIThreadMonitor.getMonitor().addObserver(this);
-            HandlerThread thread = MatrixHandlerThread.getNewHandlerThread("Matrix#AnrTracer");
-            this.anrHandler = new Handler(thread.getLooper());
+            this.anrHandler = new Handler(MatrixHandlerThread.getDefaultHandler().getLooper());
         }
     }
 
@@ -170,7 +168,7 @@ public class AnrTracer extends Tracer {
                     printAnr(scene, processStat, memoryInfo, status, logcatBuilder, isForeground, stack.size(),
                             stackKey, dumpStack, inputCost, animationCost, traversalCost, stackCost), token, curTime); // for logcat
 
-            if (stackCost >= Constants.DEFAULT_ANR_INVALID || processStat[0] > 10) {
+            if (stackCost >= Constants.DEFAULT_ANR_INVALID) {
                 MatrixLog.w(TAG, "The checked anr task was not executed on time. "
                         + "The possible reason is that the current process has a low priority. just pass this report");
                 return;

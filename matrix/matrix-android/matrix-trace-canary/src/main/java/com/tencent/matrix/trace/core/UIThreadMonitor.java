@@ -20,7 +20,7 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
     private static final String ADD_CALLBACK = "addCallbackLocked";
     private volatile boolean isAlive = false;
     private long[] dispatchTimeMs = new long[4];
-    private HashSet<LooperObserver> observers = new HashSet<>();
+    private final HashSet<LooperObserver> observers = new HashSet<>();
     private volatile long token = 0L;
     private boolean isBelongFrame = false;
 
@@ -111,6 +111,8 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
             }
 
         });
+        this.isInit = true;
+        MatrixLog.i(TAG, "[UIThreadMonitor] %s %s %s %s %s frameIntervalNanos:%s", callbackQueueLock == null, callbackQueues == null, addInputQueue == null, addTraversalQueue == null, addAnimationQueue == null, frameIntervalNanos);
 
         if (config.isDevEnv()) {
             addObserver(new LooperObserver() {
@@ -120,8 +122,6 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
                 }
             });
         }
-        MatrixLog.i(TAG, "[UIThreadMonitor] %s %s %s %s %s frameIntervalNanos:%s", callbackQueueLock == null, callbackQueues == null, addInputQueue == null, addTraversalQueue == null, addAnimationQueue == null, frameIntervalNanos);
-        this.isInit = true;
     }
 
     private synchronized void addFrameCallback(int type, Runnable callback, boolean isAddHeader) {
@@ -242,24 +242,26 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
         }
         queueStatus = new int[CALLBACK_LAST + 1];
 
-        long start = token;
-        long end = SystemClock.uptimeMillis();
-        synchronized (observers) {
-            for (LooperObserver observer : observers) {
-                if (observer.isDispatchBegin()) {
-                    observer.doFrame(AppMethodBeat.getVisibleScene(), start, end, end - start, queueCost[CALLBACK_INPUT], queueCost[CALLBACK_ANIMATION], queueCost[CALLBACK_TRAVERSAL]);
-                }
-            }
-        }
-
         addFrameCallback(CALLBACK_INPUT, this, true);
 
         this.isBelongFrame = false;
     }
 
     private void dispatchEnd() {
+
         if (isBelongFrame) {
             doFrameEnd(token);
+        }
+
+        long start = token;
+        long end = SystemClock.uptimeMillis();
+
+        synchronized (observers) {
+            for (LooperObserver observer : observers) {
+                if (observer.isDispatchBegin()) {
+                    observer.doFrame(AppMethodBeat.getVisibleScene(), token, SystemClock.uptimeMillis(), isBelongFrame ? end - start : 0, queueCost[CALLBACK_INPUT], queueCost[CALLBACK_ANIMATION], queueCost[CALLBACK_TRAVERSAL]);
+                }
+            }
         }
 
         dispatchTimeMs[3] = SystemClock.currentThreadTimeMillis();

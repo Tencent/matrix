@@ -57,5 +57,13 @@ task buildApkCheckJar(type: Copy, dependsOn: [build, jar]) {
     into(project.file("tools_output"))
 }
 
-apply from: rootProject.file('gradle/java-publish.gradle')
+if("External" == rootProject.ext.PUBLISH_CHANNEL) {
+    apply from: rootProject.file('gradle/java-publish.gradle')
+}else {
+    //uploading to WeChat maven repo
+    apply from: rootProject.file('gradle/WeChatPublish.gradle')
+    wechatPublish {
+        artifactId = POM_ARTIFACT_ID
+    }
+}
 

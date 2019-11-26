@@ -27,7 +27,7 @@ import org.json.JSONObject;
  */
 
 public class Issue {
-    private Integer    type;
+    private int        type;
     private String     tag;
     private String     key;
     private JSONObject content;
@@ -73,7 +73,7 @@ public class Issue {
         this.tag = tag;
     }
 
-    public Integer getType() {
+    public int getType() {
         return type;
     }
 

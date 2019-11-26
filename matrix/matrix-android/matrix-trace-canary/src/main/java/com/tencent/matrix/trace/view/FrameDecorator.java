@@ -20,6 +20,7 @@ import android.widget.TextView;
 import com.tencent.matrix.AppActiveMatrixDelegate;
 import com.tencent.matrix.Matrix;
 import com.tencent.matrix.listeners.IAppForeground;
+import com.tencent.matrix.trace.R;
 import com.tencent.matrix.trace.TracePlugin;
 import com.tencent.matrix.trace.constants.Constants;
 import com.tencent.matrix.trace.core.UIThreadMonitor;
@@ -27,6 +28,8 @@ import com.tencent.matrix.trace.listeners.IDoFrameListener;
 import com.tencent.matrix.trace.tracer.FrameTracer;
 import com.tencent.matrix.util.MatrixHandlerThread;
 import com.tencent.matrix.util.MatrixLog;
+
+import java.util.concurrent.Executor;
 
 public class FrameDecorator extends IDoFrameListener implements IAppForeground {
     private static final String TAG = "Matrix.FrameDecorator";
@@ -37,7 +40,7 @@ public class FrameDecorator extends IDoFrameListener implements IAppForeground {
     private static Handler mainHandler = new Handler(Looper.getMainLooper());
     private Handler handler;
     private static FrameDecorator instance;
-    private static Object lock = new Object();
+    private static final Object lock = new Object();
     private View.OnClickListener clickListener;
     private DisplayMetrics displayMetrics = new DisplayMetrics();
     private boolean isEnable = true;
@@ -136,13 +139,22 @@ public class FrameDecorator extends IDoFrameListener implements IAppForeground {
         this.clickListener = clickListener;
     }
 
-    long sumFrameCost;
-    long[] lastCost = new long[1];
-    long sumFrames;
-    long[] lastFrames = new long[1];
+    public void setExtraInfo(String info) {
+        if (getView() != null) {
+            TextView textView = getView().findViewById(R.id.extra_info);
+            if (null != textView) {
+                textView.setText(info);
+            }
+        }
+    }
 
 
-    Runnable updateDefaultRunnable = new Runnable() {
+    private long sumFrameCost;
+    private long[] lastCost = new long[1];
+    private long sumFrames;
+    private long[] lastFrames = new long[1];
+
+    private Runnable updateDefaultRunnable = new Runnable() {
         @Override
         public void run() {
             view.fpsView.setText("60.00 FPS");
@@ -151,8 +163,8 @@ public class FrameDecorator extends IDoFrameListener implements IAppForeground {
     };
 
     @Override
-    public void doFrameAsync(String focusedActivityName, long frameCost, int droppedFrames) {
-        super.doFrameAsync(focusedActivityName, frameCost, droppedFrames);
+    public void doFrameAsync(String visibleScene, long taskCost, long frameCostMs, int droppedFrames, boolean isContainsFrame) {
+        super.doFrameAsync(visibleScene, taskCost, frameCostMs, droppedFrames, isContainsFrame);
         sumFrameCost += (droppedFrames + 1) * UIThreadMonitor.getMonitor().getFrameIntervalNanos() / Constants.TIME_MILLIS_TO_NANO;
         sumFrames += 1;
         long duration = sumFrameCost - lastCost[0];
@@ -186,7 +198,18 @@ public class FrameDecorator extends IDoFrameListener implements IAppForeground {
     }
 
     @Override
-    public Handler getHandler() {
+    public Executor getExecutor() {
+        return executor;
+    }
+
+    private Executor executor = new Executor() {
+        @Override
+        public void execute(Runnable command) {
+            getHandler().post(command);
+        }
+    };
+
+    private Handler getHandler() {
         if (handler == null || !handler.getLooper().getThread().isAlive()) {
             handler = new Handler(MatrixHandlerThread.getDefaultHandlerThread().getLooper());
         }
@@ -197,7 +220,7 @@ public class FrameDecorator extends IDoFrameListener implements IAppForeground {
         return instance;
     }
 
-    public static FrameDecorator create(final Context context) {
+    public static FrameDecorator getInstance(final Context context) {
         if (instance == null) {
             if (Thread.currentThread() == Looper.getMainLooper().getThread()) {
                 instance = new FrameDecorator(context, new FloatFrameView(context));
