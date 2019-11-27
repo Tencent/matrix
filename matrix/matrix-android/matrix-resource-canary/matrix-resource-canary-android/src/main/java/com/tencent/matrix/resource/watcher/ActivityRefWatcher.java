@@ -296,7 +296,7 @@ public class ActivityRefWatcher extends FilePublisher implements Watcher, IAppFo
                         activityLeakCallback.onLeak(destroyedActivityInfo.mActivityName, destroyedActivityInfo.mKey);
                     }
                 } else if (mDumpHprofMode == ResourceConfig.DumpMode.AUTO_DUMP) {
-                    final File hprofFile = mHeapDumper.dumpHeap();
+                    final File hprofFile = mHeapDumper.dumpHeap(true);
                     if (hprofFile != null) {
                         markPublished(destroyedActivityInfo.mActivityName);
                         final HeapDump heapDump = new HeapDump(hprofFile, destroyedActivityInfo.mKey, destroyedActivityInfo.mActivityName);
