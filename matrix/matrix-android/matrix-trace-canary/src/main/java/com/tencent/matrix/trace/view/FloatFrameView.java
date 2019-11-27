@@ -80,7 +80,7 @@ public class FloatFrameView extends LinearLayout {
         private int frozenColor = getContext().getResources().getColor(R.color.level_frozen_color);
 
         private int grayColor = getContext().getResources().getColor(R.color.dark_text);
-        float padding = dip2px(getContext(), 10);
+        float padding = dip2px(getContext(), 8);
         float width;
         float lineContentWidth;
         float lineContentHeight;
@@ -90,12 +90,12 @@ public class FloatFrameView extends LinearLayout {
         public LineChartView(Context context, AttributeSet attrs, int defStyleAttr) {
             super(context, attrs, defStyleAttr);
             paint = new Paint();
-            tipPaint = new TextPaint();
-            tipPaint.setTextSize(textSize = dip2px(getContext(), 8));
+            tipPaint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
+            tipPaint.setTextSize(textSize = dip2px(getContext(), 7));
             tipPaint.setStrokeWidth(dip2px(getContext(), 1));
             tipPaint.setColor(grayColor);
 
-            levelLinePaint = new TextPaint();
+            levelLinePaint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
             levelLinePaint.setStrokeWidth(dip2px(getContext(), 1));
             levelLinePaint.setStyle(Paint.Style.STROKE);
 
@@ -120,21 +120,20 @@ public class FloatFrameView extends LinearLayout {
                 width = getMeasuredWidth();
                 height = getMeasuredHeight();
 
-                lineContentWidth = width - padding;
-                lineContentHeight = height - textSize;
-//                lineStrokeWidth = (height - 2 * padding) / (LINE_COUNT * 2);
+                lineContentWidth = width - 2 * padding;
+                lineContentHeight = height - padding;
 
                 lineStrokeWidth = dip2px(getContext(), 1);
                 paint.setStrokeWidth(lineStrokeWidth);
                 linePadding = lineStrokeWidth * 2;
 
                 float rate = lineContentWidth / 60;
-                topTip[0] = 10 * rate + padding;
+                topTip[0] = 10 * rate + (width - lineContentWidth);
                 topTip[1] = lineContentHeight;
                 topPath.moveTo(topTip[0], lineContentHeight);
                 topPath.lineTo(topTip[0], 0);
 
-                middleTip[0] = 30 * rate + padding;
+                middleTip[0] = 30 * rate + (width - lineContentWidth);
                 middleTip[1] = lineContentHeight;
                 middlePath.moveTo(middleTip[0], lineContentHeight);
                 middlePath.lineTo(middleTip[0], 0);
@@ -198,7 +197,7 @@ public class FloatFrameView extends LinearLayout {
                 this.color = color;
 
                 linePoint[0] = width; // startX
-                linePoint[2] = (60 - fps) * (lineContentWidth) / 60 + padding; // endX
+                linePoint[2] = (60 - fps) * (lineContentWidth) / 60 + (getWidth() - lineContentWidth); // endX
 
             }
 
