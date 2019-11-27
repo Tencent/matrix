@@ -121,7 +121,7 @@ public class FloatFrameView extends LinearLayout {
                 height = getMeasuredHeight();
 
                 lineContentWidth = width - padding;
-                lineContentHeight = height - 2 * padding;
+                lineContentHeight = height - textSize;
 //                lineStrokeWidth = (height - 2 * padding) / (LINE_COUNT * 2);
 
                 lineStrokeWidth = dip2px(getContext(), 1);

@@ -148,6 +148,6 @@
         android:id="@+id/chart"
         class="com.tencent.matrix.trace.view.FloatFrameView$LineChartView"
         android:layout_width="match_parent"
-        android:layout_height="130dp" />
+        android:layout_height="110dp" />
 
 </LinearLayout>
