@@ -3,6 +3,7 @@ package com.tencent.matrix.trace.tracer;
 import android.app.Activity;
 import android.app.Application;
 import android.os.Bundle;
+import android.util.Log;
 
 import com.tencent.matrix.Matrix;
 import com.tencent.matrix.report.Issue;
@@ -88,6 +89,10 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, App
 
     @Override
     public void onActivityFocused(String activity) {
+        if (ActivityThreadHacker.sApplicationCreateScene == Integer.MIN_VALUE) {
+            Log.w(TAG, "start up from unknown scene");
+            return;
+        }
         if (isColdStartup()) {
             if (firstScreenCost == 0) {
                 this.firstScreenCost = uptimeMillis() - ActivityThreadHacker.getEggBrokenTime();

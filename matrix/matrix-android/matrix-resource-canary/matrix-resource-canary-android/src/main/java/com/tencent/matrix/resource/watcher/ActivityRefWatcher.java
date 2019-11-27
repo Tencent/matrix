@@ -271,12 +271,12 @@ public class ActivityRefWatcher extends FilePublisher implements Watcher, IAppFo
                 ++destroyedActivityInfo.mDetectedCount;
 
                 if (destroyedActivityInfo.mDetectedCount < mMaxRedetectTimes
-                    || !mResourcePlugin.getConfig().getDetectDebugger()) {
+                        && !mResourcePlugin.getConfig().getDetectDebugger()) {
                     // Although the sentinel tell us the activity should have been recycled,
                     // system may still ignore it, so try again until we reach max retry times.
                     MatrixLog.i(TAG, "activity with key [%s] should be recycled but actually still \n"
-                            + "exists in %s times, wait for next detection to confirm.",
-                        destroyedActivityInfo.mKey, destroyedActivityInfo.mDetectedCount);
+                                    + "exists in %s times, wait for next detection to confirm.",
+                            destroyedActivityInfo.mKey, destroyedActivityInfo.mDetectedCount);
                     continue;
                 }
 
