@@ -59,7 +59,7 @@ public class AndroidHeapDumper {
         mMainHandler = mainHandler;
     }
 
-    public File dumpHeap() {
+    public File dumpHeap(boolean isShowToast) {
         final File hprofFile = mDumpStorageManager.newHprofFile();
 
         if (null == hprofFile) {
@@ -78,21 +78,30 @@ public class AndroidHeapDumper {
             return null;
         }
 
-        final FutureResult<Toast> waitingForToast = new FutureResult<>();
-        showToast(waitingForToast);
+        if (isShowToast) {
+            final FutureResult<Toast> waitingForToast = new FutureResult<>();
+            showToast(waitingForToast);
 
-        if (!waitingForToast.wait(5, TimeUnit.SECONDS)) {
-            MatrixLog.w(TAG, "give up dumping heap, waiting for toast too long.");
-            return null;
-        }
-
-        try {
-            Debug.dumpHprofData(hprofFile.getAbsolutePath());
-            cancelToast(waitingForToast.get());
-            return hprofFile;
-        } catch (Exception e) {
-            MatrixLog.printErrStackTrace(TAG, e, "failed to dump heap into file: %s.", hprofFile.getAbsolutePath());
-            return null;
+            if (!waitingForToast.wait(5, TimeUnit.SECONDS)) {
+                MatrixLog.w(TAG, "give up dumping heap, waiting for toast too long.");
+                return null;
+            }
+            try {
+                Debug.dumpHprofData(hprofFile.getAbsolutePath());
+                cancelToast(waitingForToast.get());
+                return hprofFile;
+            } catch (Exception e) {
+                MatrixLog.printErrStackTrace(TAG, e, "failed to dump heap into file: %s.", hprofFile.getAbsolutePath());
+                return null;
+            }
+        } else {
+            try {
+                Debug.dumpHprofData(hprofFile.getAbsolutePath());
+                return hprofFile;
+            } catch (Exception e) {
+                MatrixLog.printErrStackTrace(TAG, e, "failed to dump heap into file: %s.", hprofFile.getAbsolutePath());
+                return null;
+            }
         }
     }
 
