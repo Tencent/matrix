@@ -56,11 +56,11 @@ public class FrameDecorator extends IDoFrameListener implements IAppForeground {
     @SuppressLint("ClickableViewAccessibility")
     private FrameDecorator(Context context, final FloatFrameView view) {
         this.view = view;
-        this.bestColor = context.getResources().getColor(R.color.best_color);
-        this.normalColor = context.getResources().getColor(R.color.normal_color);
-        this.middleColor = context.getResources().getColor(R.color.middle_color);
-        this.highColor = context.getResources().getColor(R.color.high_color);
-        this.frozenColor = context.getResources().getColor(R.color.frozen_color);
+        this.bestColor = context.getResources().getColor(R.color.level_best_color);
+        this.normalColor = context.getResources().getColor(R.color.level_normal_color);
+        this.middleColor = context.getResources().getColor(R.color.level_middle_color);
+        this.highColor = context.getResources().getColor(R.color.level_high_color);
+        this.frozenColor = context.getResources().getColor(R.color.level_frozen_color);
 
         AppActiveMatrixDelegate.INSTANCE.addListener(this);
         view.addOnAttachStateChangeListener(new View.OnAttachStateChangeListener() {
@@ -174,7 +174,7 @@ public class FrameDecorator extends IDoFrameListener implements IAppForeground {
         @Override
         public void run() {
             view.fpsView.setText("60.00 FPS");
-            view.fpsView.setTextColor(view.getResources().getColor(R.color.best_color));
+            view.fpsView.setTextColor(view.getResources().getColor(R.color.level_best_color));
             view.levelFrozenView.setText(dropLevel[FrameTracer.DropStatus.DROPPED_FROZEN.index] + "");
             view.levelHighView.setText(dropLevel[FrameTracer.DropStatus.DROPPED_HIGH.index] + "");
             view.levelMiddleView.setText(dropLevel[FrameTracer.DropStatus.DROPPED_MIDDLE.index] + "");

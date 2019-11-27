@@ -1,14 +1,11 @@
 package com.tencent.matrix.trace.view;
 
 import android.annotation.SuppressLint;
-import android.app.Application;
 import android.content.Context;
 import android.graphics.Canvas;
-import android.graphics.Color;
 import android.graphics.DashPathEffect;
 import android.graphics.Paint;
 import android.graphics.Path;
-import android.os.Build;
 import android.text.TextPaint;
 import android.util.AttributeSet;
 import android.view.LayoutInflater;
@@ -18,8 +15,6 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import com.tencent.matrix.trace.R;
-import com.tencent.matrix.trace.constants.Constants;
-import com.tencent.matrix.trace.tracer.FrameTracer;
 
 import java.util.LinkedList;
 
@@ -75,11 +70,11 @@ public class FloatFrameView extends LinearLayout {
         private Path topPath = new Path();
         private float[] topTip = new float[2];
 
-        private int bestColor = getContext().getResources().getColor(R.color.best_color);
-        private int normalColor = getContext().getResources().getColor(R.color.normal_color);
-        private int middleColor = getContext().getResources().getColor(R.color.middle_color);
-        private int highColor = getContext().getResources().getColor(R.color.high_color);
-        private int frozenColor = getContext().getResources().getColor(R.color.frozen_color);
+        private int bestColor = getContext().getResources().getColor(R.color.level_best_color);
+        private int normalColor = getContext().getResources().getColor(R.color.level_normal_color);
+        private int middleColor = getContext().getResources().getColor(R.color.level_middle_color);
+        private int highColor = getContext().getResources().getColor(R.color.level_high_color);
+        private int frozenColor = getContext().getResources().getColor(R.color.level_frozen_color);
 
         private int grayColor = getContext().getResources().getColor(R.color.dark_text);
         float padding = 10 * getContext().getResources().getDisplayMetrics().density;
