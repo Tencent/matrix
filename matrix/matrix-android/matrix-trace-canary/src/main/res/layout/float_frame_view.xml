@@ -34,7 +34,7 @@
     <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="3dp"
+        android:layout_marginTop="2dp"
         android:layout_marginBottom="2dp"
         android:orientation="vertical">
 
@@ -57,18 +57,34 @@
             android:textSize="8dp"
             android:visibility="gone" />
 
-        <TextView
-            android:id="@+id/fps_view"
+        <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:minWidth="70dp"
-            android:paddingBottom="3dp"
-            android:text="60.00 FPS"
-            android:textColor="@android:color/holo_green_dark"
-            android:textSize="12dp"
-            android:textStyle="bold" />
+            android:minWidth="80dp"
+            android:orientation="horizontal">
 
+            <TextView
+                android:id="@+id/fps_view"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:paddingBottom="3dp"
+                android:text="60.00 FPS"
+                android:textColor="@android:color/holo_green_dark"
+                android:textSize="12dp"
+                android:textStyle="bold" />
 
+            <TextView
+                android:id="@+id/qi_wang"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:maxHeight="20dp"
+                android:text="00"
+                android:textColor="@android:color/darker_gray"
+                android:textSize="8dp" />
+
+        </LinearLayout>
     </LinearLayout>
 
 
@@ -77,26 +93,14 @@
         android:layout_height="wrap_content"
         android:layout_marginBottom="2dp"
         android:orientation="horizontal"
-        android:weightSum="5">
-
-        <TextView
-            android:id="@+id/level_best"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:background="@color/best_color"
-            android:gravity="center"
-            android:maxHeight="20dp"
-            android:text="0"
-            android:textColor="@android:color/white"
-            android:textSize="8dp" />
+        android:weightSum="4">
 
         <TextView
             android:id="@+id/level_normal"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:background="@color/normal_color"
+            android:background="@color/level_normal_color"
             android:gravity="center"
             android:maxHeight="20dp"
             android:text="0"
@@ -108,7 +112,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:background="@color/middle_color"
+            android:background="@color/level_middle_color"
             android:gravity="center"
             android:maxHeight="20dp"
             android:text="0"
@@ -120,7 +124,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:background="@color/high_color"
+            android:background="@color/level_high_color"
             android:gravity="center"
             android:maxHeight="20dp"
             android:text="0"
@@ -132,7 +136,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:background="@color/frozen_color"
+            android:background="@color/level_frozen_color"
             android:gravity="center"
             android:maxHeight="20dp"
             android:text="0"
