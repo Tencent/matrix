@@ -38,7 +38,7 @@ public class ActivityThreadHacker {
     private static long sLastLaunchActivityTime = 0L;
     public static AppMethodBeat.IndexRecord sLastLaunchActivityMethodIndex = new AppMethodBeat.IndexRecord();
     public static AppMethodBeat.IndexRecord sApplicationCreateBeginMethodIndex = new AppMethodBeat.IndexRecord();
-    public static int sApplicationCreateScene = -100;
+    public static int sApplicationCreateScene = Integer.MIN_VALUE;
 
     public static void hackSysHandlerCallback() {
         try {
