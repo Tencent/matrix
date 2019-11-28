@@ -45,7 +45,7 @@
             android:gravity="left"
             android:minWidth="40dp"
             android:textColor="@color/dark_text"
-            android:textSize="7dp" />
+            android:textSize="8dp" />
 
         <TextView
             android:id="@+id/scene_view"
@@ -54,13 +54,13 @@
             android:gravity="left"
             android:minWidth="40dp"
             android:textColor="@color/dark_text"
-            android:textSize="7dp"
+            android:textSize="8dp"
             android:visibility="gone" />
 
         <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:minWidth="70dp"
+            android:minWidth="80dp"
             android:orientation="horizontal">
 
             <TextView
@@ -70,7 +70,7 @@
                 android:paddingBottom="3dp"
                 android:text="60.00 FPS"
                 android:textColor="@android:color/holo_green_dark"
-                android:textSize="10dp"
+                android:textSize="12dp"
                 android:textStyle="bold" />
 
             <TextView
@@ -82,7 +82,7 @@
                 android:maxHeight="20dp"
                 android:text="00"
                 android:textColor="@android:color/darker_gray"
-                android:textSize="7dp" />
+                android:textSize="8dp" />
 
         </LinearLayout>
     </LinearLayout>
@@ -105,7 +105,7 @@
             android:maxHeight="20dp"
             android:text="0"
             android:textColor="@android:color/white"
-            android:textSize="7dp" />
+            android:textSize="8dp" />
 
         <TextView
             android:id="@+id/level_middle"
@@ -117,7 +117,7 @@
             android:maxHeight="20dp"
             android:text="0"
             android:textColor="@android:color/white"
-            android:textSize="7dp" />
+            android:textSize="8dp" />
 
         <TextView
             android:id="@+id/level_high"
@@ -129,7 +129,7 @@
             android:maxHeight="20dp"
             android:text="0"
             android:textColor="@android:color/white"
-            android:textSize="7dp" />
+            android:textSize="8dp" />
 
         <TextView
             android:id="@+id/level_frozen"
@@ -141,7 +141,7 @@
             android:maxHeight="20dp"
             android:text="0"
             android:textColor="@android:color/white"
-            android:textSize="7dp" />
+            android:textSize="8dp" />
     </LinearLayout>
 
     <view
