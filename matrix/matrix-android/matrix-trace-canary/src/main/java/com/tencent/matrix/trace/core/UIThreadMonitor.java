@@ -4,6 +4,7 @@ import android.os.Looper;
 import android.os.SystemClock;
 import android.view.Choreographer;
 
+import com.tencent.matrix.Matrix;
 import com.tencent.matrix.trace.config.TraceConfig;
 import com.tencent.matrix.trace.listeners.LooperObserver;
 import com.tencent.matrix.trace.util.Utils;
@@ -295,7 +296,8 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
     @Override
     public synchronized void onStart() {
         if (!isInit) {
-            throw new RuntimeException("never init!");
+            MatrixLog.e(TAG,"[onStart] is never init.");
+            return;
         }
         if (!isAlive) {
             this.isAlive = true;
@@ -345,7 +347,8 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
     @Override
     public synchronized void onStop() {
         if (!isInit) {
-            throw new RuntimeException("UIThreadMonitor is never init!");
+            MatrixLog.e(TAG,"[onStart] is never init.");
+            return;
         }
         if (isAlive) {
             this.isAlive = false;
