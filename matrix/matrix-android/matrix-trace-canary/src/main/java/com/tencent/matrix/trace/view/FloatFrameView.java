@@ -27,9 +27,14 @@ public class FloatFrameView extends LinearLayout {
     public TextView levelHighView;
     public TextView levelMiddleView;
     public TextView levelNormalView;
+    public TextView sumLevelFrozenView;
+    public TextView sumLevelHighView;
+    public TextView sumLevelMiddleView;
+    public TextView sumLevelNormalView;
     public TextView extraInfoView;
     public TextView sceneView;
     public TextView qiWangView;
+    public TextView sumQiWangView;
 
     public FloatFrameView(Context context) {
         super(context);
@@ -49,11 +54,18 @@ public class FloatFrameView extends LinearLayout {
         extraInfoView = findViewById(R.id.extra_info);
         sceneView = findViewById(R.id.scene_view);
         extraInfoView.setText("{other info}");
-        qiWangView = findViewById(R.id.qi_wang);
+
+        qiWangView = findViewById(R.id.qi_wang_tv);
         levelFrozenView = findViewById(R.id.level_frozen);
         levelHighView = findViewById(R.id.level_high);
         levelMiddleView = findViewById(R.id.level_middle);
         levelNormalView = findViewById(R.id.level_normal);
+
+        sumQiWangView = findViewById(R.id.sum_qi_wang_tv);
+        sumLevelFrozenView = findViewById(R.id.sum_level_frozen);
+        sumLevelHighView = findViewById(R.id.sum_level_high);
+        sumLevelMiddleView = findViewById(R.id.sum_level_middle);
+        sumLevelNormalView = findViewById(R.id.sum_level_normal);
         chartView = findViewById(R.id.chart);
     }
 
@@ -83,7 +95,6 @@ public class FloatFrameView extends LinearLayout {
         float padding = dip2px(getContext(), 8);
         float width;
         float lineContentWidth;
-        float lineContentHeight;
         float height;
         float textSize;
 
@@ -91,7 +102,7 @@ public class FloatFrameView extends LinearLayout {
             super(context, attrs, defStyleAttr);
             paint = new Paint();
             tipPaint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
-            tipPaint.setTextSize(textSize = dip2px(getContext(), 7));
+            tipPaint.setTextSize(textSize = dip2px(getContext(), 8));
             tipPaint.setStrokeWidth(dip2px(getContext(), 1));
             tipPaint.setColor(grayColor);
 
@@ -120,8 +131,7 @@ public class FloatFrameView extends LinearLayout {
                 width = getMeasuredWidth();
                 height = getMeasuredHeight();
 
-                lineContentWidth = width - 2 * padding;
-                lineContentHeight = height - padding;
+                lineContentWidth = width - 3 * padding;
 
                 lineStrokeWidth = dip2px(getContext(), 1);
                 paint.setStrokeWidth(lineStrokeWidth);
@@ -129,13 +139,13 @@ public class FloatFrameView extends LinearLayout {
 
                 float rate = lineContentWidth / 60;
                 topTip[0] = 10 * rate + (width - lineContentWidth);
-                topTip[1] = lineContentHeight;
-                topPath.moveTo(topTip[0], lineContentHeight);
+                topTip[1] = LINE_COUNT * linePadding + padding;
+                topPath.moveTo(topTip[0], topTip[1]);
                 topPath.lineTo(topTip[0], 0);
 
                 middleTip[0] = 30 * rate + (width - lineContentWidth);
-                middleTip[1] = lineContentHeight;
-                middlePath.moveTo(middleTip[0], lineContentHeight);
+                middleTip[1] = LINE_COUNT * linePadding + padding;
+                middlePath.moveTo(middleTip[0], middleTip[1]);
                 middlePath.lineTo(middleTip[0], 0);
             }
         }
@@ -169,7 +179,7 @@ public class FloatFrameView extends LinearLayout {
                     if (index > 0) {
                         int aver = sumFps / index;
                         tipPaint.setColor(getColor(aver));
-                        canvas.drawText(aver + " FPS", 0, pathY - textSize / 2, tipPaint);
+                        canvas.drawText(aver + "FPS", 0, pathY - textSize / 2, tipPaint);
                     }
                 }
                 index++;

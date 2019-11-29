@@ -174,6 +174,7 @@ public class FrameDecorator extends IDoFrameListener implements IAppForeground {
     private int belongColor = bestColor;
     private long[] lastFrames = new long[1];
     private int[] dropLevel = new int[FrameTracer.DropStatus.values().length];
+    private int[] sumDropLevel = new int[FrameTracer.DropStatus.values().length];
     private String lastVisibleScene = "default";
 
     private Runnable updateDefaultRunnable = new Runnable() {
@@ -194,7 +195,6 @@ public class FrameDecorator extends IDoFrameListener implements IAppForeground {
             lastVisibleScene = visibleScene;
             lastCost[0] = 0;
             lastFrames[0] = 0;
-            Log.e(TAG, "change visibleScene=" + visibleScene + " lastVisibleScene=" + lastVisibleScene);
         }
 
         sumFrameCost += (droppedFrames + 1) * frameIntervalMs;
@@ -203,24 +203,29 @@ public class FrameDecorator extends IDoFrameListener implements IAppForeground {
 
         if (droppedFrames >= Constants.DEFAULT_DROPPED_FROZEN) {
             dropLevel[FrameTracer.DropStatus.DROPPED_FROZEN.index]++;
+            sumDropLevel[FrameTracer.DropStatus.DROPPED_FROZEN.index]++;
             belongColor = frozenColor;
         } else if (droppedFrames >= Constants.DEFAULT_DROPPED_HIGH) {
             dropLevel[FrameTracer.DropStatus.DROPPED_HIGH.index]++;
+            sumDropLevel[FrameTracer.DropStatus.DROPPED_HIGH.index]++;
             if (belongColor != frozenColor) {
                 belongColor = highColor;
             }
         } else if (droppedFrames >= Constants.DEFAULT_DROPPED_MIDDLE) {
             dropLevel[FrameTracer.DropStatus.DROPPED_MIDDLE.index]++;
+            sumDropLevel[FrameTracer.DropStatus.DROPPED_MIDDLE.index]++;
             if (belongColor != frozenColor && belongColor != highColor) {
                 belongColor = middleColor;
             }
         } else if (droppedFrames >= Constants.DEFAULT_DROPPED_NORMAL) {
             dropLevel[FrameTracer.DropStatus.DROPPED_NORMAL.index]++;
+            sumDropLevel[FrameTracer.DropStatus.DROPPED_NORMAL.index]++;
             if (belongColor != frozenColor && belongColor != highColor && belongColor != middleColor) {
                 belongColor = normalColor;
             }
         } else {
             dropLevel[FrameTracer.DropStatus.DROPPED_BEST.index]++;
+            sumDropLevel[FrameTracer.DropStatus.DROPPED_BEST.index]++;
             if (belongColor != frozenColor && belongColor != highColor && belongColor != middleColor && belongColor != normalColor) {
                 belongColor = bestColor;
             }
@@ -230,45 +235,73 @@ public class FrameDecorator extends IDoFrameListener implements IAppForeground {
         long collectFrame = sumFrames - lastFrames[0];
         if (duration >= 200) {
             final float fps = Math.min(60.f, 1000.f * collectFrame / duration);
-            updateView(view, fps, belongColor, dropLevel[FrameTracer.DropStatus.DROPPED_BEST.index],
+            updateView(view, fps, belongColor,
                     dropLevel[FrameTracer.DropStatus.DROPPED_NORMAL.index],
                     dropLevel[FrameTracer.DropStatus.DROPPED_MIDDLE.index],
                     dropLevel[FrameTracer.DropStatus.DROPPED_HIGH.index],
-                    dropLevel[FrameTracer.DropStatus.DROPPED_FROZEN.index]);
+                    dropLevel[FrameTracer.DropStatus.DROPPED_FROZEN.index],
+                    sumDropLevel[FrameTracer.DropStatus.DROPPED_NORMAL.index],
+                    sumDropLevel[FrameTracer.DropStatus.DROPPED_MIDDLE.index],
+                    sumDropLevel[FrameTracer.DropStatus.DROPPED_HIGH.index],
+                    sumDropLevel[FrameTracer.DropStatus.DROPPED_FROZEN.index]);
             belongColor = bestColor;
             lastCost[0] = sumFrameCost;
             lastFrames[0] = sumFrames;
             mainHandler.removeCallbacks(updateDefaultRunnable);
-            mainHandler.postDelayed(updateDefaultRunnable, 400);
+            mainHandler.postDelayed(updateDefaultRunnable, 250);
         }
     }
 
-    private void updateView(final FloatFrameView view, final float fps, final int belongColor, final int best, final int normal, final int middle, final int high, final int frozen) {
-        int sumLevel = normal + middle + high + frozen;
-        float frozenValue = sumLevel <= 0 ? 0 : 1.f * frozen / sumLevel * 60;
-        float highValue = sumLevel <= 0 ? 0 : 1.f * high / sumLevel * 25;
-        float middleValue = sumLevel <= 0 ? 0 : 1.f * middle / sumLevel * 14;
-        float normaValue = sumLevel <= 0 ? 0 : 1.f * normal / sumLevel * 1;
+    private void updateView(final FloatFrameView view, final float fps, final int belongColor,
+                            final int normal, final int middle, final int high, final int frozen,
+                            final int sumNormal, final int sumMiddle, final int sumHigh, final int sumFrozen) {
+        int all = normal + middle + high + frozen;
+        float frozenValue = all <= 0 ? 0 : 1.f * frozen / all * 60;
+        float highValue = all <= 0 ? 0 : 1.f * high / all * 25;
+        float middleValue = all <= 0 ? 0 : 1.f * middle / all * 14;
+        float normaValue = all <= 0 ? 0 : 1.f * normal / all * 1;
         float qiWang = frozenValue + highValue + middleValue + normaValue;
+
+        int sumAll = sumNormal + sumMiddle + sumHigh + sumFrozen;
+        float sumFrozenValue = sumAll <= 0 ? 0 : 1.f * sumFrozen / sumAll * 60;
+        float sumHighValue = sumAll <= 0 ? 0 : 1.f * sumHigh / sumAll * 25;
+        float sumMiddleValue = sumAll <= 0 ? 0 : 1.f * sumMiddle / sumAll * 14;
+        float sumNormaValue = sumAll <= 0 ? 0 : 1.f * sumNormal / sumAll * 1;
+        float sumQiWang = sumFrozenValue + sumHighValue + sumMiddleValue + sumNormaValue;
+
         final String radioFrozen = String.format("%.1f", frozenValue);
         final String radioHigh = String.format("%.1f", highValue);
         final String radioMiddle = String.format("%.1f", middleValue);
         final String radioNormal = String.format("%.1f", normaValue);
-        final String qiWangStr = String.format("%.1f", qiWang);
+        final String qiWangStr = String.format("current: %.1f", qiWang);
+
+        final String sumRadioFrozen = String.format("%.1f", sumFrozenValue);
+        final String sumRadioHigh = String.format("%.1f", sumHighValue);
+        final String sumRadioMiddle = String.format("%.1f", sumMiddleValue);
+        final String sumRadioNormal = String.format("%.1f", sumNormaValue);
+        final String sumQiWangStr = String.format("sum: %.1f", sumQiWang);
+
+        final String fpsStr = String.format("%.2f FPS", fps);
 
         mainHandler.post(new Runnable() {
             @Override
             public void run() {
-                Log.e(TAG, "fps=" + fps + " radioFrozen=" + radioFrozen + " radioHigh=" + radioHigh + " radioMiddle=" + radioMiddle + " radioNormal" + radioNormal + " qiWangStr=" + qiWangStr);
                 view.chartView.addFps((int) fps, belongColor);
-                view.fpsView.setText(String.format("%.2f FPS", fps));
-                view.qiWangView.setText(String.format("(%s) ", qiWangStr));
+                view.fpsView.setText(fpsStr);
                 view.fpsView.setTextColor(belongColor);
 
+                view.qiWangView.setText(qiWangStr);
                 view.levelFrozenView.setText(radioFrozen);
                 view.levelHighView.setText(radioHigh);
                 view.levelMiddleView.setText(radioMiddle);
                 view.levelNormalView.setText(radioNormal);
+
+                view.sumQiWangView.setText(sumQiWangStr);
+                view.sumLevelFrozenView.setText(sumRadioFrozen);
+                view.sumLevelHighView.setText(sumRadioHigh);
+                view.sumLevelMiddleView.setText(sumRadioMiddle);
+                view.sumLevelNormalView.setText(sumRadioNormal);
+
             }
         });
     }
