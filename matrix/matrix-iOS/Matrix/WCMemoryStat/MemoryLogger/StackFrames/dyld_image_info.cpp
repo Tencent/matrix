@@ -41,20 +41,20 @@
 
 #define DYLD_IMAGE_MACOUNT		(512+256)
 
-struct dyld_image_info {
+struct dyld_image_info_mem {
 	uint64_t	vm_str;			/* the start address of this segment */
 	uint64_t	vm_end;			/* the end address of this segment */
 	char		uuid[33];		/* the 128-bit uuid */
 	char		image_name[30];	/* name of shared object */
 	bool		is_app_image;	/* whether this image is belong to the APP */
 	
-	dyld_image_info(uint64_t _vs=0, uint64_t _ve=0) : vm_str(_vs), vm_end(_ve) {}
+	dyld_image_info_mem(uint64_t _vs=0, uint64_t _ve=0) : vm_str(_vs), vm_end(_ve) {}
 	
-	inline bool operator == (const dyld_image_info &another) const {
+	inline bool operator == (const dyld_image_info_mem &another) const {
 		return another.vm_str >= vm_str && another.vm_str < vm_end;
 	}
 	
-	inline bool operator > (const dyld_image_info &another) const {
+	inline bool operator > (const dyld_image_info_mem &another) const {
 		return another.vm_str < vm_str;
 	}
 };
@@ -64,7 +64,7 @@ struct dyld_image_info_file {
 	int fs;
 	int count;
 	void *buff;
-	dyld_image_info list[DYLD_IMAGE_MACOUNT];
+	dyld_image_info_mem list[DYLD_IMAGE_MACOUNT];
 };
 
 #pragma mark -
@@ -77,8 +77,8 @@ int skip_max_stack_depth;
 int skip_min_malloc_size;
 bool is_ios9_plus = true;
 
-static dyld_image_info app_image_info = {0}; // Infos of all app images including embeded frameworks
-static dyld_image_info mmap_func_info = {0};
+static dyld_image_info_mem app_image_info = {0}; // Infos of all app images including embeded frameworks
+static dyld_image_info_mem mmap_func_info = {0};
 
 static const char *g_app_bundle_name = bundleHelperGetAppBundleName();
 static const char *g_app_name = bundleHelperGetAppName();
@@ -119,7 +119,7 @@ static void __add_info_for_image(const struct mach_header *header, intptr_t slid
 		return;
 	}
 	
-	dyld_image_info image_info = {0};
+	dyld_image_info_mem image_info = {0};
 	bool is_current_app_image = false;
     
 	segment_command_t *cur_seg_cmd = NULL;
@@ -216,11 +216,11 @@ static void __init_image_info_list()
 	}
 }
 
-dyld_image_info *__binary_search(dyld_image_info_file *file, vm_address_t address)
+dyld_image_info_mem *__binary_search(dyld_image_info_file *file, vm_address_t address)
 {
 	int low = 0;
 	int high = file->count - 1;
-	dyld_image_info *list = file->list;
+	dyld_image_info_mem *list = file->list;
 
 	while (low <= high) {
 		int midd = ((low + high) >> 1);
@@ -354,7 +354,7 @@ dyld_image_info_file *open_dyld_image_info_file(const char *event_dir)
 			file->fs = fs;
 			file->buff = buff;
 			
-			if (file->count < 0 || file->count > sizeof(file->list) / sizeof(dyld_image_info)) {
+			if (file->count < 0 || file->count > sizeof(file->list) / sizeof(dyld_image_info_mem)) {
 				// dirty data
 				file->count = 0;
 				memset(file->list, 0, sizeof(file->list));
@@ -383,7 +383,7 @@ void close_dyld_image_info_file(dyld_image_info_file *file_context)
 
 void transform_frames(dyld_image_info_file *file_context, uint64_t *src_frames, uint64_t *out_offsets, char const **out_uuids, char const **out_image_names, bool *out_is_app_images, int32_t count)
 {
-	dyld_image_info *last_info = NULL; // cache
+	dyld_image_info_mem *last_info = NULL; // cache
 	while (count--) {
 		uint64_t address = src_frames[count];
 		if (last_info && *last_info == address) {
