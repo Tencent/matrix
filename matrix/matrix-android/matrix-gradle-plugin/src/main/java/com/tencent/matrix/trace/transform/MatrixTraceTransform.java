@@ -119,6 +119,7 @@ public class MatrixTraceTransform extends Transform {
             String[] names = new String[]{
                     "transformClassesWithDexBuilderFor" + buildTypeSuffix,
                     "transformClassesWithDexFor" + buildTypeSuffix,
+                    "transformClassesAndResourcesWithR8For" + buildTypeSuffix
             };
             return names;
         }
