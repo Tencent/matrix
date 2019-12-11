@@ -10,7 +10,6 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.DisplayMetrics;
-import android.util.Log;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
@@ -375,7 +374,9 @@ public class FrameDecorator extends IDoFrameListener implements IAppForeground {
             layoutParam.flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
                     | WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL;
             layoutParam.gravity = Gravity.START | Gravity.TOP;
-            layoutParam.x = metrics.widthPixels - view.getLayoutParams().width * 2;
+            if (null != view) {
+                layoutParam.x = metrics.widthPixels - view.getLayoutParams().width * 2;
+            }
             layoutParam.y = 0;
             layoutParam.width = WindowManager.LayoutParams.WRAP_CONTENT;
             layoutParam.height = WindowManager.LayoutParams.WRAP_CONTENT;
