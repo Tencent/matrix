@@ -52,11 +52,14 @@ public class ActivityThreadHacker {
             mH.setAccessible(true);
             Object handler = mH.get(activityThreadValue);
             Class<?> handlerClass = handler.getClass().getSuperclass();
-            Field callbackField = handlerClass.getDeclaredField("mCallback");
-            callbackField.setAccessible(true);
-            Handler.Callback originalCallback = (Handler.Callback) callbackField.get(handler);
-            HackCallback callback = new HackCallback(originalCallback);
-            callbackField.set(handler, callback);
+            if (null != handlerClass) {
+                Field callbackField = handlerClass.getDeclaredField("mCallback");
+                callbackField.setAccessible(true);
+                Handler.Callback originalCallback = (Handler.Callback) callbackField.get(handler);
+                HackCallback callback = new HackCallback(originalCallback);
+                callbackField.set(handler, callback);
+            }
+
             MatrixLog.i(TAG, "hook system handler completed. start:%s SDK_INT:%s", sApplicationCreateBeginTime, Build.VERSION.SDK_INT);
         } catch (Exception e) {
             MatrixLog.e(TAG, "hook system handler err! %s", e.getCause().toString());
