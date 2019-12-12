@@ -4,7 +4,6 @@ import android.os.Looper;
 import android.os.SystemClock;
 import android.view.Choreographer;
 
-import com.tencent.matrix.Matrix;
 import com.tencent.matrix.trace.config.TraceConfig;
 import com.tencent.matrix.trace.listeners.LooperObserver;
 import com.tencent.matrix.trace.util.Utils;
@@ -87,10 +86,11 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
         choreographer = Choreographer.getInstance();
         callbackQueueLock = reflectObject(choreographer, "mLock");
         callbackQueues = reflectObject(choreographer, "mCallbackQueues");
-
-        addInputQueue = reflectChoreographerMethod(callbackQueues[CALLBACK_INPUT], ADD_CALLBACK, long.class, Object.class, Object.class);
-        addAnimationQueue = reflectChoreographerMethod(callbackQueues[CALLBACK_ANIMATION], ADD_CALLBACK, long.class, Object.class, Object.class);
-        addTraversalQueue = reflectChoreographerMethod(callbackQueues[CALLBACK_TRAVERSAL], ADD_CALLBACK, long.class, Object.class, Object.class);
+        if (null != callbackQueues) {
+            addInputQueue = reflectChoreographerMethod(callbackQueues[CALLBACK_INPUT], ADD_CALLBACK, long.class, Object.class, Object.class);
+            addAnimationQueue = reflectChoreographerMethod(callbackQueues[CALLBACK_ANIMATION], ADD_CALLBACK, long.class, Object.class, Object.class);
+            addTraversalQueue = reflectChoreographerMethod(callbackQueues[CALLBACK_TRAVERSAL], ADD_CALLBACK, long.class, Object.class, Object.class);
+        }
         frameIntervalNanos = reflectObject(choreographer, "mFrameIntervalNanos");
 
         LooperMonitor.register(new LooperMonitor.LooperDispatchListener() {
@@ -296,7 +296,7 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
     @Override
     public synchronized void onStart() {
         if (!isInit) {
-            MatrixLog.e(TAG,"[onStart] is never init.");
+            MatrixLog.e(TAG, "[onStart] is never init.");
             return;
         }
         if (!isAlive) {
@@ -347,7 +347,7 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
     @Override
     public synchronized void onStop() {
         if (!isInit) {
-            MatrixLog.e(TAG,"[onStart] is never init.");
+            MatrixLog.e(TAG, "[onStart] is never init.");
             return;
         }
         if (isAlive) {
