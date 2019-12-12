@@ -203,9 +203,13 @@ public class ActivityRefWatcher extends FilePublisher implements Watcher, IAppFo
         return mHeapDumper;
     }
 
+    public AndroidHeapDumper.HeapDumpHandler getHeapDumpHandler() {
+        return mHeapDumpHandler;
+    }
+
     private void pushDestroyedActivityInfo(Activity activity) {
         final String activityName = activity.getClass().getName();
-        if (!mResourcePlugin.getConfig().getDetectDebugger() && isPublished(activityName)) {
+        if (!mResourcePlugin.getConfig().getDetectDebugger() && mDumpHprofMode != ResourceConfig.DumpMode.SILENCE_DUMP && isPublished(activityName)) {
             MatrixLog.i(TAG, "activity leak with name %s had published, just ignore", activityName);
             return;
         }
@@ -283,13 +287,14 @@ public class ActivityRefWatcher extends FilePublisher implements Watcher, IAppFo
                 MatrixLog.i(TAG, "activity with key [%s] was suspected to be a leaked instance. mode[%s]", destroyedActivityInfo.mKey, mDumpHprofMode);
 
                 if (mDumpHprofMode == ResourceConfig.DumpMode.SILENCE_DUMP) {
-                    if (mResourcePlugin != null && !isPublished(destroyedActivityInfo.mActivityName)) {
+                    if (!isPublished(destroyedActivityInfo.mActivityName)) {
                         final JSONObject resultJson = new JSONObject();
                         try {
                             resultJson.put(SharePluginInfo.ISSUE_ACTIVITY_NAME, destroyedActivityInfo.mActivityName);
                         } catch (JSONException e) {
                             MatrixLog.printErrStackTrace(TAG, e, "unexpected exception.");
                         }
+                        markPublished(destroyedActivityInfo.mActivityName);
                         mResourcePlugin.onDetectIssue(new Issue(resultJson));
                     }
                     if (null != activityLeakCallback) {
@@ -329,15 +334,13 @@ public class ActivityRefWatcher extends FilePublisher implements Watcher, IAppFo
                     // Lightweight mode, just report leaked activity name.
                     MatrixLog.i(TAG, "lightweight mode, just report leaked activity name.");
                     markPublished(destroyedActivityInfo.mActivityName);
-                    if (mResourcePlugin != null) {
-                        final JSONObject resultJson = new JSONObject();
-                        try {
-                            resultJson.put(SharePluginInfo.ISSUE_ACTIVITY_NAME, destroyedActivityInfo.mActivityName);
-                        } catch (JSONException e) {
-                            MatrixLog.printErrStackTrace(TAG, e, "unexpected exception.");
-                        }
-                        mResourcePlugin.onDetectIssue(new Issue(resultJson));
+                    final JSONObject resultJson = new JSONObject();
+                    try {
+                        resultJson.put(SharePluginInfo.ISSUE_ACTIVITY_NAME, destroyedActivityInfo.mActivityName);
+                    } catch (JSONException e) {
+                        MatrixLog.printErrStackTrace(TAG, e, "unexpected exception.");
                     }
+                    mResourcePlugin.onDetectIssue(new Issue(resultJson));
                 }
             }
 
