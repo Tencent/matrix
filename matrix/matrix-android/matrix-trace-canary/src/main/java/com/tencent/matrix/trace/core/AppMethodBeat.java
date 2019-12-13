@@ -216,10 +216,8 @@ public class AppMethodBeat implements BeatLifecycle {
             }
         }
 
-        long threadId = -1;
-        if (null != Thread.currentThread()) {
-            threadId = Thread.currentThread().getId();
-        }
+        long threadId = Thread.currentThread().getId();
+
         if (sMethodEnterListener != null) {
             sMethodEnterListener.enter(methodId, threadId);
         }
@@ -253,7 +251,7 @@ public class AppMethodBeat implements BeatLifecycle {
         if (methodId >= METHOD_ID_MAX) {
             return;
         }
-        if (null != Thread.currentThread() && Thread.currentThread().getId() == sMainThreadId) {
+        if (Thread.currentThread().getId() == sMainThreadId) {
             if (sIndex < Constants.BUFFER_SIZE) {
                 mergeData(methodId, sIndex, false);
             } else {
