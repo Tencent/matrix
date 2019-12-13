@@ -217,7 +217,6 @@ public class AppMethodBeat implements BeatLifecycle {
         }
 
         long threadId = Thread.currentThread().getId();
-
         if (sMethodEnterListener != null) {
             sMethodEnterListener.enter(methodId, threadId);
         }
