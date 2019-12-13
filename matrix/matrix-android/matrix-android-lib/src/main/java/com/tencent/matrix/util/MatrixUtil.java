@@ -195,7 +195,7 @@ public final class MatrixUtil {
             try {
                 return MessageDigest.getInstance("MD5");
             } catch (NoSuchAlgorithmException e) {
-                throw new RuntimeException("Initialize SHA256-DIGEST failed.", e);
+                throw new RuntimeException("Initialize MD5-DIGEST failed.", e);
             }
         }
     };
