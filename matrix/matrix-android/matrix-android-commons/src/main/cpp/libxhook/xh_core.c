@@ -682,6 +682,7 @@ void* xh_core_elf_open(const char *path_suffix) {
     path_suffix_len = strlen(path_suffix);
     if (path_suffix_len == 0)
     {
+        fclose(fp);
         return NULL;
     }
 
@@ -730,24 +731,28 @@ void* xh_core_elf_open(const char *path_suffix) {
 
     if (found != 1)
     {
+        fclose(fp);
         return NULL;
     }
 
     mi = malloc(sizeof(xh_core_map_info_t));
     if (mi == NULL)
     {
+        fclose(fp);
         return NULL;
     }
     memset(mi, 0, sizeof(xh_core_map_info_t));
 
     if ((mi->pathname = strdup(pathname)) == NULL)
     {
+        fclose(fp);
         free(mi);
         mi = NULL;
         return NULL;
     }
 
     mi->base_addr = base_addr;
+    fclose(fp);
 
     return mi;
 }
