@@ -163,6 +163,7 @@
     }
     
     if (!trueStack) {
+        pthread_mutex_unlock(&m_threadLock);
         return NULL;
     }
 
