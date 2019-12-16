@@ -19,7 +19,6 @@ package com.tencent.matrix.apk.model.task;
 
 import com.google.common.collect.Ordering;
 import com.google.gson.JsonArray;
-import com.tencent.matrix.apk.model.task.util.ApkConstants;
 import com.tencent.matrix.apk.model.exception.TaskExecuteException;
 import com.tencent.matrix.apk.model.exception.TaskInitException;
 import com.tencent.matrix.apk.model.job.JobConfig;
@@ -27,11 +26,13 @@ import com.tencent.matrix.apk.model.job.JobConstants;
 import com.tencent.matrix.apk.model.result.TaskJsonResult;
 import com.tencent.matrix.apk.model.result.TaskResult;
 import com.tencent.matrix.apk.model.result.TaskResultFactory;
+import com.tencent.matrix.apk.model.task.util.ApkConstants;
 import com.tencent.matrix.apk.model.task.util.ApkResourceDecoder;
 import com.tencent.matrix.apk.model.task.util.ApkUtil;
 import com.tencent.matrix.javalib.util.FileUtil;
 import com.tencent.matrix.javalib.util.Log;
 import com.tencent.matrix.javalib.util.Util;
+
 import org.jf.baksmali.BaksmaliOptions;
 import org.jf.dexlib2.DexFileFactory;
 import org.jf.dexlib2.Opcodes;
@@ -405,15 +406,14 @@ public class UnusedResourcesTask extends ApkTask {
             }
         }
 
-        for (String resource : resourceRefSet) {
-            readChildReference(resource);
-        }
-
         for (String resource : unusedResSet) {
             if (ignoreResource(resource)) {
                 resourceRefSet.add(resource);
-                ignoreChildResource(resource);
             }
+        }
+
+        for (String resource : resourceRefSet) {
+            readChildReference(resource);
         }
     }
 
@@ -440,13 +440,6 @@ public class UnusedResourcesTask extends ApkTask {
                 }
             }
             visitPath.pop();
-        }
-    }
-
-    private void ignoreChildResource(String resource) {
-        if (nonValueReferences.containsKey(resource)) {
-            Set<String> childReference = nonValueReferences.get(resource);
-            resourceRefSet.addAll(childReference);
         }
     }
 
