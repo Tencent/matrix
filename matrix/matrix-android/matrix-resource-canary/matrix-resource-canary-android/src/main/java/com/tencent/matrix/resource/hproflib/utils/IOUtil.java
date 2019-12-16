@@ -226,8 +226,8 @@ public final class IOUtil {
     }
 
     public static void writeString(OutputStream out, String text) throws IOException {
-        final int length = text.length();
-        out.write(text.getBytes(Charset.forName("UTF-8")), 0, length);
+        byte[] content=text.getBytes(Charset.forName("UTF-8"));
+        out.write(content, 0, content.length);
     }
 
     public static void writeNullTerminatedString(OutputStream out, String text) throws IOException {
