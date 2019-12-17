@@ -29,7 +29,7 @@ public class FrameTracer extends Tracer {
 
     private static final String TAG = "Matrix.FrameTracer";
     private final HashSet<IDoFrameListener> listeners = new HashSet<>();
-    private final long frameIntervalMs;
+    private final float frameIntervalMs;
     private final TraceConfig config;
     private long timeSliceMs;
     private boolean isFPSEnable;
@@ -40,7 +40,7 @@ public class FrameTracer extends Tracer {
 
     public FrameTracer(TraceConfig config) {
         this.config = config;
-        this.frameIntervalMs = TimeUnit.MILLISECONDS.convert(UIThreadMonitor.getMonitor().getFrameIntervalNanos(), TimeUnit.NANOSECONDS) + 1;
+        this.frameIntervalMs = UIThreadMonitor.getMonitor().getFrameIntervalNanos() / 1000000f;
         this.timeSliceMs = config.getTimeSliceMs();
         this.isFPSEnable = config.isFPSEnable();
         this.frozenThreshold = config.getFrozenThreshold();

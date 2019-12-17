@@ -46,8 +46,7 @@ public class FrameDecorator extends IDoFrameListener implements IAppForeground {
     private View.OnClickListener clickListener;
     private DisplayMetrics displayMetrics = new DisplayMetrics();
     private boolean isEnable = true;
-    private long frameIntervalMs;
-
+    private float frameIntervalMs;
 
     private int bestColor;
     private int normalColor;
@@ -58,7 +57,7 @@ public class FrameDecorator extends IDoFrameListener implements IAppForeground {
 
     @SuppressLint("ClickableViewAccessibility")
     private FrameDecorator(Context context, final FloatFrameView view) {
-        this.frameIntervalMs = TimeUnit.MILLISECONDS.convert(UIThreadMonitor.getMonitor().getFrameIntervalNanos(), TimeUnit.NANOSECONDS) + 1;
+        this.frameIntervalMs = UIThreadMonitor.getMonitor().getFrameIntervalNanos() / 1000000f;
         this.view = view;
         this.bestColor = context.getResources().getColor(R.color.level_best_color);
         this.normalColor = context.getResources().getColor(R.color.level_normal_color);
