@@ -66,6 +66,7 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, App
         this.splashActivities = config.getSplashActivities();
         this.coldStartupThresholdMs = config.getColdStartupThresholdMs();
         this.warmStartupThresholdMs = config.getWarmStartupThresholdMs();
+        MatrixLog.i(TAG, "startInfo:" + config.toString());
     }
 
     @Override
@@ -97,8 +98,10 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, App
             if (firstScreenCost == 0) {
                 this.firstScreenCost = uptimeMillis() - ActivityThreadHacker.getEggBrokenTime();
             }
+            MatrixLog.i(TAG, "firstScreenCost:%d", this.firstScreenCost);
             if (hasShowSplashActivity) {
                 coldCost = uptimeMillis() - ActivityThreadHacker.getEggBrokenTime();
+                MatrixLog.i(TAG, "hasShowSplashActivity:true, coldCost:%d", this.coldCost);
             } else {
                 if (splashActivities.contains(activity)) {
                     hasShowSplashActivity = true;
@@ -109,6 +112,8 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, App
                     MatrixLog.w(TAG, "pass this activity[%s] at duration of start up! splashActivities=%s", activity, splashActivities);
                 }
             }
+            MatrixLog.i(TAG, "matrix cost:%d", coldCost);
+
             if (coldCost > 0) {
                 analyse(ActivityThreadHacker.getApplicationCost(), firstScreenCost, coldCost, false);
             }
@@ -116,6 +121,7 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, App
         } else if (isWarmStartUp()) {
             isWarmStartUp = false;
             long warmCost = uptimeMillis() - ActivityThreadHacker.getLastLaunchActivityTime();
+            MatrixLog.i(TAG, "isWarmStartUp(true), warmCost:%d", warmCost);
             if (warmCost > 0) {
                 analyse(ActivityThreadHacker.getApplicationCost(), firstScreenCost, warmCost, true);
             }
@@ -163,6 +169,8 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, App
             this.firstScreenCost = firstScreenCost;
             this.allCost = allCost;
             this.isWarmStartUp = isWarmStartUp;
+            MatrixLog.i(TAG, "data.lenth:%d, scene:%d, applicationCost:d, firstScreenCost:%d, allCost:%d, isWarmStartUp:%b",
+                    data.length, scene, applicationCost, firstScreenCost, allCost, isWarmStartUp);
         }
 
         @Override
@@ -214,6 +222,7 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, App
 
             TracePlugin plugin = Matrix.with().getPluginByClass(TracePlugin.class);
             if (null == plugin) {
+                MatrixLog.w(TAG, "null == plugin");
                 return;
             }
             try {
@@ -224,6 +233,7 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, App
                 costObject.put(SharePluginInfo.STAGE_FIRST_ACTIVITY_CREATE, firstScreenCost);
                 costObject.put(SharePluginInfo.STAGE_STARTUP_DURATION, allCost);
                 costObject.put(SharePluginInfo.ISSUE_IS_WARM_START_UP, isWarmStartUp);
+                MatrixLog.i(TAG, "startup:%s", costObject.toString());
                 Issue issue = new Issue();
                 issue.setTag(SharePluginInfo.TAG_PLUGIN_STARTUP);
                 issue.setContent(costObject);
@@ -244,6 +254,7 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, App
                     jsonObject.put(SharePluginInfo.ISSUE_TRACE_STACK, reportBuilder.toString());
                     jsonObject.put(SharePluginInfo.ISSUE_STACK_KEY, stackKey);
                     jsonObject.put(SharePluginInfo.ISSUE_SUB_TYPE, isWarmStartUp ? 2 : 1);
+                    MatrixLog.i(TAG, "EvilMethod:%s", jsonObject.toString());
                     Issue issue = new Issue();
                     issue.setTag(SharePluginInfo.TAG_PLUGIN_EVIL_METHOD);
                     issue.setContent(jsonObject);
