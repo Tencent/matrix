@@ -94,6 +94,7 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, App
             Log.w(TAG, "start up from unknown scene");
             return;
         }
+        MatrixLog.i(TAG, "[onActivityFocused] activity:%s", activity);
         if (isColdStartup()) {
             if (firstScreenCost == 0) {
                 this.firstScreenCost = uptimeMillis() - ActivityThreadHacker.getEggBrokenTime();
@@ -104,6 +105,7 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, App
                 MatrixLog.i(TAG, "hasShowSplashActivity:true, coldCost:%d", this.coldCost);
             } else {
                 if (splashActivities.contains(activity)) {
+                    MatrixLog.i(TAG, "splashActivities:%s", activity);
                     hasShowSplashActivity = true;
                 } else if (splashActivities.isEmpty()) {
                     MatrixLog.i(TAG, "default splash activity[%s]", activity);
@@ -169,7 +171,7 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, App
             this.firstScreenCost = firstScreenCost;
             this.allCost = allCost;
             this.isWarmStartUp = isWarmStartUp;
-            MatrixLog.i(TAG, "data.lenth:%d, scene:%d, applicationCost:d, firstScreenCost:%d, allCost:%d, isWarmStartUp:%b",
+            MatrixLog.i(TAG, "data.lenth:%d, scene:%d, applicationCost:%d, firstScreenCost:%d, allCost:%d, isWarmStartUp:%b",
                     data.length, scene, applicationCost, firstScreenCost, allCost, isWarmStartUp);
         }
 
