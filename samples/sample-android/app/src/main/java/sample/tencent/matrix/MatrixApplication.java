@@ -22,6 +22,8 @@ import android.os.HandlerThread;
 import android.content.Intent;
 
 import com.tencent.matrix.Matrix;
+import com.tencent.matrix.batterycanary.BatteryCanaryPlugin;
+import com.tencent.matrix.batterycanary.config.BatteryConfig;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitor;
 import com.tencent.matrix.batterycanary.monitor.plugin.JiffiesMonitorPlugin;
 import com.tencent.matrix.batterycanary.monitor.plugin.LooperTaskMonitorPlugin;
@@ -36,6 +38,7 @@ import com.tencent.matrix.trace.TracePlugin;
 import com.tencent.matrix.trace.config.TraceConfig;
 import com.tencent.matrix.util.MatrixHandlerThread;
 import com.tencent.matrix.util.MatrixLog;
+import com.tencent.mrs.plugin.IDynamicConfig;
 import com.tencent.sqlitelint.SQLiteLint;
 import com.tencent.sqlitelint.SQLiteLintPlugin;
 import com.tencent.sqlitelint.config.SQLiteLintConfig;
@@ -126,6 +129,8 @@ public class MatrixApplication extends Application {
             );
             builder.plugin(batteryMonitor);
 
+            BatteryCanaryPlugin oldBatteryPlugin = new BatteryCanaryPlugin(new BatteryConfig.Builder().dynamicConfig(new DumpConfig()).build());
+            builder.plugin(oldBatteryPlugin);
 
             MatrixHandlerThread.getDefaultHandler().postDelayed(new Runnable() {
                 @Override
@@ -148,6 +153,19 @@ public class MatrixApplication extends Application {
         Matrix.with().getPluginByClass(BatteryMonitor.class).start();
         MatrixLog.i("Matrix.HackCallback", "end:%s", System.currentTimeMillis());
 
+    }
+
+    private static class DumpConfig implements IDynamicConfig {
+
+        public String get(String key, String defStr) {return  defStr;}
+
+        public int get(String key, int defInt) {return defInt;}
+
+        public long get(String key, long defLong){return defLong;}
+
+        public boolean get(String key, boolean defBool){return defBool;}
+
+        public float get(String key, float defFloat) {return defFloat;}
     }
 
 
