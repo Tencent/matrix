@@ -43,10 +43,10 @@ public class TraceConfig implements IDefaultConfig {
     public boolean isDevEnv;
     public String splashActivities;
     public Set<String> splashActivitiesSet;
-
+    public boolean isHasActivity;
 
     private TraceConfig() {
-
+        this.isHasActivity = true;
     }
 
     @Override
@@ -55,6 +55,7 @@ public class TraceConfig implements IDefaultConfig {
         ss.append("# TraceConfig\n");
         ss.append("* isDebug:\t").append(isDebug).append("\n");
         ss.append("* isDevEnv:\t").append(isDevEnv).append("\n");
+        ss.append("* isHasActivity:\t").append(isHasActivity).append("\n");
         ss.append("* defaultFpsEnable:\t").append(defaultFpsEnable).append("\n");
         ss.append("* defaultMethodTraceEnable:\t").append(defaultMethodTraceEnable).append("\n");
         ss.append("* defaultStartupEnable:\t").append(defaultStartupEnable).append("\n");
@@ -86,6 +87,10 @@ public class TraceConfig implements IDefaultConfig {
 
     public boolean isStartupEnable() {
         return defaultStartupEnable;
+    }
+
+    public boolean isHasActivity() {
+        return isHasActivity;
     }
 
     @Override
@@ -204,6 +209,11 @@ public class TraceConfig implements IDefaultConfig {
 
         public Builder isDevEnv(boolean isDevEnv) {
             config.isDevEnv = isDevEnv;
+            return this;
+        }
+
+        public Builder isHasActivity(boolean isHasActivity) {
+            config.isHasActivity = isHasActivity;
             return this;
         }
 

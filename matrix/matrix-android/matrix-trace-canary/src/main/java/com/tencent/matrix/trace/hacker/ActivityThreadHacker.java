@@ -26,6 +26,7 @@ import com.tencent.matrix.util.MatrixLog;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.util.HashSet;
 import java.util.List;
 
 /**
@@ -39,6 +40,24 @@ public class ActivityThreadHacker {
     public static AppMethodBeat.IndexRecord sLastLaunchActivityMethodIndex = new AppMethodBeat.IndexRecord();
     public static AppMethodBeat.IndexRecord sApplicationCreateBeginMethodIndex = new AppMethodBeat.IndexRecord();
     public static int sApplicationCreateScene = Integer.MIN_VALUE;
+    private static final HashSet<IApplicationCreateListener> listeners = new HashSet<>();
+    private static boolean sIsCreatedByLaunchActivity = false;
+
+    public static void addListener(IApplicationCreateListener listener) {
+        synchronized (listeners) {
+            listeners.add(listener);
+        }
+    }
+
+    public static void removeListener(IApplicationCreateListener listener) {
+        synchronized (listeners) {
+            listeners.remove(listener);
+        }
+    }
+
+    public interface IApplicationCreateListener {
+        void onApplicationCreateEnd();
+    }
 
     public static void hackSysHandlerCallback() {
         try {
@@ -75,12 +94,16 @@ public class ActivityThreadHacker {
         return ActivityThreadHacker.sLastLaunchActivityTime;
     }
 
+    public static boolean isCreatedByLaunchActivity() {
+        return sIsCreatedByLaunchActivity;
+    }
+
 
     private final static class HackCallback implements Handler.Callback {
         private static final int LAUNCH_ACTIVITY = 100;
         private static final int CREATE_SERVICE = 114;
         private static final int RECEIVER = 113;
-        public static final int EXECUTE_TRANSACTION = 159; // for Android 9.0
+        private static final int EXECUTE_TRANSACTION = 159; // for Android 9.0
         private static boolean isCreated = false;
         private static int hasPrint = 10;
 
@@ -98,6 +121,7 @@ public class ActivityThreadHacker {
             }
 
             boolean isLaunchActivity = isLaunchActivity(msg);
+
             if (hasPrint > 0) {
                 MatrixLog.i(TAG, "[handleMessage] msg.what:%s begin:%s isLaunchActivity:%s", msg.what, SystemClock.uptimeMillis(), isLaunchActivity);
                 hasPrint--;
@@ -112,6 +136,13 @@ public class ActivityThreadHacker {
                     ActivityThreadHacker.sApplicationCreateEndTime = SystemClock.uptimeMillis();
                     ActivityThreadHacker.sApplicationCreateScene = msg.what;
                     isCreated = true;
+                    sIsCreatedByLaunchActivity = isLaunchActivity;
+                    MatrixLog.i(TAG, "application create end, sApplicationCreateScene:%d, isLaunchActivity:%s", msg.what, isLaunchActivity);
+                    synchronized (listeners) {
+                        for (IApplicationCreateListener listener : listeners) {
+                            listener.onApplicationCreateEnd();
+                        }
+                    }
                 }
             }
 
