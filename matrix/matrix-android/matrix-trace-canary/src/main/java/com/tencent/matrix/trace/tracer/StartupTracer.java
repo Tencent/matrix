@@ -45,7 +45,7 @@ import static android.os.SystemClock.uptimeMillis;
  * </p>
  */
 
-public class StartupTracer extends Tracer implements IAppMethodBeatListener, Application.ActivityLifecycleCallbacks {
+public class StartupTracer extends Tracer implements IAppMethodBeatListener, ActivityThreadHacker.IApplicationCreateListener, Application.ActivityLifecycleCallbacks {
 
     private static final String TAG = "Matrix.StartupTracer";
     private final TraceConfig config;
@@ -58,6 +58,7 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, App
     private Set<String> splashActivities;
     private long coldStartupThresholdMs;
     private long warmStartupThresholdMs;
+    private boolean isHasActivity;
 
 
     public StartupTracer(TraceConfig config) {
@@ -66,6 +67,8 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, App
         this.splashActivities = config.getSplashActivities();
         this.coldStartupThresholdMs = config.getColdStartupThresholdMs();
         this.warmStartupThresholdMs = config.getWarmStartupThresholdMs();
+        this.isHasActivity = config.isHasActivity();
+        ActivityThreadHacker.addListener(this);
     }
 
     @Override
@@ -88,11 +91,22 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, App
     }
 
     @Override
+    public void onApplicationCreateEnd() {
+        if (!isHasActivity) {
+            long applicationCost = ActivityThreadHacker.getApplicationCost();
+            analyse(applicationCost, 0, applicationCost, false);
+        }
+    }
+
+    @Override
     public void onActivityFocused(String activity) {
         if (ActivityThreadHacker.sApplicationCreateScene == Integer.MIN_VALUE) {
             Log.w(TAG, "start up from unknown scene");
             return;
         }
+
+        boolean isCreatedByLaunchActivity = ActivityThreadHacker.isCreatedByLaunchActivity();
+
         if (isColdStartup()) {
             if (firstScreenCost == 0) {
                 this.firstScreenCost = uptimeMillis() - ActivityThreadHacker.getEggBrokenTime();
@@ -102,11 +116,20 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, App
             } else {
                 if (splashActivities.contains(activity)) {
                     hasShowSplashActivity = true;
-                } else if (splashActivities.isEmpty()) {
+                } else if (splashActivities.isEmpty()) { //process which is has activity and  not named 'MM'
                     MatrixLog.i(TAG, "default splash activity[%s]", activity);
-                    coldCost = firstScreenCost;
-                } else {
-                    MatrixLog.w(TAG, "pass this activity[%s] at duration of start up! splashActivities=%s", activity, splashActivities);
+                    if (isCreatedByLaunchActivity) {
+                        coldCost = firstScreenCost;
+                    } else {
+                        firstScreenCost = 0;
+                        coldCost = ActivityThreadHacker.getApplicationCost();
+                    }
+                } else { // only process MM but not created by launch UI
+                    if (isCreatedByLaunchActivity) { // error path
+                        MatrixLog.e(TAG, "pass this activity[%s] at duration of start up! splashActivities=%s", activity, splashActivities);
+                    } else { //other create-scene
+                        coldCost = firstScreenCost;
+                    }
                 }
             }
             if (coldCost > 0) {
@@ -117,7 +140,7 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, App
             isWarmStartUp = false;
             long warmCost = uptimeMillis() - ActivityThreadHacker.getLastLaunchActivityTime();
             if (warmCost > 0) {
-                analyse(ActivityThreadHacker.getApplicationCost(), firstScreenCost, warmCost, true);
+                analyse(ActivityThreadHacker.getApplicationCost(), 0, warmCost, true);
             }
         }
 
