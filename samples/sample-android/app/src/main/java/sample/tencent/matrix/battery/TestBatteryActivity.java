@@ -87,14 +87,14 @@ public class TestBatteryActivity extends Activity {
             am.set(AlarmManager.ELAPSED_REALTIME_WAKEUP, 200*1000, pendingIntent);
         }
 
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                final AlarmManager am = (AlarmManager) getApplicationContext().getSystemService(Context.ALARM_SERVICE);
-                am.cancel(pendingIntent);
-                pendingIntent.cancel();
-            }
-        }).start();
+//        new Thread(new Runnable() {
+//            @Override
+//            public void run() {
+//                final AlarmManager am = (AlarmManager) getApplicationContext().getSystemService(Context.ALARM_SERVICE);
+//                am.cancel(pendingIntent);
+//                pendingIntent.cancel();
+//            }
+//        }).start();
     }
 
     @Override

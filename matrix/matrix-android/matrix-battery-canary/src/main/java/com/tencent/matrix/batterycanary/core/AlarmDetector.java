@@ -231,8 +231,8 @@ public class AlarmDetector extends IssuePublisher {
             }
         }
 
-//        MatrixLog.i(TAG, "doCountAndDetect currentRunningAlarms size:%d, currentCountPeriodAlarmTriggeredCount:%d, currentCountPeriodWakeUpAlarmTriggeredCount:%d",
-//                mCurrentRunningAlarms.size(), currentCountPeriodAlarmTriggeredCount, currentCountPeriodWakeUpAlarmTriggeredCount);
+        MatrixLog.i(TAG, "doCountAndDetect currentRunningAlarms size:%d, currentCountPeriodAlarmTriggeredCount:%d, currentCountPeriodWakeUpAlarmTriggeredCount:%d",
+                mCurrentRunningAlarms.size(), currentCountPeriodAlarmTriggeredCount, currentCountPeriodWakeUpAlarmTriggeredCount);
 
         //detect
         int issueType = -1;

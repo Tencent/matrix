@@ -46,7 +46,7 @@ public class BatteryConfig {
     private static final int DEFAULT_WAKE_LOCK_HOLD_TIME_1H_THRESHOLD   = 10 * 60 * 1000;
 
     private static final int DEFAULT_ALARM_TRIGGERED_NUM_1H_THRESHOLD = 20;
-    private static final int DEFAULT_WAKEUP_ALARM_TRIGGERED_NUM_1H_THRESHOLD = 12;
+    private static final int DEFAULT_WAKEUP_ALARM_TRIGGERED_NUM_1H_THRESHOLD = 20;
 
     /**
      * The default, lax policy will enable all available detectors
