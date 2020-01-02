@@ -116,7 +116,7 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, Act
             } else {
                 if (splashActivities.contains(activity)) {
                     hasShowSplashActivity = true;
-                } else if (splashActivities.isEmpty()) { //process which is has activity and  not named 'MM'
+                } else if (splashActivities.isEmpty()) { //process which is has activity but not main UI process
                     MatrixLog.i(TAG, "default splash activity[%s]", activity);
                     if (isCreatedByLaunchActivity) {
                         coldCost = firstScreenCost;
@@ -124,12 +124,12 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, Act
                         firstScreenCost = 0;
                         coldCost = ActivityThreadHacker.getApplicationCost();
                     }
-                } else { // only process MM but not created by launch UI
+                } else {
                     if (isCreatedByLaunchActivity) { // error path
                         MatrixLog.e(TAG, "pass this activity[%s] at duration of start up! splashActivities=%s", activity, splashActivities);
-                    } else { //other create-scene
-                        coldCost = firstScreenCost;
                     }
+
+                    coldCost = firstScreenCost;
                 }
             }
             if (coldCost > 0) {
@@ -140,7 +140,7 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, Act
             isWarmStartUp = false;
             long warmCost = uptimeMillis() - ActivityThreadHacker.getLastLaunchActivityTime();
             if (warmCost > 0) {
-                analyse(ActivityThreadHacker.getApplicationCost(), 0, warmCost, true);
+                analyse(0, 0, warmCost, true);
             }
         }
 
