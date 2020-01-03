@@ -106,7 +106,7 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, Act
         }
 
         boolean isCreatedByLaunchActivity = ActivityThreadHacker.isCreatedByLaunchActivity();
-
+        MatrixLog.i(TAG, "activity:%s,  isCreatedByLaunchActivity:%b", activity, isCreatedByLaunchActivity);
         if (isColdStartup()) {
             if (firstScreenCost == 0) {
                 this.firstScreenCost = uptimeMillis() - ActivityThreadHacker.getEggBrokenTime();
