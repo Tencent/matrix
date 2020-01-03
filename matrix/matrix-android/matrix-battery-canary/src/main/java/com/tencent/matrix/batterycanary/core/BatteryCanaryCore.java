@@ -79,6 +79,10 @@ public class BatteryCanaryCore implements PowerManagerServiceHooker.IListener,
         mWakeLockDetector = null;
     }
 
+    public void onForeground(boolean isForground) {
+        mAlarmDetector.onForeground(isForground);
+    }
+
     @Override
     public void onAcquireWakeLock(final IBinder token, final int flags, final String tag, final String packageName,
                                   final WorkSource workSource, final String historyTag) {
