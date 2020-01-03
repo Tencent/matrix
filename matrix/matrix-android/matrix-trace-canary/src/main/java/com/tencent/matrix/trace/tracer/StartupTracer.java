@@ -106,26 +106,23 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, Act
             return;
         }
 
-        boolean isCreatedByLaunchActivity = ActivityThreadHacker.isCreatedByLaunchActivity();
-        MatrixLog.i(TAG, "activity:%s, splashActivities:%s, size:%d, isCreatedByLaunchActivity:%b, hasShowSplashActivity:%b, isColdStartup:%b",
-                activity, splashActivities, splashActivities.size(), isCreatedByLaunchActivity, hasShowSplashActivity, isColdStartup());
         if (isColdStartup()) {
+            boolean isCreatedByLaunchActivity = ActivityThreadHacker.isCreatedByLaunchActivity();
+            MatrixLog.i(TAG, "#ColdStartup# activity:%s, splashActivities:%s, empty:%b, isCreatedByLaunchActivity:%b, hasShowSplashActivity:%b, firstScreenCost:%d",
+                    activity, splashActivities, splashActivities.isEmpty(), isCreatedByLaunchActivity, hasShowSplashActivity, firstScreenCost);
+
             if (firstScreenCost == 0) {
                 this.firstScreenCost = uptimeMillis() - ActivityThreadHacker.getEggBrokenTime();
             }
             if (hasShowSplashActivity) {
                 coldCost = uptimeMillis() - ActivityThreadHacker.getEggBrokenTime();
             } else {
-                MatrixLog.i(TAG, "pre-load by os,  activity[%s], splashActivities=%s, size:%d", activity, splashActivities, splashActivities.size());
-
                 if (splashActivities.contains(activity)) {
                     hasShowSplashActivity = true;
                 } else if (splashActivities.isEmpty()) { //process which is has activity but not main UI process
-                    MatrixLog.i(TAG, "default splash activity[%s]", activity);
                     if (isCreatedByLaunchActivity) {
                         coldCost = firstScreenCost;
                     } else {
-                        firstScreenCost = 0;
                         coldCost = ActivityThreadHacker.getApplicationCost();
                     }
                 } else {
@@ -144,6 +141,7 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, Act
         } else if (isWarmStartUp()) {
             isWarmStartUp = false;
             long warmCost = uptimeMillis() - ActivityThreadHacker.getLastLaunchActivityTime();
+            MatrixLog.i(TAG, "#WarmStartup#  warmCost:%d", activity, warmCost);
             if (warmCost > 0) {
                 analyse(0, 0, warmCost, true);
             }
