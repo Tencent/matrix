@@ -126,8 +126,8 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, Act
                         coldCost = ActivityThreadHacker.getApplicationCost();
                     }
                 } else {
-                    if (isCreatedByLaunchActivity) { // error path
-                        MatrixLog.e(TAG, "pass this activity[%s] at duration of start up! splashActivities=%s", activity, splashActivities);
+                    if (isCreatedByLaunchActivity) {
+//                        MatrixLog.e(TAG, "pass this activity[%s] at duration of start up! splashActivities=%s", activity, splashActivities);
                         coldCost = firstScreenCost;
                     } else {
                         coldCost = ActivityThreadHacker.getApplicationCost();
@@ -141,7 +141,7 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, Act
         } else if (isWarmStartUp()) {
             isWarmStartUp = false;
             long warmCost = uptimeMillis() - ActivityThreadHacker.getLastLaunchActivityTime();
-            MatrixLog.i(TAG, "#WarmStartup#  warmCost:%d", activity, warmCost);
+            MatrixLog.i(TAG, "#WarmStartup# activity:%s, warmCost:%d", activity, warmCost);
             if (warmCost > 0) {
                 analyse(0, 0, warmCost, true);
             }
