@@ -28,6 +28,7 @@ import com.tencent.matrix.batterycanary.config.BatteryConfig;
 import com.tencent.matrix.batterycanary.util.BatteryCanaryUtil;
 import com.tencent.matrix.report.Issue;
 import com.tencent.matrix.report.IssuePublisher;
+import com.tencent.matrix.util.MatrixLog;
 //import com.tencent.matrix.util.MatrixLog;
 
 /**
@@ -45,7 +46,7 @@ public class BatteryCanaryCore implements PowerManagerServiceHooker.IListener,
 
     private boolean           mIsStart;
     private WakeLockDetector mWakeLockDetector;
-    private AlarmDetector mAlarmDetector;
+    private AlarmDetector mAlarmDetector = null;
     private final Context mContext;
 
     public BatteryCanaryCore(BatteryCanaryPlugin batteryCanaryPlugin) {
@@ -80,7 +81,9 @@ public class BatteryCanaryCore implements PowerManagerServiceHooker.IListener,
     }
 
     public void onForeground(boolean isForground) {
-        mAlarmDetector.onForeground(isForground);
+        if (null != mAlarmDetector) {
+            mAlarmDetector.onForeground(isForground);
+        }
     }
 
     @Override
@@ -156,6 +159,8 @@ public class BatteryCanaryCore implements PowerManagerServiceHooker.IListener,
                 }
             });
             AlarmManagerServiceHooker.addListener(this);
+        } else {
+            MatrixLog.i(TAG, "isDetectAlarm == false");
         }
     }
 
@@ -165,7 +170,7 @@ public class BatteryCanaryCore implements PowerManagerServiceHooker.IListener,
 //        MatrixLog.d(TAG, "onAlarmSet: type:%d, triggerAtMillis:%d, windowMillis:%d, intervalMillis:%d, flags:%d, operationInfo:%s, onAlarmListener:%s",
 //                type, triggerAtMillis, windowMillis, intervalMillis, flags, operation, onAlarmListener);
 
-        if (mAlarmDetector == null) {
+        if (null == mAlarmDetector) {
             return;
         }
 
@@ -183,6 +188,9 @@ public class BatteryCanaryCore implements PowerManagerServiceHooker.IListener,
     @Override
     public void onAlarmRemove(final PendingIntent operation, final AlarmManager.OnAlarmListener onAlarmListener) {
 //        MatrixLog.d(TAG, "onAlarmRemove: operationInfo:%s, onAlarmListener:%s", operation, onAlarmListener);
+        if (null == mAlarmDetector) {
+            return;
+        }
 
         final String stackTrace = BatteryCanaryUtil.getThrowableStack(new Throwable());
         final Runnable detectTask = new Runnable() {
