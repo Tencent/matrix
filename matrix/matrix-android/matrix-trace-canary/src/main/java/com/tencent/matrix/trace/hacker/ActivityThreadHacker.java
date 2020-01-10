@@ -20,6 +20,7 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.Message;
 import android.os.SystemClock;
+import android.util.Log;
 
 import com.tencent.matrix.trace.core.AppMethodBeat;
 import com.tencent.matrix.util.MatrixLog;
@@ -105,7 +106,7 @@ public class ActivityThreadHacker {
         private static final int RECEIVER = 113;
         private static final int EXECUTE_TRANSACTION = 159; // for Android 9.0
         private static boolean isCreated = false;
-        private static int hasPrint = 10;
+        private static int hasPrint = Integer.MAX_VALUE;
 
         private final Handler.Callback mOriginalCallback;
 
@@ -123,12 +124,13 @@ public class ActivityThreadHacker {
             boolean isLaunchActivity = isLaunchActivity(msg);
 
             if (hasPrint > 0) {
-                MatrixLog.i(TAG, "[handleMessage] msg.what:%s begin:%s isLaunchActivity:%s", msg.what, SystemClock.uptimeMillis(), isLaunchActivity);
+                MatrixLog.i(TAG, "[handleMessage] msg.what:%s begin:%s isLaunchActivity:%s SDK_INT=%s", msg.what, SystemClock.uptimeMillis(), isLaunchActivity, Build.VERSION.SDK_INT);
                 hasPrint--;
             }
             if (isLaunchActivity) {
                 ActivityThreadHacker.sLastLaunchActivityTime = SystemClock.uptimeMillis();
                 ActivityThreadHacker.sLastLaunchActivityMethodIndex = AppMethodBeat.getInstance().maskIndex("LastLaunchActivityMethodIndex");
+                MatrixLog.i(TAG, "sLastLaunchActivityTime=%s", ActivityThreadHacker.sLastLaunchActivityTime);
             }
 
             if (!isCreated) {
