@@ -3,6 +3,7 @@ package com.tencent.matrix.trace.tracer;
 import android.app.Activity;
 import android.app.Application;
 import android.os.Bundle;
+import android.os.Handler;
 import android.util.Log;
 
 import com.tencent.matrix.Matrix;
@@ -23,6 +24,7 @@ import com.tencent.matrix.util.MatrixLog;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.lang.reflect.Field;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
