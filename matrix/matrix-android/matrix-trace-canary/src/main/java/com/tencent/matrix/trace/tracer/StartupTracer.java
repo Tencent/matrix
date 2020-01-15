@@ -114,8 +114,12 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, Act
 
         if (isColdStartup()) {
             boolean isCreatedByLaunchActivity = ActivityThreadHacker.isCreatedByLaunchActivity();
-            MatrixLog.i(TAG, "#ColdStartup# activity:%s, splashActivities:%s, empty:%b, isCreatedByLaunchActivity:%b, hasShowSplashActivity:%b, firstScreenCost:%d",
-                    activity, splashActivities, splashActivities.isEmpty(), isCreatedByLaunchActivity, hasShowSplashActivity, firstScreenCost);
+            MatrixLog.i(TAG, "#ColdStartup# activity:%s, splashActivities:%s, empty:%b, " +
+                            "isCreatedByLaunchActivity:%b, hasShowSplashActivity:%b, " +
+                            "firstScreenCost:%d, now:%d, application_create_begin_time:%d, app_cost:%d",
+                    activity, splashActivities, splashActivities.isEmpty(), isCreatedByLaunchActivity,
+                    hasShowSplashActivity, firstScreenCost, uptimeMillis(),
+                    ActivityThreadHacker.getEggBrokenTime(), ActivityThreadHacker.getApplicationCost());
 
             if (firstScreenCost == 0) {
                 this.firstScreenCost = uptimeMillis() - ActivityThreadHacker.getEggBrokenTime();
@@ -148,6 +152,7 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, Act
             isWarmStartUp = false;
             long warmCost = uptimeMillis() - lastCreateActivity;
             MatrixLog.i(TAG, "#WarmStartup# activity:%s, warmCost:%d", activity, warmCost);
+
             if (warmCost > 0) {
                 analyse(0, 0, warmCost, true);
             }
@@ -293,6 +298,7 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, Act
 
     @Override
     public void onActivityCreated(Activity activity, Bundle savedInstanceState) {
+        MatrixLog.i(TAG, "activeActivityCount:%d, coldCost:%d", activeActivityCount, coldCost);
         if (activeActivityCount == 0 && coldCost > 0) {
             lastCreateActivity = uptimeMillis();
             isWarmStartUp = true;
@@ -302,6 +308,7 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, Act
 
     @Override
     public void onActivityDestroyed(Activity activity) {
+        MatrixLog.i(TAG, "activeActivityCount:%d", activeActivityCount);
         activeActivityCount--;
     }
 
