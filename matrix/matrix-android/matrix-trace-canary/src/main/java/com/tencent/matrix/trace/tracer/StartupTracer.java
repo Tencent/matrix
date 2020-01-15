@@ -23,6 +23,7 @@ import com.tencent.matrix.util.MatrixLog;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -114,6 +115,16 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, Act
                     activity, splashActivities, splashActivities.isEmpty(), isCreatedByLaunchActivity,
                     hasShowSplashActivity, firstScreenCost, uptimeMillis(),
                     ActivityThreadHacker.getEggBrokenTime(), ActivityThreadHacker.getApplicationCost());
+
+            String key = activity.getClass().getName() + "@" + activity.hashCode();
+            Long createdTime = createdTimeMap.get(key);
+            if (createdTime == null) {
+                createdTime = 0L;
+            }
+            if (uptimeMillis() - createdTime >= 30 * 1000) {
+                MatrixLog.e(TAG, "%s cost too much time[%s] between activity create and onActivityFocused, just throw it. ", key, uptimeMillis() - createdTime);
+                return;
+            }
 
             if (firstScreenCost == 0) {
                 this.firstScreenCost = uptimeMillis() - ActivityThreadHacker.getEggBrokenTime();
@@ -289,6 +300,8 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, Act
     }
 
     private long lastCreateActivity = 0l;
+    private HashMap<String, Long> createdTimeMap = new HashMap<>();
+    private boolean isShouldRecordCreateTime = true;
 
     @Override
     public void onActivityCreated(Activity activity, Bundle savedInstanceState) {
@@ -299,6 +312,9 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, Act
             isWarmStartUp = true;
         }
         activeActivityCount++;
+        if (isShouldRecordCreateTime) {
+            createdTimeMap.put(activity.getClass().getName() + "@" + activity.hashCode(), uptimeMillis());
+        }
     }
 
     @Override
