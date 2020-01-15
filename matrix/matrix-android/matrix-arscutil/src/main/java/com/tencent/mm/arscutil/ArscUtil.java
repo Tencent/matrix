@@ -183,7 +183,7 @@ public class ArscUtil {
 
     public static boolean replaceFileResource(ResTable resTable, int sourceResId, String sourceFile, int targetResId, String targetFile) throws IOException {
         int sourcePkgId = getPackageId(sourceResId);
-    	int targetPkgId = getPackageId(targetResId);
+        int targetPkgId = getPackageId(targetResId);
     	Log.i(TAG, "try to replace %H(%s) with %H(%s)", sourceResId, sourceFile, targetResId, targetFile);
     	if (sourcePkgId == targetPkgId) {
     		ResPackage resPackage = findResPackage(resTable, sourcePkgId);
