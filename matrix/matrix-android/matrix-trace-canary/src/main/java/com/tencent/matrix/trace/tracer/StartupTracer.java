@@ -2,9 +2,12 @@ package com.tencent.matrix.trace.tracer;
 
 import android.app.Activity;
 import android.app.Application;
+import android.content.Context;
 import android.os.Bundle;
+import android.os.Handler;
 import android.util.Log;
 
+import com.tencent.matrix.AppActiveMatrixDelegate;
 import com.tencent.matrix.Matrix;
 import com.tencent.matrix.report.Issue;
 import com.tencent.matrix.trace.TracePlugin;
@@ -23,6 +26,9 @@ import com.tencent.matrix.util.MatrixLog;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -140,7 +146,7 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, Act
 
         } else if (isWarmStartUp()) {
             isWarmStartUp = false;
-            long warmCost = uptimeMillis() - ActivityThreadHacker.getLastLaunchActivityTime();
+            long warmCost = uptimeMillis() - lastCreateActivity;
             MatrixLog.i(TAG, "#WarmStartup# activity:%s, warmCost:%d", activity, warmCost);
             if (warmCost > 0) {
                 analyse(0, 0, warmCost, true);
@@ -283,10 +289,12 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, Act
         }
     }
 
+    private long lastCreateActivity = 0l;
 
     @Override
     public void onActivityCreated(Activity activity, Bundle savedInstanceState) {
         if (activeActivityCount == 0 && coldCost > 0) {
+            lastCreateActivity = uptimeMillis();
             isWarmStartUp = true;
         }
         activeActivityCount++;
@@ -321,4 +329,5 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, Act
     public void onActivitySaveInstanceState(Activity activity, Bundle outState) {
 
     }
+
 }
