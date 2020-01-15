@@ -337,4 +337,31 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, Act
 
     }
 
+    @Override
+    public void onForeground(boolean isForeground) {
+        super.onForeground(isForeground);
+        if (!isForeground) {
+            checkActivityThread_mCallback();
+        }
+    }
+
+    private static void checkActivityThread_mCallback() {
+        try {
+            Class<?> forName = Class.forName("android.app.ActivityThread");
+            Field field = forName.getDeclaredField("sCurrentActivityThread");
+            field.setAccessible(true);
+            Object activityThreadValue = field.get(forName);
+            Field mH = forName.getDeclaredField("mH");
+            mH.setAccessible(true);
+            Object handler = mH.get(activityThreadValue);
+            Class<?> handlerClass = handler.getClass().getSuperclass();
+            Field callbackField = handlerClass.getDeclaredField("mCallback");
+            callbackField.setAccessible(true);
+            Handler.Callback currentCallback = (Handler.Callback) callbackField.get(handler);
+            MatrixLog.i(TAG, "callback %s", currentCallback);
+
+        } catch (Exception e) {
+        }
+    }
+
 }
