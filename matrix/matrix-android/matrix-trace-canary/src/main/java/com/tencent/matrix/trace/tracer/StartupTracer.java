@@ -145,7 +145,7 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, Act
         } else if (isWarmStartUp()) {
             isWarmStartUp = false;
             long warmCost = uptimeMillis() - lastCreateActivity;
-            MatrixLog.i(TAG, "#WarmStartup# activity:%s, warmCost:%d", activity, warmCost);
+            MatrixLog.i(TAG, "#WarmStartup# activity:%s, warmCost:%d, now:%d, lastCreateActivity:%d", activity, warmCost, uptimeMillis(), lastCreateActivity);
 
             if (warmCost > 0) {
                 analyse(0, 0, warmCost, true);
@@ -295,6 +295,7 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, Act
         MatrixLog.i(TAG, "activeActivityCount:%d, coldCost:%d", activeActivityCount, coldCost);
         if (activeActivityCount == 0 && coldCost > 0) {
             lastCreateActivity = uptimeMillis();
+            MatrixLog.i(TAG, "lastCreateActivity:%d", lastCreateActivity);
             isWarmStartUp = true;
         }
         activeActivityCount++;
