@@ -48,7 +48,7 @@ public class ResValue {
     }
 
     public byte getDataType() {
-    	return this.dataType;
+        return this.dataType;
     }
 
     public int getData() {

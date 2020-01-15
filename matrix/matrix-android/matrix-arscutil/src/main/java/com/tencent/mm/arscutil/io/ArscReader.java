@@ -268,7 +268,7 @@ public class ArscReader {
         //Log.d(TAG, "resValue data %d", resValue.getData());
 
         if (resValue.getDataType() == ArscConstants.RES_VALUE_DATA_TYPE_STRING) {
-        	Log.d(TAG,  "resValue string %s", ArscUtil.resolveStringPoolEntry(globalResTable.getGlobalStringPool().getStrings().get(resValue.getData()).array(), globalResTable.getGlobalStringPool().getCharSet()));
+            Log.d(TAG,  "resValue string %s", ArscUtil.resolveStringPoolEntry(globalResTable.getGlobalStringPool().getStrings().get(resValue.getData()).array(), globalResTable.getGlobalStringPool().getCharSet()));
         } else {
         	Log.d(TAG, "resValue %s", resValue.printData());
         }
