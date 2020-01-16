@@ -312,7 +312,7 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, Act
         MatrixLog.i(TAG, "activeActivityCount:%d, coldCost:%d", activeActivityCount, coldCost);
         if (activeActivityCount == 0 && coldCost > 0) {
             lastCreateActivity = uptimeMillis();
-            MatrixLog.i(TAG, "lastCreateActivity:%d", lastCreateActivity);
+            MatrixLog.i(TAG, "lastCreateActivity:%d, activity:%s", lastCreateActivity, activity.getClass().getName());
             isWarmStartUp = true;
         }
         activeActivityCount++;
