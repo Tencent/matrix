@@ -224,6 +224,18 @@ public class RemoveUnusedResourcesTask extends DefaultTask {
             commandList.add("--rTxt")
             commandList.add(rTxtFile)
 
+            StringBuilder ignoreResParam = new StringBuilder()
+            Set<String> ignoreResources = project.extensions.matrix.removeUnusedResources.ignoreResources
+            if (!ignoreResources.isEmpty()) {
+                for (String ignore : ignoreResources) {
+                    ignoreResParam.append(ignore)
+                    ignoreResParam.append(',')
+                }
+                ignoreResParam.deleteCharAt(ignoreResParam.length() - 1)
+                commandList.add("--ignoreResources")
+                commandList.add(ignoreResParam.toString())
+            }
+
             if (project.extensions.matrix.removeUnusedResources.deDuplicate) {
                 commandList.add("-duplicatedFile")
             }

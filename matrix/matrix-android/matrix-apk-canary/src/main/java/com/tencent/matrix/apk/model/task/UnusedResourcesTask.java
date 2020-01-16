@@ -405,15 +405,14 @@ public class UnusedResourcesTask extends ApkTask {
             }
         }
 
-        for (String resource : resourceRefSet) {
-            readChildReference(resource);
-        }
-
         for (String resource : unusedResSet) {
             if (ignoreResource(resource)) {
                 resourceRefSet.add(resource);
-                ignoreChildResource(resource);
             }
+        }
+
+        for (String resource : resourceRefSet) {
+            readChildReference(resource);
         }
     }
 
@@ -440,13 +439,6 @@ public class UnusedResourcesTask extends ApkTask {
                 }
             }
             visitPath.pop();
-        }
-    }
-
-    private void ignoreChildResource(String resource) {
-        if (nonValueReferences.containsKey(resource)) {
-            Set<String> childReference = nonValueReferences.get(resource);
-            resourceRefSet.addAll(childReference);
         }
     }
 
