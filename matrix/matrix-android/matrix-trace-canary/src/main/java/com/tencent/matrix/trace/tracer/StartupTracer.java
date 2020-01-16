@@ -124,11 +124,7 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, Act
             if (createdTime == null) {
                 createdTime = 0L;
             }
-            if (uptimeMillis() - createdTime >= 30 * 1000) {
-                MatrixLog.e(TAG, "%s cost too much time[%s] between activity create and onActivityFocused, " +
-                        "just throw it.(createTime:%s) ", key, uptimeMillis() - createdTime, createdTime);
-                return;
-            }
+            createdTimeMap.put(key, uptimeMillis() - createdTime);
 
             if (firstScreenCost == 0) {
                 this.firstScreenCost = uptimeMillis() - ActivityThreadHacker.getEggBrokenTime();
@@ -154,6 +150,12 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, Act
                 }
             }
             if (coldCost > 0) {
+                Long betweenCost = createdTimeMap.get(key);
+                if (null != betweenCost && betweenCost >= 30 * 1000) {
+                    MatrixLog.e(TAG, "%s cost too much time[%s] between activity create and onActivityFocused, " +
+                            "just throw it.(createTime:%s) ", key, uptimeMillis() - createdTime, createdTime);
+                    return;
+                }
                 analyse(ActivityThreadHacker.getApplicationCost(), firstScreenCost, coldCost, false);
             }
 
