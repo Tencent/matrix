@@ -28,7 +28,9 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.math.BigInteger;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.List;
@@ -205,6 +207,46 @@ public final class MatrixUtil {
     public static String getMD5String(byte[] bytes) {
         MessageDigest digest = MD5_DIGEST.get();
         return bufferToHex(digest.digest(bytes));
+    }
+
+    private final static ThreadLocal<MessageDigest> SHA256_DIGEST = new ThreadLocal<MessageDigest>() {
+        @Override
+        protected MessageDigest initialValue() {
+            try {
+                return MessageDigest.getInstance("SHA-256");
+            } catch (NoSuchAlgorithmException e) {
+                throw new RuntimeException("Initialize SHA256-DIGEST failed.", e);
+            }
+        }
+    };
+
+    private static byte[] getSHA(String input) throws NoSuchAlgorithmException {
+        // Static getInstance method is called with hashing SHA
+        MessageDigest md = SHA256_DIGEST.get();
+
+        // digest() method called
+        // to calculate message digest of an input
+        // and return array of byte
+        return md.digest(input.getBytes(StandardCharsets.UTF_8));
+    }
+
+    private static String toHexString(byte[] hash) {
+        // Convert byte array into signum representation
+        BigInteger number = new BigInteger(1, hash);
+
+        // Convert message digest into hex value
+        StringBuilder hexString = new StringBuilder(number.toString(16));
+
+        // Pad with leading zeros
+        while (hexString.length() < 32) {
+            hexString.insert(0, '0');
+        }
+
+        return hexString.toString();
+    }
+
+    public static String getSHA256String(String s) throws NoSuchAlgorithmException {
+        return toHexString(getSHA(s));
     }
 
     private static String bufferToHex(byte[] bytes) {
