@@ -125,7 +125,8 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, Act
                 createdTime = 0L;
             }
             if (uptimeMillis() - createdTime >= 30 * 1000) {
-                MatrixLog.e(TAG, "%s cost too much time[%s] between activity create and onActivityFocused, just throw it. ", key, uptimeMillis() - createdTime);
+                MatrixLog.e(TAG, "%s cost too much time[%s] between activity create and onActivityFocused, " +
+                        "just throw it.(createTime:%s) ", key, uptimeMillis() - createdTime, createdTime);
                 return;
             }
 
