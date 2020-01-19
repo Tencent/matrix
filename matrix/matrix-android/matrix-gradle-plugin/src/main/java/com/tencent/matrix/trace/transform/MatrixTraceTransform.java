@@ -374,6 +374,9 @@ public class MatrixTraceTransform extends Transform {
                         dirInputOutMap.put(changedFileInput, changedFileOutput);
                     } else if (status == Status.REMOVED) {
                         changedFileOutput.delete();
+                    }else if (status == Status.NOTCHANGED){
+                        // just copy
+                        FileUtils.copy(changedFileInput,changedFileOutput);
                     }
                     outChangedFiles.put(changedFileOutput, status);
                 }
@@ -427,6 +430,9 @@ public class MatrixTraceTransform extends Transform {
                         jarInputOutMap.put(jarInput, jarOutput);
                     } else if (inputJar.getStatus() == Status.REMOVED) {
                         jarOutput.delete();
+                    }else if (inputJar.getStatus() == Status.NOTCHANGED){
+                        // just copy
+                        FileUtils.copy(jarInput,jarOutput);
                     }
 
                 } else {
