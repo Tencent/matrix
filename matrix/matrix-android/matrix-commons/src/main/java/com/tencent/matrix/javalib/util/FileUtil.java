@@ -179,6 +179,28 @@ public class FileUtil {
         }
     }
 
+    public static void traversalCopy(File from, File toDir) throws IOException {
+        File to = new File(toDir, from.getName());
+        if (from.isDirectory()) {
+            if (!to.exists()) {
+                to.mkdirs();
+            }
+            File[] children = from.listFiles();
+            if (children != null) {
+                File[] arr$ = children;
+                int len$ = children.length;
+
+                for(int i$ = 0; i$ < len$; ++i$) {
+                    File child = arr$[i$];
+                    traversalCopy(child, to);
+                }
+            }
+        } else if (from.isFile()) {
+            copyFileUsingStream(from, to);
+        }
+
+    }
+
     public static void copyFileUsingStream(File source, File dest) throws IOException {
         FileInputStream is = null;
         FileOutputStream os = null;
