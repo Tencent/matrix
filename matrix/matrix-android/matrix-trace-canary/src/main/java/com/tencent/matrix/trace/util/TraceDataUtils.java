@@ -160,7 +160,9 @@ public class TraceDataUtils {
 
         for (int i = 0; i < root.children.size(); i++) {
             TreeNode node = root.children.get(i);
-            list.add(node.item);
+            if (node.item != null) {
+                list.add(node.item);
+            }
             if (!node.children.isEmpty()) {
                 treeToStack(node, list);
             }
