@@ -138,6 +138,7 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, Act
                     if (isCreatedByLaunchActivity) {
                         coldCost = firstScreenCost;
                     } else {
+                        firstScreenCost = 0;
                         coldCost = ActivityThreadHacker.getApplicationCost();
                     }
                 } else {
@@ -145,6 +146,7 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, Act
 //                        MatrixLog.e(TAG, "pass this activity[%s] at duration of start up! splashActivities=%s", activity, splashActivities);
                         coldCost = firstScreenCost;
                     } else {
+                        firstScreenCost = 0;
                         coldCost = ActivityThreadHacker.getApplicationCost();
                     }
                 }
