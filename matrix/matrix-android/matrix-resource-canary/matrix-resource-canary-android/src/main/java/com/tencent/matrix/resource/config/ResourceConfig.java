@@ -93,7 +93,7 @@ public final class ResourceConfig {
         }
 
         public Builder setDetectDebuger(boolean enabled) {
-            mDetectDebugger = true;
+            mDetectDebugger = enabled;
             return this;
         }
 
