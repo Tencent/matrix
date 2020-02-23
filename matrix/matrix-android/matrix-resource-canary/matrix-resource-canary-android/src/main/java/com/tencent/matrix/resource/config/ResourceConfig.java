@@ -52,15 +52,18 @@ public final class ResourceConfig {
     }
 
     public long getScanIntervalMillis() {
-        return mDynamicConfig.get(IDynamicConfig.ExptEnum.clicfg_matrix_resource_detect_interval_millis.name(), DEFAULT_DETECT_INTERVAL_MILLIS);
+        return null == mDynamicConfig ? DEFAULT_DETECT_INTERVAL_MILLIS
+                : mDynamicConfig.get(IDynamicConfig.ExptEnum.clicfg_matrix_resource_detect_interval_millis.name(), DEFAULT_DETECT_INTERVAL_MILLIS);
     }
 
     public long getBgScanIntervalMillis() {
-        return mDynamicConfig.get(IDynamicConfig.ExptEnum.clicfg_matrix_resource_detect_interval_millis_bg.name(), DEFAULT_DETECT_INTERVAL_MILLIS_BG);
+        return null == mDynamicConfig ? DEFAULT_DETECT_INTERVAL_MILLIS_BG
+                : mDynamicConfig.get(IDynamicConfig.ExptEnum.clicfg_matrix_resource_detect_interval_millis_bg.name(), DEFAULT_DETECT_INTERVAL_MILLIS_BG);
     }
 
     public int getMaxRedetectTimes() {
-        return mDynamicConfig.get(IDynamicConfig.ExptEnum.clicfg_matrix_resource_max_detect_times.name(), DEFAULT_MAX_REDETECT_TIMES);
+        return null == mDynamicConfig ? DEFAULT_MAX_REDETECT_TIMES
+                : mDynamicConfig.get(IDynamicConfig.ExptEnum.clicfg_matrix_resource_max_detect_times.name(), DEFAULT_MAX_REDETECT_TIMES);
     }
 
     public DumpMode getDumpHprofMode() {
