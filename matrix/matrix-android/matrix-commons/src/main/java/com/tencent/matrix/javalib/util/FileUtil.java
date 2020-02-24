@@ -41,8 +41,8 @@ import java.util.zip.ZipOutputStream;
  */
 
 public class FileUtil {
-    private static final String TAG         = "Matrix.FileUtil";
-    public static final  int    BUFFER_SIZE = 16384;
+    private static final String TAG = "Matrix.FileUtil";
+    public static final int BUFFER_SIZE = 16384;
 
     public static final boolean isLegalFile(File file) {
         return file != null && file.exists() && file.canRead() && file.isFile() && file.length() > 0;
@@ -187,11 +187,11 @@ public class FileUtil {
             }
             File[] children = from.listFiles();
             if (children != null) {
-                File[] arr$ = children;
-                int len$ = children.length;
+                File[] arr = children;
+                int len = children.length;
 
-                for(int i$ = 0; i$ < len$; ++i$) {
-                    File child = arr$[i$];
+                for (int i = 0; i < len; ++i) {
+                    File child = arr[i];
                     traversalCopy(child, to);
                 }
             }
@@ -259,7 +259,7 @@ public class FileUtil {
                 closeQuietly(inputStream);
             } catch (Exception e) {
                 Log.e(TAG, "file op readFileAsString close e type:%s, e msg:%s, filePath:%s",
-                    e.getClass().getSimpleName(), e.getMessage(), filePath);
+                        e.getClass().getSimpleName(), e.getMessage(), filePath);
             }
         }
         return fileData.toString();
