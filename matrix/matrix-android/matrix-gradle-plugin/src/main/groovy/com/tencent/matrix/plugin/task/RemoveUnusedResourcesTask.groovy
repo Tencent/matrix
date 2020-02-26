@@ -486,12 +486,14 @@ public class RemoveUnusedResourcesTask extends DefaultTask {
                             Log.w(TAG, "parse entry %s resource name failed!", zipEntry.name)
                         }
                     } else {
-                        if ( (!zipEntry.name.startsWith("META-INF/") || (!zipEntry.name.endsWith(".SF") &&  !zipEntry.name.endsWith(".MF") && !zipEntry.name.endsWith(".RSA"))) && !zipEntry.name.equals(ARSC_FILE_NAME)) {
+                        if ( !zipEntry.name.startsWith("META-INF/") || (!zipEntry.name.endsWith(".SF") &&  !zipEntry.name.endsWith(".MF") && !zipEntry.name.endsWith(".RSA"))) {
                             if (zipEntry.getMethod() == ZipEntry.DEFLATED) {
                                 compressedEntry.add(destFile)
                             }
-                            Log.i(TAG, "unzip %s to file %s", zipEntry.name, destFile)
-                            ApkUtil.unzipEntry(zipInputFile, zipEntry, destFile)
+                            if (!zipEntry.name.equals(ARSC_FILE_NAME)) {                            // has already unzip resources.arsc before
+                                Log.i(TAG, "unzip %s to file %s", zipEntry.name, destFile)
+                                ApkUtil.unzipEntry(zipInputFile, zipEntry, destFile)
+                            }
                         }
                     }
                 }
@@ -558,8 +560,9 @@ public class RemoveUnusedResourcesTask extends DefaultTask {
         } else {
             ZipEntry zipEntry = new ZipEntry()
             zipEntry.name = file.canonicalPath.substring(rootDir.length() + 1)
-            Log.i(TAG, "zip file %s -> entry %s", file.canonicalPath, zipEntry.name)
-            zipEntry.setMethod(compressedEntry.contains(file.canonicalPath) ? ZipEntry.DEFLATED : ZipEntry.STORED)
+            int method = compressedEntry.contains(file.canonicalPath) ? ZipEntry.DEFLATED : ZipEntry.STORED
+            Log.i(TAG, "zip file %s -> entry %s, DEFLATED %s", file.canonicalPath, zipEntry.name, method == ZipEntry.DEFLATED)
+            zipEntry.setMethod(method)
             ApkUtil.addZipEntry(zipOutputStream, zipEntry, file)
         }
     }
