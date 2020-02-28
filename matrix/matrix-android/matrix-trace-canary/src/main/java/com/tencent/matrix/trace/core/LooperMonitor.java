@@ -11,7 +11,6 @@ import android.util.Printer;
 import com.tencent.matrix.util.MatrixLog;
 import com.tencent.matrix.util.ReflectUtils;
 
-import java.lang.reflect.Field;
 import java.util.HashSet;
 import java.util.Objects;
 
@@ -172,7 +171,7 @@ public class LooperMonitor implements MessageQueue.IdleHandler {
         boolean isHasChecked = false;
         boolean isValid = false;
 
-        public LooperPrinter(Printer printer) {
+        LooperPrinter(Printer printer) {
             this.origin = printer;
         }
 

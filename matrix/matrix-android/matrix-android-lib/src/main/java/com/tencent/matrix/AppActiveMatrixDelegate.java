@@ -40,7 +40,9 @@ public enum AppActiveMatrixDelegate {
             return;
         }
         this.isInit = true;
-        this.handler = new Handler(MatrixHandlerThread.getDefaultHandlerThread().getLooper());
+        if (null != MatrixHandlerThread.getDefaultHandlerThread()) {
+            this.handler = new Handler(MatrixHandlerThread.getDefaultHandlerThread().getLooper());
+        }
         application.registerComponentCallbacks(controller);
         application.registerActivityLifecycleCallbacks(controller);
     }

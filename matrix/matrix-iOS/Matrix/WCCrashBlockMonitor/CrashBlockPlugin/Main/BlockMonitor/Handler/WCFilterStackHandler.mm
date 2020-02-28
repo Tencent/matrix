@@ -73,7 +73,7 @@
         return 1;
     } else {
         NSUInteger featCnt = [featCntNum unsignedIntegerValue];
-        [_stackFeatDict setObject:[NSNumber numberWithUnsignedInteger:(featCnt + 1)] forKey:featCntNum];
+        [_stackFeatDict setObject:[NSNumber numberWithUnsignedInteger:(featCnt + 1)] forKey:featNum];
         return featCnt + 1;
     }
 }

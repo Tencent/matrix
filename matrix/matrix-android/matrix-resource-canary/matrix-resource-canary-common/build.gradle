@@ -10,9 +10,12 @@ dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
 }
 
-//apply from: rootProject.file('gradle/java-publish.gradle')
-//for uploading to WeChat maven serve
-apply from: rootProject.file('gradle/WeChatPublish.gradle')
-wechatPublish {
-    artifactId=POM_ARTIFACT_ID
+if("External" == rootProject.ext.PUBLISH_CHANNEL) {
+    apply from: rootProject.file('gradle/java-publish.gradle')
+}
+else {
+    apply from: rootProject.file('gradle/WeChatPublish.gradle')
+    wechatPublish {
+        artifactId = POM_ARTIFACT_ID
+    }
 }

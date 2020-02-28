@@ -19,7 +19,6 @@ package com.tencent.matrix.util;
 import android.app.ActivityManager;
 import android.app.Application;
 import android.content.Context;
-//import android.content.pm.ApplicationInfo;
 import android.os.Build;
 import android.os.Debug;
 
@@ -401,8 +400,8 @@ public class DeviceUtil {
         BufferedReader reader = null;
         StringBuilder sb = new StringBuilder();
         try {
-            reader = new BufferedReader(new InputStreamReader(is));
-            String line = null;
+            reader = new BufferedReader(new InputStreamReader(is, "UTF-8"));
+            String line;
             while ((line = reader.readLine()) != null) {
                 sb.append(line).append('\n');
             }

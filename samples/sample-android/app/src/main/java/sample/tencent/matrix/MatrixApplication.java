@@ -19,6 +19,7 @@ package sample.tencent.matrix;
 import android.app.Application;
 import android.content.Context;
 import android.os.HandlerThread;
+import android.content.Intent;
 
 import com.tencent.matrix.Matrix;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitor;
@@ -33,7 +34,6 @@ import com.tencent.matrix.threadcanary.ThreadMonitor;
 import com.tencent.matrix.threadcanary.ThreadMonitorConfig;
 import com.tencent.matrix.trace.TracePlugin;
 import com.tencent.matrix.trace.config.TraceConfig;
-import com.tencent.matrix.util.MatrixHandlerThread;
 import com.tencent.matrix.util.MatrixLog;
 import com.tencent.sqlitelint.SQLiteLint;
 import com.tencent.sqlitelint.SQLiteLintPlugin;
@@ -98,11 +98,17 @@ public class MatrixApplication extends Application {
         if (matrixEnable) {
 
             //resource
-            builder.plugin(new ResourcePlugin(new ResourceConfig.Builder()
+            Intent intent = new Intent();
+            ResourceConfig.DumpMode mode = ResourceConfig.DumpMode.AUTO_DUMP;
+            MatrixLog.i(TAG, "Dump Activity Leak Mode=%s", mode);
+            intent.setClassName(this.getPackageName(), "com.tencent.mm.ui.matrix.ManualDumpActivity");
+            ResourceConfig resourceConfig = new ResourceConfig.Builder()
                     .dynamicConfig(dynamicConfig)
-                    .setAutoDumpHprofMode(ResourceConfig.DumpMode.MANUAL_DUMP)
-                    .setDetectDebuger(true)     //only set true when in sample, not in your app
-                    .build()));
+                    .setAutoDumpHprofMode(mode)
+//                .setDetectDebuger(true) //matrix test code
+                    .setNotificationContentIntent(intent)
+                    .build();
+            builder.plugin(new ResourcePlugin(resourceConfig));
             ResourcePlugin.activityLeakFixer(this);
 
             //io
@@ -114,9 +120,14 @@ public class MatrixApplication extends Application {
 
             // prevent api 19 UnsatisfiedLinkError
             //sqlite
-            SQLiteLintConfig config = initSQLiteLintConfig();
-            SQLiteLintPlugin sqLiteLintPlugin = new SQLiteLintPlugin(config);
-            builder.plugin(sqLiteLintPlugin);
+            SQLiteLintConfig sqlLiteConfig;
+            try {
+                sqlLiteConfig = new SQLiteLintConfig(SQLiteLint.SqlExecutionCallbackMode.CUSTOM_NOTIFY);
+            } catch (Throwable t) {
+                sqlLiteConfig = new SQLiteLintConfig(SQLiteLint.SqlExecutionCallbackMode.CUSTOM_NOTIFY);
+            }
+            builder.plugin(new SQLiteLintPlugin(sqlLiteConfig));
+
 
             ThreadMonitor threadMonitor = new ThreadMonitor(new ThreadMonitorConfig.Builder().build());
             builder.plugin(threadMonitor);

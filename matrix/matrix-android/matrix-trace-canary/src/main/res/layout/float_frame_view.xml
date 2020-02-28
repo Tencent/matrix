@@ -30,12 +30,11 @@
 
     </LinearLayout>
 
-
     <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="3dp"
-        android:layout_marginBottom="3dp"
+        android:layout_marginTop="2dp"
+        android:minWidth="76dp"
         android:orientation="vertical">
 
         <TextView
@@ -43,31 +42,165 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:gravity="left"
-            android:minWidth="40dp"
-            android:paddingLeft="3dp"
             android:textColor="@color/dark_text"
             android:textSize="8dp" />
+
+        <TextView
+            android:id="@+id/scene_view"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="left"
+
+            android:textColor="@color/dark_text"
+            android:textSize="8dp"
+            android:visibility="gone" />
 
         <TextView
             android:id="@+id/fps_view"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:minWidth="60dp"
-            android:paddingLeft="3dp"
             android:paddingBottom="3dp"
             android:text="60.00 FPS"
             android:textColor="@android:color/holo_green_dark"
             android:textSize="12dp"
             android:textStyle="bold" />
 
-
     </LinearLayout>
 
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:id="@+id/sum_qi_wang_tv"
+        android:gravity="left"
+        android:text="sum:"
+        android:textColor="@color/dark_text"
+        android:textSize="8dp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="2dp"
+        android:orientation="horizontal"
+        android:weightSum="4">
+
+        <TextView
+            android:id="@+id/sum_level_normal"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:background="@color/level_normal_color"
+            android:gravity="center"
+            android:maxHeight="20dp"
+            android:text="0"
+            android:textColor="@android:color/white"
+            android:textSize="8dp" />
+
+        <TextView
+            android:id="@+id/sum_level_middle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:background="@color/level_middle_color"
+            android:gravity="center"
+            android:maxHeight="20dp"
+            android:text="0"
+            android:textColor="@android:color/white"
+            android:textSize="8dp" />
+
+        <TextView
+            android:id="@+id/sum_level_high"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:background="@color/level_high_color"
+            android:gravity="center"
+            android:maxHeight="20dp"
+            android:text="0"
+            android:textColor="@android:color/white"
+            android:textSize="8dp" />
+
+        <TextView
+            android:id="@+id/sum_level_frozen"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:background="@color/level_frozen_color"
+            android:gravity="center"
+            android:maxHeight="20dp"
+            android:text="0"
+            android:textColor="@android:color/white"
+            android:textSize="8dp" />
+    </LinearLayout>
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="left"
+        android:text="current:"
+        android:textColor="@color/dark_text"
+        android:id="@+id/qi_wang_tv"
+        android:textSize="8dp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="2dp"
+        android:orientation="horizontal"
+        android:weightSum="4">
+
+        <TextView
+            android:id="@+id/level_normal"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:background="@color/level_normal_color"
+            android:gravity="center"
+            android:maxHeight="20dp"
+            android:text="0"
+            android:textColor="@android:color/white"
+            android:textSize="8dp" />
+
+        <TextView
+            android:id="@+id/level_middle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:background="@color/level_middle_color"
+            android:gravity="center"
+            android:maxHeight="20dp"
+            android:text="0"
+            android:textColor="@android:color/white"
+            android:textSize="8dp" />
+
+        <TextView
+            android:id="@+id/level_high"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:background="@color/level_high_color"
+            android:gravity="center"
+            android:maxHeight="20dp"
+            android:text="0"
+            android:textColor="@android:color/white"
+            android:textSize="8dp" />
+
+        <TextView
+            android:id="@+id/level_frozen"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:background="@color/level_frozen_color"
+            android:gravity="center"
+            android:maxHeight="20dp"
+            android:text="0"
+            android:textColor="@android:color/white"
+            android:textSize="8dp" />
+    </LinearLayout>
 
     <view
         android:id="@+id/chart"
         class="com.tencent.matrix.trace.view.FloatFrameView$LineChartView"
         android:layout_width="match_parent"
-        android:layout_height="160dp"
-        android:layout_marginLeft="2dp" />
+        android:layout_height="140dp" />
+
 </LinearLayout>
