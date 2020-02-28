@@ -100,6 +100,10 @@ public class ActivityThreadHacker {
         return sIsCreatedByLaunchActivity;
     }
 
+    public static boolean isCreatedByLaunchActivity() {
+        return sIsCreatedByLaunchActivity;
+    }
+
 
     private final static class HackCallback implements Handler.Callback {
         private static final int LAUNCH_ACTIVITY = 100;
