@@ -113,11 +113,13 @@ public class IOCanaryJniBridge {
 
     private static final class JavaContext {
         private final String stack;
-        private final String threadName;
+        private String threadName;
 
         private JavaContext() {
             stack = IOCanaryUtil.getThrowableStack(new Throwable());
-            threadName = Thread.currentThread().getName();
+            if (null != Thread.currentThread()) {
+                threadName = Thread.currentThread().getName();
+            }
         }
     }
 

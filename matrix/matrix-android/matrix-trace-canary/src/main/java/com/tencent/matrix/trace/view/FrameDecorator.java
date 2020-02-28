@@ -318,7 +318,9 @@ public class FrameDecorator extends IDoFrameListener implements IAppForeground {
 
     private Handler getHandler() {
         if (handler == null || !handler.getLooper().getThread().isAlive()) {
-            handler = new Handler(MatrixHandlerThread.getDefaultHandlerThread().getLooper());
+            if (null != MatrixHandlerThread.getDefaultHandlerThread()) {
+                handler = new Handler(MatrixHandlerThread.getDefaultHandlerThread().getLooper());
+            }
         }
         return handler;
     }
@@ -361,9 +363,12 @@ public class FrameDecorator extends IDoFrameListener implements IAppForeground {
     private void initLayoutParams(Context context) {
         windowManager = (WindowManager) context.getApplicationContext().getSystemService(Context.WINDOW_SERVICE);
         try {
-            windowManager.getDefaultDisplay().getMetrics(displayMetrics);
             DisplayMetrics metrics = new DisplayMetrics();
-            windowManager.getDefaultDisplay().getMetrics(metrics);
+            if (null != windowManager.getDefaultDisplay()) {
+                windowManager.getDefaultDisplay().getMetrics(displayMetrics);
+                windowManager.getDefaultDisplay().getMetrics(metrics);
+            }
+
             layoutParam = new WindowManager.LayoutParams();
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 layoutParam.type = WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY;
