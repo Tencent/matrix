@@ -112,9 +112,9 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, Act
         String activityName = activity.getClass().getName();
         if (isColdStartup()) {
             boolean isCreatedByLaunchActivity = ActivityThreadHacker.isCreatedByLaunchActivity();
-            MatrixLog.i(TAG, "#ColdStartup# activity:%s, splashActivities:%s, empty:%b, " +
-                            "isCreatedByLaunchActivity:%b, hasShowSplashActivity:%b, " +
-                            "firstScreenCost:%d, now:%d, application_create_begin_time:%d, app_cost:%d",
+            MatrixLog.i(TAG, "#ColdStartup# activity:%s, splashActivities:%s, empty:%b, "
+                            + "isCreatedByLaunchActivity:%b, hasShowSplashActivity:%b, "
+                            + "firstScreenCost:%d, now:%d, application_create_begin_time:%d, app_cost:%d",
                     activityName, splashActivities, splashActivities.isEmpty(), isCreatedByLaunchActivity,
                     hasShowSplashActivity, firstScreenCost, uptimeMillis(),
                     ActivityThreadHacker.getEggBrokenTime(), ActivityThreadHacker.getApplicationCost());
@@ -154,8 +154,8 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, Act
             if (coldCost > 0) {
                 Long betweenCost = createdTimeMap.get(key);
                 if (null != betweenCost && betweenCost >= 30 * 1000) {
-                    MatrixLog.e(TAG, "%s cost too much time[%s] between activity create and onActivityFocused, " +
-                            "just throw it.(createTime:%s) ", key, uptimeMillis() - createdTime, createdTime);
+                    MatrixLog.e(TAG, "%s cost too much time[%s] between activity create and onActivityFocused, "
+                            + "just throw it.(createTime:%s) ", key, uptimeMillis() - createdTime, createdTime);
                     return;
                 }
                 analyse(ActivityThreadHacker.getApplicationCost(), firstScreenCost, coldCost, false);
@@ -307,7 +307,7 @@ public class StartupTracer extends Tracer implements IAppMethodBeatListener, Act
         }
     }
 
-    private long lastCreateActivity = 0l;
+    private long lastCreateActivity = 0L;
     private HashMap<String, Long> createdTimeMap = new HashMap<>();
     private boolean isShouldRecordCreateTime = true;
 
