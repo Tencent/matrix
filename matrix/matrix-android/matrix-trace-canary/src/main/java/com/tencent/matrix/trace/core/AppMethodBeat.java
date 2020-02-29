@@ -273,7 +273,7 @@ public class AppMethodBeat implements BeatLifecycle {
             if (sFocusActivitySet.add(activityName)) {
                 synchronized (listeners) {
                     for (IAppMethodBeatListener listener : listeners) {
-                        listener.onActivityFocused(activityName);
+                        listener.onActivityFocused(activity);
                     }
                 }
                 MatrixLog.i(TAG, "[at] visibleScene[%s] has %s focus!", getVisibleScene(), "attach");

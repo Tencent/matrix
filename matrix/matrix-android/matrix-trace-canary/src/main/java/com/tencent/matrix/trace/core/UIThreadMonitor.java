@@ -5,6 +5,7 @@ import android.os.SystemClock;
 import android.view.Choreographer;
 
 import com.tencent.matrix.trace.config.TraceConfig;
+import com.tencent.matrix.trace.constants.Constants;
 import com.tencent.matrix.trace.listeners.LooperObserver;
 import com.tencent.matrix.trace.util.Utils;
 import com.tencent.matrix.util.MatrixLog;
@@ -22,7 +23,7 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
     private long[] dispatchTimeMs = new long[4];
     private final HashSet<LooperObserver> observers = new HashSet<>();
     private volatile long token = 0L;
-    private boolean isBelongFrame = false;
+    private boolean isVsyncFrame = false;
 
     /**
      * Callback type: Input callback.  Runs first.
@@ -87,9 +88,9 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
         callbackQueueLock = reflectObject(choreographer, "mLock");
         callbackQueues = reflectObject(choreographer, "mCallbackQueues");
         if (null != callbackQueues) {
-            addInputQueue = reflectChoreographerMethod(callbackQueues[CALLBACK_INPUT], ADD_CALLBACK, long.class, Object.class, Object.class);
-            addAnimationQueue = reflectChoreographerMethod(callbackQueues[CALLBACK_ANIMATION], ADD_CALLBACK, long.class, Object.class, Object.class);
-            addTraversalQueue = reflectChoreographerMethod(callbackQueues[CALLBACK_TRAVERSAL], ADD_CALLBACK, long.class, Object.class, Object.class);
+            addInputQueue = reflectMethod(callbackQueues[CALLBACK_INPUT], ADD_CALLBACK, long.class, Object.class, Object.class);
+            addAnimationQueue = reflectMethod(callbackQueues[CALLBACK_ANIMATION], ADD_CALLBACK, long.class, Object.class, Object.class);
+            addTraversalQueue = reflectMethod(callbackQueues[CALLBACK_TRAVERSAL], ADD_CALLBACK, long.class, Object.class, Object.class);
         }
         frameIntervalNanos = reflectObject(choreographer, "mFrameIntervalNanos");
 
@@ -118,8 +119,9 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
         if (config.isDevEnv()) {
             addObserver(new LooperObserver() {
                 @Override
-                public void doFrame(String focusedActivityName, long start, long end, long frameCostMs, long inputCost, long animationCost, long traversalCost) {
-                    MatrixLog.i(TAG, "activityName[%s] frame cost:%sms [%s|%s|%s]ns", focusedActivityName, frameCostMs, inputCost, animationCost, traversalCost);
+                public void doFrame(String focusedActivity, long startNs, long endNs, boolean isVsyncFrame, long intendedFrameTimeNs, long inputCostNs, long animationCostNs, long traversalCostNs) {
+                    MatrixLog.i(TAG, "focusedActivity[%s] frame cost:%sms isVsyncFrame=%s intendedFrameTimeNs=%s [%s|%s|%s]ns",
+                            focusedActivity, (endNs - startNs) / Constants.TIME_MILLIS_TO_NANO, isVsyncFrame, intendedFrameTimeNs, inputCostNs, animationCostNs, traversalCostNs);
                 }
             });
         }
@@ -181,38 +183,8 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
         }
     }
 
-    public long getQueueCost(int type, long token) {
-        if (token != this.token) {
-            return -1;
-        }
-        return queueStatus[type] == DO_QUEUE_END ? queueCost[type] : 0;
-    }
-
-    private <T> T reflectObject(Object instance, String name) {
-        try {
-            Field field = instance.getClass().getDeclaredField(name);
-            field.setAccessible(true);
-            return (T) field.get(instance);
-        } catch (Exception e) {
-            e.printStackTrace();
-            MatrixLog.e(TAG, e.toString());
-        }
-        return null;
-    }
-
-    private Method reflectChoreographerMethod(Object instance, String name, Class<?>... argTypes) {
-        try {
-            Method method = instance.getClass().getDeclaredMethod(name, argTypes);
-            method.setAccessible(true);
-            return method;
-        } catch (Exception e) {
-            MatrixLog.e(TAG, e.toString());
-        }
-        return null;
-    }
-
     private void dispatchBegin() {
-        token = dispatchTimeMs[0] = SystemClock.uptimeMillis();
+        token = dispatchTimeMs[0] = System.nanoTime();
         dispatchTimeMs[2] = SystemClock.currentThreadTimeMillis();
         AppMethodBeat.i(AppMethodBeat.METHOD_ID_DISPATCH);
 
@@ -223,10 +195,13 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
                 }
             }
         }
+        if (config.isDevEnv()) {
+            MatrixLog.d(TAG, "[dispatchBegin#run] inner cost:%sns", System.nanoTime() - token);
+        }
     }
 
     private void doFrameBegin(long token) {
-        this.isBelongFrame = true;
+        this.isVsyncFrame = true;
     }
 
     private void doFrameEnd(long token) {
@@ -245,39 +220,47 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
 
         addFrameCallback(CALLBACK_INPUT, this, true);
 
-        this.isBelongFrame = false;
     }
 
     private void dispatchEnd() {
-
-        if (isBelongFrame) {
+        long traceBegin = 0;
+        if (config.isDevEnv()) {
+            traceBegin = System.nanoTime();
+        }
+        long startNs = token;
+        long intendedFrameTimeNs = startNs;
+        if (isVsyncFrame) {
             doFrameEnd(token);
+            intendedFrameTimeNs = getIntendedFrameTimeNs(startNs);
         }
 
-        long start = token;
-        long end = SystemClock.uptimeMillis();
+        long endNs = System.nanoTime();
 
         synchronized (observers) {
             for (LooperObserver observer : observers) {
                 if (observer.isDispatchBegin()) {
-                    observer.doFrame(AppMethodBeat.getVisibleScene(), token, SystemClock.uptimeMillis(), isBelongFrame ? end - start : 0, queueCost[CALLBACK_INPUT], queueCost[CALLBACK_ANIMATION], queueCost[CALLBACK_TRAVERSAL]);
+                    observer.doFrame(AppMethodBeat.getVisibleScene(), startNs, endNs, isVsyncFrame, intendedFrameTimeNs, queueCost[CALLBACK_INPUT], queueCost[CALLBACK_ANIMATION], queueCost[CALLBACK_TRAVERSAL]);
                 }
             }
         }
 
         dispatchTimeMs[3] = SystemClock.currentThreadTimeMillis();
-        dispatchTimeMs[1] = SystemClock.uptimeMillis();
+        dispatchTimeMs[1] = System.nanoTime();
 
         AppMethodBeat.o(AppMethodBeat.METHOD_ID_DISPATCH);
 
         synchronized (observers) {
             for (LooperObserver observer : observers) {
                 if (observer.isDispatchBegin()) {
-                    observer.dispatchEnd(dispatchTimeMs[0], dispatchTimeMs[2], dispatchTimeMs[1], dispatchTimeMs[3], token, isBelongFrame);
+                    observer.dispatchEnd(dispatchTimeMs[0], dispatchTimeMs[2], dispatchTimeMs[1], dispatchTimeMs[3], token, isVsyncFrame);
                 }
             }
         }
+        this.isVsyncFrame = false;
 
+        if (config.isDevEnv()) {
+            MatrixLog.d(TAG, "[dispatchEnd#run] inner cost:%sns", System.nanoTime() - traceBegin);
+        }
     }
 
     private void doQueueBegin(int type) {
@@ -361,5 +344,62 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
         return isAlive;
     }
 
+    private long getIntendedFrameTimeNs(long defaultValue) {
+        try {
+            Choreographer choreographer = Choreographer.getInstance();
+            final Object receiver = reflectObject(choreographer, "mDisplayEventReceiver");
+            Method getDeclaredField = Class.class.getDeclaredMethod("getDeclaredField", String.class);
+            Field field = (Field) getDeclaredField.invoke(receiver.getClass(), "mTimestampNanos");
+            field.setAccessible(true);
+            return (long) field.get(receiver);
+        } catch (Exception e) {
+            e.printStackTrace();
+            MatrixLog.e(TAG, e.toString());
+        }
+        return defaultValue;
+    }
 
+    public long getQueueCost(int type, long token) {
+        if (token != this.token) {
+            return -1;
+        }
+        return queueStatus[type] == DO_QUEUE_END ? queueCost[type] : 0;
+    }
+
+    private <T> T reflectObject(Object instance, String name) {
+        try {
+            Field field = instance.getClass().getDeclaredField(name);
+            field.setAccessible(true);
+            return (T) field.get(instance);
+        } catch (Throwable e) {
+            try {
+                Method getDeclaredField = Class.class.getDeclaredMethod("getDeclaredField", String.class);
+                Field field = (Field) getDeclaredField.invoke(instance.getClass(), name);
+                field.setAccessible(true);
+                return (T) field.get(instance);
+            } catch (Throwable ex) {
+                MatrixLog.e(TAG, ex.toString());
+            }
+        }
+        return null;
+    }
+
+    private Method reflectMethod(Object instance, String name, Class<?>... argTypes) {
+        try {
+            Method method = instance.getClass().getDeclaredMethod(name, argTypes);
+            method.setAccessible(true);
+            throw new RuntimeException("");
+//            return method;
+        } catch (Throwable e) {
+            try {
+                Method getDeclaredMethod = Class.class.getDeclaredMethod("getDeclaredMethod", String.class, Class[].class);
+                Method method = (Method) getDeclaredMethod.invoke(instance.getClass(), name, argTypes);
+                method.setAccessible(true);
+                return method;
+            } catch (Throwable ex) {
+                MatrixLog.e(TAG, ex.toString());
+            }
+        }
+        return null;
+    }
 }

@@ -16,6 +16,10 @@
 
 package com.tencent.matrix.trace.listeners;
 
+import android.support.annotation.CallSuper;
+
+import com.tencent.matrix.trace.constants.Constants;
+
 import java.util.concurrent.Executor;
 
 /**
@@ -34,14 +38,30 @@ public class IDoFrameListener {
         this.executor = executor;
     }
 
+    @Deprecated
+    public void doFrameAsync(String visibleScene, long taskCost, long frameCostMs, int droppedFrames, boolean isVsyncFrame) {
 
-    public void doFrameAsync(String visibleScene, long taskCost, long frameCostMs, int droppedFrames, boolean isContainsFrame) {
+    }
+
+    @Deprecated
+    public void doFrameSync(String visibleScene, long taskCost, long frameCostMs, int droppedFrames, boolean isVsyncFrame) {
 
     }
 
-    public void doFrameSync(String visibleScene, long taskCost, long frameCostMs, int droppedFrames, boolean isContainsFrame) {
-
+    @CallSuper
+    public void doFrameAsync(String focusedActivity, long startNs, long endNs, int dropFrame, boolean isVsyncFrame,
+                             long intendedFrameTimeNs, long inputCostNs, long animationCostNs, long traversalCostNs) {
+        long cost = (endNs - intendedFrameTimeNs) / Constants.TIME_MILLIS_TO_NANO;
+        doFrameAsync(focusedActivity, cost, cost, dropFrame, isVsyncFrame);
     }
+
+    @CallSuper
+    public void doFrameSync(String focusedActivity, long startNs, long endNs, int dropFrame, boolean isVsyncFrame,
+                            long intendedFrameTimeNs, long inputCostNs, long animationCostNs, long traversalCostNs) {
+        long cost = (endNs - intendedFrameTimeNs) / Constants.TIME_MILLIS_TO_NANO;
+        doFrameSync(focusedActivity, cost, cost, dropFrame, isVsyncFrame);
+    }
+
 
     public Executor getExecutor() {
         return executor;

@@ -18,8 +18,13 @@ package sample.tencent.matrix;
 
 import android.app.Application;
 import android.content.Context;
+import android.os.Handler;
 import android.os.HandlerThread;
 import android.content.Intent;
+import android.os.Looper;
+import android.os.Message;
+import android.support.annotation.NonNull;
+import android.view.Choreographer;
 
 import com.tencent.matrix.Matrix;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitor;
@@ -34,10 +39,15 @@ import com.tencent.matrix.threadcanary.ThreadMonitor;
 import com.tencent.matrix.threadcanary.ThreadMonitorConfig;
 import com.tencent.matrix.trace.TracePlugin;
 import com.tencent.matrix.trace.config.TraceConfig;
+import com.tencent.matrix.util.MatrixHandlerThread;
 import com.tencent.matrix.util.MatrixLog;
 import com.tencent.sqlitelint.SQLiteLint;
 import com.tencent.sqlitelint.SQLiteLintPlugin;
 import com.tencent.sqlitelint.config.SQLiteLintConfig;
+
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 
 import sample.tencent.matrix.config.DynamicConfigImplDemo;
 import sample.tencent.matrix.listener.TestPluginListener;
@@ -89,7 +99,7 @@ public class MatrixApplication extends Application {
                 .enableStartup(traceEnable)
                 .splashActivities("sample.tencent.matrix.SplashActivity;")
                 .isDebug(true)
-                .isDevEnv(false)
+                .isDevEnv(true)
                 .build();
 
         TracePlugin tracePlugin = (new TracePlugin(traceConfig));
@@ -142,14 +152,6 @@ public class MatrixApplication extends Application {
                     .build()
             );
             builder.plugin(batteryMonitor);
-
-
-            MatrixHandlerThread.getDefaultHandler().postDelayed(new Runnable() {
-                @Override
-                public void run() {
-                    MatrixHandlerThread.getDefaultHandler().postDelayed(this, 200);
-                }
-            }, 2000);
         }
 
         Matrix.init(builder.build());
@@ -160,8 +162,8 @@ public class MatrixApplication extends Application {
         Matrix.with().getPluginByClass(BatteryMonitor.class).start();
         MatrixLog.i("Matrix.HackCallback", "end:%s", System.currentTimeMillis());
 
-    }
 
+    }
 
     public static Context getContext() {
         return sContext;
