@@ -207,24 +207,21 @@ public class AnrTracer extends Tracer {
                                 long stackSize, String stackKey, String dumpStack, long inputCost, long animationCost, long traversalCost, long stackCost) {
             StringBuilder print = new StringBuilder();
             print.append(String.format("-\n>>>>>>>>>>>>>>>>>>>>>>> maybe happens ANR(%s ms)! <<<<<<<<<<<<<<<<<<<<<<<\n", stackCost));
-            print.append("|* scene: ").append(scene).append("\n");
-            print.append("|* [ProcessStat]").append("\n");
-            print.append("|*\t\tPriority: ").append(processStat[0]).append("\n");
-            print.append("|*\t\tNice: ").append(processStat[1]).append("\n");
+            print.append("|* [Status]").append("\n");
+            print.append("|*\t\tScene: ").append(scene).append("\n");
             print.append("|*\t\tForeground: ").append(isForeground).append("\n");
+            print.append("|*\t\tPriority: ").append(processStat[0]).append("\tNice: ").append(processStat[1]).append("\n");
+
             print.append("|* [Memory]").append("\n");
             print.append("|*\t\tDalvikHeap: ").append(memoryInfo[0]).append("kb\n");
             print.append("|*\t\tNativeHeap: ").append(memoryInfo[1]).append("kb\n");
             print.append("|*\t\tVmSize: ").append(memoryInfo[2]).append("kb\n");
             print.append("|* [doFrame]").append("\n");
-            print.append("|*\t\tinputCost: ").append(inputCost).append("\n");
-            print.append("|*\t\tanimationCost: ").append(animationCost).append("\n");
-            print.append("|*\t\ttraversalCost: ").append(traversalCost).append("\n");
+            print.append("|*\t\tinputCost:animationCost:traversalCost").append("\n");
+            print.append("|*\t\t").append(inputCost).append(":").append(animationCost).append(":").append(traversalCost).append("\n");
             print.append("|* [Thread]").append("\n");
-            print.append("|*\t\tState: ").append(state).append("\n");
-            print.append("|*\t\tStack: ").append(dumpStack);
+            print.append(String.format("|*\t\tStack(%s): ", state)).append(dumpStack);
             print.append("|* [Trace]").append("\n");
-            print.append("|*\t\tStackSize: ").append(stackSize).append("\n");
             print.append("|*\t\tStackKey: ").append(stackKey).append("\n");
 
             if (traceConfig.isDebug()) {
