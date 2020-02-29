@@ -18,12 +18,15 @@ package sample.tencent.matrix;
 
 import android.app.Application;
 import android.content.Context;
+import android.os.Handler;
 import android.os.HandlerThread;
 import android.content.Intent;
+import android.os.Looper;
+import android.os.Message;
+import android.support.annotation.NonNull;
+import android.view.Choreographer;
 
 import com.tencent.matrix.Matrix;
-import com.tencent.matrix.batterycanary.BatteryCanaryPlugin;
-import com.tencent.matrix.batterycanary.config.BatteryConfig;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitor;
 import com.tencent.matrix.batterycanary.monitor.plugin.JiffiesMonitorPlugin;
 import com.tencent.matrix.batterycanary.monitor.plugin.LooperTaskMonitorPlugin;
@@ -38,10 +41,13 @@ import com.tencent.matrix.trace.TracePlugin;
 import com.tencent.matrix.trace.config.TraceConfig;
 import com.tencent.matrix.util.MatrixHandlerThread;
 import com.tencent.matrix.util.MatrixLog;
-import com.tencent.mrs.plugin.IDynamicConfig;
 import com.tencent.sqlitelint.SQLiteLint;
 import com.tencent.sqlitelint.SQLiteLintPlugin;
 import com.tencent.sqlitelint.config.SQLiteLintConfig;
+
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 
 import sample.tencent.matrix.config.DynamicConfigImplDemo;
 import sample.tencent.matrix.listener.TestPluginListener;
@@ -93,7 +99,7 @@ public class MatrixApplication extends Application {
                 .enableStartup(traceEnable)
                 .splashActivities("sample.tencent.matrix.SplashActivity;")
                 .isDebug(true)
-                .isDevEnv(false)
+                .isDevEnv(true)
                 .build();
 
         TracePlugin tracePlugin = (new TracePlugin(traceConfig));
@@ -102,11 +108,17 @@ public class MatrixApplication extends Application {
         if (matrixEnable) {
 
             //resource
-            builder.plugin(new ResourcePlugin(new ResourceConfig.Builder()
+            Intent intent = new Intent();
+            ResourceConfig.DumpMode mode = ResourceConfig.DumpMode.AUTO_DUMP;
+            MatrixLog.i(TAG, "Dump Activity Leak Mode=%s", mode);
+            intent.setClassName(this.getPackageName(), "com.tencent.mm.ui.matrix.ManualDumpActivity");
+            ResourceConfig resourceConfig = new ResourceConfig.Builder()
                     .dynamicConfig(dynamicConfig)
-                    .setAutoDumpHprofMode(ResourceConfig.DumpMode.MANUAL_DUMP)
-                    .setDetectDebuger(true)     //only set true when in sample, not in your app
-                    .build()));
+                    .setAutoDumpHprofMode(mode)
+//                .setDetectDebuger(true) //matrix test code
+                    .setNotificationContentIntent(intent)
+                    .build();
+            builder.plugin(new ResourcePlugin(resourceConfig));
             ResourcePlugin.activityLeakFixer(this);
 
             //io
@@ -114,6 +126,18 @@ public class MatrixApplication extends Application {
                     .dynamicConfig(dynamicConfig)
                     .build());
             builder.plugin(ioCanaryPlugin);
+
+
+            // prevent api 19 UnsatisfiedLinkError
+            //sqlite
+            SQLiteLintConfig sqlLiteConfig;
+            try {
+                sqlLiteConfig = new SQLiteLintConfig(SQLiteLint.SqlExecutionCallbackMode.CUSTOM_NOTIFY);
+            } catch (Throwable t) {
+                sqlLiteConfig = new SQLiteLintConfig(SQLiteLint.SqlExecutionCallbackMode.CUSTOM_NOTIFY);
+            }
+            builder.plugin(new SQLiteLintPlugin(sqlLiteConfig));
+
 
             ThreadMonitor threadMonitor = new ThreadMonitor(new ThreadMonitorConfig.Builder().build());
             builder.plugin(threadMonitor);
@@ -128,21 +152,6 @@ public class MatrixApplication extends Application {
                     .build()
             );
             builder.plugin(batteryMonitor);
-
-            BatteryCanaryPlugin oldBatteryPlugin = new BatteryCanaryPlugin(new BatteryConfig.Builder().dynamicConfig(new DumpConfig()).build());
-            builder.plugin(oldBatteryPlugin);
-
-            MatrixHandlerThread.getDefaultHandler().postDelayed(new Runnable() {
-                @Override
-                public void run() {
-                    MatrixHandlerThread.getDefaultHandler().postDelayed(this, 200);
-                }
-            }, 2000);
-            // prevent api 19 UnsatisfiedLinkError
-            //sqlite
-            SQLiteLintConfig config = initSQLiteLintConfig();
-            SQLiteLintPlugin sqLiteLintPlugin = new SQLiteLintPlugin(config);
-            builder.plugin(sqLiteLintPlugin);
         }
 
         Matrix.init(builder.build());
@@ -153,21 +162,8 @@ public class MatrixApplication extends Application {
         Matrix.with().getPluginByClass(BatteryMonitor.class).start();
         MatrixLog.i("Matrix.HackCallback", "end:%s", System.currentTimeMillis());
 
+
     }
-
-    private static class DumpConfig implements IDynamicConfig {
-
-        public String get(String key, String defStr) {return  defStr;}
-
-        public int get(String key, int defInt) {return defInt;}
-
-        public long get(String key, long defLong){return defLong;}
-
-        public boolean get(String key, boolean defBool){return defBool;}
-
-        public float get(String key, float defFloat) {return defFloat;}
-    }
-
 
     public static Context getContext() {
         return sContext;

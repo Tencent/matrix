@@ -48,6 +48,7 @@ public class FrameDecorator extends IDoFrameListener implements IAppForeground {
     private boolean isEnable = true;
     private float frameIntervalMs;
 
+
     private int bestColor;
     private int normalColor;
     private int middleColor;
@@ -57,7 +58,7 @@ public class FrameDecorator extends IDoFrameListener implements IAppForeground {
 
     @SuppressLint("ClickableViewAccessibility")
     private FrameDecorator(Context context, final FloatFrameView view) {
-        this.frameIntervalMs = UIThreadMonitor.getMonitor().getFrameIntervalNanos() / 1000000f;
+        this.frameIntervalMs = 1f * UIThreadMonitor.getMonitor().getFrameIntervalNanos() / Constants.TIME_MILLIS_TO_NANO;
         this.view = view;
         this.bestColor = context.getResources().getColor(R.color.level_best_color);
         this.normalColor = context.getResources().getColor(R.color.level_normal_color);
@@ -185,37 +186,37 @@ public class FrameDecorator extends IDoFrameListener implements IAppForeground {
 
 
     @Override
-    public void doFrameAsync(String visibleScene, long taskCost, long frameCostMs, int droppedFrames, boolean isContainsFrame) {
-        super.doFrameAsync(visibleScene, taskCost, frameCostMs, droppedFrames, isContainsFrame);
+    public void doFrameAsync(String focusedActivity, long startNs, long endNs, int dropFrame, boolean isVsyncFrame, long intendedFrameTimeNs, long inputCostNs, long animationCostNs, long traversalCostNs) {
+        super.doFrameAsync(focusedActivity, startNs, endNs, dropFrame, isVsyncFrame, intendedFrameTimeNs, inputCostNs, animationCostNs, traversalCostNs);
 
-        if (!Objects.equals(visibleScene, lastVisibleScene)) {
+        if (!Objects.equals(focusedActivity, lastVisibleScene)) {
             dropLevel = new int[FrameTracer.DropStatus.values().length];
-            lastVisibleScene = visibleScene;
+            lastVisibleScene = focusedActivity;
             lastCost[0] = 0;
             lastFrames[0] = 0;
         }
 
-        sumFrameCost += (droppedFrames + 1) * frameIntervalMs;
+        sumFrameCost += (dropFrame + 1) * frameIntervalMs;
         sumFrames += 1;
-        long duration = sumFrameCost - lastCost[0];
+        float duration = sumFrameCost - lastCost[0];
 
-        if (droppedFrames >= Constants.DEFAULT_DROPPED_FROZEN) {
+        if (dropFrame >= Constants.DEFAULT_DROPPED_FROZEN) {
             dropLevel[FrameTracer.DropStatus.DROPPED_FROZEN.index]++;
             sumDropLevel[FrameTracer.DropStatus.DROPPED_FROZEN.index]++;
             belongColor = frozenColor;
-        } else if (droppedFrames >= Constants.DEFAULT_DROPPED_HIGH) {
+        } else if (dropFrame >= Constants.DEFAULT_DROPPED_HIGH) {
             dropLevel[FrameTracer.DropStatus.DROPPED_HIGH.index]++;
             sumDropLevel[FrameTracer.DropStatus.DROPPED_HIGH.index]++;
             if (belongColor != frozenColor) {
                 belongColor = highColor;
             }
-        } else if (droppedFrames >= Constants.DEFAULT_DROPPED_MIDDLE) {
+        } else if (dropFrame >= Constants.DEFAULT_DROPPED_MIDDLE) {
             dropLevel[FrameTracer.DropStatus.DROPPED_MIDDLE.index]++;
             sumDropLevel[FrameTracer.DropStatus.DROPPED_MIDDLE.index]++;
             if (belongColor != frozenColor && belongColor != highColor) {
                 belongColor = middleColor;
             }
-        } else if (droppedFrames >= Constants.DEFAULT_DROPPED_NORMAL) {
+        } else if (dropFrame >= Constants.DEFAULT_DROPPED_NORMAL) {
             dropLevel[FrameTracer.DropStatus.DROPPED_NORMAL.index]++;
             sumDropLevel[FrameTracer.DropStatus.DROPPED_NORMAL.index]++;
             if (belongColor != frozenColor && belongColor != highColor && belongColor != middleColor) {

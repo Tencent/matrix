@@ -58,39 +58,38 @@ public class EvilMethodTracer extends Tracer {
 
 
     @Override
-    public void dispatchBegin(long beginMs, long cpuBeginMs, long token) {
-        super.dispatchBegin(beginMs, cpuBeginMs, token);
+    public void dispatchBegin(long beginNs, long cpuBeginMs, long token) {
+        super.dispatchBegin(beginNs, cpuBeginMs, token);
         indexRecord = AppMethodBeat.getInstance().maskIndex("EvilMethodTracer#dispatchBegin");
     }
 
 
     @Override
-    public void doFrame(String focusedActivityName, long start, long end, long frameCostMs, long inputCostNs, long animationCostNs, long traversalCostNs) {
+    public void doFrame(String focusedActivity, long startNs, long endNs, boolean isVsyncFrame, long intendedFrameTimeNs, long inputCostNs, long animationCostNs, long traversalCostNs) {
         queueTypeCosts[0] = inputCostNs;
         queueTypeCosts[1] = animationCostNs;
         queueTypeCosts[2] = traversalCostNs;
     }
 
-
     @Override
-    public void dispatchEnd(long beginMs, long cpuBeginMs, long endMs, long cpuEndMs, long token, boolean isBelongFrame) {
-        super.dispatchEnd(beginMs, cpuBeginMs, endMs, cpuEndMs, token, isBelongFrame);
+    public void dispatchEnd(long beginNs, long cpuBeginMs, long endNs, long cpuEndMs, long token, boolean isVsyncFrame) {
+        super.dispatchEnd(beginNs, cpuBeginMs, endNs, cpuEndMs, token, isVsyncFrame);
         long start = config.isDevEnv() ? System.currentTimeMillis() : 0;
+        long dispatchCost = (endNs - beginNs) / Constants.TIME_MILLIS_TO_NANO;
         try {
-            long dispatchCost = endMs - beginMs;
             if (dispatchCost >= evilThresholdMs) {
                 long[] data = AppMethodBeat.getInstance().copyData(indexRecord);
                 long[] queueCosts = new long[3];
                 System.arraycopy(queueTypeCosts, 0, queueCosts, 0, 3);
                 String scene = AppMethodBeat.getVisibleScene();
-                MatrixHandlerThread.getDefaultHandler().post(new AnalyseTask(isForeground(), scene, data, queueCosts, cpuEndMs - cpuBeginMs, endMs - beginMs, endMs));
+                MatrixHandlerThread.getDefaultHandler().post(new AnalyseTask(isForeground(), scene, data, queueCosts, cpuEndMs - cpuBeginMs, dispatchCost, endNs / Constants.TIME_MILLIS_TO_NANO));
             }
         } finally {
             indexRecord.release();
             if (config.isDevEnv()) {
-                String usage = Utils.calculateCpuUsage(cpuEndMs - cpuBeginMs, endMs - beginMs);
+                String usage = Utils.calculateCpuUsage(cpuEndMs - cpuBeginMs, dispatchCost);
                 MatrixLog.v(TAG, "[dispatchEnd] token:%s cost:%sms cpu:%sms usage:%s innerCost:%s",
-                        token, endMs - beginMs, cpuEndMs - cpuBeginMs, usage, System.currentTimeMillis() - start);
+                        token, dispatchCost, cpuEndMs - cpuBeginMs, usage, System.currentTimeMillis() - start);
             }
         }
     }

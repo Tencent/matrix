@@ -343,9 +343,7 @@ public class AppMethodBeat implements BeatLifecycle {
                         indexRecord.next = tmp;
                     } else {
                         IndexRecord tmp = last.next;
-                        if (null != last.next) {
-                            last.next = indexRecord;
-                        }
+                        last.next = indexRecord;
                         indexRecord.next = tmp;
                     }
                     return indexRecord;
@@ -353,7 +351,6 @@ public class AppMethodBeat implements BeatLifecycle {
                 last = record;
                 record = record.next;
             }
-
             last.next = indexRecord;
 
             return indexRecord;

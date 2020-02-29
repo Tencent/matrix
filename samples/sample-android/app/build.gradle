@@ -9,8 +9,8 @@ configurations.all {
 }
 
 android {
-    compileSdkVersion 28
-    buildToolsVersion "28.0.2"
+    compileSdkVersion 29
+    buildToolsVersion "28.0.3"
 
     signingConfigs {
         debug {
@@ -21,7 +21,7 @@ android {
     defaultConfig {
         applicationId "sample.tencent.matrix"
         minSdkVersion 19
-        targetSdkVersion 28
+        targetSdkVersion 29
         versionCode 1
         versionName "1.0"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
