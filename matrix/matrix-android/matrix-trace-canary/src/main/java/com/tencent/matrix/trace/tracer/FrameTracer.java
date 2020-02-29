@@ -175,7 +175,7 @@ public class FrameTracer extends Tracer {
             float frameIntervalCost = 1f * UIThreadMonitor.getMonitor().getFrameIntervalNanos() / Constants.TIME_MILLIS_TO_NANO;
             sumFrameCost += (droppedFrames + 1) * frameIntervalCost;
             sumDroppedFrames += droppedFrames;
-
+            sumFrame++;
             if (droppedFrames >= frozenThreshold) {
                 dropLevel[DropStatus.DROPPED_FROZEN.index]++;
                 dropSum[DropStatus.DROPPED_FROZEN.index] += droppedFrames;
