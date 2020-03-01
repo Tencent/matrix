@@ -429,4 +429,17 @@ public class DeviceUtil {
         return ret;
     }
 
+    /**
+     * Check if current runtime is 64bit.
+     *
+     * @return
+     *   True if current runtime is 64bit abi. Otherwise return false instead.
+     */
+    public static boolean is64BitRuntime() {
+        final String currRuntimeABI = Build.CPU_ABI;
+        return "arm64-v8a".equalsIgnoreCase(currRuntimeABI)
+                || "x86_64".equalsIgnoreCase(currRuntimeABI)
+                || "mips64".equalsIgnoreCase(currRuntimeABI);
+    }
+
 }

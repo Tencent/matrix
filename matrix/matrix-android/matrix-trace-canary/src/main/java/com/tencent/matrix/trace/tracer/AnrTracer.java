@@ -1,5 +1,6 @@
 package com.tencent.matrix.trace.tracer;
 
+import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Process;
@@ -12,6 +13,7 @@ import com.tencent.matrix.trace.config.SharePluginInfo;
 import com.tencent.matrix.trace.config.TraceConfig;
 import com.tencent.matrix.trace.constants.Constants;
 import com.tencent.matrix.trace.core.AppMethodBeat;
+import com.tencent.matrix.trace.core.LooperMonitor;
 import com.tencent.matrix.trace.core.UIThreadMonitor;
 import com.tencent.matrix.trace.items.MethodItem;
 import com.tencent.matrix.trace.util.TraceDataUtils;
@@ -19,6 +21,7 @@ import com.tencent.matrix.trace.util.Utils;
 import com.tencent.matrix.util.DeviceUtil;
 import com.tencent.matrix.util.MatrixHandlerThread;
 import com.tencent.matrix.util.MatrixLog;
+import com.tencent.matrix.util.ReflectUtils;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -65,11 +68,13 @@ public class AnrTracer extends Tracer {
     @Override
     public void dispatchBegin(long beginNs, long cpuBeginMs, long token) {
         super.dispatchBegin(beginNs, cpuBeginMs, token);
+        long inputCost = UIThreadMonitor.getMonitor().getInputEventCost();
+
         anrTask = new AnrHandleTask(AppMethodBeat.getInstance().maskIndex("AnrTracer#dispatchBegin"), token);
         if (traceConfig.isDevEnv()) {
-            MatrixLog.v(TAG, "* [dispatchBegin] token:%s index:%s", token, anrTask.beginRecord.index);
+            MatrixLog.v(TAG, "* [dispatchBegin] token:%s index:%s inputCost:%s", token, anrTask.beginRecord.index, inputCost);
         }
-        anrHandler.postDelayed(anrTask, Constants.DEFAULT_ANR - (SystemClock.uptimeMillis() - token));
+        anrHandler.postDelayed(anrTask, Constants.DEFAULT_ANR - (System.nanoTime() - token) / Constants.TIME_MILLIS_TO_NANO);
     }
 
 
@@ -211,6 +216,7 @@ public class AnrTracer extends Tracer {
             print.append("|*\t\tScene: ").append(scene).append("\n");
             print.append("|*\t\tForeground: ").append(isForeground).append("\n");
             print.append("|*\t\tPriority: ").append(processStat[0]).append("\tNice: ").append(processStat[1]).append("\n");
+            print.append("|*\t\tis64BitRuntime: ").append(DeviceUtil.is64BitRuntime()).append("\n");
 
             print.append("|* [Memory]").append("\n");
             print.append("|*\t\tDalvikHeap: ").append(memoryInfo[0]).append("kb\n");
@@ -241,4 +247,6 @@ public class AnrTracer extends Tracer {
         memory[2] = DeviceUtil.getVmSize();
         return memory;
     }
+
+
 }

@@ -196,6 +196,7 @@ public class EvilMethodTracer extends Tracer {
             print.append("|*\t\tScene: ").append(scene).append("\n");
             print.append("|*\t\tForeground: ").append(isForeground).append("\n");
             print.append("|*\t\tPriority: ").append(processStat[0]).append("\tNice: ").append(processStat[1]).append("\n");
+            print.append("|*\t\tis64BitRuntime: ").append(DeviceUtil.is64BitRuntime()).append("\n");
             print.append("|*\t\tCPU: ").append(usage).append("\n");
             print.append("|* [doFrame]").append("\n");
             print.append("|*\t\tinputCost:animationCost:traversalCost").append("\n");

@@ -32,6 +32,7 @@ public class Constants {
     public static final int TIME_MILLIS_TO_NANO = 1000000;
     public static final int DEFAULT_ANR = 5 * 1000;
     public static final int DEFAULT_ANR_INVALID = 6 * 1000;
+    public static final long DEFAULT_FRAME_DURATION = 16666667L;
 
     public static final int DEFAULT_DROPPED_NORMAL = 3;
     public static final int DEFAULT_DROPPED_MIDDLE = 9;
