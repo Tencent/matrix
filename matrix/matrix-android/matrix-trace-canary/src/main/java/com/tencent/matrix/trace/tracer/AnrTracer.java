@@ -1,6 +1,5 @@
 package com.tencent.matrix.trace.tracer;
 
-import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Process;
@@ -13,7 +12,6 @@ import com.tencent.matrix.trace.config.SharePluginInfo;
 import com.tencent.matrix.trace.config.TraceConfig;
 import com.tencent.matrix.trace.constants.Constants;
 import com.tencent.matrix.trace.core.AppMethodBeat;
-import com.tencent.matrix.trace.core.LooperMonitor;
 import com.tencent.matrix.trace.core.UIThreadMonitor;
 import com.tencent.matrix.trace.items.MethodItem;
 import com.tencent.matrix.trace.util.TraceDataUtils;
@@ -21,7 +19,6 @@ import com.tencent.matrix.trace.util.Utils;
 import com.tencent.matrix.util.DeviceUtil;
 import com.tencent.matrix.util.MatrixHandlerThread;
 import com.tencent.matrix.util.MatrixLog;
-import com.tencent.matrix.util.ReflectUtils;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -68,8 +65,10 @@ public class AnrTracer extends Tracer {
     @Override
     public void dispatchBegin(long beginNs, long cpuBeginMs, long token) {
         super.dispatchBegin(beginNs, cpuBeginMs, token);
-        long inputCost = UIThreadMonitor.getMonitor().getInputEventCost();
-
+//        long inputCost = UIThreadMonitor.getMonitor().getInputEventCost();
+//        if (inputCost > Constants.DEFAULT_INPUT_EXPIRED_TIME * Constants.TIME_MILLIS_TO_NANO) {
+//            printInputExpired(inputCost);
+//        }
         anrTask = new AnrHandleTask(AppMethodBeat.getInstance().maskIndex("AnrTracer#dispatchBegin"), token);
         if (traceConfig.isDevEnv()) {
             MatrixLog.v(TAG, "* [dispatchBegin] token:%s index:%s inputCost:%s", token, anrTask.beginRecord.index, inputCost);
@@ -165,7 +164,7 @@ public class AnrTracer extends Tracer {
             String stackKey = TraceDataUtils.getTreeKey(stack, stackCost);
             MatrixLog.w(TAG, "%s \npostTime:%s curTime:%s",
                     printAnr(scene, processStat, memoryInfo, status, logcatBuilder, isForeground, stack.size(),
-                            stackKey, dumpStack, inputCost, animationCost, traversalCost, stackCost), token, curTime); // for logcat
+                            stackKey, dumpStack, inputCost, animationCost, traversalCost, stackCost), token / Constants.TIME_MILLIS_TO_NANO, curTime); // for logcat
 
             if (stackCost >= Constants.DEFAULT_ANR_INVALID) {
                 MatrixLog.w(TAG, "The checked anr task was not executed on time. "
@@ -228,16 +227,37 @@ public class AnrTracer extends Tracer {
             print.append("|* [Thread]").append("\n");
             print.append(String.format("|*\t\tStack(%s): ", state)).append(dumpStack);
             print.append("|* [Trace]").append("\n");
-            print.append("|*\t\tStackKey: ").append(stackKey).append("\n");
-
-            if (traceConfig.isDebug()) {
+            if (stackSize > 0) {
+                print.append("|*\t\tStackKey: ").append(stackKey).append("\n");
                 print.append(stack.toString());
+            } else {
+                print.append(String.format("AppMethodBeat is close[%s].", AppMethodBeat.getInstance().isAlive())).append("\n");
             }
-
             print.append("=========================================================================");
             return print.toString();
         }
+    }
 
+    private String printInputExpired(long inputCost) {
+        StringBuilder print = new StringBuilder();
+        String scene = AppMethodBeat.getVisibleScene();
+        boolean isForeground = isForeground();
+        // memory
+        long[] memoryInfo = dumpMemory();
+        // process
+        int[] processStat = Utils.getProcessPriority(Process.myPid());
+        print.append(String.format("-\n>>>>>>>>>>>>>>>>>>>>>>> maybe happens Input ANR(%s ms)! <<<<<<<<<<<<<<<<<<<<<<<\n", inputCost));
+        print.append("|* [Status]").append("\n");
+        print.append("|*\t\tScene: ").append(scene).append("\n");
+        print.append("|*\t\tForeground: ").append(isForeground).append("\n");
+        print.append("|*\t\tPriority: ").append(processStat[0]).append("\tNice: ").append(processStat[1]).append("\n");
+        print.append("|*\t\tis64BitRuntime: ").append(DeviceUtil.is64BitRuntime()).append("\n");
+        print.append("|* [Memory]").append("\n");
+        print.append("|*\t\tDalvikHeap: ").append(memoryInfo[0]).append("kb\n");
+        print.append("|*\t\tNativeHeap: ").append(memoryInfo[1]).append("kb\n");
+        print.append("|*\t\tVmSize: ").append(memoryInfo[2]).append("kb\n");
+        print.append("=========================================================================");
+        return print.toString();
     }
 
     private long[] dumpMemory() {

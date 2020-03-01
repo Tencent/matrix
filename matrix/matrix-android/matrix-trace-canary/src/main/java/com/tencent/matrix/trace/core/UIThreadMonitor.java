@@ -356,9 +356,7 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
         try {
             Choreographer choreographer = Choreographer.getInstance();
             final Object receiver = ReflectUtils.reflectObject(choreographer, "mDisplayEventReceiver", null);
-            Field field = ReflectUtils.reflectObject(receiver, "mTimestampNanos", null);
-            if (null == field) return defaultValue;
-            return (long) field.get(receiver);
+            return ReflectUtils.reflectObject(receiver, "mTimestampNanos", defaultValue);
         } catch (Exception e) {
             e.printStackTrace();
             MatrixLog.e(TAG, e.toString());
@@ -379,7 +377,10 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             Object obj = ReflectUtils.reflectObject(choreographer, "mFrameInfo", null);
             if (null == frameInfo) {
-                frameInfo = ReflectUtils.reflectObject(obj, "mFrameInfo", new long[9]);
+                frameInfo = ReflectUtils.reflectObject(obj, "frameInfo", null);
+                if (null == frameInfo) {
+                    frameInfo = ReflectUtils.reflectObject(obj, "mFrameInfo", new long[9]);
+                }
             }
             long start = frameInfo[OLDEST_INPUT_EVENT];
             long end = frameInfo[NEWEST_INPUT_EVENT];

@@ -33,14 +33,14 @@ public class ReflectUtils {
             Field field = instance.getClass().getDeclaredField(name);
             field.setAccessible(true);
             return (T) field.get(instance);
-        } catch (Throwable e) {
+        } catch (Exception e) {
             try {
                 Method getDeclaredField = Class.class.getDeclaredMethod("getDeclaredField", String.class);
                 Field field = (Field) getDeclaredField.invoke(instance.getClass(), name);
                 field.setAccessible(true);
                 return (T) field.get(instance);
-            } catch (Throwable ex) {
-                MatrixLog.e(TAG, ex.toString());
+            } catch (Exception ex) {
+                MatrixLog.e(TAG, ex.toString() + "\n%s", MatrixUtil.printException(ex));
             }
         }
         return defaultValue;
@@ -51,14 +51,14 @@ public class ReflectUtils {
             Method method = instance.getClass().getDeclaredMethod(name, argTypes);
             method.setAccessible(true);
             return method;
-        } catch (Throwable e) {
+        } catch (Exception e) {
             try {
                 Method getDeclaredMethod = Class.class.getDeclaredMethod("getDeclaredMethod", String.class, Class[].class);
                 Method method = (Method) getDeclaredMethod.invoke(instance.getClass(), name, argTypes);
                 method.setAccessible(true);
                 return method;
-            } catch (Throwable ex) {
-                MatrixLog.e(TAG, ex.toString());
+            } catch (Exception ex) {
+                MatrixLog.e(TAG, ex.toString() + "\n%s", MatrixUtil.printException(ex));
             }
         }
         return null;

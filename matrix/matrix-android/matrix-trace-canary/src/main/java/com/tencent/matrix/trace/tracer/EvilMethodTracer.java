@@ -201,11 +201,11 @@ public class EvilMethodTracer extends Tracer {
             print.append("|* [doFrame]").append("\n");
             print.append("|*\t\tinputCost:animationCost:traversalCost").append("\n");
             print.append("|*\t\t").append(inputCost).append(":").append(animationCost).append(":").append(traversalCost).append("\n");
-            print.append("|* [Trace]").append("\n");
-            print.append("|*\t\tStackKey: ").append(stackKey).append("\n");
-
-            if (config.isDebug()) {
+            if (stackSize > 0) {
+                print.append("|*\t\tStackKey: ").append(stackKey).append("\n");
                 print.append(stack.toString());
+            } else {
+                print.append(String.format("AppMethodBeat is close[%s].", AppMethodBeat.getInstance().isAlive())).append("\n");
             }
 
             print.append("=========================================================================");
