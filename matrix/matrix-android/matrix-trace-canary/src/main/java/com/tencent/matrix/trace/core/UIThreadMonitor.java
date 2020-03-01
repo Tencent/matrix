@@ -1,5 +1,6 @@
 package com.tencent.matrix.trace.core;
 
+import android.os.Build;
 import android.os.Looper;
 import android.os.SystemClock;
 import android.view.Choreographer;
@@ -8,7 +9,9 @@ import com.tencent.matrix.trace.config.TraceConfig;
 import com.tencent.matrix.trace.constants.Constants;
 import com.tencent.matrix.trace.listeners.LooperObserver;
 import com.tencent.matrix.trace.util.Utils;
+import com.tencent.matrix.util.DeviceUtil;
 import com.tencent.matrix.util.MatrixLog;
+import com.tencent.matrix.util.ReflectUtils;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -24,6 +27,11 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
     private final HashSet<LooperObserver> observers = new HashSet<>();
     private volatile long token = 0L;
     private boolean isVsyncFrame = false;
+    // The time of the oldest input event
+    private static final int OLDEST_INPUT_EVENT = 3;
+
+    // The time of the newest input event
+    private static final int NEWEST_INPUT_EVENT = 4;
 
     /**
      * Callback type: Input callback.  Runs first.
@@ -85,14 +93,14 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
         }
         this.config = config;
         choreographer = Choreographer.getInstance();
-        callbackQueueLock = reflectObject(choreographer, "mLock");
-        callbackQueues = reflectObject(choreographer, "mCallbackQueues");
+        callbackQueueLock = ReflectUtils.reflectObject(choreographer, "mLock", new Object());
+        callbackQueues = ReflectUtils.reflectObject(choreographer, "mCallbackQueues", null);
         if (null != callbackQueues) {
-            addInputQueue = reflectMethod(callbackQueues[CALLBACK_INPUT], ADD_CALLBACK, long.class, Object.class, Object.class);
-            addAnimationQueue = reflectMethod(callbackQueues[CALLBACK_ANIMATION], ADD_CALLBACK, long.class, Object.class, Object.class);
-            addTraversalQueue = reflectMethod(callbackQueues[CALLBACK_TRAVERSAL], ADD_CALLBACK, long.class, Object.class, Object.class);
+            addInputQueue = ReflectUtils.reflectMethod(callbackQueues[CALLBACK_INPUT], ADD_CALLBACK, long.class, Object.class, Object.class);
+            addAnimationQueue = ReflectUtils.reflectMethod(callbackQueues[CALLBACK_ANIMATION], ADD_CALLBACK, long.class, Object.class, Object.class);
+            addTraversalQueue = ReflectUtils.reflectMethod(callbackQueues[CALLBACK_TRAVERSAL], ADD_CALLBACK, long.class, Object.class, Object.class);
         }
-        frameIntervalNanos = reflectObject(choreographer, "mFrameIntervalNanos");
+        frameIntervalNanos = ReflectUtils.reflectObject(choreographer, "mFrameIntervalNanos", Constants.DEFAULT_FRAME_DURATION);
 
         LooperMonitor.register(new LooperMonitor.LooperDispatchListener() {
             @Override
@@ -347,11 +355,8 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
     private long getIntendedFrameTimeNs(long defaultValue) {
         try {
             Choreographer choreographer = Choreographer.getInstance();
-            final Object receiver = reflectObject(choreographer, "mDisplayEventReceiver");
-            Method getDeclaredField = Class.class.getDeclaredMethod("getDeclaredField", String.class);
-            Field field = (Field) getDeclaredField.invoke(receiver.getClass(), "mTimestampNanos");
-            field.setAccessible(true);
-            return (long) field.get(receiver);
+            final Object receiver = ReflectUtils.reflectObject(choreographer, "mDisplayEventReceiver", null);
+            return ReflectUtils.reflectObject(receiver, "mTimestampNanos", defaultValue);
         } catch (Exception e) {
             e.printStackTrace();
             MatrixLog.e(TAG, e.toString());
@@ -366,40 +371,21 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
         return queueStatus[type] == DO_QUEUE_END ? queueCost[type] : 0;
     }
 
-    private <T> T reflectObject(Object instance, String name) {
-        try {
-            Field field = instance.getClass().getDeclaredField(name);
-            field.setAccessible(true);
-            return (T) field.get(instance);
-        } catch (Throwable e) {
-            try {
-                Method getDeclaredField = Class.class.getDeclaredMethod("getDeclaredField", String.class);
-                Field field = (Field) getDeclaredField.invoke(instance.getClass(), name);
-                field.setAccessible(true);
-                return (T) field.get(instance);
-            } catch (Throwable ex) {
-                MatrixLog.e(TAG, ex.toString());
-            }
-        }
-        return null;
-    }
+    private long[] frameInfo = null;
 
-    private Method reflectMethod(Object instance, String name, Class<?>... argTypes) {
-        try {
-            Method method = instance.getClass().getDeclaredMethod(name, argTypes);
-            method.setAccessible(true);
-            throw new RuntimeException("");
-//            return method;
-        } catch (Throwable e) {
-            try {
-                Method getDeclaredMethod = Class.class.getDeclaredMethod("getDeclaredMethod", String.class, Class[].class);
-                Method method = (Method) getDeclaredMethod.invoke(instance.getClass(), name, argTypes);
-                method.setAccessible(true);
-                return method;
-            } catch (Throwable ex) {
-                MatrixLog.e(TAG, ex.toString());
+    public long getInputEventCost() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            Object obj = ReflectUtils.reflectObject(choreographer, "mFrameInfo", null);
+            if (null == frameInfo) {
+                frameInfo = ReflectUtils.reflectObject(obj, "frameInfo", null);
+                if (null == frameInfo) {
+                    frameInfo = ReflectUtils.reflectObject(obj, "mFrameInfo", new long[9]);
+                }
             }
+            long start = frameInfo[OLDEST_INPUT_EVENT];
+            long end = frameInfo[NEWEST_INPUT_EVENT];
+            return end - start;
         }
-        return null;
+        return 0;
     }
 }

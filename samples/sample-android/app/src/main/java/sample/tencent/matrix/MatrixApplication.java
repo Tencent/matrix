@@ -99,7 +99,7 @@ public class MatrixApplication extends Application {
                 .enableStartup(traceEnable)
                 .splashActivities("sample.tencent.matrix.SplashActivity;")
                 .isDebug(true)
-                .isDevEnv(false)
+                .isDevEnv(true)
                 .build();
 
         TracePlugin tracePlugin = (new TracePlugin(traceConfig));

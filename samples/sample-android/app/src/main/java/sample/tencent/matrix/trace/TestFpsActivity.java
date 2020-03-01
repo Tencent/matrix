@@ -25,6 +25,7 @@ import android.os.SystemClock;
 import android.print.PrinterId;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
@@ -94,19 +95,27 @@ public class TestFpsActivity extends Activity {
         for (int i = 0; i < 200; i++) {
             data[i] = "MatrixTrace:" + i;
         }
+        mListView.setOnTouchListener(new View.OnTouchListener() {
+            @Override
+            public boolean onTouch(View view, MotionEvent motionEvent) {
+                MatrixLog.i(TAG, "onTouch=" + motionEvent);
+                SystemClock.sleep(800);
+                return false;
+            }
+        });
         mListView.setAdapter(new ArrayAdapter(this, android.R.layout.simple_list_item_1, data) {
             Random random = new Random();
 
             @NonNull
             @Override
             public View getView(int position, @Nullable View convertView, @NonNull ViewGroup parent) {
-                mainHandler.post(new Runnable() {
-                    @Override
-                    public void run() {
-                        int rand = random.nextInt(10);
-                        SystemClock.sleep(rand * 4);
-                    }
-                });
+//                mainHandler.post(new Runnable() {
+//                    @Override
+//                    public void run() {
+//                        int rand = random.nextInt(10);
+//                        SystemClock.sleep(rand * 4);
+//                    }
+//                });
                 return super.getView(position, convertView, parent);
             }
         });
