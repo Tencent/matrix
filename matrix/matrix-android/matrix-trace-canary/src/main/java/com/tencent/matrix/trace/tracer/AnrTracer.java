@@ -71,7 +71,7 @@ public class AnrTracer extends Tracer {
 //        }
         anrTask = new AnrHandleTask(AppMethodBeat.getInstance().maskIndex("AnrTracer#dispatchBegin"), token);
         if (traceConfig.isDevEnv()) {
-            MatrixLog.v(TAG, "* [dispatchBegin] token:%s index:%s inputCost:%s", token, anrTask.beginRecord.index, inputCost);
+            MatrixLog.v(TAG, "* [dispatchBegin] token:%s index:%s", token, anrTask.beginRecord.index);
         }
         anrHandler.postDelayed(anrTask, Constants.DEFAULT_ANR - (System.nanoTime() - token) / Constants.TIME_MILLIS_TO_NANO);
     }
