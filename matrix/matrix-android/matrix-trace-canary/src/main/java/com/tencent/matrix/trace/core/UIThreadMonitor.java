@@ -70,6 +70,7 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
     private Method addInputQueue;
     private Method addAnimationQueue;
     private Choreographer choreographer;
+    private Object vsyncReceiver;
     private long frameIntervalNanos = 16666666;
     private int[] queueStatus = new int[CALLBACK_LAST + 1];
     private boolean[] callbackExist = new boolean[CALLBACK_LAST + 1]; // ABA
@@ -100,6 +101,7 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
             addAnimationQueue = ReflectUtils.reflectMethod(callbackQueues[CALLBACK_ANIMATION], ADD_CALLBACK, long.class, Object.class, Object.class);
             addTraversalQueue = ReflectUtils.reflectMethod(callbackQueues[CALLBACK_TRAVERSAL], ADD_CALLBACK, long.class, Object.class, Object.class);
         }
+        vsyncReceiver = ReflectUtils.reflectObject(choreographer, "mDisplayEventReceiver", null);
         frameIntervalNanos = ReflectUtils.reflectObject(choreographer, "mFrameIntervalNanos", Constants.DEFAULT_FRAME_DURATION);
 
         LooperMonitor.register(new LooperMonitor.LooperDispatchListener() {
@@ -122,7 +124,9 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
 
         });
         this.isInit = true;
-        MatrixLog.i(TAG, "[UIThreadMonitor] %s %s %s %s %s frameIntervalNanos:%s", callbackQueueLock == null, callbackQueues == null, addInputQueue == null, addTraversalQueue == null, addAnimationQueue == null, frameIntervalNanos);
+        MatrixLog.i(TAG, "[UIThreadMonitor] %s %s %s %s %s %s frameIntervalNanos:%s", callbackQueueLock == null, callbackQueues == null,
+                addInputQueue == null, addTraversalQueue == null, addAnimationQueue == null, vsyncReceiver == null, frameIntervalNanos);
+
 
         if (config.isDevEnv()) {
             addObserver(new LooperObserver() {
@@ -354,9 +358,7 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
 
     private long getIntendedFrameTimeNs(long defaultValue) {
         try {
-            Choreographer choreographer = Choreographer.getInstance();
-            final Object receiver = ReflectUtils.reflectObject(choreographer, "mDisplayEventReceiver", null);
-            return ReflectUtils.reflectObject(receiver, "mTimestampNanos", defaultValue);
+            return ReflectUtils.reflectObject(vsyncReceiver, "mTimestampNanos", defaultValue);
         } catch (Exception e) {
             e.printStackTrace();
             MatrixLog.e(TAG, e.toString());
