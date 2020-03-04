@@ -11,13 +11,27 @@ class WebViewReporterRegistry {
     }
 
     private val mRegistry : ConcurrentMap<String, IWebViewPerformanceReporter>
+    private val mReporterRegisterListenerList : MutableList<ReporterRegisterListener>
 
     init {
         mRegistry = ConcurrentHashMap()
+        mReporterRegisterListenerList = ArrayList()
     }
 
-    fun registerReporter (name : String, reporter: IWebViewPerformanceReporter){
+    fun registerReporter(name : String, reporter: IWebViewPerformanceReporter){
         mRegistry[name] = reporter
+
+        synchronized(this) {
+            mReporterRegisterListenerList.forEach {
+                it.onReporterRegister(name, reporter)
+            }
+        }
+    }
+
+    fun addReporterRegisterListener(listener: ReporterRegisterListener) {
+        synchronized(this) {
+            mReporterRegisterListenerList.add(listener)
+        }
     }
 
     fun traversalReporter(func : (name : String, reporter : IWebViewPerformanceReporter) -> Unit) {
@@ -26,5 +40,9 @@ class WebViewReporterRegistry {
         tempMap.forEach {
                 (key, value ) -> func(key, value)
         }
+    }
+
+    interface ReporterRegisterListener {
+        fun onReporterRegister(name: String, reporter: IWebViewPerformanceReporter)
     }
 }
