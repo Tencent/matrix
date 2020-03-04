@@ -25,16 +25,12 @@ class WebViewCanaryPlugin(private val mConfig: Config = Config.EMPTY) : Plugin()
 
     override fun start() {
         super.start()
-        if (isPluginStopped) {
-            mCore.start()
-        }
+        mCore.start()
     }
 
     override fun stop() {
         super.stop()
-        if (isPluginStarted) {
-            mCore.stop()
-        }
+        mCore.stop()
     }
 
     fun getConfig(): Config {

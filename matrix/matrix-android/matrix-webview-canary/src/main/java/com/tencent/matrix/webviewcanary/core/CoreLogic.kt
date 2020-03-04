@@ -20,17 +20,18 @@ class CoreLogic(private val mPlugin: WebViewCanaryPlugin) : OnIssueDetectListene
     }
 
     fun start() {
-        WebViewReporterRegistry.INSTANCE.traversalReporter { _, reporter ->
-            reporter.startReportPerformance(REPORTER_TAG_FRAME_DROP, mCollector)
+        if (!mStarted) {
+            mStarted = true
         }
-        mStarted = true
     }
 
     fun stop() {
-        WebViewReporterRegistry.INSTANCE.traversalReporter { _, reporter ->
-            reporter.stopReportPerformance()
+        if (mStarted) {
+            WebViewReporterRegistry.INSTANCE.traversalReporter { _, reporter ->
+                reporter.stopReportPerformance()
+            }
+            mStarted = false
         }
-        mStarted = false
     }
 
     override fun onDetectIssue(issue: Issue?) {

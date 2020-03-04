@@ -1,5 +1,6 @@
 package com.tencent.matrix.webviewcanary.core
 
+import android.util.Log
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentMap
 
@@ -31,6 +32,9 @@ class WebViewReporterRegistry {
     fun addReporterRegisterListener(listener: ReporterRegisterListener) {
         synchronized(this) {
             mReporterRegisterListenerList.add(listener)
+
+            // 对存量 reporter 触发一次 listener
+            traversalReporter { name, reporter -> listener.onReporterRegister(name, reporter) }
         }
     }
 
