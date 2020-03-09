@@ -15,6 +15,8 @@ class WebViewPerformanceDataCollector(private val mIssueDetectListener: IssuePub
 
     override fun reportFrameCost(
             host: String,
+            deviceRefreshRate : Int,
+            fps : Double,
             totalCostCount: Int,
             noDropFrameCountFor120Hz: Int,
             noDropFrameCountFor90Hz: Int,
@@ -23,6 +25,8 @@ class WebViewPerformanceDataCollector(private val mIssueDetectListener: IssuePub
     ) {
         mFrameDropDetector.onFrameCostDataReceived(
                 host,
+                deviceRefreshRate,
+                fps,
                 totalCostCount,
                 noDropFrameCountFor120Hz,
                 noDropFrameCountFor90Hz,
