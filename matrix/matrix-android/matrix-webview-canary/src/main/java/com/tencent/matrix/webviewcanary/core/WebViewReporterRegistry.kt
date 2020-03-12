@@ -1,6 +1,5 @@
 package com.tencent.matrix.webviewcanary.core
 
-import android.util.Log
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentMap
 

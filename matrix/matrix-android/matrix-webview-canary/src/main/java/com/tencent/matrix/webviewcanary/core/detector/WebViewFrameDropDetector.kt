@@ -7,40 +7,46 @@ import com.tencent.matrix.webviewcanary.core.IssueType
 import org.json.JSONObject
 
 class WebViewFrameDropDetector(
-    private val mListener: OnIssueDetectListener,
-    private val mConfig: Config
+        private val mListener: OnIssueDetectListener,
+        private val mConfig: Config
 ) :
-    IssuePublisher(mListener) {
+        IssuePublisher(mListener) {
 
     fun onFrameCostDataReceived(
-        host: String,
-        totalCostCount: Int,
-        noDropFrameCountFor120Hz: Int,
-        noDropFrameCountFor90Hz: Int,
-        noDropFrameCountFor60Hz: Int,
-        dropFrameCostSequence: DoubleArray
+            host: String,
+            deviceRefreshRate: Int,
+            fps: Double,
+            totalCostCount: Int,
+            noDropFrameCountFor120Hz: Int,
+            noDropFrameCountFor90Hz: Int,
+            noDropFrameCountFor60Hz: Int,
+            dropFrameCostSequence: DoubleArray
     ) {
         analysis(
-            host,
-            totalCostCount,
-            noDropFrameCountFor120Hz,
-            noDropFrameCountFor90Hz,
-            noDropFrameCountFor60Hz,
-            dropFrameCostSequence
+                host, deviceRefreshRate, fps,
+                totalCostCount,
+                noDropFrameCountFor120Hz,
+                noDropFrameCountFor90Hz,
+                noDropFrameCountFor60Hz,
+                dropFrameCostSequence
         )
     }
 
     private fun analysis(
-        host: String,
-        totalCostCount: Int,
-        noDropFrameCountFor120Hz: Int,
-        noDropFrameCountFor90Hz: Int,
-        noDropFrameCountFor60Hz: Int,
-        dropFrameCostSequence: DoubleArray
+            host: String,
+            deviceRefreshRate: Int,
+            fps: Double,
+            totalCostCount: Int,
+            noDropFrameCountFor120Hz: Int,
+            noDropFrameCountFor90Hz: Int,
+            noDropFrameCountFor60Hz: Int,
+            dropFrameCostSequence: DoubleArray
     ) {
         val contentObject = JSONObject()
         contentObject.put(CONTENT_KEY_HOST, host)
         contentObject.put(CONTENT_KEY_TOTAL_COST_COUNT, totalCostCount)
+        contentObject.put(CONTENT_KEY_FPS, fps)
+        contentObject.put(CONTENT_KEY_DEVICE_REFRESH_RATE, deviceRefreshRate)
 
         contentObject.put(DropStatus.NO_DROP_FOR_120.name, noDropFrameCountFor120Hz)
         contentObject.put(DropStatus.NO_DROP_FOR_90.name, noDropFrameCountFor90Hz)
