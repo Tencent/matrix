@@ -494,6 +494,7 @@ bool ksfu_flushBufferedWriter(KSBufferedWriter* writer)
     {
         if(!ksfu_writeBytesToFD(writer->fd, writer->buffer, writer->position))
         {
+            writer->position = 0;
             return false;
         }
         writer->position = 0;
