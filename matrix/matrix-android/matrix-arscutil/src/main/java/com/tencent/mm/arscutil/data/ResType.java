@@ -18,7 +18,9 @@ package com.tencent.mm.arscutil.data;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Created by jinqiuchen on 18/7/29.
@@ -36,6 +38,8 @@ public class ResType extends ResChunk {
     private ResConfig resConfigFlags; // configFlag
     private List<Integer> entryOffsets; // entry 偏移数组，给出每个entry的偏移位置, 0xFFFF表示NO_ENTRY
     private List<ResEntry> entryTable; // entry table
+
+    private Map<Integer, Integer> resValueStringCountMap = new HashMap<>();   //保存ResValue引用的字符串的引用计数
 
     public byte getId() {
         return id;
@@ -99,6 +103,27 @@ public class ResType extends ResChunk {
 
     public void setEntryTable(List<ResEntry> entryTable) {
         this.entryTable = entryTable;
+        if (entryTable != null) {
+            for (int i = 0; i < entryCount; i++) {
+                ResValue resValue = entryTable.get(i).getResValue();
+                countResValueStringReference(resValue);
+                if (entryTable.get(i).getResMapValues() != null) {
+                    for (ResMapValue resMapValue : entryTable.get(i).getResMapValues()) {
+                        countResValueStringReference(resValue);
+                    }
+                }
+            }
+        }
+    }
+
+    private void countResValueStringReference(ResValue resValue) {
+        if (resValue != null && resValue.getDataType() == ArscConstants.RES_VALUE_DATA_TYPE_STRING) {
+            int stringPoolIndex = resValue.getData();
+            if (!resValueStringCountMap.containsKey(stringPoolIndex)) {
+                resValueStringCountMap.put(stringPoolIndex, 0);
+            }
+            resValueStringCountMap.put(stringPoolIndex, resValueStringCountMap.get(stringPoolIndex) + 1);
+        }
     }
 
     public void refresh()  {
