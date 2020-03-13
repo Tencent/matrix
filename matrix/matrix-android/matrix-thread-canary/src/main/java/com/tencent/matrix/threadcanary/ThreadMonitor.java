@@ -154,6 +154,7 @@ public class ThreadMonitor extends Plugin {
                         threadInfo.stackTrace = appThreadInfo.stackTrace;
                         threadInfo.isHandlerThread = appThreadInfo.isHandlerThread;
                         threadInfo.target = appThreadInfo.target;
+                        threadInfo.isJavaThread = true;
                     } else {
                         threadInfo.name = threadInfo.name.replaceAll("-?[0-9]\\d*", "?");
                     }
@@ -292,6 +293,7 @@ public class ThreadMonitor extends Plugin {
                     threadInfo.stackTrace = appThreadInfo.stackTrace;
                     threadInfo.isHandlerThread = appThreadInfo.isHandlerThread;
                     threadInfo.target = appThreadInfo.target;
+                    threadInfo.isJavaThread = true;
                 } else {
                     threadInfo.name = threadInfo.name.replaceAll("-?[0-9]\\d*", "?");
                 }
@@ -455,6 +457,7 @@ public class ThreadMonitor extends Plugin {
         String state;
         int stackTrace;
         String target;
+        boolean isJavaThread;
 
         @Override
         public boolean equals(Object obj) {
@@ -464,6 +467,22 @@ public class ThreadMonitor extends Plugin {
             } else {
                 return false;
             }
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public long getTid() {
+            return tid;
+        }
+
+        public boolean isHandlerThread() {
+            return isHandlerThread;
+        }
+
+        public boolean isJavaThread() {
+            return isJavaThread;
         }
 
         @Override
@@ -477,13 +496,17 @@ public class ThreadMonitor extends Plugin {
         }
     }
 
-    private static class ThreadGroupInfo {
+    public static class ThreadGroupInfo {
         String name;
         List<ThreadInfo> list = new LinkedList<>();
 
 
         ThreadGroupInfo(String name) {
             this.name = name;
+        }
+
+        public String getName() {
+            return name;
         }
 
         public int getSize() {
