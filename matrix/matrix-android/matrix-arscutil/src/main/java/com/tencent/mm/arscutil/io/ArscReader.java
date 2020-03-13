@@ -236,7 +236,7 @@ public class ArscReader {
         Log.d(TAG, "resEntry flag %d", resEntry.getFlag());
         resEntry.setStringPoolIndex(dataInput.readInt());
 
-        String entryName = ArscUtil.resolveStringPoolEntry(resPackage.getResNamePool().getStrings().get(resEntry.getStringPoolIndex()).array(), resPackage.getResNamePool().getCharSet());
+        String entryName = ResStringBlock.resolveStringPoolEntry(resPackage.getResNamePool().getStrings().get(resEntry.getStringPoolIndex()).array(), resPackage.getResNamePool().getCharSet());
         Log.d(TAG, "entryName %s", entryName);
         resEntry.setEntryName(entryName);
 
@@ -268,7 +268,7 @@ public class ArscReader {
         //Log.d(TAG, "resValue data %d", resValue.getData());
               
         if (resValue.getDataType() == ArscConstants.RES_VALUE_DATA_TYPE_STRING) {
-        	Log.d(TAG,  "resValue string %s", ArscUtil.resolveStringPoolEntry(globalResTable.getGlobalStringPool().getStrings().get(resValue.getData()).array(), globalResTable.getGlobalStringPool().getCharSet()));
+        	Log.d(TAG,  "resValue string %s", ResStringBlock.resolveStringPoolEntry(globalResTable.getGlobalStringPool().getStrings().get(resValue.getData()).array(), globalResTable.getGlobalStringPool().getCharSet()));
         } else {
         	Log.d(TAG, "resValue %s", resValue.printData());
         }
@@ -356,7 +356,7 @@ public class ArscReader {
                 strings.get(i).order(ByteOrder.LITTLE_ENDIAN);
                 strings.get(i).clear();
                 strings.get(i).put(buffer);
-                stringIndexMap.put(ArscUtil.resolveStringPoolEntry(buffer, stringPool.getCharSet()), i);
+                stringIndexMap.put(ResStringBlock.resolveStringPoolEntry(buffer, stringPool.getCharSet()), i);
             }
             stringPool.setStrings(strings);
             stringPool.setStringIndexMap(stringIndexMap);

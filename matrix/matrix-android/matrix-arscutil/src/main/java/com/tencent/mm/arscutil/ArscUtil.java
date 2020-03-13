@@ -46,34 +46,6 @@ public class ArscUtil {
 
     private static final String TAG = "ArscUtil.ArscUtil";
 
-    //字符串长度最少占2个字节，最多占4个字节
-    public static String resolveStringPoolEntry(byte[] buffer, Charset charSet) {
-        String str = "";
-        int len = 0;
-        if (charSet.equals(StandardCharsets.UTF_8)) {
-            len = buffer[0];
-            if ((len & 0x80) != 0) {
-                byte high = buffer[1];
-                len = ((len & 0x7f) << 8) | high;
-            }
-            str = new String(buffer, 2, buffer.length - 2 - 1, charSet);
-        } else {
-            ByteBuffer byteBuffer = ByteBuffer.allocate(4);
-            byteBuffer.order(ByteOrder.LITTLE_ENDIAN);
-            byteBuffer.clear();
-            byteBuffer.put(buffer, 0, 2);
-            byteBuffer.flip();
-            len = byteBuffer.getShort();
-            if ((len & 0x8000) != 0) {
-                short high = byteBuffer.getShort();
-                len = ((len & 0x7fff) << 16) | high;
-            }
-            str = new String(buffer, byteBuffer.limit(), buffer.length - 4, charSet);
-        }
-        Log.d(TAG, "str len %d, %s", len, str);
-        return str;
-    }
-
     public static byte[] encodeStringPoolEntry(String str, Charset charSet) {
         byte[] content = str.getBytes(charSet);
         int len = str.length();
@@ -173,14 +145,13 @@ public class ArscUtil {
             for (ResType resType : resTypeList) {
                 int entryId = getResourceEntryId(resourceId);
                 resNameStringPoolIndex = resType.getEntryTable().get(entryId).getStringPoolIndex();
-                Log.d(TAG, "try to remove %s (%H), find resource %s", resourceName, resourceId, ArscUtil.resolveStringPoolEntry(resPackage.getResNamePool().getStrings().get(resNameStringPoolIndex).array(), resPackage.getResNamePool().getCharSet()));
+                Log.d(TAG, "try to remove %s (%H), find resource %s", resourceName, resourceId, ResStringBlock.resolveStringPoolEntry(resPackage.getResNamePool().getStrings().get(resNameStringPoolIndex).array(), resPackage.getResNamePool().getCharSet()));
                 resType.getEntryTable().set(entryId, null);
                 resType.getEntryOffsets().set(entryId, ArscConstants.NO_ENTRY_INDEX);
                 resType.refresh();
             }
             if (resNameStringPoolIndex != -1) {
                 resPackage.getResNamePool().getStrings().remove(resNameStringPoolIndex);
-                resPackage.getResNamePool().getStringOffsets().remove(resNameStringPoolIndex);
                 resPackage.getResNamePool().refresh();
             }
             resPackage.refresh();
@@ -204,7 +175,7 @@ public class ArscUtil {
             		boolean isComplex = (resEntry.getFlag() & ArscConstants.RES_TABLE_ENTRY_FLAG_COMPLEX) != 0;
             		if (!isComplex && resEntry.getResValue() != null) {
             			if (resEntry.getResValue().getDataType() == ArscConstants.RES_VALUE_DATA_TYPE_STRING) {
-            				String filePath = ArscUtil.resolveStringPoolEntry(resTable.getGlobalStringPool().getStrings().get(resEntry.getResValue().getData()).array(), resTable.getGlobalStringPool().getCharSet());
+            				String filePath = ResStringBlock.resolveStringPoolEntry(resTable.getGlobalStringPool().getStrings().get(resEntry.getResValue().getData()).array(), resTable.getGlobalStringPool().getCharSet());
             				if (filePath.equals(targetFile)) {
             					targetFileIndex = resEntry.getResValue().getData();
             					break;
@@ -228,7 +199,7 @@ public class ArscUtil {
                     boolean isComplex = (resEntry.getFlag() & ArscConstants.RES_TABLE_ENTRY_FLAG_COMPLEX) != 0;
                     if (!isComplex && resEntry.getResValue() != null) {
                     	if (resEntry.getResValue().getDataType() == ArscConstants.RES_VALUE_DATA_TYPE_STRING) {
-                    		String filePath = ArscUtil.resolveStringPoolEntry(resTable.getGlobalStringPool().getStrings().get(resEntry.getResValue().getData()).array(), resTable.getGlobalStringPool().getCharSet());
+                    		String filePath = ResStringBlock.resolveStringPoolEntry(resTable.getGlobalStringPool().getStrings().get(resEntry.getResValue().getData()).array(), resTable.getGlobalStringPool().getCharSet());
                     		if (filePath.equals(sourceFile)) {
                     			sourceFileIndex = resEntry.getResValue().getData();
                     			resEntry.getResValue().setData(targetFileIndex);
@@ -325,7 +296,7 @@ public class ArscUtil {
                 int entryId = getResourceEntryId(resId);
                 ResEntry resEntry = resType.getEntryTable().get(entryId);
                 if (resEntry.getResValue().getDataType() == ArscConstants.RES_VALUE_DATA_TYPE_STRING) {
-                	String filePath = ArscUtil.resolveStringPoolEntry(resTable.getGlobalStringPool().getStrings().get(resEntry.getResValue().getData()).array(), resTable.getGlobalStringPool().getCharSet());
+                	String filePath = ResStringBlock.resolveStringPoolEntry(resTable.getGlobalStringPool().getStrings().get(resEntry.getResValue().getData()).array(), resTable.getGlobalStringPool().getCharSet());
                 	if (filePath.equals(srcFileName)) {
                 		resTable.getGlobalStringPool().getStrings().set(resEntry.getResValue().getData(), ByteBuffer.wrap(ArscUtil.encodeStringPoolEntry(targetFileName, resTable.getGlobalStringPool().getCharSet())));
                 		result = true;
