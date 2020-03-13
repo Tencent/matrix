@@ -169,12 +169,19 @@ public class ArscUtil {
         ResPackage resPackage = findResPackage(resTable, getPackageId(resourceId));
         if (resPackage != null) {
             List<ResType> resTypeList = findResType(resPackage, resourceId);
+            int resNameStringPoolIndex = -1;
             for (ResType resType : resTypeList) {
                 int entryId = getResourceEntryId(resourceId);
-                //Log.d(TAG, "try to remove %s (%H), find resource %s", resourceName, resourceId, ArscUtil.resolveStringPoolEntry(resPackage.getResNamePool().getStrings().get(resType.getEntryTable().get(entryId).getStringPoolIndex()).array(), resPackage.getResNamePool().getCharSet()));
+                resNameStringPoolIndex = resType.getEntryTable().get(entryId).getStringPoolIndex();
+                Log.d(TAG, "try to remove %s (%H), find resource %s", resourceName, resourceId, ArscUtil.resolveStringPoolEntry(resPackage.getResNamePool().getStrings().get(resNameStringPoolIndex).array(), resPackage.getResNamePool().getCharSet()));
                 resType.getEntryTable().set(entryId, null);
                 resType.getEntryOffsets().set(entryId, ArscConstants.NO_ENTRY_INDEX);
                 resType.refresh();
+            }
+            if (resNameStringPoolIndex != -1) {
+                resPackage.getResNamePool().getStrings().remove(resNameStringPoolIndex);
+                resPackage.getResNamePool().getStringOffsets().remove(resNameStringPoolIndex);
+                resPackage.getResNamePool().refresh();
             }
             resPackage.refresh();
             resTable.refresh();

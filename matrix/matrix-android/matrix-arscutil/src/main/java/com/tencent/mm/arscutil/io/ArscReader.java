@@ -339,7 +339,7 @@ public class ArscReader {
         dataInput.seek(headStart + stringPool.getStringStart());
         if (stringPool.getStringCount() > 0) {
             List<ByteBuffer> strings = new ArrayList<ByteBuffer>();
-            Map<String, Integer> stringIntegerMap = new HashMap<>();
+            Map<String, Integer> stringIndexMap = new HashMap<>();
             for (int i = 0; i < stringPool.getStringCount(); i++) {
                 byte[] buffer = null;
                 if (i < stringPool.getStringCount() - 1) {
@@ -356,10 +356,10 @@ public class ArscReader {
                 strings.get(i).order(ByteOrder.LITTLE_ENDIAN);
                 strings.get(i).clear();
                 strings.get(i).put(buffer);
-                stringIntegerMap.put(ArscUtil.resolveStringPoolEntry(buffer, stringPool.getCharSet()), i);
+                stringIndexMap.put(ArscUtil.resolveStringPoolEntry(buffer, stringPool.getCharSet()), i);
             }
             stringPool.setStrings(strings);
-            stringPool.setStringIndexMap(stringIntegerMap);
+            stringPool.setStringIndexMap(stringIndexMap);
         }
         if (stringPool.getStyleCount() > 0) {
             byte[] styleBytes = new byte[stringPool.getChunkSize() - stringPool.getStyleStart()];
