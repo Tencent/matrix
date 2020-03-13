@@ -132,47 +132,81 @@ public class ResStringBlock extends ResChunk {
         }
     }
 
+    //字符串长度最少占2个字节，最多占4个字节
+    public static String resolveStringPoolEntry(byte[] buffer, Charset charSet) {
+        String str = "";
+        int len = 0;
+        if (charSet.equals(StandardCharsets.UTF_8)) {
+            len = buffer[0];
+            if ((len & 0x80) != 0) {
+                byte high = buffer[1];
+                len = ((len & 0x7f) << 8) | high;
+            }
+            str = new String(buffer, 2, buffer.length - 2 - 1, charSet);
+        } else {
+            ByteBuffer byteBuffer = ByteBuffer.allocate(4);
+            byteBuffer.order(ByteOrder.LITTLE_ENDIAN);
+            byteBuffer.clear();
+            byteBuffer.put(buffer, 0, 2);
+            byteBuffer.flip();
+            len = byteBuffer.getShort();
+            if ((len & 0x8000) != 0) {
+                short high = byteBuffer.getShort();
+                len = ((len & 0x7fff) << 16) | high;
+            }
+            str = new String(buffer, byteBuffer.limit(), buffer.length - 4, charSet);
+        }
+        return str;
+    }
+
     public void refresh() {
         chunkSize = 0;
         chunkSize += headSize;
-        if (stringOffsets != null) {
-            chunkSize += stringCount * 4;
-        }
-        if (styleOffsets != null) {
-            chunkSize += styleCount * 4;
+        stringCount = 0;
+        chunkSize += styleCount * 4;
+
+        if (strings != null) {
+            stringCount = strings.size();
+
+            //regenerate stringIndexMap
+            if (stringIndexMap != null) {
+                stringIndexMap.clear();
+                for (int i = 0; i < stringCount; i++) {
+                    stringIndexMap.put(resolveStringPoolEntry(strings.get(i).array(), getCharSet()), i);
+                }
+            }
+
+            //need sort string pool
+            if ( (flag & ArscConstants.RES_STRING_POOL_SORTED_FLAG) != 0 && stringIndexMap != null) {
+                List<String> strList = new LinkedList(stringIndexMap.keySet());
+                Collections.sort(strList);
+                List<ByteBuffer> sortedStrings = new ArrayList<>();
+                for (String str : strList) {
+                    sortedStrings.add(strings.get(stringIndexMap.get(str)));
+                }
+                strings = sortedStrings;
+            }
+
+            stringOffsets.clear();
+            if (stringCount > 0) {
+                chunkSize += stringCount * 4;
+                stringOffsets.add(0);
+                for (int i = 1; i < stringCount; i++) {
+                    stringOffsets.add(stringOffsets.get(i - 1) + strings.get(i - 1).limit());
+                }
+                for (ByteBuffer buffer : strings) {
+                    int strLen = buffer.limit();
+                    chunkSize += strLen;
+                }
+            }
         }
 
-        //need sort string pool
-        if ((flag & ArscConstants.RES_STRING_POOL_SORTED_FLAG) != 0 && stringIndexMap != null) {
-            List<String> strList = new LinkedList(stringIndexMap.keySet());
-            Collections.sort(strList);
-            List<ByteBuffer> sortedStrings = new ArrayList<>();
-            for (String str : strList) {
-                sortedStrings.add(strings.get(stringIndexMap.get(str)));
-            }
-            strings = sortedStrings;
-        }
+        stringStart = headSize + styleCount * 4 + stringCount * 4;
 
-        stringStart = 0;
-        stringOffsets.clear();
-        if (stringCount > 0) {
-            stringStart = chunkSize;
-            stringOffsets.add(0);
-            for (int i = 1; i < stringCount; i++) {
-                stringOffsets.add(stringOffsets.get(i - 1) + strings.get(i - 1).limit());
-            }
-            styleStart = 0;
+        if (styles != null) {
             if (styleCount > 0) {
                 styleStart = stringStart + stringOffsets.get(stringCount - 1) + strings.get(stringCount - 1).limit();
             }
-        }
-        if (strings != null) {
-            for (ByteBuffer buffer : strings) {
-                int strLen = buffer.limit();
-                chunkSize += strLen;
-            }
-        }
-        if (styles != null) {
             chunkSize += styles.length;
         }
         if (chunkSize % 4 != 0) {
