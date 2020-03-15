@@ -20,9 +20,6 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
@@ -159,14 +156,47 @@ public class ResStringBlock extends ResChunk {
         return str;
     }
 
+    public static byte[] encodeStringPoolEntry(String str, Charset charSet) {
+        byte[] content = str.getBytes(charSet);
+        int len = str.length();
+        ByteBuffer resultBuf;
+        if (charSet.equals(StandardCharsets.UTF_8)) {
+            resultBuf = ByteBuffer.allocate(content.length + 2 + 1);
+            resultBuf.order(ByteOrder.LITTLE_ENDIAN);
+            if (len > 0xFF) {
+                resultBuf.put( (byte) (((len & 0x7F00) >> 8) | 0x80));
+                resultBuf.put((byte) (len & 0xFF));
+            } else {
+                resultBuf.put((byte) (len & 0xFF));
+                resultBuf.put((byte) (len & 0xFF));
+            }
+        } else {
+            if (len > 0xFFFF) {
+                resultBuf = ByteBuffer.allocate(content.length + 4 + 2);
+                resultBuf.order(ByteOrder.LITTLE_ENDIAN);
+                resultBuf.putShort((short) (((len & 0x7FFF0000) >> 16) | 0x8000));
+                resultBuf.putShort((short) (len & 0xFFFF));
+            } else {
+                resultBuf = ByteBuffer.allocate(content.length + 2 + 2);
+                resultBuf.order(ByteOrder.LITTLE_ENDIAN);
+                resultBuf.putShort((short) (len & 0xFFFF));
+            }
+        }
+        resultBuf.put(content);
+        resultBuf.rewind();
+        return resultBuf.array();
+    }
+
     public void refresh() {
+        int oldChunkSize = chunkSize;
         chunkSize = 0;
         chunkSize += headSize;
-        stringCount = 0;
+        chunkSize += stringCount * 4;
         chunkSize += styleCount * 4;
 
         if (strings != null) {
-            stringCount = strings.size();
+
+            stringStart = headSize + styleCount * 4 + stringCount * 4;
 
             //regenerate stringIndexMap
             if (stringIndexMap != null) {
@@ -176,23 +206,14 @@ public class ResStringBlock extends ResChunk {
                 }
             }
 
-            //need sort string pool
-            if ( (flag & ArscConstants.RES_STRING_POOL_SORTED_FLAG) != 0 && stringIndexMap != null) {
-                List<String> strList = new LinkedList(stringIndexMap.keySet());
-                Collections.sort(strList);
-                List<ByteBuffer> sortedStrings = new ArrayList<>();
-                for (String str : strList) {
-                    sortedStrings.add(strings.get(stringIndexMap.get(str)));
-                }
-                strings = sortedStrings;
-            }
-
             stringOffsets.clear();
             if (stringCount > 0) {
-                chunkSize += stringCount * 4;
                 stringOffsets.add(0);
                 for (int i = 1; i < stringCount; i++) {
                     stringOffsets.add(stringOffsets.get(i - 1) + strings.get(i - 1).limit());
+                }
+                if (styleCount > 0) {
+                    styleStart = stringStart + stringOffsets.get(stringCount - 1) + strings.get(stringCount - 1).limit();
                 }
                 for (ByteBuffer buffer : strings) {
                     int strLen = buffer.limit();
@@ -201,12 +222,7 @@ public class ResStringBlock extends ResChunk {
             }
         }
 
-        stringStart = headSize + styleCount * 4 + stringCount * 4;
-
         if (styles != null) {
-            if (styleCount > 0) {
-                styleStart = stringStart + stringOffsets.get(stringCount - 1) + strings.get(stringCount - 1).limit();
-            }
             chunkSize += styles.length;
         }
         if (chunkSize % 4 != 0) {

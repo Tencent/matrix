@@ -18,7 +18,9 @@ package com.tencent.mm.arscutil.data;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Created by jinqiuchen on 18/7/29.
@@ -36,6 +38,8 @@ public class ResType extends ResChunk {
     private ResConfig resConfigFlags; // configFlag
     private List<Integer> entryOffsets; // entry 偏移数组，给出每个entry的偏移位置, 0xFFFF表示NO_ENTRY
     private List<ResEntry> entryTable; // entry table
+
+    private Map<Integer, Integer> resNameStringCountMap = new HashMap<>();  //保存ResEntry中资源名称字符串的引用计数
 
     public byte getId() {
         return id;
@@ -99,16 +103,46 @@ public class ResType extends ResChunk {
 
     public void setEntryTable(List<ResEntry> entryTable) {
         this.entryTable = entryTable;
+        if (entryTable != null) {
+            updateResNameReferenceCount();
+        }
+    }
+
+    public Map<Integer, Integer> getResNameStringCountMap() {
+        return resNameStringCountMap;
+    }
+
+    public void removeEntry(int entryId) {
+        getEntryTable().set(entryId, null);
+        getEntryOffsets().set(entryId, ArscConstants.NO_ENTRY_INDEX);
+    }
+
+    private void updateResNameReferenceCount() {
+        resNameStringCountMap.clear();
+        for (int i = 0; i < entryCount; i++) {
+            if (entryTable.get(i) == null) {
+                continue;
+            }
+            int resNameStringPoolIndex = entryTable.get(i).stringPoolIndex;
+            if (!resNameStringCountMap.containsKey(resNameStringPoolIndex)) {
+                resNameStringCountMap.put(resNameStringPoolIndex, 0);
+            }
+            resNameStringCountMap.put(resNameStringPoolIndex,  resNameStringCountMap.get(resNameStringPoolIndex) + 1);
+        }
     }
 
     public void refresh()  {
-        //校正entryOffsets
-        int lastOffset = 0;
-        for (int i = 0; i < entryCount; i++) {
-            if (entryOffsets.get(i) != ArscConstants.NO_ENTRY_INDEX) {
-                entryOffsets.set(i, lastOffset);
-                lastOffset += entryTable.get(i).toBytes().length;
+        if (entryTable != null) {
+            //校正entryOffsets
+            int lastOffset = 0;
+            for (int i = 0; i < entryCount; i++) {
+                if (entryOffsets.get(i) != ArscConstants.NO_ENTRY_INDEX) {
+                    entryOffsets.set(i, lastOffset);
+                    lastOffset += entryTable.get(i).toBytes().length;
+                }
             }
+            //更新字符串引用计数
+            updateResNameReferenceCount();
         }
         recomputeChunkSize();
     }
