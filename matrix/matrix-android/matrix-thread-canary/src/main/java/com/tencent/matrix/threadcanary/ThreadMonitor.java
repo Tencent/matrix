@@ -154,6 +154,7 @@ public class ThreadMonitor extends Plugin {
                         threadInfo.stackTrace = appThreadInfo.stackTrace;
                         threadInfo.isHandlerThread = appThreadInfo.isHandlerThread;
                         threadInfo.target = appThreadInfo.target;
+                        threadInfo.isJavaThread = true;
                     } else {
                         threadInfo.name = threadInfo.name.replaceAll("-?[0-9]\\d*", "?");
                     }
@@ -292,6 +293,7 @@ public class ThreadMonitor extends Plugin {
                     threadInfo.stackTrace = appThreadInfo.stackTrace;
                     threadInfo.isHandlerThread = appThreadInfo.isHandlerThread;
                     threadInfo.target = appThreadInfo.target;
+                    threadInfo.isJavaThread = true;
                 } else {
                     threadInfo.name = threadInfo.name.replaceAll("-?[0-9]\\d*", "?");
                 }
@@ -455,6 +457,7 @@ public class ThreadMonitor extends Plugin {
         String state;
         int stackTrace;
         String target;
+        boolean isJavaThread;
 
         @Override
         public boolean equals(Object obj) {
@@ -466,6 +469,22 @@ public class ThreadMonitor extends Plugin {
             }
         }
 
+        public String getName() {
+            return name;
+        }
+
+        public long getTid() {
+            return tid;
+        }
+
+        public boolean isHandlerThread() {
+            return isHandlerThread;
+        }
+
+        public boolean isJavaThread() {
+            return isJavaThread;
+        }
+
         @Override
         public int hashCode() {
             return (int) tid;
@@ -473,11 +492,15 @@ public class ThreadMonitor extends Plugin {
 
         @Override
         public String toString() {
-            return String.format("name=%s tid=%s state=%s isHandlerThread=%s", name, tid, state, isHandlerThread);
+            return String.format("%s J=%s", name, isJavaThread);
+        }
+
+        public String toDetailString() {
+            return String.format("name=%s tid=%s state=%s isHandlerThread=%s isJavaThread=%s", name, tid, state, isHandlerThread, isJavaThread);
         }
     }
 
-    private static class ThreadGroupInfo {
+    public static class ThreadGroupInfo {
         String name;
         List<ThreadInfo> list = new LinkedList<>();
 
@@ -486,8 +509,20 @@ public class ThreadMonitor extends Plugin {
             this.name = name;
         }
 
+        public String getName() {
+            return name;
+        }
+
         public int getSize() {
             return list.size();
+        }
+
+        public boolean isJavaThread() {
+            if (list.size() > 0) {
+                return list.get(0).isJavaThread();
+            }
+
+            return false;
         }
 
         @Override
@@ -507,7 +542,7 @@ public class ThreadMonitor extends Plugin {
 
         @Override
         public String toString() {
-            return name + " size=" + getSize();
+            return name + "=" + getSize() + "J" + (isJavaThread() ? 1 : 0);
         }
     }
 
