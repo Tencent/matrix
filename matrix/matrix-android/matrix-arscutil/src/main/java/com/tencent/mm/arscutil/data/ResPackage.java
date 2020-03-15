@@ -18,6 +18,7 @@ package com.tencent.mm.arscutil.data;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.util.HashMap;
 import java.util.List;
 
 /**
@@ -124,6 +125,27 @@ public class ResPackage extends ResChunk {
             resNamePool.refresh();
         }
         recomputeChunkSize();
+    }
+
+    public void shrinkResNameStringPool() {
+        HashMap<Integer, Integer> countMap = new HashMap<>();
+        for (ResChunk resType : resTypeArray) {
+            if (resType.getType() == ArscConstants.RES_TABLE_TYPE_TYPE) {
+                for ( int index : ((ResType) resType).getResNameStringCountMap().keySet()) {
+                    if (!countMap.containsKey(index)) {
+                        countMap.put(index, 0);
+                    }
+                    countMap.put(index, countMap.get(index) + ((ResType) resType).getResNameStringCountMap().get(index));
+                }
+            }
+        }
+
+        for (int index = 0; index < resNamePool.getStringCount(); index++) {
+            if (!countMap.containsKey(index)) {
+                resNamePool.getStrings().set(index, ByteBuffer.wrap(ResStringBlock.encodeStringPoolEntry("", resNamePool.getCharSet())));
+            }
+        }
+        resNamePool.refresh();
     }
 
     private void recomputeChunkSize() {
