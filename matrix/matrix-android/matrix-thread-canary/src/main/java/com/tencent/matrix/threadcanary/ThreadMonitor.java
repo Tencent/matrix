@@ -492,7 +492,11 @@ public class ThreadMonitor extends Plugin {
 
         @Override
         public String toString() {
-            return String.format("name=%s tid=%s state=%s isHandlerThread=%s", name, tid, state, isHandlerThread);
+            return String.format("%s J=%s", name, isJavaThread);
+        }
+
+        public String toDetailString() {
+            return String.format("name=%s tid=%s state=%s isHandlerThread=%s isJavaThread=%s", name, tid, state, isHandlerThread, isJavaThread);
         }
     }
 
@@ -513,6 +517,14 @@ public class ThreadMonitor extends Plugin {
             return list.size();
         }
 
+        public boolean isJavaThread() {
+            if (list.size() > 0) {
+                return list.get(0).isJavaThread();
+            }
+
+            return false;
+        }
+
         @Override
         public boolean equals(Object obj) {
             if (obj instanceof ThreadInfo) {
@@ -530,7 +542,7 @@ public class ThreadMonitor extends Plugin {
 
         @Override
         public String toString() {
-            return name + " size=" + getSize();
+            return name + "=" + getSize() + "J" + (isJavaThread() ? 1 : 0);
         }
     }
 
