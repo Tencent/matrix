@@ -51,7 +51,7 @@ public class ReflectUtils {
     }
 
     public static <T> T reflectObject(Object instance, String name, T defaultValue) {
-        return reflectObject(instance, name, defaultValue);
+        return reflectObject(instance, name, defaultValue, true);
     }
 
     public static Method reflectMethod(Object instance, boolean isHard, String name, Class<?>... argTypes) {
