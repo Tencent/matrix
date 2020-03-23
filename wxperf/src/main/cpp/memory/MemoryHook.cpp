@@ -98,15 +98,19 @@ static inline void record_acquire_mem_unsafe(void *__caller,
             return;
         }
 
-        auto stack_frames = new std::vector<unwindstack::FrameData>;
-        unwindstack::do_unwind(*stack_frames);
+        auto ptr_stack_frames = new std::vector<unwindstack::FrameData>;
+        unwindstack::do_unwind(*ptr_stack_frames);
 
-        if (!stack_frames->empty()) {
-            uint64_t stack_hash = hash(*stack_frames);
+        if (!ptr_stack_frames->empty()) {
+            uint64_t stack_hash = hash(*ptr_stack_frames);
             ptr_meta.stack_hash = stack_hash;
             stack_meta_t &stack_meta = stack_metas[stack_hash];
             stack_meta.size += __byte_count;
-            stack_meta.p_stacktraces = stack_frames;
+            if (stack_meta.p_stacktraces) { // 相同堆栈只记录一次
+                delete ptr_stack_frames;
+                return;
+            }
+            stack_meta.p_stacktraces = ptr_stack_frames;
         }
     }
 }
