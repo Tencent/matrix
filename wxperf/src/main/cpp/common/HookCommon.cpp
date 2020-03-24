@@ -40,22 +40,15 @@ void add_dlopen_hook_callback(DLOPEN_CALLBACK __callback) {
 bool get_java_stacktrace(char *__stack) {
     JNIEnv *env;
     if (m_java_vm->GetEnv(reinterpret_cast<void **>(&env), JNI_VERSION_1_6) == JNI_OK) {
-        m_java_vm->AttachCurrentThread(&env, NULL);
-        jclass j_PthreadHook = env->FindClass("com/tencent/mm/performance/jni/HookManager");
 
-        if (!j_PthreadHook) {
-            LOGD("Yves-debug", "class not found");
-            return false;
-        }
-
-        jmethodID j_getStack = env->GetStaticMethodID(j_PthreadHook, "getStack", "()Ljava/lang/String;");
-        jstring j_stacktrace = (jstring) env->CallStaticObjectMethod(j_PthreadHook, j_getStack);
+        jstring j_stacktrace = (jstring) env->CallStaticObjectMethod(m_class_HookManager, m_method_getStack);
         const char *stack = env->GetStringUTFChars(j_stacktrace, NULL);
         strcpy(__stack, stack);
-        LOGD("Yves-debug", "Java Stacktrace = \n%s", stack);
+        LOGD("Yves-debug", "get_java_stacktrace: Java Stacktrace = \n%s", stack);
         env->ReleaseStringUTFChars(j_stacktrace, stack);
         return true;
     }
+    return false;
 }
 
 JNIEXPORT jint JNICALL

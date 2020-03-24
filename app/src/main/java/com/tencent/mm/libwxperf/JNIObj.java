@@ -31,4 +31,6 @@ public class JNIObj {
     }
 
     public native static void testThread();
+
+    public native static void testThreadSpecific();
 }

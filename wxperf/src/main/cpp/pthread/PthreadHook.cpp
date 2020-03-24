@@ -19,8 +19,11 @@
 #include "JNICommon.h"
 
 #define ORIGINAL_LIB "libc.so"
+#define TAG "PthreadHook"
 
 #define THREAD_NAME_LEN 16
+
+typedef void *(*pthread_routine_t)(void *);
 
 extern "C" typedef struct {
     pthread_t                           pthread; // key ?
@@ -29,29 +32,31 @@ extern "C" typedef struct {
     char                                *parent_name;
     char                                *java_stacktrace;
     std::vector<unwindstack::FrameData> *native_stacktrace;
-} pthread_meta_t;
+}            pthread_meta_t;
+
+extern "C" typedef struct {
+    pthread_routine_t origin_func;
+    void *origin_args;
+} routine_wrapper_t;
 
 struct regex_wrapper {
-    const char * regex_str;
-    regex_t regex;
+    const char *regex_str;
+    regex_t    regex;
 
     regex_wrapper(const char *regexStr, const regex_t &regex) : regex_str(regexStr), regex(regex) {}
 
-    friend bool operator< (const regex_wrapper &left, const regex_wrapper &right) {
+    friend bool operator<(const regex_wrapper &left, const regex_wrapper &right) {
         return static_cast<bool>(strcmp(left.regex_str, right.regex_str));
     }
 };
 
-//extern "C" typedef struct {
-//    regex_t thread_name_regex;
-//    regex_t parent_thread_name_regex;
-//} hook_info_t;
+static pthread_mutex_t m_pthread_meta_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-static pthread_mutex_t                               m_thread_meta_mutex = PTHREAD_MUTEX_INITIALIZER;
-static std::unordered_map<pthread_t, pthread_meta_t> m_thread_metas;
+static std::unordered_map<pthread_t, pthread_meta_t> m_pthread_metas;
+static std::set<regex_wrapper>                       m_hook_thread_name_regex;
 
-static std::set<regex_wrapper> m_hook_thread_name_regex;
-//static std::set<regex_t> m_hook_parent_thread_name_regex;
+static pthread_key_t m_key;
+//static pthread_cond_t m_wrapper_cond = PTHREAD_COND_INITIALIZER;
 
 void add_hook_thread_name(const char *__regex_str) {
 //    std::regex regex(__regex_str);
@@ -60,12 +65,12 @@ void add_hook_thread_name(const char *__regex_str) {
         LOGE("PthreadHook", "regex compiled error: %s", __regex_str);
         return;
     }
-    size_t len = strlen(__regex_str);
-    char *p_regex_str = static_cast<char *>(malloc(sizeof(char) * len));
+    size_t len          = strlen(__regex_str);
+    char   *p_regex_str = static_cast<char *>(malloc(sizeof(char) * len));
     strcpy(p_regex_str, __regex_str);
     regex_wrapper w_regex(p_regex_str, regex);
     m_hook_thread_name_regex.insert(w_regex);
-    LOGD("Yves-debug", "parent name regex: %s", __regex_str);
+    LOGD(TAG, "parent name regex: %s", __regex_str);
 }
 
 static int read_thread_name(pthread_t __pthread, char *__buf, size_t __n) {
@@ -80,7 +85,7 @@ static int read_thread_name(pthread_t __pthread, char *__buf, size_t __n) {
     FILE *file = fopen(proc_path, "r");
 
     if (!file) {
-        LOGD("Yves-debug", "file not found: %s", proc_path);
+        LOGD(TAG, "file not found: %s", proc_path);
         return -1;
     }
 
@@ -100,9 +105,9 @@ static inline int wrap_pthread_getname_np(pthread_t __pthread, char *__buf, size
 }
 
 static void unwind_pthread_stacktrace(pthread_meta_t &__meta) {
-    for (const auto& w: m_hook_thread_name_regex) {
+    for (const auto &w: m_hook_thread_name_regex) {
         if (0 == regexec(&w.regex, __meta.thread_name, 0, NULL, 0)) {
-            LOGD("Yves-debug", "%s matches regex %s", __meta.thread_name, w.regex_str);
+            LOGD(TAG, "%s matches regex %s", __meta.thread_name, w.regex_str);
             // do unwind
             auto native_stacktrace = new std::vector<unwindstack::FrameData>;
             unwindstack::do_unwind(*native_stacktrace);
@@ -114,14 +119,16 @@ static void unwind_pthread_stacktrace(pthread_meta_t &__meta) {
             }
 
             auto java_stacktrace = static_cast<char *>(malloc(sizeof(char) * 1024));
-//            if (get_java_stacktrace(java_stacktrace)) {
-//                __meta.java_stacktrace = java_stacktrace;
-//            } else {
-//                free(java_stacktrace);
-//            }
+            if (get_java_stacktrace(java_stacktrace)) {
+                __meta.java_stacktrace = java_stacktrace;
+            } else {
+                free(java_stacktrace);
+            }
 
-            strcpy(java_stacktrace, "    stub java stack");
-            __meta.java_stacktrace = java_stacktrace;
+//            LOGD(TAG, "meta java stacktrace = \n%s", __meta.java_stacktrace);
+
+//            strcpy(java_stacktrace, "    stub java stack");
+//            __meta.java_stacktrace = java_stacktrace;
 
             break;
         }
@@ -130,20 +137,20 @@ static void unwind_pthread_stacktrace(pthread_meta_t &__meta) {
 
 
 static void on_pthread_create(const pthread_t *__pthread_ptr) {
-    LOGD("Yves-debug", "on_pthread_create");
-    pthread_mutex_lock(&m_thread_meta_mutex);
+    LOGD(TAG, "on_pthread_create");
+    pthread_mutex_lock(&m_pthread_meta_mutex);
 
     pthread_t pthread = *__pthread_ptr;
-    if (m_thread_metas.count(pthread)) {
-        pthread_mutex_unlock(&m_thread_meta_mutex);
+    if (m_pthread_metas.count(pthread)) {
+        pthread_mutex_unlock(&m_pthread_meta_mutex);
         return;
     }
 
-    pthread_meta_t &meta = m_thread_metas[pthread];
-
+    pthread_meta_t &meta = m_pthread_metas[pthread];
 
     pid_t tid = pthread_gettid_np(pthread);
-    LOGD("Yves-debug", "pthread = %ld, tid = %d", pthread, tid);
+    meta.tid = tid;
+    LOGD(TAG, "pthread = %ld, tid = %d", pthread, tid);
 
     char *parent_name = static_cast<char *>(malloc(sizeof(char) * THREAD_NAME_LEN));
 
@@ -154,71 +161,74 @@ static void on_pthread_create(const pthread_t *__pthread_ptr) {
         meta.thread_name = meta.parent_name = const_cast<char *>("null");
     }
 
-    LOGD("Yves-debug", "pthread = %ld, parent name: %s, thread name: %s", pthread, meta.parent_name, meta.thread_name);
+    LOGD(TAG, "pthread = %ld, parent name: %s, thread name: %s", pthread, meta.parent_name,
+         meta.thread_name);
     unwind_pthread_stacktrace(meta);
 
-    pthread_mutex_unlock(&m_thread_meta_mutex);
+    pthread_mutex_unlock(&m_pthread_meta_mutex);
 }
 
 void on_pthread_setname(pthread_t __pthread, const char *__name) {
     if (NULL == __name) {
-        LOGE("Yves-debug", "setting name null");
+        LOGE(TAG, "setting name null");
         return;
     }
 
     const size_t name_len = strlen(__name);
-    LOGD("Yves-debug", "on_pthread_setname: %ld, %s, %zu", __pthread, __name, name_len);
 
     if (0 == name_len || name_len >= THREAD_NAME_LEN) {
-        LOGE("Yves-debug", "pthread name is illegal, just ignore. len(%zu)", name_len);
+        LOGE(TAG, "pthread name is illegal, just ignore. len(%zu)", name_len);
         return;
     }
 
-    pthread_mutex_lock(&m_thread_meta_mutex);
+    pthread_mutex_lock(&m_pthread_meta_mutex);
 
-    if (!m_thread_metas.count(__pthread)) {
-        LOGE("Yves-debug", "pthread hook lost");
+    if (!m_pthread_metas.count(__pthread)) {
+        LOGE(TAG, "pthread hook lost");
         return;
     }
 
-    pthread_meta_t &meta = m_thread_metas.at(__pthread);
+    pthread_meta_t &meta = m_pthread_metas.at(__pthread);
+
+    LOGD(TAG, "on_pthread_setname: %s -> %s", meta.thread_name, __name);
 
     meta.thread_name = static_cast<char *>(malloc(sizeof(char) * THREAD_NAME_LEN));
-
     strncpy(meta.thread_name, __name, THREAD_NAME_LEN);
 
     // 如果有 set name, 并且子线程名与父线程名不一致, create 时父线程名没有匹配到正则
-    LOGD("Yves-debug", "js:%s, pn:%s, tn:%s",meta.java_stacktrace, meta.parent_name, meta.thread_name);
     if ((!meta.native_stacktrace || meta.native_stacktrace->empty())
         && !meta.java_stacktrace
-        && ((meta.parent_name == NULL && meta.thread_name == NULL) || 0 != strncmp(meta.parent_name, meta.thread_name, THREAD_NAME_LEN))) {
-        LOGD("Yves-debug", "unwinding pthread");
+        && ((meta.parent_name == NULL && meta.thread_name == NULL) ||
+            0 != strncmp(meta.parent_name, meta.thread_name, THREAD_NAME_LEN))) {
+        LOGD(TAG, "unwinding pthread");
         unwind_pthread_stacktrace(meta);
     }
 
-    LOGD("Yves-debug", "--------------------------");
-    pthread_mutex_unlock(&m_thread_meta_mutex);
+    LOGD(TAG, "--------------------------");
+    pthread_mutex_unlock(&m_pthread_meta_mutex);
 }
 
 
 void pthread_dump_impl(FILE *__log_file) {
     if (!__log_file) {
-        LOGE("Yves-debug", "open file failed");
+        LOGE(TAG, "open file failed");
         return;
     }
 
-    for (auto i: m_thread_metas) {
+    for (auto i: m_pthread_metas) {
         auto meta = i.second;
-        LOGD("Yves-debug", "pthread[%s], parent[%s], tid[%d]", meta.thread_name,
+        LOGD(TAG, "========> RETAINED PTHREAD { name : %s, parent: %s, tid: %d }", meta.thread_name,
              meta.parent_name, meta.tid);
-        fprintf(__log_file, "pthread[%s], parent[%s], tid[%d]\n", meta.thread_name,
-                meta.parent_name, meta.tid);
+        fprintf(__log_file, "========> RETAINED PTHREAD { name : %s, parent: %s, tid: %d }\n"
+                , meta.thread_name, meta.parent_name, meta.tid);
         std::stringstream stack_builder;
 
         if (!meta.native_stacktrace) {
             continue;
         }
 
+        LOGD(TAG, "native stacktrace:");
+        fprintf(__log_file, "native stacktrace:\n");
         for (auto p_frame = meta.native_stacktrace->begin();
              p_frame != meta.native_stacktrace->end(); ++p_frame) {
             Dl_info stack_info;
@@ -232,45 +242,94 @@ void pthread_dump_impl(FILE *__log_file) {
 
             free(demangled_name);
 
-            LOGD("Yves-debug", "    #pc %"
+            LOGD(TAG, "  #pc %"
                     PRIxPTR
                     " %s (%s)", p_frame->rel_pc,
                  demangled_name ? demangled_name : "(null)", stack_info.dli_fname);
-            fprintf(__log_file, "    #pc %" PRIxPTR " %s (%s)\n", p_frame->rel_pc,
+            fprintf(__log_file, "  #pc %" PRIxPTR " %s (%s)\n", p_frame->rel_pc,
                     demangled_name ? demangled_name : "(null)", stack_info.dli_fname);
         }
 
-        LOGD("Yves-debug", "java stacktrace:\n%s", meta.java_stacktrace);
+        LOGD(TAG, "java stacktrace:\n%s", meta.java_stacktrace);
         fprintf(__log_file, "java stacktrace:\n%s\n", meta.java_stacktrace);
     }
 }
 
 void pthread_dump(const char *__path) {
-    LOGD("Yves-debug",
+    LOGD(TAG,
          ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> pthread dump begin <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
-    pthread_mutex_lock(&m_thread_meta_mutex);
+    pthread_mutex_lock(&m_pthread_meta_mutex);
 
     FILE *log_file = fopen(__path, "w+");
-    LOGD("Yves-debug", "pthread dump path = %s", __path);
+    LOGD(TAG, "pthread dump path = %s", __path);
 
     pthread_dump_impl(log_file);
 
     fclose(log_file);
 
-    pthread_mutex_unlock(&m_thread_meta_mutex);
+    pthread_mutex_unlock(&m_pthread_meta_mutex);
 
-    LOGD("Yves-debug",
+    LOGD(TAG,
          ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> pthread dump end <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
 }
 
 void pthread_hook_on_dlopen(const char *__file_name) {
-    LOGD("Yves-debug", "pthread_hook_on_dlopen");
+    LOGD(TAG, "pthread_hook_on_dlopen");
+    pthread_mutex_lock(&m_pthread_meta_mutex);
+
     unwindstack::update_maps();
+
+    pthread_mutex_unlock(&m_pthread_meta_mutex);
+}
+
+void on_pthread_destroy(void *__specific) {
+    LOGD(TAG, "on_pthread_destroy");
+    pthread_mutex_lock(&m_pthread_meta_mutex);
+
+    pthread_t destroying_thread = pthread_self();
+
+    if (!m_pthread_metas.count(destroying_thread)) {
+        pthread_mutex_unlock(&m_pthread_meta_mutex);
+        return;
+    }
+
+    pthread_meta_t &meta = m_pthread_metas.at(destroying_thread);
+
+    m_pthread_metas.erase(destroying_thread);
+    LOGD(TAG, "removed thread {%ld, %s, %s, %d}", destroying_thread, meta.thread_name, meta.parent_name, meta.tid);
+
+    pthread_mutex_unlock(&m_pthread_meta_mutex);
+
+    free(__specific);
+}
+
+void *pthread_routine_wrapper(void *__arg) {
+
+    auto *specific = (char *)malloc(sizeof(char));
+    *specific = 'P';
+
+    if (!m_key) {
+        pthread_key_create(&m_key, on_pthread_destroy);
+    }
+
+    pthread_setspecific(m_key, specific);
+
+    auto *args_wrapper = (routine_wrapper_t *) __arg;
+    void *ret = args_wrapper->origin_func(args_wrapper->origin_args);
+    free(args_wrapper);
+
+    return ret;
 }
 
 DEFINE_HOOK_FUN(int, pthread_create, pthread_t *__pthread_ptr, pthread_attr_t const *__attr,
                 void *(*__start_routine)(void *), void *__arg) {
-    CALL_ORIGIN_FUNC_RET(int, ret, pthread_create, __pthread_ptr, __attr, __start_routine, __arg);
+    auto *args_wrapper = (routine_wrapper_t *) malloc(sizeof(routine_wrapper_t));
+    args_wrapper->origin_func = __start_routine;
+    args_wrapper->origin_args = __arg;
+
+    CALL_ORIGIN_FUNC_RET(int, ret, pthread_create, __pthread_ptr, __attr, pthread_routine_wrapper,
+                         args_wrapper);
+
     on_pthread_create(__pthread_ptr);
     return ret;
 }

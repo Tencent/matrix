@@ -12,9 +12,28 @@ extern "C" {
 
 JavaVM *m_java_vm;
 
+jclass m_class_HookManager;
+jmethodID m_method_getStack;
+
 JNIEXPORT jint JNI_OnLoad(JavaVM *vm, void *reserved) {
     LOGD("Yves-debug", "JNI OnLoad...");
     m_java_vm = vm;
+
+    JNIEnv *env;
+
+    vm->GetEnv((void **)&env, JNI_VERSION_1_6);
+
+    if (env) {
+        jclass j_HookManager = env->FindClass("com/tencent/mm/performance/jni/HookManager");
+
+        if (j_HookManager) {
+            LOGD("Yves-debug", "j_PthreadHook not null");
+            m_class_HookManager = (jclass) env->NewGlobalRef(j_HookManager);
+            m_method_getStack = env->GetStaticMethodID(m_class_HookManager, "getStack", "()Ljava/lang/String;");
+        } else {
+            LOGD("Yves-debug", "j_PthreadHook null!");
+        }
+    }
 
     xhook_ignore(".*libwxperf\\.so$", NULL);
     xhook_ignore(".*liblog\\.so$", NULL);

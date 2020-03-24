@@ -4,6 +4,7 @@ import android.Manifest;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.HandlerThread;
 import android.os.Process;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
@@ -38,9 +39,9 @@ public class MainActivity extends AppCompatActivity {
                     .addHook(PthreadHook.INSTANCE
                             .addHookSo(".*libnative-lib\\.so$")
                             .addHookSo(".*\\.so$")
-                            .addIgnoreSo(".*libart\\.so$")
-                            .addHookThread("AnotherJavaThread")
-                            .addHookThread("RenderThread")
+//                            .addIgnoreSo(".*libart\\.so$")
+                            .addHookThread(".*")
+//                            .addHookThread("MyHandlerThread")
                             .addHookThread("\\[GT\\]MediaCodecR$"))
                     .commitHooks();
 
@@ -55,6 +56,7 @@ public class MainActivity extends AppCompatActivity {
 //                    .enableStacktrace(true)
 //                    .enableMmapHook(true)
 //                    .hook();
+            throw new HookManager.HookFailedException("adfad");
         } catch (HookManager.HookFailedException e) {
             e.printStackTrace();
         }
@@ -109,7 +111,7 @@ public class MainActivity extends AppCompatActivity {
                             @Override
                             public void run() {
                                 try {
-                                    Thread.sleep(10 * 60 * 1000);
+                                    Thread.sleep(3 * 1000);
                                 } catch (InterruptedException e) {
                                     e.printStackTrace();
                                 }
@@ -117,7 +119,7 @@ public class MainActivity extends AppCompatActivity {
                         }, "AnotherJavaThread").start();
 
                         try {
-                            Thread.sleep(10 * 60 * 1000);
+                            Thread.sleep(3 * 1000);
                         } catch (InterruptedException e) {
                             e.printStackTrace();
                         }
@@ -126,8 +128,10 @@ public class MainActivity extends AppCompatActivity {
 
                 t.start();
 
+                new HandlerThread("MyHandlerThread").start();
+
                 try {
-                    Thread.sleep(3 * 1000);
+                    Thread.sleep(10 * 1000);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
@@ -135,6 +139,14 @@ public class MainActivity extends AppCompatActivity {
                 PthreadHook.INSTANCE.dump("/sdcard/pthread_hook.log");
             }
         });
+
+        findViewById(R.id.btn_thread_spec).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                JNIObj.testThreadSpecific();
+            }
+        });
+
 
         checkPermission();
 //        if (checkPermission()) {

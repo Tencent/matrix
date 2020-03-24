@@ -419,7 +419,7 @@ Java_com_tencent_mm_libwxperf_JNIObj_dump(JNIEnv *env, jobject instance, jstring
 static void *
 threadfunc(void *parm)
 {
-    LOGD("Yves-debug", "new thread=%ld, tid=%d", pthread_self(), pthread_gettid_np(pthread_self()));
+    LOGD("Yves-debug", ">>>>new thread=%ld, tid=%d", pthread_self(), pthread_gettid_np(pthread_self()));
     sleep(5);          // allow main program to set the thread name
     return NULL;
 }
@@ -476,6 +476,40 @@ Java_com_tencent_mm_libwxperf_JNIObj_testThread(JNIEnv *env, jclass clazz) {
     wrap_pthread_getname_np(thread, thread_name, 16);
 
     LOGD("Yves-debug","Created a thread. Default name is: %s", thread_name);
+}
+
+pthread_key_t key;
+
+void dest(void *arg) {
+    LOGD("Yves-debug", "dest is running on %ld arg=%p, *arg=%d", pthread_self(), arg, *(int *)arg);
+}
+
+void *threadfunc2(void *arg) {
+    LOGD("Yves-debug", "setting specific");
+    pthread_t pthread = pthread_self();
+    pthread_setspecific(key, arg);
+
+    int *pa = static_cast<int *>(pthread_getspecific(key));
+
+    LOGD("Yves-debug", "in thread arg = %p, pa=%p, *pa=%d", arg, pa, *pa);
+    return NULL;
+}
+
+JNIEXPORT void JNICALL
+Java_com_tencent_mm_libwxperf_JNIObj_testThreadSpecific(JNIEnv *env, jclass clazz) {
+    if (!key) {
+        pthread_key_create(&key, dest);
+    }
+    pthread_t thread1;
+
+    int *a = new int;
+    *a = 10086;
+
+    LOGD("Yves-debug", "origin a = %p", a);
+
+    pthread_create(&thread1, NULL, threadfunc2, a);
+    LOGD("Yves-debug", "creating thread thread1 %ld", thread1);
+//    pthread_join(thread1, NULL);
 }
 
 #ifdef __cplusplus

@@ -17,7 +17,9 @@ public class HookManager {
     private volatile boolean hasHooked;
     private Set<AbsHook> mHooks = new HashSet<>();
 
-    private HookManager(){}
+    private HookManager(){
+//        initNative();
+    }
 
     private void exclusiveHook() {
         xhookEnableDebugNative(BuildConfig.DEBUG);
