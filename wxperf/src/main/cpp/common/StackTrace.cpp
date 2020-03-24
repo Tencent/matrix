@@ -4,6 +4,7 @@
 
 #include <dlfcn.h>
 #include "StackTrace.h"
+#include "JNICommon.h"
 
 namespace unwindstack {
 

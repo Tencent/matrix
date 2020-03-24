@@ -11,11 +11,25 @@
 #include <jni.h>
 #include <new>
 #include "MemoryHookCXX.h"
-#include "MemoryHook_def.h"
+#include "HookCommon.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+// called by function definition
+
+#define DO_HOOK_ACQUIRE(p, size) \
+    GET_CALLER_ADDR(caller); \
+    on_acquire_memory(caller, p, size);
+
+#define DO_HOOK_RELEASE(p) \
+    on_release_memory(p)
+
+//#define DO_HOOK_RELEASE(sym, p, params...) \
+//    GET_CALLER_ADDR(caller); \
+//    on_release_memory(caller, p); \
+//    ORIGINAL_FUNC_NAME(sym)(p, params);
 
 DECLARE_HOOK_ORIG(void *, malloc, size_t __byte_count);
 
@@ -44,10 +58,13 @@ DECLARE_HOOK_ORIG(void *, mremap, void*, size_t, size_t, int, ...)
 DECLARE_HOOK_ORIG(int, munmap, void *__addr, size_t __size);
 //int h_munmap(void *__addr, size_t __size);
 
-DECLARE_HOOK_ORIG(void *, dlopen, const char *filename,
-                  int flag,
-                  const void *extinfo,
-                  const void *caller_addr);
+
+void memory_hook_on_dlopen(const char *__file_name);
+
+//DECLARE_HOOK_ORIG(void *, __loader_android_dlopen_ext, const char *filename,
+//                  int flag,
+//                  const void *extinfo,
+//                  const void *caller_addr);
 
 //JNIEXPORT void *h_dlopen(const char *filename,
 //                         int flag,
@@ -56,20 +73,21 @@ DECLARE_HOOK_ORIG(void *, dlopen, const char *filename,
 
 /******* not hook api below *******/
 
-void dump(bool enable_mmap_hook = false, const std::string path = "/sdcard/memory_hook.log");
+void dump(bool enable_mmap_hook = false, const char *path = "/sdcard/memory_hook.log");
 
-void enableStacktrace(bool);
+void enable_stacktrace(bool);
 
-void enableGroupBySize(bool);
+void enable_group_by_size(bool);
 
-void setSampleSizeRange(size_t, size_t);
+void set_sample_size_range(size_t __min, size_t __max);
 
-void setSampling(double);
+void set_sampling(double);
 
 static uint64_t stacktrace_hash(uint64_t *);
-
-#endif //MEMINFO_MEMORYHOOK_H
 
 #ifdef __cplusplus
 }
 #endif
+
+#endif //MEMINFO_MEMORYHOOK_H
+

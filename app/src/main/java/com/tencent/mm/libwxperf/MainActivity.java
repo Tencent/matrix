@@ -11,10 +11,13 @@ import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
 
+import com.tencent.mm.performance.jni.HookManager;
 import com.tencent.mm.performance.jni.fd.FDDumpBridge;
 import com.tencent.mm.performance.jni.memory.MemoryHook;
+import com.tencent.mm.performance.jni.pthread.PthreadHook;
 
 import java.io.File;
+import java.util.Map;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -26,12 +29,36 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
 //        MemoryHook.hook();
-//        MemoryHook.groupByMemorySize(true);
-        MemoryHook.INSTANCE
-                .addHookSo(".*libnative-lib\\.so$")
-                .enableStacktrace(true)
-                .enableMmapHook(true)
-                .hook();
+        try {
+            HookManager.INSTANCE
+                    .addHook(MemoryHook.INSTANCE
+                            .addHookSo(".*libnative-lib\\.so$")
+                            .enableStacktrace(true)
+                            .enableMmapHook(true))
+                    .addHook(PthreadHook.INSTANCE
+                            .addHookSo(".*libnative-lib\\.so$")
+                            .addHookSo(".*\\.so$")
+                            .addIgnoreSo(".*libart\\.so$")
+                            .addHookThread("AnotherJavaThread")
+                            .addHookThread("RenderThread")
+                            .addHookThread("\\[GT\\]MediaCodecR$"))
+                    .commitHooks();
+
+//            PthreadHook.INSTANCE.addHookSo(".*\\.so$")
+//                    .addHookThread("RenderThread")
+//                    .addHookThread("\\[GT\\]MediaCodecR$")
+//                    .addHookThread("RenderThread")
+//                    .hook();
+
+//            MemoryHook.INSTANCE
+//                    .addHookSo(".*libnative-lib\\.so$")
+//                    .enableStacktrace(true)
+//                    .enableMmapHook(true)
+//                    .hook();
+        } catch (HookManager.HookFailedException e) {
+            e.printStackTrace();
+        }
+
 
         Log.d(TAG, " pid = " + Process.myPid() + " tid = " + Thread.currentThread().getId());
 
@@ -66,9 +93,52 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        findViewById(R.id.btn_thread).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Thread t = new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+
+                        JNIObj.init();
+                        Log.d("Yves-debug", "before test");
+                        JNIObj.testThread();
+
+
+                        new Thread(new Runnable() {
+                            @Override
+                            public void run() {
+                                try {
+                                    Thread.sleep(10 * 60 * 1000);
+                                } catch (InterruptedException e) {
+                                    e.printStackTrace();
+                                }
+                            }
+                        }, "AnotherJavaThread").start();
+
+                        try {
+                            Thread.sleep(10 * 60 * 1000);
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }, "[GT]MediaCodecR");
+
+                t.start();
+
+                try {
+                    Thread.sleep(3 * 1000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+
+                PthreadHook.INSTANCE.dump("/sdcard/pthread_hook.log");
+            }
+        });
+
         checkPermission();
 //        if (checkPermission()) {
-            Log.d(TAG, "onCreate: path = " + Environment.getExternalStorageDirectory().getAbsolutePath());
+        Log.d(TAG, "onCreate: path = " + Environment.getExternalStorageDirectory().getAbsolutePath());
 //        }
 
 //        dumpFd();
@@ -84,7 +154,7 @@ public class MainActivity extends AppCompatActivity {
 
         try {
             for (File file : fdDir.listFiles()) {
-                Log.d(TAG, "onCreate: path = " + file.getAbsolutePath() + " file = "+ FDDumpBridge.getFdPathName(file.getAbsolutePath()));
+                Log.d(TAG, "onCreate: path = " + file.getAbsolutePath() + " file = " + FDDumpBridge.getFdPathName(file.getAbsolutePath()));
             }
         } catch (Exception e) {
             e.printStackTrace();

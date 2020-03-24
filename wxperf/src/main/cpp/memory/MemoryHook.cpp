@@ -43,27 +43,22 @@ std::map<void *, caller_meta_t> m_mmap_caller_meta;
 std::map<uint64_t, stack_meta_t> m_mmap_stack_meta;
 
 bool is_stacktrace_enabled = false;
-bool is_group_by_size_enabled = false;
 
 size_t m_sample_size_min = 0;
 size_t m_sample_size_max = 0;
 
 double m_sampling = 1;
 
-void enableStacktrace(bool __enable) {
+void enable_stacktrace(bool __enable) {
     is_stacktrace_enabled = __enable;
 }
 
-void enableGroupBySize(bool __enable) {
-    is_group_by_size_enabled = __enable;
-}
-
-void setSampleSizeRange(size_t __min, size_t __max) {
+void set_sample_size_range(size_t __min, size_t __max) {
     m_sample_size_min = __min;
     m_sample_size_max = __max;
 }
 
-void setSampling(double __sampling) {
+void set_sampling(double __sampling) {
     m_sampling = __sampling;
 }
 
@@ -74,10 +69,10 @@ static inline void record_acquire_mem_unsafe(void *__caller,
                                              std::map<void *, caller_meta_t> &caller_metas,
                                              std::map<uint64_t, stack_meta_t> &stack_metas) {
     if (ptr_metas.count(__ptr) && ptr_metas.at(__ptr).size == __byte_count) { // 检查是否重复记录同一个指针
-//        LOGD("Yves-debug", "skip for dup record");
+        LOGD("Yves-debug", "skip for dup record");
         return;
     }
-//    LOGD("Yves.debug", "on acquire ptr = %p", __ptr);
+//    LOGD("Yves-debug", "on acquire ptr = %p", __ptr);
     ptr_meta_t &ptr_meta = ptr_metas[__ptr];
     ptr_meta.size = __byte_count;
     ptr_meta.caller = __caller;
@@ -98,15 +93,19 @@ static inline void record_acquire_mem_unsafe(void *__caller,
             return;
         }
 
-        auto stack_frames = new std::vector<unwindstack::FrameData>;
-        unwindstack::do_unwind(*stack_frames);
+        auto ptr_stack_frames = new std::vector<unwindstack::FrameData>;
+        unwindstack::do_unwind(*ptr_stack_frames);
 
-        if (!stack_frames->empty()) {
-            uint64_t stack_hash = hash(*stack_frames);
+        if (!ptr_stack_frames->empty()) {
+            uint64_t stack_hash = hash(*ptr_stack_frames);
             ptr_meta.stack_hash = stack_hash;
             stack_meta_t &stack_meta = stack_metas[stack_hash];
             stack_meta.size += __byte_count;
-            stack_meta.p_stacktraces = stack_frames;
+            if (stack_meta.p_stacktraces) { // 相同的堆栈只记录一个
+                delete ptr_stack_frames;
+                return;
+            }
+            stack_meta.p_stacktraces = ptr_stack_frames;
         }
     }
 }
@@ -119,6 +118,8 @@ static inline void record_release_mem_unsafe(void *__ptr,
 //        LOGD("Yves-debug", "skip for ptr not found");
         return;
     }
+
+//    LOGD("Yves-debug", "record_release_mem_unsafe");
 
     ptr_meta_t &ptr_meta = ptr_metas.at(__ptr);
 
@@ -180,137 +181,6 @@ static inline void on_munmap_memory(void *__ptr) {
     record_release_mem_unsafe(__ptr, m_mmap_ptr_meta, m_mmap_caller_meta, m_mmap_stack_meta);
 
     release_lock();
-}
-
-DEFINE_HOOK_FUN(void *, malloc, size_t __byte_count) {
-    CALL_ORIGIN_FUNC_RET(void*, p, malloc, __byte_count);
-    DO_HOOK_ACQUIRE(p, __byte_count);
-    return p;
-}
-
-DEFINE_HOOK_FUN(void *, calloc, size_t __item_count, size_t __item_size) {
-    CALL_ORIGIN_FUNC_RET(void *, p, calloc, __item_count, __item_size);
-    DO_HOOK_ACQUIRE(p, __item_count * __item_size);
-    return p;
-}
-
-DEFINE_HOOK_FUN(void *, realloc, void *__ptr, size_t __byte_count) {
-    CALL_ORIGIN_FUNC_RET(void *, p, realloc, __ptr, __byte_count);
-
-    GET_CALLER_ADDR(caller);
-
-    // If ptr is NULL, then the call is equivalent to malloc(size), for all values of size;
-    // if size is equal to zero, and ptr is not NULL, then the call is equivalent to free(ptr).
-    // Unless ptr is NULL, it must have been returned by an earlier call to malloc(), calloc() or realloc().
-    // If the area pointed to was moved, a free(ptr) is done.
-    if (!__ptr) { // malloc
-        on_acquire_memory(caller, p, __byte_count);
-        return p;
-    } else if (!__byte_count) { // free
-        on_release_memory(__ptr);
-        return p;
-    }
-
-    // whatever has been moved or not, record anyway, because using realloc to shrink an allocation is allowed.
-    on_release_memory(__ptr);
-    on_acquire_memory(caller, p, __byte_count);
-
-    return p;
-}
-
-DEFINE_HOOK_FUN(void, free, void *__ptr) {
-    DO_HOOK_RELEASE(__ptr);
-    CALL_ORIGIN_FUNC_VOID(free, __ptr);
-}
-
-#if defined(__USE_FILE_OFFSET64)
-void*h_mmap(void* __addr, size_t __size, int __prot, int __flags, int __fd, off_t __offset) __RENAME(mmap64) {
-    void * p = mmap(__addr, __size, __prot, __flags, __fd, __offset);
-    GET_CALLER_ADDR(caller);
-    on_mmap_memory(caller, p, __size);
-    return p;
-}
-#else
-
-DEFINE_HOOK_FUN(void *, mmap, void *__addr, size_t __size, int __prot, int __flags, int __fd,
-                off_t __offset) {
-    CALL_ORIGIN_FUNC_RET(void *, p, mmap, __addr, __size, __prot, __flags, __fd, __offset);
-    if (p == MAP_FAILED) {
-        return p;// just return
-    }
-    DO_HOOK_ACQUIRE(p, __size);
-    return p;
-}
-
-//void *h_mmap(void *__addr, size_t __size, int __prot, int __flags, int __fd, off_t __offset) {
-//    void *p = mmap(__addr, __size, __prot, __flags, __fd, __offset);
-//    if (p == MAP_FAILED) {
-//        return p;// just return
-//    }
-//    GET_CALLER_ADDR(caller);
-//    on_mmap_memory(caller, p, __size);
-//    return p;
-//}
-
-#endif
-
-#if __ANDROID_API__ >= __ANDROID_API_L__
-
-void *h_mmap64(void *__addr, size_t __size, int __prot, int __flags, int __fd,
-               off64_t __offset) __INTRODUCED_IN(21) {
-    void *p = mmap64(__addr, __size, __prot, __flags, __fd, __offset);
-    if (p == MAP_FAILED) {
-        return p;// just return
-    }
-    GET_CALLER_ADDR(caller);
-    on_mmap_memory(caller, p, __size);
-    return p;
-}
-
-#endif
-
-DEFINE_HOOK_FUN(void *, mremap, void *__old_addr, size_t __old_size, size_t __new_size, int __flags,
-                ...) {
-    void *new_address = nullptr;
-    if ((__flags & MREMAP_FIXED) != 0) {
-        va_list ap;
-        va_start(ap, __flags);
-        new_address = va_arg(ap, void *);
-        va_end(ap);
-    }
-    void *p = mremap(__old_addr, __old_size, __new_size, __flags, new_address);
-    if (p == MAP_FAILED) {
-        return p; // just return
-    }
-
-    GET_CALLER_ADDR(caller);
-
-    on_munmap_memory(__old_addr);
-    on_mmap_memory(caller, p, __new_size);
-
-    return p;
-}
-
-DEFINE_HOOK_FUN(int, munmap, void *__addr, size_t __size) {
-    on_munmap_memory(__addr);
-    return munmap(__addr, __size);
-}
-
-DEFINE_HOOK_FUN(void *, dlopen, const char *filename,
-                int flag,
-                const void *extinfo,
-                const void *caller_addr) {
-    void *ret = (*orig_dlopen)(filename, flag, extinfo, caller_addr);
-
-    if (is_stacktrace_enabled) {
-        acquire_lock();
-        unwindstack::update_maps();
-        release_lock();
-    }
-    xhook_refresh(false);
-    srand((unsigned int) time(NULL));
-    LOGD("Yves.dlopen", "dlopen %s", filename);
-    return ret;
 }
 
 static inline void dump_callers_unsafe(FILE *log_file,
@@ -519,14 +389,14 @@ static inline void dump_unsafe(FILE *log_file, bool enable_mmap_hook) {
             (sizeof(stack_meta_t) + sizeof(uint64_t)) * m_mmap_stack_meta.size());
 }
 
-void dump(bool enable_mmap_hook, const std::string path) {
+void dump(bool enable_mmap_hook, const char *path) {
     LOGD("Yves.dump",
          ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> memory dump begin <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
 
     acquire_lock();
 
-    FILE *log_file = fopen(path.c_str(), "w+");
-    LOGD("Yves.dump", "dump path = %s", path.c_str());
+    FILE *log_file = fopen(path, "w+");
+    LOGD("Yves.dump", "dump path = %s", path);
     if (!log_file) {
         LOGE("Yves.dump", "open file failed");
         release_lock();
@@ -541,6 +411,123 @@ void dump(bool enable_mmap_hook, const std::string path) {
     release_lock();
     LOGD("Yves.dump",
          ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> memory dump end <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
+}
+
+void memory_hook_on_dlopen(const char *__file_name) {
+    LOGD("Yves-debug", "memory_hook_on_dlopen");
+    if (is_stacktrace_enabled) {
+        acquire_lock();
+        unwindstack::update_maps();
+        release_lock();
+    }
+    srand((unsigned int) time(NULL));
+}
+
+#define ORIGINAL_LIB "libc++_shared.so"
+
+DEFINE_HOOK_FUN(void *, malloc, size_t __byte_count) {
+    CALL_ORIGIN_FUNC_RET(void*, p, malloc, __byte_count);
+    DO_HOOK_ACQUIRE(p, __byte_count);
+    return p;
+}
+
+DEFINE_HOOK_FUN(void *, calloc, size_t __item_count, size_t __item_size) {
+    CALL_ORIGIN_FUNC_RET(void *, p, calloc, __item_count, __item_size);
+    DO_HOOK_ACQUIRE(p, __item_count * __item_size);
+    return p;
+}
+
+DEFINE_HOOK_FUN(void *, realloc, void *__ptr, size_t __byte_count) {
+    CALL_ORIGIN_FUNC_RET(void *, p, realloc, __ptr, __byte_count);
+
+    GET_CALLER_ADDR(caller);
+
+    // If ptr is NULL, then the call is equivalent to malloc(size), for all values of size;
+    // if size is equal to zero, and ptr is not NULL, then the call is equivalent to free(ptr).
+    // Unless ptr is NULL, it must have been returned by an earlier call to malloc(), calloc() or realloc().
+    // If the area pointed to was moved, a free(ptr) is done.
+    if (!__ptr) { // malloc
+        on_acquire_memory(caller, p, __byte_count);
+        return p;
+    } else if (!__byte_count) { // free
+        on_release_memory(__ptr);
+        return p;
+    }
+
+    // whatever has been moved or not, record anyway, because using realloc to shrink an allocation is allowed.
+    on_release_memory(__ptr);
+    on_acquire_memory(caller, p, __byte_count);
+
+    return p;
+}
+
+DEFINE_HOOK_FUN(void, free, void *__ptr) {
+    DO_HOOK_RELEASE(__ptr);
+    CALL_ORIGIN_FUNC_VOID(free, __ptr);
+}
+
+#if defined(__USE_FILE_OFFSET64)
+void*h_mmap(void* __addr, size_t __size, int __prot, int __flags, int __fd, off_t __offset) __RENAME(mmap64) {
+    void * p = mmap(__addr, __size, __prot, __flags, __fd, __offset);
+    GET_CALLER_ADDR(caller);
+    on_mmap_memory(caller, p, __size);
+    return p;
+}
+#else
+
+DEFINE_HOOK_FUN(void *, mmap, void *__addr, size_t __size, int __prot, int __flags, int __fd,
+                off_t __offset) {
+    CALL_ORIGIN_FUNC_RET(void *, p, mmap, __addr, __size, __prot, __flags, __fd, __offset);
+    if (p == MAP_FAILED) {
+        return p;// just return
+    }
+    DO_HOOK_ACQUIRE(p, __size);
+    return p;
+}
+
+
+#endif
+
+#if __ANDROID_API__ >= __ANDROID_API_L__
+
+void *h_mmap64(void *__addr, size_t __size, int __prot, int __flags, int __fd,
+               off64_t __offset) __INTRODUCED_IN(21) {
+    void *p = mmap64(__addr, __size, __prot, __flags, __fd, __offset);
+    if (p == MAP_FAILED) {
+        return p;// just return
+    }
+    GET_CALLER_ADDR(caller);
+    on_mmap_memory(caller, p, __size);
+    return p;
+}
+
+#endif
+
+DEFINE_HOOK_FUN(void *, mremap, void *__old_addr, size_t __old_size, size_t __new_size, int __flags,
+                ...) {
+    void *new_address = nullptr;
+    if ((__flags & MREMAP_FIXED) != 0) {
+        va_list ap;
+        va_start(ap, __flags);
+        new_address = va_arg(ap, void *);
+        va_end(ap);
+    }
+    void *p = mremap(__old_addr, __old_size, __new_size, __flags, new_address);
+    if (p == MAP_FAILED) {
+        return p; // just return
+    }
+
+    GET_CALLER_ADDR(caller);
+
+    on_munmap_memory(__old_addr);
+    on_mmap_memory(caller, p, __new_size);
+
+    return p;
+}
+
+DEFINE_HOOK_FUN(int, munmap, void *__addr, size_t __size) {
+    on_munmap_memory(__addr);
+    return munmap(__addr, __size);
 }
 
 #ifndef __LP64__
@@ -756,3 +743,5 @@ DEFINE_HOOK_FUN(void, _ZdaPvRKSt9nothrow_t, void *ptr, std::nothrow_t const &not
     DO_HOOK_RELEASE(ptr);
     CALL_ORIGIN_FUNC_VOID(_ZdaPvRKSt9nothrow_t, ptr, nothrow);
 }
+
+#undef ORIGINAL_LIB

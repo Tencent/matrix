@@ -7,7 +7,7 @@
 
 #include <new>
 #include <cstddef>
-#include "MemoryHook_def.h"
+#include "HookCommon.h"
 
 #ifndef __LP64__
 

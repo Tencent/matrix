@@ -29,4 +29,6 @@ public class JNIObj {
     public static void onDumpFinished(String res) {
 
     }
+
+    public native static void testThread();
 }

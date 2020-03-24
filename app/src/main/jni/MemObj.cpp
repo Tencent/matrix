@@ -9,6 +9,9 @@
 #include <cstring>
 #include <vector>
 #include <sys/mman.h>
+#include <pthread.h>
+#include <iostream>
+#include <sstream>
 
 #define LOGD(TAG, FMT, args...) __android_log_print(ANDROID_LOG_DEBUG, TAG, FMT, ##args)
 
@@ -340,9 +343,9 @@ JNIEXPORT void JNICALL
 Java_com_tencent_mm_libwxperf_JNIObj_nullptr(JNIEnv *env, jobject instance, jobjectArray ss) {
 
     if (!ss) {
-        LOGD("Yves.debug", "ss is null");
+        LOGD("Yves-debug", "ss is null");
     } else {
-        LOGD("Yves.debug", "ss is not null");
+        LOGD("Yves-debug", "ss is not null");
     }
 
 }
@@ -352,7 +355,7 @@ Java_com_tencent_mm_libwxperf_JNIObj_dump(JNIEnv *env, jobject instance, jstring
 
     const char *path = env->GetStringUTFChars(path_, 0);
 
-    LOGD("Yves.debug", "path = %s", path);
+    LOGD("Yves-debug", "path = %s", path);
 //    dump();
 
     env->ReleaseStringUTFChars(path_, path);
@@ -409,6 +412,70 @@ Java_com_tencent_mm_libwxperf_JNIObj_dump(JNIEnv *env, jobject instance, jstring
 //
 //
 //    LOGD("Yves-sample", "<<<<<<<<<<<<<<<<<<<<end dump");
+}
+
+#define NAMELEN 16
+
+static void *
+threadfunc(void *parm)
+{
+    LOGD("Yves-debug", "new thread=%ld, tid=%d", pthread_self(), pthread_gettid_np(pthread_self()));
+    sleep(5);          // allow main program to set the thread name
+    return NULL;
+}
+
+
+#include <sys/prctl.h>
+
+static int read_thread_name(pthread_t __pthread, char *__buf, size_t __n) {
+    if (!__buf) {
+        return -1;
+    }
+
+    char proc_path[__n];
+
+    sprintf(proc_path, "/proc/self/task/%d/stat", pthread_gettid_np(__pthread));
+
+    FILE *file = fopen(proc_path, "r");
+
+    if (!file) {
+        LOGD("Yves-debug", "file not found: %s", proc_path);
+        return -1;
+    }
+
+    fscanf(file, "%*d (%[^)]", __buf);
+
+    fclose(file);
+
+    return 0;
+}
+
+static int wrap_pthread_getname_np(pthread_t __pthread, char* __buf, size_t __n) {
+#if __ANDROID_API__ >= 26
+    return pthread_getname_np(__pthread, __buf, __n);
+#else
+    return read_thread_name(__pthread, __buf, __n);
+#endif
+}
+
+JNIEXPORT void JNICALL
+Java_com_tencent_mm_libwxperf_JNIObj_testThread(JNIEnv *env, jclass clazz) {
+
+    pthread_t thread;
+    int rc;
+    char thread_name[NAMELEN];
+
+    rc = pthread_create(&thread, NULL, threadfunc, NULL);
+
+    pthread_setname_np(thread, "123456789ABCDEF");
+
+    if (rc != 0)
+        LOGD("Yves-debug","pthread_create: %d", rc);
+    LOGD("Yves-debug", "origin thread=%ld, tid=%d", pthread_self(), pthread_gettid_np(pthread_self()));
+
+    wrap_pthread_getname_np(thread, thread_name, 16);
+
+    LOGD("Yves-debug","Created a thread. Default name is: %s", thread_name);
 }
 
 #ifdef __cplusplus
