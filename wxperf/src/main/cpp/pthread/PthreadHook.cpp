@@ -125,12 +125,7 @@ static void unwind_pthread_stacktrace(pthread_meta_t &__meta) {
                 free(java_stacktrace);
             }
 
-//            LOGD(TAG, "meta java stacktrace = \n%s", __meta.java_stacktrace);
-
-//            strcpy(java_stacktrace, "    stub java stack");
-//            __meta.java_stacktrace = java_stacktrace;
-
-            break;
+            break; // peek first match
         }
     }
 }
@@ -294,9 +289,14 @@ void on_pthread_destroy(void *__specific) {
     }
 
     pthread_meta_t &meta = m_pthread_metas.at(destroying_thread);
+    LOGD(TAG, "removing thread {%ld, %s, %s, %d}", destroying_thread, meta.thread_name, meta.parent_name, meta.tid);
+
+    free(meta.thread_name);
+    free(meta.parent_name);
+    free(meta.java_stacktrace);
+    delete meta.native_stacktrace;
 
     m_pthread_metas.erase(destroying_thread);
-    LOGD(TAG, "removed thread {%ld, %s, %s, %d}", destroying_thread, meta.thread_name, meta.parent_name, meta.tid);
 
     pthread_mutex_unlock(&m_pthread_meta_mutex);
 
