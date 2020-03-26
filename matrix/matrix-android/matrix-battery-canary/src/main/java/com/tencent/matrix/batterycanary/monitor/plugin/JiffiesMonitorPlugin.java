@@ -60,7 +60,9 @@ public class JiffiesMonitorPlugin implements IBatteryMonitorPlugin, Handler.Call
             Message message = Message.obtain(handler);
             message.what = MSG_ID_JIFFIES_END;
             handler.sendMessageAtFrontOfQueue(message);
+        }
 
+        if (isForeground) {
             handler.removeCallbacks(foregroundLoopCheckRunnable);
             if (isEnableCheckForeground) {
                 foregroundLoopCheckRunnable.lastWhat = MSG_ID_JIFFIES_START;
