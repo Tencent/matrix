@@ -22,17 +22,22 @@ public class JiffiesMonitorPlugin implements IBatteryMonitorPlugin, Handler.Call
 
     private static final String TAG = "Matrix.JiffiesMonitorPlugin";
     private static long WAIT_TIME;
+    private static long LOOP_TIME = 15 * 60 * 1000;
+    private static boolean isEnableCheckForeground;
     private static final int MSG_ID_JIFFIES_START = 0x1;
     private static final int MSG_ID_JIFFIES_END = 0x2;
     private Handler handler;
     private ProcessInfo lastProcessInfo = null;
     private BatteryMonitor monitor;
+    private LoopCheckRunnable foregroundLoopCheckRunnable = new LoopCheckRunnable();
 
     @Override
     public void onInstall(BatteryMonitor monitor) {
         this.monitor = monitor;
         handler = new Handler(MatrixHandlerThread.getDefaultHandlerThread().getLooper(), this);
         WAIT_TIME = monitor.getConfig().greyTime;
+        LOOP_TIME = monitor.getConfig().foregroundLoopCheckTime;
+        isEnableCheckForeground = monitor.getConfig().isEnableCheckForeground;
     }
 
     @Override
@@ -47,16 +52,23 @@ public class JiffiesMonitorPlugin implements IBatteryMonitorPlugin, Handler.Call
     @Override
     public void onAppForeground(boolean isForeground) {
         if (!isForeground) {
+            handler.removeCallbacksAndMessages(null);
             Message message = Message.obtain(handler);
             message.what = MSG_ID_JIFFIES_START;
             handler.sendMessageDelayed(message, WAIT_TIME);
         } else if (!handler.hasMessages(MSG_ID_JIFFIES_START)) {
             Message message = Message.obtain(handler);
             message.what = MSG_ID_JIFFIES_END;
-
             handler.sendMessageAtFrontOfQueue(message);
+
+            handler.removeCallbacks(foregroundLoopCheckRunnable);
+            if (isEnableCheckForeground) {
+                foregroundLoopCheckRunnable.lastWhat = MSG_ID_JIFFIES_START;
+                handler.post(foregroundLoopCheckRunnable);
+            }
         }
     }
+
 
     @Override
     public int weight() {
@@ -92,6 +104,19 @@ public class JiffiesMonitorPlugin implements IBatteryMonitorPlugin, Handler.Call
         return false;
     }
 
+    private class LoopCheckRunnable implements Runnable {
+
+        int lastWhat = MSG_ID_JIFFIES_START;
+
+        @Override
+        public void run() {
+            Message message = Message.obtain(handler);
+            message.what = lastWhat;
+            handler.sendMessageAtFrontOfQueue(message);
+            lastWhat = (lastWhat == MSG_ID_JIFFIES_END ? MSG_ID_JIFFIES_START : MSG_ID_JIFFIES_END);
+            handler.postDelayed(this, LOOP_TIME);
+        }
+    }
 
     private void printResult(JiffiesResult result) {
     }

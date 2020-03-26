@@ -104,6 +104,17 @@ public class BatteryMonitor extends Plugin {
             return this;
         }
 
+        public Builder isEnableCheckForeground(boolean isEnable) {
+            config.isEnableCheckForeground = isEnable;
+            return this;
+        }
+
+
+        public Builder foregroundLoopCheckTime(long time) {
+            config.foregroundLoopCheckTime = time;
+            return this;
+        }
+
         public Builder installPlugin(Class<? extends IBatteryMonitorPlugin> pluginClass) {
             try {
                 config.plugins.add(pluginClass.newInstance());
@@ -133,6 +144,8 @@ public class BatteryMonitor extends Plugin {
         public Printer printer = new BatteryPrinter();
         public long wakelockTimeout;
         public long greyTime;
+        public long foregroundLoopCheckTime;
+        public boolean isEnableCheckForeground = false;
         public boolean disableAppForegroundNotifyByMatrix = false;
         public LinkedList<IBatteryMonitorPlugin> plugins = new LinkedList<>();
     }
