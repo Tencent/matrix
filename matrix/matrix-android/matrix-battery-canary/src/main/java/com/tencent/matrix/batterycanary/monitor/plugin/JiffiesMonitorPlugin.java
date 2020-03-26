@@ -96,6 +96,7 @@ public class JiffiesMonitorPlugin implements IBatteryMonitorPlugin, Handler.Call
             processInfo.upTime = SystemClock.uptimeMillis();
             processInfo.time = System.currentTimeMillis();
             JiffiesResult result = calculateDiff(lastProcessInfo, processInfo);
+            result.isForeground = msg.arg1 == 1;
             printResult(result);
             if (null != monitor.getConfig().printer) {
                 monitor.getConfig().printer.onJiffies(result);
@@ -114,6 +115,7 @@ public class JiffiesMonitorPlugin implements IBatteryMonitorPlugin, Handler.Call
         public void run() {
             Message message = Message.obtain(handler);
             message.what = lastWhat;
+            message.arg1 = 1;
             handler.sendMessageAtFrontOfQueue(message);
             lastWhat = (lastWhat == MSG_ID_JIFFIES_END ? MSG_ID_JIFFIES_START : MSG_ID_JIFFIES_END);
             handler.postDelayed(this, LOOP_TIME);
@@ -163,6 +165,7 @@ public class JiffiesMonitorPlugin implements IBatteryMonitorPlugin, Handler.Call
         public long jiffiesDiff2;
         public long timeDiff;
         public long upTimeDiff;
+        public boolean isForeground;
         public LinkedList<ThreadResult> threadResults = new LinkedList<>();
     }
 
