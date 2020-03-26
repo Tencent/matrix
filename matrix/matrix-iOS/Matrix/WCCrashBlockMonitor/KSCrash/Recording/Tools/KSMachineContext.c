@@ -32,6 +32,8 @@
 #include "KSStackCursor_MachineContext.h"
 
 #include <mach/mach.h>
+#include <sys/ucontext.h>
+#include <sys/_types/_ucontext64.h>
 
 //#define KSLogger_LocalLevel TRACE
 #include "KSLogger.h"

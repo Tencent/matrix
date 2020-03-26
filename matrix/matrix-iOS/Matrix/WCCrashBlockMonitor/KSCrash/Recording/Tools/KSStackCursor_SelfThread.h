@@ -26,13 +26,12 @@
 #ifndef KSStackCursor_SelfThread_h
 #define KSStackCursor_SelfThread_h
 
+#include "KSStackCursor.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
     
-    
-#include "KSStackCursor.h"
-
 /** Initialize a stack cursor for the current thread.
  *  You may want to skip some entries to account for the trace immediately leading
  *  up to this init function.

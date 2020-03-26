@@ -29,6 +29,11 @@
  * supported.
  */
 
+#include <stdbool.h>
+#include <stdint.h>
+/* KSCrashSentryHandleSignal use the signalinfo */
+#include <sys/signal.h>
+#include "KSStackCursor.h"
 
 #ifndef HDR_KSCrashReportWriter_h
 #define HDR_KSCrashReportWriter_h
@@ -36,14 +41,6 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-
-#include <stdbool.h>
-#include <stdint.h>
-/* KSCrashSentryHandleSignal use the signalinfo */
-#include <sys/signal.h>
-#include "KSStackCursor.h"
-
 /**
  * Encapsulates report writing functionality.
  */

@@ -28,12 +28,12 @@
 #ifndef HDR_KSMachineContext_h
 #define HDR_KSMachineContext_h
 
+#include "KSThread.h"
+#include <stdbool.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include "KSThread.h"
-#include <stdbool.h>
 
 /** Suspend the runtime environment.
  */

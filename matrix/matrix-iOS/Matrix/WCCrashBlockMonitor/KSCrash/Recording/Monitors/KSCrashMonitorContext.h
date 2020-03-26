@@ -28,15 +28,15 @@
 #ifndef HDR_KSCrashMonitorContext_h
 #define HDR_KSCrashMonitorContext_h
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include "KSCrashMonitorType.h"
 #include "KSMachineContext.h"
 
 #include <stdbool.h>
 #include <stdint.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 typedef struct KSCrash_MonitorContext
 {

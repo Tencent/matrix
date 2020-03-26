@@ -50,14 +50,13 @@
  */
 #define CALL_INSTRUCTION_FROM_RETURN_ADDRESS(A) (DETAG_INSTRUCTION_ADDRESS((A)) - 1)
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-
 #include "KSStackCursor.h"
 #include <stdbool.h>
 #include "KSDynamicLinker.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
     
 /** Symbolicate a stack cursor.
  *

@@ -26,13 +26,12 @@
 #ifndef KSStackCursor_Backtrace_h
 #define KSStackCursor_Backtrace_h
 
+#include "KSStackCursor.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
     
-    
-#include "KSStackCursor.h"
-
 /** Exposed for other internal systems to use.
  */
 typedef struct
