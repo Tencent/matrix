@@ -148,7 +148,7 @@ public class FrameTracer extends Tracer {
 
         @Override
         public int getIntervalFrameReplay() {
-            return 200;
+            return 300;
         }
 
         @Override
