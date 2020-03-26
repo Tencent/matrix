@@ -22,6 +22,7 @@ import org.json.JSONObject;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.concurrent.Executor;
 
 public class FrameTracer extends Tracer {
@@ -94,17 +95,24 @@ public class FrameTracer extends Tracer {
                     if (config.isDevEnv()) {
                         listener.time = SystemClock.uptimeMillis();
                     }
-                    listener.doFrameSync(focusedActivity, startNs, endNs, dropFrame, isVsyncFrame,
-                            intendedFrameTimeNs, inputCostNs, animationCostNs, traversalCostNs);
                     if (null != listener.getExecutor()) {
-                        listener.getExecutor().execute(new Runnable() {
-                            @Override
-                            public void run() {
-                                listener.doFrameAsync(focusedActivity, startNs, endNs, dropFrame, isVsyncFrame,
-                                        intendedFrameTimeNs, inputCostNs, animationCostNs, traversalCostNs);
-                            }
-                        });
+                        if (listener.getIntervalFrameReplay() > 0) {
+                            listener.collect(focusedActivity, startNs, endNs, dropFrame, isVsyncFrame,
+                                    intendedFrameTimeNs, inputCostNs, animationCostNs, traversalCostNs);
+                        } else {
+                            listener.getExecutor().execute(new Runnable() {
+                                @Override
+                                public void run() {
+                                    listener.doFrameAsync(focusedActivity, startNs, endNs, dropFrame, isVsyncFrame,
+                                            intendedFrameTimeNs, inputCostNs, animationCostNs, traversalCostNs);
+                                }
+                            });
+                        }
+                    } else {
+                        listener.doFrameSync(focusedActivity, startNs, endNs, dropFrame, isVsyncFrame,
+                                intendedFrameTimeNs, inputCostNs, animationCostNs, traversalCostNs);
                     }
+
                     if (config.isDevEnv()) {
                         listener.time = SystemClock.uptimeMillis() - listener.time;
                         MatrixLog.d(TAG, "[notifyListener] cost:%sms listener:%s", listener.time, listener);
@@ -139,7 +147,23 @@ public class FrameTracer extends Tracer {
         }
 
         @Override
-        public void doFrameAsync(String visibleScene, long taskCost, long frameCostMs, int droppedFrames, boolean isVsyncFrame) {
+        public int getIntervalFrameReplay() {
+            return 200;
+        }
+
+        @Override
+        public void doReplay(List<FrameReplay> list) {
+            super.doReplay(list);
+            for (FrameReplay replay : list) {
+                doReplayInner(replay.focusedActivity, replay.startNs, replay.endNs, replay.dropFrame, replay.isVsyncFrame,
+                        replay.intendedFrameTimeNs, replay.inputCostNs, replay.animationCostNs, replay.traversalCostNs);
+            }
+        }
+
+        public void doReplayInner(String visibleScene, long startNs, long endNs, int droppedFrames,
+                                  boolean isVsyncFrame, long intendedFrameTimeNs, long inputCostNs,
+                                  long animationCostNs, long traversalCostNs) {
+
             if (Utils.isEmpty(visibleScene)) return;
             if (!isVsyncFrame) return;
 
