@@ -149,7 +149,7 @@ public class ThreadMonitor extends Plugin {
                         if (threadInfo.tid == mainTid) {
                             threadInfo.name = "main";
                         } else {
-                            threadInfo.name = appThreadInfo.name.replaceAll("-?[0-9]\\d*", "?");
+                            threadInfo.name = appThreadInfo.name.replaceAll("-?[0-9]\\d*", "?") + "J";
                         }
                         threadInfo.stackTrace = appThreadInfo.stackTrace;
                         threadInfo.isHandlerThread = appThreadInfo.isHandlerThread;
@@ -289,7 +289,7 @@ public class ThreadMonitor extends Plugin {
             public void next(ThreadInfo threadInfo) {
                 ThreadInfo appThreadInfo = appThreadsMap.get(threadInfo.tid);
                 if (null != appThreadInfo) {
-                    threadInfo.name = appThreadInfo.name.replaceAll("-?[0-9]\\d*", "?");
+                    threadInfo.name = appThreadInfo.name.replaceAll("-?[0-9]\\d*", "?") + "J";
                     threadInfo.stackTrace = appThreadInfo.stackTrace;
                     threadInfo.isHandlerThread = appThreadInfo.isHandlerThread;
                     threadInfo.target = appThreadInfo.target;
@@ -492,12 +492,9 @@ public class ThreadMonitor extends Plugin {
 
         @Override
         public String toString() {
-            return String.format("%s J=%s", name, isJavaThread);
-        }
-
-        public String toDetailString() {
             return String.format("name=%s tid=%s state=%s isHandlerThread=%s isJavaThread=%s", name, tid, state, isHandlerThread, isJavaThread);
         }
+
     }
 
     public static class ThreadGroupInfo {
@@ -542,7 +539,7 @@ public class ThreadMonitor extends Plugin {
 
         @Override
         public String toString() {
-            return name + "=" + getSize() + "J" + (isJavaThread() ? 1 : 0);
+            return name + "=" + getSize();
         }
     }
 
