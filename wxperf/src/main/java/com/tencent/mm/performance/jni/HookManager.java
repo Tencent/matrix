@@ -1,5 +1,7 @@
 package com.tencent.mm.performance.jni;
 
+import android.util.Log;
+
 import java.util.HashSet;
 import java.util.Set;
 
@@ -18,7 +20,6 @@ public class HookManager {
     private Set<AbsHook> mHooks = new HashSet<>();
 
     private HookManager(){
-//        initNative();
     }
 
     private void exclusiveHook() {

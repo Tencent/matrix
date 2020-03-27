@@ -1,5 +1,7 @@
 package com.tencent.mm.libwxperf;
 
+import android.util.Log;
+
 /**
  * Created by Yves on 2019-08-08
  */
@@ -33,4 +35,15 @@ public class JNIObj {
     public native static void testThread();
 
     public native static void testThreadSpecific();
+
+    public native static void testJNICall();
+
+    public static void calledByJNI() {
+        Log.d("Yves-debug", "called By JNI");
+        try {
+            Thread.sleep(1);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
 }

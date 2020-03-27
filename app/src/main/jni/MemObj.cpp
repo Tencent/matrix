@@ -512,6 +512,22 @@ Java_com_tencent_mm_libwxperf_JNIObj_testThreadSpecific(JNIEnv *env, jclass claz
 //    pthread_join(thread1, NULL);
 }
 
+JNIEXPORT void JNICALL
+Java_com_tencent_mm_libwxperf_JNIObj_testJNICall(JNIEnv *env, jclass clazz) {
+
+    jclass j_jniobj = env->FindClass("com/tencent/mm/libwxperf/JNIObj");
+    if (j_jniobj) {
+        jmethodID method = env->GetStaticMethodID(j_jniobj, "calledByJNI", "()V");
+        if (method) {
+            LOGD("Yves-debug", "before call java");
+            env->CallStaticVoidMethod(j_jniobj, method);
+            LOGD("Yves-debug", "after call java");
+        }
+    } else {
+        LOGD("Yves-debug", "class not found");
+    }
+}
+
 #ifdef __cplusplus
 }
 #endif

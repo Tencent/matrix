@@ -75,54 +75,6 @@ static const HookFunction HOOK_MMAP_FUNCTIONS[] = {
 
 bool enable_mmap_hook = false;
 
-//static void registerCXXFun(const char *lib_pattern) {
-//#ifndef __LP64__
-//    xhook_register(lib_pattern, "_Znwj", (void*) HANDLER_FUNC_NAME(_Znwj), NULL);
-//    xhook_register(lib_pattern, "_ZnwjSt11align_val_t", (void*) HANDLER_FUNC_NAME(_ZnwjSt11align_val_t), NULL);
-//    xhook_register(lib_pattern, );
-//    xhook_register(lib_pattern, );
-//    xhook_register(lib_pattern, );
-//    xhook_register(lib_pattern, );
-//    xhook_register(lib_pattern, );
-//    xhook_register(lib_pattern, );
-//
-//    xhook_register(lib_pattern, );
-//    xhook_register(lib_pattern, );
-//
-//    xhook_register(lib_pattern, );
-//    xhook_register(lib_pattern, );
-//#else
-//
-//    xhook_register(lib_pattern, );
-//    xhook_register(lib_pattern, );
-//    xhook_register(lib_pattern, );
-//    xhook_register(lib_pattern, );
-//    xhook_register(lib_pattern, );
-//    xhook_register(lib_pattern, );
-//    xhook_register(lib_pattern, );
-//    xhook_register(lib_pattern, );
-//
-//    xhook_register(lib_pattern, );
-//    xhook_register(lib_pattern, );
-//
-//    xhook_register(lib_pattern, );
-//    xhook_register(lib_pattern, );
-//#endif
-//
-//    xhook_register(lib_pattern, );
-//    xhook_register(lib_pattern, );
-//    xhook_register(lib_pattern, );
-//    xhook_register(lib_pattern, );
-//
-//    xhook_register(lib_pattern, );
-//    xhook_register(lib_pattern, );
-//    xhook_register(lib_pattern, );
-//    xhook_register(lib_pattern, );
-//
-//    xhook_register(lib_pattern, );
-//    xhook_register(lib_pattern, );
-//}
-
 static void hook(const char *regex) {
 
     for (auto f : HOOK_MALL_FUNCTIONS) {
@@ -191,39 +143,6 @@ Java_com_tencent_mm_performance_jni_memory_MemoryHook_addIgnoreSoNative(JNIEnv *
         env->ReleaseStringUTFChars(jregex, regex);
     }
 }
-
-//JNIEXPORT void JNICALL
-//Java_com_tencent_mm_performance_jni_memory_MemoryHook_xhookInitNative(JNIEnv *env, jobject instance) {
-//
-//
-//    xhook_register(".*\\.so$", "__loader_android_dlopen_ext", (void *) HANDLER_FUNC_NAME(__loader_android_dlopen_ext),
-//                   (void **) &ORIGINAL_FUNC_NAME(__loader_android_dlopen_ext));
-//}
-
-//JNIEXPORT void JNICALL
-//Java_com_tencent_mm_performance_jni_memory_MemoryHook_xhookClearNative(JNIEnv *env, jobject instance) {
-//    xhook_clear();
-//}
-
-//JNIEXPORT jint JNICALL
-//Java_com_tencent_mm_performance_jni_memory_MemoryHook_xhookRefreshNative(JNIEnv *env, jobject instance,
-//                                                                         jboolean async) {
-//    unwindstack::update_maps();
-//    return xhook_refresh(async);
-//}
-//
-//JNIEXPORT void JNICALL
-//Java_com_tencent_mm_performance_jni_memory_MemoryHook_xhookEnableDebugNative(JNIEnv *env,
-//                                                                             jobject instance,
-//                                                                             jboolean flag) {
-//    xhook_enable_debug(flag);
-//}
-//
-//JNIEXPORT void JNICALL
-//Java_com_tencent_mm_performance_jni_memory_MemoryHook_xhookEnableSigSegvProtectionNative(
-//        JNIEnv *env, jobject instance, jboolean flag) {
-//    xhook_enable_sigsegv_protection(flag);
-//}
 
 JNIEXPORT void JNICALL
 Java_com_tencent_mm_performance_jni_memory_MemoryHook_setSamplingNative(JNIEnv *env,

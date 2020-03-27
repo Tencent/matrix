@@ -67,4 +67,14 @@
         app:layout_constraintBaseline_toBaselineOf="@+id/button"
         app:layout_constraintStart_toEndOf="@+id/button" />
 
+    <Button
+        android:id="@+id/btn_concurrent_jni"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="14dp"
+        android:layout_marginTop="33dp"
+        android:text="Con_JNI"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/button" />
+
 </android.support.constraint.ConstraintLayout>

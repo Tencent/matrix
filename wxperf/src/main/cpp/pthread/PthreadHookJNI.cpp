@@ -10,16 +10,13 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-// @formatter:off
+
 static HookFunction const HOOK_FUNCTIONS[] = {
-        {"pthread_create", (void *) HANDLER_FUNC_NAME(pthread_create), NULL},
+        {"pthread_create",     (void *) HANDLER_FUNC_NAME(pthread_create),     NULL},
         {"pthread_setname_np", (void *) HANDLER_FUNC_NAME(pthread_setname_np), NULL}
 };
-// @formatter:on
 
 static void hook_impl(const char *regex) {
-//    xhook_register(regex, "pthread_create", (void *) HANDLER_FUNC_NAME(pthread_create),
-//                   (void **) &ORIGINAL_FUNC_NAME(pthread_create));
     for (auto f: HOOK_FUNCTIONS) {
         xhook_register(regex, f.name, f.handler_ptr, f.origin_ptr);
     }
@@ -44,6 +41,7 @@ Java_com_tencent_mm_performance_jni_pthread_PthreadHook_addHookSoNative(JNIEnv *
     }
 
     add_dlopen_hook_callback(pthread_hook_on_dlopen);
+    add_hook_init_callback(pthread_hook_init);
 }
 
 JNIEXPORT void JNICALL
@@ -58,21 +56,6 @@ Java_com_tencent_mm_performance_jni_pthread_PthreadHook_addIgnoreSoNative(JNIEnv
         env->ReleaseStringUTFChars(jregex, regex);
     }
 }
-
-//JNIEXPORT void JNICALL
-//Java_com_tencent_mm_performance_jni_pthread_PthreadHook_addHookParentThreadNameNative(JNIEnv *env,
-//                                                                                      jobject thiz,
-//                                                                                      jobjectArray thread_names) {
-//    jsize size = env->GetArrayLength(thread_names);
-//
-//    for (int i = 0; i < size; ++i) {
-//        LOGD("Yves-debug", "jni add p n");
-//        auto       jregex = (jstring) (env->GetObjectArrayElement(thread_names, i));
-//        const char *regex = env->GetStringUTFChars(jregex, NULL);
-//        add_hook_parent_thread_name(regex);
-//        env->ReleaseStringUTFChars(jregex, regex);
-//    }
-//}
 
 JNIEXPORT void JNICALL
 Java_com_tencent_mm_performance_jni_pthread_PthreadHook_addHookThreadNameNative(JNIEnv *env,

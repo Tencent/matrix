@@ -4,6 +4,7 @@ import android.Manifest;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Process;
 import android.support.v4.app.ActivityCompat;
@@ -37,12 +38,13 @@ public class MainActivity extends AppCompatActivity {
                             .enableStacktrace(true)
                             .enableMmapHook(true))
                     .addHook(PthreadHook.INSTANCE
-                            .addHookSo(".*libnative-lib\\.so$")
+//                            .addHookSo(".*libnative-lib\\.so$")
                             .addHookSo(".*\\.so$")
 //                            .addIgnoreSo(".*libart\\.so$")
                             .addHookThread(".*")
 //                            .addHookThread("MyHandlerThread")
-                            .addHookThread("\\[GT\\]MediaCodecR$"))
+//                            .addHookThread("\\[GT\\]MediaCodecR$")
+                    )
                     .commitHooks();
 
 //            PthreadHook.INSTANCE.addHookSo(".*\\.so$")
@@ -102,33 +104,45 @@ public class MainActivity extends AppCompatActivity {
                     @Override
                     public void run() {
 
-                        JNIObj.init();
-                        Log.d("Yves-debug", "before test");
-                        JNIObj.testThread();
+                        for (int i = 0; i < 100; i++) {
+                            Log.d("Yves-debug", "test thread " + i);
+                            JNIObj.testThread();
 
+                            HandlerThread ht = new HandlerThread("TestHandlerTh");
+                            ht.start();
 
-                        new Thread(new Runnable() {
-                            @Override
-                            public void run() {
-                                try {
-                                    Thread.sleep(3 * 1000);
-                                } catch (InterruptedException e) {
-                                    e.printStackTrace();
+                            new Handler(ht.getLooper()).post(new Runnable() {
+                                @Override
+                                public void run() {
+
+                                    new Thread(new Runnable() {
+                                        @Override
+                                        public void run() {
+                                            try {
+                                                Thread.sleep(1000);
+                                            } catch (InterruptedException e) {
+                                                e.printStackTrace();
+                                            }
+                                        }
+                                    }, "SubTestTh").start();
+
+                                    try {
+                                        Thread.sleep(3000);
+                                    } catch (InterruptedException e) {
+                                        e.printStackTrace();
+                                    }
                                 }
-                            }
-                        }, "AnotherJavaThread").start();
-
-                        try {
-                            Thread.sleep(3 * 1000);
-                        } catch (InterruptedException e) {
-                            e.printStackTrace();
+                            });
                         }
+
+
+
+
                     }
                 }, "[GT]MediaCodecR");
 
                 t.start();
 
-                new HandlerThread("MyHandlerThread").start();
 
                 try {
                     Thread.sleep(10 * 1000);
@@ -147,6 +161,22 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        findViewById(R.id.btn_concurrent_jni).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+
+                for (int i = 0; i < 100; i++) {
+
+                    new Thread(new Runnable() {
+                        @Override
+                        public void run() {
+                            JNIObj.testJNICall();
+                            JNIObj.testJNICall();
+                        }
+                    }).start();
+                }
+            }
+        });
 
         checkPermission();
 //        if (checkPermission()) {

@@ -18,6 +18,8 @@
 #include "utils.h"
 #include "unwindstack/Unwinder.h"
 
+#define ORIGINAL_LIB "libc++_shared.so"
+
 extern "C" typedef struct {
     size_t size;
     void *caller;
@@ -94,7 +96,7 @@ static inline void record_acquire_mem_unsafe(void *__caller,
         }
 
         auto ptr_stack_frames = new std::vector<unwindstack::FrameData>;
-        unwindstack::do_unwind(*ptr_stack_frames);
+        unwindstack::do_unwind(ptr_stack_frames);
 
         if (!ptr_stack_frames->empty()) {
             uint64_t stack_hash = hash(*ptr_stack_frames);
@@ -422,8 +424,6 @@ void memory_hook_on_dlopen(const char *__file_name) {
     }
     srand((unsigned int) time(NULL));
 }
-
-#define ORIGINAL_LIB "libc++_shared.so"
 
 DEFINE_HOOK_FUN(void *, malloc, size_t __byte_count) {
     CALL_ORIGIN_FUNC_RET(void*, p, malloc, __byte_count);

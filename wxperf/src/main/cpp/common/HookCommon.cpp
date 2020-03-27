@@ -13,7 +13,8 @@
 extern "C" {
 #endif
 
-std::vector<DLOPEN_CALLBACK> m_callbacks;
+std::vector<dlopen_callback_t> m_dlopen_callbacks;
+std::vector<hook_init_callback_t> m_init_callbacks;
 
 DEFINE_HOOK_FUN(void *, __loader_android_dlopen_ext, const char *__file_name,
                 int                                             __flag,
@@ -24,7 +25,7 @@ DEFINE_HOOK_FUN(void *, __loader_android_dlopen_ext, const char *__file_name,
 
     LOGD("Yves-debug", "call into dlopen hook");
 
-    for (auto &callback : m_callbacks) {
+    for (auto &callback : m_dlopen_callbacks) {
         callback(__file_name);
     }
 
@@ -33,20 +34,51 @@ DEFINE_HOOK_FUN(void *, __loader_android_dlopen_ext, const char *__file_name,
     return ret;
 }
 
-void add_dlopen_hook_callback(DLOPEN_CALLBACK __callback) {
-    m_callbacks.push_back(__callback);
+static void hook_common_init() {
+    for (auto &callback : m_init_callbacks) {
+        callback();
+    }
 }
 
-bool get_java_stacktrace(char *__stack) {
-    JNIEnv *env;
-    if (m_java_vm->GetEnv(reinterpret_cast<void **>(&env), JNI_VERSION_1_6) == JNI_OK) {
+void add_dlopen_hook_callback(dlopen_callback_t __callback) {
+    m_dlopen_callbacks.push_back(__callback);
+}
+
+void add_hook_init_callback(hook_init_callback_t __callback) {
+    m_init_callbacks.push_back(__callback);
+}
+
+bool get_java_stacktrace(char *__stack, size_t __size) {
+    JNIEnv *env = NULL;
+    bool attached = false;
+
+    if (m_java_vm->GetEnv((void **)&env, JNI_VERSION_1_6) != JNI_OK) {
+        if (m_java_vm->AttachCurrentThread(&env, NULL) == JNI_OK) {
+            attached = true;
+        } else {
+            return false;
+        }
+    }
+
+    if (env != NULL) {
+        LOGD("Yves-debug", "get_java_stacktrace call");
 
         jstring j_stacktrace = (jstring) env->CallStaticObjectMethod(m_class_HookManager, m_method_getStack);
+
+        LOGD("Yves-debug", "get_java_stacktrace called");
         const char *stack = env->GetStringUTFChars(j_stacktrace, NULL);
-        strcpy(__stack, stack);
-        LOGD("Yves-debug", "get_java_stacktrace: Java Stacktrace = \n%s", stack);
+        strncpy(__stack, stack, __size);
         env->ReleaseStringUTFChars(j_stacktrace, stack);
+        if (attached) {
+            m_java_vm->DetachCurrentThread();
+        }
+
         return true;
+    }
+
+    strncpy(__stack, "  null", __size);
+    if (attached) {
+        m_java_vm->DetachCurrentThread();
     }
     return false;
 }
@@ -54,7 +86,7 @@ bool get_java_stacktrace(char *__stack) {
 JNIEXPORT jint JNICALL
 Java_com_tencent_mm_performance_jni_HookManager_xhookRefreshNative(JNIEnv *env, jobject thiz,
                                                                   jboolean async) {
-    LOGD("Yves.debug", "refresh...");
+    hook_common_init();
     unwindstack::update_maps();
     return xhook_refresh(async);
 }
