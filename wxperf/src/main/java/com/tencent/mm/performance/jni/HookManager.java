@@ -36,6 +36,10 @@ public class HookManager {
             throw new HookFailedException("this process has already been hooked!");
         }
 
+        if (mHooks.isEmpty()) {
+            return;
+        }
+
         for (AbsHook hook : mHooks) {
             hook.onConfigure();
         }
