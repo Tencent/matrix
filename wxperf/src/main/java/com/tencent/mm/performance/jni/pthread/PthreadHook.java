@@ -12,7 +12,7 @@ import java.util.Set;
 /**
  * Created by Yves on 2020-03-11
  */
-public class PthreadHook implements AbsHook {
+public class PthreadHook extends AbsHook {
 
     static {
         LibWxPerfManager.INSTANCE.init();
@@ -92,7 +92,7 @@ public class PthreadHook implements AbsHook {
     }
 
     @Override
-    public void onHook() {
+    protected void onHook() {
         addHookSoNative(mHookSoSet.toArray(new String[0]));
         addIgnoreSoNative(mIgnoreSoSet.toArray(new String[0]));
     }

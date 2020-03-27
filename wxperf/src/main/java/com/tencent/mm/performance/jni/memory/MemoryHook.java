@@ -13,7 +13,7 @@ import java.util.Set;
 /**
  * Created by Yves on 2019-08-08
  */
-public class MemoryHook implements AbsHook {
+public class MemoryHook extends AbsHook {
 
     static {
         LibWxPerfManager.INSTANCE.init();
@@ -136,7 +136,7 @@ public class MemoryHook implements AbsHook {
     }
 
     @Override
-    public void onHook() {
+    protected void onHook() {
         addHookSoNative(mHookSoSet.toArray(new String[0]));
         addIgnoreSoNative(mIgnoreSoSet.toArray(new String[0]));
     }
