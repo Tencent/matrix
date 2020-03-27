@@ -1,6 +1,6 @@
 package com.tencent.mm.performance.jni;
 
-import android.util.Log;
+import android.support.annotation.Nullable;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -45,8 +45,10 @@ public class HookManager {
         exclusiveHook();
     }
 
-    public HookManager addHook(AbsHook hook) {
-        mHooks.add(hook);
+    public HookManager addHook(@Nullable AbsHook hook) {
+        if (hook != null) {
+            mHooks.add(hook);
+        }
         return this;
     }
 
