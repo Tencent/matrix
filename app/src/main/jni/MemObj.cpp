@@ -9,6 +9,9 @@
 #include <cstring>
 #include <vector>
 #include <sys/mman.h>
+#include <pthread.h>
+#include <iostream>
+#include <sstream>
 
 #define LOGD(TAG, FMT, args...) __android_log_print(ANDROID_LOG_DEBUG, TAG, FMT, ##args)
 
@@ -340,9 +343,9 @@ JNIEXPORT void JNICALL
 Java_com_tencent_mm_libwxperf_JNIObj_nullptr(JNIEnv *env, jobject instance, jobjectArray ss) {
 
     if (!ss) {
-        LOGD("Yves.debug", "ss is null");
+        LOGD("Yves-debug", "ss is null");
     } else {
-        LOGD("Yves.debug", "ss is not null");
+        LOGD("Yves-debug", "ss is not null");
     }
 
 }
@@ -352,7 +355,7 @@ Java_com_tencent_mm_libwxperf_JNIObj_dump(JNIEnv *env, jobject instance, jstring
 
     const char *path = env->GetStringUTFChars(path_, 0);
 
-    LOGD("Yves.debug", "path = %s", path);
+    LOGD("Yves-debug", "path = %s", path);
 //    dump();
 
     env->ReleaseStringUTFChars(path_, path);
@@ -409,6 +412,120 @@ Java_com_tencent_mm_libwxperf_JNIObj_dump(JNIEnv *env, jobject instance, jstring
 //
 //
 //    LOGD("Yves-sample", "<<<<<<<<<<<<<<<<<<<<end dump");
+}
+
+#define NAMELEN 16
+
+static void *
+threadfunc(void *parm)
+{
+    LOGD("Yves-debug", ">>>>new thread=%ld, tid=%d", pthread_self(), pthread_gettid_np(pthread_self()));
+    sleep(5);          // allow main program to set the thread name
+    return NULL;
+}
+
+
+#include <sys/prctl.h>
+
+static int read_thread_name(pthread_t __pthread, char *__buf, size_t __n) {
+    if (!__buf) {
+        return -1;
+    }
+
+    char proc_path[__n];
+
+    sprintf(proc_path, "/proc/self/task/%d/stat", pthread_gettid_np(__pthread));
+
+    FILE *file = fopen(proc_path, "r");
+
+    if (!file) {
+        LOGD("Yves-debug", "file not found: %s", proc_path);
+        return -1;
+    }
+
+    fscanf(file, "%*d (%[^)]", __buf);
+
+    fclose(file);
+
+    return 0;
+}
+
+static int wrap_pthread_getname_np(pthread_t __pthread, char* __buf, size_t __n) {
+#if __ANDROID_API__ >= 26
+    return pthread_getname_np(__pthread, __buf, __n);
+#else
+    return read_thread_name(__pthread, __buf, __n);
+#endif
+}
+
+JNIEXPORT void JNICALL
+Java_com_tencent_mm_libwxperf_JNIObj_testThread(JNIEnv *env, jclass clazz) {
+
+    pthread_t thread;
+    int rc;
+    char thread_name[NAMELEN];
+
+    rc = pthread_create(&thread, NULL, threadfunc, NULL);
+
+    pthread_setname_np(thread, "123456789ABCDEF");
+
+    if (rc != 0)
+        LOGD("Yves-debug","pthread_create: %d", rc);
+    LOGD("Yves-debug", "origin thread=%ld, tid=%d", pthread_self(), pthread_gettid_np(pthread_self()));
+
+    wrap_pthread_getname_np(thread, thread_name, 16);
+
+    LOGD("Yves-debug","Created a thread. Default name is: %s", thread_name);
+}
+
+pthread_key_t key;
+
+void dest(void *arg) {
+    LOGD("Yves-debug", "dest is running on %ld arg=%p, *arg=%d", pthread_self(), arg, *(int *)arg);
+}
+
+void *threadfunc2(void *arg) {
+    LOGD("Yves-debug", "setting specific");
+    pthread_t pthread = pthread_self();
+    pthread_setspecific(key, arg);
+
+    int *pa = static_cast<int *>(pthread_getspecific(key));
+
+    LOGD("Yves-debug", "in thread arg = %p, pa=%p, *pa=%d", arg, pa, *pa);
+    return NULL;
+}
+
+JNIEXPORT void JNICALL
+Java_com_tencent_mm_libwxperf_JNIObj_testThreadSpecific(JNIEnv *env, jclass clazz) {
+    if (!key) {
+        pthread_key_create(&key, dest);
+    }
+    pthread_t thread1;
+
+    int *a = new int;
+    *a = 10086;
+
+    LOGD("Yves-debug", "origin a = %p", a);
+
+    pthread_create(&thread1, NULL, threadfunc2, a);
+    LOGD("Yves-debug", "creating thread thread1 %ld", thread1);
+//    pthread_join(thread1, NULL);
+}
+
+JNIEXPORT void JNICALL
+Java_com_tencent_mm_libwxperf_JNIObj_testJNICall(JNIEnv *env, jclass clazz) {
+
+    jclass j_jniobj = env->FindClass("com/tencent/mm/libwxperf/JNIObj");
+    if (j_jniobj) {
+        jmethodID method = env->GetStaticMethodID(j_jniobj, "calledByJNI", "()V");
+        if (method) {
+            LOGD("Yves-debug", "before call java");
+            env->CallStaticVoidMethod(j_jniobj, method);
+            LOGD("Yves-debug", "after call java");
+        }
+    } else {
+        LOGD("Yves-debug", "class not found");
+    }
 }
 
 #ifdef __cplusplus

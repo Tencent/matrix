@@ -4,6 +4,7 @@
 
 #include <dlfcn.h>
 #include "StackTrace.h"
+#include "JNICommon.h"
 
 namespace unwindstack {
 
@@ -11,7 +12,15 @@ namespace unwindstack {
 
     static bool has_inited = false;
 
+    static pthread_mutex_t unwind_mutex = PTHREAD_MUTEX_INITIALIZER;
+
     void update_maps() {
+        pthread_mutex_lock(&unwind_mutex);
+//        while (pthread_mutex_trylock(&unwind_mutex) != 0) {
+//            LOGE("Yves.unwind", "try lock failed");
+//            sleep(1);
+//        }
+
         if (!localMaps) {
             localMaps = new LocalMaps;
         } else {
@@ -20,55 +29,27 @@ namespace unwindstack {
         }
         if (!localMaps->Parse()) {
             LOGE("Yves.unwind", "Failed to parse map data.");
+            pthread_mutex_unlock(&unwind_mutex);
             return;
         } else {
             has_inited = true;
         }
+        pthread_mutex_unlock(&unwind_mutex);
     }
 
-//    void do_unwind(uint64_t **p_stacks, size_t *p_stack_size) {
-//        if (!has_inited) {
-//            LOGE("Yves.unwind", "libunwindstack was not inited");
-//            return;
-//        }
-//
-//        static Regs *regs = Regs::CreateFromLocal();
-//        RegsGetLocal(regs);
-//        if (regs == nullptr) {
-//            LOGE("Yves.unwind", "Unable to get remote reg data");
-//            return;
-//        }
-//
-//        auto process_memory = Memory::CreateProcessMemory(getpid());
-//        Unwinder unwinder(128, localMaps, regs, process_memory);
-//        JitDebug jit_debug(process_memory);
-//        unwinder.SetJitDebug(&jit_debug, regs->Arch());
-//        unwinder.Unwind();
-//
-//        LOGD("Yves.unwind", "unwind done");
-//        // Print the frames.
-//        *p_stack_size = unwinder.NumFrames();
-//        *p_stacks = static_cast<uint64_t *>(malloc(sizeof(uint64_t) * (*p_stack_size + 1)));
-//
-//        auto *p_frames = new std::vector<FrameData>;
-//        auto frames = unwinder.frames();
-//        (*p_frames) = frames;
-//
-//        for (size_t i = 0; i < unwinder.NumFrames(); i++) {
-//            (*p_stacks)[i] = frames[i].pc;
-//        }
-//    }
-
-    void do_unwind(std::vector<FrameData> &dst) {
+    void do_unwind(std::vector<FrameData> *dst) {
         if (!has_inited) {
             LOGE("Yves.unwind", "libunwindstack was not inited");
             return;
         }
 
+        pthread_mutex_lock(&unwind_mutex);
+
         static Regs *regs = Regs::CreateFromLocal();
         RegsGetLocal(regs);
         if (regs == nullptr) {
             LOGE("Yves.unwind", "Unable to get remote reg data");
+            pthread_mutex_unlock(&unwind_mutex);
             return;
         }
 
@@ -83,6 +64,7 @@ namespace unwindstack {
 //            LOGD("Yves.unwind", "~~~~~~~~~~~~~%s", unwinder.FormatFrame(i).c_str());
 //        }
 
-        dst = unwinder.frames();
+        *dst = unwinder.frames();
+        pthread_mutex_unlock(&unwind_mutex);
     }
 }

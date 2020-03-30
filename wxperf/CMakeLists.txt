@@ -19,9 +19,13 @@ set(
         ${SOURCE_DIR}/fd/FDInfoReader.cpp
         ${SOURCE_DIR}/memory/MemoryHookJNI.cpp
         ${SOURCE_DIR}/memory/MemoryHook.cpp
-        ${SOURCE_DIR}/memory/lock.cpp
-        ${SOURCE_DIR}/memory/StackTrace.cpp
-        ${SOURCE_DIR}/memory/utils.cpp
+        ${SOURCE_DIR}/common/lock.cpp
+        ${SOURCE_DIR}/common/StackTrace.cpp
+        ${SOURCE_DIR}/common/utils.cpp
+        ${SOURCE_DIR}/common/JNICommon.cpp
+        ${SOURCE_DIR}/common/HookCommon.cpp
+        ${SOURCE_DIR}/pthread/PthreadHook.cpp
+        ${SOURCE_DIR}/pthread/PthreadHookJNI.cpp
 )
 
 add_library( # Specifies the name of the library.
@@ -40,7 +44,7 @@ add_subdirectory(${SOURCE_DIR}/external/libunwindstack)
 
 target_include_directories(
         wxperf
-        PRIVATE ${SOURCE_DIR}/include
+        PRIVATE ${SOURCE_DIR}/common
         PRIVATE ${SOURCE_DIR}/external/libxhook
         PRIVATE ${SOURCE_DIR}/external/libunwindstack/include
 )

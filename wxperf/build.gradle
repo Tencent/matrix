@@ -3,7 +3,7 @@ apply plugin: 'com.android.library'
 apply from: rootProject.file('gradle/WeChatPublish.gradle')
 
 group 'com.tencent.mm'
-version '1.2.4'
+version '1.2.5'
 artifactId = 'wxperf-jni'
 
 android {

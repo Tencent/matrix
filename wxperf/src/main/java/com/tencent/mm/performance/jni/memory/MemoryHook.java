@@ -1,6 +1,10 @@
 package com.tencent.mm.performance.jni.memory;
 
-import com.tencent.mm.performance.jni.BuildConfig;
+import android.text.TextUtils;
+import android.util.Log;
+
+import com.tencent.mm.performance.jni.AbsHook;
+import com.tencent.mm.performance.jni.HookManager;
 import com.tencent.mm.performance.jni.LibWxPerfManager;
 
 import java.util.HashSet;
@@ -9,10 +13,13 @@ import java.util.Set;
 /**
  * Created by Yves on 2019-08-08
  */
-public class MemoryHook {
+public class MemoryHook extends AbsHook {
 
-//    public static final String HOOK_STATE_NONE = "none";
-//    public static final String HOOK_STATE_HOOK = "hook";
+    static {
+        LibWxPerfManager.INSTANCE.init();
+    }
+
+    public static final MemoryHook INSTANCE = new MemoryHook();
 
     private Set<String> mHookSoSet   = new HashSet<>();
     private Set<String> mIgnoreSoSet = new HashSet<>();
@@ -21,19 +28,13 @@ public class MemoryHook {
     private int     mMaxTraceSize;
     private double  mSampling = 1;
     private boolean mEnableStacktrace;
-
-    static {
-        LibWxPerfManager.INSTANCE.init();
-    }
-
-    public static final MemoryHook INSTANCE = new MemoryHook();
+    private boolean mEnableMmap;
 
     private MemoryHook() {
-        xhookInitNative();
     }
 
     public MemoryHook addHookSo(String regex) {
-        if (regex == null || regex.length() <= 0) {
+        if (TextUtils.isEmpty(regex)) {
             throw new IllegalArgumentException("regex = " + regex);
         }
         mHookSoSet.add(regex);
@@ -41,17 +42,14 @@ public class MemoryHook {
     }
 
     public MemoryHook addHookSo(String... regexArr) {
-        for (String s : regexArr) {
-            if (s == null || s.length() <= 0) {
-                throw new IllegalArgumentException("regex = " + s);
-            }
-            mHookSoSet.add(s);
+        for (String regex : regexArr) {
+            addHookSo(regex);
         }
         return this;
     }
 
     public MemoryHook addIgnoreSo(String regex) {
-        if (regex == null || regex.length() <= 0) {
+        if (TextUtils.isEmpty(regex)) {
             return this;
         }
         mIgnoreSoSet.add(regex);
@@ -59,11 +57,8 @@ public class MemoryHook {
     }
 
     public MemoryHook addIgnoreSo(String... regexArr) {
-        for (String s : regexArr) {
-            if (s == null || s.length() <= 0) {
-                continue;
-            }
-            mIgnoreSoSet.add(s);
+        for (String regex : regexArr) {
+            addIgnoreSo(regex);
         }
         return this;
     }
@@ -74,7 +69,8 @@ public class MemoryHook {
     }
 
     /**
-     *  >= 0, 0 表示不限制
+     * >= 0, 0 表示不限制
+     *
      * @param size
      * @return
      */
@@ -84,7 +80,8 @@ public class MemoryHook {
     }
 
     /**
-     *  0 或 > minSize, 0 表示不限制
+     * 0 或 > minSize, 0 表示不限制
+     *
      * @param size
      * @return
      */
@@ -95,6 +92,7 @@ public class MemoryHook {
 
     /**
      * [0,1]
+     *
      * @param sampling
      * @return
      */
@@ -107,27 +105,40 @@ public class MemoryHook {
     }
 
     public MemoryHook enableMmapHook(boolean enable) {
-        enableMmapHookNative(enable);
+        mEnableMmap = enable;
         return this;
     }
 
-    public void hook() {
-        xhookRegisterNative(mHookSoSet.toArray(new String[0]));
-        xhookIgnoreNative(mIgnoreSoSet.toArray(new String[0]));
+    /**
+     * notice: it is an exclusive interface
+     */
+    public void hook() throws HookManager.HookFailedException {
+        HookManager.INSTANCE
+                .clearHooks()
+                .addHook(this)
+                .commitHooks();
+    }
 
+    @Override
+    public void onConfigure() {
         if (mMinTraceSize < 0 || (mMaxTraceSize != 0 && mMaxTraceSize < mMinTraceSize)) {
             throw new IllegalArgumentException("sizes should not be negative and maxSize should be " +
                     "0 or greater than minSize: min = " + mMinTraceSize + ", max = " + mMaxTraceSize);
         }
 
+        Log.d("Yves.debug", "enable mmap? " + mEnableMmap);
+        enableMmapHookNative(mEnableMmap);
+
         setSampleSizeRangeNative(mMinTraceSize, mMaxTraceSize);
         setSamplingNative(mSampling);
 
         enableStacktraceNative(mEnableStacktrace);
-        xhookEnableDebugNative(BuildConfig.DEBUG);
-        xhookEnableSigSegvProtectionNative(!BuildConfig.DEBUG);
-        groupByMemorySize(true);
-        xhookRefreshNative(false);
+    }
+
+    @Override
+    protected void onHook() {
+        addHookSoNative(mHookSoSet.toArray(new String[0]));
+        addIgnoreSoNative(mIgnoreSoSet.toArray(new String[0]));
     }
 
     public void dump(String into) {
@@ -135,8 +146,6 @@ public class MemoryHook {
     }
 
     private native void dumpNative(String path);
-
-    private native void groupByMemorySize(boolean enable);
 
     private native void setSamplingNative(double sampling);
 
@@ -146,18 +155,8 @@ public class MemoryHook {
 
     private native void enableMmapHookNative(boolean enable);
 
-    private native void xhookRegisterNative(String[] hookSoList);
+    private native void addHookSoNative(String[] hookSoList);
 
-    private native void xhookIgnoreNative(String[] ignoreSoList);
-
-    private native void xhookInitNative();
-
-    private native void xhookClearNative();
-
-    private native int xhookRefreshNative(boolean async);
-
-    private native void xhookEnableDebugNative(boolean flag);
-
-    private native void xhookEnableSigSegvProtectionNative(boolean flag);
+    private native void addIgnoreSoNative(String[] ignoreSoList);
 }
 

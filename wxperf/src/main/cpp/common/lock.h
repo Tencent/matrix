@@ -15,8 +15,9 @@ extern "C" {
 
 //    void acquire_lock_log();
 
+// fixme deprecated
     void acquire_lock();
-
+// fixme deprecated
     void release_lock();
 
 #ifdef __cplusplus
