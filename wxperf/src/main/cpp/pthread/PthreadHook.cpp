@@ -55,20 +55,24 @@ struct regex_wrapper {
 static pthread_mutex_t     m_pthread_meta_mutex;
 static pthread_mutexattr_t attr;
 
-static pthread_mutex_t m_unwind_mutex = PTHREAD_MUTEX_INITIALIZER;
-
-
 static std::unordered_map<pthread_t, pthread_meta_t> m_pthread_metas;
 static std::set<regex_wrapper>                       m_hook_thread_name_regex;
 
 static pthread_key_t m_key;
+//static pthread_mutex_t m_key_mutex = PTHREAD_MUTEX_INITIALIZER;
 //static pthread_cond_t m_wrapper_cond = PTHREAD_COND_INITIALIZER;
+
+static void on_pthread_destroy(void *__specific);
 
 void pthread_hook_init() {
     LOGD(TAG, "pthread_hook_init");
     pthread_mutexattr_init(&attr);
     pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
     pthread_mutex_init(&m_pthread_meta_mutex, &attr);
+
+    if (!m_key) {
+        pthread_key_create(&m_key, on_pthread_destroy);
+    }
 }
 
 void add_hook_thread_name(const char *__regex_str) {
@@ -314,7 +318,7 @@ void pthread_hook_on_dlopen(const char *__file_name) {
     LOGD(TAG, "pthread_hook_on_dlopen end");
 }
 
-void on_pthread_destroy(void *__specific) {
+static void on_pthread_destroy(void *__specific) {
     LOGD(TAG, "on_pthread_destroy");
     pthread_mutex_lock(&m_pthread_meta_mutex);
 
@@ -357,14 +361,10 @@ void on_pthread_destroy(void *__specific) {
     LOGD(TAG, "on_pthread_destroy end");
 }
 
-void *pthread_routine_wrapper(void *__arg) {
+static void *pthread_routine_wrapper(void *__arg) {
 
     auto *specific = (char *) malloc(sizeof(char));
     *specific = 'P';
-
-    if (!m_key) {
-        pthread_key_create(&m_key, on_pthread_destroy);
-    }
 
     pthread_setspecific(m_key, specific);
 
