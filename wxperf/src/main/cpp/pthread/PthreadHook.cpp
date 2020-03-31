@@ -78,12 +78,12 @@ void add_hook_thread_name(const char *__regex_str) {
         LOGE("PthreadHook", "regex compiled error: %s", __regex_str);
         return;
     }
-    size_t len          = sizeof(__regex_str) + sizeof(char);
+    size_t len          = strlen(__regex_str) + 1;
     char   *p_regex_str = static_cast<char *>(malloc(len));
     strncpy(p_regex_str, __regex_str, len);
     regex_wrapper w_regex(p_regex_str, regex);
     m_hook_thread_name_regex.insert(w_regex);
-    LOGD(TAG, "parent name regex: %s", __regex_str);
+    LOGD(TAG, "parent name regex: %s -> %s, len = %d", __regex_str, p_regex_str, len);
 }
 
 static int read_thread_name(pthread_t __pthread, char *__buf, size_t __n) {
