@@ -139,6 +139,7 @@ static void unwind_pthread_stacktrace(pthread_meta_t &__meta) {
 //    为什么这样写会挂？ *dst = unwinder.frames() 时 Fault Address
 //    __meta.native_stacktrace = new std::vector<unwindstack::FrameData>;
     auto *tmp_ns= new std::vector<unwindstack::FrameData>;
+    tmp_ns->reserve(16 * 2);
     unwindstack::do_unwind(tmp_ns);
     __meta.native_stacktrace = tmp_ns;
 
