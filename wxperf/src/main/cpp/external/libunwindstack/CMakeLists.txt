@@ -15,6 +15,7 @@ SET(
         ${CMAKE_CURRENT_SOURCE_DIR}/Elf.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/ElfInterface.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/ElfInterfaceArm.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/ElfInterfaceArm64.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/JitDebug.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/Log.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/MapInfo.cpp
@@ -30,6 +31,7 @@ SET(
         ${CMAKE_CURRENT_SOURCE_DIR}/Unwinder.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/Symbols.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/MemFnWrapper.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/EnhanceDlsym.cpp
 )
 
 IF(${ANDROID_ABI} STREQUAL x86)

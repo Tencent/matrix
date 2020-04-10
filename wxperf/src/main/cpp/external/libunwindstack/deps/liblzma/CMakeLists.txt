@@ -55,7 +55,7 @@ TARGET_COMPILE_OPTIONS(
   ${TARGET}
   PUBLIC -D_7ZIP_ST
   PUBLIC -Wall
-  PUBLIC -Werror
+#  PUBLIC -Werror
   PUBLIC -Wno-unused-value
   PUBLIC -Wno-empty-body
   PUBLIC -Wno-self-assign

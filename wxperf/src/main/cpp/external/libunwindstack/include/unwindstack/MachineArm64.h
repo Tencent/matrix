@@ -59,6 +59,7 @@ enum Arm64Reg : uint16_t {
 
   ARM64_REG_SP = ARM64_REG_R31,
   ARM64_REG_LR = ARM64_REG_R30,
+  ARM64_REG_FP = ARM64_REG_R29,
 };
 
 }  // namespace unwindstack

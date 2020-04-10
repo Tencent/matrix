@@ -26,6 +26,8 @@ set(
         ${SOURCE_DIR}/common/HookCommon.cpp
         ${SOURCE_DIR}/pthread/PthreadHook.cpp
         ${SOURCE_DIR}/pthread/PthreadHookJNI.cpp
+        ${SOURCE_DIR}/dlsym/EnhanceDlsym.cpp
+        ${SOURCE_DIR}/test/UnwindTestJNI.cpp
 )
 
 add_library( # Specifies the name of the library.

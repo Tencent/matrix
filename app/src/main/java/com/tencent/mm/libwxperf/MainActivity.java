@@ -17,6 +17,7 @@ import com.tencent.mm.performance.jni.HookManager;
 import com.tencent.mm.performance.jni.fd.FDDumpBridge;
 import com.tencent.mm.performance.jni.memory.MemoryHook;
 import com.tencent.mm.performance.jni.pthread.PthreadHook;
+import com.tencent.mm.performance.jni.test.UnwindTest;
 
 import java.io.File;
 import java.util.Map;
@@ -35,16 +36,16 @@ public class MainActivity extends AppCompatActivity {
             HookManager.INSTANCE
                     .addHook(MemoryHook.INSTANCE
                             .addHookSo(".*libnative-lib\\.so$")
-                            .enableStacktrace(true)
+                            .enableStacktrace(false)
                             .enableMmapHook(true))
-                    .addHook(PthreadHook.INSTANCE
-//                            .addHookSo(".*libnative-lib\\.so$")
-                            .addHookSo(".*\\.so$")
-//                            .addIgnoreSo(".*libart\\.so$")
-                            .addHookThread(".*")
-//                            .addHookThread("MyHandlerThread")
-//                            .addHookThread("\\[GT\\]MediaCodecR$")
-                    )
+//                    .addHook(PthreadHook.INSTANCE
+////                            .addHookSo(".*libnative-lib\\.so$")
+//                            .addHookSo(".*\\.so$")
+////                            .addIgnoreSo(".*libart\\.so$")
+//                            .addHookThread(".*")
+////                            .addHookThread("MyHandlerThread")
+////                            .addHookThread("\\[GT\\]MediaCodecR$")
+//                    )
                     .commitHooks();
 
 //            PthreadHook.INSTANCE.addHookSo(".*\\.so$")
@@ -175,6 +176,13 @@ public class MainActivity extends AppCompatActivity {
                         }
                     }).start();
                 }
+            }
+        });
+
+        findViewById(R.id.btn_unwind).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                UnwindTest.test();
             }
         });
 

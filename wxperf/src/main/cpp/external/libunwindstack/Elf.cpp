@@ -33,6 +33,7 @@
 
 #include "ElfInterfaceArm.h"
 #include "Symbols.h"
+#include "ElfInterfaceArm64.h"
 
 namespace unwindstack {
 
@@ -272,6 +273,9 @@ ElfInterface* Elf::CreateInterfaceFromMemory(Memory* memory) {
     machine_type_ = e_machine;
     if (e_machine == EM_AARCH64) {
       arch_ = ARCH_ARM64;
+      ElfInterfaceArm64 *elfInterfaceArm64 = new ElfInterfaceArm64(memory);
+      interface.reset(elfInterfaceArm64);
+      return interface.release();
     } else if (e_machine == EM_X86_64) {
       arch_ = ARCH_X86_64;
     } else if (e_machine == EM_MIPS) {

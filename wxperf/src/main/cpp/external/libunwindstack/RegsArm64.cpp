@@ -43,6 +43,22 @@ uint64_t RegsArm64::sp() {
   return regs_[ARM64_REG_SP];
 }
 
+uint64_t RegsArm64::lr() {
+  return regs_[ARM64_REG_LR];
+}
+
+uint64_t RegsArm64::fp() {
+  return regs_[ARM64_REG_FP];
+}
+
+void RegsArm64::set_lr(uint64_t lr) {
+  regs_[ARM64_REG_LR] = lr;
+}
+
+void RegsArm64::set_fp(uint64_t fp) {
+  regs_[ARM64_REG_FP] = fp;
+}
+
 void RegsArm64::set_pc(uint64_t pc) {
   regs_[ARM64_REG_PC] = pc;
 }
