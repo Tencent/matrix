@@ -182,7 +182,12 @@ public class MainActivity extends AppCompatActivity {
         findViewById(R.id.btn_unwind).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                UnwindTest.test();
+                UnwindTest.init();
+                for (int i = 0; i < 10; i++) {
+                    long begin = System.nanoTime();
+                    UnwindTest.test();
+                    Log.d("Unwind-test", "unwind cost: " + (System.nanoTime() - begin));
+                }
             }
         });
 

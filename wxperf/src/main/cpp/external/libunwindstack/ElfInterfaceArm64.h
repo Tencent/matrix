@@ -40,8 +40,8 @@ namespace unwindstack {
 
     private:
         vector<RegsArm64> prologueFrames;
-        uint64_t          stackLimitMax;
-        uint64_t          stackLimitMin;
+        uint64_t stackLimitMax;
+        uint64_t stackLimitMin;
     };
 
 //    mutex mMutex;
@@ -61,58 +61,19 @@ namespace unwindstack {
             return INSTANCE;
         }
 
-        bool ShouldFallback(uintptr_t pc) {
-            LOGD(TAG, "checking %lu", pc);
-
-            for (const auto &range : mSkipFunctions) {
-                if (range.first < pc && pc < range.second) {
-                    return true;
-                }
-            }
-            return false;
-        }
+        bool ShouldFallback(uintptr_t pc);
 
     private:
 
-        FallbackPCRange() {
-            void *trampoline;
-            if (nullptr !=
-                (trampoline = EnhanceDlsym::getInstance()->dlsym(
-                        "/apex/com.android.runtime/lib64/libart.so",
-                        "art_quick_generic_jni_trampoline"))) {
-
-                mSkipFunctions.push_back({reinterpret_cast<uintptr_t>(trampoline),
-                                          reinterpret_cast<uintptr_t>(trampoline) + 0x27C});
-            }
-
-            LOGD(TAG, "trampoline %p", trampoline);
-
-            void *art_quick_invoke_static_stub;
-            if (nullptr != (art_quick_invoke_static_stub = EnhanceDlsym::getInstance()->dlsym(
-                    "/apex/com.android.runtime/lib64/libart.so", "art_quick_invoke_static_stub"))) {
-                mSkipFunctions.push_back(
-                        {reinterpret_cast<uintptr_t >(art_quick_invoke_static_stub),
-                         reinterpret_cast<uintptr_t >(art_quick_invoke_static_stub) + 0x280});
-            }
-
-            LOGD(TAG, "art_quick_invoke_static_stub %p", art_quick_invoke_static_stub);
-
-            void *jvalue;
-            if (nullptr != (jvalue = EnhanceDlsym::getInstance()->dlsym(
-                    "/apex/com.android.runtime/lib64/libart.so",
-                    "_ZN3art9ArtMethod6InvokeEPNS_6ThreadEPjjPNS_6JValueEPKc"))) {
-                mSkipFunctions.push_back({reinterpret_cast<uintptr_t>(jvalue),
-                                          reinterpret_cast<uintptr_t>(jvalue) + 0x228});
-            }
-
-            LOGD(TAG, "jvalue %p", jvalue);
-        };
+        FallbackPCRange();
 
         ~FallbackPCRange() {};
 
         FallbackPCRange(const FallbackPCRange &);
 
         FallbackPCRange &operator=(const FallbackPCRange &);
+
+        void SkipDexPC();
 
         vector<pair<uintptr_t, uintptr_t>> mSkipFunctions;
 

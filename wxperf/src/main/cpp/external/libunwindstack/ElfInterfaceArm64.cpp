@@ -13,6 +13,7 @@
 #include <android/log.h>
 #include <cinttypes>
 #include <string>
+#include <fstream>
 
 #include "ElfInterfaceArm64.h"
 
@@ -20,20 +21,15 @@ namespace unwindstack {
 
     uint64_t prolo_prologue[4] = {0};
     uint64_t dwarf_prologue[4] = {0};
-//    uint64_t dwarf_unwind[4] = {0};
 
-//    bool IsOnStack(void *) {
-//
-//    }
-
-
-    bool ElfInterfaceArm64::PreStep(uint64_t pc, uint64_t load_bias, Regs *regs, Memory *process_memory,
-                 bool *finished) {
+    bool
+    ElfInterfaceArm64::PreStep(uint64_t pc, uint64_t load_bias, Regs *regs, Memory *process_memory,
+                               bool *finished) {
 
         RegsArm64 *cur_regs_arm64;
         cur_regs_arm64 = dynamic_cast<RegsArm64 *>(regs);
 
-        void * cur_fp = reinterpret_cast<void *>(cur_regs_arm64->fp());
+        void *cur_fp = reinterpret_cast<void *>(cur_regs_arm64->fp());
         memcpy(dwarf_prologue, cur_fp, 0x10);
 
         uint64_t next_sp = cur_regs_arm64->fp() + 0x10;
@@ -42,8 +38,6 @@ namespace unwindstack {
 
         uint64_t next_pc = dwarf_prologue[1];
         dwarf_prologue[3] = next_pc;
-
-//        dwarf_prolog
 
         RegsArm64 cur_regs_arm64_prologue;
         if (!prologueFrames.empty()) {
@@ -55,7 +49,8 @@ namespace unwindstack {
         }
 
         cur_fp = reinterpret_cast<void *>(cur_regs_arm64_prologue.fp());
-        if ((uint64_t)cur_fp > stackLimitMax || (uint64_t)cur_fp <= stackLimitMin) {
+        if (FallbackPCRange::GetInstance()->ShouldFallback(cur_regs_arm64_prologue.pc()) ||
+            (uint64_t) cur_fp > stackLimitMax || (uint64_t) cur_fp <= stackLimitMin) {
             memset(prolo_prologue, 0, sizeof(prolo_prologue));
             return true;
         }
@@ -79,36 +74,62 @@ namespace unwindstack {
         return true;
     }
 
-    bool ElfInterfaceArm64::PostStep(uint64_t pc, uint64_t load_bias, Regs *regs, Memory *process_memory,
-                  bool *finished) {
+    bool
+    ElfInterfaceArm64::PostStep(uint64_t pc, uint64_t load_bias, Regs *regs, Memory *process_memory,
+                                bool *finished) {
 
         RegsArm64 *regs_arm64 = dynamic_cast<RegsArm64 *>(regs);
 
-//        dwarf_unwind[0] = regs_arm64->fp();
-//        dwarf_unwind[1] = regs_arm64->lr();
-
         uint64_t rel_pc = 0;
 
-//        MapInfo *mapInfo = maps_->Find(prolo_prologue[3]);
-//        if (mapInfo) {
-//            Memory memory_copy = *process_memory;
-//            LOGD("Yves-Test", "mapinfo = %s", mapInfo->name.c_str());
-//            std::shared_ptr<Memory> sp_memory = std::shared_ptr<Memory>(&memory_copy);
-//            Elf *elf = mapInfo->GetElf(sp_memory, maps_);
-//            LOGD("Yves-Test", "elf = %p", elf);
-//            rel_pc = elf->GetRelPc(prolo_prologue[3], mapInfo);
-//        }
-
-        LOGD("Unwind-debug", "prolo_prolog [X29fp, X30lr, X31sp, X32pc] = [%lu,%lu,%lu,%lu,%lu]", prolo_prologue[0], prolo_prologue[1], prolo_prologue[2], prolo_prologue[3], rel_pc);
-        LOGD("Unwind-debug", "dwarf_prolog [X29fp, X30lr, X31sp, X32pc] = [%lu,%lu,%lu,%lu]", dwarf_prologue[0], dwarf_prologue[1], dwarf_prologue[2], dwarf_prologue[3]);
-        LOGD("Unwind-debug", "dwarf_unwind [X29fp, X30lr, X31sp, X32pc] = [%lu,%lu,%lu,%lu]", regs_arm64->fp(), regs_arm64->lr(), regs_arm64->sp(), regs_arm64->pc());
+        LOGD("Unwind-debug", "prolo_prolog [X29fp, X30lr, X31sp, X32pc] = [%lu,%lu,%lu,%lu,%lu]",
+             prolo_prologue[0], prolo_prologue[1], prolo_prologue[2], prolo_prologue[3], rel_pc);
+        LOGD("Unwind-debug", "dwarf_prolog [X29fp, X30lr, X31sp, X32pc] = [%lu,%lu,%lu,%lu]",
+             dwarf_prologue[0], dwarf_prologue[1], dwarf_prologue[2], dwarf_prologue[3]);
+        LOGD("Unwind-debug", "dwarf_unwind [X29fp, X30lr, X31sp, X32pc] = [%lu,%lu,%lu,%lu]",
+             regs_arm64->fp(), regs_arm64->lr(), regs_arm64->sp(), regs_arm64->pc());
 
 
-        if (FallbackPCRange::GetInstance()->ShouldFallback(regs_arm64->pc())) {
-            LOGD(TAG, "should fallback %lu", regs_arm64->pc());
+        if (0 == prolo_prologue[0]) {
+            LOGD(TAG, "using dwarf step result");
+            prologueFrames.push_back(*regs_arm64);
         }
 
-        LOGD("Unwind-debug", "------ %d %d", dwarf_prologue[0] == regs_arm64->fp(), dwarf_prologue[1] == regs_arm64->lr());
+        LOGD("Unwind-debug", "----------------");
+
+        return true;
+    }
+
+    bool ElfInterfaceArm64::StepPrologue(uint64_t pc, uint64_t load_bias, Regs *regs,
+                                         Memory *process_memory, bool *finished) {
+
+        if (true) {
+            return false;
+        }
+
+        RegsArm64 *regs_arm64 = dynamic_cast<RegsArm64 *>(regs);
+
+        if (FallbackPCRange::GetInstance()->ShouldFallback(regs_arm64->pc())) {
+            return false;
+        }
+
+        void *cur_fp = reinterpret_cast<void *>(regs_arm64->fp());
+
+        uintptr_t next_fp_lr[2] = {0, 0};
+        memcpy(next_fp_lr, cur_fp, sizeof(next_fp_lr));
+
+        uintptr_t next_sp = regs_arm64->fp() + 0x10;
+        uintptr_t next_pc = next_fp_lr[1];
+
+//        LOGD("Unwind-debug", "StepPrologue [X29fp, X30lr, X31sp, X32pc] = [%lu,%lu,%lu,%lu]",
+//             next_fp_lr[0], next_fp_lr[1], next_sp, next_pc);
+
+        regs_arm64->set_fp(next_fp_lr[0]);
+        regs_arm64->set_lr(next_fp_lr[1]);
+        regs_arm64->set_sp(next_sp);
+        regs_arm64->set_pc(next_pc);
+
+        *finished = (regs_arm64->pc() == 0) ? true : false;
 
         return true;
     }
@@ -116,36 +137,108 @@ namespace unwindstack {
     bool
     ElfInterfaceArm64::Step(uint64_t pc, uint64_t load_bias, Regs *regs, Memory *process_memory,
                             bool *finished) {
-        // For Arm64 devices
-//        return StepPrologue(pc, load_bias, regs, process_memory, finished)
-//               || ElfInterface64::Step(pc, load_bias, regs, process_memory, finished);
+//         For Arm64 devices
+//        LOGD(TAG, "steping");
+        return StepPrologue(pc, load_bias, regs, process_memory, finished)
+               || ElfInterface64::Step(pc, load_bias, regs, process_memory, finished);
 
-        return PreStep(pc, load_bias, regs, process_memory, finished)
-        && ElfInterface64::Step(pc, load_bias, regs, process_memory, finished)
-        && PostStep(pc, load_bias, regs, process_memory, finished);
-    }
-
-    bool ElfInterfaceArm64::StepPrologue(uint64_t pc, uint64_t load_bias, Regs *regs,
-                                         Memory *process_memory, bool *finished) {
-
-        RegsArm64 *regs_arm64 = dynamic_cast<RegsArm64 *>(regs);
-
-        void * cur_fp = reinterpret_cast<void *>(regs_arm64->fp());
-
-        uint64_t pair[2] = {0, 0};
-
-        memcpy(pair, cur_fp, sizeof(pair));
-
-        LOGD("Unwind-debug", "regs[X29fp, X30lr, SP, PC] = [%lu, %lu, %lu, %lu]", regs_arm64->fp(), regs_arm64->lr(), regs_arm64->sp(), regs_arm64->pc());
-//        LOGD("Unwind-debug", "mem [X29, X30] = [%" PRIxPTR ", %" PRIxPTR "]", pair[0], pair[1]);
-        LOGD("Unwind-debug", "mem [X29fp, X30lr] = [%lu,%lu]", pair[0], pair[1]);
-
-        LOGD("Unwind-debug", "-------");
-
-
-        return false;
     }
 
     FallbackPCRange *FallbackPCRange::INSTANCE = nullptr;
+
     mutex FallbackPCRange::mMutex;
+
+    FallbackPCRange::FallbackPCRange() {
+
+        void *trampoline = EnhanceDlsym::getInstance()->dlsym(
+                "/apex/com.android.runtime/lib64/libart.so",
+                "art_quick_generic_jni_trampoline");
+        if (nullptr != trampoline) {
+            mSkipFunctions.push_back({reinterpret_cast<uintptr_t>(trampoline),
+                                      reinterpret_cast<uintptr_t>(trampoline) + 0x27C});
+        }
+
+//        LOGD(TAG, "trampoline %p", trampoline);
+
+        void *art_quick_invoke_static_stub = EnhanceDlsym::getInstance()->dlsym(
+                "/apex/com.android.runtime/lib64/libart.so",
+                "art_quick_invoke_static_stub");
+        if (nullptr != art_quick_invoke_static_stub) {
+            mSkipFunctions.push_back(
+                    {reinterpret_cast<uintptr_t >(art_quick_invoke_static_stub),
+                     reinterpret_cast<uintptr_t >(art_quick_invoke_static_stub) + 0x280});
+        }
+
+//        LOGD(TAG, "art_quick_invoke_static_stub %p", art_quick_invoke_static_stub);
+
+//        void *mterp_op_invoke_static = EnhanceDlsym::getInstance()->dlsym(
+//                "/apex/com.android.runtime/lib64/libart.so", "mterp_op_invoke_static");
+//
+//        if (nullptr != mterp_op_invoke_static) {
+//            mSkipFunctions.push_back({reinterpret_cast<uintptr_t>(mterp_op_invoke_static),
+//                                      reinterpret_cast<uintptr_t>(mterp_op_invoke_static) + 0x7C});
+//        }
+
+//        void *jvalue = EnhanceDlsym::getInstance()->dlsym(
+//                "/apex/com.android.runtime/lib64/libart.so",
+//                "_ZN3art9ArtMethod6InvokeEPNS_6ThreadEPjjPNS_6JValueEPKc");
+//        if (nullptr != jvalue) {
+//            mSkipFunctions.push_back({reinterpret_cast<uintptr_t>(jvalue),
+//                                      reinterpret_cast<uintptr_t>(jvalue) + 0x228});
+//        }
+
+        SkipDexPC();
+
+    }
+
+    static inline bool EndWith(std::string const &value, std::string const &ending) {
+        if (ending.size() > value.size()) {
+            return false;
+        }
+        return std::equal(ending.rbegin(), ending.rend(), value.rbegin());
+    }
+
+    void FallbackPCRange::SkipDexPC() {
+
+        uintptr_t map_base_addr;
+        uintptr_t map_end_addr;
+        char map_perm[5];
+
+        ifstream input("/proc/self/maps");
+        std::string aline;
+
+        while (getline(input, aline)) {
+            if (sscanf(aline.c_str(),
+                       "%" PRIxPTR "-%" PRIxPTR " %4s",
+                       &map_base_addr,
+                       &map_end_addr,
+                       map_perm) != 3) {
+                continue;
+            }
+
+            if ('r' == map_perm[0]
+                && 'x' == map_perm[2]
+                && 'p' == map_perm[3]
+                &&
+                (EndWith(aline, ".dex")
+                 || EndWith(aline, ".odex")
+                 || EndWith(aline, ".vdex"))) {
+
+                mSkipFunctions.push_back({map_base_addr, map_end_addr});
+            }
+        }
+    }
+
+    bool FallbackPCRange::ShouldFallback(uintptr_t pc) {
+//        LOGD(TAG, "checking %lu", pc);
+
+        for (const auto &range : mSkipFunctions) {
+//            LOGD(TAG, "{%lu, %lu}", range.first, range.second);
+            if (range.first < pc && pc < range.second) {
+//                LOGD(TAG, "ShouldFallback");
+                return true;
+            }
+        }
+        return false;
+    }
 }
