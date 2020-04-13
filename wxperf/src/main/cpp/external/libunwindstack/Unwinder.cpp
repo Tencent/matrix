@@ -107,11 +107,11 @@ void Unwinder::FillInFrame(MapInfo* map_info, Elf* elf, uint64_t rel_pc, uint64_
   frame->function_name = "";
   frame->function_offset = 0;
 
-  if (!resolve_names_ ||
-      !elf->GetFunctionName(func_pc, &frame->function_name, &frame->function_offset)) {
-    frame->function_name = "";
-    frame->function_offset = 0;
-  }
+//  if (!resolve_names_ ||
+//      !elf->GetFunctionName(func_pc, &frame->function_name, &frame->function_offset)) {
+//    frame->function_name = "";
+//    frame->function_offset = 0;
+//  }
 }
 
 static bool ShouldStop(const std::vector<std::string>* map_suffixes_to_ignore,

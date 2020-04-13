@@ -43,8 +43,8 @@ namespace unwindstack {
         if (!prologueFrames.empty()) {
             cur_regs_arm64_prologue = prologueFrames.back();
         } else {
-            stackLimitMax = cur_regs_arm64->sp() + 64 * 1024;
-            stackLimitMin = cur_regs_arm64->sp();
+            stackLimitMax           = cur_regs_arm64->sp() + 64 * 1024;
+            stackLimitMin           = cur_regs_arm64->sp();
             cur_regs_arm64_prologue = *cur_regs_arm64;
         }
 
@@ -103,17 +103,30 @@ namespace unwindstack {
     bool ElfInterfaceArm64::StepPrologue(uint64_t pc, uint64_t load_bias, Regs *regs,
                                          Memory *process_memory, bool *finished) {
 
-        if (true) {
+//        if (true) {
+//            return false;
+//        }
+
+        RegsArm64 *regs_arm64 = dynamic_cast<RegsArm64 *>(regs);
+        LOGD("Unwind-debug", "begin StrepPrologue cur [X29fp, X30lr, X31sp, X32pc] = [%lu,%lu,%lu,%lu]", regs_arm64->fp(), regs_arm64->lr(), regs_arm64->sp(), regs_arm64->pc());
+
+        *finished = regs_arm64->pc() == 0
+                || regs_arm64->fp() == 0
+                || regs_arm64->lr() == 0;
+
+        if (*finished) {
+            LOGD("Unwind-debug", "finish");
             return false;
         }
 
-        RegsArm64 *regs_arm64 = dynamic_cast<RegsArm64 *>(regs);
-
         if (FallbackPCRange::GetInstance()->ShouldFallback(regs_arm64->pc())) {
+            LOGE("Unwind-debug", "fallback for PC range ");
             return false;
         }
 
         void *cur_fp = reinterpret_cast<void *>(regs_arm64->fp());
+
+        // TODO check fp ?
 
         uintptr_t next_fp_lr[2] = {0, 0};
         memcpy(next_fp_lr, cur_fp, sizeof(next_fp_lr));
@@ -121,15 +134,24 @@ namespace unwindstack {
         uintptr_t next_sp = regs_arm64->fp() + 0x10;
         uintptr_t next_pc = next_fp_lr[1];
 
-//        LOGD("Unwind-debug", "StepPrologue [X29fp, X30lr, X31sp, X32pc] = [%lu,%lu,%lu,%lu]",
-//             next_fp_lr[0], next_fp_lr[1], next_sp, next_pc);
+        LOGD("Unwind-debug",
+             "StepPrologue [X29fp, X30lr, X31sp, X32pc] = [%lu,%lu,%lu,%lu] -> cur [X29fp, X30lr, X31sp, X32pc] = [%lu,%lu,%lu,%lu]",
+             next_fp_lr[0], next_fp_lr[1], next_sp, next_pc,
+             regs_arm64->fp(), regs_arm64->lr(), regs_arm64->sp(), regs_arm64->pc());
 
-        regs_arm64->set_fp(next_fp_lr[0]);
-        regs_arm64->set_lr(next_fp_lr[1]);
+        if (next_fp_lr[0] < regs_arm64->fp() || next_sp < regs_arm64->sp()) {
+            LOGE("Unwind-debug", "fallback for illegal fp sp");
+            return false;
+        }
+
+        LOGD("Unwind-debug", "Stepped");
+
         regs_arm64->set_sp(next_sp);
         regs_arm64->set_pc(next_pc);
+        regs_arm64->set_fp(next_fp_lr[0]);
+        regs_arm64->set_lr(next_fp_lr[1]);
 
-        *finished = (regs_arm64->pc() == 0) ? true : false;
+
 
         return true;
     }
@@ -139,8 +161,17 @@ namespace unwindstack {
                             bool *finished) {
 //         For Arm64 devices
 //        LOGD(TAG, "steping");
-        return StepPrologue(pc, load_bias, regs, process_memory, finished)
-               || ElfInterface64::Step(pc, load_bias, regs, process_memory, finished);
+        bool stepped = StepPrologue(pc, load_bias, regs, process_memory, finished);
+
+        if (!stepped) {
+//            LOGD("Unwind-debug", "not stepped, fallback to dwarf");
+            ElfInterface64::Step(pc, load_bias, regs, process_memory, finished);
+        }
+
+        return stepped;
+
+//        return StepPrologue(pc, load_bias, regs, process_memory, finished)
+//            || ElfInterface64::Step(pc, load_bias, regs, process_memory, finished);
 
     }
 
@@ -202,9 +233,9 @@ namespace unwindstack {
 
         uintptr_t map_base_addr;
         uintptr_t map_end_addr;
-        char map_perm[5];
+        char      map_perm[5];
 
-        ifstream input("/proc/self/maps");
+        ifstream    input("/proc/self/maps");
         std::string aline;
 
         while (getline(input, aline)) {

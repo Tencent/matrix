@@ -36,16 +36,16 @@ public class MainActivity extends AppCompatActivity {
             HookManager.INSTANCE
                     .addHook(MemoryHook.INSTANCE
                             .addHookSo(".*libnative-lib\\.so$")
-                            .enableStacktrace(false)
+                            .enableStacktrace(true)
                             .enableMmapHook(true))
-//                    .addHook(PthreadHook.INSTANCE
-////                            .addHookSo(".*libnative-lib\\.so$")
-//                            .addHookSo(".*\\.so$")
-////                            .addIgnoreSo(".*libart\\.so$")
-//                            .addHookThread(".*")
-////                            .addHookThread("MyHandlerThread")
-////                            .addHookThread("\\[GT\\]MediaCodecR$")
-//                    )
+                    .addHook(PthreadHook.INSTANCE
+//                            .addHookSo(".*libnative-lib\\.so$")
+                            .addHookSo(".*\\.so$")
+//                            .addIgnoreSo(".*libart\\.so$")
+                            .addHookThread(".*")
+//                            .addHookThread("MyHandlerThread")
+//                            .addHookThread("\\[GT\\]MediaCodecR$")
+                    )
                     .commitHooks();
 
 //            PthreadHook.INSTANCE.addHookSo(".*\\.so$")
@@ -186,7 +186,7 @@ public class MainActivity extends AppCompatActivity {
                 for (int i = 0; i < 10; i++) {
                     long begin = System.nanoTime();
                     UnwindTest.test();
-                    Log.d("Unwind-test", "unwind cost: " + (System.nanoTime() - begin));
+                    Log.i("Unwind-test", "unwind cost: " + (System.nanoTime() - begin));
                 }
             }
         });

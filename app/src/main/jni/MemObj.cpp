@@ -432,7 +432,7 @@ static int read_thread_name(pthread_t __pthread, char *__buf, size_t __n) {
         return -1;
     }
 
-    char proc_path[__n];
+    char proc_path[256];
 
     sprintf(proc_path, "/proc/self/task/%d/stat", pthread_gettid_np(__pthread));
 

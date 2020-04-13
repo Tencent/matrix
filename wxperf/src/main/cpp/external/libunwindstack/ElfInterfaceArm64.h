@@ -8,9 +8,9 @@
 #include <unwindstack/RegsArm64.h>
 #include <unwindstack/EnhanceDlsym.h>
 
-#define LOGD(TAG, FMT, args...) __android_log_print(ANDROID_LOG_DEBUG, TAG, FMT, ##args)
+#define LOGD(TAG, FMT, args...) //__android_log_print(ANDROID_LOG_DEBUG, TAG, FMT, ##args)
 #define LOGI(TAG, FMT, args...) //__android_log_print(ANDROID_LOG_INFO, TAG, FMT, ##args)
-#define LOGE(TAG, FMT, args...) __android_log_print(ANDROID_LOG_ERROR, TAG, FMT, ##args)
+#define LOGE(TAG, FMT, args...) //__android_log_print(ANDROID_LOG_ERROR, TAG, FMT, ##args)
 
 #define TAG "Unwind-debug"
 
@@ -40,8 +40,11 @@ namespace unwindstack {
 
     private:
         vector<RegsArm64> prologueFrames;
-        uint64_t stackLimitMax;
-        uint64_t stackLimitMin;
+        uintptr_t stackLimitMax;
+        uintptr_t stackLimitMin;
+
+//        uintptr_t lastFP;
+//        uintptr_t lastSP;
     };
 
 //    mutex mMutex;
