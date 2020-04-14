@@ -29,12 +29,10 @@ void func1() {
         std::string so_name = std::string(stack_info.dli_fname);
 
         int status = 0;
-        char *demangled_name = abi::__cxa_demangle(stack_info.dli_sname, nullptr, 0,
-                                                   &status);
+//        char *demangled_name = abi::__cxa_demangle(stack_info.dli_sname, nullptr, 0,
+//                                                   &status);
 
-        LOGD("Unwind-debug", "  #pc %"
-                PRIxPTR
-                " %lu %lx %s (%s)", p_frame->rel_pc, p_frame->pc, p_frame->pc,
+        LOGD("Unwind-debug", "  #pc %llx %llu %llx %s (%s)", p_frame->rel_pc, p_frame->pc, p_frame->pc,
         /*demangled_name ? demangled_name : "(null)",*/ stack_info.dli_sname, stack_info.dli_fname);
     }
 

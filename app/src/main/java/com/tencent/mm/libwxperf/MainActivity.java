@@ -33,20 +33,20 @@ public class MainActivity extends AppCompatActivity {
 
 //        MemoryHook.hook();
         try {
-            HookManager.INSTANCE
-                    .addHook(MemoryHook.INSTANCE
-                            .addHookSo(".*libnative-lib\\.so$")
-                            .enableStacktrace(true)
-                            .enableMmapHook(true))
-                    .addHook(PthreadHook.INSTANCE
+//            HookManager.INSTANCE
+//                    .addHook(MemoryHook.INSTANCE
 //                            .addHookSo(".*libnative-lib\\.so$")
-                            .addHookSo(".*\\.so$")
-//                            .addIgnoreSo(".*libart\\.so$")
-                            .addHookThread(".*")
-//                            .addHookThread("MyHandlerThread")
-//                            .addHookThread("\\[GT\\]MediaCodecR$")
-                    )
-                    .commitHooks();
+//                            .enableStacktrace(true)
+//                            .enableMmapHook(true))
+//                    .addHook(PthreadHook.INSTANCE
+////                            .addHookSo(".*libnative-lib\\.so$")
+//                            .addHookSo(".*\\.so$")
+////                            .addIgnoreSo(".*libart\\.so$")
+//                            .addHookThread(".*")
+////                            .addHookThread("MyHandlerThread")
+////                            .addHookThread("\\[GT\\]MediaCodecR$")
+//                    )
+//                    .commitHooks();
 
 //            PthreadHook.INSTANCE.addHookSo(".*\\.so$")
 //                    .addHookThread("RenderThread")
@@ -183,7 +183,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 UnwindTest.init();
-                for (int i = 0; i < 10; i++) {
+                for (int i = 0; i < 1; i++) {
                     long begin = System.nanoTime();
                     UnwindTest.test();
                     Log.i("Unwind-test", "unwind cost: " + (System.nanoTime() - begin));
