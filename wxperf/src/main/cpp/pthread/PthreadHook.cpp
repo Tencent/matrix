@@ -25,6 +25,7 @@
 
 typedef void *(*pthread_routine_t)(void *);
 
+// fixme on_create on_setname 时序问题
 extern "C" typedef struct {
     pthread_t pthread; // key ?
     pid_t     tid;
@@ -123,7 +124,7 @@ inline int wrap_pthread_getname_np(pthread_t __pthread, char *__buf, size_t __n)
 #endif
 }
 
-static bool should_do_unwind(pthread_meta_t &__meta) {
+static bool test_match_thread_name(pthread_meta_t &__meta) {
     for (const auto &w : m_hook_thread_name_regex) {
         if (0 == regexec(&w.regex, __meta.thread_name, 0, NULL, 0)) {
             LOGD(TAG, "%s matches regex %s", __meta.thread_name, w.regex_str);
@@ -138,7 +139,7 @@ static void unwind_pthread_stacktrace(pthread_meta_t &__meta) {
     // do unwind
 //    为什么这样写会挂？ *dst = unwinder.frames() 时 Fault Address
 //    __meta.native_stacktrace = new std::vector<unwindstack::FrameData>;
-    auto *tmp_ns= new std::vector<unwindstack::FrameData>;
+    auto *tmp_ns = new std::vector<unwindstack::FrameData>;
     tmp_ns->reserve(16 * 2);
     unwindstack::do_unwind(tmp_ns);
     __meta.native_stacktrace = tmp_ns;
@@ -177,7 +178,7 @@ static void on_pthread_create(const pthread_t __pthread_ptr) {
     LOGD(TAG, "pthread = %ld, parent name: %s, thread name: %s", pthread, meta.parent_name,
          meta.thread_name);
 
-    std::atomic_bool need_unwind = should_do_unwind(meta);
+    std::atomic_bool need_unwind = test_match_thread_name(meta);
 
     pthread_mutex_unlock(&m_pthread_meta_mutex);
 
@@ -185,9 +186,15 @@ static void on_pthread_create(const pthread_t __pthread_ptr) {
         unwind_pthread_stacktrace(meta);
     }
 
-    LOGD(TAG, "on_pthread_create end");
+    LOGD(TAG, "on_pthread_create end, %p, %p", meta.native_stacktrace.load(),
+         meta.java_stacktrace.load());
 }
 
+/**
+ * on_pthread_setname 有可能在 on_pthread_create 之前先执行
+ * @param __pthread
+ * @param __name
+ */
 static void on_pthread_setname(pthread_t __pthread, const char *__name) {
     if (NULL == __name) {
         LOGE(TAG, "setting name null");
@@ -216,24 +223,23 @@ static void on_pthread_setname(pthread_t __pthread, const char *__name) {
 
     pthread_meta_t &meta = m_pthread_metas.at(__pthread);
 
+    // 此时子线程和父线程名字一样，如果 match，则说明在父线程 unwind 了
+    bool unwind_in_parent = test_match_thread_name(meta);
+
     LOGD(TAG, "on_pthread_setname: %s -> %s, tid:%d", meta.thread_name, __name, meta.tid);
 
     meta.thread_name = static_cast<char *>(malloc(sizeof(char) * (THREAD_NAME_LEN + 1)));
     strncpy(meta.thread_name, __name, THREAD_NAME_LEN + 1);
 
-//    bool need_unwind = (!meta.native_stacktrace || meta.native_stacktrace->empty())
-//                       && !meta.java_stacktrace
-//                       && ((meta.parent_name == NULL && meta.thread_name == NULL)
-//                           || 0 != strncmp(meta.parent_name, meta.thread_name, THREAD_NAME_LEN));
-
     // 子线程与父线程名不一致时，并且新线程名 match 正则，则需要 unwind
     std::atomic_bool need_unwind =
-                             (0 != strncmp(meta.parent_name, meta.thread_name, THREAD_NAME_LEN)
-                              && should_do_unwind(meta));
+                             (!unwind_in_parent
+                              && 0 != strncmp(meta.parent_name, meta.thread_name, THREAD_NAME_LEN)
+                              && test_match_thread_name(meta));
 
     pthread_mutex_unlock(&m_pthread_meta_mutex);
 
-    if (need_unwind && !meta.native_stacktrace && !meta.java_stacktrace) {
+    if (need_unwind && !meta.native_stacktrace.load() && !meta.java_stacktrace.load()) {
         LOGD(TAG, "unwinding when setname");
         unwind_pthread_stacktrace(meta);
     }
@@ -376,7 +382,7 @@ static void *pthread_routine_wrapper(void *__arg) {
     return ret;
 }
 
-DEFINE_HOOK_FUN(int, pthread_create, pthread_t *__pthread_ptr, pthread_attr_t const *__attr,
+DEFINE_HOOK_FUN(int, pthread_create, pthread_t * __pthread_ptr, pthread_attr_t const *__attr,
                 void *(*__start_routine)(void *), void *__arg) {
     auto *args_wrapper = (routine_wrapper_t *) malloc(sizeof(routine_wrapper_t));
     args_wrapper->origin_func = __start_routine;
@@ -390,7 +396,8 @@ DEFINE_HOOK_FUN(int, pthread_create, pthread_t *__pthread_ptr, pthread_attr_t co
     return ret;
 }
 
-DEFINE_HOOK_FUN(int, pthread_setname_np, pthread_t __pthread, const char *__name) {
+DEFINE_HOOK_FUN(int, pthread_setname_np, pthread_t
+        __pthread, const char *__name) {
     CALL_ORIGIN_FUNC_RET(int, ret, pthread_setname_np, __pthread, __name);
     on_pthread_setname(__pthread, __name);
     return ret;
