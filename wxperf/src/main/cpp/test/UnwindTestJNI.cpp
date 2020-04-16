@@ -8,20 +8,11 @@
 #include <cxxabi.h>
 #include "log.h"
 #include "StackTrace.h"
+#include "../external/libunwindstack/TimeUtil.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-inline long CurrentNano() {
-    struct timespec tms;
-
-    if (clock_gettime(CLOCK_REALTIME,&tms)) {
-//        LOGE("Unwind-debug", "get time error");
-    }
-
-    return tms.tv_nsec;
-}
 
 void func1() {
     LOGD("Yves-test", "func1");
