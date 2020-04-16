@@ -17,111 +17,28 @@
 #include <fcntl.h>
 
 #include "ElfInterfaceArm64.h"
+#include "TimeUtil.h"
 
 namespace unwindstack {
 
-    uint64_t prolo_prologue[4] = {0};
-    uint64_t dwarf_prologue[4] = {0};
 
-    bool
-    ElfInterfaceArm64::PreStep(uint64_t pc, uint64_t load_bias, Regs *regs, Memory *process_memory,
-                               bool *finished) {
-
-        RegsArm64 *cur_regs_arm64;
-        cur_regs_arm64 = dynamic_cast<RegsArm64 *>(regs);
-
-        void *cur_fp = reinterpret_cast<void *>(cur_regs_arm64->fp());
-        memcpy(dwarf_prologue, cur_fp, 0x10);
-
-        uint64_t next_sp = cur_regs_arm64->fp() + 0x10;
-
-        dwarf_prologue[2] = next_sp;
-
-        uint64_t next_pc = dwarf_prologue[1];
-        dwarf_prologue[3] = next_pc;
-
-        RegsArm64 cur_regs_arm64_prologue;
-        if (!prologueFrames.empty()) {
-            cur_regs_arm64_prologue = prologueFrames.back();
-        } else {
-            stackLimitMax           = cur_regs_arm64->sp() + 64 * 1024;
-            stackLimitMin           = cur_regs_arm64->sp();
-            cur_regs_arm64_prologue = *cur_regs_arm64;
-        }
-
-        cur_fp = reinterpret_cast<void *>(cur_regs_arm64_prologue.fp());
-        if (FallbackPCRange::GetInstance()->ShouldFallback(cur_regs_arm64_prologue.pc()) ||
-            (uint64_t) cur_fp > stackLimitMax || (uint64_t) cur_fp <= stackLimitMin) {
-            memset(prolo_prologue, 0, sizeof(prolo_prologue));
-            return true;
-        }
-
-        memcpy(prolo_prologue, cur_fp, 0x10); // filled prolo_prologue[0,1]
-
-        // next sp
-        prolo_prologue[2] = cur_regs_arm64_prologue.fp() + 0x10;
-
-        // next pc
-        prolo_prologue[3] = prolo_prologue[1];
-
-        RegsArm64 next_regs;
-        next_regs.set_fp(prolo_prologue[0]);
-        next_regs.set_lr(prolo_prologue[1]);
-        next_regs.set_sp(prolo_prologue[2]);
-        next_regs.set_pc(prolo_prologue[3]);
-
-        prologueFrames.push_back(next_regs);
-
-        return true;
-    }
-
-    bool
-    ElfInterfaceArm64::PostStep(uint64_t pc, uint64_t load_bias, Regs *regs, Memory *process_memory,
-                                bool *finished) {
+    inline bool ElfInterfaceArm64::StepPrologue(uint64_t pc, uint64_t load_bias, Regs *regs,
+                                                Memory *process_memory, bool *finished) {
+//        return false;
 
         RegsArm64 *regs_arm64 = dynamic_cast<RegsArm64 *>(regs);
-
-        uint64_t rel_pc = 0;
-
-        LOGD("Unwind-debug", "prolo_prolog [X29fp, X30lr, X31sp, X32pc] = [%lu,%lu,%lu,%lu,%lu]",
-             prolo_prologue[0], prolo_prologue[1], prolo_prologue[2], prolo_prologue[3], rel_pc);
-        LOGD("Unwind-debug", "dwarf_prolog [X29fp, X30lr, X31sp, X32pc] = [%lu,%lu,%lu,%lu]",
-             dwarf_prologue[0], dwarf_prologue[1], dwarf_prologue[2], dwarf_prologue[3]);
-        LOGD("Unwind-debug", "dwarf_unwind [X29fp, X30lr, X31sp, X32pc] = [%lu,%lu,%lu,%lu]",
+        LOGE("Unwind-debug",
+             "+++++++++++++++++ begin StepPrologue cur [X29fp, X30lr, X31sp, X32pc] = [%lu,%lu,%lu,%lu]",
              regs_arm64->fp(), regs_arm64->lr(), regs_arm64->sp(), regs_arm64->pc());
 
-
-        if (0 == prolo_prologue[0]) {
-            LOGD(TAG, "using dwarf step result");
-            prologueFrames.push_back(*regs_arm64);
-        }
-
-        LOGD("Unwind-debug", "----------------");
-
-        return true;
-    }
-
-    bool ElfInterfaceArm64::StepPrologue(uint64_t pc, uint64_t load_bias, Regs *regs,
-                                         Memory *process_memory, bool *finished) {
-
-//        if (true) {
-//            return false;
-//        }
-
-        RegsArm64 *regs_arm64 = dynamic_cast<RegsArm64 *>(regs);
-        LOGD("Unwind-debug", "+++++++++++++++++ begin StepPrologue cur [X29fp, X30lr, X31sp, X32pc] = [%lu,%lu,%lu,%lu]", regs_arm64->fp(), regs_arm64->lr(), regs_arm64->sp(), regs_arm64->pc());
-
-
-        int fd = open("/dev/random", O_WRONLY | O_CLOEXEC);
-
-        if (write(fd, reinterpret_cast<const void *>(regs_arm64->fp()), 0x10) < 0) {
-            LOGD("Unwind-debug", "[fp] not readable");
+        if (FallbackPCRange::GetInstance()->ShouldPCFallback(regs_arm64->pc())) {
+            LOGE("Unwind-debug", "fallback for PC range ");
             return false;
         }
 
-        LOGD("Unwind-debug", "to check");
-        if (FallbackPCRange::GetInstance()->ShouldFallback(regs_arm64->pc())) {
-            LOGE("Unwind-debug", "fallback for PC range ");
+        if (FallbackPCRange::GetInstance()->ShouldFPSPFallback(regs_arm64->fp(),
+                                                               regs_arm64->sp(), regs_arm64)) {
+            LOGE(TAG, "fallback for fp sp");
             return false;
         }
 
@@ -138,11 +55,17 @@ namespace unwindstack {
              next_fp_lr[0], next_fp_lr[1], next_sp, next_pc);
 
         if (next_fp_lr[0] < regs_arm64->fp() || next_sp < regs_arm64->sp()) {
-            LOGE("Unwind-debug", "fallback for illegal fp sp");
+
+            LOGE("Unwind-debug",
+                 "CUR: fallback for illegal [fp, sp, stack, size] = [%lu, %lu, %lu, %zu]",
+                 next_fp_lr[0], next_sp, regs_arm64->fp(), regs_arm64->sp());
+
+//            *finished = true;
+//            return true;
             return false;
         }
 
-        LOGD("Unwind-debug", "---------------------- end StepPrologue");
+        LOGE("Unwind-debug", "---------------------- end StepPrologue");
 
         regs_arm64->set_sp(next_sp);
         regs_arm64->set_pc(next_pc);
@@ -160,26 +83,22 @@ namespace unwindstack {
     ElfInterfaceArm64::Step(uint64_t pc, uint64_t load_bias, Regs *regs, Memory *process_memory,
                             bool *finished) {
 //         For Arm64 devices
-//        LOGD(TAG, "steping");
-        bool stepped = StepPrologue(pc, load_bias, regs, process_memory, finished);
+//        long begin = CurrentNano();
 
-        if (!stepped) {
-//            LOGD("Unwind-debug", "not stepped, fallback to dwarf");
-            stepped = ElfInterface64::Step(pc, load_bias, regs, process_memory, finished);
-            RegsArm64 *regs_arm64 = dynamic_cast<RegsArm64 *>(regs);
-            LOGD("Unwind-debug", "=====> fallback: [X29fp, X30lr, X31sp, X32pc] = [%lu,%lu,%lu,%lu]", regs_arm64->fp(), regs_arm64->lr(), regs_arm64->sp(), regs_arm64->pc());
-        }
+        bool ret = StepPrologue(pc, load_bias, regs, process_memory, finished)
+                   || ElfInterface64::Step(pc, load_bias, regs, process_memory, finished);
 
-        return stepped;
+//        LOGE("Unwind-debug", "step arm64 cost: %ld", (CurrentNano() - begin));
 
-//        return StepPrologue(pc, load_bias, regs, process_memory, finished)
-//            || ElfInterface64::Step(pc, load_bias, regs, process_memory, finished);
+        return ret;
 
     }
 
     FallbackPCRange *FallbackPCRange::INSTANCE = nullptr;
 
-    mutex FallbackPCRange::mMutex;
+//    mutex FallbackPCRange::mMutex;
+//    mutex mMutex;
+    pthread_mutex_t pthread_mutex = PTHREAD_MUTEX_INITIALIZER;
 
     FallbackPCRange::FallbackPCRange() {
 
@@ -191,8 +110,6 @@ namespace unwindstack {
                                       reinterpret_cast<uintptr_t>(trampoline) + 0x27C});
         }
 
-//        LOGD(TAG, "trampoline %p", trampoline);
-
         void *art_quick_invoke_static_stub = EnhanceDlsym::getInstance()->dlsym(
                 "/apex/com.android.runtime/lib64/libart.so",
                 "art_quick_invoke_static_stub");
@@ -202,26 +119,9 @@ namespace unwindstack {
                      reinterpret_cast<uintptr_t >(art_quick_invoke_static_stub) + 0x280});
         }
 
-//        LOGD(TAG, "art_quick_invoke_static_stub %p", art_quick_invoke_static_stub);
-
-//        void *mterp_op_invoke_static = EnhanceDlsym::getInstance()->dlsym(
-//                "/apex/com.android.runtime/lib64/libart.so", "mterp_op_invoke_static");
-//
-//        if (nullptr != mterp_op_invoke_static) {
-//            mSkipFunctions.push_back({reinterpret_cast<uintptr_t>(mterp_op_invoke_static),
-//                                      reinterpret_cast<uintptr_t>(mterp_op_invoke_static) + 0x7C});
-//        }
-
-//        void *jvalue = EnhanceDlsym::getInstance()->dlsym(
-//                "/apex/com.android.runtime/lib64/libart.so",
-//                "_ZN3art9ArtMethod6InvokeEPNS_6ThreadEPjjPNS_6JValueEPKc");
-//        if (nullptr != jvalue) {
-//            mSkipFunctions.push_back({reinterpret_cast<uintptr_t>(jvalue),
-//                                      reinterpret_cast<uintptr_t>(jvalue) + 0x228});
-//        }
-
         SkipDexPC();
 
+        fd = open("/dev/random", O_WRONLY | O_CLOEXEC);
     }
 
     static inline bool EndWith(std::string const &value, std::string const &ending) {
@@ -262,16 +162,33 @@ namespace unwindstack {
         }
     }
 
-    bool FallbackPCRange::ShouldFallback(uintptr_t pc) {
-        LOGD(TAG, "checking %lu", pc);
+    inline bool FallbackPCRange::ShouldPCFallback(uintptr_t pc) {
+//        LOGD(TAG, "checking %lu", pc);
 
         for (const auto &range : mSkipFunctions) {
-            LOGD(TAG, "{%lu, %lu}", range.first, range.second);
+//            LOGD(TAG, "{%lu, %lu}", range.first, range.second);
             if (range.first < pc && pc < range.second) {
-                LOGD(TAG, "ShouldFallback");
+//                LOGD(TAG, "ShouldFallback");
                 return true;
             }
         }
         return false;
+    }
+
+    bool FallbackPCRange::ShouldFPSPFallback(uintptr_t fp, uintptr_t sp, RegsArm64* regs) {
+        uint64_t stack_top    = regs->get_stack_top();
+        uint64_t stack_bottom = regs->get_stack_bottom();
+
+        LOGD(TAG, "top %lu, bot %lu", stack_top, stack_bottom);
+        if (stack_top && stack_bottom) {
+            // 在栈范围内则返回 false
+            LOGD(TAG, "test ShouldFPSPFallback [fp, sp, top, bottom] = [%lu, %lu, %lu, %lu]", fp, sp, stack_top, stack_bottom);
+            return !(stack_top < fp && fp < stack_bottom
+                     && stack_top < sp && sp < stack_bottom);
+        }
+
+        bool ret = write(fd, reinterpret_cast<const void *>(fp), 0x10) < 0;
+
+        return ret;
     }
 }

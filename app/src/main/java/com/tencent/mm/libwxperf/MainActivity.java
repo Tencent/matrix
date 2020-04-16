@@ -33,7 +33,7 @@ public class MainActivity extends AppCompatActivity {
 
 //        MemoryHook.hook();
         try {
-//            HookManager.INSTANCE
+            HookManager.INSTANCE
 //                    .addHook(MemoryHook.INSTANCE
 //                            .addHookSo(".*libnative-lib\\.so$")
 //                            .enableStacktrace(true)
@@ -46,7 +46,7 @@ public class MainActivity extends AppCompatActivity {
 ////                            .addHookThread("MyHandlerThread")
 ////                            .addHookThread("\\[GT\\]MediaCodecR$")
 //                    )
-//                    .commitHooks();
+                    .commitHooks();
 
 //            PthreadHook.INSTANCE.addHookSo(".*\\.so$")
 //                    .addHookThread("RenderThread")
@@ -101,13 +101,16 @@ public class MainActivity extends AppCompatActivity {
         findViewById(R.id.btn_thread).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Thread t = new Thread(new Runnable() {
+                HandlerThread t = new HandlerThread( "[GT]MediaCodecR");
+
+                t.start();
+
+                new Handler(t.getLooper()).post(new Runnable() {
                     @Override
                     public void run() {
-
-                        for (int i = 0; i < 100; i++) {
+                        for (int i = 0; i < 1; i++) {
                             Log.d("Yves-debug", "test thread " + i);
-                            JNIObj.testThread();
+//                            JNIObj.testThread();
 
                             HandlerThread ht = new HandlerThread("TestHandlerTh");
                             ht.start();
@@ -116,33 +119,27 @@ public class MainActivity extends AppCompatActivity {
                                 @Override
                                 public void run() {
 
-                                    new Thread(new Runnable() {
-                                        @Override
-                                        public void run() {
-                                            try {
-                                                Thread.sleep(1000);
-                                            } catch (InterruptedException e) {
-                                                e.printStackTrace();
-                                            }
-                                        }
-                                    }, "SubTestTh").start();
-
-                                    try {
-                                        Thread.sleep(3000);
-                                    } catch (InterruptedException e) {
-                                        e.printStackTrace();
-                                    }
+//                                    new Thread(new Runnable() {
+//                                        @Override
+//                                        public void run() {
+//                                            try {
+//                                                Thread.sleep(1000);
+//                                            } catch (InterruptedException e) {
+//                                                e.printStackTrace();
+//                                            }
+//                                        }
+//                                    }, "SubTestTh").start();
+//
+//                                    try {
+//                                        Thread.sleep(3000);
+//                                    } catch (InterruptedException e) {
+//                                        e.printStackTrace();
+//                                    }
                                 }
                             });
                         }
-
-
-
-
                     }
-                }, "[GT]MediaCodecR");
-
-                t.start();
+                });
 
 
                 try {
@@ -159,6 +156,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 JNIObj.testThreadSpecific();
+                PthreadHook.INSTANCE.dump("/sdcard/pthread_hook.log");
             }
         });
 
@@ -179,15 +177,23 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        UnwindTest.init();
         findViewById(R.id.btn_unwind).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                UnwindTest.init();
-                for (int i = 0; i < 1; i++) {
-                    long begin = System.nanoTime();
-                    UnwindTest.test();
-                    Log.i("Unwind-test", "unwind cost: " + (System.nanoTime() - begin));
-                }
+                new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        for (int i = 0; i < 1; i++) {
+//                            long begin = System.nanoTime();
+                            UnwindTest.test();
+//                            Log.i("Unwind-test", "unwind cost: " + (System.nanoTime() - begin));
+                        }
+
+                        PthreadHook.INSTANCE.dump("/sdcard/pthread_hook.log");
+                    }
+                }).start();
+
             }
         });
 

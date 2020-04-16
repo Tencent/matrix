@@ -21,6 +21,7 @@ namespace unwindstack {
     public:
 
         static EnhanceDlsym *getInstance() {
+            // fix lock
             return INSTANCE;
         }
 

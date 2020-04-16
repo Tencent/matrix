@@ -24,6 +24,7 @@
 #include <unwindstack/Log.h>
 #include <unwindstack/Memory.h>
 #include <unwindstack/Regs.h>
+#include <include/unwindstack/MachineArm64.h>
 
 #include "DwarfCfa.h"
 #include "DwarfDebugFrame.h"
@@ -237,6 +238,10 @@ bool DwarfSectionImpl<AddressType>::Eval(const DwarfCie* cie, Memory* regular_me
       // Skip this unknown register.
       continue;
     }
+
+//    if (reg != ARM64_REG_R0 && reg != ARM64_REG_R20 && reg < ARM64_REG_FP) {
+//      continue;
+//    }
 
     reg_ptr = eval_info.regs_info.Save(reg);
     if (!EvalRegister(&entry.second, reg, reg_ptr, &eval_info)) {

@@ -52,6 +52,11 @@ class RegsArm64 : public RegsImpl<uint64_t> {
   void set_lr(uint64_t lr);
   void set_fp(uint64_t fp);
 
+  void setup_stack();
+
+  uint64_t get_stack_top();
+  uint64_t get_stack_bottom();
+
   void set_pc(uint64_t pc) override;
   void set_sp(uint64_t sp) override;
 

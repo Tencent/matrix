@@ -7,6 +7,7 @@
 
 #include <unwindstack/RegsArm64.h>
 #include <unwindstack/EnhanceDlsym.h>
+#include "TimeUtil.h"
 
 #define LOGD(TAG, FMT, args...) //__android_log_print(ANDROID_LOG_DEBUG, TAG, FMT, ##args)
 #define LOGI(TAG, FMT, args...) //__android_log_print(ANDROID_LOG_INFO, TAG, FMT, ##args)
@@ -24,47 +25,43 @@ namespace unwindstack {
     public:
         ElfInterfaceArm64(Memory *memory) : ElfInterface64(memory) {
 //            EnhanceDlsym::getInstance()->dlopen("/system/lib/libart.so", 0);
+
         }
-
-        bool PreStep(uint64_t pc, uint64_t load_bias, Regs *regs, Memory *process_memory,
-                     bool *finished);
-
-        bool PostStep(uint64_t pc, uint64_t load_bias, Regs *regs, Memory *process_memory,
-                      bool *finished);
 
         bool Step(uint64_t pc, uint64_t load_bias, Regs *regs, Memory *process_memory,
                   bool *finished) override;
 
-        bool StepPrologue(uint64_t pc, uint64_t load_bias, Regs *regs, Memory *process_memory,
+        inline bool StepPrologue(uint64_t pc, uint64_t load_bias, Regs *regs, Memory *process_memory,
                           bool *finished);
 
     private:
-        vector<RegsArm64> prologueFrames;
-        uintptr_t stackLimitMax;
-        uintptr_t stackLimitMin;
+//        pthread_attr_t attr;
 
-//        uintptr_t lastFP;
-//        uintptr_t lastSP;
     };
 
-//    mutex mMutex;
+//    extern mutex mMutex;
+
+    extern pthread_mutex_t pthread_mutex;
 
     class FallbackPCRange {
     public:
 
         static FallbackPCRange *GetInstance() {
             if (!INSTANCE) {
-                lock_guard<mutex> lock(mMutex);
+//                lock_guard<mutex> lock(mMutex);
+                pthread_mutex_lock(&pthread_mutex);
                 if (!INSTANCE) {
                     INSTANCE = new FallbackPCRange;
                 }
+                pthread_mutex_unlock(&pthread_mutex);
             }
 
-//            static FallbackPCRange INSTANCE;
             return INSTANCE;
         }
 
-        bool ShouldFallback(uintptr_t pc);
+        inline bool ShouldPCFallback(uintptr_t pc);
+
+        inline bool ShouldFPSPFallback(uintptr_t fp, uintptr_t sp, RegsArm64* regs);
 
     private:
 
@@ -80,9 +77,11 @@ namespace unwindstack {
 
         vector<pair<uintptr_t, uintptr_t>> mSkipFunctions;
 
+        int fd;
+
         static FallbackPCRange *INSTANCE;
 
-        static mutex mMutex;
+//        static mutex mMutex;
     };
 }
 

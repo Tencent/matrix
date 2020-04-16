@@ -29,7 +29,9 @@
 namespace unwindstack {
 
 RegsArm64::RegsArm64()
-    : RegsImpl<uint64_t>(ARM64_REG_LAST, Location(LOCATION_REGISTER, ARM64_REG_LR)) {}
+    : RegsImpl<uint64_t>(ARM64_REG_EXT_LAST, Location(LOCATION_REGISTER, ARM64_REG_LR)) {
+  setup_stack();
+}
 
 ArchEnum RegsArm64::Arch() {
   return ARCH_ARM64;
@@ -57,6 +59,25 @@ void RegsArm64::set_lr(uint64_t lr) {
 
 void RegsArm64::set_fp(uint64_t fp) {
   regs_[ARM64_REG_FP] = fp;
+}
+
+void RegsArm64::setup_stack() {
+  if (getpid() != gettid()) {
+    pthread_attr_t attr;
+    pthread_getattr_np(pthread_self(), &attr);
+    regs_[ARM64_REG_EXT_STACK_TOP] = reinterpret_cast<uintptr_t >(attr.stack_base);
+    regs_[ARM64_REG_EXT_STACK_BTM] = reinterpret_cast<uintptr_t >(attr.stack_base) + attr.stack_size;
+  } else {
+    regs_[ARM64_REG_EXT_STACK_TOP] = 0;
+    regs_[ARM64_REG_EXT_STACK_BTM] = 0;
+  }
+}
+
+uint64_t RegsArm64::get_stack_top() {
+  return regs_[ARM64_REG_EXT_STACK_TOP];
+}
+uint64_t RegsArm64::get_stack_bottom() {
+  return regs_[ARM64_REG_EXT_STACK_BTM];
 }
 
 void RegsArm64::set_pc(uint64_t pc) {

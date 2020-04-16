@@ -34,6 +34,7 @@
 #include "ElfInterfaceArm.h"
 #include "Symbols.h"
 #include "ElfInterfaceArm64.h"
+#include "TimeUtil.h"
 
 namespace unwindstack {
 
@@ -163,19 +164,21 @@ uint64_t Elf::GetLastErrorAddress() {
 // The relative pc is always relative to the start of the map from which it comes.
 bool Elf::Step(uint64_t rel_pc, uint64_t adjusted_rel_pc, Regs* regs, Memory* process_memory,
                bool* finished) {
-  if (!valid_) {
+//      long begin = CurrentNano();
+      if (!valid_) {
     return false;
   }
-
-  // The relative pc expectd by StepIfSignalHandler is relative to the start of the elf.
-  if (regs->StepIfSignalHandler(rel_pc, this, process_memory)) {
+      // The relative pc expectd by StepIfSignalHandler is relative to the start of the elf.
+      if (regs->StepIfSignalHandler(rel_pc, this, process_memory)) {
     *finished = false;
     return true;
   }
 
-  // Lock during the step which can update information in the object.
+      // Lock during the step which can update information in the object.
   std::lock_guard<std::mutex> guard(lock_);
-  return interface_->Step(adjusted_rel_pc, load_bias_, regs, process_memory, finished);
+  bool ret = interface_->Step(adjusted_rel_pc, load_bias_, regs, process_memory, finished);
+//      LOGE("Unwind-debug", "interface_->Step cost %ld", (CurrentNano() - begin));
+      return ret;
 }
 
 bool Elf::IsValidElf(Memory* memory) {
