@@ -143,6 +143,8 @@ public class MainActivity extends AppCompatActivity {
 
                 t.start();
 
+                HandlerThread handlerThread = new HandlerThread("HandlerThread1");
+                handlerThread.start();
 
                 try {
                     Thread.sleep(10 * 1000);
@@ -157,7 +159,14 @@ public class MainActivity extends AppCompatActivity {
         findViewById(R.id.btn_thread_spec).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                JNIObj.testThreadSpecific();
+                new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        for (int i = 0; i < 100; i++) {
+                            JNIObj.testThreadSpecific();
+                        }
+                    }
+                }).start();
             }
         });
 
@@ -165,16 +174,18 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
 
-                for (int i = 0; i < 100; i++) {
+//                for (int i = 0; i < 100; i++) {
+//
+//                    new Thread(new Runnable() {
+//                        @Override
+//                        public void run() {
+//                            JNIObj.testJNICall();
+//                            JNIObj.testJNICall();
+//                        }
+//                    }).start();
+//                }
 
-                    new Thread(new Runnable() {
-                        @Override
-                        public void run() {
-                            JNIObj.testJNICall();
-                            JNIObj.testJNICall();
-                        }
-                    }).start();
-                }
+                JNIObj.testJNICall();
             }
         });
 

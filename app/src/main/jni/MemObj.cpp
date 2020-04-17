@@ -432,7 +432,7 @@ static int read_thread_name(pthread_t __pthread, char *__buf, size_t __n) {
         return -1;
     }
 
-    char proc_path[__n];
+    char proc_path[128];
 
     sprintf(proc_path, "/proc/self/task/%d/stat", pthread_gettid_np(__pthread));
 
@@ -512,19 +512,48 @@ Java_com_tencent_mm_libwxperf_JNIObj_testThreadSpecific(JNIEnv *env, jclass claz
 //    pthread_join(thread1, NULL);
 }
 
+struct Obj {
+    int a;
+    int b;
+};
+
+void copy(std::vector<Obj> *dest) {
+
+    std::vector<Obj> src;
+
+    src.push_back({11,22});
+    src.push_back({22,22});
+    src.push_back({3,22});
+    src.push_back({4,22});
+    src.push_back({5,22});
+    src.push_back({6,22});
+
+    *dest = src;
+}
+
 JNIEXPORT void JNICALL
 Java_com_tencent_mm_libwxperf_JNIObj_testJNICall(JNIEnv *env, jclass clazz) {
 
-    jclass j_jniobj = env->FindClass("com/tencent/mm/libwxperf/JNIObj");
-    if (j_jniobj) {
-        jmethodID method = env->GetStaticMethodID(j_jniobj, "calledByJNI", "()V");
-        if (method) {
-            LOGD("Yves-debug", "before call java");
-            env->CallStaticVoidMethod(j_jniobj, method);
-            LOGD("Yves-debug", "after call java");
-        }
-    } else {
-        LOGD("Yves-debug", "class not found");
+//    jclass j_jniobj = env->FindClass("com/tencent/mm/libwxperf/JNIObj");
+//    if (j_jniobj) {
+//        jmethodID method = env->GetStaticMethodID(j_jniobj, "calledByJNI", "()V");
+//        if (method) {
+//            LOGD("Yves-debug", "before call java");
+//            env->CallStaticVoidMethod(j_jniobj, method);
+//            LOGD("Yves-debug", "after call java");
+//        }
+//    } else {
+//        LOGD("Yves-debug", "class not found");
+//    }
+
+    std::atomic<std::vector<Obj> *> atomic_vec_ptr;
+
+    atomic_vec_ptr = new std::vector<Obj>;
+
+    copy(atomic_vec_ptr);
+
+    for (auto obj : *atomic_vec_ptr.load()) {
+        LOGD("Vector-test", "a=%d, b=%d", obj.a, obj.b);
     }
 }
 
