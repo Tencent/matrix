@@ -38,12 +38,28 @@ public class JNIObj {
 
     public native static void testJNICall();
 
-    public static void calledByJNI() {
+    public static String calledByJNI() {
         Log.d("Yves-debug", "called By JNI");
-        try {
-            Thread.sleep(1);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
+        return stackTraceToString(new Throwable().getStackTrace());
+    }
+
+    private static String stackTraceToString(final StackTraceElement[] arr) {
+        Log.d("Yves-debug", "java: stackTraceToString");
+        if (arr == null) {
+            return "";
         }
+
+        StringBuilder sb = new StringBuilder();
+
+        for (StackTraceElement stackTraceElement : arr) {
+            String className = stackTraceElement.getClassName();
+            // remove unused stacks
+            if (className.contains("java.lang.Thread")) {
+                continue;
+            }
+
+            sb.append("\t").append(stackTraceElement).append('\n');
+        }
+        return sb.toString();
     }
 }

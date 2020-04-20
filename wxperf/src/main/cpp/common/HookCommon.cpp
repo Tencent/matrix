@@ -52,6 +52,10 @@ bool get_java_stacktrace(char *__stack, size_t __size) {
     JNIEnv *env = NULL;
     bool attached = false;
 
+    if (!__stack) {
+        return false;
+    }
+
     if (m_java_vm->GetEnv((void **)&env, JNI_VERSION_1_6) != JNI_OK) {
         if (m_java_vm->AttachCurrentThread(&env, NULL) == JNI_OK) {
             attached = true;

@@ -96,10 +96,10 @@ static inline void record_acquire_mem_unsafe(void *__caller,
         }
 
         auto ptr_stack_frames = new std::vector<unwindstack::FrameData>;
-        unwindstack::do_unwind(ptr_stack_frames);
+        unwindstack::do_unwind(*ptr_stack_frames);
 
         if (!ptr_stack_frames->empty()) {
-            uint64_t stack_hash = hash(*ptr_stack_frames);
+            uint64_t stack_hash = hash_stack_frames(*ptr_stack_frames);
             ptr_meta.stack_hash = stack_hash;
             stack_meta_t &stack_meta = stack_metas[stack_hash];
             stack_meta.size += __byte_count;

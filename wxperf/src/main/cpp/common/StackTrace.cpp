@@ -37,7 +37,7 @@ namespace unwindstack {
         pthread_mutex_unlock(&unwind_mutex);
     }
 
-    void do_unwind(std::vector<FrameData> *dst) {
+    void do_unwind(std::vector<FrameData> &dst) {
         if (!has_inited) {
             LOGE("Yves.unwind", "libunwindstack was not inited");
             return;
@@ -64,7 +64,7 @@ namespace unwindstack {
 //            LOGD("Yves.unwind", "~~~~~~~~~~~~~%s", unwinder.FormatFrame(i).c_str());
 //        }
 
-        *dst = unwinder.frames();
+        dst = unwinder.frames();
         pthread_mutex_unlock(&unwind_mutex);
     }
 }

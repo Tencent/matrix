@@ -18,7 +18,7 @@ namespace unwindstack {
 
 //    void do_unwind(uint64_t **, size_t *);
 
-    void do_unwind(std::vector<FrameData> *);
+    void do_unwind(std::vector<FrameData> &);
 }
 
 #endif //LIBWXPERF_JNI_STACKTRACE_H

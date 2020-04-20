@@ -531,30 +531,57 @@ void copy(std::vector<Obj> *dest) {
     *dest = src;
 }
 
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+
 JNIEXPORT void JNICALL
 Java_com_tencent_mm_libwxperf_JNIObj_testJNICall(JNIEnv *env, jclass clazz) {
 
+//    pthread_mutex_lock(&mutex);
+//
 //    jclass j_jniobj = env->FindClass("com/tencent/mm/libwxperf/JNIObj");
 //    if (j_jniobj) {
-//        jmethodID method = env->GetStaticMethodID(j_jniobj, "calledByJNI", "()V");
+//        jmethodID method = env->GetStaticMethodID(j_jniobj, "calledByJNI", "()Ljava/lang/String;");
 //        if (method) {
 //            LOGD("Yves-debug", "before call java");
-//            env->CallStaticVoidMethod(j_jniobj, method);
+//            jstring jstr = (jstring)env->CallStaticObjectMethod(j_jniobj, method);
 //            LOGD("Yves-debug", "after call java");
+//
+//            const char *stack = env->GetStringUTFChars(jstr, NULL);
+//
+//            LOGD("Yves-debug", " stack = %s", stack);
+//
+//            env->ReleaseStringUTFChars(jstr, stack);
 //        }
 //    } else {
 //        LOGD("Yves-debug", "class not found");
 //    }
+//
+//    pthread_mutex_unlock(&mutex);
 
-    std::atomic<std::vector<Obj> *> atomic_vec_ptr;
+//    std::atomic<std::vector<Obj> *> atomic_vec_ptr;
+//
+//    atomic_vec_ptr = new std::vector<Obj>;
+//
+//    copy(atomic_vec_ptr);
+//
+//    for (auto obj : *atomic_vec_ptr.load()) {
+//        LOGD("Vector-test", "a=%d, b=%d", obj.a, obj.b);
+//    }
 
-    atomic_vec_ptr = new std::vector<Obj>;
+    char * ch = static_cast<char *>(malloc(64));
 
-    copy(atomic_vec_ptr);
+    std::atomic<char *> atomic_ch;
+    atomic_ch.store(ch);
 
-    for (auto obj : *atomic_vec_ptr.load()) {
-        LOGD("Vector-test", "a=%d, b=%d", obj.a, obj.b);
-    }
+    LOGD("Yves-debug", "atomic test: %p -> %p", ch, atomic_ch.load());
+
+    char * ch2 = static_cast<char *>(malloc(64));
+
+    std::atomic<char *> atomic_ch2;
+    atomic_ch2.store(ch, std::memory_order_release);
+
+    LOGD("Yves-debug", "atomic test 2 : %p -> %p", ch2, atomic_ch2.load(std::memory_order_acquire));
+
 }
 
 #ifdef __cplusplus

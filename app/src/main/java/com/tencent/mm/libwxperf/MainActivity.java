@@ -33,10 +33,10 @@ public class MainActivity extends AppCompatActivity {
 //        MemoryHook.hook();
         try {
             HookManager.INSTANCE
-                    .addHook(MemoryHook.INSTANCE
-                            .addHookSo(".*libnative-lib\\.so$")
-                            .enableStacktrace(true)
-                            .enableMmapHook(true))
+//                    .addHook(MemoryHook.INSTANCE
+//                            .addHookSo(".*libnative-lib\\.so$")
+//                            .enableStacktrace(true)
+//                            .enableMmapHook(true))
                     .addHook(PthreadHook.INSTANCE
 //                            .addHookSo(".*libnative-lib\\.so$")
                             .addHookSo(".*\\.so$")
@@ -174,18 +174,18 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
 
-//                for (int i = 0; i < 100; i++) {
-//
-//                    new Thread(new Runnable() {
-//                        @Override
-//                        public void run() {
-//                            JNIObj.testJNICall();
-//                            JNIObj.testJNICall();
-//                        }
-//                    }).start();
-//                }
+                for (int i = 0; i < 100; i++) {
 
-                JNIObj.testJNICall();
+                    new Thread(new Runnable() {
+                        @Override
+                        public void run() {
+                            JNIObj.testJNICall();
+                            JNIObj.testJNICall();
+                        }
+                    }).start();
+                }
+
+//                JNIObj.testJNICall();
             }
         });
 
