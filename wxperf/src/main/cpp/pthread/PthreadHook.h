@@ -17,7 +17,9 @@ void pthread_hook_init();
 
 void add_hook_thread_name(const char *__regex_str);
 
-void pthread_dump(const char *path = "/sdcard/pthread_hook.log");
+void pthread_dump(const char *__path = "/sdcard/pthread_hook.log");
+
+char * pthread_dump_json(const char *__path = "/sdcard/pthread_hook.json");
 
 void pthread_hook_on_dlopen(const char *__file_name);
 

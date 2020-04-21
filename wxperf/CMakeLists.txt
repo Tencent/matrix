@@ -41,12 +41,14 @@ add_library( # Specifies the name of the library.
 
 add_subdirectory(${SOURCE_DIR}/external/libxhook)
 add_subdirectory(${SOURCE_DIR}/external/libunwindstack)
+add_subdirectory(${SOURCE_DIR}/external/libcJSON)
 
 target_include_directories(
         wxperf
         PRIVATE ${SOURCE_DIR}/common
         PRIVATE ${SOURCE_DIR}/external/libxhook
         PRIVATE ${SOURCE_DIR}/external/libunwindstack/include
+        PRIVATE ${SOURCE_DIR}/external/libcJSON
 )
 
 # Searches for a specified prebuilt library and stores the path as a
@@ -70,6 +72,7 @@ target_link_libraries( # Specifies the target library.
         wxperf
         xhook
         unwindstack
+        cJSON
         # Links the target library to the log library
         # included in the NDK.
         ${log-lib})

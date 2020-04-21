@@ -311,7 +311,7 @@ static inline void dump_stacks_unsafe(FILE *log_file,
             stack_builder << "      | "
                           << "#pc " << std::hex << it->rel_pc << " "
                           << (demangled_name ? demangled_name : "(null)")
-                          << " (" << stack_info.dli_fname << ")"
+                          << " (" << (stack_info.dli_fname ? stack_info.dli_fname : "(null)") << ")"
                           << std::endl;
 
             free(demangled_name);

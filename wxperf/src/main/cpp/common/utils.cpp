@@ -36,3 +36,7 @@ uint64_t hash_str(const char * str) {
     }
     return hash;
 }
+
+uint64_t hash_combine(uint64_t l, uint64_t r) {
+    return l + r;
+}

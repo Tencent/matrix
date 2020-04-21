@@ -18,6 +18,7 @@
 #include "pthread.h"
 #include "log.h"
 #include "JNICommon.h"
+#include "cJSON.h"
 
 #define ORIGINAL_LIB "libc.so"
 #define TAG "PthreadHook"
@@ -26,25 +27,51 @@
 
 typedef void *(*pthread_routine_t)(void *);
 
-// fixme on_create on_setname 时序问题
-extern "C" typedef struct {
-    pthread_t pthread; // key ?
-    pid_t     tid;
-    char      *thread_name;
-    char      *parent_name;
-    uint64_t  native_hash;
-    uint64_t  java_hash;
+//typedef struct {
+//
+//    std::vector<unwindstack::FrameData> native_stacktrace;
+//
+//    std::atomic<char *> java_stacktrace;
+//
+//} pthread_stacktrace_t;
+
+struct pthread_meta_t {
+    pid_t tid;
+    char  *thread_name;
+    char  *parent_name;
+
+    uint64_t hash;
 
     std::vector<unwindstack::FrameData> native_stacktrace;
 
     std::atomic<char *> java_stacktrace;
 
-} pthread_meta_t;
+    pthread_meta_t() : tid(0),
+                       thread_name(nullptr),
+                       parent_name(nullptr),
+                       hash(0),
+                       java_stacktrace(nullptr) {
+    };
 
-extern "C" typedef struct {
+    ~pthread_meta_t() = default;
+
+    pthread_meta_t(const pthread_meta_t &src) {
+        tid               = src.tid;
+        thread_name       = src.thread_name;
+        parent_name       = src.parent_name;
+        hash              = src.hash;
+        native_stacktrace = src.native_stacktrace;
+        java_stacktrace.store(src.java_stacktrace.load(std::memory_order_acquire),
+                              std::memory_order_release);
+    }
+};
+
+// fixme on_create on_setname 时序问题
+
+typedef struct {
     pthread_routine_t origin_func;
     void              *origin_args;
-} routine_wrapper_t;
+}            routine_wrapper_t;
 
 struct regex_wrapper {
     const char *regex_str;
@@ -60,12 +87,11 @@ struct regex_wrapper {
 static pthread_mutex_t     m_pthread_meta_mutex;
 static pthread_mutexattr_t attr;
 
-static std::unordered_map<pthread_t, pthread_meta_t> m_pthread_metas;
-static std::set<regex_wrapper>                       m_hook_thread_name_regex;
+static std::map<pthread_t, pthread_meta_t> m_pthread_metas;
+
+static std::set<regex_wrapper> m_hook_thread_name_regex;
 
 static pthread_key_t m_key;
-//static pthread_mutex_t m_key_mutex = PTHREAD_MUTEX_INITIALIZER;
-//static pthread_cond_t m_wrapper_cond = PTHREAD_COND_INITIALIZER;
 
 static void on_pthread_destroy(void *__specific);
 
@@ -92,7 +118,7 @@ void add_hook_thread_name(const char *__regex_str) {
     strncpy(p_regex_str, __regex_str, len);
     regex_wrapper w_regex(p_regex_str, regex);
     m_hook_thread_name_regex.insert(w_regex);
-    LOGD(TAG, "parent name regex: %s -> %s, len = %d", __regex_str, p_regex_str, len);
+    LOGD(TAG, "parent name regex: %s -> %s, len = %zu", __regex_str, p_regex_str, len);
 }
 
 static int read_thread_name(pthread_t __pthread, char *__buf, size_t __n) {
@@ -144,7 +170,7 @@ static void unwind_native_stacktrace(pthread_meta_t &__meta) {
 
 static void unwind_java_stacktrace(pthread_meta_t *__meta) {
     const size_t BUF_SIZE = 1024;
-    char *buf = static_cast<char *>(malloc(BUF_SIZE));
+    char         *buf     = static_cast<char *>(malloc(BUF_SIZE));
 
     if (buf) {
         get_java_stacktrace(buf, BUF_SIZE);
@@ -183,35 +209,41 @@ static void on_pthread_create(const pthread_t __pthread_ptr) {
         meta.thread_name = meta.parent_name;
     }
 
-    LOGD(TAG, "on_pthread_create: pthread = %ld, parent name: %s, thread name: %s", pthread, meta.parent_name,
+    LOGD(TAG, "on_pthread_create: pthread = %ld, parent name: %s, thread name: %s", pthread,
+         meta.parent_name,
          meta.thread_name);
 
     bool need_unwind = test_match_thread_name(meta);
 
+    uint64_t native_hash = 0;
+    uint64_t java_hash   = 0;
+
     if (need_unwind && meta.native_stacktrace.empty()) {
         unwind_native_stacktrace(meta);
-        meta.native_hash = hash_stack_frames(meta.native_stacktrace);
-        LOGD(TAG, "on_pthread_create: native hash = %llu", meta.native_hash);
+        native_hash = hash_stack_frames(meta.native_stacktrace);
+        LOGD(TAG, "on_pthread_create: native hash = %lu", native_hash);
     }
 
     pthread_mutex_unlock(&m_pthread_meta_mutex);
 
-    // 反射 Java 获取堆栈加锁会造成死锁
     if (need_unwind && !meta.java_stacktrace.load(std::memory_order_acquire)) {
-
+        // 反射 Java 获取堆栈时加锁会造成死锁
         unwind_java_stacktrace(&meta);
-
-        pthread_mutex_lock(&m_pthread_meta_mutex);
 
         const char *java_stacktrace = meta.java_stacktrace.load(std::memory_order_acquire);
         if (java_stacktrace) {
-            meta.java_hash = hash_str(java_stacktrace);
-            LOGD(TAG, "on_pthread_create: java hash = %llu", meta.java_hash);
+            java_hash = hash_str(java_stacktrace);
+            LOGD(TAG, "on_pthread_create: java hash = %lu", java_hash);
         }
-
-        pthread_mutex_unlock(&m_pthread_meta_mutex);
     }
 
+    pthread_mutex_lock(&m_pthread_meta_mutex);
+
+    if (native_hash && java_hash) {
+        meta.hash = hash_combine(native_hash, java_hash);
+    }
+
+    pthread_mutex_unlock(&m_pthread_meta_mutex);
     LOGD(TAG, "------ on_pthread_create end");
 }
 
@@ -261,9 +293,12 @@ static void on_pthread_setname(pthread_t __pthread, const char *__name) {
                         && 0 != strncmp(meta.parent_name, meta.thread_name, THREAD_NAME_LEN)
                         && test_match_thread_name(meta));
 
+    uint64_t native_hash = 0;
+    uint64_t java_hash   = 0;
+
     if (need_unwind && meta.native_stacktrace.empty()) {
         unwind_native_stacktrace(meta);
-        meta.native_hash = hash_stack_frames(meta.native_stacktrace);
+        native_hash = hash_stack_frames(meta.native_stacktrace);
         LOGD(TAG, "on_pthread_setname: unwind native");
     }
 
@@ -273,28 +308,32 @@ static void on_pthread_setname(pthread_t __pthread, const char *__name) {
         LOGD(TAG, "on_pthread_setname: unwinding java");
         unwind_java_stacktrace(&meta);
 
-        pthread_mutex_lock(&m_pthread_meta_mutex);
-
         const char *java_stacktrace = meta.java_stacktrace.load(std::memory_order_acquire);
         if (java_stacktrace) {
-            meta.java_hash = hash_str(java_stacktrace);
-            LOGD(TAG, "on_pthread_setname: java hash = %llu", meta.java_hash);
+            java_hash = hash_str(java_stacktrace);
+            LOGD(TAG, "on_pthread_setname: java hash = %lu", java_hash);
         }
-
-        pthread_mutex_unlock(&m_pthread_meta_mutex);
     }
+
+    pthread_mutex_lock(&m_pthread_meta_mutex);
+
+    if (native_hash && java_hash) {
+        meta.hash = hash_combine(native_hash, java_hash);
+    }
+
+    pthread_mutex_unlock(&m_pthread_meta_mutex);
 
     LOGD(TAG, "--------------------------");
 }
 
 
-void pthread_dump_impl(FILE *__log_file, std::unordered_map<pthread_t, pthread_meta_t> &metas) {
+void pthread_dump_impl(FILE *__log_file) {
     if (!__log_file) {
         LOGE(TAG, "open file failed");
         return;
     }
 
-    for (auto &i: metas) {
+    for (auto &i: m_pthread_metas) {
         auto &meta = i.second;
         LOGD(TAG, "========> RETAINED PTHREAD { name : %s, parent: %s, tid: %d }", meta.thread_name,
              meta.parent_name, meta.tid);
@@ -309,15 +348,9 @@ void pthread_dump_impl(FILE *__log_file, std::unordered_map<pthread_t, pthread_m
         LOGD(TAG, "native stacktrace:");
         fprintf(__log_file, "native stacktrace:\n");
 
-//        auto native_stacktrace = std::atomic_load(&meta.native_stacktrace);
-//        if (!native_stacktrace) {
-//            continue;
-//        }
-
-        for (auto p_frame = meta.native_stacktrace.begin();
-             p_frame != meta.native_stacktrace.end(); ++p_frame) {
+        for (auto &p_frame : meta.native_stacktrace) {
             Dl_info stack_info;
-            dladdr((void *) p_frame->pc, &stack_info);
+            dladdr((void *) p_frame.pc, &stack_info);
 
             std::string so_name = std::string(stack_info.dli_fname);
 
@@ -327,9 +360,9 @@ void pthread_dump_impl(FILE *__log_file, std::unordered_map<pthread_t, pthread_m
 
             LOGD(TAG, "  #pc %"
                     PRIxPTR
-                    " %s (%s)", p_frame->rel_pc,
+                    " %s (%s)", p_frame.rel_pc,
                  demangled_name ? demangled_name : "(null)", stack_info.dli_fname);
-            fprintf(__log_file, "  #pc %" PRIxPTR " %s (%s)\n", p_frame->rel_pc,
+            fprintf(__log_file, "  #pc %" PRIxPTR " %s (%s)\n", p_frame.rel_pc,
                     demangled_name ? demangled_name : "(null)", stack_info.dli_fname);
 
             free(demangled_name);
@@ -349,7 +382,7 @@ void pthread_dump(const char *__path) {
     FILE *log_file = fopen(__path, "w+");
     LOGD(TAG, "pthread dump path = %s", __path);
 
-    pthread_dump_impl(log_file, m_pthread_metas);
+    pthread_dump_impl(log_file);
 
     fclose(log_file);
 
@@ -357,6 +390,131 @@ void pthread_dump(const char *__path) {
 
     LOGD(TAG,
          ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> pthread dump end <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
+}
+
+
+char *pthread_dump_json_impl(FILE *__log_file) {
+
+    std::map<uint64_t, std::vector<pthread_meta_t>> pthread_metas_by_hash;
+
+    for (auto &i : m_pthread_metas) {
+        auto &meta        = i.second;
+        auto &hash_bucket = pthread_metas_by_hash[meta.hash];
+        hash_bucket.emplace_back(meta);
+    }
+
+    char  *json_str    = NULL;
+    cJSON *threads_arr = NULL;
+
+    cJSON *json_obj = cJSON_CreateObject();
+
+    if (!json_obj) {
+        goto err;
+    }
+
+    threads_arr = cJSON_AddArrayToObject(json_obj, "PthreadHook");
+
+    if (!threads_arr) {
+        goto err;
+    }
+
+    for (auto &i : pthread_metas_by_hash) {
+        auto &hash  = i.first;
+        auto &metas = i.second;
+
+        cJSON *hash_obj = cJSON_CreateObject();
+
+        if (!hash_obj) {
+            goto err;
+        }
+
+        cJSON_AddStringToObject(hash_obj, "hash", std::to_string(hash).c_str());
+        assert(!metas.empty());
+
+        std::stringstream stack_builder;
+        for (auto         &frame : metas.front().native_stacktrace) {
+            Dl_info stack_info;
+            dladdr((void *) frame.pc, &stack_info);
+
+            int  status          = 0;
+            char *demangled_name = abi::__cxa_demangle(stack_info.dli_sname, nullptr, 0,
+                                                       &status);
+
+            stack_builder << "#pc " << std::hex << frame.rel_pc << " "
+                          << (demangled_name ? demangled_name : "(null)")
+                          << " (" << (stack_info.dli_fname ? stack_info.dli_fname : "(null)")
+                          << ");";
+
+            free(demangled_name);
+        }
+        cJSON_AddStringToObject(hash_obj, "native", stack_builder.str().c_str());
+
+        cJSON_AddStringToObject(hash_obj, "java", metas.front().java_stacktrace);
+
+        cJSON_AddStringToObject(hash_obj, "count", std::to_string(metas.size()).c_str());
+
+        cJSON *same_hash_metas_arr = cJSON_AddArrayToObject(hash_obj, "threads");
+
+        if (!same_hash_metas_arr) {
+            goto err;
+        }
+
+        for (auto &meta: metas) {
+            cJSON *meta_obj = cJSON_CreateObject();
+
+            if (!meta_obj) {
+                goto err;
+            }
+
+            cJSON_AddStringToObject(meta_obj, "tid", std::to_string(meta.tid).c_str());
+            cJSON_AddStringToObject(meta_obj, "name", meta.thread_name);
+            cJSON_AddStringToObject(meta_obj, "parent", meta.parent_name);
+
+            cJSON_AddItemToArray(same_hash_metas_arr, meta_obj);
+        }
+
+        cJSON_AddItemToArray(threads_arr, hash_obj);
+
+        LOGD(TAG, "%s", cJSON_Print(hash_obj));
+    }
+
+    json_str = cJSON_PrintUnformatted(json_obj);
+
+    cJSON_Delete(json_obj);
+
+    fprintf(__log_file, "%s", json_str);
+
+    return json_str;
+
+    err:
+    LOGD(TAG, "ERROR: create cJSON object failed");
+    cJSON_Delete(json_obj);
+
+    return nullptr;
+}
+
+char *pthread_dump_json(const char *__path) {
+
+    LOGD(TAG,
+         ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> pthread dump json begin <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
+    pthread_mutex_lock(&m_pthread_meta_mutex);
+
+    FILE *log_file = fopen(__path, "w+");
+    LOGD(TAG, "pthread dump path = %s", __path);
+
+    pthread_dump_json_impl(log_file);
+
+    fclose(log_file);
+
+    pthread_mutex_unlock(&m_pthread_meta_mutex);
+
+    LOGD(TAG,
+         ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> pthread dump json end <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
+
+    char *ret;
+
+
+    return ret;
 }
 
 void pthread_hook_on_dlopen(const char *__file_name) {
@@ -389,7 +547,7 @@ static void on_pthread_destroy(void *__specific) {
         free(meta.parent_name);
     }
 
-    char * java_stacktrace = meta.java_stacktrace.load(std::memory_order_acquire);
+    char *java_stacktrace = meta.java_stacktrace.load(std::memory_order_acquire);
     if (java_stacktrace) {
         free(java_stacktrace);
     }

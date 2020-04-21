@@ -81,6 +81,8 @@ Java_com_tencent_mm_performance_jni_pthread_PthreadHook_dumpNative(JNIEnv *env, 
     } else {
         pthread_dump();
     }
+    // todo
+    pthread_dump_json();
 }
 
 
