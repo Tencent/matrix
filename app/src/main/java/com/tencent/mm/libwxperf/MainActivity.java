@@ -19,7 +19,6 @@ import com.tencent.mm.performance.jni.memory.MemoryHook;
 import com.tencent.mm.performance.jni.pthread.PthreadHook;
 
 import java.io.File;
-import java.util.Map;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -29,6 +28,12 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        String threadNameRegex = "[GT]TestHT-?".replace("[", "\\[").replace("]", "\\]").replace("?", "[0-9]*");
+
+        String name = "[GT]TestHT-12";
+
+        Log.d(TAG, "threadName = " + threadNameRegex + ", " + name.matches(threadNameRegex));
 
 //        MemoryHook.hook();
         try {
@@ -41,7 +46,8 @@ public class MainActivity extends AppCompatActivity {
 //                            .addHookSo(".*libnative-lib\\.so$")
                             .addHookSo(".*\\.so$")
 //                            .addIgnoreSo(".*libart\\.so$")
-                            .addHookThread(".*")
+//                            .addHookThread(".*")
+                            .addHookThread(threadNameRegex)
 //                            .addHookThread("MyHandlerThread")
 //                            .addHookThread("\\[GT\\]MediaCodecR$")
                     )
@@ -108,7 +114,7 @@ public class MainActivity extends AppCompatActivity {
                             Log.d("Yves-debug", "test thread " + i);
                             JNIObj.testThread();
 
-                            HandlerThread ht = new HandlerThread("TestHandlerTh");
+                            HandlerThread ht = new HandlerThread("[GT]TestHT-" + i);
                             ht.start();
 
                             new Handler(ht.getLooper()).post(new Runnable() {
@@ -139,7 +145,7 @@ public class MainActivity extends AppCompatActivity {
 
 
                     }
-                }, "[GT]MediaCodecR");
+                }, "[GT]HotPool#1");
 
                 t.start();
 

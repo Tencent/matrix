@@ -27,18 +27,10 @@
 
 typedef void *(*pthread_routine_t)(void *);
 
-//typedef struct {
-//
-//    std::vector<unwindstack::FrameData> native_stacktrace;
-//
-//    std::atomic<char *> java_stacktrace;
-//
-//} pthread_stacktrace_t;
-
 struct pthread_meta_t {
     pid_t tid;
     char  *thread_name;
-    char  *parent_name;
+//    char  *parent_name;
 
     uint64_t hash;
 
@@ -48,7 +40,7 @@ struct pthread_meta_t {
 
     pthread_meta_t() : tid(0),
                        thread_name(nullptr),
-                       parent_name(nullptr),
+//                       parent_name(nullptr),
                        hash(0),
                        java_stacktrace(nullptr) {
     };
@@ -58,15 +50,13 @@ struct pthread_meta_t {
     pthread_meta_t(const pthread_meta_t &src) {
         tid               = src.tid;
         thread_name       = src.thread_name;
-        parent_name       = src.parent_name;
+//        parent_name       = src.parent_name;
         hash              = src.hash;
         native_stacktrace = src.native_stacktrace;
         java_stacktrace.store(src.java_stacktrace.load(std::memory_order_acquire),
                               std::memory_order_release);
     }
 };
-
-// fixme on_create on_setname 时序问题
 
 typedef struct {
     pthread_routine_t origin_func;
@@ -88,6 +78,7 @@ static pthread_mutex_t     m_pthread_meta_mutex;
 static pthread_mutexattr_t attr;
 
 static std::map<pthread_t, pthread_meta_t> m_pthread_metas;
+static std::set<pthread_t>                 m_filtered_pthreads;
 
 static std::set<regex_wrapper> m_hook_thread_name_regex;
 
@@ -157,8 +148,12 @@ inline int wrap_pthread_getname_np(pthread_t __pthread, char *__buf, size_t __n)
 static bool test_match_thread_name(pthread_meta_t &__meta) {
     for (const auto &w : m_hook_thread_name_regex) {
         if (__meta.thread_name && 0 == regexec(&w.regex, __meta.thread_name, 0, NULL, 0)) {
-            LOGD(TAG, "%s matches regex %s", __meta.thread_name, w.regex_str);
+            LOGD(TAG, "test_match_thread_name: %s matches regex %s", __meta.thread_name,
+                 w.regex_str);
             return true;
+        } else {
+            LOGD(TAG, "test_match_thread_name: %s NOT matches regex %s", __meta.thread_name,
+                 w.regex_str);
         }
     }
     return false;
@@ -178,64 +173,56 @@ static void unwind_java_stacktrace(pthread_meta_t *__meta) {
     __meta->java_stacktrace.store(buf, std::memory_order_release);
 }
 
-static void on_pthread_create(const pthread_t __pthread_ptr) {
+static void on_pthread_create(const pthread_t __pthread) {
 
-    pthread_t pthread = __pthread_ptr;
-    pid_t     tid     = pthread_gettid_np(pthread);
+//    pthread_t pthread    = __pthread;
+    pid_t tid        = pthread_gettid_np(__pthread);
+    pid_t parent_tid = pthread_gettid_np(pthread_self());
 
-    LOGD(TAG, "+++++++ on_pthread_create tid: %d", tid);
+    LOGD(TAG, "+++++++ on_pthread_create parendt_tid: %d -> tid: %d", parent_tid, tid);
     pthread_mutex_lock(&m_pthread_meta_mutex);
 
-    if (m_pthread_metas.count(pthread)) {
+    if (m_pthread_metas.count(__pthread)) {
         LOGD(TAG, "on_pthread_create: thread already recorded");
         pthread_mutex_unlock(&m_pthread_meta_mutex);
         return;
     }
 
-    pthread_meta_t &meta = m_pthread_metas[pthread];
+    pthread_meta_t &meta = m_pthread_metas[__pthread];
 
     meta.tid = tid;
 
-    char *parent_name = static_cast<char *>(malloc(sizeof(char) * THREAD_NAME_LEN));
-
-    if (wrap_pthread_getname_np(pthread, parent_name, THREAD_NAME_LEN) == 0) {
-    } else {
-        strncpy(parent_name, "(null)", THREAD_NAME_LEN);
+    // 如果还没 setname, 此时拿到的是父线程的名字, 在 setname 的时候有一次更正机会, 否则继承父线程名字
+    // 如果已经 setname, 那么此时拿到的就是当前线程的名字
+    meta.thread_name = static_cast<char *>(malloc(sizeof(char) * THREAD_NAME_LEN));
+    if (0 != wrap_pthread_getname_np(__pthread, meta.thread_name, THREAD_NAME_LEN) == 0) {
+        strncpy(meta.thread_name, "(null name)", THREAD_NAME_LEN);
     }
 
-    meta.parent_name = parent_name;
+    LOGD(TAG, "on_pthread_create: pthread = %ld, thread name: %s", __pthread, meta.thread_name);
 
-    if (!meta.thread_name) { // 如果还没 setname, 则继承父线程名
-        meta.thread_name = meta.parent_name;
+    if (test_match_thread_name(meta)) {
+        m_filtered_pthreads.insert(__pthread);
     }
-
-    LOGD(TAG, "on_pthread_create: pthread = %ld, parent name: %s, thread name: %s", pthread,
-         meta.parent_name,
-         meta.thread_name);
-
-    bool need_unwind = test_match_thread_name(meta);
 
     uint64_t native_hash = 0;
     uint64_t java_hash   = 0;
 
-    if (need_unwind && meta.native_stacktrace.empty()) {
-        unwind_native_stacktrace(meta);
-        native_hash = hash_stack_frames(meta.native_stacktrace);
-        LOGD(TAG, "on_pthread_create: native hash = %lu", native_hash);
-    }
+    unwind_native_stacktrace(meta);
+    native_hash = hash_stack_frames(meta.native_stacktrace);
 
     pthread_mutex_unlock(&m_pthread_meta_mutex);
 
-    if (need_unwind && !meta.java_stacktrace.load(std::memory_order_acquire)) {
-        // 反射 Java 获取堆栈时加锁会造成死锁
-        unwind_java_stacktrace(&meta);
+    // unlock scope
+    // 反射 Java 获取堆栈时加锁会造成死锁
+    unwind_java_stacktrace(&meta);
 
-        const char *java_stacktrace = meta.java_stacktrace.load(std::memory_order_acquire);
-        if (java_stacktrace) {
-            java_hash = hash_str(java_stacktrace);
-            LOGD(TAG, "on_pthread_create: java hash = %lu", java_hash);
-        }
+    const char *java_stacktrace = meta.java_stacktrace.load(std::memory_order_acquire);
+    if (java_stacktrace) {
+        java_hash = hash_str(java_stacktrace);
+        LOGD(TAG, "on_pthread_create: java hash = %lu", java_hash);
     }
+    // unlock scope
 
     pthread_mutex_lock(&m_pthread_meta_mutex);
 
@@ -270,57 +257,44 @@ static void on_pthread_setname(pthread_t __pthread, const char *__name) {
     pthread_mutex_lock(&m_pthread_meta_mutex);
 
     if (!m_pthread_metas.count(__pthread)) {
+        // 到这里说明没有回调 on_pthread_create, setname 对 on_pthread_create 是可见的
         auto lost_thread_name = static_cast<char *>(malloc(sizeof(char) * THREAD_NAME_LEN));
         wrap_pthread_getname_np(__pthread, lost_thread_name, THREAD_NAME_LEN);
-        LOGE(TAG, "on_pthread_setname: pthread hook lost: {%s}", lost_thread_name);
+        LOGE(TAG,
+             "on_pthread_setname: pthread hook lost: {%s} -> {%s}, maybe on_create has not been called",
+             lost_thread_name, __name);
         free(lost_thread_name);
+
         pthread_mutex_unlock(&m_pthread_meta_mutex);
         return;
     }
 
-    pthread_meta_t &meta = m_pthread_metas.at(__pthread);
+    // 到这里说明 on_pthread_create 已经回调了, 需要修正并检查新的线程名是否 match 正则
 
-    // 如果 match, 则说明在父线程 unwind 了, 否则应该重新 unwind
-    bool unwind_in_parent = test_match_thread_name(meta);
+    pthread_meta_t &meta = m_pthread_metas.at(__pthread);
 
     LOGD(TAG, "on_pthread_setname: %s -> %s, tid:%d", meta.thread_name, __name, meta.tid);
 
-    meta.thread_name = static_cast<char *>(malloc(sizeof(char) * (THREAD_NAME_LEN + 1)));
-    strncpy(meta.thread_name, __name, THREAD_NAME_LEN + 1);
+    assert(meta.thread_name != nullptr);
+    strncpy(meta.thread_name, __name, THREAD_NAME_LEN);
 
-    // 子线程与父线程名不一致时，并且新线程名 match 正则，则需要 unwind
-    bool need_unwind = (!unwind_in_parent
-                        && 0 != strncmp(meta.parent_name, meta.thread_name, THREAD_NAME_LEN)
-                        && test_match_thread_name(meta));
+    bool parent_match = m_filtered_pthreads.count(__pthread) != 0;
 
-    uint64_t native_hash = 0;
-    uint64_t java_hash   = 0;
-
-    if (need_unwind && meta.native_stacktrace.empty()) {
-        unwind_native_stacktrace(meta);
-        native_hash = hash_stack_frames(meta.native_stacktrace);
-        LOGD(TAG, "on_pthread_setname: unwind native");
+    // 如果新线程名不 match, 但父线程名 match, 说明需要从 filter 集合中移除
+    if (!test_match_thread_name(meta) && parent_match) {
+        m_filtered_pthreads.erase(__pthread);
+        goto end;
     }
 
-    pthread_mutex_unlock(&m_pthread_meta_mutex);
-
-    if (need_unwind && !meta.java_stacktrace.load(std::memory_order_acquire)) {
-        LOGD(TAG, "on_pthread_setname: unwinding java");
-        unwind_java_stacktrace(&meta);
-
-        const char *java_stacktrace = meta.java_stacktrace.load(std::memory_order_acquire);
-        if (java_stacktrace) {
-            java_hash = hash_str(java_stacktrace);
-            LOGD(TAG, "on_pthread_setname: java hash = %lu", java_hash);
-        }
+    // 如果新线程 match, 但父线程名不 match, 说明需要添加仅 filter 集合
+    if (test_match_thread_name(meta) && !parent_match) {
+        m_filtered_pthreads.insert(__pthread);
+        goto end;
     }
 
-    pthread_mutex_lock(&m_pthread_meta_mutex);
+    // 否则, 啥也不干 (都 match, 都不 match)
 
-    if (native_hash && java_hash) {
-        meta.hash = hash_combine(native_hash, java_hash);
-    }
-
+    end:
     pthread_mutex_unlock(&m_pthread_meta_mutex);
 
     LOGD(TAG, "--------------------------");
@@ -335,10 +309,9 @@ void pthread_dump_impl(FILE *__log_file) {
 
     for (auto &i: m_pthread_metas) {
         auto &meta = i.second;
-        LOGD(TAG, "========> RETAINED PTHREAD { name : %s, parent: %s, tid: %d }", meta.thread_name,
-             meta.parent_name, meta.tid);
-        fprintf(__log_file, "========> RETAINED PTHREAD { name : %s, parent: %s, tid: %d }\n",
-                meta.thread_name, meta.parent_name, meta.tid);
+        LOGD(TAG, "========> RETAINED PTHREAD { name : %s, tid: %d }", meta.thread_name, meta.tid);
+        fprintf(__log_file, "========> RETAINED PTHREAD { name : %s, tid: %d }\n",
+                meta.thread_name, meta.tid);
         std::stringstream stack_builder;
 
         if (meta.native_stacktrace.empty()) {
@@ -397,10 +370,12 @@ char *pthread_dump_json_impl(FILE *__log_file) {
 
     std::map<uint64_t, std::vector<pthread_meta_t>> pthread_metas_by_hash;
 
-    for (auto &i : m_pthread_metas) {
-        auto &meta        = i.second;
-        auto &hash_bucket = pthread_metas_by_hash[meta.hash];
-        hash_bucket.emplace_back(meta);
+    for (auto &i : m_filtered_pthreads) {
+        auto &meta = m_pthread_metas[i];
+        if (meta.hash) {
+            auto &hash_bucket = pthread_metas_by_hash[meta.hash];
+            hash_bucket.emplace_back(meta);
+        }
     }
 
     char  *json_str    = NULL;
@@ -433,23 +408,32 @@ char *pthread_dump_json_impl(FILE *__log_file) {
 
         std::stringstream stack_builder;
         for (auto         &frame : metas.front().native_stacktrace) {
-            Dl_info stack_info;
-            dladdr((void *) frame.pc, &stack_info);
+            Dl_info stack_info = {nullptr};
+            int     success    = dladdr((void *) frame.pc, &stack_info);
 
-            int  status          = 0;
-            char *demangled_name = abi::__cxa_demangle(stack_info.dli_sname, nullptr, 0,
-                                                       &status);
+            LOGE(TAG, "===> success = %d, pc =  %p, dl_info.dli_sname = %p %s",
+                 success, (void *) frame.pc, (void *) stack_info.dli_sname, stack_info.dli_sname);
+
+            char *demangled_name = nullptr;
+            if (success > 0) {
+                int status = 0;
+                demangled_name = abi::__cxa_demangle(stack_info.dli_sname, nullptr, 0, &status);
+            }
 
             stack_builder << "#pc " << std::hex << frame.rel_pc << " "
                           << (demangled_name ? demangled_name : "(null)")
-                          << " (" << (stack_info.dli_fname ? stack_info.dli_fname : "(null)")
+                          << " ("
+                          << (success && stack_info.dli_fname ? stack_info.dli_fname : "(null)")
                           << ");";
 
-            free(demangled_name);
+            if (demangled_name) {
+                free(demangled_name);
+            }
         }
         cJSON_AddStringToObject(hash_obj, "native", stack_builder.str().c_str());
 
-        cJSON_AddStringToObject(hash_obj, "java", metas.front().java_stacktrace);
+        const char *java_stacktrace = metas.front().java_stacktrace.load(std::memory_order_acquire);
+        cJSON_AddStringToObject(hash_obj, "java", java_stacktrace ? java_stacktrace : "");
 
         cJSON_AddStringToObject(hash_obj, "count", std::to_string(metas.size()).c_str());
 
@@ -468,7 +452,6 @@ char *pthread_dump_json_impl(FILE *__log_file) {
 
             cJSON_AddStringToObject(meta_obj, "tid", std::to_string(meta.tid).c_str());
             cJSON_AddStringToObject(meta_obj, "name", meta.thread_name);
-            cJSON_AddStringToObject(meta_obj, "parent", meta.parent_name);
 
             cJSON_AddItemToArray(same_hash_metas_arr, meta_obj);
         }
@@ -483,7 +466,6 @@ char *pthread_dump_json_impl(FILE *__log_file) {
     cJSON_Delete(json_obj);
 
     fprintf(__log_file, "%s", json_str);
-
     return json_str;
 
     err:
@@ -519,8 +501,9 @@ char *pthread_dump_json(const char *__path) {
 
 void pthread_hook_on_dlopen(const char *__file_name) {
     LOGD(TAG, "pthread_hook_on_dlopen");
+    pthread_mutex_lock(&m_pthread_meta_mutex);
     unwindstack::update_maps();
-
+    pthread_mutex_unlock(&m_pthread_meta_mutex);
     LOGD(TAG, "pthread_hook_on_dlopen end");
 }
 
@@ -537,15 +520,9 @@ static void on_pthread_destroy(void *__specific) {
     }
 
     pthread_meta_t &meta = m_pthread_metas.at(destroying_thread);
-    LOGD(TAG, "removing thread {%ld, %s, %s, %d}", destroying_thread, meta.thread_name,
-         meta.parent_name, meta.tid);
+    LOGD(TAG, "removing thread {%ld, %s, %d}", destroying_thread, meta.thread_name, meta.tid);
 
-    if (meta.thread_name == meta.parent_name) {
-        free(meta.thread_name);
-    } else {
-        free(meta.thread_name);
-        free(meta.parent_name);
-    }
+    free(meta.thread_name);
 
     char *java_stacktrace = meta.java_stacktrace.load(std::memory_order_acquire);
     if (java_stacktrace) {
@@ -553,6 +530,7 @@ static void on_pthread_destroy(void *__specific) {
     }
 
     m_pthread_metas.erase(destroying_thread);
+    m_filtered_pthreads.erase(destroying_thread);
     pthread_mutex_unlock(&m_pthread_meta_mutex);
 
     LOGD(TAG, "__specific %c", *(char *) __specific);
@@ -585,7 +563,9 @@ DEFINE_HOOK_FUN(int, pthread_create, pthread_t *__pthread_ptr, pthread_attr_t co
     CALL_ORIGIN_FUNC_RET(int, ret, pthread_create, __pthread_ptr, __attr, pthread_routine_wrapper,
                          args_wrapper);
 
-    on_pthread_create(*__pthread_ptr);
+    if (0 == ret) {
+        on_pthread_create(*__pthread_ptr);
+    }
 
     return ret;
 }
@@ -593,6 +573,8 @@ DEFINE_HOOK_FUN(int, pthread_create, pthread_t *__pthread_ptr, pthread_attr_t co
 DEFINE_HOOK_FUN(int, pthread_setname_np, pthread_t
         __pthread, const char *__name) {
     CALL_ORIGIN_FUNC_RET(int, ret, pthread_setname_np, __pthread, __name);
-    on_pthread_setname(__pthread, __name);
+    if (0 == ret) {
+        on_pthread_setname(__pthread, __name);
+    }
     return ret;
 }

@@ -6,6 +6,8 @@
 #include "utils.h"
 #include "log.h"
 
+#define JAVA_LONG_MAX_VALUE 0x7fffffffffffffff
+
 uint64_t hash_uint64(uint64_t *p_pc_stacks, size_t stack_size) {
     assert(p_pc_stacks != NULL && stack_size > 0);
     uint64_t sum = 0;
@@ -38,5 +40,5 @@ uint64_t hash_str(const char * str) {
 }
 
 uint64_t hash_combine(uint64_t l, uint64_t r) {
-    return l + r;
+    return (l + r) & JAVA_LONG_MAX_VALUE;
 }

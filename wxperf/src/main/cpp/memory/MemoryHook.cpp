@@ -299,22 +299,26 @@ static inline void dump_stacks_unsafe(FILE *log_file,
         std::string caller_so_name;
         std::stringstream stack_builder;
         for (auto it = stacktrace->begin(); it != stacktrace->end(); ++it) {
-            Dl_info stack_info;
-            dladdr((void *) it->pc, &stack_info);
+            Dl_info stack_info = {nullptr};
+            int success = dladdr((void *) it->pc, &stack_info);
 
-            std::string so_name = std::string(stack_info.dli_fname);
+            std::string so_name = std::string(success ? stack_info.dli_fname : "");
 
-            int status = 0;
-            char *demangled_name = abi::__cxa_demangle(stack_info.dli_sname, nullptr, 0,
-                                                       &status);
+            char *demangled_name = nullptr;
+            if (success > 0) {
+                int status = 0;
+                demangled_name = abi::__cxa_demangle(stack_info.dli_sname, nullptr, 0, &status);
+            }
 
             stack_builder << "      | "
                           << "#pc " << std::hex << it->rel_pc << " "
                           << (demangled_name ? demangled_name : "(null)")
-                          << " (" << (stack_info.dli_fname ? stack_info.dli_fname : "(null)") << ")"
+                          << " (" << (success && stack_info.dli_fname ? stack_info.dli_fname : "(null)") << ")"
                           << std::endl;
 
-            free(demangled_name);
+            if (demangled_name) {
+                free(demangled_name);
+            }
 
             // fixme hard coding
             if (/*so_name.find("com.tencent.mm") == std::string::npos ||*/
