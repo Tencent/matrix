@@ -7,6 +7,18 @@ SET(TARGET android-base)
 SET(
   ${TARGET}_SOURCE_FILES
   ${CMAKE_CURRENT_SOURCE_DIR}/stringprintf.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/file.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/logging.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/chrono_utils.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/cmsg.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/mapped_file.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/parsenetaddress.cpp
+#  ${CMAKE_CURRENT_SOURCE_DIR}/properties.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/quick_exit.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/stringprintf.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/strings.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/threads.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/test_utils.cpp
 )
 
 ADD_LIBRARY(

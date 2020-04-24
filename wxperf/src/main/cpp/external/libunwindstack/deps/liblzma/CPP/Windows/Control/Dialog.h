@@ -105,6 +105,7 @@ public:
   virtual bool OnButtonClicked(int buttonID, HWND buttonHWND);
   virtual void OnOK() {};
   virtual void OnCancel() {};
+  virtual void OnClose() {}
   virtual bool OnNotify(UINT /* controlID */, LPNMHDR /* lParam */) { return false; }
   virtual bool OnTimer(WPARAM /* timerID */, LPARAM /* callback */) { return false; }
 
@@ -133,6 +134,7 @@ public:
   #endif
   virtual void OnOK() { Destroy(); }
   virtual void OnCancel() { Destroy(); }
+  virtual void OnClose() { Destroy(); }
 };
 
 class CModalDialog: public CDialog
@@ -147,6 +149,7 @@ public:
   bool End(INT_PTR result) { return BOOLToBool(::EndDialog(_window, result)); }
   virtual void OnOK() { End(IDOK); }
   virtual void OnCancel() { End(IDCANCEL); }
+  virtual void OnClose() { End(IDCLOSE); }
 };
 
 class CDialogChildControl: public NWindows::CWindow

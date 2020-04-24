@@ -227,7 +227,7 @@ bool CStreamInfo::IsMainStream() const throw()
 UString CStreamInfo::GetReducedName() const
 {
   // remove ":$DATA" postfix, but keep postfix, if Name is "::$DATA"
-  UString s = Name;
+  UString s (Name);
   if (s.Len() > 6 + 1 && StringsAreEqualNoCase_Ascii(s.RightPtr(6), ":$DATA"))
     s.DeleteFrom(s.Len() - 6);
   return s;
@@ -453,7 +453,7 @@ bool CFileInfo::Find(CFSTR path)
   if (colonPos >= 0 && path[(unsigned)colonPos + 1] != 0)
   {
     UString streamName = fs2us(path + (unsigned)colonPos);
-    FString filePath = path;
+    FString filePath (path);
     filePath.DeleteFrom(colonPos);
     /* we allow both cases:
       name:stream
@@ -462,7 +462,7 @@ bool CFileInfo::Find(CFSTR path)
     const unsigned kPostfixSize = 6;
     if (streamName.Len() <= kPostfixSize
         || !StringsAreEqualNoCase_Ascii(streamName.RightPtr(kPostfixSize), ":$DATA"))
-      streamName += L":$DATA";
+      streamName += ":$DATA";
 
     bool isOk = true;
     
@@ -559,9 +559,9 @@ bool CFileInfo::Find(CFSTR path)
         {
           if (NName::FindSepar(path + prefixSize) < 0)
           {
-            FString s = path;
+            FString s (path);
             s.Add_PathSepar();
-            s += FCHAR_ANY_MASK;
+            s += '*'; // CHAR_ANY_MASK
             
             bool isOK = false;
             if (finder.FindFirst(s, *this))
@@ -617,6 +617,12 @@ bool DoesFileOrDirExist(CFSTR name)
   return fi.Find(name);
 }
 
+
+void CEnumerator::SetDirPrefix(const FString &dirPrefix)
+{
+  _wildcard = dirPrefix;
+  _wildcard += '*';
+}
 
 bool CEnumerator::NextAny(CFileInfo &fi)
 {

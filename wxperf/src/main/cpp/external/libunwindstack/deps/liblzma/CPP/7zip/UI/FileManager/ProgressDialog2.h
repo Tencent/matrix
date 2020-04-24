@@ -261,7 +261,18 @@ public:
 
   INT_PTR Create(const UString &title, NWindows::CThread &thread, HWND wndParent = 0);
 
+
+  /* how it works:
+     1) the working thread calls ProcessWasFinished()
+        that sends kCloseMessage message to CProgressDialog (GUI) thread
+     2) CProgressDialog (GUI) thread receives kCloseMessage message and
+        calls ProcessWasFinished_GuiVirt();
+        So we can implement ProcessWasFinished_GuiVirt() and show special
+        results window in GUI thread with CProgressDialog as parent window
+  */
+
   void ProcessWasFinished();
+  virtual void ProcessWasFinished_GuiVirt() {}
 };
 
 
@@ -273,7 +284,8 @@ public:
   ~CProgressCloser() { _p->ProcessWasFinished(); }
 };
 
-class CProgressThreadVirt
+
+class CProgressThreadVirt: public CProgressDialog
 {
 protected:
   FStringVector ErrorPaths;
@@ -281,33 +293,59 @@ protected:
 
   // error if any of HRESULT, ErrorMessage, ErrorPath
   virtual HRESULT ProcessVirt() = 0;
-  void Process();
 public:
   HRESULT Result;
   bool ThreadFinishedOK; // if there is no fatal exception
-  CProgressDialog ProgressDialog;
 
-  static THREAD_FUNC_DECL MyThreadFunction(void *param)
-  {
-    CProgressThreadVirt *p = (CProgressThreadVirt *)param;
-    try
-    {
-      p->Process();
-      p->ThreadFinishedOK = true;
-    }
-    catch (...) { p->Result = E_FAIL; }
-    return 0;
-  }
-
+  void Process();
   void AddErrorPath(const FString &path) { ErrorPaths.Add(path); }
 
   HRESULT Create(const UString &title, HWND parentWindow = 0);
   CProgressThreadVirt(): Result(E_FAIL), ThreadFinishedOK(false) {}
 
   CProgressMessageBoxPair &GetMessagePair(bool isError) { return isError ? FinalMessage.ErrorMessage : FinalMessage.OkMessage; }
-
 };
 
 UString HResultToMessage(HRESULT errorCode);
+
+/*
+how it works:
+
+client code inherits CProgressThreadVirt and calls
+CProgressThreadVirt::Create()
+{
+  it creates new thread that calls CProgressThreadVirt::Process();
+  it creates modal progress dialog window with ProgressDialog.Create()
+}
+
+CProgressThreadVirt::Process()
+{
+  {
+    ProcessVirt(); // virtual function that must implement real work
+  }
+  if (exceptions) or FinalMessage.ErrorMessage.Message
+  {
+    set message to ProgressDialog.Sync.FinalMessage.ErrorMessage.Message
+  }
+  else if (FinalMessage.OkMessage.Message)
+  {
+    set message to ProgressDialog.Sync.FinalMessage.OkMessage
+  }
+
+  PostMsg(kCloseMessage);
+}
+
+
+CProgressDialog::OnExternalCloseMessage()
+{
+  if (ProgressDialog.Sync.FinalMessage)
+  {
+    WorkWasFinishedVirt();
+    Show (ProgressDialog.Sync.FinalMessage)
+    MessagesDisplayed = true;
+  }
+}
+
+*/
 
 #endif

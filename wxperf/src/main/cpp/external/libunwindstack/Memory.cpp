@@ -30,6 +30,7 @@
 #include <android-base/unique_fd.h>
 
 #include <unwindstack/Memory.h>
+#include <deps/sys_compat/compat_uio.h>
 
 #include "Check.h"
 
@@ -82,7 +83,7 @@ static size_t ProcessVmRead(pid_t pid, uint64_t remote_src, void* dst, size_t le
       ++iovecs_used;
     }
 
-    ssize_t rc = process_vm_readv(pid, &dst_iov, 1, src_iovs, iovecs_used, 0);
+    ssize_t rc = compat_process_vm_readv(pid, &dst_iov, 1, src_iovs, iovecs_used, 0);
     if (rc == -1) {
       return total_read;
     }

@@ -1,6 +1,81 @@
 HISTORY of the LZMA SDK
 -----------------------
 
+18.06          2018-12-30
+-------------------------
+- The speed for LZMA/LZMA2 compressing was increased by 3-10%,
+  and there are minor changes in compression ratio.
+- Some bugs were fixed.
+- The bug in 7-Zip 18.02-18.05 was fixed:
+  There was memory leak in multithreading xz decoder - XzDecMt_Decode(),
+  if xz stream contains only one block.
+- The changes for MSVS compiler makefiles: 
+   - the makefiles now use "PLATFORM" macroname with values (x64, x86, arm64)
+     instead of "CPU" macroname with values (AMD64, ARM64).
+   - the makefiles by default now use static version of the run-time library.
+
+
+18.05          2018-04-30
+-------------------------
+- The speed for LZMA/LZMA2 compressing was increased 
+    by 8% for fastest/fast compression levels and 
+    by 3% for normal/maximum compression levels.
+- Previous versions of 7-Zip could work incorrectly in "Large memory pages" mode in
+  Windows 10 because of some BUG with "Large Pages" in Windows 10. 
+  Now 7-Zip doesn't use "Large Pages" on Windows 10 up to revision 1709 (16299).
+- The BUG was fixed in Lzma2Enc.c
+    Lzma2Enc_Encode2() function worked incorretly,
+      if (inStream == NULL) and the number of block threads is more than 1.
+
+
+18.03 beta     2018-03-04
+-------------------------
+- Asm\x86\LzmaDecOpt.asm: new optimized LZMA decoder written in asm 
+  for x64 with about 30% higher speed than main version of LZMA decoder written in C.
+- The speed for single-thread LZMA/LZMA2 decoder written in C was increased by 3%.
+- 7-Zip now can use multi-threading for 7z/LZMA2 decoding,
+  if there are multiple independent data chunks in LZMA2 stream.
+- 7-Zip now can use multi-threading for xz decoding,
+  if there are multiple blocks in xz stream.
+
+
+18.01          2019-01-28
+-------------------------
+- The BUG in 17.01 - 18.00 beta was fixed:
+  XzDec.c : random block unpacking and XzUnpacker_IsBlockFinished()
+  didn't work correctly for xz archives without checksum (CRC).
+
+
+18.00 beta     2019-01-10
+-------------------------
+- The BUG in xz encoder was fixed:
+  There was memory leak of 16 KB for each file compressed with 
+  xz compression method, if additional filter was used.
+
+
+17.01 beta     2017-08-28
+-------------------------
+- Minor speed optimization for LZMA2 (xz and 7z) multi-threading compression.
+  7-Zip now uses additional memory buffers for multi-block LZMA2 compression.
+  CPU utilization was slightly improved.
+- 7-zip now creates multi-block xz archives by default. Block size can be 
+  specified with -ms[Size]{m|g} switch.
+- xz decoder now can unpack random block from multi-block xz archives.
+- 7-Zip command line: @listfile now doesn't work after -- switch.
+  Use -i@listfile before -- switch instead.
+- The BUGs were fixed:
+  7-Zip 17.00 beta crashed for commands that write anti-item to 7z archive.
+
+
+17.00 beta     2017-04-29
+-------------------------
+- NewHandler.h / NewHandler.cpp: 
+    now it redefines operator new() only for old MSVC compilers (_MSC_VER < 1900).
+- C/7zTypes.h : the names of variables in interface structures were changed (vt).
+- Some bugs were fixed. 7-Zip could crash in some cases.
+- Some internal changes in code.
+
+
 16.04          2016-10-04
 -------------------------
 - The bug was fixed in DllSecur.c.

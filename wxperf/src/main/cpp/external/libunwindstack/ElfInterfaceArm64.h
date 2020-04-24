@@ -28,10 +28,10 @@ namespace unwindstack {
 
         }
 
-        bool Step(uint64_t pc, uint64_t load_bias, Regs *regs, Memory *process_memory,
+        bool Step(uint64_t rel_pc, Regs *regs, Memory *process_memory,
                   bool *finished) override;
 
-        inline bool StepPrologue(uint64_t pc, uint64_t load_bias, Regs *regs, Memory *process_memory,
+        inline bool StepPrologue(uint64_t rel_pc, Regs *regs, Memory *process_memory,
                           bool *finished);
 
     private:

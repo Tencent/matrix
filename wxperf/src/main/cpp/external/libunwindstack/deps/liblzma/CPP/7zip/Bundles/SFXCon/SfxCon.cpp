@@ -2,6 +2,8 @@
 
 #include "StdAfx.h"
 
+#include "../../../../C/CpuArch.h"
+
 #include "../../../Common/MyWindows.h"
 
 #include "../../../Common/MyInitGuid.h"
@@ -37,8 +39,8 @@ HINSTANCE g_hInstance = 0;
 int g_CodePage = -1;
 extern CStdOutStream *g_StdStream;
 
-static const char *kCopyrightString =
-"\n7-Zip SFX " MY_VERSION_COPYRIGHT_DATE "\n";
+static const char * const kCopyrightString =
+"\n7-Zip SFX " MY_VERSION_CPU " : " MY_COPYRIGHT_DATE "\n";
 
 static const int kNumSwitches = 6;
 
@@ -65,7 +67,6 @@ enum EEnum
 }
 /*
 static const char kRecursedIDChar = 'R';
-static const wchar_t *kRecursedPostCharSet = L"0-";
 
 namespace NRecursedPostCharIndex {
   enum EEnum
@@ -101,10 +102,10 @@ static const NRecursedType::EEnum kCommandRecursedDefault[kNumCommandForms] =
 // static const bool kTestExtractRecursedDefault = true;
 // static const bool kAddRecursedDefault = false;
 
-static const wchar_t *kUniversalWildcard = L"*";
+static const char * const kUniversalWildcard = "*";
 static const int kCommandIndex = 0;
 
-static const char *kHelpString =
+static const char * const kHelpString =
     "\nUsage: 7zSFX [<command>] [<switches>...] [<file_name>...]\n"
     "\n"
     "<Commands>\n"
@@ -121,16 +122,16 @@ static const char *kHelpString =
 // ---------------------------
 // exception messages
 
-static const char *kUserErrorMessage  = "Incorrect command line"; // NExitCode::kUserError
-// static const char *kIncorrectListFile = "Incorrect wildcard in listfile";
-static const char *kIncorrectWildcardInCommandLine  = "Incorrect wildcard in command line";
+static const char * const kUserErrorMessage  = "Incorrect command line"; // NExitCode::kUserError
+// static const char * const kIncorrectListFile = "Incorrect wildcard in listfile";
+static const char * const kIncorrectWildcardInCommandLine  = "Incorrect wildcard in command line";
 
 // static const CSysString kFileIsNotArchiveMessageBefore = "File \"";
 // static const CSysString kFileIsNotArchiveMessageAfter = "\" is not archive";
 
-// static const char *kProcessArchiveMessage = " archive: ";
+// static const char * const kProcessArchiveMessage = " archive: ";
 
-static const char *kCantFindSFX = " cannot find sfx";
+static const char * const kCantFindSFX = " cannot find sfx";
 
 namespace NCommandType
 {
@@ -280,13 +281,16 @@ int Main2(
 
   #endif
 
-  commandStrings.Delete(0);
+  #ifndef UNDER_CE
+  if (commandStrings.Size() > 0)
+    commandStrings.Delete(0);
+  #endif
 
-  NCommandLineParser::CParser parser(kNumSwitches);
+  NCommandLineParser::CParser parser;
   
   try
   {
-    if (!parser.ParseStrings(kSwitchForms, commandStrings))
+    if (!parser.ParseStrings(kSwitchForms, kNumSwitches, commandStrings))
     {
       g_StdOut << "Command line error:" << endl
           << parser.ErrorMessage << endl
@@ -331,7 +335,7 @@ int Main2(
   
   {
     if (nonSwitchStrings.Size() == curCommandIndex)
-      AddCommandLineWildcardToCensor(wildcardCensor, kUniversalWildcard, true, recursedType);
+      AddCommandLineWildcardToCensor(wildcardCensor, (UString)kUniversalWildcard, true, recursedType);
     for (; curCommandIndex < nonSwitchStrings.Size(); curCommandIndex++)
     {
       const UString &s = nonSwitchStrings[curCommandIndex];

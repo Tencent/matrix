@@ -143,7 +143,7 @@ bool CExtractDialog::OnInit()
       GetText(s);
     if (!ArcPath.IsEmpty())
     {
-      s.AddAscii(" : ");
+      s += " : ";
       s += ArcPath;
     }
     SetText(s);
@@ -409,10 +409,10 @@ void CExtractDialog::OnOK()
 }
 
 #ifndef NO_REGISTRY
-static LPCWSTR kHelpTopic = L"fm/plugins/7-zip/extract.htm";
+#define kHelpTopic "fm/plugins/7-zip/extract.htm"
 void CExtractDialog::OnHelp()
 {
-  ShowHelpWindow(NULL, kHelpTopic);
+  ShowHelpWindow(kHelpTopic);
   CModalDialog::OnHelp();
 }
 #endif

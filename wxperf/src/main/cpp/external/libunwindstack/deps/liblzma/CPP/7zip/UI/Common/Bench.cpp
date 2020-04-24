@@ -32,8 +32,6 @@
 #include "../../../../C/Alloc.h"
 #include "../../../../C/CpuArch.h"
 
-#include "../../../Windows/System.h"
-
 #ifndef _7ZIP_ST
 #include "../../../Windows/Synchronization.h"
 #include "../../../Windows/Thread.h"
@@ -524,10 +522,9 @@ class CBenchProgressInfo:
 {
 public:
   CBenchProgressStatus *Status;
-  HRESULT Res;
   IBenchCallback *Callback;
 
-  CBenchProgressInfo(): Callback(0) {}
+  CBenchProgressInfo(): Callback(NULL) {}
   MY_UNKNOWN_IMP
   STDMETHOD(SetRatioInfo)(const UInt64 *inSize, const UInt64 *outSize);
 };
@@ -760,7 +757,7 @@ struct CEncoderInfo
     fileData(NULL),
     CheckCrc_Enc(true),
     CheckCrc_Dec(true),
-    outStreamSpec(0), callback(0), printCallback(0), propStreamSpec(0) {}
+    outStreamSpec(NULL), callback(NULL), printCallback(NULL), propStreamSpec(NULL) {}
 
   #ifndef _7ZIP_ST
   
@@ -1146,7 +1143,7 @@ static const UInt32 kNumThreadsMax = (1 << 12);
 struct CBenchEncoders
 {
   CEncoderInfo *encoders;
-  CBenchEncoders(UInt32 num): encoders(0) { encoders = new CEncoderInfo[num]; }
+  CBenchEncoders(UInt32 num): encoders(NULL) { encoders = new CEncoderInfo[num]; }
   ~CBenchEncoders() { delete []encoders; }
 };
 
@@ -1185,9 +1182,11 @@ static HRESULT MethodBench(
   COneMethodInfo method = method2;
   UInt64 methodId;
   UInt32 numStreams;
-  if (!FindMethod(
+  int codecIndex = FindMethod_Index(
       EXTERNAL_CODECS_LOC_VARS
-      method.MethodName, methodId, numStreams))
+      method.MethodName, true,
+      methodId, numStreams);
+  if (codecIndex < 0)
     return E_NOTIMPL;
   if (numStreams != 1)
     return E_INVALIDARG;
@@ -1200,10 +1199,9 @@ static HRESULT MethodBench(
 
     if (oldLzmaBenchMode && methodId == k_LZMA)
     {
-      bool fixedNumber;
-      UInt32 numLzmaThreads = method.Get_Lzma_NumThreads(fixedNumber);
-      if (!fixedNumber && numThreads == 1)
+      if (numThreads == 1 && method.Get_NumThreads() < 0)
         method.AddProp_NumThreads(1);
+      const UInt32 numLzmaThreads = method.Get_Lzma_NumThreads();
       if (numThreads > 1 && numLzmaThreads > 1)
       {
         numEncoderThreads = numThreads / 2;
@@ -1225,7 +1223,7 @@ static HRESULT MethodBench(
 
     {
       CCreatedCoder cod;
-      RINOK(CreateCoder(EXTERNAL_CODECS_LOC_VARS methodId, true, encoder._encoderFilter, cod));
+      RINOK(CreateCoder_Index(EXTERNAL_CODECS_LOC_VARS codecIndex, true, encoder._encoderFilter, cod));
       encoder._encoder = cod.Coder;
       if (!encoder._encoder && !encoder._encoderFilter)
         return E_NOTIMPL;
@@ -1242,7 +1240,7 @@ static HRESULT MethodBench(
     {
       CCreatedCoder cod;
       CMyComPtr<ICompressCoder> &decoder = encoder._decoders[j];
-      RINOK(CreateCoder(EXTERNAL_CODECS_LOC_VARS methodId, false, encoder._decoderFilter, cod));
+      RINOK(CreateCoder_Id(EXTERNAL_CODECS_LOC_VARS methodId, false, encoder._decoderFilter, cod));
       decoder = cod.Coder;
       if (!encoder._decoderFilter && !decoder)
         return E_NOTIMPL;
@@ -1546,7 +1544,7 @@ struct CFreqThreads
   CFreqInfo *Items;
   UInt32 NumThreads;
 
-  CFreqThreads(): Items(0), NumThreads(0) {}
+  CFreqThreads(): Items(NULL), NumThreads(0) {}
   void WaitAll()
   {
     for (UInt32 i = 0; i < NumThreads; i++)
@@ -1604,7 +1602,7 @@ struct CCrcThreads
   CCrcInfo *Items;
   UInt32 NumThreads;
 
-  CCrcThreads(): Items(0), NumThreads(0) {}
+  CCrcThreads(): Items(NULL), NumThreads(0) {}
   void WaitAll()
   {
     for (UInt32 i = 0; i < NumThreads; i++)
@@ -1858,6 +1856,80 @@ static void PrintTotals(IBenchPrintCallback &f, bool showFreq, UInt64 cpuFreq, c
   PrintResults(f, res.Usage / numIterations2, res.RPU / numIterations2, res.Rating / numIterations2, showFreq, cpuFreq);
 }
 
+
+static void PrintHex(AString &s, UInt64 v)
+{
+  char temp[32];
+  ConvertUInt64ToHex(v, temp);
+  s += temp;
+}
+
+AString GetProcessThreadsInfo(const NSystem::CProcessAffinity &ti)
+{
+  AString s;
+  // s.Add_UInt32(ti.numProcessThreads);
+  if (ti.processAffinityMask != ti.systemAffinityMask)
+  {
+    // if (ti.numProcessThreads != ti.numSysThreads)
+    {
+      s += " / ";
+      s.Add_UInt32(ti.GetNumSystemThreads());
+    }
+    s += " : ";
+    PrintHex(s, ti.processAffinityMask);
+    s += " / ";
+    PrintHex(s, ti.systemAffinityMask);
+  }
+  return s;
+}
+
+
+static void PrintSize(AString &s, UInt64 v)
+{
+  char c = 0;
+  if ((v & 0x3FF) == 0) { v >>= 10; c = 'K';
+  if ((v & 0x3FF) == 0) { v >>= 10; c = 'M';
+  if ((v & 0x3FF) == 0) { v >>= 10; c = 'G';
+  if ((v & 0x3FF) == 0) { v >>= 10; c = 'T';
+  }}}}
+  else
+  {
+    PrintHex(s, v);
+    return;
+  }
+  char temp[32];
+  ConvertUInt64ToString(v, temp);
+  s += temp;
+  if (c)
+    s += c;
+}
+
+
+#ifdef _7ZIP_LARGE_PAGES
+
+extern bool g_LargePagesMode;
+
+extern "C"
+{
+  extern SIZE_T g_LargePageSize;
+}
+
+void Add_LargePages_String(AString &s)
+{
+  if (g_LargePagesMode || g_LargePageSize != 0)
+  {
+    s += " (LP-";
+    PrintSize(s, g_LargePageSize);
+    if (!g_LargePagesMode)
+      s += "-NA";
+    s += ")";
+  }
+}
+
+#endif
+
+
+
 static void PrintRequirements(IBenchPrintCallback &f, const char *sizeString,
     bool size_Defined, UInt64 size, const char *threadsString, UInt32 numThreads)
 {
@@ -1867,11 +1939,22 @@ static void PrintRequirements(IBenchPrintCallback &f, const char *sizeString,
     PrintNumber(f, (size >> 20), 6);
   else
     f.Print("      ?");
-  f.Print(" MB,  # ");
+  f.Print(" MB");
+  
+  #ifdef _7ZIP_LARGE_PAGES
+  {
+    AString s;
+    Add_LargePages_String(s);
+    f.Print(s);
+  }
+  #endif
+  
+  f.Print(",  # ");
   f.Print(threadsString);
   PrintNumber(f, numThreads, 3);
-  f.NewLine();
 }
+
+
 
 struct CBenchCallbackToPrint: public IBenchCallback
 {
@@ -1930,7 +2013,7 @@ HRESULT CBenchCallbackToPrint::SetEncodeResult(const CBenchInfo &info, bool fina
   return S_OK;
 }
 
-static const char *kSep = "  | ";
+static const char * const kSep = "  | ";
 
 HRESULT CBenchCallbackToPrint::SetDecodeResult(const CBenchInfo &info, bool final)
 {
@@ -2147,7 +2230,7 @@ static HRESULT CrcBench(
   numThreads = 1;
   #endif
 
-  AString methodName = method.MethodName;
+  const AString &methodName = method.MethodName;
   // methodName.RemoveChar(L'-');
   CMethodId hashID;
   if (!FindHashMethod(
@@ -2344,15 +2427,7 @@ static UInt32 GetNumThreadsNext(unsigned i, UInt32 numThreads)
 
 static bool AreSameMethodNames(const char *fullName, const char *shortName)
 {
-  for (;;)
-  {
-    char c2 = *shortName++;
-    if (c2 == 0)
-      return true;
-    char c1 = *fullName++;
-    if (MyCharLower_Ascii(c1) != MyCharLower_Ascii(c2))
-      return false;
-  }
+  return StringsAreEqualNoCase_Ascii(fullName, shortName);
 }
 
 
@@ -2410,6 +2485,226 @@ static void x86cpuid_to_String(const Cx86cpuid &c, AString &s)
 #endif
 
 
+
+static const char * const k_PROCESSOR_ARCHITECTURE[] =
+{
+    "x86" // "INTEL"
+  , "MIPS"
+  , "ALPHA"
+  , "PPC"
+  , "SHX"
+  , "ARM"
+  , "IA64"
+  , "ALPHA64"
+  , "MSIL"
+  , "x64" // "AMD64"
+  , "IA32_ON_WIN64"
+  , "NEUTRAL"
+  , "ARM64"
+  , "ARM32_ON_WIN64"
+};
+
+#define MY__PROCESSOR_ARCHITECTURE_INTEL 0
+#define MY__PROCESSOR_ARCHITECTURE_AMD64 9
+
+
+#define MY__PROCESSOR_INTEL_PENTIUM  586
+#define MY__PROCESSOR_AMD_X8664      8664
+
+/*
+static const CUInt32PCharPair k_PROCESSOR[] =
+{
+  { 2200, "IA64" },
+  { 8664, "x64" }
+};
+
+#define PROCESSOR_INTEL_386      386
+#define PROCESSOR_INTEL_486      486
+#define PROCESSOR_INTEL_PENTIUM  586
+#define PROCESSOR_INTEL_860      860
+#define PROCESSOR_INTEL_IA64     2200
+#define PROCESSOR_AMD_X8664      8664
+#define PROCESSOR_MIPS_R2000     2000
+#define PROCESSOR_MIPS_R3000     3000
+#define PROCESSOR_MIPS_R4000     4000
+#define PROCESSOR_ALPHA_21064    21064
+#define PROCESSOR_PPC_601        601
+#define PROCESSOR_PPC_603        603
+#define PROCESSOR_PPC_604        604
+#define PROCESSOR_PPC_620        620
+#define PROCESSOR_HITACHI_SH3    10003
+#define PROCESSOR_HITACHI_SH3E   10004
+#define PROCESSOR_HITACHI_SH4    10005
+#define PROCESSOR_MOTOROLA_821   821
+#define PROCESSOR_SHx_SH3        103
+#define PROCESSOR_SHx_SH4        104
+#define PROCESSOR_STRONGARM      2577    // 0xA11
+#define PROCESSOR_ARM720         1824    // 0x720
+#define PROCESSOR_ARM820         2080    // 0x820
+#define PROCESSOR_ARM920         2336    // 0x920
+#define PROCESSOR_ARM_7TDMI      70001
+#define PROCESSOR_OPTIL          18767   // 0x494f
+*/
+
+#ifdef _WIN32
+
+static const char * const k_PF[] =
+{
+    "FP_ERRATA"
+  , "FP_EMU"
+  , "CMPXCHG"
+  , "MMX"
+  , "PPC_MOVEMEM_64BIT"
+  , "ALPHA_BYTE"
+  , "SSE"
+  , "3DNOW"
+  , "RDTSC"
+  , "PAE"
+  , "SSE2"
+  , "SSE_DAZ"
+  , "NX"
+  , "SSE3"
+  , "CMPXCHG16B"
+  , "CMP8XCHG16"
+  , "CHANNELS"
+  , "XSAVE"
+  , "ARM_VFP_32"
+  , "ARM_NEON"
+  , "L2AT"
+  , "VIRT_FIRMWARE"
+  , "RDWRFSGSBASE"
+  , "FASTFAIL"
+  , "ARM_DIVIDE"
+  , "ARM_64BIT_LOADSTORE_ATOMIC"
+  , "ARM_EXTERNAL_CACHE"
+  , "ARM_FMAC"
+  , "RDRAND"
+  , "ARM_V8"
+  , "ARM_V8_CRYPTO"
+  , "ARM_V8_CRC32"
+  , "RDTSCP"
+};
+
+#endif
+
+
+
+
+static void PrintPage(AString &s, UInt32 v)
+{
+  if ((v & 0x3FF) == 0)
+  {
+    s.Add_UInt32(v >> 10);
+    s += "K";
+  }
+  else
+    s.Add_UInt32(v >> 10);
+}
+
+static AString TypeToString2(const char * const table[], unsigned num, UInt32 value)
+{
+  char sz[16];
+  const char *p = NULL;
+  if (value < num)
+    p = table[value];
+  if (!p)
+  {
+    ConvertUInt32ToString(value, sz);
+    p = sz;
+  }
+  return (AString)p;
+}
+
+#ifdef _WIN32
+
+static void SysInfo_To_String(AString &s, const SYSTEM_INFO &si)
+{
+  s += TypeToString2(k_PROCESSOR_ARCHITECTURE, ARRAY_SIZE(k_PROCESSOR_ARCHITECTURE), si.wProcessorArchitecture);
+
+  if (!(   si.wProcessorArchitecture == MY__PROCESSOR_ARCHITECTURE_INTEL && si.dwProcessorType == MY__PROCESSOR_INTEL_PENTIUM
+      || si.wProcessorArchitecture == MY__PROCESSOR_ARCHITECTURE_AMD64 && si.dwProcessorType == MY__PROCESSOR_AMD_X8664))
+  {
+    s += " ";
+    // s += TypePairToString(k_PROCESSOR, ARRAY_SIZE(k_PROCESSOR), si.dwProcessorType);
+    s.Add_UInt32(si.dwProcessorType);
+  }
+  s += " ";
+  PrintHex(s, si.wProcessorLevel);
+  s += ".";
+  PrintHex(s, si.wProcessorRevision);
+  if ((UInt64)si.dwActiveProcessorMask + 1 != ((UInt64)1 << si.dwNumberOfProcessors))
+  if ((UInt64)si.dwActiveProcessorMask + 1 != 0 || si.dwNumberOfProcessors != sizeof(UInt64) * 8)
+  {
+    s += " act:";
+    PrintHex(s, si.dwActiveProcessorMask);
+  }
+  s += " cpus:";
+  s.Add_UInt32(si.dwNumberOfProcessors);
+  if (si.dwPageSize != 1 << 12)
+  {
+    s += " page:";
+    PrintPage(s, si.dwPageSize);
+  }
+  if (si.dwAllocationGranularity != 1 << 16)
+  {
+    s += " gran:";
+    PrintPage(s, si.dwAllocationGranularity);
+  }
+  s += " ";
+
+  DWORD_PTR minAdd = (DWORD_PTR)si.lpMinimumApplicationAddress;
+  UInt64 maxSize = (UInt64)(DWORD_PTR)si.lpMaximumApplicationAddress + 1;
+  const UInt32 kReserveSize = ((UInt32)1 << 16);
+  if (minAdd != kReserveSize)
+  {
+    PrintSize(s, minAdd);
+    s += "-";
+  }
+  else
+  {
+    if ((maxSize & (kReserveSize - 1)) == 0)
+      maxSize += kReserveSize;
+  }
+  PrintSize(s, maxSize);
+}
+
+#ifndef _WIN64
+typedef VOID (WINAPI *Func_GetNativeSystemInfo)(LPSYSTEM_INFO lpSystemInfo);
+#endif
+
+#endif
+
+void GetSysInfo(AString &s1, AString &s2)
+{
+  s1.Empty();
+  s2.Empty();
+
+  #ifdef _WIN32
+    SYSTEM_INFO si;
+    GetSystemInfo(&si);
+    {
+      SysInfo_To_String(s1, si);
+      // s += " : ";
+    }
+    
+    #if !defined(_WIN64) && !defined(UNDER_CE)
+    Func_GetNativeSystemInfo fn_GetNativeSystemInfo = (Func_GetNativeSystemInfo)GetProcAddress(
+        GetModuleHandleA("kernel32.dll"), "GetNativeSystemInfo");
+    if (fn_GetNativeSystemInfo)
+    {
+      SYSTEM_INFO si2;
+      fn_GetNativeSystemInfo(&si2);
+      // if (memcmp(&si, &si2, sizeof(si)) != 0)
+      {
+        // s += " - ";
+        SysInfo_To_String(s2, si2);
+      }
+    }
+    #endif
+  #endif
+}
+
+
 void GetCpuName(AString &s)
 {
   s.Empty();
@@ -2419,31 +2714,80 @@ void GetCpuName(AString &s)
     Cx86cpuid cpuid;
     if (x86cpuid_CheckAndRead(&cpuid))
     {
-      x86cpuid_to_String(cpuid, s);
-      return;
+      AString s2;
+      x86cpuid_to_String(cpuid, s2);
+      s += s2;
     }
+    else
+    {
     #ifdef MY_CPU_AMD64
-    s = "x64";
+    s += "x64";
     #else
-    s = "x86";
+    s += "x86";
     #endif
+    }
   }
   #else
   
     #ifdef MY_CPU_LE
-      s = "LE";
+      s += "LE";
     #elif defined(MY_CPU_BE)
-      s = "BE";
+      s += "BE";
     #endif
 
   #endif
+
+  #ifdef _7ZIP_LARGE_PAGES
+  Add_LargePages_String(s);
+  #endif
 }
+
+
+void GetCpuFeatures(AString &s)
+{
+  s.Empty();
+  
+  #ifdef _WIN32
+  const unsigned kNumFeatures_Extra = 32; // we check also for unknown features
+  const unsigned kNumFeatures = ARRAY_SIZE(k_PF) + kNumFeatures_Extra;
+  for (unsigned i = 0; i < kNumFeatures; i++)
+  {
+    if (IsProcessorFeaturePresent(i))
+    {
+      s.Add_Space_if_NotEmpty();
+      s += TypeToString2(k_PF, ARRAY_SIZE(k_PF), i);
+    }
+  }
+  #endif
+}
+
+
+#ifdef _WIN32
+#ifndef UNDER_CE
+
+typedef void (WINAPI * Func_RtlGetVersion) (OSVERSIONINFOEXW *);
+
+static BOOL My_RtlGetVersion(OSVERSIONINFOEXW *vi)
+{
+  HMODULE ntdll = ::GetModuleHandleW(L"ntdll.dll");
+  if (!ntdll)
+    return FALSE;
+  Func_RtlGetVersion func = (Func_RtlGetVersion)GetProcAddress(ntdll, "RtlGetVersion");
+  if (!func)
+    return FALSE;
+  func(vi);
+  return TRUE;
+}
+
+#endif
+#endif
 
 
 HRESULT Bench(
     DECL_EXTERNAL_CODECS_LOC_VARS
     IBenchPrintCallback *printCallback,
     IBenchCallback *benchCallback,
+    // IBenchFreqCallback *freqCallback,
     const CObjectVector<CProperty> &props,
     UInt32 numIterations,
     bool multiDict)
@@ -2454,8 +2798,16 @@ HRESULT Bench(
   UInt32 numCPUs = 1;
   UInt64 ramSize = (UInt64)(sizeof(size_t)) << 29;
 
+  NSystem::CProcessAffinity threadsInfo;
+  threadsInfo.InitST();
+
   #ifndef _7ZIP_ST
-  numCPUs = NSystem::GetNumberOfProcessors();
+
+  if (threadsInfo.Get() && threadsInfo.processAffinityMask != 0)
+    numCPUs = threadsInfo.GetNumProcessThreads();
+  else
+    numCPUs = NSystem::GetNumberOfProcessors();
+
   #endif
   
   bool ramSize_Defined = NSystem::GetRamSize(ramSize);
@@ -2477,7 +2829,7 @@ HRESULT Bench(
   for (i = 0; i < props.Size(); i++)
   {
     const CProperty &property = props[i];
-    UString name = property.Name;
+    UString name (property.Name);
     name.MakeLower_Ascii();
 
     if (name.IsEqualTo("file"))
@@ -2504,7 +2856,6 @@ HRESULT Bench(
       if (printCallback)
       {
         printCallback->Print("file size =");
-        // printCallback->Print(GetOemString(property.Value));
         PrintNumber(*printCallback, len, 0);
         printCallback->NewLine();
       }
@@ -2523,14 +2874,14 @@ HRESULT Bench(
     
     if (name.IsEqualTo("time"))
     {
-      RINOK(ParsePropToUInt32(L"", propVariant, testTime));
+      RINOK(ParsePropToUInt32(UString(), propVariant, testTime));
       continue;
     }
     
     if (name.IsEqualTo("freq"))
     {
       UInt32 freq32 = 0;
-      RINOK(ParsePropToUInt32(L"", propVariant, freq32));
+      RINOK(ParsePropToUInt32(UString(), propVariant, freq32));
       if (freq32 == 0)
         return E_INVALIDARG;
       specifiedFreq = (UInt64)freq32 * 1000000;
@@ -2548,18 +2899,11 @@ HRESULT Bench(
     if (name.IsPrefixedBy_Ascii_NoCase("mt"))
     {
       UString s = name.Ptr(2);
-      if (s == L"*")
+      if (s.IsEqualTo("*")
+          || s.IsEmpty() && propVariant.vt == VT_BSTR && StringsAreEqual_Ascii(propVariant.bstrVal, "*"))
       {
         multiThreadTests = true;
         continue;
-      }
-      if (s.IsEmpty() && propVariant.vt == VT_BSTR)
-      {
-        if (wcscmp(propVariant.bstrVal, L"*") == 0)
-        {
-          multiThreadTests = true;
-          continue;
-        }
       }
       #ifndef _7ZIP_ST
       RINOK(ParseMtProp(s, propVariant, numCPUs, numThreadsSpecified));
@@ -2573,10 +2917,62 @@ HRESULT Bench(
 
   if (printCallback)
   {
-    AString s;
-    GetCpuName(s);
-    printCallback->Print(s);
-    printCallback->NewLine();
+    #ifdef _WIN32
+    #ifndef UNDER_CE
+    {
+      AString s;
+      // OSVERSIONINFO vi;
+      OSVERSIONINFOEXW vi;
+      vi.dwOSVersionInfoSize = sizeof(vi);
+      // if (::GetVersionEx(&vi))
+      if (My_RtlGetVersion(&vi))
+      {
+        s += "Windows";
+        if (vi.dwPlatformId != VER_PLATFORM_WIN32_NT)
+          s.Add_UInt32(vi.dwPlatformId);
+        s += " "; s.Add_UInt32(vi.dwMajorVersion);
+        s += "."; s.Add_UInt32(vi.dwMinorVersion);
+        s += " "; s.Add_UInt32(vi.dwBuildNumber);
+        // s += " "; s += GetAnsiString(vi.szCSDVersion);
+      }
+      printCallback->Print(s);
+      printCallback->NewLine();
+    }
+    #endif
+    #endif
+
+    {
+      AString s1, s2;
+      GetSysInfo(s1, s2);
+      if (!s1.IsEmpty() || !s2.IsEmpty())
+      {
+        printCallback->Print(s1);
+        if (s1 != s2 && !s2.IsEmpty())
+        {
+          printCallback->Print(" - ");
+          printCallback->Print(s2);
+        }
+        printCallback->NewLine();
+      }
+    }
+    {
+      AString s;
+      GetCpuFeatures(s);
+      if (!s.IsEmpty())
+      {
+        printCallback->Print(s);
+        printCallback->NewLine();
+      }
+    }
+    {
+      AString s;
+      GetCpuName(s);
+      if (!s.IsEmpty())
+      {
+        printCallback->Print(s);
+        printCallback->NewLine();
+      }
+    }
   }
 
   if (printCallback)
@@ -2586,7 +2982,7 @@ HRESULT Bench(
 
   UInt64 complexInCommands = kComplexInCommands;
 
-  if (printCallback /* || benchCallback */)
+  if (printCallback /* || freqCallback */)
   {
     UInt64 numMilCommands = 1 << 6;
     if (specifiedFreq != 0)
@@ -2603,6 +2999,9 @@ HRESULT Bench(
       UInt64 start = ::GetTimeCount();
       UInt32 sum = (UInt32)start;
       sum = CountCpuFreq(sum, (UInt32)(numMilCommands * 1000000 / kNumFreqCommands), g_BenchCpuFreqTemp);
+      if (sum == 0xF1541213)
+        if (printCallback)
+          printCallback->Print("");
       const UInt64 realDelta = ::GetTimeCount() - start;
       start = realDelta;
       if (start == 0)
@@ -2619,12 +3018,12 @@ HRESULT Bench(
         else
         {
           // PrintNumber(*printCallback, start, 0);
-          PrintNumber(*printCallback, mipsVal, 5 + ((sum == 0xF1541213) ? 1 : 0));
+          PrintNumber(*printCallback, mipsVal, 5);
         }
       }
       /*
-      if (benchCallback)
-        benchCallback->AddCpuFreq(mipsVal);
+      if (freqCallback)
+        freqCallback->AddCpuFreq(mipsVal);
       */
 
       if (jj >= 3)
@@ -2643,6 +3042,8 @@ HRESULT Bench(
     printCallback->NewLine();
     printCallback->NewLine();
     PrintRequirements(*printCallback, "size: ", ramSize_Defined, ramSize, "CPU hardware threads:", numCPUs);
+    printCallback->Print(GetProcessThreadsInfo(threadsInfo));
+    printCallback->NewLine();
   }
 
   if (numThreadsSpecified < 1 || numThreadsSpecified > kNumThreadsMax)
@@ -2669,7 +3070,7 @@ HRESULT Bench(
         kOldLzmaDictBits, printCallback, benchCallback, &benchProps);
   }
 
-  AString methodName = method.MethodName;
+  AString methodName (method.MethodName);
   if (methodName.IsEqualTo_Ascii_NoCase("CRC"))
     methodName = "crc32";
   method.MethodName = methodName;
@@ -2688,26 +3089,34 @@ HRESULT Bench(
     UInt32 complexity = 10000;
     const UInt32 *checkSum = NULL;
     {
-      for (unsigned i = 0; i < ARRAY_SIZE(g_Hash); i++)
+      unsigned i;
+      for (i = 0; i < ARRAY_SIZE(g_Hash); i++)
       {
         const CBenchHash &h = g_Hash[i];
-        AString s = h.Name;
-        AString hProp;
-        int propPos = s.Find(':');
+        AString benchMethod (h.Name);
+        AString benchProps;
+        int propPos = benchMethod.Find(':');
         if (propPos >= 0)
         {
-          hProp = s.Ptr(propPos + 1);
-          s.DeleteFrom(propPos);
+          benchProps = benchMethod.Ptr(propPos + 1);
+          benchMethod.DeleteFrom(propPos);
         }
 
-        if (AreSameMethodNames(s, methodName))
+        if (AreSameMethodNames(benchMethod, methodName))
         {
-          complexity = h.Complex;
-          checkSum = &h.CheckSum;
-          if (method.PropsString.IsEqualTo_Ascii_NoCase(hProp))
-            break;
+          if (benchProps.IsEmpty()
+              || benchMethod.IsEqualTo_Ascii_NoCase("crc32") && benchProps == "8" && method.PropsString.IsEmpty()
+              || method.PropsString.IsPrefixedBy_Ascii_NoCase(benchProps))
+          {
+            complexity = h.Complex;
+            checkSum = &h.CheckSum;
+            if (method.PropsString.IsEqualTo_Ascii_NoCase(benchProps))
+              break;
+          }
         }
       }
+      if (i == ARRAY_SIZE(g_Hash))
+        return E_NOTIMPL;
     }
 
     f.NewLine();
@@ -2852,6 +3261,7 @@ HRESULT Bench(
   }
 
   PrintRequirements(f, "usage:", true, GetBenchMemoryUsage(numThreads, dict, totalBenchMode), "Benchmark threads:   ", numThreads);
+  f.NewLine();
 
   f.NewLine();
 
@@ -2997,19 +3407,35 @@ HRESULT Bench(
     bool needSetComplexity = true;
     if (!methodName.IsEqualTo_Ascii_NoCase("LZMA"))
     {
-      for (unsigned i = 0; i < ARRAY_SIZE(g_Bench); i++)
+      unsigned i;
+      for (i = 0; i < ARRAY_SIZE(g_Bench); i++)
       {
         const CBenchMethod &h = g_Bench[i];
-        AString s = h.Name;
-        if (AreSameMethodNames(h.Name, methodName))
+        AString benchMethod (h.Name);
+        AString benchProps;
+        int propPos = benchMethod.Find(':');
+        if (propPos >= 0)
         {
-          callback.BenchProps.EncComplex = h.EncComplex;
-          callback.BenchProps.DecComplexCompr = h.DecComplexCompr;
-          callback.BenchProps.DecComplexUnc = h.DecComplexUnc;;
-          needSetComplexity = false;
-          break;
+          benchProps = benchMethod.Ptr(propPos + 1);
+          benchMethod.DeleteFrom(propPos);
+        }
+
+        if (AreSameMethodNames(benchMethod, methodName))
+        {
+          if (benchProps.IsEmpty()
+              || benchProps == "x5" && method.PropsString.IsEmpty()
+              || method.PropsString.IsPrefixedBy_Ascii_NoCase(benchProps))
+          {
+            callback.BenchProps.EncComplex = h.EncComplex;
+            callback.BenchProps.DecComplexCompr = h.DecComplexCompr;
+            callback.BenchProps.DecComplexUnc = h.DecComplexUnc;;
+            needSetComplexity = false;
+            break;
+          }
         }
       }
+      if (i == ARRAY_SIZE(g_Bench))
+        return E_NOTIMPL;
     }
     if (needSetComplexity)
       callback.BenchProps.SetLzmaCompexity();
@@ -3040,7 +3466,7 @@ HRESULT Bench(
         // method2 can have two different dictionary size properties.
         // And last property is main.
         NCOM::CPropVariant propVariant = (UInt32)pow;
-        RINOK(method2.ParseMethodFromPROPVARIANT(L"d", propVariant));
+        RINOK(method2.ParseMethodFromPROPVARIANT((UString)"d", propVariant));
       }
 
       size_t uncompressedDataSize;

@@ -1,5 +1,5 @@
 /* Bcj2Enc.c -- BCJ2 Encoder (Converter for x86 code)
-2014-11-10 : Igor Pavlov : Public domain */
+2018-07-04 : Igor Pavlov : Public domain */
 
 #include "Precomp.h"
 
@@ -12,7 +12,6 @@
 #define PRF(x)
 #endif
 
-#include <windows.h>
 #include <string.h>
 
 #include "Bcj2.h"
@@ -53,7 +52,7 @@ void Bcj2Enc_Init(CBcj2Enc *p)
     p->probs[i] = kBitModelTotal >> 1;
 }
 
-static Bool MY_FAST_CALL RangeEnc_ShiftLow(CBcj2Enc *p)
+static BoolInt MY_FAST_CALL RangeEnc_ShiftLow(CBcj2Enc *p)
 {
   if ((UInt32)p->low < (UInt32)0xFF000000 || (UInt32)(p->low >> 32) != 0)
   {
@@ -166,7 +165,7 @@ static void Bcj2Enc_Encode_2(CBcj2Enc *p)
  
         {
           Byte context = (Byte)(num == 0 ? p->prevByte : src[-1]);
-          Bool needConvert;
+          BoolInt needConvert;
 
           p->bufs[BCJ2_STREAM_MAIN] = dest + 1;
           p->ip += (UInt32)num + 1;
@@ -271,7 +270,7 @@ void Bcj2Enc_Encode(CBcj2Enc *p)
         unsigned i;
         p->tempPos = tempPos;
         for (i = 0; i < tempPos; i++)
-          p->temp[i] = p->temp[i + num];
+          p->temp[i] = p->temp[(size_t)i + num];
       
         p->src = src;
         p->srcLim = srcLim;

@@ -335,20 +335,18 @@ void SetExtractErrorMessage(Int32 opRes, Int32 encrypted, const wchar_t *fileNam
       s += msg;
     else
     {
-      char temp[16];
-      ConvertUInt32ToString(opRes, temp);
-      s.AddAscii("Error #");
-      s.AddAscii(temp);
+      s += "Error #";
+      s.Add_UInt32(opRes);
     }
 
     if (encrypted && opRes != NArchive::NExtract::NOperationResult::kWrongPassword)
     {
-      // s.AddAscii(" : ");
+      // s += " : ";
       // AddLangString(s, IDS_EXTRACT_MSG_ENCRYPTED);
-      s.AddAscii(" : ");
+      s += " : ";
       AddLangString(s, IDS_EXTRACT_MSG_WRONG_PSW_GUESS);
     }
-    s.AddAscii(" : ");
+    s += " : ";
     s += fileName;
   }
 }
@@ -466,7 +464,7 @@ UString GetOpenArcErrorMessage(UInt32 errorFlags)
       continue;
     if (f == kpv_ErrorFlags_EncryptedHeadersError)
     {
-      m.AddAscii(" : ");
+      m += " : ";
       AddLangString(m, IDS_EXTRACT_MSG_WRONG_PSW_GUESS);
     }
     if (!s.IsEmpty())
@@ -483,7 +481,7 @@ UString GetOpenArcErrorMessage(UInt32 errorFlags)
     ConvertUInt32ToHex(errorFlags, sz + 2);
     if (!s.IsEmpty())
       s.Add_LF();
-    s.AddAscii(sz);
+    s += sz;
   }
   
   return s;
@@ -503,7 +501,7 @@ static void ErrorInfo_Print(UString &s, const CArcErrorInfo &er)
   if (warningFlags != 0)
   {
     s += GetNameOfProperty(kpidWarningFlags, L"Warnings");
-    s.AddAscii(":");
+    s += ":";
     s.Add_LF();
     AddNewLineString(s, GetOpenArcErrorMessage(warningFlags));
   }
@@ -511,7 +509,7 @@ static void ErrorInfo_Print(UString &s, const CArcErrorInfo &er)
   if (!er.WarningMessage.IsEmpty())
   {
     s += GetNameOfProperty(kpidWarning, L"Warning");
-    s.AddAscii(": ");
+    s += ": ";
     s += er.WarningMessage;
     s.Add_LF();
   }
@@ -519,9 +517,9 @@ static void ErrorInfo_Print(UString &s, const CArcErrorInfo &er)
 
 static UString GetBracedType(const wchar_t *type)
 {
-  UString s = L'[';
+  UString s ('[');
   s += type;
-  s += L']';
+  s += ']';
   return s;
 }
 
@@ -761,11 +759,15 @@ STDMETHODIMP CExtractCallbackImp::AskWrite(
       destPathResultTemp = fs2us(destPathSys);
     }
     else
+    {
+      if (NFind::DoesFileExist(destPathSys))
       if (!NDir::DeleteFileAlways(destPathSys))
+      if (GetLastError() != ERROR_FILE_NOT_FOUND)
       {
         RINOK(MessageError("can not delete output file", destPathSys));
         return E_ABORT;
       }
+    }
   }
   *writeAnswer = BoolToInt(true);
   return StringToBstr(destPathResultTemp, destPathResult);
@@ -1009,7 +1011,7 @@ HRESULT CVirtFileSystem::FlushToDisk(bool closeLast)
       {
         _outFileStream.Release();
         return E_FAIL;
-        // MessageBoxMyError(UString(L"Can't create file ") + fs2us(tempFilePath));
+        // MessageBoxMyError(UString("Can't create file ") + fs2us(tempFilePath));
       }
       _fileIsOpen = true;
       RINOK(WriteStream(_outFileStream, file.Data, (size_t)file.Size));
@@ -1027,7 +1029,7 @@ HRESULT CVirtFileSystem::FlushToDisk(bool closeLast)
     _numFlushed++;
     _fileIsOpen = false;
     if (file.AttribDefined)
-      NDir::SetFileAttrib(path, file.Attrib);
+      NDir::SetFileAttrib_PosixHighDetect(path, file.Attrib);
   }
   return S_OK;
 }

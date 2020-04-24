@@ -3,6 +3,8 @@
 #ifndef __7ZIP_BENCH_H
 #define __7ZIP_BENCH_H
 
+#include "../../../Windows/System.h"
+
 #include "../../Common/CreateCoder.h"
 #include "../../UI/Common/Property.h"
 
@@ -43,13 +45,33 @@ struct IBenchPrintCallback
   virtual HRESULT CheckBreak() = 0;
 };
 
+/*
+struct IBenchFreqCallback
+{
+  virtual void AddCpuFreq(UInt64 freq) = 0;
+};
+*/
+
 HRESULT Bench(
     DECL_EXTERNAL_CODECS_LOC_VARS
     IBenchPrintCallback *printCallback,
     IBenchCallback *benchCallback,
+    // IBenchFreqCallback *freqCallback,
     const CObjectVector<CProperty> &props,
     UInt32 numIterations,
     bool multiDict
     );
+
+AString GetProcessThreadsInfo(const NWindows::NSystem::CProcessAffinity &ti);
+
+void GetSysInfo(AString &s1, AString &s2);
+void GetCpuName(AString &s);
+void GetCpuFeatures(AString &s);
+
+#ifdef _7ZIP_LARGE_PAGES
+void Add_LargePages_String(AString &s);
+#else
+// #define Add_LargePages_String
+#endif
 
 #endif

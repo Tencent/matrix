@@ -8,6 +8,15 @@
 
 #include "ExtractingFilePath.h"
 
+bool g_PathTrailReplaceMode =
+    #ifdef _WIN32
+      true
+    #else
+      false
+    #endif
+    ;
+
+
 static void ReplaceIncorrectChars(UString &s)
 {
   {
@@ -26,17 +35,42 @@ static void ReplaceIncorrectChars(UString &s)
     }
   }
   
-  #ifdef _WIN32
+  if (g_PathTrailReplaceMode)
   {
-    for (unsigned i = s.Len(); i != 0;)
+    /*
+    // if (g_PathTrailReplaceMode == 1)
     {
-      wchar_t c = s[--i];
-      if (c != '.' && c != ' ')
-        break;
-      s.ReplaceOneCharAtPos(i, '_');
+      if (!s.IsEmpty())
+      {
+        wchar_t c = s.Back();
+        if (c == '.' || c == ' ')
+        {
+          // s += (wchar_t)(0x9c); // STRING TERMINATOR
+          s += (wchar_t)'_';
+        }
+      }
+    }
+    else
+    */
+    {
+      unsigned i;
+      for (i = s.Len(); i != 0;)
+      {
+        wchar_t c = s[i - 1];
+        if (c != '.' && c != ' ')
+          break;
+        i--;
+        s.ReplaceOneCharAtPos(i, '_');
+        // s.ReplaceOneCharAtPos(i, (c == ' ' ? (wchar_t)(0x2423) : (wchar_t)0x00B7));
+      }
+      /*
+      if (g_PathTrailReplaceMode > 1 && i != s.Len())
+      {
+        s.DeleteFrom(i);
+      }
+      */
     }
   }
-  #endif
 }
 
 #ifdef _WIN32
@@ -61,7 +95,7 @@ void Correct_AltStream_Name(UString &s)
       s.ReplaceOneCharAtPos(i, '_');
   }
   if (s.IsEmpty())
-    s = L'_';
+    s = '_';
 }
 
 static const unsigned g_ReservedWithNum_Index = 4;
@@ -112,6 +146,9 @@ static void CorrectUnsupportedName(UString &name)
 static void Correct_PathPart(UString &s)
 {
   // "." and ".."
+  if (s.IsEmpty())
+    return;
+
   if (s[0] == '.' && (s[1] == 0 || s[1] == '.' && s[2] == 0))
     s.Empty();
   #ifdef _WIN32
@@ -120,8 +157,8 @@ static void Correct_PathPart(UString &s)
   #endif
 }
 
-// static const wchar_t *k_EmptyReplaceName = L"[]";
-static const wchar_t k_EmptyReplaceName = L'_';
+// static const char * const k_EmptyReplaceName = "[]";
+static const char k_EmptyReplaceName = '_';
 
 UString Get_Correct_FsFile_Name(const UString &name)
 {
@@ -138,7 +175,7 @@ UString Get_Correct_FsFile_Name(const UString &name)
 }
 
 
-void Correct_FsPath(bool absIsAllowed, UStringVector &parts, bool isDir)
+void Correct_FsPath(bool absIsAllowed, bool keepAndReplaceEmptyPrefixes, UStringVector &parts, bool isDir)
 {
   unsigned i = 0;
 
@@ -147,6 +184,7 @@ void Correct_FsPath(bool absIsAllowed, UStringVector &parts, bool isDir)
     #if defined(_WIN32) && !defined(UNDER_CE)
     bool isDrive = false;
     #endif
+    
     if (parts[0].IsEmpty())
     {
       i = 1;
@@ -157,7 +195,7 @@ void Correct_FsPath(bool absIsAllowed, UStringVector &parts, bool isDir)
         if (parts.Size() > 2 && parts[2] == L"?")
         {
           i = 3;
-          if (parts.Size() > 3  && NWindows::NFile::NName::IsDrivePath2(parts[3]))
+          if (parts.Size() > 3 && NWindows::NFile::NName::IsDrivePath2(parts[3]))
           {
             isDrive = true;
             i = 4;
@@ -176,15 +214,18 @@ void Correct_FsPath(bool absIsAllowed, UStringVector &parts, bool isDir)
     if (isDrive)
     {
       // we convert "c:name" to "c:\name", if absIsAllowed path.
-      const UString &ds = parts[i - 1];
-      if (ds.Len() != 2)
+      UString &ds = parts[i - 1];
+      if (ds.Len() > 2)
       {
-        UString s = ds.Ptr(2);
-        parts.Insert(i, s);
+        parts.Insert(i, ds.Ptr(2));
+        ds.DeleteFrom(2);
       }
     }
     #endif
   }
+
+  if (i != 0)
+    keepAndReplaceEmptyPrefixes = false;
 
   for (; i < parts.Size();)
   {
@@ -194,15 +235,17 @@ void Correct_FsPath(bool absIsAllowed, UStringVector &parts, bool isDir)
 
     if (s.IsEmpty())
     {
-      if (isDir || i != parts.Size() - 1)
-      {
-        parts.Delete(i);
-        continue;
-      }
+      if (!keepAndReplaceEmptyPrefixes)
+        if (isDir || i != parts.Size() - 1)
+        {
+          parts.Delete(i);
+          continue;
+        }
       s = k_EmptyReplaceName;
     }
     else
     {
+      keepAndReplaceEmptyPrefixes = false;
       #ifdef _WIN32
       CorrectUnsupportedName(s);
       #endif
@@ -214,7 +257,7 @@ void Correct_FsPath(bool absIsAllowed, UStringVector &parts, bool isDir)
   if (!isDir)
   {
     if (parts.IsEmpty())
-      parts.Add(k_EmptyReplaceName);
+      parts.Add((UString)k_EmptyReplaceName);
     else
     {
       UString &s = parts.Back();

@@ -1,5 +1,5 @@
 /* Threads.h -- multithreading library
-2013-11-12 : Igor Pavlov : Public domain */
+2017-06-18 : Igor Pavlov : Public domain */
 
 #ifndef __7Z_THREADS_H
 #define __7Z_THREADS_H
@@ -49,7 +49,8 @@ WRes AutoResetEvent_Create(CAutoResetEvent *p, int signaled);
 WRes AutoResetEvent_CreateNotSignaled(CAutoResetEvent *p);
 
 typedef HANDLE CSemaphore;
-#define Semaphore_Construct(p) (*p) = NULL
+#define Semaphore_Construct(p) *(p) = NULL
+#define Semaphore_IsCreated(p) (*(p) != NULL)
 #define Semaphore_Close(p) HandlePtr_Close(p)
 #define Semaphore_Wait(p) Handle_WaitObject(*(p))
 WRes Semaphore_Create(CSemaphore *p, UInt32 initCount, UInt32 maxCount);

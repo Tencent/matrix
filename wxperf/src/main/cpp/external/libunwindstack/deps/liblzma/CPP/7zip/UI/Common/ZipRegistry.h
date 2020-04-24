@@ -48,9 +48,14 @@ namespace NCompression
     UString Options;
     UString EncryptionMethod;
 
+    void Reset_BlockLogSize()
+    {
+      BlockLogSize = (UInt32)(Int32)-1;
+    }
+
     void ResetForLevelChange()
     {
-      BlockLogSize = NumThreads = Level = Dictionary = Order = UInt32(-1);
+      BlockLogSize = NumThreads = Level = Dictionary = Order = (UInt32)(Int32)-1;
       Method.Empty();
       // Options.Empty();
       // EncryptionMethod.Empty();

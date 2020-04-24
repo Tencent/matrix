@@ -115,16 +115,26 @@ bool FileTimeToDosTime(const FILETIME &ft, UInt32 &dosTime) throw()
   return true;
 }
 
+UInt64 UnixTimeToFileTime64(UInt32 unixTime) throw()
+{
+  return (kUnixTimeOffset + (UInt64)unixTime) * kNumTimeQuantumsInSecond;
+}
+
 void UnixTimeToFileTime(UInt32 unixTime, FILETIME &ft) throw()
 {
-  UInt64 v = (kUnixTimeOffset + (UInt64)unixTime) * kNumTimeQuantumsInSecond;
+  UInt64 v = UnixTimeToFileTime64(unixTime);
   ft.dwLowDateTime = (DWORD)v;
   ft.dwHighDateTime = (DWORD)(v >> 32);
 }
 
+UInt64 UnixTime64ToFileTime64(Int64 unixTime) throw()
+{
+  return (UInt64)(kUnixTimeOffset + unixTime) * kNumTimeQuantumsInSecond;
+}
+
 bool UnixTime64ToFileTime(Int64 unixTime, FILETIME &ft) throw()
 {
-  if (unixTime > kNumSecondsInFileTime - kUnixTimeOffset)
+  if (unixTime > (Int64)(kNumSecondsInFileTime - kUnixTimeOffset))
   {
     ft.dwLowDateTime = ft.dwHighDateTime = (UInt32)(Int32)-1;
     return false;
@@ -144,7 +154,7 @@ bool UnixTime64ToFileTime(Int64 unixTime, FILETIME &ft) throw()
 Int64 FileTimeToUnixTime64(const FILETIME &ft) throw()
 {
   UInt64 winTime = (((UInt64)ft.dwHighDateTime) << 32) + ft.dwLowDateTime;
-  return (Int64)(winTime / kNumTimeQuantumsInSecond) - kUnixTimeOffset;
+  return (Int64)(winTime / kNumTimeQuantumsInSecond) - (Int64)kUnixTimeOffset;
 }
 
 bool FileTimeToUnixTime(const FILETIME &ft, UInt32 &unixTime) throw()

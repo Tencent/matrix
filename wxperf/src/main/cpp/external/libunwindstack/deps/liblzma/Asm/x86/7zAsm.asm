@@ -1,5 +1,5 @@
 ; 7zAsm.asm -- ASM macros
-; 2012-12-30 : Igor Pavlov : Public domain
+; 2018-02-03 : Igor Pavlov : Public domain
 
 MY_ASM_START macro
   ifdef x64
@@ -52,6 +52,15 @@ endif
   x6 equ ESI
   x7 equ EDI
 
+  x0_W equ AX
+  x1_W equ CX
+  x2_W equ DX
+  x3_W equ BX
+
+  x5_W equ BP
+  x6_W equ SI
+  x7_W equ DI
+
   x0_L equ AL
   x1_L equ CL
   x2_L equ DL
@@ -63,6 +72,10 @@ endif
   x3_H equ BH
 
 ifdef x64
+  x5_L equ BPL
+  x6_L equ SIL
+  x7_L equ DIL
+
   r0 equ RAX
   r1 equ RCX
   r2 equ RDX
@@ -103,3 +116,32 @@ MY_POP_4_REGS macro
     pop     r5
     pop     r3
 endm
+
+
+ifdef x64
+
+; for WIN64-x64 ABI:
+
+REG_PARAM_0 equ r1
+REG_PARAM_1 equ r2
+REG_PARAM_2 equ r8
+REG_PARAM_3 equ r9
+
+MY_PUSH_PRESERVED_REGS macro
+    MY_PUSH_4_REGS
+    push    r12
+    push    r13
+    push    r14
+    push    r15
+endm
+
+
+MY_POP_PRESERVED_REGS macro
+    pop     r15
+    pop     r14
+    pop     r13
+    pop     r12
+    MY_POP_4_REGS
+endm
+
+endif

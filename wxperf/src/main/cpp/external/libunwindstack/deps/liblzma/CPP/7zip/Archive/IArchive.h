@@ -488,6 +488,16 @@ ARCHIVE_INTERFACE(IOutArchive, 0xA0)
 };
 
 
+/*
+ISetProperties::SetProperties()
+  PROPVARIANT values[i].vt:
+    VT_EMPTY
+    VT_BOOL
+    VT_UI4   - if 32-bit number
+    VT_UI8   - if 64-bit number
+    VT_BSTR
+*/
+
 ARCHIVE_INTERFACE(ISetProperties, 0x03)
 {
   STDMETHOD(SetProperties)(const wchar_t * const *names, const PROPVARIANT *values, UInt32 numProps) PURE;

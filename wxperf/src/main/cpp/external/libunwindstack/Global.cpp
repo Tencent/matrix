@@ -17,6 +17,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <sys/mman.h>
+#include <libgen.h>
 
 #include <string>
 #include <vector>

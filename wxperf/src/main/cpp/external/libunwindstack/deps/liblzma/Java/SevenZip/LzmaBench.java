@@ -1,4 +1,4 @@
-package external.libunwindstack.deps.liblzma.Java.SevenZip;
+package SevenZip;
 
 import java.io.ByteArrayOutputStream;
 import java.io.ByteArrayInputStream;

@@ -24,12 +24,12 @@ extern int Main2(
   #endif
 );
 
-static const char *kException_CmdLine_Error_Message = "Command Line Error:";
-static const char *kExceptionErrorMessage = "ERROR:";
-static const char *kUserBreakMessage  = "Break signaled";
-static const char *kMemoryExceptionMessage = "ERROR: Can't allocate required memory!";
-static const char *kUnknownExceptionMessage = "Unknown Error";
-static const char *kInternalExceptionMessage = "\n\nInternal Error #";
+static const char * const kException_CmdLine_Error_Message = "Command Line Error:";
+static const char * const kExceptionErrorMessage = "ERROR:";
+static const char * const kUserBreakMessage  = "Break signaled";
+static const char * const kMemoryExceptionMessage = "ERROR: Can't allocate required memory!";
+static const char * const kUnknownExceptionMessage = "Unknown Error";
+static const char * const kInternalExceptionMessage = "\n\nInternal Error #";
 
 static void FlushStreams()
 {
@@ -79,7 +79,7 @@ int MY_CDECL main
     PrintError(kUserBreakMessage);
     return (NExitCode::kUserBreak);
   }
-  catch(const CArcCmdLineException &e)
+  catch(const CMessagePathException &e)
   {
     PrintError(kException_CmdLine_Error_Message);
     if (g_ErrStream)

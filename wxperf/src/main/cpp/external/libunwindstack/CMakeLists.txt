@@ -30,6 +30,7 @@ SET(
         ${CMAKE_CURRENT_SOURCE_DIR}/RegsMips64.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/Unwinder.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/Symbols.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/Global.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/MemFnWrapper.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/EnhanceDlsym.cpp
 )
@@ -63,6 +64,8 @@ ENDIF()
 ADD_SUBDIRECTORY(deps/android-base)
 ADD_SUBDIRECTORY(deps/liblzma)
 ADD_SUBDIRECTORY(deps/sys_compat)
+ADD_SUBDIRECTORY(deps/libprocinfo)
+ADD_SUBDIRECTORY(deps/demangle)
 
 ADD_LIBRARY(
         ${TARGET}
@@ -96,6 +99,8 @@ TARGET_LINK_LIBRARIES(
         PRIVATE android-base
         PRIVATE lzma
         PRIVATE sys_compat
+        PRIVATE procinfo
+        PRIVATE demangle
         PRIVATE -Wl,--gc-sections
 #        PRIVATE -Wl,--wrap=malloc
 #        PRIVATE -Wl,--wrap=calloc
