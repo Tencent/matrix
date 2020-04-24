@@ -97,8 +97,14 @@ class ElfInterfaceTest : public ::testing::Test {
   template <typename ElfType>
   void InitHeadersDebugFrameFail();
 
+  template <typename Ehdr, typename Phdr, typename ElfInterfaceType>
+  void InitProgramHeadersMalformed();
+
   template <typename Ehdr, typename Shdr, typename ElfInterfaceType>
   void InitSectionHeadersMalformed();
+
+  template <typename Ehdr, typename Shdr, typename ElfInterfaceType>
+  void InitSectionHeadersMalformedSymData();
 
   template <typename Ehdr, typename Shdr, typename Sym, typename ElfInterfaceType>
   void InitSectionHeaders(uint64_t entry_size);
@@ -110,14 +116,28 @@ class ElfInterfaceTest : public ::testing::Test {
   void InitSym(uint64_t offset, uint32_t value, uint32_t size, uint32_t name_offset,
                uint64_t sym_offset, const char* name);
 
+  template <typename Ehdr, typename Shdr, typename Nhdr, typename ElfInterfaceType>
+  void BuildID();
+
+  template <typename Ehdr, typename Shdr, typename Nhdr, typename ElfInterfaceType>
+  void BuildIDTwoNotes();
+
+  template <typename Ehdr, typename Shdr, typename Nhdr, typename ElfInterfaceType>
+  void BuildIDSectionTooSmallForName();
+
+  template <typename Ehdr, typename Shdr, typename Nhdr, typename ElfInterfaceType>
+  void BuildIDSectionTooSmallForDesc();
+
+  template <typename Ehdr, typename Shdr, typename Nhdr, typename ElfInterfaceType>
+  void BuildIDSectionTooSmallForHeader();
+
   MemoryFake memory_;
 };
 
 template <typename Sym>
 void ElfInterfaceTest::InitSym(uint64_t offset, uint32_t value, uint32_t size, uint32_t name_offset,
                                uint64_t sym_offset, const char* name) {
-  Sym sym;
-  memset(&sym, 0, sizeof(sym));
+  Sym sym = {};
   sym.st_info = STT_FUNC;
   sym.st_value = value;
   sym.st_size = size;
@@ -132,15 +152,13 @@ template <typename Ehdr, typename Phdr, typename Dyn, typename ElfInterfaceType>
 void ElfInterfaceTest::SinglePtLoad() {
   std::unique_ptr<ElfInterface> elf(new ElfInterfaceType(&memory_));
 
-  Ehdr ehdr;
-  memset(&ehdr, 0, sizeof(ehdr));
+  Ehdr ehdr = {};
   ehdr.e_phoff = 0x100;
   ehdr.e_phnum = 1;
   ehdr.e_phentsize = sizeof(Phdr);
   memory_.SetMemory(0, &ehdr, sizeof(ehdr));
 
-  Phdr phdr;
-  memset(&phdr, 0, sizeof(phdr));
+  Phdr phdr = {};
   phdr.p_type = PT_LOAD;
   phdr.p_vaddr = 0x2000;
   phdr.p_memsz = 0x10000;
@@ -172,15 +190,13 @@ template <typename Ehdr, typename Phdr, typename Dyn, typename ElfInterfaceType>
 void ElfInterfaceTest::MultipleExecutablePtLoads() {
   std::unique_ptr<ElfInterface> elf(new ElfInterfaceType(&memory_));
 
-  Ehdr ehdr;
-  memset(&ehdr, 0, sizeof(ehdr));
+  Ehdr ehdr = {};
   ehdr.e_phoff = 0x100;
   ehdr.e_phnum = 3;
   ehdr.e_phentsize = sizeof(Phdr);
   memory_.SetMemory(0, &ehdr, sizeof(ehdr));
 
-  Phdr phdr;
-  memset(&phdr, 0, sizeof(phdr));
+  Phdr phdr = {};
   phdr.p_type = PT_LOAD;
   phdr.p_vaddr = 0x2000;
   phdr.p_memsz = 0x10000;
@@ -241,15 +257,13 @@ template <typename Ehdr, typename Phdr, typename Dyn, typename ElfInterfaceType>
 void ElfInterfaceTest::MultipleExecutablePtLoadsIncrementsNotSizeOfPhdr() {
   std::unique_ptr<ElfInterface> elf(new ElfInterfaceType(&memory_));
 
-  Ehdr ehdr;
-  memset(&ehdr, 0, sizeof(ehdr));
+  Ehdr ehdr = {};
   ehdr.e_phoff = 0x100;
   ehdr.e_phnum = 3;
   ehdr.e_phentsize = sizeof(Phdr) + 100;
   memory_.SetMemory(0, &ehdr, sizeof(ehdr));
 
-  Phdr phdr;
-  memset(&phdr, 0, sizeof(phdr));
+  Phdr phdr = {};
   phdr.p_type = PT_LOAD;
   phdr.p_vaddr = 0x2000;
   phdr.p_memsz = 0x10000;
@@ -312,15 +326,13 @@ template <typename Ehdr, typename Phdr, typename Dyn, typename ElfInterfaceType>
 void ElfInterfaceTest::NonExecutablePtLoads() {
   std::unique_ptr<ElfInterface> elf(new ElfInterfaceType(&memory_));
 
-  Ehdr ehdr;
-  memset(&ehdr, 0, sizeof(ehdr));
+  Ehdr ehdr = {};
   ehdr.e_phoff = 0x100;
   ehdr.e_phnum = 3;
   ehdr.e_phentsize = sizeof(Phdr);
   memory_.SetMemory(0, &ehdr, sizeof(ehdr));
 
-  Phdr phdr;
-  memset(&phdr, 0, sizeof(phdr));
+  Phdr phdr = {};
   phdr.p_type = PT_LOAD;
   phdr.p_vaddr = 0x2000;
   phdr.p_memsz = 0x10000;
@@ -371,17 +383,15 @@ template <typename Ehdr, typename Phdr, typename Dyn, typename ElfInterfaceType>
 void ElfInterfaceTest::ManyPhdrs() {
   std::unique_ptr<ElfInterface> elf(new ElfInterfaceType(&memory_));
 
-  Ehdr ehdr;
-  memset(&ehdr, 0, sizeof(ehdr));
+  Ehdr ehdr = {};
   ehdr.e_phoff = 0x100;
   ehdr.e_phnum = 7;
   ehdr.e_phentsize = sizeof(Phdr);
   memory_.SetMemory(0, &ehdr, sizeof(ehdr));
 
-  Phdr phdr;
   uint64_t phdr_offset = 0x100;
 
-  memset(&phdr, 0, sizeof(phdr));
+  Phdr phdr = {};
   phdr.p_type = PT_LOAD;
   phdr.p_vaddr = 0x2000;
   phdr.p_memsz = 0x10000;
@@ -444,18 +454,16 @@ TEST_F(ElfInterfaceTest, elf64_many_phdrs) {
 TEST_F(ElfInterfaceTest, elf32_arm) {
   ElfInterfaceArm elf_arm(&memory_);
 
-  Elf32_Ehdr ehdr;
-  memset(&ehdr, 0, sizeof(ehdr));
+  Elf32_Ehdr ehdr = {};
   ehdr.e_phoff = 0x100;
   ehdr.e_phnum = 1;
   ehdr.e_phentsize = sizeof(Elf32_Phdr);
   memory_.SetMemory(0, &ehdr, sizeof(ehdr));
 
-  Elf32_Phdr phdr;
-  memset(&phdr, 0, sizeof(phdr));
+  Elf32_Phdr phdr = {};
   phdr.p_type = PT_ARM_EXIDX;
-  phdr.p_vaddr = 0x2000;
-  phdr.p_memsz = 16;
+  phdr.p_offset = 0x2000;
+  phdr.p_filesz = 16;
   memory_.SetMemory(0x100, &phdr, sizeof(phdr));
 
   // Add arm exidx entries.
@@ -480,8 +488,7 @@ TEST_F(ElfInterfaceTest, elf32_arm) {
 
 template <typename Ehdr, typename Phdr, typename Shdr, typename Dyn>
 void ElfInterfaceTest::SonameInit(SonameTestEnum test_type) {
-  Ehdr ehdr;
-  memset(&ehdr, 0, sizeof(ehdr));
+  Ehdr ehdr = {};
   ehdr.e_shoff = 0x200;
   ehdr.e_shnum = 2;
   ehdr.e_shentsize = sizeof(Shdr);
@@ -490,8 +497,7 @@ void ElfInterfaceTest::SonameInit(SonameTestEnum test_type) {
   ehdr.e_phentsize = sizeof(Phdr);
   memory_.SetMemory(0, &ehdr, sizeof(ehdr));
 
-  Shdr shdr;
-  memset(&shdr, 0, sizeof(shdr));
+  Shdr shdr = {};
   shdr.sh_type = SHT_STRTAB;
   if (test_type == SONAME_MISSING_MAP) {
     shdr.sh_addr = 0x20100;
@@ -501,8 +507,7 @@ void ElfInterfaceTest::SonameInit(SonameTestEnum test_type) {
   shdr.sh_offset = 0x10000;
   memory_.SetMemory(0x200 + sizeof(shdr), &shdr, sizeof(shdr));
 
-  Phdr phdr;
-  memset(&phdr, 0, sizeof(phdr));
+  Phdr phdr = {};
   phdr.p_type = PT_DYNAMIC;
   phdr.p_offset = 0x2000;
   phdr.p_memsz = sizeof(Dyn) * 3;
@@ -550,9 +555,7 @@ void ElfInterfaceTest::Soname() {
   ASSERT_TRUE(elf->Init(&load_bias));
   EXPECT_EQ(0U, load_bias);
 
-  std::string name;
-  ASSERT_TRUE(elf->GetSoname(&name));
-  ASSERT_STREQ("fake_soname.so", name.c_str());
+  ASSERT_EQ("fake_soname.so", elf->GetSoname());
 }
 
 TEST_F(ElfInterfaceTest, elf32_soname) {
@@ -573,8 +576,7 @@ void ElfInterfaceTest::SonameAfterDtNull() {
   ASSERT_TRUE(elf->Init(&load_bias));
   EXPECT_EQ(0U, load_bias);
 
-  std::string name;
-  ASSERT_FALSE(elf->GetSoname(&name));
+  ASSERT_EQ("", elf->GetSoname());
 }
 
 TEST_F(ElfInterfaceTest, elf32_soname_after_dt_null) {
@@ -595,8 +597,7 @@ void ElfInterfaceTest::SonameSize() {
   ASSERT_TRUE(elf->Init(&load_bias));
   EXPECT_EQ(0U, load_bias);
 
-  std::string name;
-  ASSERT_FALSE(elf->GetSoname(&name));
+  ASSERT_EQ("", elf->GetSoname());
 }
 
 TEST_F(ElfInterfaceTest, elf32_soname_size) {
@@ -619,8 +620,7 @@ void ElfInterfaceTest::SonameMissingMap() {
   ASSERT_TRUE(elf->Init(&load_bias));
   EXPECT_EQ(0U, load_bias);
 
-  std::string name;
-  ASSERT_FALSE(elf->GetSoname(&name));
+  ASSERT_EQ("", elf->GetSoname());
 }
 
 TEST_F(ElfInterfaceTest, elf32_soname_missing_map) {
@@ -647,7 +647,7 @@ void ElfInterfaceTest::InitHeadersEhFrameTest() {
   memory_.SetData32(0x10004, 0x500);
   memory_.SetData32(0x10008, 250);
 
-  elf.InitHeaders();
+  elf.InitHeaders(0);
 
   EXPECT_FALSE(elf.eh_frame() == nullptr);
   EXPECT_TRUE(elf.debug_frame() == nullptr);
@@ -672,15 +672,14 @@ void ElfInterfaceTest::InitHeadersDebugFrame() {
 
   memory_.SetData32(0x5000, 0xfc);
   memory_.SetData32(0x5004, 0xffffffff);
-  memory_.SetData8(0x5008, 1);
-  memory_.SetData8(0x5009, '\0');
+  memory_.SetMemory(0x5008, std::vector<uint8_t>{1, '\0', 4, 8, 2});
 
   memory_.SetData32(0x5100, 0xfc);
   memory_.SetData32(0x5104, 0);
   memory_.SetData32(0x5108, 0x1500);
   memory_.SetData32(0x510c, 0x200);
 
-  elf.InitHeaders();
+  elf.InitHeaders(0);
 
   EXPECT_TRUE(elf.eh_frame() == nullptr);
   EXPECT_FALSE(elf.debug_frame() == nullptr);
@@ -694,62 +693,34 @@ TEST_F(ElfInterfaceTest, init_headers_debug_frame64) {
   InitHeadersDebugFrame<ElfInterface64Fake>();
 }
 
-template <typename ElfType>
-void ElfInterfaceTest::InitHeadersEhFrameFail() {
-  ElfType elf(&memory_);
+template <typename Ehdr, typename Phdr, typename ElfInterfaceType>
+void ElfInterfaceTest::InitProgramHeadersMalformed() {
+  std::unique_ptr<ElfInterfaceType> elf(new ElfInterfaceType(&memory_));
 
-  elf.FakeSetEhFrameOffset(0x1000);
-  elf.FakeSetEhFrameSize(0x100);
-  elf.FakeSetDebugFrameOffset(0);
-  elf.FakeSetDebugFrameSize(0);
+  Ehdr ehdr = {};
+  ehdr.e_phoff = 0x100;
+  ehdr.e_phnum = 3;
+  ehdr.e_phentsize = sizeof(Phdr);
+  memory_.SetMemory(0, &ehdr, sizeof(ehdr));
 
-  elf.InitHeaders();
-
-  EXPECT_TRUE(elf.eh_frame() == nullptr);
-  EXPECT_EQ(0U, elf.eh_frame_offset());
-  EXPECT_EQ(static_cast<uint64_t>(-1), elf.eh_frame_size());
-  EXPECT_TRUE(elf.debug_frame() == nullptr);
+  uint64_t load_bias = 0;
+  ASSERT_TRUE(elf->Init(&load_bias));
+  EXPECT_EQ(0U, load_bias);
 }
 
-TEST_F(ElfInterfaceTest, init_headers_eh_frame32_fail) {
-  InitHeadersEhFrameFail<ElfInterface32Fake>();
+TEST_F(ElfInterfaceTest, init_program_headers_malformed32) {
+  InitProgramHeadersMalformed<Elf32_Ehdr, Elf32_Phdr, ElfInterface32>();
 }
 
-TEST_F(ElfInterfaceTest, init_headers_eh_frame64_fail) {
-  InitHeadersEhFrameFail<ElfInterface64Fake>();
-}
-
-template <typename ElfType>
-void ElfInterfaceTest::InitHeadersDebugFrameFail() {
-  ElfType elf(&memory_);
-
-  elf.FakeSetEhFrameOffset(0);
-  elf.FakeSetEhFrameSize(0);
-  elf.FakeSetDebugFrameOffset(0x1000);
-  elf.FakeSetDebugFrameSize(0x100);
-
-  elf.InitHeaders();
-
-  EXPECT_TRUE(elf.eh_frame() == nullptr);
-  EXPECT_TRUE(elf.debug_frame() == nullptr);
-  EXPECT_EQ(0U, elf.debug_frame_offset());
-  EXPECT_EQ(static_cast<uint64_t>(-1), elf.debug_frame_size());
-}
-
-TEST_F(ElfInterfaceTest, init_headers_debug_frame32_fail) {
-  InitHeadersDebugFrameFail<ElfInterface32Fake>();
-}
-
-TEST_F(ElfInterfaceTest, init_headers_debug_frame64_fail) {
-  InitHeadersDebugFrameFail<ElfInterface64Fake>();
+TEST_F(ElfInterfaceTest, init_program_headers_malformed64) {
+  InitProgramHeadersMalformed<Elf64_Ehdr, Elf64_Phdr, ElfInterface64>();
 }
 
 template <typename Ehdr, typename Shdr, typename ElfInterfaceType>
 void ElfInterfaceTest::InitSectionHeadersMalformed() {
   std::unique_ptr<ElfInterfaceType> elf(new ElfInterfaceType(&memory_));
 
-  Ehdr ehdr;
-  memset(&ehdr, 0, sizeof(ehdr));
+  Ehdr ehdr = {};
   ehdr.e_shoff = 0x1000;
   ehdr.e_shnum = 10;
   ehdr.e_shentsize = sizeof(Shdr);
@@ -768,23 +739,95 @@ TEST_F(ElfInterfaceTest, init_section_headers_malformed64) {
   InitSectionHeadersMalformed<Elf64_Ehdr, Elf64_Shdr, ElfInterface64>();
 }
 
+template <typename Ehdr, typename Shdr, typename ElfInterfaceType>
+void ElfInterfaceTest::InitSectionHeadersMalformedSymData() {
+  std::unique_ptr<ElfInterfaceType> elf(new ElfInterfaceType(&memory_));
+
+  uint64_t offset = 0x1000;
+
+  Ehdr ehdr = {};
+  ehdr.e_shoff = offset;
+  ehdr.e_shnum = 5;
+  ehdr.e_shentsize = sizeof(Shdr);
+  memory_.SetMemory(0, &ehdr, sizeof(ehdr));
+
+  offset += ehdr.e_shentsize;
+
+  Shdr shdr = {};
+  shdr.sh_type = SHT_SYMTAB;
+  shdr.sh_link = 4;
+  shdr.sh_addr = 0x5000;
+  shdr.sh_offset = 0x5000;
+  shdr.sh_entsize = 0x100;
+  shdr.sh_size = shdr.sh_entsize * 10;
+  memory_.SetMemory(offset, &shdr, sizeof(shdr));
+  offset += ehdr.e_shentsize;
+
+  memset(&shdr, 0, sizeof(shdr));
+  shdr.sh_type = SHT_DYNSYM;
+  shdr.sh_link = 10;
+  shdr.sh_addr = 0x6000;
+  shdr.sh_offset = 0x6000;
+  shdr.sh_entsize = 0x100;
+  shdr.sh_size = shdr.sh_entsize * 10;
+  memory_.SetMemory(offset, &shdr, sizeof(shdr));
+  offset += ehdr.e_shentsize;
+
+  memset(&shdr, 0, sizeof(shdr));
+  shdr.sh_type = SHT_DYNSYM;
+  shdr.sh_link = 2;
+  shdr.sh_addr = 0x6000;
+  shdr.sh_offset = 0x6000;
+  shdr.sh_entsize = 0x100;
+  shdr.sh_size = shdr.sh_entsize * 10;
+  memory_.SetMemory(offset, &shdr, sizeof(shdr));
+  offset += ehdr.e_shentsize;
+
+  // The string data for the entries.
+  memset(&shdr, 0, sizeof(shdr));
+  shdr.sh_type = SHT_STRTAB;
+  shdr.sh_name = 0x20000;
+  shdr.sh_offset = 0xf000;
+  shdr.sh_size = 0x1000;
+  memory_.SetMemory(offset, &shdr, sizeof(shdr));
+  offset += ehdr.e_shentsize;
+
+  uint64_t load_bias = 0;
+  ASSERT_TRUE(elf->Init(&load_bias));
+  EXPECT_EQ(0U, load_bias);
+  EXPECT_EQ(0U, elf->debug_frame_offset());
+  EXPECT_EQ(0U, elf->debug_frame_size());
+  EXPECT_EQ(0U, elf->gnu_debugdata_offset());
+  EXPECT_EQ(0U, elf->gnu_debugdata_size());
+
+  std::string name;
+  uint64_t name_offset;
+  ASSERT_FALSE(elf->GetFunctionName(0x90010, &name, &name_offset));
+}
+
+TEST_F(ElfInterfaceTest, init_section_headers_malformed_symdata32) {
+  InitSectionHeadersMalformedSymData<Elf32_Ehdr, Elf32_Shdr, ElfInterface32>();
+}
+
+TEST_F(ElfInterfaceTest, init_section_headers_malformed_symdata64) {
+  InitSectionHeadersMalformedSymData<Elf64_Ehdr, Elf64_Shdr, ElfInterface64>();
+}
+
 template <typename Ehdr, typename Shdr, typename Sym, typename ElfInterfaceType>
 void ElfInterfaceTest::InitSectionHeaders(uint64_t entry_size) {
   std::unique_ptr<ElfInterfaceType> elf(new ElfInterfaceType(&memory_));
 
   uint64_t offset = 0x1000;
 
-  Ehdr ehdr;
-  memset(&ehdr, 0, sizeof(ehdr));
+  Ehdr ehdr = {};
   ehdr.e_shoff = offset;
-  ehdr.e_shnum = 10;
+  ehdr.e_shnum = 5;
   ehdr.e_shentsize = entry_size;
   memory_.SetMemory(0, &ehdr, sizeof(ehdr));
 
   offset += ehdr.e_shentsize;
 
-  Shdr shdr;
-  memset(&shdr, 0, sizeof(shdr));
+  Shdr shdr = {};
   shdr.sh_type = SHT_SYMTAB;
   shdr.sh_link = 4;
   shdr.sh_addr = 0x5000;
@@ -833,10 +876,10 @@ void ElfInterfaceTest::InitSectionHeaders(uint64_t entry_size) {
   // Look in the first symbol table.
   std::string name;
   uint64_t name_offset;
-  ASSERT_TRUE(elf->GetFunctionName(0x90010, 0, &name, &name_offset));
+  ASSERT_TRUE(elf->GetFunctionName(0x90010, &name, &name_offset));
   EXPECT_EQ("function_one", name);
   EXPECT_EQ(16U, name_offset);
-  ASSERT_TRUE(elf->GetFunctionName(0xd0020, 0, &name, &name_offset));
+  ASSERT_TRUE(elf->GetFunctionName(0xd0020, &name, &name_offset));
   EXPECT_EQ("function_two", name);
   EXPECT_EQ(32U, name_offset);
 }
@@ -863,18 +906,16 @@ void ElfInterfaceTest::InitSectionHeadersOffsets() {
 
   uint64_t offset = 0x2000;
 
-  Ehdr ehdr;
-  memset(&ehdr, 0, sizeof(ehdr));
+  Ehdr ehdr = {};
   ehdr.e_shoff = offset;
-  ehdr.e_shnum = 10;
+  ehdr.e_shnum = 7;
   ehdr.e_shentsize = sizeof(Shdr);
   ehdr.e_shstrndx = 2;
   memory_.SetMemory(0, &ehdr, sizeof(ehdr));
 
   offset += ehdr.e_shentsize;
 
-  Shdr shdr;
-  memset(&shdr, 0, sizeof(shdr));
+  Shdr shdr = {};
   shdr.sh_type = SHT_PROGBITS;
   shdr.sh_link = 2;
   shdr.sh_name = 0x200;
@@ -927,10 +968,19 @@ void ElfInterfaceTest::InitSectionHeadersOffsets() {
   memory_.SetMemory(offset, &shdr, sizeof(shdr));
   offset += ehdr.e_shentsize;
 
+  memset(&shdr, 0, sizeof(shdr));
+  shdr.sh_type = SHT_NOTE;
+  shdr.sh_name = 0x500;
+  shdr.sh_offset = 0xb000;
+  shdr.sh_size = 0xf00;
+  memory_.SetMemory(offset, &shdr, sizeof(shdr));
+  offset += ehdr.e_shentsize;
+
   memory_.SetMemory(0xf100, ".debug_frame", sizeof(".debug_frame"));
   memory_.SetMemory(0xf200, ".gnu_debugdata", sizeof(".gnu_debugdata"));
   memory_.SetMemory(0xf300, ".eh_frame", sizeof(".eh_frame"));
   memory_.SetMemory(0xf400, ".eh_frame_hdr", sizeof(".eh_frame_hdr"));
+  memory_.SetMemory(0xf500, ".note.gnu.build-id", sizeof(".note.gnu.build-id"));
 
   uint64_t load_bias = 0;
   ASSERT_TRUE(elf->Init(&load_bias));
@@ -943,6 +993,8 @@ void ElfInterfaceTest::InitSectionHeadersOffsets() {
   EXPECT_EQ(0x800U, elf->eh_frame_size());
   EXPECT_EQ(0xa000U, elf->eh_frame_hdr_offset());
   EXPECT_EQ(0xf00U, elf->eh_frame_hdr_size());
+  EXPECT_EQ(0xb000U, elf->gnu_build_id_offset());
+  EXPECT_EQ(0xf00U, elf->gnu_build_id_size());
 }
 
 TEST_F(ElfInterfaceTest, init_section_headers_offsets32) {
@@ -956,15 +1008,13 @@ TEST_F(ElfInterfaceTest, init_section_headers_offsets64) {
 TEST_F(ElfInterfaceTest, is_valid_pc_from_pt_load) {
   std::unique_ptr<ElfInterface> elf(new ElfInterface32(&memory_));
 
-  Elf32_Ehdr ehdr;
-  memset(&ehdr, 0, sizeof(ehdr));
+  Elf32_Ehdr ehdr = {};
   ehdr.e_phoff = 0x100;
   ehdr.e_phnum = 1;
   ehdr.e_phentsize = sizeof(Elf32_Phdr);
   memory_.SetMemory(0, &ehdr, sizeof(ehdr));
 
-  Elf32_Phdr phdr;
-  memset(&phdr, 0, sizeof(phdr));
+  Elf32_Phdr phdr = {};
   phdr.p_type = PT_LOAD;
   phdr.p_vaddr = 0;
   phdr.p_memsz = 0x10000;
@@ -984,15 +1034,13 @@ TEST_F(ElfInterfaceTest, is_valid_pc_from_pt_load) {
 TEST_F(ElfInterfaceTest, is_valid_pc_from_pt_load_non_zero_load_bias) {
   std::unique_ptr<ElfInterface> elf(new ElfInterface32(&memory_));
 
-  Elf32_Ehdr ehdr;
-  memset(&ehdr, 0, sizeof(ehdr));
+  Elf32_Ehdr ehdr = {};
   ehdr.e_phoff = 0x100;
   ehdr.e_phnum = 1;
   ehdr.e_phentsize = sizeof(Elf32_Phdr);
   memory_.SetMemory(0, &ehdr, sizeof(ehdr));
 
-  Elf32_Phdr phdr;
-  memset(&phdr, 0, sizeof(phdr));
+  Elf32_Phdr phdr = {};
   phdr.p_type = PT_LOAD;
   phdr.p_vaddr = 0x2000;
   phdr.p_memsz = 0x10000;
@@ -1017,16 +1065,14 @@ TEST_F(ElfInterfaceTest, is_valid_pc_from_debug_frame) {
 
   uint64_t sh_offset = 0x100;
 
-  Elf32_Ehdr ehdr;
-  memset(&ehdr, 0, sizeof(ehdr));
+  Elf32_Ehdr ehdr = {};
   ehdr.e_shstrndx = 1;
   ehdr.e_shoff = sh_offset;
   ehdr.e_shentsize = sizeof(Elf32_Shdr);
   ehdr.e_shnum = 3;
   memory_.SetMemory(0, &ehdr, sizeof(ehdr));
 
-  Elf32_Shdr shdr;
-  memset(&shdr, 0, sizeof(shdr));
+  Elf32_Shdr shdr = {};
   shdr.sh_type = SHT_NULL;
   memory_.SetMemory(sh_offset, &shdr, sizeof(shdr));
 
@@ -1051,11 +1097,7 @@ TEST_F(ElfInterfaceTest, is_valid_pc_from_debug_frame) {
   // CIE 32.
   memory_.SetData32(0x600, 0xfc);
   memory_.SetData32(0x604, 0xffffffff);
-  memory_.SetData8(0x608, 1);
-  memory_.SetData8(0x609, '\0');
-  memory_.SetData8(0x60a, 0x4);
-  memory_.SetData8(0x60b, 0x4);
-  memory_.SetData8(0x60c, 0x1);
+  memory_.SetMemory(0x608, std::vector<uint8_t>{1, '\0', 4, 4, 1});
 
   // FDE 32.
   memory_.SetData32(0x700, 0xfc);
@@ -1065,7 +1107,7 @@ TEST_F(ElfInterfaceTest, is_valid_pc_from_debug_frame) {
 
   uint64_t load_bias = 0;
   ASSERT_TRUE(elf->Init(&load_bias));
-  elf->InitHeaders();
+  elf->InitHeaders(0);
   EXPECT_EQ(0U, load_bias);
   EXPECT_FALSE(elf->IsValidPc(0));
   EXPECT_FALSE(elf->IsValidPc(0x20ff));
@@ -1080,16 +1122,14 @@ TEST_F(ElfInterfaceTest, is_valid_pc_from_eh_frame) {
 
   uint64_t sh_offset = 0x100;
 
-  Elf32_Ehdr ehdr;
-  memset(&ehdr, 0, sizeof(ehdr));
+  Elf32_Ehdr ehdr = {};
   ehdr.e_shstrndx = 1;
   ehdr.e_shoff = sh_offset;
   ehdr.e_shentsize = sizeof(Elf32_Shdr);
   ehdr.e_shnum = 3;
   memory_.SetMemory(0, &ehdr, sizeof(ehdr));
 
-  Elf32_Shdr shdr;
-  memset(&shdr, 0, sizeof(shdr));
+  Elf32_Shdr shdr = {};
   shdr.sh_type = SHT_NULL;
   memory_.SetMemory(sh_offset, &shdr, sizeof(shdr));
 
@@ -1114,11 +1154,7 @@ TEST_F(ElfInterfaceTest, is_valid_pc_from_eh_frame) {
   // CIE 32.
   memory_.SetData32(0x600, 0xfc);
   memory_.SetData32(0x604, 0);
-  memory_.SetData8(0x608, 1);
-  memory_.SetData8(0x609, '\0');
-  memory_.SetData8(0x60a, 0x4);
-  memory_.SetData8(0x60b, 0x4);
-  memory_.SetData8(0x60c, 0x1);
+  memory_.SetMemory(0x608, std::vector<uint8_t>{1, '\0', 4, 4, 1});
 
   // FDE 32.
   memory_.SetData32(0x700, 0xfc);
@@ -1128,7 +1164,7 @@ TEST_F(ElfInterfaceTest, is_valid_pc_from_eh_frame) {
 
   uint64_t load_bias = 0;
   ASSERT_TRUE(elf->Init(&load_bias));
-  elf->InitHeaders();
+  elf->InitHeaders(0);
   EXPECT_EQ(0U, load_bias);
   EXPECT_FALSE(elf->IsValidPc(0));
   EXPECT_FALSE(elf->IsValidPc(0x27ff));
@@ -1136,6 +1172,327 @@ TEST_F(ElfInterfaceTest, is_valid_pc_from_eh_frame) {
   EXPECT_TRUE(elf->IsValidPc(0x2900));
   EXPECT_TRUE(elf->IsValidPc(0x29ff));
   EXPECT_FALSE(elf->IsValidPc(0x2a00));
+}
+
+template <typename Ehdr, typename Shdr, typename Nhdr, typename ElfInterfaceType>
+void ElfInterfaceTest::BuildID() {
+  std::unique_ptr<ElfInterfaceType> elf(new ElfInterfaceType(&memory_));
+
+  uint64_t offset = 0x2000;
+
+  Ehdr ehdr = {};
+  ehdr.e_shoff = offset;
+  ehdr.e_shnum = 3;
+  ehdr.e_shentsize = sizeof(Shdr);
+  ehdr.e_shstrndx = 2;
+  memory_.SetMemory(0, &ehdr, sizeof(ehdr));
+
+  offset += ehdr.e_shentsize;
+
+  char note_section[128];
+  Nhdr note_header = {};
+  note_header.n_namesz = 4;  // "GNU"
+  note_header.n_descsz = 7;  // "BUILDID"
+  note_header.n_type = NT_GNU_BUILD_ID;
+  memcpy(&note_section, &note_header, sizeof(note_header));
+  size_t note_offset = sizeof(note_header);
+  // The note information contains the GNU and trailing '\0'.
+  memcpy(&note_section[note_offset], "GNU", sizeof("GNU"));
+  note_offset += sizeof("GNU");
+  // This part of the note does not contain any trailing '\0'.
+  memcpy(&note_section[note_offset], "BUILDID", 7);
+  note_offset += 8;
+
+  Shdr shdr = {};
+  shdr.sh_type = SHT_NOTE;
+  shdr.sh_name = 0x500;
+  shdr.sh_offset = 0xb000;
+  shdr.sh_size = sizeof(note_section);
+  memory_.SetMemory(offset, &shdr, sizeof(shdr));
+  offset += ehdr.e_shentsize;
+
+  // The string data for section header names.
+  memset(&shdr, 0, sizeof(shdr));
+  shdr.sh_type = SHT_STRTAB;
+  shdr.sh_name = 0x20000;
+  shdr.sh_offset = 0xf000;
+  shdr.sh_size = 0x1000;
+  memory_.SetMemory(offset, &shdr, sizeof(shdr));
+  offset += ehdr.e_shentsize;
+
+  memory_.SetMemory(0xf500, ".note.gnu.build-id", sizeof(".note.gnu.build-id"));
+  memory_.SetMemory(0xb000, note_section, sizeof(note_section));
+
+  uint64_t load_bias = 0;
+  ASSERT_TRUE(elf->Init(&load_bias));
+  ASSERT_EQ("BUILDID", elf->GetBuildID());
+}
+
+template <typename Ehdr, typename Shdr, typename Nhdr, typename ElfInterfaceType>
+void ElfInterfaceTest::BuildIDTwoNotes() {
+  std::unique_ptr<ElfInterfaceType> elf(new ElfInterfaceType(&memory_));
+
+  uint64_t offset = 0x2000;
+
+  Ehdr ehdr = {};
+  ehdr.e_shoff = offset;
+  ehdr.e_shnum = 3;
+  ehdr.e_shentsize = sizeof(Shdr);
+  ehdr.e_shstrndx = 2;
+  memory_.SetMemory(0, &ehdr, sizeof(ehdr));
+
+  offset += ehdr.e_shentsize;
+
+  char note_section[128];
+  Nhdr note_header = {};
+  note_header.n_namesz = 8;  // "WRONG" aligned to 4
+  note_header.n_descsz = 7;  // "BUILDID"
+  note_header.n_type = NT_GNU_BUILD_ID;
+  memcpy(&note_section, &note_header, sizeof(note_header));
+  size_t note_offset = sizeof(note_header);
+  memcpy(&note_section[note_offset], "WRONG", sizeof("WRONG"));
+  note_offset += 8;
+  // This part of the note does not contain any trailing '\0'.
+  memcpy(&note_section[note_offset], "BUILDID", 7);
+  note_offset += 8;
+
+  note_header.n_namesz = 4;  // "GNU"
+  note_header.n_descsz = 7;  // "BUILDID"
+  note_header.n_type = NT_GNU_BUILD_ID;
+  memcpy(&note_section[note_offset], &note_header, sizeof(note_header));
+  note_offset += sizeof(note_header);
+  // The note information contains the GNU and trailing '\0'.
+  memcpy(&note_section[note_offset], "GNU", sizeof("GNU"));
+  note_offset += sizeof("GNU");
+  // This part of the note does not contain any trailing '\0'.
+  memcpy(&note_section[note_offset], "BUILDID", 7);
+  note_offset += 8;
+
+  Shdr shdr = {};
+  shdr.sh_type = SHT_NOTE;
+  shdr.sh_name = 0x500;
+  shdr.sh_offset = 0xb000;
+  shdr.sh_size = sizeof(note_section);
+  memory_.SetMemory(offset, &shdr, sizeof(shdr));
+  offset += ehdr.e_shentsize;
+
+  // The string data for section header names.
+  memset(&shdr, 0, sizeof(shdr));
+  shdr.sh_type = SHT_STRTAB;
+  shdr.sh_name = 0x20000;
+  shdr.sh_offset = 0xf000;
+  shdr.sh_size = 0x1000;
+  memory_.SetMemory(offset, &shdr, sizeof(shdr));
+  offset += ehdr.e_shentsize;
+
+  memory_.SetMemory(0xf500, ".note.gnu.build-id", sizeof(".note.gnu.build-id"));
+  memory_.SetMemory(0xb000, note_section, sizeof(note_section));
+
+  uint64_t load_bias = 0;
+  ASSERT_TRUE(elf->Init(&load_bias));
+  ASSERT_EQ("BUILDID", elf->GetBuildID());
+}
+
+template <typename Ehdr, typename Shdr, typename Nhdr, typename ElfInterfaceType>
+void ElfInterfaceTest::BuildIDSectionTooSmallForName () {
+  std::unique_ptr<ElfInterfaceType> elf(new ElfInterfaceType(&memory_));
+
+  uint64_t offset = 0x2000;
+
+  Ehdr ehdr = {};
+  ehdr.e_shoff = offset;
+  ehdr.e_shnum = 3;
+  ehdr.e_shentsize = sizeof(Shdr);
+  ehdr.e_shstrndx = 2;
+  memory_.SetMemory(0, &ehdr, sizeof(ehdr));
+
+  offset += ehdr.e_shentsize;
+
+  char note_section[128];
+  Nhdr note_header = {};
+  note_header.n_namesz = 4;  // "GNU"
+  note_header.n_descsz = 7;  // "BUILDID"
+  note_header.n_type = NT_GNU_BUILD_ID;
+  memcpy(&note_section, &note_header, sizeof(note_header));
+  size_t note_offset = sizeof(note_header);
+  // The note information contains the GNU and trailing '\0'.
+  memcpy(&note_section[note_offset], "GNU", sizeof("GNU"));
+  note_offset += sizeof("GNU");
+  // This part of the note does not contain any trailing '\0'.
+  memcpy(&note_section[note_offset], "BUILDID", 7);
+  note_offset += 8;
+
+  Shdr shdr = {};
+  shdr.sh_type = SHT_NOTE;
+  shdr.sh_name = 0x500;
+  shdr.sh_offset = 0xb000;
+  shdr.sh_size = sizeof(note_header) + 1;
+  memory_.SetMemory(offset, &shdr, sizeof(shdr));
+  offset += ehdr.e_shentsize;
+
+  // The string data for section header names.
+  memset(&shdr, 0, sizeof(shdr));
+  shdr.sh_type = SHT_STRTAB;
+  shdr.sh_name = 0x20000;
+  shdr.sh_offset = 0xf000;
+  shdr.sh_size = 0x1000;
+  memory_.SetMemory(offset, &shdr, sizeof(shdr));
+  offset += ehdr.e_shentsize;
+
+  memory_.SetMemory(0xf500, ".note.gnu.build-id", sizeof(".note.gnu.build-id"));
+  memory_.SetMemory(0xb000, note_section, sizeof(note_section));
+
+  uint64_t load_bias = 0;
+  ASSERT_TRUE(elf->Init(&load_bias));
+  ASSERT_EQ("", elf->GetBuildID());
+}
+
+template <typename Ehdr, typename Shdr, typename Nhdr, typename ElfInterfaceType>
+void ElfInterfaceTest::BuildIDSectionTooSmallForDesc () {
+  std::unique_ptr<ElfInterfaceType> elf(new ElfInterfaceType(&memory_));
+
+  uint64_t offset = 0x2000;
+
+  Ehdr ehdr = {};
+  ehdr.e_shoff = offset;
+  ehdr.e_shnum = 3;
+  ehdr.e_shentsize = sizeof(Shdr);
+  ehdr.e_shstrndx = 2;
+  memory_.SetMemory(0, &ehdr, sizeof(ehdr));
+
+  offset += ehdr.e_shentsize;
+
+  char note_section[128];
+  Nhdr note_header = {};
+  note_header.n_namesz = 4;  // "GNU"
+  note_header.n_descsz = 7;  // "BUILDID"
+  note_header.n_type = NT_GNU_BUILD_ID;
+  memcpy(&note_section, &note_header, sizeof(note_header));
+  size_t note_offset = sizeof(note_header);
+  // The note information contains the GNU and trailing '\0'.
+  memcpy(&note_section[note_offset], "GNU", sizeof("GNU"));
+  note_offset += sizeof("GNU");
+  // This part of the note does not contain any trailing '\0'.
+  memcpy(&note_section[note_offset], "BUILDID", 7);
+  note_offset += 8;
+
+  Shdr shdr = {};
+  shdr.sh_type = SHT_NOTE;
+  shdr.sh_name = 0x500;
+  shdr.sh_offset = 0xb000;
+  shdr.sh_size = sizeof(note_header) + sizeof("GNU") + 1;
+  memory_.SetMemory(offset, &shdr, sizeof(shdr));
+  offset += ehdr.e_shentsize;
+
+  // The string data for section header names.
+  memset(&shdr, 0, sizeof(shdr));
+  shdr.sh_type = SHT_STRTAB;
+  shdr.sh_name = 0x20000;
+  shdr.sh_offset = 0xf000;
+  shdr.sh_size = 0x1000;
+  memory_.SetMemory(offset, &shdr, sizeof(shdr));
+  offset += ehdr.e_shentsize;
+
+  memory_.SetMemory(0xf500, ".note.gnu.build-id", sizeof(".note.gnu.build-id"));
+  memory_.SetMemory(0xb000, note_section, sizeof(note_section));
+
+  uint64_t load_bias = 0;
+  ASSERT_TRUE(elf->Init(&load_bias));
+  ASSERT_EQ("", elf->GetBuildID());
+}
+
+template <typename Ehdr, typename Shdr, typename Nhdr, typename ElfInterfaceType>
+void ElfInterfaceTest::BuildIDSectionTooSmallForHeader () {
+  std::unique_ptr<ElfInterfaceType> elf(new ElfInterfaceType(&memory_));
+
+  uint64_t offset = 0x2000;
+
+  Ehdr ehdr = {};
+  ehdr.e_shoff = offset;
+  ehdr.e_shnum = 3;
+  ehdr.e_shentsize = sizeof(Shdr);
+  ehdr.e_shstrndx = 2;
+  memory_.SetMemory(0, &ehdr, sizeof(ehdr));
+
+  offset += ehdr.e_shentsize;
+
+  char note_section[128];
+  Nhdr note_header = {};
+  note_header.n_namesz = 4;  // "GNU"
+  note_header.n_descsz = 7;  // "BUILDID"
+  note_header.n_type = NT_GNU_BUILD_ID;
+  memcpy(&note_section, &note_header, sizeof(note_header));
+  size_t note_offset = sizeof(note_header);
+  // The note information contains the GNU and trailing '\0'.
+  memcpy(&note_section[note_offset], "GNU", sizeof("GNU"));
+  note_offset += sizeof("GNU");
+  // This part of the note does not contain any trailing '\0'.
+  memcpy(&note_section[note_offset], "BUILDID", 7);
+  note_offset += 8;
+
+  Shdr shdr = {};
+  shdr.sh_type = SHT_NOTE;
+  shdr.sh_name = 0x500;
+  shdr.sh_offset = 0xb000;
+  shdr.sh_size = sizeof(note_header) - 1;
+  memory_.SetMemory(offset, &shdr, sizeof(shdr));
+  offset += ehdr.e_shentsize;
+
+  // The string data for section header names.
+  memset(&shdr, 0, sizeof(shdr));
+  shdr.sh_type = SHT_STRTAB;
+  shdr.sh_name = 0x20000;
+  shdr.sh_offset = 0xf000;
+  shdr.sh_size = 0x1000;
+  memory_.SetMemory(offset, &shdr, sizeof(shdr));
+  offset += ehdr.e_shentsize;
+
+  memory_.SetMemory(0xf500, ".note.gnu.build-id", sizeof(".note.gnu.build-id"));
+  memory_.SetMemory(0xb000, note_section, sizeof(note_section));
+
+  uint64_t load_bias = 0;
+  ASSERT_TRUE(elf->Init(&load_bias));
+  ASSERT_EQ("", elf->GetBuildID());
+}
+
+TEST_F(ElfInterfaceTest, build_id32) {
+  BuildID<Elf32_Ehdr, Elf32_Shdr, Elf32_Nhdr, ElfInterface32>();
+}
+
+TEST_F(ElfInterfaceTest, build_id64) {
+  BuildID<Elf64_Ehdr, Elf64_Shdr, Elf64_Nhdr, ElfInterface64>();
+}
+
+TEST_F(ElfInterfaceTest, build_id_two_notes32) {
+  BuildIDTwoNotes<Elf32_Ehdr, Elf32_Shdr, Elf32_Nhdr, ElfInterface32>();
+}
+
+TEST_F(ElfInterfaceTest, build_id_two_notes64) {
+  BuildIDTwoNotes<Elf64_Ehdr, Elf64_Shdr, Elf64_Nhdr, ElfInterface64>();
+}
+
+TEST_F(ElfInterfaceTest, build_id_section_too_small_for_name32) {
+  BuildIDSectionTooSmallForName<Elf32_Ehdr, Elf32_Shdr, Elf32_Nhdr, ElfInterface32>();
+}
+
+TEST_F(ElfInterfaceTest, build_id_section_too_small_for_name64) {
+  BuildIDSectionTooSmallForName<Elf64_Ehdr, Elf64_Shdr, Elf64_Nhdr, ElfInterface64>();
+}
+
+TEST_F(ElfInterfaceTest, build_id_section_too_small_for_desc32) {
+  BuildIDSectionTooSmallForDesc<Elf32_Ehdr, Elf32_Shdr, Elf32_Nhdr, ElfInterface32>();
+}
+
+TEST_F(ElfInterfaceTest, build_id_section_too_small_for_desc64) {
+  BuildIDSectionTooSmallForDesc<Elf64_Ehdr, Elf64_Shdr, Elf64_Nhdr, ElfInterface64>();
+}
+
+TEST_F(ElfInterfaceTest, build_id_section_too_small_for_header32) {
+  BuildIDSectionTooSmallForHeader<Elf32_Ehdr, Elf32_Shdr, Elf32_Nhdr, ElfInterface32>();
+}
+
+TEST_F(ElfInterfaceTest, build_id_section_too_small_for_header64) {
+  BuildIDSectionTooSmallForHeader<Elf64_Ehdr, Elf64_Shdr, Elf64_Nhdr, ElfInterface64>();
 }
 
 }  // namespace unwindstack

@@ -34,7 +34,9 @@
 #include <unwindstack/ElfInterface.h>
 #include <unwindstack/Log.h>
 
+#include "ArmExidx.h"
 #include "DwarfOp.h"
+#include "ElfInterfaceArm.h"
 
 namespace unwindstack {
 
@@ -136,6 +138,32 @@ void PrintRegInformation(DwarfSection* section, Memory* memory, uint64_t pc, uin
   }
 }
 
+void PrintArmRegInformation(ElfInterfaceArm* interface, uint64_t pc) {
+  printf("\nArm exidx:\n");
+  uint64_t entry_offset;
+  if (!interface->FindEntry(pc, &entry_offset)) {
+    return;
+  }
+
+  ArmExidx arm(nullptr, interface->memory(), nullptr);
+
+  log_to_stdout(true);
+  arm.set_log(ARM_LOG_BY_REG);
+  arm.set_log_skip_execution(true);
+  arm.set_log_indent(1);
+  if (!arm.ExtractEntryData(entry_offset)) {
+    if (arm.status() != ARM_STATUS_NO_UNWIND) {
+      printf("  Error trying to extract data.\n");
+    }
+    return;
+  }
+  if (arm.data()->size() != 0 && arm.Eval()) {
+    arm.LogByReg();
+  } else {
+    printf("  Error tring to evaluate exidx data.\n");
+  }
+}
+
 int GetInfo(const char* file, uint64_t pc) {
   MemoryFileAtOffset* memory = new MemoryFileAtOffset;
   if (!memory->Init(file, 0)) {
@@ -145,7 +173,7 @@ int GetInfo(const char* file, uint64_t pc) {
   }
 
   Elf elf(memory);
-  if (!elf.Init(true) || !elf.valid()) {
+  if (!elf.Init() || !elf.valid()) {
     printf("%s is not a valid elf file.\n", file);
     return 1;
   }
@@ -157,17 +185,27 @@ int GetInfo(const char* file, uint64_t pc) {
     return 1;
   }
 
-  std::string soname;
-  if (elf.GetSoname(&soname)) {
+  std::string soname(elf.GetSoname());
+  if (!soname.empty()) {
     printf("Soname: %s\n\n", soname.c_str());
   }
 
-  printf("PC 0x%" PRIx64 ":\n", pc);
+  printf("PC 0x%" PRIx64, pc);
+  std::string function_name;
+  uint64_t function_offset;
+  if (elf.GetFunctionName(pc, &function_name, &function_offset)) {
+    printf(" (%s)", function_name.c_str());
+  }
+  printf(":\n");
+
+  if (elf.machine_type() == EM_ARM) {
+    PrintArmRegInformation(reinterpret_cast<ElfInterfaceArm*>(interface), pc - load_bias);
+  }
 
   DwarfSection* section = interface->eh_frame();
   if (section != nullptr) {
     printf("\neh_frame:\n");
-    PrintRegInformation(section, memory, pc - load_bias, elf.class_type());
+    PrintRegInformation(section, memory, pc, elf.class_type());
   } else {
     printf("\nno eh_frame information\n");
   }
@@ -175,7 +213,7 @@ int GetInfo(const char* file, uint64_t pc) {
   section = interface->debug_frame();
   if (section != nullptr) {
     printf("\ndebug_frame:\n");
-    PrintRegInformation(section, memory, pc - load_bias, elf.class_type());
+    PrintRegInformation(section, memory, pc, elf.class_type());
     printf("\n");
   } else {
     printf("\nno debug_frame information\n");

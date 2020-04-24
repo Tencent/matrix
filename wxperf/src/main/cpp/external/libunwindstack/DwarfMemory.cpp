@@ -104,7 +104,6 @@ size_t DwarfMemory::GetEncodedSize(uint8_t encoding) {
 
 bool DwarfMemory::AdjustEncodedValue(uint8_t encoding, uint64_t* value) {
   CHECK((encoding & 0x0f) == 0);
-  CHECK(encoding != DW_EH_PE_aligned);
 
   // Handle the encoding.
   switch (encoding) {

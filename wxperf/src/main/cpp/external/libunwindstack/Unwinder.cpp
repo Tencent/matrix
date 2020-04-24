@@ -25,12 +25,16 @@
 #include <algorithm>
 
 #include <android-base/stringprintf.h>
+#include <android-base/strings.h>
+
+#include <demangle.h>
 
 #include <unwindstack/Elf.h>
 #include <unwindstack/JitDebug.h>
 #include <unwindstack/MapInfo.h>
+#include <unwindstack/Maps.h>
+#include <unwindstack/Memory.h>
 #include <unwindstack/Unwinder.h>
-#include <libgen.h>
 
 #if !defined(NO_LIBDEXFILE_SUPPORT)
 #include <unwindstack/DexFiles.h>
@@ -59,10 +63,13 @@ void Unwinder::FillInDexFrame() {
   if (info != nullptr) {
     frame->map_start = info->start;
     frame->map_end = info->end;
-    frame->map_offset = info->offset;
+    frame->map_elf_start_offset = info->elf_start_offset;
+    frame->map_exact_offset = info->offset;
     frame->map_load_bias = info->load_bias;
     frame->map_flags = info->flags;
-    frame->map_name = info->name;
+    if (resolve_names_) {
+      frame->map_name = info->name;
+    }
     frame->rel_pc = dex_pc - info->start;
   } else {
     frame->rel_pc = dex_pc;
@@ -83,8 +90,8 @@ void Unwinder::FillInDexFrame() {
 #endif
 }
 
-void Unwinder::FillInFrame(MapInfo* map_info, Elf* elf, uint64_t rel_pc, uint64_t func_pc,
-                           uint64_t pc_adjustment) {
+FrameData* Unwinder::FillInFrame(MapInfo* map_info, Elf* elf, uint64_t rel_pc,
+                                 uint64_t pc_adjustment) {
   size_t frame_num = frames_.size();
   frames_.resize(frame_num + 1);
   FrameData* frame = &frames_.at(frame_num);
@@ -94,21 +101,26 @@ void Unwinder::FillInFrame(MapInfo* map_info, Elf* elf, uint64_t rel_pc, uint64_
   frame->pc = regs_->pc() - pc_adjustment;
 
   if (map_info == nullptr) {
-    return;
+    // Nothing else to update.
+    return nullptr;
   }
 
-  frame->map_name = map_info->name;
-  frame->map_offset = map_info->offset;
+  if (resolve_names_) {
+    frame->map_name = map_info->name;
+    if (embedded_soname_ && map_info->elf_start_offset != 0 && !frame->map_name.empty()) {
+      std::string soname = elf->GetSoname();
+      if (!soname.empty()) {
+        frame->map_name += '!' + soname;
+      }
+    }
+  }
+  frame->map_elf_start_offset = map_info->elf_start_offset;
+  frame->map_exact_offset = map_info->offset;
   frame->map_start = map_info->start;
   frame->map_end = map_info->end;
   frame->map_flags = map_info->flags;
   frame->map_load_bias = elf->GetLoadBias();
-
-  if (!resolve_names_ ||
-      !elf->GetFunctionName(func_pc, &frame->function_name, &frame->function_offset)) {
-    frame->function_name = "";
-    frame->function_offset = 0;
-  }
+  return frame;
 }
 
 static bool ShouldStop(const std::vector<std::string>* map_suffixes_to_ignore,
@@ -130,35 +142,48 @@ void Unwinder::Unwind(const std::vector<std::string>* initial_map_names_to_skip,
   frames_.clear();
   last_error_.code = ERROR_NONE;
   last_error_.address = 0;
+  elf_from_memory_not_file_ = false;
+
+  ArchEnum arch = regs_->Arch();
 
   bool return_address_attempt = false;
   bool adjust_pc = false;
-  std::unique_ptr<JitDebug> jit_debug;
   for (; frames_.size() < max_frames_;) {
     uint64_t cur_pc = regs_->pc();
     uint64_t cur_sp = regs_->sp();
 
     MapInfo* map_info = maps_->Find(regs_->pc());
-    uint64_t rel_pc;
     uint64_t pc_adjustment = 0;
     uint64_t step_pc;
+    uint64_t rel_pc;
     Elf* elf;
     if (map_info == nullptr) {
-      rel_pc = regs_->pc();
-      step_pc = rel_pc;
+      step_pc = regs_->pc();
+      rel_pc = step_pc;
       last_error_.code = ERROR_INVALID_MAP;
     } else {
       if (ShouldStop(map_suffixes_to_ignore, map_info->name)) {
         break;
       }
-      elf = map_info->GetElf(process_memory_, true);
-      rel_pc = elf->GetRelPc(regs_->pc(), map_info);
+      elf = map_info->GetElf(process_memory_, arch);
+      // If this elf is memory backed, and there is a valid file, then set
+      // an indicator that we couldn't open the file.
+      if (!elf_from_memory_not_file_ && map_info->memory_backed_elf && !map_info->name.empty() &&
+          map_info->name[0] != '[' && !android::base::StartsWith(map_info->name, "/memfd:")) {
+        elf_from_memory_not_file_ = true;
+      }
+      step_pc = regs_->pc();
+      rel_pc = elf->GetRelPc(step_pc, map_info);
+      // Everyone except elf data in gdb jit debug maps uses the relative pc.
+      if (!(map_info->flags & MAPS_FLAGS_JIT_SYMFILE_MAP)) {
+        step_pc = rel_pc;
+      }
       if (adjust_pc) {
         pc_adjustment = regs_->GetPcAdjustment(rel_pc, elf);
       } else {
         pc_adjustment = 0;
       }
-      step_pc = rel_pc - pc_adjustment;
+      step_pc -= pc_adjustment;
 
       // If the pc is in an invalid elf file, try and get an Elf object
       // using the jit debug information.
@@ -173,6 +198,7 @@ void Unwinder::Unwind(const std::vector<std::string>* initial_map_names_to_skip,
       }
     }
 
+    FrameData* frame = nullptr;
     if (map_info == nullptr || initial_map_names_to_skip == nullptr ||
         std::find(initial_map_names_to_skip->begin(), initial_map_names_to_skip->end(),
                   basename(map_info->name.c_str())) == initial_map_names_to_skip->end()) {
@@ -181,25 +207,29 @@ void Unwinder::Unwind(const std::vector<std::string>* initial_map_names_to_skip,
         FillInDexFrame();
         // Clear the dex pc so that we don't repeat this frame later.
         regs_->set_dex_pc(0);
+
+        // Make sure there is enough room for the real frame.
+        if (frames_.size() == max_frames_) {
+          last_error_.code = ERROR_MAX_FRAMES_EXCEEDED;
+          break;
+        }
       }
 
-      FillInFrame(map_info, elf, rel_pc, step_pc, pc_adjustment);
+      frame = FillInFrame(map_info, elf, rel_pc, pc_adjustment);
 
       // Once a frame is added, stop skipping frames.
       initial_map_names_to_skip = nullptr;
     }
     adjust_pc = true;
 
-    bool stepped;
+    bool stepped = false;
     bool in_device_map = false;
-    if (map_info == nullptr) {
-      stepped = false;
-    } else {
+    bool finished = false;
+    if (map_info != nullptr) {
       if (map_info->flags & MAPS_FLAGS_DEVICE_MAP) {
         // Do not stop here, fall through in case we are
         // in the speculative unwind path and need to remove
         // some of the speculative frames.
-        stepped = false;
         in_device_map = true;
       } else {
         MapInfo* sp_info = maps_->Find(regs_->sp());
@@ -207,23 +237,47 @@ void Unwinder::Unwind(const std::vector<std::string>* initial_map_names_to_skip,
           // Do not stop here, fall through in case we are
           // in the speculative unwind path and need to remove
           // some of the speculative frames.
-          stepped = false;
           in_device_map = true;
         } else {
-          bool finished;
-          stepped = elf->Step(rel_pc, step_pc, regs_, process_memory_.get(), &finished);
-          elf->GetLastError(&last_error_);
-          if (stepped && finished) {
-            break;
+          if (elf->StepIfSignalHandler(rel_pc, regs_, process_memory_.get())) {
+            stepped = true;
+            if (frame != nullptr) {
+              // Need to adjust the relative pc because the signal handler
+              // pc should not be adjusted.
+              frame->rel_pc = rel_pc;
+              frame->pc += pc_adjustment;
+              step_pc = rel_pc;
+            }
+          } else if (elf->Step(step_pc, regs_, process_memory_.get(), &finished)) {
+            stepped = true;
           }
+          elf->GetLastError(&last_error_);
         }
       }
     }
 
+    if (frame != nullptr) {
+      if (!resolve_names_ ||
+          !elf->GetFunctionName(step_pc, &frame->function_name, &frame->function_offset)) {
+        frame->function_name = "";
+        frame->function_offset = 0;
+      }
+    }
+
+    if (finished) {
+      break;
+    }
+
     if (!stepped) {
       if (return_address_attempt) {
-        // Remove the speculative frame.
-        frames_.pop_back();
+        // Only remove the speculative frame if there are more than two frames
+        // or the pc in the first frame is in a valid map.
+        // This allows for a case where the code jumps into the middle of
+        // nowhere, but there is no other unwind information after that.
+        if (frames_.size() > 2 || (frames_.size() > 0 && maps_->Find(frames_[0].pc) != nullptr)) {
+          // Remove the speculative frame.
+          frames_.pop_back();
+        }
         break;
       } else if (in_device_map) {
         // Do not attempt any other unwinding, pc or sp is in a device
@@ -251,24 +305,12 @@ void Unwinder::Unwind(const std::vector<std::string>* initial_map_names_to_skip,
   }
 }
 
-std::string Unwinder::FormatFrame(size_t frame_num) {
-  if (frame_num >= frames_.size()) {
-    return "";
-  }
-  return FormatFrame(frames_[frame_num], regs_->Is32Bit());
-}
-
-std::string Unwinder::FormatFrame(const FrameData& frame, bool is32bit) {
+std::string Unwinder::FormatFrame(const FrameData& frame) {
   std::string data;
-
-  if (is32bit) {
+  if (regs_->Is32Bit()) {
     data += android::base::StringPrintf("  #%02zu pc %08" PRIx64, frame.num, frame.rel_pc);
   } else {
     data += android::base::StringPrintf("  #%02zu pc %016" PRIx64, frame.num, frame.rel_pc);
-  }
-
-  if (frame.map_offset != 0) {
-    data += android::base::StringPrintf(" (offset 0x%" PRIx64 ")", frame.map_offset);
   }
 
   if (frame.map_start == frame.map_end) {
@@ -279,14 +321,34 @@ std::string Unwinder::FormatFrame(const FrameData& frame, bool is32bit) {
   } else {
     data += android::base::StringPrintf("  <anonymous:%" PRIx64 ">", frame.map_start);
   }
+
+  if (frame.map_elf_start_offset != 0) {
+    data += android::base::StringPrintf(" (offset 0x%" PRIx64 ")", frame.map_elf_start_offset);
+  }
+
   if (!frame.function_name.empty()) {
-    data += " (" + frame.function_name;
+    data += " (" + demangle(frame.function_name.c_str());
     if (frame.function_offset != 0) {
       data += android::base::StringPrintf("+%" PRId64, frame.function_offset);
     }
     data += ')';
   }
+
+  MapInfo* map_info = maps_->Find(frame.map_start);
+  if (map_info != nullptr && display_build_id_) {
+    std::string build_id = map_info->GetPrintableBuildID();
+    if (!build_id.empty()) {
+      data += " (BuildId: " + build_id + ')';
+    }
+  }
   return data;
+}
+
+std::string Unwinder::FormatFrame(size_t frame_num) {
+  if (frame_num >= frames_.size()) {
+    return "";
+  }
+  return FormatFrame(frames_[frame_num]);
 }
 
 void Unwinder::SetJitDebug(JitDebug* jit_debug, ArchEnum arch) {
@@ -300,5 +362,30 @@ void Unwinder::SetDexFiles(DexFiles* dex_files, ArchEnum arch) {
   dex_files_ = dex_files;
 }
 #endif
+
+bool UnwinderFromPid::Init(ArchEnum arch) {
+  if (pid_ == getpid()) {
+    maps_ptr_.reset(new LocalMaps());
+  } else {
+    maps_ptr_.reset(new RemoteMaps(pid_));
+  }
+  if (!maps_ptr_->Parse()) {
+    return false;
+  }
+  maps_ = maps_ptr_.get();
+
+  process_memory_ = Memory::CreateProcessMemoryCached(pid_);
+
+  jit_debug_ptr_.reset(new JitDebug(process_memory_));
+  jit_debug_ = jit_debug_ptr_.get();
+  SetJitDebug(jit_debug_, arch);
+#if !defined(NO_LIBDEXFILE_SUPPORT)
+  dex_files_ptr_.reset(new DexFiles(process_memory_));
+  dex_files_ = dex_files_ptr_.get();
+  SetDexFiles(dex_files_, arch);
+#endif
+
+  return true;
+}
 
 }  // namespace unwindstack

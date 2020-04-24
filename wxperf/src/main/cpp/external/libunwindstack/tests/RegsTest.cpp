@@ -182,7 +182,7 @@ TEST_F(RegsTest, elf_invalid) {
   RegsX86_64 regs_x86_64;
   RegsMips regs_mips;
   RegsMips64 regs_mips64;
-  MapInfo map_info(0x1000, 0x2000);
+  MapInfo map_info(nullptr, 0x1000, 0x2000, 0, 0, "");
   Elf* invalid_elf = new Elf(nullptr);
   map_info.elf.reset(invalid_elf);
 

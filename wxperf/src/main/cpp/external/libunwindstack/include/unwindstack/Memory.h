@@ -22,8 +22,10 @@
 #include <unistd.h>
 
 #include <atomic>
+#include <map>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 namespace unwindstack {
@@ -34,24 +36,15 @@ class Memory {
   virtual ~Memory() = default;
 
   static std::shared_ptr<Memory> CreateProcessMemory(pid_t pid);
+  static std::shared_ptr<Memory> CreateProcessMemoryCached(pid_t pid);
 
   virtual bool ReadString(uint64_t addr, std::string* string, uint64_t max_read = UINT64_MAX);
+
+  virtual void Clear() {}
 
   virtual size_t Read(uint64_t addr, void* dst, size_t size) = 0;
 
   bool ReadFully(uint64_t addr, void* dst, size_t size);
-
-  inline bool ReadField(uint64_t addr, void* start, void* field, size_t size) {
-    if (reinterpret_cast<uintptr_t>(field) < reinterpret_cast<uintptr_t>(start)) {
-      return false;
-    }
-    uint64_t offset = reinterpret_cast<uintptr_t>(field) - reinterpret_cast<uintptr_t>(start);
-    if (__builtin_add_overflow(addr, offset, &offset)) {
-      return false;
-    }
-    // The read will check if offset + size overflows.
-    return ReadFully(offset, field, size);
-  }
 
   inline bool Read32(uint64_t addr, uint32_t* dst) {
     return ReadFully(addr, dst, sizeof(uint32_t));
@@ -60,6 +53,24 @@ class Memory {
   inline bool Read64(uint64_t addr, uint64_t* dst) {
     return ReadFully(addr, dst, sizeof(uint64_t));
   }
+};
+
+class MemoryCache : public Memory {
+ public:
+  MemoryCache(Memory* memory) : impl_(memory) {}
+  virtual ~MemoryCache() = default;
+
+  size_t Read(uint64_t addr, void* dst, size_t size) override;
+
+  void Clear() override { cache_.clear(); }
+
+ private:
+  constexpr static size_t kCacheBits = 12;
+  constexpr static size_t kCacheMask = (1 << kCacheBits) - 1;
+  constexpr static size_t kCacheSize = 1 << kCacheBits;
+  std::unordered_map<uint64_t, uint8_t[kCacheSize]> cache_;
+
+  std::unique_ptr<Memory> impl_;
 };
 
 class MemoryBuffer : public Memory {
@@ -90,7 +101,7 @@ class MemoryFileAtOffset : public Memory {
 
   size_t Size() { return size_; }
 
-  void Clear();
+  void Clear() override;
 
  protected:
   size_t size_ = 0;
@@ -131,11 +142,27 @@ class MemoryRange : public Memory {
 
   size_t Read(uint64_t addr, void* dst, size_t size) override;
 
+  uint64_t offset() { return offset_; }
+  uint64_t length() { return length_; }
+
  private:
   std::shared_ptr<Memory> memory_;
   uint64_t begin_;
   uint64_t length_;
   uint64_t offset_;
+};
+
+class MemoryRanges : public Memory {
+ public:
+  MemoryRanges() = default;
+  virtual ~MemoryRanges() = default;
+
+  void Insert(MemoryRange* memory);
+
+  size_t Read(uint64_t addr, void* dst, size_t size) override;
+
+ private:
+  std::map<uint64_t, std::unique_ptr<MemoryRange>> maps_;
 };
 
 class MemoryOffline : public Memory {

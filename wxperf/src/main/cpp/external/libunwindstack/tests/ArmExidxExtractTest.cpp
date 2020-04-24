@@ -301,7 +301,7 @@ TEST_F(ArmExidxExtractTest, cant_unwind_log) {
   elf_memory_.SetData32(0x1000, 0x7fff2340);
   elf_memory_.SetData32(0x1004, 1);
 
-  exidx_->set_log(true);
+  exidx_->set_log(ARM_LOG_FULL);
   exidx_->set_log_indent(0);
   exidx_->set_log_skip_execution(false);
 
@@ -316,7 +316,7 @@ TEST_F(ArmExidxExtractTest, raw_data_compact) {
   elf_memory_.SetData32(0x4000, 0x7ffa3000);
   elf_memory_.SetData32(0x4004, 0x80a8b0b0);
 
-  exidx_->set_log(true);
+  exidx_->set_log(ARM_LOG_FULL);
   exidx_->set_log_indent(0);
   exidx_->set_log_skip_execution(false);
 
@@ -330,7 +330,7 @@ TEST_F(ArmExidxExtractTest, raw_data_non_compact) {
   elf_memory_.SetData32(0x6234, 0x2);
   elf_memory_.SetData32(0x6238, 0x00112233);
 
-  exidx_->set_log(true);
+  exidx_->set_log(ARM_LOG_FULL);
   exidx_->set_log_indent(0);
   exidx_->set_log_skip_execution(false);
 

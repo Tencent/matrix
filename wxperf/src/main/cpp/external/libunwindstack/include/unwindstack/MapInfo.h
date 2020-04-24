@@ -25,23 +25,32 @@
 #include <string>
 
 #include <unwindstack/Elf.h>
+#include <unwindstack/Memory.h>
 
 namespace unwindstack {
 
-// Forward declarations.
-class Memory;
-
 struct MapInfo {
-  MapInfo() = default;
-  MapInfo(uint64_t start, uint64_t end) : start(start), end(end) {}
-  MapInfo(uint64_t start, uint64_t end, uint64_t offset, uint64_t flags, const std::string& name)
+  MapInfo(MapInfo* map_info, uint64_t start, uint64_t end, uint64_t offset, uint64_t flags,
+          const char* name)
       : start(start),
         end(end),
         offset(offset),
         flags(flags),
         name(name),
-        load_bias(static_cast<uint64_t>(-1)) {}
-  ~MapInfo() = default;
+        prev_map(map_info),
+        load_bias(static_cast<uint64_t>(-1)),
+        build_id(0) {}
+  MapInfo(MapInfo* map_info, uint64_t start, uint64_t end, uint64_t offset, uint64_t flags,
+          const std::string& name)
+      : start(start),
+        end(end),
+        offset(offset),
+        flags(flags),
+        name(name),
+        prev_map(map_info),
+        load_bias(static_cast<uint64_t>(-1)),
+        build_id(0) {}
+  ~MapInfo();
 
   uint64_t start = 0;
   uint64_t end = 0;
@@ -50,25 +59,46 @@ struct MapInfo {
   std::string name;
   std::shared_ptr<Elf> elf;
   // This value is only non-zero if the offset is non-zero but there is
-  // no elf signature found at that offset. This indicates that the
-  // entire file is represented by the Memory object returned by CreateMemory,
-  // instead of a portion of the file.
+  // no elf signature found at that offset.
   uint64_t elf_offset = 0;
+  // This value is the offset from the map in memory that is the start
+  // of the elf. This is not equal to offset when the linker splits
+  // shared libraries into a read-only and read-execute map.
+  uint64_t elf_start_offset = 0;
+
+  MapInfo* prev_map = nullptr;
 
   std::atomic_uint64_t load_bias;
 
+  // This is a pointer to a new'd std::string.
+  // Using an atomic value means that we don't need to lock and will
+  // make it easier to move to a fine grained lock in the future.
+  std::atomic_uintptr_t build_id;
+
+  // Set to true if the elf file data is coming from memory.
+  bool memory_backed_elf = false;
+
   // This function guarantees it will never return nullptr.
-  Elf* GetElf(const std::shared_ptr<Memory>& process_memory, bool init_gnu_debugdata = false);
+  Elf* GetElf(const std::shared_ptr<Memory>& process_memory, ArchEnum expected_arch);
 
   uint64_t GetLoadBias(const std::shared_ptr<Memory>& process_memory);
+
+  Memory* CreateMemory(const std::shared_ptr<Memory>& process_memory);
+
+  bool GetFunctionName(uint64_t addr, std::string* name, uint64_t* func_offset);
+
+  // Returns the raw build id read from the elf data.
+  std::string GetBuildID();
+
+  // Returns the printable version of the build id (hex dump of raw data).
+  std::string GetPrintableBuildID();
 
  private:
   MapInfo(const MapInfo&) = delete;
   void operator=(const MapInfo&) = delete;
 
   Memory* GetFileMemory();
-
-  Memory* CreateMemory(const std::shared_ptr<Memory>& process_memory);
+  bool InitFileMemoryFromPreviousReadOnlyMap(MemoryFileAtOffset* memory);
 
   // Protect the creation of the elf object.
   std::mutex mutex_;

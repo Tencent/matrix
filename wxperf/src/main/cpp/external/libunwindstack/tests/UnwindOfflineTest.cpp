@@ -18,6 +18,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/mman.h>
 #include <unistd.h>
 
 #include <gtest/gtest.h>
@@ -42,6 +43,7 @@
 #include <unwindstack/Unwinder.h>
 
 #include "ElfTestUtils.h"
+#include "TestUtils.h"
 
 namespace unwindstack {
 
@@ -202,6 +204,7 @@ static std::string DumpFrames(Unwinder& unwinder) {
 TEST_F(UnwindOfflineTest, pc_straddle_arm) {
   ASSERT_NO_FATAL_FAILURE(Init("straddle_arm/", ARCH_ARM));
 
+  std::unique_ptr<Regs> regs_copy(regs_->Clone());
   Unwinder unwinder(128, maps_.get(), regs_.get(), process_memory_);
   unwinder.Unwind();
 
@@ -209,8 +212,8 @@ TEST_F(UnwindOfflineTest, pc_straddle_arm) {
   ASSERT_EQ(4U, unwinder.NumFrames()) << "Unwind:\n" << frame_info;
   EXPECT_EQ(
       "  #00 pc 0001a9f8  libc.so (abort+64)\n"
-      "  #01 pc 00006a1b  libbase.so (_ZN7android4base14DefaultAborterEPKc+6)\n"
-      "  #02 pc 00007441  libbase.so (_ZN7android4base10LogMessageD2Ev+748)\n"
+      "  #01 pc 00006a1b  libbase.so (android::base::DefaultAborter(char const*)+6)\n"
+      "  #02 pc 00007441  libbase.so (android::base::LogMessage::~LogMessage()+748)\n"
       "  #03 pc 00015147  /does/not/exist/libhidlbase.so\n",
       frame_info);
   EXPECT_EQ(0xf31ea9f8U, unwinder.frames()[0].pc);
@@ -221,6 +224,22 @@ TEST_F(UnwindOfflineTest, pc_straddle_arm) {
   EXPECT_EQ(0xe9c86730U, unwinder.frames()[2].sp);
   EXPECT_EQ(0xf3367147U, unwinder.frames()[3].pc);
   EXPECT_EQ(0xe9c86778U, unwinder.frames()[3].sp);
+
+  // Display build ids now.
+  unwinder.SetRegs(regs_copy.get());
+  unwinder.SetDisplayBuildID(true);
+  unwinder.Unwind();
+
+  frame_info = DumpFrames(unwinder);
+  ASSERT_EQ(4U, unwinder.NumFrames()) << "Unwind:\n" << frame_info;
+  EXPECT_EQ(
+      "  #00 pc 0001a9f8  libc.so (abort+64) (BuildId: 2dd0d4ba881322a0edabeed94808048c)\n"
+      "  #01 pc 00006a1b  libbase.so (android::base::DefaultAborter(char const*)+6) (BuildId: "
+      "ed43842c239cac1a618e600ea91c4cbd)\n"
+      "  #02 pc 00007441  libbase.so (android::base::LogMessage::~LogMessage()+748) (BuildId: "
+      "ed43842c239cac1a618e600ea91c4cbd)\n"
+      "  #03 pc 00015147  /does/not/exist/libhidlbase.so\n",
+      frame_info);
 }
 
 TEST_F(UnwindOfflineTest, pc_in_gnu_debugdata_arm) {
@@ -233,9 +252,10 @@ TEST_F(UnwindOfflineTest, pc_in_gnu_debugdata_arm) {
   ASSERT_EQ(2U, unwinder.NumFrames()) << "Unwind:\n" << frame_info;
   EXPECT_EQ(
       "  #00 pc 0006dc49  libandroid_runtime.so "
-      "(_ZN7android14AndroidRuntime15javaThreadShellEPv+80)\n"
+      "(android::AndroidRuntime::javaThreadShell(void*)+80)\n"
       "  #01 pc 0006dce5  libandroid_runtime.so "
-      "(_ZN7android14AndroidRuntime19javaCreateThreadEtcEPFiPvES1_PKcijPS1_)\n",
+      "(android::AndroidRuntime::javaCreateThreadEtc(int (*)(void*), void*, char const*, int, "
+      "unsigned int, void**))\n",
       frame_info);
   EXPECT_EQ(0xf1f6dc49U, unwinder.frames()[0].pc);
   EXPECT_EQ(0xd8fe6930U, unwinder.frames()[0].sp);
@@ -256,10 +276,10 @@ TEST_F(UnwindOfflineTest, pc_straddle_arm64) {
       "  #01 pc 000000000042a078  libunwindstack_test (SignalMiddleFunction+8)\n"
       "  #02 pc 000000000042a08c  libunwindstack_test (SignalOuterFunction+8)\n"
       "  #03 pc 000000000042d8fc  libunwindstack_test "
-      "(_ZN11unwindstackL19RemoteThroughSignalEij+20)\n"
+      "(unwindstack::RemoteThroughSignal(int, unsigned int)+20)\n"
       "  #04 pc 000000000042d8d8  libunwindstack_test "
-      "(_ZN11unwindstack37UnwindTest_remote_through_signal_Test8TestBodyEv+32)\n"
-      "  #05 pc 0000000000455d70  libunwindstack_test (_ZN7testing4Test3RunEv+392)\n",
+      "(unwindstack::UnwindTest_remote_through_signal_Test::TestBody()+32)\n"
+      "  #05 pc 0000000000455d70  libunwindstack_test (testing::Test::Run()+392)\n",
       frame_info);
   EXPECT_EQ(0x64d09d4fd8U, unwinder.frames()[0].pc);
   EXPECT_EQ(0x7fe0d84040U, unwinder.frames()[0].sp);
@@ -295,54 +315,57 @@ TEST_F(UnwindOfflineTest, jit_debug_x86) {
   std::string frame_info(DumpFrames(unwinder));
   ASSERT_EQ(69U, unwinder.NumFrames()) << "Unwind:\n" << frame_info;
   EXPECT_EQ(
-      "  #00 pc 00068fb8  libarttestd.so (_ZN3artL13CauseSegfaultEv+72)\n"
+      "  #00 pc 00068fb8  libarttestd.so (art::CauseSegfault()+72)\n"
       "  #01 pc 00067f00  libarttestd.so (Java_Main_unwindInProcess+10032)\n"
-      "  #02 pc 000021a8 (offset 0x2000)  137-cfi.odex (boolean Main.unwindInProcess(boolean, int, "
+      "  #02 pc 000021a8  137-cfi.odex (boolean Main.unwindInProcess(boolean, int, "
       "boolean)+136)\n"
       "  #03 pc 0000fe80  anonymous:ee74c000 (boolean Main.bar(boolean)+64)\n"
       "  #04 pc 006ad4d2  libartd.so (art_quick_invoke_stub+338)\n"
       "  #05 pc 00146ab5  libartd.so "
-      "(_ZN3art9ArtMethod6InvokeEPNS_6ThreadEPjjPNS_6JValueEPKc+885)\n"
+      "(art::ArtMethod::Invoke(art::Thread*, unsigned int*, unsigned int, art::JValue*, char "
+      "const*)+885)\n"
       "  #06 pc 0039cf0d  libartd.so "
-      "(_ZN3art11interpreter34ArtInterpreterToCompiledCodeBridgeEPNS_6ThreadEPNS_9ArtMethodEPNS_"
-      "11ShadowFrameEtPNS_6JValueE+653)\n"
+      "(art::interpreter::ArtInterpreterToCompiledCodeBridge(art::Thread*, art::ArtMethod*, "
+      "art::ShadowFrame*, unsigned short, art::JValue*)+653)\n"
       "  #07 pc 00392552  libartd.so "
-      "(_ZN3art11interpreterL7ExecuteEPNS_6ThreadERKNS_20CodeItemDataAccessorERNS_11ShadowFrameENS_"
-      "6JValueEb+354)\n"
+      "(art::interpreter::Execute(art::Thread*, art::CodeItemDataAccessor const&, "
+      "art::ShadowFrame&, art::JValue, bool)+354)\n"
       "  #08 pc 0039399a  libartd.so "
-      "(_ZN3art11interpreter30EnterInterpreterFromEntryPointEPNS_6ThreadERKNS_"
-      "20CodeItemDataAccessorEPNS_11ShadowFrameE+234)\n"
+      "(art::interpreter::EnterInterpreterFromEntryPoint(art::Thread*, art::CodeItemDataAccessor "
+      "const&, art::ShadowFrame*)+234)\n"
       "  #09 pc 00684362  libartd.so (artQuickToInterpreterBridge+1058)\n"
       "  #10 pc 006b35bd  libartd.so (art_quick_to_interpreter_bridge+77)\n"
       "  #11 pc 0000fe03  anonymous:ee74c000 (int Main.compare(Main, Main)+51)\n"
       "  #12 pc 006ad4d2  libartd.so (art_quick_invoke_stub+338)\n"
       "  #13 pc 00146ab5  libartd.so "
-      "(_ZN3art9ArtMethod6InvokeEPNS_6ThreadEPjjPNS_6JValueEPKc+885)\n"
+      "(art::ArtMethod::Invoke(art::Thread*, unsigned int*, unsigned int, art::JValue*, char "
+      "const*)+885)\n"
       "  #14 pc 0039cf0d  libartd.so "
-      "(_ZN3art11interpreter34ArtInterpreterToCompiledCodeBridgeEPNS_6ThreadEPNS_9ArtMethodEPNS_"
-      "11ShadowFrameEtPNS_6JValueE+653)\n"
+      "(art::interpreter::ArtInterpreterToCompiledCodeBridge(art::Thread*, art::ArtMethod*, "
+      "art::ShadowFrame*, unsigned short, art::JValue*)+653)\n"
       "  #15 pc 00392552  libartd.so "
-      "(_ZN3art11interpreterL7ExecuteEPNS_6ThreadERKNS_20CodeItemDataAccessorERNS_11ShadowFrameENS_"
-      "6JValueEb+354)\n"
+      "(art::interpreter::Execute(art::Thread*, art::CodeItemDataAccessor const&, "
+      "art::ShadowFrame&, art::JValue, bool)+354)\n"
       "  #16 pc 0039399a  libartd.so "
-      "(_ZN3art11interpreter30EnterInterpreterFromEntryPointEPNS_6ThreadERKNS_"
-      "20CodeItemDataAccessorEPNS_11ShadowFrameE+234)\n"
+      "(art::interpreter::EnterInterpreterFromEntryPoint(art::Thread*, art::CodeItemDataAccessor "
+      "const&, art::ShadowFrame*)+234)\n"
       "  #17 pc 00684362  libartd.so (artQuickToInterpreterBridge+1058)\n"
       "  #18 pc 006b35bd  libartd.so (art_quick_to_interpreter_bridge+77)\n"
       "  #19 pc 0000fd3b  anonymous:ee74c000 (int Main.compare(java.lang.Object, "
       "java.lang.Object)+107)\n"
       "  #20 pc 006ad4d2  libartd.so (art_quick_invoke_stub+338)\n"
       "  #21 pc 00146ab5  libartd.so "
-      "(_ZN3art9ArtMethod6InvokeEPNS_6ThreadEPjjPNS_6JValueEPKc+885)\n"
+      "(art::ArtMethod::Invoke(art::Thread*, unsigned int*, unsigned int, art::JValue*, char "
+      "const*)+885)\n"
       "  #22 pc 0039cf0d  libartd.so "
-      "(_ZN3art11interpreter34ArtInterpreterToCompiledCodeBridgeEPNS_6ThreadEPNS_9ArtMethodEPNS_"
-      "11ShadowFrameEtPNS_6JValueE+653)\n"
+      "(art::interpreter::ArtInterpreterToCompiledCodeBridge(art::Thread*, art::ArtMethod*, "
+      "art::ShadowFrame*, unsigned short, art::JValue*)+653)\n"
       "  #23 pc 00392552  libartd.so "
-      "(_ZN3art11interpreterL7ExecuteEPNS_6ThreadERKNS_20CodeItemDataAccessorERNS_11ShadowFrameENS_"
-      "6JValueEb+354)\n"
+      "(art::interpreter::Execute(art::Thread*, art::CodeItemDataAccessor const&, "
+      "art::ShadowFrame&, art::JValue, bool)+354)\n"
       "  #24 pc 0039399a  libartd.so "
-      "(_ZN3art11interpreter30EnterInterpreterFromEntryPointEPNS_6ThreadERKNS_"
-      "20CodeItemDataAccessorEPNS_11ShadowFrameE+234)\n"
+      "(art::interpreter::EnterInterpreterFromEntryPoint(art::Thread*, art::CodeItemDataAccessor "
+      "const&, art::ShadowFrame*)+234)\n"
       "  #25 pc 00684362  libartd.so (artQuickToInterpreterBridge+1058)\n"
       "  #26 pc 006b35bd  libartd.so (art_quick_to_interpreter_bridge+77)\n"
       "  #27 pc 0000fbdb  anonymous:ee74c000 (int "
@@ -350,81 +373,86 @@ TEST_F(UnwindOfflineTest, jit_debug_x86) {
       "java.util.Comparator)+331)\n"
       "  #28 pc 006ad6a2  libartd.so (art_quick_invoke_static_stub+418)\n"
       "  #29 pc 00146acb  libartd.so "
-      "(_ZN3art9ArtMethod6InvokeEPNS_6ThreadEPjjPNS_6JValueEPKc+907)\n"
+      "(art::ArtMethod::Invoke(art::Thread*, unsigned int*, unsigned int, art::JValue*, char "
+      "const*)+907)\n"
       "  #30 pc 0039cf0d  libartd.so "
-      "(_ZN3art11interpreter34ArtInterpreterToCompiledCodeBridgeEPNS_6ThreadEPNS_9ArtMethodEPNS_"
-      "11ShadowFrameEtPNS_6JValueE+653)\n"
+      "(art::interpreter::ArtInterpreterToCompiledCodeBridge(art::Thread*, art::ArtMethod*, "
+      "art::ShadowFrame*, unsigned short, art::JValue*)+653)\n"
       "  #31 pc 00392552  libartd.so "
-      "(_ZN3art11interpreterL7ExecuteEPNS_6ThreadERKNS_20CodeItemDataAccessorERNS_11ShadowFrameENS_"
-      "6JValueEb+354)\n"
+      "(art::interpreter::Execute(art::Thread*, art::CodeItemDataAccessor const&, "
+      "art::ShadowFrame&, art::JValue, bool)+354)\n"
       "  #32 pc 0039399a  libartd.so "
-      "(_ZN3art11interpreter30EnterInterpreterFromEntryPointEPNS_6ThreadERKNS_"
-      "20CodeItemDataAccessorEPNS_11ShadowFrameE+234)\n"
+      "(art::interpreter::EnterInterpreterFromEntryPoint(art::Thread*, art::CodeItemDataAccessor "
+      "const&, art::ShadowFrame*)+234)\n"
       "  #33 pc 00684362  libartd.so (artQuickToInterpreterBridge+1058)\n"
       "  #34 pc 006b35bd  libartd.so (art_quick_to_interpreter_bridge+77)\n"
       "  #35 pc 0000f624  anonymous:ee74c000 (boolean Main.foo()+164)\n"
       "  #36 pc 006ad4d2  libartd.so (art_quick_invoke_stub+338)\n"
       "  #37 pc 00146ab5  libartd.so "
-      "(_ZN3art9ArtMethod6InvokeEPNS_6ThreadEPjjPNS_6JValueEPKc+885)\n"
+      "(art::ArtMethod::Invoke(art::Thread*, unsigned int*, unsigned int, art::JValue*, char "
+      "const*)+885)\n"
       "  #38 pc 0039cf0d  libartd.so "
-      "(_ZN3art11interpreter34ArtInterpreterToCompiledCodeBridgeEPNS_6ThreadEPNS_9ArtMethodEPNS_"
-      "11ShadowFrameEtPNS_6JValueE+653)\n"
+      "(art::interpreter::ArtInterpreterToCompiledCodeBridge(art::Thread*, art::ArtMethod*, "
+      "art::ShadowFrame*, unsigned short, art::JValue*)+653)\n"
       "  #39 pc 00392552  libartd.so "
-      "(_ZN3art11interpreterL7ExecuteEPNS_6ThreadERKNS_20CodeItemDataAccessorERNS_11ShadowFrameENS_"
-      "6JValueEb+354)\n"
+      "(art::interpreter::Execute(art::Thread*, art::CodeItemDataAccessor const&, "
+      "art::ShadowFrame&, art::JValue, bool)+354)\n"
       "  #40 pc 0039399a  libartd.so "
-      "(_ZN3art11interpreter30EnterInterpreterFromEntryPointEPNS_6ThreadERKNS_"
-      "20CodeItemDataAccessorEPNS_11ShadowFrameE+234)\n"
+      "(art::interpreter::EnterInterpreterFromEntryPoint(art::Thread*, art::CodeItemDataAccessor "
+      "const&, art::ShadowFrame*)+234)\n"
       "  #41 pc 00684362  libartd.so (artQuickToInterpreterBridge+1058)\n"
       "  #42 pc 006b35bd  libartd.so (art_quick_to_interpreter_bridge+77)\n"
       "  #43 pc 0000eedb  anonymous:ee74c000 (void Main.runPrimary()+59)\n"
       "  #44 pc 006ad4d2  libartd.so (art_quick_invoke_stub+338)\n"
       "  #45 pc 00146ab5  libartd.so "
-      "(_ZN3art9ArtMethod6InvokeEPNS_6ThreadEPjjPNS_6JValueEPKc+885)\n"
+      "(art::ArtMethod::Invoke(art::Thread*, unsigned int*, unsigned int, art::JValue*, char "
+      "const*)+885)\n"
       "  #46 pc 0039cf0d  libartd.so "
-      "(_ZN3art11interpreter34ArtInterpreterToCompiledCodeBridgeEPNS_6ThreadEPNS_9ArtMethodEPNS_"
-      "11ShadowFrameEtPNS_6JValueE+653)\n"
+      "(art::interpreter::ArtInterpreterToCompiledCodeBridge(art::Thread*, art::ArtMethod*, "
+      "art::ShadowFrame*, unsigned short, art::JValue*)+653)\n"
       "  #47 pc 00392552  libartd.so "
-      "(_ZN3art11interpreterL7ExecuteEPNS_6ThreadERKNS_20CodeItemDataAccessorERNS_11ShadowFrameENS_"
-      "6JValueEb+354)\n"
+      "(art::interpreter::Execute(art::Thread*, art::CodeItemDataAccessor const&, "
+      "art::ShadowFrame&, art::JValue, bool)+354)\n"
       "  #48 pc 0039399a  libartd.so "
-      "(_ZN3art11interpreter30EnterInterpreterFromEntryPointEPNS_6ThreadERKNS_"
-      "20CodeItemDataAccessorEPNS_11ShadowFrameE+234)\n"
+      "(art::interpreter::EnterInterpreterFromEntryPoint(art::Thread*, art::CodeItemDataAccessor "
+      "const&, art::ShadowFrame*)+234)\n"
       "  #49 pc 00684362  libartd.so (artQuickToInterpreterBridge+1058)\n"
       "  #50 pc 006b35bd  libartd.so (art_quick_to_interpreter_bridge+77)\n"
       "  #51 pc 0000ac21  anonymous:ee74c000 (void Main.main(java.lang.String[])+97)\n"
       "  #52 pc 006ad6a2  libartd.so (art_quick_invoke_static_stub+418)\n"
       "  #53 pc 00146acb  libartd.so "
-      "(_ZN3art9ArtMethod6InvokeEPNS_6ThreadEPjjPNS_6JValueEPKc+907)\n"
+      "(art::ArtMethod::Invoke(art::Thread*, unsigned int*, unsigned int, art::JValue*, char "
+      "const*)+907)\n"
       "  #54 pc 0039cf0d  libartd.so "
-      "(_ZN3art11interpreter34ArtInterpreterToCompiledCodeBridgeEPNS_6ThreadEPNS_9ArtMethodEPNS_"
-      "11ShadowFrameEtPNS_6JValueE+653)\n"
+      "(art::interpreter::ArtInterpreterToCompiledCodeBridge(art::Thread*, art::ArtMethod*, "
+      "art::ShadowFrame*, unsigned short, art::JValue*)+653)\n"
       "  #55 pc 00392552  libartd.so "
-      "(_ZN3art11interpreterL7ExecuteEPNS_6ThreadERKNS_20CodeItemDataAccessorERNS_11ShadowFrameENS_"
-      "6JValueEb+354)\n"
+      "(art::interpreter::Execute(art::Thread*, art::CodeItemDataAccessor const&, "
+      "art::ShadowFrame&, art::JValue, bool)+354)\n"
       "  #56 pc 0039399a  libartd.so "
-      "(_ZN3art11interpreter30EnterInterpreterFromEntryPointEPNS_6ThreadERKNS_"
-      "20CodeItemDataAccessorEPNS_11ShadowFrameE+234)\n"
+      "(art::interpreter::EnterInterpreterFromEntryPoint(art::Thread*, art::CodeItemDataAccessor "
+      "const&, art::ShadowFrame*)+234)\n"
       "  #57 pc 00684362  libartd.so (artQuickToInterpreterBridge+1058)\n"
       "  #58 pc 006b35bd  libartd.so (art_quick_to_interpreter_bridge+77)\n"
       "  #59 pc 006ad6a2  libartd.so (art_quick_invoke_static_stub+418)\n"
       "  #60 pc 00146acb  libartd.so "
-      "(_ZN3art9ArtMethod6InvokeEPNS_6ThreadEPjjPNS_6JValueEPKc+907)\n"
+      "(art::ArtMethod::Invoke(art::Thread*, unsigned int*, unsigned int, art::JValue*, char "
+      "const*)+907)\n"
       "  #61 pc 005aac95  libartd.so "
-      "(_ZN3artL18InvokeWithArgArrayERKNS_33ScopedObjectAccessAlreadyRunnableEPNS_9ArtMethodEPNS_"
-      "8ArgArrayEPNS_6JValueEPKc+85)\n"
+      "(art::InvokeWithArgArray(art::ScopedObjectAccessAlreadyRunnable const&, art::ArtMethod*, "
+      "art::ArgArray*, art::JValue*, char const*)+85)\n"
       "  #62 pc 005aab5a  libartd.so "
-      "(_ZN3art17InvokeWithVarArgsERKNS_33ScopedObjectAccessAlreadyRunnableEP8_jobjectP10_"
-      "jmethodIDPc+362)\n"
+      "(art::InvokeWithVarArgs(art::ScopedObjectAccessAlreadyRunnable const&, _jobject*, "
+      "_jmethodID*, char*)+362)\n"
       "  #63 pc 0048a3dd  libartd.so "
-      "(_ZN3art3JNI21CallStaticVoidMethodVEP7_JNIEnvP7_jclassP10_jmethodIDPc+125)\n"
+      "(art::JNI::CallStaticVoidMethodV(_JNIEnv*, _jclass*, _jmethodID*, char*)+125)\n"
       "  #64 pc 0018448c  libartd.so "
-      "(_ZN3art8CheckJNI11CallMethodVEPKcP7_JNIEnvP8_jobjectP7_jclassP10_jmethodIDPcNS_"
-      "9Primitive4TypeENS_10InvokeTypeE+1964)\n"
+      "(art::CheckJNI::CallMethodV(char const*, _JNIEnv*, _jobject*, _jclass*, _jmethodID*, char*, "
+      "art::Primitive::Type, art::InvokeType)+1964)\n"
       "  #65 pc 0017cf06  libartd.so "
-      "(_ZN3art8CheckJNI21CallStaticVoidMethodVEP7_JNIEnvP7_jclassP10_jmethodIDPc+70)\n"
+      "(art::CheckJNI::CallStaticVoidMethodV(_JNIEnv*, _jclass*, _jmethodID*, char*)+70)\n"
       "  #66 pc 00001d8c  dalvikvm32 "
-      "(_ZN7_JNIEnv20CallStaticVoidMethodEP7_jclassP10_jmethodIDz+60)\n"
+      "(_JNIEnv::CallStaticVoidMethod(_jclass*, _jmethodID*, ...)+60)\n"
       "  #67 pc 00001a80  dalvikvm32 (main+1312)\n"
       "  #68 pc 00018275  libc.so\n",
       frame_info);
@@ -590,38 +618,40 @@ TEST_F(UnwindOfflineTest, jit_debug_arm) {
   ASSERT_EQ(76U, unwinder.NumFrames()) << "Unwind:\n" << frame_info;
   EXPECT_EQ(
       "  #00 pc 00018a5e  libarttestd.so (Java_Main_unwindInProcess+866)\n"
-      "  #01 pc 0000212d (offset 0x2000)  137-cfi.odex (boolean Main.unwindInProcess(boolean, int, "
+      "  #01 pc 0000212d  137-cfi.odex (boolean Main.unwindInProcess(boolean, int, "
       "boolean)+92)\n"
       "  #02 pc 00011cb1  anonymous:e2796000 (boolean Main.bar(boolean)+72)\n"
       "  #03 pc 00462175  libartd.so (art_quick_invoke_stub_internal+68)\n"
       "  #04 pc 00467129  libartd.so (art_quick_invoke_stub+228)\n"
       "  #05 pc 000bf7a9  libartd.so "
-      "(_ZN3art9ArtMethod6InvokeEPNS_6ThreadEPjjPNS_6JValueEPKc+864)\n"
+      "(art::ArtMethod::Invoke(art::Thread*, unsigned int*, unsigned int, art::JValue*, char "
+      "const*)+864)\n"
       "  #06 pc 00247833  libartd.so "
-      "(_ZN3art11interpreter34ArtInterpreterToCompiledCodeBridgeEPNS_6ThreadEPNS_9ArtMethodEPNS_"
-      "11ShadowFrameEtPNS_6JValueE+382)\n"
+      "(art::interpreter::ArtInterpreterToCompiledCodeBridge(art::Thread*, art::ArtMethod*, "
+      "art::ShadowFrame*, unsigned short, art::JValue*)+382)\n"
       "  #07 pc 0022e935  libartd.so "
-      "(_ZN3art11interpreterL7ExecuteEPNS_6ThreadERKNS_20CodeItemDataAccessorERNS_11ShadowFrameENS_"
-      "6JValueEb+244)\n"
+      "(art::interpreter::Execute(art::Thread*, art::CodeItemDataAccessor const&, "
+      "art::ShadowFrame&, art::JValue, bool)+244)\n"
       "  #08 pc 0022f71d  libartd.so "
-      "(_ZN3art11interpreter30EnterInterpreterFromEntryPointEPNS_6ThreadERKNS_"
-      "20CodeItemDataAccessorEPNS_11ShadowFrameE+128)\n"
+      "(art::interpreter::EnterInterpreterFromEntryPoint(art::Thread*, art::CodeItemDataAccessor "
+      "const&, art::ShadowFrame*)+128)\n"
       "  #09 pc 00442865  libartd.so (artQuickToInterpreterBridge+796)\n"
       "  #10 pc 004666ff  libartd.so (art_quick_to_interpreter_bridge+30)\n"
       "  #11 pc 00011c31  anonymous:e2796000 (int Main.compare(Main, Main)+64)\n"
       "  #12 pc 00462175  libartd.so (art_quick_invoke_stub_internal+68)\n"
       "  #13 pc 00467129  libartd.so (art_quick_invoke_stub+228)\n"
       "  #14 pc 000bf7a9  libartd.so "
-      "(_ZN3art9ArtMethod6InvokeEPNS_6ThreadEPjjPNS_6JValueEPKc+864)\n"
+      "(art::ArtMethod::Invoke(art::Thread*, unsigned int*, unsigned int, art::JValue*, char "
+      "const*)+864)\n"
       "  #15 pc 00247833  libartd.so "
-      "(_ZN3art11interpreter34ArtInterpreterToCompiledCodeBridgeEPNS_6ThreadEPNS_9ArtMethodEPNS_"
-      "11ShadowFrameEtPNS_6JValueE+382)\n"
+      "(art::interpreter::ArtInterpreterToCompiledCodeBridge(art::Thread*, art::ArtMethod*, "
+      "art::ShadowFrame*, unsigned short, art::JValue*)+382)\n"
       "  #16 pc 0022e935  libartd.so "
-      "(_ZN3art11interpreterL7ExecuteEPNS_6ThreadERKNS_20CodeItemDataAccessorERNS_11ShadowFrameENS_"
-      "6JValueEb+244)\n"
+      "(art::interpreter::Execute(art::Thread*, art::CodeItemDataAccessor const&, "
+      "art::ShadowFrame&, art::JValue, bool)+244)\n"
       "  #17 pc 0022f71d  libartd.so "
-      "(_ZN3art11interpreter30EnterInterpreterFromEntryPointEPNS_6ThreadERKNS_"
-      "20CodeItemDataAccessorEPNS_11ShadowFrameE+128)\n"
+      "(art::interpreter::EnterInterpreterFromEntryPoint(art::Thread*, art::CodeItemDataAccessor "
+      "const&, art::ShadowFrame*)+128)\n"
       "  #18 pc 00442865  libartd.so (artQuickToInterpreterBridge+796)\n"
       "  #19 pc 004666ff  libartd.so (art_quick_to_interpreter_bridge+30)\n"
       "  #20 pc 00011b77  anonymous:e2796000 (int Main.compare(java.lang.Object, "
@@ -629,16 +659,17 @@ TEST_F(UnwindOfflineTest, jit_debug_arm) {
       "  #21 pc 00462175  libartd.so (art_quick_invoke_stub_internal+68)\n"
       "  #22 pc 00467129  libartd.so (art_quick_invoke_stub+228)\n"
       "  #23 pc 000bf7a9  libartd.so "
-      "(_ZN3art9ArtMethod6InvokeEPNS_6ThreadEPjjPNS_6JValueEPKc+864)\n"
+      "(art::ArtMethod::Invoke(art::Thread*, unsigned int*, unsigned int, art::JValue*, char "
+      "const*)+864)\n"
       "  #24 pc 00247833  libartd.so "
-      "(_ZN3art11interpreter34ArtInterpreterToCompiledCodeBridgeEPNS_6ThreadEPNS_9ArtMethodEPNS_"
-      "11ShadowFrameEtPNS_6JValueE+382)\n"
+      "(art::interpreter::ArtInterpreterToCompiledCodeBridge(art::Thread*, art::ArtMethod*, "
+      "art::ShadowFrame*, unsigned short, art::JValue*)+382)\n"
       "  #25 pc 0022e935  libartd.so "
-      "(_ZN3art11interpreterL7ExecuteEPNS_6ThreadERKNS_20CodeItemDataAccessorERNS_11ShadowFrameENS_"
-      "6JValueEb+244)\n"
+      "(art::interpreter::Execute(art::Thread*, art::CodeItemDataAccessor const&, "
+      "art::ShadowFrame&, art::JValue, bool)+244)\n"
       "  #26 pc 0022f71d  libartd.so "
-      "(_ZN3art11interpreter30EnterInterpreterFromEntryPointEPNS_6ThreadERKNS_"
-      "20CodeItemDataAccessorEPNS_11ShadowFrameE+128)\n"
+      "(art::interpreter::EnterInterpreterFromEntryPoint(art::Thread*, art::CodeItemDataAccessor "
+      "const&, art::ShadowFrame*)+128)\n"
       "  #27 pc 00442865  libartd.so (artQuickToInterpreterBridge+796)\n"
       "  #28 pc 004666ff  libartd.so (art_quick_to_interpreter_bridge+30)\n"
       "  #29 pc 00011a29  anonymous:e2796000 (int "
@@ -647,85 +678,90 @@ TEST_F(UnwindOfflineTest, jit_debug_arm) {
       "  #30 pc 00462175  libartd.so (art_quick_invoke_stub_internal+68)\n"
       "  #31 pc 0046722f  libartd.so (art_quick_invoke_static_stub+226)\n"
       "  #32 pc 000bf7bb  libartd.so "
-      "(_ZN3art9ArtMethod6InvokeEPNS_6ThreadEPjjPNS_6JValueEPKc+882)\n"
+      "(art::ArtMethod::Invoke(art::Thread*, unsigned int*, unsigned int, art::JValue*, char "
+      "const*)+882)\n"
       "  #33 pc 00247833  libartd.so "
-      "(_ZN3art11interpreter34ArtInterpreterToCompiledCodeBridgeEPNS_6ThreadEPNS_9ArtMethodEPNS_"
-      "11ShadowFrameEtPNS_6JValueE+382)\n"
+      "(art::interpreter::ArtInterpreterToCompiledCodeBridge(art::Thread*, art::ArtMethod*, "
+      "art::ShadowFrame*, unsigned short, art::JValue*)+382)\n"
       "  #34 pc 0022e935  libartd.so "
-      "(_ZN3art11interpreterL7ExecuteEPNS_6ThreadERKNS_20CodeItemDataAccessorERNS_11ShadowFrameENS_"
-      "6JValueEb+244)\n"
+      "(art::interpreter::Execute(art::Thread*, art::CodeItemDataAccessor const&, "
+      "art::ShadowFrame&, art::JValue, bool)+244)\n"
       "  #35 pc 0022f71d  libartd.so "
-      "(_ZN3art11interpreter30EnterInterpreterFromEntryPointEPNS_6ThreadERKNS_"
-      "20CodeItemDataAccessorEPNS_11ShadowFrameE+128)\n"
+      "(art::interpreter::EnterInterpreterFromEntryPoint(art::Thread*, art::CodeItemDataAccessor "
+      "const&, art::ShadowFrame*)+128)\n"
       "  #36 pc 00442865  libartd.so (artQuickToInterpreterBridge+796)\n"
       "  #37 pc 004666ff  libartd.so (art_quick_to_interpreter_bridge+30)\n"
       "  #38 pc 0001139b  anonymous:e2796000 (boolean Main.foo()+178)\n"
       "  #39 pc 00462175  libartd.so (art_quick_invoke_stub_internal+68)\n"
       "  #40 pc 00467129  libartd.so (art_quick_invoke_stub+228)\n"
       "  #41 pc 000bf7a9  libartd.so "
-      "(_ZN3art9ArtMethod6InvokeEPNS_6ThreadEPjjPNS_6JValueEPKc+864)\n"
+      "(art::ArtMethod::Invoke(art::Thread*, unsigned int*, unsigned int, art::JValue*, char "
+      "const*)+864)\n"
       "  #42 pc 00247833  libartd.so "
-      "(_ZN3art11interpreter34ArtInterpreterToCompiledCodeBridgeEPNS_6ThreadEPNS_9ArtMethodEPNS_"
-      "11ShadowFrameEtPNS_6JValueE+382)\n"
+      "(art::interpreter::ArtInterpreterToCompiledCodeBridge(art::Thread*, art::ArtMethod*, "
+      "art::ShadowFrame*, unsigned short, art::JValue*)+382)\n"
       "  #43 pc 0022e935  libartd.so "
-      "(_ZN3art11interpreterL7ExecuteEPNS_6ThreadERKNS_20CodeItemDataAccessorERNS_11ShadowFrameENS_"
-      "6JValueEb+244)\n"
+      "(art::interpreter::Execute(art::Thread*, art::CodeItemDataAccessor const&, "
+      "art::ShadowFrame&, art::JValue, bool)+244)\n"
       "  #44 pc 0022f71d  libartd.so "
-      "(_ZN3art11interpreter30EnterInterpreterFromEntryPointEPNS_6ThreadERKNS_"
-      "20CodeItemDataAccessorEPNS_11ShadowFrameE+128)\n"
+      "(art::interpreter::EnterInterpreterFromEntryPoint(art::Thread*, art::CodeItemDataAccessor "
+      "const&, art::ShadowFrame*)+128)\n"
       "  #45 pc 00442865  libartd.so (artQuickToInterpreterBridge+796)\n"
       "  #46 pc 004666ff  libartd.so (art_quick_to_interpreter_bridge+30)\n"
       "  #47 pc 00010aa7  anonymous:e2796000 (void Main.runPrimary()+70)\n"
       "  #48 pc 00462175  libartd.so (art_quick_invoke_stub_internal+68)\n"
       "  #49 pc 00467129  libartd.so (art_quick_invoke_stub+228)\n"
       "  #50 pc 000bf7a9  libartd.so "
-      "(_ZN3art9ArtMethod6InvokeEPNS_6ThreadEPjjPNS_6JValueEPKc+864)\n"
+      "(art::ArtMethod::Invoke(art::Thread*, unsigned int*, unsigned int, art::JValue*, char "
+      "const*)+864)\n"
       "  #51 pc 00247833  libartd.so "
-      "(_ZN3art11interpreter34ArtInterpreterToCompiledCodeBridgeEPNS_6ThreadEPNS_9ArtMethodEPNS_"
-      "11ShadowFrameEtPNS_6JValueE+382)\n"
+      "(art::interpreter::ArtInterpreterToCompiledCodeBridge(art::Thread*, art::ArtMethod*, "
+      "art::ShadowFrame*, unsigned short, art::JValue*)+382)\n"
       "  #52 pc 0022e935  libartd.so "
-      "(_ZN3art11interpreterL7ExecuteEPNS_6ThreadERKNS_20CodeItemDataAccessorERNS_11ShadowFrameENS_"
-      "6JValueEb+244)\n"
+      "(art::interpreter::Execute(art::Thread*, art::CodeItemDataAccessor const&, "
+      "art::ShadowFrame&, art::JValue, bool)+244)\n"
       "  #53 pc 0022f71d  libartd.so "
-      "(_ZN3art11interpreter30EnterInterpreterFromEntryPointEPNS_6ThreadERKNS_"
-      "20CodeItemDataAccessorEPNS_11ShadowFrameE+128)\n"
+      "(art::interpreter::EnterInterpreterFromEntryPoint(art::Thread*, art::CodeItemDataAccessor "
+      "const&, art::ShadowFrame*)+128)\n"
       "  #54 pc 00442865  libartd.so (artQuickToInterpreterBridge+796)\n"
       "  #55 pc 004666ff  libartd.so (art_quick_to_interpreter_bridge+30)\n"
       "  #56 pc 0000ba99  anonymous:e2796000 (void Main.main(java.lang.String[])+144)\n"
       "  #57 pc 00462175  libartd.so (art_quick_invoke_stub_internal+68)\n"
       "  #58 pc 0046722f  libartd.so (art_quick_invoke_static_stub+226)\n"
       "  #59 pc 000bf7bb  libartd.so "
-      "(_ZN3art9ArtMethod6InvokeEPNS_6ThreadEPjjPNS_6JValueEPKc+882)\n"
+      "(art::ArtMethod::Invoke(art::Thread*, unsigned int*, unsigned int, art::JValue*, char "
+      "const*)+882)\n"
       "  #60 pc 00247833  libartd.so "
-      "(_ZN3art11interpreter34ArtInterpreterToCompiledCodeBridgeEPNS_6ThreadEPNS_9ArtMethodEPNS_"
-      "11ShadowFrameEtPNS_6JValueE+382)\n"
+      "(art::interpreter::ArtInterpreterToCompiledCodeBridge(art::Thread*, art::ArtMethod*, "
+      "art::ShadowFrame*, unsigned short, art::JValue*)+382)\n"
       "  #61 pc 0022e935  libartd.so "
-      "(_ZN3art11interpreterL7ExecuteEPNS_6ThreadERKNS_20CodeItemDataAccessorERNS_11ShadowFrameENS_"
-      "6JValueEb+244)\n"
+      "(art::interpreter::Execute(art::Thread*, art::CodeItemDataAccessor const&, "
+      "art::ShadowFrame&, art::JValue, bool)+244)\n"
       "  #62 pc 0022f71d  libartd.so "
-      "(_ZN3art11interpreter30EnterInterpreterFromEntryPointEPNS_6ThreadERKNS_"
-      "20CodeItemDataAccessorEPNS_11ShadowFrameE+128)\n"
+      "(art::interpreter::EnterInterpreterFromEntryPoint(art::Thread*, art::CodeItemDataAccessor "
+      "const&, art::ShadowFrame*)+128)\n"
       "  #63 pc 00442865  libartd.so (artQuickToInterpreterBridge+796)\n"
       "  #64 pc 004666ff  libartd.so (art_quick_to_interpreter_bridge+30)\n"
       "  #65 pc 00462175  libartd.so (art_quick_invoke_stub_internal+68)\n"
       "  #66 pc 0046722f  libartd.so (art_quick_invoke_static_stub+226)\n"
       "  #67 pc 000bf7bb  libartd.so "
-      "(_ZN3art9ArtMethod6InvokeEPNS_6ThreadEPjjPNS_6JValueEPKc+882)\n"
+      "(art::ArtMethod::Invoke(art::Thread*, unsigned int*, unsigned int, art::JValue*, char "
+      "const*)+882)\n"
       "  #68 pc 003b292d  libartd.so "
-      "(_ZN3artL18InvokeWithArgArrayERKNS_33ScopedObjectAccessAlreadyRunnableEPNS_9ArtMethodEPNS_"
-      "8ArgArrayEPNS_6JValueEPKc+52)\n"
+      "(art::InvokeWithArgArray(art::ScopedObjectAccessAlreadyRunnable const&, art::ArtMethod*, "
+      "art::ArgArray*, art::JValue*, char const*)+52)\n"
       "  #69 pc 003b26c3  libartd.so "
-      "(_ZN3art17InvokeWithVarArgsERKNS_33ScopedObjectAccessAlreadyRunnableEP8_jobjectP10_"
-      "jmethodIDSt9__va_list+210)\n"
+      "(art::InvokeWithVarArgs(art::ScopedObjectAccessAlreadyRunnable const&, _jobject*, "
+      "_jmethodID*, std::__va_list)+210)\n"
       "  #70 pc 00308411  libartd.so "
-      "(_ZN3art3JNI21CallStaticVoidMethodVEP7_JNIEnvP7_jclassP10_jmethodIDSt9__va_list+76)\n"
+      "(art::JNI::CallStaticVoidMethodV(_JNIEnv*, _jclass*, _jmethodID*, std::__va_list)+76)\n"
       "  #71 pc 000e6a9f  libartd.so "
-      "(_ZN3art8CheckJNI11CallMethodVEPKcP7_JNIEnvP8_jobjectP7_jclassP10_jmethodIDSt9__va_listNS_"
-      "9Primitive4TypeENS_10InvokeTypeE+1486)\n"
+      "(art::CheckJNI::CallMethodV(char const*, _JNIEnv*, _jobject*, _jclass*, _jmethodID*, "
+      "std::__va_list, art::Primitive::Type, art::InvokeType)+1486)\n"
       "  #72 pc 000e19b9  libartd.so "
-      "(_ZN3art8CheckJNI21CallStaticVoidMethodVEP7_JNIEnvP7_jclassP10_jmethodIDSt9__va_list+40)\n"
+      "(art::CheckJNI::CallStaticVoidMethodV(_JNIEnv*, _jclass*, _jmethodID*, std::__va_list)+40)\n"
       "  #73 pc 0000159f  dalvikvm32 "
-      "(_ZN7_JNIEnv20CallStaticVoidMethodEP7_jclassP10_jmethodIDz+30)\n"
+      "(_JNIEnv::CallStaticVoidMethod(_jclass*, _jmethodID*, ...)+30)\n"
       "  #74 pc 00001349  dalvikvm32 (main+896)\n"
       "  #75 pc 000850c9  libc.so\n",
       frame_info);
@@ -883,6 +919,43 @@ TEST_F(UnwindOfflineTest, jit_debug_arm) {
   EXPECT_EQ(0xff85f0c0U, unwinder.frames()[75].sp);
 }
 
+struct LeakType {
+  LeakType(Maps* maps, Regs* regs, std::shared_ptr<Memory>& process_memory)
+      : maps(maps), regs(regs), process_memory(process_memory) {}
+
+  Maps* maps;
+  Regs* regs;
+  std::shared_ptr<Memory>& process_memory;
+};
+
+static void OfflineUnwind(void* data) {
+  LeakType* leak_data = reinterpret_cast<LeakType*>(data);
+
+  std::unique_ptr<Regs> regs_copy(leak_data->regs->Clone());
+  JitDebug jit_debug(leak_data->process_memory);
+  Unwinder unwinder(128, leak_data->maps, regs_copy.get(), leak_data->process_memory);
+  unwinder.SetJitDebug(&jit_debug, regs_copy->Arch());
+  unwinder.Unwind();
+  ASSERT_EQ(76U, unwinder.NumFrames());
+}
+
+TEST_F(UnwindOfflineTest, unwind_offline_check_for_leaks) {
+  ASSERT_NO_FATAL_FAILURE(Init("jit_debug_arm/", ARCH_ARM));
+
+  MemoryOfflineParts* memory = new MemoryOfflineParts;
+  AddMemory(dir_ + "descriptor.data", memory);
+  AddMemory(dir_ + "descriptor1.data", memory);
+  AddMemory(dir_ + "stack.data", memory);
+  for (size_t i = 0; i < 7; i++) {
+    AddMemory(dir_ + "entry" + std::to_string(i) + ".data", memory);
+    AddMemory(dir_ + "jit" + std::to_string(i) + ".data", memory);
+  }
+  process_memory_.reset(memory);
+
+  LeakType data(maps_.get(), regs_.get(), process_memory_);
+  TestCheckForLeaks(OfflineUnwind, &data);
+}
+
 // The eh_frame_hdr data is present but set to zero fdes. This should
 // fallback to iterating over the cies/fdes and ignore the eh_frame_hdr.
 // No .gnu_debugdata section in the elf file, so no symbols.
@@ -996,41 +1069,44 @@ TEST_F(UnwindOfflineTest, art_quick_osr_stub_arm) {
       "(com.example.simpleperf.simpleperfexamplewithnative.MixActivity$1.run+60)\n"
       "  #02 pc 004135bb  libart.so (art_quick_osr_stub+42)\n"
       "  #03 pc 002657a5  libart.so "
-      "(_ZN3art3jit3Jit25MaybeDoOnStackReplacementEPNS_6ThreadEPNS_9ArtMethodEjiPNS_6JValueE+876)\n"
+      "(art::jit::Jit::MaybeDoOnStackReplacement(art::Thread*, art::ArtMethod*, unsigned int, int, "
+      "art::JValue*)+876)\n"
       "  #04 pc 004021a7  libart.so (MterpMaybeDoOnStackReplacement+86)\n"
       "  #05 pc 00412474  libart.so (ExecuteMterpImpl+66164)\n"
       "  #06 pc cd8365b0  <unknown>\n"  // symbol in dex file
       "  #07 pc 001d7f1b  libart.so "
-      "(_ZN3art11interpreterL7ExecuteEPNS_6ThreadERKNS_20CodeItemDataAccessorERNS_11ShadowFrameENS_"
-      "6JValueEb+374)\n"
+      "(art::interpreter::Execute(art::Thread*, art::CodeItemDataAccessor const&, "
+      "art::ShadowFrame&, art::JValue, bool)+374)\n"
       "  #08 pc 001dc593  libart.so "
-      "(_ZN3art11interpreter33ArtInterpreterToInterpreterBridgeEPNS_6ThreadERKNS_"
-      "20CodeItemDataAccessorEPNS_11ShadowFrameEPNS_6JValueE+154)\n"
+      "(art::interpreter::ArtInterpreterToInterpreterBridge(art::Thread*, "
+      "art::CodeItemDataAccessor const&, art::ShadowFrame*, art::JValue*)+154)\n"
       "  #09 pc 001f4d01  libart.so "
-      "(_ZN3art11interpreter6DoCallILb0ELb0EEEbPNS_9ArtMethodEPNS_6ThreadERNS_11ShadowFrameEPKNS_"
-      "11InstructionEtPNS_6JValueE+732)\n"
+      "(bool art::interpreter::DoCall<false, false>(art::ArtMethod*, art::Thread*, "
+      "art::ShadowFrame&, art::Instruction const*, unsigned short, art::JValue*)+732)\n"
       "  #10 pc 003fe427  libart.so (MterpInvokeInterface+1354)\n"
       "  #11 pc 00405b94  libart.so (ExecuteMterpImpl+14740)\n"
       "  #12 pc 7004873e  <unknown>\n"  // symbol in dex file
       "  #13 pc 001d7f1b  libart.so "
-      "(_ZN3art11interpreterL7ExecuteEPNS_6ThreadERKNS_20CodeItemDataAccessorERNS_11ShadowFrameENS_"
-      "6JValueEb+374)\n"
+      "(art::interpreter::Execute(art::Thread*, art::CodeItemDataAccessor const&, "
+      "art::ShadowFrame&, art::JValue, bool)+374)\n"
       "  #14 pc 001dc4d5  libart.so "
-      "(_ZN3art11interpreter30EnterInterpreterFromEntryPointEPNS_6ThreadERKNS_"
-      "20CodeItemDataAccessorEPNS_11ShadowFrameE+92)\n"
+      "(art::interpreter::EnterInterpreterFromEntryPoint(art::Thread*, art::CodeItemDataAccessor "
+      "const&, art::ShadowFrame*)+92)\n"
       "  #15 pc 003f25ab  libart.so (artQuickToInterpreterBridge+970)\n"
       "  #16 pc 00417aff  libart.so (art_quick_to_interpreter_bridge+30)\n"
       "  #17 pc 00413575  libart.so (art_quick_invoke_stub_internal+68)\n"
       "  #18 pc 00418531  libart.so (art_quick_invoke_stub+236)\n"
-      "  #19 pc 000b468d  libart.so (_ZN3art9ArtMethod6InvokeEPNS_6ThreadEPjjPNS_6JValueEPKc+136)\n"
+      "  #19 pc 000b468d  libart.so (art::ArtMethod::Invoke(art::Thread*, unsigned int*, unsigned "
+      "int, art::JValue*, char const*)+136)\n"
       "  #20 pc 00362f49  libart.so "
-      "(_ZN3art12_GLOBAL__N_118InvokeWithArgArrayERKNS_33ScopedObjectAccessAlreadyRunnableEPNS_"
-      "9ArtMethodEPNS0_8ArgArrayEPNS_6JValueEPKc+52)\n"
+      "(art::(anonymous namespace)::InvokeWithArgArray(art::ScopedObjectAccessAlreadyRunnable "
+      "const&, art::ArtMethod*, art::(anonymous namespace)::ArgArray*, art::JValue*, char "
+      "const*)+52)\n"
       "  #21 pc 00363cd9  libart.so "
-      "(_ZN3art35InvokeVirtualOrInterfaceWithJValuesERKNS_33ScopedObjectAccessAlreadyRunnableEP8_"
-      "jobjectP10_jmethodIDP6jvalue+332)\n"
-      "  #22 pc 003851dd  libart.so (_ZN3art6Thread14CreateCallbackEPv+868)\n"
-      "  #23 pc 00062925  libc.so (_ZL15__pthread_startPv+22)\n"
+      "(art::InvokeVirtualOrInterfaceWithJValues(art::ScopedObjectAccessAlreadyRunnable const&, "
+      "_jobject*, _jmethodID*, jvalue*)+332)\n"
+      "  #22 pc 003851dd  libart.so (art::Thread::CreateCallback(void*)+868)\n"
+      "  #23 pc 00062925  libc.so (__pthread_start(void*)+22)\n"
       "  #24 pc 0001de39  libc.so (__start_thread+24)\n",
       frame_info);
   EXPECT_EQ(0xd025c788U, unwinder.frames()[0].pc);
@@ -1085,6 +1161,46 @@ TEST_F(UnwindOfflineTest, art_quick_osr_stub_arm) {
   EXPECT_EQ(0xcd4ff960U, unwinder.frames()[24].sp);
 }
 
+TEST_F(UnwindOfflineTest, jit_map_arm) {
+  ASSERT_NO_FATAL_FAILURE(Init("jit_map_arm/", ARCH_ARM));
+
+  maps_->Add(0xd025c788, 0xd025c9f0, 0, PROT_READ | PROT_EXEC | MAPS_FLAGS_JIT_SYMFILE_MAP,
+             "jit_map0.so", 0);
+  maps_->Add(0xd025cd98, 0xd025cff4, 0, PROT_READ | PROT_EXEC | MAPS_FLAGS_JIT_SYMFILE_MAP,
+             "jit_map1.so", 0);
+  maps_->Sort();
+
+  Unwinder unwinder(128, maps_.get(), regs_.get(), process_memory_);
+  unwinder.Unwind();
+
+  std::string frame_info(DumpFrames(unwinder));
+  ASSERT_EQ(6U, unwinder.NumFrames()) << "Unwind:\n" << frame_info;
+  EXPECT_EQ(
+      "  #00 pc 00000000  jit_map0.so "
+      "(com.example.simpleperf.simpleperfexamplewithnative.MixActivity.access$000)\n"
+      "  #01 pc 0000003d  jit_map1.so "
+      "(com.example.simpleperf.simpleperfexamplewithnative.MixActivity$1.run+60)\n"
+      "  #02 pc 004135bb  libart.so (art_quick_osr_stub+42)\n"
+
+      "  #03 pc 003851dd  libart.so (art::Thread::CreateCallback(void*)+868)\n"
+      "  #04 pc 00062925  libc.so (__pthread_start(void*)+22)\n"
+      "  #05 pc 0001de39  libc.so (__start_thread+24)\n",
+      frame_info);
+
+  EXPECT_EQ(0xd025c788U, unwinder.frames()[0].pc);
+  EXPECT_EQ(0xcd4ff140U, unwinder.frames()[0].sp);
+  EXPECT_EQ(0xd025cdd5U, unwinder.frames()[1].pc);
+  EXPECT_EQ(0xcd4ff140U, unwinder.frames()[1].sp);
+  EXPECT_EQ(0xe4a755bbU, unwinder.frames()[2].pc);
+  EXPECT_EQ(0xcd4ff160U, unwinder.frames()[2].sp);
+  EXPECT_EQ(0xe49e71ddU, unwinder.frames()[3].pc);
+  EXPECT_EQ(0xcd4ff8e8U, unwinder.frames()[3].sp);
+  EXPECT_EQ(0xe7df3925U, unwinder.frames()[4].pc);
+  EXPECT_EQ(0xcd4ff958U, unwinder.frames()[4].sp);
+  EXPECT_EQ(0xe7daee39U, unwinder.frames()[5].pc);
+  EXPECT_EQ(0xcd4ff960U, unwinder.frames()[5].sp);
+}
+
 TEST_F(UnwindOfflineTest, offset_arm) {
   ASSERT_NO_FATAL_FAILURE(Init("offset_arm/", ARCH_ARM));
 
@@ -1094,29 +1210,29 @@ TEST_F(UnwindOfflineTest, offset_arm) {
   std::string frame_info(DumpFrames(unwinder));
   ASSERT_EQ(19U, unwinder.NumFrames()) << "Unwind:\n" << frame_info;
   EXPECT_EQ(
-      "  #00 pc 0032bfa0 (offset 0x42000)  libunwindstack_test (SignalInnerFunction+40)\n"
-      "  #01 pc 0032bfeb (offset 0x42000)  libunwindstack_test (SignalMiddleFunction+2)\n"
-      "  #02 pc 0032bff3 (offset 0x42000)  libunwindstack_test (SignalOuterFunction+2)\n"
-      "  #03 pc 0032fed3 (offset 0x42000)  libunwindstack_test "
-      "(_ZN11unwindstackL19SignalCallerHandlerEiP7siginfoPv+26)\n"
-      "  #04 pc 00026528 (offset 0x25000)  libc.so\n"
+      "  #00 pc 0032bfa0  libunwindstack_test (SignalInnerFunction+40)\n"
+      "  #01 pc 0032bfeb  libunwindstack_test (SignalMiddleFunction+2)\n"
+      "  #02 pc 0032bff3  libunwindstack_test (SignalOuterFunction+2)\n"
+      "  #03 pc 0032fed3  libunwindstack_test "
+      "(unwindstack::SignalCallerHandler(int, siginfo*, void*)+26)\n"
+      "  #04 pc 0002652c  libc.so (__restore)\n"
       "  #05 pc 00000000  <unknown>\n"
-      "  #06 pc 0032c2d9 (offset 0x42000)  libunwindstack_test (InnerFunction+736)\n"
-      "  #07 pc 0032cc4f (offset 0x42000)  libunwindstack_test (MiddleFunction+42)\n"
-      "  #08 pc 0032cc81 (offset 0x42000)  libunwindstack_test (OuterFunction+42)\n"
-      "  #09 pc 0032e547 (offset 0x42000)  libunwindstack_test "
-      "(_ZN11unwindstackL19RemoteThroughSignalEij+270)\n"
-      "  #10 pc 0032ed99 (offset 0x42000)  libunwindstack_test "
-      "(_ZN11unwindstack55UnwindTest_remote_through_signal_with_invalid_func_Test8TestBodyEv+16)\n"
-      "  #11 pc 00354453 (offset 0x42000)  libunwindstack_test (_ZN7testing4Test3RunEv+154)\n"
-      "  #12 pc 00354de7 (offset 0x42000)  libunwindstack_test (_ZN7testing8TestInfo3RunEv+194)\n"
-      "  #13 pc 00355105 (offset 0x42000)  libunwindstack_test (_ZN7testing8TestCase3RunEv+180)\n"
-      "  #14 pc 0035a215 (offset 0x42000)  libunwindstack_test "
-      "(_ZN7testing8internal12UnitTestImpl11RunAllTestsEv+664)\n"
-      "  #15 pc 00359f4f (offset 0x42000)  libunwindstack_test (_ZN7testing8UnitTest3RunEv+110)\n"
-      "  #16 pc 0034d3db (offset 0x42000)  libunwindstack_test (main+38)\n"
-      "  #17 pc 00092c0d (offset 0x25000)  libc.so (__libc_init+48)\n"
-      "  #18 pc 0004202f (offset 0x42000)  libunwindstack_test (_start_main+38)\n",
+      "  #06 pc 0032c2d9  libunwindstack_test (InnerFunction+736)\n"
+      "  #07 pc 0032cc4f  libunwindstack_test (MiddleFunction+42)\n"
+      "  #08 pc 0032cc81  libunwindstack_test (OuterFunction+42)\n"
+      "  #09 pc 0032e547  libunwindstack_test "
+      "(unwindstack::RemoteThroughSignal(int, unsigned int)+270)\n"
+      "  #10 pc 0032ed99  libunwindstack_test "
+      "(unwindstack::UnwindTest_remote_through_signal_with_invalid_func_Test::TestBody()+16)\n"
+      "  #11 pc 00354453  libunwindstack_test (testing::Test::Run()+154)\n"
+      "  #12 pc 00354de7  libunwindstack_test (testing::TestInfo::Run()+194)\n"
+      "  #13 pc 00355105  libunwindstack_test (testing::TestCase::Run()+180)\n"
+      "  #14 pc 0035a215  libunwindstack_test "
+      "(testing::internal::UnitTestImpl::RunAllTests()+664)\n"
+      "  #15 pc 00359f4f  libunwindstack_test (testing::UnitTest::Run()+110)\n"
+      "  #16 pc 0034d3db  libunwindstack_test (main+38)\n"
+      "  #17 pc 00092c0d  libc.so (__libc_init+48)\n"
+      "  #18 pc 0004202f  libunwindstack_test (_start_main+38)\n",
       frame_info);
 
   EXPECT_EQ(0x2e55fa0U, unwinder.frames()[0].pc);
@@ -1127,7 +1243,7 @@ TEST_F(UnwindOfflineTest, offset_arm) {
   EXPECT_EQ(0xf43d2ce8U, unwinder.frames()[2].sp);
   EXPECT_EQ(0x2e59ed3U, unwinder.frames()[3].pc);
   EXPECT_EQ(0xf43d2cf0U, unwinder.frames()[3].sp);
-  EXPECT_EQ(0xf4136528U, unwinder.frames()[4].pc);
+  EXPECT_EQ(0xf413652cU, unwinder.frames()[4].pc);
   EXPECT_EQ(0xf43d2d10U, unwinder.frames()[4].sp);
   EXPECT_EQ(0U, unwinder.frames()[5].pc);
   EXPECT_EQ(0xffcc0ee0U, unwinder.frames()[5].sp);
@@ -1157,6 +1273,173 @@ TEST_F(UnwindOfflineTest, offset_arm) {
   EXPECT_EQ(0xffcc1540U, unwinder.frames()[17].sp);
   EXPECT_EQ(0x2b6c02fU, unwinder.frames()[18].pc);
   EXPECT_EQ(0xffcc1558U, unwinder.frames()[18].sp);
+}
+
+// Test using a non-zero load bias library that has the fde entries
+// encoded as 0xb, which is not set as pc relative.
+TEST_F(UnwindOfflineTest, debug_frame_load_bias_arm) {
+  ASSERT_NO_FATAL_FAILURE(Init("debug_frame_load_bias_arm/", ARCH_ARM));
+
+  Unwinder unwinder(128, maps_.get(), regs_.get(), process_memory_);
+  unwinder.Unwind();
+
+  std::string frame_info(DumpFrames(unwinder));
+  ASSERT_EQ(8U, unwinder.NumFrames()) << "Unwind:\n" << frame_info;
+  EXPECT_EQ(
+      "  #00 pc 0005138c  libc.so (__ioctl+8)\n"
+      "  #01 pc 0002140f  libc.so (ioctl+30)\n"
+      "  #02 pc 00039535  libbinder.so (android::IPCThreadState::talkWithDriver(bool)+204)\n"
+      "  #03 pc 00039633  libbinder.so (android::IPCThreadState::getAndExecuteCommand()+10)\n"
+      "  #04 pc 00039b57  libbinder.so (android::IPCThreadState::joinThreadPool(bool)+38)\n"
+      "  #05 pc 00000c21  mediaserver (main+104)\n"
+      "  #06 pc 00084b89  libc.so (__libc_init+48)\n"
+      "  #07 pc 00000b77  mediaserver (_start_main+38)\n",
+      frame_info);
+
+  EXPECT_EQ(0xf0be238cU, unwinder.frames()[0].pc);
+  EXPECT_EQ(0xffd4a638U, unwinder.frames()[0].sp);
+  EXPECT_EQ(0xf0bb240fU, unwinder.frames()[1].pc);
+  EXPECT_EQ(0xffd4a638U, unwinder.frames()[1].sp);
+  EXPECT_EQ(0xf1a75535U, unwinder.frames()[2].pc);
+  EXPECT_EQ(0xffd4a650U, unwinder.frames()[2].sp);
+  EXPECT_EQ(0xf1a75633U, unwinder.frames()[3].pc);
+  EXPECT_EQ(0xffd4a6b0U, unwinder.frames()[3].sp);
+  EXPECT_EQ(0xf1a75b57U, unwinder.frames()[4].pc);
+  EXPECT_EQ(0xffd4a6d0U, unwinder.frames()[4].sp);
+  EXPECT_EQ(0x8d1cc21U, unwinder.frames()[5].pc);
+  EXPECT_EQ(0xffd4a6e8U, unwinder.frames()[5].sp);
+  EXPECT_EQ(0xf0c15b89U, unwinder.frames()[6].pc);
+  EXPECT_EQ(0xffd4a700U, unwinder.frames()[6].sp);
+  EXPECT_EQ(0x8d1cb77U, unwinder.frames()[7].pc);
+  EXPECT_EQ(0xffd4a718U, unwinder.frames()[7].sp);
+}
+
+TEST_F(UnwindOfflineTest, shared_lib_in_apk_arm64) {
+  ASSERT_NO_FATAL_FAILURE(Init("shared_lib_in_apk_arm64/", ARCH_ARM64));
+
+  Unwinder unwinder(128, maps_.get(), regs_.get(), process_memory_);
+  unwinder.Unwind();
+
+  std::string frame_info(DumpFrames(unwinder));
+  ASSERT_EQ(7U, unwinder.NumFrames()) << "Unwind:\n" << frame_info;
+  EXPECT_EQ(
+      "  #00 pc 000000000014ccbc  linker64 (__dl_syscall+28)\n"
+      "  #01 pc 000000000005426c  linker64 "
+      "(__dl__ZL24debuggerd_signal_handleriP7siginfoPv+1128)\n"
+      "  #02 pc 00000000000008c0  vdso.so (__kernel_rt_sigreturn)\n"
+      "  #03 pc 00000000000846f4  libc.so (abort+172)\n"
+      "  #04 pc 0000000000084ad4  libc.so (__assert2+36)\n"
+      "  #05 pc 000000000003d5b4  ANGLEPrebuilt.apk!libfeature_support_angle.so (offset 0x4000) "
+      "(ANGLEGetUtilityAPI+56)\n"
+      "  #06 pc 000000000007fe68  libc.so (__libc_init)\n",
+      frame_info);
+
+  EXPECT_EQ(0x7e82c4fcbcULL, unwinder.frames()[0].pc);
+  EXPECT_EQ(0x7df8ca3bf0ULL, unwinder.frames()[0].sp);
+  EXPECT_EQ(0x7e82b5726cULL, unwinder.frames()[1].pc);
+  EXPECT_EQ(0x7df8ca3bf0ULL, unwinder.frames()[1].sp);
+  EXPECT_EQ(0x7e82b018c0ULL, unwinder.frames()[2].pc);
+  EXPECT_EQ(0x7df8ca3da0ULL, unwinder.frames()[2].sp);
+  EXPECT_EQ(0x7e7eecc6f4ULL, unwinder.frames()[3].pc);
+  EXPECT_EQ(0x7dabf3db60ULL, unwinder.frames()[3].sp);
+  EXPECT_EQ(0x7e7eeccad4ULL, unwinder.frames()[4].pc);
+  EXPECT_EQ(0x7dabf3dc40ULL, unwinder.frames()[4].sp);
+  EXPECT_EQ(0x7dabc405b4ULL, unwinder.frames()[5].pc);
+  EXPECT_EQ(0x7dabf3dc50ULL, unwinder.frames()[5].sp);
+  EXPECT_EQ(0x7e7eec7e68ULL, unwinder.frames()[6].pc);
+  EXPECT_EQ(0x7dabf3dc70ULL, unwinder.frames()[6].sp);
+  // Ignore top frame since the test code was modified to end in __libc_init.
+}
+
+TEST_F(UnwindOfflineTest, shared_lib_in_apk_memory_only_arm64) {
+  ASSERT_NO_FATAL_FAILURE(Init("shared_lib_in_apk_memory_only_arm64/", ARCH_ARM64));
+  // Add the memory that represents the shared library.
+  MemoryOfflineParts* memory = reinterpret_cast<MemoryOfflineParts*>(process_memory_.get());
+  AddMemory(dir_ + "lib_mem.data", memory);
+
+  Unwinder unwinder(128, maps_.get(), regs_.get(), process_memory_);
+  unwinder.Unwind();
+
+  std::string frame_info(DumpFrames(unwinder));
+  ASSERT_EQ(7U, unwinder.NumFrames()) << "Unwind:\n" << frame_info;
+  EXPECT_EQ(
+      "  #00 pc 000000000014ccbc  linker64 (__dl_syscall+28)\n"
+      "  #01 pc 000000000005426c  linker64 "
+      "(__dl__ZL24debuggerd_signal_handleriP7siginfoPv+1128)\n"
+      "  #02 pc 00000000000008c0  vdso.so (__kernel_rt_sigreturn)\n"
+      "  #03 pc 00000000000846f4  libc.so (abort+172)\n"
+      "  #04 pc 0000000000084ad4  libc.so (__assert2+36)\n"
+      "  #05 pc 000000000003d5b4  ANGLEPrebuilt.apk (offset 0x21d5000)\n"
+      "  #06 pc 000000000007fe68  libc.so (__libc_init)\n",
+      frame_info);
+
+  EXPECT_EQ(0x7e82c4fcbcULL, unwinder.frames()[0].pc);
+  EXPECT_EQ(0x7df8ca3bf0ULL, unwinder.frames()[0].sp);
+  EXPECT_EQ(0x7e82b5726cULL, unwinder.frames()[1].pc);
+  EXPECT_EQ(0x7df8ca3bf0ULL, unwinder.frames()[1].sp);
+  EXPECT_EQ(0x7e82b018c0ULL, unwinder.frames()[2].pc);
+  EXPECT_EQ(0x7df8ca3da0ULL, unwinder.frames()[2].sp);
+  EXPECT_EQ(0x7e7eecc6f4ULL, unwinder.frames()[3].pc);
+  EXPECT_EQ(0x7dabf3db60ULL, unwinder.frames()[3].sp);
+  EXPECT_EQ(0x7e7eeccad4ULL, unwinder.frames()[4].pc);
+  EXPECT_EQ(0x7dabf3dc40ULL, unwinder.frames()[4].sp);
+  EXPECT_EQ(0x7dabc405b4ULL, unwinder.frames()[5].pc);
+  EXPECT_EQ(0x7dabf3dc50ULL, unwinder.frames()[5].sp);
+  EXPECT_EQ(0x7e7eec7e68ULL, unwinder.frames()[6].pc);
+  EXPECT_EQ(0x7dabf3dc70ULL, unwinder.frames()[6].sp);
+  // Ignore top frame since the test code was modified to end in __libc_init.
+}
+
+TEST_F(UnwindOfflineTest, shared_lib_in_apk_single_map_arm64) {
+  ASSERT_NO_FATAL_FAILURE(Init("shared_lib_in_apk_single_map_arm64/", ARCH_ARM64));
+
+  Unwinder unwinder(128, maps_.get(), regs_.get(), process_memory_);
+  unwinder.Unwind();
+
+  std::string frame_info(DumpFrames(unwinder));
+  ASSERT_EQ(13U, unwinder.NumFrames()) << "Unwind:\n" << frame_info;
+  EXPECT_EQ(
+      "  #00 pc 00000000000814bc  libc.so (syscall+28)\n"
+      "  #01 pc 00000000008cdf5c  test.apk (offset 0x5000)\n"
+      "  #02 pc 00000000008cde9c  test.apk (offset 0x5000)\n"
+      "  #03 pc 00000000008cdd70  test.apk (offset 0x5000)\n"
+      "  #04 pc 00000000008ce408  test.apk (offset 0x5000)\n"
+      "  #05 pc 00000000008ce8d8  test.apk (offset 0x5000)\n"
+      "  #06 pc 00000000008ce814  test.apk (offset 0x5000)\n"
+      "  #07 pc 00000000008bcf60  test.apk (offset 0x5000)\n"
+      "  #08 pc 0000000000133024  test.apk (offset 0x5000)\n"
+      "  #09 pc 0000000000134ad0  test.apk (offset 0x5000)\n"
+      "  #10 pc 0000000000134b64  test.apk (offset 0x5000)\n"
+      "  #11 pc 00000000000e406c  libc.so (__pthread_start(void*)+36)\n"
+      "  #12 pc 0000000000085e18  libc.so (__start_thread+64)\n",
+      frame_info);
+
+  EXPECT_EQ(0x7cbe0b14bcULL, unwinder.frames()[0].pc);
+  EXPECT_EQ(0x7be4f077d0ULL, unwinder.frames()[0].sp);
+  EXPECT_EQ(0x7be6715f5cULL, unwinder.frames()[1].pc);
+  EXPECT_EQ(0x7be4f077d0ULL, unwinder.frames()[1].sp);
+  EXPECT_EQ(0x7be6715e9cULL, unwinder.frames()[2].pc);
+  EXPECT_EQ(0x7be4f07800ULL, unwinder.frames()[2].sp);
+  EXPECT_EQ(0x7be6715d70ULL, unwinder.frames()[3].pc);
+  EXPECT_EQ(0x7be4f07840ULL, unwinder.frames()[3].sp);
+  EXPECT_EQ(0x7be6716408ULL, unwinder.frames()[4].pc);
+  EXPECT_EQ(0x7be4f07860ULL, unwinder.frames()[4].sp);
+  EXPECT_EQ(0x7be67168d8ULL, unwinder.frames()[5].pc);
+  EXPECT_EQ(0x7be4f07880ULL, unwinder.frames()[5].sp);
+  EXPECT_EQ(0x7be6716814ULL, unwinder.frames()[6].pc);
+  EXPECT_EQ(0x7be4f078f0ULL, unwinder.frames()[6].sp);
+  EXPECT_EQ(0x7be6704f60ULL, unwinder.frames()[7].pc);
+  EXPECT_EQ(0x7be4f07910ULL, unwinder.frames()[7].sp);
+  EXPECT_EQ(0x7be5f7b024ULL, unwinder.frames()[8].pc);
+  EXPECT_EQ(0x7be4f07950ULL, unwinder.frames()[8].sp);
+  EXPECT_EQ(0x7be5f7cad0ULL, unwinder.frames()[9].pc);
+  EXPECT_EQ(0x7be4f07aa0ULL, unwinder.frames()[9].sp);
+  EXPECT_EQ(0x7be5f7cb64ULL, unwinder.frames()[10].pc);
+  EXPECT_EQ(0x7be4f07ce0ULL, unwinder.frames()[10].sp);
+  EXPECT_EQ(0x7cbe11406cULL, unwinder.frames()[11].pc);
+  EXPECT_EQ(0x7be4f07d00ULL, unwinder.frames()[11].sp);
+  EXPECT_EQ(0x7cbe0b5e18ULL, unwinder.frames()[12].pc);
+  EXPECT_EQ(0x7be4f07d20ULL, unwinder.frames()[12].sp);
 }
 
 }  // namespace unwindstack

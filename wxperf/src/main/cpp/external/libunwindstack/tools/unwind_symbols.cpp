@@ -66,13 +66,13 @@ int main(int argc, char** argv) {
   }
 
   unwindstack::Elf elf(memory);
-  if (!elf.Init(true) || !elf.valid()) {
+  if (!elf.Init() || !elf.valid()) {
     printf("%s is not a valid elf file.\n", argv[1]);
     return 1;
   }
 
-  std::string soname;
-  if (elf.GetSoname(&soname)) {
+  std::string soname(elf.GetSoname());
+  if (!soname.empty()) {
     printf("Soname: %s\n\n", soname.c_str());
   }
 
@@ -95,7 +95,6 @@ int main(int argc, char** argv) {
   }
 
   std::string name;
-  uint64_t load_bias = elf.GetLoadBias();
   if (argc == 3) {
     std::string cur_name;
     uint64_t func_offset;
@@ -113,8 +112,8 @@ int main(int argc, char** argv) {
 
   // This is a crude way to get the symbols in order.
   for (const auto& entry : elf.interface()->pt_loads()) {
-    uint64_t start = entry.second.offset + load_bias;
-    uint64_t end = entry.second.table_size + load_bias;
+    uint64_t start = entry.second.offset;
+    uint64_t end = entry.second.table_size;
     for (uint64_t addr = start; addr < end; addr += 4) {
       std::string cur_name;
       uint64_t func_offset;

@@ -33,8 +33,7 @@ namespace unwindstack {
 
 #if defined(__arm__)
 
-inline __always_inline void RegsGetLocal(Regs* regs) {
-  void* reg_data = regs->RawData();
+inline __attribute__((__always_inline__)) void AsmGetRegs(void* reg_data) {
   asm volatile(
       ".align 2\n"
       "bx pc\n"
@@ -55,8 +54,7 @@ inline __always_inline void RegsGetLocal(Regs* regs) {
 
 #elif defined(__aarch64__)
 
-inline __always_inline void RegsGetLocal(Regs* regs) {
-  void* reg_data = regs->RawData();
+inline __attribute__((__always_inline__)) void AsmGetRegs(void* reg_data) {
   asm volatile(
       "1:\n"
       "stp x0, x1, [%[base], #0]\n"
@@ -87,11 +85,12 @@ inline __always_inline void RegsGetLocal(Regs* regs) {
 
 extern "C" void AsmGetRegs(void* regs);
 
-inline void RegsGetLocal(Regs* regs) {
+#endif
+
+inline __attribute__((__always_inline__)) void RegsGetLocal(Regs* regs) {
   AsmGetRegs(regs->RawData());
 }
 
-#endif
 
 }  // namespace unwindstack
 
