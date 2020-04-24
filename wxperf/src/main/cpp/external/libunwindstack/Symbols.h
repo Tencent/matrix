@@ -44,8 +44,7 @@ class Symbols {
   const Info* GetInfoFromCache(uint64_t addr);
 
   template <typename SymType>
-  bool GetName(uint64_t addr, uint64_t load_bias, Memory* elf_memory, std::string* name,
-               uint64_t* func_offset);
+  bool GetName(uint64_t addr, Memory* elf_memory, std::string* name, uint64_t* func_offset);
 
   template <typename SymType>
   bool GetGlobal(Memory* elf_memory, const std::string& name, uint64_t* memory_address);

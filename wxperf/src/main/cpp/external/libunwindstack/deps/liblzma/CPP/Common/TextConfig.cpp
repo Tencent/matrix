@@ -61,7 +61,7 @@ bool GetTextConfig(const AString &s, CObjectVector<CTextConfigPair> &pairs)
       break;
     CTextConfigPair pair;
     unsigned finishPos;
-    AString temp = GetIDString(((const char *)s) + pos, finishPos);
+    const AString temp (GetIDString(((const char *)s) + pos, finishPos));
     if (!ConvertUTF8ToUnicode(temp, pair.ID))
       return false;
     if (finishPos == 0)
@@ -107,15 +107,15 @@ bool GetTextConfig(const AString &s, CObjectVector<CTextConfigPair> &pairs)
   return true;
 }
 
-int FindTextConfigItem(const CObjectVector<CTextConfigPair> &pairs, const UString &id) throw()
+int FindTextConfigItem(const CObjectVector<CTextConfigPair> &pairs, const char *id) throw()
 {
   FOR_VECTOR (i, pairs)
-    if (pairs[i].ID == id)
+    if (pairs[i].ID.IsEqualTo(id))
       return i;
   return -1;
 }
 
-UString GetTextConfigValue(const CObjectVector<CTextConfigPair> &pairs, const UString &id)
+UString GetTextConfigValue(const CObjectVector<CTextConfigPair> &pairs, const char *id)
 {
   int index = FindTextConfigItem(pairs, id);
   if (index < 0)

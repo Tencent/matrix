@@ -85,9 +85,12 @@ C_OBJS = \
   $O\CpuArch.obj \
   $O\Delta.obj \
   $O\Lzma2Dec.obj \
+  $O\Lzma2DecMt.obj \
   $O\LzmaDec.obj \
+  $O\MtDec.obj \
   $O\Threads.obj \
 
 !include "../../Crc.mak"
+!include "../../LzmaDec.mak"
 
 !include "../../7zip.mak"

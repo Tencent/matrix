@@ -56,6 +56,8 @@ TARGET_COMPILE_OPTIONS(
   PUBLIC -D_7ZIP_ST
   PUBLIC -Wall
 #  PUBLIC -Werror
+  PUBLIC -Wno-enum-conversion
+  PUBLIC -Wno-logical-op-parentheses
   PUBLIC -Wno-unused-value
   PUBLIC -Wno-empty-body
   PUBLIC -Wno-self-assign

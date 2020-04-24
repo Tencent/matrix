@@ -62,6 +62,7 @@ public:
 class CDecoder:
   public ICompressCoder2,
   public ICompressSetFinishMode,
+  public ICompressGetInStreamProcessedSize2,
   public ICompressSetInStream2,
   public ISequentialInStream,
   public ICompressSetOutStreamSize,
@@ -84,9 +85,10 @@ class CDecoder:
   // HRESULT ReadSpec();
   
 public:
-  MY_UNKNOWN_IMP6(
+  MY_UNKNOWN_IMP7(
     ICompressCoder2,
     ICompressSetFinishMode,
+    ICompressGetInStreamProcessedSize2,
     ICompressSetInStream2,
     ISequentialInStream,
     ICompressSetOutStreamSize,
@@ -98,6 +100,7 @@ public:
       ICompressProgressInfo *progress);
 
   STDMETHOD(SetFinishMode)(UInt32 finishMode);
+  STDMETHOD(GetInStreamProcessedSize2)(UInt32 streamIndex, UInt64 *value);
 
   STDMETHOD(SetInStream2)(UInt32 streamIndex, ISequentialInStream *inStream);
   STDMETHOD(ReleaseInStream2)(UInt32 streamIndex);

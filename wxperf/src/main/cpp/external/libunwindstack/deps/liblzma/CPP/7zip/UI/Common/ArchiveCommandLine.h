@@ -6,14 +6,13 @@
 #include "../../../Common/CommandLineParser.h"
 #include "../../../Common/Wildcard.h"
 
+#include "EnumDirItems.h"
+
 #include "Extract.h"
 #include "HashCalc.h"
 #include "Update.h"
 
-struct CArcCmdLineException: public UString
-{
-  CArcCmdLineException(const char *a, const wchar_t *u = NULL);
-};
+typedef CMessagePathException CArcCmdLineException;
 
 namespace NCommandType { enum EEnum
 {
@@ -51,7 +50,7 @@ struct CArcCmdLineOptions
 {
   bool HelpMode;
 
-  bool LargePages;
+  // bool LargePages;
   bool CaseSensitiveChange;
   bool CaseSensitive;
 
@@ -110,7 +109,7 @@ struct CArcCmdLineOptions
   UInt32 NumIterations;
 
   CArcCmdLineOptions():
-      LargePages(false),
+      // LargePages(false),
       CaseSensitiveChange(false),
       CaseSensitive(false),
 
@@ -130,18 +129,8 @@ class CArcCmdLineParser
 {
   NCommandLineParser::CParser parser;
 public:
-  CArcCmdLineParser();
   void Parse1(const UStringVector &commandStrings, CArcCmdLineOptions &options);
   void Parse2(CArcCmdLineOptions &options);
 };
-
-HRESULT EnumerateDirItemsAndSort(
-    NWildcard::CCensor &censor,
-    NWildcard::ECensorPathMode pathMode,
-    const UString &addPathPrefix,
-    UStringVector &sortedPaths,
-    UStringVector &sortedFullPaths,
-    CDirItemsStat &st,
-    IDirItemsCallback *callback);
 
 #endif

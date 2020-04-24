@@ -1,5 +1,5 @@
 /* 7zBuf2.c -- Byte Buffer
-2014-08-22 : Igor Pavlov : Public domain */
+2017-04-03 : Igor Pavlov : Public domain */
 
 #include "Precomp.h"
 
@@ -19,19 +19,20 @@ void DynBuf_SeekToBeg(CDynBuf *p)
   p->pos = 0;
 }
 
-int DynBuf_Write(CDynBuf *p, const Byte *buf, size_t size, ISzAlloc *alloc)
+int DynBuf_Write(CDynBuf *p, const Byte *buf, size_t size, ISzAllocPtr alloc)
 {
   if (size > p->size - p->pos)
   {
     size_t newSize = p->pos + size;
     Byte *data;
     newSize += newSize / 4;
-    data = (Byte *)alloc->Alloc(alloc, newSize);
-    if (data == 0)
+    data = (Byte *)ISzAlloc_Alloc(alloc, newSize);
+    if (!data)
       return 0;
     p->size = newSize;
-    memcpy(data, p->data, p->pos);
-    alloc->Free(alloc, p->data);
+    if (p->pos != 0)
+      memcpy(data, p->data, p->pos);
+    ISzAlloc_Free(alloc, p->data);
     p->data = data;
   }
   if (size != 0)
@@ -42,9 +43,9 @@ int DynBuf_Write(CDynBuf *p, const Byte *buf, size_t size, ISzAlloc *alloc)
   return 1;
 }
 
-void DynBuf_Free(CDynBuf *p, ISzAlloc *alloc)
+void DynBuf_Free(CDynBuf *p, ISzAllocPtr alloc)
 {
-  alloc->Free(alloc, p->data);
+  ISzAlloc_Free(alloc, p->data);
   p->data = 0;
   p->size = 0;
   p->pos = 0;

@@ -20,6 +20,7 @@
 #include <stdint.h>
 
 #include <deque>
+#include <map>
 
 namespace unwindstack {
 
@@ -44,6 +45,12 @@ enum ArmOp : uint8_t {
   ARM_OP_FINISH = 0xb0,
 };
 
+enum ArmLogType : uint8_t {
+  ARM_LOG_NONE,
+  ARM_LOG_FULL,
+  ARM_LOG_BY_REG,
+};
+
 class ArmExidx {
  public:
   ArmExidx(RegsArm* regs, Memory* elf_memory, Memory* process_memory)
@@ -51,6 +58,8 @@ class ArmExidx {
   virtual ~ArmExidx() {}
 
   void LogRawData();
+
+  void LogByReg();
 
   bool ExtractEntryData(uint32_t entry_offset);
 
@@ -71,12 +80,13 @@ class ArmExidx {
   bool pc_set() { return pc_set_; }
   void set_pc_set(bool pc_set) { pc_set_ = pc_set; }
 
-  void set_log(bool log) { log_ = log; }
+  void set_log(ArmLogType log_type) { log_type_ = log_type; }
   void set_log_skip_execution(bool skip_execution) { log_skip_execution_ = skip_execution; }
   void set_log_indent(uint8_t indent) { log_indent_ = indent; }
 
  private:
   bool GetByte(uint8_t* byte);
+  void AdjustRegisters(int32_t offset);
 
   bool DecodePrefix_10_00(uint8_t byte);
   bool DecodePrefix_10_01(uint8_t byte);
@@ -103,10 +113,12 @@ class ArmExidx {
   Memory* elf_memory_;
   Memory* process_memory_;
 
-  bool log_ = false;
+  ArmLogType log_type_ = ARM_LOG_NONE;
   uint8_t log_indent_ = 0;
   bool log_skip_execution_ = false;
   bool pc_set_ = false;
+  int32_t log_cfa_offset_ = 0;
+  std::map<uint8_t, int32_t> log_regs_;
 };
 
 }  // namespace unwindstack

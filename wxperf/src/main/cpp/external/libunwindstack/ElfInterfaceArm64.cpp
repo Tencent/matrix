@@ -22,7 +22,7 @@
 namespace unwindstack {
 
 
-    inline bool ElfInterfaceArm64::StepPrologue(uint64_t pc, uint64_t load_bias, Regs *regs,
+    inline bool ElfInterfaceArm64::StepPrologue(uint64_t rel_pc, Regs *regs,
                                                 Memory *process_memory, bool *finished) {
 //        return false;
 
@@ -80,13 +80,13 @@ namespace unwindstack {
     }
 
     bool
-    ElfInterfaceArm64::Step(uint64_t pc, uint64_t load_bias, Regs *regs, Memory *process_memory,
+    ElfInterfaceArm64::Step(uint64_t rel_pc, Regs *regs, Memory *process_memory,
                             bool *finished) {
 //         For Arm64 devices
 //        long begin = CurrentNano();
 
-        bool ret = StepPrologue(pc, load_bias, regs, process_memory, finished)
-                   || ElfInterface64::Step(pc, load_bias, regs, process_memory, finished);
+        bool ret = StepPrologue(rel_pc, regs, process_memory, finished)
+                   || ElfInterface64::Step(rel_pc, regs, process_memory, finished);
 
 //        LOGE("Unwind-debug", "step arm64 cost: %ld", (CurrentNano() - begin));
 

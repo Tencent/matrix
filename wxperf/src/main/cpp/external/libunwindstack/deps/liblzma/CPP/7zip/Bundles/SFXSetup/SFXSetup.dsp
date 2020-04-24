@@ -449,6 +449,14 @@ SOURCE=..\..\..\Windows\Synchronization.h
 # End Source File
 # Begin Source File
 
+SOURCE=..\..\..\Windows\System.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=..\..\..\Windows\System.h
+# End Source File
+# Begin Source File
+
 SOURCE=..\..\..\Windows\Window.cpp
 # End Source File
 # Begin Source File
@@ -466,6 +474,14 @@ SOURCE=..\..\Common\CreateCoder.cpp
 # Begin Source File
 
 SOURCE=..\..\Common\CreateCoder.h
+# End Source File
+# Begin Source File
+
+SOURCE=..\..\Common\CWrappers.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=..\..\Common\CWrappers.h
 # End Source File
 # Begin Source File
 
@@ -724,12 +740,30 @@ SOURCE=..\..\..\..\C\Lzma2Dec.h
 # End Source File
 # Begin Source File
 
+SOURCE=..\..\..\..\C\Lzma2DecMt.c
+# SUBTRACT CPP /YX /Yc /Yu
+# End Source File
+# Begin Source File
+
+SOURCE=..\..\..\..\C\Lzma2DecMt.h
+# End Source File
+# Begin Source File
+
 SOURCE=..\..\..\..\C\LzmaDec.c
 # SUBTRACT CPP /YX /Yc /Yu
 # End Source File
 # Begin Source File
 
 SOURCE=..\..\..\..\C\LzmaDec.h
+# End Source File
+# Begin Source File
+
+SOURCE=..\..\..\..\C\MtDec.c
+# SUBTRACT CPP /YX /Yc /Yu
+# End Source File
+# Begin Source File
+
+SOURCE=..\..\..\..\C\MtDec.h
 # End Source File
 # Begin Source File
 

@@ -1,2 +1,0 @@
-The pom_template.xml is for a Maven repository but it's not meant
-for building the project. Note that build.xml will replace @foo@ tags.

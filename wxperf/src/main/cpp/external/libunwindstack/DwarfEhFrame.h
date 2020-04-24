@@ -25,9 +25,9 @@
 namespace unwindstack {
 
 template <typename AddressType>
-class DwarfEhFrame : public DwarfSectionImpl<AddressType> {
+class DwarfEhFrame : public DwarfSectionImplNoHdr<AddressType> {
  public:
-  DwarfEhFrame(Memory* memory) : DwarfSectionImpl<AddressType>(memory) {}
+  DwarfEhFrame(Memory* memory) : DwarfSectionImplNoHdr<AddressType>(memory) {}
   virtual ~DwarfEhFrame() = default;
 
   uint64_t GetCieOffsetFromFde32(uint32_t pointer) override {

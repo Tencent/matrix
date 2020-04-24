@@ -9,7 +9,6 @@
 #include "../../Common/MethodProps.h"
 
 #include "DirItem.h"
-#include "Property.h"
 
 const unsigned k_HashCalc_DigestSize_Max = 64;
 
@@ -52,9 +51,13 @@ struct CHashBundle: public IHashCalc
 
   UInt64 CurSize;
 
+  UString MainName;
+  UString FirstFileName;
+
   HRESULT SetMethods(DECL_EXTERNAL_CODECS_LOC_VARS const UStringVector &methods);
   
-  void Init()
+  // void Init() {}
+  CHashBundle()
   {
     NumDirs = NumFiles = NumAltStreams = FilesSize = AltStreamsSize = NumErrors = 0;
   }
@@ -77,7 +80,7 @@ struct CHashBundle: public IHashCalc
   virtual HRESULT GetStream(const wchar_t *name, bool isFolder) x; \
   virtual HRESULT OpenFileError(const FString &path, DWORD systemError) x; \
   virtual HRESULT SetOperationResult(UInt64 fileSize, const CHashBundle &hb, bool showHash) x; \
-  virtual HRESULT AfterLastFile(const CHashBundle &hb) x; \
+  virtual HRESULT AfterLastFile(CHashBundle &hb) x; \
 
 struct IHashCallbackUI: public IDirItemsCallback
 {

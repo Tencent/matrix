@@ -26,9 +26,9 @@
 namespace unwindstack {
 
 template <typename AddressType>
-class DwarfDebugFrame : public DwarfSectionImpl<AddressType> {
+class DwarfDebugFrame : public DwarfSectionImplNoHdr<AddressType> {
  public:
-  DwarfDebugFrame(Memory* memory) : DwarfSectionImpl<AddressType>(memory) {
+  DwarfDebugFrame(Memory* memory) : DwarfSectionImplNoHdr<AddressType>(memory) {
     this->cie32_value_ = static_cast<uint32_t>(-1);
     this->cie64_value_ = static_cast<uint64_t>(-1);
   }

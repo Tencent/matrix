@@ -1,4 +1,4 @@
-package external.libunwindstack.deps.liblzma.Java.SevenZip.Compression.LZMA;
+package SevenZip.Compression.LZMA;
 
 import SevenZip.Compression.RangeCoder.BitTreeEncoder;
 import SevenZip.Compression.LZMA.Base;
@@ -428,7 +428,7 @@ public class Encoder
 		_additionalOffset = 0;
 	}
 
-	int ReadMatchDistances() throws IOException
+	int ReadMatchDistances() throws java.io.IOException
 	{
 		int lenRes = 0;
 		_numDistancePairs = _matchFinder.GetMatches(_matchDistances);
@@ -443,7 +443,7 @@ public class Encoder
 		return lenRes;
 	}
 
-	void MovePos(int num) throws IOException
+	void MovePos(int num) throws java.io.IOException
 	{
 		if (num > 0)
 		{

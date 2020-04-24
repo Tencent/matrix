@@ -2,9 +2,6 @@
 
 #include "StdAfx.h"
 
-#include "../../Common/Defs.h"
-#include "../../Common/IntToString.h"
-
 #include "../../Windows/FileFind.h"
 
 #include "FilePathAutoRename.h"
@@ -14,10 +11,8 @@ using namespace NWindows;
 static bool MakeAutoName(const FString &name,
     const FString &extension, UInt32 value, FString &path)
 {
-  char temp[16];
-  ConvertUInt32ToString(value, temp);
   path = name;
-  path.AddAscii(temp);
+  path.Add_UInt32(value);
   path += extension;
   return NFile::NFind::DoesFileOrDirExist(path);
 }
@@ -34,7 +29,7 @@ bool AutoRenamePath(FString &path)
     name.DeleteFrom(dotPos);
     extension = path.Ptr(dotPos);
   }
-  name += FTEXT('_');
+  name += '_';
   
   FString temp;
 

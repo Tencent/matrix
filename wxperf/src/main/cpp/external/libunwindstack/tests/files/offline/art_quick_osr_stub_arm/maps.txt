@@ -1,3 +1,4 @@
 d0250000-d2600000 r-xp 0 00:00 0 <anonymous:d0250000>
 e466e000-e4ae8000 r-xp 0 00:00 0 libart.so
+e4ae8000-e4ae9000 rw-p 1000 00:00 0 libart.so
 e7d91000-e7e31000 r-xp 0 00:00 0 libc.so

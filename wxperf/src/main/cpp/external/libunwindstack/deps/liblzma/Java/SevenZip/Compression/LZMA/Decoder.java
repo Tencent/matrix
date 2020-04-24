@@ -1,4 +1,4 @@
-package external.libunwindstack.deps.liblzma.Java.SevenZip.Compression.LZMA;
+package SevenZip.Compression.LZMA;
 
 import SevenZip.Compression.RangeCoder.BitTreeDecoder;
 import SevenZip.Compression.LZMA.Base;

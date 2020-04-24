@@ -13,7 +13,9 @@ struct CMethodFull: public CMethodProps
 {
   CMethodId Id;
   UInt32 NumStreams;
+  int CodecIndex;
 
+  CMethodFull(): CodecIndex(-1) {}
   bool IsSimpleCoder() const { return NumStreams == 1; }
 };
 

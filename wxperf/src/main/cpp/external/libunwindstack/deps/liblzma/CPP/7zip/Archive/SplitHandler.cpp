@@ -181,7 +181,7 @@ HRESULT CHandler::Open2(IInStream *stream, IArchiveOpenCallback *callback)
   seqName._splitStyle = splitStyle;
   
   if (prefix.Len() < 1)
-    _subName.SetFromAscii("file");
+    _subName = "file";
   else
     _subName.SetFrom(prefix, prefix.Len() - 1);
   

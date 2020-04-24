@@ -33,7 +33,7 @@ If you want to use old interfaces you can download previous version of LZMA SDK
 from sourceforge.net site.
 
 To use ANSI-C LZMA Decoder you need the following files:
-1) LzmaDec.h + LzmaDec.c + Types.h
+1) LzmaDec.h + LzmaDec.c + 7zTypes.h + Precomp.h + Compiler.h
 
 Look example code:
   C/Util/Lzma/LzmaUtil.c
@@ -70,7 +70,7 @@ You can use p = p; operator to disable compiler warnings.
 Single-call Decompressing
 -------------------------
 When to use: RAM->RAM decompressing
-Compile files: LzmaDec.h + LzmaDec.c + Types.h
+Compile files: LzmaDec.h + LzmaDec.c + 7zTypes.h
 Compile defines: no defines
 Memory Requirements:
   - Input buffer: compressed size
@@ -124,7 +124,7 @@ Multi-call State Decompressing (zlib-like interface)
 ----------------------------------------------------
 
 When to use: file->file decompressing 
-Compile files: LzmaDec.h + LzmaDec.c + Types.h
+Compile files: LzmaDec.h + LzmaDec.c + 7zTypes.h
 
 Memory Requirements:
  - Buffer for input stream: any size (for example, 16 KB)
@@ -167,7 +167,7 @@ How To compress data
 --------------------
 
 Compile files: 
-  Types.h
+  7zTypes.h
   Threads.h	
   LzmaEnc.h
   LzmaEnc.c

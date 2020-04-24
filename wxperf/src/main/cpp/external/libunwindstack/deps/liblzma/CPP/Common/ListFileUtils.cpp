@@ -25,14 +25,21 @@ static void AddName(UStringVector &strings, UString &s)
     strings.Add(s);
 }
 
-bool ReadNamesFromListFile(CFSTR fileName, UStringVector &strings, UINT codePage)
+bool ReadNamesFromListFile2(CFSTR fileName, UStringVector &strings, UINT codePage, DWORD &lastError)
 {
+  lastError = 0;
   NWindows::NFile::NIO::CInFile file;
   if (!file.Open(fileName))
+  {
+    lastError = ::GetLastError();
     return false;
+  }
   UInt64 fileSize;
   if (!file.GetLength(fileSize))
+  {
+    lastError = ::GetLastError();
     return false;
+  }
   if (fileSize >= ((UInt32)1 << 31) - 32)
     return false;
   UString u;
@@ -43,7 +50,10 @@ bool ReadNamesFromListFile(CFSTR fileName, UStringVector &strings, UINT codePage
     CByteArr buf((size_t)fileSize);
     UInt32 processed;
     if (!file.Read(buf, (UInt32)fileSize, processed))
+    {
+      lastError = ::GetLastError();
       return false;
+    }
     if (processed != fileSize)
       return false;
     file.Close();
@@ -52,7 +62,7 @@ bool ReadNamesFromListFile(CFSTR fileName, UStringVector &strings, UINT codePage
     if (codePage == MY__CP_UTF16)
       for (unsigned i = 0; i < num; i++)
       {
-        wchar_t c = GetUi16(buf + i * 2);
+        wchar_t c = GetUi16(buf + (size_t)i * 2);
         if (c == 0)
           return false;
         p[i] = c;
@@ -60,7 +70,7 @@ bool ReadNamesFromListFile(CFSTR fileName, UStringVector &strings, UINT codePage
     else
       for (unsigned i = 0; i < num; i++)
       {
-        wchar_t c = (wchar_t)GetBe16(buf + i * 2);
+        wchar_t c = (wchar_t)GetBe16(buf + (size_t)i * 2);
         if (c == 0)
           return false;
         p[i] = c;
@@ -74,7 +84,10 @@ bool ReadNamesFromListFile(CFSTR fileName, UStringVector &strings, UINT codePage
     char *p = s.GetBuf((unsigned)fileSize);
     UInt32 processed;
     if (!file.Read(p, (UInt32)fileSize, processed))
+    {
+      lastError = ::GetLastError();
       return false;
+    }
     if (processed != fileSize)
       return false;
     file.Close();
@@ -104,7 +117,7 @@ bool ReadNamesFromListFile(CFSTR fileName, UStringVector &strings, UINT codePage
     wchar_t c = u[i];
     if (c == kGoodBOM || c == kBadBOM)
       return false;
-    if (c == L'\n' || c == 0xD)
+    if (c == '\n' || c == 0xD)
     {
       AddName(strings, s);
       s.Empty();

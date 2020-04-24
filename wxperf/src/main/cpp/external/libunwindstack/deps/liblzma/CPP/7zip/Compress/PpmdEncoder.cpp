@@ -43,7 +43,7 @@ CEncoder::CEncoder():
   _inBuf(NULL)
 {
   _props.Normalize(-1);
-  _rangeEnc.Stream = &_outStream.p;
+  _rangeEnc.Stream = &_outStream.vt;
   Ppmd7_Construct(&_ppmd);
 }
 

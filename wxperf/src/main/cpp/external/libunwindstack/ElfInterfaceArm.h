@@ -64,28 +64,30 @@ class ElfInterfaceArm : public ElfInterface32 {
   iterator begin() { return iterator(this, 0); }
   iterator end() { return iterator(this, total_entries_); }
 
+  bool Init(uint64_t* load_bias) override;
+
   bool GetPrel31Addr(uint32_t offset, uint32_t* addr);
 
   bool FindEntry(uint32_t pc, uint64_t* entry_offset);
 
-  bool HandleType(uint64_t offset, uint32_t type, uint64_t load_bias) override;
+  void HandleUnknownType(uint32_t type, uint64_t ph_offset, uint64_t ph_filesz) override;
 
-  bool Step(uint64_t pc, uint64_t load_bias, Regs* regs, Memory* process_memory,
-            bool* finished) override;
+  bool Step(uint64_t pc, Regs* regs, Memory* process_memory, bool* finished) override;
 
-  bool StepExidx(uint64_t pc, uint64_t load_bias, Regs* regs, Memory* process_memory,
-                 bool* finished);
+  bool StepExidx(uint64_t pc, Regs* regs, Memory* process_memory, bool* finished);
 
-  bool GetFunctionName(uint64_t addr, uint64_t load_bias, std::string* name,
-                       uint64_t* offset) override;
+  bool GetFunctionName(uint64_t addr, std::string* name, uint64_t* offset) override;
 
   uint64_t start_offset() { return start_offset_; }
 
   size_t total_entries() { return total_entries_; }
 
+  void set_load_bias(uint64_t load_bias) { load_bias_ = load_bias; }
+
  protected:
   uint64_t start_offset_ = 0;
   size_t total_entries_ = 0;
+  uint64_t load_bias_ = 0;
 
   std::unordered_map<size_t, uint32_t> addrs_;
 };

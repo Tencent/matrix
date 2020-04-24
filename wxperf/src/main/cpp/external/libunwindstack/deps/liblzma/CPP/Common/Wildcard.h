@@ -139,7 +139,7 @@ public:
   }
   void AddPreItem_Wildcard()
   {
-    AddPreItem(true, L"*", false, true);
+    AddPreItem(true, UString("*"), false, true);
   }
 };
 

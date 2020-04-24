@@ -79,7 +79,7 @@ TYPED_TEST_P(DwarfCfaLogTest, cfa_illegal) {
     this->memory_.SetMemory(0x2000, std::vector<uint8_t>{i});
 
     ResetLogs();
-    ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0, 0x2000, 0x2001));
+    ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0x2000, 0x2001));
     std::string expected = "4 unwind Illegal\n";
     expected += android::base::StringPrintf("4 unwind Raw Data: 0x%02x\n", i);
     ASSERT_EQ(expected, GetFakeLogPrint());
@@ -90,7 +90,7 @@ TYPED_TEST_P(DwarfCfaLogTest, cfa_illegal) {
 TYPED_TEST_P(DwarfCfaLogTest, cfa_nop) {
   this->memory_.SetMemory(0x2000, std::vector<uint8_t>{0x00});
 
-  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0, 0x2000, 0x2001));
+  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0x2000, 0x2001));
   std::string expected =
       "4 unwind DW_CFA_nop\n"
       "4 unwind Raw Data: 0x00\n";
@@ -101,7 +101,7 @@ TYPED_TEST_P(DwarfCfaLogTest, cfa_nop) {
 TYPED_TEST_P(DwarfCfaLogTest, cfa_offset) {
   this->memory_.SetMemory(0x2000, std::vector<uint8_t>{0x83, 0x04});
 
-  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0, 0x2000, 0x2002));
+  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0x2000, 0x2002));
   std::string expected =
       "4 unwind DW_CFA_offset register(3) 4\n"
       "4 unwind Raw Data: 0x83 0x04\n";
@@ -111,7 +111,7 @@ TYPED_TEST_P(DwarfCfaLogTest, cfa_offset) {
   ResetLogs();
   this->memory_.SetMemory(0x2100, std::vector<uint8_t>{0x83, 0x84, 0x01});
 
-  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0, 0x2100, 0x2103));
+  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0x2100, 0x2103));
   expected =
       "4 unwind DW_CFA_offset register(3) 132\n"
       "4 unwind Raw Data: 0x83 0x84 0x01\n";
@@ -122,7 +122,7 @@ TYPED_TEST_P(DwarfCfaLogTest, cfa_offset) {
 TYPED_TEST_P(DwarfCfaLogTest, cfa_offset_extended) {
   this->memory_.SetMemory(0x500, std::vector<uint8_t>{0x05, 0x03, 0x02});
 
-  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0, 0x500, 0x503));
+  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0x500, 0x503));
   std::string expected =
       "4 unwind DW_CFA_offset_extended register(3) 2\n"
       "4 unwind Raw Data: 0x05 0x03 0x02\n";
@@ -132,7 +132,7 @@ TYPED_TEST_P(DwarfCfaLogTest, cfa_offset_extended) {
   ResetLogs();
   this->memory_.SetMemory(0x1500, std::vector<uint8_t>{0x05, 0x81, 0x01, 0x82, 0x12});
 
-  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0, 0x1500, 0x1505));
+  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0x1500, 0x1505));
   expected =
       "4 unwind DW_CFA_offset_extended register(129) 2306\n"
       "4 unwind Raw Data: 0x05 0x81 0x01 0x82 0x12\n";
@@ -143,7 +143,7 @@ TYPED_TEST_P(DwarfCfaLogTest, cfa_offset_extended) {
 TYPED_TEST_P(DwarfCfaLogTest, cfa_offset_extended_sf) {
   this->memory_.SetMemory(0x500, std::vector<uint8_t>{0x11, 0x05, 0x10});
 
-  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0, 0x500, 0x503));
+  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0x500, 0x503));
   std::string expected =
       "4 unwind DW_CFA_offset_extended_sf register(5) 16\n"
       "4 unwind Raw Data: 0x11 0x05 0x10\n";
@@ -154,7 +154,7 @@ TYPED_TEST_P(DwarfCfaLogTest, cfa_offset_extended_sf) {
   ResetLogs();
   this->memory_.SetMemory(0x1500, std::vector<uint8_t>{0x11, 0x86, 0x01, 0xff, 0x7f});
 
-  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0, 0x1500, 0x1505));
+  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0x1500, 0x1505));
   expected =
       "4 unwind DW_CFA_offset_extended_sf register(134) -1\n"
       "4 unwind Raw Data: 0x11 0x86 0x01 0xff 0x7f\n";
@@ -165,7 +165,7 @@ TYPED_TEST_P(DwarfCfaLogTest, cfa_offset_extended_sf) {
 TYPED_TEST_P(DwarfCfaLogTest, cfa_restore) {
   this->memory_.SetMemory(0x2000, std::vector<uint8_t>{0xc2});
 
-  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0, 0x2000, 0x2001));
+  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0x2000, 0x2001));
   std::string expected =
       "4 unwind DW_CFA_restore register(2)\n"
       "4 unwind Raw Data: 0xc2\n";
@@ -175,7 +175,7 @@ TYPED_TEST_P(DwarfCfaLogTest, cfa_restore) {
   ResetLogs();
   this->memory_.SetMemory(0x3000, std::vector<uint8_t>{0x82, 0x04, 0xc2});
 
-  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0, 0x3000, 0x3003));
+  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0x3000, 0x3003));
   expected =
       "4 unwind DW_CFA_offset register(2) 4\n"
       "4 unwind Raw Data: 0x82 0x04\n"
@@ -188,7 +188,7 @@ TYPED_TEST_P(DwarfCfaLogTest, cfa_restore) {
 TYPED_TEST_P(DwarfCfaLogTest, cfa_restore_extended) {
   this->memory_.SetMemory(0x4000, std::vector<uint8_t>{0x06, 0x08});
 
-  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0, 0x4000, 0x4002));
+  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0x4000, 0x4002));
   std::string expected =
       "4 unwind DW_CFA_restore_extended register(8)\n"
       "4 unwind Raw Data: 0x06 0x08\n";
@@ -198,7 +198,7 @@ TYPED_TEST_P(DwarfCfaLogTest, cfa_restore_extended) {
   ResetLogs();
   this->memory_.SetMemory(0x5000, std::vector<uint8_t>{0x05, 0x82, 0x02, 0x04, 0x06, 0x82, 0x02});
 
-  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0, 0x5000, 0x5007));
+  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0x5000, 0x5007));
   expected =
       "4 unwind DW_CFA_offset_extended register(258) 4\n"
       "4 unwind Raw Data: 0x05 0x82 0x02 0x04\n"
@@ -228,7 +228,7 @@ TYPED_TEST_P(DwarfCfaLogTest, cfa_set_loc) {
   this->memory_.SetMemory(0x50, buffer, sizeof(buffer));
   ResetLogs();
 
-  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0, 0x50, 0x51 + sizeof(TypeParam)));
+  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0x50, 0x51 + sizeof(TypeParam)));
   std::string expected = "4 unwind DW_CFA_set_loc " + address_str + "\n";
   expected += "4 unwind " + raw_data + "\n";
   expected += "4 unwind \n";
@@ -240,7 +240,7 @@ TYPED_TEST_P(DwarfCfaLogTest, cfa_set_loc) {
   ResetLogs();
   this->fde_.pc_start = address + 0x10;
 
-  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0, 0x50, 0x51 + sizeof(TypeParam)));
+  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0x50, 0x51 + sizeof(TypeParam)));
   expected = "4 unwind DW_CFA_set_loc " + address_str + "\n";
   expected += "4 unwind " + raw_data + "\n";
   expected += "4 unwind \n";
@@ -252,7 +252,7 @@ TYPED_TEST_P(DwarfCfaLogTest, cfa_set_loc) {
 TYPED_TEST_P(DwarfCfaLogTest, cfa_advance_loc) {
   this->memory_.SetMemory(0x200, std::vector<uint8_t>{0x44});
 
-  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0, 0x200, 0x201));
+  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0x200, 0x201));
   std::string expected =
       "4 unwind DW_CFA_advance_loc 4\n"
       "4 unwind Raw Data: 0x44\n"
@@ -260,22 +260,12 @@ TYPED_TEST_P(DwarfCfaLogTest, cfa_advance_loc) {
       "4 unwind PC 0x2010\n";
   ASSERT_EQ(expected, GetFakeLogPrint());
   ASSERT_EQ("", GetFakeLogBuf());
-
-  ResetLogs();
-  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0x100, 0x200, 0x201));
-  expected =
-      "4 unwind DW_CFA_advance_loc 4\n"
-      "4 unwind Raw Data: 0x44\n"
-      "4 unwind \n"
-      "4 unwind PC 0x2110\n";
-  ASSERT_EQ(expected, GetFakeLogPrint());
-  ASSERT_EQ("", GetFakeLogBuf());
 }
 
 TYPED_TEST_P(DwarfCfaLogTest, cfa_advance_loc1) {
   this->memory_.SetMemory(0x200, std::vector<uint8_t>{0x02, 0x04});
 
-  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0, 0x200, 0x202));
+  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0x200, 0x202));
   std::string expected =
       "4 unwind DW_CFA_advance_loc1 4\n"
       "4 unwind Raw Data: 0x02 0x04\n"
@@ -283,22 +273,12 @@ TYPED_TEST_P(DwarfCfaLogTest, cfa_advance_loc1) {
       "4 unwind PC 0x2004\n";
   ASSERT_EQ(expected, GetFakeLogPrint());
   ASSERT_EQ("", GetFakeLogBuf());
-
-  ResetLogs();
-  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0x10, 0x200, 0x202));
-  expected =
-      "4 unwind DW_CFA_advance_loc1 4\n"
-      "4 unwind Raw Data: 0x02 0x04\n"
-      "4 unwind \n"
-      "4 unwind PC 0x2014\n";
-  ASSERT_EQ(expected, GetFakeLogPrint());
-  ASSERT_EQ("", GetFakeLogBuf());
 }
 
 TYPED_TEST_P(DwarfCfaLogTest, cfa_advance_loc2) {
   this->memory_.SetMemory(0x600, std::vector<uint8_t>{0x03, 0x04, 0x03});
 
-  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0, 0x600, 0x603));
+  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0x600, 0x603));
   std::string expected =
       "4 unwind DW_CFA_advance_loc2 772\n"
       "4 unwind Raw Data: 0x03 0x04 0x03\n"
@@ -306,22 +286,12 @@ TYPED_TEST_P(DwarfCfaLogTest, cfa_advance_loc2) {
       "4 unwind PC 0x2304\n";
   ASSERT_EQ(expected, GetFakeLogPrint());
   ASSERT_EQ("", GetFakeLogBuf());
-
-  ResetLogs();
-  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0x1000, 0x600, 0x603));
-  expected =
-      "4 unwind DW_CFA_advance_loc2 772\n"
-      "4 unwind Raw Data: 0x03 0x04 0x03\n"
-      "4 unwind \n"
-      "4 unwind PC 0x3304\n";
-  ASSERT_EQ(expected, GetFakeLogPrint());
-  ASSERT_EQ("", GetFakeLogBuf());
 }
 
 TYPED_TEST_P(DwarfCfaLogTest, cfa_advance_loc4) {
   this->memory_.SetMemory(0x500, std::vector<uint8_t>{0x04, 0x04, 0x03, 0x02, 0x01});
 
-  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0, 0x500, 0x505));
+  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0x500, 0x505));
   std::string expected =
       "4 unwind DW_CFA_advance_loc4 16909060\n"
       "4 unwind Raw Data: 0x04 0x04 0x03 0x02 0x01\n"
@@ -329,22 +299,12 @@ TYPED_TEST_P(DwarfCfaLogTest, cfa_advance_loc4) {
       "4 unwind PC 0x1022304\n";
   ASSERT_EQ(expected, GetFakeLogPrint());
   ASSERT_EQ("", GetFakeLogBuf());
-
-  ResetLogs();
-  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0x2000, 0x500, 0x505));
-  expected =
-      "4 unwind DW_CFA_advance_loc4 16909060\n"
-      "4 unwind Raw Data: 0x04 0x04 0x03 0x02 0x01\n"
-      "4 unwind \n"
-      "4 unwind PC 0x1024304\n";
-  ASSERT_EQ(expected, GetFakeLogPrint());
-  ASSERT_EQ("", GetFakeLogBuf());
 }
 
 TYPED_TEST_P(DwarfCfaLogTest, cfa_undefined) {
   this->memory_.SetMemory(0xa00, std::vector<uint8_t>{0x07, 0x09});
 
-  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0, 0xa00, 0xa02));
+  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0xa00, 0xa02));
   std::string expected =
       "4 unwind DW_CFA_undefined register(9)\n"
       "4 unwind Raw Data: 0x07 0x09\n";
@@ -355,7 +315,7 @@ TYPED_TEST_P(DwarfCfaLogTest, cfa_undefined) {
   dwarf_loc_regs_t cie_loc_regs;
   this->memory_.SetMemory(0x1a00, std::vector<uint8_t>{0x07, 0x81, 0x01});
 
-  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0, 0x1a00, 0x1a03));
+  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0x1a00, 0x1a03));
   expected =
       "4 unwind DW_CFA_undefined register(129)\n"
       "4 unwind Raw Data: 0x07 0x81 0x01\n";
@@ -366,7 +326,7 @@ TYPED_TEST_P(DwarfCfaLogTest, cfa_undefined) {
 TYPED_TEST_P(DwarfCfaLogTest, cfa_same) {
   this->memory_.SetMemory(0x100, std::vector<uint8_t>{0x08, 0x7f});
 
-  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0, 0x100, 0x102));
+  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0x100, 0x102));
   std::string expected =
       "4 unwind DW_CFA_same_value register(127)\n"
       "4 unwind Raw Data: 0x08 0x7f\n";
@@ -376,7 +336,7 @@ TYPED_TEST_P(DwarfCfaLogTest, cfa_same) {
   ResetLogs();
   this->memory_.SetMemory(0x2100, std::vector<uint8_t>{0x08, 0xff, 0x01});
 
-  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0, 0x2100, 0x2103));
+  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0x2100, 0x2103));
   expected =
       "4 unwind DW_CFA_same_value register(255)\n"
       "4 unwind Raw Data: 0x08 0xff 0x01\n";
@@ -387,7 +347,7 @@ TYPED_TEST_P(DwarfCfaLogTest, cfa_same) {
 TYPED_TEST_P(DwarfCfaLogTest, cfa_register) {
   this->memory_.SetMemory(0x300, std::vector<uint8_t>{0x09, 0x02, 0x01});
 
-  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0, 0x300, 0x303));
+  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0x300, 0x303));
   std::string expected =
       "4 unwind DW_CFA_register register(2) register(1)\n"
       "4 unwind Raw Data: 0x09 0x02 0x01\n";
@@ -397,7 +357,7 @@ TYPED_TEST_P(DwarfCfaLogTest, cfa_register) {
   ResetLogs();
   this->memory_.SetMemory(0x4300, std::vector<uint8_t>{0x09, 0xff, 0x01, 0xff, 0x03});
 
-  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0, 0x4300, 0x4305));
+  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0x4300, 0x4305));
   expected =
       "4 unwind DW_CFA_register register(255) register(511)\n"
       "4 unwind Raw Data: 0x09 0xff 0x01 0xff 0x03\n";
@@ -408,7 +368,7 @@ TYPED_TEST_P(DwarfCfaLogTest, cfa_register) {
 TYPED_TEST_P(DwarfCfaLogTest, cfa_state) {
   this->memory_.SetMemory(0x300, std::vector<uint8_t>{0x0a});
 
-  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0, 0x300, 0x301));
+  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0x300, 0x301));
 
   std::string expected =
       "4 unwind DW_CFA_remember_state\n"
@@ -419,7 +379,7 @@ TYPED_TEST_P(DwarfCfaLogTest, cfa_state) {
   ResetLogs();
   this->memory_.SetMemory(0x4300, std::vector<uint8_t>{0x0b});
 
-  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0, 0x4300, 0x4301));
+  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0x4300, 0x4301));
 
   expected =
       "4 unwind DW_CFA_restore_state\n"
@@ -431,7 +391,7 @@ TYPED_TEST_P(DwarfCfaLogTest, cfa_state) {
 TYPED_TEST_P(DwarfCfaLogTest, cfa_state_cfa_offset_restore) {
   this->memory_.SetMemory(0x3000, std::vector<uint8_t>{0x0a, 0x0e, 0x40, 0x0b});
 
-  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0, 0x3000, 0x3004));
+  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0x3000, 0x3004));
 
   std::string expected =
       "4 unwind DW_CFA_remember_state\n"
@@ -447,7 +407,7 @@ TYPED_TEST_P(DwarfCfaLogTest, cfa_state_cfa_offset_restore) {
 TYPED_TEST_P(DwarfCfaLogTest, cfa_def_cfa) {
   this->memory_.SetMemory(0x100, std::vector<uint8_t>{0x0c, 0x7f, 0x74});
 
-  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0, 0x100, 0x103));
+  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0x100, 0x103));
 
   std::string expected =
       "4 unwind DW_CFA_def_cfa register(127) 116\n"
@@ -458,7 +418,7 @@ TYPED_TEST_P(DwarfCfaLogTest, cfa_def_cfa) {
   ResetLogs();
   this->memory_.SetMemory(0x200, std::vector<uint8_t>{0x0c, 0xff, 0x02, 0xf4, 0x04});
 
-  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0, 0x200, 0x205));
+  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0x200, 0x205));
 
   expected =
       "4 unwind DW_CFA_def_cfa register(383) 628\n"
@@ -470,7 +430,7 @@ TYPED_TEST_P(DwarfCfaLogTest, cfa_def_cfa) {
 TYPED_TEST_P(DwarfCfaLogTest, cfa_def_cfa_sf) {
   this->memory_.SetMemory(0x100, std::vector<uint8_t>{0x12, 0x30, 0x25});
 
-  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0, 0x100, 0x103));
+  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0x100, 0x103));
 
   std::string expected =
       "4 unwind DW_CFA_def_cfa_sf register(48) 37\n"
@@ -482,7 +442,7 @@ TYPED_TEST_P(DwarfCfaLogTest, cfa_def_cfa_sf) {
   ResetLogs();
   this->memory_.SetMemory(0x200, std::vector<uint8_t>{0x12, 0xa3, 0x01, 0xfa, 0x7f});
 
-  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0, 0x200, 0x205));
+  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0x200, 0x205));
 
   expected =
       "4 unwind DW_CFA_def_cfa_sf register(163) -6\n"
@@ -494,7 +454,7 @@ TYPED_TEST_P(DwarfCfaLogTest, cfa_def_cfa_sf) {
 TYPED_TEST_P(DwarfCfaLogTest, cfa_def_cfa_register) {
   this->memory_.SetMemory(0x100, std::vector<uint8_t>{0x0d, 0x72});
 
-  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0, 0x100, 0x102));
+  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0x100, 0x102));
 
   std::string expected =
       "4 unwind DW_CFA_def_cfa_register register(114)\n"
@@ -505,7 +465,7 @@ TYPED_TEST_P(DwarfCfaLogTest, cfa_def_cfa_register) {
   ResetLogs();
   this->memory_.SetMemory(0x200, std::vector<uint8_t>{0x0d, 0xf9, 0x20});
 
-  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0, 0x200, 0x203));
+  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0x200, 0x203));
 
   expected =
       "4 unwind DW_CFA_def_cfa_register register(4217)\n"
@@ -517,7 +477,7 @@ TYPED_TEST_P(DwarfCfaLogTest, cfa_def_cfa_register) {
 TYPED_TEST_P(DwarfCfaLogTest, cfa_def_cfa_offset) {
   this->memory_.SetMemory(0x100, std::vector<uint8_t>{0x0e, 0x59});
 
-  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0, 0x100, 0x102));
+  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0x100, 0x102));
 
   std::string expected =
       "4 unwind DW_CFA_def_cfa_offset 89\n"
@@ -526,7 +486,7 @@ TYPED_TEST_P(DwarfCfaLogTest, cfa_def_cfa_offset) {
   ASSERT_EQ("", GetFakeLogBuf());
 
   ResetLogs();
-  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0, 0x100, 0x102));
+  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0x100, 0x102));
 
   expected =
       "4 unwind DW_CFA_def_cfa_offset 89\n"
@@ -537,7 +497,7 @@ TYPED_TEST_P(DwarfCfaLogTest, cfa_def_cfa_offset) {
   ResetLogs();
   this->memory_.SetMemory(0x200, std::vector<uint8_t>{0x0e, 0xd4, 0x0a});
 
-  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0, 0x200, 0x203));
+  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0x200, 0x203));
 
   expected =
       "4 unwind DW_CFA_def_cfa_offset 1364\n"
@@ -549,7 +509,7 @@ TYPED_TEST_P(DwarfCfaLogTest, cfa_def_cfa_offset) {
 TYPED_TEST_P(DwarfCfaLogTest, cfa_def_cfa_offset_sf) {
   this->memory_.SetMemory(0x100, std::vector<uint8_t>{0x13, 0x23});
 
-  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0, 0x100, 0x102));
+  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0x100, 0x102));
 
   std::string expected =
       "4 unwind DW_CFA_def_cfa_offset_sf 35\n"
@@ -558,7 +518,7 @@ TYPED_TEST_P(DwarfCfaLogTest, cfa_def_cfa_offset_sf) {
   ASSERT_EQ("", GetFakeLogBuf());
 
   ResetLogs();
-  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0, 0x100, 0x102));
+  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0x100, 0x102));
 
   expected =
       "4 unwind DW_CFA_def_cfa_offset_sf 35\n"
@@ -570,7 +530,7 @@ TYPED_TEST_P(DwarfCfaLogTest, cfa_def_cfa_offset_sf) {
   ResetLogs();
   this->memory_.SetMemory(0x200, std::vector<uint8_t>{0x13, 0xf6, 0x7f});
 
-  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0, 0x200, 0x203));
+  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0x200, 0x203));
 
   expected =
       "4 unwind DW_CFA_def_cfa_offset_sf -10\n"
@@ -582,7 +542,7 @@ TYPED_TEST_P(DwarfCfaLogTest, cfa_def_cfa_offset_sf) {
 TYPED_TEST_P(DwarfCfaLogTest, cfa_def_cfa_expression) {
   this->memory_.SetMemory(0x100, std::vector<uint8_t>{0x0f, 0x04, 0x01, 0x02, 0x04, 0x05});
 
-  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0, 0x100, 0x106));
+  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0x100, 0x106));
 
   std::string expected =
       "4 unwind DW_CFA_def_cfa_expression 4\n"
@@ -614,7 +574,7 @@ TYPED_TEST_P(DwarfCfaLogTest, cfa_def_cfa_expression) {
   }
   expected += '\n';
   this->memory_.SetMemory(0x200, ops);
-  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0, 0x200, 0x284));
+  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0x200, 0x284));
 
   expected = "4 unwind DW_CFA_def_cfa_expression 129\n" + expected;
   ASSERT_EQ(expected + op_string, GetFakeLogPrint());
@@ -624,7 +584,7 @@ TYPED_TEST_P(DwarfCfaLogTest, cfa_def_cfa_expression) {
 TYPED_TEST_P(DwarfCfaLogTest, cfa_expression) {
   this->memory_.SetMemory(0x100, std::vector<uint8_t>{0x10, 0x04, 0x02, 0xc0, 0xc1});
 
-  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0, 0x100, 0x105));
+  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0x100, 0x105));
 
   std::string expected =
       "4 unwind DW_CFA_expression register(4) 2\n"
@@ -652,7 +612,7 @@ TYPED_TEST_P(DwarfCfaLogTest, cfa_expression) {
   expected = "4 unwind DW_CFA_expression register(255) 130\n" + expected + "\n";
 
   this->memory_.SetMemory(0x200, ops);
-  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0, 0x200, 0x287));
+  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0x200, 0x287));
 
   ASSERT_EQ(expected + op_string, GetFakeLogPrint());
   ASSERT_EQ("", GetFakeLogBuf());
@@ -661,7 +621,7 @@ TYPED_TEST_P(DwarfCfaLogTest, cfa_expression) {
 TYPED_TEST_P(DwarfCfaLogTest, cfa_val_offset) {
   this->memory_.SetMemory(0x100, std::vector<uint8_t>{0x14, 0x45, 0x54});
 
-  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0, 0x100, 0x103));
+  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0x100, 0x103));
 
   std::string expected =
       "4 unwind DW_CFA_val_offset register(69) 84\n"
@@ -672,7 +632,7 @@ TYPED_TEST_P(DwarfCfaLogTest, cfa_val_offset) {
   ResetLogs();
   this->memory_.SetMemory(0x400, std::vector<uint8_t>{0x14, 0xa2, 0x02, 0xb4, 0x05});
 
-  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0, 0x400, 0x405));
+  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0x400, 0x405));
 
   expected =
       "4 unwind DW_CFA_val_offset register(290) 692\n"
@@ -684,7 +644,7 @@ TYPED_TEST_P(DwarfCfaLogTest, cfa_val_offset) {
 TYPED_TEST_P(DwarfCfaLogTest, cfa_val_offset_sf) {
   this->memory_.SetMemory(0x100, std::vector<uint8_t>{0x15, 0x56, 0x12});
 
-  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0, 0x100, 0x103));
+  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0x100, 0x103));
 
   std::string expected =
       "4 unwind DW_CFA_val_offset_sf register(86) 18\n"
@@ -696,7 +656,7 @@ TYPED_TEST_P(DwarfCfaLogTest, cfa_val_offset_sf) {
   ResetLogs();
   this->memory_.SetMemory(0xa00, std::vector<uint8_t>{0x15, 0xff, 0x01, 0xc0, 0x7f});
 
-  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0, 0xa00, 0xa05));
+  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0xa00, 0xa05));
 
   expected =
       "4 unwind DW_CFA_val_offset_sf register(255) -64\n"
@@ -708,7 +668,7 @@ TYPED_TEST_P(DwarfCfaLogTest, cfa_val_offset_sf) {
 TYPED_TEST_P(DwarfCfaLogTest, cfa_val_expression) {
   this->memory_.SetMemory(0x100, std::vector<uint8_t>{0x16, 0x05, 0x02, 0xb0, 0xb1});
 
-  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0, 0x100, 0x105));
+  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0x100, 0x105));
 
   std::string expected =
       "4 unwind DW_CFA_val_expression register(5) 2\n"
@@ -737,7 +697,7 @@ TYPED_TEST_P(DwarfCfaLogTest, cfa_val_expression) {
 
   this->memory_.SetMemory(0xa00, ops);
 
-  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0, 0xa00, 0xaad));
+  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0xa00, 0xaad));
 
   ASSERT_EQ(expected + op_string, GetFakeLogPrint());
   ASSERT_EQ("", GetFakeLogBuf());
@@ -746,7 +706,7 @@ TYPED_TEST_P(DwarfCfaLogTest, cfa_val_expression) {
 TYPED_TEST_P(DwarfCfaLogTest, cfa_gnu_args_size) {
   this->memory_.SetMemory(0x2000, std::vector<uint8_t>{0x2e, 0x04});
 
-  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0, 0x2000, 0x2002));
+  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0x2000, 0x2002));
 
   std::string expected =
       "4 unwind DW_CFA_GNU_args_size 4\n"
@@ -757,7 +717,7 @@ TYPED_TEST_P(DwarfCfaLogTest, cfa_gnu_args_size) {
   ResetLogs();
   this->memory_.SetMemory(0x5000, std::vector<uint8_t>{0x2e, 0xa4, 0x80, 0x04});
 
-  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0, 0x5000, 0x5004));
+  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0x5000, 0x5004));
 
   expected =
       "4 unwind DW_CFA_GNU_args_size 65572\n"
@@ -769,7 +729,7 @@ TYPED_TEST_P(DwarfCfaLogTest, cfa_gnu_args_size) {
 TYPED_TEST_P(DwarfCfaLogTest, cfa_gnu_negative_offset_extended) {
   this->memory_.SetMemory(0x500, std::vector<uint8_t>{0x2f, 0x08, 0x10});
 
-  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0, 0x500, 0x503));
+  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0x500, 0x503));
 
   std::string expected =
       "4 unwind DW_CFA_GNU_negative_offset_extended register(8) 16\n"
@@ -780,7 +740,7 @@ TYPED_TEST_P(DwarfCfaLogTest, cfa_gnu_negative_offset_extended) {
   ResetLogs();
   this->memory_.SetMemory(0x1500, std::vector<uint8_t>{0x2f, 0x81, 0x02, 0xff, 0x01});
 
-  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0, 0x1500, 0x1505));
+  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0x1500, 0x1505));
 
   expected =
       "4 unwind DW_CFA_GNU_negative_offset_extended register(257) 255\n"
@@ -792,7 +752,7 @@ TYPED_TEST_P(DwarfCfaLogTest, cfa_gnu_negative_offset_extended) {
 TYPED_TEST_P(DwarfCfaLogTest, cfa_register_override) {
   this->memory_.SetMemory(0x300, std::vector<uint8_t>{0x09, 0x02, 0x01, 0x09, 0x02, 0x04});
 
-  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0, 0x300, 0x306));
+  ASSERT_TRUE(this->cfa_->Log(0, this->fde_.pc_start, 0x300, 0x306));
 
   std::string expected =
       "4 unwind DW_CFA_register register(2) register(1)\n"

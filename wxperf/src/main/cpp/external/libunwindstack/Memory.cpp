@@ -16,11 +16,12 @@
 
 #include <errno.h>
 #include <fcntl.h>
+#include <string.h>
 #include <sys/mman.h>
 #include <sys/ptrace.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <sys_compat/compat_uio.h>
+#include <sys/uio.h>
 #include <unistd.h>
 
 #include <algorithm>
@@ -29,6 +30,7 @@
 #include <android-base/unique_fd.h>
 
 #include <unwindstack/Memory.h>
+#include <deps/sys_compat/compat_uio.h>
 
 #include "Check.h"
 
@@ -174,6 +176,13 @@ std::shared_ptr<Memory> Memory::CreateProcessMemory(pid_t pid) {
   return std::shared_ptr<Memory>(new MemoryRemote(pid));
 }
 
+std::shared_ptr<Memory> Memory::CreateProcessMemoryCached(pid_t pid) {
+  if (pid == getpid()) {
+    return std::shared_ptr<Memory>(new MemoryCache(new MemoryLocal()));
+  }
+  return std::shared_ptr<Memory>(new MemoryCache(new MemoryRemote(pid)));
+}
+
 size_t MemoryBuffer::Read(uint64_t addr, void* dst, size_t size) {
   if (addr >= raw_.size()) {
     return 0;
@@ -316,6 +325,18 @@ size_t MemoryRange::Read(uint64_t addr, void* dst, size_t size) {
   return memory_->Read(read_addr, dst, read_length);
 }
 
+void MemoryRanges::Insert(MemoryRange* memory) {
+  maps_.emplace(memory->offset() + memory->length(), memory);
+}
+
+size_t MemoryRanges::Read(uint64_t addr, void* dst, size_t size) {
+  auto entry = maps_.upper_bound(addr);
+  if (entry != maps_.end()) {
+    return entry->second->Read(addr, dst, size);
+  }
+  return 0;
+}
+
 bool MemoryOffline::Init(const std::string& file, uint64_t offset) {
   auto memory_file = std::make_shared<MemoryFileAtOffset>();
   if (!memory_file->Init(file, offset)) {
@@ -384,6 +405,52 @@ size_t MemoryOfflineParts::Read(uint64_t addr, void* dst, size_t size) {
     }
   }
   return 0;
+}
+
+size_t MemoryCache::Read(uint64_t addr, void* dst, size_t size) {
+  // Only bother caching and looking at the cache if this is a small read for now.
+  if (size > 64) {
+    return impl_->Read(addr, dst, size);
+  }
+
+  uint64_t addr_page = addr >> kCacheBits;
+  auto entry = cache_.find(addr_page);
+  uint8_t* cache_dst;
+  if (entry != cache_.end()) {
+    cache_dst = entry->second;
+  } else {
+    cache_dst = cache_[addr_page];
+    if (!impl_->ReadFully(addr_page << kCacheBits, cache_dst, kCacheSize)) {
+      // Erase the entry.
+      cache_.erase(addr_page);
+      return impl_->Read(addr, dst, size);
+    }
+  }
+  size_t max_read = ((addr_page + 1) << kCacheBits) - addr;
+  if (size <= max_read) {
+    memcpy(dst, &cache_dst[addr & kCacheMask], size);
+    return size;
+  }
+
+  // The read crossed into another cached entry, since a read can only cross
+  // into one extra cached page, duplicate the code rather than looping.
+  memcpy(dst, &cache_dst[addr & kCacheMask], max_read);
+  dst = &reinterpret_cast<uint8_t*>(dst)[max_read];
+  addr_page++;
+
+  entry = cache_.find(addr_page);
+  if (entry != cache_.end()) {
+    cache_dst = entry->second;
+  } else {
+    cache_dst = cache_[addr_page];
+    if (!impl_->ReadFully(addr_page << kCacheBits, cache_dst, kCacheSize)) {
+      // Erase the entry.
+      cache_.erase(addr_page);
+      return impl_->Read(addr_page << kCacheBits, dst, size - max_read) + max_read;
+    }
+  }
+  memcpy(dst, cache_dst, size - max_read);
+  return size;
 }
 
 }  // namespace unwindstack

@@ -91,7 +91,7 @@ CPropVariant& CPropVariant::operator=(BSTR bstrSrc)
   return *this;
 }
 
-static const char *kMemException = "out of memory";
+static const char * const kMemException = "out of memory";
 
 CPropVariant& CPropVariant::operator=(LPCOLESTR lpszSrc)
 {

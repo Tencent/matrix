@@ -37,23 +37,22 @@
 
 namespace unwindstack {
 
-void DumpArm(ElfInterfaceArm* interface) {
+void DumpArm(Elf* elf, ElfInterfaceArm* interface) {
   if (interface == nullptr) {
     printf("No ARM Unwind Information.\n\n");
     return;
   }
 
   printf("ARM Unwind Information:\n");
+  uint64_t load_bias = elf->GetLoadBias();
   for (const auto& entry : interface->pt_loads()) {
-    uint64_t load_bias = entry.second.table_offset;
     printf(" PC Range 0x%" PRIx64 " - 0x%" PRIx64 "\n", entry.second.offset + load_bias,
-           entry.second.table_size + load_bias);
-    for (auto addr : *interface) {
+           entry.second.offset + entry.second.table_size + load_bias);
+    for (auto pc : *interface) {
       std::string name;
-      printf("  PC 0x%" PRIx64, addr + load_bias);
+      printf("  PC 0x%" PRIx64, pc + load_bias);
       uint64_t func_offset;
-      uint64_t pc = addr + load_bias;
-      if (interface->GetFunctionName(pc, load_bias, &name, &func_offset) && !name.empty()) {
+      if (elf->GetFunctionName(pc + load_bias, &name, &func_offset) && !name.empty()) {
         printf(" <%s>", name.c_str());
       }
       printf("\n");
@@ -63,7 +62,7 @@ void DumpArm(ElfInterfaceArm* interface) {
         continue;
       }
       ArmExidx arm(nullptr, interface->memory(), nullptr);
-      arm.set_log(true);
+      arm.set_log(ARM_LOG_FULL);
       arm.set_log_skip_execution(true);
       arm.set_log_indent(2);
       if (!arm.ExtractEntryData(entry)) {
@@ -82,21 +81,21 @@ void DumpArm(ElfInterfaceArm* interface) {
   printf("\n");
 }
 
-void DumpDwarfSection(ElfInterface* interface, DwarfSection* section, uint64_t load_bias) {
+void DumpDwarfSection(Elf* elf, DwarfSection* section, uint64_t) {
   for (const DwarfFde* fde : *section) {
     // Sometimes there are entries that have empty length, skip those since
     // they don't contain any interesting information.
     if (fde == nullptr || fde->pc_start == fde->pc_end) {
       continue;
     }
-    printf("\n  PC 0x%" PRIx64, fde->pc_start + load_bias);
+    printf("\n  PC 0x%" PRIx64 "-0x%" PRIx64, fde->pc_start, fde->pc_end);
     std::string name;
     uint64_t func_offset;
-    if (interface->GetFunctionName(fde->pc_start, load_bias, &name, &func_offset) && !name.empty()) {
+    if (elf->GetFunctionName(fde->pc_start, &name, &func_offset) && !name.empty()) {
       printf(" <%s>", name.c_str());
     }
     printf("\n");
-    if (!section->Log(2, UINT64_MAX, load_bias, fde)) {
+    if (!section->Log(2, UINT64_MAX, fde)) {
       printf("Failed to process cfa information for entry at 0x%" PRIx64 "\n", fde->pc_start);
     }
   }
@@ -114,25 +113,34 @@ int GetElfInfo(const char* file, uint64_t offset) {
   }
 
   Elf elf(memory);
-  if (!elf.Init(true) || !elf.valid()) {
+  if (!elf.Init() || !elf.valid()) {
     printf("%s is not a valid elf file.\n", file);
     return 1;
   }
 
-  std::string soname;
-  if (elf.GetSoname(&soname)) {
+  std::string soname(elf.GetSoname());
+  if (!soname.empty()) {
     printf("Soname: %s\n", soname.c_str());
+  }
+
+  std::string build_id = elf.GetBuildID();
+  if (!build_id.empty()) {
+    printf("Build ID: ");
+    for (size_t i = 0; i < build_id.size(); ++i) {
+      printf("%02hhx", build_id[i]);
+    }
+    printf("\n");
   }
 
   ElfInterface* interface = elf.interface();
   if (elf.machine_type() == EM_ARM) {
-    DumpArm(reinterpret_cast<ElfInterfaceArm*>(interface));
+    DumpArm(&elf, reinterpret_cast<ElfInterfaceArm*>(interface));
     printf("\n");
   }
 
   if (interface->eh_frame() != nullptr) {
     printf("eh_frame information:\n");
-    DumpDwarfSection(interface, interface->eh_frame(), elf.GetLoadBias());
+    DumpDwarfSection(&elf, interface->eh_frame(), elf.GetLoadBias());
     printf("\n");
   } else {
     printf("\nno eh_frame information\n");
@@ -140,7 +148,7 @@ int GetElfInfo(const char* file, uint64_t offset) {
 
   if (interface->debug_frame() != nullptr) {
     printf("\ndebug_frame information:\n");
-    DumpDwarfSection(interface, interface->debug_frame(), elf.GetLoadBias());
+    DumpDwarfSection(&elf, interface->debug_frame(), elf.GetLoadBias());
     printf("\n");
   } else {
     printf("\nno debug_frame information\n");
@@ -151,12 +159,12 @@ int GetElfInfo(const char* file, uint64_t offset) {
   if (gnu_debugdata_interface != nullptr) {
     if (gnu_debugdata_interface->eh_frame() != nullptr) {
       printf("\ngnu_debugdata (eh_frame):\n");
-      DumpDwarfSection(gnu_debugdata_interface, gnu_debugdata_interface->eh_frame(), 0);
+      DumpDwarfSection(&elf, gnu_debugdata_interface->eh_frame(), 0);
       printf("\n");
     }
     if (gnu_debugdata_interface->debug_frame() != nullptr) {
       printf("\ngnu_debugdata (debug_frame):\n");
-      DumpDwarfSection(gnu_debugdata_interface, gnu_debugdata_interface->debug_frame(), 0);
+      DumpDwarfSection(&elf, gnu_debugdata_interface->debug_frame(), 0);
       printf("\n");
     }
   } else {

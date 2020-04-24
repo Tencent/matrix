@@ -17,6 +17,7 @@
 #include <elf.h>
 #include <stdint.h>
 
+#include <algorithm>
 #include <string>
 
 #include <unwindstack/Memory.h>
@@ -54,10 +55,7 @@ const Symbols::Info* Symbols::GetInfoFromCache(uint64_t addr) {
 }
 
 template <typename SymType>
-bool Symbols::GetName(uint64_t addr, uint64_t load_bias, Memory* elf_memory, std::string* name,
-                      uint64_t* func_offset) {
-  addr += load_bias;
-
+bool Symbols::GetName(uint64_t addr, Memory* elf_memory, std::string* name, uint64_t* func_offset) {
   if (symbols_.size() != 0) {
     const Info* info = GetInfoFromCache(addr);
     if (info) {
@@ -81,9 +79,6 @@ bool Symbols::GetName(uint64_t addr, uint64_t load_bias, Memory* elf_memory, std
     if (entry.st_shndx != SHN_UNDEF && ELF32_ST_TYPE(entry.st_info) == STT_FUNC) {
       // Treat st_value as virtual address.
       uint64_t start_offset = entry.st_value;
-      if (entry.st_shndx != SHN_ABS) {
-        start_offset += load_bias;
-      }
       uint64_t end_offset = start_offset + entry.st_size;
 
       // Cache the value.
@@ -134,8 +129,8 @@ bool Symbols::GetGlobal(Memory* elf_memory, const std::string& name, uint64_t* m
 }
 
 // Instantiate all of the needed template functions.
-template bool Symbols::GetName<Elf32_Sym>(uint64_t, uint64_t, Memory*, std::string*, uint64_t*);
-template bool Symbols::GetName<Elf64_Sym>(uint64_t, uint64_t, Memory*, std::string*, uint64_t*);
+template bool Symbols::GetName<Elf32_Sym>(uint64_t, Memory*, std::string*, uint64_t*);
+template bool Symbols::GetName<Elf64_Sym>(uint64_t, Memory*, std::string*, uint64_t*);
 
 template bool Symbols::GetGlobal<Elf32_Sym>(Memory*, const std::string&, uint64_t*);
 template bool Symbols::GetGlobal<Elf64_Sym>(Memory*, const std::string&, uint64_t*);

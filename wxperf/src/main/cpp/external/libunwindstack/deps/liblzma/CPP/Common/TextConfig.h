@@ -13,7 +13,7 @@ struct CTextConfigPair
 
 bool GetTextConfig(const AString &text, CObjectVector<CTextConfigPair> &pairs);
 
-int FindTextConfigItem(const CObjectVector<CTextConfigPair> &pairs, const UString &id) throw();
-UString GetTextConfigValue(const CObjectVector<CTextConfigPair> &pairs, const UString &id);
+int FindTextConfigItem(const CObjectVector<CTextConfigPair> &pairs, const char *id) throw();
+UString GetTextConfigValue(const CObjectVector<CTextConfigPair> &pairs, const char *id);
 
 #endif

@@ -8,16 +8,6 @@
 
 #include "../../Common/CreateCoder.h"
 
-#ifndef EXTRACT_ONLY
-#include "../Common/HandlerOut.h"
-#endif
-
-#include "7zCompressionMode.h"
-#include "7zIn.h"
-
-namespace NArchive {
-namespace N7z {
-
 #ifndef __7Z_SET_PROPERTIES
 
 #ifdef EXTRACT_ONLY
@@ -30,6 +20,16 @@ namespace N7z {
 
 #endif
 
+// #ifdef __7Z_SET_PROPERTIES
+#include "../Common/HandlerOut.h"
+// #endif
+
+#include "7zCompressionMode.h"
+#include "7zIn.h"
+
+namespace NArchive {
+namespace N7z {
+
 
 #ifndef EXTRACT_ONLY
 
@@ -38,8 +38,6 @@ class COutHandler: public CMultiMethodProps
   HRESULT SetSolidFromString(const UString &s);
   HRESULT SetSolidFromPROPVARIANT(const PROPVARIANT &value);
 public:
-  bool _removeSfxBlock;
-  
   UInt64 _numSolidFiles;
   UInt64 _numSolidBytes;
   bool _numSolidBytesDefined;
@@ -54,9 +52,12 @@ public:
   CBoolPair Write_CTime;
   CBoolPair Write_ATime;
   CBoolPair Write_MTime;
+  CBoolPair Write_Attrib;
 
   bool _useMultiThreadMixer;
 
+  bool _removeSfxBlock;
+  
   // bool _volumeMode;
 
   void InitSolidFiles() { _numSolidFiles = (UInt64)(Int64)(-1); }
@@ -69,9 +70,10 @@ public:
     _numSolidBytesDefined = false;
   }
 
+  void InitProps7z();
   void InitProps();
 
-  COutHandler() { InitProps(); }
+  COutHandler() { InitProps7z(); }
 
   HRESULT SetProperty(const wchar_t *name, const PROPVARIANT &value);
 };
@@ -81,16 +83,23 @@ public:
 class CHandler:
   public IInArchive,
   public IArchiveGetRawProps,
+  
   #ifdef __7Z_SET_PROPERTIES
   public ISetProperties,
   #endif
+  
   #ifndef EXTRACT_ONLY
   public IOutArchive,
   #endif
+  
   PUBLIC_ISetCompressCodecsInfo
-  public CMyUnknownImp
+  
+  public CMyUnknownImp,
+
   #ifndef EXTRACT_ONLY
-  , public COutHandler
+    public COutHandler
+  #else
+    public CCommonMethodProps
   #endif
 {
 public:
@@ -134,7 +143,6 @@ private:
   #ifdef EXTRACT_ONLY
   
   #ifdef __7Z_SET_PROPERTIES
-  UInt32 _numThreads;
   bool _useMultiThreadMixer;
   #endif
 

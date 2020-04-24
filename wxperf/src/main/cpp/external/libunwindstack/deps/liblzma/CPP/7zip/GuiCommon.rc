@@ -71,6 +71,9 @@ LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
   DEFPUSHBUTTON  "OK",     IDOK,     bx2, by, bxs, bys \
   PUSHBUTTON     "Cancel", IDCANCEL, bx1, by, bxs, bys
 
+#define MY_BUTTON__CLOSE \
+  DEFPUSHBUTTON  "&Close", IDCLOSE,  bx1, by, bxs, bys
+
 
 #define MY_COMBO  CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
 #define MY_COMBO_SORTED  MY_COMBO | CBS_SORT

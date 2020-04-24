@@ -6,7 +6,7 @@
 
 using namespace NUpdateArchive;
 
-static const char *kUpdateActionSetCollision = "Internal collision in update action set";
+static const char * const kUpdateActionSetCollision = "Internal collision in update action set";
 
 void UpdateProduce(
     const CRecordVector<CUpdatePair> &updatePairs,
