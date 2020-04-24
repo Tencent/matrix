@@ -75,6 +75,9 @@
 /// did the device reboot after the app's last launch
 - (BOOL)isAfterLastLaunchUserRebootDevice;
 
+/// did occur xpc lag
+- (BOOL)checkXPCReboot;
+
 #if !TARGET_OS_OSX
 
 /// notify the app is in Background Fetch, help improve the detection of the plugins

@@ -178,6 +178,11 @@
     return [MatrixAppRebootAnalyzer isAfterLastLaunchUserRebootDevice];
 }
 
+- (BOOL)checkXPCReboot
+{
+    return [MatrixAppRebootAnalyzer checkXPCReboot];
+}
+
 #if !TARGET_OS_OSX
 - (void)notifyAppBackgroundFetch
 {
