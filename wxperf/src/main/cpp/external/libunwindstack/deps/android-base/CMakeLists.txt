@@ -10,7 +10,7 @@ SET(
   ${CMAKE_CURRENT_SOURCE_DIR}/file.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/logging.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/chrono_utils.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/cmsg.cpp
+#  ${CMAKE_CURRENT_SOURCE_DIR}/cmsg.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/mapped_file.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/parsenetaddress.cpp
 #  ${CMAKE_CURRENT_SOURCE_DIR}/properties.cpp
@@ -37,7 +37,6 @@ TARGET_COMPILE_OPTIONS(
   ${TARGET}
   PUBLIC -Wall
 #  PUBLIC -Werror
-  PUBLIC -Wno-c++17-extensions
   PUBLIC -Wextra
 #  PUBLIC -D_FILE_OFFSET_BITS=64
   PUBLIC -Wexit-time-destructors
