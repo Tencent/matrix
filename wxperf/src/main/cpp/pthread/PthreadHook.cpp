@@ -485,9 +485,8 @@ char *pthread_dump_json(const char *__path) {
 
     if (log_file) {
         pthread_dump_json_impl(log_file);
+        fclose(log_file);
     }
-
-    fclose(log_file);
 
     pthread_mutex_unlock(&m_pthread_meta_mutex);
 
