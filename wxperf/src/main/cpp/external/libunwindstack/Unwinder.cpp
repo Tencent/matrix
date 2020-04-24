@@ -31,6 +31,9 @@
 #include <unwindstack/MapInfo.h>
 #include <unwindstack/Unwinder.h>
 #include <libgen.h>
+#include <android/log.h>
+#include "ElfInterfaceArm64.h"
+#include "TimeUtil.h"
 
 #if !defined(NO_LIBDEXFILE_SUPPORT)
 #include <unwindstack/DexFiles.h>
@@ -104,11 +107,14 @@ void Unwinder::FillInFrame(MapInfo* map_info, Elf* elf, uint64_t rel_pc, uint64_
   frame->map_flags = map_info->flags;
   frame->map_load_bias = elf->GetLoadBias();
 
-  if (!resolve_names_ ||
-      !elf->GetFunctionName(func_pc, &frame->function_name, &frame->function_offset)) {
-    frame->function_name = "";
-    frame->function_offset = 0;
-  }
+  frame->function_name = "";
+  frame->function_offset = 0;
+
+//  if (!resolve_names_ ||
+//      !elf->GetFunctionName(func_pc, &frame->function_name, &frame->function_offset)) {
+//    frame->function_name = "";
+//    frame->function_offset = 0;
+//  }
 }
 
 static bool ShouldStop(const std::vector<std::string>* map_suffixes_to_ignore,
@@ -210,8 +216,19 @@ void Unwinder::Unwind(const std::vector<std::string>* initial_map_names_to_skip,
           stepped = false;
           in_device_map = true;
         } else {
+
           bool finished;
+
+//            end = CurrentNano();
+//            LOGE("Unwind-debug", " before step costs: %ld", (end - nano));
+//            nano = CurrentNano();
+
           stepped = elf->Step(rel_pc, step_pc, regs_, process_memory_.get(), &finished);
+
+//            end = CurrentNano();
+//            LOGE("Unwind-debug", "step costs: %ld", (end - nano));
+//            nano = end;
+
           elf->GetLastError(&last_error_);
           if (stepped && finished) {
             break;

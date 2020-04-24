@@ -17,8 +17,10 @@ import com.tencent.mm.performance.jni.HookManager;
 import com.tencent.mm.performance.jni.fd.FDDumpBridge;
 import com.tencent.mm.performance.jni.memory.MemoryHook;
 import com.tencent.mm.performance.jni.pthread.PthreadHook;
+import com.tencent.mm.performance.jni.test.UnwindTest;
 
 import java.io.File;
+import java.util.Map;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -173,6 +175,7 @@ public class MainActivity extends AppCompatActivity {
                         }
                     }
                 }).start();
+                PthreadHook.INSTANCE.dump("/sdcard/pthread_hook.log");
             }
         });
 
@@ -192,6 +195,26 @@ public class MainActivity extends AppCompatActivity {
                 }
 
 //                JNIObj.testJNICall();
+            }
+        });
+
+        UnwindTest.init();
+        findViewById(R.id.btn_unwind).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        for (int i = 0; i < 1; i++) {
+//                            long begin = System.nanoTime();
+                            UnwindTest.test();
+//                            Log.i("Unwind-test", "unwind cost: " + (System.nanoTime() - begin));
+                        }
+
+                        PthreadHook.INSTANCE.dump("/sdcard/pthread_hook.log");
+                    }
+                }).start();
+
             }
         });
 

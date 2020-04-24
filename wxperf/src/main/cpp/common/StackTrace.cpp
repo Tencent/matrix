@@ -3,6 +3,7 @@
 //
 
 #include <dlfcn.h>
+#include <unwindstack/RegsArm64.h>
 #include "StackTrace.h"
 #include "JNICommon.h"
 
@@ -43,9 +44,15 @@ namespace unwindstack {
             return;
         }
 
+        struct timespec tms;
+
+        if (clock_gettime(CLOCK_REALTIME,&tms)) {
+            LOGE("Unwind-debug", "get time error");
+        }
+
         pthread_mutex_lock(&unwind_mutex);
 
-        static Regs *regs = Regs::CreateFromLocal();
+        Regs *regs = Regs::CreateFromLocal();
         RegsGetLocal(regs);
         if (regs == nullptr) {
             LOGE("Yves.unwind", "Unable to get remote reg data");
@@ -55,10 +62,20 @@ namespace unwindstack {
 
         auto process_memory = Memory::CreateProcessMemory(getpid());
         Unwinder unwinder(16, localMaps, regs, process_memory);
-        JitDebug jit_debug(process_memory);
-        unwinder.SetJitDebug(&jit_debug, regs->Arch());
+//        JitDebug jit_debug(process_memory);
+//        unwinder.SetJitDebug(&jit_debug, regs->Arch());
         unwinder.SetResolveNames(false);
+
+        long nano = tms.tv_nsec;
+
         unwinder.Unwind();
+
+        delete regs;
+
+        if (clock_gettime(CLOCK_REALTIME,&tms)) {
+            LOGE("Unwind-debug", "get time error");
+        }
+        LOGE("Unwind-debug", "unwinder.Unwind() costs: %ld",(tms.tv_nsec - nano));
 
 //        for (size_t i = 0; i < unwinder.NumFrames(); i++) {
 //            LOGD("Yves.unwind", "~~~~~~~~~~~~~%s", unwinder.FormatFrame(i).c_str());

@@ -36,6 +36,7 @@ namespace unwindstack {
 
 // Forward declaration.
 struct MapInfo;
+class Maps;
 class Regs;
 
 enum ArchEnum : uint8_t {
