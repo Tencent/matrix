@@ -21,7 +21,7 @@ void func1() {
 
     auto *tmp_ns = new std::vector<unwindstack::FrameData>;
 
-    unwindstack::do_unwind(tmp_ns);
+    unwindstack::do_unwind(*tmp_ns);
 
 //    long begin = CurrentNano();
 //
