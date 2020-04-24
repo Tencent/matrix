@@ -177,9 +177,8 @@ static void on_pthread_create(const pthread_t __pthread) {
 
 //    pthread_t pthread    = __pthread;
     pid_t tid        = pthread_gettid_np(__pthread);
-    pid_t parent_tid = pthread_gettid_np(pthread_self());
 
-    LOGD(TAG, "+++++++ on_pthread_create parendt_tid: %d -> tid: %d", parent_tid, tid);
+    LOGD(TAG, "+++++++ on_pthread_create parendt_tid: %d -> tid: %d", pthread_gettid_np(pthread_self()), tid);
     pthread_mutex_lock(&m_pthread_meta_mutex);
 
     if (m_pthread_metas.count(__pthread)) {
@@ -484,9 +483,10 @@ char *pthread_dump_json(const char *__path) {
     FILE *log_file = fopen(__path, "w+");
     LOGD(TAG, "pthread dump path = %s", __path);
 
-    pthread_dump_json_impl(log_file);
-
-    fclose(log_file);
+    if (log_file) {
+        pthread_dump_json_impl(log_file);
+        fclose(log_file);
+    }
 
     pthread_mutex_unlock(&m_pthread_meta_mutex);
 
