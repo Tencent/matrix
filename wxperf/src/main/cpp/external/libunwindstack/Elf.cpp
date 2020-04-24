@@ -42,7 +42,7 @@ bool Elf::cache_enabled_;
 std::unordered_map<std::string, std::pair<std::shared_ptr<Elf>, bool>>* Elf::cache_;
 std::mutex* Elf::cache_lock_;
 
-bool Elf::Init(bool init_gnu_debugdata) {
+bool Elf::Init() {
   load_bias_ = 0;
   if (!memory_) {
     return false;
@@ -55,12 +55,8 @@ bool Elf::Init(bool init_gnu_debugdata) {
 
   valid_ = interface_->Init(&load_bias_);
   if (valid_) {
-    interface_->InitHeaders();
-    if (init_gnu_debugdata) {
-      InitGnuDebugdata();
-    } else {
-      gnu_debugdata_interface_.reset(nullptr);
-    }
+    interface_->InitHeaders(load_bias_);
+    InitGnuDebugdata();
   } else {
     interface_.reset(nullptr);
   }
@@ -85,7 +81,7 @@ void Elf::InitGnuDebugdata() {
   // is in the uncompressed data.
   uint64_t load_bias;
   if (gnu->Init(&load_bias)) {
-    gnu->InitHeaders();
+    gnu->InitHeaders(load_bias);
     interface_->SetGnuDebugdataInterface(gnu);
   } else {
     // Free all of the memory associated with the gnu_debugdata section.
@@ -94,9 +90,17 @@ void Elf::InitGnuDebugdata() {
   }
 }
 
-bool Elf::GetSoname(std::string* name) {
+void Elf::Invalidate() {
+  interface_.reset(nullptr);
+  valid_ = false;
+}
+
+std::string Elf::GetSoname() {
   std::lock_guard<std::mutex> guard(lock_);
-  return valid_ && interface_->GetSoname(name);
+  if (!valid_) {
+    return "";
+  }
+  return interface_->GetSoname();
 }
 
 uint64_t Elf::GetRelPc(uint64_t pc, const MapInfo* map_info) {
@@ -105,9 +109,9 @@ uint64_t Elf::GetRelPc(uint64_t pc, const MapInfo* map_info) {
 
 bool Elf::GetFunctionName(uint64_t addr, std::string* name, uint64_t* func_offset) {
   std::lock_guard<std::mutex> guard(lock_);
-  return valid_ && (interface_->GetFunctionName(addr, load_bias_, name, func_offset) ||
-                    (gnu_debugdata_interface_ && gnu_debugdata_interface_->GetFunctionName(
-                                                     addr, load_bias_, name, func_offset)));
+  return valid_ && (interface_->GetFunctionName(addr, name, func_offset) ||
+                    (gnu_debugdata_interface_ &&
+                     gnu_debugdata_interface_->GetFunctionName(addr, name, func_offset)));
 }
 
 bool Elf::GetGlobalVariable(const std::string& name, uint64_t* memory_address) {
@@ -141,6 +145,13 @@ bool Elf::GetGlobalVariable(const std::string& name, uint64_t* memory_address) {
   return true;
 }
 
+std::string Elf::GetBuildID() {
+  if (!valid_) {
+    return "";
+  }
+  return interface_->GetBuildID();
+}
+
 void Elf::GetLastError(ErrorData* data) {
   if (valid_) {
     *data = interface_->last_error();
@@ -151,7 +162,7 @@ ErrorCode Elf::GetLastErrorCode() {
   if (valid_) {
     return interface_->LastErrorCode();
   }
-  return ERROR_NONE;
+  return ERROR_INVALID_ELF;
 }
 
 uint64_t Elf::GetLastErrorAddress() {
@@ -161,24 +172,23 @@ uint64_t Elf::GetLastErrorAddress() {
   return 0;
 }
 
-// The relative pc is always relative to the start of the map from which it comes.
-bool Elf::Step(uint64_t rel_pc, uint64_t adjusted_rel_pc, Regs* regs, Memory* process_memory,
-               bool* finished) {
-//      long begin = CurrentNano();
-      if (!valid_) {
+// The relative pc expectd by this function is relative to the start of the elf.
+bool Elf::StepIfSignalHandler(uint64_t rel_pc, Regs* regs, Memory* process_memory) {
+  if (!valid_) {
     return false;
   }
-      // The relative pc expectd by StepIfSignalHandler is relative to the start of the elf.
-      if (regs->StepIfSignalHandler(rel_pc, this, process_memory)) {
-    *finished = false;
-    return true;
+  return regs->StepIfSignalHandler(rel_pc, this, process_memory);
+}
+
+// The relative pc is always relative to the start of the map from which it comes.
+bool Elf::Step(uint64_t rel_pc, Regs* regs, Memory* process_memory, bool* finished) {
+  if (!valid_) {
+    return false;
   }
 
       // Lock during the step which can update information in the object.
   std::lock_guard<std::mutex> guard(lock_);
-  bool ret = interface_->Step(adjusted_rel_pc, load_bias_, regs, process_memory, finished);
-//      LOGE("Unwind-debug", "interface_->Step cost %ld", (CurrentNano() - begin));
-      return ret;
+  return interface_->Step(rel_pc, regs, process_memory, finished);
 }
 
 bool Elf::IsValidElf(Memory* memory) {
@@ -198,33 +208,32 @@ bool Elf::IsValidElf(Memory* memory) {
   return true;
 }
 
-void Elf::GetInfo(Memory* memory, bool* valid, uint64_t* size) {
+bool Elf::GetInfo(Memory* memory, uint64_t* size) {
   if (!IsValidElf(memory)) {
-    *valid = false;
-    return;
+    return false;
   }
   *size = 0;
-  *valid = true;
 
-  // Now read the section header information.
   uint8_t class_type;
   if (!memory->ReadFully(EI_CLASS, &class_type, 1)) {
-    return;
+    return false;
   }
+
+  // Get the maximum size of the elf data from the header.
   if (class_type == ELFCLASS32) {
     ElfInterface32::GetMaxSize(memory, size);
   } else if (class_type == ELFCLASS64) {
     ElfInterface64::GetMaxSize(memory, size);
   } else {
-    *valid = false;
+    return false;
   }
+  return true;
 }
 
 bool Elf::IsValidPc(uint64_t pc) {
   if (!valid_ || pc < load_bias_) {
     return false;
   }
-  pc -= load_bias_;
 
   if (interface_->IsValidPc(pc)) {
     return true;
@@ -385,6 +394,24 @@ bool Elf::CacheGet(MapInfo* info) {
     return true;
   }
   return false;
+}
+
+std::string Elf::GetBuildID(Memory* memory) {
+  if (!IsValidElf(memory)) {
+    return "";
+  }
+
+  uint8_t class_type;
+  if (!memory->Read(EI_CLASS, &class_type, 1)) {
+    return "";
+  }
+
+  if (class_type == ELFCLASS32) {
+    return ElfInterface::ReadBuildIDFromMemory<Elf32_Ehdr, Elf32_Shdr, Elf32_Nhdr>(memory);
+  } else if (class_type == ELFCLASS64) {
+    return ElfInterface::ReadBuildIDFromMemory<Elf64_Ehdr, Elf64_Shdr, Elf64_Nhdr>(memory);
+  }
+  return "";
 }
 
 }  // namespace unwindstack

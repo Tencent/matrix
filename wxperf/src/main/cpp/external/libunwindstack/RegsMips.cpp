@@ -15,6 +15,7 @@
  */
 
 #include <stdint.h>
+#include <string.h>
 
 #include <functional>
 
@@ -134,7 +135,7 @@ bool RegsMips::StepIfSignalHandler(uint64_t rel_pc, Elf* elf, Memory* process_me
   Memory* elf_memory = elf->memory();
   // Read from elf memory since it is usually more expensive to read from
   // process memory.
-  if (!elf_memory->Read(rel_pc, &data, sizeof(data))) {
+  if (!elf_memory->ReadFully(rel_pc, &data, sizeof(data))) {
     return false;
   }
 
@@ -159,7 +160,7 @@ bool RegsMips::StepIfSignalHandler(uint64_t rel_pc, Elf* elf, Memory* process_me
 
   // read sc_pc and sc_regs[32] from stack
   uint64_t values[MIPS_REG_LAST];
-  if (!process_memory->Read(regs_[MIPS_REG_SP] + offset, values, sizeof(values))) {
+  if (!process_memory->ReadFully(regs_[MIPS_REG_SP] + offset, values, sizeof(values))) {
     return false;
   }
 

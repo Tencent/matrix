@@ -70,18 +70,18 @@ TYPED_TEST_P(SymbolsTest, function_bounds_check) {
 
   std::string name;
   uint64_t func_offset;
-  ASSERT_TRUE(symbols.GetName<TypeParam>(0x5000, 0, &this->memory_, &name, &func_offset));
+  ASSERT_TRUE(symbols.GetName<TypeParam>(0x5000, &this->memory_, &name, &func_offset));
   ASSERT_EQ("fake_function", name);
   ASSERT_EQ(0U, func_offset);
 
   name.clear();
-  ASSERT_TRUE(symbols.GetName<TypeParam>(0x500f, 0, &this->memory_, &name, &func_offset));
+  ASSERT_TRUE(symbols.GetName<TypeParam>(0x500f, &this->memory_, &name, &func_offset));
   ASSERT_EQ("fake_function", name);
   ASSERT_EQ(0xfU, func_offset);
 
   // Check one before and one after the function.
-  ASSERT_FALSE(symbols.GetName<TypeParam>(0x4fff, 0, &this->memory_, &name, &func_offset));
-  ASSERT_FALSE(symbols.GetName<TypeParam>(0x5010, 0, &this->memory_, &name, &func_offset));
+  ASSERT_FALSE(symbols.GetName<TypeParam>(0x4fff, &this->memory_, &name, &func_offset));
+  ASSERT_FALSE(symbols.GetName<TypeParam>(0x5010, &this->memory_, &name, &func_offset));
 }
 
 TYPED_TEST_P(SymbolsTest, no_symbol) {
@@ -98,7 +98,7 @@ TYPED_TEST_P(SymbolsTest, no_symbol) {
   // First verify that we can get the name.
   std::string name;
   uint64_t func_offset;
-  ASSERT_TRUE(symbols.GetName<TypeParam>(0x5000, 0, &this->memory_, &name, &func_offset));
+  ASSERT_TRUE(symbols.GetName<TypeParam>(0x5000, &this->memory_, &name, &func_offset));
   ASSERT_EQ("fake_function", name);
   ASSERT_EQ(0U, func_offset);
 
@@ -107,7 +107,7 @@ TYPED_TEST_P(SymbolsTest, no_symbol) {
   this->memory_.SetMemory(offset, &sym, sizeof(sym));
   // Clear the cache to force the symbol data to be re-read.
   symbols.ClearCache();
-  ASSERT_FALSE(symbols.GetName<TypeParam>(0x5000, 0, &this->memory_, &name, &func_offset));
+  ASSERT_FALSE(symbols.GetName<TypeParam>(0x5000, &this->memory_, &name, &func_offset));
 
   // Set the function back, and set the shndx to UNDEF.
   sym.st_info = STT_FUNC;
@@ -115,7 +115,7 @@ TYPED_TEST_P(SymbolsTest, no_symbol) {
   this->memory_.SetMemory(offset, &sym, sizeof(sym));
   // Clear the cache to force the symbol data to be re-read.
   symbols.ClearCache();
-  ASSERT_FALSE(symbols.GetName<TypeParam>(0x5000, 0, &this->memory_, &name, &func_offset));
+  ASSERT_FALSE(symbols.GetName<TypeParam>(0x5000, &this->memory_, &name, &func_offset));
 }
 
 TYPED_TEST_P(SymbolsTest, multiple_entries) {
@@ -144,34 +144,34 @@ TYPED_TEST_P(SymbolsTest, multiple_entries) {
 
   std::string name;
   uint64_t func_offset;
-  ASSERT_TRUE(symbols.GetName<TypeParam>(0x3005, 0, &this->memory_, &name, &func_offset));
+  ASSERT_TRUE(symbols.GetName<TypeParam>(0x3005, &this->memory_, &name, &func_offset));
   ASSERT_EQ("function_two", name);
   ASSERT_EQ(1U, func_offset);
 
   name.clear();
-  ASSERT_TRUE(symbols.GetName<TypeParam>(0x5004, 0, &this->memory_, &name, &func_offset));
+  ASSERT_TRUE(symbols.GetName<TypeParam>(0x5004, &this->memory_, &name, &func_offset));
   ASSERT_EQ("function_one", name);
   ASSERT_EQ(4U, func_offset);
 
   name.clear();
-  ASSERT_TRUE(symbols.GetName<TypeParam>(0xa011, 0, &this->memory_, &name, &func_offset));
+  ASSERT_TRUE(symbols.GetName<TypeParam>(0xa011, &this->memory_, &name, &func_offset));
   ASSERT_EQ("function_three", name);
   ASSERT_EQ(1U, func_offset);
 
   // Reget some of the others to verify getting one function name doesn't
   // affect any of the next calls.
   name.clear();
-  ASSERT_TRUE(symbols.GetName<TypeParam>(0x5008, 0, &this->memory_, &name, &func_offset));
+  ASSERT_TRUE(symbols.GetName<TypeParam>(0x5008, &this->memory_, &name, &func_offset));
   ASSERT_EQ("function_one", name);
   ASSERT_EQ(8U, func_offset);
 
   name.clear();
-  ASSERT_TRUE(symbols.GetName<TypeParam>(0x3008, 0, &this->memory_, &name, &func_offset));
+  ASSERT_TRUE(symbols.GetName<TypeParam>(0x3008, &this->memory_, &name, &func_offset));
   ASSERT_EQ("function_two", name);
   ASSERT_EQ(4U, func_offset);
 
   name.clear();
-  ASSERT_TRUE(symbols.GetName<TypeParam>(0xa01a, 0, &this->memory_, &name, &func_offset));
+  ASSERT_TRUE(symbols.GetName<TypeParam>(0xa01a, &this->memory_, &name, &func_offset));
   ASSERT_EQ("function_three", name);
   ASSERT_EQ(0xaU, func_offset);
 }
@@ -203,45 +203,19 @@ TYPED_TEST_P(SymbolsTest, multiple_entries_nonstandard_size) {
 
   std::string name;
   uint64_t func_offset;
-  ASSERT_TRUE(symbols.GetName<TypeParam>(0x3005, 0, &this->memory_, &name, &func_offset));
+  ASSERT_TRUE(symbols.GetName<TypeParam>(0x3005, &this->memory_, &name, &func_offset));
   ASSERT_EQ("function_two", name);
   ASSERT_EQ(1U, func_offset);
 
   name.clear();
-  ASSERT_TRUE(symbols.GetName<TypeParam>(0x5004, 0, &this->memory_, &name, &func_offset));
+  ASSERT_TRUE(symbols.GetName<TypeParam>(0x5004, &this->memory_, &name, &func_offset));
   ASSERT_EQ("function_one", name);
   ASSERT_EQ(4U, func_offset);
 
   name.clear();
-  ASSERT_TRUE(symbols.GetName<TypeParam>(0xa011, 0, &this->memory_, &name, &func_offset));
+  ASSERT_TRUE(symbols.GetName<TypeParam>(0xa011, &this->memory_, &name, &func_offset));
   ASSERT_EQ("function_three", name);
   ASSERT_EQ(1U, func_offset);
-}
-
-TYPED_TEST_P(SymbolsTest, load_bias) {
-  Symbols symbols(0x1000, sizeof(TypeParam), sizeof(TypeParam), 0x2000, 0x100);
-
-  TypeParam sym;
-  this->InitSym(&sym, 0x5000, 0x10, 0x40);
-  uint64_t offset = 0x1000;
-  this->memory_.SetMemory(offset, &sym, sizeof(sym));
-
-  std::string fake_name("fake_function");
-  this->memory_.SetMemory(0x2040, fake_name.c_str(), fake_name.size() + 1);
-
-  // Set a non-zero load_bias that should be a valid function offset.
-  std::string name;
-  uint64_t func_offset;
-  ASSERT_TRUE(symbols.GetName<TypeParam>(0x5004, 0x1000, &this->memory_, &name, &func_offset));
-  ASSERT_EQ("fake_function", name);
-  ASSERT_EQ(4U, func_offset);
-
-  // Set a flag that should cause the load_bias to be ignored.
-  sym.st_shndx = SHN_ABS;
-  this->memory_.SetMemory(offset, &sym, sizeof(sym));
-  // Clear the cache to force the symbol data to be re-read.
-  symbols.ClearCache();
-  ASSERT_FALSE(symbols.GetName<TypeParam>(0x5004, 0x1000, &this->memory_, &name, &func_offset));
 }
 
 TYPED_TEST_P(SymbolsTest, symtab_value_out_of_bounds) {
@@ -265,18 +239,16 @@ TYPED_TEST_P(SymbolsTest, symtab_value_out_of_bounds) {
   std::string name;
   uint64_t func_offset;
   // Verify that we can get the function name properly for both entries.
-  ASSERT_TRUE(symbols_end_at_200.GetName<TypeParam>(0x5000, 0, &this->memory_, &name, &func_offset));
+  ASSERT_TRUE(symbols_end_at_200.GetName<TypeParam>(0x5000, &this->memory_, &name, &func_offset));
   ASSERT_EQ("fake_function", name);
   ASSERT_EQ(0U, func_offset);
-  ASSERT_TRUE(symbols_end_at_200.GetName<TypeParam>(0x3000, 0, &this->memory_, &name, &func_offset));
+  ASSERT_TRUE(symbols_end_at_200.GetName<TypeParam>(0x3000, &this->memory_, &name, &func_offset));
   ASSERT_EQ("function", name);
   ASSERT_EQ(0U, func_offset);
 
   // Now use the symbol table that ends at 0x100.
-  ASSERT_FALSE(
-      symbols_end_at_100.GetName<TypeParam>(0x5000, 0, &this->memory_, &name, &func_offset));
-  ASSERT_FALSE(
-      symbols_end_at_100.GetName<TypeParam>(0x3000, 0, &this->memory_, &name, &func_offset));
+  ASSERT_FALSE(symbols_end_at_100.GetName<TypeParam>(0x5000, &this->memory_, &name, &func_offset));
+  ASSERT_FALSE(symbols_end_at_100.GetName<TypeParam>(0x3000, &this->memory_, &name, &func_offset));
 }
 
 // Verify the entire func table is cached.
@@ -302,9 +274,9 @@ TYPED_TEST_P(SymbolsTest, symtab_read_cached) {
   // Do call that should cache all of the entries (except the string data).
   std::string name;
   uint64_t func_offset;
-  ASSERT_FALSE(symbols.GetName<TypeParam>(0x6000, 0, &this->memory_, &name, &func_offset));
+  ASSERT_FALSE(symbols.GetName<TypeParam>(0x6000, &this->memory_, &name, &func_offset));
   this->memory_.Clear();
-  ASSERT_FALSE(symbols.GetName<TypeParam>(0x6000, 0, &this->memory_, &name, &func_offset));
+  ASSERT_FALSE(symbols.GetName<TypeParam>(0x6000, &this->memory_, &name, &func_offset));
 
   // Clear the memory and only put the symbol data string data in memory.
   this->memory_.Clear();
@@ -317,15 +289,15 @@ TYPED_TEST_P(SymbolsTest, symtab_read_cached) {
   fake_name = "third_entry";
   this->memory_.SetMemory(0xa300, fake_name.c_str(), fake_name.size() + 1);
 
-  ASSERT_TRUE(symbols.GetName<TypeParam>(0x5001, 0, &this->memory_, &name, &func_offset));
+  ASSERT_TRUE(symbols.GetName<TypeParam>(0x5001, &this->memory_, &name, &func_offset));
   ASSERT_EQ("first_entry", name);
   ASSERT_EQ(1U, func_offset);
 
-  ASSERT_TRUE(symbols.GetName<TypeParam>(0x2002, 0, &this->memory_, &name, &func_offset));
+  ASSERT_TRUE(symbols.GetName<TypeParam>(0x2002, &this->memory_, &name, &func_offset));
   ASSERT_EQ("second_entry", name);
   ASSERT_EQ(2U, func_offset);
 
-  ASSERT_TRUE(symbols.GetName<TypeParam>(0x1003, 0, &this->memory_, &name, &func_offset));
+  ASSERT_TRUE(symbols.GetName<TypeParam>(0x1003, &this->memory_, &name, &func_offset));
   ASSERT_EQ("third_entry", name);
   ASSERT_EQ(3U, func_offset);
 }
@@ -381,17 +353,17 @@ TYPED_TEST_P(SymbolsTest, get_global) {
   EXPECT_FALSE(symbols.GetGlobal<TypeParam>(&this->memory_, "function_1", &offset));
 
   std::string name;
-  EXPECT_TRUE(symbols.GetName<TypeParam>(0x10002, 0, &this->memory_, &name, &offset));
+  EXPECT_TRUE(symbols.GetName<TypeParam>(0x10002, &this->memory_, &name, &offset));
   EXPECT_EQ("function_0", name);
   EXPECT_EQ(2U, offset);
 
-  EXPECT_TRUE(symbols.GetName<TypeParam>(0x12004, 0, &this->memory_, &name, &offset));
+  EXPECT_TRUE(symbols.GetName<TypeParam>(0x12004, &this->memory_, &name, &offset));
   EXPECT_EQ("function_1", name);
   EXPECT_EQ(4U, offset);
 }
 
 REGISTER_TYPED_TEST_CASE_P(SymbolsTest, function_bounds_check, no_symbol, multiple_entries,
-                           multiple_entries_nonstandard_size, load_bias, symtab_value_out_of_bounds,
+                           multiple_entries_nonstandard_size, symtab_value_out_of_bounds,
                            symtab_read_cached, get_global);
 
 typedef ::testing::Types<Elf32_Sym, Elf64_Sym> SymbolsTestTypes;

@@ -31,6 +31,8 @@
 
 namespace unwindstack {
 
+static constexpr uint8_t LOG_CFA_REG = 64;
+
 void ArmExidx::LogRawData() {
   std::string log_str("Raw Data:");
   for (const uint8_t data : data_) {
@@ -63,8 +65,10 @@ bool ArmExidx::ExtractEntryData(uint32_t entry_offset) {
   if (data == 1) {
     // This is a CANT UNWIND entry.
     status_ = ARM_STATUS_NO_UNWIND;
-    if (log_) {
-      log(log_indent_, "Raw Data: 0x00 0x00 0x00 0x01");
+    if (log_type_ != ARM_LOG_NONE) {
+      if (log_type_ == ARM_LOG_FULL) {
+        log(log_indent_, "Raw Data: 0x00 0x00 0x00 0x01");
+      }
       log(log_indent_, "[cantunwind]");
     }
     return false;
@@ -86,7 +90,7 @@ bool ArmExidx::ExtractEntryData(uint32_t entry_offset) {
       // If this didn't end with a finish op, add one.
       data_.push_back(ARM_OP_FINISH);
     }
-    if (log_) {
+    if (log_type_ == ARM_LOG_FULL) {
       LogRawData();
     }
     return true;
@@ -163,7 +167,7 @@ bool ArmExidx::ExtractEntryData(uint32_t entry_offset) {
     data_.push_back(ARM_OP_FINISH);
   }
 
-  if (log_) {
+  if (log_type_ == ARM_LOG_FULL) {
     LogRawData();
   }
   return true;
@@ -190,32 +194,45 @@ inline bool ArmExidx::DecodePrefix_10_00(uint8_t byte) {
   registers |= byte;
   if (registers == 0) {
     // 10000000 00000000: Refuse to unwind
-    if (log_) {
+    if (log_type_ != ARM_LOG_NONE) {
       log(log_indent_, "Refuse to unwind");
     }
     status_ = ARM_STATUS_NO_UNWIND;
     return false;
   }
   // 1000iiii iiiiiiii: Pop up to 12 integer registers under masks {r15-r12}, {r11-r4}
-  if (log_) {
-    bool add_comma = false;
-    std::string msg = "pop {";
-    for (size_t i = 0; i < 12; i++) {
-      if (registers & (1 << i)) {
-        if (add_comma) {
-          msg += ", ";
+  registers <<= 4;
+
+  if (log_type_ != ARM_LOG_NONE) {
+    if (log_type_ == ARM_LOG_FULL) {
+      bool add_comma = false;
+      std::string msg = "pop {";
+      for (size_t reg = 4; reg < 16; reg++) {
+        if (registers & (1 << reg)) {
+          if (add_comma) {
+            msg += ", ";
+          }
+          msg += android::base::StringPrintf("r%zu", reg);
+          add_comma = true;
         }
-        msg += android::base::StringPrintf("r%zu", i + 4);
-        add_comma = true;
+      }
+      log(log_indent_, "%s}", msg.c_str());
+    } else {
+      uint32_t cfa_offset = __builtin_popcount(registers) * 4;
+      log_cfa_offset_ += cfa_offset;
+      for (size_t reg = 4; reg < 16; reg++) {
+        if (registers & (1 << reg)) {
+          log_regs_[reg] = cfa_offset;
+          cfa_offset -= 4;
+        }
       }
     }
-    log(log_indent_, "%s}", msg.c_str());
+
     if (log_skip_execution_) {
       return true;
     }
   }
 
-  registers <<= 4;
   for (size_t reg = 4; reg < 16; reg++) {
     if (registers & (1 << reg)) {
       if (!process_memory_->Read32(cfa_, &(*regs_)[reg])) {
@@ -246,15 +263,20 @@ inline bool ArmExidx::DecodePrefix_10_01(uint8_t byte) {
   if (bits == 13 || bits == 15) {
     // 10011101: Reserved as prefix for ARM register to register moves
     // 10011111: Reserved as prefix for Intel Wireless MMX register to register moves
-    if (log_) {
+    if (log_type_ != ARM_LOG_NONE) {
       log(log_indent_, "[Reserved]");
     }
     status_ = ARM_STATUS_RESERVED;
     return false;
   }
   // 1001nnnn: Set vsp = r[nnnn] (nnnn != 13, 15)
-  if (log_) {
-    log(log_indent_, "vsp = r%d", bits);
+  if (log_type_ != ARM_LOG_NONE) {
+    if (log_type_ == ARM_LOG_FULL) {
+      log(log_indent_, "vsp = r%d", bits);
+    } else {
+      log_regs_[LOG_CFA_REG] = bits;
+    }
+
     if (log_skip_execution_) {
       return true;
     }
@@ -270,17 +292,36 @@ inline bool ArmExidx::DecodePrefix_10_10(uint8_t byte) {
 
   // 10100nnn: Pop r4-r[4+nnn]
   // 10101nnn: Pop r4-r[4+nnn], r14
-  if (log_) {
-    std::string msg = "pop {r4";
+  if (log_type_ != ARM_LOG_NONE) {
     uint8_t end_reg = byte & 0x7;
-    if (end_reg) {
-      msg += android::base::StringPrintf("-r%d", 4 + end_reg);
-    }
-    if (byte & 0x8) {
-      log(log_indent_, "%s, r14}", msg.c_str());
+    if (log_type_ == ARM_LOG_FULL) {
+      std::string msg = "pop {r4";
+      if (end_reg) {
+        msg += android::base::StringPrintf("-r%d", 4 + end_reg);
+      }
+      if (byte & 0x8) {
+        log(log_indent_, "%s, r14}", msg.c_str());
+      } else {
+        log(log_indent_, "%s}", msg.c_str());
+      }
     } else {
-      log(log_indent_, "%s}", msg.c_str());
+      end_reg += 4;
+      uint32_t cfa_offset = (end_reg - 3) * 4;
+      if (byte & 0x8) {
+        cfa_offset += 4;
+      }
+      log_cfa_offset_ += cfa_offset;
+
+      for (uint8_t reg = 4; reg <= end_reg; reg++) {
+        log_regs_[reg] = cfa_offset;
+        cfa_offset -= 4;
+      }
+
+      if (byte & 0x8) {
+        log_regs_[14] = cfa_offset;
+      }
     }
+
     if (log_skip_execution_) {
       return true;
     }
@@ -307,8 +348,11 @@ inline bool ArmExidx::DecodePrefix_10_10(uint8_t byte) {
 
 inline bool ArmExidx::DecodePrefix_10_11_0000() {
   // 10110000: Finish
-  if (log_) {
-    log(log_indent_, "finish");
+  if (log_type_ != ARM_LOG_NONE) {
+    if (log_type_ == ARM_LOG_FULL) {
+      log(log_indent_, "finish");
+    }
+
     if (log_skip_execution_) {
       status_ = ARM_STATUS_FINISH;
       return false;
@@ -326,7 +370,7 @@ inline bool ArmExidx::DecodePrefix_10_11_0001() {
 
   if (byte == 0) {
     // 10110001 00000000: Spare
-    if (log_) {
+    if (log_type_ != ARM_LOG_NONE) {
       log(log_indent_, "Spare");
     }
     status_ = ARM_STATUS_SPARE;
@@ -334,7 +378,7 @@ inline bool ArmExidx::DecodePrefix_10_11_0001() {
   }
   if (byte >> 4) {
     // 10110001 xxxxyyyy: Spare (xxxx != 0000)
-    if (log_) {
+    if (log_type_ != ARM_LOG_NONE) {
       log(log_indent_, "Spare");
     }
     status_ = ARM_STATUS_SPARE;
@@ -342,19 +386,32 @@ inline bool ArmExidx::DecodePrefix_10_11_0001() {
   }
 
   // 10110001 0000iiii: Pop integer registers under mask {r3, r2, r1, r0}
-  if (log_) {
-    bool add_comma = false;
-    std::string msg = "pop {";
-    for (size_t i = 0; i < 4; i++) {
-      if (byte & (1 << i)) {
-        if (add_comma) {
-          msg += ", ";
+  if (log_type_ != ARM_LOG_NONE) {
+    if (log_type_ == ARM_LOG_FULL) {
+      bool add_comma = false;
+      std::string msg = "pop {";
+      for (size_t i = 0; i < 4; i++) {
+        if (byte & (1 << i)) {
+          if (add_comma) {
+            msg += ", ";
+          }
+          msg += android::base::StringPrintf("r%zu", i);
+          add_comma = true;
         }
-        msg += android::base::StringPrintf("r%zu", i);
-        add_comma = true;
+      }
+      log(log_indent_, "%s}", msg.c_str());
+    } else {
+      byte &= 0xf;
+      uint32_t cfa_offset = __builtin_popcount(byte) * 4;
+      log_cfa_offset_ += cfa_offset;
+      for (size_t reg = 0; reg < 4; reg++) {
+        if (byte & (1 << reg)) {
+          log_regs_[reg] = cfa_offset;
+          cfa_offset -= 4;
+        }
       }
     }
-    log(log_indent_, "%s}", msg.c_str());
+
     if (log_skip_execution_) {
       return true;
     }
@@ -373,6 +430,15 @@ inline bool ArmExidx::DecodePrefix_10_11_0001() {
   return true;
 }
 
+inline void ArmExidx::AdjustRegisters(int32_t offset) {
+  for (auto& entry : log_regs_) {
+    if (entry.first >= LOG_CFA_REG) {
+      break;
+    }
+    entry.second += offset;
+  }
+}
+
 inline bool ArmExidx::DecodePrefix_10_11_0010() {
   // 10110010 uleb128: vsp = vsp + 0x204 + (uleb128 << 2)
   uint32_t result = 0;
@@ -387,8 +453,15 @@ inline bool ArmExidx::DecodePrefix_10_11_0010() {
     shift += 7;
   } while (byte & 0x80);
   result <<= 2;
-  if (log_) {
-    log(log_indent_, "vsp = vsp + %d", 0x204 + result);
+  if (log_type_ != ARM_LOG_NONE) {
+    int32_t cfa_offset = 0x204 + result;
+    if (log_type_ == ARM_LOG_FULL) {
+      log(log_indent_, "vsp = vsp + %d", cfa_offset);
+    } else {
+      log_cfa_offset_ += cfa_offset;
+    }
+    AdjustRegisters(cfa_offset);
+
     if (log_skip_execution_) {
       return true;
     }
@@ -404,14 +477,20 @@ inline bool ArmExidx::DecodePrefix_10_11_0011() {
     return false;
   }
 
-  if (log_) {
+  if (log_type_ != ARM_LOG_NONE) {
     uint8_t start_reg = byte >> 4;
-    std::string msg = android::base::StringPrintf("pop {d%d", start_reg);
     uint8_t end_reg = start_reg + (byte & 0xf);
-    if (end_reg) {
-      msg += android::base::StringPrintf("-d%d", end_reg);
+
+    if (log_type_ == ARM_LOG_FULL) {
+      std::string msg = android::base::StringPrintf("pop {d%d", start_reg);
+      if (end_reg) {
+        msg += android::base::StringPrintf("-d%d", end_reg);
+      }
+      log(log_indent_, "%s}", msg.c_str());
+    } else {
+      log(log_indent_, "Unsupported DX register display");
     }
-    log(log_indent_, "%s}", msg.c_str());
+
     if (log_skip_execution_) {
       return true;
     }
@@ -422,7 +501,7 @@ inline bool ArmExidx::DecodePrefix_10_11_0011() {
 
 inline bool ArmExidx::DecodePrefix_10_11_01nn() {
   // 101101nn: Spare
-  if (log_) {
+  if (log_type_ != ARM_LOG_NONE) {
     log(log_indent_, "Spare");
   }
   status_ = ARM_STATUS_SPARE;
@@ -433,13 +512,18 @@ inline bool ArmExidx::DecodePrefix_10_11_1nnn(uint8_t byte) {
   CHECK((byte & ~0x07) == 0xb8);
 
   // 10111nnn: Pop VFP double-precision registers D[8]-D[8+nnn] by FSTMFDX
-  if (log_) {
-    std::string msg = "pop {d8";
-    uint8_t last_reg = (byte & 0x7);
-    if (last_reg) {
-      msg += android::base::StringPrintf("-d%d", last_reg + 8);
+  if (log_type_ != ARM_LOG_NONE) {
+    if (log_type_ == ARM_LOG_FULL) {
+      uint8_t last_reg = (byte & 0x7);
+      std::string msg = "pop {d8";
+      if (last_reg) {
+        msg += android::base::StringPrintf("-d%d", last_reg + 8);
+      }
+      log(log_indent_, "%s}", msg.c_str());
+    } else {
+      log(log_indent_, "Unsupported DX register display");
     }
-    log(log_indent_, "%s}", msg.c_str());
+
     if (log_skip_execution_) {
       return true;
     }
@@ -489,14 +573,19 @@ inline bool ArmExidx::DecodePrefix_11_000(uint8_t byte) {
     }
 
     // 11000110 sssscccc: Intel Wireless MMX pop wR[ssss]-wR[ssss+cccc]
-    if (log_) {
-      uint8_t start_reg = byte >> 4;
-      std::string msg = android::base::StringPrintf("pop {wR%d", start_reg);
-      uint8_t end_reg = byte & 0xf;
-      if (end_reg) {
-        msg += android::base::StringPrintf("-wR%d", start_reg + end_reg);
+    if (log_type_ != ARM_LOG_NONE) {
+      if (log_type_ == ARM_LOG_FULL) {
+        uint8_t start_reg = byte >> 4;
+        std::string msg = android::base::StringPrintf("pop {wR%d", start_reg);
+        uint8_t end_reg = byte & 0xf;
+        if (end_reg) {
+          msg += android::base::StringPrintf("-wR%d", start_reg + end_reg);
+        }
+        log(log_indent_, "%s}", msg.c_str());
+      } else {
+        log(log_indent_, "Unsupported wRX register display");
       }
-      log(log_indent_, "%s}", msg.c_str());
+
       if (log_skip_execution_) {
         return true;
       }
@@ -510,32 +599,40 @@ inline bool ArmExidx::DecodePrefix_11_000(uint8_t byte) {
 
     if (byte == 0) {
       // 11000111 00000000: Spare
-      if (log_) {
+      if (log_type_ != ARM_LOG_NONE) {
         log(log_indent_, "Spare");
       }
       status_ = ARM_STATUS_SPARE;
       return false;
     } else if ((byte >> 4) == 0) {
       // 11000111 0000iiii: Intel Wireless MMX pop wCGR registers {wCGR0,1,2,3}
-      if (log_) {
-        bool add_comma = false;
-        std::string msg = "pop {";
-        for (size_t i = 0; i < 4; i++) {
-          if (byte & (1 << i)) {
-            if (add_comma) {
-              msg += ", ";
+      if (log_type_ != ARM_LOG_NONE) {
+        if (log_type_ == ARM_LOG_FULL) {
+          bool add_comma = false;
+          std::string msg = "pop {";
+          for (size_t i = 0; i < 4; i++) {
+            if (byte & (1 << i)) {
+              if (add_comma) {
+                msg += ", ";
+              }
+              msg += android::base::StringPrintf("wCGR%zu", i);
+              add_comma = true;
             }
-            msg += android::base::StringPrintf("wCGR%zu", i);
-            add_comma = true;
           }
+          log(log_indent_, "%s}", msg.c_str());
+        } else {
+          log(log_indent_, "Unsupported wCGR register display");
         }
-        log(log_indent_, "%s}", msg.c_str());
+
+        if (log_skip_execution_) {
+          return true;
+        }
       }
       // Only update the cfa.
       cfa_ += __builtin_popcount(byte) * 4;
     } else {
       // 11000111 xxxxyyyy: Spare (xxxx != 0000)
-      if (log_) {
+      if (log_type_ != ARM_LOG_NONE) {
         log(log_indent_, "Spare");
       }
       status_ = ARM_STATUS_SPARE;
@@ -543,13 +640,18 @@ inline bool ArmExidx::DecodePrefix_11_000(uint8_t byte) {
     }
   } else {
     // 11000nnn: Intel Wireless MMX pop wR[10]-wR[10+nnn] (nnn != 6, 7)
-    if (log_) {
-      std::string msg = "pop {wR10";
-      uint8_t nnn = byte & 0x7;
-      if (nnn) {
-        msg += android::base::StringPrintf("-wR%d", 10 + nnn);
+    if (log_type_ != ARM_LOG_NONE) {
+      if (log_type_ == ARM_LOG_FULL) {
+        std::string msg = "pop {wR10";
+        uint8_t nnn = byte & 0x7;
+        if (nnn) {
+          msg += android::base::StringPrintf("-wR%d", 10 + nnn);
+        }
+        log(log_indent_, "%s}", msg.c_str());
+      } else {
+        log(log_indent_, "Unsupported wRX register display");
       }
-      log(log_indent_, "%s}", msg.c_str());
+
       if (log_skip_execution_) {
         return true;
       }
@@ -570,14 +672,19 @@ inline bool ArmExidx::DecodePrefix_11_001(uint8_t byte) {
       return false;
     }
 
-    if (log_) {
-      uint8_t start_reg = byte >> 4;
-      std::string msg = android::base::StringPrintf("pop {d%d", 16 + start_reg);
-      uint8_t end_reg = byte & 0xf;
-      if (end_reg) {
-        msg += android::base::StringPrintf("-d%d", 16 + start_reg + end_reg);
+    if (log_type_ != ARM_LOG_NONE) {
+      if (log_type_ == ARM_LOG_FULL) {
+        uint8_t start_reg = byte >> 4;
+        std::string msg = android::base::StringPrintf("pop {d%d", 16 + start_reg);
+        uint8_t end_reg = byte & 0xf;
+        if (end_reg) {
+          msg += android::base::StringPrintf("-d%d", 16 + start_reg + end_reg);
+        }
+        log(log_indent_, "%s}", msg.c_str());
+      } else {
+        log(log_indent_, "Unsupported DX register display");
       }
-      log(log_indent_, "%s}", msg.c_str());
+
       if (log_skip_execution_) {
         return true;
       }
@@ -590,14 +697,19 @@ inline bool ArmExidx::DecodePrefix_11_001(uint8_t byte) {
       return false;
     }
 
-    if (log_) {
-      uint8_t start_reg = byte >> 4;
-      std::string msg = android::base::StringPrintf("pop {d%d", start_reg);
-      uint8_t end_reg = byte & 0xf;
-      if (end_reg) {
-        msg += android::base::StringPrintf("-d%d", start_reg + end_reg);
+    if (log_type_ != ARM_LOG_NONE) {
+      if (log_type_ == ARM_LOG_FULL) {
+        uint8_t start_reg = byte >> 4;
+        std::string msg = android::base::StringPrintf("pop {d%d", start_reg);
+        uint8_t end_reg = byte & 0xf;
+        if (end_reg) {
+          msg += android::base::StringPrintf("-d%d", start_reg + end_reg);
+        }
+        log(log_indent_, "%s}", msg.c_str());
+      } else {
+        log(log_indent_, "Unsupported DX register display");
       }
-      log(log_indent_, "%s}", msg.c_str());
+
       if (log_skip_execution_) {
         return true;
       }
@@ -606,7 +718,7 @@ inline bool ArmExidx::DecodePrefix_11_001(uint8_t byte) {
     cfa_ += (byte & 0xf) * 8 + 8;
   } else {
     // 11001yyy: Spare (yyy != 000, 001)
-    if (log_) {
+    if (log_type_ != ARM_LOG_NONE) {
       log(log_indent_, "Spare");
     }
     status_ = ARM_STATUS_SPARE;
@@ -619,13 +731,18 @@ inline bool ArmExidx::DecodePrefix_11_010(uint8_t byte) {
   CHECK((byte & ~0x07) == 0xd0);
 
   // 11010nnn: Pop VFP double precision registers D[8]-D[8+nnn] by VPUSH
-  if (log_) {
-    std::string msg = "pop {d8";
-    uint8_t end_reg = byte & 0x7;
-    if (end_reg) {
-      msg += android::base::StringPrintf("-d%d", 8 + end_reg);
+  if (log_type_ != ARM_LOG_NONE) {
+    if (log_type_ == ARM_LOG_FULL) {
+      std::string msg = "pop {d8";
+      uint8_t end_reg = byte & 0x7;
+      if (end_reg) {
+        msg += android::base::StringPrintf("-d%d", 8 + end_reg);
+      }
+      log(log_indent_, "%s}", msg.c_str());
+    } else {
+      log(log_indent_, "Unsupported DX register display");
     }
-    log(log_indent_, "%s}", msg.c_str());
+
     if (log_skip_execution_) {
       return true;
     }
@@ -646,7 +763,7 @@ inline bool ArmExidx::DecodePrefix_11(uint8_t byte) {
     return DecodePrefix_11_010(byte);
   default:
     // 11xxxyyy: Spare (xxx != 000, 001, 010)
-    if (log_) {
+    if (log_type_ != ARM_LOG_NONE) {
       log(log_indent_, "Spare");
     }
     status_ = ARM_STATUS_SPARE;
@@ -664,8 +781,15 @@ bool ArmExidx::Decode() {
   switch (byte >> 6) {
   case 0:
     // 00xxxxxx: vsp = vsp + (xxxxxxx << 2) + 4
-    if (log_) {
-      log(log_indent_, "vsp = vsp + %d", ((byte & 0x3f) << 2) + 4);
+    if (log_type_ != ARM_LOG_NONE) {
+      int32_t cfa_offset = ((byte & 0x3f) << 2) + 4;
+      if (log_type_ == ARM_LOG_FULL) {
+        log(log_indent_, "vsp = vsp + %d", cfa_offset);
+      } else {
+        log_cfa_offset_ += cfa_offset;
+      }
+      AdjustRegisters(cfa_offset);
+
       if (log_skip_execution_) {
         break;
       }
@@ -674,8 +798,15 @@ bool ArmExidx::Decode() {
     break;
   case 1:
     // 01xxxxxx: vsp = vsp - (xxxxxxx << 2) + 4
-    if (log_) {
-      log(log_indent_, "vsp = vsp - %d", ((byte & 0x3f) << 2) + 4);
+    if (log_type_ != ARM_LOG_NONE) {
+      uint32_t cfa_offset = ((byte & 0x3f) << 2) + 4;
+      if (log_type_ == ARM_LOG_FULL) {
+        log(log_indent_, "vsp = vsp - %d", cfa_offset);
+      } else {
+        log_cfa_offset_ -= cfa_offset;
+      }
+      AdjustRegisters(-cfa_offset);
+
       if (log_skip_execution_) {
         break;
       }
@@ -694,6 +825,38 @@ bool ArmExidx::Eval() {
   pc_set_ = false;
   while (Decode());
   return status_ == ARM_STATUS_FINISH;
+}
+
+void ArmExidx::LogByReg() {
+  if (log_type_ != ARM_LOG_BY_REG) {
+    return;
+  }
+
+  uint8_t cfa_reg;
+  if (log_regs_.count(LOG_CFA_REG) == 0) {
+    cfa_reg = 13;
+  } else {
+    cfa_reg = log_regs_[LOG_CFA_REG];
+  }
+
+  if (log_cfa_offset_ != 0) {
+    char sign = (log_cfa_offset_ > 0) ? '+' : '-';
+    log(log_indent_, "cfa = r%zu %c %d", cfa_reg, sign, abs(log_cfa_offset_));
+  } else {
+    log(log_indent_, "cfa = r%zu", cfa_reg);
+  }
+
+  for (const auto& entry : log_regs_) {
+    if (entry.first >= LOG_CFA_REG) {
+      break;
+    }
+    if (entry.second == 0) {
+      log(log_indent_, "r%zu = [cfa]", entry.first);
+    } else {
+      char sign = (entry.second > 0) ? '-' : '+';
+      log(log_indent_, "r%zu = [cfa %c %d]", entry.first, sign, abs(entry.second));
+    }
+  }
 }
 
 }  // namespace unwindstack

@@ -18,6 +18,7 @@
 #define _LIBUNWINDSTACK_REGS_H
 
 #include <stdint.h>
+#include <unistd.h>
 
 #include <functional>
 #include <string>

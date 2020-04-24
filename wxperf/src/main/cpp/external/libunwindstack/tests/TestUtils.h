@@ -50,6 +50,8 @@ inline bool TestQuiescePid(pid_t pid) {
   return ready;
 }
 
+void TestCheckForLeaks(void (*unwind_func)(void*), void* data);
+
 }  // namespace unwindstack
 
 #endif  // _LIBUNWINDSTACK_TESTS_TEST_UTILS_H

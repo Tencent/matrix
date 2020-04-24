@@ -43,19 +43,15 @@ struct DEXFileEntry64 {
   uint64_t dex_file;
 };
 
-DexFiles::DexFiles(std::shared_ptr<Memory>& memory) : memory_(memory) {}
+DexFiles::DexFiles(std::shared_ptr<Memory>& memory) : Global(memory) {}
 
 DexFiles::DexFiles(std::shared_ptr<Memory>& memory, std::vector<std::string>& search_libs)
-    : memory_(memory), search_libs_(search_libs) {}
+    : Global(memory, search_libs) {}
 
-DexFiles::~DexFiles() {
-  for (auto& entry : files_) {
-    delete entry.second;
-  }
-}
+DexFiles::~DexFiles() {}
 
-void DexFiles::SetArch(ArchEnum arch) {
-  switch (arch) {
+void DexFiles::ProcessArch() {
+  switch (arch()) {
     case ARCH_ARM:
     case ARCH_MIPS:
     case ARCH_X86:
@@ -117,6 +113,11 @@ bool DexFiles::ReadEntry64() {
   return true;
 }
 
+bool DexFiles::ReadVariableData(uint64_t ptr_offset) {
+  entry_addr_ = (this->*read_entry_ptr_func_)(ptr_offset);
+  return entry_addr_ != 0;
+}
+
 void DexFiles::Init(Maps* maps) {
   if (initialized_) {
     return;
@@ -124,36 +125,7 @@ void DexFiles::Init(Maps* maps) {
   initialized_ = true;
   entry_addr_ = 0;
 
-  const std::string dex_debug_name("__dex_debug_descriptor");
-  for (MapInfo* info : *maps) {
-    if (!(info->flags & PROT_EXEC) || !(info->flags & PROT_READ) || info->offset != 0) {
-      continue;
-    }
-
-    if (!search_libs_.empty()) {
-      bool found = false;
-      const char* lib = basename(info->name.c_str());
-      for (const std::string& name : search_libs_) {
-        if (name == lib) {
-          found = true;
-          break;
-        }
-      }
-      if (!found) {
-        continue;
-      }
-    }
-
-    Elf* elf = info->GetElf(memory_, true);
-    uint64_t ptr;
-    // Find first non-empty list (libart might be loaded multiple times).
-    if (elf->GetGlobalVariable(dex_debug_name, &ptr) && ptr != 0) {
-      entry_addr_ = (this->*read_entry_ptr_func_)(ptr + info->start);
-      if (entry_addr_ != 0) {
-        break;
-      }
-    }
-  }
+  FindAndReadVariable(maps, "__dex_debug_descriptor");
 }
 
 DexFile* DexFiles::GetDexFile(uint64_t dex_file_offset, MapInfo* info) {
@@ -161,10 +133,11 @@ DexFile* DexFiles::GetDexFile(uint64_t dex_file_offset, MapInfo* info) {
   DexFile* dex_file;
   auto entry = files_.find(dex_file_offset);
   if (entry == files_.end()) {
-    dex_file = DexFile::Create(dex_file_offset, memory_.get(), info);
-    files_[dex_file_offset] = dex_file;
+    std::unique_ptr<DexFile> new_dex_file = DexFile::Create(dex_file_offset, memory_.get(), info);
+    dex_file = new_dex_file.get();
+    files_[dex_file_offset] = std::move(new_dex_file);
   } else {
-    dex_file = entry->second;
+    dex_file = entry->second.get();
   }
   return dex_file;
 }
