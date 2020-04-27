@@ -160,6 +160,7 @@ static bool test_match_thread_name(pthread_meta_t &__meta) {
 }
 
 static void unwind_native_stacktrace(pthread_meta_t &__meta) {
+    __meta.native_stacktrace.reserve(16 * 2);
     unwindstack::do_unwind(__meta.native_stacktrace);
 }
 
