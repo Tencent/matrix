@@ -65,7 +65,7 @@ class Unwinder {
  public:
   Unwinder(size_t max_frames, Maps* maps, Regs* regs, std::shared_ptr<Memory> process_memory)
       : max_frames_(max_frames), maps_(maps), regs_(regs), process_memory_(process_memory) {
-    frames_.reserve(max_frames);
+    frames_.reserve(max_frames * 2);
   }
   Unwinder(size_t max_frames, Maps* maps, std::shared_ptr<Memory> process_memory)
       : max_frames_(max_frames), maps_(maps), process_memory_(process_memory) {
