@@ -82,15 +82,15 @@ Memory* ElfInterface::CreateGnuDebugdataMemory() {
   if (gnu_debugdata_size_ > SIZE_MAX) {
     return nullptr;
   }
-  size_t initial_buffer_size;
-  if (__builtin_mul_overflow(5, gnu_debugdata_size_, &initial_buffer_size)) {
-    return nullptr;
-  }
+  size_t initial_buffer_size = gnu_debugdata_size_ * 5;
+//  if (__builtin_mul_overflow(5, gnu_debugdata_size_, &initial_buffer_size)) {
+//    return nullptr;
+//  }
 
-  size_t buffer_increment;
-  if (__builtin_mul_overflow(2, gnu_debugdata_size_, &buffer_increment)) {
-    return nullptr;
-  }
+  size_t buffer_increment = gnu_debugdata_size_ * 2;
+//  if (__builtin_mul_overflow(2, gnu_debugdata_size_, &buffer_increment)) {
+//    return nullptr;
+//  }
 
   std::unique_ptr<uint8_t[]> src(new (std::nothrow) uint8_t[gnu_debugdata_size_]);
   if (src.get() == nullptr) {
