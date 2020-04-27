@@ -33,6 +33,7 @@ SET(
         ${CMAKE_CURRENT_SOURCE_DIR}/Global.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/MemFnWrapper.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/EnhanceDlsym.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/FpUnwinder.cpp
 )
 
 IF(${ANDROID_ABI} STREQUAL x86)
