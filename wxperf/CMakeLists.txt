@@ -64,6 +64,7 @@ target_include_directories(
         PRIVATE ${SOURCE_DIR}/common
         PRIVATE ${SOURCE_DIR}/external/libxhook
         PRIVATE ${SOURCE_DIR}/external/libunwindstack/include
+        PRIVATE ${SOURCE_DIR}/external/libwechatbacktrace/include
         PRIVATE ${SOURCE_DIR}/external/libcJSON
 )
 

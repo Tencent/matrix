@@ -40,9 +40,10 @@ Java_com_tencent_mm_performance_jni_test_UnwindBenckmarkTest_benchmarkNative(JNI
     BENCHMARK(DWARF_UNWIND, func_throughjni)
     BENCHMARK(DWARF_UNWIND, func_throughsystemso)
 
-//    benchmark(FP_UNWIND, benchmark_times, func_selfso);
-//    benchmark(FP_UNWIND, benchmark_times, func_throughjni);
-//    benchmark(FP_UNWIND, benchmark_times, func_throughsystemso);
+    // FP_UNWIND mode benchmark
+    BENCHMARK(FP_UNWIND, func_selfso);
+    BENCHMARK(FP_UNWIND, func_throughjni);
+    BENCHMARK(FP_UNWIND, func_throughsystemso);
 //
 //    benchmark(FP_UNWIND_WITH_FALLBACK, benchmark_times, func_selfso);
 //    benchmark(FP_UNWIND_WITH_FALLBACK, benchmark_times, func_throughjni);

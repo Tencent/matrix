@@ -11,6 +11,7 @@
 #include <unwindstack/RegsGetLocal.h>
 #include <unwindstack/Unwinder.h>
 #include <unwindstack/JitDebug.h>
+#include <FastUnwinder.h>
 #include "log.h"
 
 #define WECHAT_BACKTRACE_TAG "Wechat.Backtrace"
@@ -20,6 +21,8 @@ namespace wechat_backtrace {
     void update_maps();
 
     void dwarf_unwind(std::vector<unwindstack::FrameData> &, size_t);
+
+    void fp_fast_unwind(uptr * frames, uptr frameMaxSize, uptr &frameSize);
 }
 
 #endif //LIBWXPERF_JNI_STACKTRACE_H

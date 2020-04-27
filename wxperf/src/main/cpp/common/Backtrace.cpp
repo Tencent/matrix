@@ -5,6 +5,7 @@
 #include <dlfcn.h>
 #include "Backtrace.h"
 #include "JNICommon.h"
+#include <FastUnwinder.h>
 
 namespace wechat_backtrace {
 
@@ -59,6 +60,15 @@ namespace wechat_backtrace {
         delete regs;
 
         dst = unwinder.frames();
+
+        pthread_mutex_unlock(&unwind_mutex);
+    }
+
+    void fp_fast_unwind(uptr * frames, uptr frameMaxSize, uptr &frameSize) {
+
+        pthread_mutex_lock(&unwind_mutex);
+
+        fpUnwind(frames, frameMaxSize, frameSize);
 
         pthread_mutex_unlock(&unwind_mutex);
     }

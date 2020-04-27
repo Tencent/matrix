@@ -33,7 +33,9 @@ SET(
         ${CMAKE_CURRENT_SOURCE_DIR}/Global.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/MemFnWrapper.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/EnhanceDlsym.cpp
-#        ${CMAKE_CURRENT_SOURCE_DIR}/FpUnwinder.cpp
+
+        ${CMAKE_CURRENT_SOURCE_DIR}/../libwechatbacktrace/FastUnwinder.cpp
+#        ${CMAKE_CURRENT_SOURCE_DIR}/../libwechatbacktrace/WeChatElfInterfaceArm64.cpp
 )
 
 IF(${ANDROID_ABI} STREQUAL x86)
@@ -90,6 +92,7 @@ TARGET_INCLUDE_DIRECTORIES(
         PRIVATE .
         PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/deps
         PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include
+        PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../libwechatbacktrace/include
 )
 
 FIND_LIBRARY(log-lib log)

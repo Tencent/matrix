@@ -9,6 +9,7 @@
 #include "UnwindTestCommon.h"
 
 #define DWARF_UNWIND_TAG "Dwarf-Unwind"
+#define FP_FAST_UNWIND_TAG "Fp-Unwind"
 
 #define FRAME_MAX_SIZE 16
 
@@ -69,13 +70,45 @@ inline void print_dwarf_unwind() {
     }
 }
 
+
+
+inline void print_fp_unwind() {
+
+    NanoSeconds_Start(nano);
+
+    uptr frames[FRAME_MAX_SIZE];
+
+    uptr frame_size = 0;
+
+    wechat_backtrace::fp_fast_unwind(frames, FRAME_MAX_SIZE, frame_size);
+
+    NanoSeconds_End(wechat_backtrace::fp_fast_unwind, nano);
+
+    LOGE(FP_FAST_UNWIND_TAG, "frames = %llu", frame_size);
+
+    for (size_t i = 0 ; i < frame_size; i++) {
+        Dl_info stack_info;
+        dladdr((void *) frames[i], &stack_info);
+
+        std::string so_name = std::string(stack_info.dli_fname);
+
+        LOGE(DWARF_UNWIND_TAG, "  #pc 0x%"
+                PRIxPTR
+                " %"
+                PRIuPTR
+                " 0x%"
+                PRIxPTR
+                " %s (%s)", frames[i], frames[i], frames[i], stack_info.dli_sname, stack_info.dli_fname);
+    }
+}
+
 void leaf_func(const char * testcase) {
 
     LOGD(UNWIND_TEST_TAG, "Test %s unwind start with mode %d.", testcase, gMode);
 
     switch (gMode) {
         case FP_UNWIND:
-            LOGE(UNWIND_TEST_TAG, "FP_UNWIND not supported yet.");
+            print_fp_unwind();
             break;
         case FP_UNWIND_WITH_FALLBACK:
             LOGE(UNWIND_TEST_TAG, "FP_UNWIND_WITH_FALLBACK not supported yet.");
