@@ -5,6 +5,8 @@
 #ifndef LIBWXPERF_JNI_TIMEUTIL_H
 #define LIBWXPERF_JNI_TIMEUTIL_H
 
+#include <time.h>
+
 inline long CurrentNano() {
     struct timespec tms;
 
