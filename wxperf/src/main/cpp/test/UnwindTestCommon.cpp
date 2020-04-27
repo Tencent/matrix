@@ -1,11 +1,8 @@
-//
-// Created by yves on 20-4-11.
-//
-
 #include <jni.h>
 #include <dlfcn.h>
 #include <cinttypes>
 #include <cxxabi.h>
+#include <inttypes.h>
 #include "log.h"
 #include "Backtrace.h"
 #include "../external/libunwindstack/TimeUtil.h"
@@ -31,7 +28,6 @@
             struct timespec tms; \
             if (clock_gettime(CLOCK_REALTIME, &tms)) { \
                 LOGE(UNWIND_TEST_TAG, "Err: Get time failed."); \
-                uint64_t timestamp = 0; \
             } \
             LOGE(UNWIND_TEST_TAG, #tag" costs: %ldns", (tms.tv_nsec - timestamp)); \
         }
@@ -55,7 +51,7 @@ inline void print_dwarf_unwind() {
 
     NanoSeconds_End(unwindstack::dwarf_unwind, nano);
 
-    LOGD(DWARF_UNWIND_TAG, "frames = %d", tmp_ns->size());
+    LOGD(DWARF_UNWIND_TAG, "frames = %llu", tmp_ns->size());
 
     for (auto p_frame = tmp_ns->begin(); p_frame != tmp_ns->end(); ++p_frame) {
         Dl_info stack_info;
@@ -63,7 +59,13 @@ inline void print_dwarf_unwind() {
 
         std::string so_name = std::string(stack_info.dli_fname);
 
-        LOGE(DWARF_UNWIND_TAG, "  #pc %llx %llu %llx %s (%s)", p_frame->rel_pc, p_frame->pc, p_frame->pc, stack_info.dli_sname, stack_info.dli_fname);
+        LOGE(DWARF_UNWIND_TAG, "  #pc 0x%"
+        PRIx64
+        " %"
+        PRIu64
+        " 0x%"
+        PRIx64
+        " %s (%s)", p_frame->rel_pc, p_frame->pc, p_frame->pc, stack_info.dli_sname, stack_info.dli_fname);
     }
 }
 

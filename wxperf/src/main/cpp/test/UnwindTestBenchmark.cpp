@@ -1,7 +1,3 @@
-//
-// Created by yves on 20-4-11.
-//
-
 #include <jni.h>
 #include <dlfcn.h>
 #include <cinttypes>
