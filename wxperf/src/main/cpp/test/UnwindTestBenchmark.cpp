@@ -6,8 +6,8 @@
 #include <dlfcn.h>
 #include <cinttypes>
 #include <cxxabi.h>
+#include <Backtrace.h>
 #include "log.h"
-#include "StackTrace.h"
 #include "Backtrace.h"
 #include "../external/libunwindstack/TimeUtil.h"
 
@@ -22,21 +22,27 @@
 extern "C" {
 #endif
 
-inline void benchmark(UnwindTestMode mode, int round, void (*test_func) ()) {
-
-    set_unwind_mode(mode);
-    for (int i = 0; i < round; i++) {
-        test_func();
-    }
-}
+#define BENCHMARK(mode, test_func) { \
+    set_unwind_mode(mode); \
+    LOGE(UNWIND_TEST_TAG, "Start "#test_func" case benchmark for mode "#mode); \
+    for (int i = 0; i < benchmark_times; i++) { \
+        test_func(); \
+    } \
+};
 
 JNIEXPORT void JNICALL
-Java_com_tencent_mm_performance_jni_test_UnwindTest_benchmark(JNIEnv *env, jclass clazz) {
+Java_com_tencent_mm_performance_jni_test_UnwindBenckmarkTest_benchmarkInitNative(JNIEnv *env, jclass clazz) {
+    wechat_backtrace::update_maps();
+}
+
+
+JNIEXPORT void JNICALL
+Java_com_tencent_mm_performance_jni_test_UnwindBenckmarkTest_benchmarkNative(JNIEnv *env, jclass clazz) {
 
     // DWARF_UNWIND mode benchmark
-    benchmark(DWARF_UNWIND, benchmark_times, func_selfso);
-    benchmark(DWARF_UNWIND, benchmark_times, func_throughjni);
-    benchmark(DWARF_UNWIND, benchmark_times, func_throughsystemso);
+    BENCHMARK(DWARF_UNWIND, func_selfso)
+    BENCHMARK(DWARF_UNWIND, func_throughjni)
+    BENCHMARK(DWARF_UNWIND, func_throughsystemso)
 
 //    benchmark(FP_UNWIND, benchmark_times, func_selfso);
 //    benchmark(FP_UNWIND, benchmark_times, func_throughjni);

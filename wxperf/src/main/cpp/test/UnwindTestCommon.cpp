@@ -33,7 +33,7 @@
                 LOGE(UNWIND_TEST_TAG, "Err: Get time failed."); \
                 uint64_t timestamp = 0; \
             } \
-            LOGE(UNWIND_TEST_TAG, "tag costs: %ld", (tms.tv_nsec - timestamp)); \
+            LOGE(UNWIND_TEST_TAG, #tag" costs: %ldns", (tms.tv_nsec - timestamp)); \
         }
 
 #ifdef __cplusplus

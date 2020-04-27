@@ -17,6 +17,7 @@ import com.tencent.mm.performance.jni.HookManager;
 import com.tencent.mm.performance.jni.fd.FDDumpBridge;
 import com.tencent.mm.performance.jni.memory.MemoryHook;
 import com.tencent.mm.performance.jni.pthread.PthreadHook;
+import com.tencent.mm.performance.jni.test.UnwindBenckmarkTest;
 import com.tencent.mm.performance.jni.test.UnwindTest;
 
 import java.io.File;
@@ -212,6 +213,20 @@ public class MainActivity extends AppCompatActivity {
                         }
 
                         PthreadHook.INSTANCE.dump("/sdcard/pthread_hook.log");
+                    }
+                }).start();
+
+            }
+        });
+
+        UnwindBenckmarkTest.benchmarkInitNative();
+        findViewById(R.id.btn_unwind_benchmark).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        UnwindBenckmarkTest.benchmarkNative();
                     }
                 }).start();
 
