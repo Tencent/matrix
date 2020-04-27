@@ -77,7 +77,7 @@ class Unwinder {
   void Unwind(const std::vector<std::string>* initial_map_names_to_skip = nullptr,
               const std::vector<std::string>* map_suffixes_to_ignore = nullptr);
 
-  size_t NumFrames() { return frames_.size(); }
+  size_t NumFrames() const { return frames_.size(); }
 
   const std::vector<FrameData>& frames() { return frames_; }
 
@@ -87,8 +87,8 @@ class Unwinder {
     return frames;
   }
 
-  std::string FormatFrame(size_t frame_num);
-  std::string FormatFrame(const FrameData& frame);
+  std::string FormatFrame(size_t frame_num) const;
+  std::string FormatFrame(const FrameData& frame) const;
 
   void SetJitDebug(JitDebug* jit_debug, ArchEnum arch);
 
@@ -107,14 +107,19 @@ class Unwinder {
 
   void SetDisplayBuildID(bool display_build_id) { display_build_id_ = display_build_id; }
 
-#if !defined(NO_LIBDEXFILE_SUPPORT)
   void SetDexFiles(DexFiles* dex_files, ArchEnum arch);
-#endif
 
   bool elf_from_memory_not_file() { return elf_from_memory_not_file_; }
 
   ErrorCode LastErrorCode() { return last_error_.code; }
   uint64_t LastErrorAddress() { return last_error_.address; }
+
+  // Builds a frame for symbolization using the maps from this unwinder. The
+  // constructed frame contains just enough information to be used to symbolize
+  // frames collected by frame-pointer unwinding that's done outside of
+  // libunwindstack. This is used by tombstoned to symbolize frame pointer-based
+  // stack traces that are collected by tools such as GWP-ASan and MTE.
+  FrameData BuildFrameFromPcOnly(uint64_t pc);
 
  protected:
   Unwinder(size_t max_frames) : max_frames_(max_frames) { frames_.reserve(max_frames); }
@@ -128,9 +133,7 @@ class Unwinder {
   std::vector<FrameData> frames_;
   std::shared_ptr<Memory> process_memory_;
   JitDebug* jit_debug_ = nullptr;
-#if !defined(NO_LIBDEXFILE_SUPPORT)
   DexFiles* dex_files_ = nullptr;
-#endif
   bool resolve_names_ = true;
   bool embedded_soname_ = true;
   bool display_build_id_ = false;
@@ -151,9 +154,7 @@ class UnwinderFromPid : public Unwinder {
   pid_t pid_;
   std::unique_ptr<Maps> maps_ptr_;
   std::unique_ptr<JitDebug> jit_debug_ptr_;
-#if !defined(NO_LIBDEXFILE_SUPPORT)
   std::unique_ptr<DexFiles> dex_files_ptr_;
-#endif
 };
 
 }  // namespace unwindstack

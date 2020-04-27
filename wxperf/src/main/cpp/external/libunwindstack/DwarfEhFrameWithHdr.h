@@ -34,11 +34,7 @@ class DwarfEhFrameWithHdr : public DwarfSectionImpl<AddressType> {
   // Add these so that the protected members of DwarfSectionImpl
   // can be accessed without needing a this->.
   using DwarfSectionImpl<AddressType>::memory_;
-  using DwarfSectionImpl<AddressType>::pc_offset_;
-  using DwarfSectionImpl<AddressType>::entries_offset_;
-  using DwarfSectionImpl<AddressType>::entries_end_;
   using DwarfSectionImpl<AddressType>::last_error_;
-  using DwarfSectionImpl<AddressType>::load_bias_;
 
   struct FdeInfo {
     AddressType pc;
@@ -49,19 +45,20 @@ class DwarfEhFrameWithHdr : public DwarfSectionImpl<AddressType> {
   virtual ~DwarfEhFrameWithHdr() = default;
 
   uint64_t GetCieOffsetFromFde32(uint32_t pointer) override {
-    return this->memory_.cur_offset() - pointer - 4;
+    return memory_.cur_offset() - pointer - 4;
   }
 
   uint64_t GetCieOffsetFromFde64(uint64_t pointer) override {
-    return this->memory_.cur_offset() - pointer - 8;
+    return memory_.cur_offset() - pointer - 8;
   }
 
   uint64_t AdjustPcFromFde(uint64_t pc) override {
     // The eh_frame uses relative pcs.
-    return pc + this->memory_.cur_offset() - 4;
+    return pc + memory_.cur_offset() - 4;
   }
 
-  bool Init(uint64_t offset, uint64_t size, uint64_t load_bias) override;
+  bool EhFrameInit(uint64_t offset, uint64_t size, int64_t section_bias);
+  bool Init(uint64_t offset, uint64_t size, int64_t section_bias) override;
 
   const DwarfFde* GetFdeFromPc(uint64_t pc) override;
 
@@ -72,17 +69,15 @@ class DwarfEhFrameWithHdr : public DwarfSectionImpl<AddressType> {
   void GetFdes(std::vector<const DwarfFde*>* fdes) override;
 
  protected:
-  uint8_t version_;
-  uint8_t ptr_encoding_;
-  uint8_t table_encoding_;
-  size_t table_entry_size_;
+  uint8_t version_ = 0;
+  uint8_t table_encoding_ = 0;
+  size_t table_entry_size_ = 0;
 
-  uint64_t ptr_offset_;
+  uint64_t hdr_entries_offset_ = 0;
+  uint64_t hdr_entries_data_offset_ = 0;
+  uint64_t hdr_section_bias_ = 0;
 
-  uint64_t entries_data_offset_;
-  uint64_t cur_entries_offset_ = 0;
-
-  uint64_t fde_count_;
+  uint64_t fde_count_ = 0;
   std::unordered_map<uint64_t, FdeInfo> fde_info_;
 };
 

@@ -33,6 +33,7 @@ SET(
         ${CMAKE_CURRENT_SOURCE_DIR}/Global.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/MemFnWrapper.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/EnhanceDlsym.cpp
+#        ${CMAKE_CURRENT_SOURCE_DIR}/FpUnwinder.cpp
 )
 
 IF(${ANDROID_ABI} STREQUAL x86)
@@ -81,7 +82,7 @@ TARGET_COMPILE_OPTIONS(
         PRIVATE -Wexit-time-destructors
         PRIVATE -Wno-unused-value
         PRIVATE -DNO_LIBDEXFILE_SUPPORT
-        PRIVATE $<$<COMPILE_LANGUAGE:CXX>:-std=c++14>
+        PRIVATE $<$<COMPILE_LANGUAGE:CXX>:-std=c++17>
 )
 
 TARGET_INCLUDE_DIRECTORIES(

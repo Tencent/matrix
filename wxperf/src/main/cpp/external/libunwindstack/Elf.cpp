@@ -55,7 +55,7 @@ bool Elf::Init() {
 
   valid_ = interface_->Init(&load_bias_);
   if (valid_) {
-    interface_->InitHeaders(load_bias_);
+    interface_->InitHeaders();
     InitGnuDebugdata();
   } else {
     interface_.reset(nullptr);
@@ -79,9 +79,9 @@ void Elf::InitGnuDebugdata() {
 
   // Ignore the load_bias from the compressed section, the correct load bias
   // is in the uncompressed data.
-  uint64_t load_bias;
+  int64_t load_bias;
   if (gnu->Init(&load_bias)) {
-    gnu->InitHeaders(load_bias);
+    gnu->InitHeaders();
     interface_->SetGnuDebugdataInterface(gnu);
   } else {
     // Free all of the memory associated with the gnu_debugdata section.
@@ -114,35 +114,33 @@ bool Elf::GetFunctionName(uint64_t addr, std::string* name, uint64_t* func_offse
                      gnu_debugdata_interface_->GetFunctionName(addr, name, func_offset)));
 }
 
-bool Elf::GetGlobalVariable(const std::string& name, uint64_t* memory_address) {
+bool Elf::GetGlobalVariableOffset(const std::string& name, uint64_t* memory_offset) {
   if (!valid_) {
     return false;
   }
 
-  if (!interface_->GetGlobalVariable(name, memory_address) &&
+  uint64_t vaddr;
+  if (!interface_->GetGlobalVariable(name, &vaddr) &&
       (gnu_debugdata_interface_ == nullptr ||
-       !gnu_debugdata_interface_->GetGlobalVariable(name, memory_address))) {
+       !gnu_debugdata_interface_->GetGlobalVariable(name, &vaddr))) {
     return false;
   }
 
-  // Adjust by the load bias.
-  if (*memory_address < load_bias_) {
-    return false;
+  // Check the .data section.
+  uint64_t vaddr_start = interface_->data_vaddr_start();
+  if (vaddr >= vaddr_start && vaddr < interface_->data_vaddr_end()) {
+    *memory_offset = vaddr - vaddr_start + interface_->data_offset();
+    return true;
   }
 
-  *memory_address -= load_bias_;
-
-  // If this winds up in the dynamic section, then we might need to adjust
-  // the address.
-  uint64_t dynamic_end = interface_->dynamic_vaddr() + interface_->dynamic_size();
-  if (*memory_address >= interface_->dynamic_vaddr() && *memory_address < dynamic_end) {
-    if (interface_->dynamic_vaddr() > interface_->dynamic_offset()) {
-      *memory_address -= interface_->dynamic_vaddr() - interface_->dynamic_offset();
-    } else {
-      *memory_address += interface_->dynamic_offset() - interface_->dynamic_vaddr();
-    }
+  // Check the .dynamic section.
+  vaddr_start = interface_->dynamic_vaddr_start();
+  if (vaddr >= vaddr_start && vaddr < interface_->dynamic_vaddr_end()) {
+    *memory_offset = vaddr - vaddr_start + interface_->dynamic_offset();
+    return true;
   }
-  return true;
+
+  return false;
 }
 
 std::string Elf::GetBuildID() {
@@ -177,7 +175,12 @@ bool Elf::StepIfSignalHandler(uint64_t rel_pc, Regs* regs, Memory* process_memor
   if (!valid_) {
     return false;
   }
-  return regs->StepIfSignalHandler(rel_pc, this, process_memory);
+
+  // Convert the rel_pc to an elf_offset.
+  if (rel_pc < static_cast<uint64_t>(load_bias_)) {
+    return false;
+  }
+  return regs->StepIfSignalHandler(rel_pc - load_bias_, this, process_memory);
 }
 
 // The relative pc is always relative to the start of the map from which it comes.
@@ -231,7 +234,7 @@ bool Elf::GetInfo(Memory* memory, uint64_t* size) {
 }
 
 bool Elf::IsValidPc(uint64_t pc) {
-  if (!valid_ || pc < load_bias_) {
+  if (!valid_ || (load_bias_ > 0 && pc < static_cast<uint64_t>(load_bias_))) {
     return false;
   }
 
@@ -304,7 +307,7 @@ ElfInterface* Elf::CreateInterfaceFromMemory(Memory* memory) {
   return interface.release();
 }
 
-uint64_t Elf::GetLoadBias(Memory* memory) {
+int64_t Elf::GetLoadBias(Memory* memory) {
   if (!IsValidElf(memory)) {
     return 0;
   }

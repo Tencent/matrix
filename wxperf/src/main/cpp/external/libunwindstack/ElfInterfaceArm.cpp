@@ -26,7 +26,7 @@
 
 namespace unwindstack {
 
-bool ElfInterfaceArm::Init(uint64_t* load_bias) {
+bool ElfInterfaceArm::Init(int64_t* load_bias) {
   if (!ElfInterface32::Init(load_bias)) {
     return false;
   }
