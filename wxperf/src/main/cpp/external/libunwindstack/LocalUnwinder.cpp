@@ -106,7 +106,7 @@ bool LocalUnwinder::Unwind(std::vector<LocalFrameData>* frame_info, size_t max_f
     uint64_t step_pc = rel_pc;
     uint64_t pc_adjustment;
     if (adjust_pc) {
-      pc_adjustment = regs->GetPcAdjustment(rel_pc, elf);
+      pc_adjustment = GetPcAdjustment(rel_pc, elf, arch);
     } else {
       pc_adjustment = 0;
     }

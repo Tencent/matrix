@@ -19,8 +19,9 @@
 
 #include <stdint.h>
 
+#include <optional>
 #include <string>
-#include <vector>
+#include <unordered_map>
 
 namespace unwindstack {
 
@@ -29,19 +30,15 @@ class Memory;
 
 class Symbols {
   struct Info {
-    Info(uint64_t start_offset, uint64_t end_offset, uint64_t str_offset)
-        : start_offset(start_offset), end_offset(end_offset), str_offset(str_offset) {}
-    uint64_t start_offset;
-    uint64_t end_offset;
-    uint64_t str_offset;
+    uint64_t addr;  // Symbol address.
+    uint32_t size;  // Symbol size in bytes. Zero if not a function.
+    uint32_t name;  // Offset in .strtab.
   };
 
  public:
   Symbols(uint64_t offset, uint64_t size, uint64_t entry_size, uint64_t str_offset,
           uint64_t str_size);
   virtual ~Symbols() = default;
-
-  const Info* GetInfoFromCache(uint64_t addr);
 
   template <typename SymType>
   bool GetName(uint64_t addr, Memory* elf_memory, std::string* name, uint64_t* func_offset);
@@ -51,18 +48,27 @@ class Symbols {
 
   void ClearCache() {
     symbols_.clear();
-    cur_offset_ = offset_;
+    remap_.reset();
   }
 
  private:
-  uint64_t cur_offset_;
-  uint64_t offset_;
-  uint64_t end_;
-  uint64_t entry_size_;
-  uint64_t str_offset_;
-  uint64_t str_end_;
+  template <typename SymType>
+  const Info* ReadFuncInfo(uint32_t symbol_index, Memory* elf_memory);
 
-  std::vector<Info> symbols_;
+  template <typename SymType, bool RemapIndices>
+  const Info* BinarySearch(uint64_t addr, Memory* elf_memory);
+
+  template <typename SymType>
+  void BuildRemapTable(Memory* elf_memory);
+
+  const uint64_t offset_;
+  const uint64_t count_;
+  const uint64_t entry_size_;
+  const uint64_t str_offset_;
+  const uint64_t str_end_;
+
+  std::unordered_map<uint32_t, Info> symbols_;  // Cache of read symbols (keyed by symbol index).
+  std::optional<std::vector<uint32_t>> remap_;  // Indices of function symbols sorted by address.
 };
 
 }  // namespace unwindstack

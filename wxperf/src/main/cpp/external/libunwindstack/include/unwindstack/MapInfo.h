@@ -25,30 +25,33 @@
 #include <string>
 
 #include <unwindstack/Elf.h>
-#include <unwindstack/Memory.h>
 
 namespace unwindstack {
 
+class MemoryFileAtOffset;
+
 struct MapInfo {
-  MapInfo(MapInfo* map_info, uint64_t start, uint64_t end, uint64_t offset, uint64_t flags,
-          const char* name)
+  MapInfo(MapInfo* prev_map, MapInfo* prev_real_map, uint64_t start, uint64_t end, uint64_t offset,
+          uint64_t flags, const char* name)
       : start(start),
         end(end),
         offset(offset),
         flags(flags),
         name(name),
-        prev_map(map_info),
-        load_bias(static_cast<uint64_t>(-1)),
+        prev_map(prev_map),
+        prev_real_map(prev_real_map),
+        load_bias(INT64_MAX),
         build_id(0) {}
-  MapInfo(MapInfo* map_info, uint64_t start, uint64_t end, uint64_t offset, uint64_t flags,
-          const std::string& name)
+  MapInfo(MapInfo* prev_map, MapInfo* prev_real_map, uint64_t start, uint64_t end, uint64_t offset,
+          uint64_t flags, const std::string& name)
       : start(start),
         end(end),
         offset(offset),
         flags(flags),
         name(name),
-        prev_map(map_info),
-        load_bias(static_cast<uint64_t>(-1)),
+        prev_map(prev_map),
+        prev_real_map(prev_real_map),
+        load_bias(INT64_MAX),
         build_id(0) {}
   ~MapInfo();
 
@@ -58,17 +61,28 @@ struct MapInfo {
   uint16_t flags = 0;
   std::string name;
   std::shared_ptr<Elf> elf;
+  // The offset of the beginning of this mapping to the beginning of the
+  // ELF file.
+  // elf_offset == offset - elf_start_offset.
   // This value is only non-zero if the offset is non-zero but there is
   // no elf signature found at that offset.
   uint64_t elf_offset = 0;
-  // This value is the offset from the map in memory that is the start
-  // of the elf. This is not equal to offset when the linker splits
+  // This value is the offset into the file of the map in memory that is the
+  // start of the elf. This is not equal to offset when the linker splits
   // shared libraries into a read-only and read-execute map.
   uint64_t elf_start_offset = 0;
 
   MapInfo* prev_map = nullptr;
+  // This is the previous map that is not empty with a 0 offset. For
+  // example, this set of maps:
+  //  1000-2000  r--p 000000 00:00 0 libc.so
+  //  2000-3000  ---p 000000 00:00 0 libc.so
+  //  3000-4000  r-xp 003000 00:00 0 libc.so
+  // The last map's prev_map would point to the 2000-3000 map, while the
+  // prev_real_map would point to the 1000-2000 map.
+  MapInfo* prev_real_map = nullptr;
 
-  std::atomic_uint64_t load_bias;
+  std::atomic_int64_t load_bias;
 
   // This is a pointer to a new'd std::string.
   // Using an atomic value means that we don't need to lock and will
@@ -92,6 +106,8 @@ struct MapInfo {
 
   // Returns the printable version of the build id (hex dump of raw data).
   std::string GetPrintableBuildID();
+
+  inline bool IsBlank() { return offset == 0 && flags == 0 && name.empty(); }
 
  private:
   MapInfo(const MapInfo&) = delete;

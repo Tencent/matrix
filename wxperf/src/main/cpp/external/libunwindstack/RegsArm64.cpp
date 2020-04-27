@@ -52,13 +52,6 @@ void RegsArm64::set_sp(uint64_t sp) {
   regs_[ARM64_REG_SP] = sp;
 }
 
-uint64_t RegsArm64::GetPcAdjustment(uint64_t rel_pc, Elf*) {
-  if (rel_pc < 4) {
-    return 0;
-  }
-  return 4;
-}
-
 bool RegsArm64::SetPcFromReturnAddress(Memory*) {
   uint64_t lr = regs_[ARM64_REG_LR];
   if (regs_[ARM64_REG_PC] == lr) {
@@ -100,19 +93,21 @@ void RegsArm64::IterateRegisters(std::function<void(const char*, uint64_t)> fn) 
   fn("x27", regs_[ARM64_REG_R27]);
   fn("x28", regs_[ARM64_REG_R28]);
   fn("x29", regs_[ARM64_REG_R29]);
-  fn("sp", regs_[ARM64_REG_SP]);
   fn("lr", regs_[ARM64_REG_LR]);
+  fn("sp", regs_[ARM64_REG_SP]);
   fn("pc", regs_[ARM64_REG_PC]);
+  fn("pst", regs_[ARM64_REG_PSTATE]);
 }
 
 Regs* RegsArm64::Read(void* remote_data) {
   arm64_user_regs* user = reinterpret_cast<arm64_user_regs*>(remote_data);
 
   RegsArm64* regs = new RegsArm64();
-  memcpy(regs->RawData(), &user->regs[0], (ARM64_REG_R31 + 1) * sizeof(uint64_t));
+  memcpy(regs->RawData(), &user->regs[0], (ARM64_REG_R30 + 1) * sizeof(uint64_t));
   uint64_t* reg_data = reinterpret_cast<uint64_t*>(regs->RawData());
-  reg_data[ARM64_REG_PC] = user->pc;
   reg_data[ARM64_REG_SP] = user->sp;
+  reg_data[ARM64_REG_PC] = user->pc;
+  reg_data[ARM64_REG_PSTATE] = user->pstate;
   return regs;
 }
 
@@ -124,12 +119,12 @@ Regs* RegsArm64::CreateFromUcontext(void* ucontext) {
   return regs;
 }
 
-bool RegsArm64::StepIfSignalHandler(uint64_t rel_pc, Elf* elf, Memory* process_memory) {
+bool RegsArm64::StepIfSignalHandler(uint64_t elf_offset, Elf* elf, Memory* process_memory) {
   uint64_t data;
   Memory* elf_memory = elf->memory();
   // Read from elf memory since it is usually more expensive to read from
   // process memory.
-  if (!elf_memory->ReadFully(rel_pc, &data, sizeof(data))) {
+  if (!elf_memory->ReadFully(elf_offset, &data, sizeof(data))) {
     return false;
   }
 

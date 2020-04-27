@@ -64,7 +64,7 @@ class ElfInterfaceArm : public ElfInterface32 {
   iterator begin() { return iterator(this, 0); }
   iterator end() { return iterator(this, total_entries_); }
 
-  bool Init(uint64_t* load_bias) override;
+  bool Init(int64_t* section_bias) override;
 
   bool GetPrel31Addr(uint32_t offset, uint32_t* addr);
 

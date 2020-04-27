@@ -39,28 +39,22 @@ void Global::SetArch(ArchEnum arch) {
   }
 }
 
-uint64_t Global::GetVariableOffset(MapInfo* info, const std::string& variable) {
-  if (!search_libs_.empty()) {
-    bool found = false;
-    const char* lib = basename(info->name.c_str());
-    for (const std::string& name : search_libs_) {
-      if (name == lib) {
-        found = true;
-        break;
-      }
-    }
-    if (!found) {
-      return 0;
-    }
+bool Global::Searchable(const std::string& name) {
+  if (search_libs_.empty()) {
+    return true;
   }
 
-  Elf* elf = info->GetElf(memory_, arch());
-  uint64_t ptr;
-  // Find first non-empty list (libraries might be loaded multiple times).
-  if (elf->GetGlobalVariable(variable, &ptr) && ptr != 0) {
-    return ptr + info->start;
+  if (name.empty()) {
+    return false;
   }
-  return 0;
+
+  const char* base_name = basename(name.c_str());
+  for (const std::string& lib : search_libs_) {
+    if (base_name == lib) {
+      return true;
+    }
+  }
+  return false;
 }
 
 void Global::FindAndReadVariable(Maps* maps, const char* var_str) {
@@ -76,27 +70,28 @@ void Global::FindAndReadVariable(Maps* maps, const char* var_str) {
   // This also works:
   //   f0000-f2000 0 r-- /system/lib/libc.so
   //   f2000-f3000 2000 rw- /system/lib/libc.so
-  MapInfo* map_start = nullptr;
+  // It is also possible to see empty maps after the read-only like so:
+  //   f0000-f1000 0 r-- /system/lib/libc.so
+  //   f1000-f2000 0 ---
+  //   f2000-f3000 1000 r-x /system/lib/libc.so
+  //   f3000-f4000 2000 rw- /system/lib/libc.so
+  MapInfo* map_zero = nullptr;
   for (const auto& info : *maps) {
-    if (map_start != nullptr) {
-      if (map_start->name == info->name) {
-        if (info->offset != 0 &&
-            (info->flags & (PROT_READ | PROT_WRITE)) == (PROT_READ | PROT_WRITE)) {
-          uint64_t ptr = GetVariableOffset(map_start, variable);
-          if (ptr != 0 && ReadVariableData(ptr)) {
+    if (info->offset != 0 && (info->flags & (PROT_READ | PROT_WRITE)) == (PROT_READ | PROT_WRITE) &&
+        map_zero != nullptr && Searchable(info->name) && info->name == map_zero->name) {
+      Elf* elf = map_zero->GetElf(memory_, arch());
+      uint64_t ptr;
+      if (elf->GetGlobalVariableOffset(variable, &ptr) && ptr != 0) {
+        uint64_t offset_end = info->offset + info->end - info->start;
+        if (ptr >= info->offset && ptr < offset_end) {
+          ptr = info->start + ptr - info->offset;
+          if (ReadVariableData(ptr)) {
             break;
-          } else {
-            // Failed to find the global variable, do not bother trying again.
-            map_start = nullptr;
           }
         }
-      } else {
-        map_start = nullptr;
       }
-    }
-    if (map_start == nullptr && (info->flags & PROT_READ) && info->offset == 0 &&
-        !info->name.empty()) {
-      map_start = info.get();
+    } else if (info->offset == 0 && !info->name.empty()) {
+      map_zero = info.get();
     }
   }
 }

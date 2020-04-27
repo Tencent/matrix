@@ -52,14 +52,6 @@ void RegsMips::set_sp(uint64_t sp) {
   regs_[MIPS_REG_SP] = static_cast<uint32_t>(sp);
 }
 
-uint64_t RegsMips::GetPcAdjustment(uint64_t rel_pc, Elf*) {
-  if (rel_pc < 8) {
-    return 0;
-  }
-  // For now, just assume no compact branches
-  return 8;
-}
-
 bool RegsMips::SetPcFromReturnAddress(Memory*) {
   uint32_t ra = regs_[MIPS_REG_RA];
   if (regs_[MIPS_REG_PC] == ra) {
@@ -129,13 +121,13 @@ Regs* RegsMips::CreateFromUcontext(void* ucontext) {
   return regs;
 }
 
-bool RegsMips::StepIfSignalHandler(uint64_t rel_pc, Elf* elf, Memory* process_memory) {
+bool RegsMips::StepIfSignalHandler(uint64_t elf_offset, Elf* elf, Memory* process_memory) {
   uint64_t data;
   uint64_t offset = 0;
   Memory* elf_memory = elf->memory();
   // Read from elf memory since it is usually more expensive to read from
   // process memory.
-  if (!elf_memory->ReadFully(rel_pc, &data, sizeof(data))) {
+  if (!elf_memory->ReadFully(elf_offset, &data, sizeof(data))) {
     return false;
   }
 
