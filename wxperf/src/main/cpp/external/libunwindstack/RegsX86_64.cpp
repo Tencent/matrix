@@ -51,13 +51,6 @@ void RegsX86_64::set_sp(uint64_t sp) {
   regs_[X86_64_REG_SP] = sp;
 }
 
-uint64_t RegsX86_64::GetPcAdjustment(uint64_t rel_pc, Elf*) {
-  if (rel_pc == 0) {
-    return 0;
-  }
-  return 1;
-}
-
 bool RegsX86_64::SetPcFromReturnAddress(Memory* process_memory) {
   // Attempt to get the return address from the top of the stack.
   uint64_t new_pc;
@@ -139,17 +132,17 @@ Regs* RegsX86_64::CreateFromUcontext(void* ucontext) {
   return regs;
 }
 
-bool RegsX86_64::StepIfSignalHandler(uint64_t rel_pc, Elf* elf, Memory* process_memory) {
+bool RegsX86_64::StepIfSignalHandler(uint64_t elf_offset, Elf* elf, Memory* process_memory) {
   uint64_t data;
   Memory* elf_memory = elf->memory();
   // Read from elf memory since it is usually more expensive to read from
   // process memory.
-  if (!elf_memory->ReadFully(rel_pc, &data, sizeof(data)) || data != 0x0f0000000fc0c748) {
+  if (!elf_memory->ReadFully(elf_offset, &data, sizeof(data)) || data != 0x0f0000000fc0c748) {
     return false;
   }
 
   uint16_t data2;
-  if (!elf_memory->ReadFully(rel_pc + 8, &data2, sizeof(data2)) || data2 != 0x0f05) {
+  if (!elf_memory->ReadFully(elf_offset + 8, &data2, sizeof(data2)) || data2 != 0x0f05) {
     return false;
   }
 

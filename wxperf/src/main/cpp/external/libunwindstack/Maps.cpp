@@ -60,6 +60,8 @@ MapInfo* Maps::Find(uint64_t pc) {
 }
 
 bool Maps::Parse() {
+  MapInfo* prev_map = nullptr;
+  MapInfo* prev_real_map = nullptr;
   return android::procinfo::ReadMapFile(
       GetMapsFile(),
       [&](uint64_t start, uint64_t end, uint16_t flags, uint64_t pgoff, ino_t, const char* name) {
@@ -67,17 +69,24 @@ bool Maps::Parse() {
         if (strncmp(name, "/dev/", 5) == 0 && strncmp(name + 5, "ashmem/", 7) != 0) {
           flags |= unwindstack::MAPS_FLAGS_DEVICE_MAP;
         }
-        maps_.emplace_back(
-            new MapInfo(maps_.empty() ? nullptr : maps_.back().get(), start, end, pgoff,
-                        flags, name));
+        maps_.emplace_back(new MapInfo(prev_map, prev_real_map, start, end, pgoff, flags, name));
+        prev_map = maps_.back().get();
+        if (!prev_map->IsBlank()) {
+          prev_real_map = prev_map;
+        }
       });
 }
 
 void Maps::Add(uint64_t start, uint64_t end, uint64_t offset, uint64_t flags,
                const std::string& name, uint64_t load_bias) {
+  MapInfo* prev_map = maps_.empty() ? nullptr : maps_.back().get();
+  MapInfo* prev_real_map = prev_map;
+  while (prev_real_map != nullptr && prev_real_map->IsBlank()) {
+    prev_real_map = prev_real_map->prev_map;
+  }
+
   auto map_info =
-      std::make_unique<MapInfo>(maps_.empty() ? nullptr : maps_.back().get(), start, end, offset,
-                                flags, name);
+      std::make_unique<MapInfo>(prev_map, prev_real_map, start, end, offset, flags, name);
   map_info->load_bias = load_bias;
   maps_.emplace_back(std::move(map_info));
 }
@@ -89,14 +98,21 @@ void Maps::Sort() {
 
   // Set the prev_map values on the info objects.
   MapInfo* prev_map = nullptr;
+  MapInfo* prev_real_map = nullptr;
   for (const auto& map_info : maps_) {
     map_info->prev_map = prev_map;
+    map_info->prev_real_map = prev_real_map;
     prev_map = map_info.get();
+    if (!prev_map->IsBlank()) {
+      prev_real_map = prev_map;
+    }
   }
 }
 
 bool BufferMaps::Parse() {
   std::string content(buffer_);
+  MapInfo* prev_map = nullptr;
+  MapInfo* prev_real_map = nullptr;
   return android::procinfo::ReadMapFileContent(
       &content[0],
       [&](uint64_t start, uint64_t end, uint16_t flags, uint64_t pgoff, ino_t, const char* name) {
@@ -104,9 +120,11 @@ bool BufferMaps::Parse() {
         if (strncmp(name, "/dev/", 5) == 0 && strncmp(name + 5, "ashmem/", 7) != 0) {
           flags |= unwindstack::MAPS_FLAGS_DEVICE_MAP;
         }
-        maps_.emplace_back(
-            new MapInfo(maps_.empty() ? nullptr : maps_.back().get(), start, end, pgoff,
-                        flags, name));
+        maps_.emplace_back(new MapInfo(prev_map, prev_real_map, start, end, pgoff, flags, name));
+        prev_map = maps_.back().get();
+        if (!prev_map->IsBlank()) {
+          prev_real_map = prev_map;
+        }
       });
 }
 
@@ -139,6 +157,9 @@ bool LocalUpdatableMaps::Reparse() {
       if (start == info->start && end == info->end && flags == info->flags && *name == info->name) {
         // No need to check
         search_map_idx = old_map_idx + 1;
+        if (new_map_idx + 1 < maps_.size()) {
+          maps_[new_map_idx + 1]->prev_map = info.get();
+        }
         maps_[new_map_idx] = nullptr;
         total_entries--;
         break;
@@ -149,9 +170,10 @@ bool LocalUpdatableMaps::Reparse() {
       }
 
       // Never delete these maps, they may be in use. The assumption is
-      // that there will only every be a handfull of these so waiting
+      // that there will only every be a handful of these so waiting
       // to destroy them is not too expensive.
       saved_maps_.emplace_back(std::move(info));
+      search_map_idx = old_map_idx + 1;
       maps_[old_map_idx] = nullptr;
       total_entries--;
     }

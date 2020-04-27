@@ -45,7 +45,7 @@ class Global {
   ArchEnum arch() { return arch_; }
 
  protected:
-  uint64_t GetVariableOffset(MapInfo* info, const std::string& variable);
+  bool Searchable(const std::string& name);
   void FindAndReadVariable(Maps* maps, const char* variable);
 
   virtual bool ReadVariableData(uint64_t offset) = 0;

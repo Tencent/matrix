@@ -64,7 +64,7 @@ class Elf {
 
   bool GetFunctionName(uint64_t addr, std::string* name, uint64_t* func_offset);
 
-  bool GetGlobalVariable(const std::string& name, uint64_t* memory_address);
+  bool GetGlobalVariableOffset(const std::string& name, uint64_t* memory_offset);
 
   uint64_t GetRelPc(uint64_t pc, const MapInfo* map_info);
 
@@ -76,7 +76,7 @@ class Elf {
 
   std::string GetBuildID();
 
-  uint64_t GetLoadBias() { return load_bias_; }
+  int64_t GetLoadBias() { return load_bias_; }
 
   bool IsValidPc(uint64_t pc);
 
@@ -102,7 +102,7 @@ class Elf {
 
   static bool GetInfo(Memory* memory, uint64_t* size);
 
-  static uint64_t GetLoadBias(Memory* memory);
+  static int64_t GetLoadBias(Memory* memory);
 
   static std::string GetBuildID(Memory* memory);
 
@@ -117,7 +117,7 @@ class Elf {
 
  protected:
   bool valid_ = false;
-  uint64_t load_bias_ = 0;
+  int64_t load_bias_ = 0;
   std::unique_ptr<ElfInterface> interface_;
   std::unique_ptr<Memory> memory_;
   uint32_t machine_type_;

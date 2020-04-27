@@ -51,37 +51,6 @@ void RegsArm::set_sp(uint64_t sp) {
   regs_[ARM_REG_SP] = sp;
 }
 
-uint64_t RegsArm::GetPcAdjustment(uint64_t rel_pc, Elf* elf) {
-  if (!elf->valid()) {
-    return 2;
-  }
-
-  uint64_t load_bias = elf->GetLoadBias();
-  if (rel_pc < load_bias) {
-    if (rel_pc < 2) {
-      return 0;
-    }
-    return 2;
-  }
-  uint64_t adjusted_rel_pc = rel_pc - load_bias;
-  if (adjusted_rel_pc < 5) {
-    if (adjusted_rel_pc < 2) {
-      return 0;
-    }
-    return 2;
-  }
-
-  if (adjusted_rel_pc & 1) {
-    // This is a thumb instruction, it could be 2 or 4 bytes.
-    uint32_t value;
-    if (!elf->memory()->ReadFully(adjusted_rel_pc - 5, &value, sizeof(value)) ||
-        (value & 0xe000f000) != 0xe000f000) {
-      return 2;
-    }
-  }
-  return 4;
-}
-
 bool RegsArm::SetPcFromReturnAddress(Memory*) {
   uint32_t lr = regs_[ARM_REG_LR];
   if (regs_[ARM_REG_PC] == lr) {
@@ -127,12 +96,12 @@ Regs* RegsArm::CreateFromUcontext(void* ucontext) {
   return regs;
 }
 
-bool RegsArm::StepIfSignalHandler(uint64_t rel_pc, Elf* elf, Memory* process_memory) {
+bool RegsArm::StepIfSignalHandler(uint64_t elf_offset, Elf* elf, Memory* process_memory) {
   uint32_t data;
   Memory* elf_memory = elf->memory();
   // Read from elf memory since it is usually more expensive to read from
   // process memory.
-  if (!elf_memory->ReadFully(rel_pc, &data, sizeof(data))) {
+  if (!elf_memory->ReadFully(elf_offset, &data, sizeof(data))) {
     return false;
   }
 

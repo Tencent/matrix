@@ -111,7 +111,7 @@ bool DwarfMemory::AdjustEncodedValue(uint8_t encoding, uint64_t* value) {
       // Nothing to do.
       break;
     case DW_EH_PE_pcrel:
-      if (pc_offset_ == static_cast<uint64_t>(-1)) {
+      if (pc_offset_ == INT64_MAX) {
         // Unsupported encoding.
         return false;
       }

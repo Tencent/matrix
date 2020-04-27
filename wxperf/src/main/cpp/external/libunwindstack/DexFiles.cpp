@@ -27,9 +27,20 @@
 #include <unwindstack/Maps.h>
 #include <unwindstack/Memory.h>
 
+#if defined(DEXFILE_SUPPORT)
 #include "DexFile.h"
+#endif
 
 namespace unwindstack {
+
+#if !defined(DEXFILE_SUPPORT)
+// Empty class definition.
+class DexFile {
+ public:
+  DexFile() = default;
+  virtual ~DexFile() = default;
+};
+#endif
 
 struct DEXFileEntry32 {
   uint32_t next;
@@ -128,6 +139,7 @@ void DexFiles::Init(Maps* maps) {
   FindAndReadVariable(maps, "__dex_debug_descriptor");
 }
 
+#if defined(DEXFILE_SUPPORT)
 DexFile* DexFiles::GetDexFile(uint64_t dex_file_offset, MapInfo* info) {
   // Lock while processing the data.
   DexFile* dex_file;
@@ -141,6 +153,11 @@ DexFile* DexFiles::GetDexFile(uint64_t dex_file_offset, MapInfo* info) {
   }
   return dex_file;
 }
+#else
+DexFile* DexFiles::GetDexFile(uint64_t, MapInfo*) {
+  return nullptr;
+}
+#endif
 
 bool DexFiles::GetAddr(size_t index, uint64_t* addr) {
   if (index < addrs_.size()) {
@@ -154,6 +171,7 @@ bool DexFiles::GetAddr(size_t index, uint64_t* addr) {
   return false;
 }
 
+#if defined(DEXFILE_SUPPORT)
 void DexFiles::GetMethodInformation(Maps* maps, MapInfo* info, uint64_t dex_pc,
                                     std::string* method_name, uint64_t* method_offset) {
   std::lock_guard<std::mutex> guard(lock_);
@@ -175,5 +193,8 @@ void DexFiles::GetMethodInformation(Maps* maps, MapInfo* info, uint64_t dex_pc,
     }
   }
 }
+#else
+void DexFiles::GetMethodInformation(Maps*, MapInfo*, uint64_t, std::string*, uint64_t*) {}
+#endif
 
 }  // namespace unwindstack

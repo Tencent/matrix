@@ -29,12 +29,12 @@
 #include <unwindstack/DwarfSection.h>
 #include <unwindstack/ElfInterface.h>
 #include <unwindstack/Log.h>
-#include <unwindstack/Memory.h>
 #include <unwindstack/Regs.h>
 
 #include "DwarfDebugFrame.h"
 #include "DwarfEhFrame.h"
 #include "DwarfEhFrameWithHdr.h"
+#include "MemoryBuffer.h"
 #include "Symbols.h"
 
 namespace unwindstack {
@@ -78,10 +78,31 @@ Memory* ElfInterface::CreateGnuDebugdataMemory() {
   CrcGenerateTable();
   Crc64GenerateTable();
 
-  std::vector<uint8_t> src(gnu_debugdata_size_);
-  if (!memory_->ReadFully(gnu_debugdata_offset_, src.data(), gnu_debugdata_size_)) {
-    gnu_debugdata_offset_ = 0;
-    gnu_debugdata_size_ = static_cast<uint64_t>(-1);
+  // Verify the request is not larger than the max size_t value.
+  if (gnu_debugdata_size_ > SIZE_MAX) {
+    return nullptr;
+  }
+  size_t initial_buffer_size;
+  if (__builtin_mul_overflow(5, gnu_debugdata_size_, &initial_buffer_size)) {
+    return nullptr;
+  }
+
+  size_t buffer_increment;
+  if (__builtin_mul_overflow(2, gnu_debugdata_size_, &buffer_increment)) {
+    return nullptr;
+  }
+
+  std::unique_ptr<uint8_t[]> src(new (std::nothrow) uint8_t[gnu_debugdata_size_]);
+  if (src.get() == nullptr) {
+    return nullptr;
+  }
+
+  std::unique_ptr<MemoryBuffer> dst(new MemoryBuffer);
+  if (!dst->Resize(initial_buffer_size)) {
+    return nullptr;
+  }
+
+  if (!memory_->ReadFully(gnu_debugdata_offset_, src.get(), gnu_debugdata_size_)) {
     return nullptr;
   }
 
@@ -89,21 +110,23 @@ Memory* ElfInterface::CreateGnuDebugdataMemory() {
   CXzUnpacker state;
   alloc.Alloc = [](ISzAllocPtr, size_t size) { return malloc(size); };
   alloc.Free = [](ISzAllocPtr, void* ptr) { return free(ptr); };
-
   XzUnpacker_Construct(&state, &alloc);
 
-  std::unique_ptr<MemoryBuffer> dst(new MemoryBuffer);
   int return_val;
   size_t src_offset = 0;
   size_t dst_offset = 0;
   ECoderStatus status;
-  dst->Resize(5 * gnu_debugdata_size_);
   do {
-    size_t src_remaining = src.size() - src_offset;
+    size_t src_remaining = gnu_debugdata_size_ - src_offset;
     size_t dst_remaining = dst->Size() - dst_offset;
-    if (dst_remaining < 2 * gnu_debugdata_size_) {
-      dst->Resize(dst->Size() + 2 * gnu_debugdata_size_);
-      dst_remaining += 2 * gnu_debugdata_size_;
+    if (dst_remaining < buffer_increment) {
+      size_t new_size;
+      if (__builtin_add_overflow(dst->Size(), buffer_increment, &new_size) ||
+          !dst->Resize(new_size)) {
+        XzUnpacker_Free(&state);
+        return nullptr;
+      }
+      dst_remaining += buffer_increment;
     }
     return_val = XzUnpacker_Code(&state, dst->GetPtr(dst_offset), &dst_remaining, &src[src_offset],
                                  &src_remaining, true, CODER_FINISH_ANY, &status);
@@ -112,22 +135,24 @@ Memory* ElfInterface::CreateGnuDebugdataMemory() {
   } while (return_val == SZ_OK && status == CODER_STATUS_NOT_FINISHED);
   XzUnpacker_Free(&state);
   if (return_val != SZ_OK || !XzUnpacker_IsStreamWasFinished(&state)) {
-    gnu_debugdata_offset_ = 0;
-    gnu_debugdata_size_ = static_cast<uint64_t>(-1);
     return nullptr;
   }
 
   // Shrink back down to the exact size.
-  dst->Resize(dst_offset);
+  if (!dst->Resize(dst_offset)) {
+    return nullptr;
+  }
 
   return dst.release();
 }
 
 template <typename AddressType>
-void ElfInterface::InitHeadersWithTemplate(uint64_t load_bias) {
+void ElfInterface::InitHeadersWithTemplate() {
   if (eh_frame_hdr_offset_ != 0) {
-    eh_frame_.reset(new DwarfEhFrameWithHdr<AddressType>(memory_));
-    if (!eh_frame_->Init(eh_frame_hdr_offset_, eh_frame_hdr_size_, load_bias)) {
+    DwarfEhFrameWithHdr<AddressType>* eh_frame_hdr = new DwarfEhFrameWithHdr<AddressType>(memory_);
+    eh_frame_.reset(eh_frame_hdr);
+    if (!eh_frame_hdr->EhFrameInit(eh_frame_offset_, eh_frame_size_, eh_frame_section_bias_) ||
+        !eh_frame_->Init(eh_frame_hdr_offset_, eh_frame_hdr_size_, eh_frame_hdr_section_bias_)) {
       eh_frame_.reset(nullptr);
     }
   }
@@ -136,21 +161,23 @@ void ElfInterface::InitHeadersWithTemplate(uint64_t load_bias) {
     // If there is an eh_frame section without an eh_frame_hdr section,
     // or using the frame hdr object failed to init.
     eh_frame_.reset(new DwarfEhFrame<AddressType>(memory_));
-    if (!eh_frame_->Init(eh_frame_offset_, eh_frame_size_, load_bias)) {
+    if (!eh_frame_->Init(eh_frame_offset_, eh_frame_size_, eh_frame_section_bias_)) {
       eh_frame_.reset(nullptr);
     }
   }
 
   if (eh_frame_.get() == nullptr) {
     eh_frame_hdr_offset_ = 0;
+    eh_frame_hdr_section_bias_ = 0;
     eh_frame_hdr_size_ = static_cast<uint64_t>(-1);
     eh_frame_offset_ = 0;
+    eh_frame_section_bias_ = 0;
     eh_frame_size_ = static_cast<uint64_t>(-1);
   }
 
   if (debug_frame_offset_ != 0) {
     debug_frame_.reset(new DwarfDebugFrame<AddressType>(memory_));
-    if (!debug_frame_->Init(debug_frame_offset_, debug_frame_size_, load_bias)) {
+    if (!debug_frame_->Init(debug_frame_offset_, debug_frame_size_, debug_frame_section_bias_)) {
       debug_frame_.reset(nullptr);
       debug_frame_offset_ = 0;
       debug_frame_size_ = static_cast<uint64_t>(-1);
@@ -159,7 +186,7 @@ void ElfInterface::InitHeadersWithTemplate(uint64_t load_bias) {
 }
 
 template <typename EhdrType, typename PhdrType, typename ShdrType>
-bool ElfInterface::ReadAllHeaders(uint64_t* load_bias) {
+bool ElfInterface::ReadAllHeaders(int64_t* load_bias) {
   EhdrType ehdr;
   if (!memory_->ReadFully(0, &ehdr, sizeof(ehdr))) {
     last_error_.code = ERROR_MEMORY_INVALID;
@@ -175,7 +202,7 @@ bool ElfInterface::ReadAllHeaders(uint64_t* load_bias) {
 }
 
 template <typename EhdrType, typename PhdrType>
-uint64_t ElfInterface::GetLoadBias(Memory* memory) {
+int64_t ElfInterface::GetLoadBias(Memory* memory) {
   EhdrType ehdr;
   if (!memory->ReadFully(0, &ehdr, sizeof(ehdr))) {
     return false;
@@ -187,16 +214,19 @@ uint64_t ElfInterface::GetLoadBias(Memory* memory) {
     if (!memory->ReadFully(offset, &phdr, sizeof(phdr))) {
       return 0;
     }
-    if (phdr.p_type == PT_LOAD && phdr.p_offset == 0) {
-      return phdr.p_vaddr;
+
+    // Find the first executable load when looking for the load bias.
+    if (phdr.p_type == PT_LOAD && (phdr.p_flags & PF_X)) {
+      return static_cast<uint64_t>(phdr.p_vaddr) - phdr.p_offset;
     }
   }
   return 0;
 }
 
 template <typename EhdrType, typename PhdrType>
-void ElfInterface::ReadProgramHeaders(const EhdrType& ehdr, uint64_t* load_bias) {
+void ElfInterface::ReadProgramHeaders(const EhdrType& ehdr, int64_t* load_bias) {
   uint64_t offset = ehdr.e_phoff;
+  bool first_exec_load_header = true;
   for (size_t i = 0; i < ehdr.e_phnum; i++, offset += ehdr.e_phentsize) {
     PhdrType phdr;
     if (!memory_->ReadFully(offset, &phdr, sizeof(phdr))) {
@@ -212,22 +242,29 @@ void ElfInterface::ReadProgramHeaders(const EhdrType& ehdr, uint64_t* load_bias)
 
       pt_loads_[phdr.p_offset] = LoadInfo{phdr.p_offset, phdr.p_vaddr,
                                           static_cast<size_t>(phdr.p_memsz)};
-      if (phdr.p_offset == 0) {
-        *load_bias = phdr.p_vaddr;
+      // Only set the load bias from the first executable load header.
+      if (first_exec_load_header) {
+        *load_bias = static_cast<uint64_t>(phdr.p_vaddr) - phdr.p_offset;
       }
+      first_exec_load_header = false;
       break;
     }
 
     case PT_GNU_EH_FRAME:
       // This is really the pointer to the .eh_frame_hdr section.
       eh_frame_hdr_offset_ = phdr.p_offset;
+      eh_frame_hdr_section_bias_ = static_cast<uint64_t>(phdr.p_vaddr) - phdr.p_offset;
       eh_frame_hdr_size_ = phdr.p_memsz;
       break;
 
     case PT_DYNAMIC:
       dynamic_offset_ = phdr.p_offset;
-      dynamic_vaddr_ = phdr.p_vaddr;
-      dynamic_size_ = phdr.p_memsz;
+      dynamic_vaddr_start_ = phdr.p_vaddr;
+      if (__builtin_add_overflow(dynamic_vaddr_start_, phdr.p_memsz, &dynamic_vaddr_end_)) {
+        dynamic_offset_ = 0;
+        dynamic_vaddr_start_ = 0;
+        dynamic_vaddr_end_ = 0;
+      }
       break;
 
     default:
@@ -334,25 +371,30 @@ void ElfInterface::ReadSectionHeaders(const EhdrType& ehdr) {
       // Look for the .debug_frame and .gnu_debugdata.
       if (shdr.sh_name < sec_size) {
         std::string name;
-        if (memory_->ReadString(sec_offset + shdr.sh_name, &name)) {
-          uint64_t* offset_ptr = nullptr;
-          uint64_t* size_ptr = nullptr;
+        if (memory_->ReadString(sec_offset + shdr.sh_name, &name, sec_size - shdr.sh_name)) {
           if (name == ".debug_frame") {
-            offset_ptr = &debug_frame_offset_;
-            size_ptr = &debug_frame_size_;
+            debug_frame_offset_ = shdr.sh_offset;
+            debug_frame_size_ = shdr.sh_size;
+            debug_frame_section_bias_ = static_cast<uint64_t>(shdr.sh_addr) - shdr.sh_offset;
           } else if (name == ".gnu_debugdata") {
-            offset_ptr = &gnu_debugdata_offset_;
-            size_ptr = &gnu_debugdata_size_;
+            gnu_debugdata_offset_ = shdr.sh_offset;
+            gnu_debugdata_size_ = shdr.sh_size;
           } else if (name == ".eh_frame") {
-            offset_ptr = &eh_frame_offset_;
-            size_ptr = &eh_frame_size_;
+            eh_frame_offset_ = shdr.sh_offset;
+            eh_frame_section_bias_ = static_cast<uint64_t>(shdr.sh_addr) - shdr.sh_offset;
+            eh_frame_size_ = shdr.sh_size;
           } else if (eh_frame_hdr_offset_ == 0 && name == ".eh_frame_hdr") {
-            offset_ptr = &eh_frame_hdr_offset_;
-            size_ptr = &eh_frame_hdr_size_;
-          }
-          if (offset_ptr != nullptr) {
-            *offset_ptr = shdr.sh_offset;
-            *size_ptr = shdr.sh_size;
+            eh_frame_hdr_offset_ = shdr.sh_offset;
+            eh_frame_hdr_section_bias_ = static_cast<uint64_t>(shdr.sh_addr) - shdr.sh_offset;
+            eh_frame_hdr_size_ = shdr.sh_size;
+          } else if (name == ".data") {
+            data_offset_ = shdr.sh_offset;
+            data_vaddr_start_ = shdr.sh_addr;
+            if (__builtin_add_overflow(data_vaddr_start_, shdr.sh_size, &data_vaddr_end_)) {
+              data_offset_ = 0;
+              data_vaddr_start_ = 0;
+              data_vaddr_end_ = 0;
+            }
           }
         }
       }
@@ -363,7 +405,7 @@ void ElfInterface::ReadSectionHeaders(const EhdrType& ehdr) {
     } else if (shdr.sh_type == SHT_NOTE) {
       if (shdr.sh_name < sec_size) {
         std::string name;
-        if (memory_->ReadString(sec_offset + shdr.sh_name, &name) &&
+        if (memory_->ReadString(sec_offset + shdr.sh_name, &name, sec_size - shdr.sh_name) &&
             name == ".note.gnu.build-id") {
           gnu_build_id_offset_ = shdr.sh_offset;
           gnu_build_id_size_ = shdr.sh_size;
@@ -391,7 +433,7 @@ std::string ElfInterface::GetSonameWithTemplate() {
   // Find the soname location from the dynamic headers section.
   DynType dyn;
   uint64_t offset = dynamic_offset_;
-  uint64_t max_offset = offset + dynamic_size_;
+  uint64_t max_offset = offset + dynamic_vaddr_end_ - dynamic_vaddr_start_;
   for (uint64_t offset = dynamic_offset_; offset < max_offset; offset += sizeof(DynType)) {
     if (!memory_->ReadFully(offset, &dyn, sizeof(dyn))) {
       last_error_.code = ERROR_MEMORY_INVALID;
@@ -414,10 +456,11 @@ std::string ElfInterface::GetSonameWithTemplate() {
   for (const auto& entry : strtabs_) {
     if (entry.first == strtab_addr) {
       soname_offset = entry.second + soname_offset;
-      if (soname_offset >= entry.second + strtab_size) {
+      uint64_t soname_max = entry.second + strtab_size;
+      if (soname_offset >= soname_max) {
         return "";
       }
-      if (!memory_->ReadString(soname_offset, &soname_)) {
+      if (!memory_->ReadString(soname_offset, &soname_, soname_max - soname_offset)) {
         return "";
       }
       soname_type_ = SONAME_VALID;
@@ -566,7 +609,8 @@ bool GetBuildIDInfo(Memory* memory, uint64_t* build_id_offset, uint64_t* build_i
     }
     std::string name;
     if (shdr.sh_type == SHT_NOTE && shdr.sh_name < sec_size &&
-        memory->ReadString(sec_offset + shdr.sh_name, &name) && name == ".note.gnu.build-id") {
+        memory->ReadString(sec_offset + shdr.sh_name, &name, sec_size - shdr.sh_name) &&
+        name == ".note.gnu.build-id") {
       *build_id_offset = shdr.sh_offset;
       *build_id_size = shdr.sh_size;
       return true;
@@ -620,7 +664,7 @@ std::string ElfInterface::ReadBuildIDFromMemory(Memory* memory) {
         if (note_size - offset < hdr.n_descsz || hdr.n_descsz == 0) {
           return "";
         }
-        std::string build_id(hdr.n_descsz - 1, '\0');
+        std::string build_id(hdr.n_descsz, '\0');
         if (memory->ReadFully(note_offset + offset, &build_id[0], hdr.n_descsz)) {
           return build_id;
         }
@@ -634,16 +678,14 @@ std::string ElfInterface::ReadBuildIDFromMemory(Memory* memory) {
 }
 
 // Instantiate all of the needed template functions.
-template void ElfInterface::InitHeadersWithTemplate<uint32_t>(uint64_t);
-template void ElfInterface::InitHeadersWithTemplate<uint64_t>(uint64_t);
+template void ElfInterface::InitHeadersWithTemplate<uint32_t>();
+template void ElfInterface::InitHeadersWithTemplate<uint64_t>();
 
-template bool ElfInterface::ReadAllHeaders<Elf32_Ehdr, Elf32_Phdr, Elf32_Shdr>(uint64_t*);
-template bool ElfInterface::ReadAllHeaders<Elf64_Ehdr, Elf64_Phdr, Elf64_Shdr>(uint64_t*);
+template bool ElfInterface::ReadAllHeaders<Elf32_Ehdr, Elf32_Phdr, Elf32_Shdr>(int64_t*);
+template bool ElfInterface::ReadAllHeaders<Elf64_Ehdr, Elf64_Phdr, Elf64_Shdr>(int64_t*);
 
-template void ElfInterface::ReadProgramHeaders<Elf32_Ehdr, Elf32_Phdr>(const Elf32_Ehdr&,
-                                                                       uint64_t*);
-template void ElfInterface::ReadProgramHeaders<Elf64_Ehdr, Elf64_Phdr>(const Elf64_Ehdr&,
-                                                                       uint64_t*);
+template void ElfInterface::ReadProgramHeaders<Elf32_Ehdr, Elf32_Phdr>(const Elf32_Ehdr&, int64_t*);
+template void ElfInterface::ReadProgramHeaders<Elf64_Ehdr, Elf64_Phdr>(const Elf64_Ehdr&, int64_t*);
 
 template void ElfInterface::ReadSectionHeaders<Elf32_Ehdr, Elf32_Shdr>(const Elf32_Ehdr&);
 template void ElfInterface::ReadSectionHeaders<Elf64_Ehdr, Elf64_Shdr>(const Elf64_Ehdr&);
@@ -665,8 +707,8 @@ template bool ElfInterface::GetGlobalVariableWithTemplate<Elf64_Sym>(const std::
 template void ElfInterface::GetMaxSizeWithTemplate<Elf32_Ehdr>(Memory*, uint64_t*);
 template void ElfInterface::GetMaxSizeWithTemplate<Elf64_Ehdr>(Memory*, uint64_t*);
 
-template uint64_t ElfInterface::GetLoadBias<Elf32_Ehdr, Elf32_Phdr>(Memory*);
-template uint64_t ElfInterface::GetLoadBias<Elf64_Ehdr, Elf64_Phdr>(Memory*);
+template int64_t ElfInterface::GetLoadBias<Elf32_Ehdr, Elf32_Phdr>(Memory*);
+template int64_t ElfInterface::GetLoadBias<Elf64_Ehdr, Elf64_Phdr>(Memory*);
 
 template std::string ElfInterface::ReadBuildIDFromMemory<Elf32_Ehdr, Elf32_Shdr, Elf32_Nhdr>(
     Memory*);
