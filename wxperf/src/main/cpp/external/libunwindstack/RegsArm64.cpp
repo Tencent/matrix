@@ -31,7 +31,7 @@ namespace unwindstack {
 
 RegsArm64::RegsArm64()
     : RegsImpl<uint64_t>(ARM64_REG_EXT_LAST, Location(LOCATION_REGISTER, ARM64_REG_LR)) {
-//  setup_stack();
+  setup_stack();
 }
 
 ArchEnum RegsArm64::Arch() {
