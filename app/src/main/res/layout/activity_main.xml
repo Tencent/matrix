@@ -97,4 +97,15 @@
         app:layout_constraintBaseline_toBaselineOf="@+id/btn_unwind"
         app:layout_constraintStart_toEndOf="@+id/btn_unwind" />
 
+    <Button
+        android:id="@+id/btn_unwind_benchmark_debug"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="12dp"
+        android:layout_marginTop="33dp"
+        android:text="debug"
+        android:textAllCaps="false"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/btn_concurrent_jni" />
+
 </android.support.constraint.ConstraintLayout>

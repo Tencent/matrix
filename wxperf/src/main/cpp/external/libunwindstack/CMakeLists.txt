@@ -35,6 +35,8 @@ SET(
         ${CMAKE_CURRENT_SOURCE_DIR}/EnhanceDlsym.cpp
 
         ${CMAKE_CURRENT_SOURCE_DIR}/../libwechatbacktrace/FastUnwinder.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/../libwechatbacktrace/FallbackUnwinder.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/../libwechatbacktrace/MapsControll.cpp
 #        ${CMAKE_CURRENT_SOURCE_DIR}/../libwechatbacktrace/WeChatElfInterfaceArm64.cpp
 )
 

@@ -5,6 +5,8 @@ typedef uintptr_t uptr;
 
 namespace wechat_backtrace {
 
+    std::vector<std::pair<uintptr_t, uintptr_t>>* GetSkipFunctions();
+
     // Check if given pointer points into allocated stack area.
     static inline bool IsValidFrame(uptr frame, uptr stack_top, uptr stack_bottom) {
         return frame > stack_bottom && frame < stack_top - 2 * sizeof (uptr);
@@ -18,7 +20,7 @@ namespace wechat_backtrace {
         return (a & (alignment - 1)) == 0;
     }
 
-    void fpUnwind(uptr * backtrace, uptr frame_max_size, uptr &frame_size);
+    void FpUnwind(uptr *backtrace, uptr frame_max_size, uptr &frame_size, bool fallback);
 
 }  // namespace wechat_backtrace
 

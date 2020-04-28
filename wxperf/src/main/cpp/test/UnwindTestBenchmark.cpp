@@ -3,6 +3,7 @@
 #include <cinttypes>
 #include <cxxabi.h>
 #include <Backtrace.h>
+#include <MapsControll.h>
 #include "log.h"
 #include "Backtrace.h"
 #include "../external/libunwindstack/TimeUtil.h"
@@ -18,17 +19,26 @@
 extern "C" {
 #endif
 
-#define BENCHMARK(mode, test_func) { \
+#define BENCHMARK_TIMES(mode, times, test_func) {\
     set_unwind_mode(mode); \
     LOGE(UNWIND_TEST_TAG, "Start "#test_func" case benchmark for mode "#mode); \
-    for (int i = 0; i < benchmark_times; i++) { \
+    for (int i = 0; i < times; i++) { \
         test_func(); \
     } \
 };
 
+#define BENCHMARK(mode, test_func) BENCHMARK_TIMES(mode, benchmark_times, test_func)
+
 JNIEXPORT void JNICALL
 Java_com_tencent_mm_performance_jni_test_UnwindBenckmarkTest_benchmarkInitNative(JNIEnv *env, jclass clazz) {
+
+    // for dwarf unwinder
     wechat_backtrace::update_maps();
+
+    // for fp unwinder with fallback
+    wechat_backtrace::GetMapsCache();
+    wechat_backtrace::UpdateFallbackPCRange();
+
 }
 
 
@@ -44,16 +54,22 @@ Java_com_tencent_mm_performance_jni_test_UnwindBenckmarkTest_benchmarkNative(JNI
     BENCHMARK(FP_UNWIND, func_selfso);
     BENCHMARK(FP_UNWIND, func_throughjni);
     BENCHMARK(FP_UNWIND, func_throughsystemso);
-//
-//    benchmark(FP_UNWIND_WITH_FALLBACK, benchmark_times, func_selfso);
-//    benchmark(FP_UNWIND_WITH_FALLBACK, benchmark_times, func_throughjni);
-//    benchmark(FP_UNWIND_WITH_FALLBACK, benchmark_times, func_throughsystemso);
+
+    // FP_UNWIND_WITH_FALLBACK mode benchmark
+    BENCHMARK(FP_UNWIND_WITH_FALLBACK, func_selfso);
+    BENCHMARK(FP_UNWIND_WITH_FALLBACK, func_throughjni);
+    BENCHMARK(FP_UNWIND_WITH_FALLBACK, func_throughsystemso);
 //
 //    benchmark(FAST_DWARF_UNWIND, benchmark_times, func_selfso);
 //    benchmark(FAST_DWARF_UNWIND, benchmark_times, func_throughjni);
 //    benchmark(FAST_DWARF_UNWIND, benchmark_times, func_throughsystemso);
 }
 
+
+JNIEXPORT void JNICALL
+Java_com_tencent_mm_performance_jni_test_UnwindBenckmarkTest_debugNative(JNIEnv *env, jclass clazz) {
+    BENCHMARK_TIMES(FP_UNWIND_WITH_FALLBACK, 1, func_throughsystemso);
+}
 
 #ifdef __cplusplus
 }

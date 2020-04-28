@@ -233,6 +233,19 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        findViewById(R.id.btn_unwind_benchmark_debug).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        UnwindBenckmarkTest.debugNative();
+                    }
+                }).start();
+
+            }
+        });
+
         checkPermission();
 //        if (checkPermission()) {
         Log.d(TAG, "onCreate: path = " + Environment.getExternalStorageDirectory().getAbsolutePath());

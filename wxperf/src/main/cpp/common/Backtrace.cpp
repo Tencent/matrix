@@ -64,11 +64,20 @@ namespace wechat_backtrace {
         pthread_mutex_unlock(&unwind_mutex);
     }
 
-    void fp_fast_unwind(uptr * frames, uptr frameMaxSize, uptr &frameSize) {
+    void fp_fast_unwind(uptr *frames, uptr frameMaxSize, uptr &frameSize) {
 
         pthread_mutex_lock(&unwind_mutex);
 
-        fpUnwind(frames, frameMaxSize, frameSize);
+        FpUnwind(frames, frameMaxSize, frameSize, false);
+
+        pthread_mutex_unlock(&unwind_mutex);
+    }
+
+    void fp_unwind_with_fallback(uptr *frames, uptr frameMaxSize, uptr &frameSize) {
+
+        pthread_mutex_lock(&unwind_mutex);
+
+        FpUnwind(frames, frameMaxSize, frameSize, true);
 
         pthread_mutex_unlock(&unwind_mutex);
     }
