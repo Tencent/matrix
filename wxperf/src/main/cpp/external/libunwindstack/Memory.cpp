@@ -31,6 +31,7 @@
 
 #include <unwindstack/Memory.h>
 #include <deps/sys_compat/compat_uio.h>
+#include <include/unwindstack/DwarfError.h>
 
 #include "Check.h"
 #include "MemoryBuffer.h"
@@ -98,6 +99,11 @@ static size_t ProcessVmRead(pid_t pid, uint64_t remote_src, void* dst, size_t le
     total_read += rc;
   }
   return total_read;
+}
+
+static size_t ProcessLocalVmRead(pid_t pid, uint64_t remote_src, void* dst, size_t len) {
+  memcpy(dst, reinterpret_cast<const void *>(remote_src), len);
+  return len;
 }
 
 static bool PtraceReadLong(pid_t pid, uint64_t addr, long* value) {
@@ -309,6 +315,7 @@ size_t MemoryRemote::Read(uint64_t addr, void* dst, size_t size) {
 #endif
 
   size_t (*read_func)(pid_t, uint64_t, void*, size_t) =
+      GetFastFlag() ? ProcessLocalVmRead :
       reinterpret_cast<size_t (*)(pid_t, uint64_t, void*, size_t)>(read_redirect_func_.load());
   if (read_func != nullptr) {
     return read_func(pid_, addr, dst, size);
