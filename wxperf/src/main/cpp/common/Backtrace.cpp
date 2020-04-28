@@ -34,7 +34,7 @@ namespace wechat_backtrace {
         pthread_mutex_unlock(&unwind_mutex);
     }
 
-    void dwarf_unwind(std::vector<unwindstack::FrameData> &dst, size_t frameSize) {
+    void dwarf_unwind(unwindstack::Regs *regs, std::vector<unwindstack::FrameData> &dst, size_t frameSize) {
 
         if (!has_inited) {
             LOGE(WECHAT_BACKTRACE_TAG, "Err: libunwindstack was not initialized.");
@@ -42,9 +42,6 @@ namespace wechat_backtrace {
         }
 
         pthread_mutex_lock(&unwind_mutex);
-
-        unwindstack::Regs *regs = unwindstack::Regs::CreateFromLocal();
-        unwindstack::RegsGetLocal(regs);
         if (regs == nullptr) {
             LOGE(WECHAT_BACKTRACE_TAG, "Err: unable to get remote reg data.");
             pthread_mutex_unlock(&unwind_mutex);
@@ -64,20 +61,20 @@ namespace wechat_backtrace {
         pthread_mutex_unlock(&unwind_mutex);
     }
 
-    void fp_fast_unwind(uptr *frames, uptr frameMaxSize, uptr &frameSize) {
+    void fp_fast_unwind(uptr *regs, uptr *frames, uptr frameMaxSize, uptr &frameSize) {
 
         pthread_mutex_lock(&unwind_mutex);
 
-        FpUnwind(frames, frameMaxSize, frameSize, false);
+        FpUnwind(regs, frames, frameMaxSize, frameSize, false);
 
         pthread_mutex_unlock(&unwind_mutex);
     }
 
-    void fp_unwind_with_fallback(uptr *frames, uptr frameMaxSize, uptr &frameSize) {
+    void fp_unwind_with_fallback(uptr *regs, uptr *frames, uptr frameMaxSize, uptr &frameSize) {
 
         pthread_mutex_lock(&unwind_mutex);
 
-        FpUnwind(frames, frameMaxSize, frameSize, true);
+        FpUnwind(regs, frames, frameMaxSize, frameSize, true);
 
         pthread_mutex_unlock(&unwind_mutex);
     }

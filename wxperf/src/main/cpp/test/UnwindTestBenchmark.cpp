@@ -68,7 +68,7 @@ Java_com_tencent_mm_performance_jni_test_UnwindBenckmarkTest_benchmarkNative(JNI
 
 JNIEXPORT void JNICALL
 Java_com_tencent_mm_performance_jni_test_UnwindBenckmarkTest_debugNative(JNIEnv *env, jclass clazz) {
-    BENCHMARK_TIMES(FP_UNWIND_WITH_FALLBACK, 1, func_throughsystemso);
+    BENCHMARK_TIMES(FP_UNWIND, 1, func_selfso);
 }
 
 #ifdef __cplusplus

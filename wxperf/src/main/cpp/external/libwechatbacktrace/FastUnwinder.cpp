@@ -96,96 +96,48 @@ namespace wechat_backtrace {
             bool &finished, unwindstack::FallbackUnwinder *&fallbackUnwinder, uptr &next_pc) {
 #ifdef __arm__
         // TODO
-//        return GetCanonicFrame(fp, stack_top, stack_bottom);
         return 0;
 #else
-//        if (ShouldGoFallback(pc) ||
-//            !IsValidFrame(fp, stack_top, stack_bottom)) {
 
-            if (fallbackUnwinder == NULL) {
-                unwindstack::Regs *regs = unwindstack::Regs::CreateFromLocal();
-                unwindstack::RegsGetLocal(regs);
-                regs->set_pc(pc);
-                regs->set_sp(sp);
-                ((uptr *)regs->RawData())[unwindstack::ARM64_REG_LR] = pc;
+        if (fallbackUnwinder == NULL) {
+            unwindstack::Regs *regs = unwindstack::Regs::CreateFromLocal();
+            unwindstack::RegsGetLocal(regs);
+            regs->set_pc(pc);
+            regs->set_sp(sp);
+            ((uptr *)regs->RawData())[unwindstack::ARM64_REG_LR] = pc;
 
-                auto process_memory = unwindstack::Memory::CreateProcessMemory(getpid());
+            auto process_memory = unwindstack::Memory::CreateProcessMemory(getpid());
 
-                unwindstack::LocalMaps *maps = GetMapsCache();
+            unwindstack::LocalMaps *maps = GetMapsCache();
 
-                if (!maps) {
-                    return 0;
-                }
-
-                fallbackUnwinder = new unwindstack::FallbackUnwinder(maps, regs, process_memory);
-                unwindstack::JitDebug jit_debug(process_memory);
-                fallbackUnwinder->SetJitDebug(&jit_debug, regs->Arch());
-                fallbackUnwinder->SetResolveNames(false);
+            if (!maps) {
+                return 0;
             }
 
-            fallbackUnwinder->fallbackUnwindFrame(finished);
+            fallbackUnwinder = new unwindstack::FallbackUnwinder(maps, regs, process_memory);
+            unwindstack::JitDebug jit_debug(process_memory);
+            fallbackUnwinder->SetJitDebug(&jit_debug, regs->Arch());
+            fallbackUnwinder->SetResolveNames(false);
+        }
 
-            unwindstack::Regs *regs = fallbackUnwinder->getRegs();
+        fallbackUnwinder->fallbackUnwindFrame(finished);
 
-            switch (fallbackUnwinder->LastErrorCode()) {
-                case unwindstack::ErrorCode::ERROR_MEMORY_INVALID:
-                case unwindstack::ErrorCode::ERROR_UNWIND_INFO:
-                case unwindstack::ErrorCode::ERROR_UNSUPPORTED:
-                case unwindstack::ErrorCode::ERROR_INVALID_MAP:
-                case unwindstack::ErrorCode::ERROR_INVALID_ELF:
-                    return 0;
-            }
+        unwindstack::Regs *regs = fallbackUnwinder->getRegs();
 
-            next_pc = ((uptr *) regs->RawData())[unwindstack::ARM64_REG_PC];
+        switch (fallbackUnwinder->LastErrorCode()) {
+            case unwindstack::ErrorCode::ERROR_MEMORY_INVALID:
+            case unwindstack::ErrorCode::ERROR_UNWIND_INFO:
+            case unwindstack::ErrorCode::ERROR_UNSUPPORTED:
+            case unwindstack::ErrorCode::ERROR_INVALID_MAP:
+            case unwindstack::ErrorCode::ERROR_INVALID_ELF:
+                return 0;
+        }
 
-            return (uptr *)(((uptr *) regs->RawData())[unwindstack::ARM64_REG_FP]);
-//        } else {
-//            return GetCanonicFrame(fp, stack_top, stack_bottom);
-//        }
+        next_pc = ((uptr *) regs->RawData())[unwindstack::ARM64_REG_PC];
+
+        return (uptr *)(((uptr *) regs->RawData())[unwindstack::ARM64_REG_FP]);
 #endif
     }
-
-//    static inline uptr * GetCanonicFrameWithFallback(uptr pc, uptr sp, uptr fp,
-//            uptr stack_top, uptr stack_bottom, bool &finished,
-//            unwindstack::FallbackUnwinder *&fallbackUnwinder) {
-//#ifdef __arm__
-//        // TODO
-//        return GetCanonicFrame(fp, stack_top, stack_bottom);
-//#else
-//        if (ShouldGoFallback(pc) ||
-//                !IsValidFrame(fp, stack_top, stack_bottom)) {
-//
-//            if (fallbackUnwinder == NULL) {
-//                unwindstack::Regs *regs = unwindstack::Regs::CreateFromLocal();
-//
-//                regs->set_pc(pc);
-//                regs->set_sp(sp);
-//                ((uptr *)regs->RawData())[unwindstack::ARM64_REG_LR] = pc;
-//
-//                auto process_memory = unwindstack::Memory::CreateProcessMemory(getpid());
-//
-//                unwindstack::LocalMaps *maps = GetMapsCache();
-//
-//                if (!maps) {
-//                    return 0;
-//                }
-//
-//                fallbackUnwinder = new unwindstack::FallbackUnwinder(maps, regs, process_memory);
-//                unwindstack::JitDebug jit_debug(process_memory);
-//                fallbackUnwinder->SetJitDebug(&jit_debug, regs->Arch());
-//                fallbackUnwinder->SetResolveNames(false);
-//            }
-//
-//            fallbackUnwinder->fallbackUnwindFrame(finished);
-//
-//            unwindstack::Regs *regs = fallbackUnwinder->getRegs();
-//
-//            return (uptr *)(((uptr *) regs->RawData())[unwindstack::ARM64_REG_FP]);
-//        } else {
-//            return GetCanonicFrame(fp, stack_top, stack_bottom);
-//        }
-//#endif
-//    }
 
     static inline void fpUnwindWithFallbackImpl(uptr pc, uptr fp, uptr stack_top, uptr stack_bottom,
                                                 uptr * backtrace, uptr frame_max_size,
@@ -248,9 +200,7 @@ namespace wechat_backtrace {
         }
     }
 
-    void FpUnwind(uptr * backtrace, uptr frame_max_size, uptr &frame_size, bool fallback) {
-        uptr regs[4];
-        RegsMinimalGetLocal(regs);
+    void FpUnwind(uptr * regs, uptr * backtrace, uptr frame_max_size, uptr &frame_size, bool fallback) {
 
         pthread_attr_t attr;
         pthread_getattr_np(pthread_self(), &attr);

@@ -20,7 +20,7 @@ namespace wechat_backtrace {
         return (a & (alignment - 1)) == 0;
     }
 
-    void FpUnwind(uptr *backtrace, uptr frame_max_size, uptr &frame_size, bool fallback);
+    void FpUnwind(uptr *regs, uptr *backtrace, uptr frame_max_size, uptr &frame_size, bool fallback);
 
 }  // namespace wechat_backtrace
 

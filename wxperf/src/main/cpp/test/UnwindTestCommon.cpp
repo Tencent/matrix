@@ -4,6 +4,7 @@
 #include <cxxabi.h>
 #include <inttypes.h>
 #include <MapsControll.h>
+#include <FastRegs.h>
 #include "log.h"
 #include "Backtrace.h"
 #include "../external/libunwindstack/TimeUtil.h"
@@ -50,7 +51,10 @@ inline void print_dwarf_unwind() {
 
     NanoSeconds_Start(nano);
 
-    wechat_backtrace::dwarf_unwind(*tmp_ns, FRAME_MAX_SIZE);
+    unwindstack::Regs *regs = unwindstack::Regs::CreateFromLocal();
+    unwindstack::RegsGetLocal(regs);
+
+    wechat_backtrace::dwarf_unwind(regs, *tmp_ns, FRAME_MAX_SIZE);
 
     NanoSeconds_End(unwindstack::dwarf_unwind, nano);
 
@@ -80,7 +84,10 @@ inline void print_fp_unwind() {
 
     uptr frame_size = 0;
 
-    wechat_backtrace::fp_fast_unwind(frames, FRAME_MAX_SIZE, frame_size);
+    uptr regs[4];
+    RegsMinimalGetLocal(regs);
+
+    wechat_backtrace::fp_fast_unwind(regs, frames, FRAME_MAX_SIZE, frame_size);
 
     NanoSeconds_End(wechat_backtrace::fp_fast_unwind, nano);
 
@@ -102,7 +109,7 @@ inline void print_fp_unwind() {
     }
 }
 
-inline void print_fp_unwind_with_fallback() {
+static inline void print_fp_unwind_with_fallback() {
 
     NanoSeconds_Start(nano);
 
@@ -110,7 +117,10 @@ inline void print_fp_unwind_with_fallback() {
 
     uptr frame_size = 0;
 
-    wechat_backtrace::fp_unwind_with_fallback(frames, FRAME_MAX_SIZE, frame_size);
+    uptr regs[4];
+    RegsMinimalGetLocal(regs);
+
+    wechat_backtrace::fp_unwind_with_fallback(regs, frames, FRAME_MAX_SIZE, frame_size);
 
     NanoSeconds_End(wechat_backtrace::fp_unwind_with_fallback, nano);
 
