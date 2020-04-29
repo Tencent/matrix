@@ -76,6 +76,8 @@ namespace wechat_backtrace {
 
         pthread_mutex_lock(&unwind_mutex);
 
+        unwindstack::SetFastFlag(true);
+
         FpUnwind(regs, frames, frameMaxSize, frameSize, true);
 
         pthread_mutex_unlock(&unwind_mutex);
