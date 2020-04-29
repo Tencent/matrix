@@ -537,11 +537,13 @@ bool DwarfSectionImpl<AddressType>::Eval(const DwarfCie* cie, Memory* regular_me
       continue;
     }
 
+#ifdef __aarch64__
     if (GetFastFlag()) {
-        if (reg < ARM64_REG_R29) {
+        if (reg != ARM64_REG_R0 && reg != ARM64_REG_R20 && reg < ARM64_REG_R29) {
             continue;
         }
     }
+#endif
 
     reg_ptr = eval_info.regs_info.Save(reg);
     if (!EvalRegister(&entry.second, reg, reg_ptr, &eval_info)) {
