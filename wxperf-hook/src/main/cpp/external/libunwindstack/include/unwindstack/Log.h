@@ -26,4 +26,7 @@ void log(uint8_t indent, const char* format, ...);
 
 }  // namespace unwindstack
 
+#define UNWIND_LOG(fmt, args...) \
+  do { unwindstack::log(0, fmt, ##args); } while (0)
+
 #endif  // _LIBUNWINDSTACK_LOG_H

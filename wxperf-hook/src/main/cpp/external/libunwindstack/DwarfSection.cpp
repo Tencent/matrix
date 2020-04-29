@@ -41,6 +41,9 @@ bool DwarfSection::Step(uint64_t pc, Regs* regs, Memory* process_memory, bool* f
   // Lookup the pc in the cache.
   auto it = loc_regs_.upper_bound(pc);
   if (it == loc_regs_.end() || pc < it->second.pc_start) {
+
+    UNWIND_LOG("DwarfSection::Step slow path");
+
     last_error_.code = DWARF_ERROR_NONE;
     const DwarfFde* fde = GetFdeFromPc(pc);
     if (fde == nullptr || fde->cie == nullptr) {
@@ -508,6 +511,8 @@ bool DwarfSectionImpl<AddressType>::Eval(const DwarfCie* cie, Memory* regular_me
       eval_info.cfa += loc->values[1];
       break;
     case DWARF_LOCATION_VAL_EXPRESSION: {
+
+        UNWIND_LOG("DwarfSectionImpl<AddressType>::Eval DWARF_LOCATION_VAL_EXPRESSION");
       AddressType value;
       if (!EvalExpression(*loc, regular_memory, &value, &eval_info.regs_info, nullptr)) {
         return false;
