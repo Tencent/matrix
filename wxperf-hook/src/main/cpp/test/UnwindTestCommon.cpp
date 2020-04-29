@@ -7,7 +7,6 @@
 #include <FastRegs.h>
 #include "Log.h"
 #include "Backtrace.h"
-#include "../external/libunwindstack/TimeUtil.h"
 #include "UnwindTestCommon.h"
 
 #define DWARF_UNWIND_TAG "Dwarf-Unwind"

@@ -98,6 +98,18 @@ void Unwinder::FillInDexFrame() {
 
 FrameData* Unwinder::FillInFrame(MapInfo* map_info, Elf* elf, uint64_t rel_pc,
                                  uint64_t pc_adjustment) {
+
+  if (GetFastFlag()) {
+    size_t frame_num = frames_.size();
+    frames_.resize(frame_num + 1);
+    FrameData* frame = &frames_.at(frame_num);
+    frame->num = frame_num;
+    frame->sp = regs_->sp();
+    frame->rel_pc = rel_pc - pc_adjustment;
+    frame->pc = regs_->pc() - pc_adjustment;
+    return frame;
+  }
+
   size_t frame_num = frames_.size();
   frames_.resize(frame_num + 1);
   FrameData* frame = &frames_.at(frame_num);
@@ -255,7 +267,7 @@ void Unwinder::Unwind(const std::vector<std::string>* initial_map_names_to_skip,
           // some of the speculative frames.
           in_device_map = true;
         } else {
-          if (elf->StepIfSignalHandler(rel_pc, regs_, process_memory_.get())) {
+          if (!GetFastFlag() && elf->StepIfSignalHandler(rel_pc, regs_, process_memory_.get())) {
             stepped = true;
             if (frame != nullptr) {
               // Need to adjust the relative pc because the signal handler

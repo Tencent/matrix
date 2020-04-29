@@ -70,6 +70,16 @@ Java_com_tencent_mm_performance_jni_test_UnwindBenckmarkTest_benchmarkNative(JNI
 JNIEXPORT void JNICALL
 Java_com_tencent_wxperf_jni_test_UnwindBenckmarkTest_debugNative(JNIEnv *env, jclass clazz) {
     BENCHMARK_TIMES(FP_UNWIND, 1, func_selfso);
+
+//    BENCHMARK_TIMES(FAST_DWARF_UNWIND, 50000, func_selfso);
+
+//    BENCHMARK(FAST_DWARF_UNWIND, func_selfso)
+//    BENCHMARK(FAST_DWARF_UNWIND, func_selfso)
+//    BENCHMARK(FAST_DWARF_UNWIND, func_selfso)
+//    BENCHMARK(FAST_DWARF_UNWIND, func_selfso)
+//    BENCHMARK(FAST_DWARF_UNWIND, func_selfso)
+//    BENCHMARK(FAST_DWARF_UNWIND, func_selfso)
+
 }
 
 #ifdef __cplusplus
