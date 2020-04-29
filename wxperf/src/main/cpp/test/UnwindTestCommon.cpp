@@ -13,6 +13,7 @@
 #define DWARF_UNWIND_TAG "Dwarf-Unwind"
 #define FP_FAST_UNWIND_TAG "Fp-Unwind"
 #define FP_FAST_UNWIND_WITH_FALLBACK_TAG "Fp-Unwind-Fallback"
+#define DWARF_FAST_UNWIND_TAG "Dwarf-Fast-Unwind"
 
 #define FRAME_MAX_SIZE 16
 
@@ -91,7 +92,9 @@ inline void print_fp_unwind() {
 
     NanoSeconds_End(wechat_backtrace::fp_fast_unwind, nano);
 
-    LOGE(FP_FAST_UNWIND_TAG, "frames = %lu", frame_size);
+    LOGE(FP_FAST_UNWIND_TAG, "frames = %"
+            PRIxPTR
+            "u", frame_size);
 
     for (size_t i = 0 ; i < frame_size; i++) {
         Dl_info stack_info;
@@ -142,6 +145,36 @@ static inline void print_fp_unwind_with_fallback() {
     }
 }
 
+inline void print_dwarf_fast_unwind() {
+    auto *tmp_ns = new std::vector<unwindstack::FrameData>;
+
+    NanoSeconds_Start(nano);
+
+    unwindstack::Regs *regs = unwindstack::Regs::CreateFromLocal();
+    unwindstack::RegsGetLocal(regs);
+
+    wechat_backtrace::fast_dwarf_unwind(regs, *tmp_ns, FRAME_MAX_SIZE);
+
+    NanoSeconds_End(unwindstack::fast_dwarf_unwind, nano);
+
+    LOGD(DWARF_FAST_UNWIND_TAG, "frames = %llu", tmp_ns->size());
+
+    for (auto p_frame = tmp_ns->begin(); p_frame != tmp_ns->end(); ++p_frame) {
+        Dl_info stack_info;
+        dladdr((void *) p_frame->pc, &stack_info);
+
+        std::string so_name = std::string(stack_info.dli_fname);
+
+        LOGE(DWARF_FAST_UNWIND_TAG, "  #pc 0x%"
+                PRIx64
+                " %"
+                PRIu64
+                " 0x%"
+                PRIx64
+                " %s (%s)", p_frame->rel_pc, p_frame->pc, p_frame->pc, stack_info.dli_sname, stack_info.dli_fname);
+    }
+}
+
 void leaf_func(const char * testcase) {
 
     LOGD(UNWIND_TEST_TAG, "Test %s unwind start with mode %d.", testcase, gMode);
@@ -157,7 +190,7 @@ void leaf_func(const char * testcase) {
             LOGE(UNWIND_TEST_TAG, "FAST_DWARF_UNWIND_WITHOUT_JIT not supported yet.");
             break;
         case FAST_DWARF_UNWIND:
-            LOGE(UNWIND_TEST_TAG, "FAST_DWARF_UNWIND not supported yet.");
+            print_dwarf_fast_unwind();
             break;
         case DWARF_UNWIND:
             print_dwarf_unwind();

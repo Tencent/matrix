@@ -47,6 +47,8 @@ namespace wechat_backtrace {
             pthread_mutex_unlock(&unwind_mutex);
         }
 
+        unwindstack::SetFastFlag(false);
+
         auto process_memory = unwindstack::Memory::CreateProcessMemory(getpid());
         unwindstack::Unwinder unwinder(frameSize, localMaps, regs, process_memory);
         unwindstack::JitDebug jit_debug(process_memory);
@@ -75,6 +77,35 @@ namespace wechat_backtrace {
         pthread_mutex_lock(&unwind_mutex);
 
         FpUnwind(regs, frames, frameMaxSize, frameSize, true);
+
+        pthread_mutex_unlock(&unwind_mutex);
+    }
+
+    void fast_dwarf_unwind(unwindstack::Regs *regs, std::vector<unwindstack::FrameData> &dst, size_t frameSize) {
+
+        if (!has_inited) {
+            LOGE(WECHAT_BACKTRACE_TAG, "Err: libunwindstack was not initialized.");
+            return;
+        }
+
+        pthread_mutex_lock(&unwind_mutex);
+        if (regs == nullptr) {
+            LOGE(WECHAT_BACKTRACE_TAG, "Err: unable to get remote reg data.");
+            pthread_mutex_unlock(&unwind_mutex);
+        }
+
+        unwindstack::SetFastFlag(true);
+
+        auto process_memory = unwindstack::Memory::CreateProcessMemory(getpid());
+        unwindstack::Unwinder unwinder(frameSize, localMaps, regs, process_memory);
+        unwindstack::JitDebug jit_debug(process_memory);
+        unwinder.SetJitDebug(&jit_debug, regs->Arch());
+        unwinder.SetResolveNames(false);
+        unwinder.Unwind();
+
+        delete regs;
+
+        dst = unwinder.frames();
 
         pthread_mutex_unlock(&unwind_mutex);
     }

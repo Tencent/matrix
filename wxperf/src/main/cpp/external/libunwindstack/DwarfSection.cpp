@@ -532,6 +532,12 @@ bool DwarfSectionImpl<AddressType>::Eval(const DwarfCie* cie, Memory* regular_me
       continue;
     }
 
+    if (GetFastFlag()) {
+        if (reg < ARM64_REG_R29) {
+            continue;
+        }
+    }
+
     reg_ptr = eval_info.regs_info.Save(reg);
     if (!EvalRegister(&entry.second, reg, reg_ptr, &eval_info)) {
       return false;

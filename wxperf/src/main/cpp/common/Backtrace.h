@@ -25,6 +25,8 @@ namespace wechat_backtrace {
     void fp_fast_unwind(uptr *regs, uptr * frames, uptr frameMaxSize, uptr &frameSize);
 
     void fp_unwind_with_fallback(uptr *regs, uptr *frames, uptr frameMaxSize, uptr &frameSize);
+
+    void fast_dwarf_unwind(unwindstack::Regs *regs, std::vector<unwindstack::FrameData> &dst, size_t frameSize);
 }
 
 #endif //LIBWXPERF_JNI_STACKTRACE_H

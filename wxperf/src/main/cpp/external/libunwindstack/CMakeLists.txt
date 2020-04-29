@@ -6,6 +6,7 @@ SET(TARGET unwindstack)
 
 SET(
         ${TARGET}_SOURCE_FILES
+        ${CMAKE_CURRENT_SOURCE_DIR}/DwarfError.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/ArmExidx.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/DwarfCfa.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/DwarfEhFrameWithHdr.cpp
