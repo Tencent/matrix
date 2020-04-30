@@ -236,7 +236,7 @@ public class ArscReader {
         Log.d(TAG, "resEntry flag %d", resEntry.getFlag());
         resEntry.setStringPoolIndex(dataInput.readInt());
 
-        String entryName = ArscUtil.resolveStringPoolEntry(resPackage.getResNamePool().getStrings().get(resEntry.getStringPoolIndex()).array(), resPackage.getResNamePool().getCharSet());
+        String entryName = ResStringBlock.resolveStringPoolEntry(resPackage.getResNamePool().getStrings().get(resEntry.getStringPoolIndex()).array(), resPackage.getResNamePool().getCharSet());
         Log.d(TAG, "entryName %s", entryName);
         resEntry.setEntryName(entryName);
 
@@ -257,7 +257,7 @@ public class ArscReader {
     }
 
     private ResValue readResValue() throws IOException {
-    	Log.d(TAG,"============ResValue===============");
+        Log.d(TAG, "============ResValue===============");
         ResValue resValue = new ResValue();
         resValue.setSize(dataInput.readShort());
         //Log.d(TAG, "resValue size %d", resValue.getSize());
@@ -266,13 +266,13 @@ public class ArscReader {
         Log.d(TAG, "resValue data type %d", resValue.getDataType());
         resValue.setData(dataInput.readInt());
         //Log.d(TAG, "resValue data %d", resValue.getData());
-              
+
         if (resValue.getDataType() == ArscConstants.RES_VALUE_DATA_TYPE_STRING) {
-        	Log.d(TAG,  "resValue string %s", ArscUtil.resolveStringPoolEntry(globalResTable.getGlobalStringPool().getStrings().get(resValue.getData()).array(), globalResTable.getGlobalStringPool().getCharSet()));
+        	Log.d(TAG,  "resValue string %s", ResStringBlock.resolveStringPoolEntry(globalResTable.getGlobalStringPool().getStrings().get(resValue.getData()).array(), globalResTable.getGlobalStringPool().getCharSet()));
         } else {
         	Log.d(TAG, "resValue %s", resValue.printData());
         }
-       
+
         return resValue;
     }
 
@@ -339,7 +339,7 @@ public class ArscReader {
         dataInput.seek(headStart + stringPool.getStringStart());
         if (stringPool.getStringCount() > 0) {
             List<ByteBuffer> strings = new ArrayList<ByteBuffer>();
-            Map<String, Integer> stringIntegerMap = new HashMap<>();
+            Map<String, Integer> stringIndexMap = new HashMap<>();
             for (int i = 0; i < stringPool.getStringCount(); i++) {
                 byte[] buffer = null;
                 if (i < stringPool.getStringCount() - 1) {
@@ -356,10 +356,10 @@ public class ArscReader {
                 strings.get(i).order(ByteOrder.LITTLE_ENDIAN);
                 strings.get(i).clear();
                 strings.get(i).put(buffer);
-                stringIntegerMap.put(ArscUtil.resolveStringPoolEntry(buffer, stringPool.getCharSet()), i);
+                stringIndexMap.put(ResStringBlock.resolveStringPoolEntry(buffer, stringPool.getCharSet()), i);
             }
             stringPool.setStrings(strings);
-            stringPool.setStringIndexMap(stringIntegerMap);
+            stringPool.setStringIndexMap(stringIndexMap);
         }
         if (stringPool.getStyleCount() > 0) {
             byte[] styleBytes = new byte[stringPool.getChunkSize() - stringPool.getStyleStart()];

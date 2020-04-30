@@ -93,19 +93,19 @@ public class BatteryCanaryPlugin extends Plugin {
         MatrixLog.i(TAG, "onForeground:" + isForground);
 
         super.onForeground(isForground);
+        mCore.onForeground(isForground);
 
-        if (isForground && isPluginStarted()) {
-            stoppedForForeground = true;
-            super.stop();
-            mCore.stop();
-            return;
-        }
-
-        if (!isForground && isPluginStopped() && stoppedForForeground) {
-            super.start();
-            mCore.start();
-        }
-
+//        if (isForground && isPluginStarted()) {
+//            stoppedForForeground = true;
+//            super.stop();
+//            mCore.stop();
+//            return;
+//        }
+//
+//        if (!isForground && isPluginStopped() && stoppedForForeground) {
+//            super.start();
+//            mCore.start();
+//        }
 
     }
 }

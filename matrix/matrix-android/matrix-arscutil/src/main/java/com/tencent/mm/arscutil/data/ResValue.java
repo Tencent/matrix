@@ -26,9 +26,9 @@ import java.nio.ByteOrder;
 public class ResValue {
 
     private short size;                    // 2 bytes，大小
-    private byte res0;					   // 保留字段，始终为0
-    private byte dataType;		   			// 数据类型
-    private int data;					   // 数据的内容，根据dataType解析，例如：对于TYPE_STRING，data就是global string pool中的index
+    private byte res0;                     // 保留字段，始终为0
+    private byte dataType;                 // 数据类型
+    private int data;                      // 数据的内容，根据dataType解析，例如：对于TYPE_STRING，data就是global string pool中的index
 
 
     public short getSize() {
@@ -38,27 +38,27 @@ public class ResValue {
     public void setSize(short size) {
         this.size = size;
     }
-    
+
     public void setResvered(byte res) {
-    	this.res0 = res;
+        this.res0 = res;
     }
-    
+
     public void setDataType(byte dataType) {
-    	this.dataType = dataType;
+        this.dataType = dataType;
     }
-    
+
     public byte getDataType() {
-    	return this.dataType;
+        return this.dataType;
     }
-    
+
     public int getData() {
     	return data;
     }
-    
+
     public void setData(int data) {
     	this.data = data;
     }
-    
+
     public String printData() {
     	switch (dataType) {
     		case ArscConstants.RES_VALUE_DATA_TYPE_NULL:
@@ -85,10 +85,8 @@ public class ResValue {
     			return "color:" + String.format("#%3x", data);
     		default:
     			return "other:" + data;
-    			
     	}
     }
-    
 
     public byte[] toBytes() {
         ByteBuffer byteBuffer = ByteBuffer.allocate(size);

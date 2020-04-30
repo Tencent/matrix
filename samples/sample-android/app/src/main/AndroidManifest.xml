@@ -36,6 +36,7 @@
         <activity android:name=".trace.TestEnterActivity"></activity>
         <activity android:name=".trace.TestFpsActivity"></activity>
         <activity android:name=".sqlitelint.TestSQLiteLintActivity"></activity>
+        <activity android:name=".battery.TestBatteryActivity"></activity>
     </application>
 
 </manifest>

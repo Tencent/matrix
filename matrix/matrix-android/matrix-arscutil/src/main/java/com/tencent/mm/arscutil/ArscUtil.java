@@ -16,19 +16,6 @@
 
 package com.tencent.mm.arscutil;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.nio.CharBuffer;
-import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
 import com.tencent.matrix.javalib.util.Log;
 import com.tencent.mm.arscutil.data.ArscConstants;
 import com.tencent.mm.arscutil.data.ResChunk;
@@ -38,6 +25,17 @@ import com.tencent.mm.arscutil.data.ResStringBlock;
 import com.tencent.mm.arscutil.data.ResTable;
 import com.tencent.mm.arscutil.data.ResType;
 
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.nio.CharBuffer;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
 /**
  * Created by jinqiuchen on 18/7/29.
  */
@@ -45,65 +43,6 @@ import com.tencent.mm.arscutil.data.ResType;
 public class ArscUtil {
 
     private static final String TAG = "ArscUtil.ArscUtil";
-
-    //字符串长度最少占2个字节，最多占4个字节
-    public static String resolveStringPoolEntry(byte[] buffer, Charset charSet) {
-        String str = "";
-        int len = 0;
-        if (charSet.equals(StandardCharsets.UTF_8)) {
-            len = buffer[0];
-            if ((len & 0x80) != 0) {
-                byte high = buffer[1];
-                len = ((len & 0x7f) << 8) | high;
-            }
-            str = new String(buffer, 2, buffer.length - 2 - 1, charSet);
-        } else {
-            ByteBuffer byteBuffer = ByteBuffer.allocate(4);
-            byteBuffer.order(ByteOrder.LITTLE_ENDIAN);
-            byteBuffer.clear();
-            byteBuffer.put(buffer, 0, 2);
-            byteBuffer.flip();
-            len = byteBuffer.getShort();
-            if ((len & 0x8000) != 0) {
-                short high = byteBuffer.getShort();
-                len = ((len & 0x7fff) << 16) | high;
-            }
-            str = new String(buffer, byteBuffer.limit(), buffer.length - 4, charSet);
-        }
-        Log.d(TAG, "str len %d, %s", len, str);
-        return str;
-    }
-
-    public static byte[] encodeStringPoolEntry(String str, Charset charSet) {
-        byte[] content = str.getBytes(charSet);
-        int len = str.length();
-        ByteBuffer resultBuf;
-        if (charSet.equals(StandardCharsets.UTF_8)) {
-            resultBuf = ByteBuffer.allocate(content.length + 2 + 1);
-            resultBuf.order(ByteOrder.LITTLE_ENDIAN);
-            if (len > 0xFF) {
-                resultBuf.put( (byte) (((len & 0x7F00) >> 8) | 0x80));
-                resultBuf.put((byte) (len & 0xFF));
-            } else {
-                resultBuf.put((byte) (len & 0xFF));
-                resultBuf.put((byte) (len & 0xFF));
-            }
-        } else {
-            if (len > 0xFFFF) {
-                resultBuf = ByteBuffer.allocate(content.length + 4 + 2);
-                resultBuf.order(ByteOrder.LITTLE_ENDIAN);
-                resultBuf.putShort((short) (((len & 0x7FFF0000) >> 16) | 0x8000));
-                resultBuf.putShort((short) (len & 0xFFFF));
-            } else {
-                resultBuf = ByteBuffer.allocate(content.length + 2 + 2);
-                resultBuf.order(ByteOrder.LITTLE_ENDIAN);
-                resultBuf.putShort((short) (len & 0xFFFF));
-            }
-        }
-        resultBuf.put(content);
-        resultBuf.rewind();
-        return resultBuf.array();
-    }
 
     public static String toUTF16String(byte[] buffer) {
         CharBuffer charBuffer = ByteBuffer.wrap(buffer).order(ByteOrder.LITTLE_ENDIAN).asCharBuffer();
@@ -165,25 +104,28 @@ public class ArscUtil {
     }
 
     public static void removeResource(ResTable resTable, int resourceId, String resourceName) throws IOException {
-    	Log.i(TAG, "try to remove %s (%H)", resourceName, resourceId);
         ResPackage resPackage = findResPackage(resTable, getPackageId(resourceId));
         if (resPackage != null) {
             List<ResType> resTypeList = findResType(resPackage, resourceId);
+            int resNameStringPoolIndex = -1;
             for (ResType resType : resTypeList) {
                 int entryId = getResourceEntryId(resourceId);
-                //Log.d(TAG, "try to remove %s (%H), find resource %s", resourceName, resourceId, ArscUtil.resolveStringPoolEntry(resPackage.getResNamePool().getStrings().get(resType.getEntryTable().get(entryId).getStringPoolIndex()).array(), resPackage.getResNamePool().getCharSet()));
-                resType.getEntryTable().set(entryId, null);
-                resType.getEntryOffsets().set(entryId, ArscConstants.NO_ENTRY_INDEX);
+                resNameStringPoolIndex = resType.getEntryTable().get(entryId).getStringPoolIndex();
+                resType.removeEntry(entryId);
                 resType.refresh();
             }
+            if (resNameStringPoolIndex != -1) {
+                Log.i(TAG, "try to remove %s (%H), find resource %s", resourceName, resourceId, ResStringBlock.resolveStringPoolEntry(resPackage.getResNamePool().getStrings().get(resNameStringPoolIndex).array(), resPackage.getResNamePool().getCharSet()));
+            }
+            resPackage.shrinkResNameStringPool();
             resPackage.refresh();
             resTable.refresh();
         }
     }
-    
+
     public static boolean replaceFileResource(ResTable resTable, int sourceResId, String sourceFile, int targetResId, String targetFile) throws IOException {
-    	int sourcePkgId = getPackageId(sourceResId);
-    	int targetPkgId = getPackageId(targetResId);
+        int sourcePkgId = getPackageId(sourceResId);
+        int targetPkgId = getPackageId(targetResId);
     	Log.i(TAG, "try to replace %H(%s) with %H(%s)", sourceResId, sourceFile, targetResId, targetFile);
     	if (sourcePkgId == targetPkgId) {
     		ResPackage resPackage = findResPackage(resTable, sourcePkgId);
@@ -197,7 +139,7 @@ public class ArscUtil {
             		boolean isComplex = (resEntry.getFlag() & ArscConstants.RES_TABLE_ENTRY_FLAG_COMPLEX) != 0;
             		if (!isComplex && resEntry.getResValue() != null) {
             			if (resEntry.getResValue().getDataType() == ArscConstants.RES_VALUE_DATA_TYPE_STRING) {
-            				String filePath = ArscUtil.resolveStringPoolEntry(resTable.getGlobalStringPool().getStrings().get(resEntry.getResValue().getData()).array(), resTable.getGlobalStringPool().getCharSet());
+            				String filePath = ResStringBlock.resolveStringPoolEntry(resTable.getGlobalStringPool().getStrings().get(resEntry.getResValue().getData()).array(), resTable.getGlobalStringPool().getCharSet());
             				if (filePath.equals(targetFile)) {
             					targetFileIndex = resEntry.getResValue().getData();
             					break;
@@ -221,10 +163,11 @@ public class ArscUtil {
                     boolean isComplex = (resEntry.getFlag() & ArscConstants.RES_TABLE_ENTRY_FLAG_COMPLEX) != 0;
                     if (!isComplex && resEntry.getResValue() != null) {
                     	if (resEntry.getResValue().getDataType() == ArscConstants.RES_VALUE_DATA_TYPE_STRING) {
-                    		String filePath = ArscUtil.resolveStringPoolEntry(resTable.getGlobalStringPool().getStrings().get(resEntry.getResValue().getData()).array(), resTable.getGlobalStringPool().getCharSet());
+                    		String filePath = ResStringBlock.resolveStringPoolEntry(resTable.getGlobalStringPool().getStrings().get(resEntry.getResValue().getData()).array(), resTable.getGlobalStringPool().getCharSet());
                     		if (filePath.equals(sourceFile)) {
                     			sourceFileIndex = resEntry.getResValue().getData();
                     			resEntry.getResValue().setData(targetFileIndex);
+                    			sourceResType.refresh();
                     		} else {
                     			Log.w(TAG, "find source file %s, %s was expected", filePath, sourceFile);
             					continue;
@@ -241,7 +184,7 @@ public class ArscUtil {
     	}
     	return false;
     }
-    
+
     public static void replaceResEntryName(ResTable resTable, Map<Integer, String> resIdProguard) {
         Set<ResPackage> updatePackages = new HashSet<>();
         for (int resId : resIdProguard.keySet()) {
@@ -275,7 +218,7 @@ public class ArscUtil {
                     resEntry.setEntryName(resIdProguard.get(resId));
 
                     if (!resPackage.getResProguardPool().getStringIndexMap().containsKey(resEntry.getEntryName())) {
-                        resPackage.getResProguardPool().getStrings().add(ByteBuffer.wrap(ArscUtil.encodeStringPoolEntry(resEntry.getEntryName(), resPackage.getResProguardPool().getCharSet())));
+                        resPackage.getResProguardPool().getStrings().add(ByteBuffer.wrap(ResStringBlock.encodeStringPoolEntry(resEntry.getEntryName(), resPackage.getResProguardPool().getCharSet())));
                         resPackage.getResProguardPool().setStringCount(resPackage.getResProguardPool().getStrings().size());
                         resPackage.getResProguardPool().getStringIndexMap().put(resEntry.getEntryName(), resPackage.getResProguardPool().getStringCount() - 1);
                     }
@@ -293,7 +236,7 @@ public class ArscUtil {
                         for (ResEntry resEntry : resType.getEntryTable()) {
                             if (resEntry != null) {
                                 if (!resPackage.getResProguardPool().getStringIndexMap().containsKey(resEntry.getEntryName())) {
-                                    resPackage.getResProguardPool().getStrings().add(ByteBuffer.wrap(ArscUtil.encodeStringPoolEntry(resEntry.getEntryName(), resPackage.getResProguardPool().getCharSet())));
+                                    resPackage.getResProguardPool().getStrings().add(ByteBuffer.wrap(ResStringBlock.encodeStringPoolEntry(resEntry.getEntryName(), resPackage.getResProguardPool().getCharSet())));
                                     resPackage.getResProguardPool().setStringCount(resPackage.getResProguardPool().getStrings().size());
                                     resPackage.getResProguardPool().getStringIndexMap().put(resEntry.getEntryName(), resPackage.getResProguardPool().getStringCount() - 1);
                                 }
@@ -307,7 +250,7 @@ public class ArscUtil {
         }
         resTable.refresh();
     }
-    
+
     public static boolean replaceResFileName(ResTable resTable, int resId, String srcFileName, String targetFileName) {
     	Log.i(TAG, "try to replace resource (%H) file %s with %s", resId, srcFileName, targetFileName);
     	ResPackage resPackage = findResPackage(resTable, getPackageId(resId));
@@ -318,9 +261,9 @@ public class ArscUtil {
                 int entryId = getResourceEntryId(resId);
                 ResEntry resEntry = resType.getEntryTable().get(entryId);
                 if (resEntry.getResValue().getDataType() == ArscConstants.RES_VALUE_DATA_TYPE_STRING) {
-                	String filePath = ArscUtil.resolveStringPoolEntry(resTable.getGlobalStringPool().getStrings().get(resEntry.getResValue().getData()).array(), resTable.getGlobalStringPool().getCharSet());
+                	String filePath = ResStringBlock.resolveStringPoolEntry(resTable.getGlobalStringPool().getStrings().get(resEntry.getResValue().getData()).array(), resTable.getGlobalStringPool().getCharSet());
                 	if (filePath.equals(srcFileName)) {
-                		resTable.getGlobalStringPool().getStrings().set(resEntry.getResValue().getData(), ByteBuffer.wrap(ArscUtil.encodeStringPoolEntry(targetFileName, resTable.getGlobalStringPool().getCharSet())));
+                		resTable.getGlobalStringPool().getStrings().set(resEntry.getResValue().getData(), ByteBuffer.wrap(ResStringBlock.encodeStringPoolEntry(targetFileName, resTable.getGlobalStringPool().getCharSet())));
                 		result = true;
                 		break;
                 	}

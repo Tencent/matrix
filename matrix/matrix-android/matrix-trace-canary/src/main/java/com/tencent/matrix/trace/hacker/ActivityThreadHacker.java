@@ -36,7 +36,6 @@ public class ActivityThreadHacker {
     private static final String TAG = "Matrix.ActivityThreadHacker";
     private static long sApplicationCreateBeginTime = 0L;
     private static long sApplicationCreateEndTime = 0L;
-    private static long sLastLaunchActivityTime = 0L;
     public static AppMethodBeat.IndexRecord sLastLaunchActivityMethodIndex = new AppMethodBeat.IndexRecord();
     public static AppMethodBeat.IndexRecord sApplicationCreateBeginMethodIndex = new AppMethodBeat.IndexRecord();
     public static int sApplicationCreateScene = Integer.MIN_VALUE;
@@ -93,10 +92,6 @@ public class ActivityThreadHacker {
         return ActivityThreadHacker.sApplicationCreateBeginTime;
     }
 
-    public static long getLastLaunchActivityTime() {
-        return ActivityThreadHacker.sLastLaunchActivityTime;
-    }
-
     public static boolean isCreatedByLaunchActivity() {
         return sIsCreatedByLaunchActivity;
     }
@@ -105,10 +100,11 @@ public class ActivityThreadHacker {
     private final static class HackCallback implements Handler.Callback {
         private static final int LAUNCH_ACTIVITY = 100;
         private static final int CREATE_SERVICE = 114;
+        private static final int RELAUNCH_ACTIVITY = 126;
         private static final int RECEIVER = 113;
         private static final int EXECUTE_TRANSACTION = 159; // for Android 9.0
         private static boolean isCreated = false;
-        private static int hasPrint = 10;
+        private static int hasPrint = Integer.MAX_VALUE;
 
         private final Handler.Callback mOriginalCallback;
 
@@ -126,12 +122,8 @@ public class ActivityThreadHacker {
             boolean isLaunchActivity = isLaunchActivity(msg);
 
             if (hasPrint > 0) {
-                MatrixLog.i(TAG, "[handleMessage] msg.what:%s begin:%s isLaunchActivity:%s", msg.what, SystemClock.uptimeMillis(), isLaunchActivity);
+                MatrixLog.i(TAG, "[handleMessage] msg.what:%s begin:%s isLaunchActivity:%s SDK_INT=%s", msg.what, SystemClock.uptimeMillis(), isLaunchActivity, Build.VERSION.SDK_INT);
                 hasPrint--;
-            }
-            if (isLaunchActivity) {
-                ActivityThreadHacker.sLastLaunchActivityTime = SystemClock.uptimeMillis();
-                ActivityThreadHacker.sLastLaunchActivityMethodIndex = AppMethodBeat.getInstance().maskIndex("LastLaunchActivityMethodIndex");
             }
 
             if (!isCreated) {
@@ -173,7 +165,7 @@ public class ActivityThreadHacker {
                 }
                 return msg.what == LAUNCH_ACTIVITY;
             } else {
-                return msg.what == LAUNCH_ACTIVITY;
+                return msg.what == LAUNCH_ACTIVITY || msg.what == RELAUNCH_ACTIVITY;
             }
         }
     }

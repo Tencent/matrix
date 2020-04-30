@@ -157,19 +157,19 @@ public class AlarmManagerServiceHooker {
         }
     }
 
-    private static Class sListenerWrapperCls;
-    private static Field sListenerField;
-    static {
-        try {
-            sListenerWrapperCls = Class.forName("android.app.AlarmManager$ListenerWrapper");
-            sListenerField = sListenerWrapperCls.getDeclaredField("mListener");
-            sListenerField.setAccessible(true);
-        } catch (ClassNotFoundException e) {
-            MatrixLog.w(TAG, "static init exp:%s", e);
-        } catch (NoSuchFieldException e) {
-            MatrixLog.w(TAG, "static init exp:%s", e);
-        }
-    }
+//    private static Class sListenerWrapperCls;
+//    private static Field sListenerField;
+//    static {
+//        try {
+//            sListenerWrapperCls = Class.forName("android.app.AlarmManager$ListenerWrapper");
+//            sListenerField = sListenerWrapperCls.getDeclaredField("mListener");
+//            sListenerField.setAccessible(true);
+//        } catch (ClassNotFoundException e) {
+//            MatrixLog.w(TAG, "static init exp:%s", e);
+//        } catch (NoSuchFieldException e) {
+//            MatrixLog.w(TAG, "static init exp:%s", e);
+//        }
+//    }
 
     private static final class SetArgs {
         int type;
@@ -269,26 +269,26 @@ public class AlarmManagerServiceHooker {
                 setArgs.operation = (PendingIntent) argsArr[6];
             }
 
-            if (sListenerWrapperCls == null || sListenerField == null) {
-                MatrixLog.w(TAG, "createSetArgs sListenerWrapperCls sListenerField null");
-                return null;
-            }
+//            if (sListenerWrapperCls == null || sListenerField == null) {
+//                MatrixLog.w(TAG, "createSetArgs sListenerWrapperCls sListenerField null");
+//                return null;
+//            }
 
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                if (argsArr[7] != null && !sListenerWrapperCls.isInstance(argsArr[7])) {
-                    MatrixLog.w(TAG, "createSetArgs args idx 7 not ListenerWrapper, %s", argsArr[7]);
-                    return null;
-                } else {
-                    try {
-                        if (argsArr[7] != null) {
-                            setArgs.onAlarmListener = (AlarmManager.OnAlarmListener) sListenerField.get(argsArr[7]);
-                        }
-                    } catch (IllegalAccessException e) {
-                        MatrixLog.w(TAG, "createSetArgs args idx 7 init exp:%s", e.getLocalizedMessage());
-                        return null;
-                    }
-                }
-            }
+//            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+//                if (argsArr[7] != null && !sListenerWrapperCls.isInstance(argsArr[7])) {
+//                    MatrixLog.w(TAG, "createSetArgs args idx 7 not ListenerWrapper, %s", argsArr[7]);
+//                    return null;
+//                } else {
+//                    try {
+//                        if (argsArr[7] != null) {
+//                            setArgs.onAlarmListener = (AlarmManager.OnAlarmListener) sListenerField.get(argsArr[7]);
+//                        }
+//                    } catch (IllegalAccessException e) {
+//                        MatrixLog.w(TAG, "createSetArgs args idx 7 init exp:%s", e.getLocalizedMessage());
+//                        return null;
+//                    }
+//                }
+//            }
 
             return setArgs;
         }
@@ -502,23 +502,23 @@ public class AlarmManagerServiceHooker {
                 cancelArgs.operation = (PendingIntent) argsArr[0];
             }
 
-            if (sListenerWrapperCls == null || sListenerField == null) {
-                MatrixLog.w(TAG, "createSetArgs sListenerWrapperCls sListenerField null");
-                return null;
-            }
-            if (argsArr[1] != null && !sListenerWrapperCls.isInstance(argsArr[1])) {
-                MatrixLog.w(TAG, "createSetArgs args idx 1 not ListenerWrapper, %s", argsArr[1]);
-                return null;
-            } else {
-                try {
-                    if (argsArr[1] != null) {
-                        cancelArgs.onAlarmListener = (AlarmManager.OnAlarmListener) sListenerField.get(argsArr[1]);
-                    }
-                } catch (IllegalAccessException e) {
-                    MatrixLog.w(TAG, "createSetArgs args idx 1 init exp:%s", e.getLocalizedMessage());
-                    return null;
-                }
-            }
+//            if (sListenerWrapperCls == null || sListenerField == null) {
+//                MatrixLog.w(TAG, "createSetArgs sListenerWrapperCls sListenerField null");
+//                return null;
+//            }
+//            if (argsArr[1] != null && !sListenerWrapperCls.isInstance(argsArr[1])) {
+//                MatrixLog.w(TAG, "createSetArgs args idx 1 not ListenerWrapper, %s", argsArr[1]);
+//                return null;
+//            } else {
+//                try {
+//                    if (argsArr[1] != null) {
+//                        cancelArgs.onAlarmListener = (AlarmManager.OnAlarmListener) sListenerField.get(argsArr[1]);
+//                    }
+//                } catch (IllegalAccessException e) {
+//                    MatrixLog.w(TAG, "createSetArgs args idx 1 init exp:%s", e.getLocalizedMessage());
+//                    return null;
+//                }
+//            }
 
             return cancelArgs;
         }

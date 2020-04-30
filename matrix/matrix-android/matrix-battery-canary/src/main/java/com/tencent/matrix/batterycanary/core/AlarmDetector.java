@@ -50,8 +50,10 @@ import java.io.Serializable;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.TreeSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 
 /**
  * 1. There will be a estimate count of the alarm triggers in a stat period (1 hour)
@@ -86,6 +88,7 @@ public class AlarmDetector extends IssuePublisher {
     private final AlarmInfoRecorder mAlarmInfoRecorder;
     private List<AlarmInfo> mCurrentRunningAlarms;
     private long mCurrentCountPeriodFrom;
+    private boolean isForeground = true;
 
     public AlarmDetector(OnIssueDetectListener issueDetectListener, BatteryConfig config) {
         super(issueDetectListener);
@@ -113,6 +116,11 @@ public class AlarmDetector extends IssuePublisher {
                            int flags, PendingIntent operation, AlarmManager.OnAlarmListener onAlarmListener,
                            String stackTrace) {
 
+        if(isForeground) {
+            MatrixLog.i(TAG, "in foreground, ignore alarm event");
+            return;
+        }
+
         if (mAlarmInfoRecorder != null) {
             mAlarmInfoRecorder.onAlarmSet(type, triggerAtMillis, windowMillis, intervalMillis, flags, operation, onAlarmListener, stackTrace);
         }
@@ -137,7 +145,12 @@ public class AlarmDetector extends IssuePublisher {
 
         doMarkRemoveLogic(onAlarmListener, new OperationInfo(operation));
 
-        countAndDetect();
+        if(!isForeground)
+            countAndDetect();
+    }
+
+    public void onForeground(boolean _isForeground) {
+        isForeground = _isForeground;
     }
 
     private void countAndDetect() {
@@ -168,8 +181,8 @@ public class AlarmDetector extends IssuePublisher {
             return;
         }
 
-        StringBuilder relatedAlarmSetStacks = new StringBuilder();
-        StringBuilder relatedWakeUpAlarmSetStacks = new StringBuilder();
+        TreeSet<String> relatedAlarmSetStacks = new TreeSet<>();
+        TreeSet<String> relatedWakeUpAlarmSetStacks = new TreeSet<>();
 
         /**
          * It's just an estimate.
@@ -223,16 +236,19 @@ public class AlarmDetector extends IssuePublisher {
             }
 
             currentCountPeriodAlarmTriggeredCount += repeatCount;
-            relatedAlarmSetStacks.append(alarmInfo.stackTrace).append("\t\t");
+            relatedAlarmSetStacks.add(alarmInfo.stackTrace);
 
             if (alarmInfo.isWakeUpAlarm()) {
                 currentCountPeriodWakeUpAlarmTriggeredCount += repeatCount;
-                relatedWakeUpAlarmSetStacks.append(alarmInfo.stackTrace).append("\t\t");
+                relatedWakeUpAlarmSetStacks.add(alarmInfo.stackTrace);
             }
         }
 
-//        MatrixLog.i(TAG, "doCountAndDetect currentRunningAlarms size:%d, currentCountPeriodAlarmTriggeredCount:%d, currentCountPeriodWakeUpAlarmTriggeredCount:%d",
-//                mCurrentRunningAlarms.size(), currentCountPeriodAlarmTriggeredCount, currentCountPeriodWakeUpAlarmTriggeredCount);
+        MatrixLog.i(TAG, "doCountAndDetect currentRunningAlarms size:%d, currentCountPeriodAlarmTriggeredCount:%d, currentCountPeriodWakeUpAlarmTriggeredCount:%d",
+                mCurrentRunningAlarms.size(), currentCountPeriodAlarmTriggeredCount, currentCountPeriodWakeUpAlarmTriggeredCount);
+
+        String setStackStr = join(relatedAlarmSetStacks, "\r\n\r\n");
+        String setWakeUpStr = join(relatedWakeUpAlarmSetStacks, "\r\n\r\n");
 
         //detect
         int issueType = -1;
@@ -240,11 +256,11 @@ public class AlarmDetector extends IssuePublisher {
         int alarmTriggerCount = 0;
         if (currentCountPeriodAlarmTriggeredCount >= mAlarmTriggerNum1HThreshold) {
             issueType = SharePluginInfo.IssueType.ISSUE_ALARM_TOO_OFTEN;
-            alarmSetStacks = relatedAlarmSetStacks.toString();
+            alarmSetStacks = setStackStr;
             alarmTriggerCount = currentCountPeriodAlarmTriggeredCount;
         } else if (currentCountPeriodWakeUpAlarmTriggeredCount >= mWakeUpAlarmTriggerNum1HThreshold) {
             issueType = SharePluginInfo.IssueType.ISSUE_ALARM_WAKE_UP_TOO_OFTEN;
-            alarmSetStacks = relatedWakeUpAlarmSetStacks.toString();
+            alarmSetStacks = setWakeUpStr;
             alarmTriggerCount = currentCountPeriodWakeUpAlarmTriggeredCount;
         }
         if (issueType > 0) {
@@ -268,6 +284,22 @@ public class AlarmDetector extends IssuePublisher {
                 markPublished(issueKey);
             }
         }
+    }
+
+    private String join(Set<String> set, String sep) {
+        String result = null;
+        if(set != null) {
+            StringBuilder sb = new StringBuilder();
+            Iterator<String> it = set.iterator();
+            if(it.hasNext()) {
+                sb.append(it.next());
+            }
+            while(it.hasNext()) {
+                sb.append(sep).append(it.next());
+            }
+            result = sb.toString();
+        }
+        return result;
     }
 
     /**
