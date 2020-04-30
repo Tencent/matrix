@@ -7,7 +7,7 @@
 
 #if defined(__arm__)
 
-// TODO minimal
+// TODO minimize
 inline __always_inline void RegsMinimalGetLocal(void *reg_data) {
   asm volatile(
       ".align 2\n"
@@ -29,6 +29,7 @@ inline __always_inline void RegsMinimalGetLocal(void *reg_data) {
 
 #elif defined(__aarch64__)
 
+// Only get 4 registers from x29 to x32.
 inline __always_inline void RegsMinimalGetLocal(void *reg_data) {
     asm volatile(
     "1:\n"

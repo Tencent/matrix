@@ -68,7 +68,7 @@ namespace wechat_backtrace {
         const uptr kPageSize = GetPageSize();
         backtrace[0] = pc;
         frame_size = 1;
-        if (stack_top < 4096) return;  // Sanity check for stack top.
+        if (UNLIKELY(stack_top < 4096)) return;  // Sanity check for stack top.
         uptr *frame = GetCanonicFrame(fp, stack_top, stack_bottom);
         // Lowest possible address that makes sense as the next frame pointer.
         // Goes up as we walk the stack.
@@ -157,7 +157,6 @@ namespace wechat_backtrace {
         // Lowest possible address that makes sense as the next frame pointer.
         // Goes up as we walk the stack.
         uptr bottom = stack_bottom;
-        // Avoid infinite loop when frame == frame[0] by using frame > prev_frame.
 
         uptr next_pc = 0;
         while (frame_size < frame_max_size) {
