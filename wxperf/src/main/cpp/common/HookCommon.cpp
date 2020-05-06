@@ -4,6 +4,7 @@
 
 #include <jni.h>
 #include <xhook.h>
+#include <sys/stat.h>
 #include "HookCommon.h"
 #include "log.h"
 #include "StackTrace.h"
@@ -48,6 +49,25 @@ void add_hook_init_callback(hook_init_callback_t __callback) {
     m_init_callbacks.push_back(__callback);
 }
 
+void test_log_to_file(const char *ch) {
+    const char *dir = "/sdcard/Android/data/com.tencent.mm/MicroMsg/Diagnostic";
+    const char *path = "/sdcard/Android/data/com.tencent.mm/MicroMsg/Diagnostic/log";
+
+    mkdir(dir, S_IRWXU|S_IRWXG|S_IROTH);
+
+    FILE *log_file = fopen(path, "a+");
+
+    if (!log_file) {
+        return;
+    }
+
+    fprintf(log_file, "%p:%s\n", ch, ch);
+
+    fflush(log_file);
+    fclose(log_file);
+
+}
+
 bool get_java_stacktrace(char *__stack, size_t __size) {
     JNIEnv *env = NULL;
     bool attached = false;
@@ -71,6 +91,7 @@ bool get_java_stacktrace(char *__stack, size_t __size) {
 
         LOGD("Yves-debug", "get_java_stacktrace called");
         const char *stack = env->GetStringUTFChars(j_stacktrace, NULL);
+        test_log_to_file(stack);
         memcpy(__stack, stack, __size - 1);
         __stack[__size - 1] = '\0';
         env->ReleaseStringUTFChars(j_stacktrace, stack);
