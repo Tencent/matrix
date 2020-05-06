@@ -298,7 +298,11 @@ public class ActivityRefWatcher extends FilePublisher implements Watcher, IAppFo
                         mResourcePlugin.onDetectIssue(new Issue(resultJson));
                     }
                     if (null != activityLeakCallback) {
-                        activityLeakCallback.onLeak(destroyedActivityInfo.mActivityName, destroyedActivityInfo.mKey);
+                        boolean dumped = activityLeakCallback.onLeak(destroyedActivityInfo.mActivityName, destroyedActivityInfo.mKey);
+                        if (dumped) {
+                            MatrixLog.i(TAG, "activity [%s] with key [%s] has been dumped. stop polling", destroyedActivityInfo.mActivityName, destroyedActivityInfo.mKey);
+                            infoIt.remove();
+                        }
                     }
                 } else if (mDumpHprofMode == ResourceConfig.DumpMode.AUTO_DUMP) {
                     final File hprofFile = mHeapDumper.dumpHeap(true);
