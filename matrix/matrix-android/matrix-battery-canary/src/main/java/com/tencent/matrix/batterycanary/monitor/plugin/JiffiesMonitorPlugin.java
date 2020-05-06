@@ -138,11 +138,11 @@ public class JiffiesMonitorPlugin implements IBatteryMonitorPlugin, Handler.Call
             array.put(info.tid, threadResult);
         }
         for (ThreadInfo info : startProcessInfo.threadInfo) {
-            jiffiesStart += info.jiffies;
             ThreadResult threadResult = array.get(info.tid);
             if (null == threadResult) {
                 array.put(info.tid, ThreadResult.obtain(info, 3));
             } else {
+                jiffiesStart += info.jiffies;
                 threadResult.threadState = 2;
                 threadResult.jiffiesDiff = threadResult.threadInfo.jiffies - info.jiffies;
             }

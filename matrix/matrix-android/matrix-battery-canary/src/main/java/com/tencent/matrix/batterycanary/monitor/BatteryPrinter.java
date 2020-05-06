@@ -22,11 +22,12 @@ public class BatteryPrinter implements BatteryMonitor.Printer {
         StringBuilder sb = new StringBuilder("\t\n");
         sb.append("****************************************** PowerTest *****************************************").append("\n");
         sb.append("| ").append("pid=").append(Process.myPid())
+                .append("\t\t").append("isForeground=").append(result.isForeground)
                 .append("\t\t").append("during(min)=").append(result.upTimeDiff / ONE_MIN).append("<").append(result.timeDiff / ONE_MIN)
                 .append("\t\t").append("diff(jiffies)=").append(result.jiffiesDiff).append("<").append(result.jiffiesDiff2)
                 .append("\t\t").append("average(jiffies/min)=").append(result.jiffiesDiff2 / Math.max(1, result.upTimeDiff / ONE_MIN)).append("\n");
         sb.append("==============================================================================================").append("\n");
-        for (JiffiesMonitorPlugin.ThreadResult threadResult : result.threadResults.subList(0, 8)) {
+        for (JiffiesMonitorPlugin.ThreadResult threadResult : result.threadResults.subList(0, Math.min(result.threadResults.size(), 8))) {
             if (threadResult.jiffiesDiff <= 0) {
                 sb.append("|\t\t......\n");
                 break;
