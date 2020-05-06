@@ -211,22 +211,22 @@ static void on_pthread_create(const pthread_t __pthread) {
     unwind_native_stacktrace(meta);
     native_hash = hash_stack_frames(meta.native_stacktrace);
 
-    pthread_mutex_unlock(&m_pthread_meta_mutex);
+//    pthread_mutex_unlock(&m_pthread_meta_mutex);
 
     // unlock scope
     // 反射 Java 获取堆栈时加锁会造成死锁
-    unwind_java_stacktrace(&meta);
+//    unwind_java_stacktrace(&meta);
+//
+//    const char *java_stacktrace = meta.java_stacktrace.load(std::memory_order_acquire);
+//    if (java_stacktrace) {
+//        java_hash = hash_str(java_stacktrace);
+//        LOGD(TAG, "on_pthread_create: java hash = %lu", java_hash);
+//    }
+//    // unlock scope
+//
+//    pthread_mutex_lock(&m_pthread_meta_mutex);
 
-    const char *java_stacktrace = meta.java_stacktrace.load(std::memory_order_acquire);
-    if (java_stacktrace) {
-        java_hash = hash_str(java_stacktrace);
-        LOGD(TAG, "on_pthread_create: java hash = %lu", java_hash);
-    }
-    // unlock scope
-
-    pthread_mutex_lock(&m_pthread_meta_mutex);
-
-    if (native_hash && java_hash) {
+    if (native_hash /*&& java_hash*/) {
         meta.hash = hash_combine(native_hash, java_hash);
     }
 
