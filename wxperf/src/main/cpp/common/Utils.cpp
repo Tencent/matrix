@@ -3,8 +3,8 @@
 //
 
 #include <cassert>
-#include "utils.h"
-#include "log.h"
+#include "Utils.h"
+#include "Log.h"
 
 #define JAVA_LONG_MAX_VALUE 0x7fffffffffffffff
 

@@ -19,6 +19,7 @@ set(
         ${SOURCE_DIR}/fd/FDInfoReader.cpp
         ${SOURCE_DIR}/memory/MemoryHookJNI.cpp
         ${SOURCE_DIR}/memory/MemoryHook.cpp
+        ${SOURCE_DIR}/memory/MemoryHookFunctions.cpp
         ${SOURCE_DIR}/common/lock.cpp
         ${SOURCE_DIR}/common/StackTrace.cpp
         ${SOURCE_DIR}/common/utils.cpp
