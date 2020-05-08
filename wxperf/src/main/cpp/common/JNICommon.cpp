@@ -15,6 +15,9 @@ JavaVM *m_java_vm;
 jclass m_class_HookManager;
 jmethodID m_method_getStack;
 
+jclass m_class_EglHook;
+jmethodID  m_method_record;
+
 JNIEXPORT jint JNI_OnLoad(JavaVM *vm, void *reserved) {
     LOGD("Yves-debug", "JNI OnLoad...");
     m_java_vm = vm;
@@ -32,6 +35,12 @@ JNIEXPORT jint JNI_OnLoad(JavaVM *vm, void *reserved) {
             m_method_getStack = env->GetStaticMethodID(m_class_HookManager, "getStack", "()Ljava/lang/String;");
         } else {
             LOGD("Yves-debug", "j_PthreadHook null!");
+        }
+
+        jclass j_EglHook = env->FindClass("com/tencent/mm/performance/jni/egl/EglHook");
+        if (j_EglHook) {
+            m_class_EglHook = (jclass) env->NewGlobalRef(j_EglHook);
+            m_method_record = env->GetStaticMethodID(m_class_EglHook, "onCreateEglContext", "(JJLjava/lang/String;)V");
         }
     }
 

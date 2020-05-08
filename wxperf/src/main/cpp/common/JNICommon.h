@@ -17,6 +17,9 @@ extern JavaVM *m_java_vm;
 extern jclass m_class_HookManager;
 extern jmethodID m_method_getStack;
 
+extern jclass m_class_EglHook;
+extern jmethodID m_method_record;
+
 #ifdef __cplusplus
 }
 #endif

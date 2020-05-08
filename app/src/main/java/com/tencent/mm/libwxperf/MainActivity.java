@@ -2,6 +2,12 @@ package com.tencent.mm.libwxperf;
 
 import android.Manifest;
 import android.content.pm.PackageManager;
+import android.opengl.EGL14;
+import android.opengl.EGLConfig;
+import android.opengl.EGLContext;
+import android.opengl.EGLDisplay;
+import android.opengl.EGLSurface;
+import android.opengl.GLES20;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
@@ -14,6 +20,8 @@ import android.util.Log;
 import android.view.View;
 
 import com.tencent.mm.performance.jni.HookManager;
+import com.tencent.mm.performance.jni.egl.EglContextMonitor;
+import com.tencent.mm.performance.jni.egl.EglHook;
 import com.tencent.mm.performance.jni.fd.FDDumpBridge;
 import com.tencent.mm.performance.jni.memory.MemoryHook;
 import com.tencent.mm.performance.jni.pthread.PthreadHook;
@@ -36,38 +44,38 @@ public class MainActivity extends AppCompatActivity {
         Log.d(TAG, "threadName = " + threadNameRegex + ", " + name.matches(threadNameRegex));
 
 //        MemoryHook.hook();
-        try {
-            HookManager.INSTANCE
-//                    .addHook(MemoryHook.INSTANCE
-//                            .addHookSo(".*libnative-lib\\.so$")
-//                            .enableStacktrace(true)
-//                            .enableMmapHook(true))
-                    .addHook(PthreadHook.INSTANCE
-//                            .addHookSo(".*libnative-lib\\.so$")
-                            .addHookSo(".*\\.so$")
-//                            .addIgnoreSo(".*libart\\.so$")
-//                            .addHookThread(".*")
-                            .addHookThread(threadNameRegex)
-//                            .addHookThread("MyHandlerThread")
-//                            .addHookThread("\\[GT\\]MediaCodecR$")
-                    )
-                    .commitHooks();
-
-//            PthreadHook.INSTANCE.addHookSo(".*\\.so$")
-//                    .addHookThread("RenderThread")
-//                    .addHookThread("\\[GT\\]MediaCodecR$")
-//                    .addHookThread("RenderThread")
-//                    .hook();
-
-//            MemoryHook.INSTANCE
-//                    .addHookSo(".*libnative-lib\\.so$")
-//                    .enableStacktrace(true)
-//                    .enableMmapHook(true)
-//                    .hook();
-            throw new HookManager.HookFailedException("adfad");
-        } catch (HookManager.HookFailedException e) {
-            e.printStackTrace();
-        }
+//        try {
+//            HookManager.INSTANCE
+////                    .addHook(MemoryHook.INSTANCE
+////                            .addHookSo(".*libnative-lib\\.so$")
+////                            .enableStacktrace(true)
+////                            .enableMmapHook(true))
+//                    .addHook(PthreadHook.INSTANCE
+////                            .addHookSo(".*libnative-lib\\.so$")
+//                                    .addHookSo(".*\\.so$")
+////                            .addIgnoreSo(".*libart\\.so$")
+////                            .addHookThread(".*")
+//                                    .addHookThread(threadNameRegex)
+////                            .addHookThread("MyHandlerThread")
+////                            .addHookThread("\\[GT\\]MediaCodecR$")
+//                    )
+//                    .commitHooks();
+//
+////            PthreadHook.INSTANCE.addHookSo(".*\\.so$")
+////                    .addHookThread("RenderThread")
+////                    .addHookThread("\\[GT\\]MediaCodecR$")
+////                    .addHookThread("RenderThread")
+////                    .hook();
+//
+////            MemoryHook.INSTANCE
+////                    .addHookSo(".*libnative-lib\\.so$")
+////                    .enableStacktrace(true)
+////                    .enableMmapHook(true)
+////                    .hook();
+//            throw new HookManager.HookFailedException("adfad");
+//        } catch (HookManager.HookFailedException e) {
+//            e.printStackTrace();
+//        }
 
 
         Log.d(TAG, " pid = " + Process.myPid() + " tid = " + Thread.currentThread().getId());
@@ -142,8 +150,6 @@ public class MainActivity extends AppCompatActivity {
                         }
 
 
-
-
                     }
                 }, "[GT]HotPool#1");
 
@@ -192,6 +198,31 @@ public class MainActivity extends AppCompatActivity {
                 }
 
 //                JNIObj.testJNICall();
+            }
+        });
+
+        findViewById(R.id.btn_egl).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                try {
+                    HookManager.INSTANCE.addHook(EglHook.INSTANCE).commitHooks();
+                } catch (Exception e) {
+                    Log.e("opdeng", "egl hook fail:" + e.getCause());
+                }
+            }
+        });
+
+        findViewById(R.id.btn_egl_create_context).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                EglTest.initOpenGL();
+            }
+        });
+
+        findViewById(R.id.btn_egl_destroy_context).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                EglTest.release();
             }
         });
 
@@ -250,4 +281,5 @@ public class MainActivity extends AppCompatActivity {
             return true;
         }
     }
+
 }
