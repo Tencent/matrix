@@ -58,7 +58,6 @@ public class AnrTracer extends Tracer {
                 anrTask.getBeginRecord().release();
             }
             anrHandler.removeCallbacksAndMessages(null);
-            anrHandler.getLooper().quit();
         }
     }
 
