@@ -86,10 +86,16 @@ public class JiffiesMonitorPlugin implements IBatteryMonitorPlugin, Handler.Call
             processInfo.upTime = SystemClock.uptimeMillis();
             processInfo.time = System.currentTimeMillis();
             lastProcessInfo = processInfo;
+            if (null != monitor.getConfig().printer) {
+                monitor.getConfig().printer.onTraceBegin();
+            }
             return true;
         } else if (msg.what == MSG_ID_JIFFIES_END) {
             if (null == lastProcessInfo) {
                 return true;
+            }
+            if (null != monitor.getConfig().printer) {
+                monitor.getConfig().printer.onTraceEnd();
             }
             ProcessInfo processInfo = getProcessInfo();
             processInfo.threadInfo.addAll(getThreadsInfo(processInfo.pid));

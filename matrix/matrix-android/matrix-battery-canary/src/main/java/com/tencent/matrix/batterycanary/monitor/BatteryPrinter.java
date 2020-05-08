@@ -4,8 +4,11 @@ import android.os.HandlerThread;
 import android.os.Process;
 import android.util.LongSparseArray;
 
+import com.tencent.matrix.Matrix;
+import com.tencent.matrix.batterycanary.core.PowerManagerServiceHooker;
 import com.tencent.matrix.batterycanary.monitor.plugin.JiffiesMonitorPlugin;
 import com.tencent.matrix.batterycanary.monitor.plugin.LooperTaskMonitorPlugin;
+import com.tencent.matrix.batterycanary.monitor.plugin.WakeLockMonitorPlugin;
 import com.tencent.matrix.util.MatrixLog;
 
 import java.util.List;
@@ -15,6 +18,33 @@ public class BatteryPrinter implements BatteryMonitor.Printer {
     private static final String TAG = "Matrix.BatteryPrinter";
     private static final int ONE_MIN = 60 * 1000;
     private final LongSparseArray<List<LooperTaskMonitorPlugin.TaskTraceInfo>> tasks = new LongSparseArray<>();
+    private WakeLockMonitorPlugin.Info lastWakeInfo = null;
+    private int diffWakeCount = 0;
+    private long diffWakeTime = 0L;
+
+    @Override
+    public void onTraceBegin() {
+        BatteryMonitor monitor = Matrix.with().getPluginByClass(BatteryMonitor.class);
+        if (null != monitor) {
+            WakeLockMonitorPlugin plugin = monitor.getMonitorPlugin(WakeLockMonitorPlugin.class);
+            if (null != plugin) {
+                lastWakeInfo = plugin.getInfo();
+            }
+        }
+    }
+
+    @Override
+    public void onTraceEnd() {
+        BatteryMonitor monitor = Matrix.with().getPluginByClass(BatteryMonitor.class);
+        if (null != monitor) {
+            WakeLockMonitorPlugin plugin = monitor.getMonitorPlugin(WakeLockMonitorPlugin.class);
+            if (null != plugin && null != lastWakeInfo) {
+                WakeLockMonitorPlugin.Info info = plugin.getInfo();
+                diffWakeCount = info.wakeLockCount - lastWakeInfo.wakeLockCount;
+                diffWakeTime = info.wakeLockTime - lastWakeInfo.wakeLockTime;
+            }
+        }
+    }
 
     @Override
     public void onJiffies(JiffiesMonitorPlugin.JiffiesResult result) {
@@ -40,11 +70,17 @@ public class BatteryPrinter implements BatteryMonitor.Printer {
                 }
             }
         }
+        sb.append("| -> ").append("incrementWakeCount=").append(diffWakeCount).append(" sumWakeTime=").append(diffWakeTime).append("ms\n");
+        sb.append(getExtInfo());
         sb.append("**********************************************************************************************");
         MatrixLog.i(TAG, "%s", sb.toString());
         synchronized (tasks) {
             tasks.clear();
         }
+    }
+
+    public StringBuilder getExtInfo() {
+        return new StringBuilder();
     }
 
     @Override

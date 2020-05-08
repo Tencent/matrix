@@ -2,7 +2,9 @@ package com.tencent.matrix.batterycanary.monitor.plugin;
 
 import android.os.Handler;
 import android.os.IBinder;
+import android.os.SystemClock;
 import android.os.WorkSource;
+import android.support.annotation.Nullable;
 
 import com.tencent.matrix.batterycanary.core.PowerManagerServiceHooker;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitor;
@@ -12,13 +14,17 @@ import com.tencent.matrix.util.MatrixLog;
 
 import java.util.HashMap;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class WakeLockMonitorPlugin implements IBatteryMonitorPlugin, PowerManagerServiceHooker.IListener {
 
     private static final String TAG = "Matrix.WakeLockMonitorPlugin";
     private Handler handler = null;
     private BatteryMonitor monitor;
-    private HashMap<Object, Runnable> timeoutMap = new HashMap<>(2);
+    private ConcurrentHashMap<Object, Cache> timeoutMap = new ConcurrentHashMap<>(2);
+    private long wakeLockTime = 0L;
+    private int wakeLockingCount = 0;
+    private int wakeLockCount = 0;
 
     @Override
     public void onInstall(BatteryMonitor monitor) {
@@ -66,13 +72,64 @@ public class WakeLockMonitorPlugin implements IBatteryMonitorPlugin, PowerManage
                 }
             }
         };
-        timeoutMap.put(token, timeoutRunnable);
+        timeoutMap.put(token, new Cache(token, SystemClock.uptimeMillis(), timeoutRunnable));
         handler.postDelayed(timeoutRunnable, monitor.getConfig().wakelockTimeout);
+        wakeLockingCount += 1;
+        wakeLockCount++;
     }
 
     @Override
     public void onReleaseWakeLock(IBinder token, int flags) {
         MatrixLog.i(TAG, "[onReleaseWakeLock] token=%s flags=%s", token.hashCode(), flags);
-        handler.removeCallbacks(timeoutMap.get(token));
+        Cache cache = timeoutMap.get(token);
+        handler.removeCallbacks(cache.runnable);
+        wakeLockTime += (SystemClock.uptimeMillis() - cache.time);
+        wakeLockingCount -= 1;
+    }
+
+    public Info getInfo() {
+        long time = wakeLockTime;
+        if (wakeLockingCount > 0) {
+            for (Cache cache : timeoutMap.values()) {
+                time += (SystemClock.uptimeMillis() - cache.time);
+            }
+        }
+        return new Info(time, wakeLockingCount, wakeLockCount);
+    }
+
+    public static class Info {
+
+        public Info(long wakeLockTime, int wakeLockingCount, int wakeLockCount) {
+            this.wakeLockTime = wakeLockTime;
+            this.wakeLockingCount = wakeLockingCount;
+            this.wakeLockCount = wakeLockCount;
+        }
+
+        public long wakeLockTime;
+        public int wakeLockingCount;
+        public int wakeLockCount;
+    }
+
+
+    public static class Cache {
+        IBinder token;
+        long time;
+        Runnable runnable;
+
+        Cache(IBinder token, long time, Runnable runnable) {
+            this.token = token;
+            this.time = time;
+            this.runnable = runnable;
+        }
+
+        @Override
+        public int hashCode() {
+            return token.hashCode();
+        }
+
+        @Override
+        public boolean equals(@Nullable Object obj) {
+            return token.equals(obj);
+        }
     }
 }

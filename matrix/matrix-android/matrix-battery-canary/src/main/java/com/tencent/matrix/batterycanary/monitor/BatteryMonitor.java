@@ -29,11 +29,25 @@ public class BatteryMonitor extends Plugin {
     }
 
     public interface Printer {
+
+        void onTraceBegin();
+
+        void onTraceEnd();
+
         void onJiffies(JiffiesMonitorPlugin.JiffiesResult result);
 
         void onTaskTrace(Thread thread, List<LooperTaskMonitorPlugin.TaskTraceInfo> sortList);
 
         void onWakeLockTimeout(String tag, String packageName, int warningCount);
+    }
+
+    public <T extends IBatteryMonitorPlugin> T getMonitorPlugin(Class<T> clazz) {
+        for (IBatteryMonitorPlugin plugin : config.plugins) {
+            if (clazz.isAssignableFrom(plugin.getClass())) {
+                return (T) plugin;
+            }
+        }
+        return null;
     }
 
     public Config getConfig() {
