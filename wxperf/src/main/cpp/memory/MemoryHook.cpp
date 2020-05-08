@@ -25,7 +25,7 @@ struct ptr_meta_t {
     uint64_t stack_hash;
     bool     is_mmap;
 
-    ptr_meta_t() = default;
+    ptr_meta_t() : size(0), caller(nullptr), stack_hash(0), is_mmap(false) {}
 
     ptr_meta_t(size_t size, void *caller, uint64_t stackHash, bool isMmap) : size(size),
                                                                              caller(caller),
@@ -35,28 +35,29 @@ struct ptr_meta_t {
     ~ptr_meta_t() = default;
 
     ptr_meta_t(const ptr_meta_t &src) /*= default;*/ {
-        size = src.size;
-        caller = src.caller;
+        size       = src.size;
+        caller     = src.caller;
         stack_hash = src.stack_hash;
-        is_mmap = src.is_mmap;
+        is_mmap    = src.is_mmap;
     }
 
 };
 
-struct caller_meta_t{
+struct caller_meta_t {
     size_t           total_size;
     std::set<void *> pointers;
 };
 
-struct stack_meta_t{
+struct stack_meta_t {
     size_t                              size;
     std::vector<unwindstack::FrameData> *p_stacktraces;
 
     stack_meta_t() = default;
 
     ~stack_meta_t() = default;
+
     stack_meta_t(const stack_meta_t &src) = default;
-} ;
+};
 
 struct tsd_t {
     // todo replace with radix tree
@@ -130,7 +131,7 @@ static inline void flush_tsd_to(tsd_t *__tsd_src, tsd_t *__dest) {
 
     // 不同的 tsd 中可能有相同的堆栈, 累加 size
     for (auto it : __tsd_src->stack_meta) {
-        auto &stack_meta = __dest->stack_meta[it.first];
+        auto &stack_meta         = __dest->stack_meta[it.first];
         stack_meta.size += it.second.size;
         stack_meta.p_stacktraces = it.second.p_stacktraces;
     }
@@ -279,7 +280,6 @@ static inline void on_release_memory(void *__ptr, bool __is_mmap) {
 
     if (unlikely(!released)) {
         pthread_rwlock_rdlock(&m_tsd_merge_bucket_lock);
-        LOGD(TAG, "on_release_memory hard");
         released = do_release_memory_meta(__ptr, &m_merge_bucket, __is_mmap);
         pthread_rwlock_unlock(&m_tsd_merge_bucket_lock);
     }
@@ -374,7 +374,7 @@ static inline void dump_callers_unsafe(FILE *log_file,
 
 //    LOGE("Yves.debug", "caller so begin");
     // 按 so 聚类
-    for (auto & i : caller_metas) {
+    for (auto &i : caller_metas) {
 //        LOGE("Yves.debug", "so sum loop");
         auto caller      = i.first;
         auto caller_meta = i.second;
@@ -462,7 +462,8 @@ static inline void dump_stacks_unsafe(FILE *log_file,
     fprintf(log_file, "hash count = %zu\n", stack_metas.size());
 
     for (auto &stack_meta :stack_metas) {
-        LOGD(TAG, "hash %lu : stack.size = %zu, %p", stack_meta.first, stack_meta.second.size, stack_meta.second.p_stacktraces);
+        LOGD(TAG, "hash %lu : stack.size = %zu, %p", stack_meta.first, stack_meta.second.size,
+             stack_meta.second.p_stacktraces);
     }
 
     std::unordered_map<std::string, size_t>                                      stack_alloc_size_of_so;
@@ -607,7 +608,6 @@ void dump(bool enable_mmap_hook, const char *path) {
     LOGD(TAG, "dump path = %s", path);
     if (!log_file) {
         LOGE(TAG, "open file failed");
-        release_lock();
         return;
     }
 
