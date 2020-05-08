@@ -37,6 +37,8 @@ public class FrameTracer extends Tracer {
     private long highThreshold;
     private long middleThreshold;
     private long normalThreshold;
+    private int droppedSum = 0;
+    private long durationSum = 0;
 
     public FrameTracer(TraceConfig config) {
         this.config = config;
@@ -85,11 +87,23 @@ public class FrameTracer extends Tracer {
         }
     }
 
+    public int getDroppedSum() {
+        return droppedSum;
+    }
+
+    public long getDurationSum() {
+        return durationSum;
+    }
+
     private void notifyListener(final String focusedActivity, final long startNs, final long endNs, final boolean isVsyncFrame,
                                 final long intendedFrameTimeNs, final long inputCostNs, final long animationCostNs, final long traversalCostNs) {
         long traceBegin = System.currentTimeMillis();
         try {
-            final int dropFrame = (int) ((endNs - intendedFrameTimeNs) / frameIntervalNs);
+            final long jiter = endNs - intendedFrameTimeNs;
+            final int dropFrame = (int) (jiter / frameIntervalNs);
+            droppedSum += dropFrame;
+            durationSum += Math.max(jiter, frameIntervalNs);
+
             synchronized (listeners) {
                 for (final IDoFrameListener listener : listeners) {
                     if (config.isDevEnv()) {
