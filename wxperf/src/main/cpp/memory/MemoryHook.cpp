@@ -12,7 +12,6 @@
 #include <cxxabi.h>
 #include <sys/mman.h>
 #include "MemoryHookFunctions.h"
-#include "lock.h"
 #include "StackTrace.h"
 #include "Utils.h"
 #include "unwindstack/Unwinder.h"
@@ -594,9 +593,7 @@ void dump(bool enable_mmap_hook, const char *path) {
 void memory_hook_on_dlopen(const char *__file_name) {
     LOGD(TAG, "memory_hook_on_dlopen");
     if (is_stacktrace_enabled) {
-        acquire_lock();
         unwindstack::update_maps();
-        release_lock();
     }
     srand((unsigned int) time(NULL));
 }
