@@ -5,10 +5,10 @@ import android.support.annotation.Nullable;
 
 public class EglContextMonitor {
 
-    private long contextId;
+    public long contextId;
 
-    private String javaStack;
-    private long nativeStackHash;
+    public String javaStack;
+    public long nativeStackHash;
 
     public EglContextMonitor(long contextId, String javaStack, long nativeStackHash) {
         this.contextId = contextId;
