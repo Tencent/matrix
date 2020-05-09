@@ -19,6 +19,7 @@ extern jmethodID m_method_getStack;
 
 extern jclass m_class_EglHook;
 extern jmethodID m_method_record;
+extern jmethodID m_method_egl_release;
 
 #ifdef __cplusplus
 }

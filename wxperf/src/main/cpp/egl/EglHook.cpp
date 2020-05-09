@@ -36,8 +36,24 @@ void store_stack_info(uint64_t egl_context, char *java_stack, uint64_t native_st
     if (env != NULL) {
         jstring js = charTojstring(env, java_stack);
         env->CallStaticVoidMethod(m_class_EglHook,
-                                    m_method_record,
-                                    egl_context, native_stack_hash, js);
+                                  m_method_record,
+                                  egl_context, native_stack_hash, js);
+    }
+}
+
+void release_egl_context(uint64_t egl_context) {
+    JNIEnv *env = NULL;
+    if (m_java_vm->GetEnv((void **) &env, JNI_VERSION_1_6) != JNI_OK) {
+        if (m_java_vm->AttachCurrentThread(&env, NULL) == JNI_OK) {
+        } else {
+            return;
+        }
+    }
+
+    if (env != NULL) {
+        env->CallStaticVoidMethod(m_class_EglHook,
+                                  m_method_egl_release,
+                                  egl_context);
     }
 }
 
@@ -55,9 +71,6 @@ DEFINE_HOOK_FUN(EGLContext, eglCreateContext, EGLDisplay dpy, EGLConfig config,
         get_java_stacktrace(buf, BUF_SIZE);
     }
 
-    LOGI("java", "%s", buf);
-    LOGI("native", "%ld", native_stack_hash_code);
-
     CALL_ORIGIN_FUNC_RET(EGLContext, ret, eglCreateContext, dpy, config, share_context,
                          attrib_list);
 
@@ -68,7 +81,8 @@ DEFINE_HOOK_FUN(EGLContext, eglCreateContext, EGLDisplay dpy, EGLConfig config,
 
 DEFINE_HOOK_FUN(EGLBoolean, eglDestroyContext, EGLDisplay dpy, EGLContext ctx) {
 
-    LOGI(TAG, "my_eglDestroyContext");
+    release_egl_context((uint64_t) ctx);
+
     CALL_ORIGIN_FUNC_RET(EGLBoolean, ret, eglDestroyContext, dpy, ctx);
 
     return ret;

@@ -17,6 +17,7 @@ jmethodID m_method_getStack;
 
 jclass m_class_EglHook;
 jmethodID  m_method_record;
+jmethodID  m_method_egl_release;
 
 JNIEXPORT jint JNI_OnLoad(JavaVM *vm, void *reserved) {
     LOGD("Yves-debug", "JNI OnLoad...");
@@ -41,6 +42,7 @@ JNIEXPORT jint JNI_OnLoad(JavaVM *vm, void *reserved) {
         if (j_EglHook) {
             m_class_EglHook = (jclass) env->NewGlobalRef(j_EglHook);
             m_method_record = env->GetStaticMethodID(m_class_EglHook, "onCreateEglContext", "(JJLjava/lang/String;)V");
+            m_method_egl_release = env->GetStaticMethodID(m_class_EglHook, "onDeleteEglContext", "(J)V");
         }
     }
 
