@@ -91,10 +91,15 @@ bool get_java_stacktrace(char *__stack, size_t __size) {
 
         LOGD("Yves-debug", "get_java_stacktrace called");
         const char *stack = env->GetStringUTFChars(j_stacktrace, NULL);
-        test_log_to_file(stack);
-        memcpy(__stack, stack, __size - 1);
-        __stack[__size - 1] = '\0';
+        if (stack) {
+            test_log_to_file(stack);
+            memcpy(__stack, stack, __size - 1);
+            __stack[__size - 1] = '\0';
+        } else {
+            strncpy(__stack, "  get java stacktrace failed", __size);
+        }
         env->ReleaseStringUTFChars(j_stacktrace, stack);
+
         if (attached) {
             m_java_vm->DetachCurrentThread();
         }
