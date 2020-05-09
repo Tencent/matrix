@@ -24,23 +24,6 @@ struct ptr_meta_t {
     void     *caller;
     uint64_t stack_hash;
     bool     is_mmap;
-
-    ptr_meta_t() : size(0), caller(nullptr), stack_hash(0), is_mmap(false) {}
-
-    ptr_meta_t(size_t size, void *caller, uint64_t stackHash, bool isMmap) : size(size),
-                                                                             caller(caller),
-                                                                             stack_hash(stackHash),
-                                                                             is_mmap(isMmap) {}
-
-    ~ptr_meta_t() = default;
-
-    ptr_meta_t(const ptr_meta_t &src) /*= default;*/ {
-        size       = src.size;
-        caller     = src.caller;
-        stack_hash = src.stack_hash;
-        is_mmap    = src.is_mmap;
-    }
-
 };
 
 struct caller_meta_t {
@@ -51,26 +34,13 @@ struct caller_meta_t {
 struct stack_meta_t {
     size_t                              size;
     std::vector<unwindstack::FrameData> *p_stacktraces;
-
-    stack_meta_t() = default;
-
-    ~stack_meta_t() = default;
-
-    stack_meta_t(const stack_meta_t &src) = default;
 };
 
 struct tsd_t {
-    // todo replace with radix tree
     std::multimap<void *, ptr_meta_t> ptr_meta;
     std::map<uint64_t, stack_meta_t>  stack_meta;
     std::multiset<void *>             borrowed_ptrs;
 };
-
-//struct merge_bucket_t {
-//    std::multimap<void *, ptr_meta_t> ptr_meta;
-//    std::map<uint64_t, stack_meta_t>  stack_meta;
-//    std::multiset<void *>             borrowed_ptrs;
-//};
 
 static tsd_t            m_merge_bucket;
 static pthread_rwlock_t m_tsd_merge_bucket_lock;
@@ -291,21 +261,6 @@ static inline void on_release_memory(void *__ptr, bool __is_mmap) {
     // TODO countdown to flush
 }
 
-// TODO caller
-//
-//    if (ptr_meta.caller && caller_metas.count(ptr_meta.caller)) {
-//        caller_meta_t &caller_meta = caller_metas.at(ptr_meta.caller);
-//        if (caller_meta.total_size > ptr_meta.size) { // 减去 caller 的 size
-//            caller_meta.total_size -= ptr_meta.size;
-//            caller_meta.pointers.erase(__ptr);
-//        } else { // 删除 size 为 0 的 caller
-//            std::set<void *> empty_set;
-//            empty_set.swap(caller_meta.pointers);
-////            caller_meta.pointers.clear(); // 造成卡顿, 是否有其他方法
-//            caller_metas.erase(ptr_meta.caller);
-//        }
-//    }
-
 void on_alloc_memory(void *__caller, void *__ptr, size_t __byte_count) {
     on_acquire_memory(__caller, __ptr, __byte_count, false);
 }
@@ -357,9 +312,9 @@ static inline void collect_metas(tsd_t &__tsd,
     }
 }
 
-static inline void dump_callers_unsafe(FILE *log_file,
-                                       std::multimap<void *, ptr_meta_t> &ptr_metas,
-                                       std::map<void *, caller_meta_t> &caller_metas) {
+static inline void dump_callers(FILE *log_file,
+                                std::multimap<void *, ptr_meta_t> &ptr_metas,
+                                std::map<void *, caller_meta_t> &caller_metas) {
 
     if (caller_metas.empty()) {
         LOGI(TAG, "caller: nothing dump");
@@ -451,8 +406,8 @@ static inline void dump_callers_unsafe(FILE *log_file,
     fprintf(log_file, "---------------------------------------------------\n\n");
 }
 
-static inline void dump_stacks_unsafe(FILE *log_file,
-                                      std::map<uint64_t, stack_meta_t> &stack_metas) {
+static inline void dump_stacks(FILE *log_file,
+                               std::map<uint64_t, stack_meta_t> &stack_metas) {
     if (stack_metas.empty()) {
         LOGI(TAG, "stacktrace: nothing dump");
         return;
@@ -540,11 +495,13 @@ static inline void dump_stacks_unsafe(FILE *log_file,
 
 }
 
-static void dump_unsafe(FILE *log_file, bool enable_mmap_hook) {
+static inline void dump_impl(FILE *log_file, bool enable_mmap_hook) {
 
     pthread_mutex_lock(&m_tsd_global_set_mutex);
 
     tsd_t dump_dst;
+
+    size_t tsd_size = m_tsd_global_set.size();
 
     for (auto tsd : m_tsd_global_set) {
         flush_tsd_to(tsd, &dump_dst);
@@ -566,15 +523,23 @@ static void dump_unsafe(FILE *log_file, bool enable_mmap_hook) {
                   mmap_stack_metas);
 
     // native heap allocation
-    dump_callers_unsafe(log_file, dump_dst.ptr_meta, heap_caller_metas);
-    dump_stacks_unsafe(log_file, heap_stack_metas);
+    dump_callers(log_file, dump_dst.ptr_meta, heap_caller_metas);
+    dump_stacks(log_file, heap_stack_metas);
 
     fprintf(log_file,
-            "<void *, ptr_meta_t> m_ptr_meta [%zu * %zu = (%zu)]\n<void *, caller_meta_t> m_caller_meta [%zu * %zu = (%zu)]\n<uint64_t, stack_meta_t> m_stack_meta [%zu * %zu = (%zu)]\n\n",
+            "tsd count = %zu\n"
+            "<void *, ptr_meta_t> m_ptr_meta [%zu * %zu = (%zu)]\n"
+            "<void *, caller_meta_t> m_caller_meta [%zu * %zu = (%zu)]\n"
+            "<uint64_t, stack_meta_t> m_stack_meta [%zu * %zu = (%zu)]\n\n",
+
+            tsd_size,
+
             sizeof(ptr_meta_t) + sizeof(void *), dump_dst.ptr_meta.size(),
             (sizeof(ptr_meta_t) + sizeof(void *)) * dump_dst.ptr_meta.size(),
+
             sizeof(caller_meta_t) + sizeof(void *), heap_caller_metas.size(),
             (sizeof(caller_meta_t) + sizeof(void *)) * heap_caller_metas.size(),
+
             sizeof(stack_meta_t) + sizeof(uint64_t), heap_stack_metas.size(),
             (sizeof(stack_meta_t) + sizeof(uint64_t)) * heap_stack_metas.size());
 
@@ -586,11 +551,17 @@ static void dump_unsafe(FILE *log_file, bool enable_mmap_hook) {
     LOGD(TAG, "############################# mmap ###################################\n\n");
     fprintf(log_file, "############################# mmap ###################################\n\n");
 
-    dump_callers_unsafe(log_file, dump_dst.ptr_meta, mmap_caller_metas);
-    dump_stacks_unsafe(log_file, mmap_stack_metas);
+    dump_callers(log_file, dump_dst.ptr_meta, mmap_caller_metas);
+    dump_stacks(log_file, mmap_stack_metas);
 
     fprintf(log_file,
-            "<void *, ptr_meta_t> m_mmap_ptr_meta [%zu * %zu = (%zu)]\n<void *, caller_meta_t> m_mmap_caller_meta [%zu * %zu = (%zu)]\n<uint64_t, stack_meta_t> m_mmap_stack_meta [%zu * %zu = (%zu)]\n\n",
+            "tsd count = %zu\n"
+            "<void *, ptr_meta_t> m_ptr_meta [%zu * %zu = (%zu)]\n"
+            "<void *, caller_meta_t> m_caller_meta [%zu * %zu = (%zu)]\n"
+            "<uint64_t, stack_meta_t> m_stack_meta [%zu * %zu = (%zu)]\n\n",
+
+            tsd_size,
+
             sizeof(ptr_meta_t) + sizeof(void *), dump_dst.ptr_meta.size(),
             (sizeof(ptr_meta_t) + sizeof(void *)) * dump_dst.ptr_meta.size(),
             sizeof(caller_meta_t) + sizeof(void *), mmap_caller_metas.size(),
@@ -611,7 +582,7 @@ void dump(bool enable_mmap_hook, const char *path) {
         return;
     }
 
-    dump_unsafe(log_file, enable_mmap_hook);
+    dump_impl(log_file, enable_mmap_hook);
 
     fflush(log_file);
     fclose(log_file);

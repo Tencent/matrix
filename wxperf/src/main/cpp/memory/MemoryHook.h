@@ -21,11 +21,11 @@ void dump(bool enable_mmap_hook = false, const char *path = "/sdcard/memory_hook
 
 void enable_stacktrace(bool);
 
-void enable_group_by_size(bool);
-
 void set_sample_size_range(size_t __min, size_t __max);
 
 void set_sampling(double);
+
+void enable_caller_sampling(bool __enable);
 
 void memory_hook_init();
 
