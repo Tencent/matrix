@@ -22,7 +22,7 @@ set(
         ${SOURCE_DIR}/memory/MemoryHookFunctions.cpp
         ${SOURCE_DIR}/common/Backtrace.cpp
         ${SOURCE_DIR}/common/StackTrace.cpp
-        ${SOURCE_DIR}/common/utils.cpp
+        ${SOURCE_DIR}/common/Utils.cpp
         ${SOURCE_DIR}/common/JNICommon.cpp
         ${SOURCE_DIR}/common/HookCommon.cpp
         ${SOURCE_DIR}/pthread/PthreadHook.cpp
