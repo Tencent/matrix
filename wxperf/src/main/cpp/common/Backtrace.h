@@ -12,7 +12,7 @@
 #include <unwindstack/Unwinder.h>
 #include <unwindstack/JitDebug.h>
 #include <FastUnwinder.h>
-#include "log.h"
+#include "Log.h"
 
 #define WECHAT_BACKTRACE_TAG "Wechat.Backtrace"
 

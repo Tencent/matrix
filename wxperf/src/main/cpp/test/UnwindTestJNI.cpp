@@ -6,7 +6,7 @@
 #include <dlfcn.h>
 #include <cinttypes>
 #include <cxxabi.h>
-#include "log.h"
+#include "Log.h"
 #include "StackTrace.h"
 #include "../external/libunwindstack/TimeUtil.h"
 

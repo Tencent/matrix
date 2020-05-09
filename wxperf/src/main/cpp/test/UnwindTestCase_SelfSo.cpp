@@ -2,7 +2,7 @@
 #include <dlfcn.h>
 #include <cinttypes>
 #include <cxxabi.h>
-#include "log.h"
+#include "Log.h"
 #include "UnwindTestCommon.h"
 #include "../external/libunwindstack/TimeUtil.h"
 #include "UnwindTestCase_SelfSo.h"

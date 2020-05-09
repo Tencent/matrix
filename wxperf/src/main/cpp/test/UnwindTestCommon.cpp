@@ -5,7 +5,7 @@
 #include <inttypes.h>
 #include <MapsControll.h>
 #include <FastRegs.h>
-#include "log.h"
+#include "Log.h"
 #include "Backtrace.h"
 #include "../external/libunwindstack/TimeUtil.h"
 #include "UnwindTestCommon.h"

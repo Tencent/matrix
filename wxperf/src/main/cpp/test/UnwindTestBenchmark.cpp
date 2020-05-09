@@ -4,7 +4,7 @@
 #include <cxxabi.h>
 #include <Backtrace.h>
 #include <MapsControll.h>
-#include "log.h"
+#include "Log.h"
 #include "Backtrace.h"
 #include "../external/libunwindstack/TimeUtil.h"
 

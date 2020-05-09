@@ -14,7 +14,7 @@
 #include <link.h>
 #include <sys/mman.h>
 #include <unistd.h>
-#include "../../common/log.h"
+#include "../../common/Log.h"
 
 #define TAG "unwind-EnhanceDlsym"
 
