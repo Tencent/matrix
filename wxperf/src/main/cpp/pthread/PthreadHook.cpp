@@ -13,10 +13,10 @@
 #include <regex>
 #include <set>
 #include <regex.h>
-#include <utils.h>
+#include <Utils.h>
 #include "PthreadHook.h"
 #include "pthread.h"
-#include "log.h"
+#include "Log.h"
 #include "JNICommon.h"
 #include "cJSON.h"
 
@@ -579,3 +579,5 @@ DEFINE_HOOK_FUN(int, pthread_setname_np, pthread_t
     }
     return ret;
 }
+
+#undef ORIGINAL_LIB

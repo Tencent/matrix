@@ -3,6 +3,7 @@
 //
 #include <jni.h>
 #include "xhook.h"
+#include "MemoryHookFunctions.h"
 #include "MemoryHook.h"
 #include "StackTrace.h"
 #include "xh_errno.h"
@@ -121,7 +122,7 @@ Java_com_tencent_mm_performance_jni_memory_MemoryHook_addHookSoNative(JNIEnv *en
         hook(regex);
         env->ReleaseStringUTFChars(jregex, regex);
     }
-
+    add_hook_init_callback(memory_hook_init);
     add_dlopen_hook_callback(memory_hook_on_dlopen);
 }
 

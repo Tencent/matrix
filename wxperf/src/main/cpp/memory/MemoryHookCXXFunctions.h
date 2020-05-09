@@ -2,8 +2,8 @@
 // Created by Yves on 2019-09-18.
 //
 
-#ifndef LIBWXPERF_JNI_MEMORYHOOKCXX_H
-#define LIBWXPERF_JNI_MEMORYHOOKCXX_H
+#ifndef LIBWXPERF_JNI_MEMORYHOOKCXXFUNCTIONS_H
+#define LIBWXPERF_JNI_MEMORYHOOKCXXFUNCTIONS_H
 
 #include <new>
 #include <cstddef>
@@ -95,4 +95,4 @@ DECLARE_HOOK_ORIG(void, _ZdaPvSt11align_val_tRKSt9nothrow_t, void* ptr,
 
 DECLARE_HOOK_ORIG(void, _ZdaPvRKSt9nothrow_t, void* ptr, std::nothrow_t const& nothrow)
 
-#endif //LIBWXPERF_JNI_MEMORYHOOKCXX_H
+#endif //LIBWXPERF_JNI_MEMORYHOOKCXXFUNCTIONS_H

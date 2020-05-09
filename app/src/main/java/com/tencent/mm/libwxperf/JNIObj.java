@@ -24,19 +24,15 @@ public class JNIObj {
 
     public native void doMmap();
 
-    public native void dump(String libPath);
-
-    public native void nullptr(String[] ss);
-
-    public static void onDumpFinished(String res) {
-
-    }
-
     public native static void testThread();
 
     public native static void testThreadSpecific();
 
     public native static void testJNICall();
+
+    public native static void testPthreadFree();
+
+    public native static void mallocTest();
 
     public static String calledByJNI() {
         Log.d("Yves-debug", "called By JNI");
