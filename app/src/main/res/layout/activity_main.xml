@@ -94,10 +94,9 @@
         android:id="@+id/btn_unwind_benchmark"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginStart="12dp"
+        android:onClick="unwindBenchmark"
         android:text="benchmark"
         android:textAllCaps="false"
-        android:onClick="unwindBenchmark"
         app:layout_constraintBaseline_toBaselineOf="@+id/btn_unwind"
         app:layout_constraintStart_toEndOf="@+id/btn_unwind" />
 
@@ -105,10 +104,9 @@
         android:id="@+id/btn_unwind_benchmark_debug"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginStart="15dp"
-        android:text="unwind_benchmark_debug"
-        android:textAllCaps="false"
         android:onClick="unwindBenchmarkDebug"
+        android:text="unwindBenchmarkDebug"
+        android:textAllCaps="false"
         app:layout_constraintBaseline_toBaselineOf="@+id/btn_unwind_benchmark"
         app:layout_constraintStart_toEndOf="@+id/btn_unwind_benchmark" />
 
