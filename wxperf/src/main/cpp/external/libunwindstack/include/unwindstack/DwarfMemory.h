@@ -49,8 +49,8 @@ class DwarfMemory {
   uint64_t cur_offset() { return cur_offset_; }
   void set_cur_offset(uint64_t cur_offset) { cur_offset_ = cur_offset; }
 
-  void set_pc_offset(uint64_t offset) { pc_offset_ = offset; }
-  void clear_pc_offset() { pc_offset_ = static_cast<uint64_t>(-1); }
+  void set_pc_offset(int64_t offset) { pc_offset_ = offset; }
+  void clear_pc_offset() { pc_offset_ = INT64_MAX; }
 
   void set_data_offset(uint64_t offset) { data_offset_ = offset; }
   void clear_data_offset() { data_offset_ = static_cast<uint64_t>(-1); }
@@ -65,7 +65,7 @@ class DwarfMemory {
   Memory* memory_;
   uint64_t cur_offset_ = 0;
 
-  uint64_t pc_offset_ = static_cast<uint64_t>(-1);
+  int64_t pc_offset_ = INT64_MAX;
   uint64_t data_offset_ = static_cast<uint64_t>(-1);
   uint64_t func_offset_ = static_cast<uint64_t>(-1);
   uint64_t text_offset_ = static_cast<uint64_t>(-1);

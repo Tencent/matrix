@@ -53,8 +53,8 @@ UString MyFormatMessage(DWORD errorCode)
       s[7 - i] = (char)((t < 10) ? ('0' + t) : ('A' + (t - 10)));
     }
     s[8] = 0;
-    m.AddAscii("Error #");
-    m.AddAscii(s);
+    m += "Error #";
+    m += s;
   }
   else if (m.Len() >= 2
       && m[m.Len() - 1] == 0x0A

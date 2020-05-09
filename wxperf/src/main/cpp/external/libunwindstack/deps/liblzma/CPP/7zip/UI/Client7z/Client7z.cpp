@@ -49,21 +49,35 @@ using namespace NDir;
 
 #define kDllName "7z.dll"
 
-static const char *kCopyrightString = "\n7-Zip " MY_VERSION
-" ("  kDllName " client) "
-MY_COPYRIGHT " " MY_DATE "\n";
+static const char * const kCopyrightString =
+  "\n"
+  "7-Zip"
+  " (" kDllName " client)"
+  " " MY_VERSION
+  " : " MY_COPYRIGHT_DATE
+  "\n";
 
-static const char *kHelpString =
-"Usage: Client7z.exe [a | l | x ] archive.7z [fileName ...]\n"
+static const char * const kHelpString =
+"Usage: 7zcl.exe [a | l | x] archive.7z [fileName ...]\n"
 "Examples:\n"
-"  Client7z.exe a archive.7z f1.txt f2.txt  : compress two files to archive.7z\n"
-"  Client7z.exe l archive.7z   : List contents of archive.7z\n"
-"  Client7z.exe x archive.7z   : eXtract files from archive.7z\n";
+"  7zcl.exe a archive.7z f1.txt f2.txt  : compress two files to archive.7z\n"
+"  7zcl.exe l archive.7z   : List contents of archive.7z\n"
+"  7zcl.exe x archive.7z   : eXtract files from archive.7z\n";
 
 
-static AString FStringToConsoleString(const FString &s)
+static void Convert_UString_to_AString(const UString &s, AString &temp)
 {
-  return GetOemString(fs2us(s));
+  int codePage = CP_OEMCP;
+  /*
+  int g_CodePage = -1;
+  int codePage = g_CodePage;
+  if (codePage == -1)
+    codePage = CP_OEMCP;
+  if (codePage == CP_UTF8)
+    ConvertUnicodeToUTF8(s, temp);
+  else
+  */
+    UnicodeStringToMultiByte2(temp, s, (UINT)codePage);
 }
 
 static FString CmdStringToFString(const char *s)
@@ -71,41 +85,53 @@ static FString CmdStringToFString(const char *s)
   return us2fs(GetUnicodeString(s));
 }
 
-static void PrintString(const UString &s)
+static void Print(const char *s)
 {
-  printf("%s", (LPCSTR)GetOemString(s));
+  fputs(s, stdout);
 }
 
-static void PrintString(const AString &s)
+static void Print(const AString &s)
 {
-  printf("%s", (LPCSTR)s);
+  Print(s.Ptr());
+}
+
+static void Print(const UString &s)
+{
+  AString as;
+  Convert_UString_to_AString(s, as);
+  Print(as);
+}
+
+static void Print(const wchar_t *s)
+{
+  Print(UString(s));
 }
 
 static void PrintNewLine()
 {
-  PrintString("\n");
+  Print("\n");
 }
 
-static void PrintStringLn(const AString &s)
+static void PrintStringLn(const char *s)
 {
-  PrintString(s);
+  Print(s);
+  PrintNewLine();
+}
+
+static void PrintError(const char *message)
+{
+  Print("Error: ");
+  PrintNewLine();
+  Print(message);
   PrintNewLine();
 }
 
 static void PrintError(const char *message, const FString &name)
 {
-  printf("Error: %s", (LPCSTR)message);
-  PrintNewLine();
-  PrintString(FStringToConsoleString(name));
-  PrintNewLine();
+  PrintError(message);
+  Print(name);
 }
 
-static void PrintError(const AString &s)
-{
-  PrintNewLine();
-  PrintString(s);
-  PrintNewLine();
-}
 
 static HRESULT IsArchiveItemProp(IInArchive *archive, UInt32 index, PROPID propID, bool &result)
 {
@@ -126,7 +152,7 @@ static HRESULT IsArchiveItemFolder(IInArchive *archive, UInt32 index, bool &resu
 }
 
 
-static const wchar_t *kEmptyFileAlias = L"[Content]";
+static const wchar_t * const kEmptyFileAlias = L"[Content]";
 
 
 //////////////////////////////////////////////////////////////
@@ -176,21 +202,25 @@ STDMETHODIMP CArchiveOpenCallback::CryptoGetTextPassword(BSTR *password)
 }
 
 
+
+static const char * const kIncorrectCommand = "incorrect command";
+
 //////////////////////////////////////////////////////////////
 // Archive Extracting callback class
 
-static const char *kTestingString    =  "Testing     ";
-static const char *kExtractingString =  "Extracting  ";
-static const char *kSkippingString   =  "Skipping    ";
+static const char * const kTestingString    =  "Testing     ";
+static const char * const kExtractingString =  "Extracting  ";
+static const char * const kSkippingString   =  "Skipping    ";
 
-static const char *kUnsupportedMethod = "Unsupported Method";
-static const char *kCRCFailed = "CRC Failed";
-static const char *kDataError = "Data Error";
-static const char *kUnavailableData = "Unavailable data";
-static const char *kUnexpectedEnd = "Unexpected end of data";
-static const char *kDataAfterEnd = "There are some data after the end of the payload data";
-static const char *kIsNotArc = "Is not archive";
-static const char *kHeadersError = "Headers Error";
+static const char * const kUnsupportedMethod = "Unsupported Method";
+static const char * const kCRCFailed = "CRC Failed";
+static const char * const kDataError = "Data Error";
+static const char * const kUnavailableData = "Unavailable data";
+static const char * const kUnexpectedEnd = "Unexpected end of data";
+static const char * const kDataAfterEnd = "There are some data after the end of the payload data";
+static const char * const kIsNotArc = "Is not archive";
+static const char * const kHeadersError = "Headers Error";
+
 
 class CArchiveExtractCallback:
   public IArchiveExtractCallback,
@@ -380,11 +410,11 @@ STDMETHODIMP CArchiveExtractCallback::PrepareOperation(Int32 askExtractMode)
   };
   switch (askExtractMode)
   {
-    case NArchive::NExtract::NAskMode::kExtract:  PrintString(kExtractingString); break;
-    case NArchive::NExtract::NAskMode::kTest:  PrintString(kTestingString); break;
-    case NArchive::NExtract::NAskMode::kSkip:  PrintString(kSkippingString); break;
+    case NArchive::NExtract::NAskMode::kExtract:  Print(kExtractingString); break;
+    case NArchive::NExtract::NAskMode::kTest:  Print(kTestingString); break;
+    case NArchive::NExtract::NAskMode::kSkip:  Print(kSkippingString); break;
   };
-  PrintString(_filePath);
+  Print(_filePath);
   return S_OK;
 }
 
@@ -397,7 +427,7 @@ STDMETHODIMP CArchiveExtractCallback::SetOperationResult(Int32 operationResult)
     default:
     {
       NumErrors++;
-      PrintString("  :  ");
+      Print("  :  ");
       const char *s = NULL;
       switch (operationResult)
       {
@@ -428,15 +458,15 @@ STDMETHODIMP CArchiveExtractCallback::SetOperationResult(Int32 operationResult)
       }
       if (s)
       {
-        PrintString("Error : ");
-        PrintString(s);
+        Print("Error : ");
+        Print(s);
       }
       else
       {
         char temp[16];
         ConvertUInt32ToString(operationResult, temp);
-        PrintString("Error #");
-        PrintString(temp);
+        Print("Error #");
+        Print(temp);
       }
     }
   }
@@ -449,7 +479,7 @@ STDMETHODIMP CArchiveExtractCallback::SetOperationResult(Int32 operationResult)
   }
   _outFileStream.Release();
   if (_extractMode && _processedFileInfo.AttribDefined)
-    SetFileAttrib(_diskFilePath, _processedFileInfo.Attrib);
+    SetFileAttrib_PosixHighDetect(_diskFilePath, _processedFileInfo.Attrib);
   PrintNewLine();
   return S_OK;
 }
@@ -602,10 +632,10 @@ HRESULT CArchiveUpdateCallback::Finilize()
 
 static void GetStream2(const wchar_t *name)
 {
-  PrintString("Compressing  ");
+  Print("Compressing  ");
   if (name[0] == 0)
     name = kEmptyFileAlias;
-  PrintString(name);
+  Print(name);
 }
 
 STDMETHODIMP CArchiveUpdateCallback::GetStream(UInt32 index, ISequentialInStream **inStream)
@@ -631,7 +661,7 @@ STDMETHODIMP CArchiveUpdateCallback::GetStream(UInt32 index, ISequentialInStream
       {
         PrintNewLine();
         PrintError("WARNING: can't open file");
-        // PrintString(NError::MyFormatMessageW(systemError));
+        // Print(NError::MyFormatMessageW(systemError));
         return S_FALSE;
       }
       // return sysError;
@@ -665,7 +695,7 @@ STDMETHODIMP CArchiveUpdateCallback::GetVolumeStream(UInt32 index, ISequentialOu
   while (res.Len() < 2)
     res.InsertAtFront(L'0');
   UString fileName = VolName;
-  fileName += L'.';
+  fileName += '.';
   fileName += res;
   fileName += VolExt;
   COutFileStream *streamSpec = new COutFileStream;
@@ -704,11 +734,18 @@ int MY_CDECL main(int numArgs, const char *args[])
 
   PrintStringLn(kCopyrightString);
 
-  if (numArgs < 3)
+  if (numArgs < 2)
   {
     PrintStringLn(kHelpString);
+    return 0;
+  }
+
+  if (numArgs < 3)
+  {
+    PrintError(kIncorrectCommand);
     return 1;
   }
+
   
   NDLL::CLibrary lib;
   if (!lib.Load(NDLL::GetModuleDirPrefix() + FTEXT(kDllName)))
@@ -726,10 +763,10 @@ int MY_CDECL main(int numArgs, const char *args[])
 
   char c;
   {
-    AString command = args[1];
+    AString command (args[1]);
     if (command.Len() != 1)
     {
-      PrintError("incorrect command");
+      PrintError(kIncorrectCommand);
       return 1;
     }
     c = (char)MyCharLower_Ascii(command[0]);
@@ -742,7 +779,7 @@ int MY_CDECL main(int numArgs, const char *args[])
     // create archive command
     if (numArgs < 4)
     {
-      PrintStringLn(kHelpString);
+      PrintError(kIncorrectCommand);
       return 1;
     }
     CObjectVector<CDirItem> dirItems;
@@ -839,7 +876,7 @@ int MY_CDECL main(int numArgs, const char *args[])
   {
     if (numArgs != 3)
     {
-      PrintStringLn(kHelpString);
+      PrintError(kIncorrectCommand);
       return 1;
     }
 
@@ -851,7 +888,7 @@ int MY_CDECL main(int numArgs, const char *args[])
       listCommand = false;
     else
     {
-      PrintError("incorrect command");
+      PrintError(kIncorrectCommand);
       return 1;
     }
   
@@ -899,17 +936,17 @@ int MY_CDECL main(int numArgs, const char *args[])
           archive->GetProperty(i, kpidSize, &prop);
           char s[32];
           ConvertPropVariantToShortString(prop, s);
-          PrintString(s);
-          PrintString("  ");
+          Print(s);
+          Print("  ");
         }
         {
           // Get name of file
           NCOM::CPropVariant prop;
           archive->GetProperty(i, kpidPath, &prop);
           if (prop.vt == VT_BSTR)
-            PrintString(prop.bstrVal);
+            Print(prop.bstrVal);
           else if (prop.vt != VT_EMPTY)
-            PrintString("ERROR!");
+            Print("ERROR!");
         }
         PrintNewLine();
       }
@@ -919,10 +956,10 @@ int MY_CDECL main(int numArgs, const char *args[])
       // Extract command
       CArchiveExtractCallback *extractCallbackSpec = new CArchiveExtractCallback;
       CMyComPtr<IArchiveExtractCallback> extractCallback(extractCallbackSpec);
-      extractCallbackSpec->Init(archive, FTEXT("")); // second parameter is output folder path
+      extractCallbackSpec->Init(archive, FString()); // second parameter is output folder path
       extractCallbackSpec->PasswordIsDefined = false;
       // extractCallbackSpec->PasswordIsDefined = true;
-      // extractCallbackSpec->Password = L"1";
+      // extractCallbackSpec->Password = "1";
 
       /*
       const wchar_t *names[] =

@@ -1,5 +1,5 @@
 /* Ppmd.h -- PPMD codec common code
-2016-05-16 : Igor Pavlov : Public domain
+2017-04-03 : Igor Pavlov : Public domain
 This code is based on PPMd var.H (2001): Dmitry Shkarin : Public domain */
 
 #ifndef __PPMD_H
@@ -77,7 +77,7 @@ typedef
   CPpmd_Byte_Ref;
 
 #define PPMD_SetAllBitsIn256Bytes(p) \
-  { unsigned z; for (z = 0; z < 256 / sizeof(p[0]); z += 8) { \
+  { size_t z; for (z = 0; z < 256 / sizeof(p[0]); z += 8) { \
   p[z+7] = p[z+6] = p[z+5] = p[z+4] = p[z+3] = p[z+2] = p[z+1] = p[z+0] = ~(size_t)0; }}
 
 EXTERN_C_END

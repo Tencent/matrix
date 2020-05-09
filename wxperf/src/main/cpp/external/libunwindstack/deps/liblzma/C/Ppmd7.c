@@ -1,5 +1,5 @@
 /* Ppmd7.c -- PPMdH codec
-2016-05-21 : Igor Pavlov : Public domain
+2018-07-04 : Igor Pavlov : Public domain
 This code is based on PPMd var.H (2001): Dmitry Shkarin : Public domain */
 
 #include "Precomp.h"
@@ -15,7 +15,7 @@ static const UInt16 kInitBinEsc[] = { 0x3CDD, 0x1F3F, 0x59BF, 0x48F3, 0x64A1, 0x
 #define UNIT_SIZE 12
 
 #define U2B(nu) ((UInt32)(nu) * UNIT_SIZE)
-#define U2I(nu) (p->Units2Indx[(nu) - 1])
+#define U2I(nu) (p->Units2Indx[(size_t)(nu) - 1])
 #define I2U(indx) (p->Indx2Units[indx])
 
 #ifdef PPMD_32BIT
@@ -88,29 +88,31 @@ void Ppmd7_Construct(CPpmd7 *p)
   memset(p->HB2Flag + 0x40, 8, 0x100 - 0x40);
 }
 
-void Ppmd7_Free(CPpmd7 *p, ISzAlloc *alloc)
+void Ppmd7_Free(CPpmd7 *p, ISzAllocPtr alloc)
 {
-  alloc->Free(alloc, p->Base);
+  ISzAlloc_Free(alloc, p->Base);
   p->Size = 0;
   p->Base = 0;
 }
 
-Bool Ppmd7_Alloc(CPpmd7 *p, UInt32 size, ISzAlloc *alloc)
+BoolInt Ppmd7_Alloc(CPpmd7 *p, UInt32 size, ISzAllocPtr alloc)
 {
-  if (p->Base == 0 || p->Size != size)
+  if (!p->Base || p->Size != size)
   {
+    size_t size2;
     Ppmd7_Free(p, alloc);
+    size2 = 0
+      #ifndef PPMD_32BIT
+      + UNIT_SIZE
+      #endif
+      ;
     p->AlignOffset =
       #ifdef PPMD_32BIT
         (4 - size) & 3;
       #else
         4 - (size & 3);
       #endif
-    if ((p->Base = (Byte *)alloc->Alloc(alloc, p->AlignOffset + size
-        #ifndef PPMD_32BIT
-        + UNIT_SIZE
-        #endif
-        )) == 0)
+    if ((p->Base = (Byte *)ISzAlloc_Alloc(alloc, p->AlignOffset + size + size2)) == 0)
       return False;
     p->Size = size;
   }
@@ -340,7 +342,7 @@ void Ppmd7_Init(CPpmd7 *p, unsigned maxOrder)
   p->DummySee.Count = 64; /* unused */
 }
 
-static CTX_PTR CreateSuccessors(CPpmd7 *p, Bool skip)
+static CTX_PTR CreateSuccessors(CPpmd7 *p, BoolInt skip)
 {
   CPpmd_State upState;
   CTX_PTR c = p->MinContext;
@@ -513,7 +515,7 @@ static void UpdateModel(CPpmd7 *p)
         /* Expand for one UNIT */
         unsigned oldNU = ns1 >> 1;
         unsigned i = U2I(oldNU);
-        if (i != U2I(oldNU + 1))
+        if (i != U2I((size_t)oldNU + 1))
         {
           void *ptr = AllocUnits(p, i + 1);
           void *oldPtr;
@@ -639,7 +641,7 @@ CPpmd_See *Ppmd7_MakeEscFreq(CPpmd7 *p, unsigned numMasked, UInt32 *escFreq)
   unsigned nonMasked = p->MinContext->NumStats - numMasked;
   if (p->MinContext->NumStats != 256)
   {
-    see = p->See[(unsigned)p->NS2Indx[nonMasked - 1]] +
+    see = p->See[(unsigned)p->NS2Indx[(size_t)nonMasked - 1]] +
         (nonMasked < (unsigned)SUFFIX(p->MinContext)->NumStats - p->MinContext->NumStats) +
         2 * (unsigned)(p->MinContext->SummFreq < 11 * p->MinContext->NumStats) +
         4 * (unsigned)(numMasked > nonMasked) +

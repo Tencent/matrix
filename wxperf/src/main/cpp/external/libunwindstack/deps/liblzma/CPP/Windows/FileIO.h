@@ -45,7 +45,11 @@ struct CReparseAttr
   UString PrintName;
 
   CReparseAttr(): Tag(0), Flags(0) {}
-  bool Parse(const Byte *p, size_t size);
+
+  // Parse()
+  // returns true and (errorCode = 0), if (correct MOUNT_POINT or SYMLINK)
+  // returns false and (errorCode = ERROR_REPARSE_TAG_MISMATCH), if not (MOUNT_POINT or SYMLINK)
+  bool Parse(const Byte *p, size_t size, DWORD &errorCode);
 
   bool IsMountPoint() const { return Tag == _my_IO_REPARSE_TAG_MOUNT_POINT; } // it's Junction
   bool IsSymLink() const { return Tag == _my_IO_REPARSE_TAG_SYMLINK; }
@@ -171,7 +175,12 @@ public:
 
   bool OpenReparse(CFSTR fileName)
   {
-    return Open(fileName, FILE_SHARE_READ, OPEN_EXISTING,
+    // 17.02 fix: to support Windows XP compatibility junctions:
+    //   we use Create() with (desiredAccess = 0) instead of Open() with GENERIC_READ
+    return
+        Create(fileName, 0,
+        // Open(fileName,
+        FILE_SHARE_READ, OPEN_EXISTING,
         FILE_FLAG_OPEN_REPARSE_POINT | FILE_FLAG_BACKUP_SEMANTICS);
   }
   

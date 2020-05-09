@@ -1,6 +1,6 @@
 // LZ.OutWindow
 
-package external.libunwindstack.deps.liblzma.Java.SevenZip.Compression.LZ;
+package SevenZip.Compression.LZ;
 
 import java.io.IOException;
 

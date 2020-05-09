@@ -51,40 +51,6 @@ struct FakeStruct {
   uint64_t four;
 };
 
-TEST(MemoryTest, read_field) {
-  MemoryFakeAlwaysReadZero memory;
-
-  FakeStruct data;
-  memset(&data, 0xff, sizeof(data));
-  ASSERT_TRUE(memory.ReadField(0, &data, &data.one, sizeof(data.one)));
-  ASSERT_EQ(0, data.one);
-
-  memset(&data, 0xff, sizeof(data));
-  ASSERT_TRUE(memory.ReadField(0, &data, &data.two, sizeof(data.two)));
-  ASSERT_FALSE(data.two);
-
-  memset(&data, 0xff, sizeof(data));
-  ASSERT_TRUE(memory.ReadField(0, &data, &data.three, sizeof(data.three)));
-  ASSERT_EQ(0U, data.three);
-
-  memset(&data, 0xff, sizeof(data));
-  ASSERT_TRUE(memory.ReadField(0, &data, &data.four, sizeof(data.four)));
-  ASSERT_EQ(0U, data.four);
-}
-
-TEST(MemoryTest, read_field_fails) {
-  MemoryFakeAlwaysReadZero memory;
-
-  FakeStruct data;
-  memset(&data, 0xff, sizeof(data));
-
-  ASSERT_FALSE(memory.ReadField(UINT64_MAX, &data, &data.three, sizeof(data.three)));
-
-  // Field and start reversed, should fail.
-  ASSERT_FALSE(memory.ReadField(100, &data.two, &data, sizeof(data.two)));
-  ASSERT_FALSE(memory.ReadField(0, &data.two, &data, sizeof(data.two)));
-}
-
 TEST(MemoryTest, read_string) {
   std::string name("string_in_memory");
 

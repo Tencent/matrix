@@ -152,7 +152,7 @@ LONG CKey::SetValue(LPCWSTR name, LPCWSTR value)
   MYASSERT(value != NULL);
   MYASSERT(_object != NULL);
   if (g_IsNT)
-    return RegSetValueExW(_object, name, NULL, REG_SZ,
+    return RegSetValueExW(_object, name, 0, REG_SZ,
       (const BYTE * )value, (DWORD)((wcslen(value) + 1) * sizeof(wchar_t)));
   return SetValue(name == 0 ? 0 : (LPCSTR)GetSystemString(name),
     value == 0 ? 0 : (LPCSTR)GetSystemString(value));

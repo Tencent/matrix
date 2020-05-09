@@ -97,6 +97,33 @@ Byte CInBufferBase::ReadByte_FromNewBlock()
 
 size_t CInBufferBase::ReadBytes(Byte *buf, size_t size)
 {
+  size_t num = 0;
+  for (;;)
+  {
+    const size_t rem = _bufLim - _buf;
+    if (size <= rem)
+    {
+      if (size != 0)
+      {
+        memcpy(buf, _buf, size);
+        _buf += size;
+        num += size;
+      }
+      return num;
+    }
+    if (rem != 0)
+    {
+      memcpy(buf, _buf, rem);
+      _buf += rem;
+      buf += rem;
+      num += rem;
+      size -= rem;
+    }
+    if (!ReadBlock())
+      return num;
+  }
+
+  /*
   if ((size_t)(_bufLim - _buf) >= size)
   {
     const Byte *src = _buf;
@@ -113,6 +140,7 @@ size_t CInBufferBase::ReadBytes(Byte *buf, size_t size)
     buf[i] = *_buf++;
   }
   return size;
+  */
 }
 
 size_t CInBufferBase::Skip(size_t size)

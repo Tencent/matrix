@@ -22,6 +22,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/mman.h>
 #include <sys/ptrace.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -46,11 +47,17 @@ struct map_info_t {
   uint64_t start;
   uint64_t end;
   uint64_t offset;
+  uint64_t flags;
   std::string name;
 };
 
 static bool Attach(pid_t pid) {
-  if (ptrace(PTRACE_ATTACH, pid, 0, 0) == -1) {
+  if (ptrace(PTRACE_SEIZE, pid, 0, 0) == -1) {
+    return false;
+  }
+
+  if (ptrace(PTRACE_INTERRUPT, pid, 0, 0) == -1) {
+    ptrace(PTRACE_DETACH, pid, 0, 0);
     return false;
   }
 
@@ -69,7 +76,7 @@ static bool Attach(pid_t pid) {
 bool SaveRegs(unwindstack::Regs* regs) {
   std::unique_ptr<FILE, decltype(&fclose)> fp(fopen("regs.txt", "w+"), &fclose);
   if (fp == nullptr) {
-    printf("Failed to create file regs.txt.\n");
+    perror("Failed to create file regs.txt");
     return false;
   }
   regs->IterateRegisters([&fp](const char* name, uint64_t value) {
@@ -102,13 +109,14 @@ bool SaveStack(pid_t pid, const std::vector<std::pair<uint64_t, uint64_t>>& stac
 
     std::unique_ptr<FILE, decltype(&fclose)> fp(fopen(file_name.c_str(), "w+"), &fclose);
     if (fp == nullptr) {
-      printf("Failed to create stack.data.\n");
+      perror("Failed to create stack.data");
       return false;
     }
 
     size_t bytes = fwrite(&sp_start, 1, sizeof(sp_start), fp.get());
     if (bytes != sizeof(sp_start)) {
-      perror("Failed to write all data.");
+      printf("Failed to write sp_start data: sizeof(sp_start) %zu, written %zu\n", sizeof(sp_start),
+             bytes);
       return false;
     }
 
@@ -141,7 +149,7 @@ bool CreateElfFromMemory(std::shared_ptr<unwindstack::Memory>& memory, map_info_
 
   std::unique_ptr<FILE, decltype(&fclose)> output(fopen(cur_name.c_str(), "w+"), &fclose);
   if (output == nullptr) {
-    printf("Cannot create %s\n", cur_name.c_str());
+    perror((std::string("Cannot create ") + cur_name).c_str());
     return false;
   }
 
@@ -157,16 +165,22 @@ bool CreateElfFromMemory(std::shared_ptr<unwindstack::Memory>& memory, map_info_
   return true;
 }
 
-bool CopyElfFromFile(map_info_t* info) {
+bool CopyElfFromFile(map_info_t* info, bool* file_copied) {
+  std::string cur_name = basename(info->name.c_str());
+  if (*file_copied) {
+    info->name = cur_name;
+    return true;
+  }
+
   std::unique_ptr<FILE, decltype(&fclose)> fp(fopen(info->name.c_str(), "r"), &fclose);
   if (fp == nullptr) {
+    perror((std::string("Cannot open ") + info->name).c_str());
     return false;
   }
 
-  std::string cur_name = basename(info->name.c_str());
   std::unique_ptr<FILE, decltype(&fclose)> output(fopen(cur_name.c_str(), "w+"), &fclose);
   if (output == nullptr) {
-    printf("Cannot create file %s\n", cur_name.c_str());
+    perror((std::string("Cannot create file " + cur_name)).c_str());
     return false;
   }
   std::vector<uint8_t> buffer(10000);
@@ -186,16 +200,43 @@ bool CopyElfFromFile(map_info_t* info) {
   return true;
 }
 
+map_info_t* FillInAndGetMapInfo(std::unordered_map<uint64_t, map_info_t>& maps_by_start,
+                                unwindstack::MapInfo* map_info) {
+  auto info = &maps_by_start[map_info->start];
+  info->start = map_info->start;
+  info->end = map_info->end;
+  info->offset = map_info->offset;
+  info->name = map_info->name;
+  info->flags = map_info->flags;
+
+  return info;
+}
+
+void SaveMapInformation(std::shared_ptr<unwindstack::Memory>& process_memory, map_info_t* info,
+                        bool* file_copied) {
+  if (CopyElfFromFile(info, file_copied)) {
+    return;
+  }
+  *file_copied = false;
+
+  // Try to create the elf from memory, this will handle cases where
+  // the data only exists in memory such as vdso data on x86.
+  if (CreateElfFromMemory(process_memory, info)) {
+    return;
+  }
+
+  printf("Cannot save memory or file for map ");
+  if (!info->name.empty()) {
+    printf("%s\n", info->name.c_str());
+  } else {
+    printf("anonymous:%" PRIx64 "\n", info->start);
+  }
+}
+
 int SaveData(pid_t pid) {
   unwindstack::Regs* regs = unwindstack::Regs::RemoteGet(pid);
   if (regs == nullptr) {
     printf("Unable to get remote reg data.\n");
-    return 1;
-  }
-
-  unwindstack::RemoteMaps maps(pid);
-  if (!maps.Parse()) {
-    printf("Unable to parse maps.\n");
     return 1;
   }
 
@@ -206,46 +247,48 @@ int SaveData(pid_t pid) {
 
   // Do an unwind so we know how much of the stack to save, and what
   // elf files are involved.
+  unwindstack::UnwinderFromPid unwinder(1024, pid);
+  if (!unwinder.Init(regs->Arch())) {
+    printf("Unable to init unwinder object.\n");
+    return 1;
+  }
+  unwinder.SetRegs(regs);
   uint64_t sp = regs->sp();
-  auto process_memory = unwindstack::Memory::CreateProcessMemory(pid);
-  unwindstack::JitDebug jit_debug(process_memory);
-  unwindstack::Unwinder unwinder(1024, &maps, regs, process_memory);
-  unwinder.SetJitDebug(&jit_debug, regs->Arch());
   unwinder.Unwind();
 
   std::unordered_map<uint64_t, map_info_t> maps_by_start;
   std::vector<std::pair<uint64_t, uint64_t>> stacks;
+  unwindstack::Maps* maps = unwinder.GetMaps();
   uint64_t sp_map_start = 0;
-  unwindstack::MapInfo* map_info = maps.Find(sp);
+  unwindstack::MapInfo* map_info = maps->Find(sp);
   if (map_info != nullptr) {
     stacks.emplace_back(std::make_pair(sp, map_info->end));
     sp_map_start = map_info->start;
   }
 
-  for (auto frame : unwinder.frames()) {
-    map_info = maps.Find(frame.sp);
+  for (const auto& frame : unwinder.frames()) {
+    map_info = maps->Find(frame.sp);
     if (map_info != nullptr && sp_map_start != map_info->start) {
       stacks.emplace_back(std::make_pair(frame.sp, map_info->end));
       sp_map_start = map_info->start;
     }
 
     if (maps_by_start.count(frame.map_start) == 0) {
-      auto info = &maps_by_start[frame.map_start];
-      info->start = frame.map_start;
-      info->end = frame.map_end;
-      info->offset = frame.map_offset;
-      info->name = frame.map_name;
-      if (!CopyElfFromFile(info)) {
-        // Try to create the elf from memory, this will handle cases where
-        // the data only exists in memory such as vdso data on x86.
-        if (!CreateElfFromMemory(process_memory, info)) {
-          printf("Ignoring map ");
-          if (!info->name.empty()) {
-            printf("%s\n", info->name.c_str());
-          } else {
-            printf("anonymous:%" PRIx64 "\n", info->start);
-          }
-        }
+      map_info = maps->Find(frame.map_start);
+
+      auto info = FillInAndGetMapInfo(maps_by_start, map_info);
+      bool file_copied = false;
+      SaveMapInformation(unwinder.GetProcessMemory(), info, &file_copied);
+
+      // If you are using a a linker that creates two maps (one read-only, one
+      // read-executable), it's necessary to capture the previous map
+      // information if needed.
+      unwindstack::MapInfo* prev_map = map_info->prev_map;
+      if (prev_map != nullptr && map_info->offset != 0 && prev_map->offset == 0 &&
+          prev_map->flags == PROT_READ && map_info->name == prev_map->name &&
+          maps_by_start.count(prev_map->start) == 0) {
+        info = FillInAndGetMapInfo(maps_by_start, prev_map);
+        SaveMapInformation(unwinder.GetProcessMemory(), info, &file_copied);
       }
     }
   }
@@ -265,13 +308,23 @@ int SaveData(pid_t pid) {
 
   std::unique_ptr<FILE, decltype(&fclose)> fp(fopen("maps.txt", "w+"), &fclose);
   if (fp == nullptr) {
-    printf("Failed to create maps.txt.\n");
+    perror("Failed to create maps.txt");
     return false;
   }
 
   for (auto& element : sorted_maps) {
+    char perms[5] = {"---p"};
     map_info_t& map = element.second;
-    fprintf(fp.get(), "%" PRIx64 "-%" PRIx64 " r-xp %" PRIx64 " 00:00 0", map.start, map.end,
+    if (map.flags & PROT_READ) {
+      perms[0] = 'r';
+    }
+    if (map.flags & PROT_WRITE) {
+      perms[1] = 'w';
+    }
+    if (map.flags & PROT_EXEC) {
+      perms[2] = 'x';
+    }
+    fprintf(fp.get(), "%" PRIx64 "-%" PRIx64 " %s %" PRIx64 " 00:00 0", map.start, map.end, perms,
             map.offset);
     if (!map.name.empty()) {
       fprintf(fp.get(), "   %s", map.name.c_str());

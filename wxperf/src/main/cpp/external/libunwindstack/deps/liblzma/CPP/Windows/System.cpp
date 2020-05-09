@@ -11,12 +11,42 @@
 namespace NWindows {
 namespace NSystem {
 
+UInt32 CountAffinity(DWORD_PTR mask)
+{
+  UInt32 num = 0;
+  for (unsigned i = 0; i < sizeof(mask) * 8; i++)
+    num += (UInt32)((mask >> i) & 1);
+  return num;
+}
+
 #ifdef _WIN32
+
+BOOL CProcessAffinity::Get()
+{
+  #ifndef UNDER_CE
+  return GetProcessAffinityMask(GetCurrentProcess(), &processAffinityMask, &systemAffinityMask);
+  #else
+  return FALSE;
+  #endif
+}
+
 
 UInt32 GetNumberOfProcessors()
 {
+  // We need to know how many threads we can use.
+  // By default the process is assigned to one group.
+  // So we get the number of logical processors (threads)
+  // assigned to current process in the current group.
+  // Group size can be smaller than total number logical processors, for exammple, 2x36
+
+  CProcessAffinity pa;
+
+  if (pa.Get() && pa.processAffinityMask != 0)
+    return pa.GetNumProcessThreads();
+
   SYSTEM_INFO systemInfo;
   GetSystemInfo(&systemInfo);
+  // the number of logical processors in the current group
   return (UInt32)systemInfo.dwNumberOfProcessors;
 }
 

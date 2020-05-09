@@ -18,7 +18,6 @@
 #include <unistd.h>
 
 #include <android-base/file.h>
-#include <android-base/test_utils.h>
 
 #include <gtest/gtest.h>
 
@@ -79,12 +78,12 @@ void ElfCacheTest::VerifySameMap(bool cache_enabled) {
 
   uint64_t start = 0x1000;
   uint64_t end = 0x20000;
-  MapInfo info1(start, end, 0, 0x5, tf.path);
-  MapInfo info2(start, end, 0, 0x5, tf.path);
+  MapInfo info1(nullptr, start, end, 0, 0x5, tf.path);
+  MapInfo info2(nullptr, start, end, 0, 0x5, tf.path);
 
-  Elf* elf1 = info1.GetElf(memory_, true);
+  Elf* elf1 = info1.GetElf(memory_, ARCH_ARM);
   ASSERT_TRUE(elf1->valid());
-  Elf* elf2 = info2.GetElf(memory_, true);
+  Elf* elf2 = info2.GetElf(memory_, ARCH_ARM);
   ASSERT_TRUE(elf2->valid());
 
   if (cache_enabled) {
@@ -120,22 +119,22 @@ void ElfCacheTest::VerifyWithinSameMap(bool cache_enabled) {
   uint64_t start = 0x1000;
   uint64_t end = 0x20000;
   // Will have an elf at offset 0 in file.
-  MapInfo info0_1(start, end, 0, 0x5, tf.path);
-  MapInfo info0_2(start, end, 0, 0x5, tf.path);
+  MapInfo info0_1(nullptr, start, end, 0, 0x5, tf.path);
+  MapInfo info0_2(nullptr, start, end, 0, 0x5, tf.path);
   // Will have an elf at offset 0x100 in file.
-  MapInfo info100_1(start, end, 0x100, 0x5, tf.path);
-  MapInfo info100_2(start, end, 0x100, 0x5, tf.path);
+  MapInfo info100_1(nullptr, start, end, 0x100, 0x5, tf.path);
+  MapInfo info100_2(nullptr, start, end, 0x100, 0x5, tf.path);
   // Will have an elf at offset 0x200 in file.
-  MapInfo info200_1(start, end, 0x200, 0x5, tf.path);
-  MapInfo info200_2(start, end, 0x200, 0x5, tf.path);
+  MapInfo info200_1(nullptr, start, end, 0x200, 0x5, tf.path);
+  MapInfo info200_2(nullptr, start, end, 0x200, 0x5, tf.path);
   // Will have an elf at offset 0 in file.
-  MapInfo info300_1(start, end, 0x300, 0x5, tf.path);
-  MapInfo info300_2(start, end, 0x300, 0x5, tf.path);
+  MapInfo info300_1(nullptr, start, end, 0x300, 0x5, tf.path);
+  MapInfo info300_2(nullptr, start, end, 0x300, 0x5, tf.path);
 
-  Elf* elf0_1 = info0_1.GetElf(memory_, true);
+  Elf* elf0_1 = info0_1.GetElf(memory_, ARCH_ARM);
   ASSERT_TRUE(elf0_1->valid());
   EXPECT_EQ(ARCH_ARM, elf0_1->arch());
-  Elf* elf0_2 = info0_2.GetElf(memory_, true);
+  Elf* elf0_2 = info0_2.GetElf(memory_, ARCH_ARM);
   ASSERT_TRUE(elf0_2->valid());
   EXPECT_EQ(ARCH_ARM, elf0_2->arch());
   EXPECT_EQ(0U, info0_1.elf_offset);
@@ -146,10 +145,10 @@ void ElfCacheTest::VerifyWithinSameMap(bool cache_enabled) {
     EXPECT_NE(elf0_1, elf0_2);
   }
 
-  Elf* elf100_1 = info100_1.GetElf(memory_, true);
+  Elf* elf100_1 = info100_1.GetElf(memory_, ARCH_X86);
   ASSERT_TRUE(elf100_1->valid());
   EXPECT_EQ(ARCH_X86, elf100_1->arch());
-  Elf* elf100_2 = info100_2.GetElf(memory_, true);
+  Elf* elf100_2 = info100_2.GetElf(memory_, ARCH_X86);
   ASSERT_TRUE(elf100_2->valid());
   EXPECT_EQ(ARCH_X86, elf100_2->arch());
   EXPECT_EQ(0U, info100_1.elf_offset);
@@ -160,10 +159,10 @@ void ElfCacheTest::VerifyWithinSameMap(bool cache_enabled) {
     EXPECT_NE(elf100_1, elf100_2);
   }
 
-  Elf* elf200_1 = info200_1.GetElf(memory_, true);
+  Elf* elf200_1 = info200_1.GetElf(memory_, ARCH_X86_64);
   ASSERT_TRUE(elf200_1->valid());
   EXPECT_EQ(ARCH_X86_64, elf200_1->arch());
-  Elf* elf200_2 = info200_2.GetElf(memory_, true);
+  Elf* elf200_2 = info200_2.GetElf(memory_, ARCH_X86_64);
   ASSERT_TRUE(elf200_2->valid());
   EXPECT_EQ(ARCH_X86_64, elf200_2->arch());
   EXPECT_EQ(0U, info200_1.elf_offset);
@@ -174,10 +173,10 @@ void ElfCacheTest::VerifyWithinSameMap(bool cache_enabled) {
     EXPECT_NE(elf200_1, elf200_2);
   }
 
-  Elf* elf300_1 = info300_1.GetElf(memory_, true);
+  Elf* elf300_1 = info300_1.GetElf(memory_, ARCH_ARM);
   ASSERT_TRUE(elf300_1->valid());
   EXPECT_EQ(ARCH_ARM, elf300_1->arch());
-  Elf* elf300_2 = info300_2.GetElf(memory_, true);
+  Elf* elf300_2 = info300_2.GetElf(memory_, ARCH_ARM);
   ASSERT_TRUE(elf300_2->valid());
   EXPECT_EQ(ARCH_ARM, elf300_2->arch());
   EXPECT_EQ(0x300U, info300_1.elf_offset);
@@ -217,15 +216,15 @@ void ElfCacheTest::VerifyWithinSameMapNeverReadAtZero(bool cache_enabled) {
   uint64_t start = 0x1000;
   uint64_t end = 0x20000;
   // Multiple info sections at different offsets will have non-zero elf offsets.
-  MapInfo info300_1(start, end, 0x300, 0x5, tf.path);
-  MapInfo info300_2(start, end, 0x300, 0x5, tf.path);
-  MapInfo info400_1(start, end, 0x400, 0x5, tf.path);
-  MapInfo info400_2(start, end, 0x400, 0x5, tf.path);
+  MapInfo info300_1(nullptr, start, end, 0x300, 0x5, tf.path);
+  MapInfo info300_2(nullptr, start, end, 0x300, 0x5, tf.path);
+  MapInfo info400_1(nullptr, start, end, 0x400, 0x5, tf.path);
+  MapInfo info400_2(nullptr, start, end, 0x400, 0x5, tf.path);
 
-  Elf* elf300_1 = info300_1.GetElf(memory_, true);
+  Elf* elf300_1 = info300_1.GetElf(memory_, ARCH_ARM);
   ASSERT_TRUE(elf300_1->valid());
   EXPECT_EQ(ARCH_ARM, elf300_1->arch());
-  Elf* elf300_2 = info300_2.GetElf(memory_, true);
+  Elf* elf300_2 = info300_2.GetElf(memory_, ARCH_ARM);
   ASSERT_TRUE(elf300_2->valid());
   EXPECT_EQ(ARCH_ARM, elf300_2->arch());
   EXPECT_EQ(0x300U, info300_1.elf_offset);
@@ -236,10 +235,10 @@ void ElfCacheTest::VerifyWithinSameMapNeverReadAtZero(bool cache_enabled) {
     EXPECT_NE(elf300_1, elf300_2);
   }
 
-  Elf* elf400_1 = info400_1.GetElf(memory_, true);
+  Elf* elf400_1 = info400_1.GetElf(memory_, ARCH_ARM);
   ASSERT_TRUE(elf400_1->valid());
   EXPECT_EQ(ARCH_ARM, elf400_1->arch());
-  Elf* elf400_2 = info400_2.GetElf(memory_, true);
+  Elf* elf400_2 = info400_2.GetElf(memory_, ARCH_ARM);
   ASSERT_TRUE(elf400_2->valid());
   EXPECT_EQ(ARCH_ARM, elf400_2->arch());
   EXPECT_EQ(0x400U, info400_1.elf_offset);

@@ -1,4 +1,4 @@
-package external.libunwindstack.deps.liblzma.Java.SevenZip;
+package SevenZip;
 
 public interface ICodeProgress
 {

@@ -1,5 +1,5 @@
 /* Ppmd7Dec.c -- PPMdH Decoder
-2010-03-12 : Igor Pavlov : Public domain
+2018-07-04 : Igor Pavlov : Public domain
 This code is based on PPMd var.H (2001): Dmitry Shkarin : Public domain */
 
 #include "Precomp.h"
@@ -8,49 +8,51 @@ This code is based on PPMd var.H (2001): Dmitry Shkarin : Public domain */
 
 #define kTopValue (1 << 24)
 
-Bool Ppmd7z_RangeDec_Init(CPpmd7z_RangeDec *p)
+BoolInt Ppmd7z_RangeDec_Init(CPpmd7z_RangeDec *p)
 {
   unsigned i;
   p->Code = 0;
   p->Range = 0xFFFFFFFF;
-  if (p->Stream->Read((void *)p->Stream) != 0)
+  if (IByteIn_Read(p->Stream) != 0)
     return False;
   for (i = 0; i < 4; i++)
-    p->Code = (p->Code << 8) | p->Stream->Read((void *)p->Stream);
+    p->Code = (p->Code << 8) | IByteIn_Read(p->Stream);
   return (p->Code < 0xFFFFFFFF);
 }
 
-static UInt32 Range_GetThreshold(void *pp, UInt32 total)
+#define GET_Ppmd7z_RangeDec CPpmd7z_RangeDec *p = CONTAINER_FROM_VTBL(pp, CPpmd7z_RangeDec, vt);
+ 
+static UInt32 Range_GetThreshold(const IPpmd7_RangeDec *pp, UInt32 total)
 {
-  CPpmd7z_RangeDec *p = (CPpmd7z_RangeDec *)pp;
-  return (p->Code) / (p->Range /= total);
+  GET_Ppmd7z_RangeDec
+  return p->Code / (p->Range /= total);
 }
 
 static void Range_Normalize(CPpmd7z_RangeDec *p)
 {
   if (p->Range < kTopValue)
   {
-    p->Code = (p->Code << 8) | p->Stream->Read((void *)p->Stream);
+    p->Code = (p->Code << 8) | IByteIn_Read(p->Stream);
     p->Range <<= 8;
     if (p->Range < kTopValue)
     {
-      p->Code = (p->Code << 8) | p->Stream->Read((void *)p->Stream);
+      p->Code = (p->Code << 8) | IByteIn_Read(p->Stream);
       p->Range <<= 8;
     }
   }
 }
 
-static void Range_Decode(void *pp, UInt32 start, UInt32 size)
+static void Range_Decode(const IPpmd7_RangeDec *pp, UInt32 start, UInt32 size)
 {
-  CPpmd7z_RangeDec *p = (CPpmd7z_RangeDec *)pp;
+  GET_Ppmd7z_RangeDec
   p->Code -= start * p->Range;
   p->Range *= size;
   Range_Normalize(p);
 }
 
-static UInt32 Range_DecodeBit(void *pp, UInt32 size0)
+static UInt32 Range_DecodeBit(const IPpmd7_RangeDec *pp, UInt32 size0)
 {
-  CPpmd7z_RangeDec *p = (CPpmd7z_RangeDec *)pp;
+  GET_Ppmd7z_RangeDec
   UInt32 newBound = (p->Range >> 14) * size0;
   UInt32 symbol;
   if (p->Code < newBound)
@@ -70,15 +72,15 @@ static UInt32 Range_DecodeBit(void *pp, UInt32 size0)
 
 void Ppmd7z_RangeDec_CreateVTable(CPpmd7z_RangeDec *p)
 {
-  p->p.GetThreshold = Range_GetThreshold;
-  p->p.Decode = Range_Decode;
-  p->p.DecodeBit = Range_DecodeBit;
+  p->vt.GetThreshold = Range_GetThreshold;
+  p->vt.Decode = Range_Decode;
+  p->vt.DecodeBit = Range_DecodeBit;
 }
 
 
 #define MASK(sym) ((signed char *)charMask)[sym]
 
-int Ppmd7_DecodeSymbol(CPpmd7 *p, IPpmd7_RangeDec *rc)
+int Ppmd7_DecodeSymbol(CPpmd7 *p, const IPpmd7_RangeDec *rc)
 {
   size_t charMask[256 / sizeof(size_t)];
   if (p->MinContext->NumStats != 1)

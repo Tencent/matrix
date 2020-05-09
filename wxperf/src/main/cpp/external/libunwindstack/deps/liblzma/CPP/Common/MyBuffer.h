@@ -5,6 +5,9 @@
 
 #include "Defs.h"
 
+/* 7-Zip now uses CBuffer only as CByteBuffer.
+   So there is no need to use MY_ARRAY_NEW macro in CBuffer code. */
+
 template <class T> class CBuffer
 {
   T *_items;
@@ -119,7 +122,7 @@ bool operator!=(const CBuffer<T>& b1, const CBuffer<T>& b2)
 }
 
 
-typedef CBuffer<char> CCharBuffer;
+// typedef CBuffer<char> CCharBuffer;
 // typedef CBuffer<wchar_t> CWCharBuffer;
 typedef CBuffer<unsigned char> CByteBuffer;
 
@@ -129,7 +132,7 @@ template <class T> class CObjArray
 protected:
   T *_items;
 private:
-  // we disable constructors
+  // we disable copy
   CObjArray(const CObjArray &buffer);
   void operator=(const CObjArray &buffer);
 public:
@@ -138,7 +141,14 @@ public:
     delete []_items;
     _items = 0;
   }
-  CObjArray(size_t size): _items(0) { if (size != 0) _items = new T[size]; }
+  CObjArray(size_t size): _items(0)
+  {
+    if (size != 0)
+    {
+      MY_ARRAY_NEW(_items, T, size)
+      // _items = new T[size];
+    }
+  }
   CObjArray(): _items(0) {};
   ~CObjArray() { delete []_items; }
   
@@ -149,7 +159,8 @@ public:
   {
     delete []_items;
     _items = 0;
-    _items = new T[newSize];
+    MY_ARRAY_NEW(_items, T, newSize)
+    // _items = new T[newSize];
   }
 };
 
@@ -164,6 +175,7 @@ template <class T> class CObjArray2
   T *_items;
   unsigned _size;
 
+  // we disable copy
   CObjArray2(const CObjArray2 &buffer);
   void operator=(const CObjArray2 &buffer);
 public:
@@ -216,7 +228,10 @@ public:
       return;
     T *newBuffer = NULL;
     if (size != 0)
-      newBuffer = new T[size];
+    {
+      MY_ARRAY_NEW(newBuffer, T, size)
+      // newBuffer = new T[size];
+    }
     delete []_items;
     _items = newBuffer;
     _size = size;

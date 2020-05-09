@@ -35,27 +35,7 @@ namespace unwindstack {
 
 class JitDebugTest : public ::testing::Test {
  protected:
-  void SetUp() override {
-    memory_ = new MemoryFake;
-    process_memory_.reset(memory_);
-
-    jit_debug_.reset(new JitDebug(process_memory_));
-    jit_debug_->SetArch(ARCH_ARM);
-
-    maps_.reset(
-        new BufferMaps("1000-4000 ---s 00000000 00:00 0\n"
-                       "4000-6000 r--s 00000000 00:00 0\n"
-                       "6000-8000 -w-s 00000000 00:00 0\n"
-                       "a000-c000 --xp 00000000 00:00 0\n"
-                       "c000-f000 rwxp 00000000 00:00 0\n"
-                       "f000-11000 r-xp 00000000 00:00 0\n"
-                       "12000-14000 r-xp 00000000 00:00 0\n"
-                       "100000-110000 rw-p 0000000 00:00 0\n"
-                       "200000-210000 rw-p 0000000 00:00 0\n"));
-    ASSERT_TRUE(maps_->Parse());
-
-    MapInfo* map_info = maps_->Get(3);
-    ASSERT_TRUE(map_info != nullptr);
+  void CreateFakeElf(MapInfo* map_info) {
     MemoryFake* memory = new MemoryFake;
     ElfFake* elf = new ElfFake(memory);
     elf->FakeSetValid(true);
@@ -63,26 +43,43 @@ class JitDebugTest : public ::testing::Test {
     elf->FakeSetInterface(interface);
     interface->FakeSetGlobalVariable("__jit_debug_descriptor", 0x800);
     map_info->elf.reset(elf);
+  }
+
+  void Init(ArchEnum arch) {
+    jit_debug_.reset(new JitDebug(process_memory_));
+    jit_debug_->SetArch(arch);
+
+    maps_.reset(
+        new BufferMaps("1000-4000 ---s 00000000 00:00 0 /fake/elf1\n"
+                       "4000-6000 r--s 00000000 00:00 0 /fake/elf1\n"
+                       "6000-8000 -wxs 00000000 00:00 0 /fake/elf1\n"
+                       "a000-c000 --xp 00000000 00:00 0 /fake/elf2\n"
+                       "c000-f000 rw-p 00001000 00:00 0 /fake/elf2\n"
+                       "f000-11000 r--p 00000000 00:00 0 /fake/elf3\n"
+                       "11000-12000 rw-p 00001000 00:00 0 /fake/elf3\n"
+                       "12000-14000 r--p 00000000 00:00 0 /fake/elf4\n"
+                       "100000-110000 rw-p 0001000 00:00 0 /fake/elf4\n"
+                       "200000-210000 rw-p 0002000 00:00 0 /fake/elf4\n"));
+    ASSERT_TRUE(maps_->Parse());
+
+    MapInfo* map_info = maps_->Get(3);
+    ASSERT_TRUE(map_info != nullptr);
+    CreateFakeElf(map_info);
 
     map_info = maps_->Get(5);
     ASSERT_TRUE(map_info != nullptr);
-    memory = new MemoryFake;
-    elf = new ElfFake(memory);
-    elf->FakeSetValid(true);
-    interface = new ElfInterfaceFake(memory);
-    elf->FakeSetInterface(interface);
-    interface->FakeSetGlobalVariable("__jit_debug_descriptor", 0x800);
-    map_info->elf.reset(elf);
+    CreateFakeElf(map_info);
 
-    map_info = maps_->Get(6);
+    map_info = maps_->Get(7);
     ASSERT_TRUE(map_info != nullptr);
-    memory = new MemoryFake;
-    elf = new ElfFake(memory);
-    elf->FakeSetValid(true);
-    interface = new ElfInterfaceFake(memory);
-    elf->FakeSetInterface(interface);
-    interface->FakeSetGlobalVariable("__jit_debug_descriptor", 0x800);
-    map_info->elf.reset(elf);
+    CreateFakeElf(map_info);
+  }
+
+  void SetUp() override {
+    memory_ = new MemoryFake;
+    process_memory_.reset(memory_);
+
+    Init(ARCH_ARM);
   }
 
   template <typename EhdrType, typename ShdrType>
@@ -325,6 +322,8 @@ TEST_F(JitDebugTest, get_multiple_jit_debug_descriptors_valid) {
 }
 
 TEST_F(JitDebugTest, get_elf_x86) {
+  Init(ARCH_X86);
+
   CreateElf<Elf32_Ehdr, Elf32_Shdr>(0x4000, ELFCLASS32, EM_ARM, 0x1500, 0x200);
 
   WriteDescriptor32(0xf800, 0x200000);
@@ -342,12 +341,13 @@ TEST_F(JitDebugTest, get_elf_x86) {
 }
 
 TEST_F(JitDebugTest, get_elf_64) {
+  Init(ARCH_ARM64);
+
   CreateElf<Elf64_Ehdr, Elf64_Shdr>(0x4000, ELFCLASS64, EM_AARCH64, 0x1500, 0x200);
 
   WriteDescriptor64(0xf800, 0x200000);
   WriteEntry64(0x200000, 0, 0, 0x4000, 0x1000);
 
-  jit_debug_->SetArch(ARCH_ARM64);
   Elf* elf = jit_debug_->GetElf(maps_.get(), 0x1500);
   ASSERT_TRUE(elf != nullptr);
 
@@ -396,6 +396,8 @@ TEST_F(JitDebugTest, get_elf_search_libs) {
 
   // Change the name of the map that includes the value and verify this works.
   MapInfo* map_info = maps_->Get(5);
+  map_info->name = "/system/lib/libart.so";
+  map_info = maps_->Get(6);
   map_info->name = "/system/lib/libart.so";
   jit_debug_.reset(new JitDebug(process_memory_, libs));
   // Make sure that clearing our copy of the libs doesn't affect the

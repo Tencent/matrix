@@ -60,6 +60,63 @@ static void BoolVector_Fill_False(CBoolVector &v, unsigned size)
     p[i] = false;
 }
 
+
+HRESULT CCoder::CheckDataAfterEnd(bool &dataAfterEnd_Error /* , bool &InternalPackSizeError */) const
+{
+  if (Coder)
+  {
+    if (PackSizePointers.IsEmpty() || !PackSizePointers[0])
+      return S_OK;
+    CMyComPtr<ICompressGetInStreamProcessedSize> getInStreamProcessedSize;
+    Coder.QueryInterface(IID_ICompressGetInStreamProcessedSize, (void **)&getInStreamProcessedSize);
+    // if (!getInStreamProcessedSize) return E_FAIL;
+    if (getInStreamProcessedSize)
+    {
+      UInt64 processed;
+      RINOK(getInStreamProcessedSize->GetInStreamProcessedSize(&processed));
+      if (processed != (UInt64)(Int64)-1)
+      {
+        const UInt64 size = PackSizes[0];
+        if (processed < size && Finish)
+          dataAfterEnd_Error = true;
+        if (processed > size)
+        {
+          // InternalPackSizeError = true;
+          // return S_FALSE;
+        }
+      }
+    }
+  }
+  else if (Coder2)
+  {
+    CMyComPtr<ICompressGetInStreamProcessedSize2> getInStreamProcessedSize2;
+    Coder2.QueryInterface(IID_ICompressGetInStreamProcessedSize2, (void **)&getInStreamProcessedSize2);
+    if (getInStreamProcessedSize2)
+    FOR_VECTOR (i, PackSizePointers)
+    {
+      if (!PackSizePointers[i])
+        continue;
+      UInt64 processed;
+      RINOK(getInStreamProcessedSize2->GetInStreamProcessedSize2(i, &processed));
+      if (processed != (UInt64)(Int64)-1)
+      {
+        const UInt64 size = PackSizes[i];
+        if (processed < size && Finish)
+          dataAfterEnd_Error = true;
+        else if (processed > size)
+        {
+          // InternalPackSizeError = true;
+          // return S_FALSE;
+        }
+      }
+    }
+  }
+
+  return S_OK;
+}
+
+
+
 class CBondsChecks
 {
   CBoolVector _coderUsed;
@@ -151,8 +208,10 @@ bool CBindInfo::CalcMapsAndCheck()
 }
 
 
-void CCoder::SetCoderInfo(const UInt64 *unpackSize, const UInt64 * const *packSizes)
+void CCoder::SetCoderInfo(const UInt64 *unpackSize, const UInt64 * const *packSizes, bool finish)
 {
+  Finish = finish;
+
   if (unpackSize)
   {
     UnpackSize = *unpackSize;
@@ -640,8 +699,12 @@ void CMixerST::SelectMainCoder(bool useFirst)
 HRESULT CMixerST::Code(
     ISequentialInStream * const *inStreams,
     ISequentialOutStream * const *outStreams,
-    ICompressProgressInfo *progress)
+    ICompressProgressInfo *progress,
+    bool &dataAfterEnd_Error)
 {
+  // InternalPackSizeError = false;
+  dataAfterEnd_Error = false;
+
   _binderStreams.Clear();
   unsigned ci = MainCoderIndex;
  
@@ -742,7 +805,16 @@ HRESULT CMixerST::Code(
 
   if (res == k_My_HRESULT_WritingWasCut)
     res = S_OK;
-  return res;
+
+  if (res != S_OK)
+    return res;
+
+  for (i = 0; i < _coders.Size(); i++)
+  {
+    RINOK(_coders[i].CheckDataAfterEnd(dataAfterEnd_Error /*, InternalPackSizeError */));
+  }
+
+  return S_OK;
 }
 
 
@@ -988,8 +1060,12 @@ HRESULT CMixerMT::ReturnIfError(HRESULT code)
 HRESULT CMixerMT::Code(
     ISequentialInStream * const *inStreams,
     ISequentialOutStream * const *outStreams,
-    ICompressProgressInfo *progress)
+    ICompressProgressInfo *progress,
+    bool &dataAfterEnd_Error)
 {
+  // InternalPackSizeError = false;
+  dataAfterEnd_Error = false;
+
   Init(inStreams, outStreams);
 
   unsigned i;
@@ -1029,6 +1105,11 @@ HRESULT CMixerMT::Code(
     HRESULT result = _coders[i].Result;
     if (result != S_OK && result != k_My_HRESULT_WritingWasCut)
       return result;
+  }
+
+  for (i = 0; i < _coders.Size(); i++)
+  {
+    RINOK(_coders[i].CheckDataAfterEnd(dataAfterEnd_Error /* , InternalPackSizeError */));
   }
 
   return S_OK;

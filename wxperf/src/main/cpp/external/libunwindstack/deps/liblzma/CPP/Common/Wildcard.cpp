@@ -22,16 +22,18 @@ bool IsPath1PrefixedByPath2(const wchar_t *s1, const wchar_t *s2)
 int CompareFileNames(const wchar_t *s1, const wchar_t *s2) STRING_UNICODE_THROW
 {
   if (g_CaseSensitive)
-    return wcscmp(s1, s2);
+    return MyStringCompare(s1, s2);
   return MyStringCompareNoCase(s1, s2);
 }
 
 #ifndef USE_UNICODE_FSTRING
 int CompareFileNames(const char *s1, const char *s2)
 {
+  const UString u1 = fs2us(s1);
+  const UString u2 = fs2us(s2);
   if (g_CaseSensitive)
-    return wcscmp(fs2us(s1), fs2us(s2));
-  return MyStringCompareNoCase(fs2us(s1), fs2us(s2));
+    return MyStringCompare(u1, u2);
+  return MyStringCompareNoCase(u1, u2);
 }
 #endif
 
@@ -120,24 +122,16 @@ void SplitPathToParts_Smart(const UString &path, UString &dirPrefix, UString &na
   name = p;
 }
 
+/*
 UString ExtractDirPrefixFromPath(const UString &path)
 {
-  const wchar_t *start = path;
-  const wchar_t *p = start + path.Len();
-  for (; p != start; p--)
-    if (IsPathSepar(*(p - 1)))
-      break;
-  return path.Left((unsigned)(p - start));
+  return path.Left(path.ReverseFind_PathSepar() + 1));
 }
+*/
 
 UString ExtractFileNameFromPath(const UString &path)
 {
-  const wchar_t *start = path;
-  const wchar_t *p = start + path.Len();
-  for (; p != start; p--)
-    if (IsPathSepar(*(p - 1)))
-      break;
-  return p;
+  return UString(path.Ptr(path.ReverseFind_PathSepar() + 1));
 }
 
 
@@ -425,7 +419,7 @@ void CCensorNode::AddItem2(bool include, const UString &path, bool recursive, bo
     return;
   bool forFile = true;
   bool forFolder = true;
-  UString path2 = path;
+  UString path2 (path);
   if (IsPathSepar(path.Back()))
   {
     path2.DeleteBack();
@@ -612,7 +606,7 @@ void CCensor::AddItem(ECensorPathMode pathMode, bool include, const UString &pat
     {
       // we create universal item, if we skip all parts as prefix (like \ or L:\ )
       pathParts.Clear();
-      pathParts.Add(L"*");
+      pathParts.Add(UString("*"));
       forFile = true;
       wildcardMatching = true;
       recursive = false;

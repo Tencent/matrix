@@ -7,9 +7,9 @@
 #include "ConsoleClose.h"
 #include "HashCon.h"
 
-static const wchar_t *kEmptyFileAlias = L"[Content]";
+static const char * const kEmptyFileAlias = "[Content]";
 
-static const char *kScanningMessage = "Scanning";
+static const char * const kScanningMessage = "Scanning";
 
 static HRESULT CheckBreak2()
 {
@@ -168,7 +168,7 @@ HRESULT CHashCallbackConsole::BeforeFirstFile(const CHashBundle &hb)
     if (PrintSize)
     {
       _s.Add_Space();
-      const AString s2 = "Size";
+      const AString s2 ("Size");
       AddSpaces_if_Positive(_s, (int)kSizeField_Len - (int)s2.Len());
       _s += s2;
     }
@@ -269,7 +269,7 @@ HRESULT CHashCallbackConsole::SetOperationResult(UInt64 fileSize, const CHashBun
       if (_fileName.IsEmpty())
         *_so << kEmptyFileAlias;
       else
-        *_so << _fileName;
+        _so->NormalizePrint_UString(_fileName);
     }
     *_so << endl;
   }
@@ -332,7 +332,7 @@ void CHashCallbackConsole::PrintProperty(const char *name, UInt64 value)
   *_so << name << s << endl;
 }
 
-HRESULT CHashCallbackConsole::AfterLastFile(const CHashBundle &hb)
+HRESULT CHashCallbackConsole::AfterLastFile(CHashBundle &hb)
 {
   ClosePercents2();
   

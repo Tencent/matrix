@@ -15,7 +15,7 @@ class CLang
 public:
   CLang(): _text(0) {}
   ~CLang() { Clear(); }
-  bool Open(CFSTR fileName, const wchar_t *id);
+  bool Open(CFSTR fileName, const char *id);
   void Clear() throw();
   const wchar_t *Get(UInt32 id) const throw();
 };

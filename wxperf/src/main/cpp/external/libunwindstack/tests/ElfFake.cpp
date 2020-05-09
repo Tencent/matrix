@@ -32,7 +32,7 @@ namespace unwindstack {
 std::deque<FunctionData> ElfInterfaceFake::functions_;
 std::deque<StepData> ElfInterfaceFake::steps_;
 
-bool ElfInterfaceFake::GetFunctionName(uint64_t, uint64_t, std::string* name, uint64_t* offset) {
+bool ElfInterfaceFake::GetFunctionName(uint64_t, std::string* name, uint64_t* offset) {
   if (functions_.empty()) {
     return false;
   }
@@ -52,7 +52,7 @@ bool ElfInterfaceFake::GetGlobalVariable(const std::string& global, uint64_t* of
   return true;
 }
 
-bool ElfInterfaceFake::Step(uint64_t, uint64_t, Regs* regs, Memory*, bool* finished) {
+bool ElfInterfaceFake::Step(uint64_t, Regs* regs, Memory*, bool* finished) {
   if (steps_.empty()) {
     return false;
   }

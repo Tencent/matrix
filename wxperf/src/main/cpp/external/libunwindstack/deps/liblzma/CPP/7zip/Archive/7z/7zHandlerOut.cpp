@@ -13,16 +13,19 @@
 #include "7zOut.h"
 #include "7zUpdate.h"
 
+#ifndef EXTRACT_ONLY
+
 using namespace NWindows;
 
 namespace NArchive {
 namespace N7z {
 
-static const char *k_LZMA_Name = "LZMA";
-static const char *kDefaultMethodName = "LZMA2";
-static const char *k_Copy_Name = "Copy";
+#define k_LZMA_Name "LZMA"
+#define kDefaultMethodName "LZMA2"
+#define k_Copy_Name "Copy"
 
-static const char *k_MatchFinder_ForHeaders = "BT2";
+#define k_MatchFinder_ForHeaders "BT2"
+
 static const UInt32 k_NumFastBytes_ForHeaders = 273;
 static const UInt32 k_Level_ForHeaders = 5;
 static const UInt32 k_Dictionary_ForHeaders =
@@ -40,9 +43,11 @@ STDMETHODIMP CHandler::GetFileTimeType(UInt32 *type)
 
 HRESULT CHandler::PropsMethod_To_FullMethod(CMethodFull &dest, const COneMethodInfo &m)
 {
-  if (!FindMethod(
+  dest.CodecIndex = FindMethod_Index(
       EXTERNAL_CODECS_VARS
-      m.MethodName, dest.Id, dest.NumStreams))
+      m.MethodName, true,
+      dest.Id, dest.NumStreams);
+  if (dest.CodecIndex < 0)
     return E_INVALIDARG;
   (CProps &)dest = (CProps &)m;
   return S_OK;
@@ -113,11 +118,11 @@ HRESULT CHandler::SetMainMethod(
   FOR_VECTOR (i, methods)
   {
     COneMethodInfo &oneMethodInfo = methods[i];
-    SetGlobalLevelAndThreads(oneMethodInfo
-      #ifndef _7ZIP_ST
-      , numThreads
-      #endif
-      );
+
+    SetGlobalLevelTo(oneMethodInfo);
+    #ifndef _7ZIP_ST
+    CMultiMethodProps::SetMethodThreadsTo(oneMethodInfo, numThreads);
+    #endif
 
     CMethodFull &methodFull = methodMode.Methods.AddNew();
     RINOK(PropsMethod_To_FullMethod(methodFull, oneMethodInfo));
@@ -262,6 +267,9 @@ STDMETHODIMP CHandler::UpdateItems(ISequentialOutStream *outStream, UInt32 numIt
     db = &_db;
   #endif
 
+  if (db && !db->CanUpdate())
+    return E_NOTIMPL;
+
   /*
   CMyComPtr<IArchiveGetRawProps> getRawProps;
   updateCallback->QueryInterface(IID_IArchiveGetRawProps, (void **)&getRawProps);
@@ -282,15 +290,18 @@ STDMETHODIMP CHandler::UpdateItems(ISequentialOutStream *outStream, UInt32 numIt
   bool need_CTime = (Write_CTime.Def && Write_CTime.Val);
   bool need_ATime = (Write_ATime.Def && Write_ATime.Val);
   bool need_MTime = (Write_MTime.Def && Write_MTime.Val || !Write_MTime.Def);
+  bool need_Attrib = (Write_Attrib.Def && Write_Attrib.Val || !Write_Attrib.Def);
   
   if (db && !db->Files.IsEmpty())
   {
     if (!Write_CTime.Def) need_CTime = !db->CTime.Defs.IsEmpty();
     if (!Write_ATime.Def) need_ATime = !db->ATime.Defs.IsEmpty();
     if (!Write_MTime.Def) need_MTime = !db->MTime.Defs.IsEmpty();
+    if (!Write_Attrib.Def) need_Attrib = !db->Attrib.Defs.IsEmpty();
   }
 
-  UString s;
+  // UString s;
+  UString name;
 
   for (UInt32 i = 0; i < numItems; i++)
   {
@@ -307,7 +318,7 @@ STDMETHODIMP CHandler::UpdateItems(ISequentialOutStream *outStream, UInt32 numIt
     ui.IsAnti = false;
     ui.Size = 0;
 
-    UString name;
+    name.Empty();
     // bool isAltStream = false;
     if (ui.IndexInArchive != -1)
     {
@@ -334,6 +345,7 @@ STDMETHODIMP CHandler::UpdateItems(ISequentialOutStream *outStream, UInt32 numIt
     if (ui.NewProps)
     {
       bool folderStatusIsDefined;
+      if (need_Attrib)
       {
         NCOM::CPropVariant prop;
         RINOK(updateCallback->GetProperty(i, kpidAttrib, &prop));
@@ -377,7 +389,8 @@ STDMETHODIMP CHandler::UpdateItems(ISequentialOutStream *outStream, UInt32 numIt
           return E_INVALIDARG;
         else
         {
-          name = NItemName::MakeLegalName(prop.bstrVal);
+          name = prop.bstrVal;
+          NItemName::ReplaceSlashes_OsToUnix(name);
         }
       }
       {
@@ -614,6 +627,7 @@ STDMETHODIMP CHandler::UpdateItems(ISequentialOutStream *outStream, UInt32 numIt
   options.HeaderOptions.WriteCTime = Write_CTime;
   options.HeaderOptions.WriteATime = Write_ATime;
   options.HeaderOptions.WriteMTime = Write_MTime;
+  options.HeaderOptions.WriteAttrib = Write_Attrib;
   */
   
   options.NumSolidFiles = _numSolidFiles;
@@ -692,10 +706,8 @@ static HRESULT ParseBond(UString &srcString, UInt32 &coder, UInt32 &stream)
   return S_OK;
 }
 
-void COutHandler::InitProps()
+void COutHandler::InitProps7z()
 {
-  CMultiMethodProps::Init();
-
   _removeSfxBlock = false;
   _compressHeaders = true;
   _encryptHeadersSpecified = false;
@@ -705,6 +717,7 @@ void COutHandler::InitProps()
   Write_CTime.Init();
   Write_ATime.Init();
   Write_MTime.Init();
+  Write_Attrib.Init();
 
   _useMultiThreadMixer = true;
 
@@ -713,6 +726,14 @@ void COutHandler::InitProps()
   InitSolid();
   _useTypeSorting = false;
 }
+
+void COutHandler::InitProps()
+{
+  CMultiMethodProps::Init();
+  InitProps7z();
+}
+
+
 
 HRESULT COutHandler::SetSolidFromString(const UString &s)
 {
@@ -754,6 +775,10 @@ HRESULT COutHandler::SetSolidFromString(const UString &s)
       }
       _numSolidBytes = (v << numBits);
       _numSolidBytesDefined = true;
+      /*
+      if (_numSolidBytes == 0)
+        _numSolidFiles = 1;
+      */
     }
   }
   return S_OK;
@@ -802,7 +827,7 @@ HRESULT COutHandler::SetProperty(const wchar_t *nameSpec, const PROPVARIANT &val
       return E_INVALIDARG;
     return SetSolidFromString(name);
   }
-  
+
   UInt32 number;
   int index = ParseStringToUInt32(name, number);
   // UString realName = name.Ptr(index);
@@ -829,6 +854,8 @@ HRESULT COutHandler::SetProperty(const wchar_t *nameSpec, const PROPVARIANT &val
     if (name.IsEqualTo("tc")) return PROPVARIANT_to_BoolPair(value, Write_CTime);
     if (name.IsEqualTo("ta")) return PROPVARIANT_to_BoolPair(value, Write_ATime);
     if (name.IsEqualTo("tm")) return PROPVARIANT_to_BoolPair(value, Write_MTime);
+    
+    if (name.IsEqualTo("tr")) return PROPVARIANT_to_BoolPair(value, Write_Attrib);
     
     if (name.IsEqualTo("mtf")) return PROPVARIANT_to_bool(value, _useMultiThreadMixer);
 
@@ -911,3 +938,5 @@ STDMETHODIMP CHandler::SetProperties(const wchar_t * const *names, const PROPVAR
 }
 
 }}
+
+#endif

@@ -15,6 +15,7 @@
  */
 
 #include <stdint.h>
+#include <string.h>
 
 #include <functional>
 
@@ -49,14 +50,6 @@ void RegsMips64::set_pc(uint64_t pc) {
 
 void RegsMips64::set_sp(uint64_t sp) {
   regs_[MIPS64_REG_SP] = sp;
-}
-
-uint64_t RegsMips64::GetPcAdjustment(uint64_t rel_pc, Elf*) {
-  if (rel_pc < 8) {
-    return 0;
-  }
-  // For now, just assume no compact branches
-  return 8;
 }
 
 bool RegsMips64::SetPcFromReturnAddress(Memory*) {
@@ -126,12 +119,12 @@ Regs* RegsMips64::CreateFromUcontext(void* ucontext) {
   return regs;
 }
 
-bool RegsMips64::StepIfSignalHandler(uint64_t rel_pc, Elf* elf, Memory* process_memory) {
+bool RegsMips64::StepIfSignalHandler(uint64_t elf_offset, Elf* elf, Memory* process_memory) {
   uint64_t data;
   Memory* elf_memory = elf->memory();
   // Read from elf memory since it is usually more expensive to read from
   // process memory.
-  if (!elf_memory->Read(rel_pc, &data, sizeof(data))) {
+  if (!elf_memory->Read(elf_offset, &data, sizeof(data))) {
     return false;
   }
 

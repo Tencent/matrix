@@ -45,6 +45,7 @@ public:
   size_t GetPos() const { return _pos; }
 };
 
+
 struct CHeaderOptions
 {
   bool CompressMainHeader;
@@ -71,23 +72,30 @@ struct CFileItem2
   UInt64 ATime;
   UInt64 MTime;
   UInt64 StartPos;
+  UInt32 Attrib;
+
   bool CTimeDefined;
   bool ATimeDefined;
   bool MTimeDefined;
   bool StartPosDefined;
+  bool AttribDefined;
   bool IsAnti;
   // bool IsAux;
 
+  /*
   void Init()
   {
     CTimeDefined = false;
     ATimeDefined = false;
     MTimeDefined = false;
     StartPosDefined = false;
+    AttribDefined = false;
     IsAnti = false;
     // IsAux = false;
   }
+  */
 };
+
 
 struct COutFolders
 {
@@ -111,6 +119,7 @@ struct COutFolders
   }
 };
 
+
 struct CArchiveDatabaseOut: public COutFolders
 {
   CRecordVector<UInt64> PackSizes;
@@ -123,10 +132,11 @@ struct CArchiveDatabaseOut: public COutFolders
   CUInt64DefVector ATime;
   CUInt64DefVector MTime;
   CUInt64DefVector StartPos;
-  CRecordVector<bool> IsAnti;
+  CUInt32DefVector Attrib;
+  CBoolVector IsAnti;
 
   /*
-  CRecordVector<bool> IsAux;
+  CBoolVector IsAux;
 
   CByteBuffer SecureBuf;
   CRecordVector<UInt32> SecureSizes;
@@ -154,6 +164,7 @@ struct CArchiveDatabaseOut: public COutFolders
     ATime.Clear();
     MTime.Clear();
     StartPos.Clear();
+    Attrib.Clear();
     IsAnti.Clear();
 
     /*
@@ -176,6 +187,7 @@ struct CArchiveDatabaseOut: public COutFolders
     ATime.ReserveDown();
     MTime.ReserveDown();
     StartPos.ReserveDown();
+    Attrib.ReserveDown();
     IsAnti.ReserveDown();
 
     /*
@@ -196,11 +208,12 @@ struct CArchiveDatabaseOut: public COutFolders
   {
     unsigned size = Files.Size();
     return (
-      CTime.CheckSize(size) &&
-      ATime.CheckSize(size) &&
-      MTime.CheckSize(size) &&
-      StartPos.CheckSize(size) &&
-      (size == IsAnti.Size() || IsAnti.Size() == 0));
+           CTime.CheckSize(size)
+        && ATime.CheckSize(size)
+        && MTime.CheckSize(size)
+        && StartPos.CheckSize(size)
+        && Attrib.CheckSize(size)
+        && (size == IsAnti.Size() || IsAnti.Size() == 0));
   }
 
   bool IsItemAnti(unsigned index) const { return (index < IsAnti.Size() && IsAnti[index]); }
@@ -223,6 +236,7 @@ struct CArchiveDatabaseOut: public COutFolders
 
   void AddFile(const CFileItem &file, const CFileItem2 &file2, const UString &name);
 };
+
 
 class COutArchive
 {
@@ -261,8 +275,8 @@ class COutArchive
       const CRecordVector<UInt64> &unpackSizes,
       const CUInt32DefVector &digests);
 
-  void SkipAlign(unsigned pos, unsigned alignSize);
-  void WriteAlignedBoolHeader(const CBoolVector &v, unsigned numDefined, Byte type, unsigned itemSize);
+  void SkipToAligned(unsigned pos, unsigned alignShifts);
+  void WriteAlignedBools(const CBoolVector &v, unsigned numDefined, Byte type, unsigned itemSizeShifts);
   void WriteUInt64DefVector(const CUInt64DefVector &v, Byte type);
 
   HRESULT EncodeStream(

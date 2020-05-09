@@ -40,6 +40,7 @@
   04  ICompressProgressInfo
   05  ICompressCoder
   18  ICompressCoder2
+  1F  ICompressSetCoderPropertiesOpt
   20  ICompressSetCoderProperties
   21  ICompressSetDecoderProperties //
   22  ICompressSetDecoderProperties2
@@ -47,6 +48,8 @@
   24  ICompressGetInStreamProcessedSize
   25  ICompressSetCoderMt
   26  ICompressSetFinishMode
+  27  ICompressGetInStreamProcessedSize2
+  28  ICompressSetMemLimit
 
   30  ICompressGetSubStreamSize
   31  ICompressSetInStream
@@ -163,6 +166,7 @@ Handler GUIDs:
   0C xz
   0D ppmd
 
+  C6 COFF
   C7 Ext
   C8 VMDK
   C9 VDI

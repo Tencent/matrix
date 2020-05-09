@@ -55,5 +55,6 @@ C_OBJS = \
   $O\Threads.obj \
 
 !include "../../Crc.mak"
+!include "../../LzmaDec.mak"
 
 !include "../../7zip.mak"

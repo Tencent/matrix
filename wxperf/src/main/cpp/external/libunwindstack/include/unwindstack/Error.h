@@ -29,6 +29,7 @@ enum ErrorCode : uint8_t {
   ERROR_INVALID_MAP,          // Unwind in an invalid map.
   ERROR_MAX_FRAMES_EXCEEDED,  // The number of frames exceed the total allowed.
   ERROR_REPEATED_FRAME,       // The last frame has the same pc/sp as the next.
+  ERROR_INVALID_ELF,          // Unwind in an invalid elf.
 };
 
 struct ErrorData {

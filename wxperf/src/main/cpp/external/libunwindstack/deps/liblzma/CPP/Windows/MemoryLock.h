@@ -31,6 +31,8 @@ inline void EnablePrivilege_SymLink()
   // Do we need to set SE_BACKUP_NAME ?
 }
 
+unsigned Get_LargePages_RiskLevel();
+
 #endif
 
 }}

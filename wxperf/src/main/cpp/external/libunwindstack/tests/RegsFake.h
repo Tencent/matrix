@@ -23,6 +23,8 @@
 #include <unwindstack/Memory.h>
 #include <unwindstack/Regs.h>
 
+#include "Check.h"
+
 namespace unwindstack {
 
 class RegsFake : public Regs {
@@ -47,7 +49,10 @@ class RegsFake : public Regs {
 
   void IterateRegisters(std::function<void(const char*, uint64_t)>) override {}
 
-  bool Is32Bit() { return false; }
+  bool Is32Bit() {
+    CHECK(fake_arch_ != ARCH_UNKNOWN);
+    return fake_arch_ == ARCH_ARM || fake_arch_ == ARCH_X86 || fake_arch_ == ARCH_MIPS;
+  }
 
   uint64_t GetPcAdjustment(uint64_t, Elf*) override { return 2; }
 

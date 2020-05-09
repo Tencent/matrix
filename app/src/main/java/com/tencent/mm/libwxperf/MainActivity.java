@@ -17,6 +17,8 @@ import com.tencent.mm.performance.jni.HookManager;
 import com.tencent.mm.performance.jni.fd.FDDumpBridge;
 import com.tencent.mm.performance.jni.memory.MemoryHook;
 import com.tencent.mm.performance.jni.pthread.PthreadHook;
+import com.tencent.mm.performance.jni.test.UnwindBenckmarkTest;
+import com.tencent.mm.performance.jni.test.UnwindTest;
 
 import java.io.File;
 
@@ -24,18 +26,17 @@ public class MainActivity extends AppCompatActivity {
 
     private static final String TAG = "MainActivity";
 
+    String threadNameRegex = "[GT]TestHT-?".replace("[", "\\[").replace("]", "\\]").replace("?", "[0-9]*");
+
+    String name = "[GT]TestHT-12";
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        String threadNameRegex = "[GT]TestHT-?".replace("[", "\\[").replace("]", "\\]").replace("?", "[0-9]*");
-
-        String name = "[GT]TestHT-12";
-
         Log.d(TAG, "threadName = " + threadNameRegex + ", " + name.matches(threadNameRegex));
 
-//        MemoryHook.hook();
         try {
             HookManager.INSTANCE
 //                    .addHook(MemoryHook.INSTANCE
@@ -44,163 +45,25 @@ public class MainActivity extends AppCompatActivity {
 //                            .enableMmapHook(true))
                     .addHook(PthreadHook.INSTANCE
 //                            .addHookSo(".*libnative-lib\\.so$")
-                            .addHookSo(".*\\.so$")
+                                    .addHookSo(".*\\.so$")
 //                            .addIgnoreSo(".*libart\\.so$")
 //                            .addHookThread(".*")
-                            .addHookThread(threadNameRegex)
+                                    .addHookThread(threadNameRegex)
 //                            .addHookThread("MyHandlerThread")
 //                            .addHookThread("\\[GT\\]MediaCodecR$")
                     )
                     .commitHooks();
 
-//            PthreadHook.INSTANCE.addHookSo(".*\\.so$")
-//                    .addHookThread("RenderThread")
-//                    .addHookThread("\\[GT\\]MediaCodecR$")
-//                    .addHookThread("RenderThread")
-//                    .hook();
-
-//            MemoryHook.INSTANCE
-//                    .addHookSo(".*libnative-lib\\.so$")
-//                    .enableStacktrace(true)
-//                    .enableMmapHook(true)
-//                    .hook();
             throw new HookManager.HookFailedException("adfad");
         } catch (HookManager.HookFailedException e) {
             e.printStackTrace();
         }
 
-
-        Log.d(TAG, " pid = " + Process.myPid() + " tid = " + Thread.currentThread().getId());
-
-        findViewById(R.id.button).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                final JNIObj jniObj = new JNIObj();
-                for (int i = 0; i < 1000; i++) {
-                    jniObj.doSomeThing();
-                }
-//                jniObj.nullptr(null);
-//                jniObj.dump(null);
-                MemoryHook.INSTANCE.dump("/sdcard/memory_hook.log");
-            }
-        });
-
-        findViewById(R.id.btn_mmap).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                JNIObj jniObj = new JNIObj();
-                jniObj.doMmap();
-                MemoryHook.INSTANCE.dump("/sdcard/memory_hook.log");
-            }
-        });
-
-        findViewById(R.id.btn_realloc).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                JNIObj jniObj = new JNIObj();
-                jniObj.reallocTest();
-                MemoryHook.INSTANCE.dump("/sdcard/memory_hook.log");
-            }
-        });
-
-        findViewById(R.id.btn_thread).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Thread t = new Thread(new Runnable() {
-                    @Override
-                    public void run() {
-
-                        for (int i = 0; i < 100; i++) {
-                            Log.d("Yves-debug", "test thread " + i);
-                            JNIObj.testThread();
-
-                            HandlerThread ht = new HandlerThread("[GT]TestHT-" + i);
-                            ht.start();
-
-                            new Handler(ht.getLooper()).post(new Runnable() {
-                                @Override
-                                public void run() {
-
-                                    new Thread(new Runnable() {
-                                        @Override
-                                        public void run() {
-                                            try {
-                                                Thread.sleep(1000);
-                                            } catch (InterruptedException e) {
-                                                e.printStackTrace();
-                                            }
-                                        }
-                                    }, "SubTestTh").start();
-
-                                    try {
-                                        Thread.sleep(3000);
-                                    } catch (InterruptedException e) {
-                                        e.printStackTrace();
-                                    }
-                                }
-                            });
-                        }
-
-
-
-
-                    }
-                }, "[GT]HotPool#1");
-
-                t.start();
-
-                HandlerThread handlerThread = new HandlerThread("HandlerThread1");
-                handlerThread.start();
-
-                try {
-                    Thread.sleep(10 * 1000);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-
-                PthreadHook.INSTANCE.dump("/sdcard/pthread_hook.log");
-            }
-        });
-
-        findViewById(R.id.btn_thread_spec).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                new Thread(new Runnable() {
-                    @Override
-                    public void run() {
-                        for (int i = 0; i < 100; i++) {
-                            JNIObj.testThreadSpecific();
-                        }
-                    }
-                }).start();
-            }
-        });
-
-        findViewById(R.id.btn_concurrent_jni).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-
-                for (int i = 0; i < 100; i++) {
-
-                    new Thread(new Runnable() {
-                        @Override
-                        public void run() {
-                            JNIObj.testJNICall();
-                            JNIObj.testJNICall();
-                        }
-                    }).start();
-                }
-
-//                JNIObj.testJNICall();
-            }
-        });
+        UnwindTest.init();
+        UnwindBenckmarkTest.benchmarkInitNative();
 
         checkPermission();
-//        if (checkPermission()) {
         Log.d(TAG, "onCreate: path = " + Environment.getExternalStorageDirectory().getAbsolutePath());
-//        }
-
-//        dumpFd();
     }
 
     private void dumpFd() {
@@ -249,5 +112,164 @@ public class MainActivity extends AppCompatActivity {
             // Permission has already been granted
             return true;
         }
+    }
+
+    public void reallocTest(View view) {
+        final JNIObj jniObj = new JNIObj();
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                jniObj.reallocTest();
+            }
+        }).start();
+//        new Handler().postDelayed(new Runnable() {
+//            @Override
+//            public void run() {
+//                MemoryHook.INSTANCE.dump("/sdcard/memory_hook.log");
+//            }
+//        }, 2000);
+
+        try {
+            Thread.sleep(2);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        MemoryHook.INSTANCE.dump("/sdcard/memory_hook.log");
+    }
+
+    public void mmapTest(View view) {
+        JNIObj jniObj = new JNIObj();
+        jniObj.doMmap();
+        MemoryHook.INSTANCE.dump("/sdcard/memory_hook.log");
+    }
+
+    public void threadTest(View view) {
+
+        Thread t = new Thread(new Runnable() {
+            @Override
+            public void run() {
+
+                for (int i = 0; i < 100; i++) {
+                    Log.d("Yves-debug", "test thread " + i);
+                    JNIObj.testThread();
+
+                    HandlerThread ht = new HandlerThread("[GT]TestHT-" + i);
+                    ht.start();
+
+                    new Handler(ht.getLooper()).post(new Runnable() {
+                        @Override
+                        public void run() {
+
+                            new Thread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    try {
+                                        Thread.sleep(1000);
+                                    } catch (InterruptedException e) {
+                                        e.printStackTrace();
+                                    }
+                                }
+                            }, "SubTestTh").start();
+
+                            try {
+                                Thread.sleep(3000);
+                            } catch (InterruptedException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    });
+                }
+
+            }
+        }, "[GT]HotPool#1");
+
+        t.start();
+
+        HandlerThread handlerThread = new HandlerThread("HandlerThread1");
+        handlerThread.start();
+
+        try {
+            Thread.sleep(10 * 1000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        PthreadHook.INSTANCE.dump("/sdcard/pthread_hook.log");
+    }
+
+    public void mallocTest(View view) {
+        JNIObj.mallocTest();
+    }
+
+    public void doSomeThing(View view) {
+        final JNIObj jniObj = new JNIObj();
+        for (int i = 0; i < 1000; i++) {
+            jniObj.doSomeThing();
+        }
+        MemoryHook.INSTANCE.dump("/sdcard/memory_hook.log");
+    }
+
+    public void specificTest(View view) {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                for (int i = 0; i < 100; i++) {
+                    JNIObj.testThreadSpecific();
+                }
+            }
+        }).start();
+    }
+
+    public void concurrentJNITest(View view) {
+        for (int i = 0; i < 100; i++) {
+
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    JNIObj.testJNICall();
+                    JNIObj.testJNICall();
+                }
+            }).start();
+        }
+
+//        JNIObj.testPthreadFree();
+
+        JNIObj.testJNICall();
+    }
+
+    public void unwindTest(View view) {
+
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                for (int i = 0; i < 1; i++) {
+//                            long begin = System.nanoTime();
+                    UnwindTest.test();
+//                            Log.i("Unwind-test", "unwind cost: " + (System.nanoTime() - begin));
+                }
+
+                PthreadHook.INSTANCE.dump("/sdcard/pthread_hook.log");
+            }
+        }).start();
+    }
+
+    public void unwindBenchmark(View view) {
+
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                UnwindBenckmarkTest.benchmarkNative();
+            }
+        }).start();
+    }
+
+    public void unwindBenchmarkDebug(View view) {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                UnwindBenckmarkTest.debugNative();
+            }
+        }).start();
     }
 }

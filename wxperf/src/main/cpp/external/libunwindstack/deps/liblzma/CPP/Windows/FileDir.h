@@ -15,7 +15,20 @@ bool GetWindowsDir(FString &path);
 bool GetSystemDir(FString &path);
 
 bool SetDirTime(CFSTR path, const FILETIME *cTime, const FILETIME *aTime, const FILETIME *mTime);
+
+
 bool SetFileAttrib(CFSTR path, DWORD attrib);
+
+/*
+  Some programs store posix attributes in high 16 bits of windows attributes field.
+  Also some programs use additional flag markers: 0x8000 or 0x4000.
+  SetFileAttrib_PosixHighDetect() tries to detect posix field, and it extracts only attribute
+  bits that are related to current system only.
+*/
+
+bool SetFileAttrib_PosixHighDetect(CFSTR path, DWORD attrib);
+
+
 bool MyMoveFile(CFSTR existFileName, CFSTR newFileName);
 
 #ifndef UNDER_CE

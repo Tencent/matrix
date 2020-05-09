@@ -50,7 +50,7 @@ class MapInfoGetLoadBiasTest : public ::testing::Test {
     process_memory_.reset(memory_);
     elf_ = new ElfFake(new MemoryFake);
     elf_container_.reset(elf_);
-    map_info_.reset(new MapInfo(0x1000, 0x20000, 0, PROT_READ | PROT_WRITE, ""));
+    map_info_.reset(new MapInfo(nullptr, 0x1000, 0x20000, 0, PROT_READ | PROT_WRITE, ""));
   }
 
   void MultipleThreadTest(uint64_t expected_load_bias);
@@ -63,7 +63,7 @@ class MapInfoGetLoadBiasTest : public ::testing::Test {
 };
 
 TEST_F(MapInfoGetLoadBiasTest, no_elf_and_no_valid_elf_in_memory) {
-  MapInfo info(0x1000, 0x2000, 0, PROT_READ, "");
+  MapInfo info(nullptr, 0x1000, 0x2000, 0, PROT_READ, "");
 
   EXPECT_EQ(0U, info.GetLoadBias(process_memory_));
 }

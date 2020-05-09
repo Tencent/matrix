@@ -6,7 +6,7 @@
 #include <xhook.h>
 #include <sys/stat.h>
 #include "HookCommon.h"
-#include "log.h"
+#include "Log.h"
 #include "StackTrace.h"
 #include "JNICommon.h"
 

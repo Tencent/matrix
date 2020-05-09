@@ -19,17 +19,30 @@ set(
         ${SOURCE_DIR}/fd/FDInfoReader.cpp
         ${SOURCE_DIR}/memory/MemoryHookJNI.cpp
         ${SOURCE_DIR}/memory/MemoryHook.cpp
-        ${SOURCE_DIR}/common/lock.cpp
+        ${SOURCE_DIR}/memory/MemoryHookFunctions.cpp
+        ${SOURCE_DIR}/common/Backtrace.cpp
         ${SOURCE_DIR}/common/StackTrace.cpp
-        ${SOURCE_DIR}/common/utils.cpp
+        ${SOURCE_DIR}/common/Utils.cpp
         ${SOURCE_DIR}/common/JNICommon.cpp
         ${SOURCE_DIR}/common/HookCommon.cpp
         ${SOURCE_DIR}/pthread/PthreadHook.cpp
         ${SOURCE_DIR}/pthread/PthreadHookJNI.cpp
+        ${SOURCE_DIR}/dlsym/EnhanceDlsym.cpp
 )
 
+set(
+        TEST_SOURCE_FILES
+        ${SOURCE_DIR}/test/UnwindTestJNI.cpp
+        ${SOURCE_DIR}/test/UnwindTestCommon.cpp
+        ${SOURCE_DIR}/test/UnwindTestCase_SelfSo.cpp
+        ${SOURCE_DIR}/test/UnwindTestCase_ThroughJNI.cpp
+        ${SOURCE_DIR}/test/UnwindTestCase_ThroughSystemSo.cpp
+        ${SOURCE_DIR}/test/UnwindTestBenchmark.cpp
+)
+
+
 add_library( # Specifies the name of the library.
-        wxperf
+        ${TARGET}
 
         # Sets the library as a shared library.
         SHARED
@@ -37,6 +50,9 @@ add_library( # Specifies the name of the library.
         # Provides a relative path to your source file(s).
         ${SOURCE_FILES}
         #            src/main/cpp/fd/FDInfoReader.cpp
+
+        # Test source files.
+        ${TEST_SOURCE_FILES}
         )
 
 add_subdirectory(${SOURCE_DIR}/external/libxhook)
@@ -44,10 +60,11 @@ add_subdirectory(${SOURCE_DIR}/external/libunwindstack)
 add_subdirectory(${SOURCE_DIR}/external/libcJSON)
 
 target_include_directories(
-        wxperf
+        ${TARGET}
         PRIVATE ${SOURCE_DIR}/common
         PRIVATE ${SOURCE_DIR}/external/libxhook
         PRIVATE ${SOURCE_DIR}/external/libunwindstack/include
+        PRIVATE ${SOURCE_DIR}/external/libwechatbacktrace/include
         PRIVATE ${SOURCE_DIR}/external/libcJSON
 )
 
@@ -69,7 +86,7 @@ find_library( # Sets the name of the path variable.
 # build script, prebuilt third-party libraries, or system libraries.
 
 target_link_libraries( # Specifies the target library.
-        wxperf
+        ${TARGET}
         xhook
         unwindstack
         cJSON
@@ -78,7 +95,7 @@ target_link_libraries( # Specifies the target library.
         ${log-lib})
 
 TARGET_COMPILE_OPTIONS(
-        wxperf
+        ${TARGET}
         PRIVATE $<$<COMPILE_LANGUAGE:C>:-std=c99>
         PRIVATE $<$<COMPILE_LANGUAGE:CXX>:-std=c++17 -fno-exceptions -fno-rtti>
 )

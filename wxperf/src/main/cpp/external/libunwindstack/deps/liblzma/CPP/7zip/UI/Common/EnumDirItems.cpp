@@ -16,6 +16,7 @@
 #endif
 
 #include "EnumDirItems.h"
+#include "SortUtils.h"
 
 using namespace NWindows;
 using namespace NFile;
@@ -213,7 +214,8 @@ HRESULT CDirItems::EnumerateDir(int phyParent, int logParent, const FString &phy
 {
   RINOK(ScanProgress(phyPrefix));
 
-  NFind::CEnumerator enumerator(phyPrefix + FCHAR_ANY_MASK);
+  NFind::CEnumerator enumerator;
+  enumerator.SetDirPrefix(phyPrefix);
   for (unsigned ttt = 0; ; ttt++)
   {
     NFind::CFileInfo fi;
@@ -342,6 +344,7 @@ static HRESULT EnumerateAltStreams(
     const NWildcard::CCensorNode &curNode,
     int phyParent, int logParent, const FString &fullPath,
     const UStringVector &addArchivePrefix,  // prefix from curNode
+    bool addAllItems,
     CDirItems &dirItems)
 {
   NFind::CStreamEnumerator enumerator(fullPath);
@@ -362,6 +365,10 @@ static HRESULT EnumerateAltStreams(
     addArchivePrefixNew.Back() += reducedName;
     if (curNode.CheckPathToRoot(false, addArchivePrefixNew, true))
       continue;
+    if (!addAllItems)
+      if (!curNode.CheckPathToRoot(true, addArchivePrefixNew, true))
+        continue;
+
     NFind::CFileInfo fi2 = fi;
     fi2.Name += us2fs(reducedName);
     fi2.Size = si.Size;
@@ -380,15 +387,27 @@ HRESULT CDirItems::SetLinkInfo(CDirItem &dirItem, const NFind::CFileInfo &fi,
     return S_OK;
   const FString path = phyPrefix + fi.Name;
   CByteBuffer &buf = dirItem.ReparseData;
+  DWORD res = 0;
   if (NIO::GetReparseData(path, buf))
   {
     CReparseAttr attr;
-    if (attr.Parse(buf, buf.Size()))
+    if (attr.Parse(buf, buf.Size(), res))
       return S_OK;
+    // we ignore unknown reparse points
+    if (res != ERROR_INVALID_REPARSE_DATA)
+      res = 0;
   }
-  DWORD res = ::GetLastError();
+  else
+  {
+    res = ::GetLastError();
+    if (res == 0)
+      res = ERROR_INVALID_FUNCTION;
+  }
+
   buf.Free();
-  return AddError(path , res);
+  if (res == 0)
+    return S_OK;
+  return AddError(path, res);
 }
 
 #endif
@@ -412,6 +431,8 @@ static HRESULT EnumerateForItem(
   }
   int dirItemIndex = -1;
   
+  bool addAllSubStreams = false;
+
   if (curNode.CheckPathToRoot(true, addArchivePrefixNew, !fi.IsDir()))
   {
     int secureIndex = -1;
@@ -426,6 +447,8 @@ static HRESULT EnumerateForItem(
     dirItems.AddDirFileInfo(phyParent, logParent, secureIndex, fi);
     if (fi.IsDir())
       enterToSubFolders2 = true;
+
+    addAllSubStreams = true;
   }
 
   #ifndef UNDER_CE
@@ -433,7 +456,9 @@ static HRESULT EnumerateForItem(
   {
     RINOK(EnumerateAltStreams(fi, curNode, phyParent, logParent,
         phyPrefix + fi.Name,
-        addArchivePrefixNew, dirItems));
+        addArchivePrefixNew,
+        addAllSubStreams,
+        dirItems));
   }
 
   if (dirItemIndex >= 0)
@@ -570,7 +595,7 @@ static HRESULT EnumerateDirItems(
               #endif
               */
 
-              fullPath = FCHAR_PATH_SEPARATOR;
+              fullPath = CHAR_PATH_SEPARATOR;
             }
             #if defined(_WIN32) && !defined(UNDER_CE)
             else if (item.IsDriveItem())
@@ -642,7 +667,9 @@ static HRESULT EnumerateDirItems(
           UStringVector pathParts;
           pathParts.Add(fs2us(fi.Name));
           RINOK(EnumerateAltStreams(fi, curNode, phyParent, logParent,
-              fullPath, pathParts, dirItems));
+              fullPath, pathParts,
+              true, /* addAllSubStreams */
+              dirItems));
         }
         #endif
 
@@ -682,7 +709,7 @@ static HRESULT EnumerateDirItems(
         {
           {
             if (nextNode.Name.IsEmpty())
-              fullPath = FCHAR_PATH_SEPARATOR;
+              fullPath = CHAR_PATH_SEPARATOR;
             #ifdef _WIN32
             else if (NWildcard::IsDriveColonName(nextNode.Name))
               fullPath.Add_PathSepar();
@@ -773,7 +800,9 @@ static HRESULT EnumerateDirItems(
   #endif
   #endif
 
-  NFind::CEnumerator enumerator(phyPrefix + FCHAR_ANY_MASK);
+  NFind::CEnumerator enumerator;
+  enumerator.SetDirPrefix(phyPrefix);
+
   for (unsigned ttt = 0; ; ttt++)
   {
     NFind::CFileInfo fi;
@@ -849,7 +878,8 @@ void CDirItems::FillFixedReparse()
       continue;
     
     CReparseAttr attr;
-    if (!attr.Parse(item.ReparseData, item.ReparseData.Size()))
+    DWORD errorCode = 0;
+    if (!attr.Parse(item.ReparseData, item.ReparseData.Size(), errorCode))
       continue;
     if (attr.IsRelative())
       continue;
@@ -896,3 +926,171 @@ void CDirItems::FillFixedReparse()
 }
 
 #endif
+
+
+
+static const char * const kCannotFindArchive = "Cannot find archive";
+
+HRESULT EnumerateDirItemsAndSort(
+    NWildcard::CCensor &censor,
+    NWildcard::ECensorPathMode censorPathMode,
+    const UString &addPathPrefix,
+    UStringVector &sortedPaths,
+    UStringVector &sortedFullPaths,
+    CDirItemsStat &st,
+    IDirItemsCallback *callback)
+{
+  FStringVector paths;
+  
+  {
+    CDirItems dirItems;
+    dirItems.Callback = callback;
+    {
+      HRESULT res = EnumerateItems(censor, censorPathMode, addPathPrefix, dirItems);
+      st = dirItems.Stat;
+      RINOK(res);
+    }
+  
+    FOR_VECTOR (i, dirItems.Items)
+    {
+      const CDirItem &dirItem = dirItems.Items[i];
+      if (!dirItem.IsDir())
+        paths.Add(dirItems.GetPhyPath(i));
+    }
+  }
+  
+  if (paths.Size() == 0)
+  {
+    // return S_OK;
+    throw CMessagePathException(kCannotFindArchive);
+  }
+  
+  UStringVector fullPaths;
+  
+  unsigned i;
+  
+  for (i = 0; i < paths.Size(); i++)
+  {
+    FString fullPath;
+    NFile::NDir::MyGetFullPathName(paths[i], fullPath);
+    fullPaths.Add(fs2us(fullPath));
+  }
+  
+  CUIntVector indices;
+  SortFileNames(fullPaths, indices);
+  sortedPaths.ClearAndReserve(indices.Size());
+  sortedFullPaths.ClearAndReserve(indices.Size());
+
+  for (i = 0; i < indices.Size(); i++)
+  {
+    unsigned index = indices[i];
+    sortedPaths.AddInReserved(fs2us(paths[index]));
+    sortedFullPaths.AddInReserved(fullPaths[index]);
+    if (i > 0 && CompareFileNames(sortedFullPaths[i], sortedFullPaths[i - 1]) == 0)
+      throw CMessagePathException("Duplicate archive path:", sortedFullPaths[i]);
+  }
+
+  return S_OK;
+}
+
+
+
+
+#ifdef _WIN32
+
+// This code converts all short file names to long file names.
+
+static void ConvertToLongName(const UString &prefix, UString &name)
+{
+  if (name.IsEmpty() || DoesNameContainWildcard(name))
+    return;
+  NFind::CFileInfo fi;
+  const FString path (us2fs(prefix + name));
+  #ifndef UNDER_CE
+  if (NFile::NName::IsDevicePath(path))
+    return;
+  #endif
+  if (fi.Find(path))
+    name = fs2us(fi.Name);
+}
+
+static void ConvertToLongNames(const UString &prefix, CObjectVector<NWildcard::CItem> &items)
+{
+  FOR_VECTOR (i, items)
+  {
+    NWildcard::CItem &item = items[i];
+    if (item.Recursive || item.PathParts.Size() != 1)
+      continue;
+    if (prefix.IsEmpty() && item.IsDriveItem())
+      continue;
+    ConvertToLongName(prefix, item.PathParts.Front());
+  }
+}
+
+static void ConvertToLongNames(const UString &prefix, NWildcard::CCensorNode &node)
+{
+  ConvertToLongNames(prefix, node.IncludeItems);
+  ConvertToLongNames(prefix, node.ExcludeItems);
+  unsigned i;
+  for (i = 0; i < node.SubNodes.Size(); i++)
+  {
+    UString &name = node.SubNodes[i].Name;
+    if (prefix.IsEmpty() && NWildcard::IsDriveColonName(name))
+      continue;
+    ConvertToLongName(prefix, name);
+  }
+  // mix folders with same name
+  for (i = 0; i < node.SubNodes.Size(); i++)
+  {
+    NWildcard::CCensorNode &nextNode1 = node.SubNodes[i];
+    for (unsigned j = i + 1; j < node.SubNodes.Size();)
+    {
+      const NWildcard::CCensorNode &nextNode2 = node.SubNodes[j];
+      if (nextNode1.Name.IsEqualTo_NoCase(nextNode2.Name))
+      {
+        nextNode1.IncludeItems += nextNode2.IncludeItems;
+        nextNode1.ExcludeItems += nextNode2.ExcludeItems;
+        node.SubNodes.Delete(j);
+      }
+      else
+        j++;
+    }
+  }
+  for (i = 0; i < node.SubNodes.Size(); i++)
+  {
+    NWildcard::CCensorNode &nextNode = node.SubNodes[i];
+    ConvertToLongNames(prefix + nextNode.Name + WCHAR_PATH_SEPARATOR, nextNode);
+  }
+}
+
+void ConvertToLongNames(NWildcard::CCensor &censor)
+{
+  FOR_VECTOR (i, censor.Pairs)
+  {
+    NWildcard::CPair &pair = censor.Pairs[i];
+    ConvertToLongNames(pair.Prefix, pair.Head);
+  }
+}
+
+#endif
+
+
+CMessagePathException::CMessagePathException(const char *a, const wchar_t *u)
+{
+  (*this) += a;
+  if (u)
+  {
+    Add_LF();
+    (*this) += u;
+  }
+}
+
+CMessagePathException::CMessagePathException(const wchar_t *a, const wchar_t *u)
+{
+  (*this) += a;
+  if (u)
+  {
+    Add_LF();
+    (*this) += u;
+  }
+}

@@ -19,47 +19,50 @@
 
 #include <stdint.h>
 
+#include <map>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
-#include <dex/dex_file-inl.h>
+#include <art_api/dex_file_support.h>
 
 namespace unwindstack {
 
-class DexFile {
+class DexFile : protected art_api::dex::DexFile {
  public:
-  DexFile() = default;
   virtual ~DexFile() = default;
 
   bool GetMethodInformation(uint64_t dex_offset, std::string* method_name, uint64_t* method_offset);
 
-  static DexFile* Create(uint64_t dex_file_offset_in_memory, Memory* memory, MapInfo* info);
+  static std::unique_ptr<DexFile> Create(uint64_t dex_file_offset_in_memory, Memory* memory,
+                                         MapInfo* info);
 
  protected:
-  std::unique_ptr<const art::DexFile> dex_file_;
+  DexFile(std::unique_ptr<art_api::dex::DexFile>& art_dex_file)
+      : art_api::dex::DexFile(art_dex_file) {}
 };
 
 class DexFileFromFile : public DexFile {
  public:
-  DexFileFromFile() = default;
-  virtual ~DexFileFromFile();
-
-  bool Open(uint64_t dex_file_offset_in_file, const std::string& name);
+  static std::unique_ptr<DexFileFromFile> Create(uint64_t dex_file_offset_in_file,
+                                                 const std::string& file);
 
  private:
-  void* mapped_memory_ = nullptr;
-  size_t size_ = 0;
+  DexFileFromFile(std::unique_ptr<art_api::dex::DexFile>& art_dex_file) : DexFile(art_dex_file) {}
 };
 
 class DexFileFromMemory : public DexFile {
  public:
-  DexFileFromMemory() = default;
-  virtual ~DexFileFromMemory() = default;
-
-  bool Open(uint64_t dex_file_offset_in_memory, Memory* memory);
+  static std::unique_ptr<DexFileFromMemory> Create(uint64_t dex_file_offset_in_memory,
+                                                   Memory* memory, const std::string& name,
+                                                   size_t max_size);
 
  private:
+  DexFileFromMemory(std::unique_ptr<art_api::dex::DexFile>& art_dex_file,
+                    std::vector<uint8_t>&& memory)
+      : DexFile(art_dex_file), memory_(std::move(memory)) {}
+
   std::vector<uint8_t> memory_;
 };
 

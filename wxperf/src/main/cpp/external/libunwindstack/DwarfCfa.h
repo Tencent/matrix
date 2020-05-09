@@ -49,7 +49,14 @@ class DwarfCfaInfo {
   };
 
   struct Info {
-    const char* name;
+    // It may seem cleaner to just change the type of 'name' to 'const char *'.
+    // However, having a pointer here would require relocation at runtime,
+    // causing 'kTable' to be placed in data.rel.ro section instead of rodata
+    // section, adding memory pressure to the system.  Note that this is only
+    // safe because this is only used in C++ code.  C++ standard, unlike C
+    // standard, mandates the array size to be large enough to hold the NULL
+    // terminator when initialized with a string literal.
+    const char name[36];
     uint8_t supported_version;
     uint8_t num_operands;
     uint8_t operands[2];
@@ -71,8 +78,7 @@ class DwarfCfa {
   bool GetLocationInfo(uint64_t pc, uint64_t start_offset, uint64_t end_offset,
                        dwarf_loc_regs_t* loc_regs);
 
-  bool Log(uint32_t indent, uint64_t pc, uint64_t load_bias, uint64_t start_offset,
-           uint64_t end_offset);
+  bool Log(uint32_t indent, uint64_t pc, uint64_t start_offset, uint64_t end_offset);
 
   const DwarfErrorData& last_error() { return last_error_; }
   DwarfErrorCode LastErrorCode() { return last_error_.code; }

@@ -120,7 +120,7 @@ bool CProgressDialog::OnTimer(WPARAM /* timerID */, LPARAM /* callback */)
     wchar_t s[64];
     ConvertUInt64ToString(percentValue, s);
     UString title = s;
-    title += L"% ";
+    title += "% ";
     SetText(title + _title);
     #ifndef _SFX
     AddToTitle(title + MainAddTitle);

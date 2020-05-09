@@ -2,6 +2,8 @@
 
 #include "StdAfx.h"
 
+#include "../../../Common/Wildcard.h"
+
 #include "../../../Windows/FileDir.h"
 #include "../../../Windows/FileName.h"
 
@@ -11,7 +13,7 @@
 using namespace NWindows;
 using namespace NFile;
 
-UString CreateArchiveName(const NFind::CFileInfo &fi, bool keepName)
+static UString CreateArchiveName(const NFind::CFileInfo &fi, bool keepName)
 {
   FString resultName = fi.Name;
   if (!fi.IsDir() && !keepName)
@@ -29,7 +31,7 @@ UString CreateArchiveName(const NFind::CFileInfo &fi, bool keepName)
 
 static FString CreateArchiveName2(const FString &path, bool fromPrev, bool keepName)
 {
-  FString resultName = FTEXT("Archive");
+  FString resultName ("Archive");
   if (fromPrev)
   {
     FString dirPrefix;
@@ -72,7 +74,75 @@ static FString CreateArchiveName2(const FString &path, bool fromPrev, bool keepN
   return resultName;
 }
 
-UString CreateArchiveName(const UString &path, bool fromPrev, bool keepName)
+
+UString CreateArchiveName(const UStringVector &paths, const NFind::CFileInfo *fi)
 {
-  return Get_Correct_FsFile_Name(fs2us(CreateArchiveName2(us2fs(path), fromPrev, keepName)));
+  bool keepName = false;
+  /*
+  if (paths.Size() == 1)
+  {
+    const UString &name = paths[0];
+    if (name.Len() > 4)
+      if (CompareFileNames(name.RightPtr(4), L".tar") == 0)
+        keepName = true;
+  }
+  */
+
+  UString name;
+  if (fi)
+    name = CreateArchiveName(*fi, keepName);
+  else
+  {
+    if (paths.IsEmpty())
+      return L"archive";
+    bool fromPrev = (paths.Size() > 1);
+    name = Get_Correct_FsFile_Name(fs2us(CreateArchiveName2(us2fs(paths.Front()), fromPrev, keepName)));
+  }
+
+  UString postfix;
+  UInt32 index = 1;
+  
+  for (;;)
+  {
+    // we don't want cases when we include archive to itself.
+    // so we find first available name for archive
+    const UString name2 = name + postfix;
+    const UString name2_zip = name2 + L".zip";
+    const UString name2_7z = name2 + L".7z";
+    const UString name2_tar = name2 + L".tar";
+    const UString name2_wim = name2 + L".wim";
+    
+    unsigned i = 0;
+    
+    for (i = 0; i < paths.Size(); i++)
+    {
+      const UString &fn = paths[i];
+      NFind::CFileInfo fi2;
+
+      const NFind::CFileInfo *fp;
+      if (fi && paths.Size() == 1)
+        fp = fi;
+      else
+      {
+        if (!fi2.Find(us2fs(fn)))
+          continue;
+        fp = &fi2;
+      }
+      const UString fname = fs2us(fp->Name);
+      if (   0 == CompareFileNames(fname, name2_zip)
+          || 0 == CompareFileNames(fname, name2_7z)
+          || 0 == CompareFileNames(fname, name2_tar)
+          || 0 == CompareFileNames(fname, name2_wim))
+        break;
+    }
+    
+    if (i == paths.Size())
+      break;
+    index++;
+    postfix = "_";
+    postfix.Add_UInt32(index);
+  }
+  
+  name += postfix;
+  return name;
 }

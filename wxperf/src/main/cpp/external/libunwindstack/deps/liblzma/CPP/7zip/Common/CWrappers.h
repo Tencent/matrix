@@ -6,49 +6,54 @@
 #include "../ICoder.h"
 #include "../../Common/MyCom.h"
 
+SRes HRESULT_To_SRes(HRESULT res, SRes defaultRes) throw();
+HRESULT SResToHRESULT(SRes res) throw();
+
 struct CCompressProgressWrap
 {
-  ICompressProgress p;
+  ICompressProgress vt;
   ICompressProgressInfo *Progress;
   HRESULT Res;
   
-  CCompressProgressWrap(ICompressProgressInfo *progress) throw();
+  void Init(ICompressProgressInfo *progress) throw();
 };
+
 
 struct CSeqInStreamWrap
 {
-  ISeqInStream p;
+  ISeqInStream vt;
   ISequentialInStream *Stream;
   HRESULT Res;
   UInt64 Processed;
   
-  CSeqInStreamWrap(ISequentialInStream *stream) throw();
+  void Init(ISequentialInStream *stream) throw();
 };
+
 
 struct CSeekInStreamWrap
 {
-  ISeekInStream p;
+  ISeekInStream vt;
   IInStream *Stream;
   HRESULT Res;
   
-  CSeekInStreamWrap(IInStream *stream) throw();
+  void Init(IInStream *stream) throw();
 };
+
 
 struct CSeqOutStreamWrap
 {
-  ISeqOutStream p;
+  ISeqOutStream vt;
   ISequentialOutStream *Stream;
   HRESULT Res;
   UInt64 Processed;
   
-  CSeqOutStreamWrap(ISequentialOutStream *stream) throw();
+  void Init(ISequentialOutStream *stream) throw();
 };
 
-HRESULT SResToHRESULT(SRes res) throw();
 
 struct CByteInBufWrap
 {
-  IByteIn p;
+  IByteIn vt;
   const Byte *Cur;
   const Byte *Lim;
   Byte *Buf;
@@ -79,9 +84,10 @@ struct CByteInBufWrap
   }
 };
 
+
 struct CByteOutBufWrap
 {
-  IByteOut p;
+  IByteOut vt;
   Byte *Cur;
   const Byte *Lim;
   Byte *Buf;
