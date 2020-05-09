@@ -20,7 +20,9 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.Message;
 import android.os.SystemClock;
+import android.support.annotation.RequiresApi;
 
+import com.tencent.matrix.trace.config.IssueFixConfig;
 import com.tencent.matrix.trace.core.AppMethodBeat;
 import com.tencent.matrix.util.MatrixLog;
 
@@ -28,6 +30,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.HashSet;
 import java.util.List;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
  * Created by caichongyang on 2017/5/26.
@@ -108,6 +111,12 @@ public class ActivityThreadHacker {
 
         private final Handler.Callback mOriginalCallback;
 
+        private static final int SERIVCE_ARGS = 115;
+        private static final int STOP_SERVICE = 116;
+        private static final int STOP_ACTIVITY_SHOW = 103;
+        private static final int STOP_ACTIVITY_HIDE = 104;
+        private static final int SLEEPING = 137;
+
         HackCallback(Handler.Callback callback) {
             this.mOriginalCallback = callback;
         }
@@ -140,8 +149,41 @@ public class ActivityThreadHacker {
                     }
                 }
             }
-
+            if(IssueFixConfig.getsInstance().isEnableFixSpApply()) {
+                if (Build.VERSION.SDK_INT >= 21 && Build.VERSION.SDK_INT <= 25) {
+                    if (msg.what == SERIVCE_ARGS || msg.what == STOP_SERVICE || msg.what == STOP_ACTIVITY_SHOW || msg.what == STOP_ACTIVITY_HIDE || msg.what == SLEEPING) {
+                        MatrixLog.i(TAG, "[Matrix.fix.sp.apply] start to fix msg.waht=" + msg.what);
+                        fix();
+                    }
+                }
+            }
             return null != mOriginalCallback && mOriginalCallback.handleMessage(msg);
+        }
+
+        @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
+        private void fix(){
+            try {
+                Class cls = Class.forName("android.app.QueuedWork");
+                Field field = cls.getDeclaredField("sPendingWorkFinishers");
+                if(field != null){
+                    field.setAccessible(true);
+                    ConcurrentLinkedQueue<Runnable> runnables = (ConcurrentLinkedQueue<Runnable>)field.get(null);
+                    runnables.clear();
+                }
+            } catch (ClassNotFoundException e) {
+                MatrixLog.e(TAG, "[Matrix.fix.sp.apply] ClassNotFoundException = "+e.getMessage());
+                e.printStackTrace();
+            } catch (IllegalAccessException e) {
+                MatrixLog.e(TAG, "[Matrix.fix.sp.apply] IllegalAccessException ="+e.getMessage());
+                e.printStackTrace();
+            } catch (NoSuchFieldException e) {
+                MatrixLog.e(TAG, "[Matrix.fix.sp.apply] NoSuchFieldException = "+e.getMessage());
+                e.printStackTrace();
+            } catch (Exception e){
+                MatrixLog.e(TAG, "[Matrix.fix.sp.apply] Exception = "+e.getMessage());
+                e.printStackTrace();
+            }
+
         }
 
         private Method method = null;
