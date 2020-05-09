@@ -14,6 +14,12 @@
 extern "C" {
 #endif
 
+#ifdef LOGD
+    #undef LOGD
+#endif
+
+#define LOGD(TAG, FMT, args...) //
+
 void func1() {
     LOGD("Yves-test", "func1");
 
@@ -41,7 +47,7 @@ void func1() {
 
 //    LOGE("Unwind-test", "arr cost = %ld", (CurrentNano() - begin));
 
-    LOGE("Unwind-test", "frames = %d", tmp_ns->size());
+    LOGE("Unwind-test", "frames = %zu", tmp_ns->size());
 
     for (auto p_frame = tmp_ns->begin(); p_frame != tmp_ns->end(); ++p_frame) {
         Dl_info stack_info;

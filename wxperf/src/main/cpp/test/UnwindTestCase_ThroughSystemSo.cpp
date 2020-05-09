@@ -13,6 +13,12 @@
 extern "C" {
 #endif
 
+#ifdef LOGD
+#undef LOGD
+#endif
+
+#define LOGD(TAG, FMT, args...) //
+
 void throughsystemso_func0f() {
 
     const int len = 70;
