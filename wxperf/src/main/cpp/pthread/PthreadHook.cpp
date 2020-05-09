@@ -159,25 +159,17 @@ static bool test_match_thread_name(pthread_meta_t &__meta) {
     return false;
 }
 
-static void unwind_native_stacktrace(pthread_meta_t &__meta) {
-    __meta.native_stacktrace.reserve(16 * 2);
-    unwindstack::do_unwind(__meta.native_stacktrace);
-}
-
-static void unwind_java_stacktrace(pthread_meta_t *__meta) {
-    const size_t BUF_SIZE = 1024;
-    char         *buf     = static_cast<char *>(malloc(BUF_SIZE));
-
-    if (buf) {
-        get_java_stacktrace(buf, BUF_SIZE);
-    }
-    __meta->java_stacktrace.store(buf, std::memory_order_release);
-}
-
 static void on_pthread_create(const pthread_t __pthread) {
 
-//    pthread_t pthread    = __pthread;
     pid_t tid        = pthread_gettid_np(__pthread);
+
+    // 反射 Java 获取堆栈时加锁会造成死锁, 提前获取堆栈
+    const size_t BUF_SIZE = 1024;
+    char * java_stacktrace = static_cast<char *>(malloc(BUF_SIZE));
+    if (java_stacktrace) {
+        get_java_stacktrace(java_stacktrace, BUF_SIZE);
+//        strncpy(java_stacktrace, " (fake stacktrace)", BUF_SIZE);
+    }
 
     LOGD(TAG, "+++++++ on_pthread_create parendt_tid: %d -> tid: %d", pthread_gettid_np(pthread_self()), tid);
     pthread_mutex_lock(&m_pthread_meta_mutex);
@@ -185,6 +177,7 @@ static void on_pthread_create(const pthread_t __pthread) {
     if (m_pthread_metas.count(__pthread)) {
         LOGD(TAG, "on_pthread_create: thread already recorded");
         pthread_mutex_unlock(&m_pthread_meta_mutex);
+        free(java_stacktrace);
         return;
     }
 
@@ -208,25 +201,17 @@ static void on_pthread_create(const pthread_t __pthread) {
     uint64_t native_hash = 0;
     uint64_t java_hash   = 0;
 
-    unwind_native_stacktrace(meta);
+    meta.native_stacktrace.reserve(16 * 2);
+    unwindstack::do_unwind(meta.native_stacktrace);
     native_hash = hash_stack_frames(meta.native_stacktrace);
 
-    pthread_mutex_unlock(&m_pthread_meta_mutex);
-
-    // unlock scope
-    // 反射 Java 获取堆栈时加锁会造成死锁
-    unwind_java_stacktrace(&meta);
-
-    const char *java_stacktrace = meta.java_stacktrace.load(std::memory_order_acquire);
     if (java_stacktrace) {
+        meta.java_stacktrace.store(java_stacktrace);
         java_hash = hash_str(java_stacktrace);
         LOGD(TAG, "on_pthread_create: java hash = %lu", java_hash);
     }
-    // unlock scope
 
-    pthread_mutex_lock(&m_pthread_meta_mutex);
-
-    if (native_hash && java_hash) {
+    if (native_hash || java_hash) {
         meta.hash = hash_combine(native_hash, java_hash);
     }
 
