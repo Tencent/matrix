@@ -24,6 +24,7 @@
 
 
 #include "KSStackCursor_Backtrace.h"
+#include "KSCPU.h"
 
 //#define KSLogger_LocalLevel TRACE
 #include "KSLogger.h"
@@ -39,7 +40,7 @@ static bool advanceCursor(KSStackCursor *cursor)
         // Bug: The system sometimes gives a backtrace with an extra 0x00000001 at the end.
         if(nextAddress > 1)
         {
-            cursor->stackEntry.address = context->backtrace[currentIndex];
+            cursor->stackEntry.address = kscpu_normaliseInstructionPointer(nextAddress);
             cursor->state.currentDepth++;
             return true;
         }

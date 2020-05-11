@@ -2,8 +2,10 @@ cmake_minimum_required(VERSION 3.4.1)
 
 project(IOCanary)
 
-aux_source_directory(../matrix-android-commons/src/main/cpp/elf_hook ELF_HOOK)
-include_directories(../matrix-android-commons/src/main/cpp/elf_hook)
+#aux_source_directory(../matrix-android-commons/src/main/cpp/elf_hook ELF_HOOK)
+#include_directories(../matrix-android-commons/src/main/cpp/elf_hook)
+
+add_subdirectory(../matrix-android-commons/src/main/cpp/libxhook ${CMAKE_CURRENT_BINARY_DIR}/libxhook)
 
 aux_source_directory(src/main/cpp/detector/ SRC_DIR_DETECTOR)
 aux_source_directory(src/main/cpp/comm/ SRC_DIR_COMM)
@@ -27,4 +29,5 @@ find_library( log-lib
               log )
 
 target_link_libraries( io-canary
-                       ${log-lib} )
+                       ${log-lib}
+                       xhook)

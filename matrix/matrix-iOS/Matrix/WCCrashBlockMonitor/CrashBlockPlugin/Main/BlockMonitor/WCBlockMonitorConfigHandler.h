@@ -29,8 +29,10 @@
 - (float)getCPUUsagePercent;
 - (BOOL)getShouldPrintCPUUsage;
 - (BOOL)getShouldGetCPUHighLog;
-- (BOOL)getShouldGetCPUIntervalHighLog;
+- (BOOL)getShouldGetPowerConsumeStack;
+- (float)getPowerConsumeCPULimit;
 - (BOOL)getShouldFilterSameStack;
 - (uint32_t)getTriggerFilterCount;
+- (BOOL)getShouldPrintMemoryUse;
 
 @end

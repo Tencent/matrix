@@ -1,9 +1,13 @@
-#pod lib lint matrix.podspec --use-libraries
-#pod lib lint --verbose --skip-import-validation --allow-warnings matrix.podspec
+#pod lib lint matrix-wechat.podspec --use-libraries
+#pod lib lint --verbose --skip-import-validation --allow-warnings matrix-wechat.podspec
+#pod spec lint matrix-wechat.podspec --allow-warnings
+#pod trunk me 
+#pod trunk push matrix-wechat.podspec --allow-warnings
+#pod trunk info matrix-wechat
 
 Pod::Spec.new do |matrix|
   matrix.name             = 'matrix-wechat'
-  matrix.version          = '0.5.1'
+  matrix.version          = '0.6.1'
   matrix.summary          = 'Matrix for iOS/macOS is a performance probe tool developed and used by WeChat.'
   matrix.description      = <<-DESC
                             Matrix for iOS/macOS is a performance probe tool developed and used by WeChat. 
@@ -17,7 +21,7 @@ Pod::Spec.new do |matrix|
   matrix.homepage         = 'https://github.com/Tencent/matrix'
   matrix.license          = { :type => 'BSD', :file => 'LICENSE' }
   matrix.author           = { 'johnzjchen' => 'johnzjchen@tencent.com' }
-  matrix.source           = { :git => 'https://github.com/Tencent/matrix.git', :tag => "v#{matrix.version}" }
+  matrix.source           = { :git => 'https://github.com/Tencent/matrix.git', :tag => "V#{matrix.version}" }
   matrix.module_name      = "Matrix"
 
   matrix.ios.deployment_target = '8.0'

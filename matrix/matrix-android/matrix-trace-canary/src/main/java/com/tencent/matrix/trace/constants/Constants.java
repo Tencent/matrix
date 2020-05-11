@@ -27,10 +27,11 @@ public class Constants {
     public static final int FILTER_STACK_MAX_COUNT = 60;
     public static final float FILTER_STACK_KEY_ALL_PERCENT = .3F;
     public static final float FILTER_STACK_KEY_PATENT_PERCENT = .8F;
-    public static final int DEFAULT_EVIL_METHOD_THRESHOLD_MS = 1000;
+    public static final int DEFAULT_EVIL_METHOD_THRESHOLD_MS = 700;
     public static final int DEFAULT_FPS_TIME_SLICE_ALIVE_MS = 10 * 1000;
     public static final int TIME_MILLIS_TO_NANO = 1000000;
     public static final int DEFAULT_ANR = 5 * 1000;
+    public static final int DEFAULT_ANR_INVALID = 6 * 1000;
 
     public static final int DEFAULT_DROPPED_NORMAL = 3;
     public static final int DEFAULT_DROPPED_MIDDLE = 9;
@@ -45,6 +46,7 @@ public class Constants {
     public static final int MAX_LIMIT_ANALYSE_STACK_KEY_NUM = 10;
 
     public static final int LIMIT_WARM_THRESHOLD_MS = 5 * 1000;
+
 
     public enum Type {
         NORMAL, ANR, STARTUP

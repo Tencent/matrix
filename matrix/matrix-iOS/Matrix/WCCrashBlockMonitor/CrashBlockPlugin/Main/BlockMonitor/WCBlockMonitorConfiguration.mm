@@ -27,9 +27,11 @@
 #define kCPUPercentLimit "CPUPercentLimit"
 #define kPrintCPUUsage "PrintCPUUsage"
 #define kGetCPUHighLog "GetCPUHigh"
-#define kGetCPUIntervalHightLog "GetCPUIntervalHight"
+#define kGetPowerConsumeStack "GetPowerConsumeStack"
+#define kPowerConsumeCPULimit "PowerConsumeCPULimit"
 #define kFilterSameStack "FilterSameStack"
 #define kTriggerFilteredCount "TriggerFilteredCount"
+#define kPrintMemoryUsage "PrintMemoryUse"
 
 @implementation WCBlockMonitorConfiguration
 
@@ -44,9 +46,12 @@
     configuration.limitCPUPercent = g_defaultCPUUsagePercent;
     configuration.bPrintCPUUsage = NO;
     configuration.bGetCPUHighLog = NO;
-    configuration.bGetIntervalHighLog = NO;
+    
+    configuration.bGetPowerConsumeStack = NO;
+    configuration.powerConsumeStackCPULimit = g_defaultPowerConsumeCPULimit;
     configuration.bFilterSameStack = NO;
     configuration.triggerToBeFilteredCount = 10;
+    configuration.bPrintMemomryUse = NO;
     return configuration;
 }
 
@@ -62,9 +67,11 @@
         _limitCPUPercent = [aDecoder decodeFloatForKey:@kCPUPercentLimit];
         _bPrintCPUUsage = [aDecoder decodeBoolForKey:@kPrintCPUUsage];
         _bGetCPUHighLog = [aDecoder decodeBoolForKey:@kGetCPUHighLog];
-        _bGetIntervalHighLog = [aDecoder decodeBoolForKey:@kGetCPUIntervalHightLog];
+        _bGetPowerConsumeStack = [aDecoder decodeBoolForKey:@kGetPowerConsumeStack];
+        _powerConsumeStackCPULimit = [aDecoder decodeFloatForKey:@kPowerConsumeCPULimit];
         _bFilterSameStack = [aDecoder decodeBoolForKey:@kFilterSameStack];
         _triggerToBeFilteredCount = (uint32_t)[aDecoder decodeInt32ForKey:@kTriggerFilteredCount];
+        _bPrintMemomryUse = [aDecoder decodeBoolForKey:@kPrintMemoryUsage];
     }
     return self;
 }
@@ -79,21 +86,25 @@
     [aCoder encodeFloat:_limitCPUPercent forKey:@kCPUPercentLimit];
     [aCoder encodeBool:_bPrintCPUUsage forKey:@kPrintCPUUsage];
     [aCoder encodeBool:_bGetCPUHighLog forKey:@kGetCPUHighLog];
-    [aCoder encodeBool:_bGetIntervalHighLog forKey:@kGetCPUIntervalHightLog];
+    [aCoder encodeBool:_bGetPowerConsumeStack forKey:@kGetPowerConsumeStack];
+    [aCoder encodeFloat:_powerConsumeStackCPULimit forKey:@kPowerConsumeCPULimit];
     [aCoder encodeBool:_bFilterSameStack forKey:@kFilterSameStack];
     [aCoder encodeInt32:_triggerToBeFilteredCount forKey:@kTriggerFilteredCount];
+    [aCoder encodeBool:_bPrintMemomryUse forKey:@kPrintMemoryUsage];
 }
 
 - (NSString *)description
 {
     return [NSString stringWithFormat:@"RunLoopTimeOut[%u],CheckPeriodTime[%d],\
             \nMainThreadHandle[%d],PerStackInterval[%d],MainThreadCount[%d],\
-            \nCPUUsagePercent[%f],PrintCPU[%d],GetCPUHighLog[%d],GetCPUIntervalHighLog[%d],\
-            \nFilterSameStact[%d],TriggerBeFilteredCount[%u]",
+            \nCPUUsagePercent[%f],PrintCPU[%d],GetCPUHighLog[%d],GetPowerConsumeStack[%d],\
+            \nPowerConsumeCPULimit[%f],FilterSameStact[%d],TriggerBeFilteredCount[%u],\
+            \nPrintMemory[%d]",
             self.checkPeriodTime, self.runloopTimeOut,
             self.bMainThreadHandle, self.perStackInterval, self.mainThreadCount,
-            self.limitCPUPercent, self.bPrintCPUUsage, self.bGetCPUHighLog, self.bGetIntervalHighLog,
-            self.bFilterSameStack, self.triggerToBeFilteredCount];
+            self.limitCPUPercent, self.bPrintCPUUsage, self.bGetCPUHighLog, self.bGetPowerConsumeStack,
+            self.powerConsumeStackCPULimit, self.bFilterSameStack, self.triggerToBeFilteredCount,
+            self.bPrintMemomryUse];
 }
 
 @end

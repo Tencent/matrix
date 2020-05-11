@@ -60,7 +60,6 @@ public class TraceConfigTestCase extends TestCase {
                 return super.get(key, defStr);
             }
         }).build() ;
-
         Set<String> activities = config.getSplashActivities() ;
         assertNotNull(activities);
         assertEquals(2, activities.size());

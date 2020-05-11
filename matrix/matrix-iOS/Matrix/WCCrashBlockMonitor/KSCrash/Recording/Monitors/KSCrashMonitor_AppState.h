@@ -101,6 +101,10 @@ void kscrashstate_initialize(const char* stateFilePath);
  */
 bool kscrashstate_reset(void);
 
+/** Notify the crash reporter of KSCrash being added to Objective-C runtime system.
+ */
+void kscrashstate_notifyObjCLoad(void);
+
 /** Notify the crash reporter of the application active state.
  *
  * @param isActive true if the application is active, otherwise false.

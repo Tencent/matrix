@@ -24,7 +24,7 @@
 // THE SOFTWARE.
 //
 
-
+#import "KSCrash.h"
 #import "KSCrashMonitor_NSException.h"
 #import "KSStackCursor_Backtrace.h"
 #include "KSCrashMonitorContext.h"
@@ -129,6 +129,7 @@ static void setEnabled(bool isEnabled)
             
             KSLOG_DEBUG(@"Setting new handler.");
             NSSetUncaughtExceptionHandler(&handleException);
+            KSCrash.sharedInstance.uncaughtExceptionHandler = &handleException;
         }
         else
         {

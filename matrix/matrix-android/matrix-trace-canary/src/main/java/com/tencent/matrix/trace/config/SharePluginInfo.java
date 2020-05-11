@@ -32,7 +32,12 @@ public class SharePluginInfo {
     public static final String ISSUE_DROP_LEVEL = "dropLevel";
     public static final String ISSUE_DROP_SUM = "dropSum";
     public static final String ISSUE_FPS = "fps";
-    public static final String ISSUE_STACK = "stack";
+    public static final String ISSUE_SUM_TASK_FRAME = "dropTaskFrameSum";
+    public static final String ISSUE_TRACE_STACK = "stack";
+    public static final String ISSUE_THREAD_STACK = "threadStack";
+    public static final String ISSUE_PROCESS_PRIORITY = "processPriority";
+    public static final String ISSUE_PROCESS_NICE = "processNice";
+    public static final String ISSUE_PROCESS_FOREGROUND = "isProcessForeground";
     public static final String ISSUE_STACK_KEY = "stackKey";
     public static final String ISSUE_MEMORY = "memory";
     public static final String ISSUE_MEMORY_NATIVE = "native_heap";

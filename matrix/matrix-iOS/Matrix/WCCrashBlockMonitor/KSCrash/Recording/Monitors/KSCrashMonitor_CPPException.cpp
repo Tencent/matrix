@@ -28,6 +28,7 @@
 #include "KSThread.h"
 #include "KSMachineContext.h"
 #include "KSStackCursor_SelfThread.h"
+#include "KSCrash_fishhook.h"
 
 //#define KSLogger_LocalLevel TRACE
 #include "KSLogger.h"
@@ -76,28 +77,41 @@ static bool g_capturedStackCursor = false;
 #pragma mark - Callbacks -
 // ============================================================================
 
-typedef void (*cxa_throw_type)(void*, std::type_info*, void (*)(void*));
+//typedef void (*cxa_throw_type)(void*, std::type_info*, void (*)(void*));
+//
+//extern "C"
+//{
+//    void __cxa_throw(void* thrown_exception, std::type_info* tinfo, void (*dest)(void*)) __attribute__ ((weak));
+//
+//    void __cxa_throw(void* thrown_exception, std::type_info* tinfo, void (*dest)(void*))
+//    {
+//        if(g_captureNextStackTrace)
+//        {
+//            kssc_initSelfThread(&g_stackCursor, 1);
+//            g_capturedStackCursor = true;
+//        }
+//
+//        static cxa_throw_type orig_cxa_throw = NULL;
+//        unlikely_if(orig_cxa_throw == NULL)
+//        {
+//            orig_cxa_throw = (cxa_throw_type) dlsym(RTLD_NEXT, "__cxa_throw");
+//        }
+//        orig_cxa_throw(thrown_exception, tinfo, dest);
+//        __builtin_unreachable();
+//    }
+//}
 
-extern "C"
+static void (*orig_cxa_throw)(void* thrown_exception, std::type_info* tinfo, void (*dest)(void*));
+
+void my_cxa_throw(void* thrown_exception, std::type_info* tinfo, void (*dest)(void*))
 {
-    void __cxa_throw(void* thrown_exception, std::type_info* tinfo, void (*dest)(void*)) __attribute__ ((weak));
-
-    void __cxa_throw(void* thrown_exception, std::type_info* tinfo, void (*dest)(void*))
+    if(g_captureNextStackTrace)
     {
-        if(g_captureNextStackTrace)
-        {
-            kssc_initSelfThread(&g_stackCursor, 1);
-            g_capturedStackCursor = true;
-        }
-        
-        static cxa_throw_type orig_cxa_throw = NULL;
-        unlikely_if(orig_cxa_throw == NULL)
-        {
-            orig_cxa_throw = (cxa_throw_type) dlsym(RTLD_NEXT, "__cxa_throw");
-        }
-        orig_cxa_throw(thrown_exception, tinfo, dest);
-        __builtin_unreachable();
+        kssc_initSelfThread(&g_stackCursor, 1);
+        g_capturedStackCursor = true;
+        KSLOG_DEBUG("Trapped C++ Stack");
     }
+    return orig_cxa_throw(thrown_exception, tinfo, dest);
 }
 
 static void CPPExceptionTerminate(void)
@@ -111,9 +125,9 @@ static void CPPExceptionTerminate(void)
         name = tinfo->name();
     }
     KSLOG_DEBUG("name:%s capured:%d", name, g_capturedStackCursor);
-    // if (name == NULL || strcmp(name, "NSException") != 0)
     // 之前判断是否是cpp exception的条件，继承自NSException的NSException会被当做cpp exception处理
-    if(g_capturedStackCursor == true)
+    // if (name == NULL || strcmp(name, "NSException") != 0
+    if (g_capturedStackCursor && (name == NULL || strcmp(name, "NSException") != 0))
     {
         kscm_notifyFatalExceptionCaptured(false);
         KSCrash_MonitorContext* crashContext = &g_monitorContext;
@@ -217,6 +231,14 @@ static void setEnabled(bool isEnabled)
 
             ksid_generate(g_eventID);
             g_originalTerminateHandler = std::set_terminate(CPPExceptionTerminate);
+            
+            ks_rebinding item;
+            item.name = "__cxa_throw";
+            item.replacement = (void *)my_cxa_throw;
+            item.replaced = (void **)&orig_cxa_throw;
+            ks_rebind_symbols(&item, 1);
+//            int ret_val = ks_rebind_symbols(&item, 1);
+//            KSLOG_DEBUG("rebind ret: %d", ret_val);
         }
         else
         {

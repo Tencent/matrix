@@ -11,6 +11,7 @@ import com.tencent.matrix.util.MatrixLog;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.util.Arrays;
 import java.util.HashSet;
 
 public class UIThreadMonitor implements BeatLifecycle, Runnable {
@@ -19,7 +20,7 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
     private static final String ADD_CALLBACK = "addCallbackLocked";
     private volatile boolean isAlive = false;
     private long[] dispatchTimeMs = new long[4];
-    private HashSet<LooperObserver> observers = new HashSet<>();
+    private final HashSet<LooperObserver> observers = new HashSet<>();
     private volatile long token = 0L;
     private boolean isBelongFrame = false;
 
@@ -81,7 +82,6 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
         if (Thread.currentThread() != Looper.getMainLooper().getThread()) {
             throw new AssertionError("must be init in main thread!");
         }
-        this.isInit = true;
         this.config = config;
         choreographer = Choreographer.getInstance();
         callbackQueueLock = reflectObject(choreographer, "mLock");
@@ -111,6 +111,8 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
             }
 
         });
+        this.isInit = true;
+        MatrixLog.i(TAG, "[UIThreadMonitor] %s %s %s %s %s frameIntervalNanos:%s", callbackQueueLock == null, callbackQueues == null, addInputQueue == null, addTraversalQueue == null, addAnimationQueue == null, frameIntervalNanos);
 
         if (config.isDevEnv()) {
             addObserver(new LooperObserver() {
@@ -120,14 +122,11 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
                 }
             });
         }
-
-        MatrixLog.i(TAG, "[UIThreadMonitor] %s %s %s %s %s frameIntervalNanos:%s", callbackQueueLock == null, callbackQueues == null, addInputQueue == null, addTraversalQueue == null, addAnimationQueue == null, frameIntervalNanos);
     }
 
     private synchronized void addFrameCallback(int type, Runnable callback, boolean isAddHeader) {
-
         if (callbackExist[type]) {
-            MatrixLog.w(TAG, "[addFrameCallback] this type %s callback has exist!", type);
+            MatrixLog.w(TAG, "[addFrameCallback] this type %s callback has exist! isAddHeader:%s", type, isAddHeader);
             return;
         }
 
@@ -243,24 +242,26 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
         }
         queueStatus = new int[CALLBACK_LAST + 1];
 
-        long start = token;
-        long end = SystemClock.uptimeMillis();
-        synchronized (observers) {
-            for (LooperObserver observer : observers) {
-                if (observer.isDispatchBegin()) {
-                    observer.doFrame(AppMethodBeat.getFocusedActivity(), start, end, end - start, queueCost[CALLBACK_INPUT], queueCost[CALLBACK_ANIMATION], queueCost[CALLBACK_TRAVERSAL]);
-                }
-            }
-        }
-
         addFrameCallback(CALLBACK_INPUT, this, true);
 
         this.isBelongFrame = false;
     }
 
     private void dispatchEnd() {
+
         if (isBelongFrame) {
             doFrameEnd(token);
+        }
+
+        long start = token;
+        long end = SystemClock.uptimeMillis();
+
+        synchronized (observers) {
+            for (LooperObserver observer : observers) {
+                if (observer.isDispatchBegin()) {
+                    observer.doFrame(AppMethodBeat.getVisibleScene(), token, SystemClock.uptimeMillis(), isBelongFrame ? end - start : 0, queueCost[CALLBACK_INPUT], queueCost[CALLBACK_ANIMATION], queueCost[CALLBACK_TRAVERSAL]);
+                }
+            }
         }
 
         dispatchTimeMs[3] = SystemClock.currentThreadTimeMillis();
@@ -286,7 +287,7 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
     private void doQueueEnd(int type) {
         queueStatus[type] = DO_QUEUE_END;
         queueCost[type] = System.nanoTime() - queueCost[type];
-        synchronized (callbackExist) {
+        synchronized (this) {
             callbackExist[type] = false;
         }
     }
@@ -297,8 +298,13 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
             throw new RuntimeException("never init!");
         }
         if (!isAlive) {
-            MatrixLog.i(TAG, "[onStart] %s", Utils.getStack());
             this.isAlive = true;
+            synchronized (this) {
+                MatrixLog.i(TAG, "[onStart] callbackExist:%s %s", Arrays.toString(callbackExist), Utils.getStack());
+                callbackExist = new boolean[CALLBACK_LAST + 1];
+            }
+            queueStatus = new int[CALLBACK_LAST + 1];
+            queueCost = new long[CALLBACK_LAST + 1];
             addFrameCallback(CALLBACK_INPUT, this, true);
         }
     }
@@ -343,7 +349,7 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
         }
         if (isAlive) {
             this.isAlive = false;
-            MatrixLog.i(TAG, "[onStop] %s", Utils.getStack());
+            MatrixLog.i(TAG, "[onStop] callbackExist:%s %s", Arrays.toString(callbackExist), Utils.getStack());
         }
     }
 

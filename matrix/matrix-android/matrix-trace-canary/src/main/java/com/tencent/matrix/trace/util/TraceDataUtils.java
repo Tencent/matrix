@@ -1,5 +1,7 @@
 package com.tencent.matrix.trace.util;
 
+import android.util.Log;
+
 import com.tencent.matrix.trace.constants.Constants;
 import com.tencent.matrix.trace.core.AppMethodBeat;
 import com.tencent.matrix.trace.items.MethodItem;
@@ -53,18 +55,27 @@ public class TraceDataUtils {
                 depth++;
                 rawData.push(trueId);
             } else {
-                int methodId = getMethodId(trueId); // out
+                int outMethodId = getMethodId(trueId);
                 if (!rawData.isEmpty()) {
                     long in = rawData.pop();
                     depth--;
-                    while (getMethodId(in) != methodId && !rawData.isEmpty()) {
-                        MatrixLog.w(TAG, "[structuredDataToStack] method[%s] not match in! pop[%s] to continue find!", in, methodId);
+                    int inMethodId;
+                    LinkedList<Long> tmp = new LinkedList<>();
+                    tmp.add(in);
+                    while ((inMethodId = getMethodId(in)) != outMethodId && !rawData.isEmpty()) {
+                        MatrixLog.w(TAG, "pop inMethodId[%s] to continue match ouMethodId[%s]", inMethodId, outMethodId);
                         in = rawData.pop();
                         depth--;
+                        tmp.add(in);
                     }
-                    if (lastInId == methodId && methodId == AppMethodBeat.METHOD_ID_DISPATCH) {
+
+                    if (inMethodId != outMethodId && inMethodId == AppMethodBeat.METHOD_ID_DISPATCH) {
+                        MatrixLog.e(TAG, "inMethodId[%s] != outMethodId[%s] throw this outMethodId!", inMethodId, outMethodId);
+                        rawData.addAll(tmp);
+                        depth += rawData.size();
                         continue;
                     }
+
                     long outTime = getTime(trueId);
                     long inTime = getTime(in);
                     long during = outTime - inTime;
@@ -74,10 +85,10 @@ public class TraceDataUtils {
                         result.clear();
                         return;
                     }
-                    MethodItem methodItem = new MethodItem(methodId, (int) during, depth);
+                    MethodItem methodItem = new MethodItem(outMethodId, (int) during, depth);
                     addMethodItem(result, methodItem);
                 } else {
-                    MatrixLog.w(TAG, "[structuredDataToStack] method[%s] not found in! ", methodId);
+                    MatrixLog.w(TAG, "[structuredDataToStack] method[%s] not found in! ", outMethodId);
                 }
             }
         }
@@ -87,7 +98,8 @@ public class TraceDataUtils {
             int methodId = getMethodId(trueId);
             boolean isIn = isIn(trueId);
             long inTime = getTime(trueId) + AppMethodBeat.getDiffTime();
-            MatrixLog.w(TAG, "[structuredDataToStack] has never out method[%s], isIn:%s, rawData size:%s", methodId, isIn, rawData.size());
+            MatrixLog.w(TAG, "[structuredDataToStack] has never out method[%s], isIn:%s, inTime:%s, endTime:%s,rawData size:%s",
+                    methodId, isIn, inTime, endTime, rawData.size());
             if (!isIn) {
                 MatrixLog.e(TAG, "[structuredDataToStack] why has out Method[%s]? is wrong! ", methodId);
                 continue;
@@ -95,26 +107,10 @@ public class TraceDataUtils {
             MethodItem methodItem = new MethodItem(methodId, (int) (endTime - inTime), rawData.size());
             addMethodItem(result, methodItem);
         }
-
-        LinkedList<MethodItem> list = new LinkedList<>();
-        MethodItem last = null;
-        for (MethodItem item : result) {
-            if (null != last) {
-                int index = list.indexOf(last);
-                if (last.depth == item.depth) {
-                    list.add(index, item);
-                } else {
-                    list.add(index + 1, item);
-                }
-
-            } else {
-                list.add(item);
-            }
-            last = item;
-        }
+        TreeNode root = new TreeNode(null, null);
+        stackToTree(result, root);
         result.clear();
-        result.addAll(list);
-
+        treeToStack(root, result);
     }
 
     private static boolean isIn(long trueId) {
@@ -130,6 +126,9 @@ public class TraceDataUtils {
     }
 
     private static int addMethodItem(LinkedList<MethodItem> resultStack, MethodItem item) {
+        if (AppMethodBeat.isDev) {
+            Log.v(TAG, "method:" + item);
+        }
         MethodItem last = null;
         if (!resultStack.isEmpty()) {
             last = resultStack.peek();
@@ -143,6 +142,31 @@ public class TraceDataUtils {
             return item.durTime;
         }
     }
+
+    private static void rechange(TreeNode root) {
+        if (root.children.isEmpty()) {
+            return;
+        }
+        TreeNode[] nodes = new TreeNode[root.children.size()];
+        root.children.toArray(nodes);
+        root.children.clear();
+        for (TreeNode node : nodes) {
+            root.children.addFirst(node);
+            rechange(node);
+        }
+    }
+
+    private static void treeToStack(TreeNode root, LinkedList<MethodItem> list) {
+
+        for (int i = 0; i < root.children.size(); i++) {
+            TreeNode node = root.children.get(i);
+            list.add(node.item);
+            if (!node.children.isEmpty()) {
+                treeToStack(node, list);
+            }
+        }
+    }
+
 
     /**
      * Structured the method stack as a tree Data structure
@@ -165,14 +189,14 @@ public class TraceDataUtils {
             if (lastNode == null || depth == 0) {
                 root.add(node);
             } else if (lastNode.depth() >= depth) {
-                while (lastNode.depth() > depth) {
+                while (null != lastNode && lastNode.depth() > depth) {
                     lastNode = lastNode.father;
                 }
-                if (lastNode.father != null) {
+                if (lastNode != null && lastNode.father != null) {
                     node.father = lastNode.father;
                     lastNode.father.add(node);
                 }
-            } else if (lastNode.depth() < depth) {
+            } else {
                 lastNode.add(node);
             }
             lastNode = node;
@@ -182,14 +206,14 @@ public class TraceDataUtils {
 
 
     public static long stackToString(LinkedList<MethodItem> stack, StringBuilder reportBuilder, StringBuilder logcatBuilder) {
-        logcatBuilder.append("|*   TraceStack:").append("\n");
-        logcatBuilder.append("|*        [id count cost]").append("\n");
+        logcatBuilder.append("|*\t\tTraceStack:").append("\n");
+        logcatBuilder.append("|*\t\t\t[id count cost]").append("\n");
         Iterator<MethodItem> listIterator = stack.iterator();
         long stackCost = 0; // fix cost
         while (listIterator.hasNext()) {
             MethodItem item = listIterator.next();
             reportBuilder.append(item.toString()).append('\n');
-            logcatBuilder.append("|*        ").append(item.print()).append('\n');
+            logcatBuilder.append("|*\t\t").append(item.print()).append('\n');
 
             if (stackCost < item.durTime) {
                 stackCost = item.durTime;
@@ -324,7 +348,7 @@ public class TraceDataUtils {
         StringBuilder ss = new StringBuilder();
         long allLimit = (long) (stackCost * Constants.FILTER_STACK_KEY_ALL_PERCENT);
 
-        List<MethodItem> sortList = new LinkedList<>();
+        LinkedList<MethodItem> sortList = new LinkedList<>();
 
         for (MethodItem item : stack) {
             if (item.durTime >= allLimit) {
@@ -335,18 +359,20 @@ public class TraceDataUtils {
         Collections.sort(sortList, new Comparator<MethodItem>() {
             @Override
             public int compare(MethodItem o1, MethodItem o2) {
-                return Long.compare((o2.depth + 1) * o2.durTime, (o1.depth + 1) * o1.durTime);
+                return Integer.compare((o2.depth + 1) * o2.durTime, (o1.depth + 1) * o1.durTime);
             }
         });
 
         if (sortList.isEmpty() && !stack.isEmpty()) {
-            sortList.add(stack.get(0));
-        } else if (!sortList.isEmpty()) {
-            sortList = sortList.subList(0, 1);
+            MethodItem root = stack.get(0);
+            sortList.add(root);
+        } else if (sortList.size() > 1 && sortList.peek().methodId == AppMethodBeat.METHOD_ID_DISPATCH) {
+            sortList.removeFirst();
         }
 
         for (MethodItem item : sortList) {
             ss.append(item.methodId + "|");
+            break;
         }
         return ss.toString();
     }

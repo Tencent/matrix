@@ -36,13 +36,14 @@ public class Matrix {
     private static volatile Matrix sInstance;
 
     private final HashSet<Plugin> plugins;
-    private final Application     application;
-    private final PluginListener  pluginListener;
+    private final Application application;
+    private final PluginListener pluginListener;
 
     private Matrix(Application app, PluginListener listener, HashSet<Plugin> plugins) {
         this.application = app;
         this.pluginListener = listener;
         this.plugins = plugins;
+        AppActiveMatrixDelegate.INSTANCE.init(application);
         for (Plugin plugin : plugins) {
             plugin.init(application, pluginListener);
             pluginListener.onInit(plugin);
@@ -125,8 +126,8 @@ public class Matrix {
     }
 
     public static class Builder {
-        private final Application    application;
-        private       PluginListener pluginListener;
+        private final Application application;
+        private PluginListener pluginListener;
 
         private HashSet<Plugin> plugins = new HashSet<>();
 

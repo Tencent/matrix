@@ -173,6 +173,11 @@
     return [MatrixAppRebootAnalyzer userSceneOfLastRun];
 }
 
+- (BOOL)isAfterLastLaunchUserRebootDevice
+{
+    return [MatrixAppRebootAnalyzer isAfterLastLaunchUserRebootDevice];
+}
+
 #if !TARGET_OS_OSX
 - (void)notifyAppBackgroundFetch
 {

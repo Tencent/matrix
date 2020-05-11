@@ -71,11 +71,14 @@ public interface IDynamicConfig {
 
         //resource
         clicfg_matrix_resource_detect_interval_millis,
+        clicfg_matrix_resource_detect_interval_millis_bg,
         clicfg_matrix_resource_max_detect_times,
         clicfg_matrix_resource_dump_hprof_enable,
 
         //thread
         clicfg_matrix_thread_check_time,
+        clicfg_matrix_thread_check_bg_time,
+        clicfg_matrix_thread_limit_count,
         clicfg_matrix_thread_report_time,
         clicfg_matrix_thread_contain_sys,
         clicfg_matrix_thread_filter_thread_set,

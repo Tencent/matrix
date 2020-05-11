@@ -35,10 +35,12 @@ public class FilePublisher extends IssuePublisher {
     private final SharedPreferences        sharedPreferences;
     private final SharedPreferences.Editor editor;
     private final HashMap<String, Long>    mPublishedMap;
+    protected final Context context;
 
 
     public FilePublisher(Context context, long expire, String tag, OnIssueDetectListener issueDetectListener) {
         super(issueDetectListener);
+        this.context = context;
         expiredTime = expire;
         sharedPreferences = context.getSharedPreferences(tag + MatrixUtil.getProcessName(context), Context.MODE_PRIVATE);
         mPublishedMap = new HashMap<>();

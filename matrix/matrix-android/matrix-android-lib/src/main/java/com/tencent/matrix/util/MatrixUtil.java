@@ -21,9 +21,13 @@ import android.content.Context;
 import android.os.Looper;
 import android.util.Log;
 
+import java.io.BufferedReader;
 import java.io.Closeable;
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.nio.charset.Charset;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -151,6 +155,24 @@ public final class MatrixUtil {
         return sb.toString();
     }
 
+    public static String printException(Exception e) {
+        final StackTraceElement[] stackTrace = e.getStackTrace();
+        if ((stackTrace == null)) {
+            return "";
+        }
+
+        StringBuilder t = new StringBuilder(e.toString());
+        for (int i = 2; i < stackTrace.length; i++) {
+            t.append('[');
+            t.append(stackTrace[i].getClassName());
+            t.append(':');
+            t.append(stackTrace[i].getMethodName());
+            t.append("(" + stackTrace[i].getLineNumber() + ")]");
+            t.append("\n");
+        }
+        return t.toString();
+    }
+
     /**
      * Closes the given {@code Closeable}. Suppresses any IO exceptions.
      */
@@ -203,5 +225,38 @@ public final class MatrixUtil {
         char c1 = hexDigits[bt & 0xf];
         stringbuffer.append(c0);
         stringbuffer.append(c1);
+    }
+
+    public static String getStringFromFile(String filePath) throws IOException {
+        File fl = new File(filePath);
+        FileInputStream fin = null;
+        String ret;
+        try {
+            fin = new FileInputStream(fl);
+            ret = convertStreamToString(fin);
+        } finally {
+            if (null != fin) {
+                fin.close();
+            }
+        }
+        return ret;
+    }
+
+    public static String convertStreamToString(InputStream is) throws IOException {
+        BufferedReader reader = null;
+        StringBuilder sb = new StringBuilder();
+        try {
+            reader = new BufferedReader(new InputStreamReader(is, "UTF-8"));
+            String line;
+            while ((line = reader.readLine()) != null) {
+                sb.append(line).append('\n');
+            }
+        } finally {
+            if (null != reader) {
+                reader.close();
+            }
+        }
+
+        return sb.toString();
     }
 }

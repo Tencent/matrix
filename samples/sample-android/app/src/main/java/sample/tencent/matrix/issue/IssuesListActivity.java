@@ -152,9 +152,6 @@ public class IssuesListActivity extends AppCompatActivity {
             if (TextUtils.isEmpty(issue.getKey())) tvKey.setVisibility(View.GONE);
             else tvKey.setText("KEY -> " + issue.getKey());
 
-            if (issue.getType() == null) tvType.setVisibility(View.GONE);
-            else tvType.setText("TYPE -> " + issue.getType());
-
             tvIndex.setText((IssuesMap.getCount() - position) + "");
             tvIndex.setTextColor(getColor(position));
             if (isShow)

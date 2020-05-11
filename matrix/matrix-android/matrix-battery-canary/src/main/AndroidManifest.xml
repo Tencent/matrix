@@ -1,8 +1,0 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.tencent.matrix.batterycanary">
-
-    <application>
-    </application>
-
-</manifest>
-
