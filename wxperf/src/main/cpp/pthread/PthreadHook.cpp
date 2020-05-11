@@ -128,16 +128,16 @@ static int read_thread_name(pthread_t __pthread, char *__buf, size_t __buf_size)
 
     snprintf(proc_path, sizeof(proc_path), "/proc/self/task/%d/comm", tid);
 
-    FILE * fd = fopen(proc_path, "r");
+    FILE *file = fopen(proc_path, "r");
 
-    if (!fd) {
+    if (!file) {
         LOGD(TAG, "read_thread_name: file not found: %s", proc_path);
         return errno;
     }
 
-    size_t n = fread(__buf, sizeof(char), __buf_size, fd);
+    size_t n = fread(__buf, sizeof(char), __buf_size, file);
 
-    fclose(fd);
+    fclose(file);
 
     if (n > THREAD_NAME_LEN) {
         LOGE(TAG, "buf overflowed %zu", n);
@@ -251,7 +251,9 @@ static void on_pthread_create(const pthread_t __pthread) {
 }
 
 /**
- * on_pthread_setname 有可能在 on_pthread_create 之前先执行
+ * ~~on_pthread_setname 有可能在 on_pthread_create 之前先执行~~
+ * 在增加了 cond 之后, 必然后于 on_pthread_create 执行
+ *
  * @param __pthread
  * @param __name
  */
@@ -272,7 +274,7 @@ static void on_pthread_setname(pthread_t __pthread, const char *__name) {
 
     pthread_mutex_lock(&m_pthread_meta_mutex);
 
-    if (!m_pthread_metas.count(__pthread)) {
+    if (!m_pthread_metas.count(__pthread)) { // always false
         // 到这里说明没有回调 on_pthread_create, setname 对 on_pthread_create 是可见的
         auto lost_thread_name = static_cast<char *>(malloc(sizeof(char) * THREAD_NAME_LEN));
         wrap_pthread_getname_np(__pthread, lost_thread_name, THREAD_NAME_LEN);
