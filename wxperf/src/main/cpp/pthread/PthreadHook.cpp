@@ -173,6 +173,7 @@ static bool test_match_thread_name(pthread_meta_t &__meta) {
     return false;
 }
 
+// notice: 在父线程回调此函数
 static void on_pthread_create(const pthread_t __pthread) {
     LOGD(TAG, "+++++++ on_pthread_create");
 
@@ -202,7 +203,7 @@ static void on_pthread_create(const pthread_t __pthread) {
     meta.tid = tid;
 
     // 如果还没 setname, 此时拿到的是父线程的名字, 在 setname 的时候有一次更正机会, 否则继承父线程名字
-    // 如果已经 setname, 那么此时拿到的就是当前线程的名字
+    // 如果已经 setname, 那么此时拿到的就是当前创建线程的名字
     meta.thread_name = static_cast<char *>(malloc(sizeof(char) * THREAD_NAME_LEN));
     if (0 != wrap_pthread_getname_np(__pthread, meta.thread_name, THREAD_NAME_LEN)) {
         char temp_name[THREAD_NAME_LEN];
