@@ -14,6 +14,7 @@
 #include <set>
 #include <regex.h>
 #include <Utils.h>
+#include <fcntl.h>
 #include "PthreadHook.h"
 #include "pthread.h"
 #include "Log.h"
@@ -84,6 +85,10 @@ static std::set<regex_wrapper> m_hook_thread_name_regex;
 
 static pthread_key_t m_key;
 
+static pthread_mutex_t m_pthread_routine_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t m_pthread_routine_cond = PTHREAD_COND_INITIALIZER;
+static std::set<pthread_t> m_pthread_routine_flags;
+
 static void on_pthread_destroy(void *__specific);
 
 void pthread_hook_init() {
@@ -112,27 +117,36 @@ void add_hook_thread_name(const char *__regex_str) {
     LOGD(TAG, "parent name regex: %s -> %s, len = %zu", __regex_str, p_regex_str, len);
 }
 
-static int read_thread_name(pthread_t __pthread, char *__buf, size_t __n) {
-    if (!__buf) {
-        return -1;
+static int read_thread_name(pthread_t __pthread, char *__buf, size_t __buf_size) {
+    if (!__buf || __buf_size < THREAD_NAME_LEN) {
+        LOGD(TAG, "buffer error");
+        return ERANGE;
     }
 
-    char proc_path[128];
+    char proc_path[64];
+    pid_t tid = pthread_gettid_np(__pthread);
 
-    sprintf(proc_path, "/proc/self/task/%d/stat", pthread_gettid_np(__pthread));
+    snprintf(proc_path, sizeof(proc_path), "/proc/self/task/%d/comm", tid);
 
-    FILE *file = fopen(proc_path, "r");
+    int fd = open(proc_path, O_RDONLY | O_CLOEXEC);
 
-    if (!file) {
+    if (-1 == fd) {
         LOGD(TAG, "file not found: %s", proc_path);
-        return -1;
+        return errno;
     }
 
-    fscanf(file, "%*d (%[^)]", __buf);
+    ssize_t n = read(fd, __buf, __buf_size);
+    close(fd);
 
-    LOGD(TAG, "read thread name %s, len %zu", __buf, strlen(__buf));
+    if (-1 == n) {
+        return errno;
+    }
 
-    fclose(file);
+    if (n > 0 && __buf[n - 1] == '\n') {
+        __buf[n - 1] = '\0';
+    }
+
+    LOGD(TAG, "read thread %d -> name %s, len %zu", tid, __buf, strlen(__buf));
 
     return 0;
 }
@@ -160,19 +174,21 @@ static bool test_match_thread_name(pthread_meta_t &__meta) {
 }
 
 static void on_pthread_create(const pthread_t __pthread) {
+    LOGD(TAG, "+++++++ on_pthread_create");
 
-    pid_t tid        = pthread_gettid_np(__pthread);
+    pid_t tid  = pthread_gettid_np(__pthread);
 
     // 反射 Java 获取堆栈时加锁会造成死锁, 提前获取堆栈
-    const size_t BUF_SIZE = 1024;
-    char * java_stacktrace = static_cast<char *>(malloc(BUF_SIZE));
+    const size_t BUF_SIZE         = 1024;
+    char         *java_stacktrace = static_cast<char *>(malloc(BUF_SIZE));
     if (java_stacktrace) {
         get_java_stacktrace(java_stacktrace, BUF_SIZE);
 //        strncpy(java_stacktrace, " (fake stacktrace)", BUF_SIZE);
     }
 
-    LOGD(TAG, "+++++++ on_pthread_create parendt_tid: %d -> tid: %d", pthread_gettid_np(pthread_self()), tid);
+    LOGD(TAG, "parent_tid: %d -> tid: %d", pthread_gettid_np(pthread_self()), tid);
     pthread_mutex_lock(&m_pthread_meta_mutex);
+
 
     if (m_pthread_metas.count(__pthread)) {
         LOGD(TAG, "on_pthread_create: thread already recorded");
@@ -188,8 +204,10 @@ static void on_pthread_create(const pthread_t __pthread) {
     // 如果还没 setname, 此时拿到的是父线程的名字, 在 setname 的时候有一次更正机会, 否则继承父线程名字
     // 如果已经 setname, 那么此时拿到的就是当前线程的名字
     meta.thread_name = static_cast<char *>(malloc(sizeof(char) * THREAD_NAME_LEN));
-    if (0 != wrap_pthread_getname_np(__pthread, meta.thread_name, THREAD_NAME_LEN) == 0) {
-        strncpy(meta.thread_name, "(null name)", THREAD_NAME_LEN);
+    if (0 != wrap_pthread_getname_np(__pthread, meta.thread_name, THREAD_NAME_LEN)) {
+        char temp_name[THREAD_NAME_LEN];
+        snprintf(temp_name, THREAD_NAME_LEN, "tid-%d", pthread_gettid_np(__pthread));
+        strncpy(meta.thread_name, temp_name, THREAD_NAME_LEN);
     }
 
     LOGD(TAG, "on_pthread_create: pthread = %ld, thread name: %s", __pthread, meta.thread_name);
@@ -216,6 +234,15 @@ static void on_pthread_create(const pthread_t __pthread) {
     }
 
     pthread_mutex_unlock(&m_pthread_meta_mutex);
+
+    pthread_mutex_lock(&m_pthread_routine_mutex);
+
+    m_pthread_routine_flags.emplace(__pthread);
+    LOGD(TAG, "notify waiting count : %zu", m_pthread_routine_flags.size());
+    pthread_cond_broadcast(&m_pthread_routine_cond);
+
+    pthread_mutex_unlock(&m_pthread_routine_mutex);
+
     LOGD(TAG, "------ on_pthread_create end");
 }
 
@@ -285,8 +312,25 @@ static void on_pthread_setname(pthread_t __pthread, const char *__name) {
     LOGD(TAG, "--------------------------");
 }
 
+static inline void before_routine_start() {
+    LOGI(TAG, "before_routine_start");
+    pthread_mutex_lock(&m_pthread_routine_mutex);
 
-void pthread_dump_impl(FILE *__log_file) {
+    pthread_t self_thread = pthread_self();
+    while (!m_pthread_routine_flags.count(self_thread)) {
+        LOGI(TAG, "before_routine_start: waiting for create ready");
+        pthread_cond_wait(&m_pthread_routine_cond, &m_pthread_routine_mutex);
+    }
+
+    LOGI(TAG, "before_routine_start: create ready, just continue, waiting count : %zu", m_pthread_routine_flags.size());
+
+    m_pthread_routine_flags.erase(self_thread);
+
+    pthread_mutex_unlock(&m_pthread_routine_mutex);
+}
+
+
+static inline void pthread_dump_impl(FILE *__log_file) {
     if (!__log_file) {
         LOGE(TAG, "open file failed");
         return;
@@ -351,7 +395,9 @@ void pthread_dump(const char *__path) {
 }
 
 
-char *pthread_dump_json_impl(FILE *__log_file) {
+static inline char *pthread_dump_json_impl(FILE *__log_file) {
+
+    LOGD(TAG, "pthread dump waiting count: %zu", m_pthread_routine_flags.size());
 
     std::map<uint64_t, std::vector<pthread_meta_t>> pthread_metas_by_hash;
 
@@ -396,8 +442,8 @@ char *pthread_dump_json_impl(FILE *__log_file) {
             Dl_info stack_info = {nullptr};
             int     success    = dladdr((void *) frame.pc, &stack_info);
 
-            LOGE(TAG, "===> success = %d, pc =  %p, dl_info.dli_sname = %p %s",
-                 success, (void *) frame.pc, (void *) stack_info.dli_sname, stack_info.dli_sname);
+//            LOGE(TAG, "===> success = %d, pc =  %p, dl_info.dli_sname = %p %s",
+//                 success, (void *) frame.pc, (void *) stack_info.dli_sname, stack_info.dli_sname);
 
             char *demangled_name = nullptr;
             if (success > 0) {
@@ -460,7 +506,7 @@ char *pthread_dump_json_impl(FILE *__log_file) {
     return nullptr;
 }
 
-char *pthread_dump_json(const char *__path) {
+void pthread_dump_json(const char *__path) {
 
     LOGD(TAG,
          ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> pthread dump json begin <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
@@ -478,11 +524,6 @@ char *pthread_dump_json(const char *__path) {
 
     LOGD(TAG,
          ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> pthread dump json end <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
-
-    char *ret;
-
-
-    return ret;
 }
 
 void pthread_hook_on_dlopen(const char *__file_name) {
@@ -532,6 +573,8 @@ static void *pthread_routine_wrapper(void *__arg) {
     *specific = 'P';
 
     pthread_setspecific(m_key, specific);
+
+    before_routine_start();
 
     auto *args_wrapper = (routine_wrapper_t *) __arg;
     void *ret          = args_wrapper->origin_func(args_wrapper->origin_args);

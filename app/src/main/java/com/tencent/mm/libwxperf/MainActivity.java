@@ -47,8 +47,8 @@ public class MainActivity extends AppCompatActivity {
 //                            .addHookSo(".*libnative-lib\\.so$")
                                     .addHookSo(".*\\.so$")
 //                            .addIgnoreSo(".*libart\\.so$")
-//                            .addHookThread(".*")
-                                    .addHookThread(threadNameRegex)
+                            .addHookThread(".*")
+//                                    .addHookThread(threadNameRegex)
 //                            .addHookThread("MyHandlerThread")
 //                            .addHookThread("\\[GT\\]MediaCodecR$")
                     )
@@ -164,13 +164,35 @@ public class MainActivity extends AppCompatActivity {
                             new Thread(new Runnable() {
                                 @Override
                                 public void run() {
-                                    try {
-                                        Thread.sleep(1000);
-                                    } catch (InterruptedException e) {
-                                        e.printStackTrace();
-                                    }
+//                                    try {
+//                                        Thread.sleep(1000);
+//                                    } catch (InterruptedException e) {
+//                                        e.printStackTrace();
+//                                    }
                                 }
                             }, "SubTestTh").start();
+
+
+                            new Thread(new Runnable() {
+                                @Override
+                                public void run() {
+
+                                }
+                            }).start();
+
+                            new Thread(new Runnable() {
+                                @Override
+                                public void run() {
+
+                                }
+                            }).start();
+
+                            new Thread(new Runnable() {
+                                @Override
+                                public void run() {
+
+                                }
+                            }).start();
 
                             try {
                                 Thread.sleep(3000);
