@@ -119,7 +119,7 @@ void add_hook_thread_name(const char *__regex_str) {
 
 static int read_thread_name(pthread_t __pthread, char *__buf, size_t __buf_size) {
     if (!__buf || __buf_size < THREAD_NAME_LEN) {
-        LOGD(TAG, "buffer error");
+        LOGD(TAG, "read_thread_name: buffer error");
         return ERANGE;
     }
 
@@ -128,25 +128,28 @@ static int read_thread_name(pthread_t __pthread, char *__buf, size_t __buf_size)
 
     snprintf(proc_path, sizeof(proc_path), "/proc/self/task/%d/comm", tid);
 
-    int fd = open(proc_path, O_RDONLY | O_CLOEXEC);
+    FILE * fd = fopen(proc_path, "r");
 
-    if (-1 == fd) {
-        LOGD(TAG, "file not found: %s", proc_path);
+    if (!fd) {
+        LOGD(TAG, "read_thread_name: file not found: %s", proc_path);
         return errno;
     }
 
-    ssize_t n = read(fd, __buf, __buf_size);
-    close(fd);
+    size_t n = fread(__buf, sizeof(char), __buf_size, fd);
 
-    if (-1 == n) {
-        return errno;
+    fclose(fd);
+
+    if (n > THREAD_NAME_LEN) {
+        LOGE(TAG, "buf overflowed %zu", n);
+        abort();
     }
 
     if (n > 0 && __buf[n - 1] == '\n') {
+        LOGD(TAG, "read_thread_name: end with \\0");
         __buf[n - 1] = '\0';
     }
 
-    LOGD(TAG, "read thread %d -> name %s, len %zu", tid, __buf, strlen(__buf));
+    LOGD(TAG, "read_thread_name: %d -> name %s, len %zu, n = %zu", tid, __buf, strlen(__buf), n);
 
     return 0;
 }
