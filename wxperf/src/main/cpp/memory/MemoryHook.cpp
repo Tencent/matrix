@@ -161,10 +161,11 @@ void memory_hook_init() {
 tsd_t *tsd_fetch() {
     auto *tsd = (tsd_t *) pthread_getspecific(m_tsd_key);
     if (unlikely(!tsd)) {
-        pthread_mutex_lock(&m_tsd_global_set_mutex);
-
         tsd = new tsd_t;
         pthread_setspecific(m_tsd_key, tsd);
+
+        pthread_mutex_lock(&m_tsd_global_set_mutex);
+
         m_tsd_global_set.insert(tsd);
 
         pthread_mutex_unlock(&m_tsd_global_set_mutex);
@@ -198,10 +199,11 @@ static inline void on_acquire_memory(void *__caller,
         return;
     }
 
-    // 如果当前 tsd 指针重复了, 该指针要么在其他线程释放了, 要么释放函数没有 hook 到, 但记录都应该被清除
-    __tsd->ptr_meta.erase(__ptr);
+    // 如果当前 tsd 指针重复了, 该指针要么在其他线程释放了, 要么释放函数没有 hook 到
+    // 但 flush 时需要对账, 所以不能清除记录
+//    __tsd->ptr_meta.erase(__ptr);
 
-    ptr_meta_t ptr_meta;
+    ptr_meta_t ptr_meta{};
     ptr_meta.size       = __byte_count;
     ptr_meta.caller     = __caller;
     ptr_meta.stack_hash = 0; // clear hash
