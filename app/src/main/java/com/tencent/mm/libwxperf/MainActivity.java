@@ -38,21 +38,21 @@ public class MainActivity extends AppCompatActivity {
         Log.d(TAG, "threadName = " + threadNameRegex + ", " + name.matches(threadNameRegex));
 
         try {
-            HookManager.INSTANCE
-//                    .addHook(MemoryHook.INSTANCE
-//                            .addHookSo(".*libnative-lib\\.so$")
-//                            .enableStacktrace(true)
-//                            .enableMmapHook(true))
-                    .addHook(PthreadHook.INSTANCE
-//                            .addHookSo(".*libnative-lib\\.so$")
-                                    .addHookSo(".*\\.so$")
-//                            .addIgnoreSo(".*libart\\.so$")
-                            .addHookThread(".*")
-//                                    .addHookThread(threadNameRegex)
-//                            .addHookThread("MyHandlerThread")
-//                            .addHookThread("\\[GT\\]MediaCodecR$")
-                    )
-                    .commitHooks();
+//            HookManager.INSTANCE
+////                    .addHook(MemoryHook.INSTANCE
+////                            .addHookSo(".*libnative-lib\\.so$")
+////                            .enableStacktrace(true)
+////                            .enableMmapHook(true))
+//                    .addHook(PthreadHook.INSTANCE
+////                            .addHookSo(".*libnative-lib\\.so$")
+//                                    .addHookSo(".*\\.so$")
+////                            .addIgnoreSo(".*libart\\.so$")
+//                            .addHookThread(".*")
+////                                    .addHookThread(threadNameRegex)
+////                            .addHookThread("MyHandlerThread")
+////                            .addHookThread("\\[GT\\]MediaCodecR$")
+//                    )
+//                    .commitHooks();
 
             throw new HookManager.HookFailedException("adfad");
         } catch (HookManager.HookFailedException e) {
@@ -293,5 +293,20 @@ public class MainActivity extends AppCompatActivity {
                 UnwindBenckmarkTest.debugNative();
             }
         }).start();
+    }
+
+    public void memoryBenchmark(View view) {
+        MemoryBenchmarkTest.benchmarkNative();
+        try {
+            HookManager.INSTANCE
+                    .addHook(MemoryHook.INSTANCE
+                            .addHookSo(".*libnative-lib\\.so$")
+                            .enableStacktrace(false)
+                            .enableMmapHook(false))
+                    .commitHooks();
+        } catch (HookManager.HookFailedException e) {
+            e.printStackTrace();
+        }
+        MemoryBenchmarkTest.benchmarkNative();
     }
 }

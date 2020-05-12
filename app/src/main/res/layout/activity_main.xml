@@ -84,8 +84,8 @@
         android:layout_height="wrap_content"
         android:layout_marginStart="5dp"
         android:layout_marginTop="11dp"
-        android:text="unwind"
         android:onClick="unwindTest"
+        android:text="unwind"
         android:textAllCaps="false"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/doSomething" />
@@ -109,5 +109,16 @@
         android:textAllCaps="false"
         app:layout_constraintBaseline_toBaselineOf="@+id/btn_unwind_benchmark"
         app:layout_constraintStart_toEndOf="@+id/btn_unwind_benchmark" />
+
+    <Button
+        android:id="@+id/btn_memory_benchmark"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:text="MemoryBenchmark"
+        android:textAllCaps="false"
+        android:onClick="memoryBenchmark"
+        app:layout_constraintStart_toStartOf="@+id/btn_unwind"
+        app:layout_constraintTop_toBottomOf="@+id/btn_unwind" />
 
 </android.support.constraint.ConstraintLayout>
