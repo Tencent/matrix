@@ -197,7 +197,9 @@ static void on_pthread_create(const pthread_t __pthread) {
     if (m_pthread_metas.count(__pthread)) {
         LOGD(TAG, "on_pthread_create: thread already recorded");
         pthread_mutex_unlock(&m_pthread_meta_mutex);
-        free(java_stacktrace);
+        if (java_stacktrace) {
+            free(java_stacktrace);
+        }
         return;
     }
 
