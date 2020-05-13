@@ -98,6 +98,30 @@ public class MappingCollector implements MappingProcessor {
         }
     }
 
+    public MethodInfo proguardMethodName(String originalClassName, String originalMethodName, String originalMethodDesc) {
+        MethodInfo findMethod = null;
+        DescInfo descInfo = parseMethodDesc(originalMethodDesc, true);
+//        Log.i(TAG, "proguardMethodName desc parse " + descInfo);
+        // Class name -> obfuscated method names.
+        Map<String, Set<MethodInfo>> methodMap = mOriginalClassMethodMap.get(originalClassName);
+        if (methodMap != null) {
+            Set<MethodInfo> methodSet = methodMap.get(originalMethodName);
+            if (null != methodSet) {
+                // Find all matching methods.
+                Iterator<MethodInfo> methodInfoIterator = methodSet.iterator();
+                while (methodInfoIterator.hasNext()) {
+                    MethodInfo methodInfo = methodInfoIterator.next();
+                    if (methodInfo.matches(descInfo.returnType, descInfo.arguments)) {
+                        findMethod = new MethodInfo(methodInfo);
+                        findMethod.setDesc(methodInfo.desc);
+                        break;
+                    }
+                }
+            }
+        }
+        return findMethod;
+    }
+
     /**
      * get original method info
      *
@@ -200,7 +224,7 @@ public class MappingCollector implements MappingProcessor {
      * @param isRawToObfuscated
      * @return
      */
-    private DescInfo parseMethodDesc(String desc, boolean isRawToObfuscated) {
+    public DescInfo parseMethodDesc(String desc, boolean isRawToObfuscated) {
         DescInfo descInfo = new DescInfo();
         Type[] argsObj = Type.getArgumentTypes(desc);
         StringBuffer argumentsBuffer = new StringBuffer();
@@ -268,7 +292,7 @@ public class MappingCollector implements MappingProcessor {
     /**
      * about method desc info
      */
-    private static class DescInfo {
+    public static class DescInfo {
         private String desc;
         private String arguments;
         private String returnType;
@@ -283,6 +307,19 @@ public class MappingCollector implements MappingProcessor {
 
         public void setDesc(String desc) {
             this.desc = desc;
+        }
+
+        public String getArguments() {
+            return arguments;
+        }
+
+        public String getReturnType() {
+            return returnType;
+        }
+
+        @Override
+        public String toString() {
+            return "DescInfo{" + "desc='" + desc + '\'' + ", arguments='" + arguments + '\'' + ", returnType='" + returnType + '\'' + '}';
         }
     }
 

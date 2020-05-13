@@ -254,7 +254,7 @@ public class MethodTracer {
             super.visit(version, access, name, signature, superName, interfaces);
             this.className = name;
             this.isActivityOrSubClass = isActivityOrSubClass(className, collectedClassExtendMap);
-            this.isNeedTrace = MethodCollector.isNeedTrace(configuration, className, mappingCollector);
+            this.isNeedTrace = MethodCollector.isClassNeedTrace(configuration, className, mappingCollector);
             if ((access & Opcodes.ACC_ABSTRACT) > 0 || (access & Opcodes.ACC_INTERFACE) > 0) {
                 this.isABSClass = true;
             }

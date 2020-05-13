@@ -1,12 +1,15 @@
 package com.tencent.matrix.trace;
 
 import com.tencent.matrix.javalib.util.FileUtil;
+import com.tencent.matrix.javalib.util.Log;
 import com.tencent.matrix.javalib.util.Util;
 import com.tencent.matrix.trace.retrace.MappingCollector;
+import com.tencent.matrix.trace.retrace.MethodInfo;
 
 import java.util.HashSet;
 
 public class Configuration {
+    public static final String TAG = "Matrix.Configuration";
 
     public String packageName;
     public String mappingDir;
@@ -16,6 +19,7 @@ public class Configuration {
     public String blackListFilePath;
     public String traceClassOut;
     public HashSet<String> blackSet = new HashSet<>();
+    public HashSet<MethodInfo> blackMethodSet = new HashSet<>();
 
     Configuration(String packageName, String mappingDir, String baseMethodMapPath, String methodMapFilePath,
                   String ignoreMethodMapFilePath, String blackListFilePath, String traceClassOut) {
@@ -51,10 +55,22 @@ public class Configuration {
                 } else if (black.startsWith("-keeppackage ")) {
                     black = black.replace("-keeppackage ", "");
                     blackSet.add(processor.proguardPackageName(black, black));
+                } else if (black.startsWith("-keepmethod")) {
+                    Log.i(TAG, black);
+                    black = black.replace("-keepmethod", "").substring(1);
+                    String[] keepMethod = black.split(" ");
+                    String originalClass = keepMethod[0];
+                    String originalMethod = keepMethod[1];
+                    String originalMethodDesc = keepMethod[2];
+                    Log.i(TAG, "keepmethod [" + originalClass + "#" + originalMethod + " . desc = " + originalMethodDesc + " ] ");
+                    MethodInfo methodInfo = processor.proguardMethodName(originalClass, originalMethod, originalMethodDesc);
+                    if (methodInfo != null) {
+                        blackMethodSet.add(methodInfo);
+                    }
                 }
             }
         }
-        return blackSet.size();
+        return blackSet.size() + blackMethodSet.size();
     }
 
     @Override

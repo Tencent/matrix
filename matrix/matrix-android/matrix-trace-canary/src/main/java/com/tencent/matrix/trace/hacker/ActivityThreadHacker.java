@@ -45,9 +45,19 @@ public class ActivityThreadHacker {
             sApplicationCreateBeginTime = SystemClock.uptimeMillis();
             sApplicationCreateBeginMethodIndex = AppMethodBeat.getInstance().maskIndex("ApplicationCreateBeginMethodIndex");
             Class<?> forName = Class.forName("android.app.ActivityThread");
-            Field field = forName.getDeclaredField("sCurrentActivityThread");
-            field.setAccessible(true);
-            Object activityThreadValue = field.get(forName);
+            Field field = null;
+            Object activityThreadValue = null;
+            try {
+                field = forName.getDeclaredField("sCurrentActivityThread");
+                field.setAccessible(true);
+                activityThreadValue = field.get(forName);
+            } catch (NoSuchFieldException e) {
+                MatrixLog.w(TAG, "hook system handler but no ActivityThread target!");
+                Method currentActivityThread = forName.getDeclaredMethod("currentActivityThread");
+                currentActivityThread.setAccessible(true);
+                activityThreadValue = currentActivityThread.invoke(null);
+            }
+
             Field mH = forName.getDeclaredField("mH");
             mH.setAccessible(true);
             Object handler = mH.get(activityThreadValue);
@@ -59,7 +69,7 @@ public class ActivityThreadHacker {
             callbackField.set(handler, callback);
             MatrixLog.i(TAG, "hook system handler completed. start:%s SDK_INT:%s", sApplicationCreateBeginTime, Build.VERSION.SDK_INT);
         } catch (Exception e) {
-            MatrixLog.e(TAG, "hook system handler err! %s", e.getCause().toString());
+            MatrixLog.e(TAG, "hook system handler err! %s", e.getCause() == null ? e.toString() : e.getCause().toString());
         }
     }
 
