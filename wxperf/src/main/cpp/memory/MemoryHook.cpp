@@ -228,11 +228,19 @@ static inline void on_acquire_memory(void *__caller,
 
     __tsd->ptr_meta.emplace(__ptr, ptr_meta);
 
+    if (__tsd->ptr_meta.size() > 10000 || __tsd->borrowed_ptrs.size() > 10000) {
+        LOGD(TAG, "on_acquire_memory: trigger to flush ptr = %zu, bor = %zu", __tsd->ptr_meta.size(), __tsd->borrowed_ptrs.size());
+        pthread_rwlock_wrlock(&m_tsd_merge_bucket_lock);
+        flush_tsd_to(__tsd, &m_merge_bucket);
+        pthread_rwlock_unlock(&m_tsd_merge_bucket_lock);
+        __tsd->ptr_meta.clear();
+        __tsd->stack_meta.clear();
+        __tsd->borrowed_ptrs.clear();
+    }
     // todo countdown to flush
 }
 
 static inline bool do_release_memory_meta(void *__ptr, tsd_t *__tsd, bool __is_mmap) {
-    // 单个线程内不存在多个相同的指针
     auto meta_it = __tsd->ptr_meta.find(__ptr);
     if (unlikely(meta_it == __tsd->ptr_meta.end())) {
         return false;
@@ -242,7 +250,8 @@ static inline bool do_release_memory_meta(void *__ptr, tsd_t *__tsd, bool __is_m
 
     decrease_stack_size(__tsd->stack_meta, ptr_meta);
 
-    __tsd->ptr_meta.erase(__ptr);
+    // flush 需要对账, 所以只 erase 一个记录
+    __tsd->ptr_meta.erase(meta_it);
 
     return true;
 }
