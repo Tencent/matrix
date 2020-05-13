@@ -107,29 +107,30 @@ static inline void flush_tsd_to(tsd_t *__tsd_src, tsd_t *__dest) {
 
     // 保存所有的 borrow 指针
     __dest->borrowed_ptrs.insert(__tsd_src->borrowed_ptrs.begin(), __tsd_src->borrowed_ptrs.end());
+    LOGI(TAG, "flush_tsd done");
+}
 
+static inline void repay_debt(tsd_t *__tsd) {
     // 还债
-    for (auto borrow_it = __dest->borrowed_ptrs.begin();
-         borrow_it != __dest->borrowed_ptrs.end();) {
+    for (auto borrow_it = __tsd->borrowed_ptrs.begin();
+         borrow_it != __tsd->borrowed_ptrs.end();) {
         LOGI(TAG, "flush ptr %p", *borrow_it);
-        if (!__dest->ptr_meta.count(*borrow_it)) {
+        if (!__tsd->ptr_meta.count(*borrow_it)) {
             LOGI(TAG, "but ptr not found %p", *borrow_it);
             borrow_it++;
             continue;
         }
 
         // 有一还一
-        auto ptr_meta_it = __dest->ptr_meta.find(*borrow_it);
-        if (ptr_meta_it != __dest->ptr_meta.end()) {
-            decrease_stack_size(__dest->stack_meta, ptr_meta_it->second);
-            __dest->ptr_meta.erase(ptr_meta_it);
-            __dest->borrowed_ptrs.erase(borrow_it++);// note: 遍历时删除元素需要这样自增
+        auto ptr_meta_it = __tsd->ptr_meta.find(*borrow_it);
+        if (ptr_meta_it != __tsd->ptr_meta.end()) {
+            decrease_stack_size(__tsd->stack_meta, ptr_meta_it->second);
+            __tsd->ptr_meta.erase(ptr_meta_it);
+            __tsd->borrowed_ptrs.erase(borrow_it++);// note: 遍历时删除元素需要这样自增
         } else {
             borrow_it++;
         }
     }
-
-    LOGI(TAG, "flush_tsd done");
 }
 
 void on_caller_thread_destroy(void *__arg) {
@@ -140,6 +141,7 @@ void on_caller_thread_destroy(void *__arg) {
 
     pthread_rwlock_wrlock(&m_tsd_merge_bucket_lock);
     flush_tsd_to(current_tsd, &m_merge_bucket);
+    repay_debt(&m_merge_bucket);
     pthread_rwlock_unlock(&m_tsd_merge_bucket_lock);
 
     delete current_tsd;
@@ -229,9 +231,11 @@ static inline void on_acquire_memory(void *__caller,
     __tsd->ptr_meta.emplace(__ptr, ptr_meta);
 
     if (__tsd->ptr_meta.size() > 10000 || __tsd->borrowed_ptrs.size() > 10000) {
-        LOGD(TAG, "on_acquire_memory: trigger to flush ptr = %zu, bor = %zu", __tsd->ptr_meta.size(), __tsd->borrowed_ptrs.size());
+        LOGD(TAG, "on_acquire_memory: trigger to flush ptr = %zu, bor = %zu",
+             __tsd->ptr_meta.size(), __tsd->borrowed_ptrs.size());
         pthread_rwlock_wrlock(&m_tsd_merge_bucket_lock);
         flush_tsd_to(__tsd, &m_merge_bucket);
+        repay_debt(&m_merge_bucket);
         pthread_rwlock_unlock(&m_tsd_merge_bucket_lock);
         __tsd->ptr_meta.clear();
         __tsd->stack_meta.clear();
@@ -524,6 +528,7 @@ static inline void dump_impl(FILE *log_file, bool enable_mmap_hook) {
     for (auto tsd : m_tsd_global_set) {
         flush_tsd_to(tsd, &dump_dst);
     }
+    repay_debt(&dump_dst);
 
     pthread_mutex_unlock(&m_tsd_global_set_mutex);
 
