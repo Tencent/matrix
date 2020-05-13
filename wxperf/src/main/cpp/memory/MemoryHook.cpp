@@ -191,6 +191,11 @@ static inline void on_acquire_memory(void *__caller,
 
     tsd_t *__tsd = tsd_fetch();
 
+    if (!__ptr) {
+        LOGE(TAG, "on_acquire_memory: invalid pointer");
+        return;
+    }
+
     // 如果当前 tsd 指针重复了, 该指针要么在其他线程释放了, 要么释放函数没有 hook 到, 但记录都应该被清除
     __tsd->ptr_meta.erase(__ptr);
 
@@ -243,6 +248,11 @@ static inline bool do_release_memory_meta(void *__ptr, tsd_t *__tsd, bool __is_m
 }
 
 static inline void on_release_memory(void *__ptr, bool __is_mmap) {
+    if (!__ptr) {
+        LOGE(TAG, "on_release_memory: invalid pointer");
+        return;
+    }
+
     tsd_t *tsd = tsd_fetch();
 
     bool released = do_release_memory_meta(__ptr, tsd, __is_mmap);
