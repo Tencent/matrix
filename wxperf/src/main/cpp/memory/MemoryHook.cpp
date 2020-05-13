@@ -536,12 +536,12 @@ static inline void dump_impl(FILE *log_file, bool enable_mmap_hook) {
     dump_stacks(log_file, heap_stack_metas);
 
     fprintf(log_file,
-            "tsd count = %zu\n"
+            "tsd count = %zu, borrowed count = %zu\n"
             "<void *, ptr_meta_t> m_ptr_meta [%zu * %zu = (%zu)]\n"
             "<void *, caller_meta_t> m_caller_meta [%zu * %zu = (%zu)]\n"
             "<uint64_t, stack_meta_t> m_stack_meta [%zu * %zu = (%zu)]\n\n",
 
-            tsd_size,
+            tsd_size, dump_dst.borrowed_ptrs.size(),
 
             sizeof(ptr_meta_t) + sizeof(void *), dump_dst.ptr_meta.size(),
             (sizeof(ptr_meta_t) + sizeof(void *)) * dump_dst.ptr_meta.size(),
@@ -564,12 +564,12 @@ static inline void dump_impl(FILE *log_file, bool enable_mmap_hook) {
     dump_stacks(log_file, mmap_stack_metas);
 
     fprintf(log_file,
-            "tsd count = %zu\n"
+            "tsd count = %zu, borrowed count = %zu\n"
             "<void *, ptr_meta_t> m_ptr_meta [%zu * %zu = (%zu)]\n"
             "<void *, caller_meta_t> m_caller_meta [%zu * %zu = (%zu)]\n"
             "<uint64_t, stack_meta_t> m_stack_meta [%zu * %zu = (%zu)]\n\n",
 
-            tsd_size,
+            tsd_size, dump_dst.borrowed_ptrs.size(),
 
             sizeof(ptr_meta_t) + sizeof(void *), dump_dst.ptr_meta.size(),
             (sizeof(ptr_meta_t) + sizeof(void *)) * dump_dst.ptr_meta.size(),
