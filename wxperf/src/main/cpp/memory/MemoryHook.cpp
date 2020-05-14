@@ -168,7 +168,7 @@ void memory_hook_init() {
 //    pthread_mutex_unlock(&m_tsd_global_set_mutex);
 }
 
-tsd_t *tsd_fetch() {
+static inline tsd_t *tsd_fetch() {
     auto *tsd = (tsd_t *) pthread_getspecific(m_tsd_key);
     if (unlikely(!tsd)) {
         LOGI(TAG, "tsd_fetch: creating new tsd");
@@ -228,7 +228,7 @@ static inline size_t flush_all_locked() {
     return count;
 }
 
-static void on_acquire_memory(void *__caller,
+static inline void on_acquire_memory(void *__caller,
                               void *__ptr,
                               size_t __byte_count,
                               bool __is_mmap) {
