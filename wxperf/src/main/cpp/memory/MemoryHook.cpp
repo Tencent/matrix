@@ -49,7 +49,7 @@ static pthread_key_t m_tsd_key;
 static std::set<tsd_t *> m_tsd_global_set;
 static pthread_mutex_t   m_tsd_global_set_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-static size_t m_max_tsd_capacity = 100000;
+static size_t m_max_tsd_capacity = 20000;
 
 static bool is_stacktrace_enabled      = false;
 static bool is_caller_sampling_enabled = false;
@@ -147,7 +147,9 @@ static inline void on_caller_thread_destroy(void *__arg) {
 
     pthread_rwlock_wrlock(&m_tsd_merge_bucket_lock);
     flush_tsd_to(current_tsd, &m_merge_bucket);
-    repay_debt(&m_merge_bucket);
+    size_t repaid_count = repay_debt(&m_merge_bucket);
+    LOGD(TAG, "on_caller_thread_destroy: repaid = %zu, retained = %zu",
+         repaid_count, m_merge_bucket.borrowed_ptrs.size());
     pthread_rwlock_unlock(&m_tsd_merge_bucket_lock);
 
     pthread_mutex_unlock(&m_tsd_global_set_mutex);
@@ -207,12 +209,13 @@ static inline size_t flush_all_locked() {
         tsd->borrowed_ptrs.clear();
     }
 
-    repay_debt(&m_merge_bucket);
+    size_t repaid_count = repay_debt(&m_merge_bucket);
 
     {
         std::multiset<void *> temp_set;
         m_merge_bucket.borrowed_ptrs.swap(temp_set);
-        LOGD(TAG, "flush_all_locked: clear borrowed count %zu", temp_set.size());
+        LOGD(TAG, "flush_all_locked: repaid count: %zu, clear borrowed count: %zu", repaid_count,
+             temp_set.size());
         temp_set.clear();
     }
 
@@ -274,13 +277,14 @@ static void on_acquire_memory(void *__caller,
 
         pthread_rwlock_wrlock(&m_tsd_merge_bucket_lock);
         flush_tsd_to(__tsd, &m_merge_bucket);
-        size_t repaid_count  = repay_debt(&m_merge_bucket);
+        size_t repaid_count          = repay_debt(&m_merge_bucket);
         size_t retained_borrow_count = m_merge_bucket.borrowed_ptrs.size();
         pthread_rwlock_unlock(&m_tsd_merge_bucket_lock);
 
         LOGD(TAG,
              "on_acquire_memory: triggerred flush ptr = %zu, bor = %zu, stack = %zu, repaid = %zu, retained = %zu",
-             __tsd->ptr_meta.size(), __tsd->borrowed_ptrs.size(), __tsd->stack_meta.size(), repaid_count, retained_borrow_count);
+             __tsd->ptr_meta.size(), __tsd->borrowed_ptrs.size(), __tsd->stack_meta.size(),
+             repaid_count, retained_borrow_count);
 
         if (retained_borrow_count > m_max_tsd_capacity * 10) {
             LOGD(TAG, "on_acquire_memory: trigger flush all tsd");
