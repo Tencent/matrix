@@ -574,6 +574,8 @@ static inline void dump_impl(FILE *log_file, bool enable_mmap_hook) {
 
     size_t tsd_count = flush_all_locked();
 
+    pthread_rwlock_rdlock(&m_tsd_merge_bucket_lock);
+
     LOGD(TAG, "retained borrowed count: %zu", m_merge_bucket.borrowed_ptrs.size());
 
     std::map<void *, caller_meta_t>  heap_caller_metas;
@@ -609,7 +611,7 @@ static inline void dump_impl(FILE *log_file, bool enable_mmap_hook) {
             sizeof(void *) * m_merge_bucket.borrowed_ptrs.size());
 
     if (!enable_mmap_hook) {
-        return;
+        goto end;
     }
 
     // mmap allocation
@@ -618,6 +620,9 @@ static inline void dump_impl(FILE *log_file, bool enable_mmap_hook) {
 
     dump_callers(log_file, m_merge_bucket.ptr_meta, mmap_caller_metas);
     dump_stacks(log_file, mmap_stack_metas);
+
+    end:
+    pthread_rwlock_unlock(&m_tsd_merge_bucket_lock);
 }
 
 void dump(bool enable_mmap_hook, const char *path) {
