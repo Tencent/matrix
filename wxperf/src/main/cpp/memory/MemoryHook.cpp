@@ -59,6 +59,8 @@ static size_t m_sample_size_max = 0;
 
 static double m_sampling = 1;
 
+static size_t m_lost_ptr_count = 0;
+
 void enable_stacktrace(bool __enable) {
     is_stacktrace_enabled = __enable;
 }
@@ -214,6 +216,7 @@ static inline size_t flush_all_locked() {
     {
         std::multiset<void *> temp_set;
         m_merge_bucket.borrowed_ptrs.swap(temp_set);
+        m_lost_ptr_count += temp_set.size();
         LOGD(TAG, "flush_all_locked: repaid count: %zu, clear borrowed count: %zu", repaid_count,
              temp_set.size());
         temp_set.clear();
@@ -593,13 +596,22 @@ static inline void dump_impl(FILE *log_file, bool enable_mmap_hook) {
     dump_callers(log_file, m_merge_bucket.ptr_meta, heap_caller_metas);
     dump_stacks(log_file, heap_stack_metas);
 
+    if (enable_mmap_hook) {
+        // mmap allocation
+        LOGD(TAG, "############################# mmap ###################################\n\n");
+        fprintf(log_file, "############################# mmap ###################################\n\n");
+
+        dump_callers(log_file, m_merge_bucket.ptr_meta, mmap_caller_metas);
+        dump_stacks(log_file, mmap_stack_metas);
+    }
+
     fprintf(log_file,
-            "tsd count = %zu, borrowed count = %zu\n"
-            "<void *, ptr_meta_t> m_ptr_meta [%zu * %zu = (%zu)]\n"
-            "<uint64_t, stack_meta_t> m_stack_meta [%zu * %zu = (%zu)]\n"
+            "tsd count = %zu, borrowed count = %zu, lost cout = %zu\n"
+            "<void *, ptr_meta_t> ptr_meta [%zu * %zu = (%zu)]\n"
+            "<uint64_t, stack_meta_t> stack_meta [%zu * %zu = (%zu)]\n"
             "<void *> borrowed_ptrs [%zu * %zu = (%zu)]\n\n",
 
-            tsd_count, m_merge_bucket.borrowed_ptrs.size(),
+            tsd_count, m_merge_bucket.borrowed_ptrs.size(), m_lost_ptr_count,
 
             sizeof(ptr_meta_t) + sizeof(void *), m_merge_bucket.ptr_meta.size(),
             (sizeof(ptr_meta_t) + sizeof(void *)) * m_merge_bucket.ptr_meta.size(),
@@ -610,18 +622,6 @@ static inline void dump_impl(FILE *log_file, bool enable_mmap_hook) {
             sizeof(void *), m_merge_bucket.borrowed_ptrs.size(),
             sizeof(void *) * m_merge_bucket.borrowed_ptrs.size());
 
-    if (!enable_mmap_hook) {
-        goto end;
-    }
-
-    // mmap allocation
-    LOGD(TAG, "############################# mmap ###################################\n\n");
-    fprintf(log_file, "############################# mmap ###################################\n\n");
-
-    dump_callers(log_file, m_merge_bucket.ptr_meta, mmap_caller_metas);
-    dump_stacks(log_file, mmap_stack_metas);
-
-    end:
     pthread_rwlock_unlock(&m_tsd_merge_bucket_lock);
 }
 
