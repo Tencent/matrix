@@ -36,6 +36,7 @@ struct stack_meta_t {
 };
 
 struct tsd_t {
+    pthread_mutex_t                   tsd_mutex = PTHREAD_MUTEX_INITIALIZER;
     std::multimap<void *, ptr_meta_t> ptr_meta;
     std::map<uint64_t, stack_meta_t>  stack_meta;
     std::multiset<void *>             borrowed_ptrs;
@@ -84,7 +85,7 @@ decrease_stack_size(std::map<uint64_t, stack_meta_t> &__stack_metas, ptr_meta_t 
     if (is_stacktrace_enabled
         && __ptr_meta.stack_hash
         && __stack_metas.count(__ptr_meta.stack_hash)) {
-
+        LOGD(TAG, "into calculate_stack_size");
         stack_meta_t &stack_meta = __stack_metas.at(__ptr_meta.stack_hash);
 
         if (stack_meta.size > __ptr_meta.size) { // 减去同堆栈的 size
@@ -97,7 +98,10 @@ decrease_stack_size(std::map<uint64_t, stack_meta_t> &__stack_metas, ptr_meta_t 
 }
 
 static inline void flush_tsd_to(tsd_t *__tsd_src, tsd_t *__dest) {
-    LOGI(TAG, "flush_tsd");
+    LOGD(TAG, "flush_tsd");
+
+    assert(__tsd_src != nullptr);
+    assert(__dest != nullptr);
 
     // 不同的 tsd 中可能存在相同的指针, 只有一个应该被最终保留, 但为了所有 borrow 的指针可以正常对账, 先全部保存
     __dest->ptr_meta.insert(__tsd_src->ptr_meta.begin(), __tsd_src->ptr_meta.end());
@@ -111,10 +115,11 @@ static inline void flush_tsd_to(tsd_t *__tsd_src, tsd_t *__dest) {
 
     // 保存所有的 borrow 指针
     __dest->borrowed_ptrs.insert(__tsd_src->borrowed_ptrs.begin(), __tsd_src->borrowed_ptrs.end());
-//    LOGD(TAG, "flush_tsd done");
+    LOGD(TAG, "flush_tsd done");
 }
 
 static inline size_t repay_debt(tsd_t *__tsd) {
+    LOGD(TAG, "repay_debt");
     size_t    total_count = __tsd->borrowed_ptrs.size();
     // 还债
     for (auto borrow_it   = __tsd->borrowed_ptrs.begin();
@@ -152,10 +157,10 @@ static inline void on_caller_thread_destroy(void *__arg) {
     size_t repaid_count = repay_debt(&m_merge_bucket);
     LOGD(TAG, "on_caller_thread_destroy: repaid = %zu, retained = %zu",
          repaid_count, m_merge_bucket.borrowed_ptrs.size());
-    pthread_rwlock_unlock(&m_tsd_merge_bucket_lock);
-
-    pthread_mutex_unlock(&m_tsd_global_set_mutex);
     delete current_tsd;
+
+    pthread_rwlock_unlock(&m_tsd_merge_bucket_lock);
+    pthread_mutex_unlock(&m_tsd_global_set_mutex);
 }
 
 void memory_hook_init() {
@@ -171,7 +176,7 @@ void memory_hook_init() {
 static inline tsd_t *tsd_fetch() {
     auto *tsd = (tsd_t *) pthread_getspecific(m_tsd_key);
     if (unlikely(!tsd)) {
-        LOGI(TAG, "tsd_fetch: creating new tsd");
+        LOGD(TAG, "tsd_fetch: creating new tsd");
         tsd = new tsd_t;
         pthread_setspecific(m_tsd_key, tsd);
 
@@ -205,10 +210,12 @@ static inline size_t flush_all_locked() {
     size_t count = m_tsd_global_set.size();
 
     for (auto tsd : m_tsd_global_set) {
+        pthread_mutex_lock(&tsd->tsd_mutex);
         flush_tsd_to(tsd, &m_merge_bucket);
         tsd->ptr_meta.clear();
         tsd->stack_meta.clear();
         tsd->borrowed_ptrs.clear();
+        pthread_mutex_unlock(&tsd->tsd_mutex);
     }
 
     size_t repaid_count = repay_debt(&m_merge_bucket);
@@ -229,11 +236,11 @@ static inline size_t flush_all_locked() {
 }
 
 static inline void on_acquire_memory(void *__caller,
-                              void *__ptr,
-                              size_t __byte_count,
-                              bool __is_mmap) {
+                                     void *__ptr,
+                                     size_t __byte_count,
+                                     bool __is_mmap) {
 
-    tsd_t *__tsd = tsd_fetch();
+    tsd_t *tsd = tsd_fetch();
 
     if (!__ptr) {
         LOGE(TAG, "on_acquire_memory: invalid pointer");
@@ -242,13 +249,15 @@ static inline void on_acquire_memory(void *__caller,
 
     // 如果当前 tsd 指针重复了, 该指针要么在其他线程释放了, 要么释放函数没有 hook 到
     // 但 flush 时需要对账, 所以不能清除记录
-//    __tsd->ptr_meta.erase(__ptr);
+//    tsd->ptr_meta.erase(__ptr);
 
     ptr_meta_t ptr_meta{};
     ptr_meta.size       = __byte_count;
     ptr_meta.caller     = __caller;
     ptr_meta.stack_hash = 0; // clear hash
     ptr_meta.is_mmap    = __is_mmap;
+
+    pthread_mutex_lock(&tsd->tsd_mutex);
 
     // TODO 只在 merge_bucket 里面存储 stack？
     if (is_stacktrace_enabled && should_do_unwind(__byte_count, __caller)) {
@@ -259,7 +268,7 @@ static inline void on_acquire_memory(void *__caller,
         if (!ptr_stack_frames->empty()) {
             uint64_t stack_hash = hash_stack_frames(*ptr_stack_frames);
             ptr_meta.stack_hash = stack_hash;
-            stack_meta_t &stack_meta = __tsd->stack_meta[stack_hash];
+            stack_meta_t &stack_meta = tsd->stack_meta[stack_hash];
             stack_meta.size += __byte_count;
 
             if (stack_meta.p_stacktraces) { // 相同的堆栈只记录一个
@@ -272,32 +281,42 @@ static inline void on_acquire_memory(void *__caller,
         }
     }
 
-    __tsd->ptr_meta.emplace(__ptr, ptr_meta);
+    tsd->ptr_meta.emplace(__ptr, ptr_meta);
 
-    if (__tsd->ptr_meta.size() > m_max_tsd_capacity
-        || __tsd->borrowed_ptrs.size() > m_max_tsd_capacity
-        || __tsd->stack_meta.size() > m_max_tsd_capacity) {
+    if ((tsd->ptr_meta.size() > m_max_tsd_capacity
+         || tsd->borrowed_ptrs.size() > m_max_tsd_capacity
+         || tsd->stack_meta.size() > m_max_tsd_capacity)) {
 
         pthread_rwlock_wrlock(&m_tsd_merge_bucket_lock);
-        flush_tsd_to(__tsd, &m_merge_bucket);
-        size_t repaid_count          = repay_debt(&m_merge_bucket);
+
+        flush_tsd_to(tsd, &m_merge_bucket);
+        size_t repaid_count = repay_debt(&m_merge_bucket);
+
         size_t retained_borrow_count = m_merge_bucket.borrowed_ptrs.size();
+
         pthread_rwlock_unlock(&m_tsd_merge_bucket_lock);
 
         LOGD(TAG,
              "on_acquire_memory: triggerred flush ptr = %zu, bor = %zu, stack = %zu, repaid = %zu, retained = %zu",
-             __tsd->ptr_meta.size(), __tsd->borrowed_ptrs.size(), __tsd->stack_meta.size(),
+             tsd->ptr_meta.size(), tsd->borrowed_ptrs.size(), tsd->stack_meta.size(),
              repaid_count, retained_borrow_count);
+
+
+        tsd->ptr_meta.clear();
+        tsd->stack_meta.clear();
+        tsd->borrowed_ptrs.clear();
+
+        pthread_mutex_unlock(&tsd->tsd_mutex); // 触发归并之前需要先释放 tsd 的锁
 
         if (retained_borrow_count > m_max_tsd_capacity * 10) {
             LOGD(TAG, "on_acquire_memory: trigger flush all tsd");
+
             flush_all_locked();
         }
-
-        __tsd->ptr_meta.clear();
-        __tsd->stack_meta.clear();
-        __tsd->borrowed_ptrs.clear();
+    } else {
+        pthread_mutex_unlock(&tsd->tsd_mutex);
     }
+
 }
 
 static inline bool do_release_memory_meta(void *__ptr, tsd_t *__tsd, bool __is_mmap) {
@@ -368,7 +387,7 @@ static inline void collect_metas(tsd_t &__tsd,
                                  std::map<void *, caller_meta_t> &__mmap_caller_metas,
                                  std::map<uint64_t, stack_meta_t> &__heap_stack_metas,
                                  std::map<uint64_t, stack_meta_t> &__mmap_stack_metas) {
-
+    LOGD(TAG, "collect_metas");
     for (auto it : __tsd.ptr_meta) {
         auto &ptr_meta          = it.second;
         auto ptr                = it.first;
@@ -383,11 +402,13 @@ static inline void collect_metas(tsd_t &__tsd,
 
         if (ptr_meta.stack_hash
             && __tsd.stack_meta.count(ptr_meta.stack_hash)) {
+            LOGD(TAG, "collect_metas: into collect stack");
             auto &stack_meta = dest_stack_metas[ptr_meta.stack_hash];
             stack_meta.p_stacktraces = __tsd.stack_meta.at(ptr_meta.stack_hash).p_stacktraces;
             stack_meta.size += ptr_meta.size;
         }
     }
+    LOGD(TAG, "collect_metas done");
 }
 
 static inline void dump_callers(FILE *log_file,
@@ -395,12 +416,12 @@ static inline void dump_callers(FILE *log_file,
                                 std::map<void *, caller_meta_t> &caller_metas) {
 
     if (caller_metas.empty()) {
-        LOGI(TAG, "caller: nothing dump");
+        LOGI(TAG, "dump_callers: nothing dump");
         return;
     }
 
-    LOGD(TAG, "caller count = %zu", caller_metas.size());
-    fprintf(log_file, "caller count = %zu\n", caller_metas.size());
+    LOGD(TAG, "dump_callers: count = %zu", caller_metas.size());
+    fprintf(log_file, "dump_callers: count = %zu\n", caller_metas.size());
 
     std::unordered_map<std::string, size_t>                   caller_alloc_size_of_so;
     std::unordered_map<std::string, std::map<size_t, size_t>> same_size_count_of_so;
@@ -491,8 +512,8 @@ static inline void dump_stacks(FILE *log_file,
         return;
     }
 
-    LOGD(TAG, "hash count = %zu", stack_metas.size());
-    fprintf(log_file, "hash count = %zu\n", stack_metas.size());
+    LOGD(TAG, "dump_stacks: hash count = %zu", stack_metas.size());
+    fprintf(log_file, "dump_stacks: hash count = %zu\n", stack_metas.size());
 
     for (auto &stack_meta :stack_metas) {
         LOGD(TAG, "hash %lu : stack.size = %zu, %p", stack_meta.first, stack_meta.second.size,
@@ -599,7 +620,8 @@ static inline void dump_impl(FILE *log_file, bool enable_mmap_hook) {
     if (enable_mmap_hook) {
         // mmap allocation
         LOGD(TAG, "############################# mmap ###################################\n\n");
-        fprintf(log_file, "############################# mmap ###################################\n\n");
+        fprintf(log_file,
+                "############################# mmap ###################################\n\n");
 
         dump_callers(log_file, m_merge_bucket.ptr_meta, mmap_caller_metas);
         dump_stacks(log_file, mmap_stack_metas);
