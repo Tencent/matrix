@@ -412,6 +412,13 @@ void *threadfunc2(void *arg) {
     int *pa = static_cast<int *>(pthread_getspecific(key));
 
     LOGD("Yves-debug", "in thread arg = %p, pa=%p, *pa=%d", arg, pa, *pa);
+
+    int *b = new int;
+    *b = 1024;
+
+    pthread_setspecific(key, b);
+
+
     return NULL;
 }
 
@@ -428,6 +435,8 @@ Java_com_tencent_mm_libwxperf_JNIObj_testThreadSpecific(JNIEnv *env, jclass claz
     LOGD("Yves-debug", "origin a = %p", a);
 
     pthread_create(&thread1, NULL, threadfunc2, a);
+
+
     LOGD("Yves-debug", "creating thread thread1 %ld", thread1);
 //    pthread_join(thread1, NULL);
 }
@@ -561,6 +570,19 @@ Java_com_tencent_mm_libwxperf_JNIObj_mallocTest(JNIEnv *env, jclass clazz) {
 //    LOGD("Yves-debug", "mallocTest: malloc %p", p);
 //    free(p);
 
+}
+
+JNIEXPORT void JNICALL
+Java_com_tencent_mm_libwxperf_JNIObj_tlsTest(JNIEnv *env, jclass clazz) {
+
+    if (!key) {
+        pthread_key_create(&key, dest);
+    }
+
+    pthread_t pthread;
+    int *a = new int;
+    *a = 10086;
+    pthread_create(&pthread, NULL, threadfunc2, a);
 }
 
 #ifdef __cplusplus

@@ -228,4 +228,8 @@ public class MainActivity extends AppCompatActivity {
 
         JNIObj.testJNICall();
     }
+
+    public void tlsTest(View view) {
+        JNIObj.tlsTest();
+    }
 }

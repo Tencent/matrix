@@ -10,8 +10,8 @@
         android:id="@+id/btn_mmap"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="mmap"
         android:onClick="mmapTest"
+        android:text="mmap"
         android:textAllCaps="false"
         app:layout_constraintStart_toEndOf="@+id/btn_realloc"
         app:layout_constraintTop_toTopOf="@+id/btn_realloc" />
@@ -22,8 +22,8 @@
         android:layout_height="wrap_content"
         android:layout_marginStart="5dp"
         android:layout_marginTop="30dp"
-        android:text="realloc"
         android:onClick="reallocTest"
+        android:text="realloc"
         android:textAllCaps="false"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
@@ -32,8 +32,8 @@
         android:id="@+id/btn_thread"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Thread"
         android:onClick="threadTest"
+        android:text="Thread"
         android:textAllCaps="false"
         app:layout_constraintStart_toEndOf="@+id/btn_mmap"
         app:layout_constraintTop_toTopOf="@+id/btn_mmap" />
@@ -43,8 +43,8 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="6dp"
-        android:text="Con_JNI"
         android:onClick="concurrentJNITest"
+        android:text="Con_JNI"
         app:layout_constraintStart_toEndOf="@+id/btn_thread_spec"
         app:layout_constraintTop_toTopOf="@+id/btn_thread_spec" />
 
@@ -63,8 +63,8 @@
         android:id="@+id/btn_thread_spec"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="thread_spec"
         android:onClick="specificTest"
+        android:text="thread_spec"
         app:layout_constraintStart_toEndOf="@+id/doSomething"
         app:layout_constraintTop_toTopOf="@+id/doSomething" />
 
@@ -77,5 +77,16 @@
         android:textAllCaps="false"
         app:layout_constraintStart_toEndOf="@+id/btn_thread"
         app:layout_constraintTop_toTopOf="@+id/btn_thread" />
+
+    <Button
+        android:id="@+id/button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="5dp"
+        android:layout_marginTop="14dp"
+        android:text="TLS"
+        android:onClick="tlsTest"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/doSomething" />
 
 </android.support.constraint.ConstraintLayout>
