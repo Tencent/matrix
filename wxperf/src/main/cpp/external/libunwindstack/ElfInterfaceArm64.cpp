@@ -24,7 +24,7 @@ namespace unwindstack {
 
     inline bool ElfInterfaceArm64::StepPrologue(uint64_t rel_pc, Regs *regs,
                                                 Memory *process_memory, bool *finished) {
-        return false;
+//        return false;
 
         RegsArm64 *regs_arm64 = dynamic_cast<RegsArm64 *>(regs);
         LOGE("Unwind-debug",
