@@ -343,7 +343,11 @@ static inline void on_release_memory(void *__ptr, bool __is_mmap) {
 
     tsd_t *tsd = tsd_fetch();
 
+    pthread_mutex_lock(&tsd->tsd_mutex);
+
     bool released = do_release_memory_meta(__ptr, tsd, __is_mmap);
+
+    pthread_mutex_unlock(&tsd->tsd_mutex);
 
     if (!released) {
         pthread_rwlock_rdlock(&m_tsd_merge_bucket_lock);
@@ -352,10 +356,10 @@ static inline void on_release_memory(void *__ptr, bool __is_mmap) {
     }
 
     if (unlikely(!released)) { // free 的指针没记录或者还在某个线程的 tsd 里没有 flush, 可能有多个相同的
+        pthread_mutex_lock(&tsd->tsd_mutex);
         tsd->borrowed_ptrs.insert(__ptr);
+        pthread_mutex_unlock(&tsd->tsd_mutex);
     }
-
-    // TODO countdown to flush
 }
 
 void on_alloc_memory(void *__caller, void *__ptr, size_t __byte_count) {
