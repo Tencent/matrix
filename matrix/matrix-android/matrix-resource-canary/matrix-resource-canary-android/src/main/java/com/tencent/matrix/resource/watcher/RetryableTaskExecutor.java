@@ -32,7 +32,7 @@ import android.os.Looper;
 public class RetryableTaskExecutor {
     private final Handler mBackgroundHandler;
     private final Handler mMainHandler;
-    private final long mDelayMillis;
+    private long mDelayMillis;
 
     public interface RetryableTask {
         enum Status {
@@ -47,6 +47,10 @@ public class RetryableTaskExecutor {
         mBackgroundHandler = new Handler(handleThread.getLooper());
         mMainHandler = new Handler(Looper.getMainLooper());
         mDelayMillis = delayMillis;
+    }
+
+    public void setDelayMillis(long delayed) {
+        this.mDelayMillis = delayed;
     }
 
     public void executeInMainThread(final RetryableTask task) {

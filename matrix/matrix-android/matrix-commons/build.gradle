@@ -10,5 +10,12 @@ dependencies {
     implementation 'commons-io:commons-io:2.6'
 }
 
-
-apply from: rootProject.file('gradle/java-publish.gradle')
+if("External" == rootProject.ext.PUBLISH_CHANNEL){
+    apply from: rootProject.file('gradle/java-publish.gradle')
+}
+else {
+    apply from: rootProject.file('gradle/WeChatPublish.gradle')
+    wechatPublish {
+        artifactId = POM_ARTIFACT_ID
+    }
+}

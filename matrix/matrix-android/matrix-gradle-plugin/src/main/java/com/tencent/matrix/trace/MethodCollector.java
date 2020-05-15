@@ -317,20 +317,21 @@ public class MethodCollector {
             if ("<init>".equals(name)) {
                 isConstructor = true;
             }
+
+            boolean isNeedTrace = isNeedTrace(configuration, traceMethod.className, mappingCollector);
             // filter simple methods
             if ((isEmptyMethod() || isGetSetMethod() || isSingleMethod())
-                    && isNeedTrace(configuration, traceMethod.className, mappingCollector)) {
+                    && isNeedTrace) {
                 ignoreCount.incrementAndGet();
                 collectedIgnoreMethodMap.put(traceMethod.getMethodName(), traceMethod);
                 return;
             }
 
-            if (isNeedTrace(configuration, traceMethod.className, mappingCollector) && !collectedMethodMap.containsKey(traceMethod.getMethodName())) {
+            if (isNeedTrace && !collectedMethodMap.containsKey(traceMethod.getMethodName())) {
                 traceMethod.id = methodId.incrementAndGet();
                 collectedMethodMap.put(traceMethod.getMethodName(), traceMethod);
                 incrementCount.incrementAndGet();
-            } else if (!isNeedTrace(configuration, traceMethod.className, mappingCollector)
-                    && !collectedIgnoreMethodMap.containsKey(traceMethod.className)) {
+            } else if (!isNeedTrace && !collectedIgnoreMethodMap.containsKey(traceMethod.className)) {
                 ignoreCount.incrementAndGet();
                 collectedIgnoreMethodMap.put(traceMethod.getMethodName(), traceMethod);
             }

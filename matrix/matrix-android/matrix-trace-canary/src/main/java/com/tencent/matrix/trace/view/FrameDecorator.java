@@ -20,6 +20,7 @@ import android.widget.TextView;
 import com.tencent.matrix.AppActiveMatrixDelegate;
 import com.tencent.matrix.Matrix;
 import com.tencent.matrix.listeners.IAppForeground;
+import com.tencent.matrix.trace.R;
 import com.tencent.matrix.trace.TracePlugin;
 import com.tencent.matrix.trace.constants.Constants;
 import com.tencent.matrix.trace.core.UIThreadMonitor;
@@ -27,6 +28,10 @@ import com.tencent.matrix.trace.listeners.IDoFrameListener;
 import com.tencent.matrix.trace.tracer.FrameTracer;
 import com.tencent.matrix.util.MatrixHandlerThread;
 import com.tencent.matrix.util.MatrixLog;
+
+import java.util.Objects;
+import java.util.concurrent.Executor;
+import java.util.concurrent.TimeUnit;
 
 public class FrameDecorator extends IDoFrameListener implements IAppForeground {
     private static final String TAG = "Matrix.FrameDecorator";
@@ -37,14 +42,30 @@ public class FrameDecorator extends IDoFrameListener implements IAppForeground {
     private static Handler mainHandler = new Handler(Looper.getMainLooper());
     private Handler handler;
     private static FrameDecorator instance;
-    private static Object lock = new Object();
+    private static final Object lock = new Object();
     private View.OnClickListener clickListener;
     private DisplayMetrics displayMetrics = new DisplayMetrics();
     private boolean isEnable = true;
+    private long frameIntervalMs;
+
+
+    private int bestColor;
+    private int normalColor;
+    private int middleColor;
+    private int highColor;
+    private int frozenColor;
+
 
     @SuppressLint("ClickableViewAccessibility")
     private FrameDecorator(Context context, final FloatFrameView view) {
+        this.frameIntervalMs = TimeUnit.MILLISECONDS.convert(UIThreadMonitor.getMonitor().getFrameIntervalNanos(), TimeUnit.NANOSECONDS) + 1;
         this.view = view;
+        this.bestColor = context.getResources().getColor(R.color.level_best_color);
+        this.normalColor = context.getResources().getColor(R.color.level_normal_color);
+        this.middleColor = context.getResources().getColor(R.color.level_middle_color);
+        this.highColor = context.getResources().getColor(R.color.level_high_color);
+        this.frozenColor = context.getResources().getColor(R.color.level_frozen_color);
+
         AppActiveMatrixDelegate.INSTANCE.addListener(this);
         view.addOnAttachStateChangeListener(new View.OnAttachStateChangeListener() {
             @Override
@@ -136,57 +157,167 @@ public class FrameDecorator extends IDoFrameListener implements IAppForeground {
         this.clickListener = clickListener;
     }
 
-    long sumFrameCost;
-    long[] lastCost = new long[1];
-    long sumFrames;
-    long[] lastFrames = new long[1];
+    public void setExtraInfo(String info) {
+        if (getView() != null) {
+            TextView textView = getView().findViewById(R.id.extra_info);
+            if (null != textView) {
+                textView.setText(info);
+            }
+        }
+    }
 
 
-    Runnable updateDefaultRunnable = new Runnable() {
+    private long sumFrameCost;
+    private long[] lastCost = new long[1];
+    private long sumFrames;
+    private int belongColor = bestColor;
+    private long[] lastFrames = new long[1];
+    private int[] dropLevel = new int[FrameTracer.DropStatus.values().length];
+    private int[] sumDropLevel = new int[FrameTracer.DropStatus.values().length];
+    private String lastVisibleScene = "default";
+
+    private Runnable updateDefaultRunnable = new Runnable() {
         @Override
         public void run() {
             view.fpsView.setText("60.00 FPS");
-            view.fpsView.setTextColor(view.getResources().getColor(android.R.color.holo_green_dark));
+            view.fpsView.setTextColor(view.getResources().getColor(R.color.level_best_color));
         }
     };
 
+
     @Override
-    public void doFrameAsync(String focusedActivityName, long frameCost, int droppedFrames) {
-        super.doFrameAsync(focusedActivityName, frameCost, droppedFrames);
-        sumFrameCost += (droppedFrames + 1) * UIThreadMonitor.getMonitor().getFrameIntervalNanos() / Constants.TIME_MILLIS_TO_NANO;
+    public void doFrameAsync(String visibleScene, long taskCost, long frameCostMs, int droppedFrames, boolean isContainsFrame) {
+        super.doFrameAsync(visibleScene, taskCost, frameCostMs, droppedFrames, isContainsFrame);
+
+        if (!Objects.equals(visibleScene, lastVisibleScene)) {
+            dropLevel = new int[FrameTracer.DropStatus.values().length];
+            lastVisibleScene = visibleScene;
+            lastCost[0] = 0;
+            lastFrames[0] = 0;
+        }
+
+        sumFrameCost += (droppedFrames + 1) * frameIntervalMs;
         sumFrames += 1;
         long duration = sumFrameCost - lastCost[0];
+
+        if (droppedFrames >= Constants.DEFAULT_DROPPED_FROZEN) {
+            dropLevel[FrameTracer.DropStatus.DROPPED_FROZEN.index]++;
+            sumDropLevel[FrameTracer.DropStatus.DROPPED_FROZEN.index]++;
+            belongColor = frozenColor;
+        } else if (droppedFrames >= Constants.DEFAULT_DROPPED_HIGH) {
+            dropLevel[FrameTracer.DropStatus.DROPPED_HIGH.index]++;
+            sumDropLevel[FrameTracer.DropStatus.DROPPED_HIGH.index]++;
+            if (belongColor != frozenColor) {
+                belongColor = highColor;
+            }
+        } else if (droppedFrames >= Constants.DEFAULT_DROPPED_MIDDLE) {
+            dropLevel[FrameTracer.DropStatus.DROPPED_MIDDLE.index]++;
+            sumDropLevel[FrameTracer.DropStatus.DROPPED_MIDDLE.index]++;
+            if (belongColor != frozenColor && belongColor != highColor) {
+                belongColor = middleColor;
+            }
+        } else if (droppedFrames >= Constants.DEFAULT_DROPPED_NORMAL) {
+            dropLevel[FrameTracer.DropStatus.DROPPED_NORMAL.index]++;
+            sumDropLevel[FrameTracer.DropStatus.DROPPED_NORMAL.index]++;
+            if (belongColor != frozenColor && belongColor != highColor && belongColor != middleColor) {
+                belongColor = normalColor;
+            }
+        } else {
+            dropLevel[FrameTracer.DropStatus.DROPPED_BEST.index]++;
+            sumDropLevel[FrameTracer.DropStatus.DROPPED_BEST.index]++;
+            if (belongColor != frozenColor && belongColor != highColor && belongColor != middleColor && belongColor != normalColor) {
+                belongColor = bestColor;
+            }
+        }
+
 
         long collectFrame = sumFrames - lastFrames[0];
         if (duration >= 200) {
             final float fps = Math.min(60.f, 1000.f * collectFrame / duration);
-            updateView(view.fpsView, fps);
-            view.chartView.addFps((int) fps);
+            updateView(view, fps, belongColor,
+                    dropLevel[FrameTracer.DropStatus.DROPPED_NORMAL.index],
+                    dropLevel[FrameTracer.DropStatus.DROPPED_MIDDLE.index],
+                    dropLevel[FrameTracer.DropStatus.DROPPED_HIGH.index],
+                    dropLevel[FrameTracer.DropStatus.DROPPED_FROZEN.index],
+                    sumDropLevel[FrameTracer.DropStatus.DROPPED_NORMAL.index],
+                    sumDropLevel[FrameTracer.DropStatus.DROPPED_MIDDLE.index],
+                    sumDropLevel[FrameTracer.DropStatus.DROPPED_HIGH.index],
+                    sumDropLevel[FrameTracer.DropStatus.DROPPED_FROZEN.index]);
+            belongColor = bestColor;
             lastCost[0] = sumFrameCost;
             lastFrames[0] = sumFrames;
             mainHandler.removeCallbacks(updateDefaultRunnable);
-            mainHandler.postDelayed(updateDefaultRunnable, 130);
+            mainHandler.postDelayed(updateDefaultRunnable, 250);
         }
     }
 
-    private void updateView(final TextView view, final float fps) {
+    private void updateView(final FloatFrameView view, final float fps, final int belongColor,
+                            final int normal, final int middle, final int high, final int frozen,
+                            final int sumNormal, final int sumMiddle, final int sumHigh, final int sumFrozen) {
+        int all = normal + middle + high + frozen;
+        float frozenValue = all <= 0 ? 0 : 1.f * frozen / all * 60;
+        float highValue = all <= 0 ? 0 : 1.f * high / all * 25;
+        float middleValue = all <= 0 ? 0 : 1.f * middle / all * 14;
+        float normaValue = all <= 0 ? 0 : 1.f * normal / all * 1;
+        float qiWang = frozenValue + highValue + middleValue + normaValue;
+
+        int sumAll = sumNormal + sumMiddle + sumHigh + sumFrozen;
+        float sumFrozenValue = sumAll <= 0 ? 0 : 1.f * sumFrozen / sumAll * 60;
+        float sumHighValue = sumAll <= 0 ? 0 : 1.f * sumHigh / sumAll * 25;
+        float sumMiddleValue = sumAll <= 0 ? 0 : 1.f * sumMiddle / sumAll * 14;
+        float sumNormaValue = sumAll <= 0 ? 0 : 1.f * sumNormal / sumAll * 1;
+        float sumQiWang = sumFrozenValue + sumHighValue + sumMiddleValue + sumNormaValue;
+
+        final String radioFrozen = String.format("%.1f", frozenValue);
+        final String radioHigh = String.format("%.1f", highValue);
+        final String radioMiddle = String.format("%.1f", middleValue);
+        final String radioNormal = String.format("%.1f", normaValue);
+        final String qiWangStr = String.format("current: %.1f", qiWang);
+
+        final String sumRadioFrozen = String.format("%.1f", sumFrozenValue);
+        final String sumRadioHigh = String.format("%.1f", sumHighValue);
+        final String sumRadioMiddle = String.format("%.1f", sumMiddleValue);
+        final String sumRadioNormal = String.format("%.1f", sumNormaValue);
+        final String sumQiWangStr = String.format("sum: %.1f", sumQiWang);
+
+        final String fpsStr = String.format("%.2f FPS", fps);
+
         mainHandler.post(new Runnable() {
             @Override
             public void run() {
-                view.setText(String.format("%.2f FPS", fps));
-                if (fps >= 50) {
-                    view.setTextColor(view.getResources().getColor(android.R.color.holo_green_dark));
-                } else if (fps >= 30) {
-                    view.setTextColor(view.getResources().getColor(android.R.color.holo_orange_dark));
-                } else {
-                    view.setTextColor(view.getResources().getColor(android.R.color.holo_red_dark));
-                }
+                view.chartView.addFps((int) fps, belongColor);
+                view.fpsView.setText(fpsStr);
+                view.fpsView.setTextColor(belongColor);
+
+                view.qiWangView.setText(qiWangStr);
+                view.levelFrozenView.setText(radioFrozen);
+                view.levelHighView.setText(radioHigh);
+                view.levelMiddleView.setText(radioMiddle);
+                view.levelNormalView.setText(radioNormal);
+
+                view.sumQiWangView.setText(sumQiWangStr);
+                view.sumLevelFrozenView.setText(sumRadioFrozen);
+                view.sumLevelHighView.setText(sumRadioHigh);
+                view.sumLevelMiddleView.setText(sumRadioMiddle);
+                view.sumLevelNormalView.setText(sumRadioNormal);
+
             }
         });
     }
 
     @Override
-    public Handler getHandler() {
+    public Executor getExecutor() {
+        return executor;
+    }
+
+    private Executor executor = new Executor() {
+        @Override
+        public void execute(Runnable command) {
+            getHandler().post(command);
+        }
+    };
+
+    private Handler getHandler() {
         if (handler == null || !handler.getLooper().getThread().isAlive()) {
             handler = new Handler(MatrixHandlerThread.getDefaultHandlerThread().getLooper());
         }
@@ -197,22 +328,22 @@ public class FrameDecorator extends IDoFrameListener implements IAppForeground {
         return instance;
     }
 
-    public static FrameDecorator create(final Context context) {
+    public static FrameDecorator getInstance(final Context context) {
         if (instance == null) {
             if (Thread.currentThread() == Looper.getMainLooper().getThread()) {
                 instance = new FrameDecorator(context, new FloatFrameView(context));
             } else {
                 try {
-                    mainHandler.post(new Runnable() {
-                        @Override
-                        public void run() {
-                            instance = new FrameDecorator(context, new FloatFrameView(context));
-                            synchronized (lock) {
-                                lock.notifyAll();
-                            }
-                        }
-                    });
                     synchronized (lock) {
+                        mainHandler.post(new Runnable() {
+                            @Override
+                            public void run() {
+                                instance = new FrameDecorator(context, new FloatFrameView(context));
+                                synchronized (lock) {
+                                    lock.notifyAll();
+                                }
+                            }
+                        });
                         lock.wait();
                     }
                 } catch (InterruptedException e) {
@@ -226,6 +357,7 @@ public class FrameDecorator extends IDoFrameListener implements IAppForeground {
     public FloatFrameView getView() {
         return view;
     }
+
 
     private void initLayoutParams(Context context) {
         windowManager = (WindowManager) context.getApplicationContext().getSystemService(Context.WINDOW_SERVICE);
@@ -242,7 +374,9 @@ public class FrameDecorator extends IDoFrameListener implements IAppForeground {
             layoutParam.flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
                     | WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL;
             layoutParam.gravity = Gravity.START | Gravity.TOP;
-            layoutParam.x = metrics.widthPixels - view.getLayoutParams().width * 2;
+            if (null != view) {
+                layoutParam.x = metrics.widthPixels - view.getLayoutParams().width * 2;
+            }
             layoutParam.y = 0;
             layoutParam.width = WindowManager.LayoutParams.WRAP_CONTENT;
             layoutParam.height = WindowManager.LayoutParams.WRAP_CONTENT;
@@ -314,4 +448,5 @@ public class FrameDecorator extends IDoFrameListener implements IAppForeground {
             });
         }
     }
+
 }

@@ -53,6 +53,10 @@ public class ResourcePlugin extends Plugin {
         });
     }
 
+    public ActivityRefWatcher getWatcher() {
+        return mWatcher;
+    }
+
     @Override
     public void init(Application app, PluginListener listener) {
         super.init(app, listener);

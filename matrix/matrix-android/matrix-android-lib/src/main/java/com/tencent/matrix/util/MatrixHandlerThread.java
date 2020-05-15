@@ -69,6 +69,9 @@ public class MatrixHandlerThread {
     }
 
     public static Handler getDefaultHandler() {
+        if (defaultHandler == null) {
+            getDefaultHandlerThread();
+        }
         return defaultHandler;
     }
 
@@ -122,7 +125,6 @@ public class MatrixHandlerThread {
         @Override
         public void onForeground(boolean isForeground) {
             this.isForeground = isForeground;
-            MatrixLog.d(TAG, "onForeground:%s", isForeground);
             if (isForeground) {
                 long start = System.currentTimeMillis();
                 LinkedList<Info> list = new LinkedList<>();

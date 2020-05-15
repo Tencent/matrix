@@ -71,6 +71,7 @@ public interface IDynamicConfig {
 
         //resource
         clicfg_matrix_resource_detect_interval_millis,
+        clicfg_matrix_resource_detect_interval_millis_bg,
         clicfg_matrix_resource_max_detect_times,
         clicfg_matrix_resource_dump_hprof_enable,
 
