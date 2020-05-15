@@ -17,6 +17,8 @@ extern "C" {
 std::vector<dlopen_callback_t> m_dlopen_callbacks;
 std::vector<hook_init_callback_t> m_init_callbacks;
 
+static pthread_mutex_t m_dlopen_mutex;
+
 DEFINE_HOOK_FUN(void *, __loader_android_dlopen_ext, const char *__file_name,
                 int                                             __flag,
                 const void                                      *__extinfo,
@@ -25,6 +27,7 @@ DEFINE_HOOK_FUN(void *, __loader_android_dlopen_ext, const char *__file_name,
                                                                    __caller_addr);
 
     LOGD("Yves-debug", "call into dlopen hook");
+    pthread_mutex_lock(&m_dlopen_mutex);
 
     for (auto &callback : m_dlopen_callbacks) {
         callback(__file_name);
@@ -32,6 +35,7 @@ DEFINE_HOOK_FUN(void *, __loader_android_dlopen_ext, const char *__file_name,
 
     xhook_refresh(false);
 
+    pthread_mutex_unlock(&m_dlopen_mutex);
     return ret;
 }
 
