@@ -249,8 +249,9 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
     }
 
     private void dispatchEnd() {
+        final boolean localBelongFrame = isBelongFrame;
 
-        if (isBelongFrame) {
+        if (localBelongFrame) {
             doFrameEnd(token);
         }
 
@@ -260,7 +261,7 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
         synchronized (observers) {
             for (LooperObserver observer : observers) {
                 if (observer.isDispatchBegin()) {
-                    observer.doFrame(AppMethodBeat.getVisibleScene(), token, SystemClock.uptimeMillis(), isBelongFrame ? end - start : 0, queueCost[CALLBACK_INPUT], queueCost[CALLBACK_ANIMATION], queueCost[CALLBACK_TRAVERSAL]);
+                    observer.doFrame(AppMethodBeat.getVisibleScene(), token, SystemClock.uptimeMillis(), localBelongFrame ? end - start : 0, queueCost[CALLBACK_INPUT], queueCost[CALLBACK_ANIMATION], queueCost[CALLBACK_TRAVERSAL]);
                 }
             }
         }
@@ -273,7 +274,7 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
         synchronized (observers) {
             for (LooperObserver observer : observers) {
                 if (observer.isDispatchBegin()) {
-                    observer.dispatchEnd(dispatchTimeMs[0], dispatchTimeMs[2], dispatchTimeMs[1], dispatchTimeMs[3], token, isBelongFrame);
+                    observer.dispatchEnd(dispatchTimeMs[0], dispatchTimeMs[2], dispatchTimeMs[1], dispatchTimeMs[3], token, localBelongFrame);
                 }
             }
         }
