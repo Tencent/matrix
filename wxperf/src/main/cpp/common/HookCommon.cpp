@@ -92,8 +92,9 @@ bool get_java_stacktrace(char *__stack, size_t __size) {
         LOGD("Yves-debug", "get_java_stacktrace called");
         const char *stack = env->GetStringUTFChars(j_stacktrace, NULL);
         if (stack) {
-            memcpy(__stack, stack, __size - 1);
-            __stack[__size - 1] = '\0';
+            const size_t cpy_len = std::min(strlen(stack) + 1, __size - 1);
+            memcpy(__stack, stack, cpy_len);
+            __stack[cpy_len] = '\0';
         } else {
             strncpy(__stack, "  get java stacktrace failed", __size);
         }
