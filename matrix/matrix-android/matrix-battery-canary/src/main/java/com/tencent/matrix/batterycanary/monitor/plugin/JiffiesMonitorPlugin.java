@@ -349,7 +349,7 @@ public class JiffiesMonitorPlugin implements IBatteryMonitorPlugin, Handler.Call
     private static void parseJiffiesInfo(String path, ThreadInfo info) {
         final int readBytes = readProcStat(path, sBuffer);
 
-        MatrixLog.d(TAG, "%d: %s", readBytes, sBuffer);
+        MatrixLog.d(TAG, "%d: %s", readBytes, new String(sBuffer));
 
         for (int i = 0, spaceIdx = 0; i < readBytes;) {
             if (Character.isSpaceChar(sBuffer[i])) {
@@ -360,7 +360,7 @@ public class JiffiesMonitorPlugin implements IBatteryMonitorPlugin, Handler.Call
 
             switch (spaceIdx) {
                 case 1: { // read thread name
-                    int begin = i + 1;
+                    int begin = i;
                     int length = 0;
 
                     for (;i < readBytes && !Character.isSpaceChar(sBuffer[i]); i++, length++);
@@ -378,7 +378,7 @@ public class JiffiesMonitorPlugin implements IBatteryMonitorPlugin, Handler.Call
                         info.name = new String(sBuffer, begin, length);
                     }
 
-                    MatrixLog.d(TAG, "read name = %s", info.name);
+                    MatrixLog.d(TAG, "read name = %s, begin = %d, length = %d", info.name, begin, length);
 
                     break;
                 }
