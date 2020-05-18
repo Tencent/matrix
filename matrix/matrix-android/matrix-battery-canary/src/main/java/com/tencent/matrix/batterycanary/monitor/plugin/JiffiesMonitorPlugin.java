@@ -5,17 +5,20 @@ import android.os.Message;
 import android.os.Process;
 import android.os.SystemClock;
 import android.support.annotation.NonNull;
+import android.text.TextUtils;
 import android.util.SparseArray;
 
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitor;
 import com.tencent.matrix.util.MatrixHandlerThread;
+import com.tencent.matrix.util.MatrixLog;
 import com.tencent.matrix.util.MatrixUtil;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedList;
-import java.util.Objects;
 import java.util.Set;
 
 public class JiffiesMonitorPlugin implements IBatteryMonitorPlugin, Handler.Callback {
@@ -30,6 +33,7 @@ public class JiffiesMonitorPlugin implements IBatteryMonitorPlugin, Handler.Call
     private ProcessInfo lastProcessInfo = null;
     private BatteryMonitor monitor;
     private LoopCheckRunnable foregroundLoopCheckRunnable = new LoopCheckRunnable();
+    private static byte[] sBuffer = new byte[2 * 1024];
 
     @Override
     public void onInstall(BatteryMonitor monitor) {
@@ -82,7 +86,7 @@ public class JiffiesMonitorPlugin implements IBatteryMonitorPlugin, Handler.Call
     public boolean handleMessage(Message msg) {
         if (msg.what == MSG_ID_JIFFIES_START) {
             ProcessInfo processInfo = getProcessInfo();
-            processInfo.threadInfo.addAll(getThreadsInfo(processInfo.pid));
+            processInfo.threadInfo.addAll(getThreadsInfo2(processInfo.pid));
             processInfo.upTime = SystemClock.uptimeMillis();
             processInfo.time = System.currentTimeMillis();
             lastProcessInfo = processInfo;
@@ -98,7 +102,7 @@ public class JiffiesMonitorPlugin implements IBatteryMonitorPlugin, Handler.Call
                 monitor.getConfig().printer.onTraceEnd();
             }
             ProcessInfo processInfo = getProcessInfo();
-            processInfo.threadInfo.addAll(getThreadsInfo(processInfo.pid));
+            processInfo.threadInfo.addAll(getThreadsInfo2(processInfo.pid));
             processInfo.upTime = SystemClock.uptimeMillis();
             processInfo.time = System.currentTimeMillis();
             JiffiesResult result = calculateDiff(lastProcessInfo, processInfo);
@@ -211,6 +215,7 @@ public class JiffiesMonitorPlugin implements IBatteryMonitorPlugin, Handler.Call
         }
     }
 
+    @Deprecated
     private static long getTotalJiffiesByStat(int tid, int pid) {
         String stat;
         if (tid == -1) {
@@ -236,6 +241,7 @@ public class JiffiesMonitorPlugin implements IBatteryMonitorPlugin, Handler.Call
         }
     }
 
+    // fixme 这里读的是只是主线程的
     private ProcessInfo getProcessInfo() {
         ProcessInfo processInfo = new ProcessInfo();
         processInfo.pid = Process.myPid();
@@ -265,6 +271,7 @@ public class JiffiesMonitorPlugin implements IBatteryMonitorPlugin, Handler.Call
         return processInfo;
     }
 
+    @Deprecated
     private Set<ThreadInfo> getThreadsInfo(int pid) {
         Set<ThreadInfo> set = new HashSet<>();
         String threadDir = String.format("/proc/%s/task/", pid);
@@ -296,6 +303,123 @@ public class JiffiesMonitorPlugin implements IBatteryMonitorPlugin, Handler.Call
 
         }
         return set;
+    }
+
+    private Set<ThreadInfo> getThreadsInfo2(int pid) {
+        Set<ThreadInfo> set = new HashSet<>();
+        String threadDir = String.format("/proc/%s/task/", pid);
+        File dirFile = new File(threadDir);
+        if (dirFile.isDirectory()) {
+            File[] subDirs = dirFile.listFiles();
+            if (null == subDirs) {
+                return set;
+            }
+
+            for (File file : subDirs) {
+                if (!file.isDirectory()) {
+                    continue;
+                }
+
+                ThreadInfo threadInfo = null;
+
+                try {
+                    threadInfo = new ThreadInfo();
+                    threadInfo.tid = Integer.parseInt(file.getName());
+
+                    parseJiffiesInfo(threadDir + file.getName() + "/stat", threadInfo);
+
+                    if (threadInfo.tid == pid) {
+                        threadInfo.name =  "main";
+                    } else if (TextUtils.isEmpty(threadInfo.name)) {
+                        threadInfo.name = "null";
+                    }
+                } catch (Exception e) {
+                } finally {
+                    if (null != threadInfo) {
+                        set.add(threadInfo);
+                    }
+                }
+
+            }
+        }
+
+        return set;
+    }
+
+    private static void parseJiffiesInfo(String path, ThreadInfo info) {
+        final int readBytes = readProcStat(path, sBuffer);
+
+        MatrixLog.d(TAG, "%d: %s", readBytes, sBuffer);
+
+        for (int i = 0, spaceIdx = 0; i < readBytes;) {
+            if (Character.isSpaceChar(sBuffer[i])) {
+                spaceIdx++;
+                i++;
+                continue;
+            }
+
+            switch (spaceIdx) {
+                case 1: { // read thread name
+                    int begin = i + 1;
+                    int length = 0;
+
+                    for (;i < readBytes && !Character.isSpaceChar(sBuffer[i]); i++, length++);
+
+                    if ('(' == sBuffer[begin]) {
+                        begin++;
+                        length--;
+                    }
+
+                    if (')' == sBuffer[begin + length - 1]) {
+                        length--;
+                    }
+
+                    if (length > 0) {
+                        info.name = new String(sBuffer, begin, length);
+                    }
+
+                    MatrixLog.d(TAG, "read name = %s", info.name);
+
+                    break;
+                }
+                case 13:
+                case 14:
+                case 15:
+                case 16: { // read jiffies
+                    int begin = i;
+                    int length = 0;
+
+                    for (; i < readBytes && !Character.isSpaceChar(sBuffer[i]); i++, length++);
+
+                    String num = new String(sBuffer, begin, length);
+
+                    MatrixLog.d(TAG, "read jiffies = %s", num);
+
+                    info.jiffies += MatrixUtil.parseLong(num, 0);
+
+                    break;
+                }
+                default:
+                    i++;
+            }
+        }
+    }
+
+    private static int readProcStat(String path, byte[] buffer) {
+        int readBytes = -1;
+        File file = new File(path);
+        if (!file.exists()) {
+            return -1;
+        }
+
+        try (FileInputStream fis = new FileInputStream(file)) {
+            readBytes = fis.read(buffer);
+        } catch (IOException e) {
+            MatrixLog.printErrStackTrace(TAG, e, "");
+            readBytes = -1;
+        }
+
+        return readBytes;
     }
 
 
