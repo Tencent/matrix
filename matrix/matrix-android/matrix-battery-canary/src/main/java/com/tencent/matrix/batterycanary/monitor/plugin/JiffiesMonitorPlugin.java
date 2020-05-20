@@ -56,6 +56,10 @@ public class JiffiesMonitorPlugin implements IBatteryMonitorPlugin, Handler.Call
 
     @Override
     public void onAppForeground(boolean isForeground) {
+        if (!Matrix.isInstalled()) {
+            MatrixLog.e(TAG, "Matrix was not installed yet, just ignore the event");
+            return;
+        }
         if (!isForeground) {
             handler.removeCallbacksAndMessages(null);
             Message message = Message.obtain(handler);
@@ -88,7 +92,7 @@ public class JiffiesMonitorPlugin implements IBatteryMonitorPlugin, Handler.Call
         if (msg.what == MSG_ID_JIFFIES_START) {
             ProcessInfo processInfo = new ProcessInfo();
             processInfo.pid = Process.myPid();
-            processInfo.name = MatrixUtil.getProcessName(Matrix.with().getApplication());
+            processInfo.name = Matrix.isInstalled() ? MatrixUtil.getProcessName(Matrix.with().getApplication()) : "default";
             processInfo.threadInfo.addAll(getThreadsInfo(processInfo.pid));
             processInfo.upTime = SystemClock.uptimeMillis();
             processInfo.time = System.currentTimeMillis();
@@ -106,7 +110,7 @@ public class JiffiesMonitorPlugin implements IBatteryMonitorPlugin, Handler.Call
             }
             ProcessInfo processInfo = new ProcessInfo();
             processInfo.pid = Process.myPid();
-            processInfo.name = MatrixUtil.getProcessName(Matrix.with().getApplication());
+            processInfo.name = Matrix.isInstalled() ? MatrixUtil.getProcessName(Matrix.with().getApplication()) : "default";
             processInfo.threadInfo.addAll(getThreadsInfo(processInfo.pid));
             processInfo.upTime = SystemClock.uptimeMillis();
             processInfo.time = System.currentTimeMillis();
