@@ -1,10 +1,13 @@
 package com.tencent.matrix.batterycanary.monitor;
 
+import android.app.Application;
+
 import com.tencent.matrix.AppActiveMatrixDelegate;
 import com.tencent.matrix.batterycanary.monitor.plugin.IBatteryMonitorPlugin;
 import com.tencent.matrix.batterycanary.monitor.plugin.JiffiesMonitorPlugin;
 import com.tencent.matrix.batterycanary.monitor.plugin.LooperTaskMonitorPlugin;
 import com.tencent.matrix.plugin.Plugin;
+import com.tencent.matrix.plugin.PluginListener;
 
 import java.util.Collections;
 import java.util.Comparator;
@@ -19,12 +22,17 @@ public class BatteryMonitor extends Plugin {
     public BatteryMonitor(Config config) {
         this.config = config;
 
-        if (config.disableAppForegroundNotifyByMatrix) {
-            AppActiveMatrixDelegate.INSTANCE.removeListener(this);
-        }
-
         for (IBatteryMonitorPlugin plugin : config.plugins) {
             plugin.onInstall(this);
+        }
+    }
+
+    @Override
+    public void init(Application app, PluginListener listener) {
+        super.init(app, listener);
+
+        if (config.disableAppForegroundNotifyByMatrix) {
+            AppActiveMatrixDelegate.INSTANCE.removeListener(this);
         }
     }
 
