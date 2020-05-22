@@ -65,6 +65,10 @@ static std::list<tsd_t *> m_merge_waiting_buffer;
 
 static size_t m_max_tsd_capacity = 20000;
 
+static size_t m_minor_merge_times = 0;
+static size_t m_full_merge_times = 0;
+static size_t m_dump_times = 0;
+
 static bool is_stacktrace_enabled      = false;
 static bool is_caller_sampling_enabled = false;
 
@@ -159,12 +163,6 @@ static inline size_t repay_debt(tsd_t *__tsd) {
     return total_count - __tsd->borrowed_ptrs.size();
 }
 
-static void log_data() {
-    LOGD(TAG, ">>>>> global:%zu, waiting:%zu, merge_bucket:[%zu, %zu, %zu]",
-         m_tsd_global_set.size(), m_merge_waiting_buffer.size(), m_merge_bucket.ptr_meta.size(),
-         m_merge_bucket.borrowed_ptrs.size(), m_merge_bucket.stack_meta.size());
-}
-
 static inline size_t minor_merge() {
 //    LOGD(TAG, "minor_merge");
     std::lock_guard<std::mutex>        global_tsd_set_lock(m_tsd_global_set_mutex);
@@ -187,7 +185,6 @@ static inline size_t minor_merge() {
         delete tsd;
     }
     repay_debt(&m_merge_bucket);
-    log_data();
     return m_merge_bucket.borrowed_ptrs.size();
 //    LOGD(TAG, "minor_merge end");
 }
@@ -238,11 +235,13 @@ static void *merge_async(void *__arg) {
         NanoSeconds_Start(merge_begin);
 
         size_t retained_borrow_count = minor_merge();
+        m_minor_merge_times++;
         LOGD(TAG, "merge_async: retained borrowed count %zu", retained_borrow_count);
 
         if (retained_borrow_count > m_max_tsd_capacity * 10) {
             NanoSeconds_Start(full_begin);
             full_merge();
+            m_full_merge_times++;
             NanoSeconds_End(full_cost, full_begin);
             LOGD(TAG, "merge_async: full merge cost: %lld", full_cost);
         }
@@ -664,6 +663,7 @@ static inline void dump_stacks(FILE *log_file,
 static inline void dump_impl(FILE *log_file, bool enable_mmap_hook) {
 
     size_t tsd_count = full_merge();
+    m_dump_times++;
 
     m_merge_bucket.tsd_shared_mutex.lock_shared();
 
@@ -695,12 +695,13 @@ static inline void dump_impl(FILE *log_file, bool enable_mmap_hook) {
     }
 
     fprintf(log_file,
-            "tsd count = %zu, borrowed count = %zu, lost cout = %zu\n"
+            "tsd count = %zu, borrowed count = %zu, lost cout = %zu, minor = %zu, full = %zu, dump = %zu\n"
             "<void *, ptr_meta_t> ptr_meta [%zu * %zu = (%zu)]\n"
             "<uint64_t, stack_meta_t> stack_meta [%zu * %zu = (%zu)]\n"
             "<void *> borrowed_ptrs [%zu * %zu = (%zu)]\n\n",
 
             tsd_count, m_merge_bucket.borrowed_ptrs.size(), m_lost_ptr_count,
+            m_minor_merge_times, m_full_merge_times, m_dump_times;
 
             sizeof(ptr_meta_t) + sizeof(void *), m_merge_bucket.ptr_meta.size(),
             (sizeof(ptr_meta_t) + sizeof(void *)) * m_merge_bucket.ptr_meta.size(),
