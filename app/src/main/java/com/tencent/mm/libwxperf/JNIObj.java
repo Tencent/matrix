@@ -34,6 +34,8 @@ public class JNIObj {
 
     public native static void mallocTest();
 
+    public native static void tlsTest();
+
     public static String calledByJNI() {
         Log.d("Yves-debug", "called By JNI");
         return stackTraceToString(new Throwable().getStackTrace());

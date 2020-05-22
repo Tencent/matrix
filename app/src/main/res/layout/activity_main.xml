@@ -114,11 +114,21 @@
         android:id="@+id/btn_memory_benchmark"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="2dp"
+        android:layout_marginTop="12dp"
+        android:onClick="memoryBenchmark"
         android:text="MemoryBenchmark"
         android:textAllCaps="false"
-        android:onClick="memoryBenchmark"
         app:layout_constraintStart_toStartOf="@+id/btn_unwind"
         app:layout_constraintTop_toBottomOf="@+id/btn_unwind" />
+
+    <Button
+        android:id="@+id/button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="9dp"
+        android:onClick="tlsTest"
+        android:text="TLS"
+        app:layout_constraintBaseline_toBaselineOf="@+id/btn_memory_benchmark"
+        app:layout_constraintStart_toEndOf="@+id/btn_memory_benchmark" />
 
 </android.support.constraint.ConstraintLayout>

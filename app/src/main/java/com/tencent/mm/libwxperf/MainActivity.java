@@ -309,4 +309,8 @@ public class MainActivity extends AppCompatActivity {
         }
         MemoryBenchmarkTest.benchmarkNative();
     }
+
+    public void tlsTest(View view) {
+        JNIObj.tlsTest();
+    }
 }
