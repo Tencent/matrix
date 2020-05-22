@@ -412,11 +412,12 @@ static inline void on_release_memory(void *__ptr, bool __is_mmap) {
         released = do_release_memory_meta(__ptr, tsd, __is_mmap);
     }
 
-    if (!released) {
-        m_merge_bucket.tsd_shared_mutex.lock_shared();
-        released = do_release_memory_meta(__ptr, &m_merge_bucket, __is_mmap);
-        m_merge_bucket.tsd_shared_mutex.unlock_shared();
-    }
+    // fixme 这里用共享锁会有问题！这里是要写入的！只有在按 caller 采样时用共享锁才有意义
+//    if (!released) {
+//        m_merge_bucket.tsd_shared_mutex.lock_shared();
+//        released = do_release_memory_meta(__ptr, &m_merge_bucket, __is_mmap);
+//        m_merge_bucket.tsd_shared_mutex.unlock_shared();
+//    }
 
     if (unlikely(!released)) { // free 的指针没记录或者还在某个线程的 tsd 里没有 flush, 可能有多个相同的
         std::lock_guard<std::shared_mutex> tsd_lock(tsd->tsd_shared_mutex);
