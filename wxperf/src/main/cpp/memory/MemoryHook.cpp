@@ -701,7 +701,7 @@ static inline void dump_impl(FILE *log_file, bool enable_mmap_hook) {
             "<void *> borrowed_ptrs [%zu * %zu = (%zu)]\n\n",
 
             tsd_count, m_merge_bucket.borrowed_ptrs.size(), m_lost_ptr_count,
-            m_minor_merge_times, m_full_merge_times, m_dump_times;
+            m_minor_merge_times, m_full_merge_times, m_dump_times,
 
             sizeof(ptr_meta_t) + sizeof(void *), m_merge_bucket.ptr_meta.size(),
             (sizeof(ptr_meta_t) + sizeof(void *)) * m_merge_bucket.ptr_meta.size(),
