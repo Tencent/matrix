@@ -41,9 +41,7 @@
 
 KSThread ksthread_self()
 {
-    thread_t thread_self = mach_thread_self();
-    mach_port_deallocate(mach_task_self(), thread_self);
-    return (KSThread)thread_self;
+    return pthread_mach_thread_np(pthread_self());
 }
 
 bool ksthread_getThreadName(const KSThread thread, char* const buffer, int bufLength)
