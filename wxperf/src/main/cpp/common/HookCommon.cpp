@@ -14,6 +14,8 @@
 extern "C" {
 #endif
 
+#define TAG "HookCommon"
+
 std::vector<dlopen_callback_t> m_dlopen_callbacks;
 std::vector<hook_init_callback_t> m_init_callbacks;
 
@@ -26,14 +28,18 @@ DEFINE_HOOK_FUN(void *, __loader_android_dlopen_ext, const char *__file_name,
     void *ret = (*ORIGINAL_FUNC_NAME(__loader_android_dlopen_ext))(__file_name, __flag, __extinfo,
                                                                    __caller_addr);
 
-    LOGD("Yves-debug", "call into dlopen hook");
+    LOGD(TAG, "call into dlopen hook");
     pthread_mutex_lock(&m_dlopen_mutex);
 
     for (auto &callback : m_dlopen_callbacks) {
         callback(__file_name);
     }
 
+    NanoSeconds_Start(begin);
     xhook_refresh(false);
+    NanoSeconds_End(cost, begin);
+
+    LOGD(TAG, "xhook_refresh cost : %lld", cost);
 
     pthread_mutex_unlock(&m_dlopen_mutex);
     return ret;
@@ -123,7 +129,12 @@ Java_com_tencent_mm_performance_jni_HookManager_xhookRefreshNative(JNIEnv *env, 
                                                                   jboolean async) {
     hook_common_init();
     unwindstack::update_maps();
-    return xhook_refresh(async);
+    NanoSeconds_Start(begin);
+    int ret = xhook_refresh(async);
+    NanoSeconds_End(cost, begin);
+
+    LOGD(TAG, "xhook_refresh in JNI cost %lld", cost);
+    return ret;
 }
 
 JNIEXPORT void JNICALL
