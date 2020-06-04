@@ -14,6 +14,7 @@ import android.util.Log;
 import android.view.View;
 
 import com.tencent.mm.performance.jni.HookManager;
+import com.tencent.mm.performance.jni.LibWxPerfManager;
 import com.tencent.mm.performance.jni.fd.FDDumpBridge;
 import com.tencent.mm.performance.jni.memory.MemoryHook;
 import com.tencent.mm.performance.jni.pthread.PthreadHook;
@@ -34,6 +35,11 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        LibWxPerfManager.INSTANCE.init();
+        if (!LibWxPerfManager.INSTANCE.initOk()) {
+            throw new RuntimeException("init failed");
+        }
 
         Log.d(TAG, "threadName = " + threadNameRegex + ", " + name.matches(threadNameRegex));
 
