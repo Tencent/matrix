@@ -66,7 +66,7 @@ uint64_t get_native_stack() {
     return hash_stack_frames(*ptr_stack_frames);
 }
 
-char* get_java_stack() {
+char *get_java_stack() {
     char *buf = static_cast<char *>(malloc(BUF_SIZE));
     if (buf) {
         get_java_stacktrace(buf, BUF_SIZE);
@@ -80,7 +80,8 @@ DEFINE_HOOK_FUN(EGLContext, eglCreateContext, EGLDisplay dpy, EGLConfig config,
     CALL_ORIGIN_FUNC_RET(EGLContext, ret, eglCreateContext, dpy, config, share_context,
                          attrib_list);
 
-    store_stack_info((uint64_t) ret, m_method_egl_create_context, get_java_stack(), get_native_stack());
+    store_stack_info((uint64_t) ret, m_method_egl_create_context, get_java_stack(),
+                     get_native_stack());
 
     return ret;
 }
@@ -89,10 +90,18 @@ DEFINE_HOOK_FUN(EGLBoolean, eglDestroyContext, EGLDisplay dpy, EGLContext ctx) {
 
     release_egl_resource(m_method_egl_destroy_context, (uint64_t) ctx);
 
-    CALL_ORIGIN_FUNC_RET(EGLBoolean, ret, eglDestroyContext, dpy, ctx);
+    void *handle = dlopen(ORIGINAL_LIB, RTLD_LAZY);
+    EGLBoolean (*eglDestroyContext)(EGLDisplay, EGLContext);
 
-    return ret;
+    eglDestroyContext = static_cast<EGLBoolean (*)(EGLDisplay, EGLContext)>(dlsym(handle,"eglDestroyContext"));
+
+    return eglDestroyContext(dpy, ctx);
+
+//    CALL_ORIGIN_FUNC_RET(EGLBoolean, ret, eglDestorySurface, dpy, ctx);
+//
+//    return ret;
 }
+
 
 DEFINE_HOOK_FUN(EGLSurface, eglCreatePbufferSurface, EGLDisplay dpy, EGLContext ctx,
                 const EGLint *attrib_list, int offset) {
@@ -100,17 +109,19 @@ DEFINE_HOOK_FUN(EGLSurface, eglCreatePbufferSurface, EGLDisplay dpy, EGLContext 
     CALL_ORIGIN_FUNC_RET(EGLContext, ret, eglCreatePbufferSurface, dpy, ctx, attrib_list,
                          offset);
 
-    store_stack_info((uint64_t) ret, m_method_egl_create_pbuffer_surface, get_java_stack(), get_native_stack());
+    store_stack_info((uint64_t) ret, m_method_egl_create_pbuffer_surface, get_java_stack(),
+                     get_native_stack());
 
     return ret;
 
 }
 
-DEFINE_HOOK_FUN(EGLBoolean, eglDestroySurface, EGLDisplay dpy, EGLSurface surface) {
+DEFINE_HOOK_FUN(EGLBoolean, eglDestorySurface, EGLDisplay dpy, EGLSurface surface) {
 
     release_egl_resource(m_method_egl_destroy_surface, (uint64_t) surface);
 
-    CALL_ORIGIN_FUNC_RET(EGLBoolean, ret, eglDestroySurface, dpy, surface);
+    LOGE("Cc1over-debug", "surface == nullptr_t = " + surface == nullptr_t);
+    CALL_ORIGIN_FUNC_RET(EGLBoolean, ret, eglDestroyContext, dpy, surface);
 
     return ret;
 
@@ -122,7 +133,8 @@ DEFINE_HOOK_FUN(EGLSurface, eglCreateWindowSurface, EGLDisplay dpy, EGLConfig co
     CALL_ORIGIN_FUNC_RET(EGLContext, ret, eglCreateWindowSurface, dpy, config, window,
                          attrib_list);
 
-    store_stack_info((uint64_t) ret, m_method_egl_create_window_surface, get_java_stack(), get_native_stack());
+    store_stack_info((uint64_t) ret, m_method_egl_create_window_surface, get_java_stack(),
+                     get_native_stack());
 
     return ret;
 }

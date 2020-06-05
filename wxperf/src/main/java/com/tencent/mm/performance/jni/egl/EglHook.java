@@ -58,6 +58,7 @@ public class EglHook extends AbsHook {
     public static void onCreateEglContext(long eglContext, long nativeAddr, String javaStack) {
 
         Log.e(TAG, "onCreateEglContext callback");
+        Log.e(TAG, javaStack);
 
         EglResourceMonitor newEgl = new EglResourceMonitor(eglContext, javaStack, nativeAddr);
 
@@ -105,6 +106,7 @@ public class EglHook extends AbsHook {
     public static void onCreateEglWindowSurface(long eglSurface, long nativeAddr, String javaStack) {
 
         Log.e(TAG, "onCreateEglWindowSurface callback");
+        Log.e(TAG, javaStack);
 
         EglResourceMonitor newEgl = new EglResourceMonitor(eglSurface, javaStack, nativeAddr);
 
@@ -122,6 +124,7 @@ public class EglHook extends AbsHook {
     public static void onCreatePbufferSurface(long eglSurface, long nativeAddr, String javaStack) {
 
         Log.e(TAG, "onCreatePbufferSurface callback");
+        Log.e(TAG, javaStack);
 
         EglResourceMonitor newEgl = new EglResourceMonitor(eglSurface, javaStack, nativeAddr);
 

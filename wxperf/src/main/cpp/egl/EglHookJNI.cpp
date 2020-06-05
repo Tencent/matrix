@@ -17,7 +17,7 @@ static HookFunction const EGL_HOOK_FUNCTIONS[] = {
         {"eglDestroyContext",       (void *) HANDLER_FUNC_NAME(eglDestroyContext),       NULL},
         {"eglCreateWindowSurface",  (void *) HANDLER_FUNC_NAME(eglCreateWindowSurface),  NULL},
         {"eglCreatePbufferSurface", (void *) HANDLER_FUNC_NAME(eglCreatePbufferSurface), NULL},
-        { "eglDestroySurface", (void *) HANDLER_FUNC_NAME(eglDestroySurface), NULL }
+        {"eglDestroySurface", (void *) HANDLER_FUNC_NAME(eglDestorySurface), NULL }
 };
 
 void egl_hook() {
