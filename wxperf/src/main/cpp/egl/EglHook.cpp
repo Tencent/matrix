@@ -90,16 +90,9 @@ DEFINE_HOOK_FUN(EGLBoolean, eglDestroyContext, EGLDisplay dpy, EGLContext ctx) {
 
     release_egl_resource(m_method_egl_destroy_context, (uint64_t) ctx);
 
-    void *handle = dlopen(ORIGINAL_LIB, RTLD_LAZY);
-    EGLBoolean (*eglDestroyContext)(EGLDisplay, EGLContext);
+    CALL_ORIGIN_FUNC_RET(EGLBoolean, ret, eglDestroyContext, dpy, ctx);
 
-    eglDestroyContext = static_cast<EGLBoolean (*)(EGLDisplay, EGLContext)>(dlsym(handle,"eglDestroyContext"));
-
-    return eglDestroyContext(dpy, ctx);
-
-//    CALL_ORIGIN_FUNC_RET(EGLBoolean, ret, eglDestorySurface, dpy, ctx);
-//
-//    return ret;
+    return ret;
 }
 
 
@@ -116,14 +109,20 @@ DEFINE_HOOK_FUN(EGLSurface, eglCreatePbufferSurface, EGLDisplay dpy, EGLContext 
 
 }
 
+typedef EGLBoolean (*EGL_DESTORY_SURFACE)(EGLDisplay, EGLSurface);
+
 DEFINE_HOOK_FUN(EGLBoolean, eglDestorySurface, EGLDisplay dpy, EGLSurface surface) {
 
     release_egl_resource(m_method_egl_destroy_surface, (uint64_t) surface);
 
-    LOGE("Cc1over-debug", "surface == nullptr_t = " + surface == nullptr_t);
-    CALL_ORIGIN_FUNC_RET(EGLBoolean, ret, eglDestroyContext, dpy, surface);
+//    CALL_ORIGIN_FUNC_RET(EGLBoolean, ret, eglDestroyContext, dpy, surface);
 
-    return ret;
+//    return ret;
+    void *handle = dlopen(ORIGINAL_LIB, RTLD_LAZY);
+
+    EGL_DESTORY_SURFACE eglDestorySurface =(EGL_DESTORY_SURFACE)(dlsym(handle,"eglDestroySurface"));
+
+    return eglDestorySurface(dpy, surface);
 
 }
 
