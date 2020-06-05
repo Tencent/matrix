@@ -9,6 +9,8 @@
 #define ORIGINAL_LIB "libEGL.so"
 #define TAG "EGL"
 
+const size_t BUF_SIZE = 1024;
+
 jstring charTojstring(JNIEnv *env, const char *pat) {
     //定义java String类 strClass
     jclass strClass = (env)->FindClass("java/lang/String");
@@ -24,7 +26,8 @@ jstring charTojstring(JNIEnv *env, const char *pat) {
     return (jstring) (env)->NewObject(strClass, ctorID, bytes, encoding);
 }
 
-void store_stack_info(uint64_t egl_context, char *java_stack, uint64_t native_stack_hash) {
+void store_stack_info(uint64_t egl_resource, jmethodID methodId, char *java_stack,
+                      uint64_t native_stack_hash) {
     JNIEnv *env = NULL;
     if (m_java_vm->GetEnv((void **) &env, JNI_VERSION_1_6) != JNI_OK) {
         if (m_java_vm->AttachCurrentThread(&env, NULL) == JNI_OK) {
@@ -36,12 +39,12 @@ void store_stack_info(uint64_t egl_context, char *java_stack, uint64_t native_st
     if (env != NULL) {
         jstring js = charTojstring(env, java_stack);
         env->CallStaticVoidMethod(m_class_EglHook,
-                                  m_method_record,
-                                  egl_context, native_stack_hash, js);
+                                  methodId,
+                                  egl_resource, native_stack_hash, js);
     }
 }
 
-void release_egl_context(uint64_t egl_context) {
+void release_egl_resource(jmethodID methodId, uint64_t egl_resource) {
     JNIEnv *env = NULL;
     if (m_java_vm->GetEnv((void **) &env, JNI_VERSION_1_6) != JNI_OK) {
         if (m_java_vm->AttachCurrentThread(&env, NULL) == JNI_OK) {
@@ -52,38 +55,75 @@ void release_egl_context(uint64_t egl_context) {
 
     if (env != NULL) {
         env->CallStaticVoidMethod(m_class_EglHook,
-                                  m_method_egl_release,
-                                  egl_context);
+                                  methodId,
+                                  egl_resource);
     }
 }
 
-const size_t BUF_SIZE = 1024;
-
-DEFINE_HOOK_FUN(EGLContext, eglCreateContext, EGLDisplay dpy, EGLConfig config,
-                EGLContext share_context, const EGLint *attrib_list) {
-
+uint64_t get_native_stack() {
     auto ptr_stack_frames = new std::vector<unwindstack::FrameData>;
     unwindstack::do_unwind(*ptr_stack_frames);
-    uint64_t native_stack_hash_code = hash_stack_frames(*ptr_stack_frames);
+    return hash_stack_frames(*ptr_stack_frames);
+}
 
+char* get_java_stack() {
     char *buf = static_cast<char *>(malloc(BUF_SIZE));
     if (buf) {
         get_java_stacktrace(buf, BUF_SIZE);
     }
+    return buf;
+}
+
+DEFINE_HOOK_FUN(EGLContext, eglCreateContext, EGLDisplay dpy, EGLConfig config,
+                EGLContext share_context, const EGLint *attrib_list) {
 
     CALL_ORIGIN_FUNC_RET(EGLContext, ret, eglCreateContext, dpy, config, share_context,
                          attrib_list);
 
-    store_stack_info((uint64_t) ret, buf, native_stack_hash_code);
+    store_stack_info((uint64_t) ret, m_method_egl_create_context, get_java_stack(), get_native_stack());
 
     return ret;
 }
 
 DEFINE_HOOK_FUN(EGLBoolean, eglDestroyContext, EGLDisplay dpy, EGLContext ctx) {
 
-    release_egl_context((uint64_t) ctx);
+    release_egl_resource(m_method_egl_destroy_context, (uint64_t) ctx);
 
     CALL_ORIGIN_FUNC_RET(EGLBoolean, ret, eglDestroyContext, dpy, ctx);
 
     return ret;
 }
+
+DEFINE_HOOK_FUN(EGLSurface, eglCreatePbufferSurface, EGLDisplay dpy, EGLContext ctx,
+                const EGLint *attrib_list, int offset) {
+
+    CALL_ORIGIN_FUNC_RET(EGLContext, ret, eglCreatePbufferSurface, dpy, ctx, attrib_list,
+                         offset);
+
+    store_stack_info((uint64_t) ret, m_method_egl_create_pbuffer_surface, get_java_stack(), get_native_stack());
+
+    return ret;
+
+}
+
+DEFINE_HOOK_FUN(EGLBoolean, eglDestroySurface, EGLDisplay dpy, EGLSurface surface) {
+
+    release_egl_resource(m_method_egl_destroy_surface, (uint64_t) surface);
+
+    CALL_ORIGIN_FUNC_RET(EGLBoolean, ret, eglDestroySurface, dpy, surface);
+
+    return ret;
+
+}
+
+DEFINE_HOOK_FUN(EGLSurface, eglCreateWindowSurface, EGLDisplay dpy, EGLConfig config,
+                EGLNativeWindowType window, const EGLint *attrib_list) {
+
+    CALL_ORIGIN_FUNC_RET(EGLContext, ret, eglCreateWindowSurface, dpy, config, window,
+                         attrib_list);
+
+    store_stack_info((uint64_t) ret, m_method_egl_create_window_surface, get_java_stack(), get_native_stack());
+
+    return ret;
+}
+

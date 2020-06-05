@@ -1,17 +1,14 @@
 package com.tencent.mm.performance.jni.egl;
 
-import android.opengl.EGL14;
-import android.support.annotation.Nullable;
+public class EglResourceMonitor {
 
-public class EglContextMonitor {
-
-    public long contextId;
+    public long resourceId;
 
     public String javaStack;
     public long nativeStackHash;
 
-    public EglContextMonitor(long contextId, String javaStack, long nativeStackHash) {
-        this.contextId = contextId;
+    public EglResourceMonitor(long contextId, String javaStack, long nativeStackHash) {
+        this.resourceId = contextId;
         this.javaStack = javaStack;
         this.nativeStackHash = nativeStackHash;
     }
@@ -22,7 +19,7 @@ public class EglContextMonitor {
             return false;
         }
 
-        EglContextMonitor compare = (EglContextMonitor) obj;
+        EglResourceMonitor compare = (EglResourceMonitor) obj;
 
         if (compare.nativeStackHash == this.nativeStackHash && compare.javaStack.equals(this.javaStack)) {
             return true;
