@@ -357,9 +357,14 @@ public class TraceDataUtils {
         }
 
         Collections.sort(sortList, new Comparator<MethodItem>() {
+
+            private int compare(int x, int y) {
+                return (x < y) ? -1 : ((x == y) ? 0 : 1);
+            }
+
             @Override
             public int compare(MethodItem o1, MethodItem o2) {
-                return Integer.compare((o2.depth + 1) * o2.durTime, (o1.depth + 1) * o1.durTime);
+                return compare((o2.depth + 1) * o2.durTime, (o1.depth + 1) * o1.durTime);
             }
         });
 

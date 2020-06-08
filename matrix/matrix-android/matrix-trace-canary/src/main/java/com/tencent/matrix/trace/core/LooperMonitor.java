@@ -12,7 +12,6 @@ import com.tencent.matrix.util.MatrixLog;
 import com.tencent.matrix.util.ReflectUtils;
 
 import java.util.HashSet;
-import java.util.Objects;
 
 public class LooperMonitor implements MessageQueue.IdleHandler {
 
@@ -80,7 +79,9 @@ public class LooperMonitor implements MessageQueue.IdleHandler {
     }
 
     public LooperMonitor(Looper looper) {
-        Objects.requireNonNull(looper);
+        if (looper == null) {
+            throw new NullPointerException();
+        }
         this.looper = looper;
         resetPrinter();
         addIdleHandler(looper);

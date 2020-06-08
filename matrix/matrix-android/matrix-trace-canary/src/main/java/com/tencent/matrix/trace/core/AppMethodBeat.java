@@ -73,7 +73,7 @@ public class AppMethodBeat implements BeatLifecycle {
     };
 
     static {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.ICE_CREAM_SANDWICH) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
             sHandler.postDelayed(new Runnable() {
                 @Override
                 public void run() {
@@ -202,7 +202,7 @@ public class AppMethodBeat implements BeatLifecycle {
      * @param methodId
      */
     public static void i(int methodId) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.ICE_CREAM_SANDWICH) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN) {
             return;
         }
 
@@ -250,7 +250,7 @@ public class AppMethodBeat implements BeatLifecycle {
      * @param methodId
      */
     public static void o(int methodId) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.ICE_CREAM_SANDWICH) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN) {
             return;
         }
 
@@ -278,7 +278,7 @@ public class AppMethodBeat implements BeatLifecycle {
      * @param isFocus  this window if has focus
      */
     public static void at(Activity activity, boolean isFocus) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.ICE_CREAM_SANDWICH) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN) {
             return;
         }
 
