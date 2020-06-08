@@ -18,6 +18,7 @@
 #import <mach-o/dyld.h>
 #import <map>
 #import "KSCrash.h"
+#import "KSCrash_BinaryImageHandler.h"
 
 #ifdef __LP64__
 typedef mach_header_64 wxg_mach_header;
@@ -125,20 +126,24 @@ const char *wxg_lastPathEntry(const char *const path)
 
     // These operations is NOT thread-safe according to Apple docs
     // Do not call this multiple times
-    int images = _dyld_image_count();
+    int images = __ks_dyld_image_count();
 
     for (int i = 0; i < images; i++) {
         // Here we extract the module name from the full path
         // Typically it looks something like: /path/to/lib/UIKit
         // And I just extract UIKit
 
-        NSString *fullName = [NSString stringWithUTF8String:_dyld_get_image_name(i)];
+        const char *image_name = __ks_dyld_get_image_name(i);
+        if (image_name == NULL) {
+            continue;
+        }
+        NSString *fullName = [NSString stringWithUTF8String:image_name];
         NSRange range = [fullName rangeOfString:@"/" options:NSBackwardsSearch];
 
         NSUInteger startP = (range.location != NSNotFound) ? range.location + 1 : 0;
         NSString *imageName = [fullName substringFromIndex:startP];
 
-        wxg_mach_header *header = (wxg_mach_header *) _dyld_get_image_header(i);
+        wxg_mach_header *header = (wxg_mach_header *) __ks_dyld_get_image_header(i);
         if (!header) {
             continue;
         }

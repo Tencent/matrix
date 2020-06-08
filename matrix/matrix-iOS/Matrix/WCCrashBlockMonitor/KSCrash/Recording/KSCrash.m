@@ -37,6 +37,7 @@
 #import "KSCrashMonitor_System.h"
 #import "KSSystemCapabilities.h"
 //#define KSLogger_LocalLevel TRACE
+#import "KSCrash_BinaryImageHandler.h"
 #import "KSLogger.h"
 #import "MatrixPathUtil.h"
 
@@ -183,6 +184,7 @@ static NSString* getBasePath()
 
 - (id) init
 {
+    kscrash_record_current_all_images();
     return [self initWithBasePath:getBasePath()];
 }
 
@@ -795,7 +797,6 @@ SYNTHESIZE_CRASH_STATE_PROPERTY(BOOL, crashedLastLaunch)
     _printPreviousLog = shouldPrintPreviousLog;
     kscrash_setPrintPreviousLog(shouldPrintPreviousLog);
 }
-
 
 // ============================================================================
 #pragma mark - Utility -

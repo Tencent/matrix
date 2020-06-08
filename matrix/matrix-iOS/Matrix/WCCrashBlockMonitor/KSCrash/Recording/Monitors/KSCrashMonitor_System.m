@@ -33,6 +33,7 @@
 #import "KSDynamicLinker.h"
 #import "KSSysCtl.h"
 #import "KSSystemCapabilities.h"
+#import "KSCrash_BinaryImageHandler.h"
 
 //#define KSLogger_LocalLevel TRACE
 #import "KSLogger.h"
@@ -486,7 +487,10 @@ static void initialize()
 
         NSBundle* mainBundle = [NSBundle mainBundle];
         NSDictionary* infoDict = [mainBundle infoDictionary];
-        const struct mach_header* header = _dyld_get_image_header(0);
+        const struct mach_header* header = __ks_dyld_get_image_header(0);
+        if (header == NULL) {
+            header = _dyld_get_image_header(0);
+        }
 
 #if KSCRASH_HAS_UIDEVICE
         g_systemData.systemName = cString([UIDevice currentDevice].systemName);
@@ -541,8 +545,8 @@ static void initialize()
         g_systemData.cpuArchitecture = getCurrentCPUArch();
         g_systemData.cpuType = kssysctl_int32ForName("hw.cputype");
         g_systemData.cpuSubType = kssysctl_int32ForName("hw.cpusubtype");
-        g_systemData.binaryCPUType = header->cputype;
-        g_systemData.binaryCPUSubType = header->cpusubtype;
+        g_systemData.binaryCPUType = header ? header->cputype : 0;
+        g_systemData.binaryCPUSubType = header ? header -> cpusubtype : 0;
         g_systemData.timezone = cString([NSTimeZone localTimeZone].abbreviation);
         g_systemData.processName = cString([NSProcessInfo processInfo].processName);
         g_systemData.processID = [NSProcessInfo processInfo].processIdentifier;

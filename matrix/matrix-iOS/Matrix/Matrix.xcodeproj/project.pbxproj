@@ -13,6 +13,8 @@
 		1110E02B2243388500A873F9 /* WCFilterStackHandler.mm in Sources */ = {isa = PBXBuildFile; fileRef = 1110E0292243388500A873F9 /* WCFilterStackHandler.mm */; };
 		111A10262379411100546915 /* MatrixAsyncHook.h in Headers */ = {isa = PBXBuildFile; fileRef = 111A10242379411100546915 /* MatrixAsyncHook.h */; };
 		111A10272379411100546915 /* MatrixAsyncHook.m in Sources */ = {isa = PBXBuildFile; fileRef = 111A10252379411100546915 /* MatrixAsyncHook.m */; };
+		1127770225ECD92E00F7A6E4 /* KSCrash_BinaryImageHandler.h in Headers */ = {isa = PBXBuildFile; fileRef = 1127770025ECD92E00F7A6E4 /* KSCrash_BinaryImageHandler.h */; };
+		1127770325ECD92E00F7A6E4 /* KSCrash_BinaryImageHandler.mm in Sources */ = {isa = PBXBuildFile; fileRef = 1127770125ECD92E00F7A6E4 /* KSCrash_BinaryImageHandler.mm */; };
 		114E342E21E83FE6001FB50C /* MatrixAppRebootType.h in Headers */ = {isa = PBXBuildFile; fileRef = 114E342B21E83FC5001FB50C /* MatrixAppRebootType.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		116460A12111AF190069B5DE /* KSDate.c in Sources */ = {isa = PBXBuildFile; fileRef = 114E681220AAC0CE0045083D /* KSDate.c */; };
 		116460A22111AF190069B5DE /* KSLogger.c in Sources */ = {isa = PBXBuildFile; fileRef = 114E682420AAC0CE0045083D /* KSLogger.c */; };
@@ -285,6 +287,8 @@
 		111A10252379411100546915 /* MatrixAsyncHook.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = MatrixAsyncHook.m; sourceTree = "<group>"; };
 		11203FA920EE10A20022FF96 /* MatrixDeviceInfo.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MatrixDeviceInfo.h; sourceTree = "<group>"; };
 		11203FAA20EE10A20022FF96 /* MatrixDeviceInfo.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = MatrixDeviceInfo.mm; sourceTree = "<group>"; };
+		1127770025ECD92E00F7A6E4 /* KSCrash_BinaryImageHandler.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = KSCrash_BinaryImageHandler.h; sourceTree = "<group>"; };
+		1127770125ECD92E00F7A6E4 /* KSCrash_BinaryImageHandler.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = KSCrash_BinaryImageHandler.mm; sourceTree = "<group>"; };
 		114E342B21E83FC5001FB50C /* MatrixAppRebootType.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MatrixAppRebootType.h; sourceTree = "<group>"; };
 		114E67B920AAC0CE0045083D /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		114E67BB20AAC0CE0045083D /* MatrixIssue.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MatrixIssue.h; sourceTree = "<group>"; };
@@ -765,6 +769,8 @@
 				114E680720AAC0CE0045083D /* KSCrashMonitorContext.h */,
 				114E680820AAC0CE0045083D /* KSCrashMonitorType.c */,
 				114E680920AAC0CE0045083D /* KSCrashMonitorType.h */,
+				1127770125ECD92E00F7A6E4 /* KSCrash_BinaryImageHandler.mm */,
+				1127770025ECD92E00F7A6E4 /* KSCrash_BinaryImageHandler.h */,
 			);
 			path = Monitors;
 			sourceTree = "<group>";
@@ -1249,6 +1255,7 @@
 				116461102111AF190069B5DE /* KSSymbolicator.h in Headers */,
 				116461112111AF190069B5DE /* WCMainThreadHandler.h in Headers */,
 				116461122111AF190069B5DE /* llvm-config.h in Headers */,
+				1127770225ECD92E00F7A6E4 /* KSCrash_BinaryImageHandler.h in Headers */,
 				BB77AD7622368582008C67D9 /* biginteger.h in Headers */,
 				116461142111AF190069B5DE /* LLVM.h in Headers */,
 				116461162111AF190069B5DE /* KSJSONCodecObjC.h in Headers */,
@@ -1439,6 +1446,7 @@
 				116460B52111AF190069B5DE /* KSCPU_arm.c in Sources */,
 				116460B62111AF190069B5DE /* WCCrashBlockMonitor.mm in Sources */,
 				116460B72111AF190069B5DE /* WCDumpReportDataProvider.mm in Sources */,
+				1127770325ECD92E00F7A6E4 /* KSCrash_BinaryImageHandler.mm in Sources */,
 				BB77AD1E22368582008C67D9 /* nsobject_hook.mm in Sources */,
 				116460B82111AF190069B5DE /* KSStackCursor_MachineContext.c in Sources */,
 				116460B92111AF190069B5DE /* KSCrashMonitor_Zombie.c in Sources */,
