@@ -1,12 +1,15 @@
 package com.tencent.matrix.trace;
 
 import com.tencent.matrix.javalib.util.FileUtil;
+import com.tencent.matrix.javalib.util.Log;
 import com.tencent.matrix.javalib.util.Util;
 import com.tencent.matrix.trace.retrace.MappingCollector;
+import com.tencent.matrix.trace.retrace.MethodInfo;
 
 import java.util.HashSet;
 
 public class Configuration {
+    public static final String TAG = "Matrix.Configuration";
 
     public String packageName;
     public String mappingDir;
@@ -16,6 +19,7 @@ public class Configuration {
     public String blackListFilePath;
     public String traceClassOut;
     public HashSet<String> blackSet = new HashSet<>();
+    public HashSet<MethodInfo> blackMethodSet = new HashSet<>();
 
     Configuration(String packageName, String mappingDir, String baseMethodMapPath, String methodMapFilePath,
                   String ignoreMethodMapFilePath, String blackListFilePath, String traceClassOut) {
@@ -30,8 +34,7 @@ public class Configuration {
 
     public int parseBlackFile(MappingCollector processor) {
         String blackStr = TraceBuildConstants.DEFAULT_BLACK_TRACE + FileUtil.readFileAsString(blackListFilePath);
-
-        String[] blackArray = blackStr.trim().replace("/", ".").split("\n");
+        String[] blackArray = blackStr.trim().replace("/", ".").split("\r\n");
 
         if (blackArray != null) {
             for (String black : blackArray) {
@@ -47,14 +50,28 @@ public class Configuration {
 
                 if (black.startsWith("-keepclass ")) {
                     black = black.replace("-keepclass ", "");
+                    Log.i(TAG, "keepclass [" + black + " ] ");
                     blackSet.add(processor.proguardClassName(black, black));
                 } else if (black.startsWith("-keeppackage ")) {
                     black = black.replace("-keeppackage ", "");
+                    Log.i(TAG, "keeppackage [" + black + " ] ");
                     blackSet.add(processor.proguardPackageName(black, black));
+                } else if (black.startsWith("-keepmethod")) {
+                    Log.i(TAG, black);
+                    black = black.replace("-keepmethod ", "");
+                    String[] keepMethod = black.split(" ");
+                    String originalClass = keepMethod[0];
+                    String originalMethod = keepMethod[1];
+                    String originalMethodDesc = keepMethod[2];
+                    Log.i(TAG, "keepmethod [" + originalClass + "#" + originalMethod + " . desc = " + originalMethodDesc + " ] ");
+                    MethodInfo methodInfo = processor.proguardMethodName(originalClass, originalMethod, originalMethodDesc);
+                    if (methodInfo != null) {
+                        blackMethodSet.add(methodInfo);
+                    }
                 }
             }
         }
-        return blackSet.size();
+        return blackSet.size() + blackMethodSet.size();
     }
 
     @Override

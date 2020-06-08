@@ -1,6 +1,7 @@
 package com.tencent.matrix.trace.core;
 
 import android.app.Activity;
+import android.os.Build;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
@@ -72,12 +73,14 @@ public class AppMethodBeat implements BeatLifecycle {
     };
 
     static {
-        sHandler.postDelayed(new Runnable() {
-            @Override
-            public void run() {
-                realRelease();
-            }
-        }, Constants.DEFAULT_RELEASE_BUFFER_DELAY);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
+            sHandler.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    realRelease();
+                }
+            }, Constants.DEFAULT_RELEASE_BUFFER_DELAY);
+        }
     }
 
     /**
@@ -199,6 +202,9 @@ public class AppMethodBeat implements BeatLifecycle {
      * @param methodId
      */
     public static void i(int methodId) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN) {
+            return;
+        }
 
         if (status <= STATUS_STOPPED) {
             return;
@@ -244,6 +250,10 @@ public class AppMethodBeat implements BeatLifecycle {
      * @param methodId
      */
     public static void o(int methodId) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN) {
+            return;
+        }
+
         if (status <= STATUS_STOPPED) {
             return;
         }
@@ -268,6 +278,10 @@ public class AppMethodBeat implements BeatLifecycle {
      * @param isFocus  this window if has focus
      */
     public static void at(Activity activity, boolean isFocus) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN) {
+            return;
+        }
+
         String activityName = activity.getClass().getName();
         if (isFocus) {
             if (sFocusActivitySet.add(activityName)) {

@@ -35,9 +35,9 @@ public class TraceBuildConstants {
     public final static String MATRIX_TRACE_ON_WINDOW_FOCUS_METHOD_ARGS = "(Z)V";
     public static final String[] UN_TRACE_CLASS = {"R.class", "R$", "Manifest", "BuildConfig"};
     public final static String DEFAULT_BLACK_TRACE =
-                    "[package]\n"
-                    + "-keeppackage android/\n"
-                    + "-keeppackage com/tencent/matrix/\n";
+                    "[package]\r\n"
+                    + "-keeppackage android/\r\n"
+                    + "-keeppackage com/tencent/matrix/\r\n";
 
     private static final int METHOD_ID_MAX = 0xFFFFF;
     public static final int METHOD_ID_DISPATCH = METHOD_ID_MAX - 1;

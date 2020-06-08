@@ -92,4 +92,11 @@ public class MethodInfo {
     public void setOriginalType(String originalType) {
         this.originalType = originalType;
     }
+
+    @Override
+    public String toString() {
+        return "MethodInfo{" + "originalClassName='" + originalClassName + '\'' + ", originalType='"
+                + originalType + '\'' + ", originalArguments='" + originalArguments
+                + '\'' + ", originalName='" + originalName + '\'' + '}';
+    }
 }

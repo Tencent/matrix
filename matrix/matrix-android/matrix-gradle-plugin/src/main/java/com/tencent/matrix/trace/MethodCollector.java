@@ -3,6 +3,7 @@ package com.tencent.matrix.trace;
 import com.tencent.matrix.javalib.util.Log;
 import com.tencent.matrix.trace.item.TraceMethod;
 import com.tencent.matrix.trace.retrace.MappingCollector;
+import com.tencent.matrix.trace.retrace.MethodInfo;
 
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassVisitor;
@@ -23,6 +24,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Enumeration;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.ListIterator;
@@ -81,12 +83,12 @@ public class MethodCollector {
             }
 
             for (File classFile : classFileList) {
-                futures.add(executor.submit(new CollectSrcTask(classFile)));
+                futures.add(executor.submit(new CollectSrcTask(classFile, mappingCollector)));
             }
         }
 
         for (File jarFile : dependencyJarList) {
-            futures.add(executor.submit(new CollectJarTask(jarFile)));
+            futures.add(executor.submit(new CollectJarTask(jarFile, mappingCollector)));
         }
 
         for (Future future : futures) {
@@ -119,9 +121,11 @@ public class MethodCollector {
     class CollectSrcTask implements Runnable {
 
         File classFile;
+        MappingCollector mappingCollector;
 
-        CollectSrcTask(File classFile) {
+        CollectSrcTask(File classFile, MappingCollector mappingCollector) {
             this.classFile = classFile;
+            this.mappingCollector = mappingCollector;
         }
 
         @Override
@@ -131,7 +135,7 @@ public class MethodCollector {
                 is = new FileInputStream(classFile);
                 ClassReader classReader = new ClassReader(is);
                 ClassWriter classWriter = new ClassWriter(ClassWriter.COMPUTE_MAXS);
-                ClassVisitor visitor = new TraceClassAdapter(Opcodes.ASM5, classWriter);
+                ClassVisitor visitor = new TraceClassAdapter(Opcodes.ASM5, classWriter, mappingCollector);
                 classReader.accept(visitor, 0);
 
             } catch (Exception e) {
@@ -148,9 +152,11 @@ public class MethodCollector {
     class CollectJarTask implements Runnable {
 
         File fromJar;
+        MappingCollector mappingCollector;
 
-        CollectJarTask(File jarFile) {
+        CollectJarTask(File jarFile, MappingCollector mappingCollector) {
             this.fromJar = jarFile;
+            this.mappingCollector = mappingCollector;
         }
 
         @Override
@@ -167,7 +173,7 @@ public class MethodCollector {
                         InputStream inputStream = zipFile.getInputStream(zipEntry);
                         ClassReader classReader = new ClassReader(inputStream);
                         ClassWriter classWriter = new ClassWriter(ClassWriter.COMPUTE_MAXS);
-                        ClassVisitor visitor = new TraceClassAdapter(Opcodes.ASM5, classWriter);
+                        ClassVisitor visitor = new TraceClassAdapter(Opcodes.ASM5, classWriter, mappingCollector);
                         classReader.accept(visitor, 0);
                     }
                 }
@@ -269,9 +275,11 @@ public class MethodCollector {
         private String className;
         private boolean isABSClass = false;
         private boolean hasWindowFocusMethod = false;
+        private MappingCollector mappingCollector;
 
-        TraceClassAdapter(int i, ClassVisitor classVisitor) {
+        TraceClassAdapter(int i, ClassVisitor classVisitor, MappingCollector mappingCollector) {
             super(i, classVisitor);
+            this.mappingCollector = mappingCollector;
         }
 
         @Override
@@ -293,7 +301,7 @@ public class MethodCollector {
                 if (!hasWindowFocusMethod) {
                     hasWindowFocusMethod = isWindowFocusChangeMethod(name, desc);
                 }
-                return new CollectMethodNode(className, access, name, desc, signature, exceptions);
+                return new CollectMethodNode(className, access, name, desc, signature, exceptions, mappingCollector);
             }
         }
     }
@@ -301,12 +309,14 @@ public class MethodCollector {
     private class CollectMethodNode extends MethodNode {
         private String className;
         private boolean isConstructor;
+        private MappingCollector mappingCollector;
 
 
         CollectMethodNode(String className, int access, String name, String desc,
-                          String signature, String[] exceptions) {
+                          String signature, String[] exceptions, MappingCollector mappingCollector) {
             super(Opcodes.ASM5, access, name, desc, signature, exceptions);
             this.className = className;
+            this.mappingCollector = mappingCollector;
         }
 
         @Override
@@ -318,24 +328,32 @@ public class MethodCollector {
                 isConstructor = true;
             }
 
-            boolean isNeedTrace = isNeedTrace(configuration, traceMethod.className, mappingCollector);
-            // filter simple methods
-            if ((isEmptyMethod() || isGetSetMethod() || isSingleMethod())
-                    && isNeedTrace) {
+            boolean isMethodNeedTrace = isMethodNeedTrace(configuration, mappingCollector, traceMethod.className,
+                    traceMethod.methodName, traceMethod.desc);
+            if (!isMethodNeedTrace) {
+                Log.i(TAG, "keep method not trace [" + traceMethod.className + "#" + traceMethod.methodName + " . desc = " + traceMethod.desc + " ] ");
                 ignoreCount.incrementAndGet();
                 collectedIgnoreMethodMap.put(traceMethod.getMethodName(), traceMethod);
                 return;
             }
 
-            if (isNeedTrace && !collectedMethodMap.containsKey(traceMethod.getMethodName())) {
+            boolean isClassNeedTrace = isClassNeedTrace(configuration, traceMethod.className, mappingCollector);
+            // filter simple methods
+            if ((isEmptyMethod() || isGetSetMethod() || isSingleMethod())
+                    && isClassNeedTrace) {
+                ignoreCount.incrementAndGet();
+                collectedIgnoreMethodMap.put(traceMethod.getMethodName(), traceMethod);
+                return;
+            }
+
+            if (isClassNeedTrace && !collectedMethodMap.containsKey(traceMethod.getMethodName())) {
                 traceMethod.id = methodId.incrementAndGet();
                 collectedMethodMap.put(traceMethod.getMethodName(), traceMethod);
                 incrementCount.incrementAndGet();
-            } else if (!isNeedTrace && !collectedIgnoreMethodMap.containsKey(traceMethod.className)) {
+            } else if (!isClassNeedTrace && !collectedIgnoreMethodMap.containsKey(traceMethod.className)) {
                 ignoreCount.incrementAndGet();
                 collectedIgnoreMethodMap.put(traceMethod.getMethodName(), traceMethod);
             }
-
         }
 
         private boolean isGetSetMethod() {
@@ -408,11 +426,27 @@ public class MethodCollector {
 
     }
 
+    public static boolean isMethodNeedTrace(Configuration configuration,
+                                            MappingCollector mappingCollector, String className, String methodName, String desc) {
+        Iterator<MethodInfo> iterator = configuration.blackMethodSet.iterator();
+        while (iterator.hasNext()) {
+            MethodInfo methodInfo = iterator.next();
+            if (methodInfo.getOriginalClassName().equals(className)
+                    && methodInfo.getOriginalName().equals(methodName)) {
+                MappingCollector.DescInfo descInfo = mappingCollector.parseMethodDesc(desc, true);
+                if (methodInfo.matches(descInfo.getReturnType(), descInfo.getArguments())) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
     public static boolean isWindowFocusChangeMethod(String name, String desc) {
         return null != name && null != desc && name.equals(TraceBuildConstants.MATRIX_TRACE_ON_WINDOW_FOCUS_METHOD) && desc.equals(TraceBuildConstants.MATRIX_TRACE_ON_WINDOW_FOCUS_METHOD_ARGS);
     }
 
-    public static boolean isNeedTrace(Configuration configuration, String clsName, MappingCollector mappingCollector) {
+    public static boolean isClassNeedTrace(Configuration configuration, String clsName, MappingCollector mappingCollector) {
         boolean isNeed = true;
         if (configuration.blackSet.contains(clsName)) {
             isNeed = false;
