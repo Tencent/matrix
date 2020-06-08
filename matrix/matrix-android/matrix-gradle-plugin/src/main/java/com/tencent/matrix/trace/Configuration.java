@@ -34,8 +34,7 @@ public class Configuration {
 
     public int parseBlackFile(MappingCollector processor) {
         String blackStr = TraceBuildConstants.DEFAULT_BLACK_TRACE + FileUtil.readFileAsString(blackListFilePath);
-
-        String[] blackArray = blackStr.trim().replace("/", ".").split("\n");
+        String[] blackArray = blackStr.trim().replace("/", ".").split("\r\n");
 
         if (blackArray != null) {
             for (String black : blackArray) {
@@ -51,13 +50,15 @@ public class Configuration {
 
                 if (black.startsWith("-keepclass ")) {
                     black = black.replace("-keepclass ", "");
+                    Log.i(TAG, "keepclass [" + black + " ] ");
                     blackSet.add(processor.proguardClassName(black, black));
                 } else if (black.startsWith("-keeppackage ")) {
                     black = black.replace("-keeppackage ", "");
+                    Log.i(TAG, "keeppackage [" + black + " ] ");
                     blackSet.add(processor.proguardPackageName(black, black));
                 } else if (black.startsWith("-keepmethod")) {
                     Log.i(TAG, black);
-                    black = black.replace("-keepmethod", "").substring(1);
+                    black = black.replace("-keepmethod ", "");
                     String[] keepMethod = black.split(" ");
                     String originalClass = keepMethod[0];
                     String originalMethod = keepMethod[1];
