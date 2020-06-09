@@ -12,12 +12,19 @@
 #include <pthread.h>
 #include <iostream>
 #include <sstream>
+#include <map>
+#include <unordered_map>
+#include "../../../../wxperf/src/main/cpp/common/Log.h"
+
 
 #define LOGD(TAG, FMT, args...) __android_log_print(ANDROID_LOG_DEBUG, TAG, FMT, ##args)
+#define TAG "Yves-test"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+    using namespace std;
 
 int count = 0;
 
@@ -327,7 +334,7 @@ Java_com_tencent_mm_libwxperf_JNIObj_doSomeThing(JNIEnv *env, jobject instance) 
         }
     }
 
-    *pi = count++;
+//    *pi = count++;
     LOGD("Yves-sample", " pi = %d", *pi);
 
     LOGD("Yves-sample", "<<<<<<<<<<<<<<<<<<<<end");
@@ -572,17 +579,68 @@ Java_com_tencent_mm_libwxperf_JNIObj_mallocTest(JNIEnv *env, jclass clazz) {
 
 }
 
+void SpeedTest() {
+    map<uint64_t, size_t > m;
+    unordered_map<uint64_t, size_t > um;
+
+    size_t TIMES = 100000;
+
+    NanoSeconds_Start(mbegin);
+//        ptr_meta_t meta{};
+    for (size_t i = 0; i < TIMES; ++i) {
+//        meta.size = i;
+        m[i] = i;
+    }
+    NanoSeconds_End(mend, mbegin);
+    LOGD(TAG, "          map cost %d", mend);
+
+
+    NanoSeconds_Start(umbegin);
+    for (size_t i = 0; i < TIMES; ++i) {
+//        meta.size = i;
+        um[i] = i;
+    }
+    NanoSeconds_End(umend, umbegin);
+    LOGD(TAG, "unordered_map cost %d", umend);
+
+    NanoSeconds_Start(mbegin2);
+
+//    auto m_it = m.find(100);
+//    if (m_it != m.end()) {
+//        LOGD(TAG, "map found %zu", m_it->second);
+//    }
+
+    m.erase(999);
+
+    NanoSeconds_End(mend2, mbegin2);
+    LOGD(TAG, "          map find cost %lld", mend2);
+
+    NanoSeconds_Start(umbegin2);
+//        ptr_meta_t meta{};
+
+//    auto um_it = um.find(100);
+//    if (um_it != um.end()) {
+//        LOGD(TAG, "map found %zu", um_it->second);
+//    }
+    um.erase(999);
+
+    NanoSeconds_End(umend2, umbegin2);
+    LOGD(TAG, "          map find cost %lld", umend2);
+}
+
 JNIEXPORT void JNICALL
 Java_com_tencent_mm_libwxperf_JNIObj_tlsTest(JNIEnv *env, jclass clazz) {
 
-    if (!key) {
-        pthread_key_create(&key, dest);
-    }
+//    if (!key) {
+//        pthread_key_create(&key, dest);
+//    }
+//
+//    pthread_t pthread;
+//    int *a = new int;
+//    *a = 10086;
+//    pthread_create(&pthread, NULL, threadfunc2, a);
 
-    pthread_t pthread;
-    int *a = new int;
-    *a = 10086;
-    pthread_create(&pthread, NULL, threadfunc2, a);
+    SpeedTest();
 }
 
 #ifdef __cplusplus

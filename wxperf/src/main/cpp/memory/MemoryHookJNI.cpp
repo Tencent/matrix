@@ -13,11 +13,13 @@
 extern "C" {
 #endif
 // @formatter:off
-static const HookFunction HOOK_MALL_FUNCTIONS[] = {
+const HookFunction HOOK_MALL_FUNCTIONS[] = {
         {"malloc", (void *) h_malloc, NULL},
         {"calloc", (void *) h_calloc, NULL},
         {"realloc", (void *) h_realloc, NULL},
         {"free", (void *) h_free, NULL},
+        {"memalign", (void *) HANDLER_FUNC_NAME(memalign), NULL},
+        {"posix_memalign", (void *) HANDLER_FUNC_NAME(posix_memalign), NULL},
         // CXX functions
 #ifndef __LP64__
         {"_Znwj",                               (void*) HANDLER_FUNC_NAME(_Znwj), NULL},

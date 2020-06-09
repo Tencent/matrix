@@ -39,8 +39,8 @@ public class MainActivity extends AppCompatActivity {
             HookManager.INSTANCE
                     .addHook(MemoryHook.INSTANCE
                             .addHookSo(".*libnative-lib\\.so$")
-                            .enableStacktrace(true)
-                            .enableMmapHook(true))
+                            .enableStacktrace(false)
+                            .enableMmapHook(false))
 //                    .addHook(PthreadHook.INSTANCE
 //                                    .addHookSo(".*\\.so$")
 //                                    .addHookThread(".*")

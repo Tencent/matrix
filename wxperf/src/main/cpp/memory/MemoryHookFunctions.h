@@ -26,6 +26,10 @@ DECLARE_HOOK_ORIG(void *, realloc, void * __ptr, size_t __byte_count);
 
 DECLARE_HOOK_ORIG(void, free, void *__ptr);
 
+DECLARE_HOOK_ORIG(void *, memalign, size_t __alignment, size_t __byte_count);
+
+DECLARE_HOOK_ORIG(int, posix_memalign, void** __memptr, size_t __alignment, size_t __size);
+
 #if defined(__USE_FILE_OFFSET64)
 // DECLARE_HOOK_ORIG not supports attrbute
 void *h_mmap(void* __addr, size_t __size, int __prot, int __flags, int __fd, off_t __offset) __RENAME(mmap64);
