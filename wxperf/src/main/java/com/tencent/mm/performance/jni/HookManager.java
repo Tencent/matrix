@@ -1,5 +1,6 @@
 package com.tencent.mm.performance.jni;
 
+import android.support.annotation.Keep;
 import android.support.annotation.Nullable;
 
 import java.util.HashSet;
@@ -61,6 +62,7 @@ public class HookManager {
         return this;
     }
 
+    @Keep
     public static String getStack() {
         return stackTraceToString(new Throwable().getStackTrace());
     }
