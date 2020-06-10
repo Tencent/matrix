@@ -1,5 +1,5 @@
 /* XzEnc.c -- Xz Encode
-2015-09-16 : Igor Pavlov : Public domain */
+2018-07-04 : Igor Pavlov : Public domain */
 
 #include "Precomp.h"
 
@@ -7,7 +7,6 @@
 #include <string.h>
 
 #include "7zCrc.h"
-#include "Alloc.h"
 #include "Bra.h"
 #include "CpuArch.h"
 
@@ -19,21 +18,40 @@
 
 #include "XzEnc.h"
 
+// #define _7ZIP_ST
+
+#ifndef _7ZIP_ST
+#include "MtCoder.h"
+#else
+#define MTCODER__THREADS_MAX 1
+#define MTCODER__BLOCKS_MAX 1
+#endif
+
+#define XZ_GET_PAD_SIZE(dataSize) ((4 - ((unsigned)(dataSize) & 3)) & 3)
+
+/* max pack size for LZMA2 block + check-64bytrs: */
+#define XZ_GET_MAX_BLOCK_PACK_SIZE(unpackSize) ((unpackSize) + ((unpackSize) >> 10) + 16 + 64)
+
+#define XZ_GET_ESTIMATED_BLOCK_TOTAL_PACK_SIZE(unpackSize) (XZ_BLOCK_HEADER_SIZE_MAX + XZ_GET_MAX_BLOCK_PACK_SIZE(unpackSize))
+
+
 #define XzBlock_ClearFlags(p)       (p)->flags = 0;
 #define XzBlock_SetNumFilters(p, n) (p)->flags |= ((n) - 1);
 #define XzBlock_SetHasPackSize(p)   (p)->flags |= XZ_BF_PACK_SIZE;
 #define XzBlock_SetHasUnpackSize(p) (p)->flags |= XZ_BF_UNPACK_SIZE;
 
-static SRes WriteBytes(ISeqOutStream *s, const void *buf, UInt32 size)
+
+static SRes WriteBytes(ISeqOutStream *s, const void *buf, size_t size)
 {
-  return (s->Write(s, buf, size) == size) ? SZ_OK : SZ_ERROR_WRITE;
+  return (ISeqOutStream_Write(s, buf, size) == size) ? SZ_OK : SZ_ERROR_WRITE;
 }
 
-static SRes WriteBytesAndCrc(ISeqOutStream *s, const void *buf, UInt32 size, UInt32 *crc)
+static SRes WriteBytesUpdateCrc(ISeqOutStream *s, const void *buf, size_t size, UInt32 *crc)
 {
   *crc = CrcUpdate(*crc, buf, size);
   return WriteBytes(s, buf, size);
 }
+
 
 static SRes Xz_WriteHeader(CXzStreamFlags f, ISeqOutStream *s)
 {
@@ -78,98 +96,154 @@ static SRes XzBlock_WriteHeader(const CXzBlock *p, ISeqOutStream *s)
 }
 
 
-static SRes Xz_WriteFooter(CXzStream *p, ISeqOutStream *s)
+
+
+typedef struct
+{
+  size_t numBlocks;
+  size_t size;
+  size_t allocated;
+  Byte *blocks;
+} CXzEncIndex;
+
+
+static void XzEncIndex_Construct(CXzEncIndex *p)
+{
+  p->numBlocks = 0;
+  p->size = 0;
+  p->allocated = 0;
+  p->blocks = NULL;
+}
+
+static void XzEncIndex_Init(CXzEncIndex *p)
+{
+  p->numBlocks = 0;
+  p->size = 0;
+}
+
+static void XzEncIndex_Free(CXzEncIndex *p, ISzAllocPtr alloc)
+{
+  if (p->blocks)
+  {
+    ISzAlloc_Free(alloc, p->blocks);
+    p->blocks = NULL;
+  }
+  p->numBlocks = 0;
+  p->size = 0;
+  p->allocated = 0;
+}
+
+
+static SRes XzEncIndex_ReAlloc(CXzEncIndex *p, size_t newSize, ISzAllocPtr alloc)
+{
+  Byte *blocks = (Byte *)ISzAlloc_Alloc(alloc, newSize);
+  if (!blocks)
+    return SZ_ERROR_MEM;
+  if (p->size != 0)
+    memcpy(blocks, p->blocks, p->size);
+  if (p->blocks)
+    ISzAlloc_Free(alloc, p->blocks);
+  p->blocks = blocks;
+  p->allocated = newSize;
+  return SZ_OK;
+}
+
+
+static SRes XzEncIndex_PreAlloc(CXzEncIndex *p, UInt64 numBlocks, UInt64 unpackSize, UInt64 totalSize, ISzAllocPtr alloc)
+{
+  UInt64 pos;
+  {
+    Byte buf[32];
+    unsigned pos2 = Xz_WriteVarInt(buf, totalSize);
+    pos2 += Xz_WriteVarInt(buf + pos2, unpackSize);
+    pos = numBlocks * pos2;
+  }
+  
+  if (pos <= p->allocated - p->size)
+    return SZ_OK;
+  {
+    UInt64 newSize64 = p->size + pos;
+    size_t newSize = (size_t)newSize64;
+    if (newSize != newSize64)
+      return SZ_ERROR_MEM;
+    return XzEncIndex_ReAlloc(p, newSize, alloc);
+  }
+}
+
+
+static SRes XzEncIndex_AddIndexRecord(CXzEncIndex *p, UInt64 unpackSize, UInt64 totalSize, ISzAllocPtr alloc)
+{
+  Byte buf[32];
+  unsigned pos = Xz_WriteVarInt(buf, totalSize);
+  pos += Xz_WriteVarInt(buf + pos, unpackSize);
+
+  if (pos > p->allocated - p->size)
+  {
+    size_t newSize = p->allocated * 2 + 16 * 2;
+    if (newSize < p->size + pos)
+      return SZ_ERROR_MEM;
+    RINOK(XzEncIndex_ReAlloc(p, newSize, alloc));
+  }
+  memcpy(p->blocks + p->size, buf, pos);
+  p->size += pos;
+  p->numBlocks++;
+  return SZ_OK;
+}
+
+
+static SRes XzEncIndex_WriteFooter(const CXzEncIndex *p, CXzStreamFlags flags, ISeqOutStream *s)
 {
   Byte buf[32];
   UInt64 globalPos;
-  {
-    UInt32 crc = CRC_INIT_VAL;
-    unsigned pos = 1 + Xz_WriteVarInt(buf + 1, p->numBlocks);
-    size_t i;
-
-    globalPos = pos;
-    buf[0] = 0;
-    RINOK(WriteBytesAndCrc(s, buf, pos, &crc));
-
-    for (i = 0; i < p->numBlocks; i++)
-    {
-      const CXzBlockSizes *block = &p->blocks[i];
-      pos = Xz_WriteVarInt(buf, block->totalSize);
-      pos += Xz_WriteVarInt(buf + pos, block->unpackSize);
-      globalPos += pos;
-      RINOK(WriteBytesAndCrc(s, buf, pos, &crc));
-    }
-    
-    pos = ((unsigned)globalPos & 3);
-    
-    if (pos != 0)
-    {
-      buf[0] = buf[1] = buf[2] = 0;
-      RINOK(WriteBytesAndCrc(s, buf, 4 - pos, &crc));
-      globalPos += 4 - pos;
-    }
-    {
-      SetUi32(buf, CRC_GET_DIGEST(crc));
-      RINOK(WriteBytes(s, buf, 4));
-      globalPos += 4;
-    }
-  }
-
-  {
-    UInt32 indexSize = (UInt32)((globalPos >> 2) - 1);
-    SetUi32(buf + 4, indexSize);
-    buf[8] = (Byte)(p->flags >> 8);
-    buf[9] = (Byte)(p->flags & 0xFF);
-    SetUi32(buf, CrcCalc(buf + 4, 6));
-    memcpy(buf + 10, XZ_FOOTER_SIG, XZ_FOOTER_SIG_SIZE);
-    return WriteBytes(s, buf, 12);
-  }
+  UInt32 crc = CRC_INIT_VAL;
+  unsigned pos = 1 + Xz_WriteVarInt(buf + 1, p->numBlocks);
+  
+  globalPos = pos;
+  buf[0] = 0;
+  RINOK(WriteBytesUpdateCrc(s, buf, pos, &crc));
+  RINOK(WriteBytesUpdateCrc(s, p->blocks, p->size, &crc));
+  globalPos += p->size;
+  
+  pos = XZ_GET_PAD_SIZE(globalPos);
+  buf[1] = 0;
+  buf[2] = 0;
+  buf[3] = 0;
+  globalPos += pos;
+  
+  crc = CrcUpdate(crc, buf + 4 - pos, pos);
+  SetUi32(buf + 4, CRC_GET_DIGEST(crc));
+  
+  SetUi32(buf + 8 + 4, (UInt32)(globalPos >> 2));
+  buf[8 + 8] = (Byte)(flags >> 8);
+  buf[8 + 9] = (Byte)(flags & 0xFF);
+  SetUi32(buf + 8, CrcCalc(buf + 8 + 4, 6));
+  buf[8 + 10] = XZ_FOOTER_SIG_0;
+  buf[8 + 11] = XZ_FOOTER_SIG_1;
+  
+  return WriteBytes(s, buf + 4 - pos, pos + 4 + 12);
 }
 
-
-static SRes Xz_AddIndexRecord(CXzStream *p, UInt64 unpackSize, UInt64 totalSize, ISzAlloc *alloc)
-{
-  if (!p->blocks || p->numBlocksAllocated == p->numBlocks)
-  {
-    size_t num = p->numBlocks * 2 + 1;
-    size_t newSize = sizeof(CXzBlockSizes) * num;
-    CXzBlockSizes *blocks;
-    if (newSize / sizeof(CXzBlockSizes) != num)
-      return SZ_ERROR_MEM;
-    blocks = (CXzBlockSizes *)alloc->Alloc(alloc, newSize);
-    if (!blocks)
-      return SZ_ERROR_MEM;
-    if (p->numBlocks != 0)
-    {
-      memcpy(blocks, p->blocks, p->numBlocks * sizeof(CXzBlockSizes));
-      alloc->Free(alloc, p->blocks);
-    }
-    p->blocks = blocks;
-    p->numBlocksAllocated = num;
-  }
-  {
-    CXzBlockSizes *block = &p->blocks[p->numBlocks++];
-    block->unpackSize = unpackSize;
-    block->totalSize = totalSize;
-  }
-  return SZ_OK;
-}
 
 
 /* ---------- CSeqCheckInStream ---------- */
 
 typedef struct
 {
-  ISeqInStream p;
+  ISeqInStream vt;
   ISeqInStream *realStream;
+  const Byte *data;
+  UInt64 limit;
   UInt64 processed;
+  int realStreamFinished;
   CXzCheck check;
 } CSeqCheckInStream;
 
-static void SeqCheckInStream_Init(CSeqCheckInStream *p, unsigned mode)
+static void SeqCheckInStream_Init(CSeqCheckInStream *p, unsigned checkMode)
 {
+  p->limit = (UInt64)(Int64)-1;
   p->processed = 0;
-  XzCheck_Init(&p->check, mode);
+  p->realStreamFinished = 0;
+  XzCheck_Init(&p->check, checkMode);
 }
 
 static void SeqCheckInStream_GetDigest(CSeqCheckInStream *p, Byte *digest)
@@ -177,12 +251,31 @@ static void SeqCheckInStream_GetDigest(CSeqCheckInStream *p, Byte *digest)
   XzCheck_Final(&p->check, digest);
 }
 
-static SRes SeqCheckInStream_Read(void *pp, void *data, size_t *size)
+static SRes SeqCheckInStream_Read(const ISeqInStream *pp, void *data, size_t *size)
 {
-  CSeqCheckInStream *p = (CSeqCheckInStream *)pp;
-  SRes res = p->realStream->Read(p->realStream, data, size);
-  XzCheck_Update(&p->check, data, *size);
-  p->processed += *size;
+  CSeqCheckInStream *p = CONTAINER_FROM_VTBL(pp, CSeqCheckInStream, vt);
+  size_t size2 = *size;
+  SRes res = SZ_OK;
+  
+  if (p->limit != (UInt64)(Int64)-1)
+  {
+    UInt64 rem = p->limit - p->processed;
+    if (size2 > rem)
+      size2 = (size_t)rem;
+  }
+  if (size2 != 0)
+  {
+    if (p->realStream)
+    {
+      res = ISeqInStream_Read(p->realStream, data, &size2);
+      p->realStreamFinished = (size2 == 0) ? 1 : 0;
+    }
+    else
+      memcpy(data, p->data + (size_t)p->processed, size2);
+    XzCheck_Update(&p->check, data, size2);
+    p->processed += size2;
+  }
+  *size = size2;
   return res;
 }
 
@@ -191,15 +284,24 @@ static SRes SeqCheckInStream_Read(void *pp, void *data, size_t *size)
 
 typedef struct
 {
-  ISeqOutStream p;
+  ISeqOutStream vt;
   ISeqOutStream *realStream;
+  Byte *outBuf;
+  size_t outBufLimit;
   UInt64 processed;
 } CSeqSizeOutStream;
 
-static size_t MyWrite(void *pp, const void *data, size_t size)
+static size_t SeqSizeOutStream_Write(const ISeqOutStream *pp, const void *data, size_t size)
 {
-  CSeqSizeOutStream *p = (CSeqSizeOutStream *)pp;
-  size = p->realStream->Write(p->realStream, data, size);
+  CSeqSizeOutStream *p = CONTAINER_FROM_VTBL(pp, CSeqSizeOutStream, vt);
+  if (p->realStream)
+    size = ISeqOutStream_Write(p->realStream, data, size);
+  else
+  {
+    if (size > p->outBufLimit - (size_t)p->processed)
+      return 0;
+    memcpy(p->outBuf + (size_t)p->processed, data, size);
+  }
   p->processed += size;
   return size;
 }
@@ -220,9 +322,29 @@ typedef struct
   int srcWasFinished;
 } CSeqInFilter;
 
-static SRes SeqInFilter_Read(void *pp, void *data, size_t *size)
+
+SRes BraState_SetFromMethod(IStateCoder *p, UInt64 id, int encodeMode, ISzAllocPtr alloc);
+
+static SRes SeqInFilter_Init(CSeqInFilter *p, const CXzFilter *props, ISzAllocPtr alloc)
 {
-  CSeqInFilter *p = (CSeqInFilter *)pp;
+  if (!p->buf)
+  {
+    p->buf = (Byte *)ISzAlloc_Alloc(alloc, FILTER_BUF_SIZE);
+    if (!p->buf)
+      return SZ_ERROR_MEM;
+  }
+  p->curPos = p->endPos = 0;
+  p->srcWasFinished = 0;
+  RINOK(BraState_SetFromMethod(&p->StateCoder, props->id, 1, alloc));
+  RINOK(p->StateCoder.SetProps(p->StateCoder.p, props->props, props->propsSize, alloc));
+  p->StateCoder.Init(p->StateCoder.p);
+  return SZ_OK;
+}
+
+
+static SRes SeqInFilter_Read(const ISeqInStream *pp, void *data, size_t *size)
+{
+  CSeqInFilter *p = CONTAINER_FROM_VTBL(pp, CSeqInFilter, p);
   size_t sizeOriginal = *size;
   if (sizeOriginal == 0)
     return SZ_OK;
@@ -234,19 +356,22 @@ static SRes SeqInFilter_Read(void *pp, void *data, size_t *size)
     {
       p->curPos = 0;
       p->endPos = FILTER_BUF_SIZE;
-      RINOK(p->realStream->Read(p->realStream, p->buf, &p->endPos));
+      RINOK(ISeqInStream_Read(p->realStream, p->buf, &p->endPos));
       if (p->endPos == 0)
         p->srcWasFinished = 1;
     }
     {
       SizeT srcLen = p->endPos - p->curPos;
-      int wasFinished;
+      ECoderStatus status;
       SRes res;
       *size = sizeOriginal;
-      res = p->StateCoder.Code(p->StateCoder.p, data, size, p->buf + p->curPos, &srcLen,
-        p->srcWasFinished, CODER_FINISH_ANY, &wasFinished);
+      res = p->StateCoder.Code2(p->StateCoder.p,
+          data, size,
+          p->buf + p->curPos, &srcLen,
+          p->srcWasFinished, CODER_FINISH_ANY,
+          &status);
       p->curPos += srcLen;
-      if (*size != 0 || srcLen == 0 || res != 0)
+      if (*size != 0 || srcLen == 0 || res != SZ_OK)
         return res;
     }
   }
@@ -255,34 +380,22 @@ static SRes SeqInFilter_Read(void *pp, void *data, size_t *size)
 static void SeqInFilter_Construct(CSeqInFilter *p)
 {
   p->buf = NULL;
+  p->StateCoder.p = NULL;
   p->p.Read = SeqInFilter_Read;
 }
 
-static void SeqInFilter_Free(CSeqInFilter *p)
+static void SeqInFilter_Free(CSeqInFilter *p, ISzAllocPtr alloc)
 {
+  if (p->StateCoder.p)
+  {
+    p->StateCoder.Free(p->StateCoder.p, alloc);
+    p->StateCoder.p = NULL;
+  }
   if (p->buf)
   {
-    g_Alloc.Free(&g_Alloc, p->buf);
+    ISzAlloc_Free(alloc, p->buf);
     p->buf = NULL;
   }
-}
-
-SRes BraState_SetFromMethod(IStateCoder *p, UInt64 id, int encodeMode, ISzAlloc *alloc);
-
-static SRes SeqInFilter_Init(CSeqInFilter *p, const CXzFilter *props)
-{
-  if (!p->buf)
-  {
-    p->buf = g_Alloc.Alloc(&g_Alloc, FILTER_BUF_SIZE);
-    if (!p->buf)
-      return SZ_ERROR_MEM;
-  }
-  p->curPos = p->endPos = 0;
-  p->srcWasFinished = 0;
-  RINOK(BraState_SetFromMethod(&p->StateCoder, props->id, 1, &g_Alloc));
-  RINOK(p->StateCoder.SetProps(p->StateCoder.p, props->props, props->propsSize, &g_Alloc));
-  p->StateCoder.Init(p->StateCoder.p);
-  return SZ_OK;
 }
 
 
@@ -292,17 +405,17 @@ static SRes SeqInFilter_Init(CSeqInFilter *p, const CXzFilter *props)
 
 typedef struct
 {
-  ISeqInStream p;
+  ISeqInStream vt;
   ISeqInStream *inStream;
   CSbEnc enc;
 } CSbEncInStream;
 
-static SRes SbEncInStream_Read(void *pp, void *data, size_t *size)
+static SRes SbEncInStream_Read(const ISeqInStream *pp, void *data, size_t *size)
 {
-  CSbEncInStream *p = (CSbEncInStream *)pp;
+  CSbEncInStream *p = CONTAINER_FROM_VTBL(pp, CSbEncInStream, vt);
   size_t sizeOriginal = *size;
   if (sizeOriginal == 0)
-    return S_OK;
+    return SZ_OK;
   
   for (;;)
   {
@@ -322,14 +435,14 @@ static SRes SbEncInStream_Read(void *pp, void *data, size_t *size)
     *size = sizeOriginal;
     RINOK(SbEnc_Read(&p->enc, data, size));
     if (*size != 0 || !p->enc.needRead)
-      return S_OK;
+      return SZ_OK;
   }
 }
 
-void SbEncInStream_Construct(CSbEncInStream *p, ISzAlloc *alloc)
+void SbEncInStream_Construct(CSbEncInStream *p, ISzAllocPtr alloc)
 {
   SbEnc_Construct(&p->enc, alloc);
-  p->p.Read = SbEncInStream_Read;
+  p->vt.Read = SbEncInStream_Read;
 }
 
 SRes SbEncInStream_Init(CSbEncInStream *p)
@@ -345,57 +458,9 @@ void SbEncInStream_Free(CSbEncInStream *p)
 #endif
 
 
-typedef struct
-{
-  CLzma2EncHandle lzma2;
-  #ifdef USE_SUBBLOCK
-  CSbEncInStream sb;
-  #endif
-  CSeqInFilter filter;
-  ISzAlloc *alloc;
-  ISzAlloc *bigAlloc;
-} CLzma2WithFilters;
 
+/* ---------- CXzProps ---------- */
 
-static void Lzma2WithFilters_Construct(CLzma2WithFilters *p, ISzAlloc *alloc, ISzAlloc *bigAlloc)
-{
-  p->alloc = alloc;
-  p->bigAlloc = bigAlloc;
-  p->lzma2 = NULL;
-  #ifdef USE_SUBBLOCK
-  SbEncInStream_Construct(&p->sb, alloc);
-  #endif
-  SeqInFilter_Construct(&p->filter);
-}
-
-static SRes Lzma2WithFilters_Create(CLzma2WithFilters *p)
-{
-  p->lzma2 = Lzma2Enc_Create(p->alloc, p->bigAlloc);
-  if (!p->lzma2)
-    return SZ_ERROR_MEM;
-  return SZ_OK;
-}
-
-static void Lzma2WithFilters_Free(CLzma2WithFilters *p)
-{
-  SeqInFilter_Free(&p->filter);
-  #ifdef USE_SUBBLOCK
-  SbEncInStream_Free(&p->sb);
-  #endif
-  if (p->lzma2)
-  {
-    Lzma2Enc_Destroy(p->lzma2);
-    p->lzma2 = NULL;
-  }
-}
-
-
-void XzProps_Init(CXzProps *p)
-{
-  p->lzma2Props = NULL;
-  p->filterProps = NULL;
-  p->checkId = XZ_CHECK_CRC32;
-}
 
 void XzFilterProps_Init(CXzFilterProps *p)
 {
@@ -405,122 +470,848 @@ void XzFilterProps_Init(CXzFilterProps *p)
   p->ipDefined = False;
 }
 
-
-static SRes Xz_Compress(CXzStream *xz, CLzma2WithFilters *lzmaf,
-    ISeqOutStream *outStream, ISeqInStream *inStream,
-    const CXzProps *props, ICompressProgress *progress)
+void XzProps_Init(CXzProps *p)
 {
-  xz->flags = (Byte)props->checkId;
+  p->checkId = XZ_CHECK_CRC32;
+  p->blockSize = XZ_PROPS__BLOCK_SIZE__AUTO;
+  p->numBlockThreads_Reduced = -1;
+  p->numBlockThreads_Max = -1;
+  p->numTotalThreads = -1;
+  p->reduceSize = (UInt64)(Int64)-1;
+  p->forceWriteSizesInHeader = 0;
+  // p->forceWriteSizesInHeader = 1;
 
-  RINOK(Lzma2Enc_SetProps(lzmaf->lzma2, props->lzma2Props));
-  RINOK(Xz_WriteHeader(xz->flags, outStream));
-
-  {
-    CSeqCheckInStream checkInStream;
-    CSeqSizeOutStream seqSizeOutStream;
-    CXzBlock block;
-    unsigned filterIndex = 0;
-    CXzFilter *filter = NULL;
-    const CXzFilterProps *fp = props->filterProps;
-    
-    XzBlock_ClearFlags(&block);
-    XzBlock_SetNumFilters(&block, 1 + (fp ? 1 : 0));
-    
-    if (fp)
-    {
-      filter = &block.filters[filterIndex++];
-      filter->id = fp->id;
-      filter->propsSize = 0;
-      
-      if (fp->id == XZ_ID_Delta)
-      {
-        filter->props[0] = (Byte)(fp->delta - 1);
-        filter->propsSize = 1;
-      }
-      else if (fp->ipDefined)
-      {
-        SetUi32(filter->props, fp->ip);
-        filter->propsSize = 4;
-      }
-    }
-
-    {
-      CXzFilter *f = &block.filters[filterIndex++];
-      f->id = XZ_ID_LZMA2;
-      f->propsSize = 1;
-      f->props[0] = Lzma2Enc_WriteProperties(lzmaf->lzma2);
-    }
-
-    seqSizeOutStream.p.Write = MyWrite;
-    seqSizeOutStream.realStream = outStream;
-    seqSizeOutStream.processed = 0;
-    
-    RINOK(XzBlock_WriteHeader(&block, &seqSizeOutStream.p));
-    
-    checkInStream.p.Read = SeqCheckInStream_Read;
-    checkInStream.realStream = inStream;
-    SeqCheckInStream_Init(&checkInStream, XzFlags_GetCheckType(xz->flags));
-    
-    if (fp)
-    {
-      #ifdef USE_SUBBLOCK
-      if (fp->id == XZ_ID_Subblock)
-      {
-        lzmaf->sb.inStream = &checkInStream.p;
-        RINOK(SbEncInStream_Init(&lzmaf->sb));
-      }
-      else
-      #endif
-      {
-        lzmaf->filter.realStream = &checkInStream.p;
-        RINOK(SeqInFilter_Init(&lzmaf->filter, filter));
-      }
-    }
-
-    {
-      UInt64 packPos = seqSizeOutStream.processed;
-      
-      SRes res = Lzma2Enc_Encode(lzmaf->lzma2, &seqSizeOutStream.p,
-          fp ?
-            #ifdef USE_SUBBLOCK
-            (fp->id == XZ_ID_Subblock) ? &lzmaf->sb.p:
-            #endif
-            &lzmaf->filter.p:
-            &checkInStream.p,
-          progress);
-      
-      RINOK(res);
-      block.unpackSize = checkInStream.processed;
-      block.packSize = seqSizeOutStream.processed - packPos;
-    }
-
-    {
-      unsigned padSize = 0;
-      Byte buf[128];
-      while ((((unsigned)block.packSize + padSize) & 3) != 0)
-        buf[padSize++] = 0;
-      SeqCheckInStream_GetDigest(&checkInStream, buf + padSize);
-      RINOK(WriteBytes(&seqSizeOutStream.p, buf, padSize + XzFlags_GetCheckSize(xz->flags)));
-      RINOK(Xz_AddIndexRecord(xz, block.unpackSize, seqSizeOutStream.processed - padSize, &g_Alloc));
-    }
-  }
-  return Xz_WriteFooter(xz, outStream);
+  XzFilterProps_Init(&p->filterProps);
+  Lzma2EncProps_Init(&p->lzma2Props);
 }
 
+
+static void XzEncProps_Normalize_Fixed(CXzProps *p)
+{
+  UInt64 fileSize;
+  int t1, t1n, t2, t2r, t3;
+  {
+    CLzma2EncProps tp = p->lzma2Props;
+    if (tp.numTotalThreads <= 0)
+      tp.numTotalThreads = p->numTotalThreads;
+    Lzma2EncProps_Normalize(&tp);
+    t1n = tp.numTotalThreads;
+  }
+
+  t1 = p->lzma2Props.numTotalThreads;
+  t2 = p->numBlockThreads_Max;
+  t3 = p->numTotalThreads;
+
+  if (t2 > MTCODER__THREADS_MAX)
+    t2 = MTCODER__THREADS_MAX;
+
+  if (t3 <= 0)
+  {
+    if (t2 <= 0)
+      t2 = 1;
+    t3 = t1n * t2;
+  }
+  else if (t2 <= 0)
+  {
+    t2 = t3 / t1n;
+    if (t2 == 0)
+    {
+      t1 = 1;
+      t2 = t3;
+    }
+    if (t2 > MTCODER__THREADS_MAX)
+      t2 = MTCODER__THREADS_MAX;
+  }
+  else if (t1 <= 0)
+  {
+    t1 = t3 / t2;
+    if (t1 == 0)
+      t1 = 1;
+  }
+  else
+    t3 = t1n * t2;
+
+  p->lzma2Props.numTotalThreads = t1;
+
+  t2r = t2;
+
+  fileSize = p->reduceSize;
+
+  if ((p->blockSize < fileSize || fileSize == (UInt64)(Int64)-1))
+    p->lzma2Props.lzmaProps.reduceSize = p->blockSize;
+
+  Lzma2EncProps_Normalize(&p->lzma2Props);
+
+  t1 = p->lzma2Props.numTotalThreads;
+
+  {
+    if (t2 > 1 && fileSize != (UInt64)(Int64)-1)
+    {
+      UInt64 numBlocks = fileSize / p->blockSize;
+      if (numBlocks * p->blockSize != fileSize)
+        numBlocks++;
+      if (numBlocks < (unsigned)t2)
+      {
+        t2r = (unsigned)numBlocks;
+        if (t2r == 0)
+          t2r = 1;
+        t3 = t1 * t2r;
+      }
+    }
+  }
+  
+  p->numBlockThreads_Max = t2;
+  p->numBlockThreads_Reduced = t2r;
+  p->numTotalThreads = t3;
+}
+
+
+static void XzProps_Normalize(CXzProps *p)
+{
+  /* we normalize xzProps properties, but we normalize only some of CXzProps::lzma2Props properties.
+     Lzma2Enc_SetProps() will normalize lzma2Props later. */
+  
+  if (p->blockSize == XZ_PROPS__BLOCK_SIZE__SOLID)
+  {
+    p->lzma2Props.lzmaProps.reduceSize = p->reduceSize;
+    p->numBlockThreads_Reduced = 1;
+    p->numBlockThreads_Max = 1;
+    if (p->lzma2Props.numTotalThreads <= 0)
+      p->lzma2Props.numTotalThreads = p->numTotalThreads;
+    return;
+  }
+  else
+  {
+    CLzma2EncProps *lzma2 = &p->lzma2Props;
+    if (p->blockSize == LZMA2_ENC_PROPS__BLOCK_SIZE__AUTO)
+    {
+      // xz-auto
+      p->lzma2Props.lzmaProps.reduceSize = p->reduceSize;
+
+      if (lzma2->blockSize == LZMA2_ENC_PROPS__BLOCK_SIZE__SOLID)
+      {
+        // if (xz-auto && lzma2-solid) - we use solid for both
+        p->blockSize = XZ_PROPS__BLOCK_SIZE__SOLID;
+        p->numBlockThreads_Reduced = 1;
+        p->numBlockThreads_Max = 1;
+        if (p->lzma2Props.numTotalThreads <= 0)
+          p->lzma2Props.numTotalThreads = p->numTotalThreads;
+      }
+      else
+      {
+        // if (xz-auto && (lzma2-auto || lzma2-fixed_)
+        //   we calculate block size for lzma2 and use that block size for xz, lzma2 uses single-chunk per block
+        CLzma2EncProps tp = p->lzma2Props;
+        if (tp.numTotalThreads <= 0)
+          tp.numTotalThreads = p->numTotalThreads;
+        
+        Lzma2EncProps_Normalize(&tp);
+        
+        p->blockSize = tp.blockSize; // fixed or solid
+        p->numBlockThreads_Reduced = tp.numBlockThreads_Reduced;
+        p->numBlockThreads_Max = tp.numBlockThreads_Max;
+        if (lzma2->blockSize == LZMA2_ENC_PROPS__BLOCK_SIZE__AUTO)
+          lzma2->blockSize = tp.blockSize; // fixed or solid, LZMA2_ENC_PROPS__BLOCK_SIZE__SOLID
+        if (lzma2->lzmaProps.reduceSize > tp.blockSize && tp.blockSize != LZMA2_ENC_PROPS__BLOCK_SIZE__SOLID)
+          lzma2->lzmaProps.reduceSize = tp.blockSize;
+        lzma2->numBlockThreads_Reduced = 1;
+        lzma2->numBlockThreads_Max = 1;
+        return;
+      }
+    }
+    else
+    {
+      // xz-fixed
+      // we can use xz::reduceSize or xz::blockSize as base for lzmaProps::reduceSize
+      
+      p->lzma2Props.lzmaProps.reduceSize = p->reduceSize;
+      {
+        UInt64 r = p->reduceSize;
+        if (r > p->blockSize || r == (UInt64)(Int64)-1)
+          r = p->blockSize;
+        lzma2->lzmaProps.reduceSize = r;
+      }
+      if (lzma2->blockSize == LZMA2_ENC_PROPS__BLOCK_SIZE__AUTO)
+        lzma2->blockSize = LZMA2_ENC_PROPS__BLOCK_SIZE__SOLID;
+      else if (lzma2->blockSize > p->blockSize && lzma2->blockSize != LZMA2_ENC_PROPS__BLOCK_SIZE__SOLID)
+        lzma2->blockSize = p->blockSize;
+      
+      XzEncProps_Normalize_Fixed(p);
+    }
+  }
+}
+
+
+/* ---------- CLzma2WithFilters ---------- */
+
+typedef struct
+{
+  CLzma2EncHandle lzma2;
+  CSeqInFilter filter;
+
+  #ifdef USE_SUBBLOCK
+  CSbEncInStream sb;
+  #endif
+} CLzma2WithFilters;
+
+
+static void Lzma2WithFilters_Construct(CLzma2WithFilters *p)
+{
+  p->lzma2 = NULL;
+  SeqInFilter_Construct(&p->filter);
+
+  #ifdef USE_SUBBLOCK
+  SbEncInStream_Construct(&p->sb, alloc);
+  #endif
+}
+
+
+static SRes Lzma2WithFilters_Create(CLzma2WithFilters *p, ISzAllocPtr alloc, ISzAllocPtr bigAlloc)
+{
+  if (!p->lzma2)
+  {
+    p->lzma2 = Lzma2Enc_Create(alloc, bigAlloc);
+    if (!p->lzma2)
+      return SZ_ERROR_MEM;
+  }
+  return SZ_OK;
+}
+
+
+static void Lzma2WithFilters_Free(CLzma2WithFilters *p, ISzAllocPtr alloc)
+{
+  #ifdef USE_SUBBLOCK
+  SbEncInStream_Free(&p->sb);
+  #endif
+
+  SeqInFilter_Free(&p->filter, alloc);
+  if (p->lzma2)
+  {
+    Lzma2Enc_Destroy(p->lzma2);
+    p->lzma2 = NULL;
+  }
+}
+
+
+typedef struct
+{
+  UInt64 unpackSize;
+  UInt64 totalSize;
+  size_t headerSize;
+} CXzEncBlockInfo;
+
+
+static SRes Xz_CompressBlock(
+    CLzma2WithFilters *lzmaf,
+    
+    ISeqOutStream *outStream,
+    Byte *outBufHeader,
+    Byte *outBufData, size_t outBufDataLimit,
+
+    ISeqInStream *inStream,
+    // UInt64 expectedSize,
+    const Byte *inBuf, // used if (!inStream)
+    size_t inBufSize,  // used if (!inStream), it's block size, props->blockSize is ignored
+
+    const CXzProps *props,
+    ICompressProgress *progress,
+    int *inStreamFinished,  /* only for inStream version */
+    CXzEncBlockInfo *blockSizes,
+    ISzAllocPtr alloc,
+    ISzAllocPtr allocBig)
+{
+  CSeqCheckInStream checkInStream;
+  CSeqSizeOutStream seqSizeOutStream;
+  CXzBlock block;
+  unsigned filterIndex = 0;
+  CXzFilter *filter = NULL;
+  const CXzFilterProps *fp = &props->filterProps;
+  if (fp->id == 0)
+    fp = NULL;
+  
+  *inStreamFinished = False;
+  
+  RINOK(Lzma2WithFilters_Create(lzmaf, alloc, allocBig));
+  
+  RINOK(Lzma2Enc_SetProps(lzmaf->lzma2, &props->lzma2Props));
+  
+  XzBlock_ClearFlags(&block);
+  XzBlock_SetNumFilters(&block, 1 + (fp ? 1 : 0));
+  
+  if (fp)
+  {
+    filter = &block.filters[filterIndex++];
+    filter->id = fp->id;
+    filter->propsSize = 0;
+    
+    if (fp->id == XZ_ID_Delta)
+    {
+      filter->props[0] = (Byte)(fp->delta - 1);
+      filter->propsSize = 1;
+    }
+    else if (fp->ipDefined)
+    {
+      SetUi32(filter->props, fp->ip);
+      filter->propsSize = 4;
+    }
+  }
+  
+  {
+    CXzFilter *f = &block.filters[filterIndex++];
+    f->id = XZ_ID_LZMA2;
+    f->propsSize = 1;
+    f->props[0] = Lzma2Enc_WriteProperties(lzmaf->lzma2);
+  }
+  
+  seqSizeOutStream.vt.Write = SeqSizeOutStream_Write;
+  seqSizeOutStream.realStream = outStream;
+  seqSizeOutStream.outBuf = outBufData;
+  seqSizeOutStream.outBufLimit = outBufDataLimit;
+  seqSizeOutStream.processed = 0;
+    
+  /*
+  if (expectedSize != (UInt64)(Int64)-1)
+  {
+    block.unpackSize = expectedSize;
+    if (props->blockSize != (UInt64)(Int64)-1)
+      if (expectedSize > props->blockSize)
+        block.unpackSize = props->blockSize;
+    XzBlock_SetHasUnpackSize(&block);
+  }
+  */
+
+  if (outStream)
+  {
+    RINOK(XzBlock_WriteHeader(&block, &seqSizeOutStream.vt));
+  }
+  
+  checkInStream.vt.Read = SeqCheckInStream_Read;
+  SeqCheckInStream_Init(&checkInStream, props->checkId);
+  
+  checkInStream.realStream = inStream;
+  checkInStream.data = inBuf;
+  checkInStream.limit = props->blockSize;
+  if (!inStream)
+    checkInStream.limit = inBufSize;
+
+  if (fp)
+  {
+    #ifdef USE_SUBBLOCK
+    if (fp->id == XZ_ID_Subblock)
+    {
+      lzmaf->sb.inStream = &checkInStream.vt;
+      RINOK(SbEncInStream_Init(&lzmaf->sb));
+    }
+    else
+    #endif
+    {
+      lzmaf->filter.realStream = &checkInStream.vt;
+      RINOK(SeqInFilter_Init(&lzmaf->filter, filter, alloc));
+    }
+  }
+
+  {
+    SRes res;
+    Byte *outBuf = NULL;
+    size_t outSize = 0;
+    BoolInt useStream = (fp || inStream);
+    // useStream = True;
+    
+    if (!useStream)
+    {
+      XzCheck_Update(&checkInStream.check, inBuf, inBufSize);
+      checkInStream.processed = inBufSize;
+    }
+    
+    if (!outStream)
+    {
+      outBuf = seqSizeOutStream.outBuf; //  + (size_t)seqSizeOutStream.processed;
+      outSize = seqSizeOutStream.outBufLimit; // - (size_t)seqSizeOutStream.processed;
+    }
+    
+    res = Lzma2Enc_Encode2(lzmaf->lzma2,
+        outBuf ? NULL : &seqSizeOutStream.vt,
+        outBuf,
+        outBuf ? &outSize : NULL,
+      
+        useStream ?
+          (fp ?
+            (
+            #ifdef USE_SUBBLOCK
+            (fp->id == XZ_ID_Subblock) ? &lzmaf->sb.vt:
+            #endif
+            &lzmaf->filter.p) :
+            &checkInStream.vt) : NULL,
+      
+        useStream ? NULL : inBuf,
+        useStream ? 0 : inBufSize,
+        
+        progress);
+    
+    if (outBuf)
+      seqSizeOutStream.processed += outSize;
+    
+    RINOK(res);
+    blockSizes->unpackSize = checkInStream.processed;
+  }
+  {
+    Byte buf[4 + 64];
+    unsigned padSize = XZ_GET_PAD_SIZE(seqSizeOutStream.processed);
+    UInt64 packSize = seqSizeOutStream.processed;
+    
+    buf[0] = 0;
+    buf[1] = 0;
+    buf[2] = 0;
+    buf[3] = 0;
+    
+    SeqCheckInStream_GetDigest(&checkInStream, buf + 4);
+    RINOK(WriteBytes(&seqSizeOutStream.vt, buf + (4 - padSize), padSize + XzFlags_GetCheckSize((CXzStreamFlags)props->checkId)));
+    
+    blockSizes->totalSize = seqSizeOutStream.processed - padSize;
+    
+    if (!outStream)
+    {
+      seqSizeOutStream.outBuf = outBufHeader;
+      seqSizeOutStream.outBufLimit = XZ_BLOCK_HEADER_SIZE_MAX;
+      seqSizeOutStream.processed = 0;
+      
+      block.unpackSize = blockSizes->unpackSize;
+      XzBlock_SetHasUnpackSize(&block);
+      
+      block.packSize = packSize;
+      XzBlock_SetHasPackSize(&block);
+      
+      RINOK(XzBlock_WriteHeader(&block, &seqSizeOutStream.vt));
+      
+      blockSizes->headerSize = (size_t)seqSizeOutStream.processed;
+      blockSizes->totalSize += seqSizeOutStream.processed;
+    }
+  }
+  
+  if (inStream)
+    *inStreamFinished = checkInStream.realStreamFinished;
+  else
+  {
+    *inStreamFinished = False;
+    if (checkInStream.processed != inBufSize)
+      return SZ_ERROR_FAIL;
+  }
+
+  return SZ_OK;
+}
+
+
+
+typedef struct
+{
+  ICompressProgress vt;
+  ICompressProgress *progress;
+  UInt64 inOffset;
+  UInt64 outOffset;
+} CCompressProgress_XzEncOffset;
+
+
+static SRes CompressProgress_XzEncOffset_Progress(const ICompressProgress *pp, UInt64 inSize, UInt64 outSize)
+{
+  const CCompressProgress_XzEncOffset *p = CONTAINER_FROM_VTBL(pp, CCompressProgress_XzEncOffset, vt);
+  inSize += p->inOffset;
+  outSize += p->outOffset;
+  return ICompressProgress_Progress(p->progress, inSize, outSize);
+}
+
+
+
+
+typedef struct
+{
+  ISzAllocPtr alloc;
+  ISzAllocPtr allocBig;
+
+  CXzProps xzProps;
+  UInt64 expectedDataSize;
+
+  CXzEncIndex xzIndex;
+
+  CLzma2WithFilters lzmaf_Items[MTCODER__THREADS_MAX];
+  
+  size_t outBufSize;       /* size of allocated outBufs[i] */
+  Byte *outBufs[MTCODER__BLOCKS_MAX];
+
+  #ifndef _7ZIP_ST
+  unsigned checkType;
+  ISeqOutStream *outStream;
+  BoolInt mtCoder_WasConstructed;
+  CMtCoder mtCoder;
+  CXzEncBlockInfo EncBlocks[MTCODER__BLOCKS_MAX];
+  #endif
+
+} CXzEnc;
+
+
+static void XzEnc_Construct(CXzEnc *p)
+{
+  unsigned i;
+
+  XzEncIndex_Construct(&p->xzIndex);
+
+  for (i = 0; i < MTCODER__THREADS_MAX; i++)
+    Lzma2WithFilters_Construct(&p->lzmaf_Items[i]);
+
+  #ifndef _7ZIP_ST
+  p->mtCoder_WasConstructed = False;
+  {
+    for (i = 0; i < MTCODER__BLOCKS_MAX; i++)
+      p->outBufs[i] = NULL;
+    p->outBufSize = 0;
+  }
+  #endif
+}
+
+
+static void XzEnc_FreeOutBufs(CXzEnc *p)
+{
+  unsigned i;
+  for (i = 0; i < MTCODER__BLOCKS_MAX; i++)
+    if (p->outBufs[i])
+    {
+      ISzAlloc_Free(p->alloc, p->outBufs[i]);
+      p->outBufs[i] = NULL;
+    }
+  p->outBufSize = 0;
+}
+
+
+static void XzEnc_Free(CXzEnc *p, ISzAllocPtr alloc)
+{
+  unsigned i;
+
+  XzEncIndex_Free(&p->xzIndex, alloc);
+
+  for (i = 0; i < MTCODER__THREADS_MAX; i++)
+    Lzma2WithFilters_Free(&p->lzmaf_Items[i], alloc);
+  
+  #ifndef _7ZIP_ST
+  if (p->mtCoder_WasConstructed)
+  {
+    MtCoder_Destruct(&p->mtCoder);
+    p->mtCoder_WasConstructed = False;
+  }
+  XzEnc_FreeOutBufs(p);
+  #endif
+}
+
+
+CXzEncHandle XzEnc_Create(ISzAllocPtr alloc, ISzAllocPtr allocBig)
+{
+  CXzEnc *p = (CXzEnc *)ISzAlloc_Alloc(alloc, sizeof(CXzEnc));
+  if (!p)
+    return NULL;
+  XzEnc_Construct(p);
+  XzProps_Init(&p->xzProps);
+  XzProps_Normalize(&p->xzProps);
+  p->expectedDataSize = (UInt64)(Int64)-1;
+  p->alloc = alloc;
+  p->allocBig = allocBig;
+  return p;
+}
+
+
+void XzEnc_Destroy(CXzEncHandle pp)
+{
+  CXzEnc *p = (CXzEnc *)pp;
+  XzEnc_Free(p, p->alloc);
+  ISzAlloc_Free(p->alloc, p);
+}
+
+
+SRes XzEnc_SetProps(CXzEncHandle pp, const CXzProps *props)
+{
+  CXzEnc *p = (CXzEnc *)pp;
+  p->xzProps = *props;
+  XzProps_Normalize(&p->xzProps);
+  return SZ_OK;
+}
+
+
+void XzEnc_SetDataSize(CXzEncHandle pp, UInt64 expectedDataSiize)
+{
+  CXzEnc *p = (CXzEnc *)pp;
+  p->expectedDataSize = expectedDataSiize;
+}
+
+
+
+
+#ifndef _7ZIP_ST
+
+static SRes XzEnc_MtCallback_Code(void *pp, unsigned coderIndex, unsigned outBufIndex,
+    const Byte *src, size_t srcSize, int finished)
+{
+  CXzEnc *me = (CXzEnc *)pp;
+  SRes res;
+  CMtProgressThunk progressThunk;
+
+  Byte *dest = me->outBufs[outBufIndex];
+
+  UNUSED_VAR(finished)
+
+  {
+    CXzEncBlockInfo *bInfo = &me->EncBlocks[outBufIndex];
+    bInfo->totalSize = 0;
+    bInfo->unpackSize = 0;
+    bInfo->headerSize = 0;
+  }
+
+  if (!dest)
+  {
+    dest = (Byte *)ISzAlloc_Alloc(me->alloc, me->outBufSize);
+    if (!dest)
+      return SZ_ERROR_MEM;
+    me->outBufs[outBufIndex] = dest;
+  }
+  
+  MtProgressThunk_CreateVTable(&progressThunk);
+  progressThunk.mtProgress = &me->mtCoder.mtProgress;
+  MtProgressThunk_Init(&progressThunk);
+
+  {
+    CXzEncBlockInfo blockSizes;
+    int inStreamFinished;
+
+    res = Xz_CompressBlock(
+        &me->lzmaf_Items[coderIndex],
+        
+        NULL,
+        dest,
+        dest + XZ_BLOCK_HEADER_SIZE_MAX, me->outBufSize - XZ_BLOCK_HEADER_SIZE_MAX,
+
+        NULL,
+        // srcSize, // expectedSize
+        src, srcSize,
+
+        &me->xzProps,
+        &progressThunk.vt,
+        &inStreamFinished,
+        &blockSizes,
+        me->alloc,
+        me->allocBig);
+    
+    if (res == SZ_OK)
+      me->EncBlocks[outBufIndex] = blockSizes;
+
+    return res;
+  }
+}
+
+
+static SRes XzEnc_MtCallback_Write(void *pp, unsigned outBufIndex)
+{
+  CXzEnc *me = (CXzEnc *)pp;
+
+  const CXzEncBlockInfo *bInfo = &me->EncBlocks[outBufIndex];
+  const Byte *data = me->outBufs[outBufIndex];
+
+  RINOK(WriteBytes(me->outStream, data, bInfo->headerSize));
+
+  {
+    UInt64 totalPackFull = bInfo->totalSize + XZ_GET_PAD_SIZE(bInfo->totalSize);
+    RINOK(WriteBytes(me->outStream, data + XZ_BLOCK_HEADER_SIZE_MAX, (size_t)totalPackFull - bInfo->headerSize));
+  }
+
+  return XzEncIndex_AddIndexRecord(&me->xzIndex, bInfo->unpackSize, bInfo->totalSize, me->alloc);
+}
+
+#endif
+
+
+
+SRes XzEnc_Encode(CXzEncHandle pp, ISeqOutStream *outStream, ISeqInStream *inStream, ICompressProgress *progress)
+{
+  CXzEnc *p = (CXzEnc *)pp;
+
+  const CXzProps *props = &p->xzProps;
+
+  XzEncIndex_Init(&p->xzIndex);
+  {
+    UInt64 numBlocks = 1;
+    UInt64 blockSize = props->blockSize;
+    
+    if (blockSize != XZ_PROPS__BLOCK_SIZE__SOLID
+        && props->reduceSize != (UInt64)(Int64)-1)
+    {
+      numBlocks = props->reduceSize / blockSize;
+      if (numBlocks * blockSize != props->reduceSize)
+        numBlocks++;
+    }
+    else
+      blockSize = (UInt64)1 << 62;
+    
+    RINOK(XzEncIndex_PreAlloc(&p->xzIndex, numBlocks, blockSize, XZ_GET_ESTIMATED_BLOCK_TOTAL_PACK_SIZE(blockSize), p->alloc));
+  }
+
+  RINOK(Xz_WriteHeader((CXzStreamFlags)props->checkId, outStream));
+
+
+  #ifndef _7ZIP_ST
+  if (props->numBlockThreads_Reduced > 1)
+  {
+    IMtCoderCallback2 vt;
+
+    if (!p->mtCoder_WasConstructed)
+    {
+      p->mtCoder_WasConstructed = True;
+      MtCoder_Construct(&p->mtCoder);
+    }
+
+    vt.Code = XzEnc_MtCallback_Code;
+    vt.Write = XzEnc_MtCallback_Write;
+
+    p->checkType = props->checkId;
+    p->xzProps = *props;
+    
+    p->outStream = outStream;
+
+    p->mtCoder.allocBig = p->allocBig;
+    p->mtCoder.progress = progress;
+    p->mtCoder.inStream = inStream;
+    p->mtCoder.inData = NULL;
+    p->mtCoder.inDataSize = 0;
+    p->mtCoder.mtCallback = &vt;
+    p->mtCoder.mtCallbackObject = p;
+
+    if (   props->blockSize == XZ_PROPS__BLOCK_SIZE__SOLID
+        || props->blockSize == XZ_PROPS__BLOCK_SIZE__AUTO)
+      return SZ_ERROR_FAIL;
+
+    p->mtCoder.blockSize = (size_t)props->blockSize;
+    if (p->mtCoder.blockSize != props->blockSize)
+      return SZ_ERROR_PARAM; /* SZ_ERROR_MEM */
+
+    {
+      size_t destBlockSize = XZ_BLOCK_HEADER_SIZE_MAX + XZ_GET_MAX_BLOCK_PACK_SIZE(p->mtCoder.blockSize);
+      if (destBlockSize < p->mtCoder.blockSize)
+        return SZ_ERROR_PARAM;
+      if (p->outBufSize != destBlockSize)
+        XzEnc_FreeOutBufs(p);
+      p->outBufSize = destBlockSize;
+    }
+
+    p->mtCoder.numThreadsMax = props->numBlockThreads_Max;
+    p->mtCoder.expectedDataSize = p->expectedDataSize;
+    
+    RINOK(MtCoder_Code(&p->mtCoder));
+  }
+  else
+  #endif
+  {
+    int writeStartSizes;
+    CCompressProgress_XzEncOffset progress2;
+    Byte *bufData = NULL;
+    size_t bufSize = 0;
+
+    progress2.vt.Progress = CompressProgress_XzEncOffset_Progress;
+    progress2.inOffset = 0;
+    progress2.outOffset = 0;
+    progress2.progress = progress;
+    
+    writeStartSizes = 0;
+    
+    if (props->blockSize != XZ_PROPS__BLOCK_SIZE__SOLID)
+    {
+      writeStartSizes = (props->forceWriteSizesInHeader > 0);
+      
+      if (writeStartSizes)
+      {
+        size_t t2;
+        size_t t = (size_t)props->blockSize;
+        if (t != props->blockSize)
+          return SZ_ERROR_PARAM;
+        t = XZ_GET_MAX_BLOCK_PACK_SIZE(t);
+        if (t < props->blockSize)
+          return SZ_ERROR_PARAM;
+        t2 = XZ_BLOCK_HEADER_SIZE_MAX + t;
+        if (!p->outBufs[0] || t2 != p->outBufSize)
+        {
+          XzEnc_FreeOutBufs(p);
+          p->outBufs[0] = (Byte *)ISzAlloc_Alloc(p->alloc, t2);
+          if (!p->outBufs[0])
+            return SZ_ERROR_MEM;
+          p->outBufSize = t2;
+        }
+        bufData = p->outBufs[0] + XZ_BLOCK_HEADER_SIZE_MAX;
+        bufSize = t;
+      }
+    }
+    
+    for (;;)
+    {
+      CXzEncBlockInfo blockSizes;
+      int inStreamFinished;
+      
+      /*
+      UInt64 rem = (UInt64)(Int64)-1;
+      if (props->reduceSize != (UInt64)(Int64)-1
+          && props->reduceSize >= progress2.inOffset)
+        rem = props->reduceSize - progress2.inOffset;
+      */
+
+      blockSizes.headerSize = 0; // for GCC
+      
+      RINOK(Xz_CompressBlock(
+          &p->lzmaf_Items[0],
+          
+          writeStartSizes ? NULL : outStream,
+          writeStartSizes ? p->outBufs[0] : NULL,
+          bufData, bufSize,
+          
+          inStream,
+          // rem,
+          NULL, 0,
+          
+          props,
+          progress ? &progress2.vt : NULL,
+          &inStreamFinished,
+          &blockSizes,
+          p->alloc,
+          p->allocBig));
+
+      {
+        UInt64 totalPackFull = blockSizes.totalSize + XZ_GET_PAD_SIZE(blockSizes.totalSize);
+      
+        if (writeStartSizes)
+        {
+          RINOK(WriteBytes(outStream, p->outBufs[0], blockSizes.headerSize));
+          RINOK(WriteBytes(outStream, bufData, (size_t)totalPackFull - blockSizes.headerSize));
+        }
+        
+        RINOK(XzEncIndex_AddIndexRecord(&p->xzIndex, blockSizes.unpackSize, blockSizes.totalSize, p->alloc));
+        
+        progress2.inOffset += blockSizes.unpackSize;
+        progress2.outOffset += totalPackFull;
+      }
+        
+      if (inStreamFinished)
+        break;
+    }
+  }
+
+  return XzEncIndex_WriteFooter(&p->xzIndex, (CXzStreamFlags)props->checkId, outStream);
+}
+
+
+#include "Alloc.h"
 
 SRes Xz_Encode(ISeqOutStream *outStream, ISeqInStream *inStream,
     const CXzProps *props, ICompressProgress *progress)
 {
   SRes res;
-  CXzStream xz;
-  CLzma2WithFilters lzmaf;
-  Xz_Construct(&xz);
-  Lzma2WithFilters_Construct(&lzmaf, &g_Alloc, &g_BigAlloc);
-  res = Lzma2WithFilters_Create(&lzmaf);
+  CXzEncHandle xz = XzEnc_Create(&g_Alloc, &g_BigAlloc);
+  if (!xz)
+    return SZ_ERROR_MEM;
+  res = XzEnc_SetProps(xz, props);
   if (res == SZ_OK)
-    res = Xz_Compress(&xz, &lzmaf, outStream, inStream, props, progress);
-  Lzma2WithFilters_Free(&lzmaf);
-  Xz_Free(&xz, &g_Alloc);
+    res = XzEnc_Encode(xz, outStream, inStream, progress);
+  XzEnc_Destroy(xz);
   return res;
 }
 
@@ -528,11 +1319,11 @@ SRes Xz_Encode(ISeqOutStream *outStream, ISeqInStream *inStream,
 SRes Xz_EncodeEmpty(ISeqOutStream *outStream)
 {
   SRes res;
-  CXzStream xz;
-  Xz_Construct(&xz);
-  res = Xz_WriteHeader(xz.flags, outStream);
+  CXzEncIndex xzIndex;
+  XzEncIndex_Construct(&xzIndex);
+  res = Xz_WriteHeader((CXzStreamFlags)0, outStream);
   if (res == SZ_OK)
-    res = Xz_WriteFooter(&xz, outStream);
-  Xz_Free(&xz, &g_Alloc);
+    res = XzEncIndex_WriteFooter(&xzIndex, (CXzStreamFlags)0, outStream);
+  XzEncIndex_Free(&xzIndex, NULL); // g_Alloc
   return res;
 }

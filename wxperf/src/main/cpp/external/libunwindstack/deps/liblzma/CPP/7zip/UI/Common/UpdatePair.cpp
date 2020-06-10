@@ -38,14 +38,13 @@ static int MyCompareTime(NFileTimeType::EEnum fileTimeType, const FILETIME &time
   throw 4191618;
 }
 
-static const char *k_Duplicate_inArc_Message = "Duplicate filename in archive:";
-static const char *k_Duplicate_inDir_Message = "Duplicate filename on disk:";
-static const char *k_NotCensoredCollision_Message = "Internal file name collision (file on disk, file in archive):";
+static const char * const k_Duplicate_inArc_Message = "Duplicate filename in archive:";
+static const char * const k_Duplicate_inDir_Message = "Duplicate filename on disk:";
+static const char * const k_NotCensoredCollision_Message = "Internal file name collision (file on disk, file in archive):";
 
 static void ThrowError(const char *message, const UString &s1, const UString &s2)
 {
-  UString m;
-  m.SetFromAscii(message);
+  UString m (message);
   m.Add_LF(); m += s1;
   m.Add_LF(); m += s2;
   throw m;

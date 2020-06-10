@@ -116,13 +116,12 @@ extern CExternalCodecs g_ExternalCodecs;
 
 #endif
 
-
-
-
-bool FindMethod(
+int FindMethod_Index(
     DECL_EXTERNAL_CODECS_LOC_VARS
     const AString &name,
-    CMethodId &methodId, UInt32 &numStreams);
+    bool encode,
+    CMethodId &methodId,
+    UInt32 &numStreams);
 
 bool FindMethod(
     DECL_EXTERNAL_CODECS_LOC_VARS
@@ -152,18 +151,29 @@ struct CCreatedCoder
 };
 
 
-HRESULT CreateCoder(
+HRESULT CreateCoder_Index(
+    DECL_EXTERNAL_CODECS_LOC_VARS
+    unsigned codecIndex, bool encode,
+    CMyComPtr<ICompressFilter> &filter,
+    CCreatedCoder &cod);
+
+HRESULT CreateCoder_Index(
+    DECL_EXTERNAL_CODECS_LOC_VARS
+    unsigned index, bool encode,
+    CCreatedCoder &cod);
+
+HRESULT CreateCoder_Id(
     DECL_EXTERNAL_CODECS_LOC_VARS
     CMethodId methodId, bool encode,
     CMyComPtr<ICompressFilter> &filter,
     CCreatedCoder &cod);
 
-HRESULT CreateCoder(
+HRESULT CreateCoder_Id(
     DECL_EXTERNAL_CODECS_LOC_VARS
     CMethodId methodId, bool encode,
     CCreatedCoder &cod);
 
-HRESULT CreateCoder(
+HRESULT CreateCoder_Id(
     DECL_EXTERNAL_CODECS_LOC_VARS
     CMethodId methodId, bool encode,
     CMyComPtr<ICompressCoder> &coder);

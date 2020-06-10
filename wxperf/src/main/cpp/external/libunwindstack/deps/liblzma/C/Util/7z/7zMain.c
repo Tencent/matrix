@@ -1,10 +1,12 @@
 /* 7zMain.c - Test application for 7z Decoder
-2016-05-16 : Igor Pavlov : Public domain */
+2018-08-04 : Igor Pavlov : Public domain */
 
 #include "Precomp.h"
 
 #include <stdio.h>
 #include <string.h>
+
+#include "../../CpuArch.h"
 
 #include "../../7z.h"
 #include "../../7zAlloc.h"
@@ -23,7 +25,17 @@
 #endif
 #endif
 
-static ISzAlloc g_Alloc = { SzAlloc, SzFree };
+
+#define kInputBufSize ((size_t)1 << 18)
+
+static const ISzAlloc g_Alloc = { SzAlloc, SzFree };
+
+
+static void Print(const char *s)
+{
+  fputs(s, stdout);
+}
+
 
 static int Buf_EnsureSize(CBuf *dest, size_t size)
 {
@@ -227,6 +239,7 @@ static WRes OutFile_OpenUtf16(CSzFile *p, const UInt16 *name)
   #endif
 }
 
+
 static SRes PrintString(const UInt16 *s)
 {
   CBuf buf;
@@ -238,12 +251,12 @@ static SRes PrintString(const UInt16 *s)
       #endif
       );
   if (res == SZ_OK)
-    fputs((const char *)buf.data, stdout);
+    Print((const char *)buf.data);
   Buf_Free(&buf, &g_Alloc);
   return res;
 }
 
-static void UInt64ToStr(UInt64 value, char *s)
+static void UInt64ToStr(UInt64 value, char *s, int numDigits)
 {
   char temp[32];
   int pos = 0;
@@ -253,6 +266,10 @@ static void UInt64ToStr(UInt64 value, char *s)
     value /= 10;
   }
   while (value != 0);
+
+  for (numDigits -= pos; numDigits > 0; numDigits--)
+    *s++ = ' ';
+
   do
     *s++ = temp[--pos];
   while (pos);
@@ -266,8 +283,10 @@ static char *UIntToStr(char *s, unsigned value, int numDigits)
   do
     temp[pos++] = (char)('0' + (value % 10));
   while (value /= 10);
+
   for (numDigits -= pos; numDigits > 0; numDigits--)
     *s++ = '0';
+
   do
     *s++ = temp[--pos];
   while (pos);
@@ -323,12 +342,19 @@ static void ConvertFileTimeToString(const CNtfsFileTime *nt, char *s)
   UIntToStr_2(s, sec); s[2] = 0;
 }
 
-void PrintError(char *sz)
+static void PrintLF()
 {
-  printf("\nERROR: %s\n", sz);
+  Print("\n");
 }
 
-static void GetAttribString(UInt32 wa, Bool isDir, char *s)
+static void PrintError(char *s)
+{
+  Print("\nERROR: ");
+  Print(s);
+  PrintLF();
+}
+
+static void GetAttribString(UInt32 wa, BoolInt isDir, char *s)
 {
   #ifdef USE_WINDOWS_FILE
   s[0] = (char)(((wa & FILE_ATTRIBUTE_DIRECTORY) != 0 || isDir) ? 'D' : '.');
@@ -343,25 +369,27 @@ static void GetAttribString(UInt32 wa, Bool isDir, char *s)
   #endif
 }
 
+
 // #define NUM_PARENTS_MAX 128
 
 int MY_CDECL main(int numargs, char *args[])
 {
-  CFileInStream archiveStream;
-  CLookToRead lookStream;
-  CSzArEx db;
-  SRes res;
   ISzAlloc allocImp;
   ISzAlloc allocTempImp;
+
+  CFileInStream archiveStream;
+  CLookToRead2 lookStream;
+  CSzArEx db;
+  SRes res;
   UInt16 *temp = NULL;
   size_t tempSize = 0;
   // UInt32 parents[NUM_PARENTS_MAX];
 
-  printf("\n7z ANSI-C Decoder " MY_VERSION_COPYRIGHT_DATE "\n\n");
+  Print("\n7z Decoder " MY_VERSION_CPU " : " MY_COPYRIGHT_DATE "\n\n");
 
   if (numargs == 1)
   {
-    printf(
+    Print(
       "Usage: 7zDec <command> <archive_name>\n\n"
       "<Commands>\n"
       "  e: Extract files from archive (without using directory names)\n"
@@ -370,7 +398,7 @@ int MY_CDECL main(int numargs, char *args[])
       "  x: eXtract files with full paths\n");
     return 0;
   }
-  
+
   if (numargs < 3)
   {
     PrintError("incorrect command");
@@ -381,11 +409,9 @@ int MY_CDECL main(int numargs, char *args[])
   g_FileCodePage = AreFileApisANSI() ? CP_ACP : CP_OEMCP;
   #endif
 
-  allocImp.Alloc = SzAlloc;
-  allocImp.Free = SzFree;
 
-  allocTempImp.Alloc = SzAllocTemp;
-  allocTempImp.Free = SzFreeTemp;
+  allocImp = g_Alloc;
+  allocTempImp = g_Alloc;
 
   #ifdef UNDER_CE
   if (InFile_OpenW(&archiveStream.file, L"\test.7z"))
@@ -398,16 +424,31 @@ int MY_CDECL main(int numargs, char *args[])
   }
 
   FileInStream_CreateVTable(&archiveStream);
-  LookToRead_CreateVTable(&lookStream, False);
-  
-  lookStream.realStream = &archiveStream.s;
-  LookToRead_Init(&lookStream);
+  LookToRead2_CreateVTable(&lookStream, False);
+  lookStream.buf = NULL;
 
+  res = SZ_OK;
+
+  {
+    lookStream.buf = ISzAlloc_Alloc(&allocImp, kInputBufSize);
+    if (!lookStream.buf)
+      res = SZ_ERROR_MEM;
+    else
+    {
+      lookStream.bufSize = kInputBufSize;
+      lookStream.realStream = &archiveStream.vt;
+      LookToRead2_Init(&lookStream);
+    }
+  }
+    
   CrcGenerateTable();
-
+    
   SzArEx_Init(&db);
-  
-  res = SzArEx_Open(&db, &lookStream.s, &allocImp, &allocTempImp);
+    
+  if (res == SZ_OK)
+  {
+    res = SzArEx_Open(&db, &lookStream.vt, &allocImp, &allocTempImp);
+  }
   
   if (res == SZ_OK)
   {
@@ -477,7 +518,7 @@ int MY_CDECL main(int numargs, char *args[])
           GetAttribString(SzBitWithVals_Check(&db.Attribs, i) ? db.Attribs.Vals[i] : 0, isDir, attr);
 
           fileSize = SzArEx_GetFileSize(&db, i);
-          UInt64ToStr(fileSize, s);
+          UInt64ToStr(fileSize, s, 10);
           
           if (SzBitWithVals_Check(&db.MTime, i))
             ConvertFileTimeToString(&db.MTime.Vals[i], t);
@@ -489,29 +530,33 @@ int MY_CDECL main(int numargs, char *args[])
             t[j] = '\0';
           }
           
-          printf("%s %s %10s  ", t, attr, s);
+          Print(t);
+          Print(" ");
+          Print(attr);
+          Print(" ");
+          Print(s);
+          Print("  ");
           res = PrintString(temp);
           if (res != SZ_OK)
             break;
           if (isDir)
-            printf("/");
-          printf("\n");
+            Print("/");
+          PrintLF();
           continue;
         }
 
-        fputs(testCommand ?
+        Print(testCommand ?
             "Testing    ":
-            "Extracting ",
-            stdout);
+            "Extracting ");
         res = PrintString(temp);
         if (res != SZ_OK)
           break;
         
         if (isDir)
-          printf("/");
+          Print("/");
         else
         {
-          res = SzArEx_Extract(&db, &lookStream.s, i,
+          res = SzArEx_Extract(&db, &lookStream.vt, i,
               &blockIndex, &outBuffer, &outBufferSize,
               &offset, &outSizeProcessed,
               &allocImp, &allocTempImp);
@@ -543,7 +588,7 @@ int MY_CDECL main(int numargs, char *args[])
           if (isDir)
           {
             MyCreateDir(destPath);
-            printf("\n");
+            PrintLF();
             continue;
           }
           else if (OutFile_OpenUtf16(&outFile, destPath))
@@ -561,6 +606,31 @@ int MY_CDECL main(int numargs, char *args[])
             res = SZ_ERROR_FAIL;
             break;
           }
+
+          #ifdef USE_WINDOWS_FILE
+          {
+            FILETIME mtime, ctime;
+            FILETIME *mtimePtr = NULL;
+            FILETIME *ctimePtr = NULL;
+
+            if (SzBitWithVals_Check(&db.MTime, i))
+            {
+              const CNtfsFileTime *t = &db.MTime.Vals[i];
+              mtime.dwLowDateTime = (DWORD)(t->Low);
+              mtime.dwHighDateTime = (DWORD)(t->High);
+              mtimePtr = &mtime;
+            }
+            if (SzBitWithVals_Check(&db.CTime, i))
+            {
+              const CNtfsFileTime *t = &db.CTime.Vals[i];
+              ctime.dwLowDateTime = (DWORD)(t->Low);
+              ctime.dwHighDateTime = (DWORD)(t->High);
+              ctimePtr = &ctime;
+            }
+            if (mtimePtr || ctimePtr)
+              SetFileTime(outFile.handle, ctimePtr, NULL, mtimePtr);
+          }
+          #endif
           
           if (File_Close(&outFile))
           {
@@ -571,23 +641,31 @@ int MY_CDECL main(int numargs, char *args[])
           
           #ifdef USE_WINDOWS_FILE
           if (SzBitWithVals_Check(&db.Attribs, i))
-            SetFileAttributesW(destPath, db.Attribs.Vals[i]);
+          {
+            UInt32 attrib = db.Attribs.Vals[i];
+            /* p7zip stores posix attributes in high 16 bits and adds 0x8000 as marker.
+               We remove posix bits, if we detect posix mode field */
+            if ((attrib & 0xF0000000) != 0)
+              attrib &= 0x7FFF;
+            SetFileAttributesW(destPath, attrib);
+          }
           #endif
         }
-        printf("\n");
+        PrintLF();
       }
-      IAlloc_Free(&allocImp, outBuffer);
+      ISzAlloc_Free(&allocImp, outBuffer);
     }
   }
 
-  SzArEx_Free(&db, &allocImp);
   SzFree(NULL, temp);
+  SzArEx_Free(&db, &allocImp);
+  ISzAlloc_Free(&allocImp, lookStream.buf);
 
   File_Close(&archiveStream.file);
   
   if (res == SZ_OK)
   {
-    printf("\nEverything is Ok\n");
+    Print("\nEverything is Ok\n");
     return 0;
   }
   
@@ -598,7 +676,11 @@ int MY_CDECL main(int numargs, char *args[])
   else if (res == SZ_ERROR_CRC)
     PrintError("CRC error");
   else
-    printf("\nERROR #%d\n", res);
+  {
+    char s[32];
+    UInt64ToStr(res, s, 0);
+    PrintError(s);
+  }
   
   return 1;
 }

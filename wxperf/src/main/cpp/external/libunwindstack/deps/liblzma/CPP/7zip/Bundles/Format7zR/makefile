@@ -102,12 +102,15 @@ C_OBJS = \
   $O\LzFind.obj \
   $O\LzFindMt.obj \
   $O\Lzma2Dec.obj \
+  $O\Lzma2DecMt.obj \
   $O\Lzma2Enc.obj \
   $O\LzmaDec.obj \
   $O\LzmaEnc.obj \
   $O\MtCoder.obj \
+  $O\MtDec.obj \
   $O\Threads.obj \
 
 !include "../../Crc.mak"
+!include "../../LzmaDec.mak"
 
 !include "../../7zip.mak"

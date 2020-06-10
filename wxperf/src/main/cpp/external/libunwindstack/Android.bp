@@ -35,18 +35,14 @@ cc_defaults {
     },
 }
 
-cc_library {
-    name: "libunwindstack",
-    vendor_available: true,
-    vndk: {
-        enabled: true,
-        support_system_process: true,
-    },
+cc_defaults {
+    name: "libunwindstack_defaults",
     defaults: ["libunwindstack_flags"],
     export_include_dirs: ["include"],
 
     srcs: [
         "ArmExidx.cpp",
+        "DexFiles.cpp",
         "DwarfCfa.cpp",
         "DwarfEhFrameWithHdr.cpp",
         "DwarfMemory.cpp",
@@ -55,11 +51,14 @@ cc_library {
         "Elf.cpp",
         "ElfInterface.cpp",
         "ElfInterfaceArm.cpp",
+        "Global.cpp",
         "JitDebug.cpp",
         "Log.cpp",
         "MapInfo.cpp",
         "Maps.cpp",
         "Memory.cpp",
+        "MemoryMte.cpp",
+        "LocalUnwinder.cpp",
         "Regs.cpp",
         "RegsArm.cpp",
         "RegsArm64.cpp",
@@ -83,13 +82,7 @@ cc_library {
                 "-g",
             ],
         },
-        vendor: {
-            cflags: ["-DNO_LIBDEXFILE_SUPPORT"],
-            exclude_static_libs: ["libunwindstack_dex"],
-            exclude_shared_libs: ["libdexfile"],
-        },
     },
-    whole_static_libs: ["libunwindstack_dex"],
 
     arch: {
         x86: {
@@ -98,60 +91,71 @@ cc_library {
         x86_64: {
             srcs: ["AsmGetRegsX86_64.S"],
         },
-        mips: {
-            srcs: ["AsmGetRegsMips.S"],
-        },
-        mips64: {
-            srcs: ["AsmGetRegsMips64.S"],
-        },
     },
+
+    static_libs: [
+        "libprocinfo",
+    ],
 
     shared_libs: [
         "libbase",
-        "libdexfile",
         "liblog",
         "liblzma",
     ],
-}
 
-// Isolate the dex file processing into a separate library. Currently,
-// it is necessary to add art include directories directly, which also
-// adds the art elf.h file in the include path, overriding the system one.
-// Work to isolate libdexfile is b/72216369.
-cc_library_static {
-    name: "libunwindstack_dex",
-    vendor_available: false,
-    defaults: ["libunwindstack_flags"],
-
-    cflags: [
-        "-Wexit-time-destructors",
+    header_libs: [
+        "bionic_libc_platform_headers",
     ],
 
-    srcs: [
-        "DexFile.cpp",
-        "DexFiles.cpp",
-    ],
-    target: {
-        // Always disable optimizations for host to make it easier to debug.
-        host: {
-            cflags: [
-                "-O0",
-                "-g",
-            ],
+    product_variables: {
+        experimental_mte: {
+            cflags: ["-DANDROID_EXPERIMENTAL_MTE"],
         },
     },
+}
 
-    shared_libs: [
-        "libbase",
-        "libdexfile",
+cc_library {
+    name: "libunwindstack",
+    vendor_available: true,
+    recovery_available: true,
+    vndk: {
+        enabled: true,
+        support_system_process: true,
+    },
+    defaults: ["libunwindstack_defaults"],
+
+    srcs: ["DexFile.cpp"],
+    cflags: ["-DDEXFILE_SUPPORT"],
+    shared_libs: ["libdexfile_support"],
+
+    target: {
+        vendor: {
+            cflags: ["-UDEXFILE_SUPPORT"],
+            exclude_srcs: ["DexFile.cpp"],
+            exclude_shared_libs: ["libdexfile_support"],
+        },
+        recovery: {
+            cflags: ["-UDEXFILE_SUPPORT"],
+            exclude_srcs: ["DexFile.cpp"],
+            exclude_shared_libs: ["libdexfile_support"],
+        },
+    },
+}
+
+// Static library without DEX support to avoid dependencies on the ART APEX.
+cc_library_static {
+    name: "libunwindstack_no_dex",
+    recovery_available: true,
+    defaults: ["libunwindstack_defaults"],
+
+    visibility: [
+        "//system/core/debuggerd",
+        "//system/core/init",
+        "//system/core/libbacktrace",
     ],
-    local_include_dirs: ["include"],
-    allow_undefined_symbols: true,
-
-    // libdexfile will eventually properly export headers, for now include
-    // these directly.
-    include_dirs: [
-        "art/runtime",
+    apex_available: [
+        "//apex_available:platform",
+        "com.android.runtime",
     ],
 }
 
@@ -159,41 +163,30 @@ cc_library_static {
 // Unit Tests
 //-------------------------------------------------------------------------
 cc_test_library {
-    name: "libunwindstack_dex_test",
-    vendor_available: false,
+    name: "libunwindstack_local",
     defaults: ["libunwindstack_flags"],
+    srcs: ["tests/TestLocal.cpp"],
 
-    shared: {
-        enabled: false,
-    },
-
-    srcs: [
-        "tests/DexFileTest.cpp",
-        "tests/DexFilesTest.cpp",
+    cflags: [
+        "-O0",
+        "-g",
     ],
-    local_include_dirs: ["include"],
-    allow_undefined_symbols: true,
 
     shared_libs: [
-        "libbase",
         "libunwindstack",
-        "libdexfile",
     ],
-
-    // libdexfile will eventually properly export headers, for now include
-    // these directly.
-    include_dirs: [
-        "art/runtime",
-    ],
+    relative_install_path: "libunwindstack_test",
 }
 
-cc_test {
-    name: "libunwindstack_test",
+cc_defaults {
+    name: "libunwindstack_testlib_flags",
     defaults: ["libunwindstack_flags"],
 
     srcs: [
         "tests/ArmExidxDecodeTest.cpp",
         "tests/ArmExidxExtractTest.cpp",
+        "tests/DexFileTest.cpp",
+        "tests/DexFilesTest.cpp",
         "tests/DwarfCfaLogTest.cpp",
         "tests/DwarfCfaTest.cpp",
         "tests/DwarfDebugFrameTest.cpp",
@@ -210,27 +203,38 @@ cc_test {
         "tests/ElfInterfaceTest.cpp",
         "tests/ElfTest.cpp",
         "tests/ElfTestUtils.cpp",
+        "tests/IsolatedSettings.cpp",
         "tests/JitDebugTest.cpp",
+        "tests/LocalUpdatableMapsTest.cpp",
         "tests/LogFake.cpp",
+        "tests/MapInfoCreateMemoryTest.cpp",
+        "tests/MapInfoGetBuildIDTest.cpp",
         "tests/MapInfoGetElfTest.cpp",
         "tests/MapInfoGetLoadBiasTest.cpp",
+        "tests/MapInfoTest.cpp",
         "tests/MapsTest.cpp",
         "tests/MemoryBufferTest.cpp",
+        "tests/MemoryCacheTest.cpp",
         "tests/MemoryFake.cpp",
         "tests/MemoryFileTest.cpp",
         "tests/MemoryLocalTest.cpp",
         "tests/MemoryOfflineBufferTest.cpp",
         "tests/MemoryOfflineTest.cpp",
         "tests/MemoryRangeTest.cpp",
+        "tests/MemoryRangesTest.cpp",
         "tests/MemoryRemoteTest.cpp",
         "tests/MemoryTest.cpp",
+        "tests/MemoryMteTest.cpp",
+        "tests/RegsInfoTest.cpp",
         "tests/RegsIterateTest.cpp",
         "tests/RegsStepIfSignalHandlerTest.cpp",
         "tests/RegsTest.cpp",
         "tests/SymbolsTest.cpp",
+        "tests/TestUtils.cpp",
         "tests/UnwindOfflineTest.cpp",
         "tests/UnwindTest.cpp",
         "tests/UnwinderTest.cpp",
+        "tests/VerifyBionicTerminationTest.cpp",
     ],
 
     cflags: [
@@ -243,28 +247,69 @@ cc_test {
         "liblog",
         "liblzma",
         "libunwindstack",
+        "libdexfile_support",
     ],
 
     static_libs: [
         "libgmock",
     ],
 
-    whole_static_libs: ["libunwindstack_dex_test"],
-
+    test_suites: ["device-tests"],
     data: [
         "tests/files/elf32.xz",
         "tests/files/elf64.xz",
         "tests/files/offline/art_quick_osr_stub_arm/*",
         "tests/files/offline/bad_eh_frame_hdr_arm64/*",
         "tests/files/offline/debug_frame_first_x86/*",
+        "tests/files/offline/debug_frame_load_bias_arm/*",
+        "tests/files/offline/eh_frame_bias_x86/*",
         "tests/files/offline/eh_frame_hdr_begin_x86_64/*",
+        "tests/files/offline/empty_arm64/*",
+        "tests/files/offline/invalid_elf_offset_arm/*",
         "tests/files/offline/jit_debug_arm/*",
         "tests/files/offline/jit_debug_x86/*",
+        "tests/files/offline/jit_map_arm/*",
         "tests/files/offline/gnu_debugdata_arm/*",
+        "tests/files/offline/load_bias_different_section_bias_arm64/*",
+        "tests/files/offline/load_bias_ro_rx_x86_64/*",
         "tests/files/offline/offset_arm/*",
+        "tests/files/offline/shared_lib_in_apk_arm64/*",
+        "tests/files/offline/shared_lib_in_apk_memory_only_arm64/*",
+        "tests/files/offline/shared_lib_in_apk_single_map_arm64/*",
+        "tests/files/offline/signal_load_bias_arm/*",
         "tests/files/offline/straddle_arm/*",
         "tests/files/offline/straddle_arm64/*",
     ],
+
+    header_libs: [
+        "bionic_libc_platform_headers",
+    ],
+
+    product_variables: {
+        experimental_mte: {
+            cflags: ["-DANDROID_EXPERIMENTAL_MTE"],
+        },
+    },
+}
+
+cc_test {
+    name: "libunwindstack_test",
+    defaults: ["libunwindstack_testlib_flags"],
+    isolated: true,
+
+    srcs: [
+        "tests/LocalUnwinderTest.cpp",
+    ],
+    required: [
+        "libunwindstack_local",
+    ],
+}
+
+// Skip LocalUnwinderTest until atest understands required properly.
+cc_test {
+    name: "libunwindstack_unit_test",
+    defaults: ["libunwindstack_testlib_flags"],
+    isolated: true,
 }
 
 //-------------------------------------------------------------------------
@@ -279,6 +324,15 @@ cc_defaults {
         "libbase",
         "liblzma",
     ],
+    target: {
+        // Always disable optimizations for host to make it easier to debug.
+        host: {
+            cflags: [
+                "-O0",
+                "-g",
+            ],
+        },
+    },
 }
 
 cc_binary {
@@ -324,6 +378,45 @@ cc_binary {
     srcs: [
         "tools/unwind_reg_info.cpp",
     ],
+}
+
+//-------------------------------------------------------------------------
+// Benchmarks
+//-------------------------------------------------------------------------
+cc_benchmark {
+    name: "unwind_benchmarks",
+    host_supported: true,
+    defaults: ["libunwindstack_flags"],
+
+    // Disable optimizations so that all of the calls are not optimized away.
+    cflags: [
+        "-O0",
+    ],
+
+    srcs: [
+        "benchmarks/unwind_benchmarks.cpp",
+        "benchmarks/ElfBenchmark.cpp",
+        "benchmarks/SymbolBenchmark.cpp",
+        "benchmarks/Utils.cpp",
+    ],
+
+    data: [
+        "benchmarks/files/*",
+    ],
+
+    shared_libs: [
+        "libbase",
+        "libunwindstack",
+    ],
+
+    target: {
+        android: {
+            static_libs: [
+                "libmeminfo",
+                "libprocinfo",
+            ],
+        },
+    },
 }
 
 // Generates the elf data for use in the tests for .gnu_debugdata frames.

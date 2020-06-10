@@ -1,4 +1,5 @@
 PROG = 7zS2con.sfx
+MY_FIXED = 1
 CFLAGS = $(CFLAGS) -D_CONSOLE
 
 C_OBJS = \

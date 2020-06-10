@@ -23,7 +23,7 @@ bool IsAltPathPrefix(CFSTR s) throw(); /* name: */
 
 #if defined(_WIN32) && !defined(UNDER_CE)
 
-extern const wchar_t *kSuperPathPrefix; /* \\?\ */
+extern const char * const kSuperPathPrefix; /* \\?\ */
 const unsigned kDevicePathPrefixSize = 4;
 const unsigned kSuperPathPrefixSize = 4;
 const unsigned kSuperUncPathPrefixSize = kSuperPathPrefixSize + 4;
@@ -42,7 +42,7 @@ unsigned GetNetworkServerPrefixSize(CFSTR s) throw();
 
 bool IsNetworkShareRootPath(CFSTR s) throw();  /* \\?\UNC\SERVER\share or \\SERVER\share or with slash */
 
-// bool IsDrivePath_SuperAllowed(CFSTR s) throw();  // first chars are drive chars like "a:\" or "\\?\a:\"
+bool IsDrivePath_SuperAllowed(CFSTR s) throw();  // first chars are drive chars like "a:\" or "\\?\a:\"
 bool IsDriveRootPath_SuperAllowed(CFSTR s) throw();  // exact drive root path "a:\" or "\\?\a:\"
 
 bool IsDrivePath2(const wchar_t *s) throw(); // first 2 chars are drive chars like "a:"
@@ -71,7 +71,7 @@ unsigned GetRootPrefixSize(CFSTR s) throw();
 
 #endif
 
-int FindAltStreamColon(CFSTR path);
+int FindAltStreamColon(CFSTR path) throw();
 
 #endif // _WIN32
 

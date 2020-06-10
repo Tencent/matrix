@@ -20,45 +20,35 @@
 
 #include <unordered_map>
 
-#include <android-base/test_utils.h>
-
+#include <android-base/file.h>
+#include <gtest/gtest.h>
 #include <unwindstack/MapInfo.h>
 #include <unwindstack/Memory.h>
 
-#include <dex/code_item_accessors-inl.h>
-#include <dex/standard_dex_file.h>
-
-#include <gtest/gtest.h>
-
 #include "DexFile.h"
-
 #include "DexFileData.h"
 #include "MemoryFake.h"
 
 namespace unwindstack {
 
 TEST(DexFileTest, from_file_open_non_exist) {
-  DexFileFromFile dex_file;
-  ASSERT_FALSE(dex_file.Open(0, "/file/does/not/exist"));
+  EXPECT_TRUE(DexFileFromFile::Create(0, "/file/does/not/exist") == nullptr);
 }
 
 TEST(DexFileTest, from_file_open_too_small) {
   TemporaryFile tf;
   ASSERT_TRUE(tf.fd != -1);
 
-  ASSERT_EQ(sizeof(art::DexFile::Header) - 2,
-            static_cast<size_t>(
-                TEMP_FAILURE_RETRY(write(tf.fd, kDexData, sizeof(art::DexFile::Header)) - 2)));
+  ASSERT_EQ(size_t{10}, static_cast<size_t>(TEMP_FAILURE_RETRY(write(tf.fd, kDexData, 10))));
 
   // Header too small.
-  DexFileFromFile dex_file;
-  ASSERT_FALSE(dex_file.Open(0, tf.path));
+  EXPECT_TRUE(DexFileFromFile::Create(0, tf.path) == nullptr);
 
   // Header correct, file too small.
   ASSERT_EQ(0, lseek(tf.fd, 0, SEEK_SET));
-  ASSERT_EQ(sizeof(art::DexFile::Header), static_cast<size_t>(TEMP_FAILURE_RETRY(write(
-                                              tf.fd, kDexData, sizeof(art::DexFile::Header)))));
-  ASSERT_FALSE(dex_file.Open(0, tf.path));
+  ASSERT_EQ(sizeof(kDexData) - 1,
+            static_cast<size_t>(TEMP_FAILURE_RETRY(write(tf.fd, kDexData, sizeof(kDexData) - 1))));
+  EXPECT_TRUE(DexFileFromFile::Create(0, tf.path) == nullptr);
 }
 
 TEST(DexFileTest, from_file_open) {
@@ -68,8 +58,7 @@ TEST(DexFileTest, from_file_open) {
   ASSERT_EQ(sizeof(kDexData),
             static_cast<size_t>(TEMP_FAILURE_RETRY(write(tf.fd, kDexData, sizeof(kDexData)))));
 
-  DexFileFromFile dex_file;
-  ASSERT_TRUE(dex_file.Open(0, tf.path));
+  EXPECT_TRUE(DexFileFromFile::Create(0, tf.path) != nullptr);
 }
 
 TEST(DexFileTest, from_file_open_non_zero_offset) {
@@ -80,35 +69,31 @@ TEST(DexFileTest, from_file_open_non_zero_offset) {
   ASSERT_EQ(sizeof(kDexData),
             static_cast<size_t>(TEMP_FAILURE_RETRY(write(tf.fd, kDexData, sizeof(kDexData)))));
 
-  DexFileFromFile dex_file;
-  ASSERT_TRUE(dex_file.Open(0x100, tf.path));
+  EXPECT_TRUE(DexFileFromFile::Create(0x100, tf.path) != nullptr);
 }
 
 TEST(DexFileTest, from_memory_fail_too_small_for_header) {
   MemoryFake memory;
 
-  memory.SetMemory(0x1000, kDexData, sizeof(art::DexFile::Header) - 1);
-  DexFileFromMemory dex_file;
+  memory.SetMemory(0x1000, kDexData, 10);
 
-  ASSERT_FALSE(dex_file.Open(0x1000, &memory));
+  EXPECT_TRUE(DexFileFromMemory::Create(0x1000, &memory, "") == nullptr);
 }
 
 TEST(DexFileTest, from_memory_fail_too_small_for_data) {
   MemoryFake memory;
 
   memory.SetMemory(0x1000, kDexData, sizeof(kDexData) - 2);
-  DexFileFromMemory dex_file;
 
-  ASSERT_FALSE(dex_file.Open(0x1000, &memory));
+  EXPECT_TRUE(DexFileFromMemory::Create(0x1000, &memory, "") == nullptr);
 }
 
 TEST(DexFileTest, from_memory_open) {
   MemoryFake memory;
 
   memory.SetMemory(0x1000, kDexData, sizeof(kDexData));
-  DexFileFromMemory dex_file;
 
-  ASSERT_TRUE(dex_file.Open(0x1000, &memory));
+  EXPECT_TRUE(DexFileFromMemory::Create(0x1000, &memory, "") != nullptr);
 }
 
 TEST(DexFileTest, create_using_file) {
@@ -120,9 +105,8 @@ TEST(DexFileTest, create_using_file) {
             static_cast<size_t>(TEMP_FAILURE_RETRY(write(tf.fd, kDexData, sizeof(kDexData)))));
 
   MemoryFake memory;
-  MapInfo info(0, 0x10000, 0, 0x5, tf.path);
-  std::unique_ptr<DexFile> dex_file(DexFile::Create(0x500, &memory, &info));
-  ASSERT_TRUE(dex_file != nullptr);
+  MapInfo info(nullptr, 0, 0x10000, 0, 0x5, tf.path);
+  EXPECT_TRUE(DexFile::Create(0x500, &memory, &info) != nullptr);
 }
 
 TEST(DexFileTest, create_using_file_non_zero_start) {
@@ -134,9 +118,8 @@ TEST(DexFileTest, create_using_file_non_zero_start) {
             static_cast<size_t>(TEMP_FAILURE_RETRY(write(tf.fd, kDexData, sizeof(kDexData)))));
 
   MemoryFake memory;
-  MapInfo info(0x100, 0x10000, 0, 0x5, tf.path);
-  std::unique_ptr<DexFile> dex_file(DexFile::Create(0x600, &memory, &info));
-  ASSERT_TRUE(dex_file != nullptr);
+  MapInfo info(nullptr, 0x100, 0x10000, 0, 0x5, tf.path);
+  EXPECT_TRUE(DexFile::Create(0x600, &memory, &info) != nullptr);
 }
 
 TEST(DexFileTest, create_using_file_non_zero_offset) {
@@ -148,25 +131,22 @@ TEST(DexFileTest, create_using_file_non_zero_offset) {
             static_cast<size_t>(TEMP_FAILURE_RETRY(write(tf.fd, kDexData, sizeof(kDexData)))));
 
   MemoryFake memory;
-  MapInfo info(0x100, 0x10000, 0x200, 0x5, tf.path);
-  std::unique_ptr<DexFile> dex_file(DexFile::Create(0x400, &memory, &info));
-  ASSERT_TRUE(dex_file != nullptr);
+  MapInfo info(nullptr, 0x100, 0x10000, 0x200, 0x5, tf.path);
+  EXPECT_TRUE(DexFile::Create(0x400, &memory, &info) != nullptr);
 }
 
 TEST(DexFileTest, create_using_memory_empty_file) {
   MemoryFake memory;
   memory.SetMemory(0x4000, kDexData, sizeof(kDexData));
-  MapInfo info(0x100, 0x10000, 0x200, 0x5, "");
-  std::unique_ptr<DexFile> dex_file(DexFile::Create(0x4000, &memory, &info));
-  ASSERT_TRUE(dex_file != nullptr);
+  MapInfo info(nullptr, 0x100, 0x10000, 0x200, 0x5, "");
+  EXPECT_TRUE(DexFile::Create(0x4000, &memory, &info) != nullptr);
 }
 
 TEST(DexFileTest, create_using_memory_file_does_not_exist) {
   MemoryFake memory;
   memory.SetMemory(0x4000, kDexData, sizeof(kDexData));
-  MapInfo info(0x100, 0x10000, 0x200, 0x5, "/does/not/exist");
-  std::unique_ptr<DexFile> dex_file(DexFile::Create(0x4000, &memory, &info));
-  ASSERT_TRUE(dex_file != nullptr);
+  MapInfo info(nullptr, 0x100, 0x10000, 0x200, 0x5, "/does/not/exist");
+  EXPECT_TRUE(DexFile::Create(0x4000, &memory, &info) != nullptr);
 }
 
 TEST(DexFileTest, create_using_memory_file_is_malformed) {
@@ -178,43 +158,46 @@ TEST(DexFileTest, create_using_memory_file_is_malformed) {
 
   MemoryFake memory;
   memory.SetMemory(0x4000, kDexData, sizeof(kDexData));
-  MapInfo info(0x4000, 0x10000, 0x200, 0x5, "/does/not/exist");
-  std::unique_ptr<DexFile> dex_file(DexFile::Create(0x4000, &memory, &info));
+  MapInfo info(nullptr, 0x4000, 0x10000, 0x200, 0x5, "/does/not/exist");
+  std::unique_ptr<DexFile> dex_file = DexFile::Create(0x4000, &memory, &info);
   ASSERT_TRUE(dex_file != nullptr);
 
   // Check it came from memory by clearing memory and verifying it fails.
   memory.Clear();
-  dex_file.reset(DexFile::Create(0x4000, &memory, &info));
-  ASSERT_TRUE(dex_file == nullptr);
-}
-
-TEST(DexFileTest, get_method_not_opened) {
-  std::string method("something");
-  uint64_t method_offset = 100;
-  DexFile dex_file;
-  dex_file.GetMethodInformation(0x100, &method, &method_offset);
-  EXPECT_EQ("something", method);
-  EXPECT_EQ(100U, method_offset);
+  dex_file = DexFile::Create(0x4000, &memory, &info);
+  EXPECT_TRUE(dex_file == nullptr);
 }
 
 TEST(DexFileTest, get_method) {
   MemoryFake memory;
   memory.SetMemory(0x4000, kDexData, sizeof(kDexData));
-  MapInfo info(0x100, 0x10000, 0x200, 0x5, "");
+  MapInfo info(nullptr, 0x100, 0x10000, 0x200, 0x5, "");
   std::unique_ptr<DexFile> dex_file(DexFile::Create(0x4000, &memory, &info));
   ASSERT_TRUE(dex_file != nullptr);
 
   std::string method;
   uint64_t method_offset;
-  dex_file->GetMethodInformation(0x102, &method, &method_offset);
+  ASSERT_TRUE(dex_file->GetMethodInformation(0x102, &method, &method_offset));
   EXPECT_EQ("Main.<init>", method);
   EXPECT_EQ(2U, method_offset);
 
-  method = "not_in_a_method";
-  method_offset = 0x123;
-  dex_file->GetMethodInformation(0x100000, &method, &method_offset);
-  EXPECT_EQ("not_in_a_method", method);
-  EXPECT_EQ(0x123U, method_offset);
+  ASSERT_TRUE(dex_file->GetMethodInformation(0x118, &method, &method_offset));
+  EXPECT_EQ("Main.main", method);
+  EXPECT_EQ(0U, method_offset);
+}
+
+TEST(DexFileTest, get_method_empty) {
+  MemoryFake memory;
+  memory.SetMemory(0x4000, kDexData, sizeof(kDexData));
+  MapInfo info(nullptr, 0x100, 0x10000, 0x200, 0x5, "");
+  std::unique_ptr<DexFile> dex_file(DexFile::Create(0x4000, &memory, &info));
+  ASSERT_TRUE(dex_file != nullptr);
+
+  std::string method;
+  uint64_t method_offset;
+  EXPECT_FALSE(dex_file->GetMethodInformation(0x100000, &method, &method_offset));
+
+  EXPECT_FALSE(dex_file->GetMethodInformation(0x98, &method, &method_offset));
 }
 
 }  // namespace unwindstack

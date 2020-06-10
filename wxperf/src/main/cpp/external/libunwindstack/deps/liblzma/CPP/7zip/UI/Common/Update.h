@@ -92,6 +92,7 @@ struct CUpdateOptions
   FString SfxModule;
   
   bool OpenShareForWrite;
+  bool StopAfterOpenError;
 
   bool StdInMode;
   UString StdInFileName;
@@ -127,6 +128,7 @@ struct CUpdateOptions
     EMailMode(false),
     EMailRemoveAfter(false),
     OpenShareForWrite(false),
+    StopAfterOpenError(false),
     ArcNameMode(k_ArcNameMode_Smart),
     PathMode(NWildcard::k_RelatPath),
     

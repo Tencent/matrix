@@ -24,7 +24,9 @@
 #include <string>
 #include <vector>
 
+#include <unwindstack/DexFiles.h>
 #include <unwindstack/Error.h>
+#include <unwindstack/JitDebug.h>
 #include <unwindstack/Maps.h>
 #include <unwindstack/Memory.h>
 #include <unwindstack/Regs.h>
@@ -32,9 +34,7 @@
 namespace unwindstack {
 
 // Forward declarations.
-class DexFiles;
 class Elf;
-class JitDebug;
 enum ArchEnum : uint8_t;
 
 struct FrameData {
@@ -48,7 +48,13 @@ struct FrameData {
   uint64_t function_offset = 0;
 
   std::string map_name;
-  uint64_t map_offset = 0;
+  // The offset from the first map representing the frame. When there are
+  // two maps (read-only and read-execute) this will be the offset from
+  // the read-only map. When there is only one map, this will be the
+  // same as the actual offset of the map and match map_exact_offset.
+  uint64_t map_elf_start_offset = 0;
+  // The actual offset from the map where the pc lies.
+  uint64_t map_exact_offset = 0;
   uint64_t map_start = 0;
   uint64_t map_end = 0;
   uint64_t map_load_bias = 0;
@@ -61,35 +67,65 @@ class Unwinder {
       : max_frames_(max_frames), maps_(maps), regs_(regs), process_memory_(process_memory) {
     frames_.reserve(max_frames * 2);
   }
-  ~Unwinder() = default;
+  Unwinder(size_t max_frames, Maps* maps, std::shared_ptr<Memory> process_memory)
+      : max_frames_(max_frames), maps_(maps), process_memory_(process_memory) {
+    frames_.reserve(max_frames);
+  }
+
+  virtual ~Unwinder() = default;
 
   void Unwind(const std::vector<std::string>* initial_map_names_to_skip = nullptr,
               const std::vector<std::string>* map_suffixes_to_ignore = nullptr);
 
-  size_t NumFrames() { return frames_.size(); }
+  size_t NumFrames() const { return frames_.size(); }
 
   const std::vector<FrameData>& frames() { return frames_; }
 
-  std::string FormatFrame(size_t frame_num);
-  static std::string FormatFrame(const FrameData& frame, bool is32bit);
+  std::vector<FrameData> ConsumeFrames() {
+    std::vector<FrameData> frames = std::move(frames_);
+    frames_.clear();
+    return frames;
+  }
+
+  std::string FormatFrame(size_t frame_num) const;
+  std::string FormatFrame(const FrameData& frame) const;
 
   void SetJitDebug(JitDebug* jit_debug, ArchEnum arch);
+
+  void SetRegs(Regs* regs) { regs_ = regs; }
+  Maps* GetMaps() { return maps_; }
+  std::shared_ptr<Memory>& GetProcessMemory() { return process_memory_; }
 
   // Disabling the resolving of names results in the function name being
   // set to an empty string and the function offset being set to zero.
   void SetResolveNames(bool resolve) { resolve_names_ = resolve; }
 
-#if !defined(NO_LIBDEXFILE_SUPPORT)
+  // Enable/disable soname printing the soname for a map name if the elf is
+  // embedded in a file. This is enabled by default.
+  // NOTE: This does nothing unless resolving names is enabled.
+  void SetEmbeddedSoname(bool embedded_soname) { embedded_soname_ = embedded_soname; }
+
+  void SetDisplayBuildID(bool display_build_id) { display_build_id_ = display_build_id; }
+
   void SetDexFiles(DexFiles* dex_files, ArchEnum arch);
-#endif
+
+  bool elf_from_memory_not_file() { return elf_from_memory_not_file_; }
 
   ErrorCode LastErrorCode() { return last_error_.code; }
   uint64_t LastErrorAddress() { return last_error_.address; }
 
- private:
+  // Builds a frame for symbolization using the maps from this unwinder. The
+  // constructed frame contains just enough information to be used to symbolize
+  // frames collected by frame-pointer unwinding that's done outside of
+  // libunwindstack. This is used by tombstoned to symbolize frame pointer-based
+  // stack traces that are collected by tools such as GWP-ASan and MTE.
+  FrameData BuildFrameFromPcOnly(uint64_t pc);
+
+ protected:
+  Unwinder(size_t max_frames) : max_frames_(max_frames) { frames_.reserve(max_frames); }
+
   void FillInDexFrame();
-  void FillInFrame(MapInfo* map_info, Elf* elf, uint64_t rel_pc, uint64_t func_pc,
-                   uint64_t pc_adjustment);
+  FrameData* FillInFrame(MapInfo* map_info, Elf* elf, uint64_t rel_pc, uint64_t pc_adjustment);
 
   size_t max_frames_;
   Maps* maps_;
@@ -97,11 +133,28 @@ class Unwinder {
   std::vector<FrameData> frames_;
   std::shared_ptr<Memory> process_memory_;
   JitDebug* jit_debug_ = nullptr;
-#if !defined(NO_LIBDEXFILE_SUPPORT)
   DexFiles* dex_files_ = nullptr;
-#endif
   bool resolve_names_ = true;
+  bool embedded_soname_ = true;
+  bool display_build_id_ = false;
+  // True if at least one elf file is coming from memory and not the related
+  // file. This is only true if there is an actual file backing up the elf.
+  bool elf_from_memory_not_file_ = false;
   ErrorData last_error_;
+};
+
+class UnwinderFromPid : public Unwinder {
+ public:
+  UnwinderFromPid(size_t max_frames, pid_t pid) : Unwinder(max_frames), pid_(pid) {}
+  virtual ~UnwinderFromPid() = default;
+
+  bool Init(ArchEnum arch);
+
+ private:
+  pid_t pid_;
+  std::unique_ptr<Maps> maps_ptr_;
+  std::unique_ptr<JitDebug> jit_debug_ptr_;
+  std::unique_ptr<DexFiles> dex_files_ptr_;
 };
 
 }  // namespace unwindstack

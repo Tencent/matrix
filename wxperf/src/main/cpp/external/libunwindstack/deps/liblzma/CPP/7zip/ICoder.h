@@ -43,6 +43,7 @@ CODER_INTERFACE(ICompressCoder2, 0x18)
     S_OK     : OK
     S_FALSE  : data error (for decoders)
     E_OUTOFMEMORY : memory allocation error
+    E_NOTIMPL : unsupported encoding method (for decoders)
     another error code : some error. For example, it can be error code received from inStream or outStream function.
   
   Parameters:
@@ -104,24 +105,40 @@ namespace NCoderPropID
   enum EEnum
   {
     kDefaultProp = 0,
-    kDictionarySize,
-    kUsedMemorySize,
-    kOrder,
-    kBlockSize,
-    kPosStateBits,
-    kLitContextBits,
-    kLitPosBits,
-    kNumFastBytes,
-    kMatchFinder,
-    kMatchFinderCycles,
-    kNumPasses,
-    kAlgorithm,
-    kNumThreads,
-    kEndMarker,
-    kLevel,
-    kReduceSize // estimated size of data that will be compressed. Encoder can use this value to reduce dictionary size.
+    kDictionarySize,    // VT_UI4
+    kUsedMemorySize,    // VT_UI4
+    kOrder,             // VT_UI4
+    kBlockSize,         // VT_UI4 or VT_UI8
+    kPosStateBits,      // VT_UI4
+    kLitContextBits,    // VT_UI4
+    kLitPosBits,        // VT_UI4
+    kNumFastBytes,      // VT_UI4
+    kMatchFinder,       // VT_BSTR
+    kMatchFinderCycles, // VT_UI4
+    kNumPasses,         // VT_UI4
+    kAlgorithm,         // VT_UI4
+    kNumThreads,        // VT_UI4
+    kEndMarker,         // VT_BOOL
+    kLevel,             // VT_UI4
+    kReduceSize,        // VT_UI8 : it's estimated size of largest data stream that will be compressed
+                        //   encoder can use this value to reduce dictionary size and allocate data buffers
+
+    kExpectedDataSize,  // VT_UI8 : for ICompressSetCoderPropertiesOpt :
+                        //   it's estimated size of current data stream
+                        //   real data size can differ from that size
+                        //   encoder can use this value to optimize encoder initialization
+
+    kBlockSize2,        // VT_UI4 or VT_UI8
+    kCheckSize,         // VT_UI4 : size of digest in bytes
+    kFilter,            // VT_BSTR
+    kMemUse             // VT_UI8
   };
 }
+
+CODER_INTERFACE(ICompressSetCoderPropertiesOpt, 0x1F)
+{
+  STDMETHOD(SetCoderPropertiesOpt)(const PROPID *propIDs, const PROPVARIANT *props, UInt32 numProps) PURE;
+};
 
 CODER_INTERFACE(ICompressSetCoderProperties, 0x20)
 {
@@ -169,6 +186,17 @@ CODER_INTERFACE(ICompressSetFinishMode, 0x26)
     0 : partial decoding is allowed. It's default mode for ICompressCoder::Code(), if (outSize) is defined.
     1 : full decoding. The stream must be finished at the end of decoding. */
 };
+
+CODER_INTERFACE(ICompressGetInStreamProcessedSize2, 0x27)
+{
+  STDMETHOD(GetInStreamProcessedSize2)(UInt32 streamIndex, UInt64 *value) PURE;
+};
+
+CODER_INTERFACE(ICompressSetMemLimit, 0x28)
+{
+  STDMETHOD(SetMemLimit)(UInt64 memUsage) PURE;
+};
+
 
 
 CODER_INTERFACE(ICompressGetSubStreamSize, 0x30)

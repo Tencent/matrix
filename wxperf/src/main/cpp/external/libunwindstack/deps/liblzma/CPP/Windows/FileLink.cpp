@@ -74,7 +74,7 @@ static const UInt32 kReparseFlags_Microsoft   = ((UInt32)1 << 31);
 #define Set16(p, v) SetUi16(p, v)
 #define Set32(p, v) SetUi32(p, v)
 
-static const wchar_t *k_LinkPrefix = L"\\??\\";
+static const wchar_t * const k_LinkPrefix = L"\\??\\";
 static const unsigned k_LinkPrefix_Size = 4;
 
 static const bool IsLinkPrefix(const wchar_t *s)
@@ -83,7 +83,7 @@ static const bool IsLinkPrefix(const wchar_t *s)
 }
 
 /*
-static const wchar_t *k_VolumePrefix = L"Volume{";
+static const wchar_t * const k_VolumePrefix = L"Volume{";
 static const bool IsVolumeName(const wchar_t *s)
 {
   return IsString1PrefixedByString2(s, k_VolumePrefix);
@@ -194,8 +194,9 @@ static void GetString(const Byte *p, unsigned len, UString &res)
   res.ReleaseBuf_SetLen(i);
 }
 
-bool CReparseAttr::Parse(const Byte *p, size_t size)
+bool CReparseAttr::Parse(const Byte *p, size_t size, DWORD &errorCode)
 {
+  errorCode = ERROR_INVALID_REPARSE_DATA;
   if (size < 8)
     return false;
   Tag = Get32(p);
@@ -209,8 +210,10 @@ bool CReparseAttr::Parse(const Byte *p, size_t size)
   */
   if (Tag != _my_IO_REPARSE_TAG_MOUNT_POINT &&
       Tag != _my_IO_REPARSE_TAG_SYMLINK)
-    // return true;
+  {
+    errorCode = ERROR_REPARSE_TAG_MISMATCH; // ERROR_REPARSE_TAG_INVALID
     return false;
+  }
 
   if (Get16(p + 6) != 0) // padding
     return false;
@@ -247,6 +250,7 @@ bool CReparseAttr::Parse(const Byte *p, size_t size)
   GetString(p + subOffs, subLen >> 1, SubsName);
   GetString(p + printOffs, printLen >> 1, PrintName);
 
+  errorCode = 0;
   return true;
 }
 
@@ -332,7 +336,7 @@ bool CReparseAttr::IsVolume() const
 
 UString CReparseAttr::GetPath() const
 {
-  UString s = SubsName;
+  UString s (SubsName);
   if (IsLinkPrefix(s))
   {
     s.ReplaceOneCharAtPos(1, '\\');
@@ -376,7 +380,7 @@ bool GetReparseData(CFSTR path, CByteBuffer &reparseData, BY_HANDLE_FILE_INFORMA
 
 static bool CreatePrefixDirOfFile(CFSTR path)
 {
-  FString path2 = path;
+  FString path2 (path);
   int pos = path2.ReverseFind_PathSepar();
   if (pos < 0)
     return true;

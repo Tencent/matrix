@@ -29,7 +29,6 @@
 #include <vector>
 
 #include <android-base/file.h>
-#include <android-base/test_utils.h>
 #include <gtest/gtest.h>
 
 #include <unwindstack/Elf.h>
@@ -69,83 +68,69 @@ class MapInfoGetElfTest : public ::testing::Test {
 };
 
 TEST_F(MapInfoGetElfTest, invalid) {
-  MapInfo info(0x1000, 0x2000, 0, PROT_READ, "");
+  MapInfo info(nullptr, 0x1000, 0x2000, 0, PROT_READ, "");
 
   // The map is empty, but this should still create an invalid elf object.
-  Elf* elf = info.GetElf(process_memory_, false);
+  Elf* elf = info.GetElf(process_memory_, ARCH_ARM);
   ASSERT_TRUE(elf != nullptr);
   ASSERT_FALSE(elf->valid());
 }
 
 TEST_F(MapInfoGetElfTest, valid32) {
-  MapInfo info(0x3000, 0x4000, 0, PROT_READ, "");
+  MapInfo info(nullptr, 0x3000, 0x4000, 0, PROT_READ, "");
 
   Elf32_Ehdr ehdr;
   TestInitEhdr<Elf32_Ehdr>(&ehdr, ELFCLASS32, EM_ARM);
   memory_->SetMemory(0x3000, &ehdr, sizeof(ehdr));
 
-  Elf* elf = info.GetElf(process_memory_, false);
+  Elf* elf = info.GetElf(process_memory_, ARCH_ARM);
   ASSERT_TRUE(elf != nullptr);
   ASSERT_TRUE(elf->valid());
   EXPECT_EQ(static_cast<uint32_t>(EM_ARM), elf->machine_type());
   EXPECT_EQ(ELFCLASS32, elf->class_type());
+
+  // Now verify that an empty process memory returns an invalid elf object.
+  info.elf.reset();
+  elf = info.GetElf(std::shared_ptr<Memory>(), ARCH_ARM);
+  ASSERT_TRUE(elf != nullptr);
+  ASSERT_FALSE(elf->valid());
 }
 
 TEST_F(MapInfoGetElfTest, valid64) {
-  MapInfo info(0x8000, 0x9000, 0, PROT_READ, "");
+  MapInfo info(nullptr, 0x8000, 0x9000, 0, PROT_READ, "");
 
   Elf64_Ehdr ehdr;
   TestInitEhdr<Elf64_Ehdr>(&ehdr, ELFCLASS64, EM_AARCH64);
   memory_->SetMemory(0x8000, &ehdr, sizeof(ehdr));
 
-  Elf* elf = info.GetElf(process_memory_, false);
+  Elf* elf = info.GetElf(process_memory_, ARCH_ARM64);
   ASSERT_TRUE(elf != nullptr);
   ASSERT_TRUE(elf->valid());
   EXPECT_EQ(static_cast<uint32_t>(EM_AARCH64), elf->machine_type());
   EXPECT_EQ(ELFCLASS64, elf->class_type());
 }
 
-TEST_F(MapInfoGetElfTest, gnu_debugdata_do_not_init32) {
-  MapInfo info(0x4000, 0x8000, 0, PROT_READ, "");
+TEST_F(MapInfoGetElfTest, invalid_arch_mismatch) {
+  MapInfo info(nullptr, 0x3000, 0x4000, 0, PROT_READ, "");
 
-  TestInitGnuDebugdata<Elf32_Ehdr, Elf32_Shdr>(ELFCLASS32, EM_ARM, false,
-                                               [&](uint64_t offset, const void* ptr, size_t size) {
-                                                 memory_->SetMemory(0x4000 + offset, ptr, size);
-                                               });
+  Elf32_Ehdr ehdr;
+  TestInitEhdr<Elf32_Ehdr>(&ehdr, ELFCLASS32, EM_ARM);
+  memory_->SetMemory(0x3000, &ehdr, sizeof(ehdr));
 
-  Elf* elf = info.GetElf(process_memory_, false);
+  Elf* elf = info.GetElf(process_memory_, ARCH_X86);
   ASSERT_TRUE(elf != nullptr);
-  ASSERT_TRUE(elf->valid());
-  EXPECT_EQ(static_cast<uint32_t>(EM_ARM), elf->machine_type());
-  EXPECT_EQ(ELFCLASS32, elf->class_type());
-  EXPECT_TRUE(elf->gnu_debugdata_interface() == nullptr);
-}
-
-TEST_F(MapInfoGetElfTest, gnu_debugdata_do_not_init64) {
-  MapInfo info(0x6000, 0x8000, 0, PROT_READ, "");
-
-  TestInitGnuDebugdata<Elf64_Ehdr, Elf64_Shdr>(ELFCLASS64, EM_AARCH64, false,
-                                               [&](uint64_t offset, const void* ptr, size_t size) {
-                                                 memory_->SetMemory(0x6000 + offset, ptr, size);
-                                               });
-
-  Elf* elf = info.GetElf(process_memory_, false);
-  ASSERT_TRUE(elf != nullptr);
-  ASSERT_TRUE(elf->valid());
-  EXPECT_EQ(static_cast<uint32_t>(EM_AARCH64), elf->machine_type());
-  EXPECT_EQ(ELFCLASS64, elf->class_type());
-  EXPECT_TRUE(elf->gnu_debugdata_interface() == nullptr);
+  ASSERT_FALSE(elf->valid());
 }
 
 TEST_F(MapInfoGetElfTest, gnu_debugdata_init32) {
-  MapInfo info(0x2000, 0x3000, 0, PROT_READ, "");
+  MapInfo info(nullptr, 0x2000, 0x3000, 0, PROT_READ, "");
 
   TestInitGnuDebugdata<Elf32_Ehdr, Elf32_Shdr>(ELFCLASS32, EM_ARM, true,
                                                [&](uint64_t offset, const void* ptr, size_t size) {
                                                  memory_->SetMemory(0x2000 + offset, ptr, size);
                                                });
 
-  Elf* elf = info.GetElf(process_memory_, true);
+  Elf* elf = info.GetElf(process_memory_, ARCH_ARM);
   ASSERT_TRUE(elf != nullptr);
   ASSERT_TRUE(elf->valid());
   EXPECT_EQ(static_cast<uint32_t>(EM_ARM), elf->machine_type());
@@ -154,14 +139,14 @@ TEST_F(MapInfoGetElfTest, gnu_debugdata_init32) {
 }
 
 TEST_F(MapInfoGetElfTest, gnu_debugdata_init64) {
-  MapInfo info(0x5000, 0x8000, 0, PROT_READ, "");
+  MapInfo info(nullptr, 0x5000, 0x8000, 0, PROT_READ, "");
 
   TestInitGnuDebugdata<Elf64_Ehdr, Elf64_Shdr>(ELFCLASS64, EM_AARCH64, true,
                                                [&](uint64_t offset, const void* ptr, size_t size) {
                                                  memory_->SetMemory(0x5000 + offset, ptr, size);
                                                });
 
-  Elf* elf = info.GetElf(process_memory_, true);
+  Elf* elf = info.GetElf(process_memory_, ARCH_ARM64);
   ASSERT_TRUE(elf != nullptr);
   ASSERT_TRUE(elf->valid());
   EXPECT_EQ(static_cast<uint32_t>(EM_AARCH64), elf->machine_type());
@@ -170,26 +155,26 @@ TEST_F(MapInfoGetElfTest, gnu_debugdata_init64) {
 }
 
 TEST_F(MapInfoGetElfTest, end_le_start) {
-  MapInfo info(0x1000, 0x1000, 0, PROT_READ, elf_.path);
+  MapInfo info(nullptr, 0x1000, 0x1000, 0, PROT_READ, elf_.path);
 
   Elf32_Ehdr ehdr;
   TestInitEhdr<Elf32_Ehdr>(&ehdr, ELFCLASS32, EM_ARM);
   ASSERT_TRUE(android::base::WriteFully(elf_.fd, &ehdr, sizeof(ehdr)));
 
-  Elf* elf = info.GetElf(process_memory_, false);
+  Elf* elf = info.GetElf(process_memory_, ARCH_ARM);
   ASSERT_TRUE(elf != nullptr);
   ASSERT_FALSE(elf->valid());
 
   info.elf.reset();
   info.end = 0xfff;
-  elf = info.GetElf(process_memory_, false);
+  elf = info.GetElf(process_memory_, ARCH_ARM);
   ASSERT_TRUE(elf != nullptr);
   ASSERT_FALSE(elf->valid());
 
   // Make sure this test is valid.
   info.elf.reset();
   info.end = 0x2000;
-  elf = info.GetElf(process_memory_, false);
+  elf = info.GetElf(process_memory_, ARCH_ARM);
   ASSERT_TRUE(elf != nullptr);
   ASSERT_TRUE(elf->valid());
 }
@@ -197,7 +182,7 @@ TEST_F(MapInfoGetElfTest, end_le_start) {
 // Verify that if the offset is non-zero but there is no elf at the offset,
 // that the full file is used.
 TEST_F(MapInfoGetElfTest, file_backed_non_zero_offset_full_file) {
-  MapInfo info(0x1000, 0x2000, 0x100, PROT_READ, elf_.path);
+  MapInfo info(nullptr, 0x1000, 0x2000, 0x100, PROT_READ, elf_.path);
 
   std::vector<uint8_t> buffer(0x1000);
   memset(buffer.data(), 0, buffer.size());
@@ -206,7 +191,7 @@ TEST_F(MapInfoGetElfTest, file_backed_non_zero_offset_full_file) {
   memcpy(buffer.data(), &ehdr, sizeof(ehdr));
   ASSERT_TRUE(android::base::WriteFully(elf_.fd, buffer.data(), buffer.size()));
 
-  Elf* elf = info.GetElf(process_memory_, false);
+  Elf* elf = info.GetElf(process_memory_, ARCH_ARM);
   ASSERT_TRUE(elf != nullptr);
   ASSERT_TRUE(elf->valid());
   ASSERT_TRUE(elf->memory() != nullptr);
@@ -226,7 +211,7 @@ TEST_F(MapInfoGetElfTest, file_backed_non_zero_offset_full_file) {
 // Verify that if the offset is non-zero and there is an elf at that
 // offset, that only part of the file is used.
 TEST_F(MapInfoGetElfTest, file_backed_non_zero_offset_partial_file) {
-  MapInfo info(0x1000, 0x2000, 0x2000, PROT_READ, elf_.path);
+  MapInfo info(nullptr, 0x1000, 0x2000, 0x2000, PROT_READ, elf_.path);
 
   std::vector<uint8_t> buffer(0x4000);
   memset(buffer.data(), 0, buffer.size());
@@ -235,7 +220,7 @@ TEST_F(MapInfoGetElfTest, file_backed_non_zero_offset_partial_file) {
   memcpy(&buffer[info.offset], &ehdr, sizeof(ehdr));
   ASSERT_TRUE(android::base::WriteFully(elf_.fd, buffer.data(), buffer.size()));
 
-  Elf* elf = info.GetElf(process_memory_, false);
+  Elf* elf = info.GetElf(process_memory_, ARCH_ARM);
   ASSERT_TRUE(elf != nullptr);
   ASSERT_TRUE(elf->valid());
   ASSERT_TRUE(elf->memory() != nullptr);
@@ -256,7 +241,7 @@ TEST_F(MapInfoGetElfTest, file_backed_non_zero_offset_partial_file) {
 // embedded elf is bigger than the initial map, the new object is larger
 // than the original map size. Do this for a 32 bit elf and a 64 bit elf.
 TEST_F(MapInfoGetElfTest, file_backed_non_zero_offset_partial_file_whole_elf32) {
-  MapInfo info(0x5000, 0x6000, 0x1000, PROT_READ, elf_.path);
+  MapInfo info(nullptr, 0x5000, 0x6000, 0x1000, PROT_READ, elf_.path);
 
   std::vector<uint8_t> buffer(0x4000);
   memset(buffer.data(), 0, buffer.size());
@@ -268,7 +253,7 @@ TEST_F(MapInfoGetElfTest, file_backed_non_zero_offset_partial_file_whole_elf32) 
   memcpy(&buffer[info.offset], &ehdr, sizeof(ehdr));
   ASSERT_TRUE(android::base::WriteFully(elf_.fd, buffer.data(), buffer.size()));
 
-  Elf* elf = info.GetElf(process_memory_, false);
+  Elf* elf = info.GetElf(process_memory_, ARCH_ARM);
   ASSERT_TRUE(elf != nullptr);
   ASSERT_TRUE(elf->valid());
   ASSERT_TRUE(elf->memory() != nullptr);
@@ -284,7 +269,7 @@ TEST_F(MapInfoGetElfTest, file_backed_non_zero_offset_partial_file_whole_elf32) 
 }
 
 TEST_F(MapInfoGetElfTest, file_backed_non_zero_offset_partial_file_whole_elf64) {
-  MapInfo info(0x7000, 0x8000, 0x1000, PROT_READ, elf_.path);
+  MapInfo info(nullptr, 0x7000, 0x8000, 0x1000, PROT_READ, elf_.path);
 
   std::vector<uint8_t> buffer(0x4000);
   memset(buffer.data(), 0, buffer.size());
@@ -296,7 +281,7 @@ TEST_F(MapInfoGetElfTest, file_backed_non_zero_offset_partial_file_whole_elf64) 
   memcpy(&buffer[info.offset], &ehdr, sizeof(ehdr));
   ASSERT_TRUE(android::base::WriteFully(elf_.fd, buffer.data(), buffer.size()));
 
-  Elf* elf = info.GetElf(process_memory_, false);
+  Elf* elf = info.GetElf(process_memory_, ARCH_ARM64);
   ASSERT_TRUE(elf != nullptr);
   ASSERT_TRUE(elf->valid());
   ASSERT_TRUE(elf->memory() != nullptr);
@@ -311,29 +296,9 @@ TEST_F(MapInfoGetElfTest, file_backed_non_zero_offset_partial_file_whole_elf64) 
   ASSERT_TRUE(elf->memory()->ReadFully(0x1000, buffer.data(), 1));
 }
 
-TEST_F(MapInfoGetElfTest, process_memory_not_read_only) {
-  MapInfo info(0x9000, 0xa000, 0x1000, 0, "");
-
-  // Create valid elf data in process memory only.
-  Elf64_Ehdr ehdr;
-  TestInitEhdr<Elf64_Ehdr>(&ehdr, ELFCLASS64, EM_AARCH64);
-  ehdr.e_shoff = 0x2000;
-  ehdr.e_shentsize = sizeof(Elf64_Shdr) + 100;
-  ehdr.e_shnum = 4;
-  memory_->SetMemory(0x9000, &ehdr, sizeof(ehdr));
-
-  Elf* elf = info.GetElf(process_memory_, false);
-  ASSERT_TRUE(elf != nullptr);
-  ASSERT_FALSE(elf->valid());
-
-  info.elf.reset();
-  info.flags = PROT_READ;
-  elf = info.GetElf(process_memory_, false);
-  ASSERT_TRUE(elf->valid());
-}
-
 TEST_F(MapInfoGetElfTest, check_device_maps) {
-  MapInfo info(0x7000, 0x8000, 0x1000, PROT_READ | MAPS_FLAGS_DEVICE_MAP, "/dev/something");
+  MapInfo info(nullptr, 0x7000, 0x8000, 0x1000, PROT_READ | MAPS_FLAGS_DEVICE_MAP,
+               "/dev/something");
 
   // Create valid elf data in process memory for this to verify that only
   // the name is causing invalid elf data.
@@ -341,23 +306,23 @@ TEST_F(MapInfoGetElfTest, check_device_maps) {
   TestInitEhdr<Elf64_Ehdr>(&ehdr, ELFCLASS64, EM_X86_64);
   ehdr.e_shoff = 0x2000;
   ehdr.e_shentsize = sizeof(Elf64_Shdr) + 100;
-  ehdr.e_shnum = 4;
+  ehdr.e_shnum = 0;
   memory_->SetMemory(0x7000, &ehdr, sizeof(ehdr));
 
-  Elf* elf = info.GetElf(process_memory_, false);
+  Elf* elf = info.GetElf(process_memory_, ARCH_X86_64);
   ASSERT_TRUE(elf != nullptr);
   ASSERT_FALSE(elf->valid());
 
   // Set the name to nothing to verify that it still fails.
   info.elf.reset();
   info.name = "";
-  elf = info.GetElf(process_memory_, false);
+  elf = info.GetElf(process_memory_, ARCH_X86_64);
   ASSERT_FALSE(elf->valid());
 
   // Change the flags and verify the elf is valid now.
   info.elf.reset();
   info.flags = PROT_READ;
-  elf = info.GetElf(process_memory_, false);
+  elf = info.GetElf(process_memory_, ARCH_X86_64);
   ASSERT_TRUE(elf->valid());
 }
 
@@ -368,7 +333,7 @@ TEST_F(MapInfoGetElfTest, multiple_thread_get_elf) {
   TestInitEhdr<Elf64_Ehdr>(&ehdr, ELFCLASS64, EM_X86_64);
   ehdr.e_shoff = 0x2000;
   ehdr.e_shentsize = sizeof(Elf64_Shdr) + 100;
-  ehdr.e_shnum = 4;
+  ehdr.e_shnum = 0;
   memory_->SetMemory(0x7000, &ehdr, sizeof(ehdr));
 
   Elf* elf_in_threads[kNumConcurrentThreads];
@@ -378,12 +343,12 @@ TEST_F(MapInfoGetElfTest, multiple_thread_get_elf) {
   wait = true;
   // Create all of the threads and have them do the GetElf at the same time
   // to make it likely that a race will occur.
-  MapInfo info(0x7000, 0x8000, 0x1000, PROT_READ, "");
+  MapInfo info(nullptr, 0x7000, 0x8000, 0x1000, PROT_READ, "");
   for (size_t i = 0; i < kNumConcurrentThreads; i++) {
     std::thread* thread = new std::thread([i, this, &wait, &info, &elf_in_threads]() {
       while (wait)
         ;
-      Elf* elf = info.GetElf(process_memory_, false);
+      Elf* elf = info.GetElf(process_memory_, ARCH_X86_64);
       elf_in_threads[i] = elf;
     });
     threads.push_back(thread);
@@ -404,6 +369,37 @@ TEST_F(MapInfoGetElfTest, multiple_thread_get_elf) {
   for (size_t i = 0; i < kNumConcurrentThreads; i++) {
     EXPECT_EQ(elf, elf_in_threads[i]) << "Thread " << i << " mismatched.";
   }
+}
+
+// Verify that previous maps don't automatically get the same elf object.
+TEST_F(MapInfoGetElfTest, prev_map_elf_not_set) {
+  MapInfo info1(nullptr, 0x1000, 0x2000, 0, PROT_READ, "/not/present");
+  MapInfo info2(&info1, 0x2000, 0x3000, 0, PROT_READ, elf_.path);
+
+  Elf32_Ehdr ehdr;
+  TestInitEhdr<Elf32_Ehdr>(&ehdr, ELFCLASS32, EM_ARM);
+  memory_->SetMemory(0x2000, &ehdr, sizeof(ehdr));
+  Elf* elf = info2.GetElf(process_memory_, ARCH_ARM);
+  ASSERT_TRUE(elf != nullptr);
+  ASSERT_TRUE(elf->valid());
+
+  ASSERT_NE(elf, info1.GetElf(process_memory_, ARCH_ARM));
+}
+
+// Verify that a read-only map followed by a read-execute map will result
+// in the same elf object in both maps.
+TEST_F(MapInfoGetElfTest, read_only_followed_by_read_exec_share_elf) {
+  MapInfo r_info(nullptr, 0x1000, 0x2000, 0, PROT_READ, elf_.path);
+  MapInfo rw_info(&r_info, 0x2000, 0x3000, 0x1000, PROT_READ | PROT_EXEC, elf_.path);
+
+  Elf32_Ehdr ehdr;
+  TestInitEhdr<Elf32_Ehdr>(&ehdr, ELFCLASS32, EM_ARM);
+  memory_->SetMemory(0x1000, &ehdr, sizeof(ehdr));
+  Elf* elf = rw_info.GetElf(process_memory_, ARCH_ARM);
+  ASSERT_TRUE(elf != nullptr);
+  ASSERT_TRUE(elf->valid());
+
+  ASSERT_EQ(elf, r_info.GetElf(process_memory_, ARCH_ARM));
 }
 
 }  // namespace unwindstack

@@ -32,6 +32,21 @@ using namespace NCOM;
 namespace NArchive {
 namespace N7z {
 
+unsigned BoolVector_CountSum(const CBoolVector &v)
+{
+  unsigned sum = 0;
+  const unsigned size = v.Size();
+  for (unsigned i = 0; i < size; i++)
+    if (v[i])
+      sum++;
+  return sum;
+}
+
+static inline bool BoolVector_Item_IsValidAndTrue(const CBoolVector &v, unsigned i)
+{
+  return (i < v.Size() ? v[i] : false);
+}
+
 static void BoolVector_Fill_False(CBoolVector &v, unsigned size)
 {
   v.ClearAndSetSize(size);
@@ -39,6 +54,7 @@ static void BoolVector_Fill_False(CBoolVector &v, unsigned size)
   for (unsigned i = 0; i < size; i++)
     p[i] = false;
 }
+
 
 class CInArchiveException {};
 class CUnsupportedFeatureException: public CInArchiveException {};
@@ -566,20 +582,29 @@ void CInArchive::WaitId(UInt64 id)
   }
 }
 
+
+void CInArchive::Read_UInt32_Vector(CUInt32DefVector &v)
+{
+  unsigned numItems = v.Defs.Size();
+  v.Vals.ClearAndSetSize(numItems);
+  UInt32 *p = &v.Vals[0];
+  const bool *defs = &v.Defs[0];
+  for (unsigned i = 0; i < numItems; i++)
+  {
+    UInt32 a = 0;
+    if (defs[i])
+      a = ReadUInt32();
+    p[i] = a;
+  }
+}
+
+
 void CInArchive::ReadHashDigests(unsigned numItems, CUInt32DefVector &crcs)
 {
   ReadBoolVector2(numItems, crcs.Defs);
-  crcs.Vals.ClearAndSetSize(numItems);
-  UInt32 *p = &crcs.Vals[0];
-  const bool *defs = &crcs.Defs[0];
-  for (unsigned i = 0; i < numItems; i++)
-  {
-    UInt32 crc = 0;
-    if (defs[i])
-      crc = ReadUInt32();
-    p[i] = crc;
-  }
+  Read_UInt32_Vector(crcs);
 }
+
 
 #define k_Scan_NumCoders_MAX 64
 #define k_Scan_NumCodersStreams_in_Folder_MAX 64
@@ -1075,6 +1100,8 @@ HRESULT CInArchive::ReadAndDecodePackedStreams(
     CMyComPtr<ISequentialOutStream> outStream = outStreamSpec;
     outStreamSpec->Init(data, unpackSize);
     
+    bool dataAfterEnd_Error = false;
+
     HRESULT result = decoder.Decode(
         EXTERNAL_CODECS_LOC_VARS
         _stream, baseOffset + dataOffset,
@@ -1083,15 +1110,22 @@ HRESULT CInArchive::ReadAndDecodePackedStreams(
         
         outStream,
         NULL, // *compressProgress
+
         NULL  // **inStreamMainRes
+        , dataAfterEnd_Error
         
         _7Z_DECODER_CRYPRO_VARS
-        #if !defined(_7ZIP_ST) && !defined(_SFX)
+        #if !defined(_7ZIP_ST)
           , false // mtMode
           , 1     // numThreads
+          , 0     // memUsage
         #endif
       );
+    
     RINOK(result);
+    
+    if (dataAfterEnd_Error)
+      ThereIsHeaderError = true;
     
     if (folders.FolderCRCs.ValidAndDefined(i))
       if (CrcCalc(data, unpackSize) != folders.FolderCRCs.Vals[i])
@@ -1148,19 +1182,10 @@ HRESULT CInArchive::ReadHeader(
     type = ReadID();
   }
 
-  db.Files.Clear();
-
   if (type == NID::kFilesInfo)
   {
   
   const CNum numFiles = ReadNum();
-  db.Files.ClearAndSetSize(numFiles);
-  /*
-  db.Files.Reserve(numFiles);
-  CNum i;
-  for (i = 0; i < numFiles; i++)
-    db.Files.Add(CFileItem());
-  */
 
   db.ArcInfo.FileInfoPopIDs.Add(NID::kSize);
   // if (!db.PackSizes.IsEmpty())
@@ -1169,7 +1194,6 @@ HRESULT CInArchive::ReadHeader(
     db.ArcInfo.FileInfoPopIDs.Add(NID::kCRC);
 
   CBoolVector emptyStreamVector;
-  BoolVector_Fill_False(emptyStreamVector, (unsigned)numFiles);
   CBoolVector emptyFileVector;
   CBoolVector antiFileVector;
   CNum numEmptyStreams = 0;
@@ -1197,10 +1221,10 @@ HRESULT CInArchive::ReadHeader(
         size_t rem = _inByteBack->GetRem();
         db.NamesBuf.Alloc(rem);
         ReadBytes(db.NamesBuf, rem);
-        db.NameOffsets.Alloc(db.Files.Size() + 1);
+        db.NameOffsets.Alloc(numFiles + 1);
         size_t pos = 0;
         unsigned i;
-        for (i = 0; i < db.Files.Size(); i++)
+        for (i = 0; i < numFiles; i++)
         {
           size_t curRem = (rem - pos) / 2;
           const UInt16 *buf = (const UInt16 *)(db.NamesBuf + pos);
@@ -1216,36 +1240,31 @@ HRESULT CInArchive::ReadHeader(
           ThereIsHeaderError = true;
         break;
       }
+
       case NID::kWinAttrib:
       {
-        CBoolVector boolVector;
-        ReadBoolVector2(db.Files.Size(), boolVector);
+        ReadBoolVector2(numFiles, db.Attrib.Defs);
         CStreamSwitch streamSwitch;
         streamSwitch.Set(this, &dataVector);
-        for (CNum i = 0; i < numFiles; i++)
-        {
-          CFileItem &file = db.Files[i];
-          file.AttribDefined = boolVector[i];
-          if (file.AttribDefined)
-            file.Attrib = ReadUInt32();
-        }
+        Read_UInt32_Vector(db.Attrib);
         break;
       }
+      
       /*
       case NID::kIsAux:
       {
-        ReadBoolVector(db.Files.Size(), db.IsAux);
+        ReadBoolVector(numFiles, db.IsAux);
         break;
       }
       case NID::kParent:
       {
         db.IsTree = true;
         // CBoolVector boolVector;
-        // ReadBoolVector2(db.Files.Size(), boolVector);
+        // ReadBoolVector2(numFiles, boolVector);
         // CStreamSwitch streamSwitch;
         // streamSwitch.Set(this, &dataVector);
         CBoolVector boolVector;
-        ReadBoolVector2(db.Files.Size(), boolVector);
+        ReadBoolVector2(numFiles, boolVector);
 
         db.ThereAreAltStreams = false;
         for (i = 0; i < numFiles; i++)
@@ -1264,14 +1283,9 @@ HRESULT CInArchive::ReadHeader(
       case NID::kEmptyStream:
       {
         ReadBoolVector(numFiles, emptyStreamVector);
-        numEmptyStreams = 0;
-        for (CNum i = 0; i < (CNum)emptyStreamVector.Size(); i++)
-          if (emptyStreamVector[i])
-            numEmptyStreams++;
-
-        BoolVector_Fill_False(emptyFileVector, numEmptyStreams);
-        BoolVector_Fill_False(antiFileVector, numEmptyStreams);
-
+        numEmptyStreams = BoolVector_CountSum(emptyStreamVector);
+        emptyFileVector.Clear();
+        antiFileVector.Clear();
         break;
       }
       case NID::kEmptyFile:  ReadBoolVector(numEmptyStreams, emptyFileVector); break;
@@ -1314,7 +1328,7 @@ HRESULT CInArchive::ReadHeader(
               ReadBytes(db.SecureBuf + offset, db.SecureOffsets[i + 1] - offset);
             }
             db.SecureIDs.Clear();
-            for (unsigned i = 0; i < db.Files.Size(); i++)
+            for (unsigned i = 0; i < numFiles; i++)
             {
               db.SecureIDs.Add(ReadNum());
               // db.SecureIDs.Add(ReadUInt32());
@@ -1359,22 +1373,21 @@ HRESULT CInArchive::ReadHeader(
   CNum emptyFileIndex = 0;
   CNum sizeIndex = 0;
 
-  CNum numAntiItems = 0;
+  const CNum numAntiItems = BoolVector_CountSum(antiFileVector);
 
-  CNum i;
+  if (numAntiItems != 0)
+    db.IsAnti.ClearAndSetSize(numFiles);
 
-  for (i = 0; i < numEmptyStreams; i++)
-    if (antiFileVector[i])
-      numAntiItems++;
+  db.Files.ClearAndSetSize(numFiles);
 
-  for (i = 0; i < numFiles; i++)
+  for (CNum i = 0; i < numFiles; i++)
   {
     CFileItem &file = db.Files[i];
     bool isAnti;
-    file.HasStream = !emptyStreamVector[i];
     file.Crc = 0;
-    if (file.HasStream)
+    if (!BoolVector_Item_IsValidAndTrue(emptyStreamVector, i))
     {
+      file.HasStream = true;
       file.IsDir = false;
       isAnti = false;
       file.Size = unpackSizes[sizeIndex];
@@ -1385,25 +1398,30 @@ HRESULT CInArchive::ReadHeader(
     }
     else
     {
-      file.IsDir = !emptyFileVector[emptyFileIndex];
-      isAnti = antiFileVector[emptyFileIndex];
+      file.HasStream = false;
+      file.IsDir = !BoolVector_Item_IsValidAndTrue(emptyFileVector, emptyFileIndex);
+      isAnti = BoolVector_Item_IsValidAndTrue(antiFileVector, emptyFileIndex);
       emptyFileIndex++;
       file.Size = 0;
       file.CrcDefined = false;
     }
     if (numAntiItems != 0)
-      db.IsAnti.Add(isAnti);
+      db.IsAnti[i] = isAnti;
   }
+  
   }
+  
   db.FillLinks();
-  /*
-  if (type != NID::kEnd)
-    ThrowIncorrect();
-  if (_inByteBack->GetRem() != 0)
-    ThrowIncorrect();
-  */
+
+  if (type != NID::kEnd || _inByteBack->GetRem() != 0)
+  {
+    db.UnsupportedFeatureWarning = true;
+    // ThrowIncorrect();
+  }
+
   return S_OK;
 }
+
 
 void CDbEx::FillLinks()
 {
@@ -1447,24 +1465,28 @@ void CDbEx::FillLinks()
   }
 
   if (indexInFolder != 0)
+  {
     folderIndex++;
-  /*
-  if (indexInFolder != 0)
-    ThrowIncorrect();
-  */
+    // 18.06
+    ThereIsHeaderError = true;
+    // ThrowIncorrect();
+  }
   
   for (;;)
   {
     if (folderIndex >= NumFolders)
       return;
     FolderStartFileIndex[folderIndex] = i;
-    /*
     if (NumUnpackStreamsVector[folderIndex] != 0)
-      ThrowIncorrect();;
-    */
+    {
+      // 18.06
+      ThereIsHeaderError = true;
+      // ThrowIncorrect();
+    }
     folderIndex++;
   }
 }
+
 
 HRESULT CInArchive::ReadDatabase2(
     DECL_EXTERNAL_CODECS_LOC_VARS
@@ -1609,6 +1631,7 @@ HRESULT CInArchive::ReadDatabase2(
     _7Z_DECODER_CRYPRO_VARS
     );
 }
+
 
 HRESULT CInArchive::ReadDatabase(
     DECL_EXTERNAL_CODECS_LOC_VARS

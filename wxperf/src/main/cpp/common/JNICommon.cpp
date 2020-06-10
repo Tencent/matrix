@@ -2,7 +2,7 @@
 // Created by Yves on 2020-03-16.
 //
 #include "JNICommon.h"
-#include "log.h"
+#include "Log.h"
 #include "HookCommon.h"
 #include "xhook.h"
 

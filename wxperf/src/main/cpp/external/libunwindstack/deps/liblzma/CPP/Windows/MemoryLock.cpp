@@ -67,6 +67,31 @@ bool EnablePrivilege(LPCTSTR privilegeName, bool enable)
   return res;
 }
 
+
+
+typedef void (WINAPI * Func_RtlGetVersion) (OSVERSIONINFOEXW *);
+
+/*
+  We suppose that Window 10 works incorrectly with "Large Pages" at:
+    - Windows 10 1703 (15063)
+    - Windows 10 1709 (16299)
+*/
+
+unsigned Get_LargePages_RiskLevel()
+{
+  OSVERSIONINFOEXW vi;
+  HMODULE ntdll = ::GetModuleHandleW(L"ntdll.dll");
+  if (!ntdll)
+    return 0;
+  Func_RtlGetVersion func = (Func_RtlGetVersion)GetProcAddress(ntdll, "RtlGetVersion");
+  if (!func)
+    return 0;
+  func(&vi);
+  return (vi.dwPlatformId == VER_PLATFORM_WIN32_NT
+      && vi.dwMajorVersion + vi.dwMinorVersion == 10
+      && vi.dwBuildNumber <= 16299) ? 1 : 0;
+}
+
 #endif
 
 }}

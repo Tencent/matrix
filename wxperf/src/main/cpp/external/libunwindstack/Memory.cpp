@@ -16,11 +16,12 @@
 
 #include <errno.h>
 #include <fcntl.h>
+#include <string.h>
 #include <sys/mman.h>
 #include <sys/ptrace.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <sys_compat/compat_uio.h>
+#include <sys/uio.h>
 #include <unistd.h>
 
 #include <algorithm>
@@ -29,8 +30,18 @@
 #include <android-base/unique_fd.h>
 
 #include <unwindstack/Memory.h>
+#include <deps/sys_compat/compat_uio.h>
+#include <include/unwindstack/DwarfError.h>
 
 #include "Check.h"
+#include "MemoryBuffer.h"
+#include "MemoryCache.h"
+#include "MemoryFileAtOffset.h"
+#include "MemoryLocal.h"
+#include "MemoryOffline.h"
+#include "MemoryOfflineBuffer.h"
+#include "MemoryRange.h"
+#include "MemoryRemote.h"
 
 namespace unwindstack {
 
@@ -88,6 +99,11 @@ static size_t ProcessVmRead(pid_t pid, uint64_t remote_src, void* dst, size_t le
     total_read += rc;
   }
   return total_read;
+}
+
+static size_t ProcessLocalVmRead(pid_t pid, uint64_t remote_src, void* dst, size_t len) {
+  memcpy(dst, reinterpret_cast<const void *>(remote_src), len);
+  return len;
 }
 
 static bool PtraceReadLong(pid_t pid, uint64_t addr, long* value) {
@@ -149,22 +165,42 @@ bool Memory::ReadFully(uint64_t addr, void* dst, size_t size) {
   return rc == size;
 }
 
-bool Memory::ReadString(uint64_t addr, std::string* string, uint64_t max_read) {
-  string->clear();
-  uint64_t bytes_read = 0;
-  while (bytes_read < max_read) {
-    uint8_t value;
-    if (!ReadFully(addr, &value, sizeof(value))) {
-      return false;
+bool Memory::ReadString(uint64_t addr, std::string* dst, size_t max_read) {
+  char buffer[256];  // Large enough for 99% of symbol names.
+  size_t size = 0;   // Number of bytes which were read into the buffer.
+  for (size_t offset = 0; offset < max_read; offset += size) {
+    // Look for null-terminator first, so we can allocate string of exact size.
+    // If we know the end of valid memory range, do the reads in larger blocks.
+    size_t read = std::min(sizeof(buffer), max_read - offset);
+    size = Read(addr + offset, buffer, read);
+    if (size == 0) {
+      return false;  // We have not found end of string yet and we can not read more data.
     }
-    if (value == '\0') {
-      return true;
+    size_t length = strnlen(buffer, size);  // Index of the null-terminator.
+    if (length < size) {
+      // We found the null-terminator. Allocate the string and set its content.
+      if (offset == 0) {
+        // We did just single read, so the buffer already contains the whole string.
+        dst->assign(buffer, length);
+        return true;
+      } else {
+        // The buffer contains only the last block. Read the whole string again.
+        dst->assign(offset + length, '\0');
+        return ReadFully(addr, dst->data(), dst->size());
+      }
     }
-    string->push_back(value);
-    addr++;
-    bytes_read++;
   }
   return false;
+}
+
+std::unique_ptr<Memory> Memory::CreateFileMemory(const std::string& path, uint64_t offset) {
+  auto memory = std::make_unique<MemoryFileAtOffset>();
+
+  if (memory->Init(path, offset)) {
+    return memory;
+  }
+
+  return nullptr;
 }
 
 std::shared_ptr<Memory> Memory::CreateProcessMemory(pid_t pid) {
@@ -174,13 +210,25 @@ std::shared_ptr<Memory> Memory::CreateProcessMemory(pid_t pid) {
   return std::shared_ptr<Memory>(new MemoryRemote(pid));
 }
 
+std::shared_ptr<Memory> Memory::CreateProcessMemoryCached(pid_t pid) {
+  if (pid == getpid()) {
+    return std::shared_ptr<Memory>(new MemoryCache(new MemoryLocal()));
+  }
+  return std::shared_ptr<Memory>(new MemoryCache(new MemoryRemote(pid)));
+}
+
+std::shared_ptr<Memory> Memory::CreateOfflineMemory(const uint8_t* data, uint64_t start,
+                                                    uint64_t end) {
+  return std::shared_ptr<Memory>(new MemoryOfflineBuffer(data, start, end));
+}
+
 size_t MemoryBuffer::Read(uint64_t addr, void* dst, size_t size) {
-  if (addr >= raw_.size()) {
+  if (addr >= size_) {
     return 0;
   }
 
-  size_t bytes_left = raw_.size() - static_cast<size_t>(addr);
-  const unsigned char* actual_base = static_cast<const unsigned char*>(raw_.data()) + addr;
+  size_t bytes_left = size_ - static_cast<size_t>(addr);
+  const unsigned char* actual_base = static_cast<const unsigned char*>(raw_) + addr;
   size_t actual_len = std::min(bytes_left, size);
 
   memcpy(dst, actual_base, actual_len);
@@ -188,7 +236,7 @@ size_t MemoryBuffer::Read(uint64_t addr, void* dst, size_t size) {
 }
 
 uint8_t* MemoryBuffer::GetPtr(size_t offset) {
-  if (offset < raw_.size()) {
+  if (offset < size_) {
     return &raw_[offset];
   }
   return nullptr;
@@ -267,6 +315,7 @@ size_t MemoryRemote::Read(uint64_t addr, void* dst, size_t size) {
 #endif
 
   size_t (*read_func)(pid_t, uint64_t, void*, size_t) =
+      GetFastFlag() ? ProcessLocalVmRead :
       reinterpret_cast<size_t (*)(pid_t, uint64_t, void*, size_t)>(read_redirect_func_.load());
   if (read_func != nullptr) {
     return read_func(pid_, addr, dst, size);
@@ -293,6 +342,16 @@ size_t MemoryLocal::Read(uint64_t addr, void* dst, size_t size) {
   return ProcessVmRead(getpid(), addr, dst, size);
 }
 
+#if !defined(ANDROID_EXPERIMENTAL_MTE)
+long MemoryRemote::ReadTag(uint64_t) {
+  return -1;
+}
+
+long MemoryLocal::ReadTag(uint64_t) {
+  return -1;
+}
+#endif
+
 MemoryRange::MemoryRange(const std::shared_ptr<Memory>& memory, uint64_t begin, uint64_t length,
                          uint64_t offset)
     : memory_(memory), begin_(begin), length_(length), offset_(offset) {}
@@ -314,6 +373,18 @@ size_t MemoryRange::Read(uint64_t addr, void* dst, size_t size) {
   }
 
   return memory_->Read(read_addr, dst, read_length);
+}
+
+void MemoryRanges::Insert(MemoryRange* memory) {
+  maps_.emplace(memory->offset() + memory->length(), memory);
+}
+
+size_t MemoryRanges::Read(uint64_t addr, void* dst, size_t size) {
+  auto entry = maps_.upper_bound(addr);
+  if (entry != maps_.end()) {
+    return entry->second->Read(addr, dst, size);
+  }
+  return 0;
 }
 
 bool MemoryOffline::Init(const std::string& file, uint64_t offset) {
@@ -384,6 +455,52 @@ size_t MemoryOfflineParts::Read(uint64_t addr, void* dst, size_t size) {
     }
   }
   return 0;
+}
+
+size_t MemoryCache::Read(uint64_t addr, void* dst, size_t size) {
+  // Only bother caching and looking at the cache if this is a small read for now.
+  if (size > 64) {
+    return impl_->Read(addr, dst, size);
+  }
+
+  uint64_t addr_page = addr >> kCacheBits;
+  auto entry = cache_.find(addr_page);
+  uint8_t* cache_dst;
+  if (entry != cache_.end()) {
+    cache_dst = entry->second;
+  } else {
+    cache_dst = cache_[addr_page];
+    if (!impl_->ReadFully(addr_page << kCacheBits, cache_dst, kCacheSize)) {
+      // Erase the entry.
+      cache_.erase(addr_page);
+      return impl_->Read(addr, dst, size);
+    }
+  }
+  size_t max_read = ((addr_page + 1) << kCacheBits) - addr;
+  if (size <= max_read) {
+    memcpy(dst, &cache_dst[addr & kCacheMask], size);
+    return size;
+  }
+
+  // The read crossed into another cached entry, since a read can only cross
+  // into one extra cached page, duplicate the code rather than looping.
+  memcpy(dst, &cache_dst[addr & kCacheMask], max_read);
+  dst = &reinterpret_cast<uint8_t*>(dst)[max_read];
+  addr_page++;
+
+  entry = cache_.find(addr_page);
+  if (entry != cache_.end()) {
+    cache_dst = entry->second;
+  } else {
+    cache_dst = cache_[addr_page];
+    if (!impl_->ReadFully(addr_page << kCacheBits, cache_dst, kCacheSize)) {
+      // Erase the entry.
+      cache_.erase(addr_page);
+      return impl_->Read(addr_page << kCacheBits, dst, size - max_read) + max_read;
+    }
+  }
+  memcpy(dst, cache_dst, size - max_read);
+  return size;
 }
 
 }  // namespace unwindstack

@@ -13,7 +13,9 @@ class CStdOutStream
   FILE *_stream;
   bool _streamIsOpen;
 public:
-  CStdOutStream(): _stream(0), _streamIsOpen(false) {};
+  bool IsTerminalMode;
+
+  CStdOutStream(): _stream(0), _streamIsOpen(false), IsTerminalMode(false) {};
   CStdOutStream(FILE *stream): _stream(stream), _streamIsOpen(false) {};
   ~CStdOutStream() { Close(); }
 
@@ -50,6 +52,13 @@ public:
 
   CStdOutStream & operator<<(const wchar_t *s);
   void PrintUString(const UString &s, AString &temp);
+
+  void Normalize_UString__LF_Allowed(UString &s);
+  void Normalize_UString(UString &s);
+
+  void NormalizePrint_UString(const UString &s, UString &tempU, AString &tempA);
+  void NormalizePrint_UString(const UString &s);
+  void NormalizePrint_wstr(const wchar_t *s);
 };
 
 CStdOutStream & endl(CStdOutStream & outStream) throw();

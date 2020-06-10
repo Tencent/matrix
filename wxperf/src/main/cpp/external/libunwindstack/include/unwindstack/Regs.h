@@ -18,6 +18,7 @@
 #define _LIBUNWINDSTACK_REGS_H
 
 #include <stdint.h>
+#include <unistd.h>
 
 #include <functional>
 #include <string>
@@ -63,9 +64,7 @@ class Regs {
   uint64_t dex_pc() { return dex_pc_; }
   void set_dex_pc(uint64_t dex_pc) { dex_pc_ = dex_pc; }
 
-  virtual uint64_t GetPcAdjustment(uint64_t rel_pc, Elf* elf) = 0;
-
-  virtual bool StepIfSignalHandler(uint64_t rel_pc, Elf* elf, Memory* process_memory) = 0;
+  virtual bool StepIfSignalHandler(uint64_t elf_offset, Elf* elf, Memory* process_memory) = 0;
 
   virtual bool SetPcFromReturnAddress(Memory* process_memory) = 0;
 
@@ -108,6 +107,8 @@ class RegsImpl : public Regs {
  protected:
   std::vector<AddressType> regs_;
 };
+
+uint64_t GetPcAdjustment(uint64_t rel_pc, Elf* elf, ArchEnum arch);
 
 }  // namespace unwindstack
 

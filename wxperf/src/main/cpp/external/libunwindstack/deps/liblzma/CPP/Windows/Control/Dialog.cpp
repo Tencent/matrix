@@ -72,6 +72,7 @@ bool CDialog::OnButtonClicked(int buttonID, HWND /* buttonHWND */)
   {
     case IDOK: OnOK(); break;
     case IDCANCEL: OnCancel(); break;
+    case IDCLOSE: OnClose(); break;
     case IDHELP: OnHelp(); break;
     default: return false;
   }

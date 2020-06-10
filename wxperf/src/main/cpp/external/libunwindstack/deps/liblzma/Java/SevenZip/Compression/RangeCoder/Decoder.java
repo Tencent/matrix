@@ -1,4 +1,4 @@
-package external.libunwindstack.deps.liblzma.Java.SevenZip.Compression.RangeCoder;
+package SevenZip.Compression.RangeCoder;
 import java.io.IOException;
 
 public class Decoder

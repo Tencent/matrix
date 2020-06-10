@@ -3,6 +3,7 @@
 //
 #include <jni.h>
 #include "xhook.h"
+#include "MemoryHookFunctions.h"
 #include "MemoryHook.h"
 #include "StackTrace.h"
 #include "xh_errno.h"
@@ -19,45 +20,45 @@ static const HookFunction HOOK_MALL_FUNCTIONS[] = {
         {"free", (void *) h_free, NULL},
         // CXX functions
 #ifndef __LP64__
-        {"_Znwj", (void*) HANDLER_FUNC_NAME(_Znwj), NULL},
-        {"_ZnwjSt11align_val_t", (void*) HANDLER_FUNC_NAME(_ZnwjSt11align_val_t), NULL},
-        {"_ZnwjSt11align_val_tRKSt9nothrow_t", (void*) HANDLER_FUNC_NAME(_ZnwjSt11align_val_tRKSt9nothrow_t), NULL},
-        {"_ZnwjRKSt9nothrow_t", (void*) HANDLER_FUNC_NAME(_ZnwjRKSt9nothrow_t), NULL},
+        {"_Znwj",                               (void*) HANDLER_FUNC_NAME(_Znwj), NULL},
+        {"_ZnwjSt11align_val_t",                (void*) HANDLER_FUNC_NAME(_ZnwjSt11align_val_t), NULL},
+        {"_ZnwjSt11align_val_tRKSt9nothrow_t",  (void*) HANDLER_FUNC_NAME(_ZnwjSt11align_val_tRKSt9nothrow_t), NULL},
+        {"_ZnwjRKSt9nothrow_t",                 (void*) HANDLER_FUNC_NAME(_ZnwjRKSt9nothrow_t), NULL},
 
-        {"_Znaj", (void*) HANDLER_FUNC_NAME(_Znaj), NULL},
-        {"_ZnajSt11align_val_t", (void*) HANDLER_FUNC_NAME(_ZnajSt11align_val_t), NULL},
-        {"_ZnajSt11align_val_tRKSt9nothrow_t", (void*) HANDLER_FUNC_NAME(_ZnajSt11align_val_tRKSt9nothrow_t), NULL},
-        {"_ZnajRKSt9nothrow_t", (void*) HANDLER_FUNC_NAME(_ZnajRKSt9nothrow_t), NULL},
+        {"_Znaj",                               (void*) HANDLER_FUNC_NAME(_Znaj), NULL},
+        {"_ZnajSt11align_val_t",                (void*) HANDLER_FUNC_NAME(_ZnajSt11align_val_t), NULL},
+        {"_ZnajSt11align_val_tRKSt9nothrow_t",  (void*) HANDLER_FUNC_NAME(_ZnajSt11align_val_tRKSt9nothrow_t), NULL},
+        {"_ZnajRKSt9nothrow_t",                 (void*) HANDLER_FUNC_NAME(_ZnajRKSt9nothrow_t), NULL},
 
-        {"_ZdlPvj", (void*) HANDLER_FUNC_NAME(_ZdlPvj), NULL},
-        {"_ZdlPvjSt11align_val_t", (void*) HANDLER_FUNC_NAME(_ZdlPvjSt11align_val_t), NULL},
-        {"_ZdaPvj", (void*) HANDLER_FUNC_NAME(_ZdaPvj), NULL},
-        {"_ZdaPvjSt11align_val_t", (void*) HANDLER_FUNC_NAME(_ZdaPvjSt11align_val_t), NULL},
+        {"_ZdlPvj",                             (void*) HANDLER_FUNC_NAME(_ZdlPvj), NULL},
+        {"_ZdlPvjSt11align_val_t",              (void*) HANDLER_FUNC_NAME(_ZdlPvjSt11align_val_t), NULL},
+        {"_ZdaPvj",                             (void*) HANDLER_FUNC_NAME(_ZdaPvj), NULL},
+        {"_ZdaPvjSt11align_val_t",              (void*) HANDLER_FUNC_NAME(_ZdaPvjSt11align_val_t), NULL},
 #else
-        {"_Znwm", (void*) HANDLER_FUNC_NAME(_Znwm), NULL},
-        {"_ZnwmSt11align_val_t", (void*) HANDLER_FUNC_NAME(_ZnwmSt11align_val_t), NULL},
-        {"_ZnwmSt11align_val_tRKSt9nothrow_t", (void*) HANDLER_FUNC_NAME(_ZnwmSt11align_val_tRKSt9nothrow_t), NULL},
-        {"_ZnwmRKSt9nothrow_t", (void*) HANDLER_FUNC_NAME(_ZnwmRKSt9nothrow_t), NULL},
+        {"_Znwm",                               (void*) HANDLER_FUNC_NAME(_Znwm), NULL},
+        {"_ZnwmSt11align_val_t",                (void*) HANDLER_FUNC_NAME(_ZnwmSt11align_val_t), NULL},
+        {"_ZnwmSt11align_val_tRKSt9nothrow_t",  (void*) HANDLER_FUNC_NAME(_ZnwmSt11align_val_tRKSt9nothrow_t), NULL},
+        {"_ZnwmRKSt9nothrow_t",                 (void*) HANDLER_FUNC_NAME(_ZnwmRKSt9nothrow_t), NULL},
 
-        {"_Znam", (void*) HANDLER_FUNC_NAME(_Znam), NULL},
-        {"_ZnamSt11align_val_t", (void*) HANDLER_FUNC_NAME(_ZnamSt11align_val_t), NULL},
-        {"_ZnamSt11align_val_tRKSt9nothrow_t", (void*) HANDLER_FUNC_NAME(_ZnamSt11align_val_tRKSt9nothrow_t), NULL},
-        {"_ZnamRKSt9nothrow_t", (void*) HANDLER_FUNC_NAME(_ZnamRKSt9nothrow_t), NULL},
+        {"_Znam",                               (void*) HANDLER_FUNC_NAME(_Znam), NULL},
+        {"_ZnamSt11align_val_t",                (void*) HANDLER_FUNC_NAME(_ZnamSt11align_val_t), NULL},
+        {"_ZnamSt11align_val_tRKSt9nothrow_t",  (void*) HANDLER_FUNC_NAME(_ZnamSt11align_val_tRKSt9nothrow_t), NULL},
+        {"_ZnamRKSt9nothrow_t",                 (void*) HANDLER_FUNC_NAME(_ZnamRKSt9nothrow_t), NULL},
 
-        {"_ZdlPvm", (void*) HANDLER_FUNC_NAME(_ZdlPvm), NULL},
-        {"_ZdlPvmSt11align_val_t", (void*) HANDLER_FUNC_NAME(_ZdlPvmSt11align_val_t), NULL},
-        {"_ZdaPvm", (void*) HANDLER_FUNC_NAME(_ZdaPvm), NULL},
-        {"_ZdaPvmSt11align_val_t", (void*) HANDLER_FUNC_NAME(_ZdaPvmSt11align_val_t), NULL},
+        {"_ZdlPvm",                             (void*) HANDLER_FUNC_NAME(_ZdlPvm), NULL},
+        {"_ZdlPvmSt11align_val_t",              (void*) HANDLER_FUNC_NAME(_ZdlPvmSt11align_val_t), NULL},
+        {"_ZdaPvm",                             (void*) HANDLER_FUNC_NAME(_ZdaPvm), NULL},
+        {"_ZdaPvmSt11align_val_t",              (void*) HANDLER_FUNC_NAME(_ZdaPvmSt11align_val_t), NULL},
 #endif
-        {"_ZdlPv", (void*) HANDLER_FUNC_NAME(_ZdlPv), NULL},
-        {"_ZdlPvSt11align_val_t", (void*) HANDLER_FUNC_NAME(_ZdlPvSt11align_val_t), NULL},
+        {"_ZdlPv",                              (void*) HANDLER_FUNC_NAME(_ZdlPv), NULL},
+        {"_ZdlPvSt11align_val_t",               (void*) HANDLER_FUNC_NAME(_ZdlPvSt11align_val_t), NULL},
         {"_ZdlPvSt11align_val_tRKSt9nothrow_t", (void*) HANDLER_FUNC_NAME(_ZdlPvSt11align_val_tRKSt9nothrow_t), NULL},
-        {"_ZdlPvRKSt9nothrow_t", (void*) HANDLER_FUNC_NAME(_ZdlPvRKSt9nothrow_t), NULL},
+        {"_ZdlPvRKSt9nothrow_t",                (void*) HANDLER_FUNC_NAME(_ZdlPvRKSt9nothrow_t), NULL},
 
-        {"_ZdaPv", (void*) HANDLER_FUNC_NAME(_ZdaPv), NULL},
-        {"_ZdaPvSt11align_val_t", (void*) HANDLER_FUNC_NAME(_ZdaPvSt11align_val_t), NULL},
+        {"_ZdaPv",                              (void*) HANDLER_FUNC_NAME(_ZdaPv), NULL},
+        {"_ZdaPvSt11align_val_t",               (void*) HANDLER_FUNC_NAME(_ZdaPvSt11align_val_t), NULL},
         {"_ZdaPvSt11align_val_tRKSt9nothrow_t", (void*) HANDLER_FUNC_NAME(_ZdaPvSt11align_val_tRKSt9nothrow_t), NULL},
-        {"_ZdaPvRKSt9nothrow_t", (void*) HANDLER_FUNC_NAME(_ZdaPvRKSt9nothrow_t), NULL},
+        {"_ZdaPvRKSt9nothrow_t",                (void*) HANDLER_FUNC_NAME(_ZdaPvRKSt9nothrow_t), NULL},
 
         {"strdup", (void*) HANDLER_FUNC_NAME(strdup), (void **) ORIGINAL_FUNC_NAME(strdup)},
         {"strndup", (void*) HANDLER_FUNC_NAME(strndup), (void **) ORIGINAL_FUNC_NAME(strndup)},
@@ -121,7 +122,7 @@ Java_com_tencent_mm_performance_jni_memory_MemoryHook_addHookSoNative(JNIEnv *en
         hook(regex);
         env->ReleaseStringUTFChars(jregex, regex);
     }
-
+    add_hook_init_callback(memory_hook_init);
     add_dlopen_hook_callback(memory_hook_on_dlopen);
 }
 

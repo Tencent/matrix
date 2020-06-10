@@ -21,4 +21,8 @@ void ConvertUInt32ToHex8Digits(UInt32 value, char *s) throw();
 void ConvertInt64ToString(Int64 value, char *s) throw();
 void ConvertInt64ToString(Int64 value, wchar_t *s) throw();
 
+// use RawLeGuid only for RAW bytes that contain stored GUID as Little-endian.
+char *RawLeGuidToString(const Byte *guid, char *s) throw();
+char *RawLeGuidToString_Braced(const Byte *guid, char *s) throw();
+
 #endif

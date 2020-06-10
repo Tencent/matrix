@@ -23,15 +23,15 @@ static NSynchronization::CCriticalSection g_CriticalSection;
 #define MT_LOCK
 #endif
 
-static const wchar_t *kEmptyFileAlias = L"[Content]";
+static const wchar_t * const kEmptyFileAlias = L"[Content]";
 
-static const char *kOpenArchiveMessage = "Open archive: ";
-static const char *kCreatingArchiveMessage = "Creating archive: ";
-static const char *kUpdatingArchiveMessage = "Updating archive: ";
-static const char *kScanningMessage = "Scanning the drive:";
+static const char * const kOpenArchiveMessage = "Open archive: ";
+static const char * const kCreatingArchiveMessage = "Creating archive: ";
+static const char * const kUpdatingArchiveMessage = "Updating archive: ";
+static const char * const kScanningMessage = "Scanning the drive:";
 
-static const char *kError = "ERROR: ";
-static const char *kWarning = "WARNING: ";
+static const char * const kError = "ERROR: ";
+static const char * const kWarning = "WARNING: ";
 
 static HRESULT CheckBreak2()
 {
@@ -143,7 +143,9 @@ HRESULT CUpdateCallbackConsole::OpenResult(
       _so->Flush();
     if (_se)
     {
-      *_se << kError << name << endl;
+      *_se << kError;
+      _se->NormalizePrint_wstr(name);
+      *_se << endl;
       HRESULT res = Print_OpenArchive_Error(*_se, codecs, arcLink);
       RINOK(res);
       _se->Flush();
@@ -185,7 +187,9 @@ void CCallbackConsoleBase::CommonError(const FString &path, DWORD systemError, b
 
     *_se << endl << (isWarning ? kWarning : kError)
         << NError::MyFormatMessage(systemError)
-        << endl << fs2us(path) << endl << endl;
+        << endl;
+    _se->NormalizePrint_UString(fs2us(path));
+    *_se << endl << endl;
     _se->Flush();
   }
 }
@@ -241,6 +245,7 @@ static void PrintPropPair(AString &s, const char *name, UInt64 val)
 
 void PrintSize_bytes_Smart(AString &s, UInt64 val);
 void Print_DirItemsStat(AString &s, const CDirItemsStat &st);
+void Print_DirItemsStat2(AString &s, const CDirItemsStat2 &st);
 
 HRESULT CUpdateCallbackConsole::FinishScanning(const CDirItemsStat &st)
 {
@@ -259,7 +264,7 @@ HRESULT CUpdateCallbackConsole::FinishScanning(const CDirItemsStat &st)
   return S_OK;
 }
 
-static const char *k_StdOut_ArcName = "StdOut";
+static const char * const k_StdOut_ArcName = "StdOut";
 
 HRESULT CUpdateCallbackConsole::StartOpenArchive(const wchar_t *name)
 {
@@ -280,8 +285,8 @@ HRESULT CUpdateCallbackConsole::StartArchive(const wchar_t *name, bool updating)
   if (_so)
   {
     *_so << (updating ? kUpdatingArchiveMessage : kCreatingArchiveMessage);
-    if (name != 0)
-      *_so << name;
+    if (name)
+      _so->NormalizePrint_wstr(name);
     else
       *_so << k_StdOut_ArcName;
    *_so << endl << endl;
@@ -316,7 +321,7 @@ HRESULT CUpdateCallbackConsole::WriteSfx(const wchar_t *name, UInt64 size)
   {
     *_so << "Write SFX: ";
     *_so << name;
-    AString s = " : ";
+    AString s (" : ");
     PrintSize_bytes_Smart(s, size);
     *_so << s << endl;
   }
@@ -342,6 +347,7 @@ HRESULT CUpdateCallbackConsole::DeletingAfterArchiving(const FString &path, bool
         _tempA.Add_Space();
         *_so << _tempA;
         _tempU = fs2us(path);
+        _so->Normalize_UString(_tempU);
         _so->PrintUString(_tempU, _tempA);
         *_so << endl;
         if (NeedFlush)
@@ -398,14 +404,31 @@ HRESULT CUpdateCallbackConsole::Finalize()
 }
 */
 
-HRESULT CUpdateCallbackConsole::SetNumItems(UInt64 numItems)
+
+void static PrintToDoStat(CStdOutStream *_so, const CDirItemsStat2 &stat, const char *name)
+{
+  AString s;
+  Print_DirItemsStat2(s, stat);
+  *_so << name << ": " << s << endl;
+}
+
+HRESULT CUpdateCallbackConsole::SetNumItems(const CArcToDoStat &stat)
 {
   if (_so)
   {
     ClosePercents_for_so();
-    AString s;
-    PrintPropPair(s, "Items to compress", numItems);
-    *_so << s << endl << endl;
+    if (!stat.DeleteData.IsEmpty())
+    {
+      *_so << endl;
+      PrintToDoStat(_so, stat.DeleteData, "Delete data from archive");
+    }
+    if (!stat.OldData.IsEmpty())
+      PrintToDoStat(_so, stat.OldData, "Keep old data in archive");
+    // if (!stat.NewData.IsEmpty())
+    {
+      PrintToDoStat(_so, stat.NewData, "Add new data to archive");
+    }
+    *_so << endl;
   }
   return S_OK;
 }
@@ -457,7 +480,10 @@ HRESULT CCallbackConsoleBase::PrintProgress(const wchar_t *name, const char *com
 
     _tempU.Empty();
     if (name)
+    {
       _tempU = name;
+      _so->Normalize_UString(_tempU);
+    }
     _so->PrintUString(_tempU, _tempA);
     *_so << endl;
     if (NeedFlush)
@@ -550,7 +576,9 @@ HRESULT CUpdateCallbackConsole::ReportExtractResult(Int32 opRes, Int32 isEncrypt
 
       AString s;
       SetExtractErrorMessage(opRes, isEncrypted, s);
-      *_se << s << " : " << endl << name << endl << endl;
+      *_se << s << " : " << endl;
+      _se->NormalizePrint_wstr(name);
+      *_se << endl << endl;
       _se->Flush();
     }
     return S_OK;
@@ -622,7 +650,7 @@ HRESULT CUpdateCallbackConsole::CryptoGetTextPassword2(Int32 *passwordIsDefined,
   {
     if (AskPassword)
     {
-      Password = GetPassword(_so);
+      RINOK(GetPassword_HRESULT(_so, Password));
       PasswordIsDefined = true;
     }
   }
@@ -649,7 +677,7 @@ HRESULT CUpdateCallbackConsole::CryptoGetTextPassword(BSTR *password)
   if (!PasswordIsDefined)
   {
     {
-      Password = GetPassword(_so);
+      RINOK(GetPassword_HRESULT(_so, Password))
       PasswordIsDefined = true;
     }
   }

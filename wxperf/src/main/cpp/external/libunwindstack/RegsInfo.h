@@ -25,11 +25,13 @@ namespace unwindstack {
 
 template <typename AddressType>
 struct RegsInfo {
+  static constexpr size_t MAX_REGISTERS = 64;
+
   RegsInfo(RegsImpl<AddressType>* regs) : regs(regs) {}
 
   RegsImpl<AddressType>* regs = nullptr;
   uint64_t saved_reg_map = 0;
-  AddressType saved_regs[64];
+  AddressType saved_regs[MAX_REGISTERS];
 
   inline AddressType Get(uint32_t reg) {
     if (IsSaved(reg)) {
@@ -39,23 +41,23 @@ struct RegsInfo {
   }
 
   inline AddressType* Save(uint32_t reg) {
-    if (reg > sizeof(saved_regs) / sizeof(AddressType)) {
-      // This should never happen as since all currently supported
-      // architectures have the total number of registers < 64.
+    if (reg >= MAX_REGISTERS) {
+      // This should never happen since all currently supported
+      // architectures have < 64 total registers.
       abort();
     }
-    saved_reg_map |= 1 << reg;
+    saved_reg_map |= 1ULL << reg;
     saved_regs[reg] = (*regs)[reg];
     return &(*regs)[reg];
   }
 
   inline bool IsSaved(uint32_t reg) {
-    if (reg > sizeof(saved_regs) / sizeof(AddressType)) {
-      // This should never happen as since all currently supported
-      // architectures have the total number of registers < 64.
+    if (reg > MAX_REGISTERS) {
+      // This should never happen since all currently supported
+      // architectures have < 64 total registers.
       abort();
     }
-    return saved_reg_map & (1 << reg);
+    return saved_reg_map & (1ULL << reg);
   }
 
   inline uint16_t Total() { return regs->total_regs(); }

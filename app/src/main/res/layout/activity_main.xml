@@ -6,76 +6,130 @@
     android:layout_height="match_parent"
     tools:context=".MainActivity">
 
-    <TextView
-        android:id="@+id/main_tv_hello"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Hello World!"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintLeft_toLeftOf="parent"
-        app:layout_constraintRight_toRightOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
-
-    <Button
-        android:id="@+id/button"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="60dp"
-        android:text="DoSomeThing"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.055"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/main_tv_hello" />
-
     <Button
         android:id="@+id/btn_mmap"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="73dp"
+        android:onClick="mmapTest"
         android:text="mmap"
         android:textAllCaps="false"
-        app:layout_constraintBottom_toTopOf="@+id/main_tv_hello"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent" />
+        app:layout_constraintStart_toEndOf="@+id/btn_realloc"
+        app:layout_constraintTop_toTopOf="@+id/btn_realloc" />
 
     <Button
         android:id="@+id/btn_realloc"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginStart="31dp"
+        android:layout_marginStart="5dp"
+        android:layout_marginTop="30dp"
+        android:onClick="reallocTest"
         android:text="realloc"
         android:textAllCaps="false"
-        app:layout_constraintBaseline_toBaselineOf="@+id/btn_mmap"
-        app:layout_constraintStart_toStartOf="parent" />
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
 
     <Button
         android:id="@+id/btn_thread"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginEnd="28dp"
+        android:onClick="threadTest"
         android:text="Thread"
         android:textAllCaps="false"
-        app:layout_constraintBaseline_toBaselineOf="@+id/btn_mmap"
-        app:layout_constraintEnd_toEndOf="parent" />
-
-    <Button
-        android:id="@+id/btn_thread_spec"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="22dp"
-        android:text="thread_spec"
-        app:layout_constraintBaseline_toBaselineOf="@+id/button"
-        app:layout_constraintStart_toEndOf="@+id/button" />
+        app:layout_constraintStart_toEndOf="@+id/btn_mmap"
+        app:layout_constraintTop_toTopOf="@+id/btn_mmap" />
 
     <Button
         android:id="@+id/btn_concurrent_jni"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginStart="14dp"
-        android:layout_marginTop="33dp"
+        android:layout_marginStart="6dp"
+        android:onClick="concurrentJNITest"
         android:text="Con_JNI"
+        app:layout_constraintStart_toEndOf="@+id/btn_thread_spec"
+        app:layout_constraintTop_toTopOf="@+id/btn_thread_spec" />
+
+    <Button
+        android:id="@+id/doSomething"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="5dp"
+        android:layout_marginTop="20dp"
+        android:onClick="doSomeThing"
+        android:text="DoSomeThing"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/button" />
+        app:layout_constraintTop_toBottomOf="@+id/btn_realloc" />
+
+    <Button
+        android:id="@+id/btn_thread_spec"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:onClick="specificTest"
+        android:text="thread_spec"
+        app:layout_constraintStart_toEndOf="@+id/doSomething"
+        app:layout_constraintTop_toTopOf="@+id/doSomething" />
+
+    <Button
+        android:id="@+id/btn_malloc"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:onClick="mallocTest"
+        android:text="malloc"
+        android:textAllCaps="false"
+        app:layout_constraintStart_toEndOf="@+id/btn_thread"
+        app:layout_constraintTop_toTopOf="@+id/btn_thread" />
+
+    <Button
+        android:id="@+id/btn_unwind"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="5dp"
+        android:layout_marginTop="11dp"
+        android:onClick="unwindTest"
+        android:text="unwind"
+        android:textAllCaps="false"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/doSomething" />
+
+    <Button
+        android:id="@+id/btn_unwind_benchmark"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:onClick="unwindBenchmark"
+        android:text="benchmark"
+        android:textAllCaps="false"
+        app:layout_constraintBaseline_toBaselineOf="@+id/btn_unwind"
+        app:layout_constraintStart_toEndOf="@+id/btn_unwind" />
+
+    <Button
+        android:id="@+id/btn_unwind_benchmark_debug"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:onClick="unwindBenchmarkDebug"
+        android:text="unwindBenchmarkDebug"
+        android:textAllCaps="false"
+        app:layout_constraintBaseline_toBaselineOf="@+id/btn_unwind_benchmark"
+        app:layout_constraintStart_toEndOf="@+id/btn_unwind_benchmark" />
+
+    <Button
+        android:id="@+id/btn_memory_benchmark"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:onClick="memoryBenchmark"
+        android:text="MemoryBenchmark"
+        android:textAllCaps="false"
+        app:layout_constraintStart_toStartOf="@+id/btn_unwind"
+        app:layout_constraintTop_toBottomOf="@+id/btn_unwind" />
+
+    <Button
+        android:id="@+id/button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="9dp"
+        android:onClick="tlsTest"
+        android:text="TLS"
+        app:layout_constraintBaseline_toBaselineOf="@+id/btn_memory_benchmark"
+        app:layout_constraintStart_toEndOf="@+id/btn_memory_benchmark" />
 
     <Button
         android:id="@+id/btn_egl"

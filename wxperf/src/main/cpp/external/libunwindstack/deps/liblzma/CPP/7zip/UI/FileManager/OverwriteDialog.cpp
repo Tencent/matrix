@@ -40,6 +40,12 @@ void COverwriteDialog::ReduceString(UString &s)
     s.Delete(size / 2, s.Len() - size);
     s.Insert(size / 2, L" ... ");
   }
+  if (!s.IsEmpty() && s.Back() == ' ')
+  {
+    // s += (wchar_t)(0x2423);
+    s.InsertAtFront(L'\"');
+    s += L'\"';
+  }
 }
 
 void COverwriteDialog::SetFileInfoControl(int textID, int iconID,
@@ -66,13 +72,10 @@ void COverwriteDialog::SetFileInfoControl(int textID, int iconID,
 
   if (fileInfo.TimeIsDefined)
   {
-    FILETIME localFileTime;
-    if (!FileTimeToLocalFileTime(&fileInfo.Time, &localFileTime))
-      throw 4190402;
     AddLangString(s, IDS_PROP_MTIME);
-    s += L": ";
-    wchar_t t[32];
-    ConvertFileTimeToString(localFileTime, t);
+    s += ": ";
+    char t[32];
+    ConvertUtcFileTimeToString(fileInfo.Time, t);
     s += t;
   }
 

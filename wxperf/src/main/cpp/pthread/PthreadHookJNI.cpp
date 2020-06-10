@@ -76,12 +76,10 @@ Java_com_tencent_mm_performance_jni_pthread_PthreadHook_dumpNative(JNIEnv *env, 
                                                                    jstring jpath) {
     if (jpath) {
         const char *path = env->GetStringUTFChars(jpath, NULL);
-//        pthread_dump_json(path);
-        pthread_dump(path);
+        pthread_dump_json(path);
         env->ReleaseStringUTFChars(jpath, path);
     } else {
-//        pthread_dump_json();
-        pthread_dump();
+        pthread_dump_json();
     }
 }
 

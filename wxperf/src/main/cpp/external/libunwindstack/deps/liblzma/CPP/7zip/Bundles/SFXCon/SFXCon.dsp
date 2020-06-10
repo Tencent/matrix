@@ -117,6 +117,10 @@ SOURCE=..\..\Archive\Common\CoderMixer2.h
 # End Source File
 # Begin Source File
 
+SOURCE=..\..\Archive\Common\HandlerOut.h
+# End Source File
+# Begin Source File
+
 SOURCE=..\..\Archive\Common\ItemNameUtils.cpp
 # End Source File
 # Begin Source File
@@ -293,6 +297,10 @@ SOURCE=..\..\Compress\Lzma2Decoder.cpp
 # End Source File
 # Begin Source File
 
+SOURCE=..\..\Compress\Lzma2Decoder.h
+# End Source File
+# Begin Source File
+
 SOURCE=..\..\Compress\Lzma2Register.cpp
 # End Source File
 # Begin Source File
@@ -410,6 +418,14 @@ SOURCE=..\..\..\Windows\Synchronization.cpp
 # Begin Source File
 
 SOURCE=..\..\..\Windows\Synchronization.h
+# End Source File
+# Begin Source File
+
+SOURCE=..\..\..\Windows\System.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=..\..\..\Windows\System.h
 # End Source File
 # End Group
 # Begin Group "Common"
@@ -822,12 +838,30 @@ SOURCE=..\..\..\..\C\Lzma2Dec.h
 # End Source File
 # Begin Source File
 
+SOURCE=..\..\..\..\C\Lzma2DecMt.c
+# SUBTRACT CPP /YX /Yc /Yu
+# End Source File
+# Begin Source File
+
+SOURCE=..\..\..\..\C\Lzma2DecMt.h
+# End Source File
+# Begin Source File
+
 SOURCE=..\..\..\..\C\LzmaDec.c
 # SUBTRACT CPP /YX /Yc /Yu
 # End Source File
 # Begin Source File
 
 SOURCE=..\..\..\..\C\LzmaDec.h
+# End Source File
+# Begin Source File
+
+SOURCE=..\..\..\..\C\MtDec.c
+# SUBTRACT CPP /YX /Yc /Yu
+# End Source File
+# Begin Source File
+
+SOURCE=..\..\..\..\C\MtDec.h
 # End Source File
 # Begin Source File
 

@@ -1,6 +1,6 @@
 // Base.java
 
-package external.libunwindstack.deps.liblzma.Java.SevenZip.Compression.LZMA;
+package SevenZip.Compression.LZMA;
 
 public class Base
 {

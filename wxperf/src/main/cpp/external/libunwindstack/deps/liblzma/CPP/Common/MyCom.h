@@ -4,7 +4,6 @@
 #define __MY_COM_H
 
 #include "MyWindows.h"
-#include "NewHandler.h"
 
 #ifndef RINOK
 #define RINOK(x) { HRESULT __result_ = (x); if (__result_ != S_OK) return __result_; }
@@ -158,7 +157,20 @@ private:
   }
 };
 
-//////////////////////////////////////////////////////////
+
+
+/*
+  If CMyUnknownImp doesn't use virtual destructor, the code size is smaller.
+  But if some class_1 derived from CMyUnknownImp
+    uses MY_ADDREF_RELEASE and IUnknown::Release()
+    and some another class_2 is derived from class_1,
+    then class_1 must use virtual destructor:
+      virtual ~class_1();
+    In that case, class_1::Release() calls correct destructor of class_2.
+
+  Also you can use virtual ~CMyUnknownImp(), if you want to disable warning
+    "class has virtual functions, but destructor is not virtual".
+*/
 
 class CMyUnknownImp
 {
@@ -166,8 +178,11 @@ public:
   ULONG __m_RefCount;
   CMyUnknownImp(): __m_RefCount(0) {}
 
-  // virtual ~CMyUnknownImp() {};
+  // virtual
+  ~CMyUnknownImp() {}
 };
+
+
 
 #define MY_QUERYINTERFACE_BEGIN STDMETHOD(QueryInterface) \
 (REFGUID iid, void **outObject) throw() { *outObject = NULL;

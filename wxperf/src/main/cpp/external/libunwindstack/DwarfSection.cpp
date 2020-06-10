@@ -24,6 +24,7 @@
 #include <unwindstack/Log.h>
 #include <unwindstack/Memory.h>
 #include <unwindstack/Regs.h>
+#include <include/unwindstack/MachineArm64.h>
 
 #include "DwarfCfa.h"
 #include "DwarfDebugFrame.h"
@@ -35,24 +36,6 @@
 namespace unwindstack {
 
 DwarfSection::DwarfSection(Memory* memory) : memory_(memory) {}
-
-const DwarfFde* DwarfSection::GetFdeFromPc(uint64_t pc) {
-  uint64_t fde_offset;
-  if (!GetFdeOffsetFromPc(pc, &fde_offset)) {
-    return nullptr;
-  }
-  const DwarfFde* fde = GetFdeFromOffset(fde_offset);
-  if (fde == nullptr) {
-    return nullptr;
-  }
-
-  // Guaranteed pc >= pc_start, need to check pc in the fde range.
-  if (pc < fde->pc_end) {
-    return fde;
-  }
-  last_error_.code = DWARF_ERROR_ILLEGAL_STATE;
-  return nullptr;
-}
 
 bool DwarfSection::Step(uint64_t pc, Regs* regs, Memory* process_memory, bool* finished) {
   // Lookup the pc in the cache.
@@ -78,6 +61,316 @@ bool DwarfSection::Step(uint64_t pc, Regs* regs, Memory* process_memory, bool* f
 
   // Now eval the actual registers.
   return Eval(it->second.cie, process_memory, it->second, regs, finished);
+}
+
+template <typename AddressType>
+const DwarfCie* DwarfSectionImpl<AddressType>::GetCieFromOffset(uint64_t offset) {
+  auto cie_entry = cie_entries_.find(offset);
+  if (cie_entry != cie_entries_.end()) {
+    return &cie_entry->second;
+  }
+  DwarfCie* cie = &cie_entries_[offset];
+  memory_.set_data_offset(entries_offset_);
+  memory_.set_cur_offset(offset);
+  if (!FillInCieHeader(cie) || !FillInCie(cie)) {
+    // Erase the cached entry.
+    cie_entries_.erase(offset);
+    return nullptr;
+  }
+  return cie;
+}
+
+template <typename AddressType>
+bool DwarfSectionImpl<AddressType>::FillInCieHeader(DwarfCie* cie) {
+  cie->lsda_encoding = DW_EH_PE_omit;
+  uint32_t length32;
+  if (!memory_.ReadBytes(&length32, sizeof(length32))) {
+    last_error_.code = DWARF_ERROR_MEMORY_INVALID;
+    last_error_.address = memory_.cur_offset();
+    return false;
+  }
+  if (length32 == static_cast<uint32_t>(-1)) {
+    // 64 bit Cie
+    uint64_t length64;
+    if (!memory_.ReadBytes(&length64, sizeof(length64))) {
+      last_error_.code = DWARF_ERROR_MEMORY_INVALID;
+      last_error_.address = memory_.cur_offset();
+      return false;
+    }
+
+    cie->cfa_instructions_end = memory_.cur_offset() + length64;
+    cie->fde_address_encoding = DW_EH_PE_sdata8;
+
+    uint64_t cie_id;
+    if (!memory_.ReadBytes(&cie_id, sizeof(cie_id))) {
+      last_error_.code = DWARF_ERROR_MEMORY_INVALID;
+      last_error_.address = memory_.cur_offset();
+      return false;
+    }
+    if (cie_id != cie64_value_) {
+      // This is not a Cie, something has gone horribly wrong.
+      last_error_.code = DWARF_ERROR_ILLEGAL_VALUE;
+      return false;
+    }
+  } else {
+    // 32 bit Cie
+    cie->cfa_instructions_end = memory_.cur_offset() + length32;
+    cie->fde_address_encoding = DW_EH_PE_sdata4;
+
+    uint32_t cie_id;
+    if (!memory_.ReadBytes(&cie_id, sizeof(cie_id))) {
+      last_error_.code = DWARF_ERROR_MEMORY_INVALID;
+      last_error_.address = memory_.cur_offset();
+      return false;
+    }
+    if (cie_id != cie32_value_) {
+      // This is not a Cie, something has gone horribly wrong.
+      last_error_.code = DWARF_ERROR_ILLEGAL_VALUE;
+      return false;
+    }
+  }
+  return true;
+}
+
+template <typename AddressType>
+bool DwarfSectionImpl<AddressType>::FillInCie(DwarfCie* cie) {
+  if (!memory_.ReadBytes(&cie->version, sizeof(cie->version))) {
+    last_error_.code = DWARF_ERROR_MEMORY_INVALID;
+    last_error_.address = memory_.cur_offset();
+    return false;
+  }
+
+  if (cie->version != 1 && cie->version != 3 && cie->version != 4 && cie->version != 5) {
+    // Unrecognized version.
+    last_error_.code = DWARF_ERROR_UNSUPPORTED_VERSION;
+    return false;
+  }
+
+  // Read the augmentation string.
+  char aug_value;
+  do {
+    if (!memory_.ReadBytes(&aug_value, 1)) {
+      last_error_.code = DWARF_ERROR_MEMORY_INVALID;
+      last_error_.address = memory_.cur_offset();
+      return false;
+    }
+    cie->augmentation_string.push_back(aug_value);
+  } while (aug_value != '\0');
+
+  if (cie->version == 4 || cie->version == 5) {
+    // Skip the Address Size field since we only use it for validation.
+    memory_.set_cur_offset(memory_.cur_offset() + 1);
+
+    // Segment Size
+    if (!memory_.ReadBytes(&cie->segment_size, 1)) {
+      last_error_.code = DWARF_ERROR_MEMORY_INVALID;
+      last_error_.address = memory_.cur_offset();
+      return false;
+    }
+  }
+
+  // Code Alignment Factor
+  if (!memory_.ReadULEB128(&cie->code_alignment_factor)) {
+    last_error_.code = DWARF_ERROR_MEMORY_INVALID;
+    last_error_.address = memory_.cur_offset();
+    return false;
+  }
+
+  // Data Alignment Factor
+  if (!memory_.ReadSLEB128(&cie->data_alignment_factor)) {
+    last_error_.code = DWARF_ERROR_MEMORY_INVALID;
+    last_error_.address = memory_.cur_offset();
+    return false;
+  }
+
+  if (cie->version == 1) {
+    // Return Address is a single byte.
+    uint8_t return_address_register;
+    if (!memory_.ReadBytes(&return_address_register, 1)) {
+      last_error_.code = DWARF_ERROR_MEMORY_INVALID;
+      last_error_.address = memory_.cur_offset();
+      return false;
+    }
+    cie->return_address_register = return_address_register;
+  } else if (!memory_.ReadULEB128(&cie->return_address_register)) {
+    last_error_.code = DWARF_ERROR_MEMORY_INVALID;
+    last_error_.address = memory_.cur_offset();
+    return false;
+  }
+
+  if (cie->augmentation_string[0] != 'z') {
+    cie->cfa_instructions_offset = memory_.cur_offset();
+    return true;
+  }
+
+  uint64_t aug_length;
+  if (!memory_.ReadULEB128(&aug_length)) {
+    last_error_.code = DWARF_ERROR_MEMORY_INVALID;
+    last_error_.address = memory_.cur_offset();
+    return false;
+  }
+  cie->cfa_instructions_offset = memory_.cur_offset() + aug_length;
+
+  for (size_t i = 1; i < cie->augmentation_string.size(); i++) {
+    switch (cie->augmentation_string[i]) {
+      case 'L':
+        if (!memory_.ReadBytes(&cie->lsda_encoding, 1)) {
+          last_error_.code = DWARF_ERROR_MEMORY_INVALID;
+          last_error_.address = memory_.cur_offset();
+          return false;
+        }
+        break;
+      case 'P': {
+        uint8_t encoding;
+        if (!memory_.ReadBytes(&encoding, 1)) {
+          last_error_.code = DWARF_ERROR_MEMORY_INVALID;
+          last_error_.address = memory_.cur_offset();
+          return false;
+        }
+        memory_.set_pc_offset(pc_offset_);
+        if (!memory_.ReadEncodedValue<AddressType>(encoding, &cie->personality_handler)) {
+          last_error_.code = DWARF_ERROR_MEMORY_INVALID;
+          last_error_.address = memory_.cur_offset();
+          return false;
+        }
+      } break;
+      case 'R':
+        if (!memory_.ReadBytes(&cie->fde_address_encoding, 1)) {
+          last_error_.code = DWARF_ERROR_MEMORY_INVALID;
+          last_error_.address = memory_.cur_offset();
+          return false;
+        }
+        break;
+    }
+  }
+  return true;
+}
+
+template <typename AddressType>
+const DwarfFde* DwarfSectionImpl<AddressType>::GetFdeFromOffset(uint64_t offset) {
+  auto fde_entry = fde_entries_.find(offset);
+  if (fde_entry != fde_entries_.end()) {
+    return &fde_entry->second;
+  }
+  DwarfFde* fde = &fde_entries_[offset];
+  memory_.set_data_offset(entries_offset_);
+  memory_.set_cur_offset(offset);
+  if (!FillInFdeHeader(fde) || !FillInFde(fde)) {
+    fde_entries_.erase(offset);
+    return nullptr;
+  }
+  return fde;
+}
+
+template <typename AddressType>
+bool DwarfSectionImpl<AddressType>::FillInFdeHeader(DwarfFde* fde) {
+  uint32_t length32;
+  if (!memory_.ReadBytes(&length32, sizeof(length32))) {
+    last_error_.code = DWARF_ERROR_MEMORY_INVALID;
+    last_error_.address = memory_.cur_offset();
+    return false;
+  }
+
+  if (length32 == static_cast<uint32_t>(-1)) {
+    // 64 bit Fde.
+    uint64_t length64;
+    if (!memory_.ReadBytes(&length64, sizeof(length64))) {
+      last_error_.code = DWARF_ERROR_MEMORY_INVALID;
+      last_error_.address = memory_.cur_offset();
+      return false;
+    }
+    fde->cfa_instructions_end = memory_.cur_offset() + length64;
+
+    uint64_t value64;
+    if (!memory_.ReadBytes(&value64, sizeof(value64))) {
+      last_error_.code = DWARF_ERROR_MEMORY_INVALID;
+      last_error_.address = memory_.cur_offset();
+      return false;
+    }
+    if (value64 == cie64_value_) {
+      // This is a Cie, this means something has gone wrong.
+      last_error_.code = DWARF_ERROR_ILLEGAL_VALUE;
+      return false;
+    }
+
+    // Get the Cie pointer, which is necessary to properly read the rest of
+    // of the Fde information.
+    fde->cie_offset = GetCieOffsetFromFde64(value64);
+  } else {
+    // 32 bit Fde.
+    fde->cfa_instructions_end = memory_.cur_offset() + length32;
+
+    uint32_t value32;
+    if (!memory_.ReadBytes(&value32, sizeof(value32))) {
+      last_error_.code = DWARF_ERROR_MEMORY_INVALID;
+      last_error_.address = memory_.cur_offset();
+      return false;
+    }
+    if (value32 == cie32_value_) {
+      // This is a Cie, this means something has gone wrong.
+      last_error_.code = DWARF_ERROR_ILLEGAL_VALUE;
+      return false;
+    }
+
+    // Get the Cie pointer, which is necessary to properly read the rest of
+    // of the Fde information.
+    fde->cie_offset = GetCieOffsetFromFde32(value32);
+  }
+  return true;
+}
+
+template <typename AddressType>
+bool DwarfSectionImpl<AddressType>::FillInFde(DwarfFde* fde) {
+  uint64_t cur_offset = memory_.cur_offset();
+
+  const DwarfCie* cie = GetCieFromOffset(fde->cie_offset);
+  if (cie == nullptr) {
+    return false;
+  }
+  fde->cie = cie;
+
+  if (cie->segment_size != 0) {
+    // Skip over the segment selector for now.
+    cur_offset += cie->segment_size;
+  }
+  memory_.set_cur_offset(cur_offset);
+
+  // The load bias only applies to the start.
+  memory_.set_pc_offset(section_bias_);
+  bool valid = memory_.ReadEncodedValue<AddressType>(cie->fde_address_encoding, &fde->pc_start);
+  fde->pc_start = AdjustPcFromFde(fde->pc_start);
+
+  memory_.set_pc_offset(0);
+  if (!valid || !memory_.ReadEncodedValue<AddressType>(cie->fde_address_encoding, &fde->pc_end)) {
+    last_error_.code = DWARF_ERROR_MEMORY_INVALID;
+    last_error_.address = memory_.cur_offset();
+    return false;
+  }
+  fde->pc_end += fde->pc_start;
+
+  if (cie->augmentation_string.size() > 0 && cie->augmentation_string[0] == 'z') {
+    // Augmentation Size
+    uint64_t aug_length;
+    if (!memory_.ReadULEB128(&aug_length)) {
+      last_error_.code = DWARF_ERROR_MEMORY_INVALID;
+      last_error_.address = memory_.cur_offset();
+      return false;
+    }
+    uint64_t cur_offset = memory_.cur_offset();
+
+    memory_.set_pc_offset(pc_offset_);
+    if (!memory_.ReadEncodedValue<AddressType>(cie->lsda_encoding, &fde->lsda_address)) {
+      last_error_.code = DWARF_ERROR_MEMORY_INVALID;
+      last_error_.address = memory_.cur_offset();
+      return false;
+    }
+
+    // Set our position to after all of the augmentation data.
+    memory_.set_cur_offset(cur_offset + aug_length);
+  }
+  fde->cfa_instructions_offset = memory_.cur_offset();
+
+  return true;
 }
 
 template <typename AddressType>
@@ -171,6 +464,7 @@ bool DwarfSectionImpl<AddressType>::EvalRegister(const DwarfLocation* loc, uint3
       if (reg == eval_info->cie->return_address_register) {
         eval_info->return_address_undefined = true;
       }
+      break;
     default:
       break;
   }
@@ -238,6 +532,12 @@ bool DwarfSectionImpl<AddressType>::Eval(const DwarfCie* cie, Memory* regular_me
       continue;
     }
 
+    if (GetFastFlag()) {
+        if (reg < ARM64_REG_R29) {
+            continue;
+        }
+    }
+
     reg_ptr = eval_info.regs_info.Save(reg);
     if (!EvalRegister(&entry.second, reg, reg_ptr, &eval_info)) {
       return false;
@@ -255,305 +555,6 @@ bool DwarfSectionImpl<AddressType>::Eval(const DwarfCie* cie, Memory* regular_me
   *finished = (cur_regs->pc() == 0) ? true : false;
 
   cur_regs->set_sp(eval_info.cfa);
-
-  return true;
-}
-
-template <typename AddressType>
-const DwarfCie* DwarfSectionImpl<AddressType>::GetCie(uint64_t offset) {
-  auto cie_entry = cie_entries_.find(offset);
-  if (cie_entry != cie_entries_.end()) {
-    return &cie_entry->second;
-  }
-  DwarfCie* cie = &cie_entries_[offset];
-  memory_.set_cur_offset(offset);
-  if (!FillInCie(cie)) {
-    // Erase the cached entry.
-    cie_entries_.erase(offset);
-    return nullptr;
-  }
-  return cie;
-}
-
-template <typename AddressType>
-bool DwarfSectionImpl<AddressType>::FillInCie(DwarfCie* cie) {
-  uint32_t length32;
-  if (!memory_.ReadBytes(&length32, sizeof(length32))) {
-    last_error_.code = DWARF_ERROR_MEMORY_INVALID;
-    last_error_.address = memory_.cur_offset();
-    return false;
-  }
-  // Set the default for the lsda encoding.
-  cie->lsda_encoding = DW_EH_PE_omit;
-
-  if (length32 == static_cast<uint32_t>(-1)) {
-    // 64 bit Cie
-    uint64_t length64;
-    if (!memory_.ReadBytes(&length64, sizeof(length64))) {
-      last_error_.code = DWARF_ERROR_MEMORY_INVALID;
-      last_error_.address = memory_.cur_offset();
-      return false;
-    }
-
-    cie->cfa_instructions_end = memory_.cur_offset() + length64;
-    cie->fde_address_encoding = DW_EH_PE_sdata8;
-
-    uint64_t cie_id;
-    if (!memory_.ReadBytes(&cie_id, sizeof(cie_id))) {
-      last_error_.code = DWARF_ERROR_MEMORY_INVALID;
-      last_error_.address = memory_.cur_offset();
-      return false;
-    }
-    if (cie_id != cie64_value_) {
-      // This is not a Cie, something has gone horribly wrong.
-      last_error_.code = DWARF_ERROR_ILLEGAL_VALUE;
-      return false;
-    }
-  } else {
-    // 32 bit Cie
-    cie->cfa_instructions_end = memory_.cur_offset() + length32;
-    cie->fde_address_encoding = DW_EH_PE_sdata4;
-
-    uint32_t cie_id;
-    if (!memory_.ReadBytes(&cie_id, sizeof(cie_id))) {
-      last_error_.code = DWARF_ERROR_MEMORY_INVALID;
-      last_error_.address = memory_.cur_offset();
-      return false;
-    }
-    if (cie_id != cie32_value_) {
-      // This is not a Cie, something has gone horribly wrong.
-      last_error_.code = DWARF_ERROR_ILLEGAL_VALUE;
-      return false;
-    }
-  }
-
-  if (!memory_.ReadBytes(&cie->version, sizeof(cie->version))) {
-    last_error_.code = DWARF_ERROR_MEMORY_INVALID;
-    last_error_.address = memory_.cur_offset();
-    return false;
-  }
-
-  if (cie->version != 1 && cie->version != 3 && cie->version != 4) {
-    // Unrecognized version.
-    last_error_.code = DWARF_ERROR_UNSUPPORTED_VERSION;
-    return false;
-  }
-
-  // Read the augmentation string.
-  char aug_value;
-  do {
-    if (!memory_.ReadBytes(&aug_value, 1)) {
-      last_error_.code = DWARF_ERROR_MEMORY_INVALID;
-      last_error_.address = memory_.cur_offset();
-      return false;
-    }
-    cie->augmentation_string.push_back(aug_value);
-  } while (aug_value != '\0');
-
-  if (cie->version == 4) {
-    // Skip the Address Size field since we only use it for validation.
-    memory_.set_cur_offset(memory_.cur_offset() + 1);
-
-    // Segment Size
-    if (!memory_.ReadBytes(&cie->segment_size, 1)) {
-      last_error_.code = DWARF_ERROR_MEMORY_INVALID;
-      last_error_.address = memory_.cur_offset();
-      return false;
-    }
-  }
-
-  // Code Alignment Factor
-  if (!memory_.ReadULEB128(&cie->code_alignment_factor)) {
-    last_error_.code = DWARF_ERROR_MEMORY_INVALID;
-    last_error_.address = memory_.cur_offset();
-    return false;
-  }
-
-  // Data Alignment Factor
-  if (!memory_.ReadSLEB128(&cie->data_alignment_factor)) {
-    last_error_.code = DWARF_ERROR_MEMORY_INVALID;
-    last_error_.address = memory_.cur_offset();
-    return false;
-  }
-
-  if (cie->version == 1) {
-    // Return Address is a single byte.
-    uint8_t return_address_register;
-    if (!memory_.ReadBytes(&return_address_register, 1)) {
-      last_error_.code = DWARF_ERROR_MEMORY_INVALID;
-      last_error_.address = memory_.cur_offset();
-      return false;
-    }
-    cie->return_address_register = return_address_register;
-  } else if (!memory_.ReadULEB128(&cie->return_address_register)) {
-    last_error_.code = DWARF_ERROR_MEMORY_INVALID;
-    last_error_.address = memory_.cur_offset();
-    return false;
-  }
-
-  if (cie->augmentation_string[0] != 'z') {
-    cie->cfa_instructions_offset = memory_.cur_offset();
-    return true;
-  }
-
-  uint64_t aug_length;
-  if (!memory_.ReadULEB128(&aug_length)) {
-    last_error_.code = DWARF_ERROR_MEMORY_INVALID;
-    last_error_.address = memory_.cur_offset();
-    return false;
-  }
-  cie->cfa_instructions_offset = memory_.cur_offset() + aug_length;
-
-  for (size_t i = 1; i < cie->augmentation_string.size(); i++) {
-    switch (cie->augmentation_string[i]) {
-      case 'L':
-        if (!memory_.ReadBytes(&cie->lsda_encoding, 1)) {
-          last_error_.code = DWARF_ERROR_MEMORY_INVALID;
-          last_error_.address = memory_.cur_offset();
-          return false;
-        }
-        break;
-      case 'P': {
-        uint8_t encoding;
-        if (!memory_.ReadBytes(&encoding, 1)) {
-          last_error_.code = DWARF_ERROR_MEMORY_INVALID;
-          last_error_.address = memory_.cur_offset();
-          return false;
-        }
-        if (!memory_.ReadEncodedValue<AddressType>(encoding, &cie->personality_handler)) {
-          last_error_.code = DWARF_ERROR_MEMORY_INVALID;
-          last_error_.address = memory_.cur_offset();
-          return false;
-        }
-      } break;
-      case 'R':
-        if (!memory_.ReadBytes(&cie->fde_address_encoding, 1)) {
-          last_error_.code = DWARF_ERROR_MEMORY_INVALID;
-          last_error_.address = memory_.cur_offset();
-          return false;
-        }
-        break;
-    }
-  }
-  return true;
-}
-
-template <typename AddressType>
-const DwarfFde* DwarfSectionImpl<AddressType>::GetFdeFromOffset(uint64_t offset) {
-  auto fde_entry = fde_entries_.find(offset);
-  if (fde_entry != fde_entries_.end()) {
-    return &fde_entry->second;
-  }
-  DwarfFde* fde = &fde_entries_[offset];
-  memory_.set_cur_offset(offset);
-  if (!FillInFde(fde)) {
-    fde_entries_.erase(offset);
-    return nullptr;
-  }
-  return fde;
-}
-
-template <typename AddressType>
-bool DwarfSectionImpl<AddressType>::FillInFde(DwarfFde* fde) {
-  uint32_t length32;
-  if (!memory_.ReadBytes(&length32, sizeof(length32))) {
-    last_error_.code = DWARF_ERROR_MEMORY_INVALID;
-    last_error_.address = memory_.cur_offset();
-    return false;
-  }
-
-  if (length32 == static_cast<uint32_t>(-1)) {
-    // 64 bit Fde.
-    uint64_t length64;
-    if (!memory_.ReadBytes(&length64, sizeof(length64))) {
-      last_error_.code = DWARF_ERROR_MEMORY_INVALID;
-      last_error_.address = memory_.cur_offset();
-      return false;
-    }
-    fde->cfa_instructions_end = memory_.cur_offset() + length64;
-
-    uint64_t value64;
-    if (!memory_.ReadBytes(&value64, sizeof(value64))) {
-      last_error_.code = DWARF_ERROR_MEMORY_INVALID;
-      last_error_.address = memory_.cur_offset();
-      return false;
-    }
-    if (value64 == cie64_value_) {
-      // This is a Cie, this means something has gone wrong.
-      last_error_.code = DWARF_ERROR_ILLEGAL_VALUE;
-      return false;
-    }
-
-    // Get the Cie pointer, which is necessary to properly read the rest of
-    // of the Fde information.
-    fde->cie_offset = GetCieOffsetFromFde64(value64);
-  } else {
-    // 32 bit Fde.
-    fde->cfa_instructions_end = memory_.cur_offset() + length32;
-
-    uint32_t value32;
-    if (!memory_.ReadBytes(&value32, sizeof(value32))) {
-      last_error_.code = DWARF_ERROR_MEMORY_INVALID;
-      last_error_.address = memory_.cur_offset();
-      return false;
-    }
-    if (value32 == cie32_value_) {
-      // This is a Cie, this means something has gone wrong.
-      last_error_.code = DWARF_ERROR_ILLEGAL_VALUE;
-      return false;
-    }
-
-    // Get the Cie pointer, which is necessary to properly read the rest of
-    // of the Fde information.
-    fde->cie_offset = GetCieOffsetFromFde32(value32);
-  }
-  uint64_t cur_offset = memory_.cur_offset();
-
-  const DwarfCie* cie = GetCie(fde->cie_offset);
-  if (cie == nullptr) {
-    return false;
-  }
-  fde->cie = cie;
-
-  if (cie->segment_size != 0) {
-    // Skip over the segment selector for now.
-    cur_offset += cie->segment_size;
-  }
-  memory_.set_cur_offset(cur_offset);
-
-  if (!memory_.ReadEncodedValue<AddressType>(cie->fde_address_encoding & 0xf, &fde->pc_start)) {
-    last_error_.code = DWARF_ERROR_MEMORY_INVALID;
-    last_error_.address = memory_.cur_offset();
-    return false;
-  }
-  fde->pc_start = AdjustPcFromFde(fde->pc_start);
-
-  if (!memory_.ReadEncodedValue<AddressType>(cie->fde_address_encoding & 0xf, &fde->pc_end)) {
-    last_error_.code = DWARF_ERROR_MEMORY_INVALID;
-    last_error_.address = memory_.cur_offset();
-    return false;
-  }
-  fde->pc_end += fde->pc_start;
-  if (cie->augmentation_string.size() > 0 && cie->augmentation_string[0] == 'z') {
-    // Augmentation Size
-    uint64_t aug_length;
-    if (!memory_.ReadULEB128(&aug_length)) {
-      last_error_.code = DWARF_ERROR_MEMORY_INVALID;
-      last_error_.address = memory_.cur_offset();
-      return false;
-    }
-    uint64_t cur_offset = memory_.cur_offset();
-
-    if (!memory_.ReadEncodedValue<AddressType>(cie->lsda_encoding, &fde->lsda_address)) {
-      last_error_.code = DWARF_ERROR_MEMORY_INVALID;
-      last_error_.address = memory_.cur_offset();
-      return false;
-    }
-
-    // Set our position to after all of the augmentation data.
-    memory_.set_cur_offset(cur_offset + aug_length);
-  }
-  fde->cfa_instructions_offset = memory_.cur_offset();
 
   return true;
 }
@@ -582,17 +583,16 @@ bool DwarfSectionImpl<AddressType>::GetCfaLocationInfo(uint64_t pc, const DwarfF
 }
 
 template <typename AddressType>
-bool DwarfSectionImpl<AddressType>::Log(uint8_t indent, uint64_t pc, uint64_t load_bias,
-                                        const DwarfFde* fde) {
+bool DwarfSectionImpl<AddressType>::Log(uint8_t indent, uint64_t pc, const DwarfFde* fde) {
   DwarfCfa<AddressType> cfa(&memory_, fde);
 
   // Always print the cie information.
   const DwarfCie* cie = fde->cie;
-  if (!cfa.Log(indent, pc, load_bias, cie->cfa_instructions_offset, cie->cfa_instructions_end)) {
+  if (!cfa.Log(indent, pc, cie->cfa_instructions_offset, cie->cfa_instructions_end)) {
     last_error_ = cfa.last_error();
     return false;
   }
-  if (!cfa.Log(indent, pc, load_bias, fde->cfa_instructions_offset, fde->cfa_instructions_end)) {
+  if (!cfa.Log(indent, pc, fde->cfa_instructions_offset, fde->cfa_instructions_end)) {
     last_error_ = cfa.last_error();
     return false;
   }
@@ -600,303 +600,203 @@ bool DwarfSectionImpl<AddressType>::Log(uint8_t indent, uint64_t pc, uint64_t lo
 }
 
 template <typename AddressType>
-bool DwarfSectionImpl<AddressType>::Init(uint64_t offset, uint64_t size) {
+bool DwarfSectionImpl<AddressType>::Init(uint64_t offset, uint64_t size, int64_t section_bias) {
+  section_bias_ = section_bias;
   entries_offset_ = offset;
+  next_entries_offset_ = offset;
   entries_end_ = offset + size;
 
   memory_.clear_func_offset();
   memory_.clear_text_offset();
-  memory_.set_data_offset(offset);
   memory_.set_cur_offset(offset);
-  memory_.set_pc_offset(offset);
-
-  return CreateSortedFdeList();
-}
-
-template <typename AddressType>
-bool DwarfSectionImpl<AddressType>::GetCieInfo(uint8_t* segment_size, uint8_t* encoding) {
-  uint8_t version;
-  if (!memory_.ReadBytes(&version, 1)) {
-    last_error_.code = DWARF_ERROR_MEMORY_INVALID;
-    last_error_.address = memory_.cur_offset();
-    return false;
-  }
-  // Read the augmentation string.
-  std::vector<char> aug_string;
-  char aug_value;
-  bool get_encoding = false;
-  do {
-    if (!memory_.ReadBytes(&aug_value, 1)) {
-      last_error_.code = DWARF_ERROR_MEMORY_INVALID;
-      last_error_.address = memory_.cur_offset();
-      return false;
-    }
-    if (aug_value == 'R') {
-      get_encoding = true;
-    }
-    aug_string.push_back(aug_value);
-  } while (aug_value != '\0');
-
-  if (version == 4) {
-    // Skip the Address Size field.
-    memory_.set_cur_offset(memory_.cur_offset() + 1);
-
-    // Read the segment size.
-    if (!memory_.ReadBytes(segment_size, 1)) {
-      last_error_.code = DWARF_ERROR_MEMORY_INVALID;
-      last_error_.address = memory_.cur_offset();
-      return false;
-    }
-  } else {
-    *segment_size = 0;
-  }
-
-  if (aug_string[0] != 'z' || !get_encoding) {
-    // No encoding
-    return true;
-  }
-
-  // Skip code alignment factor
-  uint8_t value;
-  do {
-    if (!memory_.ReadBytes(&value, 1)) {
-      last_error_.code = DWARF_ERROR_MEMORY_INVALID;
-      last_error_.address = memory_.cur_offset();
-      return false;
-    }
-  } while (value & 0x80);
-
-  // Skip data alignment factor
-  do {
-    if (!memory_.ReadBytes(&value, 1)) {
-      last_error_.code = DWARF_ERROR_MEMORY_INVALID;
-      last_error_.address = memory_.cur_offset();
-      return false;
-    }
-  } while (value & 0x80);
-
-  if (version == 1) {
-    // Skip return address register.
-    memory_.set_cur_offset(memory_.cur_offset() + 1);
-  } else {
-    // Skip return address register.
-    do {
-      if (!memory_.ReadBytes(&value, 1)) {
-        last_error_.code = DWARF_ERROR_MEMORY_INVALID;
-        last_error_.address = memory_.cur_offset();
-        return false;
-      }
-    } while (value & 0x80);
-  }
-
-  // Skip the augmentation length.
-  do {
-    if (!memory_.ReadBytes(&value, 1)) {
-      last_error_.code = DWARF_ERROR_MEMORY_INVALID;
-      last_error_.address = memory_.cur_offset();
-      return false;
-    }
-  } while (value & 0x80);
-
-  for (size_t i = 1; i < aug_string.size(); i++) {
-    if (aug_string[i] == 'R') {
-      if (!memory_.ReadBytes(encoding, 1)) {
-        last_error_.code = DWARF_ERROR_MEMORY_INVALID;
-        last_error_.address = memory_.cur_offset();
-        return false;
-      }
-      // Got the encoding, that's all we are looking for.
-      return true;
-    } else if (aug_string[i] == 'L') {
-      memory_.set_cur_offset(memory_.cur_offset() + 1);
-    } else if (aug_string[i] == 'P') {
-      uint8_t encoding;
-      if (!memory_.ReadBytes(&encoding, 1)) {
-        last_error_.code = DWARF_ERROR_MEMORY_INVALID;
-        last_error_.address = memory_.cur_offset();
-        return false;
-      }
-      uint64_t value;
-      if (!memory_.template ReadEncodedValue<AddressType>(encoding, &value)) {
-        last_error_.code = DWARF_ERROR_MEMORY_INVALID;
-        last_error_.address = memory_.cur_offset();
-        return false;
-      }
-    }
-  }
-
-  // It should be impossible to get here.
-  abort();
-}
-
-template <typename AddressType>
-bool DwarfSectionImpl<AddressType>::AddFdeInfo(uint64_t entry_offset, uint8_t segment_size,
-                                               uint8_t encoding) {
-  if (segment_size != 0) {
-    memory_.set_cur_offset(memory_.cur_offset() + 1);
-  }
-
-  uint64_t start;
-  if (!memory_.template ReadEncodedValue<AddressType>(encoding & 0xf, &start)) {
-    last_error_.code = DWARF_ERROR_MEMORY_INVALID;
-    last_error_.address = memory_.cur_offset();
-    return false;
-  }
-  start = AdjustPcFromFde(start);
-
-  uint64_t length;
-  if (!memory_.template ReadEncodedValue<AddressType>(encoding & 0xf, &length)) {
-    last_error_.code = DWARF_ERROR_MEMORY_INVALID;
-    last_error_.address = memory_.cur_offset();
-    return false;
-  }
-  if (length != 0) {
-    fdes_.emplace_back(entry_offset, start, length);
-  }
+  pc_offset_ = offset;
 
   return true;
 }
 
+// Create a cached version of the fde information such that it is a std::map
+// that is indexed by end pc and contains a pair that represents the start pc
+// followed by the fde object. The fde pointers are owned by fde_entries_
+// and not by the map object.
+// It is possible for an fde to be represented by multiple entries in
+// the map. This can happen if the the start pc and end pc overlap already
+// existing entries. For example, if there is already an entry of 0x400, 0x200,
+// and an fde has a start pc of 0x100 and end pc of 0x500, two new entries
+// will be added: 0x200, 0x100 and 0x500, 0x400.
 template <typename AddressType>
-bool DwarfSectionImpl<AddressType>::CreateSortedFdeList() {
-  memory_.set_cur_offset(entries_offset_);
+void DwarfSectionImpl<AddressType>::InsertFde(const DwarfFde* fde) {
+  uint64_t start = fde->pc_start;
+  uint64_t end = fde->pc_end;
+  auto it = fdes_.upper_bound(start);
+  while (it != fdes_.end() && start < end && it->second.first < end) {
+    if (start < it->second.first) {
+      fdes_[it->second.first] = std::make_pair(start, fde);
+    }
+    start = it->first;
+    ++it;
+  }
+  if (start < end) {
+    fdes_[end] = std::make_pair(start, fde);
+  }
+}
 
-  // Loop through all of the entries and read just enough to create
-  // a sorted list of pcs.
-  // This code assumes that first comes the cie, then the fdes that
-  // it applies to.
-  uint64_t cie_offset = 0;
-  uint8_t address_encoding;
-  uint8_t segment_size;
-  while (memory_.cur_offset() < entries_end_) {
-    uint64_t cur_entry_offset = memory_.cur_offset();
+template <typename AddressType>
+bool DwarfSectionImpl<AddressType>::GetNextCieOrFde(const DwarfFde** fde_entry) {
+  uint64_t start_offset = next_entries_offset_;
 
-    // Figure out the entry length and type.
-    uint32_t value32;
+  memory_.set_data_offset(entries_offset_);
+  memory_.set_cur_offset(next_entries_offset_);
+  uint32_t value32;
+  if (!memory_.ReadBytes(&value32, sizeof(value32))) {
+    last_error_.code = DWARF_ERROR_MEMORY_INVALID;
+    last_error_.address = memory_.cur_offset();
+    return false;
+  }
+
+  uint64_t cie_offset;
+  uint8_t cie_fde_encoding;
+  bool entry_is_cie = false;
+  if (value32 == static_cast<uint32_t>(-1)) {
+    // 64 bit entry.
+    uint64_t value64;
+    if (!memory_.ReadBytes(&value64, sizeof(value64))) {
+      last_error_.code = DWARF_ERROR_MEMORY_INVALID;
+      last_error_.address = memory_.cur_offset();
+      return false;
+    }
+
+    next_entries_offset_ = memory_.cur_offset() + value64;
+    // Read the Cie Id of a Cie or the pointer of the Fde.
+    if (!memory_.ReadBytes(&value64, sizeof(value64))) {
+      last_error_.code = DWARF_ERROR_MEMORY_INVALID;
+      last_error_.address = memory_.cur_offset();
+      return false;
+    }
+
+    if (value64 == cie64_value_) {
+      entry_is_cie = true;
+      cie_fde_encoding = DW_EH_PE_sdata8;
+    } else {
+      cie_offset = GetCieOffsetFromFde64(value64);
+    }
+  } else {
+    next_entries_offset_ = memory_.cur_offset() + value32;
+
+    // 32 bit Cie
     if (!memory_.ReadBytes(&value32, sizeof(value32))) {
       last_error_.code = DWARF_ERROR_MEMORY_INVALID;
       last_error_.address = memory_.cur_offset();
       return false;
     }
 
-    uint64_t next_entry_offset;
-    if (value32 == static_cast<uint32_t>(-1)) {
-      uint64_t value64;
-      if (!memory_.ReadBytes(&value64, sizeof(value64))) {
-        last_error_.code = DWARF_ERROR_MEMORY_INVALID;
-        last_error_.address = memory_.cur_offset();
-        return false;
-      }
-      next_entry_offset = memory_.cur_offset() + value64;
-
-      // Read the Cie Id of a Cie or the pointer of the Fde.
-      if (!memory_.ReadBytes(&value64, sizeof(value64))) {
-        last_error_.code = DWARF_ERROR_MEMORY_INVALID;
-        last_error_.address = memory_.cur_offset();
-        return false;
-      }
-
-      if (value64 == cie64_value_) {
-        // Cie 64 bit
-        address_encoding = DW_EH_PE_sdata8;
-        if (!GetCieInfo(&segment_size, &address_encoding)) {
-          return false;
-        }
-        cie_offset = cur_entry_offset;
-      } else {
-        uint64_t last_cie_offset = GetCieOffsetFromFde64(value64);
-        if (last_cie_offset != cie_offset) {
-          // This means that this Fde is not following the Cie.
-          last_error_.code = DWARF_ERROR_ILLEGAL_VALUE;
-          return false;
-        }
-
-        // Fde 64 bit
-        if (!AddFdeInfo(cur_entry_offset, segment_size, address_encoding)) {
-          return false;
-        }
-      }
+    if (value32 == cie32_value_) {
+      entry_is_cie = true;
+      cie_fde_encoding = DW_EH_PE_sdata4;
     } else {
-      next_entry_offset = memory_.cur_offset() + value32;
-
-      // Read the Cie Id of a Cie or the pointer of the Fde.
-      if (!memory_.ReadBytes(&value32, sizeof(value32))) {
-        last_error_.code = DWARF_ERROR_MEMORY_INVALID;
-        last_error_.address = memory_.cur_offset();
-        return false;
-      }
-
-      if (value32 == cie32_value_) {
-        // Cie 32 bit
-        address_encoding = DW_EH_PE_sdata4;
-        if (!GetCieInfo(&segment_size, &address_encoding)) {
-          return false;
-        }
-        cie_offset = cur_entry_offset;
-      } else {
-        uint64_t last_cie_offset = GetCieOffsetFromFde32(value32);
-        if (last_cie_offset != cie_offset) {
-          // This means that this Fde is not following the Cie.
-          last_error_.code = DWARF_ERROR_ILLEGAL_VALUE;
-          return false;
-        }
-
-        // Fde 32 bit
-        if (!AddFdeInfo(cur_entry_offset, segment_size, address_encoding)) {
-          return false;
-        }
-      }
+      cie_offset = GetCieOffsetFromFde32(value32);
     }
-
-    if (next_entry_offset < memory_.cur_offset()) {
-      // Simply consider the processing done in this case.
-      break;
-    }
-    memory_.set_cur_offset(next_entry_offset);
   }
 
-  // Sort the entries.
-  std::sort(fdes_.begin(), fdes_.end(), [](const FdeInfo& a, const FdeInfo& b) {
-    if (a.start == b.start) return a.end < b.end;
-    return a.start < b.start;
-  });
+  if (entry_is_cie) {
+    auto entry = cie_entries_.find(start_offset);
+    if (entry == cie_entries_.end()) {
+      DwarfCie* cie = &cie_entries_[start_offset];
+      cie->lsda_encoding = DW_EH_PE_omit;
+      cie->cfa_instructions_end = next_entries_offset_;
+      cie->fde_address_encoding = cie_fde_encoding;
 
-  fde_count_ = fdes_.size();
+      if (!FillInCie(cie)) {
+        cie_entries_.erase(start_offset);
+        return false;
+      }
+    }
+    *fde_entry = nullptr;
+  } else {
+    auto entry = fde_entries_.find(start_offset);
+    if (entry != fde_entries_.end()) {
+      *fde_entry = &entry->second;
+    } else {
+      DwarfFde* fde = &fde_entries_[start_offset];
+      fde->cfa_instructions_end = next_entries_offset_;
+      fde->cie_offset = cie_offset;
 
+      if (!FillInFde(fde)) {
+        fde_entries_.erase(start_offset);
+        return false;
+      }
+      *fde_entry = fde;
+    }
+  }
   return true;
 }
 
 template <typename AddressType>
-bool DwarfSectionImpl<AddressType>::GetFdeOffsetFromPc(uint64_t pc, uint64_t* fde_offset) {
-  if (fde_count_ == 0) {
-    return false;
-  }
-
-  size_t first = 0;
-  size_t last = fde_count_;
-  while (first < last) {
-    size_t current = (first + last) / 2;
-    const FdeInfo* info = &fdes_[current];
-    if (pc >= info->start && pc <= info->end) {
-      *fde_offset = info->offset;
-      return true;
-    }
-
-    if (pc < info->start) {
-      last = current;
+void DwarfSectionImpl<AddressType>::GetFdes(std::vector<const DwarfFde*>* fdes) {
+  // Loop through the already cached entries.
+  uint64_t entry_offset = entries_offset_;
+  while (entry_offset < next_entries_offset_) {
+    auto cie_it = cie_entries_.find(entry_offset);
+    if (cie_it != cie_entries_.end()) {
+      entry_offset = cie_it->second.cfa_instructions_end;
     } else {
-      first = current + 1;
+      auto fde_it = fde_entries_.find(entry_offset);
+      if (fde_it == fde_entries_.end()) {
+        // No fde or cie at this entry, should not be possible.
+        return;
+      }
+      entry_offset = fde_it->second.cfa_instructions_end;
+      fdes->push_back(&fde_it->second);
     }
   }
-  return false;
+
+  while (next_entries_offset_ < entries_end_) {
+    const DwarfFde* fde;
+    if (!GetNextCieOrFde(&fde)) {
+      break;
+    }
+    if (fde != nullptr) {
+      InsertFde(fde);
+      fdes->push_back(fde);
+    }
+
+    if (next_entries_offset_ < memory_.cur_offset()) {
+      // Simply consider the processing done in this case.
+      break;
+    }
+  }
 }
 
 template <typename AddressType>
-const DwarfFde* DwarfSectionImpl<AddressType>::GetFdeFromIndex(size_t index) {
-  if (index >= fdes_.size()) {
-    return nullptr;
+const DwarfFde* DwarfSectionImpl<AddressType>::GetFdeFromPc(uint64_t pc) {
+  // Search in the list of fdes we already have.
+  auto it = fdes_.upper_bound(pc);
+  if (it != fdes_.end()) {
+    if (pc >= it->second.first) {
+      return it->second.second;
+    }
   }
-  return this->GetFdeFromOffset(fdes_[index].offset);
+
+  // The section might have overlapping pcs in fdes, so it is necessary
+  // to do a linear search of the fdes by pc. As fdes are read, a cached
+  // search map is created.
+  while (next_entries_offset_ < entries_end_) {
+    const DwarfFde* fde;
+    if (!GetNextCieOrFde(&fde)) {
+      return nullptr;
+    }
+    if (fde != nullptr) {
+      InsertFde(fde);
+      if (pc >= fde->pc_start && pc < fde->pc_end) {
+        return fde;
+      }
+    }
+
+    if (next_entries_offset_ < memory_.cur_offset()) {
+      // Simply consider the processing done in this case.
+      break;
+    }
+  }
+  return nullptr;
 }
 
 // Explicitly instantiate DwarfSectionImpl

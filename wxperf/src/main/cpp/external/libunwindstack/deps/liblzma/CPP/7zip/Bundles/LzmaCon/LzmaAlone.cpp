@@ -4,6 +4,8 @@
 
 #include <stdio.h>
 
+#include "../../../../C/CpuArch.h"
+
 #if (defined(_WIN32) || defined(OS2) || defined(MSDOS)) && !defined(UNDER_CE)
 #include <fcntl.h>
 #include <io.h>
@@ -39,14 +41,16 @@
 #include "../../UI/Console/BenchCon.h"
 #include "../../UI/Console/ConsoleClose.h"
 
+bool g_LargePagesMode = false;
+
 using namespace NCommandLineParser;
 
 static const unsigned kDictSizeLog = 24;
 
-static const char *kCopyrightString = "\nLZMA " MY_VERSION_COPYRIGHT_DATE "\n\n";
+#define kCopyrightString "\nLZMA " MY_VERSION_CPU " : " MY_COPYRIGHT_DATE "\n\n"
 
-static const char *kHelpString =
-    "Usage:  LZMA <command> [inputFile] [outputFile] [<switches>...]\n"
+static const char * const kHelpString =
+    "Usage:  lzma <command> [inputFile] [outputFile] [<switches>...]\n"
     "\n"
     "<command>\n"
     "  e : Encode file\n"
@@ -67,9 +71,9 @@ static const char *kHelpString =
     "  -so    : write data to stdout\n";
 
 
-static const char *kCantAllocate = "Can not allocate memory";
-static const char *kReadError = "Read error";
-static const char *kWriteError = "Write error";
+static const char * const kCantAllocate = "Can not allocate memory";
+static const char * const kReadError = "Read error";
+static const char * const kWriteError = "Write error";
 
 
 namespace NKey {
@@ -117,6 +121,21 @@ static const CSwitchForm kSwitchForms[] =
 };
 
 
+static void Convert_UString_to_AString(const UString &s, AString &temp)
+{
+  int codePage = CP_OEMCP;
+  /*
+  int g_CodePage = -1;
+  int codePage = g_CodePage;
+  if (codePage == -1)
+    codePage = CP_OEMCP;
+  if (codePage == CP_UTF8)
+    ConvertUnicodeToUTF8(s, temp);
+  else
+  */
+    UnicodeStringToMultiByte2(temp, s, (UINT)codePage);
+}
+
 static void PrintErr(const char *s)
 {
   fputs(s, stderr);
@@ -135,10 +154,12 @@ static void PrintError(const char *s)
   PrintErr_LF(s);
 }
 
-static void PrintError2(const char *s1, const wchar_t *s2)
+static void PrintError2(const char *s1, const UString &s2)
 {
   PrintError(s1);
-  PrintErr_LF(GetOemString(s2));
+  AString a;
+  Convert_UString_to_AString(s2, a);
+  PrintErr_LF(a);
 }
 
 static void PrintError_int(const char *s, int code)
@@ -208,7 +229,7 @@ public:
 
 #define BACK_STR \
 "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b"
-static const char *kBackSpaces =
+static const char * const kBackSpaces =
 BACK_STR
 "                                                                "
 BACK_STR;
@@ -298,7 +319,7 @@ static int Error_HRESULT(const char *s, HRESULT res)
 static void AddProp(CObjectVector<CProperty> &props2, const char *name, const wchar_t *val)
 {
   CProperty &prop = props2.AddNew();
-  prop.Name.SetFromAscii(name);
+  prop.Name = name;
   prop.Value = val;
 }
 
@@ -322,10 +343,10 @@ static int main2(int numArgs, const char *args[])
   for (int i = 1; i < numArgs; i++)
     commandStrings.Add(MultiByteToUnicodeString(args[i]));
   
-  CParser parser(ARRAY_SIZE(kSwitchForms));
+  CParser parser;
   try
   {
-    if (!parser.ParseStrings(kSwitchForms, commandStrings))
+    if (!parser.ParseStrings(kSwitchForms, ARRAY_SIZE(kSwitchForms), commandStrings))
     {
       PrintError2(parser.ErrorMessage, parser.ErrorLine);
       return 1;
@@ -376,7 +397,7 @@ static int main2(int numArgs, const char *args[])
     AddProp(props2, "x", s);
   }
   
-  UString mf = L"BT4";
+  UString mf ("BT4");
   if (parser[NKey::kMatchFinder].ThereIs)
     mf = parser[NKey::kMatchFinder].PostStrings[0];
 

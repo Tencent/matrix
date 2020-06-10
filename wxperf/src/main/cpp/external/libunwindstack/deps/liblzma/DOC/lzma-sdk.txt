@@ -1,4 +1,4 @@
-LZMA SDK 16.04
+LZMA SDK 18.06
 --------------
 
 LZMA SDK provides the documentation, samples, header files,

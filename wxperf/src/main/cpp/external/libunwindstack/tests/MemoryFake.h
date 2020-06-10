@@ -36,6 +36,8 @@ class MemoryFake : public Memory {
 
   void SetMemory(uint64_t addr, const void* memory, size_t length);
 
+  void SetMemoryBlock(uint64_t addr, size_t length, uint8_t value);
+
   void SetData8(uint64_t addr, uint8_t value) {
     SetMemory(addr, &value, sizeof(value));
   }

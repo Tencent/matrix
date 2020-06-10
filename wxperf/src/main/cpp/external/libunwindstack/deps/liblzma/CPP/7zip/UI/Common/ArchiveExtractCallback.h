@@ -57,6 +57,8 @@ struct CExtractNtOptions
   bool ReplaceColonForAltStream;
   bool WriteToAltStreamIfColon;
 
+  bool PreAllocateOutFile;
+
   CExtractNtOptions():
       ReplaceColonForAltStream(false),
       WriteToAltStreamIfColon(false)
@@ -64,6 +66,13 @@ struct CExtractNtOptions
     SymLinks.Val = true;
     HardLinks.Val = true;
     AltStreams.Val = true;
+    
+    PreAllocateOutFile =
+      #ifdef _WIN32
+        true;
+      #else
+        false;
+      #endif
   }
 };
 
@@ -142,6 +151,25 @@ struct CIndexToPathPair
 
 #endif
 
+
+
+struct CDirPathTime
+{
+  FILETIME CTime;
+  FILETIME ATime;
+  FILETIME MTime;
+
+  bool CTimeDefined;
+  bool ATimeDefined;
+  bool MTimeDefined;
+
+  FString Path;
+  
+  bool SetDirTime();
+};
+
+
+
 class CArchiveExtractCallback:
   public IArchiveExtractCallback,
   public IArchiveExtractCallbackMessage,
@@ -163,6 +191,7 @@ class CArchiveExtractCallback:
   FString _dirPathPrefix_Full;
   NExtract::NPathMode::EEnum _pathMode;
   NExtract::NOverwriteMode::EEnum _overwriteMode;
+  bool _keepAndReplaceEmptyDirPrefixes; // replace them to "_";
 
   #ifndef _SFX
 
@@ -201,6 +230,7 @@ class CArchiveExtractCallback:
   UInt32 _index;
   UInt64 _curSize;
   bool _curSizeDefined;
+  bool _fileLengthWasSet;
   COutFileStream *_outFileStreamSpec;
   CMyComPtr<ISequentialOutStream> _outFileStream;
 
@@ -230,15 +260,14 @@ class CArchiveExtractCallback:
   UInt64 _progressTotal;
   bool _progressTotal_Defined;
 
-  FStringVector _extractedFolderPaths;
-  CRecordVector<UInt32> _extractedFolderIndices;
+  CObjectVector<CDirPathTime> _extractedFolders;
 
   #if defined(_WIN32) && !defined(UNDER_CE) && !defined(_SFX)
   bool _saclEnabled;
   #endif
 
   void CreateComplexDirectory(const UStringVector &dirPathParts, FString &fullPath);
-  HRESULT GetTime(int index, PROPID propID, FILETIME &filetime, bool &filetimeIsDefined);
+  HRESULT GetTime(UInt32 index, PROPID propID, FILETIME &filetime, bool &filetimeIsDefined);
   HRESULT GetUnpackSize();
 
   HRESULT SendMessageError(const char *message, const FString &path);
@@ -268,11 +297,13 @@ public:
 
   void InitForMulti(bool multiArchives,
       NExtract::NPathMode::EEnum pathMode,
-      NExtract::NOverwriteMode::EEnum overwriteMode)
+      NExtract::NOverwriteMode::EEnum overwriteMode,
+      bool keepAndReplaceEmptyDirPrefixes)
   {
     _multiArchives = multiArchives;
     _pathMode = pathMode;
     _overwriteMode = overwriteMode;
+    _keepAndReplaceEmptyDirPrefixes = keepAndReplaceEmptyDirPrefixes;
     NumFolders = NumFiles = NumAltStreams = UnpackSize = AltStreams_UnpackSize = 0;
   }
 
@@ -330,8 +361,42 @@ public:
   }
   #endif
 
+  HRESULT CloseArc();
+
+private:
+  void ClearExtractedDirsInfo()
+  {
+    _extractedFolders.Clear();
+  }
+
+  HRESULT CloseFile();
   HRESULT SetDirsTimes();
 };
+
+
+struct CArchiveExtractCallback_Closer
+{
+  CArchiveExtractCallback *_ref;
+  
+  CArchiveExtractCallback_Closer(CArchiveExtractCallback *ref): _ref(ref) {}
+  
+  HRESULT Close()
+  {
+    HRESULT res = S_OK;
+    if (_ref)
+    {
+      res = _ref->CloseArc();
+      _ref = NULL;
+    }
+    return res;
+  }
+  
+  ~CArchiveExtractCallback_Closer()
+  {
+    Close();
+  }
+};
+
 
 bool CensorNode_CheckPath(const NWildcard::CCensorNode &node, const CReadArcItem &item);
 

@@ -153,6 +153,15 @@ public:
     ~C_OutStream_Releaser() { if (FilterCoder) FilterCoder->ReleaseOutStream(); }
   };
 
+  class C_Filter_Releaser
+  {
+  public:
+    CFilterCoder *FilterCoder;
+    C_Filter_Releaser(): FilterCoder(NULL) {}
+    ~C_Filter_Releaser() { if (FilterCoder) FilterCoder->Filter.Release(); }
+  };
+  
+
   MY_QUERYINTERFACE_BEGIN2(ICompressCoder)
 
     MY_QUERYINTERFACE_ENTRY(ICompressSetOutStreamSize)

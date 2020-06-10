@@ -414,4 +414,23 @@ struct CArchiveLink
 
 bool ParseOpenTypes(CCodecs &codecs, const UString &s, CObjectVector<COpenType> &types);
 
+
+struct CDirPathSortPair
+{
+  unsigned Len;
+  unsigned Index;
+
+  void SetNumSlashes(const FChar *s);
+  
+  int Compare(const CDirPathSortPair &a) const
+  {
+    // We need sorting order where parent items will be after child items
+    if (Len < a.Len) return 1;
+    if (Len > a.Len) return -1;
+    if (Index < a.Index) return -1;
+    if (Index > a.Index) return 1;
+    return 0;
+  }
+};
+
 #endif

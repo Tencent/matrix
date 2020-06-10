@@ -21,7 +21,7 @@
 
 #include <unordered_map>
 
-#include "DwarfEhFrame.h"
+#include <unwindstack/DwarfSection.h>
 
 namespace unwindstack {
 
@@ -29,14 +29,11 @@ namespace unwindstack {
 class Memory;
 
 template <typename AddressType>
-class DwarfEhFrameWithHdr : public DwarfEhFrame<AddressType> {
+class DwarfEhFrameWithHdr : public DwarfSectionImpl<AddressType> {
  public:
   // Add these so that the protected members of DwarfSectionImpl
   // can be accessed without needing a this->.
   using DwarfSectionImpl<AddressType>::memory_;
-  using DwarfSectionImpl<AddressType>::fde_count_;
-  using DwarfSectionImpl<AddressType>::entries_offset_;
-  using DwarfSectionImpl<AddressType>::entries_end_;
   using DwarfSectionImpl<AddressType>::last_error_;
 
   struct FdeInfo {
@@ -44,32 +41,43 @@ class DwarfEhFrameWithHdr : public DwarfEhFrame<AddressType> {
     uint64_t offset;
   };
 
-  DwarfEhFrameWithHdr(Memory* memory) : DwarfEhFrame<AddressType>(memory) {}
+  DwarfEhFrameWithHdr(Memory* memory) : DwarfSectionImpl<AddressType>(memory) {}
   virtual ~DwarfEhFrameWithHdr() = default;
 
-  bool Init(uint64_t offset, uint64_t size) override;
+  uint64_t GetCieOffsetFromFde32(uint32_t pointer) override {
+    return memory_.cur_offset() - pointer - 4;
+  }
 
-  bool GetFdeOffsetFromPc(uint64_t pc, uint64_t* fde_offset) override;
+  uint64_t GetCieOffsetFromFde64(uint64_t pointer) override {
+    return memory_.cur_offset() - pointer - 8;
+  }
 
-  const DwarfFde* GetFdeFromIndex(size_t index) override;
+  uint64_t AdjustPcFromFde(uint64_t pc) override {
+    // The eh_frame uses relative pcs.
+    return pc + memory_.cur_offset() - 4;
+  }
+
+  bool EhFrameInit(uint64_t offset, uint64_t size, int64_t section_bias);
+  bool Init(uint64_t offset, uint64_t size, int64_t section_bias) override;
+
+  const DwarfFde* GetFdeFromPc(uint64_t pc) override;
+
+  bool GetFdeOffsetFromPc(uint64_t pc, uint64_t* fde_offset);
 
   const FdeInfo* GetFdeInfoFromIndex(size_t index);
 
-  bool GetFdeOffsetSequential(uint64_t pc, uint64_t* fde_offset);
-
-  bool GetFdeOffsetBinary(uint64_t pc, uint64_t* fde_offset, uint64_t total_entries);
+  void GetFdes(std::vector<const DwarfFde*>* fdes) override;
 
  protected:
-  uint8_t version_;
-  uint8_t ptr_encoding_;
-  uint8_t table_encoding_;
-  size_t table_entry_size_;
+  uint8_t version_ = 0;
+  uint8_t table_encoding_ = 0;
+  size_t table_entry_size_ = 0;
 
-  uint64_t ptr_offset_;
+  uint64_t hdr_entries_offset_ = 0;
+  uint64_t hdr_entries_data_offset_ = 0;
+  uint64_t hdr_section_bias_ = 0;
 
-  uint64_t entries_data_offset_;
-  uint64_t cur_entries_offset_ = 0;
-
+  uint64_t fde_count_ = 0;
   std::unordered_map<uint64_t, FdeInfo> fde_info_;
 };
 

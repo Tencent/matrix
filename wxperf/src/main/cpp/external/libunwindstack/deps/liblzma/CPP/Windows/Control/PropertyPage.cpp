@@ -115,7 +115,7 @@ INT_PTR MyPropertySheet(const CObjectVector<CPageInfo> &pagesInfo, HWND hwndPare
     sheet.dwFlags = PSH_PROPSHEETPAGE;
     sheet.hwndParent = hwndParent;
     sheet.hInstance = g_hInstance;
-    AString titleA = GetSystemString(title);
+    AString titleA (GetSystemString(title));
     sheet.pszCaption = titleA;
     sheet.nPages = pagesInfo.Size();
     sheet.nStartPage = 0;

@@ -37,11 +37,9 @@ class RegsX86_64 : public RegsImpl<uint64_t> {
 
   ArchEnum Arch() override final;
 
-  uint64_t GetPcAdjustment(uint64_t rel_pc, Elf* elf) override;
-
   bool SetPcFromReturnAddress(Memory* process_memory) override;
 
-  bool StepIfSignalHandler(uint64_t rel_pc, Elf* elf, Memory* process_memory) override;
+  bool StepIfSignalHandler(uint64_t elf_offset, Elf* elf, Memory* process_memory) override;
 
   void SetFromUcontext(x86_64_ucontext_t* ucontext);
 

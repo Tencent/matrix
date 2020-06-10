@@ -23,6 +23,17 @@
 
 namespace unwindstack {
 
+void MemoryFake::SetMemoryBlock(uint64_t addr, size_t length, uint8_t value) {
+  for (size_t i = 0; i < length; i++, addr++) {
+    auto entry = data_.find(addr);
+    if (entry != data_.end()) {
+      entry->second = value;
+    } else {
+      data_.insert({addr, value});
+    }
+  }
+}
+
 void MemoryFake::SetMemory(uint64_t addr, const void* memory, size_t length) {
   const uint8_t* src = reinterpret_cast<const uint8_t*>(memory);
   for (size_t i = 0; i < length; i++, addr++) {

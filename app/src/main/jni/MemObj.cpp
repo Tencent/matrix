@@ -52,11 +52,6 @@ Java_com_tencent_mm_libwxperf_JNIObj_reallocTest(JNIEnv *env, jobject instance) 
     LOGD("Yves-debug", "realloc p = %p", p);
 }
 
-/*
- * Class:     com_example_meminfo_JNIObj
- * Method:    allocMem
- * Signature: ()V
- */
 JNIEXPORT void JNICALL
 Java_com_tencent_mm_libwxperf_JNIObj_doSomeThing(JNIEnv *env, jobject instance) {
     LOGD("Yves-sample", ">>>>>>>>>>>>>>>>>>begin");
@@ -339,81 +334,6 @@ Java_com_tencent_mm_libwxperf_JNIObj_doSomeThing(JNIEnv *env, jobject instance) 
 
 }
 
-JNIEXPORT void JNICALL
-Java_com_tencent_mm_libwxperf_JNIObj_nullptr(JNIEnv *env, jobject instance, jobjectArray ss) {
-
-    if (!ss) {
-        LOGD("Yves-debug", "ss is null");
-    } else {
-        LOGD("Yves-debug", "ss is not null");
-    }
-
-}
-
-JNIEXPORT void JNICALL
-Java_com_tencent_mm_libwxperf_JNIObj_dump(JNIEnv *env, jobject instance, jstring path_) {
-
-    const char *path = env->GetStringUTFChars(path_, 0);
-
-    LOGD("Yves-debug", "path = %s", path);
-//    dump();
-
-    env->ReleaseStringUTFChars(path_, path);
-
-    LOGD("Yves-sample", ">>>>>>>>>>>>>>>>>>begin dump");
-//    typedef void (*FN_DUMP)();
-//    const char * path = env->GetStringUTFChars(libPath, 0);
-//    void *handle = dlopen(path, RTLD_LAZY);
-//    env->ReleaseStringUTFChars(libPath, path);
-//    if (handle != nullptr) {
-//        LOGD("Yves-sample","so not null");
-//        auto p = (FN_DUMP)dlsym(handle, "dump");
-//        if (p != nullptr) {
-//            LOGD("Yves-sample","dump func not null");
-//            p();
-//        }
-//    }
-//    int err;
-//    errno = 0;
-//    FILE *file = fopen("/sdcard/memory_hook_fopen.log", "w+");
-//    err = errno;
-//    LOGD("Yves-sample", "fopen: errno = %s", strerror(err));
-//    if (file) {
-//        fputs("fputs\n", file);
-//        err = errno;
-//        LOGD("Yves-sample", "fopen: errno = %s", strerror(err));
-//        fflush(file);
-//        fclose(file);
-//    }
-////
-////
-////
-//    errno = 0;
-//
-//    int fd = TEMP_FAILURE_RETRY(open("/sdcard/memory_hook.log", O_RDWR | O_CREAT));
-//    err = errno;
-//    LOGD("Yves-sample", "open fd = %d, errno = %s %d", fd, strerror(err),err);
-//    if (fd != -1) {
-//        write(fd, "abbbbbbbb\n",10);
-//        close(fd);
-//    }
-//    err = errno;
-//    LOGD("Yves-sample", "write fd = %d, errno = %s", fd, strerror(err));
-//
-////    int fd2 = open("/data/data/com.tencent.mm.libwxperf/cache/memory_hook.log", O_RDWR | O_CREAT);
-////    err = errno;
-////    LOGD("Yves-sample", "open fd = %d, errno = %s", fd2, strerror(err));
-////    if (fd2 != -1) {
-////        write(fd2, "aaaaaa\n", 7);
-////    }
-////    err = errno;
-////    LOGD("Yves-sample", "write fd = %d, errno = %s", fd2, strerror(err));
-////    close(fd2);
-//
-//
-//    LOGD("Yves-sample", "<<<<<<<<<<<<<<<<<<<<end dump");
-}
-
 #define NAMELEN 16
 
 static void *
@@ -492,6 +412,13 @@ void *threadfunc2(void *arg) {
     int *pa = static_cast<int *>(pthread_getspecific(key));
 
     LOGD("Yves-debug", "in thread arg = %p, pa=%p, *pa=%d", arg, pa, *pa);
+
+    int *b = new int;
+    *b = 1024;
+
+    pthread_setspecific(key, b);
+
+
     return NULL;
 }
 
@@ -508,6 +435,8 @@ Java_com_tencent_mm_libwxperf_JNIObj_testThreadSpecific(JNIEnv *env, jclass claz
     LOGD("Yves-debug", "origin a = %p", a);
 
     pthread_create(&thread1, NULL, threadfunc2, a);
+
+
     LOGD("Yves-debug", "creating thread thread1 %ld", thread1);
 //    pthread_join(thread1, NULL);
 }
@@ -582,6 +511,78 @@ Java_com_tencent_mm_libwxperf_JNIObj_testJNICall(JNIEnv *env, jclass clazz) {
 
     LOGD("Yves-debug", "atomic test 2 : %p -> %p", ch2, atomic_ch2.load(std::memory_order_acquire));
 
+}
+
+void *thread_rountine(void *arg) {
+    free(arg);
+    LOGD("Yves-debug", "free thread %d", pthread_gettid_np(pthread_self()));
+    return 0;
+}
+
+JNIEXPORT void JNICALL
+Java_com_tencent_mm_libwxperf_JNIObj_testPthreadFree(JNIEnv *env, jclass clazz) {
+    LOGD("Yves-debug", "malloc thread %d", pthread_gettid_np(pthread_self()));
+
+    pthread_t thread;
+
+    void *p = malloc(128 * 1024);
+    LOGD("Yves-debug", "p1 = %p", p);
+    pthread_create(&thread, NULL, thread_rountine, p);
+    pthread_join(thread, NULL);
+//    free(p);
+
+    p = malloc(128 * 1024);
+    LOGD("Yves-debug", "p2 = %p", p);
+    pthread_create(&thread, NULL, thread_rountine, p);
+    pthread_join(thread, NULL);
+//    free(p);
+
+    p = malloc(128 * 1024);
+    LOGD("Yves-debug", "p3 = %p", p);
+    pthread_create(&thread, NULL, thread_rountine, p);
+    pthread_join(thread, NULL);
+//    free(p);
+
+    p = malloc(128 * 1024);
+    LOGD("Yves-debug", "p4 = %p", p);
+    pthread_create(&thread, NULL, thread_rountine, p);
+    pthread_join(thread, NULL);
+//    free(p);
+
+    p = malloc(128 * 1024);
+    LOGD("Yves-debug", "p5 = %p", p);
+    pthread_create(&thread, NULL, thread_rountine, p);
+    pthread_join(thread, NULL);
+//    free(p);
+}
+
+JNIEXPORT void JNICALL
+Java_com_tencent_mm_libwxperf_JNIObj_mallocTest(JNIEnv *env, jclass clazz) {
+//    LOGD("Yves-debug", "mallocTest");
+    Obj *p = new Obj;
+    LOGD("Yves-debug", "mallocTest: new %p", p);
+    delete p;
+//    p = new int[2];
+//    LOGD("Yves-debug", "mallocTest: new int %p", p);
+//    delete p;
+//
+//    p = malloc(sizeof(Obj));
+//    LOGD("Yves-debug", "mallocTest: malloc %p", p);
+//    free(p);
+
+}
+
+JNIEXPORT void JNICALL
+Java_com_tencent_mm_libwxperf_JNIObj_tlsTest(JNIEnv *env, jclass clazz) {
+
+    if (!key) {
+        pthread_key_create(&key, dest);
+    }
+
+    pthread_t pthread;
+    int *a = new int;
+    *a = 10086;
+    pthread_create(&pthread, NULL, threadfunc2, a);
 }
 
 #ifdef __cplusplus

@@ -1,6 +1,6 @@
 // SevenZip/CRC.java
 
-package external.libunwindstack.deps.liblzma.Java.SevenZip;
+package SevenZip;
 
 public class CRC
 {
