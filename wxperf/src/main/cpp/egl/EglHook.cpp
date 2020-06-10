@@ -54,9 +54,6 @@ void release_egl_resource(jmethodID methodId, uint64_t egl_resource) {
     }
 
     if (env != NULL) {
-        assert(m_class_EglHook);
-        assert(methodId);
-        assert(egl_resource);
         env->CallStaticVoidMethod(m_class_EglHook,
                                   methodId,
                                   egl_resource);
