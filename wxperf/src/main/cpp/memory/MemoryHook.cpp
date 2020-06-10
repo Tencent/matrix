@@ -70,23 +70,57 @@ struct ptr_meta_eq {
 
 struct tsd_t {
 
-    std::mutex                                  tsd_mutex;
-    pthread_t                                   owner_thread;
-    std::unordered_multimap<void *, ptr_meta_t> ptr_metas;
-    std::unordered_map<uint64_t, stack_meta_t>  stack_metas;
-    std::unordered_multimap<void *, uint64_t>   borrowed_ptrs;
+    std::mutex                        tsd_mutex;
+    pthread_t                         owner_thread;
+    std::multimap<void *, ptr_meta_t> ptr_metas;
+    std::map<uint64_t, stack_meta_t>  stack_metas;
+    std::multimap<void *, uint64_t>   borrowed_ptrs;
 
     tsd_t() {
         owner_thread = pthread_self();
     }
 };
 
+// fixme use template ?
+struct PtrHash {
+    size_t operator()(void *ptr) const {
+        auto uptr = (uintptr_t) ptr;
+
+#ifndef __LP64__
+        auto ret =  uptr ^ (uptr << 8) ^ (uptr << 16) ^ (uptr << 24);
+#else
+        auto ret = uptr ^(uptr << 16) ^(uptr << 32) ^(uptr << 48) ^(uptr << 56);
+#endif
+        return ret;
+    }
+};
+
+struct PtrEqual {
+    bool operator()(const void *__x, const void *__y) const {
+        return __x == __y;
+    }
+};
+
+struct PthreadHash {
+    size_t operator()(const pthread_t &pthread) const {
+
+        return pthread ^ (pthread << 8) ^ (pthread << 16) ^ (pthread << 24);
+    }
+};
+
+struct PthreadEqual {
+    bool operator()(const pthread_t &__x, const pthread_t &__y) const {
+        return __x == __y;
+    }
+};
+
 struct merge_bucket_t {
-    std::shared_mutex                                         bucket_shared_mutex;
-    std::unordered_map<void *, std::set<ptr_meta_t>>          ptr_metas;
-    std::unordered_map<uint64_t, stack_meta_t>                stack_metas;
-    std::unordered_map<void *, std::set<uint64_t>>            borrowed_ptrs;
-    std::unordered_map<pthread_t, std::unordered_set<void *>> ptrs_of_alloc_thread;
+    std::shared_mutex                      bucket_shared_mutex;
+    std::map<void *, std::set<ptr_meta_t>> ptr_metas;
+    std::map<uint64_t, stack_meta_t>       stack_metas;
+    std::map<void *, std::set<uint64_t>>   borrowed_ptrs;
+
+    std::unordered_map<pthread_t, std::unordered_set<void *, PtrHash, PtrEqual>, PthreadHash, PthreadEqual> ptrs_of_alloc_thread;
 
     size_t borrowed_count;
 };
@@ -103,8 +137,8 @@ static std::condition_variable m_merge_cv;
 
 static std::list<tsd_t *> m_merge_waiting_buffer;
 
-static std::shared_mutex          m_dirty_ptrs_shared_mutex;
-static std::unordered_set<void *> m_dirty_ptrs; // 标记所有可能跨线程分配的指针
+static std::shared_mutex                             m_dirty_ptrs_shared_mutex;
+static std::unordered_set<void *, PtrHash, PtrEqual> m_dirty_ptrs; // 标记所有可能跨线程分配的指针
 
 static std::atomic_uint64_t m_mem_stamp;
 
@@ -144,7 +178,7 @@ void enable_caller_sampling(bool __enable) {
 }
 
 static inline void
-decrease_stack_size(std::unordered_map<uint64_t, stack_meta_t> &__stack_metas,
+decrease_stack_size(std::map<uint64_t, stack_meta_t> &__stack_metas,
                     const ptr_meta_t &__ptr_meta) {
     LOGI(TAG, "calculate_stack_size");
     if (is_stacktrace_enabled
@@ -206,9 +240,9 @@ static inline size_t repay_debt(merge_bucket_t *__merge_bucket) {
     LOGD(TAG, "repay_debt");
     NanoSeconds_Start(begin);
 //    size_t total_count = __merge_bucket->borrowed_ptrs.size();
-    size_t repaid_count = 0;
-    size_t total_count  = 0;
-    size_t dirty_count = m_dirty_ptrs.size();
+    size_t          repaid_count = 0;
+    size_t          total_count  = 0;
+    size_t          dirty_count  = m_dirty_ptrs.size();
     for (const auto &borrow_it : __merge_bucket->borrowed_ptrs) {
         auto &free_ptr    = borrow_it.first;
         auto &free_stamps = borrow_it.second; // set<uint64_t>
@@ -244,8 +278,8 @@ static inline size_t repay_debt(merge_bucket_t *__merge_bucket) {
             std::lock_guard<std::shared_mutex> dirty_ptr_lock(m_dirty_ptrs_shared_mutex);
             m_dirty_ptrs.erase(free_ptr);
         } else if (alloc_metas.size() > 1) {
-            LOGD(TAG, "repay_debt -------> ERROR: retained MORE than one same ptr, size = %zu",
-                 alloc_metas.size()); // fixme why？可能 free 没有 hook 到? 打地鼠 case？
+//            LOGD(TAG, "repay_debt -------> ERROR: retained MORE than one same ptr, size = %zu",
+//                 alloc_metas.size()); // fixme why？可能 free 没有 hook 到? 打地鼠 case？
         }
     }
 
@@ -296,7 +330,7 @@ static inline size_t full_merge() {
     repay_debt(&m_merge_bucket);
 
     {
-        std::unordered_map<void *, std::set<uint64_t>> temp_set;
+        std::map<void *, std::set<uint64_t>> temp_set;
         m_merge_bucket.borrowed_ptrs.swap(temp_set);
         m_merge_bucket.borrowed_count = 0;
         temp_set.clear();
@@ -457,18 +491,20 @@ static inline void on_acquire_memory(void *__caller,
 
     if (tsd_acquire(ptr_meta)) {
 
-        NanoSeconds_Start(begin);
+//        NanoSeconds_Start(begin);
 
         tsd_fetch(true); // replace current tsd
         std::unique_lock<std::mutex> merge_lock(m_merge_mutex);
         m_merge_waiting_buffer.emplace_back(tsd);
         m_merge_cv.notify_one();
 
-        NanoSeconds_End(cost, begin);
+//        NanoSeconds_End(cost, begin);
         LOGD(TAG,
-             "on_acquire_memory: triggerred flush ptr = %zu, bor = %zu, stack = %zu, cost = %lld; tsd is %p",
-             tsd->ptr_metas.size(), tsd->borrowed_ptrs.size(), tsd->stack_metas.size(), cost, tsd);
+             "on_acquire_memory: triggerred flush ptr = %zu, bor = %zu, stack = %zu",
+             tsd->ptr_metas.size(), tsd->borrowed_ptrs.size(), tsd->stack_metas.size());
     }
+//    NanoSeconds_End(alloc_cost, alloc_begin);
+//    LOGD(TAG, "alloc cost %lld", alloc_cost);
 }
 
 static inline bool do_release_memory_meta(void *__ptr, tsd_t *__tsd, bool __is_mmap) {
@@ -492,6 +528,7 @@ static inline bool do_release_memory_meta(void *__ptr, tsd_t *__tsd, bool __is_m
 }
 
 static inline bool is_dirty_ptr(void *__ptr) {
+//    return false;
     m_dirty_ptrs_shared_mutex.lock_shared();
 
     bool is_dirty = 0 != m_dirty_ptrs.count(__ptr);
@@ -509,7 +546,7 @@ static inline void on_release_memory(void *__ptr, bool __is_mmap) {
 //    NanoSeconds_Start(release_begin);
 //    long long query_cost = 0;
 //    long long dirty_cost = 0;
-    uint64_t  stamp      = m_mem_stamp.fetch_add(1, std::memory_order_release);
+    uint64_t stamp = m_mem_stamp.fetch_add(1, std::memory_order_release);
 
     tsd_t *tsd = tsd_fetch(false);
 
@@ -524,14 +561,20 @@ static inline void on_release_memory(void *__ptr, bool __is_mmap) {
 
         if (!released) {
 //            NanoSeconds_Start(query_begin);
+
+            // fixme 慢了一倍多
             m_merge_bucket.bucket_shared_mutex.lock_shared();
-            merged = 0 != m_merge_bucket.ptrs_of_alloc_thread[tsd->owner_thread].count(__ptr);
+
+            if (0 != m_merge_bucket.ptrs_of_alloc_thread.count(tsd->owner_thread)) {
+                merged =
+                        0 != m_merge_bucket.ptrs_of_alloc_thread.at(tsd->owner_thread).count(__ptr);
+//                LOGD(TAG, "merged size = %zu",
+//                     m_merge_bucket.ptrs_of_alloc_thread.at(tsd->owner_thread).size());
+            }
             m_merge_bucket.bucket_shared_mutex.unlock_shared();
+
 //            NanoSeconds_End(query_end, query_begin);
 //            query_cost = query_end;
-//            if (merged) {
-//                LOGD(TAG, "NOT released cause %p was merged", __ptr);
-//            }
         }
     }
 

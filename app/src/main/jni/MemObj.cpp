@@ -631,16 +631,28 @@ void SpeedTest() {
 JNIEXPORT void JNICALL
 Java_com_tencent_mm_libwxperf_JNIObj_tlsTest(JNIEnv *env, jclass clazz) {
 
-//    if (!key) {
-//        pthread_key_create(&key, dest);
-//    }
-//
-//    pthread_t pthread;
-//    int *a = new int;
-//    *a = 10086;
-//    pthread_create(&pthread, NULL, threadfunc2, a);
+    if (!key) {
+        pthread_key_create(&key, dest);
+    }
 
-    SpeedTest();
+    pthread_t pthread;
+    int *a = new int;
+    *a = 10086;
+    pthread_create(&pthread, NULL, threadfunc2, a);
+
+//    SpeedTest();
+
+//    char *p = (char *)malloc(1024);
+//    strncpy(p, "abc", 1024);
+//
+//    char *mp = (char *)((uintptr_t)p | 0xff00000000000000);
+//
+//    LOGD(TAG, "p = %p, *p = %s, mp = %p, *mp = %s,", p, p, mp, mp);
+//
+//    strncpy(mp, "def", 1024);
+//
+//    LOGD(TAG, "-> p = %p, *p = %s, mp = %p, *mp = %s,", p, p, mp, mp);
+
 }
 
 #ifdef __cplusplus
