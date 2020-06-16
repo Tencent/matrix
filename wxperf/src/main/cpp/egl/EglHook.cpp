@@ -38,9 +38,9 @@ void store_stack_info(uint64_t egl_resource, jmethodID methodId, char *java_stac
 
     if (env != NULL) {
         jstring js = charTojstring(env, java_stack);
-        env->CallStaticVoidMethod(m_class_EglHook,
-                                  methodId,
-                                  egl_resource, native_stack_hash, js);
+//        env->CallStaticVoidMethod(m_class_EglHook,
+//                                  methodId,
+//                                  egl_resource, native_stack_hash, js);
     }
 }
 
@@ -54,9 +54,9 @@ void release_egl_resource(jmethodID methodId, uint64_t egl_resource) {
     }
 
     if (env != NULL) {
-        env->CallStaticVoidMethod(m_class_EglHook,
-                                  methodId,
-                                  egl_resource);
+//        env->CallStaticVoidMethod(m_class_EglHook,
+//                                  methodId,
+//                                  egl_resource);
     }
 }
 

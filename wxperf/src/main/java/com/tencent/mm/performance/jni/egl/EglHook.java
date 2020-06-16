@@ -140,6 +140,7 @@ public class EglHook extends AbsHook {
     }
 
     public interface OnChangeListener {
+
         void onCreateEglContext(EglResourceMonitor eglContextMonitor);
 
         void onDeleteEglContext(long eglContextId);
@@ -149,5 +150,7 @@ public class EglHook extends AbsHook {
         void onCreatePbufferSurface(EglResourceMonitor eglContextMonitor);
 
         void onDeleteEglSurface(long eglSurfaceId);
+
     }
+
 }
