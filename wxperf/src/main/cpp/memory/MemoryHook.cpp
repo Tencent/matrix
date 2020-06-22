@@ -24,6 +24,7 @@
 #include "StackTrace.h"
 #include "Utils.h"
 #include "unwindstack/Unwinder.h"
+#include "ThreadPool.h"
 #include "MemoryHook.h"
 
 struct ptr_meta_t {
@@ -75,6 +76,7 @@ struct tsd_t {
     std::multimap<void *, ptr_meta_t> ptr_metas;
     std::map<uint64_t, stack_meta_t>  stack_metas;
     std::multimap<void *, uint64_t>   borrowed_ptrs;
+    size_t                            worker_idx;
 
     tsd_t() {
         owner_thread = pthread_self();
@@ -124,6 +126,9 @@ struct merge_bucket_t {
 
     size_t borrowed_count;
 };
+
+static multi_worker_thread_pool m_thread_pool(4);
+static worker                              worker;
 
 static merge_bucket_t m_merge_bucket;
 
@@ -261,6 +266,7 @@ static inline size_t repay_debt(merge_bucket_t *__merge_bucket) {
         auto free_stamp_it = free_stamps.begin();
         auto alloc_meta_it = alloc_metas.begin();
 
+        //  TODO 推断优化 ？
         while (free_stamp_it != free_stamps.end() && alloc_meta_it != alloc_metas.end()) {
             if (*free_stamp_it < alloc_meta_it->mem_stamp) {
                 free_stamp_it++;
@@ -278,8 +284,12 @@ static inline size_t repay_debt(merge_bucket_t *__merge_bucket) {
             std::lock_guard<std::shared_mutex> dirty_ptr_lock(m_dirty_ptrs_shared_mutex);
             m_dirty_ptrs.erase(free_ptr);
         } else if (alloc_metas.size() > 1) {
-//            LOGD(TAG, "repay_debt -------> ERROR: retained MORE than one same ptr, size = %zu",
-//                 alloc_metas.size()); // fixme why？可能 free 没有 hook 到? 打地鼠 case？
+            // 可能 free 没有 hook 到? 打地鼠 case？不管怎样都只保留最后一个
+            auto rbegin = alloc_metas.rbegin();
+            rbegin++;
+            assert(rbegin != alloc_metas.rend());
+            alloc_metas.erase(alloc_metas.begin(), rbegin.base());
+            assert(alloc_metas.size() == 1);
         }
     }
 
@@ -307,7 +317,10 @@ static inline void minor_merge() {
                 abort();
             }
         }
-        delete tsd;
+        // safe delete
+        m_thread_pool.execute([tsd] {
+            delete tsd;
+        }, tsd->worker_idx);
     }
 }
 
@@ -386,7 +399,11 @@ static inline void on_caller_thread_destroy(void *__arg) {
 //         repaid_count, m_merge_bucket.borrowed_ptrs.size(), current_tsd);
 
     m_tsd_global_set.erase(current_tsd);
-    delete current_tsd;
+
+    m_thread_pool.execute([current_tsd] {
+        delete current_tsd;
+    }, current_tsd->worker_idx);
+
 }
 
 void memory_hook_init() {
@@ -404,6 +421,7 @@ static inline tsd_t *tsd_fetch(bool __replace) {
     if (unlikely(!tsd) || unlikely(__replace)) {
         LOGI(TAG, "tsd_fetch: creating new tsd");
         tsd = new tsd_t;
+        tsd->worker_idx = m_thread_pool.worker_choose(((uintptr_t)tsd >> 14) ^ ((unsigned long)tsd->owner_thread >> 4));
         pthread_setspecific(m_tsd_key, tsd);
 
         std::lock_guard<std::mutex> global_tsd_set_lock(m_tsd_global_set_mutex);
@@ -427,13 +445,14 @@ static inline bool should_do_unwind(size_t __byte_count, void *__caller) {
     return false;
 }
 
-static inline bool tsd_acquire(ptr_meta_t &__meta) {
-    tsd_t *tsd = tsd_fetch(false);
+// fixme
+static inline bool tsd_acquire(tsd_t *tsd, ptr_meta_t &__meta) {
+//    tsd_t *tsd = tsd_fetch(false);
 
     std::lock_guard<std::mutex> tsd_lock(tsd->tsd_mutex);
 
     // TODO 只在 merge_bucket 里面存储 stack？
-    // TODO 在锁外获取 Java 堆栈
+    // fixme 在锁外获取 Java 堆栈
     // fixme 不用 new vector
     if (is_stacktrace_enabled && should_do_unwind(__meta.size, __meta.caller)) {
 
@@ -489,11 +508,13 @@ static inline void on_acquire_memory(void *__caller,
     ptr_meta.mem_stamp    = stamp;
     ptr_meta.owner_thread = tsd->owner_thread;
 
-    if (tsd_acquire(ptr_meta)) {
+//    m_thread_pool.execute([&tsd, &ptr_meta] {
+
+    if (tsd_acquire(tsd, ptr_meta)) {
 
 //        NanoSeconds_Start(begin);
 
-        tsd_fetch(true); // replace current tsd
+        tsd_fetch(true); // replace current tsd fixme 如果跑在子线程的话不能在这里 fetch
         std::unique_lock<std::mutex> merge_lock(m_merge_mutex);
         m_merge_waiting_buffer.emplace_back(tsd);
         m_merge_cv.notify_one();
@@ -503,6 +524,10 @@ static inline void on_acquire_memory(void *__caller,
              "on_acquire_memory: triggerred flush ptr = %zu, bor = %zu, stack = %zu",
              tsd->ptr_metas.size(), tsd->borrowed_ptrs.size(), tsd->stack_metas.size());
     }
+
+//    }, tsd->worker_idx);
+
+
 //    NanoSeconds_End(alloc_cost, alloc_begin);
 //    LOGD(TAG, "alloc cost %lld", alloc_cost);
 }
@@ -516,7 +541,7 @@ static inline bool do_release_memory_meta(void *__ptr, tsd_t *__tsd, bool __is_m
 
 //    auto &ptr_set = meta_it->second;
     auto idx = meta_it.first;
-    assert(++idx == meta_it.second);// 到这里说明肯定有且只有一个记录
+    assert(++idx == meta_it.second);// 到这里说明肯定有且只有一个记录, fixme crash why ?
 
     auto &meta = meta_it.first->second;
 
@@ -543,56 +568,66 @@ static inline void on_release_memory(void *__ptr, bool __is_mmap) {
         LOGE(TAG, "on_release_memory: invalid pointer");
         return;
     }
-//    NanoSeconds_Start(release_begin);
+    NanoSeconds_Start(release_begin);
 //    long long query_cost = 0;
 //    long long dirty_cost = 0;
     uint64_t stamp = m_mem_stamp.fetch_add(1, std::memory_order_release);
 
     tsd_t *tsd = tsd_fetch(false);
 
-    bool released = false;
-    bool merged   = false;
-    if (!is_dirty_ptr(__ptr)) {
-        // 该指针没有跨线程, 或者第一次跨线程
-        {
-            std::lock_guard<std::mutex> tsd_lock(tsd->tsd_mutex);
-            released = do_release_memory_meta(__ptr, tsd, __is_mmap);
-        }
+    m_thread_pool.execute([tsd, __ptr, __is_mmap, stamp] {
+        bool released = false;
+        bool merged   = false;
+        if (!is_dirty_ptr(__ptr)) {
+            // 该指针没有跨线程, 或者第一次跨线程
+            {
+                std::lock_guard<std::mutex> tsd_lock(tsd->tsd_mutex);
+                released = do_release_memory_meta(__ptr, tsd, __is_mmap);
+            }
 
-        if (!released) {
+            if (!released) {
 //            NanoSeconds_Start(query_begin);
 
-            // fixme 慢了一倍多
-            m_merge_bucket.bucket_shared_mutex.lock_shared();
+                // fixme 慢了一倍多
+                m_merge_bucket.bucket_shared_mutex.lock_shared();
 
-            if (0 != m_merge_bucket.ptrs_of_alloc_thread.count(tsd->owner_thread)) {
-                merged =
-                        0 != m_merge_bucket.ptrs_of_alloc_thread.at(tsd->owner_thread).count(__ptr);
+                if (0 != m_merge_bucket.ptrs_of_alloc_thread.count(tsd->owner_thread)) {
+                    merged =
+                            0 !=
+                            m_merge_bucket.ptrs_of_alloc_thread.at(tsd->owner_thread).count(__ptr);
 //                LOGD(TAG, "merged size = %zu",
 //                     m_merge_bucket.ptrs_of_alloc_thread.at(tsd->owner_thread).size());
-            }
-            m_merge_bucket.bucket_shared_mutex.unlock_shared();
+                }
+                m_merge_bucket.bucket_shared_mutex.unlock_shared();
 
 //            NanoSeconds_End(query_end, query_begin);
 //            query_cost = query_end;
+            }
         }
-    }
 
-    if (!released) { // 该指针跨线程了或者被合并了
+        if (!released) { // 该指针跨线程了或者被合并了
 
-        if (!merged) {
+            if (!merged) {
 //            NanoSeconds_Start(dirty_begin);
-            std::lock_guard<std::shared_mutex> dirty_ptr_lock(m_dirty_ptrs_shared_mutex);
-            m_dirty_ptrs.emplace(__ptr); // mark dirty
+                std::lock_guard<std::shared_mutex> dirty_ptr_lock(m_dirty_ptrs_shared_mutex);
+                m_dirty_ptrs.emplace(__ptr); // mark dirty
 //            NanoSeconds_End(dirty_end, dirty_begin);
 //            dirty_cost = dirty_end;
-        }
+            }
 
-        std::lock_guard<std::mutex> tsd_lock(tsd->tsd_mutex);
-        tsd->borrowed_ptrs.emplace(__ptr, stamp); // borrow
-    }
-//    NanoSeconds_End(release_cost, release_begin);
-//    LOGD(TAG, "release cost %lld", release_cost);
+            std::lock_guard<std::mutex> tsd_lock(tsd->tsd_mutex);
+            tsd->borrowed_ptrs.emplace(__ptr, stamp); // borrow
+        }
+    }, tsd->worker_idx);
+
+//    m_thread_pool.execute([tsd] {
+////        usleep(100000);
+//        assert(tsd != nullptr);
+//        LOGD(TAG, "do nothing but fetch tsd, %p", tsd);
+//    });
+
+    NanoSeconds_End(release_cost, release_begin);
+    LOGD(TAG, "release cost %lld", release_cost);
 //    LOGD(TAG, "release cost %lld, query cost %lld, dirty cost %lld", release_cost, query_cost, dirty_cost);
 }
 

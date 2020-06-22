@@ -36,17 +36,17 @@ public class MainActivity extends AppCompatActivity {
         Log.d(TAG, "threadName = " + threadNameRegex + ", " + name.matches(threadNameRegex));
 
         try {
-            HookManager.INSTANCE
-                    .addHook(MemoryHook.INSTANCE
-                            .addHookSo(".*libnative-lib\\.so$")
-                            .enableStacktrace(false)
-                            .enableMmapHook(false))
+//            HookManager.INSTANCE
+//                    .addHook(MemoryHook.INSTANCE
+//                            .addHookSo(".*libnative-lib\\.so$")
+//                            .enableStacktrace(false)
+//                            .enableMmapHook(false))
 //                    .addHook(PthreadHook.INSTANCE
 //                                    .addHookSo(".*\\.so$")
 //                                    .addHookThread(".*")
 ////                                    .addHookThread(threadNameRegex)
 //                    )
-                    .commitHooks();
+//                    .commitHooks();
 
             throw new HookManager.HookFailedException("adfad");
         } catch (HookManager.HookFailedException e) {
@@ -231,5 +231,36 @@ public class MainActivity extends AppCompatActivity {
 
     public void tlsTest(View view) {
         JNIObj.tlsTest();
+    }
+
+    public void poolTest(View view) {
+        for (int i = 0; i < 10; i++) {
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    JNIObj.poolTest();
+                }
+            }).start();
+        }
+    }
+
+    public void epollTest(View view) {
+//        JNIObj.epollTest();
+//
+//        try {
+//            Thread.sleep(1000);
+//        } catch (InterruptedException e) {
+//            e.printStackTrace();
+//        }
+
+        for (int i = 0; i < 1; i++) {
+
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    JNIObj.epollTest();
+                }
+            }).start();
+        }
     }
 }
