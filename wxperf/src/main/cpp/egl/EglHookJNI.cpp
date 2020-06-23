@@ -6,7 +6,7 @@
 #include <xhook.h>
 #include <EGL/egl.h>
 #include "EglHook.h"
-#include "log.h"
+#include "Log.h"
 
 #ifdef __cplusplus
 extern "C" {

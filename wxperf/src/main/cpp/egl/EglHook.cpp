@@ -3,7 +3,7 @@
 //
 
 #include "EglHook.h"
-#include "log.h"
+#include "Log.h"
 #include <EGL/egl.h>
 
 #define ORIGINAL_LIB "libEGL.so"
