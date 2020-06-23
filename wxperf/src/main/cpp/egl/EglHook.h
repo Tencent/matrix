@@ -8,7 +8,7 @@
 #include "HookCommon.h"
 #include <EGL/egl.h>
 #include <StackTrace.h>
-#include <utils.h>
+#include "Utils.h"
 
 DECLARE_HOOK_ORIG(EGLContext, eglCreateContext, EGLDisplay dpy, EGLConfig config,
                   EGLContext share_context, const EGLint *attrib_list);
