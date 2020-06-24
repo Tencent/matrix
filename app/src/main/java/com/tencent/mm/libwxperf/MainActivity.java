@@ -49,15 +49,15 @@ public class MainActivity extends AppCompatActivity {
                             .addHookSo(".*libnative-lib\\.so$")
                             .enableStacktrace(false)
                             .enableMmapHook(false))
-//                    .addHook(PthreadHook.INSTANCE
-////                            .addHookSo(".*libnative-lib\\.so$")
-//                                    .addHookSo(".*\\.so$")
-////                            .addIgnoreSo(".*libart\\.so$")
-//                            .addHookThread(".*")
-////                                    .addHookThread(threadNameRegex)
-////                            .addHookThread("MyHandlerThread")
-////                            .addHookThread("\\[GT\\]MediaCodecR$")
-//                    )
+                    .addHook(PthreadHook.INSTANCE
+//                            .addHookSo(".*libnative-lib\\.so$")
+                                    .addHookSo(".*\\.so$")
+//                            .addIgnoreSo(".*libart\\.so$")
+                            .addHookThread(".*")
+//                                    .addHookThread(threadNameRegex)
+//                            .addHookThread("MyHandlerThread")
+//                            .addHookThread("\\[GT\\]MediaCodecR$")
+                    )
                     .commitHooks();
 
 //            throw new HookManager.HookFailedException("adfad");

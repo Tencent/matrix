@@ -79,48 +79,32 @@ void test_log_to_file(const char *ch) {
 }
 
 bool get_java_stacktrace(char *__stack, size_t __size) {
-    JNIEnv *env = NULL;
-    bool attached = false;
+    JNIEnv *env = nullptr;
 
     if (!__stack) {
         return false;
     }
 
-    if (m_java_vm->GetEnv((void **)&env, JNI_VERSION_1_6) != JNI_OK) {
-        if (m_java_vm->AttachCurrentThread(&env, NULL) == JNI_OK) {
-            attached = true;
-        } else {
-            return false;
-        }
-    }
-
-    if (env != NULL) {
-        LOGD("Yves-debug", "get_java_stacktrace call");
+    if (m_java_vm->GetEnv((void **)&env, JNI_VERSION_1_6) == JNI_OK) {
+        LOGD(TAG, "get_java_stacktrace call");
 
         jstring j_stacktrace = (jstring) env->CallStaticObjectMethod(m_class_HookManager, m_method_getStack);
 
-        LOGD("Yves-debug", "get_java_stacktrace called");
+        LOGD(TAG, "get_java_stacktrace called");
         const char *stack = env->GetStringUTFChars(j_stacktrace, NULL);
         if (stack) {
             const size_t cpy_len = std::min(strlen(stack) + 1, __size - 1);
             memcpy(__stack, stack, cpy_len);
             __stack[cpy_len] = '\0';
         } else {
-            strncpy(__stack, "  get java stacktrace failed", __size);
+            strncpy(__stack, "\tget java stacktrace failed", __size);
         }
         env->ReleaseStringUTFChars(j_stacktrace, stack);
-
-        if (attached) {
-            m_java_vm->DetachCurrentThread();
-        }
 
         return true;
     }
 
-    strncpy(__stack, "  null", __size);
-    if (attached) {
-        m_java_vm->DetachCurrentThread();
-    }
+    strncpy(__stack, "\tnull", __size);
     return false;
 }
 
@@ -157,4 +141,7 @@ Java_com_tencent_mm_performance_jni_HookManager_xhookClearNative(JNIEnv *env, jo
 
 #ifdef __cplusplus
 }
+
+#undef TAG
+
 #endif
