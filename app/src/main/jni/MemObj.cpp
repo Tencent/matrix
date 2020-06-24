@@ -12,12 +12,23 @@
 #include <pthread.h>
 #include <iostream>
 #include <sstream>
+#include <map>
+#include <unordered_map>
+#include <sys/epoll.h>
+#include <sys/eventfd.h>
+#include "../../../../wxperf/src/main/cpp/common/Log.h"
+#include "../../../../wxperf/src/main/cpp/common/ThreadPool.h"
+//#include "../../../../wxperf/src/main/cpp/memory/PointerMetaContainer.h"
+
 
 #define LOGD(TAG, FMT, args...) __android_log_print(ANDROID_LOG_DEBUG, TAG, FMT, ##args)
+#define TAG "Yves-test"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+using namespace std;
 
 int count = 0;
 
@@ -49,7 +60,23 @@ Java_com_tencent_mm_libwxperf_JNIObj_reallocTest(JNIEnv *env, jobject instance) 
     LOGD("Yves-debug", "malloc p = %p", p);
 
     p = realloc(p, 4);
-    LOGD("Yves-debug", "realloc p = %p", p);
+    LOGD("Yves-debug", "1 realloc p = %p", p);
+
+    p = realloc(p, 8);
+    LOGD("Yves-debug", "2 realloc p = %p", p);
+
+    free(p);
+
+    void *pp[100];
+
+    for (int i = 0; i < 100; ++i) {
+        pp[i] = malloc(i);
+//        free(p);
+    }
+
+    for (int i = 0; i < 50; ++i) {
+        free(pp[i]);
+    }
 }
 
 JNIEXPORT void JNICALL
@@ -69,14 +96,14 @@ Java_com_tencent_mm_libwxperf_JNIObj_doSomeThing(JNIEnv *env, jobject instance) 
 //        free(p);
 //    }
 
-    int * pi = new int;
+    int *pi = new int;
 //    pi = new int;
 //    pi = new int;
 //    pi = new int;
 
     int LEN = 10000;
 
-    int * p_arr[LEN];
+    int *p_arr[LEN];
 
     for (int i = 0; i < LEN; ++i) {
         p_arr[i] = NULL;
@@ -327,7 +354,7 @@ Java_com_tencent_mm_libwxperf_JNIObj_doSomeThing(JNIEnv *env, jobject instance) 
         }
     }
 
-    *pi = count++;
+//    *pi = count++;
     LOGD("Yves-sample", " pi = %d", *pi);
 
     LOGD("Yves-sample", "<<<<<<<<<<<<<<<<<<<<end");
@@ -337,9 +364,9 @@ Java_com_tencent_mm_libwxperf_JNIObj_doSomeThing(JNIEnv *env, jobject instance) 
 #define NAMELEN 16
 
 static void *
-threadfunc(void *parm)
-{
-    LOGD("Yves-debug", ">>>>new thread=%ld, tid=%d", pthread_self(), pthread_gettid_np(pthread_self()));
+threadfunc(void *parm) {
+    LOGD("Yves-debug", ">>>>new thread=%ld, tid=%d", pthread_self(),
+         pthread_gettid_np(pthread_self()));
     sleep(5);          // allow main program to set the thread name
     return NULL;
 }
@@ -370,7 +397,7 @@ static int read_thread_name(pthread_t __pthread, char *__buf, size_t __n) {
     return 0;
 }
 
-static int wrap_pthread_getname_np(pthread_t __pthread, char* __buf, size_t __n) {
+static int wrap_pthread_getname_np(pthread_t __pthread, char *__buf, size_t __n) {
 #if __ANDROID_API__ >= 26
     return pthread_getname_np(__pthread, __buf, __n);
 #else
@@ -382,26 +409,27 @@ JNIEXPORT void JNICALL
 Java_com_tencent_mm_libwxperf_JNIObj_testThread(JNIEnv *env, jclass clazz) {
 
     pthread_t thread;
-    int rc;
-    char thread_name[NAMELEN];
+    int       rc;
+    char      thread_name[NAMELEN];
 
     rc = pthread_create(&thread, NULL, threadfunc, NULL);
 
     pthread_setname_np(thread, "123456789ABCDEF");
 
     if (rc != 0)
-        LOGD("Yves-debug","pthread_create: %d", rc);
-    LOGD("Yves-debug", "origin thread=%ld, tid=%d", pthread_self(), pthread_gettid_np(pthread_self()));
+        LOGD("Yves-debug", "pthread_create: %d", rc);
+    LOGD("Yves-debug", "origin thread=%ld, tid=%d", pthread_self(),
+         pthread_gettid_np(pthread_self()));
 
     wrap_pthread_getname_np(thread, thread_name, 16);
 
-    LOGD("Yves-debug","Created a thread. Default name is: %s", thread_name);
+    LOGD("Yves-debug", "Created a thread. Default name is: %s", thread_name);
 }
 
 pthread_key_t key;
 
 void dest(void *arg) {
-    LOGD("Yves-debug", "dest is running on %ld arg=%p, *arg=%d", pthread_self(), arg, *(int *)arg);
+    LOGD("Yves-debug", "dest is running on %ld arg=%p, *arg=%d", pthread_self(), arg, *(int *) arg);
 }
 
 void *threadfunc2(void *arg) {
@@ -450,12 +478,12 @@ void copy(std::vector<Obj> *dest) {
 
     std::vector<Obj> src;
 
-    src.push_back({11,22});
-    src.push_back({22,22});
-    src.push_back({3,22});
-    src.push_back({4,22});
-    src.push_back({5,22});
-    src.push_back({6,22});
+    src.push_back({11, 22});
+    src.push_back({22, 22});
+    src.push_back({3, 22});
+    src.push_back({4, 22});
+    src.push_back({5, 22});
+    src.push_back({6, 22});
 
     *dest = src;
 }
@@ -497,14 +525,14 @@ Java_com_tencent_mm_libwxperf_JNIObj_testJNICall(JNIEnv *env, jclass clazz) {
 //        LOGD("Vector-test", "a=%d, b=%d", obj.a, obj.b);
 //    }
 
-    char * ch = static_cast<char *>(malloc(64));
+    char *ch = static_cast<char *>(malloc(64));
 
     std::atomic<char *> atomic_ch;
     atomic_ch.store(ch);
 
     LOGD("Yves-debug", "atomic test: %p -> %p", ch, atomic_ch.load());
 
-    char * ch2 = static_cast<char *>(malloc(64));
+    char *ch2 = static_cast<char *>(malloc(64));
 
     std::atomic<char *> atomic_ch2;
     atomic_ch2.store(ch, std::memory_order_release);
@@ -572,6 +600,55 @@ Java_com_tencent_mm_libwxperf_JNIObj_mallocTest(JNIEnv *env, jclass clazz) {
 
 }
 
+void SpeedTest() {
+    map<uint64_t, size_t>           m;
+    unordered_map<uint64_t, size_t> um;
+
+    size_t TIMES = 100000;
+
+    NanoSeconds_Start(mbegin);
+//        ptr_meta_t meta{};
+    for (size_t i = 0; i < TIMES; ++i) {
+//        meta.size = i;
+        m[i] = i;
+    }
+    NanoSeconds_End(mend, mbegin);
+    LOGD(TAG, "          map cost %d", mend);
+
+
+    NanoSeconds_Start(umbegin);
+    for (size_t i = 0; i < TIMES; ++i) {
+//        meta.size = i;
+        um[i] = i;
+    }
+    NanoSeconds_End(umend, umbegin);
+    LOGD(TAG, "unordered_map cost %d", umend);
+
+    NanoSeconds_Start(mbegin2);
+
+//    auto m_it = m.find(100);
+//    if (m_it != m.end()) {
+//        LOGD(TAG, "map found %zu", m_it->second);
+//    }
+
+    m.erase(999);
+
+    NanoSeconds_End(mend2, mbegin2);
+    LOGD(TAG, "          map find cost %lld", mend2);
+
+    NanoSeconds_Start(umbegin2);
+//        ptr_meta_t meta{};
+
+//    auto um_it = um.find(100);
+//    if (um_it != um.end()) {
+//        LOGD(TAG, "map found %zu", um_it->second);
+//    }
+    um.erase(999);
+
+    NanoSeconds_End(umend2, umbegin2);
+    LOGD(TAG, "          map find cost %lld", umend2);
+}
+
 JNIEXPORT void JNICALL
 Java_com_tencent_mm_libwxperf_JNIObj_tlsTest(JNIEnv *env, jclass clazz) {
 
@@ -580,9 +657,171 @@ Java_com_tencent_mm_libwxperf_JNIObj_tlsTest(JNIEnv *env, jclass clazz) {
     }
 
     pthread_t pthread;
-    int *a = new int;
+    int       *a = new int;
     *a = 10086;
     pthread_create(&pthread, NULL, threadfunc2, a);
+
+//    SpeedTest();
+
+//    char *p = (char *)malloc(1024);
+//    strncpy(p, "abc", 1024);
+//
+//    char *mp = (char *)((uintptr_t)p | 0xff00000000000000);
+//
+//    LOGD(TAG, "p = %p, *p = %s, mp = %p, *mp = %s,", p, p, mp, mp);
+//
+//    strncpy(mp, "def", 1024);
+//
+//    LOGD(TAG, "-> p = %p, *p = %s, mp = %p, *mp = %s,", p, p, mp, mp);
+
+
+}
+
+worker *w = nullptr;
+
+multi_worker_thread_pool mw(4);
+
+size_t test_count = 0;
+std::mutex test_mutex;
+
+JNIEXPORT void JNICALL
+Java_com_tencent_mm_libwxperf_JNIObj_poolTest(JNIEnv *env, jclass clazz) {
+//    if (w) {
+//        delete w;
+//        w = nullptr;
+//        LOGD(TAG, "delete");
+//    } else {
+//        w = new worker;
+//        w->execute([]{ LOGD(TAG, "executing task1... %d", std::rand());});
+//        w->execute([]{ LOGD(TAG, "executing task2...");});
+//        w->execute([]{ LOGD(TAG, "executing task3...\n");});
+//    }
+
+//    LOGD(TAG, "choose : %zu, %d", mw.worker_choose(0x150), 0x150 % 16);
+//    LOGD(TAG, "choose : %zu", mw.worker_choose(0x140));
+//    LOGD(TAG, "choose : %zu", mw.worker_choose(0x130));
+//    LOGD(TAG, "choose : %zu", mw.worker_choose(0x120));
+//    LOGD(TAG, "choose : %zu", mw.worker_choose(0x110));
+//    LOGD(TAG, "choose : %zu", mw.worker_choose(0x10));
+
+//    size_t idx = mw.worker_choose(100);
+//    size_t idx2 = mw.worker_choose(101);
+
+//    for (int i = 0; i < 10; ++i) {
+//        auto fun = [i] { LOGD(TAG, "mw execute... %d", i); };
+//        mw.execute(fun,idx);
+//    }
+
+    for (int i = 0; i < 10000; ++i) {
+        auto fun = [i] {
+//            LOGD(TAG, "mw execute... %d", i);
+            std::lock_guard<std::mutex> lock(test_mutex);
+            test_count++;
+//            usleep(1000);
+        };
+        mw.execute(fun, mw.worker_choose(i));
+    }
+
+    sleep(10);
+    std::lock_guard<std::mutex> lock(test_mutex);
+    LOGD(TAG, "final test_count = %zu", test_count);
+}
+
+#define EPOLL_MAX_EVENTS 16
+
+volatile int wake_fd = -1;
+size_t res = 0;
+
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wmissing-noreturn"
+void epollTest() {
+    wake_fd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
+    int epoll_fd = epoll_create1(EPOLL_CLOEXEC);
+    struct epoll_event eventItem;
+    memset(&eventItem, 0, sizeof(epoll_event)); // zero out unused members of data field union
+    eventItem.events = EPOLLIN;
+    eventItem.data.fd = wake_fd;
+    int result = epoll_ctl(epoll_fd, EPOLL_CTL_ADD, wake_fd, &eventItem);
+
+    struct epoll_event eventItems[EPOLL_MAX_EVENTS];
+
+
+    uint64_t msg = 10086;
+    ssize_t ssize = TEMP_FAILURE_RETRY(write(wake_fd, &msg, sizeof(uint64_t)));
+
+    for (;;) {
+        LOGD(TAG, "loop...");
+        int eventCount = epoll_wait(epoll_fd, eventItems, EPOLL_MAX_EVENTS, -1);
+
+        for (int i = 0; i < eventCount; i++) {
+            int fd = eventItems[i].data.fd;
+            uint32_t epollEvents = eventItems[i].events;
+            if (fd == wake_fd) {
+                uint64_t received = 0;
+                TEMP_FAILURE_RETRY(read(fd, &received, sizeof(uint64_t)));
+                res++;
+                LOGD(TAG, "received fd event %d, %lu, %u", fd, received, epollEvents);
+            } else {
+                LOGD(TAG, "fd ? %d", fd);
+            }
+        }
+
+        for (int i = 0; i < 10000; ++i) {
+            std::lock_guard<std::mutex> lock(test_mutex);
+            test_count++;
+        }
+//        std::lock_guard<std::mutex> lock(test_mutex);
+//        LOGD(TAG, "print log ......, %zu", test_count++);
+    }
+}
+#pragma clang diagnostic pop
+
+JNIEXPORT void JNICALL
+Java_com_tencent_mm_libwxperf_JNIObj_epollTest(JNIEnv *env, jclass clazz) {
+    if (wake_fd == -1) {
+//        std::thread(epollTest());
+        epollTest();
+    } else {
+
+        for (int i = 0; i < 10000; ++i) {
+            NanoSeconds_Start(begin);
+            uint64_t msg = i;
+            ssize_t ssize = TEMP_FAILURE_RETRY(write(wake_fd, &msg, sizeof(uint64_t)));
+//            TEMP_FAILURE_RETRY(write(wake_fd, &msg, sizeof(uint64_t)));
+
+            NanoSeconds_End(cost, begin);
+            LOGD(TAG, "write fd cost %lld", cost);
+
+            if (ssize != sizeof(uint64_t)) {
+                abort();
+            }
+//            sleep(1);
+        }
+    }
+
+    sleep(5);
+    LOGD(TAG, "final res = %zu", res);
+
+//    if (wake_fd == -1) {
+//        wake_fd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
+//    } else {
+//        uint64_t msg = 1;
+//        TEMP_FAILURE_RETRY(write(wake_fd, &msg, sizeof(uint64_t)));
+//    }
+//
+//    sleep(5);
+//    uint64_t received = 0;
+//    TEMP_FAILURE_RETRY(read(wake_fd, &received, sizeof(uint64_t)));
+//    LOGD(TAG, "read fd %lu", received);
+}
+
+JNIEXPORT void JNICALL
+Java_com_tencent_mm_libwxperf_JNIObj_concurrentMapTest(JNIEnv *env, jclass clazz) {
+
+    int r = ({int i = 0; int j = 1; int k = 2; j;});
+
+    LOGD(TAG, "res = %d", r);
+
 }
 
 #ifdef __cplusplus

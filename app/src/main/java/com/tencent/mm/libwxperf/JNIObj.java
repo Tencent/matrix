@@ -36,6 +36,12 @@ public class JNIObj {
 
     public native static void tlsTest();
 
+    public native static void poolTest();
+
+    public native static void epollTest();
+
+    public native static void concurrentMapTest();
+
     public static String calledByJNI() {
         Log.d("Yves-debug", "called By JNI");
         return stackTraceToString(new Throwable().getStackTrace());
