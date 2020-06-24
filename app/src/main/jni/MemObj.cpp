@@ -18,6 +18,7 @@
 #include <sys/eventfd.h>
 #include "../../../../wxperf/src/main/cpp/common/Log.h"
 #include "../../../../wxperf/src/main/cpp/common/ThreadPool.h"
+//#include "../../../../wxperf/src/main/cpp/memory/PointerMetaContainer.h"
 
 
 #define LOGD(TAG, FMT, args...) __android_log_print(ANDROID_LOG_DEBUG, TAG, FMT, ##args)
@@ -59,7 +60,23 @@ Java_com_tencent_mm_libwxperf_JNIObj_reallocTest(JNIEnv *env, jobject instance) 
     LOGD("Yves-debug", "malloc p = %p", p);
 
     p = realloc(p, 4);
-    LOGD("Yves-debug", "realloc p = %p", p);
+    LOGD("Yves-debug", "1 realloc p = %p", p);
+
+    p = realloc(p, 8);
+    LOGD("Yves-debug", "2 realloc p = %p", p);
+
+    free(p);
+
+    void *pp[100];
+
+    for (int i = 0; i < 100; ++i) {
+        pp[i] = malloc(i);
+//        free(p);
+    }
+
+    for (int i = 0; i < 50; ++i) {
+        free(pp[i]);
+    }
 }
 
 JNIEXPORT void JNICALL
@@ -796,6 +813,15 @@ Java_com_tencent_mm_libwxperf_JNIObj_epollTest(JNIEnv *env, jclass clazz) {
 //    uint64_t received = 0;
 //    TEMP_FAILURE_RETRY(read(wake_fd, &received, sizeof(uint64_t)));
 //    LOGD(TAG, "read fd %lu", received);
+}
+
+JNIEXPORT void JNICALL
+Java_com_tencent_mm_libwxperf_JNIObj_concurrentMapTest(JNIEnv *env, jclass clazz) {
+
+    int r = ({int i = 0; int j = 1; int k = 2; j;});
+
+    LOGD(TAG, "res = %d", r);
+
 }
 
 #ifdef __cplusplus

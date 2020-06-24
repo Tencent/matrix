@@ -36,19 +36,19 @@ public class MainActivity extends AppCompatActivity {
         Log.d(TAG, "threadName = " + threadNameRegex + ", " + name.matches(threadNameRegex));
 
         try {
-//            HookManager.INSTANCE
-//                    .addHook(MemoryHook.INSTANCE
-//                            .addHookSo(".*libnative-lib\\.so$")
-//                            .enableStacktrace(false)
-//                            .enableMmapHook(false))
+            HookManager.INSTANCE
+                    .addHook(MemoryHook.INSTANCE
+                            .addHookSo(".*libnative-lib\\.so$")
+                            .enableStacktrace(false)
+                            .enableMmapHook(false))
 //                    .addHook(PthreadHook.INSTANCE
 //                                    .addHookSo(".*\\.so$")
 //                                    .addHookThread(".*")
 ////                                    .addHookThread(threadNameRegex)
 //                    )
-//                    .commitHooks();
+                    .commitHooks();
 
-            throw new HookManager.HookFailedException("adfad");
+//            throw new HookManager.HookFailedException("adfad");
         } catch (HookManager.HookFailedException e) {
             e.printStackTrace();
         }
@@ -107,12 +107,17 @@ public class MainActivity extends AppCompatActivity {
 
     public void reallocTest(View view) {
         final JNIObj jniObj = new JNIObj();
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                jniObj.reallocTest();
-            }
-        }).start();
+        for (int i = 0; i < 30; i++) {
+
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    jniObj.reallocTest();
+                    jniObj.reallocTest();
+                    jniObj.reallocTest();
+                }
+            }).start();
+        }
 //        new Handler().postDelayed(new Runnable() {
 //            @Override
 //            public void run() {
@@ -121,7 +126,7 @@ public class MainActivity extends AppCompatActivity {
 //        }, 2000);
 
         try {
-            Thread.sleep(2);
+            Thread.sleep(500);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
@@ -262,5 +267,9 @@ public class MainActivity extends AppCompatActivity {
                 }
             }).start();
         }
+    }
+
+    public void concurrentMapTest(View view) {
+        JNIObj.concurrentMapTest();
     }
 }
