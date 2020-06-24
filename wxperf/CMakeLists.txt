@@ -28,6 +28,8 @@ set(
         ${SOURCE_DIR}/pthread/PthreadHook.cpp
         ${SOURCE_DIR}/pthread/PthreadHookJNI.cpp
         ${SOURCE_DIR}/dlsym/EnhanceDlsym.cpp
+        ${SOURCE_DIR}/egl/EglHook.cpp
+        ${SOURCE_DIR}/egl/EglHookJNI.cpp
 )
 
 set(

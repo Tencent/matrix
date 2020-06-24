@@ -8,6 +8,7 @@
 #define LIBWXPERF_JNI_HOOKCOMMON_H
 
 #include "JNICommon.h"
+#include <dlfcn.h>
 
 #define GET_CALLER_ADDR(__caller_addr) \
     void * __caller_addr = __builtin_return_address(0)
