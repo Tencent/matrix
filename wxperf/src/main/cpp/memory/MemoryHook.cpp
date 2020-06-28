@@ -231,10 +231,9 @@ static inline void dump_callers(FILE *log_file,
     std::unordered_map<std::string, size_t>                   caller_alloc_size_of_so;
     std::unordered_map<std::string, std::map<size_t, size_t>> same_size_count_of_so;
 
-//    LOGE("Yves.debug", "caller so begin");
+    LOGD(TAG, "caller so begin");
     // 按 so 聚类
     for (auto &i : caller_metas) {
-//        LOGE("Yves.debug", "so sum loop");
         auto caller      = i.first;
         auto caller_meta = i.second;
 
@@ -248,23 +247,22 @@ static inline void dump_callers(FILE *log_file,
 
         // 按 size 聚类
         for (auto pointer : caller_meta.pointers) {
-            m_ptr_meta_container.get(pointer, [&](ptr_meta_t &__meta) {
-                same_size_count_of_so[dl_info.dli_sname][__meta.size]++;
-            });
+            m_ptr_meta_container.get(pointer,
+                                     [&same_size_count_of_so, &dl_info](ptr_meta_t &__meta) {
+                                         same_size_count_of_so[dl_info.dli_fname][__meta.size]++;
+                                     });
         }
     }
 
-//    LOGE("Yves.debug", "begin sort");
     // 排序 so
     std::multimap<size_t, std::string> result_sort_by_size;
 
     std::transform(caller_alloc_size_of_so.begin(),
                    caller_alloc_size_of_so.end(),
                    std::inserter(result_sort_by_size, result_sort_by_size.begin()),
-                   [](std::pair<std::string, size_t> src) {
+                   [](const std::pair<std::string, size_t> &src) {
                        return std::pair<size_t, std::string>(src.second, src.first);
                    });
-//    LOGE("Yves.debug", "sort end");
 
     size_t    caller_total_size = 0;
     for (auto i                 = result_sort_by_size.rbegin();
@@ -284,7 +282,8 @@ static inline void dump_callers(FILE *log_file,
                                    src.first * src.second,
                                    std::pair<size_t, size_t>(src.first, src.second));
                        });
-        int                                              lines         = 20; // fixme hard coding
+
+        int lines = 20; // fixme hard coding
         LOGD(TAG, "top %d (size * count):", lines);
         fprintf(log_file, "top %d (size * count):\n", lines);
 
@@ -484,7 +483,7 @@ void dump(bool enable_mmap_hook, const char *path) {
     LOGD(TAG,
          ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> memory dump begin <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
 
-
+    assert(path != nullptr);
     FILE *log_file = fopen(path, "w+");
     LOGD(TAG, "dump path = %s", path);
     if (!log_file) {
