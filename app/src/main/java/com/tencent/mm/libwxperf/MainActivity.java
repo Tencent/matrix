@@ -44,23 +44,23 @@ public class MainActivity extends AppCompatActivity {
         Log.d(TAG, "threadName = " + threadNameRegex + ", " + name.matches(threadNameRegex));
 
         try {
-            HookManager.INSTANCE
-                    .addHook(MemoryHook.INSTANCE
-                            .addHookSo(".*libnative-lib\\.so$")
-                            .enableStacktrace(false)
-                            .enableMmapHook(false))
-                    .addHook(PthreadHook.INSTANCE
+//            HookManager.INSTANCE
+//                    .addHook(MemoryHook.INSTANCE
 //                            .addHookSo(".*libnative-lib\\.so$")
-                                    .addHookSo(".*\\.so$")
-//                            .addIgnoreSo(".*libart\\.so$")
-                            .addHookThread(".*")
-//                                    .addHookThread(threadNameRegex)
-//                            .addHookThread("MyHandlerThread")
-//                            .addHookThread("\\[GT\\]MediaCodecR$")
-                    )
-                    .commitHooks();
+//                            .enableStacktrace(false)
+//                            .enableMmapHook(false))
+//                    .addHook(PthreadHook.INSTANCE
+////                            .addHookSo(".*libnative-lib\\.so$")
+//                                    .addHookSo(".*\\.so$")
+////                            .addIgnoreSo(".*libart\\.so$")
+//                            .addHookThread(".*")
+////                                    .addHookThread(threadNameRegex)
+////                            .addHookThread("MyHandlerThread")
+////                            .addHookThread("\\[GT\\]MediaCodecR$")
+//                    )
+//                    .commitHooks();
 
-//            throw new HookManager.HookFailedException("adfad");
+            throw new HookManager.HookFailedException("adfad");
         } catch (HookManager.HookFailedException e) {
             e.printStackTrace();
         }
@@ -307,7 +307,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void memoryBenchmark(View view) {
-        MemoryBenchmarkTest.benchmarkNative();
+//        MemoryBenchmarkTest.benchmarkNative();
         try {
             HookManager.INSTANCE
                     .addHook(MemoryHook.INSTANCE
@@ -318,7 +318,13 @@ public class MainActivity extends AppCompatActivity {
         } catch (HookManager.HookFailedException e) {
             e.printStackTrace();
         }
-        MemoryBenchmarkTest.benchmarkNative();
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                MemoryBenchmarkTest.benchmarkNative();
+            }
+        }).start();
+
     }
 
     public void tlsTest(View view) {

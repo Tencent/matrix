@@ -613,7 +613,7 @@ void SpeedTest() {
         m[i] = i;
     }
     NanoSeconds_End(mend, mbegin);
-    LOGD(TAG, "          map cost %d", mend);
+//    LOGD(TAG, "          map cost %d", mend);
 
 
     NanoSeconds_Start(umbegin);
@@ -622,7 +622,7 @@ void SpeedTest() {
         um[i] = i;
     }
     NanoSeconds_End(umend, umbegin);
-    LOGD(TAG, "unordered_map cost %d", umend);
+//    LOGD(TAG, "unordered_map cost %d", umend);
 
     NanoSeconds_Start(mbegin2);
 
@@ -634,7 +634,7 @@ void SpeedTest() {
     m.erase(999);
 
     NanoSeconds_End(mend2, mbegin2);
-    LOGD(TAG, "          map find cost %lld", mend2);
+//    LOGD(TAG, "          map find cost %lld", mend2);
 
     NanoSeconds_Start(umbegin2);
 //        ptr_meta_t meta{};
@@ -646,7 +646,7 @@ void SpeedTest() {
     um.erase(999);
 
     NanoSeconds_End(umend2, umbegin2);
-    LOGD(TAG, "          map find cost %lld", umend2);
+//    LOGD(TAG, "          map find cost %lld", umend2);
 }
 
 JNIEXPORT void JNICALL
@@ -790,7 +790,7 @@ Java_com_tencent_mm_libwxperf_JNIObj_epollTest(JNIEnv *env, jclass clazz) {
 //            TEMP_FAILURE_RETRY(write(wake_fd, &msg, sizeof(uint64_t)));
 
             NanoSeconds_End(cost, begin);
-            LOGD(TAG, "write fd cost %lld", cost);
+//            LOGD(TAG, "write fd cost %lld", cost);
 
             if (ssize != sizeof(uint64_t)) {
                 abort();
