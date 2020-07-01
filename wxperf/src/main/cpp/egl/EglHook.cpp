@@ -23,7 +23,11 @@ jstring charTojstring(JNIEnv *env, const char *pat) {
     // 设置String, 保存语言类型,用于byte数组转换至String时的参数
     jstring encoding = (env)->NewStringUTF("GB2312");
     //将byte数组转换为java String,并输出
-    return (jstring) (env)->NewObject(strClass, ctorID, bytes, encoding);
+    jstring result = (jstring) (env)->NewObject(strClass, ctorID, bytes, encoding);
+
+    env->DeleteLocalRef(bytes);
+    env->DeleteLocalRef(strClass);
+    return result;
 }
 
 void store_stack_info(uint64_t egl_resource, jmethodID methodId, char *java_stack,
@@ -43,6 +47,7 @@ void store_stack_info(uint64_t egl_resource, jmethodID methodId, char *java_stac
         env->CallStaticVoidMethod(m_class_EglHook,
                                   methodId,
                                   egl_resource, native_stack_hash, js);
+        env->DeleteLocalRef(js);
         LOGD("Cc1over-debug", "end call back jni");
     }
 }
@@ -88,7 +93,7 @@ DEFINE_HOOK_FUN(EGLContext, eglCreateContext, EGLDisplay dpy, EGLConfig config,
 
     LOGD("Cc1over-debug", "call into eglCreateContext");
 
-    store_stack_info((uint64_t) ret, m_method_egl_create_context, "get_java_stack()", 0);
+    store_stack_info((uint64_t) ret, m_method_egl_create_context, get_java_stack(), get_native_stack());
 
     return ret;
 }
@@ -113,7 +118,7 @@ DEFINE_HOOK_FUN(EGLSurface, eglCreatePbufferSurface, EGLDisplay dpy, EGLContext 
 
     LOGD("Cc1over-debug", "call into eglCreatePbufferSurface");
 
-    store_stack_info((uint64_t) ret, m_method_egl_create_pbuffer_surface,  "get_java_stack()", 0);
+    store_stack_info((uint64_t) ret, m_method_egl_create_pbuffer_surface, get_java_stack(), get_native_stack());
 
     return ret;
 
@@ -143,7 +148,7 @@ DEFINE_HOOK_FUN(EGLSurface, eglCreateWindowSurface, EGLDisplay dpy, EGLConfig co
 
     LOGD("Cc1over-debug", "call into eglCreateWindowSurface");
 
-    store_stack_info((uint64_t) ret, m_method_egl_create_window_surface,  "get_java_stack()", 0);
+    store_stack_info((uint64_t) ret, m_method_egl_create_window_surface,  get_java_stack(), get_native_stack());
 
     return ret;
 }

@@ -73,15 +73,42 @@ public class MainActivity extends AppCompatActivity {
 //        checkPermission();
 //        Log.d(TAG, "onCreate: path = " + Environment.getExternalStorageDirectory().getAbsolutePath());
 
+        EglHook.initILog(new EglHook.ILog() {
+            @Override
+            public void v(String tag, String info) {
+
+            }
+
+            @Override
+            public void i(String tag, String info) {
+
+            }
+
+            @Override
+            public void e(String tag, String info) {
+                Log.e(tag, info);
+            }
+
+            @Override
+            public void w(String tag, String info) {
+
+            }
+
+            @Override
+            public void d(String tag, String info) {
+
+            }
+        });
+
         findViewById(R.id.btn_egl).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 try {
                     HookManager.INSTANCE
                             .addHook(EglHook.INSTANCE).commitHooks();
-                    Log.e("Cc1over-debug","hook success");
+                    Log.e("Cc1over-debug", "hook success");
                 } catch (HookManager.HookFailedException e) {
-                    Log.e("Cc1over-debug","hook fail");
+                    Log.e("Cc1over-debug", "hook fail");
                 }
             }
         });
@@ -118,7 +145,6 @@ public class MainActivity extends AppCompatActivity {
             e.printStackTrace();
         }
         Log.d(TAG, "dump cost:" + (System.currentTimeMillis() - begin));
-
 
 
     }
