@@ -32,15 +32,18 @@ void store_stack_info(uint64_t egl_resource, jmethodID methodId, char *java_stac
     if (m_java_vm->GetEnv((void **) &env, JNI_VERSION_1_6) != JNI_OK) {
         if (m_java_vm->AttachCurrentThread(&env, NULL) == JNI_OK) {
         } else {
+            LOGD("Cc1over-debug", "AttachCurrentThread != JNI_OK");
             return;
         }
     }
 
     if (env != NULL) {
         jstring js = charTojstring(env, java_stack);
-//        env->CallStaticVoidMethod(m_class_EglHook,
-//                                  methodId,
-//                                  egl_resource, native_stack_hash, js);
+        LOGD("Cc1over-debug", "start call back jni");
+        env->CallStaticVoidMethod(m_class_EglHook,
+                                  methodId,
+                                  egl_resource, native_stack_hash, js);
+        LOGD("Cc1over-debug", "end call back jni");
     }
 }
 
@@ -49,14 +52,17 @@ void release_egl_resource(jmethodID methodId, uint64_t egl_resource) {
     if (m_java_vm->GetEnv((void **) &env, JNI_VERSION_1_6) != JNI_OK) {
         if (m_java_vm->AttachCurrentThread(&env, NULL) == JNI_OK) {
         } else {
+            LOGD("Cc1over-debug", "AttachCurrentThread != JNI_OK");
             return;
         }
     }
 
     if (env != NULL) {
-//        env->CallStaticVoidMethod(m_class_EglHook,
-//                                  methodId,
-//                                  egl_resource);
+        LOGD("Cc1over-debug", "start call back jni");
+        env->CallStaticVoidMethod(m_class_EglHook,
+                                  methodId,
+                                  egl_resource);
+        LOGD("Cc1over-debug", "end call back jni");
     }
 }
 
@@ -80,8 +86,9 @@ DEFINE_HOOK_FUN(EGLContext, eglCreateContext, EGLDisplay dpy, EGLConfig config,
     CALL_ORIGIN_FUNC_RET(EGLContext, ret, eglCreateContext, dpy, config, share_context,
                          attrib_list);
 
-    store_stack_info((uint64_t) ret, m_method_egl_create_context, get_java_stack(),
-                     get_native_stack());
+    LOGD("Cc1over-debug", "call into eglCreateContext");
+
+    store_stack_info((uint64_t) ret, m_method_egl_create_context, "get_java_stack()", 0);
 
     return ret;
 }
@@ -89,6 +96,8 @@ DEFINE_HOOK_FUN(EGLContext, eglCreateContext, EGLDisplay dpy, EGLConfig config,
 DEFINE_HOOK_FUN(EGLBoolean, eglDestroyContext, EGLDisplay dpy, EGLContext ctx) {
 
     release_egl_resource(m_method_egl_destroy_context, (uint64_t) ctx);
+
+    LOGD("Cc1over-debug", "call into eglDestroyContext");
 
     CALL_ORIGIN_FUNC_RET(EGLBoolean, ret, eglDestroyContext, dpy, ctx);
 
@@ -102,8 +111,9 @@ DEFINE_HOOK_FUN(EGLSurface, eglCreatePbufferSurface, EGLDisplay dpy, EGLContext 
     CALL_ORIGIN_FUNC_RET(EGLContext, ret, eglCreatePbufferSurface, dpy, ctx, attrib_list,
                          offset);
 
-    store_stack_info((uint64_t) ret, m_method_egl_create_pbuffer_surface, get_java_stack(),
-                     get_native_stack());
+    LOGD("Cc1over-debug", "call into eglCreatePbufferSurface");
+
+    store_stack_info((uint64_t) ret, m_method_egl_create_pbuffer_surface,  "get_java_stack()", 0);
 
     return ret;
 
@@ -115,12 +125,11 @@ DEFINE_HOOK_FUN(EGLBoolean, eglDestorySurface, EGLDisplay dpy, EGLSurface surfac
 
     release_egl_resource(m_method_egl_destroy_surface, (uint64_t) surface);
 
-//    CALL_ORIGIN_FUNC_RET(EGLBoolean, ret, eglDestroyContext, dpy, surface);
+    LOGD("Cc1over-debug", "call into eglDestorySurface");
 
-//    return ret;
     void *handle = dlopen(ORIGINAL_LIB, RTLD_LAZY);
 
-    EGL_DESTORY_SURFACE eglDestorySurface =(EGL_DESTORY_SURFACE)(dlsym(handle,"eglDestroySurface"));
+    EGL_DESTORY_SURFACE eglDestorySurface = (EGL_DESTORY_SURFACE) (dlsym(handle, "eglDestroySurface"));
 
     return eglDestorySurface(dpy, surface);
 
@@ -132,8 +141,9 @@ DEFINE_HOOK_FUN(EGLSurface, eglCreateWindowSurface, EGLDisplay dpy, EGLConfig co
     CALL_ORIGIN_FUNC_RET(EGLContext, ret, eglCreateWindowSurface, dpy, config, window,
                          attrib_list);
 
-    store_stack_info((uint64_t) ret, m_method_egl_create_window_surface, get_java_stack(),
-                     get_native_stack());
+    LOGD("Cc1over-debug", "call into eglCreateWindowSurface");
+
+    store_stack_info((uint64_t) ret, m_method_egl_create_window_surface,  "get_java_stack()", 0);
 
     return ret;
 }

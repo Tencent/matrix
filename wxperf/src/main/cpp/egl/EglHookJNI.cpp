@@ -24,6 +24,7 @@ void egl_hook() {
     for (auto f: EGL_HOOK_FUNCTIONS) {
         xhook_register(".*\\.so$", f.name, f.handler_ptr, f.origin_ptr);
     }
+    LOGD("Cc1over-debug", "call into egl hook");
 }
 
 void egl_hook_on_dlopen(const char *__file_name) {
