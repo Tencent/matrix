@@ -2,6 +2,7 @@ package com.tencent.mm.libwxperf;
 
 import android.Manifest;
 import android.content.pm.PackageManager;
+import android.opengl.EGL14;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
@@ -15,6 +16,7 @@ import android.view.View;
 
 import com.tencent.mm.performance.jni.HookManager;
 import com.tencent.mm.performance.jni.LibWxPerfManager;
+import com.tencent.mm.performance.jni.egl.EglHook;
 import com.tencent.mm.performance.jni.fd.FDDumpBridge;
 import com.tencent.mm.performance.jni.memory.MemoryHook;
 import com.tencent.mm.performance.jni.pthread.PthreadHook;
@@ -36,40 +38,68 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        LibWxPerfManager.INSTANCE.init();
-        if (!LibWxPerfManager.INSTANCE.initOk()) {
-            throw new RuntimeException("init failed");
-        }
-
-        Log.d(TAG, "threadName = " + threadNameRegex + ", " + name.matches(threadNameRegex));
-
-        try {
-            HookManager.INSTANCE
-                    .addHook(MemoryHook.INSTANCE
-                            .addHookSo(".*libnative-lib\\.so$")
-                            .enableStacktrace(false)
-                            .enableMmapHook(false))
-                    .addHook(PthreadHook.INSTANCE
+//        LibWxPerfManager.INSTANCE.init();
+//        if (!LibWxPerfManager.INSTANCE.initOk()) {
+//            throw new RuntimeException("init failed");
+//        }
+//
+//        Log.d(TAG, "threadName = " + threadNameRegex + ", " + name.matches(threadNameRegex));
+//
+//        try {
+//            HookManager.INSTANCE
+//                    .addHook(MemoryHook.INSTANCE
 //                            .addHookSo(".*libnative-lib\\.so$")
-                                    .addHookSo(".*\\.so$")
-//                            .addIgnoreSo(".*libart\\.so$")
-                            .addHookThread(".*")
-//                                    .addHookThread(threadNameRegex)
-//                            .addHookThread("MyHandlerThread")
-//                            .addHookThread("\\[GT\\]MediaCodecR$")
-                    )
-                    .commitHooks();
+//                            .enableStacktrace(false)
+//                            .enableMmapHook(false))
+//                    .addHook(PthreadHook.INSTANCE
+////                            .addHookSo(".*libnative-lib\\.so$")
+//                                    .addHookSo(".*\\.so$")
+////                            .addIgnoreSo(".*libart\\.so$")
+//                                    .addHookThread(".*")
+////                                    .addHookThread(threadNameRegex)
+////                            .addHookThread("MyHandlerThread")
+////                            .addHookThread("\\[GT\\]MediaCodecR$")
+//                    )
+//                    .commitHooks();
+//
+////            throw new HookManager.HookFailedException("adfad");
+//        } catch (HookManager.HookFailedException e) {
+//            e.printStackTrace();
+//        }
+//
+//        UnwindTest.init();
+//        UnwindBenckmarkTest.benchmarkInitNative();
+//
+//        checkPermission();
+//        Log.d(TAG, "onCreate: path = " + Environment.getExternalStorageDirectory().getAbsolutePath());
 
-//            throw new HookManager.HookFailedException("adfad");
-        } catch (HookManager.HookFailedException e) {
-            e.printStackTrace();
-        }
+        findViewById(R.id.btn_egl).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                try {
+                    HookManager.INSTANCE
+                            .addHook(EglHook.INSTANCE).commitHooks();
+                    Log.e("Cc1over-debug","hook success");
+                } catch (HookManager.HookFailedException e) {
+                    Log.e("Cc1over-debug","hook fail");
+                }
+            }
+        });
 
-        UnwindTest.init();
-        UnwindBenckmarkTest.benchmarkInitNative();
+        findViewById(R.id.btn_egl_create_context).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                EglTest.initOpenGL();
+            }
+        });
 
-        checkPermission();
-        Log.d(TAG, "onCreate: path = " + Environment.getExternalStorageDirectory().getAbsolutePath());
+        findViewById(R.id.btn_egl_destroy_context).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                EglTest.release();
+            }
+        });
+
     }
 
     private void dumpFd() {
@@ -88,6 +118,9 @@ public class MainActivity extends AppCompatActivity {
             e.printStackTrace();
         }
         Log.d(TAG, "dump cost:" + (System.currentTimeMillis() - begin));
+
+
+
     }
 
     private boolean checkPermission() {

@@ -80,6 +80,8 @@ DEFINE_HOOK_FUN(EGLContext, eglCreateContext, EGLDisplay dpy, EGLConfig config,
     CALL_ORIGIN_FUNC_RET(EGLContext, ret, eglCreateContext, dpy, config, share_context,
                          attrib_list);
 
+    LOGD("Cc1over-debug", "call into eglCreateContext");
+
     store_stack_info((uint64_t) ret, m_method_egl_create_context, "get_java_stack()", 0);
 
     return ret;
@@ -88,6 +90,8 @@ DEFINE_HOOK_FUN(EGLContext, eglCreateContext, EGLDisplay dpy, EGLConfig config,
 DEFINE_HOOK_FUN(EGLBoolean, eglDestroyContext, EGLDisplay dpy, EGLContext ctx) {
 
     release_egl_resource(m_method_egl_destroy_context, (uint64_t) ctx);
+
+    LOGD("Cc1over-debug", "call into eglDestroyContext");
 
     CALL_ORIGIN_FUNC_RET(EGLBoolean, ret, eglDestroyContext, dpy, ctx);
 
@@ -101,6 +105,8 @@ DEFINE_HOOK_FUN(EGLSurface, eglCreatePbufferSurface, EGLDisplay dpy, EGLContext 
     CALL_ORIGIN_FUNC_RET(EGLContext, ret, eglCreatePbufferSurface, dpy, ctx, attrib_list,
                          offset);
 
+    LOGD("Cc1over-debug", "call into eglCreatePbufferSurface");
+
     store_stack_info((uint64_t) ret, m_method_egl_create_pbuffer_surface,  "get_java_stack()", 0);
 
     return ret;
@@ -112,6 +118,8 @@ typedef EGLBoolean (*EGL_DESTORY_SURFACE)(EGLDisplay, EGLSurface);
 DEFINE_HOOK_FUN(EGLBoolean, eglDestorySurface, EGLDisplay dpy, EGLSurface surface) {
 
     release_egl_resource(m_method_egl_destroy_surface, (uint64_t) surface);
+
+    LOGD("Cc1over-debug", "call into eglDestorySurface");
 
     void *handle = dlopen(ORIGINAL_LIB, RTLD_LAZY);
 
@@ -126,6 +134,8 @@ DEFINE_HOOK_FUN(EGLSurface, eglCreateWindowSurface, EGLDisplay dpy, EGLConfig co
 
     CALL_ORIGIN_FUNC_RET(EGLContext, ret, eglCreateWindowSurface, dpy, config, window,
                          attrib_list);
+
+    LOGD("Cc1over-debug", "call into eglCreateWindowSurface");
 
     store_stack_info((uint64_t) ret, m_method_egl_create_window_surface,  "get_java_stack()", 0);
 
