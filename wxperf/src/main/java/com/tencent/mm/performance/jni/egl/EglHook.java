@@ -1,10 +1,9 @@
 package com.tencent.mm.performance.jni.egl;
 
-import android.nfc.Tag;
-import android.util.Log;
 
 import com.tencent.mm.performance.jni.AbsHook;
 import com.tencent.mm.performance.jni.LibWxPerfManager;
+import com.tencent.stubs.logger.Log;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -12,6 +11,8 @@ import java.util.List;
 public class EglHook extends AbsHook {
 
     private static final String TAG = "Cc1over-debug";
+
+    private static ILog iLog = new ILog.Default();
 
     static {
         LibWxPerfManager.INSTANCE.init();
@@ -28,6 +29,10 @@ public class EglHook extends AbsHook {
     @Override
     protected void onConfigure() {
 
+    }
+
+    public static void initILog(ILog log) {
+        iLog = log;
     }
 
     @Override
@@ -57,8 +62,8 @@ public class EglHook extends AbsHook {
 
     public static void onCreateEglContext(long eglContext, long nativeAddr, String javaStack) {
 
-        Log.e(TAG, "onCreateEglContext callback");
-        Log.e(TAG, javaStack);
+        iLog.e(TAG, "onCreateEglContext callback");
+        iLog.e(TAG, javaStack);
 
         EglResourceMonitor newEgl = new EglResourceMonitor(eglContext, javaStack, nativeAddr);
 
@@ -75,7 +80,7 @@ public class EglHook extends AbsHook {
 
     public static void onDeleteEglSurface(long eglSurface) {
 
-        Log.e(TAG, "onDeleteEglSurface callback");
+        iLog.e(TAG, "onDeleteEglSurface callback");
 
         synchronized (listeners) {
             if (listeners.size() == 0) {
@@ -90,7 +95,7 @@ public class EglHook extends AbsHook {
 
     public static void onDeleteEglContext(long eglContext) {
 
-        Log.e(TAG, "onDeleteEglContext callback");
+        iLog.e(TAG, "onDeleteEglContext callback");
 
         synchronized (listeners) {
             if (listeners.size() == 0) {
@@ -105,8 +110,8 @@ public class EglHook extends AbsHook {
 
     public static void onCreateEglWindowSurface(long eglSurface, long nativeAddr, String javaStack) {
 
-        Log.e(TAG, "onCreateEglWindowSurface callback");
-        Log.e(TAG, javaStack);
+        iLog.e(TAG, "onCreateEglWindowSurface callback");
+        iLog.e(TAG, javaStack);
 
         EglResourceMonitor newEgl = new EglResourceMonitor(eglSurface, javaStack, nativeAddr);
 
@@ -123,8 +128,8 @@ public class EglHook extends AbsHook {
 
     public static void onCreatePbufferSurface(long eglSurface, long nativeAddr, String javaStack) {
 
-        Log.e(TAG, "onCreatePbufferSurface callback");
-        Log.e(TAG, javaStack);
+        iLog.e(TAG, "onCreatePbufferSurface callback");
+        iLog.e(TAG, javaStack);
 
         EglResourceMonitor newEgl = new EglResourceMonitor(eglSurface, javaStack, nativeAddr);
 
@@ -150,6 +155,49 @@ public class EglHook extends AbsHook {
         void onCreatePbufferSurface(EglResourceMonitor eglContextMonitor);
 
         void onDeleteEglSurface(long eglSurfaceId);
+
+    }
+
+    public interface ILog {
+
+        void v(String tag, String info);
+
+        void i(String tag, String info);
+
+        void e(String tag, String info);
+
+        void w(String tag, String info);
+
+        void d(String tag, String info);
+
+
+        class Default implements  ILog{
+
+            @Override
+            public void v(String tag, String info) {
+
+            }
+
+            @Override
+            public void i(String tag, String info) {
+
+            }
+
+            @Override
+            public void e(String tag, String info) {
+
+            }
+
+            @Override
+            public void w(String tag, String info) {
+
+            }
+
+            @Override
+            public void d(String tag, String info) {
+
+            }
+        }
 
     }
 
