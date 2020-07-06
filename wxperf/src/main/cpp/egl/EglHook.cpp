@@ -12,22 +12,18 @@
 const size_t BUF_SIZE = 1024;
 
 jstring charTojstring(JNIEnv *env, const char *pat) {
-    //定义java String类 strClass
-    jclass strClass = (env)->FindClass("java/lang/String");
-    //获取String(byte[],String)的构造器,用于将本地byte[]数组转换为一个新String
-    jmethodID ctorID = (env)->GetMethodID(strClass, "<init>", "([BLjava/lang/String;)V");
-    //建立byte数组
-    jbyteArray bytes = (env)->NewByteArray(strlen(pat));
-    //将char* 转换为byte数组
-    (env)->SetByteArrayRegion(bytes, 0, strlen(pat), (jbyte *) pat);
-    // 设置String, 保存语言类型,用于byte数组转换至String时的参数
-    jstring encoding = (env)->NewStringUTF("GB2312");
-    //将byte数组转换为java String,并输出
-    jstring result = (jstring) (env)->NewObject(strClass, ctorID, bytes, encoding);
 
-    env->DeleteLocalRef(bytes);
-    env->DeleteLocalRef(strClass);
-    env->DeleteLocalRef(encoding);
+//    jclass strClass = (env)->FindClass("java/lang/String");
+//    jmethodID ctorID = (env)->GetMethodID(strClass, "<init>", "([BLjava/lang/String;)V");
+//    jbyteArray bytes = (env)->NewByteArray(strlen(pat));
+//    (env)->SetByteArrayRegion(bytes, 0, strlen(pat), (jbyte *) pat);
+//    jstring encoding = (env)->NewStringUTF("GB2312");
+//    jstring result = (jstring) (env)->NewObject(strClass, ctorID, bytes, encoding);
+
+    jstring result = (env)->NewStringUTF(pat);
+
+//    env->DeleteLocalRef(strClass);
+
     return result;
 }
 
@@ -49,6 +45,9 @@ void store_stack_info(uint64_t egl_resource, jmethodID methodId, char *java_stac
                                   methodId,
                                   egl_resource, native_stack_hash, js);
         env->DeleteLocalRef(js);
+        if (java_stack) {
+            free(java_stack);
+        }
         LOGD("Cc1over-debug", "end call back jni");
     }
 }
@@ -73,9 +72,10 @@ void release_egl_resource(jmethodID methodId, uint64_t egl_resource) {
 }
 
 uint64_t get_native_stack() {
-    auto ptr_stack_frames = new std::vector<unwindstack::FrameData>;
-    unwindstack::do_unwind(*ptr_stack_frames);
-    return hash_stack_frames(*ptr_stack_frames);
+//    auto ptr_stack_frames = new std::vector<unwindstack::FrameData>;
+//    unwindstack::do_unwind(*ptr_stack_frames);
+//    return hash_stack_frames(*ptr_stack_frames);
+    return 0;
 }
 
 char *get_java_stack() {
@@ -94,7 +94,8 @@ DEFINE_HOOK_FUN(EGLContext, eglCreateContext, EGLDisplay dpy, EGLConfig config,
 
     LOGD("Cc1over-debug", "call into eglCreateContext");
 
-    store_stack_info((uint64_t) ret, m_method_egl_create_context, get_java_stack(), get_native_stack());
+    store_stack_info((uint64_t) ret, m_method_egl_create_context, get_java_stack(),
+                     get_native_stack());
 
     return ret;
 }
@@ -119,7 +120,8 @@ DEFINE_HOOK_FUN(EGLSurface, eglCreatePbufferSurface, EGLDisplay dpy, EGLContext 
 
     LOGD("Cc1over-debug", "call into eglCreatePbufferSurface");
 
-    store_stack_info((uint64_t) ret, m_method_egl_create_pbuffer_surface, get_java_stack(), get_native_stack());
+    store_stack_info((uint64_t) ret, m_method_egl_create_pbuffer_surface, get_java_stack(),
+                     get_native_stack());
 
     return ret;
 
@@ -135,7 +137,8 @@ DEFINE_HOOK_FUN(EGLBoolean, eglDestorySurface, EGLDisplay dpy, EGLSurface surfac
 
     void *handle = dlopen(ORIGINAL_LIB, RTLD_LAZY);
 
-    EGL_DESTORY_SURFACE eglDestorySurface = (EGL_DESTORY_SURFACE) (dlsym(handle, "eglDestroySurface"));
+    EGL_DESTORY_SURFACE eglDestorySurface = (EGL_DESTORY_SURFACE) (dlsym(handle,
+                                                                         "eglDestroySurface"));
 
     return eglDestorySurface(dpy, surface);
 
@@ -149,7 +152,8 @@ DEFINE_HOOK_FUN(EGLSurface, eglCreateWindowSurface, EGLDisplay dpy, EGLConfig co
 
     LOGD("Cc1over-debug", "call into eglCreateWindowSurface");
 
-    store_stack_info((uint64_t) ret, m_method_egl_create_window_surface,  get_java_stack(), get_native_stack());
+    store_stack_info((uint64_t) ret, m_method_egl_create_window_surface, get_java_stack(),
+                     get_native_stack());
 
     return ret;
 }
