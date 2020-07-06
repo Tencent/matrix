@@ -27,6 +27,7 @@ jstring charTojstring(JNIEnv *env, const char *pat) {
 
     env->DeleteLocalRef(bytes);
     env->DeleteLocalRef(strClass);
+    env->DeleteLocalRef(encoding);
     return result;
 }
 
