@@ -169,6 +169,7 @@ public class FrameTracer extends Tracer implements Application.ActivityLifecycle
         }
     }
 
+
     private class FPSCollector extends IDoFrameListener {
 
         private Handler frameHandler = new Handler(MatrixHandlerThread.getDefaultHandlerThread().getLooper());
@@ -262,6 +263,7 @@ public class FrameTracer extends Tracer implements Application.ActivityLifecycle
         void report() {
             float fps = Math.min(60.f, 1000.f * sumFrame / sumFrameCost);
             MatrixLog.i(TAG, "[report] FPS:%s %s", fps, toString());
+
             try {
                 TracePlugin plugin = Matrix.with().getPluginByClass(TracePlugin.class);
                 if (null == plugin) {
@@ -288,6 +290,7 @@ public class FrameTracer extends Tracer implements Application.ActivityLifecycle
                 resultObject.put(SharePluginInfo.ISSUE_DROP_LEVEL, dropLevelObject);
                 resultObject.put(SharePluginInfo.ISSUE_DROP_SUM, dropSumObject);
                 resultObject.put(SharePluginInfo.ISSUE_FPS, fps);
+
                 Issue issue = new Issue();
                 issue.setTag(SharePluginInfo.TAG_PLUGIN_FPS);
                 issue.setContent(resultObject);
