@@ -1,8 +1,12 @@
 package com.tencent.matrix.trace.tracer;
 
+import android.app.Activity;
+import android.app.Application;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.SystemClock;
 
+import com.tencent.matrix.AppActiveMatrixDelegate;
 import com.tencent.matrix.Matrix;
 import com.tencent.matrix.report.Issue;
 import com.tencent.matrix.trace.TracePlugin;
@@ -23,12 +27,15 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Executor;
 
-public class FrameTracer extends Tracer {
+public class FrameTracer extends Tracer implements Application.ActivityLifecycleCallbacks {
 
     private static final String TAG = "Matrix.FrameTracer";
     private final HashSet<IDoFrameListener> listeners = new HashSet<>();
+    private DropFrameListener dropFrameListener;
+    private int dropFrameListenerThreshold = 0;
     private final long frameIntervalNs;
     private final TraceConfig config;
     private long timeSliceMs;
@@ -39,6 +46,7 @@ public class FrameTracer extends Tracer {
     private long normalThreshold;
     private int droppedSum = 0;
     private long durationSum = 0;
+    private Map<String,Long> lastResumeTimeMap = new HashMap<>();
 
     public FrameTracer(TraceConfig config) {
         this.config = config;
@@ -72,12 +80,19 @@ public class FrameTracer extends Tracer {
     public void onAlive() {
         super.onAlive();
         UIThreadMonitor.getMonitor().addObserver(this);
+        if (isFPSEnable) {
+            Matrix.with().getApplication().registerActivityLifecycleCallbacks(this);
+        }
     }
 
     @Override
     public void onDead() {
         super.onDead();
         UIThreadMonitor.getMonitor().removeObserver(this);
+        removeDropFrameListener();
+        if (isFPSEnable) {
+            Matrix.with().getApplication().unregisterActivityLifecycleCallbacks(this);
+        }
     }
 
     @Override
@@ -101,6 +116,19 @@ public class FrameTracer extends Tracer {
         try {
             final long jiter = endNs - intendedFrameTimeNs;
             final int dropFrame = (int) (jiter / frameIntervalNs);
+            if(dropFrameListener != null) {
+                if(dropFrame > dropFrameListenerThreshold) {
+                    try {
+                        if (AppActiveMatrixDelegate.getTopActivityName() != null) {
+                            long lastResumeTime = lastResumeTimeMap.get(AppActiveMatrixDelegate.getTopActivityName());
+                            dropFrameListener.dropFrame(dropFrame, AppActiveMatrixDelegate.getTopActivityName(), lastResumeTime);
+                        }
+                    }catch (Exception e){
+                        MatrixLog.e(TAG,"dropFrameListener error e:" + e.getMessage());
+                    }
+                }
+            }
+
             droppedSum += dropFrame;
             durationSum += Math.max(jiter, frameIntervalNs);
 
@@ -295,6 +323,54 @@ public class FrameTracer extends Tracer {
         DropStatus(int index) {
             this.index = index;
         }
+
+    }
+
+    public void addDropFrameListener(int dropFrameListenerThreshold, DropFrameListener dropFrameListener){
+        this.dropFrameListener = dropFrameListener;
+        this.dropFrameListenerThreshold = dropFrameListenerThreshold;
+    }
+
+    public void removeDropFrameListener(){
+        this.dropFrameListener = null;
+    }
+
+    public interface DropFrameListener{
+        void dropFrame(int dropedFrame, String scene, long lastResume);
+    }
+
+    @Override
+    public void onActivityCreated(Activity activity, Bundle savedInstanceState) {
+
+    }
+
+    @Override
+    public void onActivityStarted(Activity activity) {
+
+    }
+
+    @Override
+    public void onActivityResumed(Activity activity) {
+        lastResumeTimeMap.put(activity.getClass().getName(), System.currentTimeMillis());
+    }
+
+    @Override
+    public void onActivityPaused(Activity activity) {
+
+    }
+
+    @Override
+    public void onActivityStopped(Activity activity) {
+
+    }
+
+    @Override
+    public void onActivitySaveInstanceState(Activity activity, Bundle outState) {
+
+    }
+
+    @Override
+    public void onActivityDestroyed(Activity activity) {
 
     }
 }
