@@ -15,6 +15,7 @@
 #include <regex.h>
 #include <Utils.h>
 #include <fcntl.h>
+#include "PthreadExt.h"
 #include "PthreadHook.h"
 #include "pthread.h"
 #include "Log.h"
@@ -117,51 +118,6 @@ void add_hook_thread_name(const char *__regex_str) {
     LOGD(TAG, "parent name regex: %s -> %s, len = %zu", __regex_str, p_regex_str, len);
 }
 
-static int read_thread_name(pthread_t __pthread, char *__buf, size_t __buf_size) {
-    if (!__buf || __buf_size < THREAD_NAME_LEN) {
-        LOGD(TAG, "read_thread_name: buffer error");
-        return ERANGE;
-    }
-
-    char proc_path[64];
-    pid_t tid = pthread_gettid_np(__pthread);
-
-    snprintf(proc_path, sizeof(proc_path), "/proc/self/task/%d/comm", tid);
-
-    FILE *file = fopen(proc_path, "r");
-
-    if (!file) {
-        LOGD(TAG, "read_thread_name: file not found: %s", proc_path);
-        return errno;
-    }
-
-    size_t n = fread(__buf, sizeof(char), __buf_size, file);
-
-    fclose(file);
-
-    if (n > THREAD_NAME_LEN) {
-        LOGE(TAG, "buf overflowed %zu", n);
-        abort();
-    }
-
-    if (n > 0 && __buf[n - 1] == '\n') {
-        LOGD(TAG, "read_thread_name: end with \\0");
-        __buf[n - 1] = '\0';
-    }
-
-    LOGD(TAG, "read_thread_name: %d -> name %s, len %zu, n = %zu", tid, __buf, strlen(__buf), n);
-
-    return 0;
-}
-
-inline int wrap_pthread_getname_np(pthread_t __pthread, char *__buf, size_t __n) {
-#if __ANDROID_API__ >= 26
-    return pthread_getname_np(__pthread, __buf, __n);
-#else
-    return read_thread_name(__pthread, __buf, __n);
-#endif
-}
-
 static bool test_match_thread_name(pthread_meta_t &__meta) {
     for (const auto &w : m_hook_thread_name_regex) {
         if (__meta.thread_name && 0 == regexec(&w.regex, __meta.thread_name, 0, NULL, 0)) {
@@ -210,7 +166,7 @@ static void on_pthread_create(const pthread_t __pthread) {
     // 如果还没 setname, 此时拿到的是父线程的名字, 在 setname 的时候有一次更正机会, 否则继承父线程名字
     // 如果已经 setname, 那么此时拿到的就是当前创建线程的名字
     meta.thread_name = static_cast<char *>(malloc(sizeof(char) * THREAD_NAME_LEN));
-    if (0 != wrap_pthread_getname_np(__pthread, meta.thread_name, THREAD_NAME_LEN)) {
+    if (0 != pthread_getname_ext(__pthread, meta.thread_name, THREAD_NAME_LEN)) {
         char temp_name[THREAD_NAME_LEN];
         snprintf(temp_name, THREAD_NAME_LEN, "tid-%d", pthread_gettid_np(__pthread));
         strncpy(meta.thread_name, temp_name, THREAD_NAME_LEN);
@@ -279,7 +235,7 @@ static void on_pthread_setname(pthread_t __pthread, const char *__name) {
     if (!m_pthread_metas.count(__pthread)) { // always false
         // 到这里说明没有回调 on_pthread_create, setname 对 on_pthread_create 是可见的
         auto lost_thread_name = static_cast<char *>(malloc(sizeof(char) * THREAD_NAME_LEN));
-        wrap_pthread_getname_np(__pthread, lost_thread_name, THREAD_NAME_LEN);
+        pthread_getname_ext(__pthread, lost_thread_name, THREAD_NAME_LEN);
         LOGE(TAG,
              "on_pthread_setname: pthread hook lost: {%s} -> {%s}, maybe on_create has not been called",
              lost_thread_name, __name);
