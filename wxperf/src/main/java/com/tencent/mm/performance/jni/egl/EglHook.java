@@ -60,12 +60,11 @@ public class EglHook extends AbsHook {
         }
     }
 
-    public static void onCreateEglContext(long eglContext, long nativeAddr, String javaStack) {
+    public static void onCreateEglContext(long eglContext) {
 
         iLog.e(TAG, "onCreateEglContext callback");
-        iLog.e(TAG, javaStack);
 
-        EglResourceMonitor newEgl = new EglResourceMonitor(eglContext, javaStack, nativeAddr);
+        EglResourceMonitor newEgl = new EglResourceMonitor(eglContext);
 
         synchronized (listeners) {
             if (listeners.size() == 0) {
@@ -108,12 +107,11 @@ public class EglHook extends AbsHook {
         }
     }
 
-    public static void onCreateEglWindowSurface(long eglSurface, long nativeAddr, String javaStack) {
+    public static void onCreateEglWindowSurface(long eglSurface) {
 
         iLog.e(TAG, "onCreateEglWindowSurface callback");
-        iLog.e(TAG, javaStack);
 
-        EglResourceMonitor newEgl = new EglResourceMonitor(eglSurface, javaStack, nativeAddr);
+        EglResourceMonitor newEgl = new EglResourceMonitor(eglSurface);
 
         synchronized (listeners) {
             if(listeners.size() == 0) {
@@ -126,12 +124,11 @@ public class EglHook extends AbsHook {
         }
     }
 
-    public static void onCreatePbufferSurface(long eglSurface, long nativeAddr, String javaStack) {
+    public static void onCreatePbufferSurface(long eglSurface) {
 
         iLog.e(TAG, "onCreatePbufferSurface callback");
-        iLog.e(TAG, javaStack);
 
-        EglResourceMonitor newEgl = new EglResourceMonitor(eglSurface, javaStack, nativeAddr);
+        EglResourceMonitor newEgl = new EglResourceMonitor(eglSurface);
 
         synchronized (listeners) {
             if(listeners.size() == 0) {

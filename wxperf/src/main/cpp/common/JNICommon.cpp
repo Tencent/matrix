@@ -46,15 +46,15 @@ JNIEXPORT jint JNI_OnLoad(JavaVM *vm, void *reserved) {
         if (j_EglHook) {
             m_class_EglHook = (jclass) env->NewGlobalRef(j_EglHook);
             m_method_egl_create_context = env->GetStaticMethodID(m_class_EglHook, "onCreateEglContext",
-                                                     "(JJLjava/lang/String;)V");
+                                                     "(J)V");
             m_method_egl_destroy_context = env->GetStaticMethodID(m_class_EglHook, "onDeleteEglContext",
                                                           "(J)V");
             m_method_egl_create_window_surface = env->GetStaticMethodID(m_class_EglHook,
                                                                         "onCreateEglWindowSurface",
-                                                                        "(JJLjava/lang/String;)V");
+                                                                        "(J)V");
             m_method_egl_create_pbuffer_surface = env->GetStaticMethodID(m_class_EglHook,
                                                                          "onCreatePbufferSurface",
-                                                                         "(JJLjava/lang/String;)V");
+                                                                         "(J)V");
             m_method_egl_destroy_surface = env->GetStaticMethodID(m_class_EglHook,
                                                                   "onDeleteEglSurface", "(J)V");
 

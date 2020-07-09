@@ -27,28 +27,19 @@ jstring charTojstring(JNIEnv *env, const char *pat) {
     return result;
 }
 
-void store_stack_info(uint64_t egl_resource, jmethodID methodId, char *java_stack,
-                      uint64_t native_stack_hash) {
+void store_stack_info(uint64_t egl_resource, jmethodID methodId) {
     JNIEnv *env = NULL;
     if (m_java_vm->GetEnv((void **) &env, JNI_VERSION_1_6) != JNI_OK) {
         if (m_java_vm->AttachCurrentThread(&env, NULL) == JNI_OK) {
         } else {
-            LOGD("Cc1over-debug", "AttachCurrentThread != JNI_OK");
             return;
         }
     }
 
     if (env != NULL) {
-        jstring js = charTojstring(env, java_stack);
-        LOGD("Cc1over-debug", "start call back jni");
         env->CallStaticVoidMethod(m_class_EglHook,
                                   methodId,
-                                  egl_resource, native_stack_hash, js);
-        env->DeleteLocalRef(js);
-        if (java_stack) {
-            free(java_stack);
-        }
-        LOGD("Cc1over-debug", "end call back jni");
+                                  egl_resource);
     }
 }
 
@@ -94,8 +85,7 @@ DEFINE_HOOK_FUN(EGLContext, eglCreateContext, EGLDisplay dpy, EGLConfig config,
 
     LOGD("Cc1over-debug", "call into eglCreateContext");
 
-    store_stack_info((uint64_t) ret, m_method_egl_create_context, get_java_stack(),
-                     get_native_stack());
+    store_stack_info((uint64_t) ret, m_method_egl_create_context);
 
     return ret;
 }
@@ -120,8 +110,7 @@ DEFINE_HOOK_FUN(EGLSurface, eglCreatePbufferSurface, EGLDisplay dpy, EGLContext 
 
     LOGD("Cc1over-debug", "call into eglCreatePbufferSurface");
 
-    store_stack_info((uint64_t) ret, m_method_egl_create_pbuffer_surface, get_java_stack(),
-                     get_native_stack());
+    store_stack_info((uint64_t) ret, m_method_egl_create_pbuffer_surface);
 
     return ret;
 
@@ -152,8 +141,7 @@ DEFINE_HOOK_FUN(EGLSurface, eglCreateWindowSurface, EGLDisplay dpy, EGLConfig co
 
     LOGD("Cc1over-debug", "call into eglCreateWindowSurface");
 
-    store_stack_info((uint64_t) ret, m_method_egl_create_window_surface, get_java_stack(),
-                     get_native_stack());
+    store_stack_info((uint64_t) ret, m_method_egl_create_window_surface);
 
     return ret;
 }
