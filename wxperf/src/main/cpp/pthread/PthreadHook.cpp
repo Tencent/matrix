@@ -163,7 +163,7 @@ static inline bool on_pthread_create_locked(const pthread_t __pthread, char *__j
     uint64_t java_hash   = 0;
 
     meta.native_stacktrace.reserve(16 * 2);
-//    unwindstack::do_unwind(meta.native_stacktrace);
+    unwindstack::do_unwind(meta.native_stacktrace);
     native_hash = hash_stack_frames(meta.native_stacktrace);
 
     if (__java_stacktrace) {
@@ -192,31 +192,31 @@ static void notify_routine(const pthread_t __pthread) {
 static void on_pthread_create(const pthread_t __pthread) {
     LOGD(TAG, "+++++++ on_pthread_create");
 
-    pid_t tid  = pthread_gettid_np(__pthread);
-
-    if (!rp_acquire()) {
-        LOGD(TAG, "reentrant!!!");
-        notify_routine(__pthread);
-        return;
-    }
-
-    // 反射 Java 获取堆栈时加锁会造成死锁, 提前获取堆栈
-    const size_t BUF_SIZE         = 1024;
-    char         *java_stacktrace = static_cast<char *>(malloc(BUF_SIZE));
-    if (java_stacktrace) {
-        get_java_stacktrace(java_stacktrace, BUF_SIZE);
-//        strncpy(java_stacktrace, " (fake stacktrace)", BUF_SIZE);
-    }
-
-    LOGD(TAG, "parent_tid: %d -> tid: %d", pthread_gettid_np(pthread_self()), tid);
-    bool recorded = on_pthread_create_locked(__pthread, java_stacktrace, tid);
-
-    if (!recorded && java_stacktrace) {
-        free(java_stacktrace);
-    }
-
-    rp_release();
-    notify_routine(__pthread);
+//    pid_t tid  = pthread_gettid_np(__pthread);
+//
+//    if (!rp_acquire()) {
+//        LOGD(TAG, "reentrant!!!");
+//        notify_routine(__pthread);
+//        return;
+//    }
+//
+//    // 反射 Java 获取堆栈时加锁会造成死锁, 提前获取堆栈
+//    const size_t BUF_SIZE         = 1024;
+//    char         *java_stacktrace = static_cast<char *>(malloc(BUF_SIZE));
+//    if (java_stacktrace) {
+//        get_java_stacktrace(java_stacktrace, BUF_SIZE);
+////        strncpy(java_stacktrace, " (fake stacktrace)", BUF_SIZE);
+//    }
+//
+//    LOGD(TAG, "parent_tid: %d -> tid: %d", pthread_gettid_np(pthread_self()), tid);
+//    bool recorded = on_pthread_create_locked(__pthread, java_stacktrace, tid);
+//
+//    if (!recorded && java_stacktrace) {
+//        free(java_stacktrace);
+//    }
+//
+//    rp_release();
+//    notify_routine(__pthread);
 
     LOGD(TAG, "------ on_pthread_create end");
 }
@@ -229,60 +229,60 @@ static void on_pthread_create(const pthread_t __pthread) {
  * @param __name
  */
 static void on_pthread_setname(pthread_t __pthread, const char *__name) {
-    if (NULL == __name) {
-        LOGE(TAG, "setting name null");
-        return;
-    }
-
-    const size_t name_len = strlen(__name);
-
-    if (0 == name_len || name_len >= THREAD_NAME_LEN) {
-        LOGE(TAG, "pthread name is illegal, just ignore. len(%s)", __name);
-        return;
-    }
-
-    LOGD(TAG, "++++++++ pre on_pthread_setname tid: %d, %s", pthread_gettid_np(__pthread), __name);
-
-    {
-        std::lock_guard<std::recursive_mutex> meta_lock(m_pthread_meta_mutex);
-
-        if (!m_pthread_metas.count(__pthread)) { // always false
-            // 到这里说明没有回调 on_pthread_create, setname 对 on_pthread_create 是可见的
-            auto lost_thread_name = static_cast<char *>(malloc(sizeof(char) * THREAD_NAME_LEN));
-            pthread_getname_ext(__pthread, lost_thread_name, THREAD_NAME_LEN);
-            LOGE(TAG,
-                 "on_pthread_setname: pthread hook lost: {%s} -> {%s}, maybe on_create has not been called",
-                 lost_thread_name, __name);
-            free(lost_thread_name);
-
-            return;
-        }
-
-        // 到这里说明 on_pthread_create 已经回调了, 需要修正并检查新的线程名是否 match 正则
-
-        pthread_meta_t &meta = m_pthread_metas.at(__pthread);
-
-        LOGD(TAG, "on_pthread_setname: %s -> %s, tid:%d", meta.thread_name, __name, meta.tid);
-
-        assert(meta.thread_name != nullptr);
-        strncpy(meta.thread_name, __name, THREAD_NAME_LEN);
-
-        bool parent_match = m_filtered_pthreads.count(__pthread) != 0;
-
-        // 如果新线程名不 match, 但父线程名 match, 说明需要从 filter 集合中移除
-        if (!test_match_thread_name(meta) && parent_match) {
-            m_filtered_pthreads.erase(__pthread);
-            LOGD(TAG, "--------------------------");
-            return;
-        }
-
-        // 如果新线程 match, 但父线程名不 match, 说明需要添加仅 filter 集合
-        if (test_match_thread_name(meta) && !parent_match) {
-            m_filtered_pthreads.insert(__pthread);
-            LOGD(TAG, "--------------------------");
-            return;
-        }
-    }
+//    if (NULL == __name) {
+//        LOGE(TAG, "setting name null");
+//        return;
+//    }
+//
+//    const size_t name_len = strlen(__name);
+//
+//    if (0 == name_len || name_len >= THREAD_NAME_LEN) {
+//        LOGE(TAG, "pthread name is illegal, just ignore. len(%s)", __name);
+//        return;
+//    }
+//
+//    LOGD(TAG, "++++++++ pre on_pthread_setname tid: %d, %s", pthread_gettid_np(__pthread), __name);
+//
+//    {
+//        std::lock_guard<std::recursive_mutex> meta_lock(m_pthread_meta_mutex);
+//
+//        if (!m_pthread_metas.count(__pthread)) { // always false
+//            // 到这里说明没有回调 on_pthread_create, setname 对 on_pthread_create 是可见的
+//            auto lost_thread_name = static_cast<char *>(malloc(sizeof(char) * THREAD_NAME_LEN));
+//            pthread_getname_ext(__pthread, lost_thread_name, THREAD_NAME_LEN);
+//            LOGE(TAG,
+//                 "on_pthread_setname: pthread hook lost: {%s} -> {%s}, maybe on_create has not been called",
+//                 lost_thread_name, __name);
+//            free(lost_thread_name);
+//
+//            return;
+//        }
+//
+//        // 到这里说明 on_pthread_create 已经回调了, 需要修正并检查新的线程名是否 match 正则
+//
+//        pthread_meta_t &meta = m_pthread_metas.at(__pthread);
+//
+//        LOGD(TAG, "on_pthread_setname: %s -> %s, tid:%d", meta.thread_name, __name, meta.tid);
+//
+//        assert(meta.thread_name != nullptr);
+//        strncpy(meta.thread_name, __name, THREAD_NAME_LEN);
+//
+//        bool parent_match = m_filtered_pthreads.count(__pthread) != 0;
+//
+//        // 如果新线程名不 match, 但父线程名 match, 说明需要从 filter 集合中移除
+//        if (!test_match_thread_name(meta) && parent_match) {
+//            m_filtered_pthreads.erase(__pthread);
+//            LOGD(TAG, "--------------------------");
+//            return;
+//        }
+//
+//        // 如果新线程 match, 但父线程名不 match, 说明需要添加仅 filter 集合
+//        if (test_match_thread_name(meta) && !parent_match) {
+//            m_filtered_pthreads.insert(__pthread);
+//            LOGD(TAG, "--------------------------");
+//            return;
+//        }
+//    }
 
     // 否则, 啥也不干 (都 match, 都不 match)
     LOGD(TAG, "--------------------------");
@@ -536,12 +536,12 @@ static void on_pthread_destroy(void *__specific) {
 
 static void *pthread_routine_wrapper(void *__arg) {
 
-    auto *specific = (char *) malloc(sizeof(char));
-    *specific = 'P';
-
-    pthread_setspecific(m_rp_key, specific);
-
-    before_routine_start();
+//    auto *specific = (char *) malloc(sizeof(char));
+//    *specific = 'P';
+//
+//    pthread_setspecific(m_rp_key, specific);
+//
+//    before_routine_start();
 
     auto *args_wrapper = (routine_wrapper_t *) __arg;
     void *ret          = args_wrapper->origin_func(args_wrapper->origin_args);
