@@ -215,6 +215,7 @@ static void on_pthread_create(const pthread_t __pthread) {
         free(java_stacktrace);
     }
 
+    rp_release();
     notify_routine(__pthread);
 
     LOGD(TAG, "------ on_pthread_create end");
