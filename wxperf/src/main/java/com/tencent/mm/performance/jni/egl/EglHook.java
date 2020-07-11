@@ -14,14 +14,14 @@ public class EglHook extends AbsHook {
 
     private static ILog iLog = new ILog.Default();
 
-    static {
-        LibWxPerfManager.INSTANCE.init();
-    }
-
     public static final EglHook INSTANCE = new EglHook();
     private static final List<OnChangeListener> listeners = new ArrayList<>();
 
     private EglHook() {
+    }
+
+    public void init() {
+        LibWxPerfManager.INSTANCE.init();
     }
 
     private native void startHook();
