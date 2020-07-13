@@ -5,7 +5,7 @@ import com.tencent.stubs.logger.Log;
 /**
  * Created by Yves on 2019-08-20
  */
-public class LibWxPerfManager {
+/* package */ class LibWxPerfManager {
 
     private static final String TAG = "LibWxPerfManager";
 

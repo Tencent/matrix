@@ -2,9 +2,7 @@ package com.tencent.mm.libwxperf;
 
 import android.Manifest;
 import android.content.pm.PackageManager;
-import android.opengl.EGL14;
 import android.os.Bundle;
-import android.os.Environment;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Process;
@@ -15,9 +13,8 @@ import android.util.Log;
 import android.view.View;
 
 import com.tencent.mm.performance.jni.HookManager;
-import com.tencent.mm.performance.jni.LibWxPerfManager;
 import com.tencent.mm.performance.jni.egl.EglHook;
-import com.tencent.mm.performance.jni.fd.FDDumpBridge;
+import com.tencent.mm.performance.jni.FDDumpBridge;
 import com.tencent.mm.performance.jni.memory.MemoryHook;
 import com.tencent.mm.performance.jni.pthread.PthreadHook;
 import com.tencent.mm.performance.jni.test.UnwindBenckmarkTest;

@@ -4,7 +4,6 @@ import android.text.TextUtils;
 
 import com.tencent.mm.performance.jni.AbsHook;
 import com.tencent.mm.performance.jni.HookManager;
-import com.tencent.mm.performance.jni.LibWxPerfManager;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -13,10 +12,6 @@ import java.util.Set;
  * Created by Yves on 2020-03-11
  */
 public class PthreadHook extends AbsHook {
-
-    static {
-        LibWxPerfManager.INSTANCE.init();
-    }
 
     public static final PthreadHook INSTANCE = new PthreadHook();
 

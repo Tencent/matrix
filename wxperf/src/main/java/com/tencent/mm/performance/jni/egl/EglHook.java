@@ -1,9 +1,9 @@
 package com.tencent.mm.performance.jni.egl;
 
 
+import android.support.annotation.Keep;
+
 import com.tencent.mm.performance.jni.AbsHook;
-import com.tencent.mm.performance.jni.LibWxPerfManager;
-import com.tencent.stubs.logger.Log;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -18,10 +18,6 @@ public class EglHook extends AbsHook {
     private static final List<OnChangeListener> listeners = new ArrayList<>();
 
     private EglHook() {
-    }
-
-    public void init() {
-        LibWxPerfManager.INSTANCE.init();
     }
 
     private native void startHook();
@@ -60,6 +56,7 @@ public class EglHook extends AbsHook {
         }
     }
 
+    @Keep
     public static void onCreateEglContext(long eglContext) {
 
         iLog.e(TAG, "onCreateEglContext callback");
@@ -77,6 +74,7 @@ public class EglHook extends AbsHook {
         }
     }
 
+    @Keep
     public static void onDeleteEglSurface(long eglSurface) {
 
         iLog.e(TAG, "onDeleteEglSurface callback");
@@ -92,6 +90,7 @@ public class EglHook extends AbsHook {
         }
     }
 
+    @Keep
     public static void onDeleteEglContext(long eglContext) {
 
         iLog.e(TAG, "onDeleteEglContext callback");
@@ -107,6 +106,7 @@ public class EglHook extends AbsHook {
         }
     }
 
+    @Keep
     public static void onCreateEglWindowSurface(long eglSurface) {
 
         iLog.e(TAG, "onCreateEglWindowSurface callback");
@@ -124,6 +124,7 @@ public class EglHook extends AbsHook {
         }
     }
 
+    @Keep
     public static void onCreatePbufferSurface(long eglSurface) {
 
         iLog.e(TAG, "onCreatePbufferSurface callback");
@@ -143,14 +144,19 @@ public class EglHook extends AbsHook {
 
     public interface OnChangeListener {
 
+        @Keep
         void onCreateEglContext(EglResourceMonitor eglContextMonitor);
 
+        @Keep
         void onDeleteEglContext(long eglContextId);
 
+        @Keep
         void onCreateEglWindowSurface(EglResourceMonitor eglContextMonitor);
 
+        @Keep
         void onCreatePbufferSurface(EglResourceMonitor eglContextMonitor);
 
+        @Keep
         void onDeleteEglSurface(long eglSurfaceId);
 
     }

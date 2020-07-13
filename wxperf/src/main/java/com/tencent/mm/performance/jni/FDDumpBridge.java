@@ -1,4 +1,4 @@
-package com.tencent.mm.performance.jni.fd;
+package com.tencent.mm.performance.jni;
 
 import com.tencent.mm.performance.jni.LibWxPerfManager;
 import com.tencent.stubs.logger.Log;

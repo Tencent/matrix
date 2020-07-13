@@ -5,7 +5,6 @@ import android.util.Log;
 
 import com.tencent.mm.performance.jni.AbsHook;
 import com.tencent.mm.performance.jni.HookManager;
-import com.tencent.mm.performance.jni.LibWxPerfManager;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -14,10 +13,6 @@ import java.util.Set;
  * Created by Yves on 2019-08-08
  */
 public class MemoryHook extends AbsHook {
-
-    static {
-        LibWxPerfManager.INSTANCE.init();
-    }
 
     public static final MemoryHook INSTANCE = new MemoryHook();
 
