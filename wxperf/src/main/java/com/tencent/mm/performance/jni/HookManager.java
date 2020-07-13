@@ -9,7 +9,6 @@ import java.util.Set;
 /**
  * Created by Yves on 2020-03-17
  */
-@Keep
 public class HookManager {
 
     static {
