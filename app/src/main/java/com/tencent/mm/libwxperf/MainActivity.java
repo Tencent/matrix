@@ -35,6 +35,14 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        {
+            try {
+                Class.forName("com.tencent.mm.performance.jni.HookManager");
+            } catch (ClassNotFoundException e) {
+                e.printStackTrace();
+            }
+        }
+
 //        LibWxPerfManager.INSTANCE.init();
 //        if (!LibWxPerfManager.INSTANCE.initOk()) {
 //            throw new RuntimeException("init failed");
