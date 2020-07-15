@@ -5,7 +5,7 @@
 #ifndef LIBWXPERF_JNI_MEMORYHOOK_H
 #define LIBWXPERF_JNI_MEMORYHOOK_H
 
-#define TAG "MemoryHook"
+#define TAG "Wxperf.MemoryHook"
 
 void on_alloc_memory(void *__caller, void *__ptr, size_t __byte_count);
 

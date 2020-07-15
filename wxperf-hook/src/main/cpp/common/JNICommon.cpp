@@ -6,6 +6,8 @@
 #include "HookCommon.h"
 #include "xhook.h"
 
+#define TAG "Wxperf.JNICommon"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -23,7 +25,7 @@ jmethodID m_method_egl_create_pbuffer_surface;
 jmethodID m_method_egl_destroy_surface;
 
 JNIEXPORT jint JNI_OnLoad(JavaVM *vm, void *reserved) {
-    LOGD("Yves-debug", "JNI OnLoad...");
+    LOGD(TAG, "JNI OnLoad...");
     m_java_vm = vm;
 
     JNIEnv *env;
@@ -34,12 +36,12 @@ JNIEXPORT jint JNI_OnLoad(JavaVM *vm, void *reserved) {
         jclass j_HookManager = env->FindClass("com/tencent/wxperf/jni/HookManager");
 
         if (j_HookManager) {
-            LOGD("Yves-debug", "j_PthreadHook not null");
+            LOGD(TAG, "j_PthreadHook not null");
             m_class_HookManager = (jclass) env->NewGlobalRef(j_HookManager);
             m_method_getStack = env->GetStaticMethodID(m_class_HookManager, "getStack",
                                                        "()Ljava/lang/String;");
         } else {
-            LOGD("Yves-debug", "j_PthreadHook null!");
+            LOGD(TAG, "j_PthreadHook null!");
         }
 
         jclass j_EglHook = env->FindClass("com/tencent/wxperf/jni/egl/EglHook");
@@ -85,3 +87,5 @@ JNIEXPORT void JNI_OnUnload(JavaVM *vm, void *reserved) {
 #ifdef __cplusplus
 }
 #endif
+
+#undef TAG

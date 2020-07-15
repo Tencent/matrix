@@ -14,7 +14,7 @@
 extern "C" {
 #endif
 
-#define TAG "HookCommon"
+#define TAG "Wxperf.HookCommon"
 
 std::vector<dlopen_callback_t> m_dlopen_callbacks;
 std::vector<hook_init_callback_t> m_init_callbacks;

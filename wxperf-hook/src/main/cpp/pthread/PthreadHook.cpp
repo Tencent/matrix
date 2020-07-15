@@ -22,7 +22,7 @@
 #include "cJSON.h"
 
 #define ORIGINAL_LIB "libc.so"
-#define TAG "PthreadHook"
+#define TAG "Wxperf.PthreadHook"
 
 #define THREAD_NAME_LEN 16
 
