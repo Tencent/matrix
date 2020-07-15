@@ -31,7 +31,7 @@ JNIEXPORT jint JNI_OnLoad(JavaVM *vm, void *reserved) {
     vm->GetEnv((void **) &env, JNI_VERSION_1_6);
 
     if (env) {
-        jclass j_HookManager = env->FindClass("com/tencent/mm/wxperf/jni/HookManager");
+        jclass j_HookManager = env->FindClass("com/tencent/wxperf/jni/HookManager");
 
         if (j_HookManager) {
             LOGD("Yves-debug", "j_PthreadHook not null");
@@ -42,7 +42,7 @@ JNIEXPORT jint JNI_OnLoad(JavaVM *vm, void *reserved) {
             LOGD("Yves-debug", "j_PthreadHook null!");
         }
 
-        jclass j_EglHook = env->FindClass("com/tencent/mm/wxperf/jni/egl/EglHook");
+        jclass j_EglHook = env->FindClass("com/tencent/wxperf/jni/egl/EglHook");
         if (j_EglHook) {
             m_class_EglHook = (jclass) env->NewGlobalRef(j_EglHook);
             m_method_egl_create_context = env->GetStaticMethodID(m_class_EglHook, "onCreateEglContext",
