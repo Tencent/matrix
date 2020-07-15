@@ -7,9 +7,9 @@
 - master
     要合主工程主干的分支
 - experimental
-    要合主工程红版的分支
-- dev
-    libwxperf-jni 的主干开发分支, 禁止从 experimental 拉的分支回流
+    要合主工程红版的分支, 禁止回流 master
+- unstable/<master/experimental>/your_feature
+    你的开发分支, 建议基于此分支打 SNAPSHOT 版本
        
 # module 说明
 
