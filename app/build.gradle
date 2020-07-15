@@ -3,7 +3,7 @@ apply plugin: 'com.android.application'
 android {
     compileSdkVersion 28
     defaultConfig {
-        applicationId "com.tencent.mm.libwxperf"
+        applicationId "com.tencent.libwxperf"
         minSdkVersion 21
         targetSdkVersion 28
         versionCode 1
@@ -48,5 +48,6 @@ dependencies {
     testImplementation 'junit:junit:4.12'
     androidTestImplementation 'com.android.support.test:runner:1.0.2'
     androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.2'
-    implementation project(':wxperf')
+    implementation project(':wxperf-hook')
+    implementation project(':wxperf-fd')
 }

@@ -1,1 +1,3 @@
-include ':app', ':wxperf'
+include ':wxperf-common'
+include ':wxperf-jectl'
+include ':app', ':wxperf-hook', ':wxperf-fd'

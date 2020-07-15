@@ -1,0 +1,47 @@
+apply plugin: 'com.android.library'
+
+apply from: rootProject.file('gradle/WeChatPublish.gradle')
+
+group rootProject.GROUP
+version rootProject.VERSION
+artifactId = 'wxperf-fd'
+
+android {
+    compileSdkVersion rootProject.COMPILE_SDK_VERSION
+
+    defaultConfig {
+        minSdkVersion rootProject.MIN_SDK_VERSION
+        targetSdkVersion rootProject.TARGET_SDK_VERSION
+        versionCode rootProject.VERSION_CODE
+        versionName rootProject.VERSION_NAME
+
+        testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+        consumerProguardFiles "consumer-rules.pro"
+
+        ndk {
+            abiFilters rootProject.ABI_FILTERS as String[]
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    externalNativeBuild {
+        cmake {
+            path "CMakeLists.txt"
+        }
+    }
+}
+
+dependencies {
+    implementation fileTree(dir: "libs", include: ["*.jar"])
+    implementation 'com.android.support:appcompat-v7:28.0.0'
+    testImplementation 'junit:junit:4.12'
+    androidTestImplementation 'com.android.support.test:runner:1.0.2'
+    androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.2'
+    implementation "com.tencent.stubs:logger:${rootProject.LOGGER_VERSION}"
+}

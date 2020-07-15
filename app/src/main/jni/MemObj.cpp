@@ -16,8 +16,8 @@
 #include <unordered_map>
 #include <sys/epoll.h>
 #include <sys/eventfd.h>
-#include "../../../../wxperf/src/main/cpp/common/Log.h"
-#include "../../../../wxperf/src/main/cpp/common/ThreadPool.h"
+#include "../../../../wxperf-hook/src/main/cpp/common/Log.h"
+#include "../../../../wxperf-hook/src/main/cpp/common/ThreadPool.h"
 //#include "../../../../wxperf/src/main/cpp/memory/PointerMetaContainer.h"
 
 
