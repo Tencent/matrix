@@ -37,7 +37,7 @@ void egl_hook_on_dlopen(const char *__file_name) {
  * Signature: ()V
  */
 JNIEXPORT void JNICALL
-Java_com_tencent_mm_performance_jni_egl_EglHook_startHook(JNIEnv *, jobject) {
+Java_com_tencent_wxperf_jni_egl_EglHook_startHook(JNIEnv *, jobject) {
     egl_hook();
     add_dlopen_hook_callback(egl_hook_on_dlopen);
 }
