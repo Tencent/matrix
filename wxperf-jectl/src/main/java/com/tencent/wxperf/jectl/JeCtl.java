@@ -21,7 +21,7 @@ public class JeCtl {
         return tryDisableRetainNative();
     }
 
-    public static int checkRetain() {
+    public synchronized static int checkRetain() {
         return checkRetainNative();
     }
 
