@@ -21,6 +21,11 @@ public class JeCtl {
         return tryDisableRetainNative();
     }
 
+    public static int checkRetain() {
+        return checkRetainNative();
+    }
+
     private static native int tryDisableRetainNative();
 
+    private static native int checkRetainNative();
 }

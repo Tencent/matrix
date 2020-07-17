@@ -426,7 +426,9 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void jectlTest(View view) {
+        JeCtl.checkRetain();
         int ret = JeCtl.tryDisableRetain();
         Log.d(TAG, "tryDisableRetain result :" + ret);
+        JeCtl.checkRetain();
     }
 }

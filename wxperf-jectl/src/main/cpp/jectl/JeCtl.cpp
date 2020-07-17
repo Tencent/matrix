@@ -22,7 +22,13 @@ typedef int (*mallctl_t)(const char *name,
                          void *newp,
                          size_t newlen);
 
-extern "C"
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+mallctl_t mallctl = nullptr;
+
+
 JNIEXPORT jint JNICALL
 Java_com_tencent_wxperf_jectl_JeCtl_tryDisableRetainNative(JNIEnv *env, jclass clazz) {
 
@@ -36,7 +42,9 @@ Java_com_tencent_wxperf_jectl_JeCtl_tryDisableRetainNative(JNIEnv *env, jclass c
         return ERR_SO_NOT_FOUND;
     }
 
-    auto mallctl    = (mallctl_t) Enhance::dlsym(handle, "je_mallctl");
+    if (!mallctl) {
+        mallctl = (mallctl_t) Enhance::dlsym(handle, "je_mallctl");
+    }
 
     if (!mallctl) {
         return ERR_SYM_MALLCTL;
@@ -48,7 +56,7 @@ Java_com_tencent_wxperf_jectl_JeCtl_tryDisableRetainNative(JNIEnv *env, jclass c
 
     LOGD(TAG, "jemalloc version: %s", version);
 
-    if (0 != strncmp(version, "5.", 2)) {
+    if (0 != strncmp(version, "5.1.0", 5)) {
         return ERR_VERSION;
     }
 
@@ -65,3 +73,30 @@ Java_com_tencent_wxperf_jectl_JeCtl_tryDisableRetainNative(JNIEnv *env, jclass c
     return JECTL_OK;
 #endif
 }
+
+JNIEXPORT jint JNICALL
+Java_com_tencent_wxperf_jectl_JeCtl_checkRetainNative(JNIEnv *env, jclass clazz) {
+
+    if (!mallctl) {
+        void *handle = Enhance::dlopen("libc.so", 0);
+        mallctl = (mallctl_t) Enhance::dlsym(handle, "je_mallctl");
+        Enhance::dlclose(handle);
+    }
+
+    if (!mallctl) {
+        return ERR_SYM_MALLCTL;
+    }
+
+    bool retain = true;
+    size_t size = sizeof(retain);
+    mallctl("opt.retain", &retain, &size, nullptr, 0);
+
+    LOGD(TAG, "opt.retain = %d", retain);
+
+    return retain;
+
+}
+
+#ifdef __cplusplus
+}
+#endif

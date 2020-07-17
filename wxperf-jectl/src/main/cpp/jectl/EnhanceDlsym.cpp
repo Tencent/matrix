@@ -101,6 +101,7 @@ namespace Enhance {
             if (end_with(map_file_name, __file_name)
                 && 0 != check_loaded_so((void *) map_base_addr)) {
                 found = true;
+                LOGD(TAG, "found entry [%s]", aline.c_str());
                 break;
             }
         }
@@ -273,7 +274,6 @@ namespace Enhance {
             return nullptr;
         }
 
-        LOGD(TAG, "dlsym hard");
         ElfW(Sym) *symtab_end = info->symtab + info->symtab_num;
         ElfW(Sym) *symtab_idx = info->symtab;
 
