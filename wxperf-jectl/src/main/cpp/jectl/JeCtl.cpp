@@ -43,7 +43,7 @@ Java_com_tencent_wxperf_jectl_JeCtl_tryDisableRetainNative(JNIEnv *env, jclass c
     }
 
     const char *version;
-    size_t     size = 0;
+    size_t     size = sizeof(version);
     mallctl("version", &version, &size, nullptr, 0);
 
     LOGD(TAG, "jemalloc version: %s", version);

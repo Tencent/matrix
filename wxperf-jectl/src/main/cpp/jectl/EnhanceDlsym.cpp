@@ -16,13 +16,9 @@
 #include <dlfcn.h>
 #include <set>
 #include "EnhanceDlsym.h"
+#include "JeLog.h"
 
-#define TAG "unwind-EnhanceDlsym"
-
-
-#define LOGD
-#define LOGI
-#define LOGE
+#define TAG "Wxperf.EnhanceDl"
 
 namespace Enhance {
 
@@ -103,7 +99,7 @@ namespace Enhance {
 //            LOGD(TAG, "%s", aline.c_str());
 
             if (end_with(map_file_name, __file_name)
-                && 0 == check_loaded_so((void *) map_base_addr)) {
+                && 0 != check_loaded_so((void *) map_base_addr)) {
                 found = true;
                 break;
             }
