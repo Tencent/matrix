@@ -13,6 +13,7 @@ import android.util.Log;
 import android.view.View;
 
 import com.tencent.wxperf.fd.FDDumpBridge;
+import com.tencent.wxperf.jectl.JeCtl;
 import com.tencent.wxperf.jni.HookManager;
 import com.tencent.wxperf.jni.egl.EglHook;
 import com.tencent.wxperf.jni.memory.MemoryHook;
@@ -422,5 +423,10 @@ public class MainActivity extends AppCompatActivity {
 
     public void concurrentMapTest(View view) {
         JNIObj.concurrentMapTest();
+    }
+
+    public void jectlTest(View view) {
+        int ret = JeCtl.tryDisableRetain();
+        Log.d(TAG, "tryDisableRetain result :" + ret);
     }
 }

@@ -1,4 +1,4 @@
-package com.tencent.jectl;
+package com.tencent.wxperf.jectl;
 
 import android.content.Context;
 import android.support.test.InstrumentationRegistry;

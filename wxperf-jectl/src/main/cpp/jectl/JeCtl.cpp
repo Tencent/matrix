@@ -23,7 +23,7 @@ typedef int (*mallctl_t)(const char *name,
 
 extern "C"
 JNIEXPORT jint JNICALL
-Java_com_tencent_jectl_JeCtl_tryCtlRetainNative(JNIEnv *env, jclass clazz) {
+Java_com_tencent_wxperf_jectl_JeCtl_tryDisableRetainNative(JNIEnv *env, jclass clazz) {
 
 #ifdef __LP64__
     return ERR_64_BIT;

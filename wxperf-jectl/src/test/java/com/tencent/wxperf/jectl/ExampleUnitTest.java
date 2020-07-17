@@ -1,4 +1,4 @@
-package com.tencent.jectl;
+package com.tencent.wxperf.jectl;
 
 import org.junit.Test;
 
