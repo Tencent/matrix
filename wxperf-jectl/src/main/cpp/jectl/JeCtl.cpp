@@ -6,12 +6,13 @@
 #include "EnhanceDlsym.h"
 #include "JeLog.h"
 
-#define JECTL_OK 0
-#define ERR_SO_NOT_FOUND 1
-#define ERR_SYM_MALLCTL 2
-#define ERR_SYM_OPT_RETAIN 3
-#define ERR_VERSION 4
-#define ERR_64_BIT 5
+// 必须和 java 保持一致
+#define JECTL_OK            0
+#define ERR_SO_NOT_FOUND    1
+#define ERR_SYM_MALLCTL     2
+#define ERR_SYM_OPT_RETAIN  3
+#define ERR_VERSION         4
+#define ERR_64_BIT          5
 
 #define TAG "Wxperf.JeCtl"
 
@@ -35,7 +36,7 @@ Java_com_tencent_wxperf_jectl_JeCtl_tryDisableRetainNative(JNIEnv *env, jclass c
         return ERR_SO_NOT_FOUND;
     }
 
-    auto mallctl = (mallctl_t) Enhance::dlsym(handle, "je_mallctl");
+    auto mallctl    = (mallctl_t) Enhance::dlsym(handle, "je_mallctl");
 
     if (!mallctl) {
         return ERR_SYM_MALLCTL;
@@ -51,7 +52,7 @@ Java_com_tencent_wxperf_jectl_JeCtl_tryDisableRetainNative(JNIEnv *env, jclass c
         return ERR_VERSION;
     }
 
-    bool *opt_retain = (bool *)Enhance::dlsym(handle, "je_opt_retain");
+    bool *opt_retain = (bool *) Enhance::dlsym(handle, "je_opt_retain");
 
     if (!opt_retain) {
         return ERR_SYM_OPT_RETAIN;

@@ -9,9 +9,13 @@ public class JeCtl {
         System.loadLibrary("wxperf-jectl");
     }
 
-    public static final int ERR_VERSION = 1;
-    public static final int ERR_SYMBOL_NOT_FOUND = 2;
-    // TODO
+    // 必须和 native 保持一致
+    public static final int JECTL_OK           = 0;
+    public static final int ERR_SO_NOT_FOUND   = 1;
+    public static final int ERR_SYM_MALLCTL    = 2;
+    public static final int ERR_SYM_OPT_RETAIN = 3;
+    public static final int ERR_VERSION        = 4;
+    public static final int ERR_64_BIT         = 5;
 
     public static int tryDisableRetain() {
         return tryDisableRetainNative();
