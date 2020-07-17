@@ -16,7 +16,8 @@ set(SOURCE_DIR src/main/cpp)
 
 set(
         SOURCE_FILES
-        ${SOURCE_DIR}/jectl/jectl.cpp
+        ${SOURCE_DIR}/jectl/JeCtl.cpp
+        ${SOURCE_DIR}/jectl/EnhanceDlsym.cpp
 )
 
 add_library( # Specifies the name of the library.
