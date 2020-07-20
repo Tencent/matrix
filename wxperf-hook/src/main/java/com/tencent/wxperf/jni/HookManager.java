@@ -20,11 +20,6 @@ public class HookManager {
     private Set<AbsHook> mHooks = new HashSet<>();
 
     private HookManager(){
-        try {
-            System.loadLibrary("wxperf-jni");
-        } catch (Throwable e) {
-            Log.printStack(Log.ERROR, TAG, e);
-        }
     }
 
     private void exclusiveHook() {
@@ -43,6 +38,12 @@ public class HookManager {
 
         if (mHooks.isEmpty()) {
             return;
+        }
+
+        try {
+            System.loadLibrary("wxperf-jni");
+        } catch (Throwable e) {
+            Log.printStack(Log.ERROR, TAG, e);
         }
 
         for (AbsHook hook : mHooks) {
@@ -88,6 +89,10 @@ public class HookManager {
             sb.append("\t").append(stackTraceElement).append('\n');
         }
         return sb.toString();
+    }
+
+    public boolean hasHooked() {
+        return hasHooked;
     }
 
     private native int xhookRefreshNative(boolean async);

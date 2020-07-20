@@ -137,7 +137,9 @@ public class MemoryHook extends AbsHook {
     }
 
     public void dump(String into) {
-        dumpNative(into);
+        if (HookManager.INSTANCE.hasHooked()) {
+            dumpNative(into);
+        }
     }
 
     private native void dumpNative(String path);

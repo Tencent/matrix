@@ -60,11 +60,11 @@ JNIEXPORT jint JNI_OnLoad(JavaVM *vm, void *reserved) {
             m_method_egl_destroy_surface = env->GetStaticMethodID(m_class_EglHook,
                                                                   "onDeleteEglSurface", "(J)V");
 
-            LOGE("Cc1over-debug", "j_EglHook success");
+            LOGD(TAG, "j_EglHook success");
         }
     }
 
-    xhook_ignore(".*libwxperf\\.so$", NULL);
+    xhook_ignore(".*libwxperf-jni\\.so$", NULL);
     xhook_ignore(".*liblog\\.so$", NULL);
     xhook_ignore(".*libc\\.so$", NULL);
     xhook_ignore(".*libm\\.so$", NULL);

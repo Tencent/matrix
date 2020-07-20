@@ -78,7 +78,9 @@ public class PthreadHook extends AbsHook {
     }
 
     public void dump(String path) {
-        dumpNative(path);
+        if (HookManager.INSTANCE.hasHooked()) {
+            dumpNative(path);
+        }
     }
 
     @Override
