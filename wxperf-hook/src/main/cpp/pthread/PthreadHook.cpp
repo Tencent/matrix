@@ -192,28 +192,28 @@ static void notify_routine(const pthread_t __pthread) {
 static void on_pthread_create(const pthread_t __pthread) {
     LOGD(TAG, "+++++++ on_pthread_create");
 
-//    pid_t tid  = pthread_gettid_np(__pthread);
-//
+    pid_t tid  = pthread_gettid_np(__pthread);
+
 //    if (!rp_acquire()) {
 //        LOGD(TAG, "reentrant!!!");
 //        notify_routine(__pthread);
 //        return;
 //    }
 //
-//    // 反射 Java 获取堆栈时加锁会造成死锁, 提前获取堆栈
-//    const size_t BUF_SIZE         = 1024;
-//    char         *java_stacktrace = static_cast<char *>(malloc(BUF_SIZE));
-//    if (java_stacktrace) {
-//        get_java_stacktrace(java_stacktrace, BUF_SIZE);
-////        strncpy(java_stacktrace, " (fake stacktrace)", BUF_SIZE);
-//    }
+    // 反射 Java 获取堆栈时加锁会造成死锁, 提前获取堆栈
+    const size_t BUF_SIZE         = 1024;
+    char         *java_stacktrace = static_cast<char *>(malloc(BUF_SIZE));
+    if (java_stacktrace) {
+        get_java_stacktrace(java_stacktrace, BUF_SIZE);
+        strncpy(java_stacktrace, " (fake stacktrace)", BUF_SIZE);
+    }
 //
-//    LOGD(TAG, "parent_tid: %d -> tid: %d", pthread_gettid_np(pthread_self()), tid);
-//    bool recorded = on_pthread_create_locked(__pthread, java_stacktrace, tid);
-//
-//    if (!recorded && java_stacktrace) {
-//        free(java_stacktrace);
-//    }
+    LOGD(TAG, "parent_tid: %d -> tid: %d", pthread_gettid_np(pthread_self()), tid);
+    bool recorded = false;//on_pthread_create_locked(__pthread, java_stacktrace, tid);
+
+    if (!recorded && java_stacktrace) {
+        free(java_stacktrace);
+    }
 //
 //    rp_release();
     notify_routine(__pthread);
