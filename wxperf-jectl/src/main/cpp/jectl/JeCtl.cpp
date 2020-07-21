@@ -63,6 +63,11 @@ Java_com_tencent_wxperf_jectl_JeCtl_tryDisableRetainNative(JNIEnv *env, jclass c
     bool *opt_retain = (bool *) Enhance::dlsym(handle, "je_opt_retain");
 
     if (!opt_retain) {
+        // retry without je prefix
+        opt_retain = (bool *) Enhance::dlsym(handle, "opt_retain");
+    }
+
+    if (!opt_retain) {
         return ERR_SYM_OPT_RETAIN;
     }
 
