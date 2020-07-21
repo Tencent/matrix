@@ -24,6 +24,8 @@ set(
         ${SOURCE_DIR}/common/Utils.cpp
         ${SOURCE_DIR}/common/JNICommon.cpp
         ${SOURCE_DIR}/common/HookCommon.cpp
+        ${SOURCE_DIR}/common/PthreadExt.cpp
+        ${SOURCE_DIR}/common/ReentrantPrevention.cpp
         ${SOURCE_DIR}/pthread/PthreadHook.cpp
         ${SOURCE_DIR}/pthread/PthreadHookJNI.cpp
         ${SOURCE_DIR}/dlsym/EnhanceDlsym.cpp
