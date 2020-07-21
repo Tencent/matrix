@@ -33,7 +33,7 @@ using namespace std;
 int count = 0;
 
 JNIEXPORT void JNICALL
-Java_com_tencent_mm_libwxperf_JNIObj_doMmap(JNIEnv *env, jobject instance) {
+Java_com_tencent_wxperf_sample_JNIObj_doMmap(JNIEnv *env, jobject instance) {
 
     void *p_mmap = mmap(NULL, 1024, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
     LOGD("Yves-debug", "map ptr = %p", p_mmap);
@@ -55,7 +55,7 @@ Java_com_tencent_mm_libwxperf_JNIObj_doMmap(JNIEnv *env, jobject instance) {
 }
 
 JNIEXPORT void JNICALL
-Java_com_tencent_mm_libwxperf_JNIObj_reallocTest(JNIEnv *env, jobject instance) {
+Java_com_tencent_wxperf_sample_JNIObj_reallocTest(JNIEnv *env, jobject instance) {
     void *p = malloc(8);
     LOGD("Yves-debug", "malloc p = %p", p);
 
@@ -80,7 +80,7 @@ Java_com_tencent_mm_libwxperf_JNIObj_reallocTest(JNIEnv *env, jobject instance) 
 }
 
 JNIEXPORT void JNICALL
-Java_com_tencent_mm_libwxperf_JNIObj_doSomeThing(JNIEnv *env, jobject instance) {
+Java_com_tencent_wxperf_sample_JNIObj_doSomeThing(JNIEnv *env, jobject instance) {
     LOGD("Yves-sample", ">>>>>>>>>>>>>>>>>>begin");
 //    LOGD("Yves-sample", "malloc size = 9012111");
 //    malloc(9012);
@@ -406,7 +406,7 @@ static int wrap_pthread_getname_np(pthread_t __pthread, char *__buf, size_t __n)
 }
 
 JNIEXPORT void JNICALL
-Java_com_tencent_mm_libwxperf_JNIObj_testThread(JNIEnv *env, jclass clazz) {
+Java_com_tencent_wxperf_sample_JNIObj_testThread(JNIEnv *env, jclass clazz) {
 
     pthread_t thread;
     int       rc;
@@ -451,7 +451,7 @@ void *threadfunc2(void *arg) {
 }
 
 JNIEXPORT void JNICALL
-Java_com_tencent_mm_libwxperf_JNIObj_testThreadSpecific(JNIEnv *env, jclass clazz) {
+Java_com_tencent_wxperf_sample_JNIObj_testThreadSpecific(JNIEnv *env, jclass clazz) {
     if (!key) {
         pthread_key_create(&key, dest);
     }
@@ -491,7 +491,7 @@ void copy(std::vector<Obj> *dest) {
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 JNIEXPORT void JNICALL
-Java_com_tencent_mm_libwxperf_JNIObj_testJNICall(JNIEnv *env, jclass clazz) {
+Java_com_tencent_wxperf_sample_JNIObj_testJNICall(JNIEnv *env, jclass clazz) {
 
 //    pthread_mutex_lock(&mutex);
 //
@@ -548,7 +548,7 @@ void *thread_rountine(void *arg) {
 }
 
 JNIEXPORT void JNICALL
-Java_com_tencent_mm_libwxperf_JNIObj_testPthreadFree(JNIEnv *env, jclass clazz) {
+Java_com_tencent_wxperf_sample_JNIObj_testPthreadFree(JNIEnv *env, jclass clazz) {
     LOGD("Yves-debug", "malloc thread %d", pthread_gettid_np(pthread_self()));
 
     pthread_t thread;
@@ -585,7 +585,7 @@ Java_com_tencent_mm_libwxperf_JNIObj_testPthreadFree(JNIEnv *env, jclass clazz) 
 }
 
 JNIEXPORT void JNICALL
-Java_com_tencent_mm_libwxperf_JNIObj_mallocTest(JNIEnv *env, jclass clazz) {
+Java_com_tencent_wxperf_sample_JNIObj_mallocTest(JNIEnv *env, jclass clazz) {
 //    LOGD("Yves-debug", "mallocTest");
     Obj *p = new Obj;
     LOGD("Yves-debug", "mallocTest: new %p", p);
@@ -650,7 +650,7 @@ void SpeedTest() {
 }
 
 JNIEXPORT void JNICALL
-Java_com_tencent_mm_libwxperf_JNIObj_tlsTest(JNIEnv *env, jclass clazz) {
+Java_com_tencent_wxperf_sample_JNIObj_tlsTest(JNIEnv *env, jclass clazz) {
 
     if (!key) {
         pthread_key_create(&key, dest);
@@ -685,7 +685,7 @@ size_t test_count = 0;
 std::mutex test_mutex;
 
 JNIEXPORT void JNICALL
-Java_com_tencent_mm_libwxperf_JNIObj_poolTest(JNIEnv *env, jclass clazz) {
+Java_com_tencent_wxperf_sample_JNIObj_poolTest(JNIEnv *env, jclass clazz) {
 //    if (w) {
 //        delete w;
 //        w = nullptr;
@@ -777,7 +777,7 @@ void epollTest() {
 #pragma clang diagnostic pop
 
 JNIEXPORT void JNICALL
-Java_com_tencent_mm_libwxperf_JNIObj_epollTest(JNIEnv *env, jclass clazz) {
+Java_com_tencent_wxperf_sample_JNIObj_epollTest(JNIEnv *env, jclass clazz) {
     if (wake_fd == -1) {
 //        std::thread(epollTest());
         epollTest();
@@ -816,7 +816,7 @@ Java_com_tencent_mm_libwxperf_JNIObj_epollTest(JNIEnv *env, jclass clazz) {
 }
 
 JNIEXPORT void JNICALL
-Java_com_tencent_mm_libwxperf_JNIObj_concurrentMapTest(JNIEnv *env, jclass clazz) {
+Java_com_tencent_wxperf_sample_JNIObj_concurrentMapTest(JNIEnv *env, jclass clazz) {
 
     int r = ({int i = 0; int j = 1; int k = 2; j;});
 

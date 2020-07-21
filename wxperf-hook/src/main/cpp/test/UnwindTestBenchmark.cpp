@@ -30,7 +30,7 @@ extern "C" {
 #define BENCHMARK(mode, test_func) BENCHMARK_TIMES(mode, benchmark_times, test_func)
 
 JNIEXPORT void JNICALL
-Java_com_tencent_mm_performance_jni_test_UnwindBenckmarkTest_benchmarkInitNative(JNIEnv *env, jclass clazz) {
+Java_com_tencent_wxperf_jni_test_UnwindBenckmarkTest_benchmarkInitNative(JNIEnv *env, jclass clazz) {
 
     // for dwarf unwinder
     wechat_backtrace::update_maps();
@@ -68,7 +68,7 @@ Java_com_tencent_mm_performance_jni_test_UnwindBenckmarkTest_benchmarkNative(JNI
 
 
 JNIEXPORT void JNICALL
-Java_com_tencent_mm_performance_jni_test_UnwindBenckmarkTest_debugNative(JNIEnv *env, jclass clazz) {
+Java_com_tencent_wxperf_jni_test_UnwindBenckmarkTest_debugNative(JNIEnv *env, jclass clazz) {
     BENCHMARK_TIMES(FP_UNWIND, 1, func_selfso);
 }
 

@@ -102,22 +102,22 @@ namespace unwindstack {
 
     FallbackPCRange::FallbackPCRange() {
 
-        void *trampoline = EnhanceDlsym::getInstance()->dlsym(
-                "/apex/com.android.runtime/lib64/libart.so",
-                "art_quick_generic_jni_trampoline");
-        if (nullptr != trampoline) {
-            mSkipFunctions.push_back({reinterpret_cast<uintptr_t>(trampoline),
-                                      reinterpret_cast<uintptr_t>(trampoline) + 0x27C});
-        }
+        void *handle = enhance::dlopen("libart.so", 0);
+        if (handle) {
+            void *trampoline = enhance::dlsym(handle, "art_quick_generic_jni_trampoline");
+            if (nullptr != trampoline) {
+                mSkipFunctions.emplace_back(reinterpret_cast<uintptr_t>(trampoline),
+                                          reinterpret_cast<uintptr_t>(trampoline) + 0x27C);
+            }
 
-        void *art_quick_invoke_static_stub = EnhanceDlsym::getInstance()->dlsym(
-                "/apex/com.android.runtime/lib64/libart.so",
-                "art_quick_invoke_static_stub");
-        if (nullptr != art_quick_invoke_static_stub) {
-            mSkipFunctions.push_back(
-                    {reinterpret_cast<uintptr_t >(art_quick_invoke_static_stub),
-                     reinterpret_cast<uintptr_t >(art_quick_invoke_static_stub) + 0x280});
+            void *art_quick_invoke_static_stub = enhance::dlsym(handle, "art_quick_invoke_static_stub");
+            if (nullptr != art_quick_invoke_static_stub) {
+
+                mSkipFunctions.emplace_back(reinterpret_cast<uintptr_t >(art_quick_invoke_static_stub),
+                         reinterpret_cast<uintptr_t >(art_quick_invoke_static_stub) + 0x280);
+            }
         }
+        enhance::dlclose(handle);
 
         SkipDexPC();
 

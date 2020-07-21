@@ -20,7 +20,7 @@
 
 #define TAG "Wxperf.EnhanceDl"
 
-namespace Enhance {
+namespace enhance {
 
     static std::set<DlInfo *> m_opened_info;
     static std::mutex         m_dl_mutex;

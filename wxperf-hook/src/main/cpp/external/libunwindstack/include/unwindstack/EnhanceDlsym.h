@@ -1,5 +1,5 @@
 //
-// Created by Yves on 2020-04-09.
+// Created by Yves on 2020/7/15.
 //
 
 #ifndef LIBWXPERF_JNI_ENHANCEDLSYM_H
@@ -11,63 +11,34 @@
 #include <mutex>
 
 namespace unwindstack {
+    namespace enhance {
+        void *dlopen(const char *__file_name, int __flag);
 
-    using namespace std;
+        int dlclose(void *__handle);
 
-    struct ElfMeta;
+        void *dlsym(void *__handle, const char *__symbol);
 
-    class EnhanceDlsym {
+        struct DlInfo {
 
-    public:
+            DlInfo() {}
 
-        static EnhanceDlsym *getInstance() {
-            return INSTANCE;
-        }
+            ~DlInfo() {}
 
-        void *dlsym(const string& file_name__, const string& symbol) ;
+            std::string pathname;
 
-        void load(const string file_name__);
+            ElfW(Addr) base_addr;
+            ElfW(Addr) bias_addr;
 
-    private:
-        EnhanceDlsym() {};
-        ~EnhanceDlsym() {};
-        EnhanceDlsym(const EnhanceDlsym &);
-        const EnhanceDlsym &operator=(const EnhanceDlsym&);
+            ElfW(Ehdr) *ehdr; // pointing to loaded mem
+            ElfW(Phdr) *phdr; // pointing to loaded mem
 
-        ElfW(Phdr) *GetFirstSegmentByTypeOffset(ElfMeta &meta__, ElfW(Word) type__, ElfW(Off) offset__)  ;//getfirst_segment_by_type_offset
+            char *strtab; // strtab
+            ElfW(Word) strtab_size; // size in bytes
 
-        void LoadFromFile(ElfMeta &meta__, const string &file_name__);
+            ElfW(Sym)  *symtab;
+            ElfW(Word) symtab_num;
 
-        static EnhanceDlsym *INSTANCE;
-
-        map<string, ElfMeta> mOpenedFile;
-
-        mutex mMutex;
-    };
-
-
-    struct ElfMeta {
-
-        ElfMeta() {}
-        ~ElfMeta() {}
-
-        void * handler;
-        string pathname;
-
-        ElfW(Addr)  base_addr;
-        ElfW(Addr)  bias_addr;
-
-        ElfW(Ehdr) *ehdr; // pointing to loaded mem
-        ElfW(Phdr) *phdr; // pointing to loaded mem
-
-        char *strtab; // strtab
-        ElfW(Word) strtab_size; // size in bytes
-
-        ElfW(Sym)  *symtab;
-        ElfW(Word) symtab_num;
-
-        std::map<string, uintptr_t > found_syms;
-    };
+        };
+    }
 }
-
 #endif //LIBWXPERF_JNI_ENHANCEDLSYM_H

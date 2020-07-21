@@ -51,27 +51,28 @@ public class MainActivity extends AppCompatActivity {
 //
 //        Log.d(TAG, "threadName = " + threadNameRegex + ", " + name.matches(threadNameRegex));
 //
-//        try {
-//            HookManager.INSTANCE
-//                    .addHook(MemoryHook.INSTANCE
+        try {
+            HookManager.INSTANCE
+                    .addHook(MemoryHook.INSTANCE
 //                            .addHookSo(".*libnative-lib\\.so$")
-//                            .enableStacktrace(false)
-//                            .enableMmapHook(false))
-//                    .addHook(PthreadHook.INSTANCE
-////                            .addHookSo(".*libnative-lib\\.so$")
-//                                    .addHookSo(".*\\.so$")
-////                            .addIgnoreSo(".*libart\\.so$")
-//                                    .addHookThread(".*")
-////                                    .addHookThread(threadNameRegex)
-////                            .addHookThread("MyHandlerThread")
-////                            .addHookThread("\\[GT\\]MediaCodecR$")
-//                    )
-//                    .commitHooks();
-//
-////            throw new HookManager.HookFailedException("adfad");
-//        } catch (HookManager.HookFailedException e) {
-//            e.printStackTrace();
-//        }
+                            .addHookSo(".*libnative-lib\\.so$")
+                            .enableStacktrace(true)
+                            .enableMmapHook(false))
+                    .addHook(PthreadHook.INSTANCE
+//                            .addHookSo(".*libnative-lib\\.so$")
+                                    .addHookSo(".*\\.so$")
+//                            .addIgnoreSo(".*libart\\.so$")
+                                    .addHookThread(".*")
+//                                    .addHookThread(threadNameRegex)
+//                            .addHookThread("MyHandlerThread")
+//                            .addHookThread("\\[GT\\]MediaCodecR$")
+                    )
+                    .commitHooks();
+
+//            throw new HookManager.HookFailedException("adfad");
+        } catch (HookManager.HookFailedException e) {
+            e.printStackTrace();
+        }
 //
 //        UnwindTest.init();
 //        UnwindBenckmarkTest.benchmarkInitNative();

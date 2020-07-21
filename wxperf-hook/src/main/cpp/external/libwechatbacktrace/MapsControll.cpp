@@ -41,7 +41,7 @@ namespace wechat_backtrace {
         pthread_mutex_unlock(&unwind_mutex);
     }
 
-    unwindstack::LocalMaps * GetMapsCache() {
+    unwindstack::LocalMaps *GetMapsCache() {
         unwindstack::LocalMaps *maps = gMapsCache.get();
 
         if (maps == NULL) {
@@ -75,9 +75,9 @@ namespace wechat_backtrace {
         while (getline(input, aline)) {
             if (sscanf(aline.c_str(),
                        "%" PRIxPTR "-%" PRIxPTR " %4s",
-                    &map_base_addr,
-                    &map_end_addr,
-                    map_perm) != 3) {
+                       &map_base_addr,
+                       &map_end_addr,
+                       map_perm) != 3) {
                 continue;
             }
 
@@ -98,22 +98,28 @@ namespace wechat_backtrace {
 
         GetSkipFunctions()->clear();
 
-        void *trampoline = unwindstack::EnhanceDlsym::getInstance()->dlsym(
-                "/apex/com.android.runtime/lib64/libart.so",
-                "art_quick_generic_jni_trampoline");
-        if (nullptr != trampoline) {
-            GetSkipFunctions()->push_back({reinterpret_cast<uintptr_t>(trampoline),
-                                      reinterpret_cast<uintptr_t>(trampoline) + 0x27C});
-        }
+        void *handle = unwindstack::enhance::dlopen("libart.so", 0);
 
-        void *art_quick_invoke_static_stub = unwindstack::EnhanceDlsym::getInstance()->dlsym(
-                "/apex/com.android.runtime/lib64/libart.so",
-                "art_quick_invoke_static_stub");
-        if (nullptr != art_quick_invoke_static_stub) {
-            GetSkipFunctions()->push_back(
-                    {reinterpret_cast<uintptr_t >(art_quick_invoke_static_stub),
-                     reinterpret_cast<uintptr_t >(art_quick_invoke_static_stub) + 0x280});
+        if (handle) {
+
+            void *trampoline =
+                         unwindstack::enhance::dlsym(handle, "art_quick_generic_jni_trampoline");
+
+            if (nullptr != trampoline) {
+                GetSkipFunctions()->push_back({reinterpret_cast<uintptr_t>(trampoline),
+                                               reinterpret_cast<uintptr_t>(trampoline) + 0x27C});
+            }
+
+            void *art_quick_invoke_static_stub = unwindstack::enhance::dlsym(
+                    handle,
+                    "art_quick_invoke_static_stub");
+            if (nullptr != art_quick_invoke_static_stub) {
+                GetSkipFunctions()->push_back(
+                        {reinterpret_cast<uintptr_t >(art_quick_invoke_static_stub),
+                         reinterpret_cast<uintptr_t >(art_quick_invoke_static_stub) + 0x280});
+            }
         }
+        unwindstack::enhance::dlclose(handle);
 
         SkipDexPC();
     }

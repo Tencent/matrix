@@ -25,7 +25,7 @@ extern "C" {
 extern int benchmark_entry(int argc, char **argv);
 
 JNIEXPORT void JNICALL
-Java_com_tencent_mm_libwxperf_MemoryBenchmarkTest_benchmarkNative(JNIEnv *env,
+Java_com_tencent_wxperf_sample_MemoryBenchmarkTest_benchmarkNative(JNIEnv *env,
                                                                   jclass clazz) {
 
 //    BENCHMARK(single_thread)

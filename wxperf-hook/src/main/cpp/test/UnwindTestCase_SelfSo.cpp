@@ -17,7 +17,8 @@ extern "C" {
 #undef LOGD
 #endif
 
-#define LOGD(TAG, FMT, args...) //
+#define LOGD(TAG, FMT, args...) //__android_log_print(ANDROID_LOG_DEBUG, TAG, FMT, ##args)
+#define DWARF_UNWIND_TEST "Wxperf.UnwindBenchmark"
 
 void selfso_func0f() {
 

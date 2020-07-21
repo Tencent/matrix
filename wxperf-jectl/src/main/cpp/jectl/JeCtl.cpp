@@ -36,14 +36,14 @@ Java_com_tencent_wxperf_jectl_JeCtl_tryDisableRetainNative(JNIEnv *env, jclass c
     return ERR_64_BIT;
 #else
 
-    void *handle = Enhance::dlopen("libc.so", 0);
+    void *handle = enhance::dlopen("libc.so", 0);
 
     if (!handle) {
         return ERR_SO_NOT_FOUND;
     }
 
     if (!mallctl) {
-        mallctl = (mallctl_t) Enhance::dlsym(handle, "je_mallctl");
+        mallctl = (mallctl_t) enhance::dlsym(handle, "je_mallctl");
     }
 
     if (!mallctl) {
@@ -60,11 +60,11 @@ Java_com_tencent_wxperf_jectl_JeCtl_tryDisableRetainNative(JNIEnv *env, jclass c
         return ERR_VERSION;
     }
 
-    bool *opt_retain = (bool *) Enhance::dlsym(handle, "je_opt_retain");
+    bool *opt_retain = (bool *) enhance::dlsym(handle, "je_opt_retain");
 
     if (!opt_retain) {
         // retry without je prefix
-        opt_retain = (bool *) Enhance::dlsym(handle, "opt_retain");
+        opt_retain = (bool *) enhance::dlsym(handle, "opt_retain");
     }
 
     if (!opt_retain) {
@@ -73,7 +73,7 @@ Java_com_tencent_wxperf_jectl_JeCtl_tryDisableRetainNative(JNIEnv *env, jclass c
 
     *opt_retain = false;
 
-    Enhance::dlclose(handle);
+    enhance::dlclose(handle);
 
     return JECTL_OK;
 #endif
@@ -83,9 +83,9 @@ JNIEXPORT jint JNICALL
 Java_com_tencent_wxperf_jectl_JeCtl_checkRetainNative(JNIEnv *env, jclass clazz) {
 
     if (!mallctl) {
-        void *handle = Enhance::dlopen("libc.so", 0);
-        mallctl = (mallctl_t) Enhance::dlsym(handle, "je_mallctl");
-        Enhance::dlclose(handle);
+        void *handle = enhance::dlopen("libc.so", 0);
+        mallctl = (mallctl_t) enhance::dlsym(handle, "je_mallctl");
+        enhance::dlclose(handle);
     }
 
     if (!mallctl) {
