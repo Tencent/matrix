@@ -37,15 +37,15 @@ Java_com_tencent_wxperf_sample_MemoryBenchmarkTest_benchmarkNative(JNIEnv *env,
 //    LOGD(MEMORY_BENCHMARK_TAG, "start concurrent_alloc benchmark");
 //    concurrent_alloc();
 
-#define THREAD_COUNT    "50"    /* Number of execution threads */
+#define THREAD_COUNT    "20"    /* Number of execution threads */
 #define MODE            "0"     /* 0 for random size [min, max], 1 for fixed size (min) */
 #define SIZE_MODE       "1"     /*  0 for even distribution, 1 for linear dropoff, 2 for exp dropoff */
-#define CROSS_RATE      "20"    /* Rate of cross-thread deallocations (every n iterations), 0 for none */
-#define LOOPS           "10"     /* Number of loops in each iteration (0 for default, 800k) */
-#define ALLOCS          "1024"     /* Number of concurrent allocations in each thread, (0 for default, 10k) */
-#define OP_COUNT        "1000"     /* Iteration operation count */
+#define CROSS_RATE      "2"    /* Rate of cross-thread deallocations (every n iterations), 0 for none */
+#define LOOPS           "20"     /* Number of loops in each iteration (0 for default, 800k) */
+#define ALLOCS          "10240"     /* Number of concurrent allocations in each thread, (0 for default, 10k) */
+#define OP_COUNT        "5000"     /* Iteration operation count */
 #define MIN_SIZE        "16"    /* Minimum size for random mode, fixed size for fixed mode */
-#define MAX_SIZE        "1024"  /* Maximum size for random mode, ignored for fixed mode */
+#define MAX_SIZE        "8192"  /* Maximum size for random mode, ignored for fixed mode */
 
     char *argv[] = {
             "benchmark",

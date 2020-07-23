@@ -31,13 +31,14 @@ DEFINE_HOOK_FUN(void *, __loader_android_dlopen_ext, const char *__file_name,
     LOGD(TAG, "call into dlopen hook");
     pthread_mutex_lock(&m_dlopen_mutex);
 
+//    NanoSeconds_Start(TAG, begin);
+
     for (auto &callback : m_dlopen_callbacks) {
         callback(__file_name);
     }
 
-    NanoSeconds_Start(begin);
     xhook_refresh(false);
-    NanoSeconds_End(cost, begin);
+//    NanoSeconds_End(TAG, begin, "refresh");
 
     LOGD(TAG, "xhook_refresh cost : %lld", cost);
 
@@ -113,9 +114,9 @@ Java_com_tencent_wxperf_jni_HookManager_xhookRefreshNative(JNIEnv *env, jobject 
                                                                   jboolean async) {
     hook_common_init();
     unwindstack::update_maps();
-    NanoSeconds_Start(begin);
+    NanoSeconds_Start(TAG, begin);
     int ret = xhook_refresh(async);
-    NanoSeconds_End(cost, begin);
+    NanoSeconds_End(TAG, begin, "fist refresh");
 
     LOGD(TAG, "xhook_refresh in JNI cost %lld", cost);
     return ret;

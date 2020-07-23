@@ -183,10 +183,20 @@
         android:id="@+id/button5"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:onClick="jectlTest"
         android:text="JeCtl"
         android:textAllCaps="false"
-        android:onClick="jectlTest"
         app:layout_constraintBaseline_toBaselineOf="@+id/btn_egl"
         app:layout_constraintStart_toEndOf="@+id/btn_egl" />
+
+    <Button
+        android:id="@+id/button6"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="KillSelf"
+        android:textAllCaps="false"
+        android:onClick="killSelf"
+        app:layout_constraintStart_toStartOf="@+id/btn_egl_create_context"
+        app:layout_constraintTop_toBottomOf="@+id/btn_egl_create_context" />
 
 </android.support.constraint.ConstraintLayout>
