@@ -564,15 +564,24 @@ static float *g_cpuHighThreadValueArray = NULL;
         int *trace_length_matrix = stackInfo.trace_length_matrix;
         
         if (stack_matrix != NULL && trace_length_matrix != NULL) {
-            g_cpuHighThreadArray = (KSStackCursor **)malloc(sizeof(KSStackCursor *) * (int)cost_cpu_thread_count);
-            g_cpuHighThreadNumber = (int) cost_cpu_thread_count;
-            g_cpuHighThreadValueArray = (float *)malloc(sizeof(float) * (int)cost_cpu_thread_count);
-            
+            int real_cpu_thread_count = 0;
             for (int i = 0; i < cost_cpu_thread_count; i++) {
                 if (stack_matrix[i] != NULL) {
-                    g_cpuHighThreadArray[i] = (KSStackCursor *)malloc(sizeof(KSStackCursor));
-                    kssc_initWithBacktrace(g_cpuHighThreadArray[i], stack_matrix[i], trace_length_matrix[i], 0);
-                    g_cpuHighThreadValueArray[i] = cost_cpu_value_list[i];
+                    real_cpu_thread_count++;
+                }
+            }
+            
+            g_cpuHighThreadArray = (KSStackCursor **)malloc(sizeof(KSStackCursor *) * (int)real_cpu_thread_count);
+            g_cpuHighThreadNumber = (int) real_cpu_thread_count;
+            g_cpuHighThreadValueArray = (float *)malloc(sizeof(float) * (int)real_cpu_thread_count);
+            
+            int index = 0;
+            for (int i = 0; i < cost_cpu_thread_count; i++) {
+                if (stack_matrix[i] != NULL) {
+                    g_cpuHighThreadArray[index] = (KSStackCursor *)malloc(sizeof(KSStackCursor));
+                    kssc_initWithBacktrace(g_cpuHighThreadArray[index], stack_matrix[i], trace_length_matrix[i], 0);
+                    g_cpuHighThreadValueArray[index] = cost_cpu_value_list[i];
+                    index++;
                 }
             }
             
