@@ -24,6 +24,7 @@ jmethodID m_method_egl_create_window_surface;
 jmethodID m_method_egl_create_pbuffer_surface;
 jmethodID m_method_egl_destroy_surface;
 
+// fixme 解偶
 JNIEXPORT jint JNI_OnLoad(JavaVM *vm, void *reserved) {
     LOGD(TAG, "JNI OnLoad...");
     m_java_vm = vm;
