@@ -84,7 +84,7 @@ static std::set<pthread_t>                 m_filtered_pthreads;
 
 static std::set<regex_wrapper> m_hook_thread_name_regex;
 
-static pthread_key_t m_rp_key;
+static pthread_key_t m_destructor_key;
 
 static std::mutex m_subroutine_mutex;
 static std::condition_variable m_subroutine_cv;
@@ -96,8 +96,8 @@ static void on_pthread_destroy(void *__specific);
 void pthread_hook_init() {
     LOGD(TAG, "pthread_hook_init");
 
-    if (!m_rp_key) {
-        pthread_key_create(&m_rp_key, on_pthread_destroy);
+    if (!m_destructor_key) {
+        pthread_key_create(&m_destructor_key, on_pthread_destroy);
     }
 
     rp_init();
@@ -541,11 +541,11 @@ static void on_pthread_destroy(void *__specific) {
 
 static void *pthread_routine_wrapper(void *__arg) {
 
-//    auto *specific = (char *) malloc(sizeof(char));
-//    *specific = 'P';
-//
-//    pthread_setspecific(m_rp_key, specific);
-//
+    auto *specific = (char *) malloc(sizeof(char));
+    *specific = 'P';
+
+    pthread_setspecific(m_destructor_key, specific);
+
     before_routine_start();
 
     auto *args_wrapper = (routine_wrapper_t *) __arg;
