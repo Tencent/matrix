@@ -221,7 +221,7 @@ static void on_pthread_create(const pthread_t __pthread) {
     }
 //
 //    rp_release();
-    notify_routine(__pthread);
+//    notify_routine(__pthread);
 
     LOGD(TAG, "------ on_pthread_create end");
 }
@@ -546,7 +546,7 @@ static void *pthread_routine_wrapper(void *__arg) {
 
     pthread_setspecific(m_destructor_key, specific);
 
-    before_routine_start();
+//    before_routine_start();
 
     auto *args_wrapper = (routine_wrapper_t *) __arg;
     void *ret          = args_wrapper->origin_func(args_wrapper->origin_args);
@@ -575,7 +575,7 @@ DEFINE_HOOK_FUN(int, pthread_setname_np, pthread_t
         __pthread, const char *__name) {
     CALL_ORIGIN_FUNC_RET(int, ret, pthread_setname_np, __pthread, __name);
     if (0 == ret) {
-        on_pthread_setname(__pthread, __name);
+//        on_pthread_setname(__pthread, __name);
     }
     return ret;
 }
