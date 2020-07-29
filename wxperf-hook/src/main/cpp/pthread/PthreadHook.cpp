@@ -209,8 +209,8 @@ static void on_pthread_create(const pthread_t __pthread) {
     const size_t BUF_SIZE         = 1024;
     char         *java_stacktrace = static_cast<char *>(malloc(BUF_SIZE));
     if (java_stacktrace) {
-//        get_java_stacktrace(java_stacktrace, BUF_SIZE);
-        strncpy(java_stacktrace, " (fake stacktrace)", BUF_SIZE);
+        get_java_stacktrace(java_stacktrace, BUF_SIZE);
+//        strncpy(java_stacktrace, " (fake stacktrace)", BUF_SIZE);
     }
 //
     LOGD(TAG, "parent_tid: %d -> tid: %d", pthread_gettid_np(pthread_self()), tid);
