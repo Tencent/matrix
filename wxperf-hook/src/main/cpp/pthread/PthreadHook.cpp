@@ -78,6 +78,7 @@ struct regex_wrapper {
 };
 
 static std::recursive_mutex m_pthread_meta_mutex;
+typedef std::lock_guard<std::recursive_mutex> pthread_meta_lock;
 
 static std::map<pthread_t, pthread_meta_t> m_pthread_metas;
 static std::set<pthread_t>                 m_filtered_pthreads;
@@ -133,7 +134,7 @@ static bool test_match_thread_name(pthread_meta_t &__meta) {
 }
 
 static inline bool on_pthread_create_locked(const pthread_t __pthread, char *__java_stacktrace, pid_t __tid) {
-    std::lock_guard<std::recursive_mutex> meta_lock(m_pthread_meta_mutex);
+    pthread_meta_lock meta_lock(m_pthread_meta_mutex);
 
     if (m_pthread_metas.count(__pthread)) {
         LOGD(TAG, "on_pthread_create: thread already recorded");
@@ -206,6 +207,7 @@ static void on_pthread_create(const pthread_t __pthread) {
 //    }
 //
     // 反射 Java 获取堆栈时加锁会造成死锁, 提前获取堆栈
+    // todo move to on_pthread_create_locked
     const size_t BUF_SIZE         = 1024;
     char         *java_stacktrace = static_cast<char *>(malloc(BUF_SIZE));
     if (java_stacktrace) {
@@ -249,7 +251,7 @@ static void on_pthread_setname(pthread_t __pthread, const char *__name) {
     LOGD(TAG, "++++++++ pre on_pthread_setname tid: %d, %s", pthread_gettid_np(__pthread), __name);
 
     {
-        std::lock_guard<std::recursive_mutex> meta_lock(m_pthread_meta_mutex);
+        pthread_meta_lock meta_lock(m_pthread_meta_mutex);
 
         if (!m_pthread_metas.count(__pthread)) { // always false
             // 到这里说明没有回调 on_pthread_create, setname 对 on_pthread_create 是可见的
@@ -358,7 +360,7 @@ static inline void pthread_dump_impl(FILE *__log_file) {
 void pthread_dump(const char *__path) {
     LOGD(TAG,
          ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> pthread dump begin <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
-    std::lock_guard<std::recursive_mutex> meta_lock(m_pthread_meta_mutex);
+    pthread_meta_lock meta_lock(m_pthread_meta_mutex);
 
     FILE *log_file = fopen(__path, "w+");
     LOGD(TAG, "pthread dump path = %s", __path);
@@ -487,7 +489,7 @@ void pthread_dump_json(const char *__path) {
 
     LOGD(TAG,
          ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> pthread dump json begin <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
-    std::lock_guard<std::recursive_mutex> meta_lock(m_pthread_meta_mutex);
+    pthread_meta_lock meta_lock(m_pthread_meta_mutex);
 
     FILE *log_file = fopen(__path, "w+");
     LOGD(TAG, "pthread dump path = %s", __path);
@@ -503,14 +505,14 @@ void pthread_dump_json(const char *__path) {
 
 void pthread_hook_on_dlopen(const char *__file_name) {
     LOGD(TAG, "pthread_hook_on_dlopen");
-    std::lock_guard<std::recursive_mutex> meta_lock(m_pthread_meta_mutex);
+    pthread_meta_lock meta_lock(m_pthread_meta_mutex);
     unwindstack::update_maps();
     LOGD(TAG, "pthread_hook_on_dlopen end");
 }
 
 static void on_pthread_destroy(void *__specific) {
     LOGD(TAG, "on_pthread_destroy++++");
-    std::lock_guard<std::recursive_mutex> meta_lock(m_pthread_meta_mutex);
+    pthread_meta_lock meta_lock(m_pthread_meta_mutex);
 
     pthread_t destroying_thread = pthread_self();
 
