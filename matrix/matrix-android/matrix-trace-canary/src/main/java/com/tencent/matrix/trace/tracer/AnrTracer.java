@@ -31,8 +31,10 @@ public class AnrTracer extends Tracer {
 
     private static final String TAG = "Matrix.AnrTracer";
     private Handler anrHandler;
+    private Handler lagHandler;
     private final TraceConfig traceConfig;
     private volatile AnrHandleTask anrTask;
+    private volatile LagHandleTask lagTask;
     private boolean isAnrTraceEnable;
 
     public AnrTracer(TraceConfig traceConfig) {
@@ -46,6 +48,7 @@ public class AnrTracer extends Tracer {
         if (isAnrTraceEnable) {
             UIThreadMonitor.getMonitor().addObserver(this);
             this.anrHandler = new Handler(MatrixHandlerThread.getDefaultHandler().getLooper());
+            this.lagHandler = new Handler(MatrixHandlerThread.getDefaultHandler().getLooper());
         }
     }
 
@@ -58,6 +61,7 @@ public class AnrTracer extends Tracer {
                 anrTask.getBeginRecord().release();
             }
             anrHandler.removeCallbacksAndMessages(null);
+            lagHandler.removeCallbacksAndMessages(null);
         }
     }
 
@@ -69,10 +73,13 @@ public class AnrTracer extends Tracer {
 //            printInputExpired(inputCost);
 //        }
         anrTask = new AnrHandleTask(AppMethodBeat.getInstance().maskIndex("AnrTracer#dispatchBegin"), token);
+        lagTask = new LagHandleTask();
+
         if (traceConfig.isDevEnv()) {
             MatrixLog.v(TAG, "* [dispatchBegin] token:%s index:%s", token, anrTask.beginRecord.index);
         }
         anrHandler.postDelayed(anrTask, Constants.DEFAULT_ANR - (System.nanoTime() - token) / Constants.TIME_MILLIS_TO_NANO);
+        lagHandler.postDelayed(lagTask, Constants.DEFAULT_NORMAL_LAG - (System.nanoTime() - token) / Constants.TIME_MILLIS_TO_NANO);
     }
 
 
@@ -87,6 +94,43 @@ public class AnrTracer extends Tracer {
         if (null != anrTask) {
             anrTask.getBeginRecord().release();
             anrHandler.removeCallbacks(anrTask);
+        }
+        if (null != lagTask) {
+            lagHandler.removeCallbacks(lagTask);
+        }
+    }
+
+    class LagHandleTask implements Runnable{
+
+        @Override
+        public void run() {
+            String scene = AppMethodBeat.getVisibleScene();
+            boolean isForeground = isForeground();
+            try {
+                TracePlugin plugin = Matrix.with().getPluginByClass(TracePlugin.class);
+                if (null == plugin) {
+                    return;
+                }
+
+                StackTraceElement[] stackTrace = Looper.getMainLooper().getThread().getStackTrace();
+
+                JSONObject jsonObject = new JSONObject();
+                jsonObject = DeviceUtil.getDeviceInfo(jsonObject, Matrix.with().getApplication());
+                jsonObject.put(SharePluginInfo.ISSUE_STACK_TYPE, Constants.Type.LAG);
+                jsonObject.put(SharePluginInfo.ISSUE_SCENE, scene);
+                jsonObject.put(SharePluginInfo.ISSUE_THREAD_STACK, Utils.getStack(stackTrace));
+                jsonObject.put(SharePluginInfo.ISSUE_PROCESS_FOREGROUND, isForeground);
+
+                Issue issue = new Issue();
+                issue.setTag(SharePluginInfo.TAG_PLUGIN_EVIL_METHOD);
+                issue.setContent(jsonObject);
+                plugin.onDetectIssue(issue);
+
+            } catch (JSONException e) {
+                MatrixLog.e(TAG, "[JSONException error: %s", e);
+            }
+
+
         }
     }
 
