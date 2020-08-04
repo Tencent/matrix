@@ -114,9 +114,9 @@ Java_com_tencent_wxperf_jni_HookManager_xhookRefreshNative(JNIEnv *env, jobject 
                                                                   jboolean async) {
     hook_common_init();
     unwindstack::update_maps();
-    NanoSeconds_Start(TAG, begin);
+//    NanoSeconds_Start(TAG, begin);
     int ret = xhook_refresh(async);
-    NanoSeconds_End(TAG, begin, "fist refresh");
+//    NanoSeconds_End(TAG, begin, "fist refresh");
 
     LOGD(TAG, "xhook_refresh in JNI cost %lld", cost);
     return ret;
