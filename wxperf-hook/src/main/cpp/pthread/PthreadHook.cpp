@@ -204,11 +204,11 @@ static void on_pthread_create(const pthread_t __pthread) {
 
     pid_t tid  = pthread_gettid_np(__pthread);
 
-//    if (!rp_acquire()) {
-//        LOGD(TAG, "reentrant!!!");
-//        notify_routine(__pthread);
-//        return;
-//    }
+    if (!rp_acquire()) {
+        LOGD(TAG, "reentrant!!!");
+        notify_routine(__pthread);
+        return;
+    }
 //
     // 反射 Java 获取堆栈时加锁会造成死锁, 提前获取堆栈
     // todo move to on_pthread_create_locked
@@ -226,7 +226,7 @@ static void on_pthread_create(const pthread_t __pthread) {
         free(java_stacktrace);
     }
 //
-//    rp_release();
+    rp_release();
     notify_routine(__pthread);
 
     LOGD(TAG, "------ on_pthread_create end");
