@@ -16,13 +16,14 @@
 #include <unordered_map>
 #include <sys/epoll.h>
 #include <sys/eventfd.h>
+#include "MallocTest.h"
 #include "../../../../wxperf-hook/src/main/cpp/common/Log.h"
 #include "../../../../wxperf-hook/src/main/cpp/common/ThreadPool.h"
 //#include "../../../../wxperf/src/main/cpp/memory/PointerMetaContainer.h"
 
 
 #define LOGD(TAG, FMT, args...) __android_log_print(ANDROID_LOG_DEBUG, TAG, FMT, ##args)
-#define TAG "Yves-test"
+#define TAG "Wxperf.sample"
 
 #ifdef __cplusplus
 extern "C" {
@@ -56,16 +57,25 @@ Java_com_tencent_wxperf_sample_JNIObj_doMmap(JNIEnv *env, jobject instance) {
 
 JNIEXPORT void JNICALL
 Java_com_tencent_wxperf_sample_JNIObj_reallocTest(JNIEnv *env, jobject instance) {
-    void *p = malloc(8);
-    LOGD("Yves-debug", "malloc p = %p", p);
+    for (int i = 0; i < 10; ++i) {
 
-    p = realloc(p, 4);
-    LOGD("Yves-debug", "1 realloc p = %p", p);
 
-    p = realloc(p, 8);
-    LOGD("Yves-debug", "2 realloc p = %p", p);
+        struct timespec begin;
+        if (clock_gettime(CLOCK_REALTIME, &begin)) {
+            LOGD(TAG, "Err: Get time failed.");
+        }
 
-    free(p);
+        void *p = malloc(1024);
+
+        struct timespec tms_end;
+        if (clock_gettime(CLOCK_REALTIME, &tms_end)) {
+            LOGD(TAG, "Err: Get time failed.");
+        }
+
+        LOGD(TAG, "malloc cost %ld", (tms_end.tv_sec * 1000 * 1000 * 1000 + tms_end.tv_nsec -
+                                      (begin.tv_sec * 1000 * 1000 * 1000 + begin.tv_nsec)));
+
+    }
 
     void *pp[100];
 
@@ -587,17 +597,7 @@ Java_com_tencent_wxperf_sample_JNIObj_testPthreadFree(JNIEnv *env, jclass clazz)
 JNIEXPORT void JNICALL
 Java_com_tencent_wxperf_sample_JNIObj_mallocTest(JNIEnv *env, jclass clazz) {
 //    LOGD("Yves-debug", "mallocTest");
-    Obj *p = new Obj;
-    LOGD("Yves-debug", "mallocTest: new %p", p);
-    delete p;
-//    p = new int[2];
-//    LOGD("Yves-debug", "mallocTest: new int %p", p);
-//    delete p;
-//
-//    p = malloc(sizeof(Obj));
-//    LOGD("Yves-debug", "mallocTest: malloc %p", p);
-//    free(p);
-
+    malloc_test();
 }
 
 void SpeedTest() {
@@ -681,7 +681,7 @@ worker *w = nullptr;
 
 multi_worker_thread_pool mw(4);
 
-size_t test_count = 0;
+size_t     test_count = 0;
 std::mutex test_mutex;
 
 JNIEXPORT void JNICALL
@@ -730,31 +730,31 @@ Java_com_tencent_wxperf_sample_JNIObj_poolTest(JNIEnv *env, jclass clazz) {
 #define EPOLL_MAX_EVENTS 16
 
 volatile int wake_fd = -1;
-size_t res = 0;
+size_t       res     = 0;
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wmissing-noreturn"
 void epollTest() {
-    wake_fd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
-    int epoll_fd = epoll_create1(EPOLL_CLOEXEC);
+    wake_fd                     = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
+    int                epoll_fd = epoll_create1(EPOLL_CLOEXEC);
     struct epoll_event eventItem;
     memset(&eventItem, 0, sizeof(epoll_event)); // zero out unused members of data field union
-    eventItem.events = EPOLLIN;
+    eventItem.events  = EPOLLIN;
     eventItem.data.fd = wake_fd;
     int result = epoll_ctl(epoll_fd, EPOLL_CTL_ADD, wake_fd, &eventItem);
 
     struct epoll_event eventItems[EPOLL_MAX_EVENTS];
 
 
-    uint64_t msg = 10086;
-    ssize_t ssize = TEMP_FAILURE_RETRY(write(wake_fd, &msg, sizeof(uint64_t)));
+    uint64_t msg   = 10086;
+    ssize_t  ssize = TEMP_FAILURE_RETRY(write(wake_fd, &msg, sizeof(uint64_t)));
 
     for (;;) {
         LOGD(TAG, "loop...");
         int eventCount = epoll_wait(epoll_fd, eventItems, EPOLL_MAX_EVENTS, -1);
 
         for (int i = 0; i < eventCount; i++) {
-            int fd = eventItems[i].data.fd;
+            int      fd          = eventItems[i].data.fd;
             uint32_t epollEvents = eventItems[i].events;
             if (fd == wake_fd) {
                 uint64_t received = 0;
@@ -785,8 +785,8 @@ Java_com_tencent_wxperf_sample_JNIObj_epollTest(JNIEnv *env, jclass clazz) {
 
         for (int i = 0; i < 10000; ++i) {
             NanoSeconds_Start(begin);
-            uint64_t msg = i;
-            ssize_t ssize = TEMP_FAILURE_RETRY(write(wake_fd, &msg, sizeof(uint64_t)));
+            uint64_t msg   = i;
+            ssize_t  ssize = TEMP_FAILURE_RETRY(write(wake_fd, &msg, sizeof(uint64_t)));
 //            TEMP_FAILURE_RETRY(write(wake_fd, &msg, sizeof(uint64_t)));
 
             NanoSeconds_End(cost, begin);
@@ -818,7 +818,12 @@ Java_com_tencent_wxperf_sample_JNIObj_epollTest(JNIEnv *env, jclass clazz) {
 JNIEXPORT void JNICALL
 Java_com_tencent_wxperf_sample_JNIObj_concurrentMapTest(JNIEnv *env, jclass clazz) {
 
-    int r = ({int i = 0; int j = 1; int k = 2; j;});
+    int r = ({
+        int i = 0;
+        int j = 1;
+        int k = 2;
+        j;
+    });
 
     LOGD(TAG, "res = %d", r);
 

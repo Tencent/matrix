@@ -193,9 +193,9 @@
         android:id="@+id/button6"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:onClick="killSelf"
         android:text="KillSelf"
         android:textAllCaps="false"
-        android:onClick="killSelf"
         app:layout_constraintStart_toStartOf="@+id/btn_egl_create_context"
         app:layout_constraintTop_toBottomOf="@+id/btn_egl_create_context" />
 

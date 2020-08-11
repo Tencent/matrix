@@ -129,6 +129,7 @@ namespace enhance {
             return false;
         }
         __info.bias_addr = __info.base_addr - phdr0->p_vaddr;
+        LOGD(TAG, "bias_addr = %p, bias = %p", (void *)__info.bias_addr, (void *)phdr0->p_vaddr);
 
         return true;
     }
@@ -289,7 +290,9 @@ namespace enhance {
             if (sym_name == __symbol) {
                 LOGD(TAG, "st_value=%llx", symtab_idx->st_value);
                 uintptr_t found_sym_addr = symtab_idx->st_value + info->bias_addr;
-                return reinterpret_cast<void *>(found_sym_addr);
+                if (check_loaded_so((void *)found_sym_addr) != 0) {
+                    return reinterpret_cast<void *>(found_sym_addr);
+                }
             }
         }
 

@@ -25,7 +25,7 @@ import java.io.File;
 
 public class MainActivity extends AppCompatActivity {
 
-    private static final String TAG = "MainActivity";
+    private static final String TAG = "Wxperf.MainActivity";
 
     String threadNameRegex = "[GT]TestHT-?".replace("[", "\\[").replace("]", "\\]").replace("?", "[0-9]*");
 
@@ -36,13 +36,13 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        {
-            try {
-                Class.forName("com.tencent.wxperf.jni.HookManager");
-            } catch (ClassNotFoundException e) {
-                e.printStackTrace();
-            }
-        }
+//        {
+//            try {
+//                Class.forName("com.tencent.wxperf.jni.HookManager");
+//            } catch (ClassNotFoundException e) {
+//                e.printStackTrace();
+//            }
+//        }
 
 //        LibWxPerfManager.INSTANCE.init();
 //        if (!LibWxPerfManager.INSTANCE.initOk()) {
@@ -194,8 +194,8 @@ public class MainActivity extends AppCompatActivity {
                 @Override
                 public void run() {
                     jniObj.reallocTest();
-                    jniObj.reallocTest();
-                    jniObj.reallocTest();
+//                    jniObj.reallocTest();
+//                    jniObj.reallocTest();
                 }
             }).start();
         }
@@ -427,10 +427,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void jectlTest(View view) {
-        JeCtl.checkRetain();
-        int ret = JeCtl.tryDisableRetain();
+        int ret = JeCtl.compact();
         Log.d(TAG, "tryDisableRetain result :" + ret);
-        JeCtl.checkRetain();
     }
 
     public void killSelf(View view) {
