@@ -203,6 +203,7 @@ static void on_pthread_create(const pthread_t __pthread) {
     if (!rp_acquire()) {
         LOGD(TAG, "reentrant!!!");
         notify_routine(__pthread);
+        __android_log_assert("REENTRANT", TAG, "REENTRANT");
         return;
     }
 //
