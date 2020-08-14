@@ -69,7 +69,7 @@ public class HookManager {
 
     @Keep
     public static String getStack() {
-        return stackTraceToString(new Throwable().getStackTrace());
+        return stackTraceToString(Thread.currentThread().getStackTrace());
     }
 
     private static String stackTraceToString(final StackTraceElement[] arr) {

@@ -40,7 +40,7 @@ DEFINE_HOOK_FUN(void *, __loader_android_dlopen_ext, const char *__file_name,
     xhook_refresh(false);
 //    NanoSeconds_End(TAG, begin, "refresh");
 
-    LOGD(TAG, "xhook_refresh cost : %lld", cost);
+//    LOGD(TAG, "xhook_refresh cost : %lld", cost);
 
     pthread_mutex_unlock(&m_dlopen_mutex);
     return ret;
@@ -93,15 +93,16 @@ bool get_java_stacktrace(char *__stack, size_t __size) {
 
         LOGD(TAG, "get_java_stacktrace called");
         const char *stack = env->GetStringUTFChars(j_stacktrace, NULL);
+        const jsize stack_len = env->GetStringLength(j_stacktrace);
         if (stack) {
-            const size_t cpy_len = std::min(strlen(stack) + 1, __size - 1);
+            const size_t cpy_len = std::min((size_t)stack_len, __size - 1);
             memcpy(__stack, stack, cpy_len);
             __stack[cpy_len] = '\0';
         } else {
             strncpy(__stack, "\tget java stacktrace failed", __size);
         }
         env->ReleaseStringUTFChars(j_stacktrace, stack);
-
+        env->DeleteLocalRef(j_stacktrace);
         return true;
     }
 
@@ -118,7 +119,7 @@ Java_com_tencent_wxperf_jni_HookManager_xhookRefreshNative(JNIEnv *env, jobject 
     int ret = xhook_refresh(async);
 //    NanoSeconds_End(TAG, begin, "fist refresh");
 
-    LOGD(TAG, "xhook_refresh in JNI cost %lld", cost);
+//    LOGD(TAG, "xhook_refresh in JNI cost %lld", cost);
     return ret;
 }
 

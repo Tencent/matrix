@@ -223,78 +223,87 @@ public class MainActivity extends AppCompatActivity {
 
     public void threadTest(View view) {
 
-        Thread t = new Thread(new Runnable() {
-            @Override
-            public void run() {
-
-                for (int i = 0; i < 100; i++) {
-                    Log.d("Yves-debug", "test thread " + i);
-                    JNIObj.testThread();
-
-                    HandlerThread ht = new HandlerThread("[GT]TestHT-" + i);
-                    ht.start();
-
-                    new Handler(ht.getLooper()).post(new Runnable() {
-                        @Override
-                        public void run() {
-
-                            new Thread(new Runnable() {
-                                @Override
-                                public void run() {
-//                                    try {
-//                                        Thread.sleep(1000);
-//                                    } catch (InterruptedException e) {
-//                                        e.printStackTrace();
-//                                    }
-                                }
-                            }, "SubTestTh").start();
-
-
-                            new Thread(new Runnable() {
-                                @Override
-                                public void run() {
-
-                                }
-                            }).start();
-
-                            new Thread(new Runnable() {
-                                @Override
-                                public void run() {
-
-                                }
-                            }).start();
-
-                            new Thread(new Runnable() {
-                                @Override
-                                public void run() {
-
-                                }
-                            }).start();
-
-                            try {
-                                Thread.sleep(3000);
-                            } catch (InterruptedException e) {
-                                e.printStackTrace();
-                            }
-                        }
-                    });
+        for (int i = 0; i < 500; i++) {
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    Log.d(TAG, "run");
                 }
-
-            }
-        }, "[GT]HotPool#1");
-
-        t.start();
-
-        HandlerThread handlerThread = new HandlerThread("HandlerThread1");
-        handlerThread.start();
-
-        try {
-            Thread.sleep(10 * 1000);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
+            }).start();
         }
 
-        PthreadHook.INSTANCE.dump("/sdcard/pthread_hook.log");
+//        Thread t = new Thread(new Runnable() {
+//            @Override
+//            public void run() {
+//
+//                for (int i = 0; i < 100; i++) {
+//                    Log.d("Yves-debug", "test thread " + i);
+//                    JNIObj.testThread();
+//
+//                    HandlerThread ht = new HandlerThread("[GT]TestHT-" + i);
+//                    ht.start();
+//
+//                    new Handler(ht.getLooper()).post(new Runnable() {
+//                        @Override
+//                        public void run() {
+//
+//                            new Thread(new Runnable() {
+//                                @Override
+//                                public void run() {
+////                                    try {
+////                                        Thread.sleep(1000);
+////                                    } catch (InterruptedException e) {
+////                                        e.printStackTrace();
+////                                    }
+//                                }
+//                            }, "SubTestTh").start();
+//
+//
+//                            new Thread(new Runnable() {
+//                                @Override
+//                                public void run() {
+//
+//                                }
+//                            }).start();
+//
+//                            new Thread(new Runnable() {
+//                                @Override
+//                                public void run() {
+//
+//                                }
+//                            }).start();
+//
+//                            new Thread(new Runnable() {
+//                                @Override
+//                                public void run() {
+//
+//                                }
+//                            }).start();
+//
+//                            try {
+//                                Thread.sleep(3000);
+//                            } catch (InterruptedException e) {
+//                                e.printStackTrace();
+//                            }
+//                        }
+//                    });
+//                }
+//
+//            }
+//        }, "[GT]HotPool#1");
+//
+//        t.start();
+//
+//        HandlerThread handlerThread = new HandlerThread("HandlerThread1");
+//        handlerThread.start();
+//
+//        try {
+//            Thread.sleep(10 * 1000);
+//        } catch (InterruptedException e) {
+//            e.printStackTrace();
+//        }
+//
+//        PthreadHook.INSTANCE.dump("/sdcard/pthread_hook.log");
     }
 
     public void mallocTest(View view) {
