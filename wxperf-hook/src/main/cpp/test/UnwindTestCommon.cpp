@@ -73,13 +73,11 @@ inline void print_dwarf_unwind() {
 
         std::string so_name = std::string(stack_info.dli_fname);
 
-        LOGE(DWARF_UNWIND_TAG, "  #pc 0x%"
-        PRIx64
-        " %"
-        PRIu64
-        " 0x%"
-        PRIx64
-        " %s (%s)", p_frame->rel_pc, p_frame->pc, p_frame->pc, stack_info.dli_sname, stack_info.dli_fname);
+        LOGE(DWARF_UNWIND_TAG, "  #pc 0x%" PRIx64
+        " rel_pc 0x%" PRIx64
+        " fbase 0x%" PRIxPTR
+        " cal_rel_pc 0x%" PRIxPTR
+        " %s (%s)", p_frame->pc, p_frame->rel_pc, (uptr)stack_info.dli_fbase, (uptr)(p_frame->pc - (uptr)stack_info.dli_fbase), stack_info.dli_sname, stack_info.dli_fname);
     }
 }
 
@@ -111,10 +109,10 @@ inline void print_fp_unwind() {
         LOGE(FP_FAST_UNWIND_TAG, "  #pc 0x%"
                 PRIxPTR
                 " %"
-                PRIuPTR
+                PRIxPTR
                 " 0x%"
                 PRIxPTR
-                " %s (%s)", frames[i], frames[i], frames[i], stack_info.dli_sname, stack_info.dli_fname);
+                " %s (%s)", frames[i], (uptr)stack_info.dli_fbase, frames[i] - (uptr)stack_info.dli_fbase, stack_info.dli_sname, stack_info.dli_fname);
     }
 }
 
@@ -175,13 +173,11 @@ inline void print_dwarf_fast_unwind() {
 
         std::string so_name = std::string(stack_info.dli_fname);
 
-        LOGE(DWARF_FAST_UNWIND_TAG, "  #pc 0x%"
-                PRIx64
-                " %"
-                PRIu64
-                " 0x%"
-                PRIx64
-                " %s (%s)", p_frame->rel_pc, p_frame->pc, p_frame->pc, stack_info.dli_sname, stack_info.dli_fname);
+        LOGE(DWARF_UNWIND_TAG, "  #pc 0x%" PRIx64
+                " rel_pc 0x%" PRIx64
+                " fbase 0x%" PRIxPTR
+                " cal_rel_pc 0x%" PRIxPTR
+                " %s (%s)", p_frame->pc, p_frame->rel_pc, (uptr)stack_info.dli_fbase, (uptr)(p_frame->pc - (uptr)stack_info.dli_fbase), stack_info.dli_sname, stack_info.dli_fname);
     }
 }
 

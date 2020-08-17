@@ -6,6 +6,7 @@
 #include "Backtrace.h"
 #include "JNICommon.h"
 #include <FastUnwinder.h>
+#include <FastRegs.h>
 
 namespace wechat_backtrace {
 
