@@ -43,14 +43,14 @@ public class AppMethodBeat implements BeatLifecycle {
     private volatile static long sCurrentDiffTime = SystemClock.uptimeMillis();
     private volatile static long sDiffTime = sCurrentDiffTime;
     private static long sMainThreadId = Looper.getMainLooper().getThread().getId();
-    private static HandlerThread sTimerUpdateThread = MatrixHandlerThread.getNewHandlerThread("matrix_time_update_thread");
+    private static HandlerThread sTimerUpdateThread = MatrixHandlerThread.getNewHandlerThread("matrix_time_update_thread", Thread.MIN_PRIORITY + 2);
     private static Handler sHandler = new Handler(sTimerUpdateThread.getLooper());
     private static final int METHOD_ID_MAX = 0xFFFFF;
     public static final int METHOD_ID_DISPATCH = METHOD_ID_MAX - 1;
     private static Set<String> sFocusActivitySet = new HashSet<>();
     private static final HashSet<IAppMethodBeatListener> listeners = new HashSet<>();
     private static final Object updateTimeLock = new Object();
-    private static boolean isPauseUpdateTime = false;
+    private static volatile boolean isPauseUpdateTime = false;
     private static Runnable checkStartExpiredRunnable = null;
     private static LooperMonitor.LooperDispatchListener looperMonitorListener = new LooperMonitor.LooperDispatchListener() {
         @Override
@@ -96,7 +96,7 @@ public class AppMethodBeat implements BeatLifecycle {
                         updateTimeLock.wait();
                     }
                 }
-            } catch (InterruptedException e) {
+            } catch (Exception e) {
                 MatrixLog.e(TAG, "" + e.toString());
             }
         }
@@ -343,9 +343,7 @@ public class AppMethodBeat implements BeatLifecycle {
                         indexRecord.next = tmp;
                     } else {
                         IndexRecord tmp = last.next;
-                        if (null != last.next) {
-                            last.next = indexRecord;
-                        }
+                        last.next = indexRecord;
                         indexRecord.next = tmp;
                     }
                     return indexRecord;
@@ -353,7 +351,6 @@ public class AppMethodBeat implements BeatLifecycle {
                 last = record;
                 record = record.next;
             }
-
             last.next = indexRecord;
 
             return indexRecord;

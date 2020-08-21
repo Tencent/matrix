@@ -160,7 +160,9 @@ public class TraceDataUtils {
 
         for (int i = 0; i < root.children.size(); i++) {
             TreeNode node = root.children.get(i);
-            list.add(node.item);
+            if (node.item != null) {
+                list.add(node.item);
+            }
             if (!node.children.isEmpty()) {
                 treeToStack(node, list);
             }
@@ -207,7 +209,7 @@ public class TraceDataUtils {
 
     public static long stackToString(LinkedList<MethodItem> stack, StringBuilder reportBuilder, StringBuilder logcatBuilder) {
         logcatBuilder.append("|*\t\tTraceStack:").append("\n");
-        logcatBuilder.append("|*\t\t\t[id count cost]").append("\n");
+        logcatBuilder.append("|*\t\t[id count cost]").append("\n");
         Iterator<MethodItem> listIterator = stack.iterator();
         long stackCost = 0; // fix cost
         while (listIterator.hasNext()) {

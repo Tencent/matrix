@@ -132,8 +132,7 @@ public class TestTraceMainActivity extends Activity implements IAppForeground {
        /* for (long i = 0; i < 1l; i++) {
             testInnerSleep();
         }*/
-
-        evilMethod5(true);
+        A();
     }
 
     private void A() {
