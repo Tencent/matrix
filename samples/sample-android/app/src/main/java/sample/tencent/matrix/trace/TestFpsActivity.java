@@ -99,7 +99,7 @@ public class TestFpsActivity extends Activity {
             @Override
             public boolean onTouch(View view, MotionEvent motionEvent) {
                 MatrixLog.i(TAG, "onTouch=" + motionEvent);
-                SystemClock.sleep(800);
+                SystemClock.sleep(80);
                 return false;
             }
         });

@@ -47,6 +47,7 @@ public class FrameDecorator extends IDoFrameListener implements IAppForeground {
     private DisplayMetrics displayMetrics = new DisplayMetrics();
     private boolean isEnable = true;
     private float frameIntervalMs;
+    private float maxFps;
 
 
     private int bestColor;
@@ -59,7 +60,9 @@ public class FrameDecorator extends IDoFrameListener implements IAppForeground {
     @SuppressLint("ClickableViewAccessibility")
     private FrameDecorator(Context context, final FloatFrameView view) {
         this.frameIntervalMs = 1f * UIThreadMonitor.getMonitor().getFrameIntervalNanos() / Constants.TIME_MILLIS_TO_NANO;
+        this.maxFps = Math.round(1000f / frameIntervalMs);
         this.view = view;
+        view.fpsView.setText(String.format("%.2f FPS", maxFps));
         this.bestColor = context.getResources().getColor(R.color.level_best_color);
         this.normalColor = context.getResources().getColor(R.color.level_normal_color);
         this.middleColor = context.getResources().getColor(R.color.level_middle_color);
@@ -179,7 +182,7 @@ public class FrameDecorator extends IDoFrameListener implements IAppForeground {
     private Runnable updateDefaultRunnable = new Runnable() {
         @Override
         public void run() {
-            view.fpsView.setText("60.00 FPS");
+            view.fpsView.setText(String.format("%.2f FPS", maxFps));
             view.fpsView.setTextColor(view.getResources().getColor(R.color.level_best_color));
         }
     };
@@ -233,7 +236,7 @@ public class FrameDecorator extends IDoFrameListener implements IAppForeground {
 
         long collectFrame = sumFrames - lastFrames[0];
         if (duration >= 200) {
-            final float fps = Math.min(60.f, 1000.f * collectFrame / duration);
+            final float fps = Math.min(maxFps, 1000.f * collectFrame / duration);
             updateView(view, fps, belongColor,
                     dropLevel[FrameTracer.DropStatus.DROPPED_NORMAL.index],
                     dropLevel[FrameTracer.DropStatus.DROPPED_MIDDLE.index],
