@@ -1,5 +1,5 @@
-
-apply plugin: 'com.google.osdetector'
+import com.google.gson.JsonArray
+import com.google.gson.Gson
 
 apply plugin: 'com.android.application'
 
@@ -9,8 +9,8 @@ configurations.all {
 }
 
 android {
-    compileSdkVersion 29
-    buildToolsVersion "28.0.3"
+    compileSdkVersion 28
+    buildToolsVersion "28.0.2"
 
     signingConfigs {
         debug {
@@ -21,7 +21,7 @@ android {
     defaultConfig {
         applicationId "sample.tencent.matrix"
         minSdkVersion 19
-        targetSdkVersion 29
+        targetSdkVersion 28
         versionCode 1
         versionName "1.0"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
@@ -43,12 +43,47 @@ android {
             signingConfig signingConfigs.debug
         }
     }
+
+    applicationVariants.all { variant ->
+        if (variant.name.equalsIgnoreCase("debug")) {
+            packageDebug.doLast {
+                ProcessBuilder processBuilder = new ProcessBuilder();
+                println configurations.apkCheckerDependency.getAt(0).getAbsolutePath()
+                processBuilder.command("java",
+                        "-jar", configurations.apkCheckerDependency.getAt(0).getAbsolutePath(),
+                        "--apk", variant.outputs.first().outputFile.getAbsolutePath(),
+                        "--output", project.getProjectDir().getAbsolutePath() + "/unused_resources",
+                        "--format", "json",
+                        "-unusedResources", "--rTxt", project.getBuildDir().getAbsolutePath() + "/intermediates/symbols/${variant.name}/R.txt");
+                Process process = processBuilder.start();
+                process.waitFor();
+                File outputFile = new File(project.getProjectDir().getAbsolutePath() + "/unused_resources.json");
+                if (outputFile.exists()) {
+                    Gson gson = new Gson();
+                    JsonArray jsonArray = gson.fromJson(outputFile.text, JsonArray.class);
+                    for (int i = 0; i < jsonArray.size(); i++) {
+                        if (jsonArray.get(i).asJsonObject.get("taskType").asInt == 12) {
+                            JsonArray resList = jsonArray.get(i).asJsonObject.get("unused-resources").asJsonArray;
+                            for (int j = 0; j < resList.size(); j++) {
+                                project.ext.unusedResourcesSet.add(resList.get(j).asString);
+                            }
+                            println "find unused resources:\n" + unusedResourcesSet
+                            break;
+                        }
+                    }
+                    outputFile.delete();
+                }
+            }
+        }
+    }
 }
+
+ext.unusedResourcesSet = new HashSet<String>();
 
 configurations {
     apkCheckerDependency
-    sevenZipDependency
 }
+
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
@@ -64,20 +99,12 @@ dependencies {
 
     implementation 'com.android.support:appcompat-v7:28.0.0'
     implementation 'com.android.support:recyclerview-v7:28.0.0'
-    
+    apkCheckerDependency group: "com.tencent.matrix", name: "matrix-apk-canary", version:MATRIX_VERSION, changing: true
+
     testImplementation 'junit:junit:4.12'
     androidTestCompile('com.android.support.test.espresso:espresso-core:2.2.2', {
         exclude group: 'com.android.support', module: 'support-annotations'
     })
-
-    apkCheckerDependency ("com.tencent.matrix:matrix-apk-canary:${MATRIX_VERSION}")
-    sevenZipDependency ('com.tencent.mm:SevenZip:1.2.17') {
-        artifact {
-            classifier = project.osdetector.classifier
-            name = "SevenZip"
-            type = 'exe'
-        }
-    }
 }
 
 apply plugin: 'com.tencent.matrix-plugin'
@@ -89,19 +116,13 @@ matrix {
     }
     removeUnusedResources {
         enable true
-        variant = "release"
+        variant = "debug"
         needSign true
         shrinkArsc true
-        deDuplicate true
-        resguard true
-        use7zip = true
-        zipAlign = true
-        apkCheckerPath = "${project.configurations.apkCheckerDependency.resolve().find { it.name.startsWith("matrix-apk-canary") }.getAbsolutePath()}"
-        sevenZipPath = "${project.configurations.sevenZipDependency.resolve().getAt(0).getAbsolutePath()}"
         //Notice: You need to modify the  value of $apksignerPath on different platform. the value below only suitable for Mac Platform,
         //if on Windows, you may have to  replace apksigner with apksigner.bat.
         apksignerPath = "${android.getSdkDirectory().getAbsolutePath()}/build-tools/${android.getBuildToolsVersion()}/apksigner"
-        zipAlignPath = "${android.getSdkDirectory().getAbsolutePath()}/build-tools/${android.getBuildToolsVersion()}/zipalign"
-        ignoreResources = ["R.id.*", "R.bool.*", "R.layout.unused_layout"]
+        unusedResources = project.ext.unusedResourcesSet
+        ignoreResources = ["R.id.*", "R.bool.*"]
     }
 }
