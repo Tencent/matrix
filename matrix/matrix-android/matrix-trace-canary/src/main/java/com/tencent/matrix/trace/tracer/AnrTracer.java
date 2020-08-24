@@ -58,34 +58,31 @@ public class AnrTracer extends Tracer {
                 anrTask.getBeginRecord().release();
             }
             anrHandler.removeCallbacksAndMessages(null);
-            anrHandler.getLooper().quit();
         }
     }
 
     @Override
-    public void dispatchBegin(long beginMs, long cpuBeginMs, long token) {
-        super.dispatchBegin(beginMs, cpuBeginMs, token);
+    public void dispatchBegin(long beginNs, long cpuBeginMs, long token) {
+        super.dispatchBegin(beginNs, cpuBeginMs, token);
+//        long inputCost = UIThreadMonitor.getMonitor().getInputEventCost();
+//        if (inputCost > Constants.DEFAULT_INPUT_EXPIRED_TIME * Constants.TIME_MILLIS_TO_NANO) {
+//            printInputExpired(inputCost);
+//        }
         anrTask = new AnrHandleTask(AppMethodBeat.getInstance().maskIndex("AnrTracer#dispatchBegin"), token);
         if (traceConfig.isDevEnv()) {
             MatrixLog.v(TAG, "* [dispatchBegin] token:%s index:%s", token, anrTask.beginRecord.index);
         }
-        anrHandler.postDelayed(anrTask, Constants.DEFAULT_ANR - (SystemClock.uptimeMillis() - token));
-    }
-
-    @Override
-    public void doFrame(String focusedActivityName, long start, long end, long frameCostMs, long inputCost, long animationCost, long traversalCost) {
-        if (traceConfig.isDevEnv()) {
-            MatrixLog.v(TAG, "--> [doFrame] activityName:%s frameCost:%sms [%s:%s:%s]ns", focusedActivityName, frameCostMs, inputCost, animationCost, traversalCost);
-        }
+        anrHandler.postDelayed(anrTask, Constants.DEFAULT_ANR - (System.nanoTime() - token) / Constants.TIME_MILLIS_TO_NANO);
     }
 
 
     @Override
-    public void dispatchEnd(long beginMs, long cpuBeginMs, long endMs, long cpuEndMs, long token, boolean isBelongFrame) {
-        super.dispatchEnd(beginMs, cpuBeginMs, endMs, cpuEndMs, token, isBelongFrame);
+    public void dispatchEnd(long beginNs, long cpuBeginMs, long endNs, long cpuEndMs, long token, boolean isBelongFrame) {
+        super.dispatchEnd(beginNs, cpuBeginMs, endNs, cpuEndMs, token, isBelongFrame);
         if (traceConfig.isDevEnv()) {
+            long cost = (endNs - beginNs) / Constants.TIME_MILLIS_TO_NANO;
             MatrixLog.v(TAG, "[dispatchEnd] token:%s cost:%sms cpu:%sms usage:%s",
-                    token, endMs - beginMs, cpuEndMs - cpuBeginMs, Utils.calculateCpuUsage(cpuEndMs - cpuBeginMs, endMs - beginMs));
+                    token, cost, cpuEndMs - cpuBeginMs, Utils.calculateCpuUsage(cpuEndMs - cpuBeginMs, cost));
         }
         if (null != anrTask) {
             anrTask.getBeginRecord().release();
@@ -166,7 +163,7 @@ public class AnrTracer extends Tracer {
             String stackKey = TraceDataUtils.getTreeKey(stack, stackCost);
             MatrixLog.w(TAG, "%s \npostTime:%s curTime:%s",
                     printAnr(scene, processStat, memoryInfo, status, logcatBuilder, isForeground, stack.size(),
-                            stackKey, dumpStack, inputCost, animationCost, traversalCost, stackCost), token, curTime); // for logcat
+                            stackKey, dumpStack, inputCost, animationCost, traversalCost, stackCost), token / Constants.TIME_MILLIS_TO_NANO, curTime); // for logcat
 
             if (stackCost >= Constants.DEFAULT_ANR_INVALID) {
                 MatrixLog.w(TAG, "The checked anr task was not executed on time. "
@@ -213,34 +210,53 @@ public class AnrTracer extends Tracer {
                                 long stackSize, String stackKey, String dumpStack, long inputCost, long animationCost, long traversalCost, long stackCost) {
             StringBuilder print = new StringBuilder();
             print.append(String.format("-\n>>>>>>>>>>>>>>>>>>>>>>> maybe happens ANR(%s ms)! <<<<<<<<<<<<<<<<<<<<<<<\n", stackCost));
-            print.append("|* scene: ").append(scene).append("\n");
-            print.append("|* [ProcessStat]").append("\n");
-            print.append("|*\t\tPriority: ").append(processStat[0]).append("\n");
-            print.append("|*\t\tNice: ").append(processStat[1]).append("\n");
+            print.append("|* [Status]").append("\n");
+            print.append("|*\t\tScene: ").append(scene).append("\n");
             print.append("|*\t\tForeground: ").append(isForeground).append("\n");
+            print.append("|*\t\tPriority: ").append(processStat[0]).append("\tNice: ").append(processStat[1]).append("\n");
+            print.append("|*\t\tis64BitRuntime: ").append(DeviceUtil.is64BitRuntime()).append("\n");
+
             print.append("|* [Memory]").append("\n");
             print.append("|*\t\tDalvikHeap: ").append(memoryInfo[0]).append("kb\n");
             print.append("|*\t\tNativeHeap: ").append(memoryInfo[1]).append("kb\n");
             print.append("|*\t\tVmSize: ").append(memoryInfo[2]).append("kb\n");
             print.append("|* [doFrame]").append("\n");
-            print.append("|*\t\tinputCost: ").append(inputCost).append("\n");
-            print.append("|*\t\tanimationCost: ").append(animationCost).append("\n");
-            print.append("|*\t\ttraversalCost: ").append(traversalCost).append("\n");
+            print.append("|*\t\tinputCost:animationCost:traversalCost").append("\n");
+            print.append("|*\t\t").append(inputCost).append(":").append(animationCost).append(":").append(traversalCost).append("\n");
             print.append("|* [Thread]").append("\n");
-            print.append("|*\t\tState: ").append(state).append("\n");
-            print.append("|*\t\tStack: ").append(dumpStack);
+            print.append(String.format("|*\t\tStack(%s): ", state)).append(dumpStack);
             print.append("|* [Trace]").append("\n");
-            print.append("|*\t\tStackSize: ").append(stackSize).append("\n");
-            print.append("|*\t\tStackKey: ").append(stackKey).append("\n");
-
-            if (traceConfig.isDebug()) {
+            if (stackSize > 0) {
+                print.append("|*\t\tStackKey: ").append(stackKey).append("\n");
                 print.append(stack.toString());
+            } else {
+                print.append(String.format("AppMethodBeat is close[%s].", AppMethodBeat.getInstance().isAlive())).append("\n");
             }
-
             print.append("=========================================================================");
             return print.toString();
         }
+    }
 
+    private String printInputExpired(long inputCost) {
+        StringBuilder print = new StringBuilder();
+        String scene = AppMethodBeat.getVisibleScene();
+        boolean isForeground = isForeground();
+        // memory
+        long[] memoryInfo = dumpMemory();
+        // process
+        int[] processStat = Utils.getProcessPriority(Process.myPid());
+        print.append(String.format("-\n>>>>>>>>>>>>>>>>>>>>>>> maybe happens Input ANR(%s ms)! <<<<<<<<<<<<<<<<<<<<<<<\n", inputCost));
+        print.append("|* [Status]").append("\n");
+        print.append("|*\t\tScene: ").append(scene).append("\n");
+        print.append("|*\t\tForeground: ").append(isForeground).append("\n");
+        print.append("|*\t\tPriority: ").append(processStat[0]).append("\tNice: ").append(processStat[1]).append("\n");
+        print.append("|*\t\tis64BitRuntime: ").append(DeviceUtil.is64BitRuntime()).append("\n");
+        print.append("|* [Memory]").append("\n");
+        print.append("|*\t\tDalvikHeap: ").append(memoryInfo[0]).append("kb\n");
+        print.append("|*\t\tNativeHeap: ").append(memoryInfo[1]).append("kb\n");
+        print.append("|*\t\tVmSize: ").append(memoryInfo[2]).append("kb\n");
+        print.append("=========================================================================");
+        return print.toString();
     }
 
     private long[] dumpMemory() {
@@ -250,4 +266,6 @@ public class AnrTracer extends Tracer {
         memory[2] = DeviceUtil.getVmSize();
         return memory;
     }
+
+
 }
