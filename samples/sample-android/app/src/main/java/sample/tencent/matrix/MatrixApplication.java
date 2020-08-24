@@ -120,14 +120,15 @@ public class MatrixApplication extends Application {
                 sqlLiteConfig = new SQLiteLintConfig(SQLiteLint.SqlExecutionCallbackMode.CUSTOM_NOTIFY);
             }
             builder.plugin(new SQLiteLintPlugin(sqlLiteConfig));
+
         }
 
         Matrix.init(builder.build());
 
         //start only startup tracer, close other tracer.
         tracePlugin.start();
-    }
 
+    }
 
     public static Context getContext() {
         return sContext;

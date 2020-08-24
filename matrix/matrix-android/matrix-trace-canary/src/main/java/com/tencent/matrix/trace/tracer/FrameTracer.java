@@ -22,14 +22,14 @@ import org.json.JSONObject;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.concurrent.Executor;
-import java.util.concurrent.TimeUnit;
 
 public class FrameTracer extends Tracer {
 
     private static final String TAG = "Matrix.FrameTracer";
     private final HashSet<IDoFrameListener> listeners = new HashSet<>();
-    private final long frameIntervalMs;
+    private final long frameIntervalNs;
     private final TraceConfig config;
     private long timeSliceMs;
     private boolean isFPSEnable;
@@ -37,10 +37,12 @@ public class FrameTracer extends Tracer {
     private long highThreshold;
     private long middleThreshold;
     private long normalThreshold;
+    private int droppedSum = 0;
+    private long durationSum = 0;
 
     public FrameTracer(TraceConfig config) {
         this.config = config;
-        this.frameIntervalMs = TimeUnit.MILLISECONDS.convert(UIThreadMonitor.getMonitor().getFrameIntervalNanos(), TimeUnit.NANOSECONDS) + 1;
+        this.frameIntervalNs = UIThreadMonitor.getMonitor().getFrameIntervalNanos();
         this.timeSliceMs = config.getTimeSliceMs();
         this.isFPSEnable = config.isFPSEnable();
         this.frozenThreshold = config.getFrozenThreshold();
@@ -48,7 +50,7 @@ public class FrameTracer extends Tracer {
         this.normalThreshold = config.getNormalThreshold();
         this.middleThreshold = config.getMiddleThreshold();
 
-        MatrixLog.i(TAG, "[init] frameIntervalMs:%s isFPSEnable:%s", frameIntervalMs, isFPSEnable);
+        MatrixLog.i(TAG, "[init] frameIntervalMs:%s isFPSEnable:%s", frameIntervalNs, isFPSEnable);
         if (isFPSEnable) {
             addListener(new FPSCollector());
         }
@@ -78,34 +80,53 @@ public class FrameTracer extends Tracer {
         UIThreadMonitor.getMonitor().removeObserver(this);
     }
 
-
     @Override
-    public void doFrame(String focusedActivityName, long start, long end, long frameCostMs, long inputCostNs, long animationCostNs, long traversalCostNs) {
+    public void doFrame(String focusedActivity, long startNs, long endNs, boolean isVsyncFrame, long intendedFrameTimeNs, long inputCostNs, long animationCostNs, long traversalCostNs) {
         if (isForeground()) {
-            notifyListener(focusedActivityName, end - start, frameCostMs, frameCostMs >= 0);
+            notifyListener(focusedActivity, startNs, endNs, isVsyncFrame, intendedFrameTimeNs, inputCostNs, animationCostNs, traversalCostNs);
         }
     }
 
+    public int getDroppedSum() {
+        return droppedSum;
+    }
 
-    private void notifyListener(final String visibleScene, final long taskCostMs, final long frameCostMs, final boolean isContainsFrame) {
-        long start = System.currentTimeMillis();
+    public long getDurationSum() {
+        return durationSum;
+    }
+
+    private void notifyListener(final String focusedActivity, final long startNs, final long endNs, final boolean isVsyncFrame,
+                                final long intendedFrameTimeNs, final long inputCostNs, final long animationCostNs, final long traversalCostNs) {
+        long traceBegin = System.currentTimeMillis();
         try {
+            final long jiter = endNs - intendedFrameTimeNs;
+            final int dropFrame = (int) (jiter / frameIntervalNs);
+            droppedSum += dropFrame;
+            durationSum += Math.max(jiter, frameIntervalNs);
+
             synchronized (listeners) {
                 for (final IDoFrameListener listener : listeners) {
                     if (config.isDevEnv()) {
                         listener.time = SystemClock.uptimeMillis();
                     }
-                    final int dropFrame = (int) (taskCostMs / frameIntervalMs);
-
-                    listener.doFrameSync(visibleScene, taskCostMs, frameCostMs, dropFrame, isContainsFrame);
                     if (null != listener.getExecutor()) {
-                        listener.getExecutor().execute(new Runnable() {
-                            @Override
-                            public void run() {
-                                listener.doFrameAsync(visibleScene, taskCostMs, frameCostMs, dropFrame, isContainsFrame);
-                            }
-                        });
+                        if (listener.getIntervalFrameReplay() > 0) {
+                            listener.collect(focusedActivity, startNs, endNs, dropFrame, isVsyncFrame,
+                                    intendedFrameTimeNs, inputCostNs, animationCostNs, traversalCostNs);
+                        } else {
+                            listener.getExecutor().execute(new Runnable() {
+                                @Override
+                                public void run() {
+                                    listener.doFrameAsync(focusedActivity, startNs, endNs, dropFrame, isVsyncFrame,
+                                            intendedFrameTimeNs, inputCostNs, animationCostNs, traversalCostNs);
+                                }
+                            });
+                        }
+                    } else {
+                        listener.doFrameSync(focusedActivity, startNs, endNs, dropFrame, isVsyncFrame,
+                                intendedFrameTimeNs, inputCostNs, animationCostNs, traversalCostNs);
                     }
+
                     if (config.isDevEnv()) {
                         listener.time = SystemClock.uptimeMillis() - listener.time;
                         MatrixLog.d(TAG, "[notifyListener] cost:%sms listener:%s", listener.time, listener);
@@ -113,8 +134,8 @@ public class FrameTracer extends Tracer {
                 }
             }
         } finally {
-            long cost = System.currentTimeMillis() - start;
-            if (config.isDebug() && cost > frameIntervalMs) {
+            long cost = System.currentTimeMillis() - traceBegin;
+            if (config.isDebug() && cost > frameIntervalNs) {
                 MatrixLog.w(TAG, "[notifyListener] warm! maybe do heavy work in doFrameSync! size:%s cost:%sms", listeners.size(), cost);
             }
         }
@@ -122,7 +143,6 @@ public class FrameTracer extends Tracer {
 
 
     private class FPSCollector extends IDoFrameListener {
-
 
         private Handler frameHandler = new Handler(MatrixHandlerThread.getDefaultHandlerThread().getLooper());
 
@@ -141,11 +161,25 @@ public class FrameTracer extends Tracer {
         }
 
         @Override
-        public void doFrameAsync(String visibleScene, long taskCost, long frameCostMs, int droppedFrames, boolean isContainsFrame) {
-            super.doFrameAsync(visibleScene, taskCost, frameCostMs, droppedFrames, isContainsFrame);
-            if (Utils.isEmpty(visibleScene)) {
-                return;
+        public int getIntervalFrameReplay() {
+            return 200;
+        }
+
+        @Override
+        public void doReplay(List<FrameReplay> list) {
+            super.doReplay(list);
+            for (FrameReplay replay : list) {
+                doReplayInner(replay.focusedActivity, replay.startNs, replay.endNs, replay.dropFrame, replay.isVsyncFrame,
+                        replay.intendedFrameTimeNs, replay.inputCostNs, replay.animationCostNs, replay.traversalCostNs);
             }
+        }
+
+        public void doReplayInner(String visibleScene, long startNs, long endNs, int droppedFrames,
+                                  boolean isVsyncFrame, long intendedFrameTimeNs, long inputCostNs,
+                                  long animationCostNs, long traversalCostNs) {
+
+            if (Utils.isEmpty(visibleScene)) return;
+            if (!isVsyncFrame) return;
 
             FrameCollectItem item = map.get(visibleScene);
             if (null == item) {
@@ -153,7 +187,7 @@ public class FrameTracer extends Tracer {
                 map.put(visibleScene, item);
             }
 
-            item.collect(droppedFrames, isContainsFrame);
+            item.collect(droppedFrames);
 
             if (item.sumFrameCost >= timeSliceMs) { // report
                 map.remove(visibleScene);
@@ -166,7 +200,6 @@ public class FrameTracer extends Tracer {
         String visibleScene;
         long sumFrameCost;
         int sumFrame = 0;
-        int sumTaskFrame = 0;
         int sumDroppedFrames;
         // record the level of frames dropped each time
         int[] dropLevel = new int[DropStatus.values().length];
@@ -176,15 +209,11 @@ public class FrameTracer extends Tracer {
             this.visibleScene = visibleScene;
         }
 
-        void collect(int droppedFrames, boolean isContainsFrame) {
-            long frameIntervalCost = UIThreadMonitor.getMonitor().getFrameIntervalNanos();
-            sumFrameCost += (droppedFrames + 1) * frameIntervalCost / Constants.TIME_MILLIS_TO_NANO;
+        void collect(int droppedFrames) {
+            float frameIntervalCost = 1f * UIThreadMonitor.getMonitor().getFrameIntervalNanos() / Constants.TIME_MILLIS_TO_NANO;
+            sumFrameCost += (droppedFrames + 1) * frameIntervalCost;
             sumDroppedFrames += droppedFrames;
             sumFrame++;
-            if (!isContainsFrame) {
-                sumTaskFrame++;
-            }
-
             if (droppedFrames >= frozenThreshold) {
                 dropLevel[DropStatus.DROPPED_FROZEN.index]++;
                 dropSum[DropStatus.DROPPED_FROZEN.index] += droppedFrames;
@@ -199,7 +228,7 @@ public class FrameTracer extends Tracer {
                 dropSum[DropStatus.DROPPED_NORMAL.index] += droppedFrames;
             } else {
                 dropLevel[DropStatus.DROPPED_BEST.index]++;
-                dropSum[DropStatus.DROPPED_BEST.index] += (droppedFrames < 0 ? 0 : droppedFrames);
+                dropSum[DropStatus.DROPPED_BEST.index] += Math.max(droppedFrames, 0);
             }
         }
 
@@ -233,7 +262,6 @@ public class FrameTracer extends Tracer {
                 resultObject.put(SharePluginInfo.ISSUE_DROP_LEVEL, dropLevelObject);
                 resultObject.put(SharePluginInfo.ISSUE_DROP_SUM, dropSumObject);
                 resultObject.put(SharePluginInfo.ISSUE_FPS, fps);
-                resultObject.put(SharePluginInfo.ISSUE_SUM_TASK_FRAME, sumTaskFrame);
 
                 Issue issue = new Issue();
                 issue.setTag(SharePluginInfo.TAG_PLUGIN_FPS);
@@ -246,7 +274,6 @@ public class FrameTracer extends Tracer {
                 sumFrame = 0;
                 sumDroppedFrames = 0;
                 sumFrameCost = 0;
-                sumTaskFrame = 0;
             }
         }
 

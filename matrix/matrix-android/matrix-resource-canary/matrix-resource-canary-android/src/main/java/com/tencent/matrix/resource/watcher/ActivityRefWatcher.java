@@ -203,9 +203,13 @@ public class ActivityRefWatcher extends FilePublisher implements Watcher, IAppFo
         return mHeapDumper;
     }
 
+    public AndroidHeapDumper.HeapDumpHandler getHeapDumpHandler() {
+        return mHeapDumpHandler;
+    }
+
     private void pushDestroyedActivityInfo(Activity activity) {
         final String activityName = activity.getClass().getName();
-        if (!mResourcePlugin.getConfig().getDetectDebugger() && isPublished(activityName)) {
+        if (!mResourcePlugin.getConfig().getDetectDebugger() && mDumpHprofMode != ResourceConfig.DumpMode.SILENCE_DUMP && isPublished(activityName)) {
             MatrixLog.i(TAG, "activity leak with name %s had published, just ignore", activityName);
             return;
         }
@@ -271,32 +275,33 @@ public class ActivityRefWatcher extends FilePublisher implements Watcher, IAppFo
                 ++destroyedActivityInfo.mDetectedCount;
 
                 if (destroyedActivityInfo.mDetectedCount < mMaxRedetectTimes
-                    || !mResourcePlugin.getConfig().getDetectDebugger()) {
+                        && !mResourcePlugin.getConfig().getDetectDebugger()) {
                     // Although the sentinel tell us the activity should have been recycled,
                     // system may still ignore it, so try again until we reach max retry times.
                     MatrixLog.i(TAG, "activity with key [%s] should be recycled but actually still \n"
-                            + "exists in %s times, wait for next detection to confirm.",
-                        destroyedActivityInfo.mKey, destroyedActivityInfo.mDetectedCount);
+                                    + "exists in %s times, wait for next detection to confirm.",
+                            destroyedActivityInfo.mKey, destroyedActivityInfo.mDetectedCount);
                     continue;
                 }
 
                 MatrixLog.i(TAG, "activity with key [%s] was suspected to be a leaked instance. mode[%s]", destroyedActivityInfo.mKey, mDumpHprofMode);
 
                 if (mDumpHprofMode == ResourceConfig.DumpMode.SILENCE_DUMP) {
-                    if (mResourcePlugin != null && !isPublished(destroyedActivityInfo.mActivityName)) {
+                    if (!isPublished(destroyedActivityInfo.mActivityName)) {
                         final JSONObject resultJson = new JSONObject();
                         try {
                             resultJson.put(SharePluginInfo.ISSUE_ACTIVITY_NAME, destroyedActivityInfo.mActivityName);
                         } catch (JSONException e) {
                             MatrixLog.printErrStackTrace(TAG, e, "unexpected exception.");
                         }
+                        markPublished(destroyedActivityInfo.mActivityName);
                         mResourcePlugin.onDetectIssue(new Issue(resultJson));
                     }
                     if (null != activityLeakCallback) {
                         activityLeakCallback.onLeak(destroyedActivityInfo.mActivityName, destroyedActivityInfo.mKey);
                     }
                 } else if (mDumpHprofMode == ResourceConfig.DumpMode.AUTO_DUMP) {
-                    final File hprofFile = mHeapDumper.dumpHeap();
+                    final File hprofFile = mHeapDumper.dumpHeap(true);
                     if (hprofFile != null) {
                         markPublished(destroyedActivityInfo.mActivityName);
                         final HeapDump heapDump = new HeapDump(hprofFile, destroyedActivityInfo.mKey, destroyedActivityInfo.mActivityName);
@@ -329,15 +334,13 @@ public class ActivityRefWatcher extends FilePublisher implements Watcher, IAppFo
                     // Lightweight mode, just report leaked activity name.
                     MatrixLog.i(TAG, "lightweight mode, just report leaked activity name.");
                     markPublished(destroyedActivityInfo.mActivityName);
-                    if (mResourcePlugin != null) {
-                        final JSONObject resultJson = new JSONObject();
-                        try {
-                            resultJson.put(SharePluginInfo.ISSUE_ACTIVITY_NAME, destroyedActivityInfo.mActivityName);
-                        } catch (JSONException e) {
-                            MatrixLog.printErrStackTrace(TAG, e, "unexpected exception.");
-                        }
-                        mResourcePlugin.onDetectIssue(new Issue(resultJson));
+                    final JSONObject resultJson = new JSONObject();
+                    try {
+                        resultJson.put(SharePluginInfo.ISSUE_ACTIVITY_NAME, destroyedActivityInfo.mActivityName);
+                    } catch (JSONException e) {
+                        MatrixLog.printErrStackTrace(TAG, e, "unexpected exception.");
                     }
+                    mResourcePlugin.onDetectIssue(new Issue(resultJson));
                 }
             }
 

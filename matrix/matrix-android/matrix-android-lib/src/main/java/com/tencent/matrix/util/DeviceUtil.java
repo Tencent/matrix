@@ -19,7 +19,6 @@ package com.tencent.matrix.util;
 import android.app.ActivityManager;
 import android.app.Application;
 import android.content.Context;
-//import android.content.pm.ApplicationInfo;
 import android.os.Build;
 import android.os.Debug;
 
@@ -97,19 +96,13 @@ public class DeviceUtil {
         long totalMemory = getTotalMemory(context);
         int coresNum = getNumOfCores();
         MatrixLog.i(TAG, "[getLevel] totalMemory:%s coresNum:%s", totalMemory, coresNum);
-        if (totalMemory >= 4 * 1024 * MB) {
+        if (totalMemory >= 8 * 1024 * MB) {
             sLevelCache = LEVEL.BEST;
-        } else if (totalMemory >= 3 * 1024 * MB) {
+        } else if (totalMemory >= 6 * 1024 * MB) {
             sLevelCache = LEVEL.HIGH;
+        } else if (totalMemory >= 4 * 1024 * MB) {
+            sLevelCache = LEVEL.MIDDLE;
         } else if (totalMemory >= 2 * 1024 * MB) {
-            if (coresNum >= 4) {
-                sLevelCache = LEVEL.HIGH;
-            } else if (coresNum >= 2) {
-                sLevelCache = LEVEL.MIDDLE;
-            } else if (coresNum > 0) {
-                sLevelCache = LEVEL.LOW;
-            }
-        } else if (totalMemory >= 1024 * MB) {
             if (coresNum >= 4) {
                 sLevelCache = LEVEL.MIDDLE;
             } else if (coresNum >= 2) {
@@ -401,8 +394,8 @@ public class DeviceUtil {
         BufferedReader reader = null;
         StringBuilder sb = new StringBuilder();
         try {
-            reader = new BufferedReader(new InputStreamReader(is));
-            String line = null;
+            reader = new BufferedReader(new InputStreamReader(is, "UTF-8"));
+            String line;
             while ((line = reader.readLine()) != null) {
                 sb.append(line).append('\n');
             }
@@ -428,6 +421,19 @@ public class DeviceUtil {
             }
         }
         return ret;
+    }
+
+    /**
+     * Check if current runtime is 64bit.
+     *
+     * @return
+     *   True if current runtime is 64bit abi. Otherwise return false instead.
+     */
+    public static boolean is64BitRuntime() {
+        final String currRuntimeABI = Build.CPU_ABI;
+        return "arm64-v8a".equalsIgnoreCase(currRuntimeABI)
+                || "x86_64".equalsIgnoreCase(currRuntimeABI)
+                || "mips64".equalsIgnoreCase(currRuntimeABI);
     }
 
 }
