@@ -757,22 +757,28 @@ static float *g_cpuHighThreadValueArray = NULL;
         int *async_stack_trace_array_count = (int *)malloc(sizeof(int) * cost_cpu_thread_count);
         
         // get the origin async stack from MatrixAsyncHook
-        MatrixAsyncHook *asyncHook = [MatrixAsyncHook sharedInstance];
-        NSDictionary *asyncThreadStackDict = [asyncHook getAsyncOriginThreadDict];
-        
         for (int i = 0; i < cost_cpu_thread_count; i++) {
             thread_t current_thread = cost_cpu_thread_list[i];
-            NSArray *asyncStackTrace = [asyncThreadStackDict objectForKey:[[NSNumber alloc] initWithInt:current_thread]];
+            AsyncStackTrace *asyncStackTrace = getAsyncStack((mach_port_t)current_thread);
             
-            if (asyncStackTrace != nil && [asyncStackTrace count] != 0) {
-                async_stack_trace_array[i] = (uintptr_t *)malloc(sizeof(uintptr_t) * [asyncStackTrace count]);
-                async_stack_trace_array_count[i] = (int)[asyncStackTrace count];
-                for (int j = 0; j < [asyncStackTrace count]; j++) {
-                    async_stack_trace_array[i][j] = [asyncStackTrace[j] unsignedLongValue];
+            if (asyncStackTrace != NULL && asyncStackTrace->backTrace != NULL) {
+                async_stack_trace_array[i] = (uintptr_t *)malloc(sizeof(uintptr_t) * asyncStackTrace->size);
+                async_stack_trace_array_count[i] = (int)asyncStackTrace->size;
+                for (int j = 0; j < asyncStackTrace->size; j++) {
+                    async_stack_trace_array[i][j] = (unsigned long)asyncStackTrace->backTrace[j];
                 }
             } else {
                 async_stack_trace_array[i] = NULL;
                 async_stack_trace_array_count[i] = 0;
+            }
+            
+            if (asyncStackTrace) {
+                if (asyncStackTrace->backTrace) {
+                    free(asyncStackTrace->backTrace);
+                    asyncStackTrace->backTrace = NULL;
+                }
+                free(asyncStackTrace);
+                asyncStackTrace = NULL;
             }
         }
         

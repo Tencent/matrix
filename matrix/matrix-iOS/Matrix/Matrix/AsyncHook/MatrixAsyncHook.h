@@ -16,14 +16,19 @@
 
 #import <Foundation/Foundation.h>
 
+typedef struct AsyncStackTrace {
+    void **backTrace;
+    size_t size;
+} AsyncStackTrace;
 
-@interface MatrixAsyncHook : NSObject
+#ifdef __cplusplus
+extern "C" {
+#endif //__cplusplus
 
-+ (instancetype)sharedInstance;
+void beginHookDispatch();
+AsyncStackTrace* getAsyncStack(mach_port_t thread);
 
-- (void)beginHook;
-- (NSDictionary *)getAsyncOriginThreadDict;
-
-@end
-
+#ifdef __cplusplus
+}
+#endif //__cplusplus
 

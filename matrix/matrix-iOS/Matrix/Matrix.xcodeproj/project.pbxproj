@@ -12,9 +12,9 @@
 		1110E02A2243388500A873F9 /* WCFilterStackHandler.h in Headers */ = {isa = PBXBuildFile; fileRef = 1110E0282243388500A873F9 /* WCFilterStackHandler.h */; };
 		1110E02B2243388500A873F9 /* WCFilterStackHandler.mm in Sources */ = {isa = PBXBuildFile; fileRef = 1110E0292243388500A873F9 /* WCFilterStackHandler.mm */; };
 		111A10262379411100546915 /* MatrixAsyncHook.h in Headers */ = {isa = PBXBuildFile; fileRef = 111A10242379411100546915 /* MatrixAsyncHook.h */; };
-		111A10272379411100546915 /* MatrixAsyncHook.m in Sources */ = {isa = PBXBuildFile; fileRef = 111A10252379411100546915 /* MatrixAsyncHook.m */; };
 		1127770225ECD92E00F7A6E4 /* KSCrash_BinaryImageHandler.h in Headers */ = {isa = PBXBuildFile; fileRef = 1127770025ECD92E00F7A6E4 /* KSCrash_BinaryImageHandler.h */; };
 		1127770325ECD92E00F7A6E4 /* KSCrash_BinaryImageHandler.mm in Sources */ = {isa = PBXBuildFile; fileRef = 1127770125ECD92E00F7A6E4 /* KSCrash_BinaryImageHandler.mm */; };
+		1127770A25ECDAF600F7A6E4 /* MatrixAsyncHook.mm in Sources */ = {isa = PBXBuildFile; fileRef = 1127770925ECDAF500F7A6E4 /* MatrixAsyncHook.mm */; };
 		114E342E21E83FE6001FB50C /* MatrixAppRebootType.h in Headers */ = {isa = PBXBuildFile; fileRef = 114E342B21E83FC5001FB50C /* MatrixAppRebootType.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		116460A12111AF190069B5DE /* KSDate.c in Sources */ = {isa = PBXBuildFile; fileRef = 114E681220AAC0CE0045083D /* KSDate.c */; };
 		116460A22111AF190069B5DE /* KSLogger.c in Sources */ = {isa = PBXBuildFile; fileRef = 114E682420AAC0CE0045083D /* KSLogger.c */; };
@@ -284,11 +284,11 @@
 		1110E0282243388500A873F9 /* WCFilterStackHandler.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = WCFilterStackHandler.h; sourceTree = "<group>"; };
 		1110E0292243388500A873F9 /* WCFilterStackHandler.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = WCFilterStackHandler.mm; sourceTree = "<group>"; };
 		111A10242379411100546915 /* MatrixAsyncHook.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MatrixAsyncHook.h; sourceTree = "<group>"; };
-		111A10252379411100546915 /* MatrixAsyncHook.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = MatrixAsyncHook.m; sourceTree = "<group>"; };
 		11203FA920EE10A20022FF96 /* MatrixDeviceInfo.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MatrixDeviceInfo.h; sourceTree = "<group>"; };
 		11203FAA20EE10A20022FF96 /* MatrixDeviceInfo.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = MatrixDeviceInfo.mm; sourceTree = "<group>"; };
 		1127770025ECD92E00F7A6E4 /* KSCrash_BinaryImageHandler.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = KSCrash_BinaryImageHandler.h; sourceTree = "<group>"; };
 		1127770125ECD92E00F7A6E4 /* KSCrash_BinaryImageHandler.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = KSCrash_BinaryImageHandler.mm; sourceTree = "<group>"; };
+		1127770925ECDAF500F7A6E4 /* MatrixAsyncHook.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = MatrixAsyncHook.mm; sourceTree = "<group>"; };
 		114E342B21E83FC5001FB50C /* MatrixAppRebootType.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MatrixAppRebootType.h; sourceTree = "<group>"; };
 		114E67B920AAC0CE0045083D /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		114E67BB20AAC0CE0045083D /* MatrixIssue.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MatrixIssue.h; sourceTree = "<group>"; };
@@ -570,7 +570,7 @@
 			isa = PBXGroup;
 			children = (
 				111A10242379411100546915 /* MatrixAsyncHook.h */,
-				111A10252379411100546915 /* MatrixAsyncHook.m */,
+				1127770925ECDAF500F7A6E4 /* MatrixAsyncHook.mm */,
 			);
 			path = AsyncHook;
 			sourceTree = "<group>";
@@ -1484,7 +1484,6 @@
 				1177FFF22137A53200FDFEB4 /* MatrixTester.mm in Sources */,
 				116460D02111AF190069B5DE /* KSCrashReportFilterBasic.m in Sources */,
 				116460D12111AF190069B5DE /* WCGetCallStackReportHandler.mm in Sources */,
-				111A10272379411100546915 /* MatrixAsyncHook.m in Sources */,
 				116460D22111AF190069B5DE /* MatrixPluginConfig.mm in Sources */,
 				116460D32111AF190069B5DE /* KSSignalInfo.c in Sources */,
 				11B71A4B22F45A1F004A7212 /* KSCrash_fishhook.c in Sources */,
@@ -1502,6 +1501,7 @@
 				116460DC2111AF190069B5DE /* KSDemangle_CPP.cpp in Sources */,
 				116460DD2111AF190069B5DE /* KSDemangle_Swift.cpp in Sources */,
 				116460DE2111AF190069B5DE /* KSMachineContext.c in Sources */,
+				1127770A25ECDAF600F7A6E4 /* MatrixAsyncHook.mm in Sources */,
 				BB77ADCA22368582008C67D9 /* memory_logging.cpp in Sources */,
 				116460DF2111AF190069B5DE /* WCBlockMonitorConfigHandler.mm in Sources */,
 				116460E02111AF190069B5DE /* Matrix.mm in Sources */,

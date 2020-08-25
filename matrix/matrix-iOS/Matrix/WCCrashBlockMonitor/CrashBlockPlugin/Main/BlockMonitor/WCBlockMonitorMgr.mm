@@ -278,7 +278,7 @@ float *kscrash_pointCpuHighThreadArrayCallBack(void)
     [self setCPUUsagePercent:[_monitorConfigHandler getCPUUsagePercent]];
     [self setPerStackInterval:[_monitorConfigHandler getPerStackInterval]];
     
-    [[MatrixAsyncHook sharedInstance] beginHook];
+    beginHookDispatch();
 
     m_nIntervalTime = 1;
     m_nLastTimeInterval = 1;
