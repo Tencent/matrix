@@ -116,7 +116,10 @@ void my_cxa_throw(void* thrown_exception, std::type_info* tinfo, void (*dest)(vo
 
 static void CPPExceptionTerminate(void)
 {
-    ksmc_suspendEnvironment();
+    thread_act_array_t threads = NULL;
+    mach_msg_type_number_t numThreads = 0;
+    ksmc_suspendEnvironment(&threads, &numThreads);
+    
     KSLOG_DEBUG("Trapped c++ exception");
     const char* name = NULL;
     std::type_info* tinfo = __cxxabiv1::__cxa_current_exception_type();
@@ -190,14 +193,14 @@ catch(TYPE value)\
         ksTmpSingal.si_pid = (int)ksmc_getThreadFromContext(machineContext);
 
         kscm_handleException(crashContext);
-        ksmc_resumeEnvironment();
+        ksmc_resumeEnvironment(threads, numThreads);
         kscm_innerHandleSignal(&ksTmpSingal);
         kscm_handleSignal(&ksTmpSingal);
     }
     else
     {
         KSLOG_DEBUG("Detected NSException. Letting the current NSException handler deal with it.");
-        ksmc_resumeEnvironment();
+        ksmc_resumeEnvironment(threads, numThreads);
     }
 
 

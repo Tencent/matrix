@@ -34,14 +34,15 @@ extern "C" {
 
 #include "KSThread.h"
 #include <stdbool.h>
+#include <mach/mach.h>
 
 /** Suspend the runtime environment.
  */
-void ksmc_suspendEnvironment(void);
+void ksmc_suspendEnvironment(thread_act_array_t *suspendedThreads, mach_msg_type_number_t *numSuspendedThreads);
 
 /** Resume the runtime environment.
  */
-void ksmc_resumeEnvironment(void);
+void ksmc_resumeEnvironment(thread_act_array_t threads, mach_msg_type_number_t numThreads);
 
 /** Create a new machine context on the stack.
  * This macro creates a storage object on the stack, as well as a pointer of type

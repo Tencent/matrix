@@ -298,7 +298,9 @@ static void* handleExceptions(void* const userData)
                 exceptionMessage.code[0], exceptionMessage.code[1]);
     if(g_isEnabled)
     {
-        ksmc_suspendEnvironment();
+        thread_act_array_t threads = NULL;
+        mach_msg_type_number_t numThreads = 0;
+        ksmc_suspendEnvironment(&threads, &numThreads);
         g_isHandlingCrash = true;
         kscm_notifyFatalExceptionCaptured(true);
 
@@ -367,7 +369,7 @@ static void* handleExceptions(void* const userData)
 
         KSLOG_DEBUG("Crash handling complete. Restoring original handlers.");
         g_isHandlingCrash = false;
-        ksmc_resumeEnvironment();
+        ksmc_resumeEnvironment(threads, numThreads);
         kscm_innerHandleSignal(&ksTmpSingal);
         kscm_handleSignal(&ksTmpSingal);        
     }

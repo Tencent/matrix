@@ -761,7 +761,9 @@ static float *g_cpuHighThreadValueArray = NULL;
             }
         }
         
-        ksmc_suspendEnvironment();
+        thread_act_array_t threads = NULL;
+        mach_msg_type_number_t numThreads = 0;
+        ksmc_suspendEnvironment(&threads, &numThreads);
         for (int i = 0; i < cost_cpu_thread_count; i++) {
             thread_t current_thread = cost_cpu_thread_list[i];
             uintptr_t backtrace_buffer[maxEntries];
@@ -780,7 +782,7 @@ static float *g_cpuHighThreadValueArray = NULL;
                 }
             }
         }
-        ksmc_resumeEnvironment();
+        ksmc_resumeEnvironment(threads, numThreads);
         
         for (int i = 0; i < cost_cpu_thread_count; i++) {
             if (async_stack_trace_array[i] != NULL && async_stack_trace_array_count[i] != 0) {

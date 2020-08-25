@@ -107,7 +107,9 @@ static NSTimeInterval g_watchdogInterval = 0;
 
 - (void) handleDeadlock
 {
-    ksmc_suspendEnvironment();
+    thread_act_array_t threads = NULL;
+    mach_msg_type_number_t numThreads = 0;
+    ksmc_suspendEnvironment(&threads, &numThreads);
     kscm_notifyFatalExceptionCaptured(false);
 
     KSMC_NEW_CONTEXT(machineContext);
@@ -127,7 +129,7 @@ static NSTimeInterval g_watchdogInterval = 0;
     crashContext->stackCursor = &stackCursor;
     
     kscm_handleException(crashContext);
-    ksmc_resumeEnvironment();
+    ksmc_resumeEnvironment(threads, numThreads);
 
     KSLOG_DEBUG(@"Calling abort()");
     abort();

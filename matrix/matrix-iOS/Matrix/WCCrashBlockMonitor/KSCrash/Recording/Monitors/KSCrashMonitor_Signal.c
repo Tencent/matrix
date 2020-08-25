@@ -84,7 +84,9 @@ static void handleSignal(int sigNum, siginfo_t* signalInfo, void* userContext)
     KSLOG_DEBUG("Trapped signal %d", sigNum);
     if(g_isEnabled)
     {
-        ksmc_suspendEnvironment();
+        thread_act_array_t threads = NULL;
+        mach_msg_type_number_t numThreads = 0;
+        ksmc_suspendEnvironment(&threads, &numThreads);
         kscm_notifyFatalExceptionCaptured(false);
 
         KSLOG_DEBUG("Filling out context.");
@@ -105,7 +107,7 @@ static void handleSignal(int sigNum, siginfo_t* signalInfo, void* userContext)
         crashContext->stackCursor = &g_stackCursor;
 
         kscm_handleException(crashContext);
-        ksmc_resumeEnvironment();
+        ksmc_resumeEnvironment(threads, numThreads);
         kscm_innerHandleSignal(signalInfo);
         kscm_handleSignal(signalInfo);
     }
