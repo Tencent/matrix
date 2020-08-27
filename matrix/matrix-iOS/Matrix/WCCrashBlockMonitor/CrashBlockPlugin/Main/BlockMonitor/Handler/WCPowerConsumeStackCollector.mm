@@ -196,6 +196,8 @@ struct StackInfo
             memset(m_stackCPU, 0, cpuArrayBytes);
         }
         m_poolTailPoint = 0;
+        
+        _bTryToSymbolicate = YES;
     }
     return self;
 }
@@ -269,7 +271,9 @@ struct StackInfo
     
     for (int i = 0; i < [self.parentAddressFrame count] && i < 2; i++) {
         WCAddressFrame *addressFrame = self.parentAddressFrame[i];
-        [addressFrame symbolicate];
+        if (self.bTryToSymbolicate) {
+            [addressFrame symbolicate];
+        }
         NSDictionary *curDict = [self p_getInfoDictFromAddressFrame:addressFrame];
         [addressDictArray addObject:curDict];
     }
@@ -441,6 +445,8 @@ static float *g_cpuHighThreadValueArray = NULL;
     if (self) {
         g_kGetPowerStackCPULimit = cpuLimit;
         _stackTracePool = [[WCStackTracePool alloc] initWithMaxStackTraceCount:MAX_STACK_TRACE_COUNT];
+        _stackTracePool.bTryToSymbolicate = self.bTryToSymbolicate;
+        _bTryToSymbolicate = YES;
     }
     return self;
 }
@@ -453,7 +459,7 @@ static float *g_cpuHighThreadValueArray = NULL;
 {
     WCStackTracePool *handlePool = _stackTracePool;
     _stackTracePool = [[WCStackTracePool alloc] initWithMaxStackTraceCount:MAX_STACK_TRACE_COUNT];
-    
+    _stackTracePool.bTryToSymbolicate = self.bTryToSymbolicate;
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
         NSArray <NSDictionary *>*stackTree = [handlePool makeCallTree];
         if (self.delegate != nil && [self.delegate respondsToSelector:@selector(powerConsumeStackCollectorConclude:)]) {

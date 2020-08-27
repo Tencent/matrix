@@ -121,4 +121,9 @@
     return m_currentConfiguration.bPrintMemomryUse;
 }
 
+- (BOOL)getEnableLocalSymbolicate
+{
+    return m_currentConfiguration.bEnableLocalSymbolicate;
+}
+
 @end

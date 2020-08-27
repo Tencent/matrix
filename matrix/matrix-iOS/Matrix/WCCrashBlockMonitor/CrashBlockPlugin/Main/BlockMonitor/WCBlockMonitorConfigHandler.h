@@ -35,4 +35,6 @@
 - (uint32_t)getTriggerFilterCount;
 - (BOOL)getShouldPrintMemoryUse;
 
+- (BOOL)getEnableLocalSymbolicate;
+
 @end

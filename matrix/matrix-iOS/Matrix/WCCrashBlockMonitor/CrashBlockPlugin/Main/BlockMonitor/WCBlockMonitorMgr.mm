@@ -306,6 +306,7 @@ float *kscrash_pointCpuHighThreadArrayCallBack(void)
     
     if ([_monitorConfigHandler getShouldGetPowerConsumeStack]) {
         m_powerConsumeStackCollector = [[WCPowerConsumeStackCollector alloc] initWithCPULimit:[_monitorConfigHandler getPowerConsumeCPULimit]];
+        m_powerConsumeStackCollector.bTryToSymbolicate = [_monitorConfigHandler getEnableLocalSymbolicate];
         m_powerConsumeStackCollector.delegate = self;
     } else {
         m_powerConsumeStackCollector = nil;

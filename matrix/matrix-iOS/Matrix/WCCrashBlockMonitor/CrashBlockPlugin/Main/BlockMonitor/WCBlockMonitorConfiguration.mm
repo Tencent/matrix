@@ -52,6 +52,7 @@
     configuration.bFilterSameStack = NO;
     configuration.triggerToBeFilteredCount = 10;
     configuration.bPrintMemomryUse = NO;
+    configuration.bEnableLocalSymbolicate = YES;
     return configuration;
 }
 
