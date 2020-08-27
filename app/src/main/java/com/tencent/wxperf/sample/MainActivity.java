@@ -3,6 +3,7 @@ package com.tencent.wxperf.sample;
 import android.Manifest;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
+import android.os.Debug;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Process;
@@ -297,8 +298,11 @@ public class MainActivity extends AppCompatActivity {
         PthreadHook.INSTANCE.dump("/sdcard/pthread_hook.log");
     }
 
+
     public void mallocTest(View view) {
+        Log.d(TAG, "mallocTest: native heap:" + Debug.getNativeHeapSize() + ", allocated:" + Debug.getNativeHeapAllocatedSize() + ", free:" + Debug.getNativeHeapFreeSize());
         JNIObj.mallocTest();
+        Log.d(TAG, "mallocTest after malloc: native heap:" + Debug.getNativeHeapSize() + ", allocated:" + Debug.getNativeHeapAllocatedSize() + ", free:" + Debug.getNativeHeapFreeSize());
     }
 
     public void doSomeThing(View view) {
@@ -427,8 +431,10 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void jectlTest(View view) {
-        int ret = JeCtl.compact();
-        Log.d(TAG, "tryDisableRetain result :" + ret);
+//        JeCtl.extentHookTest();
+        JeCtl.preAllocRetain(500 * 1024 * 1024 /*up to 640M*/, 120 * 1024 * 1024 /*up to 128M*/, 256 * 1024 * 1024,128 * 1024 * 1024);
+//        int ret = JeCtl.compact();
+//        Log.d(TAG, "tryDisableRetain result :" + ret);
     }
 
     public void killSelf(View view) {

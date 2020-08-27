@@ -33,6 +33,23 @@ using namespace std;
 
 int count = 0;
 
+struct internal_struct {
+    long j;
+};
+
+struct test_struct {
+    int i;
+    struct internal_struct internal;
+    union {
+        double dou;
+        long long ll;
+    };
+};
+
+typedef struct test_struct my_struct ;// __attribute__ ((visibility ("default")));
+
+my_struct my_struct_arr[2]  ;//__attribute__ ((visibility ("default")));
+
 JNIEXPORT void JNICALL
 Java_com_tencent_wxperf_sample_JNIObj_doMmap(JNIEnv *env, jobject instance) {
 
@@ -594,10 +611,67 @@ Java_com_tencent_wxperf_sample_JNIObj_testPthreadFree(JNIEnv *env, jclass clazz)
 //    free(p);
 }
 
+void *malloc_routine(void *arg) {
+    LOGD(TAG,"malloc_routine");
+
+    for (int i = 0; i < 1000; ++i) {
+//        malloc(1024 * 14);
+//        usleep(100);
+    }
+
+    return nullptr;
+}
+
 JNIEXPORT void JNICALL
 Java_com_tencent_wxperf_sample_JNIObj_mallocTest(JNIEnv *env, jclass clazz) {
 //    LOGD("Yves-debug", "mallocTest");
-    malloc_test();
+//    malloc_test();
+#define LEN 20
+//    char *p[LEN];
+//    for (int i = 0; i < LEN; ++i) {
+//        p[i] = (char *)malloc(512 * 1024 * sizeof(char));
+//        LOGD(TAG, "p[%d] = %p", i, p[i]);
+//    }
+
+//    char *sb = (char *)sbrk(4 * 1024);
+//
+//    memset(sb, 'b', 4 * 1024 - 1);
+//    sb[4 * 1024 - 1] = '\0';
+//
+//    LOGD(TAG, "sb = %p %s",sb, sb);
+
+//    pthread_t pthread[100];
+//    for (int i = 0; i < 100;++i) {
+//        pthread_create(&pthread[i], nullptr, malloc_routine, nullptr);
+////        usleep(1000);
+////        sleep(1);
+//    }
+//
+//    for (int i = 0; i < 100; ++i) {
+//        pthread_join(pthread[i], nullptr);
+//    }
+
+//    LOGD(TAG, "sizeof struc : %zu, x2=%zu", sizeof(my_struct), sizeof(my_struct) * 2);
+//    LOGD(TAG, "sizeof arr %p : %zu", my_struct_arr, sizeof(my_struct_arr));
+//    LOGD(TAG, "arr1[%p,%p]", &my_struct_arr[1], my_struct_arr + 1);
+//
+//    my_struct *str = (my_struct *)malloc(sizeof(my_struct));
+//
+//    LOGD(TAG, " %p =? %p", str, &str->i);
+
+//    LOGD(TAG, "mallocTest finished");
+    // leak
+
+//    void *large = malloc(1024 * 1024 * 1024);
+//    LOGD(TAG, "large = %p", large);
+//    free(large);
+
+    void *p = malloc(300 * 1024 * 1024);
+    LOGD(TAG, "p = %p", p);
+    free(p);
+
+
+#undef LEN
 }
 
 void SpeedTest() {

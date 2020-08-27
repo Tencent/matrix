@@ -7,6 +7,7 @@ public class JeCtl {
 
     static {
         System.loadLibrary("wxperf-jectl");
+        initNative();
     }
 
     // 必须和 native 保持一致
@@ -19,5 +20,22 @@ public class JeCtl {
         return compactNative();
     }
 
+    private static boolean hasAllocated;
+
+    public synchronized static int preAllocRetain(int size0, int size1, int limit0, int limit1) {
+        if (!hasAllocated) {
+            hasAllocated = true;
+            return preAllocRetainNative(size0, size1, limit0, limit1);
+        }
+
+        return JECTL_OK;
+    }
+
+    private static native void initNative();
+
     private static native int compactNative();
+
+    private static native int extentHookTest();
+
+    private static native int preAllocRetainNative(int size0, int size1, int limit0, int limit1);
 }
