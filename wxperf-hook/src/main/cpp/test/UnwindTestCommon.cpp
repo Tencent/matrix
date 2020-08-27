@@ -7,13 +7,17 @@
 #include <FastRegs.h>
 #include "Log.h"
 #include "Backtrace.h"
-#include "../external/libunwindstack/TimeUtil.h"
 #include "UnwindTestCommon.h"
 
 #define DWARF_UNWIND_TAG "Dwarf-Unwind"
 #define FP_FAST_UNWIND_TAG "Fp-Unwind"
 #define FP_FAST_UNWIND_WITH_FALLBACK_TAG "Fp-Unwind-Fallback"
 #define DWARF_FAST_UNWIND_TAG "Dwarf-Fast-Unwind"
+
+//#define DWARF_UNWIND_TAG UNWIND_TEST_TAG
+//#define FP_FAST_UNWIND_TAG UNWIND_TEST_TAG
+//#define FP_FAST_UNWIND_WITH_FALLBACK_TAG UNWIND_TEST_TAG
+//#define DWARF_FAST_UNWIND_TAG UNWIND_TEST_TAG
 
 #define FRAME_MAX_SIZE 16
 
@@ -59,7 +63,9 @@ inline void print_dwarf_unwind() {
 
     NanoSeconds_End(unwindstack::dwarf_unwind, nano);
 
-    LOGD(DWARF_UNWIND_TAG, "frames = %llu", tmp_ns->size());
+    LOGE(DWARF_UNWIND_TAG, "frames = %"
+            PRIuPTR
+            , tmp_ns->size());
 
     for (auto p_frame = tmp_ns->begin(); p_frame != tmp_ns->end(); ++p_frame) {
         Dl_info stack_info;
@@ -93,8 +99,8 @@ inline void print_fp_unwind() {
     NanoSeconds_End(wechat_backtrace::fp_fast_unwind, nano);
 
     LOGE(FP_FAST_UNWIND_TAG, "frames = %"
-            PRIxPTR
-            "u", frame_size);
+            PRIuPTR
+            , frame_size);
 
     for (size_t i = 0 ; i < frame_size; i++) {
         Dl_info stack_info;
@@ -127,7 +133,9 @@ static inline void print_fp_unwind_with_fallback() {
 
     NanoSeconds_End(wechat_backtrace::fp_unwind_with_fallback, nano);
 
-    LOGE(FP_FAST_UNWIND_WITH_FALLBACK_TAG, "frames = %llu", frame_size);
+    LOGE(FP_FAST_UNWIND_WITH_FALLBACK_TAG, "frames = %"
+            PRIuPTR
+    , frame_size);
 
     for (size_t i = 0 ; i < frame_size; i++) {
         Dl_info stack_info;
@@ -157,7 +165,9 @@ inline void print_dwarf_fast_unwind() {
 
     NanoSeconds_End(unwindstack::fast_dwarf_unwind, nano);
 
-    LOGD(DWARF_FAST_UNWIND_TAG, "frames = %llu", tmp_ns->size());
+    LOGE(DWARF_FAST_UNWIND_TAG, "frames = %"
+            PRIuPTR
+    , tmp_ns->size());
 
     for (auto p_frame = tmp_ns->begin(); p_frame != tmp_ns->end(); ++p_frame) {
         Dl_info stack_info;

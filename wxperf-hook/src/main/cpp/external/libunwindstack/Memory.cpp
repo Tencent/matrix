@@ -315,7 +315,6 @@ size_t MemoryRemote::Read(uint64_t addr, void* dst, size_t size) {
 #endif
 
   size_t (*read_func)(pid_t, uint64_t, void*, size_t) =
-      GetFastFlag() ? ProcessLocalVmRead :
       reinterpret_cast<size_t (*)(pid_t, uint64_t, void*, size_t)>(read_redirect_func_.load());
   if (read_func != nullptr) {
     return read_func(pid_, addr, dst, size);
@@ -339,7 +338,11 @@ size_t MemoryRemote::Read(uint64_t addr, void* dst, size_t size) {
 }
 
 size_t MemoryLocal::Read(uint64_t addr, void* dst, size_t size) {
-  return ProcessVmRead(getpid(), addr, dst, size);
+  if (GetFastFlag()) {
+    return ProcessLocalVmRead(getpid(), addr, dst, size);
+  } else {
+    return ProcessVmRead(getpid(), addr, dst, size);
+  }
 }
 
 #if !defined(ANDROID_EXPERIMENTAL_MTE)

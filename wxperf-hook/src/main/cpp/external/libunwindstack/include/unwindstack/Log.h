@@ -18,6 +18,7 @@
 #define _LIBUNWINDSTACK_LOG_H
 
 #include <stdint.h>
+#include <time.h>
 
 namespace unwindstack {
 
@@ -25,5 +26,28 @@ void log_to_stdout(bool enable);
 void log(uint8_t indent, const char* format, ...);
 
 }  // namespace unwindstack
+
+#define UNWIND_LOG(fmt, args...) \
+//  do { unwindstack::log(0, fmt, ##args); } while (0)
+
+#define TS_Start(timestamp) \
+//        long timestamp = 0; \
+//        { \
+//            struct timespec tms; \
+//            if (clock_gettime(CLOCK_REALTIME, &tms)) { \
+//                UNWIND_LOG("UnwindTS Err: Get time failed."); \
+//            } else { \
+//                timestamp = tms.tv_nsec; \
+//            } \
+//        }
+
+#define TS_End(tag, timestamp) \
+//        { \
+//            struct timespec tms; \
+//            if (clock_gettime(CLOCK_REALTIME, &tms)) { \
+//                UNWIND_LOG("UnwindTS Err: Get time failed."); \
+//            } \
+//            UNWIND_LOG("UnwindTS "#tag" %ld - %ld = costs: %ldns", tms.tv_nsec, timestamp, (tms.tv_nsec - timestamp)); \
+//        }
 
 #endif  // _LIBUNWINDSTACK_LOG_H
