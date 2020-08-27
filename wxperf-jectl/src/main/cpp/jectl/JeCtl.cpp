@@ -335,7 +335,6 @@ static void call_alloc_large_in_arena1(size_t __size) {
     mallctl("thread.arena", &which_arena, &which_arena_size, nullptr, 0);
 
     bool zero = false;
-    LOGD(TAG, "arenas = %p, parena1 = %p, arena1 = %p", arenas, p_arena1, (void *) arena1);
     LOGD(TAG, "args : tsd=%p, arena1=%p, size=%zu, align=%d, zero=%p", tsd, (void *) arena1, __size,
          CACHELINE, &zero);
     void *extent = arena_extent_alloc_large(tsd, (void *) arena1, __size, CACHELINE, &zero);
@@ -439,6 +438,8 @@ static void testAlloc() {
     }
 }
 
+void *arena0_alloc_opt_prevent;
+
 JNIEXPORT jint JNICALL
 Java_com_tencent_wxperf_jectl_JeCtl_preAllocRetainNative(JNIEnv *env, jclass clazz, jint __size0,
                                                          jint __size1, jint __limit0, jint __limit1) {
@@ -482,9 +483,9 @@ Java_com_tencent_wxperf_jectl_JeCtl_preAllocRetainNative(JNIEnv *env, jclass cla
 
     LOGD(TAG, "prepare alloc");
     void *p = malloc(__size0);
+    arena0_alloc_opt_prevent = p;
     LOGD(TAG, "prepare alloc arena0 done %p", p);
     free(p);
-
     hack_prealloc_within_arena1(__size1);
 
     flush_decay_purge();
