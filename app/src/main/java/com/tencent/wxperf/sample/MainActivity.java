@@ -441,7 +441,7 @@ public class MainActivity extends AppCompatActivity {
 
     public void jectlTest(View view) {
 //        JeCtl.extentHookTest();
-        JeCtl.preAllocRetain(500 * 1024 * 1024 /*up to 640M*/, 120 * 1024 * 1024 /*up to 128M*/, 256 * 1024 * 1024,128 * 1024 * 1024);
+        JeCtl.preAllocRetain(320 * 1024 * 1024 /*up to 384M*/, 60 * 1024 * 1024 /*up to 64M*/, 256 * 1024 * 1024,64 * 1024 * 1024);
 //        int ret = JeCtl.compact();
 //        Log.d(TAG, "tryDisableRetain result :" + ret);
     }

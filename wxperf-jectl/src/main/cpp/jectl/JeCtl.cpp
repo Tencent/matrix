@@ -19,6 +19,7 @@
 #define ERR_VERSION         2
 #define ERR_64_BIT          3
 #define ERR_CTL             4
+#define ERR_ALLOC_FAILED    5
 
 #define CACHELINE        64
 
@@ -457,15 +458,16 @@ Java_com_tencent_wxperf_jectl_JeCtl_preAllocRetainNative(JNIEnv *env, jclass cla
     assert(__limit0 > 0);
     assert(__limit1 > 0);
 
-    int ret             = 0;
+    int ctl_result      = 0;
+    int ret_code        = JECTL_OK;
 
     size_t dirty_ms;
     size_t new_dirty_ms = 0;
     size_t ms_size      = sizeof(size_t);
-    ret = mallctl("arena.0.muzzy_decay_ms", &dirty_ms, &ms_size, &new_dirty_ms, ms_size);
-    LOGD(TAG, "arena.0.muzzy_decay_ms ret = %d", ret);
-    ret = mallctl("arena.1.muzzy_decay_ms", &dirty_ms, &ms_size, &new_dirty_ms, ms_size);
-    LOGD(TAG, "arena.1.muzzy_decay_ms ret = %d", ret);
+    ctl_result = mallctl("arena.0.muzzy_decay_ms", &dirty_ms, &ms_size, &new_dirty_ms, ms_size);
+    LOGD(TAG, "arena.0.muzzy_decay_ms ret = %d", ctl_result);
+    ctl_result = mallctl("arena.1.muzzy_decay_ms", &dirty_ms, &ms_size, &new_dirty_ms, ms_size);
+    LOGD(TAG, "arena.1.muzzy_decay_ms ret = %d", ctl_result);
 
 //    ret = mallctl("arena.0.dirty_decay_ms", &dirty_ms, &dirty_ms_size, &new_dirty_ms, dirty_ms_size);
 //    LOGD(TAG, "arena.0.dirty_decay_ms ret = %d", ret);
@@ -475,14 +477,17 @@ Java_com_tencent_wxperf_jectl_JeCtl_preAllocRetainNative(JNIEnv *env, jclass cla
     size_t old_limit  = 0;
     size_t new_limit  = __limit0;
     size_t limit_size = sizeof(size_t);
-    ret = mallctl("arena.0.retain_grow_limit", &old_limit, &limit_size, &new_limit, limit_size);
-    LOGD(TAG, "arena.0.retain_grow_limit ret = %d, old limit = %zu", ret, old_limit);
-    new_limit = __limit1;
-    ret = mallctl("arena.1.retain_grow_limit", &old_limit, &limit_size, &new_limit, limit_size);
-    LOGD(TAG, "arena.1.retain_grow_limit ret = %d, old limit = %zu", ret, old_limit);
+    ctl_result = mallctl("arena.0.retain_grow_limit", &old_limit, &limit_size, &new_limit, limit_size);
+    LOGD(TAG, "arena.0.retain_grow_limit ret = %d, old limit = %zu", ctl_result, old_limit);
+    new_limit  = __limit1;
+    ctl_result = mallctl("arena.1.retain_grow_limit", &old_limit, &limit_size, &new_limit, limit_size);
+    LOGD(TAG, "arena.1.retain_grow_limit ret = %d, old limit = %zu", ctl_result, old_limit);
 
     LOGD(TAG, "prepare alloc");
     void *p = malloc(__size0);
+    if (!p) {
+        ret_code = ERR_ALLOC_FAILED;
+    }
     arena0_alloc_opt_prevent = p;
     LOGD(TAG, "prepare alloc arena0 done %p", p);
     free(p);
@@ -490,7 +495,7 @@ Java_com_tencent_wxperf_jectl_JeCtl_preAllocRetainNative(JNIEnv *env, jclass cla
 
     flush_decay_purge();
 
-    return JECTL_OK;
+    return ret_code;
 #endif
 }
 
