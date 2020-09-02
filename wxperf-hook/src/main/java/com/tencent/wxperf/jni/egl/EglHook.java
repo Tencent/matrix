@@ -27,6 +27,11 @@ public class EglHook extends AbsHook {
 
     }
 
+    /**
+     * Deprecated: use {@link com.tencent.stubs.logger.Log} instead
+     * @param log
+     */
+    @Deprecated
     public static void initILog(ILog log) {
         iLog = log;
     }
@@ -161,6 +166,10 @@ public class EglHook extends AbsHook {
 
     }
 
+    /**
+     * Deprecated: use {@link com.tencent.stubs.logger.Log} instead
+     */
+    @Deprecated
     public interface ILog {
 
         void v(String tag, String info);
