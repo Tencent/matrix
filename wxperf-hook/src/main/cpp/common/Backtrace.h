@@ -2,8 +2,8 @@
 // Created by Yves on 2019-08-09.
 //
 
-#ifndef LIBWXPERF_JNI_STACKTRACE_H
-#define LIBWXPERF_JNI_STACKTRACE_H
+#ifndef LIBWXPERF_JNI_BACKTRACE_H
+#define LIBWXPERF_JNI_BACKTRACE_H
 
 #include <unwindstack/Maps.h>
 #include <unwindstack/Regs.h>
@@ -29,4 +29,4 @@ namespace wechat_backtrace {
     void fast_dwarf_unwind(unwindstack::Regs *regs, std::vector<unwindstack::FrameData> &dst, size_t frameSize);
 }
 
-#endif //LIBWXPERF_JNI_STACKTRACE_H
+#endif //LIBWXPERF_JNI_BACKTRACE_H

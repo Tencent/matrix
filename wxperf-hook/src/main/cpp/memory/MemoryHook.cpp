@@ -106,7 +106,7 @@ static inline void on_acquire_memory(void *__caller,
     if (is_stacktrace_enabled && should_do_unwind(meta.size, meta.caller)) {
 
         std::vector<unwindstack::FrameData> stack_frames;
-        unwindstack::do_unwind(stack_frames);
+        unwind_adapter(stack_frames);
 
         if (!stack_frames.empty()) {
             uint64_t stack_hash = hash_stack_frames(stack_frames);
@@ -365,25 +365,26 @@ static inline void dump_stacks(FILE *log_file,
 
         std::string       caller_so_name;
         std::stringstream stack_builder;
-        for (auto         it = stacktrace.begin(); it != stacktrace.end(); ++it) {
-            Dl_info stack_info = {nullptr};
-            int     success    = dladdr((void *) it->pc, &stack_info);
 
-            std::string so_name = std::string(success ? stack_info.dli_fname : "");
+        restore_frame_data(stacktrace);
+
+        for (auto & it : stacktrace) {
+
+            std::string so_name = it.map_name;
 
             char *demangled_name = nullptr;
-            if (success > 0) {
-                int status = 0;
-                demangled_name = abi::__cxa_demangle(stack_info.dli_sname, nullptr, 0, &status);
-            }
+            int status = 0;
+            demangled_name = abi::__cxa_demangle(it.function_name.c_str(), nullptr, 0, &status);
 
             stack_builder << "      | "
-                          << "#pc " << std::hex << it->rel_pc << " "
+                          << "#pc " << std::hex << it.rel_pc << " "
                           << (demangled_name ? demangled_name : "(null)")
                           << " ("
-                          << (success && stack_info.dli_fname ? stack_info.dli_fname : "(null)")
+                          << it.map_name
                           << ")"
                           << std::endl;
+
+            LOGE(TAG, "#pc %p %s %s", (void *) it.rel_pc, demangled_name, it.map_name.c_str());
 
             if (demangled_name) {
                 free(demangled_name);
@@ -506,7 +507,7 @@ void memory_hook_on_dlopen(const char *__file_name) {
     LOGD(TAG, "memory_hook_on_dlopen: file %s, h_malloc %p, h_realloc %p, h_free %p", __file_name,
          h_malloc, h_realloc, h_free);
     if (is_stacktrace_enabled) {
-        unwindstack::update_maps();
+        notify_maps_change();
     }
     srand((unsigned int) time(NULL));
 }
