@@ -11,6 +11,7 @@
 #include "FastUnwinder.h"
 
 #include "android-base/include/android-base/macros.h"
+#include "../../common/PthreadExt.h"
 
 namespace wechat_backtrace {
 
@@ -202,7 +203,7 @@ namespace wechat_backtrace {
     void FpUnwind(uptr * regs, uptr * backtrace, uptr frame_max_size, uptr &frame_size, bool fallback) {
 
         pthread_attr_t attr;
-        pthread_getattr_np(pthread_self(), &attr);
+        pthread_getattr_ext(pthread_self(), &attr);
         uptr stack_bottom = reinterpret_cast<uptr>(attr.stack_base);
         uptr tack_top = reinterpret_cast<uptr>(attr.stack_base) + attr.stack_size;
         uptr fp = regs[0]; // x29

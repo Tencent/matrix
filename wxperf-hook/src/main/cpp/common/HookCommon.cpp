@@ -9,6 +9,7 @@
 #include "Log.h"
 #include "StackTrace.h"
 #include "JNICommon.h"
+#include "PthreadExt.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -113,6 +114,7 @@ bool get_java_stacktrace(char *__stack, size_t __size) {
 JNIEXPORT jint JNICALL
 Java_com_tencent_wxperf_jni_HookManager_xhookRefreshNative(JNIEnv *env, jobject thiz,
                                                                   jboolean async) {
+    add_hook_init_callback(pthread_ext_init);
     hook_common_init();
     unwindstack::update_maps();
 //    NanoSeconds_Start(TAG, begin);
