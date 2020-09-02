@@ -164,7 +164,6 @@ on_pthread_create_locked(const pthread_t __pthread, char *__java_stacktrace, pid
     uint64_t native_hash = 0;
     uint64_t java_hash   = 0;
 
-    meta.native_stacktrace.reserve(16 * 2);
     unwind_adapter(meta.native_stacktrace);
     native_hash = hash_stack_frames(meta.native_stacktrace);
 
