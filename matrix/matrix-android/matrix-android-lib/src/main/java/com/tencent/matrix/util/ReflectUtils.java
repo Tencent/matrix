@@ -1,5 +1,7 @@
 package com.tencent.matrix.util;
 
+import android.os.Build;
+
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 
@@ -78,7 +80,8 @@ public class ReflectUtils {
     }
 
     public static Method reflectMethod(Object instance, String name, Class<?>... argTypes) {
-        return reflectMethod(instance, true, name, argTypes);
+        boolean isHard = Build.VERSION.SDK_INT <= 29;
+        return reflectMethod(instance, isHard, name, argTypes);
     }
 
 }
