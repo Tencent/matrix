@@ -315,6 +315,10 @@ public class MethodTracer {
                 traceMethodCount.incrementAndGet();
                 mv.visitLdcInsn(traceMethod.id);
                 mv.visitMethodInsn(INVOKESTATIC, TraceBuildConstants.MATRIX_TRACE_CLASS, "i", "(I)V", false);
+
+                if (checkNeedTraceWindowFocusChangeMethod(traceMethod)) {
+                    traceWindowFocusChangeMethod(mv, className);
+                }
             }
         }
 
@@ -340,18 +344,21 @@ public class MethodTracer {
         protected void onMethodExit(int opcode) {
             TraceMethod traceMethod = collectedMethodMap.get(methodName);
             if (traceMethod != null) {
-                if (hasWindowFocusMethod && isActivityOrSubClass && isNeedTrace) {
-                    TraceMethod windowFocusChangeMethod = TraceMethod.create(-1, Opcodes.ACC_PUBLIC, className,
-                            TraceBuildConstants.MATRIX_TRACE_ON_WINDOW_FOCUS_METHOD, TraceBuildConstants.MATRIX_TRACE_ON_WINDOW_FOCUS_METHOD_ARGS);
-                    if (windowFocusChangeMethod.equals(traceMethod)) {
-                        traceWindowFocusChangeMethod(mv, className);
-                    }
-                }
-
                 traceMethodCount.incrementAndGet();
                 mv.visitLdcInsn(traceMethod.id);
                 mv.visitMethodInsn(INVOKESTATIC, TraceBuildConstants.MATRIX_TRACE_CLASS, "o", "(I)V", false);
             }
+        }
+
+        private boolean checkNeedTraceWindowFocusChangeMethod(TraceMethod traceMethod) {
+            if (hasWindowFocusMethod && isActivityOrSubClass && isNeedTrace) {
+                TraceMethod windowFocusChangeMethod = TraceMethod.create(-1, Opcodes.ACC_PUBLIC, className,
+                        TraceBuildConstants.MATRIX_TRACE_ON_WINDOW_FOCUS_METHOD, TraceBuildConstants.MATRIX_TRACE_ON_WINDOW_FOCUS_METHOD_ARGS);
+                if (windowFocusChangeMethod.equals(traceMethod)) {
+                    return true;
+                }
+            }
+            return false;
         }
     }
 

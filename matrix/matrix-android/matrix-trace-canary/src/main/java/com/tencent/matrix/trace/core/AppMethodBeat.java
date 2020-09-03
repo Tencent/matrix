@@ -264,6 +264,8 @@ public class AppMethodBeat implements BeatLifecycle {
     /**
      * when the special method calls,it's will be called.
      *
+     * called after {@link #i(int)}
+     *
      * @param activity now at which activity
      * @param isFocus  this window if has focus
      */
