@@ -102,7 +102,8 @@ static inline void on_acquire_memory(void *__caller,
     meta.is_mmap    = __is_mmap;
 //    meta.recycled   = false;
 
-    // TODO 获取 Java 堆栈
+    // TODO 获取 Java 堆栈?
+    // fixme 并发容器
     if (is_stacktrace_enabled && should_do_unwind(meta.size, meta.caller)) {
 
         std::vector<unwindstack::FrameData> stack_frames;
@@ -117,8 +118,9 @@ static inline void on_acquire_memory(void *__caller,
             stack_meta_t &stack_meta = m_stack_metas[stack_hash];
             stack_meta.size += meta.size;
 
-            if (stack_meta.stacktrace.empty()) { // 相同的堆栈只记录一个
+            if (stack_meta.stacktrace.empty()) { // 相同的堆栈只记录一个 // TODO 或许可以每个指针都保存堆栈？
                 stack_meta.stacktrace.swap(stack_frames);
+                stack_meta.caller = __caller;
             }
         }
     }
@@ -204,8 +206,10 @@ static inline size_t collect_metas(std::map<void *, caller_meta_t> &__heap_calle
             std::lock_guard<std::mutex> stack_meta_lock(m_stack_meta_mutex);
             if (m_stack_metas.count(meta.stack_hash)) {
                 auto &stack_meta = dest_stack_metas[meta.stack_hash];
-                stack_meta.stacktrace = m_stack_metas.at(meta.stack_hash).stacktrace;
+                auto &source_meta = m_stack_metas.at(meta.stack_hash);
+                stack_meta.stacktrace = source_meta.stacktrace;
                 stack_meta.size += meta.size;
+                stack_meta.caller = source_meta.caller;
             }
         }
 
@@ -358,15 +362,24 @@ static inline void dump_stacks(FILE *log_file,
     std::unordered_map<std::string, size_t>                                      stack_alloc_size_of_so;
     std::unordered_map<std::string, std::vector<std::pair<size_t, std::string>>> stacktrace_of_so;
 
-    for (auto &stack_meta : stack_metas) {
-        auto hash            = stack_meta.first;
-        auto size            = stack_meta.second.size;
-        auto stacktrace      = stack_meta.second.stacktrace;
+    for (auto &stack_meta_it : stack_metas) {
+        auto hash            = stack_meta_it.first;
+        auto size            = stack_meta_it.second.size;
+        auto stacktrace      = stack_meta_it.second.stacktrace;
+        auto caller = stack_meta_it.second.caller;
 
         std::string       caller_so_name;
         std::stringstream stack_builder;
 
         restore_frame_data(stacktrace);
+
+        Dl_info caller_info{};
+        dladdr(caller, &caller_info);
+
+        if (caller_info.dli_fname != nullptr) {
+            LOGD(TAG, "got caller name = %s", caller_info.dli_fname);
+            caller_so_name = caller_info.dli_fname;
+        }
 
         for (auto & it : stacktrace) {
 
@@ -390,17 +403,18 @@ static inline void dump_stacks(FILE *log_file,
                 free(demangled_name);
             }
 
-            // fixme hard coding
-            if (/*so_name.find("com.tencent.mm") == std::string::npos ||*/
-                    so_name.find("libwxperf.so") != std::string::npos ||
-                    so_name.find("libwxperf-jni.so") != std::string::npos ||
-                    !caller_so_name.empty()) {
-                continue;
+            if (caller_so_name.empty()) { // fallback
+                LOGD(TAG, "fallback getting so name -> caller = %p", stack_meta_it.second.caller);
+                // fixme hard coding
+                if (/*so_name.find("com.tencent.mm") == std::string::npos ||*/
+                        so_name.find("libwxperf.so") != std::string::npos ||
+                        so_name.find("libwxperf-jni.so") != std::string::npos) {
+                    continue;
+                }
+                caller_so_name = so_name;
             }
-
-            caller_so_name = so_name;
-            stack_alloc_size_of_so[caller_so_name] += size;
         }
+        stack_alloc_size_of_so[caller_so_name] += size;
 
         std::pair<size_t, std::string> stack_size_pair(size, stack_builder.str());
         stacktrace_of_so[caller_so_name].push_back(stack_size_pair);

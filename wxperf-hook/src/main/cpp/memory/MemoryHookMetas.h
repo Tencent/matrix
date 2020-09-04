@@ -32,7 +32,8 @@ struct caller_meta_t {
 };
 
 struct stack_meta_t {
-    size_t                              size;
+    size_t size;
+    void *caller;
     std::vector<unwindstack::FrameData> stacktrace; // fixme using swap?
 };
 
