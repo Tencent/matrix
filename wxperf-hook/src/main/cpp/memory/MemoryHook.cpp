@@ -393,6 +393,7 @@ static inline void dump_stacks(FILE *log_file,
             // fixme hard coding
             if (/*so_name.find("com.tencent.mm") == std::string::npos ||*/
                     so_name.find("libwxperf.so") != std::string::npos ||
+                    so_name.find("libwxperf-jni.so") != std::string::npos ||
                     !caller_so_name.empty()) {
                 continue;
             }
