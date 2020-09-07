@@ -189,6 +189,14 @@ Java_com_tencent_wxperf_jni_memory_MemoryHook_enableMmapHookNative(JNIEnv *env,
 
 }
 
+JNIEXPORT void JNICALL
+Java_com_tencent_wxperf_jni_memory_MemoryHook_setStacktraceLogThresholdNative(JNIEnv *env,
+                                                                              jobject thiz,
+                                                                              jint threshold) {
+    assert(threshold > 0);
+    set_stacktrace_log_threshold(threshold);
+}
+
 #ifdef __cplusplus
 }
 #endif

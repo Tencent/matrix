@@ -21,6 +21,7 @@ public class MemoryHook extends AbsHook {
 
     private int     mMinTraceSize;
     private int     mMaxTraceSize;
+    private int     mStacktraceLogThreshold;
     private double  mSampling = 1;
     private boolean mEnableStacktrace;
     private boolean mEnableMmap;
@@ -104,6 +105,11 @@ public class MemoryHook extends AbsHook {
         return this;
     }
 
+    public MemoryHook stacktraeLogThreshold(int threshold) {
+        mStacktraceLogThreshold = threshold;
+        return this;
+    }
+
     /**
      * notice: it is an exclusive interface
      */
@@ -155,5 +161,7 @@ public class MemoryHook extends AbsHook {
     private native void addHookSoNative(String[] hookSoList);
 
     private native void addIgnoreSoNative(String[] ignoreSoList);
+
+    private native void setStacktraceLogThresholdNative(int threshold);
 }
 

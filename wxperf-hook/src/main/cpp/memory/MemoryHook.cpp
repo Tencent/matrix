@@ -39,8 +39,14 @@ static size_t m_sample_size_min = 0;
 static size_t m_sample_size_max = 0;
 static double m_sampling        = 0.01;
 
+static size_t m_stacktrace_log_threshold = 10 * 1024 * 1024;
+
 void enable_stacktrace(bool __enable) {
     is_stacktrace_enabled = __enable;
+}
+
+void set_stacktrace_log_threshold(size_t __threshold) {
+    m_stacktrace_log_threshold = __threshold;
 }
 
 void set_sample_size_range(size_t __min, size_t __max) {
@@ -345,6 +351,13 @@ static inline void dump_callers(FILE *log_file,
 //    m_debug_lost_ptr_stack.clear();
 //}
 
+
+struct CmpBySize {
+    bool operator()(const std::pair<std::string, size_t> & v1, const std::pair<std::string, size_t> & v2) const {
+        return v1.second > v2.second;
+    }
+};
+
 static inline void dump_stacks(FILE *log_file,
                                std::map<uint64_t, stack_meta_t> &stack_metas) {
     if (stack_metas.empty()) {
@@ -359,7 +372,7 @@ static inline void dump_stacks(FILE *log_file,
         LOGD(TAG, "hash %lu : stack.size = %zu", stack_meta.first, stack_meta.second.size);
     }
 
-    std::unordered_map<std::string, size_t>                                      stack_alloc_size_of_so;
+    std::unordered_map<std::string, size_t>                                     stack_alloc_size_of_so;
     std::unordered_map<std::string, std::vector<std::pair<size_t, std::string>>> stacktrace_of_so;
 
     for (auto &stack_meta_it : stack_metas) {
@@ -421,14 +434,26 @@ static inline void dump_stacks(FILE *log_file,
     }
 
     // 排序
-    for (auto i = stack_alloc_size_of_so.begin(); i != stack_alloc_size_of_so.end(); ++i) {
-        auto so_name       = i->first;
-        auto so_alloc_size = i->second;
+    std::vector<std::pair<std::string, size_t>> so_sorted_by_size;
+    so_sorted_by_size.reserve(stack_alloc_size_of_so.size());
+    for (auto &p : stack_alloc_size_of_so) {
+        so_sorted_by_size.emplace_back(p);
+    }
+    std::sort(so_sorted_by_size.begin(), so_sorted_by_size.end(), CmpBySize());
+
+    for (auto &p : so_sorted_by_size) {
+        auto so_name = p.first;
+        auto so_alloc_size = p.second;
 
         LOGD(TAG, "\nmalloc size of so (%s) : remaining size = %zu", so_name.c_str(),
              so_alloc_size);
         fprintf(log_file, "\nmalloc size of so (%s) : remaining size = %zu\n", so_name.c_str(),
                 so_alloc_size);
+
+        if (so_alloc_size < m_stacktrace_log_threshold) {
+            fprintf(log_file, "skip printing stacktrace for size less than %zu\n", m_stacktrace_log_threshold);
+            continue;
+        }
 
         for (auto it_stack = stacktrace_of_so[so_name].begin();
              it_stack != stacktrace_of_so[so_name].end(); ++it_stack) {
