@@ -455,16 +455,15 @@ static inline void dump_stacks(FILE *log_file,
             continue;
         }
 
-        for (auto it_stack = stacktrace_of_so[so_name].begin();
-             it_stack != stacktrace_of_so[so_name].end(); ++it_stack) {
+        for (auto & it_stack : stacktrace_of_so[so_name]) {
 
             LOGD(TAG, "malloc size of the same stack = %zu\n stacktrace : \n%s",
                  it_stack->first,
                  it_stack->second.c_str());
 
             fprintf(log_file, "malloc size of the same stack = %zu\n stacktrace : \n%s\n",
-                    it_stack->first,
-                    it_stack->second.c_str());
+                    it_stack.first,
+                    it_stack.second.c_str());
         }
     }
 
