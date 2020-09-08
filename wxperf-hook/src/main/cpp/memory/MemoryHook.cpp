@@ -28,9 +28,9 @@
 #include "MemoryHookMetas.h"
 #include "MemoryHook.h"
 
-static pointer_meta_container           m_ptr_meta_container;
-static std::map<uint64_t, stack_meta_t> m_stack_metas; // fixme lock
-static std::mutex                       m_stack_meta_mutex;
+static concurrent_slot_maps<const void *, ptr_meta_t>             m_ptr_meta_container;
+static concurrent_slot_maps<uint64_t, stack_meta_t> m_stack_metas; // fixme lock
+//static std::mutex                       m_stack_meta_mutex;
 
 static bool is_stacktrace_enabled      = false;
 static bool is_caller_sampling_enabled = false;
@@ -119,12 +119,12 @@ static inline void on_acquire_memory(void *__caller,
             uint64_t stack_hash = hash_stack_frames(stack_frames);
             meta.stack_hash = stack_hash;
 
-            std::lock_guard<std::mutex> stack_meta_lock(m_stack_meta_mutex);
+//            std::lock_guard<std::mutex> stack_meta_lock(m_stack_meta_mutex);
 
             stack_meta_t &stack_meta = m_stack_metas[stack_hash];
             stack_meta.size += meta.size;
 
-            if (stack_meta.stacktrace.empty()) { // 相同的堆栈只记录一个 // TODO 或许可以每个指针都保存堆栈？
+            if (stack_meta.stacktrace.empty()) { // 相同的堆栈只记录一个
                 stack_meta.stacktrace.swap(stack_frames);
                 stack_meta.caller = __caller;
             }
@@ -147,15 +147,15 @@ static inline void on_release_memory(void *__ptr, bool __is_mmap) {
         // notice: container is locked here
         if (is_stacktrace_enabled && __meta.stack_hash) {
 
-            std::lock_guard<std::mutex> stack_meta_lock(m_stack_meta_mutex);
+//            std::lock_guard<std::mutex> stack_meta_lock(m_stack_meta_mutex);
 
-            if (m_stack_metas.count(__meta.stack_hash)) {
+            if (m_stack_metas.contains(__meta.stack_hash)) {
                 stack_meta_t &stack_meta = m_stack_metas.at(__meta.stack_hash);
 
                 if (stack_meta.size > __meta.size) { // 减去同堆栈的 size
                     stack_meta.size -= __meta.size;
                 } else { // 删除 size 为 0 的堆栈
-                    m_stack_metas.erase(__meta.stack_hash);
+                    m_stack_metas.erase(__meta.stack_hash, nullptr);
                 }
             }
         }
@@ -209,8 +209,8 @@ static inline size_t collect_metas(std::map<void *, caller_meta_t> &__heap_calle
         }
 
         if (meta.stack_hash) {
-            std::lock_guard<std::mutex> stack_meta_lock(m_stack_meta_mutex);
-            if (m_stack_metas.count(meta.stack_hash)) {
+//            std::lock_guard<std::mutex> stack_meta_lock(m_stack_meta_mutex);
+            if (m_stack_metas.contains(meta.stack_hash)) {
                 auto &stack_meta  = dest_stack_metas[meta.stack_hash];
                 auto &source_meta = m_stack_metas.at(meta.stack_hash);
                 stack_meta.stacktrace = source_meta.stacktrace;
@@ -503,7 +503,7 @@ static inline void dump_impl(FILE *log_file, bool enable_mmap_hook) {
         dump_stacks(log_file, mmap_stack_metas);
     }
 
-    std::lock_guard<std::mutex> stack_meta_lock(m_stack_meta_mutex);
+//    std::lock_guard<std::mutex> stack_meta_lock(m_stack_meta_mutex);
 
     fprintf(log_file,
             "<void *, ptr_meta_t> ptr_meta [%zu * %zu = (%zu)]\n"

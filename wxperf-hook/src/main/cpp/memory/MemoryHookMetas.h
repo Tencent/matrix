@@ -34,7 +34,7 @@ struct caller_meta_t {
 struct stack_meta_t {
     size_t size;
     void *caller;
-    std::vector<unwindstack::FrameData> stacktrace; // fixme using swap?
+    std::vector<unwindstack::FrameData> stacktrace;
 };
 
 
@@ -71,54 +71,57 @@ struct stack_meta_t {
 //
 //};
 // ==========================================
-
-class pointer_meta_container {
+template <class _Key, class _Val>
+class concurrent_slot_maps {
 
     typedef struct {
 
-        std::map<const void *, ptr_meta_t> container;
-        std::mutex                         mutex;
+        std::map<_Key, _Val> container;
+        std::mutex           mutex;
 
     } container_wrapper;
 
 #define TARGET_WITH_LOCK(target, key) \
-    container_wrapper * target = container_maps.data()[select((uintptr_t) __k)]; \
+    container_wrapper * target = container_slots.data()[select((uintptr_t) __k)]; \
     std::lock_guard<std::mutex> target_lock(target->mutex)
 
 public:
-
-    pointer_meta_container() {
+    concurrent_slot_maps() {
         const size_t cap = capacity();
-        container_maps.reserve(cap);
+        container_slots.reserve(cap);
         for (int i = 0; i < cap; ++i) {
-            container_maps.push_back(new container_wrapper);
+            container_slots.push_back(new container_wrapper);
         }
     }
 
-    inline ptr_meta_t &operator[](const void *__k) {
+    inline _Val &operator[](_Key __k) {
         TARGET_WITH_LOCK(target, __k);
         return target->container[__k];
     }
 
     template<class _Callable>
-    inline void insert(const void *__k, _Callable __callable) {
+    inline void insert(_Key __k, _Callable __callable) {
         TARGET_WITH_LOCK(target, __k);
         auto &meta = target->container[__k];
-        __callable(meta);
+        if constexpr (!std::is_same<std::nullptr_t, decltype(__callable)>::value) {
+            __callable(meta);
+        }
     }
 
-    inline ptr_meta_t &at(const void *__k) {
+    inline _Val &at(_Key __k) {
         TARGET_WITH_LOCK(target, __k);
         auto &ret = target->container.at(__k);
         return target->container.at(__k);
     }
 
     template<class _Callable>
-    inline void get(const void *__k, _Callable __callable) {
+    inline void get(_Key __k, _Callable __callable) {
         TARGET_WITH_LOCK(target, __k);
         if (0 != target->container.count(__k)) {
             auto &meta = target->container.at(__k);
-            __callable(meta);
+            if constexpr (!std::is_same<std::nullptr_t, decltype(__callable)>::value) {
+                __callable(meta);
+            }
         }
     }
 
@@ -129,7 +132,7 @@ public:
      * @return
      */
     template<class _Callback>
-    inline bool erase(const void *__k, _Callback __callback) {
+    inline bool erase(_Key __k, _Callback __callback) {
         TARGET_WITH_LOCK(target, __k);
 
         auto it = target->container.find(__k);
@@ -138,21 +141,23 @@ public:
         }
 //        it->second.recycled = true; // mark recycled. TODO
 
-        __callback(it->second);
+        if constexpr (!std::is_same<std::nullptr_t, decltype(__callback)>::value) {
+            __callback(it->second);
+        }
 
         target->container.erase(it);
 
         return true;
     }
 
-    bool contains(const void *__k) {
+    bool contains(_Key __k) {
         TARGET_WITH_LOCK(target, __k);
         return 0 != target->container.count(__k);
     }
 
     template<class _Callback>
     void for_each(_Callback __func) {
-        for (const auto cw : container_maps) {
+        for (const auto cw : container_slots) {
             std::lock_guard<std::mutex> container_lock(cw->mutex);
 
             for (auto it : cw->container) {
@@ -172,6 +177,15 @@ public:
         }
     }
 
+    size_t size() {
+        size_t count = 0;
+        for (const auto cw : container_slots) {
+            std::lock_guard<std::mutex> container_lock(cw->mutex);
+            count += cw->container.size();
+        }
+        return count;
+    }
+
 private:
 
     static inline size_t capacity() {
@@ -182,8 +196,8 @@ private:
         return static_cast<size_t>((__v ^ (__v >> 16)) & MASK);
     }
 
-    std::vector<container_wrapper *> container_maps;
-    static const unsigned int        MAX_SLOT = 1 << 16;
+    std::vector<container_wrapper *> container_slots;
+    static const unsigned int        MAX_SLOT = 1 << 10;
     static const unsigned int        MASK     = MAX_SLOT - 1;
 };
 
