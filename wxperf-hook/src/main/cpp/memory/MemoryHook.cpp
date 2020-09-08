@@ -211,11 +211,11 @@ static inline size_t collect_metas(std::map<void *, caller_meta_t> &__heap_calle
         if (meta.stack_hash) {
             std::lock_guard<std::mutex> stack_meta_lock(m_stack_meta_mutex);
             if (m_stack_metas.count(meta.stack_hash)) {
-                auto &stack_meta = dest_stack_metas[meta.stack_hash];
+                auto &stack_meta  = dest_stack_metas[meta.stack_hash];
                 auto &source_meta = m_stack_metas.at(meta.stack_hash);
                 stack_meta.stacktrace = source_meta.stacktrace;
                 stack_meta.size += meta.size;
-                stack_meta.caller = source_meta.caller;
+                stack_meta.caller     = source_meta.caller;
             }
         }
 
@@ -352,12 +352,6 @@ static inline void dump_callers(FILE *log_file,
 //}
 
 
-struct CmpBySize {
-    bool operator()(const std::pair<std::string, size_t> & v1, const std::pair<std::string, size_t> & v2) const {
-        return v1.second > v2.second;
-    }
-};
-
 static inline void dump_stacks(FILE *log_file,
                                std::map<uint64_t, stack_meta_t> &stack_metas) {
     if (stack_metas.empty()) {
@@ -372,14 +366,14 @@ static inline void dump_stacks(FILE *log_file,
         LOGD(TAG, "hash %lu : stack.size = %zu", stack_meta.first, stack_meta.second.size);
     }
 
-    std::unordered_map<std::string, size_t>                                     stack_alloc_size_of_so;
+    std::unordered_map<std::string, size_t>                                      stack_alloc_size_of_so;
     std::unordered_map<std::string, std::vector<std::pair<size_t, std::string>>> stacktrace_of_so;
 
     for (auto &stack_meta_it : stack_metas) {
-        auto hash            = stack_meta_it.first;
-        auto size            = stack_meta_it.second.size;
-        auto stacktrace      = stack_meta_it.second.stacktrace;
-        auto caller = stack_meta_it.second.caller;
+        auto hash       = stack_meta_it.first;
+        auto size       = stack_meta_it.second.size;
+        auto stacktrace = stack_meta_it.second.stacktrace;
+        auto caller     = stack_meta_it.second.caller;
 
         std::string       caller_so_name;
         std::stringstream stack_builder;
@@ -394,12 +388,12 @@ static inline void dump_stacks(FILE *log_file,
             caller_so_name = caller_info.dli_fname;
         }
 
-        for (auto & it : stacktrace) {
+        for (auto &it : stacktrace) {
 
             std::string so_name = it.map_name;
 
             char *demangled_name = nullptr;
-            int status = 0;
+            int  status          = 0;
             demangled_name = abi::__cxa_demangle(it.function_name.c_str(), nullptr, 0, &status);
 
             stack_builder << "      | "
@@ -433,16 +427,20 @@ static inline void dump_stacks(FILE *log_file,
         stacktrace_of_so[caller_so_name].push_back(stack_size_pair);
     }
 
-    // 排序
+    // 从大到小排序
     std::vector<std::pair<std::string, size_t>> so_sorted_by_size;
     so_sorted_by_size.reserve(stack_alloc_size_of_so.size());
     for (auto &p : stack_alloc_size_of_so) {
         so_sorted_by_size.emplace_back(p);
     }
-    std::sort(so_sorted_by_size.begin(), so_sorted_by_size.end(), CmpBySize());
+    std::sort(so_sorted_by_size.begin(), so_sorted_by_size.end(),
+              [](const std::pair<std::string, size_t> &v1,
+                 const std::pair<std::string, size_t> &v2) {
+                  return v1.second > v2.second;
+              });
 
     for (auto &p : so_sorted_by_size) {
-        auto so_name = p.first;
+        auto so_name       = p.first;
         auto so_alloc_size = p.second;
 
         LOGD(TAG, "\nmalloc size of so (%s) : remaining size = %zu", so_name.c_str(),
@@ -451,15 +449,24 @@ static inline void dump_stacks(FILE *log_file,
                 so_alloc_size);
 
         if (so_alloc_size < m_stacktrace_log_threshold) {
-            fprintf(log_file, "skip printing stacktrace for size less than %zu\n", m_stacktrace_log_threshold);
+            fprintf(log_file, "skip printing stacktrace for size less than %zu\n",
+                    m_stacktrace_log_threshold);
             continue;
         }
 
-        for (auto & it_stack : stacktrace_of_so[so_name]) {
+        // 从大到小排序
+        auto &stacktrace_sorted_by_size = stacktrace_of_so[so_name];
+        std::sort(stacktrace_sorted_by_size.begin(), stacktrace_sorted_by_size.end(),
+                  [](const std::pair<size_t, std::string> &v1,
+                     const std::pair<size_t, std::string> &v2) {
+                      return v1.first > v2.first;
+                  });
+
+        for (auto &it_stack : stacktrace_sorted_by_size) {
 
             LOGD(TAG, "malloc size of the same stack = %zu\n stacktrace : \n%s",
-                 it_stack->first,
-                 it_stack->second.c_str());
+                 it_stack.first,
+                 it_stack.second.c_str());
 
             fprintf(log_file, "malloc size of the same stack = %zu\n stacktrace : \n%s\n",
                     it_stack.first,
