@@ -190,6 +190,11 @@ static NSString *g_userDumpCachePath = nil;
             [WCCrashBlockFileHandler deleteLagDataWithReportID:reportID andReportType:dumpType];
             continue;
         }
+        if ([jsonData length] > 4*1000*1000) {
+            MatrixError(@"file is too big %@ fail", path);
+            [WCCrashBlockFileHandler deleteLagDataWithReportID:reportID andReportType:dumpType];
+            continue;
+        }
 
         NSMutableDictionary *report = [WCCrashBlockJsonUtil jsonDecode:jsonData withError:&error];
         if (error != nil) {
