@@ -33,8 +33,8 @@ public class AnrTracer extends Tracer {
     private Handler anrHandler;
     private Handler lagHandler;
     private final TraceConfig traceConfig;
-    private volatile AnrHandleTask anrTask;
-    private volatile LagHandleTask lagTask;
+    private volatile AnrHandleTask anrTask = new AnrHandleTask();
+    private volatile LagHandleTask lagTask = new LagHandleTask();
     private boolean isAnrTraceEnable;
 
     public AnrTracer(TraceConfig traceConfig) {
@@ -68,18 +68,16 @@ public class AnrTracer extends Tracer {
     @Override
     public void dispatchBegin(long beginNs, long cpuBeginMs, long token) {
         super.dispatchBegin(beginNs, cpuBeginMs, token);
-//        long inputCost = UIThreadMonitor.getMonitor().getInputEventCost();
-//        if (inputCost > Constants.DEFAULT_INPUT_EXPIRED_TIME * Constants.TIME_MILLIS_TO_NANO) {
-//            printInputExpired(inputCost);
-//        }
-        anrTask = new AnrHandleTask(AppMethodBeat.getInstance().maskIndex("AnrTracer#dispatchBegin"), token);
-        lagTask = new LagHandleTask();
+
+        anrTask.beginRecord = AppMethodBeat.getInstance().maskIndex("AnrTracer#dispatchBegin");
+        anrTask.token = token;
 
         if (traceConfig.isDevEnv()) {
             MatrixLog.v(TAG, "* [dispatchBegin] token:%s index:%s", token, anrTask.beginRecord.index);
         }
-        anrHandler.postDelayed(anrTask, Constants.DEFAULT_ANR - (System.nanoTime() - token) / Constants.TIME_MILLIS_TO_NANO);
-        lagHandler.postDelayed(lagTask, Constants.DEFAULT_NORMAL_LAG - (System.nanoTime() - token) / Constants.TIME_MILLIS_TO_NANO);
+        long cost = (System.nanoTime() - token) / Constants.TIME_MILLIS_TO_NANO;
+        anrHandler.postDelayed(anrTask, Constants.DEFAULT_ANR - cost);
+        lagHandler.postDelayed(lagTask, Constants.DEFAULT_NORMAL_LAG - cost);
     }
 
 
@@ -100,7 +98,7 @@ public class AnrTracer extends Tracer {
         }
     }
 
-    class LagHandleTask implements Runnable{
+    class LagHandleTask implements Runnable {
 
         @Override
         public void run() {
@@ -142,6 +140,9 @@ public class AnrTracer extends Tracer {
 
         public AppMethodBeat.IndexRecord getBeginRecord() {
             return beginRecord;
+        }
+
+        public AnrHandleTask() {
         }
 
         AnrHandleTask(AppMethodBeat.IndexRecord record, long token) {
