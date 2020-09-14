@@ -109,7 +109,7 @@ void unwind_adapter(std::vector<unwindstack::FrameData> &dst) {
     for (auto i = 0; i < frame_size; i++) {
         unwindstack::FrameData data;
         data.pc = frames[i];
-        dst.__emplace_back(data);
+        dst.emplace_back(data);
     }
 
     return;
