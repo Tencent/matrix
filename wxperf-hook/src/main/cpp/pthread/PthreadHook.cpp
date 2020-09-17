@@ -4,7 +4,7 @@
 
 #include <dlfcn.h>
 #include <unordered_map>
-#include <StackTrace.h>
+#include <Stacktrace.h>
 #include <cxxabi.h>
 #include <sstream>
 #include <iostream>

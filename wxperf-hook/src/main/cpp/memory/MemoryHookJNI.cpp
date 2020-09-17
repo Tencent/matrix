@@ -5,7 +5,7 @@
 #include "xhook.h"
 #include "MemoryHookFunctions.h"
 #include "MemoryHook.h"
-#include "StackTrace.h"
+#include "Stacktrace.h"
 #include "xh_errno.h"
 #include "HookCommon.h"
 

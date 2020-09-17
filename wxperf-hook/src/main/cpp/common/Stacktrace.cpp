@@ -5,7 +5,7 @@
 #include <dlfcn.h>
 #include <unwindstack/RegsArm64.h>
 #include <FastRegs.h>
-#include "StackTrace.h"
+#include "Stacktrace.h"
 #include "JNICommon.h"
 #include "Backtrace.h"
 
@@ -88,9 +88,7 @@ namespace unwindstack {
     }
 }
 
-static inline void fp_unwind(uptr *frames, size_t max_size, size_t &frame_size) {
-    uptr regs[4];
-    RegsMinimalGetLocal(regs);
+static inline void fp_unwind(uptr* regs, uptr *frames, size_t max_size, size_t &frame_size) {
     wechat_backtrace::fp_fast_unwind(regs, frames, max_size, frame_size);
 }
 
@@ -102,7 +100,10 @@ void unwind_adapter(std::vector<unwindstack::FrameData> &dst) {
     uptr frames[MAX_FRAMES];
     size_t frame_size = 0;
 
-    fp_unwind(frames, MAX_FRAMES, frame_size);
+    uptr regs[4];
+    RegsMinimalGetLocal(regs);
+
+    fp_unwind(regs, frames, MAX_FRAMES, frame_size);
 
     LOGD("Wxperf.unwind", "unwind adapter: size %zu", frame_size);
 
