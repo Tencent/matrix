@@ -83,7 +83,7 @@ static void hook(const char *regex) {
     for (auto f : HOOK_MALL_FUNCTIONS) {
         xhook_register(regex, f.name, f.handler_ptr, f.origin_ptr);
     }
-    LOGD("Yves-debug", "mmap enabled ? %d", enable_mmap_hook);
+    LOGD(TAG, "mmap enabled ? %d", enable_mmap_hook);
     if (enable_mmap_hook) {
         for (auto f: HOOK_MMAP_FUNCTIONS) {
             xhook_register(regex, f.name, f.handler_ptr, f.origin_ptr);

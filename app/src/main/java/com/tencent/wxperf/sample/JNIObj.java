@@ -6,6 +6,9 @@ import android.util.Log;
  * Created by Yves on 2019-08-08
  */
 public class JNIObj {
+
+    private static final String TAG = "Wxperf.test.JNIObj";
+
     static {
         init();
     }
@@ -43,12 +46,12 @@ public class JNIObj {
     public native static void concurrentMapTest();
 
     public static String calledByJNI() {
-        Log.d("Yves-debug", "called By JNI");
+        Log.d(TAG, "called By JNI");
         return stackTraceToString(new Throwable().getStackTrace());
     }
 
     private static String stackTraceToString(final StackTraceElement[] arr) {
-        Log.d("Yves-debug", "java: stackTraceToString");
+        Log.d(TAG, "java: stackTraceToString");
         if (arr == null) {
             return "";
         }

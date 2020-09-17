@@ -25,7 +25,7 @@ import java.io.File;
 
 public class MainActivity extends AppCompatActivity {
 
-    private static final String TAG = "MainActivity";
+    private static final String TAG = "Wxperf.MainActivity";
 
     String threadNameRegex = "[GT]TestHT-?".replace("[", "\\[").replace("]", "\\]").replace("?", "[0-9]*");
 
@@ -79,33 +79,6 @@ public class MainActivity extends AppCompatActivity {
 //
         checkPermission();
 //        Log.d(TAG, "onCreate: path = " + Environment.getExternalStorageDirectory().getAbsolutePath());
-
-        EglHook.initILog(new EglHook.ILog() {
-            @Override
-            public void v(String tag, String info) {
-
-            }
-
-            @Override
-            public void i(String tag, String info) {
-
-            }
-
-            @Override
-            public void e(String tag, String info) {
-                Log.e(tag, info);
-            }
-
-            @Override
-            public void w(String tag, String info) {
-
-            }
-
-            @Override
-            public void d(String tag, String info) {
-
-            }
-        });
 
         findViewById(R.id.btn_egl).setOnClickListener(new View.OnClickListener() {
             @Override
