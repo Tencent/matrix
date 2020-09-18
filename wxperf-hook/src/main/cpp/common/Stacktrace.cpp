@@ -109,7 +109,7 @@ void unwind_adapter(std::vector<unwindstack::FrameData> &dst) {
 
     for (auto i = 0; i < frame_size; i++) {
         unwindstack::FrameData data;
-        data.pc = frames[i];
+        data.pc = frames[i] - 4; // fp_unwind 得到的 pc 实际都是 LR, arm64 指令长度都是定长 32bit, 所以 -4 以恢复 pc
         dst.emplace_back(data);
     }
 
