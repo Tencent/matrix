@@ -168,12 +168,13 @@ Java_com_tencent_wxperf_jni_memory_MemoryHook_setSampleSizeRangeNative(JNIEnv *e
 
 JNIEXPORT void JNICALL
 Java_com_tencent_wxperf_jni_memory_MemoryHook_dumpNative(JNIEnv *env, jobject instance,
-                                                                 jstring jpath_) {
+                                                         jstring __log_path, jstring __json_path) {
 
-    if (jpath_) {
-        const char *path = env->GetStringUTFChars(jpath_, 0);
-        dump(enable_mmap_hook, path);
-        env->ReleaseStringUTFChars(jpath_, path);
+    if (__log_path) {
+        const char *log_path = env->GetStringUTFChars(__log_path, 0);
+        const char *json_path = env->GetStringUTFChars(__json_path, 0);
+        dump(enable_mmap_hook, log_path, json_path);
+        env->ReleaseStringUTFChars(__log_path, log_path);
     } else {
         dump(enable_mmap_hook);
     }
@@ -193,7 +194,7 @@ JNIEXPORT void JNICALL
 Java_com_tencent_wxperf_jni_memory_MemoryHook_setStacktraceLogThresholdNative(JNIEnv *env,
                                                                               jobject thiz,
                                                                               jint threshold) {
-    assert(threshold > 0);
+    assert(threshold >= 0);
     set_stacktrace_log_threshold(threshold);
 }
 

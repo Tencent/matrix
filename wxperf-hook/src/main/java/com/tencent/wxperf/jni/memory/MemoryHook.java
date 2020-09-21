@@ -133,6 +133,7 @@ public class MemoryHook extends AbsHook {
         setSampleSizeRangeNative(mMinTraceSize, mMaxTraceSize);
         setSamplingNative(mSampling);
 
+        setStacktraceLogThresholdNative(mStacktraceLogThreshold);
         enableStacktraceNative(mEnableStacktrace);
     }
 
@@ -142,13 +143,13 @@ public class MemoryHook extends AbsHook {
         addIgnoreSoNative(mIgnoreSoSet.toArray(new String[0]));
     }
 
-    public void dump(String into) {
+    public void dump(String logPath, String jsonPath) {
         if (HookManager.INSTANCE.hasHooked()) {
-            dumpNative(into);
+            dumpNative(logPath, jsonPath);
         }
     }
 
-    private native void dumpNative(String path);
+    private native void dumpNative(String logPath, String jsonPath);
 
     private native void setSamplingNative(double sampling);
 

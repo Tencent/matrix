@@ -20,6 +20,7 @@
 #include <mutex>
 #include <condition_variable>
 #include <shared_mutex>
+#include <cJSON.h>
 #include "MemoryHookFunctions.h"
 #include "Stacktrace.h"
 #include "Utils.h"
@@ -324,32 +325,38 @@ static inline void dump_callers(FILE *log_file,
 //    m_debug_lost_ptr_stack.clear();
 //}
 
+struct stack_dump_meta_t {
+    size_t      size;
+    std::string full_stacktrace;
+    std::string brief_stacktrace;
+};
 
-static inline void dump_stacks(FILE *log_file,
-                               std::map<uint64_t, stack_meta_t> &stack_metas) {
-    if (stack_metas.empty()) {
+static inline void dump_stacks(FILE *__log_file, FILE *__json_file,
+                               std::map<uint64_t, stack_meta_t> &__stack_metas) {
+    if (__stack_metas.empty()) {
         LOGI(TAG, "stacktrace: nothing dump");
         return;
     }
 
-    LOGD(TAG, "dump_stacks: hash count = %zu", stack_metas.size());
-    fprintf(log_file, "dump_stacks: hash count = %zu\n", stack_metas.size());
+    LOGD(TAG, "dump_stacks: hash count = %zu", __stack_metas.size());
+    fprintf(__log_file, "dump_stacks: hash count = %zu\n", __stack_metas.size());
 
-    for (auto &stack_meta :stack_metas) {
+    for (auto &stack_meta :__stack_metas) {
         LOGD(TAG, "hash %lu : stack.size = %zu", stack_meta.first, stack_meta.second.size);
     }
 
-    std::unordered_map<std::string, size_t>                                      stack_alloc_size_of_so;
-    std::unordered_map<std::string, std::vector<std::pair<size_t, std::string>>> stacktrace_of_so;
+    std::unordered_map<std::string, size_t>                         stack_alloc_size_of_so;
+    std::unordered_map<std::string, std::vector<stack_dump_meta_t>> stacktrace_of_so;
 
-    for (auto &stack_meta_it : stack_metas) {
+    for (auto &stack_meta_it : __stack_metas) {
         auto hash       = stack_meta_it.first;
         auto size       = stack_meta_it.second.size;
         auto stacktrace = stack_meta_it.second.stacktrace;
         auto caller     = stack_meta_it.second.caller;
 
         std::string       caller_so_name;
-        std::stringstream stack_builder;
+        std::stringstream full_stack_builder;
+        std::stringstream brief_stack_builder;
 
         restore_frame_data(stacktrace);
 
@@ -361,7 +368,8 @@ static inline void dump_stacks(FILE *log_file,
             caller_so_name = caller_info.dli_fname;
         }
 
-        for (auto &it : stacktrace) {
+        std::string last_so_name; // 上一帧所属 so 名字
+        for (auto   &it : stacktrace) {
 
             std::string so_name = it.map_name;
 
@@ -369,15 +377,22 @@ static inline void dump_stacks(FILE *log_file,
             int  status          = 0;
             demangled_name = abi::__cxa_demangle(it.function_name.c_str(), nullptr, 0, &status);
 
-            stack_builder << "      | "
-                          << "#pc " << std::hex << it.rel_pc << " "
-                          << (demangled_name ? demangled_name : "(null)")
-                          << " ("
-                          << it.map_name
-                          << ")"
-                          << std::endl;
+            std::string demangled_name_cpy = demangled_name ? demangled_name : "(null)";
 
-            LOGE(TAG, "#pc %p %s %s", (void *) it.rel_pc, demangled_name, it.map_name.c_str());
+            full_stack_builder << "      | "
+                               << "#pc " << std::hex << it.rel_pc << " "
+                               << demangled_name_cpy
+                               << " ("
+                               << it.map_name
+                               << ")"
+                               << std::endl;
+
+            if (last_so_name != it.map_name) {
+                last_so_name = it.map_name;
+                brief_stack_builder << it.map_name << ";";
+            }
+
+            brief_stack_builder << std::hex << it.rel_pc << ";";
 
             if (demangled_name) {
                 free(demangled_name);
@@ -396,8 +411,10 @@ static inline void dump_stacks(FILE *log_file,
         }
         stack_alloc_size_of_so[caller_so_name] += size;
 
-        std::pair<size_t, std::string> stack_size_pair(size, stack_builder.str());
-        stacktrace_of_so[caller_so_name].push_back(stack_size_pair);
+        stack_dump_meta_t stack_dump_meta{size,
+                                          full_stack_builder.str(),
+                                          brief_stack_builder.str()};
+        stacktrace_of_so[caller_so_name].emplace_back(stack_dump_meta);
     }
 
     // 从大到小排序
@@ -412,17 +429,24 @@ static inline void dump_stacks(FILE *log_file,
                   return v1.second > v2.second;
               });
 
+    /*************************** prepared done ********************************/
+
+    cJSON *json_obj = cJSON_CreateObject();
+    cJSON *mem_arr = cJSON_AddArrayToObject(json_obj, "MemoryHook");
+
+    size_t json_so_count = 3;
+
     for (auto &p : so_sorted_by_size) {
         auto so_name       = p.first;
         auto so_alloc_size = p.second;
 
         LOGD(TAG, "\nmalloc size of so (%s) : remaining size = %zu", so_name.c_str(),
              so_alloc_size);
-        fprintf(log_file, "\nmalloc size of so (%s) : remaining size = %zu\n", so_name.c_str(),
+        fprintf(__log_file, "\nmalloc size of so (%s) : remaining size = %zu\n", so_name.c_str(),
                 so_alloc_size);
 
         if (so_alloc_size < m_stacktrace_log_threshold) {
-            fprintf(log_file, "skip printing stacktrace for size less than %zu\n",
+            fprintf(__log_file, "skip printing stacktrace for size less than %zu\n",
                     m_stacktrace_log_threshold);
             continue;
         }
@@ -430,26 +454,48 @@ static inline void dump_stacks(FILE *log_file,
         // 从大到小排序
         auto &stacktrace_sorted_by_size = stacktrace_of_so[so_name];
         std::sort(stacktrace_sorted_by_size.begin(), stacktrace_sorted_by_size.end(),
-                  [](const std::pair<size_t, std::string> &v1,
-                     const std::pair<size_t, std::string> &v2) {
-                      return v1.first > v2.first;
+                  [](const stack_dump_meta_t &v1,
+                     const stack_dump_meta_t &v2) {
+                      return v1.size > v2.size;
                   });
 
-        for (auto &it_stack : stacktrace_sorted_by_size) {
+        cJSON *so_obj = nullptr; // nullable
+        cJSON *so_stack_arr = nullptr; // nullable
+        if (json_so_count--) {
+            so_obj = cJSON_CreateObject();
+            cJSON_AddStringToObject(so_obj, "so", so_name.c_str());
+            cJSON_AddStringToObject(so_obj, "size", std::to_string(so_alloc_size).c_str());
+            so_stack_arr = cJSON_AddArrayToObject(so_obj, "top_stacks");
+        }
+
+        auto json_stacktrace_count = 3;
+
+        for (auto &stack_dump_meta : stacktrace_sorted_by_size) {
 
             LOGD(TAG, "malloc size of the same stack = %zu\n stacktrace : \n%s",
-                 it_stack.first,
-                 it_stack.second.c_str());
+                 stack_dump_meta.size,
+                 stack_dump_meta.full_stacktrace.c_str());
 
-            fprintf(log_file, "malloc size of the same stack = %zu\n stacktrace : \n%s\n",
-                    it_stack.first,
-                    it_stack.second.c_str());
+            fprintf(__log_file, "malloc size of the same stack = %zu\n stacktrace : \n%s\n",
+                    stack_dump_meta.size,
+                    stack_dump_meta.full_stacktrace.c_str());
+
+            if (json_so_count && json_stacktrace_count--) {
+                cJSON *stack_obj = cJSON_CreateObject();
+                cJSON_AddStringToObject(stack_obj, "size", std::to_string(stack_dump_meta.size).c_str());
+                cJSON_AddStringToObject(stack_obj, "stack", stack_dump_meta.brief_stacktrace.c_str());
+                cJSON_AddItemToArray(so_stack_arr, stack_obj);
+            }
         }
+
+        cJSON_AddItemToArray(mem_arr, so_obj);
     }
 
+    fprintf(__json_file, "%s", cJSON_PrintUnformatted(json_obj));
+    LOGD(TAG, "==> %s", cJSON_PrintUnformatted(json_obj));
 }
 
-static inline void dump_impl(FILE *log_file, bool enable_mmap_hook) {
+static inline void dump_impl(FILE *__log_file, FILE *__json_file, bool __mmap) {
 
     std::map<void *, caller_meta_t>  heap_caller_metas;
     std::map<void *, caller_meta_t>  mmap_caller_metas;
@@ -462,20 +508,20 @@ static inline void dump_impl(FILE *log_file, bool enable_mmap_hook) {
                                          mmap_stack_metas);
 
     // native heap allocation
-    dump_callers(log_file, heap_caller_metas);
-    dump_stacks(log_file, heap_stack_metas);
+    dump_callers(__log_file, heap_caller_metas);
+    dump_stacks(__log_file, __json_file, heap_stack_metas);// fixme mmap json
 
-    if (enable_mmap_hook) {
+    if (__mmap) {
         // mmap allocation
         LOGD(TAG, "############################# mmap #############################\n\n");
-        fprintf(log_file,
+        fprintf(__log_file,
                 "############################# mmap #############################\n\n");
 
-        dump_callers(log_file, mmap_caller_metas);
-        dump_stacks(log_file, mmap_stack_metas);
+        dump_callers(__log_file, mmap_caller_metas);
+        dump_stacks(__log_file, __json_file, mmap_stack_metas);
     }
 
-    fprintf(log_file,
+    fprintf(__log_file,
             "\n\n---------------------------------------------------\n"
             "<void *, ptr_meta_t> ptr_meta [%zu * %zu = (%zu)]\n"
             "<uint64_t, stack_meta_t> stack_meta [%zu * %zu = (%zu)]\n"
@@ -502,22 +548,30 @@ static inline void dump_impl(FILE *log_file, bool enable_mmap_hook) {
          ((heap_stack_metas.size() + mmap_stack_metas.size())));
 }
 
-void dump(bool enable_mmap_hook, const char *path) {
+void dump(bool __enable_mmap, const char *__log_path, const char *__json_path) {
     LOGD(TAG,
          ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> memory dump begin <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
 
-    assert(path != nullptr);
-    FILE *log_file = fopen(path, "w+");
-    LOGD(TAG, "dump path = %s", path);
+    assert(__log_path != nullptr);
+    FILE *log_file  = fopen(__log_path, "w+");
+    FILE *json_file = fopen(__json_path, "w+");
+    LOGD(TAG, "dump path = %s", __log_path);
     if (!log_file) {
-        LOGE(TAG, "open file failed");
+        LOGE(TAG, "open file failed: %s", __log_path);
         return;
     }
 
-    dump_impl(log_file, enable_mmap_hook);
+    if (!json_file) {
+        LOGE(TAG, "open file failed: %s", __json_path);
+        return;
+    }
+
+    dump_impl(log_file, json_file, __enable_mmap);
 
     fflush(log_file);
     fclose(log_file);
+    fflush(json_file);
+    fclose(json_file);
 
     LOGD(TAG,
          ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> memory dump end <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
