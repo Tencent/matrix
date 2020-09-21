@@ -492,6 +492,7 @@ static inline void dump_stacks(FILE *__log_file, FILE *__json_file,
     }
 
     fprintf(__json_file, "%s", cJSON_PrintUnformatted(json_obj));
+    cJSON_Delete(json_obj);
     LOGD(TAG, "==> %s", cJSON_PrintUnformatted(json_obj));
 }
 
