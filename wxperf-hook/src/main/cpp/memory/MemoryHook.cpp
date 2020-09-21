@@ -221,7 +221,7 @@ static inline void dump_callers(FILE *log_file,
         auto caller      = i.first;
         auto caller_meta = i.second;
 
-        Dl_info dl_info{};
+        Dl_info dl_info;
         dladdr(caller, &dl_info);
 
         if (!dl_info.dli_fname) {
