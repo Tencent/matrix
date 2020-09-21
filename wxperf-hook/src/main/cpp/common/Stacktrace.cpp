@@ -48,7 +48,7 @@ namespace unwindstack {
 
         struct timespec tms;
 
-        if (clock_gettime(CLOCK_REALTIME, &tms)) {
+        if (clock_gettime(CLOCK_REALTIME,&tms)) {
             LOGE("Unwind-debug", "get time error");
         }
 
@@ -62,7 +62,7 @@ namespace unwindstack {
             return;
         }
 
-        auto     process_memory = Memory::CreateProcessMemory(getpid());
+        auto process_memory = Memory::CreateProcessMemory(getpid());
         Unwinder unwinder(16, localMaps, regs, process_memory);
 //        JitDebug jit_debug(process_memory);
 //        unwinder.SetJitDebug(&jit_debug, regs->Arch());
@@ -74,10 +74,10 @@ namespace unwindstack {
 
         delete regs;
 
-        if (clock_gettime(CLOCK_REALTIME, &tms)) {
+        if (clock_gettime(CLOCK_REALTIME,&tms)) {
             LOGE("Unwind-debug", "get time error");
         }
-        LOGE("Unwind-debug", "unwinder.Unwind() costs: %ld", (tms.tv_nsec - nano));
+        LOGE("Unwind-debug", "unwinder.Unwind() costs: %ld",(tms.tv_nsec - nano));
 
 //        for (size_t i = 0; i < unwinder.NumFrames(); i++) {
 //            LOGD("Yves.unwind", "~~~~~~~~~~~~~%s", unwinder.FormatFrame(i).c_str());
@@ -88,7 +88,7 @@ namespace unwindstack {
     }
 }
 
-static inline void fp_unwind(uptr *regs, uptr *frames, size_t max_size, size_t &frame_size) {
+static inline void fp_unwind(uptr* regs, uptr *frames, size_t max_size, size_t &frame_size) {
     wechat_backtrace::fp_fast_unwind(regs, frames, max_size, frame_size);
 }
 
@@ -97,7 +97,7 @@ static inline void fp_unwind(uptr *regs, uptr *frames, size_t max_size, size_t &
 void unwind_adapter(std::vector<unwindstack::FrameData> &dst) {
 #ifdef __aarch64__
 
-    uptr   frames[MAX_FRAMES];
+    uptr frames[MAX_FRAMES];
     size_t frame_size = 0;
 
     uptr regs[4];
@@ -130,17 +130,13 @@ void restore_frame_data(std::vector<unwindstack::FrameData> &frames) {
 #ifdef __aarch64__
 
     LOGD("Wxperf.unwind", "restore frame %zu", frames.size());
-    for (int i = 0; i < frames.size(); i++) {
-        auto &frame_data = frames[i];
-        // fp_unwind 得到的 pc 除了第 0 帧实际都是 LR, arm64 指令长度都是定长 32bit, 所以 -4 以恢复 pc
-        uintptr_t real_pc = frame_data.pc - i > 0 ? 4 : 0;
-
+    for (auto& frame_data: frames) {
         Dl_info stack_info;
-        dladdr((void *) real_pc, &stack_info);
+        dladdr((void *) frame_data.pc, &stack_info);
 
-        frame_data.rel_pc        = real_pc - (uptr) stack_info.dli_fbase;
+        frame_data.rel_pc = frame_data.pc - (uptr) stack_info.dli_fbase;
         frame_data.function_name = stack_info.dli_sname == nullptr ? "null" : stack_info.dli_sname;
-        frame_data.map_name      = stack_info.dli_fname == nullptr ? "null" : stack_info.dli_fname;
+        frame_data.map_name = stack_info.dli_fname == nullptr ? "null" : stack_info.dli_fname;
     }
 
     return;
