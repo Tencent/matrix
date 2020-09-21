@@ -133,7 +133,7 @@ void restore_frame_data(std::vector<unwindstack::FrameData> &frames) {
     for (int i = 0; i < frames.size(); i++) {
         auto &frame_data = frames[i];
         // fp_unwind 得到的 pc 除了第 0 帧实际都是 LR, arm64 指令长度都是定长 32bit, 所以 -4 以恢复 pc
-        uintptr_t real_pc = frame_data.pc - i > 0 ? 4 : 0;
+        uintptr_t real_pc = frame_data.pc - (i > 0 ? 4 : 0);
 
         Dl_info stack_info{};
         dladdr((void *) real_pc, &stack_info);
