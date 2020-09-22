@@ -583,8 +583,6 @@ void dump(bool __enable_mmap, const char *__log_path, const char *__json_path) {
          ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> memory dump end <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
 }
 
-extern const HookFunction HOOK_MALL_FUNCTIONS[];
-
 void memory_hook_on_dlopen(const char *__file_name) {
     LOGD(TAG, "memory_hook_on_dlopen: file %s, h_malloc %p, h_realloc %p, h_free %p", __file_name,
          h_malloc, h_realloc, h_free);
