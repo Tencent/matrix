@@ -36,7 +36,7 @@ static bool is_caller_sampling_enabled = false;
 
 static size_t m_sample_size_min = 0;
 static size_t m_sample_size_max = 0;
-static double m_sampling        = 0.01;
+static double m_sampling        = 1;
 
 static size_t m_stacktrace_log_threshold;
 
@@ -331,7 +331,8 @@ struct stack_dump_meta_t {
     std::string brief_stacktrace;
 };
 
-static inline void dump_stacks(FILE *__log_file, FILE *__json_file,
+static inline void dump_stacks(FILE *__log_file,
+                               cJSON *__json_mem_arr,
                                std::map<uint64_t, stack_meta_t> &__stack_metas) {
     if (__stack_metas.empty()) {
         LOGI(TAG, "stacktrace: nothing dump");
@@ -428,9 +429,6 @@ static inline void dump_stacks(FILE *__log_file, FILE *__json_file,
 
     /*************************** prepared done ********************************/
 
-    cJSON *json_obj = cJSON_CreateObject();
-    cJSON *mem_arr = cJSON_AddArrayToObject(json_obj, "MemoryHook");
-
     size_t json_so_count = 3;
 
     for (auto &p : so_sorted_by_size) {
@@ -456,7 +454,7 @@ static inline void dump_stacks(FILE *__log_file, FILE *__json_file,
                       return v1.size > v2.size;
                   });
 
-        cJSON *so_obj = nullptr; // nullable
+        cJSON *so_obj       = nullptr; // nullable
         cJSON *so_stack_arr = nullptr; // nullable
         if (json_so_count) {
             LOGE(TAG".json", "json_so_count = %zu", json_so_count);
@@ -483,17 +481,15 @@ static inline void dump_stacks(FILE *__log_file, FILE *__json_file,
                 json_stacktrace_count--;
                 LOGE(TAG".json", "json_stacktrace_count = %zu", json_stacktrace_count);
                 cJSON *stack_obj = cJSON_CreateObject();
-                cJSON_AddStringToObject(stack_obj, "size", std::to_string(stack_dump_meta.size).c_str());
-                cJSON_AddStringToObject(stack_obj, "stack", stack_dump_meta.brief_stacktrace.c_str());
+                cJSON_AddStringToObject(stack_obj, "size",
+                                        std::to_string(stack_dump_meta.size).c_str());
+                cJSON_AddStringToObject(stack_obj, "stack",
+                                        stack_dump_meta.brief_stacktrace.c_str());
                 cJSON_AddItemToArray(so_stack_arr, stack_obj);
             }
         }
-
-        cJSON_AddItemToArray(mem_arr, so_obj);
+        cJSON_AddItemToArray(__json_mem_arr, so_obj);
     }
-
-    fprintf(__json_file, "%s", cJSON_PrintUnformatted(json_obj));
-    cJSON_Delete(json_obj);
     LOGD(TAG, "==> %s", cJSON_PrintUnformatted(json_obj));
 }
 
@@ -511,7 +507,11 @@ static inline void dump_impl(FILE *__log_file, FILE *__json_file, bool __mmap) {
 
     // native heap allocation
     dump_callers(__log_file, heap_caller_metas);
-    dump_stacks(__log_file, __json_file, heap_stack_metas);// fixme mmap json
+
+    cJSON *json_obj        = cJSON_CreateObject();
+    cJSON *native_heap_arr = cJSON_AddArrayToObject(json_obj, "NativeHeap");
+
+    dump_stacks(__log_file, native_heap_arr, heap_stack_metas);
 
     if (__mmap) {
         // mmap allocation
@@ -520,8 +520,12 @@ static inline void dump_impl(FILE *__log_file, FILE *__json_file, bool __mmap) {
                 "############################# mmap #############################\n\n");
 
         dump_callers(__log_file, mmap_caller_metas);
-        dump_stacks(__log_file, __json_file, mmap_stack_metas);
+        cJSON *mmap_arr = cJSON_AddArrayToObject(json_obj, "mmap");
+        dump_stacks(__log_file, mmap_arr, mmap_stack_metas);
     }
+
+    fprintf(__json_file, "%s", cJSON_PrintUnformatted(json_obj));
+    cJSON_Delete(json_obj);
 
     fprintf(__log_file,
             "\n\n---------------------------------------------------\n"
