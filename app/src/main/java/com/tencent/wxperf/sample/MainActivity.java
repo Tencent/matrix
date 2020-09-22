@@ -57,7 +57,7 @@ public class MainActivity extends AppCompatActivity {
 //                            .addHookSo(".*libnative-lib\\.so$")
                             .addHookSo(".*libnative-lib\\.so$")
                             .enableStacktrace(true)
-                            .stacktraeLogThreshold(0)
+                            .stacktraceLogThreshold(0)
                             .enableMmapHook(false))
                     .addHook(PthreadHook.INSTANCE
 //                            .addHookSo(".*libnative-lib\\.so$")

@@ -38,7 +38,7 @@ static size_t m_sample_size_min = 0;
 static size_t m_sample_size_max = 0;
 static double m_sampling        = 0.01;
 
-static size_t m_stacktrace_log_threshold = 10 * 1024 * 1024;
+static size_t m_stacktrace_log_threshold;
 
 void enable_stacktrace(bool __enable) {
     is_stacktrace_enabled = __enable;
@@ -364,7 +364,6 @@ static inline void dump_stacks(FILE *__log_file, FILE *__json_file,
         dladdr(caller, &caller_info);
 
         if (caller_info.dli_fname != nullptr) {
-            LOGD(TAG, "got caller name = %s", caller_info.dli_fname);
             caller_so_name = caller_info.dli_fname;
         }
 
@@ -377,11 +376,9 @@ static inline void dump_stacks(FILE *__log_file, FILE *__json_file,
             int  status          = 0;
             demangled_name = abi::__cxa_demangle(it.function_name.c_str(), nullptr, 0, &status);
 
-            std::string demangled_name_cpy = demangled_name ? demangled_name : "(null)";
-
             full_stack_builder << "      | "
                                << "#pc " << std::hex << it.rel_pc << " "
-                               << demangled_name_cpy
+                               << (demangled_name ? demangled_name : "(null)")
                                << " ("
                                << it.map_name
                                << ")"
@@ -461,14 +458,16 @@ static inline void dump_stacks(FILE *__log_file, FILE *__json_file,
 
         cJSON *so_obj = nullptr; // nullable
         cJSON *so_stack_arr = nullptr; // nullable
-        if (json_so_count--) {
+        if (json_so_count) {
+            LOGE(TAG".json", "json_so_count = %zu", json_so_count);
+            json_so_count--;
             so_obj = cJSON_CreateObject();
             cJSON_AddStringToObject(so_obj, "so", so_name.c_str());
             cJSON_AddStringToObject(so_obj, "size", std::to_string(so_alloc_size).c_str());
             so_stack_arr = cJSON_AddArrayToObject(so_obj, "top_stacks");
         }
 
-        auto json_stacktrace_count = 3;
+        size_t json_stacktrace_count = 3;
 
         for (auto &stack_dump_meta : stacktrace_sorted_by_size) {
 
@@ -480,7 +479,9 @@ static inline void dump_stacks(FILE *__log_file, FILE *__json_file,
                     stack_dump_meta.size,
                     stack_dump_meta.full_stacktrace.c_str());
 
-            if (json_so_count && json_stacktrace_count--) {
+            if (json_so_count && json_stacktrace_count) {
+                json_stacktrace_count--;
+                LOGE(TAG".json", "json_stacktrace_count = %zu", json_stacktrace_count);
                 cJSON *stack_obj = cJSON_CreateObject();
                 cJSON_AddStringToObject(stack_obj, "size", std::to_string(stack_dump_meta.size).c_str());
                 cJSON_AddStringToObject(stack_obj, "stack", stack_dump_meta.brief_stacktrace.c_str());

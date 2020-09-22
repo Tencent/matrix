@@ -21,7 +21,7 @@ public class MemoryHook extends AbsHook {
 
     private int     mMinTraceSize;
     private int     mMaxTraceSize;
-    private int     mStacktraceLogThreshold;
+    private int     mStacktraceLogThreshold = 10 * 1024 * 1024;
     private double  mSampling = 1;
     private boolean mEnableStacktrace;
     private boolean mEnableMmap;
@@ -105,7 +105,7 @@ public class MemoryHook extends AbsHook {
         return this;
     }
 
-    public MemoryHook stacktraeLogThreshold(int threshold) {
+    public MemoryHook stacktraceLogThreshold(int threshold) {
         mStacktraceLogThreshold = threshold;
         return this;
     }
