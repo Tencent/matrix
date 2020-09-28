@@ -44,6 +44,7 @@ public class HookManager {
             System.loadLibrary("wxperf-jni");
         } catch (Throwable e) {
             Log.printStack(Log.ERROR, TAG, e);
+            return;
         }
 
         for (AbsHook hook : mHooks) {

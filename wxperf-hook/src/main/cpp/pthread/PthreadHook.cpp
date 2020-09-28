@@ -4,7 +4,7 @@
 
 #include <dlfcn.h>
 #include <unordered_map>
-#include <StackTrace.h>
+#include <Stacktrace.h>
 #include <cxxabi.h>
 #include <sstream>
 #include <iostream>
@@ -77,7 +77,7 @@ struct regex_wrapper {
     }
 };
 
-static std::recursive_mutex m_pthread_meta_mutex;
+static std::recursive_mutex                   m_pthread_meta_mutex;
 typedef std::lock_guard<std::recursive_mutex> pthread_meta_lock;
 
 static std::map<pthread_t, pthread_meta_t> m_pthread_metas;
@@ -87,7 +87,7 @@ static std::set<regex_wrapper> m_hook_thread_name_regex;
 
 static pthread_key_t m_destructor_key;
 
-static std::mutex m_subroutine_mutex;
+static std::mutex              m_subroutine_mutex;
 static std::condition_variable m_subroutine_cv;
 
 static std::set<pthread_t> m_pthread_routine_flags;
@@ -133,7 +133,8 @@ static bool test_match_thread_name(pthread_meta_t &__meta) {
     return false;
 }
 
-static inline bool on_pthread_create_locked(const pthread_t __pthread, char *__java_stacktrace, pid_t __tid) {
+static inline bool
+on_pthread_create_locked(const pthread_t __pthread, char *__java_stacktrace, pid_t __tid) {
     pthread_meta_lock meta_lock(m_pthread_meta_mutex);
 
     if (m_pthread_metas.count(__pthread)) {
@@ -163,8 +164,7 @@ static inline bool on_pthread_create_locked(const pthread_t __pthread, char *__j
     uint64_t native_hash = 0;
     uint64_t java_hash   = 0;
 
-    meta.native_stacktrace.reserve(16 * 2);
-    unwindstack::do_unwind(meta.native_stacktrace);
+    unwind_adapter(meta.native_stacktrace);
     native_hash = hash_stack_frames(meta.native_stacktrace);
 
     if (__java_stacktrace) {
@@ -191,9 +191,15 @@ static void notify_routine(const pthread_t __pthread) {
 
 // notice: 在父线程回调此函数
 static void on_pthread_create(const pthread_t __pthread) {
-    LOGD(TAG, "+++++++ on_pthread_create");
+    const char * arch =
+#ifdef __aarch64__
+        "aarch64";
+#elif defined __arm__
+        "arm";
+#endif
+    LOGD(TAG, "+++++++ on_pthread_create, %s", arch);
 
-    pid_t tid  = pthread_gettid_np(__pthread);
+    pid_t tid = pthread_gettid_np(__pthread);
 
     if (!rp_acquire()) {
         LOGD(TAG, "reentrant!!!");
@@ -300,7 +306,8 @@ static inline void before_routine_start() {
         return m_pthread_routine_flags.count(self_thread);
     });
 
-    LOGI(TAG, "before_routine_start: create ready, just continue, waiting count : %zu", m_pthread_routine_flags.size());
+    LOGI(TAG, "before_routine_start: create ready, just continue, waiting count : %zu",
+         m_pthread_routine_flags.size());
 
     m_pthread_routine_flags.erase(self_thread);
 }
@@ -326,22 +333,19 @@ static inline void pthread_dump_impl(FILE *__log_file) {
         LOGD(TAG, "native stacktrace:");
         fprintf(__log_file, "native stacktrace:\n");
 
+        restore_frame_data(meta.native_stacktrace);
+
         for (auto &p_frame : meta.native_stacktrace) {
-            Dl_info stack_info;
-            dladdr((void *) p_frame.pc, &stack_info);
-
-            std::string so_name = std::string(stack_info.dli_fname);
-
             int  status          = 0;
-            char *demangled_name = abi::__cxa_demangle(stack_info.dli_sname, nullptr, 0,
+            char *demangled_name = abi::__cxa_demangle(p_frame.function_name.c_str(), nullptr, 0,
                                                        &status);
 
-            LOGD(TAG, "  #pc %"
-                    PRIxPTR
-                    " %s (%s)", p_frame.rel_pc,
-                 demangled_name ? demangled_name : "(null)", stack_info.dli_fname);
+            LOGD(TAG, "  #pc %" PRIxPTR " %s (%s)",
+                 p_frame.rel_pc,
+                 demangled_name ? demangled_name : "(null)",
+                 p_frame.map_name.c_str());
             fprintf(__log_file, "  #pc %" PRIxPTR " %s (%s)\n", p_frame.rel_pc,
-                    demangled_name ? demangled_name : "(null)", stack_info.dli_fname);
+                    demangled_name ? demangled_name : "(null)", p_frame.map_name.c_str());
 
             free(demangled_name);
         }
@@ -412,29 +416,31 @@ static inline char *pthread_dump_json_impl(FILE *__log_file) {
         assert(!metas.empty());
 
         std::stringstream stack_builder;
-        for (auto         &frame : metas.front().native_stacktrace) {
-            Dl_info stack_info = {nullptr};
-            int     success    = dladdr((void *) frame.pc, &stack_info);
+        auto front_frames = metas.front().native_stacktrace;
+        restore_frame_data(front_frames);
 
+        for (auto         &frame : front_frames) {
 //            LOGE(TAG, "===> success = %d, pc =  %p, dl_info.dli_sname = %p %s",
 //                 success, (void *) frame.pc, (void *) stack_info.dli_sname, stack_info.dli_sname);
 
             char *demangled_name = nullptr;
-            if (success > 0) {
-                int status = 0;
-                demangled_name = abi::__cxa_demangle(stack_info.dli_sname, nullptr, 0, &status);
-            }
+
+            int status = 0;
+            demangled_name = abi::__cxa_demangle(frame.function_name.c_str(), nullptr, nullptr, &status);
 
             stack_builder << "#pc " << std::hex << frame.rel_pc << " "
                           << (demangled_name ? demangled_name : "(null)")
                           << " ("
-                          << (success && stack_info.dli_fname ? stack_info.dli_fname : "(null)")
+                          << frame.map_name
                           << ");";
+
+            LOGE(TAG, "#pc %p %s %s", (void *) frame.rel_pc, demangled_name, frame.map_name.c_str());
 
             if (demangled_name) {
                 free(demangled_name);
             }
         }
+        LOGE(TAG, "-------------------");
         cJSON_AddStringToObject(hash_obj, "native", stack_builder.str().c_str());
 
         const char *java_stacktrace = metas.front().java_stacktrace.load(std::memory_order_acquire);
@@ -501,7 +507,7 @@ void pthread_dump_json(const char *__path) {
 void pthread_hook_on_dlopen(const char *__file_name) {
     LOGD(TAG, "pthread_hook_on_dlopen");
     pthread_meta_lock meta_lock(m_pthread_meta_mutex);
-    unwindstack::update_maps();
+    notify_maps_change();
     LOGD(TAG, "pthread_hook_on_dlopen end");
 }
 

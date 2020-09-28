@@ -21,16 +21,14 @@
 #include <condition_variable>
 #include <shared_mutex>
 #include "MemoryHookFunctions.h"
-#include "StackTrace.h"
+#include "Stacktrace.h"
 #include "Utils.h"
 #include "unwindstack/Unwinder.h"
 #include "ThreadPool.h"
 #include "MemoryHookMetas.h"
 #include "MemoryHook.h"
 
-static pointer_meta_container           m_ptr_meta_container;
-static std::map<uint64_t, stack_meta_t> m_stack_metas; // fixme lock
-static std::mutex                       m_stack_meta_mutex;
+static memory_meta_container m_memory_meta_container;
 
 static bool is_stacktrace_enabled      = false;
 static bool is_caller_sampling_enabled = false;
@@ -39,8 +37,14 @@ static size_t m_sample_size_min = 0;
 static size_t m_sample_size_max = 0;
 static double m_sampling        = 0.01;
 
+static size_t m_stacktrace_log_threshold = 10 * 1024 * 1024;
+
 void enable_stacktrace(bool __enable) {
     is_stacktrace_enabled = __enable;
+}
+
+void set_stacktrace_log_threshold(size_t __threshold) {
+    m_stacktrace_log_threshold = __threshold;
 }
 
 void set_sample_size_range(size_t __min, size_t __max) {
@@ -93,35 +97,32 @@ static inline void on_acquire_memory(void *__caller,
         return;
     }
 
-    ptr_meta_t &meta = m_ptr_meta_container[__ptr];
-
-    meta.ptr        = __ptr;
-    meta.size       = __byte_count;
-    meta.caller     = __caller;
-    meta.stack_hash = 0;
-    meta.is_mmap    = __is_mmap;
-//    meta.recycled   = false;
-
-    // TODO 获取 Java 堆栈
-    if (is_stacktrace_enabled && should_do_unwind(meta.size, meta.caller)) {
-
-        std::vector<unwindstack::FrameData> stack_frames;
-        unwindstack::do_unwind(stack_frames);
-
-        if (!stack_frames.empty()) {
-            uint64_t stack_hash = hash_stack_frames(stack_frames);
-            meta.stack_hash = stack_hash;
-
-            std::lock_guard<std::mutex> stack_meta_lock(m_stack_meta_mutex);
-
-            stack_meta_t &stack_meta = m_stack_metas[stack_hash];
-            stack_meta.size += meta.size;
-
-            if (stack_meta.stacktrace.empty()) { // 相同的堆栈只记录一个
-                stack_meta.stacktrace.swap(stack_frames);
-            }
-        }
+    std::vector<unwindstack::FrameData> stack_frames;
+    uint64_t                            stack_hash = 0;
+    if (is_stacktrace_enabled && should_do_unwind(__byte_count, __caller)) {
+        unwind_adapter(stack_frames);
+        stack_hash = hash_stack_frames(stack_frames);
+        assert(stack_hash != 0);
     }
+
+    m_memory_meta_container.insert(__ptr,
+                                   stack_hash,
+                                   [&](ptr_meta_t *ptr_meta, stack_meta_t *stack_meta) {
+                                       ptr_meta->ptr     = __ptr;
+                                       ptr_meta->size    = __byte_count;
+                                       ptr_meta->caller  = __caller;
+                                       ptr_meta->is_mmap = __is_mmap;
+
+                                       if (!stack_meta) {
+                                           return;
+                                       }
+
+                                       stack_meta->size += __byte_count;
+                                       if (stack_meta->stacktrace.empty()) { // 相同的堆栈只记录一个
+                                           stack_meta->stacktrace.swap(stack_frames);
+                                           stack_meta->caller = __caller;
+                                       }
+                                   });
 
 //    NanoSeconds_End(alloc_cost, alloc_begin);
 //    LOGD(TAG, "alloc cost %lld", alloc_cost);
@@ -134,24 +135,7 @@ static inline void on_release_memory(void *__ptr, bool __is_mmap) {
     }
 //    NanoSeconds_Start(release_begin);
 
-    // avoid copy
-    m_ptr_meta_container.erase(__ptr, [](ptr_meta_t &__meta) {
-        // notice: container is locked here
-        if (is_stacktrace_enabled && __meta.stack_hash) {
-
-            std::lock_guard<std::mutex> stack_meta_lock(m_stack_meta_mutex);
-
-            if (m_stack_metas.count(__meta.stack_hash)) {
-                stack_meta_t &stack_meta = m_stack_metas.at(__meta.stack_hash);
-
-                if (stack_meta.size > __meta.size) { // 减去同堆栈的 size
-                    stack_meta.size -= __meta.size;
-                } else { // 删除 size 为 0 的堆栈
-                    m_stack_metas.erase(__meta.stack_hash);
-                }
-            }
-        }
-    });
+    m_memory_meta_container.erase(__ptr);
 //    NanoSeconds_End(release_cost, release_begin);
 //    LOGD(TAG, "release cost %lld", release_cost);
 }
@@ -174,13 +158,10 @@ void on_munmap_memory(void *__ptr) {
 
 /**
  * 区分 native heap 和 mmap 的 caller 和 stack
- * @param __merge_bucket
  * @param __heap_caller_metas
  * @param __mmap_caller_metas
  * @param __heap_stack_metas
  * @param __mmap_stack_metas
- *
- * fixme 去掉中转逻辑？
  */
 static inline size_t collect_metas(std::map<void *, caller_meta_t> &__heap_caller_metas,
                                    std::map<void *, caller_meta_t> &__mmap_caller_metas,
@@ -190,27 +171,29 @@ static inline size_t collect_metas(std::map<void *, caller_meta_t> &__heap_calle
 
     size_t ptr_meta_size = 0;
 
-    m_ptr_meta_container.for_each([&](const void *ptr, ptr_meta_t meta) {
-        auto &dest_caller_metes = meta.is_mmap ? __mmap_caller_metas : __heap_caller_metas;
-        auto &dest_stack_metas  = meta.is_mmap ? __mmap_stack_metas : __heap_stack_metas;
+    m_memory_meta_container.for_each(
+            [&](const void *__ptr, ptr_meta_t *__meta, stack_meta_t *__stack_meta) {
 
-        if (meta.caller) {
-            caller_meta_t &caller_meta = dest_caller_metes[meta.caller];
-            caller_meta.pointers.insert(ptr);
-            caller_meta.total_size += meta.size;
-        }
+                auto &dest_caller_metes =
+                             __meta->is_mmap ? __mmap_caller_metas : __heap_caller_metas;
+                auto &dest_stack_metas  = __meta->is_mmap ? __mmap_stack_metas : __heap_stack_metas;
 
-        if (meta.stack_hash) {
-            std::lock_guard<std::mutex> stack_meta_lock(m_stack_meta_mutex);
-            if (m_stack_metas.count(meta.stack_hash)) {
-                auto &stack_meta = dest_stack_metas[meta.stack_hash];
-                stack_meta.stacktrace = m_stack_metas.at(meta.stack_hash).stacktrace;
-                stack_meta.size += meta.size;
-            }
-        }
+                if (__meta->caller) {
+                    caller_meta_t &caller_meta = dest_caller_metes[__meta->caller];
+                    caller_meta.pointers.insert(__ptr);
+                    caller_meta.total_size += __meta->size;
+                }
 
-        ptr_meta_size++;
-    });
+                if (__stack_meta) {
+                    auto &dest_stack_meta = dest_stack_metas[__meta->stack_hash];
+                    dest_stack_meta.stacktrace = __stack_meta->stacktrace;
+                    // 没错, 这里的确使用 ptr_meta 的 size, 因为是在遍历 ptr_meta, 因此原来 stack_meta 的 size 仅起引用计数作用
+                    dest_stack_meta.size += __meta->size;
+                    dest_stack_meta.caller     = __stack_meta->caller;
+                }
+
+                ptr_meta_size++;
+            });
 
     LOGD(TAG, "collect_metas done");
     return ptr_meta_size;
@@ -247,10 +230,10 @@ static inline void dump_callers(FILE *log_file,
 
         // 按 size 聚类
         for (auto pointer : caller_meta.pointers) {
-            m_ptr_meta_container.get(pointer,
-                                     [&same_size_count_of_so, &dl_info](ptr_meta_t &__meta) {
-                                         same_size_count_of_so[dl_info.dli_fname][__meta.size]++;
-                                     });
+            m_memory_meta_container.get(pointer,
+                                        [&same_size_count_of_so, &dl_info](ptr_meta_t &__meta) {
+                                            same_size_count_of_so[dl_info.dli_fname][__meta.size]++;
+                                        });
         }
     }
 
@@ -341,6 +324,7 @@ static inline void dump_callers(FILE *log_file,
 //    m_debug_lost_ptr_stack.clear();
 //}
 
+
 static inline void dump_stacks(FILE *log_file,
                                std::map<uint64_t, stack_meta_t> &stack_metas) {
     if (stack_metas.empty()) {
@@ -358,72 +342,108 @@ static inline void dump_stacks(FILE *log_file,
     std::unordered_map<std::string, size_t>                                      stack_alloc_size_of_so;
     std::unordered_map<std::string, std::vector<std::pair<size_t, std::string>>> stacktrace_of_so;
 
-    for (auto &stack_meta : stack_metas) {
-        auto hash            = stack_meta.first;
-        auto size            = stack_meta.second.size;
-        auto stacktrace      = stack_meta.second.stacktrace;
+    for (auto &stack_meta_it : stack_metas) {
+        auto hash       = stack_meta_it.first;
+        auto size       = stack_meta_it.second.size;
+        auto stacktrace = stack_meta_it.second.stacktrace;
+        auto caller     = stack_meta_it.second.caller;
 
         std::string       caller_so_name;
         std::stringstream stack_builder;
-        for (auto         it = stacktrace.begin(); it != stacktrace.end(); ++it) {
-            Dl_info stack_info = {nullptr};
-            int     success    = dladdr((void *) it->pc, &stack_info);
 
-            std::string so_name = std::string(success ? stack_info.dli_fname : "");
+        restore_frame_data(stacktrace);
+
+        Dl_info caller_info{};
+        dladdr(caller, &caller_info);
+
+        if (caller_info.dli_fname != nullptr) {
+            LOGD(TAG, "got caller name = %s", caller_info.dli_fname);
+            caller_so_name = caller_info.dli_fname;
+        }
+
+        for (auto &it : stacktrace) {
+
+            std::string so_name = it.map_name;
 
             char *demangled_name = nullptr;
-            if (success > 0) {
-                int status = 0;
-                demangled_name = abi::__cxa_demangle(stack_info.dli_sname, nullptr, 0, &status);
-            }
+            int  status          = 0;
+            demangled_name = abi::__cxa_demangle(it.function_name.c_str(), nullptr, 0, &status);
 
             stack_builder << "      | "
-                          << "#pc " << std::hex << it->rel_pc << " "
+                          << "#pc " << std::hex << it.rel_pc << " "
                           << (demangled_name ? demangled_name : "(null)")
                           << " ("
-                          << (success && stack_info.dli_fname ? stack_info.dli_fname : "(null)")
+                          << it.map_name
                           << ")"
                           << std::endl;
+
+            LOGE(TAG, "#pc %p %s %s", (void *) it.rel_pc, demangled_name, it.map_name.c_str());
 
             if (demangled_name) {
                 free(demangled_name);
             }
 
-            // fixme hard coding
-            if (/*so_name.find("com.tencent.mm") == std::string::npos ||*/
-                    so_name.find("libwxperf.so") != std::string::npos ||
-                    !caller_so_name.empty()) {
-                continue;
+            if (caller_so_name.empty()) { // fallback
+                LOGD(TAG, "fallback getting so name -> caller = %p", stack_meta_it.second.caller);
+                // fixme hard coding
+                if (/*so_name.find("com.tencent.mm") == std::string::npos ||*/
+                        so_name.find("libwxperf.so") != std::string::npos ||
+                        so_name.find("libwxperf-jni.so") != std::string::npos) {
+                    continue;
+                }
+                caller_so_name = so_name;
             }
-
-            caller_so_name = so_name;
-            stack_alloc_size_of_so[caller_so_name] += size;
         }
+        stack_alloc_size_of_so[caller_so_name] += size;
 
         std::pair<size_t, std::string> stack_size_pair(size, stack_builder.str());
         stacktrace_of_so[caller_so_name].push_back(stack_size_pair);
     }
 
-    // 排序
-    for (auto i = stack_alloc_size_of_so.begin(); i != stack_alloc_size_of_so.end(); ++i) {
-        auto so_name       = i->first;
-        auto so_alloc_size = i->second;
+    // 从大到小排序
+    std::vector<std::pair<std::string, size_t>> so_sorted_by_size;
+    so_sorted_by_size.reserve(stack_alloc_size_of_so.size());
+    for (auto &p : stack_alloc_size_of_so) {
+        so_sorted_by_size.emplace_back(p);
+    }
+    std::sort(so_sorted_by_size.begin(), so_sorted_by_size.end(),
+              [](const std::pair<std::string, size_t> &v1,
+                 const std::pair<std::string, size_t> &v2) {
+                  return v1.second > v2.second;
+              });
+
+    for (auto &p : so_sorted_by_size) {
+        auto so_name       = p.first;
+        auto so_alloc_size = p.second;
 
         LOGD(TAG, "\nmalloc size of so (%s) : remaining size = %zu", so_name.c_str(),
              so_alloc_size);
         fprintf(log_file, "\nmalloc size of so (%s) : remaining size = %zu\n", so_name.c_str(),
                 so_alloc_size);
 
-        for (auto it_stack = stacktrace_of_so[so_name].begin();
-             it_stack != stacktrace_of_so[so_name].end(); ++it_stack) {
+        if (so_alloc_size < m_stacktrace_log_threshold) {
+            fprintf(log_file, "skip printing stacktrace for size less than %zu\n",
+                    m_stacktrace_log_threshold);
+            continue;
+        }
+
+        // 从大到小排序
+        auto &stacktrace_sorted_by_size = stacktrace_of_so[so_name];
+        std::sort(stacktrace_sorted_by_size.begin(), stacktrace_sorted_by_size.end(),
+                  [](const std::pair<size_t, std::string> &v1,
+                     const std::pair<size_t, std::string> &v2) {
+                      return v1.first > v2.first;
+                  });
+
+        for (auto &it_stack : stacktrace_sorted_by_size) {
 
             LOGD(TAG, "malloc size of the same stack = %zu\n stacktrace : \n%s",
-                 it_stack->first,
-                 it_stack->second.c_str());
+                 it_stack.first,
+                 it_stack.second.c_str());
 
             fprintf(log_file, "malloc size of the same stack = %zu\n stacktrace : \n%s\n",
-                    it_stack->first,
-                    it_stack->second.c_str());
+                    it_stack.first,
+                    it_stack.second.c_str());
         }
     }
 
@@ -431,7 +451,6 @@ static inline void dump_stacks(FILE *log_file,
 
 static inline void dump_impl(FILE *log_file, bool enable_mmap_hook) {
 
-    std::map<void *, ptr_meta_t>     ptr_metas;
     std::map<void *, caller_meta_t>  heap_caller_metas;
     std::map<void *, caller_meta_t>  mmap_caller_metas;
     std::map<uint64_t, stack_meta_t> heap_stack_metas;
@@ -448,25 +467,27 @@ static inline void dump_impl(FILE *log_file, bool enable_mmap_hook) {
 
     if (enable_mmap_hook) {
         // mmap allocation
-        LOGD(TAG, "############################# mmap ###################################\n\n");
+        LOGD(TAG, "############################# mmap #############################\n\n");
         fprintf(log_file,
-                "############################# mmap ###################################\n\n");
+                "############################# mmap #############################\n\n");
 
         dump_callers(log_file, mmap_caller_metas);
         dump_stacks(log_file, mmap_stack_metas);
     }
 
-    std::lock_guard<std::mutex> stack_meta_lock(m_stack_meta_mutex);
-
     fprintf(log_file,
+            "\n\n---------------------------------------------------\n"
             "<void *, ptr_meta_t> ptr_meta [%zu * %zu = (%zu)]\n"
-            "<uint64_t, stack_meta_t> stack_meta [%zu * %zu = (%zu)]\n",
+            "<uint64_t, stack_meta_t> stack_meta [%zu * %zu = (%zu)]\n"
+            "---------------------------------------------------\n",
 
             sizeof(ptr_meta_t) + sizeof(void *), ptr_meta_size,
             (sizeof(ptr_meta_t) + sizeof(void *)) * ptr_meta_size,
 
-            sizeof(stack_meta_t) + sizeof(uint64_t), m_stack_metas.size(),
-            (sizeof(stack_meta_t) + sizeof(uint64_t)) * m_stack_metas.size());
+            sizeof(stack_meta_t) + sizeof(uint64_t),
+            (heap_stack_metas.size() + mmap_stack_metas.size()),
+            (sizeof(stack_meta_t) + sizeof(uint64_t)) *
+            ((heap_stack_metas.size() + mmap_stack_metas.size())));
 
     LOGD(TAG,
          "<void *, ptr_meta_t> ptr_meta [%zu * %zu = (%zu)]\n"
@@ -475,8 +496,10 @@ static inline void dump_impl(FILE *log_file, bool enable_mmap_hook) {
          sizeof(ptr_meta_t) + sizeof(void *), ptr_meta_size,
          (sizeof(ptr_meta_t) + sizeof(void *)) * ptr_meta_size,
 
-         sizeof(stack_meta_t) + sizeof(uint64_t), m_stack_metas.size(),
-         (sizeof(stack_meta_t) + sizeof(uint64_t)) * m_stack_metas.size());
+         sizeof(stack_meta_t) + sizeof(uint64_t),
+         (heap_stack_metas.size() + mmap_stack_metas.size()),
+         (sizeof(stack_meta_t) + sizeof(uint64_t)) *
+         ((heap_stack_metas.size() + mmap_stack_metas.size())));
 }
 
 void dump(bool enable_mmap_hook, const char *path) {
@@ -506,7 +529,7 @@ void memory_hook_on_dlopen(const char *__file_name) {
     LOGD(TAG, "memory_hook_on_dlopen: file %s, h_malloc %p, h_realloc %p, h_free %p", __file_name,
          h_malloc, h_realloc, h_free);
     if (is_stacktrace_enabled) {
-        unwindstack::update_maps();
+        notify_maps_change();
     }
     srand((unsigned int) time(NULL));
 }

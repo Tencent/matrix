@@ -5,7 +5,7 @@
 #include "xhook.h"
 #include "MemoryHookFunctions.h"
 #include "MemoryHook.h"
-#include "StackTrace.h"
+#include "Stacktrace.h"
 #include "xh_errno.h"
 #include "HookCommon.h"
 
@@ -83,7 +83,7 @@ static void hook(const char *regex) {
     for (auto f : HOOK_MALL_FUNCTIONS) {
         xhook_register(regex, f.name, f.handler_ptr, f.origin_ptr);
     }
-    LOGD("Yves-debug", "mmap enabled ? %d", enable_mmap_hook);
+    LOGD(TAG, "mmap enabled ? %d", enable_mmap_hook);
     if (enable_mmap_hook) {
         for (auto f: HOOK_MMAP_FUNCTIONS) {
             xhook_register(regex, f.name, f.handler_ptr, f.origin_ptr);
@@ -187,6 +187,14 @@ Java_com_tencent_wxperf_jni_memory_MemoryHook_enableMmapHookNative(JNIEnv *env,
     LOGD("Yves.debug", "jni enableMmapHookNative %d", enable);
     enable_mmap_hook = enable;
 
+}
+
+JNIEXPORT void JNICALL
+Java_com_tencent_wxperf_jni_memory_MemoryHook_setStacktraceLogThresholdNative(JNIEnv *env,
+                                                                              jobject thiz,
+                                                                              jint threshold) {
+    assert(threshold > 0);
+    set_stacktrace_log_threshold(threshold);
 }
 
 #ifdef __cplusplus

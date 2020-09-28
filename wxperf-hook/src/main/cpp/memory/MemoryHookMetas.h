@@ -9,9 +9,10 @@
 #include <vector>
 #include <set>
 #include "unwindstack/Unwinder.h"
+#include "Utils.h"
 // TODO #include "pool_allocator.h"
 
-#define TAG "Container"
+#define TAG "Wxperf.MemoryHook.Container"
 
 struct ptr_meta_t {
     void     *ptr;
@@ -19,11 +20,6 @@ struct ptr_meta_t {
     void     *caller;
     uint64_t stack_hash;
     bool     is_mmap;
-//    bool     recycled;
-
-//    ptr_meta_t &operator=(const ptr_meta_t& r) {
-//
-//    }
 };
 
 struct caller_meta_t {
@@ -32,158 +28,170 @@ struct caller_meta_t {
 };
 
 struct stack_meta_t {
+    /**
+     * size 在分配释放阶段仅起引用计数作用, 因为在 dump 时会重新以 ptr_meta 的 size 进行统计
+     */
     size_t                              size;
-    std::vector<unwindstack::FrameData> stacktrace; // fixme using swap?
+    void                                *caller;
+    std::vector<unwindstack::FrameData> stacktrace;
 };
 
-
-// ==========================================
-//template<class _Tp>
-//struct base_selector {
-//
-//    virtual size_t capacity() = 0;
-//
-//    virtual size_t select(_Tp __v) = 0;
-//};
-
-//struct default_pointer_selector : public base_selector<uintptr_t> {
-//    inline size_t operator()(unsigned char __v) const _NOEXCEPT {
-//        return static_cast<size_t>(__v & MASK);
-//    }
-//
-//    inline size_t capacity() override {
-//        return MAX_SLOT;
-//    }
-//
-//    inline size_t select(uintptr_t __v) override {
-//        return static_cast<size_t>(__v & MASK);
-//    }
-//
-//private:
-//    static const unsigned int MAX_SLOT = 1 << 16;
-//    static const unsigned int MASK     = MAX_SLOT - 1;
-//};
-
-// TODO
-//template <class _Tp, class _Container>
-//class base_container {
-//
-//};
-// ==========================================
-
-class pointer_meta_container {
+class memory_meta_container {
 
     typedef struct {
 
         std::map<const void *, ptr_meta_t> container;
         std::mutex                         mutex;
 
-    } container_wrapper;
+    } ptr_meta_container_wrapper_t;
 
-#define TARGET_WITH_LOCK(target, key) \
-    container_wrapper * target = container_maps.data()[select((uintptr_t) __k)]; \
+    typedef struct {
+        std::map<uint64_t, stack_meta_t> container;
+        std::mutex                       mutex;
+    } stack_container_wrapper_t;
+
+#define TARGET_PTR_CONTAINER_LOCKED(target, key) \
+    ptr_meta_container_wrapper_t * target = ptr_meta_containers.data()[ptr_meta_hash((uintptr_t) key)]; \
     std::lock_guard<std::mutex> target_lock(target->mutex)
+
+#define TARGET_STACK_CONTAINER_LOCKED(target, key) \
+    stack_container_wrapper_t *target = stack_meta_containers.data()[stack_meta_hash(key)]; \
+    std::lock_guard<std::mutex> stack_lock(target->mutex)
 
 public:
 
-    pointer_meta_container() {
-        const size_t cap = capacity();
-        container_maps.reserve(cap);
+    memory_meta_container() {
+        size_t cap = ptr_meta_capacity();
+        ptr_meta_containers.reserve(cap);
         for (int i = 0; i < cap; ++i) {
-            container_maps.push_back(new container_wrapper);
+            ptr_meta_containers.emplace_back(new ptr_meta_container_wrapper_t);
+        }
+
+        cap = stack_meta_capacity();
+        stack_meta_containers.reserve(cap);
+        for (int i = 0; i < cap; ++i) {
+            stack_meta_containers.emplace_back(new stack_container_wrapper_t);
         }
     }
 
     inline ptr_meta_t &operator[](const void *__k) {
-        TARGET_WITH_LOCK(target, __k);
+        TARGET_PTR_CONTAINER_LOCKED(target, __k);
         return target->container[__k];
     }
 
-    template<class _Callable>
-    inline void insert(const void *__k, _Callable __callable) {
-        TARGET_WITH_LOCK(target, __k);
-        auto &meta = target->container[__k];
-        __callable(meta);
+    inline void insert(const void *__ptr,
+                       uint64_t __stack_hash,
+                       std::function<void(ptr_meta_t *, stack_meta_t *)> __callback) {
+        TARGET_PTR_CONTAINER_LOCKED(ptr_meta_container, __ptr);
+        auto ptr_meta = &ptr_meta_container->container[__ptr];
+        ptr_meta->stack_hash = __stack_hash;
+        if (__stack_hash) {
+            TARGET_STACK_CONTAINER_LOCKED(stack_meta_container, __stack_hash);
+            auto stack_meta = &stack_meta_container->container[__stack_hash];
+            __callback(ptr_meta, stack_meta);
+        } else {
+            __callback(ptr_meta, nullptr);
+        }
     }
 
-    inline ptr_meta_t &at(const void *__k) {
-        TARGET_WITH_LOCK(target, __k);
-        auto &ret = target->container.at(__k);
-        return target->container.at(__k);
-    }
+//    inline ptr_meta_t &at(const void *__k) {
+//        TARGET_PTR_CONTAINER_LOCKED(target, __k);
+//        auto &ret = target->container.at(__k);
+//        return target->container.at(__k);
+//    }
 
     template<class _Callable>
     inline void get(const void *__k, _Callable __callable) {
-        TARGET_WITH_LOCK(target, __k);
+        TARGET_PTR_CONTAINER_LOCKED(target, __k);
         if (0 != target->container.count(__k)) {
             auto &meta = target->container.at(__k);
             __callable(meta);
         }
     }
 
-    /**
-     * fake erase, 保留 map 中的结点
-     * @param __k
-     * @param __out_meta
-     * @return
-     */
-    template<class _Callback>
-    inline bool erase(const void *__k, _Callback __callback) {
-        TARGET_WITH_LOCK(target, __k);
+//    template<class _Callback>
+    inline bool erase(const void *__k) {
+        TARGET_PTR_CONTAINER_LOCKED(ptr_meta_container, __k);
 
-        auto it = target->container.find(__k);
-        if (it == target->container.end()) { // not contains
+        auto it = ptr_meta_container->container.find(__k);
+        if (it == ptr_meta_container->container.end()) { // not contains
             return false;
         }
-//        it->second.recycled = true; // mark recycled. TODO
 
-        __callback(it->second);
+        auto &ptr_meta = it->second;
 
-        target->container.erase(it);
+        if (ptr_meta.stack_hash) {
+            TARGET_STACK_CONTAINER_LOCKED(stack_meta_container, ptr_meta.stack_hash);
+            if (stack_meta_container->container.count(ptr_meta.stack_hash)) {
+                auto &stack_meta = stack_meta_container->container.at(ptr_meta.stack_hash);
+                if (stack_meta.size > ptr_meta.size) { // 减去同堆栈的 size
+                    stack_meta.size -= ptr_meta.size;
+                } else { // 删除 size 为 0 的堆栈
+                    stack_meta_container->container.erase(ptr_meta.stack_hash);
+                }
+            }
+        }
+
+        ptr_meta_container->container.erase(it);
 
         return true;
     }
 
     bool contains(const void *__k) {
-        TARGET_WITH_LOCK(target, __k);
-        return 0 != target->container.count(__k);
+        TARGET_PTR_CONTAINER_LOCKED(ptr_meta_container, __k);
+        return 0 != ptr_meta_container->container.count(__k);
     }
 
-    template<class _Callback>
-    void for_each(_Callback __func) {
-        for (const auto cw : container_maps) {
+//    template<class _Callback>
+    void for_each(std::function<void(const void *, ptr_meta_t *, stack_meta_t *)> __callback) {
+        for (const auto cw : ptr_meta_containers) {
             std::lock_guard<std::mutex> container_lock(cw->mutex);
 
             for (auto it : cw->container) {
-                __func(it.first, it.second);
-            }
+                auto &ptr      = it.first;
+                auto ptr_meta = &it.second;
 
-            // TODO
-//            for (auto it = cw->container.begin(); it != cw->container.end();) {
-//                if (!it->second.recycled) {
-//                    __func(it->first, it->second);
-//                    it++;
-//                } else {
-//
-//                    cw->container.erase(it++); // real erase
-//                }
-//            }
+                if (ptr_meta->stack_hash) {
+                    TARGET_STACK_CONTAINER_LOCKED(stack_meta_container, ptr_meta->stack_hash);
+                    stack_meta_t *stack_meta = nullptr;
+                    if (stack_meta_container->container.count(ptr_meta->stack_hash)) {
+                        stack_meta = &stack_meta_container->container.at(ptr_meta->stack_hash);
+                    }
+                    __callback(ptr, ptr_meta, stack_meta); // within lock scope
+                } else {
+                    __callback(ptr, ptr_meta, nullptr);
+                }
+
+
+            }
         }
     }
 
 private:
 
-    static inline size_t capacity() {
-        return MAX_SLOT;
+    static inline size_t ptr_meta_capacity() {
+        return MAX_PTR_META_SLOT;
     }
 
-    static inline size_t select(uintptr_t __v) {
-        return static_cast<size_t>((__v ^ (__v >> 16)) & MASK);
+    static inline size_t ptr_meta_hash(uintptr_t __key) {
+        return static_cast<size_t>((__key ^ (__key >> 16)) & PTR_META_MASK);
     }
 
-    std::vector<container_wrapper *> container_maps;
-    static const unsigned int        MAX_SLOT = 1 << 16;
-    static const unsigned int        MASK     = MAX_SLOT - 1;
+    static inline size_t stack_meta_capacity() {
+        return MAX_STACK_META_SLOT;
+    }
+
+    static inline size_t stack_meta_hash(uint64_t __key) {
+        return ((__key ^ (__key >> 16)) & STACK_META_MASK);
+    }
+
+    std::vector<ptr_meta_container_wrapper_t *> ptr_meta_containers;
+    std::vector<stack_container_wrapper_t *>    stack_meta_containers;
+
+    static const unsigned int MAX_PTR_META_SLOT   = 1 << 10;
+    static const unsigned int PTR_META_MASK       = MAX_PTR_META_SLOT - 1;
+    static const unsigned int MAX_STACK_META_SLOT = 1 << 9;
+    static const unsigned int STACK_META_MASK     = MAX_STACK_META_SLOT - 1;
 };
 
 #undef TAG

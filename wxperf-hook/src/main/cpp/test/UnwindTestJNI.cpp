@@ -7,7 +7,7 @@
 #include <cinttypes>
 #include <cxxabi.h>
 #include "Log.h"
-#include "StackTrace.h"
+#include "Stacktrace.h"
 #include "../external/libunwindstack/TimeUtil.h"
 
 #ifdef __cplusplus

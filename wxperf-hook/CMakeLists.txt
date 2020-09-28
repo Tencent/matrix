@@ -20,7 +20,7 @@ set(
         ${SOURCE_DIR}/memory/MemoryHook.cpp
         ${SOURCE_DIR}/memory/MemoryHookFunctions.cpp
         ${SOURCE_DIR}/common/Backtrace.cpp
-        ${SOURCE_DIR}/common/StackTrace.cpp
+        ${SOURCE_DIR}/common/Stacktrace.cpp
         ${SOURCE_DIR}/common/Utils.cpp
         ${SOURCE_DIR}/common/JNICommon.cpp
         ${SOURCE_DIR}/common/HookCommon.cpp

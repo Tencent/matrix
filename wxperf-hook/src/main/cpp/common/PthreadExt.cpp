@@ -6,10 +6,27 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <mutex>
 #include "PthreadExt.h"
 #include "Log.h"
 
 #define TAG "PthreadExt"
+
+static pthread_key_t m_attr_key;
+static std::mutex    m_init_mutex;
+
+static void attr_destructor(void *__attr) {
+    if (__attr) {
+        free(__attr);
+    }
+}
+
+void pthread_ext_init() {
+    std::lock_guard<std::mutex> lock(m_init_mutex);
+    if (!m_attr_key) {
+        pthread_key_create(&m_attr_key, attr_destructor);
+    }
+}
 
 static int read_thread_name(pthread_t __pthread, char *__buf, size_t __buf_size) {
     if (!__buf || __buf_size < THREAD_NAME_LEN) {
@@ -17,7 +34,7 @@ static int read_thread_name(pthread_t __pthread, char *__buf, size_t __buf_size)
         return ERANGE;
     }
 
-    char proc_path[64];
+    char  proc_path[64];
     pid_t tid = pthread_gettid_np(__pthread);
 
     snprintf(proc_path, sizeof(proc_path), "/proc/self/task/%d/comm", tid);
@@ -54,6 +71,25 @@ int pthread_getname_ext(pthread_t __pthread, char *__buf, size_t __n) {
 #else
     return read_thread_name(__pthread, __buf, __n);
 #endif
+}
+
+
+int pthread_getattr_ext(pthread_t __pthread, pthread_attr_t *__attr) {
+
+    int ret = 0;
+    auto attr = (pthread_attr_t *)(pthread_getspecific(m_attr_key));
+
+    if (!attr) {
+        attr = (pthread_attr_t *) malloc(sizeof(pthread_attr_t));
+        ret = pthread_getattr_np(__pthread, attr);
+        pthread_setspecific(m_attr_key, attr);
+    }
+
+    if (ret == 0) {
+        *__attr = *attr;
+    }
+
+    return ret;
 }
 
 #undef TAG

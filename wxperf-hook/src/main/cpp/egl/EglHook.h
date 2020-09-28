@@ -7,7 +7,7 @@
 
 #include "HookCommon.h"
 #include <EGL/egl.h>
-#include <StackTrace.h>
+#include <Stacktrace.h>
 #include "Utils.h"
 
 DECLARE_HOOK_ORIG(EGLContext, eglCreateContext, EGLDisplay dpy, EGLConfig config,

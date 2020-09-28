@@ -116,7 +116,7 @@ DEFINE_HOOK_FUN(void *, mmap, void *__addr, size_t __size, int __prot, int __fla
     if (p == MAP_FAILED) {
         return p;// just return
     }
-    LOGI(TAG, "+ mmap %p", p);
+    LOGI(TAG, "+ mmap %p = mmap(addr=%p, size=%zu, prot=%d, flag=%d, fd=%d, offset=%ld", p, __addr, __size, __prot, __flags, __fd, __offset);
     GET_CALLER_ADDR(caller);
     on_mmap_memory(caller, p, __size);
     return p;
@@ -133,7 +133,7 @@ void *h_mmap64(void *__addr, size_t __size, int __prot, int __flags, int __fd,
     if (p == MAP_FAILED) {
         return p;// just return
     }
-    LOGI(TAG, "+ mmap64 %p", p);
+    LOGI(TAG, "+ mmap64 %p = mmap64(addr=%p, size=%zu, prot=%d, flag=%d, fd=%d, offset=%lld", p, __addr, __size, __prot, __flags, __fd, __offset);
     GET_CALLER_ADDR(caller);
     on_mmap_memory(caller, p, __size);
     return p;
@@ -158,7 +158,7 @@ DEFINE_HOOK_FUN(void *, mremap, void *__old_addr, size_t __old_size, size_t __ne
     GET_CALLER_ADDR(caller);
 
     on_munmap_memory(__old_addr);
-    LOGI(TAG, "+ mremap %p", p);
+    LOGI(TAG, "+ mremap %p = mremap(addr=%p, __new_size=%zu", p, __old_addr, __new_size);
     on_mmap_memory(caller, p, __new_size);
 
     return p;

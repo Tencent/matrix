@@ -54,22 +54,22 @@ JNIEXPORT void JNICALL
 Java_com_tencent_wxperf_sample_JNIObj_doMmap(JNIEnv *env, jobject instance) {
 
     void *p_mmap = mmap(NULL, 1024, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
-    LOGD("Yves-debug", "map ptr = %p", p_mmap);
+    LOGD(TAG, "map ptr = %p", p_mmap);
     munmap(p_mmap, 1024);
 
     p_mmap = mmap(NULL, 1024, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
-    LOGD("Yves-debug", "map ptr = %p", p_mmap);
+    LOGD(TAG, "map ptr = %p", p_mmap);
 
     munmap(p_mmap, 1024);
 
     p_mmap = mmap(NULL, 1024, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
-    LOGD("Yves-debug", "map ptr = %p", p_mmap);
+    LOGD(TAG, "map ptr = %p", p_mmap);
 
     p_mmap = mremap(p_mmap, 1024, 2048, MREMAP_MAYMOVE);
-    LOGD("Yves-debug", "remap ptr = %p", p_mmap);
+    LOGD(TAG, "remap ptr = %p", p_mmap);
 
     p_mmap = mremap(p_mmap, 1024, 20480, MREMAP_MAYMOVE);
-    LOGD("Yves-debug", "remap ptr = %p", p_mmap);
+    LOGD(TAG, "remap ptr = %p", p_mmap);
 }
 
 JNIEXPORT void JNICALL
@@ -392,7 +392,7 @@ Java_com_tencent_wxperf_sample_JNIObj_doSomeThing(JNIEnv *env, jobject instance)
 
 static void *
 threadfunc(void *parm) {
-    LOGD("Yves-debug", ">>>>new thread=%ld, tid=%d", pthread_self(),
+    LOGD(TAG, ">>>>new thread=%ld, tid=%d", pthread_self(),
          pthread_gettid_np(pthread_self()));
     sleep(5);          // allow main program to set the thread name
     return NULL;
@@ -413,7 +413,7 @@ static int read_thread_name(pthread_t __pthread, char *__buf, size_t __n) {
     FILE *file = fopen(proc_path, "r");
 
     if (!file) {
-        LOGD("Yves-debug", "file not found: %s", proc_path);
+        LOGD(TAG, "file not found: %s", proc_path);
         return -1;
     }
 
@@ -444,29 +444,29 @@ Java_com_tencent_wxperf_sample_JNIObj_testThread(JNIEnv *env, jclass clazz) {
     pthread_setname_np(thread, "123456789ABCDEF");
 
     if (rc != 0)
-        LOGD("Yves-debug", "pthread_create: %d", rc);
-    LOGD("Yves-debug", "origin thread=%ld, tid=%d", pthread_self(),
+        LOGD(TAG, "pthread_create: %d", rc);
+    LOGD(TAG, "origin thread=%ld, tid=%d", pthread_self(),
          pthread_gettid_np(pthread_self()));
 
     wrap_pthread_getname_np(thread, thread_name, 16);
 
-    LOGD("Yves-debug", "Created a thread. Default name is: %s", thread_name);
+    LOGD(TAG, "Created a thread. Default name is: %s", thread_name);
 }
 
 pthread_key_t key;
 
 void dest(void *arg) {
-    LOGD("Yves-debug", "dest is running on %ld arg=%p, *arg=%d", pthread_self(), arg, *(int *) arg);
+    LOGD(TAG, "dest is running on %ld arg=%p, *arg=%d", pthread_self(), arg, *(int *) arg);
 }
 
 void *threadfunc2(void *arg) {
-    LOGD("Yves-debug", "setting specific");
+    LOGD(TAG, "setting specific");
     pthread_t pthread = pthread_self();
     pthread_setspecific(key, arg);
 
     int *pa = static_cast<int *>(pthread_getspecific(key));
 
-    LOGD("Yves-debug", "in thread arg = %p, pa=%p, *pa=%d", arg, pa, *pa);
+    LOGD(TAG, "in thread arg = %p, pa=%p, *pa=%d", arg, pa, *pa);
 
     int *b = new int;
     *b = 1024;
@@ -487,12 +487,12 @@ Java_com_tencent_wxperf_sample_JNIObj_testThreadSpecific(JNIEnv *env, jclass cla
     int *a = new int;
     *a = 10086;
 
-    LOGD("Yves-debug", "origin a = %p", a);
+    LOGD(TAG, "origin a = %p", a);
 
     pthread_create(&thread1, NULL, threadfunc2, a);
 
 
-    LOGD("Yves-debug", "creating thread thread1 %ld", thread1);
+    LOGD(TAG, "creating thread thread1 %ld", thread1);
 //    pthread_join(thread1, NULL);
 }
 
@@ -526,18 +526,18 @@ Java_com_tencent_wxperf_sample_JNIObj_testJNICall(JNIEnv *env, jclass clazz) {
 //    if (j_jniobj) {
 //        jmethodID method = env->GetStaticMethodID(j_jniobj, "calledByJNI", "()Ljava/lang/String;");
 //        if (method) {
-//            LOGD("Yves-debug", "before call java");
+//            LOGD(TAG, "before call java");
 //            jstring jstr = (jstring)env->CallStaticObjectMethod(j_jniobj, method);
-//            LOGD("Yves-debug", "after call java");
+//            LOGD(TAG, "after call java");
 //
 //            const char *stack = env->GetStringUTFChars(jstr, NULL);
 //
-//            LOGD("Yves-debug", " stack = %s", stack);
+//            LOGD(TAG, " stack = %s", stack);
 //
 //            env->ReleaseStringUTFChars(jstr, stack);
 //        }
 //    } else {
-//        LOGD("Yves-debug", "class not found");
+//        LOGD(TAG, "class not found");
 //    }
 //
 //    pthread_mutex_unlock(&mutex);
@@ -557,55 +557,55 @@ Java_com_tencent_wxperf_sample_JNIObj_testJNICall(JNIEnv *env, jclass clazz) {
     std::atomic<char *> atomic_ch;
     atomic_ch.store(ch);
 
-    LOGD("Yves-debug", "atomic test: %p -> %p", ch, atomic_ch.load());
+    LOGD(TAG, "atomic test: %p -> %p", ch, atomic_ch.load());
 
     char *ch2 = static_cast<char *>(malloc(64));
 
     std::atomic<char *> atomic_ch2;
     atomic_ch2.store(ch, std::memory_order_release);
 
-    LOGD("Yves-debug", "atomic test 2 : %p -> %p", ch2, atomic_ch2.load(std::memory_order_acquire));
+    LOGD(TAG, "atomic test 2 : %p -> %p", ch2, atomic_ch2.load(std::memory_order_acquire));
 
 }
 
 void *thread_rountine(void *arg) {
     free(arg);
-    LOGD("Yves-debug", "free thread %d", pthread_gettid_np(pthread_self()));
+    LOGD(TAG, "free thread %d", pthread_gettid_np(pthread_self()));
     return 0;
 }
 
 JNIEXPORT void JNICALL
 Java_com_tencent_wxperf_sample_JNIObj_testPthreadFree(JNIEnv *env, jclass clazz) {
-    LOGD("Yves-debug", "malloc thread %d", pthread_gettid_np(pthread_self()));
+    LOGD(TAG, "malloc thread %d", pthread_gettid_np(pthread_self()));
 
     pthread_t thread;
 
     void *p = malloc(128 * 1024);
-    LOGD("Yves-debug", "p1 = %p", p);
+    LOGD(TAG, "p1 = %p", p);
     pthread_create(&thread, NULL, thread_rountine, p);
     pthread_join(thread, NULL);
 //    free(p);
 
     p = malloc(128 * 1024);
-    LOGD("Yves-debug", "p2 = %p", p);
+    LOGD(TAG, "p2 = %p", p);
     pthread_create(&thread, NULL, thread_rountine, p);
     pthread_join(thread, NULL);
 //    free(p);
 
     p = malloc(128 * 1024);
-    LOGD("Yves-debug", "p3 = %p", p);
+    LOGD(TAG, "p3 = %p", p);
     pthread_create(&thread, NULL, thread_rountine, p);
     pthread_join(thread, NULL);
 //    free(p);
 
     p = malloc(128 * 1024);
-    LOGD("Yves-debug", "p4 = %p", p);
+    LOGD(TAG, "p4 = %p", p);
     pthread_create(&thread, NULL, thread_rountine, p);
     pthread_join(thread, NULL);
 //    free(p);
 
     p = malloc(128 * 1024);
-    LOGD("Yves-debug", "p5 = %p", p);
+    LOGD(TAG, "p5 = %p", p);
     pthread_create(&thread, NULL, thread_rountine, p);
     pthread_join(thread, NULL);
 //    free(p);

@@ -43,7 +43,7 @@ Java_com_tencent_wxperf_jni_test_UnwindBenckmarkTest_benchmarkInitNative(JNIEnv 
 
 
 JNIEXPORT void JNICALL
-Java_com_tencent_mm_performance_jni_test_UnwindBenckmarkTest_benchmarkNative(JNIEnv *env, jclass clazz) {
+Java_com_tencent_wxperf_jni_test_UnwindBenckmarkTest_benchmarkNative(JNIEnv *env, jclass clazz) {
 
     // DWARF_UNWIND mode benchmark
     BENCHMARK(DWARF_UNWIND, func_selfso)
