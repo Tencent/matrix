@@ -293,7 +293,7 @@ void func_throughjni() {
 
     for (int i = 0; i < len; ++i) {
         a[i] = a[i] + b[i] + c[i] - d[i] + e[i]
-                                           * f[i] - g[i] * 2 - h[i] - j[i] + k[i] / l[i]
+                                           * f[i] - g[i] * 2 - h[i] - j[i] + k[i] // / l[i]
                + m[i] + n[i] * o[i] + p[i] + q[i];
     }
 

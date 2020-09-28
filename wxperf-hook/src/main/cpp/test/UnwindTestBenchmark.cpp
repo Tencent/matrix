@@ -4,6 +4,7 @@
 #include <cxxabi.h>
 #include <Backtrace.h>
 #include <MapsControll.h>
+#include <QuickenMaps.h>
 #include "Log.h"
 #include "Backtrace.h"
 #include "../external/libunwindstack/TimeUtil.h"
@@ -35,10 +36,15 @@ Java_com_tencent_wxperf_jni_test_UnwindBenckmarkTest_benchmarkInitNative(JNIEnv 
     // for dwarf unwinder
     wechat_backtrace::update_maps();
 
+    // for WeChat quicken unwinder
+    wechat_backtrace::Maps::Parse();
+
     // for fp unwinder with fallback
     wechat_backtrace::GetMapsCache();
     wechat_backtrace::UpdateFallbackPCRange();
 
+//    // enable Elf caching
+//    unwindstack::Elf::SetCachingEnabled(true);
 }
 
 
@@ -66,19 +72,22 @@ Java_com_tencent_wxperf_jni_test_UnwindBenckmarkTest_benchmarkNative(JNIEnv *env
     BENCHMARK(FAST_DWARF_UNWIND, func_throughsystemso);
 }
 
-
 JNIEXPORT void JNICALL
 Java_com_tencent_wxperf_jni_test_UnwindBenckmarkTest_debugNative(JNIEnv *env, jclass clazz) {
-    BENCHMARK_TIMES(FP_UNWIND, 1, func_selfso);
+//    BENCHMARK_TIMES(DWARF_UNWIND, 1, func_selfso);
+//    BENCHMARK_TIMES(DWARF_UNWIND, 1, func_selfso);
+//    BENCHMARK_TIMES(FP_UNWIND, 1, func_selfso);
+//    BENCHMARK_TIMES(FP_UNWIND_WITH_FALLBACK, 1, func_selfso);
+//    BENCHMARK_TIMES(FAST_DWARF_UNWIND, 1, func_selfso);
 
-//    BENCHMARK_TIMES(FAST_DWARF_UNWIND, 50000, func_selfso);
+//    BENCHMARK_TIMES(DWARF_UNWIND, 10, func_selfso)
+//    BENCHMARK_TIMES(FAST_DWARF_UNWIND, 10, func_selfso)
 
-//    BENCHMARK(FAST_DWARF_UNWIND, func_selfso)
-//    BENCHMARK(FAST_DWARF_UNWIND, func_selfso)
-//    BENCHMARK(FAST_DWARF_UNWIND, func_selfso)
-//    BENCHMARK(FAST_DWARF_UNWIND, func_selfso)
-//    BENCHMARK(FAST_DWARF_UNWIND, func_selfso)
-//    BENCHMARK(FAST_DWARF_UNWIND, func_selfso)
+    BENCHMARK_TIMES(WECHAT_QUICKEN_UNWIND, 20, func_selfso);
+
+//    BENCHMARK_TIMES(FP_UNWIND, 3, func_selfso)
+//    BENCHMARK_TIMES(FP_UNWIND, 3, func_throughjni)
+//    BENCHMARK_TIMES(FP_UNWIND, 3, func_throughsystemso)
 
 }
 

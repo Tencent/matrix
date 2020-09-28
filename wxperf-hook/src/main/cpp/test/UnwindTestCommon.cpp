@@ -5,6 +5,9 @@
 #include <inttypes.h>
 #include <MapsControll.h>
 #include <FastRegs.h>
+#include <FastArmExidxUnwinder.h>
+#include <QuickenUnwinder.h>
+#include <QuickenMaps.h>
 #include "Log.h"
 #include "Backtrace.h"
 #include "UnwindTestCommon.h"
@@ -13,6 +16,7 @@
 #define FP_FAST_UNWIND_TAG "Fp-Unwind"
 #define FP_FAST_UNWIND_WITH_FALLBACK_TAG "Fp-Unwind-Fallback"
 #define DWARF_FAST_UNWIND_TAG "Dwarf-Fast-Unwind"
+#define WECHAT_QUICKEN_UNWIND_TAG "WeChat-Quicken-Unwind"
 
 //#define DWARF_UNWIND_TAG UNWIND_TEST_TAG
 //#define FP_FAST_UNWIND_TAG UNWIND_TEST_TAG
@@ -21,7 +25,7 @@
 
 #define FRAME_MAX_SIZE 16
 
-#define NanoSeconds_Start(timestamp) \
+#define TEST_NanoSeconds_Start(timestamp) \
         long timestamp = 0; \
         { \
             struct timespec tms; \
@@ -32,13 +36,13 @@
             } \
         }
 
-#define NanoSeconds_End(tag, timestamp) \
+#define TEST_NanoSeconds_End(tag, timestamp) \
         { \
             struct timespec tms; \
             if (clock_gettime(CLOCK_REALTIME, &tms)) { \
                 LOGE(UNWIND_TEST_TAG, "Err: Get time failed."); \
             } \
-            LOGE(UNWIND_TEST_TAG, #tag" %ld - %ld = costs: %ldns", tms.tv_nsec, timestamp, (tms.tv_nsec - timestamp)); \
+            LOGE(UNWIND_TEST_TAG, #tag" %ld(ns) - %ld(ns) = costs: %ld(ns)", tms.tv_nsec, timestamp, (tms.tv_nsec - timestamp)); \
         }
 
 #ifdef __cplusplus
@@ -54,14 +58,14 @@ void set_unwind_mode(UnwindTestMode mode) {
 inline void print_dwarf_unwind() {
     auto *tmp_ns = new std::vector<unwindstack::FrameData>;
 
-    NanoSeconds_Start(nano);
+    TEST_NanoSeconds_Start(nano);
 
     unwindstack::Regs *regs = unwindstack::Regs::CreateFromLocal();
     unwindstack::RegsGetLocal(regs);
 
     wechat_backtrace::dwarf_unwind(regs, *tmp_ns, FRAME_MAX_SIZE);
 
-    NanoSeconds_End(unwindstack::dwarf_unwind, nano);
+    TEST_NanoSeconds_End(unwindstack::dwarf_unwind, nano);
 
     LOGE(DWARF_UNWIND_TAG, "frames = %"
             PRIuPTR
@@ -83,18 +87,19 @@ inline void print_dwarf_unwind() {
 
 inline void print_fp_unwind() {
 
-    NanoSeconds_Start(nano);
+
+    TEST_NanoSeconds_Start(nano);
 
     uptr frames[FRAME_MAX_SIZE];
 
     uptr frame_size = 0;
 
-    uptr regs[4];
+    uint32_t regs[4];
     RegsMinimalGetLocal(regs);
 
-    wechat_backtrace::fp_fast_unwind(regs, frames, FRAME_MAX_SIZE, frame_size);
+    wechat_backtrace::FpUnwind(regs, frames, FRAME_MAX_SIZE, frame_size, false);
 
-    NanoSeconds_End(wechat_backtrace::fp_fast_unwind, nano);
+    TEST_NanoSeconds_End(wechat_backtrace::fp_fast_unwind, nano);
 
     LOGE(FP_FAST_UNWIND_TAG, "frames = %"
             PRIuPTR
@@ -118,7 +123,7 @@ inline void print_fp_unwind() {
 
 static inline void print_fp_unwind_with_fallback() {
 
-    NanoSeconds_Start(nano);
+    TEST_NanoSeconds_Start(nano);
 
     uptr frames[FRAME_MAX_SIZE];
 
@@ -129,7 +134,7 @@ static inline void print_fp_unwind_with_fallback() {
 
     wechat_backtrace::fp_unwind_with_fallback(regs, frames, FRAME_MAX_SIZE, frame_size);
 
-    NanoSeconds_End(wechat_backtrace::fp_unwind_with_fallback, nano);
+    TEST_NanoSeconds_End(wechat_backtrace::fp_unwind_with_fallback, nano);
 
     LOGE(FP_FAST_UNWIND_WITH_FALLBACK_TAG, "frames = %"
             PRIuPTR
@@ -151,17 +156,88 @@ static inline void print_fp_unwind_with_fallback() {
     }
 }
 
+#ifdef __arm__
+inline void print_wechat_quicken_unwind() {
+
+    TEST_NanoSeconds_Start(nano);
+
+    uptr regs[5];
+    RegsMinimalGetLocal(regs);
+    uptr frames[FRAME_MAX_SIZE];
+    uptr frame_size = 0;
+
+    wechat_backtrace::WeChatQuickenUnwind(regs, frames, FRAME_MAX_SIZE, frame_size);
+
+    TEST_NanoSeconds_End(print_wechat_quicken_unwind, nano);
+
+    LOGE(WECHAT_QUICKEN_UNWIND_TAG, "frames = %"
+            PRIuPTR
+    , frame_size);
+
+    for (size_t i = 0 ; i < frame_size; i++) {
+        Dl_info stack_info;
+        dladdr((void *) frames[i], &stack_info);
+
+        std::string so_name = std::string(stack_info.dli_fname);
+
+        LOGE(WECHAT_QUICKEN_UNWIND_TAG, "  #pc 0x%"
+                PRIxPTR
+                " %"
+                PRIuPTR
+                " 0x%"
+                PRIxPTR
+                " %s (%s)", frames[i], frames[i], frames[i], stack_info.dli_sname, stack_info.dli_fname);
+    }
+}
+#else
+inline void print_arm_quicken_unwind() {
+    LOGE(WECHAT_QUICKEN_UNWIND_TAG, "ARMQuickenUnwinder only support 32-bit runtime.");
+}
+#endif
+
+#ifdef __arm__
 inline void print_dwarf_fast_unwind() {
-    auto *tmp_ns = new std::vector<unwindstack::FrameData>;
 
-    NanoSeconds_Start(nano);
+    TEST_NanoSeconds_Start(nano);
 
+    uptr regs[5];
+    RegsMinimalGetLocal(regs);
+    uptr frames[FRAME_MAX_SIZE];
+    uptr frame_size = 0;
+
+    wechat_backtrace::FastExidxUnwind(regs, frames, FRAME_MAX_SIZE, frame_size);
+
+    TEST_NanoSeconds_End(unwindstack::fast_dwarf_unwind, nano);
+
+    LOGE(DWARF_FAST_UNWIND_TAG, "frames = %"
+            PRIuPTR
+    , frame_size);
+
+    for (size_t i = 0 ; i < frame_size; i++) {
+        Dl_info stack_info;
+        dladdr((void *) frames[i], &stack_info);
+
+        std::string so_name = std::string(stack_info.dli_fname);
+
+        LOGE(DWARF_FAST_UNWIND_TAG, "  #pc 0x%"
+                PRIxPTR
+                " %"
+                PRIuPTR
+                " 0x%"
+                PRIxPTR
+                " %s (%s)", frames[i], frames[i], frames[i], stack_info.dli_sname, stack_info.dli_fname);
+    }
+}
+#else
+inline void print_dwarf_fast_unwind() {
+
+    TEST_NanoSeconds_Start(nano);
     unwindstack::Regs *regs = unwindstack::Regs::CreateFromLocal();
     unwindstack::RegsGetLocal(regs);
-
+    auto *tmp_ns = new std::vector<unwindstack::FrameData>;
     wechat_backtrace::fast_dwarf_unwind(regs, *tmp_ns, FRAME_MAX_SIZE);
 
-    NanoSeconds_End(unwindstack::fast_dwarf_unwind, nano);
+    TEST_NanoSeconds_End(unwindstack::fast_dwarf_unwind, nano);
 
     LOGE(DWARF_FAST_UNWIND_TAG, "frames = %"
             PRIuPTR
@@ -180,6 +256,7 @@ inline void print_dwarf_fast_unwind() {
                 " %s (%s)", p_frame->pc, p_frame->rel_pc, (uptr)stack_info.dli_fbase, (uptr)(p_frame->pc - (uptr)stack_info.dli_fbase), stack_info.dli_sname, stack_info.dli_fname);
     }
 }
+#endif
 
 void leaf_func(const char * testcase) {
 
@@ -192,11 +269,11 @@ void leaf_func(const char * testcase) {
         case FP_UNWIND_WITH_FALLBACK:
             print_fp_unwind_with_fallback();
             break;
-        case FAST_DWARF_UNWIND_WITHOUT_JIT:
-            LOGE(UNWIND_TEST_TAG, "FAST_DWARF_UNWIND_WITHOUT_JIT not supported yet.");
-            break;
         case FAST_DWARF_UNWIND:
             print_dwarf_fast_unwind();
+            break;
+        case WECHAT_QUICKEN_UNWIND:
+            print_wechat_quicken_unwind();
             break;
         case DWARF_UNWIND:
             print_dwarf_unwind();

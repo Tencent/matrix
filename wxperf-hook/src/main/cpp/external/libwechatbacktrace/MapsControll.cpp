@@ -12,6 +12,7 @@
 #include <ElfInterfaceArm64.h>
 #include <unwindstack/EnhanceDlsym.h>
 #include <FastUnwinder.h>
+#include "../../common/Log.h"
 
 namespace wechat_backtrace {
 
@@ -22,6 +23,7 @@ namespace wechat_backtrace {
     static pthread_mutex_t unwind_mutex = PTHREAD_MUTEX_INITIALIZER;
 
     static inline void update_maps() {
+
         pthread_mutex_lock(&unwind_mutex);
 
         unwindstack::LocalMaps *localMaps = gMapsCache.get();

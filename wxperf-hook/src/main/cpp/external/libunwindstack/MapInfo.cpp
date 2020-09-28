@@ -31,6 +31,7 @@
 
 #include "MemoryFileAtOffset.h"
 #include "MemoryRange.h"
+#include "../../common/Log.h"
 
 namespace unwindstack {
 

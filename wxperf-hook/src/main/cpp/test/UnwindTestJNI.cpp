@@ -47,7 +47,7 @@ void func1() {
 
 //    LOGE("Unwind-test", "arr cost = %ld", (CurrentNano() - begin));
 
-    LOGE("Unwind-test", "frames = %zu", tmp_ns->size());
+    LOGI("Unwind-test", "frames = %zu", tmp_ns->size());
 
     for (auto p_frame = tmp_ns->begin(); p_frame != tmp_ns->end(); ++p_frame) {
         Dl_info stack_info;
@@ -59,11 +59,11 @@ void func1() {
 //        char *demangled_name = abi::__cxa_demangle(stack_info.dli_sname, nullptr, 0,
 //                                                   &status);
 
-        LOGD("Unwind-test", "  #pc %llx %llu %llx %s (%s)", p_frame->rel_pc, p_frame->pc, p_frame->pc,
+        LOGI("Unwind-test", "  #pc %llx %llu %llx %s (%s)", p_frame->rel_pc, p_frame->pc, p_frame->pc,
         /*demangled_name ? demangled_name : "(null)",*/ stack_info.dli_sname, stack_info.dli_fname);
     }
 
-    LOGD("Unwind-test", "unwind done");
+    LOGI("Unwind-test", "unwind done");
 }
 
 void func0f() {
@@ -744,7 +744,7 @@ void func0() {
 
 
 JNIEXPORT void JNICALL
-Java_com_tencent_mm_performance_jni_test_UnwindTest_testNative(JNIEnv *env, jclass clazz) {
+Java_com_tencent_wxperf_jni_test_UnwindTest_testNative(JNIEnv *env, jclass clazz) {
     func0();
 }
 
@@ -760,14 +760,16 @@ void func2(JNIEnv *env, jclass clazz) {
 }
 
 JNIEXPORT void JNICALL
-Java_com_tencent_mm_performance_jni_test_UnwindTest_testNative2(JNIEnv *env, jclass clazz) {
+Java_com_tencent_wxperf_jni_test_UnwindTest_testNative2(JNIEnv *env, jclass clazz) {
     func2(env, clazz);
 }
 
 JNIEXPORT void JNICALL
-Java_com_tencent_mm_performance_jni_test_UnwindTest_initNative(JNIEnv *env, jclass clazz) {
+Java_com_tencent_wxperf_jni_test_UnwindTest_initNative(JNIEnv *env, jclass clazz) {
     LOGD("Yves-test", "Unwind init");
+    // TODO by carl, wrap this update
     unwindstack::update_maps();
+
 }
 
 #ifdef __cplusplus

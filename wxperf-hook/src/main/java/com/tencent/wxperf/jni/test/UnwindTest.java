@@ -1,11 +1,18 @@
 package com.tencent.wxperf.jni.test;
 
-//import com.tencent.mm.performance.jni.LibWxPerfManager;
+import com.tencent.stubs.logger.Log;
 
 public class UnwindTest {
 
+    private final static String TAG = "Wxperf.UnwindTest";
+
     static {
-//        LibWxPerfManager.INSTANCE.init();
+        // FIXME
+        try {
+            System.loadLibrary("wxperf-jni");
+        } catch (Throwable e) {
+            Log.printStack(Log.ERROR, TAG, e);
+        }
     }
 
     public static void init() {

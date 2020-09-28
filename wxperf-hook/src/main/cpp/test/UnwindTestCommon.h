@@ -7,8 +7,8 @@ extern "C" {
 enum UnwindTestMode {
     FP_UNWIND,
     FP_UNWIND_WITH_FALLBACK,
-    FAST_DWARF_UNWIND_WITHOUT_JIT,
     FAST_DWARF_UNWIND,
+    WECHAT_QUICKEN_UNWIND,
     DWARF_UNWIND, // baseline
 };
 

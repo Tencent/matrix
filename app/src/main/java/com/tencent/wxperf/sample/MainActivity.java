@@ -106,7 +106,6 @@ public class MainActivity extends AppCompatActivity {
                 EglTest.release();
             }
         });
-
     }
 
     private void dumpFd() {
@@ -329,6 +328,8 @@ public class MainActivity extends AppCompatActivity {
 
     public void unwindTest(View view) {
 
+        UnwindTest.init();
+
         new Thread(new Runnable() {
             @Override
             public void run() {
@@ -348,6 +349,7 @@ public class MainActivity extends AppCompatActivity {
         new Thread(new Runnable() {
             @Override
             public void run() {
+                UnwindBenckmarkTest.benchmarkInitNative();
                 UnwindBenckmarkTest.benchmarkNative();
             }
         }).start();
@@ -357,6 +359,7 @@ public class MainActivity extends AppCompatActivity {
         new Thread(new Runnable() {
             @Override
             public void run() {
+                UnwindBenckmarkTest.benchmarkInitNative();
                 UnwindBenckmarkTest.debugNative();
             }
         }).start();

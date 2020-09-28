@@ -86,11 +86,18 @@ void selfso_func0e() {
     selfso_func0f();
 }
 
-void selfso_func0d() {
+void selfso_func0d(int vargs ...) {
+
+    va_list args;
+    va_start(args, vargs);
+
+    int arg0 = va_arg(args, int);
+
+    va_end(args);
 
     const int len = 70;
 
-    long a[len] = {0};
+    long a[len] = {arg0};
     long b[len] = {9};
     long c[len] = {9};
     long d[len] = {9};
@@ -149,7 +156,8 @@ void selfso_func0c() {
 
     LOGD(UNWIND_TEST_TAG, "a[9] = %d", a[9]);
 
-    selfso_func0d();
+    selfso_func0d(0, 1, 2, 3);
+    selfso_func0d(0, 1, 2, 3, 4, 5, 6, 7);
 }
 
 void selfso_func0b() {
@@ -310,7 +318,8 @@ void selfso_func07() {
     }
 
     for (int i = 0; i < len; ++i) {
-        a[i] = a[i] + b[i] + c[i] - d[i] + e[i] * f[i] - g[i] * 2 - h[i] - j[i] + k[i] / l[i];
+        a[i] = a[i] + b[i] + c[i] - d[i] + e[i] * f[i] - g[i] * 2 - h[i] - j[i] + k[i] // / l[i]
+                ;
     }
 
     LOGD(UNWIND_TEST_TAG, "a[9] = %d", a[9]);
@@ -352,7 +361,7 @@ void selfso_func06(long a1,long a2, long a3, long a4, long a5,long a6, long a7) 
 
     for (int i = 0; i < len; ++i) {
         a[i] = a[i] + b[i] + c[i] - d[i] + e[i]
-                * f[i] - g[i] * 2 - h[i] - j[i] + k[i] / l[i]
+                * f[i] - g[i] * 2 - h[i] - j[i] + k[i] // / l[i]
                 + m[i];
     }
 
@@ -397,7 +406,7 @@ void selfso_func05(long a1,long a2, long a3, long a4, long a5,long a6) {
 
     for (int i = 0; i < len; ++i) {
         a[i] = a[i] + b[i] + c[i] - d[i] + e[i]
-                                           * f[i] - g[i] * 2 - h[i] - j[i] + k[i] / l[i]
+                                           * f[i] - g[i] * 2 - h[i] - j[i] + k[i] // / l[i]
                + m[i] + n[i];
     }
 
@@ -512,7 +521,7 @@ void selfso_func03(){
 
     for (int i = 0; i < len; ++i) {
         a[i] = a[i] + b[i] + c[i] - d[i] + e[i]
-                                           * f[i] - g[i] * 2 - h[i] - j[i] + k[i] / l[i]
+                                           * f[i] - g[i] * 2 - h[i] - j[i] + k[i] // / l[i]
                + m[i] + n[i] * o[i];
     }
 
@@ -632,7 +641,7 @@ void selfso_func01(int arg) {
 
     for (int i = 0; i < len; ++i) {
         a[i] = a[i] + b[i] + c[i] - d[i] + e[i]
-                                           * f[i] - g[i] * 2 - h[i] - j[i] + k[i] / l[i]
+                                           * f[i] - g[i] * 2 - h[i] - j[i] + k[i] // / l[i]
                + m[i] + n[i] * o[i] + p[i];
     }
 
@@ -686,7 +695,7 @@ void func_selfso() {
 
     for (int i = 0; i < len; ++i) {
         a[i] = a[i] + b[i] + c[i] - d[i] + e[i]
-                                           * f[i] - g[i] * 2 - h[i] - j[i] + k[i] / l[i]
+                                           * f[i] - g[i] * 2 - h[i] - j[i] + k[i] // / l[i]
                + m[i] + n[i] * o[i] + p[i] + q[i];
     }
 

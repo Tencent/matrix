@@ -53,7 +53,7 @@ struct MapInfo {
         prev_real_map(prev_real_map),
         load_bias(INT64_MAX),
         build_id(0) {}
-  ~MapInfo();
+  virtual ~MapInfo();
 
   uint64_t start = 0;
   uint64_t end = 0;

@@ -32,6 +32,7 @@
 #include <unwindstack/Memory.h>
 #include <deps/sys_compat/compat_uio.h>
 #include <include/unwindstack/DwarfError.h>
+#include <deps/android-base/include/android-base/macros.h>
 
 #include "Check.h"
 #include "MemoryBuffer.h"
@@ -101,7 +102,8 @@ static size_t ProcessVmRead(pid_t pid, uint64_t remote_src, void* dst, size_t le
   return total_read;
 }
 
-static size_t ProcessLocalVmRead(pid_t pid, uint64_t remote_src, void* dst, size_t len) {
+static inline size_t ProcessLocalVmRead(pid_t pid, uint64_t remote_src, void* dst, size_t len) {
+  (pid);
   memcpy(dst, reinterpret_cast<const void *>(remote_src), len);
   return len;
 }

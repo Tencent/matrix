@@ -18,6 +18,7 @@
 
 #include "ElfInterfaceArm64.h"
 #include "TimeUtil.h"
+#include "../../common/Log.h"
 
 namespace unwindstack {
 

@@ -34,6 +34,10 @@ namespace wechat_backtrace {
         return false;
     }
 
+    // Check if given pointer points into allocated stack area.
+    static inline bool IsValidFrame(uptr frame, uptr stack_top, uptr stack_bottom) {
+        return frame > stack_bottom && frame < stack_top - 2 * sizeof (uptr);
+    }
 
     // In GCC on ARM bp points to saved lr, not fp, so we should check the next
     // cell in stack to be a saved frame pointer. GetCanonicFrame returns the
@@ -61,6 +65,14 @@ namespace wechat_backtrace {
 #else
         return (uptr *) fp;
 #endif
+    }
+
+    static inline uptr GetPageSize() {
+        return 4096;
+    }
+
+    static inline bool IsAligned(uptr a, uptr alignment) {
+        return (a & (alignment - 1)) == 0;
     }
 
     static inline void fpUnwindImpl(uptr pc, uptr fp, uptr stack_top, uptr stack_bottom,
@@ -95,10 +107,8 @@ namespace wechat_backtrace {
 
     static inline uptr * StepFallback(uptr pc, uptr sp,
             bool &finished, unwindstack::FallbackUnwinder *&fallbackUnwinder, uptr &next_pc) {
-#ifdef __arm__
-        // TODO
-        return 0;
-#else
+
+#ifdef __aarch64__
 
         if (fallbackUnwinder == NULL) {
             unwindstack::Regs *regs = unwindstack::Regs::CreateFromLocal();
@@ -137,6 +147,10 @@ namespace wechat_backtrace {
         next_pc = ((uptr *) regs->RawData())[unwindstack::ARM64_REG_PC];
 
         return (uptr *)(((uptr *) regs->RawData())[unwindstack::ARM64_REG_FP]);
+
+#else
+        // TODO
+        return 0;
 #endif
     }
 
@@ -206,14 +220,19 @@ namespace wechat_backtrace {
         pthread_getattr_ext(pthread_self(), &attr);
         uptr stack_bottom = reinterpret_cast<uptr>(attr.stack_base);
         uptr tack_top = reinterpret_cast<uptr>(attr.stack_base) + attr.stack_size;
-        uptr fp = regs[0]; // x29
-        uptr pc = regs[3]; // x32
+
+        uptr fp = regs[0]; // x29 or r7
+        uptr pc = regs[3]; // x32 or r15
 
         if (!fallback) {
             fpUnwindImpl(pc, fp, tack_top, stack_bottom, backtrace, frame_max_size, frame_size);
         } else {
+#ifdef __aarch64__
             fpUnwindWithFallbackImpl(pc, fp, tack_top, stack_bottom, backtrace, frame_max_size,
                     frame_size);
+#else
+            // TODO: Do not support ARM 32-bit and other arch yet.
+#endif
         }
     }
 

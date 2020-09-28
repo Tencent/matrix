@@ -38,6 +38,7 @@ ext {
     TARGET_SDK_VERSION = 28
     VERSION_CODE = 1
     VERSION_NAME = '1.0'
-    ABI_FILTERS = ['armeabi-v7a', 'arm64-v8a']
+//    ABI_FILTERS = ['armeabi-v7a', 'arm64-v8a']
+    ABI_FILTERS = ['armeabi-v7a']
     LOGGER_VERSION = 1.1
 }

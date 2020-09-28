@@ -5,6 +5,7 @@
 #include <dlfcn.h>
 #include <unwindstack/RegsArm64.h>
 #include <FastRegs.h>
+#include <QuickenMaps.h>
 #include "Stacktrace.h"
 #include "JNICommon.h"
 #include "Backtrace.h"
@@ -77,7 +78,7 @@ namespace unwindstack {
         if (clock_gettime(CLOCK_REALTIME,&tms)) {
             LOGE("Unwind-debug", "get time error");
         }
-        LOGE("Unwind-debug", "unwinder.Unwind() costs: %ld",(tms.tv_nsec - nano));
+        LOGI("Unwind-debug", "unwinder.Unwind() costs: %ldns",(tms.tv_nsec - nano));
 
 //        for (size_t i = 0; i < unwinder.NumFrames(); i++) {
 //            LOGD("Yves.unwind", "~~~~~~~~~~~~~%s", unwinder.FormatFrame(i).c_str());
@@ -164,6 +165,8 @@ void restore_frame_data(std::vector<unwindstack::FrameData> &frames) {
 
 void notify_maps_change() {
 #ifdef __arm__
+    // TODO by carl, wrap this update
     unwindstack::update_maps();
+    wechat_backtrace::Maps::Parse();
 #endif
 }
