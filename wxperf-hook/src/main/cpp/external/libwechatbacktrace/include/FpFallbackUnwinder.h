@@ -16,15 +16,21 @@
 #include <unwindstack/Regs.h>
 #include <unwindstack/Unwinder.h>
 
+namespace wechat_backtrace {
+
+    void UpdateFallbackPCRange();
+
+}
+
 namespace unwindstack {
 
-class FallbackUnwinder : public Unwinder {
+class FpFallbackUnwinder : public Unwinder {
 
 public:
-    FallbackUnwinder(Maps *maps, Regs *regs,std::shared_ptr<Memory> processMemory)
+    FpFallbackUnwinder(Maps *maps, Regs *regs,std::shared_ptr<Memory> processMemory)
             : Unwinder(0, maps, regs, processMemory) {}
 
-    virtual ~FallbackUnwinder() = default;
+    virtual ~FpFallbackUnwinder() = default;
 
     void fallbackUnwindFrame(bool &finished);
     void fallbackUnwindFrameImpl(bool &finished, bool return_address_attempt);

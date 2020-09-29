@@ -5,7 +5,7 @@ typedef uintptr_t uptr;
 
 namespace wechat_backtrace {
 
-    void FastExidxUnwind(uptr * regs, uptr * backtrace, uptr frame_max_size, uptr &frame_size);
+    void FastExidxUnwind(uint32_t* regs, uptr* backtrace, uptr frame_max_size, uptr &frame_size);
 
 }  // namespace wechat_backtrace
 

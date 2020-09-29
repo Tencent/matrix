@@ -16,8 +16,6 @@ namespace unwindstack {
 
     void update_maps();
 
-//    void do_unwind(uint64_t **, size_t *);
-
     void do_unwind(std::vector<FrameData> &);
 }
 

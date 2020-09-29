@@ -3,7 +3,7 @@
 //
 
 #include <deps/android-base/include/android-base/macros.h>
-#include <FastRegs.h>
+#include <MinimalRegs.h>
 #include "../../common/Log.h"
 #include "QuickenInterface.h"
 #include "QuickenMaps.h"

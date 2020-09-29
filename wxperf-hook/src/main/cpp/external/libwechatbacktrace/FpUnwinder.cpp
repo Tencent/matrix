@@ -2,13 +2,15 @@
 #include <bits/pthread_types.h>
 #include <cstdlib>
 #include <pthread.h>
-#include <FallbackUnwinder.h>
-#include <MapsControll.h>
+
+#include <FpFallbackUnwinder.h>
 #include <unwindstack/MachineArm64.h>
 #include <unwindstack/RegsGetLocal.h>
 
-#include "FastRegs.h"
+#include "MinimalRegs.h"
 #include "FpUnwinder.h"
+
+#include "LocalMaps.h"
 
 #include "android-base/include/android-base/macros.h"
 #include "../../common/PthreadExt.h"
@@ -106,7 +108,7 @@ namespace wechat_backtrace {
     }
 
     static inline uptr * StepFallback(uptr pc, uptr sp,
-            bool &finished, unwindstack::FallbackUnwinder *&fallbackUnwinder, uptr &next_pc) {
+            bool &finished, unwindstack::FpFallbackUnwinder *&fallbackUnwinder, uptr &next_pc) {
 
 #ifdef __aarch64__
 
@@ -119,13 +121,13 @@ namespace wechat_backtrace {
 
             auto process_memory = unwindstack::Memory::CreateProcessMemory(getpid());
 
-            unwindstack::LocalMaps *maps = GetMapsCache();
+            shared_ptr<unwindstack::LocalMaps> maps = wechat_backtrace::GetMapsCache();
 
             if (!maps) {
                 return 0;
             }
 
-            fallbackUnwinder = new unwindstack::FallbackUnwinder(maps, regs, process_memory);
+            fallbackUnwinder = new unwindstack::FpFallbackUnwinder(maps.get(), regs, process_memory);
             unwindstack::JitDebug jit_debug(process_memory);
             fallbackUnwinder->SetJitDebug(&jit_debug, regs->Arch());
             fallbackUnwinder->SetResolveNames(false);
@@ -162,7 +164,7 @@ namespace wechat_backtrace {
         backtrace[0] = pc;
         frame_size = 1;
 
-        unwindstack::FallbackUnwinder *fallbackUnwinder = NULL;
+        unwindstack::FpFallbackUnwinder *fallbackUnwinder = NULL;
         bool finished = false;
 
         if (UNLIKELY(stack_top < 4096)) return;  // Sanity check for stack top.
@@ -224,7 +226,7 @@ namespace wechat_backtrace {
         uptr fp = regs[0]; // x29 or r7
         uptr pc = regs[3]; // x32 or r15
 
-        if (!fallback) {
+        if (LIKELY(!fallback)) {
             fpUnwindImpl(pc, fp, tack_top, stack_bottom, backtrace, frame_max_size, frame_size);
         } else {
 #ifdef __aarch64__

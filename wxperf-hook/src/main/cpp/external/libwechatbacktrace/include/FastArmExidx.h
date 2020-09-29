@@ -23,7 +23,7 @@
 #include <map>
 #include "ArmExidx.h"
 
-#include "FastRegs.h"
+#include "MinimalRegs.h"
 
 namespace unwindstack {
 
@@ -33,7 +33,7 @@ class RegsArm;
 
 class FastArmExidx {
 public:
-    FastArmExidx(uintptr_t *regs, Memory *elf_memory, Memory *process_memory)
+    FastArmExidx(uint32_t *regs, Memory *elf_memory, Memory *process_memory)
             : regs_(regs), elf_memory_(elf_memory), process_memory_(process_memory) {}
 
     virtual ~FastArmExidx() {}
@@ -90,7 +90,7 @@ private:
 
     bool DecodePrefix_11(uint8_t byte);
 
-    uintptr_t *regs_ = nullptr;
+    uint32_t *regs_ = nullptr;
     uint32_t cfa_ = 0;
 
     uint8_t *data_array = nullptr;

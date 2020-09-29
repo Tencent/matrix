@@ -33,24 +33,6 @@
 #include "../../common/Log.h"
 #include "ArmExidx.h"
 
-#define BYTE_TO_BINARY_PATTERN "%c%c%c%c%c%c%c%c"
-
-#define BYTE_TO_BINARY(byte)  \
-  (byte & 0x80 ? '1' : '0'), \
-  (byte & 0x40 ? '1' : '0'), \
-  (byte & 0x20 ? '1' : '0'), \
-  (byte & 0x10 ? '1' : '0'), \
-  (byte & 0x08 ? '1' : '0'), \
-  (byte & 0x04 ? '1' : '0'), \
-  (byte & 0x02 ? '1' : '0'), \
-  (byte & 0x01 ? '1' : '0')
-
-#define SHORT_TO_BINARY_PATTERN BYTE_TO_BINARY_PATTERN " " BYTE_TO_BINARY_PATTERN
-
-#define SHORT_TO_BINARY(_short) \
-    BYTE_TO_BINARY(((uint8_t)(_short >> 8))), \
-    BYTE_TO_BINARY(((uint8_t)(_short)))
-
 namespace unwindstack {
     uint8_t * temp_data_array = static_cast<uint8_t *>(malloc(32 * sizeof(uint8_t)));
 
@@ -67,7 +49,6 @@ bool FastArmExidx::ExtractEntryData(uint32_t entry_offset) {
   if (entry_offset & 1) {
     // The offset needs to be at least two byte aligned.
     status_ = ARM_STATUS_INVALID_ALIGNMENT;
-//    LOGE("UPDATE-WTF", "ExtractEntryData %x ", entry_offset);
     return false;
   }
 
@@ -159,7 +140,6 @@ bool FastArmExidx::ExtractEntryData(uint32_t entry_offset) {
       return false;
     }
 
-    LOGE("FUT-WTF", "ExtractEntryData 3rd Read32 -> %x", data);
     num_table_words = (data >> 24) & 0xff;
 //    data_.push_back((data >> 16) & 0xff);
       data_array[data_index++] = (data >> 16) & 0xff;
@@ -182,7 +162,6 @@ bool FastArmExidx::ExtractEntryData(uint32_t entry_offset) {
       return false;
     }
 
-//    LOGE("FUT-WTF", "ExtractEntryData 4th Read32 -> %x", data);
 //    data_.push_back((data >> 24) & 0xff);
       data_array[data_index++] = (data >> 24) & 0xff;
 //    data_.push_back((data >> 16) & 0xff);
@@ -229,8 +208,6 @@ inline bool FastArmExidx::DecodePrefix_10_00(uint8_t byte) {
   // 1000iiii iiiiiiii: Pop up to 12 integer registers under masks {r15-r12}, {r11-r4}
   registers <<= 4;
 
-//  LOGE("UPDATE-WTF", "registers " SHORT_TO_BINARY_PATTERN, SHORT_TO_BINARY(registers));
-
     for (size_t reg = ARM_REG_R4; reg < ARM_REG_R7; reg++) {
         if (registers & (1 << reg)) {
             cfa_ += 4;
@@ -274,20 +251,17 @@ inline bool FastArmExidx::DecodePrefix_10_00(uint8_t byte) {
 
     // lr
     if (registers & (1 << ARM_REG_LR)) {
-//        LOGE("UPDATE-WTF", "update LR %x before", LR(regs_));
         if (!process_memory_->Read32(cfa_, &LR(regs_))) {
             status_ = ARM_STATUS_READ_FAILED;
             status_address_ = cfa_;
             return false;
         }
 
-//        LOGE("UPDATE-WTF", "update LR %x", PC(regs_));
         cfa_ += 4;
     }
 
   // PC
   if (registers & (1 << ARM_REG_PC)) {
-//    LOGE("UPDATE-WTF", "update PC %x before", PC(regs_));
     if (!process_memory_->Read32(cfa_, &PC(regs_))) {
       status_ = ARM_STATUS_READ_FAILED;
       status_address_ = cfa_;

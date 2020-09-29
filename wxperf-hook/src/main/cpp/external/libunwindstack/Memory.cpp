@@ -103,7 +103,6 @@ static size_t ProcessVmRead(pid_t pid, uint64_t remote_src, void* dst, size_t le
 }
 
 static inline size_t ProcessLocalVmRead(pid_t pid, uint64_t remote_src, void* dst, size_t len) {
-  (pid);
   memcpy(dst, reinterpret_cast<const void *>(remote_src), len);
   return len;
 }

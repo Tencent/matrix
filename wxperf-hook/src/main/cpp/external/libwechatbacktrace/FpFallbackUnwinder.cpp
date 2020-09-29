@@ -21,6 +21,10 @@
 #include <string.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <type_traits>
+#include <cinttypes>
+#include <fstream>
+#include <fcntl.h>
 
 #include <algorithm>
 
@@ -33,17 +37,92 @@
 #include <unwindstack/Maps.h>
 #include <unwindstack/Memory.h>
 #include <unwindstack/Unwinder.h>
+#include <unwindstack/EnhanceDlsym.h>
 #include <libgen.h>
 #include <android/log.h>
-#include "FallbackUnwinder.h"
+#include "FpFallbackUnwinder.h"
+#include "FpUnwinder.h"
 #include "../libunwindstack/TimeUtil.h"
 
 #include <unwindstack/DexFiles.h>
 
+namespace wechat_backtrace {
+
+
+
+static inline bool EndWith(std::string const &value, std::string const &ending) {
+  if (ending.size() > value.size()) {
+    return false;
+  }
+  return std::equal(ending.rbegin(), ending.rend(), value.rbegin());
+}
+
+static inline void SkipDexPC() {
+
+  uintptr_t map_base_addr;
+  uintptr_t map_end_addr;
+  char      map_perm[5];
+
+  std::ifstream    input("/proc/self/maps");
+  std::string aline;
+
+  while (getline(input, aline)) {
+    if (sscanf(aline.c_str(),
+               "%" PRIxPTR "-%" PRIxPTR " %4s",
+               &map_base_addr,
+               &map_end_addr,
+               map_perm) != 3) {
+      continue;
+    }
+
+    if ('r' == map_perm[0]
+        && 'x' == map_perm[2]
+        && 'p' == map_perm[3]
+        &&
+        (EndWith(aline, ".dex")
+         || EndWith(aline, ".odex")
+         || EndWith(aline, ".vdex"))) {
+
+      GetSkipFunctions()->push_back({map_base_addr, map_end_addr});
+    }
+  }
+}
+
+void UpdateFallbackPCRange() {
+
+  GetSkipFunctions()->clear();
+
+  void *handle = unwindstack::enhance::dlopen("libart.so", 0);
+
+  if (handle) {
+
+    void *trampoline =
+            unwindstack::enhance::dlsym(handle, "art_quick_generic_jni_trampoline");
+
+    if (nullptr != trampoline) {
+      GetSkipFunctions()->push_back({reinterpret_cast<uintptr_t>(trampoline),
+                                     reinterpret_cast<uintptr_t>(trampoline) + 0x27C});
+    }
+
+    void *art_quick_invoke_static_stub = unwindstack::enhance::dlsym(
+            handle,
+            "art_quick_invoke_static_stub");
+    if (nullptr != art_quick_invoke_static_stub) {
+      GetSkipFunctions()->push_back(
+              {reinterpret_cast<uintptr_t >(art_quick_invoke_static_stub),
+               reinterpret_cast<uintptr_t >(art_quick_invoke_static_stub) + 0x280});
+    }
+  }
+  unwindstack::enhance::dlclose(handle);
+
+  SkipDexPC();
+}
+
+} // wechat_backtrace
+
 namespace unwindstack {
 
-
-void FallbackUnwinder::fallbackUnwindFrame(bool &finished) {
+void FpFallbackUnwinder::fallbackUnwindFrame(bool &finished) {
 //  frames_.clear();
   last_error_.code = ERROR_NONE;
   last_error_.address = 0;
@@ -52,7 +131,7 @@ void FallbackUnwinder::fallbackUnwindFrame(bool &finished) {
   fallbackUnwindFrameImpl(finished, false);
 
 }
-void FallbackUnwinder::fallbackUnwindFrameImpl(bool &finished, bool return_address_attempt) {
+void FpFallbackUnwinder::fallbackUnwindFrameImpl(bool &finished, bool return_address_attempt) {
 
   ArchEnum arch = regs_->Arch();
 

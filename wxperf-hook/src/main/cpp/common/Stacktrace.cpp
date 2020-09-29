@@ -4,96 +4,31 @@
 
 #include <dlfcn.h>
 #include <unwindstack/RegsArm64.h>
-#include <FastRegs.h>
+#include <MinimalRegs.h>
 #include <QuickenMaps.h>
 #include "Stacktrace.h"
 #include "JNICommon.h"
 #include "Backtrace.h"
 
+#define MAX_FRAMES 16
+
 namespace unwindstack {
-
-    static LocalMaps *localMaps;
-
-    static bool has_inited = false;
-
-    static pthread_mutex_t unwind_mutex = PTHREAD_MUTEX_INITIALIZER;
-
     void update_maps() {
-        pthread_mutex_lock(&unwind_mutex);
-//        while (pthread_mutex_trylock(&unwind_mutex) != 0) {
-//            LOGE("Yves.unwind", "try lock failed");
-//            sleep(1);
-//        }
-
-        if (!localMaps) {
-            localMaps = new LocalMaps;
-        } else {
-            delete localMaps;
-            localMaps = new LocalMaps;
-        }
-        if (!localMaps->Parse()) {
-            LOGE("Yves.unwind", "Failed to parse map data.");
-            pthread_mutex_unlock(&unwind_mutex);
-            return;
-        } else {
-            has_inited = true;
-        }
-        pthread_mutex_unlock(&unwind_mutex);
+        wechat_backtrace::update_maps();
     }
 
     void do_unwind(std::vector<FrameData> &dst) {
-        if (!has_inited) {
-            LOGE("Yves.unwind", "libunwindstack was not inited");
-            return;
-        }
 
-        struct timespec tms;
+        std::shared_ptr<unwindstack::Regs> regs(unwindstack::Regs::CreateFromLocal());
+        unwindstack::RegsGetLocal(regs.get());
 
-        if (clock_gettime(CLOCK_REALTIME,&tms)) {
-            LOGE("Unwind-debug", "get time error");
-        }
-
-        pthread_mutex_lock(&unwind_mutex);
-
-        Regs *regs = Regs::CreateFromLocal();
-        RegsGetLocal(regs);
-        if (regs == nullptr) {
-            LOGE("Yves.unwind", "Unable to get remote reg data");
-            pthread_mutex_unlock(&unwind_mutex);
-            return;
-        }
-
-        auto process_memory = Memory::CreateProcessMemory(getpid());
-        Unwinder unwinder(16, localMaps, regs, process_memory);
-//        JitDebug jit_debug(process_memory);
-//        unwinder.SetJitDebug(&jit_debug, regs->Arch());
-        unwinder.SetResolveNames(false);
-
-        long nano = tms.tv_nsec;
-
-        unwinder.Unwind();
-
-        delete regs;
-
-        if (clock_gettime(CLOCK_REALTIME,&tms)) {
-            LOGE("Unwind-debug", "get time error");
-        }
-        LOGI("Unwind-debug", "unwinder.Unwind() costs: %ldns",(tms.tv_nsec - nano));
-
-//        for (size_t i = 0; i < unwinder.NumFrames(); i++) {
-//            LOGD("Yves.unwind", "~~~~~~~~~~~~~%s", unwinder.FormatFrame(i).c_str());
-//        }
-
-        dst = unwinder.frames();
-        pthread_mutex_unlock(&unwind_mutex);
+        wechat_backtrace::dwarf_unwind(regs.get(), dst, MAX_FRAMES);
     }
 }
 
 static inline void fp_unwind(uptr* regs, uptr *frames, size_t max_size, size_t &frame_size) {
-    wechat_backtrace::fp_fast_unwind(regs, frames, max_size, frame_size);
+    wechat_backtrace::fp_unwind(regs, frames, max_size, frame_size);
 }
-
-#define MAX_FRAMES 16
 
 void unwind_adapter(std::vector<unwindstack::FrameData> &dst) {
 #ifdef __aarch64__
@@ -165,8 +100,6 @@ void restore_frame_data(std::vector<unwindstack::FrameData> &frames) {
 
 void notify_maps_change() {
 #ifdef __arm__
-    // TODO by carl, wrap this update
     unwindstack::update_maps();
-    wechat_backtrace::Maps::Parse();
 #endif
 }

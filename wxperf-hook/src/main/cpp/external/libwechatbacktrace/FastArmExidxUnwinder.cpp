@@ -2,8 +2,7 @@
 #include <bits/pthread_types.h>
 #include <cstdlib>
 #include <pthread.h>
-#include <FallbackUnwinder.h>
-#include <MapsControll.h>
+#include <FpFallbackUnwinder.h>
 #include <deps/android-base/include/android-base/strings.h>
 #include <FastArmExidx.h>
 
@@ -43,7 +42,7 @@ namespace wechat_backtrace {
         return 4;
     }
 
-    void FastExidxUnwind(uptr * regs, uptr * backtrace, uptr frame_max_size, uptr &frame_size) {
+    void FastExidxUnwind(uint32_t* regs, uptr* backtrace, uptr frame_max_size, uptr &frame_size) {
 
         std::shared_ptr<Maps> maps = Maps::current();
 

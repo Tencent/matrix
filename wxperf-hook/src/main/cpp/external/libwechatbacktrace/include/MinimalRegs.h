@@ -2,8 +2,8 @@
 // Created by Carl on 2020-04-27.
 //
 
-#ifndef LIBWXPERF_JNI_FASTREGS_H
-#define LIBWXPERF_JNI_FASTREGS_H
+#ifndef LIBWXPERF_JNI_MINIMALREGS_H
+#define LIBWXPERF_JNI_MINIMALREGS_H
 
 #define R7(regs) regs[0]
 #define R11(regs) regs[1]
@@ -49,4 +49,4 @@ inline __always_inline void RegsMinimalGetLocal(void *reg_data) {
 
 #endif
 
-#endif //LIBWXPERF_JNI_FASTREGS_H
+#endif //LIBWXPERF_JNI_MINIMALREGS_H

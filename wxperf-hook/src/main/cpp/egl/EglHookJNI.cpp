@@ -28,7 +28,6 @@ void egl_hook() {
 }
 
 void egl_hook_on_dlopen(const char *__file_name) {
-    // TODO by carl, wrap this update
     unwindstack::update_maps();
 }
 

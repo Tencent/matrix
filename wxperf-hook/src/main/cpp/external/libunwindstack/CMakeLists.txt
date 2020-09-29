@@ -44,9 +44,9 @@ SET(
         ${CMAKE_CURRENT_SOURCE_DIR}/../libwechatbacktrace/FastArmExidxInterface.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/../libwechatbacktrace/FastArmExidxUnwinder.cpp
 
+        ${CMAKE_CURRENT_SOURCE_DIR}/../libwechatbacktrace/LocalMaps.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/../libwechatbacktrace/FpUnwinder.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/../libwechatbacktrace/FallbackUnwinder.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/../libwechatbacktrace/MapsControll.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/../libwechatbacktrace/FpFallbackUnwinder.cpp
 
 #        ${CMAKE_CURRENT_SOURCE_DIR}/../libwechatbacktrace/WeChatElfInterfaceArm64.cpp
 )

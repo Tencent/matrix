@@ -20,13 +20,19 @@ namespace wechat_backtrace {
 
     void update_maps();
 
-    void dwarf_unwind(unwindstack::Regs *regs, std::vector<unwindstack::FrameData> &, size_t);
+    void dwarf_unwind(unwindstack::Regs* regs, std::vector<unwindstack::FrameData> &, size_t);
 
-    void fp_fast_unwind(uptr *regs, uptr * frames, uptr frameMaxSize, uptr &frameSize);
+    void fp_unwind(uptr *regs, uptr *frames, uptr frameMaxSize, uptr &frameSize);
 
-    void fp_unwind_with_fallback(uptr *regs, uptr *frames, uptr frameMaxSize, uptr &frameSize);
+    void quicken_unwind(uptr* regs, uptr* frames, uptr frame_max_size, uptr &frame_size);
 
-    void fast_dwarf_unwind(unwindstack::Regs *regs, std::vector<unwindstack::FrameData> &dst, size_t frameSize);
+    void fp_unwind_with_fallback(uptr* regs, uptr* frames, uptr frameMaxSize, uptr &frameSize);
+
+#ifdef __arm__
+    void fast_dwarf_unwind(uptr* regs, uptr* frames, uptr frame_max_size, uptr &frame_size);
+#else
+    void fast_dwarf_unwind(unwindstack::Regs* regs, std::vector<unwindstack::FrameData> &dst, size_t frameSize);
+#endif
 }
 
 #endif //LIBWXPERF_JNI_BACKTRACE_H

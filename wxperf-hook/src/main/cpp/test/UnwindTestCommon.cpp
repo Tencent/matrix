@@ -3,8 +3,7 @@
 #include <cinttypes>
 #include <cxxabi.h>
 #include <inttypes.h>
-#include <MapsControll.h>
-#include <FastRegs.h>
+#include <MinimalRegs.h>
 #include <FastArmExidxUnwinder.h>
 #include <QuickenUnwinder.h>
 #include <QuickenMaps.h>
@@ -60,10 +59,10 @@ inline void print_dwarf_unwind() {
 
     TEST_NanoSeconds_Start(nano);
 
-    unwindstack::Regs *regs = unwindstack::Regs::CreateFromLocal();
-    unwindstack::RegsGetLocal(regs);
+    std::shared_ptr<unwindstack::Regs> regs(unwindstack::Regs::CreateFromLocal());
+    unwindstack::RegsGetLocal(regs.get());
 
-    wechat_backtrace::dwarf_unwind(regs, *tmp_ns, FRAME_MAX_SIZE);
+    wechat_backtrace::dwarf_unwind(regs.get(), *tmp_ns, FRAME_MAX_SIZE);
 
     TEST_NanoSeconds_End(unwindstack::dwarf_unwind, nano);
 
@@ -94,12 +93,12 @@ inline void print_fp_unwind() {
 
     uptr frame_size = 0;
 
-    uint32_t regs[4];
+    uptr regs[4];
     RegsMinimalGetLocal(regs);
 
     wechat_backtrace::FpUnwind(regs, frames, FRAME_MAX_SIZE, frame_size, false);
 
-    TEST_NanoSeconds_End(wechat_backtrace::fp_fast_unwind, nano);
+    TEST_NanoSeconds_End(wechat_backtrace::fp_unwind, nano);
 
     LOGE(FP_FAST_UNWIND_TAG, "frames = %"
             PRIuPTR
@@ -166,7 +165,7 @@ inline void print_wechat_quicken_unwind() {
     uptr frames[FRAME_MAX_SIZE];
     uptr frame_size = 0;
 
-    wechat_backtrace::WeChatQuickenUnwind(regs, frames, FRAME_MAX_SIZE, frame_size);
+    wechat_backtrace::quicken_unwind(regs, frames, FRAME_MAX_SIZE, frame_size);
 
     TEST_NanoSeconds_End(print_wechat_quicken_unwind, nano);
 
@@ -190,7 +189,7 @@ inline void print_wechat_quicken_unwind() {
     }
 }
 #else
-inline void print_arm_quicken_unwind() {
+inline void print_wechat_quicken_unwind() {
     LOGE(WECHAT_QUICKEN_UNWIND_TAG, "ARMQuickenUnwinder only support 32-bit runtime.");
 }
 #endif
@@ -205,7 +204,7 @@ inline void print_dwarf_fast_unwind() {
     uptr frames[FRAME_MAX_SIZE];
     uptr frame_size = 0;
 
-    wechat_backtrace::FastExidxUnwind(regs, frames, FRAME_MAX_SIZE, frame_size);
+    wechat_backtrace::fast_dwarf_unwind(regs, frames, FRAME_MAX_SIZE, frame_size);
 
     TEST_NanoSeconds_End(unwindstack::fast_dwarf_unwind, nano);
 
@@ -232,10 +231,11 @@ inline void print_dwarf_fast_unwind() {
 inline void print_dwarf_fast_unwind() {
 
     TEST_NanoSeconds_Start(nano);
-    unwindstack::Regs *regs = unwindstack::Regs::CreateFromLocal();
-    unwindstack::RegsGetLocal(regs);
+    std::shared_ptr<unwindstack::Regs> regs(unwindstack::Regs::CreateFromLocal());
+    unwindstack::RegsGetLocal(regs.get());
+
     auto *tmp_ns = new std::vector<unwindstack::FrameData>;
-    wechat_backtrace::fast_dwarf_unwind(regs, *tmp_ns, FRAME_MAX_SIZE);
+    wechat_backtrace::fast_dwarf_unwind(regs.get(), *tmp_ns, FRAME_MAX_SIZE);
 
     TEST_NanoSeconds_End(unwindstack::fast_dwarf_unwind, nano);
 

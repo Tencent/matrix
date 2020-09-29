@@ -3,8 +3,9 @@
 #include <cinttypes>
 #include <cxxabi.h>
 #include <Backtrace.h>
-#include <MapsControll.h>
 #include <QuickenMaps.h>
+#include <FpFallbackUnwinder.h>
+#include <LocalMaps.h>
 #include "Log.h"
 #include "Backtrace.h"
 #include "../external/libunwindstack/TimeUtil.h"
@@ -34,13 +35,12 @@ JNIEXPORT void JNICALL
 Java_com_tencent_wxperf_jni_test_UnwindBenckmarkTest_benchmarkInitNative(JNIEnv *env, jclass clazz) {
 
     // for dwarf unwinder
-    wechat_backtrace::update_maps();
+    wechat_backtrace::UpdateLocalMaps();
 
     // for WeChat quicken unwinder
     wechat_backtrace::Maps::Parse();
 
     // for fp unwinder with fallback
-    wechat_backtrace::GetMapsCache();
     wechat_backtrace::UpdateFallbackPCRange();
 
     // enable Elf caching

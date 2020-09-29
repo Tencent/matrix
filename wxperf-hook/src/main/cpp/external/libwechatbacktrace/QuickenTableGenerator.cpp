@@ -9,20 +9,8 @@
 #include <vector>
 #include <utility>
 #include "QuickenTableGenerator.h"
-#include "FastRegs.h"
+#include "MinimalRegs.h"
 #include "../../common/Log.h"
-
-#define BYTE_TO_BINARY_PATTERN "%c%c%c%c%c%c%c%c"
-
-#define BYTE_TO_BINARY(byte)  \
-  (byte & 0x80 ? '1' : '0'), \
-  (byte & 0x40 ? '1' : '0'), \
-  (byte & 0x20 ? '1' : '0'), \
-  (byte & 0x10 ? '1' : '0'), \
-  (byte & 0x08 ? '1' : '0'), \
-  (byte & 0x04 ? '1' : '0'), \
-  (byte & 0x02 ? '1' : '0'), \
-  (byte & 0x01 ? '1' : '0')
 
 // WeChat Quicken Unwind Table encode:
 //      00nn nnnn           : vsp = vsp + (nnnnnn << 2)                     ; # (nnnnnnn << 2) in [0, 0xfc]
@@ -56,6 +44,7 @@ static QutStatisticInstruction statistic_;
 QutStatisticInstruction GetQutStatistic() {
     return statistic_;
 }
+
 void SetQutStatistic(QutStatisticInstruction statistic_func) {
     statistic_ = statistic_func;
 }
@@ -1058,6 +1047,11 @@ inline bool QuickenTable::Decode(uint32_t* instructions, const size_t amount, si
 //      1111 1101 + SLEB128 : r11 = [vsp - SLEB128]                         ; # [addr] means get value from pointed by addr
 //      1111 1111 + SLEB128 : vsp = vsp + SLEB128                           ;
 
+#ifndef __arm__
+    #pragma clang diagnostic push
+    #pragma clang diagnostic ignored "-Wint-to-pointer-cast"
+#endif
+
     int32_t j = start_pos;
     for (size_t i = 0; i < amount;) {
         uint8_t byte;
@@ -1165,6 +1159,10 @@ inline bool QuickenTable::Decode(uint32_t* instructions, const size_t amount, si
             i++;
         }
     }
+
+#ifndef __arm__
+    #pragma clang diagnostic pop
+#endif
 
     return true;
 }
