@@ -50,8 +50,7 @@ class Maps {
 public:
     Maps() {};
     Maps(size_t start_capacity) : maps_capacity_(start_capacity) {};
-    ~Maps()
-    {
+    ~Maps() {
         if (local_maps_ != nullptr)
         {
             ReleaseLocalMaps();

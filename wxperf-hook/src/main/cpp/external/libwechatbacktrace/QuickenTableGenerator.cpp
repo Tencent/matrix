@@ -24,11 +24,11 @@
 //      1101 nnnn           : r11 = [vsp - (nnnn << 2)]                     ; # (nnnn << 2) in [0, 0x3c]
 //      1110 nnnn           : lr = [vsp - (nnnn << 2)]                      ; # (nnnn << 2) in [0, 0x3c]
 //      1111 0000           : Finish                                        ;
-//      1111 1001 + SLEB128 : sp = [vsp - SLEB128]                          ; # [addr] means get value from pointed by addr
-//      1111 1010 + SLEB128 : lr = [vsp - SLEB128]                          ; # [addr] means get value from pointed by addr
-//      1111 1011 + SLEB128 : pc = [vsp - SLEB128]                          ; # [addr] means get value from pointed by addr
-//      1111 1100 + SLEB128 : r7 = [vsp - SLEB128]                          ; # [addr] means get value from pointed by addr
-//      1111 1101 + SLEB128 : r11 = [vsp - SLEB128]                         ; # [addr] means get value from pointed by addr
+//      1111 1001 + SLEB128 : sp = [vsp - SLEB128]                          ; # [addr] means get value from pointer addr
+//      1111 1010 + SLEB128 : lr = [vsp - SLEB128]                          ; # [addr] means get value from pointer addr
+//      1111 1011 + SLEB128 : pc = [vsp - SLEB128]                          ; # [addr] means get value from pointer addr
+//      1111 1100 + SLEB128 : r7 = [vsp - SLEB128]                          ; # [addr] means get value from pointer addr
+//      1111 1101 + SLEB128 : r11 = [vsp - SLEB128]                         ; # [addr] means get value from pointer addr
 //      1111 1111 + SLEB128 : vsp = vsp + SLEB128                           ;
 
 #define FUT_FINISH 0xf0
@@ -670,11 +670,11 @@ bool QuickenTableGenerator::EncodeInstruction(std::deque<uint64_t> &instructions
 //      1101 nnnn           : r11 = [vsp - (nnnn << 2)]                     ; # (nnnn << 2) in [0, 0x3c]
 //      1110 nnnn           : lr = [vsp - (nnnn << 2)]                      ; # (nnnn << 2) in [0, 0x3c]
 //      1111 0000           : Finish                                        ;
-//      1111 1001 + SLEB128 : sp = [vsp - SLEB128]                          ; # [addr] means get value from pointed by addr
-//      1111 1010 + SLEB128 : lr = [vsp - SLEB128]                          ; # [addr] means get value from pointed by addr
-//      1111 1011 + SLEB128 : pc = [vsp - SLEB128]                          ; # [addr] means get value from pointed by addr
-//      1111 1100 + SLEB128 : r7 = [vsp - SLEB128]                          ; # [addr] means get value from pointed by addr
-//      1111 1101 + SLEB128 : r11 = [vsp - SLEB128]                         ; # [addr] means get value from pointed by addr
+//      1111 1001 + SLEB128 : sp = [vsp - SLEB128]                          ; # [addr] means get value from pointer addr
+//      1111 1010 + SLEB128 : lr = [vsp - SLEB128]                          ; # [addr] means get value from pointer addr
+//      1111 1011 + SLEB128 : pc = [vsp - SLEB128]                          ; # [addr] means get value from pointer addr
+//      1111 1100 + SLEB128 : r7 = [vsp - SLEB128]                          ; # [addr] means get value from pointer addr
+//      1111 1101 + SLEB128 : r11 = [vsp - SLEB128]                         ; # [addr] means get value from pointer addr
 //      1111 1111 + SLEB128 : vsp = vsp + SLEB128                           ;
 
     while (!instructions.empty()) {
@@ -773,7 +773,7 @@ bool QuickenTableGenerator::EncodeInstruction(std::deque<uint64_t> &instructions
 
                 encoded.push_back(byte);
             } else {
-                // 1111 1100 + SLEB128 : r7 = [vsp - SLEB128] ; # [addr] means get value from pointed by addr
+                // 1111 1100 + SLEB128 : r7 = [vsp - SLEB128] ; # [addr] means get value from pointer addr
                 uint8_t byte = 0xfc;
                 encoded.push_back(byte);
                 EncodeSLEB128_PUSHBACK(encoded, imm);
@@ -787,7 +787,7 @@ bool QuickenTableGenerator::EncodeInstruction(std::deque<uint64_t> &instructions
                 encoded.push_back(byte);
 
             } else {
-                // 1111 1101 + SLEB128 : r11 = [vsp - SLEB128] ; # [addr] means get value from pointed by addr
+                // 1111 1101 + SLEB128 : r11 = [vsp - SLEB128] ; # [addr] means get value from pointer addr
                 uint8_t byte = 0xfd;
 
                 encoded.push_back(byte);
@@ -801,20 +801,20 @@ bool QuickenTableGenerator::EncodeInstruction(std::deque<uint64_t> &instructions
 
                 encoded.push_back(byte);
             } else {
-                // 1111 1010 + SLEB128 : lr = [vsp - SLEB128] ; # [addr] means get value from pointed by addr
+                // 1111 1010 + SLEB128 : lr = [vsp - SLEB128] ; # [addr] means get value from pointer addr
                 uint8_t byte = 0xfa;
 
                 encoded.push_back(byte);
                 EncodeSLEB128_PUSHBACK(encoded, imm);
             }
         } else if (op == QUT_INSTRUCTION_SP_OFFSET) {
-            // 1111 1001 + SLEB128 : sp = [vsp - SLEB128] ; # [addr] means get value from pointed by addr
+            // 1111 1001 + SLEB128 : sp = [vsp - SLEB128] ; # [addr] means get value from pointer addr
             uint8_t byte = 0xf9;
 
             encoded.push_back(byte);
             EncodeSLEB128_PUSHBACK(encoded, imm);
         } else if (op == QUT_INSTRUCTION_PC_OFFSET) {
-            // 1111 1011 + SLEB128 : pc = [vsp - SLEB128] ; # [addr] means get value from pointed by addr
+            // 1111 1011 + SLEB128 : pc = [vsp - SLEB128] ; # [addr] means get value from pointer addr
             uint8_t byte = 0xfb;
 
             encoded.push_back(byte);
@@ -1040,11 +1040,11 @@ inline bool QuickenTable::Decode(uint32_t* instructions, const size_t amount, si
 //      1101 nnnn           : r11 = [vsp - (nnnn << 2)]                     ; # (nnnn << 2) in [0, 0x3c]
 //      1110 nnnn           : lr = [vsp - (nnnn << 2)]                      ; # (nnnn << 2) in [0, 0x3c]
 //      1111 0000           : Finish                                        ;
-//      1111 1001 + SLEB128 : sp = [vsp - SLEB128]                          ; # [addr] means get value from pointed by addr
-//      1111 1010 + SLEB128 : lr = [vsp - SLEB128]                          ; # [addr] means get value from pointed by addr
-//      1111 1011 + SLEB128 : pc = [vsp - SLEB128]                          ; # [addr] means get value from pointed by addr
-//      1111 1100 + SLEB128 : r7 = [vsp - SLEB128]                          ; # [addr] means get value from pointed by addr
-//      1111 1101 + SLEB128 : r11 = [vsp - SLEB128]                         ; # [addr] means get value from pointed by addr
+//      1111 1001 + SLEB128 : sp = [vsp - SLEB128]                          ; # [addr] means get value from pointer addr
+//      1111 1010 + SLEB128 : lr = [vsp - SLEB128]                          ; # [addr] means get value from pointer addr
+//      1111 1011 + SLEB128 : pc = [vsp - SLEB128]                          ; # [addr] means get value from pointer addr
+//      1111 1100 + SLEB128 : r7 = [vsp - SLEB128]                          ; # [addr] means get value from pointer addr
+//      1111 1101 + SLEB128 : r11 = [vsp - SLEB128]                         ; # [addr] means get value from pointer addr
 //      1111 1111 + SLEB128 : vsp = vsp + SLEB128                           ;
 
 #ifndef __arm__
@@ -1115,28 +1115,28 @@ inline bool QuickenTable::Decode(uint32_t* instructions, const size_t amount, si
                             // finished
                             return true;
                         case 0xf9:
-                            // 1111 1001 + SLEB128 : sp = [vsp - SLEB128] ; # [addr] means get value from pointed by addr
+                            // 1111 1001 + SLEB128 : sp = [vsp - SLEB128] ; # [addr] means get value from pointer addr
                             DecodeSLEB128(value, instructions, amount, j, i)
                             SP(regs_) = *((uint32_t *)(cfa_ - (uint32_t)value));
                             break;
                         case 0xfa:
-                            // 1111 1010 + SLEB128 : lr = [vsp - SLEB128] ; # [addr] means get value from pointed by addr
+                            // 1111 1010 + SLEB128 : lr = [vsp - SLEB128] ; # [addr] means get value from pointer addr
                             DecodeSLEB128(value, instructions, amount, j, i)
                             LR(regs_) = *((uint32_t *)(cfa_ - (uint32_t)value));
                             break;
                         case 0xfb:
-                            // 1111 1011 + SLEB128 : pc = [vsp - SLEB128] ; # [addr] means get value from pointed by addr
+                            // 1111 1011 + SLEB128 : pc = [vsp - SLEB128] ; # [addr] means get value from pointer addr
                             DecodeSLEB128(value, instructions, amount, j, i)
                             PC(regs_) = *((uint32_t *)(cfa_ - (uint32_t)value));
                             pc_set_ = true;
                             break;
                         case 0xfc:
-                            // 1111 1100 + SLEB128 : r7 = [vsp - SLEB128] ; # [addr] means get value from pointed by addr
+                            // 1111 1100 + SLEB128 : r7 = [vsp - SLEB128] ; # [addr] means get value from pointer addr
                             DecodeSLEB128(value, instructions, amount, j, i)
                             R7(regs_) = *((uint32_t *)(cfa_ - (uint32_t)value));
                             break;
                         case 0xfd:
-                            // 1111 1101 + SLEB128 : r11 = [vsp - SLEB128] ; # [addr] means get value from pointed by addr
+                            // 1111 1101 + SLEB128 : r11 = [vsp - SLEB128] ; # [addr] means get value from pointer addr
                             DecodeSLEB128(value, instructions, amount, j, i)
                             R11(regs_) = *((uint32_t *)(cfa_ - (uint32_t)value));
                             break;
