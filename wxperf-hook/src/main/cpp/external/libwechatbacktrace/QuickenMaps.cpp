@@ -156,7 +156,7 @@ std::shared_ptr<Maps> Maps::current() {
 bool Maps::Parse() {
     std::lock_guard<std::mutex> guard(maps_lock_);
 
-    shared_ptr<Maps> maps(new Maps(latest_maps_capacity_);
+    shared_ptr<Maps> maps(new Maps(latest_maps_capacity_));
 
     bool ret = maps->ParseImpl();
 
