@@ -32,7 +32,7 @@ public:
     };
 
     QutErrorCode last_error_code_ = QUT_ERROR_NONE;
-    size_t bad_enties_ = 0;
+    size_t bad_entries_ = 0;
 
 protected:
 

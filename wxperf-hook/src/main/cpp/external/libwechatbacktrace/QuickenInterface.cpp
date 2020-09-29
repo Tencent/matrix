@@ -28,10 +28,10 @@ bool QuickenInterface::GenerateQuickenTable(unwindstack::Memory* process_memory)
     QuickenTableGenerator generator(memory_, process_memory);
     QutSections* qut_sections = new QutSections();
 
-    size_t bad_enties = 0;
-    bool ret = generator.GenerateFutSections(start_offset_, total_entries_, qut_sections, bad_enties);
+    size_t bad_entries = 0;
+    bool ret = generator.GenerateFutSections(start_offset_, total_entries_, qut_sections, bad_entries);
 
-    bad_enties_ = bad_enties;
+    bad_entries_ = bad_entries;
 
     if (ret) {
         qut_sections_.reset(qut_sections);
