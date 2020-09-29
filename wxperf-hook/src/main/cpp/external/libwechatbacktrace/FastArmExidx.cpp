@@ -268,7 +268,6 @@ inline bool FastArmExidx::DecodePrefix_10_00(uint8_t byte) {
       return false;
     }
 
-//    LOGE("UPDATE-WTF", "update PC %x", PC(regs_));
     cfa_ += 4;
   }
 
@@ -351,13 +350,11 @@ inline bool FastArmExidx::DecodePrefix_10_10(uint8_t byte) {
   }
   if (byte & 0x8) {
 
-//    LOGE("UPDATE-WTF", "update 2 LR %x before", LR(regs_));
     if (!process_memory_->Read32(cfa_, &LR(regs_))) {
       status_ = ARM_STATUS_READ_FAILED;
       status_address_ = cfa_;
       return false;
     }
-//    LOGE("UPDATE-WTF", "update 2 LR %x", PC(regs_));
     cfa_ += 4;
   }
   return true;
@@ -573,8 +570,6 @@ bool FastArmExidx::Decode() {
     return false;
   }
 
-//  LOGE("ArmExidx WTF", "Arm exidx instruction: " BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(byte));
-
   switch (byte >> 6) {
   case 0:
     // 00xxxxxx: vsp = vsp + (xxxxxxx << 2) + 4
@@ -594,9 +589,7 @@ bool FastArmExidx::Decode() {
 
 bool FastArmExidx::Eval() {
   pc_set_ = false;
-//  LOGE("UPDATE-WTF", "Arm exidx eval started.");
   while (Decode());
-//  LOGE("UPDATE-WTF", "Arm exidx eval stopped.");
   return status_ == ARM_STATUS_FINISH;
 }
 
