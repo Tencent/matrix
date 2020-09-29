@@ -43,8 +43,8 @@ Java_com_tencent_wxperf_jni_test_UnwindBenckmarkTest_benchmarkInitNative(JNIEnv 
     wechat_backtrace::GetMapsCache();
     wechat_backtrace::UpdateFallbackPCRange();
 
-//    // enable Elf caching
-//    unwindstack::Elf::SetCachingEnabled(true);
+    // enable Elf caching
+    unwindstack::Elf::SetCachingEnabled(true);
 }
 
 
@@ -80,10 +80,12 @@ Java_com_tencent_wxperf_jni_test_UnwindBenckmarkTest_debugNative(JNIEnv *env, jc
 //    BENCHMARK_TIMES(FP_UNWIND_WITH_FALLBACK, 1, func_selfso);
 //    BENCHMARK_TIMES(FAST_DWARF_UNWIND, 1, func_selfso);
 
-//    BENCHMARK_TIMES(DWARF_UNWIND, 10, func_selfso)
-//    BENCHMARK_TIMES(FAST_DWARF_UNWIND, 10, func_selfso)
+    BENCHMARK_TIMES(DWARF_UNWIND, 10, func_selfso)
+    BENCHMARK_TIMES(FAST_DWARF_UNWIND, 10, func_selfso)
 
-    BENCHMARK_TIMES(WECHAT_QUICKEN_UNWIND, 20, func_selfso);
+#ifdef __arm__
+    BENCHMARK_TIMES(WECHAT_QUICKEN_UNWIND, 10, func_selfso);
+#endif
 
 //    BENCHMARK_TIMES(FP_UNWIND, 3, func_selfso)
 //    BENCHMARK_TIMES(FP_UNWIND, 3, func_throughjni)

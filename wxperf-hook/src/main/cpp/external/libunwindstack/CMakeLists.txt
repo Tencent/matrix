@@ -35,18 +35,18 @@ SET(
         ${CMAKE_CURRENT_SOURCE_DIR}/MemFnWrapper.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/EnhanceDlsym.cpp
 
-        ${CMAKE_CURRENT_SOURCE_DIR}/ElfInterfaceArmExidx.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/ArmExidxFast.cpp
-
         ${CMAKE_CURRENT_SOURCE_DIR}/../libwechatbacktrace/QuickenMaps.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/../libwechatbacktrace/QuickenInterface.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/../libwechatbacktrace/QuickenTableGenerator.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/../libwechatbacktrace/QuickenUnwinder.cpp
 
-        ${CMAKE_CURRENT_SOURCE_DIR}/../libwechatbacktrace/FastUnwinder.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/../libwechatbacktrace/FastArmExidx.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/../libwechatbacktrace/FastArmExidxInterface.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/../libwechatbacktrace/FastArmExidxUnwinder.cpp
+
+        ${CMAKE_CURRENT_SOURCE_DIR}/../libwechatbacktrace/FpUnwinder.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/../libwechatbacktrace/FallbackUnwinder.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/../libwechatbacktrace/MapsControll.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/../libwechatbacktrace/FastArmExidxUnwinder.cpp
 
 #        ${CMAKE_CURRENT_SOURCE_DIR}/../libwechatbacktrace/WeChatElfInterfaceArm64.cpp
 )

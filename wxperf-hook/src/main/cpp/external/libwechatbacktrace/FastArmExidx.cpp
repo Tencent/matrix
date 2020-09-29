@@ -28,7 +28,7 @@
 #include <deps/log/log.h>
 #include <deps/android-base/include/android-base/macros.h>
 
-#include "ArmExidxFast.h"
+#include "FastArmExidx.h"
 #include "Check.h"
 #include "../../common/Log.h"
 #include "ArmExidx.h"
@@ -54,7 +54,7 @@
 namespace unwindstack {
     uint8_t * temp_data_array = static_cast<uint8_t *>(malloc(32 * sizeof(uint8_t)));
 
-bool ArmExidxFast::ExtractEntryData(uint32_t entry_offset) {
+bool FastArmExidx::ExtractEntryData(uint32_t entry_offset) {
 //  data_.clear();
     if (data_array != nullptr) {
         data_index = 0;
@@ -83,8 +83,6 @@ bool ArmExidxFast::ExtractEntryData(uint32_t entry_offset) {
     return false;
   }
 
-    LOGE("FUT-WTF", "ExtractEntryData Read32 -> %x ", data);
-
   if (data == 1) {
     // This is a CANT UNWIND entry.
     status_ = ARM_STATUS_NO_UNWIND;
@@ -92,12 +90,10 @@ bool ArmExidxFast::ExtractEntryData(uint32_t entry_offset) {
   }
 
   if (data & (1UL << 31)) {
-//      LOGE("UPDATE-WTF", "ExtractEntryData Read32 -> %x is compact table entry", data);
     // This is a compact table entry.
     if ((data >> 24) & 0xf) {
       // This is a non-zero index, this code doesn't support
       // other formats.
-//        LOGE("UPDATE-WTF", "ExtractEntryData Read32 -> %x invalid personality", data);
       status_ = ARM_STATUS_INVALID_PERSONALITY;
       return false;
     }
@@ -126,11 +122,8 @@ bool ArmExidxFast::ExtractEntryData(uint32_t entry_offset) {
     return false;
   }
 
-//    LOGE("FUT-WTF", "ExtractEntryData 2nd Read32 -> %x", data);
-
   size_t num_table_words;
   if (data & (1UL << 31)) {
-//      LOGE("UPDATE-WTF", "ExtractEntryData 2nd Read32 -> %x is compact table entry", data);
 
     // Compact model.
     switch ((data >> 24) & 0xf) {
@@ -148,7 +141,6 @@ bool ArmExidxFast::ExtractEntryData(uint32_t entry_offset) {
       // Only a personality of 0, 1, 2 is valid.
       status_ = ARM_STATUS_INVALID_PERSONALITY;
 
-//            LOGE("UPDATE-WTF", "ExtractEntryData Read32 -> %x invalid personality", data);
       return false;
     }
 //    data_.push_back((data >> 8) & 0xff);
@@ -210,7 +202,7 @@ bool ArmExidxFast::ExtractEntryData(uint32_t entry_offset) {
   return true;
 }
 
-inline bool ArmExidxFast::GetByte(uint8_t* byte) {
+inline bool FastArmExidx::GetByte(uint8_t* byte) {
   if (UNLIKELY(data_index == data_read_index)) {
     status_ = ARM_STATUS_TRUNCATED;
     return false;
@@ -220,7 +212,7 @@ inline bool ArmExidxFast::GetByte(uint8_t* byte) {
   return true;
 }
 
-inline bool ArmExidxFast::DecodePrefix_10_00(uint8_t byte) {
+inline bool FastArmExidx::DecodePrefix_10_00(uint8_t byte) {
   CHECK((byte >> 4) == 0x8);
 
   uint16_t registers = (byte & 0xf) << 8;
@@ -323,7 +315,7 @@ inline bool ArmExidxFast::DecodePrefix_10_00(uint8_t byte) {
   return true;
 }
 
-inline bool ArmExidxFast::DecodePrefix_10_01(uint8_t byte) {
+inline bool FastArmExidx::DecodePrefix_10_01(uint8_t byte) {
   CHECK((byte >> 4) == 0x9);
 
   uint8_t bits = byte & 0xf;
@@ -356,7 +348,7 @@ inline bool ArmExidxFast::DecodePrefix_10_01(uint8_t byte) {
   return true;
 }
 
-inline bool ArmExidxFast::DecodePrefix_10_10(uint8_t byte) {
+inline bool FastArmExidx::DecodePrefix_10_10(uint8_t byte) {
   CHECK((byte >> 4) == 0xa);
 
   // 10100nnn: Pop r4-r[4+nnn]
@@ -397,13 +389,13 @@ inline bool ArmExidxFast::DecodePrefix_10_10(uint8_t byte) {
   return true;
 }
 
-inline bool ArmExidxFast::DecodePrefix_10_11_0000() {
+inline bool FastArmExidx::DecodePrefix_10_11_0000() {
   // 10110000: Finish
   status_ = ARM_STATUS_FINISH;
   return false;
 }
 
-inline bool ArmExidxFast::DecodePrefix_10_11_0001() {
+inline bool FastArmExidx::DecodePrefix_10_11_0001() {
   uint8_t byte;
   if (!GetByte(&byte)) {
     return false;
@@ -435,7 +427,7 @@ inline bool ArmExidxFast::DecodePrefix_10_11_0001() {
   return true;
 }
 
-inline bool ArmExidxFast::DecodePrefix_10_11_0010() {
+inline bool FastArmExidx::DecodePrefix_10_11_0010() {
   // 10110010 uleb128: vsp = vsp + 0x204 + (uleb128 << 2)
   uint32_t result = 0;
   uint32_t shift = 0;
@@ -453,7 +445,7 @@ inline bool ArmExidxFast::DecodePrefix_10_11_0010() {
   return true;
 }
 
-inline bool ArmExidxFast::DecodePrefix_10_11_0011() {
+inline bool FastArmExidx::DecodePrefix_10_11_0011() {
   // 10110011 sssscccc: Pop VFP double precision registers D[ssss]-D[ssss+cccc] by FSTMFDX
   uint8_t byte;
   if (!GetByte(&byte)) {
@@ -464,13 +456,13 @@ inline bool ArmExidxFast::DecodePrefix_10_11_0011() {
   return true;
 }
 
-inline bool ArmExidxFast::DecodePrefix_10_11_01nn() {
+inline bool FastArmExidx::DecodePrefix_10_11_01nn() {
   // 101101nn: Spare
   status_ = ARM_STATUS_SPARE;
   return false;
 }
 
-inline bool ArmExidxFast::DecodePrefix_10_11_1nnn(uint8_t byte) {
+inline bool FastArmExidx::DecodePrefix_10_11_1nnn(uint8_t byte) {
   CHECK((byte & ~0x07) == 0xb8);
 
   // 10111nnn: Pop VFP double-precision registers D[8]-D[8+nnn] by FSTMFDX
@@ -479,7 +471,7 @@ inline bool ArmExidxFast::DecodePrefix_10_11_1nnn(uint8_t byte) {
   return true;
 }
 
-inline bool ArmExidxFast::DecodePrefix_10(uint8_t byte) {
+inline bool FastArmExidx::DecodePrefix_10(uint8_t byte) {
   CHECK((byte >> 6) == 0x2);
 
   switch ((byte >> 4) & 0x3) {
@@ -509,7 +501,7 @@ inline bool ArmExidxFast::DecodePrefix_10(uint8_t byte) {
   }
 }
 
-inline bool ArmExidxFast::DecodePrefix_11_000(uint8_t byte) {
+inline bool FastArmExidx::DecodePrefix_11_000(uint8_t byte) {
   CHECK((byte & ~0x07) == 0xc0);
 
   uint8_t bits = byte & 0x7;
@@ -547,7 +539,7 @@ inline bool ArmExidxFast::DecodePrefix_11_000(uint8_t byte) {
   return true;
 }
 
-inline bool ArmExidxFast::DecodePrefix_11_001(uint8_t byte) {
+inline bool FastArmExidx::DecodePrefix_11_001(uint8_t byte) {
   CHECK((byte & ~0x07) == 0xc8);
 
   uint8_t bits = byte & 0x7;
@@ -575,7 +567,7 @@ inline bool ArmExidxFast::DecodePrefix_11_001(uint8_t byte) {
   return true;
 }
 
-inline bool ArmExidxFast::DecodePrefix_11_010(uint8_t byte) {
+inline bool FastArmExidx::DecodePrefix_11_010(uint8_t byte) {
   CHECK((byte & ~0x07) == 0xd0);
 
   // 11010nnn: Pop VFP double precision registers D[8]-D[8+nnn] by VPUSH
@@ -583,7 +575,7 @@ inline bool ArmExidxFast::DecodePrefix_11_010(uint8_t byte) {
   return true;
 }
 
-inline bool ArmExidxFast::DecodePrefix_11(uint8_t byte) {
+inline bool FastArmExidx::DecodePrefix_11(uint8_t byte) {
   CHECK((byte >> 6) == 0x3);
 
   switch ((byte >> 3) & 0x7) {
@@ -600,7 +592,7 @@ inline bool ArmExidxFast::DecodePrefix_11(uint8_t byte) {
   }
 }
 
-bool ArmExidxFast::Decode() {
+bool FastArmExidx::Decode() {
   status_ = ARM_STATUS_NONE;
   uint8_t byte;
   if (!GetByte(&byte)) {
@@ -626,7 +618,7 @@ bool ArmExidxFast::Decode() {
   return true;
 }
 
-bool ArmExidxFast::Eval() {
+bool FastArmExidx::Eval() {
   pc_set_ = false;
 //  LOGE("UPDATE-WTF", "Arm exidx eval started.");
   while (Decode());

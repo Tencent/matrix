@@ -11,7 +11,7 @@
 #include <unwindstack/RegsGetLocal.h>
 #include <unwindstack/Unwinder.h>
 #include <unwindstack/JitDebug.h>
-#include <FastUnwinder.h>
+#include <FpUnwinder.h>
 #include "Log.h"
 
 #define WECHAT_BACKTRACE_TAG "Wechat.Backtrace"

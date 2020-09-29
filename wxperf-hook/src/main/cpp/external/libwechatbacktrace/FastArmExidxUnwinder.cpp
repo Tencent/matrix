@@ -5,8 +5,7 @@
 #include <FallbackUnwinder.h>
 #include <MapsControll.h>
 #include <deps/android-base/include/android-base/strings.h>
-#include <ArmExidxFast.h>
-#include <ElfInterfaceArmExidx.h>
+#include <FastArmExidx.h>
 
 #include "FastArmExidxUnwinder.h"
 #include "QuickenMaps.h"
@@ -48,18 +47,17 @@ namespace wechat_backtrace {
 
         std::shared_ptr<Maps> maps = Maps::current();
 
-        // TODO
         unwindstack::SetFastFlag(true);
         auto process_memory_ = unwindstack::Memory::CreateProcessMemory(getpid());
 
         bool adjust_pc = false;
-        unwindstack::MapInfo* last_map_info = nullptr;
+        MapInfoPtr last_map_info = nullptr;
 
         for (; frame_size < frame_max_size;) {
             uint64_t cur_pc = PC(regs);
             uint64_t cur_sp = SP(regs);
 
-            unwindstack::MapInfo *map_info = nullptr;
+            MapInfoPtr map_info = nullptr;
 
             if (last_map_info && last_map_info->start <= cur_pc && last_map_info->end > cur_pc) {
                 map_info = last_map_info;
@@ -80,6 +78,9 @@ namespace wechat_backtrace {
             }
 
             elf = map_info->GetElf(process_memory_, arch);
+
+            unwindstack::FastArmExidxInterface* interface =
+                    map_info->GetFastArmExidxInterface(process_memory_, arch);
             step_pc = PC(regs);
             rel_pc = elf->GetRelPc(step_pc, map_info);
 
@@ -107,7 +108,7 @@ namespace wechat_backtrace {
                     LOGE(FAST_ARM_EXIDX_UNWINDER_TAG, "map_info flags is MAPS_FLAGS_DEVICE_MAP!");
                     break;
                 } else {
-                    stepped = elf->StepExidx(step_pc, regs, process_memory_.get(), &finished);
+                    stepped = interface->Step(step_pc, regs, process_memory_.get(), &finished);
                     if (!stepped) {
                         // TODO stop unwind
                         LOGE(FAST_ARM_EXIDX_UNWINDER_TAG, "stepped failed");

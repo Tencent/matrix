@@ -31,8 +31,8 @@ mutex Maps::maps_lock_;
 size_t Maps::latest_maps_capacity_ = CAPACITY_INCREMENT;
 shared_ptr<Maps> Maps::current_maps_;
 
-QuickenInterface*
-QuickenMapInfo::GetQuickenInterface(const std::shared_ptr<unwindstack::Memory>& process_memory, unwindstack::ArchEnum expected_arch) {
+QuickenInterface* QuickenMapInfo::GetQuickenInterface(const shared_ptr<Memory>& process_memory,
+        ArchEnum expected_arch) {
 
     if (quicken_interface_) {
         return quicken_interface_.get();
@@ -54,10 +54,39 @@ QuickenMapInfo::GetQuickenInterface(const std::shared_ptr<unwindstack::Memory>& 
                                                       elf_interface->start_offset(),
                                                       elf_interface->total_entries()));
 
-        elf_load_bias_ = quicken_interface_->GetLoadBias();
+        elf_load_bias_ = elf->GetLoadBias();
     }
 
     return quicken_interface_.get();
+}
+
+FastArmExidxInterface* QuickenMapInfo::GetFastArmExidxInterface(const shared_ptr<Memory>& process_memory,
+        ArchEnum expected_arch) {
+
+    if (exidx_interface_) {
+        return exidx_interface_.get();
+    }
+
+    std::lock_guard<std::mutex> guard(lock_);
+
+    if (!exidx_interface_) {
+
+        Elf* elf = GetElf(process_memory, expected_arch);
+
+        if (!elf->valid()) {
+            return nullptr;
+        }
+
+        ElfInterfaceArm* elf_interface = dynamic_cast<ElfInterfaceArm *>(elf->interface());
+
+        exidx_interface_.reset(new FastArmExidxInterface(elf->memory(), elf->GetLoadBias(),
+                                                      elf_interface->start_offset(),
+                                                      elf_interface->total_entries()));
+
+        elf_load_bias_ = elf->GetLoadBias();
+    }
+
+    return exidx_interface_.get();
 }
 
 uint64_t QuickenMapInfo::GetRelPc(uint64_t pc) {

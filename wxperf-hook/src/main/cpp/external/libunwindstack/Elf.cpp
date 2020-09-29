@@ -35,7 +35,6 @@
 #include "Symbols.h"
 #include "ElfInterfaceArm64.h"
 #include "TimeUtil.h"
-#include "ElfInterfaceArmExidx.h"
 
 namespace unwindstack {
 
@@ -195,18 +194,6 @@ bool Elf::Step(uint64_t rel_pc, Regs* regs, Memory* process_memory, bool* finish
   return interface_->Step(rel_pc, regs, process_memory, finished);
 }
 
-// The relative pc is always relative to the start of the map from which it comes.
-bool Elf::StepExidx(uint64_t rel_pc, uintptr_t* regs, Memory* process_memory, bool* finished) {
-  if (!valid_) {
-    return false;
-  }
-
-  // Lock during the step which can update information in the object.
-  std::lock_guard<std::mutex> guard(lock_);
-  ElfInterfaceArmExidx * interfaceExidx_ = dynamic_cast<ElfInterfaceArmExidx *>(interface_.get());
-  return interfaceExidx_->StepExidx(rel_pc, regs, process_memory, finished);
-}
-
 bool Elf::IsValidElf(Memory* memory) {
   if (memory == nullptr) {
     return false;
@@ -280,11 +267,7 @@ ElfInterface* Elf::CreateInterfaceFromMemory(Memory* memory) {
     machine_type_ = e_machine;
     if (e_machine == EM_ARM) {
       arch_ = ARCH_ARM;
-      if (GetFastFlag()) {
-        interface.reset(new ElfInterfaceArmExidx(memory));
-      } else {
-        interface.reset(new ElfInterfaceArm(memory));
-      }
+      interface.reset(new ElfInterfaceArm(memory));
     } else if (e_machine == EM_386) {
       arch_ = ARCH_X86;
       interface.reset(new ElfInterface32(memory));

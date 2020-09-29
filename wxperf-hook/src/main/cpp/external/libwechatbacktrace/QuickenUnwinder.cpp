@@ -5,8 +5,7 @@
 #include <FallbackUnwinder.h>
 #include <MapsControll.h>
 #include <deps/android-base/include/android-base/strings.h>
-#include <ArmExidxFast.h>
-#include <ElfInterfaceArmExidx.h>
+#include <FastArmExidx.h>
 #include <include/unwindstack/DwarfError.h>
 
 #include "QuickenUnwinder.h"
