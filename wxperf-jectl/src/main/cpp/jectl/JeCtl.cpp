@@ -21,6 +21,12 @@
 #define ERR_CTL             4
 #define ERR_ALLOC_FAILED    5
 
+#define VER_5_1_0   51
+#define VER_4_4_0   44
+#define VER_4_x_x   40
+#define VER_3_x_x   30
+#define VER_UNKNOWN -1
+
 #define CACHELINE        64
 
 #define TAG "Wxperf.JeCtl"
@@ -52,8 +58,8 @@ typedef void (*arena_extents_dirty_dalloc_t)(void *tsdn, void *arena,
 
 #define MAX_RETRY_TIMES 10
 
-void   *handle     = nullptr;
-bool   initialized = false;
+void *handle     = nullptr;
+bool initialized = false;
 
 mallctl_t                        mallctl                        = nullptr;
 arena_extent_alloc_large_t       arena_extent_alloc_large       = nullptr;
@@ -78,7 +84,7 @@ static bool init() {
         return false;
     }
 
-    mallctl = (mallctl_t) enhance::dlsym(handle, "je_mallctl");
+    mallctl         = (mallctl_t) enhance::dlsym(handle, "je_mallctl");
 
     if (!mallctl) {
         return false;
@@ -235,86 +241,6 @@ Java_com_tencent_wxperf_jectl_JeCtl_compactNative(JNIEnv *env, jclass clazz) {
 #endif
 }
 
-JNIEXPORT jint JNICALL
-Java_com_tencent_wxperf_jectl_JeCtl_extentHookTest(JNIEnv *env, jclass clazz) {
-
-#ifdef __LP64__
-    return ERR_64_BIT;
-#else
-
-    if (!initialized) {
-        return ERR_INIT_FAILED;
-    }
-
-//    bool old_val;
-//    size_t old_val_size = sizeof(bool);
-//    bool new_val = false;
-//    mallctl("thread.tcache.enabled", &old_val, &old_val_size, &new_val, sizeof(new_val));
-//    LOGD(TAG, "thread.tcache.enabled: %d", old_val);
-//    mallctl("thread.tcache.enabled", &old_val, &old_val_size, nullptr, 0);
-//    LOGD(TAG, "thread.tcache.enabled: %d", old_val);
-
-    size_t         extent_hooks_size = sizeof(extent_hooks_t *);
-    extent_hooks_t *new_hook         = &extent_hooks;
-
-    int ret = mallctl("arena.0.extent_hooks", &origin_extent_hooks,
-                      &extent_hooks_size, /*nullptr, 0*/
-                      &new_hook,
-                      extent_hooks_size);
-    LOGD(TAG, "arena.0.extent_hooks: default %p ret = %d", origin_extent_hooks, ret);
-    ret = mallctl("arena.1.extent_hooks", &origin_extent_hooks, &extent_hooks_size, /*nullptr, 0*/
-                  &new_hook, extent_hooks_size);
-    LOGD(TAG, "arena.1.extent_hooks: default %p ret = %d", origin_extent_hooks, ret);
-
-//    extent_hooks_t *hooks;
-//    ret = mallctl("arena.0.extent_hooks", &hooks, &extent_hooks_size, nullptr, 0);
-//    LOGD(TAG, "arena.0.extent_hooks: default %p ret = %d", hooks, ret);
-//    ret = mallctl("arena.0.extent_hooks", &hooks, &extent_hooks_size, nullptr, 0);
-//    LOGD(TAG, "arena.0.extent_hooks: default %p ret = %d", hooks, ret);
-
-//    mprotect((void *) PAGE_START((uintptr_t) origin_extent_hooks),
-//             PAGE_COVER((uintptr_t) origin_extent_hooks),
-//             PROT_READ | PROT_WRITE);
-//
-//    original_split = origin_extent_hooks->split;
-//    origin_extent_hooks->split = extent_hooks.split;
-
-#endif
-    LOGD(TAG,
-         "origin alloc %p, dalloc %p, destroy %p, commit %p, decommit %p, purge_lazy %p, purge_forced %p, split %p, merge %p",
-         origin_extent_hooks->alloc, origin_extent_hooks->dalloc, origin_extent_hooks->destroy,
-         origin_extent_hooks->commit, origin_extent_hooks->decommit,
-         origin_extent_hooks->purge_lazy, origin_extent_hooks->purge_forced,
-         origin_extent_hooks->split, origin_extent_hooks->merge);
-
-    LOGD(TAG,
-         "our hook: %p alloc %p, dalloc %p, destroy %p, commit %p, decommit %p, purge_lazy %p, purge_forced %p, split %p, merge %p",
-         &extent_hooks, extent_hooks.alloc, extent_hooks.dalloc, extent_hooks.destroy,
-         extent_hooks.commit, extent_hooks.decommit, extent_hooks.purge_lazy,
-         extent_hooks.purge_forced, extent_hooks.split, extent_hooks.merge);
-
-//    void *npe = (void *)0x00000078;
-//    LOGD(TAG, "NPE : %d", npe == nullptr);
-
-//    stub_alloc(nullptr);
-
-//    pthread_t pthread[100];
-//    for (int i = 0; i < 100;++i) {
-//        pthread_create(&pthread[i], nullptr, stub_alloc, nullptr);
-//    }
-//    for (int i = 0; i < 10; ++i) {
-//        pthread_join(pthread[i], nullptr);
-//    }
-
-//    LOGD(TAG, "all thread finished: %d", arena_1);
-
-//    void *p = malloc(100 * 1024 * 1024);
-//    memset(p, 'a', 1024 * 1024);
-//    free(p);
-
-    return JECTL_OK;
-}
-
 static void call_alloc_large_in_arena1(size_t __size) {
     // 延迟时机, 失败也不影响 arena0 的预分配
     auto tsd_tsd = (pthread_t *) enhance::dlsym(handle, "je_tsd_tsd");
@@ -443,7 +369,8 @@ void *arena0_alloc_opt_prevent;
 
 JNIEXPORT jint JNICALL
 Java_com_tencent_wxperf_jectl_JeCtl_preAllocRetainNative(JNIEnv *env, jclass clazz, jint __size0,
-                                                         jint __size1, jint __limit0, jint __limit1) {
+                                                         jint __size1, jint __limit0,
+                                                         jint __limit1) {
 
 #ifdef __LP64__
     return ERR_64_BIT;
@@ -477,14 +404,16 @@ Java_com_tencent_wxperf_jectl_JeCtl_preAllocRetainNative(JNIEnv *env, jclass cla
     size_t old_limit  = 0;
     size_t new_limit  = __limit0;
     size_t limit_size = sizeof(size_t);
-    ctl_result = mallctl("arena.0.retain_grow_limit", &old_limit, &limit_size, &new_limit, limit_size);
+    ctl_result = mallctl("arena.0.retain_grow_limit", &old_limit, &limit_size, &new_limit,
+                         limit_size);
     LOGD(TAG, "arena.0.retain_grow_limit ret = %d, old limit = %zu", ctl_result, old_limit);
     new_limit  = __limit1;
-    ctl_result = mallctl("arena.1.retain_grow_limit", &old_limit, &limit_size, &new_limit, limit_size);
+    ctl_result = mallctl("arena.1.retain_grow_limit", &old_limit, &limit_size, &new_limit,
+                         limit_size);
     LOGD(TAG, "arena.1.retain_grow_limit ret = %d, old limit = %zu", ctl_result, old_limit);
 
     LOGD(TAG, "prepare alloc");
-    void *p = malloc(__size0);
+    void *p                  = malloc(__size0);
     if (!p) {
         ret_code = ERR_ALLOC_FAILED;
     }
@@ -496,6 +425,36 @@ Java_com_tencent_wxperf_jectl_JeCtl_preAllocRetainNative(JNIEnv *env, jclass cla
     flush_decay_purge();
 
     return ret_code;
+#endif
+}
+
+JNIEXPORT jint JNICALL
+Java_com_tencent_wxperf_jectl_JeCtl_getVersionNative(JNIEnv *env, jclass clazz) {
+#ifdef __LP64__
+    return ERR_64_BIT;
+#else
+    if (initialized) {
+        return VER_5_1_0;
+    }
+
+    if (!mallctl) {
+        return 0;
+    }
+
+    const char *version;
+    size_t     size = sizeof(version);
+    mallctl("version", &version, &size, nullptr, 0);
+    LOGD(TAG, "jemalloc version: %s", version);
+
+    if (0 == strncmp(version, "4.4.0", 5)) {
+        return VER_4_4_0;
+    } else if (0 == strncmp(version, "4.", 2)) {
+        return VER_4_x_x;
+    } else if (0 == strncmp(version, "3.", 2)) {
+        return VER_3_x_x;
+    } else {
+        return VER_UNKNOWN;
+    }
 #endif
 }
 
