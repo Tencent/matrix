@@ -137,12 +137,12 @@ std::vector<MapInfoPtr> Maps::FindMapInfoByName(std::string soname) {
     return found_mapinfos;
 }
 
-inline void Maps::ReleaseLocalMaps() {
+void Maps::ReleaseLocalMaps() {
     for (size_t i = 0; i < maps_capacity_; i++) {
         delete local_maps_[i];
     }
 
-    delete[] local_maps_;
+    delete local_maps_;
     maps_capacity_ = 0;
     maps_size_ = 0;
     local_maps_ = nullptr;
@@ -156,12 +156,12 @@ std::shared_ptr<Maps> Maps::current() {
 bool Maps::Parse() {
     std::lock_guard<std::mutex> guard(maps_lock_);
 
-    Maps *maps = new Maps(latest_maps_capacity_);
+    shared_ptr<Maps> maps(new Maps(latest_maps_capacity_);
 
     bool ret = maps->ParseImpl();
 
     if (ret) {
-        current_maps_.reset(maps);
+        current_maps_ = maps;
         latest_maps_capacity_ = maps->maps_capacity_;
     }
 
@@ -197,7 +197,7 @@ bool Maps::ParseImpl() {
                     tmp_capacity = tmp_capacity + CAPACITY_INCREMENT;
                     MapInfoPtr *swap = new MapInfoPtr[tmp_capacity]();
                     memcpy(swap, tmp_maps, tmp_idx * sizeof(MapInfoPtr));
-                    delete tmp_maps;
+                    delete tmp_maps;    // Only delete array
                     tmp_maps = swap;
                 }
 
@@ -207,6 +207,12 @@ bool Maps::ParseImpl() {
         local_maps_ = tmp_maps;
         maps_capacity_ = tmp_capacity;
         maps_size_ = tmp_idx;
+    } else {
+        // Delete everything
+        for (size_t i = 0; i < tmp_idx; i++) {
+            delete tmp_maps[i];
+        }
+        delete tmp_maps;
     }
 
     return ret;

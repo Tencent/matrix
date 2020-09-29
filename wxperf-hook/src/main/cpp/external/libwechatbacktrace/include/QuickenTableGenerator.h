@@ -27,16 +27,29 @@ enum QutInstruction : uint32_t {
 };
 
 struct QutSections {
-    uint32_t* quidx;
-    uint32_t* qutbl;
 
-    size_t idx_size;
-    size_t tbl_size;
+    QutSections() = default;
+    ~QutSections() {
+        delete quidx;
+        delete qutbl;
 
-    size_t idx_capacity;
-    size_t tbl_capacity;
+        idx_size = 0;
+        tbl_size = 0;
 
-    size_t total_entries;
+        idx_capacity = 0;
+        tbl_capacity = 0;
+    }
+
+    uint32_t* quidx = nullptr;
+    uint32_t* qutbl = nullptr;
+
+    size_t idx_size = 0;
+    size_t tbl_size = 0;
+
+    size_t idx_capacity = 0;
+    size_t tbl_capacity = 0;
+
+    size_t total_entries = 0;
     uint64_t start_offset_ = 0;
 };
 
