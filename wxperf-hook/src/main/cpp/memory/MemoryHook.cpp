@@ -490,7 +490,6 @@ static inline void dump_stacks(FILE *__log_file,
         }
         cJSON_AddItemToArray(__json_mem_arr, so_obj);
     }
-    LOGD(TAG, "==> %s", cJSON_PrintUnformatted(so_obj));
 }
 
 static inline void dump_impl(FILE *__log_file, FILE *__json_file, bool __mmap) {
