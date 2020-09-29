@@ -58,6 +58,7 @@ public class MainActivity extends AppCompatActivity {
 //                            .addHookSo(".*libnative-lib\\.so$")
                             .addHookSo(".*libnative-lib\\.so$")
                             .enableStacktrace(true)
+                            .stacktraceLogThreshold(0)
                             .enableMmapHook(false))
                     .addHook(PthreadHook.INSTANCE
 //                            .addHookSo(".*libnative-lib\\.so$")
@@ -186,13 +187,13 @@ public class MainActivity extends AppCompatActivity {
             e.printStackTrace();
         }
 
-        MemoryHook.INSTANCE.dump("/sdcard/memory_hook.log");
+        MemoryHook.INSTANCE.dump("/sdcard/memory_hook.log", "/sdcard/memory_hook.json");
     }
 
     public void mmapTest(View view) {
         JNIObj jniObj = new JNIObj();
         jniObj.doMmap();
-        MemoryHook.INSTANCE.dump("/sdcard/memory_hook.log");
+        MemoryHook.INSTANCE.dump("/sdcard/memory_hook.log", "/sdcard/memory_hook.json");
     }
 
     public void threadTest(View view) {
@@ -300,7 +301,7 @@ public class MainActivity extends AppCompatActivity {
         for (int i = 0; i < 1000; i++) {
             jniObj.doSomeThing();
         }
-        MemoryHook.INSTANCE.dump("/sdcard/memory_hook.log");
+        MemoryHook.INSTANCE.dump("/sdcard/memory_hook.log", "/sdcard/memory_hook.json");
     }
 
     public void specificTest(View view) {
