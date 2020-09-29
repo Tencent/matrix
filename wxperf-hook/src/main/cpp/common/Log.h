@@ -8,9 +8,17 @@
 #include <time.h>
 #include <android/log.h>
 
+//#define EnableLOG
+
+#ifdef EnableLOG
 #define LOGD(TAG, FMT, args...) __android_log_print(ANDROID_LOG_DEBUG, TAG, FMT, ##args)
 #define LOGI(TAG, FMT, args...) __android_log_print(ANDROID_LOG_INFO, TAG, FMT, ##args)
 #define LOGE(TAG, FMT, args...) __android_log_print(ANDROID_LOG_ERROR, TAG, FMT, ##args)
+#else
+#define LOGD(TAG, FMT, args...)
+#define LOGI(TAG, FMT, args...)
+#define LOGE(TAG, FMT, args...)
+#endif
 
 #define __FAKE_USE_VA_ARGS(...) ((void)(0))
 #define __android_second(dummy, second, ...) second
