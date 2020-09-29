@@ -5,6 +5,7 @@
 #ifndef LIBWXPERF_JNI_MINIMALREGS_H
 #define LIBWXPERF_JNI_MINIMALREGS_H
 
+// For Arm 32-bit.
 #define R7(regs) regs[0]
 #define R11(regs) regs[1]
 #define SP(regs) regs[2]
