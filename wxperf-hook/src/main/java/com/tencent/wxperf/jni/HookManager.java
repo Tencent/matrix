@@ -87,7 +87,7 @@ public class HookManager {
                 continue;
             }
 
-            sb.append("\t").append(stackTraceElement).append('\n');
+            sb.append(stackTraceElement).append(';');
         }
         return sb.toString();
     }
