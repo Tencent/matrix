@@ -1,8 +1,8 @@
 package com.tencent.wxperf.jni.memory;
 
 import android.text.TextUtils;
-import android.util.Log;
 
+import com.tencent.stubs.logger.Log;
 import com.tencent.wxperf.jni.AbsHook;
 import com.tencent.wxperf.jni.HookManager;
 
@@ -13,6 +13,8 @@ import java.util.Set;
  * Created by Yves on 2019-08-08
  */
 public class MemoryHook extends AbsHook {
+
+    private static final String TAG = "Wxperf.Memory";
 
     public static final MemoryHook INSTANCE = new MemoryHook();
 
@@ -31,9 +33,10 @@ public class MemoryHook extends AbsHook {
 
     public MemoryHook addHookSo(String regex) {
         if (TextUtils.isEmpty(regex)) {
-            throw new IllegalArgumentException("regex = " + regex);
+            Log.e(TAG, "thread regex is empty!!!");
+        } else {
+            mHookSoSet.add(regex);
         }
-        mHookSoSet.add(regex);
         return this;
     }
 
