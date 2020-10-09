@@ -414,7 +414,8 @@ public class MatrixTraceTransform extends Transform {
 
             final File jarInput = inputJar.getFile();
             final File jarOutput = new File(traceClassOut, getUniqueJarName(jarInput));
-            if (jarOutput.exists()) {
+
+            if (!isIncremental && jarOutput.exists()) {
                 jarOutput.delete();
             }
             if (!jarOutput.getParentFile().exists()) {
