@@ -21,12 +21,6 @@
 #define ERR_CTL             4
 #define ERR_ALLOC_FAILED    5
 
-#define VER_5_1_0   51
-#define VER_4_4_0   44
-#define VER_4_x_x   40
-#define VER_3_x_x   30
-#define VER_UNKNOWN -1
-
 #define CACHELINE        64
 
 #define TAG "Wxperf.JeCtl"
@@ -428,17 +422,13 @@ Java_com_tencent_wxperf_jectl_JeCtl_preAllocRetainNative(JNIEnv *env, jclass cla
 #endif
 }
 
-JNIEXPORT jint JNICALL
+JNIEXPORT jstring JNICALL
 Java_com_tencent_wxperf_jectl_JeCtl_getVersionNative(JNIEnv *env, jclass clazz) {
 #ifdef __LP64__
-    return ERR_64_BIT;
+    return env->NewStringUTF("64-bit");
 #else
-    if (initialized) {
-        return VER_5_1_0;
-    }
-
     if (!mallctl) {
-        return 0;
+        return env->NewStringUTF("Error");
     }
 
     const char *version;
@@ -446,15 +436,7 @@ Java_com_tencent_wxperf_jectl_JeCtl_getVersionNative(JNIEnv *env, jclass clazz) 
     mallctl("version", &version, &size, nullptr, 0);
     LOGD(TAG, "jemalloc version: %s", version);
 
-    if (0 == strncmp(version, "4.4.0", 5)) {
-        return VER_4_4_0;
-    } else if (0 == strncmp(version, "4.", 2)) {
-        return VER_4_x_x;
-    } else if (0 == strncmp(version, "3.", 2)) {
-        return VER_3_x_x;
-    } else {
-        return VER_UNKNOWN;
-    }
+    return env->NewStringUTF(version);
 #endif
 }
 

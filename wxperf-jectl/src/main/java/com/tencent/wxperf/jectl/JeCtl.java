@@ -28,12 +28,6 @@ public class JeCtl {
     public static final int ERR_CTL          = 4;
     public static final int ERR_ALLOC_FAILED = 5;
 
-    public static final int VER_5_1_0   = 51;
-    public static final int VER_4_4_0   = 44;
-    public static final int VER_4_x_x   = 40;
-    public static final int VER_3_x_x   = 30;
-    public static final int VER_UNKNOWN = -1;
-
     public synchronized static int compact() {
         if (!initialized) {
             Log.e(TAG, "JeCtl init failed! check if so exists");
@@ -58,10 +52,10 @@ public class JeCtl {
         return sLastPreAllocRet;
     }
 
-    public synchronized static int version() {
+    public synchronized static String version() {
         if (!initialized) {
             Log.e(TAG, "JeCtl init failed! check if so exists");
-            return VER_UNKNOWN;
+            return "VER_UNKNOWN";
         }
 
         return getVersionNative();
@@ -73,5 +67,5 @@ public class JeCtl {
 
     private static native int preAllocRetainNative(int size0, int size1, int limit0, int limit1);
 
-    private static native int getVersionNative();
+    private static native String getVersionNative();
 }
