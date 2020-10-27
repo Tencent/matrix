@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.tencent.matrix.batterycanary.core;
+package com.tencent.matrix.batterycanary.detector;
 
 import android.app.AlarmManager;
 import android.app.PendingIntent;
@@ -24,12 +24,14 @@ import android.os.PowerManager;
 import android.os.WorkSource;
 
 import com.tencent.matrix.batterycanary.BatteryCanaryPlugin;
-import com.tencent.matrix.batterycanary.config.BatteryConfig;
-import com.tencent.matrix.batterycanary.util.BatteryCanaryUtil;
+import com.tencent.matrix.batterycanary.detector.config.BatteryConfig;
+import com.tencent.matrix.batterycanary.utils.AlarmManagerServiceHooker;
+import com.tencent.matrix.batterycanary.utils.PowerManagerServiceHooker;
+import com.tencent.matrix.batterycanary.utils.BatteryCanaryDetectScheduler;
+import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
 import com.tencent.matrix.report.Issue;
 import com.tencent.matrix.report.IssuePublisher;
 import com.tencent.matrix.util.MatrixLog;
-//import com.tencent.matrix.util.MatrixLog;
 
 /**
  * @author liyongjie

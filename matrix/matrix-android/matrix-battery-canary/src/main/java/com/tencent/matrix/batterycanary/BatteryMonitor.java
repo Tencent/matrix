@@ -1,8 +1,9 @@
-package com.tencent.matrix.batterycanary.monitor;
+package com.tencent.matrix.batterycanary;
 
 import android.app.Application;
 
 import com.tencent.matrix.AppActiveMatrixDelegate;
+import com.tencent.matrix.batterycanary.monitor.BatteryPrinter;
 import com.tencent.matrix.batterycanary.monitor.plugin.IBatteryMonitorPlugin;
 import com.tencent.matrix.batterycanary.monitor.plugin.JiffiesMonitorPlugin;
 import com.tencent.matrix.batterycanary.monitor.plugin.LooperTaskMonitorPlugin;

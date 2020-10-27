@@ -1,7 +1,7 @@
 package com.tencent.matrix.batterycanary.monitor.plugin;
 
 
-import com.tencent.matrix.batterycanary.monitor.BatteryMonitor;
+import com.tencent.matrix.batterycanary.BatteryMonitor;
 
 public interface IBatteryMonitorPlugin {
 

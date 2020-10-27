@@ -6,13 +6,12 @@ import android.os.SystemClock;
 import android.os.WorkSource;
 import android.support.annotation.Nullable;
 
-import com.tencent.matrix.batterycanary.core.PowerManagerServiceHooker;
-import com.tencent.matrix.batterycanary.monitor.BatteryMonitor;
-import com.tencent.matrix.batterycanary.util.BatteryCanaryUtil;
+import com.tencent.matrix.batterycanary.utils.PowerManagerServiceHooker;
+import com.tencent.matrix.batterycanary.BatteryMonitor;
+import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
 import com.tencent.matrix.util.MatrixHandlerThread;
 import com.tencent.matrix.util.MatrixLog;
 
-import java.util.HashMap;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 

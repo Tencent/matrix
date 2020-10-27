@@ -14,14 +14,13 @@
  * limitations under the License.
  */
 
-package com.tencent.matrix.batterycanary.core;
+package com.tencent.matrix.batterycanary.utils;
 
 import android.content.Context;
 import android.os.Build;
 import android.os.IBinder;
 import android.os.WorkSource;
 
-import com.tencent.matrix.batterycanary.util.SystemServiceBinderHooker;
 import com.tencent.matrix.util.MatrixLog;
 
 import java.lang.reflect.Method;
@@ -51,9 +50,7 @@ public final class PowerManagerServiceHooker {
     private static final String TAG = "Matrix.PowerManagerServiceHooker";
 
     public interface IListener {
-        void onAcquireWakeLock(IBinder token, int flags, String tag, String packageName,
-                               WorkSource workSource, String historyTag);
-
+        void onAcquireWakeLock(IBinder token, int flags, String tag, String packageName, WorkSource workSource, String historyTag);
         void onReleaseWakeLock(IBinder token, int flags);
     }
 

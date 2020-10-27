@@ -5,7 +5,7 @@ import android.os.Process;
 import android.util.LongSparseArray;
 
 import com.tencent.matrix.Matrix;
-import com.tencent.matrix.batterycanary.core.PowerManagerServiceHooker;
+import com.tencent.matrix.batterycanary.BatteryMonitor;
 import com.tencent.matrix.batterycanary.monitor.plugin.JiffiesMonitorPlugin;
 import com.tencent.matrix.batterycanary.monitor.plugin.LooperTaskMonitorPlugin;
 import com.tencent.matrix.batterycanary.monitor.plugin.WakeLockMonitorPlugin;

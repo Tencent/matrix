@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.tencent.matrix.batterycanary.core;
+package com.tencent.matrix.batterycanary.detector;
 
 import android.app.AlarmManager;
 import android.app.PendingIntent;
@@ -24,9 +24,10 @@ import android.os.Environment;
 import android.os.Parcel;
 import android.os.SystemClock;
 
-import com.tencent.matrix.batterycanary.config.BatteryConfig;
-import com.tencent.matrix.batterycanary.config.SharePluginInfo;
-import com.tencent.matrix.batterycanary.util.BatteryCanaryUtil;
+import com.tencent.matrix.batterycanary.detector.config.BatteryConfig;
+import com.tencent.matrix.batterycanary.detector.config.SharePluginInfo;
+import com.tencent.matrix.batterycanary.utils.BatteryCanaryDetectScheduler;
+import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
 import com.tencent.matrix.report.Issue;
 import com.tencent.matrix.report.IssuePublisher;
 import com.tencent.matrix.util.MatrixLog;
@@ -110,7 +111,7 @@ public class AlarmDetector extends IssuePublisher {
 
     /**
      * Run in {@link BatteryCanaryDetectScheduler} single thread
-     * @see com.tencent.matrix.batterycanary.core.BatteryCanaryCore
+     * @see BatteryCanaryCore
      */
     public void onAlarmSet(int type, long triggerAtMillis, long windowMillis, long intervalMillis,
                            int flags, PendingIntent operation, AlarmManager.OnAlarmListener onAlarmListener,
@@ -136,7 +137,7 @@ public class AlarmDetector extends IssuePublisher {
 
     /**
      * Run in {@link BatteryCanaryDetectScheduler} single thread
-     * @see com.tencent.matrix.batterycanary.core.BatteryCanaryCore
+     * @see BatteryCanaryCore
      */
     public void onAlarmRemove(PendingIntent operation, AlarmManager.OnAlarmListener onAlarmListener, String stackTrace) {
         if (mAlarmInfoRecorder != null) {

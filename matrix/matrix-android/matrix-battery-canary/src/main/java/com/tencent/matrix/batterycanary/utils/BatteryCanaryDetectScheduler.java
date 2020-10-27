@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.tencent.matrix.batterycanary.core;
+package com.tencent.matrix.batterycanary.utils;
 
 import android.os.Handler;
 import android.os.HandlerThread;
@@ -35,7 +35,6 @@ public class BatteryCanaryDetectScheduler {
     private boolean started = false;
 
     public BatteryCanaryDetectScheduler() {
-
     }
 
     /**

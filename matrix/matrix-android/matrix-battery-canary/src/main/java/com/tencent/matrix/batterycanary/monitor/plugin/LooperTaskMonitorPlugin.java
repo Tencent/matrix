@@ -7,7 +7,7 @@ import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.util.LongSparseArray;
 
-import com.tencent.matrix.batterycanary.monitor.BatteryMonitor;
+import com.tencent.matrix.batterycanary.BatteryMonitor;
 import com.tencent.matrix.trace.core.LooperMonitor;
 import com.tencent.matrix.util.MatrixLog;
 

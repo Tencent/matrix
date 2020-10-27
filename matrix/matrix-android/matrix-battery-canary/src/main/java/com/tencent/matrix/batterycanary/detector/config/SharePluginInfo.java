@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.tencent.matrix.batterycanary.config;
+package com.tencent.matrix.batterycanary.detector.config;
 
 /**
  * @author liyongjie

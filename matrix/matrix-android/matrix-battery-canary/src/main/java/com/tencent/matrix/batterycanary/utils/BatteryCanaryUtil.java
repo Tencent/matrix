@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.tencent.matrix.batterycanary.util;
+package com.tencent.matrix.batterycanary.utils;
 
 import android.app.AlarmManager;
 import android.content.Context;

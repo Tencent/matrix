@@ -18,11 +18,10 @@ package com.tencent.matrix.batterycanary;
 
 import android.app.Application;
 
-import com.tencent.matrix.batterycanary.config.BatteryConfig;
-import com.tencent.matrix.batterycanary.config.SharePluginInfo;
-import com.tencent.matrix.batterycanary.core.BatteryCanaryCore;
-import com.tencent.matrix.batterycanary.monitor.BatteryMonitor;
-import com.tencent.matrix.batterycanary.util.BatteryCanaryUtil;
+import com.tencent.matrix.batterycanary.detector.config.BatteryConfig;
+import com.tencent.matrix.batterycanary.detector.config.SharePluginInfo;
+import com.tencent.matrix.batterycanary.detector.BatteryCanaryCore;
+import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
 import com.tencent.matrix.plugin.Plugin;
 import com.tencent.matrix.plugin.PluginListener;
 import com.tencent.matrix.util.MatrixLog;
@@ -38,7 +37,7 @@ public class BatteryCanaryPlugin extends Plugin {
     private static final String TAG = "Matrix.BatteryCanaryPlugin";
 
     private final BatteryConfig mBatteryConfig;
-    private       BatteryCanaryCore mCore;
+    private BatteryCanaryCore mCore;
     private       boolean stoppedForForeground = false;
 
 //    public BatteryCanaryPlugin() {

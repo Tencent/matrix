@@ -9,7 +9,7 @@ import android.text.TextUtils;
 import android.util.SparseArray;
 
 import com.tencent.matrix.Matrix;
-import com.tencent.matrix.batterycanary.monitor.BatteryMonitor;
+import com.tencent.matrix.batterycanary.BatteryMonitor;
 import com.tencent.matrix.util.MatrixHandlerThread;
 import com.tencent.matrix.util.MatrixLog;
 import com.tencent.matrix.util.MatrixUtil;
