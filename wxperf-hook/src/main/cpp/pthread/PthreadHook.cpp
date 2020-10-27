@@ -373,7 +373,7 @@ void pthread_dump(const char *__path) {
 }
 
 
-static inline char *pthread_dump_json_impl(FILE *__log_file) {
+static inline void pthread_dump_json_impl(FILE *__log_file) {
 
     LOGD(TAG, "pthread dump waiting count: %zu", m_pthread_routine_flags.size());
 
@@ -477,13 +477,14 @@ static inline char *pthread_dump_json_impl(FILE *__log_file) {
     cJSON_Delete(json_obj);
 
     fprintf(__log_file, "%s", json_str);
-    return json_str;
+    cJSON_free(json_str);
+    return;
 
     err:
     LOGD(TAG, "ERROR: create cJSON object failed");
     cJSON_Delete(json_obj);
 
-    return nullptr;
+    return;
 }
 
 void pthread_dump_json(const char *__path) {

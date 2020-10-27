@@ -523,7 +523,9 @@ static inline void dump_impl(FILE *__log_file, FILE *__json_file, bool __mmap) {
         dump_stacks(__log_file, mmap_arr, mmap_stack_metas);
     }
 
-    fprintf(__json_file, "%s", cJSON_PrintUnformatted(json_obj));
+    char *printed = cJSON_PrintUnformatted(json_obj);
+    fprintf(__json_file, "%s", printed);
+    cJSON_free(printed);
     cJSON_Delete(json_obj);
 
     fprintf(__log_file,
