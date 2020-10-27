@@ -6,27 +6,37 @@ import android.os.SystemClock;
 import android.os.WorkSource;
 import android.support.annotation.Nullable;
 
+import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
 import com.tencent.matrix.batterycanary.utils.PowerManagerServiceHooker;
-import com.tencent.matrix.batterycanary.BatteryMonitor;
+import com.tencent.matrix.batterycanary.BatteryMonitorPlugin;
 import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
 import com.tencent.matrix.util.MatrixHandlerThread;
 import com.tencent.matrix.util.MatrixLog;
 
+import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class WakeLockMonitorPlugin implements IBatteryMonitorPlugin, PowerManagerServiceHooker.IListener {
-
     private static final String TAG = "Matrix.WakeLockMonitorPlugin";
+
+    public interface WakeLockListener {
+        void onWakeLockTimeout(String tag, String packageName, int warningCount);
+    }
+
     private Handler handler = null;
-    private BatteryMonitor monitor;
+    private BatteryMonitorCore monitor;
     private ConcurrentHashMap<Object, Cache> timeoutMap = new ConcurrentHashMap<>(2);
     private long wakeLockTime = 0L;
     private int wakeLockingCount = 0;
     private int wakeLockCount = 0;
 
+    private WakeLockListener getListener() {
+        return monitor;
+    }
+
     @Override
-    public void onInstall(BatteryMonitor monitor) {
+    public void onInstall(BatteryMonitorCore monitor) {
         this.monitor = monitor;
         this.handler = new Handler(MatrixHandlerThread.getDefaultHandlerThread().getLooper());
     }
@@ -64,11 +74,11 @@ public class WakeLockMonitorPlugin implements IBatteryMonitorPlugin, PowerManage
 
             @Override
             public void run() {
-                if (monitor.getConfig().printer != null) {
-                    monitor.getConfig().printer.onWakeLockTimeout(tag, packageName, warningCount);
-                    warningCount++;
-                    handler.postDelayed(this, monitor.getConfig().wakelockTimeout);
+                if (getListener() != null) {
+                    getListener().onWakeLockTimeout(tag, packageName, warningCount);
                 }
+                warningCount++;
+                handler.postDelayed(this, monitor.getConfig().wakelockTimeout);
             }
         };
         timeoutMap.put(token, new Cache(token, SystemClock.uptimeMillis(), timeoutRunnable));

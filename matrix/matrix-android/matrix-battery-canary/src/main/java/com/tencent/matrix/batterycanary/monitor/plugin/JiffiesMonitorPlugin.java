@@ -9,7 +9,8 @@ import android.text.TextUtils;
 import android.util.SparseArray;
 
 import com.tencent.matrix.Matrix;
-import com.tencent.matrix.batterycanary.BatteryMonitor;
+import com.tencent.matrix.batterycanary.BatteryMonitorPlugin;
+import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
 import com.tencent.matrix.util.MatrixHandlerThread;
 import com.tencent.matrix.util.MatrixLog;
 import com.tencent.matrix.util.MatrixUtil;
@@ -20,11 +21,18 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Set;
 
 public class JiffiesMonitorPlugin implements IBatteryMonitorPlugin, Handler.Callback {
-
     private static final String TAG = "Matrix.JiffiesMonitorPlugin";
+
+    public interface JiffiesListener {
+        void onTraceBegin();
+        void onTraceEnd();
+        void onJiffies(JiffiesMonitorPlugin.JiffiesResult result);
+    }
+
     private static long WAIT_TIME;
     private static long LOOP_TIME = 15 * 60 * 1000;
     private static boolean isEnableCheckForeground;
@@ -32,12 +40,16 @@ public class JiffiesMonitorPlugin implements IBatteryMonitorPlugin, Handler.Call
     private static final int MSG_ID_JIFFIES_END = 0x2;
     private Handler handler;
     private ProcessInfo lastProcessInfo = null;
-    private BatteryMonitor monitor;
+    private BatteryMonitorCore monitor;
     private LoopCheckRunnable foregroundLoopCheckRunnable = new LoopCheckRunnable();
     private static byte[] sBuffer = new byte[2 * 1024];
 
+    private JiffiesListener getListener() {
+        return monitor;
+    }
+
     @Override
-    public void onInstall(BatteryMonitor monitor) {
+    public void onInstall(BatteryMonitorCore monitor) {
         this.monitor = monitor;
         handler = new Handler(MatrixHandlerThread.getDefaultHandlerThread().getLooper(), this);
         WAIT_TIME = monitor.getConfig().greyTime;
@@ -97,16 +109,16 @@ public class JiffiesMonitorPlugin implements IBatteryMonitorPlugin, Handler.Call
             processInfo.upTime = SystemClock.uptimeMillis();
             processInfo.time = System.currentTimeMillis();
             lastProcessInfo = processInfo;
-            if (null != monitor.getConfig().printer) {
-                monitor.getConfig().printer.onTraceBegin();
+            if (null != getListener()) {
+                getListener().onTraceBegin();
             }
             return true;
         } else if (msg.what == MSG_ID_JIFFIES_END) {
             if (null == lastProcessInfo) {
                 return true;
             }
-            if (null != monitor.getConfig().printer) {
-                monitor.getConfig().printer.onTraceEnd();
+            if (null != getListener()) {
+                getListener().onTraceEnd();
             }
             ProcessInfo processInfo = new ProcessInfo();
             processInfo.pid = Process.myPid();
@@ -117,8 +129,8 @@ public class JiffiesMonitorPlugin implements IBatteryMonitorPlugin, Handler.Call
             JiffiesResult result = calculateDiff(lastProcessInfo, processInfo);
             result.isForeground = msg.arg1 == 1;
             printResult(result);
-            if (null != monitor.getConfig().printer) {
-                monitor.getConfig().printer.onJiffies(result);
+            if (null != getListener()) {
+                getListener().onJiffies(result);
             }
             lastProcessInfo = null;
             return true;

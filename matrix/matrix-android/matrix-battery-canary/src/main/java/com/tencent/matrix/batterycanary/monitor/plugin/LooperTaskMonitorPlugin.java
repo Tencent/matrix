@@ -7,7 +7,7 @@ import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.util.LongSparseArray;
 
-import com.tencent.matrix.batterycanary.BatteryMonitor;
+import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
 import com.tencent.matrix.trace.core.LooperMonitor;
 import com.tencent.matrix.util.MatrixLog;
 
@@ -20,16 +20,24 @@ import java.util.Map;
 import java.util.Set;
 
 public class LooperTaskMonitorPlugin implements IBatteryMonitorPlugin {
-
-    private BatteryMonitor batteryMonitor;
     private static final String TAG = "Matrix.LooperTaskMonitorPlugin";
+
+    public interface LooperTaskListener {
+        void onTaskTrace(Thread thread, List<LooperTaskMonitorPlugin.TaskTraceInfo> sortList);
+    }
+
+    private BatteryMonitorCore monitor;
     private final LongSparseArray<LooperMonitor> looperMonitorArray = new LongSparseArray<>();
     private static final int MAX_CHAT_COUNT = 60;
 
+    private LooperTaskListener getListener() {
+        return monitor;
+    }
+
     @Override
-    public void onInstall(BatteryMonitor monitor) {
+    public void onInstall(BatteryMonitorCore monitor) {
         MatrixLog.i(TAG, "onInstall");
-        this.batteryMonitor = monitor;
+        this.monitor = monitor;
     }
 
     @Override
@@ -45,7 +53,7 @@ public class LooperTaskMonitorPlugin implements IBatteryMonitorPlugin {
 
     @Override
     public void onAppForeground(boolean isForeground) {
-        if (batteryMonitor.isTurnOn()) {
+        if (monitor.isTurnOn()) {
             Map<Thread, StackTraceElement[]> stacks = Thread.getAllStackTraces();
             Set<Thread> set = stacks.keySet();
             for (Thread thread : set) {
@@ -56,8 +64,8 @@ public class LooperTaskMonitorPlugin implements IBatteryMonitorPlugin {
                             onBindLooperMonitor(thread, looper);
                         } else {
                             List<TaskTraceInfo> list = onUnbindLooperMonitor(thread);
-                            if (batteryMonitor.getConfig().printer != null && !list.isEmpty()) {
-                                batteryMonitor.getConfig().printer.onTaskTrace(thread, list);
+                            if (getListener() != null && !list.isEmpty()) {
+                                getListener().onTaskTrace(thread, list);
                             }
                         }
                     }
@@ -131,12 +139,12 @@ public class LooperTaskMonitorPlugin implements IBatteryMonitorPlugin {
 
         @Override
         public boolean isValid() {
-            return !batteryMonitor.isForeground();
+            return !monitor.isForeground();
         }
 
         @Override
         public void onDispatchStart(String x) {
-            if (batteryMonitor.isForeground()) {
+            if (monitor.isForeground()) {
                 return;
             }
             super.onDispatchStart(x);
@@ -169,7 +177,7 @@ public class LooperTaskMonitorPlugin implements IBatteryMonitorPlugin {
     }
 
 
-    public class TaskTraceInfo {
+    public static class TaskTraceInfo {
         private static final int LENGTH = 1000;
         private int count;
         String helpfulStr;

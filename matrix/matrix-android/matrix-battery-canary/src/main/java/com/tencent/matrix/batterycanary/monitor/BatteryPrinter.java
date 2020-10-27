@@ -2,10 +2,11 @@ package com.tencent.matrix.batterycanary.monitor;
 
 import android.os.HandlerThread;
 import android.os.Process;
+import android.support.annotation.NonNull;
 import android.util.LongSparseArray;
 
 import com.tencent.matrix.Matrix;
-import com.tencent.matrix.batterycanary.BatteryMonitor;
+import com.tencent.matrix.batterycanary.BatteryMonitorPlugin;
 import com.tencent.matrix.batterycanary.monitor.plugin.JiffiesMonitorPlugin;
 import com.tencent.matrix.batterycanary.monitor.plugin.LooperTaskMonitorPlugin;
 import com.tencent.matrix.batterycanary.monitor.plugin.WakeLockMonitorPlugin;
@@ -13,20 +14,28 @@ import com.tencent.matrix.util.MatrixLog;
 
 import java.util.List;
 
-public class BatteryPrinter implements BatteryMonitor.Printer {
-
+@SuppressWarnings("NotNullFieldNotInitialized")
+public class BatteryPrinter implements BatteryMonitorCore.Printer {
     private static final String TAG = "Matrix.BatteryPrinter";
     private static final int ONE_MIN = 60 * 1000;
+
+    @NonNull
+    private BatteryMonitorCore mMonitorCore;
     private final LongSparseArray<List<LooperTaskMonitorPlugin.TaskTraceInfo>> tasks = new LongSparseArray<>();
     private WakeLockMonitorPlugin.Info lastWakeInfo = null;
     private int diffWakeCount = 0;
     private long diffWakeTime = 0L;
 
+    final BatteryPrinter attach(BatteryMonitorCore monitorCore) {
+        mMonitorCore = monitorCore;
+        return this;
+    }
+
     @Override
     public void onTraceBegin() {
-        BatteryMonitor monitor = Matrix.with().getPluginByClass(BatteryMonitor.class);
+        BatteryMonitorPlugin monitor = Matrix.with().getPluginByClass(BatteryMonitorPlugin.class);
         if (null != monitor) {
-            WakeLockMonitorPlugin plugin = monitor.getMonitorPlugin(WakeLockMonitorPlugin.class);
+            WakeLockMonitorPlugin plugin = mMonitorCore.getMonitorPlugin(WakeLockMonitorPlugin.class);
             if (null != plugin) {
                 lastWakeInfo = plugin.getInfo();
             }
@@ -35,9 +44,9 @@ public class BatteryPrinter implements BatteryMonitor.Printer {
 
     @Override
     public void onTraceEnd() {
-        BatteryMonitor monitor = Matrix.with().getPluginByClass(BatteryMonitor.class);
+        BatteryMonitorPlugin monitor = Matrix.with().getPluginByClass(BatteryMonitorPlugin.class);
         if (null != monitor) {
-            WakeLockMonitorPlugin plugin = monitor.getMonitorPlugin(WakeLockMonitorPlugin.class);
+            WakeLockMonitorPlugin plugin = mMonitorCore.getMonitorPlugin(WakeLockMonitorPlugin.class);
             if (null != plugin && null != lastWakeInfo) {
                 WakeLockMonitorPlugin.Info info = plugin.getInfo();
                 diffWakeCount = info.wakeLockCount - lastWakeInfo.wakeLockCount;
