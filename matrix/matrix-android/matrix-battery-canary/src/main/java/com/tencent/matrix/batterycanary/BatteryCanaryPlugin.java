@@ -32,7 +32,6 @@ import com.tencent.matrix.util.MatrixUtil;
  * @author liyongjie
  *         Created by liyongjie on 2017/8/14.
  */
-
 public class BatteryCanaryPlugin extends Plugin {
     private static final String TAG = "Matrix.BatteryCanaryPlugin";
 

@@ -1,4 +1,4 @@
-package com.tencent.matrix.batterycanary.monitor.plugin;
+package com.tencent.matrix.batterycanary.monitor.feature;
 
 import android.os.Handler;
 import android.os.IBinder;
@@ -8,16 +8,14 @@ import android.support.annotation.Nullable;
 
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
 import com.tencent.matrix.batterycanary.utils.PowerManagerServiceHooker;
-import com.tencent.matrix.batterycanary.BatteryMonitorPlugin;
 import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
 import com.tencent.matrix.util.MatrixHandlerThread;
 import com.tencent.matrix.util.MatrixLog;
 
-import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class WakeLockMonitorPlugin implements IBatteryMonitorPlugin, PowerManagerServiceHooker.IListener {
+public class WakeLockMonitorFeature implements MonitorFeature, PowerManagerServiceHooker.IListener {
     private static final String TAG = "Matrix.WakeLockMonitorPlugin";
 
     public interface WakeLockListener {
@@ -36,7 +34,7 @@ public class WakeLockMonitorPlugin implements IBatteryMonitorPlugin, PowerManage
     }
 
     @Override
-    public void onInstall(BatteryMonitorCore monitor) {
+    public void configure(BatteryMonitorCore monitor) {
         this.monitor = monitor;
         this.handler = new Handler(MatrixHandlerThread.getDefaultHandlerThread().getLooper());
     }

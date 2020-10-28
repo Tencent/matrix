@@ -1,31 +1,32 @@
 package com.tencent.matrix.batterycanary.monitor;
 
 import com.tencent.matrix.AppActiveMatrixDelegate;
-import com.tencent.matrix.batterycanary.monitor.plugin.IBatteryMonitorPlugin;
-import com.tencent.matrix.batterycanary.monitor.plugin.JiffiesMonitorPlugin;
-import com.tencent.matrix.batterycanary.monitor.plugin.LooperTaskMonitorPlugin;
-import com.tencent.matrix.batterycanary.monitor.plugin.WakeLockMonitorPlugin;
+import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature;
+import com.tencent.matrix.batterycanary.monitor.feature.LooperTaskMonitorFeature;
+import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature;
+import com.tencent.matrix.batterycanary.monitor.feature.WakeLockMonitorFeature;
+import com.tencent.matrix.util.MatrixLog;
 
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.LinkedList;
 import java.util.List;
 
-public class BatteryMonitorCore implements JiffiesMonitorPlugin.JiffiesListener, LooperTaskMonitorPlugin.LooperTaskListener, WakeLockMonitorPlugin.WakeLockListener {
+public class BatteryMonitorCore implements JiffiesMonitorFeature.JiffiesListener, LooperTaskMonitorFeature.LooperTaskListener,
+        WakeLockMonitorFeature.WakeLockListener {
+    private static final String TAG = "Matrix.monitor.core";
+
     private volatile boolean isTurnOn = false;
     private boolean isAppForeground = AppActiveMatrixDelegate.INSTANCE.isAppForeground();
-    private final MonitorConfig config;
+    private final BatteryMonitorConfig config;
 
-    public BatteryMonitorCore(MonitorConfig config) {
+    public BatteryMonitorCore(BatteryMonitorConfig config) {
         this.config = config;
-        if (config.printer instanceof BatteryPrinter) ((BatteryPrinter) config.printer).attach(this);
-        for (IBatteryMonitorPlugin plugin : config.plugins) {
-            plugin.onInstall(this);
+        if (config.callback instanceof BatteryMonitorCallback.BatteryPrinter) ((BatteryMonitorCallback.BatteryPrinter) config.callback).attach(this);
+        for (MonitorFeature plugin : config.plugins) {
+            plugin.configure(this);
         }
     }
 
-    public <T extends IBatteryMonitorPlugin> T getMonitorPlugin(Class<T> clazz) {
-        for (IBatteryMonitorPlugin plugin : config.plugins) {
+    public <T extends MonitorFeature> T getMonitorFeature(Class<T> clazz) {
+        for (MonitorFeature plugin : config.plugins) {
             if (clazz.isAssignableFrom(plugin.getClass())) {
                 //noinspection unchecked
                 return (T) plugin;
@@ -34,7 +35,7 @@ public class BatteryMonitorCore implements JiffiesMonitorPlugin.JiffiesListener,
         return null;
     }
 
-    public MonitorConfig getConfig() {
+    public BatteryMonitorConfig getConfig() {
         return config;
     }
 
@@ -47,7 +48,7 @@ public class BatteryMonitorCore implements JiffiesMonitorPlugin.JiffiesListener,
     public void start() {
         synchronized (BatteryMonitorCore.class) {
             if (!isTurnOn) {
-                for (IBatteryMonitorPlugin plugin : config.plugins) {
+                for (MonitorFeature plugin : config.plugins) {
                     plugin.onTurnOn();
                 }
                 isTurnOn = true;
@@ -58,7 +59,7 @@ public class BatteryMonitorCore implements JiffiesMonitorPlugin.JiffiesListener,
     public void stop() {
         synchronized (BatteryMonitorCore.class) {
             if (isTurnOn) {
-                for (IBatteryMonitorPlugin plugin : config.plugins) {
+                for (MonitorFeature plugin : config.plugins) {
                     plugin.onTurnOff();
                 }
                 isTurnOn = false;
@@ -68,7 +69,7 @@ public class BatteryMonitorCore implements JiffiesMonitorPlugin.JiffiesListener,
 
     public void onForeground(boolean isForeground) {
         isAppForeground = isForeground;
-        for (IBatteryMonitorPlugin plugin : config.plugins) {
+        for (MonitorFeature plugin : config.plugins) {
             plugin.onAppForeground(isForeground);
         }
     }
@@ -79,91 +80,31 @@ public class BatteryMonitorCore implements JiffiesMonitorPlugin.JiffiesListener,
 
     @Override
     public void onTraceBegin() {
-        getConfig().printer.onTraceBegin();
+        MatrixLog.d(TAG, "#onTraceBegin");
+        getConfig().callback.onTraceBegin();
     }
 
     @Override
     public void onTraceEnd() {
-        getConfig().printer.onTraceEnd();
+        MatrixLog.d(TAG, "#onTraceEnd");
+        getConfig().callback.onTraceEnd();
     }
 
     @Override
-    public void onJiffies(JiffiesMonitorPlugin.JiffiesResult result) {
-        getConfig().printer.onJiffies(result);
+    public void onJiffies(JiffiesMonitorFeature.JiffiesResult result) {
+        MatrixLog.d(TAG, "#onJiffies, diff = " + result.jiffiesDiff2);
+        getConfig().callback.onJiffies(result);
     }
 
     @Override
-    public void onTaskTrace(Thread thread, List<LooperTaskMonitorPlugin.TaskTraceInfo> sortList) {
-        getConfig().printer.onTaskTrace(thread, sortList);
+    public void onTaskTrace(Thread thread, List<LooperTaskMonitorFeature.TaskTraceInfo> sortList) {
+        MatrixLog.d(TAG, "#onTaskTrace, thread = " + thread.getName());
+        getConfig().callback.onTaskTrace(thread, sortList);
     }
 
     @Override
     public void onWakeLockTimeout(String tag, String packageName, int warningCount) {
+        MatrixLog.d(TAG, "#onWakeLockTimeout, tag = " + tag + ", pkg = " + packageName + ", count = " + warningCount);
         onWakeLockTimeout(tag, packageName, warningCount);
-    }
-
-    public interface Printer extends JiffiesMonitorPlugin.JiffiesListener, LooperTaskMonitorPlugin.LooperTaskListener, WakeLockMonitorPlugin.WakeLockListener {}
-
-    public static class MonitorConfig {
-        public Printer printer = new BatteryPrinter();
-        public long wakelockTimeout;
-        public long greyTime;
-        public long foregroundLoopCheckTime;
-        public boolean isEnableCheckForeground = false;
-        public boolean disableAppForegroundNotifyByMatrix = false;
-        public LinkedList<IBatteryMonitorPlugin> plugins = new LinkedList<>();
-
-        public static class Builder {
-            private MonitorConfig config = new MonitorConfig();
-
-            public Builder setPrinter(Printer printer) {
-                config.printer = printer;
-                return this;
-            }
-
-            public Builder wakelockTimeout(long timeout) {
-                config.wakelockTimeout = timeout;
-                return this;
-            }
-
-            public Builder greyJiffiesTime(long time) {
-                config.greyTime = time;
-                return this;
-            }
-
-            public Builder isEnableCheckForeground(boolean isEnable) {
-                config.isEnableCheckForeground = isEnable;
-                return this;
-            }
-
-
-            public Builder foregroundLoopCheckTime(long time) {
-                config.foregroundLoopCheckTime = time;
-                return this;
-            }
-
-            public Builder installPlugin(Class<? extends IBatteryMonitorPlugin> pluginClass) {
-                try {
-                    config.plugins.add(pluginClass.newInstance());
-                } catch (Exception ignored) {
-                }
-                return this;
-            }
-
-            public Builder disableAppForegroundNotifyByMatrix(boolean enable) {
-                config.disableAppForegroundNotifyByMatrix = enable;
-                return this;
-            }
-
-            public MonitorConfig build() {
-                Collections.sort(config.plugins, new Comparator<IBatteryMonitorPlugin>() {
-                    @Override
-                    public int compare(IBatteryMonitorPlugin o1, IBatteryMonitorPlugin o2) {
-                        return Integer.compare(o2.weight(), o1.weight());
-                    }
-                });
-                return config;
-            }
-        }
     }
 }

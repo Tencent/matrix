@@ -3,6 +3,7 @@ package com.tencent.matrix.batterycanary;
 import android.app.Application;
 
 import com.tencent.matrix.AppActiveMatrixDelegate;
+import com.tencent.matrix.batterycanary.monitor.BatteryMonitorConfig;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
 import com.tencent.matrix.plugin.Plugin;
 import com.tencent.matrix.plugin.PluginListener;
@@ -10,7 +11,7 @@ import com.tencent.matrix.plugin.PluginListener;
 public class BatteryMonitorPlugin extends Plugin {
     final BatteryMonitorCore mDelegate;
 
-    public BatteryMonitorPlugin(BatteryMonitorCore.MonitorConfig config) {
+    public BatteryMonitorPlugin(BatteryMonitorConfig config) {
         mDelegate = new BatteryMonitorCore(config);
     }
 

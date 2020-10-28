@@ -1,4 +1,4 @@
-package com.tencent.matrix.batterycanary.monitor.plugin;
+package com.tencent.matrix.batterycanary.monitor.feature;
 
 import android.os.Handler;
 import android.os.Message;
@@ -9,7 +9,6 @@ import android.text.TextUtils;
 import android.util.SparseArray;
 
 import com.tencent.matrix.Matrix;
-import com.tencent.matrix.batterycanary.BatteryMonitorPlugin;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
 import com.tencent.matrix.util.MatrixHandlerThread;
 import com.tencent.matrix.util.MatrixLog;
@@ -21,16 +20,15 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedList;
-import java.util.List;
 import java.util.Set;
 
-public class JiffiesMonitorPlugin implements IBatteryMonitorPlugin, Handler.Callback {
+public class JiffiesMonitorFeature implements MonitorFeature, Handler.Callback {
     private static final String TAG = "Matrix.JiffiesMonitorPlugin";
 
     public interface JiffiesListener {
         void onTraceBegin();
         void onTraceEnd();
-        void onJiffies(JiffiesMonitorPlugin.JiffiesResult result);
+        void onJiffies(JiffiesMonitorFeature.JiffiesResult result);
     }
 
     private static long WAIT_TIME;
@@ -49,7 +47,7 @@ public class JiffiesMonitorPlugin implements IBatteryMonitorPlugin, Handler.Call
     }
 
     @Override
-    public void onInstall(BatteryMonitorCore monitor) {
+    public void configure(BatteryMonitorCore monitor) {
         this.monitor = monitor;
         handler = new Handler(MatrixHandlerThread.getDefaultHandlerThread().getLooper(), this);
         WAIT_TIME = monitor.getConfig().greyTime;

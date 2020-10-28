@@ -1,4 +1,4 @@
-package com.tencent.matrix.batterycanary.monitor.plugin;
+package com.tencent.matrix.batterycanary.monitor.feature;
 
 
 import android.os.HandlerThread;
@@ -19,11 +19,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public class LooperTaskMonitorPlugin implements IBatteryMonitorPlugin {
+public class LooperTaskMonitorFeature implements MonitorFeature {
     private static final String TAG = "Matrix.LooperTaskMonitorPlugin";
 
     public interface LooperTaskListener {
-        void onTaskTrace(Thread thread, List<LooperTaskMonitorPlugin.TaskTraceInfo> sortList);
+        void onTaskTrace(Thread thread, List<LooperTaskMonitorFeature.TaskTraceInfo> sortList);
     }
 
     private BatteryMonitorCore monitor;
@@ -35,7 +35,7 @@ public class LooperTaskMonitorPlugin implements IBatteryMonitorPlugin {
     }
 
     @Override
-    public void onInstall(BatteryMonitorCore monitor) {
+    public void configure(BatteryMonitorCore monitor) {
         MatrixLog.i(TAG, "onInstall");
         this.monitor = monitor;
     }

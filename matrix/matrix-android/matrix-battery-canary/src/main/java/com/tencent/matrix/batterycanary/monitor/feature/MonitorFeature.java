@@ -1,18 +1,12 @@
-package com.tencent.matrix.batterycanary.monitor.plugin;
+package com.tencent.matrix.batterycanary.monitor.feature;
 
 
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
 
-public interface IBatteryMonitorPlugin {
-
-    void onInstall(BatteryMonitorCore monitor);
-
+public interface MonitorFeature {
+    void configure(BatteryMonitorCore monitor);
     void onTurnOn();
-
     void onTurnOff();
-
     void onAppForeground(boolean isForeground);
-
     int weight();
-
 }
