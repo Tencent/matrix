@@ -20,13 +20,13 @@ public class BatteryMonitorCore implements JiffiesMonitorFeature.JiffiesListener
     public BatteryMonitorCore(BatteryMonitorConfig config) {
         this.config = config;
         if (config.callback instanceof BatteryMonitorCallback.BatteryPrinter) ((BatteryMonitorCallback.BatteryPrinter) config.callback).attach(this);
-        for (MonitorFeature plugin : config.plugins) {
+        for (MonitorFeature plugin : config.features) {
             plugin.configure(this);
         }
     }
 
     public <T extends MonitorFeature> T getMonitorFeature(Class<T> clazz) {
-        for (MonitorFeature plugin : config.plugins) {
+        for (MonitorFeature plugin : config.features) {
             if (clazz.isAssignableFrom(plugin.getClass())) {
                 //noinspection unchecked
                 return (T) plugin;
@@ -48,7 +48,7 @@ public class BatteryMonitorCore implements JiffiesMonitorFeature.JiffiesListener
     public void start() {
         synchronized (BatteryMonitorCore.class) {
             if (!isTurnOn) {
-                for (MonitorFeature plugin : config.plugins) {
+                for (MonitorFeature plugin : config.features) {
                     plugin.onTurnOn();
                 }
                 isTurnOn = true;
@@ -59,7 +59,7 @@ public class BatteryMonitorCore implements JiffiesMonitorFeature.JiffiesListener
     public void stop() {
         synchronized (BatteryMonitorCore.class) {
             if (isTurnOn) {
-                for (MonitorFeature plugin : config.plugins) {
+                for (MonitorFeature plugin : config.features) {
                     plugin.onTurnOff();
                 }
                 isTurnOn = false;
@@ -69,7 +69,7 @@ public class BatteryMonitorCore implements JiffiesMonitorFeature.JiffiesListener
 
     public void onForeground(boolean isForeground) {
         isAppForeground = isForeground;
-        for (MonitorFeature plugin : config.plugins) {
+        for (MonitorFeature plugin : config.features) {
             plugin.onAppForeground(isForeground);
         }
     }

@@ -18,7 +18,7 @@ public class BatteryMonitorPlugin extends Plugin {
     @Override
     public void init(Application app, PluginListener listener) {
         super.init(app, listener);
-        if (mDelegate.getConfig().disableAppForegroundNotifyByMatrix) {
+        if (!mDelegate.getConfig().isBuiltinForegroundNotifyEnabled) {
             AppActiveMatrixDelegate.INSTANCE.removeListener(this);
         }
     }

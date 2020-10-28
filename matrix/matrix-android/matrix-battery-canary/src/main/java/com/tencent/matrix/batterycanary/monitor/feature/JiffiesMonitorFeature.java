@@ -33,7 +33,6 @@ public class JiffiesMonitorFeature implements MonitorFeature, Handler.Callback {
 
     private static long WAIT_TIME;
     private static long LOOP_TIME = 15 * 60 * 1000;
-    private static boolean isEnableCheckForeground;
     private static final int MSG_ID_JIFFIES_START = 0x1;
     private static final int MSG_ID_JIFFIES_END = 0x2;
     private Handler handler;
@@ -52,7 +51,6 @@ public class JiffiesMonitorFeature implements MonitorFeature, Handler.Callback {
         handler = new Handler(MatrixHandlerThread.getDefaultHandlerThread().getLooper(), this);
         WAIT_TIME = monitor.getConfig().greyTime;
         LOOP_TIME = monitor.getConfig().foregroundLoopCheckTime;
-        isEnableCheckForeground = monitor.getConfig().isEnableCheckForeground;
     }
 
     @Override
@@ -70,6 +68,7 @@ public class JiffiesMonitorFeature implements MonitorFeature, Handler.Callback {
             MatrixLog.e(TAG, "Matrix was not installed yet, just ignore the event");
             return;
         }
+
         if (!isForeground) {
             handler.removeCallbacksAndMessages(null);
             Message message = Message.obtain(handler);
@@ -83,7 +82,7 @@ public class JiffiesMonitorFeature implements MonitorFeature, Handler.Callback {
 
         if (isForeground) {
             handler.removeCallbacks(foregroundLoopCheckRunnable);
-            if (isEnableCheckForeground) {
+            if (monitor.getConfig().isForegroundModeEnabled) {
                 foregroundLoopCheckRunnable.lastWhat = MSG_ID_JIFFIES_START;
                 handler.post(foregroundLoopCheckRunnable);
             }

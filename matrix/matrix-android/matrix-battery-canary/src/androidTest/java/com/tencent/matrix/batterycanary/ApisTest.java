@@ -68,12 +68,12 @@ public class ApisTest {
                 .enable(JiffiesMonitorFeature.class)
                 .enable(WakeLockMonitorFeature.class)
                 .enable(LooperTaskMonitorFeature.class)
-                .disableAppForegroundNotifyByMatrix(true)
-                .isEnableCheckForeground(true)
+                .enableBuiltinForegroundNotify(false)
+                .enableForegroundMode(true)
                 .setCallback(new BatteryMonitorCallback.BatteryPrinter())
-                .wakelockTimeout(2 * 60 * 1000)
-                .greyJiffiesTime(30 * 1000)
-                .foregroundLoopCheckTime(20 * 60 * 1000)
+                .wakelockTimeout(2 * 60 * 1000L)
+                .greyJiffiesTime(30 * 1000L)
+                .foregroundLoopCheckTime(20 * 60 * 1000L)
                 .build();
         BatteryMonitorPlugin plugin = new BatteryMonitorPlugin(config);
         Assert.assertEquals("BatteryMonitorPlugin", plugin.getTag());
