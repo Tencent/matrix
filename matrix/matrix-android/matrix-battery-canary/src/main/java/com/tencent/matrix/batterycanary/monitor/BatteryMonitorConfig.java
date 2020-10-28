@@ -7,14 +7,12 @@ import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.LinkedList;
 import java.util.List;
 
 /**
  * @author Kaede
  * @since 2020/10/27
  */
-@SuppressWarnings("NotNullFieldNotInitialized")
 public class BatteryMonitorConfig {
     public static final long DEF_WAKELOCK_TIMEOUT = 2 * 60 * 1000L; // 2min
     public static final long DEF_JIFFIES_DELAY = 30 * 1000L; // 30s

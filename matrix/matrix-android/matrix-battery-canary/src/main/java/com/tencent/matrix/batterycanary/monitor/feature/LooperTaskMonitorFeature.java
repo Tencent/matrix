@@ -19,14 +19,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+@SuppressWarnings("NotNullFieldNotInitialized")
 public class LooperTaskMonitorFeature implements MonitorFeature {
-    private static final String TAG = "Matrix.LooperTaskMonitorPlugin";
+    private static final String TAG = "Matrix.monitor.LooperTaskMonitorFeature";
 
     public interface LooperTaskListener {
         void onTaskTrace(Thread thread, List<LooperTaskMonitorFeature.TaskTraceInfo> sortList);
     }
 
-    private BatteryMonitorCore monitor;
+    @NonNull private BatteryMonitorCore monitor;
     private final LongSparseArray<LooperMonitor> looperMonitorArray = new LongSparseArray<>();
     private static final int MAX_CHAT_COUNT = 60;
 
@@ -36,23 +37,24 @@ public class LooperTaskMonitorFeature implements MonitorFeature {
 
     @Override
     public void configure(BatteryMonitorCore monitor) {
-        MatrixLog.i(TAG, "onInstall");
+        MatrixLog.i(TAG, "#configure monitor feature");
         this.monitor = monitor;
     }
 
     @Override
     public void onTurnOn() {
-        MatrixLog.i(TAG, "onTurnOn");
+        MatrixLog.i(TAG, "#onTurnOn");
     }
 
     @Override
     public void onTurnOff() {
-        MatrixLog.i(TAG, "onTurnOff");
+        MatrixLog.i(TAG, "#onTurnOff");
         onUnbindLooperMonitor();
     }
 
     @Override
     public void onAppForeground(boolean isForeground) {
+        MatrixLog.i(TAG, "#onAppForeground, bool = " + isForeground);
         if (monitor.isTurnOn()) {
             Map<Thread, StackTraceElement[]> stacks = Thread.getAllStackTraces();
             Set<Thread> set = stacks.keySet();
@@ -64,7 +66,7 @@ public class LooperTaskMonitorFeature implements MonitorFeature {
                             onBindLooperMonitor(thread, looper);
                         } else {
                             List<TaskTraceInfo> list = onUnbindLooperMonitor(thread);
-                            if (getListener() != null && !list.isEmpty()) {
+                            if (!list.isEmpty()) {
                                 getListener().onTaskTrace(thread, list);
                             }
                         }
@@ -205,9 +207,9 @@ public class LooperTaskMonitorFeature implements MonitorFeature {
 
         @Override
         public boolean equals(@Nullable Object obj) {
+            if (helpfulStr == null) return false;
+            if (!(obj instanceof String)) return false;
             return helpfulStr.equals(obj);
         }
     }
-
-
 }

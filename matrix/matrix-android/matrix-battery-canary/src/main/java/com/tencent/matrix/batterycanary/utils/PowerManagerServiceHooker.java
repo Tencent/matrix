@@ -20,6 +20,7 @@ import android.content.Context;
 import android.os.Build;
 import android.os.IBinder;
 import android.os.WorkSource;
+import android.support.annotation.RestrictTo;
 
 import com.tencent.matrix.util.MatrixLog;
 
@@ -45,7 +46,7 @@ import java.util.List;
  * usage example:
  * final PowerManagerServiceHooker.IListener listener = new PowerManagerServiceHooker.IListener() {
  */
-
+@RestrictTo(RestrictTo.Scope.LIBRARY)
 public final class PowerManagerServiceHooker {
     private static final String TAG = "Matrix.PowerManagerServiceHooker";
 

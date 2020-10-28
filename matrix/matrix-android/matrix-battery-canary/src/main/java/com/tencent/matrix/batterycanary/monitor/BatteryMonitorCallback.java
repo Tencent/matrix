@@ -30,6 +30,7 @@ public interface BatteryMonitorCallback extends JiffiesMonitorFeature.JiffiesLis
         private int diffWakeCount = 0;
         private long diffWakeTime = 0L;
 
+        @SuppressWarnings("UnusedReturnValue")
         final BatteryPrinter attach(BatteryMonitorCore monitorCore) {
             mMonitorCore = monitorCore;
             return this;
@@ -79,7 +80,7 @@ public interface BatteryMonitorCallback extends JiffiesMonitorFeature.JiffiesLis
             sb.append("| -> ").append("incrementWakeCount=").append(diffWakeCount).append(" sumWakeTime=").append(diffWakeTime).append("ms\n");
             sb.append(getExtInfo());
             sb.append("**********************************************************************************************");
-            MatrixLog.i(TAG, "%s", sb.toString());
+            MatrixLog.i(TAG, sb.toString());
             synchronized (tasks) {
                 tasks.clear();
             }

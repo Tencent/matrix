@@ -35,7 +35,7 @@ import org.junit.runner.RunWith;
 
 @RunWith(AndroidJUnit4.class)
 public class MonitorConfigTest {
-    static final String TAG = "Matrix.test.foo";
+    static final String TAG = "Matrix.test.MonitorConfigTest";
 
     Context mContext;
 

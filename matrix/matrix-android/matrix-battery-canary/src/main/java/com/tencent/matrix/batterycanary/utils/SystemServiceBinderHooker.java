@@ -18,6 +18,7 @@ package com.tencent.matrix.batterycanary.utils;
 
 import android.os.IBinder;
 import android.os.IInterface;
+import android.support.annotation.RestrictTo;
 
 import com.tencent.matrix.util.MatrixLog;
 
@@ -31,7 +32,7 @@ import java.util.Map;
  * @author liyongjie
  *         Created by liyongjie on 2017/10/30.
  */
-
+@RestrictTo(RestrictTo.Scope.LIBRARY)
 public class SystemServiceBinderHooker {
     private static final String TAG = "Matrix.SystemServiceBinderHooker";
 

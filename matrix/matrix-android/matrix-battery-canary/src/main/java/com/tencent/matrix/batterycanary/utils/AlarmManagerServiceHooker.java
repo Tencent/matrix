@@ -20,6 +20,7 @@ import android.app.AlarmManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.os.Build;
+import android.support.annotation.RestrictTo;
 
 import com.tencent.matrix.util.MatrixLog;
 
@@ -31,7 +32,7 @@ import java.util.List;
  * @author liyongjie
  *         Created by liyongjie on 2017/10/30.
  */
-
+@RestrictTo(RestrictTo.Scope.LIBRARY)
 public class AlarmManagerServiceHooker {
     private static final String TAG = "Matrix.AlarmManagerServiceHooker";
 

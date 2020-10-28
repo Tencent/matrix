@@ -18,6 +18,7 @@ package com.tencent.matrix.batterycanary.utils;
 
 import android.os.Handler;
 import android.os.HandlerThread;
+import android.support.annotation.RestrictTo;
 
 import com.tencent.matrix.util.MatrixHandlerThread;
 
@@ -27,7 +28,7 @@ import com.tencent.matrix.util.MatrixHandlerThread;
  * @author liyongjie
  *         Created by liyongjie on 2017/8/14.
  */
-
+@RestrictTo(RestrictTo.Scope.LIBRARY)
 public class BatteryCanaryDetectScheduler {
     private static final String TAG = "Matrix.BatteryCanaryDetectScheduler";
 

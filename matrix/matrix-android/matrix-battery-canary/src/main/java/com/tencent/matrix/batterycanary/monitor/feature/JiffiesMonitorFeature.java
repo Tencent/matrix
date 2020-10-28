@@ -22,8 +22,9 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.Set;
 
+@SuppressWarnings("NotNullFieldNotInitialized")
 public class JiffiesMonitorFeature implements MonitorFeature, Handler.Callback {
-    private static final String TAG = "Matrix.JiffiesMonitorPlugin";
+    private static final String TAG = "Matrix.monitor.JiffiesMonitorFeature";
 
     public interface JiffiesListener {
         void onTraceBegin();
@@ -35,9 +36,9 @@ public class JiffiesMonitorFeature implements MonitorFeature, Handler.Callback {
     private static long LOOP_TIME = 15 * 60 * 1000;
     private static final int MSG_ID_JIFFIES_START = 0x1;
     private static final int MSG_ID_JIFFIES_END = 0x2;
-    private Handler handler;
+    @NonNull private BatteryMonitorCore monitor;
+    @NonNull private Handler handler;
     private ProcessInfo lastProcessInfo = null;
-    private BatteryMonitorCore monitor;
     private LoopCheckRunnable foregroundLoopCheckRunnable = new LoopCheckRunnable();
     private static byte[] sBuffer = new byte[2 * 1024];
 
@@ -47,6 +48,7 @@ public class JiffiesMonitorFeature implements MonitorFeature, Handler.Callback {
 
     @Override
     public void configure(BatteryMonitorCore monitor) {
+        MatrixLog.i(TAG, "#configure monitor feature");
         this.monitor = monitor;
         handler = new Handler(MatrixHandlerThread.getDefaultHandlerThread().getLooper(), this);
         WAIT_TIME = monitor.getConfig().greyTime;
@@ -55,15 +57,18 @@ public class JiffiesMonitorFeature implements MonitorFeature, Handler.Callback {
 
     @Override
     public void onTurnOn() {
+        MatrixLog.i(TAG, "#onTurnOn");
     }
 
     @Override
     public void onTurnOff() {
+        MatrixLog.i(TAG, "#onTurnOff");
         handler.removeCallbacksAndMessages(null);
     }
 
     @Override
     public void onAppForeground(boolean isForeground) {
+        MatrixLog.i(TAG, "#onAppForeground, bool = " + isForeground);
         if (!Matrix.isInstalled()) {
             MatrixLog.e(TAG, "Matrix was not installed yet, just ignore the event");
             return;
@@ -106,17 +111,13 @@ public class JiffiesMonitorFeature implements MonitorFeature, Handler.Callback {
             processInfo.upTime = SystemClock.uptimeMillis();
             processInfo.time = System.currentTimeMillis();
             lastProcessInfo = processInfo;
-            if (null != getListener()) {
-                getListener().onTraceBegin();
-            }
+            getListener().onTraceBegin();
             return true;
         } else if (msg.what == MSG_ID_JIFFIES_END) {
             if (null == lastProcessInfo) {
                 return true;
             }
-            if (null != getListener()) {
-                getListener().onTraceEnd();
-            }
+            getListener().onTraceEnd();
             ProcessInfo processInfo = new ProcessInfo();
             processInfo.pid = Process.myPid();
             processInfo.name = Matrix.isInstalled() ? MatrixUtil.getProcessName(Matrix.with().getApplication()) : "default";
@@ -125,10 +126,7 @@ public class JiffiesMonitorFeature implements MonitorFeature, Handler.Callback {
             processInfo.time = System.currentTimeMillis();
             JiffiesResult result = calculateDiff(lastProcessInfo, processInfo);
             result.isForeground = msg.arg1 == 1;
-            printResult(result);
-            if (null != getListener()) {
-                getListener().onJiffies(result);
-            }
+            getListener().onJiffies(result);
             lastProcessInfo = null;
             return true;
         }
@@ -148,9 +146,6 @@ public class JiffiesMonitorFeature implements MonitorFeature, Handler.Callback {
             lastWhat = (lastWhat == MSG_ID_JIFFIES_END ? MSG_ID_JIFFIES_START : MSG_ID_JIFFIES_END);
             handler.postDelayed(this, LOOP_TIME);
         }
-    }
-
-    private void printResult(JiffiesResult result) {
     }
 
 
@@ -259,7 +254,7 @@ public class JiffiesMonitorFeature implements MonitorFeature, Handler.Callback {
                     } else if (TextUtils.isEmpty(threadInfo.name)) {
                         threadInfo.name = "null";
                     }
-                } catch (Exception e) {
+                } catch (Exception ignored) {
                 } finally {
                     if (null != threadInfo) {
                         set.add(threadInfo);

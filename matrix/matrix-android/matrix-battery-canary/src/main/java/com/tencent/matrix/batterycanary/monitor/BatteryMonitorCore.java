@@ -1,5 +1,7 @@
 package com.tencent.matrix.batterycanary.monitor;
 
+import android.support.annotation.RestrictTo;
+
 import com.tencent.matrix.AppActiveMatrixDelegate;
 import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.LooperTaskMonitorFeature;
@@ -105,6 +107,6 @@ public class BatteryMonitorCore implements JiffiesMonitorFeature.JiffiesListener
     @Override
     public void onWakeLockTimeout(String tag, String packageName, int warningCount) {
         MatrixLog.d(TAG, "#onWakeLockTimeout, tag = " + tag + ", pkg = " + packageName + ", count = " + warningCount);
-        onWakeLockTimeout(tag, packageName, warningCount);
+        getConfig().callback.onWakeLockTimeout(tag, packageName, warningCount);
     }
 }

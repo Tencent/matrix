@@ -4,6 +4,7 @@ import android.os.Handler;
 import android.os.IBinder;
 import android.os.SystemClock;
 import android.os.WorkSource;
+import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
@@ -16,14 +17,14 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class WakeLockMonitorFeature implements MonitorFeature, PowerManagerServiceHooker.IListener {
-    private static final String TAG = "Matrix.WakeLockMonitorPlugin";
+    private static final String TAG = "Matrix.monitor.WakeLockMonitorFeature";
 
     public interface WakeLockListener {
         void onWakeLockTimeout(String tag, String packageName, int warningCount);
     }
 
-    private Handler handler = null;
-    private BatteryMonitorCore monitor;
+    @NonNull private BatteryMonitorCore monitor;
+    @NonNull private Handler handler = null;
     private ConcurrentHashMap<Object, Cache> timeoutMap = new ConcurrentHashMap<>(2);
     private long wakeLockTime = 0L;
     private int wakeLockingCount = 0;
@@ -35,26 +36,27 @@ public class WakeLockMonitorFeature implements MonitorFeature, PowerManagerServi
 
     @Override
     public void configure(BatteryMonitorCore monitor) {
+        MatrixLog.i(TAG, "#configure monitor feature");
         this.monitor = monitor;
         this.handler = new Handler(MatrixHandlerThread.getDefaultHandlerThread().getLooper());
     }
 
     @Override
     public void onTurnOn() {
-        Objects.requireNonNull(monitor);
+        MatrixLog.i(TAG, "#onTurnOn");
         PowerManagerServiceHooker.addListener(this);
     }
 
     @Override
     public void onTurnOff() {
-        Objects.requireNonNull(monitor);
+        MatrixLog.i(TAG, "#onTurnOff");
         PowerManagerServiceHooker.removeListener(this);
         handler.removeCallbacksAndMessages(null);
     }
 
     @Override
     public void onAppForeground(boolean isForeground) {
-
+        MatrixLog.i(TAG, "#onAppForeground, bool = " + isForeground);
     }
 
     @Override

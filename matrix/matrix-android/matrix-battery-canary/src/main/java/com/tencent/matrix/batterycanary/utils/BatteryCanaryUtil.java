@@ -19,6 +19,7 @@ package com.tencent.matrix.batterycanary.utils;
 import android.app.AlarmManager;
 import android.content.Context;
 import android.os.SystemClock;
+import android.support.annotation.RestrictTo;
 
 import java.util.ArrayList;
 import java.util.ListIterator;
@@ -27,7 +28,7 @@ import java.util.ListIterator;
  * @author liyongjie
  *         Created by liyongjie on 2017/8/14.
  */
-
+@RestrictTo(RestrictTo.Scope.LIBRARY)
 public final class BatteryCanaryUtil {
     private static final int DEFAULT_MAX_STACK_LAYER = 10;
     private static String sPackageName = null;
