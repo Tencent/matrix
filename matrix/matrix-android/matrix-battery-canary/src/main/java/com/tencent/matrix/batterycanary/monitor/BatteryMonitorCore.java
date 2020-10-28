@@ -1,7 +1,5 @@
 package com.tencent.matrix.batterycanary.monitor;
 
-import android.support.annotation.RestrictTo;
-
 import com.tencent.matrix.AppActiveMatrixDelegate;
 import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.LooperTaskMonitorFeature;
@@ -72,7 +70,7 @@ public class BatteryMonitorCore implements JiffiesMonitorFeature.JiffiesListener
     public void onForeground(boolean isForeground) {
         isAppForeground = isForeground;
         for (MonitorFeature plugin : config.features) {
-            plugin.onAppForeground(isForeground);
+            plugin.onForeground(isForeground);
         }
     }
 
@@ -94,7 +92,7 @@ public class BatteryMonitorCore implements JiffiesMonitorFeature.JiffiesListener
 
     @Override
     public void onJiffies(JiffiesMonitorFeature.JiffiesResult result) {
-        MatrixLog.d(TAG, "#onJiffies, diff = " + result.jiffiesDiff2);
+        MatrixLog.d(TAG, "#onJiffies, diff = " + result.totalJiffiesDiff);
         getConfig().callback.onJiffies(result);
     }
 

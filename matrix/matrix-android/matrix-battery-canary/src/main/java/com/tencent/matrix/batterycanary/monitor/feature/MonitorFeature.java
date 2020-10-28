@@ -7,6 +7,6 @@ public interface MonitorFeature {
     void configure(BatteryMonitorCore monitor);
     void onTurnOn();
     void onTurnOff();
-    void onAppForeground(boolean isForeground);
+    void onForeground(boolean isForeground);
     int weight();
 }

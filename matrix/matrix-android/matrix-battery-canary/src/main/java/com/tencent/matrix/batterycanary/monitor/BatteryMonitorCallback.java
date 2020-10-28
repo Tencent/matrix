@@ -59,18 +59,18 @@ public interface BatteryMonitorCallback extends JiffiesMonitorFeature.JiffiesLis
             StringBuilder sb = new StringBuilder("\t\n");
             sb.append("****************************************** PowerTest *****************************************").append("\n");
             sb.append("| ").append("pid=").append(Process.myPid())
-                    .append("\t\t").append("isForeground=").append(result.isForeground)
+                    .append("\t\t").append("stat=").append(result.status)
                     .append("\t\t").append("during(min)=").append(result.upTimeDiff / ONE_MIN).append("<").append(result.timeDiff / ONE_MIN)
-                    .append("\t\t").append("diff(jiffies)=").append(result.jiffiesDiff2)
-                    .append("\t\t").append("average(jiffies/min)=").append(result.jiffiesDiff2 / Math.max(1, result.upTimeDiff / ONE_MIN)).append("\n");
+                    .append("\t\t").append("diff(jiffies)=").append(result.totalJiffiesDiff)
+                    .append("\t\t").append("avg(jiffies/min)=").append(result.totalJiffiesDiff / Math.max(1, result.upTimeDiff / ONE_MIN)).append("\n");
             sb.append("==============================================================================================").append("\n");
-            for (JiffiesMonitorFeature.ThreadResult threadResult : result.threadResults.subList(0, Math.min(result.threadResults.size(), 8))) {
-                if (threadResult.jiffiesDiff <= 0) {
+            for (JiffiesMonitorFeature.JiffiesResult.ThreadJiffies threadJiffies : result.threadJiffies.subList(0, Math.min(result.threadJiffies.size(), 8))) {
+                if (threadJiffies.jiffiesDiff <= 0) {
                     sb.append("|\t\t......\n");
                     break;
                 }
-                sb.append("| -> ").append(threadResult).append("\n");
-                List<LooperTaskMonitorFeature.TaskTraceInfo> threadTasks = tasks.get(threadResult.threadInfo.tid);
+                sb.append("| -> ").append(threadJiffies).append("\n");
+                List<LooperTaskMonitorFeature.TaskTraceInfo> threadTasks = tasks.get(threadJiffies.threadInfo.tid);
                 if (null != threadTasks && !threadTasks.isEmpty()) {
                     for (LooperTaskMonitorFeature.TaskTraceInfo task : threadTasks.subList(0, Math.min(3, threadTasks.size()))) {
                         sb.append("|\t\t").append(task).append("\n");

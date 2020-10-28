@@ -55,7 +55,7 @@ public class WakeLockMonitorFeature implements MonitorFeature, PowerManagerServi
     }
 
     @Override
-    public void onAppForeground(boolean isForeground) {
+    public void onForeground(boolean isForeground) {
         MatrixLog.i(TAG, "#onAppForeground, bool = " + isForeground);
     }
 

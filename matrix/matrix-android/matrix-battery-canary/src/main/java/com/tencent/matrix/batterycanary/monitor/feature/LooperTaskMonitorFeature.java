@@ -53,7 +53,7 @@ public class LooperTaskMonitorFeature implements MonitorFeature {
     }
 
     @Override
-    public void onAppForeground(boolean isForeground) {
+    public void onForeground(boolean isForeground) {
         MatrixLog.i(TAG, "#onAppForeground, bool = " + isForeground);
         if (monitor.isTurnOn()) {
             Map<Thread, StackTraceElement[]> stacks = Thread.getAllStackTraces();

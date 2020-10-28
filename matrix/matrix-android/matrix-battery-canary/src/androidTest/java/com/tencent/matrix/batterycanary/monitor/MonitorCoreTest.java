@@ -111,6 +111,38 @@ public class MonitorCoreTest {
                 }
             }
         });
+        thread.setPriority(Thread.MAX_PRIORITY);
+        thread.setName("test-jiffies-thread");
+        thread.start();
+
+        Matrix.init(new Matrix.Builder(((Application) mContext.getApplicationContext())).build());
+        BatteryMonitorConfig config = new BatteryMonitorConfig.Builder()
+                .enable(JiffiesMonitorFeature.class)
+                .enableBuiltinForegroundNotify(false)
+                .enableForegroundMode(false)
+                .setCallback(spyCallback)
+                .wakelockTimeout(1000)
+                .greyJiffiesTime(100)
+                .foregroundLoopCheckTime(1000)
+                .build();
+
+        final BatteryMonitorCore core = new BatteryMonitorCore(config);
+        mockForegroundSwitching(core);
+        core.start();
+        Thread.sleep(10000L);
+    }
+
+    @Test
+    public void testJiffiesFeaturesWithForegroundLoopCheck() throws InterruptedException {
+        Thread thread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                while (true) {
+                    new Handler(Looper.getMainLooper());
+                }
+            }
+        });
+        thread.setPriority(Thread.MAX_PRIORITY);
         thread.setName("test-jiffies-thread");
         thread.start();
 
@@ -126,8 +158,14 @@ public class MonitorCoreTest {
                 .build();
 
         final BatteryMonitorCore core = new BatteryMonitorCore(config);
-        mockForegroundSwitching(core);
         core.start();
+        Handler handler = new Handler(Looper.getMainLooper());
+        handler.post(new Runnable() {
+            @Override
+            public void run() {
+                core.onForeground(true);
+            }
+        });
         Thread.sleep(10000L);
     }
 
@@ -142,19 +180,19 @@ public class MonitorCoreTest {
         handler.postDelayed(new Runnable() {
             @Override
             public void run() {
-                core.onForeground(false);
+                core.onForeground(true);
             }
         }, 2000L);
         handler.postDelayed(new Runnable() {
             @Override
             public void run() {
-                core.onForeground(true);
+                core.onForeground(false);
             }
         }, 5000L);
         handler.postDelayed(new Runnable() {
             @Override
             public void run() {
-                core.onForeground(false);
+                core.onForeground(true);
             }
         }, 9000L);
     }
