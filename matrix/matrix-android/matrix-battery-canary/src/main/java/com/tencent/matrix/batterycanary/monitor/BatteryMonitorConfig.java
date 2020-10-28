@@ -23,6 +23,11 @@ public class BatteryMonitorConfig {
     public boolean disableAppForegroundNotifyByMatrix = false;
     public LinkedList<MonitorFeature> plugins = new LinkedList<>();
 
+    private BatteryMonitorConfig() {}
+
+    /**
+     * FIXME: suitable builder needed
+     */
     public static class Builder {
         private final BatteryMonitorConfig config = new BatteryMonitorConfig();
 
