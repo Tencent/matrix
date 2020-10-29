@@ -20,6 +20,7 @@ import android.content.Context;
 import android.os.Build;
 import android.os.IBinder;
 import android.os.WorkSource;
+import android.support.annotation.Nullable;
 import android.support.annotation.RestrictTo;
 
 import com.tencent.matrix.util.MatrixLog;
@@ -51,7 +52,7 @@ public final class PowerManagerServiceHooker {
     private static final String TAG = "Matrix.PowerManagerServiceHooker";
 
     public interface IListener {
-        void onAcquireWakeLock(IBinder token, int flags, String tag, String packageName, WorkSource workSource, String historyTag);
+        void onAcquireWakeLock(IBinder token, int flags, String tag, String packageName, @Nullable WorkSource workSource, @Nullable String historyTag);
         void onReleaseWakeLock(IBinder token, int flags);
     }
 
