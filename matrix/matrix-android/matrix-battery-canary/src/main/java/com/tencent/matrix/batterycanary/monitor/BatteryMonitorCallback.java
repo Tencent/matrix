@@ -26,7 +26,7 @@ public interface BatteryMonitorCallback extends JiffiesMonitorFeature.JiffiesLis
         @NonNull
         private BatteryMonitorCore mMonitorCore;
         private final LongSparseArray<List<LooperTaskMonitorFeature.TaskTraceInfo>> tasks = new LongSparseArray<>();
-        private WakeLockMonitorFeature.Info lastWakeInfo = null;
+        private WakeLockMonitorFeature.WakeLockInfo mLastWakeWakeLockInfo = null;
         private int diffWakeCount = 0;
         private long diffWakeTime = 0L;
 
@@ -40,17 +40,17 @@ public interface BatteryMonitorCallback extends JiffiesMonitorFeature.JiffiesLis
         public void onTraceBegin() {
             WakeLockMonitorFeature plugin = mMonitorCore.getMonitorFeature(WakeLockMonitorFeature.class);
             if (null != plugin) {
-                lastWakeInfo = plugin.getInfo();
+                mLastWakeWakeLockInfo = plugin.currentWakeLocks();
             }
         }
 
         @Override
         public void onTraceEnd() {
             WakeLockMonitorFeature plugin = mMonitorCore.getMonitorFeature(WakeLockMonitorFeature.class);
-            if (null != plugin && null != lastWakeInfo) {
-                WakeLockMonitorFeature.Info info = plugin.getInfo();
-                diffWakeCount = info.wakeLockCount - lastWakeInfo.wakeLockCount;
-                diffWakeTime = info.wakeLockTime - lastWakeInfo.wakeLockTime;
+            if (null != plugin && null != mLastWakeWakeLockInfo) {
+                WakeLockMonitorFeature.WakeLockInfo wakeLockInfo = plugin.currentWakeLocks();
+                diffWakeCount = wakeLockInfo.totalWakeLockCount - mLastWakeWakeLockInfo.totalWakeLockCount;
+                diffWakeTime = wakeLockInfo.totalWakeLockTime - mLastWakeWakeLockInfo.totalWakeLockTime;
             }
         }
 

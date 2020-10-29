@@ -8,14 +8,17 @@ import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
-import com.tencent.matrix.batterycanary.utils.PowerManagerServiceHooker;
 import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
+import com.tencent.matrix.batterycanary.utils.PowerManagerServiceHooker;
 import com.tencent.matrix.util.MatrixHandlerThread;
 import com.tencent.matrix.util.MatrixLog;
 
-import java.util.Objects;
+import java.util.Collections;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
+@SuppressWarnings("NotNullFieldNotInitialized")
 public class WakeLockMonitorFeature implements MonitorFeature, PowerManagerServiceHooker.IListener {
     private static final String TAG = "Matrix.monitor.WakeLockMonitorFeature";
 
@@ -24,11 +27,11 @@ public class WakeLockMonitorFeature implements MonitorFeature, PowerManagerServi
     }
 
     @NonNull private BatteryMonitorCore monitor;
-    @NonNull private Handler handler = null;
-    private ConcurrentHashMap<Object, Cache> timeoutMap = new ConcurrentHashMap<>(2);
-    private long wakeLockTime = 0L;
-    private int wakeLockingCount = 0;
-    private int wakeLockCount = 0;
+    @NonNull private Handler handler;
+    long wakeLockedTime = 0L;
+    int wakeLockRequiredCount = 0;
+    static long OVER_TIME;
+    final ConcurrentHashMap<IBinder, WakeLockTrace> overTimeWakeLocks = new ConcurrentHashMap<>(2);
 
     private WakeLockListener getListener() {
         return monitor;
@@ -38,7 +41,8 @@ public class WakeLockMonitorFeature implements MonitorFeature, PowerManagerServi
     public void configure(BatteryMonitorCore monitor) {
         MatrixLog.i(TAG, "#configure monitor feature");
         this.monitor = monitor;
-        this.handler = new Handler(MatrixHandlerThread.getDefaultHandlerThread().getLooper());
+        OVER_TIME = monitor.getConfig().wakelockTimeout;
+        handler = new Handler(MatrixHandlerThread.getDefaultHandlerThread().getLooper());
     }
 
     @Override
@@ -55,9 +59,7 @@ public class WakeLockMonitorFeature implements MonitorFeature, PowerManagerServi
     }
 
     @Override
-    public void onForeground(boolean isForeground) {
-        MatrixLog.i(TAG, "#onAppForeground, bool = " + isForeground);
-    }
+    public void onForeground(boolean isForeground) {}
 
     @Override
     public int weight() {
@@ -66,69 +68,75 @@ public class WakeLockMonitorFeature implements MonitorFeature, PowerManagerServi
 
     @Override
     public void onAcquireWakeLock(IBinder token, int flags, final String tag, final String packageName, WorkSource workSource, String historyTag) {
-        MatrixLog.i(TAG, "[onAcquireWakeLock] token=%s flags=%s tag=%s historyTag=%s packageName=%s workSource=%s stack=%s"
-                , token.hashCode(), flags, tag, historyTag, packageName, workSource, BatteryCanaryUtil.stackTraceToString(new Throwable().getStackTrace()));
+        MatrixLog.i(TAG, "[onAcquireWakeLock] token=%s flags=%s tag=%s historyTag=%s packageName=%s workSource=%s stack=%s",
+                String.valueOf(token), flags, tag, historyTag, packageName, workSource, BatteryCanaryUtil.stackTraceToString(new Throwable().getStackTrace()));
 
-        Runnable timeoutRunnable = new Runnable() {
+        Runnable timeoutLoopCheckTask = new Runnable() {
             int warningCount = 1;
-
             @Override
             public void run() {
-                if (getListener() != null) {
-                    getListener().onWakeLockTimeout(tag, packageName, warningCount);
-                }
+                getListener().onWakeLockTimeout(tag, packageName, warningCount);
                 warningCount++;
-                handler.postDelayed(this, monitor.getConfig().wakelockTimeout);
+                handler.postDelayed(this, OVER_TIME);
             }
         };
-        timeoutMap.put(token, new Cache(token, SystemClock.uptimeMillis(), timeoutRunnable));
-        handler.postDelayed(timeoutRunnable, monitor.getConfig().wakelockTimeout);
-        wakeLockingCount += 1;
-        wakeLockCount++;
+
+        overTimeWakeLocks.put(token, new WakeLockTrace(token, tag, packageName, timeoutLoopCheckTask));
+        handler.postDelayed(timeoutLoopCheckTask, OVER_TIME);
+        wakeLockRequiredCount++;
     }
 
     @Override
     public void onReleaseWakeLock(IBinder token, int flags) {
         MatrixLog.i(TAG, "[onReleaseWakeLock] token=%s flags=%s", token.hashCode(), flags);
-        Cache cache = timeoutMap.get(token);
-        handler.removeCallbacks(cache.runnable);
-        wakeLockTime += (SystemClock.uptimeMillis() - cache.time);
-        wakeLockingCount -= 1;
+        WakeLockTrace wakeLockTrace = overTimeWakeLocks.get(token);
+        if (wakeLockTrace != null) {
+            handler.removeCallbacks(wakeLockTrace.runnable);
+            wakeLockTrace.finish();
+            wakeLockedTime += (wakeLockTrace.timeEnd - wakeLockTrace.timeBgn);
+        } else {
+            MatrixLog.i(TAG, "[onReleaseWakeLock] missing tracking, token = " + token);
+        }
     }
 
-    public Info getInfo() {
-        long time = wakeLockTime;
-        if (wakeLockingCount > 0) {
-            for (Cache cache : timeoutMap.values()) {
-                time += (SystemClock.uptimeMillis() - cache.time);
+    public WakeLockInfo currentWakeLocks() {
+        long totalWakeLockTime = wakeLockedTime;
+        long uptimeMillis = SystemClock.uptimeMillis();
+
+        List<WakeLockTrace> currentOverTimeWakeLocks = new LinkedList<>();
+        for (WakeLockTrace item : currentOverTimeWakeLocks) {
+            if (!item.isFinished()) {
+                currentOverTimeWakeLocks.add(item);
+                totalWakeLockTime += (uptimeMillis - item.timeBgn);
             }
         }
-        return new Info(time, wakeLockingCount, wakeLockCount);
+        WakeLockInfo info = new WakeLockInfo();
+        info.totalWakeLockTime = totalWakeLockTime;
+        info.totalWakeLockCount = wakeLockRequiredCount;
+        info.currentOverTimeWakeLocks = currentOverTimeWakeLocks;
+        return info;
     }
 
-    public static class Info {
-
-        public Info(long wakeLockTime, int wakeLockingCount, int wakeLockCount) {
-            this.wakeLockTime = wakeLockTime;
-            this.wakeLockingCount = wakeLockingCount;
-            this.wakeLockCount = wakeLockCount;
-        }
-
-        public long wakeLockTime;
-        public int wakeLockingCount;
-        public int wakeLockCount;
+    public static class WakeLockInfo {
+        public long totalWakeLockTime;
+        public int totalWakeLockCount;
+        List<WakeLockTrace> currentOverTimeWakeLocks = Collections.emptyList();
     }
 
+    public static class WakeLockTrace {
+        final IBinder token;
+        final Runnable runnable;
+        final String tag;
+        final String packageName;
+        final long timeBgn;
+        long timeEnd = 0;
 
-    public static class Cache {
-        IBinder token;
-        long time;
-        Runnable runnable;
-
-        Cache(IBinder token, long time, Runnable runnable) {
+        WakeLockTrace(IBinder token, String tag, String packageName, Runnable runnable) {
             this.token = token;
-            this.time = time;
             this.runnable = runnable;
+            this.tag = tag;
+            this.packageName = packageName;
+            this.timeBgn = SystemClock.uptimeMillis();
         }
 
         @Override
@@ -138,7 +146,16 @@ public class WakeLockMonitorFeature implements MonitorFeature, PowerManagerServi
 
         @Override
         public boolean equals(@Nullable Object obj) {
+            if (!(obj instanceof WakeLockTrace)) return false;
             return token.equals(obj);
+        }
+
+        public void finish() {
+            timeEnd = SystemClock.uptimeMillis();
+        }
+
+        public boolean isFinished() {
+            return timeEnd >= timeBgn;
         }
     }
 }
