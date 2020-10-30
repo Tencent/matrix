@@ -12,7 +12,7 @@ import java.util.List;
 
 public class BatteryMonitorCore implements JiffiesMonitorFeature.JiffiesListener, LooperTaskMonitorFeature.LooperTaskListener,
         WakeLockMonitorFeature.WakeLockListener {
-    private static final String TAG = "Matrix.monitor.core";
+    private static final String TAG = "Matrix.battery.monitor";
 
     private volatile boolean isTurnOn = false;
     private boolean isAppForeground = AppActiveMatrixDelegate.INSTANCE.isAppForeground();

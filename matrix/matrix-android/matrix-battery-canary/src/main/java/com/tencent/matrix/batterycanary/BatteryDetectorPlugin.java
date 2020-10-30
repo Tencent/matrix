@@ -32,18 +32,18 @@ import com.tencent.matrix.util.MatrixUtil;
  * @author liyongjie
  *         Created by liyongjie on 2017/8/14.
  */
-public class BatteryCanaryPlugin extends Plugin {
-    private static final String TAG = "Matrix.BatteryCanaryPlugin";
+public class BatteryDetectorPlugin extends Plugin {
+    private static final String TAG = "Matrix.BatteryDetectorPlugin";
 
     private final BatteryConfig mBatteryConfig;
     private BatteryCanaryCore mCore;
     private       boolean stoppedForForeground = false;
 
-//    public BatteryCanaryPlugin() {
+//    public BatteryDetectorPlugin() {
 //        mBatteryConfig = BatteryConfig.DEFAULT;
 //    }
 
-    public BatteryCanaryPlugin(BatteryConfig batteryConfig) {
+    public BatteryDetectorPlugin(BatteryConfig batteryConfig) {
         mBatteryConfig = batteryConfig;
     }
 

@@ -23,7 +23,7 @@ import android.os.IBinder;
 import android.os.PowerManager;
 import android.os.WorkSource;
 
-import com.tencent.matrix.batterycanary.BatteryCanaryPlugin;
+import com.tencent.matrix.batterycanary.BatteryDetectorPlugin;
 import com.tencent.matrix.batterycanary.detector.config.BatteryConfig;
 import com.tencent.matrix.batterycanary.utils.AlarmManagerServiceHooker;
 import com.tencent.matrix.batterycanary.utils.PowerManagerServiceHooker;
@@ -40,22 +40,22 @@ import com.tencent.matrix.util.MatrixLog;
 
 public class BatteryCanaryCore implements PowerManagerServiceHooker.IListener,
         AlarmManagerServiceHooker.IListener, IssuePublisher.OnIssueDetectListener {
-    private static final String TAG = "Matrix.BatteryCanaryCore";
+    private static final String TAG = "Matrix.battery.detector";
 
     private final BatteryConfig mBatteryConfig;
     private final BatteryCanaryDetectScheduler mDetectScheduler;
-    private final BatteryCanaryPlugin mBatteryCanaryPlugin;
+    private final BatteryDetectorPlugin mBatteryDetectorPlugin;
 
     private boolean           mIsStart;
     private WakeLockDetector mWakeLockDetector;
     private AlarmDetector mAlarmDetector = null;
     private final Context mContext;
 
-    public BatteryCanaryCore(BatteryCanaryPlugin batteryCanaryPlugin) {
-        mBatteryConfig = batteryCanaryPlugin.getConfig();
+    public BatteryCanaryCore(BatteryDetectorPlugin batteryDetectorPlugin) {
+        mBatteryConfig = batteryDetectorPlugin.getConfig();
         mDetectScheduler = new BatteryCanaryDetectScheduler();
-        mBatteryCanaryPlugin = batteryCanaryPlugin;
-        mContext = batteryCanaryPlugin.getApplication();
+        mBatteryDetectorPlugin = batteryDetectorPlugin;
+        mContext = batteryDetectorPlugin.getApplication();
     }
 
     public void start() {
@@ -128,7 +128,7 @@ public class BatteryCanaryCore implements PowerManagerServiceHooker.IListener,
 
     @Override
     public void onDetectIssue(Issue issue) {
-        mBatteryCanaryPlugin.onDetectIssue(issue);
+        mBatteryDetectorPlugin.onDetectIssue(issue);
     }
 
     private void initDetectorsAndHookers(BatteryConfig batteryConfig) {

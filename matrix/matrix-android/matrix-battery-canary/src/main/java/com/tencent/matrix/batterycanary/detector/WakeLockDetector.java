@@ -63,7 +63,7 @@ import java.util.Vector;
  */
 
 public class WakeLockDetector extends IssuePublisher {
-    private static final String TAG = "Matrix.WakeLockDetector";
+    private static final String TAG = "Matrix.detector.WakeLock";
 
     public interface IDelegate {
         void addDetectTask(Runnable detectTask, long delayInMillis);
