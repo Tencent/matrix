@@ -24,8 +24,6 @@ import android.os.Environment;
 import android.os.Parcel;
 import android.os.SystemClock;
 
-import com.tencent.matrix.batterycanary.detector.config.BatteryConfig;
-import com.tencent.matrix.batterycanary.detector.config.SharePluginInfo;
 import com.tencent.matrix.batterycanary.utils.BatteryCanaryDetectScheduler;
 import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
 import com.tencent.matrix.report.Issue;
@@ -59,15 +57,14 @@ import java.util.Set;
 /**
  * 1. There will be a estimate count of the alarm triggers in a stat period (1 hour)
  * and a issue will be publish if the count is over the threshold which can be custom
- * {@link BatteryConfig.Builder#alarmTriggerNum1HThreshold(int)} and {@link BatteryConfig.Builder#wakeUpAlarmTriggerNum1HThreshold(int)}.
+ * {@link BatteryDetectorConfig.Builder#alarmTriggerNum1HThreshold(int)} and {@link BatteryDetectorConfig.Builder#wakeUpAlarmTriggerNum1HThreshold(int)}.
  *
- * 2. The history of alarms will be record if enable the record feature {@link BatteryConfig.Builder#enableRecordAlarm()}.
+ * 2. The history of alarms will be record if enable the record feature {@link BatteryDetectorConfig.Builder#enableRecordAlarm()}.
  * also see {@link AlarmInfoRecorder}
  *
  * @author liyongjie
  *         Created by liyongjie on 2017/11/2.
  */
-
 public class AlarmDetector extends IssuePublisher {
     private static final String TAG = "MicroMsg.AlarmDetector";
 
@@ -91,7 +88,7 @@ public class AlarmDetector extends IssuePublisher {
     private long mCurrentCountPeriodFrom;
     private boolean isForeground = true;
 
-    public AlarmDetector(OnIssueDetectListener issueDetectListener, BatteryConfig config) {
+    public AlarmDetector(OnIssueDetectListener issueDetectListener, BatteryDetectorConfig config) {
         super(issueDetectListener);
         mAlarmTriggerNum1HThreshold = config.getAlarmTriggerNum1HThreshold();
         mWakeUpAlarmTriggerNum1HThreshold = config.getWakeUpAlarmTriggerNum1HThreshold();
@@ -111,7 +108,7 @@ public class AlarmDetector extends IssuePublisher {
 
     /**
      * Run in {@link BatteryCanaryDetectScheduler} single thread
-     * @see BatteryCanaryCore
+     * @see BatteryDetectorCore
      */
     public void onAlarmSet(int type, long triggerAtMillis, long windowMillis, long intervalMillis,
                            int flags, PendingIntent operation, AlarmManager.OnAlarmListener onAlarmListener,
@@ -137,7 +134,7 @@ public class AlarmDetector extends IssuePublisher {
 
     /**
      * Run in {@link BatteryCanaryDetectScheduler} single thread
-     * @see BatteryCanaryCore
+     * @see BatteryDetectorCore
      */
     public void onAlarmRemove(PendingIntent operation, AlarmManager.OnAlarmListener onAlarmListener, String stackTrace) {
         if (mAlarmInfoRecorder != null) {

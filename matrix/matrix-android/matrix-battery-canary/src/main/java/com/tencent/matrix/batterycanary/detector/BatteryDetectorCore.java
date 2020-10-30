@@ -24,7 +24,6 @@ import android.os.PowerManager;
 import android.os.WorkSource;
 
 import com.tencent.matrix.batterycanary.BatteryDetectorPlugin;
-import com.tencent.matrix.batterycanary.detector.config.BatteryConfig;
 import com.tencent.matrix.batterycanary.utils.AlarmManagerServiceHooker;
 import com.tencent.matrix.batterycanary.utils.PowerManagerServiceHooker;
 import com.tencent.matrix.batterycanary.utils.BatteryCanaryDetectScheduler;
@@ -37,12 +36,11 @@ import com.tencent.matrix.util.MatrixLog;
  * @author liyongjie
  *         Created by liyongjie on 2017/8/14.
  */
-
-public class BatteryCanaryCore implements PowerManagerServiceHooker.IListener,
+public class BatteryDetectorCore implements PowerManagerServiceHooker.IListener,
         AlarmManagerServiceHooker.IListener, IssuePublisher.OnIssueDetectListener {
     private static final String TAG = "Matrix.battery.detector";
 
-    private final BatteryConfig mBatteryConfig;
+    private final BatteryDetectorConfig mBatteryDetectorConfig;
     private final BatteryCanaryDetectScheduler mDetectScheduler;
     private final BatteryDetectorPlugin mBatteryDetectorPlugin;
 
@@ -51,8 +49,8 @@ public class BatteryCanaryCore implements PowerManagerServiceHooker.IListener,
     private AlarmDetector mAlarmDetector = null;
     private final Context mContext;
 
-    public BatteryCanaryCore(BatteryDetectorPlugin batteryDetectorPlugin) {
-        mBatteryConfig = batteryDetectorPlugin.getConfig();
+    public BatteryDetectorCore(BatteryDetectorPlugin batteryDetectorPlugin) {
+        mBatteryDetectorConfig = batteryDetectorPlugin.getConfig();
         mDetectScheduler = new BatteryCanaryDetectScheduler();
         mBatteryDetectorPlugin = batteryDetectorPlugin;
         mContext = batteryDetectorPlugin.getApplication();
@@ -60,7 +58,7 @@ public class BatteryCanaryCore implements PowerManagerServiceHooker.IListener,
 
     public void start() {
         mDetectScheduler.start();
-        initDetectorsAndHookers(mBatteryConfig);
+        initDetectorsAndHookers(mBatteryDetectorConfig);
         synchronized (this) {
             mIsStart = true;
         }
@@ -131,12 +129,12 @@ public class BatteryCanaryCore implements PowerManagerServiceHooker.IListener,
         mBatteryDetectorPlugin.onDetectIssue(issue);
     }
 
-    private void initDetectorsAndHookers(BatteryConfig batteryConfig) {
-        if (batteryConfig == null) {
+    private void initDetectorsAndHookers(BatteryDetectorConfig batteryDetectorConfig) {
+        if (batteryDetectorConfig == null) {
             throw new RuntimeException("batteryConfig is null");
         }
-        if (batteryConfig.isDetectWakeLock()) {
-            mWakeLockDetector = new WakeLockDetector(this, batteryConfig, new WakeLockDetector.IDelegate() {
+        if (batteryDetectorConfig.isDetectWakeLock()) {
+            mWakeLockDetector = new WakeLockDetector(this, batteryDetectorConfig, new WakeLockDetector.IDelegate() {
                 @Override
                 public void addDetectTask(Runnable detectTask, long delayInMillis) {
                     mDetectScheduler.addDetectTask(detectTask, delayInMillis);
@@ -152,8 +150,8 @@ public class BatteryCanaryCore implements PowerManagerServiceHooker.IListener,
         }
 
 
-        if (batteryConfig.isDetectAlarm()) {
-            mAlarmDetector = new AlarmDetector(this, mBatteryConfig);
+        if (batteryDetectorConfig.isDetectAlarm()) {
+            mAlarmDetector = new AlarmDetector(this, mBatteryDetectorConfig);
             mDetectScheduler.addDetectTask(new Runnable() {
                 @Override
                 public void run() {

@@ -14,15 +14,13 @@
  * limitations under the License.
  */
 
-package com.tencent.matrix.batterycanary.detector.config;
+package com.tencent.matrix.batterycanary.detector;
 
 /**
  * @author liyongjie
  *         Created by liyongjie on 2017/8/14.
  */
-
-public class SharePluginInfo {
-    public static final String TAG_PLUGIN = "battery";
+class SharePluginInfo {
     public static final String SUB_TAG_WAKE_LOCK = "wakeLock";
     public static final String SUB_TAG_ALARM = "alarm";
 

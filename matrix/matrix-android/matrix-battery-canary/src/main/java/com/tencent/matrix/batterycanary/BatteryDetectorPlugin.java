@@ -18,9 +18,8 @@ package com.tencent.matrix.batterycanary;
 
 import android.app.Application;
 
-import com.tencent.matrix.batterycanary.detector.config.BatteryConfig;
-import com.tencent.matrix.batterycanary.detector.config.SharePluginInfo;
-import com.tencent.matrix.batterycanary.detector.BatteryCanaryCore;
+import com.tencent.matrix.batterycanary.detector.BatteryDetectorCore;
+import com.tencent.matrix.batterycanary.detector.BatteryDetectorConfig;
 import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
 import com.tencent.matrix.plugin.Plugin;
 import com.tencent.matrix.plugin.PluginListener;
@@ -35,16 +34,16 @@ import com.tencent.matrix.util.MatrixUtil;
 public class BatteryDetectorPlugin extends Plugin {
     private static final String TAG = "Matrix.BatteryDetectorPlugin";
 
-    private final BatteryConfig mBatteryConfig;
-    private BatteryCanaryCore mCore;
+    private final BatteryDetectorConfig mBatteryDetectorConfig;
+    private BatteryDetectorCore mCore;
     private       boolean stoppedForForeground = false;
 
 //    public BatteryDetectorPlugin() {
 //        mBatteryConfig = BatteryConfig.DEFAULT;
 //    }
 
-    public BatteryDetectorPlugin(BatteryConfig batteryConfig) {
-        mBatteryConfig = batteryConfig;
+    public BatteryDetectorPlugin(BatteryDetectorConfig batteryDetectorConfig) {
+        mBatteryDetectorConfig = batteryDetectorConfig;
     }
 
     @Override
@@ -52,7 +51,7 @@ public class BatteryDetectorPlugin extends Plugin {
         super.init(app, listener);
         BatteryCanaryUtil.setPackageName(app);
         BatteryCanaryUtil.setProcessName(MatrixUtil.getProcessName(app));
-        mCore = new BatteryCanaryCore(this);
+        mCore = new BatteryDetectorCore(this);
     }
 
     @Override
@@ -72,8 +71,8 @@ public class BatteryDetectorPlugin extends Plugin {
         }
     }
 
-    public BatteryConfig getConfig() {
-        return mBatteryConfig;
+    public BatteryDetectorConfig getConfig() {
+        return mBatteryDetectorConfig;
     }
 
     @Override
@@ -83,7 +82,7 @@ public class BatteryDetectorPlugin extends Plugin {
 
     @Override
     public String getTag() {
-        return SharePluginInfo.TAG_PLUGIN;
+        return "BatteryDetectorPlugin";
     }
 
     @Override

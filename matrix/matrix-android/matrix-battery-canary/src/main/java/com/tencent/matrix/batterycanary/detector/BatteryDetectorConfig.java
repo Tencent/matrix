@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.tencent.matrix.batterycanary.detector.config;
+package com.tencent.matrix.batterycanary.detector;
 
 import com.tencent.mrs.plugin.IDynamicConfig;
 
@@ -22,8 +22,7 @@ import com.tencent.mrs.plugin.IDynamicConfig;
  * @author liyongjie
  *         Created by liyongjie on 2017/8/14.
  */
-
-public class BatteryConfig {
+public class BatteryDetectorConfig {
     private static final String TAG = "Matrix.BatteryConfig";
 
     private static final boolean  DETECT_WAKE_LOCK = true;
@@ -55,7 +54,7 @@ public class BatteryConfig {
 
     private final IDynamicConfig mDynamicConfig;
 
-    private BatteryConfig(IDynamicConfig dynamicConfig) {
+    private BatteryDetectorConfig(IDynamicConfig dynamicConfig) {
         this.mDynamicConfig = dynamicConfig;
     }
 
@@ -112,18 +111,14 @@ public class BatteryConfig {
 
     public static final class Builder {
         private IDynamicConfig dynamicConfig;
-
         public Builder() {
         }
-
         public Builder dynamicConfig(IDynamicConfig dynamicConfig) {
             this.dynamicConfig = dynamicConfig;
             return this;
         }
-
-
-        public BatteryConfig build() {
-            return new BatteryConfig(dynamicConfig);
+        public BatteryDetectorConfig build() {
+            return new BatteryDetectorConfig(dynamicConfig);
         }
     }
 }

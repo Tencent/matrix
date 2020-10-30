@@ -21,8 +21,6 @@ import android.os.IBinder;
 import android.os.SystemClock;
 import android.os.WorkSource;
 
-import com.tencent.matrix.batterycanary.detector.config.BatteryConfig;
-import com.tencent.matrix.batterycanary.detector.config.SharePluginInfo;
 import com.tencent.matrix.batterycanary.utils.BatteryCanaryDetectScheduler;
 import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
 import com.tencent.matrix.report.Issue;
@@ -61,7 +59,6 @@ import java.util.Vector;
  * @author liyongjie
  *         Created by liyongjie on 2017/7/25.
  */
-
 public class WakeLockDetector extends IssuePublisher {
     private static final String TAG = "Matrix.detector.WakeLock";
 
@@ -81,7 +78,7 @@ public class WakeLockDetector extends IssuePublisher {
     private final WakeLockInfoRecorder mWakeLockRecorder;
 
     public WakeLockDetector(OnIssueDetectListener issueDetectListener,
-                            BatteryConfig config, IDelegate delegate) {
+                            BatteryDetectorConfig config, IDelegate delegate) {
         super(issueDetectListener);
         mWakeLockOnceHoldTimeThreshold = config.getWakeLockHoldTimeThreshold();
         mWakeLockHoldTime1HThreshold = config.getWakeLockHoldTime1HThreshold();
@@ -105,7 +102,7 @@ public class WakeLockDetector extends IssuePublisher {
 
     /**
      * Run in {@link BatteryCanaryDetectScheduler}  single thread
-     * @see BatteryCanaryCore
+     * @see BatteryDetectorCore
      */
     public void onAcquireWakeLock(IBinder token, int flags, String tag, String packageName,
                                   WorkSource workSource, String historyTag, String stackTrace, final long acquireTime) {
@@ -137,7 +134,7 @@ public class WakeLockDetector extends IssuePublisher {
 
     /**
      * Run in {@link BatteryCanaryDetectScheduler}  single thread
-     * @see BatteryCanaryCore
+     * @see BatteryDetectorCore
      * @param token
      * @param flags
      */
