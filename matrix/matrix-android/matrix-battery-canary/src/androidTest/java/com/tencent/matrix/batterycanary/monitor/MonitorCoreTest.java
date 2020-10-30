@@ -73,8 +73,8 @@ public class MonitorCoreTest {
             }
 
             @Override
-            public void onWakeLockTimeout(String tag, String packageName, int warningCount) {
-                super.onWakeLockTimeout(tag, packageName, warningCount);
+            public void onWakeLockTimeout(int warningCount, WakeLockMonitorFeature.WakeLockTrace.WakeLockRecord record) {
+                super.onWakeLockTimeout(warningCount, record);
             }
         };
     }

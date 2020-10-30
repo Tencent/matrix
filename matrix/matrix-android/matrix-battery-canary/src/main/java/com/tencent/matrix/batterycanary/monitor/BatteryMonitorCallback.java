@@ -8,6 +8,7 @@ import android.util.LongSparseArray;
 import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.LooperTaskMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.WakeLockMonitorFeature;
+import com.tencent.matrix.batterycanary.monitor.feature.WakeLockMonitorFeature.WakeLockTrace.WakeLockRecord;
 import com.tencent.matrix.util.MatrixLog;
 
 import java.util.List;
@@ -40,7 +41,7 @@ public interface BatteryMonitorCallback extends JiffiesMonitorFeature.JiffiesLis
         public void onTraceBegin() {
             WakeLockMonitorFeature plugin = mMonitorCore.getMonitorFeature(WakeLockMonitorFeature.class);
             if (null != plugin) {
-                mLastWakeWakeLockInfo = plugin.currentWakeLocks();
+                mLastWakeWakeLockInfo = plugin.currentWakeLocksInfo();
             }
         }
 
@@ -48,7 +49,7 @@ public interface BatteryMonitorCallback extends JiffiesMonitorFeature.JiffiesLis
         public void onTraceEnd() {
             WakeLockMonitorFeature plugin = mMonitorCore.getMonitorFeature(WakeLockMonitorFeature.class);
             if (null != plugin && null != mLastWakeWakeLockInfo) {
-                WakeLockMonitorFeature.WakeLockInfo wakeLockInfo = plugin.currentWakeLocks();
+                WakeLockMonitorFeature.WakeLockInfo wakeLockInfo = plugin.currentWakeLocksInfo();
                 diffWakeCount = wakeLockInfo.totalWakeLockCount - mLastWakeWakeLockInfo.totalWakeLockCount;
                 diffWakeTime = wakeLockInfo.totalWakeLockTime - mLastWakeWakeLockInfo.totalWakeLockTime;
             }
@@ -100,7 +101,7 @@ public interface BatteryMonitorCallback extends JiffiesMonitorFeature.JiffiesLis
         }
 
         @Override
-        public void onWakeLockTimeout(String tag, String packageName, int warningCount) {
+        public void onWakeLockTimeout(int warningCount, WakeLockRecord record) {
 
         }
     }

@@ -5,6 +5,7 @@ import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.LooperTaskMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.WakeLockMonitorFeature;
+import com.tencent.matrix.batterycanary.monitor.feature.WakeLockMonitorFeature.WakeLockTrace.WakeLockRecord;
 import com.tencent.matrix.util.MatrixLog;
 
 import java.util.List;
@@ -103,8 +104,8 @@ public class BatteryMonitorCore implements JiffiesMonitorFeature.JiffiesListener
     }
 
     @Override
-    public void onWakeLockTimeout(String tag, String packageName, int warningCount) {
-        MatrixLog.d(TAG, "#onWakeLockTimeout, tag = " + tag + ", pkg = " + packageName + ", count = " + warningCount);
-        getConfig().callback.onWakeLockTimeout(tag, packageName, warningCount);
+    public void onWakeLockTimeout(int warningCount, WakeLockRecord record) {
+        MatrixLog.d(TAG, "#onWakeLockTimeout, tag = " + record.tag + ", pkg = " + record.packageName + ", count = " + warningCount);
+        getConfig().callback.onWakeLockTimeout(warningCount, record);
     }
 }

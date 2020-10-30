@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.tencent.matrix.batterycanary.monitor;
+package com.tencent.matrix.batterycanary.monitor.feature;
 
 import android.app.Application;
 import android.content.Context;
@@ -24,8 +24,8 @@ import android.support.test.InstrumentationRegistry;
 import android.support.test.runner.AndroidJUnit4;
 
 import com.tencent.matrix.Matrix;
-import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature;
-import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature;
+import com.tencent.matrix.batterycanary.monitor.BatteryMonitorConfig;
+import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
 
 import org.junit.After;
 import org.junit.Before;
