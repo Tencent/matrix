@@ -99,6 +99,8 @@ class ElfInterface {
   DwarfSection* eh_frame() { return eh_frame_.get(); }
   DwarfSection* debug_frame() { return debug_frame_.get(); }
 
+  ElfInterface* gnu_debugdata_interface() { return gnu_debugdata_interface_; }
+
   const ErrorData& last_error() { return last_error_; }
   ErrorCode LastErrorCode() { return last_error_.code; }
   uint64_t LastErrorAddress() { return last_error_.address; }

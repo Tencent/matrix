@@ -26,7 +26,7 @@ namespace unwindstack {
     }
 }
 
-static inline void fp_unwind(uptr* regs, uptr *frames, size_t max_size, size_t &frame_size) {
+static inline void fp_unwind(wechat_backtrace::uptr* regs, wechat_backtrace::uptr *frames, size_t max_size, size_t &frame_size) {
     wechat_backtrace::fp_unwind(regs, frames, max_size, frame_size);
 }
 

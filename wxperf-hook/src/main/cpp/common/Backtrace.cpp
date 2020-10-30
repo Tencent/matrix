@@ -101,6 +101,7 @@ namespace wechat_backtrace {
 #endif
 
     void quicken_unwind(uptr* regs, uptr* frames, uptr frame_max_size, uptr &frame_size) {
-        wechat_backtrace::WeChatQuickenUnwind(regs, frames, frame_max_size, frame_size);
+        unwindstack::ArchEnum arch = unwindstack::ArchEnum::ARCH_ARM;
+        wechat_backtrace::WeChatQuickenUnwind(arch, regs, frames, frame_max_size, frame_size);
     }
 }

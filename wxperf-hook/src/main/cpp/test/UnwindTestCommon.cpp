@@ -22,7 +22,7 @@
 //#define FP_FAST_UNWIND_WITH_FALLBACK_TAG UNWIND_TEST_TAG
 //#define DWARF_FAST_UNWIND_TAG UNWIND_TEST_TAG
 
-#define FRAME_MAX_SIZE 16
+#define FRAME_MAX_SIZE 60
 
 #define TEST_NanoSeconds_Start(timestamp) \
         long timestamp = 0; \
@@ -55,6 +55,9 @@ void set_unwind_mode(UnwindTestMode mode) {
 }
 
 inline void print_dwarf_unwind() {
+
+//    abort();
+
     auto *tmp_ns = new std::vector<unwindstack::FrameData>;
 
     TEST_NanoSeconds_Start(nano);
@@ -160,8 +163,8 @@ inline void print_wechat_quicken_unwind() {
 
     TEST_NanoSeconds_Start(nano);
 
-    uptr regs[5];
-    RegsMinimalGetLocal(regs);
+    uptr regs[QUT_MINIMAL_REG_SIZE];
+    GetMinimalRegs(regs);
     uptr frames[FRAME_MAX_SIZE];
     uptr frame_size = 0;
 
@@ -177,6 +180,10 @@ inline void print_wechat_quicken_unwind() {
         Dl_info stack_info;
         dladdr((void *) frames[i], &stack_info);
 
+        if (!stack_info.dli_fname) {
+            LOGE(WECHAT_QUICKEN_UNWIND_TAG, "  #pc stack_info.dli_fname is null");
+            continue;
+        }
         std::string so_name = std::string(stack_info.dli_fname);
 
         LOGE(WECHAT_QUICKEN_UNWIND_TAG, "  #pc 0x%"
@@ -199,8 +206,8 @@ inline void print_dwarf_fast_unwind() {
 
     TEST_NanoSeconds_Start(nano);
 
-    uptr regs[5];
-    RegsMinimalGetLocal(regs);
+    uptr regs[7];
+    GetMinimalRegs(regs);
     uptr frames[FRAME_MAX_SIZE];
     uptr frame_size = 0;
 

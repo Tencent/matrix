@@ -21,7 +21,6 @@ namespace wechat_backtrace {
 using namespace std;
 using namespace unwindstack;
 
-
 //void GenerateWeChatQuickenUnwindTable() {
 //
 //    std::shared_ptr<Maps> maps = Maps::current();
@@ -32,8 +31,9 @@ using namespace unwindstack;
 //    for (MapInfoPtr map_info : map_infos) {
 //        unwindstack::ArchEnum arch = unwindstack::ArchEnum::ARCH_ARM;
 //        unwindstack::Elf *elf = map_info->GetElf(process_memory_, arch);
-//        unwindstack::ElfInterfaceArmExidx* interfaceArmExidx = dynamic_cast<unwindstack::ElfInterfaceArmExidx *>(elf->interface());
-//        interfaceArmExidx->GenerateFastUnwindTable(process_memory_.get());
+//
+//        QuickenInterface *interface = map_info->GetQuickenInterface(process_memory_, arch);
+//        interface->GenerateQuickenTableUltra(process_memory_.get());
 //        break;
 //    }
 //}
@@ -64,7 +64,7 @@ inline uint32_t GetPcAdjustment(uint32_t rel_pc, uint32_t load_bias, QuickenInte
     return 4;
 }
 
-QutErrorCode WeChatQuickenUnwind(uptr* regs, uptr* backtrace, uptr frame_max_size, uptr &frame_size) {
+QutErrorCode WeChatQuickenUnwind(ArchEnum arch, uptr* regs, uptr* backtrace, uptr frame_max_size, uptr &frame_size) {
 
     std::shared_ptr<Maps> maps = Maps::current();
 
@@ -75,17 +75,15 @@ QutErrorCode WeChatQuickenUnwind(uptr* regs, uptr* backtrace, uptr frame_max_siz
 
     MapInfoPtr last_map_info = nullptr;
     QuickenInterface* last_interface = nullptr;
-    uint32_t last_load_bias = 0;
+    uint64_t last_load_bias = 0;
 
     QutErrorCode ret = QUT_ERROR_NONE;
 
-    unwindstack::ArchEnum arch = unwindstack::ArchEnum::ARCH_ARM;
-
     for (; frame_size < frame_max_size;) {
 
-        uint32_t cur_pc = PC(regs);
-        uint32_t cur_sp = SP(regs);
-
+        uint64_t cur_pc = PC(regs);
+        uint64_t cur_sp = SP(regs);
+        QUT_DEBUG_LOG("WeChatQuickenUnwind cur_pc:%llx, cur_sp:%llx", cur_pc, cur_sp);
         MapInfoPtr map_info = nullptr;
         QuickenInterface* interface = nullptr;
 
@@ -103,7 +101,6 @@ QutErrorCode WeChatQuickenUnwind(uptr* regs, uptr* backtrace, uptr frame_max_siz
             }
 
             interface = map_info->GetQuickenInterface(process_memory_, arch);
-
             if (!interface) {
                 LOGE(WECHAT_QUICKEN_UNWIND_TAG, "Quicken interface is null, maybe the elf is invalid.");
                 backtrace[frame_size] = PC(regs) - 2;
@@ -116,9 +113,9 @@ QutErrorCode WeChatQuickenUnwind(uptr* regs, uptr* backtrace, uptr frame_max_siz
             last_load_bias = interface->GetLoadBias();
         }
 
-        uint32_t pc_adjustment = 0;
-        uint32_t step_pc;
-        uint32_t rel_pc;
+        uint64_t pc_adjustment = 0;
+        uint64_t step_pc;
+        uint64_t rel_pc;
         step_pc = PC(regs);
         rel_pc = map_info->GetRelPc(step_pc);
 
@@ -126,12 +123,15 @@ QutErrorCode WeChatQuickenUnwind(uptr* regs, uptr* backtrace, uptr frame_max_siz
         if (!(map_info->flags & MAPS_FLAGS_JIT_SYMFILE_MAP)) {
             step_pc = rel_pc;
         }
+
         if (adjust_pc) {
             pc_adjustment = GetPcAdjustment(last_load_bias, rel_pc, interface);
         } else {
             pc_adjustment = 0;
         }
         step_pc -= pc_adjustment;
+
+        QUT_DEBUG_LOG("WeChatQuickenUnwind pc_adjustment:%llx, step_pc:%llx, rel_pc:%llx", pc_adjustment, step_pc, rel_pc);
 
         backtrace[frame_size++] = PC(regs) - pc_adjustment;
 

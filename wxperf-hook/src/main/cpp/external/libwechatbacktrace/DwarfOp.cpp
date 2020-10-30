@@ -22,16 +22,20 @@
 
 #include <android-base/stringprintf.h>
 
-#include <unwindstack/DwarfError.h>
 #include <unwindstack/DwarfMemory.h>
 #include <unwindstack/Log.h>
 #include <unwindstack/Memory.h>
 #include <unwindstack/Regs.h>
+#include <unwindstack/MachineArm.h>
+#include <unwindstack/MachineArm64.h>
+#include <MinimalRegs.h>
 
 #include "DwarfOp.h"
 #include "../../common/Log.h"
 
-namespace unwindstack {
+namespace wechat_backtrace {
+
+using namespace unwindstack;
 
 enum DwarfOpHandleFunc : uint8_t {
   OP_ILLEGAL = 0,
@@ -1967,33 +1971,80 @@ bool DwarfOp<AddressType>::op_regx() {
   return true;
 }
 
+
+template <typename AddressType>
+bool DwarfOp<AddressType>::support_reg(uint16_t reg) {
+
+#define SUPPORT_REGS_MACRO(arch, r) \
+    if (reg == arch##_REG_##r) {    \
+        return true;    \
+    }
+
+#ifdef __arm__
+    SUPPORT_REGS_MACRO(ARM, R4);
+    SUPPORT_REGS_MACRO(ARM, R7);
+    SUPPORT_REGS_MACRO(ARM, R10);
+    SUPPORT_REGS_MACRO(ARM, R11);
+    SUPPORT_REGS_MACRO(ARM, SP);
+    SUPPORT_REGS_MACRO(ARM, LR);
+    SUPPORT_REGS_MACRO(ARM, PC);
+#else
+    SUPPORT_REGS_MACRO(ARM64, R20);
+    SUPPORT_REGS_MACRO(ARM64, R28);
+    SUPPORT_REGS_MACRO(ARM64, R29);
+    SUPPORT_REGS_MACRO(ARM64, SP);
+    SUPPORT_REGS_MACRO(ARM64, LR);
+    SUPPORT_REGS_MACRO(ARM64, PC);
+#endif
+
+    return false;
+}
+
 // It's not clear for breg/bregx, if this op should read the current
 // value of the register, or where we think that register is located.
 // For simplicity, the code will read the value before doing the unwind.
 template <typename AddressType>
 bool DwarfOp<AddressType>::op_breg() {
   uint16_t reg = cur_op() - 0x70;
-  if (reg >= regs_info_->Total()) {
+  if (reg >= regs_total_) {
     last_error_.code = DWARF_ERROR_ILLEGAL_VALUE;
     return false;
   }
-  stack_.push_front(regs_info_->Get(reg) + OperandAt(0));
 
+  if (!support_reg(reg)) {
+    // TODO statistic and add new error code.
+    last_error_.code = DWARF_ERROR_EXPRESSION_NOT_SUPPORT;
+    return false;
+  }
+  stack_.push_front(OperandAt(0));
+  reg_expression_ = reg;
+  last_error_.code = DWARF_ERROR_EXPRESSION_REACH_BREG;
     INTER_LOG("DwarfOp: op_breg reg(%u)", (uint32_t)reg);
-  return true;
+  return false;
 }
 
 template <typename AddressType>
 bool DwarfOp<AddressType>::op_bregx() {
   AddressType reg = OperandAt(0);
-  if (reg >= regs_info_->Total()) {
+  if (reg >= regs_total_) {
     last_error_.code = DWARF_ERROR_ILLEGAL_VALUE;
     return false;
   }
-  stack_.push_front(regs_info_->Get(reg) + OperandAt(1));
 
+  if (!support_reg(reg)) {
+    // TODO statistic and add new error code.
+    last_error_.code = DWARF_ERROR_EXPRESSION_NOT_SUPPORT;
+    return false;
+  }
+
+  stack_.push_front(OperandAt(1));
+  reg_expression_ = reg;
+
+  last_error_.code = DWARF_ERROR_EXPRESSION_REACH_BREG;
+
+// TODO by carl, add instr
     INTER_LOG("DwarfOp: op_bregx reg(%u)", (uint32_t)reg);
-  return true;
+  return false;
 }
 
 template <typename AddressType>
@@ -2015,4 +2066,4 @@ bool DwarfOp<AddressType>::op_not_implemented() {
 template class DwarfOp<uint32_t>;
 template class DwarfOp<uint64_t>;
 
-}  // namespace unwindstack
+}  // namespace wechat_backtrace

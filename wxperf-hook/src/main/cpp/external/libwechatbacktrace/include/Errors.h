@@ -1,6 +1,8 @@
 #ifndef _LIBWECHATBACKTRACE_ERRORS_H
 #define _LIBWECHATBACKTRACE_ERRORS_H
 
+#include "Types.h"
+
 namespace wechat_backtrace {
 
 enum QutErrorCode {
@@ -17,6 +19,28 @@ enum QutErrorCode {
 
 };
 
+enum DwarfErrorCode : uint8_t {
+    DWARF_ERROR_NONE,
+    DWARF_ERROR_MEMORY_INVALID,
+    DWARF_ERROR_ILLEGAL_VALUE,
+    DWARF_ERROR_ILLEGAL_STATE,
+    DWARF_ERROR_STACK_INDEX_NOT_VALID,
+    DWARF_ERROR_NOT_IMPLEMENTED,
+    DWARF_ERROR_TOO_MANY_ITERATIONS,
+    DWARF_ERROR_CFA_NOT_DEFINED,
+    DWARF_ERROR_UNSUPPORTED_VERSION,
+    DWARF_ERROR_NO_FDES,
+
+    DWARF_ERROR_EXPRESSION_NOT_SUPPORT,
+    DWARF_ERROR_EXPRESSION_REACH_BREG,
+    DWARF_ERROR_NOT_SUPPORT,
+
+};
+
+struct DwarfErrorData {
+    DwarfErrorCode code;
+    uint64_t address;
+};
 }  // namespace wechat_backtrace
 
 #endif  // _LIBWECHATBACKTRACE_ERRORS_H

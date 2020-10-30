@@ -16,31 +16,31 @@
 
 namespace wechat_backtrace {
 
-    inline int GetPcAdjustment(uint32_t rel_pc, uint32_t load_bias, unwindstack::Elf* elf) {
-        if (rel_pc < load_bias) {
-            if (rel_pc < 2) {
-                return 0;
-            }
-            return 2;
-        }
-        uint32_t adjusted_rel_pc = rel_pc - load_bias;
-        if (adjusted_rel_pc < 5) {
-            if (adjusted_rel_pc < 2) {
-                return 0;
-            }
-            return 2;
-        }
-
-        if (adjusted_rel_pc & 1) {
-            // This is a thumb instruction, it could be 2 or 4 bytes.
-            uint32_t value;
-            if (!elf->memory()->ReadFully(adjusted_rel_pc - 5, &value, sizeof(value)) ||
-                (value & 0xe000f000) != 0xe000f000) {
-                return 2;
-            }
-        }
-        return 4;
-    }
+//    inline int GetPcAdjustment(uint32_t rel_pc, uint32_t load_bias, unwindstack::Elf* elf) {
+//        if (rel_pc < load_bias) {
+//            if (rel_pc < 2) {
+//                return 0;
+//            }
+//            return 2;
+//        }
+//        uint32_t adjusted_rel_pc = rel_pc - load_bias;
+//        if (adjusted_rel_pc < 5) {
+//            if (adjusted_rel_pc < 2) {
+//                return 0;
+//            }
+//            return 2;
+//        }
+//
+//        if (adjusted_rel_pc & 1) {
+//            // This is a thumb instruction, it could be 2 or 4 bytes.
+//            uint32_t value;
+//            if (!elf->memory()->ReadFully(adjusted_rel_pc - 5, &value, sizeof(value)) ||
+//                (value & 0xe000f000) != 0xe000f000) {
+//                return 2;
+//            }
+//        }
+//        return 4;
+//    }
 
     void FastExidxUnwind(uint32_t* regs, uptr* backtrace, uptr frame_max_size, uptr &frame_size) {
 

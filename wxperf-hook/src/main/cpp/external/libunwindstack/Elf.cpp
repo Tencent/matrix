@@ -33,8 +33,9 @@
 
 #include "ElfInterfaceArm.h"
 #include "Symbols.h"
-#include "ElfInterfaceArm64.h"
+//#include "ElfInterfaceArm64.h"
 #include "TimeUtil.h"
+#include "../../common/Log.h"
 
 namespace unwindstack {
 
@@ -54,6 +55,7 @@ bool Elf::Init() {
   }
 
   valid_ = interface_->Init(&load_bias_);
+  QUT_DEBUG_LOG("Elf::Init load_bias_:%llu", load_bias_);
   if (valid_) {
     interface_->InitHeaders();
     InitGnuDebugdata();
@@ -288,8 +290,8 @@ ElfInterface* Elf::CreateInterfaceFromMemory(Memory* memory) {
     machine_type_ = e_machine;
     if (e_machine == EM_AARCH64) {
       arch_ = ARCH_ARM64;
-      ElfInterfaceArm64 *elfInterfaceArm64 = new ElfInterfaceArm64(memory);
-      interface.reset(elfInterfaceArm64);
+//      ElfInterfaceArm64 *elfInterfaceArm64 = new ElfInterfaceArm64(memory);
+      interface.reset(new ElfInterface64(memory));
       return interface.release();
     } else if (e_machine == EM_X86_64) {
       arch_ = ARCH_X86_64;

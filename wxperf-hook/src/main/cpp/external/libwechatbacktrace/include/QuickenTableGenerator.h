@@ -10,20 +10,16 @@
 #include "../../common/Log.h"
 #include "../../libunwindstack/ArmExidx.h"
 #include "Errors.h"
+#include "../DwarfEhFrameWithHdrDecoder.h"
+#include "MinimalRegs.h"
+#include "QuickenInstructions.h"
 
 namespace wechat_backtrace {
 
-enum QutInstruction : uint32_t {
-    QUT_INSTRUCTION_R7_OFFSET = 0,  // 0
-    QUT_INSTRUCTION_R11_OFFSET,     // 1
-    QUT_INSTRUCTION_SP_OFFSET,      // 2
-    QUT_INSTRUCTION_LR_OFFSET,      // 3
-    QUT_INSTRUCTION_PC_OFFSET,      // 4
-    QUT_INSTRUCTION_VSP_OFFSET,     // 5
-    QUT_INSTRUCTION_VSP_SET_BY_R7,  // 6
-    QUT_INSTRUCTION_VSP_SET_BY_R11, // 7
-    QUT_INSTRUCTION_VSP_SET_BY_SP,  // 8
-    FLUSH
+struct FrameInfo {
+    uint64_t offset_ = 0;
+    int64_t section_bias_ = 0;
+    uint64_t size_ = 0;
 };
 
 struct QutSections {
@@ -40,8 +36,8 @@ struct QutSections {
         tbl_capacity = 0;
     }
 
-    uint32_t* quidx = nullptr;
-    uint32_t* qutbl = nullptr;
+    uptr* quidx = nullptr;
+    uptr* qutbl = nullptr;
 
     size_t idx_size = 0;
     size_t tbl_size = 0;
@@ -53,101 +49,7 @@ struct QutSections {
     uint64_t start_offset_ = 0;
 };
 
-struct ExidxContext {
-
-public:
-    int32_t vsp_ = 0;
-    int32_t transformed_bits = 0;
-    int32_t regs_[5] = {0};
-
-    void reset() {
-        vsp_ = 0;
-        transformed_bits = 0;
-        memset(regs_, 0, sizeof(int32_t) * 5);
-    }
-
-    void AddUpTransformed(uint32_t reg_idx, int32_t imm) {
-        if (transformed_bits & (1 << reg_idx)) {
-            regs_[reg_idx] += imm;
-        }
-    }
-
-    void AddUpVSP(int32_t imm) {
-        vsp_ += imm;
-
-        AddUpTransformed(QUT_INSTRUCTION_R7_OFFSET, imm);
-        AddUpTransformed(QUT_INSTRUCTION_R11_OFFSET, imm);
-        AddUpTransformed(QUT_INSTRUCTION_SP_OFFSET, imm);
-        AddUpTransformed(QUT_INSTRUCTION_LR_OFFSET, imm);
-        AddUpTransformed(QUT_INSTRUCTION_PC_OFFSET, imm);
-    }
-
-    void Transform(uint32_t reg_idx) {
-        transformed_bits = transformed_bits | (1 << reg_idx);
-        regs_[reg_idx] = 0;
-    }
-
-};
-
-class ExidxDecoder {
-
-public:
-    ExidxDecoder(unwindstack::Memory* memory, unwindstack::Memory* process_memory)
-        : memory_(memory), process_memory_(process_memory) {
-        instructions_.reset(new std::deque<uint64_t>);
-    }
-    ~ExidxDecoder() {};
-
-    bool ExtractEntryData(uint32_t entry_offset);
-    bool Eval();
-
-    std::unique_ptr<std::deque<uint64_t>> instructions_;
-
-    unwindstack::ArmStatus status_ = unwindstack::ARM_STATUS_NONE;
-    uint64_t status_address_ = 0;
-
-protected:
-    unwindstack::Memory* memory_;
-    unwindstack::Memory* process_memory_;
-
-    bool DecodePrefix_10_00(uint8_t byte);
-    bool DecodePrefix_10_01(uint8_t byte);
-    bool DecodePrefix_10_10(uint8_t byte);
-    bool DecodePrefix_10_11_0000();
-    bool DecodePrefix_10_11_0001();
-    bool DecodePrefix_10_11_0010();
-    bool DecodePrefix_10_11_0011();
-    bool DecodePrefix_10_11_01nn();
-    bool DecodePrefix_10_11_1nnn(uint8_t byte);
-    bool DecodePrefix_10(uint8_t byte);
-
-    bool DecodePrefix_11_000(uint8_t byte);
-    bool DecodePrefix_11_001(uint8_t byte);
-    bool DecodePrefix_11_010(uint8_t byte);
-    bool DecodePrefix_11(uint8_t byte);
-
-    bool Decode();
-    bool GetByte(uint8_t* byte);
-
-    void FlushInstructions();
-    void SaveInstructions(QutInstruction instruction);
-
-    std::deque<uint8_t> data_;
-
-    // context
-    ExidxContext context_;
-
-};
-
-enum QutStatisticType : uint32_t {
-    InstructionOp = 0,
-    UnsupportArmExdix,
-};
-typedef void(*QutStatisticInstruction)(QutStatisticType, uint32_t, uint32_t);
-
-QutStatisticInstruction GetQutStatistic();
-void SetQutStatistic(QutStatisticInstruction statistic_func);
-
+template <typename AddressType>
 class QuickenTableGenerator {
 
 public:
@@ -158,13 +60,33 @@ public:
     bool GenerateFutSections(size_t start_offset, size_t total_entry, QutSections* fut_sections,
             size_t &bad_entries_count);
 
+    bool GenerateUltraQUTSections(
+            FrameInfo eh_frame_hdr_info, FrameInfo eh_frame_info, FrameInfo debug_frame_info,
+            FrameInfo gnu_eh_frame_hdr_info, FrameInfo gnu_eh_frame_info,
+            FrameInfo gnu_debug_frame_info,
+            FrameInfo arm_exidx_info, QutSections* fut_sections);
+
+//    bool QuickenTableGenerator::GenerateDwarfBasedQUTSections(
+//            FrameInfo eh_frame_hdr_info, FrameInfo eh_frame_info, FrameInfo debug_frame_info,
+//            FrameInfo gnu_eh_frame_hdr_info, FrameInfo gnu_eh_frame_info, FrameInfo gnu_debug_frame_info,
+//            QutSections* fut_sections);
+
     QutErrorCode last_error_code;
 
 protected:
-    bool GetPrel31Addr(uint32_t offset, uint32_t* addr);
+    void DecodeDebugFrameEntriesInstr(FrameInfo debug_frame_info,
+            QutInstructionsOfEntries* entries_instructions, uint16_t regs_total);
+    void DecodeEhFrameEntriesInstr(FrameInfo eh_frame_hdr_info, FrameInfo eh_frame_info,
+            QutInstructionsOfEntries* entries_instructions, uint16_t regs_total);
+    void DecodeExidxEntriesInstr(FrameInfo arm_exidx_info, QutInstructionsOfEntries* entries_instructions);
 
-    bool EncodeInstruction(std::deque<uint64_t> &instructions, std::deque<uint8_t > &encoded);
-    bool CheckInstruction(uint64_t instruction);
+    std::shared_ptr<QutInstructionsOfEntries> MergeFrameEntries(
+            std::shared_ptr<QutInstructionsOfEntries> to, std::shared_ptr<QutInstructionsOfEntries> from);
+
+    bool PackEntriesToFutSections(
+            QutInstructionsOfEntries* entries, QutSections* fut_sections);
+
+    bool GetPrel31Addr(uint32_t offset, uint32_t* addr);
 
     unwindstack::Memory* memory_;
     unwindstack::Memory* process_memory_;
@@ -181,6 +103,7 @@ public:
     bool Eval(uint32_t entry_offset);
 
     uint32_t cfa_ = 0;
+    uint32_t dex_pc_ = 0;
     bool pc_set_ = false;
 
 protected:
@@ -197,6 +120,6 @@ protected:
     unwindstack::ArmStatus status_ = unwindstack::ARM_STATUS_NONE;
 };
 
-}  // namespace unwindstack
+}  // namespace wechat_backtrace
 
 #endif  // _LIBUNWINDSTACK_WECHAT_QUICKEN_UNWIND_TABLE_GENERATOR_H

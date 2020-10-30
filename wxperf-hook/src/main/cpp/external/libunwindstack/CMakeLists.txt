@@ -16,7 +16,7 @@ SET(
         ${CMAKE_CURRENT_SOURCE_DIR}/Elf.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/ElfInterface.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/ElfInterfaceArm.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/ElfInterfaceArm64.cpp
+#        ${CMAKE_CURRENT_SOURCE_DIR}/ElfInterfaceArm64.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/JitDebug.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/Log.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/MapInfo.cpp
@@ -35,9 +35,18 @@ SET(
         ${CMAKE_CURRENT_SOURCE_DIR}/MemFnWrapper.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/EnhanceDlsym.cpp
 
+
+        ${CMAKE_CURRENT_SOURCE_DIR}/../libwechatbacktrace/QutSatatistics.cpp
+
+        ${CMAKE_CURRENT_SOURCE_DIR}/../libwechatbacktrace/ExidxDecoder.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/../libwechatbacktrace/DwarfCfa.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/../libwechatbacktrace/DwarfSectionDecoder.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/../libwechatbacktrace/DwarfEhFrameWithHdrDecoder.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/../libwechatbacktrace/DwarfOp.cpp
+#        ${CMAKE_CURRENT_SOURCE_DIR}/../libwechatbacktrace/QuickenInstructions.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/../libwechatbacktrace/QuickenMaps.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/../libwechatbacktrace/QuickenInterface.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/../libwechatbacktrace/QuickenTableGenerator.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/../libwechatbacktrace/QuickenInterface.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/../libwechatbacktrace/QuickenUnwinder.cpp
 
         ${CMAKE_CURRENT_SOURCE_DIR}/../libwechatbacktrace/FastArmExidx.cpp

@@ -15,17 +15,47 @@ namespace wechat_backtrace {
 class QuickenInterface {
 
 public:
-    QuickenInterface(unwindstack::Memory* memory, uint64_t load_bias, uint64_t start_offset,
-            uint64_t total_entries) : memory_(memory), load_bias_(load_bias)
-            , start_offset_(start_offset), total_entries_(total_entries) {}
+    QuickenInterface(unwindstack::Memory* memory, uint64_t load_bias, unwindstack::ArchEnum arch)
+        : memory_(memory), load_bias_(load_bias), arch_(arch){}
 
-    bool FindEntry(uint32_t pc, uint64_t* entry_offset);
+    bool FindEntry(uptr pc, uint64_t* entry_offset);
 
-    bool Step(uint64_t pc, uintptr_t* regs, unwindstack::Memory* process_memory, bool* finished);
+    bool Step(uptr pc, uptr* regs, unwindstack::Memory* process_memory, bool* finished);
+
+    template <typename AddressType>
+    bool GenerateQuickenTableUltra(unwindstack::Memory* process_memory);
 
     bool GenerateQuickenTable(unwindstack::Memory* process_memory);
 
     uint64_t GetLoadBias();
+
+    void SetArmExidxInfo(uint64_t start_offset, uint64_t total_entries) {
+        arm_exidx_info_ = {start_offset, 0, total_entries};
+    }
+
+    void SetEhFrameHdrInfo(uint64_t offset, int64_t section_bias, uint64_t size) {
+        eh_frame_hdr_info_ = {offset, section_bias, size};
+    }
+
+    void SetEhFrameInfo(uint64_t offset, int64_t section_bias, uint64_t size) {
+        eh_frame_info_ = {offset, section_bias, size};
+    }
+
+    void SetDebugFrameInfo(uint64_t offset, int64_t section_bias, uint64_t size) {
+        debug_frame_info_ = {offset, section_bias, size};
+    }
+
+    void SetGnuEhFrameHdrInfo(uint64_t offset, int64_t section_bias, uint64_t size) {
+        gnu_eh_frame_hdr_info_ = {offset, section_bias, size};
+    }
+
+    void SetGnuEhFrameInfo(uint64_t offset, int64_t section_bias, uint64_t size) {
+        gnu_eh_frame_info_ = {offset, section_bias, size};
+    }
+
+    void SetGnuDebugFrameInfo(uint64_t offset, int64_t section_bias, uint64_t size) {
+        gnu_debug_frame_info_ = {offset, section_bias, size};
+    }
 
     unwindstack::Memory* Memory() {
         return memory_;
@@ -40,8 +70,23 @@ protected:
 
     unwindstack::Memory* memory_;
     uint64_t load_bias_ = 0;
-    uint64_t start_offset_;
-    uint64_t total_entries_;
+
+    unwindstack::ArchEnum arch_;
+
+//    // ---- ARM exidx ----
+//    uint64_t start_offset_ = 0;
+//    uint64_t total_entries_ = 0;
+
+    FrameInfo arm_exidx_info_ = {0};
+
+    FrameInfo eh_frame_hdr_info_ = {0};
+    FrameInfo eh_frame_info_ = {0};
+    FrameInfo debug_frame_info_ = {0};
+
+    FrameInfo gnu_eh_frame_hdr_info_ = {0};
+    FrameInfo gnu_eh_frame_info_ = {0};
+    FrameInfo gnu_debug_frame_info_ = {0};
+
     std::unique_ptr<QutSections> qut_sections_;
 };
 

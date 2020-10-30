@@ -6,7 +6,7 @@ namespace unwindstack {
 
     // Only for test currently.
     bool GetFastFlag() {
-        return gFastFlag;
+        return false;
     }
 
     void SetFastFlag(bool flag) {

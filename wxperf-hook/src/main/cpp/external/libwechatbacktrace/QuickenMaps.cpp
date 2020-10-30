@@ -31,7 +31,7 @@ mutex Maps::maps_lock_;
 size_t Maps::latest_maps_capacity_ = CAPACITY_INCREMENT;
 shared_ptr<Maps> Maps::current_maps_;
 
-QuickenInterface* QuickenMapInfo::GetQuickenInterface(const shared_ptr<Memory>& process_memory,
+QuickenInterface* QuickenMapInfo::GetQuickenInterface(const shared_ptr<unwindstack::Memory>& process_memory,
         ArchEnum expected_arch) {
 
     if (quicken_interface_) {
@@ -48,11 +48,34 @@ QuickenInterface* QuickenMapInfo::GetQuickenInterface(const shared_ptr<Memory>& 
             return nullptr;
         }
 
-        ElfInterfaceArm* elf_interface = dynamic_cast<ElfInterfaceArm *>(elf->interface());
+        quicken_interface_.reset(new QuickenInterface(elf->memory(), elf->GetLoadBias(), expected_arch));
+        ElfInterface *elf_interface = dynamic_cast<ElfInterfaceArm *>(elf->interface());
 
-        quicken_interface_.reset(new QuickenInterface(elf->memory(), elf->GetLoadBias(),
-                                                      elf_interface->start_offset(),
-                                                      elf_interface->total_entries()));
+        if (expected_arch == ARCH_ARM) {
+            ElfInterfaceArm *elf_interface_arm = dynamic_cast<ElfInterfaceArm *>(elf_interface);
+            quicken_interface_->SetArmExidxInfo(elf_interface_arm->start_offset(),
+                                                elf_interface_arm->total_entries());
+        }
+
+        quicken_interface_->SetEhFrameInfo(elf_interface->eh_frame_offset(),
+                elf_interface->eh_frame_section_bias(), elf_interface->eh_frame_size());
+        quicken_interface_->SetEhFrameHdrInfo(elf_interface->eh_frame_hdr_offset(),
+                elf_interface->eh_frame_hdr_section_bias(), elf_interface->eh_frame_hdr_size());
+        quicken_interface_->SetDebugFrameInfo(elf_interface->debug_frame_offset(),
+                elf_interface->debug_frame_section_bias(), elf_interface->debug_frame_size());
+
+        ElfInterface* gnu_debugdata_interface = elf_interface->gnu_debugdata_interface();
+        if (gnu_debugdata_interface) {
+            quicken_interface_->SetGnuEhFrameInfo(gnu_debugdata_interface->eh_frame_offset(),
+                                               gnu_debugdata_interface->eh_frame_section_bias(),
+                                               gnu_debugdata_interface->eh_frame_size());
+            quicken_interface_->SetGnuEhFrameHdrInfo(gnu_debugdata_interface->eh_frame_hdr_offset(),
+                                                  gnu_debugdata_interface->eh_frame_hdr_section_bias(),
+                                                  gnu_debugdata_interface->eh_frame_hdr_size());
+            quicken_interface_->SetGnuDebugFrameInfo(gnu_debugdata_interface->debug_frame_offset(),
+                                                  gnu_debugdata_interface->debug_frame_section_bias(),
+                                                  gnu_debugdata_interface->debug_frame_size());
+        }
 
         elf_load_bias_ = elf->GetLoadBias();
     }
@@ -60,7 +83,7 @@ QuickenInterface* QuickenMapInfo::GetQuickenInterface(const shared_ptr<Memory>& 
     return quicken_interface_.get();
 }
 
-FastArmExidxInterface* QuickenMapInfo::GetFastArmExidxInterface(const shared_ptr<Memory>& process_memory,
+FastArmExidxInterface* QuickenMapInfo::GetFastArmExidxInterface(const shared_ptr<unwindstack::Memory>& process_memory,
         ArchEnum expected_arch) {
 
     if (exidx_interface_) {
@@ -90,6 +113,7 @@ FastArmExidxInterface* QuickenMapInfo::GetFastArmExidxInterface(const shared_ptr
 }
 
 uint64_t QuickenMapInfo::GetRelPc(uint64_t pc) {
+    QUT_DEBUG_LOG("QuickenMapInfo::GetRelPc pc:%llx, start:%llx, elf_load_bias_:%llx, elf_offset:%llx", pc, start, elf_load_bias_, elf_offset);
     return pc - start + elf_load_bias_ + elf_offset;
 }
 
@@ -106,6 +130,7 @@ MapInfoPtr Maps::Find(uint64_t pc) {
     }
     size_t first = 0;
     size_t last = maps_size_;
+    QUT_DEBUG_LOG("Maps::Find %u %llx", last, pc);
     while (first < last) {
         size_t index = (first + last) / 2;
         const auto &cur = local_maps_[index];

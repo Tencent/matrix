@@ -111,7 +111,7 @@ namespace wechat_backtrace {
             bool &finished, unwindstack::FpFallbackUnwinder *&fallbackUnwinder, uptr &next_pc) {
 
 #ifdef __aarch64__
-
+        // TODO Fix memory leak here.
         if (fallbackUnwinder == NULL) {
             unwindstack::Regs *regs = unwindstack::Regs::CreateFromLocal();
             unwindstack::RegsGetLocal(regs);

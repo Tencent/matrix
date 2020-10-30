@@ -33,7 +33,9 @@
 #include "DwarfOp.h"
 #include "../../common/Log.h"
 
-namespace unwindstack {
+namespace wechat_backtrace {
+
+using namespace unwindstack;
 
 template <typename AddressType>
 constexpr typename DwarfCfa<AddressType>::process_func DwarfCfa<AddressType>::kCallbackTable[64];
@@ -790,7 +792,7 @@ const DwarfCfaInfo::Info DwarfCfaInfo::kTable[64] = {
 };
 
 // Explicitly instantiate DwarfCfa.
-template class DwarfCfa<uint32_t>;
-template class DwarfCfa<uint64_t>;
+template class DwarfCfa<addr_t>;
+//template class DwarfCfa<uint64_t>;
 
-}  // namespace unwindstack
+}  // namespace wechat_backtrace

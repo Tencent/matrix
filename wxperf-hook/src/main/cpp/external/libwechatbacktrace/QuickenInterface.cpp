@@ -7,6 +7,9 @@
 #include "../../common/Log.h"
 #include "QuickenInterface.h"
 #include "QuickenMaps.h"
+#include "DwarfEhFrameWithHdrDecoder.h"
+#include "DwarfEhFrameDecoder.h"
+#include "DwarfDebugFrameDecoder.h"
 
 namespace wechat_backtrace {
 
@@ -17,7 +20,8 @@ uint64_t QuickenInterface::GetLoadBias() {
     return load_bias_;
 }
 
-bool QuickenInterface::GenerateQuickenTable(unwindstack::Memory* process_memory) {
+template <typename AddressType>
+bool QuickenInterface::GenerateQuickenTableUltra(unwindstack::Memory* process_memory) {
 
     lock_guard<mutex> lock(lock_);
 
@@ -25,11 +29,16 @@ bool QuickenInterface::GenerateQuickenTable(unwindstack::Memory* process_memory)
         return true;
     }
 
-    QuickenTableGenerator generator(memory_, process_memory);
+    QUT_DEBUG_LOG("QuickenInterface::GenerateQuickenTableUltra");
+
+    QuickenTableGenerator<AddressType> generator(memory_, process_memory);
     QutSections* qut_sections = new QutSections();
 
-    size_t bad_entries = 0;
-    bool ret = generator.GenerateFutSections(start_offset_, total_entries_, qut_sections, bad_entries);
+    size_t bad_entries = 0; // TODO
+
+    bool ret = generator.GenerateUltraQUTSections(eh_frame_hdr_info_, eh_frame_info_,
+            debug_frame_info_, gnu_eh_frame_hdr_info_, gnu_eh_frame_info_, gnu_debug_frame_info_,
+            arm_exidx_info_, qut_sections);
 
     bad_entries_ = bad_entries;
 
@@ -42,13 +51,40 @@ bool QuickenInterface::GenerateQuickenTable(unwindstack::Memory* process_memory)
     return ret;
 }
 
-bool QuickenInterface::FindEntry(uint32_t pc, uint64_t* entry_offset) {
+bool QuickenInterface::GenerateQuickenTable(unwindstack::Memory* process_memory) {
+
+    lock_guard<mutex> lock(lock_);
+
+    if (qut_sections_) {
+        return true;
+    }
+
+    QuickenTableGenerator<uint32_t> generator(memory_, process_memory);
+    QutSections* qut_sections = new QutSections();
+
+    size_t bad_entries = 0;
+    bool ret = generator.GenerateFutSections(arm_exidx_info_.offset_, arm_exidx_info_.size_,
+            qut_sections, bad_entries);
+
+    bad_entries_ = bad_entries;
+
+    if (ret) {
+        qut_sections_.reset(qut_sections);
+    } else {
+        delete qut_sections;
+    }
+
+    return ret;
+}
+
+bool QuickenInterface::FindEntry(uptr pc, uint64_t* entry_offset) {
     size_t first = 0;
     size_t last = qut_sections_->idx_size;
 
     while (first < last) {
         size_t current = ((first + last) / 2) & 0xfffffffe;
-        uint32_t addr = qut_sections_->quidx[current];
+        uptr addr = qut_sections_->quidx[current];
+//        QUT_DEBUG_LOG("QuickenInterface::FindEntry first:%u last:%u current:%u, addr:%x, pc:%x", first, last, current, addr, pc);
         if (pc == addr) {
             *entry_offset = current;
             return true;
@@ -60,6 +96,7 @@ bool QuickenInterface::FindEntry(uint32_t pc, uint64_t* entry_offset) {
         }
     }
     if (last != 0) {
+        QUT_DEBUG_LOG("QuickenInterface::FindEntry found entry_offset: %u, addr: %x", last - 2, qut_sections_->quidx[last - 2]);
         *entry_offset = last - 2;
         return true;
     }
@@ -67,7 +104,7 @@ bool QuickenInterface::FindEntry(uint32_t pc, uint64_t* entry_offset) {
     return false;
 }
 
-bool QuickenInterface::Step(uint64_t pc, uintptr_t* regs, unwindstack::Memory* process_memory, bool* finished) {
+bool QuickenInterface::Step(uptr pc, uptr* regs, unwindstack::Memory* process_memory, bool* finished) {
 
     // Adjust the load bias to get the real relative pc.
     if (UNLIKELY(pc < load_bias_)) {
@@ -76,7 +113,7 @@ bool QuickenInterface::Step(uint64_t pc, uintptr_t* regs, unwindstack::Memory* p
     }
 
     if (!qut_sections_) {
-        if (GenerateQuickenTable(process_memory)) {
+        if (!GenerateQuickenTableUltra<addr_t>(process_memory)) {
             last_error_code_ = QUT_ERROR_QUT_SECTION_INVALID;
             return false;
         }
@@ -84,6 +121,8 @@ bool QuickenInterface::Step(uint64_t pc, uintptr_t* regs, unwindstack::Memory* p
 
     QuickenTable quicken(qut_sections_.get(), regs, memory_, process_memory);
     uint64_t entry_offset;
+
+    QUT_DEBUG_LOG("QuickenInterface::Step pc:%x, load_bias_:%llu", pc, load_bias_);
 
     pc -= load_bias_;
 

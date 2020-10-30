@@ -48,8 +48,6 @@
 
 namespace wechat_backtrace {
 
-
-
 static inline bool EndWith(std::string const &value, std::string const &ending) {
   if (ending.size() > value.size()) {
     return false;

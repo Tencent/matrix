@@ -1,7 +1,7 @@
-#ifndef _LIBUNWINDSTACK_FASTUNWINDER_H
-#define _LIBUNWINDSTACK_FASTUNWINDER_H
+#ifndef _LIBWECHATBACKTRACE_FP_UNWINDER_H
+#define _LIBWECHATBACKTRACE_FP_UNWINDER_H
 
-typedef uintptr_t uptr;
+#include "Types.h"
 
 namespace wechat_backtrace {
 
@@ -11,4 +11,4 @@ namespace wechat_backtrace {
 
 }  // namespace wechat_backtrace
 
-#endif  // _LIBUNWINDSTACK_FASTUNWINDER_H
+#endif  // _LIBWECHATBACKTRACE_FP_UNWINDER_H
