@@ -17,9 +17,12 @@
 package com.tencent.matrix.batterycanary.utils;
 
 import android.app.AlarmManager;
-import android.content.Context;
 import android.os.SystemClock;
 import android.support.annotation.RestrictTo;
+import android.text.TextUtils;
+
+import com.tencent.matrix.Matrix;
+import com.tencent.matrix.batterycanary.BatteryMonitorPlugin;
 
 import java.util.ArrayList;
 import java.util.ListIterator;
@@ -31,25 +34,21 @@ import java.util.ListIterator;
 @RestrictTo(RestrictTo.Scope.LIBRARY)
 public final class BatteryCanaryUtil {
     private static final int DEFAULT_MAX_STACK_LAYER = 10;
-    private static String sPackageName = null;
-    private static String sProcessName = null;
-
-    public static void setPackageName(Context context) {
-        if (sPackageName == null) {
-            sPackageName = context.getPackageName();
-        }
-    }
-
-    public static void setProcessName(String processName) {
-        sProcessName = processName;
-    }
 
     public static String getProcessName() {
-        return sProcessName;
+        BatteryMonitorPlugin plugin = Matrix.with().getPluginByClass(BatteryMonitorPlugin.class);
+        if (plugin == null) {
+            throw new IllegalStateException("BatteryMonitorPlugin is not yet installed!");
+        }
+        return plugin.getProcessName();
     }
 
     public static String getPackageName() {
-        return sPackageName;
+        BatteryMonitorPlugin plugin = Matrix.with().getPluginByClass(BatteryMonitorPlugin.class);
+        if (plugin == null) {
+            throw new IllegalStateException("BatteryMonitorPlugin is not yet installed!");
+        }
+        return plugin.getPackageName();
     }
 
     public static String stackTraceToString(final StackTraceElement[] arr) {
@@ -58,8 +57,8 @@ public final class BatteryCanaryUtil {
         }
 
         ArrayList<StackTraceElement> stacks = new ArrayList<>(arr.length);
-        for (int i = 0; i < arr.length; i++) {
-            String className = arr[i].getClassName();
+        for (StackTraceElement traceElement : arr) {
+            String className = traceElement.getClassName();
             // remove unused stacks
             if (className.contains("com.tencent.matrix")
                     || className.contains("java.lang.reflect")
@@ -68,16 +67,17 @@ public final class BatteryCanaryUtil {
                 continue;
             }
 
-            stacks.add(arr[i]);
+            stacks.add(traceElement);
         }
         // stack still too large
-        if (stacks.size() > DEFAULT_MAX_STACK_LAYER && sPackageName != null) {
+        String pkg = getPackageName();
+        if (stacks.size() > DEFAULT_MAX_STACK_LAYER && !TextUtils.isEmpty(pkg)) {
             ListIterator<StackTraceElement> iterator = stacks.listIterator(stacks.size());
             // from backward to forward
             while (iterator.hasPrevious()) {
                 StackTraceElement stack = iterator.previous();
                 String className = stack.getClassName();
-                if (!className.contains(sPackageName)) {
+                if (!className.contains(pkg)) {
                     iterator.remove();
                 }
                 if (stacks.size() <= DEFAULT_MAX_STACK_LAYER) {
@@ -85,7 +85,7 @@ public final class BatteryCanaryUtil {
                 }
             }
         }
-        StringBuffer sb = new StringBuffer(stacks.size());
+        StringBuilder sb = new StringBuilder(stacks.size());
         for (StackTraceElement stackTraceElement : stacks) {
             sb.append(stackTraceElement).append('\n');
         }

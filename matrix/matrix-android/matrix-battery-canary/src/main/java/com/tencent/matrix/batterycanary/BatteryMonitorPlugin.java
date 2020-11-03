@@ -7,12 +7,19 @@ import com.tencent.matrix.batterycanary.monitor.BatteryMonitorConfig;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
 import com.tencent.matrix.plugin.Plugin;
 import com.tencent.matrix.plugin.PluginListener;
+import com.tencent.matrix.util.MatrixUtil;
 
 public class BatteryMonitorPlugin extends Plugin {
     final BatteryMonitorCore mDelegate;
+    private static String sPackageName = null;
+    private static String sProcessName = null;
 
     public BatteryMonitorPlugin(BatteryMonitorConfig config) {
         mDelegate = new BatteryMonitorCore(config);
+    }
+
+    public BatteryMonitorCore core() {
+        return mDelegate;
     }
 
     @Override
@@ -48,5 +55,35 @@ public class BatteryMonitorPlugin extends Plugin {
     @Override
     public boolean isForeground() {
         return mDelegate.isForeground();
+    }
+
+    public String getProcessName() {
+        if (sProcessName == null) {
+            synchronized (this) {
+                if (sProcessName == null) {
+                    Application application = getApplication();
+                    if (application == null) {
+                        throw new IllegalStateException(getTag() + " is not yet init!");
+                    }
+                    sProcessName = MatrixUtil.getProcessName(application);
+                }
+            }
+        }
+        return sProcessName;
+    }
+
+    public String getPackageName() {
+        if (sPackageName == null) {
+            synchronized (this) {
+                if (sPackageName == null) {
+                    Application application = getApplication();
+                    if (application == null) {
+                        throw new IllegalStateException(getTag() + " is not yet init!");
+                    }
+                    sPackageName = getApplication().getPackageName();
+                }
+            }
+        }
+        return sPackageName;
     }
 }

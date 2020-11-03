@@ -18,13 +18,11 @@ package com.tencent.matrix.batterycanary;
 
 import android.app.Application;
 
-import com.tencent.matrix.batterycanary.detector.BatteryDetectorCore;
 import com.tencent.matrix.batterycanary.detector.BatteryDetectorConfig;
-import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
+import com.tencent.matrix.batterycanary.detector.BatteryDetectorCore;
 import com.tencent.matrix.plugin.Plugin;
 import com.tencent.matrix.plugin.PluginListener;
 import com.tencent.matrix.util.MatrixLog;
-import com.tencent.matrix.util.MatrixUtil;
 
 /**
  *
@@ -35,7 +33,7 @@ public class BatteryDetectorPlugin extends Plugin {
     private static final String TAG = "Matrix.BatteryDetectorPlugin";
 
     private final BatteryDetectorConfig mBatteryDetectorConfig;
-    private BatteryDetectorCore mCore;
+    private final BatteryDetectorCore mCore;
     private       boolean stoppedForForeground = false;
 
 //    public BatteryDetectorPlugin() {
@@ -44,14 +42,16 @@ public class BatteryDetectorPlugin extends Plugin {
 
     public BatteryDetectorPlugin(BatteryDetectorConfig batteryDetectorConfig) {
         mBatteryDetectorConfig = batteryDetectorConfig;
+        mCore = new BatteryDetectorCore(this);
+    }
+
+    public BatteryDetectorCore core() {
+        return mCore;
     }
 
     @Override
     public void init(Application app, PluginListener listener) {
         super.init(app, listener);
-        BatteryCanaryUtil.setPackageName(app);
-        BatteryCanaryUtil.setProcessName(MatrixUtil.getProcessName(app));
-        mCore = new BatteryDetectorCore(this);
     }
 
     @Override
