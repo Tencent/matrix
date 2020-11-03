@@ -136,4 +136,13 @@ public class CanaryUtilsTest {
         String throwableStack = BatteryCanaryUtil.getThrowableStack(new Throwable());
         Assert.assertFalse(TextUtils.isEmpty(throwableStack));
     }
+
+    @Test
+    public void testGetCpuFreq() throws InterruptedException {
+        for (int i = 0; i < 5; i++) {
+            int[] ints = BatteryCanaryUtil.getCpuCurrentFreq();
+            Assert.assertNotNull(ints);
+            Thread.sleep(100L);
+        }
+    }
 }

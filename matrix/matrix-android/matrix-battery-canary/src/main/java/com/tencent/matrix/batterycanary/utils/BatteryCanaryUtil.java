@@ -18,14 +18,20 @@ package com.tencent.matrix.batterycanary.utils;
 
 import android.app.AlarmManager;
 import android.os.SystemClock;
+import android.support.annotation.Nullable;
 import android.support.annotation.RestrictTo;
 import android.text.TextUtils;
 
 import com.tencent.matrix.Matrix;
 import com.tencent.matrix.batterycanary.BatteryMonitorPlugin;
+import com.tencent.matrix.util.MatrixLog;
 
+import java.io.File;
+import java.io.FileFilter;
+import java.io.RandomAccessFile;
 import java.util.ArrayList;
 import java.util.ListIterator;
+import java.util.regex.Pattern;
 
 /**
  * @author liyongjie
@@ -33,6 +39,7 @@ import java.util.ListIterator;
  */
 @RestrictTo(RestrictTo.Scope.LIBRARY)
 public final class BatteryCanaryUtil {
+    private static final String TAG = "Matrix.battery.BatteryCanaryUtil";
     private static final int DEFAULT_MAX_STACK_LAYER = 10;
 
     public static String getProcessName() {
@@ -126,5 +133,52 @@ public final class BatteryCanaryUtil {
                 break;
          }
          return typeStr;
+    }
+
+    public static int[] getCpuCurrentFreq() {
+        int[] output = new int[getNumCores()];
+        for (int i = 0; i < getNumCores(); i++) {
+            output[i] = 0;
+            String path = "/sys/devices/system/cpu/cpu" + i + "/cpufreq/scaling_cur_freq";
+            String cat = cat(path);
+            if (!TextUtils.isEmpty(cat)) {
+                try {
+                    //noinspection ConstantConditions
+                    output[i] = Integer.parseInt(cat) / 1000;
+                } catch (Exception ignored) {
+                }
+            }
+        }
+        return output;
+    }
+
+    private static int getNumCores() {
+        try {
+            // Get directory containing CPU info
+            File dir = new File("/sys/devices/system/cpu/");
+            // Filter to only list the devices we care about
+            File[] files = dir.listFiles(new FileFilter() {
+                @Override
+                public boolean accept(File pathname) {
+                    return Pattern.matches("cpu[0-9]+", pathname.getName());
+                }
+            });
+            // Return the number of cores (virtual CPU devices)
+            return files.length;
+        } catch (Exception ignored) {
+            // Default to return 1 core
+            return 1;
+        }
+    }
+
+    @Nullable
+    private static String cat(String path) {
+        if (TextUtils.isEmpty(path)) return null;
+        try (RandomAccessFile restrictedFile = new RandomAccessFile(path, "r")) {
+            return restrictedFile.readLine();
+        } catch (Throwable e) {
+            MatrixLog.printErrStackTrace(TAG, e, "cat file fail");
+            return null;
+        }
     }
 }
