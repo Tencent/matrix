@@ -4,6 +4,7 @@ import android.content.Context;
 import android.os.Handler;
 import android.support.annotation.NonNull;
 
+import com.tencent.matrix.Matrix;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
 import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
 import com.tencent.matrix.util.MatrixHandlerThread;
@@ -54,13 +55,23 @@ public final class DeviceStatMonitor implements MonitorFeature {
 
     public CpuFreqSnapshot currentCpuFreq() {
         CpuFreqSnapshot snapshot = new CpuFreqSnapshot();
-        snapshot.cpuFreq = BatteryCanaryUtil.getCpuCurrentFreq();
+        try {
+            snapshot.cpuFreq = BatteryCanaryUtil.getCpuCurrentFreq();
+        } catch (Throwable e) {
+            MatrixLog.printErrStackTrace(TAG, e, "#currentCpuFreq error");
+            snapshot.cpuFreq = new int[0];
+        }
         return snapshot;
     }
 
     public BatteryTmpSnapshot currentBatteryTemperature(Context context) {
         BatteryTmpSnapshot snapshot = new BatteryTmpSnapshot();
-        snapshot.temperature = BatteryCanaryUtil.getBatteryTemperature(context);
+        try {
+            snapshot.temperature = BatteryCanaryUtil.getBatteryTemperature(context);
+        } catch (Throwable e) {
+            MatrixLog.printErrStackTrace(TAG, e, "#currentBatteryTemperature error");
+            snapshot.temperature = 0;
+        }
         return snapshot;
     }
 
@@ -81,7 +92,7 @@ public final class DeviceStatMonitor implements MonitorFeature {
     }
 
     public static class BatteryTmpSnapshot extends Snapshot<BatteryTmpSnapshot> {
-        int temperature;
+        public int temperature;
 
         @Override
         public Delta<BatteryTmpSnapshot> diff(BatteryTmpSnapshot bgn) {

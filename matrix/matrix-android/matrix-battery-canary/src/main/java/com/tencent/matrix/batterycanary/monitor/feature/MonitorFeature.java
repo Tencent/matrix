@@ -16,6 +16,7 @@ public interface MonitorFeature {
     abstract class Snapshot<RECORD extends Snapshot> {
         public final long time;
         public boolean isDelta = false;
+        public boolean isValid = true;
 
         public Snapshot() {
             time = getTimeStamps();
@@ -32,6 +33,7 @@ public interface MonitorFeature {
             public final RECORD end;
             public final RECORD dlt;
             public final long during;
+            public boolean isValid = true;
 
             public Delta(RECORD bgn, RECORD end) {
                 this.bgn = bgn;
@@ -45,6 +47,7 @@ public interface MonitorFeature {
         }
 
         interface Differ<VALUE> {
+            int UNSPECIFIED_DIGIT = Integer.MAX_VALUE;
             LongDiffer sDigitDiffer = new LongDiffer();
             IntArrayDiffer sDigitArrayDiffer = new IntArrayDiffer();
 
@@ -54,7 +57,8 @@ public interface MonitorFeature {
 
                 @Override
                 public Long diff(Long bgn, Long end) {
-                    return end - bgn;
+                    long diff = end - bgn;
+                    return diff >= 0 ? diff : 0;
                 }
 
                 public Integer diffInt(Integer bgn, Integer end) {
@@ -69,7 +73,7 @@ public interface MonitorFeature {
                     if (end != null) {
                         dlt = new int[end.length];
                         for (int i = 0; i < end.length; i++) {
-                            dlt[i] = end[i] - ((bgn == null || bgn.length < i) ? 0 : bgn[i]);
+                            dlt[i] = sDigitDiffer.diffInt(((bgn == null || bgn.length < i) ? 0 : bgn[i]), end[i]);
                         }
                     }
                     return dlt;

@@ -378,7 +378,7 @@ public class JiffiesMonitorFeature implements MonitorFeature, Handler.Callback {
                 } else {
                     state = "-";
                 }
-                ss.append("(").append(state).append(")").append(threadInfo.name).append("(").append(threadInfo.tid).append(")\t").append(jiffiesDiff).append(" jiffies");
+                ss.append("(").append(state).append(")").append(threadInfo.name).append("(").append(threadInfo.tid).append(")\t").append(jiffiesDiff).append("\tjiffies");
                 return ss.toString();
             }
 
