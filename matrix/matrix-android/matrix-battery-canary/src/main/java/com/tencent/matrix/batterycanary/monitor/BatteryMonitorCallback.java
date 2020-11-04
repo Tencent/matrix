@@ -10,6 +10,7 @@ import android.util.LongSparseArray;
 
 import com.tencent.matrix.Matrix;
 import com.tencent.matrix.batterycanary.monitor.feature.AlarmMonitorFeature;
+import com.tencent.matrix.batterycanary.monitor.feature.AlarmMonitorFeature.AlarmSnapshot;
 import com.tencent.matrix.batterycanary.monitor.feature.DeviceStatMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.DeviceStatMonitorFeature.BatteryTmpSnapshot;
 import com.tencent.matrix.batterycanary.monitor.feature.DeviceStatMonitorFeature.CpuFreqSnapshot;
@@ -29,7 +30,7 @@ import java.util.List;
  */
 public interface BatteryMonitorCallback extends JiffiesMonitorFeature.JiffiesListener, LooperTaskMonitorFeature.LooperTaskListener, WakeLockMonitorFeature.WakeLockListener, AlarmMonitorFeature.AlarmListener {
 
-    @SuppressWarnings("NotNullFieldNotInitialized")
+    @SuppressWarnings({"NotNullFieldNotInitialized", "SpellCheckingInspection"})
     class BatteryPrinter implements BatteryMonitorCallback {
         private static final String TAG = "Matrix.BatteryPrinter";
         private static final int ONE_MIN = 60 * 1000;
@@ -38,11 +39,12 @@ public interface BatteryMonitorCallback extends JiffiesMonitorFeature.JiffiesLis
         private BatteryMonitorCore mMonitor;
         private final Printer mPrinter = new Printer();
         private final LongSparseArray<List<LooperTaskMonitorFeature.TaskTraceInfo>> tasks = new LongSparseArray<>();
-        private WakeLockMonitorFeature.WakeLockSnapshot mLastWakeWakeLockSnapshot = null;
 
-        @Nullable private JiffiesMonitorFeature.JiffiesResult lastJiffiesResult = null;
-        @Nullable private CpuFreqSnapshot lastCpuFreqSnapshot = null;
-        @Nullable private BatteryTmpSnapshot lastBatteryTmpSnapshot = null;
+        @Nullable private JiffiesMonitorFeature.JiffiesResult mLastJiffiesResult = null;
+        @Nullable private WakeLockMonitorFeature.WakeLockSnapshot mLastWakeWakeLockSnapshot = null;
+        @Nullable private CpuFreqSnapshot mLastCpuFreqSnapshot = null;
+        @Nullable private BatteryTmpSnapshot mLastBatteryTmpSnapshot = null;
+        @Nullable private AlarmSnapshot mLastAlarmSnapshot = null;
 
         @SuppressWarnings("UnusedReturnValue")
         final BatteryPrinter attach(BatteryMonitorCore monitorCore) {
@@ -52,15 +54,20 @@ public interface BatteryMonitorCallback extends JiffiesMonitorFeature.JiffiesLis
 
         @Override
         public void onTraceBegin() {
-            WakeLockMonitorFeature plugin = mMonitor.getMonitorFeature(WakeLockMonitorFeature.class);
-            if (null != plugin) {
-                mLastWakeWakeLockSnapshot = plugin.currentWakeLocks();
+            WakeLockMonitorFeature jiffies = mMonitor.getMonitorFeature(WakeLockMonitorFeature.class);
+            if (null != jiffies) {
+                mLastWakeWakeLockSnapshot = jiffies.currentWakeLocks();
             }
 
-            DeviceStatMonitorFeature deviceStatMonitor = mMonitor.getMonitorFeature(DeviceStatMonitorFeature.class);
-            if (deviceStatMonitor != null) {
-                lastCpuFreqSnapshot = deviceStatMonitor.currentCpuFreq();
-                lastBatteryTmpSnapshot = deviceStatMonitor.currentBatteryTemperature(mMonitor.getContext());
+            DeviceStatMonitorFeature deviceStat = mMonitor.getMonitorFeature(DeviceStatMonitorFeature.class);
+            if (deviceStat != null) {
+                mLastCpuFreqSnapshot = deviceStat.currentCpuFreq();
+                mLastBatteryTmpSnapshot = deviceStat.currentBatteryTemperature(mMonitor.getContext());
+            }
+
+            AlarmMonitorFeature alarm = mMonitor.getMonitorFeature(AlarmMonitorFeature.class);
+            if (alarm != null) {
+                mLastAlarmSnapshot = alarm.currentAlarms();
             }
         }
 
@@ -70,7 +77,7 @@ public interface BatteryMonitorCallback extends JiffiesMonitorFeature.JiffiesLis
 
         @Override
         public void onJiffies(JiffiesMonitorFeature.JiffiesResult result) {
-            lastJiffiesResult = result;
+            mLastJiffiesResult = result;
             onCanaryDump();
         }
 
@@ -97,7 +104,7 @@ public interface BatteryMonitorCallback extends JiffiesMonitorFeature.JiffiesLis
 
             // title
             mPrinter.writeTitle();
-            JiffiesMonitorFeature.JiffiesResult result = lastJiffiesResult;
+            JiffiesMonitorFeature.JiffiesResult result = mLastJiffiesResult;
             if (result != null) {
                 // header
                 mPrinter.append("| ").append("pid=").append(Process.myPid())
@@ -144,6 +151,8 @@ public interface BatteryMonitorCallback extends JiffiesMonitorFeature.JiffiesLis
                     public void accept(Printer printer) {
                         WakeLockMonitorFeature.WakeLockSnapshot wakeLockSnapshot = plugin.currentWakeLocks();
                         Delta<WakeLockMonitorFeature.WakeLockSnapshot> diff = wakeLockSnapshot.diff(mLastWakeWakeLockSnapshot);
+                        printer.createSubSection("during");
+                        printer.writeLine(String.valueOf(diff.during));
                         printer.writeLine("inc_lock_count", String.valueOf(diff.dlt.totalWakeLockCount));
                         printer.writeLine("inc_time_total", String.valueOf(diff.dlt.totalWakeLockTime));
                         printer.createSubSection("locking");
@@ -156,28 +165,47 @@ public interface BatteryMonitorCallback extends JiffiesMonitorFeature.JiffiesLis
                 });
             }
 
+            final AlarmMonitorFeature alarm = mMonitor.getMonitorFeature(AlarmMonitorFeature.class);
+            if (alarm != null && mLastAlarmSnapshot != null) {
+                createSection("wake_lock", new Consumer<Printer>() {
+                    @Override
+                    public void accept(Printer printer) {
+                        AlarmSnapshot alarmSnapshot = alarm.currentAlarms();
+                        Delta<AlarmSnapshot> diff = alarmSnapshot.diff(mLastAlarmSnapshot);
+                        printer.createSubSection("during");
+                        printer.writeLine(String.valueOf(diff.during));
+                        printer.writeLine("inc_alarm_count", String.valueOf(diff.dlt.totalCount));
+                        printer.writeLine("inc_trace_count", String.valueOf(diff.dlt.tracingCount));
+                        printer.writeLine("inc_dupli_group", String.valueOf(diff.dlt.duplicatedGroup));
+                        printer.writeLine("inc_dupli_count", String.valueOf(diff.dlt.duplicatedCount));
+                    }
+                });
+            }
+
             final DeviceStatMonitorFeature deviceStatMonitor = mMonitor.getMonitorFeature(DeviceStatMonitorFeature.class);
             if (deviceStatMonitor != null) {
                 // Device Stat
                 createSection("device_stat", new Consumer<Printer>() {
                     @Override
                     public void accept(Printer printer) {
-                        if (lastCpuFreqSnapshot != null) {
+                        if (mLastCpuFreqSnapshot != null) {
                             CpuFreqSnapshot cpuFreqSnapshot = deviceStatMonitor.currentCpuFreq();
-                            final Delta<CpuFreqSnapshot> cpuFreqDiff = cpuFreqSnapshot.diff(lastCpuFreqSnapshot);
+                            final Delta<CpuFreqSnapshot> cpuFreqDiff = cpuFreqSnapshot.diff(mLastCpuFreqSnapshot);
+                            printer.createSubSection("during");
+                            printer.writeLine(String.valueOf(cpuFreqDiff.during));
                             printer.createSubSection("cpufreq");
-                            printer.writeLine("diff", Arrays.toString(cpuFreqDiff.dlt.cpuFreq));
-                            printer.writeLine("curr", Arrays.toString(cpuFreqDiff.end.cpuFreq));
-                            printer.writeLine("mils", String.valueOf(cpuFreqDiff.during));
+                            printer.writeLine("inc", Arrays.toString(cpuFreqDiff.dlt.cpuFreq));
+                            printer.writeLine("cur", Arrays.toString(cpuFreqDiff.end.cpuFreq));
                         }
 
-                        if (lastBatteryTmpSnapshot != null) {
+                        if (mLastBatteryTmpSnapshot != null) {
                             BatteryTmpSnapshot batteryTmpSnapshot = deviceStatMonitor.currentBatteryTemperature(Matrix.with().getApplication());
-                            Delta<BatteryTmpSnapshot> batteryDiff = batteryTmpSnapshot.diff(lastBatteryTmpSnapshot);
+                            Delta<BatteryTmpSnapshot> batteryDiff = batteryTmpSnapshot.diff(mLastBatteryTmpSnapshot);
+                            printer.createSubSection("during");
+                            printer.writeLine(String.valueOf(batteryDiff.during));
                             printer.createSubSection("battery_temperature");
-                            printer.writeLine("diff", String.valueOf(batteryDiff.dlt.temperature));
-                            printer.writeLine("curr", String.valueOf(batteryDiff.end.temperature));
-                            printer.writeLine("mils", String.valueOf(batteryDiff.during));
+                            printer.writeLine("inc", String.valueOf(batteryDiff.dlt.temperature));
+                            printer.writeLine("cur", String.valueOf(batteryDiff.end.temperature));
                         }
                     }
                 });

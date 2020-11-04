@@ -148,10 +148,10 @@ public class AlarmMonitorFeature implements MonitorFeature, AlarmManagerServiceH
     }
 
     public static class AlarmSnapshot extends Snapshot<AlarmSnapshot> {
-        int totalCount;
-        int tracingCount;
-        int duplicatedGroup;
-        int duplicatedCount;
+        public int totalCount;
+        public int tracingCount;
+        public int duplicatedGroup;
+        public int duplicatedCount;
 
         @Override
         public Delta<AlarmSnapshot> diff(AlarmSnapshot bgn) {
