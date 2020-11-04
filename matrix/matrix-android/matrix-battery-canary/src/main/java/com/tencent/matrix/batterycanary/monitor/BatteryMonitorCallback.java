@@ -35,12 +35,10 @@ public interface BatteryMonitorCallback extends JiffiesMonitorFeature.JiffiesLis
         private static final int ONE_MIN = 60 * 1000;
 
         @NonNull
-        private BatteryMonitorCore mMonitorCore;
+        private BatteryMonitorCore mMonitor;
         private final Printer mPrinter = new Printer();
         private final LongSparseArray<List<LooperTaskMonitorFeature.TaskTraceInfo>> tasks = new LongSparseArray<>();
         private WakeLockMonitorFeature.WakeLockSnapshot mLastWakeWakeLockSnapshot = null;
-        private int diffWakeCount = 0;
-        private long diffWakeTime = 0L;
 
         @Nullable private JiffiesMonitorFeature.JiffiesResult lastJiffiesResult = null;
         @Nullable private CpuFreqSnapshot lastCpuFreqSnapshot = null;
@@ -48,32 +46,26 @@ public interface BatteryMonitorCallback extends JiffiesMonitorFeature.JiffiesLis
 
         @SuppressWarnings("UnusedReturnValue")
         final BatteryPrinter attach(BatteryMonitorCore monitorCore) {
-            mMonitorCore = monitorCore;
+            mMonitor = monitorCore;
             return this;
         }
 
         @Override
         public void onTraceBegin() {
-            WakeLockMonitorFeature plugin = mMonitorCore.getMonitorFeature(WakeLockMonitorFeature.class);
+            WakeLockMonitorFeature plugin = mMonitor.getMonitorFeature(WakeLockMonitorFeature.class);
             if (null != plugin) {
                 mLastWakeWakeLockSnapshot = plugin.currentWakeLocks();
             }
 
-            DeviceStatMonitorFeature deviceStatMonitor = mMonitorCore.getMonitorFeature(DeviceStatMonitorFeature.class);
+            DeviceStatMonitorFeature deviceStatMonitor = mMonitor.getMonitorFeature(DeviceStatMonitorFeature.class);
             if (deviceStatMonitor != null) {
                 lastCpuFreqSnapshot = deviceStatMonitor.currentCpuFreq();
-                lastBatteryTmpSnapshot = deviceStatMonitor.currentBatteryTemperature(Matrix.with().getApplication());
+                lastBatteryTmpSnapshot = deviceStatMonitor.currentBatteryTemperature(mMonitor.getContext());
             }
         }
 
         @Override
         public void onTraceEnd() {
-            WakeLockMonitorFeature plugin = mMonitorCore.getMonitorFeature(WakeLockMonitorFeature.class);
-            if (null != plugin && null != mLastWakeWakeLockSnapshot) {
-                WakeLockMonitorFeature.WakeLockSnapshot wakeLockSnapshot = plugin.currentWakeLocks();
-                diffWakeCount = wakeLockSnapshot.totalWakeLockCount - mLastWakeWakeLockSnapshot.totalWakeLockCount;
-                diffWakeTime = wakeLockSnapshot.totalWakeLockTime - mLastWakeWakeLockSnapshot.totalWakeLockTime;
-            }
         }
 
         @Override
@@ -130,9 +122,6 @@ public interface BatteryMonitorCallback extends JiffiesMonitorFeature.JiffiesLis
                         }
                     }
                 }
-
-                mPrinter.append("| -> ").append("incrementWakeCount=").append(diffWakeCount).append(" sumWakeTime=").append(diffWakeTime).append("ms\n");
-                mPrinter.append(getExtInfo());
             }
 
             onWritingSections();
@@ -147,7 +136,27 @@ public interface BatteryMonitorCallback extends JiffiesMonitorFeature.JiffiesLis
 
         @CallSuper
         protected void onWritingSections() {
-            final DeviceStatMonitorFeature deviceStatMonitor = mMonitorCore.getMonitorFeature(DeviceStatMonitorFeature.class);
+            final WakeLockMonitorFeature plugin = mMonitor.getMonitorFeature(WakeLockMonitorFeature.class);
+            if (null != plugin && null != mLastWakeWakeLockSnapshot) {
+                // WakeLock
+                createSection("wake_lock", new Consumer<Printer>() {
+                    @Override
+                    public void accept(Printer printer) {
+                        WakeLockMonitorFeature.WakeLockSnapshot wakeLockSnapshot = plugin.currentWakeLocks();
+                        Delta<WakeLockMonitorFeature.WakeLockSnapshot> diff = wakeLockSnapshot.diff(mLastWakeWakeLockSnapshot);
+                        printer.writeLine("inc_lock_count", String.valueOf(diff.dlt.totalWakeLockCount));
+                        printer.writeLine("inc_time_total", String.valueOf(diff.dlt.totalWakeLockTime));
+                        printer.createSubSection("locking");
+                        for (WakeLockRecord item : diff.end.totalWakeLockRecords) {
+                            if (!item.isFinished()) {
+                                printer.writeLine(item.toString());
+                            }
+                        }
+                    }
+                });
+            }
+
+            final DeviceStatMonitorFeature deviceStatMonitor = mMonitor.getMonitorFeature(DeviceStatMonitorFeature.class);
             if (deviceStatMonitor != null) {
                 // Device Stat
                 createSection("device_stat", new Consumer<Printer>() {

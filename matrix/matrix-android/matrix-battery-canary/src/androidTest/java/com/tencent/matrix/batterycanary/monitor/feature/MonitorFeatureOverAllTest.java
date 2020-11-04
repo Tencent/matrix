@@ -54,7 +54,9 @@ public class MonitorFeatureOverAllTest {
     private BatteryMonitorCore mockMonitor() {
         BatteryMonitorConfig config = new BatteryMonitorConfig.Builder()
                 .enable(JiffiesMonitorFeature.class)
+                .enable(WakeLockMonitorFeature.class)
                 .enable(DeviceStatMonitorFeature.class)
+                .enable(AlarmMonitorFeature.class)
                 .enableBuiltinForegroundNotify(false)
                 .enableForegroundMode(false)
                 .wakelockTimeout(1000)

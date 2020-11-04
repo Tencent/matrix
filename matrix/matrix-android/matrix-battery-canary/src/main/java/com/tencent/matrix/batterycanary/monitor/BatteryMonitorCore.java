@@ -1,15 +1,16 @@
 package com.tencent.matrix.batterycanary.monitor;
 
-import android.app.AlarmManager;
-import android.app.PendingIntent;
+import android.content.Context;
 
 import com.tencent.matrix.AppActiveMatrixDelegate;
+import com.tencent.matrix.Matrix;
 import com.tencent.matrix.batterycanary.monitor.feature.AlarmMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.LooperTaskMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.WakeLockMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.WakeLockMonitorFeature.WakeLockTrace.WakeLockRecord;
+import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
 import com.tencent.matrix.util.MatrixLog;
 
 import java.util.List;
@@ -79,8 +80,22 @@ public class BatteryMonitorCore implements JiffiesMonitorFeature.JiffiesListener
         }
     }
 
+    public Context getContext() {
+        // FIXME: context api configs
+        return Matrix.with().getApplication();
+    }
+
     public boolean isForeground() {
         return isAppForeground;
+    }
+
+    public int getCurrentBatteryTemperature(Context context) {
+        try {
+            return BatteryCanaryUtil.getBatteryTemperature(context);
+        } catch (Throwable e) {
+            MatrixLog.printErrStackTrace(TAG, e, "#currentBatteryTemperature error");
+            return 0;
+        }
     }
 
     @Override

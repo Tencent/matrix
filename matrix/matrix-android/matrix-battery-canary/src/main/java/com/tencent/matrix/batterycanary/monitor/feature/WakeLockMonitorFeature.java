@@ -142,7 +142,7 @@ public class WakeLockMonitorFeature implements MonitorFeature, PowerManagerServi
     public static class WakeLockSnapshot extends Snapshot<WakeLockSnapshot> {
         public long totalWakeLockTime;
         public int totalWakeLockCount;
-        List<WakeLockTrace.WakeLockRecord> totalWakeLockRecords = Collections.emptyList();
+        public List<WakeLockTrace.WakeLockRecord> totalWakeLockRecords = Collections.emptyList();
 
         @Override
         public Delta<WakeLockSnapshot> diff(WakeLockSnapshot bgn) {

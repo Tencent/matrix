@@ -1,12 +1,10 @@
 package com.tencent.matrix.batterycanary.monitor.feature;
 
 import android.content.Context;
-import android.os.Handler;
 import android.support.annotation.NonNull;
 
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
 import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
-import com.tencent.matrix.util.MatrixHandlerThread;
 import com.tencent.matrix.util.MatrixLog;
 
 /**
@@ -24,14 +22,11 @@ public final class DeviceStatMonitorFeature implements MonitorFeature {
 
     @NonNull
     private BatteryMonitorCore mMonitor;
-    @NonNull private Handler mHandler;
-
 
     @Override
     public void configure(BatteryMonitorCore monitor) {
         MatrixLog.i(TAG, "#configure monitor feature");
         mMonitor = monitor;
-        mHandler = new Handler(MatrixHandlerThread.getDefaultHandlerThread().getLooper());
     }
 
     @Override
@@ -65,17 +60,8 @@ public final class DeviceStatMonitorFeature implements MonitorFeature {
 
     public BatteryTmpSnapshot currentBatteryTemperature(Context context) {
         BatteryTmpSnapshot snapshot = new BatteryTmpSnapshot();
-        snapshot.temperature = getCurrentBatteryTemperature(context);
+        snapshot.temperature = mMonitor.getCurrentBatteryTemperature(context);
         return snapshot;
-    }
-
-    public static int getCurrentBatteryTemperature(Context context) {
-        try {
-            return BatteryCanaryUtil.getBatteryTemperature(context);
-        } catch (Throwable e) {
-            MatrixLog.printErrStackTrace(TAG, e, "#currentBatteryTemperature error");
-            return 0;
-        }
     }
 
     public static class CpuFreqSnapshot extends Snapshot<CpuFreqSnapshot> {
