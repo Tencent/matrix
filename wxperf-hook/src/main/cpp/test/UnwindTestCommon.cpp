@@ -158,7 +158,7 @@ static inline void print_fp_unwind_with_fallback() {
     }
 }
 
-#ifdef __arm__
+//#ifdef __arm__
 inline void print_wechat_quicken_unwind() {
 
     TEST_NanoSeconds_Start(nano);
@@ -195,11 +195,11 @@ inline void print_wechat_quicken_unwind() {
                 " %s (%s)", frames[i], frames[i], frames[i], stack_info.dli_sname, stack_info.dli_fname);
     }
 }
-#else
-inline void print_wechat_quicken_unwind() {
-    LOGE(WECHAT_QUICKEN_UNWIND_TAG, "ARMQuickenUnwinder only support 32-bit runtime.");
-}
-#endif
+//#else
+//inline void print_wechat_quicken_unwind() {
+//    LOGE(WECHAT_QUICKEN_UNWIND_TAG, "ARMQuickenUnwinder only support 32-bit runtime.");
+//}
+//#endif
 
 #ifdef __arm__
 inline void print_dwarf_fast_unwind() {

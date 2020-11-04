@@ -26,8 +26,11 @@
 #define U_FORMAT "llu"
 #define X_FORMAT "llx"
 #endif
-#define INTER_LOG(FMT, args...) //__android_log_print(ANDROID_LOG_ERROR, "WTF-Carl", FMT, ##args)
-#define QUT_DEBUG_LOG(FMT, args...) //__android_log_print(ANDROID_LOG_ERROR, "WTF-Qut-Carl", FMT, ##args)
+#define INTER_LOG(FMT, args...) //__android_log_print(ANDROID_LOG_ERROR, "DEBUG-UNWIND-INTER", FMT, ##args)
+#define QUT_DEBUG_LOG(FMT, args...) //__android_log_print(ANDROID_LOG_ERROR, "DEBUG-QUT", FMT, ##args)
+#define INTER_DEBUG_LOG(FMT, args...) //__android_log_print(ANDROID_LOG_ERROR, "DEBUG-QUT-INTER", FMT, ##args)
+#define DWARF_CFA_LOG(FMT, args...) //__android_log_print(ANDROID_LOG_ERROR, "DEBUG-QUT-DWARF-CFA", FMT, ##args)
+#define DWARF_OP_LOG(FMT, args...) //__android_log_print(ANDROID_LOG_ERROR, "DEBUG-QUT-DWARF-OP", FMT, ##args)
 #else
 #define LOGD(TAG, FMT, args...)
 #define LOGI(TAG, FMT, args...)
@@ -35,6 +38,9 @@
 
 #define INTER_LOG(TAG, FMT, args...)
 #define QUT_DEBUG_LOG(FMT, args...)
+#define INTER_DEBUG_LOG(FMT, args...)
+#define DWARF_CFA_LOG(FMT, args...)
+#define DWARF_OP_LOG(FMT, args...)
 #endif
 
 #define __FAKE_USE_VA_ARGS(...) ((void)(0))

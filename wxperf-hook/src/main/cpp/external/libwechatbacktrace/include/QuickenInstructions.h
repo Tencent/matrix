@@ -27,16 +27,21 @@ enum QutInstruction : uint64_t {
     QUT_INSTRUCTION_X20_OFFSET = 7,     // x20_offset
     QUT_INSTRUCTION_X28_OFFSET = 8,     // x28_offset
     QUT_INSTRUCTION_X29_OFFSET = 9,     // x29_offset
+
     QUT_INSTRUCTION_VSP_OFFSET = 10,     // vsp_offset
     QUT_INSTRUCTION_VSP_SET_IMM = 11,    // vsp_set_imm
+
     QUT_INSTRUCTION_VSP_SET_BY_R7 = 12,  // vsp_set_by_r7
     QUT_INSTRUCTION_VSP_SET_BY_R11 = 13, // vsp_set_by_r11
-    QUT_INSTRUCTION_VSP_SET_BY_R29 = 14, // vsp_set_by_x29
+
+    QUT_INSTRUCTION_VSP_SET_BY_X29 = 14, // vsp_set_by_x29
+
     QUT_INSTRUCTION_VSP_SET_BY_SP = 15,  // vsp_set_by_sp
     QUT_INSTRUCTION_VSP_SET_BY_JNI_SP = 16, // vsp_set_by_jni_sp
     QUT_INSTRUCTION_DEX_PC_SET = 17,  // dex_pc_set
-    QUT_FINISH = 18,
-    QUT_NOP = 19, // No meaning.
+    QUT_END_OF_INS = 18,
+    QUT_FIN = 19,
+    QUT_NOP = 20, // No meaning.
 };
 
 #define _0000 0x0
@@ -63,20 +68,34 @@ enum QutInstruction : uint64_t {
 #define IMM_ALIGNED(N) ((N) >> 2)
 #define FILL_WITH_IMM(Prefix, Imm, Mask) ((Prefix) | (((1 << (Mask)) - 1) & IMM_ALIGNED((Imm))))
 
+// 32-bit vsp set by fp
 #define QUT_INSTRUCTION_VSP_SET_BY_R7_OP            OP(1000, 0000)
 #define QUT_INSTRUCTION_VSP_SET_BY_R7_PROLOGUE_OP   OP(1000, 0001)
 #define QUT_INSTRUCTION_VSP_SET_BY_R11_OP           OP(1000, 0010)
 #define QUT_INSTRUCTION_VSP_SET_BY_R11_PROLOGUE_OP  OP(1000, 0011)
-#define QUT_INSTRUCTION_VSP_SET_BY_SP_OP            OP(1000, 0100)
 #define QUT_INSTRUCTION_VSP_SET_BY_R7_IMM_OP        OP(1000, 0101)
 #define QUT_INSTRUCTION_VSP_SET_BY_R11_IMM_OP       OP(1000, 0110)
+
+// 64-bit vsp set by fp
+#define QUT_INSTRUCTION_VSP_SET_BY_X29_OP           OP(1000, 0000)
+#define QUT_INSTRUCTION_VSP_SET_BY_X29_PROLOGUE_OP  OP(1000, 0001)
+#define QUT_INSTRUCTION_VSP_SET_BY_X29_IMM_OP       OP(1000, 0101)
+
+#define QUT_INSTRUCTION_VSP_SET_BY_SP_OP            OP(1000, 0100)
+
 #define QUT_INSTRUCTION_VSP_SET_BY_JNI_SP_OP        OP(1001, 0101)
 #define QUT_INSTRUCTION_VSP_SET_IMM_OP              OP(1001, 0110)
 #define QUT_INSTRUCTION_DEX_PC_SET_OP               OP(1001, 0111)
+#define QUT_END_OF_INS_OP                           OP(1001, 1001)
 #define QUT_FINISH_OP                               OP(1001, 1111)
+
 #define QUT_INSTRUCTION_R7_OFFSET_SLEB128_OP        OP(1111, 1001)
 #define QUT_INSTRUCTION_R10_OFFSET_SLEB128_OP       OP(1111, 1010)
 #define QUT_INSTRUCTION_R11_OFFSET_SLEB128_OP       OP(1111, 1011)
+
+#define QUT_INSTRUCTION_X28_OFFSET_SLEB128_OP       OP(1111, 1010)
+#define QUT_INSTRUCTION_X29_OFFSET_SLEB128_OP       OP(1111, 1011)
+
 #define QUT_INSTRUCTION_SP_OFFSET_SLEB128_OP        OP(1111, 1100)
 #define QUT_INSTRUCTION_LR_OFFSET_SLEB128_OP        OP(1111, 1101)
 #define QUT_INSTRUCTION_PC_OFFSET_SLEB128_OP        OP(1111, 1110)
@@ -86,7 +105,14 @@ enum QutInstruction : uint64_t {
 #define QUT_INSTRUCTION_R7_OFFSET_OP_PREFIX         (BIT(1011) << 4)
 #define QUT_INSTRUCTION_R10_OFFSET_OP_PREFIX        (BIT(1100) << 4)
 #define QUT_INSTRUCTION_R11_OFFSET_OP_PREFIX        (BIT(1101) << 4)
+
+#define QUT_INSTRUCTION_X20_OFFSET_OP_PREFIX        (BIT(1010) << 4)
+#define QUT_INSTRUCTION_X28_OFFSET_OP_PREFIX        (BIT(1100) << 4)
+#define QUT_INSTRUCTION_X29_OFFSET_OP_PREFIX        (BIT(1101) << 4)
+
 #define QUT_INSTRUCTION_LR_OFFSET_OP_PREFIX         (BIT(1110) << 4)
+
+
 
 inline unsigned EncodeSLEB128(int64_t Value, uint8_t *p, unsigned PadTo = 0) {
     uint8_t *orig_p = p;
@@ -264,9 +290,9 @@ inline bool _QuickenInstructionsEncode32(std::deque<uint64_t> &instructions, std
                                  next_op == QUT_INSTRUCTION_R11_OFFSET))
                             && (next_imm_fp == next_imm)) {
                             have_prologue = true;
-                            instructions.pop_front(); // vsp + 8
-                            instructions.pop_front(); // pop lr
-                            instructions.pop_front(); // pop r7/r11
+                            instructions.pop_front(); // vsp + 8    // TODO recheck this logic
+                            instructions.pop_front(); // pop lr = vsp - 4
+                            instructions.pop_front(); // pop r7/r11 = vsp - 8
                         }
                     }
                 } while (false);
@@ -307,8 +333,13 @@ inline bool _QuickenInstructionsEncode32(std::deque<uint64_t> &instructions, std
             case QUT_INSTRUCTION_DEX_PC_SET:
                 byte = QUT_INSTRUCTION_DEX_PC_SET_OP;
                 encoded.push_back(byte);
+                QUT_DEBUG_LOG("QUT_INSTRUCTION_DEX_PC_SET_OP %x", (uint32_t)byte);
                 break;
-            case QUT_FINISH:
+            case QUT_END_OF_INS:
+                byte = QUT_END_OF_INS_OP;
+                encoded.push_back(byte);
+                break;
+            case QUT_FIN:
                 byte = QUT_FINISH_OP;
                 encoded.push_back(byte);
                 break;
@@ -378,12 +409,221 @@ inline bool _QuickenInstructionsEncode32(std::deque<uint64_t> &instructions, std
     return true;
 }
 
+inline bool _QuickenInstructionsEncode64(std::deque<uint64_t> &instructions, std::deque<uint8_t > &encoded) {
+
+    // TODO
+// QUT encode for 64-bit:
+//		00nn nnnn           : vsp = vsp + (nnnnnn << 2)             			; # (nnnnnnn << 2) in [0, 0xfc]
+//      01nn nnnn           : vsp = vsp - (nnnnnn << 2)             			; # (nnnnnnn << 2) in [0, 0xfc]
+
+//      1000 0000           : vsp = x29	            							; # x29 is fp reg
+//      1000 0001           : vsp = x29 + 16, lr = [vsp - 8], sp = [vsp - 16]   ; # Have prologue
+//      1000 0100           : vsp = [sp]                                    	;
+
+//      1000 0101 0nnn nnnn : vsp = x29 + (nnnnnnn << 2)						; # (nnnnnnn << 2) in [0, 0x1fc],  0nnnnnnn is an one bit ULEB128
+
+//		1001 0101 0nnn nnnn : vsp = x28 + (nnnnnnn << 2)						; # (nnnnnnn << 2) in [0, 0x1fc],  0nnnnnnn is an one bit ULEB128
+//		1001 0110 + SLEB128 : vsp = SLEB128							    		; # vsp set by IMM
+
+//		1001 0111 			: dex_pc = x20										; # Dex pc is saved in x29
+
+//		1000 1111			: Finish                							;
+
+//		1001 xxxx 			: Reserved											;
+
+//		1010 nnnn 			: x20 = [vsp - (nnnn << 2)]     					; # (nnnn << 2) in [0, 0x3c]
+//		1100 nnnn           : x28 = [vsp - (nnnn << 2)]    						; # Same as above. x28 will be used while unwinding through JNI function
+//      1101 nnnn           : x29 = [vsp - (nnnn << 2)]    						; # Same as above
+//      1110 nnnn           : lr = [vsp - (nnnn << 2)]     						; # Same as above
+
+//      1111 0xxx 			: Reserved											;
+//      1111 1000			: Reserved											;
+
+//      1111 1010 + SLEB128 : x28 = [vsp - SLEB128] 							; # [addr] means get value from pointed by addr
+//      1111 1011 + SLEB128 : x29 = [vsp - SLEB128] 							; # Same as above
+//      1111 1100 + SLEB128 : sp = [vsp - SLEB128]  							; # Same as above
+//      1111 1101 + SLEB128 : lr = [vsp - SLEB128]  							; # Same as above
+//      1111 1110 + SLEB128 : pc = [vsp - SLEB128]  							; # Same as above
+
+//      1111 1111 + SLEB128 : vsp = vsp + SLEB128   							;
+
+    while (!instructions.empty()) {
+
+        uint64_t instruction = instructions.front();
+
+        instructions.pop_front();
+
+//        CheckInstruction(instruction);  // TODO
+
+        uint32_t op = (uint32_t)(instruction >> 32);
+        int32_t imm = (int32_t)(instruction & 0xFFFFFFFF); // TODO check imm aligned by 4
+        uint8_t byte;
+        switch(op) {
+            case QUT_INSTRUCTION_VSP_OFFSET:
+                // imm ~ [-((1 << 6) - 1) << 2, ((1 << 6) - 1) << 2]
+                if (imm >= -IMM(6) & imm <= IMM(6)) {
+                    // 00nn nnnn : vsp = vsp + (nnnnnn << 2)
+                    // 01nn nnnn : vsp = vsp - (nnnnnn << 2)
+                    byte = FILL_WITH_IMM(imm > 0 ? 0 : 0x40, imm, 6);
+                    encoded.push_back(byte);
+                } else {
+                    // 1111 1111 + SLEB128 : vsp = vsp + SLEB128
+                    byte = QUT_INSTRUCTION_VSP_OFFSET_SLEB128_OP;
+                    encoded.push_back(byte);
+                    EncodeSLEB128_PUSHBACK(encoded, imm);
+                }
+                break;
+            case QUT_INSTRUCTION_VSP_SET_BY_X29: {
+
+                if (imm != 0) {
+                    uint8_t byte;
+                    byte = QUT_INSTRUCTION_VSP_SET_BY_X29_IMM_OP;
+                    encoded.push_back(byte);
+                    if (imm <= IMM(7)) {
+                        byte = FILL_WITH_IMM(0, imm, 7);
+                        encoded.push_back(byte);
+                    } else {
+                        // TODO overflow, statistic?
+                        return false;
+                    }
+                    break;
+                }
+                bool have_prologue = false;
+
+                do {
+                    if (instructions.size() >= 3) {
+                        uint64_t next = instructions.at(0);
+                        uint32_t next_op = (uint32_t)(next >> 32);
+                        int32_t next_imm = (int32_t)(next & 0xFFFFFFFF);
+                        if (!(next_op == QUT_INSTRUCTION_VSP_OFFSET)) {
+                            break;
+                        }
+
+                        next = instructions.at(1);
+                        next_op = (uint32_t)(next >> 32);
+                        int32_t next_imm_lr = (int32_t)(next & 0xFFFFFFFF);
+                        if (!(next_op == QUT_INSTRUCTION_LR_OFFSET &&
+                              next_imm_lr == (next_imm - 8))) {
+                            break;
+                        }
+
+                        next = instructions.at(2);
+                        next_op = (uint32_t)(next >> 32);
+                        int32_t next_imm_fp = (int32_t)(next & 0xFFFFFFFF);
+
+                        if ((next_op == QUT_INSTRUCTION_X29_OFFSET)
+                            && (next_imm_fp == next_imm)) {
+                            have_prologue = true;
+                            instructions.pop_front(); // vsp + 16       // TODO recheck this logic
+                            instructions.pop_front(); // pop lr = vsp - 8
+                            instructions.pop_front(); // pop x29 = vsp - 16
+                        }
+                    }
+                } while (false);
+                // 1000 0000 : vsp = x29                                         ;
+                // 1000 0001 : vsp = x29 + 16, lr = [vsp - 8], sp = [vsp - 16]   ; # Have prologue
+                uint8_t byte;
+                if (have_prologue) {
+                    byte = QUT_INSTRUCTION_VSP_SET_BY_X29_PROLOGUE_OP;
+                } else {
+                    byte = QUT_INSTRUCTION_VSP_SET_BY_X29_OP;
+                }
+
+                encoded.push_back(byte);
+
+                break;
+            }
+            case QUT_INSTRUCTION_VSP_SET_BY_SP:
+                // 1000 0100 : vsp = sp
+                byte = QUT_INSTRUCTION_VSP_SET_BY_SP_OP;
+                encoded.push_back(byte);
+                break;
+            case QUT_INSTRUCTION_VSP_SET_BY_JNI_SP:
+                byte = QUT_INSTRUCTION_VSP_SET_BY_JNI_SP_OP;
+                encoded.push_back(byte);
+                byte = FILL_WITH_IMM(0, imm, 7);
+                encoded.push_back(byte);
+                QUT_DEBUG_LOG("QUT_INSTRUCTION_VSP_SET_BY_JNI_SP %x %x %x", QUT_INSTRUCTION_VSP_SET_BY_JNI_SP_OP, (uint32_t)byte, (uint32_t)imm);
+                break;
+            case QUT_INSTRUCTION_VSP_SET_IMM:
+                byte = QUT_INSTRUCTION_VSP_SET_IMM_OP;
+                encoded.push_back(byte);
+                EncodeSLEB128_PUSHBACK(encoded, imm);
+                break;
+            case QUT_INSTRUCTION_DEX_PC_SET:
+                byte = QUT_INSTRUCTION_DEX_PC_SET_OP;
+                encoded.push_back(byte);
+                QUT_DEBUG_LOG("QUT_INSTRUCTION_DEX_PC_SET_OP %x", (uint32_t)byte);
+                break;
+            case QUT_END_OF_INS:
+                byte = QUT_END_OF_INS_OP;
+                encoded.push_back(byte);
+                break;
+            case QUT_FIN:
+                byte = QUT_FINISH_OP;
+                encoded.push_back(byte);
+                break;
+            case QUT_INSTRUCTION_X20_OFFSET:
+                if (imm >= 0 & imm <= IMM(4)) {
+                    byte = FILL_WITH_IMM(QUT_INSTRUCTION_X20_OFFSET_OP_PREFIX, imm, 4);
+                    encoded.push_back(byte);
+                } else {
+                    // TODO check imm size, and statistic
+                }
+                break;
+            case QUT_INSTRUCTION_X29_OFFSET:
+                if (imm >= 0 & imm <= IMM(4)) {
+                    byte = FILL_WITH_IMM(QUT_INSTRUCTION_X29_OFFSET_OP_PREFIX, imm, 4);
+                    encoded.push_back(byte);
+                } else {
+                    byte = QUT_INSTRUCTION_X29_OFFSET_SLEB128_OP;
+                    encoded.push_back(byte);
+                    EncodeSLEB128_PUSHBACK(encoded, imm);
+                }
+                break;
+            case QUT_INSTRUCTION_X28_OFFSET:
+                if (imm >= 0 & imm <= IMM(4)) {
+                    byte = FILL_WITH_IMM(QUT_INSTRUCTION_X28_OFFSET_OP_PREFIX, imm, 4);
+                    encoded.push_back(byte);
+                } else {
+                    byte = QUT_INSTRUCTION_X28_OFFSET_SLEB128_OP;
+                    encoded.push_back(byte);
+                    EncodeSLEB128_PUSHBACK(encoded, imm);
+                }
+                break;
+            case QUT_INSTRUCTION_LR_OFFSET:
+                if (imm >= 0 & imm <= IMM(4)) {
+                    byte = FILL_WITH_IMM(QUT_INSTRUCTION_LR_OFFSET_OP_PREFIX, imm, 4);
+                    encoded.push_back(byte);
+                } else {
+                    byte = QUT_INSTRUCTION_LR_OFFSET_SLEB128_OP;
+                    encoded.push_back(byte);
+                    EncodeSLEB128_PUSHBACK(encoded, imm);
+                }
+                break;
+            case QUT_INSTRUCTION_SP_OFFSET: {
+                byte = QUT_INSTRUCTION_SP_OFFSET_SLEB128_OP;
+                encoded.push_back(byte);
+                EncodeSLEB128_PUSHBACK(encoded, imm);
+                break;
+            }
+            case QUT_INSTRUCTION_PC_OFFSET: {
+                byte = QUT_INSTRUCTION_PC_OFFSET_SLEB128_OP;
+                encoded.push_back(byte);
+                EncodeSLEB128_PUSHBACK(encoded, imm);
+                break;
+            }
+        }
+    }
+
+    return true;
+}
 
 inline bool QuickenInstructionsEncode(std::deque<uint64_t> &instructions, std::deque<uint8_t > &encoded) {
 #ifdef __arm__
     return _QuickenInstructionsEncode32(instructions, encoded);
 #else
-    // TODO
+    return _QuickenInstructionsEncode64(instructions, encoded);
 #endif
 }
 

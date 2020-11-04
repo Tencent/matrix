@@ -1497,6 +1497,7 @@ bool DwarfOp<AddressType>::Eval(uint64_t start, uint64_t end) {
   //   OP_drop (0x13)
   if (memory_->cur_offset() < end) {
     if (!Decode()) {
+      DWARF_OP_LOG("DwarfOp::Decode, error code: %d", (uint32_t)last_error_.code);
       return false;
     }
   } else {
@@ -1504,12 +1505,14 @@ bool DwarfOp<AddressType>::Eval(uint64_t start, uint64_t end) {
   }
   bool check_for_drop;
   if (cur_op_ == 0x0c && operands_.back() == 0x31584544) {
+  DWARF_OP_LOG("DwarfOp::Eval, DEX1");
     check_for_drop = true;
   } else {
     check_for_drop = false;
   }
   if (memory_->cur_offset() < end) {
     if (!Decode()) {
+      DWARF_OP_LOG("DwarfOp::Decode 2, error code: %d", (uint32_t)last_error_.code);
       return false;
     }
   } else {
@@ -1625,7 +1628,7 @@ bool DwarfOp<AddressType>::op_deref() {
   }
   stack_.push_front(value);
 
-  INTER_LOG("DwarfOp: op_deref");
+  DWARF_OP_LOG("DwarfOp: op_deref");
   return true;
 }
 
@@ -1646,7 +1649,7 @@ bool DwarfOp<AddressType>::op_deref_size() {
   }
   stack_.push_front(value);
 
-  INTER_LOG("DwarfOp: op_deref_size");
+  DWARF_OP_LOG("DwarfOp: op_deref_size");
   return true;
 }
 
@@ -1657,7 +1660,7 @@ bool DwarfOp<AddressType>::op_push() {
     stack_.push_front(operand);
   }
 
-  INTER_LOG("DwarfOp: op_push");
+  DWARF_OP_LOG("DwarfOp: op_push");
   return true;
 }
 
@@ -1665,21 +1668,21 @@ template <typename AddressType>
 bool DwarfOp<AddressType>::op_dup() {
   stack_.push_front(StackAt(0));
 
-  INTER_LOG("DwarfOp: op_dup");
+  DWARF_OP_LOG("DwarfOp: op_dup");
   return true;
 }
 
 template <typename AddressType>
 bool DwarfOp<AddressType>::op_drop() {
   StackPop();
-    INTER_LOG("DwarfOp: op_drop");
+  DWARF_OP_LOG("DwarfOp: op_drop");
   return true;
 }
 
 template <typename AddressType>
 bool DwarfOp<AddressType>::op_over() {
   stack_.push_front(StackAt(1));
-    INTER_LOG("DwarfOp: op_over");
+  DWARF_OP_LOG("DwarfOp: op_over");
   return true;
 }
 
@@ -1692,7 +1695,7 @@ bool DwarfOp<AddressType>::op_pick() {
   }
   stack_.push_front(StackAt(index));
 
-    INTER_LOG("DwarfOp: op_pick");
+  DWARF_OP_LOG("DwarfOp: op_pick");
   return true;
 }
 
@@ -1702,7 +1705,7 @@ bool DwarfOp<AddressType>::op_swap() {
   stack_[0] = stack_[1];
   stack_[1] = old_value;
 
-    INTER_LOG("DwarfOp: op_swap");
+  DWARF_OP_LOG("DwarfOp: op_swap");
   return true;
 }
 
@@ -1713,7 +1716,7 @@ bool DwarfOp<AddressType>::op_rot() {
   stack_[1] = stack_[2];
   stack_[2] = top;
 
-    INTER_LOG("DwarfOp: op_rot");
+  DWARF_OP_LOG("DwarfOp: op_rot");
   return true;
 }
 
@@ -1725,7 +1728,7 @@ bool DwarfOp<AddressType>::op_abs() {
   }
   stack_[0] = static_cast<AddressType>(signed_value);
 
-    INTER_LOG("DwarfOp: op_abs");
+  DWARF_OP_LOG("DwarfOp: op_abs");
   return true;
 }
 
@@ -1734,7 +1737,7 @@ bool DwarfOp<AddressType>::op_and() {
   AddressType top = StackPop();
   stack_[0] &= top;
 
-    INTER_LOG("DwarfOp: op_and");
+  DWARF_OP_LOG("DwarfOp: op_and");
   return true;
 }
 
@@ -1749,7 +1752,7 @@ bool DwarfOp<AddressType>::op_div() {
   SignedType signed_dividend = static_cast<SignedType>(stack_[0]);
   stack_[0] = static_cast<AddressType>(signed_dividend / signed_divisor);
 
-    INTER_LOG("DwarfOp: op_div");
+  DWARF_OP_LOG("DwarfOp: op_div");
   return true;
 }
 
@@ -1758,7 +1761,7 @@ bool DwarfOp<AddressType>::op_minus() {
   AddressType top = StackPop();
   stack_[0] -= top;
 
-    INTER_LOG("DwarfOp: op_minus");
+  DWARF_OP_LOG("DwarfOp: op_minus");
   return true;
 }
 
@@ -1771,7 +1774,7 @@ bool DwarfOp<AddressType>::op_mod() {
   }
   stack_[0] %= top;
 
-    INTER_LOG("DwarfOp: op_mod");
+  DWARF_OP_LOG("DwarfOp: op_mod");
   return true;
 }
 
@@ -1780,7 +1783,7 @@ bool DwarfOp<AddressType>::op_mul() {
   AddressType top = StackPop();
   stack_[0] *= top;
 
-    INTER_LOG("DwarfOp: op_mul");
+  DWARF_OP_LOG("DwarfOp: op_mul");
   return true;
 }
 
@@ -1789,7 +1792,7 @@ bool DwarfOp<AddressType>::op_neg() {
   SignedType signed_value = static_cast<SignedType>(stack_[0]);
   stack_[0] = static_cast<AddressType>(-signed_value);
 
-    INTER_LOG("DwarfOp: op_neg");
+  DWARF_OP_LOG("DwarfOp: op_neg");
   return true;
 }
 
@@ -1797,7 +1800,7 @@ template <typename AddressType>
 bool DwarfOp<AddressType>::op_not() {
   stack_[0] = ~stack_[0];
 
-    INTER_LOG("DwarfOp: op_not");
+  DWARF_OP_LOG("DwarfOp: op_not");
   return true;
 }
 
@@ -1806,7 +1809,7 @@ bool DwarfOp<AddressType>::op_or() {
   AddressType top = StackPop();
   stack_[0] |= top;
 
-    INTER_LOG("DwarfOp: op_or");
+  DWARF_OP_LOG("DwarfOp: op_or");
   return true;
 }
 
@@ -1815,7 +1818,7 @@ bool DwarfOp<AddressType>::op_plus() {
   AddressType top = StackPop();
   stack_[0] += top;
 
-    INTER_LOG("DwarfOp: op_plus");
+  DWARF_OP_LOG("DwarfOp: op_plus");
   return true;
 }
 
@@ -1823,7 +1826,7 @@ template <typename AddressType>
 bool DwarfOp<AddressType>::op_plus_uconst() {
   stack_[0] += OperandAt(0);
 
-    INTER_LOG("DwarfOp: op_plus_uconst");
+  DWARF_OP_LOG("DwarfOp: op_plus_uconst");
   return true;
 }
 
@@ -1832,7 +1835,7 @@ bool DwarfOp<AddressType>::op_shl() {
   AddressType top = StackPop();
   stack_[0] <<= top;
 
-    INTER_LOG("DwarfOp: op_shl");
+  DWARF_OP_LOG("DwarfOp: op_shl");
   return true;
 }
 
@@ -1841,8 +1844,7 @@ bool DwarfOp<AddressType>::op_shr() {
   AddressType top = StackPop();
   stack_[0] >>= top;
 
-
-    INTER_LOG("DwarfOp: op_shr");
+  DWARF_OP_LOG("DwarfOp: op_shr");
   return true;
 }
 
@@ -1852,7 +1854,7 @@ bool DwarfOp<AddressType>::op_shra() {
   SignedType signed_value = static_cast<SignedType>(stack_[0]) >> top;
   stack_[0] = static_cast<AddressType>(signed_value);
 
-    INTER_LOG("DwarfOp: op_shra");
+  DWARF_OP_LOG("DwarfOp: op_shra");
   return true;
 }
 
@@ -1861,7 +1863,7 @@ bool DwarfOp<AddressType>::op_xor() {
   AddressType top = StackPop();
   stack_[0] ^= top;
 
-    INTER_LOG("DwarfOp: op_xor");
+  DWARF_OP_LOG("DwarfOp: op_xor");
   return true;
 }
 
@@ -1878,7 +1880,7 @@ bool DwarfOp<AddressType>::op_bra() {
   }
   memory_->set_cur_offset(cur_offset);
 
-    INTER_LOG("DwarfOp: op_bra");
+  DWARF_OP_LOG("DwarfOp: op_bra");
   return true;
 }
 
@@ -1887,7 +1889,7 @@ bool DwarfOp<AddressType>::op_eq() {
   AddressType top = StackPop();
   stack_[0] = bool_to_dwarf_bool(stack_[0] == top);
 
-    INTER_LOG("DwarfOp: op_eq");
+  DWARF_OP_LOG("DwarfOp: op_eq");
   return true;
 }
 
@@ -1896,7 +1898,7 @@ bool DwarfOp<AddressType>::op_ge() {
   AddressType top = StackPop();
   stack_[0] = bool_to_dwarf_bool(stack_[0] >= top);
 
-    INTER_LOG("DwarfOp: op_ge");
+  DWARF_OP_LOG("DwarfOp: op_ge");
   return true;
 }
 
@@ -1905,7 +1907,7 @@ bool DwarfOp<AddressType>::op_gt() {
   AddressType top = StackPop();
   stack_[0] = bool_to_dwarf_bool(stack_[0] > top);
 
-    INTER_LOG("DwarfOp: op_gt");
+  DWARF_OP_LOG("DwarfOp: op_gt");
   return true;
 }
 
@@ -1914,7 +1916,7 @@ bool DwarfOp<AddressType>::op_le() {
   AddressType top = StackPop();
   stack_[0] = bool_to_dwarf_bool(stack_[0] <= top);
 
-    INTER_LOG("DwarfOp: op_le");
+  DWARF_OP_LOG("DwarfOp: op_le");
   return true;
 }
 
@@ -1923,7 +1925,7 @@ bool DwarfOp<AddressType>::op_lt() {
   AddressType top = StackPop();
   stack_[0] = bool_to_dwarf_bool(stack_[0] < top);
 
-    INTER_LOG("DwarfOp: op_lt");
+  DWARF_OP_LOG("DwarfOp: op_lt");
   return true;
 }
 
@@ -1932,7 +1934,7 @@ bool DwarfOp<AddressType>::op_ne() {
   AddressType top = StackPop();
   stack_[0] = bool_to_dwarf_bool(stack_[0] != top);
 
-    INTER_LOG("DwarfOp: op_ne");
+  DWARF_OP_LOG("DwarfOp: op_ne");
   return true;
 }
 
@@ -1942,7 +1944,7 @@ bool DwarfOp<AddressType>::op_skip() {
   uint64_t cur_offset = memory_->cur_offset() + offset;
   memory_->set_cur_offset(cur_offset);
 
-    INTER_LOG("DwarfOp: op_skip");
+  DWARF_OP_LOG("DwarfOp: op_skip");
   return true;
 }
 
@@ -1950,7 +1952,7 @@ template <typename AddressType>
 bool DwarfOp<AddressType>::op_lit() {
   stack_.push_front(cur_op() - 0x30);
 
-    INTER_LOG("DwarfOp: op_lit");
+  DWARF_OP_LOG("DwarfOp: op_lit");
   return true;
 }
 
@@ -1959,7 +1961,7 @@ bool DwarfOp<AddressType>::op_reg() {
   is_register_ = true;
   stack_.push_front(cur_op() - 0x50);
 
-    INTER_LOG("DwarfOp: op_reg reg(%u)", (uint32_t)(cur_op() - 0x50));
+  DWARF_OP_LOG("DwarfOp: op_reg reg(%u)", (uint32_t)(cur_op() - 0x50));
   return true;
 }
 
@@ -1967,7 +1969,7 @@ template <typename AddressType>
 bool DwarfOp<AddressType>::op_regx() {
   is_register_ = true;
   stack_.push_front(OperandAt(0));
-    INTER_LOG("DwarfOp: op_regx reg(%u)", (uint32_t)OperandAt(0));
+  DWARF_OP_LOG("DwarfOp: op_regx reg(%u)", (uint32_t)OperandAt(0));
   return true;
 }
 
@@ -2011,6 +2013,7 @@ bool DwarfOp<AddressType>::op_breg() {
     return false;
   }
 
+  DWARF_OP_LOG("DwarfOp: op_breg before reg(%u)", (uint32_t)reg);
   if (!support_reg(reg)) {
     // TODO statistic and add new error code.
     last_error_.code = DWARF_ERROR_EXPRESSION_NOT_SUPPORT;
@@ -2019,8 +2022,8 @@ bool DwarfOp<AddressType>::op_breg() {
   stack_.push_front(OperandAt(0));
   reg_expression_ = reg;
   last_error_.code = DWARF_ERROR_EXPRESSION_REACH_BREG;
-    INTER_LOG("DwarfOp: op_breg reg(%u)", (uint32_t)reg);
-  return false;
+  DWARF_OP_LOG("DwarfOp: op_breg reg(%u)", (uint32_t)reg);
+  return true;
 }
 
 template <typename AddressType>
@@ -2030,7 +2033,7 @@ bool DwarfOp<AddressType>::op_bregx() {
     last_error_.code = DWARF_ERROR_ILLEGAL_VALUE;
     return false;
   }
-
+  DWARF_OP_LOG("DwarfOp: op_bregx before reg(%u)", (uint32_t)reg);
   if (!support_reg(reg)) {
     // TODO statistic and add new error code.
     last_error_.code = DWARF_ERROR_EXPRESSION_NOT_SUPPORT;
@@ -2043,14 +2046,14 @@ bool DwarfOp<AddressType>::op_bregx() {
   last_error_.code = DWARF_ERROR_EXPRESSION_REACH_BREG;
 
 // TODO by carl, add instr
-    INTER_LOG("DwarfOp: op_bregx reg(%u)", (uint32_t)reg);
-  return false;
+  DWARF_OP_LOG("DwarfOp: op_bregx reg(%u)", (uint32_t)reg);
+  return true;
 }
 
 template <typename AddressType>
 bool DwarfOp<AddressType>::op_nop() {
 
-    INTER_LOG("DwarfOp: op_nop");
+  DWARF_OP_LOG("DwarfOp: op_nop");
   return true;
 }
 
@@ -2058,7 +2061,7 @@ template <typename AddressType>
 bool DwarfOp<AddressType>::op_not_implemented() {
   last_error_.code = DWARF_ERROR_NOT_IMPLEMENTED;
 
-    INTER_LOG("DwarfOp: op_not_implemented");
+  DWARF_OP_LOG("DwarfOp: op_not_implemented");
   return false;
 }
 

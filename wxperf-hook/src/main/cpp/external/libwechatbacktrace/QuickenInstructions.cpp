@@ -55,7 +55,7 @@
 ////    {QUT_NOP, NOP, 0, 0, nullptr},  //  64-bit
 ////    {QUT_INSTRUCTION_VSP_SET_BY_SP, CMD, 0, 0, nullptr},
 ////    {QUT_INSTRUCTION_VSP_SET_BY_JNI_SP, CMD, 0, 0, nullptr},
-////    {QUT_FINISH, CMD, 0, 0, nullptr},
+////    {QUT_END_OF_INS, CMD, 0, 0, nullptr},
 ////};
 //
 //

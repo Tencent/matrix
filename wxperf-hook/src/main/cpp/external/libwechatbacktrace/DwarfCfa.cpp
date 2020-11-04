@@ -79,9 +79,9 @@ bool DwarfCfa<AddressType>::GetLocationInfo(uint64_t pc, uint64_t start_offset, 
       case 1:
         cur_pc_ += cfa_low * fde_->cie->code_alignment_factor;
         if (cie_loc_regs_ == nullptr) {
-          INTER_LOG("CIE + GetLocationInfo:   cur_pc_ += %" "d" " ;", (uint32_t)(cfa_low * fde_->cie->code_alignment_factor));
+          DWARF_CFA_LOG("CIE + GetLocationInfo:   cur_pc_ += %" "d" " ;", (uint32_t)(cfa_low * fde_->cie->code_alignment_factor));
         } else {
-          INTER_LOG("FDE + GetLocationInfo:   cur_pc_ += %" "d" " ;", (uint32_t)(cfa_low * fde_->cie->code_alignment_factor));
+          DWARF_CFA_LOG("FDE + GetLocationInfo:   cur_pc_ += %" "d" " ;", (uint32_t)(cfa_low * fde_->cie->code_alignment_factor));
         }
         break;
       case 2: {
@@ -97,9 +97,9 @@ bool DwarfCfa<AddressType>::GetLocationInfo(uint64_t pc, uint64_t start_offset, 
                                 .values = {static_cast<uint64_t>(signed_offset)}};
 
         if (cie_loc_regs_ == nullptr) {
-          INTER_LOG("CIE + GetLocationInfo:   reg(%" "d" ") = offset(%lld) ;", (uint32_t)cfa_low, static_cast<int64_t>(signed_offset));
+          DWARF_CFA_LOG("CIE + GetLocationInfo:   reg(%" "d" ") = offset(%lld) ;", (uint32_t)cfa_low, static_cast<int64_t>(signed_offset));
         } else {
-          INTER_LOG("FDE + GetLocationInfo:   reg(%" "d" ") = offset(%lld) ;", (uint32_t)cfa_low, static_cast<int64_t>(signed_offset));
+          DWARF_CFA_LOG("FDE + GetLocationInfo:   reg(%" "d" ") = offset(%lld) ;", (uint32_t)cfa_low, static_cast<int64_t>(signed_offset));
         }
         break;
       }
@@ -113,10 +113,10 @@ bool DwarfCfa<AddressType>::GetLocationInfo(uint64_t pc, uint64_t start_offset, 
         auto reg_entry = cie_loc_regs_->find(cfa_low);
         if (reg_entry == cie_loc_regs_->end()) {
           loc_regs->erase(cfa_low);
-          INTER_LOG("FDE + GetLocationInfo:   loc_regs->erase(%d) ;", (uint32_t)cfa_low);
+          DWARF_CFA_LOG("FDE + GetLocationInfo:   loc_regs->erase(%d) ;", (uint32_t)cfa_low);
         } else {
           (*loc_regs)[cfa_low] = reg_entry->second;
-          INTER_LOG("FDE + GetLocationInfo:   reg(%u) = %u (%u, %u);", (uint32_t)cfa_low, (uint32_t)reg_entry->second.type,
+          DWARF_CFA_LOG("FDE + GetLocationInfo:   reg(%u) = %u (%u, %u);", (uint32_t)cfa_low, (uint32_t)reg_entry->second.type,
                     (uint32_t)reg_entry->second.values[0], (uint32_t)reg_entry->second.values[1]);
         }
         break;
@@ -332,7 +332,7 @@ bool DwarfCfa<AddressType>::Log(uint32_t indent, uint64_t pc, uint64_t start_off
 // Static data.
 template <typename AddressType>
 bool DwarfCfa<AddressType>::cfa_nop(dwarf_loc_regs_t*) {
-  INTER_LOG("DwarfCfa:   cfa_nop ;");
+  DWARF_CFA_LOG("DwarfCfa:   cfa_nop ;");
   return true;
 }
 
@@ -349,7 +349,7 @@ bool DwarfCfa<AddressType>::cfa_set_loc(dwarf_loc_regs_t*) {
   }
   cur_pc_ = new_pc;
 
-  INTER_LOG("DwarfCfa:   cfa_set_loc 0x%" PRIxPTR " ;", new_pc);
+  DWARF_CFA_LOG("DwarfCfa:   cfa_set_loc 0x%" PRIxPTR " ;", new_pc);
   return true;
 }
 
@@ -357,7 +357,7 @@ template <typename AddressType>
 bool DwarfCfa<AddressType>::cfa_advance_loc(dwarf_loc_regs_t*) {
   cur_pc_ += operands_[0] * fde_->cie->code_alignment_factor;
 
-  INTER_LOG("DwarfCfa:   cfa_advance_loc cur_pc_ += 0x%x ;", (uint32_t) (operands_[0] * fde_->cie->code_alignment_factor));
+  DWARF_CFA_LOG("DwarfCfa:   cfa_advance_loc cur_pc_ += 0x%x ;", (uint32_t) (operands_[0] * fde_->cie->code_alignment_factor));
   return true;
 }
 
@@ -366,7 +366,7 @@ bool DwarfCfa<AddressType>::cfa_offset(dwarf_loc_regs_t* loc_regs) {
   AddressType reg = operands_[0];
   (*loc_regs)[reg] = {.type = DWARF_LOCATION_OFFSET, .values = {operands_[1]}};
 
-  INTER_LOG("DwarfCfa:   cfa_offset reg(%u) = offset(0x%x) ;", (uint32_t)operands_[0], (uint32_t)operands_[1]);
+  DWARF_CFA_LOG("DwarfCfa:   cfa_offset reg(%u) = offset(0x%x) ;", (uint32_t)operands_[0], (uint32_t)operands_[1]);
   return true;
 }
 
@@ -385,7 +385,7 @@ bool DwarfCfa<AddressType>::cfa_restore(dwarf_loc_regs_t* loc_regs) {
     (*loc_regs)[reg] = reg_entry->second;
   }
 
-  INTER_LOG("DwarfCfa:   cfa_restore reg(%u) = %d (%x, %x) ;", (uint32_t)operands_[0], (uint32_t)reg_entry->second.type, (uint32_t)reg_entry->second.values[0], (uint32_t)reg_entry->second.values[1]);
+  DWARF_CFA_LOG("DwarfCfa:   cfa_restore reg(%u) = %d (%x, %x) ;", (uint32_t)operands_[0], (uint32_t)reg_entry->second.type, (uint32_t)reg_entry->second.values[0], (uint32_t)reg_entry->second.values[1]);
   return true;
 }
 
@@ -394,7 +394,7 @@ bool DwarfCfa<AddressType>::cfa_undefined(dwarf_loc_regs_t* loc_regs) {
   AddressType reg = operands_[0];
   (*loc_regs)[reg] = {.type = DWARF_LOCATION_UNDEFINED};
 
-  INTER_LOG("DwarfCfa:   cfa_undefined reg(%u) ;", (uint32_t)operands_[0]);
+  DWARF_CFA_LOG("DwarfCfa:   cfa_undefined reg(%u) ;", (uint32_t)operands_[0]);
   return true;
 }
 
@@ -403,7 +403,7 @@ bool DwarfCfa<AddressType>::cfa_same_value(dwarf_loc_regs_t* loc_regs) {
   AddressType reg = operands_[0];
   loc_regs->erase(reg);
 
-  INTER_LOG("DwarfCfa:   cfa_same_value reg(%u) ;", (uint32_t)operands_[0]);
+  DWARF_CFA_LOG("DwarfCfa:   cfa_same_value reg(%u) ;", (uint32_t)operands_[0]);
   return true;
 }
 
@@ -413,7 +413,7 @@ bool DwarfCfa<AddressType>::cfa_register(dwarf_loc_regs_t* loc_regs) {
   AddressType reg_dst = operands_[1];
   (*loc_regs)[reg] = {.type = DWARF_LOCATION_REGISTER, .values = {reg_dst}};
 
-  INTER_LOG("DwarfCfa:   cfa_register reg(%u) = reg(%u) ;", (uint32_t)operands_[0], (uint32_t)operands_[1]);
+  DWARF_CFA_LOG("DwarfCfa:   cfa_register reg(%u) = reg(%u) ;", (uint32_t)operands_[0], (uint32_t)operands_[1]);
   return true;
 }
 
@@ -421,7 +421,7 @@ template <typename AddressType>
 bool DwarfCfa<AddressType>::cfa_remember_state(dwarf_loc_regs_t* loc_regs) {
   loc_reg_state_.push(*loc_regs);
 
-  INTER_LOG("DwarfCfa:   cfa_remember_state ;");
+  DWARF_CFA_LOG("DwarfCfa:   cfa_remember_state ;");
   return true;
 }
 
@@ -434,7 +434,7 @@ bool DwarfCfa<AddressType>::cfa_restore_state(dwarf_loc_regs_t* loc_regs) {
   *loc_regs = loc_reg_state_.top();
   loc_reg_state_.pop();
 
-  INTER_LOG("DwarfCfa:   cfa_restore_state ;");
+  DWARF_CFA_LOG("DwarfCfa:   cfa_restore_state ;");
   return true;
 }
 
@@ -442,7 +442,7 @@ template <typename AddressType>
 bool DwarfCfa<AddressType>::cfa_def_cfa(dwarf_loc_regs_t* loc_regs) {
   (*loc_regs)[CFA_REG] = {.type = DWARF_LOCATION_REGISTER, .values = {operands_[0], operands_[1]}};
 
-  INTER_LOG("DwarfCfa:   cfa_def_cfa CFA_REG = (%x, %x) ;", (uint32_t)operands_[0], (uint32_t)operands_[1]);
+  DWARF_CFA_LOG("DwarfCfa:   cfa_def_cfa CFA_REG = (%x, %x) ;", (uint32_t)operands_[0], (uint32_t)operands_[1]);
   return true;
 }
 
@@ -457,7 +457,7 @@ bool DwarfCfa<AddressType>::cfa_def_cfa_register(dwarf_loc_regs_t* loc_regs) {
 
   cfa_location->second.values[0] = operands_[0];
 
-  INTER_LOG("DwarfCfa:   cfa_def_cfa_register CFA_REG = reg(%u) ;", (uint32_t)operands_[0]);
+  DWARF_CFA_LOG("DwarfCfa:   cfa_def_cfa_register CFA_REG = reg(%u) ;", (uint32_t)operands_[0]);
 
   return true;
 }
@@ -473,7 +473,7 @@ bool DwarfCfa<AddressType>::cfa_def_cfa_offset(dwarf_loc_regs_t* loc_regs) {
   }
   cfa_location->second.values[1] = operands_[0];
 
-  INTER_LOG("DwarfCfa:   cfa_def_cfa_offset CFA_REG = offset(%u) ;", (uint32_t)operands_[0]);
+  DWARF_CFA_LOG("DwarfCfa:   cfa_def_cfa_offset CFA_REG = offset(%u) ;", (uint32_t)operands_[0]);
   return true;
 }
 
@@ -485,7 +485,7 @@ bool DwarfCfa<AddressType>::cfa_def_cfa_expression(dwarf_loc_regs_t* loc_regs) {
   (*loc_regs)[CFA_REG] = {.type = DWARF_LOCATION_VAL_EXPRESSION,
                           .values = {operands_[0], memory_->cur_offset()}};
 
-  INTER_LOG("DwarfCfa:   cfa_def_cfa_expression CFA_REG = (%x, %x) ;", (uint32_t)operands_[0], (uint32_t)memory_->cur_offset());
+  DWARF_CFA_LOG("DwarfCfa:   cfa_def_cfa_expression CFA_REG = (%x, %x) ;", (uint32_t)operands_[0], (uint32_t)memory_->cur_offset());
   return true;
 }
 
@@ -495,7 +495,7 @@ bool DwarfCfa<AddressType>::cfa_expression(dwarf_loc_regs_t* loc_regs) {
   (*loc_regs)[reg] = {.type = DWARF_LOCATION_EXPRESSION,
                       .values = {operands_[1], memory_->cur_offset()}};
 
-  INTER_LOG("DwarfCfa:   cfa_expression reg(%u) = (%x, %x) ;", (uint32_t)operands_[0], (uint32_t)operands_[1], (uint32_t)memory_->cur_offset());
+  DWARF_CFA_LOG("DwarfCfa:   cfa_expression reg(%u) = (%x, %x) ;", (uint32_t)operands_[0], (uint32_t)operands_[1], (uint32_t)memory_->cur_offset());
   return true;
 }
 
@@ -505,7 +505,7 @@ bool DwarfCfa<AddressType>::cfa_offset_extended_sf(dwarf_loc_regs_t* loc_regs) {
   SignedType value = static_cast<SignedType>(operands_[1]) * fde_->cie->data_alignment_factor;
   (*loc_regs)[reg] = {.type = DWARF_LOCATION_OFFSET, .values = {static_cast<uint64_t>(value)}};
 
-  INTER_LOG("DwarfCfa:   cfa_offset_extended_sf reg(%u) = offset(%x) ;", (uint32_t)operands_[0], static_cast<uint32_t>(value));
+  DWARF_CFA_LOG("DwarfCfa:   cfa_offset_extended_sf reg(%u) = offset(%x) ;", (uint32_t)operands_[0], static_cast<uint32_t>(value));
   return true;
 }
 
@@ -515,7 +515,7 @@ bool DwarfCfa<AddressType>::cfa_def_cfa_sf(dwarf_loc_regs_t* loc_regs) {
   (*loc_regs)[CFA_REG] = {.type = DWARF_LOCATION_REGISTER,
                           .values = {operands_[0], static_cast<uint64_t>(offset)}};
 
-  INTER_LOG("DwarfCfa:   cfa_def_cfa_sf CFA_REG = reg(%u) + %x ;", (uint32_t)operands_[0], static_cast<uint32_t>(offset));
+  DWARF_CFA_LOG("DwarfCfa:   cfa_def_cfa_sf CFA_REG = reg(%u) + %x ;", (uint32_t)operands_[0], static_cast<uint32_t>(offset));
   return true;
 }
 
@@ -531,7 +531,7 @@ bool DwarfCfa<AddressType>::cfa_def_cfa_offset_sf(dwarf_loc_regs_t* loc_regs) {
   SignedType offset = static_cast<SignedType>(operands_[0]) * fde_->cie->data_alignment_factor;
   cfa_location->second.values[1] = static_cast<uint64_t>(offset);
 
-  INTER_LOG("DwarfCfa:   cfa_def_cfa_offset_sf CFA_REG = %x ;", static_cast<uint32_t>(offset));
+  DWARF_CFA_LOG("DwarfCfa:   cfa_def_cfa_offset_sf CFA_REG = %x ;", static_cast<uint32_t>(offset));
   return true;
 }
 
@@ -541,7 +541,7 @@ bool DwarfCfa<AddressType>::cfa_val_offset(dwarf_loc_regs_t* loc_regs) {
   SignedType offset = static_cast<SignedType>(operands_[1]) * fde_->cie->data_alignment_factor;
   (*loc_regs)[reg] = {.type = DWARF_LOCATION_VAL_OFFSET, .values = {static_cast<uint64_t>(offset)}};
 
-  INTER_LOG("DwarfCfa:   cfa_val_offset reg(%u) = %x ;", (uint32_t)operands_[0], static_cast<uint32_t>(offset));
+  DWARF_CFA_LOG("DwarfCfa:   cfa_val_offset reg(%u) = %x ;", (uint32_t)operands_[0], static_cast<uint32_t>(offset));
   return true;
 }
 
@@ -550,7 +550,7 @@ bool DwarfCfa<AddressType>::cfa_val_offset_sf(dwarf_loc_regs_t* loc_regs) {
   AddressType reg = operands_[0];
   SignedType offset = static_cast<SignedType>(operands_[1]) * fde_->cie->data_alignment_factor;
   (*loc_regs)[reg] = {.type = DWARF_LOCATION_VAL_OFFSET, .values = {static_cast<uint64_t>(offset)}};
-  INTER_LOG("DwarfCfa:   cfa_val_offset_sf reg(%u) = %x ;", (uint32_t)operands_[0], static_cast<uint32_t>(offset));
+  DWARF_CFA_LOG("DwarfCfa:   cfa_val_offset_sf reg(%u) = %x ;", (uint32_t)operands_[0], static_cast<uint32_t>(offset));
   return true;
 }
 
@@ -560,7 +560,7 @@ bool DwarfCfa<AddressType>::cfa_val_expression(dwarf_loc_regs_t* loc_regs) {
   (*loc_regs)[reg] = {.type = DWARF_LOCATION_VAL_EXPRESSION,
                       .values = {operands_[1], memory_->cur_offset()}};
 
-  INTER_LOG("DwarfCfa:   cfa_val_expression reg(%u) = (%x, %x) ;", (uint32_t)operands_[0], (uint32_t)operands_[1], (uint32_t)memory_->cur_offset());
+  DWARF_CFA_LOG("DwarfCfa:   cfa_val_expression reg(%u) = (%x, %x) ;", (uint32_t)operands_[0], (uint32_t)operands_[1], (uint32_t)memory_->cur_offset());
   return true;
 }
 
@@ -570,7 +570,7 @@ bool DwarfCfa<AddressType>::cfa_gnu_negative_offset_extended(dwarf_loc_regs_t* l
   SignedType offset = -static_cast<SignedType>(operands_[1]);
   (*loc_regs)[reg] = {.type = DWARF_LOCATION_OFFSET, .values = {static_cast<uint64_t>(offset)}};
 
-  INTER_LOG("DwarfCfa:   cfa_gnu_negative_offset_extended reg(%u) = offset(%x) ;", (uint32_t)operands_[0], static_cast<uint32_t>(offset));
+  DWARF_CFA_LOG("DwarfCfa:   cfa_gnu_negative_offset_extended reg(%u) = offset(%x) ;", (uint32_t)operands_[0], static_cast<uint32_t>(offset));
   return true;
 }
 
@@ -792,7 +792,7 @@ const DwarfCfaInfo::Info DwarfCfaInfo::kTable[64] = {
 };
 
 // Explicitly instantiate DwarfCfa.
-template class DwarfCfa<addr_t>;
-//template class DwarfCfa<uint64_t>;
+template class DwarfCfa<uint32_t>;
+template class DwarfCfa<uint64_t>;
 
 }  // namespace wechat_backtrace

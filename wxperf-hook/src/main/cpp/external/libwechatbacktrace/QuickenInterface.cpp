@@ -51,36 +51,36 @@ bool QuickenInterface::GenerateQuickenTableUltra(unwindstack::Memory* process_me
     return ret;
 }
 
-bool QuickenInterface::GenerateQuickenTable(unwindstack::Memory* process_memory) {
+//bool QuickenInterface::GenerateQuickenTable(unwindstack::Memory* process_memory) {
+//
+//    lock_guard<mutex> lock(lock_);
+//
+//    if (qut_sections_) {
+//        return true;
+//    }
+//
+//    QuickenTableGenerator<uint32_t> generator(memory_, process_memory);
+//    QutSections* qut_sections = new QutSections();
+//
+//    size_t bad_entries = 0;
+//    bool ret = generator.GenerateFutSections(arm_exidx_info_.offset_, arm_exidx_info_.size_,
+//            qut_sections, bad_entries);
+//
+//    bad_entries_ = bad_entries;
+//
+//    if (ret) {
+//        qut_sections_.reset(qut_sections);
+//    } else {
+//        delete qut_sections;
+//    }
+//
+//    return ret;
+//}
 
-    lock_guard<mutex> lock(lock_);
-
-    if (qut_sections_) {
-        return true;
-    }
-
-    QuickenTableGenerator<uint32_t> generator(memory_, process_memory);
-    QutSections* qut_sections = new QutSections();
-
-    size_t bad_entries = 0;
-    bool ret = generator.GenerateFutSections(arm_exidx_info_.offset_, arm_exidx_info_.size_,
-            qut_sections, bad_entries);
-
-    bad_entries_ = bad_entries;
-
-    if (ret) {
-        qut_sections_.reset(qut_sections);
-    } else {
-        delete qut_sections;
-    }
-
-    return ret;
-}
-
-bool QuickenInterface::FindEntry(uptr pc, uint64_t* entry_offset) {
+bool QuickenInterface::FindEntry(uptr pc, size_t* entry_offset) {
     size_t first = 0;
     size_t last = qut_sections_->idx_size;
-
+    QUT_DEBUG_LOG("QuickenInterface::FindEntry first:%u last:%u pc:%x", first, last, pc);
     while (first < last) {
         size_t current = ((first + last) / 2) & 0xfffffffe;
         uptr addr = qut_sections_->quidx[current];
@@ -104,7 +104,7 @@ bool QuickenInterface::FindEntry(uptr pc, uint64_t* entry_offset) {
     return false;
 }
 
-bool QuickenInterface::Step(uptr pc, uptr* regs, unwindstack::Memory* process_memory, bool* finished) {
+bool QuickenInterface::Step(uptr pc, uptr* regs, unwindstack::Memory* process_memory, uint64_t* dex_pc, bool* finished) {
 
     // Adjust the load bias to get the real relative pc.
     if (UNLIKELY(pc < load_bias_)) {
@@ -120,9 +120,9 @@ bool QuickenInterface::Step(uptr pc, uptr* regs, unwindstack::Memory* process_me
     }
 
     QuickenTable quicken(qut_sections_.get(), regs, memory_, process_memory);
-    uint64_t entry_offset;
+    size_t entry_offset;
 
-    QUT_DEBUG_LOG("QuickenInterface::Step pc:%x, load_bias_:%llu", pc, load_bias_);
+    QUT_DEBUG_LOG("QuickenInterface::Step pc:%llx, load_bias_:%llu", (uint64_t)pc, load_bias_);
 
     pc -= load_bias_;
 
@@ -134,17 +134,24 @@ bool QuickenInterface::Step(uptr pc, uptr* regs, unwindstack::Memory* process_me
     bool return_value = false;
 
     if (quicken.Eval(entry_offset)) {
+        QUT_DEBUG_LOG("QuickenInterface::Step quicken.Eval PC(regs) %llx LR(regs) %llx ken.pc_set_ %d", (uint64_t)PC(regs), (uint64_t)LR(regs), quicken.pc_set_);
         if (!quicken.pc_set_) {
             PC(regs) = LR(regs);
         }
         SP(regs) = quicken.cfa_;
         return_value = true;
+
+        if (quicken.dex_pc_ != 0) {
+            *dex_pc = quicken.dex_pc_;
+        }
     } else {
         last_error_code_ = QUT_ERROR_INVALID_QUT_INSTR;
     }
 
     // If the pc was set to zero, consider this the final frame.
     *finished = (PC(regs) == 0) ? true : false;
+
+    QUT_DEBUG_LOG("QuickenInterface::Step finished: %d, PC(regs) %llx", *finished, (uint64_t)PC(regs));
 
     return return_value;
 }

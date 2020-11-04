@@ -18,9 +18,9 @@ public:
     QuickenInterface(unwindstack::Memory* memory, uint64_t load_bias, unwindstack::ArchEnum arch)
         : memory_(memory), load_bias_(load_bias), arch_(arch){}
 
-    bool FindEntry(uptr pc, uint64_t* entry_offset);
+    bool FindEntry(uptr pc, size_t* entry_offset);
 
-    bool Step(uptr pc, uptr* regs, unwindstack::Memory* process_memory, bool* finished);
+    bool Step(uptr pc, uptr* regs, unwindstack::Memory* process_memory, uint64_t* dex_pc, bool* finished);
 
     template <typename AddressType>
     bool GenerateQuickenTableUltra(unwindstack::Memory* process_memory);

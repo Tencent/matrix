@@ -221,7 +221,7 @@ bool DwarfEhFrameWithHdrDecoder<AddressType>::GetFdeOffsetFromPc(uint64_t pc, ui
 //}
 
 // Explicitly instantiate DwarfEhFrameWithHdrDecoder
-template class DwarfEhFrameWithHdrDecoder<addr_t>;
-//template class DwarfEhFrameWithHdrDecoder<uint64_t>;
+template class DwarfEhFrameWithHdrDecoder<uint32_t>;
+template class DwarfEhFrameWithHdrDecoder<uint64_t>;
 
 }  // namespace wechat_backtrace

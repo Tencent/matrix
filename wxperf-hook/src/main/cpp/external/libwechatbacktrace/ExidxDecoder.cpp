@@ -35,8 +35,6 @@
 //      1111 1101 + SLEB128 : r11 = [vsp - SLEB128]                         ; # [addr] means get value from pointer addr
 //      1111 1111 + SLEB128 : vsp = vsp + SLEB128                           ;
 
-#define QUT_FINISH 0xf0
-
 namespace wechat_backtrace {
 
 using namespace std;

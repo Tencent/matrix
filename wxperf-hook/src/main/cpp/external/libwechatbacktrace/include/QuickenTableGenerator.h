@@ -57,8 +57,8 @@ public:
         : memory_(memory), process_memory_(process_memory) {}
     ~QuickenTableGenerator() {};
 
-    bool GenerateFutSections(size_t start_offset, size_t total_entry, QutSections* fut_sections,
-            size_t &bad_entries_count);
+//    bool GenerateFutSections(size_t start_offset, size_t total_entry, QutSections* fut_sections,
+//            size_t &bad_entries_count);
 
     bool GenerateUltraQUTSections(
             FrameInfo eh_frame_hdr_info, FrameInfo eh_frame_info, FrameInfo debug_frame_info,
@@ -100,17 +100,19 @@ public:
             process_memory_(process_memory), fut_sections_(fut_sections) {}
     ~QuickenTable() {};
 
-    bool Eval(uint32_t entry_offset);
+    bool Eval(size_t entry_offset);
 
-    uint32_t cfa_ = 0;
-    uint32_t dex_pc_ = 0;
+    uptr cfa_ = 0;
+    uptr dex_pc_ = 0;
     bool pc_set_ = false;
 
 protected:
 
-    bool Decode(uint32_t* instructions, const size_t amount, size_t start_pos = 3);
+    bool Decode32(const uint32_t * instructions, const size_t amount, const size_t start_pos);
+    bool Decode64(const uint64_t * instructions, const size_t amount, const size_t start_pos);
+    bool Decode(const uptr * instructions, const size_t amount, const size_t start_pos);
 
-    uintptr_t* regs_ = nullptr;
+    uptr * regs_ = nullptr;
 
     unwindstack::Memory* memory_ = nullptr;
     unwindstack::Memory* process_memory_ = nullptr;

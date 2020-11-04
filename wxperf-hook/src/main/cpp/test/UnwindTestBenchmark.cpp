@@ -84,9 +84,9 @@ Java_com_tencent_wxperf_jni_test_UnwindBenckmarkTest_debugNative(JNIEnv *env, jc
 //    BENCHMARK_TIMES(DWARF_UNWIND, 1, func_selfso)
 //    BENCHMARK_TIMES(FAST_DWARF_UNWIND, 10, func_selfso)
 
-#ifdef __arm__
+//#ifdef __arm__
     BENCHMARK_TIMES(WECHAT_QUICKEN_UNWIND, 5, func_selfso);
-#endif
+//#endif
 
 //    BENCHMARK_TIMES(FP_UNWIND, 3, func_selfso)
 //    BENCHMARK_TIMES(FP_UNWIND, 3, func_throughjni)

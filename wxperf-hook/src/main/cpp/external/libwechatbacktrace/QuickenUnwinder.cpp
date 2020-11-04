@@ -76,6 +76,7 @@ QutErrorCode WeChatQuickenUnwind(ArchEnum arch, uptr* regs, uptr* backtrace, upt
     MapInfoPtr last_map_info = nullptr;
     QuickenInterface* last_interface = nullptr;
     uint64_t last_load_bias = 0;
+    uint64_t dex_pc = 0;
 
     QutErrorCode ret = QUT_ERROR_NONE;
 
@@ -133,6 +134,12 @@ QutErrorCode WeChatQuickenUnwind(ArchEnum arch, uptr* regs, uptr* backtrace, upt
 
         QUT_DEBUG_LOG("WeChatQuickenUnwind pc_adjustment:%llx, step_pc:%llx, rel_pc:%llx", pc_adjustment, step_pc, rel_pc);
 
+        if (dex_pc != 0) {
+            LOGE(WECHAT_QUICKEN_UNWIND_TAG, "dex_pc %llx", dex_pc);
+            backtrace[frame_size++] = dex_pc;
+            dex_pc = 0;
+        }
+
         backtrace[frame_size++] = PC(regs) - pc_adjustment;
 
         adjust_pc = true;
@@ -142,8 +149,12 @@ QutErrorCode WeChatQuickenUnwind(ArchEnum arch, uptr* regs, uptr* backtrace, upt
             break;
         }
 
-        if (!interface->Step(step_pc, regs, process_memory_.get(), &finished)) {
+        if (!interface->Step(step_pc, regs, process_memory_.get(), &dex_pc, &finished)) {
             ret = interface->last_error_code_;
+            break;
+        }
+
+        if (finished) { // finished.
             break;
         }
 

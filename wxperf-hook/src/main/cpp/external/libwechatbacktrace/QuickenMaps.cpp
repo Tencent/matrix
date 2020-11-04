@@ -49,7 +49,7 @@ QuickenInterface* QuickenMapInfo::GetQuickenInterface(const shared_ptr<unwindsta
         }
 
         quicken_interface_.reset(new QuickenInterface(elf->memory(), elf->GetLoadBias(), expected_arch));
-        ElfInterface *elf_interface = dynamic_cast<ElfInterfaceArm *>(elf->interface());
+        ElfInterface *elf_interface = elf->interface();
 
         if (expected_arch == ARCH_ARM) {
             ElfInterfaceArm *elf_interface_arm = dynamic_cast<ElfInterfaceArm *>(elf_interface);

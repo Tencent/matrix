@@ -26,20 +26,22 @@ namespace unwindstack {
     }
 }
 
-static inline void fp_unwind(wechat_backtrace::uptr* regs, wechat_backtrace::uptr *frames, size_t max_size, size_t &frame_size) {
-    wechat_backtrace::fp_unwind(regs, frames, max_size, frame_size);
-}
+using namespace wechat_backtrace;
+
+//static inline void fp_unwind(wechat_backtrace::uptr* regs, wechat_backtrace::uptr *frames, size_t max_size, size_t &frame_size) {
+//    wechat_backtrace::fp_unwind(regs, frames, max_size, frame_size);
+//}
 
 void unwind_adapter(std::vector<unwindstack::FrameData> &dst) {
 #ifdef __aarch64__
 
-    uptr frames[MAX_FRAMES];
+    wechat_backtrace::uptr frames[MAX_FRAMES];
     size_t frame_size = 0;
 
-    uptr regs[4];
+    wechat_backtrace::uptr regs[4];
     RegsMinimalGetLocal(regs);
 
-    fp_unwind(regs, frames, MAX_FRAMES, frame_size);
+    wechat_backtrace::fp_unwind(regs, frames, MAX_FRAMES, frame_size);
 
     LOGD("Wxperf.unwind", "unwind adapter: size %zu", frame_size);
 

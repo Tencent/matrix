@@ -109,6 +109,8 @@ protected:
 
     DwarfErrorData last_error_{DWARF_ERROR_NONE, 0};
 
+    bool log = false;
+
     std::shared_ptr<std::deque<uint64_t>> temp_instructions_;
 };
 
