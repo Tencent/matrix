@@ -1,7 +1,5 @@
 package com.tencent.matrix.batterycanary.monitor;
 
-import android.app.AlarmManager;
-import android.app.PendingIntent;
 import android.os.HandlerThread;
 import android.os.Process;
 import android.support.annotation.CallSuper;
@@ -40,7 +38,7 @@ public interface BatteryMonitorCallback extends JiffiesMonitorFeature.JiffiesLis
         private BatteryMonitorCore mMonitorCore;
         private final Printer mPrinter = new Printer();
         private final LongSparseArray<List<LooperTaskMonitorFeature.TaskTraceInfo>> tasks = new LongSparseArray<>();
-        private WakeLockMonitorFeature.WakeLockInfo mLastWakeWakeLockInfo = null;
+        private WakeLockMonitorFeature.WakeLockSnapshot mLastWakeWakeLockSnapshot = null;
         private int diffWakeCount = 0;
         private long diffWakeTime = 0L;
 
@@ -58,17 +56,17 @@ public interface BatteryMonitorCallback extends JiffiesMonitorFeature.JiffiesLis
         public void onTraceBegin() {
             WakeLockMonitorFeature plugin = mMonitorCore.getMonitorFeature(WakeLockMonitorFeature.class);
             if (null != plugin) {
-                mLastWakeWakeLockInfo = plugin.currentWakeLocksInfo();
+                mLastWakeWakeLockSnapshot = plugin.currentWakeLocks();
             }
         }
 
         @Override
         public void onTraceEnd() {
             WakeLockMonitorFeature plugin = mMonitorCore.getMonitorFeature(WakeLockMonitorFeature.class);
-            if (null != plugin && null != mLastWakeWakeLockInfo) {
-                WakeLockMonitorFeature.WakeLockInfo wakeLockInfo = plugin.currentWakeLocksInfo();
-                diffWakeCount = wakeLockInfo.totalWakeLockCount - mLastWakeWakeLockInfo.totalWakeLockCount;
-                diffWakeTime = wakeLockInfo.totalWakeLockTime - mLastWakeWakeLockInfo.totalWakeLockTime;
+            if (null != plugin && null != mLastWakeWakeLockSnapshot) {
+                WakeLockMonitorFeature.WakeLockSnapshot wakeLockSnapshot = plugin.currentWakeLocks();
+                diffWakeCount = wakeLockSnapshot.totalWakeLockCount - mLastWakeWakeLockSnapshot.totalWakeLockCount;
+                diffWakeTime = wakeLockSnapshot.totalWakeLockTime - mLastWakeWakeLockSnapshot.totalWakeLockTime;
             }
         }
 

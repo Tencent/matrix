@@ -5,6 +5,9 @@ import android.os.SystemClock;
 
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public interface MonitorFeature {
     void configure(BatteryMonitorCore monitor);
     void onTurnOn();
@@ -47,7 +50,7 @@ public interface MonitorFeature {
         }
 
         interface Differ<VALUE> {
-            int UNSPECIFIED_DIGIT = Integer.MAX_VALUE;
+            // todo: int UNSPECIFIED_DIGIT = Integer.MAX_VALUE;
             LongDiffer sDigitDiffer = new LongDiffer();
             IntArrayDiffer sDigitArrayDiffer = new IntArrayDiffer();
 
@@ -77,6 +80,19 @@ public interface MonitorFeature {
                         }
                     }
                     return dlt;
+                }
+            }
+
+            class ListDiffer<T> implements Differ<List<T>> {
+                @Override
+                public List<T> diff(List<T> bgn, List<T> end) {
+                    List<T> delta = new ArrayList<>();
+                    for (T item : end) {
+                        if (!bgn.contains(item)) {
+                            delta.add(item);
+                        }
+                    }
+                    return delta;
                 }
             }
         }

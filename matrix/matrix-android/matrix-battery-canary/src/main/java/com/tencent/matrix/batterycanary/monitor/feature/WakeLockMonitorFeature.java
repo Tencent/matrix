@@ -112,13 +112,15 @@ public class WakeLockMonitorFeature implements MonitorFeature, PowerManagerServi
         }
     }
 
-    public WakeLockInfo currentWakeLocksInfo() {
+    public WakeLockSnapshot currentWakeLocks() {
         List<WakeLockTrace.WakeLockRecord> totalWakeLocks;
         long totalWakeLockTime = 0L;
+        int totalWakeLockCount = 0;
         synchronized (mFinishedWakeLockRecords) {
             for (WakeLockTrace.WakeLockRecord item : mFinishedWakeLockRecords) {
                 totalWakeLockTime += item.getLockingTimeMillis();
             }
+            totalWakeLockCount += mFinishedWakeLockRecords.size();
             totalWakeLocks = new ArrayList<>(mFinishedWakeLockRecords);
         }
 
@@ -128,17 +130,33 @@ public class WakeLockMonitorFeature implements MonitorFeature, PowerManagerServi
                 totalWakeLockTime += item.record.getLockingTimeMillis();
             }
         }
+        totalWakeLockCount += mWorkingWakeLocks.size();
 
-        WakeLockInfo info = new WakeLockInfo();
-        info.totalWakeLockTime = totalWakeLockTime;
-        info.totalWakeLockRecords = totalWakeLocks;
-        return info;
+        WakeLockSnapshot snapshot = new WakeLockSnapshot();
+        snapshot.totalWakeLockTime = totalWakeLockTime;
+        snapshot.totalWakeLockCount = totalWakeLockCount;
+        snapshot.totalWakeLockRecords = totalWakeLocks;
+        return snapshot;
     }
 
-    public static class WakeLockInfo {
+    public static class WakeLockSnapshot extends Snapshot<WakeLockSnapshot> {
         public long totalWakeLockTime;
         public int totalWakeLockCount;
         List<WakeLockTrace.WakeLockRecord> totalWakeLockRecords = Collections.emptyList();
+
+        @Override
+        public Delta<WakeLockSnapshot> diff(WakeLockSnapshot bgn) {
+            return new Delta<WakeLockSnapshot>(bgn, this) {
+                @Override
+                protected WakeLockSnapshot computeDelta() {
+                    WakeLockSnapshot delta = new WakeLockSnapshot();
+                    delta.totalWakeLockTime = Differ.sDigitDiffer.diff(bgn.totalWakeLockTime, end.totalWakeLockTime);
+                    delta.totalWakeLockCount = Differ.sDigitDiffer.diffInt(bgn.totalWakeLockCount, end.totalWakeLockCount);
+                    delta.totalWakeLockRecords = new Differ.ListDiffer<WakeLockTrace.WakeLockRecord>().diff(bgn.totalWakeLockRecords, end.totalWakeLockRecords);
+                    return delta;
+                }
+            };
+        }
     }
 
     public static class WakeLockTrace {
