@@ -1,5 +1,7 @@
 package com.tencent.matrix.batterycanary.monitor;
 
+import android.app.AlarmManager;
+import android.app.PendingIntent;
 import android.os.HandlerThread;
 import android.os.Process;
 import android.support.annotation.CallSuper;
@@ -9,9 +11,10 @@ import android.support.v4.util.Consumer;
 import android.util.LongSparseArray;
 
 import com.tencent.matrix.Matrix;
-import com.tencent.matrix.batterycanary.monitor.feature.DeviceStatMonitor;
-import com.tencent.matrix.batterycanary.monitor.feature.DeviceStatMonitor.BatteryTmpSnapshot;
-import com.tencent.matrix.batterycanary.monitor.feature.DeviceStatMonitor.CpuFreqSnapshot;
+import com.tencent.matrix.batterycanary.monitor.feature.AlarmMonitorFeature;
+import com.tencent.matrix.batterycanary.monitor.feature.DeviceStatMonitorFeature;
+import com.tencent.matrix.batterycanary.monitor.feature.DeviceStatMonitorFeature.BatteryTmpSnapshot;
+import com.tencent.matrix.batterycanary.monitor.feature.DeviceStatMonitorFeature.CpuFreqSnapshot;
 import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.LooperTaskMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Delta;
@@ -26,7 +29,7 @@ import java.util.List;
  * @author Kaede
  * @since 2020/10/27
  */
-public interface BatteryMonitorCallback extends JiffiesMonitorFeature.JiffiesListener, LooperTaskMonitorFeature.LooperTaskListener, WakeLockMonitorFeature.WakeLockListener {
+public interface BatteryMonitorCallback extends JiffiesMonitorFeature.JiffiesListener, LooperTaskMonitorFeature.LooperTaskListener, WakeLockMonitorFeature.WakeLockListener, AlarmMonitorFeature.AlarmListener {
 
     @SuppressWarnings("NotNullFieldNotInitialized")
     class BatteryPrinter implements BatteryMonitorCallback {
@@ -88,6 +91,10 @@ public interface BatteryMonitorCallback extends JiffiesMonitorFeature.JiffiesLis
         public void onWakeLockTimeout(int warningCount, WakeLockRecord record) {
         }
 
+        @Override
+        public void onAlarmDuplicated(int duplicatedCount, AlarmMonitorFeature.AlarmRecord record) {
+        }
+
         @CallSuper
         protected void onCanaryDump() {
             mPrinter.clear();
@@ -136,7 +143,7 @@ public interface BatteryMonitorCallback extends JiffiesMonitorFeature.JiffiesLis
 
         @CallSuper
         protected void onWritingSections() {
-            final DeviceStatMonitor deviceStatMonitor = mMonitorCore.getMonitorFeature(DeviceStatMonitor.class);
+            final DeviceStatMonitorFeature deviceStatMonitor = mMonitorCore.getMonitorFeature(DeviceStatMonitorFeature.class);
             if (deviceStatMonitor != null) {
                 // Cpu Freq
                 createSection("device_stat", new Consumer<Printer>() {

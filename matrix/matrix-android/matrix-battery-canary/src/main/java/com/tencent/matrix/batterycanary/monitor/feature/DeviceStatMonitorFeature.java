@@ -20,7 +20,7 @@ import com.tencent.matrix.util.MatrixLog;
  * @since 2020/11/1
  */
 @SuppressWarnings("NotNullFieldNotInitialized")
-public final class DeviceStatMonitor implements MonitorFeature {
+public final class DeviceStatMonitorFeature implements MonitorFeature {
     private static final String TAG = "Matrix.monitor.DeviceStatusMonitorFeature";
 
     @NonNull

@@ -24,7 +24,7 @@ import android.support.test.runner.AndroidJUnit4;
 import com.tencent.matrix.Matrix;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorConfig;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
-import com.tencent.matrix.batterycanary.monitor.feature.DeviceStatMonitor.CpuFreqSnapshot;
+import com.tencent.matrix.batterycanary.monitor.feature.DeviceStatMonitorFeature.CpuFreqSnapshot;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Delta;
 
 import org.junit.After;
@@ -66,7 +66,7 @@ public class MonitorFeatureDeviceStatTest {
 
     @Test
     public void testGetCpuFreqSnapshot() throws InterruptedException {
-        final DeviceStatMonitor feature = new DeviceStatMonitor();
+        final DeviceStatMonitorFeature feature = new DeviceStatMonitorFeature();
         feature.configure(mockMonitor());
         CpuFreqSnapshot bgn = feature.currentCpuFreq();
         Assert.assertNotNull(bgn);
@@ -94,17 +94,17 @@ public class MonitorFeatureDeviceStatTest {
 
     @Test
     public void testGetBatteryTmpSnapshot() throws InterruptedException {
-        final DeviceStatMonitor feature = new DeviceStatMonitor();
+        final DeviceStatMonitorFeature feature = new DeviceStatMonitorFeature();
         feature.configure(mockMonitor());
-        DeviceStatMonitor.BatteryTmpSnapshot bgn = feature.currentBatteryTemperature(mContext);
+        DeviceStatMonitorFeature.BatteryTmpSnapshot bgn = feature.currentBatteryTemperature(mContext);
         Assert.assertNotNull(bgn);
         Assert.assertFalse(bgn.isDelta);
         Thread.sleep(100);
-        DeviceStatMonitor.BatteryTmpSnapshot end = feature.currentBatteryTemperature(mContext);
+        DeviceStatMonitorFeature.BatteryTmpSnapshot end = feature.currentBatteryTemperature(mContext);
         Assert.assertNotNull(end);
         Assert.assertFalse(end.isDelta);
 
-        Delta<DeviceStatMonitor.BatteryTmpSnapshot> diff = end.diff(bgn);
+        Delta<DeviceStatMonitorFeature.BatteryTmpSnapshot> diff = end.diff(bgn);
         Assert.assertNotNull(diff);
         Assert.assertTrue(diff.dlt.isDelta);
         Assert.assertTrue(diff.during >= 100L);

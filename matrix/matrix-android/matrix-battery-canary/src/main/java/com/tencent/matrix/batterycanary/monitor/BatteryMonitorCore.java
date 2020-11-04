@@ -1,6 +1,10 @@
 package com.tencent.matrix.batterycanary.monitor;
 
+import android.app.AlarmManager;
+import android.app.PendingIntent;
+
 import com.tencent.matrix.AppActiveMatrixDelegate;
+import com.tencent.matrix.batterycanary.monitor.feature.AlarmMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.LooperTaskMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature;
@@ -11,7 +15,7 @@ import com.tencent.matrix.util.MatrixLog;
 import java.util.List;
 
 public class BatteryMonitorCore implements JiffiesMonitorFeature.JiffiesListener, LooperTaskMonitorFeature.LooperTaskListener,
-        WakeLockMonitorFeature.WakeLockListener {
+        WakeLockMonitorFeature.WakeLockListener, AlarmMonitorFeature.AlarmListener {
     private static final String TAG = "Matrix.battery.monitor";
 
     private volatile boolean isTurnOn = false;
@@ -107,5 +111,11 @@ public class BatteryMonitorCore implements JiffiesMonitorFeature.JiffiesListener
     public void onWakeLockTimeout(int warningCount, WakeLockRecord record) {
         MatrixLog.d(TAG, "#onWakeLockTimeout, tag = " + record.tag + ", pkg = " + record.packageName + ", count = " + warningCount);
         getConfig().callback.onWakeLockTimeout(warningCount, record);
+    }
+
+    @Override
+    public void onAlarmDuplicated(int duplicatedCount, AlarmMonitorFeature.AlarmRecord record) {
+        MatrixLog.d(TAG, "#onAlarmDuplicated");
+        getConfig().callback.onAlarmDuplicated(duplicatedCount, record);
     }
 }
