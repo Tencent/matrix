@@ -17,6 +17,10 @@
 package com.tencent.matrix.batterycanary.utils;
 
 import android.app.AlarmManager;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.os.BatteryManager;
 import android.os.SystemClock;
 import android.support.annotation.Nullable;
 import android.support.annotation.RestrictTo;
@@ -180,5 +184,11 @@ public final class BatteryCanaryUtil {
             MatrixLog.printErrStackTrace(TAG, e, "cat file fail");
             return null;
         }
+    }
+
+    public static int getBatteryTemperature(Context context) {
+        Intent batIntent = context.registerReceiver(null, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
+        if (batIntent == null) return 0;
+        return batIntent.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, 0);
     }
 }
