@@ -58,6 +58,12 @@ public interface BatteryMonitorCallback extends JiffiesMonitorFeature.JiffiesLis
             if (null != plugin) {
                 mLastWakeWakeLockSnapshot = plugin.currentWakeLocks();
             }
+
+            DeviceStatMonitorFeature deviceStatMonitor = mMonitorCore.getMonitorFeature(DeviceStatMonitorFeature.class);
+            if (deviceStatMonitor != null) {
+                lastCpuFreqSnapshot = deviceStatMonitor.currentCpuFreq();
+                lastBatteryTmpSnapshot = deviceStatMonitor.currentBatteryTemperature(Matrix.with().getApplication());
+            }
         }
 
         @Override
@@ -143,28 +149,27 @@ public interface BatteryMonitorCallback extends JiffiesMonitorFeature.JiffiesLis
         protected void onWritingSections() {
             final DeviceStatMonitorFeature deviceStatMonitor = mMonitorCore.getMonitorFeature(DeviceStatMonitorFeature.class);
             if (deviceStatMonitor != null) {
-                // Cpu Freq
+                // Device Stat
                 createSection("device_stat", new Consumer<Printer>() {
                     @Override
                     public void accept(Printer printer) {
-                        CpuFreqSnapshot cpuFreqSnapshot = deviceStatMonitor.currentCpuFreq();
                         if (lastCpuFreqSnapshot != null) {
+                            CpuFreqSnapshot cpuFreqSnapshot = deviceStatMonitor.currentCpuFreq();
                             final Delta<CpuFreqSnapshot> cpuFreqDiff = cpuFreqSnapshot.diff(lastCpuFreqSnapshot);
                             printer.createSubSection("cpufreq");
                             printer.writeLine("diff", Arrays.toString(cpuFreqDiff.dlt.cpuFreq));
                             printer.writeLine("curr", Arrays.toString(cpuFreqDiff.end.cpuFreq));
+                            printer.writeLine("mils", String.valueOf(cpuFreqDiff.during));
                         }
-                        lastCpuFreqSnapshot = cpuFreqSnapshot;
 
-                        // fixme: context config
-                        BatteryTmpSnapshot batteryTmpSnapshot = deviceStatMonitor.currentBatteryTemperature(Matrix.with().getApplication());
                         if (lastBatteryTmpSnapshot != null) {
+                            BatteryTmpSnapshot batteryTmpSnapshot = deviceStatMonitor.currentBatteryTemperature(Matrix.with().getApplication());
                             Delta<BatteryTmpSnapshot> batteryDiff = batteryTmpSnapshot.diff(lastBatteryTmpSnapshot);
-                            printer.createSubSection("battery_tmp");
+                            printer.createSubSection("battery_temperature");
                             printer.writeLine("diff", String.valueOf(batteryDiff.dlt.temperature));
                             printer.writeLine("curr", String.valueOf(batteryDiff.end.temperature));
+                            printer.writeLine("mils", String.valueOf(batteryDiff.during));
                         }
-                        lastBatteryTmpSnapshot = batteryTmpSnapshot;
                     }
                 });
             }
@@ -182,6 +187,7 @@ public interface BatteryMonitorCallback extends JiffiesMonitorFeature.JiffiesLis
         /**
          * Log Printer
          */
+        @SuppressWarnings("UnusedReturnValue")
         public static class Printer {
             private final StringBuilder sb = new StringBuilder("\t\n");
 
@@ -200,11 +206,6 @@ public interface BatteryMonitorCallback extends JiffiesMonitorFeature.JiffiesLis
 
             public Printer enter() {
                 sb.append("\n");
-                return this;
-            }
-
-            public Printer arrow() {
-                sb.append("-> ");
                 return this;
             }
 
@@ -244,7 +245,7 @@ public interface BatteryMonitorCallback extends JiffiesMonitorFeature.JiffiesLis
             }
 
             public void dump() {
-                MatrixLog.i(TAG, sb.toString());
+                MatrixLog.i(TAG, "\n" + sb.toString() + "\n");
             }
 
             @Override
