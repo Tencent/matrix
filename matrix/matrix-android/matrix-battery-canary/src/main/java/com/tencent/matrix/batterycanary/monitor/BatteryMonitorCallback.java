@@ -108,10 +108,10 @@ public interface BatteryMonitorCallback extends JiffiesMonitorFeature.JiffiesLis
             if (result != null) {
                 // header
                 mPrinter.append("| ").append("pid=").append(Process.myPid())
-                        .tab().append("stat=").append(result.status)
-                        .tab().append("during(min)=").append(result.upTimeDiff / ONE_MIN).append("<").append(result.timeDiff / ONE_MIN)
-                        .tab().append("diff(jiffies)=").append(result.totalJiffiesDiff)
-                        .tab().append("avg(jiffies/min)=").append(result.totalJiffiesDiff / Math.max(1, result.upTimeDiff / ONE_MIN))
+                        .tab().tab().append("fg=").append(mMonitor.isForeground())
+                        .tab().tab().append("during(min)=").append(result.upTimeDiff / ONE_MIN).append("<").append(result.timeDiff / ONE_MIN)
+                        .tab().tab().append("diff(jiffies)=").append(result.totalJiffiesDiff)
+                        .tab().tab().append("avg(jiffies/min)=").append(result.totalJiffiesDiff / Math.max(1, result.upTimeDiff / ONE_MIN))
                         .enter();
 
                 // jiffies sections
