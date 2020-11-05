@@ -49,7 +49,7 @@ public interface MonitorFeature {
             protected abstract RECORD computeDelta();
         }
 
-        interface Differ<VALUE> {
+        public interface Differ<VALUE> {
             // todo: int UNSPECIFIED_DIGIT = Integer.MAX_VALUE;
             LongDiffer sDigitDiffer = new LongDiffer();
             IntArrayDiffer sDigitArrayDiffer = new IntArrayDiffer();

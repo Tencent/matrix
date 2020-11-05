@@ -63,11 +63,6 @@ public class MonitorCoreTest {
             }
 
             @Override
-            public StringBuilder getExtInfo() {
-                return super.getExtInfo();
-            }
-
-            @Override
             public void onTaskTrace(Thread thread, List<LooperTaskMonitorFeature.TaskTraceInfo> sortList) {
                 super.onTaskTrace(thread, sortList);
             }
