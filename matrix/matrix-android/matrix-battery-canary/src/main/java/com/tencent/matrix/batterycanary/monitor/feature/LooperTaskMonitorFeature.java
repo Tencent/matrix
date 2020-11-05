@@ -21,7 +21,7 @@ import java.util.Set;
 
 @SuppressWarnings("NotNullFieldNotInitialized")
 public class LooperTaskMonitorFeature implements MonitorFeature {
-    private static final String TAG = "Matrix.monitor.LooperTaskMonitorFeature";
+    private static final String TAG = "Matrix.battery.LooperTaskMonitorFeature";
 
     public interface LooperTaskListener {
         void onTaskTrace(Thread thread, List<LooperTaskMonitorFeature.TaskTraceInfo> sortList);

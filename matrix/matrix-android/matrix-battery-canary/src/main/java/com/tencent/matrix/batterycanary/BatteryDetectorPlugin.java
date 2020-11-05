@@ -30,7 +30,7 @@ import com.tencent.matrix.util.MatrixLog;
  *         Created by liyongjie on 2017/8/14.
  */
 public class BatteryDetectorPlugin extends Plugin {
-    private static final String TAG = "Matrix.BatteryDetectorPlugin";
+    private static final String TAG = "Matrix.battery.BatteryDetectorPlugin";
 
     private final BatteryDetectorConfig mBatteryDetectorConfig;
     private final BatteryDetectorCore mCore;

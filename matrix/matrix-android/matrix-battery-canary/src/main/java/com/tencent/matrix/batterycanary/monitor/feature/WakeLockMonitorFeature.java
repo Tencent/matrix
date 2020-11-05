@@ -23,7 +23,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @SuppressWarnings("NotNullFieldNotInitialized")
 public class WakeLockMonitorFeature implements MonitorFeature, PowerManagerServiceHooker.IListener {
-    private static final String TAG = "Matrix.monitor.WakeLockMonitorFeature";
+    private static final String TAG = "Matrix.battery.WakeLockMonitorFeature";
 
     public interface WakeLockListener {
         void onWakeLockTimeout(int warningCount, WakeLockTrace.WakeLockRecord record);

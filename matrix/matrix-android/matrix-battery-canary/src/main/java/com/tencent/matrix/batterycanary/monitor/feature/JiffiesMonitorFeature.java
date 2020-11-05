@@ -28,7 +28,7 @@ import java.util.Set;
 
 @SuppressWarnings("NotNullFieldNotInitialized")
 public class JiffiesMonitorFeature implements MonitorFeature, Handler.Callback {
-    private static final String TAG = "Matrix.monitor.JiffiesMonitorFeature";
+    private static final String TAG = "Matrix.battery.JiffiesMonitorFeature";
     private boolean isForegroundModeEnabled;
 
     public interface JiffiesListener {

@@ -30,7 +30,7 @@ import com.tencent.matrix.util.MatrixHandlerThread;
  */
 @RestrictTo(RestrictTo.Scope.LIBRARY)
 public class BatteryCanaryDetectScheduler {
-    private static final String TAG = "Matrix.BatteryCanaryDetectScheduler";
+    private static final String TAG = "Matrix.battery.DetectScheduler";
 
     private Handler mDetectHandler;
     private boolean started = false;

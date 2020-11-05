@@ -32,7 +32,7 @@ public interface BatteryMonitorCallback extends JiffiesMonitorFeature.JiffiesLis
 
     @SuppressWarnings({"NotNullFieldNotInitialized", "SpellCheckingInspection"})
     class BatteryPrinter implements BatteryMonitorCallback {
-        private static final String TAG = "Matrix.BatteryPrinter";
+        private static final String TAG = "Matrix.battery.BatteryPrinter";
         private static final int ONE_MIN = 60 * 1000;
 
         @NonNull

@@ -34,7 +34,7 @@ import java.util.List;
  */
 @RestrictTo(RestrictTo.Scope.LIBRARY)
 public class AlarmManagerServiceHooker {
-    private static final String TAG = "Matrix.AlarmManagerServiceHooker";
+    private static final String TAG = "Matrix.battery.AlarmHooker";
 
     public interface IListener {
         void onAlarmSet(int type, long triggerAtMillis, long windowMillis, long intervalMillis, int flags, PendingIntent operation, AlarmManager.OnAlarmListener onAlarmListener);

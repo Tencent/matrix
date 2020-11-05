@@ -19,7 +19,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @SuppressWarnings("NotNullFieldNotInitialized")
 public class AlarmMonitorFeature implements MonitorFeature, AlarmManagerServiceHooker.IListener {
-    private static final String TAG = "Matrix.monitor.AlarmMonitorFeature";
+    private static final String TAG = "Matrix.battery.AlarmMonitorFeature";
 
     public interface AlarmListener {
         void onAlarmDuplicated(int duplicatedCount, AlarmRecord record);

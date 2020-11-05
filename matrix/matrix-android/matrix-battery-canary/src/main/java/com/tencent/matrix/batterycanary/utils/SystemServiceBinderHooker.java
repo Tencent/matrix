@@ -34,7 +34,7 @@ import java.util.Map;
  */
 @RestrictTo(RestrictTo.Scope.LIBRARY)
 public class SystemServiceBinderHooker {
-    private static final String TAG = "Matrix.SystemServiceBinderHooker";
+    private static final String TAG = "Matrix.battery.SystemServiceHooker";
 
     public interface HookCallback {
         void onServiceMethodInvoke(Method method, Object[] args);

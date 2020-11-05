@@ -43,7 +43,7 @@ import java.util.regex.Pattern;
  */
 @RestrictTo(RestrictTo.Scope.LIBRARY)
 public final class BatteryCanaryUtil {
-    private static final String TAG = "Matrix.battery.BatteryCanaryUtil";
+    private static final String TAG = "Matrix.battery.Utils";
     private static final int DEFAULT_MAX_STACK_LAYER = 10;
 
     public static String getProcessName() {

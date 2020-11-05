@@ -49,7 +49,7 @@ import java.util.List;
  */
 @RestrictTo(RestrictTo.Scope.LIBRARY)
 public final class PowerManagerServiceHooker {
-    private static final String TAG = "Matrix.PowerManagerServiceHooker";
+    private static final String TAG = "Matrix.battery.PowerHooker";
 
     public interface IListener {
         void onAcquireWakeLock(IBinder token, int flags, String tag, String packageName, @Nullable WorkSource workSource, @Nullable String historyTag);

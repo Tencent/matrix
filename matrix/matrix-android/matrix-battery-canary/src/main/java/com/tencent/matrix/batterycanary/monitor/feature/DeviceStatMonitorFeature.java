@@ -18,7 +18,7 @@ import com.tencent.matrix.util.MatrixLog;
  */
 @SuppressWarnings("NotNullFieldNotInitialized")
 public final class DeviceStatMonitorFeature implements MonitorFeature {
-    private static final String TAG = "Matrix.monitor.DeviceStatusMonitorFeature";
+    private static final String TAG = "Matrix.battery.DeviceStatusMonitorFeature";
 
     @NonNull
     private BatteryMonitorCore mMonitor;
