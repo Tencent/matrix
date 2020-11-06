@@ -176,7 +176,7 @@ public final class BatteryCanaryUtil {
     }
 
     @Nullable
-    private static String cat(String path) {
+    static String cat(String path) {
         if (TextUtils.isEmpty(path)) return null;
         try (RandomAccessFile restrictedFile = new RandomAccessFile(path, "r")) {
             return restrictedFile.readLine();
