@@ -23,8 +23,31 @@ android {
             }
         }
     }
-    buildTypes {
+
+    signingConfigs {
+        debug {
+            keyAlias 'androiddebugkey'
+            keyPassword 'android'
+            storeFile rootProject.file('compile/debug.keystore')
+            storePassword 'android'
+        }
         release {
+            keyAlias signingConfigs.debug.keyAlias
+            keyPassword signingConfigs.debug.keyPassword
+            storeFile signingConfigs.debug.storeFile
+            storePassword signingConfigs.debug.storePassword
+            v2SigningEnabled false
+        }
+    }
+
+    buildTypes {
+        debug {
+            debuggable true
+            signingConfig signingConfigs.debug
+            minifyEnabled false
+        }
+        release {
+            signingConfig signingConfigs.release
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }

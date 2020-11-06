@@ -194,32 +194,6 @@ bool DwarfEhFrameWithHdrDecoder<AddressType>::GetFdeOffsetFromPc(uint64_t pc, ui
   return false;
 }
 
-// TODO Why Override this.
-//template <typename AddressType>
-//void DwarfEhFrameWithHdrDecoder<AddressType>::GetFdes(std::vector<const DwarfFde*>* fdes) {
-//  for (size_t i = 0; i < fde_count_; i++) {
-//    const FdeInfo* info = GetFdeInfoFromIndex(i);
-//    if (info == nullptr) {
-//      break;
-//    }
-//    const DwarfFde* fde = this->GetFdeFromOffset(info->offset);
-//    if (fde == nullptr) {
-//      break;
-//    }
-//
-//    // There is a possibility that this entry points to a zero length FDE
-//    // due to a bug. If this happens, try and find the non-zero length FDE
-//    // from eh_frame directly. See b/142483624.
-//    if (fde->pc_start == fde->pc_end) {
-//      const DwarfFde* fde_real = DwarfSectionDecoder<AddressType>::GetFdeFromPc(fde->pc_start);
-//      if (fde_real != nullptr) {
-//        fde = fde_real;
-//      }
-//    }
-//    fdes->push_back(fde);
-//  }
-//}
-
 // Explicitly instantiate DwarfEhFrameWithHdrDecoder
 template class DwarfEhFrameWithHdrDecoder<uint32_t>;
 template class DwarfEhFrameWithHdrDecoder<uint64_t>;

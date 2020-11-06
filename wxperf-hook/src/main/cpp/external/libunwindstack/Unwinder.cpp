@@ -185,7 +185,6 @@ void Unwinder::Unwind(const std::vector<std::string>* initial_map_names_to_skip,
 
     MapInfo *map_info = nullptr;
     if (fast_flag) {
-      // TODO not optimized
       if (last_map_info && last_map_info->start <= cur_pc && last_map_info->end > cur_pc) {
         map_info = last_map_info;
       } else {

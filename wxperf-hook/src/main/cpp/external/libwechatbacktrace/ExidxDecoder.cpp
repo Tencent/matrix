@@ -9,6 +9,7 @@
 #include <vector>
 #include <utility>
 #include <memory>
+#include <QutStatistics.h>
 #include "QuickenTableGenerator.h"
 #include "MinimalRegs.h"
 #include "../../common/Log.h"
@@ -280,11 +281,11 @@ inline bool ExidxDecoder::DecodePrefix_10_00(uint8_t byte) {
     for (size_t reg = ARM_REG_R4; reg <= ARM_REG_R12; reg++) {
         if (registers & (1 << reg)) {
 
-            if (ARM_REG_R4 == reg) {    // r4 // TODO
+            if (ARM_REG_R4 == reg) {    // r4
                 context_.Transform(QUT_INSTRUCTION_R4_OFFSET);
             } else if (ARM_REG_R7 == reg) { // r7
                 context_.Transform(QUT_INSTRUCTION_R7_OFFSET);
-            } else if (ARM_REG_R10 == reg) {    // r10 // TODO
+            } else if (ARM_REG_R10 == reg) {    // r10
                 context_.Transform(QUT_INSTRUCTION_R10_OFFSET);
             } else if (ARM_REG_R11 == reg) {    // r11
                 context_.Transform(QUT_INSTRUCTION_R11_OFFSET);
@@ -348,10 +349,7 @@ inline bool ExidxDecoder::DecodePrefix_10_01(uint8_t byte) {
         }
         SaveInstructions(QUT_INSTRUCTION_VSP_SET_BY_R11);
     } else {
-        // TODO statistics
-//        if (statistic_) {
-//            statistic_(UnsupportedArmExdix, bits, byte);
-//        }
+        QUT_STATISTIC(UnsupportedArmExdix, bits, byte);
         return false;
     }
 

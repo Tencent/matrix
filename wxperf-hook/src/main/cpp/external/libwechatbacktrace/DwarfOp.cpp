@@ -29,6 +29,7 @@
 #include <unwindstack/MachineArm.h>
 #include <unwindstack/MachineArm64.h>
 #include <MinimalRegs.h>
+#include <QutStatistics.h>
 
 #include "DwarfOp.h"
 #include "../../common/Log.h"
@@ -2015,13 +2016,13 @@ bool DwarfOp<AddressType>::op_breg() {
 
   DWARF_OP_LOG("DwarfOp: op_breg before reg(%u)", (uint32_t)reg);
   if (!support_reg(reg)) {
-    // TODO statistic and add new error code.
+    QUT_STATISTIC(UnsupportedDwarfOp_OpBreg_Reg, reg, DWARF_ERROR_EXPRESSION_NOT_SUPPORT_BREG);
     last_error_.code = DWARF_ERROR_EXPRESSION_NOT_SUPPORT;
     return false;
   }
   stack_.push_front(OperandAt(0));
   reg_expression_ = reg;
-  last_error_.code = DWARF_ERROR_EXPRESSION_REACH_BREG;
+  last_error_.code = DWARF_ERROR_EXPRESSION_NOT_SUPPORT_BREG;
   DWARF_OP_LOG("DwarfOp: op_breg reg(%u)", (uint32_t)reg);
   return true;
 }
@@ -2035,15 +2036,15 @@ bool DwarfOp<AddressType>::op_bregx() {
   }
   DWARF_OP_LOG("DwarfOp: op_bregx before reg(%u)", (uint32_t)reg);
   if (!support_reg(reg)) {
-    // TODO statistic and add new error code.
-    last_error_.code = DWARF_ERROR_EXPRESSION_NOT_SUPPORT;
+    QUT_STATISTIC(UnsupportedDwarfOp_OpBregx_Reg, reg, DWARF_ERROR_EXPRESSION_NOT_SUPPORT_BREGX);
+    last_error_.code = DWARF_ERROR_EXPRESSION_NOT_SUPPORT_BREGX;
     return false;
   }
 
   stack_.push_front(OperandAt(1));
   reg_expression_ = reg;
 
-  last_error_.code = DWARF_ERROR_EXPRESSION_REACH_BREG;
+  last_error_.code = DWARF_ERROR_EXPRESSION_REACH_BREGX;
 
 // TODO by carl, add instr
   DWARF_OP_LOG("DwarfOp: op_bregx reg(%u)", (uint32_t)reg);

@@ -103,9 +103,6 @@ void QuickenTableGenerator<AddressType>::DecodeExidxEntriesInstr(FrameInfo arm_e
 
         ExidxDecoder decoder(memory_, process_memory_);
 
-//        if (addr == 0x102348) {
-//            decoder.log = true;
-//        }
         // Extract data, evaluate instructions and re-encode it.
         if (decoder.ExtractEntryData(entry_offset) && decoder.Eval()) {
 
@@ -418,10 +415,9 @@ bool QuickenTableGenerator<AddressType>::GenerateUltraQUTSections(
     auto gnu_eh_frame_instructions = make_shared<QutInstructionsOfEntries>();
 
     uint16_t regs_total = REGS_TOTAL;
-    QUT_DEBUG_LOG("QuickenInterface::GenerateUltraQUTSections debug_frame_info size_:%llu, offset:%llu, section_bias:%llu",
-            debug_frame_info.size_, debug_frame_info.offset_, debug_frame_info.section_bias_);
     DecodeDebugFrameEntriesInstr(debug_frame_info, debug_frame_instructions.get(), regs_total);
-    QUT_DEBUG_LOG("QuickenInterface::GenerateUltraQUTSections debug_frame_instructions %u", (uint32_t)debug_frame_instructions->size());
+    QUT_DEBUG_LOG("GenerateUltraQUTSections. debug_frame_info size_:%llu, offset:%llu, section_bias:%llu, instructions:%u",
+                  debug_frame_info.size_, debug_frame_info.offset_, debug_frame_info.section_bias_, (uint32_t)debug_frame_instructions->size());
 
     QUT_DEBUG_LOG("QuickenInterface::GenerateUltraQUTSections eh_frame_hdr_info size_:%llu, offset:%llu, section_bias:%llu",
                   eh_frame_hdr_info.size_, eh_frame_hdr_info.offset_, eh_frame_hdr_info.section_bias_);

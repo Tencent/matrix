@@ -9,6 +9,7 @@
 #include <map>
 #include <deque>
 #include <QuickenTableGenerator.h>
+#include <QutStatistics.h>
 #include "DwarfCfa.h"
 #include "DwarfSectionDecoder.h"
 #include "DwarfOp.h"
@@ -505,7 +506,7 @@ bool DwarfSectionDecoder<AddressType>::EvalExpression(const DwarfLocation& loc, 
     if (!op.Eval(start, end)) {
         INTER_DEBUG_LOG("DwarfSectionDecoder<AddressType>::EvalExpression, op.last_error().code %d", (uint32_t)op.last_error().code);
         if (op.last_error().code == DWARF_ERROR_EXPRESSION_REACH_BREG && op.dex_pc_set()) {
-            // TODO Maybe we'll support mush more breg/bregx cases in the future.
+            // XXX Maybe we'll support mush more breg/bregx cases in the future.
             value_expression->reg_expression = op.reg_expression();
         } else {
             last_error_ = op.last_error();
@@ -535,9 +536,6 @@ struct EvalInfo {
     const DwarfCie* cie;
     Memory* regular_memory;
     AddressType cfa;
-    bool return_address_undefined = false;
-//    RegsInfo<AddressType> regs_info;
-//    VirtualRegsInfo<AddressType> regs_info;
 };
 
 template <typename AddressType>
@@ -545,44 +543,27 @@ bool DwarfSectionDecoder<AddressType>::EvalRegister(const DwarfLocation* loc, ui
                                         uint32_t reg, void* info) {
     EvalInfo<AddressType>* eval_info = reinterpret_cast<EvalInfo<AddressType>*>(info);
     Memory* regular_memory = eval_info->regular_memory;
-//    AddressType reg_value;
-//    AddressType* reg_ptr = &reg_value;
-
 
     if (log) QUT_DEBUG_LOG("DwarfSectionDecoder::EvalRegister 1111111 loc->type %u, reg(%u)," , (uint32_t)loc->type, reg);
     switch (loc->type) {
-        case DWARF_LOCATION_OFFSET:
-//            if (!regular_memory->ReadFully(eval_info->cfa + loc->values[0], reg_ptr, sizeof(AddressType))) {
-//                last_error_.code = DWARF_ERROR_MEMORY_INVALID;
-//                last_error_.address = eval_info->cfa + loc->values[0];
-//                return false;
-//            }
-//            INTER_DEBUG_LOG("DwarfSectionDecoder::EvalRegister DWARF_LOCATION_OFFSET reg %u, values %lld", reg, (int64_t)loc->values[0]);
+        case DWARF_LOCATION_OFFSET: {
             RegOffsetInstruction(reg, loc->values[0]);
             break;
-        case DWARF_LOCATION_VAL_OFFSET:
-//            *reg_ptr = eval_info->cfa + loc->values[0];
-            last_error_.code = DWARF_ERROR_NOT_SUPPORT;
-            // TODO statistic, 缺少指令进行支持
+        }
+        case DWARF_LOCATION_VAL_OFFSET: {     // Do not support reg = cfa + offset, no QUT instruction.
             INTER_DEBUG_LOG("DwarfSectionDecoder::EvalRegister DWARF_LOCATION_VAL_OFFSET");
-            return false;
-            break;
-        case DWARF_LOCATION_REGISTER: {
-//            uint32_t cur_reg = loc->values[0];
-//            if (cur_reg >= regs_total) {
-//                last_error_.code = DWARF_ERROR_ILLEGAL_VALUE;
-//                return false;
-//            }
-//            *reg_ptr = eval_info->regs_info.Get(cur_reg) + loc->values[1];
             last_error_.code = DWARF_ERROR_NOT_SUPPORT;
-            // TODO statistic, 缺少指令进行支持
-            INTER_DEBUG_LOG("DwarfSectionDecoder::EvalRegister DWARF_LOCATION_REGISTER");
+            QUT_STATISTIC(UnsupportedDwarfLocationValOffset, reg, DWARF_ERROR_NOT_SUPPORT);
             return false;
-            break;
+        }
+        case DWARF_LOCATION_REGISTER: {     // Do not support regM = regN + offset, no QUT instruction.
+            INTER_DEBUG_LOG("DwarfSectionDecoder::EvalRegister DWARF_LOCATION_REGISTER");
+            last_error_.code = DWARF_ERROR_NOT_SUPPORT;
+            QUT_STATISTIC(UnsupportedDwarfLocationRegister, reg, DWARF_ERROR_NOT_SUPPORT);
+            return false;
         }
         case DWARF_LOCATION_EXPRESSION:
         case DWARF_LOCATION_VAL_EXPRESSION: {
-//            AddressType value;
             INTER_DEBUG_LOG("DwarfSectionDecoder::EvalRegister DWARF_LOCATION_EXPRESSION DWARF_LOCATION_VAL_EXPRESSION");
             ValueExpression<AddressType> value_expression;
             bool is_dex_pc = false;
@@ -590,27 +571,18 @@ bool DwarfSectionDecoder<AddressType>::EvalRegister(const DwarfLocation* loc, ui
                 return false;
             }
             if (loc->type == DWARF_LOCATION_EXPRESSION) {
-//                if (!regular_memory->ReadFully(value, reg_ptr, sizeof(AddressType))) {
-//                    last_error_.code = DWARF_ERROR_MEMORY_INVALID;
-//                    last_error_.address = value;
-//                    return false;
-//                }
+                INTER_DEBUG_LOG("DwarfSectionDecoder::EvalRegister DWARF_LOCATION_EXPRESSION")
                 last_error_.code = DWARF_ERROR_NOT_SUPPORT;
-                // TODO statistic, 缺少指令进行支持
-                INTER_DEBUG_LOG("DwarfSectionDecoder::EvalRegister DWARF_LOCATION_EXPRESSION");
+                QUT_STATISTIC(UnsupportedDwarfLocationExpression, reg, DWARF_ERROR_NOT_SUPPORT);
                 return false;
             } else {
-//                *reg_ptr = value;
-//                if (is_dex_pc) {
-//                    eval_info->regs_info.dex_pc = value;    // TODO
-//                }
                 INTER_DEBUG_LOG("DwarfSectionDecoder::EvalRegister DWARF_LOCATION_VAL_EXPRESSION is_dex_pc: %d", is_dex_pc);
                 if (is_dex_pc) {
                     AddressType value = value_expression.value;
-                    temp_instructions_->push_back((QUT_INSTRUCTION_DEX_PC_SET<< 32) | (0xffffffff & value));
+                    temp_instructions_->push_back((QUT_INSTRUCTION_DEX_PC_SET << 32) | (0xffffffff & value));
                 } else {
                     last_error_.code = DWARF_ERROR_NOT_SUPPORT;
-                    // TODO statistic, 缺少指令进行支持
+                    QUT_STATISTIC(UnsupportedDwarfLocationValExpressionWithoutDexPc, reg, DWARF_ERROR_NOT_SUPPORT);
                     return false;
                 }
             }
@@ -621,16 +593,15 @@ bool DwarfSectionDecoder<AddressType>::EvalRegister(const DwarfLocation* loc, ui
             if (log) QUT_DEBUG_LOG("DwarfSectionDecoder::EvalRegister DWARF_LOCATION_UNDEFINED");
             if (reg == eval_info->cie->return_address_register) {
                 if (log) QUT_DEBUG_LOG("DwarfSectionDecoder::EvalRegister reg == eval_info->cie->return_address_register");
-                eval_info->return_address_undefined = true;
                 temp_instructions_->push_back((QUT_FIN<< 32));
             } else {
                 last_error_.code = DWARF_ERROR_NOT_SUPPORT;
-                // TODO statistic, 缺少指令进行支持
+                QUT_STATISTIC(UnsupportedDwarfLocationUndefined, reg, DWARF_ERROR_NOT_SUPPORT);
                 return false;
             }
             break;
         default:
-            INTER_DEBUG_LOG("DwarfSectionDecoder::EvalRegister WTFFFFFF");
+            QUT_STATISTIC(UnsupportedDwarfLocation, reg, DWARF_ERROR_NOT_SUPPORT);
             break;
     }
 
@@ -642,9 +613,6 @@ bool DwarfSectionDecoder<AddressType>::CfaOffsetInstruction(uint64_t reg, uint64
 
     QutInstruction instruction;
     switch (reg) {
-//        case CFA_REG:       // TODO
-//            instruction = QUT_INSTRUCTION_VSP_OFFSET;
-//            break;
 #ifdef __arm__
         case ARM_REG_SP:
             instruction = QUT_INSTRUCTION_VSP_OFFSET;
@@ -670,10 +638,11 @@ bool DwarfSectionDecoder<AddressType>::CfaOffsetInstruction(uint64_t reg, uint64
             break;
 #endif
         default:
-            // TODO statistic
+            QUT_STATISTIC(UnsupportedCfaDwarfLocationRegister, reg, value);
             return false;
     }
 
+    // TODO check value overflow
     if (log) QUT_DEBUG_LOG("DwarfSectionDecoder<AddressType>::CfaOffsetInstruction reg(%u) %llu", (uint32_t)reg, value);
     temp_instructions_->push_back((instruction << 32) | (0xffffffff & value));
 
@@ -728,10 +697,11 @@ bool DwarfSectionDecoder<AddressType>::RegOffsetInstruction(uint64_t reg, uint64
             break;
 #endif
         default:
-            // TODO statistic
+            QUT_STATISTIC(UnsupportedDwarfLocationOffset, reg, value);
             return false;
     }
 
+    // TODO check value overflow
     temp_instructions_->push_back((instruction << 32) | (0xffffffff & ((int32_t)-value)));
 
     return true;
@@ -804,17 +774,10 @@ bool DwarfSectionDecoder<AddressType>::Eval(const DwarfCie* cie, Memory* regular
             if (!EvalExpression(*loc, regular_memory, total_regs, &value_expression, nullptr)) {
                 return false;
             }
-
-//            // There is only one type of valid expression for CFA evaluation.
-//            eval_info.cfa = value;
-
             AddressType value = value_expression.value;
-
+            // TODO check value overflow
             temp_instructions_->push_back((QUT_INSTRUCTION_VSP_SET_IMM << 32) | (0xffffffff & value));
-
-            // TODO statistic
-
-            INTER_DEBUG_LOG("DWARF_LOCATION_VAL_EXPRESSION eval_info.cfa: 0x%" X_FORMAT "", eval_info.cfa);
+            QUT_STATISTIC(UnsupportedCfaDwarfLocationValExpression, reg, value);
             break;
         }
         default:
@@ -828,7 +791,6 @@ bool DwarfSectionDecoder<AddressType>::Eval(const DwarfCie* cie, Memory* regular
         // Already handled the CFA register.
         if (reg == CFA_REG) continue;
 
-//        AddressType reg_ptr;
         if (reg >= total_regs) {
             // Skip this unknown register.
             continue;
@@ -836,35 +798,28 @@ bool DwarfSectionDecoder<AddressType>::Eval(const DwarfCie* cie, Memory* regular
 
 #ifdef __arm__
         // TODO why ARM_REG_R0, add comment here
+        // Why evaluate r0:
+        // Why evaluate r4:
+        // Why evaluate r7:
+        // Why evaluate r10:
+        // Why evaluate r11:
         if (reg != ARM_REG_R0 && reg != ARM_REG_R4 && reg != ARM_REG_R7 && reg != ARM_REG_R10 && reg != ARM_REG_R11 && reg < ARM_REG_R13) {
             continue;
         }
 #else
+        // Why evaluate x0:
+        // Why evaluate x20:
+        // Why evaluate x28:
         if (reg != ARM64_REG_R0 &&reg != ARM64_REG_R20 && reg != ARM64_REG_R28 && reg < ARM64_REG_R29) {
             continue;
         }
 #endif
 
-//        reg_ptr = eval_info.regs_info.Save(reg);
         if (!EvalRegister(&entry.second, total_regs, reg, &eval_info)) {
             INTER_DEBUG_LOG("DwarfSectionDecoder::Eval EvalRegister false");
             return false;
         }
     }
-
-//    if (eval_info.return_address_undefined) {
-//        temp_instructions_->push_back((QUT_FIN << 32));
-//    }
-
-//    // Find the return address location.
-//    if (eval_info.return_address_undefined) {
-//        cur_regs->set_pc(0);
-//        temp_instructions_->push_back((FINISH << 32) | (0xffffffff & value));
-//    } else {
-//        cur_regs->set_pc((*cur_regs)[cie->return_address_register]);
-//    }
-//
-//    cur_regs->set_sp(eval_info.cfa);
 
     return true;
 }
@@ -898,7 +853,7 @@ void DwarfSectionDecoder<AddressType>::InsertFde(const DwarfFde* fde) {
 template <typename AddressType>
 void
 DwarfSectionDecoder<AddressType>::IterateAllEntries(uint16_t regs_total, unwindstack::Memory* process_memory,
-                                       QutInstructionsOfEntries* previous_entries) {
+                                                    QutInstructionsOfEntries* previous_entries) {
 
     FillFdes();
 
@@ -912,13 +867,10 @@ DwarfSectionDecoder<AddressType>::IterateAllEntries(uint16_t regs_total, unwinds
     QUT_DEBUG_LOG("DwarfSectionDecoder::IterateAllEntries fdes_ size %u", fdes_.size());
 
     while(iter != fdes_.end()) {
-        uint64_t start = iter->second.first;
-        uint64_t end = iter->first;
         const DwarfFde *fde = iter->second.second;
 
         iter++;
 
-//        QUT_DEBUG_LOG("DwarfSectionDecoder::IterateAllEntries fdes_ start:%llx, end:%llx", start, end);
         if (fde == nullptr || fde->cie == nullptr) {
 //            last_error_.code = DWARF_ERROR_ILLEGAL_STATE;
             // TODO bad entry
@@ -927,34 +879,20 @@ DwarfSectionDecoder<AddressType>::IterateAllEntries(uint16_t regs_total, unwinds
 
         deque<uint64_t>* prev_instructions = nullptr;
         uint64_t prev_pc = -1;
-        for (uint64_t pc = start; pc < end; pc += 2) {  // TODO
-//            QUT_DEBUG_LOG("DwarfSectionDecoder::IterateAllEntries fdes_ pc:%llx", pc);
-//            auto it = previous_entries->upper_bound(pc);
-//            if (it != previous_entries->end()) {
-//                if (pc < it->second.first) {    // Overlapped entries.
-//                    pc = it->second.first;
-//                    prev_instructions = nullptr;
-//                    prev_pc = -1;
-//                    continue;
-//                }
-//            }
-
-            if (pc == 0x720b8) {
-                log = true;
-            } else {
-                log = false;
-            }
+        for (uint64_t pc = fde->pc_start; pc < fde->pc_end;) {
 
             // Now get the location information for this pc.
             dwarf_loc_regs_t loc_regs;
-            // TODO expand this.
             if (!GetCfaLocationInfo(pc, fde, &loc_regs)) {
                 // TODO bad entry
                 prev_instructions = nullptr;
                 prev_pc = -1;
+                pc += 2;
                 continue;
             }
             loc_regs.cie = fde->cie;
+
+            uint64_t pc_end = loc_regs.pc_end;
 
             auto instructions = make_shared<deque<uint64_t>>();
 
@@ -967,7 +905,7 @@ DwarfSectionDecoder<AddressType>::IterateAllEntries(uint16_t regs_total, unwinds
             // Try merge same entries.
             bool same_entry = false;
             if (prev_instructions != nullptr &&
-                    prev_instructions->size() == instructions.get()->size()) {
+                prev_instructions->size() == instructions.get()->size()) {
 
                 same_entry = true;
                 for (size_t i = 0; i < instructions.get()->size(); i++) {
@@ -979,48 +917,21 @@ DwarfSectionDecoder<AddressType>::IterateAllEntries(uint16_t regs_total, unwinds
             }
 
             if (same_entry) {
-                // TODO
-                (*all_instructions)[prev_pc].first = pc + 2;
-//                QUT_DEBUG_LOG("DwarfSectionDecoder::IterateAllEntries prev_pc %llx, end %llx", prev_pc, (*all_instructions)[prev_pc].first);
+                (*all_instructions)[prev_pc].first = pc_end;
+                pc = pc_end;
                 continue;
             }
 
-            (*all_instructions)[pc] = std::make_pair(pc + 2, instructions);
-
-            if (0x720b8 == pc) {
-                for (uint64_t instr : *instructions) {
-                    QUT_DEBUG_LOG("DwarfSectionDecoder::IterateAllEntries 0x720b8 instr %llx", instr);
-                }
-            }
-
-//            if (prev_pc != -1) {
-//                QUT_DEBUG_LOG(
-//                        "DwarfSectionDecoder::IterateAllEntries prev_pc %llx, end %llx, instructions %u",
-//                        prev_pc, (*all_instructions)[prev_pc].first,
-//                        (*all_instructions)[prev_pc].second->size());
-//
-//                for (uint64_t instr : *(*all_instructions)[prev_pc].second) {
-//                    QUT_DEBUG_LOG("DwarfSectionDecoder::IterateAllEntries instr %llx", instr);
-//                }
-//            }
+            (*all_instructions)[pc] = std::make_pair(pc_end, instructions);
 
             prev_instructions = instructions.get();
             prev_pc = pc;
 
+            pc = pc_end;
         }
-
-//        if (prev_pc != -1) {
-//            QUT_DEBUG_LOG(
-//                    "DwarfSectionDecoder::IterateAllEntries prev_pc %llx, end %llx, instructions %u",
-//                    prev_pc, (*all_instructions)[prev_pc].first,
-//                    (*all_instructions)[prev_pc].second->size());
-//            for (uint64_t instr : *(*all_instructions)[prev_pc].second) {
-//                QUT_DEBUG_LOG("DwarfSectionDecoder::IterateAllEntries instr %llx", instr);
-//            }
-//        }
     }
 
-//    return all_instructions;
+
 }
 
 template <typename AddressType>
@@ -1045,18 +956,7 @@ void DwarfSectionDecoder<AddressType>::FillFdes() {
 }
 
 // Explicitly instantiate DwarfSectionDecoder
-//template class DwarfSectionDecoder<addr_t>;
 template class DwarfSectionDecoder<uint32_t>;
 template class DwarfSectionDecoder<uint64_t>;
-//
-
-//// Explicitly instantiate DwarfDebugFrameDecoder
-//template class DwarfDebugFrameDecoder<addr_t>;
-//template class DwarfDebugFrameDecoder<uint64_t>;
-//
-//// Explicitly instantiate DwarfEhFrameDecoder
-//template class DwarfEhFrameDecoder<addr_t>;
-//template class DwarfEhFrameDecoder<uint64_t>;
-
 
 }  // namespace wechat_backtrace
