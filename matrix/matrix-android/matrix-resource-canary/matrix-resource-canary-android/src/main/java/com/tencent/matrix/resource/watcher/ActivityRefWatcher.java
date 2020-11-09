@@ -91,6 +91,7 @@ public class ActivityRefWatcher extends FilePublisher implements Watcher, IAppFo
 
     public interface IActivityLeakCallback {
         boolean onLeak(String activity, String ref);
+        boolean onLeakLite(String activity, String ref);
     }
 
     public static class ComponentFactory {
@@ -345,6 +346,9 @@ public class ActivityRefWatcher extends FilePublisher implements Watcher, IAppFo
                         MatrixLog.printErrStackTrace(TAG, e, "unexpected exception.");
                     }
                     mResourcePlugin.onDetectIssue(new Issue(resultJson));
+                    if (null != activityLeakCallback) {
+                        activityLeakCallback.onLeakLite(destroyedActivityInfo.mActivityName, destroyedActivityInfo.mKey);
+                    }
                 }
             }
 
