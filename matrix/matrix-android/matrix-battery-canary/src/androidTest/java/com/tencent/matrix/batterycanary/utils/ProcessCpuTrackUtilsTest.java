@@ -33,9 +33,12 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 
 /**
  * Instrumented test, which will execute on an Android device.
@@ -143,6 +146,28 @@ public class ProcessCpuTrackUtilsTest {
 
     @SuppressWarnings("ConstantConditions")
     @Test
+    public void testGetMyProcThreadStatOptR2() {
+        String dirPath = "/proc/" + Process.myPid() + "/task";
+        for (File item : new File(dirPath).listFiles()) {
+            if (item.isDirectory()) {
+                String catPath = new File(item, "stat").getAbsolutePath();
+                String cat = BatteryCanaryUtil.cat(catPath);
+                Assert.assertFalse(TextUtils.isEmpty(cat));
+
+                ProcStatInfo stat = parseJiffiesInfoWithBufferForPathR2(catPath);
+                Assert.assertNotNull(stat.comm);
+                Assert.assertTrue(stat.utime >= 0);
+                Assert.assertTrue(stat.stime >= 0);
+                Assert.assertTrue(stat.cutime >= 0);
+                Assert.assertTrue(stat.cstime >= 0);
+                long jiffies = stat.utime + stat.stime + stat.cutime + stat.cstime;
+                Assert.assertTrue(jiffies >= 0);
+            }
+        }
+    }
+
+    @SuppressWarnings("ConstantConditions")
+    @Test
     public void testGetMyProcThreadStatAndCompare() {
         String dirPath = "/proc/" + Process.myPid() + "/task";
         for (File item : new File(dirPath).listFiles()) {
@@ -152,6 +177,15 @@ public class ProcessCpuTrackUtilsTest {
                 Assert.assertFalse(TextUtils.isEmpty(cat));
                 ProcStatInfo statInfo1 = parseJiffiesInfoWithSplits(cat);
                 ProcStatInfo statInfo2 = parseJiffiesInfoWithBuffer(cat.getBytes());
+                Assert.assertEquals(statInfo1.comm, statInfo2.comm);
+                Assert.assertEquals(statInfo1.utime, statInfo2.utime);
+                Assert.assertEquals(statInfo1.stime, statInfo2.stime);
+                Assert.assertEquals(statInfo1.cutime, statInfo2.cutime);
+                Assert.assertEquals(statInfo1.cstime, statInfo2.cstime);
+
+                cat = getProStatText(catPath);
+                statInfo1 = parseJiffiesInfoWithSplits(cat);
+                statInfo2 = parseJiffiesInfoWithBuffer(cat.getBytes());
                 Assert.assertEquals(statInfo1.comm, statInfo2.comm);
                 Assert.assertEquals(statInfo1.utime, statInfo2.utime);
                 Assert.assertEquals(statInfo1.stime, statInfo2.stime);
@@ -188,7 +222,19 @@ public class ProcessCpuTrackUtilsTest {
         }
         long timeConsumed2 = SystemClock.uptimeMillis() - current;
 
-        Assert.fail("TIME CONSUMED: " + timeConsumed1 + " vs " + timeConsumed2);
+        current = SystemClock.uptimeMillis();
+        for (int i = 0; i < times; i++) {
+            String dirPath = "/proc/" + Process.myPid() + "/task";
+            for (File item : new File(dirPath).listFiles()) {
+                if (item.isDirectory()) {
+                    String catPath = new File(item, "stat").getAbsolutePath();
+                    parseJiffiesInfoWithBufferForPathR2(catPath);
+                }
+            }
+        }
+        long timeConsumed3 = SystemClock.uptimeMillis() - current;
+
+        Assert.fail("TIME CONSUMED: " + timeConsumed1 + " vs " + timeConsumed2 + " vs " + timeConsumed3);
     }
 
     public static class ProcStatInfo {
@@ -240,6 +286,47 @@ public class ProcessCpuTrackUtilsTest {
 
         return parseJiffiesInfoWithBuffer(buffer);
     }
+
+
+    static ProcStatInfo parseJiffiesInfoWithBufferForPathR2(String path) {
+        String text = getProStatText(path);
+        if (TextUtils.isEmpty(text)) return null;
+        //noinspection ConstantConditions
+        return parseJiffiesInfoWithBuffer(text.getBytes());
+    }
+
+    static String getProStatText(String path) {
+        File file = new File(path);
+        if (!file.exists()) {
+            return null;
+        }
+
+        StringBuilder sb = new StringBuilder();
+        int spaceCount = 0;
+        int readBytes;
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8))) {
+            while ((readBytes = reader.read()) != -1) {
+                char character = (char) readBytes;
+                sb.append(character);
+                if (' ' == character) {
+                    spaceCount++;
+                    if (spaceCount > 16) {
+                        break;
+                    }
+                }
+            }
+        } catch (IOException e) {
+            MatrixLog.printErrStackTrace(TAG, e, "read buffer from file fail");
+            readBytes = -1;
+        }
+
+        if (readBytes <= 0) {
+            return null;
+        }
+
+        return sb.toString();
+    }
+
 
     static ProcStatInfo parseJiffiesInfoWithBuffer(byte[] statBuffer) {
         /*
