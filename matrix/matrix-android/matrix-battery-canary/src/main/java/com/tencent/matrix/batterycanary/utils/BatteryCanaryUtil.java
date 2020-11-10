@@ -21,6 +21,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.BatteryManager;
+import android.os.Build;
 import android.os.SystemClock;
 import android.support.annotation.Nullable;
 import android.support.annotation.RestrictTo;
@@ -190,5 +191,18 @@ public final class BatteryCanaryUtil {
         Intent batIntent = context.registerReceiver(null, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
         if (batIntent == null) return 0;
         return batIntent.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, 0);
+    }
+
+    public static boolean isDeviceCharging(Context context) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            BatteryManager myBatteryManager = (BatteryManager) context.getSystemService(Context.BATTERY_SERVICE);
+            if (myBatteryManager != null) {
+                return myBatteryManager.isCharging();
+            }
+        }
+        Intent batIntent = context.registerReceiver(null, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
+        if (batIntent == null) return false;
+        int plugged = batIntent.getIntExtra(BatteryManager.EXTRA_PLUGGED, -1);
+        return plugged == BatteryManager.BATTERY_PLUGGED_AC || plugged == BatteryManager.BATTERY_PLUGGED_USB || plugged == BatteryManager.BATTERY_PLUGGED_WIRELESS;
     }
 }

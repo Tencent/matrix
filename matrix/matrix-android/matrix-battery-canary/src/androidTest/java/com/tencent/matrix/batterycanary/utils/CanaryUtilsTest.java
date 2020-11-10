@@ -154,4 +154,9 @@ public class CanaryUtilsTest {
             Thread.sleep(100L);
         }
     }
+
+    @Test
+    public void testCheckIfDeviceCharging() {
+        Assert.assertTrue(BatteryCanaryUtil.isDeviceCharging(mContext));
+    }
 }
