@@ -84,7 +84,7 @@ public final class DeviceStatMonitorFeature implements MonitorFeature {
         public int temperature;
 
         @Override
-        public Delta<BatteryTmpSnapshot> diff(BatteryTmpSnapshot bgn) {
+        public Delta<BatteryTmpSnapshot>  diff(BatteryTmpSnapshot bgn) {
             return new Delta<BatteryTmpSnapshot>(bgn, this) {
                 @Override
                 protected BatteryTmpSnapshot computeDelta() {
