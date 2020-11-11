@@ -18,17 +18,14 @@ package com.tencent.matrix.batterycanary.utils;
 
 import android.app.Application;
 import android.content.Context;
-import android.os.IBinder;
-import android.os.PowerManager;
-import android.os.WorkSource;
 import android.support.test.InstrumentationRegistry;
 import android.support.test.runner.AndroidJUnit4;
 import android.text.TextUtils;
+import android.util.Log;
 
 import com.tencent.matrix.Matrix;
 import com.tencent.matrix.batterycanary.BatteryMonitorPlugin;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorConfig;
-import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
 import com.tencent.matrix.batterycanary.monitor.feature.WakeLockMonitorFeature;
 
 import org.junit.After;
@@ -37,9 +34,8 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-import java.lang.reflect.Field;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.ArrayList;
+import java.util.List;
 
 
 @RunWith(AndroidJUnit4.class)
@@ -78,7 +74,7 @@ public class CanaryUtilsTest {
                 .foregroundLoopCheckTime(1000)
                 .build();
         BatteryMonitorPlugin plugin = new BatteryMonitorPlugin(config);
-        plugin.init(((Application)mContext.getApplicationContext()), null);
+        plugin.init(((Application) mContext.getApplicationContext()), null);
         Matrix.with().getPlugins().add(plugin);
 
         String processName = BatteryCanaryUtil.getProcessName();
@@ -104,7 +100,7 @@ public class CanaryUtilsTest {
                 .foregroundLoopCheckTime(1000)
                 .build();
         BatteryMonitorPlugin plugin = new BatteryMonitorPlugin(config);
-        plugin.init(((Application)mContext.getApplicationContext()), null);
+        plugin.init(((Application) mContext.getApplicationContext()), null);
         Matrix.with().getPlugins().add(plugin);
 
         String pkg = BatteryCanaryUtil.getPackageName();
@@ -130,7 +126,7 @@ public class CanaryUtilsTest {
                 .foregroundLoopCheckTime(1000)
                 .build();
         BatteryMonitorPlugin plugin = new BatteryMonitorPlugin(config);
-        plugin.init(((Application)mContext.getApplicationContext()), null);
+        plugin.init(((Application) mContext.getApplicationContext()), null);
         Matrix.with().getPlugins().add(plugin);
 
         String throwableStack = BatteryCanaryUtil.getThrowableStack(new Throwable());
@@ -158,5 +154,28 @@ public class CanaryUtilsTest {
     @Test
     public void testCheckIfDeviceCharging() {
         Assert.assertTrue(BatteryCanaryUtil.isDeviceCharging(mContext));
+    }
+
+    @Test
+    public void testDicing() {
+        long loopCount = 1000L;
+        int totalRollCount = 0;
+        for (int i = 0; i < loopCount; i++) {
+            int base = 10000;
+            do {
+                totalRollCount++;
+            } while (!diceWithBase(base));
+        }
+
+        Assert.fail("AVG ROLL COUNT: " + totalRollCount/loopCount);
+    }
+
+    private static boolean diceWithBase(int base) {
+        double dice = Math.random();
+        if (base >= 1 && dice < (1 / ((double) base))) {
+            Log.i(TAG, "dice hit, go kv stat!");
+            return true;
+        }
+        return false;
     }
 }
