@@ -4,13 +4,16 @@ android {
     compileSdkVersion rootProject.ext.compileSdkVersion
     buildToolsVersion rootProject.ext.buildToolsVersion
 
-
     defaultConfig {
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
         versionName rootProject.ext.VERSION_NAME
+
+        testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+        consumerProguardFiles 'consumer-rules.pro'
     }
+
     buildTypes {
         release {
             minifyEnabled false
@@ -21,13 +24,16 @@ android {
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
-    implementation 'com.android.support:appcompat-v7:23.0.0'
     testImplementation 'junit:junit:4.12'
-    androidTestImplementation 'com.android.support:support-annotations:27.0.2'
-    androidTestImplementation 'com.android.support.test:runner:1.0.1'
+    androidTestImplementation 'com.android.support:support-annotations:28.0.0'
+    androidTestImplementation 'com.android.support.test:runner:1.0.2'
+    androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.2'
+    testCompile "org.mockito:mockito-core:2.8.9"
+    androidTestCompile "org.mockito:mockito-android:2.8.9"
 
+    implementation 'com.android.support:appcompat-v7:28.0.0'
     implementation project(':matrix-android-lib')
-    compile project(path: ':matrix-trace-canary')
+    api project(path: ':matrix-trace-canary')
 }
 
 version = rootProject.ext.VERSION_NAME

@@ -14,17 +14,16 @@
  * limitations under the License.
  */
 
-package com.tencent.matrix.batterycanary.core;
+package com.tencent.matrix.batterycanary.utils;
 
 import android.app.AlarmManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.os.Build;
+import android.support.annotation.RestrictTo;
 
-import com.tencent.matrix.batterycanary.util.SystemServiceBinderHooker;
 import com.tencent.matrix.util.MatrixLog;
 
-import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
@@ -33,13 +32,12 @@ import java.util.List;
  * @author liyongjie
  *         Created by liyongjie on 2017/10/30.
  */
-
+@RestrictTo(RestrictTo.Scope.LIBRARY)
 public class AlarmManagerServiceHooker {
-    private static final String TAG = "Matrix.AlarmManagerServiceHooker";
+    private static final String TAG = "Matrix.battery.AlarmHooker";
 
     public interface IListener {
-        void onAlarmSet(int type, long triggerAtMillis, long windowMillis, long intervalMillis,
-                        int flags, PendingIntent operation, AlarmManager.OnAlarmListener onAlarmListener);
+        void onAlarmSet(int type, long triggerAtMillis, long windowMillis, long intervalMillis, int flags, PendingIntent operation, AlarmManager.OnAlarmListener onAlarmListener);
         void onAlarmRemove(PendingIntent operation, AlarmManager.OnAlarmListener onAlarmListener);
     }
 

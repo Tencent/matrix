@@ -14,16 +14,15 @@
  * limitations under the License.
  */
 
-package com.tencent.matrix.batterycanary.core;
+package com.tencent.matrix.batterycanary.detector;
 
 import android.os.Environment;
 import android.os.IBinder;
 import android.os.SystemClock;
 import android.os.WorkSource;
 
-import com.tencent.matrix.batterycanary.config.BatteryConfig;
-import com.tencent.matrix.batterycanary.config.SharePluginInfo;
-import com.tencent.matrix.batterycanary.util.BatteryCanaryUtil;
+import com.tencent.matrix.batterycanary.utils.BatteryCanaryDetectScheduler;
+import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
 import com.tencent.matrix.report.Issue;
 import com.tencent.matrix.report.IssuePublisher;
 //import com.tencent.matrix.util.DeviceUtil;
@@ -60,9 +59,8 @@ import java.util.Vector;
  * @author liyongjie
  *         Created by liyongjie on 2017/7/25.
  */
-
 public class WakeLockDetector extends IssuePublisher {
-    private static final String TAG = "Matrix.WakeLockDetector";
+    private static final String TAG = "Matrix.detector.WakeLock";
 
     public interface IDelegate {
         void addDetectTask(Runnable detectTask, long delayInMillis);
@@ -80,7 +78,7 @@ public class WakeLockDetector extends IssuePublisher {
     private final WakeLockInfoRecorder mWakeLockRecorder;
 
     public WakeLockDetector(OnIssueDetectListener issueDetectListener,
-                            BatteryConfig config, IDelegate delegate) {
+                            BatteryDetectorConfig config, IDelegate delegate) {
         super(issueDetectListener);
         mWakeLockOnceHoldTimeThreshold = config.getWakeLockHoldTimeThreshold();
         mWakeLockHoldTime1HThreshold = config.getWakeLockHoldTime1HThreshold();
@@ -104,7 +102,7 @@ public class WakeLockDetector extends IssuePublisher {
 
     /**
      * Run in {@link BatteryCanaryDetectScheduler}  single thread
-     * @see com.tencent.matrix.batterycanary.core.BatteryCanaryCore
+     * @see BatteryDetectorCore
      */
     public void onAcquireWakeLock(IBinder token, int flags, String tag, String packageName,
                                   WorkSource workSource, String historyTag, String stackTrace, final long acquireTime) {
@@ -136,7 +134,7 @@ public class WakeLockDetector extends IssuePublisher {
 
     /**
      * Run in {@link BatteryCanaryDetectScheduler}  single thread
-     * @see com.tencent.matrix.batterycanary.core.BatteryCanaryCore
+     * @see BatteryDetectorCore
      * @param token
      * @param flags
      */

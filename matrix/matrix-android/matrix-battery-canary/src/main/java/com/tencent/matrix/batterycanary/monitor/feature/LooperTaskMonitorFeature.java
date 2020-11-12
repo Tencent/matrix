@@ -1,4 +1,4 @@
-package com.tencent.matrix.batterycanary.monitor.plugin;
+package com.tencent.matrix.batterycanary.monitor.feature;
 
 
 import android.os.HandlerThread;
@@ -7,7 +7,7 @@ import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.util.LongSparseArray;
 
-import com.tencent.matrix.batterycanary.monitor.BatteryMonitor;
+import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
 import com.tencent.matrix.trace.core.LooperMonitor;
 import com.tencent.matrix.util.MatrixLog;
 
@@ -19,33 +19,43 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public class LooperTaskMonitorPlugin implements IBatteryMonitorPlugin {
+@SuppressWarnings("NotNullFieldNotInitialized")
+public class LooperTaskMonitorFeature implements MonitorFeature {
+    private static final String TAG = "Matrix.battery.LooperTaskMonitorFeature";
 
-    private BatteryMonitor batteryMonitor;
-    private static final String TAG = "Matrix.LooperTaskMonitorPlugin";
+    public interface LooperTaskListener {
+        void onTaskTrace(Thread thread, List<LooperTaskMonitorFeature.TaskTraceInfo> sortList);
+    }
+
+    @NonNull private BatteryMonitorCore monitor;
     private final LongSparseArray<LooperMonitor> looperMonitorArray = new LongSparseArray<>();
     private static final int MAX_CHAT_COUNT = 60;
 
+    private LooperTaskListener getListener() {
+        return monitor;
+    }
+
     @Override
-    public void onInstall(BatteryMonitor monitor) {
-        MatrixLog.i(TAG, "onInstall");
-        this.batteryMonitor = monitor;
+    public void configure(BatteryMonitorCore monitor) {
+        MatrixLog.i(TAG, "#configure monitor feature");
+        this.monitor = monitor;
     }
 
     @Override
     public void onTurnOn() {
-        MatrixLog.i(TAG, "onTurnOn");
+        MatrixLog.i(TAG, "#onTurnOn");
     }
 
     @Override
     public void onTurnOff() {
-        MatrixLog.i(TAG, "onTurnOff");
+        MatrixLog.i(TAG, "#onTurnOff");
         onUnbindLooperMonitor();
     }
 
     @Override
-    public void onAppForeground(boolean isForeground) {
-        if (batteryMonitor.isTurnOn()) {
+    public void onForeground(boolean isForeground) {
+        MatrixLog.i(TAG, "#onAppForeground, bool = " + isForeground);
+        if (monitor.isTurnOn()) {
             Map<Thread, StackTraceElement[]> stacks = Thread.getAllStackTraces();
             Set<Thread> set = stacks.keySet();
             for (Thread thread : set) {
@@ -56,8 +66,8 @@ public class LooperTaskMonitorPlugin implements IBatteryMonitorPlugin {
                             onBindLooperMonitor(thread, looper);
                         } else {
                             List<TaskTraceInfo> list = onUnbindLooperMonitor(thread);
-                            if (batteryMonitor.getConfig().printer != null && !list.isEmpty()) {
-                                batteryMonitor.getConfig().printer.onTaskTrace(thread, list);
+                            if (!list.isEmpty()) {
+                                getListener().onTaskTrace(thread, list);
                             }
                         }
                     }
@@ -131,12 +141,12 @@ public class LooperTaskMonitorPlugin implements IBatteryMonitorPlugin {
 
         @Override
         public boolean isValid() {
-            return !batteryMonitor.isForeground();
+            return !monitor.isForeground();
         }
 
         @Override
         public void onDispatchStart(String x) {
-            if (batteryMonitor.isForeground()) {
+            if (monitor.isForeground()) {
                 return;
             }
             super.onDispatchStart(x);
@@ -169,7 +179,7 @@ public class LooperTaskMonitorPlugin implements IBatteryMonitorPlugin {
     }
 
 
-    public class TaskTraceInfo {
+    public static class TaskTraceInfo {
         private static final int LENGTH = 1000;
         private int count;
         String helpfulStr;
@@ -197,9 +207,9 @@ public class LooperTaskMonitorPlugin implements IBatteryMonitorPlugin {
 
         @Override
         public boolean equals(@Nullable Object obj) {
+            if (helpfulStr == null) return false;
+            if (!(obj instanceof String)) return false;
             return helpfulStr.equals(obj);
         }
     }
-
-
 }
