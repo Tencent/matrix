@@ -124,7 +124,7 @@ public class ActivityThreadHacker {
         @Override
         public boolean handleMessage(Message msg) {
 
-            if (Build.VERSION.SDK_INT >= 21 && Build.VERSION.SDK_INT <= 26) {
+            if (Build.VERSION.SDK_INT >= 21) {
                 if (msg.what == SERIVCE_ARGS || msg.what == STOP_SERVICE || msg.what == STOP_ACTIVITY_SHOW || msg.what == STOP_ACTIVITY_HIDE || msg.what == SLEEPING) {
                     MatrixLog.i(TAG, "[Matrix.fix.sp.apply] start to fix msg.waht=" + msg.what);
                     fix();
