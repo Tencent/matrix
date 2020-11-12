@@ -48,39 +48,50 @@ QuickenInterface* QuickenMapInfo::GetQuickenInterface(const shared_ptr<unwindsta
             return nullptr;
         }
 
-        quicken_interface_.reset(new QuickenInterface(elf->memory(), elf->GetLoadBias(), expected_arch));
-        ElfInterface *elf_interface = elf->interface();
-
-        if (expected_arch == ARCH_ARM) {
-            ElfInterfaceArm *elf_interface_arm = dynamic_cast<ElfInterfaceArm *>(elf_interface);
-            quicken_interface_->SetArmExidxInfo(elf_interface_arm->start_offset(),
-                                                elf_interface_arm->total_entries());
-        }
-
-        quicken_interface_->SetEhFrameInfo(elf_interface->eh_frame_offset(),
-                elf_interface->eh_frame_section_bias(), elf_interface->eh_frame_size());
-        quicken_interface_->SetEhFrameHdrInfo(elf_interface->eh_frame_hdr_offset(),
-                elf_interface->eh_frame_hdr_section_bias(), elf_interface->eh_frame_hdr_size());
-        quicken_interface_->SetDebugFrameInfo(elf_interface->debug_frame_offset(),
-                elf_interface->debug_frame_section_bias(), elf_interface->debug_frame_size());
-
-        ElfInterface* gnu_debugdata_interface = elf_interface->gnu_debugdata_interface();
-        if (gnu_debugdata_interface) {
-            quicken_interface_->SetGnuEhFrameInfo(gnu_debugdata_interface->eh_frame_offset(),
-                                               gnu_debugdata_interface->eh_frame_section_bias(),
-                                               gnu_debugdata_interface->eh_frame_size());
-            quicken_interface_->SetGnuEhFrameHdrInfo(gnu_debugdata_interface->eh_frame_hdr_offset(),
-                                                  gnu_debugdata_interface->eh_frame_hdr_section_bias(),
-                                                  gnu_debugdata_interface->eh_frame_hdr_size());
-            quicken_interface_->SetGnuDebugFrameInfo(gnu_debugdata_interface->debug_frame_offset(),
-                                                  gnu_debugdata_interface->debug_frame_section_bias(),
-                                                  gnu_debugdata_interface->debug_frame_size());
-        }
+        quicken_interface_.reset(GetQuickenInterfaceFromElf(elf));
 
         elf_load_bias_ = elf->GetLoadBias();
     }
 
     return quicken_interface_.get();
+}
+
+QuickenInterface* QuickenMapInfo::GetQuickenInterfaceFromElf(Elf* elf) {
+
+    ArchEnum expected_arch = elf->arch();
+
+    std::unique_ptr<QuickenInterface> quicken_interface_ =
+            make_unique<QuickenInterface>(elf->memory(), elf->GetLoadBias(), expected_arch);
+
+    ElfInterface *elf_interface = elf->interface();
+
+    if (expected_arch == ARCH_ARM) {
+        ElfInterfaceArm *elf_interface_arm = dynamic_cast<ElfInterfaceArm *>(elf_interface);
+        quicken_interface_->SetArmExidxInfo(elf_interface_arm->start_offset(),
+                                            elf_interface_arm->total_entries());
+    }
+
+    quicken_interface_->SetEhFrameInfo(elf_interface->eh_frame_offset(),
+                                       elf_interface->eh_frame_section_bias(), elf_interface->eh_frame_size());
+    quicken_interface_->SetEhFrameHdrInfo(elf_interface->eh_frame_hdr_offset(),
+                                          elf_interface->eh_frame_hdr_section_bias(), elf_interface->eh_frame_hdr_size());
+    quicken_interface_->SetDebugFrameInfo(elf_interface->debug_frame_offset(),
+                                          elf_interface->debug_frame_section_bias(), elf_interface->debug_frame_size());
+
+    ElfInterface* gnu_debugdata_interface = elf_interface->gnu_debugdata_interface();
+    if (gnu_debugdata_interface) {
+        quicken_interface_->SetGnuEhFrameInfo(gnu_debugdata_interface->eh_frame_offset(),
+                                              gnu_debugdata_interface->eh_frame_section_bias(),
+                                              gnu_debugdata_interface->eh_frame_size());
+        quicken_interface_->SetGnuEhFrameHdrInfo(gnu_debugdata_interface->eh_frame_hdr_offset(),
+                                                 gnu_debugdata_interface->eh_frame_hdr_section_bias(),
+                                                 gnu_debugdata_interface->eh_frame_hdr_size());
+        quicken_interface_->SetGnuDebugFrameInfo(gnu_debugdata_interface->debug_frame_offset(),
+                                                 gnu_debugdata_interface->debug_frame_section_bias(),
+                                                 gnu_debugdata_interface->debug_frame_size());
+    }
+
+    return quicken_interface_.release();
 }
 
 FastArmExidxInterface* QuickenMapInfo::GetFastArmExidxInterface(const shared_ptr<unwindstack::Memory>& process_memory,

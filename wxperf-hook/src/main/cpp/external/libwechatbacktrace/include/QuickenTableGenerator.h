@@ -2,8 +2,8 @@
 // Created by Carl on 2020-09-21.
 //
 
-#ifndef _LIBUNWINDSTACK_WECHAT_QUICKEN_UNWIND_TABLE_GENERATOR_H
-#define _LIBUNWINDSTACK_WECHAT_QUICKEN_UNWIND_TABLE_GENERATOR_H
+#ifndef _LIBWECHATBACKTRACE_QUICKEN_UNWIND_TABLE_GENERATOR_H
+#define _LIBWECHATBACKTRACE_QUICKEN_UNWIND_TABLE_GENERATOR_H
 
 #include <deque>
 
@@ -13,6 +13,7 @@
 #include "../DwarfEhFrameWithHdrDecoder.h"
 #include "MinimalRegs.h"
 #include "QuickenInstructions.h"
+#include "QuickenTable.h"
 
 namespace wechat_backtrace {
 
@@ -20,33 +21,6 @@ struct FrameInfo {
     uint64_t offset_ = 0;
     int64_t section_bias_ = 0;
     uint64_t size_ = 0;
-};
-
-struct QutSections {
-
-    QutSections() = default;
-    ~QutSections() {
-        delete quidx;
-        delete qutbl;
-
-        idx_size = 0;
-        tbl_size = 0;
-
-        idx_capacity = 0;
-        tbl_capacity = 0;
-    }
-
-    uptr* quidx = nullptr;
-    uptr* qutbl = nullptr;
-
-    size_t idx_size = 0;
-    size_t tbl_size = 0;
-
-    size_t idx_capacity = 0;
-    size_t tbl_capacity = 0;
-
-    size_t total_entries = 0;
-    uint64_t start_offset_ = 0;
 };
 
 template <typename AddressType>
@@ -57,19 +31,11 @@ public:
         : memory_(memory), process_memory_(process_memory) {}
     ~QuickenTableGenerator() {};
 
-//    bool GenerateFutSections(size_t start_offset, size_t total_entry, QutSections* fut_sections,
-//            size_t &bad_entries_count);
-
     bool GenerateUltraQUTSections(
             FrameInfo eh_frame_hdr_info, FrameInfo eh_frame_info, FrameInfo debug_frame_info,
             FrameInfo gnu_eh_frame_hdr_info, FrameInfo gnu_eh_frame_info,
             FrameInfo gnu_debug_frame_info,
             FrameInfo arm_exidx_info, QutSections* fut_sections);
-
-//    bool QuickenTableGenerator::GenerateDwarfBasedQUTSections(
-//            FrameInfo eh_frame_hdr_info, FrameInfo eh_frame_info, FrameInfo debug_frame_info,
-//            FrameInfo gnu_eh_frame_hdr_info, FrameInfo gnu_eh_frame_info, FrameInfo gnu_debug_frame_info,
-//            QutSections* fut_sections);
 
     QutErrorCode last_error_code;
 
@@ -92,36 +58,6 @@ protected:
     unwindstack::Memory* process_memory_;
 };
 
-class QuickenTable {
-
-public:
-    QuickenTable(QutSections* fut_sections, uintptr_t* regs, unwindstack::Memory* memory,
-            unwindstack::Memory* process_memory) : regs_(regs), memory_(memory),
-            process_memory_(process_memory), fut_sections_(fut_sections) {}
-    ~QuickenTable() {};
-
-    bool Eval(size_t entry_offset);
-
-    uptr cfa_ = 0;
-    uptr dex_pc_ = 0;
-    bool pc_set_ = false;
-
-protected:
-
-    bool Decode32(const uint32_t * instructions, const size_t amount, const size_t start_pos);
-    bool Decode64(const uint64_t * instructions, const size_t amount, const size_t start_pos);
-    bool Decode(const uptr * instructions, const size_t amount, const size_t start_pos);
-
-    uptr * regs_ = nullptr;
-
-    unwindstack::Memory* memory_ = nullptr;
-    unwindstack::Memory* process_memory_ = nullptr;
-    QutSections* fut_sections_ = nullptr;
-
-//    status TODO
-    unwindstack::ArmStatus status_ = unwindstack::ARM_STATUS_NONE;
-};
-
 }  // namespace wechat_backtrace
 
-#endif  // _LIBUNWINDSTACK_WECHAT_QUICKEN_UNWIND_TABLE_GENERATOR_H
+#endif  // _LIBWECHATBACKTRACE_QUICKEN_UNWIND_TABLE_GENERATOR_H

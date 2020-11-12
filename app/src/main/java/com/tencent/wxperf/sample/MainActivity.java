@@ -1,14 +1,18 @@
 package com.tencent.wxperf.sample;
 
 import android.Manifest;
+import android.content.Context;
 import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Process;
+import android.support.annotation.RequiresApi;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
+import android.text.StaticLayout;
 import android.util.Log;
 import android.view.View;
 
@@ -22,6 +26,7 @@ import com.tencent.wxperf.jni.test.UnwindBenckmarkTest;
 import com.tencent.wxperf.jni.test.UnwindTest;
 
 import java.io.File;
+import java.io.FileFilter;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -363,6 +368,60 @@ public class MainActivity extends AppCompatActivity {
                 UnwindBenckmarkTest.debugNative();
             }
         }).start();
+    }
+
+    public void unwindStatisticDebug(final View view) {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                UnwindBenckmarkTest.benchmarkInitNative();
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    statistic(view.getContext());
+                }
+            }
+        }).start();
+    }
+
+    private final static String TmpDir = "/data/local/tmp/";
+    private final static String SdcardDir = "/sdcard/";
+    private final static String StatSdcard = "qut_stat/";
+    private final static String StatSoPath32bit = StatSdcard + "/armeabi-v7a";
+    private final static String StatSoPath64bit = StatSdcard + "/arm64-v8a";
+
+    private static void filesIterate(File file, FileFilter filter) {
+        if (file.isDirectory()) {
+            file.listFiles(filter);
+            for (File f : file.listFiles()) {
+                if (f.isFile()) {
+                    filter.accept(f);
+                } else {
+                    filesIterate(f, filter);
+                }
+            }
+        } else {
+            Log.e(TAG, "filesIterate file " + file.getAbsolutePath() + " " + file.exists());
+        }
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.M)
+    private void statistic(Context context) {
+
+        String dir = StatSoPath32bit;
+        if (Process.is64Bit()) {
+            dir = StatSoPath64bit;
+        }
+        final File nativeLibraryDir = new File(SdcardDir, dir);
+
+        filesIterate(nativeLibraryDir, new FileFilter() {
+            @Override
+            public boolean accept(File file) {
+                if (file.getName().endsWith(".so")) {
+                    UnwindBenckmarkTest.statisticNative(file.getAbsolutePath().getBytes(), file.getName().getBytes());
+                    return true;
+                }
+                return false;
+            }
+        });
     }
 
     public void memoryBenchmark(View view) {

@@ -10,7 +10,9 @@
 #include <utility>
 #include <memory>
 #include <deque>
-#include <deps/android-base/include/android-base/macros.h>
+
+#include "../../common/Log.h"
+
 #include "QuickenInstructions.h"
 #include "QutStatistics.h"
 
@@ -149,11 +151,17 @@ inline void CheckInstruction(uint64_t instruction) {
 
     if (op == QUT_INSTRUCTION_VSP_OFFSET) {
         if (imm > IMM(6) || imm < -IMM(6)) {
-            QUT_STATISTIC(InstructionOp, op, imm);
+            QUT_STATISTIC_TIPS(InstructionOp, op, imm);
         }
     } else if (op == QUT_INSTRUCTION_VSP_SET_BY_R7 || op == QUT_INSTRUCTION_VSP_SET_BY_R11 || op == QUT_INSTRUCTION_VSP_SET_BY_JNI_SP || op == QUT_INSTRUCTION_VSP_SET_BY_X29) {
         if (imm < 0 || imm > IMM(7)) {
-            QUT_STATISTIC(InstructionOpOverflow, op, imm);
+            QutStatisticType type;
+            if (op == QUT_INSTRUCTION_VSP_SET_BY_R7) type = InstructionOpOverflowR7;
+            else if (op == QUT_INSTRUCTION_VSP_SET_BY_R11) type = InstructionOpOverflowR11;
+            else if (op == QUT_INSTRUCTION_VSP_SET_BY_JNI_SP) type = InstructionOpOverflowJNISP;
+            else if (op == QUT_INSTRUCTION_VSP_SET_BY_X29) type = InstructionOpOverflowX29;
+            else return;
+            QUT_STATISTIC(type, op, imm);
         }
     } else if (op == QUT_INSTRUCTION_R4_OFFSET || op == QUT_INSTRUCTION_R7_OFFSET ||
         op == QUT_INSTRUCTION_R10_OFFSET || op == QUT_INSTRUCTION_R11_OFFSET || op == QUT_INSTRUCTION_X20_OFFSET ||
@@ -161,9 +169,10 @@ inline void CheckInstruction(uint64_t instruction) {
         op == QUT_INSTRUCTION_SP_OFFSET || op == QUT_INSTRUCTION_PC_OFFSET) {
         if (imm < 0 || imm > IMM(4)) {
             if (op == QUT_INSTRUCTION_R4_OFFSET || op == QUT_INSTRUCTION_X20_OFFSET) {
-                QUT_STATISTIC(InstructionOpOverflow, op, imm);
+                if (op == QUT_INSTRUCTION_R4_OFFSET) QUT_STATISTIC(InstructionOpOverflowR4, op, imm);
+                else if (op == QUT_INSTRUCTION_X20_OFFSET) QUT_STATISTIC(InstructionOpOverflowX20, op, imm);
             } else {
-                QUT_STATISTIC(InstructionOp, op, imm);
+                QUT_STATISTIC_TIPS(InstructionOp, op, imm);
             }
         }
     }
@@ -178,7 +187,7 @@ inline void CheckInstruction(uint64_t instruction) {
         } \
     }
 
-inline bool _QuickenInstructionsEncode32(std::deque<uint64_t> &instructions, std::deque<uint8_t > &encoded) {
+inline bool _QuickenInstructionsEncode32(std::deque<uint64_t> &instructions, std::deque<uint8_t > &encoded, bool* prologue_conformed) {
 
 // QUT encode for 32-bit:
 //		00nn nnnn           : vsp = vsp + (nnnnnn << 2)             			; # (nnnnnnn << 2) in [0, 0xfc]
@@ -219,6 +228,15 @@ inline bool _QuickenInstructionsEncode32(std::deque<uint64_t> &instructions, std
 
 //      1111 1111 + SLEB128 : vsp = vsp + SLEB128   							;
 
+#ifdef EnableLOG
+    QUT_DEBUG_LOG("--- Dump Instr");
+    for (auto iter = instructions.begin(); iter != instructions.end(); iter++) {
+        uint64_t instr = *iter;
+        QUT_DEBUG_LOG("Instr %llx", instr);
+    }
+    QUT_DEBUG_LOG("--- End Dump Instr");
+#endif
+
     while (!instructions.empty()) {
 
         uint64_t instruction = instructions.front();
@@ -232,7 +250,7 @@ inline bool _QuickenInstructionsEncode32(std::deque<uint64_t> &instructions, std
         int64_t op = instruction >> 32;
         int32_t imm = instruction & 0xFFFFFFFF;
 
-        if (UNLIKELY(imm & 0x3)) {
+        if (imm & 0x3) {
             QUT_STATISTIC(InstructionOpImmNotAligned, op, imm);
             return false;
         }
@@ -313,6 +331,8 @@ inline bool _QuickenInstructionsEncode32(std::deque<uint64_t> &instructions, std
                         byte = (op == QUT_INSTRUCTION_VSP_SET_BY_R7) ?
                                QUT_INSTRUCTION_VSP_SET_BY_R7_PROLOGUE_OP
                                                                      : QUT_INSTRUCTION_VSP_SET_BY_R11_PROLOGUE_OP;
+
+                        *prologue_conformed = true;
                     } else {
                         byte = (op == QUT_INSTRUCTION_VSP_SET_BY_R7) ?
                                QUT_INSTRUCTION_VSP_SET_BY_R7_OP : QUT_INSTRUCTION_VSP_SET_BY_R11_OP;
@@ -419,7 +439,7 @@ inline bool _QuickenInstructionsEncode32(std::deque<uint64_t> &instructions, std
     return true;
 }
 
-inline bool _QuickenInstructionsEncode64(std::deque<uint64_t> &instructions, std::deque<uint8_t > &encoded) {
+inline bool _QuickenInstructionsEncode64(std::deque<uint64_t> &instructions, std::deque<uint8_t > &encoded, bool* prologue_conformed) {
 
 // QUT encode for 64-bit:
 //		00nn nnnn           : vsp = vsp + (nnnnnn << 2)             			; # (nnnnnnn << 2) in [0, 0xfc]
@@ -468,7 +488,7 @@ inline bool _QuickenInstructionsEncode64(std::deque<uint64_t> &instructions, std
         uint32_t op = (uint32_t)(instruction >> 32);
         int32_t imm = (int32_t)(instruction & 0xFFFFFFFF);
 
-        if (UNLIKELY(imm & 0x3)) {
+        if (imm & 0x3) {
             QUT_STATISTIC(InstructionOpImmNotAligned, op, imm);
             return false;
         }
@@ -639,11 +659,11 @@ inline bool _QuickenInstructionsEncode64(std::deque<uint64_t> &instructions, std
     return true;
 }
 
-inline bool QuickenInstructionsEncode(std::deque<uint64_t> &instructions, std::deque<uint8_t > &encoded) {
+inline bool QuickenInstructionsEncode(std::deque<uint64_t> &instructions, std::deque<uint8_t > &encoded, bool* prologue_conformed) {
 #ifdef __arm__
-    return _QuickenInstructionsEncode32(instructions, encoded);
+    return _QuickenInstructionsEncode32(instructions, encoded, prologue_conformed);
 #else
-    return _QuickenInstructionsEncode64(instructions, encoded);
+    return _QuickenInstructionsEncode64(instructions, encoded, prologue_conformed);
 #endif
 }
 

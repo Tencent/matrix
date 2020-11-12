@@ -27,6 +27,8 @@ namespace wechat_backtrace {
 
     void quicken_unwind(uptr* regs, uptr* frames, uptr frame_max_size, uptr &frame_size);
 
+    void quicken_unwind_v2_wip(uptr* regs, uptr* frames, uptr frame_max_size, uptr &frame_size);
+
     void fp_unwind_with_fallback(uptr* regs, uptr* frames, uptr frameMaxSize, uptr &frameSize);
 
 #ifdef __arm__

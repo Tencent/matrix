@@ -63,6 +63,15 @@ android {
             path "CMakeLists.txt"
         }
     }
+
+    sourceSets {
+        main {
+            jniLibs {
+                setSrcDirs (['./libs'] as Set)
+            }
+        }
+
+    }
 }
 
 dependencies {

@@ -22,9 +22,9 @@ public:
 
     bool Step(uptr pc, uptr* regs, unwindstack::Memory* process_memory, uint64_t* dex_pc, bool* finished);
 
-    template <typename AddressType>
-    bool GenerateQuickenTableUltra(unwindstack::Memory* process_memory);
+    bool StepBack(uptr pc, uptr sp, uptr fp, uint8_t& regs_bits, uptr* regs, unwindstack::Memory* process_memory, bool* finish);
 
+    template <typename AddressType>
     bool GenerateQuickenTable(unwindstack::Memory* process_memory);
 
     uint64_t GetLoadBias();

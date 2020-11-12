@@ -23,6 +23,8 @@ public:
                    uint64_t offset, uint64_t flags, const char *name) :
                    MapInfo(prevMap, prevRealMap, start, end, offset, flags, name) {};
 
+    static QuickenInterface* GetQuickenInterfaceFromElf(unwindstack::Elf* elf);
+
     QuickenInterface* GetQuickenInterface(const std::shared_ptr<unwindstack::Memory>& process_memory,
             unwindstack::ArchEnum expected_arch);
 

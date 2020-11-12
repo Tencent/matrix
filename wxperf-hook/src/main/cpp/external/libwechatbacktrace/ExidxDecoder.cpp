@@ -17,25 +17,6 @@
 #include "DwarfDebugFrameDecoder.h"
 #include "ExidxDecoder.h"
 
-// WeChat Quicken Unwind Table encode:
-//      00nn nnnn           : vsp = vsp + (nnnnnn << 2)                     ; # (nnnnnnn << 2) in [0, 0xfc]
-//      01nn nnnn           : vsp = vsp - (nnnnnn << 2)                     ; # (nnnnnnn << 2) in [0, 0xfc]
-//      1000 0000           : vsp = r7                                      ;
-//      1000 0001           : vsp = r7 + 8, ls = [vsp - 4], sp = [vsp - 8]  ; # have prologue
-//      1001 0000           : vsp = r11                                     ;
-//      1001 0001           : vsp = r11 + 8, ls = [vsp - 4], sp = [vsp - 8] ; # have prologue
-//      1010 0000           : vsp = [sp]                                    ;
-//      1100 nnnn           : r7 = [vsp - (nnnn << 2)]                      ; # (nnnn << 2) in [0, 0x3c]
-//      1101 nnnn           : r11 = [vsp - (nnnn << 2)]                     ; # (nnnn << 2) in [0, 0x3c]
-//      1110 nnnn           : lr = [vsp - (nnnn << 2)]                      ; # (nnnn << 2) in [0, 0x3c]
-//      1111 0000           : Finish                                        ;
-//      1111 1001 + SLEB128 : sp = [vsp - SLEB128]                          ; # [addr] means get value from pointer addr
-//      1111 1010 + SLEB128 : lr = [vsp - SLEB128]                          ; # [addr] means get value from pointer addr
-//      1111 1011 + SLEB128 : pc = [vsp - SLEB128]                          ; # [addr] means get value from pointer addr
-//      1111 1100 + SLEB128 : r7 = [vsp - SLEB128]                          ; # [addr] means get value from pointer addr
-//      1111 1101 + SLEB128 : r11 = [vsp - SLEB128]                         ; # [addr] means get value from pointer addr
-//      1111 1111 + SLEB128 : vsp = vsp + SLEB128                           ;
-
 namespace wechat_backtrace {
 
 using namespace std;

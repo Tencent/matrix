@@ -72,10 +72,6 @@ class Elf {
 
   bool Step(uint64_t rel_pc, Regs* regs, Memory* process_memory, bool* finished);
 
-  bool StepExidx(uint64_t rel_pc, uintptr_t* regs, Memory* process_memory, bool* finished);
-
-  bool StepFut(uint64_t rel_pc, uintptr_t* regs, Memory* process_memory, bool* finished);
-
   ElfInterface* CreateInterfaceFromMemory(Memory* memory);
 
   std::string GetBuildID();

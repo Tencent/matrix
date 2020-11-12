@@ -4,6 +4,7 @@
 
 #include <deps/android-base/include/android-base/macros.h>
 #include <MinimalRegs.h>
+#include <QuickenTableReverse.h>
 #include "../../common/Log.h"
 #include "QuickenInterface.h"
 #include "QuickenMaps.h"
@@ -21,7 +22,7 @@ uint64_t QuickenInterface::GetLoadBias() {
 }
 
 template <typename AddressType>
-bool QuickenInterface::GenerateQuickenTableUltra(unwindstack::Memory* process_memory) {
+bool QuickenInterface::GenerateQuickenTable(unwindstack::Memory* process_memory) {
 
     lock_guard<mutex> lock(lock_);
 
@@ -50,32 +51,6 @@ bool QuickenInterface::GenerateQuickenTableUltra(unwindstack::Memory* process_me
 
     return ret;
 }
-
-//bool QuickenInterface::GenerateQuickenTable(unwindstack::Memory* process_memory) {
-//
-//    lock_guard<mutex> lock(lock_);
-//
-//    if (qut_sections_) {
-//        return true;
-//    }
-//
-//    QuickenTableGenerator<uint32_t> generator(memory_, process_memory);
-//    QutSections* qut_sections = new QutSections();
-//
-//    size_t bad_entries = 0;
-//    bool ret = generator.GenerateFutSections(arm_exidx_info_.offset_, arm_exidx_info_.size_,
-//            qut_sections, bad_entries);
-//
-//    bad_entries_ = bad_entries;
-//
-//    if (ret) {
-//        qut_sections_.reset(qut_sections);
-//    } else {
-//        delete qut_sections;
-//    }
-//
-//    return ret;
-//}
 
 bool QuickenInterface::FindEntry(uptr pc, size_t* entry_offset) {
     size_t first = 0;
@@ -113,7 +88,7 @@ bool QuickenInterface::Step(uptr pc, uptr* regs, unwindstack::Memory* process_me
     }
 
     if (!qut_sections_) {
-        if (!GenerateQuickenTableUltra<addr_t>(process_memory)) {
+        if (!GenerateQuickenTable<addr_t>(process_memory)) {
             last_error_code_ = QUT_ERROR_QUT_SECTION_INVALID;
             return false;
         }
@@ -152,6 +127,51 @@ bool QuickenInterface::Step(uptr pc, uptr* regs, unwindstack::Memory* process_me
     *finished = (PC(regs) == 0) ? true : false;
 
     QUT_DEBUG_LOG("QuickenInterface::Step finished: %d, PC(regs) %llx", *finished, (uint64_t)PC(regs));
+
+    return return_value;
+}
+
+bool QuickenInterface::StepBack(uptr pc, uptr sp, uptr fp, uint8_t& regs_bits, uptr* regs, unwindstack::Memory* process_memory, bool* finish) {
+
+    // Adjust the load bias to get the real relative pc.
+    if (UNLIKELY(pc < load_bias_)) {
+        last_error_code_ = QUT_ERROR_UNWIND_INFO;
+        return false;
+    }
+
+    if (!qut_sections_) {
+        if (!GenerateQuickenTable<addr_t>(process_memory)) {
+            last_error_code_ = QUT_ERROR_QUT_SECTION_INVALID;
+            return false;
+        }
+    }
+
+    QuickenTableReverse quicken(qut_sections_.get(), regs, memory_, process_memory);
+    size_t entry_offset;
+
+    pc -= load_bias_;
+
+    if (UNLIKELY(!FindEntry(pc, &entry_offset))) {
+        return false;
+    }
+
+    quicken.cfa_ = sp - sizeof(uptr) * 2;   // TODO check this
+    quicken.cfa_next_ = fp - sizeof(uptr) * 2;
+    quicken.regs_bits_ = regs_bits;
+    bool return_value = false;
+
+    if (quicken.EvalReverse(entry_offset)) {
+        return_value = true;
+        regs_bits = quicken.regs_bits_ | quicken.regs_bits_tmp_;
+        QUT_TMP_LOG("regs_bits " BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(regs_bits));
+        QUT_TMP_LOG("quicken.regs_bits_ " BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(quicken.regs_bits_));
+        QUT_TMP_LOG("quicken.regs_bits_tmp_ " BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(quicken.regs_bits_tmp_));
+        if (regs_bits == OP(0100, 1111)) {
+            *finish = true;
+        }
+    } else {
+        last_error_code_ = QUT_ERROR_INVALID_QUT_INSTR;
+    }
 
     return return_value;
 }

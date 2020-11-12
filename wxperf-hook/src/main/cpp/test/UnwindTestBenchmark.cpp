@@ -1,6 +1,7 @@
 #include <jni.h>
 #include <dlfcn.h>
 #include <cinttypes>
+#include <memory>
 #include <cxxabi.h>
 #include <Backtrace.h>
 #include <QuickenMaps.h>
@@ -84,14 +85,39 @@ Java_com_tencent_wxperf_jni_test_UnwindBenckmarkTest_debugNative(JNIEnv *env, jc
 //    BENCHMARK_TIMES(DWARF_UNWIND, 1, func_selfso)
 //    BENCHMARK_TIMES(FAST_DWARF_UNWIND, 10, func_selfso)
 
-//#ifdef __arm__
     BENCHMARK_TIMES(WECHAT_QUICKEN_UNWIND, 1, func_selfso);
-//#endif
+#ifdef __arm__
+    BENCHMARK_TIMES(WECHAT_QUICKEN_UNWIND_V2_WIP, 1, func_selfso);
+#endif
 
 //    BENCHMARK_TIMES(FP_UNWIND, 3, func_selfso)
 //    BENCHMARK_TIMES(FP_UNWIND, 3, func_throughjni)
 //    BENCHMARK_TIMES(FP_UNWIND, 3, func_throughsystemso)
 
+}
+
+inline char* jbyteArrayToChar(JNIEnv *env, jbyteArray barr) {
+    char* rtn = NULL;
+    jsize len = env->GetArrayLength(barr);
+    jbyte* ba = env->GetByteArrayElements(barr, JNI_FALSE);
+    if (len > 0) {
+        rtn = (char*) malloc(len + 1);
+        memcpy(rtn, ba, len);
+        rtn[len] = 0;
+    }
+    env->ReleaseByteArrayElements(barr, ba, 0);
+
+    return rtn;
+}
+
+JNIEXPORT void JNICALL
+Java_com_tencent_wxperf_jni_test_UnwindBenckmarkTest_statisticNative(JNIEnv *env, jclass clazz, jbyteArray sopath, jbyteArray soname) {
+    auto sopath_ = std::unique_ptr<char>(jbyteArrayToChar(env, sopath));
+    auto soname_ = std::unique_ptr<char>(jbyteArrayToChar(env, soname));
+    if (!sopath_ || !soname_) {
+        return;
+    }
+    statistic_wechat_quicken(sopath_.get(), soname_.get());
 }
 
 #ifdef __cplusplus

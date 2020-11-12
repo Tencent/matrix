@@ -158,7 +158,6 @@ static inline void print_fp_unwind_with_fallback() {
     }
 }
 
-//#ifdef __arm__
 inline void print_wechat_quicken_unwind() {
 
     TEST_NanoSeconds_Start(nano);
@@ -195,11 +194,48 @@ inline void print_wechat_quicken_unwind() {
                 " %s (%s)", frames[i], frames[i], frames[i], stack_info.dli_sname, stack_info.dli_fname);
     }
 }
-//#else
-//inline void print_wechat_quicken_unwind() {
-//    LOGE(WECHAT_QUICKEN_UNWIND_TAG, "ARMQuickenUnwinder only support 32-bit runtime.");
-//}
-//#endif
+
+inline void print_wechat_quicken_unwind_v2_wip() {
+
+    TEST_NanoSeconds_Start(nano);
+
+    uptr regs[QUT_MINIMAL_REG_SIZE];
+    GetMinimalRegs(regs);
+    uptr frames[FRAME_MAX_SIZE];
+    uptr frame_size = 0;
+
+    wechat_backtrace::quicken_unwind_v2_wip(regs, frames, FRAME_MAX_SIZE, frame_size);
+
+    TEST_NanoSeconds_End(print_wechat_quicken_unwind_v2, nano);
+
+    LOGE(WECHAT_QUICKEN_UNWIND_TAG, "frames = %"
+            PRIuPTR
+    , frame_size);
+
+    for (size_t i = 0 ; i < frame_size; i++) {
+        Dl_info stack_info;
+        dladdr((void *) frames[i], &stack_info);
+
+        if (!stack_info.dli_fname) {
+            LOGE(WECHAT_QUICKEN_UNWIND_TAG, "  #pc stack_info.dli_fname is null");
+            continue;
+        }
+        std::string so_name = std::string(stack_info.dli_fname);
+
+        LOGE(WECHAT_QUICKEN_UNWIND_TAG, "  #pc 0x%"
+                PRIxPTR
+                " %"
+                PRIuPTR
+                " 0x%"
+                PRIxPTR
+                " %s (%s)", frames[i], frames[i], frames[i], stack_info.dli_sname, stack_info.dli_fname);
+    }
+}
+
+void statistic_wechat_quicken(char* sopath, char* so) {
+    wechat_backtrace::StatisticWeChatQuickenUnwindTable(sopath, so);
+}
+
 
 #ifdef __arm__
 inline void print_dwarf_fast_unwind() {
@@ -281,6 +317,9 @@ void leaf_func(const char * testcase) {
             break;
         case WECHAT_QUICKEN_UNWIND:
             print_wechat_quicken_unwind();
+            break;
+        case WECHAT_QUICKEN_UNWIND_V2_WIP:
+            print_wechat_quicken_unwind_v2_wip();
             break;
         case DWARF_UNWIND:
             print_dwarf_unwind();

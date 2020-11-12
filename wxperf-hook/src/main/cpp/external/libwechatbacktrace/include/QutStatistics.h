@@ -7,23 +7,31 @@
 
 namespace wechat_backtrace {
 
-//#define QUT_STATISTIC_ENABLE
+//#define QUT_STATISTIC_ENABLE  // TODO
 
 #ifdef QUT_STATISTIC_ENABLE
-#define QUT_STATISTIC(Type, Arg1, Arg2) GetQutStatistic()(Type, (uint64_t)Arg1, (uint64_t)Arg2)
+#define QUT_STATISTIC(Type, Arg1, Arg2) QutStatistic(Type, (uint64_t)Arg1, (uint64_t)Arg2)
+#define QUT_STATISTIC_TIPS(Type, Arg1, Arg2) QutStatisticTips(Type, (uint64_t)Arg1, (uint64_t)Arg2)
 #else
 #define QUT_STATISTIC(Type, Arg1, Arg2)
+#define QUT_STATISTIC_TIPS(Type, Arg1, Arg2)
 #endif
 
 enum QutStatisticType : uint32_t {
     InstructionOp = 0,
-    InstructionOpOverflow = 1,
-    InstructionOpImmNotAligned = 2,
+    InstructionOpOverflowR7 = 1,
+    InstructionOpOverflowR11 = 2,
+    InstructionOpOverflowJNISP = 3,
+    InstructionOpOverflowX29 = 4,
+    InstructionOpOverflowR4 = 5,
+    InstructionOpOverflowX20 = 6,
+
+    InstructionOpImmNotAligned = 9,
     UnsupportedArmExdix = 10,
 
-    UnsupportedDwarfOp = 20,
-    UnsupportedDwarfOp_OpBreg_Reg = 21,
-    UnsupportedDwarfOp_OpBregx_Reg = 22,
+    InstructionEntriesArmExidx = 20,
+    InstructionEntriesEhFrame = 21,
+    InstructionEntriesDebugFrame = 22,
 
     UnsupportedDwarfLocation = 30,
     UnsupportedDwarfLocationValOffset = 31,
@@ -35,13 +43,19 @@ enum QutStatisticType : uint32_t {
 
     UnsupportedCfaDwarfLocationRegister = 37,
     UnsupportedCfaDwarfLocationValExpression = 38,
+
+    UnsupportedDwarfOp_OpBreg_Reg = 41,
+    UnsupportedDwarfOp_OpBregx_Reg = 42,
+
 };
 
-typedef void(*QutStatisticInstruction)(QutStatisticType, uint64_t, uint64_t);
+void SetCurrentStatLib(const char*);
 
-QutStatisticInstruction GetQutStatistic();
+void QutStatistic(QutStatisticType, uint64_t, uint64_t);
 
-void SetQutStatistic(QutStatisticInstruction statistic_func);
+void QutStatisticTips(QutStatisticType, uint64_t, uint64_t);
+
+void DumpQutStatResult();
 
 }  // namespace wechat_backtrace
 

@@ -697,7 +697,7 @@ bool DwarfSectionDecoder<AddressType>::RegOffsetInstruction(uint64_t reg, uint64
             break;
 #endif
         default:
-            QUT_STATISTIC(UnsupportedDwarfLocationOffset, reg, value);
+//            QUT_STATISTIC(UnsupportedDwarfLocationOffset, reg, value);
             return false;
     }
 
@@ -777,7 +777,7 @@ bool DwarfSectionDecoder<AddressType>::Eval(const DwarfCie* cie, Memory* regular
             AddressType value = value_expression.value;
             // TODO check value overflow
             temp_instructions_->push_back((QUT_INSTRUCTION_VSP_SET_IMM << 32) | (0xffffffff & value));
-            QUT_STATISTIC(UnsupportedCfaDwarfLocationValExpression, reg, value);
+            QUT_STATISTIC(UnsupportedCfaDwarfLocationValExpression, value, 0);
             break;
         }
         default:

@@ -36,14 +36,14 @@ SET(
         ${CMAKE_CURRENT_SOURCE_DIR}/EnhanceDlsym.cpp
 
 
-        ${CMAKE_CURRENT_SOURCE_DIR}/../libwechatbacktrace/QutSatatistics.cpp
-
+        ${CMAKE_CURRENT_SOURCE_DIR}/../libwechatbacktrace/QutStatistics.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/../libwechatbacktrace/ExidxDecoder.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/../libwechatbacktrace/DwarfCfa.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/../libwechatbacktrace/DwarfSectionDecoder.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/../libwechatbacktrace/DwarfEhFrameWithHdrDecoder.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/../libwechatbacktrace/DwarfOp.cpp
-#        ${CMAKE_CURRENT_SOURCE_DIR}/../libwechatbacktrace/QuickenInstructions.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/../libwechatbacktrace/QuickenTable.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/../libwechatbacktrace/QuickenTableReverse.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/../libwechatbacktrace/QuickenMaps.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/../libwechatbacktrace/QuickenTableGenerator.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/../libwechatbacktrace/QuickenInterface.cpp
@@ -57,7 +57,6 @@ SET(
         ${CMAKE_CURRENT_SOURCE_DIR}/../libwechatbacktrace/FpUnwinder.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/../libwechatbacktrace/FpFallbackUnwinder.cpp
 
-#        ${CMAKE_CURRENT_SOURCE_DIR}/../libwechatbacktrace/WeChatElfInterfaceArm64.cpp
 )
 
 IF(${ANDROID_ABI} STREQUAL x86)
