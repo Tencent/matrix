@@ -31,6 +31,12 @@ namespace wechat_backtrace {
         return saving_path + FILE_SEPERATOR + soname + "." + build_id + "_temp";
     }
 
+    inline void RenameToMalformed(string qut_file_name) {
+        time_t seconds = time(NULL);
+        string malformed = qut_file_name + "_malformed_" + seconds;
+        rename(qut_file_name.c_str(), malformed.c_str());
+    }
+
     QutFileError QuickenTableManager::RequestQutSections(string soname, string build_id,
                                                          QutSectionsPtr &qut_sections) {
 
@@ -41,6 +47,7 @@ namespace wechat_backtrace {
         if (qut_sections) {
             return None;
         }
+
         if (qut_sections_requesting_[build_id] == true) {
             return LoadRequesting;
         }
@@ -57,13 +64,12 @@ namespace wechat_backtrace {
             struct stat file_stat;
             if (fstat(fd, &file_stat) == 0) {
                 close(fd);
-                remove(qut_file_name.c_str());
                 return FileStateError;
             }
 
             if (file_stat.st_size < 6 * sizeof(size_t)) {
                 close(fd);
-                remove(qut_file_name.c_str());
+                RenameToMalformed(qut_file_name.c_str());
                 return FileTooShort;
             }
 
@@ -82,7 +88,7 @@ namespace wechat_backtrace {
             if (qut_version != QUT_VERSION) {
                 munmap(data, file_stat.st_size);
                 close(fd);
-                remove(qut_file_name.c_str());
+                RenameToMalformed(qut_file_name.c_str());
                 return QutVersionNotMatch;
             }
 
@@ -92,7 +98,7 @@ namespace wechat_backtrace {
             if (arch != CURRENT_ARCH_ENUM) {
                 munmap(data, file_stat.st_size);
                 close(fd);
-                remove(qut_file_name.c_str());
+                RenameToMalformed(qut_file_name.c_str());
                 return ArchNotMatch;
             }
 
@@ -116,7 +122,7 @@ namespace wechat_backtrace {
             if (file_stat.st_size != (tbl_offset + tbl_size)) {
                 munmap(data, file_stat.st_size);
                 close(fd);
-                remove(qut_file_name.c_str());
+                RenameToMalformed(qut_file_name.c_str());
                 return FileLengthNotMatch;
             }
 
@@ -135,15 +141,21 @@ namespace wechat_backtrace {
         }
     }
 
-    QutFileError QuickenTableManager::SaveQutSections(string soname, string build_id,
+    void QuickenTableManager::InsertQutSections(string soname, string build_id,
                                                       QutSectionsPtr qut_sections) {
-
         CHECK(qut_sections != nullptr);
         CHECK(qut_sections->idx_size > 0);
 
         lock_guard<mutex> lockGuard(lock_);
 
         qut_sections_map_[build_id] = qut_sections;
+
+    }
+
+    QutFileError QuickenTableManager::SaveQutSections(string soname, string build_id,
+                                                      QutSectionsPtr qut_sections) {
+
+        InsertQutSections(soname, build_id, qut_sections);
 
         string temp_qut_file_name = ToTempQutFileName(sSavingPath, soname, build_id);
 
@@ -200,8 +212,8 @@ namespace wechat_backtrace {
         close(fd);
 
         string qut_file_name = ToQutFileName(sSavingPath, soname, build_id);
-        // Delete old one
-        remove(qut_file_name.c_str());
+        // rename old one.
+        RenameToMalformed(qut_file_name);
         // Move temp to new one.
         rename(temp_qut_file_name.c_str(), qut_file_name.c_str());
 

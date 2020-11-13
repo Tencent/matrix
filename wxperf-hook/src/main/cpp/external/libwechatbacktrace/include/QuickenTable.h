@@ -73,8 +73,6 @@ namespace wechat_backtrace {
 
         QuickenTableManager &operator=(const QuickenTableManager &);
 
-        // build_id, pair(soname, QutSections)
-//        std::unordered_map<std::string, std::pair<std::string, QutSections *>> qut_sections_map_;          // TODO destruction
         std::unordered_map<std::string, QutSections *> qut_sections_map_;          // TODO destruction
         std::unordered_map<std::string, bool> qut_sections_requesting_;   // TODO destruction
 
@@ -108,6 +106,7 @@ namespace wechat_backtrace {
         QutFileError
         SaveQutSections(std::string soname, std::string build_id, QutSectionsPtr qut_sections);
 
+        void InsertQutSections(std::string soname, std::string build_id, QutSectionsPtr qut_sections);
     };
 
     class QuickenTable {
