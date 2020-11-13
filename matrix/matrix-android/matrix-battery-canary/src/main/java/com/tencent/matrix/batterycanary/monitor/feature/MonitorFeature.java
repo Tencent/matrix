@@ -2,11 +2,14 @@ package com.tencent.matrix.batterycanary.monitor.feature;
 
 
 import android.os.SystemClock;
+import android.support.annotation.NonNull;
 
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 
 public interface MonitorFeature {
     void configure(BatteryMonitorCore monitor);
@@ -19,7 +22,6 @@ public interface MonitorFeature {
     abstract class Snapshot<RECORD extends Snapshot> {
         public final long time;
         public boolean isDelta = false;
-        public boolean isValid = true;
 
         public Snapshot() {
             time = getTimeStamps();
@@ -36,7 +38,6 @@ public interface MonitorFeature {
             public final RECORD end;
             public final RECORD dlt;
             public final long during;
-            public boolean isValid = true;
 
             public Delta(RECORD bgn, RECORD end) {
                 this.bgn = bgn;
@@ -49,14 +50,274 @@ public interface MonitorFeature {
             protected abstract RECORD computeDelta();
         }
 
-        public interface Differ<VALUE> {
+        public abstract static class Entry<ENTRY> {
+            private boolean mIsValid = true;
+
+            public ENTRY setValid(boolean bool) {
+                mIsValid = bool;
+                //noinspection unchecked
+                return (ENTRY) this;
+            }
+
+            boolean isValid() {
+                return mIsValid;
+            }
+
+            public static abstract class DigitEntry<DIGIT> extends Entry<DigitEntry> {
+
+                @SuppressWarnings("unchecked")
+                public static <DIGIT> DigitEntry<DIGIT> of(DIGIT digit) {
+                    if (digit instanceof Integer) return (DigitEntry<DIGIT>) new IntDigit((Integer) digit);
+                    if (digit instanceof Long)    return (DigitEntry<DIGIT>) new LongDigit((Long) digit);
+                    if (digit instanceof Float)   return (DigitEntry<DIGIT>) new FloatDigit((Float) digit);
+                    throw new IllegalStateException("unsupported digit: " + digit.getClass());
+                }
+
+                DIGIT value;
+
+                public DigitEntry(DIGIT value) {
+                    this.value = value;
+                }
+
+                public DIGIT get() {
+                    return value;
+                }
+
+                @Override
+                public boolean equals(Object o) {
+                    if (this == o) return true;
+                    if (o == null || getClass() != o.getClass()) return false;
+                    DigitEntry<?> that = (DigitEntry<?>) o;
+                    return value.equals(that.value);
+                }
+
+                @Override
+                public int hashCode() {
+                    return Objects.hash(value);
+                }
+
+                public abstract DIGIT diff(DIGIT right);
+
+                static class IntDigit extends DigitEntry<Integer> {
+                    public IntDigit(Integer value) {
+                        super(value);
+                    }
+                    @Override
+                    public Integer diff(Integer right) {
+                        return value - right;
+                    }
+                }
+
+                static class LongDigit extends DigitEntry<Long> {
+                    public LongDigit(Long value) {
+                        super(value);
+                    }
+                    @Override
+                    public Long diff(Long right) {
+                        return value - right;
+                    }
+                }
+
+                static class FloatDigit extends DigitEntry<Float> {
+                    public FloatDigit(Float value) {
+                        super(value);
+                    }
+                    @Override
+                    public Float diff(Float right) {
+                        return value - right;
+                    }
+                }
+            }
+
+            public static class BeanEntry<BEAN> extends Entry<BeanEntry> {
+                public static final BeanEntry<?> sEmpty = new BeanEntry<Void>(null) {
+                    @Override
+                    public boolean isEmpty() {
+                        return true;
+                    }
+                };
+
+                public static <BEAN> BeanEntry<BEAN> of(BEAN bean) {
+                    return new BeanEntry<>(bean);
+                }
+
+                BEAN value;
+                public BeanEntry(BEAN value) { this.value = value; }
+                public boolean isEmpty() {
+                    return false;
+                }
+                public BEAN get() {
+                    return value;
+                }
+            }
+
+            public static class ListEntry<ITEM extends Entry> extends Entry<ListEntry> {
+                List<ITEM> list;
+
+                public static <ITEM extends Entry> ListEntry<ITEM> of(List<ITEM> items) {
+                    ListEntry<ITEM> listEntry = new ListEntry<>();
+                    listEntry.list = items;
+                    return listEntry;
+                }
+
+                public static <ITEM extends Entry> ListEntry<ITEM> of(ITEM[] items) {
+                    return of(Arrays.asList(items));
+                }
+
+                public static <DIGIT> ListEntry<DigitEntry<DIGIT>> ofDigits(List<DIGIT> items) {
+                    List<DigitEntry<DIGIT>> list = new ArrayList<>();
+                    for (DIGIT item : items) {
+                        list.add(DigitEntry.of(item));
+                    }
+                    ListEntry<DigitEntry<DIGIT>> listEntry = new ListEntry<>();
+                    listEntry.list = list;
+                    return listEntry;
+                }
+
+                public static <DIGIT> ListEntry<DigitEntry<DIGIT>> ofDigits(DIGIT[] items) {
+                    return ofDigits(Arrays.asList(items));
+                }
+
+                public static ListEntry<DigitEntry<Integer>> ofDigits(int[] items) {
+                    List<DigitEntry<Integer>> list = new ArrayList<>();
+                    for (int item : items) {
+                        list.add(DigitEntry.of(item));
+                    }
+                    ListEntry<DigitEntry<Integer>> listEntry = new ListEntry<>();
+                    listEntry.list = list;
+                    return listEntry;
+                }
+
+                public static ListEntry<DigitEntry<Long>> ofDigits(long[] items) {
+                    List<DigitEntry<Long>> list = new ArrayList<>();
+                    for (long item : items) {
+                        list.add(DigitEntry.of(item));
+                    }
+                    ListEntry<DigitEntry<Long>> listEntry = new ListEntry<>();
+                    listEntry.list = list;
+                    return listEntry;
+                }
+
+                public static ListEntry<DigitEntry<Float>> ofDigits(float[] items) {
+                    List<DigitEntry<Float>> list = new ArrayList<>();
+                    for (float item : items) {
+                        list.add(DigitEntry.of(item));
+                    }
+                    ListEntry<DigitEntry<Float>> listEntry = new ListEntry<>();
+                    listEntry.list = list;
+                    return listEntry;
+                }
+
+                @Override
+                boolean isValid() {
+                    for (ITEM item : list) {
+                        if (!item.isValid()) return false;
+                    }
+                    return super.isValid();
+                }
+
+                public List<ITEM> getList() {
+                    return list;
+                }
+            }
+        }
+
+        public interface Differ<ENTRY extends Entry> {
+
+            @NonNull
+            ENTRY diff(@NonNull ENTRY bgn, @NonNull ENTRY end);
+
+            class DigitDiffer<DIGIT> implements Differ<Entry.DigitEntry<DIGIT>> {
+                static final DigitDiffer sGlobal = new DigitDiffer();
+                @NonNull
+                public static <DIGIT> Entry.DigitEntry<DIGIT> globalDiff(@NonNull Entry.DigitEntry<DIGIT> bgn, @NonNull Entry.DigitEntry<DIGIT> end) {
+                    //noinspection unchecked
+                    return sGlobal.diff(bgn, end);
+                }
+                @Override
+                @NonNull
+                public Entry.DigitEntry<DIGIT> diff(@NonNull Entry.DigitEntry<DIGIT> bgn, @NonNull Entry.DigitEntry<DIGIT> end) {
+                    DIGIT diff = end.diff(bgn.value);
+                    return Entry.DigitEntry.of(diff);
+                }
+            }
+
+            class BeanDiffer<BEAN> implements Differ<Entry.BeanEntry<BEAN>> {
+                static final BeanDiffer sGlobal = new BeanDiffer<>();
+                @NonNull
+                public static <BEAN> Entry.BeanEntry<BEAN> globalDiff(@NonNull Entry.BeanEntry<BEAN> bgn, @NonNull Entry.BeanEntry<BEAN> end) {
+                    //noinspection unchecked
+                    return sGlobal.diff(bgn, end);
+                }
+                @Override
+                @NonNull
+                public Entry.BeanEntry<BEAN> diff(@NonNull Entry.BeanEntry<BEAN> bgn, @NonNull Entry.BeanEntry<BEAN> end) {
+                    if (end == bgn || end.equals(bgn)) {
+                        //noinspection unchecked
+                        return (Entry.BeanEntry<BEAN>) Entry.BeanEntry.sEmpty;
+                    }
+                    return end;
+                }
+            }
+
+            class ListDiffer<ENTRY extends Entry> implements Differ<Entry.ListEntry<ENTRY>> {
+                static final ListDiffer sGlobal = new ListDiffer<>();
+                @NonNull
+                public static <ENTRY extends Entry> Entry.ListEntry<ENTRY> globalDiff(@NonNull Entry.ListEntry<ENTRY> bgn, @NonNull Entry.ListEntry<ENTRY> end) {
+                    //noinspection unchecked
+                    return sGlobal.diff(bgn, end);
+                }
+
+                @NonNull
+                @Override
+                public Entry.ListEntry<ENTRY> diff(@NonNull Entry.ListEntry<ENTRY> bgn, @NonNull Entry.ListEntry<ENTRY> end) {
+                    Entry.ListEntry<ENTRY> diff = new Entry.ListEntry<>();
+                    for (int i = 0; i < end.list.size(); i++) {
+                        ENTRY endEntry = end.list.get(i);
+                        if (endEntry instanceof Entry.DigitEntry) {
+                            // digit
+                            ENTRY bgnEntry = bgn.list.get(i);
+                            if (bgnEntry instanceof Entry.DigitEntry) {
+                                //noinspection unchecked
+                                diff.list.add((ENTRY) DigitDiffer.globalDiff((Entry.DigitEntry)bgnEntry, (Entry.DigitEntry)endEntry));
+                            } else {
+                                //noinspection unchecked
+                                diff.list.add((ENTRY) Entry.DigitEntry.of(((Entry.DigitEntry) endEntry).value).setValid(false));
+                            }
+
+                        } else if (endEntry instanceof Entry.BeanEntry) {
+                            // bean
+                            if (bgn.list.contains(endEntry)) {
+                                continue;
+                            }
+                            boolean find = false;
+                            for (ENTRY bgnEntry : bgn.list) {
+                                if (!(bgnEntry instanceof Entry.BeanEntry)) {
+                                    continue;
+                                }
+                                if (BeanDiffer.globalDiff((Entry.BeanEntry)bgnEntry, (Entry.BeanEntry) endEntry) == Entry.BeanEntry.sEmpty) {
+                                    find = true;
+                                    break;
+                                }
+                            }
+                            if (!find) {
+                                diff.list.add(endEntry);
+                            }
+                        }
+                    }
+                    return diff;
+                }
+            }
+        }
+
+        public interface DifferLegacy<VALUE> {
             // todo: int UNSPECIFIED_DIGIT = Integer.MAX_VALUE;
             LongDiffer sDigitDiffer = new LongDiffer();
             IntArrayDiffer sDigitArrayDiffer = new IntArrayDiffer();
 
             VALUE diff(VALUE bgn, VALUE end);
 
-            class LongDiffer implements Differ<Long> {
+            class LongDiffer implements DifferLegacy<Long> {
 
                 @Override
                 public Long diff(Long bgn, Long end) {
@@ -69,7 +330,7 @@ public interface MonitorFeature {
                 }
             }
 
-            class IntArrayDiffer implements Differ<int[]> {
+            class IntArrayDiffer implements DifferLegacy<int[]> {
                 @Override
                 public int[] diff(int[] bgn, int[] end) {
                     int[] dlt = new int[0];
@@ -83,7 +344,7 @@ public interface MonitorFeature {
                 }
             }
 
-            class ListDiffer<T> implements Differ<List<T>> {
+            class ListDiffer<T> implements DifferLegacy<List<T>> {
                 @Override
                 public List<T> diff(List<T> bgn, List<T> end) {
                     List<T> delta = new ArrayList<>();
@@ -95,7 +356,8 @@ public interface MonitorFeature {
                     return delta;
                 }
             }
-        }
-    }
 
+        }
+
+    }
 }

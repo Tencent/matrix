@@ -143,6 +143,7 @@ public class WakeLockMonitorFeature implements MonitorFeature, PowerManagerServi
         public long totalWakeLockTime;
         public int totalWakeLockCount;
         public List<WakeLockTrace.WakeLockRecord> totalWakeLockRecords = Collections.emptyList();
+        public Entry.ListEntry<Entry.BeanEntry<WakeLockTrace.WakeLockRecord>> entries;
 
         @Override
         public Delta<WakeLockSnapshot> diff(WakeLockSnapshot bgn) {
@@ -150,9 +151,10 @@ public class WakeLockMonitorFeature implements MonitorFeature, PowerManagerServi
                 @Override
                 protected WakeLockSnapshot computeDelta() {
                     WakeLockSnapshot delta = new WakeLockSnapshot();
-                    delta.totalWakeLockTime = Differ.sDigitDiffer.diff(bgn.totalWakeLockTime, end.totalWakeLockTime);
-                    delta.totalWakeLockCount = Differ.sDigitDiffer.diffInt(bgn.totalWakeLockCount, end.totalWakeLockCount);
-                    delta.totalWakeLockRecords = new Differ.ListDiffer<WakeLockTrace.WakeLockRecord>().diff(bgn.totalWakeLockRecords, end.totalWakeLockRecords);
+                    delta.totalWakeLockTime = DifferLegacy.sDigitDiffer.diff(bgn.totalWakeLockTime, end.totalWakeLockTime);
+                    delta.totalWakeLockCount = DifferLegacy.sDigitDiffer.diffInt(bgn.totalWakeLockCount, end.totalWakeLockCount);
+                    delta.totalWakeLockRecords = new DifferLegacy.ListDiffer<WakeLockTrace.WakeLockRecord>().diff(bgn.totalWakeLockRecords, end.totalWakeLockRecords);
+                    delta.entries = Differ.ListDiffer.globalDiff(bgn.entries, end.entries);
                     return delta;
                 }
             };

@@ -159,10 +159,10 @@ public class AlarmMonitorFeature implements MonitorFeature, AlarmManagerServiceH
                 @Override
                 protected AlarmSnapshot computeDelta() {
                     AlarmSnapshot snapshot = new AlarmSnapshot();
-                    snapshot.totalCount = Differ.sDigitDiffer.diffInt(bgn.totalCount, end.totalCount);
-                    snapshot.tracingCount = Differ.sDigitDiffer.diffInt(bgn.tracingCount, end.tracingCount);
-                    snapshot.duplicatedCount = Differ.sDigitDiffer.diffInt(bgn.duplicatedGroup, end.duplicatedGroup);
-                    snapshot.duplicatedCount = Differ.sDigitDiffer.diffInt(bgn.duplicatedCount, end.duplicatedCount);
+                    snapshot.totalCount = DifferLegacy.sDigitDiffer.diffInt(bgn.totalCount, end.totalCount);
+                    snapshot.tracingCount = DifferLegacy.sDigitDiffer.diffInt(bgn.tracingCount, end.tracingCount);
+                    snapshot.duplicatedCount = DifferLegacy.sDigitDiffer.diffInt(bgn.duplicatedGroup, end.duplicatedGroup);
+                    snapshot.duplicatedCount = DifferLegacy.sDigitDiffer.diffInt(bgn.duplicatedCount, end.duplicatedCount);
                     return snapshot;
                 }
             };

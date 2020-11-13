@@ -66,6 +66,7 @@ public final class DeviceStatMonitorFeature implements MonitorFeature {
 
     public static class CpuFreqSnapshot extends Snapshot<CpuFreqSnapshot> {
         public int[] cpuFreq;
+        public Entry.ListEntry<Entry.DigitEntry<Integer>> cpuFreqs;
 
         @Override
         public Delta<CpuFreqSnapshot> diff(CpuFreqSnapshot bgn) {
@@ -73,7 +74,8 @@ public final class DeviceStatMonitorFeature implements MonitorFeature {
                 @Override
                 protected CpuFreqSnapshot computeDelta() {
                     CpuFreqSnapshot delta = new CpuFreqSnapshot();
-                    delta.cpuFreq = Differ.sDigitArrayDiffer.diff(bgn.cpuFreq, end.cpuFreq);
+                    delta.cpuFreq = DifferLegacy.sDigitArrayDiffer.diff(bgn.cpuFreq, end.cpuFreq);
+                    delta.cpuFreqs = Differ.ListDiffer.globalDiff(bgn.cpuFreqs, end.cpuFreqs);
                     return delta;
                 }
             };
@@ -82,6 +84,7 @@ public final class DeviceStatMonitorFeature implements MonitorFeature {
 
     public static class BatteryTmpSnapshot extends Snapshot<BatteryTmpSnapshot> {
         public int temperature;
+        public Entry.DigitEntry<Integer> temp;
 
         @Override
         public Delta<BatteryTmpSnapshot>  diff(BatteryTmpSnapshot bgn) {
@@ -89,7 +92,8 @@ public final class DeviceStatMonitorFeature implements MonitorFeature {
                 @Override
                 protected BatteryTmpSnapshot computeDelta() {
                     BatteryTmpSnapshot delta = new BatteryTmpSnapshot();
-                    delta.temperature = Differ.sDigitDiffer.diffInt(bgn.temperature, end.temperature);
+                    delta.temperature = DifferLegacy.sDigitDiffer.diffInt(bgn.temperature, end.temperature);
+                    delta.temp = Differ.DigitDiffer.globalDiff(bgn.temp, end.temp);
                     return delta;
                 }
             };
