@@ -16,7 +16,7 @@ class QuickenInterface {
 
 public:
     QuickenInterface(unwindstack::Memory* memory, uint64_t load_bias, unwindstack::ArchEnum arch)
-        : memory_(memory), load_bias_(load_bias), arch_(arch){}
+        : memory_(memory), load_bias_(load_bias), arch_(arch) {}
 
     bool FindEntry(uptr pc, size_t* entry_offset);
 
@@ -26,6 +26,9 @@ public:
 
     template <typename AddressType>
     bool GenerateQuickenTable(unwindstack::Memory* process_memory);
+
+    template <typename AddressType>
+    bool TryInitQuickenTable();
 
     uint64_t GetLoadBias();
 
@@ -57,16 +60,31 @@ public:
         gnu_debug_frame_info_ = {offset, section_bias, size};
     }
 
+    void SetSoInfo(std::string soname, std::string build_id) {
+        soname_ = sopath;
+        build_id_ = build_id;
+    }
+
     unwindstack::Memory* Memory() {
         return memory_;
     };
+
+    std::shared_ptr<QutSections> GetQutSections() {
+        return qut_sections_;
+    }
 
     QutErrorCode last_error_code_ = QUT_ERROR_NONE;
     size_t bad_entries_ = 0;
 
 protected:
 
+    static std::mutex sQutSectionsLock;
+    static std::map<std::string, std::shared_ptr<QutSections>> sQutSections;
+
     std::mutex lock_;
+
+    std::string soname_;
+    std::string build_id_;
 
     unwindstack::Memory* memory_;
     uint64_t load_bias_ = 0;
@@ -87,7 +105,7 @@ protected:
     FrameInfo gnu_eh_frame_info_ = {0};
     FrameInfo gnu_debug_frame_info_ = {0};
 
-    std::unique_ptr<QutSections> qut_sections_;
+    std::shared_ptr<QutSections> qut_sections_;
 };
 
 }  // namespace wechat_backtrace

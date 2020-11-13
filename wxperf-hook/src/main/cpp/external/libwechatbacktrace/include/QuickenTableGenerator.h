@@ -6,6 +6,7 @@
 #define _LIBWECHATBACKTRACE_QUICKEN_UNWIND_TABLE_GENERATOR_H
 
 #include <deque>
+#include <memory>
 
 #include "../../common/Log.h"
 #include "../../libunwindstack/ArmExidx.h"
@@ -38,6 +39,8 @@ public:
             FrameInfo arm_exidx_info, QutSections* fut_sections);
 
     QutErrorCode last_error_code;
+
+    static std::shared_ptr<QutSections> FindQutSections(std::string sopath);
 
 protected:
     void DecodeDebugFrameEntriesInstr(FrameInfo debug_frame_info,

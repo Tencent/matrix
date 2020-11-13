@@ -63,6 +63,8 @@ QuickenInterface* QuickenMapInfo::GetQuickenInterfaceFromElf(Elf* elf) {
     std::unique_ptr<QuickenInterface> quicken_interface_ =
             make_unique<QuickenInterface>(elf->memory(), elf->GetLoadBias(), expected_arch);
 
+    quicken_interface_->SetSoInfo(elf->GetBuildID());
+
     ElfInterface *elf_interface = elf->interface();
 
     if (expected_arch == ARCH_ARM) {

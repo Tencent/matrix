@@ -6,6 +6,7 @@
 #define _LIBWECHATBACKTRACE_QUICKEN_UNWIND_TABLE_H
 
 #include <cstdint>
+#include <map>
 #include "unwindstack/Memory.h"
 #include "Types.h"
 
@@ -21,8 +22,10 @@ struct QutSections {
 
     QutSections() = default;
     ~QutSections() {
-        delete quidx;
-        delete qutbl;
+        if (!load_from_file) {
+            delete quidx;
+            delete qutbl;
+        }
 
         idx_size = 0;
         tbl_size = 0;
@@ -42,6 +45,35 @@ struct QutSections {
 
     size_t total_entries = 0;
     size_t start_offset_ = 0;
+
+    bool load_from_file = false;
+};
+
+class QuickenTableManager {
+
+private:
+    QuickenTableManager() = default;
+    ~QuickenTableManager() {
+        // TODO
+    };
+    QuickenTableManager(const QuickenTableManager&);
+    QuickenTableManager& operator=(const QuickenTableManager&);
+
+    // build_id, pair(soname, QutSections)
+    std::map<std::string, std::pair<std::string, std::shared_ptr<QutSections>>> qut_sections_map_;
+
+    std::mutex lock_;
+
+public:
+    static QuickenTableManager& getInstance() {
+        static QuickenTableManager instance;
+        return instance;
+    }
+
+    std::shared_ptr<QutSections> LoadQutSections(std::string sopath, std::string build_id);
+
+    void SaveQutSections(std::string sopath, std::string build_id, std::shared_ptr<QutSections> qut_sections);
+
 };
 
 class QuickenTable {

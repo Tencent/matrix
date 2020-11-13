@@ -52,6 +52,25 @@ bool QuickenInterface::GenerateQuickenTable(unwindstack::Memory* process_memory)
     return ret;
 }
 
+bool QuickenInterface::TryInitQuickenTable() {
+
+    lock_guard<mutex> lock(lock_);
+
+    if (qut_sections_) {
+        return true;
+    }
+
+    qut_sections_ = QuickenTableManager::getInstance().LoadQutSections(soname_, build_id_);
+
+    QUT_DEBUG_LOG("QuickenInterface::TryInitQuickenTable");
+
+    if (qut_sections_) {
+        return true;
+    }
+
+    return false;
+}
+
 bool QuickenInterface::FindEntry(uptr pc, size_t* entry_offset) {
     size_t first = 0;
     size_t last = qut_sections_->idx_size;
@@ -88,7 +107,11 @@ bool QuickenInterface::Step(uptr pc, uptr* regs, unwindstack::Memory* process_me
     }
 
     if (!qut_sections_) {
-        if (!GenerateQuickenTable<addr_t>(process_memory)) {
+//        if (!GenerateQuickenTable<addr_t>(process_memory)) {
+//            last_error_code_ = QUT_ERROR_QUT_SECTION_INVALID;
+//            return false;
+//        }
+        if (!TryInitQuickenTable()) {
             last_error_code_ = QUT_ERROR_QUT_SECTION_INVALID;
             return false;
         }

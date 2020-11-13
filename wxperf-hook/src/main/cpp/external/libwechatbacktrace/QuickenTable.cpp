@@ -18,6 +18,14 @@ namespace wechat_backtrace {
 using namespace std;
 using namespace unwindstack;
 
+std::shared_ptr<QutSections> QuickenTableManager::LoadQutSections(std::string soname, std::string build_id) {
+    // TODO
+}
+
+void QuickenTableManager::SaveQutSections(std::string soname, std::string build_id, std::shared_ptr<QutSections> qut_sections) {
+    // TODO
+}
+
 #define ReturnIndexOverflow(_i, _amount)  \
         if (_i >= _amount) { \
             return false; \

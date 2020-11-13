@@ -139,6 +139,27 @@ void StatisticWeChatQuickenUnwindTable(const char* const sopath, const char* con
     DumpQutStatResult();
 }
 
+void GenerateQutForLibrary(const char* const sopath, const char* const soname) {
+
+    auto memory = new MemoryFile();
+    auto elf = make_unique<Elf>(memory);
+    if (!memory->Init(string(sopath), 0)) {
+        QUT_STAT_LOG("memory->Init so %s failed", sopath);
+        return;
+    }
+    elf->Init();
+    if (!elf->valid()) {
+        QUT_STAT_LOG("elf->valid() so %s invalid", sopath);
+        return;
+    }
+    auto process_memory_ = unwindstack::Memory::CreateProcessMemory(getpid());
+
+    QuickenInterface* interface = QuickenMapInfo::GetQuickenInterfaceFromElf(elf.get());
+    interface->GenerateQuickenTable<addr_t>(process_memory_.get());
+
+    QuickenTableManager::getInstance().SaveQutSections(soname, elf->GetBuildID(), interface->GetQutSections());
+}
+
 inline uint32_t GetPcAdjustment(uint32_t rel_pc, uint32_t load_bias, QuickenInterface* interface) {
     if (rel_pc < load_bias) {
         if (rel_pc < 2) {
