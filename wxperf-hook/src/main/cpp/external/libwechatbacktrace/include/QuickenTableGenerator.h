@@ -18,48 +18,55 @@
 
 namespace wechat_backtrace {
 
-struct FrameInfo {
-    uint64_t offset_ = 0;
-    int64_t section_bias_ = 0;
-    uint64_t size_ = 0;
-};
+    struct FrameInfo {
+        uint64_t offset_ = 0;
+        int64_t section_bias_ = 0;
+        uint64_t size_ = 0;
+    };
 
-template <typename AddressType>
-class QuickenTableGenerator {
+    template<typename AddressType>
+    class QuickenTableGenerator {
 
-public:
-    QuickenTableGenerator(unwindstack::Memory* memory, unwindstack::Memory* process_memory)
-        : memory_(memory), process_memory_(process_memory) {}
-    ~QuickenTableGenerator() {};
+    public:
+        QuickenTableGenerator(unwindstack::Memory *memory, unwindstack::Memory *process_memory)
+                : memory_(memory), process_memory_(process_memory) {}
 
-    bool GenerateUltraQUTSections(
-            FrameInfo eh_frame_hdr_info, FrameInfo eh_frame_info, FrameInfo debug_frame_info,
-            FrameInfo gnu_eh_frame_hdr_info, FrameInfo gnu_eh_frame_info,
-            FrameInfo gnu_debug_frame_info,
-            FrameInfo arm_exidx_info, QutSections* fut_sections);
+        ~QuickenTableGenerator() {};
 
-    QutErrorCode last_error_code;
+        bool GenerateUltraQUTSections(
+                FrameInfo eh_frame_hdr_info, FrameInfo eh_frame_info, FrameInfo debug_frame_info,
+                FrameInfo gnu_eh_frame_hdr_info, FrameInfo gnu_eh_frame_info,
+                FrameInfo gnu_debug_frame_info,
+                FrameInfo arm_exidx_info, QutSections *fut_sections);
 
-    static std::shared_ptr<QutSections> FindQutSections(std::string sopath);
+        QutErrorCode last_error_code;
 
-protected:
-    void DecodeDebugFrameEntriesInstr(FrameInfo debug_frame_info,
-            QutInstructionsOfEntries* entries_instructions, uint16_t regs_total);
-    void DecodeEhFrameEntriesInstr(FrameInfo eh_frame_hdr_info, FrameInfo eh_frame_info,
-            QutInstructionsOfEntries* entries_instructions, uint16_t regs_total);
-    void DecodeExidxEntriesInstr(FrameInfo arm_exidx_info, QutInstructionsOfEntries* entries_instructions);
+        static std::shared_ptr<QutSections> FindQutSections(std::string sopath);
 
-    std::shared_ptr<QutInstructionsOfEntries> MergeFrameEntries(
-            std::shared_ptr<QutInstructionsOfEntries> to, std::shared_ptr<QutInstructionsOfEntries> from);
+    protected:
+        void DecodeDebugFrameEntriesInstr(FrameInfo debug_frame_info,
+                                          QutInstructionsOfEntries *entries_instructions,
+                                          uint16_t regs_total);
 
-    bool PackEntriesToFutSections(
-            QutInstructionsOfEntries* entries, QutSections* fut_sections);
+        void DecodeEhFrameEntriesInstr(FrameInfo eh_frame_hdr_info, FrameInfo eh_frame_info,
+                                       QutInstructionsOfEntries *entries_instructions,
+                                       uint16_t regs_total);
 
-    bool GetPrel31Addr(uint32_t offset, uint32_t* addr);
+        void DecodeExidxEntriesInstr(FrameInfo arm_exidx_info,
+                                     QutInstructionsOfEntries *entries_instructions);
 
-    unwindstack::Memory* memory_;
-    unwindstack::Memory* process_memory_;
-};
+        std::shared_ptr<QutInstructionsOfEntries> MergeFrameEntries(
+                std::shared_ptr<QutInstructionsOfEntries> to,
+                std::shared_ptr<QutInstructionsOfEntries> from);
+
+        bool PackEntriesToFutSections(
+                QutInstructionsOfEntries *entries, QutSections *fut_sections);
+
+        bool GetPrel31Addr(uint32_t offset, uint32_t *addr);
+
+        unwindstack::Memory *memory_;
+        unwindstack::Memory *process_memory_;
+    };
 
 }  // namespace wechat_backtrace
 

@@ -12,56 +12,51 @@
 
 namespace wechat_backtrace {
 
-using namespace std;
+    using namespace std;
 
-static const char * sCurrStatLib = nullptr;
-//typedef map<uint32_t, shared_ptr<vector<pair<uint64_t, uint64_t>>>> StatisticInfoMap;
-static map<uint32_t, shared_ptr<vector<pair<uint64_t, uint64_t>>>> * sStatisticInfo = nullptr;
-static map<uint32_t, shared_ptr<vector<pair<uint64_t, uint64_t>>>> * sStatisticTipsInfo = nullptr;
+    static const char *sCurrStatLib = nullptr;
+    static map<uint32_t, shared_ptr<vector<pair<uint64_t, uint64_t>>>> *sStatisticInfo = nullptr;
+    static map<uint32_t, shared_ptr<vector<pair<uint64_t, uint64_t>>>> *sStatisticTipsInfo = nullptr;
 
-void SetCurrentStatLib(const char* lib) {
-    sCurrStatLib = lib;
-    if (sStatisticInfo != nullptr) delete(sStatisticInfo);
-    sStatisticInfo = new map<uint32_t, shared_ptr<vector<pair<uint64_t, uint64_t>>>>;
-    if (sStatisticTipsInfo != nullptr) delete(sStatisticTipsInfo);
-    sStatisticTipsInfo = new map<uint32_t, shared_ptr<vector<pair<uint64_t, uint64_t>>>>;
-}
-
-void QutStatistic(QutStatisticType type, uint64_t val1, uint64_t val2) {
-    vector<pair<uint64_t, uint64_t>> * v;
-    if (sStatisticInfo->find(type) == sStatisticInfo->end()) {
-        (*sStatisticInfo)[type] = make_shared<vector<pair<uint64_t, uint64_t>>>();
+    void SetCurrentStatLib(const char *lib) {
+        sCurrStatLib = lib;
+        if (sStatisticInfo != nullptr) delete (sStatisticInfo);
+        sStatisticInfo = new map<uint32_t, shared_ptr<vector<pair<uint64_t, uint64_t>>>>;
+        if (sStatisticTipsInfo != nullptr) delete (sStatisticTipsInfo);
+        sStatisticTipsInfo = new map<uint32_t, shared_ptr<vector<pair<uint64_t, uint64_t>>>>;
     }
 
-    v = ((*sStatisticInfo)[type]).get();
-    v->push_back(make_pair(val1, val2));
-}
+    void QutStatistic(QutStatisticType type, uint64_t val1, uint64_t val2) {
+        vector<pair<uint64_t, uint64_t>> *v;
+        if (sStatisticInfo->find(type) == sStatisticInfo->end()) {
+            (*sStatisticInfo)[type] = make_shared<vector<pair<uint64_t, uint64_t>>>();
+        }
 
-void QutStatisticTips(QutStatisticType type, uint64_t val1, uint64_t val2) {
-    vector<pair<uint64_t, uint64_t>> * v;
-    if (sStatisticTipsInfo->find(type) == sStatisticTipsInfo->end()) {
-        (*sStatisticTipsInfo)[type] = make_shared<vector<pair<uint64_t, uint64_t>>>();
+        v = ((*sStatisticInfo)[type]).get();
+        v->push_back(make_pair(val1, val2));
     }
 
-    v = ((*sStatisticTipsInfo)[type]).get();
-    v->push_back(make_pair(val1, val2));
-}
+    void QutStatisticTips(QutStatisticType type, uint64_t val1, uint64_t val2) {
+        vector<pair<uint64_t, uint64_t>> *v;
+        if (sStatisticTipsInfo->find(type) == sStatisticTipsInfo->end()) {
+            (*sStatisticTipsInfo)[type] = make_shared<vector<pair<uint64_t, uint64_t>>>();
+        }
 
-void DumpQutStatResult() {
-
-    auto iter = sStatisticInfo->begin();
-    QUT_STAT_LOG("Dump Qut Statistic for so %s:", sCurrStatLib);
-    while(iter != sStatisticInfo->end()) {
-        QutStatisticType type = (QutStatisticType) iter->first;
-        vector<pair<uint64_t, uint64_t>> * v = iter->second.get();
-        QUT_STAT_LOG("\t Type %u, Count %llu:", type, (uint64_t) v->size());
-//        auto vector_iter = v->begin();
-//        while(vector_iter != v->end()) {
-//            QUT_STAT_LOG("\t\t\t\t| (%llx, %llx)", (uint64_t) vector_iter->first, (uint64_t) vector_iter->second);
-//        }
-        iter++;
+        v = ((*sStatisticTipsInfo)[type]).get();
+        v->push_back(make_pair(val1, val2));
     }
-    QUT_STAT_LOG("Dump Qut Statistic End.\n\n");
-}
+
+    void DumpQutStatResult() {
+
+        auto iter = sStatisticInfo->begin();
+        QUT_STAT_LOG("Dump Qut Statistic for so %s:", sCurrStatLib);
+        while (iter != sStatisticInfo->end()) {
+            QutStatisticType type = (QutStatisticType) iter->first;
+            vector<pair<uint64_t, uint64_t>> *v = iter->second.get();
+            QUT_STAT_LOG("\t Type %u, Count %llu:", type, (uint64_t) v->size());
+            iter++;
+        }
+        QUT_STAT_LOG("Dump Qut Statistic End.\n\n");
+    }
 
 } // namespace wechat_backtrace

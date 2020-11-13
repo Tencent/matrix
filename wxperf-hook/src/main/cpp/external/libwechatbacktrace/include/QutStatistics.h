@@ -5,8 +5,6 @@
 #ifndef _LIBWECHATBACKTRACE_QUT_STATISTICS_H
 #define _LIBWECHATBACKTRACE_QUT_STATISTICS_H
 
-namespace wechat_backtrace {
-
 //#define QUT_STATISTIC_ENABLE  // TODO
 
 #ifdef QUT_STATISTIC_ENABLE
@@ -17,45 +15,47 @@ namespace wechat_backtrace {
 #define QUT_STATISTIC_TIPS(Type, Arg1, Arg2)
 #endif
 
-enum QutStatisticType : uint32_t {
-    InstructionOp = 0,
-    InstructionOpOverflowR7 = 1,
-    InstructionOpOverflowR11 = 2,
-    InstructionOpOverflowJNISP = 3,
-    InstructionOpOverflowX29 = 4,
-    InstructionOpOverflowR4 = 5,
-    InstructionOpOverflowX20 = 6,
+namespace wechat_backtrace {
 
-    InstructionOpImmNotAligned = 9,
-    UnsupportedArmExdix = 10,
+    enum QutStatisticType : uint32_t {
+        InstructionOp = 0,
+        InstructionOpOverflowR7 = 1,
+        InstructionOpOverflowR11 = 2,
+        InstructionOpOverflowJNISP = 3,
+        InstructionOpOverflowX29 = 4,
+        InstructionOpOverflowR4 = 5,
+        InstructionOpOverflowX20 = 6,
 
-    InstructionEntriesArmExidx = 20,
-    InstructionEntriesEhFrame = 21,
-    InstructionEntriesDebugFrame = 22,
+        InstructionOpImmNotAligned = 9,
+        UnsupportedArmExdix = 10,
 
-    UnsupportedDwarfLocation = 30,
-    UnsupportedDwarfLocationValOffset = 31,
-    UnsupportedDwarfLocationRegister = 32,
-    UnsupportedDwarfLocationExpression = 33,
-    UnsupportedDwarfLocationValExpressionWithoutDexPc = 34,
-    UnsupportedDwarfLocationUndefined = 35,
-    UnsupportedDwarfLocationOffset = 36,
+        InstructionEntriesArmExidx = 20,
+        InstructionEntriesEhFrame = 21,
+        InstructionEntriesDebugFrame = 22,
 
-    UnsupportedCfaDwarfLocationRegister = 37,
-    UnsupportedCfaDwarfLocationValExpression = 38,
+        UnsupportedDwarfLocation = 30,
+        UnsupportedDwarfLocationValOffset = 31,
+        UnsupportedDwarfLocationRegister = 32,
+        UnsupportedDwarfLocationExpression = 33,
+        UnsupportedDwarfLocationValExpressionWithoutDexPc = 34,
+        UnsupportedDwarfLocationUndefined = 35,
+        UnsupportedDwarfLocationOffset = 36,
 
-    UnsupportedDwarfOp_OpBreg_Reg = 41,
-    UnsupportedDwarfOp_OpBregx_Reg = 42,
+        UnsupportedCfaDwarfLocationRegister = 37,
+        UnsupportedCfaDwarfLocationValExpression = 38,
 
-};
+        UnsupportedDwarfOp_OpBreg_Reg = 41,
+        UnsupportedDwarfOp_OpBregx_Reg = 42,
 
-void SetCurrentStatLib(const char*);
+    };
 
-void QutStatistic(QutStatisticType, uint64_t, uint64_t);
+    void SetCurrentStatLib(const char *);
 
-void QutStatisticTips(QutStatisticType, uint64_t, uint64_t);
+    void QutStatistic(QutStatisticType, uint64_t, uint64_t);
 
-void DumpQutStatResult();
+    void QutStatisticTips(QutStatisticType, uint64_t, uint64_t);
+
+    void DumpQutStatResult();
 
 }  // namespace wechat_backtrace
 

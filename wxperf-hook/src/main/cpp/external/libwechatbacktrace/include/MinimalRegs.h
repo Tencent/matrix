@@ -38,39 +38,39 @@
 // Only get 4 registers(r7/r11/sp/pc)
 inline __attribute__((__always_inline__)) void RegsMinimalGetLocal(void *reg_data) {
     asm volatile(
-        ".align 2\n"
-        "bx pc\n"
-        "nop\n"
-        ".code 32\n"
-        "stmia %[base], {r7, r11}\n"
-        "add %[base], #8\n"
-        "mov r1, r13\n"
-        "mov r2, r15\n"
-        "stmia %[base], {r1, r2}\n"
-        "orr %[base], pc, #1\n"
-        "bx %[base]\n"
-        : [base] "+r"(reg_data)
-        :
-        : "r1", "r2", "memory");
+    ".align 2\n"
+    "bx pc\n"
+    "nop\n"
+    ".code 32\n"
+    "stmia %[base], {r7, r11}\n"
+    "add %[base], #8\n"
+    "mov r1, r13\n"
+    "mov r2, r15\n"
+    "stmia %[base], {r1, r2}\n"
+    "orr %[base], pc, #1\n"
+    "bx %[base]\n"
+    : [base] "+r"(reg_data)
+    :
+    : "r1", "r2", "memory");
 }
 
 // Fill reg_data[6] with [r4, r7, r10, r11, sp, pc].
 inline __attribute__((__always_inline__)) void GetMinimalRegs(void *reg_data) {
     asm volatile(
-        ".align 2\n"
-        "bx pc\n"
-        "nop\n"
-        ".code 32\n"
-        "stmia %[base], {r4, r7, r10, r11}\n"
-        "add %[base], #16\n"
-        "mov r1, r13\n"
-        "mov r2, r15\n"
-        "stmia %[base], {r1, r2}\n"
-        "orr %[base], pc, #1\n"
-        "bx %[base]\n"
-        : [base] "+r"(reg_data)
-        :
-        : "r1", "r2", "memory");
+    ".align 2\n"
+    "bx pc\n"
+    "nop\n"
+    ".code 32\n"
+    "stmia %[base], {r4, r7, r10, r11}\n"
+    "add %[base], #16\n"
+    "mov r1, r13\n"
+    "mov r2, r15\n"
+    "stmia %[base], {r1, r2}\n"
+    "orr %[base], pc, #1\n"
+    "bx %[base]\n"
+    : [base] "+r"(reg_data)
+    :
+    : "r1", "r2", "memory");
 }
 
 #elif defined(__aarch64__)

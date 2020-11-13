@@ -1,7 +1,7 @@
 #ifndef _LIBWECHATBACKTRACE_FP_UNWINDER_H
 #define _LIBWECHATBACKTRACE_FP_UNWINDER_H
 
-#include "Types.h"
+#include "Predefined.h"
 
 namespace wechat_backtrace {
 

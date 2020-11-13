@@ -34,7 +34,7 @@ public:
             const std::shared_ptr<unwindstack::Memory>& process_memory,
                                           unwindstack::ArchEnum expected_arch);
 
-    std::unique_ptr<QuickenInterface> quicken_interface_;
+    std::shared_ptr<QuickenInterface> quicken_interface_;
 
     std::unique_ptr<unwindstack::FastArmExidxInterface> exidx_interface_;
 

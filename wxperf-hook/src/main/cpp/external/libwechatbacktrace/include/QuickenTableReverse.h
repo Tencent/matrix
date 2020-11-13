@@ -6,7 +6,7 @@
 #define _LIBWECHATBACKTRACE_QUICKEN_UNWIND_TABLE_REVERSE_H
 
 #include <cstdint>
-#include "Types.h"
+#include "Predefined.h"
 #include "QuickenTable.h"
 
 namespace wechat_backtrace {

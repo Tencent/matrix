@@ -31,125 +31,170 @@
 // Forward declarations.
 namespace unwindstack {
 
-class DwarfMemory;
-class Memory;
-template<typename AddressType>
-class RegsImpl;
+    class DwarfMemory;
+
+    class Memory;
+
+    template<typename AddressType>
+    class RegsImpl;
 
 }
 
 namespace wechat_backtrace {
 
 
-template <typename AddressType>
-class DwarfOp {
-  // Signed version of AddressType
-  typedef typename std::make_signed<AddressType>::type SignedType;
+    template<typename AddressType>
+    class DwarfOp {
+        // Signed version of AddressType
+        typedef typename std::make_signed<AddressType>::type SignedType;
 
- public:
-  DwarfOp(unwindstack::DwarfMemory* memory, unwindstack::Memory* regular_memory)
-      : memory_(memory), regular_memory_(regular_memory) {}
-  virtual ~DwarfOp() = default;
+    public:
+        DwarfOp(unwindstack::DwarfMemory *memory, unwindstack::Memory *regular_memory)
+                : memory_(memory), regular_memory_(regular_memory) {}
 
-  bool Decode();
+        virtual ~DwarfOp() = default;
 
-  bool Eval(uint64_t start, uint64_t end);
+        bool Decode();
 
-  void GetLogInfo(uint64_t start, uint64_t end, std::vector<std::string>* lines);
+        bool Eval(uint64_t start, uint64_t end);
 
-  AddressType StackAt(size_t index) { return stack_[index]; }
-  size_t StackSize() { return stack_.size(); }
+        void GetLogInfo(uint64_t start, uint64_t end, std::vector<std::string> *lines);
 
-  void set_regs_info(uint16_t regs_total) {
-    regs_total_ = regs_total;
-  }
+        AddressType StackAt(size_t index) { return stack_[index]; }
 
-  const DwarfErrorData& last_error() { return last_error_; }
-  DwarfErrorCode LastErrorCode() { return last_error_.code; }
-  uint64_t LastErrorAddress() { return last_error_.address; }
+        size_t StackSize() { return stack_.size(); }
 
-  bool dex_pc_set() { return dex_pc_set_; }
+        void set_regs_info(uint16_t regs_total) {
+            regs_total_ = regs_total;
+        }
 
-  bool is_register() { return is_register_; }
+        const DwarfErrorData &last_error() { return last_error_; }
 
-  uint8_t cur_op() { return cur_op_; }
+        DwarfErrorCode LastErrorCode() { return last_error_.code; }
 
-  unwindstack::Memory* regular_memory() { return regular_memory_; }
+        uint64_t LastErrorAddress() { return last_error_.address; }
 
-  uint16_t reg_expression() { return reg_expression_; }
+        bool dex_pc_set() { return dex_pc_set_; }
 
- protected:
-  AddressType OperandAt(size_t index) { return operands_[index]; }
-  size_t OperandsSize() { return operands_.size(); }
+        bool is_register() { return is_register_; }
 
-  AddressType StackPop() {
-    AddressType value = stack_.front();
-    stack_.pop_front();
-    return value;
-  }
+        uint8_t cur_op() { return cur_op_; }
 
- private:
-  unwindstack::DwarfMemory* memory_;
-  unwindstack::Memory* regular_memory_;
+        unwindstack::Memory *regular_memory() { return regular_memory_; }
 
-  uint16_t regs_total_;
-  uint16_t reg_expression_ = 0;
+        uint16_t reg_expression() { return reg_expression_; }
 
-  bool dex_pc_set_ = false;
-  bool is_register_ = false;
-  DwarfErrorData last_error_{DWARF_ERROR_NONE, 0};
-  uint8_t cur_op_;
-  std::vector<AddressType> operands_;
-  std::deque<AddressType> stack_;
+    protected:
+        AddressType OperandAt(size_t index) { return operands_[index]; }
 
-  inline AddressType bool_to_dwarf_bool(bool value) { return value ? 1 : 0; }
+        size_t OperandsSize() { return operands_.size(); }
 
-  bool support_reg(uint16_t reg);
+        AddressType StackPop() {
+            AddressType value = stack_.front();
+            stack_.pop_front();
+            return value;
+        }
 
-  // Op processing functions.
-  bool op_deref();
-  bool op_deref_size();
-  bool op_push();
-  bool op_dup();
-  bool op_drop();
-  bool op_over();
-  bool op_pick();
-  bool op_swap();
-  bool op_rot();
-  bool op_abs();
-  bool op_and();
-  bool op_div();
-  bool op_minus();
-  bool op_mod();
-  bool op_mul();
-  bool op_neg();
-  bool op_not();
-  bool op_or();
-  bool op_plus();
-  bool op_plus_uconst();
-  bool op_shl();
-  bool op_shr();
-  bool op_shra();
-  bool op_xor();
-  bool op_bra();
-  bool op_eq();
-  bool op_ge();
-  bool op_gt();
-  bool op_le();
-  bool op_lt();
-  bool op_ne();
-  bool op_skip();
-  bool op_lit();
-  bool op_reg();
-  bool op_regx();
-  bool op_breg();
-  bool op_bregx();
-  bool op_nop();
-  bool op_not_implemented();
+    private:
+        unwindstack::DwarfMemory *memory_;
+        unwindstack::Memory *regular_memory_;
 
-  using OpHandleFuncPtr = bool (DwarfOp::*)();
-  static const OpHandleFuncPtr kOpHandleFuncList[];
-};
+        uint16_t regs_total_;
+        uint16_t reg_expression_ = 0;
+
+        bool dex_pc_set_ = false;
+        bool is_register_ = false;
+        DwarfErrorData last_error_{DWARF_ERROR_NONE, 0};
+        uint8_t cur_op_;
+        std::vector<AddressType> operands_;
+        std::deque<AddressType> stack_;
+
+        inline AddressType bool_to_dwarf_bool(bool value) { return value ? 1 : 0; }
+
+        bool support_reg(uint16_t reg);
+
+        // Op processing functions.
+        bool op_deref();
+
+        bool op_deref_size();
+
+        bool op_push();
+
+        bool op_dup();
+
+        bool op_drop();
+
+        bool op_over();
+
+        bool op_pick();
+
+        bool op_swap();
+
+        bool op_rot();
+
+        bool op_abs();
+
+        bool op_and();
+
+        bool op_div();
+
+        bool op_minus();
+
+        bool op_mod();
+
+        bool op_mul();
+
+        bool op_neg();
+
+        bool op_not();
+
+        bool op_or();
+
+        bool op_plus();
+
+        bool op_plus_uconst();
+
+        bool op_shl();
+
+        bool op_shr();
+
+        bool op_shra();
+
+        bool op_xor();
+
+        bool op_bra();
+
+        bool op_eq();
+
+        bool op_ge();
+
+        bool op_gt();
+
+        bool op_le();
+
+        bool op_lt();
+
+        bool op_ne();
+
+        bool op_skip();
+
+        bool op_lit();
+
+        bool op_reg();
+
+        bool op_regx();
+
+        bool op_breg();
+
+        bool op_bregx();
+
+        bool op_nop();
+
+        bool op_not_implemented();
+
+        using OpHandleFuncPtr = bool (DwarfOp::*)();
+        static const OpHandleFuncPtr kOpHandleFuncList[];
+    };
 
 }  // namespace wechat_backtrace
 
