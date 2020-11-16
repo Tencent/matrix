@@ -88,6 +88,11 @@ public class AlarmManagerServiceHooker {
         checkUnHook();
     }
 
+    public synchronized static void release() {
+        sListeners.clear();
+        checkUnHook();
+    }
+
     private static void checkHook() {
         if (sTryHook) {
             return;

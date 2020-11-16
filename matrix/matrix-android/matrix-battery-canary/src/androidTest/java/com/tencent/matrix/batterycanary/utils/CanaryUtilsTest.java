@@ -25,6 +25,7 @@ import android.util.Log;
 
 import com.tencent.matrix.Matrix;
 import com.tencent.matrix.batterycanary.BatteryMonitorPlugin;
+import com.tencent.matrix.batterycanary.TestUtils;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorConfig;
 import com.tencent.matrix.batterycanary.monitor.feature.WakeLockMonitorFeature;
 
@@ -58,6 +59,8 @@ public class CanaryUtilsTest {
 
     @Test
     public void testGetProcName() {
+        if (TestUtils.isAssembleTest()) return;
+
         try {
             BatteryCanaryUtil.getProcessName();
             Assert.fail("should fail");
@@ -84,6 +87,8 @@ public class CanaryUtilsTest {
 
     @Test
     public void testGetPkgName() {
+        if (TestUtils.isAssembleTest()) return;
+        
         try {
             BatteryCanaryUtil.getPackageName();
             Assert.fail("should fail");
@@ -110,6 +115,8 @@ public class CanaryUtilsTest {
 
     @Test
     public void testGetThrowableStack() {
+        if (TestUtils.isAssembleTest()) return;
+
         try {
             BatteryCanaryUtil.getThrowableStack(new Throwable());
             Assert.fail("should fail");
@@ -158,6 +165,8 @@ public class CanaryUtilsTest {
 
     @Test
     public void testDicing() {
+        if (TestUtils.isAssembleTest()) return;
+
         long loopCount = 1000L;
         int totalRollCount = 0;
         for (int i = 0; i < loopCount; i++) {

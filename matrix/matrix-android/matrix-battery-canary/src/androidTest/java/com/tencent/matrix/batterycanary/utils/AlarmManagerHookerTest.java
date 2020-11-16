@@ -46,6 +46,7 @@ public class AlarmManagerHookerTest {
 
     @After
     public void shutDown() {
+        AlarmManagerServiceHooker.release();
     }
 
     @Test

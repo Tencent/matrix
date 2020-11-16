@@ -29,6 +29,8 @@ import android.support.test.InstrumentationRegistry;
 import android.support.test.runner.AndroidJUnit4;
 import android.util.Log;
 
+import com.tencent.matrix.batterycanary.TestUtils;
+
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -73,12 +75,10 @@ public class TemperatureUtilsTest {
 
     @Test
     public void testGetDeviceTemperature() throws InterruptedException {
+        if (TestUtils.isAssembleTest()) return;
+
         // HardwarePropertiesManager hardwarePropertiesManager= (HardwarePropertiesManager) mContext.getSystemService(Context.HARDWARE_PROPERTIES_SERVICE);
         // float[] temp = hardwarePropertiesManager.getDeviceTemperatures(HardwarePropertiesManager.DEVICE_TEMPERATURE_CPU, HardwarePropertiesManager.TEMPERATURE_CURRENT);
-
-        // thermal();
-
-        // new Wrapper(mContext).getAmbientTemperature(11,30);
 
         SensorManager manager = (SensorManager) mContext.getSystemService(SENSOR_SERVICE);
         Sensor sensor = manager.getDefaultSensor(Sensor.TYPE_AMBIENT_TEMPERATURE);
@@ -88,12 +88,10 @@ public class TemperatureUtilsTest {
                 Assert.assertNotNull(sensor);
 
             }
-
             @Override
             public void onSensorChanged(SensorEvent event) {
                 Assert.assertNotNull(event);
             }
-
             @Override
             public void onAccuracyChanged(Sensor sensor, int accuracy) {
                 Assert.assertNotNull(sensor);
@@ -103,7 +101,14 @@ public class TemperatureUtilsTest {
 
         while (true) {
             Log.v(TAG, "foo");
+            Thread.sleep(100L);
         }
+    }
+
+    @Test
+    public void testGetDeviceTemperatureR2() throws InterruptedException {
+        if (TestUtils.isAssembleTest()) return;
+        thermal();
     }
 
     private static void thermal() {
@@ -172,22 +177,20 @@ public class TemperatureUtilsTest {
         return type;
     }
 
-
     @Test
-    public void testGetBatteryTemperature() throws Exception {
-        Intent batIntent = mContext.registerReceiver(null, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
-        Assert.assertNotNull(batIntent);
-        Double batTemp = (double) batIntent.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, 0) / 10;
-        Assert.assertNotNull(batTemp);
+    public void testGetDeviceTemperatureR3() throws InterruptedException {
+        if (TestUtils.isAssembleTest()) return;
+        new BatteryTempWrapper(mContext).getAmbientTemperature(11,30);
     }
 
-    private static class BatteryTempWrapper {
-        final Context mContext;
 
+    private static class BatteryTempWrapper {
+
+        final Context mContext;
         // EXAMPLE ONLY - RESET HIGHEST AT 500°C
+
         public Double closestTemperature = 500.0;
         public Long resetTime = 0L;
-
         public BatteryTempWrapper(Context context) {
             mContext = context;
         }
@@ -247,50 +250,9 @@ public class TemperatureUtilsTest {
             // FORMAT & RETURN
             return decimalFormat.format(closestTemperature);
         }
+
     }
 
-
-    @Test
-    public void testGetCpuFreq() throws Exception {
-        Double[] doubles = getCPUFrequencyCurrent();
-        Assert.assertNotNull(doubles);
-    }
-
-    public static Double[] getCPUFrequencyCurrent() throws Exception {
-        Double[] output = new Double[getNumCores()];
-        for(int i=0;i<getNumCores();i++) {
-            RandomAccessFile restrictedFile = new RandomAccessFile("/sys/devices/system/cpu/cpu"+String.valueOf(i)+"/cpufreq/scaling_cur_freq", "r");
-            Double cpuTemp = (Double.parseDouble(restrictedFile.readLine()) / 1000);
-            output[i] = cpuTemp;
-        }
-        return output;
-    }
-
-    public static int getNumCores() {
-        //Private Class to display only CPU devices in the directory listing
-        class CpuFilter implements FileFilter {
-            @Override
-            public boolean accept(File pathname) {
-                //Check if filename is "cpu", followed by a single digit number
-                if(Pattern.matches("cpu[0-9]+", pathname.getName())) {
-                    return true;
-                }
-                return false;
-            }
-        }
-
-        try {
-            //Get directory containing CPU info
-            File dir = new File("/sys/devices/system/cpu/");
-            //Filter to only list the devices we care about
-            File[] files = dir.listFiles(new CpuFilter());
-            //Return the number of cores (virtual CPU devices)
-            return files.length;
-        } catch(Exception e) {
-            //Default to return 1 core
-            return 1;
-        }
-    }
 
     @Test
     public void testCatDeviceSysFiles() throws Exception {
@@ -320,5 +282,20 @@ public class TemperatureUtilsTest {
                 e.printStackTrace();
             }
         }
+    }
+
+    @Test
+    public void testGetBatteryTemperature() throws Exception {
+        Intent batIntent = mContext.registerReceiver(null, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
+        Assert.assertNotNull(batIntent);
+        Double batTemp = (double) batIntent.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, 0) / 10;
+        Assert.assertNotNull(batTemp);
+    }
+
+    @Test
+    public void testGetCpuFreq() throws Exception {
+        int[] cpuCurrentFreq = BatteryCanaryUtil.getCpuCurrentFreq();
+        Assert.assertNotNull(cpuCurrentFreq);
+        Assert.assertTrue(cpuCurrentFreq.length > 0);
     }
 }
