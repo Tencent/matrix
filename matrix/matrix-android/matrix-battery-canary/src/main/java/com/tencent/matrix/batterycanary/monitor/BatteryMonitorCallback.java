@@ -180,10 +180,10 @@ public interface BatteryMonitorCallback extends JiffiesMonitorFeature.JiffiesLis
                         onReportAlarm(diff);
                         printer.createSubSection("during");
                         printer.writeLine(diff.during + "(mls)\t" + (diff.during/ONE_MIN) +"(min)");
-                        printer.writeLine("inc_alarm_count", String.valueOf(diff.dlt.totalCount));
-                        printer.writeLine("inc_trace_count", String.valueOf(diff.dlt.tracingCount));
-                        printer.writeLine("inc_dupli_group", String.valueOf(diff.dlt.duplicatedGroup));
-                        printer.writeLine("inc_dupli_count", String.valueOf(diff.dlt.duplicatedCount));
+                        printer.writeLine("inc_alarm_count", String.valueOf(diff.dlt.totalCount.get()));
+                        printer.writeLine("inc_trace_count", String.valueOf(diff.dlt.tracingCount.get()));
+                        printer.writeLine("inc_dupli_group", String.valueOf(diff.dlt.duplicatedGroup.get()));
+                        printer.writeLine("inc_dupli_count", String.valueOf(diff.dlt.duplicatedCount.get()));
                     }
                 });
             }

@@ -104,14 +104,17 @@ public class AlarmMonitorFeature implements MonitorFeature, AlarmManagerServiceH
     public AlarmSnapshot currentAlarms() {
         AlarmSnapshot snapshot = new AlarmSnapshot();
         synchronized (mTotalAlarms) {
-            snapshot.totalCount = mTotalAlarms.size();
-            snapshot.tracingCount = mTracingAlarms.size();
+            snapshot.totalCount = Snapshot.Entry.DigitEntry.of(mTotalAlarms.size());
+            snapshot.tracingCount = Snapshot.Entry.DigitEntry.of(mTracingAlarms.size());
+            int duplicatedGroup = 0, duplicatedCount = 0;
             for (List<AlarmRecord> item : mTracingAlarms.values()) {
                 if (item.size() > 1) {
-                    snapshot.duplicatedGroup ++;
-                    snapshot.duplicatedCount += item.size();
+                    duplicatedGroup ++;
+                    duplicatedCount += item.size();
                 }
             }
+            snapshot.duplicatedGroup = Snapshot.Entry.DigitEntry.of(duplicatedGroup);
+            snapshot.duplicatedCount = Snapshot.Entry.DigitEntry.of(duplicatedCount);
         }
         return snapshot;
     }
@@ -148,10 +151,10 @@ public class AlarmMonitorFeature implements MonitorFeature, AlarmManagerServiceH
     }
 
     public static class AlarmSnapshot extends Snapshot<AlarmSnapshot> {
-        public int totalCount;
-        public int tracingCount;
-        public int duplicatedGroup;
-        public int duplicatedCount;
+        public Entry.DigitEntry<Integer> totalCount;
+        public Entry.DigitEntry<Integer> tracingCount;
+        public Entry.DigitEntry<Integer> duplicatedGroup;
+        public Entry.DigitEntry<Integer> duplicatedCount;
 
         @Override
         public Delta<AlarmSnapshot> diff(AlarmSnapshot bgn) {
@@ -159,10 +162,10 @@ public class AlarmMonitorFeature implements MonitorFeature, AlarmManagerServiceH
                 @Override
                 protected AlarmSnapshot computeDelta() {
                     AlarmSnapshot snapshot = new AlarmSnapshot();
-                    snapshot.totalCount = DifferLegacy.sDigitDiffer.diffInt(bgn.totalCount, end.totalCount);
-                    snapshot.tracingCount = DifferLegacy.sDigitDiffer.diffInt(bgn.tracingCount, end.tracingCount);
-                    snapshot.duplicatedCount = DifferLegacy.sDigitDiffer.diffInt(bgn.duplicatedGroup, end.duplicatedGroup);
-                    snapshot.duplicatedCount = DifferLegacy.sDigitDiffer.diffInt(bgn.duplicatedCount, end.duplicatedCount);
+                    snapshot.totalCount = Differ.DigitDiffer.globalDiff(bgn.totalCount, end.totalCount);
+                    snapshot.tracingCount = Differ.DigitDiffer.globalDiff(bgn.tracingCount, end.tracingCount);
+                    snapshot.duplicatedGroup = Differ.DigitDiffer.globalDiff(bgn.duplicatedGroup, end.duplicatedGroup);
+                    snapshot.duplicatedCount = Differ.DigitDiffer.globalDiff(bgn.duplicatedCount, end.duplicatedCount);
                     return snapshot;
                 }
             };

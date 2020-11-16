@@ -71,8 +71,8 @@ public class MonitorFeatureAlarmTest {
         feature.configure(mockMonitor());
 
         AlarmMonitorFeature.AlarmSnapshot snapshot = feature.currentAlarms();
-        Assert.assertEquals(0, snapshot.totalCount);
-        Assert.assertEquals(0, snapshot.tracingCount);
+        Assert.assertEquals(0, (long) snapshot.totalCount.get());
+        Assert.assertEquals(0, (long) snapshot.tracingCount.get());
 
         for (int i = 0; i < 50; i++) {
             Intent intent = new Intent();
@@ -81,16 +81,16 @@ public class MonitorFeatureAlarmTest {
             PendingIntent pendingIntent = PendingIntent.getBroadcast(mContext, i, intent, 33); // differ pending intent
             feature.onAlarmSet(AlarmManager.RTC, 0 , 0 , 0, 0, pendingIntent, null);
             snapshot = feature.currentAlarms();
-            Assert.assertEquals(i + 1, snapshot.totalCount);
-            Assert.assertEquals(i + 1, snapshot.tracingCount);
-            Assert.assertEquals(0, snapshot.duplicatedGroup);
-            Assert.assertEquals(0, snapshot.duplicatedCount);
+            Assert.assertEquals(i + 1, (long) snapshot.totalCount.get());
+            Assert.assertEquals(i + 1, (long) snapshot.tracingCount.get());
+            Assert.assertEquals(0, (long) snapshot.duplicatedGroup.get());
+            Assert.assertEquals(0, (long) snapshot.duplicatedCount.get());
         }
 
         feature.onTurnOff();
         snapshot = feature.currentAlarms();
-        Assert.assertEquals(0, snapshot.totalCount);
-        Assert.assertEquals(0, snapshot.tracingCount);
+        Assert.assertEquals(0,(long) snapshot.totalCount.get());
+        Assert.assertEquals(0,(long) snapshot.tracingCount.get());
     }
 
     @Test
@@ -99,8 +99,8 @@ public class MonitorFeatureAlarmTest {
         feature.configure(mockMonitor());
 
         AlarmMonitorFeature.AlarmSnapshot snapshot = feature.currentAlarms();
-        Assert.assertEquals(0, snapshot.totalCount);
-        Assert.assertEquals(0, snapshot.tracingCount);
+        Assert.assertEquals(0, (long) snapshot.totalCount.get());
+        Assert.assertEquals(0, (long) snapshot.tracingCount.get());
 
         for (int i = 0; i < 50; i++) {
             Intent intent = new Intent();
@@ -109,15 +109,15 @@ public class MonitorFeatureAlarmTest {
             PendingIntent pendingIntent = PendingIntent.getBroadcast(mContext, 22, intent, 33); // same pending intent bcs input args consist
             feature.onAlarmSet(AlarmManager.RTC, 0 , 0 , 0, 0, pendingIntent, null);
             snapshot = feature.currentAlarms();
-            Assert.assertEquals(i + 1 , snapshot.totalCount);
-            Assert.assertEquals(1, snapshot.tracingCount);
-            Assert.assertEquals(i >= 1 ? 1 : 0, snapshot.duplicatedGroup);
-            Assert.assertEquals(i >= 1 ? i + 1 : 0, snapshot.duplicatedCount);
+            Assert.assertEquals(i + 1 , (long) snapshot.totalCount.get());
+            Assert.assertEquals(1, (long) snapshot.tracingCount.get());
+            Assert.assertEquals(i >= 1 ? 1 : 0, (long) snapshot.duplicatedGroup.get());
+            Assert.assertEquals(i >= 1 ? i + 1 : 0, (long) snapshot.duplicatedCount.get());
         }
 
         feature.onTurnOff();
         snapshot = feature.currentAlarms();
-        Assert.assertEquals(0, snapshot.totalCount);
-        Assert.assertEquals(0, snapshot.tracingCount);
+        Assert.assertEquals(0, (long) snapshot.totalCount.get());
+        Assert.assertEquals(0, (long) snapshot.tracingCount.get());
     }
 }
