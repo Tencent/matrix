@@ -82,9 +82,9 @@ public class MonitorFeatureWakeLockTest {
         Assert.assertEquals(0, feature.mWorkingWakeLocks.size());
         Assert.assertEquals(0, feature.mFinishedWakeLockRecords.size());
         WakeLockMonitorFeature.WakeLockSnapshot wakeLockSnapshot = feature.currentWakeLocks();
-        Assert.assertEquals(0, wakeLockSnapshot.totalWakeLockCount);
-        Assert.assertEquals(0, wakeLockSnapshot.totalWakeLockTime);
-        Assert.assertEquals(0, wakeLockSnapshot.totalWakeLockRecords.size());
+        Assert.assertEquals(0, wakeLockSnapshot.totalWakeLockCount.get().intValue());
+        Assert.assertEquals(0, wakeLockSnapshot.totalWakeLockTime.get().longValue());
+        Assert.assertEquals(0, wakeLockSnapshot.totalWakeLockRecords.getList().size());
 
         for (int i = 0; i < 100; i++) {
             IBinder mockToken = mock(IBinder.class);
@@ -98,8 +98,8 @@ public class MonitorFeatureWakeLockTest {
         Assert.assertEquals(0, feature.mFinishedWakeLockRecords.size());
         Assert.assertEquals(100, feature.mWorkingWakeLocks.size());
         wakeLockSnapshot = feature.currentWakeLocks();
-        Assert.assertEquals(100, wakeLockSnapshot.totalWakeLockCount);
-        Assert.assertEquals(100, wakeLockSnapshot.totalWakeLockRecords.size());
+        Assert.assertEquals(100, wakeLockSnapshot.totalWakeLockCount.get().intValue());
+        Assert.assertEquals(100, wakeLockSnapshot.totalWakeLockRecords.getList().size());
 
         ArrayList<WakeLockMonitorFeature.WakeLockTrace> workingList = new ArrayList<>(feature.mWorkingWakeLocks.values());
         for (int i = 0; i < workingList.size(); i++) {
@@ -121,8 +121,8 @@ public class MonitorFeatureWakeLockTest {
         Assert.assertEquals(100, feature.mFinishedWakeLockRecords.size());
         Assert.assertEquals(0, feature.mWorkingWakeLocks.size());
         wakeLockSnapshot = feature.currentWakeLocks();
-        Assert.assertEquals(100, wakeLockSnapshot.totalWakeLockCount);
-        Assert.assertEquals(100, wakeLockSnapshot.totalWakeLockRecords.size());
+        Assert.assertEquals(100, wakeLockSnapshot.totalWakeLockCount.get().intValue());
+        Assert.assertEquals(100, wakeLockSnapshot.totalWakeLockRecords.getList().size());
     }
 
     @Test
@@ -133,9 +133,9 @@ public class MonitorFeatureWakeLockTest {
         Assert.assertEquals(0, feature.mWorkingWakeLocks.size());
         Assert.assertEquals(0, feature.mFinishedWakeLockRecords.size());
         WakeLockMonitorFeature.WakeLockSnapshot wakeLockSnapshot = feature.currentWakeLocks();
-        Assert.assertEquals(0, wakeLockSnapshot.totalWakeLockCount);
-        Assert.assertEquals(0, wakeLockSnapshot.totalWakeLockTime);
-        Assert.assertEquals(0, wakeLockSnapshot.totalWakeLockRecords.size());
+        Assert.assertEquals(0, wakeLockSnapshot.totalWakeLockCount.get().intValue());
+        Assert.assertEquals(0, wakeLockSnapshot.totalWakeLockTime.get().longValue());
+        Assert.assertEquals(0, wakeLockSnapshot.totalWakeLockRecords.getList().size());
 
         ArrayList<Thread> threads = new ArrayList<>();
         for (int i = 0; i < 100; i++) {
@@ -158,8 +158,8 @@ public class MonitorFeatureWakeLockTest {
         Assert.assertEquals(0, feature.mFinishedWakeLockRecords.size());
         Assert.assertEquals(100, feature.mWorkingWakeLocks.size());
         wakeLockSnapshot = feature.currentWakeLocks();
-        Assert.assertEquals(100, wakeLockSnapshot.totalWakeLockCount);
-        Assert.assertEquals(100, wakeLockSnapshot.totalWakeLockRecords.size());
+        Assert.assertEquals(100, wakeLockSnapshot.totalWakeLockCount.get().intValue());
+        Assert.assertEquals(100, wakeLockSnapshot.totalWakeLockRecords.getList().size());
 
         final ArrayList<WakeLockMonitorFeature.WakeLockTrace> workingList = new ArrayList<>(feature.mWorkingWakeLocks.values());
         threads = new ArrayList<>();
@@ -192,8 +192,8 @@ public class MonitorFeatureWakeLockTest {
         Assert.assertEquals(100, feature.mFinishedWakeLockRecords.size());
         Assert.assertEquals(0, feature.mWorkingWakeLocks.size());
         wakeLockSnapshot = feature.currentWakeLocks();
-        Assert.assertEquals(100, wakeLockSnapshot.totalWakeLockCount);
-        Assert.assertEquals(100, wakeLockSnapshot.totalWakeLockRecords.size());
+        Assert.assertEquals(100, wakeLockSnapshot.totalWakeLockCount.get().intValue());
+        Assert.assertEquals(100, wakeLockSnapshot.totalWakeLockRecords.getList().size());
     }
 
     @Test

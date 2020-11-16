@@ -24,6 +24,7 @@ import android.support.test.InstrumentationRegistry;
 import android.support.test.runner.AndroidJUnit4;
 
 import com.tencent.matrix.Matrix;
+import com.tencent.matrix.batterycanary.TestUtils;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorConfig;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
 
@@ -65,6 +66,8 @@ public class MonitorFeatureJiffiesTest {
 
     @Test
     public void testJiffiesForegroundLoopCheck() throws InterruptedException {
+        if (TestUtils.isAssembleTest()) { return; }
+
         Thread thread = new Thread(new Runnable() {
             @Override
             public void run() {
@@ -92,6 +95,8 @@ public class MonitorFeatureJiffiesTest {
 
     @Test
     public void testJiffiesBackgroundCheck() throws InterruptedException {
+        if (TestUtils.isAssembleTest()) { return; }
+
         Thread thread = new Thread(new Runnable() {
             @Override
             public void run() {

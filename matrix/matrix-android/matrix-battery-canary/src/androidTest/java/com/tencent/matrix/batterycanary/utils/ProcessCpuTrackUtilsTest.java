@@ -24,6 +24,7 @@ import android.support.test.InstrumentationRegistry;
 import android.support.test.runner.AndroidJUnit4;
 import android.text.TextUtils;
 
+import com.tencent.matrix.batterycanary.TestUtils;
 import com.tencent.matrix.util.MatrixLog;
 import com.tencent.matrix.util.MatrixUtil;
 
@@ -74,12 +75,6 @@ public class ProcessCpuTrackUtilsTest {
 
         StackTraceElement[] ste = Thread.currentThread().getStackTrace();
         Assert.assertEquals("testGetCurrentMethodName", ste[2].getMethodName());
-    }
-
-    private static boolean skipWhenAssemle() {
-        StackTraceElement[] ste = Thread.currentThread().getStackTrace();
-        String outterMehotdName = ste[2 + 1].getMethodName();
-        return !InstrumentationRegistry.getArguments().get("class").toString().endsWith("#" + outterMehotdName);
     }
 
     /**
@@ -218,7 +213,7 @@ public class ProcessCpuTrackUtilsTest {
 
     @Test
     public void testGetMyProcThreadStatBenchmark() {
-        if (skipWhenAssemle()) return;
+        if (TestUtils.isAssembleTest()) return;
 
         int times = 100;
         long current = SystemClock.uptimeMillis();
@@ -298,7 +293,7 @@ public class ProcessCpuTrackUtilsTest {
 
     @Test
     public void testGetMyProcThreadStatWithBufferBenchmark() {
-        if (skipWhenAssemle()) return;
+        if (TestUtils.isAssembleTest()) return;
 
         int times = 100;
         long current = SystemClock.uptimeMillis();

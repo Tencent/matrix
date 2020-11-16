@@ -97,6 +97,12 @@ public interface MonitorFeature {
                     return Objects.hash(value);
                 }
 
+                @Override
+                @NonNull
+                public String toString() {
+                    return String.valueOf(value);
+                }
+
                 public abstract DIGIT diff(DIGIT right);
 
                 static class IntDigit extends DigitEntry<Integer> {
@@ -172,6 +178,12 @@ public interface MonitorFeature {
                 @Override
                 public int hashCode() {
                     return Objects.hash(value);
+                }
+
+                @Override
+                @NonNull
+                public String toString() {
+                    return String.valueOf(value);
                 }
             }
 
@@ -402,6 +414,5 @@ public interface MonitorFeature {
             }
 
         }
-
     }
 }

@@ -17,6 +17,7 @@ import com.tencent.matrix.batterycanary.monitor.feature.DeviceStatMonitorFeature
 import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature.JiffiesResult;
 import com.tencent.matrix.batterycanary.monitor.feature.LooperTaskMonitorFeature;
+import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Delta;
 import com.tencent.matrix.batterycanary.monitor.feature.WakeLockMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.WakeLockMonitorFeature.WakeLockSnapshot;
@@ -161,9 +162,9 @@ public interface BatteryMonitorCallback extends JiffiesMonitorFeature.JiffiesLis
                         printer.writeLine("inc_lock_count", String.valueOf(diff.dlt.totalWakeLockCount));
                         printer.writeLine("inc_time_total", String.valueOf(diff.dlt.totalWakeLockTime));
                         printer.createSubSection("locking");
-                        for (WakeLockRecord item : diff.end.totalWakeLockRecords) {
-                            if (!item.isFinished()) {
-                                printer.writeLine(item.toString());
+                        for (MonitorFeature.Snapshot.Entry.BeanEntry<WakeLockRecord> item : diff.end.totalWakeLockRecords.getList()) {
+                            if (!item.get().isFinished()) {
+                                printer.writeLine(item.get().toString());
                             }
                         }
                     }
