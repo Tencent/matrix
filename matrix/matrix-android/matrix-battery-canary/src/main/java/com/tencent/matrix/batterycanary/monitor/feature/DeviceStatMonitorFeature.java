@@ -51,6 +51,7 @@ public final class DeviceStatMonitorFeature implements MonitorFeature {
         CpuFreqSnapshot snapshot = new CpuFreqSnapshot();
         try {
             snapshot.cpuFreq = BatteryCanaryUtil.getCpuCurrentFreq();
+            snapshot.cpuFreqs = Snapshot.Entry.ListEntry.ofDigits(BatteryCanaryUtil.getCpuCurrentFreq());
         } catch (Throwable e) {
             MatrixLog.printErrStackTrace(TAG, e, "#currentCpuFreq error");
             snapshot.cpuFreq = new int[0];
@@ -61,6 +62,7 @@ public final class DeviceStatMonitorFeature implements MonitorFeature {
     public BatteryTmpSnapshot currentBatteryTemperature(Context context) {
         BatteryTmpSnapshot snapshot = new BatteryTmpSnapshot();
         snapshot.temperature = mMonitor.getCurrentBatteryTemperature(context);
+        snapshot.temp = Snapshot.Entry.DigitEntry.of(mMonitor.getCurrentBatteryTemperature(context));
         return snapshot;
     }
 

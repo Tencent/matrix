@@ -366,8 +366,7 @@ public interface MonitorFeature {
 
                 @Override
                 public Long diff(Long bgn, Long end) {
-                    long diff = end - bgn;
-                    return diff >= 0 ? diff : 0;
+                    return end - bgn;
                 }
 
                 public Integer diffInt(Integer bgn, Integer end) {

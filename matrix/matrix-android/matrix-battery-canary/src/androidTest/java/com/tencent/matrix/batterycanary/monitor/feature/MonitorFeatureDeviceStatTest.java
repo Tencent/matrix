@@ -88,7 +88,11 @@ public class MonitorFeatureDeviceStatTest {
             int cpuDlt = diff.dlt.cpuFreq[i];
             int cpuBgn = diff.bgn.cpuFreq[i];
             int cpuEnd = diff.end.cpuFreq[i];
-            Assert.assertEquals(cpuEnd, cpuBgn + cpuDlt);
+            Assert.assertEquals(cpuEnd + "-" + cpuBgn + "=" + cpuDlt, cpuEnd, cpuBgn + cpuDlt);
+            Assert.assertEquals(
+                    (int) diff.dlt.cpuFreqs.getList().get(i).get(),
+                    diff.end.cpuFreqs.getList().get(i).get() - diff.bgn.cpuFreqs.getList().get(i).get()
+            );
         }
     }
 
@@ -112,5 +116,6 @@ public class MonitorFeatureDeviceStatTest {
         Assert.assertSame(end, diff.end);
         Assert.assertEquals(end.time, bgn.time + diff.during);
         Assert.assertEquals(end.temperature, bgn.temperature + diff.dlt.temperature);
-    }
+        Assert.assertEquals((int) diff.dlt.temp.get(), diff.end.temp.get() - diff.bgn.temp.get());
+}
 }
