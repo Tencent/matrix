@@ -49,13 +49,15 @@
 	memory_logging_type_mapped_file_or_shared_mem | \
 	VM_FLAGS_ALIAS_MASK)
 
-#define __ML_FILE_NAME__ (strrchr(__FILE__,'/')+1)
+#ifndef __FILE_NAME__
+#define __FILE_NAME__ (strrchr(__FILE__, '/') + 1)
+#endif
 
 #define __malloc_printf(FORMAT, ...) \
 	do { \
 		char msg[256] = {0}; \
 		sprintf(msg, FORMAT, ##__VA_ARGS__); \
-		log_internal(__ML_FILE_NAME__, __LINE__, __FUNCTION__, msg); \
+		log_internal(__FILE_NAME__, __LINE__, __FUNCTION__, msg); \
 	} while(0)
 
 extern int err_code;

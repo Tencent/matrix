@@ -390,16 +390,16 @@ void AnnotateIgnoreWritesEnd(const char *file, int line);
 // This marker is used to define a happens-before arc. The race detector will
 // infer an arc from the begin to the end when they share the same pointer
 // argument.
-# define TsanHappensBefore(cv) AnnotateHappensBefore(__FILE__, __LINE__, cv)
+# define TsanHappensBefore(cv) AnnotateHappensBefore(__FILE_NAME__, __LINE__, cv)
 
 // This marker defines the destination of a happens-before arc.
-# define TsanHappensAfter(cv) AnnotateHappensAfter(__FILE__, __LINE__, cv)
+# define TsanHappensAfter(cv) AnnotateHappensAfter(__FILE_NAME__, __LINE__, cv)
 
 // Ignore any races on writes between here and the next TsanIgnoreWritesEnd.
-# define TsanIgnoreWritesBegin() AnnotateIgnoreWritesBegin(__FILE__, __LINE__)
+# define TsanIgnoreWritesBegin() AnnotateIgnoreWritesBegin(__FILE_NAME__, __LINE__)
 
 // Resume checking for racy writes.
-# define TsanIgnoreWritesEnd() AnnotateIgnoreWritesEnd(__FILE__, __LINE__)
+# define TsanIgnoreWritesEnd() AnnotateIgnoreWritesEnd(__FILE_NAME__, __LINE__)
 #else
 # define TsanHappensBefore(cv)
 # define TsanHappensAfter(cv)

@@ -24,26 +24,35 @@
 #define MatrixInfo(format, ...) MatrixInfoWithModule("Matrix", format, ##__VA_ARGS__)
 #define MatrixDebug(format, ...) MatrixDebugWithModule("Matrix", format, ##__VA_ARGS__)
 
-#define __FILENAME__ (strrchr(__FILE__, '/') + 1)
+#ifndef __FILE_NAME__
+#define __FILE_NAME__ (strrchr(__FILE__, '/') + 1)
+#endif
+
+#if __has_feature(objc_arc)
+#define Matrix_release(x)
+#else
+#define Matrix_release(x) [x release]
+#endif
 
 #define MatrixLogInternal(LOGLEVEL, MODULE, FILE, LINE, FUNC, PREFIX, FORMAT, ...)\
     if (matrix_shouldlog(LOGLEVEL)) {\
         @autoreleasepool {\
             NSString *__log_message = [[NSString alloc] initWithFormat:@"%@%@", PREFIX, [NSString stringWithFormat:FORMAT, ##__VA_ARGS__, nil]]; \
             matrix_log(LOGLEVEL, MODULE, FILE, LINE, FUNC, __log_message);\
+            Matrix_release(__log_message);\
         }\
     }
 
 #define MatrixErrorWithModule(MODULE, FORMAT, ...) \
-    MatrixLogInternal(MXLogLevelError, MODULE, __FILENAME__, __LINE__, __FUNCTION__, @"ERROR: ", FORMAT, ##__VA_ARGS__)
+    MatrixLogInternal(MXLogLevelError, MODULE, __FILE_NAME__, __LINE__, __FUNCTION__, @"ERROR: ", FORMAT, ##__VA_ARGS__)
 
 #define MatrixWarningWithModule(MODULE, FORMAT, ...) \
-    MatrixLogInternal(MXLogLevelWarn, MODULE, __FILENAME__, __LINE__, __FUNCTION__, @"WARNING: ", FORMAT, ##__VA_ARGS__)
+    MatrixLogInternal(MXLogLevelWarn, MODULE, __FILE_NAME__, __LINE__, __FUNCTION__, @"WARNING: ", FORMAT, ##__VA_ARGS__)
 
 #define MatrixInfoWithModule(MODULE, FORMAT, ...) \
-    MatrixLogInternal(MXLogLevelInfo, MODULE, __FILENAME__, __LINE__, __FUNCTION__, @"INFO: ", FORMAT, ##__VA_ARGS__)
+    MatrixLogInternal(MXLogLevelInfo, MODULE, __FILE_NAME__, __LINE__, __FUNCTION__, @"INFO: ", FORMAT, ##__VA_ARGS__)
 
 #define MatrixDebugWithModule(MODULE, FORMAT, ...) \
-    MatrixLogInternal(MXLogLevelDebug, MODULE, __FILENAME__, __LINE__, __FUNCTION__, @"DEBUG: ", FORMAT, ##__VA_ARGS__)
+    MatrixLogInternal(MXLogLevelDebug, MODULE, __FILE_NAME__, __LINE__, __FUNCTION__, @"DEBUG: ", FORMAT, ##__VA_ARGS__)
 
 #endif /* MatrixLogDef_h */

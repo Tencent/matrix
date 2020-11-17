@@ -238,7 +238,7 @@ void i_kslog_logCBasic(const char* fmt, ...);
 
 #define a_KSLOG_FULL(LEVEL, FMT, ...) \
     i_KSLOG_FULL(LEVEL, \
-                 __FILE__, \
+                 __FILE_NAME__, \
                  __LINE__, \
                  __PRETTY_FUNCTION__, \
                  FMT, \
