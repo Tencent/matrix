@@ -5,6 +5,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.BatteryManager;
+import android.os.Build;
 import android.os.CancellationSignal;
 import android.os.Handler;
 import android.os.Looper;
@@ -31,10 +32,24 @@ public class QuickenUnwinder implements Handler.Callback {
 
     private final static String TAG = "Matrix.Qut";
 
-    private final static String SYSTEM_LIBRARY_PATH = "/apex/com.android.runtime/lib/";
+    private final static String SYSTEM_LIBRARY_PATH_Q = "/apex/com.android.runtime/lib/";
+    private final static String SYSTEM_LIBRARY_PATH_Q_64 = "/apex/com.android.runtime/lib64/";
+    private final static String SYSTEM_LIBRARY_PATH = "/system/lib/";
+    private final static String SYSTEM_LIBRARY_PATH_64 = "/system/lib64/";
+
+    public static boolean is64BitRuntime() {
+        final String currRuntimeABI = Build.CPU_ABI;
+        return "arm64-v8a".equalsIgnoreCase(currRuntimeABI)
+                || "x86_64".equalsIgnoreCase(currRuntimeABI)
+                || "mips64".equalsIgnoreCase(currRuntimeABI);
+    }
 
     public static String getSystemLibraryPath() {
-        return SYSTEM_LIBRARY_PATH;
+        if (Build.VERSION.SDK_INT >= 29) {
+            return !is64BitRuntime() ? SYSTEM_LIBRARY_PATH_Q : SYSTEM_LIBRARY_PATH_Q_64;
+        } else {
+            return !is64BitRuntime() ? SYSTEM_LIBRARY_PATH : SYSTEM_LIBRARY_PATH_64;
+        }
     }
 
     private final static String ACTION_WARMED_UP = "action.quicken.warmed-up";
@@ -48,7 +63,7 @@ public class QuickenUnwinder implements Handler.Callback {
     private final static long DURATION_LAST_ACCESS_EXPIRED = 15L * 24 * 3600 * 1000; // milliseconds
     private final static long DURATION_CLEAN_UP_EXPIRED = 3L * 24 * 3600 * 1000; // milliseconds
     private final static long DURATION_CLEAN_UP = 7L * 24 * 3600 * 1000; // milliseconds
-//    private final static long DURATION_CLEAN_UP_EXPIRED = 10 * 1000; // milliseconds
+    //    private final static long DURATION_CLEAN_UP_EXPIRED = 10 * 1000; // milliseconds
 //    private final static long DURATION_CLEAN_UP = 10 * 1000; // milliseconds
     private final static long DELAY_SHORTLY = 30 * 1000;
     private final static long DELAY_CLEAN_UP = DELAY_SHORTLY;
@@ -523,7 +538,7 @@ public class QuickenUnwinder implements Handler.Callback {
             boolean needCleanUp = needCleanUp();
             if (!hasWarmedUp) {
                 mUnfinishedTask.getAndIncrement();
-                Log.i(TAG, "Has not warmed up");
+                Log.i(TAG, "Has not been warmed up");
             }
             if (needCleanUp) {
                 mUnfinishedTask.getAndIncrement();
@@ -546,10 +561,19 @@ public class QuickenUnwinder implements Handler.Callback {
     }
 
     private boolean pathValidation(Configuration configuration) {
+        if (configuration.mSavingPath == null) {
+            return false;
+        }
+
         File savingPath = new File(configuration.mSavingPath);
         try {
-            if (savingPath.getCanonicalPath().startsWith(configuration.mContext.getFilesDir().getParentFile().getAbsolutePath())) {
+            if (savingPath.getCanonicalPath().startsWith(
+                    configuration.mContext.getFilesDir().getParentFile()
+                            .getCanonicalFile().getAbsolutePath())) {
                 return true;
+            } else {
+                Log.e(TAG, "Saving path should under private storage path %s",
+                        configuration.mContext.getFilesDir().getParentFile().getAbsolutePath());
             }
         } catch (IOException e) {
             Log.printStack(Log.ERROR, TAG, e);
@@ -563,7 +587,8 @@ public class QuickenUnwinder implements Handler.Callback {
             if (configuration.mCoolDownIfApkUpdated && markFile.exists()) {
                 String content = readFileContent(markFile);
                 String lastNativeLibraryPath = content.split("\n")[0];
-                if (!lastNativeLibraryPath.equalsIgnoreCase(configuration.mContext.getApplicationInfo().nativeLibraryDir)) {
+                if (!lastNativeLibraryPath.equalsIgnoreCase(
+                        configuration.mContext.getApplicationInfo().nativeLibraryDir)) {
                     Log.i(TAG, "Apk updated, remove warmed-up file.");
                     configuration.mCoolDown = true;
                 }
@@ -575,19 +600,22 @@ public class QuickenUnwinder implements Handler.Callback {
     }
 
     private File cleanUpTimestampFile(Context context) {
-        File file = new File(context.getFilesDir().getAbsolutePath() + "/" + DIR_QUICKEN_UNWINDER + "/" + FILE_CLEAN_UP_TIMESTAMP);
+        File file = new File(context.getFilesDir().getAbsolutePath() + "/"
+                + DIR_QUICKEN_UNWINDER + "/" + FILE_CLEAN_UP_TIMESTAMP);
         file.getParentFile().mkdirs();
         return file;
     }
 
     private File warmUpMarkedFile(Context context) {
-        File file = new File(context.getFilesDir().getAbsolutePath() + "/" + DIR_QUICKEN_UNWINDER + "/" + FILE_WARMED_UP);
+        File file = new File(context.getFilesDir().getAbsolutePath() + "/"
+                + DIR_QUICKEN_UNWINDER + "/" + FILE_WARMED_UP);
         file.getParentFile().mkdirs();
         return file;
     }
 
     private String defaultSavingPath(Configuration configuration) {
-        return configuration.mContext.getFilesDir().getAbsolutePath() + "/" + DIR_QUICKEN_UNWINDER + "/" + FILE_DEFAULT_SAVING_PATH + "/";
+        return configuration.mContext.getFilesDir().getAbsolutePath() + "/"
+                + DIR_QUICKEN_UNWINDER + "/" + FILE_DEFAULT_SAVING_PATH + "/";
     }
 
     private String validateSavingPath(Configuration configuration) {
@@ -630,7 +658,7 @@ public class QuickenUnwinder implements Handler.Callback {
         String mSavingPath;
         HashSet<String> mWarmUpDirectoriesList = new HashSet<>();
         boolean mCoolDown = false;
-        boolean mCoolDownIfApkUpdated = true;
+        boolean mCoolDownIfApkUpdated = true;   // Default true.
         boolean mThisIsWarmUpProcess = false;
 
         private boolean mCommitted = false;
