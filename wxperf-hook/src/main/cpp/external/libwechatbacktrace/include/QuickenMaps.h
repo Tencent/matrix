@@ -7,90 +7,96 @@
 
 namespace wechat_backtrace {
 
-// Special flag to indicate a map is in /dev/. However, a map in
-// /dev/ashmem/... does not set this flag.
-static constexpr int MAPS_FLAGS_DEVICE_MAP = 0x8000;
+    // Special flag to indicate a map is in /dev/. However, a map in
+    // /dev/ashmem/... does not set this flag.
+    static constexpr int MAPS_FLAGS_DEVICE_MAP = 0x8000;
 
-// Special flag to indicate that this map represents an elf file
-// created by ART for use with the gdb jit debug interface.
-// This should only ever appear in offline maps data.
-static constexpr int MAPS_FLAGS_JIT_SYMFILE_MAP = 0x4000;
+    // Special flag to indicate that this map represents an elf file
+    // created by ART for use with the gdb jit debug interface.
+    // This should only ever appear in offline maps data.
+    static constexpr int MAPS_FLAGS_JIT_SYMFILE_MAP = 0x4000;
 
-class QuickenMapInfo : public unwindstack::MapInfo {
+    class QuickenInterface;
 
-public:
-    QuickenMapInfo(MapInfo *prevMap, MapInfo *prevRealMap, uint64_t start, uint64_t end,
-                   uint64_t offset, uint64_t flags, const char *name) :
-                   MapInfo(prevMap, prevRealMap, start, end, offset, flags, name) {};
+    class QuickenMapInfo : public unwindstack::MapInfo {
 
-    static QuickenInterface* GetQuickenInterfaceFromElf(unwindstack::Elf* elf);
+    public:
+        QuickenMapInfo(MapInfo *prevMap, MapInfo *prevRealMap, uint64_t start, uint64_t end,
+                       uint64_t offset, uint64_t flags, const char *name) :
+                MapInfo(prevMap, prevRealMap, start, end, offset, flags, name) {};
 
-    QuickenInterface* GetQuickenInterface(const std::shared_ptr<unwindstack::Memory>& process_memory,
-            unwindstack::ArchEnum expected_arch);
+        static QuickenInterface *GetQuickenInterfaceFromElf(const std::string &sopath, unwindstack::Elf *elf);
 
-    uint64_t GetRelPc(uint64_t pc);
+        QuickenInterface *
+        GetQuickenInterface(const std::shared_ptr<unwindstack::Memory> &process_memory,
+                            unwindstack::ArchEnum expected_arch);
 
-    unwindstack::FastArmExidxInterface* GetFastArmExidxInterface(
-            const std::shared_ptr<unwindstack::Memory>& process_memory,
-                                          unwindstack::ArchEnum expected_arch);
+        uint64_t GetRelPc(uint64_t pc);
 
-    std::shared_ptr<QuickenInterface> quicken_interface_;
+        unwindstack::FastArmExidxInterface *GetFastArmExidxInterface(
+                const std::shared_ptr<unwindstack::Memory> &process_memory,
+                unwindstack::ArchEnum expected_arch);
 
-    std::unique_ptr<unwindstack::FastArmExidxInterface> exidx_interface_;
+        std::shared_ptr<QuickenInterface> quicken_interface_;
 
-    uint64_t elf_load_bias_;
+        std::unique_ptr<unwindstack::FastArmExidxInterface> exidx_interface_;
 
-protected:
+        uint64_t elf_load_bias_;
 
-    std::mutex lock_;
-};
+    protected:
 
-typedef QuickenMapInfo* MapInfoPtr;
-
-class Maps {
-
-public:
-    Maps() {};
-    Maps(size_t start_capacity) : maps_capacity_(start_capacity) {};
-    ~Maps() {
-        if (local_maps_ != nullptr)
-        {
-            ReleaseLocalMaps();
-        }
+        std::mutex lock_;
     };
 
-    // Maps are not copyable but movable, because they own pointers to MapInfo
-    // objects.
-    Maps(const Maps&) = delete;
-    Maps& operator=(const Maps&) = delete;
-    Maps(Maps&&) = default;
-    Maps& operator=(Maps&&) = default;
+    typedef QuickenMapInfo *MapInfoPtr;
 
-    size_t GetSize();
+    class Maps {
 
-    MapInfoPtr Find(uint64_t pc);
+    public:
+        Maps() {};
 
-    std::vector<MapInfoPtr> FindMapInfoByName(std::string soname);
+        Maps(size_t start_capacity) : maps_capacity_(start_capacity) {};
 
-    static bool HasSuffix(const std::string &str, const std::string &suffix);
+        ~Maps() {
+            if (local_maps_ != nullptr) {
+                ReleaseLocalMaps();
+            }
+        };
 
-    static bool Parse();
+        // Maps are not copyable but movable, because they own pointers to MapInfo
+        // objects.
+        Maps(const Maps &) = delete;
 
-    static std::shared_ptr<Maps> current();
+        Maps &operator=(const Maps &) = delete;
 
-protected:
-    bool ParseImpl();
-    void ReleaseLocalMaps();
+        Maps(Maps &&) = default;
 
-    MapInfoPtr* local_maps_ = nullptr;
-    size_t maps_capacity_ = 0;
-    size_t maps_size_ = 0;
+        Maps &operator=(Maps &&) = default;
 
-    static std::mutex maps_lock_;
-    static size_t latest_maps_capacity_;
-    static std::shared_ptr<Maps> current_maps_;
+        size_t GetSize();
 
-};
+        MapInfoPtr Find(uint64_t pc);
+
+        std::vector<MapInfoPtr> FindMapInfoByName(std::string soname);
+
+        static bool Parse();
+
+        static std::shared_ptr<Maps> current();
+
+    protected:
+        bool ParseImpl();
+
+        void ReleaseLocalMaps();
+
+        MapInfoPtr *local_maps_ = nullptr;
+        size_t maps_capacity_ = 0;
+        size_t maps_size_ = 0;
+
+        static std::mutex maps_lock_;
+        static size_t latest_maps_capacity_;
+        static std::shared_ptr<Maps> current_maps_;
+
+    };
 
 }  // namespace wechat_backtrace
 

@@ -309,7 +309,6 @@ std::string ElfInterface::ReadBuildID() {
 
       // Align hdr.n_namesz to next power multiple of 4. See man 5 elf.
       offset += (hdr.n_namesz + 3) & ~3;
-
       if (name == "GNU" && hdr.n_type == NT_GNU_BUILD_ID) {
         if (gnu_build_id_size_ - offset < hdr.n_descsz || hdr.n_descsz == 0) {
           return "";

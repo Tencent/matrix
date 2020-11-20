@@ -13,8 +13,6 @@ enum UnwindTestMode {
     DWARF_UNWIND, // baseline
 };
 
-void statistic_wechat_quicken(char* sopath, char* soname);
-
 void set_unwind_mode(UnwindTestMode mode);
 
 void leaf_func(const char * testcase);

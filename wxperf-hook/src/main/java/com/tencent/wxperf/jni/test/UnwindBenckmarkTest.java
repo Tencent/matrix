@@ -16,6 +16,4 @@ public class UnwindBenckmarkTest {
     public static native void benchmarkNative();
 
     public static native void debugNative();
-
-    public static native void statisticNative(byte[] sopath, byte[] soname);
 }

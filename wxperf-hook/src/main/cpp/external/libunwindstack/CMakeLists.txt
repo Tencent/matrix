@@ -44,10 +44,12 @@ SET(
         ${CMAKE_CURRENT_SOURCE_DIR}/../libwechatbacktrace/DwarfOp.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/../libwechatbacktrace/QuickenTable.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/../libwechatbacktrace/QuickenTableReverse.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/../libwechatbacktrace/QuickenTableManager.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/../libwechatbacktrace/QuickenMaps.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/../libwechatbacktrace/QuickenTableGenerator.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/../libwechatbacktrace/QuickenInterface.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/../libwechatbacktrace/QuickenUnwinder.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/../libwechatbacktrace/QuickenJNI.cpp
 
         ${CMAKE_CURRENT_SOURCE_DIR}/../libwechatbacktrace/FastArmExidx.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/../libwechatbacktrace/FastArmExidxInterface.cpp

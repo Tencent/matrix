@@ -1,6 +1,8 @@
 //
 // Created by Yves on 2020-03-16.
 //
+#include <QuickenUnwinder.h>
+#include <QuickenJNI.h>
 #include "JNICommon.h"
 #include "Log.h"
 #include "HookCommon.h"
@@ -63,6 +65,10 @@ JNIEXPORT jint JNI_OnLoad(JavaVM *vm, void *reserved) {
 
             LOGD(TAG, "j_EglHook success");
         }
+
+        if (wechat_backtrace::QutJNIOnLoaded(vm, env) == 0) {
+            LOGE(TAG, "Register Quicken Unwinder JNINativeMethods Failed.");
+        }
     }
 
     xhook_ignore(".*libwxperf-jni\\.so$", NULL);
@@ -77,6 +83,7 @@ JNIEXPORT jint JNI_OnLoad(JavaVM *vm, void *reserved) {
     xhook_register(".*\\.so$", "__loader_android_dlopen_ext",
                    (void *) HANDLER_FUNC_NAME(__loader_android_dlopen_ext),
                    (void **) &ORIGINAL_FUNC_NAME(__loader_android_dlopen_ext));
+
 
     return JNI_VERSION_1_6;
 }

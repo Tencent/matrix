@@ -11,6 +11,7 @@
 #include <QuickenUnwinder.h>
 #include <QuickenMaps.h>
 #include <LocalMaps.h>
+#include <QuickenTableManager.h>
 
 namespace wechat_backtrace {
 

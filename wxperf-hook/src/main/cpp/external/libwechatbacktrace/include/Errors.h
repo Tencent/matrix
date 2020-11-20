@@ -17,6 +17,9 @@ enum QutErrorCode {
     QUT_ERROR_QUT_SECTION_INVALID,      // Quicken unwind table is invalid.
     QUT_ERROR_INVALID_QUT_INSTR,        // Met a invalid quicken instruction.
 
+    QUT_ERROR_REQUEST_QUT_FILE_FAILED,  // Request QUT file failed.
+    QUT_ERROR_READ_STACK_FAILED,        // Read memory from stack failed.
+    QUT_ERROR_TABLE_INDEX_OVERFLOW,     //
 };
 
 enum DwarfErrorCode : uint8_t {

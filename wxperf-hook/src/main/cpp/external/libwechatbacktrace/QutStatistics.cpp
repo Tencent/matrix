@@ -6,6 +6,7 @@
 #include <vector>
 #include <memory>
 #include <iterator>
+#include <string>
 #include "QutStatistics.h"
 
 #include "../../common/Log.h"
@@ -14,12 +15,12 @@ namespace wechat_backtrace {
 
     using namespace std;
 
-    static const char *sCurrStatLib = nullptr;
+    static string gCurrStatLib;
     static map<uint32_t, shared_ptr<vector<pair<uint64_t, uint64_t>>>> *sStatisticInfo = nullptr;
     static map<uint32_t, shared_ptr<vector<pair<uint64_t, uint64_t>>>> *sStatisticTipsInfo = nullptr;
 
-    void SetCurrentStatLib(const char *lib) {
-        sCurrStatLib = lib;
+    void SetCurrentStatLib(const string lib) {
+        gCurrStatLib = lib;
         if (sStatisticInfo != nullptr) delete (sStatisticInfo);
         sStatisticInfo = new map<uint32_t, shared_ptr<vector<pair<uint64_t, uint64_t>>>>;
         if (sStatisticTipsInfo != nullptr) delete (sStatisticTipsInfo);
@@ -49,7 +50,7 @@ namespace wechat_backtrace {
     void DumpQutStatResult() {
 
         auto iter = sStatisticInfo->begin();
-        QUT_STAT_LOG("Dump Qut Statistic for so %s:", sCurrStatLib);
+        QUT_STAT_LOG("Dump Qut Statistic for so %s:", gCurrStatLib.c_str());
         while (iter != sStatisticInfo->end()) {
             QutStatisticType type = (QutStatisticType) iter->first;
             vector<pair<uint64_t, uint64_t>> *v = iter->second.get();

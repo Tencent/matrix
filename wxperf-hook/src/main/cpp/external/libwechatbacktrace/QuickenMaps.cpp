@@ -16,7 +16,9 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <LocalMaps.h>
 
+#include "QuickenUtility.h"
 #include "ElfInterfaceArm.h"
 #include "QuickenMaps.h"
 
@@ -49,7 +51,7 @@ namespace wechat_backtrace {
                 return nullptr;
             }
 
-            quicken_interface_.reset(GetQuickenInterfaceFromElf(elf));
+            quicken_interface_.reset(GetQuickenInterfaceFromElf(this->name, elf));
 
             elf_load_bias_ = elf->GetLoadBias();
         }
@@ -57,14 +59,15 @@ namespace wechat_backtrace {
         return quicken_interface_.get();
     }
 
-    QuickenInterface *QuickenMapInfo::GetQuickenInterfaceFromElf(Elf *elf) {
+    QuickenInterface *QuickenMapInfo::GetQuickenInterfaceFromElf(const string &sopath, Elf *elf) {
 
         ArchEnum expected_arch = elf->arch();
 
         std::unique_ptr<QuickenInterface> quicken_interface_ =
                 make_unique<QuickenInterface>(elf->memory(), elf->GetLoadBias(), expected_arch);
-
-        quicken_interface_->SetSoInfo(elf->GetSoname(), elf->GetBuildID());
+        string soname = elf->GetSoname();
+        string build_id_hex = elf->GetBuildID();
+        quicken_interface_->SetSoInfo(sopath, soname, build_id_hex);
 
         ElfInterface *elf_interface = elf->interface();
 
@@ -163,11 +166,6 @@ namespace wechat_backtrace {
             }
         }
         return nullptr;
-    }
-
-    inline bool Maps::HasSuffix(const std::string &str, const std::string &suffix) {
-        return str.size() >= suffix.size() &&
-               str.compare(str.size() - suffix.size(), suffix.size(), suffix) == 0;
     }
 
     std::vector<MapInfoPtr> Maps::FindMapInfoByName(std::string soname) {

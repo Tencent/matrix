@@ -2048,7 +2048,6 @@ namespace wechat_backtrace {
 
         last_error_.code = DWARF_ERROR_EXPRESSION_REACH_BREGX;
 
-// TODO by carl, add instr
         DWARF_OP_LOG("DwarfOp: op_bregx reg(%u)", (uint32_t) reg);
         return true;
     }

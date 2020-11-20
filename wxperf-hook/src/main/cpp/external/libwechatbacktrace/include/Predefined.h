@@ -15,20 +15,25 @@ namespace wechat_backtrace {
 
 }  // namespace wechat_backtrace
 
+#ifdef __cplusplus__
+#define QUT_EXTERN_C extern "C"
+#else
+#define QUT_EXTERN_C
+#endif
 
 #define QUT_ARCH_ARM 0x1
 #define QUT_ARCH_ARM64 0x2
 
 #ifdef __arm__
-    #define QUT_VERSION 0x1
-    #define CURRENT_ARCH_ENUM QUT_ARCH_ARM
+#define QUT_VERSION 0x1
+#define CURRENT_ARCH_ENUM QUT_ARCH_ARM
 
-    #define QUT_TBL_ROW_SIZE 3  // 4 - 1
+#define QUT_TBL_ROW_SIZE 3  // 4 - 1
 #else
-    #define QUT_VERSION 1
-    #define CURRENT_ARCH_ENUM QUT_ARCH_ARM64
+#define QUT_VERSION 1
+#define CURRENT_ARCH_ENUM QUT_ARCH_ARM64
 
-    #define QUT_TBL_ROW_SIZE 7  // 8 - 1
+#define QUT_TBL_ROW_SIZE 7  // 8 - 1
 #endif
 
 #endif  // _LIBWECHATBACKTRACE_TYPES_H

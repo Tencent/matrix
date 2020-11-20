@@ -489,6 +489,8 @@ namespace wechat_backtrace {
 
 //      1111 1111 + SLEB128 : vsp = vsp + SLEB128   							;
 
+        (void) prologue_conformed;
+
         while (!instructions.empty()) {
 
             uint64_t instruction = instructions.front();

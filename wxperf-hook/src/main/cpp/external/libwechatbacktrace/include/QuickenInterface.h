@@ -10,8 +10,11 @@
 #include "QuickenTableGenerator.h"
 #include "Errors.h"
 #include "QuickenMaps.h"
+#include "QuickenUtility.h"
 
 namespace wechat_backtrace {
+
+    class QuickenMapInfo;
 
     class QuickenInterface {
 
@@ -63,13 +66,13 @@ namespace wechat_backtrace {
             gnu_debug_frame_info_ = {offset, section_bias, size};
         }
 
-        void SetSoInfo(std::string soname, std::string build_id) {
+        void
+        SetSoInfo(const std::string &sopath, const std::string &soname, const std::string &build_id_hex) {
             soname_ = soname;
-            build_id_ = build_id;
-        }
-
-        void BindMapInfo(QuickenMapInfo *map_info) {
-            map_info_ = map_info;
+            sopath_ = sopath;
+            build_id_hex_ = build_id_hex;
+            build_id_ = ToBuildId(build_id_hex);
+            hash_ = ToHash(sopath_);
         }
 
         unwindstack::Memory *Memory() {
@@ -88,7 +91,10 @@ namespace wechat_backtrace {
         std::mutex lock_;
 
         std::string soname_;
+        std::string sopath_;
         std::string build_id_;
+        std::string build_id_hex_;
+        std::string hash_;
 
         unwindstack::Memory *memory_;
         uint64_t load_bias_ = 0;
@@ -106,8 +112,6 @@ namespace wechat_backtrace {
         FrameInfo gnu_debug_frame_info_ = {0};
 
         QutSections *qut_sections_ = nullptr;
-
-        QuickenMapInfo *map_info_ = nullptr;
     };
 
 }  // namespace wechat_backtrace

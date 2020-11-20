@@ -19,6 +19,10 @@
 
 namespace wechat_backtrace {
 
+    void init_quicken_unwind(const char * const saving_path);
+
+    void generate_quicken_table(const char *const sopath, const char *const soname);
+
     void update_maps();
 
     void dwarf_unwind(unwindstack::Regs* regs, std::vector<unwindstack::FrameData> &, size_t);

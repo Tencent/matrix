@@ -5,12 +5,14 @@
 #include <deps/android-base/include/android-base/macros.h>
 #include <MinimalRegs.h>
 #include <QuickenTableReverse.h>
+#include <QuickenTableManager.h>
 #include "../../common/Log.h"
 #include "QuickenInterface.h"
 #include "QuickenMaps.h"
 #include "DwarfEhFrameWithHdrDecoder.h"
 #include "DwarfEhFrameDecoder.h"
 #include "DwarfDebugFrameDecoder.h"
+#include "../../common/PthreadExt.h"
 
 namespace wechat_backtrace {
 
@@ -63,8 +65,14 @@ namespace wechat_backtrace {
             return true;
         }
 
-        QutSections *tmp_qut_sections = QuickenTableManager::getInstance().RequestQutSections(
-                soname_, build_id_);
+        QutSectionsPtr tmp_qut_sections = nullptr;
+        QutFileError error = QuickenTableManager::getInstance().RequestQutSections(
+                soname_, sopath_, hash_, build_id_, build_id_hex_, tmp_qut_sections);
+
+        QUT_LOG("Try init quicken table %s result %d", sopath_.c_str(), error);
+        if (error != NoneError) {
+            return false;
+        }
 
         qut_sections_ = tmp_qut_sections;
 
@@ -120,12 +128,18 @@ namespace wechat_backtrace {
 //            return false;
 //        }
             if (!TryInitQuickenTable()) {
-                last_error_code_ = QUT_ERROR_QUT_SECTION_INVALID;
+                last_error_code_ = QUT_ERROR_REQUEST_QUT_FILE_FAILED;
                 return false;
             }
         }
 
-        QuickenTable quicken(qut_sections_, regs, memory_, process_memory);
+        // TODO optimize this, for main thread.
+        pthread_attr_t attr;
+        pthread_getattr_ext(pthread_self(), &attr);
+        uptr stack_bottom = reinterpret_cast<uptr>(attr.stack_base);
+        uptr stack_top = reinterpret_cast<uptr>(attr.stack_base) + attr.stack_size;
+
+        QuickenTable quicken(qut_sections_, regs, memory_, process_memory, stack_top, stack_bottom);
         size_t entry_offset;
 
         QUT_DEBUG_LOG("QuickenInterface::Step pc:%llx, load_bias_:%llu", (uint64_t) pc, load_bias_);
@@ -138,8 +152,8 @@ namespace wechat_backtrace {
 
         quicken.cfa_ = SP(regs);
         bool return_value = false;
-
-        if (quicken.Eval(entry_offset)) {
+        last_error_code_ = quicken.Eval(entry_offset);
+        if (last_error_code_ == QUT_ERROR_NONE) {
             QUT_DEBUG_LOG(
                     "QuickenInterface::Step quicken.Eval PC(regs) %llx LR(regs) %llx ken.pc_set_ %d",
                     (uint64_t) PC(regs), (uint64_t) LR(regs), quicken.pc_set_);
@@ -152,8 +166,6 @@ namespace wechat_backtrace {
             if (quicken.dex_pc_ != 0) {
                 *dex_pc = quicken.dex_pc_;
             }
-        } else {
-            last_error_code_ = QUT_ERROR_INVALID_QUT_INSTR;
         }
 
         // If the pc was set to zero, consider this the final frame.

@@ -8,7 +8,7 @@
 #include <time.h>
 #include <android/log.h>
 
-#define EnableLOG
+#define EnableLOG   // Enabled
 
 #ifdef EnableLOG
 #define LOGD(TAG, FMT, args...) __android_log_print(ANDROID_LOG_DEBUG, TAG, FMT, ##args)
@@ -33,7 +33,8 @@
 #define DWARF_CFA_LOG(FMT, args...) //__android_log_print(ANDROID_LOG_ERROR, "DEBUG-QUT-DWARF-CFA", FMT, ##args)
 #define DWARF_OP_LOG(FMT, args...) //__android_log_print(ANDROID_LOG_ERROR, "DEBUG-QUT-DWARF-OP", FMT, ##args)
 #define QUT_STAT_LOG(FMT, args...) //__android_log_print(ANDROID_LOG_ERROR, "STAT-QUT", FMT, ##args)
-#define QUT_TMP_LOG(FMT, args...) __android_log_print(ANDROID_LOG_ERROR, "TMP-QUT", FMT, ##args)
+#define QUT_TMP_LOG(FMT, args...) //__android_log_print(ANDROID_LOG_ERROR, "TMP-QUT", FMT, ##args)
+#define QUT_LOG(FMT, args...) __android_log_print(ANDROID_LOG_ERROR, "Matrix.Qut.N", FMT, ##args)
 #else
 #define LOGD(TAG, FMT, args...)
 #define LOGI(TAG, FMT, args...)
@@ -45,6 +46,7 @@
 #define DWARF_CFA_LOG(FMT, args...)
 #define DWARF_OP_LOG(FMT, args...)
 #define QUT_STAT_LOG(FMT, args...)
+#define QUT_LOG(FMT, args...)
 #endif
 
 #define __FAKE_USE_VA_ARGS(...) ((void)(0))

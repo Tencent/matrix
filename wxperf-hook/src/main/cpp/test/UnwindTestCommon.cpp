@@ -232,10 +232,6 @@ inline void print_wechat_quicken_unwind_v2_wip() {
     }
 }
 
-void statistic_wechat_quicken(char* sopath, char* so) {
-    wechat_backtrace::StatisticWeChatQuickenUnwindTable(sopath, so);
-}
-
 
 #ifdef __arm__
 inline void print_dwarf_fast_unwind() {

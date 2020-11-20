@@ -4,12 +4,13 @@
 #include <stdint.h>
 #include <memory>
 #include <unwindstack/Maps.h>
+#include "Predefined.h"
 
 namespace wechat_backtrace {
 
-    void UpdateLocalMaps();
+    QUT_EXTERN_C void UpdateLocalMaps();
 
-    std::shared_ptr<unwindstack::LocalMaps> GetMapsCache();
+    QUT_EXTERN_C std::shared_ptr<unwindstack::LocalMaps> GetMapsCache();
 
 }  // namespace wechat_backtrace
 

@@ -43,6 +43,7 @@
 #include "MemoryOfflineBuffer.h"
 #include "MemoryRange.h"
 #include "MemoryRemote.h"
+#include "../../common/Log.h"
 
 namespace unwindstack {
 
@@ -103,6 +104,7 @@ static size_t ProcessVmRead(pid_t pid, uint64_t remote_src, void* dst, size_t le
 }
 
 static inline size_t ProcessLocalVmRead(pid_t pid, uint64_t remote_src, void* dst, size_t len) {
+  (void) pid;
   memcpy(dst, reinterpret_cast<const void *>(remote_src), len);
   return len;
 }
@@ -302,7 +304,6 @@ size_t MemoryFileAtOffset::Read(uint64_t addr, void* dst, size_t size) {
   size_t bytes_left = size_ - static_cast<size_t>(addr);
   const unsigned char* actual_base = static_cast<const unsigned char*>(data_) + addr;
   size_t actual_len = std::min(bytes_left, size);
-
   memcpy(dst, actual_base, actual_len);
   return actual_len;
 }

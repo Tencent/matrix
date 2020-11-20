@@ -12,6 +12,9 @@
 #include <fcntl.h>
 #include <deps/android-base/include/android-base/unique_fd.h>
 #include <sys/stat.h>
+#include <QuickenTableManager.h>
+#include <jni.h>
+#include <QuickenUtility.h>
 
 #include "QuickenUnwinder.h"
 #include "QuickenMaps.h"
@@ -21,7 +24,7 @@
 #include "../../common/Log.h"
 #include "../../common/PthreadExt.h"
 
-#define WECHAT_QUICKEN_UNWIND_TAG "WeChatQuickenUnwind"
+#define WECHAT_QUICKEN_UNWIND_TAG "QuickenUnwind"
 
 namespace wechat_backtrace {
 
@@ -113,9 +116,11 @@ namespace wechat_backtrace {
         return actual_len;
     }
 
-    void StatisticWeChatQuickenUnwindTable(const char *const sopath, const char *const soname) {
+    void StatisticWeChatQuickenUnwindTable(const string &sopath) {
 
-        QUT_STAT_LOG("Statistic sopath %s so %s", sopath, soname);
+        string soname = SplitSonameFromPath(sopath);
+
+        QUT_STAT_LOG("Statistic sopath %s so %s", sopath, soname.c_str());
         MemoryFile *memory = new MemoryFile();;
         if (!memory->Init(string(sopath), 0)) {
             QUT_STAT_LOG("memory->Init so %s failed", sopath);
@@ -134,33 +139,58 @@ namespace wechat_backtrace {
 
         SetCurrentStatLib(soname);
 
-        QuickenInterface *interface = QuickenMapInfo::GetQuickenInterfaceFromElf(elf.get());
+        QuickenInterface *interface = QuickenMapInfo::GetQuickenInterfaceFromElf(sopath, elf.get());
         interface->GenerateQuickenTable<addr_t>(process_memory_.get());
 
         DumpQutStatResult();
     }
 
-    void GenerateQutForLibrary(const char *const sopath, const char *const soname) {
+    void GenerateQutForLibrary(const std::string &sopath) {
 
-        auto memory = new MemoryFile();
+        QUT_LOG("Generate qut for so %s.", sopath.c_str());
+
+        const string hash = ToHash(sopath);
+        const std::string soname = SplitSonameFromPath(sopath);
+
+        if (QuickenTableManager::CheckIfQutFileExists(soname, hash)) {
+            QUT_LOG("Qut exists and return.");
+            return;
+        }
+
+        auto memory = new MemoryFile(); // Will be destructed by 'elf' instance.
         auto elf = make_unique<Elf>(memory);
         if (!memory->Init(string(sopath), 0)) {
-            QUT_STAT_LOG("memory->Init so %s failed", sopath);
+            QUT_LOG("memory->Init so %s failed", sopath.c_str());
             return;
         }
         elf->Init();
         if (!elf->valid()) {
-            QUT_STAT_LOG("elf->valid() so %s invalid", sopath);
+            QUT_LOG("elf->valid() so %s invalid", sopath.c_str());
             return;
         }
         auto process_memory_ = unwindstack::Memory::CreateProcessMemory(getpid());
 
-        QuickenInterface *interface = QuickenMapInfo::GetQuickenInterfaceFromElf(elf.get());
+        QuickenInterface *interface = QuickenMapInfo::GetQuickenInterfaceFromElf(sopath, elf.get());
 
         interface->GenerateQuickenTable<addr_t>(process_memory_.get());
 
-        QuickenTableManager::getInstance().SaveQutSections(soname, elf->GetBuildID(),
-                                                           interface->GetQutSections());
+        const string build_id_hex = elf->GetBuildID();
+        const string build_id = ToBuildId(build_id_hex);
+
+        QutFileError error =
+                QuickenTableManager::getInstance().SaveQutSections(soname, sopath, hash, build_id,
+                                                                   build_id_hex,
+                                                                   interface->GetQutSections());
+        QUT_LOG("Generate qut for so %s result %d", sopath.c_str(), error);
+    }
+
+    void ConsumeRequestingQut() {
+        auto requesting_qut = QuickenTableManager::getInstance().GetRequestQut();
+        auto iter = requesting_qut.begin();
+        while (iter != requesting_qut.end()) {
+            GenerateQutForLibrary(iter->second);
+            iter++;
+        }
     }
 
     inline uint32_t
@@ -493,4 +523,5 @@ namespace wechat_backtrace {
 
         return ret;
     }
+
 } // namespace wechat_backtrace

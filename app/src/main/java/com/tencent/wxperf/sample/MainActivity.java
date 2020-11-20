@@ -16,6 +16,7 @@ import android.text.StaticLayout;
 import android.util.Log;
 import android.view.View;
 
+import com.tencent.components.unwinder.QuickenUnwinder;
 import com.tencent.wxperf.fd.FDDumpBridge;
 import com.tencent.wxperf.jectl.JeCtl;
 import com.tencent.wxperf.jni.HookManager;
@@ -111,6 +112,13 @@ public class MainActivity extends AppCompatActivity {
                 EglTest.release();
             }
         });
+
+        QuickenUnwinder.instance().configure(getApplicationContext())
+                .savingPath(getFilesDir().getAbsolutePath() + "/test/")
+                .coolDown(false)
+                .directoryToWarmUp(getApplicationInfo().nativeLibraryDir)
+                .isWarmUpProcess(true)
+                .commit();
     }
 
     private void dumpFd() {
@@ -416,7 +424,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public boolean accept(File file) {
                 if (file.getName().endsWith(".so")) {
-                    UnwindBenckmarkTest.statisticNative(file.getAbsolutePath().getBytes(), file.getName().getBytes());
+//                    UnwindBenckmarkTest.statisticNative(file.getAbsolutePath().getBytes(), file.getName().getBytes());
                     return true;
                 }
                 return false;

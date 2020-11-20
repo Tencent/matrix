@@ -49,7 +49,7 @@ namespace wechat_backtrace {
 
     };
 
-    void SetCurrentStatLib(const char *);
+    void SetCurrentStatLib(const std::string);
 
     void QutStatistic(QutStatisticType, uint64_t, uint64_t);
 
