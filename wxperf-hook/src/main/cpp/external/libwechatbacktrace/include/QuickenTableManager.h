@@ -96,7 +96,11 @@ namespace wechat_backtrace {
 
         std::unordered_map<std::string, std::string> GetRequestQut();
 
-        static bool CheckIfQutFileExists(const std::string &soname, const std::string &hash);
+        static bool
+        CheckIfQutFileExistsWithHash(const std::string &soname, const std::string &hash);
+
+        static bool
+        CheckIfQutFileExistsWithBuildId(const std::string &soname, const std::string &build_id);
 
         QutFileError
         RequestQutSections(const std::string &soname, const std::string &sopath,
@@ -114,7 +118,7 @@ namespace wechat_backtrace {
                         QutSectionsPtr &qut_sections_ptr);
 
         bool
-        InsertQutSections(const std::string &build_id, QutSectionsPtr qut_sections);
+        InsertQutSections(const std::string &build_id, QutSectionsPtr qut_sections, bool immediately);
     };
 }  // namespace wechat_backtrace
 

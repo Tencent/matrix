@@ -115,8 +115,8 @@ public class MainActivity extends AppCompatActivity {
 
         QuickenUnwinder.instance().configure(getApplicationContext())
                 .savingPath(getFilesDir().getAbsolutePath() + "/test/")
-                .coolDown(false)
                 .directoryToWarmUp(getApplicationInfo().nativeLibraryDir)
+                .directoryToWarmUp(QuickenUnwinder.getSystemLibraryPath())
                 .isWarmUpProcess(true)
                 .commit();
     }

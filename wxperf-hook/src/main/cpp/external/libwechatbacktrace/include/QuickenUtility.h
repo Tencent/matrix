@@ -23,17 +23,17 @@ namespace wechat_backtrace {
         return hash;
     }
 
+    static char *HexChars = "0123456789ABCDEF";
+
     inline static std::string ToBuildId(const std::string build_id_raw) {
         const size_t len = build_id_raw.length();
         std::string build_id(len * 2, '\0');
 
         for (size_t i = 0; i < len; i++) {
             unsigned int n = build_id_raw[i];
-            build_id[i * 2] = "0123456789ABCDEF"[(n >> 4) % 16];
-            build_id[i * 2 + 1] = "0123456789ABCDEF"[n % 16];
+            build_id[i * 2] = HexChars[(n >> 4) % 16];
+            build_id[i * 2 + 1] = HexChars[n % 16];
         }
-
-        QUT_LOG("build_id %s %d", build_id.c_str(), build_id.length());
 
         return build_id;
     }

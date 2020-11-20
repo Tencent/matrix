@@ -16,6 +16,7 @@
 #include <MinimalRegs.h>
 #include <sys/mman.h>
 #include <QuickenJNI.h>
+#include <utime.h>
 #include "QuickenTableManager.h"
 #include "../../common/Log.h"
 
@@ -36,7 +37,8 @@ namespace wechat_backtrace {
     inline string
     ToTempQutFileName(const string &saving_path, const string &soname, const string &build_id) {
         time_t seconds = time(NULL);
-        return saving_path + FILE_SEPERATOR + soname + "." + build_id + "_temp_" + to_string(seconds);
+        return saving_path + FILE_SEPERATOR + soname + "." + build_id + "_temp_" +
+               to_string(seconds);
     }
 
     inline string
@@ -110,7 +112,8 @@ namespace wechat_backtrace {
 
             size_t qut_version = 0;
             memcpy(&qut_version, data, sizeof(qut_version));
-            QUT_LOG("Checking file size = %lld, qut_version = %d, offset = %d", (uint64_t)file_stat.st_size, (uint32_t)qut_version, (uint32_t)offset);
+            QUT_LOG("Checking file size = %lld, qut_version = %d, offset = %d",
+                    (uint64_t) file_stat.st_size, (uint32_t) qut_version, (uint32_t) offset);
             offset += sizeof(qut_version);
             if (qut_version != QUT_VERSION) {
                 munmap(data, file_stat.st_size);
@@ -121,7 +124,8 @@ namespace wechat_backtrace {
 
             size_t arch = 0;
             memcpy(&arch, (data + offset), sizeof(arch));
-            QUT_LOG("Checking file size = %lld, arch = %d, offset = %d", (uint64_t)file_stat.st_size, (uint32_t)arch, (uint32_t)offset);
+            QUT_LOG("Checking file size = %lld, arch = %d, offset = %d",
+                    (uint64_t) file_stat.st_size, (uint32_t) arch, (uint32_t) offset);
             offset += sizeof(arch);
             if (arch != CURRENT_ARCH_ENUM) {
                 munmap(data, file_stat.st_size);
@@ -150,23 +154,27 @@ namespace wechat_backtrace {
 
             size_t idx_size;
             memcpy(&idx_size, data + offset, sizeof(idx_size));
-            QUT_LOG("Checking file size = %lld, idx_size = %d, offset = %d", (uint64_t)file_stat.st_size, (uint32_t)idx_size, (uint32_t)offset);
+            QUT_LOG("Checking file size = %lld, idx_size = %d, offset = %d",
+                    (uint64_t) file_stat.st_size, (uint32_t) idx_size, (uint32_t) offset);
             offset += sizeof(idx_size);
 
             size_t tbl_size;
             memcpy(&tbl_size, data + offset, sizeof(tbl_size));
-            QUT_LOG("Checking file size = %lld, tbl_size = %d, offset = %d", (uint64_t)file_stat.st_size, (uint32_t)tbl_size, (uint32_t)offset);
+            QUT_LOG("Checking file size = %lld, tbl_size = %d, offset = %d",
+                    (uint64_t) file_stat.st_size, (uint32_t) tbl_size, (uint32_t) offset);
             offset += sizeof(tbl_size);
 
             size_t idx_offset;
             memcpy(&idx_offset, data + offset, sizeof(idx_offset));
-            QUT_LOG("Checking file size = %lld, idx_offset = %d, offset = %d", (uint64_t)file_stat.st_size, (uint32_t)idx_offset, (uint32_t)offset);
+            QUT_LOG("Checking file size = %lld, idx_offset = %d, offset = %d",
+                    (uint64_t) file_stat.st_size, (uint32_t) idx_offset, (uint32_t) offset);
             offset += sizeof(idx_offset);
 
             size_t tbl_offset;
             memcpy(&tbl_offset, data + offset, sizeof(tbl_offset));
 
-            QUT_LOG("Checking file size = %lld, tbl_offset = %d, tbl_size = %d", (uint64_t)file_stat.st_size, (uint32_t)tbl_offset, (uint32_t)tbl_size);
+            QUT_LOG("Checking file size = %lld, tbl_offset = %d, tbl_size = %d",
+                    (uint64_t) file_stat.st_size, (uint32_t) tbl_offset, (uint32_t) tbl_size);
             if (file_stat.st_size != (tbl_offset + (tbl_size * sizeof(uptr)))) {
                 munmap(data, file_stat.st_size);
                 close(fd);
@@ -181,9 +189,12 @@ namespace wechat_backtrace {
             qut_sections->quidx = (static_cast<uptr *>((void *) (data + idx_offset)));
             qut_sections->qutbl = (static_cast<uptr *>((void *) (data + tbl_offset)));
 
-            if (!InsertQutSections(build_id, qut_sections)) {
+            if (!InsertQutSections(build_id, qut_sections, true)) {
                 return InsertNewQutFailed;
             }
+
+            // change last modified time, to prevent self clean-up logic.
+            utime(qut_file_name.c_str(), NULL);
 
             return NoneError;
         } else {
@@ -192,7 +203,8 @@ namespace wechat_backtrace {
     }
 
     bool
-    QuickenTableManager::InsertQutSections(const string &build_id, QutSectionsPtr qut_sections) {
+    QuickenTableManager::InsertQutSections(const string &build_id, QutSectionsPtr qut_sections,
+                                           bool immediately) {
         CHECK(qut_sections != nullptr);
         CHECK(qut_sections->idx_size > 0);
 
@@ -200,16 +212,19 @@ namespace wechat_backtrace {
 
         auto it = qut_sections_map_.find(build_id);
         if (it != qut_sections_map_.end() && it->second != nullptr) {
-            QUT_LOG("Qut insert build id %s failed, value %llx.", build_id.c_str(), (uint64_t)it->second);
+            QUT_LOG("Qut insert build id %s failed, value %llx.", build_id.c_str(),
+                    (uint64_t) it->second);
             return false;
         }
 
         QUT_LOG("Insert qut build id %s.", build_id.c_str());
 
-        qut_sections_map_[build_id] = qut_sections;
+        if (immediately ||
+            qut_sections_requesting_.find(build_id) != qut_sections_requesting_.end()) {
+            qut_sections_map_[build_id] = qut_sections;
+        }
 
         QUT_LOG("Erase qut requesting build id %s.", build_id.c_str());
-
         qut_sections_requesting_.erase(build_id);
 
         return true;
@@ -243,10 +258,18 @@ namespace wechat_backtrace {
     }
 
     bool
-    QuickenTableManager::CheckIfQutFileExists(const string &soname, const string &hash) {
+    QuickenTableManager::CheckIfQutFileExistsWithHash(const string &soname, const string &hash) {
         string symbolic_qut_file = ToSymbolicQutFileName(sSavingPath, soname, hash);
         struct stat buf;
         return stat(symbolic_qut_file.c_str(), &buf) == 0;
+    }
+
+    bool
+    QuickenTableManager::CheckIfQutFileExistsWithBuildId(const string &soname,
+                                                         const string &build_id) {
+        string qut_file = ToQutFileName(sSavingPath, soname, build_id);
+        struct stat buf;
+        return stat(qut_file.c_str(), &buf) == 0;
     }
 
     QutFileError
@@ -254,7 +277,7 @@ namespace wechat_backtrace {
                                          const string &hash, const string &build_id,
                                          const string &build_id_hex, QutSectionsPtr qut_sections) {
 
-        if (!InsertQutSections(build_id, qut_sections)) {
+        if (!InsertQutSections(build_id, qut_sections, false)) {
             return InsertNewQutFailed;
         }
 

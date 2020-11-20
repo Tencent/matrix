@@ -12,10 +12,14 @@ import android.os.Message;
 import android.os.OperationCanceledException;
 import android.os.PowerManager;
 import android.os.Process;
+import android.system.ErrnoException;
+import android.system.Os;
 
 import com.tencent.stubs.logger.Log;
 
 import java.io.FileFilter;
+import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.File;
 import java.util.HashSet;
@@ -27,6 +31,12 @@ public class QuickenUnwinder implements Handler.Callback {
 
     private final static String TAG = "Matrix.Qut";
 
+    private final static String SYSTEM_LIBRARY_PATH = "/apex/com.android.runtime/lib/";
+
+    public static String getSystemLibraryPath() {
+        return SYSTEM_LIBRARY_PATH;
+    }
+
     private final static String ACTION_WARMED_UP = "action.quicken.warmed-up";
     private final static String PERMISSION_WARMED_UP = ".quicken.warmed_up";
 
@@ -35,11 +45,15 @@ public class QuickenUnwinder implements Handler.Callback {
     private final static String FILE_WARMED_UP = "warmed-up";
     private final static String FILE_CLEAN_UP_TIMESTAMP = "clean-up.timestamp";
 
-    private final static long DURATION_CLEAN_UP_EXPIRED = 3 * 24 * 3600 * 1000; // milliseconds
-    private final static long DURATION_CLEAN_UP = 7 * 24 * 3600 * 1000; // milliseconds
-    private final static long DELAY_CLEAN_UP = 3 * 1000;
-    private final static long DELAY_WARM_UP = 3 * 1000;
-    private final static long DELAY_CONSUME_REQ_QUT = 3 * 1000;
+    private final static long DURATION_LAST_ACCESS_EXPIRED = 15L * 24 * 3600 * 1000; // milliseconds
+    private final static long DURATION_CLEAN_UP_EXPIRED = 3L * 24 * 3600 * 1000; // milliseconds
+    private final static long DURATION_CLEAN_UP = 7L * 24 * 3600 * 1000; // milliseconds
+//    private final static long DURATION_CLEAN_UP_EXPIRED = 10 * 1000; // milliseconds
+//    private final static long DURATION_CLEAN_UP = 10 * 1000; // milliseconds
+    private final static long DELAY_SHORTLY = 30 * 1000;
+    private final static long DELAY_CLEAN_UP = DELAY_SHORTLY;
+    private final static long DELAY_WARM_UP = DELAY_SHORTLY;
+    private final static long DELAY_CONSUME_REQ_QUT = DELAY_SHORTLY;
 
     private final static int MSG_WARM_UP = 1;
     private final static int MSG_CONSUME_REQ_QUT = 2;
@@ -219,6 +233,57 @@ public class QuickenUnwinder implements Handler.Callback {
         return warmUpMarkedFile(mConfiguration.mContext).exists();
     }
 
+    private String readFileContent(File file) {
+        if (file.isFile()) {
+            FileReader reader = null;
+            try {
+                StringBuilder sb = new StringBuilder(4096);
+                reader = new FileReader(file);
+                char[] buffer = new char[1024];
+                int len;
+                while ((len = reader.read(buffer)) > 0) {
+                    sb.append(buffer, 0, len);
+                }
+
+                return sb.toString();
+            } catch (Exception e) {
+                Log.printStack(Log.ERROR, TAG, e);
+            } finally {
+                if (reader != null) {
+                    try {
+                        reader.close();
+                    } catch (IOException e) {
+                        Log.printStack(Log.ERROR, TAG, e);
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    private boolean writeContentToFile(File file, String content) {
+        if (file.isFile()) {
+            FileWriter writer = null;
+            try {
+                writer = new FileWriter(file);
+                writer.write(content);
+                return true;
+            } catch (Exception e) {
+                Log.printStack(Log.ERROR, TAG, e);
+            } finally {
+                if (writer != null) {
+                    try {
+                        writer.close();
+                    } catch (IOException e) {
+                        Log.printStack(Log.ERROR, TAG, e);
+                    }
+                }
+            }
+        }
+
+        return false;
+    }
+
     public void requestQutGenerate() {
 
         if (!mInitialized || !mConfigured) {
@@ -313,11 +378,20 @@ public class QuickenUnwinder implements Handler.Callback {
                         public boolean accept(File pathname) {
                             if (pathname.getName().contains("_malformed_") || pathname.getName().contains("_temp_")) {
                                 if (System.currentTimeMillis() - pathname.lastModified() >= DURATION_CLEAN_UP_EXPIRED) {
+                                    Log.i(TAG, "Delete malformed and temp file %s", pathname.getAbsolutePath());
                                     pathname.delete();
                                 }
-
-                                // TODO Should also delete file which last access time was too long.
-                                // TODO Also remove broken symbolic link.
+                            } else {
+                                try {
+                                    long lastAccessTime = Os.lstat(pathname.getAbsolutePath()).st_atime * 1000L;
+                                    Log.i(TAG, "File(%s) last access time %s", pathname.getAbsolutePath(), lastAccessTime);
+                                    if ((System.currentTimeMillis() - lastAccessTime) > DURATION_LAST_ACCESS_EXPIRED) {
+                                        pathname.delete();
+                                        Log.i(TAG, "Delete long time no access file(%s)", pathname.getAbsolutePath());
+                                    }
+                                } catch (ErrnoException e) {
+                                    Log.printStack(Log.ERROR, TAG, e);
+                                }
                             }
                             return false;
                         }
@@ -353,7 +427,9 @@ public class QuickenUnwinder implements Handler.Callback {
 
     private void broadcastWarmedUp() {
         try {
-            warmUpMarkedFile(mConfiguration.mContext).createNewFile();
+            File warmedUpFile = warmUpMarkedFile(mConfiguration.mContext);
+            warmedUpFile.createNewFile();
+            writeContentToFile(warmedUpFile, mConfiguration.mContext.getApplicationInfo().nativeLibraryDir);
         } catch (IOException e) {
             Log.printStack(Log.ERROR, TAG, e);
         }
@@ -454,6 +530,15 @@ public class QuickenUnwinder implements Handler.Callback {
                 Log.i(TAG, "Need clean up");
             }
 
+            File timestamp = cleanUpTimestampFile(mConfiguration.mContext);
+            if (!timestamp.exists()) {
+                try {
+                    timestamp.createNewFile();
+                } catch (IOException e) {
+                    Log.printStack(Log.ERROR, TAG, e);
+                }
+            }
+
             if (mUnfinishedTask.get() > 0) {
                 registerIdleReceiver(configuration.mContext);
             }
@@ -473,9 +558,19 @@ public class QuickenUnwinder implements Handler.Callback {
     }
 
     private void dealWithCoolDown(Configuration configuration) {
-        if (configuration.mThisIsWarmUpProcess && configuration.mCoolDown) {
+        if (configuration.mThisIsWarmUpProcess) {
             File markFile = warmUpMarkedFile(configuration.mContext);
-            markFile.delete();
+            if (configuration.mCoolDownIfApkUpdated && markFile.exists()) {
+                String content = readFileContent(markFile);
+                String lastNativeLibraryPath = content.split("\n")[0];
+                if (!lastNativeLibraryPath.equalsIgnoreCase(configuration.mContext.getApplicationInfo().nativeLibraryDir)) {
+                    Log.i(TAG, "Apk updated, remove warmed-up file.");
+                    configuration.mCoolDown = true;
+                }
+            }
+            if (configuration.mCoolDown) {
+                markFile.delete();
+            }
         }
     }
 
@@ -534,8 +629,9 @@ public class QuickenUnwinder implements Handler.Callback {
         Context mContext;
         String mSavingPath;
         HashSet<String> mWarmUpDirectoriesList = new HashSet<>();
-        boolean mCoolDown;
-        boolean mThisIsWarmUpProcess;
+        boolean mCoolDown = false;
+        boolean mCoolDownIfApkUpdated = true;
+        boolean mThisIsWarmUpProcess = false;
 
         private boolean mCommitted = false;
         private QuickenUnwinder mQuickenUnwinder;
@@ -566,6 +662,14 @@ public class QuickenUnwinder implements Handler.Callback {
                 return this;
             }
             mCoolDown = coolDown;
+            return this;
+        }
+
+        public Configuration coolDownIfApkUpdated(boolean ifApkUpdated) {
+            if (mCommitted) {
+                return this;
+            }
+            mCoolDownIfApkUpdated = ifApkUpdated;
             return this;
         }
 

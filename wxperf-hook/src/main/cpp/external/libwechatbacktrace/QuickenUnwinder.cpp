@@ -152,8 +152,8 @@ namespace wechat_backtrace {
         const string hash = ToHash(sopath);
         const std::string soname = SplitSonameFromPath(sopath);
 
-        if (QuickenTableManager::CheckIfQutFileExists(soname, hash)) {
-            QUT_LOG("Qut exists and return.");
+        if (QuickenTableManager::CheckIfQutFileExistsWithHash(soname, hash)) {
+            QUT_LOG("Qut exists with hash %s and return.", hash.c_str());
             return;
         }
 
@@ -168,14 +168,20 @@ namespace wechat_backtrace {
             QUT_LOG("elf->valid() so %s invalid", sopath.c_str());
             return;
         }
+
+        const string build_id_hex = elf->GetBuildID();
+        const string build_id = ToBuildId(build_id_hex);
+
+        if (QuickenTableManager::CheckIfQutFileExistsWithBuildId(soname, build_id)) {
+            QUT_LOG("Qut exists with build id %s and return.", build_id.c_str());
+            return;
+        }
+
         auto process_memory_ = unwindstack::Memory::CreateProcessMemory(getpid());
 
         QuickenInterface *interface = QuickenMapInfo::GetQuickenInterfaceFromElf(sopath, elf.get());
 
         interface->GenerateQuickenTable<addr_t>(process_memory_.get());
-
-        const string build_id_hex = elf->GetBuildID();
-        const string build_id = ToBuildId(build_id_hex);
 
         QutFileError error =
                 QuickenTableManager::getInstance().SaveQutSections(soname, sopath, hash, build_id,
