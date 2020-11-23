@@ -183,10 +183,8 @@ namespace wechat_backtrace {
 
         interface->GenerateQuickenTable<addr_t>(process_memory_.get());
 
-        QutFileError error =
-                QuickenTableManager::getInstance().SaveQutSections(soname, sopath, hash, build_id,
-                                                                   build_id_hex,
-                                                                   interface->GetQutSections());
+        QutFileError error = QuickenTableManager::getInstance().SaveQutSections(
+                        soname, sopath, hash, build_id, build_id_hex, interface->GetQutSections());
         QUT_LOG("Generate qut for so %s result %d", sopath.c_str(), error);
     }
 

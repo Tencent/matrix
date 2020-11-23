@@ -92,7 +92,6 @@ namespace wechat_backtrace {
         while (first < last) {
             size_t current = ((first + last) / 2) & 0xfffffffe;
             uptr addr = qut_sections_->quidx[current];
-//        QUT_DEBUG_LOG("QuickenInterface::FindEntry first:%u last:%u current:%u, addr:%x, pc:%x", first, last, current, addr, pc);
             if (pc == addr) {
                 *entry_offset = current;
                 return true;

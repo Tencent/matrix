@@ -205,7 +205,7 @@ namespace wechat_backtrace {
 //      1000 0001           : vsp = r7 + 8, lr = [vsp - 4], sp = [vsp - 8]      ; # Have prologue
 //      1000 0010           : vsp = r11		             						; # r11 is fp reg in arm mode
 //      1000 0011           : vsp = r11 + 8, lr = [vsp - 4], sp = [vsp - 8]     ; # Have prologue
-//      1000 0100           : vsp = sp                                    		; # TODO
+//      1000 0100           : vsp = sp                                    		; # XXX
 
 //      1000 0101 0nnn nnnn : vsp = r7 + (nnnnnnn << 2)							;
 //      1000 0110 0nnn nnnn : vsp = r11 + (nnnnnnn << 2)						;
@@ -325,7 +325,7 @@ namespace wechat_backtrace {
                                          next_op == QUT_INSTRUCTION_R11_OFFSET))
                                     && (next_imm_fp == next_imm)) {
                                     have_prologue = true;
-                                    instructions.pop_front(); // vsp + 8    // TODO recheck this logic
+                                    instructions.pop_front(); // vsp + 8
                                     instructions.pop_front(); // pop lr = vsp - 4
                                     instructions.pop_front(); // pop r7/r11 = vsp - 8
                                 }

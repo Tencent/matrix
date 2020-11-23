@@ -79,7 +79,7 @@ namespace wechat_backtrace {
         }
 
         static void SetSavingPath(const std::string &saving_path) {
-            // TODO Check security here
+            // XXX Check security here
             std::string arch_folder = CURRENT_ARCH_ENUM == QUT_ARCH_ARM ? "arm32" : "arm64";
             sSavingPath = saving_path + arch_folder;
             MakeDir(sSavingPath.c_str());

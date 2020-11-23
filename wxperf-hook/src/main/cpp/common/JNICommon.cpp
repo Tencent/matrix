@@ -66,7 +66,7 @@ JNIEXPORT jint JNI_OnLoad(JavaVM *vm, void *reserved) {
             LOGD(TAG, "j_EglHook success");
         }
 
-        if (wechat_backtrace::QutJNIOnLoaded(vm, env) == 0) {
+        if (wechat_backtrace::QutJNIOnLoaded(vm, env) != 0) {
             LOGE(TAG, "Register Quicken Unwinder JNINativeMethods Failed.");
         }
     }

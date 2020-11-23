@@ -63,8 +63,7 @@ public class QuickenUnwinder implements Handler.Callback {
     private final static long DURATION_LAST_ACCESS_EXPIRED = 15L * 24 * 3600 * 1000; // milliseconds
     private final static long DURATION_CLEAN_UP_EXPIRED = 3L * 24 * 3600 * 1000; // milliseconds
     private final static long DURATION_CLEAN_UP = 7L * 24 * 3600 * 1000; // milliseconds
-    //    private final static long DURATION_CLEAN_UP_EXPIRED = 10 * 1000; // milliseconds
-//    private final static long DURATION_CLEAN_UP = 10 * 1000; // milliseconds
+
     private final static long DELAY_SHORTLY = 30 * 1000;
     private final static long DELAY_CLEAN_UP = DELAY_SHORTLY;
     private final static long DELAY_WARM_UP = DELAY_SHORTLY;
