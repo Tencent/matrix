@@ -1,8 +1,8 @@
 package com.tencent.wxperf.jni.memory;
 
 import android.text.TextUtils;
-import android.util.Log;
 
+import com.tencent.stubs.logger.Log;
 import com.tencent.wxperf.jni.AbsHook;
 import com.tencent.wxperf.jni.HookManager;
 
@@ -14,6 +14,8 @@ import java.util.Set;
  */
 public class MemoryHook extends AbsHook {
 
+    private static final String TAG = "Wxperf.Memory";
+
     public static final MemoryHook INSTANCE = new MemoryHook();
 
     private Set<String> mHookSoSet   = new HashSet<>();
@@ -21,7 +23,7 @@ public class MemoryHook extends AbsHook {
 
     private int     mMinTraceSize;
     private int     mMaxTraceSize;
-    private int     mStacktraceLogThreshold;
+    private int     mStacktraceLogThreshold = 10 * 1024 * 1024;
     private double  mSampling = 1;
     private boolean mEnableStacktrace;
     private boolean mEnableMmap;
@@ -31,9 +33,10 @@ public class MemoryHook extends AbsHook {
 
     public MemoryHook addHookSo(String regex) {
         if (TextUtils.isEmpty(regex)) {
-            throw new IllegalArgumentException("regex = " + regex);
+            Log.e(TAG, "thread regex is empty!!!");
+        } else {
+            mHookSoSet.add(regex);
         }
-        mHookSoSet.add(regex);
         return this;
     }
 
@@ -105,7 +108,7 @@ public class MemoryHook extends AbsHook {
         return this;
     }
 
-    public MemoryHook stacktraeLogThreshold(int threshold) {
+    public MemoryHook stacktraceLogThreshold(int threshold) {
         mStacktraceLogThreshold = threshold;
         return this;
     }
@@ -133,6 +136,7 @@ public class MemoryHook extends AbsHook {
         setSampleSizeRangeNative(mMinTraceSize, mMaxTraceSize);
         setSamplingNative(mSampling);
 
+        setStacktraceLogThresholdNative(mStacktraceLogThreshold);
         enableStacktraceNative(mEnableStacktrace);
     }
 
@@ -142,13 +146,13 @@ public class MemoryHook extends AbsHook {
         addIgnoreSoNative(mIgnoreSoSet.toArray(new String[0]));
     }
 
-    public void dump(String into) {
+    public void dump(String logPath, String jsonPath) {
         if (HookManager.INSTANCE.hasHooked()) {
-            dumpNative(into);
+            dumpNative(logPath, jsonPath);
         }
     }
 
-    private native void dumpNative(String path);
+    private native void dumpNative(String logPath, String jsonPath);
 
     private native void setSamplingNative(double sampling);
 

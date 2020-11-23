@@ -14,6 +14,7 @@ namespace enhance {
     void* dlopen(const char* __file_name, int __flag);
     int dlclose(void* __handle);
     void* dlsym(void* __handle, const char* __symbol);
+    size_t dlsizeof(void *__addr);
 
     struct DlInfo {
 

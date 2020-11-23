@@ -18,6 +18,7 @@ set(
         SOURCE_FILES
         ${SOURCE_DIR}/jectl/JeCtl.cpp
         ${SOURCE_DIR}/jectl/EnhanceDlsym.cpp
+        ${SOURCE_DIR}/jectl/JeHooks.cpp
 )
 
 add_library( # Specifies the name of the library.

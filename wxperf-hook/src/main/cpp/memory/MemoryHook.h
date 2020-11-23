@@ -17,7 +17,9 @@ void on_munmap_memory(void *__ptr);
 
 void memory_hook_on_dlopen(const char *__file_name);
 
-void dump(bool enable_mmap_hook = false, const char *path = "/sdcard/memory_hook.log");
+void dump(bool __enable_mmap = false,
+          const char *__log_path = "/sdcard/memory_hook.log",
+          const char *__json_path = "/sdcard/memory_hook.json");
 
 void enable_stacktrace(bool);
 

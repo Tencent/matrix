@@ -5,6 +5,7 @@ import android.content.Context;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Debug;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Process;
@@ -42,13 +43,13 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        {
-            try {
-                Class.forName("com.tencent.wxperf.jni.HookManager");
-            } catch (ClassNotFoundException e) {
-                e.printStackTrace();
-            }
-        }
+//        {
+//            try {
+//                Class.forName("com.tencent.wxperf.jni.HookManager");
+//            } catch (ClassNotFoundException e) {
+//                e.printStackTrace();
+//            }
+//        }
 
 //        LibWxPerfManager.INSTANCE.init();
 //        if (!LibWxPerfManager.INSTANCE.initOk()) {
@@ -63,6 +64,7 @@ public class MainActivity extends AppCompatActivity {
 //                            .addHookSo(".*libnative-lib\\.so$")
                             .addHookSo(".*libnative-lib\\.so$")
                             .enableStacktrace(true)
+                            .stacktraceLogThreshold(0)
                             .enableMmapHook(false))
                     .addHook(PthreadHook.INSTANCE
 //                            .addHookSo(".*libnative-lib\\.so$")
@@ -178,8 +180,8 @@ public class MainActivity extends AppCompatActivity {
                 @Override
                 public void run() {
                     jniObj.reallocTest();
-                    jniObj.reallocTest();
-                    jniObj.reallocTest();
+//                    jniObj.reallocTest();
+//                    jniObj.reallocTest();
                 }
             }).start();
         }
@@ -196,13 +198,13 @@ public class MainActivity extends AppCompatActivity {
             e.printStackTrace();
         }
 
-        MemoryHook.INSTANCE.dump("/sdcard/memory_hook.log");
+        MemoryHook.INSTANCE.dump("/sdcard/memory_hook.log", "/sdcard/memory_hook.json");
     }
 
     public void mmapTest(View view) {
         JNIObj jniObj = new JNIObj();
         jniObj.doMmap();
-        MemoryHook.INSTANCE.dump("/sdcard/memory_hook.log");
+        MemoryHook.INSTANCE.dump("/sdcard/memory_hook.log", "/sdcard/memory_hook.json");
     }
 
     public void threadTest(View view) {
@@ -298,8 +300,11 @@ public class MainActivity extends AppCompatActivity {
 //        PthreadHook.INSTANCE.dump("/sdcard/pthread_hook.log");
     }
 
+
     public void mallocTest(View view) {
+        Log.d(TAG, "mallocTest: native heap:" + Debug.getNativeHeapSize() + ", allocated:" + Debug.getNativeHeapAllocatedSize() + ", free:" + Debug.getNativeHeapFreeSize());
         JNIObj.mallocTest();
+        Log.d(TAG, "mallocTest after malloc: native heap:" + Debug.getNativeHeapSize() + ", allocated:" + Debug.getNativeHeapAllocatedSize() + ", free:" + Debug.getNativeHeapFreeSize());
     }
 
     public void doSomeThing(View view) {
@@ -307,7 +312,7 @@ public class MainActivity extends AppCompatActivity {
         for (int i = 0; i < 1000; i++) {
             jniObj.doSomeThing();
         }
-        MemoryHook.INSTANCE.dump("/sdcard/memory_hook.log");
+        MemoryHook.INSTANCE.dump("/sdcard/memory_hook.log", "/sdcard/memory_hook.json");
     }
 
     public void specificTest(View view) {
@@ -486,10 +491,11 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void jectlTest(View view) {
-        JeCtl.checkRetain();
-        int ret = JeCtl.tryDisableRetain();
-        Log.d(TAG, "tryDisableRetain result :" + ret);
-        JeCtl.checkRetain();
+//        JeCtl.extentHookTest();
+//        JeCtl.preAllocRetain(320 * 1024 * 1024 /*up to 384M*/, 60 * 1024 * 1024 /*up to 64M*/, 256 * 1024 * 1024,64 * 1024 * 1024);
+//        int ret = JeCtl.compact();
+//        Log.d(TAG, "tryDisableRetain result :" + ret);
+        Log.d(TAG, "jemalloc version = " + JeCtl.version());
     }
 
     public void killSelf(View view) {

@@ -24,6 +24,7 @@ namespace enhance {
 
     static std::set<DlInfo *> m_opened_info;
     static std::mutex         m_dl_mutex;
+    static std::map<void *, ElfW(Sym) *> m_founded_symtab;
 
     static inline bool end_with(std::string const &value, std::string const &ending) {
         if (ending.size() > value.size()) {
@@ -129,6 +130,7 @@ namespace enhance {
             return false;
         }
         __info.bias_addr = __info.base_addr - phdr0->p_vaddr;
+        LOGD(TAG, "bias_addr = %p, bias = %p", (void *)__info.bias_addr, (void *)phdr0->p_vaddr);
 
         return true;
     }
@@ -160,13 +162,16 @@ namespace enhance {
 
         // SHT_SYMTAB 和 SHT_STRTAB 通常在 section header table 的末尾, 所以倒序遍历
         short flag = 0b11;
+        size_t count = 0;
+        __info.symtab_num = 0;
+        __info.strtab_size = 0;
         do {
             shdr_end--;
 
             switch (shdr_end->sh_type) {
 
                 case SHT_SYMTAB:
-                    LOGD(TAG, "SHT_SYMTAB");
+                    LOGD(TAG, "SHT_SYMTAB[%zu]", count++);
                     __info.symtab = static_cast<ElfW(Sym) *>(malloc(shdr_end->sh_size));
                     memcpy(__info.symtab,
                            reinterpret_cast<const void *>(((uintptr_t) elf) + shdr_end->sh_offset),
@@ -177,7 +182,7 @@ namespace enhance {
                     break;
 
                 case SHT_STRTAB:
-                    LOGD(TAG, "SHT_STRTAB");
+                    LOGD(TAG, "SHT_STRTAB[%zu]", count++);
 
                     if (0 == strcmp(shstr + shdr_end->sh_name, ".strtab")) {
                         __info.strtab      = static_cast<char *>(malloc(shdr_end->sh_size));
@@ -259,10 +264,15 @@ namespace enhance {
             m_opened_info.erase(info);
             free(info->strtab);
             free(info);
+
+            std::map<void *, ElfW(Sym) *> empty;
+            empty.swap(m_founded_symtab);
+            empty.clear();
         }
         return 0;
     }
 
+    // TODO dlsym object and func
     void *dlsym(void *__handle, const char *__symbol) {
         std::lock_guard<std::mutex> lock(m_dl_mutex);
 
@@ -273,6 +283,8 @@ namespace enhance {
         if (!m_opened_info.count(info)) {
             return nullptr;
         }
+
+
 
         ElfW(Sym) *symtab_end = info->symtab + info->symtab_num;
         ElfW(Sym) *symtab_idx = info->symtab;
@@ -287,13 +299,26 @@ namespace enhance {
 
             std::string sym_name(info->strtab + symtab_idx->st_name);
             if (sym_name == __symbol) {
-                LOGD(TAG, "st_value=%llx", symtab_idx->st_value);
+                LOGD(TAG, "st_value=%x", symtab_idx->st_value);
                 uintptr_t found_sym_addr = symtab_idx->st_value + info->bias_addr;
-                return reinterpret_cast<void *>(found_sym_addr);
+                if (check_loaded_so((void *)found_sym_addr) != 0) {
+                    auto res = reinterpret_cast<void *>(found_sym_addr);
+                    m_founded_symtab[res] = symtab_idx;
+                    return res;
+                }
             }
         }
 
         return nullptr;
+    }
+
+    size_t dlsizeof(void *__addr) {
+
+        if (m_founded_symtab.count(__addr)) {
+            return m_founded_symtab[__addr]->st_size;
+        }
+
+        return -1;
     }
 }
 

@@ -2,6 +2,7 @@ package com.tencent.wxperf.jni.pthread;
 
 import android.text.TextUtils;
 
+import com.tencent.stubs.logger.Log;
 import com.tencent.wxperf.jni.AbsHook;
 import com.tencent.wxperf.jni.HookManager;
 
@@ -12,6 +13,7 @@ import java.util.Set;
  * Created by Yves on 2020-03-11
  */
 public class PthreadHook extends AbsHook {
+    private static final String TAG = "Wxperf.Pthread";
 
     public static final PthreadHook INSTANCE = new PthreadHook();
 
@@ -24,9 +26,10 @@ public class PthreadHook extends AbsHook {
 
     public PthreadHook addHookSo(String regex) {
         if (TextUtils.isEmpty(regex)) {
-            throw new IllegalArgumentException("so regex = " + regex);
+            Log.e(TAG, "so regex is empty");
+        } else {
+            mHookSoSet.add(regex);
         }
-        mHookSoSet.add(regex);
         return this;
     }
 
@@ -54,9 +57,10 @@ public class PthreadHook extends AbsHook {
 
     public PthreadHook addHookThread(String regex) {
         if (TextUtils.isEmpty(regex)) {
-            throw new IllegalArgumentException("thread regex should NOT be empty");
+            Log.e(TAG, "thread regex is empty!!!");
+        } else {
+            mHookThreadName.add(regex);
         }
-        mHookThreadName.add(regex);
         return this;
     }
 

@@ -292,7 +292,9 @@ namespace unwindstack {
                 if (sym_name == __symbol) {
                     LOGD(TAG, "st_value=%llx", symtab_idx->st_value);
                     uintptr_t found_sym_addr = symtab_idx->st_value + info->bias_addr;
-                    return reinterpret_cast<void *>(found_sym_addr);
+                    if (check_loaded_so((void *)found_sym_addr) != 0) {
+                        return reinterpret_cast<void *>(found_sym_addr);
+                    }
                 }
             }
 

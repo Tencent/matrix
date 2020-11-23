@@ -10,7 +10,7 @@ cmake_minimum_required(VERSION 3.4.1)
 # and CMake builds them for you. When you build your app, Gradle
 # automatically packages shared libraries with your APK.
 
-file(GLOB src "src/main/jni/*.cpp" "src/main/jni/benchmark/*.cpp")
+file(GLOB src "src/main/jni/*.cpp" "src/main/jni/benchmark/*.cpp" "src/main/jni/MallocTest.cpp")
 
 add_library( # Specifies the name of the library.
              native-lib
