@@ -3,7 +3,6 @@
 #include <cstdlib>
 #include <pthread.h>
 
-#include <FpFallbackUnwinder.h>
 #include <unwindstack/MachineArm64.h>
 #include <unwindstack/RegsGetLocal.h>
 
@@ -21,43 +20,32 @@ namespace wechat_backtrace {
 
     static vector<pair<uintptr_t, uintptr_t>> gSkipFunctions;
 
-    vector<pair<uintptr_t, uintptr_t>>* GetSkipFunctions() {
+    vector<pair<uintptr_t, uintptr_t>> *GetSkipFunctions() {
         return &gSkipFunctions;
-    }
-
-    static inline bool ShouldGoFallback(uptr pc) {
-#ifdef __aarch64__
-        for (const auto &range : gSkipFunctions) {
-            if (range.first < pc && pc < range.second) {
-                return true;
-            }
-        }
-#endif
-        return false;
     }
 
     // Check if given pointer points into allocated stack area.
     static inline bool IsValidFrame(uptr frame, uptr stack_top, uptr stack_bottom) {
-        return frame > stack_bottom && frame < stack_top - 2 * sizeof (uptr);
+        return frame > stack_bottom && frame < stack_top - 2 * sizeof(uptr);
     }
 
     // In GCC on ARM bp points to saved lr, not fp, so we should check the next
     // cell in stack to be a saved frame pointer. GetCanonicFrame returns the
     // pointer to saved frame pointer in any case.
-    static inline uptr * GetCanonicFrame(uptr fp, uptr stack_top, uptr stack_bottom) {
+    static inline uptr *GetCanonicFrame(uptr fp, uptr stack_top, uptr stack_bottom) {
         if (UNLIKELY(stack_top < stack_bottom)) {
             return 0;
         }
 #ifdef __arm__
         if (!IsValidFrame(fp, stack_top, stack_bottom)) return 0;
 
-        uptr *fp_prev = (uptr *)fp;
+        uptr *fp_prev = (uptr *) fp;
 
-        if (IsValidFrame((uptr)fp_prev[0], stack_top, stack_bottom)) return fp_prev;
+        if (IsValidFrame((uptr) fp_prev[0], stack_top, stack_bottom)) return fp_prev;
 
         // The next frame pointer does not look right. This could be a GCC frame, step
         // back by 1 word and try again.
-        if (IsValidFrame((uptr)fp_prev[-1], stack_top, stack_bottom)) return fp_prev - 1;
+        if (IsValidFrame((uptr) fp_prev[-1], stack_top, stack_bottom)) return fp_prev - 1;
 
         // Nope, this does not look right either. This means the frame after next does
         // not have a valid frame pointer, but we can still extract the caller PC.
@@ -77,11 +65,11 @@ namespace wechat_backtrace {
         return (a & (alignment - 1)) == 0;
     }
 
-    static inline void fpUnwindImpl(uptr pc, uptr fp, uptr stack_top, uptr stack_bottom,
-                                    uptr * backtrace, uptr frame_max_size, uptr &frame_size) {
+    static inline void fpUnwindImpl(uptr pc, uptr fp, const uptr stack_top, const uptr stack_bottom,
+                                    Frame *backtrace, const size_t frame_max_size, size_t &frame_size) {
 
         const uptr kPageSize = GetPageSize();
-        backtrace[0] = pc;
+        backtrace[0].pc = pc;
         frame_size = 1;
         if (UNLIKELY(stack_top < 4096)) return;  // Sanity check for stack top.
         uptr *frame = GetCanonicFrame(fp, stack_top, stack_bottom);
@@ -100,123 +88,15 @@ namespace wechat_backtrace {
             if (pc1 < kPageSize)
                 break;
             if (pc1 != pc) {
-                backtrace[frame_size++] = (uptr) pc1;
+                backtrace[frame_size++].pc = (uptr) pc1;
             }
             bottom = (uptr) frame;
             frame = GetCanonicFrame((uptr) frame[0], stack_top, bottom);
         }
     }
 
-    static inline uptr * StepFallback(uptr pc, uptr sp,
-            bool &finished, unwindstack::FpFallbackUnwinder *&fallbackUnwinder, uptr &next_pc) {
-
-#ifdef __aarch64__
-        // TODO Fix memory leak here.
-        if (fallbackUnwinder == NULL) {
-            unwindstack::Regs *regs = unwindstack::Regs::CreateFromLocal();
-            unwindstack::RegsGetLocal(regs);
-            regs->set_pc(pc);
-            regs->set_sp(sp);
-            ((uptr *)regs->RawData())[unwindstack::ARM64_REG_LR] = pc;
-
-            auto process_memory = unwindstack::Memory::CreateProcessMemory(getpid());
-
-            shared_ptr<unwindstack::LocalMaps> maps = wechat_backtrace::GetMapsCache();
-
-            if (!maps) {
-                return 0;
-            }
-
-            fallbackUnwinder = new unwindstack::FpFallbackUnwinder(maps.get(), regs, process_memory);
-            unwindstack::JitDebug jit_debug(process_memory);
-            fallbackUnwinder->SetJitDebug(&jit_debug, regs->Arch());
-            fallbackUnwinder->SetResolveNames(false);
-        }
-
-        fallbackUnwinder->fallbackUnwindFrame(finished);
-
-        unwindstack::Regs *regs = fallbackUnwinder->getRegs();
-
-        switch (fallbackUnwinder->LastErrorCode()) {
-            case unwindstack::ErrorCode::ERROR_MEMORY_INVALID:
-            case unwindstack::ErrorCode::ERROR_UNWIND_INFO:
-            case unwindstack::ErrorCode::ERROR_UNSUPPORTED:
-            case unwindstack::ErrorCode::ERROR_INVALID_MAP:
-            case unwindstack::ErrorCode::ERROR_INVALID_ELF:
-                return 0;
-        }
-
-        next_pc = ((uptr *) regs->RawData())[unwindstack::ARM64_REG_PC];
-
-        return (uptr *)(((uptr *) regs->RawData())[unwindstack::ARM64_REG_FP]);
-
-#else
-        // TODO
-        return 0;
-#endif
-    }
-
-    static inline void fpUnwindWithFallbackImpl(uptr pc, uptr fp, uptr stack_top, uptr stack_bottom,
-                                                uptr * backtrace, uptr frame_max_size,
-                                                uptr &frame_size) {
-
-        const uptr kPageSize = GetPageSize();
-        backtrace[0] = pc;
-        frame_size = 1;
-
-        unwindstack::FpFallbackUnwinder *fallbackUnwinder = NULL;
-        bool finished = false;
-
-        if (UNLIKELY(stack_top < 4096)) return;  // Sanity check for stack top.
-
-        uptr *frame = GetCanonicFrame(fp, stack_top, stack_bottom);
-
-        // Lowest possible address that makes sense as the next frame pointer.
-        // Goes up as we walk the stack.
-        uptr bottom = stack_bottom;
-
-        uptr next_pc = 0;
-        while (frame_size < frame_max_size) {
-
-            if (ShouldGoFallback(backtrace[frame_size - 1]) ||
-                    !(IsValidFrame((uptr) frame, stack_top, bottom) &&
-                        IsAligned((uptr) frame, sizeof(*frame)))) {
-
-                frame = StepFallback(backtrace[frame_size - 1], bottom, finished,
-                        fallbackUnwinder, next_pc);
-
-                if (frame == 0) {
-                    break;
-                }
-
-                if (next_pc != pc) {
-                    backtrace[frame_size++] = next_pc;
-                }
-
-                if (finished) break;
-
-                continue;
-            }
-
-            uptr pc1 = frame[1];
-            // Let's assume that any pointer in the 0th page (i.e. <0x1000 on i386 and
-            // x86_64) is invalid and stop unwinding here.  If we're adding support for
-            // a platform where this isn't true, we need to reconsider this check.
-            if (pc1 < kPageSize)
-                break;
-            if (pc1 != pc) {
-                backtrace[frame_size++] = (uptr) pc1;
-            }
-            bottom = (uptr) frame;
-            frame = GetCanonicFrame((uptr) frame[0], stack_top, bottom);
-        }
-
-        if (fallbackUnwinder != NULL) {
-            delete fallbackUnwinder;
-        }
-    }
-
-    void FpUnwind(uptr * regs, uptr * backtrace, uptr frame_max_size, uptr &frame_size, bool fallback) {
+    void
+    FpUnwind(uptr *regs, Frame *backtrace, const size_t max_size, size_t &frame_size/* , bool fallback */) {
 
         pthread_attr_t attr;
         pthread_getattr_ext(pthread_self(), &attr);
@@ -226,18 +106,9 @@ namespace wechat_backtrace {
         uptr fp = regs[0]; // x29 or r7
         uptr pc = regs[3]; // x32 or r15
 
-        if (LIKELY(!fallback)) {
-            fpUnwindImpl(pc, fp, tack_top, stack_bottom, backtrace, frame_max_size, frame_size);
-        } else {
-#ifdef __aarch64__
-            fpUnwindWithFallbackImpl(pc, fp, tack_top, stack_bottom, backtrace, frame_max_size,
-                    frame_size);
-#else
-            // TODO: Do not support ARM 32-bit and other arch yet.
-#endif
-        }
-    }
+        fpUnwindImpl(pc, fp, tack_top, stack_bottom, backtrace, max_size, frame_size);
 
+    }
 
 
 } // namespace wechat_backtrace

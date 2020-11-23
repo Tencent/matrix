@@ -21,11 +21,11 @@ android {
             abiFilters rootProject.ABI_FILTERS as String[]
         }
 
-//        externalNativeBuild {
-//            cmake {
-//                arguments = ['-DANDROID_STL=c++_shared']
-//            }
-//        }
+        externalNativeBuild {
+            cmake {
+                arguments = ['-DANDROID_STL=c++_shared']
+            }
+        }
     }
 
     buildTypes {

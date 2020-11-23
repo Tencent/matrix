@@ -23,7 +23,7 @@ namespace wechat_backtrace {
         return hash;
     }
 
-    static char *HexChars = "0123456789ABCDEF";
+    static const char *HexChars = "0123456789ABCDEF";
 
     inline static std::string ToBuildId(const std::string build_id_raw) {
         const size_t len = build_id_raw.length();

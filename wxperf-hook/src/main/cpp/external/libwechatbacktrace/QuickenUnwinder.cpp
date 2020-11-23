@@ -2,7 +2,6 @@
 #include <bits/pthread_types.h>
 #include <cstdlib>
 #include <pthread.h>
-#include <FpFallbackUnwinder.h>
 #include <deps/android-base/include/android-base/strings.h>
 #include <FastArmExidx.h>
 #include <include/unwindstack/DwarfError.h>
@@ -184,7 +183,7 @@ namespace wechat_backtrace {
         interface->GenerateQuickenTable<addr_t>(process_memory_.get());
 
         QutFileError error = QuickenTableManager::getInstance().SaveQutSections(
-                        soname, sopath, hash, build_id, build_id_hex, interface->GetQutSections());
+                soname, sopath, hash, build_id, build_id_hex, interface->GetQutSections());
         QUT_LOG("Generate qut for so %s result %d", sopath.c_str(), error);
     }
 
@@ -225,8 +224,8 @@ namespace wechat_backtrace {
     }
 
     QutErrorCode
-    WeChatQuickenUnwind(ArchEnum arch, uptr *regs, uptr *backtrace, uptr frame_max_size,
-                        uptr &frame_size) {
+    WeChatQuickenUnwind(const ArchEnum arch, uptr *regs, const uptr frame_max_size,
+                        Frame *backtrace, uptr &frame_size) {
 
         std::shared_ptr<Maps> maps = Maps::current();
 
@@ -257,7 +256,7 @@ namespace wechat_backtrace {
                 map_info = maps->Find(cur_pc);
 
                 if (map_info == nullptr) {
-                    backtrace[frame_size] = PC(regs) - 2;
+                    backtrace[frame_size].pc = PC(regs) - 2;
                     QUT_DEBUG_LOG(WECHAT_QUICKEN_UNWIND_TAG, "Map info is null.");
                     ret = QUT_ERROR_INVALID_MAP;
                     break;
@@ -267,7 +266,7 @@ namespace wechat_backtrace {
                 if (!interface) {
                     QUT_DEBUG_LOG(WECHAT_QUICKEN_UNWIND_TAG,
                                   "Quicken interface is null, maybe the elf is invalid.");
-                    backtrace[frame_size] = PC(regs) - 2;
+                    backtrace[frame_size].pc = PC(regs) - 2;
                     ret = QUT_ERROR_INVALID_ELF;
                     break;
                 }
@@ -302,11 +301,12 @@ namespace wechat_backtrace {
 
             if (dex_pc != 0) {
                 QUT_DEBUG_LOG(WECHAT_QUICKEN_UNWIND_TAG, "dex_pc %llx", dex_pc);
-                backtrace[frame_size++] = dex_pc;
+                backtrace[frame_size++].pc = dex_pc;
+//                backtrace[frame_size++].is_dex_pc = true;
                 dex_pc = 0;
             }
 
-            backtrace[frame_size++] = PC(regs) - pc_adjustment;
+            backtrace[frame_size++].pc = PC(regs) - pc_adjustment;
 
             adjust_pc = true;
 
@@ -420,112 +420,112 @@ namespace wechat_backtrace {
         }
     }
 
-    QutErrorCode
-    WeChatQuickenUnwindV2_WIP(ArchEnum arch, uptr *regs, uptr *backtrace, uptr frame_max_size,
-                              uptr &frame_size) {
-
-        QutErrorCode ret = QUT_ERROR_NONE;
-
-        pthread_attr_t attr;
-        pthread_getattr_ext(pthread_self(), &attr);
-        uptr stack_bottom = reinterpret_cast<uptr>(attr.stack_base);
-        uptr stack_top = reinterpret_cast<uptr>(attr.stack_base) + attr.stack_size;
-
-        uptr sp = SP(regs);
-        uptr fp = R7(regs); // TODO how to guess
-        uptr pc = PC(regs);
-
-        uptr frame_pointer[frame_max_size];
-
-        QUT_TMP_LOG("WeChatQuickenSmartUnwind start pc:%llx, fp:%llx", (uint64_t) pc,
-                    (uint64_t) fp);
-
-        FpUnwind(pc, fp, stack_top, stack_bottom, backtrace, frame_pointer, frame_max_size,
-                 frame_size);
-
-        if (frame_size >= frame_max_size) {
-            return ret;
-        }
-
-        // restore registers
-        std::shared_ptr<Maps> maps = Maps::current();
-        auto process_memory_ = unwindstack::Memory::CreateProcessMemory(getpid());
-
-        MapInfoPtr last_map_info = nullptr;
-        QuickenInterface *last_interface = nullptr;
-        uint64_t last_load_bias = 0;
-
-        uint8_t regs_bits = 0;
-
-        for (size_t i = frame_size - 2; i > 0; i--) {
-            uptr cur_pc = backtrace[i];
-            uptr cur_fp = frame_pointer[i];
-            uptr cur_sp = frame_pointer[i - 1];
-            SP(regs) = cur_sp;
-            PC(regs) = cur_pc;
-
-            MapInfoPtr map_info = nullptr;
-            QuickenInterface *interface = nullptr;
-
-            if (last_map_info && last_map_info->start <= cur_pc && last_map_info->end > cur_pc) {
-                map_info = last_map_info;
-                interface = last_interface;
-            } else {
-                map_info = maps->Find(cur_pc);
-
-                if (map_info == nullptr) {
-                    // maybe pc is invalid
-                    continue;
-                }
-
-                interface = map_info->GetQuickenInterface(process_memory_, arch);
-                if (!interface) {
-                    // maybe pc is invalid
-                    continue;
-                }
-
-                last_map_info = map_info;
-                last_interface = interface;
-                last_load_bias = interface->GetLoadBias();
-            }
-
-            uint64_t pc_adjustment = 0;
-            uint64_t step_pc;
-            uint64_t rel_pc;
-            step_pc = backtrace[i];
-            rel_pc = map_info->GetRelPc(step_pc);
-
-            // Everyone except elf data in gdb jit debug maps uses the relative pc.
-            if (!(map_info->flags & MAPS_FLAGS_JIT_SYMFILE_MAP)) {
-                step_pc = rel_pc;
-            }
-
-            pc_adjustment = GetPcAdjustment(last_load_bias, rel_pc, interface);
-            step_pc -= pc_adjustment;
-
-//        QUT_DEBUG_LOG("WeChatQuickenUnwind pc_adjustment:%llx, step_pc:%llx, rel_pc:%llx", pc_adjustment, step_pc, rel_pc);
-            bool found = false;
-            if (!interface->StepBack(step_pc, cur_sp, cur_fp, regs_bits, regs,
-                                     process_memory_.get(), &found)) {
-                ret = interface->last_error_code_;
-                QUT_TMP_LOG(
-                        "WeChatQuickenSmartUnwind failed. r4: %x, r7: %x, r10: %x, r11: %x, sp: %x, ls: %x, pc: %x",
-                        R4(regs), R7(regs), R10(regs), R11(regs), SP(regs), LR(regs), PC(regs)
-                );
-                break;
-            }
-
-            if (found) {
-                break;
-            }
-        }
-
-        QUT_TMP_LOG(
-                "WeChatQuickenSmartUnwind Reg restore end. r4: %x, r7: %x, r10: %x, r11: %x, sp: %x, ls: %x, pc: %x",
-                R4(regs), R7(regs), R10(regs), R11(regs), SP(regs), LR(regs), PC(regs)
-        );
-
-        return ret;
-    }
+//    QutErrorCode
+//    WeChatQuickenUnwindV2_WIP(ArchEnum arch, uptr *regs, uptr *backtrace, uptr frame_max_size,
+//                              uptr &frame_size) {
+//
+//        QutErrorCode ret = QUT_ERROR_NONE;
+//
+//        pthread_attr_t attr;
+//        pthread_getattr_ext(pthread_self(), &attr);
+//        uptr stack_bottom = reinterpret_cast<uptr>(attr.stack_base);
+//        uptr stack_top = reinterpret_cast<uptr>(attr.stack_base) + attr.stack_size;
+//
+//        uptr sp = SP(regs);
+//        uptr fp = R7(regs); // TODO how to guess
+//        uptr pc = PC(regs);
+//
+//        uptr frame_pointer[frame_max_size];
+//
+//        QUT_TMP_LOG("WeChatQuickenSmartUnwind start pc:%llx, fp:%llx", (uint64_t) pc,
+//                    (uint64_t) fp);
+//
+//        FpUnwind(pc, fp, stack_top, stack_bottom, backtrace, frame_pointer, frame_max_size,
+//                 frame_size);
+//
+//        if (frame_size >= frame_max_size) {
+//            return ret;
+//        }
+//
+//        // restore registers
+//        std::shared_ptr<Maps> maps = Maps::current();
+//        auto process_memory_ = unwindstack::Memory::CreateProcessMemory(getpid());
+//
+//        MapInfoPtr last_map_info = nullptr;
+//        QuickenInterface *last_interface = nullptr;
+//        uint64_t last_load_bias = 0;
+//
+//        uint8_t regs_bits = 0;
+//
+//        for (size_t i = frame_size - 2; i > 0; i--) {
+//            uptr cur_pc = backtrace[i];
+//            uptr cur_fp = frame_pointer[i];
+//            uptr cur_sp = frame_pointer[i - 1];
+//            SP(regs) = cur_sp;
+//            PC(regs) = cur_pc;
+//
+//            MapInfoPtr map_info = nullptr;
+//            QuickenInterface *interface = nullptr;
+//
+//            if (last_map_info && last_map_info->start <= cur_pc && last_map_info->end > cur_pc) {
+//                map_info = last_map_info;
+//                interface = last_interface;
+//            } else {
+//                map_info = maps->Find(cur_pc);
+//
+//                if (map_info == nullptr) {
+//                    // maybe pc is invalid
+//                    continue;
+//                }
+//
+//                interface = map_info->GetQuickenInterface(process_memory_, arch);
+//                if (!interface) {
+//                    // maybe pc is invalid
+//                    continue;
+//                }
+//
+//                last_map_info = map_info;
+//                last_interface = interface;
+//                last_load_bias = interface->GetLoadBias();
+//            }
+//
+//            uint64_t pc_adjustment = 0;
+//            uint64_t step_pc;
+//            uint64_t rel_pc;
+//            step_pc = backtrace[i];
+//            rel_pc = map_info->GetRelPc(step_pc);
+//
+//            // Everyone except elf data in gdb jit debug maps uses the relative pc.
+//            if (!(map_info->flags & MAPS_FLAGS_JIT_SYMFILE_MAP)) {
+//                step_pc = rel_pc;
+//            }
+//
+//            pc_adjustment = GetPcAdjustment(last_load_bias, rel_pc, interface);
+//            step_pc -= pc_adjustment;
+//
+////        QUT_DEBUG_LOG("WeChatQuickenUnwind pc_adjustment:%llx, step_pc:%llx, rel_pc:%llx", pc_adjustment, step_pc, rel_pc);
+//            bool found = false;
+//            if (!interface->StepBack(step_pc, cur_sp, cur_fp, regs_bits, regs,
+//                                     process_memory_.get(), &found)) {
+//                ret = interface->last_error_code_;
+//                QUT_TMP_LOG(
+//                        "WeChatQuickenSmartUnwind failed. r4: %x, r7: %x, r10: %x, r11: %x, sp: %x, ls: %x, pc: %x",
+//                        R4(regs), R7(regs), R10(regs), R11(regs), SP(regs), LR(regs), PC(regs)
+//                );
+//                break;
+//            }
+//
+//            if (found) {
+//                break;
+//            }
+//        }
+//
+//        QUT_TMP_LOG(
+//                "WeChatQuickenSmartUnwind Reg restore end. r4: %x, r7: %x, r10: %x, r11: %x, sp: %x, ls: %x, pc: %x",
+//                R4(regs), R7(regs), R10(regs), R11(regs), SP(regs), LR(regs), PC(regs)
+//        );
+//
+//        return ret;
+//    }
 
 } // namespace wechat_backtrace

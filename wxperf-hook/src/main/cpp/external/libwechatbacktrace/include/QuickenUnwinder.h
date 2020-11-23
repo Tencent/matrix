@@ -17,11 +17,13 @@ namespace wechat_backtrace {
 
     QUT_EXTERN_C void ConsumeRequestingQut();
 
-    QUT_EXTERN_C QutErrorCode WeChatQuickenUnwind(unwindstack::ArchEnum arch, uptr *regs, uptr *backtrace,
-                                     uptr frame_max_size, uptr &frame_size);
+    QUT_EXTERN_C QutErrorCode
+    WeChatQuickenUnwind(const unwindstack::ArchEnum arch, uptr *regs, const uptr frame_max_size,
+                        Frame *backtrace, uptr &frame_size);
 
-    QUT_EXTERN_C QutErrorCode WeChatQuickenUnwindV2_WIP(unwindstack::ArchEnum arch, uptr *regs, uptr *backtrace,
-                                           uptr frame_max_size, uptr &frame_size);
+//    QUT_EXTERN_C QutErrorCode
+//    WeChatQuickenUnwindV2_WIP(unwindstack::ArchEnum arch, uptr *regs, uptr *backtrace,
+//                              uptr frame_max_size, uptr &frame_size);
 
 }  // namespace wechat_backtrace
 

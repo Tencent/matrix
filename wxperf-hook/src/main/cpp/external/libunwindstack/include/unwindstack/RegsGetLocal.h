@@ -29,6 +29,8 @@
 #ifndef _LIBUNWINDSTACK_REGS_GET_LOCAL_H
 #define _LIBUNWINDSTACK_REGS_GET_LOCAL_H
 
+#include "Regs.h"
+
 namespace unwindstack {
 
 #if defined(__arm__)

@@ -6,6 +6,7 @@
 #include <dlfcn.h>
 #include <cinttypes>
 #include <cxxabi.h>
+#include <Backtrace.h>
 #include "Log.h"
 #include "Stacktrace.h"
 #include "../external/libunwindstack/TimeUtil.h"
@@ -25,9 +26,10 @@ void func1() {
 
     LOGD("Unwind-test", "unwind begin");
 
-    auto *tmp_ns = new std::vector<unwindstack::FrameData>;
+    // TODO
+//    auto *tmp_ns = new std::vector<unwindstack::FrameData>;
 
-    unwindstack::do_unwind(*tmp_ns);
+//    unwindstack::do_unwind(*tmp_ns);
 
 //    long begin = CurrentNano();
 //
@@ -47,21 +49,21 @@ void func1() {
 
 //    LOGE("Unwind-test", "arr cost = %ld", (CurrentNano() - begin));
 
-    LOGI("Unwind-test", "frames = %zu", tmp_ns->size());
-
-    for (auto p_frame = tmp_ns->begin(); p_frame != tmp_ns->end(); ++p_frame) {
-        Dl_info stack_info;
-        dladdr((void *) p_frame->pc, &stack_info);
-
-        std::string so_name = std::string(stack_info.dli_fname);
-
-        int status = 0;
-//        char *demangled_name = abi::__cxa_demangle(stack_info.dli_sname, nullptr, 0,
-//                                                   &status);
-
-        LOGI("Unwind-test", "  #pc %llx %llu %llx %s (%s)", p_frame->rel_pc, p_frame->pc, p_frame->pc,
-        /*demangled_name ? demangled_name : "(null)",*/ stack_info.dli_sname, stack_info.dli_fname);
-    }
+//    LOGI("Unwind-test", "frames = %zu", tmp_ns->size());
+//
+//    for (auto p_frame = tmp_ns->begin(); p_frame != tmp_ns->end(); ++p_frame) {
+//        Dl_info stack_info;
+//        dladdr((void *) p_frame->pc, &stack_info);
+//
+//        std::string so_name = std::string(stack_info.dli_fname);
+//
+//        int status = 0;
+////        char *demangled_name = abi::__cxa_demangle(stack_info.dli_sname, nullptr, 0,
+////                                                   &status);
+//
+//        LOGI("Unwind-test", "  #pc %llx %llu %llx %s (%s)", p_frame->rel_pc, p_frame->pc, p_frame->pc,
+//        /*demangled_name ? demangled_name : "(null)",*/ stack_info.dli_sname, stack_info.dli_fname);
+//    }
 
     LOGI("Unwind-test", "unwind done");
 }
@@ -767,7 +769,8 @@ Java_com_tencent_wxperf_jni_test_UnwindTest_testNative2(JNIEnv *env, jclass claz
 JNIEXPORT void JNICALL
 Java_com_tencent_wxperf_jni_test_UnwindTest_initNative(JNIEnv *env, jclass clazz) {
     LOGD("Yves-test", "Unwind init");
-    unwindstack::update_maps();
+//    unwindstack::update_maps();
+    wechat_backtrace::notify_maps_changed();
 }
 
 #ifdef __cplusplus

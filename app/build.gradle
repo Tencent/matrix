@@ -23,7 +23,7 @@ android {
             }
         }
     }
-    
+
     signingConfigs {
         debug {
             keyAlias 'androiddebugkey'

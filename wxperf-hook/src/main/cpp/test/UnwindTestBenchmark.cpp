@@ -5,7 +5,6 @@
 #include <cxxabi.h>
 #include <Backtrace.h>
 #include <QuickenMaps.h>
-#include <FpFallbackUnwinder.h>
 #include <LocalMaps.h>
 #include <QuickenUnwinder.h>
 #include "Log.h"
@@ -43,9 +42,6 @@ Java_com_tencent_wxperf_jni_test_UnwindBenckmarkTest_benchmarkInitNative(JNIEnv 
     // for WeChat quicken unwinder
     wechat_backtrace::Maps::Parse();
 
-    // for fp unwinder with fallback
-    wechat_backtrace::UpdateFallbackPCRange();
-
     // enable Elf caching
     unwindstack::Elf::SetCachingEnabled(true);
 }
@@ -64,10 +60,10 @@ Java_com_tencent_wxperf_jni_test_UnwindBenckmarkTest_benchmarkNative(JNIEnv *env
     BENCHMARK(FP_UNWIND, func_throughjni);
     BENCHMARK(FP_UNWIND, func_throughsystemso);
 
-    // FP_UNWIND_WITH_FALLBACK mode benchmark
-    BENCHMARK(FP_UNWIND_WITH_FALLBACK, func_selfso);
-    BENCHMARK(FP_UNWIND_WITH_FALLBACK, func_throughjni);
-    BENCHMARK(FP_UNWIND_WITH_FALLBACK, func_throughsystemso);
+//    // FP_UNWIND_WITH_FALLBACK mode benchmark
+//    BENCHMARK(FP_UNWIND_WITH_FALLBACK, func_selfso);
+//    BENCHMARK(FP_UNWIND_WITH_FALLBACK, func_throughjni);
+//    BENCHMARK(FP_UNWIND_WITH_FALLBACK, func_throughsystemso);
 
     // FAST_DWARF_UNWIND mode benchmark
     BENCHMARK(FAST_DWARF_UNWIND, func_selfso);

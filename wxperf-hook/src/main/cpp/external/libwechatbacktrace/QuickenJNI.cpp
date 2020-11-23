@@ -82,7 +82,8 @@ namespace wechat_backtrace {
     inline static JNIEnv *GetEnv() {
         if (CurrentJavaVM) {
             JNIEnv *currentEnv = nullptr;
-            auto ret = CurrentJavaVM->GetEnv(reinterpret_cast<void **>(&currentEnv), JNI_VERSION_1_6);
+            auto ret = CurrentJavaVM->GetEnv(reinterpret_cast<void **>(&currentEnv),
+                                             JNI_VERSION_1_6);
             if (ret == JNI_OK) {
                 return currentEnv;
             }

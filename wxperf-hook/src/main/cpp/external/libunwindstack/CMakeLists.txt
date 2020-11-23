@@ -43,7 +43,7 @@ SET(
         ${CMAKE_CURRENT_SOURCE_DIR}/../libwechatbacktrace/DwarfEhFrameWithHdrDecoder.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/../libwechatbacktrace/DwarfOp.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/../libwechatbacktrace/QuickenTable.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/../libwechatbacktrace/QuickenTableReverse.cpp
+#        ${CMAKE_CURRENT_SOURCE_DIR}/../libwechatbacktrace/QuickenTableReverse.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/../libwechatbacktrace/QuickenTableManager.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/../libwechatbacktrace/QuickenMaps.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/../libwechatbacktrace/QuickenTableGenerator.cpp
@@ -57,7 +57,6 @@ SET(
 
         ${CMAKE_CURRENT_SOURCE_DIR}/../libwechatbacktrace/LocalMaps.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/../libwechatbacktrace/FpUnwinder.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/../libwechatbacktrace/FpFallbackUnwinder.cpp
 
 )
 

@@ -98,14 +98,14 @@ inline void print_fp_unwind() {
 
     TEST_NanoSeconds_Start(nano);
 
-    uptr frames[FRAME_MAX_SIZE];
+    wechat_backtrace::Frame frames[FRAME_MAX_SIZE];
 
     uptr frame_size = 0;
 
     uptr regs[4];
     RegsMinimalGetLocal(regs);
 
-    wechat_backtrace::FpUnwind(regs, frames, FRAME_MAX_SIZE, frame_size, false);
+    wechat_backtrace::FpUnwind(regs, frames, FRAME_MAX_SIZE, frame_size);
 
     TEST_NanoSeconds_End(wechat_backtrace::fp_unwind, nano);
 
@@ -114,7 +114,7 @@ inline void print_fp_unwind() {
 
     for (size_t i = 0; i < frame_size; i++) {
         Dl_info stack_info;
-        dladdr((void *) frames[i], &stack_info);
+        dladdr((void *) frames[i].pc, &stack_info);
 
         std::string so_name = std::string(stack_info.dli_fname);
 
@@ -125,44 +125,44 @@ inline void print_fp_unwind() {
                 " 0x%"
                 PRIxPTR
                 " %s (%s)", frames[i], (uptr) stack_info.dli_fbase,
-             frames[i] - (uptr) stack_info.dli_fbase, stack_info.dli_sname, stack_info.dli_fname);
+             frames[i].pc - (uptr) stack_info.dli_fbase, stack_info.dli_sname, stack_info.dli_fname);
     }
 }
 
-static inline void print_fp_unwind_with_fallback() {
-
-    TEST_NanoSeconds_Start(nano);
-
-    uptr frames[FRAME_MAX_SIZE];
-
-    uptr frame_size = 0;
-
-    uptr regs[4];
-    RegsMinimalGetLocal(regs);
-
-    wechat_backtrace::fp_unwind_with_fallback(regs, frames, FRAME_MAX_SIZE, frame_size);
-
-    TEST_NanoSeconds_End(wechat_backtrace::fp_unwind_with_fallback, nano);
-
-    LOGE(FP_FAST_UNWIND_WITH_FALLBACK_TAG, "frames = %"
-            PRIuPTR, frame_size);
-
-    for (size_t i = 0; i < frame_size; i++) {
-        Dl_info stack_info;
-        dladdr((void *) frames[i], &stack_info);
-
-        std::string so_name = std::string(stack_info.dli_fname);
-
-        LOGE(FP_FAST_UNWIND_WITH_FALLBACK_TAG, "  #pc 0x%"
-                PRIxPTR
-                " %"
-                PRIuPTR
-                " 0x%"
-                PRIxPTR
-                " %s (%s)", frames[i], frames[i], frames[i], stack_info.dli_sname,
-             stack_info.dli_fname);
-    }
-}
+//static inline void print_fp_unwind_with_fallback() {
+//
+//    TEST_NanoSeconds_Start(nano);
+//
+//    uptr frames[FRAME_MAX_SIZE];
+//
+//    uptr frame_size = 0;
+//
+//    uptr regs[4];
+//    RegsMinimalGetLocal(regs);
+//
+//    wechat_backtrace::fp_unwind_with_fallback(regs, frames, FRAME_MAX_SIZE, frame_size);
+//
+//    TEST_NanoSeconds_End(wechat_backtrace::fp_unwind_with_fallback, nano);
+//
+//    LOGE(FP_FAST_UNWIND_WITH_FALLBACK_TAG, "frames = %"
+//            PRIuPTR, frame_size);
+//
+//    for (size_t i = 0; i < frame_size; i++) {
+//        Dl_info stack_info;
+//        dladdr((void *) frames[i], &stack_info);
+//
+//        std::string so_name = std::string(stack_info.dli_fname);
+//
+//        LOGE(FP_FAST_UNWIND_WITH_FALLBACK_TAG, "  #pc 0x%"
+//                PRIxPTR
+//                " %"
+//                PRIuPTR
+//                " 0x%"
+//                PRIxPTR
+//                " %s (%s)", frames[i], frames[i], frames[i], stack_info.dli_sname,
+//             stack_info.dli_fname);
+//    }
+//}
 
 inline void print_wechat_quicken_unwind() {
 
@@ -170,7 +170,7 @@ inline void print_wechat_quicken_unwind() {
 
     uptr regs[QUT_MINIMAL_REG_SIZE];
     GetMinimalRegs(regs);
-    uptr frames[FRAME_MAX_SIZE];
+    wechat_backtrace::Frame frames[FRAME_MAX_SIZE];
     uptr frame_size = 0;
 
     wechat_backtrace::quicken_unwind(regs, frames, FRAME_MAX_SIZE, frame_size);
@@ -182,7 +182,7 @@ inline void print_wechat_quicken_unwind() {
 
     for (size_t i = 0; i < frame_size; i++) {
         Dl_info stack_info;
-        dladdr((void *) frames[i], &stack_info);
+        dladdr((void *) frames[i].pc, &stack_info);
 
         if (!stack_info.dli_fname) {
             LOGE(WECHAT_QUICKEN_UNWIND_TAG, "  #pc stack_info.dli_fname is null");
@@ -311,9 +311,9 @@ void leaf_func(const char *testcase) {
         case FP_UNWIND:
             print_fp_unwind();
             break;
-        case FP_UNWIND_WITH_FALLBACK:
-            print_fp_unwind_with_fallback();
-            break;
+//        case FP_UNWIND_WITH_FALLBACK:
+//            print_fp_unwind_with_fallback();
+//            break;
         case FAST_DWARF_UNWIND:
             print_dwarf_fast_unwind();
             break;

@@ -2,7 +2,6 @@
 #include <bits/pthread_types.h>
 #include <cstdlib>
 #include <pthread.h>
-#include <FpFallbackUnwinder.h>
 #include <deps/android-base/include/android-base/strings.h>
 #include <FastArmExidx.h>
 

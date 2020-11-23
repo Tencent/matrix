@@ -16,13 +16,13 @@ namespace unwindstack {
 
     void update_maps();
 
-    void do_unwind(std::vector<FrameData> &);
+//    void do_unwind(std::vector<FrameData> &);
 }
 
-void unwind_adapter(std::vector<unwindstack::FrameData> &dst);
-
-void restore_frame_data(std::vector<unwindstack::FrameData> &frames);
-
-void notify_maps_change();
+//void unwind_adapter(std::vector<unwindstack::FrameData> &dst);
+//
+//void restore_frame_data(std::vector<unwindstack::FrameData> &frames);
+//
+//void notify_maps_change();
 
 #endif //LIBWXPERF_JNI_STACKTRACE_H

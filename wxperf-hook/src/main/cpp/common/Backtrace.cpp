@@ -17,7 +17,38 @@ namespace wechat_backtrace {
 
     static pthread_mutex_t unwind_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-    void update_maps() {
+    void restore_frame_detail(const Frame *frames, const size_t frame_size,
+                              std::function<void(FrameDetail)> frame_callback) {
+        LOGD(WECHAT_BACKTRACE_TAG, "Restore frame data size: %zu.", frame_size);
+        if (frames == nullptr || frame_callback == nullptr) {
+            return;
+        }
+
+        for (size_t i = 0; i < frame_size; i++) {
+            auto &frame_data = frames[i];
+            Dl_info stack_info;
+            dladdr((void *) frame_data.pc, &stack_info); // 用修正后的 pc dladdr 会偶现 npe crash, 因此还是用 lr
+
+#ifdef __aarch64__
+            // fp_unwind 得到的 pc 除了第 0 帧实际都是 LR, arm64 指令长度都是定长 32bit, 所以 -4 以恢复 pc
+            uptr real_pc = frame_data.pc - (i > 0 ?: 0);
+#else
+            uptr real_pc = frame_data.pc;
+#endif
+            FrameDetail detail = {
+                    real_pc - (uptr) stack_info.dli_fbase,
+                    stack_info.dli_sname == nullptr ? "null" : stack_info.dli_sname,
+                    stack_info.dli_fname == nullptr ? "null" : stack_info.dli_fname
+            };
+            frame_callback(detail);
+
+            // TODO Deal with dex pc
+        }
+
+        return;
+    }
+
+    void notify_maps_changed() {
 
         wechat_backtrace::UpdateLocalMaps();
 
@@ -27,7 +58,8 @@ namespace wechat_backtrace {
 #endif
     }
 
-    void dwarf_unwind(unwindstack::Regs* regs, std::vector<unwindstack::FrameData> &dst, size_t frameSize) {
+    void dwarf_unwind(unwindstack::Regs *regs, std::vector<unwindstack::FrameData> &dst,
+                      size_t frameSize) {
 
         pthread_mutex_lock(&unwind_mutex);
         if (regs == nullptr) {
@@ -57,18 +89,20 @@ namespace wechat_backtrace {
         pthread_mutex_unlock(&unwind_mutex);
     }
 
-    void fp_unwind(uptr* regs, uptr* frames, uptr frameMaxSize, uptr &frameSize) {
-        FpUnwind(regs, frames, frameMaxSize, frameSize, false);
+    void fp_unwind(uptr *regs, Frame *frames, size_t frameMaxSize, size_t &frameSize) {
+        FpUnwind(regs, frames, frameMaxSize, frameSize);
     }
 
-    void fp_unwind_with_fallback(uptr* regs, uptr* frames, uptr frameMaxSize, uptr &frameSize) {
-        FpUnwind(regs, frames, frameMaxSize, frameSize, true);
-    }
+//    void fp_unwind_with_fallback(uptr *regs, uptr *frames, uptr frameMaxSize, uptr &frameSize) {
+//        FpUnwind(regs, frames, frameMaxSize, frameSize);
+//    }
 
 #ifdef __arm__
-    void fast_dwarf_unwind(uptr* regs, uptr* frames, uptr frame_max_size, uptr &frame_size) {
-        wechat_backtrace::FastExidxUnwind((uint32_t*)regs, frames, frame_max_size, frame_size);
+
+    void fast_dwarf_unwind(uptr *regs, uptr *frames, uptr frame_max_size, uptr &frame_size) {
+        wechat_backtrace::FastExidxUnwind((uint32_t *) regs, frames, frame_max_size, frame_size);
     }
+
 #else
     void fast_dwarf_unwind(unwindstack::Regs* regs, std::vector<unwindstack::FrameData> &dst, size_t frameSize) {
 
@@ -101,22 +135,22 @@ namespace wechat_backtrace {
 
 #endif
 
-    void quicken_unwind(uptr* regs, uptr* frames, uptr frame_max_size, uptr &frame_size) {
+    void quicken_unwind(uptr *regs, Frame *frames, uptr frame_max_size, uptr &frame_size) {
 #ifdef __arm__
         unwindstack::ArchEnum arch = unwindstack::ArchEnum::ARCH_ARM;
 #else
         unwindstack::ArchEnum arch = unwindstack::ArchEnum::ARCH_ARM64;
 #endif
-        wechat_backtrace::WeChatQuickenUnwind(arch, regs, frames, frame_max_size, frame_size);
+        wechat_backtrace::WeChatQuickenUnwind(arch, regs, frame_max_size, frames, frame_size);
     }
 
-    void quicken_unwind_v2_wip(uptr* regs, uptr* frames, uptr frame_max_size, uptr &frame_size) {
+    void quicken_unwind_v2_wip(uptr *regs, uptr *frames, uptr frame_max_size, uptr &frame_size) {
 #ifdef __arm__
         unwindstack::ArchEnum arch = unwindstack::ArchEnum::ARCH_ARM;
 #else
         unwindstack::ArchEnum arch = unwindstack::ArchEnum::ARCH_ARM64;
 #endif
-        wechat_backtrace::WeChatQuickenUnwindV2_WIP(arch, regs, frames, frame_max_size, frame_size);
+//        wechat_backtrace::WeChatQuickenUnwindV2_WIP(arch, regs, frames, frame_max_size, frame_size);
     }
 
 }

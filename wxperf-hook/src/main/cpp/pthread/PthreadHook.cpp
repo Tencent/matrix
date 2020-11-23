@@ -15,6 +15,7 @@
 #include <regex.h>
 #include <Utils.h>
 #include <fcntl.h>
+#include <Backtrace.h>
 #include "PthreadExt.h"
 #include "PthreadHook.h"
 #include "pthread.h"
@@ -27,17 +28,19 @@
 #define TAG "Wxperf.PthreadHook"
 
 #define THREAD_NAME_LEN 16
+#define PTHREAD_BACKTRACE_MAX_FRAMES 16
 
 typedef void *(*pthread_routine_t)(void *);
 
 struct pthread_meta_t {
     pid_t tid;
-    char  *thread_name;
+    char *thread_name;
 //    char  *parent_name;
 
     uint64_t hash;
 
-    std::vector<unwindstack::FrameData> native_stacktrace;
+    wechat_backtrace::Backtrace native_backtrace;
+//    std::vector<unwindstack::FrameData> native_stacktrace;
 
     std::atomic<char *> java_stacktrace;
 
@@ -45,17 +48,19 @@ struct pthread_meta_t {
                        thread_name(nullptr),
 //                       parent_name(nullptr),
                        hash(0),
+                       native_backtrace(BACKTRACE_INITIALIZER(PTHREAD_BACKTRACE_MAX_FRAMES)),
                        java_stacktrace(nullptr) {
-    };
+    }
 
     ~pthread_meta_t() = default;
 
     pthread_meta_t(const pthread_meta_t &src) {
-        tid               = src.tid;
-        thread_name       = src.thread_name;
+        tid = src.tid;
+        thread_name = src.thread_name;
 //        parent_name       = src.parent_name;
-        hash              = src.hash;
-        native_stacktrace = src.native_stacktrace;
+        hash = src.hash;
+//        native_stacktrace = src.native_stacktrace;
+        native_backtrace = src.native_backtrace;
         java_stacktrace.store(src.java_stacktrace.load(std::memory_order_acquire),
                               std::memory_order_release);
     }
@@ -63,12 +68,12 @@ struct pthread_meta_t {
 
 typedef struct {
     pthread_routine_t origin_func;
-    void              *origin_args;
-}            routine_wrapper_t;
+    void *origin_args;
+} routine_wrapper_t;
 
 struct regex_wrapper {
     const char *regex_str;
-    regex_t    regex;
+    regex_t regex;
 
     regex_wrapper(const char *regexStr, const regex_t &regex) : regex_str(regexStr), regex(regex) {}
 
@@ -77,17 +82,17 @@ struct regex_wrapper {
     }
 };
 
-static std::recursive_mutex                   m_pthread_meta_mutex;
+static std::recursive_mutex m_pthread_meta_mutex;
 typedef std::lock_guard<std::recursive_mutex> pthread_meta_lock;
 
 static std::map<pthread_t, pthread_meta_t> m_pthread_metas;
-static std::set<pthread_t>                 m_filtered_pthreads;
+static std::set<pthread_t> m_filtered_pthreads;
 
 static std::set<regex_wrapper> m_hook_thread_name_regex;
 
 static pthread_key_t m_destructor_key;
 
-static std::mutex              m_subroutine_mutex;
+static std::mutex m_subroutine_mutex;
 static std::condition_variable m_subroutine_cv;
 
 static std::set<pthread_t> m_pthread_routine_flags;
@@ -111,8 +116,8 @@ void add_hook_thread_name(const char *__regex_str) {
         LOGE("PthreadHook", "regex compiled error: %s", __regex_str);
         return;
     }
-    size_t len          = strlen(__regex_str) + 1;
-    char   *p_regex_str = static_cast<char *>(malloc(len));
+    size_t len = strlen(__regex_str) + 1;
+    char *p_regex_str = static_cast<char *>(malloc(len));
     strncpy(p_regex_str, __regex_str, len);
     regex_wrapper w_regex(p_regex_str, regex);
     m_hook_thread_name_regex.insert(w_regex);
@@ -162,10 +167,14 @@ on_pthread_create_locked(const pthread_t __pthread, char *__java_stacktrace, pid
     }
 
     uint64_t native_hash = 0;
-    uint64_t java_hash   = 0;
+    uint64_t java_hash = 0;
 
-    unwind_adapter(meta.native_stacktrace);
-    native_hash = hash_stack_frames(meta.native_stacktrace);
+//    wechat_backtrace::unwind_adapter(meta.native_stacktrace);
+//    native_hash = hash_stack_frames(meta.native_stacktrace);
+    wechat_backtrace::unwind_adapter(meta.native_backtrace.frames.get(),
+                                     meta.native_backtrace.max_frames,
+                                     meta.native_backtrace.frame_size);
+    native_hash = hash_backtrace_frames(&(meta.native_backtrace));
 
     if (__java_stacktrace) {
         meta.java_stacktrace.store(__java_stacktrace);
@@ -191,11 +200,11 @@ static void notify_routine(const pthread_t __pthread) {
 
 // notice: 在父线程回调此函数
 static void on_pthread_create(const pthread_t __pthread) {
-    const char * arch =
+    const char *arch =
 #ifdef __aarch64__
-        "aarch64";
+            "aarch64";
 #elif defined __arm__
-        "arm";
+            "arm";
 #endif
     LOGD(TAG, "+++++++ on_pthread_create, %s", arch);
 
@@ -209,8 +218,8 @@ static void on_pthread_create(const pthread_t __pthread) {
 //
     // 反射 Java 获取堆栈时加锁会造成死锁, 提前获取堆栈
     // todo move to on_pthread_create_locked
-    const size_t BUF_SIZE         = 1024;
-    char         *java_stacktrace = static_cast<char *>(malloc(BUF_SIZE));
+    const size_t BUF_SIZE = 1024;
+    char *java_stacktrace = static_cast<char *>(malloc(BUF_SIZE));
     if (java_stacktrace) {
         get_java_stacktrace(java_stacktrace, BUF_SIZE);
 //        strncpy(java_stacktrace, " (fake stacktrace)", BUF_SIZE);
@@ -326,29 +335,50 @@ static inline void pthread_dump_impl(FILE *__log_file) {
                 meta.thread_name, meta.tid);
         std::stringstream stack_builder;
 
-        if (meta.native_stacktrace.empty()) {
+        if (meta.native_backtrace.frame_size == 0) {
             continue;
         }
 
         LOGD(TAG, "native stacktrace:");
         fprintf(__log_file, "native stacktrace:\n");
 
-        restore_frame_data(meta.native_stacktrace);
-
-        for (auto &p_frame : meta.native_stacktrace) {
-            int  status          = 0;
-            char *demangled_name = abi::__cxa_demangle(p_frame.function_name.c_str(), nullptr, 0,
+        auto frame_detail_lambda = [&__log_file](wechat_backtrace::FrameDetail detail) -> void {
+            int status = 0;
+            char *demangled_name = abi::__cxa_demangle(detail.function_name, nullptr, 0,
                                                        &status);
 
-            LOGD(TAG, "  #pc %" PRIxPTR " %s (%s)",
-                 p_frame.rel_pc,
+            LOGD(TAG, "  #pc %"
+                    PRIxPTR
+                    " %s (%s)",
+                 detail.rel_pc,
                  demangled_name ? demangled_name : "(null)",
-                 p_frame.map_name.c_str());
-            fprintf(__log_file, "  #pc %" PRIxPTR " %s (%s)\n", p_frame.rel_pc,
-                    demangled_name ? demangled_name : "(null)", p_frame.map_name.c_str());
+                 detail.map_name);
+            fprintf(__log_file, "  #pc %" PRIxPTR " %s (%s)\n", detail.rel_pc,
+                    demangled_name ? demangled_name : "(null)", detail.map_name);
 
             free(demangled_name);
-        }
+        };
+
+        wechat_backtrace::restore_frame_detail(meta.native_backtrace.frames.get(),
+                                               meta.native_backtrace.frame_size,
+                                               frame_detail_lambda);
+
+//        for (auto &p_frame : meta.native_stacktrace) {
+//            int status = 0;
+//            char *demangled_name = abi::__cxa_demangle(p_frame.function_name.c_str(), nullptr, 0,
+//                                                       &status);
+//
+//            LOGD(TAG, "  #pc %"
+//                    PRIxPTR
+//                    " %s (%s)",
+//                 p_frame.rel_pc,
+//                 demangled_name ? demangled_name : "(null)",
+//                 p_frame.map_name.c_str());
+//            fprintf(__log_file, "  #pc %" PRIxPTR " %s (%s)\n", p_frame.rel_pc,
+//                    demangled_name ? demangled_name : "(null)", p_frame.map_name.c_str());
+//
+//            free(demangled_name);
+//        }
 
         LOGD(TAG, "java stacktrace:\n%s", meta.java_stacktrace.load(std::memory_order_acquire));
         fprintf(__log_file, "java stacktrace:\n%s\n",
@@ -387,7 +417,7 @@ static inline void pthread_dump_json_impl(FILE *__log_file) {
         }
     }
 
-    char  *json_str    = NULL;
+    char *json_str = NULL;
     cJSON *threads_arr = NULL;
 
     cJSON *json_obj = cJSON_CreateObject();
@@ -403,7 +433,7 @@ static inline void pthread_dump_json_impl(FILE *__log_file) {
     }
 
     for (auto &i : pthread_metas_by_hash) {
-        auto &hash  = i.first;
+        auto &hash = i.first;
         auto &metas = i.second;
 
         cJSON *hash_obj = cJSON_CreateObject();
@@ -416,30 +446,57 @@ static inline void pthread_dump_json_impl(FILE *__log_file) {
         assert(!metas.empty());
 
         std::stringstream stack_builder;
-        auto front_frames = metas.front().native_stacktrace;
-        restore_frame_data(front_frames);
+//        auto front_frames = metas.front().native_stacktrace;
+//        restore_frame_data(front_frames);
 
-        for (auto         &frame : front_frames) {
-//            LOGE(TAG, "===> success = %d, pc =  %p, dl_info.dli_sname = %p %s",
-//                 success, (void *) frame.pc, (void *) stack_info.dli_sname, stack_info.dli_sname);
-
+        auto frame_detail_lambda = [&stack_builder](wechat_backtrace::FrameDetail detail) -> void {
             char *demangled_name = nullptr;
 
             int status = 0;
-            demangled_name = abi::__cxa_demangle(frame.function_name.c_str(), nullptr, nullptr, &status);
+            demangled_name = abi::__cxa_demangle(detail.function_name, nullptr, nullptr,
+                                                 &status);
 
-            stack_builder << "#pc " << std::hex << frame.rel_pc << " "
+            stack_builder << "#pc " << std::hex << detail.rel_pc << " "
                           << (demangled_name ? demangled_name : "(null)")
                           << " ("
-                          << frame.map_name
+                          << detail.map_name
                           << ");";
 
-            LOGE(TAG, "#pc %p %s %s", (void *) frame.rel_pc, demangled_name, frame.map_name.c_str());
+            LOGE(TAG, "#pc %p %s %s", (void *) detail.rel_pc, demangled_name,
+                 detail.map_name);
 
             if (demangled_name) {
                 free(demangled_name);
             }
-        }
+        };
+
+        auto front_backtrace = metas.front().native_backtrace;
+        wechat_backtrace::restore_frame_detail(
+                front_backtrace.frames.get(), front_backtrace.frame_size, frame_detail_lambda);
+
+//        for (auto &frame : front_frames) {
+////            LOGE(TAG, "===> success = %d, pc =  %p, dl_info.dli_sname = %p %s",
+////                 success, (void *) frame.pc, (void *) stack_info.dli_sname, stack_info.dli_sname);
+//
+//            char *demangled_name = nullptr;
+//
+//            int status = 0;
+//            demangled_name = abi::__cxa_demangle(frame.function_name.c_str(), nullptr, nullptr,
+//                                                 &status);
+//
+//            stack_builder << "#pc " << std::hex << frame.rel_pc << " "
+//                          << (demangled_name ? demangled_name : "(null)")
+//                          << " ("
+//                          << frame.map_name
+//                          << ");";
+//
+//            LOGE(TAG, "#pc %p %s %s", (void *) frame.rel_pc, demangled_name,
+//                 frame.map_name.c_str());
+//
+//            if (demangled_name) {
+//                free(demangled_name);
+//            }
+//        }
         LOGE(TAG, "-------------------");
         cJSON_AddStringToObject(hash_obj, "native", stack_builder.str().c_str());
 
@@ -508,7 +565,7 @@ void pthread_dump_json(const char *__path) {
 void pthread_hook_on_dlopen(const char *__file_name) {
     LOGD(TAG, "pthread_hook_on_dlopen");
     pthread_meta_lock meta_lock(m_pthread_meta_mutex);
-    notify_maps_change();
+    wechat_backtrace::notify_maps_changed();
     LOGD(TAG, "pthread_hook_on_dlopen end");
 }
 
@@ -553,7 +610,7 @@ static void *pthread_routine_wrapper(void *__arg) {
     before_routine_start();
 
     auto *args_wrapper = (routine_wrapper_t *) __arg;
-    void *ret          = args_wrapper->origin_func(args_wrapper->origin_args);
+    void *ret = args_wrapper->origin_func(args_wrapper->origin_args);
     free(args_wrapper);
 
     return ret;

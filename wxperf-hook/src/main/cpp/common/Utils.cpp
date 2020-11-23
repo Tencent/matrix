@@ -5,6 +5,7 @@
 #include <cassert>
 #include "Utils.h"
 #include "Log.h"
+#include "Backtrace.h"
 
 #define JAVA_LONG_MAX_VALUE 0x7fffffffffffffff
 
@@ -17,14 +18,25 @@ uint64_t hash_uint64(uint64_t *p_pc_stacks, size_t stack_size) {
     return sum;
 }
 
-uint64_t hash_stack_frames(std::vector<unwindstack::FrameData> &stack_frames) {
-    uint64_t sum = 1;
-    for (auto i = stack_frames.begin(); i != stack_frames.end(); ++i) {
-//        LOGD("DEBUG", "i->pc = %p", i->pc);
-        sum += i->pc;
+uint64_t hash_backtrace_frames(wechat_backtrace::Backtrace *backtrace) {
+    uptr sum = 1;
+    if (backtrace == nullptr) {
+        return (uint64_t) sum;
     }
-    return sum;
+    for (size_t i = 0; i != backtrace->frame_size; i++) {
+        sum += (backtrace->frames.get())[i].pc;
+    }
+    return (uint64_t) sum;
 }
+
+//uint64_t hash_stack_frames(std::vector<unwindstack::FrameData> &stack_frames) {
+//    uint64_t sum = 1;
+//    for (auto i = stack_frames.begin(); i != stack_frames.end(); ++i) {
+////        LOGD("DEBUG", "i->pc = %p", i->pc);
+//        sum += i->pc;
+//    }
+//    return sum;
+//}
 
 uint64_t hash_str(const char * str) {
     if (!str) {
