@@ -17,8 +17,6 @@
 #include "Log.h"
 #include "Predefined.h"
 
-#define WECHAT_BACKTRACE_TAG "Wechat.Backtrace"
-
 namespace wechat_backtrace {
 
     void dwarf_unwind(unwindstack::Regs *regs, std::vector<unwindstack::FrameData> &, size_t);

@@ -7,11 +7,12 @@
 #include "JNICommon.h"
 #include <FpUnwinder.h>
 #include <MinimalRegs.h>
-//#include <FastArmExidxUnwinder.h>
 #include <QuickenUnwinder.h>
 #include <QuickenMaps.h>
 #include <LocalMaps.h>
 #include <QuickenTableManager.h>
+
+#define WECHAT_BACKTRACE_TAG "Wechat.Backtrace"
 
 namespace wechat_backtrace {
 

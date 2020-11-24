@@ -4,7 +4,6 @@
 #include <cxxabi.h>
 #include <inttypes.h>
 #include <MinimalRegs.h>
-//#include <FastArmExidxUnwinder.h>
 #include <QuickenUnwinder.h>
 #include <QuickenMaps.h>
 #include "Log.h"
