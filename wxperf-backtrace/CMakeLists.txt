@@ -16,9 +16,15 @@ SET(TARGET_TEST wechatbacktrace_test)
 
 SET(SOURCE_DIR src/main/cpp)
 
-OPTION(EnableLOG "Enable QUT Logs" OFF)
+OPTION(EnableLOG "Enable QUT Logs" ON)
 OPTION(QUT_STATISTIC_ENABLE "Enable QUT Statistics" OFF)
 
+IF(EnableLOG)
+    ADD_DEFINITIONS(-DEnableLOG)
+ENDIF()
+IF(QUT_STATISTIC_ENABLE)
+    ADD_DEFINITIONS(-DQUT_STATISTIC_ENABLE)
+ENDIF()
 
 SET(
         SOURCE_FILES
@@ -44,18 +50,6 @@ SET(
         ${SOURCE_DIR}/libwechatbacktrace/FpUnwinder.cpp
         ${SOURCE_DIR}/libwechatbacktrace/Backtrace.cpp
 )
-
-
-SET(
-        TEST_SOURCE_FILES
-        ${SOURCE_DIR}/test/UnwindTestJNI.cpp
-        ${SOURCE_DIR}/test/UnwindTestCommon.cpp
-        ${SOURCE_DIR}/test/UnwindTestCase_SelfSo.cpp
-        ${SOURCE_DIR}/test/UnwindTestCase_ThroughJNI.cpp
-        ${SOURCE_DIR}/test/UnwindTestCase_ThroughSystemSo.cpp
-        ${SOURCE_DIR}/test/UnwindTestBenchmark.cpp
-)
-
 
 ADD_LIBRARY( # Specifies the name of the library.
         ${TARGET}

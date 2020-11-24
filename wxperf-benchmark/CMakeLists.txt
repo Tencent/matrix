@@ -14,6 +14,10 @@ SET(TARGET wxperf-benchmark)
 
 SET(SOURCE_DIR src/main/cpp)
 
+OPTION(EnableLOG "Enable QUT Logs" ON)
+IF(EnableLOG)
+    ADD_DEFINITIONS(-DEnableLOG)
+ENDIF()
 
 SET(
         SOURCE_FILES

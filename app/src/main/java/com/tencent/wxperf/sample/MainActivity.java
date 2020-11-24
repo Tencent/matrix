@@ -376,6 +376,7 @@ public class MainActivity extends AppCompatActivity {
         new Thread(new Runnable() {
             @Override
             public void run() {
+                Log.e(TAG, "WTF ----- unwindBenchmarkDebug");
                 UnwindBenckmarkTest.benchmarkInitNative();
                 UnwindBenckmarkTest.debugNative();
             }

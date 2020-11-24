@@ -14,6 +14,11 @@ set(TARGET wxperf-jni)
 
 set(SOURCE_DIR src/main/cpp)
 
+OPTION(EnableLOG "Enable QUT Logs" ON)
+IF(EnableLOG)
+    ADD_DEFINITIONS(-DEnableLOG)
+ENDIF()
+
 set(
         SOURCE_FILES
         ${SOURCE_DIR}/memory/MemoryHookJNI.cpp

@@ -24,7 +24,7 @@ android {
 
         externalNativeBuild {
             cmake {
-                arguments = ['-DANDROID_STL=c++_shared', '-DEnableLOG=OFF', '-DCOMPILE_TEST=ON']
+                arguments = ['-DANDROID_STL=c++_shared', '-DEnableLOG=ON']
             }
 
             exportHeaders {
