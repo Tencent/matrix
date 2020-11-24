@@ -415,6 +415,32 @@ def extractNativeDependencies(targetVariants) {
         }
 
         targetVariant.getExternalNativeBuildTasks().each { nativeBuildTask ->
+
+            projectNativeDepDirs.each { projDir ->
+                copy {
+                    duplicatesStrategy DuplicatesStrategy.FAIL
+                    includeEmptyDirs false
+                    from new File(projDir, HEADERS_DIR_NAME)
+                    into new File(extractedNativeDepsDir, HEADERS_DIR_NAME)
+                }
+            }
+
+            aarPaths.each { aarPath ->
+                copy {
+                    duplicatesStrategy DuplicatesStrategy.FAIL
+                    includeEmptyDirs false
+                    from zipTree(aarPath)
+                    into new File(extractedNativeDepsDir, HEADERS_DIR_NAME)
+                    eachFile { details ->
+                        if (details.path.endsWith('.h')) {
+                            details.path = details.path - AAR_HEADERS_DIRENTRY_NAME - '/'
+                        } else {
+                            details.exclude()
+                        }
+                    }
+                }
+            }
+
             nativeBuildTask.doFirst {
                 projectNativeDepDirs.each { projDir ->
                     copy {
