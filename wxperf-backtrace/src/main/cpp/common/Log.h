@@ -8,8 +8,6 @@
 #include <time.h>
 #include <android/log.h>
 
-#define EnableLOG   // Enabled
-
 #ifdef EnableLOG
 #define LOGD(TAG, FMT, args...) __android_log_print(ANDROID_LOG_DEBUG, TAG, FMT, ##args)
 #define LOGI(TAG, FMT, args...) __android_log_print(ANDROID_LOG_INFO, TAG, FMT, ##args)
@@ -46,6 +44,7 @@
 #define DWARF_CFA_LOG(FMT, args...)
 #define DWARF_OP_LOG(FMT, args...)
 #define QUT_STAT_LOG(FMT, args...)
+#define QUT_TMP_LOG(FMT, args...)
 #define QUT_LOG(FMT, args...)
 #endif
 

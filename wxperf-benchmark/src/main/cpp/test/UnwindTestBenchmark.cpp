@@ -9,7 +9,6 @@
 #include <QuickenUnwinder.h>
 #include "Log.h"
 #include "Backtrace.h"
-#include "../external/libunwindstack/TimeUtil.h"
 
 #include "UnwindTestCase_SelfSo.h"
 #include "UnwindTestCase_ThroughJNI.h"

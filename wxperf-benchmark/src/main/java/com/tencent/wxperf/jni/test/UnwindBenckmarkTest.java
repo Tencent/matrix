@@ -9,6 +9,7 @@ public class UnwindBenckmarkTest {
     static {
 //        LibWxPerfManager.INSTANCE.init();
         System.loadLibrary("wxperf-jni");
+        System.loadLibrary("wxperf-benchmark");
     }
 
     public static native void benchmarkInitNative();

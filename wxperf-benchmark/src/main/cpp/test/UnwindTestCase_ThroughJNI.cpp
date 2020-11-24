@@ -4,7 +4,6 @@
 #include <cxxabi.h>
 #include "Log.h"
 #include "UnwindTestCommon.h"
-#include "../external/libunwindstack/TimeUtil.h"
 #include "UnwindTestCase_ThroughJNI.h"
 
 #define TESTCASE_THROUGH_JNI "throught-jni"

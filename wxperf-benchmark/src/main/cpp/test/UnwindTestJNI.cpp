@@ -1,26 +1,72 @@
+//
+// Created by yves on 20-4-11.
+//
+
 #include <jni.h>
 #include <dlfcn.h>
 #include <cinttypes>
 #include <cxxabi.h>
+#include <Backtrace.h>
 #include "Log.h"
-#include "UnwindTestCommon.h"
-#include "../external/libunwindstack/TimeUtil.h"
-#include "UnwindTestCase_SelfSo.h"
-
-#define TESTCASE_SELF_SO "self-so"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 #ifdef LOGD
-#undef LOGD
+    #undef LOGD
 #endif
 
-#define LOGD(TAG, FMT, args...) //__android_log_print(ANDROID_LOG_DEBUG, TAG, FMT, ##args)
-#define DWARF_UNWIND_TEST "Wxperf.UnwindBenchmark"
+#define LOGD(TAG, FMT, args...) //
 
-void selfso_func0f() {
+void func1() {
+    LOGD("Yves-test", "func1");
+
+    LOGD("Unwind-test", "unwind begin");
+
+    // TODO
+//    auto *tmp_ns = new std::vector<unwindstack::FrameData>;
+
+//    unwindstack::do_unwind(*tmp_ns);
+
+//    long begin = CurrentNano();
+//
+//    std::vector<int> vec;
+//    vec.reserve(1000000);
+//    for (int i = 0; i < 1000000; ++i) {
+//        vec.emplace_back(i);
+//    }
+//
+//    LOGE("Unwind-test", "vec cost = %ld", (CurrentNano() - begin));
+//    begin = CurrentNano();
+
+//    int a[1000000];
+//    for (int i = 0; i < 1000000; ++i) {
+//        a[i] = i;
+//    }
+
+//    LOGE("Unwind-test", "arr cost = %ld", (CurrentNano() - begin));
+
+//    LOGI("Unwind-test", "frames = %zu", tmp_ns->size());
+//
+//    for (auto p_frame = tmp_ns->begin(); p_frame != tmp_ns->end(); ++p_frame) {
+//        Dl_info stack_info;
+//        dladdr((void *) p_frame->pc, &stack_info);
+//
+//        std::string so_name = std::string(stack_info.dli_fname);
+//
+//        int status = 0;
+////        char *demangled_name = abi::__cxa_demangle(stack_info.dli_sname, nullptr, 0,
+////                                                   &status);
+//
+//        LOGI("Unwind-test", "  #pc %llx %llu %llx %s (%s)", p_frame->rel_pc, p_frame->pc, p_frame->pc,
+//        /*demangled_name ? demangled_name : "(null)",*/ stack_info.dli_sname, stack_info.dli_fname);
+//    }
+
+    LOGI("Unwind-test", "unwind done");
+}
+
+void func0f() {
 
     const int len = 70;
 
@@ -48,12 +94,12 @@ void selfso_func0f() {
         a[i] = a[i] + b[i] + c[i] - d[i] + e[i] * f[i] - g[i] * 2 - h[i];
     }
 
-    LOGD(UNWIND_TEST_TAG, "a[9] = %d", a[9]);
+    LOGD("Yves-test", "a[9] = %d", a[9]);
 
-    leaf_func(TESTCASE_SELF_SO);
+    func1();
 }
 
-void selfso_func0e() {
+void func0e() {
 
     const int len = 70;
 
@@ -81,52 +127,12 @@ void selfso_func0e() {
         a[i] = a[i] + b[i] + c[i] - d[i] + e[i] * f[i] - g[i] * 2 - h[i];
     }
 
-    LOGD(UNWIND_TEST_TAG, "a[9] = %d", a[9]);
+    LOGD("Yves-test", "a[9] = %d", a[9]);
 
-    selfso_func0f();
+    func0f();
 }
 
-void selfso_func0d(int vargs ...) {
-
-    va_list args;
-    va_start(args, vargs);
-
-    int arg0 = va_arg(args, int);
-
-    va_end(args);
-
-    const int len = 70;
-
-    long a[len] = {arg0};
-    long b[len] = {9};
-    long c[len] = {9};
-    long d[len] = {9};
-    long e[len] = {9};
-    long f[len] = {9};
-    long g[len] = {9};
-    long h[len] = {9};
-
-    for (int i = 0; i < len; ++i) {
-        a[i] = i;
-        b[i] = i * 3;
-        c[i] = i + 3;
-        d[i] = i * 2;
-        e[i] = i * 2;
-        f[i] = i + 2;
-        g[i] = i + 2;
-        h[i] = i + 2;
-    }
-
-    for (int i = 0; i < len; ++i) {
-        a[i] = a[i] + b[i] + c[i] - d[i] + e[i] * f[i] - g[i] * 2 - h[i];
-    }
-
-    LOGD(UNWIND_TEST_TAG, "a[9] = %d", a[9]);
-
-    selfso_func0e();
-}
-
-void selfso_func0c() {
+void func0d() {
 
     const int len = 70;
 
@@ -154,13 +160,45 @@ void selfso_func0c() {
         a[i] = a[i] + b[i] + c[i] - d[i] + e[i] * f[i] - g[i] * 2 - h[i];
     }
 
-    LOGD(UNWIND_TEST_TAG, "a[9] = %d", a[9]);
+    LOGD("Yves-test", "a[9] = %d", a[9]);
 
-    selfso_func0d(0, 1, 2, 3);
-    selfso_func0d(0, 1, 2, 3, 4, 5, 6, 7);
+    func0e();
 }
 
-void selfso_func0b() {
+void func0c() {
+
+    const int len = 70;
+
+    long a[len] = {0};
+    long b[len] = {9};
+    long c[len] = {9};
+    long d[len] = {9};
+    long e[len] = {9};
+    long f[len] = {9};
+    long g[len] = {9};
+    long h[len] = {9};
+
+    for (int i = 0; i < len; ++i) {
+        a[i] = i;
+        b[i] = i * 3;
+        c[i] = i + 3;
+        d[i] = i * 2;
+        e[i] = i * 2;
+        f[i] = i + 2;
+        g[i] = i + 2;
+        h[i] = i + 2;
+    }
+
+    for (int i = 0; i < len; ++i) {
+        a[i] = a[i] + b[i] + c[i] - d[i] + e[i] * f[i] - g[i] * 2 - h[i];
+    }
+
+    LOGD("Yves-test", "a[9] = %d", a[9]);
+
+    func0d();
+}
+
+void func0b() {
 
     const int len = 64;
 
@@ -188,11 +226,11 @@ void selfso_func0b() {
         a[i] = a[i] + b[i] + c[i] - d[i] + e[i] * f[i] - g[i] * 2 - h[i];
     }
 
-    LOGD(UNWIND_TEST_TAG, "a[9] = %d", a[9]);
-    selfso_func0c();
+    LOGD("Yves-test", "a[9] = %d", a[9]);
+    func0c();
 }
 
-void selfso_func0a(){
+void func0a(){
 
     const int len = 64;
 
@@ -218,12 +256,12 @@ void selfso_func0a(){
         a[i] = a[i] + b[i] + c[i] - d[i] + e[i] * f[i] - g[i] * 2;
     }
 
-    LOGD(UNWIND_TEST_TAG, "a[9] = %d", a[9]);
+    LOGD("Yves-test", "a[9] = %d", a[9]);
 
-    selfso_func0b();
+    func0b();
 }
 
-void selfso_func09(){
+void func09(){
     const int len = 70;
 
     long a[len] = {0};
@@ -254,12 +292,12 @@ void selfso_func09(){
         a[i] = a[i] + b[i] + c[i] - d[i] + e[i] * f[i] - g[i] * 2 - h[i] - j[i] + k[i];
     }
 
-    LOGD(UNWIND_TEST_TAG, "a[9] = %d", a[9]);
+    LOGD("Yves-test", "a[9] = %d", a[9]);
 
-    selfso_func0a();
+    func0a();
 }
 
-void selfso_func08(){
+void func08(){
 
     const int len = 32;
 
@@ -282,12 +320,12 @@ void selfso_func08(){
         a[i] = a[i] + b[i] + c[i] - d[i] + e[i];
     }
 
-    LOGD(UNWIND_TEST_TAG, "a[9] = %d", a[9]);
+    LOGD("Yves-test", "a[9] = %d", a[9]);
 
-    selfso_func09();
+    func09();
 }
 
-void selfso_func07() {
+void func07() {
 
     const int len = 70;
 
@@ -318,16 +356,15 @@ void selfso_func07() {
     }
 
     for (int i = 0; i < len; ++i) {
-        a[i] = a[i] + b[i] + c[i] - d[i] + e[i] * f[i] - g[i] * 2 - h[i] - j[i] + k[i] // / l[i]
-                ;
+        a[i] = a[i] + b[i] + c[i] - d[i] + e[i] * f[i] - g[i] * 2 - h[i] - j[i] + k[i] / l[i];
     }
 
-    LOGD(UNWIND_TEST_TAG, "a[9] = %d", a[9]);
+    LOGD("Yves-test", "a[9] = %d", a[9]);
 
-    selfso_func08();
+    func08();
 }
 
-void selfso_func06(long a1,long a2, long a3, long a4, long a5,long a6, long a7) {
+void func06(long a1,long a2, long a3, long a4, long a5,long a6, long a7) {
 
     const int len = 70;
 
@@ -361,16 +398,16 @@ void selfso_func06(long a1,long a2, long a3, long a4, long a5,long a6, long a7) 
 
     for (int i = 0; i < len; ++i) {
         a[i] = a[i] + b[i] + c[i] - d[i] + e[i]
-                * f[i] - g[i] * 2 - h[i] - j[i] + k[i] // / l[i]
+                * f[i] - g[i] * 2 - h[i] - j[i] + k[i] / l[i]
                 + m[i];
     }
 
-    LOGD(UNWIND_TEST_TAG, "a[9] = %d", a[9]);
+    LOGD("Yves-test", "a[9] = %d", a[9]);
 
-    selfso_func07();
+    func07();
 }
 
-void selfso_func05(long a1,long a2, long a3, long a4, long a5,long a6) {
+void func05(long a1,long a2, long a3, long a4, long a5,long a6) {
 
     const int len = 70;
 
@@ -406,11 +443,11 @@ void selfso_func05(long a1,long a2, long a3, long a4, long a5,long a6) {
 
     for (int i = 0; i < len; ++i) {
         a[i] = a[i] + b[i] + c[i] - d[i] + e[i]
-                                           * f[i] - g[i] * 2 - h[i] - j[i] + k[i] // / l[i]
+                                           * f[i] - g[i] * 2 - h[i] - j[i] + k[i] / l[i]
                + m[i] + n[i];
     }
 
-    LOGD(UNWIND_TEST_TAG, "a[9] = %d", a[9]);
+    LOGD("Yves-test", "a[9] = %d", a[9]);
 
     int aa = a4;
     int bb = a3;
@@ -419,17 +456,17 @@ void selfso_func05(long a1,long a2, long a3, long a4, long a5,long a6) {
 
     for (int i = 0; i < 100; ++i) {
         aa = aa + bb++ + cc++ + ee++;
-        LOGD(UNWIND_TEST_TAG, "%d,%d",aa, bb);
+        LOGD("Yves-test", "%d,%d",aa, bb);
     }
 
-    LOGD(UNWIND_TEST_TAG, "a[9] = %d%d%d%d%d%d%d", a[9], a1,a2,a3,a4,a5,a6);
+    LOGD("Yves-test", "a[9] = %d%d%d%d%d%d%d", a[9], a1,a2,a3,a4,a5,a6);
 
 
 
-    selfso_func06(a[0],a[1],a[2],a[3],a[4],a[5], b[6]);
+    func06(a[0],a[1],a[2],a[3],a[4],a[5], b[6]);
 }
 
-void selfso_func04() {
+void func04() {
 
     const int len = 32;
 
@@ -475,15 +512,15 @@ void selfso_func04() {
 
     for (int i = 0; i < 100; ++i) {
         aa1 = aa1 + bb++ + cc++;
-        LOGD(UNWIND_TEST_TAG, "%d,%d",aa1, bb);
+        LOGD("Yves-test", "%d,%d",aa1, bb);
     }
 
-    LOGD(UNWIND_TEST_TAG, "a[9] = %d", a[9]);
+    LOGD("Yves-test", "a[9] = %d", a[9]);
 
-    selfso_func05(a[0],a[1],a[2],a[3],a[4],a[5]);
+    func05(a[0],a[1],a[2],a[3],a[4],a[5]);
 }
 
-void selfso_func03(){
+void func03(){
 
     const int len = 70;
 
@@ -521,20 +558,20 @@ void selfso_func03(){
 
     for (int i = 0; i < len; ++i) {
         a[i] = a[i] + b[i] + c[i] - d[i] + e[i]
-                                           * f[i] - g[i] * 2 - h[i] - j[i] + k[i] // / l[i]
+                                           * f[i] - g[i] * 2 - h[i] - j[i] + k[i] / l[i]
                + m[i] + n[i] * o[i];
     }
 
-    LOGD(DWARF_UNWIND_TEST, "a[9] = %d", a[9]);
+    LOGD("Yves-test", "a[9] = %d", a[9]);
 
 
 
-    LOGD(DWARF_UNWIND_TEST, "a[9] = %d", a[9]);
+    LOGD("Yves-test", "a[9] = %d", a[9]);
 
-    selfso_func04();
+    func04();
 }
 
-void selfso_func02(long a0, int a1, int a2){
+void func02(long a0, int a1, int a2){
     const int len = 11;
 
     uint64_t a[len] = {0};
@@ -595,13 +632,13 @@ void selfso_func02(long a0, int a1, int a2){
     }
 
 
-    LOGD(DWARF_UNWIND_TEST, "a[9] = %d %d%d%d", a[9], a0, a1, a2);
+    LOGD("Yves-test", "a[9] = %d %d%d%d", a[9], a0, a1, a2);
 
 
-    selfso_func03();
+    func03();
 }
 
-void selfso_func01(int arg) {
+void func01(int arg) {
 
     const int len = 70;
 
@@ -641,19 +678,19 @@ void selfso_func01(int arg) {
 
     for (int i = 0; i < len; ++i) {
         a[i] = a[i] + b[i] + c[i] - d[i] + e[i]
-                                           * f[i] - g[i] * 2 - h[i] - j[i] + k[i] // / l[i]
+                                           * f[i] - g[i] * 2 - h[i] - j[i] + k[i] / l[i]
                + m[i] + n[i] * o[i] + p[i];
     }
 
     // if else
 
-    LOGD(DWARF_UNWIND_TEST, "a[9] = %d", a[9]);
+    LOGD("Yves-test", "a[9] = %d", a[9]);
 
-    selfso_func02(a[0],a[2],a[2]);
+    func02(a[0],a[2],a[2]);
 }
 
-void func_selfso() {
-    LOGD(DWARF_UNWIND_TEST, "func_selfso");
+void func0() {
+    LOGD("Yves-test", "func0");
 
     const int len = 70;
 
@@ -695,14 +732,43 @@ void func_selfso() {
 
     for (int i = 0; i < len; ++i) {
         a[i] = a[i] + b[i] + c[i] - d[i] + e[i]
-                                           * f[i] - g[i] * 2 - h[i] - j[i] + k[i] // / l[i]
+                                           * f[i] - g[i] * 2 - h[i] - j[i] + k[i] / l[i]
                + m[i] + n[i] * o[i] + p[i] + q[i];
     }
 
-    LOGD(UNWIND_TEST_TAG, "a[9] = %d", a[9]);
+    LOGD("Yves-test", "a[9] = %d", a[9]);
 
-    selfso_func01(1);
+    func01(1);
 //    func1();
+}
+
+
+JNIEXPORT void JNICALL
+Java_com_tencent_wxperf_jni_test_UnwindTest_testNative(JNIEnv *env, jclass clazz) {
+    func0();
+}
+
+void func3(JNIEnv *env, jclass clazz) {
+    LOGD("Yves-test", "func3");
+    jmethodID j_test = env->GetStaticMethodID(clazz, "test", "()V");
+    env->CallStaticVoidMethod(clazz, j_test);
+}
+
+void func2(JNIEnv *env, jclass clazz) {
+    LOGD("Yves-test", "func2");
+    func3(env, clazz);
+}
+
+JNIEXPORT void JNICALL
+Java_com_tencent_wxperf_jni_test_UnwindTest_testNative2(JNIEnv *env, jclass clazz) {
+    func2(env, clazz);
+}
+
+JNIEXPORT void JNICALL
+Java_com_tencent_wxperf_jni_test_UnwindTest_initNative(JNIEnv *env, jclass clazz) {
+    LOGD("Yves-test", "Unwind init");
+//    unwindstack::update_maps();
+    wechat_backtrace::notify_maps_changed();
 }
 
 #ifdef __cplusplus

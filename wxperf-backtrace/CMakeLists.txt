@@ -12,7 +12,13 @@ CMAKE_MINIMUM_REQUIRED(VERSION 3.4.1)
 
 SET(TARGET wechatbacktrace)
 
+SET(TARGET_TEST wechatbacktrace_test)
+
 SET(SOURCE_DIR src/main/cpp)
+
+OPTION(EnableLOG "Enable QUT Logs" OFF)
+OPTION(QUT_STATISTIC_ENABLE "Enable QUT Statistics" OFF)
+
 
 SET(
         SOURCE_FILES
@@ -41,7 +47,7 @@ SET(
 
 
 SET(
-        TEST_SOURCE_FILES           # TODO
+        TEST_SOURCE_FILES
         ${SOURCE_DIR}/test/UnwindTestJNI.cpp
         ${SOURCE_DIR}/test/UnwindTestCommon.cpp
         ${SOURCE_DIR}/test/UnwindTestCase_SelfSo.cpp
@@ -59,9 +65,6 @@ ADD_LIBRARY( # Specifies the name of the library.
 
         # Provides a relative path to your source file(s).
         ${SOURCE_FILES}
-
-        # Test source files.
-        ${TEST_SOURCE_FILES}
         )
 
 ADD_SUBDIRECTORY(
@@ -107,7 +110,6 @@ TARGET_LINK_LIBRARIES( # Specifies the target library.
         PRIVATE demangle
         PRIVATE -Wl,--gc-sections
 )
-
 
 TARGET_COMPILE_OPTIONS(
         ${TARGET}

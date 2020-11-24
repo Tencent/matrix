@@ -17,7 +17,7 @@ import android.text.StaticLayout;
 import android.util.Log;
 import android.view.View;
 
-import com.tencent.components.unwinder.QuickenUnwinder;
+import com.tencent.components.backtrace.QuickenUnwinder;
 import com.tencent.wxperf.fd.FDDumpBridge;
 import com.tencent.wxperf.jectl.JeCtl;
 import com.tencent.wxperf.jni.HookManager;

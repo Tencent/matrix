@@ -10,6 +10,7 @@ public class UnwindTest {
         // FIXME
         try {
             System.loadLibrary("wxperf-jni");
+            System.loadLibrary("wxperf-benchmark");
         } catch (Throwable e) {
             Log.printStack(Log.ERROR, TAG, e);
         }

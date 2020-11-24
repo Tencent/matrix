@@ -1,5 +1,7 @@
 apply plugin: 'com.android.application'
 
+apply from: rootProject.file('gradle/WeChatNativeDepend.gradle')
+
 android {
     compileSdkVersion rootProject.COMPILE_SDK_VERSION
     defaultConfig {
@@ -84,4 +86,6 @@ dependencies {
     implementation project(':wxperf-hook')
     implementation project(':wxperf-fd')
     implementation project(':wxperf-jectl')
+    implementation project(':wxperf-backtrace')
+    implementation project(':wxperf-benchmark')
 }
