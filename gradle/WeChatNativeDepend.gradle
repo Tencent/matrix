@@ -141,12 +141,12 @@ def handleAndroidApplication() {
     generateBuildInfoHeader(true)
     
     def generateAction = {
-        generateBuildInfoModule()
-        generateBuildInfoHeader(false)
 //        extractNativeDependencies(project.android.applicationVariants)
     }
 
     project.afterEvaluate {
+        generateBuildInfoModule()
+        generateBuildInfoHeader(false)
         project.android.applicationVariants.each { variant ->
             def anchorTask = getGenerateOpsAnchorTask(variant)
             if (anchorTask != null) {
@@ -173,8 +173,6 @@ def handleAndroidLibrary() {
     }
     
     def generateBeforeAction = {
-        generateBuildInfoModule()
-        generateBuildInfoHeader(false)
         libVariants.each { variant ->
             def externalNativeBuildTask = project.tasks.findByName("externalNativeBuild${variant.name.capitalize()}")
             if (externalNativeBuildTask == null) {
@@ -186,6 +184,8 @@ def handleAndroidLibrary() {
     }
 
     project.afterEvaluate {
+        generateBuildInfoModule()
+        generateBuildInfoHeader(false)
         libVariants.each { variant ->
             def anchorTask = getGenerateOpsAnchorTask(variant)
             if (anchorTask != null) {
