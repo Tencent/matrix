@@ -1,3 +1,4 @@
 include ':wxperf-common'
 include ':wxperf-jectl'
 include ':app', ':wxperf-hook', ':wxperf-fd'
+include ':wxperf-backtrace'

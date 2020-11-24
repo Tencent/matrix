@@ -19,29 +19,14 @@ set(
         ${SOURCE_DIR}/memory/MemoryHookJNI.cpp
         ${SOURCE_DIR}/memory/MemoryHook.cpp
         ${SOURCE_DIR}/memory/MemoryHookFunctions.cpp
-        ${SOURCE_DIR}/common/Backtrace.cpp
-        ${SOURCE_DIR}/common/Utils.cpp
         ${SOURCE_DIR}/common/JNICommon.cpp
         ${SOURCE_DIR}/common/HookCommon.cpp
-        ${SOURCE_DIR}/common/PthreadExt.cpp
         ${SOURCE_DIR}/common/ReentrantPrevention.cpp
         ${SOURCE_DIR}/pthread/PthreadHook.cpp
         ${SOURCE_DIR}/pthread/PthreadHookJNI.cpp
-        ${SOURCE_DIR}/dlsym/EnhanceDlsym.cpp
         ${SOURCE_DIR}/egl/EglHook.cpp
         ${SOURCE_DIR}/egl/EglHookJNI.cpp
 )
-
-set(
-        TEST_SOURCE_FILES
-        ${SOURCE_DIR}/test/UnwindTestJNI.cpp
-        ${SOURCE_DIR}/test/UnwindTestCommon.cpp
-        ${SOURCE_DIR}/test/UnwindTestCase_SelfSo.cpp
-        ${SOURCE_DIR}/test/UnwindTestCase_ThroughJNI.cpp
-        ${SOURCE_DIR}/test/UnwindTestCase_ThroughSystemSo.cpp
-        ${SOURCE_DIR}/test/UnwindTestBenchmark.cpp
-)
-
 
 add_library( # Specifies the name of the library.
         ${TARGET}
@@ -51,23 +36,20 @@ add_library( # Specifies the name of the library.
 
         # Provides a relative path to your source file(s).
         ${SOURCE_FILES}
-        #            src/main/cpp/fd/FDInfoReader.cpp
 
         # Test source files.
         ${TEST_SOURCE_FILES}
         )
 
 add_subdirectory(${SOURCE_DIR}/external/libxhook)
-add_subdirectory(${SOURCE_DIR}/external/libunwindstack)
 add_subdirectory(${SOURCE_DIR}/external/libcJSON)
 
 target_include_directories(
         ${TARGET}
         PRIVATE ${SOURCE_DIR}/common
         PRIVATE ${SOURCE_DIR}/external/libxhook
-        PRIVATE ${SOURCE_DIR}/external/libunwindstack/include
-        PRIVATE ${SOURCE_DIR}/external/libwechatbacktrace/include
         PRIVATE ${SOURCE_DIR}/external/libcJSON
+        PRIVATE ${EXT_DEP}/include
 )
 
 # Searches for a specified prebuilt library and stores the path as a
@@ -89,12 +71,13 @@ find_library( # Sets the name of the path variable.
 
 target_link_libraries( # Specifies the target library.
         ${TARGET}
-        xhook
-        unwindstack
-        cJSON
+        PRIVATE xhook
+        PRIVATE cJSON
         # Links the target library to the log library
         # included in the NDK.
-        ${log-lib})
+        PRIVATE ${log-lib}
+        PRIVATE ${EXT_DEP}/lib/${ANDROID_ABI}/libwechatbacktrace.so
+)
 
 TARGET_COMPILE_OPTIONS(
         ${TARGET}
