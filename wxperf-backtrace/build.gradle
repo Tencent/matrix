@@ -24,7 +24,7 @@ android {
 
         externalNativeBuild {
             cmake {
-                arguments = ['-DANDROID_STL=c++_shared', '-DEnableLOG=ON']
+                arguments = ['-DANDROID_STL=c++_shared', "-DEnableLOG=${gradle.enableLog() ? "ON" : "OFF"}" as String]
             }
 
             exportHeaders {
