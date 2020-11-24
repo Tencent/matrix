@@ -29,15 +29,6 @@ uint64_t hash_backtrace_frames(wechat_backtrace::Backtrace *backtrace) {
     return (uint64_t) sum;
 }
 
-//uint64_t hash_stack_frames(std::vector<unwindstack::FrameData> &stack_frames) {
-//    uint64_t sum = 1;
-//    for (auto i = stack_frames.begin(); i != stack_frames.end(); ++i) {
-////        LOGD("DEBUG", "i->pc = %p", i->pc);
-//        sum += i->pc;
-//    }
-//    return sum;
-//}
-
 uint64_t hash_str(const char * str) {
     if (!str) {
         LOGD("DEBUG", "str is NULL");

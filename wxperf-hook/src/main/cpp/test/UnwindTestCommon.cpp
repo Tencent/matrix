@@ -4,7 +4,7 @@
 #include <cxxabi.h>
 #include <inttypes.h>
 #include <MinimalRegs.h>
-#include <FastArmExidxUnwinder.h>
+//#include <FastArmExidxUnwinder.h>
 #include <QuickenUnwinder.h>
 #include <QuickenMaps.h>
 #include "Log.h"
@@ -12,9 +12,7 @@
 #include "UnwindTestCommon.h"
 
 #define DWARF_UNWIND_TAG "Dwarf-Unwind"
-#define FP_FAST_UNWIND_TAG "Fp-Unwind"
-#define FP_FAST_UNWIND_WITH_FALLBACK_TAG "Fp-Unwind-Fallback"
-#define DWARF_FAST_UNWIND_TAG "Dwarf-Fast-Unwind"
+#define FP_UNWIND_TAG "Fp-Unwind"
 #define WECHAT_QUICKEN_UNWIND_TAG "WeChat-Quicken-Unwind"
 
 //#define DWARF_UNWIND_TAG UNWIND_TEST_TAG
@@ -109,7 +107,7 @@ inline void print_fp_unwind() {
 
     TEST_NanoSeconds_End(wechat_backtrace::fp_unwind, nano);
 
-    LOGE(FP_FAST_UNWIND_TAG, "frames = %"
+    LOGE(FP_UNWIND_TAG, "frames = %"
             PRIuPTR, frame_size);
 
     for (size_t i = 0; i < frame_size; i++) {
@@ -118,7 +116,7 @@ inline void print_fp_unwind() {
 
         std::string so_name = std::string(stack_info.dli_fname);
 
-        LOGE(FP_FAST_UNWIND_TAG, "  #pc 0x%"
+        LOGE(FP_UNWIND_TAG, "  #pc 0x%"
                 PRIxPTR
                 " %"
                 PRIxPTR
@@ -128,41 +126,6 @@ inline void print_fp_unwind() {
              frames[i].pc - (uptr) stack_info.dli_fbase, stack_info.dli_sname, stack_info.dli_fname);
     }
 }
-
-//static inline void print_fp_unwind_with_fallback() {
-//
-//    TEST_NanoSeconds_Start(nano);
-//
-//    uptr frames[FRAME_MAX_SIZE];
-//
-//    uptr frame_size = 0;
-//
-//    uptr regs[4];
-//    RegsMinimalGetLocal(regs);
-//
-//    wechat_backtrace::fp_unwind_with_fallback(regs, frames, FRAME_MAX_SIZE, frame_size);
-//
-//    TEST_NanoSeconds_End(wechat_backtrace::fp_unwind_with_fallback, nano);
-//
-//    LOGE(FP_FAST_UNWIND_WITH_FALLBACK_TAG, "frames = %"
-//            PRIuPTR, frame_size);
-//
-//    for (size_t i = 0; i < frame_size; i++) {
-//        Dl_info stack_info;
-//        dladdr((void *) frames[i], &stack_info);
-//
-//        std::string so_name = std::string(stack_info.dli_fname);
-//
-//        LOGE(FP_FAST_UNWIND_WITH_FALLBACK_TAG, "  #pc 0x%"
-//                PRIxPTR
-//                " %"
-//                PRIuPTR
-//                " 0x%"
-//                PRIxPTR
-//                " %s (%s)", frames[i], frames[i], frames[i], stack_info.dli_sname,
-//             stack_info.dli_fname);
-//    }
-//}
 
 inline void print_wechat_quicken_unwind() {
 
@@ -201,108 +164,6 @@ inline void print_wechat_quicken_unwind() {
     }
 }
 
-inline void print_wechat_quicken_unwind_v2_wip() {
-
-    TEST_NanoSeconds_Start(nano);
-
-    uptr regs[QUT_MINIMAL_REG_SIZE];
-    GetMinimalRegs(regs);
-    uptr frames[FRAME_MAX_SIZE];
-    uptr frame_size = 0;
-
-    wechat_backtrace::quicken_unwind_v2_wip(regs, frames, FRAME_MAX_SIZE, frame_size);
-
-    TEST_NanoSeconds_End(print_wechat_quicken_unwind_v2, nano);
-
-    LOGE(WECHAT_QUICKEN_UNWIND_TAG, "frames = %"
-            PRIuPTR, frame_size);
-
-    for (size_t i = 0; i < frame_size; i++) {
-        Dl_info stack_info;
-        dladdr((void *) frames[i], &stack_info);
-
-        if (!stack_info.dli_fname) {
-            LOGE(WECHAT_QUICKEN_UNWIND_TAG, "  #pc stack_info.dli_fname is null");
-            continue;
-        }
-        std::string so_name = std::string(stack_info.dli_fname);
-
-        LOGE(WECHAT_QUICKEN_UNWIND_TAG, "  #pc 0x%"
-                PRIxPTR
-                " %"
-                PRIuPTR
-                " 0x%"
-                PRIxPTR
-                " %s (%s)", frames[i], frames[i], frames[i], stack_info.dli_sname,
-             stack_info.dli_fname);
-    }
-}
-
-
-#ifdef __arm__
-inline void print_dwarf_fast_unwind() {
-
-    TEST_NanoSeconds_Start(nano);
-
-    uptr regs[7];
-    GetMinimalRegs(regs);
-    uptr frames[FRAME_MAX_SIZE];
-    uptr frame_size = 0;
-
-    wechat_backtrace::fast_dwarf_unwind(regs, frames, FRAME_MAX_SIZE, frame_size);
-
-    TEST_NanoSeconds_End(unwindstack::fast_dwarf_unwind, nano);
-
-    LOGE(DWARF_FAST_UNWIND_TAG, "frames = %"
-            PRIuPTR, frame_size);
-
-    for (size_t i = 0; i < frame_size; i++) {
-        Dl_info stack_info;
-        dladdr((void *) frames[i], &stack_info);
-
-        std::string so_name = std::string(stack_info.dli_fname);
-
-        LOGE(DWARF_FAST_UNWIND_TAG, "  #pc 0x%"
-                PRIxPTR
-                " %"
-                PRIuPTR
-                " 0x%"
-                PRIxPTR
-                " %s (%s)", frames[i], frames[i], frames[i], stack_info.dli_sname,
-             stack_info.dli_fname);
-    }
-}
-#else
-inline void print_dwarf_fast_unwind() {
-
-    TEST_NanoSeconds_Start(nano);
-    std::shared_ptr<unwindstack::Regs> regs(unwindstack::Regs::CreateFromLocal());
-    unwindstack::RegsGetLocal(regs.get());
-
-    auto *tmp_ns = new std::vector<unwindstack::FrameData>;
-    wechat_backtrace::fast_dwarf_unwind(regs.get(), *tmp_ns, FRAME_MAX_SIZE);
-
-    TEST_NanoSeconds_End(unwindstack::fast_dwarf_unwind, nano);
-
-    LOGE(DWARF_FAST_UNWIND_TAG, "frames = %"
-            PRIuPTR
-    , tmp_ns->size());
-
-    for (auto p_frame = tmp_ns->begin(); p_frame != tmp_ns->end(); ++p_frame) {
-        Dl_info stack_info;
-        dladdr((void *) p_frame->pc, &stack_info);
-
-        std::string so_name = std::string(stack_info.dli_fname);
-
-        LOGE(DWARF_UNWIND_TAG, "  #pc 0x%" PRIx64
-                " rel_pc 0x%" PRIx64
-                " fbase 0x%" PRIxPTR
-                " cal_rel_pc 0x%" PRIxPTR
-                " %s (%s)", p_frame->pc, p_frame->rel_pc, (uptr)stack_info.dli_fbase, (uptr)(p_frame->pc - (uptr)stack_info.dli_fbase), stack_info.dli_sname, stack_info.dli_fname);
-    }
-}
-#endif
-
 void leaf_func(const char *testcase) {
 
     LOGD(UNWIND_TEST_TAG, "Test %s unwind start with mode %d.", testcase, gMode);
@@ -311,17 +172,8 @@ void leaf_func(const char *testcase) {
         case FP_UNWIND:
             print_fp_unwind();
             break;
-//        case FP_UNWIND_WITH_FALLBACK:
-//            print_fp_unwind_with_fallback();
-//            break;
-        case FAST_DWARF_UNWIND:
-            print_dwarf_fast_unwind();
-            break;
         case WECHAT_QUICKEN_UNWIND:
             print_wechat_quicken_unwind();
-            break;
-        case WECHAT_QUICKEN_UNWIND_V2_WIP:
-            print_wechat_quicken_unwind_v2_wip();
             break;
         case DWARF_UNWIND:
             print_dwarf_unwind();

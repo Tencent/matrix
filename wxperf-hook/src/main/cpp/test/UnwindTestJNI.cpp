@@ -8,7 +8,6 @@
 #include <cxxabi.h>
 #include <Backtrace.h>
 #include "Log.h"
-#include "Stacktrace.h"
 #include "../external/libunwindstack/TimeUtil.h"
 
 #ifdef __cplusplus

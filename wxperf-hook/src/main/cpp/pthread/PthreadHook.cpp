@@ -4,7 +4,6 @@
 
 #include <dlfcn.h>
 #include <unordered_map>
-#include <Stacktrace.h>
 #include <cxxabi.h>
 #include <sstream>
 #include <iostream>
@@ -28,7 +27,7 @@
 #define TAG "Wxperf.PthreadHook"
 
 #define THREAD_NAME_LEN 16
-#define PTHREAD_BACKTRACE_MAX_FRAMES 16
+#define PTHREAD_BACKTRACE_MAX_FRAMES MAX_FRAME_SHORT
 
 typedef void *(*pthread_routine_t)(void *);
 
@@ -40,7 +39,6 @@ struct pthread_meta_t {
     uint64_t hash;
 
     wechat_backtrace::Backtrace native_backtrace;
-//    std::vector<unwindstack::FrameData> native_stacktrace;
 
     std::atomic<char *> java_stacktrace;
 
@@ -59,7 +57,6 @@ struct pthread_meta_t {
         thread_name = src.thread_name;
 //        parent_name       = src.parent_name;
         hash = src.hash;
-//        native_stacktrace = src.native_stacktrace;
         native_backtrace = src.native_backtrace;
         java_stacktrace.store(src.java_stacktrace.load(std::memory_order_acquire),
                               std::memory_order_release);
@@ -169,8 +166,6 @@ on_pthread_create_locked(const pthread_t __pthread, char *__java_stacktrace, pid
     uint64_t native_hash = 0;
     uint64_t java_hash = 0;
 
-//    wechat_backtrace::unwind_adapter(meta.native_stacktrace);
-//    native_hash = hash_stack_frames(meta.native_stacktrace);
     wechat_backtrace::unwind_adapter(meta.native_backtrace.frames.get(),
                                      meta.native_backtrace.max_frames,
                                      meta.native_backtrace.frame_size);
@@ -363,23 +358,6 @@ static inline void pthread_dump_impl(FILE *__log_file) {
                                                meta.native_backtrace.frame_size,
                                                frame_detail_lambda);
 
-//        for (auto &p_frame : meta.native_stacktrace) {
-//            int status = 0;
-//            char *demangled_name = abi::__cxa_demangle(p_frame.function_name.c_str(), nullptr, 0,
-//                                                       &status);
-//
-//            LOGD(TAG, "  #pc %"
-//                    PRIxPTR
-//                    " %s (%s)",
-//                 p_frame.rel_pc,
-//                 demangled_name ? demangled_name : "(null)",
-//                 p_frame.map_name.c_str());
-//            fprintf(__log_file, "  #pc %" PRIxPTR " %s (%s)\n", p_frame.rel_pc,
-//                    demangled_name ? demangled_name : "(null)", p_frame.map_name.c_str());
-//
-//            free(demangled_name);
-//        }
-
         LOGD(TAG, "java stacktrace:\n%s", meta.java_stacktrace.load(std::memory_order_acquire));
         fprintf(__log_file, "java stacktrace:\n%s\n",
                 meta.java_stacktrace.load(std::memory_order_acquire));
@@ -446,8 +424,6 @@ static inline void pthread_dump_json_impl(FILE *__log_file) {
         assert(!metas.empty());
 
         std::stringstream stack_builder;
-//        auto front_frames = metas.front().native_stacktrace;
-//        restore_frame_data(front_frames);
 
         auto frame_detail_lambda = [&stack_builder](wechat_backtrace::FrameDetail detail) -> void {
             char *demangled_name = nullptr;
@@ -474,29 +450,6 @@ static inline void pthread_dump_json_impl(FILE *__log_file) {
         wechat_backtrace::restore_frame_detail(
                 front_backtrace.frames.get(), front_backtrace.frame_size, frame_detail_lambda);
 
-//        for (auto &frame : front_frames) {
-////            LOGE(TAG, "===> success = %d, pc =  %p, dl_info.dli_sname = %p %s",
-////                 success, (void *) frame.pc, (void *) stack_info.dli_sname, stack_info.dli_sname);
-//
-//            char *demangled_name = nullptr;
-//
-//            int status = 0;
-//            demangled_name = abi::__cxa_demangle(frame.function_name.c_str(), nullptr, nullptr,
-//                                                 &status);
-//
-//            stack_builder << "#pc " << std::hex << frame.rel_pc << " "
-//                          << (demangled_name ? demangled_name : "(null)")
-//                          << " ("
-//                          << frame.map_name
-//                          << ");";
-//
-//            LOGE(TAG, "#pc %p %s %s", (void *) frame.rel_pc, demangled_name,
-//                 frame.map_name.c_str());
-//
-//            if (demangled_name) {
-//                free(demangled_name);
-//            }
-//        }
         LOGE(TAG, "-------------------");
         cJSON_AddStringToObject(hash_obj, "native", stack_builder.str().c_str());
 

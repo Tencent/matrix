@@ -97,7 +97,7 @@ namespace wechat_backtrace {
 
     enum QutInstruction : uint64_t {
         // Do not change this order!!!
-                QUT_INSTRUCTION_R4_OFFSET = 0,  // r4_offset
+        QUT_INSTRUCTION_R4_OFFSET = 0,  // r4_offset
         QUT_INSTRUCTION_R7_OFFSET = 1,      // r7_offset
         QUT_INSTRUCTION_R10_OFFSET = 2,     // r10_offset
         QUT_INSTRUCTION_R11_OFFSET = 3,     // r11_offset

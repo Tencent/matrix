@@ -103,36 +103,6 @@ namespace wechat_backtrace {
         return quicken_interface_.release();
     }
 
-    FastArmExidxInterface *
-    QuickenMapInfo::GetFastArmExidxInterface(const shared_ptr<unwindstack::Memory> &process_memory,
-                                             ArchEnum expected_arch) {
-
-        if (exidx_interface_) {
-            return exidx_interface_.get();
-        }
-
-        std::lock_guard<std::mutex> guard(lock_);
-
-        if (!exidx_interface_) {
-
-            Elf *elf = GetElf(process_memory, expected_arch);
-
-            if (!elf->valid()) {
-                return nullptr;
-            }
-
-            ElfInterfaceArm *elf_interface = dynamic_cast<ElfInterfaceArm *>(elf->interface());
-
-            exidx_interface_.reset(new FastArmExidxInterface(elf->memory(), elf->GetLoadBias(),
-                                                             elf_interface->start_offset(),
-                                                             elf_interface->total_entries()));
-
-            elf_load_bias_ = elf->GetLoadBias();
-        }
-
-        return exidx_interface_.get();
-    }
-
     uint64_t QuickenMapInfo::GetRelPc(uint64_t pc) {
         QUT_DEBUG_LOG(
                 "QuickenMapInfo::GetRelPc pc:%llx, start:%llx, elf_load_bias_:%llx, elf_offset:%llx",
@@ -140,11 +110,9 @@ namespace wechat_backtrace {
         return pc - start + elf_load_bias_ + elf_offset;
     }
 
-
     size_t Maps::GetSize() {
         return maps_size_;
     }
-
 
     MapInfoPtr Maps::Find(uint64_t pc) {
 

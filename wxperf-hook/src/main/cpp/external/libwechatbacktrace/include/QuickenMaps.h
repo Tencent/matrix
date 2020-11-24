@@ -3,7 +3,7 @@
 
 #include <unwindstack/MapInfo.h>
 #include "QuickenInterface.h"
-#include "FastArmExidxInterface.h"
+//#include "FastArmExidxInterface.h"
 
 namespace wechat_backtrace {
 
@@ -33,13 +33,7 @@ namespace wechat_backtrace {
 
         uint64_t GetRelPc(uint64_t pc);
 
-        unwindstack::FastArmExidxInterface *GetFastArmExidxInterface(
-                const std::shared_ptr<unwindstack::Memory> &process_memory,
-                unwindstack::ArchEnum expected_arch);
-
         std::shared_ptr<QuickenInterface> quicken_interface_;
-
-        std::unique_ptr<unwindstack::FastArmExidxInterface> exidx_interface_;
 
         uint64_t elf_load_bias_;
 

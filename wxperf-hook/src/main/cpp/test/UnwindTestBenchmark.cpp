@@ -60,15 +60,6 @@ Java_com_tencent_wxperf_jni_test_UnwindBenckmarkTest_benchmarkNative(JNIEnv *env
     BENCHMARK(FP_UNWIND, func_throughjni);
     BENCHMARK(FP_UNWIND, func_throughsystemso);
 
-//    // FP_UNWIND_WITH_FALLBACK mode benchmark
-//    BENCHMARK(FP_UNWIND_WITH_FALLBACK, func_selfso);
-//    BENCHMARK(FP_UNWIND_WITH_FALLBACK, func_throughjni);
-//    BENCHMARK(FP_UNWIND_WITH_FALLBACK, func_throughsystemso);
-
-    // FAST_DWARF_UNWIND mode benchmark
-    BENCHMARK(FAST_DWARF_UNWIND, func_selfso);
-    BENCHMARK(FAST_DWARF_UNWIND, func_throughjni);
-    BENCHMARK(FAST_DWARF_UNWIND, func_throughsystemso);
 }
 
 JNIEXPORT void JNICALL

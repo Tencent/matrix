@@ -23,14 +23,13 @@
 #include <shared_mutex>
 #include <cJSON.h>
 #include "MemoryHookFunctions.h"
-#include "Stacktrace.h"
 #include "Utils.h"
 #include "unwindstack/Unwinder.h"
 #include "ThreadPool.h"
 #include "MemoryHookMetas.h"
 #include "MemoryHook.h"
 
-#define MEMHOOK_BACKTRACE_MAX_FRAMES 16
+#define MEMHOOK_BACKTRACE_MAX_FRAMES MAX_FRAME_SHORT
 
 static memory_meta_container m_memory_meta_container;
 
@@ -192,7 +191,6 @@ static inline size_t collect_metas(std::map<void *, caller_meta_t> &__heap_calle
 
                 if (__stack_meta) {
                     auto &dest_stack_meta = dest_stack_metas[__meta->stack_hash];
-//                    dest_stack_meta.stacktrace = __stack_meta->stacktrace;
                     dest_stack_meta.backtrace = __stack_meta->backtrace;
                     // 没错, 这里的确使用 ptr_meta 的 size, 因为是在遍历 ptr_meta, 因此原来 stack_meta 的 size 仅起引用计数作用
                     dest_stack_meta.size += __meta->size;

@@ -7,7 +7,6 @@
 #include <sys/stat.h>
 #include "HookCommon.h"
 #include "Log.h"
-#include "Stacktrace.h"
 #include "JNICommon.h"
 #include "PthreadExt.h"
 #include "Backtrace.h"

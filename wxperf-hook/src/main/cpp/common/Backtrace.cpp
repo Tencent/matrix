@@ -7,7 +7,7 @@
 #include "JNICommon.h"
 #include <FpUnwinder.h>
 #include <MinimalRegs.h>
-#include <FastArmExidxUnwinder.h>
+//#include <FastArmExidxUnwinder.h>
 #include <QuickenUnwinder.h>
 #include <QuickenMaps.h>
 #include <LocalMaps.h>
@@ -29,7 +29,7 @@ namespace wechat_backtrace {
             Dl_info stack_info;
             dladdr((void *) frame_data.pc, &stack_info); // 用修正后的 pc dladdr 会偶现 npe crash, 因此还是用 lr
 
-#ifdef __aarch64__
+#ifdef __aarch64__  // TODO Fix hardcode
             // fp_unwind 得到的 pc 除了第 0 帧实际都是 LR, arm64 指令长度都是定长 32bit, 所以 -4 以恢复 pc
             uptr real_pc = frame_data.pc - (i > 0 ?: 0);
 #else
@@ -91,66 +91,6 @@ namespace wechat_backtrace {
 
     void fp_unwind(uptr *regs, Frame *frames, size_t frameMaxSize, size_t &frameSize) {
         FpUnwind(regs, frames, frameMaxSize, frameSize);
-    }
-
-//    void fp_unwind_with_fallback(uptr *regs, uptr *frames, uptr frameMaxSize, uptr &frameSize) {
-//        FpUnwind(regs, frames, frameMaxSize, frameSize);
-//    }
-
-#ifdef __arm__
-
-    void fast_dwarf_unwind(uptr *regs, uptr *frames, uptr frame_max_size, uptr &frame_size) {
-        wechat_backtrace::FastExidxUnwind((uint32_t *) regs, frames, frame_max_size, frame_size);
-    }
-
-#else
-    void fast_dwarf_unwind(unwindstack::Regs* regs, std::vector<unwindstack::FrameData> &dst, size_t frameSize) {
-
-        pthread_mutex_lock(&unwind_mutex);
-        if (regs == nullptr) {
-            LOGE(WECHAT_BACKTRACE_TAG, "Err: unable to get remote reg data.");
-            pthread_mutex_unlock(&unwind_mutex);
-        }
-
-        unwindstack::SetFastFlag(true);
-
-        std::shared_ptr<unwindstack::LocalMaps> local_maps = GetMapsCache();
-        if (!local_maps) {
-            LOGE(WECHAT_BACKTRACE_TAG, "Err: unable to get maps.");
-            pthread_mutex_unlock(&unwind_mutex);
-            return;
-        }
-
-        auto process_memory = unwindstack::Memory::CreateProcessMemory(getpid());
-        unwindstack::Unwinder unwinder(frameSize, local_maps.get(), regs, process_memory);
-        unwindstack::JitDebug jit_debug(process_memory);
-        unwinder.SetJitDebug(&jit_debug, regs->Arch());
-        unwinder.SetResolveNames(false);
-        unwinder.Unwind();
-
-        dst = unwinder.frames();
-
-        pthread_mutex_unlock(&unwind_mutex);
-    }
-
-#endif
-
-    void quicken_unwind(uptr *regs, Frame *frames, uptr frame_max_size, uptr &frame_size) {
-#ifdef __arm__
-        unwindstack::ArchEnum arch = unwindstack::ArchEnum::ARCH_ARM;
-#else
-        unwindstack::ArchEnum arch = unwindstack::ArchEnum::ARCH_ARM64;
-#endif
-        wechat_backtrace::WeChatQuickenUnwind(arch, regs, frame_max_size, frames, frame_size);
-    }
-
-    void quicken_unwind_v2_wip(uptr *regs, uptr *frames, uptr frame_max_size, uptr &frame_size) {
-#ifdef __arm__
-        unwindstack::ArchEnum arch = unwindstack::ArchEnum::ARCH_ARM;
-#else
-        unwindstack::ArchEnum arch = unwindstack::ArchEnum::ARCH_ARM64;
-#endif
-//        wechat_backtrace::WeChatQuickenUnwindV2_WIP(arch, regs, frames, frame_max_size, frame_size);
     }
 
 }

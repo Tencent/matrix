@@ -3,7 +3,7 @@
 #include <cstdlib>
 #include <pthread.h>
 #include <deps/android-base/include/android-base/strings.h>
-#include <FastArmExidx.h>
+//#include <FastArmExidx.h>
 #include <include/unwindstack/DwarfError.h>
 #include <dlfcn.h>
 #include <cinttypes>

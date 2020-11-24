@@ -50,11 +50,6 @@ SET(
         ${CMAKE_CURRENT_SOURCE_DIR}/../libwechatbacktrace/QuickenInterface.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/../libwechatbacktrace/QuickenUnwinder.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/../libwechatbacktrace/QuickenJNI.cpp
-
-        ${CMAKE_CURRENT_SOURCE_DIR}/../libwechatbacktrace/FastArmExidx.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/../libwechatbacktrace/FastArmExidxInterface.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/../libwechatbacktrace/FastArmExidxUnwinder.cpp
-
         ${CMAKE_CURRENT_SOURCE_DIR}/../libwechatbacktrace/LocalMaps.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/../libwechatbacktrace/FpUnwinder.cpp
 

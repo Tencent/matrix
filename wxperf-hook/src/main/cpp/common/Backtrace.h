@@ -25,27 +25,19 @@ namespace wechat_backtrace {
 
     void fp_unwind(uptr *regs, Frame *frames, const size_t frameMaxSize, const size_t &frameSize);
 
-    void quicken_unwind(uptr *regs, Frame *frames, uptr frame_max_size, uptr &frame_size);
-
-    void quicken_unwind_v2_wip(uptr *regs, uptr *frames, uptr frame_max_size, uptr &frame_size);
-
-//    void fp_unwind_with_fallback(uptr* regs, uptr* frames, uptr frameMaxSize, uptr &frameSize);
-
-#ifdef __arm__
-
-    void fast_dwarf_unwind(uptr *regs, uptr *frames, uptr frame_max_size, uptr &frame_size);
-
-#else
-    void fast_dwarf_unwind(unwindstack::Regs* regs, std::vector<unwindstack::FrameData> &dst, size_t frameSize);
-#endif
+    inline void quicken_unwind(uptr *regs, Frame *frames, uptr frame_max_size, uptr &frame_size) {
+        WeChatQuickenUnwind(CURRENT_ARCH, regs, frame_max_size, frames, frame_size);
+    }
 
     inline void unwind_adapter(Frame *frames, const size_t max_frames, size_t &frame_size) {
+
 #ifdef __aarch64__
         uptr regs[4];
         RegsMinimalGetLocal(regs);
         FpUnwind(regs, frames, max_frames, frame_size);
         return;
 #endif
+
 #ifdef __arm__
         uptr regs[QUT_MINIMAL_REG_SIZE];
         GetMinimalRegs(regs);
