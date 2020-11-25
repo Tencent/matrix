@@ -13,11 +13,10 @@ import android.support.annotation.RequiresApi;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
-import android.text.StaticLayout;
 import android.util.Log;
 import android.view.View;
 
-import com.tencent.components.backtrace.QuickenUnwinder;
+import com.tencent.components.backtrace.WeChatBacktrace;
 import com.tencent.wxperf.fd.FDDumpBridge;
 import com.tencent.wxperf.jectl.JeCtl;
 import com.tencent.wxperf.jni.HookManager;
@@ -115,9 +114,9 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        QuickenUnwinder.instance().configure(getApplicationContext())
+        WeChatBacktrace.instance().configure(getApplicationContext())
                 .directoryToWarmUp(getApplicationInfo().nativeLibraryDir)
-                .directoryToWarmUp(QuickenUnwinder.getSystemLibraryPath())
+                .directoryToWarmUp(WeChatBacktrace.getSystemLibraryPath())
                 .isWarmUpProcess(true)
                 .commit();
     }

@@ -93,7 +93,7 @@ namespace wechat_backtrace {
 
     static int RegisterQutJNINativeMethods(JNIEnv *env) {
 
-        static const char *cls_name = "com/tencent/components/backtrace/QuickenUnwinderNative";
+        static const char *cls_name = "com/tencent/components/backtrace/WeChatBacktraceNative";
         jclass clazz = env->FindClass(cls_name);
         if (!clazz) {
             LOGE(WECHAT_QUICKEN_UNWIND_TAG, "Find Class %s failed.", cls_name);

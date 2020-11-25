@@ -3,7 +3,7 @@ package com.tencent.components.backtrace;
 import android.support.annotation.Keep;
 
 @Keep
-public class QuickenUnwinderNative {
+public class WeChatBacktraceNative {
 
     @Keep
     static native void setPackageName(String packageName);
@@ -25,7 +25,7 @@ public class QuickenUnwinderNative {
 
     @Keep
     static void requestQutGenerate() { // Be called from native.
-        QuickenUnwinder.instance().requestQutGenerate();
+        WeChatBacktrace.instance().requestQutGenerate();
     }
 
 }

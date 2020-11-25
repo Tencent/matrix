@@ -417,7 +417,7 @@ def extractNativeDependencies(targetVariants) {
         targetVariant.getExternalNativeBuildTasks().each { nativeBuildTask ->
 
             nativeBuildTask.doFirst {
-                
+
                 projectNativeDepDirs.each { projDir ->
                     copy {
                         duplicatesStrategy DuplicatesStrategy.FAIL

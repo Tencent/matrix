@@ -12,8 +12,6 @@ CMAKE_MINIMUM_REQUIRED(VERSION 3.4.1)
 
 SET(TARGET wechatbacktrace)
 
-SET(TARGET_TEST wechatbacktrace_test)
-
 SET(SOURCE_DIR src/main/cpp)
 
 OPTION(EnableLOG "Enable QUT Logs" ON)

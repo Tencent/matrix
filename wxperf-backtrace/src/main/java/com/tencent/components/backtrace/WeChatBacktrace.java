@@ -28,9 +28,9 @@ import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class QuickenUnwinder implements Handler.Callback {
+public class WeChatBacktrace implements Handler.Callback {
 
-    private final static String TAG = "Matrix.Qut";
+    private final static String TAG = "Matrix.Backtrace";
 
     private final static String SYSTEM_LIBRARY_PATH_Q = "/apex/com.android.runtime/lib/";
     private final static String SYSTEM_LIBRARY_PATH_Q_64 = "/apex/com.android.runtime/lib64/";
@@ -52,10 +52,10 @@ public class QuickenUnwinder implements Handler.Callback {
         }
     }
 
-    private final static String ACTION_WARMED_UP = "action.quicken.warmed-up";
-    private final static String PERMISSION_WARMED_UP = ".quicken.warmed_up";
+    private final static String ACTION_WARMED_UP = "action.backtrace.warmed-up";
+    private final static String PERMISSION_WARMED_UP = ".backtrace.warmed_up";
 
-    private final static String DIR_QUICKEN_UNWINDER = "quicken-unwinder";
+    private final static String DIR_WECHAT_BACKTRACE = "wechat-backtrace";
     private final static String FILE_DEFAULT_SAVING_PATH = "saving-cache";
     private final static String FILE_WARMED_UP = "warmed-up";
     private final static String FILE_CLEAN_UP_TIMESTAMP = "clean-up.timestamp";
@@ -195,7 +195,7 @@ public class QuickenUnwinder implements Handler.Callback {
 
             switch (action) {
                 case ACTION_WARMED_UP:
-                    QuickenUnwinderNative.setWarmedUp(true);
+                    WeChatBacktraceNative.setWarmedUp(true);
                     break;
             }
         }
@@ -232,10 +232,10 @@ public class QuickenUnwinder implements Handler.Callback {
     }
 
     private final static class Singleton {
-        public final static QuickenUnwinder INSTANCE = new QuickenUnwinder();
+        public final static WeChatBacktrace INSTANCE = new WeChatBacktrace();
     }
 
-    public static QuickenUnwinder instance() {
+    public static WeChatBacktrace instance() {
         return Singleton.INSTANCE;
     }
 
@@ -350,7 +350,7 @@ public class QuickenUnwinder implements Handler.Callback {
                             @Override
                             public boolean accept(File file) {
                                 if (file.exists() && file.getAbsolutePath().endsWith(".so")) {
-                                    QuickenUnwinderNative.warmUp(file.getAbsolutePath());
+                                    WeChatBacktraceNative.warmUp(file.getAbsolutePath());
                                     Log.i(TAG, "Warming up so %s", file.getAbsolutePath());
                                 }
                                 return false;
@@ -432,7 +432,7 @@ public class QuickenUnwinder implements Handler.Callback {
             @Override
             public void run() {
                 Log.i(TAG, "Going to consume requested QUT.");
-                QuickenUnwinderNative.consumeRequestedQut();
+                WeChatBacktraceNative.consumeRequestedQut();
                 Log.i(TAG, "Consume requested QUT done.");
                 tryUnregisterIdleReceiver(mConfiguration.mContext);
             }
@@ -448,7 +448,7 @@ public class QuickenUnwinder implements Handler.Callback {
             Log.printStack(Log.ERROR, TAG, e);
         }
 
-        QuickenUnwinderNative.setWarmedUp(true);
+        WeChatBacktraceNative.setWarmedUp(true);
 
         Log.i(TAG, "Broadcast warmed up message to other processes.");
 
@@ -528,7 +528,7 @@ public class QuickenUnwinder implements Handler.Callback {
 
         mIdleHandler = new Handler(Looper.getMainLooper(), this);
 
-        mThreadTaskExecutor = new ThreadTaskExecutor("QuickenUnwinderTask");
+        mThreadTaskExecutor = new ThreadTaskExecutor("WeChatBacktraceTask");
 
         mUnfinishedTask.set(0);
 
@@ -600,21 +600,21 @@ public class QuickenUnwinder implements Handler.Callback {
 
     private File cleanUpTimestampFile(Context context) {
         File file = new File(context.getFilesDir().getAbsolutePath() + "/"
-                + DIR_QUICKEN_UNWINDER + "/" + FILE_CLEAN_UP_TIMESTAMP);
+                + DIR_WECHAT_BACKTRACE + "/" + FILE_CLEAN_UP_TIMESTAMP);
         file.getParentFile().mkdirs();
         return file;
     }
 
     private File warmUpMarkedFile(Context context) {
         File file = new File(context.getFilesDir().getAbsolutePath() + "/"
-                + DIR_QUICKEN_UNWINDER + "/" + FILE_WARMED_UP);
+                + DIR_WECHAT_BACKTRACE + "/" + FILE_WARMED_UP);
         file.getParentFile().mkdirs();
         return file;
     }
 
     private String defaultSavingPath(Configuration configuration) {
         return configuration.mContext.getFilesDir().getAbsolutePath() + "/"
-                + DIR_QUICKEN_UNWINDER + "/" + FILE_DEFAULT_SAVING_PATH + "/";
+                + DIR_WECHAT_BACKTRACE + "/" + FILE_DEFAULT_SAVING_PATH + "/";
     }
 
     private String validateSavingPath(Configuration configuration) {
@@ -635,7 +635,7 @@ public class QuickenUnwinder implements Handler.Callback {
         if (!savingPath.endsWith(File.separator)) {
             savingPath += File.separator;
         }
-        QuickenUnwinderNative.setSavingPath(savingPath);
+        WeChatBacktraceNative.setSavingPath(savingPath);
 
         // Remove warm up marked file if cool down is set.
         dealWithCoolDown(configuration);
@@ -644,7 +644,7 @@ public class QuickenUnwinder implements Handler.Callback {
         prepareIdleScheduler(configuration);
 
         // Set warmed up flag
-        QuickenUnwinderNative.setWarmedUp(hasWarmedUp());
+        WeChatBacktraceNative.setWarmedUp(hasWarmedUp());
 
         // Register warmed up receiver for other processes.
         registerWarmedUpReceiver(configuration);
@@ -661,11 +661,11 @@ public class QuickenUnwinder implements Handler.Callback {
         boolean mThisIsWarmUpProcess = false;
 
         private boolean mCommitted = false;
-        private QuickenUnwinder mQuickenUnwinder;
+        private WeChatBacktrace mWeChatBacktrace;
 
-        Configuration(Context context, QuickenUnwinder unwinder) {
+        Configuration(Context context, WeChatBacktrace backtrace) {
             mContext = context;
-            mQuickenUnwinder = unwinder;
+            mWeChatBacktrace = backtrace;
         }
 
         public Configuration savingPath(String savingPath) {
@@ -714,7 +714,7 @@ public class QuickenUnwinder implements Handler.Callback {
             }
             mCommitted = true;
 
-            mQuickenUnwinder.configure(this);
+            mWeChatBacktrace.configure(this);
         }
 
     }
