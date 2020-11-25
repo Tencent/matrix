@@ -16,6 +16,8 @@
 
 namespace wechat_backtrace {
 
+    QUT_EXTERN_C_BLOCK
+
     using namespace std;
 
     static vector<pair<uintptr_t, uintptr_t>> gSkipFunctions;
@@ -110,5 +112,5 @@ namespace wechat_backtrace {
 
     }
 
-
+    QUT_EXTERN_C_BLOCK_END
 } // namespace wechat_backtrace

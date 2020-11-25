@@ -16,8 +16,13 @@
 
 #ifdef __cplusplus__
 #define QUT_EXTERN_C extern "C"
+#define QUT_EXTERN_C_BLOCK extern "C" {
+#define QUT_EXTERN_C_BLOCK_END }
+};
 #else
 #define QUT_EXTERN_C
+#define QUT_EXTERN_C_BLOCK
+#define QUT_EXTERN_C_BLOCK_END
 #endif
 
 #ifdef __arm__

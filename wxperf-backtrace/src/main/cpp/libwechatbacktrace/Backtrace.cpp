@@ -15,6 +15,8 @@
 
 namespace wechat_backtrace {
 
+    QUT_EXTERN_C_BLOCK
+
     static pthread_mutex_t unwind_mutex = PTHREAD_MUTEX_INITIALIZER;
 
     void restore_frame_detail(const Frame *frames, const size_t frame_size,
@@ -93,4 +95,6 @@ namespace wechat_backtrace {
         FpUnwind(regs, frames, frameMaxSize, frameSize);
     }
 
+
+    QUT_EXTERN_C_BLOCK_END
 }

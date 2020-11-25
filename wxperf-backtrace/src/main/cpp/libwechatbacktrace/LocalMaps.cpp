@@ -5,34 +5,37 @@
 
 namespace wechat_backtrace {
 
-static std::shared_ptr<unwindstack::LocalMaps> local_maps_;
+    QUT_EXTERN_C_BLOCK
 
-static std::mutex unwind_mutex;
+    static std::shared_ptr<unwindstack::LocalMaps> local_maps_;
 
-void UpdateLocalMaps() {
+    static std::mutex unwind_mutex;
 
-    std::lock_guard lock(unwind_mutex);
+    void UpdateLocalMaps() {
 
-    local_maps_.reset(new unwindstack::LocalMaps);
+        std::lock_guard lock(unwind_mutex);
 
-    if (!local_maps_->Parse()) {
-        LOGE(WECHAT_BACKTRACE_LOCALMAPS_TAG, "Failed to parse map data.");
-        return;
+        local_maps_.reset(new unwindstack::LocalMaps);
+
+        if (!local_maps_->Parse()) {
+            LOGE(WECHAT_BACKTRACE_LOCALMAPS_TAG, "Failed to parse map data.");
+            return;
+        }
+
     }
 
-}
+    std::shared_ptr<unwindstack::LocalMaps> GetMapsCache() {
 
-std::shared_ptr<unwindstack::LocalMaps> GetMapsCache() {
+        if (local_maps_) {
+            return local_maps_;
+        }
 
-    if (local_maps_) {
+        UpdateLocalMaps();
+
         return local_maps_;
     }
 
-    UpdateLocalMaps();
-
-    return local_maps_;
-}
-
+    QUT_EXTERN_C_BLOCK_END
 
 }  // namespace wechat_backtrace
 

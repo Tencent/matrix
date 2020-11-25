@@ -64,7 +64,7 @@ public class WeChatBacktrace implements Handler.Callback {
     private final static long DURATION_CLEAN_UP_EXPIRED = 3L * 24 * 3600 * 1000; // milliseconds
     private final static long DURATION_CLEAN_UP = 7L * 24 * 3600 * 1000; // milliseconds
 
-    private final static long DELAY_SHORTLY = 30 * 1000;
+    private final static long DELAY_SHORTLY = 3 * 1000;
     private final static long DELAY_CLEAN_UP = DELAY_SHORTLY;
     private final static long DELAY_WARM_UP = DELAY_SHORTLY;
     private final static long DELAY_CONSUME_REQ_QUT = DELAY_SHORTLY;
@@ -111,8 +111,7 @@ public class WeChatBacktrace implements Handler.Callback {
         private CancellationSignal mCancellationSignal;
 
         private synchronized void triggerIdle() {
-            Log.d(TAG, "Idle status changed: charging = " + mIsCharging +
-                    ", interactive = " + mIsInteractive);
+            Log.i(TAG, "Idle status changed: charging = %s, interactive = %s",mIsCharging, mIsInteractive);
 
             if (!mIsInteractive && mCancellationSignal == null) {
                 mCancellationSignal = new CancellationSignal();
@@ -121,23 +120,23 @@ public class WeChatBacktrace implements Handler.Callback {
                             Message.obtain(mIdleHandler, MSG_WARM_UP, mCancellationSignal),
                             DELAY_WARM_UP
                     );
-                    Log.i(TAG, "System idle, trigger warm up in " + (DELAY_CONSUME_REQ_QUT / 1000) + " seconds.");
+                    Log.i(TAG, "System idle, trigger warm up in %s seconds.", (DELAY_CONSUME_REQ_QUT / 1000));
                 } else {
                     mIdleHandler.sendMessageDelayed(
                             Message.obtain(mIdleHandler, MSG_CONSUME_REQ_QUT, mCancellationSignal),
                             DELAY_CONSUME_REQ_QUT
                     );
-                    Log.i(TAG, "System idle, trigger consume requested qut in " + (DELAY_CONSUME_REQ_QUT / 1000) + " seconds.");
+                    Log.i(TAG, "System idle, trigger consume requested qut in %s seconds.", (DELAY_CONSUME_REQ_QUT / 1000));
                 }
                 if (needCleanUp()) {
                     mIdleHandler.sendMessageDelayed(
                             Message.obtain(mIdleHandler, MSG_CLEAN_UP, mCancellationSignal),
                             DELAY_CONSUME_REQ_QUT
                     );
-                    Log.i(TAG, "System idle, trigger clean up in " + (DELAY_CLEAN_UP / 1000) + " seconds.");
+                    Log.i(TAG, "System idle, trigger clean up in %s seconds.", (DELAY_CLEAN_UP / 1000));
                 }
 
-            } else if (!mIsInteractive && mCancellationSignal != null) {
+            } else if (mIsInteractive && mCancellationSignal != null) {
                 mIdleHandler.removeMessages(MSG_WARM_UP);
                 mIdleHandler.removeMessages(MSG_CONSUME_REQ_QUT);
                 mIdleHandler.removeMessages(MSG_CLEAN_UP);
@@ -190,6 +189,9 @@ public class WeChatBacktrace implements Handler.Callback {
 
         @Override
         public void onReceive(Context context, final Intent intent) {
+
+            Log.i(TAG, "Warm-up received .");
+
             String action = intent.getAction();
             if (action == null) return;
 
@@ -454,7 +456,7 @@ public class WeChatBacktrace implements Handler.Callback {
 
         Intent intent = new Intent(ACTION_WARMED_UP);
         intent.putExtra("pid", Process.myPid());
-        mConfiguration.mContext.sendBroadcast(intent, mConfiguration.mContext + PERMISSION_WARMED_UP);
+        mConfiguration.mContext.sendBroadcast(intent, mConfiguration.mContext.getPackageName() + PERMISSION_WARMED_UP);
     }
 
     private synchronized void registerIdleReceiver(Context context) {
@@ -499,6 +501,8 @@ public class WeChatBacktrace implements Handler.Callback {
         } else {
             return;
         }
+
+        Log.i(TAG, "Register warm-up receiver.");
 
         IntentFilter filter = new IntentFilter();
         filter.addAction(ACTION_WARMED_UP);
@@ -626,7 +630,6 @@ public class WeChatBacktrace implements Handler.Callback {
     }
 
     private void configure(Configuration configuration) {
-
         // 1. init saving path
         String savingPath = validateSavingPath(configuration);
         Log.i(TAG, "Set saving path = %s", savingPath);

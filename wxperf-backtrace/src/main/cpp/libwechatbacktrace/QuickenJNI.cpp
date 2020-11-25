@@ -23,6 +23,8 @@
 
 namespace wechat_backtrace {
 
+    QUT_EXTERN_C_BLOCK
+
     using namespace std;
     using namespace unwindstack;
 
@@ -111,10 +113,10 @@ namespace wechat_backtrace {
         return ret;
     }
 
-    int QutJNIOnLoaded(JavaVM *vm, JNIEnv *env) {
-        CurrentJavaVM = vm;
-        return RegisterQutJNINativeMethods(env);
-    }
+//    static inline int QutJNIOnLoaded(JavaVM *vm, JNIEnv *env) {
+//        CurrentJavaVM = vm;
+//        return RegisterQutJNINativeMethods(env);
+//    }
 
     void InvokeJava_RequestQutGenerate() {
 
@@ -132,4 +134,26 @@ namespace wechat_backtrace {
         env->CallStaticVoidMethod(JNIClass_QuickenUnwinderNative, JNIMethod_RequestQutGenerate);
     }
 
+    QUT_EXTERN_C_BLOCK_END
 } // namespace wechat_backtrace
+
+QUT_EXTERN_C_BLOCK
+
+JNIEXPORT jint JNI_OnLoad(JavaVM *vm, void *reserved) {
+    LOGD(WECHAT_QUICKEN_UNWIND_TAG, "JNI OnLoad...");
+    JNIEnv *env;
+    vm->GetEnv((void **) &env, JNI_VERSION_1_6);
+    wechat_backtrace::CurrentJavaVM = vm;
+    if (env) {
+        if (wechat_backtrace::RegisterQutJNINativeMethods(env) != 0) {
+            LOGE(WECHAT_QUICKEN_UNWIND_TAG, "Register Quicken Unwinder JNINativeMethods Failed.");
+        }
+    }
+    return JNI_VERSION_1_6;
+}
+
+JNIEXPORT void JNI_OnUnload(JavaVM *vm, void *reserved) {
+    // no implementation
+}
+
+QUT_EXTERN_C_BLOCK_END

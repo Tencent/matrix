@@ -114,6 +114,8 @@ namespace wechat_backtrace {
         return actual_len;
     }
 
+    QUT_EXTERN_C_BLOCK
+
     void StatisticWeChatQuickenUnwindTable(const string &sopath) {
 
         string soname = SplitSonameFromPath(sopath);
@@ -527,4 +529,5 @@ namespace wechat_backtrace {
 //        return ret;
 //    }
 
+    QUT_EXTERN_C_BLOCK_END
 } // namespace wechat_backtrace

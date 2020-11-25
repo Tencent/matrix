@@ -13,6 +13,8 @@
 
 namespace wechat_backtrace {
 
+    QUT_EXTERN_C_BLOCK
+
     using namespace std;
 
     static string gCurrStatLib;
@@ -60,4 +62,5 @@ namespace wechat_backtrace {
         QUT_STAT_LOG("Dump Qut Statistic End.\n\n");
     }
 
+    QUT_EXTERN_C_BLOCK_END
 } // namespace wechat_backtrace

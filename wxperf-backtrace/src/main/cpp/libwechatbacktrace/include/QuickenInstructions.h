@@ -95,6 +95,8 @@
 
 namespace wechat_backtrace {
 
+    QUT_EXTERN_C_BLOCK
+
     enum QutInstruction : uint64_t {
         // Do not change this order!!!
         QUT_INSTRUCTION_R4_OFFSET = 0,  // r4_offset
@@ -687,6 +689,7 @@ namespace wechat_backtrace {
 #endif
     }
 
+    QUT_EXTERN_C_BLOCK_END
 }  // namespace wechat_backtrace
 
 #endif  // _LIBWECHATBACKTRACE_QUICKEN_INSTRUCTIONS_H

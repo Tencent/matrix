@@ -32,7 +32,7 @@
 #define DWARF_OP_LOG(FMT, args...) //__android_log_print(ANDROID_LOG_ERROR, "DEBUG-QUT-DWARF-OP", FMT, ##args)
 #define QUT_STAT_LOG(FMT, args...) //__android_log_print(ANDROID_LOG_ERROR, "STAT-QUT", FMT, ##args)
 #define QUT_TMP_LOG(FMT, args...) //__android_log_print(ANDROID_LOG_ERROR, "TMP-QUT", FMT, ##args)
-#define QUT_LOG(FMT, args...) __android_log_print(ANDROID_LOG_ERROR, "Matrix.Qut.Native", FMT, ##args)
+#define QUT_LOG(FMT, args...) __android_log_print(ANDROID_LOG_ERROR, "Matrix.Backtrace.Native", FMT, ##args)
 #else
 #define LOGD(TAG, FMT, args...)
 #define LOGI(TAG, FMT, args...)

@@ -6,6 +6,8 @@
 
 namespace wechat_backtrace {
 
+    QUT_EXTERN_C_BLOCK
+
     inline static bool HasSuffix(const std::string &str, const std::string &suffix) {
         return str.size() >= suffix.size() &&
                str.compare(str.size() - suffix.size(), suffix.size(), suffix) == 0;
@@ -37,6 +39,8 @@ namespace wechat_backtrace {
 
         return build_id;
     }
+
+    QUT_EXTERN_C_BLOCK_END
 
 }  // namespace wechat_backtrace
 

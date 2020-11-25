@@ -19,6 +19,8 @@
 
 namespace wechat_backtrace {
 
+    QUT_EXTERN_C_BLOCK
+
     void dwarf_unwind(unwindstack::Regs *regs, std::vector<unwindstack::FrameData> &, size_t);
 
     void fp_unwind(uptr *regs, Frame *frames, const size_t frameMaxSize, const size_t &frameSize);
@@ -50,6 +52,8 @@ namespace wechat_backtrace {
                               std::function<void(FrameDetail)> frame_callback);
 
     void notify_maps_changed();
+
+    QUT_EXTERN_C_BLOCK_END
 }
 
 #endif //LIBWECHATBACKTRACE_BACKTRACE_H

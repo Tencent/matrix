@@ -19,6 +19,9 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        
+        <service android:name=".OtherProcessService" android:process=":other"
+            ></service>
     </application>
 
 </manifest>

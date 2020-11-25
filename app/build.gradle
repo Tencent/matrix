@@ -88,4 +88,5 @@ dependencies {
     implementation project(':wxperf-jectl')
     implementation project(':wxperf-backtrace')
     implementation project(':wxperf-benchmark')
+    implementation "com.tencent.stubs:logger:${rootProject.LOGGER_VERSION}"
 }

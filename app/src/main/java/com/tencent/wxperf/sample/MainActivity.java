@@ -1,22 +1,27 @@
 package com.tencent.wxperf.sample;
 
 import android.Manifest;
+import android.content.ComponentName;
 import android.content.Context;
+import android.content.Intent;
+import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Debug;
 import android.os.Handler;
 import android.os.HandlerThread;
+import android.os.IBinder;
 import android.os.Process;
 import android.support.annotation.RequiresApi;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
-import android.util.Log;
+//import android.util.Log;
 import android.view.View;
 
 import com.tencent.components.backtrace.WeChatBacktrace;
+import com.tencent.stubs.logger.Log;
 import com.tencent.wxperf.fd.FDDumpBridge;
 import com.tencent.wxperf.jectl.JeCtl;
 import com.tencent.wxperf.jni.HookManager;
@@ -41,6 +46,18 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        Intent intent = new Intent();
+        intent.setComponent(new ComponentName(this, OtherProcessService.class));
+        bindService(intent, new ServiceConnection() {
+            @Override
+            public void onServiceConnected(ComponentName name, IBinder service) {
+            }
+
+            @Override
+            public void onServiceDisconnected(ComponentName name) {
+            }
+        }, BIND_AUTO_CREATE);
 
 //        {
 //            try {
@@ -114,6 +131,9 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        System.loadLibrary("wechatbacktrace");
+
+        Log.i("Matrix.Qut", "WTF------????? %s", "123123123123");
         WeChatBacktrace.instance().configure(getApplicationContext())
                 .directoryToWarmUp(getApplicationInfo().nativeLibraryDir)
                 .directoryToWarmUp(WeChatBacktrace.getSystemLibraryPath())
