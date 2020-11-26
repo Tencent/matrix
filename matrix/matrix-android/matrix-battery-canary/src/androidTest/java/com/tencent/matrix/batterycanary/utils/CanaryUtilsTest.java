@@ -16,8 +16,14 @@
 
 package com.tencent.matrix.batterycanary.utils;
 
+import android.app.ActivityManager;
 import android.app.Application;
+import android.app.Service;
+import android.content.ComponentName;
 import android.content.Context;
+import android.content.Intent;
+import android.os.IBinder;
+import android.support.annotation.Nullable;
 import android.support.test.InstrumentationRegistry;
 import android.support.test.runner.AndroidJUnit4;
 import android.text.TextUtils;
@@ -36,7 +42,10 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
+
+import static android.content.Context.ACTIVITY_SERVICE;
 
 
 @RunWith(AndroidJUnit4.class)
@@ -88,7 +97,7 @@ public class CanaryUtilsTest {
     @Test
     public void testGetPkgName() {
         if (TestUtils.isAssembleTest()) return;
-        
+
         try {
             BatteryCanaryUtil.getPackageName();
             Assert.fail("should fail");
@@ -176,7 +185,34 @@ public class CanaryUtilsTest {
             } while (!diceWithBase(base));
         }
 
-        Assert.fail("AVG ROLL COUNT: " + totalRollCount/loopCount);
+        Assert.fail("AVG ROLL COUNT: " + totalRollCount / loopCount);
+    }
+
+    @Test
+    public void testCheckAppForeGroundService() {
+        boolean hasRunningService = false;
+        ActivityManager am = (ActivityManager) mContext.getSystemService(ACTIVITY_SERVICE);
+        List<ActivityManager.RunningServiceInfo> runningServices = am.getRunningServices(Integer.MAX_VALUE);
+        for (ActivityManager.RunningServiceInfo runningServiceInfo : runningServices) {
+            if (runningServiceInfo.process.startsWith(mContext.getPackageName())) {
+                hasRunningService = true;
+            }
+        }
+        Assert.assertFalse(hasRunningService);
+
+        mContext.startService(new Intent(mContext, SpyService.class));
+        runningServices = am.getRunningServices(Integer.MAX_VALUE);
+        for (ActivityManager.RunningServiceInfo runningServiceInfo : runningServices) {
+            if (runningServiceInfo.process.startsWith(mContext.getPackageName())) {
+                hasRunningService = true;
+                Assert.assertTrue(runningServiceInfo.started);
+                Assert.assertFalse(runningServiceInfo.foreground);
+            }
+        }
+        Assert.assertTrue(hasRunningService);
+
+        Assert.assertFalse(BatteryCanaryUtil.hasForegroundService(mContext));
+        Assert.assertTrue(BatteryCanaryUtil.listForegroundServices(mContext).isEmpty());
     }
 
     private static boolean diceWithBase(int base) {
@@ -186,5 +222,12 @@ public class CanaryUtilsTest {
             return true;
         }
         return false;
+    }
+
+    public static class SpyService extends Service {
+        @Override
+        public IBinder onBind(Intent intent) {
+            return null;
+        }
     }
 }
