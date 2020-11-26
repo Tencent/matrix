@@ -19,11 +19,9 @@ package com.tencent.matrix.batterycanary.utils;
 import android.app.ActivityManager;
 import android.app.Application;
 import android.app.Service;
-import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.os.IBinder;
-import android.support.annotation.Nullable;
 import android.support.test.InstrumentationRegistry;
 import android.support.test.runner.AndroidJUnit4;
 import android.text.TextUtils;
@@ -41,8 +39,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 
 import static android.content.Context.ACTIVITY_SERVICE;
@@ -186,6 +182,18 @@ public class CanaryUtilsTest {
         }
 
         Assert.fail("AVG ROLL COUNT: " + totalRollCount / loopCount);
+    }
+
+    @Test
+    public void testCheckDeviceScreenOn() {
+        boolean screenOn = BatteryCanaryUtil.isDeviceScreenOn(mContext);
+        Assert.assertTrue(screenOn);
+    }
+
+    @Test
+    public void testCheckDeviceOnPowerSaveMode() {
+        boolean result  = BatteryCanaryUtil.isDeviceOnPowerSave(mContext);
+        Assert.assertFalse(result);
     }
 
     @Test
