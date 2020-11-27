@@ -22,12 +22,12 @@ std::vector<hook_init_callback_t> m_init_callbacks;
 
 static pthread_mutex_t m_dlopen_mutex;
 
-DEFINE_HOOK_FUN(void *, __loader_android_dlopen_ext, const char *__file_name,
-                int                                             __flag,
-                const void                                      *__extinfo,
-                const void                                      *__caller_addr) {
-    void *ret = (*ORIGINAL_FUNC_NAME(__loader_android_dlopen_ext))(__file_name, __flag, __extinfo,
-                                                                   __caller_addr);
+DEFINE_HOOK_FUN(void *, __loader_android_dlopen_ext, const char *file_name,
+                int                                             flag,
+                const void                                      *extinfo,
+                const void                                      *caller_addr) {
+    void *ret = (*ORIGINAL_FUNC_NAME(__loader_android_dlopen_ext))(file_name, flag, extinfo,
+                                                                   caller_addr);
 
     LOGD(TAG, "call into dlopen hook");
     pthread_mutex_lock(&m_dlopen_mutex);
@@ -35,7 +35,7 @@ DEFINE_HOOK_FUN(void *, __loader_android_dlopen_ext, const char *__file_name,
 //    NanoSeconds_Start(TAG, begin);
 
     for (auto &callback : m_dlopen_callbacks) {
-        callback(__file_name);
+        callback(file_name);
     }
 
     xhook_refresh(false);
@@ -53,12 +53,12 @@ static void hook_common_init() {
     }
 }
 
-void add_dlopen_hook_callback(dlopen_callback_t __callback) {
-    m_dlopen_callbacks.push_back(__callback);
+void add_dlopen_hook_callback(dlopen_callback_t callback) {
+    m_dlopen_callbacks.push_back(callback);
 }
 
-void add_hook_init_callback(hook_init_callback_t __callback) {
-    m_init_callbacks.push_back(__callback);
+void add_hook_init_callback(hook_init_callback_t callback) {
+    m_init_callbacks.push_back(callback);
 }
 
 void test_log_to_file(const char *ch) {
@@ -80,10 +80,10 @@ void test_log_to_file(const char *ch) {
 
 }
 
-bool get_java_stacktrace(char *__stack, size_t __size) {
+bool get_java_stacktrace(char *stack, size_t size) {
     JNIEnv *env = nullptr;
 
-    if (!__stack) {
+    if (!stack) {
         return false;
     }
 
@@ -96,18 +96,18 @@ bool get_java_stacktrace(char *__stack, size_t __size) {
         const char *stack = env->GetStringUTFChars(j_stacktrace, NULL);
         const jsize stack_len = env->GetStringLength(j_stacktrace);
         if (stack) {
-            const size_t cpy_len = std::min((size_t)stack_len, __size - 1);
-            memcpy(__stack, stack, cpy_len);
-            __stack[cpy_len] = '\0';
+            const size_t cpy_len = std::min((size_t)stack_len, size - 1);
+            memcpy(stack, stack, cpy_len);
+            stack[cpy_len] = '\0';
         } else {
-            strncpy(__stack, "\tget java stacktrace failed", __size);
+            strncpy(stack, "\tget java stacktrace failed", size);
         }
         env->ReleaseStringUTFChars(j_stacktrace, stack);
         env->DeleteLocalRef(j_stacktrace);
         return true;
     }
 
-    strncpy(__stack, "\tnull", __size);
+    strncpy(stack, "\tnull", size);
     return false;
 }
 
