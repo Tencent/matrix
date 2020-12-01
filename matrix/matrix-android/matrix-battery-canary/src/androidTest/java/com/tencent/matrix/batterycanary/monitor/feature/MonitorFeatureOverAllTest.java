@@ -84,13 +84,14 @@ public class MonitorFeatureOverAllTest {
         thread.start();
 
         final JiffiesMonitorFeature feature = new JiffiesMonitorFeature();
-        feature.configure(mockMonitor());
-        feature.enableForegroundLoopCheck(true);
+        final BatteryMonitorCore monitor = mockMonitor();
+        monitor.enableForegroundLoopCheck(true);
+        feature.configure(monitor);
         Handler handler = new Handler(Looper.getMainLooper());
         handler.post(new Runnable() {
             @Override
             public void run() {
-                feature.onForeground(true);
+                monitor.onForeground(true);
             }
         });
         Thread.sleep(5000000L);
