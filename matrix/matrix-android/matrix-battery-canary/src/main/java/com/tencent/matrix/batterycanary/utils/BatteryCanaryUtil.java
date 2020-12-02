@@ -21,7 +21,6 @@ import android.app.AlarmManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.hardware.display.DisplayManager;
 import android.os.BatteryManager;
 import android.os.Build;
 import android.os.PowerManager;
@@ -30,7 +29,6 @@ import android.support.annotation.Nullable;
 import android.support.annotation.RestrictTo;
 import android.support.annotation.VisibleForTesting;
 import android.text.TextUtils;
-import android.view.Display;
 
 import com.tencent.matrix.Matrix;
 import com.tencent.matrix.batterycanary.BatteryMonitorPlugin;
@@ -189,7 +187,7 @@ public final class BatteryCanaryUtil {
     }
 
     @Nullable
-    static String cat(String path) {
+    public static String cat(String path) {
         if (TextUtils.isEmpty(path)) return null;
         try (RandomAccessFile restrictedFile = new RandomAccessFile(path, "r")) {
             return restrictedFile.readLine();
@@ -300,8 +298,17 @@ public final class BatteryCanaryUtil {
         @Nullable
         public static ProcStatInfo parseJiffies(String path) {
             try {
-                return parseJiffiesInfoWithBufferForPath(path, sBuffer);
-            } catch (Exception e) {
+                ProcStatInfo procStatInfo = parseJiffiesInfoWithBufferForPath(path, sBuffer);
+                if (procStatInfo == null || procStatInfo.comm == null) {
+                    MatrixLog.w(TAG, "#parseJiffies read with buffer fail, fallback with spilts");
+                    procStatInfo = parseJiffiesInfoWithSplits(cat(path));
+                    if (procStatInfo.comm == null) {
+                        MatrixLog.w(TAG, "#parseJiffies read with splits fail");
+                        return null;
+                    }
+                }
+                return procStatInfo;
+            } catch (Throwable e) {
                 MatrixLog.printErrStackTrace(TAG, e, "#parseJiffies fail");
                 return null;
             }
@@ -443,6 +450,27 @@ public final class BatteryCanaryUtil {
                     default:
                         i++;
                 }
+            }
+            return stat;
+        }
+
+        @VisibleForTesting
+        static ProcStatInfo parseJiffiesInfoWithSplits(String cat) {
+            ProcStatInfo stat = new ProcStatInfo();
+            if (!TextUtils.isEmpty(cat)) {
+                int index = cat.indexOf(")");
+                if (index <= 0) throw new IllegalStateException(cat + " has not ')'");
+                String prefix = cat.substring(0, index);
+                int indexBgn = prefix.indexOf("(") + "(".length();
+                stat.comm = prefix.substring(indexBgn, index);
+
+                String suffix = cat.substring(index + ")".length());
+                String[] splits = suffix.split(" ");
+
+                stat.utime = MatrixUtil.parseLong(splits[12], 0);
+                stat.stime = MatrixUtil.parseLong(splits[13], 0);
+                stat.cutime = MatrixUtil.parseLong(splits[14], 0);
+                stat.cstime = MatrixUtil.parseLong(splits[15], 0);
             }
             return stat;
         }

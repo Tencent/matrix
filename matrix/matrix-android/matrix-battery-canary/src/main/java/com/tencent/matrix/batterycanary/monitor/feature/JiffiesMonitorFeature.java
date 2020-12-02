@@ -3,6 +3,7 @@ package com.tencent.matrix.batterycanary.monitor.feature;
 import android.os.Process;
 import android.os.SystemClock;
 import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.support.annotation.WorkerThread;
 
 import com.tencent.matrix.Matrix;
@@ -14,6 +15,7 @@ import com.tencent.matrix.util.MatrixLog;
 import com.tencent.matrix.util.MatrixUtil;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -121,11 +123,13 @@ public class JiffiesMonitorFeature implements MonitorFeature {
 
             private ThreadInfo() {}
 
-            public void loadProcStat() {
+            public void loadProcStat() throws IOException {
                 BatteryCanaryUtil.ProcStatInfo stat = BatteryCanaryUtil.ProcStatInfo.parseJiffies("/proc/" + pid + "/task/" + tid + "/stat");
                 if (stat != null) {
                     name = stat.comm;
                     jiffies = stat.utime + stat.stime + stat.cutime + stat.cstime;
+                } else {
+                    throw new IOException("parse fail: " + BatteryCanaryUtil.cat("/proc/" + pid + "/task/" + tid + "/stat"));
                 }
             }
 
@@ -150,8 +154,10 @@ public class JiffiesMonitorFeature implements MonitorFeature {
                 threadJiffiesList = new ArrayList<>(processInfo.threadInfo.size());
                 for (ProcessInfo.ThreadInfo threadInfo : processInfo.threadInfo) {
                     ThreadJiffiesSnapshot threadJiffies = ThreadJiffiesSnapshot.parseThreadJiffies(threadInfo);
-                    threadJiffiesList.add(threadJiffies);
-                    totalJiffies += threadJiffies.value;
+                    if (threadJiffies != null) {
+                        threadJiffiesList.add(threadJiffies);
+                        totalJiffies += threadJiffies.value;
+                    }
                 }
             }
             snapshot.totalJiffies = DigitEntry.of(totalJiffies);
@@ -218,18 +224,24 @@ public class JiffiesMonitorFeature implements MonitorFeature {
         }
 
         public static class ThreadJiffiesSnapshot extends DigitEntry<Long> {
+            @Nullable
             public static ThreadJiffiesSnapshot parseThreadJiffies(ProcessInfo.ThreadInfo threadInfo) {
-                threadInfo.loadProcStat();
-                ThreadJiffiesSnapshot snapshot = new ThreadJiffiesSnapshot(threadInfo.jiffies);
-                snapshot.name = threadInfo.name;
-                snapshot.tid = threadInfo.tid;
-                snapshot.isNewAdded = true;
-                return snapshot;
+                try {
+                    threadInfo.loadProcStat();
+                    ThreadJiffiesSnapshot snapshot = new ThreadJiffiesSnapshot(threadInfo.jiffies);
+                    snapshot.name = threadInfo.name;
+                    snapshot.tid = threadInfo.tid;
+                    snapshot.isNewAdded = true;
+                    return snapshot;
+                } catch (IOException e) {
+                    MatrixLog.printErrStackTrace(TAG, e, "parseThreadJiffies fail");
+                    return null;
+                }
             }
 
-            public int tid;
-            public String name;
-            public boolean isNewAdded;
+            @NonNull public int tid;
+            @NonNull public String name;
+            @NonNull public boolean isNewAdded;
 
             public ThreadJiffiesSnapshot(Long value) {
                 super(value);

@@ -19,7 +19,6 @@ package com.tencent.matrix.batterycanary.utils;
 import android.content.Context;
 import android.os.Process;
 import android.os.SystemClock;
-import android.support.annotation.Nullable;
 import android.support.test.InstrumentationRegistry;
 import android.support.test.runner.AndroidJUnit4;
 import android.text.TextUtils;
@@ -27,7 +26,6 @@ import android.text.TextUtils;
 import com.tencent.matrix.batterycanary.TestUtils;
 import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil.ProcStatInfo;
 import com.tencent.matrix.util.MatrixLog;
-import com.tencent.matrix.util.MatrixUtil;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -193,7 +191,7 @@ public class ProcessCpuTrackUtilsTest {
                 String catPath = new File(item, "stat").getAbsolutePath();
                 String cat = BatteryCanaryUtil.cat(catPath);
                 Assert.assertFalse(TextUtils.isEmpty(cat));
-                ProcStatInfo statInfo1 = parseJiffiesInfoWithSplits(cat);
+                ProcStatInfo statInfo1 = ProcStatInfo.parseJiffiesInfoWithSplits(cat);
                 ProcStatInfo statInfo2 = parseJiffiesInfoWithBuffer(cat.getBytes());
                 Assert.assertEquals(statInfo1.comm, statInfo2.comm);
                 Assert.assertEquals(statInfo1.utime, statInfo2.utime);
@@ -202,7 +200,7 @@ public class ProcessCpuTrackUtilsTest {
                 Assert.assertEquals(statInfo1.cstime, statInfo2.cstime);
 
                 cat = getProStatText(catPath);
-                statInfo1 = parseJiffiesInfoWithSplits(cat);
+                statInfo1 = ProcStatInfo.parseJiffiesInfoWithSplits(cat);
                 statInfo2 = parseJiffiesInfoWithBuffer(cat.getBytes());
                 Assert.assertEquals(statInfo1.comm, statInfo2.comm);
                 Assert.assertEquals(statInfo1.utime, statInfo2.utime);
@@ -361,27 +359,7 @@ public class ProcessCpuTrackUtilsTest {
 
 
     static ProcStatInfo parseJiffiesInfoWithSplitsForPath(String path) {
-        return parseJiffiesInfoWithSplits(BatteryCanaryUtil.cat(path));
-    }
-
-    static ProcStatInfo parseJiffiesInfoWithSplits(String cat) {
-        ProcStatInfo stat = new ProcStatInfo();
-        if (!TextUtils.isEmpty(cat)) {
-            int index = cat.indexOf(")");
-            if (index <= 0) throw new IllegalStateException(cat + " has not ')'");
-            String prefix = cat.substring(0, index);
-            int indexBgn = prefix.indexOf("(") + "(".length();
-            stat.comm = prefix.substring(indexBgn, index);
-
-            String suffix = cat.substring(index + ")".length());
-            String[] splits = suffix.split(" ");
-
-            stat.utime = MatrixUtil.parseLong(splits[12], 0);
-            stat.stime = MatrixUtil.parseLong(splits[13], 0);
-            stat.cutime = MatrixUtil.parseLong(splits[14], 0);
-            stat.cstime = MatrixUtil.parseLong(splits[15], 0);
-        }
-        return stat;
+        return ProcStatInfo.parseJiffiesInfoWithSplits(BatteryCanaryUtil.cat(path));
     }
 
     static ProcStatInfo parseJiffiesInfoWithBufferForPath(String path, byte[] buffer) {
@@ -403,7 +381,6 @@ public class ProcessCpuTrackUtilsTest {
 
         return parseJiffiesInfoWithBuffer(buffer);
     }
-
 
     static ProcStatInfo parseJiffiesInfoWithBufferForPathR2(String path) {
         String text = getProStatText(path);
@@ -443,7 +420,6 @@ public class ProcessCpuTrackUtilsTest {
 
         return sb.toString();
     }
-
 
     static ProcStatInfo parseJiffiesInfoWithBuffer(byte[] statBuffer) {
         ProcStatInfo stat = ProcStatInfo.parseJiffiesInfoWithBuffer(statBuffer);
