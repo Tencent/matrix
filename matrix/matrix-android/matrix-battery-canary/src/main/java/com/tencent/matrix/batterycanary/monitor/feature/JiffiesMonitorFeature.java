@@ -55,9 +55,7 @@ public class JiffiesMonitorFeature implements MonitorFeature {
 
     @WorkerThread
     public JiffiesSnapshot currentJiffiesSnapshot() {
-        JiffiesSnapshot jiffiesSnapshot = JiffiesSnapshot.currentJiffiesSnapshot(ProcessInfo.getProcessInfo());
-        jiffiesSnapshot.status = monitor.isForeground() ? "fg" : "bg";
-        return jiffiesSnapshot;
+        return JiffiesSnapshot.currentJiffiesSnapshot(ProcessInfo.getProcessInfo());
     }
 
     public static class ProcessInfo {
@@ -165,7 +163,6 @@ public class JiffiesMonitorFeature implements MonitorFeature {
             return snapshot;
         }
 
-        public String status = "default";
         public int pid;
         public String name;
         public DigitEntry<Long> totalJiffies;
@@ -179,7 +176,6 @@ public class JiffiesMonitorFeature implements MonitorFeature {
                 @Override
                 protected JiffiesSnapshot computeDelta() {
                     JiffiesSnapshot delta = new JiffiesSnapshot();
-                    delta.status = end.status;
                     delta.pid = end.pid;
                     delta.name = end.name;
                     delta.totalJiffies = Differ.DigitDiffer.globalDiff(bgn.totalJiffies, end.totalJiffies);

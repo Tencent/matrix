@@ -26,7 +26,7 @@ public class BatteryMonitorCore implements Handler.Callback, LooperTaskMonitorFe
 
     public interface JiffiesListener {
         void onTraceBegin();
-        void onTraceEnd(boolean isForeground);
+        void onTraceEnd(boolean isForeground); // TODO: configurable status support
     }
 
     private class ForegroundLoopCheckTask implements Runnable {

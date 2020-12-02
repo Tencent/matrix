@@ -56,6 +56,11 @@ public interface BatteryMonitorCallback extends BatteryMonitorCore.JiffiesListen
             return this;
         }
 
+        @NonNull
+        protected BatteryMonitorCore getMonitor() {
+            return mMonitor;
+        }
+
         @Override
         public void onTraceBegin() {
             JiffiesMonitorFeature jiffies = mMonitor.getMonitorFeature(JiffiesMonitorFeature.class);
@@ -123,7 +128,7 @@ public interface BatteryMonitorCallback extends BatteryMonitorCore.JiffiesListen
                         .enter();
 
                 // jiffies sections
-                mPrinter.createSection("jiffies(" + delta.dlt.status + ")");
+                mPrinter.createSection("jiffies(" + delta.dlt.threadEntries.getList().size() + ")");
                 for (ThreadJiffiesSnapshot threadJiffies : delta.dlt.threadEntries.getList().subList(0, Math.min(delta.dlt.threadEntries.getList().size(), 8))) {
                     mPrinter.append("| -> (").append(threadJiffies.isNewAdded ? "+" : "~").append(")")
                             .append(threadJiffies.name).append("(").append(threadJiffies.tid).append(")\t")
