@@ -130,7 +130,7 @@ public interface BatteryMonitorCallback extends BatteryMonitorCore.JiffiesListen
                 // jiffies sections
                 mPrinter.createSection("jiffies(" + delta.dlt.threadEntries.getList().size() + ")");
                 for (ThreadJiffiesSnapshot threadJiffies : delta.dlt.threadEntries.getList().subList(0, Math.min(delta.dlt.threadEntries.getList().size(), 8))) {
-                    mPrinter.append("| -> (").append(threadJiffies.isNewAdded ? "+" : "~").append(")")
+                    mPrinter.append("|   -> (").append(threadJiffies.isNewAdded ? "+" : "~").append(")")
                             .append(threadJiffies.name).append("(").append(threadJiffies.tid).append(")\t")
                             .append(threadJiffies.get()).append("\tjiffies")
                             .append("\n");
