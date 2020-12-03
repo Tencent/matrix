@@ -35,26 +35,35 @@ public class FilePublisher extends IssuePublisher {
     private final SharedPreferences        sharedPreferences;
     private final SharedPreferences.Editor editor;
     private final HashMap<String, Long>    mPublishedMap;
+    protected final Context context;
 
 
     public FilePublisher(Context context, long expire, String tag, OnIssueDetectListener issueDetectListener) {
         super(issueDetectListener);
+        this.context = context;
         expiredTime = expire;
         sharedPreferences = context.getSharedPreferences(tag + MatrixUtil.getProcessName(context), Context.MODE_PRIVATE);
         mPublishedMap = new HashMap<>();
         long current = System.currentTimeMillis();
         editor = sharedPreferences.edit();
-        HashSet<String> spKeys = new HashSet<>(sharedPreferences.getAll().keySet());
-        for (String key : spKeys) {
-            long start = sharedPreferences.getLong(key, 0);
-            long costTime = current - start;
-            if (start <= 0 || costTime > expiredTime) {
-                editor.remove(key);
-            } else {
-                mPublishedMap.put(key, start);
+        HashSet<String> spKeys = null;
+        if (null != sharedPreferences.getAll()) {
+            spKeys = new HashSet<>(sharedPreferences.getAll().keySet());
+        }
+        if (null != spKeys) {
+            for (String key : spKeys) {
+                long start = sharedPreferences.getLong(key, 0);
+                long costTime = current - start;
+                if (start <= 0 || costTime > expiredTime) {
+                    editor.remove(key);
+                } else {
+                    mPublishedMap.put(key, start);
+                }
             }
         }
-        editor.apply();
+        if (null != editor) {
+            editor.apply();
+        }
     }
 
     @Override
@@ -65,7 +74,10 @@ public class FilePublisher extends IssuePublisher {
         if (!mPublishedMap.containsKey(key)) {
             final long now = System.currentTimeMillis();
             mPublishedMap.put(key, now);
-            editor.putLong(key, now).apply();
+            SharedPreferences.Editor e = editor.putLong(key, now);
+            if (null != e) {
+                e.apply();
+            }
             return;
         }
     }
@@ -79,8 +91,10 @@ public class FilePublisher extends IssuePublisher {
             return;
         }
         mPublishedMap.remove(key);
-        editor.remove(key).apply();
-
+        SharedPreferences.Editor e = editor.remove(key);
+        if (null != e) {
+            e.apply();
+        }
     }
 
     @Override
@@ -90,7 +104,10 @@ public class FilePublisher extends IssuePublisher {
         }
         long start = mPublishedMap.get(key);
         if (start <= 0 || (System.currentTimeMillis() - start) > expiredTime) {
-            editor.remove(key).apply();
+            SharedPreferences.Editor e = editor.remove(key);
+            if (null != e) {
+                e.apply();
+            }
             mPublishedMap.remove(key);
             return false;
         }

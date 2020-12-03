@@ -65,5 +65,6 @@ public enum MatrixEnum {
     clicfg_matrix_resource_max_detect_times,
     clicfg_matrix_resource_dump_hprof_enable,
 
+
     /******matrix end*******/
 }

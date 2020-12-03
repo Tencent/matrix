@@ -70,6 +70,7 @@
 #define KSCrashField_Type                  "type"
 #define KSCrashField_UUID                  "uuid"
 #define KSCrashField_Value                 "value"
+#define KSCrashFiled_CPUUsage              "cpu_usage"
 
 #define KSCrashField_Error                 "error"
 #define KSCrashField_JSONData              "json_data"
@@ -89,6 +90,7 @@
 #define KSCrashField_ObjectName            "object_name"
 #define KSCrashField_SymbolAddr            "symbol_addr"
 #define KSCrashField_SymbolName            "symbol_name"
+#define KSCrashField_RepeatCount           "repeat_count"
 
 
 #pragma mark - Stack Dump -

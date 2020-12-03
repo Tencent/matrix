@@ -2,5 +2,10 @@ platform :ios, '9.0'
 
 target 'MatrixDemo' do
 	# use_frameworks!
+	# for local pod test
+	# pod 'matrix-wechat', :path => '../../../'
 	pod 'matrix-wechat'
 end
+
+# pod install
+# use the workspace

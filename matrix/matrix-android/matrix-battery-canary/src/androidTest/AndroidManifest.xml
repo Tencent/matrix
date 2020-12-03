@@ -1,0 +1,11 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.tencent.matrix.batterycanary">
+
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <application>
+        <service android:name=".utils.CanaryUtilsTest$SpyService">
+        </service>
+    </application>
+
+</manifest>
+

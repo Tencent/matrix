@@ -25,5 +25,5 @@ public class SharePluginInfo {
 
     public static final String ISSUE_RESULT_PATH   = "resultZipPath";
     public static final String ISSUE_ACTIVITY_NAME = "activity";
-
+    public static final String ISSUE_REF_KEY = "ref_key";
 }

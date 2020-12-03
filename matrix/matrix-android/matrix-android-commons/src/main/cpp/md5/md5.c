@@ -246,7 +246,9 @@ void MD5_process(md5_t * c, const void *data_, unsigned int len)
         md5_block_data_order(c, data, n);
         n *= MD5_CBLOCK;
         data += n;
-        len -= n;
+        if (len - n >= 0) {
+            len -= n;
+        }
     }
 
     if (len != 0)

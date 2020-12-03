@@ -30,8 +30,11 @@ public class Constants {
     public static final int DEFAULT_EVIL_METHOD_THRESHOLD_MS = 700;
     public static final int DEFAULT_FPS_TIME_SLICE_ALIVE_MS = 10 * 1000;
     public static final int TIME_MILLIS_TO_NANO = 1000000;
+    public static final int DEFAULT_INPUT_EXPIRED_TIME = 500;
     public static final int DEFAULT_ANR = 5 * 1000;
-    public static final int DEFAULT_ANR_INVALID = 5 * 1000 + 500;
+    public static final int DEFAULT_NORMAL_LAG = 2 * 1000;
+    public static final int DEFAULT_ANR_INVALID = 6 * 1000;
+    public static final long DEFAULT_FRAME_DURATION = 16666667L;
 
     public static final int DEFAULT_DROPPED_NORMAL = 3;
     public static final int DEFAULT_DROPPED_MIDDLE = 9;
@@ -47,7 +50,8 @@ public class Constants {
 
     public static final int LIMIT_WARM_THRESHOLD_MS = 5 * 1000;
 
+
     public enum Type {
-        NORMAL, ANR, STARTUP
+        NORMAL, ANR, STARTUP, LAG
     }
 }

@@ -16,10 +16,11 @@
 
 package com.tencent.mm.arscutil.data;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Created by jinqiuchen on 18/7/29.
@@ -37,6 +38,8 @@ public class ResType extends ResChunk {
     private ResConfig resConfigFlags; // configFlag
     private List<Integer> entryOffsets; // entry 偏移数组，给出每个entry的偏移位置, 0xFFFF表示NO_ENTRY
     private List<ResEntry> entryTable; // entry table
+
+    private Map<Integer, Integer> resNameStringCountMap = new HashMap<>();  //保存ResEntry中资源名称字符串的引用计数
 
     public byte getId() {
         return id;
@@ -100,21 +103,51 @@ public class ResType extends ResChunk {
 
     public void setEntryTable(List<ResEntry> entryTable) {
         this.entryTable = entryTable;
+        if (entryTable != null) {
+            updateResNameReferenceCount();
+        }
     }
 
-    public void refresh() throws IOException {
-        //校正entryOffsets
-        int lastOffset = 0;
+    public Map<Integer, Integer> getResNameStringCountMap() {
+        return resNameStringCountMap;
+    }
+
+    public void removeEntry(int entryId) {
+        getEntryTable().set(entryId, null);
+        getEntryOffsets().set(entryId, ArscConstants.NO_ENTRY_INDEX);
+    }
+
+    private void updateResNameReferenceCount() {
+        resNameStringCountMap.clear();
         for (int i = 0; i < entryCount; i++) {
-            if (entryOffsets.get(i) != ArscConstants.NO_ENTRY_INDEX) {
-                entryOffsets.set(i, lastOffset);
-                lastOffset += entryTable.get(i).toBytes().length;
+            if (entryTable.get(i) == null) {
+                continue;
             }
+            int resNameStringPoolIndex = entryTable.get(i).stringPoolIndex;
+            if (!resNameStringCountMap.containsKey(resNameStringPoolIndex)) {
+                resNameStringCountMap.put(resNameStringPoolIndex, 0);
+            }
+            resNameStringCountMap.put(resNameStringPoolIndex,  resNameStringCountMap.get(resNameStringPoolIndex) + 1);
+        }
+    }
+
+    public void refresh()  {
+        if (entryTable != null) {
+            //校正entryOffsets
+            int lastOffset = 0;
+            for (int i = 0; i < entryCount; i++) {
+                if (entryOffsets.get(i) != ArscConstants.NO_ENTRY_INDEX) {
+                    entryOffsets.set(i, lastOffset);
+                    lastOffset += entryTable.get(i).toBytes().length;
+                }
+            }
+            //更新字符串引用计数
+            updateResNameReferenceCount();
         }
         recomputeChunkSize();
     }
 
-    private void recomputeChunkSize() throws IOException {
+    private void recomputeChunkSize() {
         chunkSize = 0;
         chunkSize += headSize;
         int realEntryCount = 0;
@@ -132,11 +165,19 @@ public class ResType extends ResChunk {
         if (realEntryCount == 0) {                    //no entry
             entryCount = 0;
             chunkSize = 0;
+            chunkPadding = 0;
+        } else {
+            if (chunkSize % 4 != 0) {
+                chunkPadding = 4 - chunkSize % 4;
+                chunkSize += chunkPadding;
+            } else {
+                chunkPadding = 0;
+            }
         }
     }
 
     @Override
-    public byte[] toBytes() throws IOException {
+    public byte[] toBytes() {
         ByteBuffer byteBuffer = ByteBuffer.allocate(chunkSize);
         byteBuffer.order(ByteOrder.LITTLE_ENDIAN);
         byteBuffer.clear();
@@ -151,8 +192,8 @@ public class ResType extends ResChunk {
         if (resConfigFlags != null) {
             byteBuffer.put(resConfigFlags.toBytes());
         }
-        if (headPaddingSize > 0) {
-            byteBuffer.put(new byte[headPaddingSize]);
+        if (headPadding > 0) {
+            byteBuffer.put(new byte[headPadding]);
         }
         if (entryOffsets != null) {
             for (int i = 0; i < entryOffsets.size(); i++) {
@@ -168,8 +209,8 @@ public class ResType extends ResChunk {
                 }
             }
         }
-        if (chunkPaddingSize > 0) {
-            byteBuffer.put(new byte[chunkPaddingSize]);
+        if (chunkPadding > 0) {
+            byteBuffer.put(new byte[chunkPadding]);
         }
         byteBuffer.flip();
         return byteBuffer.array();

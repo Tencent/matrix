@@ -1,16 +1,14 @@
 
 buildscript {
     repositories {
-        google()
         mavenLocal()
+        google()
         jcenter()
-//        maven {
-//           url "https://dl.bintray.com/matrix/maven/"
-//        }
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:3.1.4'
+        classpath 'com.android.tools.build:gradle:3.5.0'
         classpath 'com.google.code.gson:gson:2.7'
+        classpath  'com.google.gradle:osdetector-gradle-plugin:1.6.0'
         classpath ("com.tencent.matrix:matrix-gradle-plugin:${MATRIX_VERSION}") { changing = true }
     }
 }
@@ -20,10 +18,6 @@ allprojects {
         mavenLocal()
         jcenter()
         google()
-
-//        maven {
-//            url "https://dl.bintray.com/matrix/maven/"
-//        }
     }
 }
 

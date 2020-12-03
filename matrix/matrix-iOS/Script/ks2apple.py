@@ -838,7 +838,16 @@ if __name__ == '__main__':
         parser.print_help()
         sys.exit(1)
 
-    report = json.load(open(options.input_file))
+    reports = json.load(open(options.input_file))
+        
     fout = open(options.output_file, 'w')
-    ks_json_2_apple(report, fout)
+
+    if type(reports) is list:
+        print("this intput file contains %d report" %(len(reports)))
+        for report in reports:
+            fout.write("*------------------------------- report split line----------------------------*\n")
+            ks_json_2_apple(report, fout)
+    else:
+        ks_json_2_apple(reports, fout)
+        
     fout.close()

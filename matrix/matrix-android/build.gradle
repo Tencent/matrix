@@ -1,16 +1,22 @@
-buildscript {
+buildscript { 
+    ext.kotlin_version = '1.3.61'
+
     repositories {
+
         mavenLocal()
         google()
         jcenter()
+
     }
 
     dependencies {
         // classpath
-        classpath 'com.android.tools.build:gradle:3.0.0'
+        classpath 'com.android.tools.build:gradle:3.2.1'
         classpath 'com.jfrog.bintray.gradle:gradle-bintray-plugin:1.7.3'
-        classpath 'digital.wup:android-maven-publish:3.2.0'
+        classpath 'digital.wup:android-maven-publish:3.6.2'
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
     }
+
 
 
 }
@@ -20,6 +26,7 @@ buildscript {
 
 allprojects {
     repositories {
+
         mavenLocal()
         google()
         jcenter()
@@ -43,6 +50,7 @@ ext {
 
     GROUP = 'com.tencent.matrix'
     VERSION_NAME = "${VERSION_NAME_PREFIX}${VERSION_NAME_SUFFIX}"
+    PUBLISH_CHANNEL = "${PUBLISH_CHANNEL}"
 
     POM_PACKAGING = "pom"
     POM_DESCRIPTION = "matrix"

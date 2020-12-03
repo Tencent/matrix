@@ -242,6 +242,8 @@ public class MethodTracer {
         private String className;
         private boolean isABSClass = false;
         private boolean hasWindowFocusMethod = false;
+        private boolean isActivityOrSubClass;
+        private boolean isNeedTrace;
 
         TraceClassAdapter(int i, ClassVisitor classVisitor) {
             super(i, classVisitor);
@@ -251,6 +253,8 @@ public class MethodTracer {
         public void visit(int version, int access, String name, String signature, String superName, String[] interfaces) {
             super.visit(version, access, name, signature, superName, interfaces);
             this.className = name;
+            this.isActivityOrSubClass = isActivityOrSubClass(className, collectedClassExtendMap);
+            this.isNeedTrace = MethodCollector.isNeedTrace(configuration, className, mappingCollector);
             if ((access & Opcodes.ACC_ABSTRACT) > 0 || (access & Opcodes.ACC_INTERFACE) > 0) {
                 this.isABSClass = true;
             }
@@ -268,14 +272,14 @@ public class MethodTracer {
                 }
                 MethodVisitor methodVisitor = cv.visitMethod(access, name, desc, signature, exceptions);
                 return new TraceMethodAdapter(api, methodVisitor, access, name, desc, this.className,
-                        hasWindowFocusMethod);
+                        hasWindowFocusMethod, isActivityOrSubClass, isNeedTrace);
             }
         }
 
 
         @Override
         public void visitEnd() {
-            if (!hasWindowFocusMethod && isActivityOrSubClass(className, collectedClassExtendMap) && MethodCollector.isNeedTrace(configuration, className, mappingCollector)) {
+            if (!hasWindowFocusMethod && isActivityOrSubClass && isNeedTrace) {
                 insertWindowFocusChangeMethod(cv, className);
             }
             super.visitEnd();
@@ -288,15 +292,20 @@ public class MethodTracer {
         private final String name;
         private final String className;
         private final boolean hasWindowFocusMethod;
+        private final boolean isNeedTrace;
+        private final boolean isActivityOrSubClass;
 
         protected TraceMethodAdapter(int api, MethodVisitor mv, int access, String name, String desc, String className,
-                                     boolean hasWindowFocusMethod) {
+                                     boolean hasWindowFocusMethod, boolean isActivityOrSubClass, boolean isNeedTrace) {
             super(api, mv, access, name, desc);
             TraceMethod traceMethod = TraceMethod.create(0, access, className, name, desc);
             this.methodName = traceMethod.getMethodName();
             this.hasWindowFocusMethod = hasWindowFocusMethod;
             this.className = className;
             this.name = name;
+            this.isActivityOrSubClass = isActivityOrSubClass;
+            this.isNeedTrace = isNeedTrace;
+
         }
 
         @Override
@@ -306,6 +315,10 @@ public class MethodTracer {
                 traceMethodCount.incrementAndGet();
                 mv.visitLdcInsn(traceMethod.id);
                 mv.visitMethodInsn(INVOKESTATIC, TraceBuildConstants.MATRIX_TRACE_CLASS, "i", "(I)V", false);
+
+                if (checkNeedTraceWindowFocusChangeMethod(traceMethod)) {
+                    traceWindowFocusChangeMethod(mv, className);
+                }
             }
         }
 
@@ -331,24 +344,29 @@ public class MethodTracer {
         protected void onMethodExit(int opcode) {
             TraceMethod traceMethod = collectedMethodMap.get(methodName);
             if (traceMethod != null) {
-                if (hasWindowFocusMethod && isActivityOrSubClass(className, collectedClassExtendMap) && MethodCollector.isNeedTrace(configuration, traceMethod.className, mappingCollector)) {
-                    TraceMethod windowFocusChangeMethod = TraceMethod.create(-1, Opcodes.ACC_PUBLIC, className,
-                            TraceBuildConstants.MATRIX_TRACE_ON_WINDOW_FOCUS_METHOD, TraceBuildConstants.MATRIX_TRACE_ON_WINDOW_FOCUS_METHOD_ARGS);
-                    if (windowFocusChangeMethod.equals(traceMethod)) {
-                        traceWindowFocusChangeMethod(mv, className);
-                    }
-                }
-
                 traceMethodCount.incrementAndGet();
                 mv.visitLdcInsn(traceMethod.id);
                 mv.visitMethodInsn(INVOKESTATIC, TraceBuildConstants.MATRIX_TRACE_CLASS, "o", "(I)V", false);
             }
         }
+
+        private boolean checkNeedTraceWindowFocusChangeMethod(TraceMethod traceMethod) {
+            if (hasWindowFocusMethod && isActivityOrSubClass && isNeedTrace) {
+                TraceMethod windowFocusChangeMethod = TraceMethod.create(-1, Opcodes.ACC_PUBLIC, className,
+                        TraceBuildConstants.MATRIX_TRACE_ON_WINDOW_FOCUS_METHOD, TraceBuildConstants.MATRIX_TRACE_ON_WINDOW_FOCUS_METHOD_ARGS);
+                if (windowFocusChangeMethod.equals(traceMethod)) {
+                    return true;
+                }
+            }
+            return false;
+        }
     }
 
     private boolean isActivityOrSubClass(String className, ConcurrentHashMap<String, String> mCollectedClassExtendMap) {
         className = className.replace(".", "/");
-        boolean isActivity = className.equals(TraceBuildConstants.MATRIX_TRACE_ACTIVITY_CLASS) || className.equals(TraceBuildConstants.MATRIX_TRACE_V7_ACTIVITY_CLASS);
+        boolean isActivity = className.equals(TraceBuildConstants.MATRIX_TRACE_ACTIVITY_CLASS)
+                || className.equals(TraceBuildConstants.MATRIX_TRACE_V4_ACTIVITY_CLASS)
+                || className.equals(TraceBuildConstants.MATRIX_TRACE_V7_ACTIVITY_CLASS);
         if (isActivity) {
             return true;
         } else {

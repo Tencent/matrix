@@ -80,7 +80,7 @@ public final class IOConfig {
     }
 
     public int getFileBufferSmallThreshold() {
-        return mDynamicConfig.get(IDynamicConfig.ExptEnum.clicfg_matrix_io_small_buffer_operator_times.name(), DEFAULT_FILE_BUFFER_SMALL_THRESHOLD);
+        return mDynamicConfig.get(IDynamicConfig.ExptEnum.clicfg_matrix_io_small_buffer_threshold.name(), DEFAULT_FILE_BUFFER_SMALL_THRESHOLD);
     }
 
     public int getFilBufferSmallOpTimes() {

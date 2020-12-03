@@ -52,6 +52,14 @@
         android:text="resource_canary"
         android:textSize="20dp" />
 
+    <Button
+        android:id="@+id/test_battery"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:text="battery"
+        android:textSize="20dp" />
+
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"

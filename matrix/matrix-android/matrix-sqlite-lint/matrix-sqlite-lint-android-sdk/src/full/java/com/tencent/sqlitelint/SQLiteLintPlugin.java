@@ -52,6 +52,7 @@ public class SQLiteLintPlugin extends Plugin {
     @Override
     public void init(Application app, PluginListener listener) {
         super.init(app, listener);
+        SQLiteLint.init();
         SQLiteLint.setPackageName(app);
         //TODO UnSupport logic
 

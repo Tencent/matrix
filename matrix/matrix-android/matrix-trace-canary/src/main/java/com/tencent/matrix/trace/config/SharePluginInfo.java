@@ -32,6 +32,7 @@ public class SharePluginInfo {
     public static final String ISSUE_DROP_LEVEL = "dropLevel";
     public static final String ISSUE_DROP_SUM = "dropSum";
     public static final String ISSUE_FPS = "fps";
+    public static final String ISSUE_SUM_TASK_FRAME = "dropTaskFrameSum";
     public static final String ISSUE_TRACE_STACK = "stack";
     public static final String ISSUE_THREAD_STACK = "threadStack";
     public static final String ISSUE_PROCESS_PRIORITY = "processPriority";

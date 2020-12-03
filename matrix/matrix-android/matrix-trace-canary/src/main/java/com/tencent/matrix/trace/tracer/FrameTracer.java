@@ -1,8 +1,12 @@
 package com.tencent.matrix.trace.tracer;
 
+import android.app.Activity;
+import android.app.Application;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.SystemClock;
 
+import com.tencent.matrix.AppActiveMatrixDelegate;
 import com.tencent.matrix.Matrix;
 import com.tencent.matrix.report.Issue;
 import com.tencent.matrix.trace.TracePlugin;
@@ -22,13 +26,17 @@ import org.json.JSONObject;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.concurrent.TimeUnit;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.Executor;
 
-public class FrameTracer extends Tracer {
+public class FrameTracer extends Tracer implements Application.ActivityLifecycleCallbacks {
 
     private static final String TAG = "Matrix.FrameTracer";
-    private HashSet<IDoFrameListener> listeners = new HashSet<>();
-    private final long frameIntervalMs;
+    private final HashSet<IDoFrameListener> listeners = new HashSet<>();
+    private DropFrameListener dropFrameListener;
+    private int dropFrameListenerThreshold = 0;
+    private final long frameIntervalNs;
     private final TraceConfig config;
     private long timeSliceMs;
     private boolean isFPSEnable;
@@ -36,10 +44,13 @@ public class FrameTracer extends Tracer {
     private long highThreshold;
     private long middleThreshold;
     private long normalThreshold;
+    private int droppedSum = 0;
+    private long durationSum = 0;
+    private Map<String,Long> lastResumeTimeMap = new HashMap<>();
 
     public FrameTracer(TraceConfig config) {
         this.config = config;
-        this.frameIntervalMs = TimeUnit.MILLISECONDS.convert(UIThreadMonitor.getMonitor().getFrameIntervalNanos(), TimeUnit.NANOSECONDS) + 1;
+        this.frameIntervalNs = UIThreadMonitor.getMonitor().getFrameIntervalNanos();
         this.timeSliceMs = config.getTimeSliceMs();
         this.isFPSEnable = config.isFPSEnable();
         this.frozenThreshold = config.getFrozenThreshold();
@@ -47,7 +58,7 @@ public class FrameTracer extends Tracer {
         this.normalThreshold = config.getNormalThreshold();
         this.middleThreshold = config.getMiddleThreshold();
 
-        MatrixLog.i(TAG, "[init] frameIntervalMs:%s isFPSEnable:%s", frameIntervalMs, isFPSEnable);
+        MatrixLog.i(TAG, "[init] frameIntervalMs:%s isFPSEnable:%s", frameIntervalNs, isFPSEnable);
         if (isFPSEnable) {
             addListener(new FPSCollector());
         }
@@ -69,41 +80,81 @@ public class FrameTracer extends Tracer {
     public void onAlive() {
         super.onAlive();
         UIThreadMonitor.getMonitor().addObserver(this);
+        if (isFPSEnable) {
+            Matrix.with().getApplication().registerActivityLifecycleCallbacks(this);
+        }
     }
 
     @Override
     public void onDead() {
         super.onDead();
         UIThreadMonitor.getMonitor().removeObserver(this);
-    }
-
-
-    @Override
-    public void doFrame(String focusedActivityName, long start, long end, long frameCostMs, long inputCostNs, long animationCostNs, long traversalCostNs) {
-        if (isForeground()) {
-            notifyListener(focusedActivityName, frameCostMs);
+        removeDropFrameListener();
+        if (isFPSEnable) {
+            Matrix.with().getApplication().unregisterActivityLifecycleCallbacks(this);
         }
     }
 
+    @Override
+    public void doFrame(String focusedActivity, long startNs, long endNs, boolean isVsyncFrame, long intendedFrameTimeNs, long inputCostNs, long animationCostNs, long traversalCostNs) {
+        if (isForeground()) {
+            notifyListener(focusedActivity, startNs, endNs, isVsyncFrame, intendedFrameTimeNs, inputCostNs, animationCostNs, traversalCostNs);
+        }
+    }
 
-    private void notifyListener(final String visibleScene, final long frameCostMs) {
-        long start = System.currentTimeMillis();
+    public int getDroppedSum() {
+        return droppedSum;
+    }
+
+    public long getDurationSum() {
+        return durationSum;
+    }
+
+    private void notifyListener(final String focusedActivity, final long startNs, final long endNs, final boolean isVsyncFrame,
+                                final long intendedFrameTimeNs, final long inputCostNs, final long animationCostNs, final long traversalCostNs) {
+        long traceBegin = System.currentTimeMillis();
         try {
+            final long jiter = endNs - intendedFrameTimeNs;
+            final int dropFrame = (int) (jiter / frameIntervalNs);
+            if(dropFrameListener != null) {
+                if(dropFrame > dropFrameListenerThreshold) {
+                    try {
+                        if (AppActiveMatrixDelegate.getTopActivityName() != null) {
+                            long lastResumeTime = lastResumeTimeMap.get(AppActiveMatrixDelegate.getTopActivityName());
+                            dropFrameListener.dropFrame(dropFrame, AppActiveMatrixDelegate.getTopActivityName(), lastResumeTime);
+                        }
+                    }catch (Exception e){
+                        MatrixLog.e(TAG,"dropFrameListener error e:" + e.getMessage());
+                    }
+                }
+            }
+
+            droppedSum += dropFrame;
+            durationSum += Math.max(jiter, frameIntervalNs);
+
             synchronized (listeners) {
                 for (final IDoFrameListener listener : listeners) {
                     if (config.isDevEnv()) {
                         listener.time = SystemClock.uptimeMillis();
                     }
-                    final int dropFrame = (int) (frameCostMs / frameIntervalMs);
-                    listener.doFrameSync(visibleScene, frameCostMs, dropFrame);
-                    if (null != listener.getHandler()) {
-                        listener.getHandler().post(new Runnable() {
-                            @Override
-                            public void run() {
-                                listener.doFrameAsync(visibleScene, frameCostMs, dropFrame);
-                            }
-                        });
+                    if (null != listener.getExecutor()) {
+                        if (listener.getIntervalFrameReplay() > 0) {
+                            listener.collect(focusedActivity, startNs, endNs, dropFrame, isVsyncFrame,
+                                    intendedFrameTimeNs, inputCostNs, animationCostNs, traversalCostNs);
+                        } else {
+                            listener.getExecutor().execute(new Runnable() {
+                                @Override
+                                public void run() {
+                                    listener.doFrameAsync(focusedActivity, startNs, endNs, dropFrame, isVsyncFrame,
+                                            intendedFrameTimeNs, inputCostNs, animationCostNs, traversalCostNs);
+                                }
+                            });
+                        }
+                    } else {
+                        listener.doFrameSync(focusedActivity, startNs, endNs, dropFrame, isVsyncFrame,
+                                intendedFrameTimeNs, inputCostNs, animationCostNs, traversalCostNs);
                     }
+
                     if (config.isDevEnv()) {
                         listener.time = SystemClock.uptimeMillis() - listener.time;
                         MatrixLog.d(TAG, "[notifyListener] cost:%sms listener:%s", listener.time, listener);
@@ -111,8 +162,8 @@ public class FrameTracer extends Tracer {
                 }
             }
         } finally {
-            long cost = System.currentTimeMillis() - start;
-            if (config.isDebug() && cost > frameIntervalMs) {
+            long cost = System.currentTimeMillis() - traceBegin;
+            if (config.isDebug() && cost > frameIntervalNs) {
                 MatrixLog.w(TAG, "[notifyListener] warm! maybe do heavy work in doFrameSync! size:%s cost:%sms", listeners.size(), cost);
             }
         }
@@ -122,19 +173,41 @@ public class FrameTracer extends Tracer {
     private class FPSCollector extends IDoFrameListener {
 
         private Handler frameHandler = new Handler(MatrixHandlerThread.getDefaultHandlerThread().getLooper());
+
+        Executor executor = new Executor() {
+            @Override
+            public void execute(Runnable command) {
+                frameHandler.post(command);
+            }
+        };
+
         private HashMap<String, FrameCollectItem> map = new HashMap<>();
 
         @Override
-        public Handler getHandler() {
-            return frameHandler;
+        public Executor getExecutor() {
+            return executor;
         }
 
         @Override
-        public void doFrameAsync(String visibleScene, long frameCost, int droppedFrames) {
-            super.doFrameAsync(visibleScene, frameCost, droppedFrames);
-            if (Utils.isEmpty(visibleScene)) {
-                return;
+        public int getIntervalFrameReplay() {
+            return 300;
+        }
+
+        @Override
+        public void doReplay(List<FrameReplay> list) {
+            super.doReplay(list);
+            for (FrameReplay replay : list) {
+                doReplayInner(replay.focusedActivity, replay.startNs, replay.endNs, replay.dropFrame, replay.isVsyncFrame,
+                        replay.intendedFrameTimeNs, replay.inputCostNs, replay.animationCostNs, replay.traversalCostNs);
             }
+        }
+
+        public void doReplayInner(String visibleScene, long startNs, long endNs, int droppedFrames,
+                                  boolean isVsyncFrame, long intendedFrameTimeNs, long inputCostNs,
+                                  long animationCostNs, long traversalCostNs) {
+
+            if (Utils.isEmpty(visibleScene)) return;
+            if (!isVsyncFrame) return;
 
             FrameCollectItem item = map.get(visibleScene);
             if (null == item) {
@@ -149,7 +222,6 @@ public class FrameTracer extends Tracer {
                 item.report();
             }
         }
-
     }
 
     private class FrameCollectItem {
@@ -166,11 +238,10 @@ public class FrameTracer extends Tracer {
         }
 
         void collect(int droppedFrames) {
-            long frameIntervalCost = UIThreadMonitor.getMonitor().getFrameIntervalNanos();
-            sumFrameCost += (droppedFrames + 1) * frameIntervalCost / Constants.TIME_MILLIS_TO_NANO;
+            float frameIntervalCost = 1f * UIThreadMonitor.getMonitor().getFrameIntervalNanos() / Constants.TIME_MILLIS_TO_NANO;
+            sumFrameCost += (droppedFrames + 1) * frameIntervalCost;
             sumDroppedFrames += droppedFrames;
             sumFrame++;
-
             if (droppedFrames >= frozenThreshold) {
                 dropLevel[DropStatus.DROPPED_FROZEN.index]++;
                 dropSum[DropStatus.DROPPED_FROZEN.index] += droppedFrames;
@@ -185,7 +256,7 @@ public class FrameTracer extends Tracer {
                 dropSum[DropStatus.DROPPED_NORMAL.index] += droppedFrames;
             } else {
                 dropLevel[DropStatus.DROPPED_BEST.index]++;
-                dropSum[DropStatus.DROPPED_BEST.index] += (droppedFrames < 0 ? 0 : droppedFrames);
+                dropSum[DropStatus.DROPPED_BEST.index] += Math.max(droppedFrames, 0);
             }
         }
 
@@ -245,13 +316,61 @@ public class FrameTracer extends Tracer {
         }
     }
 
-    private enum DropStatus {
+    public enum DropStatus {
         DROPPED_FROZEN(4), DROPPED_HIGH(3), DROPPED_MIDDLE(2), DROPPED_NORMAL(1), DROPPED_BEST(0);
-        int index;
+        public int index;
 
         DropStatus(int index) {
             this.index = index;
         }
+
+    }
+
+    public void addDropFrameListener(int dropFrameListenerThreshold, DropFrameListener dropFrameListener){
+        this.dropFrameListener = dropFrameListener;
+        this.dropFrameListenerThreshold = dropFrameListenerThreshold;
+    }
+
+    public void removeDropFrameListener(){
+        this.dropFrameListener = null;
+    }
+
+    public interface DropFrameListener{
+        void dropFrame(int dropedFrame, String scene, long lastResume);
+    }
+
+    @Override
+    public void onActivityCreated(Activity activity, Bundle savedInstanceState) {
+
+    }
+
+    @Override
+    public void onActivityStarted(Activity activity) {
+
+    }
+
+    @Override
+    public void onActivityResumed(Activity activity) {
+        lastResumeTimeMap.put(activity.getClass().getName(), System.currentTimeMillis());
+    }
+
+    @Override
+    public void onActivityPaused(Activity activity) {
+
+    }
+
+    @Override
+    public void onActivityStopped(Activity activity) {
+
+    }
+
+    @Override
+    public void onActivitySaveInstanceState(Activity activity, Bundle outState) {
+
+    }
+
+    @Override
+    public void onActivityDestroyed(Activity activity) {
 
     }
 }

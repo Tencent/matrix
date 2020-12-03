@@ -43,10 +43,10 @@ public class TraceConfig implements IDefaultConfig {
     public boolean isDevEnv;
     public String splashActivities;
     public Set<String> splashActivitiesSet;
-
+    public boolean isHasActivity;
 
     private TraceConfig() {
-
+        this.isHasActivity = true;
     }
 
     @Override
@@ -55,6 +55,7 @@ public class TraceConfig implements IDefaultConfig {
         ss.append("# TraceConfig\n");
         ss.append("* isDebug:\t").append(isDebug).append("\n");
         ss.append("* isDevEnv:\t").append(isDevEnv).append("\n");
+        ss.append("* isHasActivity:\t").append(isHasActivity).append("\n");
         ss.append("* defaultFpsEnable:\t").append(defaultFpsEnable).append("\n");
         ss.append("* defaultMethodTraceEnable:\t").append(defaultMethodTraceEnable).append("\n");
         ss.append("* defaultStartupEnable:\t").append(defaultStartupEnable).append("\n");
@@ -88,6 +89,10 @@ public class TraceConfig implements IDefaultConfig {
         return defaultStartupEnable;
     }
 
+    public boolean isHasActivity() {
+        return isHasActivity;
+    }
+
     @Override
     public boolean isAnrTraceEnable() {
         return defaultAnrEnable;
@@ -97,14 +102,21 @@ public class TraceConfig implements IDefaultConfig {
     public Set<String> getSplashActivities() {
         if (null == splashActivitiesSet) {
             splashActivitiesSet = new HashSet<>();
-            if (null == splashActivities) {
-                return splashActivitiesSet;
-            }
             if (null == dynamicConfig) {
+                if (null == splashActivities) {
+                    return splashActivitiesSet;
+                }
                 splashActivitiesSet.addAll(Arrays.asList(splashActivities.split(";")));
             } else {
-                splashActivities = dynamicConfig.get(IDynamicConfig.ExptEnum.clicfg_matrix_trace_care_scene_set.name(), splashActivities);
-                splashActivitiesSet.addAll(Arrays.asList(splashActivities.split(";")));
+
+                String dySplashActivities = dynamicConfig.get(IDynamicConfig.ExptEnum.clicfg_matrix_trace_care_scene_set.name(), splashActivities);
+                if (null != dySplashActivities) {
+                    splashActivities = dySplashActivities;
+                }
+
+                if (null != splashActivities) {
+                    splashActivitiesSet.addAll(Arrays.asList(splashActivities.split(";")));
+                }
             }
         }
         return splashActivitiesSet;
@@ -197,6 +209,11 @@ public class TraceConfig implements IDefaultConfig {
 
         public Builder isDevEnv(boolean isDevEnv) {
             config.isDevEnv = isDevEnv;
+            return this;
+        }
+
+        public Builder isHasActivity(boolean isHasActivity) {
+            config.isHasActivity = isHasActivity;
             return this;
         }
 

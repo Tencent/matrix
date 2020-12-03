@@ -108,7 +108,8 @@ public class TraceDataUtils {
             addMethodItem(result, methodItem);
         }
         TreeNode root = new TreeNode(null, null);
-        stackToTree(result, root);
+        int count = stackToTree(result, root);
+        MatrixLog.i(TAG, "stackToTree: count=%s", count);
         result.clear();
         treeToStack(root, result);
     }
@@ -143,24 +144,15 @@ public class TraceDataUtils {
         }
     }
 
-    private static void rechange(TreeNode root) {
-        if (root.children.isEmpty()) {
-            return;
-        }
-        TreeNode[] nodes = new TreeNode[root.children.size()];
-        root.children.toArray(nodes);
-        root.children.clear();
-        for (TreeNode node : nodes) {
-            root.children.addFirst(node);
-            rechange(node);
-        }
-    }
 
     private static void treeToStack(TreeNode root, LinkedList<MethodItem> list) {
 
         for (int i = 0; i < root.children.size(); i++) {
             TreeNode node = root.children.get(i);
-            list.add(node.item);
+            if(null == node) continue;
+            if (node.item != null) {
+                list.add(node.item);
+            }
             if (!node.children.isEmpty()) {
                 treeToStack(node, list);
             }
@@ -189,14 +181,14 @@ public class TraceDataUtils {
             if (lastNode == null || depth == 0) {
                 root.add(node);
             } else if (lastNode.depth() >= depth) {
-                while (lastNode.depth() > depth) {
+                while (null != lastNode && lastNode.depth() > depth) {
                     lastNode = lastNode.father;
                 }
-                if (lastNode.father != null) {
+                if (lastNode != null && lastNode.father != null) {
                     node.father = lastNode.father;
                     lastNode.father.add(node);
                 }
-            } else if (lastNode.depth() < depth) {
+            } else {
                 lastNode.add(node);
             }
             lastNode = node;
@@ -206,7 +198,7 @@ public class TraceDataUtils {
 
 
     public static long stackToString(LinkedList<MethodItem> stack, StringBuilder reportBuilder, StringBuilder logcatBuilder) {
-        logcatBuilder.append("|*\tTraceStack:").append("\n");
+        logcatBuilder.append("|*\t\tTraceStack:").append("\n");
         logcatBuilder.append("|*\t\t[id count cost]").append("\n");
         Iterator<MethodItem> listIterator = stack.iterator();
         long stackCost = 0; // fix cost

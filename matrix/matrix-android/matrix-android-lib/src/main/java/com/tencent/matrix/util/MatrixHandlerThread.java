@@ -69,11 +69,14 @@ public class MatrixHandlerThread {
     }
 
     public static Handler getDefaultHandler() {
+        if (defaultHandler == null) {
+            getDefaultHandlerThread();
+        }
         return defaultHandler;
     }
 
-    public static HandlerThread getNewHandlerThread(String name) {
-        for (Iterator<HandlerThread> i = handlerThreads.iterator(); i.hasNext();) {
+    public static HandlerThread getNewHandlerThread(String name,int priority) {
+        for (Iterator<HandlerThread> i = handlerThreads.iterator(); i.hasNext(); ) {
             HandlerThread element = i.next();
             if (!element.isAlive()) {
                 i.remove();
@@ -81,6 +84,7 @@ public class MatrixHandlerThread {
             }
         }
         HandlerThread handlerThread = new HandlerThread(name);
+        handlerThread.setPriority(priority);
         handlerThread.start();
         handlerThreads.add(handlerThread);
         MatrixLog.w(TAG, "warning: create new handler thread with name %s, alive thread size:%d", name, handlerThreads.size());
@@ -122,7 +126,6 @@ public class MatrixHandlerThread {
         @Override
         public void onForeground(boolean isForeground) {
             this.isForeground = isForeground;
-            MatrixLog.d(TAG, "onForeground:%s", isForeground);
             if (isForeground) {
                 long start = System.currentTimeMillis();
                 LinkedList<Info> list = new LinkedList<>();
