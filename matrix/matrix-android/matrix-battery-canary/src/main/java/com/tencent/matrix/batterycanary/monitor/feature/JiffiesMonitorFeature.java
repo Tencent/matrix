@@ -11,6 +11,7 @@ import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Entry.DigitEntry;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Entry.ListEntry;
 import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
+import com.tencent.matrix.batterycanary.utils.ProcStatUtil;
 import com.tencent.matrix.util.MatrixLog;
 import com.tencent.matrix.util.MatrixUtil;
 
@@ -122,10 +123,10 @@ public class JiffiesMonitorFeature implements MonitorFeature {
             private ThreadInfo() {}
 
             public void loadProcStat() throws IOException {
-                BatteryCanaryUtil.ProcStatInfo stat = BatteryCanaryUtil.ProcStatInfo.parseJiffies("/proc/" + pid + "/task/" + tid + "/stat");
+                ProcStatUtil.ProcStat stat = ProcStatUtil.of(pid, tid);
                 if (stat != null) {
                     name = stat.comm;
-                    jiffies = stat.utime + stat.stime + stat.cutime + stat.cstime;
+                    jiffies = stat.getJiffies();
                 } else {
                     throw new IOException("parse fail: " + BatteryCanaryUtil.cat("/proc/" + pid + "/task/" + tid + "/stat"));
                 }
