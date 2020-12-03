@@ -366,53 +366,5 @@ public interface MonitorFeature {
                 }
             }
         }
-
-        public interface DifferLegacy<VALUE> {
-            // todo: int UNSPECIFIED_DIGIT = Integer.MAX_VALUE;
-            LongDiffer sDigitDiffer = new LongDiffer();
-            IntArrayDiffer sDigitArrayDiffer = new IntArrayDiffer();
-
-            VALUE diff(VALUE bgn, VALUE end);
-
-            class LongDiffer implements DifferLegacy<Long> {
-
-                @Override
-                public Long diff(Long bgn, Long end) {
-                    return end - bgn;
-                }
-
-                public Integer diffInt(Integer bgn, Integer end) {
-                    return diff((long) bgn, (long) end).intValue();
-                }
-            }
-
-            class IntArrayDiffer implements DifferLegacy<int[]> {
-                @Override
-                public int[] diff(int[] bgn, int[] end) {
-                    int[] dlt = new int[0];
-                    if (end != null) {
-                        dlt = new int[end.length];
-                        for (int i = 0; i < end.length; i++) {
-                            dlt[i] = sDigitDiffer.diffInt(((bgn == null || bgn.length < i) ? 0 : bgn[i]), end[i]);
-                        }
-                    }
-                    return dlt;
-                }
-            }
-
-            class ListDiffer<T> implements DifferLegacy<List<T>> {
-                @Override
-                public List<T> diff(List<T> bgn, List<T> end) {
-                    List<T> delta = new ArrayList<>();
-                    for (T item : end) {
-                        if (!bgn.contains(item)) {
-                            delta.add(item);
-                        }
-                    }
-                    return delta;
-                }
-            }
-
-        }
     }
 }

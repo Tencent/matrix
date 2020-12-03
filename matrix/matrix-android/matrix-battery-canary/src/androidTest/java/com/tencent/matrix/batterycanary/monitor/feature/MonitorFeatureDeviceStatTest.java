@@ -84,10 +84,10 @@ public class MonitorFeatureDeviceStatTest {
         Assert.assertSame(end, diff.end);
 
         Assert.assertEquals(end.time, bgn.time + diff.during);
-        for (int i = 0; i < diff.dlt.cpuFreq.length; i++) {
-            int cpuDlt = diff.dlt.cpuFreq[i];
-            int cpuBgn = diff.bgn.cpuFreq[i];
-            int cpuEnd = diff.end.cpuFreq[i];
+        for (int i = 0; i < diff.dlt.cpuFreqs.getList().size(); i++) {
+            int cpuDlt = diff.dlt.cpuFreqs.getList().get(i).get();
+            int cpuBgn = diff.bgn.cpuFreqs.getList().get(i).get();
+            int cpuEnd = diff.end.cpuFreqs.getList().get(i).get();
             Assert.assertEquals(cpuEnd + "-" + cpuBgn + "=" + cpuDlt, cpuEnd, cpuBgn + cpuDlt);
             Assert.assertEquals(
                     (int) diff.dlt.cpuFreqs.getList().get(i).get(),
@@ -115,7 +115,7 @@ public class MonitorFeatureDeviceStatTest {
         Assert.assertSame(bgn, diff.bgn);
         Assert.assertSame(end, diff.end);
         Assert.assertEquals(end.time, bgn.time + diff.during);
-        Assert.assertEquals(end.temperature, bgn.temperature + diff.dlt.temperature);
+        Assert.assertEquals(end.temp.get().intValue(), bgn.temp.get() + diff.dlt.temp.get());
         Assert.assertEquals((int) diff.dlt.temp.get(), diff.end.temp.get() - diff.bgn.temp.get());
 }
 }

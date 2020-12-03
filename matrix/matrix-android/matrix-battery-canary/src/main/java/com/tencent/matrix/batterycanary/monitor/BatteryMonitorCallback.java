@@ -211,8 +211,8 @@ public interface BatteryMonitorCallback extends BatteryMonitorCore.JiffiesListen
                             printer.createSubSection("during");
                             printer.writeLine(cpuFreqDiff.during + "(mls)\t" + (cpuFreqDiff.during/ONE_MIN) +"(min)");
                             printer.createSubSection("cpufreq");
-                            printer.writeLine("inc", Arrays.toString(cpuFreqDiff.dlt.cpuFreq));
-                            printer.writeLine("cur", Arrays.toString(cpuFreqDiff.end.cpuFreq));
+                            printer.writeLine("inc", Arrays.toString(cpuFreqDiff.dlt.cpuFreqs.getList().toArray()));
+                            printer.writeLine("cur", Arrays.toString(cpuFreqDiff.end.cpuFreqs.getList().toArray()));
                         }
 
                         if (mLastBatteryTmpSnapshot != null) {
@@ -222,8 +222,8 @@ public interface BatteryMonitorCallback extends BatteryMonitorCore.JiffiesListen
                             printer.createSubSection("during");
                             printer.writeLine(batteryDiff.during + "(mls)\t" + (batteryDiff.during/ONE_MIN) +"(min)");
                             printer.createSubSection("battery_temperature");
-                            printer.writeLine("inc", String.valueOf(batteryDiff.dlt.temperature));
-                            printer.writeLine("cur", String.valueOf(batteryDiff.end.temperature));
+                            printer.writeLine("inc", String.valueOf(batteryDiff.dlt.temp.get()));
+                            printer.writeLine("cur", String.valueOf(batteryDiff.end.temp.get()));
                         }
                     }
                 });
