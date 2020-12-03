@@ -24,6 +24,7 @@ import android.support.test.InstrumentationRegistry;
 import android.support.test.runner.AndroidJUnit4;
 
 import com.tencent.matrix.Matrix;
+import com.tencent.matrix.batterycanary.TestUtils;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorConfig;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
 
@@ -68,6 +69,8 @@ public class MonitorFeatureOverAllTest {
 
     @Test
     public void testForegroundLoopCheck() throws InterruptedException {
+        if (TestUtils.isAssembleTest()) return;
+
         Thread thread = new Thread(new Runnable() {
             @Override
             public void run() {
@@ -81,13 +84,14 @@ public class MonitorFeatureOverAllTest {
         thread.start();
 
         final JiffiesMonitorFeature feature = new JiffiesMonitorFeature();
-        feature.configure(mockMonitor());
-        feature.enableForegroundLoopCheck(true);
+        final BatteryMonitorCore monitor = mockMonitor();
+        monitor.enableForegroundLoopCheck(true);
+        feature.configure(monitor);
         Handler handler = new Handler(Looper.getMainLooper());
         handler.post(new Runnable() {
             @Override
             public void run() {
-                feature.onForeground(true);
+                monitor.onForeground(true);
             }
         });
         Thread.sleep(5000000L);

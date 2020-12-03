@@ -20,11 +20,9 @@ import android.content.Context;
 import android.support.test.InstrumentationRegistry;
 import android.support.test.runner.AndroidJUnit4;
 
-import com.tencent.matrix.batterycanary.BatteryMonitorPlugin;
 import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.LooperTaskMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.WakeLockMonitorFeature;
-import com.tencent.matrix.plugin.Plugin;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -86,5 +84,26 @@ public class MonitorConfigTest {
         Assert.assertNotNull(core.getMonitorFeature(JiffiesMonitorFeature.class));
         Assert.assertNotNull(core.getMonitorFeature(WakeLockMonitorFeature.class));
         Assert.assertNotNull(core.getMonitorFeature(LooperTaskMonitorFeature.class));
+    }
+
+    @Test
+    public void testAddWakeLockWhiteList() {
+        BatteryMonitorConfig config = new BatteryMonitorConfig.Builder()
+                .build();
+        Assert.assertTrue(config.tagWhiteList.isEmpty());
+
+        config = new BatteryMonitorConfig.Builder()
+                .addWakeLockWhiteList("xxx")
+                .build();
+        Assert.assertEquals(1, config.tagWhiteList.size());
+        Assert.assertTrue(config.tagWhiteList.contains("xxx"));
+
+        config = new BatteryMonitorConfig.Builder()
+                .addWakeLockWhiteList("xxx")
+                .addWakeLockWhiteList("yyy")
+                .build();
+        Assert.assertEquals(2, config.tagWhiteList.size());
+        Assert.assertTrue(config.tagWhiteList.contains("xxx"));
+        Assert.assertTrue(config.tagWhiteList.contains("yyy"));
     }
 }

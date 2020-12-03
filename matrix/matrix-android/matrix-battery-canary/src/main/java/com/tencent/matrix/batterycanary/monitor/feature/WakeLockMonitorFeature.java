@@ -1,5 +1,6 @@
 package com.tencent.matrix.batterycanary.monitor.feature;
 
+import android.content.pm.ApplicationInfo;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.SystemClock;
@@ -9,13 +10,13 @@ import android.support.annotation.Nullable;
 import android.support.annotation.VisibleForTesting;
 
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
+import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Entry.BeanEntry;
 import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
 import com.tencent.matrix.batterycanary.utils.PowerManagerServiceHooker;
 import com.tencent.matrix.util.MatrixHandlerThread;
 import com.tencent.matrix.util.MatrixLog;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -75,10 +76,15 @@ public class WakeLockMonitorFeature implements MonitorFeature, PowerManagerServi
 
     @Override
     public void onAcquireWakeLock(IBinder token, int flags, final String tag, final String packageName, WorkSource workSource, String historyTag) {
+        boolean debuggable = 0 != (monitor.getContext().getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE);
+        String stack = "";
+        if (debuggable || !monitor.getConfig().tagWhiteList.contains(tag)) {
+            stack = BatteryCanaryUtil.stackTraceToString(new Throwable().getStackTrace());
+        }
         MatrixLog.i(TAG, "[onAcquireWakeLock] token=%s flags=%s tag=%s historyTag=%s packageName=%s workSource=%s stack=%s",
-                String.valueOf(token), flags, tag, historyTag, packageName, workSource, BatteryCanaryUtil.stackTraceToString(new Throwable().getStackTrace()));
+                String.valueOf(token), flags, tag, historyTag, packageName, workSource, stack);
 
-        WakeLockTrace wakeLockTrace = new WakeLockTrace(token, tag, flags, packageName);
+        WakeLockTrace wakeLockTrace = new WakeLockTrace(token, tag, flags, packageName, stack);
         wakeLockTrace.setListener(new WakeLockTrace.OverTimeListener() {
             @Override
             public void onWakeLockOvertime(int warningCount, WakeLockTrace.WakeLockRecord record) {
@@ -113,36 +119,36 @@ public class WakeLockMonitorFeature implements MonitorFeature, PowerManagerServi
     }
 
     public WakeLockSnapshot currentWakeLocks() {
-        List<WakeLockTrace.WakeLockRecord> totalWakeLocks;
+        List<BeanEntry<WakeLockTrace.WakeLockRecord>> totalWakeLocks = new ArrayList<>();
         long totalWakeLockTime = 0L;
         int totalWakeLockCount = 0;
         synchronized (mFinishedWakeLockRecords) {
             for (WakeLockTrace.WakeLockRecord item : mFinishedWakeLockRecords) {
                 totalWakeLockTime += item.getLockingTimeMillis();
+                totalWakeLocks.add(BeanEntry.of(item));
             }
             totalWakeLockCount += mFinishedWakeLockRecords.size();
-            totalWakeLocks = new ArrayList<>(mFinishedWakeLockRecords);
         }
 
         for (WakeLockTrace item : mWorkingWakeLocks.values()) {
             if (!item.isFinished()) {
-                totalWakeLocks.add(item.record);
+                totalWakeLocks.add(BeanEntry.of(item.record));
                 totalWakeLockTime += item.record.getLockingTimeMillis();
             }
         }
         totalWakeLockCount += mWorkingWakeLocks.size();
 
         WakeLockSnapshot snapshot = new WakeLockSnapshot();
-        snapshot.totalWakeLockTime = totalWakeLockTime;
-        snapshot.totalWakeLockCount = totalWakeLockCount;
-        snapshot.totalWakeLockRecords = totalWakeLocks;
+        snapshot.totalWakeLockTime = Snapshot.Entry.DigitEntry.of(totalWakeLockTime);
+        snapshot.totalWakeLockCount = Snapshot.Entry.DigitEntry.of(totalWakeLockCount);
+        snapshot.totalWakeLockRecords = Snapshot.Entry.ListEntry.of(totalWakeLocks);
         return snapshot;
     }
 
     public static class WakeLockSnapshot extends Snapshot<WakeLockSnapshot> {
-        public long totalWakeLockTime;
-        public int totalWakeLockCount;
-        public List<WakeLockTrace.WakeLockRecord> totalWakeLockRecords = Collections.emptyList();
+        public Entry.DigitEntry<Long> totalWakeLockTime;
+        public Entry.DigitEntry<Integer> totalWakeLockCount;
+        public Entry.ListEntry<BeanEntry<WakeLockTrace.WakeLockRecord>> totalWakeLockRecords;
 
         @Override
         public Delta<WakeLockSnapshot> diff(WakeLockSnapshot bgn) {
@@ -150,9 +156,9 @@ public class WakeLockMonitorFeature implements MonitorFeature, PowerManagerServi
                 @Override
                 protected WakeLockSnapshot computeDelta() {
                     WakeLockSnapshot delta = new WakeLockSnapshot();
-                    delta.totalWakeLockTime = Differ.sDigitDiffer.diff(bgn.totalWakeLockTime, end.totalWakeLockTime);
-                    delta.totalWakeLockCount = Differ.sDigitDiffer.diffInt(bgn.totalWakeLockCount, end.totalWakeLockCount);
-                    delta.totalWakeLockRecords = new Differ.ListDiffer<WakeLockTrace.WakeLockRecord>().diff(bgn.totalWakeLockRecords, end.totalWakeLockRecords);
+                    delta.totalWakeLockTime = Differ.DigitDiffer.globalDiff(bgn.totalWakeLockTime, end.totalWakeLockTime);
+                    delta.totalWakeLockCount = Differ.DigitDiffer.globalDiff(bgn.totalWakeLockCount, end.totalWakeLockCount);
+                    delta.totalWakeLockRecords = Differ.ListDiffer.globalDiff(bgn.totalWakeLockRecords, end.totalWakeLockRecords);
                     return delta;
                 }
             };
@@ -170,9 +176,9 @@ public class WakeLockMonitorFeature implements MonitorFeature, PowerManagerServi
         private Runnable loopTask;
         private OverTimeListener mListener;
 
-        WakeLockTrace(IBinder token, String tag, int flags, String packageName) {
+        WakeLockTrace(IBinder token, String tag, int flags, String packageName, String stack) {
             this.token = token;
-            this.record = new WakeLockRecord(tag, flags, packageName);
+            this.record = new WakeLockRecord(tag, flags, packageName, stack);
         }
 
         void setListener(OverTimeListener listener) {
@@ -225,13 +231,15 @@ public class WakeLockMonitorFeature implements MonitorFeature, PowerManagerServi
             public final int flags;
             public final String tag;
             public final String packageName;
+            public final String stack;
             public final long timeBgn;
             public long timeEnd = 0L;
 
-            public WakeLockRecord(String tag, int flags, String packageName) {
+            public WakeLockRecord(String tag, int flags, String packageName, String stack) {
                 this.flags = flags;
                 this.tag = tag;
                 this.packageName = packageName;
+                this.stack = stack;
                 this.timeBgn = SystemClock.uptimeMillis();
             }
 
@@ -252,9 +260,10 @@ public class WakeLockMonitorFeature implements MonitorFeature, PowerManagerServi
             @Override
             public String toString() {
                 return "WakeLockRecord{" +
-                        "flag=" + flags +
+                        "flags=" + flags +
                         ", tag='" + tag + '\'' +
                         ", packageName='" + packageName + '\'' +
+                        ", stack='" + stack + '\'' +
                         ", timeBgn=" + timeBgn +
                         ", timeEnd=" + timeEnd +
                         '}';

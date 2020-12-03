@@ -15,8 +15,10 @@ import com.tencent.matrix.batterycanary.monitor.feature.DeviceStatMonitorFeature
 import com.tencent.matrix.batterycanary.monitor.feature.DeviceStatMonitorFeature.BatteryTmpSnapshot;
 import com.tencent.matrix.batterycanary.monitor.feature.DeviceStatMonitorFeature.CpuFreqSnapshot;
 import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature;
-import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature.JiffiesResult;
+import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature.JiffiesSnapshot;
+import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature.JiffiesSnapshot.ThreadJiffiesSnapshot;
 import com.tencent.matrix.batterycanary.monitor.feature.LooperTaskMonitorFeature;
+import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Delta;
 import com.tencent.matrix.batterycanary.monitor.feature.WakeLockMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.WakeLockMonitorFeature.WakeLockSnapshot;
@@ -30,7 +32,7 @@ import java.util.List;
  * @author Kaede
  * @since 2020/10/27
  */
-public interface BatteryMonitorCallback extends JiffiesMonitorFeature.JiffiesListener, LooperTaskMonitorFeature.LooperTaskListener, WakeLockMonitorFeature.WakeLockListener, AlarmMonitorFeature.AlarmListener {
+public interface BatteryMonitorCallback extends BatteryMonitorCore.JiffiesListener, LooperTaskMonitorFeature.LooperTaskListener, WakeLockMonitorFeature.WakeLockListener, AlarmMonitorFeature.AlarmListener {
 
     @SuppressWarnings({"NotNullFieldNotInitialized", "SpellCheckingInspection"})
     class BatteryPrinter implements BatteryMonitorCallback {
@@ -42,7 +44,7 @@ public interface BatteryMonitorCallback extends JiffiesMonitorFeature.JiffiesLis
         private final Printer mPrinter = new Printer();
         private final LongSparseArray<List<LooperTaskMonitorFeature.TaskTraceInfo>> tasks = new LongSparseArray<>();
 
-        @Nullable private JiffiesResult mLastJiffiesResult = null;
+        @Nullable private JiffiesSnapshot mLastJiffiesSnapshot = null;
         @Nullable private WakeLockSnapshot mLastWakeWakeLockSnapshot = null;
         @Nullable private CpuFreqSnapshot mLastCpuFreqSnapshot = null;
         @Nullable private BatteryTmpSnapshot mLastBatteryTmpSnapshot = null;
@@ -54,11 +56,21 @@ public interface BatteryMonitorCallback extends JiffiesMonitorFeature.JiffiesLis
             return this;
         }
 
+        @NonNull
+        protected BatteryMonitorCore getMonitor() {
+            return mMonitor;
+        }
+
         @Override
         public void onTraceBegin() {
-            WakeLockMonitorFeature jiffies = mMonitor.getMonitorFeature(WakeLockMonitorFeature.class);
+            JiffiesMonitorFeature jiffies = mMonitor.getMonitorFeature(JiffiesMonitorFeature.class);
             if (null != jiffies) {
-                mLastWakeWakeLockSnapshot = jiffies.currentWakeLocks();
+                mLastJiffiesSnapshot = jiffies.currentJiffiesSnapshot();
+            }
+
+            WakeLockMonitorFeature wakeLock = mMonitor.getMonitorFeature(WakeLockMonitorFeature.class);
+            if (null != wakeLock) {
+                mLastWakeWakeLockSnapshot = wakeLock.currentWakeLocks();
             }
 
             DeviceStatMonitorFeature deviceStat = mMonitor.getMonitorFeature(DeviceStatMonitorFeature.class);
@@ -74,13 +86,8 @@ public interface BatteryMonitorCallback extends JiffiesMonitorFeature.JiffiesLis
         }
 
         @Override
-        public void onTraceEnd() {
-        }
-
-        @Override
-        public void onJiffies(JiffiesResult result) {
-            mLastJiffiesResult = result;
-            onCanaryDump();
+        public void onTraceEnd(boolean isForeground) {
+            onCanaryDump(isForeground);
         }
 
         @Override
@@ -101,38 +108,41 @@ public interface BatteryMonitorCallback extends JiffiesMonitorFeature.JiffiesLis
         }
 
         @CallSuper
-        protected void onCanaryDump() {
+        protected void onCanaryDump(boolean isForeground) {
             mPrinter.clear();
 
             // title
             mPrinter.writeTitle();
-            JiffiesResult result = mLastJiffiesResult;
-            if (result != null) {
-                onReportJiffies(result);
+            JiffiesMonitorFeature jiffiesFeautre = mMonitor.getMonitorFeature(JiffiesMonitorFeature.class);
+            if (null != jiffiesFeautre && null != mLastJiffiesSnapshot) {
+                JiffiesSnapshot curr = jiffiesFeautre.currentJiffiesSnapshot();
+                Delta<JiffiesSnapshot> delta = curr.diff(mLastJiffiesSnapshot);
+                onReportJiffies(delta);
 
                 // header
                 mPrinter.append("| ").append("pid=").append(Process.myPid())
-                        .tab().tab().append("fg=").append(mMonitor.isForeground())
-                        .tab().tab().append("during(min)=").append(result.upTimeDiff / ONE_MIN).append("<").append(result.timeDiff / ONE_MIN)
-                        .tab().tab().append("diff(jiffies)=").append(result.totalJiffiesDiff)
-                        .tab().tab().append("avg(jiffies/min)=").append(result.totalJiffiesDiff / Math.max(1, result.upTimeDiff / ONE_MIN))
+                        .tab().tab().append("fg=").append(isForeground)
+                        .tab().tab().append("during(min)=").append(delta.end.time / ONE_MIN).append("<").append(delta.during / ONE_MIN)
+                        .tab().tab().append("diff(jiffies)=").append(delta.dlt.totalJiffies.get())
+                        .tab().tab().append("avg(jiffies/min)=").append(delta.dlt.totalJiffies.get() / Math.max(1, delta.during / ONE_MIN))
                         .enter();
 
                 // jiffies sections
-                mPrinter.createSection("jiffies(" + result.status + ")");
-                for (JiffiesResult.ThreadJiffies threadJiffies : result.threadJiffies.subList(0, Math.min(result.threadJiffies.size(), 8))) {
-                    if (threadJiffies.jiffiesDiff <= 0) {
-                        mPrinter.append("|\t\t......\n");
-                        break;
-                    }
-                    mPrinter.append("| -> ").append(threadJiffies).append("\n");
-                    List<LooperTaskMonitorFeature.TaskTraceInfo> threadTasks = tasks.get(threadJiffies.threadInfo.tid);
+                mPrinter.createSection("jiffies(" + delta.dlt.threadEntries.getList().size() + ")");
+                for (ThreadJiffiesSnapshot threadJiffies : delta.dlt.threadEntries.getList().subList(0, Math.min(delta.dlt.threadEntries.getList().size(), 8))) {
+                    mPrinter.append("|   -> (").append(threadJiffies.isNewAdded ? "+" : "~").append(")")
+                            .append(threadJiffies.name).append("(").append(threadJiffies.tid).append(")\t")
+                            .append(threadJiffies.get()).append("\tjiffies")
+                            .append("\n");
+
+                    List<LooperTaskMonitorFeature.TaskTraceInfo> threadTasks = tasks.get(threadJiffies.tid);
                     if (null != threadTasks && !threadTasks.isEmpty()) {
                         for (LooperTaskMonitorFeature.TaskTraceInfo task : threadTasks.subList(0, Math.min(3, threadTasks.size()))) {
                             mPrinter.append("|\t\t").append(task).append("\n");
                         }
                     }
                 }
+                mPrinter.append("|\t\t......\n");
             }
 
             onWritingSections();
@@ -161,9 +171,9 @@ public interface BatteryMonitorCallback extends JiffiesMonitorFeature.JiffiesLis
                         printer.writeLine("inc_lock_count", String.valueOf(diff.dlt.totalWakeLockCount));
                         printer.writeLine("inc_time_total", String.valueOf(diff.dlt.totalWakeLockTime));
                         printer.createSubSection("locking");
-                        for (WakeLockRecord item : diff.end.totalWakeLockRecords) {
-                            if (!item.isFinished()) {
-                                printer.writeLine(item.toString());
+                        for (MonitorFeature.Snapshot.Entry.BeanEntry<WakeLockRecord> item : diff.end.totalWakeLockRecords.getList()) {
+                            if (!item.get().isFinished()) {
+                                printer.writeLine(item.get().toString());
                             }
                         }
                     }
@@ -180,10 +190,10 @@ public interface BatteryMonitorCallback extends JiffiesMonitorFeature.JiffiesLis
                         onReportAlarm(diff);
                         printer.createSubSection("during");
                         printer.writeLine(diff.during + "(mls)\t" + (diff.during/ONE_MIN) +"(min)");
-                        printer.writeLine("inc_alarm_count", String.valueOf(diff.dlt.totalCount));
-                        printer.writeLine("inc_trace_count", String.valueOf(diff.dlt.tracingCount));
-                        printer.writeLine("inc_dupli_group", String.valueOf(diff.dlt.duplicatedGroup));
-                        printer.writeLine("inc_dupli_count", String.valueOf(diff.dlt.duplicatedCount));
+                        printer.writeLine("inc_alarm_count", String.valueOf(diff.dlt.totalCount.get()));
+                        printer.writeLine("inc_trace_count", String.valueOf(diff.dlt.tracingCount.get()));
+                        printer.writeLine("inc_dupli_group", String.valueOf(diff.dlt.duplicatedGroup.get()));
+                        printer.writeLine("inc_dupli_count", String.valueOf(diff.dlt.duplicatedCount.get()));
                     }
                 });
             }
@@ -201,8 +211,8 @@ public interface BatteryMonitorCallback extends JiffiesMonitorFeature.JiffiesLis
                             printer.createSubSection("during");
                             printer.writeLine(cpuFreqDiff.during + "(mls)\t" + (cpuFreqDiff.during/ONE_MIN) +"(min)");
                             printer.createSubSection("cpufreq");
-                            printer.writeLine("inc", Arrays.toString(cpuFreqDiff.dlt.cpuFreq));
-                            printer.writeLine("cur", Arrays.toString(cpuFreqDiff.end.cpuFreq));
+                            printer.writeLine("inc", Arrays.toString(cpuFreqDiff.dlt.cpuFreqs.getList().toArray()));
+                            printer.writeLine("cur", Arrays.toString(cpuFreqDiff.end.cpuFreqs.getList().toArray()));
                         }
 
                         if (mLastBatteryTmpSnapshot != null) {
@@ -212,8 +222,8 @@ public interface BatteryMonitorCallback extends JiffiesMonitorFeature.JiffiesLis
                             printer.createSubSection("during");
                             printer.writeLine(batteryDiff.during + "(mls)\t" + (batteryDiff.during/ONE_MIN) +"(min)");
                             printer.createSubSection("battery_temperature");
-                            printer.writeLine("inc", String.valueOf(batteryDiff.dlt.temperature));
-                            printer.writeLine("cur", String.valueOf(batteryDiff.end.temperature));
+                            printer.writeLine("inc", String.valueOf(batteryDiff.dlt.temp.get()));
+                            printer.writeLine("cur", String.valueOf(batteryDiff.end.temp.get()));
                         }
                     }
                 });
@@ -225,7 +235,7 @@ public interface BatteryMonitorCallback extends JiffiesMonitorFeature.JiffiesLis
             printerConsumer.accept(mPrinter);
         }
 
-        protected void onReportJiffies(@NonNull JiffiesResult result) {}
+        protected void onReportJiffies(@NonNull Delta<JiffiesSnapshot> delta) {}
         protected void onReportWakeLock(@NonNull Delta<WakeLockSnapshot> delta) {}
         protected void onReportAlarm(@NonNull Delta<AlarmSnapshot> delta) {}
         protected void onReportCpuFreq(@NonNull Delta<CpuFreqSnapshot> delta) {}

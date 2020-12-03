@@ -16,12 +16,14 @@
 
 package com.tencent.matrix.batterycanary.utils;
 
+import android.app.ActivityManager;
 import android.app.AlarmManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.BatteryManager;
 import android.os.Build;
+import android.os.PowerManager;
 import android.os.SystemClock;
 import android.support.annotation.Nullable;
 import android.support.annotation.RestrictTo;
@@ -35,8 +37,12 @@ import java.io.File;
 import java.io.FileFilter;
 import java.io.RandomAccessFile;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.ListIterator;
 import java.util.regex.Pattern;
+
+import static android.content.Context.ACTIVITY_SERVICE;
 
 /**
  * @author liyongjie
@@ -177,7 +183,7 @@ public final class BatteryCanaryUtil {
     }
 
     @Nullable
-    static String cat(String path) {
+    public static String cat(String path) {
         if (TextUtils.isEmpty(path)) return null;
         try (RandomAccessFile restrictedFile = new RandomAccessFile(path, "r")) {
             return restrictedFile.readLine();
@@ -205,4 +211,72 @@ public final class BatteryCanaryUtil {
         int plugged = batIntent.getIntExtra(BatteryManager.EXTRA_PLUGGED, -1);
         return plugged == BatteryManager.BATTERY_PLUGGED_AC || plugged == BatteryManager.BATTERY_PLUGGED_USB || plugged == BatteryManager.BATTERY_PLUGGED_WIRELESS;
     }
+
+    public static boolean isDeviceScreenOn(Context context) {
+        try {
+            PowerManager pm = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
+            if (pm != null) {
+                return Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT_WATCH ? pm.isInteractive() : pm .isScreenOn();
+            }
+        } catch (Exception ignored) {
+        }
+        return false;
+    }
+
+    public static boolean isDeviceOnPowerSave(Context context) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            try {
+                PowerManager pm = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
+                if (pm != null) {
+                    return pm.isPowerSaveMode();
+                }
+            } catch (Exception ignored) {
+            }
+        }
+        return false;
+    }
+
+    public static boolean hasForegroundService(Context context) {
+        try {
+            ActivityManager am = (ActivityManager) context.getSystemService(ACTIVITY_SERVICE);
+            if (am != null) {
+                List<ActivityManager.RunningServiceInfo> runningServices = am.getRunningServices(Integer.MAX_VALUE);
+                for (ActivityManager.RunningServiceInfo runningServiceInfo : runningServices) {
+                    if (!TextUtils.isEmpty(runningServiceInfo.process)
+                            && runningServiceInfo.process.startsWith(context.getPackageName())) {
+                        if (runningServiceInfo.foreground) {
+                            return true;
+                        }
+                    }
+                }
+            }
+        } catch (Throwable ignored) {
+        }
+        return false;
+    }
+
+    public static List<ActivityManager.RunningServiceInfo> listForegroundServices(Context context) {
+        List<ActivityManager.RunningServiceInfo> list = Collections.emptyList();
+        try {
+            ActivityManager am = (ActivityManager) context.getSystemService(ACTIVITY_SERVICE);
+            if (am != null) {
+                List<ActivityManager.RunningServiceInfo> runningServices = am.getRunningServices(Integer.MAX_VALUE);
+                for (ActivityManager.RunningServiceInfo runningServiceInfo : runningServices) {
+                    if (!TextUtils.isEmpty(runningServiceInfo.process)
+                            && runningServiceInfo.process.startsWith(context.getPackageName())) {
+                        if (runningServiceInfo.foreground) {
+                            if (list.isEmpty()) {
+                                list = new ArrayList<>();
+                            }
+                            list.add(runningServiceInfo);
+                        }
+                    }
+                }
+            }
+        } catch (Throwable ignored) {
+        }
+        return list;
+    }
+
+
 }

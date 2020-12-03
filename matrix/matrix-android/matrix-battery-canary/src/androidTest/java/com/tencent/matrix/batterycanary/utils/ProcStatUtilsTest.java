@@ -19,13 +19,12 @@ package com.tencent.matrix.batterycanary.utils;
 import android.content.Context;
 import android.os.Process;
 import android.os.SystemClock;
-import android.support.annotation.Nullable;
 import android.support.test.InstrumentationRegistry;
 import android.support.test.runner.AndroidJUnit4;
 import android.text.TextUtils;
 
+import com.tencent.matrix.batterycanary.TestUtils;
 import com.tencent.matrix.util.MatrixLog;
-import com.tencent.matrix.util.MatrixUtil;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -48,7 +47,7 @@ import java.util.Arrays;
  */
 @SuppressWarnings("SpellCheckingInspection")
 @RunWith(AndroidJUnit4.class)
-public class ProcessCpuTrackUtilsTest {
+public class ProcStatUtilsTest {
     static final String TAG = "Matrix.test.ProcessCpuTrackUtilsTest";
 
     Context mContext;
@@ -66,7 +65,8 @@ public class ProcessCpuTrackUtilsTest {
     public void testGetCurrentMethodName() {
         Assert.assertEquals(
                 "testGetCurrentMethodName",
-                new Object() {}
+                new Object() {
+                }
                         .getClass()
                         .getEnclosingMethod()
                         .getName()
@@ -76,10 +76,76 @@ public class ProcessCpuTrackUtilsTest {
         Assert.assertEquals("testGetCurrentMethodName", ste[2].getMethodName());
     }
 
-    private static boolean skipWhenAssemle() {
-        StackTraceElement[] ste = Thread.currentThread().getStackTrace();
-        String outterMehotdName = ste[2 + 1].getMethodName();
-        return !InstrumentationRegistry.getArguments().get("class").toString().endsWith("#" + outterMehotdName);
+    @Test
+    public void testGetThreadJiffies() {
+        ProcStatUtil.ProcStat stat = ProcStatUtil.current();
+        Assert.assertNotNull(stat);
+        Assert.assertNotNull(stat.comm);
+        Assert.assertTrue(stat.utime >= 0);
+        Assert.assertTrue(stat.stime >= 0);
+        Assert.assertTrue(stat.cutime >= 0);
+        Assert.assertTrue(stat.cstime >= 0);
+        Assert.assertTrue(stat.getJiffies() >= 0);
+
+        ProcStatUtil.ProcStat end = ProcStatUtil.current();
+        Assert.assertNotNull(end);
+        Assert.assertEquals(stat.comm, end.comm);
+        Assert.assertTrue(end.getJiffies() - stat.getJiffies() >= 0);
+    }
+
+    @Test
+    public void testGetThreadJiffiesDelta() {
+        String message = "";
+        long bgnMillis, endMillis;
+        ProcStatUtil.ProcStat bgn, end;
+
+        for (int round = 0; round < 10; round++) {
+            message += "\nROUND " + round;
+
+            bgnMillis = SystemClock.currentThreadTimeMillis();
+            bgn = ProcStatUtil.current();
+            Assert.assertNotNull(bgn);
+
+            for (int i = 0; i < 10000; i++) {
+                Assert.assertNotNull(ProcStatUtil.current());
+            }
+
+            endMillis = SystemClock.currentThreadTimeMillis();
+            end = ProcStatUtil.current();
+            Assert.assertNotNull(end);
+
+            message += "\nbgn: " + (bgnMillis) + " vs " + (bgn.getJiffies());
+            message += "\nend: " + (endMillis) + " vs " + (end.getJiffies());
+            message += "\ndlt:" + (endMillis - bgnMillis) + " vs " + (end.getJiffies() - bgn.getJiffies());
+        }
+
+        if (!TestUtils.isAssembleTest()) {
+            Assert.fail(message);
+        }
+    }
+
+    @Test
+    public void testProcStatBenchmark() {
+        if (TestUtils.isAssembleTest()) return;
+        long delta1, delta2;
+        long bgnMillis, endMillis;
+
+        bgnMillis = SystemClock.currentThreadTimeMillis();
+        for (int i = 0; i < 10000; i++) {
+            SystemClock.currentThreadTimeMillis();
+        }
+        endMillis = SystemClock.currentThreadTimeMillis();
+        delta1 = endMillis - bgnMillis;
+
+        bgnMillis = SystemClock.currentThreadTimeMillis();
+        for (int i = 0; i < 10000; i++) {
+            ProcStatUtil.current();
+        }
+        endMillis = SystemClock.currentThreadTimeMillis();
+        delta2 = endMillis - bgnMillis;
+
+
+        Assert.fail("TIME CONSUMED: " + delta1 + " vs " + delta2);
     }
 
     /**
@@ -89,12 +155,6 @@ public class ProcessCpuTrackUtilsTest {
     public void testGetCpuLoad() {
         String cat = BatteryCanaryUtil.cat("/proc/loadavg");
         Assert.assertTrue(TextUtils.isEmpty(cat));
-    }
-
-    @Test
-    public void testGetCpuLoad2() {
-        ProcessCpuTrackUtils.CpuLoad cpuLoad = ProcessCpuTrackUtils.getCpuLoad();
-        Assert.assertNotNull(cpuLoad);
     }
 
     /**
@@ -131,7 +191,7 @@ public class ProcessCpuTrackUtilsTest {
                 String cat = BatteryCanaryUtil.cat(catPath);
                 Assert.assertFalse(TextUtils.isEmpty(cat));
 
-                ProcStatInfo stat = parseJiffiesInfoWithSplitsForPath(catPath);
+                ProcStatUtil.ProcStat stat = parseJiffiesInfoWithSplitsForPath(catPath);
                 Assert.assertNotNull(stat.comm);
                 Assert.assertTrue(stat.utime >= 0);
                 Assert.assertTrue(stat.stime >= 0);
@@ -153,7 +213,7 @@ public class ProcessCpuTrackUtilsTest {
                 String cat = BatteryCanaryUtil.cat(catPath);
                 Assert.assertFalse(TextUtils.isEmpty(cat));
 
-                ProcStatInfo stat = parseJiffiesInfoWithBufferForPath(catPath, new byte[2 * 1024]);
+                ProcStatUtil.ProcStat stat = parseJiffiesInfoWithBufferForPath(catPath, new byte[2 * 1024]);
                 Assert.assertNotNull(stat.comm);
                 Assert.assertTrue(stat.utime >= 0);
                 Assert.assertTrue(stat.stime >= 0);
@@ -175,7 +235,7 @@ public class ProcessCpuTrackUtilsTest {
                 String cat = BatteryCanaryUtil.cat(catPath);
                 Assert.assertFalse(TextUtils.isEmpty(cat));
 
-                ProcStatInfo stat = parseJiffiesInfoWithBufferForPathR2(catPath);
+                ProcStatUtil.ProcStat stat = parseJiffiesInfoWithBufferForPathR2(catPath);
                 Assert.assertNotNull(stat.comm);
                 Assert.assertTrue(stat.utime >= 0);
                 Assert.assertTrue(stat.stime >= 0);
@@ -196,8 +256,8 @@ public class ProcessCpuTrackUtilsTest {
                 String catPath = new File(item, "stat").getAbsolutePath();
                 String cat = BatteryCanaryUtil.cat(catPath);
                 Assert.assertFalse(TextUtils.isEmpty(cat));
-                ProcStatInfo statInfo1 = parseJiffiesInfoWithSplits(cat);
-                ProcStatInfo statInfo2 = parseJiffiesInfoWithBuffer(cat.getBytes());
+                ProcStatUtil.ProcStat statInfo1 = ProcStatUtil.parseWithSplits(cat);
+                ProcStatUtil.ProcStat statInfo2 = parseJiffiesInfoWithBuffer(cat.getBytes());
                 Assert.assertEquals(statInfo1.comm, statInfo2.comm);
                 Assert.assertEquals(statInfo1.utime, statInfo2.utime);
                 Assert.assertEquals(statInfo1.stime, statInfo2.stime);
@@ -205,7 +265,7 @@ public class ProcessCpuTrackUtilsTest {
                 Assert.assertEquals(statInfo1.cstime, statInfo2.cstime);
 
                 cat = getProStatText(catPath);
-                statInfo1 = parseJiffiesInfoWithSplits(cat);
+                statInfo1 = ProcStatUtil.parseWithSplits(cat);
                 statInfo2 = parseJiffiesInfoWithBuffer(cat.getBytes());
                 Assert.assertEquals(statInfo1.comm, statInfo2.comm);
                 Assert.assertEquals(statInfo1.utime, statInfo2.utime);
@@ -218,7 +278,7 @@ public class ProcessCpuTrackUtilsTest {
 
     @Test
     public void testGetMyProcThreadStatBenchmark() {
-        if (skipWhenAssemle()) return;
+        if (TestUtils.isAssembleTest()) return;
 
         int times = 100;
         long current = SystemClock.uptimeMillis();
@@ -266,13 +326,33 @@ public class ProcessCpuTrackUtilsTest {
         Assert.assertEquals(72, sample.length());
         Assert.assertEquals(72, sample.getBytes().length);
 
-        ProcStatInfo stat = parseJiffiesInfoWithBuffer(sample.getBytes());
+        ProcStatUtil.ProcStat stat = parseJiffiesInfoWithBuffer(sample.getBytes());
         Assert.assertEquals("terycanary.test", stat.comm);
         Assert.assertEquals(22, stat.utime);
         Assert.assertEquals(2, stat.stime);
         Assert.assertEquals(33, stat.cutime);
         Assert.assertEquals(3, stat.cstime);
         long jiffies = stat.utime + stat.stime + stat.cutime + stat.cstime;
+        Assert.assertEquals(22 + 2 + 33 + 3, jiffies);
+
+        sample = "10966 (terycanary test) S 699 699 0 0 -1 1077952832 6187 0 0 0 22 2 33 3";
+        stat = parseJiffiesInfoWithBuffer(sample.getBytes());
+        Assert.assertEquals("terycanary test", stat.comm);
+        Assert.assertEquals(22, stat.utime);
+        Assert.assertEquals(2, stat.stime);
+        Assert.assertEquals(33, stat.cutime);
+        Assert.assertEquals(3, stat.cstime);
+        jiffies = stat.utime + stat.stime + stat.cutime + stat.cstime;
+        Assert.assertEquals(22 + 2 + 33 + 3, jiffies);
+
+        sample = "10966 (tery canary test) S 699 699 0 0 -1 1077952832 6187 0 0 0 22 2 33 3";
+        stat = parseJiffiesInfoWithBuffer(sample.getBytes());
+        Assert.assertEquals("tery canary test", stat.comm);
+        Assert.assertEquals(22, stat.utime);
+        Assert.assertEquals(2, stat.stime);
+        Assert.assertEquals(33, stat.cutime);
+        Assert.assertEquals(3, stat.cstime);
+        jiffies = stat.utime + stat.stime + stat.cutime + stat.cstime;
         Assert.assertEquals(22 + 2 + 33 + 3, jiffies);
     }
 
@@ -285,8 +365,8 @@ public class ProcessCpuTrackUtilsTest {
                 String catPath = new File(item, "stat").getAbsolutePath();
                 String cat = BatteryCanaryUtil.cat(catPath);
                 Assert.assertFalse(TextUtils.isEmpty(cat));
-                ProcStatInfo statInfo1 = parseJiffiesInfoWithBuffer(cat.getBytes());
-                ProcStatInfo statInfo2 = parseJiffiesInfoWithBuffer(Arrays.copyOfRange(cat.getBytes(), 0, 127));
+                ProcStatUtil.ProcStat statInfo1 = parseJiffiesInfoWithBuffer(cat.getBytes());
+                ProcStatUtil.ProcStat statInfo2 = parseJiffiesInfoWithBuffer(Arrays.copyOfRange(cat.getBytes(), 0, 127));
                 Assert.assertEquals(statInfo1.comm, statInfo2.comm);
                 Assert.assertEquals(statInfo1.utime, statInfo2.utime);
                 Assert.assertEquals(statInfo1.stime, statInfo2.stime);
@@ -298,7 +378,7 @@ public class ProcessCpuTrackUtilsTest {
 
     @Test
     public void testGetMyProcThreadStatWithBufferBenchmark() {
-        if (skipWhenAssemle()) return;
+        if (TestUtils.isAssembleTest()) return;
 
         int times = 100;
         long current = SystemClock.uptimeMillis();
@@ -307,7 +387,7 @@ public class ProcessCpuTrackUtilsTest {
             for (File item : new File(dirPath).listFiles()) {
                 if (item.isDirectory()) {
                     String catPath = new File(item, "stat").getAbsolutePath();
-                    ProcStatInfo stat = parseJiffiesInfoWithBufferForPath(catPath, new byte[2 * 1024]);
+                    ProcStatUtil.ProcStat stat = parseJiffiesInfoWithBufferForPath(catPath, new byte[2 * 1024]);
                     Assert.assertNotNull(stat.comm);
                     Assert.assertTrue(stat.utime >= 0);
                     Assert.assertTrue(stat.stime >= 0);
@@ -326,7 +406,7 @@ public class ProcessCpuTrackUtilsTest {
             for (File item : new File(dirPath).listFiles()) {
                 if (item.isDirectory()) {
                     String catPath = new File(item, "stat").getAbsolutePath();
-                    ProcStatInfo stat = parseJiffiesInfoWithBufferForPath(catPath, new byte[128]);
+                    ProcStatUtil.ProcStat stat = parseJiffiesInfoWithBufferForPath(catPath, new byte[128]);
                     Assert.assertNotNull(stat.comm);
                     Assert.assertTrue(stat.utime >= 0);
                     Assert.assertTrue(stat.stime >= 0);
@@ -342,37 +422,12 @@ public class ProcessCpuTrackUtilsTest {
         Assert.fail("TIME CONSUMED: " + timeConsumed1 + " vs " + timeConsumed2);
     }
 
-    public static class ProcStatInfo {
-        @Nullable
-        public String comm;
-        public long utime = -1;
-        public long stime = -1;
-        public long cutime = -1;
-        public long cstime = -1;
+
+    static ProcStatUtil.ProcStat parseJiffiesInfoWithSplitsForPath(String path) {
+        return ProcStatUtil.parseWithSplits(BatteryCanaryUtil.cat(path));
     }
 
-    static ProcStatInfo parseJiffiesInfoWithSplitsForPath(String path) {
-        return parseJiffiesInfoWithSplits(BatteryCanaryUtil.cat(path));
-    }
-
-    static ProcStatInfo parseJiffiesInfoWithSplits(String cat) {
-        // cat = cat.substring(0, cat.length() / 2);
-        ProcStatInfo stat = new ProcStatInfo();
-        if (!TextUtils.isEmpty(cat)) {
-            String[] splits = cat.split(" ");
-            String name = splits[1];
-            if (name.startsWith("(")) name = name.substring(1);
-            if (name.endsWith(")")) name = name.substring(0, name.length() - 1);
-            stat.comm = name;
-            stat.utime = MatrixUtil.parseLong(splits[13], 0);
-            stat.stime = MatrixUtil.parseLong(splits[14], 0);
-            stat.cutime = MatrixUtil.parseLong(splits[15], 0);
-            stat.cstime = MatrixUtil.parseLong(splits[16], 0);
-        }
-        return stat;
-    }
-
-    static ProcStatInfo parseJiffiesInfoWithBufferForPath(String path, byte[] buffer) {
+    static ProcStatUtil.ProcStat parseJiffiesInfoWithBufferForPath(String path, byte[] buffer) {
         File file = new File(path);
         if (!file.exists()) {
             return null;
@@ -392,8 +447,7 @@ public class ProcessCpuTrackUtilsTest {
         return parseJiffiesInfoWithBuffer(buffer);
     }
 
-
-    static ProcStatInfo parseJiffiesInfoWithBufferForPathR2(String path) {
+    static ProcStatUtil.ProcStat parseJiffiesInfoWithBufferForPathR2(String path) {
         String text = getProStatText(path);
         if (TextUtils.isEmpty(text)) return null;
         //noinspection ConstantConditions
@@ -415,7 +469,7 @@ public class ProcessCpuTrackUtilsTest {
                 sb.append(character);
                 if (' ' == character) {
                     spaceCount++;
-                    if (spaceCount > 16) {
+                    if (spaceCount > 20) {
                         break;
                     }
                 }
@@ -432,122 +486,8 @@ public class ProcessCpuTrackUtilsTest {
         return sb.toString();
     }
 
-
-    static ProcStatInfo parseJiffiesInfoWithBuffer(byte[] statBuffer) {
-        /*
-         * 样本:
-         * 10966 (terycanary.test) S 699 699 0 0 -1 1077952832 6187 0 0 0 22 2 0 0 20 0 17 0 9087400 5414273024
-         *  24109 18446744073709551615 421814448128 421814472944 549131058960 0 0 0 4612 1 1073775864
-         *  1 0 0 17 7 0 0 0 0 0 421814476800 421814478232 422247952384 549131060923 549131061022 549131061022
-         *  549131063262 0
-         *
-         * 字段:
-         * - pid:  进程ID.
-         * - comm: task_struct结构体的进程名
-         * - state: 进程状态, 此处为S
-         * - ppid: 父进程ID （父进程是指通过fork方式, 通过clone并非父进程）
-         * - pgrp: 进程组ID
-         * - session: 进程会话组ID
-         * - tty_nr: 当前进程的tty终点设备号
-         * - tpgid: 控制进程终端的前台进程号
-         * - flags: 进程标识位, 定义在include/linux/sched.h中的PF_*, 此处等于1077952832
-         * - minflt:  次要缺页中断的次数, 即无需从磁盘加载内存页. 比如COW和匿名页
-         * - cminflt: 当前进程等待子进程的minflt
-         * - majflt: 主要缺页中断的次数, 需要从磁盘加载内存页. 比如map文件
-         * - majflt: 当前进程等待子进程的majflt
-         * - utime: 该进程处于用户态的时间, 单位jiffies, 此处等于166114
-         * - stime: 该进程处于内核态的时间, 单位jiffies, 此处等于129684
-         * - cutime: 当前进程等待子进程的utime
-         * - cstime: 当前进程等待子进程的utime
-         * - priority: 进程优先级, 此次等于10.
-         * - nice: nice值, 取值范围[19, -20], 此处等于-10
-         * - num_threads: 线程个数, 此处等于221
-         * - itrealvalue: 该字段已废弃, 恒等于0
-         * - starttime: 自系统启动后的进程创建时间, 单位jiffies, 此处等于2284
-         * - vsize: 进程的虚拟内存大小, 单位为bytes
-         * - rss: 进程独占内存+共享库, 单位pages, 此处等于93087
-         * - rsslim: rss大小上限
-         *
-         * 说明:
-         * 第10~17行主要是随着时间而改变的量；
-         * 内核时间单位, sysconf(_SC_CLK_TCK)一般地定义为jiffies(一般地等于10ms)
-         * starttime: 此值单位为jiffies, 结合/proc/stat的btime, 可知道每一个线程启动的时间点
-         * 1500827856 + 2284/100 = 1500827856, 转换成北京时间为2017/7/24 0:37:58
-         * 第四行数据很少使用,只说一下该行第7至9个数的含义:
-         * signal: 即将要处理的信号, 十进制, 此处等于6660
-         * blocked: 阻塞的信号, 十进制
-         * sigignore: 被忽略的信号, 十进制, 此处等于36088
-         */
-
-        ProcStatInfo stat = new ProcStatInfo();
-        int statBytes = statBuffer.length;
-        for (int i = 0, spaceIdx = 0; i < statBytes; ) {
-            if (Character.isSpaceChar(statBuffer[i])) {
-                spaceIdx++;
-                i++;
-                continue;
-            }
-
-            switch (spaceIdx) {
-                case 1: { // read comm (thread name)
-                    int readIdx = i, window = 0;
-                    // seek next space
-                    // noinspection StatementWithEmptyBody
-                    for (; i < statBytes && !Character.isSpaceChar(statBuffer[i]); i++, window++) ;
-                    if ('(' == statBuffer[readIdx]) {
-                        readIdx++;
-                        window--;
-                    }
-                    if (')' == statBuffer[readIdx + window - 1]) {
-                        window--;
-                    }
-                    if (window > 0) {
-                        stat.comm = new String(statBuffer, readIdx, window);
-                    }
-                    break;
-                }
-
-                case 13: { // utime
-                    int readIdx = i, window = 0;
-                    // seek next space
-                    // noinspection StatementWithEmptyBody
-                    for (; i < statBytes && !Character.isSpaceChar(statBuffer[i]); i++, window++) ;
-                    String num = new String(statBuffer, readIdx, window);
-                    stat.utime = MatrixUtil.parseLong(num, 0);
-                    break;
-                }
-                case 14: { // stime
-                    int readIdx = i, window = 0;
-                    // seek next space
-                    // noinspection StatementWithEmptyBody
-                    for (; i < statBytes && !Character.isSpaceChar(statBuffer[i]); i++, window++) ;
-                    String num = new String(statBuffer, readIdx, window);
-                    stat.stime = MatrixUtil.parseLong(num, 0);
-                    break;
-                }
-                case 15: { // cutime
-                    int readIdx = i, window = 0;
-                    // seek next space
-                    // noinspection StatementWithEmptyBody
-                    for (; i < statBytes && !Character.isSpaceChar(statBuffer[i]); i++, window++) ;
-                    String num = new String(statBuffer, readIdx, window);
-                    stat.cutime = MatrixUtil.parseLong(num, 0);
-                    break;
-                }
-                case 16: { // cstime
-                    int readIdx = i, window = 0;
-                    // seek next space
-                    // noinspection StatementWithEmptyBody
-                    for (; i < statBytes && !Character.isSpaceChar(statBuffer[i]); i++, window++) ;
-                    String num = new String(statBuffer, readIdx, window);
-                    stat.cstime = MatrixUtil.parseLong(num, 0);
-                    break;
-                }
-
-                default:
-                    i++;
-            }
-        }
+    static ProcStatUtil.ProcStat parseJiffiesInfoWithBuffer(byte[] statBuffer) {
+        ProcStatUtil.ProcStat stat = ProcStatUtil.parseWithBuffer(statBuffer);
 
         Assert.assertNotNull(stat.comm);
         Assert.assertTrue(stat.utime >= 0);

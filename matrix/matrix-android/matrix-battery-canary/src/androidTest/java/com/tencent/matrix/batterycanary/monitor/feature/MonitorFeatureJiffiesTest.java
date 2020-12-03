@@ -17,20 +17,28 @@
 package com.tencent.matrix.batterycanary.monitor.feature;
 
 import android.app.Application;
+import android.arch.core.util.Function;
 import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.Process;
 import android.support.test.InstrumentationRegistry;
 import android.support.test.runner.AndroidJUnit4;
 
 import com.tencent.matrix.Matrix;
+import com.tencent.matrix.batterycanary.TestUtils;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorConfig;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
+import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature.JiffiesSnapshot;
+import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Delta;
 
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+
+import java.util.List;
 
 
 @RunWith(AndroidJUnit4.class)
@@ -51,6 +59,117 @@ public class MonitorFeatureJiffiesTest {
     public void shutDown() {
     }
 
+    @Test
+    public void getGetProcInfo() {
+        JiffiesMonitorFeature.ProcessInfo processInfo = JiffiesMonitorFeature.ProcessInfo.getProcessInfo();
+        Assert.assertNotNull(processInfo);
+        Assert.assertEquals(mContext.getPackageName(), processInfo.name);
+        Assert.assertTrue(processInfo.threadInfo.size() > 0);
+
+        for (JiffiesMonitorFeature.ProcessInfo.ThreadInfo item : processInfo.threadInfo) {
+            Assert.assertTrue(item.tid > 0);
+        }
+    }
+
+    @Test
+    public void getGetJiffiesSnapshot() {
+        JiffiesSnapshot snapshot = JiffiesSnapshot.currentJiffiesSnapshot(JiffiesMonitorFeature.ProcessInfo.getProcessInfo());
+        Assert.assertNotNull(snapshot);
+        Assert.assertEquals(Process.myPid(), snapshot.pid);
+        Assert.assertEquals(mContext.getPackageName(), snapshot.name);
+        Assert.assertFalse(snapshot.threadEntries.getList().isEmpty());
+        long total = 0;
+        for (JiffiesSnapshot.ThreadJiffiesSnapshot item : snapshot.threadEntries.getList()) {
+            total += item.value;
+        }
+        Assert.assertEquals(total, snapshot.totalJiffies.get().longValue());
+    }
+
+    @Test
+    public void testJiffiesDiff() {
+        final JiffiesSnapshot bgn = JiffiesSnapshot.currentJiffiesSnapshot(JiffiesMonitorFeature.ProcessInfo.getProcessInfo());
+        final JiffiesSnapshot end = JiffiesSnapshot.currentJiffiesSnapshot(JiffiesMonitorFeature.ProcessInfo.getProcessInfo());
+        Delta<JiffiesSnapshot> delta = end.diff(bgn);
+
+        Assert.assertNotNull(delta);
+        Assert.assertSame(bgn, delta.bgn);
+        Assert.assertSame(end, delta.end);
+        Assert.assertEquals(delta.dlt.totalJiffies.value.longValue(), delta.end.totalJiffies.value - delta.bgn.totalJiffies.value);
+
+        Function<Integer, JiffiesSnapshot.ThreadJiffiesSnapshot> findLastOne = new Function<Integer, JiffiesSnapshot.ThreadJiffiesSnapshot>() {
+            @Override
+            public JiffiesSnapshot.ThreadJiffiesSnapshot apply(Integer tid) {
+                for (JiffiesSnapshot.ThreadJiffiesSnapshot item : bgn.threadEntries.getList()) {
+                    if (item.tid == tid) return item;
+                }
+                return null;
+            }
+        };
+        Function<Integer, JiffiesSnapshot.ThreadJiffiesSnapshot> findCurrOne = new Function<Integer, JiffiesSnapshot.ThreadJiffiesSnapshot>() {
+            @Override
+            public JiffiesSnapshot.ThreadJiffiesSnapshot apply(Integer tid) {
+                for (JiffiesSnapshot.ThreadJiffiesSnapshot item : end.threadEntries.getList()) {
+                    if (item.tid == tid) return item;
+                }
+                return null;
+            }
+        };
+
+        for (JiffiesSnapshot.ThreadJiffiesSnapshot diff : delta.dlt.threadEntries.getList()) {
+            JiffiesSnapshot.ThreadJiffiesSnapshot last = findLastOne.apply(diff.tid);
+            JiffiesSnapshot.ThreadJiffiesSnapshot curr = findCurrOne.apply(diff.tid);
+            Assert.assertNotNull(curr);
+
+            if (diff.isNewAdded) {
+                Assert.assertNull(last);
+                Assert.assertEquals(diff.value.longValue(), curr.value.longValue());
+            } else {
+                Assert.assertNotNull(last);
+                Assert.assertEquals(diff.value.longValue(), curr.value - last.value);
+            }
+        }
+    }
+
+    @Test
+    public void testJiffiesDiffWithNewThread() {
+        final JiffiesSnapshot bgn = JiffiesSnapshot.currentJiffiesSnapshot(JiffiesMonitorFeature.ProcessInfo.getProcessInfo());
+        final JiffiesSnapshot end = JiffiesSnapshot.currentJiffiesSnapshot(JiffiesMonitorFeature.ProcessInfo.getProcessInfo());
+
+        long jiffies = 10016L;
+        final JiffiesSnapshot.ThreadJiffiesSnapshot mockThreadJiffies = new JiffiesSnapshot.ThreadJiffiesSnapshot(jiffies);
+        mockThreadJiffies.name = "mock-thread";
+        mockThreadJiffies.tid = 10086;
+        mockThreadJiffies.isNewAdded = true;
+        end.threadEntries.getList().add(mockThreadJiffies);
+        end.totalJiffies.value += jiffies;
+
+        Delta<JiffiesSnapshot> delta = end.diff(bgn);
+        Assert.assertNotNull(delta);
+        Assert.assertSame(bgn, delta.bgn);
+        Assert.assertSame(end, delta.end);
+        Assert.assertTrue(delta.dlt.threadEntries.getList().size() > 0);
+        Assert.assertEquals(delta.dlt.totalJiffies.value.longValue(), delta.end.totalJiffies.value - delta.bgn.totalJiffies.value);
+
+        Function<List<JiffiesSnapshot.ThreadJiffiesSnapshot>, JiffiesSnapshot.ThreadJiffiesSnapshot> findNewThread = new Function<List<JiffiesSnapshot.ThreadJiffiesSnapshot>, JiffiesSnapshot.ThreadJiffiesSnapshot>() {
+            @Override
+            public JiffiesSnapshot.ThreadJiffiesSnapshot apply(List<JiffiesSnapshot.ThreadJiffiesSnapshot> list) {
+                for (JiffiesSnapshot.ThreadJiffiesSnapshot item : list) {
+                    if (mockThreadJiffies.name.equals(item.name) && item.tid == mockThreadJiffies.tid ) return item;
+                }
+                return null;
+            }
+        };
+
+        JiffiesSnapshot.ThreadJiffiesSnapshot last = findNewThread.apply(delta.bgn.threadEntries.getList());
+        JiffiesSnapshot.ThreadJiffiesSnapshot curr = findNewThread.apply(delta.end.threadEntries.getList());
+        JiffiesSnapshot.ThreadJiffiesSnapshot diff = findNewThread.apply(delta.dlt.threadEntries.getList());
+        Assert.assertNull(last);
+        Assert.assertNotNull(curr);
+        Assert.assertNotNull(diff);
+        Assert.assertTrue(diff.isNewAdded);
+        Assert.assertEquals(diff.value.longValue(), curr.value.longValue());
+    }
+
     private BatteryMonitorCore mockMonitor() {
         BatteryMonitorConfig config = new BatteryMonitorConfig.Builder()
                 .enable(JiffiesMonitorFeature.class)
@@ -65,6 +184,8 @@ public class MonitorFeatureJiffiesTest {
 
     @Test
     public void testJiffiesForegroundLoopCheck() throws InterruptedException {
+        if (TestUtils.isAssembleTest()) { return; }
+
         Thread thread = new Thread(new Runnable() {
             @Override
             public void run() {
@@ -78,20 +199,23 @@ public class MonitorFeatureJiffiesTest {
         thread.start();
 
         final JiffiesMonitorFeature feature = new JiffiesMonitorFeature();
-        feature.configure(mockMonitor());
-        feature.enableForegroundLoopCheck(true);
+        final BatteryMonitorCore monitor = mockMonitor();
+        monitor.enableForegroundLoopCheck(true);
+        feature.configure(monitor);
         Handler handler = new Handler(Looper.getMainLooper());
         handler.post(new Runnable() {
             @Override
             public void run() {
-                feature.onForeground(true);
+                monitor.onForeground(true);
             }
         });
-        Thread.sleep(5000L);
+        Thread.sleep(500000L);
     }
 
     @Test
     public void testJiffiesBackgroundCheck() throws InterruptedException {
+        if (TestUtils.isAssembleTest()) { return; }
+
         Thread thread = new Thread(new Runnable() {
             @Override
             public void run() {

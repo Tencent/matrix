@@ -25,6 +25,7 @@ public class BatteryMonitorConfig {
     public long foregroundLoopCheckTime = DEF_FOREGROUND_SCHEDULE_TIME;
     public boolean isForegroundModeEnabled = true;
     public boolean isBuiltinForegroundNotifyEnabled = true;
+    public List<String> tagWhiteList = Collections.emptyList();
     public final List<MonitorFeature> features = new ArrayList<>(3);
 
     private BatteryMonitorConfig() {}
@@ -55,7 +56,6 @@ public class BatteryMonitorConfig {
             return this;
         }
 
-
         public Builder foregroundLoopCheckTime(long time) {
             config.foregroundLoopCheckTime = time;
             return this;
@@ -71,6 +71,14 @@ public class BatteryMonitorConfig {
 
         public Builder enableBuiltinForegroundNotify(boolean enable) {
             config.isBuiltinForegroundNotifyEnabled = enable;
+            return this;
+        }
+
+        public Builder addWakeLockWhiteList(String tag) {
+            if (config.tagWhiteList == Collections.EMPTY_LIST) {
+                config.tagWhiteList = new ArrayList<>();
+            }
+            config.tagWhiteList.add(tag);
             return this;
         }
 

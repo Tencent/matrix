@@ -53,6 +53,7 @@ public class PowerManagerHookerTest {
 
     @After
     public void shutDown() {
+        PowerManagerServiceHooker.release();
     }
 
     @Test

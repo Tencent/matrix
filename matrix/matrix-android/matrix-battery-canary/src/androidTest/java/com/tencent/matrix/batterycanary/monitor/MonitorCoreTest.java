@@ -55,13 +55,8 @@ public class MonitorCoreTest {
             }
 
             @Override
-            public void onTraceEnd() {
-                super.onTraceEnd();
-            }
-
-            @Override
-            public void onJiffies(JiffiesMonitorFeature.JiffiesResult result) {
-                super.onJiffies(result);
+            public void onTraceEnd(boolean isForeground) {
+                super.onTraceEnd(isForeground);
             }
 
             @Override

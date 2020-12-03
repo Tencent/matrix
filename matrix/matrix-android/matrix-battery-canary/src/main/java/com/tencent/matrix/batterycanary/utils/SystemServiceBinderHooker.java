@@ -18,6 +18,7 @@ package com.tencent.matrix.batterycanary.utils;
 
 import android.os.IBinder;
 import android.os.IInterface;
+import android.support.annotation.Nullable;
 import android.support.annotation.RestrictTo;
 
 import com.tencent.matrix.util.MatrixLog;
@@ -34,128 +35,143 @@ import java.util.Map;
  */
 @RestrictTo(RestrictTo.Scope.LIBRARY)
 public class SystemServiceBinderHooker {
-    private static final String TAG = "Matrix.battery.SystemServiceHooker";
+    private static final String TAG = "Matrix.battery.SystemServiceBinderHooker";
 
     public interface HookCallback {
         void onServiceMethodInvoke(Method method, Object[] args);
     }
 
     private final String mServiceName;
-    private final String mServiceClsName;
+    private final String mServiceClass;
     private final HookCallback mHookCallback;
 
-    private IBinder mServiceOriginBinder;
+    @Nullable private IBinder mOriginServiceBinder;
+    @Nullable private IBinder mDelegateServiceBinder;
 
-    public SystemServiceBinderHooker(final String serviceName, final String serviceClsName, final HookCallback hookCallback) {
+    public SystemServiceBinderHooker(final String serviceName, final String serviceClass, final HookCallback hookCallback) {
         mServiceName = serviceName;
-        mServiceClsName = serviceClsName;
+        mServiceClass = serviceClass;
         mHookCallback = hookCallback;
     }
 
+    @SuppressWarnings({"PrivateApi", "unchecked", "rawtypes"})
     public boolean doHook() {
-        MatrixLog.i(TAG, "doHook: serviceName:%s, serviceClsName:%s", mServiceName, mServiceClsName);
+        MatrixLog.i(TAG, "doHook: serviceName:%s, serviceClsName:%s", mServiceName, mServiceClass);
         try {
+            BinderProxyHandler binderProxyHandler = new BinderProxyHandler(mServiceName, mServiceClass, mHookCallback);
+            IBinder delegateBinder = binderProxyHandler.createProxyBinder();
+
             Class<?> serviceManagerCls = Class.forName("android.os.ServiceManager");
-            Method getService = serviceManagerCls.getDeclaredMethod("getService", String.class);
-            mServiceOriginBinder = (IBinder) getService.invoke(null, mServiceName);
-
-            ClassLoader classLoader = serviceManagerCls.getClassLoader();
-            if (classLoader == null) {
-                MatrixLog.e(TAG, "doHook exp classLoader null ");
-                return false;
-            }
-
-            IBinder hookedBinder = (IBinder) Proxy.newProxyInstance(classLoader,
-                    new Class<?>[]{IBinder.class},
-                    new BinderHookHandler(mServiceOriginBinder, createHookServiceProxy()));
-
             Field cacheField = serviceManagerCls.getDeclaredField("sCache");
             cacheField.setAccessible(true);
             Map<String, IBinder> cache = (Map) cacheField.get(null);
-            cache.put(mServiceName, hookedBinder);
-            return true;
-        } catch (Throwable e) {
-            MatrixLog.e(TAG, "doHook exp : " + e.getLocalizedMessage());
-        }
+            cache.put(mServiceName, delegateBinder);
 
+            mDelegateServiceBinder = delegateBinder;
+            mOriginServiceBinder = binderProxyHandler.getOriginBinder();
+            return true;
+
+        } catch (Throwable e) {
+            MatrixLog.e(TAG, "#doHook exp: " + e.getLocalizedMessage());
+        }
         return false;
     }
 
+    @SuppressWarnings({"PrivateApi", "unchecked", "rawtypes"})
     public boolean doUnHook() {
-        if (mServiceOriginBinder == null) {
-            MatrixLog.i(TAG, "doUnHook sOriginPowerManagerService null");
+        if (mOriginServiceBinder == null) {
+            MatrixLog.w(TAG, "#doUnHook mOriginServiceBinder null");
+            return false;
+        }
+        if (mDelegateServiceBinder == null) {
+            MatrixLog.w(TAG, "#doUnHook mDelegateServiceBinder null");
             return false;
         }
 
         try {
+            IBinder currentBinder = BinderProxyHandler.getCurrentBinder(mServiceName);
+            if (mDelegateServiceBinder != currentBinder) {
+                MatrixLog.w(TAG, "#doUnHook mDelegateServiceBinder != currentBinder");
+                return false;
+            }
+
             Class<?> serviceManagerCls = Class.forName("android.os.ServiceManager");
             Field cacheField = serviceManagerCls.getDeclaredField("sCache");
             cacheField.setAccessible(true);
             Map<String, IBinder> cache = (Map) cacheField.get(null);
-            cache.put(mServiceName, mServiceOriginBinder);
+            cache.put(mServiceName, mOriginServiceBinder);
             return true;
         } catch (Throwable e) {
-            MatrixLog.e(TAG, "doUnHook exp : " + e.getLocalizedMessage());
+            MatrixLog.e(TAG, "#doUnHook exp: " + e.getLocalizedMessage());
         }
         return false;
     }
 
-    private static final class BinderHookHandler implements InvocationHandler {
-        private final IBinder mOriginBinder;
-        private final Object mServiceProxy;
 
-        BinderHookHandler(IBinder originBinder, final Object serviceProxy) {
-            mOriginBinder = originBinder;
-            mServiceProxy = serviceProxy;
+    static final class BinderProxyHandler implements InvocationHandler {
+        private final IBinder mOriginBinder;
+        private final Object mServiceManagerProxy;
+
+        BinderProxyHandler(String serviceName, String serviceClass, HookCallback callback) throws Exception {
+            mOriginBinder = getCurrentBinder(serviceName);
+            mServiceManagerProxy = createServiceManagerProxy(serviceClass, mOriginBinder, callback);
         }
 
         @Override
         public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
             if ("queryLocalInterface".equals(method.getName())) {
-                if (mServiceProxy != null) {
-                    return mServiceProxy;
-                }
+                return mServiceManagerProxy;
             }
             return method.invoke(mOriginBinder, args);
         }
-    }
 
-    private Object createHookServiceProxy() {
-        try {
-            Class<?> clsIPowerManager = Class.forName(mServiceClsName);
-            Class<?> clsIPowerManagerStubCls = Class.forName(String.format("%s$Stub", mServiceClsName));
-            Method asInterfaceMethod = clsIPowerManagerStubCls.getDeclaredMethod("asInterface", IBinder.class);
-            Object originPowerManagerService = asInterfaceMethod.invoke(null, mServiceOriginBinder);
-            ClassLoader classLoader = clsIPowerManagerStubCls.getClassLoader();
+        public IBinder getOriginBinder() {
+            return mOriginBinder;
+        }
+
+        @SuppressWarnings({"PrivateApi"})
+        public IBinder createProxyBinder() throws Exception  {
+            Class<?> serviceManagerCls = Class.forName("android.os.ServiceManager");
+            ClassLoader classLoader = serviceManagerCls.getClassLoader();
             if (classLoader == null) {
-                MatrixLog.e(TAG, "doHook exp classLoader null ");
-                return false;
+                throw new IllegalStateException("Can not get ClassLoader of " + serviceManagerCls.getName());
             }
+            return (IBinder) Proxy.newProxyInstance(
+                    classLoader,
+                    new Class<?>[]{IBinder.class},
+                    this
+            );
+        }
+
+        @SuppressWarnings({"PrivateApi"})
+        static IBinder getCurrentBinder(String serviceName) throws Exception {
+            Class<?> serviceManagerCls = Class.forName("android.os.ServiceManager");
+            Method getService = serviceManagerCls.getDeclaredMethod("getService", String.class);
+            return  (IBinder) getService.invoke(null, serviceName);
+        }
+
+        @SuppressWarnings({"PrivateApi"})
+        private static Object createServiceManagerProxy(String serviceClassName, IBinder originBinder, final HookCallback callback) throws Exception  {
+            Class<?> serviceManagerCls = Class.forName(serviceClassName);
+            Class<?> serviceManagerStubCls = Class.forName(serviceClassName + "$Stub");
+            ClassLoader classLoader = serviceManagerStubCls.getClassLoader();
+            if (classLoader == null) {
+                throw new IllegalStateException("get service manager ClassLoader fail!");
+            }
+            Method asInterfaceMethod = serviceManagerStubCls.getDeclaredMethod("asInterface", IBinder.class);
+            final Object originManagerService = asInterfaceMethod.invoke(null, originBinder);
             return Proxy.newProxyInstance(classLoader,
-                    new Class[]{IBinder.class, IInterface.class, clsIPowerManager},
-                    new ServiceHookHandler(originPowerManagerService, mHookCallback));
-        } catch (Throwable e) {
-            MatrixLog.w(TAG, "createPowerManagerServiceProxy exp:%s", e.getLocalizedMessage());
-        }
-        return null;
-    }
-
-    private static class ServiceHookHandler implements InvocationHandler {
-        final Object mOriginSystemService;
-        final HookCallback mCallback;
-
-        ServiceHookHandler(Object originPowerManagerService, HookCallback callback) {
-            mOriginSystemService = originPowerManagerService;
-            mCallback = callback;
-        }
-
-        @Override
-        public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
-            if (mCallback != null) {
-                mCallback.onServiceMethodInvoke(method, args);
-            }
-
-            return method.invoke(mOriginSystemService, args);
+                    new Class[]{IBinder.class, IInterface.class, serviceManagerCls},
+                    new InvocationHandler() {
+                        @Override
+                        public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+                            if (callback != null) {
+                                callback.onServiceMethodInvoke(method, args);
+                            }
+                            return method.invoke(originManagerService, args);
+                        }
+                    }
+            );
         }
     }
 }

@@ -1,38 +1,101 @@
 package com.tencent.matrix.batterycanary.monitor;
 
 import android.content.Context;
+import android.os.Handler;
+import android.os.Message;
+import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
+import android.support.annotation.VisibleForTesting;
 
 import com.tencent.matrix.AppActiveMatrixDelegate;
 import com.tencent.matrix.Matrix;
 import com.tencent.matrix.batterycanary.monitor.feature.AlarmMonitorFeature;
-import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.LooperTaskMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.WakeLockMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.WakeLockMonitorFeature.WakeLockTrace.WakeLockRecord;
 import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
+import com.tencent.matrix.util.MatrixHandlerThread;
 import com.tencent.matrix.util.MatrixLog;
 
 import java.util.List;
 
-public class BatteryMonitorCore implements JiffiesMonitorFeature.JiffiesListener, LooperTaskMonitorFeature.LooperTaskListener,
+public class BatteryMonitorCore implements Handler.Callback, LooperTaskMonitorFeature.LooperTaskListener,
         WakeLockMonitorFeature.WakeLockListener, AlarmMonitorFeature.AlarmListener {
     private static final String TAG = "Matrix.battery.watchdog";
 
-    private volatile boolean isTurnOn = false;
-    private boolean isAppForeground = AppActiveMatrixDelegate.INSTANCE.isAppForeground();
-    private final BatteryMonitorConfig config;
+    public interface JiffiesListener {
+        void onTraceBegin();
+        void onTraceEnd(boolean isForeground); // TODO: configurable status support
+    }
+
+    private class ForegroundLoopCheckTask implements Runnable {
+        int lastWhat = MSG_ID_JIFFIES_START;
+        @Override
+        public void run() {
+            if (mForegroundModeEnabled) {
+                Message message = Message.obtain(mHandler);
+                message.what = lastWhat;
+                message.arg1 = MSG_ARG_FOREGROUND;
+                mHandler.sendMessageAtFrontOfQueue(message);
+                lastWhat = (lastWhat == MSG_ID_JIFFIES_END ? MSG_ID_JIFFIES_START : MSG_ID_JIFFIES_END);
+                mHandler.postDelayed(this, mLooperMillis);
+            }
+        }
+    }
+
+    private static final int MSG_ID_JIFFIES_START = 0x1;
+    private static final int MSG_ID_JIFFIES_END = 0x2;
+    private static final int MSG_ARG_FOREGROUND = 0x3;
+
+    @NonNull private Handler mHandler;
+    @Nullable private ForegroundLoopCheckTask mLooperTask;
+    private final BatteryMonitorConfig mConfig;
+
+    private volatile boolean mTurnOn = false;
+    private boolean mAppForeground = AppActiveMatrixDelegate.INSTANCE.isAppForeground();
+    private boolean mForegroundModeEnabled;
+    private static long mMonitorDelayMillis;
+    private static long mLooperMillis;
 
     public BatteryMonitorCore(BatteryMonitorConfig config) {
-        this.config = config;
+        mConfig = config;
         if (config.callback instanceof BatteryMonitorCallback.BatteryPrinter) ((BatteryMonitorCallback.BatteryPrinter) config.callback).attach(this);
+
+        mHandler = new Handler(MatrixHandlerThread.getDefaultHandlerThread().getLooper(), this);
+        enableForegroundLoopCheck(config.isForegroundModeEnabled);
+        mMonitorDelayMillis = config.greyTime;
+        mLooperMillis = config.foregroundLoopCheckTime;
+
         for (MonitorFeature plugin : config.features) {
             plugin.configure(this);
         }
     }
 
+    @VisibleForTesting
+    public void enableForegroundLoopCheck(boolean bool) {
+        mForegroundModeEnabled = bool;
+        if (mForegroundModeEnabled) {
+            mLooperTask = new ForegroundLoopCheckTask();
+        }
+    }
+
+    @Override
+    public boolean handleMessage(Message msg) {
+        if (msg.what == MSG_ID_JIFFIES_START) {
+            notifyTraceBegin();
+            return true;
+        }
+        if (msg.what == MSG_ID_JIFFIES_END) {
+            notifyTraceEnd(msg.arg1 == MSG_ARG_FOREGROUND);
+            return true;
+        }
+        return false;
+    }
+
+
     public <T extends MonitorFeature> T getMonitorFeature(Class<T> clazz) {
-        for (MonitorFeature plugin : config.features) {
+        for (MonitorFeature plugin : mConfig.features) {
             if (clazz.isAssignableFrom(plugin.getClass())) {
                 //noinspection unchecked
                 return (T) plugin;
@@ -42,40 +105,68 @@ public class BatteryMonitorCore implements JiffiesMonitorFeature.JiffiesListener
     }
 
     public BatteryMonitorConfig getConfig() {
-        return config;
+        return mConfig;
     }
 
     public boolean isTurnOn() {
         synchronized (BatteryMonitorCore.class) {
-            return isTurnOn;
+            return mTurnOn;
         }
     }
 
     public void start() {
         synchronized (BatteryMonitorCore.class) {
-            if (!isTurnOn) {
-                for (MonitorFeature plugin : config.features) {
+            if (!mTurnOn) {
+                for (MonitorFeature plugin : mConfig.features) {
                     plugin.onTurnOn();
                 }
-                isTurnOn = true;
+                mTurnOn = true;
             }
         }
     }
 
     public void stop() {
         synchronized (BatteryMonitorCore.class) {
-            if (isTurnOn) {
-                for (MonitorFeature plugin : config.features) {
+            if (mTurnOn) {
+                mHandler.removeCallbacksAndMessages(null);
+                for (MonitorFeature plugin : mConfig.features) {
                     plugin.onTurnOff();
                 }
-                isTurnOn = false;
+                mTurnOn = false;
             }
         }
     }
 
     public void onForeground(boolean isForeground) {
-        isAppForeground = isForeground;
-        for (MonitorFeature plugin : config.features) {
+        if (!Matrix.isInstalled()) {
+            MatrixLog.e(TAG, "Matrix was not installed yet, just ignore the event");
+            return;
+        }
+        mAppForeground = isForeground;
+
+        if (!isForeground) {
+            // back:
+            // 1. remove all checks
+            mHandler.removeCallbacksAndMessages(null);
+            // 2. start background jiffies check
+            Message message = Message.obtain(mHandler);
+            message.what = MSG_ID_JIFFIES_START;
+            mHandler.sendMessageDelayed(message, mMonitorDelayMillis);
+        } else if (!mHandler.hasMessages(MSG_ID_JIFFIES_START)) {
+            // fore:
+            // 1. finish background jiffies check
+            Message message = Message.obtain(mHandler);
+            message.what = MSG_ID_JIFFIES_END;
+            mHandler.sendMessageAtFrontOfQueue(message);
+            // 2. start foreground jiffies loop check
+            if (mForegroundModeEnabled && mLooperTask != null) {
+                mHandler.removeCallbacks(mLooperTask);
+                mLooperTask.lastWhat = MSG_ID_JIFFIES_START;
+                mHandler.post(mLooperTask);
+            }
+        }
+
+        for (MonitorFeature plugin : mConfig.features) {
             plugin.onForeground(isForeground);
         }
     }
@@ -86,7 +177,7 @@ public class BatteryMonitorCore implements JiffiesMonitorFeature.JiffiesListener
     }
 
     public boolean isForeground() {
-        return isAppForeground;
+        return mAppForeground;
     }
 
     public int getCurrentBatteryTemperature(Context context) {
@@ -98,22 +189,14 @@ public class BatteryMonitorCore implements JiffiesMonitorFeature.JiffiesListener
         }
     }
 
-    @Override
-    public void onTraceBegin() {
+    private void notifyTraceBegin() {
         MatrixLog.d(TAG, "#onTraceBegin");
         getConfig().callback.onTraceBegin();
     }
 
-    @Override
-    public void onTraceEnd() {
+    private void notifyTraceEnd(boolean isForeground) {
         MatrixLog.d(TAG, "#onTraceEnd");
-        getConfig().callback.onTraceEnd();
-    }
-
-    @Override
-    public void onJiffies(JiffiesMonitorFeature.JiffiesResult result) {
-        MatrixLog.d(TAG, "#onJiffies, diff = " + result.totalJiffiesDiff);
-        getConfig().callback.onJiffies(result);
+        getConfig().callback.onTraceEnd(isForeground);
     }
 
     @Override
