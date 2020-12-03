@@ -132,15 +132,15 @@ void restore_frame_data(std::vector<unwindstack::FrameData> &frames) {
     LOGD("Wxperf.unwind", "restore frame %zu", frames.size());
     for (int i = 0; i < frames.size(); i++) {
         auto &frame_data = frames[i];
-        Dl_info stack_info;
-        dladdr((void *) frame_data.pc, &stack_info); // 用修正后的 pc dladdr 会偶现 npe crash, 因此还是用 lr
+        Dl_info stack_info{};
+        int success = dladdr((void *) frame_data.pc, &stack_info); // 用修正后的 pc dladdr 会偶现 npe crash, 因此还是用 lr
 
         // fp_unwind 得到的 pc 除了第 0 帧实际都是 LR, arm64 指令长度都是定长 32bit, 所以 -4 以恢复 pc
         uintptr_t real_pc = frame_data.pc - (i > 0 ? 4 : 0);
 
         frame_data.rel_pc = real_pc - (uptr) stack_info.dli_fbase;
-        frame_data.function_name = stack_info.dli_sname == nullptr ? "null" : stack_info.dli_sname;
-        frame_data.map_name = stack_info.dli_fname == nullptr ? "null" : stack_info.dli_fname;
+        frame_data.function_name = success == 0 || stack_info.dli_sname == nullptr ? "null" : stack_info.dli_sname;
+        frame_data.map_name = success == 0 || stack_info.dli_fname == nullptr ? "null" : stack_info.dli_fname;
     }
 
     return;
