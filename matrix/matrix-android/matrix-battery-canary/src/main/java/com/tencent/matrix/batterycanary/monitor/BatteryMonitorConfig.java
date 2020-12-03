@@ -2,6 +2,7 @@ package com.tencent.matrix.batterycanary.monitor;
 
 import android.support.annotation.NonNull;
 
+import com.tencent.matrix.batterycanary.BuildConfig;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature;
 
 import java.util.ArrayList;
@@ -25,6 +26,7 @@ public class BatteryMonitorConfig {
     public long foregroundLoopCheckTime = DEF_FOREGROUND_SCHEDULE_TIME;
     public boolean isForegroundModeEnabled = true;
     public boolean isBuiltinForegroundNotifyEnabled = true;
+    public boolean isStatAsSample = BuildConfig.DEBUG;
     public List<String> tagWhiteList = Collections.emptyList();
     public final List<MonitorFeature> features = new ArrayList<>(3);
 
@@ -53,6 +55,10 @@ public class BatteryMonitorConfig {
 
         public Builder enableForegroundMode(boolean isEnable) {
             config.isForegroundModeEnabled = isEnable;
+            return this;
+        }
+        public Builder enableStatAsSample(boolean isEnable) {
+            config.isStatAsSample = isEnable;
             return this;
         }
 
