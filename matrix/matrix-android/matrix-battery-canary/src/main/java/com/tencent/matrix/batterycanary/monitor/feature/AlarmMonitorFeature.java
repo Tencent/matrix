@@ -152,18 +152,7 @@ public class AlarmMonitorFeature implements MonitorFeature, AlarmManagerServiceH
             if (this == o) return true;
             if (o == null || getClass() != o.getClass()) return false;
             AlarmRecord that = (AlarmRecord) o;
-            return type == that.type &&
-                    triggerAtMillis == that.triggerAtMillis &&
-                    windowMillis == that.windowMillis &&
-                    intervalMillis == that.intervalMillis &&
-                    flag == that.flag &&
-                    timeBgn == that.timeBgn &&
-                    Objects.equals(stack, that.stack);
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(type, triggerAtMillis, windowMillis, intervalMillis, flag, timeBgn, stack);
+            return hashCode() == that.hashCode();
         }
 
         @NonNull
