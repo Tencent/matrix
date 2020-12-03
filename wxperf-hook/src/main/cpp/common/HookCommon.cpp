@@ -80,10 +80,10 @@ void test_log_to_file(const char *ch) {
 
 }
 
-bool get_java_stacktrace(char *stack, size_t size) {
+bool get_java_stacktrace(char *stack_dst, size_t size) {
     JNIEnv *env = nullptr;
 
-    if (!stack) {
+    if (!stack_dst) {
         return false;
     }
 
@@ -93,21 +93,21 @@ bool get_java_stacktrace(char *stack, size_t size) {
         jstring j_stacktrace = (jstring) env->CallStaticObjectMethod(m_class_HookManager, m_method_getStack);
 
         LOGD(TAG, "get_java_stacktrace called");
-        const char *stack = env->GetStringUTFChars(j_stacktrace, NULL);
-        const jsize stack_len = env->GetStringLength(j_stacktrace);
-        if (stack) {
+        const char *stacktrace = env->GetStringUTFChars(j_stacktrace, NULL);
+        const jsize stack_len  = env->GetStringLength(j_stacktrace);
+        if (stacktrace) {
             const size_t cpy_len = std::min((size_t)stack_len, size - 1);
-            memcpy(stack, stack, cpy_len);
-            stack[cpy_len] = '\0';
+            memcpy(stack_dst, stack_dst, cpy_len);
+            stack_dst[cpy_len] = '\0';
         } else {
-            strncpy(stack, "\tget java stacktrace failed", size);
+            strncpy(stack_dst, "\tget java stacktrace failed", size);
         }
-        env->ReleaseStringUTFChars(j_stacktrace, stack);
+        env->ReleaseStringUTFChars(j_stacktrace, stacktrace);
         env->DeleteLocalRef(j_stacktrace);
         return true;
     }
 
-    strncpy(stack, "\tnull", size);
+    strncpy(stack_dst, "\tnull", size);
     return false;
 }
 

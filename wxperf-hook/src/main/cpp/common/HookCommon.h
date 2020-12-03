@@ -67,7 +67,7 @@ typedef void (*hook_init_callback_t)();
 
 void add_hook_init_callback(hook_init_callback_t callback);
 
-bool get_java_stacktrace(char *stack, size_t size);
+bool get_java_stacktrace(char *stack_dst, size_t size);
 
 DECLARE_HOOK_ORIG(void *, __loader_android_dlopen_ext, const char *filename,
                   int                                             flag,
