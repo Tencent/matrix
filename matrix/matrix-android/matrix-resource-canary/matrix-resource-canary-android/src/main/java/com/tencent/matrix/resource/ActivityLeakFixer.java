@@ -21,6 +21,7 @@ import android.content.Context;
 import android.graphics.drawable.Drawable;
 import android.os.Build;
 import android.text.TextWatcher;
+import android.util.Pair;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.inputmethod.InputMethodManager;
@@ -43,6 +44,48 @@ import java.util.ArrayList;
 
 public final class ActivityLeakFixer {
     private static final String TAG = "Matrix.ActivityLeakFixer";
+
+    private static Pair<ViewGroup, ArrayList<View>> sGroupAndOutChildren;
+
+    /**
+     * In Android P, ViewLocationHolder has an mRoot field that is not cleared in its clear() method.
+     * Introduced in https://github.com/aosp-mirror/platform_frameworks_base/commit
+     * /86b326012813f09d8f1de7d6d26c986a909d
+     *
+     * This leaks triggers very often when accessibility is on. To fix this leak we need to clear
+     * the ViewGroup.ViewLocationHolder.sPool pool. Unfortunately Android P prevents accessing that
+     * field through reflection. So instead, we call [ViewGroup#addChildrenForAccessibility] with
+     * a view group that has 32 children (32 being the pool size), which as result fills in the pool
+     * with 32 dumb views that reference a dummy context instead of an activity context.
+     *
+     * This fix empties the pool on every activity destroy and every AndroidX fragment view destroy.
+     * You can support other cases where views get detached by calling directly
+     * [ViewLocationHolderLeakFix.clearStaticPool].
+     */
+    public static void fixViewLocationHolderLeakApi28(Context destContext) {
+        if (Build.VERSION.SDK_INT != Build.VERSION_CODES.P) {
+            return;
+        }
+
+        try {
+            Context application = destContext.getApplicationContext();
+            if (sGroupAndOutChildren == null) {
+                ViewGroup sViewGroup = new FrameLayout(application);
+                // ViewLocationHolder.MAX_POOL_SIZE = 32
+                for (int i = 0; i < 32; i++) {
+                    View childView = new View(application);
+                    sViewGroup.addView(childView);
+                }
+                sGroupAndOutChildren = new Pair<>(sViewGroup, new ArrayList<View>());
+            }
+
+            sGroupAndOutChildren.first.addChildrenForAccessibility(sGroupAndOutChildren.second);
+        } catch (Throwable e) {
+            MatrixLog.printErrStackTrace(TAG, e, "fixViewLocationHolderLeakApi28 err");
+        }
+    }
+
+
 
     public static void fixInputMethodManagerLeak(Context destContext) {
         final long startTick = System.currentTimeMillis();

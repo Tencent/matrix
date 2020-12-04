@@ -49,6 +49,7 @@ public class ResourcePlugin extends Plugin {
             public void onActivityDestroyed(Activity activity) {
                 ActivityLeakFixer.fixInputMethodManagerLeak(activity);
                 ActivityLeakFixer.unbindDrawables(activity);
+                ActivityLeakFixer.fixViewLocationHolderLeakApi28(activity);
             }
         });
     }
