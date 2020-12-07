@@ -5,9 +5,11 @@ import android.app.PendingIntent;
 import android.os.Handler;
 import android.support.annotation.NonNull;
 import android.support.annotation.VisibleForTesting;
+import android.util.Log;
 
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
 import com.tencent.matrix.batterycanary.utils.AlarmManagerServiceHooker;
+import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
 import com.tencent.matrix.util.MatrixHandlerThread;
 import com.tencent.matrix.util.MatrixLog;
 
@@ -15,6 +17,7 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
 @SuppressWarnings("NotNullFieldNotInitialized")
@@ -30,7 +33,7 @@ public class AlarmMonitorFeature implements MonitorFeature, AlarmManagerServiceH
     @NonNull
     @VisibleForTesting
     Handler handler;
-    final Map<Integer, List<AlarmRecord>> mTracingAlarms = new ConcurrentHashMap<>(2);
+    final Map<Integer, List<AlarmRecord>> mTracingAlarms = new ConcurrentHashMap<>();
     final List<AlarmRecord> mTotalAlarms = new ArrayList<>();
 
     private AlarmListener getListener() {
@@ -70,7 +73,12 @@ public class AlarmMonitorFeature implements MonitorFeature, AlarmManagerServiceH
 
     @Override
     public void onAlarmSet(int type, long triggerAtMillis, long windowMillis, long intervalMillis, int flags, PendingIntent operation, AlarmManager.OnAlarmListener onAlarmListener) {
-        AlarmRecord alarmRecord = new AlarmRecord(type, triggerAtMillis, windowMillis, intervalMillis, flags);
+        String stack = "";
+        if (monitor.getConfig().isStatAsSample) {
+            stack = BatteryCanaryUtil.polishStack(Log.getStackTraceString(new Throwable()), "at android.app.AlarmManager");
+        }
+
+        AlarmRecord alarmRecord = new AlarmRecord(type, triggerAtMillis, windowMillis, intervalMillis, flags, stack);
         MatrixLog.i(TAG, "#onAlarmSet, target = " + alarmRecord);
 
         synchronized (mTotalAlarms) {
@@ -115,6 +123,7 @@ public class AlarmMonitorFeature implements MonitorFeature, AlarmManagerServiceH
             }
             snapshot.duplicatedGroup = Snapshot.Entry.DigitEntry.of(duplicatedGroup);
             snapshot.duplicatedCount = Snapshot.Entry.DigitEntry.of(duplicatedCount);
+            snapshot.records = Snapshot.Entry.ListEntry.ofBeans(mTotalAlarms);
         }
         return snapshot;
     }
@@ -126,18 +135,28 @@ public class AlarmMonitorFeature implements MonitorFeature, AlarmManagerServiceH
         public final long intervalMillis;
         public final int flag;
         public final long timeBgn;
+        public final String stack;
 
-        public AlarmRecord(int type, long triggerAtMillis, long windowMillis, long intervalMillis, int flag) {
+        public AlarmRecord(int type, long triggerAtMillis, long windowMillis, long intervalMillis, int flag, String stack) {
             this.type = type;
             this.triggerAtMillis = triggerAtMillis;
             this.windowMillis = windowMillis;
             this.intervalMillis = intervalMillis;
             this.flag = flag;
             this.timeBgn = System.currentTimeMillis();
+            this.stack = stack;
         }
 
         @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            AlarmRecord that = (AlarmRecord) o;
+            return hashCode() == that.hashCode();
+        }
+
         @NonNull
+        @Override
         public String toString() {
             return "AlarmRecord{" +
                     "type=" + type +
@@ -146,6 +165,7 @@ public class AlarmMonitorFeature implements MonitorFeature, AlarmManagerServiceH
                     ", intervalMillis=" + intervalMillis +
                     ", flag=" + flag +
                     ", timeBgn=" + timeBgn +
+                    ", stack='" + stack + '\'' +
                     '}';
         }
     }
@@ -155,6 +175,7 @@ public class AlarmMonitorFeature implements MonitorFeature, AlarmManagerServiceH
         public Entry.DigitEntry<Integer> tracingCount;
         public Entry.DigitEntry<Integer> duplicatedGroup;
         public Entry.DigitEntry<Integer> duplicatedCount;
+        public Entry.ListEntry<Entry.BeanEntry<AlarmRecord>> records;
 
         @Override
         public Delta<AlarmSnapshot> diff(AlarmSnapshot bgn) {
@@ -166,6 +187,7 @@ public class AlarmMonitorFeature implements MonitorFeature, AlarmManagerServiceH
                     snapshot.tracingCount = Differ.DigitDiffer.globalDiff(bgn.tracingCount, end.tracingCount);
                     snapshot.duplicatedGroup = Differ.DigitDiffer.globalDiff(bgn.duplicatedGroup, end.duplicatedGroup);
                     snapshot.duplicatedCount = Differ.DigitDiffer.globalDiff(bgn.duplicatedCount, end.duplicatedCount);
+                    snapshot.records = Differ.ListDiffer.globalDiff(bgn.records, end.records);
                     return snapshot;
                 }
             };

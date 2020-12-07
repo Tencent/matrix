@@ -195,8 +195,12 @@ public interface MonitorFeature {
                     return listEntry;
                 }
 
-                public static <ITEM extends Entry> ListEntry<ITEM> of(ITEM[] items) {
-                    return of(Arrays.asList(items));
+                public static <BEAN> ListEntry<BeanEntry<BEAN>> ofBeans(List<BEAN> items) {
+                    List<BeanEntry<BEAN>> list = new ArrayList<>();
+                    for (BEAN item : items) {
+                        list.add(BeanEntry.of(item));
+                    }
+                    return of(list);
                 }
 
                 public static <DIGIT extends Number> ListEntry<DigitEntry<DIGIT>> ofDigits(List<DIGIT> items) {

@@ -278,5 +278,20 @@ public final class BatteryCanaryUtil {
         return list;
     }
 
-
+    public static String polishStack(String stackTrace, String startSymbol) {
+        List<String> stacks = new ArrayList<>();
+        String[] splits = stackTrace.split("\n\t");
+        boolean startFilter = TextUtils.isEmpty(startSymbol);
+        for (String line : splits) {
+            if (!TextUtils.isEmpty(line)) {
+                if (!startFilter && line.startsWith(startSymbol)) {
+                    startFilter = true;
+                }
+                if (startFilter) {
+                    stacks.add(line.trim());
+                }
+            }
+        }
+        return TextUtils.join(";", stacks.subList(0, Math.min(5, stacks.size())));
+    }
 }
