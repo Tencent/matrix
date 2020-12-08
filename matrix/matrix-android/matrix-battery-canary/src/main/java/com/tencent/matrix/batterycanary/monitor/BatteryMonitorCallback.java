@@ -121,11 +121,12 @@ public interface BatteryMonitorCallback extends BatteryMonitorCore.JiffiesListen
                 onReportJiffies(delta);
 
                 // header
+                long avgJiffies = delta.dlt.totalJiffies.get() / Math.max(1, delta.during / ONE_MIN);
                 mPrinter.append("| ").append("pid=").append(Process.myPid())
                         .tab().tab().append("fg=").append(isForeground)
-                        .tab().tab().append("during(min)=").append(delta.end.time / ONE_MIN).append("<").append(delta.during / ONE_MIN)
+                        .tab().tab().append("during(min)=").append(delta.during / ONE_MIN)
                         .tab().tab().append("diff(jiffies)=").append(delta.dlt.totalJiffies.get())
-                        .tab().tab().append("avg(jiffies/min)=").append(delta.dlt.totalJiffies.get() / Math.max(1, delta.during / ONE_MIN))
+                        .tab().tab().append("avg(jiffies/min)=").append(avgJiffies)
                         .enter();
 
                 // jiffies sections
@@ -144,6 +145,9 @@ public interface BatteryMonitorCallback extends BatteryMonitorCore.JiffiesListen
                     }
                 }
                 mPrinter.append("|\t\t......\n");
+                if (avgJiffies > 1000L) {
+                    mPrinter.append("|   #overHeat\n");
+                }
             }
 
             onWritingSections();
