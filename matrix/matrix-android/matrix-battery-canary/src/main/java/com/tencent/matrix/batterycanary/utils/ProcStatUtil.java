@@ -18,7 +18,7 @@ import java.io.IOException;
  * @author Kaede
  * @since 2020/11/6
  */
-@SuppressWarnings("JavadocReference")
+@SuppressWarnings({"JavadocReference", "SpellCheckingInspection"})
 public final class ProcStatUtil {
     private static final String TAG = "Matrix.battery.ProcStatUtil";
     private static final byte[] sBuffer = new byte[128];

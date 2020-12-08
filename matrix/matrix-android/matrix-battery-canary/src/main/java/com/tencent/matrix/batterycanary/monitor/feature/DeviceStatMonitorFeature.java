@@ -2,9 +2,13 @@ package com.tencent.matrix.batterycanary.monitor.feature;
 
 import android.content.Context;
 import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
+import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Differ.DigitDiffer;
+import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Differ.ListDiffer;
 import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
+import com.tencent.matrix.batterycanary.utils.RadioStatUtil;
 import com.tencent.matrix.util.MatrixLog;
 
 /**
@@ -64,6 +68,20 @@ public final class DeviceStatMonitorFeature implements MonitorFeature {
         return snapshot;
     }
 
+    @Nullable
+    protected RadioStatSnapshot currentRadioSnapshot(Context context) {
+        RadioStatUtil.RadioStat stat = RadioStatUtil.getCurrentStat(context);
+        if (stat == null) {
+            return null;
+        }
+        RadioStatSnapshot snapshot = new RadioStatSnapshot();
+        snapshot.wifiRxBytes = Snapshot.Entry.DigitEntry.of(stat.wifiRxBytes);
+        snapshot.wifiTxBytes = Snapshot.Entry.DigitEntry.of(stat.wifiTxBytes);
+        snapshot.mobileRxBytes = Snapshot.Entry.DigitEntry.of(stat.mobileRxBytes);
+        snapshot.mobileTxBytes = Snapshot.Entry.DigitEntry.of(stat.mobileTxBytes);
+        return snapshot;
+    }
+
     public static class CpuFreqSnapshot extends Snapshot<CpuFreqSnapshot> {
         public Entry.ListEntry<Entry.DigitEntry<Integer>> cpuFreqs;
 
@@ -73,7 +91,7 @@ public final class DeviceStatMonitorFeature implements MonitorFeature {
                 @Override
                 protected CpuFreqSnapshot computeDelta() {
                     CpuFreqSnapshot delta = new CpuFreqSnapshot();
-                    delta.cpuFreqs = Differ.ListDiffer.globalDiff(bgn.cpuFreqs, end.cpuFreqs);
+                    delta.cpuFreqs = ListDiffer.globalDiff(bgn.cpuFreqs, end.cpuFreqs);
                     return delta;
                 }
             };
@@ -89,7 +107,29 @@ public final class DeviceStatMonitorFeature implements MonitorFeature {
                 @Override
                 protected BatteryTmpSnapshot computeDelta() {
                     BatteryTmpSnapshot delta = new BatteryTmpSnapshot();
-                    delta.temp = Differ.DigitDiffer.globalDiff(bgn.temp, end.temp);
+                    delta.temp = DigitDiffer.globalDiff(bgn.temp, end.temp);
+                    return delta;
+                }
+            };
+        }
+    }
+
+    public static class RadioStatSnapshot extends Snapshot<RadioStatSnapshot> {
+        public Entry.DigitEntry<Long> wifiRxBytes = Entry.DigitEntry.of(0L);
+        public Entry.DigitEntry<Long> wifiTxBytes = Entry.DigitEntry.of(0L);
+        public Entry.DigitEntry<Long> mobileRxBytes = Entry.DigitEntry.of(0L);
+        public Entry.DigitEntry<Long> mobileTxBytes = Entry.DigitEntry.of(0L);
+
+        @Override
+        public Delta<RadioStatSnapshot> diff(RadioStatSnapshot bgn) {
+            return new Delta<RadioStatSnapshot>(bgn, this) {
+                @Override
+                protected RadioStatSnapshot computeDelta() {
+                    RadioStatSnapshot delta = new RadioStatSnapshot();
+                    delta.wifiRxBytes = DigitDiffer.globalDiff(bgn.wifiRxBytes, end.wifiRxBytes);
+                    delta.wifiTxBytes = DigitDiffer.globalDiff(bgn.wifiTxBytes, end.wifiTxBytes);
+                    delta.mobileRxBytes = DigitDiffer.globalDiff(bgn.mobileRxBytes, end.mobileRxBytes);
+                    delta.mobileTxBytes = DigitDiffer.globalDiff(bgn.mobileTxBytes, end.mobileTxBytes);
                     return delta;
                 }
             };
