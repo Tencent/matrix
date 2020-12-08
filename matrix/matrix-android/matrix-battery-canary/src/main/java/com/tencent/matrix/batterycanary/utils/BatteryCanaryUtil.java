@@ -16,6 +16,7 @@
 
 package com.tencent.matrix.batterycanary.utils;
 
+import android.annotation.SuppressLint;
 import android.app.ActivityManager;
 import android.app.AlarmManager;
 import android.content.Context;
@@ -197,6 +198,29 @@ public final class BatteryCanaryUtil {
         Intent batIntent = context.registerReceiver(null, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
         if (batIntent == null) return 0;
         return batIntent.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, 0);
+    }
+
+    public static int getAppStat(Context context, boolean isForeground) {
+        if (isForeground) return 1; // 前台
+        if (hasForegroundService(context)) {
+            return 3; // 后台（有前台服务）
+        }
+        return 2; // 后台
+    }
+
+    public static int getDeviceStat(Context context) {
+        if (isDeviceCharging(context)) {
+            return 1; // 充电中
+        }
+
+        // 未充电状态细分:
+        if (!isDeviceScreenOn(context)) {
+            return 3; // 息屏
+        }
+        if (isDeviceOnPowerSave(context)) {
+            return 4; // 省电模式开启
+        }
+        return 2;
     }
 
     public static boolean isDeviceCharging(Context context) {

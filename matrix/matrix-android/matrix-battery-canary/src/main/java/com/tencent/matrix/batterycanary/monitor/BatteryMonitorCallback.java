@@ -11,6 +11,7 @@ import android.util.LongSparseArray;
 import com.tencent.matrix.Matrix;
 import com.tencent.matrix.batterycanary.monitor.feature.AlarmMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.AlarmMonitorFeature.AlarmSnapshot;
+import com.tencent.matrix.batterycanary.monitor.feature.AppStatMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.DeviceStatMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.DeviceStatMonitorFeature.BatteryTmpSnapshot;
 import com.tencent.matrix.batterycanary.monitor.feature.DeviceStatMonitorFeature.CpuFreqSnapshot;
@@ -120,11 +121,12 @@ public interface BatteryMonitorCallback extends BatteryMonitorCore.JiffiesListen
                 onReportJiffies(delta);
 
                 // header
+                long avgJiffies = delta.dlt.totalJiffies.get() / Math.max(1, delta.during / ONE_MIN);
                 mPrinter.append("| ").append("pid=").append(Process.myPid())
                         .tab().tab().append("fg=").append(isForeground)
-                        .tab().tab().append("during(min)=").append(delta.end.time / ONE_MIN).append("<").append(delta.during / ONE_MIN)
+                        .tab().tab().append("during(min)=").append(delta.during / ONE_MIN)
                         .tab().tab().append("diff(jiffies)=").append(delta.dlt.totalJiffies.get())
-                        .tab().tab().append("avg(jiffies/min)=").append(delta.dlt.totalJiffies.get() / Math.max(1, delta.during / ONE_MIN))
+                        .tab().tab().append("avg(jiffies/min)=").append(avgJiffies)
                         .enter();
 
                 // jiffies sections
@@ -143,6 +145,9 @@ public interface BatteryMonitorCallback extends BatteryMonitorCore.JiffiesListen
                     }
                 }
                 mPrinter.append("|\t\t......\n");
+                if (avgJiffies > 1000L) {
+                    mPrinter.append("|   #overHeat\n");
+                }
             }
 
             onWritingSections();
@@ -167,7 +172,7 @@ public interface BatteryMonitorCallback extends BatteryMonitorCore.JiffiesListen
                         Delta<WakeLockSnapshot> diff = wakeLockSnapshot.diff(mLastWakeWakeLockSnapshot);
                         onReportWakeLock(diff);
                         printer.createSubSection("during");
-                        printer.writeLine(diff.during + "(mls)\t" + (diff.during/ONE_MIN) +"(min)");
+                        printer.writeLine(diff.during + "(mls)\t" + (diff.during / ONE_MIN) + "(min)");
                         printer.writeLine("inc_lock_count", String.valueOf(diff.dlt.totalWakeLockCount));
                         printer.writeLine("inc_time_total", String.valueOf(diff.dlt.totalWakeLockTime));
                         printer.createSubSection("locking");
@@ -189,7 +194,7 @@ public interface BatteryMonitorCallback extends BatteryMonitorCore.JiffiesListen
                         Delta<AlarmSnapshot> diff = alarmSnapshot.diff(mLastAlarmSnapshot);
                         onReportAlarm(diff);
                         printer.createSubSection("during");
-                        printer.writeLine(diff.during + "(mls)\t" + (diff.during/ONE_MIN) +"(min)");
+                        printer.writeLine(diff.during + "(mls)\t" + (diff.during / ONE_MIN) + "(min)");
                         printer.writeLine("inc_alarm_count", String.valueOf(diff.dlt.totalCount.get()));
                         printer.writeLine("inc_trace_count", String.valueOf(diff.dlt.tracingCount.get()));
                         printer.writeLine("inc_dupli_group", String.valueOf(diff.dlt.duplicatedGroup.get()));
@@ -209,7 +214,7 @@ public interface BatteryMonitorCallback extends BatteryMonitorCore.JiffiesListen
                             final Delta<CpuFreqSnapshot> cpuFreqDiff = cpuFreqSnapshot.diff(mLastCpuFreqSnapshot);
                             onReportCpuFreq(cpuFreqDiff);
                             printer.createSubSection("during");
-                            printer.writeLine(cpuFreqDiff.during + "(mls)\t" + (cpuFreqDiff.during/ONE_MIN) +"(min)");
+                            printer.writeLine(cpuFreqDiff.during + "(mls)\t" + (cpuFreqDiff.during / ONE_MIN) + "(min)");
                             printer.createSubSection("cpufreq");
                             printer.writeLine("inc", Arrays.toString(cpuFreqDiff.dlt.cpuFreqs.getList().toArray()));
                             printer.writeLine("cur", Arrays.toString(cpuFreqDiff.end.cpuFreqs.getList().toArray()));
@@ -220,11 +225,28 @@ public interface BatteryMonitorCallback extends BatteryMonitorCore.JiffiesListen
                             Delta<BatteryTmpSnapshot> batteryDiff = batteryTmpSnapshot.diff(mLastBatteryTmpSnapshot);
                             onReportTemperature(batteryDiff);
                             printer.createSubSection("during");
-                            printer.writeLine(batteryDiff.during + "(mls)\t" + (batteryDiff.during/ONE_MIN) +"(min)");
+                            printer.writeLine(batteryDiff.during + "(mls)\t" + (batteryDiff.during / ONE_MIN) + "(min)");
                             printer.createSubSection("battery_temperature");
                             printer.writeLine("inc", String.valueOf(batteryDiff.dlt.temp.get()));
                             printer.writeLine("cur", String.valueOf(batteryDiff.end.temp.get()));
                         }
+                    }
+                });
+            }
+
+            final AppStatMonitorFeature appStatFeature = mMonitor.getMonitorFeature(AppStatMonitorFeature.class);
+            if (appStatFeature != null) {
+                // App Stat
+                createSection("app_stat", new Consumer<Printer>() {
+                    @Override
+                    public void accept(Printer printer) {
+                        AppStatMonitorFeature.AppStatSnapshot snapshot = appStatFeature.currentAppStatSnapshot();
+                        printer.createSubSection("uptime");
+                        printer.writeLine(snapshot.uptime.get() / ONE_MIN + "(min)");
+                        printer.createSubSection("ratio");
+                        printer.writeLine("fg", String.valueOf(snapshot.fgRatio.get()));
+                        printer.writeLine("bg", String.valueOf(snapshot.bgRatio.get()));
+                        printer.writeLine("fgSrv", String.valueOf(snapshot.fgSrvRatio.get()));
                     }
                 });
             }
