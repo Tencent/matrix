@@ -69,7 +69,7 @@ public final class DeviceStatMonitorFeature implements MonitorFeature {
     }
 
     @Nullable
-    protected RadioStatSnapshot currentRadioSnapshot(Context context) {
+    public RadioStatSnapshot currentRadioSnapshot(Context context) {
         RadioStatUtil.RadioStat stat = RadioStatUtil.getCurrentStat(context);
         if (stat == null) {
             return null;
