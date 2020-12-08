@@ -29,6 +29,7 @@ import com.tencent.matrix.util.MatrixLog;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
@@ -116,6 +117,7 @@ public class ActivityThreadHacker {
         private static final int STOP_ACTIVITY_SHOW = 103;
         private static final int STOP_ACTIVITY_HIDE = 104;
         private static final int SLEEPING = 137;
+        private static final boolean API_LEVEL_HIGHER_THAN_25 = Build.VERSION.SDK_INT > 25;
 
         HackCallback(Handler.Callback callback) {
             this.mOriginalCallback = callback;
@@ -123,9 +125,8 @@ public class ActivityThreadHacker {
 
         @Override
         public boolean handleMessage(Message msg) {
-
             if (Build.VERSION.SDK_INT >= 21) {
-                if (msg.what == SERIVCE_ARGS || msg.what == STOP_SERVICE || msg.what == STOP_ACTIVITY_SHOW || msg.what == STOP_ACTIVITY_HIDE || msg.what == SLEEPING) {
+                if (msg.what == SERIVCE_ARGS || msg.what == STOP_SERVICE || msg.what == STOP_ACTIVITY_SHOW || msg.what == STOP_ACTIVITY_HIDE || msg.what == SLEEPING || msg.what == EXECUTE_TRANSACTION) {
                     MatrixLog.i(TAG, "[Matrix.fix.sp.apply] start to fix msg.waht=" + msg.what);
                     fix();
                 }
@@ -163,11 +164,22 @@ public class ActivityThreadHacker {
         private void fix(){
             try {
                 Class cls = Class.forName("android.app.QueuedWork");
-                Field field = cls.getDeclaredField("sPendingWorkFinishers");
-                if(field != null){
-                    field.setAccessible(true);
-                    ConcurrentLinkedQueue<Runnable> runnables = (ConcurrentLinkedQueue<Runnable>)field.get(null);
-                    runnables.clear();
+                if(API_LEVEL_HIGHER_THAN_25) {
+                    Field field = cls.getDeclaredField("sFinishers");
+                    if(field != null) {
+                        field.setAccessible(true);
+                        LinkedList<Runnable> sFinishers = (LinkedList<Runnable>)field.get(null);
+                        sFinishers.clear();
+                        MatrixLog.i(TAG, "[Matrix.fix.sp.apply] sFinisher.clear successful");
+                    }
+                } else {
+                    Field field = cls.getDeclaredField("sPendingWorkFinishers");
+                    if(field != null) {
+                        field.setAccessible(true);
+                        ConcurrentLinkedQueue<Runnable> runnables = (ConcurrentLinkedQueue<Runnable>)field.get(null);
+                        runnables.clear();
+                        MatrixLog.i(TAG, "[Matrix.fix.sp.apply] sPendingWorkFinishers.clear successful");
+                    }
                 }
             } catch (ClassNotFoundException e) {
                 MatrixLog.e(TAG, "[Matrix.fix.sp.apply] ClassNotFoundException = "+e.getMessage());
