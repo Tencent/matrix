@@ -58,8 +58,9 @@ public class MonitorFeatureOverAllTest {
                 .enable(WakeLockMonitorFeature.class)
                 .enable(DeviceStatMonitorFeature.class)
                 .enable(AlarmMonitorFeature.class)
+                .enable(AppStatMonitorFeature.class)
                 .enableBuiltinForegroundNotify(false)
-                .enableForegroundMode(false)
+                .enableForegroundMode(true)
                 .wakelockTimeout(1000)
                 .greyJiffiesTime(100)
                 .foregroundLoopCheckTime(1000)
@@ -86,7 +87,7 @@ public class MonitorFeatureOverAllTest {
         final JiffiesMonitorFeature feature = new JiffiesMonitorFeature();
         final BatteryMonitorCore monitor = mockMonitor();
         monitor.enableForegroundLoopCheck(true);
-        feature.configure(monitor);
+        monitor.start();
         Handler handler = new Handler(Looper.getMainLooper());
         handler.post(new Runnable() {
             @Override
