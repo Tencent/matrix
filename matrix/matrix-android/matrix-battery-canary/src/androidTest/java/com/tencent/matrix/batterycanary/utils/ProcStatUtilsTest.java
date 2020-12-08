@@ -16,6 +16,7 @@
 
 package com.tencent.matrix.batterycanary.utils;
 
+import android.app.ActivityManager;
 import android.content.Context;
 import android.os.Process;
 import android.os.SystemClock;
@@ -39,6 +40,8 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.LinkedList;
+import java.util.List;
 
 /**
  * Instrumented test, which will execute on an Android device.
@@ -498,5 +501,37 @@ public class ProcStatUtilsTest {
         long jiffies = stat.utime + stat.stime + stat.cutime + stat.cstime;
         Assert.assertTrue(jiffies >= 0);
         return stat;
+    }
+
+
+    @RunWith(AndroidJUnit4.class)
+    public static class MultiProcess {
+        static final String TAG = "Matrix.test.ProcessCpuTrackUtilsTest$MultiProcess";
+
+        Context mContext;
+
+        @Before
+        public void setUp() {
+            mContext = InstrumentationRegistry.getTargetContext();
+        }
+
+        @After
+        public void shutDown() {
+        }
+
+        @Test
+        public void testListPids() {
+            ActivityManager am = (ActivityManager) mContext.getSystemService(Context.ACTIVITY_SERVICE);
+            Assert.assertNotNull(am);
+            List<ActivityManager.RunningAppProcessInfo> runningAppProcesses = am.getRunningAppProcesses();
+            List<Integer> pids = new LinkedList<>();
+            for (ActivityManager.RunningAppProcessInfo item : runningAppProcesses) {
+                if (item.processName.startsWith(mContext.getPackageName())) {
+                    pids.add(item.pid);
+                }
+            }
+            Assert.assertEquals(1, pids.size());
+            Assert.assertEquals(Process.myPid(), pids.get(0).intValue());
+        }
     }
 }
