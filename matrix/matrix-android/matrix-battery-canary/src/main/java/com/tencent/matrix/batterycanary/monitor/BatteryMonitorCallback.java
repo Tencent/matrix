@@ -149,8 +149,8 @@ public interface BatteryMonitorCallback extends BatteryMonitorCore.JiffiesListen
                     }
                 }
                 mPrinter.append("|\t\t......\n");
-                if (avgJiffies > 1000L) {
-                    mPrinter.append("|   #overHeat\n");
+                if (avgJiffies > 1000L || !delta.isValid()) {
+                    mPrinter.append("|  ").append(avgJiffies > 1000L ? " #overHeat" : "").append(!delta.isValid() ? " #invalid" : "").append("\n");
                 }
             }
 
