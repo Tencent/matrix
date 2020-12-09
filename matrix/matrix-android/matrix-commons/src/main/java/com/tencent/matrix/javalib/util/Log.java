@@ -40,7 +40,7 @@ public class Log {
         public void v(final String tag, final String msg, final Object... obj) {
             if (level == LOG_LEVEL_VERBOSE) {
                 String log = obj == null ? msg : String.format(msg, obj);
-                System.out.println(String.format("[VERBOSE][%s]%s", tag, log));
+                System.out.println(String.format("[V][%s] %s", tag, Util.capitalize(log)));
             }
         }
 
@@ -48,7 +48,7 @@ public class Log {
         public void d(final String tag, final String msg, final Object... obj) {
             if (level <= LOG_LEVEL_DEBUG) {
                 String log = obj == null ? msg : String.format(msg, obj);
-                System.out.println(String.format("[DEBUG][%s]%s", tag, log));
+                System.out.println(String.format("[D][%s] %s", tag, Util.capitalize(log)));
             }
         }
 
@@ -56,7 +56,7 @@ public class Log {
         public void i(final String tag, final String msg, final Object... obj) {
             if (level <= LOG_LEVEL_INFO) {
                 String log = obj == null ? msg : String.format(msg, obj);
-                System.out.println(String.format("[INFO][%s]%s", tag, log));
+                System.out.println(String.format("[I][%s] %s", tag, Util.capitalize(log)));
             }
         }
 
@@ -64,7 +64,7 @@ public class Log {
         public void w(final String tag, final String msg, final Object... obj) {
             if (level <= LOG_LEVEL_WARN) {
                 String log = obj == null ? msg : String.format(msg, obj);
-                System.out.println(String.format("[WARN][%s]%s", tag, log));
+                System.out.println(String.format("[W][%s] %s", tag, Util.capitalize(log)));
             }
         }
 
@@ -72,7 +72,7 @@ public class Log {
         public void e(final String tag, final String msg, final Object... obj) {
             if (level <= LOG_LEVEL_ERROR) {
                 String log = obj == null ? msg : String.format(msg, obj);
-                System.out.println(String.format("[ERROR][%s]%s", tag, log));
+                System.out.println(String.format("[E][%s] %s", tag, Util.capitalize(log)));
             }
         }
 
@@ -86,7 +86,7 @@ public class Log {
             PrintWriter pw = new PrintWriter(sw);
             tr.printStackTrace(pw);
             log += "  " + sw.toString();
-            System.out.println(String.format("[ERROR][%s]%s", tag, log));
+            System.out.println(String.format("[E][%s] %s", tag, Util.capitalize(log)));
         }
 
         @Override

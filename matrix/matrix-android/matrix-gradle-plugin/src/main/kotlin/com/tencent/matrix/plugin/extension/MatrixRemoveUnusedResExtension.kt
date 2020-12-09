@@ -14,42 +14,28 @@
  * limitations under the License.
  */
 
-package com.tencent.matrix.plugin.extension;
+package com.tencent.matrix.plugin.extension
 
 
-/**
- * Created by jinqiuchen on 17/12/26.
- */
+open class MatrixRemoveUnusedResExtension(
+        var enable: Boolean = false,
+        var variant: String = "",
+        var needSign: Boolean = false,
+        var shrinkArsc: Boolean = false,
+        var apksignerPath: String = "",
+        var unusedResources: HashSet<String> = HashSet(),
+        var ignoreResources: Set<String> = HashSet()
+) {
 
-class MatrixDelUnusedResConfiguration {
-
-    boolean enable
-    String variant
-    boolean needSign
-    boolean shrinkArsc
-    String apksignerPath
-    Set<String> unusedResources
-    Set<String> ignoreResources
-
-    MatrixDelUnusedResConfiguration() {
-        enable = false
-        variant = ""
-        needSign = false
-        shrinkArsc = false
-        apksignerPath = ""
-        unusedResources = new HashSet<>()
-        ignoreResources = new HashSet<>()
-    }
-
-    @Override
-    String toString() {
-        """| enable = ${enable}
+    override fun toString(): String {
+        return """|
+            | enable = ${enable}
            | variant = ${variant}
            | needSign = ${needSign}
            | shrinkArsc = ${shrinkArsc}
            | apkSignerPath = ${apksignerPath}
            | unusedResources = ${unusedResources}
            | ignoreResources = ${ignoreResources}
-        """.stripMargin()
+        """.trimMargin()
     }
 }

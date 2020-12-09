@@ -127,7 +127,7 @@ public class ArscUtil {
             List<ResType> resTypeList = findResType(resPackage, resourceId);
             for (ResType resType : resTypeList) {
                 int entryId = getResourceEntryId(resourceId);
-                Log.i(TAG, "try to remove %s (%H), find resource %s", resourceName, resourceId, ArscUtil.resolveStringPoolEntry(resPackage.getResNamePool().getStrings().get(resType.getEntryTable().get(entryId).getStringPoolIndex()).array(), resPackage.getResNamePool().getCharSet()));
+                Log.i(TAG, "Try to remove %s (%H), find resource %s", resourceName, resourceId, ArscUtil.resolveStringPoolEntry(resPackage.getResNamePool().getStrings().get(resType.getEntryTable().get(entryId).getStringPoolIndex()).array(), resPackage.getResNamePool().getCharSet()));
                 resType.getEntryTable().set(entryId, null);
                 resType.getEntryOffsets().set(entryId, ArscConstants.NO_ENTRY_INDEX);
                 resType.refresh();
