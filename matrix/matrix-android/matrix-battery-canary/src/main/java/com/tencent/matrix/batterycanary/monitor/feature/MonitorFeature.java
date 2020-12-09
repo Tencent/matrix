@@ -30,7 +30,7 @@ public interface MonitorFeature {
             return this;
         }
 
-        boolean isValid() {
+        public boolean isValid() {
             return mIsValid;
         }
 
@@ -58,6 +58,10 @@ public interface MonitorFeature {
                 dlt.isDelta = true;
             }
 
+            public boolean isValid() {
+                return bgn.isValid() && end.isValid();
+            }
+
             protected abstract RECORD computeDelta();
         }
 
@@ -70,7 +74,7 @@ public interface MonitorFeature {
                 return (ENTRY) this;
             }
 
-            boolean isValid() {
+            public boolean isValid() {
                 return mIsValid;
             }
 
@@ -279,7 +283,7 @@ public interface MonitorFeature {
                 private ListEntry() {}
 
                 @Override
-                boolean isValid() {
+                public boolean isValid() {
                     for (ITEM item : list) {
                         if (!item.isValid()) return false;
                     }
