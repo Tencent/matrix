@@ -22,6 +22,17 @@ public interface MonitorFeature {
     abstract class Snapshot<RECORD extends Snapshot> {
         public final long time;
         public boolean isDelta = false;
+        private boolean mIsValid = true;
+
+        @SuppressWarnings("UnusedReturnValue")
+        public Snapshot<RECORD> setValid(boolean bool) {
+            mIsValid = bool;
+            return this;
+        }
+
+        boolean isValid() {
+            return mIsValid;
+        }
 
         public Snapshot() {
             time = getTimeStamps();

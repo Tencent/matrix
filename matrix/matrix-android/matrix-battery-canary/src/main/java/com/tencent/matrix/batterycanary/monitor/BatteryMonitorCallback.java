@@ -33,7 +33,7 @@ import java.util.List;
  * @author Kaede
  * @since 2020/10/27
  */
-public interface BatteryMonitorCallback extends BatteryMonitorCore.JiffiesListener, LooperTaskMonitorFeature.LooperTaskListener, WakeLockMonitorFeature.WakeLockListener, AlarmMonitorFeature.AlarmListener {
+public interface BatteryMonitorCallback extends BatteryMonitorCore.JiffiesListener, LooperTaskMonitorFeature.LooperTaskListener, WakeLockMonitorFeature.WakeLockListener, AlarmMonitorFeature.AlarmListener, JiffiesMonitorFeature.JiffiesListener {
 
     @SuppressWarnings({"NotNullFieldNotInitialized", "SpellCheckingInspection"})
     class BatteryPrinter implements BatteryMonitorCallback {
@@ -106,6 +106,10 @@ public interface BatteryMonitorCallback extends BatteryMonitorCore.JiffiesListen
 
         @Override
         public void onAlarmDuplicated(int duplicatedCount, AlarmMonitorFeature.AlarmRecord record) {
+        }
+
+        @Override
+        public void onParseError(int pid, int tid) {
         }
 
         @CallSuper
