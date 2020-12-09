@@ -324,7 +324,11 @@ public interface BatteryMonitorCallback extends BatteryMonitorCore.JiffiesListen
             }
 
             public void dump() {
-                MatrixLog.i(TAG, "\t\n" + sb.toString());
+                try {
+                    MatrixLog.i(TAG, "\t\n" + sb.toString());
+                } catch (Throwable e) {
+                    MatrixLog.printErrStackTrace(TAG, e, "log format error");
+                }
             }
 
             @Override
