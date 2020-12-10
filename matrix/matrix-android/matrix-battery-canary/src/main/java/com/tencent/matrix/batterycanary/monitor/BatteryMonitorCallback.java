@@ -33,7 +33,7 @@ import java.util.List;
  * @author Kaede
  * @since 2020/10/27
  */
-public interface BatteryMonitorCallback extends BatteryMonitorCore.JiffiesListener, LooperTaskMonitorFeature.LooperTaskListener, WakeLockMonitorFeature.WakeLockListener, AlarmMonitorFeature.AlarmListener {
+public interface BatteryMonitorCallback extends BatteryMonitorCore.JiffiesListener, LooperTaskMonitorFeature.LooperTaskListener, WakeLockMonitorFeature.WakeLockListener, AlarmMonitorFeature.AlarmListener, JiffiesMonitorFeature.JiffiesListener {
 
     @SuppressWarnings({"NotNullFieldNotInitialized", "SpellCheckingInspection"})
     class BatteryPrinter implements BatteryMonitorCallback {
@@ -108,6 +108,10 @@ public interface BatteryMonitorCallback extends BatteryMonitorCore.JiffiesListen
         public void onAlarmDuplicated(int duplicatedCount, AlarmMonitorFeature.AlarmRecord record) {
         }
 
+        @Override
+        public void onParseError(int pid, int tid) {
+        }
+
         @CallSuper
         protected void onCanaryDump(boolean isForeground) {
             mPrinter.clear();
@@ -145,8 +149,8 @@ public interface BatteryMonitorCallback extends BatteryMonitorCore.JiffiesListen
                     }
                 }
                 mPrinter.append("|\t\t......\n");
-                if (avgJiffies > 1000L) {
-                    mPrinter.append("|   #overHeat\n");
+                if (avgJiffies > 1000L || !delta.isValid()) {
+                    mPrinter.append("|  ").append(avgJiffies > 1000L ? " #overHeat" : "").append(!delta.isValid() ? " #invalid" : "").append("\n");
                 }
             }
 

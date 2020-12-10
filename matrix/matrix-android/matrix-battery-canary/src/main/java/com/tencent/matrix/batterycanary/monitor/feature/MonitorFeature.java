@@ -22,6 +22,17 @@ public interface MonitorFeature {
     abstract class Snapshot<RECORD extends Snapshot> {
         public final long time;
         public boolean isDelta = false;
+        private boolean mIsValid = true;
+
+        @SuppressWarnings("UnusedReturnValue")
+        public Snapshot<RECORD> setValid(boolean bool) {
+            mIsValid = bool;
+            return this;
+        }
+
+        public boolean isValid() {
+            return mIsValid;
+        }
 
         public Snapshot() {
             time = getTimeStamps();
@@ -47,6 +58,10 @@ public interface MonitorFeature {
                 dlt.isDelta = true;
             }
 
+            public boolean isValid() {
+                return bgn.isValid() && end.isValid();
+            }
+
             protected abstract RECORD computeDelta();
         }
 
@@ -59,7 +74,7 @@ public interface MonitorFeature {
                 return (ENTRY) this;
             }
 
-            boolean isValid() {
+            public boolean isValid() {
                 return mIsValid;
             }
 
@@ -268,7 +283,7 @@ public interface MonitorFeature {
                 private ListEntry() {}
 
                 @Override
-                boolean isValid() {
+                public boolean isValid() {
                     for (ITEM item : list) {
                         if (!item.isValid()) return false;
                     }
