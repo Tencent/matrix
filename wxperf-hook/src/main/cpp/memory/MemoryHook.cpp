@@ -40,30 +40,30 @@ static double m_sampling        = 1;
 
 static size_t m_stacktrace_log_threshold;
 
-void enable_stacktrace(bool __enable) {
-    is_stacktrace_enabled = __enable;
+void enable_stacktrace(bool enable) {
+    is_stacktrace_enabled = enable;
 }
 
-void set_stacktrace_log_threshold(size_t __threshold) {
-    m_stacktrace_log_threshold = __threshold;
+void set_stacktrace_log_threshold(size_t threshold) {
+    m_stacktrace_log_threshold = threshold;
 }
 
-void set_sample_size_range(size_t __min, size_t __max) {
-    m_sample_size_min = __min;
-    m_sample_size_max = __max;
+void set_sample_size_range(size_t min, size_t max) {
+    m_sample_size_min = min;
+    m_sample_size_max = max;
 }
 
-void set_sampling(double __sampling) {
-    m_sampling = __sampling;
+void set_sampling(double sampling) {
+    m_sampling = sampling;
 }
 
-void enable_caller_sampling(bool __enable) {
-    is_caller_sampling_enabled = __enable;
+void enable_caller_sampling(bool enable) {
+    is_caller_sampling_enabled = enable;
 }
 
 static inline void
 decrease_stack_size(std::map<uint64_t, stack_meta_t> &stack_metas,
-                    const ptr_meta_t &__meta) {
+                    const ptr_meta_t &meta) {
     LOGI(TAG, "calculate_stack_size");
 
 }
@@ -72,11 +72,11 @@ void memory_hook_init() {
     LOGI(TAG, "memory_hook_init");
 }
 
-static inline bool should_do_unwind(size_t __byte_count, void *__caller) {
+static inline bool should_do_unwind(size_t byte_count, void *caller) {
     if (!is_caller_sampling_enabled) {
 
-        return ((m_sample_size_min == 0 || __byte_count >= m_sample_size_min)
-                && (m_sample_size_max == 0 || __byte_count <= m_sample_size_max)
+        return ((m_sample_size_min == 0 || byte_count >= m_sample_size_min)
+                && (m_sample_size_max == 0 || byte_count <= m_sample_size_max)
                 && rand() <= m_sampling * RAND_MAX);
 
     }
@@ -85,43 +85,43 @@ static inline bool should_do_unwind(size_t __byte_count, void *__caller) {
     return false;
 }
 
-static inline void on_acquire_memory(void *__caller,
-                                     void *__ptr,
-                                     size_t __byte_count,
-                                     bool __is_mmap) {
+static inline void on_acquire_memory(void *caller,
+                                     void *ptr,
+                                     size_t byte_count,
+                                     bool is_mmap) {
 //    NanoSeconds_Start(alloc_begin);
 ////    NanoSeconds_End(alloc_cost, alloc_begin);
 ////    LOGD(TAG, "alloc stamp cost %lld", alloc_cost);
 
-    if (!__ptr) {
+    if (!ptr) {
         LOGE(TAG, "on_acquire_memory: invalid pointer");
         return;
     }
 
     std::vector<unwindstack::FrameData> stack_frames;
     uint64_t                            stack_hash = 0;
-    if (is_stacktrace_enabled && should_do_unwind(__byte_count, __caller)) {
+    if (is_stacktrace_enabled && should_do_unwind(byte_count, caller)) {
         unwind_adapter(stack_frames);
         stack_hash = hash_stack_frames(stack_frames);
         assert(stack_hash != 0);
     }
 
-    m_memory_meta_container.insert(__ptr,
+    m_memory_meta_container.insert(ptr,
                                    stack_hash,
                                    [&](ptr_meta_t *ptr_meta, stack_meta_t *stack_meta) {
-                                       ptr_meta->ptr     = __ptr;
-                                       ptr_meta->size    = __byte_count;
-                                       ptr_meta->caller  = __caller;
-                                       ptr_meta->is_mmap = __is_mmap;
+                                       ptr_meta->ptr     = ptr;
+                                       ptr_meta->size    = byte_count;
+                                       ptr_meta->caller  = caller;
+                                       ptr_meta->is_mmap = is_mmap;
 
                                        if (!stack_meta) {
                                            return;
                                        }
 
-                                       stack_meta->size += __byte_count;
+                                       stack_meta->size += byte_count;
                                        if (stack_meta->stacktrace.empty()) { // 相同的堆栈只记录一个
                                            stack_meta->stacktrace.swap(stack_frames);
-                                           stack_meta->caller = __caller;
+                                           stack_meta->caller = caller;
                                        }
                                    });
 
@@ -129,68 +129,68 @@ static inline void on_acquire_memory(void *__caller,
 //    LOGD(TAG, "alloc cost %lld", alloc_cost);
 }
 
-static inline void on_release_memory(void *__ptr, bool __is_mmap) {
-    if (!__ptr) {
+static inline void on_release_memory(void *ptr, bool is_mmap) {
+    if (!ptr) {
         LOGE(TAG, "on_release_memory: invalid pointer");
         return;
     }
 //    NanoSeconds_Start(release_begin);
 
-    m_memory_meta_container.erase(__ptr);
+    m_memory_meta_container.erase(ptr);
 //    NanoSeconds_End(release_cost, release_begin);
 //    LOGD(TAG, "release cost %lld", release_cost);
 }
 
-void on_alloc_memory(void *__caller, void *__ptr, size_t __byte_count) {
-    on_acquire_memory(__caller, __ptr, __byte_count, false);
+void on_alloc_memory(void *caller, void *ptr, size_t byte_count) {
+    on_acquire_memory(caller, ptr, byte_count, false);
 }
 
-void on_free_memory(void *__ptr) {
-    on_release_memory(__ptr, true);
+void on_free_memory(void *ptr) {
+    on_release_memory(ptr, true);
 }
 
-void on_mmap_memory(void *__caller, void *__ptr, size_t __byte_count) {
-    on_acquire_memory(__caller, __ptr, __byte_count, true);
+void on_mmap_memory(void *caller, void *ptr, size_t byte_count) {
+    on_acquire_memory(caller, ptr, byte_count, true);
 }
 
-void on_munmap_memory(void *__ptr) {
-    on_release_memory(__ptr, true);
+void on_munmap_memory(void *ptr) {
+    on_release_memory(ptr, true);
 }
 
 /**
  * 区分 native heap 和 mmap 的 caller 和 stack
- * @param __heap_caller_metas
- * @param __mmap_caller_metas
- * @param __heap_stack_metas
- * @param __mmap_stack_metas
+ * @param heap_caller_metas
+ * @param mmap_caller_metas
+ * @param heap_stack_metas
+ * @param mmap_stack_metas
  */
-static inline size_t collect_metas(std::map<void *, caller_meta_t> &__heap_caller_metas,
-                                   std::map<void *, caller_meta_t> &__mmap_caller_metas,
-                                   std::map<uint64_t, stack_meta_t> &__heap_stack_metas,
-                                   std::map<uint64_t, stack_meta_t> &__mmap_stack_metas) {
+static inline size_t collect_metas(std::map<void *, caller_meta_t> &heap_caller_metas,
+                                   std::map<void *, caller_meta_t> &mmap_caller_metas,
+                                   std::map<uint64_t, stack_meta_t> &heap_stack_metas,
+                                   std::map<uint64_t, stack_meta_t> &mmap_stack_metas) {
     LOGD(TAG, "collect_metas");
 
     size_t ptr_meta_size = 0;
 
     m_memory_meta_container.for_each(
-            [&](const void *__ptr, ptr_meta_t *__meta, stack_meta_t *__stack_meta) {
+            [&](const void *ptr, ptr_meta_t *meta, stack_meta_t *stack_meta) {
 
                 auto &dest_caller_metes =
-                             __meta->is_mmap ? __mmap_caller_metas : __heap_caller_metas;
-                auto &dest_stack_metas  = __meta->is_mmap ? __mmap_stack_metas : __heap_stack_metas;
+                             meta->is_mmap ? mmap_caller_metas : heap_caller_metas;
+                auto &dest_stack_metas  = meta->is_mmap ? mmap_stack_metas : heap_stack_metas;
 
-                if (__meta->caller) {
-                    caller_meta_t &caller_meta = dest_caller_metes[__meta->caller];
-                    caller_meta.pointers.insert(__ptr);
-                    caller_meta.total_size += __meta->size;
+                if (meta->caller) {
+                    caller_meta_t &caller_meta = dest_caller_metes[meta->caller];
+                    caller_meta.pointers.insert(ptr);
+                    caller_meta.total_size += meta->size;
                 }
 
-                if (__stack_meta) {
-                    auto &dest_stack_meta = dest_stack_metas[__meta->stack_hash];
-                    dest_stack_meta.stacktrace = __stack_meta->stacktrace;
+                if (stack_meta) {
+                    auto &dest_stack_meta = dest_stack_metas[meta->stack_hash];
+                    dest_stack_meta.stacktrace = stack_meta->stacktrace;
                     // 没错, 这里的确使用 ptr_meta 的 size, 因为是在遍历 ptr_meta, 因此原来 stack_meta 的 size 仅起引用计数作用
-                    dest_stack_meta.size += __meta->size;
-                    dest_stack_meta.caller     = __stack_meta->caller;
+                    dest_stack_meta.size += meta->size;
+                    dest_stack_meta.caller     = stack_meta->caller;
                 }
 
                 ptr_meta_size++;
@@ -232,8 +232,8 @@ static inline void dump_callers(FILE *log_file,
         // 按 size 聚类
         for (auto pointer : caller_meta.pointers) {
             m_memory_meta_container.get(pointer,
-                                        [&same_size_count_of_so, &dl_info](ptr_meta_t &__meta) {
-                                            same_size_count_of_so[dl_info.dli_fname][__meta.size]++;
+                                        [&same_size_count_of_so, &dl_info](ptr_meta_t &meta) {
+                                            same_size_count_of_so[dl_info.dli_fname][meta.size]++;
                                         });
         }
     }
@@ -331,25 +331,25 @@ struct stack_dump_meta_t {
     std::string brief_stacktrace;
 };
 
-static inline void dump_stacks(FILE *__log_file,
-                               cJSON *__json_mem_arr,
-                               std::map<uint64_t, stack_meta_t> &__stack_metas) {
-    if (__stack_metas.empty()) {
+static inline void dump_stacks(FILE *log_file,
+                               cJSON *json_mem_arr,
+                               std::map<uint64_t, stack_meta_t> &stack_metas) {
+    if (stack_metas.empty()) {
         LOGI(TAG, "stacktrace: nothing dump");
         return;
     }
 
-    LOGD(TAG, "dump_stacks: hash count = %zu", __stack_metas.size());
-    fprintf(__log_file, "dump_stacks: hash count = %zu\n", __stack_metas.size());
+    LOGD(TAG, "dump_stacks: hash count = %zu", stack_metas.size());
+    fprintf(log_file, "dump_stacks: hash count = %zu\n", stack_metas.size());
 
-    for (auto &stack_meta :__stack_metas) {
+    for (auto &stack_meta :stack_metas) {
         LOGD(TAG, "hash %lu : stack.size = %zu", stack_meta.first, stack_meta.second.size);
     }
 
     std::unordered_map<std::string, size_t>                         stack_alloc_size_of_so;
     std::unordered_map<std::string, std::vector<stack_dump_meta_t>> stacktrace_of_so;
 
-    for (auto &stack_meta_it : __stack_metas) {
+    for (auto &stack_meta_it : stack_metas) {
         auto hash       = stack_meta_it.first;
         auto size       = stack_meta_it.second.size;
         auto stacktrace = stack_meta_it.second.stacktrace;
@@ -437,11 +437,11 @@ static inline void dump_stacks(FILE *__log_file,
 
         LOGD(TAG, "\nmalloc size of so (%s) : remaining size = %zu", so_name.c_str(),
              so_alloc_size);
-        fprintf(__log_file, "\nmalloc size of so (%s) : remaining size = %zu\n", so_name.c_str(),
+        fprintf(log_file, "\nmalloc size of so (%s) : remaining size = %zu\n", so_name.c_str(),
                 so_alloc_size);
 
         if (so_alloc_size < m_stacktrace_log_threshold) {
-            fprintf(__log_file, "skip printing stacktrace for size less than %zu\n",
+            fprintf(log_file, "skip printing stacktrace for size less than %zu\n",
                     m_stacktrace_log_threshold);
             continue;
         }
@@ -473,7 +473,7 @@ static inline void dump_stacks(FILE *__log_file,
                  stack_dump_meta.size,
                  stack_dump_meta.full_stacktrace.c_str());
 
-            fprintf(__log_file, "malloc size of the same stack = %zu\n stacktrace : \n%s\n",
+            fprintf(log_file, "malloc size of the same stack = %zu\n stacktrace : \n%s\n",
                     stack_dump_meta.size,
                     stack_dump_meta.full_stacktrace.c_str());
 
@@ -488,11 +488,11 @@ static inline void dump_stacks(FILE *__log_file,
                 cJSON_AddItemToArray(so_stack_arr, stack_obj);
             }
         }
-        cJSON_AddItemToArray(__json_mem_arr, so_obj);
+        cJSON_AddItemToArray(json_mem_arr, so_obj);
     }
 }
 
-static inline void dump_impl(FILE *__log_file, FILE *__json_file, bool __mmap) {
+static inline void dump_impl(FILE *log_file, FILE *json_file, bool mmap) {
 
     std::map<void *, caller_meta_t>  heap_caller_metas;
     std::map<void *, caller_meta_t>  mmap_caller_metas;
@@ -505,30 +505,30 @@ static inline void dump_impl(FILE *__log_file, FILE *__json_file, bool __mmap) {
                                          mmap_stack_metas);
 
     // native heap allocation
-    dump_callers(__log_file, heap_caller_metas);
+    dump_callers(log_file, heap_caller_metas);
 
     cJSON *json_obj        = cJSON_CreateObject();
     cJSON *native_heap_arr = cJSON_AddArrayToObject(json_obj, "NativeHeap");
 
-    dump_stacks(__log_file, native_heap_arr, heap_stack_metas);
+    dump_stacks(log_file, native_heap_arr, heap_stack_metas);
 
-    if (__mmap) {
+    if (mmap) {
         // mmap allocation
         LOGD(TAG, "############################# mmap #############################\n\n");
-        fprintf(__log_file,
+        fprintf(log_file,
                 "############################# mmap #############################\n\n");
 
-        dump_callers(__log_file, mmap_caller_metas);
+        dump_callers(log_file, mmap_caller_metas);
         cJSON *mmap_arr = cJSON_AddArrayToObject(json_obj, "mmap");
-        dump_stacks(__log_file, mmap_arr, mmap_stack_metas);
+        dump_stacks(log_file, mmap_arr, mmap_stack_metas);
     }
 
     char *printed = cJSON_PrintUnformatted(json_obj);
-    fprintf(__json_file, "%s", printed);
+    fprintf(json_file, "%s", printed);
     cJSON_free(printed);
     cJSON_Delete(json_obj);
 
-    fprintf(__log_file,
+    fprintf(log_file,
             "\n\n---------------------------------------------------\n"
             "<void *, ptr_meta_t> ptr_meta [%zu * %zu = (%zu)]\n"
             "<uint64_t, stack_meta_t> stack_meta [%zu * %zu = (%zu)]\n"
@@ -555,25 +555,25 @@ static inline void dump_impl(FILE *__log_file, FILE *__json_file, bool __mmap) {
          ((heap_stack_metas.size() + mmap_stack_metas.size())));
 }
 
-void dump(bool __enable_mmap, const char *__log_path, const char *__json_path) {
+void dump(bool enable_mmap, const char *log_path, const char *json_path) {
     LOGD(TAG,
          ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> memory dump begin <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
 
-    assert(__log_path != nullptr);
-    FILE *log_file  = fopen(__log_path, "w+");
-    FILE *json_file = fopen(__json_path, "w+");
-    LOGD(TAG, "dump path = %s", __log_path);
+    assert(log_path != nullptr);
+    FILE *log_file  = fopen(log_path, "w+");
+    FILE *json_file = fopen(json_path, "w+");
+    LOGD(TAG, "dump path = %s", log_path);
     if (!log_file) {
-        LOGE(TAG, "open file failed: %s", __log_path);
+        LOGE(TAG, "open file failed: %s", log_path);
         return;
     }
 
     if (!json_file) {
-        LOGE(TAG, "open file failed: %s", __json_path);
+        LOGE(TAG, "open file failed: %s", json_path);
         return;
     }
 
-    dump_impl(log_file, json_file, __enable_mmap);
+    dump_impl(log_file, json_file, enable_mmap);
 
     fflush(log_file);
     fclose(log_file);
@@ -584,8 +584,8 @@ void dump(bool __enable_mmap, const char *__log_path, const char *__json_path) {
          ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> memory dump end <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
 }
 
-void memory_hook_on_dlopen(const char *__file_name) {
-    LOGD(TAG, "memory_hook_on_dlopen: file %s, h_malloc %p, h_realloc %p, h_free %p", __file_name,
+void memory_hook_on_dlopen(const char *file_name) {
+    LOGD(TAG, "memory_hook_on_dlopen: file %s, h_malloc %p, h_realloc %p, h_free %p", file_name,
          h_malloc, h_realloc, h_free);
     if (is_stacktrace_enabled) {
         notify_maps_change();

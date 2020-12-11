@@ -61,13 +61,13 @@ typedef struct {
 
 typedef void (*dlopen_callback_t)(const char *__file_name);
 
-void add_dlopen_hook_callback(dlopen_callback_t __callback);
+void add_dlopen_hook_callback(dlopen_callback_t callback);
 
 typedef void (*hook_init_callback_t)();
 
-void add_hook_init_callback(hook_init_callback_t __callback);
+void add_hook_init_callback(hook_init_callback_t callback);
 
-bool get_java_stacktrace(char *__stack, size_t __size);
+bool get_java_stacktrace(char *stack_dst, size_t size);
 
 DECLARE_HOOK_ORIG(void *, __loader_android_dlopen_ext, const char *filename,
                   int                                             flag,
