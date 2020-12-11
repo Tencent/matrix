@@ -1,4 +1,7 @@
 apply plugin: 'com.google.osdetector'
+
+ext.removeUnusedResourcesV2Enable = true
+
 import com.google.gson.Gson
 import com.google.gson.JsonArray
 
@@ -45,35 +48,36 @@ android {
         }
     }
 
-    // TODO
-    applicationVariants.all { variant ->
-        if (variant.name.equalsIgnoreCase("debug")) {
-            packageDebug.doLast {
-                ProcessBuilder processBuilder = new ProcessBuilder();
-                println configurations.apkCheckerDependency.getAt(0).getAbsolutePath()
-                processBuilder.command("java",
-                        "-jar", configurations.apkCheckerDependency.getAt(0).getAbsolutePath(),
-                        "--apk", variant.outputs.first().outputFile.getAbsolutePath(),
-                        "--output", project.getProjectDir().getAbsolutePath() + "/unused_resources",
-                        "--format", "json",
-                        "-unusedResources", "--rTxt", project.getBuildDir().getAbsolutePath() + "/intermediates/runtime_symbol_list/${variant.name}/R.txt");
-                Process process = processBuilder.start();
-                process.waitFor();
-                File outputFile = new File(project.getProjectDir().getAbsolutePath() + "/unused_resources.json");
-                if (outputFile.exists()) {
-                    Gson gson = new Gson();
-                    JsonArray jsonArray = gson.fromJson(outputFile.text, JsonArray.class);
-                    for (int i = 0; i < jsonArray.size(); i++) {
-                        if (jsonArray.get(i).asJsonObject.get("taskType").asInt == 12) {
-                            JsonArray resList = jsonArray.get(i).asJsonObject.get("unused-resources").asJsonArray;
-                            for (int j = 0; j < resList.size(); j++) {
-                                project.ext.unusedResourcesSet.add(resList.get(j).asString);
+    if (!removeUnusedResourcesV2Enable) {
+        applicationVariants.all { variant ->
+            if (variant.name.equalsIgnoreCase("debug")) {
+                packageDebug.doLast {
+                    ProcessBuilder processBuilder = new ProcessBuilder();
+                    println configurations.apkCheckerDependency.getAt(0).getAbsolutePath()
+                    processBuilder.command("java",
+                            "-jar", configurations.apkCheckerDependency.getAt(0).getAbsolutePath(),
+                            "--apk", variant.outputs.first().outputFile.getAbsolutePath(),
+                            "--output", project.getProjectDir().getAbsolutePath() + "/unused_resources",
+                            "--format", "json",
+                            "-unusedResources", "--rTxt", project.getBuildDir().getAbsolutePath() + "/intermediates/runtime_symbol_list/${variant.name}/R.txt");
+                    Process process = processBuilder.start();
+                    process.waitFor();
+                    File outputFile = new File(project.getProjectDir().getAbsolutePath() + "/unused_resources.json");
+                    if (outputFile.exists()) {
+                        Gson gson = new Gson();
+                        JsonArray jsonArray = gson.fromJson(outputFile.text, JsonArray.class);
+                        for (int i = 0; i < jsonArray.size(); i++) {
+                            if (jsonArray.get(i).asJsonObject.get("taskType").asInt == 12) {
+                                JsonArray resList = jsonArray.get(i).asJsonObject.get("unused-resources").asJsonArray;
+                                for (int j = 0; j < resList.size(); j++) {
+                                    project.ext.unusedResourcesSet.add(resList.get(j).asString);
+                                }
+                                println "find unused resources:\n" + unusedResourcesSet
+                                break;
                             }
-                            println "find unused resources:\n" + unusedResourcesSet
-                            break;
                         }
+                        outputFile.delete();
                     }
-                    outputFile.delete();
                 }
             }
         }
@@ -121,6 +125,10 @@ dependencies {
     }
 }
 
+if (removeUnusedResourcesV2Enable) {
+    project.ext.unusedResourcesSet = new HashSet<String>()
+}
+
 apply plugin: 'com.tencent.matrix-plugin'
 matrix {
     trace {
@@ -129,14 +137,22 @@ matrix {
         blackListFile = "${project.projectDir}/matrixTrace/blackMethodList.txt"
     }
     removeUnusedResources {
-        enable true
         variant = "release"
+
+        v2 = removeUnusedResourcesV2Enable
+
+        if (!v2) {
+            unusedResources = project.ext.unusedResourcesSet
+        }
+
+        enable true
         needSign true
         shrinkArsc true
-        deDuplicate true
-        resguard true
+        shrinkDuplicates true
         use7zip = true
         zipAlign = true
+        withResGuard true
+
         apkCheckerPath = "${project.configurations.apkCheckerDependency.resolve().find { it.name.startsWith("matrix-apk-canary") }.getAbsolutePath()}"
         sevenZipPath = "${project.configurations.sevenZipDependency.resolve().getAt(0).getAbsolutePath()}"
         //Notice: You need to modify the  value of $apksignerPath on different platform. the value below only suitable for Mac Platform,

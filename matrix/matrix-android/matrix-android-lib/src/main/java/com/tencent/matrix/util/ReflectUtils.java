@@ -80,12 +80,8 @@ public class ReflectUtils {
     }
 
     public static Method reflectMethod(Object instance, String name, Class<?>... argTypes) {
-<<<<<<< HEAD
         boolean isHard = Build.VERSION.SDK_INT <= 29;
         return reflectMethod(instance, isHard, name, argTypes);
-=======
-        return reflectMethod(instance, true, name, argTypes);
->>>>>>> dc8f18ec2ecaefe01c011bb05d11c7e81c77909a
     }
 
 }

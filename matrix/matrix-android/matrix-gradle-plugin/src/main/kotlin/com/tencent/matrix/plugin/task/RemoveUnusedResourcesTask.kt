@@ -19,10 +19,10 @@ package com.tencent.matrix.plugin.task
 import com.android.build.gradle.api.BaseVariant
 import com.android.builder.model.SigningConfig
 import com.tencent.matrix.javalib.util.Log
-import com.tencent.matrix.javalib.util.Util
 import com.tencent.matrix.javalib.util.Pair
-import com.tencent.matrix.plugin.compat.CreationConfig
+import com.tencent.matrix.javalib.util.Util
 import com.tencent.matrix.plugin.compat.AgpCompat
+import com.tencent.matrix.plugin.compat.CreationConfig
 import com.tencent.matrix.plugin.extension.MatrixRemoveUnusedResExtension
 import com.tencent.matrix.shrinker.RemoveUnusedResourceHelper
 import com.tencent.mm.arscutil.ArscUtil
@@ -31,7 +31,6 @@ import com.tencent.mm.arscutil.io.ArscWriter
 import org.gradle.api.Action
 import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
-import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.TaskAction
 import java.io.File
 import java.util.zip.ZipFile

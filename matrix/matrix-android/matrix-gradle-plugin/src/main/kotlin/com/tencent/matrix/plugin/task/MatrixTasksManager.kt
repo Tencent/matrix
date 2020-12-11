@@ -36,11 +36,17 @@ class MatrixTasksManager {
                           traceExtension: MatrixTraceExtension,
                           removeUnusedResourcesExtension: MatrixRemoveUnusedResExtension) {
 
-        MatrixTraceCompat().inject(android, project, traceExtension)
+        createMatrixTraceTask(android, project, traceExtension)
 
         createRemoveUnusedResourcesTask(android, project, removeUnusedResourcesExtension)
     }
 
+    private fun createMatrixTraceTask(
+            android: AppExtension,
+            project: Project,
+            traceExtension: MatrixTraceExtension) {
+        MatrixTraceCompat().inject(android, project, traceExtension)
+    }
     private fun createRemoveUnusedResourcesTask(
             android: AppExtension,
             project: Project,

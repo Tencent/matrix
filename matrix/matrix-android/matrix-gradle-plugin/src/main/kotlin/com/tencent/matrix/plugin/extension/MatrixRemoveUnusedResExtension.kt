@@ -44,6 +44,7 @@ open class MatrixRemoveUnusedResExtension(
     override fun toString(): String {
         return """|
            | enable = ${enable}
+           | v2 = ${v2}
            | variant = ${variant}
            | needSign = ${needSign}
            | shrinkArsc = ${shrinkArsc}

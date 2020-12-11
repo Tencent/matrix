@@ -83,6 +83,8 @@ class MatrixTraceInjection : ITraceSwitchListener {
                               extension: MatrixTraceExtension,
                               variant: BaseVariant) {
 
+        Log.i(TAG, "Using trace task mode.")
+
         project.afterEvaluate {
 
             val creationConfig = CreationConfig(variant, project)
@@ -120,6 +122,9 @@ class MatrixTraceInjection : ITraceSwitchListener {
     }
 
     private fun transformInjection() {
+
+        Log.i(TAG, "Using trace transform mode.")
+
         transparentTransform!!.enable()
     }
 
