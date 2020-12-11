@@ -242,7 +242,7 @@ abstract class RemoveUnusedResourcesTaskV2 : DefaultTask() {
                                     if (mapOfResources.containsKey(resourceName)) {
                                         val dir = zipEntry.name.substring(0, zipEntry.name.lastIndexOf("/"))
                                         val suffix = zipEntry.name.substring(zipEntry.name.indexOf("."))
-                                        Log.i(TAG, "resource %s dir %s", resourceName, dir)
+                                        Log.d(TAG, "resource %s dir %s", resourceName, dir)
                                         if (!resultOfObfuscatedDirs.containsKey(dir)) {
                                             val proguardDir = dirProguard.generateNextProguardFileName()
                                             resultOfObfuscatedDirs[dir] = "$RES_DIR_PROGUARD_NAME/$proguardDir"
@@ -259,7 +259,7 @@ abstract class RemoveUnusedResourcesTaskV2 : DefaultTask() {
                                 if (zipEntry.method == ZipEntry.DEFLATED) {
                                     compressedEntry.add(destFile)
                                 }
-                                Log.i(TAG, "unzip %s to file %s", zipEntry.name, destFile)
+                                Log.d(TAG, "unzip %s to file %s", zipEntry.name, destFile)
                                 ApkUtil.unzipEntry(zipInputFile, zipEntry, destFile)
                             }
                         } else {
@@ -271,7 +271,7 @@ abstract class RemoveUnusedResourcesTaskV2 : DefaultTask() {
                                 compressedEntry.add(destFile)
                             }
                             if (zipEntry.name != ARSC_FILE_NAME) {                            // has already unzip resources.arsc before
-                                Log.i(TAG, "unzip %s to file %s", zipEntry.name, destFile)
+                                Log.d(TAG, "unzip %s to file %s", zipEntry.name, destFile)
                                 ApkUtil.unzipEntry(zipInputFile, zipEntry, destFile)
                             }
                         }
@@ -405,21 +405,21 @@ abstract class RemoveUnusedResourcesTaskV2 : DefaultTask() {
             val checkerOutputFile = File(pathOfBuildDir, "apk_checker.json")   // -_-|||
             if (checkerOutputFile.exists()) {
                 val jsonArray = Gson().fromJson(checkerOutputFile.readText(), JsonArray::class.java)
-                for (i in 0..jsonArray.size()) {
+                for (i in 0 until jsonArray.size()) {
                     if (jsonArray.get(i).asJsonObject.get("taskType").asInt == 12) {
                         val resList = jsonArray.get(i).asJsonObject.get("unused-resources").asJsonArray
-                        for (j in 0..resList.size()) {
+                        for (j in 0 until resList.size()) {
                             resultOfUnused.add(resList.get(j).asString)
                         }
                     }
                     if (jsonArray.get(i).asJsonObject.get("taskType").asInt == 10) {
                         val duplicatedFiles = jsonArray.get(i).asJsonObject.get("files").asJsonArray
-                        for (k in 0..duplicatedFiles.size()) {
+                        for (k in 0 until duplicatedFiles.size()) {
                             val obj = duplicatedFiles.get(k).asJsonObject
                             val md5 = obj.get("md5")
                             resultOfDuplicates[md5.toString()] = HashSet()
                             val fileList = obj.get("files").asJsonArray
-                            for (m in 0..fileList.size()) {
+                            for (m in 0 until fileList.size()) {
                                 resultOfDuplicates[md5.toString()]?.add(fileList.get(m).asString)
                             }
                         }
@@ -496,7 +496,7 @@ abstract class RemoveUnusedResourcesTaskV2 : DefaultTask() {
             if (duplicatesEntries != null) {
                 for (entry in duplicatesEntries) {
                     if (!entry.startsWith("res/")) {
-                        Log.w(TAG, " %s is not resource file!", entry)
+                        Log.w(TAG, "   %s is not resource file!", entry)
                         continue
                     } else {
                         duplicatesNames[entry] = ApkUtil.entryToResourceName(entry)
@@ -574,7 +574,7 @@ abstract class RemoveUnusedResourcesTaskV2 : DefaultTask() {
                 val attrs = mapOfStyleables[styleable]
                 var j = 0
                 if (attrs != null) {
-                    for (i in 0..attrs.size) {
+                    for (i in 0 until attrs.size) {
                         j = i
                         if (!mapOfResourcesGonnaRemoved.containsValue(attrs[i].right)) {
                             break
@@ -633,10 +633,11 @@ abstract class RemoveUnusedResourcesTaskV2 : DefaultTask() {
     ) {
 
         // Prepare backup dir for un-shrunk apk
-        val pathOfBackup = File(project.buildDir, "outputs")
+        val fileOfBackup = File(project.buildDir, "outputs")
                 .resolve(BACKUP_DIR_NAME)
                 .resolve(originalApkFile.name.substring(0, originalApkFile.name.indexOf(".")))
-                .absolutePath
+
+        fileOfBackup.mkdirs()
 
         val originalApkPath = originalApkFile.canonicalPath
         Log.i(TAG, "original apk file %s", originalApkPath)
@@ -747,14 +748,14 @@ abstract class RemoveUnusedResourcesTaskV2 : DefaultTask() {
             }
 
             // Backup original apk and swap shrunk apk
-            FileUtils.copyFile(originalApkFile, File(pathOfBackup, "backup.apk"))
+            FileUtils.copyFile(originalApkFile, File(fileOfBackup, "backup.apk"))
             originalApkFile.delete()
             FileUtils.copyFile(shrunkApkFile, originalApkFile)
             shrunkApkFile.delete()
 
             // Save shrunk R.txt
             saveShrunkRTxt(
-                    pathOfBackup = pathOfBackup,
+                    pathOfBackup = fileOfBackup.absolutePath,
                     mapOfResources = mapOfResources,
                     mapOfStyleables = mapOfStyleables,
                     mapOfResourcesGonnaRemoved = mapOfResourcesGonnaRemoved
@@ -763,7 +764,7 @@ abstract class RemoveUnusedResourcesTaskV2 : DefaultTask() {
             // Write resource mapping to resguard-mapping.txt
             if (isResGuardEnabled) {
                 writeResGuardMappingFile(
-                        pathOfBackup = pathOfBackup,
+                        pathOfBackup = fileOfBackup.absolutePath,
                         mapOfObfuscatedNames = mapOfObfuscatedNames,
                         mapOfObfuscatedDirs = mapOfObfuscatedDirs,
                         mapOfObfuscatedFiles = mapOfObfuscatedFiles

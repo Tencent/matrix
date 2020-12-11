@@ -23,12 +23,13 @@ package com.tencent.matrix.plugin.extension
 open class MatrixExtension(
         var clientVersion: String = "",
         var uuid: String = "",
-        var output: String = ""
+        var output: String = "",
+        var logLevel: String = "I"
 ) {
 
     override fun toString(): String {
-        return """| clientVersion = $clientVersion
-                  | uuid = $uuid
+        return """| log vevel = $logLevel
+//                  | uuid = $uuid
                 """.trimMargin()
     }
 }

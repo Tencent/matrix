@@ -226,7 +226,7 @@ abstract class RemoveUnusedResourcesTask : DefaultTask() {
 
                 Log.i(TAG, "shrink apk size %f KB", (inputFile.length() - outputFile.length()) / 1024.0)
                 if (needSign) {
-                    Log.i(TAG, "resign apk...")
+                    Log.i(TAG, "Sign apk...")
                     val processBuilder = ProcessBuilder()
                     processBuilder.command(apksigner, "sign", "-v",
                             "--ks", signingConfig!!.storeFile?.absolutePath,
@@ -252,7 +252,7 @@ abstract class RemoveUnusedResourcesTask : DefaultTask() {
                         val styleable = styleableItera.next()
                         val attrs = styleableMap[styleable]
                         var j = 0
-                        for (i in 0..(attrs!!.size)) {
+                        for (i in 0 until (attrs!!.size)) {
                             j = i
                             if (!removeResources.containsValue(attrs[i].right)) {
                                 break

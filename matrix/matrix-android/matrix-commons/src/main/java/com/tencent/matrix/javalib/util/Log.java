@@ -97,6 +97,7 @@ public class Log {
 
     private static LogImp logImp = debugLog;
     private static int level = LOG_LEVEL_INFO;
+
     private Log() {
     }
 
@@ -108,18 +109,22 @@ public class Log {
         return logImp;
     }
 
+    private final static String[][] LOG_LEVELS = {
+            {"V",   "VERBOSE",  "0"},
+            {"D",   "DEBUG",    "1"},
+            {"I",   "INFO",     "2"},
+            {"W",   "WARN",     "3"},
+            {"E",   "ERROR",    "4"},
+    };
+
     public static void setLogLevel(String logLevel) {
-        if (logLevel.equals("v")) {
-            level = LOG_LEVEL_VERBOSE;
-        } else if (logLevel.equals("d")) {
-            level = LOG_LEVEL_DEBUG;
-        } else if (logLevel.equals("i")) {
-            level = LOG_LEVEL_INFO;
-        } else if (logLevel.equals("w")) {
-            level = LOG_LEVEL_WARN;
-        } else if (logLevel.equals("e")) {
-            level = LOG_LEVEL_ERROR;
+
+        for (String[] pattern : LOG_LEVELS) {
+            if (pattern[0].equalsIgnoreCase(logLevel) || pattern[1].equalsIgnoreCase(logLevel)) {
+                level = Integer.parseInt(pattern[2]);
+            }
         }
+
         getImpl().setLogLevel(level);
     }
 

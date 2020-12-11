@@ -29,7 +29,7 @@ import android.os.Process;
 import android.support.annotation.Nullable;
 
 import com.tencent.matrix.Matrix;
-import com.tencent.matrix.batterycanary.BatteryCanaryPlugin;
+//import com.tencent.matrix.batterycanary.BatteryCanaryPlugin;
 import com.tencent.matrix.plugin.Plugin;
 import com.tencent.matrix.resource.ResourcePlugin;
 import com.tencent.matrix.util.MatrixLog;
@@ -65,27 +65,27 @@ public class TestBatteryActivity extends Activity {
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        Plugin plugin = Matrix.with().getPluginByClass(BatteryCanaryPlugin.class);
-        if (!plugin.isPluginStarted()) {
-            MatrixLog.i(TAG, "plugin-battery start");
-            plugin.start();
-        }
-
-        final AlarmManager am = (AlarmManager) getApplicationContext().getSystemService(Context.ALARM_SERVICE);
-        if (am == null) {
-            MatrixLog.e(TAG, "am == null");
-            return;
-        }
-
-        Intent intent = new Intent();
-        intent.setAction("ALARM_ACTION(" + String.valueOf(Process.myPid()) + ")");
-        intent.putExtra("ID", 1);
-        final PendingIntent pendingIntent = getAlarmPendingIntent(getApplicationContext(), (int) 1, intent);
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.KITKAT) {
-            am.setExact(AlarmManager.ELAPSED_REALTIME_WAKEUP, 200*1000, pendingIntent);
-        } else {
-            am.set(AlarmManager.ELAPSED_REALTIME_WAKEUP, 200*1000, pendingIntent);
-        }
+//        Plugin plugin = Matrix.with().getPluginByClass(BatteryCanaryPlugin.class);
+//        if (!plugin.isPluginStarted()) {
+//            MatrixLog.i(TAG, "plugin-battery start");
+//            plugin.start();
+//        }
+//
+//        final AlarmManager am = (AlarmManager) getApplicationContext().getSystemService(Context.ALARM_SERVICE);
+//        if (am == null) {
+//            MatrixLog.e(TAG, "am == null");
+//            return;
+//        }
+//
+//        Intent intent = new Intent();
+//        intent.setAction("ALARM_ACTION(" + String.valueOf(Process.myPid()) + ")");
+//        intent.putExtra("ID", 1);
+//        final PendingIntent pendingIntent = getAlarmPendingIntent(getApplicationContext(), (int) 1, intent);
+//        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.KITKAT) {
+//            am.setExact(AlarmManager.ELAPSED_REALTIME_WAKEUP, 200*1000, pendingIntent);
+//        } else {
+//            am.set(AlarmManager.ELAPSED_REALTIME_WAKEUP, 200*1000, pendingIntent);
+//        }
 
 //        new Thread(new Runnable() {
 //            @Override

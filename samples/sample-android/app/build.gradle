@@ -5,6 +5,8 @@ ext.removeUnusedResourcesV2Enable = true
 import com.google.gson.Gson
 import com.google.gson.JsonArray
 
+import com.tencent.matrix.plugin.compat.AgpCompat
+
 apply plugin: 'com.android.application'
 
 configurations.all {
@@ -59,9 +61,11 @@ android {
                             "--apk", variant.outputs.first().outputFile.getAbsolutePath(),
                             "--output", project.getProjectDir().getAbsolutePath() + "/unused_resources",
                             "--format", "json",
-                            "-unusedResources", "--rTxt", project.getBuildDir().getAbsolutePath() + "/intermediates/runtime_symbol_list/${variant.name}/R.txt");
+                            "-unusedResources", "--rTxt", project.getBuildDir().getAbsolutePath() + "/intermediates/${AgpCompat.getIntermediatesSymbolDirName.invoke()}/${variant.name}/R.txt");
                     Process process = processBuilder.start();
-                    process.waitFor();
+                    process.waitFor()
+                    println process.inputStream.text
+                    println process.errorStream.text
                     File outputFile = new File(project.getProjectDir().getAbsolutePath() + "/unused_resources.json");
                     if (outputFile.exists()) {
                         Gson gson = new Gson();
@@ -125,19 +129,22 @@ dependencies {
     }
 }
 
-if (removeUnusedResourcesV2Enable) {
+if (!removeUnusedResourcesV2Enable) {
     project.ext.unusedResourcesSet = new HashSet<String>()
 }
 
 apply plugin: 'com.tencent.matrix-plugin'
 matrix {
+
+    logLevel "D"
+
     trace {
         enable = true
         baseMethodMapFile = "${project.projectDir}/matrixTrace/methodMapping.txt"
         blackListFile = "${project.projectDir}/matrixTrace/blackMethodList.txt"
     }
     removeUnusedResources {
-        variant = "release"
+        variant = "debug"
 
         v2 = removeUnusedResourcesV2Enable
 

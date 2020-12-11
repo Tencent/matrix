@@ -42,6 +42,10 @@ class MatrixPlugin : Plugin<Project> {
             throw GradleException("Matrix Plugin, Android Application plugin required.")
         }
 
+        project.afterEvaluate {
+            Log.setLogLevel(matrix.logLevel)
+        }
+
         MatrixTasksManager().createMatrixTasks(
                 project.extensions.getByName("android") as AppExtension,
                 project,
