@@ -414,14 +414,14 @@ public class MethodCollector {
 
     public static boolean isNeedTrace(Configuration configuration, String clsName, MappingCollector mappingCollector) {
         boolean isNeed = true;
-        if (configuration.blackSet.contains(clsName)) {
+        if (configuration.blockSet.contains(clsName)) {
             isNeed = false;
         } else {
             if (null != mappingCollector) {
                 clsName = mappingCollector.originalClassName(clsName, clsName);
             }
             clsName = clsName.replaceAll("/", ".");
-            for (String packageName : configuration.blackSet) {
+            for (String packageName : configuration.blockSet) {
                 if (clsName.startsWith(packageName.replaceAll("/", "."))) {
                     isNeed = false;
                     break;

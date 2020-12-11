@@ -20,21 +20,15 @@ package com.tencent.matrix.plugin.extension
  * Created by caichongyang on 2017/6/20.
  */
 
-class MatrixExtension {
-    String clientVersion
-    String uuid
-    String output
+open class MatrixExtension(
+        var clientVersion: String = "",
+        var uuid: String = "",
+        var output: String = ""
+) {
 
-    MatrixExtension() {
-        clientVersion = ""
-        uuid = ""
-        output = ""
-    }
-
-    @Override
-    String toString() {
-        """| clientVersion = ${clientVersion}
-           | uuid = ${uuid}
-        """.stripMargin()
+    override fun toString(): String {
+        return """| clientVersion = $clientVersion
+                  | uuid = $uuid
+                """.trimMargin()
     }
 }

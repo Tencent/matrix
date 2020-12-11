@@ -14,57 +14,46 @@
  * limitations under the License.
  */
 
-package com.tencent.matrix.plugin.extension;
+package com.tencent.matrix.plugin.extension
 
+open class MatrixRemoveUnusedResExtension(
 
-/**
- * Created by jinqiuchen on 17/12/26.
- */
+        var v2: Boolean = false,
 
-class MatrixDelUnusedResConfiguration {
+        var enable: Boolean = false,
+        var shrinkArsc: Boolean = false,
+        var shrinkDuplicates: Boolean = false,
+        var needSign: Boolean = false,
+        var use7zip: Boolean = false,
+        var zipAlign: Boolean = false,
+        var withResGuard: Boolean = false,
 
-    boolean enable
-    String variant
-    boolean needSign
-    boolean shrinkArsc
-    boolean deDuplicate
-    boolean resguard
-    boolean use7zip
-    boolean zipAlign
-    String apkCheckerPath
-    String apksignerPath
-    String sevenZipPath
-    String zipAlignPath
-    Set<String> ignoreResources
+        var apksignerPath: String = "",
+        var apkCheckerPath: String = "",
+        var sevenZipPath: String = "",
+        var zipAlignPath: String = "",
 
-    MatrixDelUnusedResConfiguration() {
-        enable = false
-        variant = ""
-        needSign = false
-        shrinkArsc = false
-        resguard = false
-        use7zip = false
-        zipAlign = false
-        apkCheckerPath = ""
-        apksignerPath = ""
-        sevenZipPath = ""
-        zipAlignPath = ""
-        ignoreResources = new HashSet<>()
-    }
+        var ignoreResources: Set<String> = HashSet(),
 
-    @Override
-    String toString() {
-        """| enable = ${enable}
+        var variant: String = "",
+
+        // Deprecated
+        var unusedResources: HashSet<String> = HashSet()
+) {
+
+    override fun toString(): String {
+        return """|
+           | enable = ${enable}
            | variant = ${variant}
            | needSign = ${needSign}
            | shrinkArsc = ${shrinkArsc}
-           | deDuplicate = ${deDuplicate}
-           | resguard = ${resguard}
+           | shrinkDuplicates = ${shrinkDuplicates}
+           | withResGuard = ${withResGuard}
            | apkCheckerPath = ${apkCheckerPath}
            | apkSignerPath = ${apksignerPath}
            | sevenZipPath = ${sevenZipPath}
            | zipAlignPath = ${zipAlignPath}
            | ignoreResources = ${ignoreResources}
-        """.stripMargin()
+        """.trimMargin()
     }
 }

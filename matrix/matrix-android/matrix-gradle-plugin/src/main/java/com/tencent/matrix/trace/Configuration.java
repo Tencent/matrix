@@ -13,48 +13,50 @@ public class Configuration {
     public String baseMethodMapPath;
     public String methodMapFilePath;
     public String ignoreMethodMapFilePath;
-    public String blackListFilePath;
+    public String blockListFilePath;
     public String traceClassOut;
-    public HashSet<String> blackSet = new HashSet<>();
+    public HashSet<String> blockSet = new HashSet<>();
+
+    public Configuration() {}
 
     Configuration(String packageName, String mappingDir, String baseMethodMapPath, String methodMapFilePath,
-                  String ignoreMethodMapFilePath, String blackListFilePath, String traceClassOut) {
+                  String ignoreMethodMapFilePath, String blockListFilePath, String traceClassOut) {
         this.packageName = packageName;
         this.mappingDir = Util.nullAsNil(mappingDir);
         this.baseMethodMapPath = Util.nullAsNil(baseMethodMapPath);
         this.methodMapFilePath = Util.nullAsNil(methodMapFilePath);
         this.ignoreMethodMapFilePath = Util.nullAsNil(ignoreMethodMapFilePath);
-        this.blackListFilePath = Util.nullAsNil(blackListFilePath);
+        this.blockListFilePath = Util.nullAsNil(blockListFilePath);
         this.traceClassOut = Util.nullAsNil(traceClassOut);
     }
 
-    public int parseBlackFile(MappingCollector processor) {
-        String blackStr = TraceBuildConstants.DEFAULT_BLACK_TRACE + FileUtil.readFileAsString(blackListFilePath);
+    public int parseBlockFile(MappingCollector processor) {
+        String blockStr = TraceBuildConstants.DEFAULT_BLOCK_TRACE + FileUtil.readFileAsString(blockListFilePath);
 
-        String[] blackArray = blackStr.trim().replace("/", ".").split("\n");
+        String[] blockArray = blockStr.trim().replace("/", ".").split("\n");
 
-        if (blackArray != null) {
-            for (String black : blackArray) {
-                if (black.length() == 0) {
+        if (blockArray != null) {
+            for (String block : blockArray) {
+                if (block.length() == 0) {
                     continue;
                 }
-                if (black.startsWith("#")) {
+                if (block.startsWith("#")) {
                     continue;
                 }
-                if (black.startsWith("[")) {
+                if (block.startsWith("[")) {
                     continue;
                 }
 
-                if (black.startsWith("-keepclass ")) {
-                    black = black.replace("-keepclass ", "");
-                    blackSet.add(processor.proguardClassName(black, black));
-                } else if (black.startsWith("-keeppackage ")) {
-                    black = black.replace("-keeppackage ", "");
-                    blackSet.add(processor.proguardPackageName(black, black));
+                if (block.startsWith("-keepclass ")) {
+                    block = block.replace("-keepclass ", "");
+                    blockSet.add(processor.proguardClassName(block, block));
+                } else if (block.startsWith("-keeppackage ")) {
+                    block = block.replace("-keeppackage ", "");
+                    blockSet.add(processor.proguardPackageName(block, block));
                 }
             }
         }
-        return blackSet.size();
+        return blockSet.size();
     }
 
     @Override
@@ -65,7 +67,7 @@ public class Configuration {
                 + "|* baseMethodMapPath:\t" + baseMethodMapPath + "\n"
                 + "|* methodMapFilePath:\t" + methodMapFilePath + "\n"
                 + "|* ignoreMethodMapFilePath:\t" + ignoreMethodMapFilePath + "\n"
-                + "|* blackListFilePath:\t" + blackListFilePath + "\n"
+                + "|* blockListFilePath:\t" + blockListFilePath + "\n"
                 + "|* traceClassOut:\t" + traceClassOut + "\n";
     }
 
@@ -76,7 +78,7 @@ public class Configuration {
         public String baseMethodMap;
         public String methodMapFile;
         public String ignoreMethodMapFile;
-        public String blackListFile;
+        public String blockListFile;
         public String traceClassOut;
 
         public Builder setPackageName(String packageName) {
@@ -109,13 +111,13 @@ public class Configuration {
             return this;
         }
 
-        public Builder setBlackListFile(String blackListFile) {
-            this.blackListFile = blackListFile;
+        public Builder setBlockListFile(String blockListFile) {
+            this.blockListFile = blockListFile;
             return this;
         }
 
         public Configuration build() {
-            return new Configuration(packageName, mappingPath, baseMethodMap, methodMapFile, ignoreMethodMapFile, blackListFile, traceClassOut);
+            return new Configuration(packageName, mappingPath, baseMethodMap, methodMapFile, ignoreMethodMapFile, blockListFile, traceClassOut);
         }
 
     }
