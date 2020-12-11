@@ -26,6 +26,14 @@ import java.util.List;
 public class JiffiesMonitorFeature implements MonitorFeature {
     private static final String TAG = "Matrix.battery.JiffiesMonitorFeature";
 
+    public interface JiffiesListener {
+        void onParseError(int pid, int tid);
+    }
+
+    private JiffiesListener getListener() {
+        return monitor;
+    }
+
     @NonNull private BatteryMonitorCore monitor;
 
     @Override
@@ -56,11 +64,10 @@ public class JiffiesMonitorFeature implements MonitorFeature {
 
     @WorkerThread
     public JiffiesSnapshot currentJiffiesSnapshot() {
-        return JiffiesSnapshot.currentJiffiesSnapshot(ProcessInfo.getProcessInfo());
+        return JiffiesSnapshot.currentJiffiesSnapshot(ProcessInfo.getProcessInfo(), getListener());
     }
 
     public static class ProcessInfo {
-
         static ProcessInfo getProcessInfo() {
             ProcessInfo processInfo = new ProcessInfo();
             processInfo.pid = Process.myPid();
@@ -142,6 +149,10 @@ public class JiffiesMonitorFeature implements MonitorFeature {
 
     public static class JiffiesSnapshot extends Snapshot<JiffiesSnapshot> {
         public static JiffiesSnapshot currentJiffiesSnapshot(ProcessInfo processInfo) {
+            return currentJiffiesSnapshot(processInfo, null);
+        }
+
+        public static JiffiesSnapshot currentJiffiesSnapshot(ProcessInfo processInfo, JiffiesListener listener) {
             JiffiesSnapshot snapshot = new JiffiesSnapshot();
             snapshot.pid = processInfo.pid;
             snapshot.name = processInfo.name;
@@ -156,6 +167,11 @@ public class JiffiesMonitorFeature implements MonitorFeature {
                     if (threadJiffies != null) {
                         threadJiffiesList.add(threadJiffies);
                         totalJiffies += threadJiffies.value;
+                    } else {
+                        snapshot.setValid(false);
+                        if (listener != null) {
+                            listener.onParseError(threadInfo.pid, threadInfo.tid);
+                        }
                     }
                 }
             }

@@ -10,6 +10,7 @@ import android.support.annotation.VisibleForTesting;
 import com.tencent.matrix.AppActiveMatrixDelegate;
 import com.tencent.matrix.Matrix;
 import com.tencent.matrix.batterycanary.monitor.feature.AlarmMonitorFeature;
+import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.LooperTaskMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.WakeLockMonitorFeature;
@@ -21,7 +22,7 @@ import com.tencent.matrix.util.MatrixLog;
 import java.util.List;
 
 public class BatteryMonitorCore implements Handler.Callback, LooperTaskMonitorFeature.LooperTaskListener,
-        WakeLockMonitorFeature.WakeLockListener, AlarmMonitorFeature.AlarmListener {
+        WakeLockMonitorFeature.WakeLockListener, AlarmMonitorFeature.AlarmListener, JiffiesMonitorFeature.JiffiesListener {
     private static final String TAG = "Matrix.battery.watchdog";
 
     public interface JiffiesListener {
@@ -215,5 +216,11 @@ public class BatteryMonitorCore implements Handler.Callback, LooperTaskMonitorFe
     public void onAlarmDuplicated(int duplicatedCount, AlarmMonitorFeature.AlarmRecord record) {
         MatrixLog.d(TAG, "#onAlarmDuplicated");
         getConfig().callback.onAlarmDuplicated(duplicatedCount, record);
+    }
+
+    @Override
+    public void onParseError(int pid, int tid) {
+        MatrixLog.d(TAG, "#onParseError, tid " + tid);
+        getConfig().callback.onParseError(pid, tid);
     }
 }

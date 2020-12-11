@@ -129,14 +129,6 @@ public final class AppStatMonitorFeature implements MonitorFeature {
 
         AppStatSnapshot() {}
 
-        @SuppressWarnings("SameParameterValue")
-        void setValid(boolean bool) {
-           uptime.setValid(bool);
-           fgRatio.setValid(bool);
-           bgRatio.setValid(bool);
-           fgSrvRatio.setValid(bool);
-        }
-
         @Override
         public Delta<AppStatSnapshot> diff(AppStatSnapshot bgn) {
             return new Delta<AppStatSnapshot>(bgn, this) {
