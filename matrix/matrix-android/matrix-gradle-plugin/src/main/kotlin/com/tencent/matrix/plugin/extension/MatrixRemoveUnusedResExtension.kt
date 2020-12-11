@@ -26,7 +26,7 @@ open class MatrixRemoveUnusedResExtension(
         var needSign: Boolean = false,
         var use7zip: Boolean = false,
         var zipAlign: Boolean = false,
-        var withResGuard: Boolean = false,
+        var embedResGuard: Boolean = false,
 
         var apksignerPath: String = "",
         var apkCheckerPath: String = "",
@@ -49,7 +49,7 @@ open class MatrixRemoveUnusedResExtension(
            | needSign = ${needSign}
            | shrinkArsc = ${shrinkArsc}
            | shrinkDuplicates = ${shrinkDuplicates}
-           | withResGuard = ${withResGuard}
+           | embedResGuard = ${embedResGuard}
            | apkCheckerPath = ${apkCheckerPath}
            | apkSignerPath = ${apksignerPath}
            | sevenZipPath = ${sevenZipPath}

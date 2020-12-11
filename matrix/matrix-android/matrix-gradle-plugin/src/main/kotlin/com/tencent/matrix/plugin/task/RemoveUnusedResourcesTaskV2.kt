@@ -111,7 +111,7 @@ abstract class RemoveUnusedResourcesTaskV2 : DefaultTask() {
                 task.isSigningEnabled = needSign
                 task.isZipAlignEnabled = zipAlign
                 task.is7zipEnabled = use7zip
-                task.isResGuardEnabled = withResGuard
+                task.isResGuardEnabled = embedResGuard
 
                 task.pathOfApkChecker = apkCheckerPath
                 task.pathOfApkSigner = apksignerPath
