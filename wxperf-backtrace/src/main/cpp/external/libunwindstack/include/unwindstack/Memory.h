@@ -23,6 +23,7 @@
 
 #include <memory>
 #include <string>
+#include <cinttypes>
 
 namespace unwindstack {
 

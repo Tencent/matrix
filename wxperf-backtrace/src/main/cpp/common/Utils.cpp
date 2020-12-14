@@ -12,7 +12,7 @@
 uint64_t hash_uint64(uint64_t *p_pc_stacks, size_t stack_size) {
     assert(p_pc_stacks != NULL && stack_size > 0);
     uint64_t sum = 0;
-    for (int i = 0; i < stack_size; ++i) {
+    for (size_t i = 0; i < stack_size; ++i) {
         sum += p_pc_stacks[i];
     }
     return sum;

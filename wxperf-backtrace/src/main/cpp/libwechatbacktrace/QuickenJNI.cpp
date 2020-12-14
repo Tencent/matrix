@@ -64,7 +64,7 @@ namespace wechat_backtrace {
     static void JNI_Statistic(JNIEnv *env, jclass clazz, jstring sopath_jstr) {
         (void) clazz;
         const char *sopath = env->GetStringUTFChars(sopath_jstr, 0);
-        StatisticWeChatQuickenUnwindTable(sopath);
+//        StatisticWeChatQuickenUnwindTable(sopath);
         env->ReleaseStringUTFChars(sopath_jstr, sopath);
     }
 
@@ -81,17 +81,17 @@ namespace wechat_backtrace {
     static jmethodID JNIMethod_RequestQutGenerate = nullptr;
     static JavaVM *CurrentJavaVM = nullptr;
 
-    inline static JNIEnv *GetEnv() {
-        if (CurrentJavaVM) {
-            JNIEnv *currentEnv = nullptr;
-            auto ret = CurrentJavaVM->GetEnv(reinterpret_cast<void **>(&currentEnv),
-                                             JNI_VERSION_1_6);
-            if (ret == JNI_OK) {
-                return currentEnv;
-            }
-        }
-        return nullptr;
-    }
+//    inline static JNIEnv *GetEnv() {
+//        if (CurrentJavaVM) {
+//            JNIEnv *currentEnv = nullptr;
+//            auto ret = CurrentJavaVM->GetEnv(reinterpret_cast<void **>(&currentEnv),
+//                                             JNI_VERSION_1_6);
+//            if (ret == JNI_OK) {
+//                return currentEnv;
+//            }
+//        }
+//        return nullptr;
+//    }
 
     static int RegisterQutJNINativeMethods(JNIEnv *env) {
 
@@ -140,7 +140,11 @@ namespace wechat_backtrace {
 QUT_EXTERN_C_BLOCK
 
 JNIEXPORT jint JNI_OnLoad(JavaVM *vm, void *reserved) {
+
+    (void) reserved;
+
     LOGD(WECHAT_QUICKEN_UNWIND_TAG, "JNI OnLoad...");
+
     JNIEnv *env;
     vm->GetEnv((void **) &env, JNI_VERSION_1_6);
     wechat_backtrace::CurrentJavaVM = vm;
@@ -154,6 +158,8 @@ JNIEXPORT jint JNI_OnLoad(JavaVM *vm, void *reserved) {
 
 JNIEXPORT void JNI_OnUnload(JavaVM *vm, void *reserved) {
     // no implementation
+    (void) vm;
+    (void) reserved;
 }
 
 QUT_EXTERN_C_BLOCK_END

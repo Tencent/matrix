@@ -133,7 +133,6 @@ public class MainActivity extends AppCompatActivity {
 
         System.loadLibrary("wechatbacktrace");
 
-        Log.i("Matrix.Qut", "WTF------????? %s", "123123123123");
         WeChatBacktrace.instance().configure(getApplicationContext())
                 .directoryToWarmUp(getApplicationInfo().nativeLibraryDir)
                 .directoryToWarmUp(WeChatBacktrace.getSystemLibraryPath())
@@ -395,7 +394,6 @@ public class MainActivity extends AppCompatActivity {
         new Thread(new Runnable() {
             @Override
             public void run() {
-                Log.e(TAG, "WTF ----- unwindBenchmarkDebug");
                 UnwindBenckmarkTest.benchmarkInitNative();
                 UnwindBenckmarkTest.debugNative();
             }

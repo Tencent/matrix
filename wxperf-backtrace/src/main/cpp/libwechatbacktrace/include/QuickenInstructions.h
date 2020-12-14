@@ -238,14 +238,14 @@ namespace wechat_backtrace {
 
 //      1111 1111 + SLEB128 : vsp = vsp + SLEB128   							;
 
-#ifdef EnableLOG
-        QUT_DEBUG_LOG("--- Dump Instr");
-        for (auto iter = instructions.begin(); iter != instructions.end(); iter++) {
-            uint64_t instr = *iter;
-            QUT_DEBUG_LOG("Instr %llx", instr);
-        }
-        QUT_DEBUG_LOG("--- End Dump Instr");
-#endif
+//#ifdef EnableLOG
+//        QUT_DEBUG_LOG("--- Dump Instr");
+//        for (auto iter = instructions.begin(); iter != instructions.end(); iter++) {
+//            uint64_t instr = *iter;
+//            QUT_DEBUG_LOG("Instr %llx", instr);
+//        }
+//        QUT_DEBUG_LOG("--- End Dump Instr");
+//#endif
 
         while (!instructions.empty()) {
 

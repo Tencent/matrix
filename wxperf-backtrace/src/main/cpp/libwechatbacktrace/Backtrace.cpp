@@ -19,7 +19,7 @@ namespace wechat_backtrace {
 
     static pthread_mutex_t unwind_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-    void restore_frame_detail(const Frame *frames, const size_t frame_size,
+    void    restore_frame_detail(const Frame *frames, const size_t frame_size,
                               std::function<void(FrameDetail)> frame_callback) {
         LOGD(WECHAT_BACKTRACE_TAG, "Restore frame data size: %zu.", frame_size);
         if (frames == nullptr || frame_callback == nullptr) {
@@ -52,7 +52,7 @@ namespace wechat_backtrace {
 
     void notify_maps_changed() {
 
-        wechat_backtrace::UpdateLocalMaps();
+//        wechat_backtrace::UpdateLocalMaps();
 
 #ifdef __arm__
         // Parse quicken maps

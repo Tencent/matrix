@@ -31,28 +31,33 @@ namespace wechat_backtrace {
 #define NoReturnIndexOverflow(_i, _amount)
 
 #define IterateNextByteIdx(_j, _i, _amount, _ReturnIndexOverflow)  \
-    _j--; \
-    if (_j < 0) { \
-        _j = QUT_TBL_ROW_SIZE; \
-        _i++; \
-        _ReturnIndexOverflow(_i, _amount) \
+    { \
+        _j--; \
+        if (_j < 0) { \
+            _j = QUT_TBL_ROW_SIZE; \
+            _i++; \
+            _ReturnIndexOverflow(_i, _amount) \
+        } \
     }
-
 #define ReadByte(_byte, _instructions, _j, _i, _amount) \
-    _byte = _instructions[_i] >> (8 * _j) & 0xff; \
-    IterateNextByteIdx(_j, _i, _amount, NoReturnIndexOverflow)
+    { \
+    _byte = (uint8_t)(_instructions[_i] >> (8 * _j) & 0xff); \
+    IterateNextByteIdx(_j, _i, _amount, NoReturnIndexOverflow) \
+    }
 
 #define DecodeSLEB128(_value, _instructions, _amount, _j, _i) \
     { \
         unsigned Shift = 0; \
         uint8_t Byte; \
         do { \
-            IterateNextByteIdx(_j, _i, _amount, ReturnIndexOverflow) \
             ReadByte(Byte, _instructions, _j, _i, _amount) \
             _value |= (uint64_t(Byte & 0x7f) << Shift); \
             Shift += 7; \
-        } while (Byte >= 0x80); \
+        } while (Byte >= 0x80 && (_i < _amount)); \
         if (Shift < 64 && (Byte & 0x40)) _value |= (-1ULL) << Shift; \
+        if (UNLIKELY(Byte >= 0x80)) { \
+            return QUT_ERROR_TABLE_INDEX_OVERFLOW; \
+        } \
     }
 
     inline bool QuickenTable::ReadStack(const uptr addr, uptr *value) {
@@ -65,7 +70,7 @@ namespace wechat_backtrace {
         return true;
     }
 
-    inline QutErrorCode QuickenTable::Decode32(const uint32_t *instructions, const size_t amount,
+    inline QutErrorCode QuickenTable::Decode32(const uint32_t * const instructions, const size_t amount,
                                                const size_t start_pos) {
 
         QUT_DEBUG_LOG("QuickenTable::Decode32 instructions %x, amount %u, start_pos %u",
@@ -77,18 +82,10 @@ namespace wechat_backtrace {
         int32_t j = start_pos;
         size_t i = 0;
 
-#ifdef EnableLOG
-        for (size_t m = 0; m < amount; m++) {
-            QUT_DEBUG_LOG("QuickenTable::Decode instruction %x", instructions[m]);
-//        QUT_TMP_LOG("QuickenTable::Decode instruction %x", instructions[m]);
-        }
-#endif
 
         while (i < amount) {
             uint8_t byte;
             ReadByte(byte, instructions, j, i, amount);
-            QUT_DEBUG_LOG("Decode byte "
-                                  BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(byte));
             switch (byte >> 6) {
                 case 0:
                     // 00nn nnnn : vsp = vsp + (nnnnnn << 2) ; # (nnnnnnn << 2) in [0, 0xfc]
@@ -528,20 +525,21 @@ namespace wechat_backtrace {
 
     QutErrorCode QuickenTable::Eval(size_t entry_offset) {
 
-        uptr command = fut_sections_->quidx[entry_offset + 1];
+        uptr command = qut_sections_->quidx[entry_offset + 1];
 
         QUT_DEBUG_LOG("QuickenTable::Eval entry_offset %u, add %llx, command %llx",
-                      (uint32_t) entry_offset, (uint64_t) fut_sections_->quidx[entry_offset],
-                      (uint64_t) fut_sections_->quidx[entry_offset + 1]);
+                      (uint32_t) entry_offset, (uint64_t) qut_sections_->quidx[entry_offset],
+                      (uint64_t) qut_sections_->quidx[entry_offset + 1]);
 
-        if (command >> (sizeof(uptr) * 8 - 1)) {
+
+        if (command >> ((sizeof(uptr) * 8) - 1)) {
             return Decode(&command, 1, QUT_TBL_ROW_SIZE - 1); // compact
         } else {
             size_t row_count = (command >> ((sizeof(uptr) - 1) * 8)) & 0x7f;
             size_t row_offset = command & 0xffffff;
-            QUT_DEBUG_LOG("QuickenTable::Eval row_count %u, row_offset %u", (uint32_t) row_count,
-                          (uint32_t) row_offset);
-            return Decode(&fut_sections_->qutbl[row_offset], row_count, QUT_TBL_ROW_SIZE);
+            CHECK(row_offset + row_count <= qut_sections_->tbl_size);
+
+            return Decode(&(qut_sections_->qutbl[row_offset]), row_count, QUT_TBL_ROW_SIZE);
         }
     }
 

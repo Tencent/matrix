@@ -47,6 +47,8 @@ namespace wechat_backtrace {
         size_t size_ = 0;
         size_t offset_ = 0;
         uint8_t *data_ = nullptr;
+
+        unsigned char e_ident[EI_NIDENT];
     };
 
 
@@ -90,7 +92,15 @@ namespace wechat_backtrace {
             // Truncate the mapped size.
             size_ = max_size;
         }
-        void *map = mmap(nullptr, size_, PROT_READ, MAP_PRIVATE, fd, aligned_offset);
+
+        // Cut out e_ident header from elf mapping to broke elf header's completeness.
+        // So we can prevent some kind of custom loaders finding our mapping elf as the one loaded
+        // by dl.
+        TEMP_FAILURE_RETRY(read(fd, e_ident, EI_NIDENT));
+        size_ -= EI_NIDENT;
+        aligned_offset += EI_NIDENT;
+
+        void *map = mmap(nullptr, size_, PROT_READ, MAP_SHARED, fd, aligned_offset);
         if (map == MAP_FAILED) {
             return false;
         }
@@ -102,12 +112,24 @@ namespace wechat_backtrace {
     }
 
     size_t MemoryFile::Read(uint64_t addr, void *dst, size_t size) {
-        if (addr >= size_) {
+
+        size_t _size_;
+        uint8_t *_data_;
+        if (addr < EI_NIDENT) {
+            _size_ = EI_NIDENT;
+            _data_ = e_ident;
+        } else {
+            addr -= EI_NIDENT;
+            _size_ = size_;
+            _data_ = data_;
+        }
+
+        if (addr >= _size_) {
             return 0;
         }
 
-        size_t bytes_left = size_ - static_cast<size_t>(addr);
-        const unsigned char *actual_base = static_cast<const unsigned char *>(data_) + addr;
+        size_t bytes_left = _size_ - static_cast<size_t>(addr);
+        const unsigned char *actual_base = static_cast<const unsigned char *>(_data_) + addr;
         size_t actual_len = std::min(bytes_left, size);
 
         memcpy(dst, actual_base, actual_len);
@@ -140,7 +162,8 @@ namespace wechat_backtrace {
         SetCurrentStatLib(soname);
 
         QuickenInterface *interface = QuickenMapInfo::GetQuickenInterfaceFromElf(sopath, elf.get());
-        interface->GenerateQuickenTable<addr_t>(process_memory_.get());
+        QutSections qut_sections;
+        interface->GenerateQuickenTable<addr_t>(process_memory_.get(), &qut_sections);
 
         DumpQutStatResult();
     }
@@ -169,6 +192,11 @@ namespace wechat_backtrace {
             return;
         }
 
+        if (elf->arch() != CURRENT_ARCH) {
+            QUT_LOG("elf->arch() invalid %s", sopath.c_str());
+            return;
+        }
+
         const string build_id_hex = elf->GetBuildID();
         const string build_id = ToBuildId(build_id_hex);
 
@@ -181,19 +209,21 @@ namespace wechat_backtrace {
 
         QuickenInterface *interface = QuickenMapInfo::GetQuickenInterfaceFromElf(sopath, elf.get());
 
-        interface->GenerateQuickenTable<addr_t>(process_memory_.get());
+        std::unique_ptr<QutSections> qut_sections = make_unique<QutSections>();
+        QutSectionsPtr qut_sections_ptr = qut_sections.get();
+        interface->GenerateQuickenTable<addr_t>(process_memory_.get(), qut_sections_ptr);
 
         QutFileError error = QuickenTableManager::getInstance().SaveQutSections(
-                soname, sopath, hash, build_id, build_id_hex, interface->GetQutSections());
+                soname, sopath, hash, build_id, build_id_hex, std::move(qut_sections));
         QUT_LOG("Generate qut for so %s result %d", sopath.c_str(), error);
     }
 
     void ConsumeRequestingQut() {
         auto requesting_qut = QuickenTableManager::getInstance().GetRequestQut();
-        auto iter = requesting_qut.begin();
-        while (iter != requesting_qut.end()) {
-            GenerateQutForLibrary(iter->second);
-            iter++;
+        auto it = requesting_qut.begin();
+        while (it != requesting_qut.end()) {
+            GenerateQutForLibrary(it->second);
+            it++;
         }
     }
 
@@ -230,6 +260,11 @@ namespace wechat_backtrace {
 
         std::shared_ptr<Maps> maps = Maps::current();
 
+        if (maps == nullptr) {
+            LOGE(WECHAT_QUICKEN_UNWIND_TAG, "maps == nullptr.");
+            return QUT_ERROR_MAPS_IS_NULL;
+        }
+
         auto process_memory_ = unwindstack::Memory::CreateProcessMemory(getpid());
 
         bool adjust_pc = false;
@@ -241,6 +276,11 @@ namespace wechat_backtrace {
         uint64_t dex_pc = 0;
 
         QutErrorCode ret = QUT_ERROR_NONE;
+
+        pthread_attr_t attr;
+        pthread_getattr_ext(pthread_self(), &attr);
+        uptr stack_bottom = reinterpret_cast<uptr>(attr.stack_base);
+        uptr stack_top = reinterpret_cast<uptr>(attr.stack_base) + attr.stack_size;
 
         for (; frame_size < frame_max_size;) {
 
@@ -257,17 +297,16 @@ namespace wechat_backtrace {
                 map_info = maps->Find(cur_pc);
 
                 if (map_info == nullptr) {
-                    backtrace[frame_size].pc = PC(regs) - 2;
-                    QUT_DEBUG_LOG(WECHAT_QUICKEN_UNWIND_TAG, "Map info is null.");
+                    backtrace[frame_size++].pc = PC(regs) - 2;
+//                    LOGE(WECHAT_QUICKEN_UNWIND_TAG, "Map info is null.");
                     ret = QUT_ERROR_INVALID_MAP;
                     break;
                 }
 
                 interface = map_info->GetQuickenInterface(process_memory_, arch);
                 if (!interface) {
-                    QUT_DEBUG_LOG(WECHAT_QUICKEN_UNWIND_TAG,
-                                  "Quicken interface is null, maybe the elf is invalid.");
-                    backtrace[frame_size].pc = PC(regs) - 2;
+                    QUT_DEBUG_LOG("Quicken interface is null, maybe the elf is invalid.");
+                    backtrace[frame_size++].pc = PC(regs) - 2;
                     ret = QUT_ERROR_INVALID_ELF;
                     break;
                 }
@@ -297,14 +336,17 @@ namespace wechat_backtrace {
 
             QUT_DEBUG_LOG("WeChatQuickenUnwind pc_adjustment:%llx, step_pc:%llx, rel_pc:%llx",
                           pc_adjustment, step_pc, rel_pc);
-            QUT_TMP_LOG("WeChatQuickenUnwind pc_adjustment:%llx, step_pc:%llx, rel_pc:%llx",
-                        pc_adjustment, step_pc, rel_pc);
 
             if (dex_pc != 0) {
-                QUT_DEBUG_LOG(WECHAT_QUICKEN_UNWIND_TAG, "dex_pc %llx", dex_pc);
+                QUT_DEBUG_LOG("dex_pc %llx", dex_pc);
                 backtrace[frame_size++].pc = dex_pc;
-//                backtrace[frame_size++].is_dex_pc = true;
+                backtrace[frame_size++].is_dex_pc = true;
                 dex_pc = 0;
+
+                if (frame_size >= frame_max_size) {
+                    ret = QUT_ERROR_MAX_FRAMES_EXCEEDED;
+                    break;
+                }
             }
 
             backtrace[frame_size++].pc = PC(regs) - pc_adjustment;
@@ -316,15 +358,16 @@ namespace wechat_backtrace {
                 break;
             }
 
-            if (!interface->Step(step_pc, regs, process_memory_.get(), &dex_pc, &finished)) {
+            if (!interface->Step(step_pc, regs, process_memory_.get(), stack_top, stack_bottom,
+                                 frame_size, &dex_pc, &finished)) {
                 ret = interface->last_error_code_;
                 break;
             }
 
-            QUT_TMP_LOG(
-                    "WeChatQuickenUnwind Stepped Reg. r4: %x, r7: %x, r10: %x, r11: %x, sp: %x, ls: %x, pc: %x",
-                    R4(regs), R7(regs), R10(regs), R11(regs), SP(regs), LR(regs), PC(regs)
-            );
+//            QUT_DEBUG_LOG(
+//                    "WeChatQuickenUnwind Stepped Reg. r4: %x, r7: %x, r10: %x, r11: %x, sp: %x, ls: %x, pc: %x",
+//                    R4(regs), R7(regs), R10(regs), R11(regs), SP(regs), LR(regs), PC(regs)
+//            );
 
             if (finished) { // finished.
                 break;
@@ -332,7 +375,7 @@ namespace wechat_backtrace {
 
             // If the pc and sp didn't change, then consider everything stopped.
             if (cur_pc == PC(regs) && cur_sp == SP(regs)) {
-                QUT_DEBUG_LOG(WECHAT_QUICKEN_UNWIND_TAG, "pc and sp not changed.");
+                QUT_DEBUG_LOG("pc and sp not changed.");
                 ret = QUT_ERROR_REPEATED_FRAME;
                 break;
             }
@@ -346,80 +389,80 @@ namespace wechat_backtrace {
 // -------------------------------------------------------------------------------------------------
 // -------------------------------------------------------------------------------------------------
 
-// Check if given pointer points into allocated stack area.
-    static inline bool IsValidFrame(uptr frame, uptr stack_top, uptr stack_bottom) {
-        return frame > stack_bottom && frame < stack_top - 2 * sizeof(uptr);
-    }
-
-// In GCC on ARM bp points to saved lr, not fp, so we should check the next
-// cell in stack to be a saved frame pointer. GetCanonicFrame returns the
-// pointer to saved frame pointer in any case.
-    static inline uptr *GetCanonicFrame(uptr fp, uptr stack_top, uptr stack_bottom) {
-        if (UNLIKELY(stack_top < stack_bottom)) {
-            return 0;
-        }
-//#ifdef __arm__
-//    if (!IsValidFrame(fp, stack_top, stack_bottom)) return 0;
+//// Check if given pointer points into allocated stack area.
+//    static inline bool IsValidFrame(uptr frame, uptr stack_top, uptr stack_bottom) {
+//        return frame > stack_bottom && frame < stack_top - 2 * sizeof(uptr);
+//    }
 //
-//    uptr *fp_prev = (uptr *)fp;
+//// In GCC on ARM bp points to saved lr, not fp, so we should check the next
+//// cell in stack to be a saved frame pointer. GetCanonicFrame returns the
+//// pointer to saved frame pointer in any case.
+//    static inline uptr *GetCanonicFrame(uptr fp, uptr stack_top, uptr stack_bottom) {
+//        if (UNLIKELY(stack_top < stack_bottom)) {
+//            return 0;
+//        }
+////#ifdef __arm__
+////    if (!IsValidFrame(fp, stack_top, stack_bottom)) return 0;
+////
+////    uptr *fp_prev = (uptr *)fp;
+////
+////    if (IsValidFrame((uptr)fp_prev[0], stack_top, stack_bottom)) return fp_prev;
+////
+////    // The next frame pointer does not look right. This could be a GCC frame, step
+////    // back by 1 word and try again.
+////    if (IsValidFrame((uptr)fp_prev[-1], stack_top, stack_bottom)) return fp_prev - 1;
+////
+////    // Nope, this does not look right either. This means the frame after next does
+////    // not have a valid frame pointer, but we can still extract the caller PC.
+////    // Unfortunately, there is no way to decide between GCC and LLVM frame
+////    // layouts. Assume LLVM.
+////    return fp_prev;
+////#else
+//        return (uptr *) fp;
+////#endif
+//    }
 //
-//    if (IsValidFrame((uptr)fp_prev[0], stack_top, stack_bottom)) return fp_prev;
+//    static inline uptr GetPageSize() {
+//        return 4096;
+//    }
 //
-//    // The next frame pointer does not look right. This could be a GCC frame, step
-//    // back by 1 word and try again.
-//    if (IsValidFrame((uptr)fp_prev[-1], stack_top, stack_bottom)) return fp_prev - 1;
+//    static inline bool IsAligned(uptr a, uptr alignment) {
+//        return (a & (alignment - 1)) == 0;
+//    }
 //
-//    // Nope, this does not look right either. This means the frame after next does
-//    // not have a valid frame pointer, but we can still extract the caller PC.
-//    // Unfortunately, there is no way to decide between GCC and LLVM frame
-//    // layouts. Assume LLVM.
-//    return fp_prev;
-//#else
-        return (uptr *) fp;
-//#endif
-    }
-
-    static inline uptr GetPageSize() {
-        return 4096;
-    }
-
-    static inline bool IsAligned(uptr a, uptr alignment) {
-        return (a & (alignment - 1)) == 0;
-    }
-
-    static inline void FpUnwind(uptr pc, uptr fp, uptr stack_top, uptr stack_bottom,
-                                uptr *backtrace, uptr *frame_pointer, uptr frame_max_size,
-                                uptr &frame_size) {
-
-        const uptr kPageSize = GetPageSize();
-        backtrace[0] = pc;
-        frame_pointer[0] = fp;
-        frame_size = 1;
-        if (UNLIKELY(stack_top < 4096)) return;  // Sanity check for stack top.
-        uptr *frame = GetCanonicFrame(fp, stack_top, stack_bottom);
-        // Lowest possible address that makes sense as the next frame pointer.
-        // Goes up as we walk the stack.
-        uptr bottom = stack_bottom;
-        // Avoid infinite loop when frame == frame[0] by using frame > prev_frame.
-        while (IsValidFrame((uptr) frame, stack_top, bottom) &&
-               IsAligned((uptr) frame, sizeof(*frame)) &&
-               frame_size < frame_max_size) {
-
-            uptr pc1 = frame[1];
-            // Let's assume that any pointer in the 0th page (i.e. <0x1000 on i386 and
-            // x86_64) is invalid and stop unwinding here.  If we're adding support for
-            // a platform where this isn't true, we need to reconsider this check.
-            if (pc1 < kPageSize)
-                break;
-            if (pc1 != pc) {
-                backtrace[frame_size] = (uptr) pc1;
-                frame_pointer[frame_size] = frame[0];
-                frame_size++;
-            }
-            bottom = (uptr) frame;
-            frame = GetCanonicFrame((uptr) frame[0], stack_top, bottom);
-        }
-    }
+//    static inline void FpUnwind(uptr pc, uptr fp, uptr stack_top, uptr stack_bottom,
+//                                uptr *backtrace, uptr *frame_pointer, uptr frame_max_size,
+//                                uptr &frame_size) {
+//
+//        const uptr kPageSize = GetPageSize();
+//        backtrace[0] = pc;
+//        frame_pointer[0] = fp;
+//        frame_size = 1;
+//        if (UNLIKELY(stack_top < 4096)) return;  // Sanity check for stack top.
+//        uptr *frame = GetCanonicFrame(fp, stack_top, stack_bottom);
+//        // Lowest possible address that makes sense as the next frame pointer.
+//        // Goes up as we walk the stack.
+//        uptr bottom = stack_bottom;
+//        // Avoid infinite loop when frame == frame[0] by using frame > prev_frame.
+//        while (IsValidFrame((uptr) frame, stack_top, bottom) &&
+//               IsAligned((uptr) frame, sizeof(*frame)) &&
+//               frame_size < frame_max_size) {
+//
+//            uptr pc1 = frame[1];
+//            // Let's assume that any pointer in the 0th page (i.e. <0x1000 on i386 and
+//            // x86_64) is invalid and stop unwinding here.  If we're adding support for
+//            // a platform where this isn't true, we need to reconsider this check.
+//            if (pc1 < kPageSize)
+//                break;
+//            if (pc1 != pc) {
+//                backtrace[frame_size] = (uptr) pc1;
+//                frame_pointer[frame_size] = frame[0];
+//                frame_size++;
+//            }
+//            bottom = (uptr) frame;
+//            frame = GetCanonicFrame((uptr) frame[0], stack_top, bottom);
+//        }
+//    }
 
 //    QutErrorCode
 //    WeChatQuickenUnwindV2_WIP(ArchEnum arch, uptr *regs, uptr *backtrace, uptr frame_max_size,

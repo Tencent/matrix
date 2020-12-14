@@ -22,37 +22,18 @@ namespace wechat_backtrace {
         return load_bias_;
     }
 
-    // TODO
     template<typename AddressType>
-    bool QuickenInterface::GenerateQuickenTable(unwindstack::Memory *process_memory) {
-
-        lock_guard<mutex> lock(lock_);
-
-        if (qut_sections_) {
-            return true;
-        }
+    bool QuickenInterface::GenerateQuickenTable(unwindstack::Memory *process_memory,
+                                                QutSectionsPtr qut_sections) {
 
         QUT_DEBUG_LOG("QuickenInterface::GenerateQuickenTableUltra");
 
         QuickenTableGenerator<AddressType> generator(memory_, process_memory);
-        QutSections *qut_sections = new QutSections();
-
-        size_t bad_entries = 0; // TODO
 
         bool ret = generator.GenerateUltraQUTSections(eh_frame_hdr_info_, eh_frame_info_,
                                                       debug_frame_info_, gnu_eh_frame_hdr_info_,
                                                       gnu_eh_frame_info_, gnu_debug_frame_info_,
                                                       arm_exidx_info_, qut_sections);
-
-        bad_entries_ = bad_entries;
-
-        if (ret) {
-            // TODO
-            qut_sections_ = qut_sections;
-        } else {
-            delete qut_sections;
-        }
-
         return ret;
     }
 
@@ -64,16 +45,16 @@ namespace wechat_backtrace {
             return true;
         }
 
-        QutSectionsPtr tmp_qut_sections = nullptr;
+        QutSectionsPtr qut_sections_tmp = nullptr;
         QutFileError error = QuickenTableManager::getInstance().RequestQutSections(
-                soname_, sopath_, hash_, build_id_, build_id_hex_, tmp_qut_sections);
+                soname_, sopath_, hash_, build_id_, build_id_hex_, qut_sections_tmp);
 
         QUT_LOG("Try init quicken table %s result %d", sopath_.c_str(), error);
         if (error != NoneError) {
             return false;
         }
 
-        qut_sections_ = tmp_qut_sections;
+        qut_sections_ = qut_sections_tmp;
 
         QUT_DEBUG_LOG("QuickenInterface::TryInitQuickenTable");
 
@@ -111,8 +92,9 @@ namespace wechat_backtrace {
         return false;
     }
 
-    bool QuickenInterface::Step(uptr pc, uptr *regs, unwindstack::Memory *process_memory,
-                                uint64_t *dex_pc, bool *finished) {
+    bool
+    QuickenInterface::Step(uptr pc, uptr *regs, unwindstack::Memory *process_memory, uptr stack_top,
+                           uptr stack_bottom, uptr frame_size, uint64_t *dex_pc, bool *finished) {
 
         // Adjust the load bias to get the real relative pc.
         if (UNLIKELY(pc < load_bias_)) {
@@ -121,23 +103,13 @@ namespace wechat_backtrace {
         }
 
         if (!qut_sections_) {
-//        if (!GenerateQuickenTable<addr_t>(process_memory)) {
-//            last_error_code_ = QUT_ERROR_QUT_SECTION_INVALID;
-//            return false;
-//        }
             if (!TryInitQuickenTable()) {
                 last_error_code_ = QUT_ERROR_REQUEST_QUT_FILE_FAILED;
                 return false;
             }
         }
 
-        // TODO optimize this, for main thread.
-        pthread_attr_t attr;
-        pthread_getattr_ext(pthread_self(), &attr);
-        uptr stack_bottom = reinterpret_cast<uptr>(attr.stack_base);
-        uptr stack_top = reinterpret_cast<uptr>(attr.stack_base) + attr.stack_size;
-
-        QuickenTable quicken(qut_sections_, regs, memory_, process_memory, stack_top, stack_bottom);
+        QuickenTable quicken(qut_sections_, regs, memory_, process_memory, stack_top, stack_bottom, frame_size);
         size_t entry_offset;
 
         QUT_DEBUG_LOG("QuickenInterface::Step pc:%llx, load_bias_:%llu", (uint64_t) pc, load_bias_);
@@ -224,6 +196,8 @@ namespace wechat_backtrace {
 //        return return_value;
 //    }
 
-    template bool QuickenInterface::GenerateQuickenTable<addr_t>(unwindstack::Memory *process_memory);
+    template bool
+    QuickenInterface::GenerateQuickenTable<addr_t>(unwindstack::Memory *process_memory,
+                                                   QutSectionsPtr qut_sections);
 
 }  // namespace unwindstack

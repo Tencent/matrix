@@ -16,6 +16,7 @@
 #include <QuickenUnwinder.h>
 #include <android/log.h>
 #include "Predefined.h"
+#include "Log.h"
 
 namespace wechat_backtrace {
 
@@ -41,8 +42,7 @@ namespace wechat_backtrace {
 #ifdef __arm__
         uptr regs[QUT_MINIMAL_REG_SIZE];
         GetMinimalRegs(regs);
-        unwindstack::ArchEnum arch = unwindstack::ArchEnum::ARCH_ARM64;
-        WeChatQuickenUnwind(arch, regs, max_frames, frames, frame_size);
+        WeChatQuickenUnwind(CURRENT_ARCH, regs, max_frames, frames, frame_size);
         return;
 #endif
         __android_log_assert("NOT SUPPORT ARCH", "WeChatBacktrace", "NOT SUPPORT ARCH");

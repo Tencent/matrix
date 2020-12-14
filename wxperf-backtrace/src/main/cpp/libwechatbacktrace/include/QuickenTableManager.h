@@ -46,7 +46,7 @@ namespace wechat_backtrace {
 
         QuickenTableManager &operator=(const QuickenTableManager &);
 
-        std::unordered_map<std::string, QutSections *> qut_sections_map_;          // TODO destruction
+        std::unordered_map<std::string, QutSectionsPtr> qut_sections_map_;          // TODO destruction
         std::unordered_map<std::string, std::string> qut_sections_requesting_;   // TODO destruction
 
         std::mutex lock_;
@@ -60,6 +60,7 @@ namespace wechat_backtrace {
     public:
         static QuickenTableManager &getInstance() {
             static QuickenTableManager instance;
+//            DEFINE_STATIC_LOCAL(QuickenTableManager, instance, );
             return instance;
         }
 
@@ -103,6 +104,12 @@ namespace wechat_backtrace {
         CheckIfQutFileExistsWithBuildId(const std::string &soname, const std::string &build_id);
 
         QutFileError
+        TryLoadQutFile(const std::string &soname, const std::string &sopath,
+                       const std::string &hash, const std::string &build_id,
+                       const std::string &build_id_hex,
+                       QutSectionsPtr &qut_sections);
+
+        QutFileError
         RequestQutSections(const std::string &soname, const std::string &sopath,
                            const std::string &hash, const std::string &build_id,
                            const std::string &build_id_hex, QutSectionsPtr &qut_sections);
@@ -110,15 +117,16 @@ namespace wechat_backtrace {
         QutFileError
         SaveQutSections(const std::string &soname, const std::string &sopath,
                         const std::string &hash, const std::string &build_id,
-                        const std::string &build_id_hex, QutSectionsPtr qut_sections);
+                        const std::string &build_id_hex, std::unique_ptr<QutSections> qut_sections);
 
         QutFileError
-        FindQutSections(const std::string &soname, const std::string &sopath,
-                        const std::string &build_id,
-                        QutSectionsPtr &qut_sections_ptr);
+        FindQutSectionsNoLock(const std::string &soname, const std::string &sopath,
+                              const std::string &build_id,
+                              QutSectionsPtr &qut_sections_ptr);
 
         bool
-        InsertQutSections(const std::string &build_id, QutSectionsPtr qut_sections, bool immediately);
+        InsertQutSectionsNoLock(const std::string &soname, const std::string &build_id, QutSectionsPtr &qut_sections,
+                          bool immediately);
     };
 }  // namespace wechat_backtrace
 

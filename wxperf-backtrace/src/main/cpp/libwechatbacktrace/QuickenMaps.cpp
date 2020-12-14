@@ -30,8 +30,8 @@ namespace wechat_backtrace {
 #define CAPACITY_INCREMENT 1024
 
     mutex Maps::maps_lock_;
-    size_t Maps::latest_maps_capacity_ = CAPACITY_INCREMENT;
     shared_ptr<Maps> Maps::current_maps_;
+    size_t Maps::latest_maps_capacity_ = CAPACITY_INCREMENT;
 
     QuickenInterface *
     QuickenMapInfo::GetQuickenInterface(const shared_ptr<unwindstack::Memory> &process_memory,
@@ -149,14 +149,13 @@ namespace wechat_backtrace {
     }
 
     void Maps::ReleaseLocalMaps() {
-        for (size_t i = 0; i < maps_capacity_; i++) {
+        for (size_t i = 0; i < maps_size_; i++) {
             delete local_maps_[i];
         }
 
-        delete local_maps_;
+        free(local_maps_);
         maps_capacity_ = 0;
         maps_size_ = 0;
-        local_maps_ = nullptr;
     }
 
     std::shared_ptr<Maps> Maps::current() {
@@ -167,7 +166,7 @@ namespace wechat_backtrace {
     bool Maps::Parse() {
         std::lock_guard<std::mutex> guard(maps_lock_);
 
-        shared_ptr<Maps> maps(new Maps(latest_maps_capacity_));
+        shared_ptr<Maps> maps = make_shared<Maps>(latest_maps_capacity_);
 
         bool ret = maps->ParseImpl();
 
@@ -184,8 +183,7 @@ namespace wechat_backtrace {
         MapInfoPtr prev_real_map = nullptr;
 
         size_t tmp_capacity = maps_capacity_, tmp_idx = 0;
-        MapInfoPtr *tmp_maps = nullptr;
-        tmp_maps = new MapInfoPtr[tmp_capacity]();
+        MapInfoPtr *tmp_maps = new MapInfoPtr[tmp_capacity];
 
         bool ret = android::procinfo::ReadMapFile(
                 "/proc/self/maps",
@@ -208,7 +206,7 @@ namespace wechat_backtrace {
                         tmp_capacity = tmp_capacity + CAPACITY_INCREMENT;
                         MapInfoPtr *swap = new MapInfoPtr[tmp_capacity]();
                         memcpy(swap, tmp_maps, tmp_idx * sizeof(MapInfoPtr));
-                        delete tmp_maps;    // Only delete array
+                        delete [] tmp_maps;    // Only delete array
                         tmp_maps = swap;
                     }
 
@@ -223,7 +221,7 @@ namespace wechat_backtrace {
             for (size_t i = 0; i < tmp_idx; i++) {
                 delete tmp_maps[i];
             }
-            delete tmp_maps;
+            delete [] tmp_maps;
         }
 
         return ret;

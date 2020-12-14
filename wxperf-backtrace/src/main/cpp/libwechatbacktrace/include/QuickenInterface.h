@@ -25,14 +25,14 @@ namespace wechat_backtrace {
 
         bool FindEntry(uptr pc, size_t *entry_offset);
 
-        bool Step(uptr pc, uptr *regs, unwindstack::Memory *process_memory, uint64_t *dex_pc,
-                  bool *finished);
+        bool Step(uptr pc, uptr *regs, unwindstack::Memory *process_memory, uptr stack_top,
+                  uptr stack_bottom, uptr frame_size, uint64_t *dex_pc, bool *finished);
 
         bool StepBack(uptr pc, uptr sp, uptr fp, uint8_t &regs_bits, uptr *regs,
                       unwindstack::Memory *process_memory, bool *finish);
 
         template<typename AddressType>
-        bool GenerateQuickenTable(unwindstack::Memory *process_memory);
+        bool GenerateQuickenTable(unwindstack::Memory *process_memory, QutSectionsPtr qut_sections);
 
         bool TryInitQuickenTable();
 
@@ -67,7 +67,8 @@ namespace wechat_backtrace {
         }
 
         void
-        SetSoInfo(const std::string &sopath, const std::string &soname, const std::string &build_id_hex) {
+        SetSoInfo(const std::string &sopath, const std::string &soname,
+                  const std::string &build_id_hex) {
             soname_ = soname;
             sopath_ = sopath;
             build_id_hex_ = build_id_hex;

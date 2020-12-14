@@ -28,7 +28,7 @@ SET(
         SOURCE_FILES
         ${SOURCE_DIR}/common/Utils.cpp
         ${SOURCE_DIR}/common/PthreadExt.cpp
-        ${SOURCE_DIR}/dlsym/EnhanceDlsym.cpp
+#        ${SOURCE_DIR}/dlsym/EnhanceDlsym.cpp
 
         ${SOURCE_DIR}/libwechatbacktrace/QutStatistics.cpp
         ${SOURCE_DIR}/libwechatbacktrace/ExidxDecoder.cpp

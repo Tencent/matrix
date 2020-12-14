@@ -174,7 +174,7 @@ on_pthread_create_locked(const pthread_t __pthread, char *__java_stacktrace, pid
     if (__java_stacktrace) {
         meta.java_stacktrace.store(__java_stacktrace);
         java_hash = hash_str(__java_stacktrace);
-        LOGD(TAG, "on_pthread_create: java hash = %lu", java_hash);
+        LOGD(TAG, "on_pthread_create: java hash = %llu", (wechat_backtrace::ullint_t)java_hash);
     }
 
     if (native_hash || java_hash) {

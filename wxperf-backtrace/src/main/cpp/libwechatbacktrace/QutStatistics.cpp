@@ -17,6 +17,12 @@ namespace wechat_backtrace {
 
     using namespace std;
 
+    typedef map<uint32_t, shared_ptr<vector<pair<uint64_t, uint64_t>>>> stat_info_map_t;
+
+//    DEFINE_STATIC_LOCAL(string, gCurrStatLib, );
+//    DEFINE_STATIC_LOCAL(stat_info_map_t*, sStatisticInfo, );
+//    DEFINE_STATIC_LOCAL(stat_info_map_t*, sStatisticTipsInfo, );
+
     static string gCurrStatLib;
     static map<uint32_t, shared_ptr<vector<pair<uint64_t, uint64_t>>>> *sStatisticInfo = nullptr;
     static map<uint32_t, shared_ptr<vector<pair<uint64_t, uint64_t>>>> *sStatisticTipsInfo = nullptr;
@@ -50,7 +56,7 @@ namespace wechat_backtrace {
     }
 
     void DumpQutStatResult() {
-
+#ifdef QUT_STATISTIC_ENABLE
         auto iter = sStatisticInfo->begin();
         QUT_STAT_LOG("Dump Qut Statistic for so %s:", gCurrStatLib.c_str());
         while (iter != sStatisticInfo->end()) {
@@ -60,6 +66,7 @@ namespace wechat_backtrace {
             iter++;
         }
         QUT_STAT_LOG("Dump Qut Statistic End.\n\n");
+#endif
     }
 
     QUT_EXTERN_C_BLOCK_END

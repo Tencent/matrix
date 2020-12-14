@@ -9,11 +9,13 @@
 #include <map>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/mman.h>
 #include <unistd.h>
 #include "unwindstack/Elf.h"
 #include "unwindstack/Memory.h"
 #include "Predefined.h"
 #include "Errors.h"
+#include "Log.h"
 
 namespace wechat_backtrace {
 
@@ -23,8 +25,16 @@ namespace wechat_backtrace {
 
         ~QutSections() {
             if (!load_from_file) {
-                delete quidx;
-                delete qutbl;
+                if (quidx) {
+                    delete quidx;
+                }
+                if (qutbl) {
+                    delete qutbl;
+                }
+            } else {
+                if (mmap_ptr) {
+                    munmap(mmap_ptr, map_size);
+                }
             }
 
             idx_size = 0;
@@ -43,6 +53,9 @@ namespace wechat_backtrace {
         size_t idx_capacity = 0;
         size_t tbl_capacity = 0;
 
+        void *mmap_ptr = nullptr;
+        size_t map_size = 0;
+
 //        size_t total_entries = 0;
 //        size_t start_offset_ = 0;
 
@@ -54,11 +67,11 @@ namespace wechat_backtrace {
     class QuickenTable {
 
     public:
-        QuickenTable(QutSections *fut_sections, uintptr_t *regs, unwindstack::Memory *memory,
-                     unwindstack::Memory *process_memory, uptr stack_top, uptr stack_bottom)
+        QuickenTable(QutSections *qut_sections, uintptr_t *regs, unwindstack::Memory *memory,
+                     unwindstack::Memory *process_memory, uptr stack_top, uptr stack_bottom, uptr frame_size)
                 : regs_(regs), memory_(memory), process_memory_(process_memory),
-                  fut_sections_(fut_sections), stack_top_(stack_top),
-                  stack_bottom_(stack_bottom) {};
+                  qut_sections_(qut_sections), stack_top_(stack_top),
+                  stack_bottom_(stack_bottom), frame_size(frame_size) {};
 
         ~QuickenTable() {};
 
@@ -82,10 +95,11 @@ namespace wechat_backtrace {
 
         unwindstack::Memory *memory_ = nullptr;
         unwindstack::Memory *process_memory_ = nullptr;
-        QutSections *fut_sections_ = nullptr;
+        QutSections *qut_sections_ = nullptr;
 
         const uptr stack_top_;
         const uptr stack_bottom_;
+        uptr frame_size;
     };
 
 

@@ -317,18 +317,18 @@ namespace wechat_backtrace {
                                    (QUT_TBL_ROW_SIZE + 1);
             }
 
-#ifdef EnableLOG
-            if (entry_pair->entry_point == 0x13a0b8) {
-                QUT_DEBUG_LOG(
-                        "PackEntriesToFutSections 0x13a0b8 entry_pair->encoded_instructions.size() %llu",
-                        entry_pair->encoded_instructions.size());
-
-                for (uint8_t insn : entry_pair->encoded_instructions) {
-                    QUT_DEBUG_LOG("PackEntriesToFutSections 0x13a0b8 instr "
-                                          BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(insn));
-                }
-            }
-#endif
+//#ifdef EnableLOG
+//            if (entry_pair->entry_point == 0x13a0b8) {
+//                QUT_DEBUG_LOG(
+//                        "PackEntriesToFutSections 0x13a0b8 entry_pair->encoded_instructions.size() %llu",
+//                        entry_pair->encoded_instructions.size());
+//
+//                for (uint8_t insn : entry_pair->encoded_instructions) {
+//                    QUT_DEBUG_LOG("PackEntriesToFutSections 0x13a0b8 instr "
+//                                          BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(insn));
+//                }
+//            }
+//#endif
 
             // Finally pushed.
             entries_encoded.push_back(entry_pair);
@@ -336,9 +336,9 @@ namespace wechat_backtrace {
             it++;
         }
 
-        LOGE("WTF--Carl", "PackEntriesToFutSections bad: %llu, prologue: %llu, total: %llu",
-             (uint64_t) bad_entries_count, (uint64_t) prologue_count,
-             (uint64_t) entries_encoded.size());
+        QUT_LOG("PackEntriesToFutSections bad: %llu, prologue: %llu, total: %llu, tbl: %llu",
+             (ullint_t) bad_entries_count, (ullint_t) prologue_count,
+             (ullint_t) entries_encoded.size(), (ullint_t) instr_tbl_count);
 
 
         // Init qut_sections

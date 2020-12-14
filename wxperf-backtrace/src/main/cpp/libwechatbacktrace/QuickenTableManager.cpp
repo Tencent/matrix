@@ -27,6 +27,8 @@ namespace wechat_backtrace {
 
     string QuickenTableManager::sSavingPath;
     string QuickenTableManager::sPackageName;
+//    string& QuickenTableManager::sSavingPath = *new string;
+//    string& QuickenTableManager::sPackageName = *new string;
     bool QuickenTableManager::sHasWarmedUp = false;
 
     inline string
@@ -58,27 +60,14 @@ namespace wechat_backtrace {
     }
 
     QutFileError
-    QuickenTableManager::RequestQutSections(const string &soname, const string &sopath,
-                                            const string &hash, const string &build_id,
-                                            const string &build_id_hex,
-                                            QutSectionsPtr &qut_sections) {
+    QuickenTableManager::TryLoadQutFile(const string &soname, const string &sopath,
+                                        const string &hash, const string &build_id,
+                                        const string &build_id_hex,
+                                        QutSectionsPtr &qut_sections) {
+        (void) hash;
+        (void) build_id_hex;
 
-        QUT_LOG("Warm up get %d", sHasWarmedUp);
-
-        // Fast return.
-        if (!sHasWarmedUp) {
-            return NotWarmedUp;
-        }
-
-        if (sSavingPath.empty()) {
-            return NotInitialized;
-        }
-
-        QutFileError ret = FindQutSections(soname, sopath, build_id, qut_sections);
-
-        if (qut_sections != nullptr || ret != NoneError) {
-            return ret;
-        }
+        QUT_LOG("Request qut file before lock for so %s", sopath.c_str());
 
         string qut_file_name = ToQutFileName(QuickenTableManager::sSavingPath, soname, build_id);
 
@@ -89,21 +78,23 @@ namespace wechat_backtrace {
         if (fd >= 0) {
 
             struct stat file_stat;
-            if (fstat(fd, &file_stat) != 0) {
+            if (fstat(fd, &file_stat) != 0 || file_stat.st_size < 0) {
                 close(fd);
                 return FileStateError;
             }
 
-            if (file_stat.st_size < 6 * sizeof(size_t)) {
+            uint64_t file_size = file_stat.st_size;
+
+            if (file_size < 6 * sizeof(size_t)) {
                 close(fd);
                 RenameToMalformed(qut_file_name);
                 return FileTooShort;
             }
 
-            char *data = static_cast<char *>(mmap(NULL, file_stat.st_size, PROT_READ, MAP_SHARED,
+            char *data = static_cast<char *>(mmap(NULL, file_size, PROT_READ, MAP_SHARED,
                                                   fd, 0));
             if (data == MAP_FAILED) {
-                munmap(data, file_stat.st_size);
+                munmap(data, file_size);
                 close(fd);
                 return MmapFailed;
             }
@@ -112,11 +103,11 @@ namespace wechat_backtrace {
 
             size_t qut_version = 0;
             memcpy(&qut_version, data, sizeof(qut_version));
-            QUT_LOG("Checking file size = %lld, qut_version = %d, offset = %d",
-                    (uint64_t) file_stat.st_size, (uint32_t) qut_version, (uint32_t) offset);
+            QUT_LOG("Checking file size = %llu, qut_version = %u, offset = %u",
+                    (ullint_t) file_size, (uint32_t) qut_version, (uint32_t) offset);
             offset += sizeof(qut_version);
             if (qut_version != QUT_VERSION) {
-                munmap(data, file_stat.st_size);
+                munmap(data, file_size);
                 close(fd);
                 RenameToMalformed(qut_file_name);
                 return QutVersionNotMatch;
@@ -124,74 +115,69 @@ namespace wechat_backtrace {
 
             size_t arch = 0;
             memcpy(&arch, (data + offset), sizeof(arch));
-            QUT_LOG("Checking file size = %lld, arch = %d, offset = %d",
-                    (uint64_t) file_stat.st_size, (uint32_t) arch, (uint32_t) offset);
+            QUT_LOG("Checking file size = %llu, arch = %u, offset = %u",
+                    (ullint_t) file_size, (uint32_t) arch, (uint32_t) offset);
             offset += sizeof(arch);
             if (arch != CURRENT_ARCH_ENUM) {
-                munmap(data, file_stat.st_size);
+                munmap(data, file_size);
                 close(fd);
                 RenameToMalformed(qut_file_name);
                 return ArchNotMatch;
             }
 
-//            size_t build_id_len = build_id_hex.length();
-//            memcpy(&build_id_len, (data + offset), sizeof(build_id_len));
-//            offset += sizeof(build_id_len);
-//            if (build_id_len != 0) {
-//                char *build_id_cstr = static_cast<char *>(malloc(build_id_len));
-//                memcpy(build_id_cstr, (data + offset), build_id_len);
-//                bool same = strcmp(build_id_hex.c_str(), build_id_cstr) == 0;
-//                free(build_id_cstr);
-//                if (!same) {
-//                    munmap(data, file_stat.st_size);
-//                    close(fd);
-//                    RenameToMalformed(qut_file_name);
-//                    return BuildIdNotMatch;
-//                }
-//            }
-
             // XXX add sum check
 
             size_t idx_size;
             memcpy(&idx_size, data + offset, sizeof(idx_size));
-            QUT_LOG("Checking file size = %lld, idx_size = %d, offset = %d",
-                    (uint64_t) file_stat.st_size, (uint32_t) idx_size, (uint32_t) offset);
+            QUT_LOG("Checking file size = %llu, idx_size = %u, offset = %u",
+                    (ullint_t) file_size, (uint32_t) idx_size, (uint32_t) offset);
             offset += sizeof(idx_size);
 
             size_t tbl_size;
             memcpy(&tbl_size, data + offset, sizeof(tbl_size));
-            QUT_LOG("Checking file size = %lld, tbl_size = %d, offset = %d",
-                    (uint64_t) file_stat.st_size, (uint32_t) tbl_size, (uint32_t) offset);
+            QUT_LOG("Checking file size = %llu, tbl_size = %u, offset = %u",
+                    (ullint_t) file_size, (uint32_t) tbl_size, (uint32_t) offset);
             offset += sizeof(tbl_size);
 
             size_t idx_offset;
             memcpy(&idx_offset, data + offset, sizeof(idx_offset));
-            QUT_LOG("Checking file size = %lld, idx_offset = %d, offset = %d",
-                    (uint64_t) file_stat.st_size, (uint32_t) idx_offset, (uint32_t) offset);
+            QUT_LOG("Checking file size = %llu, idx_offset = %u, offset = %u",
+                    (ullint_t) file_size, (uint32_t) idx_offset, (uint32_t) offset);
             offset += sizeof(idx_offset);
 
             size_t tbl_offset;
             memcpy(&tbl_offset, data + offset, sizeof(tbl_offset));
 
-            QUT_LOG("Checking file size = %lld, tbl_offset = %d, tbl_size = %d",
-                    (uint64_t) file_stat.st_size, (uint32_t) tbl_offset, (uint32_t) tbl_size);
-            if (file_stat.st_size != (tbl_offset + (tbl_size * sizeof(uptr)))) {
-                munmap(data, file_stat.st_size);
+            QUT_LOG("Checking file size = %llu, tbl_offset = %u, tbl_size = %u",
+                    (ullint_t) file_size, (uint32_t) tbl_offset, (uint32_t) tbl_size);
+            if (file_size != (tbl_offset + (tbl_size * sizeof(uptr)))) {
+                munmap(data, file_size);
                 close(fd);
                 RenameToMalformed(qut_file_name);
                 return FileLengthNotMatch;
             }
 
-            qut_sections = new QutSections();
+            QutSectionsPtr qut_sections_tmp = new QutSections();
 
-            qut_sections->idx_size = idx_size;
-            qut_sections->tbl_size = tbl_size;
-            qut_sections->quidx = (static_cast<uptr *>((void *) (data + idx_offset)));
-            qut_sections->qutbl = (static_cast<uptr *>((void *) (data + tbl_offset)));
+            qut_sections_tmp->load_from_file = true;
+            qut_sections_tmp->mmap_ptr = data;
+            qut_sections_tmp->map_size = file_size;
 
-            if (!InsertQutSections(build_id, qut_sections, true)) {
+            qut_sections_tmp->idx_size = idx_size;
+            qut_sections_tmp->tbl_size = tbl_size;
+            qut_sections_tmp->quidx = (static_cast<uptr *>((void *) (data + idx_offset)));
+            qut_sections_tmp->qutbl = (static_cast<uptr *>((void *) (data + tbl_offset)));
+
+            QutSectionsPtr qut_sections_insert = qut_sections_tmp;
+            if (!InsertQutSectionsNoLock(soname, build_id, qut_sections_insert, true)) {
+                delete qut_sections_tmp;
+                close(fd);
                 return InsertNewQutFailed;
             }
+
+            qut_sections = qut_sections_tmp;
+
+            close(fd);
 
             // change last modified time, to prevent self clean-up logic.
             utime(qut_file_name.c_str(), NULL);
@@ -202,18 +188,65 @@ namespace wechat_backtrace {
         }
     }
 
+
+    QutFileError
+    QuickenTableManager::RequestQutSections(const string &soname, const string &sopath,
+                                            const string &hash, const string &build_id,
+                                            const string &build_id_hex,
+                                            QutSectionsPtr &qut_sections) {
+
+        if (sSavingPath.empty()) {
+            return NotInitialized;
+        }
+
+        if (build_id.empty()) {
+            return BuildIdNotMatch;
+        }
+
+        QutFileError ret;
+
+        {
+            lock_guard<mutex> lockGuard(lock_);
+
+            ret = FindQutSectionsNoLock(soname, sopath, build_id, qut_sections);
+
+            if (qut_sections != nullptr || ret != NoneError) {
+                return ret;
+            }
+
+            ret = TryLoadQutFile(soname, sopath, hash, build_id, build_id_hex, qut_sections);
+        }
+
+        if (ret != NoneError) {
+            QUT_LOG("Requeting quicken table %s result %d", sopath.c_str(), ret);
+
+            if (!sHasWarmedUp) {
+                return NotWarmedUp;
+            }
+
+            InvokeJava_RequestQutGenerate();
+        }
+
+        return ret;
+    }
+
     bool
-    QuickenTableManager::InsertQutSections(const string &build_id, QutSectionsPtr qut_sections,
+    QuickenTableManager::InsertQutSectionsNoLock(const string &soname, const string &build_id, QutSectionsPtr &qut_sections,
                                            bool immediately) {
         CHECK(qut_sections != nullptr);
-        CHECK(qut_sections->idx_size > 0);
+        if (qut_sections->idx_size == 0) {
+            return false;
+        }
 
-        lock_guard<mutex> lockGuard(lock_);
+        if (build_id.empty()) {
+            QUT_LOG("Insert qut build id %s is empty.", build_id.c_str());
+            return false;
+        }
 
         auto it = qut_sections_map_.find(build_id);
         if (it != qut_sections_map_.end() && it->second != nullptr) {
             QUT_LOG("Qut insert build id %s failed, value %llx.", build_id.c_str(),
-                    (uint64_t) it->second);
+                    (ullint_t)(it->second));
             return false;
         }
 
@@ -222,6 +255,7 @@ namespace wechat_backtrace {
         if (immediately ||
             qut_sections_requesting_.find(build_id) != qut_sections_requesting_.end()) {
             qut_sections_map_[build_id] = qut_sections;
+            qut_sections = nullptr;
         }
 
         QUT_LOG("Erase qut requesting build id %s.", build_id.c_str());
@@ -231,12 +265,10 @@ namespace wechat_backtrace {
     }
 
     QutFileError
-    QuickenTableManager::FindQutSections(const std::string &soname, const std::string &sopath,
-                                         const std::string &build_id,
-                                         QutSectionsPtr &qut_sections_ptr) {
+    QuickenTableManager::FindQutSectionsNoLock(const std::string &soname, const std::string &sopath,
+                                               const std::string &build_id,
+                                               QutSectionsPtr &qut_sections_ptr) {
         (void) soname;
-
-        lock_guard<mutex> lockGuard(lock_);
 
         auto it = qut_sections_map_.find(build_id);
         if (it != qut_sections_map_.end()) {
@@ -245,14 +277,12 @@ namespace wechat_backtrace {
         }
 
         if (qut_sections_requesting_.find(build_id) != qut_sections_requesting_.end()) {
-            QUT_LOG("Find qut requesting build id %s.", build_id.c_str());
+            QUT_DEBUG_LOG("Find qut requesting build id %s.", build_id.c_str());
             return LoadRequesting;
         }
 
         // Mark requesting qut sections.
         qut_sections_requesting_[build_id] = sopath;
-
-        InvokeJava_RequestQutGenerate();
 
         return NoneError;
     }
@@ -275,10 +305,26 @@ namespace wechat_backtrace {
     QutFileError
     QuickenTableManager::SaveQutSections(const string &soname, const std::string &sopath,
                                          const string &hash, const string &build_id,
-                                         const string &build_id_hex, QutSectionsPtr qut_sections) {
+                                         const string &build_id_hex,
+                                         unique_ptr<QutSections> qut_sections_ptr) {
+        (void) build_id_hex;
 
-        if (!InsertQutSections(build_id, qut_sections, false)) {
-            return InsertNewQutFailed;
+        QutSectionsPtr qut_sections_insert = qut_sections_ptr.get();
+        {
+            lock_guard<mutex> lockGuard(lock_);
+            if (qut_sections_insert == nullptr ||
+                !InsertQutSectionsNoLock(soname, build_id, qut_sections_insert, false)) {
+                return InsertNewQutFailed;
+            }
+        }
+
+        QutSectionsPtr qut_sections;
+
+        if (qut_sections_insert == nullptr) {
+            // Ownership of qut_sections has already moved to qut_sections_map_.
+            qut_sections = qut_sections_ptr.release();
+        } else {
+            qut_sections = qut_sections_insert;
         }
 
         if (sSavingPath.empty()) {
@@ -309,23 +355,16 @@ namespace wechat_backtrace {
 
         // XXX Add sum check, like CRC32 or SHA1
 
-//        // Write build id
-//        size_t build_id_len = build_id_hex.length();
-//        write(fd, reinterpret_cast<const void *>(&build_id_len), sizeof(build_id_len));
-//        offset += sizeof(build_id_len);
-//        write(fd, reinterpret_cast<const void *>(build_id_hex.c_str()), build_id_len);
-//        offset += build_id_len;
-
         // Write quidx size
         size_t idx_size = qut_sections->idx_size;
         write(fd, reinterpret_cast<const void *>(&idx_size), sizeof(idx_size));
-        QUT_LOG("Writing file idx_size = %d, offset = %d", idx_size, offset);
+        QUT_LOG("Writing file idx_size = %zu, offset = %zu", idx_size, offset);
         offset += sizeof(idx_size);
 
         // Write qutbl size
         size_t tbl_size = qut_sections->tbl_size;
         write(fd, reinterpret_cast<const void *>(&tbl_size), sizeof(tbl_size));
-        QUT_LOG("Writing file tbl_size = %d, offset = %d", tbl_size, offset);
+        QUT_LOG("Writing file tbl_size = %zu, offset = %zu", tbl_size, offset);
         offset += sizeof(tbl_size);
 
         size_t sizeof_idx = sizeof(qut_sections->quidx[0]);
@@ -335,11 +374,11 @@ namespace wechat_backtrace {
 
         // Write idx offset
         write(fd, reinterpret_cast<const void *>(&idx_offset), sizeof(idx_offset));
-        QUT_LOG("Writing file idx_offset = %d, offset = %d", idx_offset, offset);
+        QUT_LOG("Writing file idx_offset = %zu, offset = %zu", idx_offset, offset);
 
         // Write tbl offset
         write(fd, reinterpret_cast<const void *>(&tbl_offset), sizeof(tbl_offset));
-        QUT_LOG("Writing file tbl_offset = %d, tbl_size = %d", tbl_offset, tbl_size);
+        QUT_LOG("Writing file tbl_offset = %zu, tbl_size = %zu", tbl_offset, tbl_size);
 
         // Write quidx
         write(fd, reinterpret_cast<const void *>(qut_sections->quidx),

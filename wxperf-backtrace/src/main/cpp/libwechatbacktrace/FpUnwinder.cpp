@@ -20,12 +20,6 @@ namespace wechat_backtrace {
 
     using namespace std;
 
-    static vector<pair<uintptr_t, uintptr_t>> gSkipFunctions;
-
-    vector<pair<uintptr_t, uintptr_t>> *GetSkipFunctions() {
-        return &gSkipFunctions;
-    }
-
     // Check if given pointer points into allocated stack area.
     static inline bool IsValidFrame(uptr frame, uptr stack_top, uptr stack_bottom) {
         return frame > stack_bottom && frame < stack_top - 2 * sizeof(uptr);

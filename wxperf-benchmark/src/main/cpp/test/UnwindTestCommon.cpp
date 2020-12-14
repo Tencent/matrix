@@ -121,7 +121,7 @@ inline void print_fp_unwind() {
                 PRIxPTR
                 " 0x%"
                 PRIxPTR
-                " %s (%s)", frames[i], (uptr) stack_info.dli_fbase,
+                " %s (%s)", frames[i].pc, (uptr) stack_info.dli_fbase,
              frames[i].pc - (uptr) stack_info.dli_fbase, stack_info.dli_sname, stack_info.dli_fname);
     }
 }
@@ -158,7 +158,7 @@ inline void print_wechat_quicken_unwind() {
                 PRIuPTR
                 " 0x%"
                 PRIxPTR
-                " %s (%s)", frames[i], frames[i], frames[i], stack_info.dli_sname,
+                " %s (%s)", frames[i].pc, frames[i].pc, frames[i].pc, stack_info.dli_sname,
              stack_info.dli_fname);
     }
 }

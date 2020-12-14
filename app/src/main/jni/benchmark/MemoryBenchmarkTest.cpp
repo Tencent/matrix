@@ -22,7 +22,7 @@ extern "C" {
 
 #define BENCHMARK(test_func) BENCHMARK_TIMES(test_func, TIMES)
 
-extern int benchmark_entry(int argc, char **argv);
+extern int benchmark_entry(int argc, const char **argv);
 
 JNIEXPORT void JNICALL
 Java_com_tencent_wxperf_sample_MemoryBenchmarkTest_benchmarkNative(JNIEnv *env,
@@ -47,7 +47,7 @@ Java_com_tencent_wxperf_sample_MemoryBenchmarkTest_benchmarkNative(JNIEnv *env,
 #define MIN_SIZE        "16"    /* Minimum size for random mode, fixed size for fixed mode */
 #define MAX_SIZE        "8192"  /* Maximum size for random mode, ignored for fixed mode */
 
-    char *argv[] = {
+    const char *argv[] = {
             "benchmark",
             THREAD_COUNT,
             MODE,

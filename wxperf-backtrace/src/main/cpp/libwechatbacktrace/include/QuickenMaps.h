@@ -75,19 +75,24 @@ namespace wechat_backtrace {
         static bool Parse();
 
         static std::shared_ptr<Maps> current();
-
-    protected:
-        bool ParseImpl();
-
-        void ReleaseLocalMaps();
-
         MapInfoPtr *local_maps_ = nullptr;
         size_t maps_capacity_ = 0;
         size_t maps_size_ = 0;
 
+    protected:
+
+        void ReleaseLocalMaps();
+
+
         static std::mutex maps_lock_;
         static size_t latest_maps_capacity_;
         static std::shared_ptr<Maps> current_maps_;
+//        static std::mutex& maps_lock_;
+//        static size_t latest_maps_capacity_;
+//        static std::shared_ptr<Maps>& current_maps_;
+
+    private:
+        bool ParseImpl();
 
     };
 

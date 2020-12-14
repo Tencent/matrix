@@ -26,6 +26,7 @@
 #include "Utils.h"
 #include "unwindstack/Unwinder.h"
 #include "ThreadPool.h"
+#include "Predefined.h"
 #include "MemoryHookMetas.h"
 #include "MemoryHook.h"
 
@@ -347,7 +348,7 @@ static inline void dump_stacks(FILE *__log_file,
     fprintf(__log_file, "dump_stacks: hash count = %zu\n", __stack_metas.size());
 
     for (auto &stack_meta :__stack_metas) {
-        LOGD(TAG, "hash %lu : stack.size = %zu", stack_meta.first, stack_meta.second.size);
+        LOGD(TAG, "hash %llu : stack.size = %zu", (wechat_backtrace::ullint_t)stack_meta.first, stack_meta.second.size);
     }
 
     std::unordered_map<std::string, size_t> stack_alloc_size_of_so;
@@ -403,6 +404,7 @@ static inline void dump_stacks(FILE *__log_file,
                 LOGD(TAG, "fallback getting so name -> caller = %p", stack_meta_it.second.caller);
                 // fixme hard coding
                 if (/*so_name.find("com.tencent.mm") == std::string::npos ||*/
+                        so_name.find("libwechatbacktrace.so") != std::string::npos ||
                         so_name.find("libwxperf.so") != std::string::npos ||
                         so_name.find("libwxperf-jni.so") != std::string::npos) {
                     return;
