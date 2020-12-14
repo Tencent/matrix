@@ -29,6 +29,7 @@ import com.tencent.matrix.util.MatrixLog;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
@@ -123,8 +124,7 @@ public class ActivityThreadHacker {
 
         @Override
         public boolean handleMessage(Message msg) {
-
-            if (Build.VERSION.SDK_INT >= 21) {
+            if (Build.VERSION.SDK_INT >= 21 && Build.VERSION.SDK_INT <= 25) {
                 if (msg.what == SERIVCE_ARGS || msg.what == STOP_SERVICE || msg.what == STOP_ACTIVITY_SHOW || msg.what == STOP_ACTIVITY_HIDE || msg.what == SLEEPING) {
                     MatrixLog.i(TAG, "[Matrix.fix.sp.apply] start to fix msg.waht=" + msg.what);
                     fix();
@@ -164,10 +164,11 @@ public class ActivityThreadHacker {
             try {
                 Class cls = Class.forName("android.app.QueuedWork");
                 Field field = cls.getDeclaredField("sPendingWorkFinishers");
-                if(field != null){
+                if(field != null) {
                     field.setAccessible(true);
                     ConcurrentLinkedQueue<Runnable> runnables = (ConcurrentLinkedQueue<Runnable>)field.get(null);
                     runnables.clear();
+                    MatrixLog.i(TAG, "[Matrix.fix.sp.apply] sPendingWorkFinishers.clear successful");
                 }
             } catch (ClassNotFoundException e) {
                 MatrixLog.e(TAG, "[Matrix.fix.sp.apply] ClassNotFoundException = "+e.getMessage());
