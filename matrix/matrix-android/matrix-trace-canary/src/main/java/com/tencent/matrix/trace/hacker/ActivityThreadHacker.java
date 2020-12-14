@@ -117,7 +117,6 @@ public class ActivityThreadHacker {
         private static final int STOP_ACTIVITY_SHOW = 103;
         private static final int STOP_ACTIVITY_HIDE = 104;
         private static final int SLEEPING = 137;
-        private static final boolean API_LEVEL_HIGHER_THAN_25 = Build.VERSION.SDK_INT > 25;
 
         HackCallback(Handler.Callback callback) {
             this.mOriginalCallback = callback;
