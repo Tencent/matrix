@@ -22,20 +22,20 @@ open class MatrixRemoveUnusedResExtension(
 
         var enable: Boolean = false,
         var shrinkArsc: Boolean = false,
-        var shrinkDuplicates: Boolean = false,
         var needSign: Boolean = false,
-        var use7zip: Boolean = false,
-        var zipAlign: Boolean = false,
-        var embedResGuard: Boolean = false,
-
         var apksignerPath: String = "",
         var apkCheckerPath: String = "",
-        var sevenZipPath: String = "",
-        var zipAlignPath: String = "",
-
         var ignoreResources: Set<String> = HashSet(),
 
         var variant: String = "",
+
+        // WIP. Should not use these options yet.
+        var use7zip: Boolean = false,
+        var zipAlign: Boolean = false,
+        var shrinkDuplicates: Boolean = false,
+        var embedResGuard: Boolean = false,
+        var sevenZipPath: String = "",
+        var zipAlignPath: String = "",
 
         // Deprecated
         var unusedResources: HashSet<String> = HashSet()
