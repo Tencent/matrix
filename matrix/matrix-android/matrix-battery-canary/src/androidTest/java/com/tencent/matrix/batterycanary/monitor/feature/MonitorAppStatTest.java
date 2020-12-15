@@ -34,6 +34,10 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
 
 @RunWith(AndroidJUnit4.class)
 public class MonitorAppStatTest {
@@ -131,5 +135,54 @@ public class MonitorAppStatTest {
         Assert.assertTrue(snapshot.fgRatio.get() > 0L && snapshot.fgRatio.get() <= 35);
         Assert.assertTrue(snapshot.bgRatio.get() > 0L && snapshot.fgRatio.get() <= 35);
         Assert.assertTrue(snapshot.fgSrvRatio.get() > 0L && snapshot.fgSrvRatio.get() <= 35);
+    }
+
+    @Test
+    public void testEmptyListOps() {
+        List<Object> emptyList = Collections.emptyList();
+        try {
+            emptyList.add(0, null);
+            Assert.fail("should failed");
+        } catch (Exception ignored) {
+        }
+    }
+
+    @Test
+    public void testConcurrent() throws InterruptedException {
+        final AppStatMonitorFeature feature = new AppStatMonitorFeature();
+        feature.configure(mockMonitor());
+
+        List<Thread> threadList = new ArrayList<>();
+        for (int i = 0; i < 100; i++) {
+            final int finalI = i;
+            Thread thread = new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    feature.onForeground( finalI % 2 == 0);
+                }
+            });
+            thread.start();
+            threadList.add(thread);
+        }
+
+        for (int i = 0; i < 100; i++) {
+            final int finalI = i;
+            Thread thread = new Thread(new Runnable() {
+                @Override
+                public void run() {
+                   if ( finalI % 3 == 0) {
+                       feature.onTurnOff();
+                   } else {
+                       feature.onTurnOn();
+                   }
+                }
+            });
+            thread.start();
+            threadList.add(thread);
+        }
+
+        for (Thread item : threadList) {
+            item.join();
+        }
     }
 }

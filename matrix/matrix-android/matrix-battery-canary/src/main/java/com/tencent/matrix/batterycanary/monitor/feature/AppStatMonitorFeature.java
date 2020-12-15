@@ -9,9 +9,9 @@ import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
 import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
 import com.tencent.matrix.util.MatrixLog;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
@@ -36,20 +36,28 @@ public final class AppStatMonitorFeature implements MonitorFeature {
     public void onTurnOn() {
         MatrixLog.i(TAG, "#onTurnOn");
         Stamp firstStamp = new Stamp(1);
-        mStampList = new LinkedList<>();
-        mStampList.add(0, firstStamp);
+        synchronized (TAG) {
+            mStampList = new ArrayList<>();
+            mStampList.add(0, firstStamp);
+        }
     }
 
     @Override
     public void onTurnOff() {
         MatrixLog.i(TAG, "#onTurnOff");
-        mStampList.clear();
+        synchronized (TAG) {
+            mStampList.clear();
+        }
     }
 
     @Override
     public void onForeground(boolean isForeground) {
         int appStat = BatteryCanaryUtil.getAppStat(mCore.getContext(), isForeground);
-        mStampList.add(0, new Stamp(appStat));
+        synchronized (TAG) {
+            if (mStampList != Collections.EMPTY_LIST) {
+                mStampList.add(0, new Stamp(appStat));
+            }
+        }
     }
 
     @Override
@@ -61,7 +69,11 @@ public final class AppStatMonitorFeature implements MonitorFeature {
         try {
             int appStat = BatteryCanaryUtil.getAppStat(mCore.getContext(), mCore.isForeground());
             Stamp lastStamp = new Stamp(appStat);
-            mStampList.add(0, lastStamp);
+            synchronized (TAG) {
+                if (mStampList != Collections.EMPTY_LIST) {
+                    mStampList.add(0, lastStamp);
+                }
+            }
             return configureSnapshot(mStampList);
         } catch (Throwable e) {
             MatrixLog.w(TAG, "configureSnapshot fail: " + e.getMessage());
