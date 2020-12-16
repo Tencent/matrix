@@ -66,6 +66,10 @@ public final class AppStatMonitorFeature implements MonitorFeature {
     }
 
     public AppStatSnapshot currentAppStatSnapshot() {
+        return currentAppStatSnapshot(0L);
+    }
+
+    public AppStatSnapshot currentAppStatSnapshot(long windowMillis) {
         try {
             int appStat = BatteryCanaryUtil.getAppStat(mCore.getContext(), mCore.isForeground());
             Stamp lastStamp = new Stamp(appStat);
@@ -74,7 +78,7 @@ public final class AppStatMonitorFeature implements MonitorFeature {
                     mStampList.add(0, lastStamp);
                 }
             }
-            return configureSnapshot(mStampList);
+            return configureSnapshot(mStampList, windowMillis);
         } catch (Throwable e) {
             MatrixLog.w(TAG, "configureSnapshot fail: " + e.getMessage());
             AppStatSnapshot snapshot = new AppStatSnapshot();
@@ -84,30 +88,62 @@ public final class AppStatMonitorFeature implements MonitorFeature {
     }
 
     @VisibleForTesting
-    static AppStatSnapshot configureSnapshot(List<Stamp> stampList) {
+    static AppStatSnapshot configureSnapshot(List<Stamp> stampList, long windowMillis) {
         final Map<Integer, Long> mapper = new HashMap<>();
         long totalMillis = 0L;
         long lastStampMillis = Long.MIN_VALUE;
 
-        for (Stamp item : stampList) {
-            if (lastStampMillis != Long.MIN_VALUE) {
-                if (lastStampMillis < item.upTime) {
-                    // invalid data
-                    break;
-                }
+        if (windowMillis <= 0L) {
+            // configure for long all app uptime
+            for (Stamp item : stampList) {
+                if (lastStampMillis != Long.MIN_VALUE) {
+                    if (lastStampMillis < item.upTime) {
+                        // invalid data
+                        break;
+                    }
 
-                long interval = lastStampMillis - item.upTime;
-                totalMillis += interval;
-                Long record = mapper.get(item.appStat);
-                mapper.put(item.appStat, interval + (record == null ? 0 : record));
+                    long interval = lastStampMillis - item.upTime;
+                    totalMillis += interval;
+                    Long record = mapper.get(item.appStat);
+                    mapper.put(item.appStat, interval + (record == null ? 0 : record));
+                }
+                lastStampMillis = item.upTime;
             }
-            lastStampMillis = item.upTime;
+        } else {
+            // just configure for long of the given window
+            for (Stamp item : stampList) {
+                if (lastStampMillis != Long.MIN_VALUE) {
+                    if (lastStampMillis < item.upTime) {
+                        // invalid data
+                        break;
+                    }
+
+                    long interval = lastStampMillis - item.upTime;
+                    if (totalMillis + interval >= windowMillis) {
+                        // reach widow edge
+                        long lastInterval = windowMillis - totalMillis;
+                        totalMillis += lastInterval;
+                        Long record = mapper.get(item.appStat);
+                        mapper.put(item.appStat, lastInterval + (record == null ? 0 : record));
+                        break;
+                    }
+
+                    totalMillis += interval;
+                    Long record = mapper.get(item.appStat);
+                    mapper.put(item.appStat, interval + (record == null ? 0 : record));
+                }
+                lastStampMillis = item.upTime;
+            }
         }
 
         AppStatSnapshot snapshot = new AppStatSnapshot();
         if (totalMillis <= 0L) {
             snapshot.setValid(false);
         } else {
+            // window > uptime
+            if (windowMillis > totalMillis) {
+                snapshot.setValid(false);
+            }
             snapshot.uptime = Snapshot.Entry.DigitEntry.of(totalMillis);
             Function<Integer, Long> block = new Function<Integer, Long>() {
                 @Override
