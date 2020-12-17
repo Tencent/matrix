@@ -97,7 +97,7 @@ bool get_java_stacktrace(char *stack_dst, size_t size) {
         const jsize stack_len  = env->GetStringLength(j_stacktrace);
         if (stacktrace) {
             const size_t cpy_len = std::min((size_t)stack_len, size - 1);
-            memcpy(stack_dst, stack_dst, cpy_len);
+            memcpy(stack_dst, stacktrace, cpy_len);
             stack_dst[cpy_len] = '\0';
         } else {
             strncpy(stack_dst, "\tget java stacktrace failed", size);
