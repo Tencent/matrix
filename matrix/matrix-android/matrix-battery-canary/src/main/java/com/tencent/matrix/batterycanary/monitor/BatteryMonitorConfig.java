@@ -28,6 +28,7 @@ public class BatteryMonitorConfig {
     public boolean isBuiltinForegroundNotifyEnabled = true;
     public boolean isStatAsSample = BuildConfig.DEBUG;
     public List<String> tagWhiteList = Collections.emptyList();
+    public List<String> tagBlackList = Collections.emptyList();
     public final List<MonitorFeature> features = new ArrayList<>(3);
 
     private BatteryMonitorConfig() {}
@@ -99,6 +100,14 @@ public class BatteryMonitorConfig {
                 config.tagWhiteList = new ArrayList<>();
             }
             config.tagWhiteList.add(tag);
+            return this;
+        }
+
+        public Builder addWakeLockBlackList(String tag) {
+            if (config.tagBlackList == Collections.EMPTY_LIST) {
+                config.tagBlackList = new ArrayList<>();
+            }
+            config.tagBlackList.add(tag);
             return this;
         }
 

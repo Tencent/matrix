@@ -76,13 +76,15 @@ public class WakeLockMonitorFeature implements MonitorFeature, PowerManagerServi
 
     @Override
     public void onAcquireWakeLock(IBinder token, int flags, final String tag, final String packageName, WorkSource workSource, String historyTag) {
-        boolean debuggable = 0 != (monitor.getContext().getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE);
-        String stack = "";
-        if (debuggable || !monitor.getConfig().tagWhiteList.contains(tag)) {
-            stack = BatteryCanaryUtil.stackTraceToString(new Throwable().getStackTrace());
-        }
+        String stack = shouldTracing(tag) ? BatteryCanaryUtil.stackTraceToString(new Throwable().getStackTrace()) : "";
         MatrixLog.i(TAG, "[onAcquireWakeLock] token=%s flags=%s tag=%s historyTag=%s packageName=%s workSource=%s stack=%s",
                 String.valueOf(token), flags, tag, historyTag, packageName, workSource, stack);
+
+        // remove duplicated old trace
+        WakeLockTrace existingTrace = mWorkingWakeLocks.get(token);
+        if (existingTrace != null) {
+            existingTrace.finish(handler);
+        }
 
         WakeLockTrace wakeLockTrace = new WakeLockTrace(token, tag, flags, packageName, stack);
         wakeLockTrace.setListener(new WakeLockTrace.OverTimeListener() {
@@ -93,6 +95,9 @@ public class WakeLockMonitorFeature implements MonitorFeature, PowerManagerServi
         });
         wakeLockTrace.start(handler, mOverTimeMillis);
         mWorkingWakeLocks.put(token, wakeLockTrace);
+
+        // dump tracing info
+        dumpTracingForTag(wakeLockTrace.record.tag);
     }
 
     @Override
@@ -113,8 +118,32 @@ public class WakeLockMonitorFeature implements MonitorFeature, PowerManagerServi
             synchronized (mFinishedWakeLockRecords) {
                 mFinishedWakeLockRecords.add(wakeLockTrace.record);
             }
+            String tag = wakeLockTrace.record.tag;
+            String stack = shouldTracing(tag) ? BatteryCanaryUtil.stackTraceToString(new Throwable().getStackTrace()) : "";
+            MatrixLog.i(TAG, "[onReleaseWakeLock] tag = " + tag + ", stack = " + stack);
+
+            // dump tracing info
+            dumpTracingForTag(tag);
+
         } else {
-            MatrixLog.i(TAG, "[onReleaseWakeLock] missing tracking, token = " + token);
+            MatrixLog.w(TAG, "missing tracking, token = " + token);
+        }
+    }
+
+    private boolean shouldTracing(String tag) {
+        boolean debuggable = 0 != (monitor.getContext().getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE);
+        return debuggable || !monitor.getConfig().tagWhiteList.contains(tag) || monitor.getConfig().tagBlackList.contains(tag);
+    }
+
+    private void dumpTracingForTag(String tag) {
+        if (monitor.getConfig().tagBlackList.contains(tag)) {
+            // dump trace of wakelocks within blacklist
+            MatrixLog.w(TAG, "dump wakelocks tracing for tag '" + tag + "':");
+            for (WakeLockTrace item : mWorkingWakeLocks.values()) {
+                if (item.record.tag.equalsIgnoreCase(tag)) {
+                    MatrixLog.w(TAG, " - " + item.record);
+                }
+            }
         }
     }
 
