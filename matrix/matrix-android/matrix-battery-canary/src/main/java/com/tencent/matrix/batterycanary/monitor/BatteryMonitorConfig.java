@@ -32,6 +32,20 @@ public class BatteryMonitorConfig {
 
     private BatteryMonitorConfig() {}
 
+    @Override
+    public String toString() {
+        return "BatteryMonitorConfig{" +
+                ", wakelockTimeout=" + wakelockTimeout +
+                ", greyTime=" + greyTime +
+                ", foregroundLoopCheckTime=" + foregroundLoopCheckTime +
+                ", isForegroundModeEnabled=" + isForegroundModeEnabled +
+                ", isBuiltinForegroundNotifyEnabled=" + isBuiltinForegroundNotifyEnabled +
+                ", isStatAsSample=" + isStatAsSample +
+                ", tagWhiteList=" + tagWhiteList +
+                ", features=" + features +
+                '}';
+    }
+
     /**
      * FIXME: suitable builder needed
      */
