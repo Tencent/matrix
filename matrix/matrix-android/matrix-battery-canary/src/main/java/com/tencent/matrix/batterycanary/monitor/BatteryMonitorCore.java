@@ -20,6 +20,7 @@ import com.tencent.matrix.util.MatrixHandlerThread;
 import com.tencent.matrix.util.MatrixLog;
 
 import java.util.List;
+import java.util.concurrent.Callable;
 
 public class BatteryMonitorCore implements Handler.Callback, LooperTaskMonitorFeature.LooperTaskListener,
         WakeLockMonitorFeature.WakeLockListener, AlarmMonitorFeature.AlarmListener, JiffiesMonitorFeature.JiffiesListener {
@@ -53,6 +54,14 @@ public class BatteryMonitorCore implements Handler.Callback, LooperTaskMonitorFe
     @Nullable private ForegroundLoopCheckTask mLooperTask;
     private final BatteryMonitorConfig mConfig;
 
+    @NonNull
+    Callable<String> mSupplier = new Callable<String>() {
+        @Override
+        public String call() throws Exception {
+            return "unknown";
+        }
+    };
+
     private volatile boolean mTurnOn = false;
     private boolean mAppForeground = AppActiveMatrixDelegate.INSTANCE.isAppForeground();
     private boolean mForegroundModeEnabled;
@@ -62,6 +71,9 @@ public class BatteryMonitorCore implements Handler.Callback, LooperTaskMonitorFe
     public BatteryMonitorCore(BatteryMonitorConfig config) {
         mConfig = config;
         if (config.callback instanceof BatteryMonitorCallback.BatteryPrinter) ((BatteryMonitorCallback.BatteryPrinter) config.callback).attach(this);
+        if (config.onSceneSupplier != null) {
+            mSupplier = config.onSceneSupplier;
+        }
 
         mHandler = new Handler(MatrixHandlerThread.getDefaultHandlerThread().getLooper(), this);
         enableForegroundLoopCheck(config.isForegroundModeEnabled);
@@ -175,6 +187,14 @@ public class BatteryMonitorCore implements Handler.Callback, LooperTaskMonitorFe
     public Context getContext() {
         // FIXME: context api configs
         return Matrix.with().getApplication();
+    }
+
+    public String getScene() {
+        try {
+            return mSupplier.call();
+        } catch (Exception e) {
+            return "unknown";
+        }
     }
 
     public boolean isForeground() {

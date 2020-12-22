@@ -1,6 +1,7 @@
 package com.tencent.matrix.batterycanary.monitor;
 
 import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 
 import com.tencent.matrix.batterycanary.BuildConfig;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature;
@@ -9,6 +10,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.concurrent.Callable;
 
 /**
  * @author Kaede
@@ -21,6 +23,9 @@ public class BatteryMonitorConfig {
 
     @NonNull
     public BatteryMonitorCallback callback = new BatteryMonitorCallback.BatteryPrinter();
+    @Nullable
+    public Callable<String> onSceneSupplier;
+
     public long wakelockTimeout = DEF_WAKELOCK_TIMEOUT;
     public long greyTime = DEF_JIFFIES_DELAY;
     public long foregroundLoopCheckTime = DEF_FOREGROUND_SCHEDULE_TIME;
@@ -55,6 +60,11 @@ public class BatteryMonitorConfig {
 
         public Builder setCallback(BatteryMonitorCallback callback) {
             config.callback = callback;
+            return this;
+        }
+
+        public Builder setSceneSupplier(Callable<String> block) {
+            config.onSceneSupplier = block;
             return this;
         }
 

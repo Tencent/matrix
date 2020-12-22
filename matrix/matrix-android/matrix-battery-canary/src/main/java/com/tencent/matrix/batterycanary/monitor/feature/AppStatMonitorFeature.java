@@ -1,19 +1,16 @@
 package com.tencent.matrix.batterycanary.monitor.feature;
 
-import android.arch.core.util.Function;
-import android.os.SystemClock;
 import android.support.annotation.NonNull;
 import android.support.annotation.VisibleForTesting;
 
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
 import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
+import com.tencent.matrix.batterycanary.utils.TimeBreaker;
 import com.tencent.matrix.util.MatrixLog;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 /**
  * @author Kaede
@@ -23,9 +20,9 @@ public final class AppStatMonitorFeature implements MonitorFeature {
     private static final String TAG = "Matrix.battery.AppStatMonitorFeature";
 
     @SuppressWarnings("NotNullFieldNotInitialized")
-    @NonNull
-    private BatteryMonitorCore mCore;
-    List<Stamp> mStampList = Collections.emptyList();
+    @NonNull private BatteryMonitorCore mCore;
+    @NonNull List<AppStatStamp> mStampList = Collections.emptyList();
+    @NonNull List<TimeBreaker.Stamp> mSceneStampList = Collections.emptyList();
 
     @Override
     public void configure(BatteryMonitorCore monitor) {
@@ -35,10 +32,13 @@ public final class AppStatMonitorFeature implements MonitorFeature {
     @Override
     public void onTurnOn() {
         MatrixLog.i(TAG, "#onTurnOn");
-        Stamp firstStamp = new Stamp(1);
+        AppStatStamp firstStamp = new AppStatStamp(1);
+        TimeBreaker.Stamp firstSceneStamp = new TimeBreaker.Stamp(mCore.getScene());
         synchronized (TAG) {
             mStampList = new ArrayList<>();
             mStampList.add(0, firstStamp);
+            mSceneStampList = new ArrayList<>();
+            mSceneStampList.add(0, firstSceneStamp);
         }
     }
 
@@ -47,6 +47,7 @@ public final class AppStatMonitorFeature implements MonitorFeature {
         MatrixLog.i(TAG, "#onTurnOff");
         synchronized (TAG) {
             mStampList.clear();
+            mSceneStampList.clear();
         }
     }
 
@@ -55,7 +56,15 @@ public final class AppStatMonitorFeature implements MonitorFeature {
         int appStat = BatteryCanaryUtil.getAppStat(mCore.getContext(), isForeground);
         synchronized (TAG) {
             if (mStampList != Collections.EMPTY_LIST) {
-                mStampList.add(0, new Stamp(appStat));
+                mStampList.add(0, new AppStatStamp(appStat));
+            }
+        }
+    }
+
+    public void onStatScene(@NonNull String scene) {
+        synchronized (TAG) {
+            if (mSceneStampList != Collections.EMPTY_LIST) {
+                mSceneStampList.add(0, new TimeBreaker.Stamp(scene));
             }
         }
     }
@@ -72,7 +81,7 @@ public final class AppStatMonitorFeature implements MonitorFeature {
     public AppStatSnapshot currentAppStatSnapshot(long windowMillis) {
         try {
             int appStat = BatteryCanaryUtil.getAppStat(mCore.getContext(), mCore.isForeground());
-            Stamp lastStamp = new Stamp(appStat);
+            AppStatStamp lastStamp = new AppStatStamp(appStat);
             synchronized (TAG) {
                 if (mStampList != Collections.EMPTY_LIST) {
                     mStampList.add(0, lastStamp);
@@ -88,84 +97,21 @@ public final class AppStatMonitorFeature implements MonitorFeature {
     }
 
     @VisibleForTesting
-    static AppStatSnapshot configureSnapshot(List<Stamp> stampList, long windowMillis) {
-        final Map<Integer, Long> mapper = new HashMap<>();
-        long totalMillis = 0L;
-        long lastStampMillis = Long.MIN_VALUE;
-
-        if (windowMillis <= 0L) {
-            // configure for long all app uptime
-            for (Stamp item : stampList) {
-                if (lastStampMillis != Long.MIN_VALUE) {
-                    if (lastStampMillis < item.upTime) {
-                        // invalid data
-                        break;
-                    }
-
-                    long interval = lastStampMillis - item.upTime;
-                    totalMillis += interval;
-                    Long record = mapper.get(item.appStat);
-                    mapper.put(item.appStat, interval + (record == null ? 0 : record));
-                }
-                lastStampMillis = item.upTime;
-            }
-        } else {
-            // just configure for long of the given window
-            for (Stamp item : stampList) {
-                if (lastStampMillis != Long.MIN_VALUE) {
-                    if (lastStampMillis < item.upTime) {
-                        // invalid data
-                        break;
-                    }
-
-                    long interval = lastStampMillis - item.upTime;
-                    if (totalMillis + interval >= windowMillis) {
-                        // reach widow edge
-                        long lastInterval = windowMillis - totalMillis;
-                        totalMillis += lastInterval;
-                        Long record = mapper.get(item.appStat);
-                        mapper.put(item.appStat, lastInterval + (record == null ? 0 : record));
-                        break;
-                    }
-
-                    totalMillis += interval;
-                    Long record = mapper.get(item.appStat);
-                    mapper.put(item.appStat, interval + (record == null ? 0 : record));
-                }
-                lastStampMillis = item.upTime;
-            }
-        }
-
+    static AppStatSnapshot configureSnapshot(List<AppStatStamp> stampList, long windowMillis) {
+        TimeBreaker.TimePortions timePortions = TimeBreaker.configurePortions(stampList, windowMillis);
         AppStatSnapshot snapshot = new AppStatSnapshot();
-        if (totalMillis <= 0L) {
-            snapshot.setValid(false);
-        } else {
-            // window > uptime
-            if (windowMillis > totalMillis) {
-                snapshot.setValid(false);
-            }
-            snapshot.uptime = Snapshot.Entry.DigitEntry.of(totalMillis);
-            Function<Integer, Long> block = new Function<Integer, Long>() {
-                @Override
-                public Long apply(Integer input) {
-                    Long millis = mapper.get(input);
-                    return millis == null ? 0 : millis;
-                }
-            };
-            snapshot.fgRatio = Snapshot.Entry.DigitEntry.of(Math.round((((double) block.apply(1)) / totalMillis) * 100));
-            snapshot.bgRatio = Snapshot.Entry.DigitEntry.of(Math.round((((double) block.apply(2)) / totalMillis) * 100));
-            snapshot.fgSrvRatio = Snapshot.Entry.DigitEntry.of(Math.round((((double) block.apply(3)) / totalMillis) * 100));
-        }
+        snapshot.setValid(timePortions.isValid());
+        snapshot.uptime = Snapshot.Entry.DigitEntry.of(timePortions.totalUptime);
+        snapshot.fgRatio = Snapshot.Entry.DigitEntry.of((long) timePortions.getRatio("1"));
+        snapshot.bgRatio = Snapshot.Entry.DigitEntry.of((long) timePortions.getRatio("2"));
+        snapshot.fgSrvRatio = Snapshot.Entry.DigitEntry.of((long) timePortions.getRatio("3"));
         return snapshot;
     }
 
     @VisibleForTesting
-    static final class Stamp {
-        public final int appStat;
-        public final long upTime;
-        public Stamp(int appStat) {
-            this.appStat = appStat;
-            this.upTime = SystemClock.uptimeMillis();
+    static final class AppStatStamp extends TimeBreaker.Stamp {
+        public AppStatStamp(int appStat) {
+            super(String.valueOf(appStat));
         }
     }
 
@@ -191,5 +137,29 @@ public final class AppStatMonitorFeature implements MonitorFeature {
                 }
             };
         }
+    }
+
+    public TimeBreaker.TimePortions currentSceneSnapshot() {
+        return currentSceneSnapshot(0L);
+    }
+
+    public TimeBreaker.TimePortions currentSceneSnapshot(long windowMillis) {
+        try {
+            TimeBreaker.Stamp lastSceneStamp = new TimeBreaker.Stamp(mCore.getScene());
+            synchronized (TAG) {
+                if (mSceneStampList != Collections.EMPTY_LIST) {
+                    mSceneStampList.add(0, lastSceneStamp);
+                }
+            }
+            return configureSceneSnapshot(mSceneStampList, windowMillis);
+        } catch (Throwable e) {
+            MatrixLog.w(TAG, "currentSceneSnapshot fail: " + e.getMessage());
+            return TimeBreaker.TimePortions.ofInvalid();
+        }
+    }
+
+    @VisibleForTesting
+    static TimeBreaker.TimePortions configureSceneSnapshot(List<TimeBreaker.Stamp> stampList, long windowMillis) {
+        return TimeBreaker.configurePortions(stampList, windowMillis);
     }
 }
