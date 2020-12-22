@@ -37,6 +37,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
@@ -152,4 +153,60 @@ public class TimerBreakerTest {
         Assert.assertFalse(snapshot.isValid());
     }
 
+    @Test
+    public void testListGc() {
+        List<Stamp> list = Collections.emptyList();
+        gcList(list);
+        Assert.assertSame(Collections.EMPTY_LIST, list);
+
+        list = new ArrayList<>();
+        for (int i = 0; i < 1; i++) {
+            list.add(0, new Stamp(String.valueOf(i)));
+        }
+        gcList(list);
+        Assert.assertEquals(1, list.size());
+        Assert.assertEquals("0", list.get(list.size() - 1).key);
+
+        list = new ArrayList<>();
+        for (int i = 0; i < 2; i++) {
+            list.add(0, new Stamp(String.valueOf(i)));
+        }
+        gcList(list);
+        Assert.assertEquals(2, list.size());
+        Assert.assertEquals("0", list.get(list.size() - 1).key);
+
+        list = new ArrayList<>();
+        for (int i = 0; i < 3; i++) {
+            list.add(0, new Stamp(String.valueOf(i)));
+        }
+        gcList(list);
+        Assert.assertEquals(2, list.size());
+        Assert.assertEquals("0", list.get(list.size() - 1).key);
+
+        list = new ArrayList<>();
+        for (int i = 0; i < 4; i++) {
+            list.add(0, new Stamp(String.valueOf(i)));
+        }
+        gcList(list);
+        Assert.assertEquals(3, list.size());
+        Assert.assertEquals("0", list.get(list.size() - 1).key);
+
+        list = new ArrayList<>();
+        for (int i = 0; i < 5; i++) {
+            list.add(0, new Stamp(String.valueOf(i)));
+        }
+        gcList(list);
+        Assert.assertEquals(3, list.size());
+        Assert.assertEquals("0", list.get(list.size() - 1).key);
+
+        for (Integer item : Arrays.asList(10, 100, 1024, 2333, 65535)) {
+            list = new ArrayList<>();
+            for (int i = 0; i < item; i++) {
+                list.add(0, new Stamp(String.valueOf(i)));
+            }
+            gcList(list);
+            Assert.assertEquals(item - (item / 2) + (item % 2 == 0 ? 1 : 0), list.size());
+            Assert.assertEquals("0", list.get(list.size() - 1).key);
+        }
+    }
 }

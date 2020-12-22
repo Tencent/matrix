@@ -38,6 +38,14 @@ public final class DeviceStatMonitorFeature implements MonitorFeature {
     @NonNull private BatteryMonitorCore mMonitor;
     @NonNull private DevStatListener mDevStatListener;
     @NonNull List<TimeBreaker.Stamp> mStampList = Collections.emptyList();
+    @NonNull Runnable coolingTask = new Runnable() {
+        @Override
+        public void run() {
+            if (mStampList.size() >= mMonitor.getConfig().overHeatCount) {
+                TimeBreaker.gcList(mStampList);
+            }
+        }
+    };
 
     @Override
     public void configure(BatteryMonitorCore monitor) {
@@ -62,6 +70,7 @@ public final class DeviceStatMonitorFeature implements MonitorFeature {
                 synchronized (TAG) {
                     if (mStampList != Collections.EMPTY_LIST) {
                         mStampList.add(0, new TimeBreaker.Stamp(String.valueOf(integer)));
+                        checkOverHeat();
                     }
                 }
             }
@@ -82,6 +91,11 @@ public final class DeviceStatMonitorFeature implements MonitorFeature {
                 mDevStatListener.startListen(mMonitor.getContext());
             }
         }
+    }
+
+    private void checkOverHeat() {
+        mMonitor.getHandler().removeCallbacks(coolingTask);
+        mMonitor.getHandler().postDelayed(coolingTask, 1000L);
     }
 
     @Override

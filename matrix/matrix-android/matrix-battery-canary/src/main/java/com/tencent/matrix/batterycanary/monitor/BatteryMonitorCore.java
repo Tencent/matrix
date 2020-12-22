@@ -184,6 +184,11 @@ public class BatteryMonitorCore implements Handler.Callback, LooperTaskMonitorFe
         }
     }
 
+    @NonNull
+    public Handler getHandler() {
+        return mHandler;
+    }
+
     public Context getContext() {
         // FIXME: context api configs
         return Matrix.with().getApplication();

@@ -29,6 +29,7 @@ public class BatteryMonitorConfig {
     public long wakelockTimeout = DEF_WAKELOCK_TIMEOUT;
     public long greyTime = DEF_JIFFIES_DELAY;
     public long foregroundLoopCheckTime = DEF_FOREGROUND_SCHEDULE_TIME;
+    public int overHeatCount = 1024;
     public boolean isForegroundModeEnabled = true;
     public boolean isBuiltinForegroundNotifyEnabled = true;
     public boolean isStatAsSample = BuildConfig.DEBUG;
@@ -44,6 +45,7 @@ public class BatteryMonitorConfig {
                 ", wakelockTimeout=" + wakelockTimeout +
                 ", greyTime=" + greyTime +
                 ", foregroundLoopCheckTime=" + foregroundLoopCheckTime +
+                ", overHeatCount=" + overHeatCount +
                 ", isForegroundModeEnabled=" + isForegroundModeEnabled +
                 ", isBuiltinForegroundNotifyEnabled=" + isBuiltinForegroundNotifyEnabled +
                 ", isStatAsSample=" + isStatAsSample +
@@ -118,6 +120,13 @@ public class BatteryMonitorConfig {
                 config.tagBlackList = new ArrayList<>();
             }
             config.tagBlackList.add(tag);
+            return this;
+        }
+
+        public Builder setOverHeatCount(int count) {
+            if (count >= 10) {
+                config.overHeatCount = count;
+            }
             return this;
         }
 

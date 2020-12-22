@@ -23,6 +23,17 @@ public final class AppStatMonitorFeature implements MonitorFeature {
     @NonNull private BatteryMonitorCore mCore;
     @NonNull List<AppStatStamp> mStampList = Collections.emptyList();
     @NonNull List<TimeBreaker.Stamp> mSceneStampList = Collections.emptyList();
+    @NonNull Runnable coolingTask = new Runnable() {
+        @Override
+        public void run() {
+            if (mStampList.size() >= mCore.getConfig().overHeatCount) {
+                TimeBreaker.gcList(mStampList);
+            }
+            if (mSceneStampList.size() >= mCore.getConfig().overHeatCount) {
+                TimeBreaker.gcList(mSceneStampList);
+            }
+        }
+    };
 
     @Override
     public void configure(BatteryMonitorCore monitor) {
@@ -57,6 +68,7 @@ public final class AppStatMonitorFeature implements MonitorFeature {
         synchronized (TAG) {
             if (mStampList != Collections.EMPTY_LIST) {
                 mStampList.add(0, new AppStatStamp(appStat));
+                checkOverHeat();
             }
         }
     }
@@ -65,8 +77,14 @@ public final class AppStatMonitorFeature implements MonitorFeature {
         synchronized (TAG) {
             if (mSceneStampList != Collections.EMPTY_LIST) {
                 mSceneStampList.add(0, new TimeBreaker.Stamp(scene));
+                checkOverHeat();
             }
         }
+    }
+
+    private void checkOverHeat() {
+       mCore.getHandler().removeCallbacks(coolingTask);
+       mCore.getHandler().postDelayed(coolingTask, 1000L);
     }
 
     @Override

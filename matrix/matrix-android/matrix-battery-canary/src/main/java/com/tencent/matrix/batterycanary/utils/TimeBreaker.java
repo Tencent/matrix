@@ -22,6 +22,18 @@ import java.util.Map;
 @RestrictTo(RestrictTo.Scope.LIBRARY)
 public final class TimeBreaker {
 
+    public static void gcList(List<?> list) {
+        if (list == null) {
+            return;
+        }
+        int size = list.size();
+        int from = size / 2;
+        int to = size - 1;
+        if (from < to) {
+            list.subList(from, to).clear();
+        }
+    }
+
     public static TimePortions configurePortions(List<? extends Stamp> stampList, long windowMillis) {
         final Map<String, Long> mapper = new HashMap<>();
         long totalMillis = 0L;
