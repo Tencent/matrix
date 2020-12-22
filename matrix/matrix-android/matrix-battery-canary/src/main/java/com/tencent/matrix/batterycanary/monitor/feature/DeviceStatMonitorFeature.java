@@ -110,20 +110,6 @@ public final class DeviceStatMonitorFeature implements MonitorFeature {
         return snapshot;
     }
 
-    @Nullable
-    public RadioStatSnapshot currentRadioSnapshot(Context context) {
-        RadioStatUtil.RadioStat stat = RadioStatUtil.getCurrentStat(context);
-        if (stat == null) {
-            return null;
-        }
-        RadioStatSnapshot snapshot = new RadioStatSnapshot();
-        snapshot.wifiRxBytes = Snapshot.Entry.DigitEntry.of(stat.wifiRxBytes);
-        snapshot.wifiTxBytes = Snapshot.Entry.DigitEntry.of(stat.wifiTxBytes);
-        snapshot.mobileRxBytes = Snapshot.Entry.DigitEntry.of(stat.mobileRxBytes);
-        snapshot.mobileTxBytes = Snapshot.Entry.DigitEntry.of(stat.mobileTxBytes);
-        return snapshot;
-    }
-
     public DevStatSnapshot currentDevStatSnapshot() {
         return currentDevStatSnapshot(0L);
     }
@@ -324,28 +310,6 @@ public final class DeviceStatMonitorFeature implements MonitorFeature {
                 protected BatteryTmpSnapshot computeDelta() {
                     BatteryTmpSnapshot delta = new BatteryTmpSnapshot();
                     delta.temp = DigitDiffer.globalDiff(bgn.temp, end.temp);
-                    return delta;
-                }
-            };
-        }
-    }
-
-    public static class RadioStatSnapshot extends Snapshot<RadioStatSnapshot> {
-        public Entry.DigitEntry<Long> wifiRxBytes = Entry.DigitEntry.of(0L);
-        public Entry.DigitEntry<Long> wifiTxBytes = Entry.DigitEntry.of(0L);
-        public Entry.DigitEntry<Long> mobileRxBytes = Entry.DigitEntry.of(0L);
-        public Entry.DigitEntry<Long> mobileTxBytes = Entry.DigitEntry.of(0L);
-
-        @Override
-        public Delta<RadioStatSnapshot> diff(RadioStatSnapshot bgn) {
-            return new Delta<RadioStatSnapshot>(bgn, this) {
-                @Override
-                protected RadioStatSnapshot computeDelta() {
-                    RadioStatSnapshot delta = new RadioStatSnapshot();
-                    delta.wifiRxBytes = DigitDiffer.globalDiff(bgn.wifiRxBytes, end.wifiRxBytes);
-                    delta.wifiTxBytes = DigitDiffer.globalDiff(bgn.wifiTxBytes, end.wifiTxBytes);
-                    delta.mobileRxBytes = DigitDiffer.globalDiff(bgn.mobileRxBytes, end.mobileRxBytes);
-                    delta.mobileTxBytes = DigitDiffer.globalDiff(bgn.mobileTxBytes, end.mobileTxBytes);
                     return delta;
                 }
             };

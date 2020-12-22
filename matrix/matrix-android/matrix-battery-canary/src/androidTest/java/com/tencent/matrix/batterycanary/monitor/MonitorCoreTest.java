@@ -48,6 +48,9 @@ public class MonitorCoreTest {
     @Before
     public void setUp() {
         mContext = InstrumentationRegistry.getTargetContext();
+        if (!Matrix.isInstalled()) {
+            Matrix.init(new Matrix.Builder(((Application) mContext.getApplicationContext())).build());
+        }
         spyCallback = new BatteryMonitorCallback.BatteryPrinter() {
             @Override
             public void onTraceBegin() {
