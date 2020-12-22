@@ -15,9 +15,9 @@
 
 #include "QuickenUnwinder.h"
 #include "QuickenJNI.h"
+#include "Log.h"
 
 #include "android-base/macros.h"
-#include "../../common/Log.h"
 
 #define WECHAT_QUICKEN_UNWIND_TAG "QuickenUnwind"
 

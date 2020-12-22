@@ -38,6 +38,7 @@ SET(
         ${SOURCE_DIR}/libwechatbacktrace/DwarfOp.cpp
         ${SOURCE_DIR}/libwechatbacktrace/QuickenTable.cpp
         #        ${SOURCE_DIR}/QuickenTableReverse.cpp
+        ${SOURCE_DIR}/libwechatbacktrace/QuickenMemory.cpp
         ${SOURCE_DIR}/libwechatbacktrace/QuickenTableManager.cpp
         ${SOURCE_DIR}/libwechatbacktrace/QuickenMaps.cpp
         ${SOURCE_DIR}/libwechatbacktrace/QuickenTableGenerator.cpp

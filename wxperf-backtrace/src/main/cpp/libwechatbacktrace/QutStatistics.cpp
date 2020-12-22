@@ -8,8 +8,7 @@
 #include <iterator>
 #include <string>
 #include "QutStatistics.h"
-
-#include "../../common/Log.h"
+#include "Log.h"
 
 namespace wechat_backtrace {
 
@@ -19,11 +18,10 @@ namespace wechat_backtrace {
 
     typedef map<uint32_t, shared_ptr<vector<pair<uint64_t, uint64_t>>>> stat_info_map_t;
 
-//    DEFINE_STATIC_LOCAL(string, gCurrStatLib, );
+    DEFINE_STATIC_LOCAL(string, gCurrStatLib, );
 //    DEFINE_STATIC_LOCAL(stat_info_map_t*, sStatisticInfo, );
 //    DEFINE_STATIC_LOCAL(stat_info_map_t*, sStatisticTipsInfo, );
 
-    static string gCurrStatLib;
     static map<uint32_t, shared_ptr<vector<pair<uint64_t, uint64_t>>>> *sStatisticInfo = nullptr;
     static map<uint32_t, shared_ptr<vector<pair<uint64_t, uint64_t>>>> *sStatisticTipsInfo = nullptr;
 

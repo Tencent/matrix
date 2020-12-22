@@ -6,9 +6,9 @@
 namespace wechat_backtrace {
 
     QUT_EXTERN_C_BLOCK
-    static std::shared_ptr<unwindstack::LocalMaps> local_maps_;
 
-    static std::mutex unwind_mutex;
+    DEFINE_STATIC_LOCAL(std::shared_ptr<unwindstack::LocalMaps>, local_maps_, );
+    DEFINE_STATIC_LOCAL(std::mutex, unwind_mutex, );
 
     void UpdateLocalMaps() {
 

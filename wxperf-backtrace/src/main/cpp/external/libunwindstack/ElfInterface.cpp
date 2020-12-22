@@ -467,6 +467,7 @@ std::string ElfInterface::GetSonameWithTemplate() {
       return soname_;
     }
   }
+
   return "";
 }
 

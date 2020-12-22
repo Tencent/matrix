@@ -19,9 +19,11 @@ namespace wechat_backtrace {
     class QuickenInterface {
 
     public:
-        QuickenInterface(unwindstack::Memory *memory, uint64_t load_bias,
-                         unwindstack::ArchEnum arch)
-                : memory_(memory), load_bias_(load_bias), arch_(arch) {}
+        QuickenInterface(/* unwindstack::Memory *memory,*/ uint64_t load_bias,
+                                                           uint64_t elf_offset,
+                                                           unwindstack::ArchEnum arch)
+                : /* memory_(memory), */ load_bias_(load_bias), elf_offset_(elf_offset),
+                                         arch_(arch) {}
 
         bool FindEntry(uptr pc, size_t *entry_offset);
 
@@ -32,11 +34,14 @@ namespace wechat_backtrace {
                       unwindstack::Memory *process_memory, bool *finish);
 
         template<typename AddressType>
-        bool GenerateQuickenTable(unwindstack::Memory *process_memory, QutSectionsPtr qut_sections);
+        bool GenerateQuickenTable(unwindstack::Memory *memory, unwindstack::Memory *process_memory,
+                                  QutSectionsPtr qut_sections);
 
         bool TryInitQuickenTable();
 
         uint64_t GetLoadBias();
+
+        uint64_t GetElfOffset();
 
         void SetArmExidxInfo(uint64_t start_offset, uint64_t total_entries) {
             arm_exidx_info_ = {start_offset, 0, total_entries};
@@ -76,16 +81,16 @@ namespace wechat_backtrace {
             hash_ = ToHash(sopath_);
         }
 
-        unwindstack::Memory *Memory() {
-            return memory_;
-        };
-
         QutSections *GetQutSections() {
             return qut_sections_;
         }
 
         QutErrorCode last_error_code_ = QUT_ERROR_NONE;
         size_t bad_entries_ = 0;    // TODO
+
+        bool log = false;
+        uptr log_pc = 0;
+
 
     protected:
 
@@ -97,8 +102,9 @@ namespace wechat_backtrace {
         std::string build_id_hex_;
         std::string hash_;
 
-        unwindstack::Memory *memory_;
+//        unwindstack::Memory *memory_;
         uint64_t load_bias_ = 0;
+        uint64_t elf_offset_ = 0;
 
         unwindstack::ArchEnum arch_;
 

@@ -67,9 +67,10 @@ namespace wechat_backtrace {
     class QuickenTable {
 
     public:
-        QuickenTable(QutSections *qut_sections, uintptr_t *regs, unwindstack::Memory *memory,
-                     unwindstack::Memory *process_memory, uptr stack_top, uptr stack_bottom, uptr frame_size)
-                : regs_(regs), memory_(memory), process_memory_(process_memory),
+        QuickenTable(QutSections *qut_sections, uintptr_t *regs, /*unwindstack::Memory *memory,*/
+                     unwindstack::Memory *process_memory, uptr stack_top, uptr stack_bottom,
+                     uptr frame_size)
+                : regs_(regs), /*memory_(memory),*/ process_memory_(process_memory),
                   qut_sections_(qut_sections), stack_top_(stack_top),
                   stack_bottom_(stack_bottom), frame_size(frame_size) {};
 
@@ -81,11 +82,15 @@ namespace wechat_backtrace {
         uptr dex_pc_ = 0;
         bool pc_set_ = false;
 
+        bool log = false;
+
     protected:
 
-        QutErrorCode Decode32(const uint32_t *instructions, const size_t amount, const size_t start_pos);
+        QutErrorCode
+        Decode32(const uint32_t *instructions, const size_t amount, const size_t start_pos);
 
-        QutErrorCode Decode64(const uint64_t *instructions, const size_t amount, const size_t start_pos);
+        QutErrorCode
+        Decode64(const uint64_t *instructions, const size_t amount, const size_t start_pos);
 
         QutErrorCode Decode(const uptr *instructions, const size_t amount, const size_t start_pos);
 
@@ -93,7 +98,7 @@ namespace wechat_backtrace {
 
         uptr *regs_ = nullptr;
 
-        unwindstack::Memory *memory_ = nullptr;
+        /* unwindstack::Memory *memory_ = nullptr; */
         unwindstack::Memory *process_memory_ = nullptr;
         QutSections *qut_sections_ = nullptr;
 

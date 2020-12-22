@@ -14,7 +14,8 @@
 #define TAG "PthreadExt"
 
 static pthread_key_t m_attr_key;
-static std::mutex    m_init_mutex;
+
+DEFINE_STATIC_LOCAL(std::mutex, m_init_mutex, );
 
 static void attr_destructor(void *__attr) {
     if (__attr) {

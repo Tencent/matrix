@@ -5,7 +5,8 @@
 #include <android-base/macros.h>
 #include <MinimalRegs.h>
 #include <QuickenTableManager.h>
-#include "../../common/Log.h"
+#include <deps/android-base/include/android-base/logging.h>
+#include "Log.h"
 #include "QuickenInterface.h"
 #include "QuickenMaps.h"
 #include "DwarfEhFrameWithHdrDecoder.h"
@@ -22,13 +23,22 @@ namespace wechat_backtrace {
         return load_bias_;
     }
 
+    uint64_t QuickenInterface::GetElfOffset() {
+        return elf_offset_;
+    }
+
     template<typename AddressType>
-    bool QuickenInterface::GenerateQuickenTable(unwindstack::Memory *process_memory,
-                                                QutSectionsPtr qut_sections) {
+    bool QuickenInterface::GenerateQuickenTable(
+            unwindstack::Memory *memory,
+            unwindstack::Memory *process_memory,
+            QutSectionsPtr qut_sections) {
 
         QUT_DEBUG_LOG("QuickenInterface::GenerateQuickenTableUltra");
 
-        QuickenTableGenerator<AddressType> generator(memory_, process_memory);
+        CHECK(memory != nullptr);
+        CHECK(process_memory != nullptr);
+
+        QuickenTableGenerator<AddressType> generator(memory, process_memory);
 
         bool ret = generator.GenerateUltraQUTSections(eh_frame_hdr_info_, eh_frame_info_,
                                                       debug_frame_info_, gnu_eh_frame_hdr_info_,
@@ -49,7 +59,8 @@ namespace wechat_backtrace {
         QutFileError error = QuickenTableManager::getInstance().RequestQutSections(
                 soname_, sopath_, hash_, build_id_, build_id_hex_, qut_sections_tmp);
 
-        QUT_LOG("Try init quicken table %s result %d", sopath_.c_str(), error);
+        QUT_DEBUG_LOG("Try init quicken table %s build_id_ %s result %d", sopath_.c_str(),
+                      build_id_.c_str(), error);
         if (error != NoneError) {
             return false;
         }
@@ -68,10 +79,17 @@ namespace wechat_backtrace {
     bool QuickenInterface::FindEntry(uptr pc, size_t *entry_offset) {
         size_t first = 0;
         size_t last = qut_sections_->idx_size;
-        QUT_DEBUG_LOG("QuickenInterface::FindEntry first:%u last:%u pc:%x", first, last, pc);
+        QUT_DEBUG_LOG("QuickenInterface::FindEntry first:%uz last:%uz pc:%llx", first, last,
+                      (ullint_t) pc);
         while (first < last) {
             size_t current = ((first + last) / 2) & 0xfffffffe;
             uptr addr = qut_sections_->quidx[current];
+            if (log) {
+                if (pc == log_pc) {
+                    QUT_LOG(">>> QuickenInterface::FindEntry current:%llu addr:%llx pc:%llx",
+                            (ullint_t) current, (ullint_t) addr, (ullint_t) pc);
+                }
+            }
             if (pc == addr) {
                 *entry_offset = current;
                 return true;
@@ -83,8 +101,9 @@ namespace wechat_backtrace {
             }
         }
         if (last != 0) {
-            QUT_DEBUG_LOG("QuickenInterface::FindEntry found entry_offset: %u, addr: %x", last - 2,
-                          qut_sections_->quidx[last - 2]);
+            QUT_DEBUG_LOG("QuickenInterface::FindEntry found entry_offset: %uz, addr: %llx",
+                          last - 2,
+                          (ullint_t) qut_sections_->quidx[last - 2]);
             *entry_offset = last - 2;
             return true;
         }
@@ -109,7 +128,8 @@ namespace wechat_backtrace {
             }
         }
 
-        QuickenTable quicken(qut_sections_, regs, memory_, process_memory, stack_top, stack_bottom, frame_size);
+        QuickenTable quicken(qut_sections_, regs, /*memory_,*/ process_memory, stack_top,
+                             stack_bottom, frame_size);
         size_t entry_offset;
 
         QUT_DEBUG_LOG("QuickenInterface::Step pc:%llx, load_bias_:%llu", (uint64_t) pc, load_bias_);
@@ -197,7 +217,8 @@ namespace wechat_backtrace {
 //    }
 
     template bool
-    QuickenInterface::GenerateQuickenTable<addr_t>(unwindstack::Memory *process_memory,
-                                                   QutSectionsPtr qut_sections);
+    QuickenInterface::GenerateQuickenTable<addr_t>(
+            unwindstack::Memory *memory, unwindstack::Memory *process_memory,
+            QutSectionsPtr qut_sections);
 
 }  // namespace unwindstack

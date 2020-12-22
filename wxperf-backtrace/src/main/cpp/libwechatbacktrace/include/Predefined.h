@@ -47,6 +47,9 @@
 #define DEFINE_STATIC_LOCAL(type, name, arguments) \
   static type& name = *new type arguments
 
+#define DEFINE_STATIC_CPP_FIELD(type, name, arguments) \
+  type& name = *new type arguments
+
 namespace wechat_backtrace {
 
     typedef uintptr_t uptr;

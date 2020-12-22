@@ -70,18 +70,29 @@ namespace wechat_backtrace {
         return true;
     }
 
-    inline QutErrorCode QuickenTable::Decode32(const uint32_t * const instructions, const size_t amount,
-                                               const size_t start_pos) {
+    inline QutErrorCode
+    QuickenTable::Decode32(const uint32_t *const instructions, const size_t amount,
+                           const size_t start_pos) {
 
-        QUT_DEBUG_LOG("QuickenTable::Decode32 instructions %x, amount %u, start_pos %u",
-                      instructions, (uint32_t) amount, (uint32_t) start_pos);
+
+        if (log) {
+            QUT_LOG("QuickenTable::Decode32 instructions %llx, amount %u, start_pos %u",
+                    (ullint_t) instructions, (uint32_t) amount, (uint32_t) start_pos);
+            int32_t m = start_pos;
+            size_t n = 0;
+            while (n < amount) {
+                uint8_t byte;
+                ReadByte(byte, instructions, m, n, amount);
+                QUT_LOG("Decode32 instructions "
+                                BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(byte));
+            }
+        }
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wint-to-pointer-cast"
 
         int32_t j = start_pos;
         size_t i = 0;
-
 
         while (i < amount) {
             uint8_t byte;
@@ -524,13 +535,13 @@ namespace wechat_backtrace {
     }
 
     QutErrorCode QuickenTable::Eval(size_t entry_offset) {
-
         uptr command = qut_sections_->quidx[entry_offset + 1];
 
-        QUT_DEBUG_LOG("QuickenTable::Eval entry_offset %u, add %llx, command %llx",
-                      (uint32_t) entry_offset, (uint64_t) qut_sections_->quidx[entry_offset],
-                      (uint64_t) qut_sections_->quidx[entry_offset + 1]);
-
+        if (log) {
+            QUT_LOG("QuickenTable::Eval entry_offset %u, add %llx, command %llx",
+                    (uint32_t) entry_offset, (ullint_t) qut_sections_->quidx[entry_offset],
+                    (ullint_t) qut_sections_->quidx[entry_offset + 1]);
+        }
 
         if (command >> ((sizeof(uptr) * 8) - 1)) {
             return Decode(&command, 1, QUT_TBL_ROW_SIZE - 1); // compact

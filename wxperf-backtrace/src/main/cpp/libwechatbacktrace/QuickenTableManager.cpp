@@ -25,10 +25,8 @@ namespace wechat_backtrace {
     using namespace std;
     using namespace unwindstack;
 
-    string QuickenTableManager::sSavingPath;
-    string QuickenTableManager::sPackageName;
-//    string& QuickenTableManager::sSavingPath = *new string;
-//    string& QuickenTableManager::sPackageName = *new string;
+    string &QuickenTableManager::sSavingPath = *new string;
+    string &QuickenTableManager::sPackageName = *new string;
     bool QuickenTableManager::sHasWarmedUp = false;
 
     inline string
@@ -231,8 +229,12 @@ namespace wechat_backtrace {
     }
 
     bool
-    QuickenTableManager::InsertQutSectionsNoLock(const string &soname, const string &build_id, QutSectionsPtr &qut_sections,
-                                           bool immediately) {
+    QuickenTableManager::InsertQutSectionsNoLock(const string &soname, const string &build_id,
+                                                 QutSectionsPtr &qut_sections,
+                                                 bool immediately) {
+
+        (void) soname;
+
         CHECK(qut_sections != nullptr);
         if (qut_sections->idx_size == 0) {
             return false;
@@ -246,7 +248,7 @@ namespace wechat_backtrace {
         auto it = qut_sections_map_.find(build_id);
         if (it != qut_sections_map_.end() && it->second != nullptr) {
             QUT_LOG("Qut insert build id %s failed, value %llx.", build_id.c_str(),
-                    (ullint_t)(it->second));
+                    (ullint_t) (it->second));
             return false;
         }
 

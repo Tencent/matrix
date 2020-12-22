@@ -19,7 +19,7 @@
 //#define FP_FAST_UNWIND_WITH_FALLBACK_TAG UNWIND_TEST_TAG
 //#define DWARF_FAST_UNWIND_TAG UNWIND_TEST_TAG
 
-#define FRAME_MAX_SIZE 16
+#define FRAME_MAX_SIZE 60
 
 #define TEST_NanoSeconds_Start(timestamp) \
         long timestamp = 0; \

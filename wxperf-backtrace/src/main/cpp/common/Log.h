@@ -25,18 +25,35 @@
 #define X_FORMAT "llx"
 #endif
 
-#define INTER_LOG(FMT, args...) //__android_log_print(ANDROID_LOG_ERROR, "DEBUG-UNWIND-INTER", FMT, ##args)
-#define QUT_DEBUG_LOG(FMT, args...) //__android_log_print(ANDROID_LOG_ERROR, "DEBUG-QUT", FMT, ##args)
-#define INTER_DEBUG_LOG(FMT, args...) //__android_log_print(ANDROID_LOG_ERROR, "DEBUG-QUT-INTER", FMT, ##args)
-#define DWARF_CFA_LOG(FMT, args...) //__android_log_print(ANDROID_LOG_ERROR, "DEBUG-QUT-DWARF-CFA", FMT, ##args)
-#define DWARF_OP_LOG(FMT, args...) //__android_log_print(ANDROID_LOG_ERROR, "DEBUG-QUT-DWARF-OP", FMT, ##args)
-#define QUT_STAT_LOG(FMT, args...) //__android_log_print(ANDROID_LOG_ERROR, "STAT-QUT", FMT, ##args)
-#define QUT_TMP_LOG(FMT, args...) //__android_log_print(ANDROID_LOG_ERROR, "TMP-QUT", FMT, ##args)
-#define QUT_LOG(FMT, args...) __android_log_print(ANDROID_LOG_ERROR, "Matrix.Backtrace.Native", FMT, ##args)
+#define STACK_CHECK_START(S) \
+    const int barrier_size = S; \
+    char barrier_stub = (char)barrier_size;    \
+    char stack_barrier[barrier_size]; \
+    memset(stack_barrier, barrier_stub, barrier_size);
+
+#define STACK_CHECK_END \
+    for (char i : stack_barrier) { \
+        if (i != barrier_stub) { \
+            QUT_LOG("Check stack Failed! index(%llu)", (unsigned long long) barrier_size); \
+            abort(); \
+        }\
+    }
+
+#define INTER_LOG(FMT, args...) //__android_log_print(ANDROID_LOG_ERROR, "Matrix.Backtrace.INTER", FMT, ##args)
+#define INTER_DEBUG_LOG(FMT, args...) //__android_log_print(ANDROID_LOG_ERROR, "Matrix.Backtrace.INTER.D", FMT, ##args)
+#define DWARF_CFA_LOG(FMT, args...) //__android_log_print(ANDROID_LOG_ERROR, "Matrix.Backtrace.DWARF-CFA", FMT, ##args)
+#define DWARF_OP_LOG(FMT, args...) //__android_log_print(ANDROID_LOG_ERROR, "Matrix.Backtrace.DWARF-OP", FMT, ##args)
+#define QUT_TMP_LOG(FMT, args...) //__android_log_print(ANDROID_LOG_ERROR, "Matrix.Backtrace.TMP", FMT, ##args)
+#define QUT_DEBUG_LOG(FMT, args...) //__android_log_print(ANDROID_LOG_ERROR, "Matrix.Backtrace.DEBUG", FMT, ##args)
+#define QUT_STAT_LOG(FMT, args...) //__android_log_print(ANDROID_LOG_ERROR, "Matrix.Backtrace.STAT", FMT, ##args)
+#define QUT_LOG(FMT, args...) //__android_log_print(ANDROID_LOG_ERROR, "Matrix.Backtrace.Native", FMT, ##args)
 #else
 #define LOGD(TAG, FMT, args...)
 #define LOGI(TAG, FMT, args...)
 #define LOGE(TAG, FMT, args...)
+
+#define STACK_CHECK_START(S)
+#define STACK_CHECK_END
 
 #define INTER_LOG(FMT, args...)
 #define QUT_DEBUG_LOG(FMT, args...)
@@ -47,6 +64,7 @@
 #define QUT_TMP_LOG(FMT, args...)
 #define QUT_LOG(FMT, args...)
 #endif
+
 
 #define __FAKE_USE_VA_ARGS(...) ((void)(0))
 #define __android_second(dummy, second, ...) second

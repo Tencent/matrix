@@ -11,7 +11,7 @@
 #include <memory>
 #include "QuickenTableGenerator.h"
 #include "MinimalRegs.h"
-#include "../../common/Log.h"
+#include "Log.h"
 #include "DwarfEhFrameWithHdrDecoder.h"
 #include "DwarfDebugFrameDecoder.h"
 #include "DwarfEhFrameDecoder.h"
@@ -107,6 +107,13 @@ namespace wechat_backtrace {
                 QUT_DEBUG_LOG("DecodeExidxEntriesInstr GetPrel31Addr bad entry");
                 // TODO bad entry
                 continue;
+            }
+
+            if (log) {
+                if (i == 0 || i == 1 || i == total_entries - 1) {
+                    QUT_DEBUG_LOG("DecodeExidxEntriesInstr i %zu, start_addr %lx, end_addr %lx", i,
+                                  start_addr, addr);
+                }
             }
 
             if (i == total_entries - 1) {
@@ -282,28 +289,32 @@ namespace wechat_backtrace {
             auto entry_pair = make_shared<TempEntryPair>();
 
             entry_pair->entry_point = it->first;
-#ifdef EnableLOG
-            if (entry_pair->entry_point == 0x13a0b8) {
-                QUT_DEBUG_LOG(
-                        "PackEntriesToFutSections 0x13a0b8 entry_pair->entry_point %x, instr %u",
-                        (uint32_t) entry_pair->entry_point, it->second.second->size());
+
+            if (log) {
+                if (entry_pair->entry_point == log_entry_point) {
+                    QUT_DEBUG_LOG(
+                            "PackEntriesToFutSections entry_pair->entry_point %llx, instr %uz",
+                            (ullint_t) entry_pair->entry_point, it->second.second->size());
+                }
             }
-#endif
+
             bool prologue_conformed = false;
             // re-encode it.
             if (QuickenInstructionsEncode(*it->second.second.get(),
                                           entry_pair->encoded_instructions, &prologue_conformed)) {
                 // Well done.
-                if (prologue_conformed) prologue_count++;
-                else {
-#ifdef EnableLOG
-//                LOGE("WTF--Carl", "--- Dump Instr %llu", (uint64_t) entry_pair->encoded_instructions.size());
-//                for (auto it = entry_pair->encoded_instructions.begin(); it != entry_pair->encoded_instructions.end(); it++) {
-//                    uint8_t instr = *it;
-//                    LOGE("WTF--Carl", "instr: " BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(instr));
-//                }
-//                LOGE("WTF--Carl", "--- End Dump Instr");
-#endif
+                if (prologue_conformed) {
+                    prologue_count++;
+                } else if (log) {
+                    QUT_DEBUG_LOG("--- Dump Instr %llu",
+                                  (uint64_t) entry_pair->encoded_instructions.size());
+                    for (auto it = entry_pair->encoded_instructions.begin();
+                         it != entry_pair->encoded_instructions.end(); it++) {
+                        uint8_t instr = *it;
+                        QUT_DEBUG_LOG(">>>> Instr: "
+                                              BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(instr));
+                    }
+                    QUT_DEBUG_LOG("--- End Dump Instr");
                 }
             } else {
                 bad_entries_count++;
@@ -317,18 +328,18 @@ namespace wechat_backtrace {
                                    (QUT_TBL_ROW_SIZE + 1);
             }
 
-//#ifdef EnableLOG
-//            if (entry_pair->entry_point == 0x13a0b8) {
-//                QUT_DEBUG_LOG(
-//                        "PackEntriesToFutSections 0x13a0b8 entry_pair->encoded_instructions.size() %llu",
-//                        entry_pair->encoded_instructions.size());
-//
-//                for (uint8_t insn : entry_pair->encoded_instructions) {
-//                    QUT_DEBUG_LOG("PackEntriesToFutSections 0x13a0b8 instr "
-//                                          BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(insn));
-//                }
-//            }
-//#endif
+            if (log) {
+                if (entry_pair->entry_point == log_entry_point) {
+                    QUT_DEBUG_LOG(
+                            "PackEntriesToFutSections entry_pair->encoded_instructions.size() %uz",
+                            entry_pair->encoded_instructions.size());
+
+                    for (uint8_t insn : entry_pair->encoded_instructions) {
+                        QUT_DEBUG_LOG("PackEntriesToFutSections instr "
+                                              BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(insn));
+                    }
+                }
+            }
 
             // Finally pushed.
             entries_encoded.push_back(entry_pair);
@@ -337,8 +348,8 @@ namespace wechat_backtrace {
         }
 
         QUT_LOG("PackEntriesToFutSections bad: %llu, prologue: %llu, total: %llu, tbl: %llu",
-             (ullint_t) bad_entries_count, (ullint_t) prologue_count,
-             (ullint_t) entries_encoded.size(), (ullint_t) instr_tbl_count);
+                (ullint_t) bad_entries_count, (ullint_t) prologue_count,
+                (ullint_t) entries_encoded.size(), (ullint_t) instr_tbl_count);
 
 
         // Init qut_sections

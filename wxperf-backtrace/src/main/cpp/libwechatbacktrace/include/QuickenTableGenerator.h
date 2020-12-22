@@ -40,7 +40,8 @@ namespace wechat_backtrace {
 
         QutErrorCode last_error_code;
 
-//        static std::shared_ptr<QutSections> FindQutSectionsNoLock(std::string sopath);
+        bool log = false;
+        uptr log_entry_point = 0;
 
     protected:
         void DecodeDebugFrameEntriesInstr(FrameInfo debug_frame_info,

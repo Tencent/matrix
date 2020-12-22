@@ -21,18 +21,18 @@ namespace wechat_backtrace {
 
     enum QutFileError : uint16_t {
         NoneError = 0,
-        NotInitialized,
-        NotWarmedUp,
-        LoadRequesting,
-        OpenFileFailed,
-        FileStateError,
-        FileTooShort,
-        MmapFailed,
-        QutVersionNotMatch,
-        ArchNotMatch,
-        BuildIdNotMatch,
-        FileLengthNotMatch,
-        InsertNewQutFailed,
+        NotInitialized = 1,
+        NotWarmedUp = 2,
+        LoadRequesting = 3,
+        OpenFileFailed = 4,
+        FileStateError = 5,
+        FileTooShort = 6,
+        MmapFailed = 7,
+        QutVersionNotMatch = 8,
+        ArchNotMatch = 9,
+        BuildIdNotMatch = 10,
+        FileLengthNotMatch = 11,
+        InsertNewQutFailed = 12,
     };
 
     class QuickenTableManager {
@@ -51,16 +51,16 @@ namespace wechat_backtrace {
 
         std::mutex lock_;
 
-        static std::string sPackageName;
+        static std::string& sPackageName;
 
-        static std::string sSavingPath;
+        static std::string& sSavingPath;
 
         static bool sHasWarmedUp;
 
     public:
         static QuickenTableManager &getInstance() {
-            static QuickenTableManager instance;
-//            DEFINE_STATIC_LOCAL(QuickenTableManager, instance, );
+//            static QuickenTableManager instance;
+            DEFINE_STATIC_LOCAL(QuickenTableManager, instance, );
             return instance;
         }
 

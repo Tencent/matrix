@@ -13,14 +13,14 @@
 #include <QuickenTableManager.h>
 #include <jni.h>
 #include <QuickenUtility.h>
+#include <QuickenMemory.h>
 
 #include "QuickenUnwinder.h"
 #include "QuickenMaps.h"
 
-
 #include "android-base/macros.h"
-#include "../../common/Log.h"
-#include "../../common/PthreadExt.h"
+#include "Log.h"
+#include "PthreadExt.h"
 
 #define WECHAT_QUICKEN_UNWIND_TAG "QuickenUnwind"
 
@@ -29,122 +29,17 @@ namespace wechat_backtrace {
     using namespace std;
     using namespace unwindstack;
 
-    class MemoryFile : public Memory {
-    public:
-        MemoryFile() = default;
-
-        virtual ~MemoryFile();
-
-        bool Init(const std::string &file, uint64_t offset, uint64_t size = UINT64_MAX);
-
-        size_t Read(uint64_t addr, void *dst, size_t size) override;
-
-        size_t Size() { return size_; }
-
-        void Clear() override;
-
-    protected:
-        size_t size_ = 0;
-        size_t offset_ = 0;
-        uint8_t *data_ = nullptr;
-
-        unsigned char e_ident[EI_NIDENT];
-    };
-
-
-    MemoryFile::~MemoryFile() {
-        Clear();
-    }
-
-    void MemoryFile::Clear() {
-        if (data_) {
-            munmap(&data_[-offset_], size_ + offset_);
-            data_ = nullptr;
-        }
-    }
-
-    bool MemoryFile::Init(const std::string &file, uint64_t offset, uint64_t size) {
-        // Clear out any previous data if it exists.
-        Clear();
-
-        android::base::unique_fd fd(TEMP_FAILURE_RETRY(open(file.c_str(), O_RDONLY | O_CLOEXEC)));
-        if (fd == -1) {
-            return false;
-        }
-        struct stat buf;
-        if (fstat(fd, &buf) == -1) {
-            return false;
-        }
-        if (offset >= static_cast<uint64_t>(buf.st_size)) {
-            return false;
-        }
-
-        offset_ = offset & (getpagesize() - 1);
-        uint64_t aligned_offset = offset & ~(getpagesize() - 1);
-        if (aligned_offset > static_cast<uint64_t>(buf.st_size) ||
-            offset > static_cast<uint64_t>(buf.st_size)) {
-            return false;
-        }
-
-        size_ = buf.st_size - aligned_offset;
-        uint64_t max_size;
-        if (!__builtin_add_overflow(size, offset_, &max_size) && max_size < size_) {
-            // Truncate the mapped size.
-            size_ = max_size;
-        }
-
-        // Cut out e_ident header from elf mapping to broke elf header's completeness.
-        // So we can prevent some kind of custom loaders finding our mapping elf as the one loaded
-        // by dl.
-        TEMP_FAILURE_RETRY(read(fd, e_ident, EI_NIDENT));
-        size_ -= EI_NIDENT;
-        aligned_offset += EI_NIDENT;
-
-        void *map = mmap(nullptr, size_, PROT_READ, MAP_SHARED, fd, aligned_offset);
-        if (map == MAP_FAILED) {
-            return false;
-        }
-
-        data_ = &reinterpret_cast<uint8_t *>(map)[offset_];
-        size_ -= offset_;
-
-        return true;
-    }
-
-    size_t MemoryFile::Read(uint64_t addr, void *dst, size_t size) {
-
-        size_t _size_;
-        uint8_t *_data_;
-        if (addr < EI_NIDENT) {
-            _size_ = EI_NIDENT;
-            _data_ = e_ident;
-        } else {
-            addr -= EI_NIDENT;
-            _size_ = size_;
-            _data_ = data_;
-        }
-
-        if (addr >= _size_) {
-            return 0;
-        }
-
-        size_t bytes_left = _size_ - static_cast<size_t>(addr);
-        const unsigned char *actual_base = static_cast<const unsigned char *>(_data_) + addr;
-        size_t actual_len = std::min(bytes_left, size);
-
-        memcpy(dst, actual_base, actual_len);
-        return actual_len;
-    }
-
     QUT_EXTERN_C_BLOCK
+
+    DEFINE_STATIC_LOCAL(shared_ptr<Memory>, process_memory_, (new QuickenMemoryLocal));
 
     void StatisticWeChatQuickenUnwindTable(const string &sopath) {
 
         string soname = SplitSonameFromPath(sopath);
 
         QUT_STAT_LOG("Statistic sopath %s so %s", sopath, soname.c_str());
-        MemoryFile *memory = new MemoryFile();;
-        if (!memory->Init(string(sopath), 0)) {
+        auto memory = QuickenMapInfo::CreateQuickenMemoryFromFile(sopath, 0);   // TODO offset
+        if (memory == nullptr) {
             QUT_STAT_LOG("memory->Init so %s failed", sopath);
             return;
         }
@@ -157,13 +52,13 @@ namespace wechat_backtrace {
             return;
         }
 
-        auto process_memory_ = unwindstack::Memory::CreateProcessMemory(getpid());
-
         SetCurrentStatLib(soname);
 
-        QuickenInterface *interface = QuickenMapInfo::GetQuickenInterfaceFromElf(sopath, elf.get());
+        QuickenInterface *interface = QuickenMapInfo::CreateQuickenInterfaceForGenerate(sopath,
+                                                                                        elf.get());
         QutSections qut_sections;
-        interface->GenerateQuickenTable<addr_t>(process_memory_.get(), &qut_sections);
+        interface->GenerateQuickenTable<addr_t>(elf->memory(), process_memory_.get(),
+                                                &qut_sections);
 
         DumpQutStatResult();
     }
@@ -180,12 +75,13 @@ namespace wechat_backtrace {
             return;
         }
 
-        auto memory = new MemoryFile(); // Will be destructed by 'elf' instance.
-        auto elf = make_unique<Elf>(memory);
-        if (!memory->Init(string(sopath), 0)) {
-            QUT_LOG("memory->Init so %s failed", sopath.c_str());
+        // Will be destructed by 'elf' instance.
+        auto memory = QuickenMapInfo::CreateQuickenMemoryFromFile(sopath, 0); // TODO offset
+        if (memory == nullptr) {
+            QUT_LOG("Create quicken memory for so %s failed", sopath.c_str());
             return;
         }
+        auto elf = make_unique<Elf>(memory);
         elf->Init();
         if (!elf->valid()) {
             QUT_LOG("elf->valid() so %s invalid", sopath.c_str());
@@ -205,16 +101,17 @@ namespace wechat_backtrace {
             return;
         }
 
-        auto process_memory_ = unwindstack::Memory::CreateProcessMemory(getpid());
-
-        QuickenInterface *interface = QuickenMapInfo::GetQuickenInterfaceFromElf(sopath, elf.get());
+        QuickenInterface *interface =
+                QuickenMapInfo::CreateQuickenInterfaceForGenerate(sopath, elf.get());
 
         std::unique_ptr<QutSections> qut_sections = make_unique<QutSections>();
         QutSectionsPtr qut_sections_ptr = qut_sections.get();
-        interface->GenerateQuickenTable<addr_t>(process_memory_.get(), qut_sections_ptr);
+        interface->GenerateQuickenTable<addr_t>(elf->memory(), process_memory_.get(),
+                                                qut_sections_ptr);
 
         QutFileError error = QuickenTableManager::getInstance().SaveQutSections(
                 soname, sopath, hash, build_id, build_id_hex, std::move(qut_sections));
+        (void) error;
         QUT_LOG("Generate qut for so %s result %d", sopath.c_str(), error);
     }
 
@@ -227,8 +124,36 @@ namespace wechat_backtrace {
         }
     }
 
+//    inline uint32_t
+//    GetPcAdjustment(uint32_t rel_pc, uint32_t load_bias, QuickenInterface *interface) {
+//        if (rel_pc < load_bias) {
+//            if (rel_pc < 2) {
+//                return 0;
+//            }
+//            return 2;
+//        }
+//        uint32_t adjusted_rel_pc = rel_pc - load_bias;
+//        if (adjusted_rel_pc < 5) {
+//            if (adjusted_rel_pc < 2) {
+//                return 0;
+//            }
+//            return 2;
+//        }
+//
+//        if (adjusted_rel_pc & 1) {
+//            // This is a thumb instruction, it could be 2 or 4 bytes.
+//            uint32_t value;
+//            if (!interface->Memory()->ReadFully(adjusted_rel_pc - 5, &value, sizeof(value)) ||
+//                (value & 0xe000f000) != 0xe000f000) {
+//                return 2;
+//            }
+//        }
+//        return 4;
+//    }
+
     inline uint32_t
-    GetPcAdjustment(uint32_t rel_pc, uint32_t load_bias, QuickenInterface *interface) {
+    GetPcAdjustment(Memory *process_memory, uint64_t pc, uint32_t rel_pc,
+                    uint32_t load_bias) {
         if (rel_pc < load_bias) {
             if (rel_pc < 2) {
                 return 0;
@@ -243,10 +168,11 @@ namespace wechat_backtrace {
             return 2;
         }
 
-        if (adjusted_rel_pc & 1) {
+        uint64_t adjusted_pc = pc - load_bias;
+        if (adjusted_pc & 1) {
             // This is a thumb instruction, it could be 2 or 4 bytes.
             uint32_t value;
-            if (!interface->Memory()->ReadFully(adjusted_rel_pc - 5, &value, sizeof(value)) ||
+            if (!process_memory->ReadFully(adjusted_pc - 5, &value, sizeof(value)) ||
                 (value & 0xe000f000) != 0xe000f000) {
                 return 2;
             }
@@ -254,18 +180,19 @@ namespace wechat_backtrace {
         return 4;
     }
 
+
     QutErrorCode
     WeChatQuickenUnwind(const ArchEnum arch, uptr *regs, const uptr frame_max_size,
                         Frame *backtrace, uptr &frame_size) {
 
+        STACK_CHECK_START(32);
+
         std::shared_ptr<Maps> maps = Maps::current();
 
-        if (maps == nullptr) {
+        if (!maps) {
             LOGE(WECHAT_QUICKEN_UNWIND_TAG, "maps == nullptr.");
             return QUT_ERROR_MAPS_IS_NULL;
         }
-
-        auto process_memory_ = unwindstack::Memory::CreateProcessMemory(getpid());
 
         bool adjust_pc = false;
         bool finished = false;
@@ -298,12 +225,13 @@ namespace wechat_backtrace {
 
                 if (map_info == nullptr) {
                     backtrace[frame_size++].pc = PC(regs) - 2;
-//                    LOGE(WECHAT_QUICKEN_UNWIND_TAG, "Map info is null.");
                     ret = QUT_ERROR_INVALID_MAP;
                     break;
                 }
 
+                STACK_CHECK_START(11);
                 interface = map_info->GetQuickenInterface(process_memory_, arch);
+                STACK_CHECK_END;
                 if (!interface) {
                     QUT_DEBUG_LOG("Quicken interface is null, maybe the elf is invalid.");
                     backtrace[frame_size++].pc = PC(regs) - 2;
@@ -328,7 +256,9 @@ namespace wechat_backtrace {
             }
 
             if (adjust_pc) {
-                pc_adjustment = GetPcAdjustment(last_load_bias, rel_pc, interface);
+//                pc_adjustment = GetPcAdjustment(last_load_bias, rel_pc, interface);
+                pc_adjustment = GetPcAdjustment(process_memory_.get(), PC(regs), last_load_bias,
+                                                rel_pc);
             } else {
                 pc_adjustment = 0;
             }
@@ -339,35 +269,41 @@ namespace wechat_backtrace {
 
             if (dex_pc != 0) {
                 QUT_DEBUG_LOG("dex_pc %llx", dex_pc);
-                backtrace[frame_size++].pc = dex_pc;
-                backtrace[frame_size++].is_dex_pc = true;
+                backtrace[frame_size].is_dex_pc = true;
+                backtrace[frame_size].pc = dex_pc;
                 dex_pc = 0;
 
+                frame_size++;
                 if (frame_size >= frame_max_size) {
                     ret = QUT_ERROR_MAX_FRAMES_EXCEEDED;
                     break;
                 }
             }
 
-            backtrace[frame_size++].pc = PC(regs) - pc_adjustment;
+            backtrace[frame_size].pc = PC(regs) - pc_adjustment;
 
             adjust_pc = true;
 
+            frame_size++;
             if (frame_size >= frame_max_size) {
                 ret = QUT_ERROR_MAX_FRAMES_EXCEEDED;
                 break;
             }
 
-            if (!interface->Step(step_pc, regs, process_memory_.get(), stack_top, stack_bottom,
+            STACK_CHECK_START(19);
+            if (!interface->Step(step_pc, regs, nullptr, stack_top, stack_bottom,
                                  frame_size, &dex_pc, &finished)) {
                 ret = interface->last_error_code_;
+                STACK_CHECK_END;
                 break;
             }
+            STACK_CHECK_END;
 
-//            QUT_DEBUG_LOG(
-//                    "WeChatQuickenUnwind Stepped Reg. r4: %x, r7: %x, r10: %x, r11: %x, sp: %x, ls: %x, pc: %x",
-//                    R4(regs), R7(regs), R10(regs), R11(regs), SP(regs), LR(regs), PC(regs)
-//            );
+            QUT_DEBUG_LOG(
+                    "WeChatQuickenUnwind Stepped Reg. r4: %x, r7: %x, r10: %x, r11: %x, sp: %x, ls: %x, pc: %x",
+                    R4(regs), R7(regs), R10(regs), R11(regs), SP(regs), LR(regs), PC(regs)
+            );
+
 
             if (finished) { // finished.
                 break;
@@ -380,6 +316,8 @@ namespace wechat_backtrace {
                 break;
             }
         }
+
+        STACK_CHECK_END;
 
         return ret;
     }

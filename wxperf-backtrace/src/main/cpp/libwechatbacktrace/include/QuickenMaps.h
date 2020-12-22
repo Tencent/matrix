@@ -2,7 +2,9 @@
 #define _LIBWECHATBACKTRACE_QUICKEN_MAPS_H
 
 #include <unwindstack/MapInfo.h>
+#include <unordered_map>
 #include "QuickenInterface.h"
+#include "QuickenMemory.h"
 
 namespace wechat_backtrace {
 
@@ -17,6 +19,8 @@ namespace wechat_backtrace {
 
     class QuickenInterface;
 
+    typedef std::unordered_map<std::string, std::shared_ptr<QuickenInterface>> interface_caches_t;
+
     class QuickenMapInfo : public unwindstack::MapInfo {
 
     public:
@@ -24,21 +28,61 @@ namespace wechat_backtrace {
                        uint64_t offset, uint64_t flags, const char *name) :
                 MapInfo(prevMap, prevRealMap, start, end, offset, flags, name) {};
 
-        static QuickenInterface *GetQuickenInterfaceFromElf(const std::string &sopath, unwindstack::Elf *elf);
-
         QuickenInterface *
-        GetQuickenInterface(const std::shared_ptr<unwindstack::Memory> &process_memory,
-                            unwindstack::ArchEnum expected_arch);
+        GetQuickenInterface(
+                std::shared_ptr<unwindstack::Memory> &process_memory,
+                unwindstack::ArchEnum expected_arch
+        );
+
+        static QuickenInterface *
+        CreateQuickenInterfaceFromElf(
+                unwindstack::ArchEnum expected_arch,
+                const std::string &so_path,
+                const std::string &so_name,
+                const uint64_t load_bias_,
+                const uint64_t elf_offset,
+                const std::string &build_id_hex
+        );
+
+        static QuickenInterface *
+        CreateQuickenInterfaceForGenerate(
+                const std::string &sopath,
+                unwindstack::Elf *elf
+        );
+
+        static std::unique_ptr<unwindstack::Elf>
+        CreateElf(
+                const std::string &so_path,
+                unwindstack::Memory *memory,
+                unwindstack::ArchEnum expected_arch
+        );
+
+        static unwindstack::Memory *
+        CreateQuickenMemoryFromFile(
+                const std::string &so_path,
+                const uint64_t elf_start_offset
+        );
 
         uint64_t GetRelPc(uint64_t pc);
 
         std::shared_ptr<QuickenInterface> quicken_interface_;
 
+        bool quicken_interface_failed_ = false;
+
         uint64_t elf_load_bias_;
 
     protected:
 
-        std::mutex lock_;
+        unwindstack::Memory *GetFileQuickenMemory();
+
+        bool InitFileMemoryFromPreviousReadOnlyMap(QuickenMemoryFile *memory);
+
+        unwindstack::Memory *
+        CreateQuickenMemory(const std::shared_ptr<unwindstack::Memory> &process_memory);
+
+        static std::mutex &lock_;
+
+        static interface_caches_t &cached_quicken_interface_;
     };
 
     typedef QuickenMapInfo *MapInfoPtr;
@@ -75,6 +119,7 @@ namespace wechat_backtrace {
         static bool Parse();
 
         static std::shared_ptr<Maps> current();
+
         MapInfoPtr *local_maps_ = nullptr;
         size_t maps_capacity_ = 0;
         size_t maps_size_ = 0;
@@ -83,13 +128,9 @@ namespace wechat_backtrace {
 
         void ReleaseLocalMaps();
 
-
-        static std::mutex maps_lock_;
+        static std::mutex &maps_lock_;
+        static std::shared_ptr<Maps>& current_maps_;
         static size_t latest_maps_capacity_;
-        static std::shared_ptr<Maps> current_maps_;
-//        static std::mutex& maps_lock_;
-//        static size_t latest_maps_capacity_;
-//        static std::shared_ptr<Maps>& current_maps_;
 
     private:
         bool ParseImpl();
