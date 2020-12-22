@@ -13,6 +13,6 @@ int pthread_getname_ext(pthread_t __pthread, char *__buf, size_t __n);
 
 void pthread_ext_init();
 
-int pthread_getattr_ext(pthread_t __pthread, pthread_attr_t* __attr);
+int pthread_getattr_ext(pthread_t pthread, pthread_attr_t* attr);
 
 #endif //LIBWXPERF_JNI_PTHREADEXT_H

@@ -64,6 +64,7 @@ namespace wechat_backtrace {
                                         QutSectionsPtr &qut_sections) {
         (void) hash;
         (void) build_id_hex;
+        (void) sopath;
 
         QUT_LOG("Request qut file before lock for so %s", sopath.c_str());
 
@@ -310,6 +311,7 @@ namespace wechat_backtrace {
                                          const string &build_id_hex,
                                          unique_ptr<QutSections> qut_sections_ptr) {
         (void) build_id_hex;
+        (void) sopath;
 
         QutSectionsPtr qut_sections_insert = qut_sections_ptr.get();
         {

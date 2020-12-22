@@ -497,14 +497,14 @@ static inline void pthread_dump_json_impl(FILE *__log_file) {
     return;
 }
 
-void pthread_dump_json(const char *__path) {
+void pthread_dump_json(const char *path) {
 
     LOGD(TAG,
          ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> pthread dump json begin <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
     pthread_meta_lock meta_lock(m_pthread_meta_mutex);
 
-    FILE *log_file = fopen(__path, "w+");
-    LOGD(TAG, "pthread dump path = %s", __path);
+    FILE *log_file = fopen(path, "w+");
+    LOGD(TAG, "pthread dump path = %s", path);
 
     if (log_file) {
         pthread_dump_json_impl(log_file);
@@ -515,14 +515,14 @@ void pthread_dump_json(const char *__path) {
          ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> pthread dump json end <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
 }
 
-void pthread_hook_on_dlopen(const char *__file_name) {
+void pthread_hook_on_dlopen(const char *file_name) {
     LOGD(TAG, "pthread_hook_on_dlopen");
     pthread_meta_lock meta_lock(m_pthread_meta_mutex);
     wechat_backtrace::notify_maps_changed();
     LOGD(TAG, "pthread_hook_on_dlopen end");
 }
 
-static void on_pthread_destroy(void *__specific) {
+static void on_pthread_destroy(void *specific) {
     LOGD(TAG, "on_pthread_destroy++++");
     pthread_meta_lock meta_lock(m_pthread_meta_mutex);
 
@@ -546,14 +546,14 @@ static void on_pthread_destroy(void *__specific) {
     m_pthread_metas.erase(destroying_thread);
     m_filtered_pthreads.erase(destroying_thread);
 
-    LOGD(TAG, "__specific %c", *(char *) __specific);
+    LOGD(TAG, "specific %c", *(char *) specific);
 
-    free(__specific);
+    free(specific);
 
     LOGD(TAG, "on_pthread_destroy end----");
 }
 
-static void *pthread_routine_wrapper(void *__arg) {
+static void *pthread_routine_wrapper(void *arg) {
 
     auto *specific = (char *) malloc(sizeof(char));
     *specific = 'P';
@@ -562,34 +562,34 @@ static void *pthread_routine_wrapper(void *__arg) {
 
     before_routine_start();
 
-    auto *args_wrapper = (routine_wrapper_t *) __arg;
-    void *ret = args_wrapper->origin_func(args_wrapper->origin_args);
+    auto *args_wrapper = (routine_wrapper_t *) arg;
+    void *ret          = args_wrapper->origin_func(args_wrapper->origin_args);
     free(args_wrapper);
 
     return ret;
 }
 
-DEFINE_HOOK_FUN(int, pthread_create, pthread_t *__pthread_ptr, pthread_attr_t const *__attr,
-                void *(*__start_routine)(void *), void *__arg) {
+DEFINE_HOOK_FUN(int, pthread_create, pthread_t *pthread_ptr, pthread_attr_t const *attr,
+                void *(*start_routine)(void *), void *arg) {
     auto *args_wrapper = (routine_wrapper_t *) malloc(sizeof(routine_wrapper_t));
-    args_wrapper->origin_func = __start_routine;
-    args_wrapper->origin_args = __arg;
+    args_wrapper->origin_func = start_routine;
+    args_wrapper->origin_args = arg;
 
-    CALL_ORIGIN_FUNC_RET(int, ret, pthread_create, __pthread_ptr, __attr, pthread_routine_wrapper,
+    CALL_ORIGIN_FUNC_RET(int, ret, pthread_create, pthread_ptr, attr, pthread_routine_wrapper,
                          args_wrapper);
 
     if (0 == ret) {
-        on_pthread_create(*__pthread_ptr);
+        on_pthread_create(*pthread_ptr);
     }
 
     return ret;
 }
 
 DEFINE_HOOK_FUN(int, pthread_setname_np, pthread_t
-        __pthread, const char *__name) {
-    CALL_ORIGIN_FUNC_RET(int, ret, pthread_setname_np, __pthread, __name);
+        pthread, const char *name) {
+    CALL_ORIGIN_FUNC_RET(int, ret, pthread_setname_np, pthread, name);
     if (0 == ret) {
-        on_pthread_setname(__pthread, __name);
+        on_pthread_setname(pthread, name);
     }
     return ret;
 }

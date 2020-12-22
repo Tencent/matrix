@@ -28,8 +28,8 @@ namespace wechat_backtrace {
 
         for (size_t i = 0; i < frame_size; i++) {
             auto &frame_data = frames[i];
-            Dl_info stack_info;
-            dladdr((void *) frame_data.pc, &stack_info); // 用修正后的 pc dladdr 会偶现 npe crash, 因此还是用 lr
+            Dl_info stack_info{};
+            int success = dladdr((void *) frame_data.pc, &stack_info); // 用修正后的 pc dladdr 会偶现 npe crash, 因此还是用 lr
 
 #ifdef __aarch64__  // TODO Fix hardcode
             // fp_unwind 得到的 pc 除了第 0 帧实际都是 LR, arm64 指令长度都是定长 32bit, 所以 -4 以恢复 pc
@@ -39,8 +39,8 @@ namespace wechat_backtrace {
 #endif
             FrameDetail detail = {
                     real_pc - (uptr) stack_info.dli_fbase,
-                    stack_info.dli_sname == nullptr ? "null" : stack_info.dli_sname,
-                    stack_info.dli_fname == nullptr ? "null" : stack_info.dli_fname
+                    success == 0 || stack_info.dli_sname == nullptr ? "null" : stack_info.dli_sname,
+                    success == 0 || stack_info.dli_fname == nullptr ? "null" : stack_info.dli_fname
             };
             frame_callback(detail);
 

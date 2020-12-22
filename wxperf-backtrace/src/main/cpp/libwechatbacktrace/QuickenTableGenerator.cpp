@@ -311,6 +311,7 @@ namespace wechat_backtrace {
                     for (auto it = entry_pair->encoded_instructions.begin();
                          it != entry_pair->encoded_instructions.end(); it++) {
                         uint8_t instr = *it;
+                        (void) instr;
                         QUT_DEBUG_LOG(">>>> Instr: "
                                               BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(instr));
                     }
@@ -335,6 +336,7 @@ namespace wechat_backtrace {
                             entry_pair->encoded_instructions.size());
 
                     for (uint8_t insn : entry_pair->encoded_instructions) {
+                        (void) insn;
                         QUT_DEBUG_LOG("PackEntriesToFutSections instr "
                                               BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(insn));
                     }
