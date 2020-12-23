@@ -16,6 +16,7 @@ import java.util.concurrent.Callable;
  * @author Kaede
  * @since 2020/10/27
  */
+@SuppressWarnings({"SpellCheckingInspection"})
 public class BatteryMonitorConfig {
     public static final long DEF_WAKELOCK_TIMEOUT = 2 * 60 * 1000L; // 2min
     public static final long DEF_JIFFIES_DELAY = 30 * 1000L; // 30s
@@ -33,6 +34,7 @@ public class BatteryMonitorConfig {
     public boolean isForegroundModeEnabled = true;
     public boolean isBuiltinForegroundNotifyEnabled = true;
     public boolean isStatAsSample = BuildConfig.DEBUG;
+    public boolean isStatPidProc = BuildConfig.DEBUG;
     public List<String> tagWhiteList = Collections.emptyList();
     public List<String> tagBlackList = Collections.emptyList();
     public final List<MonitorFeature> features = new ArrayList<>(3);
@@ -84,8 +86,14 @@ public class BatteryMonitorConfig {
             config.isForegroundModeEnabled = isEnable;
             return this;
         }
+
         public Builder enableStatAsSample(boolean isEnable) {
             config.isStatAsSample = isEnable;
+            return this;
+        }
+
+        public Builder enableStatPidProc(boolean isEnable) {
+            config.isStatPidProc = isEnable;
             return this;
         }
 

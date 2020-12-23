@@ -27,8 +27,18 @@ public final class ProcStatUtil {
     }
 
     @Nullable
+    public static ProcStat currentPid() {
+        return of(Process.myPid());
+    }
+
+    @Nullable
     public static ProcStat current() {
         return of(Process.myPid(), Process.myTid());
+    }
+
+    @Nullable
+    public static ProcStat of(int pid) {
+        return parse("/proc/" + pid + "/stat");
     }
 
     @Nullable
@@ -75,6 +85,9 @@ public final class ProcStatUtil {
         return parseWithBuffer(buffer);
     }
 
+    /**
+     * Do NOT modfiy this method untlil all the test cases within {@link ProcStatUtilsTest} is passed.
+     */
     @VisibleForTesting
     static ProcStat parseWithBuffer(byte[] statBuffer) {
         /*
