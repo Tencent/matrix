@@ -42,7 +42,9 @@ public final class DeviceStatMonitorFeature implements MonitorFeature {
         @Override
         public void run() {
             if (mStampList.size() >= mMonitor.getConfig().overHeatCount) {
-                TimeBreaker.gcList(mStampList);
+                synchronized (TAG) {
+                    TimeBreaker.gcList(mStampList);
+                }
             }
         }
     };

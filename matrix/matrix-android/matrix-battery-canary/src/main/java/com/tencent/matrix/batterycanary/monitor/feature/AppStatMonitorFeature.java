@@ -27,10 +27,14 @@ public final class AppStatMonitorFeature implements MonitorFeature {
         @Override
         public void run() {
             if (mStampList.size() >= mCore.getConfig().overHeatCount) {
-                TimeBreaker.gcList(mStampList);
+                synchronized (TAG) {
+                    TimeBreaker.gcList(mStampList);
+                }
             }
             if (mSceneStampList.size() >= mCore.getConfig().overHeatCount) {
-                TimeBreaker.gcList(mSceneStampList);
+                synchronized (TAG) {
+                    TimeBreaker.gcList(mSceneStampList);
+                }
             }
         }
     };
