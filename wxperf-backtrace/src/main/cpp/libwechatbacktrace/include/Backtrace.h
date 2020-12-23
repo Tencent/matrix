@@ -15,7 +15,7 @@
 #include <MinimalRegs.h>
 #include <QuickenUnwinder.h>
 #include <android/log.h>
-#include "Predefined.h"
+#include "BacktraceDefine.h"
 #include "Log.h"
 
 namespace wechat_backtrace {
@@ -47,6 +47,32 @@ namespace wechat_backtrace {
 #endif
         __android_log_assert("NOT SUPPORT ARCH", "WeChatBacktrace", "NOT SUPPORT ARCH");
     }
+
+//    inline void unwind_compare(Frame *frames, Frame *dwarf_frames, const size_t max_frames, size_t &frame_size) {
+//
+//#ifdef __aarch64__
+//        uptr regs[4];
+//        RegsMinimalGetLocal(regs);
+//        FpUnwind(regs, frames, max_frames, frame_size);
+//        return;
+//#endif
+//
+//#ifdef __arm__
+//        uptr regs[QUT_MINIMAL_REG_SIZE];
+//        GetMinimalRegs(regs);
+//        WeChatQuickenUnwind(CURRENT_ARCH, regs, max_frames, frames, frame_size);
+//
+//
+//        auto tmp_ns = std::make_unique<std::vector<unwindstack::FrameData>>();
+//        std::shared_ptr<unwindstack::Regs> dwarf_regs(unwindstack::Regs::CreateFromLocal());
+//        unwindstack::RegsGetLocal(dwarf_regs.get());
+//        wechat_backtrace::dwarf_unwind(dwarf_regs.get(), *(tmp_ns.get()), max_frames);
+//        for (auto p_frame = tmp_ns->begin(); p_frame != tmp_ns->end(); ++p_frame) {
+//            dwarf_frames[]
+//        }
+//#endif
+//        __android_log_assert("NOT SUPPORT ARCH", "WeChatBacktrace", "NOT SUPPORT ARCH");
+//    }
 
     void restore_frame_detail(const Frame *frames, const size_t frame_size,
                               std::function<void(FrameDetail)> frame_callback);

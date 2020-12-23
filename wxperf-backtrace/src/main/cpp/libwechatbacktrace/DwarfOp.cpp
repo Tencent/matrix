@@ -2025,7 +2025,7 @@ namespace wechat_backtrace {
         reg_expression_ = reg;
         last_error_.code = DWARF_ERROR_EXPRESSION_NOT_SUPPORT_BREG;
         DWARF_OP_LOG("DwarfOp: op_breg reg(%u)", (uint32_t) reg);
-        return true;
+        return false;
     }
 
     template<typename AddressType>
@@ -2048,8 +2048,9 @@ namespace wechat_backtrace {
 
         last_error_.code = DWARF_ERROR_EXPRESSION_REACH_BREGX;
 
-        DWARF_OP_LOG("DwarfOp: op_bregx reg(%u)", (uint32_t) reg);
-        return true;
+        DWARF_OP_LOG("DwarfOp: op_bregx reg(%u), OperandAt(1) = %llu", (uint32_t) reg,
+                     (ullint_t) OperandAt(1));
+        return false;
     }
 
     template<typename AddressType>

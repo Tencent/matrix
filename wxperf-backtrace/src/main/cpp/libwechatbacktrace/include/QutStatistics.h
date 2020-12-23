@@ -7,7 +7,7 @@
 
 //#define QUT_STATISTIC_ENABLE  // TODO
 
-#include "Predefined.h"
+#include "BacktraceDefine.h"
 
 #ifdef QUT_STATISTIC_ENABLE
 #define QUT_STATISTIC(Type, Arg1, Arg2) QutStatistic(Type, (uint64_t)Arg1, (uint64_t)Arg2)

@@ -113,8 +113,6 @@ namespace wechat_backtrace {
                             break;
                         case QUT_INSTRUCTION_VSP_SET_BY_R7_PROLOGUE_OP:
                             cfa_ = R7(regs_) + 8;
-//                            LR(regs_) = *((uint32_t *) (cfa_ - 4));     // TODO read memory
-//                            R7(regs_) = *((uint32_t *) (cfa_ - 8));     // TODO read memory
                             if (UNLIKELY(!ReadStack(cfa_ - 4, &LR(regs_)))) {
                                 return QUT_ERROR_READ_STACK_FAILED;
                             }
@@ -127,8 +125,6 @@ namespace wechat_backtrace {
                             break;
                         case QUT_INSTRUCTION_VSP_SET_BY_R11_PROLOGUE_OP:
                             cfa_ = R11(regs_) + 8;
-//                            LR(regs_) = *((uint32_t *) (cfa_ - 4));     // TODO read memory
-//                            R11(regs_) = *((uint32_t *) (cfa_ - 8));     // TODO read memory
                             if (UNLIKELY(!ReadStack(cfa_ - 4, &LR(regs_)))) {
                                 return QUT_ERROR_READ_STACK_FAILED;
                             }
@@ -143,12 +139,6 @@ namespace wechat_backtrace {
                             uint8_t byte;
                             ReadByte(byte, instructions, j, i, amount);
                             cfa_ = R10(regs_) + ((byte & 0x7f) << 2);
-
-                            QUT_DEBUG_LOG(
-                                    "Decode QUT_INSTRUCTION_VSP_SET_BY_JNI_SP_OP %x r10 %x, cfa_ %x, offset %x, "
-                                    BYTE_TO_BINARY_PATTERN,
-                                    (uint32_t) byte, R10(regs_), cfa_,
-                                    (uint32_t) ((byte & 0x7f) << 2), BYTE_TO_BINARY(byte));
                             break;
                         }
                         case QUT_INSTRUCTION_VSP_SET_IMM_OP: {
@@ -170,16 +160,13 @@ namespace wechat_backtrace {
                             break;
                         }
                         case QUT_INSTRUCTION_DEX_PC_SET_OP: {
-                            QUT_DEBUG_LOG("Decode byte QUT_INSTRUCTION_DEX_PC_SET_OP");
                             dex_pc_ = R4(regs_);
                             break;
                         }
                         case QUT_END_OF_INS_OP: {
-                            QUT_DEBUG_LOG("Decode byte QUT_END_OF_INS_OP");
                             return QUT_ERROR_NONE;
                         }
                         case QUT_FINISH_OP: {
-                            QUT_DEBUG_LOG("Decode byte QUT_FINISH_OP");
                             PC(regs_) = 0;
                             LR(regs_) = 0;
                             return QUT_ERROR_NONE;
@@ -187,8 +174,6 @@ namespace wechat_backtrace {
                         default: {
                             switch (byte & 0xf0) {
                                 case QUT_INSTRUCTION_R4_OFFSET_OP_PREFIX: {
-//                                    R4(regs_) = *((uint32_t *) (cfa_ - ((byte & 0xf)
-//                                            << 2)));
                                     if (UNLIKELY(
                                             !ReadStack((cfa_ - ((byte & 0xf) << 2)), &R4(regs_)))) {
                                         return QUT_ERROR_READ_STACK_FAILED;
@@ -196,8 +181,6 @@ namespace wechat_backtrace {
                                     break;
                                 }
                                 case QUT_INSTRUCTION_R7_OFFSET_OP_PREFIX: {
-//                                    R7(regs_) = *((uint32_t *) (cfa_ - ((byte & 0xf)
-//                                            << 2)));
                                     if (UNLIKELY(
                                             !ReadStack((cfa_ - ((byte & 0xf) << 2)), &R7(regs_)))) {
                                         return QUT_ERROR_READ_STACK_FAILED;
@@ -211,22 +194,16 @@ namespace wechat_backtrace {
                 default:
                     switch (byte & 0xf0) {
                         case QUT_INSTRUCTION_R10_OFFSET_OP_PREFIX:
-//                            R10(regs_) = *((uint32_t *) (cfa_ - ((byte & 0xf)
-//                                    << 2)));
                             if (UNLIKELY(!ReadStack((cfa_ - ((byte & 0xf) << 2)), &R10(regs_)))) {
                                 return QUT_ERROR_READ_STACK_FAILED;
                             }
                             break;
                         case QUT_INSTRUCTION_R11_OFFSET_OP_PREFIX:
-//                            R11(regs_) = *((uint32_t *) (cfa_ - ((byte & 0xf)
-//                                    << 2)));
                             if (UNLIKELY(!ReadStack((cfa_ - ((byte & 0xf) << 2)), &R11(regs_)))) {
                                 return QUT_ERROR_READ_STACK_FAILED;
                             }
                             break;
                         case QUT_INSTRUCTION_LR_OFFSET_OP_PREFIX:
-//                            LR(regs_) = *((uint32_t *) (cfa_ - ((byte & 0xf)
-//                                    << 2)));
                             if (UNLIKELY(!ReadStack((cfa_ - ((byte & 0xf) << 2)), &LR(regs_)))) {
                                 return QUT_ERROR_READ_STACK_FAILED;
                             }
@@ -236,8 +213,6 @@ namespace wechat_backtrace {
                             switch (byte) {
                                 case QUT_INSTRUCTION_R7_OFFSET_SLEB128_OP: {
                                     DecodeSLEB128(value, instructions, amount, j, i);
-//                                    R7(regs_) = *((uint32_t *) (cfa_ -
-//                                                                (int32_t) value));
                                     if (UNLIKELY(
                                             !ReadStack((cfa_ - (int32_t) value), &R7(regs_)))) {
                                         return QUT_ERROR_READ_STACK_FAILED;
@@ -246,8 +221,6 @@ namespace wechat_backtrace {
                                 }
                                 case QUT_INSTRUCTION_R10_OFFSET_SLEB128_OP: {
                                     DecodeSLEB128(value, instructions, amount, j, i);
-//                                    R10(regs_) = *((uint32_t *) (cfa_ -
-//                                                                 (int32_t) value));
                                     if (UNLIKELY(
                                             !ReadStack((cfa_ - (int32_t) value), &R10(regs_)))) {
                                         return QUT_ERROR_READ_STACK_FAILED;
@@ -256,8 +229,6 @@ namespace wechat_backtrace {
                                 }
                                 case QUT_INSTRUCTION_R11_OFFSET_SLEB128_OP: {
                                     DecodeSLEB128(value, instructions, amount, j, i);
-//                                    R11(regs_) = *((uint32_t *) (cfa_ -
-//                                                                 (int32_t) value));
                                     if (UNLIKELY(
                                             !ReadStack((cfa_ - (int32_t) value), &R11(regs_)))) {
                                         return QUT_ERROR_READ_STACK_FAILED;
@@ -266,8 +237,6 @@ namespace wechat_backtrace {
                                 }
                                 case QUT_INSTRUCTION_SP_OFFSET_SLEB128_OP: {
                                     DecodeSLEB128(value, instructions, amount, j, i);
-//                                    SP(regs_) = *((uint32_t *) (cfa_ -
-//                                                                (int32_t) value));
                                     if (UNLIKELY(
                                             !ReadStack((cfa_ - (int32_t) value), &SP(regs_)))) {
                                         return QUT_ERROR_READ_STACK_FAILED;
@@ -276,8 +245,6 @@ namespace wechat_backtrace {
                                 }
                                 case QUT_INSTRUCTION_LR_OFFSET_SLEB128_OP: {
                                     DecodeSLEB128(value, instructions, amount, j, i);
-//                                    LR(regs_) = *((uint32_t *) (cfa_ -
-//                                                                (int32_t) value));
                                     if (UNLIKELY(
                                             !ReadStack((cfa_ - (int32_t) value), &LR(regs_)))) {
                                         return QUT_ERROR_READ_STACK_FAILED;
@@ -286,8 +253,6 @@ namespace wechat_backtrace {
                                 }
                                 case QUT_INSTRUCTION_PC_OFFSET_SLEB128_OP: {
                                     DecodeSLEB128(value, instructions, amount, j, i);
-//                                    PC(regs_) = *((uint32_t *) (cfa_ -
-//                                                                (int32_t) value));
                                     if (UNLIKELY(
                                             !ReadStack((cfa_ - (int32_t) value), &PC(regs_)))) {
                                         return QUT_ERROR_READ_STACK_FAILED;
@@ -301,7 +266,6 @@ namespace wechat_backtrace {
                                     break;
                                 }
                                 default:
-                                    QUT_DEBUG_LOG("Decode byte UNKNOWN");
                                     return QUT_ERROR_INVALID_QUT_INSTR;
                             }
                             break;
@@ -318,8 +282,15 @@ namespace wechat_backtrace {
     inline QutErrorCode QuickenTable::Decode64(const uint64_t *instructions, const size_t amount,
                                                const size_t start_pos) {
 
-        QUT_DEBUG_LOG("QuickenTable::Decode64 instructions %llx, amount %llu, start_pos %llu",
-                      instructions, amount, start_pos);
+        if (log) {
+            QUT_DEBUG_LOG(
+                    "QuickenTable::Decode64 instructions %llx, amount %llu, start_pos %llu",
+                    instructions, amount, start_pos);
+
+            for (size_t m = 0; m < amount; m++) {
+                QUT_DEBUG_LOG("QuickenTable::Decode64 instruction %llx", instructions[m]);
+            }
+        }
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wint-to-pointer-cast"
@@ -327,17 +298,13 @@ namespace wechat_backtrace {
         int32_t j = start_pos;
         size_t i = 0;
 
-#ifdef EnableLOG
-        for (size_t m = 0; m < amount; m++) {
-            QUT_DEBUG_LOG("QuickenTable::Decode64 instruction %llx", instructions[m]);
-        }
-#endif
-
         while (i < amount) {
             uint8_t byte;
             ReadByte(byte, instructions, j, i, amount);
-            QUT_DEBUG_LOG("Decode byte "
-                                  BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(byte));
+            if (log) {
+                QUT_DEBUG_LOG("Decode byte "
+                                      BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(byte));
+            }
             switch (byte >> 6) {
                 case 0:
                     // 00nn nnnn : vsp = vsp + (nnnnnn << 2) ; # (nnnnnnn << 2) in [0, 0xfc]
@@ -350,14 +317,10 @@ namespace wechat_backtrace {
                 case 2:
                     switch (byte) {
                         case QUT_INSTRUCTION_VSP_SET_BY_X29_OP:
-                            QUT_DEBUG_LOG("Decode byte QUT_INSTRUCTION_VSP_SET_BY_X29_OP");
                             cfa_ = R29(regs_);
                             break;
                         case QUT_INSTRUCTION_VSP_SET_BY_X29_PROLOGUE_OP:
-                            QUT_DEBUG_LOG("Decode byte QUT_INSTRUCTION_VSP_SET_BY_X29_PROLOGUE_OP");
                             cfa_ = R29(regs_) + 16;
-//                            LR(regs_) = *((uint64_t *) (cfa_ - 8));
-//                            R29(regs_) = *((uint64_t *) (cfa_ - 16));
                             if (UNLIKELY(!ReadStack((cfa_ - 8), &LR(regs_)))) {
                                 return QUT_ERROR_READ_STACK_FAILED;
                             }
@@ -366,7 +329,6 @@ namespace wechat_backtrace {
                             }
                             break;
                         case QUT_INSTRUCTION_VSP_SET_BY_SP_OP:
-                            QUT_DEBUG_LOG("Decode byte QUT_INSTRUCTION_VSP_SET_BY_SP_OP");
                             cfa_ = SP(regs_);
                             break;
                         case QUT_INSTRUCTION_VSP_SET_BY_JNI_SP_OP: {
@@ -374,11 +336,6 @@ namespace wechat_backtrace {
                             ReadByte(byte, instructions, j, i, amount);
                             cfa_ = R28(regs_) + ((byte & 0x7f) << 2);
 
-                            QUT_DEBUG_LOG(
-                                    "Decode QUT_INSTRUCTION_VSP_SET_BY_JNI_SP_OP %x x28 %llx, cfa_ %x, offset %x, "
-                                    BYTE_TO_BINARY_PATTERN,
-                                    (uint32_t) byte, R28(regs_), cfa_,
-                                    (uint32_t) ((byte & 0x7f) << 2), BYTE_TO_BINARY(byte));
                             break;
                         }
                         case QUT_INSTRUCTION_VSP_SET_IMM_OP: {
@@ -390,23 +347,17 @@ namespace wechat_backtrace {
                         case QUT_INSTRUCTION_VSP_SET_BY_X29_IMM_OP: {
                             uint8_t byte;
                             ReadByte(byte, instructions, j, i, amount);
-                            QUT_DEBUG_LOG(
-                                    "Decode before QUT_INSTRUCTION_VSP_SET_BY_X29_IMM_OP cfa_ %llx, R29(regs_) %llx, computed %llx",
-                                    cfa_, R29(regs_), R29(regs_) + ((byte & 0x7f) << 2));
                             cfa_ = R29(regs_) + ((byte & 0x7f) << 2);
                             break;
                         }
                         case QUT_INSTRUCTION_DEX_PC_SET_OP: {
-                            QUT_DEBUG_LOG("Decode byte QUT_INSTRUCTION_DEX_PC_SET_OP");
                             dex_pc_ = R20(regs_);
                             break;
                         }
                         case QUT_END_OF_INS_OP: {
-                            QUT_DEBUG_LOG("Decode byte QUT_END_OF_INS_OP");
                             return QUT_ERROR_NONE;
                         }
                         case QUT_FINISH_OP: {
-                            QUT_DEBUG_LOG("Decode byte QUT_FINISH_OP");
                             PC(regs_) = 0;
                             LR(regs_) = 0;
                             return QUT_ERROR_NONE;
@@ -414,7 +365,6 @@ namespace wechat_backtrace {
                         default: {
                             switch (byte & 0xf0) {
                                 case QUT_INSTRUCTION_X20_OFFSET_OP_PREFIX: {
-//                                    R20(regs_) = *((uint64_t *) (cfa_ - ((byte & 0xf) << 2)));
                                     if (UNLIKELY(!ReadStack((cfa_ - ((byte & 0xf) << 2)),
                                                             &R20(regs_)))) {
                                         return QUT_ERROR_READ_STACK_FAILED;
@@ -428,27 +378,19 @@ namespace wechat_backtrace {
                 default:
                     switch (byte & 0xf0) {
                         case QUT_INSTRUCTION_X28_OFFSET_OP_PREFIX:
-//                            R28(regs_) = *((uint64_t *) (cfa_ - ((byte & 0xf) << 2)));
                             if (UNLIKELY(!ReadStack((cfa_ - ((byte & 0xf) << 2)), &R28(regs_)))) {
                                 return QUT_ERROR_READ_STACK_FAILED;
                             }
                             break;
                         case QUT_INSTRUCTION_X29_OFFSET_OP_PREFIX:
-                            QUT_DEBUG_LOG(
-                                    "Decode before QUT_INSTRUCTION_X29_OFFSET_OP_PREFIX cfa_ %llx, computed %llx, R29(regs_) %llx",
-                                    cfa_, (cfa_ - ((byte & 0xf) << 2)),
-                                    *((uint64_t *) (cfa_ - ((byte & 0xf) << 2))));
-//                            R29(regs_) = *((uint64_t *) (cfa_ - ((byte & 0xf) << 2)));
                             if (UNLIKELY(!ReadStack((cfa_ - ((byte & 0xf) << 2)), &R29(regs_)))) {
                                 return QUT_ERROR_READ_STACK_FAILED;
                             }
-                            QUT_DEBUG_LOG("Decode QUT_INSTRUCTION_X29_OFFSET_OP_PREFIX");
                             if (R29(regs_) == 0) {  // reach end
                                 return QUT_ERROR_NONE;
                             }
                             break;
                         case QUT_INSTRUCTION_LR_OFFSET_OP_PREFIX:
-//                            LR(regs_) = *((uint64_t *) (cfa_ - ((byte & 0xf) << 2)));
                             if (UNLIKELY(!ReadStack((cfa_ - ((byte & 0xf) << 2)), &LR(regs_)))) {
                                 return QUT_ERROR_READ_STACK_FAILED;
                             }
@@ -458,7 +400,6 @@ namespace wechat_backtrace {
                             switch (byte) {
                                 case QUT_INSTRUCTION_X28_OFFSET_SLEB128_OP: {
                                     DecodeSLEB128(value, instructions, amount, j, i)
-//                                    R28(regs_) = *((uint64_t *) (cfa_ - (int64_t) value));
                                     if (UNLIKELY(
                                             !ReadStack((cfa_ - (int64_t) value), &R28(regs_)))) {
                                         return QUT_ERROR_READ_STACK_FAILED;
@@ -467,7 +408,6 @@ namespace wechat_backtrace {
                                 }
                                 case QUT_INSTRUCTION_X29_OFFSET_SLEB128_OP: {
                                     DecodeSLEB128(value, instructions, amount, j, i)
-//                                    R29(regs_) = *((uint64_t *) (cfa_ - (int64_t) value));
                                     if (UNLIKELY(
                                             !ReadStack((cfa_ - (int64_t) value), &R29(regs_)))) {
                                         return QUT_ERROR_READ_STACK_FAILED;
@@ -479,7 +419,6 @@ namespace wechat_backtrace {
                                 }
                                 case QUT_INSTRUCTION_SP_OFFSET_SLEB128_OP: {
                                     DecodeSLEB128(value, instructions, amount, j, i)
-//                                    SP(regs_) = *((uint64_t *) (cfa_ - (int64_t) value));
                                     if (UNLIKELY(
                                             !ReadStack((cfa_ - (int64_t) value), &SP(regs_)))) {
                                         return QUT_ERROR_READ_STACK_FAILED;
@@ -488,7 +427,6 @@ namespace wechat_backtrace {
                                 }
                                 case QUT_INSTRUCTION_LR_OFFSET_SLEB128_OP: {
                                     DecodeSLEB128(value, instructions, amount, j, i)
-//                                    LR(regs_) = *((uint64_t *) (cfa_ - (int64_t) value));
                                     if (UNLIKELY(
                                             !ReadStack((cfa_ - (int64_t) value), &LR(regs_)))) {
                                         return QUT_ERROR_READ_STACK_FAILED;
@@ -497,7 +435,6 @@ namespace wechat_backtrace {
                                 }
                                 case QUT_INSTRUCTION_PC_OFFSET_SLEB128_OP: {
                                     DecodeSLEB128(value, instructions, amount, j, i)
-//                                    PC(regs_) = *((uint64_t *) (cfa_ - (int64_t) value));
                                     if (UNLIKELY(
                                             !ReadStack((cfa_ - (int64_t) value), &PC(regs_)))) {
                                         return QUT_ERROR_READ_STACK_FAILED;
@@ -511,7 +448,6 @@ namespace wechat_backtrace {
                                     break;
                                 }
                                 default:
-                                    QUT_DEBUG_LOG("Decode byte UNKNOWN");
                                     return QUT_ERROR_INVALID_QUT_INSTR;
                             }
                             break;

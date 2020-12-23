@@ -1,7 +1,7 @@
 #ifndef _LIBWECHATBACKTRACE_ERRORS_H
 #define _LIBWECHATBACKTRACE_ERRORS_H
 
-#include "Predefined.h"
+#include "BacktraceDefine.h"
 
 namespace wechat_backtrace {
 

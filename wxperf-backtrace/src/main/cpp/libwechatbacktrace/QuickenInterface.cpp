@@ -79,8 +79,8 @@ namespace wechat_backtrace {
     bool QuickenInterface::FindEntry(uptr pc, size_t *entry_offset) {
         size_t first = 0;
         size_t last = qut_sections_->idx_size;
-        QUT_DEBUG_LOG("QuickenInterface::FindEntry first:%uz last:%uz pc:%llx", first, last,
-                      (ullint_t) pc);
+//        QUT_DEBUG_LOG("QuickenInterface::FindEntry first:%uz last:%uz pc:%llx", first, last,
+//                      (ullint_t) pc);
         while (first < last) {
             size_t current = ((first + last) / 2) & 0xfffffffe;
             uptr addr = qut_sections_->quidx[current];
@@ -101,9 +101,9 @@ namespace wechat_backtrace {
             }
         }
         if (last != 0) {
-            QUT_DEBUG_LOG("QuickenInterface::FindEntry found entry_offset: %uz, addr: %llx",
-                          last - 2,
-                          (ullint_t) qut_sections_->quidx[last - 2]);
+//            QUT_DEBUG_LOG("QuickenInterface::FindEntry found entry_offset: %uz, addr: %llx",
+//                          last - 2,
+//                          (ullint_t) qut_sections_->quidx[last - 2]);
             *entry_offset = last - 2;
             return true;
         }
@@ -132,7 +132,7 @@ namespace wechat_backtrace {
                              stack_bottom, frame_size);
         size_t entry_offset;
 
-        QUT_DEBUG_LOG("QuickenInterface::Step pc:%llx, load_bias_:%llu", (uint64_t) pc, load_bias_);
+//        QUT_DEBUG_LOG("QuickenInterface::Step pc:%llx, load_bias_:%llu", (uint64_t) pc, load_bias_);
 
         pc -= load_bias_;
 
@@ -144,9 +144,9 @@ namespace wechat_backtrace {
         bool return_value = false;
         last_error_code_ = quicken.Eval(entry_offset);
         if (last_error_code_ == QUT_ERROR_NONE) {
-            QUT_DEBUG_LOG(
-                    "QuickenInterface::Step quicken.Eval PC(regs) %llx LR(regs) %llx ken.pc_set_ %d",
-                    (uint64_t) PC(regs), (uint64_t) LR(regs), quicken.pc_set_);
+//            QUT_DEBUG_LOG(
+//                    "QuickenInterface::Step quicken.Eval PC(regs) %llx LR(regs) %llx ken.pc_set_ %d",
+//                    (uint64_t) PC(regs), (uint64_t) LR(regs), quicken.pc_set_);
             if (!quicken.pc_set_) {
                 PC(regs) = LR(regs);
             }
@@ -161,8 +161,8 @@ namespace wechat_backtrace {
         // If the pc was set to zero, consider this the final frame.
         *finished = (PC(regs) == 0) ? true : false;
 
-        QUT_DEBUG_LOG("QuickenInterface::Step finished: %d, PC(regs) %llx", *finished,
-                      (uint64_t) PC(regs));
+//        QUT_DEBUG_LOG("QuickenInterface::Step finished: %d, PC(regs) %llx", *finished,
+//                      (uint64_t) PC(regs));
 
         return return_value;
     }

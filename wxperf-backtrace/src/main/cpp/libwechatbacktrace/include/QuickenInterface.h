@@ -91,7 +91,6 @@ namespace wechat_backtrace {
         bool log = false;
         uptr log_pc = 0;
 
-
     protected:
 
         std::mutex lock_;

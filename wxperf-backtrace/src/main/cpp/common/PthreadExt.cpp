@@ -7,7 +7,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <mutex>
-#include <Predefined.h>
+#include <BacktraceDefine.h>
 #include "PthreadExt.h"
 #include "Log.h"
 

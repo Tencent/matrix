@@ -14,7 +14,7 @@
 #include <stdio.h>
 
 #include <unwindstack/Elf.h>
-#include <Predefined.h>
+#include <BacktraceDefine.h>
 #include "QuickenMemory.h"
 
 namespace wechat_backtrace {

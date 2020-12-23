@@ -12,7 +12,7 @@
 #include <unistd.h>
 #include "unwindstack/Elf.h"
 #include "unwindstack/Memory.h"
-#include "Predefined.h"
+#include "BacktraceDefine.h"
 #include "Errors.h"
 #include "QuickenTable.h"
 #include "Log.h"

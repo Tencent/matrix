@@ -396,7 +396,7 @@ namespace wechat_backtrace {
         }
         size_t first = 0;
         size_t last = maps_size_;
-        QUT_DEBUG_LOG("Maps::Find %u %llx", last, pc);
+
         while (first < last) {
             size_t index = (first + last) / 2;
             const auto &cur = local_maps_[index];

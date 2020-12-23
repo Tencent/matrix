@@ -18,11 +18,11 @@ import android.system.Os;
 
 import com.tencent.stubs.logger.Log;
 
+import java.io.File;
 import java.io.FileFilter;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.File;
 import java.util.HashSet;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -111,7 +111,7 @@ public class WeChatBacktrace implements Handler.Callback {
         private CancellationSignal mCancellationSignal;
 
         private synchronized void triggerIdle() {
-            Log.i(TAG, "Idle status changed: charging = %s, interactive = %s",mIsCharging, mIsInteractive);
+            Log.i(TAG, "Idle status changed: charging = %s, interactive = %s", mIsCharging, mIsInteractive);
 
             if (!mIsInteractive && mCancellationSignal == null) {
                 mCancellationSignal = new CancellationSignal();
@@ -352,8 +352,8 @@ public class WeChatBacktrace implements Handler.Callback {
                             @Override
                             public boolean accept(File file) {
                                 if (file.exists() && file.getAbsolutePath().endsWith(".so")) {
-                                    WeChatBacktraceNative.warmUp(file.getAbsolutePath());
                                     Log.i(TAG, "Warming up so %s", file.getAbsolutePath());
+                                    WeChatBacktraceNative.warmUp(file.getAbsolutePath());
                                 }
                                 return false;
                             }

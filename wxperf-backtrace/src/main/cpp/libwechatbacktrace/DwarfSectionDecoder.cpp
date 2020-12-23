@@ -518,8 +518,8 @@ namespace wechat_backtrace {
             INTER_DEBUG_LOG(
                     "DwarfSectionDecoder<AddressType>::EvalExpression, op.last_error().code %d",
                     (uint32_t) op.last_error().code);
-            if (op.last_error().code == DWARF_ERROR_EXPRESSION_REACH_BREG && op.dex_pc_set()) {
-                // XXX Maybe we'll support mush more breg/bregx cases in the future.
+            if ((op.last_error().code == DWARF_ERROR_EXPRESSION_REACH_BREGX || op.last_error().code == DWARF_ERROR_EXPRESSION_REACH_BREG) && op.dex_pc_set()) {
+                // XXX Maybe we'll support more breg/bregx cases in the future.
                 value_expression->reg_expression = op.reg_expression();
             } else {
                 last_error_ = op.last_error();
@@ -588,7 +588,7 @@ namespace wechat_backtrace {
                     return false;
                 }
                 if (loc->type == DWARF_LOCATION_EXPRESSION) {
-                    INTER_DEBUG_LOG("DwarfSectionDecoder::EvalRegister DWARF_LOCATION_EXPRESSION")
+                    INTER_DEBUG_LOG("DwarfSectionDecoder::EvalRegister DWARF_LOCATION_EXPRESSION");
                     last_error_.code = DWARF_ERROR_NOT_SUPPORT;
                     QUT_STATISTIC(UnsupportedDwarfLocationExpression, reg, DWARF_ERROR_NOT_SUPPORT);
                     return false;
@@ -775,7 +775,6 @@ namespace wechat_backtrace {
 
         switch (loc->type) {
             case DWARF_LOCATION_REGISTER:
-                if (log) QUT_DEBUG_LOG("DwarfSectionImpl::Eval DWARF_LOCATION_REGISTER");
                 INTER_DEBUG_LOG("DwarfSectionImpl::Eval DWARF_LOCATION_REGISTER");
                 if (loc->values[0] >= total_regs) {
                     last_error_.code = DWARF_ERROR_ILLEGAL_VALUE;
@@ -798,8 +797,6 @@ namespace wechat_backtrace {
                                 (int32_t) loc->values[1]);
                 break;
             case DWARF_LOCATION_VAL_EXPRESSION: {
-                if (log) QUT_DEBUG_LOG(
-                        "DwarfSectionDecoder::Eval 1111111 DWARF_LOCATION_VAL_EXPRESSION");
                 INTER_DEBUG_LOG("DwarfSectionDecoder::Eval 1111111 DWARF_LOCATION_VAL_EXPRESSION");
                 ValueExpression<AddressType> value_expression;
                 if (!EvalExpression(*loc, regular_memory, total_regs, &value_expression, nullptr)) {

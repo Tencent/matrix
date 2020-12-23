@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <memory>
 #include <unwindstack/Maps.h>
-#include "Predefined.h"
+#include "BacktraceDefine.h"
 
 namespace wechat_backtrace {
 

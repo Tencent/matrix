@@ -185,8 +185,6 @@ namespace wechat_backtrace {
     WeChatQuickenUnwind(const ArchEnum arch, uptr *regs, const uptr frame_max_size,
                         Frame *backtrace, uptr &frame_size) {
 
-        STACK_CHECK_START(32);
-
         std::shared_ptr<Maps> maps = Maps::current();
 
         if (!maps) {
@@ -213,7 +211,7 @@ namespace wechat_backtrace {
 
             uint64_t cur_pc = PC(regs);
             uint64_t cur_sp = SP(regs);
-            QUT_DEBUG_LOG("WeChatQuickenUnwind cur_pc:%llx, cur_sp:%llx", cur_pc, cur_sp);
+//            QUT_DEBUG_LOG("WeChatQuickenUnwind cur_pc:%llx, cur_sp:%llx", cur_pc, cur_sp);
             MapInfoPtr map_info = nullptr;
             QuickenInterface *interface = nullptr;
 
@@ -228,12 +226,9 @@ namespace wechat_backtrace {
                     ret = QUT_ERROR_INVALID_MAP;
                     break;
                 }
-
-                STACK_CHECK_START(11);
                 interface = map_info->GetQuickenInterface(process_memory_, arch);
-                STACK_CHECK_END;
                 if (!interface) {
-                    QUT_DEBUG_LOG("Quicken interface is null, maybe the elf is invalid.");
+//                    QUT_DEBUG_LOG("Quicken interface is null, maybe the elf is invalid.");
                     backtrace[frame_size++].pc = PC(regs) - 2;
                     ret = QUT_ERROR_INVALID_ELF;
                     break;
@@ -264,11 +259,11 @@ namespace wechat_backtrace {
             }
             step_pc -= pc_adjustment;
 
-            QUT_DEBUG_LOG("WeChatQuickenUnwind pc_adjustment:%llx, step_pc:%llx, rel_pc:%llx",
-                          pc_adjustment, step_pc, rel_pc);
+//            QUT_DEBUG_LOG("WeChatQuickenUnwind pc_adjustment:%llx, step_pc:%llx, rel_pc:%llx",
+//                          pc_adjustment, step_pc, rel_pc);
 
             if (dex_pc != 0) {
-                QUT_DEBUG_LOG("dex_pc %llx", dex_pc);
+//                QUT_DEBUG_LOG("dex_pc %llx", dex_pc);
                 backtrace[frame_size].is_dex_pc = true;
                 backtrace[frame_size].pc = dex_pc;
                 dex_pc = 0;
@@ -290,20 +285,11 @@ namespace wechat_backtrace {
                 break;
             }
 
-            STACK_CHECK_START(19);
             if (!interface->Step(step_pc, regs, nullptr, stack_top, stack_bottom,
                                  frame_size, &dex_pc, &finished)) {
                 ret = interface->last_error_code_;
-                STACK_CHECK_END;
                 break;
             }
-            STACK_CHECK_END;
-
-            QUT_DEBUG_LOG(
-                    "WeChatQuickenUnwind Stepped Reg. r4: %x, r7: %x, r10: %x, r11: %x, sp: %x, ls: %x, pc: %x",
-                    R4(regs), R7(regs), R10(regs), R11(regs), SP(regs), LR(regs), PC(regs)
-            );
-
 
             if (finished) { // finished.
                 break;
@@ -311,13 +297,11 @@ namespace wechat_backtrace {
 
             // If the pc and sp didn't change, then consider everything stopped.
             if (cur_pc == PC(regs) && cur_sp == SP(regs)) {
-                QUT_DEBUG_LOG("pc and sp not changed.");
+//                QUT_DEBUG_LOG("pc and sp not changed.");
                 ret = QUT_ERROR_REPEATED_FRAME;
                 break;
             }
         }
-
-        STACK_CHECK_END;
 
         return ret;
     }

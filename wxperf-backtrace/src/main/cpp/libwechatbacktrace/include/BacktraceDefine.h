@@ -1,5 +1,5 @@
-#ifndef _LIBWECHATBACKTRACE_TYPES_H
-#define _LIBWECHATBACKTRACE_TYPES_H
+#ifndef _LIBWECHATBACKTRACE_DEFINE_H
+#define _LIBWECHATBACKTRACE_DEFINE_H
 
 #include <memory>
 #include <unwindstack/Elf.h>
@@ -40,9 +40,6 @@
 #define BACKTRACE_INITIALIZER(MAX_FRAMES) \
     {MAX_FRAMES, 0, std::shared_ptr<wechat_backtrace::Frame>( \
     new wechat_backtrace::Frame[MAX_FRAMES], std::default_delete<wechat_backtrace::Frame[]>())}
-
-#define SHARED_PTR_WITH_ARRAY(Type, Size) \
-    std::shared_ptr<Type>(new Type[Size], std::default_delete<Type[]>())
 
 #define DEFINE_STATIC_LOCAL(type, name, arguments) \
   static type& name = *new type arguments
@@ -85,4 +82,4 @@ namespace wechat_backtrace {
 
 }  // namespace wechat_backtrace
 
-#endif  // _LIBWECHATBACKTRACE_TYPES_H
+#endif  // _LIBWECHATBACKTRACE_DEFINE_H
