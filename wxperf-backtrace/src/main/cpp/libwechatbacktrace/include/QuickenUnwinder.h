@@ -13,7 +13,7 @@ namespace wechat_backtrace {
 
     QUT_EXTERN_C void StatisticWeChatQuickenUnwindTable(const std::string &sopath);
 
-    QUT_EXTERN_C void GenerateQutForLibrary(const std::string &sopath);
+    QUT_EXTERN_C void GenerateQutForLibrary(const std::string &sopath, const uint64_t elf_start_offset);
 
     QUT_EXTERN_C void ConsumeRequestingQut();
 

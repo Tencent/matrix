@@ -21,8 +21,10 @@ namespace wechat_backtrace {
     public:
         QuickenInterface(/* unwindstack::Memory *memory,*/ uint64_t load_bias,
                                                            uint64_t elf_offset,
+                                                           uint64_t elf_start_offset,
                                                            unwindstack::ArchEnum arch)
                 : /* memory_(memory), */ load_bias_(load_bias), elf_offset_(elf_offset),
+                                         elf_start_offset_(elf_start_offset),
                                          arch_(arch) {}
 
         bool FindEntry(uptr pc, size_t *entry_offset);
@@ -34,7 +36,9 @@ namespace wechat_backtrace {
                       unwindstack::Memory *process_memory, bool *finish);
 
         template<typename AddressType>
-        bool GenerateQuickenTable(unwindstack::Memory *memory, unwindstack::Memory *process_memory,
+        bool GenerateQuickenTable(unwindstack::Memory *memory,
+                                  unwindstack::Memory *gnu_debug_data_memory,
+                                  unwindstack::Memory *process_memory,
                                   QutSectionsPtr qut_sections);
 
         bool TryInitQuickenTable();
@@ -42,6 +46,8 @@ namespace wechat_backtrace {
         uint64_t GetLoadBias();
 
         uint64_t GetElfOffset();
+
+        uint64_t GetElfStartOffset();
 
         void SetArmExidxInfo(uint64_t start_offset, uint64_t total_entries) {
             arm_exidx_info_ = {start_offset, 0, total_entries};
@@ -76,8 +82,11 @@ namespace wechat_backtrace {
                   const std::string &build_id_hex) {
             soname_ = soname;
             sopath_ = sopath;
-            build_id_hex_ = build_id_hex;
-            build_id_ = ToBuildId(build_id_hex);
+            if (build_id_hex.empty()) {
+                build_id_ = FakeBuildId(sopath);
+            } else {
+                build_id_ = ToBuildId(build_id_hex);
+            }
             hash_ = ToHash(sopath_);
         }
 
@@ -98,12 +107,12 @@ namespace wechat_backtrace {
         std::string soname_;
         std::string sopath_;
         std::string build_id_;
-        std::string build_id_hex_;
         std::string hash_;
 
 //        unwindstack::Memory *memory_;
         uint64_t load_bias_ = 0;
         uint64_t elf_offset_ = 0;
+        uint64_t elf_start_offset_ = 0;
 
         unwindstack::ArchEnum arch_;
 

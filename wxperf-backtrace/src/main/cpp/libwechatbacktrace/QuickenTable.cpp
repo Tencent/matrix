@@ -284,11 +284,11 @@ namespace wechat_backtrace {
 
         if (log) {
             QUT_DEBUG_LOG(
-                    "QuickenTable::Decode64 instructions %llx, amount %llu, start_pos %llu",
-                    instructions, amount, start_pos);
+                    "QuickenTable::Decode64 instructions %llx, amount %uz, start_pos %uz",
+                    (ullint_t)instructions, amount, start_pos);
 
             for (size_t m = 0; m < amount; m++) {
-                QUT_DEBUG_LOG("QuickenTable::Decode64 instruction %llx", instructions[m]);
+                QUT_DEBUG_LOG("QuickenTable::Decode64 instruction %llx", (ullint_t)instructions[m]);
             }
         }
 

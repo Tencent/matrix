@@ -22,7 +22,7 @@
 #include "Log.h"
 #include "PthreadExt.h"
 
-#define WECHAT_QUICKEN_UNWIND_TAG "QuickenUnwind"
+#define WECHAT_BACKTRACE_TAG "WeChatBacktrace"
 
 namespace wechat_backtrace {
 
@@ -38,7 +38,7 @@ namespace wechat_backtrace {
         string soname = SplitSonameFromPath(sopath);
 
         QUT_STAT_LOG("Statistic sopath %s so %s", sopath, soname.c_str());
-        auto memory = QuickenMapInfo::CreateQuickenMemoryFromFile(sopath, 0);   // TODO offset
+        auto memory = QuickenMapInfo::CreateQuickenMemoryFromFile(sopath, 0);
         if (memory == nullptr) {
             QUT_STAT_LOG("memory->Init so %s failed", sopath);
             return;
@@ -57,15 +57,24 @@ namespace wechat_backtrace {
         QuickenInterface *interface = QuickenMapInfo::CreateQuickenInterfaceForGenerate(sopath,
                                                                                         elf.get());
         QutSections qut_sections;
-        interface->GenerateQuickenTable<addr_t>(elf->memory(), process_memory_.get(),
+
+
+        Memory *gnu_debug_data_memory = nullptr;
+        if (elf->gnu_debugdata_interface()) {
+            gnu_debug_data_memory = elf->gnu_debugdata_interface()->memory();
+        }
+
+        interface->GenerateQuickenTable<addr_t>(elf->memory(), gnu_debug_data_memory,
+                                                process_memory_.get(),
                                                 &qut_sections);
 
         DumpQutStatResult();
     }
 
-    void GenerateQutForLibrary(const std::string &sopath) {
+    void GenerateQutForLibrary(const std::string &sopath, const uint64_t elf_start_offset) {
 
-        QUT_LOG("Generate qut for so %s.", sopath.c_str());
+        QUT_LOG("Generate qut for so %s, elf_start_offset %llu.", sopath.c_str(),
+                (ullint_t) elf_start_offset);
 
         const string hash = ToHash(sopath);
         const std::string soname = SplitSonameFromPath(sopath);
@@ -76,7 +85,7 @@ namespace wechat_backtrace {
         }
 
         // Will be destructed by 'elf' instance.
-        auto memory = QuickenMapInfo::CreateQuickenMemoryFromFile(sopath, 0); // TODO offset
+        auto memory = QuickenMapInfo::CreateQuickenMemoryFromFile(sopath, elf_start_offset);
         if (memory == nullptr) {
             QUT_LOG("Create quicken memory for so %s failed", sopath.c_str());
             return;
@@ -94,7 +103,8 @@ namespace wechat_backtrace {
         }
 
         const string build_id_hex = elf->GetBuildID();
-        const string build_id = ToBuildId(build_id_hex);
+        const string build_id = build_id_hex.empty() ? FakeBuildId(sopath) : ToBuildId(
+                build_id_hex);
 
         if (QuickenTableManager::CheckIfQutFileExistsWithBuildId(soname, build_id)) {
             QUT_LOG("Qut exists with build id %s and return.", build_id.c_str());
@@ -106,12 +116,21 @@ namespace wechat_backtrace {
 
         std::unique_ptr<QutSections> qut_sections = make_unique<QutSections>();
         QutSectionsPtr qut_sections_ptr = qut_sections.get();
-        interface->GenerateQuickenTable<addr_t>(elf->memory(), process_memory_.get(),
+
+        Memory *gnu_debug_data_memory = nullptr;
+        if (elf->gnu_debugdata_interface()) {
+            gnu_debug_data_memory = elf->gnu_debugdata_interface()->memory();
+        }
+
+        interface->GenerateQuickenTable<addr_t>(elf->memory(), gnu_debug_data_memory,
+                                                process_memory_.get(),
                                                 qut_sections_ptr);
 
         QutFileError error = QuickenTableManager::getInstance().SaveQutSections(
-                soname, sopath, hash, build_id, build_id_hex, std::move(qut_sections));
+                soname, sopath, hash, build_id, std::move(qut_sections));
+
         (void) error;
+
         QUT_LOG("Generate qut for so %s result %d", sopath.c_str(), error);
     }
 
@@ -119,7 +138,7 @@ namespace wechat_backtrace {
         auto requesting_qut = QuickenTableManager::getInstance().GetRequestQut();
         auto it = requesting_qut.begin();
         while (it != requesting_qut.end()) {
-            GenerateQutForLibrary(it->second);
+            GenerateQutForLibrary(it->second.second, it->second.first);
             it++;
         }
     }
@@ -187,8 +206,10 @@ namespace wechat_backtrace {
 
         std::shared_ptr<Maps> maps = Maps::current();
 
+//        abort();
+
         if (!maps) {
-            LOGE(WECHAT_QUICKEN_UNWIND_TAG, "maps == nullptr.");
+            QUT_LOG("Maps is null.");
             return QUT_ERROR_MAPS_IS_NULL;
         }
 

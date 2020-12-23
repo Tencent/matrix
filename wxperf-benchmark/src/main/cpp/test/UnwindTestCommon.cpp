@@ -12,7 +12,7 @@
 
 #define DWARF_UNWIND_TAG "Dwarf-Unwind"
 #define FP_UNWIND_TAG "Fp-Unwind"
-#define WECHAT_QUICKEN_UNWIND_TAG "WeChat-Quicken-Unwind"
+#define WECHAT_BACKTRACE_TAG "WeChat-Quicken-Unwind"
 
 //#define DWARF_UNWIND_TAG UNWIND_TEST_TAG
 //#define FP_FAST_UNWIND_TAG UNWIND_TEST_TAG
@@ -139,7 +139,7 @@ inline void print_wechat_quicken_unwind() {
 
     TEST_NanoSeconds_End(print_wechat_quicken_unwind, nano);
 
-    LOGE(WECHAT_QUICKEN_UNWIND_TAG, "frames = %"
+    LOGE(WECHAT_BACKTRACE_TAG, "frames = %"
             PRIuPTR, frame_size);
 
     for (size_t i = 0; i < frame_size; i++) {
@@ -147,12 +147,12 @@ inline void print_wechat_quicken_unwind() {
         dladdr((void *) frames[i].pc, &stack_info);
 
         if (!stack_info.dli_fname) {
-            LOGE(WECHAT_QUICKEN_UNWIND_TAG, "  #pc stack_info.dli_fname is null");
+            LOGE(WECHAT_BACKTRACE_TAG, "  #pc stack_info.dli_fname is null");
             continue;
         }
         std::string so_name = std::string(stack_info.dli_fname);
 
-        LOGE(WECHAT_QUICKEN_UNWIND_TAG, "  #pc 0x%"
+        LOGE(WECHAT_BACKTRACE_TAG, "  #pc 0x%"
                 PRIxPTR
                 " %"
                 PRIuPTR

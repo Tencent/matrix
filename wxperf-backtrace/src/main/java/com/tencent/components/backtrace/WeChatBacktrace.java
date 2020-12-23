@@ -335,7 +335,15 @@ public class WeChatBacktrace implements Handler.Callback {
         }
     }
 
+    // TODO For debug
+    final CancellationSignal fakeCS = new CancellationSignal();
+
     private void warmingUp(final CancellationSignal cs) {
+
+        if (fakeCS != cs) {
+            return;
+        }
+
         mThreadTaskExecutor.arrangeTask(new Runnable() {
             @Override
             public void run() {
@@ -630,7 +638,8 @@ public class WeChatBacktrace implements Handler.Callback {
     }
 
     private void configure(Configuration configuration) {
-        // 1. init saving path
+
+        // Init saving path
         String savingPath = validateSavingPath(configuration);
         Log.i(TAG, "Set saving path = %s", savingPath);
         File file = new File(savingPath);
@@ -653,6 +662,13 @@ public class WeChatBacktrace implements Handler.Callback {
         registerWarmedUpReceiver(configuration);
 
         mConfigured = true;
+
+        if (configuration.mThisIsWarmUpProcess && !hasWarmedUp()) {
+            mIdleHandler.sendMessageDelayed(
+                    Message.obtain(mIdleHandler, MSG_WARM_UP, fakeCS),
+                    DELAY_WARM_UP * 1
+            );
+        }
     }
 
     public final static class Configuration {

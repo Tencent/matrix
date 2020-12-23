@@ -1,6 +1,7 @@
 #ifndef _LIBWECHATBACKTRACE_QUICKEN_UTILITY_H
 #define _LIBWECHATBACKTRACE_QUICKEN_UTILITY_H
 
+#include <fcntl.h>
 #include "Log.h"
 #include "SHA1.h"
 
@@ -27,7 +28,7 @@ namespace wechat_backtrace {
 
     static const char *HexChars = "0123456789ABCDEF";
 
-    inline static std::string ToBuildId(const std::string build_id_raw) {
+    inline static std::string ToBuildId(const std::string &build_id_raw) {
         const size_t len = build_id_raw.length();
         std::string build_id(len * 2, '\0');
 
@@ -35,6 +36,37 @@ namespace wechat_backtrace {
             unsigned int n = build_id_raw[i];
             build_id[i * 2] = HexChars[(n >> 4) % 16];
             build_id[i * 2 + 1] = HexChars[n % 16];
+        }
+
+        return build_id;
+    }
+
+    inline static bool EndsWith(std::string_view s, std::string_view suffix) {
+        return s.size() >= suffix.size() &&
+               s.substr(s.size() - suffix.size(), suffix.size()) == suffix;
+    }
+
+    inline static bool IsOatFile(const std::string &soname) {
+        return EndsWith(soname, ".oat") ||
+               EndsWith(soname, ".odex") ||
+               EndsWith(soname, ".vdex") ||
+               EndsWith(soname, ".art");
+    }
+
+    inline static std::string FakeBuildId(const std::string sopath) {
+        std::string build_id = "";
+        if (IsOatFile(sopath)) {
+            int fd = open(sopath.c_str(), O_RDONLY);
+            if (fd >= 0) {
+                struct stat file_stat;
+                if (fstat(fd, &file_stat) == 0 && file_stat.st_size > 0) {
+                    std::string build_id_raw =
+                            std::to_string((ullint_t)file_stat.st_size) + sopath +
+                            std::to_string((ullint_t)file_stat.st_mtim.tv_sec);
+                    build_id = ToHash(build_id_raw);
+                }
+                close(fd);
+            }
         }
 
         return build_id;

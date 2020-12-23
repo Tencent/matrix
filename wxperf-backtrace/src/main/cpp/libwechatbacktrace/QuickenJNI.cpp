@@ -19,7 +19,7 @@
 
 #include "android-base/macros.h"
 
-#define WECHAT_QUICKEN_UNWIND_TAG "QuickenUnwind"
+#define WECHAT_BACKTRACE_TAG "WeChatBacktrace"
 
 namespace wechat_backtrace {
 
@@ -57,14 +57,14 @@ namespace wechat_backtrace {
     static void JNI_WarmUp(JNIEnv *env, jclass clazz, jstring sopath_jstr) {
         (void) clazz;
         const char *sopath = env->GetStringUTFChars(sopath_jstr, 0);
-        GenerateQutForLibrary(sopath);
+        GenerateQutForLibrary(sopath, 0);
         env->ReleaseStringUTFChars(sopath_jstr, sopath);
     }
 
     static void JNI_Statistic(JNIEnv *env, jclass clazz, jstring sopath_jstr) {
         (void) clazz;
         const char *sopath = env->GetStringUTFChars(sopath_jstr, 0);
-//        StatisticWeChatQuickenUnwindTable(sopath);
+        StatisticWeChatQuickenUnwindTable(sopath);
         env->ReleaseStringUTFChars(sopath_jstr, sopath);
     }
 
@@ -77,7 +77,7 @@ namespace wechat_backtrace {
             {"statistic",           "(Ljava/lang/String;)V", (void *) JNI_Statistic},
     };
 
-    static jclass JNIClass_QuickenUnwinderNative = nullptr;
+    static jclass JNIClass_WeChatBacktraceNative = nullptr;
     static jmethodID JNIMethod_RequestQutGenerate = nullptr;
     static JavaVM *CurrentJavaVM = nullptr;
 
@@ -98,30 +98,25 @@ namespace wechat_backtrace {
         static const char *cls_name = "com/tencent/components/backtrace/WeChatBacktraceNative";
         jclass clazz = env->FindClass(cls_name);
         if (!clazz) {
-            LOGE(WECHAT_QUICKEN_UNWIND_TAG, "Find Class %s failed.", cls_name);
+            LOGE(WECHAT_BACKTRACE_TAG, "Find Class %s failed.", cls_name);
             return -1;
         }
-        JNIClass_QuickenUnwinderNative = reinterpret_cast<jclass>(env->NewGlobalRef(clazz));
-        int ret = env->RegisterNatives(JNIClass_QuickenUnwinderNative, g_qut_methods,
+        JNIClass_WeChatBacktraceNative = reinterpret_cast<jclass>(env->NewGlobalRef(clazz));
+        int ret = env->RegisterNatives(JNIClass_WeChatBacktraceNative, g_qut_methods,
                                        sizeof(g_qut_methods) / sizeof(g_qut_methods[0]));
 
-        JNIMethod_RequestQutGenerate = env->GetStaticMethodID(JNIClass_QuickenUnwinderNative,
+        JNIMethod_RequestQutGenerate = env->GetStaticMethodID(JNIClass_WeChatBacktraceNative,
                                                               "requestQutGenerate", "()V");
         if (!JNIMethod_RequestQutGenerate) {
-            LOGE(WECHAT_QUICKEN_UNWIND_TAG, "requestQutGenerate() method not found.");
+            LOGE(WECHAT_BACKTRACE_TAG, "requestQutGenerate() method not found.");
         }
         return ret;
     }
 
-//    static inline int QutJNIOnLoaded(JavaVM *vm, JNIEnv *env) {
-//        CurrentJavaVM = vm;
-//        return RegisterQutJNINativeMethods(env);
-//    }
-
     void InvokeJava_RequestQutGenerate() {
 
-        if (JNIClass_QuickenUnwinderNative == nullptr || JNIMethod_RequestQutGenerate == nullptr) {
-            LOGE(WECHAT_QUICKEN_UNWIND_TAG, "RegisterQutJNINativeMethods did not be run?");
+        if (JNIClass_WeChatBacktraceNative == nullptr || JNIMethod_RequestQutGenerate == nullptr) {
+            LOGE(WECHAT_BACKTRACE_TAG, "RegisterQutJNINativeMethods did not be run?");
             return;
         }
 
@@ -131,7 +126,7 @@ namespace wechat_backtrace {
             return;
         }
 
-        env->CallStaticVoidMethod(JNIClass_QuickenUnwinderNative, JNIMethod_RequestQutGenerate);
+        env->CallStaticVoidMethod(JNIClass_WeChatBacktraceNative, JNIMethod_RequestQutGenerate);
     }
 
     QUT_EXTERN_C_BLOCK_END
@@ -143,14 +138,14 @@ JNIEXPORT jint JNI_OnLoad(JavaVM *vm, void *reserved) {
 
     (void) reserved;
 
-    LOGD(WECHAT_QUICKEN_UNWIND_TAG, "JNI OnLoad...");
+    LOGD(WECHAT_BACKTRACE_TAG, "JNI OnLoad...");
 
     JNIEnv *env;
     vm->GetEnv((void **) &env, JNI_VERSION_1_6);
     wechat_backtrace::CurrentJavaVM = vm;
     if (env) {
         if (wechat_backtrace::RegisterQutJNINativeMethods(env) != 0) {
-            LOGE(WECHAT_QUICKEN_UNWIND_TAG, "Register Quicken Unwinder JNINativeMethods Failed.");
+            LOGE(WECHAT_BACKTRACE_TAG, "Register Quicken Unwinder JNINativeMethods Failed.");
         }
     }
     return JNI_VERSION_1_6;

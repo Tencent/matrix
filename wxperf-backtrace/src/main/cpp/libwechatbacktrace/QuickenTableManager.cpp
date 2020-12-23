@@ -52,7 +52,8 @@ namespace wechat_backtrace {
         rename(qut_file_name.c_str(), malformed.c_str());
     }
 
-    std::unordered_map<std::string, std::string> QuickenTableManager::GetRequestQut() {
+    std::unordered_map<std::string, std::pair<uint64_t, std::string>>
+    QuickenTableManager::GetRequestQut() {
         lock_guard<mutex> lockGuard(lock_);
         return qut_sections_requesting_;
     }
@@ -60,10 +61,8 @@ namespace wechat_backtrace {
     QutFileError
     QuickenTableManager::TryLoadQutFile(const string &soname, const string &sopath,
                                         const string &hash, const string &build_id,
-                                        const string &build_id_hex,
                                         QutSectionsPtr &qut_sections) {
         (void) hash;
-        (void) build_id_hex;
         (void) sopath;
 
         QUT_LOG("Request qut file before lock for so %s", sopath.c_str());
@@ -191,7 +190,7 @@ namespace wechat_backtrace {
     QutFileError
     QuickenTableManager::RequestQutSections(const string &soname, const string &sopath,
                                             const string &hash, const string &build_id,
-                                            const string &build_id_hex,
+                                            const uint64_t elf_start_offset,
                                             QutSectionsPtr &qut_sections) {
 
         if (sSavingPath.empty()) {
@@ -207,13 +206,13 @@ namespace wechat_backtrace {
         {
             lock_guard<mutex> lockGuard(lock_);
 
-            ret = FindQutSectionsNoLock(soname, sopath, build_id, qut_sections);
+            ret = FindQutSectionsNoLock(soname, sopath, build_id, elf_start_offset, qut_sections);
 
             if (qut_sections != nullptr || ret != NoneError) {
                 return ret;
             }
 
-            ret = TryLoadQutFile(soname, sopath, hash, build_id, build_id_hex, qut_sections);
+            ret = TryLoadQutFile(soname, sopath, hash, build_id, qut_sections);
         }
 
         if (ret != NoneError) {
@@ -238,6 +237,7 @@ namespace wechat_backtrace {
 
         CHECK(qut_sections != nullptr);
         if (qut_sections->idx_size == 0) {
+            QUT_LOG("Insert qut idx size is empty.");
             return false;
         }
 
@@ -270,6 +270,7 @@ namespace wechat_backtrace {
     QutFileError
     QuickenTableManager::FindQutSectionsNoLock(const std::string &soname, const std::string &sopath,
                                                const std::string &build_id,
+                                               const uint64_t elf_start_offset,
                                                QutSectionsPtr &qut_sections_ptr) {
         (void) soname;
 
@@ -284,8 +285,11 @@ namespace wechat_backtrace {
             return LoadRequesting;
         }
 
+        QUT_DEBUG_LOG("Requesting qut for so(%s) build_id(%s) elf_start_offset(%llu).",
+                      sopath.c_str(), build_id.c_str(), (ullint_t) elf_start_offset);
+
         // Mark requesting qut sections.
-        qut_sections_requesting_[build_id] = sopath;
+        qut_sections_requesting_[build_id] = make_pair(elf_start_offset, sopath);
 
         return NoneError;
     }
@@ -308,9 +312,7 @@ namespace wechat_backtrace {
     QutFileError
     QuickenTableManager::SaveQutSections(const string &soname, const std::string &sopath,
                                          const string &hash, const string &build_id,
-                                         const string &build_id_hex,
                                          unique_ptr<QutSections> qut_sections_ptr) {
-        (void) build_id_hex;
         (void) sopath;
 
         QutSectionsPtr qut_sections_insert = qut_sections_ptr.get();
@@ -318,6 +320,8 @@ namespace wechat_backtrace {
             lock_guard<mutex> lockGuard(lock_);
             if (qut_sections_insert == nullptr ||
                 !InsertQutSectionsNoLock(soname, build_id, qut_sections_insert, false)) {
+                QUT_LOG("qut_sections_insert %llx", (ullint_t) qut_sections_insert);
+                QUT_LOG("qut_sections_insert %llx", (ullint_t) qut_sections_insert);
                 return InsertNewQutFailed;
             }
         }

@@ -41,6 +41,7 @@ namespace wechat_backtrace {
                 const std::string &so_name,
                 const uint64_t load_bias_,
                 const uint64_t elf_offset,
+                const uint64_t elf_start_offset,
                 const std::string &build_id_hex
         );
 

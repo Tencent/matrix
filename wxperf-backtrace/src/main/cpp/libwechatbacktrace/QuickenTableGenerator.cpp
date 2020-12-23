@@ -28,20 +28,24 @@ namespace wechat_backtrace {
     };
 
     template<typename AddressType>
-    void QuickenTableGenerator<AddressType>::DecodeEhFrameEntriesInstr(FrameInfo eh_frame_hdr_info,
-                                                                       FrameInfo eh_frame_info,
-                                                                       QutInstructionsOfEntries *entries_instructions,
-                                                                       uint16_t regs_total) {
+    void QuickenTableGenerator<AddressType>::DecodeEhFrameEntriesInstr(
+            FrameInfo eh_frame_hdr_info,
+            FrameInfo eh_frame_info,
+            QutInstructionsOfEntries *entries_instructions,
+            uint16_t regs_total,
+            bool gnu_debug_data) {
+
+        Memory *memory = gnu_debug_data ? gnu_debug_data_memory_ : memory_;
 
         shared_ptr<DwarfSectionDecoder<AddressType>> eh_frame;
 
-        if (eh_frame_hdr_info.offset_ != 0) {
+        if (memory != nullptr && eh_frame_hdr_info.offset_ != 0) {
 
             QUT_DEBUG_LOG(
                     "QuickenTableGenerator::DecodeEhFrameEntriesInstr eh_frame_hdr_info.offset_ != 0");
 
             DwarfEhFrameWithHdrDecoder<AddressType> *eh_frame_hdr = new DwarfEhFrameWithHdrDecoder<AddressType>(
-                    memory_);
+                    memory);
             eh_frame.reset(eh_frame_hdr);
             if (!eh_frame_hdr->EhFrameInit(eh_frame_info.offset_, eh_frame_info.size_,
                                            eh_frame_info.section_bias_) ||
@@ -54,14 +58,14 @@ namespace wechat_backtrace {
 
         }
 
-        if (eh_frame.get() == nullptr && eh_frame_info.offset_ != 0) {
+        if (memory != nullptr && eh_frame.get() == nullptr && eh_frame_info.offset_ != 0) {
 
             QUT_DEBUG_LOG(
                     "QuickenTableGenerator::DecodeEhFrameEntriesInstr eh_frame_info.offset_ != 0");
 
             // If there is an eh_frame section without an eh_frame_hdr section,
             // or using the frame hdr object failed to init.
-            eh_frame.reset(new DwarfEhFrameDecoder<AddressType>(memory_));
+            eh_frame.reset(new DwarfEhFrameDecoder<AddressType>(memory));
             if (!eh_frame->Init(eh_frame_info.offset_, eh_frame_info.size_,
                                 eh_frame_info.section_bias_)) {
                 eh_frame = nullptr;
@@ -103,7 +107,7 @@ namespace wechat_backtrace {
             uint32_t entry_offset = start_offset + i * 8;
 
             // Read entry
-            if (!GetPrel31Addr(entry_offset, &addr)) {
+            if (!GetPrel31Addr(memory_, entry_offset, &addr)) {
                 QUT_DEBUG_LOG("DecodeExidxEntriesInstr GetPrel31Addr bad entry");
                 // TODO bad entry
                 continue;
@@ -180,12 +184,16 @@ namespace wechat_backtrace {
 
     template<typename AddressType>
     void
-    QuickenTableGenerator<AddressType>::DecodeDebugFrameEntriesInstr(FrameInfo debug_frame_info,
-                                                                     QutInstructionsOfEntries *entries_instructions,
-                                                                     uint16_t regs_total) {
+    QuickenTableGenerator<AddressType>::DecodeDebugFrameEntriesInstr(
+            FrameInfo debug_frame_info,
+            QutInstructionsOfEntries *entries_instructions,
+            uint16_t regs_total,
+            bool gnu_debug_data) {
 
-        if (debug_frame_info.offset_ != 0) {
-            auto debug_frame_ = make_shared<DwarfDebugFrameDecoder<AddressType>>(memory_);
+        Memory *memory = gnu_debug_data ? gnu_debug_data_memory_ : memory_;
+
+        if (memory != nullptr && debug_frame_info.offset_ != 0) {
+            auto debug_frame_ = make_shared<DwarfDebugFrameDecoder<AddressType>>(memory);
             if (!debug_frame_->Init(debug_frame_info.offset_, debug_frame_info.size_,
                                     debug_frame_info.section_bias_)) {
                 return;
@@ -455,8 +463,8 @@ namespace wechat_backtrace {
     bool QuickenTableGenerator<AddressType>::GenerateUltraQUTSections(
             FrameInfo eh_frame_hdr_info, FrameInfo eh_frame_info, FrameInfo debug_frame_info,
             FrameInfo gnu_eh_frame_hdr_info, FrameInfo gnu_eh_frame_info,
-            FrameInfo gnu_debug_frame_info,
-            FrameInfo arm_exidx_info, QutSections *fut_sections) {
+            FrameInfo gnu_debug_frame_info, FrameInfo arm_exidx_info,
+            QutSections *fut_sections) {
 
         if (UNLIKELY(fut_sections == nullptr)) {
             return false;
@@ -470,39 +478,42 @@ namespace wechat_backtrace {
         uint16_t regs_total = REGS_TOTAL;
         DecodeDebugFrameEntriesInstr(debug_frame_info, debug_frame_instructions.get(), regs_total);
         QUT_DEBUG_LOG(
-                "GenerateUltraQUTSections. debug_frame_info size_:%llu, offset:%llu, section_bias:%llu, instructions:%u",
-                debug_frame_info.size_, debug_frame_info.offset_, debug_frame_info.section_bias_,
-                (uint32_t) debug_frame_instructions->size());
+                "GenerateUltraQUTSections. debug_frame_info size_:%llu, offset:%llu, section_bias:%llu, instructions:%llu",
+                (ullint_t) debug_frame_info.size_, (ullint_t) debug_frame_info.offset_,
+                (ullint_t) debug_frame_info.section_bias_,
+                (ullint_t) debug_frame_instructions->size());
 
         QUT_DEBUG_LOG(
                 "QuickenInterface::GenerateUltraQUTSections eh_frame_hdr_info size_:%llu, offset:%llu, section_bias:%llu",
-                eh_frame_hdr_info.size_, eh_frame_hdr_info.offset_,
-                eh_frame_hdr_info.section_bias_);
+                (ullint_t) eh_frame_hdr_info.size_, (ullint_t) eh_frame_hdr_info.offset_,
+                (ullint_t) eh_frame_hdr_info.section_bias_);
         QUT_DEBUG_LOG(
                 "QuickenInterface::GenerateUltraQUTSections eh_frame_info size_:%llu, offset:%llu, section_bias:%llu",
-                eh_frame_info.size_, eh_frame_info.offset_, eh_frame_info.section_bias_);
+                (ullint_t) eh_frame_info.size_, (ullint_t) eh_frame_info.offset_,
+                (ullint_t) eh_frame_info.section_bias_);
         DecodeEhFrameEntriesInstr(eh_frame_hdr_info, eh_frame_info, eh_frame_instructions.get(),
                                   regs_total);
-        QUT_DEBUG_LOG("QuickenInterface::GenerateUltraQUTSections eh_frame_instructions %u",
-                      (uint32_t) eh_frame_instructions->size());
+        QUT_DEBUG_LOG("QuickenInterface::GenerateUltraQUTSections eh_frame_instructions %llu",
+                      (ullint_t) eh_frame_instructions->size());
 
         QUT_DEBUG_LOG(
                 "QuickenInterface::GenerateUltraQUTSections gnu_debug_frame_info size_:%llu, offset:%llu, section_bias:%llu",
-                gnu_debug_frame_info.size_, gnu_debug_frame_info.offset_,
-                gnu_debug_frame_info.section_bias_);
+                (ullint_t) gnu_debug_frame_info.size_, (ullint_t) gnu_debug_frame_info.offset_,
+                (ullint_t) gnu_debug_frame_info.section_bias_);
         DecodeDebugFrameEntriesInstr(gnu_debug_frame_info, gnu_debug_frame_instructions.get(),
-                                     regs_total);
-        QUT_DEBUG_LOG("QuickenInterface::GenerateUltraQUTSections gnu_debug_frame_instructions %u",
-                      (uint32_t) gnu_debug_frame_instructions->size());
+                                     regs_total, true);
+        QUT_DEBUG_LOG(
+                "QuickenInterface::GenerateUltraQUTSections gnu_debug_frame_instructions %llu",
+                (ullint_t) gnu_debug_frame_instructions->size());
 
         QUT_DEBUG_LOG(
                 "QuickenInterface::GenerateUltraQUTSections gnu_eh_frame_hdr_info size_:%llu, offset:%llu, section_bias:%llu",
-                gnu_eh_frame_hdr_info.size_, gnu_eh_frame_hdr_info.offset_,
-                gnu_eh_frame_hdr_info.section_bias_);
+                (ullint_t) gnu_eh_frame_hdr_info.size_, (ullint_t) gnu_eh_frame_hdr_info.offset_,
+                (ullint_t) gnu_eh_frame_hdr_info.section_bias_);
         DecodeEhFrameEntriesInstr(gnu_eh_frame_hdr_info, gnu_eh_frame_info,
-                                  gnu_eh_frame_instructions.get(), regs_total);
-        QUT_DEBUG_LOG("QuickenInterface::GenerateUltraQUTSections gnu_eh_frame_instructions %u",
-                      (uint32_t) gnu_eh_frame_instructions->size());
+                                  gnu_eh_frame_instructions.get(), regs_total, true);
+        QUT_DEBUG_LOG("QuickenInterface::GenerateUltraQUTSections gnu_eh_frame_instructions %llu",
+                      (ullint_t) gnu_eh_frame_instructions->size());
 
         shared_ptr<QutInstructionsOfEntries> merged;
         merged = MergeFrameEntries(debug_frame_instructions, eh_frame_instructions);
@@ -512,22 +523,25 @@ namespace wechat_backtrace {
         if (arm_exidx_info.size_ != 0) {
             auto exidx_instructions = make_shared<QutInstructionsOfEntries>();
             DecodeExidxEntriesInstr(arm_exidx_info, exidx_instructions.get());
-            QUT_DEBUG_LOG("QuickenInterface::GenerateUltraQUTSections exidx_instructions %u",
-                          (uint32_t) exidx_instructions->size());
+            QUT_DEBUG_LOG("QuickenInterface::GenerateUltraQUTSections exidx_instructions %llu",
+                          (ullint_t) exidx_instructions->size());
             merged = MergeFrameEntries(merged, exidx_instructions);
         }
 
-        QUT_DEBUG_LOG("QuickenInterface::GenerateUltraQUTSections merged %u",
-                      (uint32_t) merged->size());
+        QUT_DEBUG_LOG("QuickenInterface::GenerateUltraQUTSections merged %llu",
+                      (ullint_t) merged->size());
         PackEntriesToFutSections(merged.get(), fut_sections);
 
         return true;
     }
 
     template<typename AddressType>
-    bool QuickenTableGenerator<AddressType>::GetPrel31Addr(uint32_t offset, uint32_t *addr) {
+    bool QuickenTableGenerator<AddressType>::GetPrel31Addr(
+            Memory *memory,
+            uint32_t offset,
+            uint32_t *addr) {
         uint32_t data;
-        if (!memory_->Read32(offset, &data)) {
+        if (!memory->Read32(offset, &data)) {
             return false;
         }
 

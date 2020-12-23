@@ -62,6 +62,7 @@ namespace wechat_backtrace {
 
                 elf_load_bias_ = quicken_interface_->GetLoadBias();
                 elf_offset = quicken_interface_->GetElfOffset();
+                elf_start_offset = quicken_interface_->GetElfStartOffset();
 
                 return quicken_interface_.get();
             }
@@ -86,9 +87,10 @@ namespace wechat_backtrace {
             string build_id_hex = elf->GetBuildID();
             elf_load_bias_ = elf->GetLoadBias();
 
-            QUT_LOG("GetQuickenInterface elf_offset %llu, offset %llu, elf_load_bias_ %llu, build_id_hex %s",
+            QUT_LOG("GetQuickenInterface elf_offset %llu, offset %llu, elf_load_bias_ %llu"
+                    ", soname %s, build_id %s.",
                     (ullint_t) elf_offset, (ullint_t) offset, (ullint_t) elf_load_bias_,
-                    soname.c_str());
+                    soname.c_str(), ToBuildId(build_id_hex).c_str());
 
             quicken_interface_.reset(CreateQuickenInterfaceFromElf(
                     expected_arch,
@@ -96,6 +98,7 @@ namespace wechat_backtrace {
                     soname,
                     elf_load_bias_,
                     elf_offset,
+                    elf_start_offset,
                     build_id_hex
             ));
 
@@ -131,10 +134,11 @@ namespace wechat_backtrace {
             const string &so_name,
             const uint64_t load_bias_,
             const uint64_t elf_offset,
+            const uint64_t elf_start_offset,
             const string &build_id_hex
     ) {
         std::unique_ptr<QuickenInterface> quicken_interface_ =
-                make_unique<QuickenInterface>(load_bias_, elf_offset, expected_arch);
+                make_unique<QuickenInterface>(load_bias_, elf_offset, elf_start_offset, expected_arch);
         quicken_interface_->SetSoInfo(so_path, so_name, build_id_hex);
 
         return quicken_interface_.release();
@@ -150,6 +154,7 @@ namespace wechat_backtrace {
                 sopath,
                 soname,
                 elf->GetLoadBias(),
+                0,
                 0,
                 build_id_hex
         );
@@ -371,7 +376,8 @@ namespace wechat_backtrace {
     }
 
     Memory *
-    QuickenMapInfo::CreateQuickenMemoryFromFile(const string &so_path, const uint64_t elf_start_offset) {
+    QuickenMapInfo::CreateQuickenMemoryFromFile(const string &so_path,
+                                                const uint64_t elf_start_offset) {
 
         auto memory = make_unique<QuickenMemoryFile>();
         if (memory->Init(string(so_path), elf_start_offset)) {

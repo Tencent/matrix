@@ -27,9 +27,14 @@ namespace wechat_backtrace {
         return elf_offset_;
     }
 
+    uint64_t QuickenInterface::GetElfStartOffset() {
+        return elf_start_offset_;
+    }
+
     template<typename AddressType>
     bool QuickenInterface::GenerateQuickenTable(
             unwindstack::Memory *memory,
+            unwindstack::Memory *gnu_debug_data_memory,
             unwindstack::Memory *process_memory,
             QutSectionsPtr qut_sections) {
 
@@ -38,7 +43,7 @@ namespace wechat_backtrace {
         CHECK(memory != nullptr);
         CHECK(process_memory != nullptr);
 
-        QuickenTableGenerator<AddressType> generator(memory, process_memory);
+        QuickenTableGenerator<AddressType> generator(memory, gnu_debug_data_memory, process_memory);
 
         bool ret = generator.GenerateUltraQUTSections(eh_frame_hdr_info_, eh_frame_info_,
                                                       debug_frame_info_, gnu_eh_frame_hdr_info_,
@@ -57,7 +62,7 @@ namespace wechat_backtrace {
 
         QutSectionsPtr qut_sections_tmp = nullptr;
         QutFileError error = QuickenTableManager::getInstance().RequestQutSections(
-                soname_, sopath_, hash_, build_id_, build_id_hex_, qut_sections_tmp);
+                soname_, sopath_, hash_, build_id_, elf_start_offset_, qut_sections_tmp);
 
         QUT_DEBUG_LOG("Try init quicken table %s build_id_ %s result %d", sopath_.c_str(),
                       build_id_.c_str(), error);
@@ -218,7 +223,9 @@ namespace wechat_backtrace {
 
     template bool
     QuickenInterface::GenerateQuickenTable<addr_t>(
-            unwindstack::Memory *memory, unwindstack::Memory *process_memory,
+            unwindstack::Memory *memory,
+            unwindstack::Memory *gnu_debug_data_memory,
+            unwindstack::Memory *process_memory,
             QutSectionsPtr qut_sections);
 
 }  // namespace unwindstack

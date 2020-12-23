@@ -27,8 +27,12 @@ namespace wechat_backtrace {
     class QuickenTableGenerator {
 
     public:
-        QuickenTableGenerator(unwindstack::Memory *memory, unwindstack::Memory *process_memory)
-                : memory_(memory), process_memory_(process_memory) {}
+        QuickenTableGenerator(unwindstack::Memory *memory,
+                              unwindstack::Memory *gnu_debug_data_memory,
+                              unwindstack::Memory *process_memory)
+                : memory_(memory),
+                  gnu_debug_data_memory_(gnu_debug_data_memory),
+                  process_memory_(process_memory) {}
 
         ~QuickenTableGenerator() {};
 
@@ -46,11 +50,11 @@ namespace wechat_backtrace {
     protected:
         void DecodeDebugFrameEntriesInstr(FrameInfo debug_frame_info,
                                           QutInstructionsOfEntries *entries_instructions,
-                                          uint16_t regs_total);
+                                          uint16_t regs_total, bool gnu_debug_data = false);
 
         void DecodeEhFrameEntriesInstr(FrameInfo eh_frame_hdr_info, FrameInfo eh_frame_info,
                                        QutInstructionsOfEntries *entries_instructions,
-                                       uint16_t regs_total);
+                                       uint16_t regs_total, bool gnu_debug_data = false);
 
         void DecodeExidxEntriesInstr(FrameInfo arm_exidx_info,
                                      QutInstructionsOfEntries *entries_instructions);
@@ -62,9 +66,10 @@ namespace wechat_backtrace {
         bool PackEntriesToFutSections(
                 QutInstructionsOfEntries *entries, QutSections *fut_sections);
 
-        bool GetPrel31Addr(uint32_t offset, uint32_t *addr);
+        bool GetPrel31Addr(unwindstack::Memory *memory_, uint32_t offset, uint32_t *addr);
 
         unwindstack::Memory *memory_;
+        unwindstack::Memory *gnu_debug_data_memory_;
         unwindstack::Memory *process_memory_;
     };
 
