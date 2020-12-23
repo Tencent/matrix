@@ -26,7 +26,7 @@
 #include "Utils.h"
 #include "unwindstack/Unwinder.h"
 #include "ThreadPool.h"
-#include "Predefined.h"
+#include "BacktraceDefine.h"
 #include "MemoryHookMetas.h"
 #include "MemoryHook.h"
 

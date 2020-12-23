@@ -5,7 +5,7 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <unistd.h>
-#include "Predefined.h"
+#include "BacktraceDefine.h"
 #include "MemoryHookFunctions.h"
 #include "MemoryHook.h"
 

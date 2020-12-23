@@ -17,7 +17,7 @@
 #include <sys/epoll.h>
 #include <linux/eventpoll.h>
 #include "Log.h"
-#include "Predefined.h"
+#include "BacktraceDefine.h"
 
 #define TAG "ThreadPool"
 
