@@ -22,6 +22,9 @@ import java.util.Map;
 @RestrictTo(RestrictTo.Scope.LIBRARY)
 public final class TimeBreaker {
 
+    /**
+     * !!Thread Unsafe!! operations
+     */
     public static void gcList(List<?> list) {
         if (list == null) {
             return;

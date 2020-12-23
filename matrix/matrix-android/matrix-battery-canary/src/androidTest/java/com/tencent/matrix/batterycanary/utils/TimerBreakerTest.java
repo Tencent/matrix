@@ -16,19 +16,9 @@
 
 package com.tencent.matrix.batterycanary.utils;
 
-import android.app.Application;
 import android.content.Context;
 import android.support.test.InstrumentationRegistry;
 import android.support.test.runner.AndroidJUnit4;
-
-import com.tencent.matrix.Matrix;
-import com.tencent.matrix.batterycanary.monitor.BatteryMonitorConfig;
-import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
-import com.tencent.matrix.batterycanary.monitor.feature.AlarmMonitorFeature;
-import com.tencent.matrix.batterycanary.monitor.feature.AppStatMonitorFeature;
-import com.tencent.matrix.batterycanary.monitor.feature.DeviceStatMonitorFeature;
-import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature;
-import com.tencent.matrix.batterycanary.monitor.feature.WakeLockMonitorFeature;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -42,7 +32,10 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
-import static com.tencent.matrix.batterycanary.utils.TimeBreaker.*;
+import static com.tencent.matrix.batterycanary.utils.TimeBreaker.Stamp;
+import static com.tencent.matrix.batterycanary.utils.TimeBreaker.TimePortions;
+import static com.tencent.matrix.batterycanary.utils.TimeBreaker.configurePortions;
+import static com.tencent.matrix.batterycanary.utils.TimeBreaker.gcList;
 
 
 @RunWith(AndroidJUnit4.class)
@@ -207,6 +200,42 @@ public class TimerBreakerTest {
             gcList(list);
             Assert.assertEquals(item - (item / 2) + (item % 2 == 0 ? 1 : 0), list.size());
             Assert.assertEquals("0", list.get(list.size() - 1).key);
+        }
+    }
+
+    @Test
+    public void testConcurrentBenchmark() throws InterruptedException {
+        final List<Stamp> stampList = new ArrayList<>();
+        List<Thread> threadList = new ArrayList<>();
+        for (int i = 0; i < 100; i++) {
+            final int finalI = i;
+            Thread thread = new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    synchronized (TimerBreakerTest.class) {
+                        stampList.add(0, new Stamp(String.valueOf(finalI)));
+                    }
+                }
+            });
+            thread.start();
+            threadList.add(thread);
+        }
+
+        for (int i = 0; i < 100; i++) {
+            Thread thread = new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    synchronized (TimerBreakerTest.class) {
+                        TimeBreaker.gcList(stampList);
+                    }
+                }
+            });
+            thread.start();
+            threadList.add(thread);
+        }
+
+        for (Thread item : threadList) {
+            item.join();
         }
     }
 }
