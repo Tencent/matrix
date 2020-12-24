@@ -18,7 +18,7 @@ import java.util.Map;
 import java.util.Set;
 
 @SuppressWarnings("NotNullFieldNotInitialized")
-public class LooperTaskMonitorFeature extends AbsMonitorFeature {
+public final class LooperTaskMonitorFeature extends AbsMonitorFeature {
     private static final String TAG = "Matrix.battery.LooperTaskMonitorFeature";
 
     public interface LooperTaskListener {

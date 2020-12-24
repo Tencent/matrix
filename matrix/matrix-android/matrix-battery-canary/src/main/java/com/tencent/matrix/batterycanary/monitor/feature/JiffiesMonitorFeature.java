@@ -22,7 +22,7 @@ import java.util.Comparator;
 import java.util.List;
 
 @SuppressWarnings("NotNullFieldNotInitialized")
-public class JiffiesMonitorFeature extends AbsMonitorFeature {
+public final class JiffiesMonitorFeature extends AbsMonitorFeature {
     private static final String TAG = "Matrix.battery.JiffiesMonitorFeature";
 
     public interface JiffiesListener {

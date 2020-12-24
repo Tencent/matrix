@@ -22,7 +22,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 @SuppressWarnings("NotNullFieldNotInitialized")
-public class WakeLockMonitorFeature extends AbsMonitorFeature implements PowerManagerServiceHooker.IListener {
+public final class WakeLockMonitorFeature extends AbsMonitorFeature implements PowerManagerServiceHooker.IListener {
     private static final String TAG = "Matrix.battery.WakeLockMonitorFeature";
 
     public interface WakeLockListener {
