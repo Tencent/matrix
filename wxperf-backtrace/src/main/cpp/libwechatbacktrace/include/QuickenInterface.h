@@ -123,7 +123,7 @@ namespace wechat_backtrace {
         FrameInfo gnu_eh_frame_info_ = {0};
         FrameInfo gnu_debug_frame_info_ = {0};
 
-        volatile QutSections *qut_sections_ = nullptr;
+        QutSections *qut_sections_ = nullptr;
 
         std::mutex lock_;
     };
