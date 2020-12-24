@@ -1,5 +1,6 @@
 package com.tencent.matrix.batterycanary.monitor;
 
+import android.app.ActivityManager;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 
@@ -33,6 +34,7 @@ public class BatteryMonitorConfig {
     public long foregroundLoopCheckTime = DEF_FOREGROUND_SCHEDULE_TIME;
     public long backgroundLoopCheckTime = DEF_BACKGROUND_SCHEDULE_TIME;
     public int overHeatCount = 1024;
+    public int foregroundServiceLeakLimit = ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND;
     public boolean isForegroundModeEnabled = true;
     public boolean isBuiltinForegroundNotifyEnabled = true;
     public boolean isStatAsSample = BuildConfig.DEBUG;
@@ -106,6 +108,11 @@ public class BatteryMonitorConfig {
 
         public Builder backgroundLoopCheckTime(long time) {
             config.backgroundLoopCheckTime = time;
+            return this;
+        }
+
+        public Builder foregroundServiceLeakLimit(int importanceLimit) {
+            config.foregroundServiceLeakLimit = importanceLimit;
             return this;
         }
 

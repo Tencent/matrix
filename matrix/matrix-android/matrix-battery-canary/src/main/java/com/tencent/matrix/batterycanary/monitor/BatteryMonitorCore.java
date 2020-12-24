@@ -1,5 +1,6 @@
 package com.tencent.matrix.batterycanary.monitor;
 
+import android.content.ComponentName;
 import android.content.Context;
 import android.os.Handler;
 import android.os.Message;
@@ -10,6 +11,7 @@ import android.support.annotation.VisibleForTesting;
 import com.tencent.matrix.AppActiveMatrixDelegate;
 import com.tencent.matrix.Matrix;
 import com.tencent.matrix.batterycanary.monitor.feature.AlarmMonitorFeature;
+import com.tencent.matrix.batterycanary.monitor.feature.AppStatMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.LooperTaskMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature;
@@ -22,8 +24,14 @@ import com.tencent.matrix.util.MatrixLog;
 import java.util.List;
 import java.util.concurrent.Callable;
 
-public class BatteryMonitorCore implements Handler.Callback, LooperTaskMonitorFeature.LooperTaskListener,
-        WakeLockMonitorFeature.WakeLockListener, AlarmMonitorFeature.AlarmListener, JiffiesMonitorFeature.JiffiesListener {
+public class BatteryMonitorCore implements
+        LooperTaskMonitorFeature.LooperTaskListener,
+        WakeLockMonitorFeature.WakeLockListener,
+        AlarmMonitorFeature.AlarmListener,
+        JiffiesMonitorFeature.JiffiesListener,
+        AppStatMonitorFeature.AppStatListener,
+        Handler.Callback {
+
     private static final String TAG = "Matrix.battery.BatteryMonitorCore";
 
     public interface JiffiesListener {
@@ -290,7 +298,12 @@ public class BatteryMonitorCore implements Handler.Callback, LooperTaskMonitorFe
 
     @Override
     public void onParseError(int pid, int tid) {
-        MatrixLog.d(TAG, "#onParseError, tid " + tid);
+        MatrixLog.d(TAG, "#onParseError, tid = " + tid);
         getConfig().callback.onParseError(pid, tid);
+    }
+
+    @Override
+    public void onForegroundServiceLeak(int appImportance, int globalAppImportance, ComponentName componentName, boolean isMyself) {
+        getConfig().callback.onForegroundServiceLeak(appImportance, globalAppImportance, componentName, isMyself);
     }
 }

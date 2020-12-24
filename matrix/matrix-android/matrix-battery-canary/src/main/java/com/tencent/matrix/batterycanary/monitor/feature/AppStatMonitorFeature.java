@@ -1,8 +1,14 @@
 package com.tencent.matrix.batterycanary.monitor.feature;
 
+import android.app.ActivityManager;
+import android.content.ComponentName;
+import android.content.Context;
 import android.support.annotation.NonNull;
 import android.support.annotation.VisibleForTesting;
+import android.support.annotation.WorkerThread;
+import android.text.TextUtils;
 
+import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
 import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
 import com.tencent.matrix.batterycanary.utils.TimeBreaker;
 import com.tencent.matrix.util.MatrixLog;
@@ -17,6 +23,20 @@ import java.util.List;
  */
 public final class AppStatMonitorFeature extends AbsMonitorFeature {
     private static final String TAG = "Matrix.battery.AppStatMonitorFeature";
+
+    public interface AppStatListener {
+        void onForegroundServiceLeak(int appImportance, int globalAppImportance, ComponentName componentName, boolean isMyself);
+    }
+
+    /**
+     * Less important than {@link ActivityManager.RunningAppProcessInfo.IMPORTANCE_GONE}
+     */
+    @SuppressWarnings("JavadocReference")
+    public static final int IMPORTANCE_LEAST = 1024;
+
+    int mAppImportance = IMPORTANCE_LEAST;
+    int mGlobalAppImportance = IMPORTANCE_LEAST;
+    int mForegroundServiceImportanceLimit = ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND;
 
     @NonNull List<AppStatStamp> mStampList = Collections.emptyList();
     @NonNull List<TimeBreaker.Stamp> mSceneStampList = Collections.emptyList();
@@ -35,6 +55,12 @@ public final class AppStatMonitorFeature extends AbsMonitorFeature {
             }
         }
     };
+
+    @Override
+    public void configure(BatteryMonitorCore monitor) {
+        super.configure(monitor);
+        mForegroundServiceImportanceLimit = Math.max(monitor.getConfig().foregroundServiceLeakLimit, ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND);
+    }
 
     @Override
     public void onTurnOn() {
@@ -68,6 +94,45 @@ public final class AppStatMonitorFeature extends AbsMonitorFeature {
                 checkOverHeat();
             }
         }
+
+        MatrixLog.i(TAG, "updateAppImportance when app " + (isForeground ? "foreground" : "background"));
+        updateAppImportance();
+    }
+
+    @WorkerThread
+    @Override
+    public void onBackgroundCheck(long duringMillis) {
+        super.onBackgroundCheck(duringMillis);
+        if (mGlobalAppImportance > mForegroundServiceImportanceLimit || mAppImportance > mForegroundServiceImportanceLimit) {
+            Context context = mCore.getContext();
+            ActivityManager am = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
+            if (am == null) {
+                return;
+            }
+
+            for (ActivityManager.RunningServiceInfo item : am.getRunningServices(Integer.MAX_VALUE)) {
+                if (!TextUtils.isEmpty(item.process) && item.process.startsWith(context.getPackageName())) {
+                    if (item.foreground) {
+                        // foreground service is running when app importance is low
+                        if (mGlobalAppImportance > mForegroundServiceImportanceLimit) {
+                            // global
+                            MatrixLog.w(TAG, "foreground service detected with low global importance: "
+                                    + mAppImportance + ", " + mGlobalAppImportance + ", " + item.service);
+                            mCore.onForegroundServiceLeak(mAppImportance, mGlobalAppImportance, item.service, false);
+                        }
+
+                        if (mAppImportance > mForegroundServiceImportanceLimit) {
+                            if (item.process.equals(context.getPackageName())) {
+                                // myself
+                                MatrixLog.w(TAG, "foreground service detected with low app importance: "
+                                        + mAppImportance + ", " + mGlobalAppImportance + ", " + item.service);
+                                mCore.onForegroundServiceLeak(mAppImportance, mGlobalAppImportance, item.service, true);
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     public void onStatScene(@NonNull String scene) {
@@ -77,11 +142,54 @@ public final class AppStatMonitorFeature extends AbsMonitorFeature {
                 checkOverHeat();
             }
         }
+
+        MatrixLog.i(TAG, "updateAppImportance when launch: " + scene);
+        updateAppImportance();
     }
 
     private void checkOverHeat() {
        mCore.getHandler().removeCallbacks(coolingTask);
        mCore.getHandler().postDelayed(coolingTask, 1000L);
+    }
+
+    private void updateAppImportance() {
+        if (mAppImportance <= mForegroundServiceImportanceLimit && mGlobalAppImportance <= mForegroundServiceImportanceLimit) {
+            return;
+        }
+
+        mCore.getHandler().post(new Runnable() {
+            @SuppressWarnings("SpellCheckingInspection")
+            @Override
+            public void run() {
+                Context context = mCore.getContext();
+                String mainProc = context.getPackageName();
+                if (mainProc.contains(":")) {
+                    mainProc = mainProc.substring(0, mainProc.indexOf(":"));
+                }
+
+                ActivityManager am = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
+                if (am == null) {
+                    return;
+                }
+
+                for (ActivityManager.RunningAppProcessInfo item : am.getRunningAppProcesses()) {
+                    if (item.processName.startsWith(mainProc)) {
+                        if (mGlobalAppImportance > item.importance) {
+                            MatrixLog.i(TAG, "update global importance: " + mGlobalAppImportance + " > " + item.importance
+                                    + ", reason = " + item.importanceReasonComponent);
+                            mGlobalAppImportance = item.importance;
+                        }
+                        if (item.processName.equals(context.getPackageName())) {
+                            if (mAppImportance > item.importance) {
+                                MatrixLog.i(TAG, "update app importance: " + mAppImportance + " > " + item.importance
+                                        + ", reason = " + item.importanceReasonComponent);
+                                mAppImportance = item.importance;
+                            }
+                        }
+                    }
+                }
+            }
+        });
     }
 
     @Override
