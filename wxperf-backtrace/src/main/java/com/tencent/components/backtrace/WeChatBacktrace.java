@@ -727,14 +727,22 @@ public class WeChatBacktrace implements Handler.Callback {
             return this;
         }
 
-        public void setBacktraceMode(Mode mode) {
+        public Configuration setBacktraceMode(Mode mode) {
+            if (mCommitted) {
+                return this;
+            }
             if (mode != null) {
                 mBacktraceMode = mode;
             }
+            return this;
         }
 
-        public void setLibraryLoader(LibraryLoader loader) {
+        public Configuration setLibraryLoader(LibraryLoader loader) {
+            if (mCommitted) {
+                return this;
+            }
             mLibraryLoader = loader;
+            return this;
         }
 
         public Configuration directoryToWarmUp(String directory) {
