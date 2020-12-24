@@ -109,6 +109,7 @@ namespace wechat_backtrace {
                                                               "requestQutGenerate", "()V");
         if (!JNIMethod_RequestQutGenerate) {
             LOGE(WECHAT_BACKTRACE_TAG, "requestQutGenerate() method not found.");
+            return -2;
         }
         return ret;
     }
@@ -152,9 +153,9 @@ JNIEXPORT jint JNI_OnLoad(JavaVM *vm, void *reserved) {
 }
 
 JNIEXPORT void JNI_OnUnload(JavaVM *vm, void *reserved) {
-    // no implementation
     (void) vm;
     (void) reserved;
+    // no implementation
 }
 
 QUT_EXTERN_C_BLOCK_END
