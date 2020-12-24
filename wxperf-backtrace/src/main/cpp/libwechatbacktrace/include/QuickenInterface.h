@@ -19,13 +19,13 @@ namespace wechat_backtrace {
     class QuickenInterface {
 
     public:
-        QuickenInterface(/* unwindstack::Memory *memory,*/ uint64_t load_bias,
-                                                           uint64_t elf_offset,
-                                                           uint64_t elf_start_offset,
-                                                           unwindstack::ArchEnum arch)
-                : /* memory_(memory), */ load_bias_(load_bias), elf_offset_(elf_offset),
-                                         elf_start_offset_(elf_start_offset),
-                                         arch_(arch) {}
+        QuickenInterface(uint64_t load_bias,
+                         uint64_t elf_offset,
+                         uint64_t elf_start_offset,
+                         unwindstack::ArchEnum arch)
+                : load_bias_(load_bias), elf_offset_(elf_offset),
+                  elf_start_offset_(elf_start_offset),
+                  arch_(arch) {}
 
         bool FindEntry(uptr pc, size_t *entry_offset);
 
@@ -102,14 +102,11 @@ namespace wechat_backtrace {
 
     protected:
 
-        std::mutex lock_;
-
         std::string soname_;
         std::string sopath_;
         std::string build_id_;
         std::string hash_;
 
-//        unwindstack::Memory *memory_;
         uint64_t load_bias_ = 0;
         uint64_t elf_offset_ = 0;
         uint64_t elf_start_offset_ = 0;
@@ -126,7 +123,9 @@ namespace wechat_backtrace {
         FrameInfo gnu_eh_frame_info_ = {0};
         FrameInfo gnu_debug_frame_info_ = {0};
 
-        QutSections *qut_sections_ = nullptr;
+        volatile QutSections *qut_sections_ = nullptr;
+
+        std::mutex lock_;
     };
 
 }  // namespace wechat_backtrace

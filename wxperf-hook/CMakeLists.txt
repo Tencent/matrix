@@ -87,5 +87,5 @@ target_link_libraries( # Specifies the target library.
 TARGET_COMPILE_OPTIONS(
         ${TARGET}
         PRIVATE $<$<COMPILE_LANGUAGE:C>:-std=c99>
-        PRIVATE $<$<COMPILE_LANGUAGE:CXX>:-std=c++17 -fno-exceptions -fno-rtti>
+        PRIVATE $<$<COMPILE_LANGUAGE:CXX>:-std=c++17 -fno-exceptions -fno-rtti -fstack-protector>
 )

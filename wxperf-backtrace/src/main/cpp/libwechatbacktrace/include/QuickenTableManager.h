@@ -33,6 +33,7 @@ namespace wechat_backtrace {
         BuildIdNotMatch = 10,
         FileLengthNotMatch = 11,
         InsertNewQutFailed = 12,
+        TryInvokeJavaRequestQutGenerate = 13,
     };
 
     class QuickenTableManager {

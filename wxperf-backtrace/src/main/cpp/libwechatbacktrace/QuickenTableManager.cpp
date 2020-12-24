@@ -222,7 +222,7 @@ namespace wechat_backtrace {
                 return NotWarmedUp;
             }
 
-            InvokeJava_RequestQutGenerate();
+            return TryInvokeJavaRequestQutGenerate;
         }
 
         return ret;

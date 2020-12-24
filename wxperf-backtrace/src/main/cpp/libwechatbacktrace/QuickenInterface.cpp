@@ -6,6 +6,7 @@
 #include <MinimalRegs.h>
 #include <QuickenTableManager.h>
 #include <deps/android-base/include/android-base/logging.h>
+#include <QuickenJNI.h>
 #include "Log.h"
 #include "QuickenInterface.h"
 #include "QuickenMaps.h"
@@ -54,28 +55,34 @@ namespace wechat_backtrace {
 
     bool QuickenInterface::TryInitQuickenTable() {
 
-        lock_guard<mutex> lock(lock_);
+        QutFileError ret;
 
-        if (qut_sections_) {
-            return true;
+        {
+            lock_guard<mutex> lock(lock_);
+
+            if (qut_sections_) {
+                return true;
+            }
+
+            QutSectionsPtr qut_sections_tmp = nullptr;
+            ret = QuickenTableManager::getInstance().RequestQutSections(
+                    soname_, sopath_, hash_, build_id_, elf_start_offset_, qut_sections_tmp);
+
+            QUT_DEBUG_LOG("Try init quicken table %s build_id_ %s result %d", sopath_.c_str(),
+                          build_id_.c_str(), ret);
+            if (ret == NoneError) {
+                qut_sections_ = qut_sections_tmp;
+
+                QUT_DEBUG_LOG("QuickenInterface::TryInitQuickenTable");
+
+                if (qut_sections_) {
+                    return true;
+                }
+            }
         }
 
-        QutSectionsPtr qut_sections_tmp = nullptr;
-        QutFileError error = QuickenTableManager::getInstance().RequestQutSections(
-                soname_, sopath_, hash_, build_id_, elf_start_offset_, qut_sections_tmp);
-
-        QUT_DEBUG_LOG("Try init quicken table %s build_id_ %s result %d", sopath_.c_str(),
-                      build_id_.c_str(), error);
-        if (error != NoneError) {
-            return false;
-        }
-
-        qut_sections_ = qut_sections_tmp;
-
-        QUT_DEBUG_LOG("QuickenInterface::TryInitQuickenTable");
-
-        if (qut_sections_) {
-            return true;
+        if (ret == TryInvokeJavaRequestQutGenerate) {
+            InvokeJava_RequestQutGenerate();
         }
 
         return false;
