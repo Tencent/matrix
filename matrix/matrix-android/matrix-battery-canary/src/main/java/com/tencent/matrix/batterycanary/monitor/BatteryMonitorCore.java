@@ -24,7 +24,7 @@ import java.util.concurrent.Callable;
 
 public class BatteryMonitorCore implements Handler.Callback, LooperTaskMonitorFeature.LooperTaskListener,
         WakeLockMonitorFeature.WakeLockListener, AlarmMonitorFeature.AlarmListener, JiffiesMonitorFeature.JiffiesListener {
-    private static final String TAG = "Matrix.battery.watchdog";
+    private static final String TAG = "Matrix.battery.BatteryMonitorCore";
 
     public interface JiffiesListener {
         void onTraceBegin();

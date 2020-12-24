@@ -13,7 +13,6 @@ import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Entry.BeanEntry;
 import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
 import com.tencent.matrix.batterycanary.utils.PowerManagerServiceHooker;
-import com.tencent.matrix.util.MatrixHandlerThread;
 import com.tencent.matrix.util.MatrixLog;
 
 import java.util.ArrayList;
@@ -23,51 +22,41 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 @SuppressWarnings("NotNullFieldNotInitialized")
-public class WakeLockMonitorFeature implements MonitorFeature, PowerManagerServiceHooker.IListener {
+public class WakeLockMonitorFeature extends AbsMonitorFeature implements PowerManagerServiceHooker.IListener {
     private static final String TAG = "Matrix.battery.WakeLockMonitorFeature";
 
     public interface WakeLockListener {
         void onWakeLockTimeout(int warningCount, WakeLockTrace.WakeLockRecord record);
     }
 
-    @NonNull
-    private BatteryMonitorCore monitor;
-    @NonNull
-    @VisibleForTesting
-    Handler handler;
     @VisibleForTesting
     long mOverTimeMillis;
     final Map<IBinder, WakeLockTrace> mWorkingWakeLocks = new ConcurrentHashMap<>(2);
     final List<WakeLockTrace.WakeLockRecord> mFinishedWakeLockRecords = new ArrayList<>();
 
     private WakeLockListener getListener() {
-        return monitor;
+        return mCore;
     }
 
     @Override
     public void configure(BatteryMonitorCore monitor) {
-        MatrixLog.i(TAG, "#configure monitor feature");
-        this.monitor = monitor;
+        super.configure(monitor);
         mOverTimeMillis = monitor.getConfig().wakelockTimeout;
-        handler = new Handler(MatrixHandlerThread.getDefaultHandlerThread().getLooper());
     }
 
     @Override
     public void onTurnOn() {
-        MatrixLog.i(TAG, "#onTurnOn");
+        super.onTurnOn();
         PowerManagerServiceHooker.addListener(this);
     }
 
     @Override
     public void onTurnOff() {
-        MatrixLog.i(TAG, "#onTurnOff");
+        super.onTurnOff();
         PowerManagerServiceHooker.removeListener(this);
-        handler.removeCallbacksAndMessages(null);
+        mCore.getHandler().removeCallbacksAndMessages(null);
         mWorkingWakeLocks.clear();
     }
-
-    @Override
-    public void onForeground(boolean isForeground) {}
 
     @Override
     public int weight() {
@@ -83,7 +72,7 @@ public class WakeLockMonitorFeature implements MonitorFeature, PowerManagerServi
         // remove duplicated old trace
         WakeLockTrace existingTrace = mWorkingWakeLocks.get(token);
         if (existingTrace != null) {
-            existingTrace.finish(handler);
+            existingTrace.finish(mCore.getHandler());
         }
 
         WakeLockTrace wakeLockTrace = new WakeLockTrace(token, tag, flags, packageName, stack);
@@ -93,7 +82,7 @@ public class WakeLockMonitorFeature implements MonitorFeature, PowerManagerServi
                 getListener().onWakeLockTimeout(warningCount, record);
             }
         });
-        wakeLockTrace.start(handler, mOverTimeMillis);
+        wakeLockTrace.start(mCore.getHandler(), mOverTimeMillis);
         mWorkingWakeLocks.put(token, wakeLockTrace);
 
         // dump tracing info
@@ -114,7 +103,7 @@ public class WakeLockMonitorFeature implements MonitorFeature, PowerManagerServi
             }
         }
         if (wakeLockTrace != null) {
-            wakeLockTrace.finish(handler);
+            wakeLockTrace.finish(mCore.getHandler());
             synchronized (mFinishedWakeLockRecords) {
                 mFinishedWakeLockRecords.add(wakeLockTrace.record);
             }
@@ -131,12 +120,12 @@ public class WakeLockMonitorFeature implements MonitorFeature, PowerManagerServi
     }
 
     private boolean shouldTracing(String tag) {
-        boolean debuggable = 0 != (monitor.getContext().getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE);
-        return debuggable || !monitor.getConfig().tagWhiteList.contains(tag) || monitor.getConfig().tagBlackList.contains(tag);
+        boolean debuggable = 0 != (mCore.getContext().getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE);
+        return debuggable || !mCore.getConfig().tagWhiteList.contains(tag) || mCore.getConfig().tagBlackList.contains(tag);
     }
 
     private void dumpTracingForTag(String tag) {
-        if (monitor.getConfig().tagBlackList.contains(tag)) {
+        if (mCore.getConfig().tagBlackList.contains(tag)) {
             // dump trace of wakelocks within blacklist
             MatrixLog.w(TAG, "dump wakelocks tracing for tag '" + tag + "':");
             for (WakeLockTrace item : mWorkingWakeLocks.values()) {

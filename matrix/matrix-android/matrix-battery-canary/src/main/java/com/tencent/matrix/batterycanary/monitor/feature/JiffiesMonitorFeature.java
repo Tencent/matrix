@@ -7,7 +7,6 @@ import android.support.annotation.Nullable;
 import android.support.annotation.WorkerThread;
 
 import com.tencent.matrix.Matrix;
-import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Entry.DigitEntry;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Entry.ListEntry;
 import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
@@ -23,7 +22,7 @@ import java.util.Comparator;
 import java.util.List;
 
 @SuppressWarnings("NotNullFieldNotInitialized")
-public class JiffiesMonitorFeature implements MonitorFeature {
+public class JiffiesMonitorFeature extends AbsMonitorFeature {
     private static final String TAG = "Matrix.battery.JiffiesMonitorFeature";
 
     public interface JiffiesListener {
@@ -31,30 +30,7 @@ public class JiffiesMonitorFeature implements MonitorFeature {
     }
 
     private JiffiesListener getListener() {
-        return monitor;
-    }
-
-    @NonNull private BatteryMonitorCore monitor;
-
-    @Override
-    public void configure(BatteryMonitorCore monitor) {
-        MatrixLog.i(TAG, "#configure monitor feature");
-        this.monitor = monitor;
-    }
-
-    @Override
-    public void onTurnOn() {
-        MatrixLog.i(TAG, "#onTurnOn");
-    }
-
-    @Override
-    public void onTurnOff() {
-        MatrixLog.i(TAG, "#onTurnOff");
-    }
-
-    @Override
-    public void onForeground(boolean isForeground) {
-        MatrixLog.i(TAG, "#onAppForeground, bool = " + isForeground);
+        return mCore;
     }
 
     @Override
@@ -64,7 +40,7 @@ public class JiffiesMonitorFeature implements MonitorFeature {
 
     @WorkerThread
     public JiffiesSnapshot currentJiffiesSnapshot() {
-        return JiffiesSnapshot.currentJiffiesSnapshot(ProcessInfo.getProcessInfo(), monitor.getConfig().isStatPidProc, getListener());
+        return JiffiesSnapshot.currentJiffiesSnapshot(ProcessInfo.getProcessInfo(), mCore.getConfig().isStatPidProc, getListener());
     }
 
     @SuppressWarnings("SpellCheckingInspection")
@@ -284,9 +260,10 @@ public class JiffiesMonitorFeature implements MonitorFeature {
                 }
             }
 
-            @NonNull public int tid;
-            @NonNull public String name;
-            @NonNull public boolean isNewAdded;
+            public int tid;
+            @NonNull
+            public String name;
+            public boolean isNewAdded;
 
             public ThreadJiffiesSnapshot(Long value) {
                 super(value);

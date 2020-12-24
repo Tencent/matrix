@@ -3,7 +3,6 @@ package com.tencent.matrix.batterycanary.monitor.feature;
 import android.support.annotation.NonNull;
 import android.support.annotation.VisibleForTesting;
 
-import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
 import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
 import com.tencent.matrix.batterycanary.utils.TimeBreaker;
 import com.tencent.matrix.util.MatrixLog;
@@ -16,11 +15,9 @@ import java.util.List;
  * @author Kaede
  * @since 2020/12/8
  */
-public final class AppStatMonitorFeature implements MonitorFeature {
+public final class AppStatMonitorFeature extends AbsMonitorFeature {
     private static final String TAG = "Matrix.battery.AppStatMonitorFeature";
 
-    @SuppressWarnings("NotNullFieldNotInitialized")
-    @NonNull private BatteryMonitorCore mCore;
     @NonNull List<AppStatStamp> mStampList = Collections.emptyList();
     @NonNull List<TimeBreaker.Stamp> mSceneStampList = Collections.emptyList();
     @NonNull Runnable coolingTask = new Runnable() {
@@ -40,13 +37,8 @@ public final class AppStatMonitorFeature implements MonitorFeature {
     };
 
     @Override
-    public void configure(BatteryMonitorCore monitor) {
-        mCore = monitor;
-    }
-
-    @Override
     public void onTurnOn() {
-        MatrixLog.i(TAG, "#onTurnOn");
+        super.onTurnOn();
         AppStatStamp firstStamp = new AppStatStamp(1);
         TimeBreaker.Stamp firstSceneStamp = new TimeBreaker.Stamp(mCore.getScene());
         synchronized (TAG) {
@@ -59,7 +51,7 @@ public final class AppStatMonitorFeature implements MonitorFeature {
 
     @Override
     public void onTurnOff() {
-        MatrixLog.i(TAG, "#onTurnOff");
+        super.onTurnOff();
         synchronized (TAG) {
             mStampList.clear();
             mSceneStampList.clear();
@@ -68,6 +60,7 @@ public final class AppStatMonitorFeature implements MonitorFeature {
 
     @Override
     public void onForeground(boolean isForeground) {
+        super.onForeground(isForeground);
         int appStat = BatteryCanaryUtil.getAppStat(mCore.getContext(), isForeground);
         synchronized (TAG) {
             if (mStampList != Collections.EMPTY_LIST) {

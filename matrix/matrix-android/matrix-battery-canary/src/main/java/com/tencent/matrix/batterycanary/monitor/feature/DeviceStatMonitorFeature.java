@@ -32,16 +32,15 @@ import java.util.List;
  * @since 2020/11/1
  */
 @SuppressWarnings("NotNullFieldNotInitialized")
-public final class DeviceStatMonitorFeature implements MonitorFeature {
+public final class DeviceStatMonitorFeature extends AbsMonitorFeature {
     private static final String TAG = "Matrix.battery.DeviceStatusMonitorFeature";
 
-    @NonNull private BatteryMonitorCore mMonitor;
     @NonNull private DevStatListener mDevStatListener;
     @NonNull List<TimeBreaker.Stamp> mStampList = Collections.emptyList();
     @NonNull Runnable coolingTask = new Runnable() {
         @Override
         public void run() {
-            if (mStampList.size() >= mMonitor.getConfig().overHeatCount) {
+            if (mStampList.size() >= mCore.getConfig().overHeatCount) {
                 synchronized (TAG) {
                     TimeBreaker.gcList(mStampList);
                 }
@@ -51,14 +50,14 @@ public final class DeviceStatMonitorFeature implements MonitorFeature {
 
     @Override
     public void configure(BatteryMonitorCore monitor) {
-        MatrixLog.i(TAG, "#configure monitor feature");
-        mMonitor = monitor;
+        super.configure(monitor);
         mDevStatListener = new DevStatListener();
     }
 
     @Override
     public void onTurnOn() {
-        int deviceStat = BatteryCanaryUtil.getDeviceStat(mMonitor.getContext());
+        super.onTurnOn();
+        int deviceStat = BatteryCanaryUtil.getDeviceStat(mCore.getContext());
         @SuppressLint("VisibleForTests") AppStatStamp firstStamp = new AppStatStamp(deviceStat);
         synchronized (TAG) {
             mStampList = new ArrayList<>();
@@ -78,26 +77,28 @@ public final class DeviceStatMonitorFeature implements MonitorFeature {
             }
         });
 
-        mDevStatListener.startListen(mMonitor.getContext());
+        mDevStatListener.startListen(mCore.getContext());
     }
 
     @Override
     public void onTurnOff() {
-        mDevStatListener.stopListen(mMonitor.getContext());
+        super.onTurnOff();
+        mDevStatListener.stopListen(mCore.getContext());
     }
 
     @Override
     public void onForeground(boolean isForeground) {
+        super.onForeground(isForeground);
         if (!isForeground) {
             if (!mDevStatListener.isListening()) {
-                mDevStatListener.startListen(mMonitor.getContext());
+                mDevStatListener.startListen(mCore.getContext());
             }
         }
     }
 
     private void checkOverHeat() {
-        mMonitor.getHandler().removeCallbacks(coolingTask);
-        mMonitor.getHandler().postDelayed(coolingTask, 1000L);
+        mCore.getHandler().removeCallbacks(coolingTask);
+        mCore.getHandler().postDelayed(coolingTask, 1000L);
     }
 
     @Override
@@ -118,7 +119,7 @@ public final class DeviceStatMonitorFeature implements MonitorFeature {
 
     public BatteryTmpSnapshot currentBatteryTemperature(Context context) {
         BatteryTmpSnapshot snapshot = new BatteryTmpSnapshot();
-        snapshot.temp = Snapshot.Entry.DigitEntry.of(mMonitor.getCurrentBatteryTemperature(context));
+        snapshot.temp = Snapshot.Entry.DigitEntry.of(mCore.getCurrentBatteryTemperature(context));
         return snapshot;
     }
 
@@ -128,7 +129,7 @@ public final class DeviceStatMonitorFeature implements MonitorFeature {
 
     public DevStatSnapshot currentDevStatSnapshot(long windowMillis) {
         try {
-            int devStat = BatteryCanaryUtil.getDeviceStat(mMonitor.getContext());
+            int devStat = BatteryCanaryUtil.getDeviceStat(mCore.getContext());
             @SuppressLint("VisibleForTests") TimeBreaker.Stamp lastStamp = new TimeBreaker.Stamp(String.valueOf(devStat));
             synchronized (TAG) {
                 if (mStampList != Collections.EMPTY_LIST) {

@@ -7,9 +7,7 @@ import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.util.LongSparseArray;
 
-import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
 import com.tencent.matrix.trace.core.LooperMonitor;
-import com.tencent.matrix.util.MatrixLog;
 
 import java.util.Collections;
 import java.util.Comparator;
@@ -20,42 +18,29 @@ import java.util.Map;
 import java.util.Set;
 
 @SuppressWarnings("NotNullFieldNotInitialized")
-public class LooperTaskMonitorFeature implements MonitorFeature {
+public class LooperTaskMonitorFeature extends AbsMonitorFeature {
     private static final String TAG = "Matrix.battery.LooperTaskMonitorFeature";
 
     public interface LooperTaskListener {
         void onTaskTrace(Thread thread, List<LooperTaskMonitorFeature.TaskTraceInfo> sortList);
     }
-
-    @NonNull private BatteryMonitorCore monitor;
     private final LongSparseArray<LooperMonitor> looperMonitorArray = new LongSparseArray<>();
     private static final int MAX_CHAT_COUNT = 60;
 
     private LooperTaskListener getListener() {
-        return monitor;
-    }
-
-    @Override
-    public void configure(BatteryMonitorCore monitor) {
-        MatrixLog.i(TAG, "#configure monitor feature");
-        this.monitor = monitor;
-    }
-
-    @Override
-    public void onTurnOn() {
-        MatrixLog.i(TAG, "#onTurnOn");
+        return mCore;
     }
 
     @Override
     public void onTurnOff() {
-        MatrixLog.i(TAG, "#onTurnOff");
+        super.onTurnOff();
         onUnbindLooperMonitor();
     }
 
     @Override
     public void onForeground(boolean isForeground) {
-        MatrixLog.i(TAG, "#onAppForeground, bool = " + isForeground);
-        if (monitor.isTurnOn()) {
+        super.onForeground(isForeground);
+        if (mCore.isTurnOn()) {
             Map<Thread, StackTraceElement[]> stacks = Thread.getAllStackTraces();
             Set<Thread> set = stacks.keySet();
             for (Thread thread : set) {
@@ -141,12 +126,12 @@ public class LooperTaskMonitorFeature implements MonitorFeature {
 
         @Override
         public boolean isValid() {
-            return !monitor.isForeground();
+            return !mCore.isForeground();
         }
 
         @Override
         public void onDispatchStart(String x) {
-            if (monitor.isForeground()) {
+            if (mCore.isForeground()) {
                 return;
             }
             super.onDispatchStart(x);

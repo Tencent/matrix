@@ -19,27 +19,8 @@ import com.tencent.matrix.util.MatrixLog;
  * @since 2020/11/1
  */
 @SuppressWarnings("NotNullFieldNotInitialized")
-public final class TrafficMonitorFeature implements MonitorFeature {
+public final class TrafficMonitorFeature extends AbsMonitorFeature {
     private static final String TAG = "Matrix.battery.TrafficMonitorFeature";
-    @NonNull private BatteryMonitorCore mMonitor;
-
-    @Override
-    public void configure(BatteryMonitorCore monitor) {
-        MatrixLog.i(TAG, "#configure monitor feature");
-        mMonitor = monitor;
-    }
-
-    @Override
-    public void onTurnOn() {
-    }
-
-    @Override
-    public void onTurnOff() {
-    }
-
-    @Override
-    public void onForeground(boolean isForeground) {
-    }
 
     @Override
     public int weight() {

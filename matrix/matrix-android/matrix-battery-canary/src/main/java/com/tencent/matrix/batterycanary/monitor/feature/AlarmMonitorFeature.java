@@ -10,7 +10,6 @@ import android.util.Log;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
 import com.tencent.matrix.batterycanary.utils.AlarmManagerServiceHooker;
 import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
-import com.tencent.matrix.util.MatrixHandlerThread;
 import com.tencent.matrix.util.MatrixLog;
 
 import java.util.ArrayList;
@@ -20,7 +19,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 @SuppressWarnings("NotNullFieldNotInitialized")
-public class AlarmMonitorFeature implements MonitorFeature, AlarmManagerServiceHooker.IListener {
+public class AlarmMonitorFeature extends AbsMonitorFeature implements AlarmManagerServiceHooker.IListener {
     private static final String TAG = "Matrix.battery.AlarmMonitorFeature";
 
     public interface AlarmListener {
@@ -28,41 +27,35 @@ public class AlarmMonitorFeature implements MonitorFeature, AlarmManagerServiceH
     }
 
     @NonNull
-    private BatteryMonitorCore monitor;
-    @NonNull
     @VisibleForTesting
     Handler handler;
     final Map<Integer, List<AlarmRecord>> mTracingAlarms = new ConcurrentHashMap<>();
     final List<AlarmRecord> mTotalAlarms = new ArrayList<>();
 
     private AlarmListener getListener() {
-        return monitor;
+        return mCore;
     }
 
     @Override
     public void configure(BatteryMonitorCore monitor) {
-        MatrixLog.i(TAG, "#configure monitor feature");
-        this.monitor = monitor;
-        handler = new Handler(MatrixHandlerThread.getDefaultHandlerThread().getLooper());
+        super.configure(monitor);
+        handler = monitor.getHandler();
     }
 
     @Override
     public void onTurnOn() {
-        MatrixLog.i(TAG, "#onTurnOn");
+        super.onTurnOn();
         AlarmManagerServiceHooker.addListener(this);
     }
 
     @Override
     public void onTurnOff() {
-        MatrixLog.i(TAG, "#onTurnOff");
+        super.onTurnOff();
         AlarmManagerServiceHooker.removeListener(this);
         handler.removeCallbacksAndMessages(null);
         mTracingAlarms.clear();
         mTotalAlarms.clear();
     }
-
-    @Override
-    public void onForeground(boolean isForeground) {}
 
     @Override
     public int weight() {
@@ -73,7 +66,7 @@ public class AlarmMonitorFeature implements MonitorFeature, AlarmManagerServiceH
     @Override
     public void onAlarmSet(int type, long triggerAtMillis, long windowMillis, long intervalMillis, int flags, PendingIntent operation, AlarmManager.OnAlarmListener onAlarmListener) {
         String stack = "";
-        if (monitor.getConfig().isStatAsSample) {
+        if (mCore.getConfig().isStatAsSample) {
             stack = BatteryCanaryUtil.polishStack(Log.getStackTraceString(new Throwable()), "at android.app.AlarmManager");
         }
 

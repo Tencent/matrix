@@ -214,7 +214,8 @@ public class MonitorFeatureWakeLockTest {
                 })
                 .build();
         final WakeLockMonitorFeature feature = new WakeLockMonitorFeature();
-        feature.configure(new BatteryMonitorCore(config));
+        BatteryMonitorCore monitorCore = new BatteryMonitorCore(config);
+        feature.configure(monitorCore);
 
         IBinder mockToken = mock(IBinder.class);
         int flag = PowerManager.ACQUIRE_CAUSES_WAKEUP;
@@ -224,7 +225,7 @@ public class MonitorFeatureWakeLockTest {
         Assert.assertEquals(0, overTimeCount.get());
         for (int i = 0; i < 10; i++) {
             final int expected = i;
-            feature.handler.post(new Runnable() {
+            monitorCore.getHandler().post(new Runnable() {
                 @Override
                 public void run() {
                     Assert.assertTrue(overTimeCount.get() >= expected - 1);
@@ -254,7 +255,8 @@ public class MonitorFeatureWakeLockTest {
                 })
                 .build();
         final WakeLockMonitorFeature feature = new WakeLockMonitorFeature();
-        feature.configure(new BatteryMonitorCore(config));
+        BatteryMonitorCore monitorCore = new BatteryMonitorCore(config);
+        feature.configure(monitorCore);
 
         for (int i = 0; i < concurrentNum; i++) {
             IBinder mockToken = mock(IBinder.class);
@@ -266,7 +268,7 @@ public class MonitorFeatureWakeLockTest {
         Assert.assertEquals(0, overTimeCount.get());
         for (int i = 0; i < 10; i++) {
             final int expected = i;
-            feature.handler.post(new Runnable() {
+            monitorCore.getHandler().post(new Runnable() {
                 @Override
                 public void run() {
                     Assert.assertTrue(overTimeCount.get() >= (expected - 1) * concurrentNum);
