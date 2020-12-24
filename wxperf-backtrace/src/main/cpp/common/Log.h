@@ -39,7 +39,6 @@
         }\
     }
 
-#define INTER_LOG(FMT, args...) //__android_log_print(ANDROID_LOG_ERROR, "Matrix.Backtrace.INTER", FMT, ##args)
 #define INTER_DEBUG_LOG(FMT, args...) //__android_log_print(ANDROID_LOG_ERROR, "Matrix.Backtrace.INTER.D", FMT, ##args)
 #define DWARF_CFA_LOG(FMT, args...) //__android_log_print(ANDROID_LOG_ERROR, "Matrix.Backtrace.DWARF-CFA", FMT, ##args)
 #define DWARF_OP_LOG(FMT, args...) //__android_log_print(ANDROID_LOG_ERROR, "Matrix.Backtrace.DWARF-OP", FMT, ##args)
@@ -55,7 +54,6 @@
 #define STACK_CHECK_START(S)
 #define STACK_CHECK_END
 
-#define INTER_LOG(FMT, args...)
 #define QUT_DEBUG_LOG(FMT, args...)
 #define INTER_DEBUG_LOG(FMT, args...)
 #define DWARF_CFA_LOG(FMT, args...)

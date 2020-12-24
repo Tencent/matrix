@@ -508,14 +508,12 @@ bool ElfInterface::Step(uint64_t pc, Regs* regs, Memory* process_memory, bool* f
   // information.
   DwarfSection* debug_frame = debug_frame_.get();
   if (debug_frame != nullptr && debug_frame->Step(pc, regs, process_memory, finished)) {
-    INTER_LOG("ElfInterface::Step debug_frame");
     return true;
   }
 
   // Try the eh_frame next.
   DwarfSection* eh_frame = eh_frame_.get();
   if (eh_frame != nullptr && eh_frame->Step(pc, regs, process_memory, finished)) {
-    INTER_LOG("ElfInterface::Step eh_frame");
     return true;
   }
 

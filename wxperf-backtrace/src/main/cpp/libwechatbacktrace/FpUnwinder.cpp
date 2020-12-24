@@ -92,7 +92,7 @@ namespace wechat_backtrace {
     }
 
     void
-    FpUnwind(uptr *regs, Frame *backtrace, const size_t max_size, size_t &frame_size/* , bool fallback */) {
+    FpUnwind(uptr *regs, Frame *backtrace, const size_t max_size, size_t &frame_size) {
 
         pthread_attr_t attr;
         pthread_getattr_ext(pthread_self(), &attr);

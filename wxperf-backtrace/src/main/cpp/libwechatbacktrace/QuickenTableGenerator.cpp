@@ -88,8 +88,9 @@ namespace wechat_backtrace {
         uint64_t start_offset = arm_exidx_info.offset_;
         uint64_t total_entries = arm_exidx_info.size_;
 
-        QUT_DEBUG_LOG("DecodeExidxEntriesInstr start_offset %llu, total_entries %llu", start_offset,
-                      total_entries);
+        QUT_DEBUG_LOG("DecodeExidxEntriesInstr start_offset %llu, total_entries %llu",
+                      (ullint_t) start_offset,
+                      (ullint_t) total_entries);
 
         if (total_entries <= 1) {
             // TODO How about this.
@@ -116,7 +117,7 @@ namespace wechat_backtrace {
             if (log) {
                 if (i == 0 || i == 1 || i == total_entries - 1) {
                     QUT_DEBUG_LOG("DecodeExidxEntriesInstr i %zu, start_addr %lx, end_addr %lx", i,
-                                  start_addr, addr);
+                                  (ulint_t) start_addr, (ulint_t) addr);
                 }
             }
 
@@ -301,7 +302,7 @@ namespace wechat_backtrace {
             if (log) {
                 if (entry_pair->entry_point == log_entry_point) {
                     QUT_DEBUG_LOG(
-                            "PackEntriesToFutSections entry_pair->entry_point %llx, instr %uz",
+                            "PackEntriesToFutSections entry_pair->entry_point %llx, instr %zu",
                             (ullint_t) entry_pair->entry_point, it->second.second->size());
                 }
             }
@@ -315,7 +316,7 @@ namespace wechat_backtrace {
                     prologue_count++;
                 } else if (log) {
                     QUT_DEBUG_LOG("--- Dump Instr %llu",
-                                  (uint64_t) entry_pair->encoded_instructions.size());
+                                  (ullint_t) entry_pair->encoded_instructions.size());
                     for (auto it = entry_pair->encoded_instructions.begin();
                          it != entry_pair->encoded_instructions.end(); it++) {
                         uint8_t instr = *it;
@@ -340,7 +341,7 @@ namespace wechat_backtrace {
             if (log) {
                 if (entry_pair->entry_point == log_entry_point) {
                     QUT_DEBUG_LOG(
-                            "PackEntriesToFutSections entry_pair->encoded_instructions.size() %uz",
+                            "PackEntriesToFutSections entry_pair->encoded_instructions.size() %zu",
                             entry_pair->encoded_instructions.size());
 
                     for (uint8_t insn : entry_pair->encoded_instructions) {

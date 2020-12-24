@@ -61,6 +61,8 @@ void Unwinder::FillInDexFrame() {
   frame->pc = dex_pc;
   frame->sp = regs_->sp();
 
+  frame->is_dex_pc = true;
+
   MapInfo* info = maps_->Find(dex_pc);
   if (info != nullptr) {
     frame->map_start = info->start;
@@ -203,7 +205,6 @@ void Unwinder::Unwind(const std::vector<std::string>* initial_map_names_to_skip,
       last_error_.code = ERROR_INVALID_MAP;
     } else {
       if (ShouldStop(map_suffixes_to_ignore, map_info->name)) {
-        INTER_LOG("Why stop - ShouldStop");
         break;
       }
       elf = map_info->GetElf(process_memory_, arch);
@@ -243,11 +244,7 @@ void Unwinder::Unwind(const std::vector<std::string>* initial_map_names_to_skip,
     if (map_info == nullptr || initial_map_names_to_skip == nullptr ||
         std::find(initial_map_names_to_skip->begin(), initial_map_names_to_skip->end(),
                   basename(map_info->name.c_str())) == initial_map_names_to_skip->end()) {
-
       if (regs_->dex_pc() != 0) {
-
-        INTER_LOG("FillInDexFrame: #%zu", frames_.size());
-
         // Add a frame to represent the dex file.
         FillInDexFrame();
         // Clear the dex pc so that we don't repeat this frame later.
@@ -256,13 +253,10 @@ void Unwinder::Unwind(const std::vector<std::string>* initial_map_names_to_skip,
         // Make sure there is enough room for the real frame.
         if (frames_.size() == max_frames_) {
           last_error_.code = ERROR_MAX_FRAMES_EXCEEDED;
-
-          INTER_LOG("Why stop - ERROR_MAX_FRAMES_EXCEEDED");
           break;
         }
       }
 
-      INTER_LOG("FillInFrame: #%zu, #%llx", frames_.size(), rel_pc);
       frame = FillInFrame(map_info, elf, rel_pc, pc_adjustment);
 
       // Once a frame is added, stop skipping frames.
@@ -313,8 +307,6 @@ void Unwinder::Unwind(const std::vector<std::string>* initial_map_names_to_skip,
     }
 
     if (finished) {
-
-      INTER_LOG("Why stop - finished");
       break;
     }
 
@@ -328,20 +320,14 @@ void Unwinder::Unwind(const std::vector<std::string>* initial_map_names_to_skip,
           // Remove the speculative frame.
           frames_.pop_back();
         }
-
-        INTER_LOG("Why stop - return_address_attempt");
         break;
       } else if (in_device_map) {
         // Do not attempt any other unwinding, pc or sp is in a device
         // map.
-
-        INTER_LOG("Why stop - in_device_map");
         break;
       } else {
         // Steping didn't work, try this secondary method.
         if (!regs_->SetPcFromReturnAddress(process_memory_.get())) {
-
-          INTER_LOG("Why stop - Steping didn't work, try this secondary method");
           break;
         }
         return_address_attempt = true;
@@ -356,8 +342,6 @@ void Unwinder::Unwind(const std::vector<std::string>* initial_map_names_to_skip,
     // If the pc and sp didn't change, then consider everything stopped.
     if (cur_pc == regs_->pc() && cur_sp == regs_->sp()) {
       last_error_.code = ERROR_REPEATED_FRAME;
-
-      INTER_LOG("Why stop - pc and sp didn't change");
       break;
     }
   }

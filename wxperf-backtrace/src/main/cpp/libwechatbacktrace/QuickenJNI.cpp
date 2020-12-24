@@ -12,6 +12,7 @@
 #include <sys/stat.h>
 #include <QuickenTableManager.h>
 #include <jni.h>
+#include <Backtrace.h>
 
 #include "QuickenUnwinder.h"
 #include "QuickenJNI.h"
@@ -54,7 +55,8 @@ namespace wechat_backtrace {
         vector<string> consumed = ConsumeRequestingQut();
 
         jobjectArray result = (jobjectArray)
-                env->NewObjectArray(consumed.size(), env->FindClass("java/lang/String"), env->NewStringUTF(""));
+                env->NewObjectArray(consumed.size(), env->FindClass("java/lang/String"),
+                                    env->NewStringUTF(""));
 
         auto it = consumed.begin();
         size_t i = 0;
@@ -74,6 +76,15 @@ namespace wechat_backtrace {
         env->ReleaseStringUTFChars(sopath_jstr, sopath);
     }
 
+    static void JNI_SetBacktraceMode(JNIEnv *env, jclass clazz, jint mode) {
+        (void) env;
+        (void) clazz;
+
+        if (mode < FramePointer || mode > DwarfBased) return;
+
+        SetBacktraceMode(static_cast<BacktraceMode>(mode));
+    }
+
     static void JNI_Statistic(JNIEnv *env, jclass clazz, jstring sopath_jstr) {
         (void) clazz;
         const char *sopath = env->GetStringUTFChars(sopath_jstr, 0);
@@ -85,26 +96,15 @@ namespace wechat_backtrace {
             {"setPackageName",      "(Ljava/lang/String;)V", (void *) JNI_SetPackageName},
             {"setSavingPath",       "(Ljava/lang/String;)V", (void *) JNI_SetSavingPath},
             {"setWarmedUp",         "(Z)V",                  (void *) JNI_SetWarmedUp},
-            {"consumeRequestedQut", "()[Ljava/lang/String;",  (void *) JNI_ConsumeRequestedQut},
+            {"consumeRequestedQut", "()[Ljava/lang/String;", (void *) JNI_ConsumeRequestedQut},
             {"warmUp",              "(Ljava/lang/String;)V", (void *) JNI_WarmUp},
+            {"setBacktraceMode",    "(I)V",                  (void *) JNI_SetBacktraceMode},
             {"statistic",           "(Ljava/lang/String;)V", (void *) JNI_Statistic},
     };
 
     static jclass JNIClass_WeChatBacktraceNative = nullptr;
     static jmethodID JNIMethod_RequestQutGenerate = nullptr;
     static JavaVM *CurrentJavaVM = nullptr;
-
-//    inline static JNIEnv *GetEnv() {
-//        if (CurrentJavaVM) {
-//            JNIEnv *currentEnv = nullptr;
-//            auto ret = CurrentJavaVM->GetEnv(reinterpret_cast<void **>(&currentEnv),
-//                                             JNI_VERSION_1_6);
-//            if (ret == JNI_OK) {
-//                return currentEnv;
-//            }
-//        }
-//        return nullptr;
-//    }
 
     static int RegisterQutJNINativeMethods(JNIEnv *env) {
 

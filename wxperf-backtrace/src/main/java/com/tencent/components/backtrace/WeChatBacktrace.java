@@ -663,7 +663,10 @@ public class WeChatBacktrace implements Handler.Callback {
 
         Log.i(TAG, configuration.toString());
 
+        WeChatBacktraceNative.setBacktraceMode(configuration.mBacktraceMode.value);
+
         if (configuration.mBacktraceMode == Mode.Quicken) {
+
             // Init saving path
             String savingPath = validateSavingPath(configuration);
             Log.i(TAG, "Set saving path = %s", savingPath);
@@ -692,14 +695,21 @@ public class WeChatBacktrace implements Handler.Callback {
         if (configuration.mIsWarmUpProcess && !hasWarmedUp()) {
             mIdleHandler.sendMessageDelayed(
                     Message.obtain(mIdleHandler, MSG_WARM_UP, fakeCS),
-                    DELAY_WARM_UP * 10
+                    DELAY_WARM_UP * 1
             );
         }
     }
 
     public enum Mode {
-        FramePointer,
-        Quicken,
+        FramePointer(0),
+        Quicken(1),
+        DwarfBased(2);
+
+        int value;
+
+        Mode(int mode) {
+            this.value = mode;
+        }
     }
 
     public final static class Configuration {
@@ -791,15 +801,18 @@ public class WeChatBacktrace implements Handler.Callback {
 
         @Override
         public String toString() {
-          return  "\n" +
-                  "WeChat backtrace configurations: \n" +
-                  ">>> Mode: " + mBacktraceMode + "\n" +
-                  ">>> Saving Path: " + mSavingPath + "\n" +
-                  ">>> Directory to Warm-up: " + mWarmUpDirectoriesList.toString() + "\n" +
-                  ">>> Is Warm-up Process: " + mIsWarmUpProcess + "\n" +
-                  ">>> Cool-down: " + mCoolDown + "\n" +
-                  ">>> Cool-down if Apk Updated: " + mCoolDownIfApkUpdated + "\n";
-        };
+            return "\n" +
+                    "WeChat backtrace configurations: \n" +
+                    ">>> Mode: " + mBacktraceMode + "\n" +
+                    ">>> Saving Path: " + mSavingPath + "\n" +
+                    ">>> Custom Library Loader: " + (mLibraryLoader != null) + "\n" +
+                    ">>> Directories to Warm-up: " + mWarmUpDirectoriesList.toString() + "\n" +
+                    ">>> Is Warm-up Process: " + mIsWarmUpProcess + "\n" +
+                    ">>> Cool-down: " + mCoolDown + "\n" +
+                    ">>> Cool-down if Apk Updated: " + mCoolDownIfApkUpdated + "\n";
+        }
+
+        ;
 
     }
 }

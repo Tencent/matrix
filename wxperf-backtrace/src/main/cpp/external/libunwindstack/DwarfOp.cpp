@@ -1620,8 +1620,6 @@ bool DwarfOp<AddressType>::op_deref() {
     return false;
   }
   stack_.push_front(value);
-
-  INTER_LOG("DwarfOp: op_deref");
   return true;
 }
 
@@ -1641,8 +1639,6 @@ bool DwarfOp<AddressType>::op_deref_size() {
     return false;
   }
   stack_.push_front(value);
-
-  INTER_LOG("DwarfOp: op_deref_size");
   return true;
 }
 
@@ -1652,30 +1648,24 @@ bool DwarfOp<AddressType>::op_push() {
   for (auto operand : operands_) {
     stack_.push_front(operand);
   }
-
-  INTER_LOG("DwarfOp: op_push");
   return true;
 }
 
 template <typename AddressType>
 bool DwarfOp<AddressType>::op_dup() {
   stack_.push_front(StackAt(0));
-
-  INTER_LOG("DwarfOp: op_dup");
   return true;
 }
 
 template <typename AddressType>
 bool DwarfOp<AddressType>::op_drop() {
   StackPop();
-    INTER_LOG("DwarfOp: op_drop");
   return true;
 }
 
 template <typename AddressType>
 bool DwarfOp<AddressType>::op_over() {
   stack_.push_front(StackAt(1));
-    INTER_LOG("DwarfOp: op_over");
   return true;
 }
 
@@ -1687,8 +1677,6 @@ bool DwarfOp<AddressType>::op_pick() {
     return false;
   }
   stack_.push_front(StackAt(index));
-
-    INTER_LOG("DwarfOp: op_pick");
   return true;
 }
 
@@ -1697,8 +1685,6 @@ bool DwarfOp<AddressType>::op_swap() {
   AddressType old_value = stack_[0];
   stack_[0] = stack_[1];
   stack_[1] = old_value;
-
-    INTER_LOG("DwarfOp: op_swap");
   return true;
 }
 
@@ -1708,8 +1694,6 @@ bool DwarfOp<AddressType>::op_rot() {
   stack_[0] = stack_[1];
   stack_[1] = stack_[2];
   stack_[2] = top;
-
-    INTER_LOG("DwarfOp: op_rot");
   return true;
 }
 
@@ -1720,8 +1704,6 @@ bool DwarfOp<AddressType>::op_abs() {
     signed_value = -signed_value;
   }
   stack_[0] = static_cast<AddressType>(signed_value);
-
-    INTER_LOG("DwarfOp: op_abs");
   return true;
 }
 
@@ -1729,8 +1711,6 @@ template <typename AddressType>
 bool DwarfOp<AddressType>::op_and() {
   AddressType top = StackPop();
   stack_[0] &= top;
-
-    INTER_LOG("DwarfOp: op_and");
   return true;
 }
 
@@ -1744,8 +1724,6 @@ bool DwarfOp<AddressType>::op_div() {
   SignedType signed_divisor = static_cast<SignedType>(top);
   SignedType signed_dividend = static_cast<SignedType>(stack_[0]);
   stack_[0] = static_cast<AddressType>(signed_dividend / signed_divisor);
-
-    INTER_LOG("DwarfOp: op_div");
   return true;
 }
 
@@ -1753,8 +1731,6 @@ template <typename AddressType>
 bool DwarfOp<AddressType>::op_minus() {
   AddressType top = StackPop();
   stack_[0] -= top;
-
-    INTER_LOG("DwarfOp: op_minus");
   return true;
 }
 
@@ -1766,8 +1742,6 @@ bool DwarfOp<AddressType>::op_mod() {
     return false;
   }
   stack_[0] %= top;
-
-    INTER_LOG("DwarfOp: op_mod");
   return true;
 }
 
@@ -1775,8 +1749,6 @@ template <typename AddressType>
 bool DwarfOp<AddressType>::op_mul() {
   AddressType top = StackPop();
   stack_[0] *= top;
-
-    INTER_LOG("DwarfOp: op_mul");
   return true;
 }
 
@@ -1784,16 +1756,12 @@ template <typename AddressType>
 bool DwarfOp<AddressType>::op_neg() {
   SignedType signed_value = static_cast<SignedType>(stack_[0]);
   stack_[0] = static_cast<AddressType>(-signed_value);
-
-    INTER_LOG("DwarfOp: op_neg");
   return true;
 }
 
 template <typename AddressType>
 bool DwarfOp<AddressType>::op_not() {
   stack_[0] = ~stack_[0];
-
-    INTER_LOG("DwarfOp: op_not");
   return true;
 }
 
@@ -1801,8 +1769,6 @@ template <typename AddressType>
 bool DwarfOp<AddressType>::op_or() {
   AddressType top = StackPop();
   stack_[0] |= top;
-
-    INTER_LOG("DwarfOp: op_or");
   return true;
 }
 
@@ -1810,16 +1776,12 @@ template <typename AddressType>
 bool DwarfOp<AddressType>::op_plus() {
   AddressType top = StackPop();
   stack_[0] += top;
-
-    INTER_LOG("DwarfOp: op_plus");
   return true;
 }
 
 template <typename AddressType>
 bool DwarfOp<AddressType>::op_plus_uconst() {
   stack_[0] += OperandAt(0);
-
-    INTER_LOG("DwarfOp: op_plus_uconst");
   return true;
 }
 
@@ -1827,8 +1789,6 @@ template <typename AddressType>
 bool DwarfOp<AddressType>::op_shl() {
   AddressType top = StackPop();
   stack_[0] <<= top;
-
-    INTER_LOG("DwarfOp: op_shl");
   return true;
 }
 
@@ -1836,9 +1796,6 @@ template <typename AddressType>
 bool DwarfOp<AddressType>::op_shr() {
   AddressType top = StackPop();
   stack_[0] >>= top;
-
-
-    INTER_LOG("DwarfOp: op_shr");
   return true;
 }
 
@@ -1847,8 +1804,6 @@ bool DwarfOp<AddressType>::op_shra() {
   AddressType top = StackPop();
   SignedType signed_value = static_cast<SignedType>(stack_[0]) >> top;
   stack_[0] = static_cast<AddressType>(signed_value);
-
-    INTER_LOG("DwarfOp: op_shra");
   return true;
 }
 
@@ -1856,8 +1811,6 @@ template <typename AddressType>
 bool DwarfOp<AddressType>::op_xor() {
   AddressType top = StackPop();
   stack_[0] ^= top;
-
-    INTER_LOG("DwarfOp: op_xor");
   return true;
 }
 
@@ -1873,8 +1826,6 @@ bool DwarfOp<AddressType>::op_bra() {
     cur_offset = memory_->cur_offset() - offset;
   }
   memory_->set_cur_offset(cur_offset);
-
-    INTER_LOG("DwarfOp: op_bra");
   return true;
 }
 
@@ -1882,8 +1833,6 @@ template <typename AddressType>
 bool DwarfOp<AddressType>::op_eq() {
   AddressType top = StackPop();
   stack_[0] = bool_to_dwarf_bool(stack_[0] == top);
-
-    INTER_LOG("DwarfOp: op_eq");
   return true;
 }
 
@@ -1891,8 +1840,6 @@ template <typename AddressType>
 bool DwarfOp<AddressType>::op_ge() {
   AddressType top = StackPop();
   stack_[0] = bool_to_dwarf_bool(stack_[0] >= top);
-
-    INTER_LOG("DwarfOp: op_ge");
   return true;
 }
 
@@ -1900,8 +1847,6 @@ template <typename AddressType>
 bool DwarfOp<AddressType>::op_gt() {
   AddressType top = StackPop();
   stack_[0] = bool_to_dwarf_bool(stack_[0] > top);
-
-    INTER_LOG("DwarfOp: op_gt");
   return true;
 }
 
@@ -1909,8 +1854,6 @@ template <typename AddressType>
 bool DwarfOp<AddressType>::op_le() {
   AddressType top = StackPop();
   stack_[0] = bool_to_dwarf_bool(stack_[0] <= top);
-
-    INTER_LOG("DwarfOp: op_le");
   return true;
 }
 
@@ -1918,8 +1861,6 @@ template <typename AddressType>
 bool DwarfOp<AddressType>::op_lt() {
   AddressType top = StackPop();
   stack_[0] = bool_to_dwarf_bool(stack_[0] < top);
-
-    INTER_LOG("DwarfOp: op_lt");
   return true;
 }
 
@@ -1927,8 +1868,6 @@ template <typename AddressType>
 bool DwarfOp<AddressType>::op_ne() {
   AddressType top = StackPop();
   stack_[0] = bool_to_dwarf_bool(stack_[0] != top);
-
-    INTER_LOG("DwarfOp: op_ne");
   return true;
 }
 
@@ -1937,16 +1876,12 @@ bool DwarfOp<AddressType>::op_skip() {
   int16_t offset = static_cast<int16_t>(OperandAt(0));
   uint64_t cur_offset = memory_->cur_offset() + offset;
   memory_->set_cur_offset(cur_offset);
-
-    INTER_LOG("DwarfOp: op_skip");
   return true;
 }
 
 template <typename AddressType>
 bool DwarfOp<AddressType>::op_lit() {
   stack_.push_front(cur_op() - 0x30);
-
-    INTER_LOG("DwarfOp: op_lit");
   return true;
 }
 
@@ -1954,8 +1889,6 @@ template <typename AddressType>
 bool DwarfOp<AddressType>::op_reg() {
   is_register_ = true;
   stack_.push_front(cur_op() - 0x50);
-
-    INTER_LOG("DwarfOp: op_reg reg(%u)", (uint32_t)(cur_op() - 0x50));
   return true;
 }
 
@@ -1963,7 +1896,6 @@ template <typename AddressType>
 bool DwarfOp<AddressType>::op_regx() {
   is_register_ = true;
   stack_.push_front(OperandAt(0));
-    INTER_LOG("DwarfOp: op_regx reg(%u)", (uint32_t)OperandAt(0));
   return true;
 }
 
@@ -1978,8 +1910,6 @@ bool DwarfOp<AddressType>::op_breg() {
     return false;
   }
   stack_.push_front(regs_info_->Get(reg) + OperandAt(0));
-
-    INTER_LOG("DwarfOp: op_breg reg(%u)", (uint32_t)reg);
   return true;
 }
 
@@ -1991,23 +1921,17 @@ bool DwarfOp<AddressType>::op_bregx() {
     return false;
   }
   stack_.push_front(regs_info_->Get(reg) + OperandAt(1));
-
-    INTER_LOG("DwarfOp: op_bregx reg(%u)", (uint32_t)reg);
   return true;
 }
 
 template <typename AddressType>
 bool DwarfOp<AddressType>::op_nop() {
-
-    INTER_LOG("DwarfOp: op_nop");
   return true;
 }
 
 template <typename AddressType>
 bool DwarfOp<AddressType>::op_not_implemented() {
   last_error_.code = DWARF_ERROR_NOT_IMPLEMENTED;
-
-    INTER_LOG("DwarfOp: op_not_implemented");
   return false;
 }
 

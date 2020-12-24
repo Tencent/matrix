@@ -518,7 +518,8 @@ namespace wechat_backtrace {
             INTER_DEBUG_LOG(
                     "DwarfSectionDecoder<AddressType>::EvalExpression, op.last_error().code %d",
                     (uint32_t) op.last_error().code);
-            if ((op.last_error().code == DWARF_ERROR_EXPRESSION_REACH_BREGX || op.last_error().code == DWARF_ERROR_EXPRESSION_REACH_BREG) && op.dex_pc_set()) {
+            if ((op.last_error().code == DWARF_ERROR_EXPRESSION_REACH_BREGX ||
+                 op.last_error().code == DWARF_ERROR_EXPRESSION_REACH_BREG) && op.dex_pc_set()) {
                 // XXX Maybe we'll support more breg/bregx cases in the future.
                 value_expression->reg_expression = op.reg_expression();
             } else {
@@ -558,8 +559,9 @@ namespace wechat_backtrace {
         EvalInfo<AddressType> *eval_info = reinterpret_cast<EvalInfo<AddressType> *>(info);
         Memory *regular_memory = eval_info->regular_memory;
 
-        if (log) QUT_DEBUG_LOG("DwarfSectionDecoder::EvalRegister 1111111 loc->type %u, reg(%u),",
-                               (uint32_t) loc->type, reg);
+        if (log)
+            QUT_DEBUG_LOG("DwarfSectionDecoder::EvalRegister 1111111 loc->type %u, reg(%u),",
+                          (uint32_t) loc->type, reg);
         switch (loc->type) {
             case DWARF_LOCATION_OFFSET: {
                 RegOffsetInstruction(reg, loc->values[0]);
@@ -611,11 +613,13 @@ namespace wechat_backtrace {
             }
             case DWARF_LOCATION_UNDEFINED:
                 INTER_DEBUG_LOG("DwarfSectionDecoder::EvalRegister DWARF_LOCATION_UNDEFINED");
-                if (log) QUT_DEBUG_LOG(
-                        "DwarfSectionDecoder::EvalRegister DWARF_LOCATION_UNDEFINED");
+                if (log)
+                    QUT_DEBUG_LOG(
+                            "DwarfSectionDecoder::EvalRegister DWARF_LOCATION_UNDEFINED");
                 if (reg == eval_info->cie->return_address_register) {
-                    if (log) QUT_DEBUG_LOG(
-                            "DwarfSectionDecoder::EvalRegister reg == eval_info->cie->return_address_register");
+                    if (log)
+                        QUT_DEBUG_LOG(
+                                "DwarfSectionDecoder::EvalRegister reg == eval_info->cie->return_address_register");
                     temp_instructions_->push_back((QUT_FIN << 32));
                 } else {
                     last_error_.code = DWARF_ERROR_NOT_SUPPORT;
@@ -666,9 +670,10 @@ namespace wechat_backtrace {
         }
 
         // TODO check value overflow
-        if (log) QUT_DEBUG_LOG(
-                "DwarfSectionDecoder<AddressType>::CfaOffsetInstruction reg(%u) %llu",
-                (uint32_t) reg, value);
+        if (log)
+            QUT_DEBUG_LOG(
+                    "DwarfSectionDecoder<AddressType>::CfaOffsetInstruction reg(%u) %llu",
+                    (uint32_t) reg, (ullint_t) value);
         temp_instructions_->push_back((instruction << 32) | (0xffffffff & value));
 
         return true;
@@ -890,17 +895,17 @@ namespace wechat_backtrace {
 
         QutInstructionsOfEntries *all_instructions = previous_entries;
 
-        map<uint64_t, pair<uint64_t, const DwarfFde *>>::iterator iter;
-        iter = fdes_.begin();
+        map<uint64_t, pair<uint64_t, const DwarfFde *>>::iterator it;
+        it = fdes_.begin();
 
         last_error_.code = DWARF_ERROR_NONE;
 
-        QUT_DEBUG_LOG("DwarfSectionDecoder::IterateAllEntries fdes_ size %u", fdes_.size());
+        QUT_DEBUG_LOG("DwarfSectionDecoder::IterateAllEntries fdes_ size %zu", fdes_.size());
 
-        while (iter != fdes_.end()) {
-            const DwarfFde *fde = iter->second.second;
+        while (it != fdes_.end()) {
+            const DwarfFde *fde = it->second.second;
 
-            iter++;
+            it++;
 
             if (fde == nullptr || fde->cie == nullptr) {
 //            last_error_.code = DWARF_ERROR_ILLEGAL_STATE;

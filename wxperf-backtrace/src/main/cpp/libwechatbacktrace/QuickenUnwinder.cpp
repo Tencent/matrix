@@ -210,8 +210,6 @@ namespace wechat_backtrace {
 
         std::shared_ptr<Maps> maps = Maps::current();
 
-//        abort();
-
         if (!maps) {
             QUT_LOG("Maps is null.");
             return QUT_ERROR_MAPS_IS_NULL;
@@ -236,7 +234,6 @@ namespace wechat_backtrace {
 
             uint64_t cur_pc = PC(regs);
             uint64_t cur_sp = SP(regs);
-//            QUT_DEBUG_LOG("WeChatQuickenUnwind cur_pc:%llx, cur_sp:%llx", cur_pc, cur_sp);
             MapInfoPtr map_info = nullptr;
             QuickenInterface *interface = nullptr;
 
@@ -253,7 +250,6 @@ namespace wechat_backtrace {
                 }
                 interface = map_info->GetQuickenInterface(process_memory_, arch);
                 if (!interface) {
-//                    QUT_DEBUG_LOG("Quicken interface is null, maybe the elf is invalid.");
                     backtrace[frame_size++].pc = PC(regs) - 2;
                     ret = QUT_ERROR_INVALID_ELF;
                     break;
@@ -276,19 +272,14 @@ namespace wechat_backtrace {
             }
 
             if (adjust_pc) {
-//                pc_adjustment = GetPcAdjustment(last_load_bias, rel_pc, interface);
-                pc_adjustment = GetPcAdjustment(process_memory_.get(), PC(regs), last_load_bias,
-                                                rel_pc);
+                pc_adjustment = GetPcAdjustment(process_memory_.get(), PC(regs), rel_pc,
+                                                last_load_bias);
             } else {
                 pc_adjustment = 0;
             }
             step_pc -= pc_adjustment;
 
-//            QUT_DEBUG_LOG("WeChatQuickenUnwind pc_adjustment:%llx, step_pc:%llx, rel_pc:%llx",
-//                          pc_adjustment, step_pc, rel_pc);
-
             if (dex_pc != 0) {
-//                QUT_DEBUG_LOG("dex_pc %llx", dex_pc);
                 backtrace[frame_size].is_dex_pc = true;
                 backtrace[frame_size].pc = dex_pc;
                 dex_pc = 0;
@@ -322,7 +313,6 @@ namespace wechat_backtrace {
 
             // If the pc and sp didn't change, then consider everything stopped.
             if (cur_pc == PC(regs) && cur_sp == SP(regs)) {
-//                QUT_DEBUG_LOG("pc and sp not changed.");
                 ret = QUT_ERROR_REPEATED_FRAME;
                 break;
             }

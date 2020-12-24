@@ -111,9 +111,6 @@ bool ElfInterfaceArm::Step(uint64_t pc, Regs* regs, Memory* process_memory, bool
 }
 
 bool ElfInterfaceArm::StepExidx(uint64_t pc, Regs* regs, Memory* process_memory, bool* finished) {
-
-  INTER_LOG("ElfInterface::Step StepExidx");
-
   // Adjust the load bias to get the real relative pc.
   if (pc < load_bias_) {
     last_error_.code = ERROR_UNWIND_INFO;

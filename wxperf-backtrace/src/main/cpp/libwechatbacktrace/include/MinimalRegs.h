@@ -25,6 +25,7 @@
 #define PC(regs) regs[5]
 #define LR(regs) regs[6]
 
+#define FP_MINIMAL_REG_SIZE 4
 #define QUT_MINIMAL_REG_SIZE 7
 
 #ifdef __arm__
@@ -36,7 +37,7 @@
 #if defined(__arm__)
 
 // Only get 4 registers(r7/r11/sp/pc)
-inline __attribute__((__always_inline__)) void RegsMinimalGetLocal(void *reg_data) {
+inline __attribute__((__always_inline__)) void GetFramePointerMinimalRegs(void *reg_data) {
     asm volatile(
     ".align 2\n"
     "bx pc\n"
@@ -54,8 +55,8 @@ inline __attribute__((__always_inline__)) void RegsMinimalGetLocal(void *reg_dat
     : "r1", "r2", "memory");
 }
 
-// Fill reg_data[6] with [r4, r7, r10, r11, sp, pc].
-inline __attribute__((__always_inline__)) void GetMinimalRegs(void *reg_data) {
+// Fill reg_data[7] with [r4, r7, r10, r11, sp, pc, unset].
+inline __attribute__((__always_inline__)) void GetQuickenMinimalRegs(void *reg_data) {
     asm volatile(
     ".align 2\n"
     "bx pc\n"
@@ -76,7 +77,7 @@ inline __attribute__((__always_inline__)) void GetMinimalRegs(void *reg_data) {
 #elif defined(__aarch64__)
 
 // Only get 4 registers from x29 to x32.
-inline __always_inline void RegsMinimalGetLocal(void *reg_data) {
+inline __always_inline void GetFramePointerMinimalRegs(void *reg_data) {
     asm volatile(
     "1:\n"
     "stp x29, x30, [%[base], #0]\n"
@@ -88,8 +89,8 @@ inline __always_inline void RegsMinimalGetLocal(void *reg_data) {
     : "x12", "x13", "memory");
 }
 
-// Fill reg_data[6] with [unset, unuse, x28, x29, sp, pc].
-inline __always_inline void GetMinimalRegs(void *reg_data) {
+// Fill reg_data[7] with [unuse, unset, x28, x29, sp, pc, unset].
+inline __always_inline void GetQuickenMinimalRegs(void *reg_data) {
     asm volatile(
     "1:\n"
     "stp x28, x29, [%[base], #16]\n"

@@ -62,6 +62,9 @@ namespace wechat_backtrace {
     typedef unsigned long long int ullint_t;
     typedef long long int llint_t;
 
+    typedef unsigned long int ulint_t;
+    typedef long int lint_t;
+
     struct Frame {
         uptr pc;
         bool is_dex_pc;
@@ -77,6 +80,12 @@ namespace wechat_backtrace {
         size_t max_frames = 0;
         size_t frame_size = 0;
         std::shared_ptr<Frame> frames;
+    };
+
+    enum BacktraceMode {
+        FramePointer,
+        Quicken,
+        DwarfBased
     };
 
 

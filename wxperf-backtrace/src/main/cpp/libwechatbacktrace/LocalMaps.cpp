@@ -1,9 +1,10 @@
 #include <LocalMaps.h>
 #include "../../common/Log.h"
 
-#define WECHAT_BACKTRACE_LOCALMAPS_TAG "LocalMaps"
-
 namespace wechat_backtrace {
+
+    using namespace std;
+    using namespace unwindstack;
 
     QUT_EXTERN_C_BLOCK
 
@@ -14,23 +15,17 @@ namespace wechat_backtrace {
 
         std::lock_guard lock(unwind_mutex);
 
-        local_maps_.reset(new unwindstack::LocalMaps);
-
-        if (!local_maps_->Parse()) {    // TODO not right
-            LOGE(WECHAT_BACKTRACE_LOCALMAPS_TAG, "Failed to parse map data.");
+        shared_ptr<LocalMaps> new_maps = make_shared<LocalMaps>();
+        if (!new_maps->Parse()) {
+            QUT_LOG("Failed to parse local map data.");
             return;
         }
 
+        local_maps_ = new_maps;
     }
 
     std::shared_ptr<unwindstack::LocalMaps> GetMapsCache() {
-
-        if (local_maps_) {
-            return local_maps_;
-        }
-
-        UpdateLocalMaps();
-
+        std::lock_guard lock(unwind_mutex);
         return local_maps_;
     }
 

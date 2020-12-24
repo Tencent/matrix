@@ -59,6 +59,8 @@ struct FrameData {
   uint64_t map_end = 0;
   uint64_t map_load_bias = 0;
   int map_flags = 0;
+
+  bool is_dex_pc = false;
 };
 
 class Unwinder {

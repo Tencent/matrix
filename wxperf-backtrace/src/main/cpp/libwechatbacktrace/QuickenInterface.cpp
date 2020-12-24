@@ -84,8 +84,6 @@ namespace wechat_backtrace {
     bool QuickenInterface::FindEntry(uptr pc, size_t *entry_offset) {
         size_t first = 0;
         size_t last = qut_sections_->idx_size;
-//        QUT_DEBUG_LOG("QuickenInterface::FindEntry first:%uz last:%uz pc:%llx", first, last,
-//                      (ullint_t) pc);
         while (first < last) {
             size_t current = ((first + last) / 2) & 0xfffffffe;
             uptr addr = qut_sections_->quidx[current];
@@ -106,9 +104,6 @@ namespace wechat_backtrace {
             }
         }
         if (last != 0) {
-//            QUT_DEBUG_LOG("QuickenInterface::FindEntry found entry_offset: %uz, addr: %llx",
-//                          last - 2,
-//                          (ullint_t) qut_sections_->quidx[last - 2]);
             *entry_offset = last - 2;
             return true;
         }

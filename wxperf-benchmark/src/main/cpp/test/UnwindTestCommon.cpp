@@ -100,7 +100,7 @@ inline void print_fp_unwind() {
     uptr frame_size = 0;
 
     uptr regs[4];
-    RegsMinimalGetLocal(regs);
+    GetFramePointerMinimalRegs(regs);
 
     wechat_backtrace::FpUnwind(regs, frames, FRAME_MAX_SIZE, frame_size);
 
@@ -131,7 +131,7 @@ inline void print_wechat_quicken_unwind() {
     TEST_NanoSeconds_Start(nano);
 
     uptr regs[QUT_MINIMAL_REG_SIZE];
-    GetMinimalRegs(regs);
+    GetQuickenMinimalRegs(regs);
     wechat_backtrace::Frame frames[FRAME_MAX_SIZE];
     uptr frame_size = 0;
 

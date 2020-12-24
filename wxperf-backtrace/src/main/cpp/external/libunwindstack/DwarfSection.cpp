@@ -481,8 +481,6 @@ template <typename AddressType>
 bool DwarfSectionImpl<AddressType>::Eval(const DwarfCie* cie, Memory* regular_memory,
                                          const dwarf_loc_regs_t& loc_regs, Regs* regs,
                                          bool* finished) {
-  INTER_LOG("DwarfSectionImpl<AddressType>::Eval");
-
   RegsImpl<AddressType>* cur_regs = reinterpret_cast<RegsImpl<AddressType>*>(regs);
   if (cie->return_address_register >= cur_regs->total_regs()) {
     last_error_.code = DWARF_ERROR_ILLEGAL_VALUE;
@@ -513,20 +511,14 @@ bool DwarfSectionImpl<AddressType>::Eval(const DwarfCie* cie, Memory* regular_me
       }
       eval_info.cfa = (*cur_regs)[loc->values[0]];
       eval_info.cfa += loc->values[1];
-
-      INTER_LOG("DWARF_LOCATION_REGISTER eval_info.cfa: 0x%" "x" " = reg(%u) + %x", (uint32_t)eval_info.cfa, (uint32_t)loc->values[0], (uint32_t)loc->values[1]);
       break;
     case DWARF_LOCATION_VAL_EXPRESSION: {
-
-        UNWIND_LOG("DwarfSectionImpl<AddressType>::Eval DWARF_LOCATION_VAL_EXPRESSION");
       AddressType value;
       if (!EvalExpression(*loc, regular_memory, &value, &eval_info.regs_info, nullptr)) {
         return false;
       }
       // There is only one type of valid expression for CFA evaluation.
       eval_info.cfa = value;
-
-      INTER_LOG("DWARF_LOCATION_VAL_EXPRESSION eval_info.cfa: 0x%" X_FORMAT "", eval_info.cfa);
       break;
     }
     default:

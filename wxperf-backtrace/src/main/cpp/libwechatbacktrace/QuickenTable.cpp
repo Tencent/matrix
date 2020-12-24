@@ -284,7 +284,7 @@ namespace wechat_backtrace {
 
         if (log) {
             QUT_DEBUG_LOG(
-                    "QuickenTable::Decode64 instructions %llx, amount %uz, start_pos %uz",
+                    "QuickenTable::Decode64 instructions %llx, amount %zu, start_pos %zu",
                     (ullint_t)instructions, amount, start_pos);
 
             for (size_t m = 0; m < amount; m++) {

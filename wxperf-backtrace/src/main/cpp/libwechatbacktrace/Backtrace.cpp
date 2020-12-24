@@ -19,6 +19,16 @@ namespace wechat_backtrace {
 
     static pthread_mutex_t unwind_mutex = PTHREAD_MUTEX_INITIALIZER;
 
+    static BacktraceMode backtrace_mode = FramePointer;
+
+    BacktraceMode GetBacktraceMode() {
+        return backtrace_mode;
+    }
+
+    void SetBacktraceMode(BacktraceMode mode) {
+        backtrace_mode = mode;
+    }
+
     void restore_frame_detail(const Frame *frames, const size_t frame_size,
                               std::function<void(FrameDetail)> frame_callback) {
         LOGD(WECHAT_BACKTRACE_TAG, "Restore frame data size: %zu.", frame_size);
@@ -53,30 +63,37 @@ namespace wechat_backtrace {
 
     void notify_maps_changed() {
 
-//        wechat_backtrace::UpdateLocalMaps();
-
 #ifdef __arm__
-        // Parse quicken maps
-        wechat_backtrace::Maps::Parse();
+        switch (backtrace_mode) {
+            case DwarfBased:
+                wechat_backtrace::UpdateLocalMaps();
+                break;
+            case Quicken:
+                // Parse quicken maps
+                wechat_backtrace::Maps::Parse();
+                break;
+            default:
+                break;
+        }
 #endif
     }
 
     void dwarf_unwind(unwindstack::Regs *regs, std::vector<unwindstack::FrameData> &dst,
                       size_t frameSize) {
 
-        pthread_mutex_lock(&unwind_mutex);
         if (regs == nullptr) {
             LOGE(WECHAT_BACKTRACE_TAG, "Err: unable to get remote reg data.");
-            pthread_mutex_unlock(&unwind_mutex);
             return;
         }
 
         unwindstack::SetFastFlag(false);
 
+        pthread_mutex_lock(&unwind_mutex);
+
         std::shared_ptr<unwindstack::LocalMaps> local_maps = GetMapsCache();
         if (!local_maps) {
-            LOGE(WECHAT_BACKTRACE_TAG, "Err: unable to get maps.");
             pthread_mutex_unlock(&unwind_mutex);
+            LOGE(WECHAT_BACKTRACE_TAG, "Err: unable to get maps.");
             return;
         }
 
@@ -87,9 +104,9 @@ namespace wechat_backtrace {
         unwinder.SetResolveNames(false);
         unwinder.Unwind();
 
-        dst = unwinder.frames();
-
         pthread_mutex_unlock(&unwind_mutex);
+
+        dst = unwinder.frames();
     }
 
     void fp_unwind(uptr *regs, Frame *frames, size_t frameMaxSize, size_t &frameSize) {
