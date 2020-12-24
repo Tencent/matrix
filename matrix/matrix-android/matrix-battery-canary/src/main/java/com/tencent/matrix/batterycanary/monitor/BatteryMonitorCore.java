@@ -277,6 +277,12 @@ public class BatteryMonitorCore implements Handler.Callback, LooperTaskMonitorFe
     }
 
     @Override
+    public void onWakeLockTimeout(WakeLockRecord record, long backgroundMillis) {
+        MatrixLog.d(TAG, "#onWakeLockTimeout, tag = " + record.tag + ", pkg = " + record.packageName + ", backgroundMillis = " + backgroundMillis);
+        getConfig().callback.onWakeLockTimeout(record, backgroundMillis);
+    }
+
+    @Override
     public void onAlarmDuplicated(int duplicatedCount, AlarmMonitorFeature.AlarmRecord record) {
         MatrixLog.d(TAG, "#onAlarmDuplicated");
         getConfig().callback.onAlarmDuplicated(duplicatedCount, record);

@@ -35,7 +35,7 @@ import java.util.List;
  */
 public interface BatteryMonitorCallback extends BatteryMonitorCore.JiffiesListener, LooperTaskMonitorFeature.LooperTaskListener, WakeLockMonitorFeature.WakeLockListener, AlarmMonitorFeature.AlarmListener, JiffiesMonitorFeature.JiffiesListener {
 
-    @SuppressWarnings({"NotNullFieldNotInitialized", "SpellCheckingInspection"})
+    @SuppressWarnings({"NotNullFieldNotInitialized", "SpellCheckingInspection", "unused"})
     class BatteryPrinter implements BatteryMonitorCallback {
         private static final String TAG = "Matrix.battery.BatteryPrinter";
         private static final int ONE_MIN = 60 * 1000;
@@ -102,6 +102,10 @@ public interface BatteryMonitorCallback extends BatteryMonitorCore.JiffiesListen
 
         @Override
         public void onWakeLockTimeout(int warningCount, WakeLockRecord record) {
+        }
+
+        @Override
+        public void onWakeLockTimeout(WakeLockRecord record, long backgroundMillis) {
         }
 
         @Override

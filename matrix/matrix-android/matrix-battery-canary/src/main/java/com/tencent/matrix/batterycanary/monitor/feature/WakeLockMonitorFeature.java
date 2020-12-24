@@ -26,7 +26,9 @@ public final class WakeLockMonitorFeature extends AbsMonitorFeature implements P
     private static final String TAG = "Matrix.battery.WakeLockMonitorFeature";
 
     public interface WakeLockListener {
+        @Deprecated
         void onWakeLockTimeout(int warningCount, WakeLockTrace.WakeLockRecord record);
+        void onWakeLockTimeout(WakeLockTrace.WakeLockRecord record, long backgroundMillis);
     }
 
     @VisibleForTesting
@@ -56,6 +58,21 @@ public final class WakeLockMonitorFeature extends AbsMonitorFeature implements P
         PowerManagerServiceHooker.removeListener(this);
         mCore.getHandler().removeCallbacksAndMessages(null);
         mWorkingWakeLocks.clear();
+    }
+
+    @Override
+    public void onBackgroundCheck(long duringMillis) {
+        super.onBackgroundCheck(duringMillis);
+        if (!mWorkingWakeLocks.isEmpty()) {
+            for (WakeLockTrace item : mWorkingWakeLocks.values()) {
+                if (!item.isFinished()) {
+                    if (shouldTracing(item.record.tag)) {
+                        // wakelock not released in background
+                        getListener().onWakeLockTimeout(item.record, duringMillis);
+                    }
+                }
+            }
+        }
     }
 
     @Override
