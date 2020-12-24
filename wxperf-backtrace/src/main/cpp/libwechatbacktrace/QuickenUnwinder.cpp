@@ -134,13 +134,17 @@ namespace wechat_backtrace {
         QUT_LOG("Generate qut for so %s result %d", sopath.c_str(), error);
     }
 
-    void ConsumeRequestingQut() {
+    vector<string> ConsumeRequestingQut() {
         auto requesting_qut = QuickenTableManager::getInstance().GetRequestQut();
         auto it = requesting_qut.begin();
+        vector<string> consumed;
         while (it != requesting_qut.end()) {
+            consumed.push_back(it->second.second + ":" + to_string(it->second.first));
             GenerateQutForLibrary(it->second.second, it->second.first);
             it++;
         }
+
+        return consumed;
     }
 
 //    inline uint32_t

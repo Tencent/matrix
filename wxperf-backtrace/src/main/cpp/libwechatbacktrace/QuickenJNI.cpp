@@ -48,10 +48,23 @@ namespace wechat_backtrace {
         QuickenTableManager::getInstance().WarmUp(warmed_up == JNI_TRUE);
     }
 
-    static void JNI_ConsumeRequestedQut(JNIEnv *env, jclass clazz) {
+    static jobjectArray JNI_ConsumeRequestedQut(JNIEnv *env, jclass clazz) {
         (void) env;
         (void) clazz;
-        ConsumeRequestingQut();
+        vector<string> consumed = ConsumeRequestingQut();
+
+        jobjectArray result = (jobjectArray)
+                env->NewObjectArray(consumed.size(), env->FindClass("java/lang/String"), env->NewStringUTF(""));
+
+        auto it = consumed.begin();
+        size_t i = 0;
+        while (it != consumed.end()) {
+            env->SetObjectArrayElement(result, i, env->NewStringUTF(it->c_str()));
+            i++;
+            it++;
+        }
+
+        return result;
     }
 
     static void JNI_WarmUp(JNIEnv *env, jclass clazz, jstring sopath_jstr) {
@@ -72,7 +85,7 @@ namespace wechat_backtrace {
             {"setPackageName",      "(Ljava/lang/String;)V", (void *) JNI_SetPackageName},
             {"setSavingPath",       "(Ljava/lang/String;)V", (void *) JNI_SetSavingPath},
             {"setWarmedUp",         "(Z)V",                  (void *) JNI_SetWarmedUp},
-            {"consumeRequestedQut", "()V",                   (void *) JNI_ConsumeRequestedQut},
+            {"consumeRequestedQut", "()[Ljava/lang/String;",  (void *) JNI_ConsumeRequestedQut},
             {"warmUp",              "(Ljava/lang/String;)V", (void *) JNI_WarmUp},
             {"statistic",           "(Ljava/lang/String;)V", (void *) JNI_Statistic},
     };

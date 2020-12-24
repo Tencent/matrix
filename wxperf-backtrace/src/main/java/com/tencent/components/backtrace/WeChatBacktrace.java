@@ -458,7 +458,10 @@ public class WeChatBacktrace implements Handler.Callback {
             @Override
             public void run() {
                 Log.i(TAG, "Going to consume requested QUT.");
-                WeChatBacktraceNative.consumeRequestedQut();
+                String[] consumed = WeChatBacktraceNative.consumeRequestedQut();
+                for (String path : consumed) {
+                    Log.i(TAG, "Consumed requested QUT -> %s", path);
+                }
                 Log.i(TAG, "Consume requested QUT done.");
                 tryUnregisterIdleReceiver(mConfiguration.mContext);
             }
@@ -658,7 +661,7 @@ public class WeChatBacktrace implements Handler.Callback {
         // Load backtrace library.
         loadLibrary(configuration.mLibraryLoader);
 
-        Log.i(TAG, "WeChat backtrace configurations: \n" + configuration.toString());
+        Log.i(TAG, configuration.toString());
 
         if (configuration.mBacktraceMode == Mode.Quicken) {
             // Init saving path
@@ -788,14 +791,14 @@ public class WeChatBacktrace implements Handler.Callback {
 
         @Override
         public String toString() {
-          return
-                  "| Mode: " + mBacktraceMode + "\n" +
-                  "| Saving Path: " + mSavingPath + "\n" +
-                  "| Directory to Warm-up: " + mWarmUpDirectoriesList.toString() + "\n" +
-                  "| Is Warm-up Process: " + mIsWarmUpProcess + "\n" +
-                  "| Cool-down: " + mCoolDown + "\n" +
-                  "| Cool-down if Apk Updated: " + mCoolDownIfApkUpdated + "\n" +
-                  "|";
+          return  "\n" +
+                  "WeChat backtrace configurations: \n" +
+                  ">>> Mode: " + mBacktraceMode + "\n" +
+                  ">>> Saving Path: " + mSavingPath + "\n" +
+                  ">>> Directory to Warm-up: " + mWarmUpDirectoriesList.toString() + "\n" +
+                  ">>> Is Warm-up Process: " + mIsWarmUpProcess + "\n" +
+                  ">>> Cool-down: " + mCoolDown + "\n" +
+                  ">>> Cool-down if Apk Updated: " + mCoolDownIfApkUpdated + "\n";
         };
 
     }

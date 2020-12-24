@@ -15,7 +15,7 @@ namespace wechat_backtrace {
 
     QUT_EXTERN_C void GenerateQutForLibrary(const std::string &sopath, const uint64_t elf_start_offset);
 
-    QUT_EXTERN_C void ConsumeRequestingQut();
+    QUT_EXTERN_C std::vector<std::string> ConsumeRequestingQut();
 
     QUT_EXTERN_C QutErrorCode
     WeChatQuickenUnwind(const unwindstack::ArchEnum arch, uptr *regs, const uptr frame_max_size,

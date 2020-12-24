@@ -15,7 +15,7 @@ public class WeChatBacktraceNative {
     static native void setWarmedUp(boolean hasWarmUp);
 
     @Keep
-    static native void consumeRequestedQut();
+    static native String[] consumeRequestedQut();
 
     @Keep
     static native void warmUp(String sopath);
