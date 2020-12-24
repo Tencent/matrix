@@ -124,7 +124,7 @@ public interface BatteryMonitorCallback extends
         }
 
         @Override
-        public void onForegroundServiceLeak(int appImportance, int globalAppImportance, ComponentName componentName, boolean isMyself) {
+        public void onForegroundServiceLeak(boolean isMyself, int appImportance, int globalAppImportance, ComponentName componentName, long millis) {
         }
 
         @CallSuper

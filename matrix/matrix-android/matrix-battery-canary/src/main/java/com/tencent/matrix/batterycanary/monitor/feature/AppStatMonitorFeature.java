@@ -25,7 +25,7 @@ public final class AppStatMonitorFeature extends AbsMonitorFeature {
     private static final String TAG = "Matrix.battery.AppStatMonitorFeature";
 
     public interface AppStatListener {
-        void onForegroundServiceLeak(int appImportance, int globalAppImportance, ComponentName componentName, boolean isMyself);
+        void onForegroundServiceLeak(boolean isMyself, int appImportance, int globalAppImportance, ComponentName componentName, long millis);
     }
 
     /**
@@ -118,7 +118,7 @@ public final class AppStatMonitorFeature extends AbsMonitorFeature {
                             // global
                             MatrixLog.w(TAG, "foreground service detected with low global importance: "
                                     + mAppImportance + ", " + mGlobalAppImportance + ", " + item.service);
-                            mCore.onForegroundServiceLeak(mAppImportance, mGlobalAppImportance, item.service, false);
+                            mCore.onForegroundServiceLeak(false, mAppImportance, mGlobalAppImportance, item.service, duringMillis);
                         }
 
                         if (mAppImportance > mForegroundServiceImportanceLimit) {
@@ -126,7 +126,7 @@ public final class AppStatMonitorFeature extends AbsMonitorFeature {
                                 // myself
                                 MatrixLog.w(TAG, "foreground service detected with low app importance: "
                                         + mAppImportance + ", " + mGlobalAppImportance + ", " + item.service);
-                                mCore.onForegroundServiceLeak(mAppImportance, mGlobalAppImportance, item.service, true);
+                                mCore.onForegroundServiceLeak(true, mAppImportance, mGlobalAppImportance, item.service, duringMillis);
                             }
                         }
                     }

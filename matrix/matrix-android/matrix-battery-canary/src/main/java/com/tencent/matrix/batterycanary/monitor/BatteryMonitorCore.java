@@ -303,7 +303,7 @@ public class BatteryMonitorCore implements
     }
 
     @Override
-    public void onForegroundServiceLeak(int appImportance, int globalAppImportance, ComponentName componentName, boolean isMyself) {
-        getConfig().callback.onForegroundServiceLeak(appImportance, globalAppImportance, componentName, isMyself);
+    public void onForegroundServiceLeak(boolean isMyself, int appImportance, int globalAppImportance, ComponentName componentName, long millis) {
+        getConfig().callback.onForegroundServiceLeak(isMyself, appImportance, globalAppImportance, componentName, millis);
     }
 }
