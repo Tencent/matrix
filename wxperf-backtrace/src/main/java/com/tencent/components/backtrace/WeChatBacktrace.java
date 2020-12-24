@@ -695,7 +695,7 @@ public class WeChatBacktrace implements Handler.Callback {
         if (configuration.mIsWarmUpProcess && !hasWarmedUp()) {
             mIdleHandler.sendMessageDelayed(
                     Message.obtain(mIdleHandler, MSG_WARM_UP, fakeCS),
-                    DELAY_WARM_UP * 1
+                    DELAY_WARM_UP * 10
             );
         }
     }
