@@ -41,5 +41,11 @@ public abstract class AbsMonitorFeature implements MonitorFeature {
     public void onForeground(boolean isForeground) {
         MatrixLog.i(TAG, "#onForeground, foreground = " + isForeground);
     }
+
+    @CallSuper
+    @Override
+    public void onBackgroundCheck(long duringMillis) {
+        MatrixLog.i(TAG, "#onBackgroundCheck, since background started millis = " + duringMillis);
+    }
 }
 

@@ -240,4 +240,24 @@ public class MonitorCoreTest {
         core.start();
         Thread.sleep(1000L);
     }
+
+    @Test
+    public void testBgLoopTask() throws InterruptedException {
+        BatteryMonitorConfig config = new BatteryMonitorConfig.Builder()
+                .enable(JiffiesMonitorFeature.class)
+                .setCallback(spyCallback)
+                .backgroundLoopCheckTime(100)
+                .build();
+
+        final BatteryMonitorCore core = new BatteryMonitorCore(config);
+        core.start();
+        core.onForeground(false);
+        Thread.sleep(1000L);
+        core.onForeground(true);
+        Thread.sleep(1000L);
+        core.onForeground(false);
+        Thread.sleep(1000L);
+        core.onForeground(true);
+        Thread.sleep(1000L);
+    }
 }

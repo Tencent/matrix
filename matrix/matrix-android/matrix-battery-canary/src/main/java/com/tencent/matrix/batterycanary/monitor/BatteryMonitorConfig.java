@@ -20,7 +20,8 @@ import java.util.concurrent.Callable;
 public class BatteryMonitorConfig {
     public static final long DEF_WAKELOCK_TIMEOUT = 2 * 60 * 1000L; // 2min
     public static final long DEF_JIFFIES_DELAY = 30 * 1000L; // 30s
-    public static final long DEF_FOREGROUND_SCHEDULE_TIME = 10 * 60 * 1000L; // 10min
+    public static final long DEF_FOREGROUND_SCHEDULE_TIME = 20 * 60 * 1000L; // 10min
+    public static final long DEF_BACKGROUND_SCHEDULE_TIME = 10 * 60 * 1000L; // 10min
 
     @NonNull
     public BatteryMonitorCallback callback = new BatteryMonitorCallback.BatteryPrinter();
@@ -30,6 +31,7 @@ public class BatteryMonitorConfig {
     public long wakelockTimeout = DEF_WAKELOCK_TIMEOUT;
     public long greyTime = DEF_JIFFIES_DELAY;
     public long foregroundLoopCheckTime = DEF_FOREGROUND_SCHEDULE_TIME;
+    public long backgroundLoopCheckTime = DEF_BACKGROUND_SCHEDULE_TIME;
     public int overHeatCount = 1024;
     public boolean isForegroundModeEnabled = true;
     public boolean isBuiltinForegroundNotifyEnabled = true;
@@ -99,6 +101,11 @@ public class BatteryMonitorConfig {
 
         public Builder foregroundLoopCheckTime(long time) {
             config.foregroundLoopCheckTime = time;
+            return this;
+        }
+
+        public Builder backgroundLoopCheckTime(long time) {
+            config.backgroundLoopCheckTime = time;
             return this;
         }
 

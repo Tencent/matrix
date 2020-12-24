@@ -16,6 +16,7 @@ public interface MonitorFeature {
     void onTurnOn();
     void onTurnOff();
     void onForeground(boolean isForeground);
+    void onBackgroundCheck(long duringMillis);
     int weight();
 
     @SuppressWarnings("rawtypes")

@@ -41,7 +41,26 @@ public class BatteryMonitorCore implements Handler.Callback, LooperTaskMonitorFe
                 message.arg1 = MSG_ARG_FOREGROUND;
                 mHandler.sendMessageAtFrontOfQueue(message);
                 lastWhat = (lastWhat == MSG_ID_JIFFIES_END ? MSG_ID_JIFFIES_START : MSG_ID_JIFFIES_END);
-                mHandler.postDelayed(this, mLooperMillis);
+                mHandler.postDelayed(this, mFgLooperMillis);
+            }
+        }
+    }
+
+    private class BackgroundLoopCheckTask implements Runnable {
+        int round = 0;
+        @Override
+        public void run() {
+            round ++;
+            MatrixLog.i(TAG, "#onBackgroundLoopCheck, round = " + round);
+            if (!isForeground()) {
+                synchronized (BatteryMonitorCore.class) {
+                    for (MonitorFeature plugin : mConfig.features) {
+                        plugin.onBackgroundCheck(mBgLooperMillis * round);
+                    }
+                }
+            }
+            if (!isForeground()) {
+                mHandler.postDelayed(this, mBgLooperMillis);
             }
         }
     }
@@ -51,13 +70,14 @@ public class BatteryMonitorCore implements Handler.Callback, LooperTaskMonitorFe
     private static final int MSG_ARG_FOREGROUND = 0x3;
 
     @NonNull private Handler mHandler;
-    @Nullable private ForegroundLoopCheckTask mLooperTask;
+    @Nullable private ForegroundLoopCheckTask mFgLooperTask;
+    @Nullable private BackgroundLoopCheckTask mBgLooperTask;
     private final BatteryMonitorConfig mConfig;
 
     @NonNull
     Callable<String> mSupplier = new Callable<String>() {
         @Override
-        public String call() throws Exception {
+        public String call() {
             return "unknown";
         }
     };
@@ -66,7 +86,8 @@ public class BatteryMonitorCore implements Handler.Callback, LooperTaskMonitorFe
     private boolean mAppForeground = AppActiveMatrixDelegate.INSTANCE.isAppForeground();
     private boolean mForegroundModeEnabled;
     private static long mMonitorDelayMillis;
-    private static long mLooperMillis;
+    private static long mFgLooperMillis;
+    private static long mBgLooperMillis;
 
     public BatteryMonitorCore(BatteryMonitorConfig config) {
         mConfig = config;
@@ -78,7 +99,8 @@ public class BatteryMonitorCore implements Handler.Callback, LooperTaskMonitorFe
         mHandler = new Handler(MatrixHandlerThread.getDefaultHandlerThread().getLooper(), this);
         enableForegroundLoopCheck(config.isForegroundModeEnabled);
         mMonitorDelayMillis = config.greyTime;
-        mLooperMillis = config.foregroundLoopCheckTime;
+        mFgLooperMillis = config.foregroundLoopCheckTime;
+        mBgLooperMillis = config.backgroundLoopCheckTime;
 
         for (MonitorFeature plugin : config.features) {
             plugin.configure(this);
@@ -89,7 +111,7 @@ public class BatteryMonitorCore implements Handler.Callback, LooperTaskMonitorFe
     public void enableForegroundLoopCheck(boolean bool) {
         mForegroundModeEnabled = bool;
         if (mForegroundModeEnabled) {
-            mLooperTask = new ForegroundLoopCheckTask();
+            mFgLooperTask = new ForegroundLoopCheckTask();
         }
     }
 
@@ -161,21 +183,38 @@ public class BatteryMonitorCore implements Handler.Callback, LooperTaskMonitorFe
             // back:
             // 1. remove all checks
             mHandler.removeCallbacksAndMessages(null);
+
             // 2. start background jiffies check
             Message message = Message.obtain(mHandler);
             message.what = MSG_ID_JIFFIES_START;
             mHandler.sendMessageDelayed(message, mMonitorDelayMillis);
+
+            // 3. start background loop check task
+            if (mBgLooperTask != null) {
+                mHandler.removeCallbacks(mBgLooperTask);
+                mBgLooperTask = null;
+            }
+            mBgLooperTask = new BackgroundLoopCheckTask();
+            mHandler.postDelayed(mBgLooperTask, mBgLooperMillis);
+
         } else if (!mHandler.hasMessages(MSG_ID_JIFFIES_START)) {
             // fore:
-            // 1. finish background jiffies check
+            // 1. remove background loop task
+            if (mBgLooperTask != null) {
+                mHandler.removeCallbacks(mBgLooperTask);
+                mBgLooperTask = null;
+            }
+
+            // 2. finish background jiffies check
             Message message = Message.obtain(mHandler);
             message.what = MSG_ID_JIFFIES_END;
             mHandler.sendMessageAtFrontOfQueue(message);
-            // 2. start foreground jiffies loop check
-            if (mForegroundModeEnabled && mLooperTask != null) {
-                mHandler.removeCallbacks(mLooperTask);
-                mLooperTask.lastWhat = MSG_ID_JIFFIES_START;
-                mHandler.post(mLooperTask);
+
+            // 3. start foreground jiffies loop check
+            if (mForegroundModeEnabled && mFgLooperTask != null) {
+                mHandler.removeCallbacks(mFgLooperTask);
+                mFgLooperTask.lastWhat = MSG_ID_JIFFIES_START;
+                mHandler.post(mFgLooperTask);
             }
         }
 
