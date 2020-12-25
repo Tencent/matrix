@@ -78,7 +78,7 @@ namespace wechat_backtrace {
         QUT_LOG("Generate qut for so %s, elf_start_offset %llu.", sopath.c_str(),
                 (ullint_t) elf_start_offset);
 
-        const string hash = ToHash(sopath);
+        const string hash = ToHash(sopath + to_string(FileSize(sopath)));
         const std::string soname = SplitSonameFromPath(sopath);
 
         {

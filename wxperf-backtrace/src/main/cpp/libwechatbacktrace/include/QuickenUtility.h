@@ -53,7 +53,21 @@ namespace wechat_backtrace {
                EndsWith(soname, ".art");
     }
 
-    inline static std::string FakeBuildId(const std::string sopath) {
+    inline static size_t FileSize(const std::string &sopath) {
+        int fd = open(sopath.c_str(), O_RDONLY);
+        size_t file_size = 0;
+        if (fd >= 0) {
+            struct stat file_stat;
+            if (fstat(fd, &file_stat) == 0) {
+                file_size = file_stat.st_size;
+            }
+            close(fd);
+        }
+
+        return file_size;
+    }
+
+    inline static std::string FakeBuildId(const std::string &sopath) {
         std::string build_id = "";
         if (IsOatFile(sopath)) {
             int fd = open(sopath.c_str(), O_RDONLY);

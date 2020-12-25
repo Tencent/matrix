@@ -87,7 +87,7 @@ namespace wechat_backtrace {
             } else {
                 build_id_ = ToBuildId(build_id_hex);
             }
-            hash_ = ToHash(sopath_);
+            hash_ = ToHash(sopath_ + std::to_string(FileSize(sopath)));
         }
 
         static void

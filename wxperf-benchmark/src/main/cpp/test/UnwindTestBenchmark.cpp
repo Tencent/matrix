@@ -65,7 +65,7 @@ JNIEXPORT void JNICALL
 Java_com_tencent_wxperf_jni_test_UnwindBenckmarkTest_debugNative(JNIEnv *env, jclass clazz) {
 //    BENCHMARK_TIMES(DWARF_UNWIND, 1, func_selfso);
 //    BENCHMARK_TIMES(FP_UNWIND, 1, func_selfso);
-    for (int i = 0; i < 1; i++) {
+    for (int i = 0; i < 3; i++) {
         BENCHMARK_TIMES(DWARF_UNWIND, 1, func_selfso)
         BENCHMARK_TIMES(WECHAT_QUICKEN_UNWIND, 1, func_selfso);
     }
