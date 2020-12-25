@@ -360,12 +360,14 @@ public class WeChatBacktrace implements Handler.Callback {
         }
     }
 
+    private final static boolean sFakeTest = false;
+
     // TODO For debug
     final CancellationSignal fakeCS = new CancellationSignal();
 
     private void warmingUp(final CancellationSignal cs) {
 
-        if (fakeCS != cs) {
+        if (sFakeTest && fakeCS != cs) {
             return;
         }
 
@@ -723,7 +725,7 @@ public class WeChatBacktrace implements Handler.Callback {
 
         mConfigured = true;
 
-        if (configuration.mIsWarmUpProcess && !hasWarmedUp()) {
+        if (sFakeTest && configuration.mIsWarmUpProcess && !hasWarmedUp()) {
             mIdleHandler.sendMessageDelayed(
                     Message.obtain(mIdleHandler, MSG_WARM_UP_FAKE, fakeCS),
                     DELAY_WARM_UP * 1
