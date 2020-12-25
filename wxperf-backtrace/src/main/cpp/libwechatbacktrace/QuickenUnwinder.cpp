@@ -33,6 +33,8 @@ namespace wechat_backtrace {
 
     DEFINE_STATIC_LOCAL(shared_ptr<Memory>, process_memory_, (new QuickenMemoryLocal));
 
+    DEFINE_STATIC_LOCAL(mutex, generate_lock_,);
+
     void StatisticWeChatQuickenUnwindTable(const string &sopath) {
 
         string soname = SplitSonameFromPath(sopath);
@@ -79,59 +81,63 @@ namespace wechat_backtrace {
         const string hash = ToHash(sopath);
         const std::string soname = SplitSonameFromPath(sopath);
 
-        if (QuickenTableManager::CheckIfQutFileExistsWithHash(soname, hash)) {
-            QUT_LOG("Qut exists with hash %s and return.", hash.c_str());
-            return;
+        {
+            lock_guard<mutex> lock(generate_lock_);
+
+            if (QuickenTableManager::CheckIfQutFileExistsWithHash(soname, hash)) {
+                QUT_LOG("Qut exists with hash %s and return.", hash.c_str());
+                return;
+            }
+
+            // Will be destructed by 'elf' instance.
+            auto memory = QuickenMapInfo::CreateQuickenMemoryFromFile(sopath, elf_start_offset);
+            if (memory == nullptr) {
+                QUT_LOG("Create quicken memory for so %s failed", sopath.c_str());
+                return;
+            }
+            auto elf = make_unique<Elf>(memory);
+            elf->Init();
+            if (!elf->valid()) {
+                QUT_LOG("elf->valid() so %s invalid", sopath.c_str());
+                return;
+            }
+
+            if (elf->arch() != CURRENT_ARCH) {
+                QUT_LOG("elf->arch() invalid %s", sopath.c_str());
+                return;
+            }
+
+            const string build_id_hex = elf->GetBuildID();
+            const string build_id = build_id_hex.empty() ? FakeBuildId(sopath) : ToBuildId(
+                    build_id_hex);
+
+            if (QuickenTableManager::CheckIfQutFileExistsWithBuildId(soname, build_id)) {
+                QUT_LOG("Qut exists with build id %s and return.", build_id.c_str());
+                return;
+            }
+
+            QuickenInterface *interface =
+                    QuickenMapInfo::CreateQuickenInterfaceForGenerate(sopath, elf.get());
+
+            std::unique_ptr<QutSections> qut_sections = make_unique<QutSections>();
+            QutSectionsPtr qut_sections_ptr = qut_sections.get();
+
+            Memory *gnu_debug_data_memory = nullptr;
+            if (elf->gnu_debugdata_interface()) {
+                gnu_debug_data_memory = elf->gnu_debugdata_interface()->memory();
+            }
+
+            interface->GenerateQuickenTable<addr_t>(elf->memory(), gnu_debug_data_memory,
+                                                    process_memory_.get(),
+                                                    qut_sections_ptr);
+
+            QutFileError error = QuickenTableManager::getInstance().SaveQutSections(
+                    soname, sopath, hash, build_id, std::move(qut_sections));
+
+            (void) error;
+
+            QUT_LOG("Generate qut for so %s result %d", sopath.c_str(), error);
         }
-
-        // Will be destructed by 'elf' instance.
-        auto memory = QuickenMapInfo::CreateQuickenMemoryFromFile(sopath, elf_start_offset);
-        if (memory == nullptr) {
-            QUT_LOG("Create quicken memory for so %s failed", sopath.c_str());
-            return;
-        }
-        auto elf = make_unique<Elf>(memory);
-        elf->Init();
-        if (!elf->valid()) {
-            QUT_LOG("elf->valid() so %s invalid", sopath.c_str());
-            return;
-        }
-
-        if (elf->arch() != CURRENT_ARCH) {
-            QUT_LOG("elf->arch() invalid %s", sopath.c_str());
-            return;
-        }
-
-        const string build_id_hex = elf->GetBuildID();
-        const string build_id = build_id_hex.empty() ? FakeBuildId(sopath) : ToBuildId(
-                build_id_hex);
-
-        if (QuickenTableManager::CheckIfQutFileExistsWithBuildId(soname, build_id)) {
-            QUT_LOG("Qut exists with build id %s and return.", build_id.c_str());
-            return;
-        }
-
-        QuickenInterface *interface =
-                QuickenMapInfo::CreateQuickenInterfaceForGenerate(sopath, elf.get());
-
-        std::unique_ptr<QutSections> qut_sections = make_unique<QutSections>();
-        QutSectionsPtr qut_sections_ptr = qut_sections.get();
-
-        Memory *gnu_debug_data_memory = nullptr;
-        if (elf->gnu_debugdata_interface()) {
-            gnu_debug_data_memory = elf->gnu_debugdata_interface()->memory();
-        }
-
-        interface->GenerateQuickenTable<addr_t>(elf->memory(), gnu_debug_data_memory,
-                                                process_memory_.get(),
-                                                qut_sections_ptr);
-
-        QutFileError error = QuickenTableManager::getInstance().SaveQutSections(
-                soname, sopath, hash, build_id, std::move(qut_sections));
-
-        (void) error;
-
-        QUT_LOG("Generate qut for so %s result %d", sopath.c_str(), error);
     }
 
     vector<string> ConsumeRequestingQut() {

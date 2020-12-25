@@ -12,7 +12,7 @@
 #include <QutStatistics.h>
 #include "QuickenTableGenerator.h"
 #include "MinimalRegs.h"
-#include "../../common/Log.h"
+#include "Log.h"
 #include "DwarfEhFrameWithHdrDecoder.h"
 #include "DwarfDebugFrameDecoder.h"
 #include "ExidxDecoder.h"

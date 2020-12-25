@@ -763,10 +763,9 @@ public class WeChatBacktrace implements Handler.Callback {
         boolean mCoolDown = false;
         boolean mCoolDownIfApkUpdated = true;   // Default true.
         boolean mIsWarmUpProcess = false;
-
         Mode mBacktraceMode = Mode.Quicken;
-
         LibraryLoader mLibraryLoader = null;
+        boolean mImmediateGeneration = false;
 
         private boolean mCommitted = false;
         private WeChatBacktrace mWeChatBacktrace;
@@ -799,6 +798,14 @@ public class WeChatBacktrace implements Handler.Callback {
                 return this;
             }
             mLibraryLoader = loader;
+            return this;
+        }
+
+        public Configuration immediateGeneration(boolean immedate) {
+            if (mCommitted) {
+                return this;
+            }
+            mImmediateGeneration = immedate;
             return this;
         }
 

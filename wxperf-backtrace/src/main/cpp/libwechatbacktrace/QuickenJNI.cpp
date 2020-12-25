@@ -13,6 +13,7 @@
 #include <QuickenTableManager.h>
 #include <jni.h>
 #include <Backtrace.h>
+#include <QuickenInterface.h>
 
 #include "QuickenUnwinder.h"
 #include "QuickenJNI.h"
@@ -85,6 +86,17 @@ namespace wechat_backtrace {
         SetBacktraceMode(static_cast<BacktraceMode>(mode));
     }
 
+    static void JNI_SetImmediateGeneration(JNIEnv *env, jclass clazz, jboolean immediate) {
+        (void) env;
+        (void) clazz;
+
+        if (immediate) {
+            QuickenInterface::SetQuickenGenerateDelegate(wechat_backtrace::GenerateQutForLibrary);
+        } else {
+            QuickenInterface::SetQuickenGenerateDelegate(nullptr);
+        }
+    }
+
     static void JNI_Statistic(JNIEnv *env, jclass clazz, jstring sopath_jstr) {
         (void) clazz;
         const char *sopath = env->GetStringUTFChars(sopath_jstr, 0);
@@ -100,6 +112,7 @@ namespace wechat_backtrace {
             {"warmUp",              "(Ljava/lang/String;)V", (void *) JNI_WarmUp},
             {"setBacktraceMode",    "(I)V",                  (void *) JNI_SetBacktraceMode},
             {"statistic",           "(Ljava/lang/String;)V", (void *) JNI_Statistic},
+            {"immediateGeneration", "(Z)V",                  (void *) JNI_SetImmediateGeneration},
     };
 
     static jclass JNIClass_WeChatBacktraceNative = nullptr;

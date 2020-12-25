@@ -61,6 +61,13 @@ public class WeChatBacktraceNative {
     static native void statistic(String so_path);
 
     /**
+     * Generate quicken table immediately while stepping stack.
+     * @param immediate
+     */
+    @Keep
+    static native void immediateGeneration(boolean immediate);
+
+    /**
      * A callback from wechat backtrace native code that will schedule an task
      * to consume QUT generate requests.
      */

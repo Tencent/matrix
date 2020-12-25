@@ -88,6 +88,7 @@ namespace wechat_backtrace {
         DwarfBased = 2
     };
 
+    typedef void(*quicken_generate_delegate_t)(const std::string &, const uint64_t);
 
 }  // namespace wechat_backtrace
 

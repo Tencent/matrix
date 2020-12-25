@@ -153,8 +153,8 @@ namespace wechat_backtrace {
                 sopath,
                 soname,
                 elf->GetLoadBias(),
-                0,
-                0,
+                0, // Not use while generating
+                0, // Not use while generating
                 build_id_hex
         );
 

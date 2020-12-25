@@ -12,7 +12,7 @@
 #include "LocalMaps.h"
 
 #include "android-base/macros.h"
-#include "../../common/PthreadExt.h"
+#include "PthreadExt.h"
 
 namespace wechat_backtrace {
 

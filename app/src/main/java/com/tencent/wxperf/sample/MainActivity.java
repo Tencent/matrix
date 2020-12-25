@@ -131,13 +131,17 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        System.loadLibrary("wechatbacktrace");
-
         WeChatBacktrace.instance().configure(getApplicationContext())
                 .directoryToWarmUp(getApplicationInfo().nativeLibraryDir)
                 .directoryToWarmUp(WeChatBacktrace.getSystemLibraryPath())
+                .setBacktraceMode(WeChatBacktrace.Mode.Quicken)
                 .isWarmUpProcess(true)
                 .commit();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
     }
 
     private void dumpFd() {

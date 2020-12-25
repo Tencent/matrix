@@ -90,6 +90,9 @@ namespace wechat_backtrace {
             hash_ = ToHash(sopath_);
         }
 
+        static void
+        SetQuickenGenerateDelegate(quicken_generate_delegate_t quicken_generate_delegate);
+
         QutSections *GetQutSections() {
             return qut_sections_;
         }
@@ -126,6 +129,8 @@ namespace wechat_backtrace {
         QutSections *qut_sections_ = nullptr;
 
         std::mutex lock_;
+
+        static quicken_generate_delegate_t quicken_generate_delegate_;
     };
 
 }  // namespace wechat_backtrace

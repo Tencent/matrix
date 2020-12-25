@@ -1,5 +1,5 @@
 #include <LocalMaps.h>
-#include "../../common/Log.h"
+#include <Log.h>
 
 namespace wechat_backtrace {
 

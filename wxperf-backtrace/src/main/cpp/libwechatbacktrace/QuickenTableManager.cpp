@@ -216,7 +216,8 @@ namespace wechat_backtrace {
         }
 
         if (ret != NoneError) {
-            QUT_LOG("Requeting quicken table %s result %d", sopath.c_str(), ret);
+
+            QUT_LOG("Request quicken table %s result %d.", sopath.c_str(), ret);
 
             if (!sHasWarmedUp) {
                 return NotWarmedUp;

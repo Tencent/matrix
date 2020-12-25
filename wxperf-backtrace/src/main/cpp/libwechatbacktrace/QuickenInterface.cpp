@@ -13,12 +13,19 @@
 #include "DwarfEhFrameWithHdrDecoder.h"
 #include "DwarfEhFrameDecoder.h"
 #include "DwarfDebugFrameDecoder.h"
-#include "../../common/PthreadExt.h"
+#include "PthreadExt.h"
 
 namespace wechat_backtrace {
 
     using namespace std;
     using namespace unwindstack;
+
+    quicken_generate_delegate_t QuickenInterface::quicken_generate_delegate_ = nullptr;
+
+    void QuickenInterface::SetQuickenGenerateDelegate(
+            quicken_generate_delegate_t quicken_generate_delegate) {
+        quicken_generate_delegate_ = quicken_generate_delegate;
+    }
 
     uint64_t QuickenInterface::GetLoadBias() {
         return load_bias_;
@@ -81,9 +88,16 @@ namespace wechat_backtrace {
             }
         }
 
-        if (ret == TryInvokeJavaRequestQutGenerate) {
-            InvokeJava_RequestQutGenerate();
+        if (UNLIKELY(quicken_generate_delegate_)) {
+            if (ret == TryInvokeJavaRequestQutGenerate || ret == NotWarmedUp) {
+                quicken_generate_delegate_(sopath_, elf_start_offset_);
+            }
+        } else {
+            if (ret == TryInvokeJavaRequestQutGenerate) {
+                InvokeJava_RequestQutGenerate();
+            }
         }
+
 
         return false;
     }
@@ -139,8 +153,6 @@ namespace wechat_backtrace {
                              stack_bottom, frame_size);
         size_t entry_offset;
 
-//        QUT_DEBUG_LOG("QuickenInterface::Step pc:%llx, load_bias_:%llu", (uint64_t) pc, load_bias_);
-
         pc -= load_bias_;
 
         if (UNLIKELY(!FindEntry(pc, &entry_offset))) {
@@ -151,9 +163,6 @@ namespace wechat_backtrace {
         bool return_value = false;
         last_error_code_ = quicken.Eval(entry_offset);
         if (last_error_code_ == QUT_ERROR_NONE) {
-//            QUT_DEBUG_LOG(
-//                    "QuickenInterface::Step quicken.Eval PC(regs) %llx LR(regs) %llx ken.pc_set_ %d",
-//                    (uint64_t) PC(regs), (uint64_t) LR(regs), quicken.pc_set_);
             if (!quicken.pc_set_) {
                 PC(regs) = LR(regs);
             }
@@ -167,9 +176,6 @@ namespace wechat_backtrace {
 
         // If the pc was set to zero, consider this the final frame.
         *finished = (PC(regs) == 0) ? true : false;
-
-//        QUT_DEBUG_LOG("QuickenInterface::Step finished: %d, PC(regs) %llx", *finished,
-//                      (uint64_t) PC(regs));
 
         return return_value;
     }
