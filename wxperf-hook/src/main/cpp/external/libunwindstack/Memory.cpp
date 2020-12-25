@@ -282,7 +282,7 @@ bool MemoryFileAtOffset::Init(const std::string& file, uint64_t offset, uint64_t
     // Truncate the mapped size.
     size_ = max_size;
   }
-  void* map = mmap(nullptr, size_, PROT_READ, MAP_PRIVATE | MAP_ANONYMOUS, fd, aligned_offset);
+  void* map = mmap(nullptr, size_, PROT_READ, MAP_PRIVATE, fd, aligned_offset);
   if (map == MAP_FAILED) {
     return false;
   }
