@@ -11,7 +11,7 @@
 #include <LocalMaps.h>
 #include <QuickenTableManager.h>
 
-#define WECHAT_BACKTRACE_TAG "Wehat.Backtrace"
+#define WECHAT_BACKTRACE_TAG "Wechat.Backtrace"
 
 namespace wechat_backtrace {
 
