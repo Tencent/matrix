@@ -175,7 +175,7 @@ namespace wechat_backtrace {
 //    }
 
     inline uint32_t
-    GetPcAdjustment(Memory *process_memory, uint64_t pc, uint32_t rel_pc,
+    GetPcAdjustment(Memory *process_memory, MapInfoPtr map_info, uint64_t pc, uint32_t rel_pc,
                     uint32_t load_bias) {
         if (rel_pc < load_bias) {
             if (rel_pc < 2) {
@@ -195,7 +195,10 @@ namespace wechat_backtrace {
         if (adjusted_pc & 1) {
             // This is a thumb instruction, it could be 2 or 4 bytes.
             uint32_t value;
-            if (!process_memory->ReadFully(adjusted_pc - 5, &value, sizeof(value)) ||
+            adjusted_pc -= 5;
+            if ((adjusted_pc - 5) < map_info->start ||
+                (adjusted_pc - 5 + sizeof(value)) >= map_info->end ||
+                !process_memory->ReadFully(adjusted_pc - 5, &value, sizeof(value)) ||
                 (value & 0xe000f000) != 0xe000f000) {
                 return 2;
             }
@@ -272,7 +275,7 @@ namespace wechat_backtrace {
             }
 
             if (adjust_pc) {
-                pc_adjustment = GetPcAdjustment(process_memory_.get(), PC(regs), rel_pc,
+                pc_adjustment = GetPcAdjustment(process_memory_.get(), map_info, PC(regs), rel_pc,
                                                 last_load_bias);
             } else {
                 pc_adjustment = 0;

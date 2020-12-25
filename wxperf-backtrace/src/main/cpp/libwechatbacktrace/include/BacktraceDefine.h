@@ -83,9 +83,9 @@ namespace wechat_backtrace {
     };
 
     enum BacktraceMode {
-        FramePointer,
-        Quicken,
-        DwarfBased
+        FramePointer = 0,
+        Quicken = 1,
+        DwarfBased = 2
     };
 
 

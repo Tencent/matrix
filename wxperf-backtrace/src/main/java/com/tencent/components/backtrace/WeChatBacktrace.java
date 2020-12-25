@@ -74,6 +74,7 @@ public class WeChatBacktrace implements Handler.Callback {
     private final static int MSG_WARM_UP = 1;
     private final static int MSG_CONSUME_REQ_QUT = 2;
     private final static int MSG_CLEAN_UP = 3;
+    private final static int MSG_WARM_UP_FAKE = 4;
 
     private volatile boolean mInitialized;
     private volatile boolean mConfigured;
@@ -84,6 +85,8 @@ public class WeChatBacktrace implements Handler.Callback {
     private ThreadTaskExecutor mThreadTaskExecutor;
     private AtomicInteger mUnfinishedTask = new AtomicInteger(0);
 
+    private Mode mCurrentBacktraceMode;
+
     public interface LibraryLoader {
         void load(String library);
     }
@@ -91,7 +94,8 @@ public class WeChatBacktrace implements Handler.Callback {
     @Override
     public boolean handleMessage(Message msg) {
         switch (msg.what) {
-            case MSG_WARM_UP: {
+            case MSG_WARM_UP:
+            case MSG_WARM_UP_FAKE: {    // MSG_WARM_UP_FAKE will be removed later
                 CancellationSignal cs = (CancellationSignal) msg.obj;
                 warmingUp(cs);
                 break;
@@ -204,6 +208,10 @@ public class WeChatBacktrace implements Handler.Callback {
             switch (action) {
                 case ACTION_WARMED_UP:
                     WeChatBacktraceNative.setWarmedUp(true);
+                    if (mCurrentBacktraceMode == Mode.FpUntilQuickenWarmedUp ||
+                            mCurrentBacktraceMode == Mode.DwarfUntilQuickenWarmedUp) {
+                        WeChatBacktraceNative.setBacktraceMode(Mode.Quicken.value);
+                    }
                     break;
             }
         }
@@ -643,7 +651,7 @@ public class WeChatBacktrace implements Handler.Callback {
         return file;
     }
 
-    private String defaultSavingPath(Configuration configuration) {
+    private static String defaultSavingPath(Configuration configuration) {
         return configuration.mContext.getFilesDir().getAbsolutePath() + "/"
                 + DIR_WECHAT_BACKTRACE + "/" + FILE_DEFAULT_SAVING_PATH + "/";
     }
@@ -663,9 +671,12 @@ public class WeChatBacktrace implements Handler.Callback {
 
         Log.i(TAG, configuration.toString());
 
-        WeChatBacktraceNative.setBacktraceMode(configuration.mBacktraceMode.value);
+        mCurrentBacktraceMode = configuration.mBacktraceMode;
 
-        if (configuration.mBacktraceMode == Mode.Quicken) {
+        if (configuration.mBacktraceMode == Mode.Quicken ||
+                configuration.mBacktraceMode == Mode.FpUntilQuickenWarmedUp ||
+                configuration.mBacktraceMode == Mode.DwarfUntilQuickenWarmedUp
+        ) {
 
             // Init saving path
             String savingPath = validateSavingPath(configuration);
@@ -683,32 +694,65 @@ public class WeChatBacktrace implements Handler.Callback {
             // Register scheduler
             prepareIdleScheduler(configuration);
 
+            // Set backtrace mode
+            boolean hasWarmedUp = hasWarmedUp();
+            Mode mode = Mode.Quicken;
+            if (!hasWarmedUp) {
+                if (configuration.mBacktraceMode == Mode.FpUntilQuickenWarmedUp) {
+                    mode = Mode.Fp;
+                } else if (configuration.mBacktraceMode == Mode.DwarfUntilQuickenWarmedUp) {
+                    mode = Mode.Dwarf;
+                }
+            }
+            WeChatBacktraceNative.setBacktraceMode(mode.value);
+
             // Set warmed up flag
-            WeChatBacktraceNative.setWarmedUp(hasWarmedUp());
+            WeChatBacktraceNative.setWarmedUp(hasWarmedUp);
 
             // Register warmed up receiver for other processes.
             registerWarmedUpReceiver(configuration);
+        } else {
+            WeChatBacktraceNative.setBacktraceMode(configuration.mBacktraceMode.value);
         }
 
         mConfigured = true;
 
         if (configuration.mIsWarmUpProcess && !hasWarmedUp()) {
             mIdleHandler.sendMessageDelayed(
-                    Message.obtain(mIdleHandler, MSG_WARM_UP, fakeCS),
-                    DELAY_WARM_UP * 10
+                    Message.obtain(mIdleHandler, MSG_WARM_UP_FAKE, fakeCS),
+                    DELAY_WARM_UP * 1
             );
         }
     }
 
     public enum Mode {
-        FramePointer(0),
+        Fp(0),
         Quicken(1),
-        DwarfBased(2);
+        Dwarf(2),
+        FpUntilQuickenWarmedUp(3),
+        DwarfUntilQuickenWarmedUp(4);
 
         int value;
 
         Mode(int mode) {
             this.value = mode;
+        }
+
+        @Override
+        public String toString() {
+            switch (this) {
+                case Fp:
+                    return "FramePointer-based.";
+                case Quicken:
+                    return "WeChat QuickenUnwindTable-based.";
+                case Dwarf:
+                    return "Dwarf-based.";
+                case FpUntilQuickenWarmedUp:
+                    return "Use fp-based backtrace before quicken has warmed up.";
+                case DwarfUntilQuickenWarmedUp:
+                    return "Use dwarf-based backtrace before quicken has warmed up.";
+            }
+            return "Unreachable.";
         }
     }
 
@@ -803,8 +847,8 @@ public class WeChatBacktrace implements Handler.Callback {
         public String toString() {
             return "\n" +
                     "WeChat backtrace configurations: \n" +
-                    ">>> Mode: " + mBacktraceMode + "\n" +
-                    ">>> Saving Path: " + mSavingPath + "\n" +
+                    ">>> Backtrace Mode: " + mBacktraceMode + "\n" +
+                    ">>> Saving Path: " + (mSavingPath != null ? mSavingPath : defaultSavingPath(this)) + "\n" +
                     ">>> Custom Library Loader: " + (mLibraryLoader != null) + "\n" +
                     ">>> Directories to Warm-up: " + mWarmUpDirectoriesList.toString() + "\n" +
                     ">>> Is Warm-up Process: " + mIsWarmUpProcess + "\n" +

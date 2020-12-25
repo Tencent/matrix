@@ -25,6 +25,9 @@ namespace wechat_backtrace {
     }
 
     std::shared_ptr<unwindstack::LocalMaps> GetMapsCache() {
+        if (!local_maps_) {
+            UpdateLocalMaps();
+        }
         std::lock_guard lock(unwind_mutex);
         return local_maps_;
     }

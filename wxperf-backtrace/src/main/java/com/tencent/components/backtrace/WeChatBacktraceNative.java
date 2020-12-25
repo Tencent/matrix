@@ -27,7 +27,7 @@ public class WeChatBacktraceNative {
     static native void setWarmedUp(boolean hasWarmUp);
 
     /**
-     * mode = 0: FramePointer-based unwind
+     * mode = 0: Fp-based unwind
      * mode = 1: Quicken-based unwind
      * mode = 2: Dwarf-based unwind
      *

@@ -24,16 +24,15 @@
 #include "ElfInterfaceArm.h"
 #include "QuickenMaps.h"
 
+#define CAPACITY_INCREMENT 1024
+
 namespace wechat_backtrace {
 
     using namespace std;
     using namespace unwindstack;
 
-#define CAPACITY_INCREMENT 1024
-
     DEFINE_STATIC_CPP_FIELD(mutex, Maps::maps_lock_,);
     DEFINE_STATIC_CPP_FIELD(shared_ptr<Maps>, Maps::current_maps_,);
-//    shared_ptr<Maps> Maps::current_maps_;
     size_t Maps::latest_maps_capacity_ = CAPACITY_INCREMENT;
 
     DEFINE_STATIC_CPP_FIELD(mutex, QuickenMapInfo::lock_,);
@@ -440,6 +439,9 @@ namespace wechat_backtrace {
     }
 
     std::shared_ptr<Maps> Maps::current() {
+        if (!current_maps_) {
+            Parse();
+        }
         std::lock_guard<std::mutex> guard(maps_lock_);
         return current_maps_;
     };
