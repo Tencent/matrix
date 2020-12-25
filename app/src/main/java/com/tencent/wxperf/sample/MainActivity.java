@@ -135,6 +135,7 @@ public class MainActivity extends AppCompatActivity {
                 .directoryToWarmUp(getApplicationInfo().nativeLibraryDir)
                 .directoryToWarmUp(WeChatBacktrace.getSystemLibraryPath())
                 .setBacktraceMode(WeChatBacktrace.Mode.Quicken)
+                .immediateGeneration(false)
                 .isWarmUpProcess(true)
                 .commit();
     }

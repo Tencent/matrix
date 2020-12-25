@@ -709,6 +709,11 @@ public class WeChatBacktrace implements Handler.Callback {
             // Set warmed up flag
             WeChatBacktraceNative.setWarmedUp(hasWarmedUp);
 
+            // Set if invoke generation immediately.
+            if (configuration.mImmediateGeneration) {
+                WeChatBacktraceNative.immediateGeneration(true);
+            }
+
             // Register warmed up receiver for other processes.
             registerWarmedUpReceiver(configuration);
         } else {

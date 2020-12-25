@@ -80,7 +80,7 @@ namespace wechat_backtrace {
             if (ret == NoneError) {
                 qut_sections_ = qut_sections_tmp;
 
-                QUT_DEBUG_LOG("QuickenInterface::TryInitQuickenTable");
+                QUT_DEBUG_LOG("Request quicken table success.");
 
                 if (qut_sections_) {
                     return true;
@@ -89,7 +89,10 @@ namespace wechat_backtrace {
         }
 
         if (UNLIKELY(quicken_generate_delegate_)) {
-            if (ret == TryInvokeJavaRequestQutGenerate || ret == NotWarmedUp) {
+            if (ret == TryInvokeJavaRequestQutGenerate || ret == NotWarmedUp ||
+                ret == LoadRequesting) {
+                QUT_DEBUG_LOG("Invoke generation immediately for so: %s, elf start offset: %s",
+                              sopath_.c_str(), elf_start_offset_);
                 quicken_generate_delegate_(sopath_, elf_start_offset_);
             }
         } else {
