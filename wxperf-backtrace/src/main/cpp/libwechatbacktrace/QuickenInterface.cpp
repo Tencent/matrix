@@ -91,8 +91,8 @@ namespace wechat_backtrace {
         if (UNLIKELY(quicken_generate_delegate_)) {
             if (ret == TryInvokeJavaRequestQutGenerate || ret == NotWarmedUp ||
                 ret == LoadRequesting) {
-                QUT_DEBUG_LOG("Invoke generation immediately for so: %s, elf start offset: %s",
-                              sopath_.c_str(), elf_start_offset_);
+                QUT_DEBUG_LOG("Invoke generation immediately for so: %s, elf start offset: %llu",
+                              sopath_.c_str(), (ullint_t) elf_start_offset_);
                 quicken_generate_delegate_(sopath_, elf_start_offset_);
             }
         } else {
@@ -111,14 +111,16 @@ namespace wechat_backtrace {
         while (first < last) {
             size_t current = ((first + last) / 2) & 0xfffffffe;
             uptr addr = qut_sections_->quidx[current];
-            if (log) {
-                if (pc == log_pc) {
-                    QUT_LOG(">>> QuickenInterface::FindEntry current:%llu addr:%llx pc:%llx",
-                            (ullint_t) current, (ullint_t) addr, (ullint_t) pc);
-                }
+            if (log && pc == log_pc) {
+                QUT_LOG(">>> QuickenInterface::FindEntry current:%llu addr:%llx pc:%llx",
+                        (ullint_t) current, (ullint_t) addr, (ullint_t) pc);
             }
             if (pc == addr) {
                 *entry_offset = current;
+                if (log && pc == log_pc) {
+                    QUT_LOG(">>> QuickenInterface::FindEntry found entry_offset:%llu pc:%llx",
+                            (ullint_t) *entry_offset, (ullint_t) pc);
+                }
                 return true;
             }
             if (pc < addr) {
@@ -128,6 +130,10 @@ namespace wechat_backtrace {
             }
         }
         if (last != 0) {
+            if (log && pc == log_pc) {
+                QUT_LOG(">>> QuickenInterface::FindEntry found entry_offset:%llu pc:%llx",
+                        (ullint_t) *entry_offset, (ullint_t) pc);
+            }
             *entry_offset = last - 2;
             return true;
         }
@@ -152,7 +158,7 @@ namespace wechat_backtrace {
             }
         }
 
-        QuickenTable quicken(qut_sections_, regs, /*memory_,*/ process_memory, stack_top,
+        QuickenTable quicken(qut_sections_, regs, process_memory, stack_top,
                              stack_bottom, frame_size);
         size_t entry_offset;
 

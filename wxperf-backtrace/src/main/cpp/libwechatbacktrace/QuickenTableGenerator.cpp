@@ -93,7 +93,6 @@ namespace wechat_backtrace {
                       (ullint_t) total_entries);
 
         if (total_entries <= 1) {
-            // TODO How to deal with this.
             return;
         }
 
@@ -102,7 +101,7 @@ namespace wechat_backtrace {
         shared_ptr<deque<uint64_t>> curr_instructions;
         uint32_t start_addr = 0;
 
-        for (size_t i = 0; i < total_entries; i++) { // TODO How to deal with last entry.
+        for (size_t i = 0; i < total_entries; i++) {
 
             uint32_t addr;
             uint32_t entry_offset = start_offset + i * 8;
@@ -166,14 +165,15 @@ namespace wechat_backtrace {
                     (*entries_instructions)[start_addr] = std::make_pair(addr, curr_instructions);
 
                     if (log) {
-                        QUT_DEBUG_LOG("DecodeExidxEntriesInstr addr: %x, instructions: %u", addr,
-                                      curr_instructions->size());
+                        QUT_DEBUG_LOG("DecodeExidxEntriesInstr addr: %llx, instructions: %llu",
+                                      (ullint_t) addr,
+                                      (ullint_t) curr_instructions->size());
                         if (addr == log_addr) {
                             for (uint64_t instr : *curr_instructions.get()) {
                                 (void) instr;
                                 QUT_DEBUG_LOG(
                                         "DecodeExidxEntriesInstr 0x%llx, instructions: %llx",
-                                        (ullint_t) log_addr, instr);
+                                        (ullint_t) log_addr, (ullint_t) instr);
                             }
                         }
                     }
@@ -306,18 +306,20 @@ namespace wechat_backtrace {
 
             entry_pair->entry_point = it->first;
 
+//            log = log_addr >= it->first && log_addr < it->second.first;
+
             if (log) {
-                if (entry_pair->entry_point == log_entry_point) {
-                    QUT_DEBUG_LOG(
-                            "PackEntriesToFutSections entry_pair->entry_point %llx, instr %zu",
-                            (ullint_t) entry_pair->entry_point, it->second.second->size());
-                }
+                QUT_DEBUG_LOG(
+                        "PackEntriesToFutSections entry_pair->entry_point %llx, instr size %zu",
+                        (ullint_t) entry_pair->entry_point, it->second.second->size());
             }
 
             bool prologue_conformed = false;
             // re-encode it.
             if (QuickenInstructionsEncode(*it->second.second.get(),
-                                          entry_pair->encoded_instructions, &prologue_conformed)) {
+                                          entry_pair->encoded_instructions,
+                                          &prologue_conformed,
+                                          log)) {
                 // Well done.
                 if (prologue_conformed) {
                     prologue_count++;
@@ -346,16 +348,14 @@ namespace wechat_backtrace {
             }
 
             if (log) {
-                if (entry_pair->entry_point == log_entry_point) {
-                    QUT_DEBUG_LOG(
-                            "PackEntriesToFutSections entry_pair->encoded_instructions.size() %zu",
-                            entry_pair->encoded_instructions.size());
+                QUT_DEBUG_LOG(
+                        "PackEntriesToFutSections entry_pair->encoded_instructions.size() %zu",
+                        entry_pair->encoded_instructions.size());
 
-                    for (uint8_t insn : entry_pair->encoded_instructions) {
-                        (void) insn;
-                        QUT_DEBUG_LOG("PackEntriesToFutSections instr "
-                                              BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(insn));
-                    }
+                for (uint8_t insn : entry_pair->encoded_instructions) {
+                    (void) insn;
+                    QUT_DEBUG_LOG("PackEntriesToFutSections instr "
+                                          BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(insn));
                 }
             }
 

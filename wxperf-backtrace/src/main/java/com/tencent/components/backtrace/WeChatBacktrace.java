@@ -74,7 +74,7 @@ public class WeChatBacktrace implements Handler.Callback {
     private final static int MSG_WARM_UP = 1;
     private final static int MSG_CONSUME_REQ_QUT = 2;
     private final static int MSG_CLEAN_UP = 3;
-//    private final static int MSG_WARM_UP_FAKE = 4;
+    private final static int MSG_WARM_UP_FAKE = 4;
 
     private volatile boolean mInitialized;
     private volatile boolean mConfigured;
@@ -95,7 +95,7 @@ public class WeChatBacktrace implements Handler.Callback {
     public boolean handleMessage(Message msg) {
         switch (msg.what) {
             case MSG_WARM_UP:
-//            case MSG_WARM_UP_FAKE: // MSG_WARM_UP_FAKE will be removed later
+            case MSG_WARM_UP_FAKE: // MSG_WARM_UP_FAKE will be removed later
             {
                 CancellationSignal cs = (CancellationSignal) msg.obj;
                 warmingUp(cs);
@@ -360,14 +360,14 @@ public class WeChatBacktrace implements Handler.Callback {
         }
     }
 
-//    // TODO For debug
-//    final CancellationSignal fakeCS = new CancellationSignal();
+    // TODO For debug
+    final CancellationSignal fakeCS = new CancellationSignal();
 
     private void warmingUp(final CancellationSignal cs) {
 
-//        if (fakeCS != cs) {
-//            return;
-//        }
+        if (fakeCS != cs) {
+            return;
+        }
 
         mThreadTaskExecutor.arrangeTask(new Runnable() {
             @Override
@@ -723,12 +723,12 @@ public class WeChatBacktrace implements Handler.Callback {
 
         mConfigured = true;
 
-//        if (configuration.mIsWarmUpProcess && !hasWarmedUp()) {
-//            mIdleHandler.sendMessageDelayed(
-//                    Message.obtain(mIdleHandler, MSG_WARM_UP_FAKE, fakeCS),
-//                    DELAY_WARM_UP * 1
-//            );
-//        }
+        if (configuration.mIsWarmUpProcess && !hasWarmedUp()) {
+            mIdleHandler.sendMessageDelayed(
+                    Message.obtain(mIdleHandler, MSG_WARM_UP_FAKE, fakeCS),
+                    DELAY_WARM_UP * 1
+            );
+        }
     }
 
     public enum Mode {

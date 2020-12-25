@@ -25,7 +25,7 @@ namespace wechat_backtrace {
         ARM_STATUS_INVALID_ALIGNMENT,
         ARM_STATUS_INVALID_PERSONALITY,
     };
-    
+
     enum ArmOp : uint8_t {
         ARM_OP_FINISH = 0xb0,
     };
@@ -37,7 +37,7 @@ namespace wechat_backtrace {
         int32_t transformed_bits = 0;
         int32_t regs_[QUT_MINIMAL_REG_SIZE] = {0};
 
-        bool log = false;
+        const bool log = false;
 
         void reset() {
             if (log) {
@@ -100,7 +100,7 @@ namespace wechat_backtrace {
         ArmStatus status_ = ARM_STATUS_NONE;
         uint64_t status_address_ = 0;
 
-        bool log = false;
+        const bool log = false;
 
     protected:
         unwindstack::Memory *memory_;

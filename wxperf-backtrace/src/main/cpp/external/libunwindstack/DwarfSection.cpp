@@ -386,7 +386,6 @@ bool DwarfSectionImpl<AddressType>::EvalExpression(const DwarfLocation& loc, Mem
   // Need to evaluate the op data.
   uint64_t end = loc.values[1];
   uint64_t start = end - loc.values[0];
-  INTER_DEBUG_LOG("DwarfSectionImpl<AddressType>::EvalExpression, start %llx, end %llx", start, end);
   if (!op.Eval(start, end)) {
     last_error_ = op.last_error();
     return false;
@@ -444,7 +443,6 @@ bool DwarfSectionImpl<AddressType>::EvalRegister(const DwarfLocation* loc, uint3
     }
     case DWARF_LOCATION_EXPRESSION:
     case DWARF_LOCATION_VAL_EXPRESSION: {
-      INTER_DEBUG_LOG("DwarfSectionImpl::EvalRegister DWARF_LOCATION_EXPRESSION DWARF_LOCATION_VAL_EXPRESSION reg(%u)", reg);
       AddressType value;
       bool is_dex_pc = false;
       if (!EvalExpression(*loc, regular_memory, &value, &eval_info->regs_info, &is_dex_pc)) {
@@ -458,7 +456,6 @@ bool DwarfSectionImpl<AddressType>::EvalRegister(const DwarfLocation* loc, uint3
         }
       } else {
         *reg_ptr = value;
-          INTER_DEBUG_LOG("DwarfSectionImpl::EvalRegister DWARF_LOCATION_VAL_EXPRESSION is_dex_pc: %d", is_dex_pc);
         if (is_dex_pc) {
           eval_info->regs_info.regs->set_dex_pc(value);
         }

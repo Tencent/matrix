@@ -44,9 +44,10 @@ namespace wechat_backtrace {
 
         QutErrorCode last_error_code;
 
-        bool log = false;
-        uptr log_entry_point = 0;
-        uptr log_addr = 0;
+        const bool log = false;
+        const uptr log_addr = 0;
+//        bool log = false;
+//        uptr log_addr = 0x14e350;
 
     protected:
         void DecodeDebugFrameEntriesInstr(FrameInfo debug_frame_info,

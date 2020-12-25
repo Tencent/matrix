@@ -74,7 +74,6 @@ namespace wechat_backtrace {
     QuickenTable::Decode32(const uint32_t *const instructions, const size_t amount,
                            const size_t start_pos) {
 
-
         if (log) {
             QUT_LOG("QuickenTable::Decode32 instructions %llx, amount %u, start_pos %u",
                     (ullint_t) instructions, (uint32_t) amount, (uint32_t) start_pos);
@@ -285,10 +284,20 @@ namespace wechat_backtrace {
         if (log) {
             QUT_DEBUG_LOG(
                     "QuickenTable::Decode64 instructions %llx, amount %zu, start_pos %zu",
-                    (ullint_t)instructions, amount, start_pos);
+                    (ullint_t) instructions, amount, start_pos);
 
             for (size_t m = 0; m < amount; m++) {
-                QUT_DEBUG_LOG("QuickenTable::Decode64 instruction %llx", (ullint_t)instructions[m]);
+                QUT_DEBUG_LOG("QuickenTable::Decode64 instruction %llx",
+                              (ullint_t) instructions[m]);
+            }
+
+            int32_t m = start_pos;
+            size_t n = 0;
+            while (n < amount) {
+                uint8_t byte;
+                ReadByte(byte, instructions, m, n, amount);
+                QUT_LOG("Decode64 instructions byte "
+                                BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(byte));
             }
         }
 
@@ -301,10 +310,6 @@ namespace wechat_backtrace {
         while (i < amount) {
             uint8_t byte;
             ReadByte(byte, instructions, j, i, amount);
-            if (log) {
-                QUT_DEBUG_LOG("Decode byte "
-                                      BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(byte));
-            }
             switch (byte >> 6) {
                 case 0:
                     // 00nn nnnn : vsp = vsp + (nnnnnn << 2) ; # (nnnnnnn << 2) in [0, 0xfc]
@@ -335,7 +340,6 @@ namespace wechat_backtrace {
                             uint8_t byte;
                             ReadByte(byte, instructions, j, i, amount);
                             cfa_ = R28(regs_) + ((byte & 0x7f) << 2);
-
                             break;
                         }
                         case QUT_INSTRUCTION_VSP_SET_IMM_OP: {
@@ -398,6 +402,14 @@ namespace wechat_backtrace {
                         default:
                             int64_t value = 0;
                             switch (byte) {
+                                case QUT_INSTRUCTION_X20_OFFSET_SLEB128_OP: {
+                                    DecodeSLEB128(value, instructions, amount, j, i)
+                                    if (UNLIKELY(
+                                            !ReadStack((cfa_ - (int64_t) value), &R20(regs_)))) {
+                                        return QUT_ERROR_READ_STACK_FAILED;
+                                    }
+                                    break;
+                                }
                                 case QUT_INSTRUCTION_X28_OFFSET_SLEB128_OP: {
                                     DecodeSLEB128(value, instructions, amount, j, i)
                                     if (UNLIKELY(
@@ -472,6 +484,8 @@ namespace wechat_backtrace {
 
     QutErrorCode QuickenTable::Eval(size_t entry_offset) {
         uptr command = qut_sections_->quidx[entry_offset + 1];
+
+//        log = log_entry == entry_offset;
 
         if (log) {
             QUT_LOG("QuickenTable::Eval entry_offset %u, add %llx, command %llx",

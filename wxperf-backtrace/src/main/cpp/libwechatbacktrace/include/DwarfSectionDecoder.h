@@ -110,7 +110,10 @@ namespace wechat_backtrace {
 
         DwarfErrorData last_error_{DWARF_ERROR_NONE, 0};
 
-        bool log = false;
+        const bool log = false;
+        const uptr log_pc = 0;
+//        bool log = true;
+//        uptr log_pc = 0x14e350;
 
         std::shared_ptr<std::deque<uint64_t>> temp_instructions_;
     };

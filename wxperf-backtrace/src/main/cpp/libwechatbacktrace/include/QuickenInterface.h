@@ -100,8 +100,10 @@ namespace wechat_backtrace {
         QutErrorCode last_error_code_ = QUT_ERROR_NONE;
         size_t bad_entries_ = 0;    // TODO
 
-        bool log = false;
-        uptr log_pc = 0;
+        const bool log = false;
+        const uptr log_pc = 0;
+//        const bool log = true;
+//        const uptr log_pc = 0x14e350;
 
     protected:
 

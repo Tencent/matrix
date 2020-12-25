@@ -13,18 +13,6 @@
 #define LOGI(TAG, FMT, args...) __android_log_print(ANDROID_LOG_INFO, TAG, FMT, ##args)
 #define LOGE(TAG, FMT, args...) __android_log_print(ANDROID_LOG_ERROR, TAG, FMT, ##args)
 
-#ifdef __arm__
-#define UINT_TYPE uint32_t
-#define D_FORMAT "d"
-#define U_FORMAT "u"
-#define X_FORMAT "x"
-#else
-#define UINT_TYPE uint64_t
-#define D_FORMAT "lld"
-#define U_FORMAT "llu"
-#define X_FORMAT "llx"
-#endif
-
 #define STACK_CHECK_START(S) \
     const int barrier_size = S; \
     char barrier_stub = (char)barrier_size;    \
@@ -39,13 +27,12 @@
         }\
     }
 
-#define INTER_DEBUG_LOG(FMT, args...) //__android_log_print(ANDROID_LOG_ERROR, "Matrix.Backtrace.INTER.D", FMT, ##args)
 #define DWARF_CFA_LOG(FMT, args...) //__android_log_print(ANDROID_LOG_ERROR, "Matrix.Backtrace.DWARF-CFA", FMT, ##args)
 #define DWARF_OP_LOG(FMT, args...) //__android_log_print(ANDROID_LOG_ERROR, "Matrix.Backtrace.DWARF-OP", FMT, ##args)
 #define QUT_TMP_LOG(FMT, args...) //__android_log_print(ANDROID_LOG_ERROR, "Matrix.Backtrace.TMP", FMT, ##args)
-#define QUT_DEBUG_LOG(FMT, args...) //__android_log_print(ANDROID_LOG_ERROR, "Matrix.Backtrace.DEBUG", FMT, ##args)
 #define QUT_STAT_LOG(FMT, args...) //__android_log_print(ANDROID_LOG_ERROR, "Matrix.Backtrace.STAT", FMT, ##args)
-#define QUT_LOG(FMT, args...) //__android_log_print(ANDROID_LOG_ERROR, "Matrix.Backtrace.Native", FMT, ##args)
+#define QUT_DEBUG_LOG(FMT, args...) __android_log_print(ANDROID_LOG_ERROR, "Matrix.Backtrace.DEBUG", FMT, ##args)
+#define QUT_LOG(FMT, args...) __android_log_print(ANDROID_LOG_ERROR, "Matrix.Backtrace.Native", FMT, ##args)
 #else
 #define LOGD(TAG, FMT, args...)
 #define LOGI(TAG, FMT, args...)
@@ -54,12 +41,11 @@
 #define STACK_CHECK_START(S)
 #define STACK_CHECK_END
 
-#define QUT_DEBUG_LOG(FMT, args...)
-#define INTER_DEBUG_LOG(FMT, args...)
 #define DWARF_CFA_LOG(FMT, args...)
 #define DWARF_OP_LOG(FMT, args...)
 #define QUT_STAT_LOG(FMT, args...)
 #define QUT_TMP_LOG(FMT, args...)
+#define QUT_DEBUG_LOG(FMT, args...)
 #define QUT_LOG(FMT, args...)
 #endif
 

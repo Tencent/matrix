@@ -65,6 +65,7 @@
 #define QUT_INSTRUCTION_R10_OFFSET_SLEB128_OP       OP(1111, 1010)
 #define QUT_INSTRUCTION_R11_OFFSET_SLEB128_OP       OP(1111, 1011)
 
+#define QUT_INSTRUCTION_X20_OFFSET_SLEB128_OP       OP(1111, 1001)
 #define QUT_INSTRUCTION_X28_OFFSET_SLEB128_OP       OP(1111, 1010)
 #define QUT_INSTRUCTION_X29_OFFSET_SLEB128_OP       OP(1111, 1011)
 
@@ -99,7 +100,7 @@ namespace wechat_backtrace {
 
     enum QutInstruction : uint64_t {
         // Do not change this order!!!
-        QUT_INSTRUCTION_R4_OFFSET = 0,  // r4_offset
+                QUT_INSTRUCTION_R4_OFFSET = 0,  // r4_offset
         QUT_INSTRUCTION_R7_OFFSET = 1,      // r7_offset
         QUT_INSTRUCTION_R10_OFFSET = 2,     // r10_offset
         QUT_INSTRUCTION_R11_OFFSET = 3,     // r11_offset
@@ -197,7 +198,7 @@ namespace wechat_backtrace {
 
     inline bool
     _QuickenInstructionsEncode32(std::deque<uint64_t> &instructions, std::deque<uint8_t> &encoded,
-                                 bool *prologue_conformed) {
+                                 bool *prologue_conformed, bool log) {
 
 // QUT encode for 32-bit:
 //		00nn nnnn           : vsp = vsp + (nnnnnn << 2)             			; # (nnnnnnn << 2) in [0, 0xfc]
@@ -238,15 +239,6 @@ namespace wechat_backtrace {
 
 //      1111 1111 + SLEB128 : vsp = vsp + SLEB128   							;
 
-//#ifdef EnableLOG
-//        QUT_DEBUG_LOG("--- Dump Instr");
-//        for (auto iter = instructions.begin(); iter != instructions.end(); iter++) {
-//            uint64_t instr = *iter;
-//            QUT_DEBUG_LOG("Instr %llx", instr);
-//        }
-//        QUT_DEBUG_LOG("--- End Dump Instr");
-//#endif
-
         while (!instructions.empty()) {
 
             uint64_t instruction = instructions.front();
@@ -260,9 +252,17 @@ namespace wechat_backtrace {
             int64_t op = instruction >> 32;
             int32_t imm = instruction & 0xFFFFFFFF;
 
+            if (log) {
+                QUT_DEBUG_LOG("Encoding instruction: %llx", (ullint_t) instruction);
+                QUT_DEBUG_LOG("Encoding op: %llx, imm: %lld", (ullint_t) op, (llint_t) imm);
+            }
+
             if (imm & 0x3) {
                 QUT_STATISTIC(InstructionOpImmNotAligned, op, imm);
-                return false;
+                if (log) {
+                    QUT_DEBUG_LOG("InstructionOpImmNotAligned");
+                }
+                return false; // bad entry
             }
 
             uint8_t byte;
@@ -294,7 +294,10 @@ namespace wechat_backtrace {
                             byte = FILL_WITH_IMM(0, imm, 7);
                             encoded.push_back(byte);
                         } else {
-                            return false;
+                            if (log) {
+                                QUT_DEBUG_LOG("QUT_INSTRUCTION_VSP_SET_BY_R11 Overflow");
+                            }
+                            return false; // overflow, bad entry
                         }
                         break;
                     } else {
@@ -365,9 +368,11 @@ namespace wechat_backtrace {
                     encoded.push_back(byte);
                     byte = FILL_WITH_IMM(0, imm, 7);
                     encoded.push_back(byte);
-                    QUT_DEBUG_LOG("QUT_INSTRUCTION_VSP_SET_BY_JNI_SP %x %x %x",
-                                  QUT_INSTRUCTION_VSP_SET_BY_JNI_SP_OP, (uint32_t) byte,
-                                  (uint32_t) imm);
+                    if (log) {
+                        QUT_DEBUG_LOG("QUT_INSTRUCTION_VSP_SET_BY_JNI_SP %x %x %x",
+                                      QUT_INSTRUCTION_VSP_SET_BY_JNI_SP_OP, (uint32_t) byte,
+                                      (uint32_t) imm);
+                    }
                     break;
                 case QUT_INSTRUCTION_VSP_SET_IMM:
                     byte = QUT_INSTRUCTION_VSP_SET_IMM_OP;
@@ -377,7 +382,9 @@ namespace wechat_backtrace {
                 case QUT_INSTRUCTION_DEX_PC_SET:
                     byte = QUT_INSTRUCTION_DEX_PC_SET_OP;
                     encoded.push_back(byte);
-                    QUT_DEBUG_LOG("QUT_INSTRUCTION_DEX_PC_SET_OP %x", (uint32_t) byte);
+                    if (log) {
+                        QUT_DEBUG_LOG("QUT_INSTRUCTION_DEX_PC_SET_OP %x", (uint32_t) byte);
+                    }
                     break;
                 case QUT_END_OF_INS:
                     byte = QUT_END_OF_INS_OP;
@@ -392,7 +399,10 @@ namespace wechat_backtrace {
                         byte = FILL_WITH_IMM(QUT_INSTRUCTION_R4_OFFSET_OP_PREFIX, imm, 4);
                         encoded.push_back(byte);
                     } else {
-                        return false; // overflow
+                        if (log) {
+                            QUT_DEBUG_LOG("QUT_INSTRUCTION_R4_OFFSET Overflow");
+                        }
+                        return false; // overflow, bad entry
                     }
                     break;
                 case QUT_INSTRUCTION_R7_OFFSET:
@@ -455,7 +465,7 @@ namespace wechat_backtrace {
 
     inline bool
     _QuickenInstructionsEncode64(std::deque<uint64_t> &instructions, std::deque<uint8_t> &encoded,
-                                 bool *prologue_conformed) {
+                                 bool *prologue_conformed, bool log) {
 
 // QUT encode for 64-bit:
 //		00nn nnnn           : vsp = vsp + (nnnnnn << 2)             			; # (nnnnnnn << 2) in [0, 0xfc]
@@ -506,9 +516,17 @@ namespace wechat_backtrace {
             uint32_t op = (uint32_t) (instruction >> 32);
             int32_t imm = (int32_t) (instruction & 0xFFFFFFFF);
 
+            if (log) {
+                QUT_DEBUG_LOG("Encoding instruction: %llx", (ullint_t) instruction);
+                QUT_DEBUG_LOG("Encoding op: %llx, imm: %lld", (ullint_t) op, (llint_t) imm);
+            }
+
             if (imm & 0x3) {
                 QUT_STATISTIC(InstructionOpImmNotAligned, op, imm);
-                return false;
+                if (log) {
+                    QUT_DEBUG_LOG("InstructionOpImmNotAligned");
+                }
+                return false; // bad entry
             }
 
             uint8_t byte;
@@ -537,7 +555,10 @@ namespace wechat_backtrace {
                             byte = FILL_WITH_IMM(0, imm, 7);
                             encoded.push_back(byte);
                         } else {
-                            return false; // overflow
+                            if (log) {
+                                QUT_DEBUG_LOG("QUT_INSTRUCTION_VSP_SET_BY_X29 overflow");
+                            }
+                            return false; // overflow, bad entry
                         }
                         break;
                     } else {
@@ -598,12 +619,17 @@ namespace wechat_backtrace {
                     if (imm <= IMM(7)) {
                         byte = FILL_WITH_IMM(0, imm, 7);
                     } else {
-                        return false; // overflow
+                        if (log) {
+                            QUT_DEBUG_LOG("QUT_INSTRUCTION_VSP_SET_BY_JNI_SP overflow");
+                        }
+                        return false; // overflow bad entry
                     }
                     encoded.push_back(byte);
-                    QUT_DEBUG_LOG("QUT_INSTRUCTION_VSP_SET_BY_JNI_SP %x %x %x",
-                                  QUT_INSTRUCTION_VSP_SET_BY_JNI_SP_OP, (uint32_t) byte,
-                                  (uint32_t) imm);
+                    if (log) {
+                        QUT_DEBUG_LOG("QUT_INSTRUCTION_VSP_SET_BY_JNI_SP %x %x %x",
+                                      QUT_INSTRUCTION_VSP_SET_BY_JNI_SP_OP, (uint32_t) byte,
+                                      (uint32_t) imm);
+                    }
                     break;
                 case QUT_INSTRUCTION_VSP_SET_IMM:
                     byte = QUT_INSTRUCTION_VSP_SET_IMM_OP;
@@ -613,7 +639,9 @@ namespace wechat_backtrace {
                 case QUT_INSTRUCTION_DEX_PC_SET:
                     byte = QUT_INSTRUCTION_DEX_PC_SET_OP;
                     encoded.push_back(byte);
-                    QUT_DEBUG_LOG("QUT_INSTRUCTION_DEX_PC_SET_OP %x", (uint32_t) byte);
+                    if (log) {
+                        QUT_DEBUG_LOG("QUT_INSTRUCTION_DEX_PC_SET_OP %x", (uint32_t) byte);
+                    }
                     break;
                 case QUT_END_OF_INS:
                     byte = QUT_END_OF_INS_OP;
@@ -628,7 +656,9 @@ namespace wechat_backtrace {
                         byte = FILL_WITH_IMM(QUT_INSTRUCTION_X20_OFFSET_OP_PREFIX, imm, 4);
                         encoded.push_back(byte);
                     } else {
-                        return false; // overflow
+                        byte = QUT_INSTRUCTION_X20_OFFSET_SLEB128_OP;
+                        encoded.push_back(byte);
+                        EncodeSLEB128_PUSHBACK(encoded, imm);
                     }
                     break;
                 case QUT_INSTRUCTION_X29_OFFSET:
@@ -676,16 +706,19 @@ namespace wechat_backtrace {
             }
         }
 
+        if (log) {
+            QUT_DEBUG_LOG("Encoding done.");
+        }
         return true;
     }
 
     inline bool
     QuickenInstructionsEncode(std::deque<uint64_t> &instructions, std::deque<uint8_t> &encoded,
-                              bool *prologue_conformed) {
+                              bool *prologue_conformed, bool log = false) {
 #ifdef __arm__
-        return _QuickenInstructionsEncode32(instructions, encoded, prologue_conformed);
+        return _QuickenInstructionsEncode32(instructions, encoded, prologue_conformed, log);
 #else
-        return _QuickenInstructionsEncode64(instructions, encoded, prologue_conformed);
+        return _QuickenInstructionsEncode64(instructions, encoded, prologue_conformed, log);
 #endif
     }
 

@@ -512,12 +512,17 @@ namespace wechat_backtrace {
         // Need to evaluate the op data.
         uint64_t end = loc.values[1];
         uint64_t start = end - loc.values[0];
-        INTER_DEBUG_LOG("DwarfSectionDecoder<AddressType>::EvalExpression, start %llx, end %llx",
-                        start, end);
+        if (log) {
+            QUT_DEBUG_LOG(
+                    "DwarfSectionDecoder<AddressType>::EvalExpression, start %llx, end %llx",
+                    (ullint_t) start, (ullint_t) end);
+        }
         if (!op.Eval(start, end)) {
-            INTER_DEBUG_LOG(
-                    "DwarfSectionDecoder<AddressType>::EvalExpression, op.last_error().code %d",
-                    (uint32_t) op.last_error().code);
+            if (log) {
+                QUT_DEBUG_LOG(
+                        "DwarfSectionDecoder<AddressType>::EvalExpression, op.last_error().code %d",
+                        (uint32_t) op.last_error().code);
+            }
             if ((op.last_error().code == DWARF_ERROR_EXPRESSION_REACH_BREGX ||
                  op.last_error().code == DWARF_ERROR_EXPRESSION_REACH_BREG) && op.dex_pc_set()) {
                 // XXX Maybe we'll support more breg/bregx cases in the future.
@@ -559,30 +564,37 @@ namespace wechat_backtrace {
         EvalInfo<AddressType> *eval_info = reinterpret_cast<EvalInfo<AddressType> *>(info);
         Memory *regular_memory = eval_info->regular_memory;
 
-        if (log)
-            QUT_DEBUG_LOG("DwarfSectionDecoder::EvalRegister 1111111 loc->type %u, reg(%u),",
+        if (log) {
+            QUT_DEBUG_LOG("DwarfSectionDecoder::EvalRegister loc->type %u, reg(%u),",
                           (uint32_t) loc->type, reg);
+        }
         switch (loc->type) {
             case DWARF_LOCATION_OFFSET: {
                 RegOffsetInstruction(reg, loc->values[0]);
                 break;
             }
             case DWARF_LOCATION_VAL_OFFSET: {     // Do not support reg = cfa + offset, no QUT instruction.
-                INTER_DEBUG_LOG("DwarfSectionDecoder::EvalRegister DWARF_LOCATION_VAL_OFFSET");
+                if (log) {
+                    QUT_DEBUG_LOG("DwarfSectionDecoder::EvalRegister DWARF_LOCATION_VAL_OFFSET");
+                }
                 last_error_.code = DWARF_ERROR_NOT_SUPPORT;
                 QUT_STATISTIC(UnsupportedDwarfLocationValOffset, reg, DWARF_ERROR_NOT_SUPPORT);
                 return false;
             }
             case DWARF_LOCATION_REGISTER: {     // Do not support regM = regN + offset, no QUT instruction.
-                INTER_DEBUG_LOG("DwarfSectionDecoder::EvalRegister DWARF_LOCATION_REGISTER");
+                if (log) {
+                    QUT_DEBUG_LOG("DwarfSectionDecoder::EvalRegister DWARF_LOCATION_REGISTER");
+                }
                 last_error_.code = DWARF_ERROR_NOT_SUPPORT;
                 QUT_STATISTIC(UnsupportedDwarfLocationRegister, reg, DWARF_ERROR_NOT_SUPPORT);
                 return false;
             }
             case DWARF_LOCATION_EXPRESSION:
             case DWARF_LOCATION_VAL_EXPRESSION: {
-                INTER_DEBUG_LOG(
-                        "DwarfSectionDecoder::EvalRegister DWARF_LOCATION_EXPRESSION DWARF_LOCATION_VAL_EXPRESSION");
+                if (log) {
+                    QUT_DEBUG_LOG(
+                            "DwarfSectionDecoder::EvalRegister DWARF_LOCATION_EXPRESSION DWARF_LOCATION_VAL_EXPRESSION");
+                }
                 ValueExpression<AddressType> value_expression;
                 bool is_dex_pc = false;
                 if (!EvalExpression(*loc, regular_memory, regs_total, &value_expression,
@@ -590,14 +602,19 @@ namespace wechat_backtrace {
                     return false;
                 }
                 if (loc->type == DWARF_LOCATION_EXPRESSION) {
-                    INTER_DEBUG_LOG("DwarfSectionDecoder::EvalRegister DWARF_LOCATION_EXPRESSION");
+                    if (log) {
+                        QUT_DEBUG_LOG(
+                                "DwarfSectionDecoder::EvalRegister DWARF_LOCATION_EXPRESSION");
+                    }
                     last_error_.code = DWARF_ERROR_NOT_SUPPORT;
                     QUT_STATISTIC(UnsupportedDwarfLocationExpression, reg, DWARF_ERROR_NOT_SUPPORT);
                     return false;
                 } else {
-                    INTER_DEBUG_LOG(
-                            "DwarfSectionDecoder::EvalRegister DWARF_LOCATION_VAL_EXPRESSION is_dex_pc: %d",
-                            is_dex_pc);
+                    if (log) {
+                        QUT_DEBUG_LOG(
+                                "DwarfSectionDecoder::EvalRegister DWARF_LOCATION_VAL_EXPRESSION is_dex_pc: %d",
+                                is_dex_pc);
+                    }
                     if (is_dex_pc) {
                         AddressType value = value_expression.value;
                         temp_instructions_->push_back(
@@ -612,14 +629,15 @@ namespace wechat_backtrace {
                 break;
             }
             case DWARF_LOCATION_UNDEFINED:
-                INTER_DEBUG_LOG("DwarfSectionDecoder::EvalRegister DWARF_LOCATION_UNDEFINED");
-                if (log)
+                if (log) {
                     QUT_DEBUG_LOG(
                             "DwarfSectionDecoder::EvalRegister DWARF_LOCATION_UNDEFINED");
+                }
                 if (reg == eval_info->cie->return_address_register) {
-                    if (log)
+                    if (log) {
                         QUT_DEBUG_LOG(
                                 "DwarfSectionDecoder::EvalRegister reg == eval_info->cie->return_address_register");
+                    }
                     temp_instructions_->push_back((QUT_FIN << 32));
                 } else {
                     last_error_.code = DWARF_ERROR_NOT_SUPPORT;
@@ -670,10 +688,11 @@ namespace wechat_backtrace {
         }
 
         // TODO check value overflow
-        if (log)
+        if (log) {
             QUT_DEBUG_LOG(
                     "DwarfSectionDecoder<AddressType>::CfaOffsetInstruction reg(%u) %llu",
                     (uint32_t) reg, (ullint_t) value);
+        }
         temp_instructions_->push_back((instruction << 32) | (0xffffffff & value));
 
         return true;
@@ -731,6 +750,12 @@ namespace wechat_backtrace {
                 return false;
         }
 
+        if (log) {
+            QUT_DEBUG_LOG(
+                    "DwarfSectionDecoder::RegOffsetInstruction instruction: %llu, value: %lld",
+                    (ullint_t) instruction, (llint_t) value);
+        }
+
         // TODO check value overflow
         temp_instructions_->push_back((instruction << 32) | (0xffffffff & ((int32_t) -value)));
 
@@ -741,17 +766,16 @@ namespace wechat_backtrace {
     bool DwarfSectionDecoder<AddressType>::Eval(const DwarfCie *cie, Memory *regular_memory,
                                                 const dwarf_loc_regs_t &loc_regs,
                                                 uint16_t total_regs) {
-        INTER_DEBUG_LOG("DwarfSectionImpl<AddressType>::Eval %llx", cie->cfa_instructions_offset);
-
-//    RegsImpl<AddressType>* cur_regs = reinterpret_cast<RegsImpl<AddressType>*>(regs);
-//    if (cie->return_address_register >= cur_regs->total_regs()) {
-//        last_error_.code = DWARF_ERROR_ILLEGAL_VALUE;
-//        return false;
-//    }
+        if (log) {
+            QUT_DEBUG_LOG("DwarfSectionImpl<AddressType>::Eval %llx",
+                          (ullint_t) cie->cfa_instructions_offset);
+        }
 
         if (cie->return_address_register >= total_regs) {
             last_error_.code = DWARF_ERROR_ILLEGAL_VALUE;
-            INTER_DEBUG_LOG("DwarfSectionImpl::Eval DWARF_ERROR_ILLEGAL_VALUE");
+            if (log) {
+                QUT_DEBUG_LOG("DwarfSectionImpl::Eval DWARF_ERROR_ILLEGAL_VALUE");
+            }
             return false;
         }
 
@@ -759,32 +783,31 @@ namespace wechat_backtrace {
         auto cfa_entry = loc_regs.find(CFA_REG);
         if (cfa_entry == loc_regs.end()) {
             last_error_.code = DWARF_ERROR_CFA_NOT_DEFINED;
-            INTER_DEBUG_LOG("DwarfSectionImpl::Eval DWARF_ERROR_CFA_NOT_DEFINED");
+            if (log) {
+                QUT_DEBUG_LOG("DwarfSectionImpl::Eval DWARF_ERROR_CFA_NOT_DEFINED");
+            }
             return false;
         }
 
-//    // Always set the dex pc to zero when evaluating.
-//    cur_regs->set_dex_pc(0);
-
-//    EvalInfo<AddressType> eval_info{.loc_regs = &loc_regs,
-//            .cie = cie,
-//            .regular_memory = regular_memory,
-//            .regs_info = RegsInfo<AddressType>(cur_regs)};
         EvalInfo<AddressType> eval_info{.loc_regs = &loc_regs,
                 .cie = cie,
                 .regular_memory = regular_memory,
-//            .regs_info = RegsInfo<AddressType>(cur_regs)
         };
+
         const DwarfLocation *loc = &cfa_entry->second;
         // Only a few location types are valid for the cfa.
 
         switch (loc->type) {
             case DWARF_LOCATION_REGISTER:
-                INTER_DEBUG_LOG("DwarfSectionImpl::Eval DWARF_LOCATION_REGISTER");
+                if (log) {
+                    QUT_DEBUG_LOG("DwarfSectionImpl::Eval DWARF_LOCATION_REGISTER");
+                }
                 if (loc->values[0] >= total_regs) {
                     last_error_.code = DWARF_ERROR_ILLEGAL_VALUE;
-                    INTER_DEBUG_LOG(
-                            "DwarfSectionImpl::Eval DWARF_LOCATION_REGISTER DWARF_ERROR_ILLEGAL_VALUE");
+                    if (log) {
+                        QUT_DEBUG_LOG(
+                                "QUT_DEBUG_LOG::Eval DWARF_LOCATION_REGISTER DWARF_ERROR_ILLEGAL_VALUE");
+                    }
                     return false;
                 }
 //            eval_info.cfa = (*cur_regs)[];
@@ -792,17 +815,25 @@ namespace wechat_backtrace {
 
                 if (!CfaOffsetInstruction(loc->values[0], loc->values[1])) {
                     last_error_.code = DWARF_ERROR_NOT_SUPPORT;
-                    INTER_DEBUG_LOG(
-                            "DwarfSectionImpl::Eval DWARF_LOCATION_REGISTER DWARF_ERROR_NOT_SUPPORT");
+                    if (log) {
+                        QUT_DEBUG_LOG(
+                                "DwarfSectionImpl::Eval DWARF_LOCATION_REGISTER DWARF_ERROR_NOT_SUPPORT");
+                    }
                     return false;
                 }
 
-                INTER_DEBUG_LOG("DWARF_LOCATION_REGISTER eval_info.cfa: 0x%" "x" " = reg(%u) + %x",
-                                (uint32_t) eval_info.cfa, (int32_t) loc->values[0],
-                                (int32_t) loc->values[1]);
+                if (log) {
+                    QUT_DEBUG_LOG(
+                            "DWARF_LOCATION_REGISTER eval_info.cfa: 0x%" "x" " = reg(%u) + %x",
+                            (uint32_t) eval_info.cfa, (int32_t) loc->values[0],
+                            (int32_t) loc->values[1]);
+                }
                 break;
             case DWARF_LOCATION_VAL_EXPRESSION: {
-                INTER_DEBUG_LOG("DwarfSectionDecoder::Eval 1111111 DWARF_LOCATION_VAL_EXPRESSION");
+                if (log) {
+                    QUT_DEBUG_LOG(
+                            "DwarfSectionDecoder::Eval DWARF_LOCATION_VAL_EXPRESSION");
+                }
                 ValueExpression<AddressType> value_expression;
                 if (!EvalExpression(*loc, regular_memory, total_regs, &value_expression, nullptr)) {
                     return false;
@@ -816,7 +847,9 @@ namespace wechat_backtrace {
             }
             default:
                 last_error_.code = DWARF_ERROR_ILLEGAL_VALUE;
-                INTER_DEBUG_LOG("DwarfSectionImpl::Eval DWARF_ERROR_ILLEGAL_VALUE");
+                if (log) {
+                    QUT_DEBUG_LOG("DwarfSectionImpl::Eval DWARF_ERROR_ILLEGAL_VALUE");
+                }
                 return false;
         }
 
@@ -851,7 +884,9 @@ namespace wechat_backtrace {
 #endif
 
             if (!EvalRegister(&entry.second, total_regs, reg, &eval_info)) {
-                INTER_DEBUG_LOG("DwarfSectionDecoder::Eval EvalRegister false");
+                if (log) {
+                    QUT_DEBUG_LOG("DwarfSectionDecoder::Eval EvalRegister false");
+                }
                 return false;
             }
         }
@@ -908,7 +943,6 @@ namespace wechat_backtrace {
             it++;
 
             if (fde == nullptr || fde->cie == nullptr) {
-//            last_error_.code = DWARF_ERROR_ILLEGAL_STATE;
                 // TODO bad entry
                 continue;
             }
@@ -930,6 +964,8 @@ namespace wechat_backtrace {
 
                 uint64_t pc_end = loc_regs.pc_end;
 
+//                log = log_pc >= pc && log_pc < pc_end;
+
                 auto instructions = make_shared<deque<uint64_t>>();
 
                 temp_instructions_ = instructions;
@@ -937,6 +973,10 @@ namespace wechat_backtrace {
                 Eval(loc_regs.cie, process_memory, loc_regs, regs_total);
 
                 temp_instructions_ = nullptr;
+
+                if (log) {
+                    QUT_DEBUG_LOG("Evaluated instructions size: %zu", instructions->size());
+                }
 
                 // Try merge same entries.
                 bool same_entry = false;
@@ -950,6 +990,11 @@ namespace wechat_backtrace {
                             break;
                         }
                     }
+                }
+
+                if (log) {
+                    QUT_DEBUG_LOG("Evaluated same_entry: %d", same_entry);
+                    QUT_DEBUG_LOG("Evaluated pc: %llx", (ullint_t) pc);
                 }
 
                 if (same_entry) {

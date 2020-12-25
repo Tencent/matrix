@@ -111,7 +111,9 @@ namespace wechat_backtrace {
     }
 
     bool ExidxDecoder::Eval() {
-        context_.log = log;
+
+//        context_.log = log;
+
         while (Decode());
 
         SaveInstructions(QUT_NOP);
