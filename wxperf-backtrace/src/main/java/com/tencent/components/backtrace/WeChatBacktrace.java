@@ -865,11 +865,10 @@ public class WeChatBacktrace implements Handler.Callback {
                     ">>> Custom Library Loader: " + (mLibraryLoader != null) + "\n" +
                     ">>> Directories to Warm-up: " + mWarmUpDirectoriesList.toString() + "\n" +
                     ">>> Is Warm-up Process: " + mIsWarmUpProcess + "\n" +
+                    ">>> Invoke generation immediately: " + mImmediateGeneration + "\n" +
                     ">>> Cool-down: " + mCoolDown + "\n" +
                     ">>> Cool-down if Apk Updated: " + mCoolDownIfApkUpdated + "\n";
         }
-
-        ;
 
     }
 }

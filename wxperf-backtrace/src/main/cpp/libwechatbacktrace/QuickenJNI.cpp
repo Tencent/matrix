@@ -124,7 +124,7 @@ namespace wechat_backtrace {
         static const char *cls_name = "com/tencent/components/backtrace/WeChatBacktraceNative";
         jclass clazz = env->FindClass(cls_name);
         if (!clazz) {
-            LOGE(WECHAT_BACKTRACE_TAG, "Find Class %s failed.", cls_name);
+            QUT_LOG("Find Class %s failed.", cls_name);
             return -1;
         }
         JNIClass_WeChatBacktraceNative = reinterpret_cast<jclass>(env->NewGlobalRef(clazz));
@@ -134,7 +134,7 @@ namespace wechat_backtrace {
         JNIMethod_RequestQutGenerate = env->GetStaticMethodID(JNIClass_WeChatBacktraceNative,
                                                               "requestQutGenerate", "()V");
         if (!JNIMethod_RequestQutGenerate) {
-            LOGE(WECHAT_BACKTRACE_TAG, "requestQutGenerate() method not found.");
+            QUT_LOG("requestQutGenerate() method not found.");
             return -2;
         }
         return ret;
@@ -143,7 +143,7 @@ namespace wechat_backtrace {
     void InvokeJava_RequestQutGenerate() {
 
         if (JNIClass_WeChatBacktraceNative == nullptr || JNIMethod_RequestQutGenerate == nullptr) {
-            LOGE(WECHAT_BACKTRACE_TAG, "RegisterQutJNINativeMethods did not be run?");
+            QUT_LOG("RegisterQutJNINativeMethods did not be run?");
             return;
         }
 
@@ -165,14 +165,14 @@ JNIEXPORT jint JNI_OnLoad(JavaVM *vm, void *reserved) {
 
     (void) reserved;
 
-    LOGD(WECHAT_BACKTRACE_TAG, "JNI OnLoad...");
+    QUT_LOG("JNI OnLoad...");
 
     JNIEnv *env;
     vm->GetEnv((void **) &env, JNI_VERSION_1_6);
     wechat_backtrace::CurrentJavaVM = vm;
     if (env) {
         if (wechat_backtrace::RegisterQutJNINativeMethods(env) != 0) {
-            LOGE(WECHAT_BACKTRACE_TAG, "Register Quicken Unwinder JNINativeMethods Failed.");
+            QUT_LOG("Register Quicken Unwinder JNINativeMethods Failed.");
         }
     }
     return JNI_VERSION_1_6;
