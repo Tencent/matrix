@@ -282,7 +282,10 @@ bool MemoryFileAtOffset::Init(const std::string& file, uint64_t offset, uint64_t
     // Truncate the mapped size.
     size_ = max_size;
   }
-  void* map = mmap(nullptr, size_, PROT_READ, MAP_PRIVATE, fd, aligned_offset);
+  // (tomys): Some symbol seek & fetch libraries like fake_dlfcn search libs base address
+  // by matching privilege 'r--p' and 'r-xp' in proc maps. So we mapped our target library
+  // by 'rw-p' privilege flags to avoid disturbing these libraries.
+  void* map = mmap(nullptr, size_, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, aligned_offset);
   if (map == MAP_FAILED) {
     return false;
   }
