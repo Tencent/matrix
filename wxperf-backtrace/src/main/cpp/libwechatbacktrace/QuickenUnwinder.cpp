@@ -202,7 +202,8 @@ namespace wechat_backtrace {
             // This is a thumb instruction, it could be 2 or 4 bytes.
             uint32_t value;
             adjusted_pc -= 5;
-            if ((adjusted_pc - 5) < map_info->start ||
+            if (!(map_info->flags & PROT_READ) ||
+                (adjusted_pc - 5) < map_info->start ||
                 (adjusted_pc - 5 + sizeof(value)) >= map_info->end ||
                 !process_memory->ReadFully(adjusted_pc - 5, &value, sizeof(value)) ||
                 (value & 0xe000f000) != 0xe000f000) {
@@ -270,15 +271,8 @@ namespace wechat_backtrace {
             }
 
             uint64_t pc_adjustment = 0;
-            uint64_t step_pc;
-            uint64_t rel_pc;
-            step_pc = PC(regs);
-            rel_pc = map_info->GetRelPc(step_pc);
-
-            // Everyone except elf data in gdb jit debug maps uses the relative pc.
-            if (!(map_info->flags & MAPS_FLAGS_JIT_SYMFILE_MAP)) {
-                step_pc = rel_pc;
-            }
+            uint64_t rel_pc = map_info->GetRelPc(PC(regs));;
+            uint64_t step_pc = rel_pc;
 
             if (adjust_pc) {
                 pc_adjustment = GetPcAdjustment(process_memory_.get(), map_info, PC(regs), rel_pc,
@@ -286,6 +280,7 @@ namespace wechat_backtrace {
             } else {
                 pc_adjustment = 0;
             }
+
             step_pc -= pc_adjustment;
 
             if (dex_pc != 0) {

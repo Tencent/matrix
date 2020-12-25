@@ -727,7 +727,7 @@ namespace wechat_backtrace {
                 break;
 #endif
             default:
-//            QUT_STATISTIC(UnsupportedDwarfLocationOffset, reg, value);
+                QUT_STATISTIC(UnsupportedDwarfLocationOffset, reg, value);
                 return false;
         }
 
@@ -859,15 +859,15 @@ namespace wechat_backtrace {
         return true;
     }
 
-// Create a cached version of the fde information such that it is a std::map
-// that is indexed by end pc and contains a pair that represents the start pc
-// followed by the fde object. The fde pointers are owned by fde_entries_
-// and not by the map object.
-// It is possible for an fde to be represented by multiple entries in
-// the map. This can happen if the the start pc and end pc overlap already
-// existing entries. For example, if there is already an entry of 0x400, 0x200,
-// and an fde has a start pc of 0x100 and end pc of 0x500, two new entries
-// will be added: 0x200, 0x100 and 0x500, 0x400.
+    // Create a cached version of the fde information such that it is a std::map
+    // that is indexed by end pc and contains a pair that represents the start pc
+    // followed by the fde object. The fde pointers are owned by fde_entries_
+    // and not by the map object.
+    // It is possible for an fde to be represented by multiple entries in
+    // the map. This can happen if the the start pc and end pc overlap already
+    // existing entries. For example, if there is already an entry of 0x400, 0x200,
+    // and an fde has a start pc of 0x100 and end pc of 0x500, two new entries
+    // will be added: 0x200, 0x100 and 0x500, 0x400.
     template<typename AddressType>
     void DwarfSectionDecoder<AddressType>::InsertFde(const DwarfFde *fde) {
         uint64_t start = fde->pc_start;
@@ -991,7 +991,7 @@ namespace wechat_backtrace {
         }
     }
 
-// Explicitly instantiate DwarfSectionDecoder
+    // Explicitly instantiate DwarfSectionDecoder
     template
     class DwarfSectionDecoder<uint32_t>;
 

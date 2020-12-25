@@ -46,6 +46,7 @@ namespace wechat_backtrace {
 
         bool log = false;
         uptr log_entry_point = 0;
+        uptr log_addr = 0;
 
     protected:
         void DecodeDebugFrameEntriesInstr(FrameInfo debug_frame_info,

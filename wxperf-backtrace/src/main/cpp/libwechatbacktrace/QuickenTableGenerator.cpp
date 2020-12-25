@@ -93,7 +93,7 @@ namespace wechat_backtrace {
                       (ullint_t) total_entries);
 
         if (total_entries <= 1) {
-            // TODO How about this.
+            // TODO How to deal with this.
             return;
         }
 
@@ -102,7 +102,7 @@ namespace wechat_backtrace {
         shared_ptr<deque<uint64_t>> curr_instructions;
         uint32_t start_addr = 0;
 
-        for (size_t i = 0; i < total_entries; i++) { // TODO How about last entry.
+        for (size_t i = 0; i < total_entries; i++) { // TODO How to deal with last entry.
 
             uint32_t addr;
             uint32_t entry_offset = start_offset + i * 8;
@@ -164,18 +164,25 @@ namespace wechat_backtrace {
                     continue;
                 } else {
                     (*entries_instructions)[start_addr] = std::make_pair(addr, curr_instructions);
-//                QUT_DEBUG_LOG("DecodeExidxEntriesInstr addr: %x, instructions: %u", addr, curr_instructions->size());
-//                if (addr == 0x1025ac) {
-//                    for (uint64_t instr : *curr_instructions.get()) {
-//                        QUT_DEBUG_LOG("DecodeExidxEntriesInstr 0x1025ac, instructions: %llx", instr);
-//                    }
-//                }
+
+                    if (log) {
+                        QUT_DEBUG_LOG("DecodeExidxEntriesInstr addr: %x, instructions: %u", addr,
+                                      curr_instructions->size());
+                        if (addr == log_addr) {
+                            for (uint64_t instr : *curr_instructions.get()) {
+                                (void) instr;
+                                QUT_DEBUG_LOG(
+                                        "DecodeExidxEntriesInstr 0x%llx, instructions: %llx",
+                                        (ullint_t) log_addr, instr);
+                            }
+                        }
+                    }
                     start_addr = addr;
                     curr_instructions = move(decoder.instructions_);
                 }
 
             } else {
-                QUT_DEBUG_LOG("DecodeExidxEntriesInstr bad entry 3");
+                QUT_DEBUG_LOG("Bad entry.");
                 // TODO bad entry
                 continue;
             }
@@ -449,8 +456,6 @@ namespace wechat_backtrace {
 
         fut_sections->idx_size = idx_size;
         fut_sections->tbl_size = tbl_size;
-
-//    fut_sections->total_entries = idx_size / 2;
 
         bad_entries_count = bad_entries;      // TODO
 

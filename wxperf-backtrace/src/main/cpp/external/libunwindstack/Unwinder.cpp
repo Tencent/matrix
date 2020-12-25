@@ -281,7 +281,7 @@ void Unwinder::Unwind(const std::vector<std::string>* initial_map_names_to_skip,
           // some of the speculative frames.
           in_device_map = true;
         } else {
-          if (!GetFastFlag() && elf->StepIfSignalHandler(rel_pc, regs_, process_memory_.get())) {
+          if (elf->StepIfSignalHandler(rel_pc, regs_, process_memory_.get())) {
             stepped = true;
             if (frame != nullptr) {
               // Need to adjust the relative pc because the signal handler

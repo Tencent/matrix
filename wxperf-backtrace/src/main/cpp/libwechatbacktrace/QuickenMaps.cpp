@@ -330,6 +330,7 @@ namespace wechat_backtrace {
 
         return nullptr;
 
+        // XXX Currently not support memory backed elf.
 //        if (process_memory == nullptr) {
 //            return nullptr;
 //        }
