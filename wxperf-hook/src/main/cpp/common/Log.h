@@ -7,6 +7,7 @@
 
 #include <time.h>
 #include <android/log.h>
+#include <cstdio>
 
 #define LOGD(TAG, FMT, args...) //__android_log_print(ANDROID_LOG_DEBUG, TAG, FMT, ##args)
 #define LOGI(TAG, FMT, args...) //__android_log_print(ANDROID_LOG_INFO, TAG, FMT, ##args)
@@ -49,5 +50,6 @@
 //            result = (tms_end.tv_sec * 1000 * 1000 * 1000 + tms_end.tv_nsec - (timestamp.tv_sec * 1000 * 1000 * 1000 + timestamp.tv_nsec)); \
 //        }
 
+int flogger(FILE* fp , const char* fmt, ...);
 
 #endif //MEMINFO_LOG_H
