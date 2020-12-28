@@ -265,11 +265,13 @@ public final class BatteryCanaryUtil {
             ActivityManager am = (ActivityManager) context.getSystemService(ACTIVITY_SERVICE);
             if (am != null) {
                 List<ActivityManager.RunningServiceInfo> runningServices = am.getRunningServices(Integer.MAX_VALUE);
-                for (ActivityManager.RunningServiceInfo runningServiceInfo : runningServices) {
-                    if (!TextUtils.isEmpty(runningServiceInfo.process)
-                            && runningServiceInfo.process.startsWith(context.getPackageName())) {
-                        if (runningServiceInfo.foreground) {
-                            return true;
+                if (runningServices != null) {
+                    for (ActivityManager.RunningServiceInfo runningServiceInfo : runningServices) {
+                        if (!TextUtils.isEmpty(runningServiceInfo.process)
+                                && runningServiceInfo.process.startsWith(context.getPackageName())) {
+                            if (runningServiceInfo.foreground) {
+                                return true;
+                            }
                         }
                     }
                 }
@@ -285,14 +287,16 @@ public final class BatteryCanaryUtil {
             ActivityManager am = (ActivityManager) context.getSystemService(ACTIVITY_SERVICE);
             if (am != null) {
                 List<ActivityManager.RunningServiceInfo> runningServices = am.getRunningServices(Integer.MAX_VALUE);
-                for (ActivityManager.RunningServiceInfo runningServiceInfo : runningServices) {
-                    if (!TextUtils.isEmpty(runningServiceInfo.process)
-                            && runningServiceInfo.process.startsWith(context.getPackageName())) {
-                        if (runningServiceInfo.foreground) {
-                            if (list.isEmpty()) {
-                                list = new ArrayList<>();
+                if (runningServices != null) {
+                    for (ActivityManager.RunningServiceInfo runningServiceInfo : runningServices) {
+                        if (!TextUtils.isEmpty(runningServiceInfo.process)
+                                && runningServiceInfo.process.startsWith(context.getPackageName())) {
+                            if (runningServiceInfo.foreground) {
+                                if (list.isEmpty()) {
+                                    list = new ArrayList<>();
+                                }
+                                list.add(runningServiceInfo);
                             }
-                            list.add(runningServiceInfo);
                         }
                     }
                 }

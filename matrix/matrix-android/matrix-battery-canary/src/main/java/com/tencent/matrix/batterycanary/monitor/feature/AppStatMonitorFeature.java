@@ -109,8 +109,12 @@ public final class AppStatMonitorFeature extends AbsMonitorFeature {
             if (am == null) {
                 return;
             }
+            List<ActivityManager.RunningServiceInfo> runningServices = am.getRunningServices(Integer.MAX_VALUE);
+            if (runningServices == null) {
+                return;
+            }
 
-            for (ActivityManager.RunningServiceInfo item : am.getRunningServices(Integer.MAX_VALUE)) {
+            for (ActivityManager.RunningServiceInfo item : runningServices) {
                 if (!TextUtils.isEmpty(item.process) && item.process.startsWith(context.getPackageName())) {
                     if (item.foreground) {
                         // foreground service is running when app importance is low
@@ -171,8 +175,12 @@ public final class AppStatMonitorFeature extends AbsMonitorFeature {
                 if (am == null) {
                     return;
                 }
+                List<ActivityManager.RunningAppProcessInfo> processes = am.getRunningAppProcesses();
+                if (processes == null) {
+                    return;
+                }
 
-                for (ActivityManager.RunningAppProcessInfo item : am.getRunningAppProcesses()) {
+                for (ActivityManager.RunningAppProcessInfo item : processes) {
                     if (item.processName.startsWith(mainProc)) {
                         if (mGlobalAppImportance > item.importance) {
                             MatrixLog.i(TAG, "update global importance: " + mGlobalAppImportance + " > " + item.importance
