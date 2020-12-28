@@ -670,6 +670,7 @@ Java_com_tencent_wxperf_sample_JNIObj_mallocTest(JNIEnv *env, jclass clazz) {
     LOGD(TAG, "p = %p", p);
     free(p);
 
+    p = new int[1024];
 
 #undef LEN
 }
