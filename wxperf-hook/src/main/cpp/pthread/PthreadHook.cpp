@@ -322,7 +322,7 @@ static inline void pthread_dump_impl(FILE *__log_file) {
     for (auto &i: m_pthread_metas) {
         auto &meta = i.second;
         LOGD(TAG, "========> RETAINED PTHREAD { name : %s, tid: %d }", meta.thread_name, meta.tid);
-        fprintf(__log_file, "========> RETAINED PTHREAD { name : %s, tid: %d }\n",
+        flogger(__log_file, "========> RETAINED PTHREAD { name : %s, tid: %d }\n",
                 meta.thread_name, meta.tid);
         std::stringstream stack_builder;
 
@@ -331,7 +331,7 @@ static inline void pthread_dump_impl(FILE *__log_file) {
         }
 
         LOGD(TAG, "native stacktrace:");
-        fprintf(__log_file, "native stacktrace:\n");
+        flogger(__log_file, "native stacktrace:\n");
 
         restore_frame_data(meta.native_stacktrace);
 
@@ -344,14 +344,14 @@ static inline void pthread_dump_impl(FILE *__log_file) {
                  p_frame.rel_pc,
                  demangled_name ? demangled_name : "(null)",
                  p_frame.map_name.c_str());
-            fprintf(__log_file, "  #pc %" PRIxPTR " %s (%s)\n", p_frame.rel_pc,
+            flogger(__log_file, "  #pc %" PRIxPTR " %s (%s)\n", p_frame.rel_pc,
                     demangled_name ? demangled_name : "(null)", p_frame.map_name.c_str());
 
             free(demangled_name);
         }
 
         LOGD(TAG, "java stacktrace:\n%s", meta.java_stacktrace.load(std::memory_order_acquire));
-        fprintf(__log_file, "java stacktrace:\n%s\n",
+        flogger(__log_file, "java stacktrace:\n%s\n",
                 meta.java_stacktrace.load(std::memory_order_acquire));
     }
 }
@@ -476,7 +476,7 @@ static inline void pthread_dump_json_impl(FILE *__log_file) {
 
     cJSON_Delete(json_obj);
 
-    fprintf(__log_file, "%s", json_str);
+    flogger(__log_file, "%s", json_str);
     cJSON_free(json_str);
     return;
 
