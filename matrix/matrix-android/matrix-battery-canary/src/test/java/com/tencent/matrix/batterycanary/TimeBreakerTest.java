@@ -21,7 +21,6 @@ import android.os.SystemClock;
 import com.tencent.matrix.batterycanary.utils.TimeBreaker;
 
 import org.junit.Assert;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.junit.MockitoJUnitRunner;
@@ -57,8 +56,9 @@ public class TimeBreakerTest {
      * Need mocking {@link SystemClock#uptimeMillis()}
      */
     @Test
-    @Ignore
     public void testPortions() throws InterruptedException {
+        new SystemMock();
+
         List<TimeBreaker.Stamp> stampList = new ArrayList<>();
         stampList.add(0, new TimeBreaker.Stamp("1"));
         Thread.sleep(100);
@@ -70,83 +70,86 @@ public class TimeBreakerTest {
         Thread.sleep(100);
         stampList.add(0, new TimeBreaker.Stamp("1"));
 
+        int delta = 20;
+        int deltaRatio = 2;
+
         TimeBreaker.TimePortions snapshot = configurePortions(stampList, 0L);
-        Assert.assertEquals(400, snapshot.totalUptime, 10);
-        Assert.assertEquals(50, snapshot.getRatio("1"), 1);
-        Assert.assertEquals(25, snapshot.getRatio("2"), 1);
-        Assert.assertEquals(25, snapshot.getRatio("3"), 1);
+        Assert.assertEquals(400, snapshot.totalUptime, delta);
+        Assert.assertEquals(50, snapshot.getRatio("1"), deltaRatio);
+        Assert.assertEquals(25, snapshot.getRatio("2"), deltaRatio);
+        Assert.assertEquals(25, snapshot.getRatio("3"), deltaRatio);
         Assert.assertEquals("1", Objects.requireNonNull(snapshot.top1()).first);
         Assert.assertTrue(snapshot.isValid());
         snapshot = configurePortions(stampList, Long.MIN_VALUE);
-        Assert.assertEquals(400, snapshot.totalUptime, 10);
-        Assert.assertEquals(50, snapshot.getRatio("1"), 1);
-        Assert.assertEquals(25, snapshot.getRatio("2"), 1);
-        Assert.assertEquals(25, snapshot.getRatio("3"), 1);
+        Assert.assertEquals(400, snapshot.totalUptime, delta);
+        Assert.assertEquals(50, snapshot.getRatio("1"), deltaRatio);
+        Assert.assertEquals(25, snapshot.getRatio("2"), deltaRatio);
+        Assert.assertEquals(25, snapshot.getRatio("3"), deltaRatio);
         Assert.assertEquals("1", Objects.requireNonNull(snapshot.top1()).first);
         Assert.assertTrue(snapshot.isValid());
 
         // last 50 millis
         snapshot = configurePortions(stampList, 50L);
-        Assert.assertEquals(50, snapshot.totalUptime, 10);
-        Assert.assertEquals(0, snapshot.getRatio("1"), 1);
-        Assert.assertEquals(0, snapshot.getRatio("2"), 1);
-        Assert.assertEquals(100, snapshot.getRatio("3"), 1);
+        Assert.assertEquals(50, snapshot.totalUptime, delta);
+        Assert.assertEquals(0, snapshot.getRatio("1"), deltaRatio);
+        Assert.assertEquals(0, snapshot.getRatio("2"), deltaRatio);
+        Assert.assertEquals(100, snapshot.getRatio("3"), deltaRatio);
         Assert.assertEquals("3", Objects.requireNonNull(snapshot.top1()).first);
         Assert.assertTrue(snapshot.isValid());
         snapshot = configurePortions(stampList, 100L);
-        Assert.assertEquals(100, snapshot.totalUptime, 10);
-        Assert.assertEquals(0, snapshot.getRatio("1"), 1);
-        Assert.assertEquals(0, snapshot.getRatio("2"), 1);
-        Assert.assertEquals(100, snapshot.getRatio("3"), 1);
+        Assert.assertEquals(100, snapshot.totalUptime, delta);
+        Assert.assertEquals(0, snapshot.getRatio("1"), deltaRatio);
+        Assert.assertEquals(0, snapshot.getRatio("2"), deltaRatio);
+        Assert.assertEquals(100, snapshot.getRatio("3"), deltaRatio);
         Assert.assertTrue(snapshot.isValid());
         snapshot = configurePortions(stampList, 150L);
-        Assert.assertEquals(150, snapshot.totalUptime, 10);
-        Assert.assertEquals(33.3, snapshot.getRatio("1"), 1);
-        Assert.assertEquals(0, snapshot.getRatio("2"), 1);
-        Assert.assertEquals(66.6, snapshot.getRatio("3"), 1);
+        Assert.assertEquals(150, snapshot.totalUptime, delta);
+        Assert.assertEquals(33.3, snapshot.getRatio("1"), deltaRatio);
+        Assert.assertEquals(0, snapshot.getRatio("2"), deltaRatio);
+        Assert.assertEquals(66.6, snapshot.getRatio("3"), deltaRatio);
         Assert.assertTrue(snapshot.isValid());
         snapshot = configurePortions(stampList, 200L);
-        Assert.assertEquals(200, snapshot.totalUptime, 10);
-        Assert.assertEquals(50, snapshot.getRatio("1"), 1);
-        Assert.assertEquals(0, snapshot.getRatio("2"), 1);
-        Assert.assertEquals(50, snapshot.getRatio("3"), 1);
+        Assert.assertEquals(200, snapshot.totalUptime, delta);
+        Assert.assertEquals(50, snapshot.getRatio("1"), deltaRatio);
+        Assert.assertEquals(0, snapshot.getRatio("2"), deltaRatio);
+        Assert.assertEquals(50, snapshot.getRatio("3"), deltaRatio);
         Assert.assertTrue(snapshot.isValid());
         snapshot = configurePortions(stampList, 250L);
-        Assert.assertEquals(250, snapshot.totalUptime, 10);
-        Assert.assertEquals(100 * 100 / 250f, snapshot.getRatio("1"), 1);
-        Assert.assertEquals(100 * 50 / 250f, snapshot.getRatio("2"), 1);
-        Assert.assertEquals(100 * 100 / 250f, snapshot.getRatio("3"), 1);
+        Assert.assertEquals(250, snapshot.totalUptime, delta);
+        Assert.assertEquals(100 * 100 / 250f, snapshot.getRatio("1"), deltaRatio);
+        Assert.assertEquals(100 * 50 / 250f, snapshot.getRatio("2"), deltaRatio);
+        Assert.assertEquals(100 * 100 / 250f, snapshot.getRatio("3"), deltaRatio);
         Assert.assertTrue(snapshot.isValid());
         snapshot = configurePortions(stampList, 300L);
-        Assert.assertEquals(300f, snapshot.totalUptime, 10);
-        Assert.assertEquals(100 * 100 / 300f, snapshot.getRatio("1"), 1);
-        Assert.assertEquals(100 * 100 / 300f, snapshot.getRatio("2"), 1);
-        Assert.assertEquals(100 * 100 / 300f, snapshot.getRatio("3"), 1);
+        Assert.assertEquals(300f, snapshot.totalUptime, delta);
+        Assert.assertEquals(100 * 100 / 300f, snapshot.getRatio("1"), deltaRatio);
+        Assert.assertEquals(100 * 100 / 300f, snapshot.getRatio("2"), deltaRatio);
+        Assert.assertEquals(100 * 100 / 300f, snapshot.getRatio("3"), deltaRatio);
         Assert.assertTrue(snapshot.isValid());
         snapshot = configurePortions(stampList, 350L);
-        Assert.assertEquals(350f, snapshot.totalUptime, 10);
-        Assert.assertEquals(100 * 150 / 350f, snapshot.getRatio("1"), 1);
-        Assert.assertEquals(100 * 100 / 350f, snapshot.getRatio("2"), 1);
-        Assert.assertEquals(100 * 100 / 350f, snapshot.getRatio("3"), 1);
+        Assert.assertEquals(350f, snapshot.totalUptime, delta);
+        Assert.assertEquals(100 * 150 / 350f, snapshot.getRatio("1"), deltaRatio);
+        Assert.assertEquals(100 * 100 / 350f, snapshot.getRatio("2"), deltaRatio);
+        Assert.assertEquals(100 * 100 / 350f, snapshot.getRatio("3"), deltaRatio);
         Assert.assertEquals("1", Objects.requireNonNull(snapshot.top1()).first);
         Assert.assertTrue(snapshot.isValid());
         snapshot = configurePortions(stampList, 400L);
-        Assert.assertEquals(400f, snapshot.totalUptime, 10);
-        Assert.assertEquals(100 * 200 / 400f, snapshot.getRatio("1"), 1);
-        Assert.assertEquals(100 * 100 / 400f, snapshot.getRatio("2"), 1);
-        Assert.assertEquals(100 * 100 / 400f, snapshot.getRatio("3"), 1);
+        Assert.assertEquals(400f, snapshot.totalUptime, delta);
+        Assert.assertEquals(100 * 200 / 400f, snapshot.getRatio("1"), deltaRatio);
+        Assert.assertEquals(100 * 100 / 400f, snapshot.getRatio("2"), deltaRatio);
+        Assert.assertEquals(100 * 100 / 400f, snapshot.getRatio("3"), deltaRatio);
         Assert.assertTrue(snapshot.isValid());
         snapshot = configurePortions(stampList, 500L);
-        Assert.assertEquals(400f, snapshot.totalUptime, 10);
-        Assert.assertEquals(100 * 200 / 400f, snapshot.getRatio("1"), 1);
-        Assert.assertEquals(100 * 100 / 400f, snapshot.getRatio("2"), 1);
-        Assert.assertEquals(100 * 100 / 400f, snapshot.getRatio("3"), 1);
+        Assert.assertEquals(400f, snapshot.totalUptime, delta);
+        Assert.assertEquals(100 * 200 / 400f, snapshot.getRatio("1"), deltaRatio);
+        Assert.assertEquals(100 * 100 / 400f, snapshot.getRatio("2"), deltaRatio);
+        Assert.assertEquals(100 * 100 / 400f, snapshot.getRatio("3"), deltaRatio);
         Assert.assertFalse(snapshot.isValid());
         snapshot = configurePortions(stampList, Long.MAX_VALUE);
-        Assert.assertEquals(400f, snapshot.totalUptime, 10);
-        Assert.assertEquals(100 * 200 / 400f, snapshot.getRatio("1"), 1);
-        Assert.assertEquals(100 * 100 / 400f, snapshot.getRatio("2"), 1);
-        Assert.assertEquals(100 * 100 / 400f, snapshot.getRatio("3"), 1);
+        Assert.assertEquals(400f, snapshot.totalUptime, delta);
+        Assert.assertEquals(100 * 200 / 400f, snapshot.getRatio("1"), deltaRatio);
+        Assert.assertEquals(100 * 100 / 400f, snapshot.getRatio("2"), deltaRatio);
+        Assert.assertEquals(100 * 100 / 400f, snapshot.getRatio("3"), deltaRatio);
         Assert.assertFalse(snapshot.isValid());
     }
 
