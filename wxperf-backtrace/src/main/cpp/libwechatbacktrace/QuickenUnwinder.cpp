@@ -56,10 +56,9 @@ namespace wechat_backtrace {
 
         SetCurrentStatLib(soname);
 
-        QuickenInterface *interface = QuickenMapInfo::CreateQuickenInterfaceForGenerate(sopath,
+        unique_ptr<QuickenInterface> interface = QuickenMapInfo::CreateQuickenInterfaceForGenerate(sopath,
                                                                                         elf.get());
         QutSections qut_sections;
-
 
         Memory *gnu_debug_data_memory = nullptr;
         if (elf->gnu_debugdata_interface()) {
@@ -71,6 +70,26 @@ namespace wechat_backtrace {
                                                 &qut_sections);
 
         DumpQutStatResult();
+    }
+
+    void NotifyWarmedUpQut(const std::string &sopath, const uint64_t elf_start_offset) {
+
+        QUT_LOG("Notify qut for so %s, elf_start_offset %llu.", sopath.c_str(),
+                (ullint_t) elf_start_offset);
+
+        const string hash = ToHash(sopath + to_string(FileSize(sopath)));
+        const std::string soname = SplitSonameFromPath(sopath);
+
+        {
+            lock_guard<mutex> lock(generate_lock_);
+
+            if (!QuickenTableManager::CheckIfQutFileExistsWithHash(soname, hash)) {
+                QUT_LOG("False warmed-up: %s %s", soname.c_str(), hash.c_str());
+                return;
+            }
+
+            QuickenTableManager::getInstance().EraseQutRequestingByHash(hash);
+        }
     }
 
     void GenerateQutForLibrary(const std::string &sopath, const uint64_t elf_start_offset) {
@@ -116,7 +135,7 @@ namespace wechat_backtrace {
                 return;
             }
 
-            QuickenInterface *interface =
+            unique_ptr<QuickenInterface> interface =
                     QuickenMapInfo::CreateQuickenInterfaceForGenerate(sopath, elf.get());
 
             std::unique_ptr<QutSections> qut_sections = make_unique<QutSections>();
@@ -146,7 +165,7 @@ namespace wechat_backtrace {
         vector<string> consumed;
         while (it != requesting_qut.end()) {
             consumed.push_back(it->second.second + ":" + to_string(it->second.first));
-            GenerateQutForLibrary(it->second.second, it->second.first);
+//            GenerateQutForLibrary(it->second.second, it->second.first);
             it++;
         }
 
@@ -215,7 +234,7 @@ namespace wechat_backtrace {
 
 
     QutErrorCode
-    WeChatQuickenUnwind(const ArchEnum arch, uptr *regs, const uptr frame_max_size,
+    WeChatQuickenUnwind(const ArchEnum arch, uptr *regs, const size_t frame_max_size,
                         Frame *backtrace, uptr &frame_size) {
 
         std::shared_ptr<Maps> maps = Maps::current();
@@ -236,7 +255,7 @@ namespace wechat_backtrace {
         QutErrorCode ret = QUT_ERROR_NONE;
 
         pthread_attr_t attr;
-        pthread_getattr_ext(pthread_self(), &attr);
+        BACKTRACE_FUNC_WRAPPER(pthread_getattr_ext)(pthread_self(), &attr);
         uptr stack_bottom = reinterpret_cast<uptr>(attr.stack_base);
         uptr stack_top = reinterpret_cast<uptr>(attr.stack_base) + attr.stack_size;
 

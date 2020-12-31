@@ -167,7 +167,7 @@ namespace wechat_backtrace {
             qut_sections_tmp->qutbl = (static_cast<uptr *>((void *) (data + tbl_offset)));
 
             QutSectionsPtr qut_sections_insert = qut_sections_tmp;
-            if (!InsertQutSectionsNoLock(soname, build_id, qut_sections_insert, true)) {
+            if (!InsertQutSectionsNoLock(soname, hash, build_id, qut_sections_insert, true)) {
                 delete qut_sections_tmp;
                 close(fd);
                 return InsertNewQutFailed;
@@ -206,7 +206,8 @@ namespace wechat_backtrace {
         {
             lock_guard<mutex> lockGuard(lock_);
 
-            ret = FindQutSectionsNoLock(soname, sopath, build_id, elf_start_offset, qut_sections);
+            ret = FindQutSectionsNoLock(soname, sopath, hash, build_id, elf_start_offset,
+                                        qut_sections);
 
             if (qut_sections != nullptr || ret != NoneError) {
                 return ret;
@@ -230,7 +231,8 @@ namespace wechat_backtrace {
     }
 
     bool
-    QuickenTableManager::InsertQutSectionsNoLock(const string &soname, const string &build_id,
+    QuickenTableManager::InsertQutSectionsNoLock(const string &soname, const string &hash,
+                                                 const string &build_id,
                                                  QutSectionsPtr &qut_sections,
                                                  bool immediately) {
 
@@ -264,12 +266,25 @@ namespace wechat_backtrace {
 
         QUT_LOG("Erase qut requesting build id %s.", build_id.c_str());
         qut_sections_requesting_.erase(build_id);
+        qut_sections_hash_to_build_id_.erase(hash);
 
         return true;
     }
 
+    void
+    QuickenTableManager::EraseQutRequestingByHash(const string &hash) {
+        lock_guard<mutex> lockGuard(lock_);
+        auto it = qut_sections_hash_to_build_id_.find(hash);
+        if (it != qut_sections_hash_to_build_id_.end()) {
+            qut_sections_requesting_.erase(it->second);
+            QUT_LOG("Erase qut requesting build id %s.", it->second.c_str());
+        }
+        qut_sections_hash_to_build_id_.erase(hash);
+    }
+
     QutFileError
     QuickenTableManager::FindQutSectionsNoLock(const std::string &soname, const std::string &sopath,
+                                               const std::string &hash,
                                                const std::string &build_id,
                                                const uint64_t elf_start_offset,
                                                QutSectionsPtr &qut_sections_ptr) {
@@ -291,6 +306,7 @@ namespace wechat_backtrace {
 
         // Mark requesting qut sections.
         qut_sections_requesting_[build_id] = make_pair(elf_start_offset, sopath);
+        qut_sections_hash_to_build_id_[hash] = build_id;
 
         return NoneError;
     }
@@ -320,8 +336,7 @@ namespace wechat_backtrace {
         {
             lock_guard<mutex> lockGuard(lock_);
             if (qut_sections_insert == nullptr ||
-                !InsertQutSectionsNoLock(soname, build_id, qut_sections_insert, false)) {
-                QUT_LOG("qut_sections_insert %llx", (ullint_t) qut_sections_insert);
+                !InsertQutSectionsNoLock(soname, hash, build_id, qut_sections_insert, false)) {
                 QUT_LOG("qut_sections_insert %llx", (ullint_t) qut_sections_insert);
                 return InsertNewQutFailed;
             }

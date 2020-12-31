@@ -767,8 +767,7 @@ Java_com_tencent_wxperf_jni_test_UnwindTest_testNative2(JNIEnv *env, jclass claz
 JNIEXPORT void JNICALL
 Java_com_tencent_wxperf_jni_test_UnwindTest_initNative(JNIEnv *env, jclass clazz) {
     LOGD("Yves-test", "Unwind init");
-//    unwindstack::update_maps();
-    wechat_backtrace::notify_maps_changed();
+    wechat_backtrace::BACKTRACE_FUNC_WRAPPER(notify_maps_changed)();
 }
 
 #ifdef __cplusplus

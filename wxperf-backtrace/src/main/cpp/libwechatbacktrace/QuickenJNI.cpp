@@ -15,6 +15,7 @@
 #include <Backtrace.h>
 #include <QuickenInterface.h>
 
+#include "PthreadExt.h"
 #include "QuickenUnwinder.h"
 #include "QuickenJNI.h"
 #include "Log.h"
@@ -70,10 +71,17 @@ namespace wechat_backtrace {
         return result;
     }
 
-    static void JNI_WarmUp(JNIEnv *env, jclass clazz, jstring sopath_jstr) {
+    static void JNI_WarmUp(JNIEnv *env, jclass clazz, jstring sopath_jstr, jint elf_start_offset) {
         (void) clazz;
         const char *sopath = env->GetStringUTFChars(sopath_jstr, 0);
-        GenerateQutForLibrary(sopath, 0);
+        GenerateQutForLibrary(sopath, (uint64_t) elf_start_offset);
+        env->ReleaseStringUTFChars(sopath_jstr, sopath);
+    }
+
+    static void JNI_NotifyWarmedUp(JNIEnv *env, jclass clazz, jstring sopath_jstr, jint elf_start_offset) {
+        (void) clazz;
+        const char *sopath = env->GetStringUTFChars(sopath_jstr, 0);
+        NotifyWarmedUpQut(sopath, (uint64_t) elf_start_offset);
         env->ReleaseStringUTFChars(sopath_jstr, sopath);
     }
 
@@ -83,7 +91,7 @@ namespace wechat_backtrace {
 
         if (mode < FramePointer || mode > DwarfBased) return;
 
-        SetBacktraceMode(static_cast<BacktraceMode>(mode));
+        set_backtrace_mode(static_cast<BacktraceMode>(mode));
     }
 
     static void JNI_SetImmediateGeneration(JNIEnv *env, jclass clazz, jboolean immediate) {
@@ -105,14 +113,15 @@ namespace wechat_backtrace {
     }
 
     static JNINativeMethod g_qut_methods[] = {
-            {"setPackageName",      "(Ljava/lang/String;)V", (void *) JNI_SetPackageName},
-            {"setSavingPath",       "(Ljava/lang/String;)V", (void *) JNI_SetSavingPath},
-            {"setWarmedUp",         "(Z)V",                  (void *) JNI_SetWarmedUp},
-            {"consumeRequestedQut", "()[Ljava/lang/String;", (void *) JNI_ConsumeRequestedQut},
-            {"warmUp",              "(Ljava/lang/String;)V", (void *) JNI_WarmUp},
-            {"setBacktraceMode",    "(I)V",                  (void *) JNI_SetBacktraceMode},
-            {"statistic",           "(Ljava/lang/String;)V", (void *) JNI_Statistic},
-            {"immediateGeneration", "(Z)V",                  (void *) JNI_SetImmediateGeneration},
+            {"setPackageName",      "(Ljava/lang/String;)V",  (void *) JNI_SetPackageName},
+            {"setSavingPath",       "(Ljava/lang/String;)V",  (void *) JNI_SetSavingPath},
+            {"setWarmedUp",         "(Z)V",                   (void *) JNI_SetWarmedUp},
+            {"consumeRequestedQut", "()[Ljava/lang/String;",  (void *) JNI_ConsumeRequestedQut},
+            {"warmUp",              "(Ljava/lang/String;I)V", (void *) JNI_WarmUp},
+            {"setBacktraceMode",    "(I)V",                   (void *) JNI_SetBacktraceMode},
+            {"statistic",           "(Ljava/lang/String;)V",  (void *) JNI_Statistic},
+            {"immediateGeneration", "(Z)V",                   (void *) JNI_SetImmediateGeneration},
+            {"notifyWarmedUp",      "(Ljava/lang/String;I)V", (void *) JNI_NotifyWarmedUp},
     };
 
     static jclass JNIClass_WeChatBacktraceNative = nullptr;
@@ -175,6 +184,9 @@ JNIEXPORT jint JNI_OnLoad(JavaVM *vm, void *reserved) {
             QUT_LOG("Register Quicken Unwinder JNINativeMethods Failed.");
         }
     }
+
+    BACKTRACE_FUNC_WRAPPER(pthread_ext_init)();
+
     return JNI_VERSION_1_6;
 }
 

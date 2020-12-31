@@ -4,6 +4,8 @@
 #include <memory>
 #include <unwindstack/Elf.h>
 
+#include "Predefined.h"
+
 // *** Version ***
 #define QUT_VERSION 0x1
 
@@ -40,12 +42,6 @@
 #define BACKTRACE_INITIALIZER(MAX_FRAMES) \
     {MAX_FRAMES, 0, std::shared_ptr<wechat_backtrace::Frame>( \
     new wechat_backtrace::Frame[MAX_FRAMES], std::default_delete<wechat_backtrace::Frame[]>())}
-
-#define DEFINE_STATIC_LOCAL(type, name, arguments) \
-  static type& name = *new type arguments
-
-#define DEFINE_STATIC_CPP_FIELD(type, name, arguments) \
-  type& name = *new type arguments
 
 namespace wechat_backtrace {
 

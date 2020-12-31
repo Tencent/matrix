@@ -37,6 +37,8 @@ public class WeChatBacktrace implements Handler.Callback {
     private final static String SYSTEM_LIBRARY_PATH = "/system/lib/";
     private final static String SYSTEM_LIBRARY_PATH_64 = "/system/lib64/";
 
+    private final static String ISOLATE_PROCESS_SUFFIX = ":wechatbacktrace";
+
     public static boolean is64BitRuntime() {
         final String currRuntimeABI = Build.CPU_ABI;
         return "arm64-v8a".equalsIgnoreCase(currRuntimeABI)
@@ -84,6 +86,8 @@ public class WeChatBacktrace implements Handler.Callback {
     private Handler mIdleHandler;
     private ThreadTaskExecutor mThreadTaskExecutor;
     private AtomicInteger mUnfinishedTask = new AtomicInteger(0);
+
+    private WarmUpDelegate mWarmUpDelegate = new WarmUpDelegate();
 
     private Mode mCurrentBacktraceMode;
 
@@ -201,7 +205,7 @@ public class WeChatBacktrace implements Handler.Callback {
         @Override
         public void onReceive(Context context, final Intent intent) {
 
-            Log.i(TAG, "Warm-up received .");
+            Log.i(TAG, "Warm-up received.");
 
             String action = intent.getAction();
             if (action == null) return;
@@ -341,11 +345,16 @@ public class WeChatBacktrace implements Handler.Callback {
 
     private void loadLibrary(LibraryLoader loader) {
         if (loader == null) {
-            System.loadLibrary(BACKTRACE_LIBRARY_NAME);
+            loadLibrary();
         } else {
             Log.i(TAG, "Using custom library loader: %s.", loader);
             loader.load(BACKTRACE_LIBRARY_NAME);
         }
+    }
+
+    // Invoke by warm-up provider
+    static void loadLibrary() {
+        System.loadLibrary(BACKTRACE_LIBRARY_NAME);
     }
 
     private void iterateTargetDirectory(File target, CancellationSignal cs, FileFilter filter) {
@@ -360,7 +369,7 @@ public class WeChatBacktrace implements Handler.Callback {
         }
     }
 
-    private final static boolean sFakeTest = false;
+    private final static boolean sFakeTest = true;
 
     // TODO For debug
     final CancellationSignal fakeCS = new CancellationSignal();
@@ -386,9 +395,15 @@ public class WeChatBacktrace implements Handler.Callback {
                         iterateTargetDirectory(dir, cs, new FileFilter() {
                             @Override
                             public boolean accept(File file) {
-                                if (file.exists() && file.getAbsolutePath().endsWith(".so")) {
-                                    Log.i(TAG, "Warming up so %s", file.getAbsolutePath());
-                                    WeChatBacktraceNative.warmUp(file.getAbsolutePath());
+                                String absolutePath = file.getAbsolutePath();
+                                if (file.exists() &&
+                                        (absolutePath.endsWith(".so") ||
+                                            absolutePath.endsWith(".odex") ||
+                                            absolutePath.endsWith(".oat")
+                                        )) {
+                                    Log.i(TAG, "Warming up so %s", absolutePath);
+                                    mWarmUpDelegate.warmUp(mConfiguration.mContext,
+                                            absolutePath, 0);
                                 }
                                 return false;
                             }
@@ -469,8 +484,23 @@ public class WeChatBacktrace implements Handler.Callback {
             @Override
             public void run() {
                 Log.i(TAG, "Going to consume requested QUT.");
-                String[] consumed = WeChatBacktraceNative.consumeRequestedQut();
-                for (String path : consumed) {
+
+                String[] arrayOfRequesting = WeChatBacktraceNative.consumeRequestedQut();
+
+                for (String path : arrayOfRequesting) {
+                    int index = path.lastIndexOf(':');
+                    String pathOfElf = path;
+                    int offset = 0;
+                    if (index != -1) {
+                        try {
+                            pathOfElf = path.substring(0, index);
+                            offset = Integer.valueOf(path.substring(index + 1));
+                        } catch (Throwable ignore) {
+                        }
+                    }
+
+                    mWarmUpDelegate.warmUp(mConfiguration.mContext, pathOfElf, offset);
+
                     Log.i(TAG, "Consumed requested QUT -> %s", path);
                 }
                 Log.i(TAG, "Consume requested QUT done.");
@@ -519,9 +549,11 @@ public class WeChatBacktrace implements Handler.Callback {
         if (mUnfinishedTask.getAndDecrement() > 0) {
             return;
         }
-        Log.i(TAG, "Unregister idle receiver.");
-        context.unregisterReceiver(mIdleReceiver);
-        mIdleReceiver = null;
+        if (mIdleReceiver != null) {
+            Log.i(TAG, "Unregister idle receiver.");
+            context.unregisterReceiver(mIdleReceiver);
+            mIdleReceiver = null;
+        }
     }
 
     private synchronized void registerWarmedUpReceiver(Configuration configuration) {
@@ -667,7 +699,32 @@ public class WeChatBacktrace implements Handler.Callback {
         }
     }
 
+    public final static class ConfigurationException extends RuntimeException {
+        public ConfigurationException(String message) {
+            super(message);
+        }
+    }
+
+    private boolean runningInIsolateProcess(Configuration configuration) {
+        String processName = ProcessUtil.getProcessNameByPid(
+                configuration.mContext, android.os.Process.myPid());
+        if (processName != null && processName.endsWith(ISOLATE_PROCESS_SUFFIX)) {
+            return true;
+        }
+        return false;
+    }
+
     private void configure(Configuration configuration) {
+
+        if (runningInIsolateProcess(configuration)) {
+            Log.i(TAG, "Isolate process does not need any configuration.");
+            return;
+        }
+
+        if (configuration.mWarmUpInIsolateProcess && configuration.mLibraryLoader != null) {
+            throw new ConfigurationException("Custom library loader is not supported in " +
+                    "isolate process warm-up mode.");
+        }
 
         // Load backtrace library.
         loadLibrary(configuration.mLibraryLoader);
@@ -675,6 +732,8 @@ public class WeChatBacktrace implements Handler.Callback {
         Log.i(TAG, configuration.toString());
 
         mCurrentBacktraceMode = configuration.mBacktraceMode;
+
+        mWarmUpDelegate.warmUpInIsolateProcess(configuration.mWarmUpInIsolateProcess);
 
         if (configuration.mBacktraceMode == Mode.Quicken ||
                 configuration.mBacktraceMode == Mode.FpUntilQuickenWarmedUp ||
@@ -689,7 +748,7 @@ public class WeChatBacktrace implements Handler.Callback {
             if (!savingPath.endsWith(File.separator)) {
                 savingPath += File.separator;
             }
-            WeChatBacktraceNative.setSavingPath(savingPath);
+            mWarmUpDelegate.setSavingPath(savingPath);
 
             // Remove warm up marked file if cool down is set.
             dealWithCoolDown(configuration);
@@ -768,12 +827,13 @@ public class WeChatBacktrace implements Handler.Callback {
         Context mContext;
         String mSavingPath;
         HashSet<String> mWarmUpDirectoriesList = new HashSet<>();
+        Mode mBacktraceMode = Mode.Quicken;
+        LibraryLoader mLibraryLoader = null;
         boolean mCoolDown = false;
         boolean mCoolDownIfApkUpdated = true;   // Default true.
         boolean mIsWarmUpProcess = false;
-        Mode mBacktraceMode = Mode.Quicken;
-        LibraryLoader mLibraryLoader = null;
         boolean mImmediateGeneration = false;
+        boolean mWarmUpInIsolateProcess = true;
 
         private boolean mCommitted = false;
         private WeChatBacktrace mWeChatBacktrace;
@@ -846,6 +906,14 @@ public class WeChatBacktrace implements Handler.Callback {
                 return this;
             }
             mIsWarmUpProcess = isWarmUpProcess;
+            return this;
+        }
+
+        public Configuration warmUpInIsolateProcess(boolean isolateProcess) {
+            if (mCommitted) {
+                return this;
+            }
+            mWarmUpInIsolateProcess = isolateProcess;
             return this;
         }
 

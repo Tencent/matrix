@@ -1,13 +1,10 @@
 package com.tencent.wxperf.jni.test;
 
-import com.tencent.stubs.logger.Log;
-
 public class UnwindBenckmarkTest {
 
     private final static String TAG = "Wxperf.UnwindBenckmarkTest";
 
     static {
-//        LibWxPerfManager.INSTANCE.init();
         System.loadLibrary("wxperf-jni");
         System.loadLibrary("wxperf-benchmark");
     }

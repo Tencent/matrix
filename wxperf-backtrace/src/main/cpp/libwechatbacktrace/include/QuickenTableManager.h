@@ -49,6 +49,7 @@ namespace wechat_backtrace {
 
         std::unordered_map<std::string, QutSectionsPtr> qut_sections_map_;          // TODO destruction
         std::unordered_map<std::string, std::pair<uint64_t, std::string>> qut_sections_requesting_;      // TODO destruction
+        std::unordered_map<std::string, std::string> qut_sections_hash_to_build_id_;      // TODO destruction
 
         std::mutex lock_;
 
@@ -122,13 +123,18 @@ namespace wechat_backtrace {
 
         QutFileError
         FindQutSectionsNoLock(const std::string &soname, const std::string &sopath,
-                              const std::string &build_id, const uint64_t elf_start_offset,
+                              const std::string &hash, const std::string &build_id,
+                              const uint64_t elf_start_offset,
                               QutSectionsPtr &qut_sections_ptr);
 
         bool
-        InsertQutSectionsNoLock(const std::string &soname, const std::string &build_id,
+        InsertQutSectionsNoLock(const std::string &soname, const std::string &hash,
+                                const std::string &build_id,
                                 QutSectionsPtr &qut_sections,
                                 bool immediately);
+
+        void
+        EraseQutRequestingByHash(const std::string &hash);
     };
 }  // namespace wechat_backtrace
 

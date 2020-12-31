@@ -6,3 +6,5 @@ include ':wxperf-backtrace'
 include ':wxperf-common'
 include ':wxperf-jectl'
 include ':wxperf-benchmark'
+
+//include ':test-backtrace'

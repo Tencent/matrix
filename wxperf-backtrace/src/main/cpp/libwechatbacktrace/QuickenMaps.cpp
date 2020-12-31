@@ -143,12 +143,13 @@ namespace wechat_backtrace {
         return quicken_interface_.release();
     }
 
-    QuickenInterface *
+    unique_ptr<QuickenInterface>
     QuickenMapInfo::CreateQuickenInterfaceForGenerate(const string &sopath, Elf *elf) {
 
         string soname = elf->GetSoname();
         string build_id_hex = elf->GetBuildID();
-        QuickenInterface *quicken_interface_ = CreateQuickenInterfaceFromElf(
+        unique_ptr<QuickenInterface> quicken_interface_;
+        quicken_interface_.reset(CreateQuickenInterfaceFromElf(
                 CURRENT_ARCH,
                 sopath,
                 soname,
@@ -156,7 +157,7 @@ namespace wechat_backtrace {
                 0, // Not use while generating
                 0, // Not use while generating
                 build_id_hex
-        );
+        ));
 
         ArchEnum expected_arch = elf->arch();
 

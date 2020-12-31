@@ -21,16 +21,17 @@ namespace wechat_backtrace {
 
     static BacktraceMode backtrace_mode = FramePointer;
 
-    BacktraceMode GetBacktraceMode() {
+    BacktraceMode get_backtrace_mode() {
         return backtrace_mode;
     }
 
-    void SetBacktraceMode(BacktraceMode mode) {
+    void set_backtrace_mode(BacktraceMode mode) {
         backtrace_mode = mode;
     }
 
-    void restore_frame_detail(const Frame *frames, const size_t frame_size,
-                              std::function<void(FrameDetail)> frame_callback) {
+    BACKTRACE_EXPORT void
+    BACKTRACE_FUNC_WRAPPER(restore_frame_detail)(const Frame *frames, const size_t frame_size,
+                                                 std::function<void(FrameDetail)> frame_callback) {
         LOGD(WECHAT_BACKTRACE_TAG, "Restore frame data size: %zu.", frame_size);
         if (frames == nullptr || frame_callback == nullptr) {
             return;
@@ -49,9 +50,11 @@ namespace wechat_backtrace {
             uptr real_pc = frame_data.pc;
 #endif
             FrameDetail detail = {
-                    real_pc - (uptr) stack_info.dli_fbase,
-                    success == 0 || stack_info.dli_sname == nullptr ? "null" : stack_info.dli_sname,
-                    success == 0 || stack_info.dli_fname == nullptr ? "null" : stack_info.dli_fname
+                    .rel_pc = real_pc - (uptr) stack_info.dli_fbase,
+                    .map_name = success == 0 || stack_info.dli_sname == nullptr ? "null"
+                                                                                : stack_info.dli_sname,
+                    .function_name = success == 0 || stack_info.dli_fname == nullptr ? "null"
+                                                                                     : stack_info.dli_fname
             };
             frame_callback(detail);
 
@@ -61,7 +64,77 @@ namespace wechat_backtrace {
         return;
     }
 
-    void notify_maps_changed() {
+    BACKTRACE_EXPORT void
+    BACKTRACE_FUNC_WRAPPER(quicken_unwind)(uptr *regs, Frame *frames, const size_t frame_max_size,
+                                           uptr &frame_size) {
+        WeChatQuickenUnwind(CURRENT_ARCH, regs, frame_max_size, frames, frame_size);
+    }
+
+    BACKTRACE_EXPORT void
+    BACKTRACE_FUNC_WRAPPER(quicken_based_unwind)(Frame *frames, const size_t max_frames,
+                                                 size_t &frame_size) {
+        uptr regs[QUT_MINIMAL_REG_SIZE];
+        GetQuickenMinimalRegs(regs);
+        WeChatQuickenUnwind(CURRENT_ARCH, regs, max_frames, frames, frame_size);
+    }
+
+    BACKTRACE_EXPORT void
+    BACKTRACE_FUNC_WRAPPER(fp_based_unwind)(Frame *frames, const size_t max_frames,
+                                            size_t &frame_size) {
+        uptr regs[FP_MINIMAL_REG_SIZE];
+        GetFramePointerMinimalRegs(regs);
+        FpUnwind(regs, frames, max_frames, frame_size);
+        return;
+    }
+
+    BACKTRACE_EXPORT void
+    BACKTRACE_FUNC_WRAPPER(dwarf_based_unwind)(Frame *frames, const size_t max_frames,
+                                               size_t &frame_size) {
+        std::vector<unwindstack::FrameData> dst;
+        unwindstack::RegsArm regs;
+        RegsGetLocal(&regs);
+        BACKTRACE_FUNC_WRAPPER(dwarf_unwind)(&regs, dst, max_frames);
+        size_t i = 0;
+        auto it = dst.begin();
+        while (it != dst.end()) {
+            frames[i].pc = it->pc;
+            frames[i].is_dex_pc = it->is_dex_pc;
+            i++;
+            it++;
+        }
+        frame_size = dst.size();
+        return;
+    }
+
+    BACKTRACE_EXPORT void
+    BACKTRACE_FUNC_WRAPPER(unwind_adapter)(Frame *frames, const size_t max_frames,
+                                           size_t &frame_size) {
+
+#ifdef __aarch64__
+        uptr regs[FP_MINIMAL_REG_SIZE];
+        GetFramePointerMinimalRegs(regs);
+        FpUnwind(regs, frames, max_frames, frame_size);
+        return;
+#endif
+
+#ifdef __arm__
+        switch (get_backtrace_mode()) {
+            case FramePointer:
+                fp_based_unwind(frames, max_frames, frame_size);
+                break;
+            case Quicken:
+                quicken_based_unwind(frames, max_frames, frame_size);
+                break;
+            case DwarfBased:
+                dwarf_based_unwind(frames, max_frames, frame_size);
+                break;
+        }
+        return;
+#endif
+//        __android_log_assert("NOT SUPPORT ARCH", "WeChatBacktrace", "NOT SUPPORT ARCH");
+    }
+
+    BACKTRACE_EXPORT void BACKTRACE_FUNC_WRAPPER(notify_maps_changed)() {
 
 #ifdef __arm__
         switch (backtrace_mode) {
@@ -78,8 +151,10 @@ namespace wechat_backtrace {
 #endif
     }
 
-    void dwarf_unwind(unwindstack::Regs *regs, std::vector<unwindstack::FrameData> &dst,
-                      size_t frameSize) {
+    BACKTRACE_EXPORT void
+    BACKTRACE_FUNC_WRAPPER(dwarf_unwind)(unwindstack::Regs *regs,
+                                         std::vector<unwindstack::FrameData> &dst,
+                                         size_t frameSize) {
 
         if (regs == nullptr) {
             LOGE(WECHAT_BACKTRACE_TAG, "Err: unable to get remote reg data.");
@@ -109,7 +184,9 @@ namespace wechat_backtrace {
         dst = unwinder.frames();
     }
 
-    void fp_unwind(uptr *regs, Frame *frames, size_t frameMaxSize, size_t &frameSize) {
+    BACKTRACE_EXPORT void
+    BACKTRACE_FUNC_WRAPPER(fp_unwind)(uptr *regs, Frame *frames, const size_t frameMaxSize,
+                                      size_t &frameSize) {
         FpUnwind(regs, frames, frameMaxSize, frameSize);
     }
 

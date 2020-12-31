@@ -35,14 +35,7 @@ JNIEXPORT void JNICALL
 Java_com_tencent_wxperf_jni_test_UnwindBenckmarkTest_benchmarkInitNative(JNIEnv *env,
                                                                          jclass clazz) {
 
-    // for dwarf unwinder
-    wechat_backtrace::UpdateLocalMaps();
-
-    // for WeChat quicken unwinder
-    wechat_backtrace::Maps::Parse();
-
-    // enable Elf caching
-    unwindstack::Elf::SetCachingEnabled(true);
+    wechat_backtrace::BACKTRACE_FUNC_WRAPPER(notify_maps_changed)();
 }
 
 
@@ -65,7 +58,7 @@ JNIEXPORT void JNICALL
 Java_com_tencent_wxperf_jni_test_UnwindBenckmarkTest_debugNative(JNIEnv *env, jclass clazz) {
 //    BENCHMARK_TIMES(DWARF_UNWIND, 1, func_selfso);
 //    BENCHMARK_TIMES(FP_UNWIND, 1, func_selfso);
-    for (int i = 0; i < 3; i++) {
+    for (int i = 0; i < 1; i++) {
         BENCHMARK_TIMES(DWARF_UNWIND, 1, func_selfso)
         BENCHMARK_TIMES(WECHAT_QUICKEN_UNWIND, 1, func_selfso);
     }

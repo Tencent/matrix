@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<android.support.constraint.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".DemoActivity">
+
+    <Button
+        android:id="@+id/btn_wechat_backtrace_init"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:onClick="backtraceInit"
+        android:text="Init Backtrace"
+        android:textAllCaps="false"
+        app:layout_constraintTop_toTopOf="parent"
+        />
+
+    <Button
+        android:id="@+id/btn_wechat_backtrace"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:onClick="backtrace"
+        android:text="Do Backtrace"
+        app:layout_constraintStart_toEndOf="@+id/btn_wechat_backtrace_init"
+        />
+
+    <Button
+        android:id="@+id/btn_wechat_dump"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:onClick="dump"
+        android:text="Do Dump"
+        app:layout_constraintStart_toEndOf="@+id/btn_wechat_backtrace"
+        />
+
+    <Button
+        android:id="@+id/btn_wechat_test_maps_update"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:onClick="testMapsUpdate"
+        android:text="Test Maps Update"
+        app:layout_constraintTop_toBottomOf="@+id/btn_wechat_backtrace_init"
+        />
+
+    <Button
+        android:id="@+id/btn_wechat_test_warmup"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:onClick="testWarmUp"
+        android:text="Test Warm Up"
+        app:layout_constraintTop_toBottomOf="@+id/btn_wechat_backtrace_init"
+        app:layout_constraintStart_toEndOf="@+id/btn_wechat_test_maps_update"
+        />
+
+
+
+</android.support.constraint.ConstraintLayout>

@@ -45,7 +45,7 @@ namespace wechat_backtrace {
                 const std::string &build_id_hex
         );
 
-        static QuickenInterface *
+        static std::unique_ptr<QuickenInterface>
         CreateQuickenInterfaceForGenerate(
                 const std::string &sopath,
                 unwindstack::Elf *elf

@@ -15,7 +15,7 @@
 
 static pthread_key_t m_attr_key;
 
-DEFINE_STATIC_LOCAL(std::mutex, m_init_mutex, );
+DEFINE_STATIC_LOCAL(std::mutex, m_init_mutex,);
 
 static void attr_destructor(void *attr) {
     if (attr) {
@@ -23,7 +23,8 @@ static void attr_destructor(void *attr) {
     }
 }
 
-void pthread_ext_init() {
+BACKTRACE_EXPORT
+void BACKTRACE_FUNC_WRAPPER(pthread_ext_init)() {
     std::lock_guard<std::mutex> lock(m_init_mutex);
     if (!m_attr_key) {
         pthread_key_create(&m_attr_key, attr_destructor);
@@ -36,7 +37,7 @@ static int read_thread_name(pthread_t pthread, char *buf, size_t buf_size) {
         return ERANGE;
     }
 
-    char  proc_path[64];
+    char proc_path[64];
     pid_t tid = pthread_gettid_np(pthread);
 
     snprintf(proc_path, sizeof(proc_path), "/proc/self/task/%d/comm", tid);
@@ -67,7 +68,8 @@ static int read_thread_name(pthread_t pthread, char *buf, size_t buf_size) {
     return 0;
 }
 
-int pthread_getname_ext(pthread_t pthread, char *buf, size_t n) {
+BACKTRACE_EXPORT
+int BACKTRACE_FUNC_WRAPPER(pthread_getname_ext)(pthread_t pthread, char *buf, size_t n) {
 #if __ANDROID_API__ >= 26
     return pthread_getname_np(pthread, __buf, __n);
 #else
@@ -76,14 +78,15 @@ int pthread_getname_ext(pthread_t pthread, char *buf, size_t n) {
 }
 
 
-int pthread_getattr_ext(pthread_t pthread, pthread_attr_t *attr) {
+BACKTRACE_EXPORT
+int BACKTRACE_FUNC_WRAPPER(pthread_getattr_ext)(pthread_t pthread, pthread_attr_t *attr) {
 
-    int  ret        = 0;
-    auto local_attr = (pthread_attr_t *)(pthread_getspecific(m_attr_key));
+    int ret = 0;
+    auto local_attr = (pthread_attr_t *) (pthread_getspecific(m_attr_key));
 
     if (!local_attr) {
         local_attr = (pthread_attr_t *) malloc(sizeof(pthread_attr_t));
-        ret        = pthread_getattr_np(pthread, local_attr);
+        ret = pthread_getattr_np(pthread, local_attr);
         pthread_setspecific(m_attr_key, local_attr);
     }
 

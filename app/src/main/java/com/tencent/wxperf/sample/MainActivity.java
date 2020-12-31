@@ -17,7 +17,6 @@ import android.support.annotation.RequiresApi;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
-//import android.util.Log;
 import android.view.View;
 
 import com.tencent.components.backtrace.WeChatBacktrace;
@@ -59,60 +58,52 @@ public class MainActivity extends AppCompatActivity {
             }
         }, BIND_AUTO_CREATE);
 
-//        {
-//            try {
-//                Class.forName("com.tencent.wxperf.jni.HookManager");
-//            } catch (ClassNotFoundException e) {
-//                e.printStackTrace();
-//            }
-//        }
+        // Init backtrace
+        WeChatBacktrace.instance().configure(getApplicationContext())
+                .directoryToWarmUp(getApplicationInfo().nativeLibraryDir)
+                .directoryToWarmUp(WeChatBacktrace.getSystemLibraryPath())
+                .setBacktraceMode(WeChatBacktrace.Mode.Quicken)
+                .immediateGeneration(false)
+                .isWarmUpProcess(true)
+                .commit();
 
-//        LibWxPerfManager.INSTANCE.init();
-//        if (!LibWxPerfManager.INSTANCE.initOk()) {
-//            throw new RuntimeException("init failed");
-//        }
-//
-//        Log.d(TAG, "threadName = " + threadNameRegex + ", " + name.matches(threadNameRegex));
-//
         try {
             HookManager.INSTANCE
+
+                    // Memory hook
                     .addHook(MemoryHook.INSTANCE
-//                            .addHookSo(".*libnative-lib\\.so$")
                             .addHookSo(".*libnative-lib\\.so$")
                             .enableStacktrace(true)
                             .stacktraceLogThreshold(0)
                             .enableMmapHook(false))
+
+                    // Thread hook
                     .addHook(PthreadHook.INSTANCE
-//                            .addHookSo(".*libnative-lib\\.so$")
                                     .addHookSo(".*\\.so$")
-//                            .addIgnoreSo(".*libart\\.so$")
                                     .addHookThread(".*")
+//                            .addHookSo(".*libnative-lib\\.so$")
+//                            .addIgnoreSo(".*libart\\.so$")
 //                                    .addHookThread(threadNameRegex)
 //                            .addHookThread("MyHandlerThread")
 //                            .addHookThread("\\[GT\\]MediaCodecR$")
                     )
                     .commitHooks();
-
-//            throw new HookManager.HookFailedException("adfad");
         } catch (HookManager.HookFailedException e) {
             e.printStackTrace();
         }
-//
-//        UnwindTest.init();
+
         UnwindBenckmarkTest.benchmarkInitNative();
-//
+
         checkPermission();
-//        Log.d(TAG, "onCreate: path = " + Environment.getExternalStorageDirectory().getAbsolutePath());
 
         findViewById(R.id.btn_egl).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 try {
-                    HookManager.INSTANCE
-                            .addHook(EglHook.INSTANCE).commitHooks();
-                    Log.e("Cc1over-debug", "hook success");
+                    HookManager.INSTANCE.addHook(EglHook.INSTANCE).commitHooks();
+                    Log.e(TAG, "EGL hook success");
                 } catch (HookManager.HookFailedException e) {
-                    Log.e("Cc1over-debug", "hook fail");
+                    Log.e(TAG, "EGL hook fail");
                 }
             }
         });
@@ -130,14 +121,6 @@ public class MainActivity extends AppCompatActivity {
                 EglTest.release();
             }
         });
-
-        WeChatBacktrace.instance().configure(getApplicationContext())
-                .directoryToWarmUp(getApplicationInfo().nativeLibraryDir)
-                .directoryToWarmUp(WeChatBacktrace.getSystemLibraryPath())
-                .setBacktraceMode(WeChatBacktrace.Mode.Quicken)
-                .immediateGeneration(false)
-                .isWarmUpProcess(true)
-                .commit();
     }
 
     @Override
@@ -187,7 +170,6 @@ public class MainActivity extends AppCompatActivity {
                 // app-defined int constant. The callback method gets the
                 // result of the request.
             }
-
             return false;
         } else {
             // Permission has already been granted
@@ -198,23 +180,13 @@ public class MainActivity extends AppCompatActivity {
     public void reallocTest(View view) {
         final JNIObj jniObj = new JNIObj();
         for (int i = 0; i < 30; i++) {
-
             new Thread(new Runnable() {
                 @Override
                 public void run() {
                     jniObj.reallocTest();
-//                    jniObj.reallocTest();
-//                    jniObj.reallocTest();
                 }
             }).start();
         }
-//        new Handler().postDelayed(new Runnable() {
-//            @Override
-//            public void run() {
-//                MemoryHook.INSTANCE.dump("/sdcard/memory_hook.log");
-//            }
-//        }, 2000);
-
         try {
             Thread.sleep(500);
         } catch (InterruptedException e) {
