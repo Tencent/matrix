@@ -3,6 +3,7 @@ package com.tencent.matrix.batterycanary.monitor.feature;
 import android.app.ActivityManager;
 import android.content.ComponentName;
 import android.content.Context;
+import android.os.Looper;
 import android.support.annotation.NonNull;
 import android.support.annotation.VisibleForTesting;
 import android.support.annotation.WorkerThread;
@@ -26,6 +27,7 @@ public final class AppStatMonitorFeature extends AbsMonitorFeature {
 
     public interface AppStatListener {
         void onForegroundServiceLeak(boolean isMyself, int appImportance, int globalAppImportance, ComponentName componentName, long millis);
+        void onAppSateLeak(boolean isMyself, int appImportance, ComponentName componentName, long millis);
     }
 
     /**
@@ -97,12 +99,19 @@ public final class AppStatMonitorFeature extends AbsMonitorFeature {
 
         MatrixLog.i(TAG, "updateAppImportance when app " + (isForeground ? "foreground" : "background"));
         updateAppImportance();
+
+        if (!isForeground) {
+            MatrixLog.i(TAG, "checkBackgroundAppState when app background");
+            checkBackgroundAppState(0L);
+        }
     }
 
     @WorkerThread
     @Override
     public void onBackgroundCheck(long duringMillis) {
         super.onBackgroundCheck(duringMillis);
+        MatrixLog.i(TAG, "#onBackgroundCheck, during = " + duringMillis);
+
         if (mGlobalAppImportance > mForegroundServiceImportanceLimit || mAppImportance > mForegroundServiceImportanceLimit) {
             Context context = mCore.getContext();
             ActivityManager am = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
@@ -117,6 +126,7 @@ public final class AppStatMonitorFeature extends AbsMonitorFeature {
             for (ActivityManager.RunningServiceInfo item : runningServices) {
                 if (!TextUtils.isEmpty(item.process) && item.process.startsWith(context.getPackageName())) {
                     if (item.foreground) {
+                        MatrixLog.i(TAG, "checkForegroundService whether app importance is low, during = " + duringMillis);
                         // foreground service is running when app importance is low
                         if (mGlobalAppImportance > mForegroundServiceImportanceLimit) {
                             // global
@@ -137,6 +147,9 @@ public final class AppStatMonitorFeature extends AbsMonitorFeature {
                 }
             }
         }
+
+        MatrixLog.i(TAG, "checkBackgroundAppState when app background, during = " + duringMillis);
+        checkBackgroundAppState(duringMillis);
     }
 
     public void onStatScene(@NonNull String scene) {
@@ -161,7 +174,7 @@ public final class AppStatMonitorFeature extends AbsMonitorFeature {
             return;
         }
 
-        mCore.getHandler().post(new Runnable() {
+        Runnable runnable = new Runnable() {
             @SuppressWarnings("SpellCheckingInspection")
             @Override
             public void run() {
@@ -197,7 +210,56 @@ public final class AppStatMonitorFeature extends AbsMonitorFeature {
                     }
                 }
             }
-        });
+        };
+
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            mCore.getHandler().post(runnable);
+        } else {
+            runnable.run();;
+        }
+    }
+
+    private void checkBackgroundAppState(final long duringMillis) {
+        Runnable runnable = new Runnable() {
+            @SuppressWarnings("SpellCheckingInspection")
+            @Override
+            public void run() {
+                Context context = mCore.getContext();
+                String mainProc = context.getPackageName();
+                if (mainProc.contains(":")) {
+                    mainProc = mainProc.substring(0, mainProc.indexOf(":"));
+                }
+
+                ActivityManager am = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
+                if (am == null) {
+                    return;
+                }
+                List<ActivityManager.RunningAppProcessInfo> processes = am.getRunningAppProcesses();
+                if (processes == null) {
+                    return;
+                }
+
+                MatrixLog.i(TAG, "Dump backgroud app sate:");
+                for (ActivityManager.RunningAppProcessInfo item : processes) {
+                    if (item.processName.startsWith(mainProc)) {
+                        if (item.importance <= mForegroundServiceImportanceLimit) {
+                            // FIXME: maybe implicit
+                            MatrixLog.w(TAG, " + " + item.processName + ", proc = " + item.importance + ", reason = " + item.importanceReasonComponent);
+                            mCore.onAppSateLeak(item.processName.equals(context.getPackageName()), item.importance, item.importanceReasonComponent, duringMillis);
+
+                        } else {
+                            MatrixLog.i(TAG, " - " + item.processName + ", proc = " + item.importance + ", reason = " + item.importanceReasonComponent);
+                        }
+                    }
+                }
+            }
+        };
+
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            mCore.getHandler().post(runnable);
+        } else {
+            runnable.run();;
+        }
     }
 
     @Override

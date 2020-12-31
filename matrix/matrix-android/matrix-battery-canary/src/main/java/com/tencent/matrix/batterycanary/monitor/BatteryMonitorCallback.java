@@ -127,6 +127,10 @@ public interface BatteryMonitorCallback extends
         public void onForegroundServiceLeak(boolean isMyself, int appImportance, int globalAppImportance, ComponentName componentName, long millis) {
         }
 
+        @Override
+        public void onAppSateLeak(boolean isMyself, int appImportance, ComponentName componentName, long millis) {
+        }
+
         @CallSuper
         protected void onCanaryDump(boolean isForeground) {
             mPrinter.clear();
