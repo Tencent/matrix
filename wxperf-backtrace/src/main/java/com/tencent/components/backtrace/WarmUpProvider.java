@@ -74,7 +74,7 @@ public class WarmUpProvider extends ContentProvider {
 
         synchronized (sRecyclerLock) {
             if (mRecycler == null) {
-                mRecycler = new HandlerThread("wechat-backtrace-process-recycler");
+                mRecycler = new HandlerThread("wechat-backtrace-proc-recycler");
                 mRecycler.start();
                 sRecyclerHandler = new Handler(mRecycler.getLooper(), new RecyclerCallback());
             }
@@ -113,18 +113,14 @@ public class WarmUpProvider extends ContentProvider {
         removeScheduledSuicide();
         try {
             final Bundle result = new Bundle();
-
             result.putInt(RESULT_CODE, INVALID_ARGUMENT);
-
             Log.i(TAG, "Invoke method: %s, with arg: %s, extras: %s", method, arg, extras);
 
             String savingPath = extras.getString(EXTRA_SAVING_PATH, null);
-
             if (isNullOrNil(savingPath)) {
                 Log.i(TAG, "Saving path is empty.");
                 return result;
             }
-
             mWarmUpDelegate.setSavingPath(savingPath);
 
             if (METHOD_WARM_UP_WITH_OFFSET.equals(method)) {
@@ -134,13 +130,10 @@ public class WarmUpProvider extends ContentProvider {
                     Log.i(TAG, "Warm-up so path is empty.");
                     return result;
                 }
-
                 int offset = extras.getInt(EXTRA_WARM_UP_ELF_START_OFFSET, 0);
 
                 Log.i(TAG, "Warm up so path %s offset %s.", pathOfSo, offset);
-
                 mWarmUpDelegate.internalWarmUpSoPath(pathOfSo, offset);
-
                 result.putInt(RESULT_CODE, OK);
 
             } else {

@@ -23,9 +23,10 @@ import java.io.FileFilter;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.Queue;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class WeChatBacktrace implements Handler.Callback {
@@ -225,14 +226,21 @@ public class WeChatBacktrace implements Handler.Callback {
     private final static class ThreadTaskExecutor implements Runnable {
         private String mThreadName;
         private Thread mThreadExecutor;
-        private Queue<Runnable> mQueue = new ConcurrentLinkedQueue<>();
+        private HashMap<String, Runnable> mRunnableTasks = new HashMap<>();
+        private Queue<String> mTaskQueue = new LinkedList<>();
 
         public ThreadTaskExecutor(String threadName) {
             mThreadName = threadName;
         }
 
-        public void arrangeTask(Runnable runnable) {
-            mQueue.add(runnable);
+        public void arrangeTask(Runnable runnable, String tag) {
+            synchronized (mTaskQueue) {
+                if (mTaskQueue.contains(tag)) {
+                    return;
+                }
+                mTaskQueue.add(tag);
+                mRunnableTasks.put(tag, runnable);
+            }
 
             synchronized (this) {
                 if (mThreadExecutor == null || !mThreadExecutor.isAlive()) {
@@ -245,10 +253,21 @@ public class WeChatBacktrace implements Handler.Callback {
 
         @Override
         public void run() {
-            Runnable runnable;
-            while ((runnable = mQueue.poll()) != null) {
-                runnable.run();
-            }
+            Runnable runnable = null;
+            do {
+
+                if (runnable != null) {
+                    runnable.run();
+                }
+
+                synchronized (mTaskQueue) {
+                    String tag = mTaskQueue.poll();
+                    if (tag == null) {
+                        return;
+                    }
+                    runnable = mRunnableTasks.remove(tag);
+                }
+            } while (runnable != null);
         }
     }
 
@@ -398,8 +417,8 @@ public class WeChatBacktrace implements Handler.Callback {
                                 String absolutePath = file.getAbsolutePath();
                                 if (file.exists() &&
                                         (absolutePath.endsWith(".so") ||
-                                            absolutePath.endsWith(".odex") ||
-                                            absolutePath.endsWith(".oat")
+                                                absolutePath.endsWith(".odex") ||
+                                                absolutePath.endsWith(".oat")
                                         )) {
                                     Log.i(TAG, "Warming up so %s", absolutePath);
                                     mWarmUpDelegate.warmUp(mConfiguration.mContext,
@@ -423,7 +442,7 @@ public class WeChatBacktrace implements Handler.Callback {
                     Log.i(TAG, "Warm-up cancelled.");
                 }
             }
-        });
+        }, "warm-up");
     }
 
     private void cleaningUp(final CancellationSignal cs) {
@@ -476,7 +495,7 @@ public class WeChatBacktrace implements Handler.Callback {
                     Log.i(TAG, "Clean up saving path(%s) cancelled.", savingDir.getAbsoluteFile());
                 }
             }
-        });
+        }, "clean-up");
     }
 
     private void consumingRequestedQut(CancellationSignal cs) {
@@ -506,7 +525,7 @@ public class WeChatBacktrace implements Handler.Callback {
                 Log.i(TAG, "Consume requested QUT done.");
                 tryUnregisterIdleReceiver(mConfiguration.mContext);
             }
-        });
+        }, "consuming-up");
     }
 
     private void broadcastWarmedUp() {
