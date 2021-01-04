@@ -105,15 +105,15 @@ static void ignore(const char *regex) {
 
 JNIEXPORT void JNICALL
 Java_com_tencent_wxperf_jni_memory_MemoryHook_enableStacktraceNative(JNIEnv *env,
-                                                                             jobject instance,
-                                                                             jboolean enable) {
+                                                                     jobject instance,
+                                                                     jboolean enable) {
 
     enable_stacktrace(enable);
 }
 
 JNIEXPORT void JNICALL
 Java_com_tencent_wxperf_jni_memory_MemoryHook_addHookSoNative(JNIEnv *env, jobject instance,
-                                                                      jobjectArray hookSoList) {
+                                                              jobjectArray hookSoList) {
 
     jsize size = env->GetArrayLength(hookSoList);
 
@@ -129,8 +129,8 @@ Java_com_tencent_wxperf_jni_memory_MemoryHook_addHookSoNative(JNIEnv *env, jobje
 
 JNIEXPORT void JNICALL
 Java_com_tencent_wxperf_jni_memory_MemoryHook_addIgnoreSoNative(JNIEnv *env,
-                                                                        jobject instance,
-                                                                        jobjectArray ignoreSoList) {
+                                                                jobject instance,
+                                                                jobjectArray ignoreSoList) {
 
     if (!ignoreSoList) {
         return;
@@ -148,8 +148,8 @@ Java_com_tencent_wxperf_jni_memory_MemoryHook_addIgnoreSoNative(JNIEnv *env,
 
 JNIEXPORT void JNICALL
 Java_com_tencent_wxperf_jni_memory_MemoryHook_setSamplingNative(JNIEnv *env,
-                                                                        jobject instance,
-                                                                        jdouble sampling) {
+                                                                jobject instance,
+                                                                jdouble sampling) {
 
     set_sampling(sampling);
 
@@ -157,9 +157,9 @@ Java_com_tencent_wxperf_jni_memory_MemoryHook_setSamplingNative(JNIEnv *env,
 
 JNIEXPORT void JNICALL
 Java_com_tencent_wxperf_jni_memory_MemoryHook_setSampleSizeRangeNative(JNIEnv *env,
-                                                                               jobject instance,
-                                                                               jint minSize,
-                                                                               jint maxSize) {
+                                                                       jobject instance,
+                                                                       jint minSize,
+                                                                       jint maxSize) {
 
     set_sample_size_range((size_t) minSize, (size_t) maxSize);
 
@@ -167,22 +167,25 @@ Java_com_tencent_wxperf_jni_memory_MemoryHook_setSampleSizeRangeNative(JNIEnv *e
 
 JNIEXPORT void JNICALL
 Java_com_tencent_wxperf_jni_memory_MemoryHook_dumpNative(JNIEnv *env, jobject instance,
-                                                         jstring __log_path, jstring __json_path) {
+                                                         jstring j_log_path, jstring j_json_path) {
 
-    if (__log_path) {
-        const char *log_path = env->GetStringUTFChars(__log_path, 0);
-        const char *json_path = env->GetStringUTFChars(__json_path, 0);
-        dump(enable_mmap_hook, log_path, json_path);
-        env->ReleaseStringUTFChars(__log_path, log_path);
-    } else {
-        dump(enable_mmap_hook);
+    const char *log_path  = j_log_path ? env->GetStringUTFChars(j_log_path, nullptr) : nullptr;
+    const char *json_path = j_json_path ? env->GetStringUTFChars(j_json_path, nullptr) : nullptr;
+
+    dump(enable_mmap_hook, log_path, json_path);
+
+    if (j_log_path) {
+        env->ReleaseStringUTFChars(j_log_path, log_path);
+    }
+    if (j_json_path) {
+        env->ReleaseStringUTFChars(j_json_path, json_path);
     }
 }
 
 JNIEXPORT void JNICALL
 Java_com_tencent_wxperf_jni_memory_MemoryHook_enableMmapHookNative(JNIEnv *env,
-                                                                           jobject instance,
-                                                                           jboolean enable) {
+                                                                   jobject instance,
+                                                                   jboolean enable) {
 
     LOGD("Yves.debug", "jni enableMmapHookNative %d", enable);
     enable_mmap_hook = enable;

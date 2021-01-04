@@ -9,26 +9,7 @@
 #include "MemoryHookFunctions.h"
 #include "MemoryHook.h"
 
-void test_log_to_file_new(const char * tag, const void *ptr) {
-//    const char *dir = "/sdcard/Android/data/com.tencent.mm/MicroMsg/Diagnostic";
-//    const char *path = "/sdcard/Android/data/com.tencent.mm/MicroMsg/Diagnostic/log_new";
-//
-//    mkdir(dir, S_IRWXU|S_IRWXG|S_IROTH);
-//
-//    FILE *log_file = fopen(path, "a+");
-//
-//    if (!log_file) {
-//        return;
-//    }
-//
-//    fprintf(log_file, "%d-%s: %p\n", gettid(), tag, ptr);
-//
-//    fflush(log_file);
-//    fclose(log_file);
-}
-
-
-#define ORIGINAL_LIB "libc++_shared.so"
+#define ORIGINAL_LIB "libc.so"
 
 #define DO_HOOK_ACQUIRE(p, size) \
     GET_CALLER_ADDR(caller); \
@@ -171,6 +152,23 @@ DEFINE_HOOK_FUN(int, munmap, void *__addr, size_t __size) {
     return munmap(__addr, __size);
 }
 
+DEFINE_HOOK_FUN(char*, strdup, const char *str) {
+    CALL_ORIGIN_FUNC_RET(char *, p, strdup, str);
+    LOGI(TAG, "+ strdup %p", (void *)p);
+    DO_HOOK_ACQUIRE(p, sizeof(str));
+    return p;
+}
+
+DEFINE_HOOK_FUN(char*, strndup, const char *str, size_t n) {
+    CALL_ORIGIN_FUNC_RET(char *, p, strndup, str, n);
+    LOGI(TAG, "+ strndup %p", (void *)p);
+    DO_HOOK_ACQUIRE(p, sizeof(str) < n ? sizeof(str) : n);
+    return p;
+}
+
+#undef ORIGINAL_LIB
+#define ORIGINAL_LIB "libc++_shared.so"
+
 #ifndef __LP64__
 
 DEFINE_HOOK_FUN(void*, _Znwj, size_t size) {
@@ -274,7 +272,6 @@ DEFINE_HOOK_FUN(void, _ZdlPvjSt11align_val_t, void* ptr, size_t size,
 DEFINE_HOOK_FUN(void*, _Znwm, size_t size) {
     CALL_ORIGIN_FUNC_RET(void*, p, _Znwm, size);
     LOGI(TAG, "+ _Znwm %p", p);
-    test_log_to_file_new("new", p);
     DO_HOOK_ACQUIRE(p, size);
     return p;
 }
@@ -362,7 +359,6 @@ DEFINE_HOOK_FUN(void, _ZdaPvmSt11align_val_t, void *ptr, size_t size,
 
 DEFINE_HOOK_FUN(void, _ZdlPv, void *p) {
     LOGI(TAG, "- _ZdlPv %p", p);
-    test_log_to_file_new("delete", p);
     DO_HOOK_RELEASE(p);
     CALL_ORIGIN_FUNC_VOID(_ZdlPv, p);
 }
@@ -411,20 +407,6 @@ DEFINE_HOOK_FUN(void, _ZdaPvRKSt9nothrow_t, void *ptr, std::nothrow_t const &not
     LOGI(TAG, "- _ZdaPvRKSt9nothrow_t %p", ptr);
     DO_HOOK_RELEASE(ptr);
     CALL_ORIGIN_FUNC_VOID(_ZdaPvRKSt9nothrow_t, ptr, nothrow);
-}
-
-DEFINE_HOOK_FUN(char*, strdup, const char *str) {
-    CALL_ORIGIN_FUNC_RET(char *, p, strdup, str);
-    LOGI(TAG, "+ strdup %p", (void *)p);
-    DO_HOOK_ACQUIRE(p, sizeof(str));
-    return p;
-}
-
-DEFINE_HOOK_FUN(char*, strndup, const char *str, size_t n) {
-    CALL_ORIGIN_FUNC_RET(char *, p, strndup, str, n);
-    LOGI(TAG, "+ strndup %p", (void *)p);
-    DO_HOOK_ACQUIRE(p, sizeof(str) < n ? sizeof(str) : n);
-    return p;
 }
 
 #undef ORIGINAL_LIB

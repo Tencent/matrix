@@ -174,7 +174,7 @@ on_pthread_create_locked(const pthread_t __pthread, char *__java_stacktrace, pid
     if (__java_stacktrace) {
         meta.java_stacktrace.store(__java_stacktrace);
         java_hash = hash_str(__java_stacktrace);
-        LOGD(TAG, "on_pthread_create: java hash = %llu", (wechat_backtrace::ullint_t)java_hash);
+        LOGD(TAG, "on_pthread_create: java hash = %llu", (wechat_backtrace::ullint_t) java_hash);
     }
 
     if (native_hash || java_hash) {
@@ -326,7 +326,7 @@ static inline void pthread_dump_impl(FILE *__log_file) {
     for (auto &i: m_pthread_metas) {
         auto &meta = i.second;
         LOGD(TAG, "========> RETAINED PTHREAD { name : %s, tid: %d }", meta.thread_name, meta.tid);
-        fprintf(__log_file, "========> RETAINED PTHREAD { name : %s, tid: %d }\n",
+        flogger(__log_file, "========> RETAINED PTHREAD { name : %s, tid: %d }\n",
                 meta.thread_name, meta.tid);
         std::stringstream stack_builder;
 
@@ -335,7 +335,7 @@ static inline void pthread_dump_impl(FILE *__log_file) {
         }
 
         LOGD(TAG, "native stacktrace:");
-        fprintf(__log_file, "native stacktrace:\n");
+        flogger(__log_file, "native stacktrace:\n");
 
         auto frame_detail_lambda = [&__log_file](wechat_backtrace::FrameDetail detail) -> void {
             int status = 0;
@@ -348,7 +348,7 @@ static inline void pthread_dump_impl(FILE *__log_file) {
                  detail.rel_pc,
                  demangled_name ? demangled_name : "(null)",
                  detail.map_name);
-            fprintf(__log_file, "  #pc %" PRIxPTR " %s (%s)\n", detail.rel_pc,
+            flogger(__log_file, "  #pc %" PRIxPTR " %s (%s)\n", detail.rel_pc,
                     demangled_name ? demangled_name : "(null)", detail.map_name);
 
             free(demangled_name);
@@ -359,7 +359,7 @@ static inline void pthread_dump_impl(FILE *__log_file) {
                                                frame_detail_lambda);
 
         LOGD(TAG, "java stacktrace:\n%s", meta.java_stacktrace.load(std::memory_order_acquire));
-        fprintf(__log_file, "java stacktrace:\n%s\n",
+        flogger(__log_file, "java stacktrace:\n%s\n",
                 meta.java_stacktrace.load(std::memory_order_acquire));
     }
 }
@@ -486,7 +486,7 @@ static inline void pthread_dump_json_impl(FILE *__log_file) {
 
     cJSON_Delete(json_obj);
 
-    fprintf(__log_file, "%s", json_str);
+    flogger(__log_file, "%s", json_str);
     cJSON_free(json_str);
     return;
 
@@ -563,7 +563,7 @@ static void *pthread_routine_wrapper(void *arg) {
     before_routine_start();
 
     auto *args_wrapper = (routine_wrapper_t *) arg;
-    void *ret          = args_wrapper->origin_func(args_wrapper->origin_args);
+    void *ret = args_wrapper->origin_func(args_wrapper->origin_args);
     free(args_wrapper);
 
     return ret;

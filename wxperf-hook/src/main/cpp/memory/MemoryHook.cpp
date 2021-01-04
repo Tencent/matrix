@@ -22,6 +22,7 @@
 #include <condition_variable>
 #include <shared_mutex>
 #include <cJSON.h>
+#include <Log.h>
 #include "MemoryHookFunctions.h"
 #include "Utils.h"
 #include "unwindstack/Unwinder.h"
@@ -215,7 +216,7 @@ static inline void dump_callers(FILE *log_file,
     }
 
     LOGD(TAG, "dump_callers: count = %zu", caller_metas.size());
-    fprintf(log_file, "dump_callers: count = %zu\n", caller_metas.size());
+    flogger(log_file, "dump_callers: count = %zu\n", caller_metas.size());
 
     std::unordered_map<std::string, size_t> caller_alloc_size_of_so;
     std::unordered_map<std::string, std::map<size_t, size_t>> same_size_count_of_so;
@@ -257,7 +258,7 @@ static inline void dump_callers(FILE *log_file,
     for (auto i = result_sort_by_size.rbegin();
          i != result_sort_by_size.rend(); ++i) {
         LOGD(TAG, "so = %s, caller alloc size = %zu", i->second.c_str(), i->first);
-        fprintf(log_file, "caller alloc size = %10zu b, so = %s\n", i->first, i->second.c_str());
+        flogger(log_file, "caller alloc size = %10zu b, so = %s\n", i->first, i->second.c_str());
 
         caller_total_size += i->first;
 
@@ -274,23 +275,23 @@ static inline void dump_callers(FILE *log_file,
 
         int lines = 20; // fixme hard coding
         LOGD(TAG, "top %d (size * count):", lines);
-        fprintf(log_file, "top %d (size * count):\n", lines);
+        flogger(log_file, "top %d (size * count):\n", lines);
 
         for (auto sc = result_sort_by_mul.rbegin();
              sc != result_sort_by_mul.rend() && lines; ++sc, --lines) {
             auto size = sc->second.first;
             auto count = sc->second.second;
             LOGD(TAG, "   size = %10zu b, count = %zu", size, count);
-            fprintf(log_file, "   size = %10zu b, count = %zu\n", size, count);
+            flogger(log_file, "   size = %10zu b, count = %zu\n", size, count);
         }
     }
 
     LOGD(TAG, "\n---------------------------------------------------");
-    fprintf(log_file, "\n---------------------------------------------------\n");
+    flogger(log_file, "\n---------------------------------------------------\n");
     LOGD(TAG, "| caller total size = %zu b", caller_total_size);
-    fprintf(log_file, "| caller total size = %zu b\n", caller_total_size);
+    flogger(log_file, "| caller total size = %zu b\n", caller_total_size);
     LOGD(TAG, "---------------------------------------------------\n");
-    fprintf(log_file, "---------------------------------------------------\n\n");
+    flogger(log_file, "---------------------------------------------------\n\n");
 }
 
 //static inline void dump_debug_stacks() {
@@ -345,11 +346,7 @@ static inline void dump_stacks(FILE *log_file,
     }
 
     LOGD(TAG, "dump_stacks: hash count = %zu", stack_metas.size());
-    fprintf(log_file, "dump_stacks: hash count = %zu\n", stack_metas.size());
-
-    for (auto &stack_meta :stack_metas) {
-        LOGD(TAG, "hash %llu : stack.size = %zu", (wechat_backtrace::ullint_t)stack_meta.first, stack_meta.second.size);
-    }
+    flogger(log_file, "dump_stacks: hash count = %zu\n", stack_metas.size());
 
     std::unordered_map<std::string, size_t> stack_alloc_size_of_so;
     std::unordered_map<std::string, std::vector<stack_dump_meta_t>> stacktrace_of_so;
@@ -484,11 +481,11 @@ static inline void dump_stacks(FILE *log_file,
 
         LOGD(TAG, "\nmalloc size of so (%s) : remaining size = %zu", so_name.c_str(),
              so_alloc_size);
-        fprintf(log_file, "\nmalloc size of so (%s) : remaining size = %zu\n", so_name.c_str(),
+        flogger(log_file, "\nmalloc size of so (%s) : remaining size = %zu\n", so_name.c_str(),
                 so_alloc_size);
 
         if (so_alloc_size < m_stacktrace_log_threshold) {
-            fprintf(log_file, "skip printing stacktrace for size less than %zu\n",
+            flogger(log_file, "skip printing stacktrace for size less than %zu\n",
                     m_stacktrace_log_threshold);
             continue;
         }
@@ -521,7 +518,7 @@ static inline void dump_stacks(FILE *log_file,
                  stack_dump_meta.size,
                  stack_dump_meta.full_stacktrace.c_str());
 
-            fprintf(log_file, "malloc size of the same stack = %zu\n stacktrace : \n%s\n",
+            flogger(log_file, "malloc size of the same stack = %zu\n stacktrace : \n%s\n",
                     stack_dump_meta.size,
                     stack_dump_meta.full_stacktrace.c_str());
 
@@ -564,7 +561,7 @@ static inline void dump_impl(FILE *log_file, FILE *json_file, bool mmap) {
     if (mmap) {
         // mmap allocation
         LOGD(TAG, "############################# mmap #############################\n\n");
-        fprintf(log_file,
+        flogger(log_file,
                 "############################# mmap #############################\n\n");
 
         dump_callers(log_file, mmap_caller_metas);
@@ -573,11 +570,12 @@ static inline void dump_impl(FILE *log_file, FILE *json_file, bool mmap) {
     }
 
     char *printed = cJSON_PrintUnformatted(json_obj);
-    fprintf(json_file, "%s", printed);
+    flogger(json_file, "%s", printed);
+    LOGD(TAG, "===> %s", printed);
     cJSON_free(printed);
     cJSON_Delete(json_obj);
 
-    fprintf(log_file,
+    flogger(log_file,
             "\n\n---------------------------------------------------\n"
             "<void *, ptr_meta_t> ptr_meta [%zu * %zu = (%zu)]\n"
             "<uint64_t, stack_meta_t> stack_meta [%zu * %zu = (%zu)]\n"
@@ -608,26 +606,21 @@ void dump(bool enable_mmap, const char *log_path, const char *json_path) {
     LOGD(TAG,
          ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> memory dump begin <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
 
-    assert(log_path != nullptr);
-    FILE *log_file  = fopen(log_path, "w+");
-    FILE *json_file = fopen(json_path, "w+");
-    LOGD(TAG, "dump path = %s", log_path);
-    if (!log_file) {
-        LOGE(TAG, "open file failed: %s", log_path);
-        return;
-    }
 
-    if (!json_file) {
-        LOGE(TAG, "open file failed: %s", json_path);
-        return;
-    }
+    FILE *log_file  = log_path ? fopen(log_path, "w+") : nullptr;
+    FILE *json_file = json_path ? fopen(json_path, "w+") : nullptr;
+    LOGD(TAG, "dump path = %s", log_path);
 
     dump_impl(log_file, json_file, enable_mmap);
 
-    fflush(log_file);
-    fclose(log_file);
-    fflush(json_file);
-    fclose(json_file);
+    if (log_file) {
+        fflush(log_file);
+        fclose(log_file);
+    }
+    if (json_file) {
+        fflush(json_file);
+        fclose(json_file);
+    }
 
     LOGD(TAG,
          ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> memory dump end <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");

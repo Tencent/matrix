@@ -7,6 +7,7 @@
 
 #include <time.h>
 #include <android/log.h>
+#include <cstdio>
 
 #ifdef EnableLOG
 #define LOGD(TAG, FMT, args...) __android_log_print(ANDROID_LOG_DEBUG, TAG, FMT, ##args)
@@ -98,5 +99,7 @@
       (byte & 0x04 ? '1' : '0'), \
       (byte & 0x02 ? '1' : '0'), \
       (byte & 0x01 ? '1' : '0')
+
+int flogger(FILE* fp , const char* fmt, ...);
 
 #endif //MEMINFO_LOG_H
