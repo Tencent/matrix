@@ -29,4 +29,6 @@ public class FDDumpBridge {
     }
 
     public static native String getFdPathNameNative(String path);
+
+    public static native int getFDLimit();
 }

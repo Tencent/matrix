@@ -5,6 +5,17 @@
 #include <jni.h>
 #include <unistd.h>
 #include <limits>
+#include <sys/time.h>
+#include <sys/resource.h>
+#include <android/log.h>
+#include <cstdio>
+#include <sstream>
+#include <sys/mman.h>
+
+
+#define LOGD(TAG, FMT, args...) //__android_log_print(ANDROID_LOG_DEBUG, TAG, FMT, ##args)
+
+#define TAG "Wxperf.FD"
 
 #ifdef __cplusplus
 extern "C" {
@@ -21,6 +32,23 @@ Java_com_tencent_wxperf_fd_FDDumpBridge_getFdPathNameNative(JNIEnv *__env, jclas
     __env->ReleaseStringUTFChars(__path, path);
 
     return __env->NewStringUTF(returnValue);
+}
+
+#define DEFAULT_FD_LIMIT 1024
+
+JNIEXPORT jint JNICALL
+Java_com_tencent_wxperf_fd_FDDumpBridge_getFDLimit(JNIEnv *env, jclass clazz) {
+
+    struct rlimit limit{};
+
+    int ret = getrlimit(RLIMIT_NOFILE, &limit);
+
+    if (ret == 0) {
+        LOGD(TAG, "RLIMIT_NOFILE = cur = %ld, max = %ld", limit.rlim_cur, limit.rlim_max);
+        return limit.rlim_cur;
+    }
+
+    return DEFAULT_FD_LIMIT;
 }
 
 #ifdef __cplusplus
