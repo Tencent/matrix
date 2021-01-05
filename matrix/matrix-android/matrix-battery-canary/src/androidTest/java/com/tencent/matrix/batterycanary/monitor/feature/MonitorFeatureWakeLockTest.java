@@ -78,7 +78,7 @@ public class MonitorFeatureWakeLockTest {
     public void testWakeLockRequired() throws InterruptedException {
         WakeLockMonitorFeature feature = new WakeLockMonitorFeature();
         feature.configure(mockMonitor());
-        feature.mOverTimeMillis = Long.MAX_VALUE;
+        feature.mOverTimeMillis = Integer.MAX_VALUE;
         Assert.assertEquals(0, feature.mWorkingWakeLocks.size());
         Assert.assertEquals(0, feature.mWakeLockTime.getTotalCount());
         WakeLockMonitorFeature.WakeLockSnapshot wakeLockSnapshot = feature.currentWakeLocks();

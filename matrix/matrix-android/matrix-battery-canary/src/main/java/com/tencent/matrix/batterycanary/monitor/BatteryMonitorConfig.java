@@ -20,6 +20,7 @@ import java.util.concurrent.Callable;
 @SuppressWarnings({"SpellCheckingInspection"})
 public class BatteryMonitorConfig {
     public static final long DEF_WAKELOCK_TIMEOUT = 2 * 60 * 1000L; // 2min
+    public static final int DEF_WAKELOCK_WARN_COUNT = 30;
     public static final long DEF_JIFFIES_DELAY = 30 * 1000L; // 30s
     public static final long DEF_FOREGROUND_SCHEDULE_TIME = 20 * 60 * 1000L; // 10min
     public static final long DEF_BACKGROUND_SCHEDULE_TIME = 10 * 60 * 1000L; // 10min
@@ -30,6 +31,7 @@ public class BatteryMonitorConfig {
     public Callable<String> onSceneSupplier;
 
     public long wakelockTimeout = DEF_WAKELOCK_TIMEOUT;
+    public int wakelockWarnCount = DEF_WAKELOCK_WARN_COUNT;
     public long greyTime = DEF_JIFFIES_DELAY;
     public long foregroundLoopCheckTime = DEF_FOREGROUND_SCHEDULE_TIME;
     public long backgroundLoopCheckTime = DEF_BACKGROUND_SCHEDULE_TIME;
@@ -49,6 +51,7 @@ public class BatteryMonitorConfig {
     public String toString() {
         return "BatteryMonitorConfig{" +
                 ", wakelockTimeout=" + wakelockTimeout +
+                ", wakelockWarnCount=" + wakelockWarnCount +
                 ", greyTime=" + greyTime +
                 ", foregroundLoopCheckTime=" + foregroundLoopCheckTime +
                 ", overHeatCount=" + overHeatCount +
@@ -77,12 +80,23 @@ public class BatteryMonitorConfig {
         }
 
         public Builder wakelockTimeout(long timeout) {
-            config.wakelockTimeout = timeout;
+            if (timeout > 0) {
+                config.wakelockTimeout = timeout;
+            }
+            return this;
+        }
+
+        public Builder wakelockWarnCount(int count) {
+            if (count > 0) {
+                config.wakelockWarnCount = count;
+            }
             return this;
         }
 
         public Builder greyJiffiesTime(long time) {
-            config.greyTime = time;
+            if (time > 0) {
+                config.greyTime = time;
+            }
             return this;
         }
 
@@ -102,12 +116,16 @@ public class BatteryMonitorConfig {
         }
 
         public Builder foregroundLoopCheckTime(long time) {
-            config.foregroundLoopCheckTime = time;
+            if (time > 0) {
+                config.foregroundLoopCheckTime = time;
+            }
             return this;
         }
 
         public Builder backgroundLoopCheckTime(long time) {
-            config.backgroundLoopCheckTime = time;
+            if (time > 0) {
+                config.backgroundLoopCheckTime = time;
+            }
             return this;
         }
 

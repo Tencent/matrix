@@ -90,11 +90,21 @@ public final class WakeLockMonitorFeature extends AbsMonitorFeature implements P
             existingTrace.finish(mCore.getHandler());
         }
 
-        WakeLockTrace wakeLockTrace = new WakeLockTrace(token, tag, flags, packageName, stack);
+        final WakeLockTrace wakeLockTrace = new WakeLockTrace(token, tag, flags, packageName, stack);
         wakeLockTrace.setListener(new WakeLockTrace.OverTimeListener() {
             @Override
             public void onWakeLockOvertime(int warningCount, WakeLockTrace.WakeLockRecord record) {
                 getListener().onWakeLockTimeout(warningCount, record);
+                if (wakeLockTrace.isExpired()) {
+                    Iterator<Map.Entry<IBinder, WakeLockTrace>> iterator = mWorkingWakeLocks.entrySet().iterator();
+                    while (iterator.hasNext()) {
+                        Map.Entry<IBinder, WakeLockTrace> next = iterator.next();
+                        if (next.getValue() == wakeLockTrace) {
+                            iterator.remove();
+                            break;
+                        }
+                    }
+                }
             }
         });
         wakeLockTrace.start(mCore.getHandler(), mOverTimeMillis);
@@ -161,12 +171,18 @@ public final class WakeLockMonitorFeature extends AbsMonitorFeature implements P
         final IBinder token;
         final WakeLockRecord record;
         int warningCount;
+        int warningCountLimit = 30;
         private Runnable loopTask;
         private OverTimeListener mListener;
 
         WakeLockTrace(IBinder token, String tag, int flags, String packageName, String stack) {
             this.token = token;
             this.record = new WakeLockRecord(tag, flags, packageName, stack);
+        }
+
+        public WakeLockTrace attach(int warningCountLimit) {
+            this.warningCountLimit = warningCountLimit;
+            return this;
         }
 
         void setListener(OverTimeListener listener) {
@@ -186,7 +202,9 @@ public final class WakeLockMonitorFeature extends AbsMonitorFeature implements P
                     if (mListener != null) {
                         mListener.onWakeLockOvertime(warningCount, record);
                     }
-                    handler.postDelayed(this, intervalMillis);
+                    if (warningCount < warningCountLimit) {
+                        handler.postDelayed(this, intervalMillis);
+                    }
                 }
             };
             handler.postDelayed(loopTask, intervalMillis);
@@ -202,6 +220,10 @@ public final class WakeLockMonitorFeature extends AbsMonitorFeature implements P
 
         public boolean isFinished() {
             return record.isFinished();
+        }
+
+        public boolean isExpired() {
+            return warningCount >= warningCountLimit;
         }
 
         @Override

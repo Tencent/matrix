@@ -48,6 +48,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static android.content.Context.ACTIVITY_SERVICE;
 
@@ -252,6 +253,19 @@ public class CanaryUtilsTest {
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
+    }
+
+    @Test
+    public void testHandlerPostDelay() throws InterruptedException {
+        final AtomicBoolean callback = new AtomicBoolean();
+        new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                callback.set(true);
+            }
+        }, Long.MAX_VALUE);
+        Thread.sleep(100L);
+        Assert.assertFalse("should never callback", callback.get());
     }
 
     private static boolean diceWithBase(int base) {
