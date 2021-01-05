@@ -38,7 +38,7 @@ public class WeChatBacktrace implements Handler.Callback {
     private final static String SYSTEM_LIBRARY_PATH = "/system/lib/";
     private final static String SYSTEM_LIBRARY_PATH_64 = "/system/lib64/";
 
-    private final static String ISOLATE_PROCESS_SUFFIX = ":wechatbacktrace";
+    public final static String ISOLATE_PROCESS_SUFFIX = ":wechatbacktrace";
 
     public static boolean is64BitRuntime() {
         final String currRuntimeABI = Build.CPU_ABI;
@@ -92,8 +92,16 @@ public class WeChatBacktrace implements Handler.Callback {
 
     private Mode mCurrentBacktraceMode;
 
+    public interface IThreadBlockedCallback {
+        void callback(boolean blocked);
+    }
+
     public interface LibraryLoader {
         void load(String library);
+    }
+
+    public static void setThreadBlockedCallback(IThreadBlockedCallback callback) {
+        ThreadTaskExecutor.setThreadBlockedCallback(callback);
     }
 
     @Override
@@ -223,14 +231,30 @@ public class WeChatBacktrace implements Handler.Callback {
         }
     }
 
-    private final static class ThreadTaskExecutor implements Runnable {
+    private final static class ThreadTaskExecutor implements Runnable, Handler.Callback {
         private String mThreadName;
         private Thread mThreadExecutor;
         private HashMap<String, Runnable> mRunnableTasks = new HashMap<>();
         private Queue<String> mTaskQueue = new LinkedList<>();
 
+        private Handler mBlockedChecker = new Handler(Looper.getMainLooper(), this);
+        private final static int MSG_BLOCKED_CHECK = 1;
+        private final static long BLOCKED_CHECK_INTERVAL = 600 * 1000;
+
+        private boolean mThreadBlocked = false;
+
+        private static IThreadBlockedCallback sCallback = null;
+
         public ThreadTaskExecutor(String threadName) {
             mThreadName = threadName;
+        }
+
+        public static void setThreadBlockedCallback(IThreadBlockedCallback callback) {
+            sCallback = callback;
+        }
+
+        public boolean isThreadBlocked() {
+            return mThreadBlocked;
         }
 
         public void arrangeTask(Runnable runnable, String tag) {
@@ -247,27 +271,50 @@ public class WeChatBacktrace implements Handler.Callback {
                     mThreadExecutor = new Thread(this, mThreadName);
                     mThreadExecutor.setPriority(Thread.NORM_PRIORITY);
                     mThreadExecutor.start();
+                    mBlockedChecker.removeMessages(MSG_BLOCKED_CHECK);
+                    mBlockedChecker.sendEmptyMessageDelayed(MSG_BLOCKED_CHECK, BLOCKED_CHECK_INTERVAL);
                 }
             }
         }
 
         @Override
         public void run() {
+
+            mThreadBlocked = false;
+
             Runnable runnable = null;
+            String tag = null;
             do {
 
                 if (runnable != null) {
+                    Log.i(TAG, "Before '%s' task execution..", tag);
                     runnable.run();
+                    Log.i(TAG, "After '%s' task execution..", tag);
                 }
 
                 synchronized (mTaskQueue) {
-                    String tag = mTaskQueue.poll();
+                    tag = mTaskQueue.poll();
                     if (tag == null) {
                         return;
                     }
                     runnable = mRunnableTasks.remove(tag);
                 }
             } while (runnable != null);
+
+            mBlockedChecker.removeMessages(MSG_BLOCKED_CHECK);
+        }
+
+        @Override
+        public boolean handleMessage(Message msg) {
+            if (msg.what == MSG_BLOCKED_CHECK) {
+                mThreadBlocked = true;
+
+                IThreadBlockedCallback callback = sCallback;
+                if (callback != null) {
+                    callback.callback(true);
+                }
+            }
+            return false;
         }
     }
 
@@ -277,6 +324,14 @@ public class WeChatBacktrace implements Handler.Callback {
 
     public static WeChatBacktrace instance() {
         return Singleton.INSTANCE;
+    }
+
+    public boolean isBacktraceThreadBlocked() {
+        if (mThreadTaskExecutor != null) {
+            return mThreadTaskExecutor.isThreadBlocked();
+        }
+
+        return true;
     }
 
     public boolean hasWarmedUp() {
@@ -388,7 +443,7 @@ public class WeChatBacktrace implements Handler.Callback {
         }
     }
 
-    private final static boolean sFakeTest = true;
+    private final static boolean sFakeTest = false;
 
     // TODO For debug
     final CancellationSignal fakeCS = new CancellationSignal();
