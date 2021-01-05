@@ -15,9 +15,7 @@ import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
 import com.tencent.matrix.batterycanary.utils.PowerManagerServiceHooker;
 import com.tencent.matrix.util.MatrixLog;
 
-import java.util.ArrayList;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -34,7 +32,7 @@ public final class WakeLockMonitorFeature extends AbsMonitorFeature implements P
     @VisibleForTesting
     long mOverTimeMillis;
     final Map<IBinder, WakeLockTrace> mWorkingWakeLocks = new ConcurrentHashMap<>(2);
-    final List<WakeLockTrace.WakeLockRecord> mFinishedWakeLockRecords = new ArrayList<>();
+    final WakeLockTime mWakeLockTime = new WakeLockTime();
 
     private WakeLockListener getListener() {
         return mCore;
@@ -121,9 +119,7 @@ public final class WakeLockMonitorFeature extends AbsMonitorFeature implements P
         }
         if (wakeLockTrace != null) {
             wakeLockTrace.finish(mCore.getHandler());
-            synchronized (mFinishedWakeLockRecords) {
-                mFinishedWakeLockRecords.add(wakeLockTrace.record);
-            }
+            mWakeLockTime.add(wakeLockTrace.record);
             String tag = wakeLockTrace.record.tag;
             String stack = shouldTracing(tag) ? BatteryCanaryUtil.stackTraceToString(new Throwable().getStackTrace()) : "";
             MatrixLog.i(TAG, "[onReleaseWakeLock] tag = " + tag + ", stack = " + stack);
@@ -154,50 +150,7 @@ public final class WakeLockMonitorFeature extends AbsMonitorFeature implements P
     }
 
     public WakeLockSnapshot currentWakeLocks() {
-        List<BeanEntry<WakeLockTrace.WakeLockRecord>> totalWakeLocks = new ArrayList<>();
-        long totalWakeLockTime = 0L;
-        int totalWakeLockCount = 0;
-        synchronized (mFinishedWakeLockRecords) {
-            for (WakeLockTrace.WakeLockRecord item : mFinishedWakeLockRecords) {
-                totalWakeLockTime += item.getLockingTimeMillis();
-                totalWakeLocks.add(BeanEntry.of(item));
-            }
-            totalWakeLockCount += mFinishedWakeLockRecords.size();
-        }
-
-        for (WakeLockTrace item : mWorkingWakeLocks.values()) {
-            if (!item.isFinished()) {
-                totalWakeLocks.add(BeanEntry.of(item.record));
-                totalWakeLockTime += item.record.getLockingTimeMillis();
-            }
-        }
-        totalWakeLockCount += mWorkingWakeLocks.size();
-
-        WakeLockSnapshot snapshot = new WakeLockSnapshot();
-        snapshot.totalWakeLockTime = Snapshot.Entry.DigitEntry.of(totalWakeLockTime);
-        snapshot.totalWakeLockCount = Snapshot.Entry.DigitEntry.of(totalWakeLockCount);
-        snapshot.totalWakeLockRecords = Snapshot.Entry.ListEntry.of(totalWakeLocks);
-        return snapshot;
-    }
-
-    public static class WakeLockSnapshot extends Snapshot<WakeLockSnapshot> {
-        public Entry.DigitEntry<Long> totalWakeLockTime;
-        public Entry.DigitEntry<Integer> totalWakeLockCount;
-        public Entry.ListEntry<BeanEntry<WakeLockTrace.WakeLockRecord>> totalWakeLockRecords;
-
-        @Override
-        public Delta<WakeLockSnapshot> diff(WakeLockSnapshot bgn) {
-            return new Delta<WakeLockSnapshot>(bgn, this) {
-                @Override
-                protected WakeLockSnapshot computeDelta() {
-                    WakeLockSnapshot delta = new WakeLockSnapshot();
-                    delta.totalWakeLockTime = Differ.DigitDiffer.globalDiff(bgn.totalWakeLockTime, end.totalWakeLockTime);
-                    delta.totalWakeLockCount = Differ.DigitDiffer.globalDiff(bgn.totalWakeLockCount, end.totalWakeLockCount);
-                    delta.totalWakeLockRecords = Differ.ListDiffer.globalDiff(bgn.totalWakeLockRecords, end.totalWakeLockRecords);
-                    return delta;
-                }
-            };
-        }
+        return mWakeLockTime.getSnapshot();
     }
 
     public static class WakeLockTrace {
@@ -303,6 +256,58 @@ public final class WakeLockMonitorFeature extends AbsMonitorFeature implements P
                         ", timeEnd=" + timeEnd +
                         '}';
             }
+        }
+    }
+
+    public static final class WakeLockTime {
+        private final byte[] mLock = new byte[]{};
+        private int mCount;
+        private long mMillis;
+
+        public void add(WakeLockTrace.WakeLockRecord record) {
+            synchronized (mLock) {
+                mCount++;
+                mMillis += record.getLockingTimeMillis();
+            }
+        }
+
+        public int getTotalCount() {
+            return mCount;
+        }
+
+        public long getTimeMillis() {
+            return mMillis;
+        }
+
+        public WakeLockSnapshot getSnapshot() {
+            WakeLockSnapshot snapshot = new WakeLockSnapshot();
+            snapshot.totalWakeLockCount = Snapshot.Entry.DigitEntry.of(getTotalCount());
+            snapshot.totalWakeLockTime = Snapshot.Entry.DigitEntry.of(getTimeMillis());
+            snapshot.totalWakeLockRecords = Snapshot.Entry.ListEntry.ofEmpty();
+            return snapshot;
+        }
+
+    }
+
+    public static class WakeLockSnapshot extends Snapshot<WakeLockSnapshot> {
+        public Entry.DigitEntry<Long> totalWakeLockTime;
+        public Entry.DigitEntry<Integer> totalWakeLockCount;
+        public Entry.ListEntry<BeanEntry<WakeLockTrace.WakeLockRecord>> totalWakeLockRecords;
+
+        WakeLockSnapshot() {}
+
+        @Override
+        public Delta<WakeLockSnapshot> diff(WakeLockSnapshot bgn) {
+            return new Delta<WakeLockSnapshot>(bgn, this) {
+                @Override
+                protected WakeLockSnapshot computeDelta() {
+                    WakeLockSnapshot delta = new WakeLockSnapshot();
+                    delta.totalWakeLockTime = Differ.DigitDiffer.globalDiff(bgn.totalWakeLockTime, end.totalWakeLockTime);
+                    delta.totalWakeLockCount = Differ.DigitDiffer.globalDiff(bgn.totalWakeLockCount, end.totalWakeLockCount);
+                    delta.totalWakeLockRecords = Differ.ListDiffer.globalDiff(bgn.totalWakeLockRecords, end.totalWakeLockRecords);
+                    return delta;
+                }
+            };
         }
     }
 }
