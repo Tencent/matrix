@@ -100,10 +100,10 @@ public final class AppStatMonitorFeature extends AbsMonitorFeature {
         MatrixLog.i(TAG, "updateAppImportance when app " + (isForeground ? "foreground" : "background"));
         updateAppImportance();
 
-        if (!isForeground) {
-            MatrixLog.i(TAG, "checkBackgroundAppState when app background");
-            checkBackgroundAppState(0L);
-        }
+        // if (!isForeground) {
+        //     MatrixLog.i(TAG, "checkBackgroundAppState when app background");
+        //     checkBackgroundAppState(0L);
+        // }
     }
 
     @WorkerThread
@@ -148,8 +148,8 @@ public final class AppStatMonitorFeature extends AbsMonitorFeature {
             }
         }
 
-        MatrixLog.i(TAG, "checkBackgroundAppState when app background, during = " + duringMillis);
-        checkBackgroundAppState(duringMillis);
+        // MatrixLog.i(TAG, "checkBackgroundAppState when app background, during = " + duringMillis);
+        // checkBackgroundAppState(duringMillis);
     }
 
     public void onStatScene(@NonNull String scene) {
