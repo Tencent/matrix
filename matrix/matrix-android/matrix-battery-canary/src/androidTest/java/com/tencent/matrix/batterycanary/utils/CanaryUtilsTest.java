@@ -269,6 +269,19 @@ public class CanaryUtilsTest {
         Assert.assertFalse("should never callback", callback.get());
     }
 
+    @Test
+    public void testProcessEnableConfigs() throws InterruptedException {
+        if (TestUtils.isAssembleTest()) return;
+        int flag = 0B01111111;
+        Assert.assertEquals(127, flag);
+        Assert.assertEquals(0B00000001, flag & 0B00000001);
+        Assert.assertEquals(0B00000010, flag & 0B00000010);
+        Assert.assertEquals(0B00000100, flag & 0B00000100);
+        Assert.assertEquals(0B00001000, flag & 0B00001000);
+        Assert.assertEquals(0B00000000, flag & 0B10000000);
+        // Assert.fail(flag + " vs " + Integer.toBinaryString(flag) ); // 127
+    }
+
     private static boolean diceWithBase(int base) {
         double dice = Math.random();
         if (base >= 1 && dice < (1 / ((double) base))) {

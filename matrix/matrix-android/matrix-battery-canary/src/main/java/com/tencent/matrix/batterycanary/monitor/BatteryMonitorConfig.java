@@ -38,6 +38,7 @@ public class BatteryMonitorConfig {
     public int overHeatCount = 1024;
     public int foregroundServiceLeakLimit = ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND;
     public boolean isForegroundModeEnabled = true;
+    public boolean isBackgroundModeEnabled = false;
     public boolean isBuiltinForegroundNotifyEnabled = true;
     public boolean isStatAsSample = BuildConfig.DEBUG;
     public boolean isStatPidProc = BuildConfig.DEBUG;
@@ -56,6 +57,7 @@ public class BatteryMonitorConfig {
                 ", foregroundLoopCheckTime=" + foregroundLoopCheckTime +
                 ", overHeatCount=" + overHeatCount +
                 ", isForegroundModeEnabled=" + isForegroundModeEnabled +
+                ", isBackgroundModeEnabled=" + isBackgroundModeEnabled +
                 ", isBuiltinForegroundNotifyEnabled=" + isBuiltinForegroundNotifyEnabled +
                 ", isStatAsSample=" + isStatAsSample +
                 ", tagWhiteList=" + tagWhiteList +
@@ -102,6 +104,11 @@ public class BatteryMonitorConfig {
 
         public Builder enableForegroundMode(boolean isEnable) {
             config.isForegroundModeEnabled = isEnable;
+            return this;
+        }
+
+        public Builder enableBackgroundMode(boolean isEnable) {
+            config.isBackgroundModeEnabled = isEnable;
             return this;
         }
 

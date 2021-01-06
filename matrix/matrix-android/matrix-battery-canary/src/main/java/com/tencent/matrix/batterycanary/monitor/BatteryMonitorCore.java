@@ -93,6 +93,7 @@ public class BatteryMonitorCore implements
     private volatile boolean mTurnOn = false;
     private boolean mAppForeground = AppActiveMatrixDelegate.INSTANCE.isAppForeground();
     private boolean mForegroundModeEnabled;
+    private boolean mBackgroundModeEnabled;
     private static long mMonitorDelayMillis;
     private static long mFgLooperMillis;
     private static long mBgLooperMillis;
@@ -106,6 +107,7 @@ public class BatteryMonitorCore implements
 
         mHandler = new Handler(MatrixHandlerThread.getDefaultHandlerThread().getLooper(), this);
         enableForegroundLoopCheck(config.isForegroundModeEnabled);
+        enableBackgroundLoopCheck(config.isBackgroundModeEnabled);
         mMonitorDelayMillis = config.greyTime;
         mFgLooperMillis = config.foregroundLoopCheckTime;
         mBgLooperMillis = config.backgroundLoopCheckTime;
@@ -121,6 +123,11 @@ public class BatteryMonitorCore implements
         if (mForegroundModeEnabled) {
             mFgLooperTask = new ForegroundLoopCheckTask();
         }
+    }
+
+    @VisibleForTesting
+    public void enableBackgroundLoopCheck(boolean bool) {
+        mBackgroundModeEnabled = bool;
     }
 
     @Override
@@ -198,12 +205,14 @@ public class BatteryMonitorCore implements
             mHandler.sendMessageDelayed(message, mMonitorDelayMillis);
 
             // 3. start background loop check task
-            if (mBgLooperTask != null) {
-                mHandler.removeCallbacks(mBgLooperTask);
-                mBgLooperTask = null;
+            if (mBackgroundModeEnabled) {
+                if (mBgLooperTask != null) {
+                    mHandler.removeCallbacks(mBgLooperTask);
+                    mBgLooperTask = null;
+                }
+                mBgLooperTask = new BackgroundLoopCheckTask();
+                mHandler.postDelayed(mBgLooperTask, mBgLooperMillis);
             }
-            mBgLooperTask = new BackgroundLoopCheckTask();
-            mHandler.postDelayed(mBgLooperTask, mBgLooperMillis);
 
         } else if (!mHandler.hasMessages(MSG_ID_JIFFIES_START)) {
             // fore:
