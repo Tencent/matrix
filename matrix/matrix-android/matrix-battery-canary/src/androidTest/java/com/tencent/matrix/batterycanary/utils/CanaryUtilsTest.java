@@ -257,6 +257,7 @@ public class CanaryUtilsTest {
 
     @Test
     public void testHandlerPostDelay() throws InterruptedException {
+        if (TestUtils.isAssembleTest()) return;
         final AtomicBoolean callback = new AtomicBoolean();
         new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
             @Override

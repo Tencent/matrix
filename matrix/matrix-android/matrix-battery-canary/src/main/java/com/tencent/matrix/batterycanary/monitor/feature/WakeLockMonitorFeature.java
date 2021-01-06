@@ -32,7 +32,7 @@ public final class WakeLockMonitorFeature extends AbsMonitorFeature implements P
     @VisibleForTesting
     long mOverTimeMillis;
     final Map<IBinder, WakeLockTrace> mWorkingWakeLocks = new ConcurrentHashMap<>(2);
-    final WakeLockTime mWakeLockTime = new WakeLockTime();
+    final WakeLockCounting mWakeLockCounting = new WakeLockCounting();
 
     private WakeLockListener getListener() {
         return mCore;
@@ -96,6 +96,7 @@ public final class WakeLockMonitorFeature extends AbsMonitorFeature implements P
             public void onWakeLockOvertime(int warningCount, WakeLockTrace.WakeLockRecord record) {
                 getListener().onWakeLockTimeout(warningCount, record);
                 if (wakeLockTrace.isExpired()) {
+                    wakeLockTrace.finish(mCore.getHandler());
                     Iterator<Map.Entry<IBinder, WakeLockTrace>> iterator = mWorkingWakeLocks.entrySet().iterator();
                     while (iterator.hasNext()) {
                         Map.Entry<IBinder, WakeLockTrace> next = iterator.next();
@@ -127,9 +128,10 @@ public final class WakeLockMonitorFeature extends AbsMonitorFeature implements P
                 break;
             }
         }
+
         if (wakeLockTrace != null) {
             wakeLockTrace.finish(mCore.getHandler());
-            mWakeLockTime.add(wakeLockTrace.record);
+            mWakeLockCounting.add(wakeLockTrace.record);
             String tag = wakeLockTrace.record.tag;
             String stack = shouldTracing(tag) ? BatteryCanaryUtil.stackTraceToString(new Throwable().getStackTrace()) : "";
             MatrixLog.i(TAG, "[onReleaseWakeLock] tag = " + tag + ", stack = " + stack);
@@ -139,6 +141,7 @@ public final class WakeLockMonitorFeature extends AbsMonitorFeature implements P
 
         } else {
             MatrixLog.w(TAG, "missing tracking, token = " + token);
+            throw new RuntimeException("foo");
         }
     }
 
@@ -160,7 +163,7 @@ public final class WakeLockMonitorFeature extends AbsMonitorFeature implements P
     }
 
     public WakeLockSnapshot currentWakeLocks() {
-        return mWakeLockTime.getSnapshot();
+        return mWakeLockCounting.getSnapshot();
     }
 
     public static class WakeLockTrace {
@@ -281,7 +284,7 @@ public final class WakeLockMonitorFeature extends AbsMonitorFeature implements P
         }
     }
 
-    public static final class WakeLockTime {
+    public static final class WakeLockCounting {
         private final byte[] mLock = new byte[]{};
         private int mCount;
         private long mMillis;
@@ -308,7 +311,6 @@ public final class WakeLockMonitorFeature extends AbsMonitorFeature implements P
             snapshot.totalWakeLockRecords = Snapshot.Entry.ListEntry.ofEmpty();
             return snapshot;
         }
-
     }
 
     public static class WakeLockSnapshot extends Snapshot<WakeLockSnapshot> {
