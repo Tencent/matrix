@@ -125,9 +125,9 @@ public class MonitorFeatureAlarmTest {
             feature.onAlarmSet(AlarmManager.RTC, 0 , 0 , 0, 0, pendingIntent, null);
             snapshot = feature.currentAlarms();
             Assert.assertEquals(i + 1 , (long) snapshot.totalCount.get());
-            Assert.assertEquals(1, (long) snapshot.tracingCount.get());
-            Assert.assertEquals(i >= 1 ? 1 : 0, (long) snapshot.duplicatedGroup.get());
-            Assert.assertEquals(i >= 1 ? i + 1 : 0, (long) snapshot.duplicatedCount.get());
+            Assert.assertEquals(i + 1, (long) snapshot.tracingCount.get());
+            Assert.assertEquals( 0, (long) snapshot.duplicatedGroup.get());
+            Assert.assertEquals( 0, (long) snapshot.duplicatedCount.get());
         }
 
         feature.onTurnOff();

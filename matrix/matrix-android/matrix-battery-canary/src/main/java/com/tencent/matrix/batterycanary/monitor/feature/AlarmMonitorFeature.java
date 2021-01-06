@@ -12,12 +12,6 @@ import com.tencent.matrix.batterycanary.utils.AlarmManagerServiceHooker;
 import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
 import com.tencent.matrix.util.MatrixLog;
 
-import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-
 @SuppressWarnings("NotNullFieldNotInitialized")
 public final class AlarmMonitorFeature extends AbsMonitorFeature implements AlarmManagerServiceHooker.IListener {
     private static final String TAG = "Matrix.battery.AlarmMonitorFeature";
@@ -29,8 +23,7 @@ public final class AlarmMonitorFeature extends AbsMonitorFeature implements Alar
     @NonNull
     @VisibleForTesting
     Handler handler;
-    final Map<Integer, List<AlarmRecord>> mTracingAlarms = new ConcurrentHashMap<>();
-    final List<AlarmRecord> mTotalAlarms = new ArrayList<>();
+    final AlarmCounting mAlarmCounting = new AlarmCounting();
 
     private AlarmListener getListener() {
         return mCore;
@@ -53,15 +46,13 @@ public final class AlarmMonitorFeature extends AbsMonitorFeature implements Alar
         super.onTurnOff();
         AlarmManagerServiceHooker.removeListener(this);
         handler.removeCallbacksAndMessages(null);
-        mTracingAlarms.clear();
-        mTotalAlarms.clear();
+        mAlarmCounting.onClear();
     }
 
     @Override
     public int weight() {
         return Integer.MIN_VALUE;
     }
-
 
     @Override
     public void onAlarmSet(int type, long triggerAtMillis, long windowMillis, long intervalMillis, int flags, PendingIntent operation, AlarmManager.OnAlarmListener onAlarmListener) {
@@ -73,23 +64,9 @@ public final class AlarmMonitorFeature extends AbsMonitorFeature implements Alar
         AlarmRecord alarmRecord = new AlarmRecord(type, triggerAtMillis, windowMillis, intervalMillis, flags, stack);
         MatrixLog.i(TAG, "#onAlarmSet, target = " + alarmRecord);
 
-        synchronized (mTotalAlarms) {
-            mTotalAlarms.add(alarmRecord);
-        }
-
         if (operation != null || onAlarmListener != null) {
             int traceKey = operation != null ? operation.hashCode() : onAlarmListener.hashCode();
-
-            List<AlarmRecord> records = mTracingAlarms.get(traceKey);
-            if (records == null) {
-                records = new LinkedList<>();
-                records.add(alarmRecord);
-                mTracingAlarms.put(traceKey, records);
-            } else {
-                // duplicated
-                records.add(alarmRecord);
-                getListener().onAlarmDuplicated(records.size(), alarmRecord);
-            }
+            mAlarmCounting.onSet(traceKey, alarmRecord);
         }
     }
 
@@ -97,27 +74,12 @@ public final class AlarmMonitorFeature extends AbsMonitorFeature implements Alar
     public void onAlarmRemove(PendingIntent operation, AlarmManager.OnAlarmListener onAlarmListener) {
         if (operation != null || onAlarmListener != null) {
             int traceKey = operation != null ? operation.hashCode() : onAlarmListener.hashCode();
-            mTracingAlarms.remove(traceKey);
+            mAlarmCounting.onRemove(traceKey);
         }
     }
 
     public AlarmSnapshot currentAlarms() {
-        AlarmSnapshot snapshot = new AlarmSnapshot();
-        synchronized (mTotalAlarms) {
-            snapshot.totalCount = Snapshot.Entry.DigitEntry.of(mTotalAlarms.size());
-            snapshot.tracingCount = Snapshot.Entry.DigitEntry.of(mTracingAlarms.size());
-            int duplicatedGroup = 0, duplicatedCount = 0;
-            for (List<AlarmRecord> item : mTracingAlarms.values()) {
-                if (item.size() > 1) {
-                    duplicatedGroup ++;
-                    duplicatedCount += item.size();
-                }
-            }
-            snapshot.duplicatedGroup = Snapshot.Entry.DigitEntry.of(duplicatedGroup);
-            snapshot.duplicatedCount = Snapshot.Entry.DigitEntry.of(duplicatedCount);
-            snapshot.records = Snapshot.Entry.ListEntry.ofBeans(mTotalAlarms);
-        }
-        return snapshot;
+        return mAlarmCounting.getSnapshot();
     }
 
     public static class AlarmRecord {
@@ -159,6 +121,50 @@ public final class AlarmMonitorFeature extends AbsMonitorFeature implements Alar
                     ", timeBgn=" + timeBgn +
                     ", stack='" + stack + '\'' +
                     '}';
+        }
+    }
+
+    public static final class AlarmCounting {
+        private final byte[] mLock = new byte[]{};
+        private int mTotalCount;
+        private int mTracingCount;
+        private int mDuplicatedGroups;
+        private int mDuplicatedCounts;
+
+        public void onSet(int key, AlarmRecord record) {
+            synchronized (mLock) {
+                mTotalCount ++;
+                mTracingCount ++;
+            }
+        }
+
+        public void onRemove(int key) {
+            synchronized (mLock) {
+                mTracingCount --;
+            }
+        }
+
+        public int getTotalCount() {
+            return mTotalCount;
+        }
+
+        public void onClear() {
+            mTotalCount = 0;
+            mTracingCount = 0;
+            mDuplicatedGroups = 0;
+            mDuplicatedCounts = 0;
+        }
+
+        public AlarmSnapshot getSnapshot() {
+            AlarmSnapshot snapshot = new AlarmSnapshot();
+            synchronized (mLock) {
+                snapshot.totalCount = Snapshot.Entry.DigitEntry.of(mTotalCount);
+                snapshot.tracingCount = Snapshot.Entry.DigitEntry.of(mTracingCount);
+                snapshot.duplicatedGroup = Snapshot.Entry.DigitEntry.of(mDuplicatedGroups);
+                snapshot.duplicatedCount = Snapshot.Entry.DigitEntry.of(mDuplicatedCounts);
+                snapshot.records = Snapshot.Entry.ListEntry.ofEmpty();
+            }
+            return snapshot;
         }
     }
 
