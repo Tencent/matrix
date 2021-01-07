@@ -25,9 +25,14 @@ import android.support.test.runner.AndroidJUnit4;
 
 import com.tencent.matrix.Matrix;
 import com.tencent.matrix.batterycanary.BatteryMonitorPlugin;
+import com.tencent.matrix.batterycanary.TestUtils;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCallback;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorConfig;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
+import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Differ.ListDiffer;
+import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Entry.BeanEntry;
+import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Entry.ListEntry;
+import com.tencent.matrix.batterycanary.monitor.feature.WakeLockMonitorFeature.WakeLockTrace.WakeLockRecord;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -36,6 +41,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.mockito.Mockito.mock;
@@ -199,7 +205,7 @@ public class MonitorFeatureWakeLockTest {
                 .wakelockTimeout(timeoutMillis)
                 .setCallback(new BatteryMonitorCallback.BatteryPrinter() {
                     @Override
-                    public void onWakeLockTimeout(int warningCount, WakeLockMonitorFeature.WakeLockTrace.WakeLockRecord record) {
+                    public void onWakeLockTimeout(int warningCount, WakeLockRecord record) {
                         super.onWakeLockTimeout(warningCount, record);
                         overTimeCount.incrementAndGet();
                     }
@@ -240,7 +246,7 @@ public class MonitorFeatureWakeLockTest {
                 .wakelockTimeout(timeoutMillis)
                 .setCallback(new BatteryMonitorCallback.BatteryPrinter() {
                     @Override
-                    public void onWakeLockTimeout(int warningCount, WakeLockMonitorFeature.WakeLockTrace.WakeLockRecord record) {
+                    public void onWakeLockTimeout(int warningCount, WakeLockRecord record) {
                         super.onWakeLockTimeout(warningCount, record);
                         overTimeCount.incrementAndGet();
                     }
@@ -269,5 +275,48 @@ public class MonitorFeatureWakeLockTest {
             });
             Thread.sleep(timeoutMillis);
         }
+    }
+
+    @Test
+    public void testRecordListBenchmark() {
+        if (TestUtils.isAssembleTest()) return;
+
+        int round = 1000;
+
+        long str = System.currentTimeMillis();
+        List<BeanEntry<WakeLockRecord>> records = new ArrayList<>();
+        for (int i = 0; i < round; i++) {
+            WakeLockRecord mock = new WakeLockRecord("xxx", 0, "yyy", "zzz");
+            records.add(BeanEntry.of(mock));
+        }
+        ListEntry<BeanEntry<WakeLockRecord>> bgn = ListEntry.of(records);
+        for (int i = 0; i < round; i++) {
+            WakeLockRecord mock = new WakeLockRecord("xxx", 0, "yyy", "zzz");
+            records.add(BeanEntry.of(mock));
+        }
+        ListEntry<BeanEntry<WakeLockRecord>> end = ListEntry.of(records);
+        ListDiffer.globalDiff(bgn, end);
+        long differConsumed = System.currentTimeMillis() - str;
+
+        str = System.currentTimeMillis();
+        List<WakeLockRecord> bgnList = new ArrayList<>();
+        for (int i = 0; i < round; i++) {
+            WakeLockRecord mock = new WakeLockRecord("xxx", 0, "yyy", "zzz");
+            bgnList.add((mock));
+        }
+        List<WakeLockRecord> endList = new ArrayList<>(bgnList);
+        for (int i = 0; i < round; i++) {
+            WakeLockRecord mock = new WakeLockRecord("xxx", 0, "yyy", "zzz");
+            endList.add((mock));
+        }
+        List<WakeLockRecord> dltList = new ArrayList<>(bgnList);
+        for (WakeLockRecord endItem : endList) {
+            if (!bgnList.contains(endItem)) {
+                dltList.add(endItem);
+            }
+        }
+        long rawEqualsConsumed = System.currentTimeMillis() - str;
+
+        Assert.fail("Time consumed: " + differConsumed + " vs " + rawEqualsConsumed + " millis");
     }
 }
