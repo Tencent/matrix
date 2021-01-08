@@ -7,7 +7,6 @@ import android.support.annotation.Nullable;
 import android.support.annotation.WorkerThread;
 
 import com.tencent.matrix.Matrix;
-import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Entry.DigitEntry;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Entry.ListEntry;
 import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
@@ -23,7 +22,7 @@ import java.util.Comparator;
 import java.util.List;
 
 @SuppressWarnings("NotNullFieldNotInitialized")
-public class JiffiesMonitorFeature implements MonitorFeature {
+public final class JiffiesMonitorFeature extends AbsMonitorFeature {
     private static final String TAG = "Matrix.battery.JiffiesMonitorFeature";
 
     public interface JiffiesListener {
@@ -31,30 +30,7 @@ public class JiffiesMonitorFeature implements MonitorFeature {
     }
 
     private JiffiesListener getListener() {
-        return monitor;
-    }
-
-    @NonNull private BatteryMonitorCore monitor;
-
-    @Override
-    public void configure(BatteryMonitorCore monitor) {
-        MatrixLog.i(TAG, "#configure monitor feature");
-        this.monitor = monitor;
-    }
-
-    @Override
-    public void onTurnOn() {
-        MatrixLog.i(TAG, "#onTurnOn");
-    }
-
-    @Override
-    public void onTurnOff() {
-        MatrixLog.i(TAG, "#onTurnOff");
-    }
-
-    @Override
-    public void onForeground(boolean isForeground) {
-        MatrixLog.i(TAG, "#onAppForeground, bool = " + isForeground);
+        return mCore;
     }
 
     @Override
@@ -64,9 +40,10 @@ public class JiffiesMonitorFeature implements MonitorFeature {
 
     @WorkerThread
     public JiffiesSnapshot currentJiffiesSnapshot() {
-        return JiffiesSnapshot.currentJiffiesSnapshot(ProcessInfo.getProcessInfo(), getListener());
+        return JiffiesSnapshot.currentJiffiesSnapshot(ProcessInfo.getProcessInfo(), mCore.getConfig().isStatPidProc, getListener());
     }
 
+    @SuppressWarnings("SpellCheckingInspection")
     public static class ProcessInfo {
         static ProcessInfo getProcessInfo() {
             ProcessInfo processInfo = new ProcessInfo();
@@ -82,9 +59,20 @@ public class JiffiesMonitorFeature implements MonitorFeature {
         String name;
         long time;
         long upTime;
+        public long jiffies;
         List<ThreadInfo> threadInfo = Collections.emptyList();
 
         private ProcessInfo() {
+        }
+
+        public void loadProcStat() throws IOException {
+            ProcStatUtil.ProcStat stat = ProcStatUtil.of(pid);
+            if (stat != null) {
+                name = stat.comm;
+                jiffies = stat.getJiffies();
+            } else {
+                throw new IOException("parse fail: " + BatteryCanaryUtil.cat("/proc/" + pid + "/stat"));
+            }
         }
 
         @NonNull
@@ -147,17 +135,34 @@ public class JiffiesMonitorFeature implements MonitorFeature {
         }
     }
 
+    @SuppressWarnings("SpellCheckingInspection")
     public static class JiffiesSnapshot extends Snapshot<JiffiesSnapshot> {
-        public static JiffiesSnapshot currentJiffiesSnapshot(ProcessInfo processInfo) {
-            return currentJiffiesSnapshot(processInfo, null);
+
+        public static JiffiesSnapshot currentJiffiesSnapshot(ProcessInfo processInfo, boolean isStatPidProc) {
+            return currentJiffiesSnapshot(processInfo, isStatPidProc, null);
         }
 
-        public static JiffiesSnapshot currentJiffiesSnapshot(ProcessInfo processInfo, JiffiesListener listener) {
+        public static JiffiesSnapshot currentJiffiesSnapshot(ProcessInfo processInfo, boolean isStatPidProc, @Nullable JiffiesListener listener) {
             JiffiesSnapshot snapshot = new JiffiesSnapshot();
             snapshot.pid = processInfo.pid;
             snapshot.name = processInfo.name;
 
             long totalJiffies = 0;
+            if (isStatPidProc) {
+                try {
+                    // idividually configure pids' jiffies
+                    processInfo.loadProcStat();
+                    totalJiffies = processInfo.jiffies;
+                } catch (IOException e) {
+                    MatrixLog.printErrStackTrace(TAG, e, "parseProcJiffies fail");
+                    isStatPidProc = false;
+                    snapshot.setValid(false);
+                    if (listener != null) {
+                        listener.onParseError(processInfo.pid, 0);
+                    }
+                }
+            }
+
             List<ThreadJiffiesSnapshot> threadJiffiesList = Collections.emptyList();
 
             if (processInfo.threadInfo.size() > 0) {
@@ -166,7 +171,10 @@ public class JiffiesMonitorFeature implements MonitorFeature {
                     ThreadJiffiesSnapshot threadJiffies = ThreadJiffiesSnapshot.parseThreadJiffies(threadInfo);
                     if (threadJiffies != null) {
                         threadJiffiesList.add(threadJiffies);
-                        totalJiffies += threadJiffies.value;
+                        if (!isStatPidProc) {
+                            // acc of all tids' jiffies
+                            totalJiffies += threadJiffies.value;
+                        }
                     } else {
                         snapshot.setValid(false);
                         if (listener != null) {
@@ -252,9 +260,10 @@ public class JiffiesMonitorFeature implements MonitorFeature {
                 }
             }
 
-            @NonNull public int tid;
-            @NonNull public String name;
-            @NonNull public boolean isNewAdded;
+            public int tid;
+            @NonNull
+            public String name;
+            public boolean isNewAdded;
 
             public ThreadJiffiesSnapshot(Long value) {
                 super(value);

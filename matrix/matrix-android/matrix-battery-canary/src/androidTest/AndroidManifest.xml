@@ -5,6 +5,9 @@
     <application>
         <service android:name=".utils.CanaryUtilsTest$SpyService">
         </service>
+        <service android:name=".utils.CanaryUtilsTest$SpyForeGroundService"
+            android:process=":fore">
+        </service>
     </application>
 
 </manifest>

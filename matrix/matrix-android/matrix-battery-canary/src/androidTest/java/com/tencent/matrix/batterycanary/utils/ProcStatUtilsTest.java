@@ -152,10 +152,28 @@ public class ProcStatUtilsTest {
      */
     @Test
     public void testGetMyProcStat() {
-        String cat = BatteryCanaryUtil.cat("/proc/" + Process.myPid() + "/stat");
+        String catPath = "/proc/" + Process.myPid() + "/stat";
+        String cat = BatteryCanaryUtil.cat(catPath);
         Assert.assertFalse(TextUtils.isEmpty(cat));
-    }
 
+        ProcStatUtil.ProcStat stat = parseJiffiesInfoWithSplitsForPath(catPath);
+        Assert.assertNotNull(stat.comm);
+        Assert.assertTrue(stat.utime >= 0);
+        Assert.assertTrue(stat.stime >= 0);
+        Assert.assertTrue(stat.cutime >= 0);
+        Assert.assertTrue(stat.cstime >= 0);
+        long jiffies = stat.utime + stat.stime + stat.cutime + stat.cstime;
+        Assert.assertTrue(jiffies >= 0);
+
+        ProcStatUtil.ProcStat statNew = ProcStatUtil.currentPid();
+        Assert.assertNotNull(statNew);
+        Assert.assertEquals(stat.comm, statNew.comm);
+        Assert.assertTrue(statNew.utime  >= stat.utime );
+        Assert.assertTrue(statNew.stime  >= stat.stime );
+        Assert.assertTrue(statNew.cutime >= stat.cutime);
+        Assert.assertTrue(statNew.cstime >= stat.cstime);
+        Assert.assertTrue(statNew.getJiffies() >= stat.getJiffies());
+    }
 
     /**
      * cat: /proc/<mypid>/task/<tid>/stat

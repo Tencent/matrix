@@ -125,9 +125,9 @@ public class MonitorFeatureAlarmTest {
             feature.onAlarmSet(AlarmManager.RTC, 0 , 0 , 0, 0, pendingIntent, null);
             snapshot = feature.currentAlarms();
             Assert.assertEquals(i + 1 , (long) snapshot.totalCount.get());
-            Assert.assertEquals(1, (long) snapshot.tracingCount.get());
-            Assert.assertEquals(i >= 1 ? 1 : 0, (long) snapshot.duplicatedGroup.get());
-            Assert.assertEquals(i >= 1 ? i + 1 : 0, (long) snapshot.duplicatedCount.get());
+            Assert.assertEquals(i + 1, (long) snapshot.tracingCount.get());
+            Assert.assertEquals( 0, (long) snapshot.duplicatedGroup.get());
+            Assert.assertEquals( 0, (long) snapshot.duplicatedCount.get());
         }
 
         feature.onTurnOff();
@@ -186,5 +186,35 @@ public class MonitorFeatureAlarmTest {
         for (BeanEntry<AlarmRecord> item : end.diff(bgn).dlt.records.getList()) {
             Assert.assertEquals("mock_3", item.value.stack);
         }
+    }
+
+    @Test
+    public void testAlarmCountingBenchmark() {
+        AlarmMonitorFeature.AlarmCounting counting = new AlarmMonitorFeature.AlarmCounting();
+        final AtomicInteger inc = new AtomicInteger(0);
+        Function<String, AlarmRecord> supplier = new Function<String, AlarmRecord>() {
+            @Override
+            public AlarmRecord apply(String input) {
+                return new AlarmRecord(0, inc.incrementAndGet(), 0, 0, 0, input);
+            }
+        };
+
+        int round = 10000;
+
+        long str = System.currentTimeMillis();
+        for (int i = 0; i < round; i++) {
+            AlarmRecord mock = supplier.apply("mock");
+            counting.onSet(mock.hashCode(), mock);
+        }
+        AlarmMonitorFeature.AlarmSnapshot bgn = counting.getSnapshot();
+        for (int i = 0; i < round; i++) {
+            AlarmRecord mock = supplier.apply("mock");
+            counting.onSet(mock.hashCode(), mock);
+        }
+        AlarmMonitorFeature.AlarmSnapshot end = counting.getSnapshot();
+        end.diff(bgn);
+        long differConsumed = System.currentTimeMillis() - str;
+
+        Assert.assertFalse("Time consumed: " + differConsumed, differConsumed > 100L);
     }
 }

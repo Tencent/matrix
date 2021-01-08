@@ -1,15 +1,26 @@
 package com.tencent.matrix.batterycanary.monitor.feature;
 
+import android.annotation.SuppressLint;
+import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.os.BatteryManager;
 import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
+import android.support.annotation.VisibleForTesting;
+import android.support.v4.util.Consumer;
 
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
+import com.tencent.matrix.batterycanary.monitor.feature.AppStatMonitorFeature.AppStatStamp;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Differ.DigitDiffer;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Differ.ListDiffer;
 import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
-import com.tencent.matrix.batterycanary.utils.RadioStatUtil;
+import com.tencent.matrix.batterycanary.utils.TimeBreaker;
 import com.tencent.matrix.util.MatrixLog;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * Device Status Monitoring:
@@ -21,34 +32,78 @@ import com.tencent.matrix.util.MatrixLog;
  * @since 2020/11/1
  */
 @SuppressWarnings("NotNullFieldNotInitialized")
-public final class DeviceStatMonitorFeature implements MonitorFeature {
+public final class DeviceStatMonitorFeature extends AbsMonitorFeature {
     private static final String TAG = "Matrix.battery.DeviceStatusMonitorFeature";
 
-    @NonNull
-    private BatteryMonitorCore mMonitor;
+    @NonNull private DevStatListener mDevStatListener;
+    @NonNull List<TimeBreaker.Stamp> mStampList = Collections.emptyList();
+    @NonNull Runnable coolingTask = new Runnable() {
+        @Override
+        public void run() {
+            if (mStampList.size() >= mCore.getConfig().overHeatCount) {
+                synchronized (TAG) {
+                    TimeBreaker.gcList(mStampList);
+                }
+            }
+        }
+    };
 
     @Override
     public void configure(BatteryMonitorCore monitor) {
-        MatrixLog.i(TAG, "#configure monitor feature");
-        mMonitor = monitor;
+        super.configure(monitor);
+        mDevStatListener = new DevStatListener();
     }
 
     @Override
     public void onTurnOn() {
+        super.onTurnOn();
+        int deviceStat = BatteryCanaryUtil.getDeviceStat(mCore.getContext());
+        @SuppressLint("VisibleForTests") AppStatStamp firstStamp = new AppStatStamp(deviceStat);
+        synchronized (TAG) {
+            mStampList = new ArrayList<>();
+            mStampList.add(0, firstStamp);
+        }
+
+        mDevStatListener.setListener(new Consumer<Integer>() {
+            @SuppressLint("VisibleForTests")
+            @Override
+            public void accept(Integer integer) {
+                synchronized (TAG) {
+                    if (mStampList != Collections.EMPTY_LIST) {
+                        mStampList.add(0, new TimeBreaker.Stamp(String.valueOf(integer)));
+                        checkOverHeat();
+                    }
+                }
+            }
+        });
+
+        mDevStatListener.startListen(mCore.getContext());
     }
 
     @Override
     public void onTurnOff() {
-
+        super.onTurnOff();
+        mDevStatListener.stopListen(mCore.getContext());
     }
 
     @Override
     public void onForeground(boolean isForeground) {
+        super.onForeground(isForeground);
+        if (!isForeground) {
+            if (!mDevStatListener.isListening()) {
+                mDevStatListener.startListen(mCore.getContext());
+            }
+        }
+    }
+
+    private void checkOverHeat() {
+        mCore.getHandler().removeCallbacks(coolingTask);
+        mCore.getHandler().postDelayed(coolingTask, 1000L);
     }
 
     @Override
     public int weight() {
-        return Integer.MIN_VALUE;
+        return Integer.MAX_VALUE;
     }
 
     public CpuFreqSnapshot currentCpuFreq() {
@@ -64,22 +119,122 @@ public final class DeviceStatMonitorFeature implements MonitorFeature {
 
     public BatteryTmpSnapshot currentBatteryTemperature(Context context) {
         BatteryTmpSnapshot snapshot = new BatteryTmpSnapshot();
-        snapshot.temp = Snapshot.Entry.DigitEntry.of(mMonitor.getCurrentBatteryTemperature(context));
+        snapshot.temp = Snapshot.Entry.DigitEntry.of(mCore.getCurrentBatteryTemperature(context));
         return snapshot;
     }
 
-    @Nullable
-    public RadioStatSnapshot currentRadioSnapshot(Context context) {
-        RadioStatUtil.RadioStat stat = RadioStatUtil.getCurrentStat(context);
-        if (stat == null) {
-            return null;
+    public DevStatSnapshot currentDevStatSnapshot() {
+        return currentDevStatSnapshot(0L);
+    }
+
+    public DevStatSnapshot currentDevStatSnapshot(long windowMillis) {
+        try {
+            int devStat = BatteryCanaryUtil.getDeviceStat(mCore.getContext());
+            @SuppressLint("VisibleForTests") TimeBreaker.Stamp lastStamp = new TimeBreaker.Stamp(String.valueOf(devStat));
+            synchronized (TAG) {
+                if (mStampList != Collections.EMPTY_LIST) {
+                    mStampList.add(0, lastStamp);
+                }
+            }
+            return configureSnapshot(mStampList, windowMillis);
+        } catch (Throwable e) {
+            MatrixLog.w(TAG, "configureSnapshot fail: " + e.getMessage());
+            DevStatSnapshot snapshot = new DevStatSnapshot();
+            snapshot.setValid(false);
+            return snapshot;
         }
-        RadioStatSnapshot snapshot = new RadioStatSnapshot();
-        snapshot.wifiRxBytes = Snapshot.Entry.DigitEntry.of(stat.wifiRxBytes);
-        snapshot.wifiTxBytes = Snapshot.Entry.DigitEntry.of(stat.wifiTxBytes);
-        snapshot.mobileRxBytes = Snapshot.Entry.DigitEntry.of(stat.mobileRxBytes);
-        snapshot.mobileTxBytes = Snapshot.Entry.DigitEntry.of(stat.mobileTxBytes);
+    }
+
+    @VisibleForTesting
+    static DevStatSnapshot configureSnapshot(List<TimeBreaker.Stamp> stampList, long windowMillis) {
+        TimeBreaker.TimePortions timePortions = TimeBreaker.configurePortions(stampList, windowMillis);
+        DevStatSnapshot snapshot = new DevStatSnapshot();
+        snapshot.setValid(timePortions.isValid());
+        snapshot.uptime = Snapshot.Entry.DigitEntry.of(timePortions.totalUptime);
+        snapshot.chargingRatio = Snapshot.Entry.DigitEntry.of((long) timePortions.getRatio("1"));
+        snapshot.screenOff = Snapshot.Entry.DigitEntry.of((long) timePortions.getRatio("3"));
         return snapshot;
+    }
+
+    static final class DevStatListener extends BroadcastReceiver {
+        Consumer<Integer> mListener = new Consumer<Integer>() {
+            @Override
+            public void accept(Integer integer) {
+
+            }
+        };
+
+        boolean mIsCharging = false;
+        boolean mIsScreenOff = false;
+        boolean mIsListening = false;
+
+        public void setListener(Consumer<Integer> listener) {
+            mListener = listener;
+        }
+
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            String action = intent.getAction();
+            if (action != null) {
+                if (action.equals(Intent.ACTION_BATTERY_CHANGED)) {
+                    int plugged = intent.getIntExtra(BatteryManager.EXTRA_PLUGGED, -1);
+                    mIsCharging = plugged == BatteryManager.BATTERY_PLUGGED_AC || plugged == BatteryManager.BATTERY_PLUGGED_USB || plugged == BatteryManager.BATTERY_PLUGGED_WIRELESS;
+                    updateStatus();
+                    return;
+                }
+                if (action.equals(Intent.ACTION_SCREEN_OFF)) {
+                    mIsScreenOff = true;
+                    updateStatus();
+                    return;
+                }
+                if (action.equals(Intent.ACTION_SCREEN_ON)) {
+                    mIsScreenOff = false;
+                    updateStatus();
+                }
+            }
+        }
+
+        protected void updateStatus() {
+            int devStat = mIsCharging ? 1 : mIsScreenOff ? 3 : 2;
+            mListener.accept(devStat);
+        }
+
+        public boolean isListening() {
+            return mIsListening;
+        }
+
+        public boolean startListen(Context context) {
+            if (!mIsListening) {
+                try {
+                    IntentFilter filter = new IntentFilter(Intent.ACTION_SCREEN_ON);
+                    filter.addAction(Intent.ACTION_SCREEN_OFF);
+                    filter.addAction(Intent.ACTION_BATTERY_CHANGED);
+                    context.registerReceiver(this, filter);
+                    mIsListening = true;
+                    return true;
+                } catch (Throwable e) {
+                    MatrixLog.printErrStackTrace(TAG, e, "#startListen failed");
+                    try {
+                        context.unregisterReceiver(this);
+                    } catch (Throwable ignored) {
+                    }
+                    mIsListening = false;
+                    return false;
+                }
+            } else {
+                return true;
+            }
+        }
+
+        public void stopListen(Context context) {
+            if (mIsListening) {
+                try {
+                    context.unregisterReceiver(this);
+                } catch (Throwable ignored) {
+                }
+                mIsListening = false;
+            }
+        }
     }
 
     public static class CpuFreqSnapshot extends Snapshot<CpuFreqSnapshot> {
@@ -114,22 +269,22 @@ public final class DeviceStatMonitorFeature implements MonitorFeature {
         }
     }
 
-    public static class RadioStatSnapshot extends Snapshot<RadioStatSnapshot> {
-        public Entry.DigitEntry<Long> wifiRxBytes = Entry.DigitEntry.of(0L);
-        public Entry.DigitEntry<Long> wifiTxBytes = Entry.DigitEntry.of(0L);
-        public Entry.DigitEntry<Long> mobileRxBytes = Entry.DigitEntry.of(0L);
-        public Entry.DigitEntry<Long> mobileTxBytes = Entry.DigitEntry.of(0L);
+    public static final class DevStatSnapshot extends Snapshot<DevStatSnapshot> {
+        public Entry.DigitEntry<Long> uptime = Entry.DigitEntry.of(0L);
+        public Entry.DigitEntry<Long> chargingRatio = Entry.DigitEntry.of(0L);
+        public Entry.DigitEntry<Long> screenOff = Entry.DigitEntry.of(0L);
+
+        DevStatSnapshot() {}
 
         @Override
-        public Delta<RadioStatSnapshot> diff(RadioStatSnapshot bgn) {
-            return new Delta<RadioStatSnapshot>(bgn, this) {
+        public Delta<DevStatSnapshot> diff(DevStatSnapshot bgn) {
+            return new Delta<DevStatSnapshot>(bgn, this) {
                 @Override
-                protected RadioStatSnapshot computeDelta() {
-                    RadioStatSnapshot delta = new RadioStatSnapshot();
-                    delta.wifiRxBytes = DigitDiffer.globalDiff(bgn.wifiRxBytes, end.wifiRxBytes);
-                    delta.wifiTxBytes = DigitDiffer.globalDiff(bgn.wifiTxBytes, end.wifiTxBytes);
-                    delta.mobileRxBytes = DigitDiffer.globalDiff(bgn.mobileRxBytes, end.mobileRxBytes);
-                    delta.mobileTxBytes = DigitDiffer.globalDiff(bgn.mobileTxBytes, end.mobileTxBytes);
+                protected DevStatSnapshot computeDelta() {
+                    DevStatSnapshot delta = new DevStatSnapshot();
+                    delta.uptime = Differ.DigitDiffer.globalDiff(bgn.uptime, end.uptime);
+                    delta.chargingRatio = Differ.DigitDiffer.globalDiff(bgn.chargingRatio, end.chargingRatio);
+                    delta.screenOff = Differ.DigitDiffer.globalDiff(bgn.screenOff, end.screenOff);
                     return delta;
                 }
             };

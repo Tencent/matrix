@@ -18,17 +18,25 @@ package com.tencent.matrix.batterycanary.utils;
 
 import android.app.ActivityManager;
 import android.app.Application;
+import android.app.Notification;
+import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.os.Handler;
 import android.os.IBinder;
+import android.os.Looper;
 import android.support.test.InstrumentationRegistry;
 import android.support.test.runner.AndroidJUnit4;
+import android.support.v4.app.NotificationCompat;
 import android.text.TextUtils;
 import android.util.Log;
+import android.widget.Toast;
 
 import com.tencent.matrix.Matrix;
 import com.tencent.matrix.batterycanary.BatteryMonitorPlugin;
+import com.tencent.matrix.batterycanary.R;
 import com.tencent.matrix.batterycanary.TestUtils;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorConfig;
 import com.tencent.matrix.batterycanary.monitor.feature.WakeLockMonitorFeature;
@@ -40,13 +48,14 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static android.content.Context.ACTIVITY_SERVICE;
 
 
 @RunWith(AndroidJUnit4.class)
 public class CanaryUtilsTest {
-    static final String TAG = "Matrix.test.MonitorFeatureWakeLockTest";
+    static final String TAG = "Matrix.test.CanaryUtilsTest";
 
     Context mContext;
 
@@ -223,6 +232,56 @@ public class CanaryUtilsTest {
         Assert.assertTrue(BatteryCanaryUtil.listForegroundServices(mContext).isEmpty());
     }
 
+    @Test
+    public void testLaunchForegroundServiceInBackground() {
+        if (TestUtils.isAssembleTest()) return;
+
+        Log.w(TAG, "#testLaunchForegroundServiceInBackground");
+        mContext.startService(new Intent(mContext, SpyForeGroundService.class));
+
+        ActivityManager am = (ActivityManager) mContext.getSystemService(ACTIVITY_SERVICE);
+        for (ActivityManager.RunningAppProcessInfo item : am.getRunningAppProcesses()) {
+            if (item.processName.startsWith(mContext.getPackageName())) {
+                // foreground service
+                Log.w(TAG, item.processName + ": " + item.importance);
+                Assert.assertTrue(item.importance >= 125);
+            }
+        }
+
+        try {
+            Thread.sleep(1000000000L);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Test
+    public void testHandlerPostDelay() throws InterruptedException {
+        if (TestUtils.isAssembleTest()) return;
+        final AtomicBoolean callback = new AtomicBoolean();
+        new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                callback.set(true);
+            }
+        }, Long.MAX_VALUE);
+        Thread.sleep(100L);
+        Assert.assertFalse("should never callback", callback.get());
+    }
+
+    @Test
+    public void testProcessEnableConfigs() throws InterruptedException {
+        if (TestUtils.isAssembleTest()) return;
+        int flag = 0B01111111;
+        Assert.assertEquals(127, flag);
+        Assert.assertEquals(0B00000001, flag & 0B00000001);
+        Assert.assertEquals(0B00000010, flag & 0B00000010);
+        Assert.assertEquals(0B00000100, flag & 0B00000100);
+        Assert.assertEquals(0B00001000, flag & 0B00001000);
+        Assert.assertEquals(0B00000000, flag & 0B10000000);
+        // Assert.fail(flag + " vs " + Integer.toBinaryString(flag) ); // 127
+    }
+
     private static boolean diceWithBase(int base) {
         double dice = Math.random();
         if (base >= 1 && dice < (1 / ((double) base))) {
@@ -233,6 +292,51 @@ public class CanaryUtilsTest {
     }
 
     public static class SpyService extends Service {
+        @Override
+        public IBinder onBind(Intent intent) {
+            return null;
+        }
+    }
+
+    public static class SpyForeGroundService extends Service {
+
+        @Override
+        public void onCreate() {
+            super.onCreate();
+            ActivityManager am = (ActivityManager) this.getSystemService(ACTIVITY_SERVICE);
+            for (ActivityManager.RunningAppProcessInfo item : am.getRunningAppProcesses()) {
+                if (item.processName.startsWith(this.getPackageName())) {
+                    Toast.makeText(this, item.processName + ": " + item.importance, Toast.LENGTH_SHORT).show();
+                    Log.w(TAG, "" + item.processName + ": " + item.importance);
+                }
+            }
+
+            Intent intent = new Intent(this, SpyService.class);
+            PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, intent, 0);
+
+            Notification notification = new NotificationCompat.Builder(this)
+                    .setSmallIcon(R.drawable.ic_launcher)
+                 // .setContentTitle("My Awesome App")
+                 // .setContentText("Doing some work...")
+                    .setContentIntent(pendingIntent).build();
+
+            startForeground(1337, notification);
+
+            for (ActivityManager.RunningAppProcessInfo item : am.getRunningAppProcesses()) {
+                if (item.processName.startsWith(this.getPackageName())) {
+                    Log.w(TAG, item.processName + ": " + item.importance);
+                    Toast.makeText(this, item.processName + ": " + item.importance, Toast.LENGTH_SHORT).show();
+                }
+            }
+            final Handler handler = new Handler(Looper.getMainLooper());
+            handler.post(new Runnable() {
+                @Override
+                public void run() {
+                    handler.post(this);
+                }
+            });
+        }
+
         @Override
         public IBinder onBind(Intent intent) {
             return null;

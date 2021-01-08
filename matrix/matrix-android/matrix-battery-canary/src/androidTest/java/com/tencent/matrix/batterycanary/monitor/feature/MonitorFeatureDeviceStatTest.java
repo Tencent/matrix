@@ -25,7 +25,7 @@ import com.tencent.matrix.Matrix;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorConfig;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
 import com.tencent.matrix.batterycanary.monitor.feature.DeviceStatMonitorFeature.CpuFreqSnapshot;
-import com.tencent.matrix.batterycanary.monitor.feature.DeviceStatMonitorFeature.RadioStatSnapshot;
+import com.tencent.matrix.batterycanary.monitor.feature.TrafficMonitorFeature.RadioStatSnapshot;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Delta;
 import com.tencent.matrix.batterycanary.utils.RadioStatUtil;
 
@@ -119,37 +119,5 @@ public class MonitorFeatureDeviceStatTest {
         Assert.assertEquals(end.time, bgn.time + diff.during);
         Assert.assertEquals(end.temp.get().intValue(), bgn.temp.get() + diff.dlt.temp.get());
         Assert.assertEquals((int) diff.dlt.temp.get(), diff.end.temp.get() - diff.bgn.temp.get());
-    }
-
-    @Test
-    public void testGetRadioSnapshot() throws InterruptedException {
-        final DeviceStatMonitorFeature feature = new DeviceStatMonitorFeature();
-        feature.configure(mockMonitor());
-
-        if (RadioStatUtil.getCurrentStat(mContext) != null) {
-            RadioStatSnapshot bgn = feature.currentRadioSnapshot(mContext);
-            Assert.assertNotNull(bgn);
-            Assert.assertFalse(bgn.isDelta);
-            Thread.sleep(100);
-            RadioStatSnapshot end = feature.currentRadioSnapshot(mContext);
-            Assert.assertNotNull(end);
-            Assert.assertFalse(end.isDelta);
-
-            Delta<RadioStatSnapshot> diff = end.diff(bgn);
-            Assert.assertNotNull(diff);
-            Assert.assertTrue(diff.dlt.isDelta);
-            Assert.assertTrue(diff.during >= 100L);
-            Assert.assertSame(bgn, diff.bgn);
-            Assert.assertSame(end, diff.end);
-            Assert.assertEquals(end.time, bgn.time + diff.during);
-            Assert.assertEquals(end.wifiRxBytes.get().longValue(), bgn.wifiRxBytes.get() + diff.dlt.wifiRxBytes.get());
-            Assert.assertEquals(end.wifiTxBytes.get().longValue(), bgn.wifiTxBytes.get() + diff.dlt.wifiTxBytes.get());
-            Assert.assertEquals(end.mobileTxBytes.get().longValue(), bgn.mobileTxBytes.get() + diff.dlt.mobileTxBytes.get());
-            Assert.assertEquals(end.mobileRxBytes.get().longValue(), bgn.mobileRxBytes.get() + diff.dlt.mobileRxBytes.get());
-
-            end.mobileRxBytes = MonitorFeature.Snapshot.Entry.DigitEntry.of(end.mobileRxBytes.get() + 10086);
-            diff = end.diff(bgn);
-            Assert.assertEquals(10086, diff.dlt.mobileRxBytes.get().longValue());
-        }
     }
 }
