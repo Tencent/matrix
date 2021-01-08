@@ -67,7 +67,7 @@ public class TimerBreakerTest {
         stampList.add(0, new Stamp("1"));
 
         int delta = 2;
-        
+
         TimePortions snapshot = configurePortions(stampList, 0L);
         Assert.assertEquals(400, snapshot.totalUptime, 10);
         Assert.assertEquals(50, snapshot.getRatio("1"), delta);

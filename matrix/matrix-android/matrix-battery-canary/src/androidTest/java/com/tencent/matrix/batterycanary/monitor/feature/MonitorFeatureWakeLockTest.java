@@ -32,6 +32,7 @@ import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Differ.ListDiffer;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Entry.BeanEntry;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Entry.ListEntry;
+import com.tencent.matrix.batterycanary.monitor.feature.WakeLockMonitorFeature.WakeLockCounting;
 import com.tencent.matrix.batterycanary.monitor.feature.WakeLockMonitorFeature.WakeLockTrace.WakeLockRecord;
 
 import org.junit.After;
@@ -318,5 +319,29 @@ public class MonitorFeatureWakeLockTest {
         long rawEqualsConsumed = System.currentTimeMillis() - str;
 
         Assert.fail("Time consumed: " + differConsumed + " vs " + rawEqualsConsumed + " millis");
+    }
+
+
+    @Test
+    public void testWakeLockCountingBenchmark() {
+        WakeLockCounting counting = new WakeLockCounting();
+
+        int round = 10000;
+
+        long str = System.currentTimeMillis();
+        for (int i = 0; i < round; i++) {
+            WakeLockRecord mock = new WakeLockRecord("xxx", 0, "yyy", "zzz");
+            counting.add(mock);
+        }
+        WakeLockMonitorFeature.WakeLockSnapshot bgn = counting.getSnapshot();
+        for (int i = 0; i < round; i++) {
+            WakeLockRecord mock = new WakeLockRecord("xxx", 0, "yyy", "zzz");
+            counting.add(mock);
+        }
+        WakeLockMonitorFeature.WakeLockSnapshot end = counting.getSnapshot();
+        end.diff(bgn);
+        long differConsumed = System.currentTimeMillis() - str;
+
+        Assert.assertFalse("Time consumed: " + differConsumed, differConsumed > 100L);
     }
 }
