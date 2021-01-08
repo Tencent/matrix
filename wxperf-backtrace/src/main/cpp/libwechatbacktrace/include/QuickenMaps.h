@@ -48,7 +48,8 @@ namespace wechat_backtrace {
         static std::unique_ptr<QuickenInterface>
         CreateQuickenInterfaceForGenerate(
                 const std::string &sopath,
-                unwindstack::Elf *elf
+                unwindstack::Elf *elf,
+                const uint64_t elf_start_offset
         );
 
         static std::unique_ptr<unwindstack::Elf>

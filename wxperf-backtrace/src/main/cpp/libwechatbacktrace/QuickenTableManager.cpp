@@ -193,6 +193,8 @@ namespace wechat_backtrace {
                                             const uint64_t elf_start_offset,
                                             QutSectionsPtr &qut_sections) {
 
+        QUT_LOG("RequestQutSections soname, %s.", soname.c_str());
+
         if (sSavingPath.empty()) {
             return NotInitialized;
         }

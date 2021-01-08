@@ -75,8 +75,8 @@ namespace wechat_backtrace {
                 struct stat file_stat;
                 if (fstat(fd, &file_stat) == 0 && file_stat.st_size > 0) {
                     std::string build_id_raw =
-                            std::to_string((ullint_t)file_stat.st_size) + sopath +
-                            std::to_string((ullint_t)file_stat.st_mtim.tv_sec);
+                            std::to_string((ullint_t) file_stat.st_size) + sopath +
+                            std::to_string((ullint_t) file_stat.st_mtim.tv_sec);
                     build_id = ToHash(build_id_raw);
                 }
                 close(fd);

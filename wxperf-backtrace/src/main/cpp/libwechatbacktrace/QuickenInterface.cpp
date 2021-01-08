@@ -75,7 +75,8 @@ namespace wechat_backtrace {
             ret = QuickenTableManager::getInstance().RequestQutSections(
                     soname_, sopath_, hash_, build_id_, elf_start_offset_, qut_sections_tmp);
 
-            QUT_DEBUG_LOG("Try init quicken table %s build_id_ %s result %d", sopath_.c_str(),
+            QUT_DEBUG_LOG("Try init quicken table soname %s path %s build_id_ %s result %d",
+                          soname_.c_str(), sopath_.c_str(),
                           build_id_.c_str(), ret);
             if (ret == NoneError) {
                 qut_sections_ = qut_sections_tmp;

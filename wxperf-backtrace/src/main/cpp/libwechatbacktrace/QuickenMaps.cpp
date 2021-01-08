@@ -138,24 +138,27 @@ namespace wechat_backtrace {
     ) {
         std::unique_ptr<QuickenInterface> quicken_interface_ =
                 make_unique<QuickenInterface>(load_bias_, elf_offset, elf_start_offset, expected_arch);
-        quicken_interface_->SetSoInfo(so_path, so_name, build_id_hex);
+        quicken_interface_->SetSoInfo(so_path, so_name, build_id_hex, elf_start_offset);
 
         return quicken_interface_.release();
     }
 
     unique_ptr<QuickenInterface>
-    QuickenMapInfo::CreateQuickenInterfaceForGenerate(const string &sopath, Elf *elf) {
+    QuickenMapInfo::CreateQuickenInterfaceForGenerate(const string &sopath, Elf *elf, const uint64_t elf_start_offset) {
 
         string soname = elf->GetSoname();
         string build_id_hex = elf->GetBuildID();
         unique_ptr<QuickenInterface> quicken_interface_;
+
+        QUT_DEBUG_LOG("CreateQuickenInterfaceForGenerate soname %s", soname.c_str());
+
         quicken_interface_.reset(CreateQuickenInterfaceFromElf(
                 CURRENT_ARCH,
                 sopath,
                 soname,
                 elf->GetLoadBias(),
                 0, // Not use while generating
-                0, // Not use while generating
+                elf_start_offset,
                 build_id_hex
         ));
 

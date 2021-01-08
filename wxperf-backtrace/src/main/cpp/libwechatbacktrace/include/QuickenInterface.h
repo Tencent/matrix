@@ -79,15 +79,18 @@ namespace wechat_backtrace {
 
         void
         SetSoInfo(const std::string &sopath, const std::string &soname,
-                  const std::string &build_id_hex) {
-            soname_ = soname;
+                  const std::string &build_id_hex, const uint64_t elf_start_offset) {
+            (void) soname;
+//            soname_ = soname;
+            soname_ = SplitSonameFromPath(sopath);
             sopath_ = sopath;
             if (build_id_hex.empty()) {
                 build_id_ = FakeBuildId(sopath);
             } else {
                 build_id_ = ToBuildId(build_id_hex);
             }
-            hash_ = ToHash(sopath_ + std::to_string(FileSize(sopath)));
+            hash_ = ToHash(
+                    sopath_ + std::to_string(FileSize(sopath)) + std::to_string(elf_start_offset));
         }
 
         static void

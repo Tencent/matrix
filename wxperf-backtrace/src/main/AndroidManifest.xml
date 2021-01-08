@@ -1,18 +1,18 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.tencent.components.backtrace" >
+    package="com.tencent.components.backtrace">
 
-    <permission android:name="${applicationId}.backtrace.warmed_up" android:protectionLevel="signature" />
+    <permission
+        android:name="${applicationId}.backtrace.warmed_up"
+        android:protectionLevel="signature" />
     <uses-permission android:name="${applicationId}.backtrace.warmed_up" />
-
 
     <application>
 
-        <provider
-            android:authorities="${applicationId}.com.tencent.components.backtrace.WarmUpProvider"
-            android:name=".WarmUpProvider"
+        <service
+            android:name=".WarmUpService"
             android:enabled="true"
             android:exported="false"
-            android:process=":wechatbacktrace" />
+            android:process=":wechatbacktrace"></service>
 
     </application>
 

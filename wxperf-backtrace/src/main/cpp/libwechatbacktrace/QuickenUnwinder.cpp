@@ -56,8 +56,11 @@ namespace wechat_backtrace {
 
         SetCurrentStatLib(soname);
 
-        unique_ptr<QuickenInterface> interface = QuickenMapInfo::CreateQuickenInterfaceForGenerate(sopath,
-                                                                                        elf.get());
+        unique_ptr<QuickenInterface> interface = QuickenMapInfo::CreateQuickenInterfaceForGenerate(
+                sopath,
+                elf.get(),
+                0   // TODO fix this bug here
+        );
         QutSections qut_sections;
 
         Memory *gnu_debug_data_memory = nullptr;
@@ -74,11 +77,11 @@ namespace wechat_backtrace {
 
     void NotifyWarmedUpQut(const std::string &sopath, const uint64_t elf_start_offset) {
 
-        QUT_LOG("Notify qut for so %s, elf_start_offset %llu.", sopath.c_str(),
-                (ullint_t) elf_start_offset);
-
-        const string hash = ToHash(sopath + to_string(FileSize(sopath)));
+        const string hash = ToHash(sopath + to_string(FileSize(sopath)) + to_string(elf_start_offset));
         const std::string soname = SplitSonameFromPath(sopath);
+
+        QUT_LOG("Notify qut for so %s, elf_start_offset %llu, hash %s.", sopath.c_str(),
+                (ullint_t) elf_start_offset, hash.c_str());
 
         {
             lock_guard<mutex> lock(generate_lock_);
@@ -97,7 +100,8 @@ namespace wechat_backtrace {
         QUT_LOG("Generate qut for so %s, elf_start_offset %llu.", sopath.c_str(),
                 (ullint_t) elf_start_offset);
 
-        const string hash = ToHash(sopath + to_string(FileSize(sopath)));
+        const string hash = ToHash(
+                sopath + to_string(FileSize(sopath)) + to_string(elf_start_offset));
         const std::string soname = SplitSonameFromPath(sopath);
 
         {
@@ -136,7 +140,7 @@ namespace wechat_backtrace {
             }
 
             unique_ptr<QuickenInterface> interface =
-                    QuickenMapInfo::CreateQuickenInterfaceForGenerate(sopath, elf.get());
+                    QuickenMapInfo::CreateQuickenInterfaceForGenerate(sopath, elf.get(), elf_start_offset);
 
             std::unique_ptr<QutSections> qut_sections = make_unique<QutSections>();
             QutSectionsPtr qut_sections_ptr = qut_sections.get();
