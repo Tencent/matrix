@@ -9,7 +9,17 @@ import java.io.InputStream;
 
 public class ProcessUtil {
 
-    public static String getProcessNameByPid(final Context context, final int pid) {
+    private static String sProcessName = null;
+
+    public static synchronized String getProcessNameByPid(final Context context) {
+        if (sProcessName == null) {
+            sProcessName = ProcessUtil.getProcessNameByPidImpl(
+                    context, android.os.Process.myPid());
+        }
+        return sProcessName;
+    }
+
+    private static String getProcessNameByPidImpl(final Context context, final int pid) {
         if (context == null || pid <= 0) {
             return "";
         }
@@ -50,5 +60,10 @@ public class ProcessUtil {
         }
 
         return "";
+    }
+
+    public static boolean isMainProcess(Context context) {
+        String processName = getProcessNameByPid(context);
+        return context.getPackageName().equalsIgnoreCase(processName);
     }
 }

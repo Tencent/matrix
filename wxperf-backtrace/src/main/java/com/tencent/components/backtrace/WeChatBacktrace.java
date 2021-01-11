@@ -36,6 +36,14 @@ public class WeChatBacktrace {
         }
     }
 
+    public static String getBaseODEXPath(Context context) {
+        String abiName = !is64BitRuntime() ? "arm" : "arm64";
+        return new File(
+                new File(context.getApplicationInfo().nativeLibraryDir)
+                        .getParentFile().getParentFile(),
+                "/oat/" + abiName + "/base.odex").getAbsolutePath();
+    }
+
     private final static String BACKTRACE_LIBRARY_NAME = "wechatbacktrace";
 
     private volatile boolean mInitialized;
@@ -121,8 +129,7 @@ public class WeChatBacktrace {
     }
 
     private boolean runningInIsolateProcess(Configuration configuration) {
-        String processName = ProcessUtil.getProcessNameByPid(
-                configuration.mContext, android.os.Process.myPid());
+        String processName = ProcessUtil.getProcessNameByPid(configuration.mContext);
         if (processName != null && processName.endsWith(ISOLATE_PROCESS_SUFFIX)) {
             return true;
         }
@@ -256,6 +263,13 @@ public class WeChatBacktrace {
         Configuration(Context context, WeChatBacktrace backtrace) {
             mContext = context;
             mWeChatBacktrace = backtrace;
+
+            // Default warm-up
+            mWarmUpDirectoriesList.add(context.getApplicationInfo().nativeLibraryDir);
+            mWarmUpDirectoriesList.add(WeChatBacktrace.getSystemLibraryPath());
+            mWarmUpDirectoriesList.add(WeChatBacktrace.getBaseODEXPath(context));
+
+            mIsWarmUpProcess = ProcessUtil.isMainProcess(mContext);
         }
 
         public Configuration savingPath(String savingPath) {
@@ -297,6 +311,14 @@ public class WeChatBacktrace {
                 return this;
             }
             mWarmUpDirectoriesList.add(directory);
+            return this;
+        }
+
+        public Configuration clearWarmUpDirectorySet() {
+            if (mCommitted) {
+                return this;
+            }
+            mWarmUpDirectoriesList.clear();
             return this;
         }
 
