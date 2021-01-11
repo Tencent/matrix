@@ -50,6 +50,8 @@ class WarmUpDelegate {
 
     private boolean[] mPrepared = {false};
 
+    static volatile WarmUpReporter sReporter;
+
     void prepare(WeChatBacktrace.Configuration configuration) {
 
         synchronized (mPrepared) {
@@ -198,6 +200,7 @@ class WarmUpDelegate {
             Log.printStack(Log.ERROR, TAG, e);
         }
 
+
         WeChatBacktraceNative.setWarmedUp(true);
 
         Log.i(TAG, "Broadcast warmed up message to other processes.");
@@ -205,6 +208,11 @@ class WarmUpDelegate {
         Intent intent = new Intent(ACTION_WARMED_UP);
         intent.putExtra("pid", Process.myPid());
         context.sendBroadcast(intent, context.getPackageName() + PERMISSION_WARMED_UP);
+
+        WarmUpReporter callback = WarmUpDelegate.sReporter;
+        if (callback != null) {
+            callback.onWarmedUp(true);
+        }
     }
 
     void warmingUp(final CancellationSignal cs) {
@@ -320,6 +328,11 @@ class WarmUpDelegate {
                     WarmUpUtility.markCleanUpTimestamp(mConfiguration.mContext);
                     mWarmUpScheduler.taskFinished(TaskType.CleanUp);
                     Log.i(TAG, "Clean up saving path(%s) done.", savingDir.getAbsoluteFile());
+
+                    WarmUpReporter callback = WarmUpDelegate.sReporter;
+                    if (callback != null) {
+                        callback.onCleanedUp(true);
+                    }
                 } else {
                     Log.i(TAG, "Clean up saving path(%s) cancelled.", savingDir.getAbsoluteFile());
                 }
@@ -408,14 +421,8 @@ class WarmUpDelegate {
 
         private boolean mThreadBlocked = false;
 
-        private static WeChatBacktrace.IThreadBlockedCallback sCallback = null;
-
         public ThreadTaskExecutor(String threadName) {
             mThreadName = threadName;
-        }
-
-        public static void setThreadBlockedCallback(WeChatBacktrace.IThreadBlockedCallback callback) {
-            sCallback = callback;
         }
 
         public boolean isThreadBlocked() {
@@ -474,9 +481,9 @@ class WarmUpDelegate {
             if (msg.what == MSG_BLOCKED_CHECK) {
                 mThreadBlocked = true;
 
-                WeChatBacktrace.IThreadBlockedCallback callback = sCallback;
+                WarmUpReporter callback = WarmUpDelegate.sReporter;
                 if (callback != null) {
-                    callback.callback(true);
+                    callback.onWarmUpThreadBlocked(true);
                 }
             }
             return false;

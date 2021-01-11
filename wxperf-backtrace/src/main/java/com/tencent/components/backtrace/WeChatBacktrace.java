@@ -43,16 +43,12 @@ public class WeChatBacktrace {
     private volatile Configuration mConfiguration;
     private WarmUpDelegate mWarmUpDelegate = new WarmUpDelegate();
 
-    public interface IThreadBlockedCallback {
-        void callback(boolean blocked);
-    }
-
     public interface LibraryLoader {
         void load(String library);
     }
 
-    public static void setThreadBlockedCallback(IThreadBlockedCallback callback) {
-        WarmUpDelegate.ThreadTaskExecutor.setThreadBlockedCallback(callback);
+    public static void setReporter(WarmUpReporter reporter) {
+        WarmUpDelegate.sReporter = reporter;
     }
 
     private final static class Singleton {
