@@ -211,7 +211,7 @@ class WarmUpDelegate {
 
         WarmUpReporter callback = WarmUpDelegate.sReporter;
         if (callback != null) {
-            callback.onWarmedUp(true);
+            callback.onReport(WarmUpReporter.ReportEvent.WarmedUp);
         }
     }
 
@@ -331,7 +331,7 @@ class WarmUpDelegate {
 
                     WarmUpReporter callback = WarmUpDelegate.sReporter;
                     if (callback != null) {
-                        callback.onCleanedUp(true);
+                        callback.onReport(WarmUpReporter.ReportEvent.CleanedUp);
                     }
                 } else {
                     Log.i(TAG, "Clean up saving path(%s) cancelled.", savingDir.getAbsoluteFile());
@@ -483,7 +483,7 @@ class WarmUpDelegate {
 
                 WarmUpReporter callback = WarmUpDelegate.sReporter;
                 if (callback != null) {
-                    callback.onWarmUpThreadBlocked(true);
+                    callback.onReport(WarmUpReporter.ReportEvent.WarmUpThreadBlocked);
                 }
             }
             return false;

@@ -1,11 +1,15 @@
 package com.tencent.components.backtrace;
 
+import android.os.Bundle;
+
 public interface WarmUpReporter {
 
-    void onWarmedUp(boolean warmedUp);
+    enum ReportEvent {
+        WarmedUp,
+        CleanedUp,
+        WarmUpThreadBlocked,
+    }
 
-    void onCleanedUp(boolean cleanedUp);
-
-    void onWarmUpThreadBlocked(boolean blocked);
+    void onReport(ReportEvent type);
 
 }
