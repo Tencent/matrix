@@ -377,7 +377,7 @@ public class BatteryMonitorCore implements
             }
         }
 
-        Entry.DigitEntry<Long> jiffies;
+        public Entry.DigitEntry<Long> jiffies;
 
         @Override
         public Delta<TaskJiffiesSnapshot> diff(TaskJiffiesSnapshot bgn) {
