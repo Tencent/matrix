@@ -4,6 +4,7 @@ import android.os.Process;
 import android.os.SystemClock;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.support.annotation.RestrictTo;
 import android.support.annotation.WorkerThread;
 
 import com.tencent.matrix.Matrix;
@@ -44,6 +45,7 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
     }
 
     @SuppressWarnings("SpellCheckingInspection")
+    @RestrictTo(RestrictTo.Scope.LIBRARY)
     public static class ProcessInfo {
         static ProcessInfo getProcessInfo() {
             ProcessInfo processInfo = new ProcessInfo();
@@ -61,9 +63,6 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
         long upTime;
         public long jiffies;
         List<ThreadInfo> threadInfo = Collections.emptyList();
-
-        private ProcessInfo() {
-        }
 
         public void loadProcStat() throws IOException {
             ProcStatUtil.ProcStat stat = ProcStatUtil.of(pid);
@@ -115,8 +114,6 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
             public String name;
             public long jiffies;
 
-            private ThreadInfo() {}
-
             public void loadProcStat() throws IOException {
                 ProcStatUtil.ProcStat stat = ProcStatUtil.of(pid, tid);
                 if (stat != null) {
@@ -135,7 +132,7 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
         }
     }
 
-    @SuppressWarnings("SpellCheckingInspection")
+    @SuppressWarnings({"SpellCheckingInspection", "deprecation"})
     public static class JiffiesSnapshot extends Snapshot<JiffiesSnapshot> {
 
         public static JiffiesSnapshot currentJiffiesSnapshot(ProcessInfo processInfo, boolean isStatPidProc) {
@@ -244,7 +241,11 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
             };
         }
 
-        public static class ThreadJiffiesSnapshot extends DigitEntry<Long> {
+        /**
+         * Use {@link ThreadJiffiesEntry} instead.
+         */
+        @Deprecated
+        public static class ThreadJiffiesSnapshot extends ThreadJiffiesEntry {
             @Nullable
             public static ThreadJiffiesSnapshot parseThreadJiffies(ProcessInfo.ThreadInfo threadInfo) {
                 try {
@@ -260,12 +261,18 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
                 }
             }
 
+            public ThreadJiffiesSnapshot(Long value) {
+                super(value);
+            }
+        }
+
+        public static class ThreadJiffiesEntry extends DigitEntry<Long> {
             public int tid;
             @NonNull
             public String name;
             public boolean isNewAdded;
 
-            public ThreadJiffiesSnapshot(Long value) {
+            public ThreadJiffiesEntry(Long value) {
                 super(value);
             }
 

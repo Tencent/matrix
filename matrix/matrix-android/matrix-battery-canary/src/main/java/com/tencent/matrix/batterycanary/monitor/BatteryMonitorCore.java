@@ -3,24 +3,30 @@ package com.tencent.matrix.batterycanary.monitor;
 import android.content.ComponentName;
 import android.content.Context;
 import android.os.Handler;
+import android.os.Looper;
 import android.os.Message;
+import android.os.Process;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.annotation.VisibleForTesting;
+import android.support.annotation.WorkerThread;
 
 import com.tencent.matrix.AppActiveMatrixDelegate;
 import com.tencent.matrix.Matrix;
 import com.tencent.matrix.batterycanary.monitor.feature.AlarmMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.AppStatMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature;
+import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature.ProcessInfo.ThreadInfo;
 import com.tencent.matrix.batterycanary.monitor.feature.LooperTaskMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature;
+import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Delta;
 import com.tencent.matrix.batterycanary.monitor.feature.WakeLockMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.WakeLockMonitorFeature.WakeLockTrace.WakeLockRecord;
 import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
 import com.tencent.matrix.util.MatrixHandlerThread;
 import com.tencent.matrix.util.MatrixLog;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.Callable;
 
@@ -37,6 +43,7 @@ public class BatteryMonitorCore implements
     public interface JiffiesListener {
         void onTraceBegin();
         void onTraceEnd(boolean isForeground); // TODO: configurable status support
+        void onReportInternalJiffies(Delta<TaskJiffiesSnapshot> delta); // Watching myself
     }
 
     private class ForegroundLoopCheckTask implements Runnable {
@@ -77,10 +84,11 @@ public class BatteryMonitorCore implements
     private static final int MSG_ID_JIFFIES_END = 0x2;
     private static final int MSG_ARG_FOREGROUND = 0x3;
 
+    private final BatteryMonitorConfig mConfig;
     @NonNull private Handler mHandler;
     @Nullable private ForegroundLoopCheckTask mFgLooperTask;
     @Nullable private BackgroundLoopCheckTask mBgLooperTask;
-    private final BatteryMonitorConfig mConfig;
+    @Nullable private TaskJiffiesSnapshot mLastInternalSnapshot;
 
     @NonNull
     Callable<String> mSupplier = new Callable<String>() {
@@ -94,9 +102,10 @@ public class BatteryMonitorCore implements
     private boolean mAppForeground = AppActiveMatrixDelegate.INSTANCE.isAppForeground();
     private boolean mForegroundModeEnabled;
     private boolean mBackgroundModeEnabled;
-    private static long mMonitorDelayMillis;
-    private static long mFgLooperMillis;
-    private static long mBgLooperMillis;
+    private long mMonitorDelayMillis;
+    private long mFgLooperMillis;
+    private long mBgLooperMillis;
+    private int mWorkerTid = -1;
 
     public BatteryMonitorCore(BatteryMonitorConfig config) {
         mConfig = config;
@@ -172,6 +181,12 @@ public class BatteryMonitorCore implements
                 }
                 mTurnOn = true;
             }
+            mHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    mWorkerTid = Process.myTid();
+                }
+            });
         }
     }
 
@@ -185,6 +200,32 @@ public class BatteryMonitorCore implements
                 mTurnOn = false;
             }
         }
+    }
+
+    @WorkerThread
+    @Nullable
+    public TaskJiffiesSnapshot configureMonitorConsuming() {
+        if (Looper.myLooper() == Looper.getMainLooper() || Looper.myLooper() == mHandler.getLooper()) {
+            throw new IllegalStateException("'#configureMonitorConsuming' should work within worker thread except matrix thread!");
+        }
+
+        if (mWorkerTid > 0) {
+            MatrixLog.i(TAG, "#configureMonitorConsuming, tid = " + mWorkerTid);
+            ThreadInfo threadInfo = new ThreadInfo();
+            threadInfo.pid = Process.myPid();
+            threadInfo.tid = mWorkerTid;
+            TaskJiffiesSnapshot snapshot = TaskJiffiesSnapshot.parse(threadInfo);
+
+            if (snapshot != null) {
+                if (mLastInternalSnapshot != null) {
+                    Delta<TaskJiffiesSnapshot> delta = snapshot.diff(mLastInternalSnapshot);
+                    getConfig().callback.onReportInternalJiffies(delta);
+                }
+                mLastInternalSnapshot = snapshot;
+                return snapshot;
+            }
+        }
+        return null;
     }
 
     public void onForeground(boolean isForeground) {
@@ -319,5 +360,35 @@ public class BatteryMonitorCore implements
     @Override
     public void onAppSateLeak(boolean isMyself, int appImportance, ComponentName componentName, long millis) {
         getConfig().callback.onAppSateLeak(isMyself, appImportance, componentName, millis);
+    }
+
+
+    public static class TaskJiffiesSnapshot extends MonitorFeature.Snapshot<TaskJiffiesSnapshot> {
+        @Nullable
+        public static TaskJiffiesSnapshot parse(JiffiesMonitorFeature.ProcessInfo.ThreadInfo threadInfo) {
+            try {
+                threadInfo.loadProcStat();
+                TaskJiffiesSnapshot snapshot = new TaskJiffiesSnapshot();
+                snapshot.jiffies = Entry.DigitEntry.of(threadInfo.jiffies);
+                return snapshot;
+            } catch (IOException e) {
+                MatrixLog.printErrStackTrace(TAG, e, "parseThreadJiffies fail");
+                return null;
+            }
+        }
+
+        Entry.DigitEntry<Long> jiffies;
+
+        @Override
+        public Delta<TaskJiffiesSnapshot> diff(TaskJiffiesSnapshot bgn) {
+            return new Delta<TaskJiffiesSnapshot>(bgn, this) {
+                @Override
+                protected TaskJiffiesSnapshot computeDelta() {
+                    TaskJiffiesSnapshot delta = new TaskJiffiesSnapshot();
+                    delta.jiffies = Differ.DigitDiffer.globalDiff(bgn.jiffies,  end.jiffies);
+                    return delta;
+                }
+            };
+        }
     }
 }

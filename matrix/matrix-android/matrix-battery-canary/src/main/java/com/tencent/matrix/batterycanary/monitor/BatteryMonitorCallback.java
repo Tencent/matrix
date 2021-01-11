@@ -99,6 +99,10 @@ public interface BatteryMonitorCallback extends
         }
 
         @Override
+        public void onReportInternalJiffies(Delta<BatteryMonitorCore.TaskJiffiesSnapshot> delta) {
+        }
+
+        @Override
         public void onTaskTrace(Thread thread, List<LooperTaskMonitorFeature.TaskTraceInfo> sortList) {
             if (thread instanceof HandlerThread) {
                 synchronized (tasks) {
