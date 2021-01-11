@@ -496,4 +496,8 @@ public class MainActivity extends AppCompatActivity {
     public void killSelf(View view) {
         Process.killProcess(Process.myPid());
     }
+
+    public void fdLimit(View view) {
+        Log.d(TAG, "FD limit = " + FDDumpBridge.getFDLimit());
+    }
 }
