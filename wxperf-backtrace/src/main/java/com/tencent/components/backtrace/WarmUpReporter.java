@@ -1,7 +1,5 @@
 package com.tencent.components.backtrace;
 
-import android.os.Bundle;
-
 public interface WarmUpReporter {
 
     enum ReportEvent {

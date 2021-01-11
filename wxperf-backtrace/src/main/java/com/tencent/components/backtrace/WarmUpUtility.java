@@ -102,9 +102,12 @@ class WarmUpUtility {
 
     static void iterateTargetDirectory(File target, CancellationSignal cs, FileFilter filter) {
         if (target.isDirectory()) {
-            for (File file : target.listFiles()) {
-                iterateTargetDirectory(file, cs, filter);
-                cs.throwIfCanceled();
+            File[] files = target.listFiles();
+            if (files != null) {
+                for (File file : files) {
+                    iterateTargetDirectory(file, cs, filter);
+                    cs.throwIfCanceled();
+                }
             }
         } else {
             filter.accept(target);

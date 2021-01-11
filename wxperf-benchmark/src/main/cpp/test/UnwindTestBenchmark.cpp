@@ -68,6 +68,12 @@ Java_com_tencent_wxperf_jni_test_UnwindBenckmarkTest_debugNative(JNIEnv *env, jc
 
 }
 
+JNIEXPORT void JNICALL
+Java_com_tencent_wxperf_jni_test_UnwindBenckmarkTest_refreshMapsInfoNative(JNIEnv *env, jclass clazz) {
+    wechat_backtrace::notify_maps_changed();
+}
+
+
 #ifdef __cplusplus
 }
 #endif

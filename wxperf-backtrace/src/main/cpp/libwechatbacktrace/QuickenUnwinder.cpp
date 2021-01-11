@@ -134,6 +134,17 @@ namespace wechat_backtrace {
             const string build_id = build_id_hex.empty() ? FakeBuildId(sopath) : ToBuildId(
                     build_id_hex);
 
+//            if (build_id_hex.empty()) {
+//                int fd = open(sopath.c_str(), O_RDONLY);
+//                if (fd >= 0) {
+//                    struct stat file_stat;
+//                    if (fstat(fd, &file_stat) == 0 && file_stat.st_size > 0) {
+//                        QUT_DEBUG_LOG("Gen build id for %s, size %llu", sopath.c_str(), (ullint_t) file_stat.st_size);
+//                    }
+//                    close(fd);
+//                }
+//            }
+
             if (QuickenTableManager::CheckIfQutFileExistsWithBuildId(soname, build_id)) {
                 QUT_LOG("Qut exists with build id %s and return.", build_id.c_str());
                 return;
@@ -175,33 +186,6 @@ namespace wechat_backtrace {
 
         return consumed;
     }
-
-//    inline uint32_t
-//    GetPcAdjustment(uint32_t rel_pc, uint32_t load_bias, QuickenInterface *interface) {
-//        if (rel_pc < load_bias) {
-//            if (rel_pc < 2) {
-//                return 0;
-//            }
-//            return 2;
-//        }
-//        uint32_t adjusted_rel_pc = rel_pc - load_bias;
-//        if (adjusted_rel_pc < 5) {
-//            if (adjusted_rel_pc < 2) {
-//                return 0;
-//            }
-//            return 2;
-//        }
-//
-//        if (adjusted_rel_pc & 1) {
-//            // This is a thumb instruction, it could be 2 or 4 bytes.
-//            uint32_t value;
-//            if (!interface->Memory()->ReadFully(adjusted_rel_pc - 5, &value, sizeof(value)) ||
-//                (value & 0xe000f000) != 0xe000f000) {
-//                return 2;
-//            }
-//        }
-//        return 4;
-//    }
 
     inline uint32_t
     GetPcAdjustment(Memory *process_memory, MapInfoPtr map_info, uint64_t pc, uint32_t rel_pc,

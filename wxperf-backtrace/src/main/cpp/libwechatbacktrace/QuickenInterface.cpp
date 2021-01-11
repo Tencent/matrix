@@ -81,7 +81,8 @@ namespace wechat_backtrace {
             if (ret == NoneError) {
                 qut_sections_ = qut_sections_tmp;
 
-                QUT_DEBUG_LOG("Request quicken table success.");
+                QUT_DEBUG_LOG("Request %s build id(%s) quicken table success.",
+                        sopath_.c_str(), build_id_.c_str());
 
                 if (qut_sections_) {
                     return true;
@@ -151,6 +152,10 @@ namespace wechat_backtrace {
             last_error_code_ = QUT_ERROR_UNWIND_INFO;
             return false;
         }
+
+//        if (HasSuffix(sopath_, ".odex")) {
+//            QUT_DEBUG_LOG("Step in %s", sopath_.c_str());
+//        }
 
         if (!qut_sections_) {
             if (!TryInitQuickenTable()) {

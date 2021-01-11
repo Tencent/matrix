@@ -314,6 +314,7 @@ namespace wechat_backtrace {
         (void) process_memory;
 
         if (end <= start) {
+//            QUT_DEBUG_LOG("CreateQuickenMemory, map name %s, (%llu, %llu)", name.c_str(), (ullint_t)start, (ullint_t)end);
             return nullptr;
         }
 
@@ -321,6 +322,7 @@ namespace wechat_backtrace {
 
         // Fail on device maps.
         if (flags & MAPS_FLAGS_DEVICE_MAP) {
+//            QUT_DEBUG_LOG("CreateQuickenMemory, in device map, map name %s, (%llu, %llu)", name.c_str(), (ullint_t)start, (ullint_t)end);
             return nullptr;
         }
 
@@ -332,51 +334,56 @@ namespace wechat_backtrace {
             }
         }
 
-        return nullptr;
-
-        // XXX Currently not support memory backed elf.
-//        if (process_memory == nullptr) {
-//            return nullptr;
-//        }
+//        if (IsOatFile(name)) {
+//            // XXX Currently not support memory backed elf.
+//            if (process_memory == nullptr) {
+//                return nullptr;
+//            }
 //
-//        if (!(flags & PROT_READ)) {
-//            return nullptr;
-//        }
+//            if (!(flags & PROT_READ)) {
+//                return nullptr;
+//            }
 //
-//        // Need to verify that this elf is valid. It's possible that
-//        // only part of the elf file to be mapped into memory is in the executable
-//        // map. In this case, there will be another read-only map that includes the
-//        // first part of the elf file. This is done if the linker rosegment
-//        // option is used.
-//        std::unique_ptr<MemoryRange> memory(new MemoryRange(process_memory, start, end - start, 0));
-//        if (Elf::IsValidElf(memory.get())) {
+//            // Need to verify that this elf is valid. It's possible that
+//            // only part of the elf file to be mapped into memory is in the executable
+//            // map. In this case, there will be another read-only map that includes the
+//            // first part of the elf file. This is done if the linker rosegment
+//            // option is used.
+//            std::unique_ptr<MemoryRange> memory(
+//                    new MemoryRange(process_memory, start, end - start, 0));
+//            if (Elf::IsValidElf(memory.get())) {
+//                memory_backed_elf = true;
+//                return memory.release();
+//            }
+//
+//            // Find the read-only map by looking at the previous map. The linker
+//            // doesn't guarantee that this invariant will always be true. However,
+//            // if that changes, there is likely something else that will change and
+//            // break something.
+//            if (offset == 0 || name.empty() || prev_real_map == nullptr ||
+//                prev_real_map->name != name ||
+//                prev_real_map->offset >= offset) {
+//                return nullptr;
+//            }
+//
+//            // Make sure that relative pc values are corrected properly.
+//            elf_offset = offset - prev_real_map->offset;
+//            // Use this as the elf start offset, otherwise, you always get offsets into
+//            // the r-x section, which is not quite the right information.
+//            elf_start_offset = prev_real_map->offset;
+//
+//            MemoryRanges *ranges = new MemoryRanges;
+//            ranges->Insert(new MemoryRange(process_memory, prev_real_map->start,
+//                                           prev_real_map->end - prev_real_map->start, 0));
+//            ranges->Insert(new MemoryRange(process_memory, start, end - start, elf_offset));
+//
 //            memory_backed_elf = true;
-//            return memory.release();
+//            return ranges;
 //        }
-//
-//        // Find the read-only map by looking at the previous map. The linker
-//        // doesn't guarantee that this invariant will always be true. However,
-//        // if that changes, there is likely something else that will change and
-//        // break something.
-//        if (offset == 0 || name.empty() || prev_real_map == nullptr ||
-//            prev_real_map->name != name ||
-//            prev_real_map->offset >= offset) {
-//            return nullptr;
-//        }
-//
-//        // Make sure that relative pc values are corrected properly.
-//        elf_offset = offset - prev_real_map->offset;
-//        // Use this as the elf start offset, otherwise, you always get offsets into
-//        // the r-x section, which is not quite the right information.
-//        elf_start_offset = prev_real_map->offset;
-//
-//        MemoryRanges *ranges = new MemoryRanges;
-//        ranges->Insert(new MemoryRange(process_memory, prev_real_map->start,
-//                                       prev_real_map->end - prev_real_map->start, 0));
-//        ranges->Insert(new MemoryRange(process_memory, start, end - start, elf_offset));
-//
-//        memory_backed_elf = true;
-//        return ranges;
+
+//        QUT_DEBUG_LOG("CreateQuickenMemory, return nullptr, map name %s, (%llu, %llu)", name.c_str(), (ullint_t)start, (ullint_t)end);
+
+        return nullptr;
     }
 
     Memory *
@@ -478,6 +485,8 @@ namespace wechat_backtrace {
                 "/proc/self/maps",
                 [&](uint64_t start, uint64_t end, uint16_t flags, uint64_t pgoff, ino_t,
                     const char *name) {
+
+//                    QUT_DEBUG_LOG("0x%llx-0x%llx %llu %s", (ullint_t) start, (ullint_t)end, (ullint_t)flags, name);
 
                     // Mark a device map in /dev/ and not in /dev/ashmem/ specially.
                     if (strncmp(name, "/dev/", 5) == 0 && strncmp(name + 5, "ashmem/", 7) != 0) {

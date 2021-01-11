@@ -60,6 +60,8 @@ public class MainActivity extends AppCompatActivity {
 
         // Init backtrace
         WeChatBacktrace.instance().configure(getApplicationContext())
+                .directoryToWarmUp(new File(new File(getApplicationInfo().nativeLibraryDir).getParentFile().getParentFile(), "/oat/arm/base.odex").getAbsolutePath())
+                .directoryToWarmUp(new File(new File(getApplicationInfo().nativeLibraryDir).getParentFile().getParentFile(), "/oat/arm/base.odex").getAbsolutePath())
                 .directoryToWarmUp(getApplicationInfo().nativeLibraryDir)
                 .directoryToWarmUp(WeChatBacktrace.getSystemLibraryPath())
                 .setBacktraceMode(WeChatBacktrace.Mode.Quicken)
@@ -385,6 +387,15 @@ public class MainActivity extends AppCompatActivity {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                     statistic(view.getContext());
                 }
+            }
+        }).start();
+    }
+
+    public void refreshMapsInfo(final View view) {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                UnwindBenckmarkTest.refreshMapsInfoNative();
             }
         }).start();
     }

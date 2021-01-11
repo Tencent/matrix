@@ -208,7 +208,7 @@
         android:onClick="fdLimit"
         app:layout_constraintBaseline_toBaselineOf="@+id/button6"
         app:layout_constraintStart_toEndOf="@+id/button6" />
-    
+
     <Button
         android:id="@+id/btn_unwind_statistic_debug"
         android:layout_width="wrap_content"
@@ -218,5 +218,15 @@
         android:textAllCaps="false"
         app:layout_constraintBaseline_toBaselineOf="@+id/button7"
         app:layout_constraintStart_toEndOf="@+id/button7" />
+
+    <Button
+        android:id="@+id/btn_refresh_maps_info"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:onClick="refreshMapsInfo"
+        android:text="refresh MapsInfo"
+        android:textAllCaps="false"
+        app:layout_constraintBaseline_toBaselineOf="@+id/btn_unwind_statistic_debug"
+        app:layout_constraintStart_toEndOf="@+id/btn_unwind_statistic_debug" />
 
 </android.support.constraint.ConstraintLayout>
