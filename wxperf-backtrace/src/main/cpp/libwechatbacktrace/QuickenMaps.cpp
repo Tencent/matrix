@@ -54,7 +54,9 @@ namespace wechat_backtrace {
 
         if (!quicken_interface_ & !quicken_interface_failed_) {
 
-            string so_key = name + ":" + to_string(start) + ":" + to_string(end);
+            string name_without_delete = RemoveMapsDeleteSuffix(name);
+
+            string so_key = name_without_delete + ":" + to_string(start) + ":" + to_string(end);
             auto it = cached_quicken_interface_.find(so_key);
             if (it != cached_quicken_interface_.end()) {
                 quicken_interface_ = it->second;
@@ -74,7 +76,7 @@ namespace wechat_backtrace {
                 return nullptr;
             }
 
-            unique_ptr<Elf> elf = CreateElf(this->name, memory, expected_arch);
+            unique_ptr<Elf> elf = CreateElf(name, memory, expected_arch);
 
             if (!elf) {
                 quicken_interface_failed_ = true;
@@ -87,13 +89,13 @@ namespace wechat_backtrace {
             elf_load_bias_ = elf->GetLoadBias();
 
             QUT_LOG("GetQuickenInterface elf_offset %llu, offset %llu, elf_load_bias_ %llu"
-                    ", soname %s, build_id %s.",
+                    ", soname %s, build_id %s, name_without_delete %s.",
                     (ullint_t) elf_offset, (ullint_t) offset, (ullint_t) elf_load_bias_,
-                    soname.c_str(), ToBuildId(build_id_hex).c_str());
+                    soname.c_str(), ToBuildId(build_id_hex).c_str(), name_without_delete.c_str());
 
             quicken_interface_.reset(CreateQuickenInterfaceFromElf(
                     expected_arch,
-                    this->name,
+                    name_without_delete,
                     soname,
                     elf_load_bias_,
                     elf_offset,
@@ -334,7 +336,7 @@ namespace wechat_backtrace {
             }
         }
 
-//        if (IsOatFile(name)) {
+//        if (HasSuffix(name, "odex (deleted)")) {
 //            // XXX Currently not support memory backed elf.
 //            if (process_memory == nullptr) {
 //                return nullptr;

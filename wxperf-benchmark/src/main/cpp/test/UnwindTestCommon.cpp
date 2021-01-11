@@ -163,6 +163,41 @@ inline void print_wechat_quicken_unwind() {
     }
 }
 
+inline void print_unwind_adapter() {
+
+    TEST_NanoSeconds_Start(nano);
+
+    wechat_backtrace::Frame frames[FRAME_MAX_SIZE];
+    size_t frame_size = 0;
+
+    wechat_backtrace::BACKTRACE_FUNC_WRAPPER(unwind_adapter)(frames, FRAME_MAX_SIZE, frame_size);
+
+    TEST_NanoSeconds_End(print_unwind_adapter, nano);
+
+    LOGE(WECHAT_BACKTRACE_TAG, "frames = %"
+            PRIuPTR, frame_size);
+
+    for (size_t i = 0; i < frame_size; i++) {
+        Dl_info stack_info;
+        dladdr((void *) frames[i].pc, &stack_info);
+
+        if (!stack_info.dli_fname) {
+            LOGE(WECHAT_BACKTRACE_TAG, "  #pc stack_info.dli_fname is null");
+            continue;
+        }
+        std::string so_name = std::string(stack_info.dli_fname);
+
+        LOGE(WECHAT_BACKTRACE_TAG, "  #pc 0x%"
+                PRIxPTR
+                " %"
+                PRIuPTR
+                " 0x%"
+                PRIxPTR
+                " %s (%s)", frames[i].pc, frames[i].pc, frames[i].pc, stack_info.dli_sname,
+             stack_info.dli_fname);
+    }
+}
+
 void leaf_func(const char *testcase) {
 
     LOGD(UNWIND_TEST_TAG, "Test %s unwind start with mode %d.", testcase, gMode);
@@ -176,6 +211,9 @@ void leaf_func(const char *testcase) {
             break;
         case DWARF_UNWIND:
             print_dwarf_unwind();
+            break;
+        case UNWIND_ADAPTER:
+            print_unwind_adapter();
             break;
         default:
             LOGE(UNWIND_TEST_TAG, "Unknown test %s with mode %d.", testcase, gMode);

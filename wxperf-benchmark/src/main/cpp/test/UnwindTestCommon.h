@@ -8,8 +8,7 @@ enum UnwindTestMode {
     DWARF_UNWIND, // baseline
     FP_UNWIND,
     WECHAT_QUICKEN_UNWIND,
-//    FP_UNWIND_WITH_FALLBACK,
-//    FAST_DWARF_UNWIND,
+    UNWIND_ADAPTER,
 //    WECHAT_QUICKEN_UNWIND_V2_WIP,
 };
 

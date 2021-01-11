@@ -20,7 +20,7 @@ class WarmUpUtility {
     private final static String FILE_WARMED_UP = "warmed-up";
     private final static String FILE_CLEAN_UP_TIMESTAMP = "clean-up.timestamp";
 
-    final static long DURATION_LAST_ACCESS_EXPIRED = 15L * 24 * 3600 * 1000; // milliseconds
+    final static long DURATION_LAST_ACCESS_EXPIRED = 60L * 24 * 3600 * 1000; // milliseconds
     final static long DURATION_CLEAN_UP_EXPIRED = 3L * 24 * 3600 * 1000; // milliseconds
     final static long DURATION_CLEAN_UP = 7L * 24 * 3600 * 1000; // milliseconds
 

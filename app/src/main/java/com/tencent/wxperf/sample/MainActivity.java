@@ -400,6 +400,15 @@ public class MainActivity extends AppCompatActivity {
         }).start();
     }
 
+    public void unwindAdapter(final View view) {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                UnwindBenckmarkTest.unwindAdapter();
+            }
+        }).start();
+    }
+
     private final static String TmpDir = "/data/local/tmp/";
     private final static String SdcardDir = "/sdcard/";
     private final static String StatSdcard = "qut_stat/";

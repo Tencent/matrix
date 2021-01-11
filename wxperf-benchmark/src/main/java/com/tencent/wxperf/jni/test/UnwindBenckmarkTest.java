@@ -16,4 +16,6 @@ public class UnwindBenckmarkTest {
     public static native void debugNative();
 
     public static native void refreshMapsInfoNative();
+
+    public static native void unwindAdapter();
 }

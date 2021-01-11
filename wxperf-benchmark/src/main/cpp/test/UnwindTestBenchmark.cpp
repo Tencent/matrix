@@ -73,6 +73,11 @@ Java_com_tencent_wxperf_jni_test_UnwindBenckmarkTest_refreshMapsInfoNative(JNIEn
     wechat_backtrace::notify_maps_changed();
 }
 
+JNIEXPORT void JNICALL
+Java_com_tencent_wxperf_jni_test_UnwindBenckmarkTest_unwindAdapter(JNIEnv *env, jclass clazz) {
+    BENCHMARK_TIMES(UNWIND_ADAPTER, 1, func_selfso);
+}
+
 
 #ifdef __cplusplus
 }

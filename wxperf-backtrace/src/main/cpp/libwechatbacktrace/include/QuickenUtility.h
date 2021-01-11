@@ -19,6 +19,18 @@ namespace wechat_backtrace {
         return sopath.substr(pos + 1);
     }
 
+    inline static bool EndsWith(std::string const &value, std::string const &ending) {
+        if (ending.size() > value.size()) return false;
+        return std::equal(ending.rbegin(), ending.rend(), value.rbegin());
+    }
+
+    inline static std::string RemoveMapsDeleteSuffix(const std::string &maps_name) {
+        if (EndsWith(maps_name, " (deleted)")) {
+            return maps_name.substr(0, maps_name.length() - 10);
+        }
+        return maps_name;
+    }
+
     inline static std::string ToHash(const std::string &sopath) {
         SHA1 sha1;
         sha1.update(sopath);

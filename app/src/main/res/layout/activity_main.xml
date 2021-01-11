@@ -226,7 +226,17 @@
         android:onClick="refreshMapsInfo"
         android:text="refresh MapsInfo"
         android:textAllCaps="false"
-        app:layout_constraintBaseline_toBaselineOf="@+id/btn_unwind_statistic_debug"
-        app:layout_constraintStart_toEndOf="@+id/btn_unwind_statistic_debug" />
+        app:layout_constraintStart_toStartOf="@+id/button6"
+        app:layout_constraintTop_toBottomOf="@+id/button6" />
+
+    <Button
+        android:id="@+id/btn_unwind_adapter"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:onClick="unwindAdapter"
+        android:text="unwind adapter"
+        android:textAllCaps="false"
+        app:layout_constraintBaseline_toBaselineOf="@+id/btn_refresh_maps_info"
+        app:layout_constraintStart_toEndOf="@+id/btn_refresh_maps_info" />
 
 </android.support.constraint.ConstraintLayout>

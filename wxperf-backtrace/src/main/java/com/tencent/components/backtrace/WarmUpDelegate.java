@@ -13,6 +13,7 @@ import android.os.OperationCanceledException;
 import android.os.Process;
 import android.system.ErrnoException;
 import android.system.Os;
+import android.system.StructStat;
 
 import com.tencent.components.backtrace.WarmUpScheduler.TaskType;
 import com.tencent.stubs.logger.Log;
@@ -202,6 +203,7 @@ class WarmUpDelegate {
 
 
         WeChatBacktraceNative.setWarmedUp(true);
+        updateBacktraceMode(mConfiguration.mBacktraceMode);
 
         Log.i(TAG, "Broadcast warmed up message to other processes.");
 
@@ -286,7 +288,7 @@ class WarmUpDelegate {
             public void run() {
                 File savingDir = new File(WarmUpUtility.validateSavingPath(mConfiguration));
 
-                Log.i(TAG, "Going to clean up saving path(%s).", savingDir.getAbsoluteFile());
+                Log.i(TAG, "Going to clean up saving path(%s)..", savingDir.getAbsoluteFile());
 
                 if (!savingDir.isDirectory()) {
                     mWarmUpScheduler.taskFinished(TaskType.CleanUp);
@@ -305,7 +307,8 @@ class WarmUpDelegate {
                                 }
                             } else {
                                 try {
-                                    long lastAccessTime = Os.lstat(pathname.getAbsolutePath()).st_atime * 1000L;
+                                    StructStat stat = Os.lstat(pathname.getAbsolutePath());
+                                    long lastAccessTime = Math.max(stat.st_atime, stat.st_mtime) * 1000L;
                                     Log.i(TAG, "File(%s) last access time %s", pathname.getAbsolutePath(), lastAccessTime);
                                     if ((System.currentTimeMillis() - lastAccessTime) > DURATION_LAST_ACCESS_EXPIRED) {
                                         pathname.delete();
@@ -400,12 +403,16 @@ class WarmUpDelegate {
             switch (action) {
                 case ACTION_WARMED_UP:
                     WeChatBacktraceNative.setWarmedUp(true);
-                    if (mCurrentBacktraceMode == WeChatBacktrace.Mode.FpUntilQuickenWarmedUp ||
-                            mCurrentBacktraceMode == WeChatBacktrace.Mode.DwarfUntilQuickenWarmedUp) {
-                        WeChatBacktraceNative.setBacktraceMode(WeChatBacktrace.Mode.Quicken.value);
-                    }
+                    updateBacktraceMode(mCurrentBacktraceMode);
                     break;
             }
+        }
+    }
+
+    private static void updateBacktraceMode(WeChatBacktrace.Mode current) {
+        if (current == WeChatBacktrace.Mode.FpUntilQuickenWarmedUp ||
+                current == WeChatBacktrace.Mode.DwarfUntilQuickenWarmedUp) {
+            WeChatBacktraceNative.setBacktraceMode(WeChatBacktrace.Mode.Quicken.value);
         }
     }
 
