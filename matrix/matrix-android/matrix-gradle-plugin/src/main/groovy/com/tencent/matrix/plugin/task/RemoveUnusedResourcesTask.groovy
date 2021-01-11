@@ -295,30 +295,30 @@ public class RemoveUnusedResourcesTask extends DefaultTask {
     }
 
     private void readResourceTxtFile(File resTxtFile, Map<String, Integer> resourceMap, Map<String, Pair<String, Integer>[]> styleableMap) throws IOException {
-        BufferedReader bufferedReader = new BufferedReader(new FileReader(resTxtFile));
-        String line = bufferedReader.readLine();
-        boolean styleable = false;
-        String styleableName = "";
+        BufferedReader bufferedReader = new BufferedReader(new FileReader(resTxtFile))
+        String line = bufferedReader.readLine()
+        boolean styleable = false
+        String styleableName = ""
         ArrayList<String> styleableAttrs = new ArrayList<>();
         try {
             while (line != null) {
-                String[] columns = line.split(" ");
+                String[] columns = line.split(" ")
                 if (columns.length >= 4) {
-                    final String resourceName = "R." + columns[1] + "." + columns[2];
+                    final String resourceName = "R." + columns[1] + "." + columns[2]
                     if (!columns[0].endsWith("[]") && columns[3].startsWith("0x")) {
                         if (styleable) {
-                            styleable = false;
-                            styleableName = "";
+                            styleable = false
+                            styleableName = ""
                         }
-                        final String resId = parseResourceId(columns[3]);
+                        final String resId = parseResourceId(columns[3])
                         if (!Util.isNullOrNil(resId)) {
-                            resourceMap.put(resourceName, Integer.decode(resId));
+                            resourceMap.put(resourceName, Integer.decode(resId))
                         }
                     } else if (columns[1].equals("styleable")) {
                         if (columns[0].endsWith("[]")) {
                             if (columns.length > 5) {
-                                styleableAttrs.clear();
-                                styleable = true;
+                                styleableAttrs.clear()
+                                styleable = true
                                 styleableName = "R." + columns[1] + "." + columns[2];
                                 for (int i = 4; i < columns.length - 1; i++) {
                                     if (columns[i].endsWith(",")) {
