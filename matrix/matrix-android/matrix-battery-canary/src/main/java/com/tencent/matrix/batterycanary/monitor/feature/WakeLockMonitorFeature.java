@@ -141,7 +141,6 @@ public final class WakeLockMonitorFeature extends AbsMonitorFeature implements P
 
         } else {
             MatrixLog.w(TAG, "missing tracking, token = " + token);
-            throw new RuntimeException("foo");
         }
     }
 
