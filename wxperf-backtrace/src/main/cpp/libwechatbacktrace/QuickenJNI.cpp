@@ -78,7 +78,8 @@ namespace wechat_backtrace {
         env->ReleaseStringUTFChars(sopath_jstr, sopath);
     }
 
-    static void JNI_NotifyWarmedUp(JNIEnv *env, jclass clazz, jstring sopath_jstr, jint elf_start_offset) {
+    static void
+    JNI_NotifyWarmedUp(JNIEnv *env, jclass clazz, jstring sopath_jstr, jint elf_start_offset) {
         (void) clazz;
         const char *sopath = env->GetStringUTFChars(sopath_jstr, 0);
         NotifyWarmedUpQut(sopath, (uint64_t) elf_start_offset);
@@ -112,6 +113,33 @@ namespace wechat_backtrace {
         env->ReleaseStringUTFChars(sopath_jstr, sopath);
     }
 
+    extern "C" int init_xlog_logger(const char *xlog_so_path);
+    extern "C" int xlog_vlogger(int log_level, const char *tag, const char *format, ...);
+
+    static void
+    JNI_EnableLogger(JNIEnv *env, jclass clazz, jstring xlog_so_path, jboolean enable) {
+        (void) clazz;
+        if (!enable) {
+            wechat_backtrace::internal_init_logger(nullptr);
+        } else {
+            if (!xlog_so_path) {
+                wechat_backtrace::internal_init_logger(
+                        reinterpret_cast<internal_logger_func>(__android_log_vprint));
+                return;
+            }
+            const char *xlog_sopath = env->GetStringUTFChars(xlog_so_path, 0);
+            if (env->GetStringUTFLength(xlog_so_path) > 0 &&
+                    wechat_backtrace::init_xlog_logger(xlog_sopath) == 0) {
+                    wechat_backtrace::internal_init_logger(
+                            reinterpret_cast<internal_logger_func>(wechat_backtrace::xlog_vlogger));
+            } else {
+                wechat_backtrace::internal_init_logger(
+                        reinterpret_cast<internal_logger_func>(__android_log_vprint));
+            }
+            env->ReleaseStringUTFChars(xlog_so_path, xlog_sopath);
+        }
+    }
+
     static JNINativeMethod g_qut_methods[] = {
             {"setPackageName",      "(Ljava/lang/String;)V",  (void *) JNI_SetPackageName},
             {"setSavingPath",       "(Ljava/lang/String;)V",  (void *) JNI_SetSavingPath},
@@ -122,6 +150,7 @@ namespace wechat_backtrace {
             {"statistic",           "(Ljava/lang/String;)V",  (void *) JNI_Statistic},
             {"immediateGeneration", "(Z)V",                   (void *) JNI_SetImmediateGeneration},
             {"notifyWarmedUp",      "(Ljava/lang/String;I)V", (void *) JNI_NotifyWarmedUp},
+            {"enableLogger",        "(Ljava/lang/String;Z)V", (void *) JNI_EnableLogger},
     };
 
     static jclass JNIClass_WeChatBacktraceNative = nullptr;

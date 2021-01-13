@@ -76,6 +76,12 @@ public class WeChatBacktraceNative {
     static native void immediateGeneration(boolean immediate);
 
     /**
+     * Enable logger if compilation options defined 'EnableLog'
+     */
+    @Keep
+    static native void enableLogger(String pathOfXlogSo, boolean enable);
+
+    /**
      * A callback from wechat backtrace native code that will schedule an task
      * to consume QUT generate requests.
      */
@@ -83,5 +89,4 @@ public class WeChatBacktraceNative {
     static void requestQutGenerate() { // Be called from native.
         WeChatBacktrace.instance().requestQutGenerate();
     }
-
 }

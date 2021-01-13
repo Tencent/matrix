@@ -964,7 +964,13 @@ namespace wechat_backtrace {
 
                 uint64_t pc_end = loc_regs.pc_end;
 
-//                log = log_pc >= pc && log_pc < pc_end;
+                if (pc_end <= pc) {
+                    // TODO bad entry
+                    prev_instructions = nullptr;
+                    prev_pc = -1;
+                    pc += 2;
+                    continue;
+                }
 
                 auto instructions = make_shared<deque<uint64_t>>();
 
@@ -973,6 +979,8 @@ namespace wechat_backtrace {
                 Eval(loc_regs.cie, process_memory, loc_regs, regs_total);
 
                 temp_instructions_ = nullptr;
+
+//                log = log_pc >= pc && log_pc < pc_end;
 
                 if (log) {
                     QUT_DEBUG_LOG("Evaluated instructions size: %zu", instructions->size());

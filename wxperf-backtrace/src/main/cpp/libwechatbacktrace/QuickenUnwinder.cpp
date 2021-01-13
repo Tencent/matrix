@@ -77,7 +77,8 @@ namespace wechat_backtrace {
 
     void NotifyWarmedUpQut(const std::string &sopath, const uint64_t elf_start_offset) {
 
-        const string hash = ToHash(sopath + to_string(FileSize(sopath)) + to_string(elf_start_offset));
+        const string hash = ToHash(
+                sopath + to_string(FileSize(sopath)) + to_string(elf_start_offset));
         const std::string soname = SplitSonameFromPath(sopath);
 
         QUT_LOG("Notify qut for so %s, elf_start_offset %llu, hash %s.", sopath.c_str(),
@@ -134,24 +135,14 @@ namespace wechat_backtrace {
             const string build_id = build_id_hex.empty() ? FakeBuildId(sopath) : ToBuildId(
                     build_id_hex);
 
-//            if (build_id_hex.empty()) {
-//                int fd = open(sopath.c_str(), O_RDONLY);
-//                if (fd >= 0) {
-//                    struct stat file_stat;
-//                    if (fstat(fd, &file_stat) == 0 && file_stat.st_size > 0) {
-//                        QUT_DEBUG_LOG("Gen build id for %s, size %llu", sopath.c_str(), (ullint_t) file_stat.st_size);
-//                    }
-//                    close(fd);
-//                }
-//            }
-
             if (QuickenTableManager::CheckIfQutFileExistsWithBuildId(soname, build_id)) {
                 QUT_LOG("Qut exists with build id %s and return.", build_id.c_str());
                 return;
             }
 
             unique_ptr<QuickenInterface> interface =
-                    QuickenMapInfo::CreateQuickenInterfaceForGenerate(sopath, elf.get(), elf_start_offset);
+                    QuickenMapInfo::CreateQuickenInterfaceForGenerate(sopath, elf.get(),
+                                                                      elf_start_offset);
 
             std::unique_ptr<QutSections> qut_sections = make_unique<QutSections>();
             QutSectionsPtr qut_sections_ptr = qut_sections.get();

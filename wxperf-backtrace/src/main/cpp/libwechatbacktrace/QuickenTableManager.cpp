@@ -54,7 +54,7 @@ namespace wechat_backtrace {
 
     std::unordered_map<std::string, std::pair<uint64_t, std::string>>
     QuickenTableManager::GetRequestQut() {
-        lock_guard<mutex> lockGuard(lock_);
+        lock_guard<mutex> guard(lock_);
         return qut_sections_requesting_;
     }
 
@@ -206,7 +206,7 @@ namespace wechat_backtrace {
         QutFileError ret;
 
         {
-            lock_guard<mutex> lockGuard(lock_);
+            lock_guard<mutex> guard(lock_);
 
             ret = FindQutSectionsNoLock(soname, sopath, hash, build_id, elf_start_offset,
                                         qut_sections);
@@ -275,7 +275,7 @@ namespace wechat_backtrace {
 
     void
     QuickenTableManager::EraseQutRequestingByHash(const string &hash) {
-        lock_guard<mutex> lockGuard(lock_);
+        lock_guard<mutex> guard(lock_);
         auto it = qut_sections_hash_to_build_id_.find(hash);
         if (it != qut_sections_hash_to_build_id_.end()) {
             qut_sections_requesting_.erase(it->second);
@@ -336,7 +336,7 @@ namespace wechat_backtrace {
 
         QutSectionsPtr qut_sections_insert = qut_sections_ptr.get();
         {
-            lock_guard<mutex> lockGuard(lock_);
+            lock_guard<mutex> guard(lock_);
             if (qut_sections_insert == nullptr ||
                 !InsertQutSectionsNoLock(soname, hash, build_id, qut_sections_insert, false)) {
                 QUT_LOG("qut_sections_insert %llx", (ullint_t) qut_sections_insert);

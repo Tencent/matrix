@@ -25,11 +25,7 @@ public class OtherProcessService extends Service {
 
         mInit = true;
 
-        WeChatBacktrace.instance().configure(getApplicationContext())
-                .directoryToWarmUp(getApplicationInfo().nativeLibraryDir)
-                .directoryToWarmUp(WeChatBacktrace.getSystemLibraryPath())
-                .isWarmUpProcess(false)
-                .commit();
+        WeChatBacktrace.instance().configure(getApplicationContext()).commit();
 
         return null;
     }

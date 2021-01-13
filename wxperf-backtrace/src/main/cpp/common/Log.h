@@ -9,10 +9,20 @@
 #include <android/log.h>
 #include <cstdio>
 
+namespace wechat_backtrace {
+
+    typedef int (*internal_logger_func)(int log_level, const char *tag, const char *format, va_list varargs);
+
+    extern "C" void internal_init_logger(internal_logger_func logger_func);
+    extern "C" void internal_logger(int log_level, const char *tag, const char *format, ...);
+    extern "C" void internal_vlogger(int log_level, const char *tag, const char *format, va_list varargs);
+
+}
+
 #ifdef EnableLOG
-#define LOGD(TAG, FMT, args...) __android_log_print(ANDROID_LOG_DEBUG, TAG, FMT, ##args)
-#define LOGI(TAG, FMT, args...) __android_log_print(ANDROID_LOG_INFO, TAG, FMT, ##args)
-#define LOGE(TAG, FMT, args...) __android_log_print(ANDROID_LOG_ERROR, TAG, FMT, ##args)
+#define LOGD(TAG, FMT, args...) wechat_backtrace::internal_logger(ANDROID_LOG_DEBUG, TAG, FMT, ##args)
+#define LOGI(TAG, FMT, args...) wechat_backtrace::internal_logger(ANDROID_LOG_INFO, TAG, FMT, ##args)
+#define LOGE(TAG, FMT, args...) wechat_backtrace::internal_logger(ANDROID_LOG_ERROR, TAG, FMT, ##args)
 
 #define STACK_CHECK_START(S) \
     const int barrier_size = S; \
@@ -28,12 +38,12 @@
         }\
     }
 
-#define DWARF_CFA_LOG(FMT, args...) //__android_log_print(ANDROID_LOG_ERROR, "Matrix.Backtrace.DWARF-CFA", FMT, ##args)
-#define DWARF_OP_LOG(FMT, args...) //__android_log_print(ANDROID_LOG_ERROR, "Matrix.Backtrace.DWARF-OP", FMT, ##args)
-#define QUT_TMP_LOG(FMT, args...) //__android_log_print(ANDROID_LOG_ERROR, "Matrix.Backtrace.TMP", FMT, ##args)
-#define QUT_STAT_LOG(FMT, args...) //__android_log_print(ANDROID_LOG_ERROR, "Matrix.Backtrace.STAT", FMT, ##args)
-#define QUT_DEBUG_LOG(FMT, args...) __android_log_print(ANDROID_LOG_ERROR, "Matrix.Backtrace.DEBUG", FMT, ##args)
-#define QUT_LOG(FMT, args...) __android_log_print(ANDROID_LOG_ERROR, "Matrix.Backtrace.Native", FMT, ##args)
+#define DWARF_CFA_LOG(FMT, args...) //wechat_backtrace::internal_logger(ANDROID_LOG_ERROR, "Matrix.Backtrace.DWARF-CFA", FMT, ##args)
+#define DWARF_OP_LOG(FMT, args...) //wechat_backtrace::internal_logger(ANDROID_LOG_ERROR, "Matrix.Backtrace.DWARF-OP", FMT, ##args)
+#define QUT_TMP_LOG(FMT, args...) //wechat_backtrace::internal_logger(ANDROID_LOG_ERROR, "Matrix.Backtrace.TMP", FMT, ##args)
+#define QUT_STAT_LOG(FMT, args...) //wechat_backtrace::internal_logger(ANDROID_LOG_ERROR, "Matrix.Backtrace.STAT", FMT, ##args)
+#define QUT_DEBUG_LOG(FMT, args...) wechat_backtrace::internal_logger(ANDROID_LOG_ERROR, "Matrix.Backtrace.DEBUG", FMT, ##args)
+#define QUT_LOG(FMT, args...) wechat_backtrace::internal_logger(ANDROID_LOG_ERROR, "Matrix.Backtrace.Native", FMT, ##args)
 #else
 #define LOGD(TAG, FMT, args...)
 #define LOGI(TAG, FMT, args...)
@@ -100,6 +110,7 @@
       (byte & 0x02 ? '1' : '0'), \
       (byte & 0x01 ? '1' : '0')
 
-int flogger(FILE* fp , const char* fmt, ...);
+extern "C" int flogger(FILE *fp, const char *fmt, ...);
+
 
 #endif //MEMINFO_LOG_H

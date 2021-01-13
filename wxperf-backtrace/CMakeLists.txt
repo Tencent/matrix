@@ -29,6 +29,8 @@ SET(
         ${SOURCE_DIR}/common/Utils.cpp
         ${SOURCE_DIR}/common/PthreadExt.cpp
         ${SOURCE_DIR}/common/Log.cpp
+        ${SOURCE_DIR}/common/fake_dlfcn.c
+        ${SOURCE_DIR}/common/LogExt.cpp
 
         ${SOURCE_DIR}/libwechatbacktrace/QutStatistics.cpp
         ${SOURCE_DIR}/libwechatbacktrace/ExidxDecoder.cpp

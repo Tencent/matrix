@@ -61,7 +61,6 @@ namespace wechat_backtrace {
 
     public:
         static QuickenTableManager &getInstance() {
-//            static QuickenTableManager instance;
             DEFINE_STATIC_LOCAL(QuickenTableManager, instance,);
             return instance;
         }

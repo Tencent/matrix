@@ -104,6 +104,10 @@ public class WeChatBacktrace {
         System.loadLibrary(BACKTRACE_LIBRARY_NAME);
     }
 
+    static void enableLogger(String pathOfXLog, boolean enableLogger) {
+        WeChatBacktraceNative.enableLogger(pathOfXLog, enableLogger);
+    }
+
     private void dealWithCoolDown(Configuration configuration) {
         if (configuration.mIsWarmUpProcess) {
             File markFile = WarmUpUtility.warmUpMarkedFile(configuration.mContext);
@@ -150,6 +154,8 @@ public class WeChatBacktrace {
 
         // Load backtrace library.
         loadLibrary(configuration.mLibraryLoader);
+
+        enableLogger(configuration.mPathOfXLogSo, configuration.mEnableLog);
 
         Log.i(TAG, configuration.toString());
 
@@ -256,6 +262,9 @@ public class WeChatBacktrace {
         boolean mWarmUpInIsolateProcess = true;
         WarmUpTiming mWarmUpTiming = WarmUpTiming.WhileScreenOff;
         long mWarmUpDelay = DELAY_SHORTLY;
+        boolean mEnableLog = false;
+        boolean mEnableIsolateProcessLog = false;
+        String mPathOfXLogSo = null;
 
         private boolean mCommitted = false;
         private WeChatBacktrace mWeChatBacktrace;
@@ -354,13 +363,32 @@ public class WeChatBacktrace {
             return this;
         }
 
-        public Configuration warmUpSettings(WarmUpTiming timing, long delay/*ms*/) {
+        public Configuration warmUpSettings(WarmUpTiming timing, long delayMs) {
             if (mCommitted) {
                 return this;
             }
 
             mWarmUpTiming = timing;
-            mWarmUpDelay = delay;
+            mWarmUpDelay = delayMs;
+
+            return this;
+        }
+
+        public Configuration xLoggerPath(String pathOfXLogSo) {
+            if (mCommitted) {
+                return this;
+            }
+
+            mPathOfXLogSo = pathOfXLogSo;
+            return this;
+        }
+
+        public Configuration enableIsolateProcessLogger(boolean enable) {
+            if (mCommitted) {
+                return this;
+            }
+
+            mEnableIsolateProcessLog = enable;
 
             return this;
         }
@@ -387,8 +415,12 @@ public class WeChatBacktrace {
                     ">>> Warm-up Delay: " + mWarmUpDelay + "ms\n" +
                     ">>> Warm-up in isolate process: " + mWarmUpInIsolateProcess + "\n" +
                     ">>> Invoke quicken generation immediately: " + mImmediateGeneration + "\n" +
+                    ">>> Enable logger: " + mEnableLog + "\n" +
+                    ">>> Enable Isolate Process logger: " + mEnableIsolateProcessLog + "\n" +
+                    ">>> Path of XLog: " + mPathOfXLogSo + "\n" +
                     ">>> Cool-down: " + mCoolDown + "\n" +
-                    ">>> Cool-down if Apk Updated: " + mCoolDownIfApkUpdated + "\n";
+                    ">>> Cool-down if Apk Updated: " + mCoolDownIfApkUpdated + "\n"
+                    ;
         }
 
     }

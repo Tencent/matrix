@@ -60,13 +60,9 @@ public class MainActivity extends AppCompatActivity {
 
         // Init backtrace
         WeChatBacktrace.instance().configure(getApplicationContext())
-                .directoryToWarmUp(new File(new File(getApplicationInfo().nativeLibraryDir).getParentFile().getParentFile(), "/oat/arm/base.odex").getAbsolutePath())
-                .directoryToWarmUp(new File(new File(getApplicationInfo().nativeLibraryDir).getParentFile().getParentFile(), "/oat/arm/base.odex").getAbsolutePath())
-                .directoryToWarmUp(getApplicationInfo().nativeLibraryDir)
-                .directoryToWarmUp(WeChatBacktrace.getSystemLibraryPath())
                 .setBacktraceMode(WeChatBacktrace.Mode.Quicken)
-                .immediateGeneration(false)
-                .isWarmUpProcess(true)
+                .warmUpSettings(WeChatBacktrace.WarmUpTiming.PostStartup, 3000)
+                .enableIsolateProcessLogger(true)
                 .commit();
 
         try {

@@ -21,14 +21,14 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class WarmUpService extends Service {
 
-    private final static String TAG = "Matrix.WarmUp.WarmUpService";
+    private final static String TAG = "Matrix.WarmUpService";
 
     interface RemoteInvoker {
         Bundle call(int cmd, Bundle args);
     }
 
     interface RemoteConnection {
-        boolean connect(Context context);
+        boolean connect(Context context, Bundle args);
         void disconnect(Context context);
     }
 
@@ -37,7 +37,7 @@ public class WarmUpService extends Service {
 
     final static class RemoteInvokerImpl implements RemoteInvoker, RemoteConnection {
 
-        private final static String TAG = "Matrix.WarmUp.RemoteInvoker";
+        private final static String TAG = "Matrix.WarmUpInvoker";
 
         volatile Messenger mResp;
         volatile Messenger mReq;
@@ -75,7 +75,7 @@ public class WarmUpService extends Service {
         }
 
         @Override
-        public boolean connect(Context context) {
+        public boolean connect(Context context, Bundle args) {
 
             checkThread();
 
@@ -111,6 +111,8 @@ public class WarmUpService extends Service {
 
             Intent intent = new Intent();
             intent.setComponent(new ComponentName(context, WarmUpService.class));
+            intent.putExtra(BIND_ARGS_ENABLE_LOGGER, args.getBoolean(BIND_ARGS_ENABLE_LOGGER, false));
+            intent.putExtra(BIND_ARGS_PATH_OF_XLOG_SO, args.getString(BIND_ARGS_PATH_OF_XLOG_SO, null));
             context.bindService(intent, mConnection, BIND_AUTO_CREATE);
 
             try {
@@ -172,6 +174,9 @@ public class WarmUpService extends Service {
         }
     }
 
+    final static String BIND_ARGS_PATH_OF_XLOG_SO = "path-of-xlog-so";
+    final static String BIND_ARGS_ENABLE_LOGGER = "enable-logger";
+
     final static String ARGS_WARM_UP_SAVING_PATH = "saving-path";
     final static String ARGS_WARM_UP_PATH_OF_ELF = "path-of-elf";
     final static String ARGS_WARM_UP_ELF_START_OFFSET = "elf-start-offset";
@@ -205,6 +210,7 @@ public class WarmUpService extends Service {
     public static final int INVALID_ARGUMENT = -1;
 
     private static volatile boolean sHasInitiated = false;
+    private static volatile boolean sHasLoaded = false;
     private static HandlerThread mRecycler;
     private static Handler sRecyclerHandler;
     private static AtomicInteger sWorkingCall = new AtomicInteger(0);
@@ -226,14 +232,31 @@ public class WarmUpService extends Service {
         }
     }
 
-    private synchronized static void init() {
+    private synchronized static void loadLibrary(Intent intent) {
 
-        if (sHasInitiated) {
+        if (sHasLoaded) {
             return;
         }
 
         Log.i(TAG, "Init called.");
         WeChatBacktrace.loadLibrary();
+
+        boolean enableLogger = intent.getBooleanExtra(BIND_ARGS_ENABLE_LOGGER, false);
+        String pathOfXLogSo = intent.getStringExtra(BIND_ARGS_PATH_OF_XLOG_SO);
+
+        Log.i(TAG, "Enable logger: %s", enableLogger);
+        Log.i(TAG, "Path of XLog: %s", pathOfXLogSo);
+
+        WeChatBacktrace.enableLogger(pathOfXLogSo, enableLogger);
+
+        sHasLoaded = true;
+    }
+
+    private synchronized static void init() {
+
+        if (sHasInitiated) {
+            return;
+        }
 
         synchronized (sRecyclerLock) {
             if (mRecycler == null) {
@@ -275,17 +298,13 @@ public class WarmUpService extends Service {
 
     private Bundle call(int cmd, Bundle args) {
 
-        if (!sHasInitiated) {
-            init();
-        }
-
         removeScheduledSuicide();
         try {
             final Bundle result = new Bundle();
             result.putInt(RESULT_OF_WARM_UP, INVALID_ARGUMENT);
-            Log.i(TAG, "Invoke from client with args: %s.", args);
 
             String savingPath = args.getString(ARGS_WARM_UP_SAVING_PATH, null);
+            Log.i(TAG, "Invoke from client with savingPath: %s.", savingPath);
             if (isNullOrNil(savingPath)) {
                 Log.i(TAG, "Saving path is empty.");
                 return result;
@@ -318,13 +337,22 @@ public class WarmUpService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
-        init();
+
+        if (!sHasInitiated) {
+            init();
+        }
+
         scheduleSuicide(true);
     }
 
     @Nullable
     @Override
     public IBinder onBind(Intent intent) {
+
+        if (!sHasLoaded) {
+            loadLibrary(intent);
+        }
+
         return mMessenger.getBinder();
     }
 }

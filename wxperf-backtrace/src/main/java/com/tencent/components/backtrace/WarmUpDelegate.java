@@ -28,6 +28,8 @@ import java.util.Queue;
 import static com.tencent.components.backtrace.WarmUpService.ARGS_WARM_UP_ELF_START_OFFSET;
 import static com.tencent.components.backtrace.WarmUpService.ARGS_WARM_UP_PATH_OF_ELF;
 import static com.tencent.components.backtrace.WarmUpService.ARGS_WARM_UP_SAVING_PATH;
+import static com.tencent.components.backtrace.WarmUpService.BIND_ARGS_ENABLE_LOGGER;
+import static com.tencent.components.backtrace.WarmUpService.BIND_ARGS_PATH_OF_XLOG_SO;
 import static com.tencent.components.backtrace.WarmUpService.CMD_WARM_UP_SINGLE_ELF_FILE;
 import static com.tencent.components.backtrace.WarmUpService.OK;
 import static com.tencent.components.backtrace.WarmUpService.RESULT_OF_WARM_UP;
@@ -120,8 +122,8 @@ class WarmUpDelegate {
         }
 
         @Override
-        public boolean connect(Context context) {
-            return mImpl.connect(context);
+        public boolean connect(Context context, Bundle args) {
+            return mImpl.connect(context, args);
         }
 
         @Override
@@ -156,7 +158,11 @@ class WarmUpDelegate {
     private WarmUpInvoker acquireWarmUpInvoker() {
         if (mIsolateRemote) {
             RemoteWarmUpInvoker invoker = new RemoteWarmUpInvoker(mSavingPath);
-            if (invoker.connect(mConfiguration.mContext)) {
+
+            Bundle args = new Bundle();
+            args.putBoolean(BIND_ARGS_ENABLE_LOGGER, mConfiguration.mEnableIsolateProcessLog);
+            args.putString(BIND_ARGS_PATH_OF_XLOG_SO, mConfiguration.mPathOfXLogSo);
+            if (invoker.connect(mConfiguration.mContext, args)) {
                 return invoker;
             }
             return null;
