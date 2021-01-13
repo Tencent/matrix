@@ -103,10 +103,12 @@ namespace wechat_backtrace {
     }
 
     int xlog_logger(int log_level, const char *tag, const char *format, ...) {
+        int ret = 0;
         va_list ap;
         va_start(ap, format);
-        xlog_vlogger(log_level, tag ,format, ap);
+        ret = xlog_vlogger(log_level, tag ,format, ap);
         va_end(ap);
+        return ret;
     }
 
     }
