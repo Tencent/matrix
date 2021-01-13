@@ -258,6 +258,8 @@ class WarmUpDelegate {
                                 if (file.exists() &&
                                         (absolutePath.endsWith(".so") ||
                                                 absolutePath.endsWith(".odex") ||
+                                                absolutePath.endsWith(".vdex") ||
+                                                absolutePath.endsWith(".art") ||
                                                 absolutePath.endsWith(".oat")
                                         )) {
                                     Log.i(TAG, "Warming up so %s", absolutePath);

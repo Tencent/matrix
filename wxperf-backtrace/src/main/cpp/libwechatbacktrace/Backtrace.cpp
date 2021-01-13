@@ -51,10 +51,10 @@ namespace wechat_backtrace {
 #endif
             FrameDetail detail = {
                     .rel_pc = real_pc - (uptr) stack_info.dli_fbase,
-                    .map_name = success == 0 || stack_info.dli_sname == nullptr ? "null"
-                                                                                : stack_info.dli_sname,
-                    .function_name = success == 0 || stack_info.dli_fname == nullptr ? "null"
-                                                                                     : stack_info.dli_fname
+                    .map_name = success == 0 || stack_info.dli_fname == nullptr ? "null"
+                                                                                : stack_info.dli_fname,
+                    .function_name = success == 0 || stack_info.dli_sname == nullptr ? "null"
+                                                                                     : stack_info.dli_sname
             };
             frame_callback(detail);
 
