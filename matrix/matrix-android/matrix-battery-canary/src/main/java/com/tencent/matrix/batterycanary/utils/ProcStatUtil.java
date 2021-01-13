@@ -11,6 +11,9 @@ import com.tencent.matrix.util.MatrixUtil;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.CharBuffer;
+import java.nio.charset.StandardCharsets;
 
 /**
  * see {@linkplain com.android.internal.os.ProcessCpuTracker}
@@ -158,7 +161,7 @@ public final class ProcStatUtil {
                         window--;
                     }
                     if (window > 0) {
-                        stat.comm = new String(statBuffer, readIdx, window);
+                        stat.comm = safeBytesToString(statBuffer, readIdx, window);
                     }
                     spaceIdx = 2;
                     break;
@@ -170,7 +173,7 @@ public final class ProcStatUtil {
                     // noinspection StatementWithEmptyBody
                     for (; i < statBytes && !Character.isSpaceChar(statBuffer[i]); i++, window++)
                         ;
-                    String num = new String(statBuffer, readIdx, window);
+                    String num = safeBytesToString(statBuffer, readIdx, window);
                     stat.utime = MatrixUtil.parseLong(num, 0);
                     break;
                 }
@@ -180,7 +183,7 @@ public final class ProcStatUtil {
                     // noinspection StatementWithEmptyBody
                     for (; i < statBytes && !Character.isSpaceChar(statBuffer[i]); i++, window++)
                         ;
-                    String num = new String(statBuffer, readIdx, window);
+                    String num = safeBytesToString(statBuffer, readIdx, window);
                     stat.stime = MatrixUtil.parseLong(num, 0);
                     break;
                 }
@@ -190,7 +193,7 @@ public final class ProcStatUtil {
                     // noinspection StatementWithEmptyBody
                     for (; i < statBytes && !Character.isSpaceChar(statBuffer[i]); i++, window++)
                         ;
-                    String num = new String(statBuffer, readIdx, window);
+                    String num = safeBytesToString(statBuffer, readIdx, window);
                     stat.cutime = MatrixUtil.parseLong(num, 0);
                     break;
                 }
@@ -200,7 +203,7 @@ public final class ProcStatUtil {
                     // noinspection StatementWithEmptyBody
                     for (; i < statBytes && !Character.isSpaceChar(statBuffer[i]); i++, window++)
                         ;
-                    String num = new String(statBuffer, readIdx, window);
+                    String num = safeBytesToString(statBuffer, readIdx, window);
                     stat.cstime = MatrixUtil.parseLong(num, 0);
                     break;
                 }
@@ -231,6 +234,12 @@ public final class ProcStatUtil {
             stat.cstime = MatrixUtil.parseLong(splits[15], 0);
         }
         return stat;
+    }
+
+    @VisibleForTesting
+    static String safeBytesToString(byte[] buffer, int offset, int length) {
+        CharBuffer charBuffer = StandardCharsets.UTF_8.decode(ByteBuffer.wrap(buffer, offset, length));
+        return String.valueOf(charBuffer.array(), 0, charBuffer.limit());
     }
 
     @SuppressWarnings("SpellCheckingInspection")
