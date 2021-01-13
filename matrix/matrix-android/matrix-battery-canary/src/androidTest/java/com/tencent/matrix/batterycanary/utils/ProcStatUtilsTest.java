@@ -608,6 +608,22 @@ public class ProcStatUtilsTest {
 
     }
 
+    @Test
+    public void testSafeByteToString() {
+        String foo = "ffffoooo";
+        byte[] fooBytes = foo.getBytes(StandardCharsets.UTF_8);
+        Assert.assertEquals(8, fooBytes.length);
+        Assert.assertEquals(foo, new String(fooBytes, StandardCharsets.UTF_8));
+        Assert.assertEquals(foo, ProcStatUtil.safeBytesToString(fooBytes, 0, fooBytes.length));
+        Assert.assertEquals(new String(fooBytes, StandardCharsets.UTF_8), ProcStatUtil.safeBytesToString(fooBytes, 0, fooBytes.length));
+        Assert.assertEquals("ffff", ProcStatUtil.safeBytesToString(fooBytes, 0, 4));
+        Assert.assertEquals("oooo", ProcStatUtil.safeBytesToString(fooBytes, 4, 4));
+
+        // Bounded
+        Assert.assertEquals("", ProcStatUtil.safeBytesToString(fooBytes, -1, 4));
+        Assert.assertEquals("", ProcStatUtil.safeBytesToString(fooBytes, 4, 5));
+    }
+
 
     @RunWith(AndroidJUnit4.class)
     public static class MultiProcess {

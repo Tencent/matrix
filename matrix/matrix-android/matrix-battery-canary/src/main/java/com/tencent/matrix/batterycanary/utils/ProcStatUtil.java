@@ -238,8 +238,13 @@ public final class ProcStatUtil {
 
     @VisibleForTesting
     static String safeBytesToString(byte[] buffer, int offset, int length) {
-        CharBuffer charBuffer = StandardCharsets.UTF_8.decode(ByteBuffer.wrap(buffer, offset, length));
-        return String.valueOf(charBuffer.array(), 0, charBuffer.limit());
+        try {
+            CharBuffer charBuffer = StandardCharsets.UTF_8.decode(ByteBuffer.wrap(buffer, offset, length));
+            return String.valueOf(charBuffer.array(), 0, charBuffer.limit());
+        } catch (IndexOutOfBoundsException e) {
+            MatrixLog.w(TAG, "#safeBytesToString failed: " + e.getMessage());
+            return "";
+        }
     }
 
     @SuppressWarnings("SpellCheckingInspection")
