@@ -22,21 +22,25 @@ public final class BlueToothMonitorFeature extends AbsMonitorFeature {
         mListener = new BluetoothManagerServiceHooker.IListener() {
             @Override
             public void onRegisterScanner() {
+                MatrixLog.i(TAG, "#onRegisterScanner");
                 mCounting.onRegisterScanner();
             }
 
             @Override
             public void onStartDiscovery() {
+                MatrixLog.i(TAG, "#onStartDiscovery");
                 mCounting.onStartDiscovery();
             }
 
             @Override
             public void onStartScan(int scanId, @Nullable ScanSettings scanSettings) {
+                MatrixLog.i(TAG, "#onStartScan, id = " + scanId);
                 mCounting.onStartScan();
             }
 
             @Override
             public void onStartScanForIntent(@Nullable ScanSettings scanSettings) {
+                MatrixLog.i(TAG, "#onStartScanForIntent");
                 mCounting.onStartScan();
             }
         };
