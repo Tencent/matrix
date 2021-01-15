@@ -37,9 +37,12 @@ import java.util.List;
 
 @RestrictTo(RestrictTo.Scope.LIBRARY)
 public final class BluetoothManagerServiceHooker {
-    private static final String TAG = "Matrix.battery.BleHooker";
+    private static final String TAG = "Matrix.battery.BluetoothHooker";
 
     public interface IListener {
+        @AnyThread
+        void onStartDiscovery();
+
         @AnyThread
         void onRegisterScanner();
 
@@ -61,7 +64,11 @@ public final class BluetoothManagerServiceHooker {
         @Nullable
         @Override
         public Object onServiceMethodIntercept(Object receiver, Method method, Object[] args) throws Throwable {
-            if ("getBluetoothGatt".equals(method.getName())) {
+            if ("registerAdapter".equals(method.getName())) {
+                Object blueTooth = method.invoke(receiver, args);
+                Object proxy = proxyBluetooth(blueTooth);
+                return proxy == null ? blueTooth : proxy;
+            } else if ("getBluetoothGatt".equals(method.getName())) {
                 Object blueToothGatt = method.invoke(receiver, args);
                 Object proxy = proxyBluetoothGatt(blueToothGatt);
                 return proxy == null ? blueToothGatt : proxy;
@@ -132,6 +139,29 @@ public final class BluetoothManagerServiceHooker {
         sTryHook = false;
     }
 
+    private static Object proxyBluetooth(final Object delegate) {
+        Object proxy = null;
+        try {
+            @SuppressLint("PrivateApi")
+            final Class<?> clazz = Class.forName("android.bluetooth.IBluetooth");
+            final Class<?>[] interfaces = new Class<?>[]{IBinder.class, IInterface.class, clazz};
+            final ClassLoader loader = delegate.getClass().getClassLoader();
+            final InvocationHandler handler = new InvocationHandler() {
+                @Override
+                public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+                    if ("startDiscovery".equals(method.getName())) {
+                        dispatchStartDiscovery();
+                    }
+                    return method.invoke(delegate, args);
+                }
+            };
+            proxy = Proxy.newProxyInstance(loader, interfaces, handler);
+        } catch (Throwable e) {
+            MatrixLog.printErrStackTrace(TAG, e, "proxyBluetooth fail");
+        }
+        return proxy;
+    }
+
     private static Object proxyBluetoothGatt(final Object delegate) {
         Object proxy = null;
         try {
@@ -180,6 +210,12 @@ public final class BluetoothManagerServiceHooker {
             MatrixLog.printErrStackTrace(TAG, e, "proxyBluetoothGatt fail");
         }
         return proxy;
+    }
+
+    private static void dispatchStartDiscovery() {
+        for (IListener item : sListeners) {
+            item.onStartDiscovery();
+        }
     }
 
     private static void dispatchRegisterScanner() {

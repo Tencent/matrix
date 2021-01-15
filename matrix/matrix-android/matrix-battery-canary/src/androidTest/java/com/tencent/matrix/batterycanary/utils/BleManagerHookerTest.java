@@ -62,7 +62,16 @@ public class BleManagerHookerTest {
     }
 
     @Test
-    public void testScan() throws Exception {
+    public void testDiscovery() {
+        BluetoothManager bluetoothManager = (BluetoothManager) mContext.getSystemService(Context.BLUETOOTH_SERVICE);
+        BluetoothAdapter adapter = bluetoothManager.getAdapter();
+        boolean discovery = adapter.startDiscovery();
+        Assert.assertFalse(discovery);
+    }
+
+    @Test
+    public void testScanning() throws Exception {
+        final AtomicInteger discInc = new AtomicInteger();
         final AtomicInteger regsInc = new AtomicInteger();
         final AtomicInteger scanInc = new AtomicInteger();
         final AtomicInteger scanForIntentInc = new AtomicInteger();
@@ -79,11 +88,36 @@ public class BleManagerHookerTest {
             @Nullable
             @Override
             public Object onServiceMethodIntercept(Object receiver, Method method, Object[] args) throws Throwable {
-                if ("getBluetoothGatt".equals(method.getName())) {
+                if ("registerAdapter".equals(method.getName())) {
+                    Object blueTooth = method.invoke(receiver, args);
+                    return proxyBluetooth(blueTooth);
+                } else if("getBluetoothGatt".equals(method.getName())) {
                     Object blueToothGatt = method.invoke(receiver, args);
                     return proxyBluetoothGatt(blueToothGatt);
                 }
                 return null;
+            }
+
+            private Object proxyBluetooth(final Object delegate) {
+                Object proxy = null;
+                try {
+                    final Class<?> clazz = Class.forName("android.bluetooth.IBluetooth");
+                    final Class<?>[] interfaces = new Class<?>[]{IBinder.class, IInterface.class, clazz};
+                    final ClassLoader loader = delegate.getClass().getClassLoader();
+                    final InvocationHandler handler = new InvocationHandler() {
+                        @Override
+                        public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+                            if ("startDiscovery".equals(method.getName())) {
+                                discInc.incrementAndGet();
+                            }
+                            return method.invoke(delegate, args);
+                        }
+                    };
+                    proxy = Proxy.newProxyInstance(loader, interfaces, handler);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+                return proxy;
             }
 
             private Object proxyBluetoothGatt(final Object delegate) {
@@ -138,8 +172,15 @@ public class BleManagerHookerTest {
         hooker.doHook();
         BluetoothManager bluetoothManager = (BluetoothManager) mContext.getSystemService(Context.BLUETOOTH_SERVICE);
         BluetoothAdapter adapter = bluetoothManager.getAdapter();
+
+        Assert.assertEquals(0, discInc.get());
+        Assert.assertEquals(0, regsInc.get());
+        Assert.assertEquals(0, scanInc.get());
+        Assert.assertEquals(0, scanForIntentInc.get());
+
         adapter.startDiscovery();
 
+        Assert.assertEquals(1, discInc.get(), 1);
         Assert.assertEquals(0, regsInc.get());
         Assert.assertEquals(0, scanInc.get());
         Assert.assertEquals(0, scanForIntentInc.get());
@@ -151,6 +192,7 @@ public class BleManagerHookerTest {
             }
         });
 
+        Assert.assertEquals(1, discInc.get(), 1);
         Assert.assertEquals(1, regsInc.get(), 1);
         Assert.assertEquals(1, scanInc.get(), 1);
         Assert.assertEquals(0, scanForIntentInc.get());
@@ -164,6 +206,7 @@ public class BleManagerHookerTest {
             }
         });
 
+        Assert.assertEquals(1, discInc.get(), 1);
         Assert.assertEquals(2, regsInc.get(), 2);
         Assert.assertEquals(2, scanInc.get(), 2);
         Assert.assertEquals(0, scanForIntentInc.get());
@@ -173,6 +216,8 @@ public class BleManagerHookerTest {
         intent.putExtra("extra_pid", 2233);
         PendingIntent pendingIntent = PendingIntent.getBroadcast(mContext, 22, intent, 33);
         scanner.startScan(null, null, pendingIntent);
+
+        Assert.assertEquals(1, discInc.get(), 1);
         Assert.assertEquals(2, regsInc.get(), 2);
         Assert.assertEquals(2, scanInc.get(), 2);
         Assert.assertEquals(1, scanForIntentInc.get(), 1);
@@ -245,10 +290,16 @@ public class BleManagerHookerTest {
 
     @Test
     public void testBleHooker() throws InterruptedException {
+        final AtomicInteger discInc = new AtomicInteger();
         final AtomicInteger regsInc = new AtomicInteger();
         final AtomicInteger scanInc = new AtomicInteger();
         final AtomicInteger scanForIntentInc = new AtomicInteger();
         BluetoothManagerServiceHooker.addListener(new BluetoothManagerServiceHooker.IListener() {
+            @Override
+            public void onStartDiscovery() {
+                discInc.incrementAndGet();
+            }
+
             @Override
             public void onRegisterScanner() {
                 regsInc.incrementAndGet();
@@ -267,10 +318,17 @@ public class BleManagerHookerTest {
             }
         });
 
+        Assert.assertEquals(0, discInc.get());
+        Assert.assertEquals(0, regsInc.get());
+        Assert.assertEquals(0, scanInc.get());
+        Assert.assertEquals(0, scanForIntentInc.get());
+
         BluetoothManager bluetoothManager = (BluetoothManager) mContext.getSystemService(Context.BLUETOOTH_SERVICE);
         BluetoothAdapter adapter = bluetoothManager.getAdapter();
+
         adapter.startDiscovery();
 
+        Assert.assertEquals(1, discInc.get(), 1);
         Assert.assertEquals(0, regsInc.get());
         Assert.assertEquals(0, scanInc.get());
         Assert.assertEquals(0, scanForIntentInc.get());
@@ -282,6 +340,7 @@ public class BleManagerHookerTest {
             }
         });
 
+        Assert.assertEquals(1, discInc.get(), 1);
         Assert.assertEquals(1, regsInc.get(), 1);
         Assert.assertEquals(1, scanInc.get(), 1);
         Assert.assertEquals(0, scanForIntentInc.get());
@@ -295,6 +354,7 @@ public class BleManagerHookerTest {
             }
         });
 
+        Assert.assertEquals(1, discInc.get(), 1);
         Assert.assertEquals(2, regsInc.get(), 2);
         Assert.assertEquals(2, scanInc.get(), 2);
         Assert.assertEquals(0, scanForIntentInc.get());
@@ -305,6 +365,7 @@ public class BleManagerHookerTest {
         PendingIntent pendingIntent = PendingIntent.getBroadcast(mContext, 22, intent, 33);
         scanner.startScan(null, null, pendingIntent);
 
+        Assert.assertEquals(1, discInc.get(), 1);
         Assert.assertEquals(2, regsInc.get(), 2);
         Assert.assertEquals(2, scanInc.get(), 2);
         Assert.assertEquals(1, scanForIntentInc.get(), 1);
