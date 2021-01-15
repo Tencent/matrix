@@ -20,7 +20,7 @@ extern "C" {
 std::vector<dlopen_callback_t> m_dlopen_callbacks;
 std::vector<hook_init_callback_t> m_init_callbacks;
 
-static pthread_mutex_t m_dlopen_mutex;
+static std::recursive_mutex dlopen_mutex;
 
 DEFINE_HOOK_FUN(void *, __loader_android_dlopen_ext, const char *file_name,
                 int                                             flag,
@@ -30,7 +30,7 @@ DEFINE_HOOK_FUN(void *, __loader_android_dlopen_ext, const char *file_name,
                                                                    caller_addr);
 
     LOGD(TAG, "call into dlopen hook");
-    pthread_mutex_lock(&m_dlopen_mutex);
+    std::lock_guard<std::recursive_mutex> dlopen_lock(dlopen_mutex);
 
 //    NanoSeconds_Start(TAG, begin);
 
@@ -43,7 +43,6 @@ DEFINE_HOOK_FUN(void *, __loader_android_dlopen_ext, const char *file_name,
 
 //    LOGD(TAG, "xhook_refresh cost : %lld", cost);
 
-    pthread_mutex_unlock(&m_dlopen_mutex);
     return ret;
 }
 
