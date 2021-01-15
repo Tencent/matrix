@@ -239,7 +239,7 @@ public interface BatteryMonitorCallback extends
             }
 
             final BlueToothMonitorFeature bluetooh = mMonitor.getMonitorFeature(BlueToothMonitorFeature.class);
-            if (bluetooh != null) {
+            if (bluetooh != null && mLastBlueToothSnapshot != null) {
                 // Scanning: BlueTooth
                 createSection("scanning", new Consumer<Printer>() {
                     @Override
@@ -247,7 +247,7 @@ public interface BatteryMonitorCallback extends
                         BlueToothSnapshot currSnapshot = bluetooh.currentSnapshot();
                         Delta<BlueToothSnapshot> delta = currSnapshot.diff(mLastBlueToothSnapshot);
                         onReportBlueTooth(delta);
-                        printer.createSubSection("during");
+                        printer.createSubSection("bluetooh");
                         printer.writeLine(delta.during + "(mls)\t" + (delta.during / ONE_MIN) + "(min)");
                         printer.writeLine("inc_regs_count", String.valueOf(delta.dlt.regsCount.get()));
                         printer.writeLine("inc_dics_count", String.valueOf(delta.dlt.discCount.get()));

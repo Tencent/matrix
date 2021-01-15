@@ -1,50 +1,58 @@
 package com.tencent.matrix.batterycanary.monitor.feature;
 
 import android.bluetooth.le.ScanSettings;
+import android.os.Build;
 import android.support.annotation.Nullable;
 
 import com.tencent.matrix.batterycanary.utils.BluetoothManagerServiceHooker;
+import com.tencent.matrix.util.MatrixLog;
 
-public final class BlueToothMonitorFeature extends AbsMonitorFeature implements BluetoothManagerServiceHooker.IListener {
+public final class BlueToothMonitorFeature extends AbsMonitorFeature {
     private static final String TAG = "Matrix.battery.BlueToothMonitorFeature";
     final BlueToothCounting mCounting = new BlueToothCounting();
+    BluetoothManagerServiceHooker.IListener mListener;
 
     @Override
     public void onTurnOn() {
         super.onTurnOn();
-        BluetoothManagerServiceHooker.addListener(this);
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+            MatrixLog.w(TAG, "only support >= android 8.0 for the moment");
+            return;
+        }
+        mListener = new BluetoothManagerServiceHooker.IListener() {
+            @Override
+            public void onRegisterScanner() {
+                mCounting.onRegisterScanner();
+            }
+
+            @Override
+            public void onStartDiscovery() {
+                mCounting.onStartDiscovery();
+            }
+
+            @Override
+            public void onStartScan(int scanId, @Nullable ScanSettings scanSettings) {
+                mCounting.onStartScan();
+            }
+
+            @Override
+            public void onStartScanForIntent(@Nullable ScanSettings scanSettings) {
+                mCounting.onStartScan();
+            }
+        };
+        BluetoothManagerServiceHooker.addListener(mListener);
     }
 
     @Override
     public void onTurnOff() {
         super.onTurnOff();
-        BluetoothManagerServiceHooker.removeListener(this);
+        BluetoothManagerServiceHooker.removeListener(mListener);
         mCounting.onClear();
     }
 
     @Override
     public int weight() {
         return Integer.MIN_VALUE;
-    }
-
-    @Override
-    public void onRegisterScanner() {
-        mCounting.onRegisterScanner();
-    }
-
-    @Override
-    public void onStartDiscovery() {
-        mCounting.onStartDiscovery();
-    }
-
-    @Override
-    public void onStartScan(int scanId, @Nullable ScanSettings scanSettings) {
-        mCounting.onStartScan();
-    }
-
-    @Override
-    public void onStartScanForIntent(@Nullable ScanSettings scanSettings) {
-        mCounting.onStartScan();
     }
 
     public BlueToothSnapshot currentSnapshot() {

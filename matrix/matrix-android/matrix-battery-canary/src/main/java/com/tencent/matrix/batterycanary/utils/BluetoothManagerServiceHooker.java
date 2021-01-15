@@ -80,10 +80,6 @@ public final class BluetoothManagerServiceHooker {
 
     @TargetApi(Build.VERSION_CODES.LOLLIPOP)
     public synchronized static void addListener(IListener listener) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
-            MatrixLog.w(TAG, "only support >= android 8.0 for the moment");
-            return;
-        }
         if (listener == null) {
             return;
         }

@@ -84,7 +84,7 @@ public class MonitorFeatureBlueToothest {
         Assert.assertEquals(0, (int) snapshot.scanCount.get());
 
         for (int i = 0; i < 50; i++) {
-            feature.onRegisterScanner();
+            feature.mCounting.onRegisterScanner();
             snapshot = feature.currentSnapshot();
             Assert.assertEquals(i + 1, (int) snapshot.regsCount.get());
             Assert.assertEquals(0, (int) snapshot.discCount.get());
@@ -109,7 +109,7 @@ public class MonitorFeatureBlueToothest {
         Assert.assertEquals(0, (int) snapshot.scanCount.get());
 
         for (int i = 0; i < 50; i++) {
-            feature.onStartDiscovery();
+            feature.mCounting.onStartDiscovery();
             snapshot = feature.currentSnapshot();
             Assert.assertEquals(0, (int) snapshot.regsCount.get());
             Assert.assertEquals(i + 1, (int) snapshot.discCount.get());
@@ -134,32 +134,7 @@ public class MonitorFeatureBlueToothest {
         Assert.assertEquals(0, (int) snapshot.scanCount.get());
 
         for (int i = 0; i < 50; i++) {
-            feature.onStartScan(1, null);
-            snapshot = feature.currentSnapshot();
-            Assert.assertEquals(0, (int) snapshot.regsCount.get());
-            Assert.assertEquals(0, (int) snapshot.discCount.get());
-            Assert.assertEquals(i + 1, (int) snapshot.scanCount.get());
-        }
-
-        feature.onTurnOff();
-        snapshot = feature.currentSnapshot();
-        Assert.assertEquals(0, (int) snapshot.regsCount.get());
-        Assert.assertEquals(0, (int) snapshot.discCount.get());
-        Assert.assertEquals(0, (int) snapshot.scanCount.get());
-    }
-
-    @Test
-    public void testScanForIntent() throws InterruptedException {
-        BlueToothMonitorFeature feature = new BlueToothMonitorFeature();
-        feature.configure(mockMonitor());
-
-        BlueToothMonitorFeature.BlueToothSnapshot snapshot = feature.currentSnapshot();
-        Assert.assertEquals(0, (int) snapshot.regsCount.get());
-        Assert.assertEquals(0, (int) snapshot.discCount.get());
-        Assert.assertEquals(0, (int) snapshot.scanCount.get());
-
-        for (int i = 0; i < 50; i++) {
-            feature.onStartScanForIntent(null);
+            feature.mCounting.onStartScan();
             snapshot = feature.currentSnapshot();
             Assert.assertEquals(0, (int) snapshot.regsCount.get());
             Assert.assertEquals(0, (int) snapshot.discCount.get());
