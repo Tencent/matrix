@@ -16,6 +16,7 @@
 
 package com.tencent.matrix.batterycanary.utils;
 
+import android.app.PendingIntent;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothManager;
@@ -24,14 +25,13 @@ import android.bluetooth.le.ScanCallback;
 import android.bluetooth.le.ScanResult;
 import android.bluetooth.le.ScanSettings;
 import android.content.Context;
+import android.content.Intent;
 import android.os.IBinder;
 import android.os.IInterface;
-import android.os.PowerManager;
-import android.os.WorkSource;
+import android.support.annotation.BinderThread;
 import android.support.annotation.Nullable;
 import android.support.test.InstrumentationRegistry;
 import android.support.test.runner.AndroidJUnit4;
-import android.util.Log;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -39,13 +39,10 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-import java.lang.reflect.Field;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
 
 
 @RunWith(AndroidJUnit4.class)
@@ -66,7 +63,9 @@ public class BleManagerHookerTest {
 
     @Test
     public void testScan() throws Exception {
+        final AtomicInteger regsInc = new AtomicInteger();
         final AtomicInteger scanInc = new AtomicInteger();
+        final AtomicInteger scanForIntentInc = new AtomicInteger();
         SystemServiceBinderHooker hooker = new SystemServiceBinderHooker("bluetooth_manager", "android.bluetooth.IBluetoothManager", new SystemServiceBinderHooker.HookCallback() {
             @Override
             public void onServiceMethodInvoke(Method method, Object[] args) {
@@ -96,7 +95,10 @@ public class BleManagerHookerTest {
                     final InvocationHandler handler = new InvocationHandler() {
                         @Override
                         public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
-                            if ("startScan".equals(method.getName())) {
+                            if ("registerScanner".equals(method.getName())) {
+                                regsInc.incrementAndGet();
+
+                            } else if ("startScan".equals(method.getName())) {
                                 scanInc.incrementAndGet();
                                 if (args.length > 0) {
                                     if (args[0] instanceof Integer) {
@@ -119,6 +121,8 @@ public class BleManagerHookerTest {
                                         // Assert.assertEquals(mContext.getPackageName(), callingPackage);
                                     }
                                 }
+                            } else if ("startScanForIntent".equals(method.getName())) {
+                                scanForIntentInc.incrementAndGet();
                             }
                             return method.invoke(delegate, args);
                         }
@@ -136,7 +140,9 @@ public class BleManagerHookerTest {
         BluetoothAdapter adapter = bluetoothManager.getAdapter();
         adapter.startDiscovery();
 
+        Assert.assertEquals(0, regsInc.get());
         Assert.assertEquals(0, scanInc.get());
+        Assert.assertEquals(0, scanForIntentInc.get());
 
         adapter.startLeScan(new BluetoothAdapter.LeScanCallback() {
             @Override
@@ -145,7 +151,9 @@ public class BleManagerHookerTest {
             }
         });
 
-        Assert.assertEquals(1, scanInc.get());
+        Assert.assertEquals(1, regsInc.get(), 1);
+        Assert.assertEquals(1, scanInc.get(), 1);
+        Assert.assertEquals(0, scanForIntentInc.get());
 
         BluetoothLeScanner scanner = adapter.getBluetoothLeScanner();
         scanner.startScan(new ScanCallback() {
@@ -156,7 +164,152 @@ public class BleManagerHookerTest {
             }
         });
 
-        Assert.assertEquals(2, scanInc.get());
+        Assert.assertEquals(2, regsInc.get(), 2);
+        Assert.assertEquals(2, scanInc.get(), 2);
+        Assert.assertEquals(0, scanForIntentInc.get());
+
+        Intent intent = new Intent();
+        intent.setAction("ALARM_ACTION(" + 10000 + ")");
+        intent.putExtra("extra_pid", 2233);
+        PendingIntent pendingIntent = PendingIntent.getBroadcast(mContext, 22, intent, 33);
+        scanner.startScan(null, null, pendingIntent);
+        Assert.assertEquals(2, regsInc.get(), 2);
+        Assert.assertEquals(2, scanInc.get(), 2);
+        Assert.assertEquals(1, scanForIntentInc.get(), 1);
+
+        hooker.doUnHook();
+    }
+
+
+    @Test
+    public void testBleHookerCounting() {
+        final AtomicInteger regsInc = new AtomicInteger();
+        final AtomicInteger scanInc = new AtomicInteger();
+        SystemServiceBinderHooker hooker = new SystemServiceBinderHooker("bluetooth_manager", "android.bluetooth.IBluetoothManager", new SystemServiceBinderHooker.HookCallback() {
+            @Override
+            public void onServiceMethodInvoke(Method method, Object[] args) {}
+
+            @Override
+            public Object onServiceMethodIntercept(Object receiver, Method method, Object[] args) throws Throwable {
+                if ("getBluetoothGatt".equals(method.getName())) {
+                    Object blueToothGatt = method.invoke(receiver, args);
+                    return proxyBluetoothGatt(blueToothGatt);
+                }
+                return null;
+            }
+
+            private Object proxyBluetoothGatt(final Object delegate) {
+                Object proxy = null;
+                try {
+                    final Class<?> clazz = Class.forName("android.bluetooth.IBluetoothGatt");
+                    final Class<?>[] interfaces = new Class<?>[]{IBinder.class, IInterface.class, clazz};
+                    final ClassLoader loader = delegate.getClass().getClassLoader();
+                    final InvocationHandler handler = new InvocationHandler() {
+                        @Override
+                        public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+                            if ("registerScanner".equals(method.getName())) {
+                                regsInc.incrementAndGet();
+                            } else if ("startScan".equals(method.getName())) {
+                                scanInc.incrementAndGet();
+                            }
+                            return method.invoke(delegate, args);
+                        }
+                    };
+                    proxy = Proxy.newProxyInstance(loader, interfaces, handler);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+                return proxy;
+            }
+        });
+
+        hooker.doHook();
+
+        BluetoothManager bluetoothManager = (BluetoothManager) mContext.getSystemService(Context.BLUETOOTH_SERVICE);
+        BluetoothAdapter adapter = bluetoothManager.getAdapter();
+
+        for (int i = 0; i < 1000; i++) {
+            Assert.assertTrue(regsInc.get() <= i);
+            Assert.assertTrue(scanInc.get() <= regsInc.get());
+
+            adapter.startLeScan(new BluetoothAdapter.LeScanCallback() {
+                @Override
+                public void onLeScan(BluetoothDevice device, int rssi, byte[] scanRecord) {
+                    Assert.assertNotNull(device);
+                }
+            });
+        }
+
+        hooker.doUnHook();
+    }
+
+    @Test
+    public void testBleHooker() throws InterruptedException {
+        final AtomicInteger regsInc = new AtomicInteger();
+        final AtomicInteger scanInc = new AtomicInteger();
+        final AtomicInteger scanForIntentInc = new AtomicInteger();
+        BluetoothManagerServiceHooker.addListener(new BluetoothManagerServiceHooker.IListener() {
+            @Override
+            public void onRegisterScanner() {
+                regsInc.incrementAndGet();
+            }
+
+            @BinderThread
+            @Override
+            public void onStartScan(int scanId, @Nullable ScanSettings scanSettings) {
+                scanInc.incrementAndGet();
+
+            }
+
+            @Override
+            public void onStartScanForIntent(@Nullable ScanSettings scanSettings) {
+                scanForIntentInc.incrementAndGet();
+            }
+        });
+
+        BluetoothManager bluetoothManager = (BluetoothManager) mContext.getSystemService(Context.BLUETOOTH_SERVICE);
+        BluetoothAdapter adapter = bluetoothManager.getAdapter();
+        adapter.startDiscovery();
+
+        Assert.assertEquals(0, regsInc.get());
+        Assert.assertEquals(0, scanInc.get());
+        Assert.assertEquals(0, scanForIntentInc.get());
+
+        adapter.startLeScan(new BluetoothAdapter.LeScanCallback() {
+            @Override
+            public void onLeScan(BluetoothDevice device, int rssi, byte[] scanRecord) {
+                Assert.assertNotNull(device);
+            }
+        });
+
+        Assert.assertEquals(1, regsInc.get(), 1);
+        Assert.assertEquals(1, scanInc.get(), 1);
+        Assert.assertEquals(0, scanForIntentInc.get());
+
+        BluetoothLeScanner scanner = adapter.getBluetoothLeScanner();
+        scanner.startScan(new ScanCallback() {
+            @Override
+            public void onScanResult(int callbackType, ScanResult result) {
+                super.onScanResult(callbackType, result);
+                Assert.assertNotNull(result);
+            }
+        });
+
+        Assert.assertEquals(2, regsInc.get(), 2);
+        Assert.assertEquals(2, scanInc.get(), 2);
+        Assert.assertEquals(0, scanForIntentInc.get());
+
+        Intent intent = new Intent();
+        intent.setAction("ALARM_ACTION(" + 10000 + ")");
+        intent.putExtra("extra_pid", 2233);
+        PendingIntent pendingIntent = PendingIntent.getBroadcast(mContext, 22, intent, 33);
+        scanner.startScan(null, null, pendingIntent);
+
+        Assert.assertEquals(2, regsInc.get(), 2);
+        Assert.assertEquals(2, scanInc.get(), 2);
+        Assert.assertEquals(1, scanForIntentInc.get(), 1);
+
+        BluetoothManagerServiceHooker.release();
     }
 }
 
