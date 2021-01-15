@@ -30,6 +30,11 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
         void onParseError(int pid, int tid);
     }
 
+    @Override
+    protected String getTag() {
+        return TAG;
+    }
+
     private JiffiesListener getListener() {
         return mCore;
     }

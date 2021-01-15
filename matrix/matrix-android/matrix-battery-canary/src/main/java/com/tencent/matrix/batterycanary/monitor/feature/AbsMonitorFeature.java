@@ -14,6 +14,10 @@ import com.tencent.matrix.util.MatrixLog;
 public abstract class AbsMonitorFeature implements MonitorFeature {
     private static final String TAG = "Matrix.battery.MonitorFeature";
 
+    protected String getTag() {
+        return TAG;
+    }
+
     @SuppressWarnings("NotNullFieldNotInitialized")
     @NonNull
     protected BatteryMonitorCore mCore;
@@ -21,33 +25,33 @@ public abstract class AbsMonitorFeature implements MonitorFeature {
     @CallSuper
     @Override
     public void configure(BatteryMonitorCore monitor) {
-        MatrixLog.i(TAG, "#configure");
+        MatrixLog.i(getTag(), "#configure");
         this.mCore = monitor;
     }
 
     @CallSuper
     @Override
     public void onTurnOn() {
-        MatrixLog.i(TAG, "#onTurnOn");
+        MatrixLog.i(getTag(), "#onTurnOn");
     }
 
     @CallSuper
     @Override
     public void onTurnOff() {
-        MatrixLog.i(TAG, "#onTurnOff");
+        MatrixLog.i(getTag(), "#onTurnOff");
     }
 
     @CallSuper
     @Override
     public void onForeground(boolean isForeground) {
-        MatrixLog.i(TAG, "#onForeground, foreground = " + isForeground);
+        MatrixLog.i(getTag(), "#onForeground, foreground = " + isForeground);
     }
 
     @CallSuper
     @WorkerThread
     @Override
     public void onBackgroundCheck(long duringMillis) {
-        MatrixLog.i(TAG, "#onBackgroundCheck, since background started millis = " + duringMillis);
+        MatrixLog.i(getTag(), "#onBackgroundCheck, since background started millis = " + duringMillis);
     }
 }
 

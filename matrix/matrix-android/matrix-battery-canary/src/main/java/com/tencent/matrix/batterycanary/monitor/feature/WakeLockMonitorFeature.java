@@ -39,6 +39,11 @@ public final class WakeLockMonitorFeature extends AbsMonitorFeature implements P
     }
 
     @Override
+    protected String getTag() {
+        return TAG;
+    }
+
+    @Override
     public void configure(BatteryMonitorCore monitor) {
         super.configure(monitor);
         mOverTimeMillis = monitor.getConfig().wakelockTimeout;

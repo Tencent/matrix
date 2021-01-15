@@ -32,6 +32,11 @@ public final class LooperTaskMonitorFeature extends AbsMonitorFeature {
     }
 
     @Override
+    protected String getTag() {
+        return TAG;
+    }
+
+    @Override
     public void onTurnOff() {
         super.onTurnOff();
         onUnbindLooperMonitor();

@@ -59,6 +59,11 @@ public final class AppStatMonitorFeature extends AbsMonitorFeature {
     };
 
     @Override
+    protected String getTag() {
+        return TAG;
+    }
+
+    @Override
     public void configure(BatteryMonitorCore monitor) {
         super.configure(monitor);
         mForegroundServiceImportanceLimit = Math.max(monitor.getConfig().foregroundServiceLeakLimit, ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND);

@@ -13,6 +13,11 @@ public final class BlueToothMonitorFeature extends AbsMonitorFeature {
     BluetoothManagerServiceHooker.IListener mListener;
 
     @Override
+    protected String getTag() {
+        return TAG;
+    }
+
+    @Override
     public void onTurnOn() {
         super.onTurnOn();
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {

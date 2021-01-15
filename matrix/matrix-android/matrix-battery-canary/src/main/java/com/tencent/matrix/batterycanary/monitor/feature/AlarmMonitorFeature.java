@@ -30,6 +30,11 @@ public final class AlarmMonitorFeature extends AbsMonitorFeature implements Alar
     }
 
     @Override
+    protected String getTag() {
+        return TAG;
+    }
+
+    @Override
     public void configure(BatteryMonitorCore monitor) {
         super.configure(monitor);
         handler = monitor.getHandler();

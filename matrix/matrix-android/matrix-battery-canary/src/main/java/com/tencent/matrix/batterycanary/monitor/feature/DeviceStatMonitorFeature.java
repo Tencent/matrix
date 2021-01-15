@@ -49,6 +49,11 @@ public final class DeviceStatMonitorFeature extends AbsMonitorFeature {
     };
 
     @Override
+    protected String getTag() {
+        return TAG;
+    }
+
+    @Override
     public void configure(BatteryMonitorCore monitor) {
         super.configure(monitor);
         mDevStatListener = new DevStatListener();
