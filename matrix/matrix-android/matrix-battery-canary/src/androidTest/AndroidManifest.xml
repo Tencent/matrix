@@ -2,6 +2,8 @@
     package="com.tencent.matrix.batterycanary">
 
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.BLUETOOTH" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
     <application>
         <service android:name=".utils.CanaryUtilsTest$SpyService">
         </service>

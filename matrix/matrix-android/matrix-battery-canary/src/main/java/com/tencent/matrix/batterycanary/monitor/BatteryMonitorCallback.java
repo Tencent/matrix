@@ -13,6 +13,8 @@ import com.tencent.matrix.Matrix;
 import com.tencent.matrix.batterycanary.monitor.feature.AlarmMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.AlarmMonitorFeature.AlarmSnapshot;
 import com.tencent.matrix.batterycanary.monitor.feature.AppStatMonitorFeature;
+import com.tencent.matrix.batterycanary.monitor.feature.BlueToothMonitorFeature;
+import com.tencent.matrix.batterycanary.monitor.feature.BlueToothMonitorFeature.BlueToothSnapshot;
 import com.tencent.matrix.batterycanary.monitor.feature.DeviceStatMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.DeviceStatMonitorFeature.BatteryTmpSnapshot;
 import com.tencent.matrix.batterycanary.monitor.feature.DeviceStatMonitorFeature.CpuFreqSnapshot;
@@ -57,6 +59,7 @@ public interface BatteryMonitorCallback extends
         @Nullable private CpuFreqSnapshot mLastCpuFreqSnapshot = null;
         @Nullable private BatteryTmpSnapshot mLastBatteryTmpSnapshot = null;
         @Nullable private AlarmSnapshot mLastAlarmSnapshot = null;
+        @Nullable private BlueToothSnapshot mLastBlueToothSnapshot;
 
         @SuppressWarnings("UnusedReturnValue")
         final BatteryPrinter attach(BatteryMonitorCore monitorCore) {
@@ -90,6 +93,11 @@ public interface BatteryMonitorCallback extends
             AlarmMonitorFeature alarm = mMonitor.getMonitorFeature(AlarmMonitorFeature.class);
             if (alarm != null) {
                 mLastAlarmSnapshot = alarm.currentAlarms();
+            }
+
+            BlueToothMonitorFeature bluetooh = mMonitor.getMonitorFeature(BlueToothMonitorFeature.class);
+            if (bluetooh != null) {
+                mLastBlueToothSnapshot = bluetooh.currentSnapshot();
             }
         }
 
@@ -230,6 +238,24 @@ public interface BatteryMonitorCallback extends
                 });
             }
 
+            final BlueToothMonitorFeature bluetooh = mMonitor.getMonitorFeature(BlueToothMonitorFeature.class);
+            if (bluetooh != null && mLastBlueToothSnapshot != null) {
+                // Scanning: BlueTooth
+                createSection("scanning", new Consumer<Printer>() {
+                    @Override
+                    public void accept(Printer printer) {
+                        BlueToothSnapshot currSnapshot = bluetooh.currentSnapshot();
+                        Delta<BlueToothSnapshot> delta = currSnapshot.diff(mLastBlueToothSnapshot);
+                        onReportBlueTooth(delta);
+                        printer.createSubSection("bluetooh");
+                        printer.writeLine(delta.during + "(mls)\t" + (delta.during / ONE_MIN) + "(min)");
+                        printer.writeLine("inc_regs_count", String.valueOf(delta.dlt.regsCount.get()));
+                        printer.writeLine("inc_dics_count", String.valueOf(delta.dlt.discCount.get()));
+                        printer.writeLine("inc_sacn_count", String.valueOf(delta.dlt.scanCount.get()));
+                    }
+                });
+            }
+
             final DeviceStatMonitorFeature deviceStatMonitor = mMonitor.getMonitorFeature(DeviceStatMonitorFeature.class);
             if (deviceStatMonitor != null) {
                 // Device Stat
@@ -287,6 +313,7 @@ public interface BatteryMonitorCallback extends
         protected void onReportJiffies(@NonNull Delta<JiffiesSnapshot> delta) {}
         protected void onReportWakeLock(@NonNull Delta<WakeLockSnapshot> delta) {}
         protected void onReportAlarm(@NonNull Delta<AlarmSnapshot> delta) {}
+        protected void onReportBlueTooth(@NonNull Delta<BlueToothSnapshot> delta) {}
         protected void onReportCpuFreq(@NonNull Delta<CpuFreqSnapshot> delta) {}
         protected void onReportTemperature(@NonNull Delta<BatteryTmpSnapshot> delta) {}
 
