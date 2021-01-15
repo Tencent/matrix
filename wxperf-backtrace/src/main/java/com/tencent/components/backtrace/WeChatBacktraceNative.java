@@ -50,7 +50,7 @@ public class WeChatBacktraceNative {
      * @param so_path
      */
     @Keep
-    static native void warmUp(String so_path, int elf_start_offset);
+    static native boolean warmUp(String so_path, int elf_start_offset, boolean only_save_file);
 
     /**
      * Notify warmed-up elf file to native library.

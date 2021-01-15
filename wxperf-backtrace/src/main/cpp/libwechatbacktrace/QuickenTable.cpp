@@ -498,6 +498,7 @@ namespace wechat_backtrace {
         } else {
             size_t row_count = (command >> ((sizeof(uptr) - 1) * 8)) & 0x7f;
             size_t row_offset = command & 0xffffff;
+
             CHECK(row_offset + row_count <= qut_sections_->tbl_size);
 
             return Decode(&(qut_sections_->qutbl[row_offset]), row_count, QUT_TBL_ROW_SIZE);

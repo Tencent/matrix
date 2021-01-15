@@ -49,7 +49,8 @@ namespace wechat_backtrace {
         virtual uint64_t AdjustPcFromFde(uint64_t pc) = 0;
 
         void IterateAllEntries(uint16_t regs_total, unwindstack::Memory *process_memory,
-                               QutInstructionsOfEntries *);
+                               QutInstructionsOfEntries *, uint64_t &estimate_memory_usage,
+                               bool &memory_overwhelmed);
 
         bool Eval(const unwindstack::DwarfCie *, unwindstack::Memory *,
                   const unwindstack::dwarf_loc_regs_t &, uint16_t total_regs);

@@ -924,7 +924,9 @@ namespace wechat_backtrace {
     void
     DwarfSectionDecoder<AddressType>::IterateAllEntries(uint16_t regs_total,
                                                         unwindstack::Memory *process_memory,
-                                                        QutInstructionsOfEntries *previous_entries) {
+                                                        QutInstructionsOfEntries *previous_entries,
+                                                        uint64_t &estimate_memory_usage,
+                                                        bool &memory_overwhelmed) {
 
         FillFdes();
 
@@ -958,6 +960,8 @@ namespace wechat_backtrace {
                     prev_instructions = nullptr;
                     prev_pc = -1;
                     pc += 2;
+
+                    QUT_DEBUG_LOG("Bad entry will GetCfaLocationInfo return false.");
                     continue;
                 }
                 loc_regs.cie = fde->cie;
@@ -969,6 +973,8 @@ namespace wechat_backtrace {
                     prev_instructions = nullptr;
                     prev_pc = -1;
                     pc += 2;
+
+                    QUT_DEBUG_LOG("Bad entry will pc_end <= pc.");
                     continue;
                 }
 
@@ -1011,12 +1017,19 @@ namespace wechat_backtrace {
                     continue;
                 }
 
-                (*all_instructions)[pc] = std::make_pair(pc_end, instructions);
+                auto entry = std::make_pair(pc_end, instructions);
+                (*all_instructions)[pc] = entry;
 
                 prev_instructions = instructions.get();
                 prev_pc = pc;
 
                 pc = pc_end;
+
+                estimate_memory_usage += instructions->size();
+                memory_overwhelmed = CHECK_MEMORY_OVERWHELMED(estimate_memory_usage);
+                if (memory_overwhelmed) {
+                    return;
+                }
             }
         }
 

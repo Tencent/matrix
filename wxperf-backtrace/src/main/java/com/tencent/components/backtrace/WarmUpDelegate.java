@@ -22,6 +22,7 @@ import java.io.File;
 import java.io.FileFilter;
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.Queue;
 
@@ -51,7 +52,7 @@ class WarmUpDelegate {
     private WarmUpScheduler mWarmUpScheduler;
     private WeChatBacktrace.Configuration mConfiguration;
 
-    private boolean[] mPrepared = {false};
+    private final boolean[] mPrepared = {false};
 
     static volatile WarmUpReporter sReporter;
 
@@ -106,8 +107,8 @@ class WarmUpDelegate {
         WeChatBacktraceNative.setSavingPath(savingPath);
     }
 
-    static void internalWarmUpSoPath(String pathOfSo, int elfStartOffset) {
-        WeChatBacktraceNative.warmUp(pathOfSo, elfStartOffset);
+    static boolean internalWarmUpSoPath(String pathOfSo, int elfStartOffset, boolean onlySaveFile) {
+        return WeChatBacktraceNative.warmUp(pathOfSo, elfStartOffset, onlySaveFile);
     }
 
     private final static class RemoteWarmUpInvoker
@@ -115,14 +116,23 @@ class WarmUpDelegate {
 
         WarmUpService.RemoteInvokerImpl mImpl = new WarmUpService.RemoteInvokerImpl();
 
-        private String mSavingPath;
+        private final String mSavingPath;
+        private Context mContext;
+        private Bundle mArgs;
 
         RemoteWarmUpInvoker(String savingPath) {
             mSavingPath = savingPath;
         }
 
         @Override
+        public boolean isConnected() {
+            return mImpl.isConnected();
+        }
+
+        @Override
         public boolean connect(Context context, Bundle args) {
+            mContext = context;
+            mArgs = args;
             return mImpl.connect(context, args);
         }
 
@@ -133,16 +143,20 @@ class WarmUpDelegate {
 
         @Override
         public boolean warmUp(String pathOfElf, int offset) {
+            if (!isConnected()) {
+                connect(mContext, mArgs);
+            }
             Bundle args = new Bundle();
             args.putString(ARGS_WARM_UP_SAVING_PATH, mSavingPath);
             args.putString(ARGS_WARM_UP_PATH_OF_ELF, pathOfElf);
             args.putLong(ARGS_WARM_UP_ELF_START_OFFSET, offset);
             Bundle result = mImpl.call(CMD_WARM_UP_SINGLE_ELF_FILE, args);
-            boolean ret = result != null && result.getInt(RESULT_OF_WARM_UP) == OK;
+            int retCode = result != null ? result.getInt(RESULT_OF_WARM_UP) : -100;
+            boolean ret = retCode == OK;
             if (ret) {
                 WeChatBacktraceNative.notifyWarmedUp(pathOfElf, offset);
             }
-            Log.i(TAG, "Warm-up %s:%s - ret %s", pathOfElf, offset, ret);
+            Log.i(TAG, "Warm-up %s:%s - retCode %s", pathOfElf, offset, retCode);
             return ret;
         }
     }
@@ -150,8 +164,7 @@ class WarmUpDelegate {
     private final static class LocalWarmUpInvoker implements WarmUpInvoker {
         @Override
         public boolean warmUp(String pathOfElf, int offset) {
-            internalWarmUpSoPath(pathOfElf, offset);
-            return true;
+            return internalWarmUpSoPath(pathOfElf, offset, false);
         }
     }
 
@@ -255,7 +268,9 @@ class WarmUpDelegate {
                             @Override
                             public boolean accept(File file) {
                                 String absolutePath = file.getAbsolutePath();
+                                int offset = 0;
                                 if (file.exists() &&
+                                        !warmUpBlocked(absolutePath, offset) &&
                                         (absolutePath.endsWith(".so") ||
                                                 absolutePath.endsWith(".odex") ||
                                                 absolutePath.endsWith(".vdex") ||
@@ -263,7 +278,10 @@ class WarmUpDelegate {
                                                 absolutePath.endsWith(".oat")
                                         )) {
                                     Log.i(TAG, "Warming up so %s", absolutePath);
-                                    invokerFinal.warmUp(absolutePath, 0);
+                                    boolean ret = invokerFinal.warmUp(absolutePath, offset);
+                                    if (!ret) {
+                                        warmUpFailed(absolutePath, offset);
+                                    }
                                 }
                                 return false;
                             }
@@ -379,7 +397,12 @@ class WarmUpDelegate {
                             }
                         }
 
-                        invoker.warmUp(pathOfElf, offset);
+                        if (!warmUpBlocked(pathOfElf, offset)) {
+                            boolean ret = invoker.warmUp(pathOfElf, offset);
+                            if (!ret) {
+                                warmUpFailed(pathOfElf, offset);
+                            }
+                        }
 
                         Log.i(TAG, "Consumed requested QUT -> %s", path);
                     }
@@ -392,6 +415,22 @@ class WarmUpDelegate {
         }, "consuming-up");
     }
 
+    private boolean warmUpBlocked(String pathOfElf, int offset) {
+        boolean blocked = !WarmUpUtility.UnfinishedManagement.check(mConfiguration.mContext, pathOfElf, offset);
+        if (blocked) {
+            Log.w(TAG, "Elf file %s:%s has blocked and will not do warm-up.", pathOfElf, offset);
+        }
+
+        return blocked;
+    }
+
+    private void warmUpFailed(String pathOfElf, int offset) {
+        WarmUpReporter reporter = sReporter;
+        if (reporter != null) {
+            reporter.onReport(WarmUpReporter.ReportEvent.WarmUpFailed, pathOfElf, offset);
+        }
+    }
+
     private final static class WarmedUpReceiver extends BroadcastReceiver {
 
         private WeChatBacktrace.Mode mCurrentBacktraceMode;
@@ -401,7 +440,7 @@ class WarmUpDelegate {
         }
 
         @Override
-        public void onReceive(Context context, final Intent intent) {
+        public void onReceive(final Context context, final Intent intent) {
 
             Log.i(TAG, "Warm-up received.");
 
@@ -412,6 +451,7 @@ class WarmUpDelegate {
                 case ACTION_WARMED_UP:
                     WeChatBacktraceNative.setWarmedUp(true);
                     updateBacktraceMode(mCurrentBacktraceMode);
+                    context.unregisterReceiver(this);
                     break;
             }
         }

@@ -11,11 +11,13 @@
 
 namespace wechat_backtrace {
 
-    typedef int (*internal_logger_func)(int log_level, const char *tag, const char *format, va_list varargs);
+    typedef int (*internal_logger_func)(int log_level, const char *tag, const char *format,
+                                        va_list varargs);
 
     extern "C" void internal_init_logger(internal_logger_func logger_func);
     extern "C" void internal_logger(int log_level, const char *tag, const char *format, ...);
-    extern "C" void internal_vlogger(int log_level, const char *tag, const char *format, va_list varargs);
+    extern "C" void
+    internal_vlogger(int log_level, const char *tag, const char *format, va_list varargs);
 
 }
 

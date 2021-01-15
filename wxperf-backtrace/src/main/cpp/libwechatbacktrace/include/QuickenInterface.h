@@ -94,9 +94,9 @@ namespace wechat_backtrace {
         }
 
         static void
-        SetQuickenGenerateDelegate(quicken_generate_delegate_t quicken_generate_delegate);
+        SetQuickenGenerateDelegate(quicken_generate_delegate_func quicken_generate_delegate);
 
-        QutSections *GetQutSections() {
+        volatile QutSections *GetQutSections() {
             return qut_sections_;
         }
 
@@ -131,11 +131,13 @@ namespace wechat_backtrace {
         FrameInfo gnu_eh_frame_info_ = {0};
         FrameInfo gnu_debug_frame_info_ = {0};
 
-        QutSections *qut_sections_ = nullptr;
+        volatile QutSections *qut_sections_ = nullptr;
 
         std::mutex lock_;
 
-        static quicken_generate_delegate_t quicken_generate_delegate_;
+        size_t try_load_qut_failed_count_ = 0;
+
+        static quicken_generate_delegate_func quicken_generate_delegate_;
     };
 
 }  // namespace wechat_backtrace

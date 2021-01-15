@@ -331,6 +331,7 @@ namespace wechat_backtrace {
     QutFileError
     QuickenTableManager::SaveQutSections(const string &soname, const std::string &sopath,
                                          const string &hash, const string &build_id,
+                                         const bool only_save_file,
                                          unique_ptr<QutSections> qut_sections_ptr) {
         (void) sopath;
 
@@ -338,7 +339,8 @@ namespace wechat_backtrace {
         {
             lock_guard<mutex> guard(lock_);
             if (qut_sections_insert == nullptr ||
-                !InsertQutSectionsNoLock(soname, hash, build_id, qut_sections_insert, false)) {
+                    (!only_save_file && !InsertQutSectionsNoLock(
+                         soname, hash, build_id, qut_sections_insert, false))) {
                 QUT_LOG("qut_sections_insert %llx", (ullint_t) qut_sections_insert);
                 return InsertNewQutFailed;
             }

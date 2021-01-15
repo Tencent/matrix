@@ -112,16 +112,23 @@ public class WeChatBacktrace {
         if (configuration.mIsWarmUpProcess) {
             File markFile = WarmUpUtility.warmUpMarkedFile(configuration.mContext);
             if (configuration.mCoolDownIfApkUpdated && markFile.exists()) {
-                String content = WarmUpUtility.readFileContent(markFile);
-                String lastNativeLibraryPath = content.split("\n")[0];
-                if (!lastNativeLibraryPath.equalsIgnoreCase(
-                        configuration.mContext.getApplicationInfo().nativeLibraryDir)) {
-                    Log.i(TAG, "Apk updated, remove warmed-up file.");
+                String content = WarmUpUtility.readFileContent(markFile, 4096);
+                if (content == null) {
                     configuration.mCoolDown = true;
+                } else {
+                    String lastNativeLibraryPath = content.split("\n")[0];
+                    if (!lastNativeLibraryPath.equalsIgnoreCase(
+                            configuration.mContext.getApplicationInfo().nativeLibraryDir)) {
+                        Log.i(TAG, "Apk updated, remove warmed-up file.");
+                        configuration.mCoolDown = true;
+                    }
                 }
             }
             if (configuration.mCoolDown) {
                 markFile.delete();
+
+                File unfinishedFile = WarmUpUtility.unfinishedFile(configuration.mContext);
+                unfinishedFile.delete();
             }
         }
     }
@@ -380,6 +387,16 @@ public class WeChatBacktrace {
             }
 
             mPathOfXLogSo = pathOfXLogSo;
+            return this;
+        }
+
+        public Configuration enableOtherProcessLogger(boolean enable) {
+            if (mCommitted) {
+                return this;
+            }
+
+            mEnableLog = enable;
+
             return this;
         }
 

@@ -96,7 +96,8 @@ namespace wechat_backtrace {
         }
     }
 
-    void GenerateQutForLibrary(const std::string &sopath, const uint64_t elf_start_offset) {
+    bool GenerateQutForLibrary(const std::string &sopath, const uint64_t elf_start_offset,
+                               const bool only_save_file) {
 
         QUT_LOG("Generate qut for so %s, elf_start_offset %llu.", sopath.c_str(),
                 (ullint_t) elf_start_offset);
@@ -110,25 +111,25 @@ namespace wechat_backtrace {
 
             if (QuickenTableManager::CheckIfQutFileExistsWithHash(soname, hash)) {
                 QUT_LOG("Qut exists with hash %s and return.", hash.c_str());
-                return;
+                return true;
             }
 
             // Will be destructed by 'elf' instance.
             auto memory = QuickenMapInfo::CreateQuickenMemoryFromFile(sopath, elf_start_offset);
             if (memory == nullptr) {
                 QUT_LOG("Create quicken memory for so %s failed", sopath.c_str());
-                return;
+                return false;
             }
             auto elf = make_unique<Elf>(memory);
             elf->Init();
             if (!elf->valid()) {
                 QUT_LOG("elf->valid() so %s invalid", sopath.c_str());
-                return;
+                return false;
             }
 
             if (elf->arch() != CURRENT_ARCH) {
                 QUT_LOG("elf->arch() invalid %s", sopath.c_str());
-                return;
+                return false;
             }
 
             const string build_id_hex = elf->GetBuildID();
@@ -137,7 +138,7 @@ namespace wechat_backtrace {
 
             if (QuickenTableManager::CheckIfQutFileExistsWithBuildId(soname, build_id)) {
                 QUT_LOG("Qut exists with build id %s and return.", build_id.c_str());
-                return;
+                return true;
             }
 
             unique_ptr<QuickenInterface> interface =
@@ -152,16 +153,21 @@ namespace wechat_backtrace {
                 gnu_debug_data_memory = elf->gnu_debugdata_interface()->memory();
             }
 
-            interface->GenerateQuickenTable<addr_t>(elf->memory(), gnu_debug_data_memory,
+            bool ret = interface->GenerateQuickenTable<addr_t>(elf->memory(), gnu_debug_data_memory,
                                                     process_memory_.get(),
                                                     qut_sections_ptr);
+            if (ret) {
+                QutFileError error = QuickenTableManager::getInstance().SaveQutSections(
+                        soname, sopath, hash, build_id, only_save_file, std::move(qut_sections));
 
-            QutFileError error = QuickenTableManager::getInstance().SaveQutSections(
-                    soname, sopath, hash, build_id, std::move(qut_sections));
+                (void) error;
 
-            (void) error;
+                QUT_LOG("Save qut for so %s result %d", sopath.c_str(), error);
+            }
 
-            QUT_LOG("Generate qut for so %s result %d", sopath.c_str(), error);
+            QUT_LOG("Generate qut for so %s result %d", sopath.c_str(), ret);
+
+            return ret;
         }
     }
 

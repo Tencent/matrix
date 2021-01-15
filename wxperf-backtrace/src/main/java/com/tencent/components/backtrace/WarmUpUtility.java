@@ -10,6 +10,10 @@ import java.io.FileFilter;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
 
 class WarmUpUtility {
 
@@ -19,10 +23,67 @@ class WarmUpUtility {
     private final static String FILE_DEFAULT_SAVING_PATH = "saving-cache";
     private final static String FILE_WARMED_UP = "warmed-up";
     private final static String FILE_CLEAN_UP_TIMESTAMP = "clean-up.timestamp";
+    private final static String FILE_BLOCKED_LIST = "blocked-list";
+    private final static String FILE_UNFINISHED = "unfinished";
 
     final static long DURATION_LAST_ACCESS_EXPIRED = 60L * 24 * 3600 * 1000; // milliseconds
     final static long DURATION_CLEAN_UP_EXPIRED = 3L * 24 * 3600 * 1000; // milliseconds
     final static long DURATION_CLEAN_UP = 7L * 24 * 3600 * 1000; // milliseconds
+
+    final static int WARM_UP_FILE_MAX_RETRY = 3;
+
+    final static String UNFINISHED_KEY_SPLIT = ":";
+    final static String UNFINISHED_RETRY_SPLIT = "|";
+
+    static class UnfinishedManagement {
+
+        private static Map<String, Integer> mUnfinishedWarmUp;
+
+        private static int retryCount(Context context, String key) {
+            if (mUnfinishedWarmUp == null) {
+                mUnfinishedWarmUp = WarmUpUtility.readUnfinishedMaps(context);
+            }
+            Integer value = mUnfinishedWarmUp.get(key);
+            int retryCount = value != null ? value : 0;
+            return retryCount;
+        }
+
+        public static boolean check(Context context, String pathOfElf, int offset) {
+            String key = WarmUpUtility.unfinishedKey(pathOfElf, offset);
+            int retryCount = retryCount(context, key);
+            if (retryCount >= WARM_UP_FILE_MAX_RETRY) {
+                return false;
+            }
+
+            return true;
+        }
+
+        public static boolean checkAndMark(Context context, String pathOfElf, int offset) {
+            String key = WarmUpUtility.unfinishedKey(pathOfElf, offset);
+            int retryCount = retryCount(context, key);
+            if (retryCount >= WARM_UP_FILE_MAX_RETRY) {
+                return false;
+            } else {
+                mUnfinishedWarmUp.put(key, retryCount + 1);
+            }
+
+            flushUnfinishedMaps(context, mUnfinishedWarmUp);
+
+            return true;
+        }
+
+        public static void result(Context context, String pathOfElf, int offset, boolean success) {
+            String key = WarmUpUtility.unfinishedKey(pathOfElf, offset);
+            int retryCount = retryCount(context, key);
+            if (success) {
+                mUnfinishedWarmUp.remove(key);
+            } else {
+                mUnfinishedWarmUp.put(key, retryCount + 1);
+            }
+
+            flushUnfinishedMaps(context, mUnfinishedWarmUp);
+        }
+    }
 
     static File cleanUpTimestampFile(Context context) {
         File file = new File(context.getFilesDir().getAbsolutePath() + "/"
@@ -72,6 +133,66 @@ class WarmUpUtility {
         return false;
     }
 
+    static File unfinishedFile(Context context) {
+        File file = new File(context.getFilesDir().getAbsolutePath() + "/"
+                + DIR_WECHAT_BACKTRACE + "/" + FILE_UNFINISHED);
+        file.getParentFile().mkdirs();
+        if (!file.exists()) {
+            try {
+                file.createNewFile();
+            } catch (IOException e) {
+                Log.printStack(Log.ERROR, TAG, e);
+            }
+        }
+        return file;
+    }
+
+    static String unfinishedKey(String pathOfElf, int offset) {
+        return pathOfElf + UNFINISHED_KEY_SPLIT + offset;
+    }
+
+    static void flushUnfinishedMaps(Context context, Map<String, Integer> unfinished) {
+        File file = unfinishedFile(context);
+
+        StringBuffer sb = new StringBuffer();
+        for (Map.Entry<String, Integer> entry : unfinished.entrySet()) {
+            sb.append(entry.getKey() + UNFINISHED_RETRY_SPLIT + entry.getValue() + "\n");
+        }
+
+        writeContentToFile(file, sb.toString());
+    }
+
+    static Map<String, Integer> readUnfinishedMaps(Context context) {
+        HashMap<String, Integer> maps = new HashMap<>();
+        File file = unfinishedFile(context);
+        String content = readFileContent(file, 512_000);
+        if (content == null) {
+
+            Log.w(TAG, "Read unfinished maps file failed, file size %s", file.length());
+
+            if (file.length() > 512_000) {
+                file.delete();
+            }
+        } else {
+            String[] lines = content.split("\n");
+            for (String line : lines) {
+                int index = line.lastIndexOf(UNFINISHED_RETRY_SPLIT);
+                if (index < 0) {
+                    continue;
+                }
+                try {
+                    String key = line.substring(0, index);
+                    String value = line.substring(index + 1);
+                    maps.put(key, Integer.parseInt(value));
+                } catch (Throwable ignore) {
+                    Log.printStack(Log.ERROR, TAG, ignore);
+                }
+            }
+        }
+
+        return maps;
+    }
+
     static boolean needCleanUp(Context context) {
         File timestamp = cleanUpTimestampFile(context);
         if (!timestamp.exists()) {
@@ -115,16 +236,21 @@ class WarmUpUtility {
         }
     }
 
-    static String readFileContent(File file) {
+    static String readFileContent(File file, int max) {
         if (file.isFile()) {
             FileReader reader = null;
             try {
                 StringBuilder sb = new StringBuilder(4096);
                 reader = new FileReader(file);
                 char[] buffer = new char[1024];
+                int accumulated = 0;
                 int len;
                 while ((len = reader.read(buffer)) > 0) {
                     sb.append(buffer, 0, len);
+                    accumulated += len;
+                    if (accumulated > max) {
+                        return null;
+                    }
                 }
 
                 return sb.toString();

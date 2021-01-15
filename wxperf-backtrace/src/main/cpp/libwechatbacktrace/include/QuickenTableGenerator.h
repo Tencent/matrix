@@ -52,11 +52,14 @@ namespace wechat_backtrace {
     protected:
         void DecodeDebugFrameEntriesInstr(FrameInfo debug_frame_info,
                                           QutInstructionsOfEntries *entries_instructions,
-                                          uint16_t regs_total, bool gnu_debug_data = false);
+                                          uint16_t regs_total,
+                                          bool gnu_debug_data = false);
 
-        void DecodeEhFrameEntriesInstr(FrameInfo eh_frame_hdr_info, FrameInfo eh_frame_info,
+        void DecodeEhFrameEntriesInstr(FrameInfo eh_frame_hdr_info,
+                                       FrameInfo eh_frame_info,
                                        QutInstructionsOfEntries *entries_instructions,
-                                       uint16_t regs_total, bool gnu_debug_data = false);
+                                       uint16_t regs_total,
+                                       bool gnu_debug_data = false);
 
         void DecodeExidxEntriesInstr(FrameInfo arm_exidx_info,
                                      QutInstructionsOfEntries *entries_instructions);
@@ -65,14 +68,19 @@ namespace wechat_backtrace {
                 std::shared_ptr<QutInstructionsOfEntries> to,
                 std::shared_ptr<QutInstructionsOfEntries> from);
 
-        bool PackEntriesToFutSections(
+        bool PackEntriesToQutSections(
                 QutInstructionsOfEntries *entries, QutSections *fut_sections);
 
         bool GetPrel31Addr(unwindstack::Memory *memory_, uint32_t offset, uint32_t *addr);
 
+        bool AccumulateMemoryUsage(uint64_t increments);
+
         unwindstack::Memory *memory_;
         unwindstack::Memory *gnu_debug_data_memory_;
         unwindstack::Memory *process_memory_;
+
+        uint64_t estimate_memory_usage_;
+        bool memory_overwhelmed_;
     };
 
 }  // namespace wechat_backtrace

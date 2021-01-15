@@ -75,15 +75,17 @@ namespace wechat_backtrace {
         }
 
         if (eh_frame) {
-            eh_frame->IterateAllEntries(regs_total, process_memory_, entries_instructions);
+            eh_frame->IterateAllEntries(regs_total, process_memory_, entries_instructions,
+                                        estimate_memory_usage_, memory_overwhelmed_);
         }
 
         return;
     }
 
     template<typename AddressType>
-    void QuickenTableGenerator<AddressType>::DecodeExidxEntriesInstr(FrameInfo arm_exidx_info,
-                                                                     QutInstructionsOfEntries *entries_instructions) {
+    void QuickenTableGenerator<AddressType>::DecodeExidxEntriesInstr(
+            FrameInfo arm_exidx_info,
+            QutInstructionsOfEntries *entries_instructions) {
 
         uint64_t start_offset = arm_exidx_info.offset_;
         uint64_t total_entries = arm_exidx_info.size_;
@@ -122,7 +124,13 @@ namespace wechat_backtrace {
 
             if (i == total_entries - 1) {
                 if (curr_instructions) {
-                    (*entries_instructions)[start_addr] = std::make_pair(addr, curr_instructions);
+                    auto entry = std::make_pair(addr, curr_instructions);
+                    (*entries_instructions)[start_addr] = entry;
+
+                    if (!AccumulateMemoryUsage(curr_instructions->size())) {
+                        return;
+                    }
+
                     continue;
                 }
             }
@@ -162,7 +170,8 @@ namespace wechat_backtrace {
                     curr_instructions = move(decoder.instructions_);
                     continue;
                 } else {
-                    (*entries_instructions)[start_addr] = std::make_pair(addr, curr_instructions);
+                    auto entry = std::make_pair(addr, curr_instructions);
+                    (*entries_instructions)[start_addr] = entry;
 
                     if (log) {
                         QUT_DEBUG_LOG("DecodeExidxEntriesInstr addr: %llx, instructions: %llu",
@@ -177,6 +186,11 @@ namespace wechat_backtrace {
                             }
                         }
                     }
+
+                    if (!AccumulateMemoryUsage(curr_instructions->size())) {
+                        return;
+                    }
+
                     start_addr = addr;
                     curr_instructions = move(decoder.instructions_);
                 }
@@ -208,7 +222,8 @@ namespace wechat_backtrace {
             }
 
             QUT_STATISTIC(InstructionEntriesDebugFrame, debug_frame_info.size_, 0);
-            debug_frame_->IterateAllEntries(regs_total, process_memory_, entries_instructions);
+            debug_frame_->IterateAllEntries(regs_total, process_memory_, entries_instructions,
+                                            estimate_memory_usage_, memory_overwhelmed_);
         }
 
         return;
@@ -238,7 +253,7 @@ namespace wechat_backtrace {
             if (from_it == from->end()) {
                 (*result_frame_instructions)[to_it->first] = make_pair(to_it->second.first,
                                                                        to_it->second.second);
-                to_it++;
+                to_it = to->erase(to_it);
                 continue;
             }
 
@@ -255,7 +270,7 @@ namespace wechat_backtrace {
                 (*result_frame_instructions)[from_start] = make_pair(from_end,
                                                                      from_it->second.second);
                 from_start = from_end;
-                from_it++;
+                from_it = from->erase(from_it);
                 continue;
             }
 
@@ -263,7 +278,7 @@ namespace wechat_backtrace {
                 (*result_frame_instructions)[from_start] = make_pair(from_end,
                                                                      to_it->second.second);
                 from_start = from_end;
-                from_it++;
+                from_it = from->erase(from_it);
             } else {
                 if (from_start < to_it->first) {
                     (*result_frame_instructions)[from_start] = make_pair(to_it->first,
@@ -271,14 +286,14 @@ namespace wechat_backtrace {
                 }
                 if (from_end < to_it->second.first) {
                     from_start = from_end;
-                    from_it++;
+                    from_it = from->erase(from_it);
                 } else {
                     (*result_frame_instructions)[to_it->first] = make_pair(to_it->second.first,
                                                                            to_it->second.second);
-                    to_it++;
+                    to_it = to->erase(to_it);
                     from_start = to_it->second.first;
                     if (from_end == from_start) {
-                        from_it++;
+                        from_it = from->erase(from_it);
                     }
                 }
             }
@@ -290,7 +305,7 @@ namespace wechat_backtrace {
     }
 
     template<typename AddressType>
-    inline bool QuickenTableGenerator<AddressType>::PackEntriesToFutSections(
+    inline bool QuickenTableGenerator<AddressType>::PackEntriesToQutSections(
             QutInstructionsOfEntries *entries, QutSections *fut_sections) {
 
         deque<shared_ptr<TempEntryPair>> entries_encoded;
@@ -310,7 +325,7 @@ namespace wechat_backtrace {
 
             if (log) {
                 QUT_DEBUG_LOG(
-                        "PackEntriesToFutSections entry_pair->entry_point %llx, instr size %zu",
+                        "PackEntriesToQutSections entry_pair->entry_point %llx, instr size %zu",
                         (ullint_t) entry_pair->entry_point, it->second.second->size());
             }
 
@@ -349,12 +364,12 @@ namespace wechat_backtrace {
 
             if (log) {
                 QUT_DEBUG_LOG(
-                        "PackEntriesToFutSections entry_pair->encoded_instructions.size() %zu",
+                        "PackEntriesToQutSections entry_pair->encoded_instructions.size() %zu",
                         entry_pair->encoded_instructions.size());
 
                 for (uint8_t insn : entry_pair->encoded_instructions) {
                     (void) insn;
-                    QUT_DEBUG_LOG("PackEntriesToFutSections instr "
+                    QUT_DEBUG_LOG("PackEntriesToQutSections instr "
                                           BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(insn));
                 }
             }
@@ -362,10 +377,10 @@ namespace wechat_backtrace {
             // Finally pushed.
             entries_encoded.push_back(entry_pair);
 
-            it++;
+            it = entries->erase(it);
         }
 
-        QUT_LOG("PackEntriesToFutSections bad: %llu, prologue: %llu, total: %llu, tbl: %llu",
+        QUT_LOG("PackEntriesToQutSections bad: %llu, prologue: %llu, total: %llu, tbl: %llu",
                 (ullint_t) bad_entries_count, (ullint_t) prologue_count,
                 (ullint_t) entries_encoded.size(), (ullint_t) instr_tbl_count);
 
@@ -459,7 +474,7 @@ namespace wechat_backtrace {
 
         bad_entries_count = bad_entries;      // TODO
 
-        QUT_DEBUG_LOG("QuickenInterface::PackEntriesToFutSections idx_size %u, tbl_size %u",
+        QUT_DEBUG_LOG("QuickenInterface::PackEntriesToQutSections idx_size %u, tbl_size %u",
                       (uint32_t) idx_size, (uint32_t) tbl_size);
 
         return true;
@@ -476,67 +491,104 @@ namespace wechat_backtrace {
             return false;
         }
 
-        auto debug_frame_instructions = make_shared<QutInstructionsOfEntries>();
-        auto eh_frame_instructions = make_shared<QutInstructionsOfEntries>();
-        auto gnu_debug_frame_instructions = make_shared<QutInstructionsOfEntries>();
-        auto gnu_eh_frame_instructions = make_shared<QutInstructionsOfEntries>();
-
-        uint16_t regs_total = REGS_TOTAL;
-        DecodeDebugFrameEntriesInstr(debug_frame_info, debug_frame_instructions.get(), regs_total);
-        QUT_DEBUG_LOG(
-                "GenerateUltraQUTSections. debug_frame_info size_:%llu, offset:%llu, section_bias:%llu, instructions:%llu",
-                (ullint_t) debug_frame_info.size_, (ullint_t) debug_frame_info.offset_,
-                (ullint_t) debug_frame_info.section_bias_,
-                (ullint_t) debug_frame_instructions->size());
-
-        QUT_DEBUG_LOG(
-                "QuickenInterface::GenerateUltraQUTSections eh_frame_hdr_info size_:%llu, offset:%llu, section_bias:%llu",
-                (ullint_t) eh_frame_hdr_info.size_, (ullint_t) eh_frame_hdr_info.offset_,
-                (ullint_t) eh_frame_hdr_info.section_bias_);
-        QUT_DEBUG_LOG(
-                "QuickenInterface::GenerateUltraQUTSections eh_frame_info size_:%llu, offset:%llu, section_bias:%llu",
-                (ullint_t) eh_frame_info.size_, (ullint_t) eh_frame_info.offset_,
-                (ullint_t) eh_frame_info.section_bias_);
-        DecodeEhFrameEntriesInstr(eh_frame_hdr_info, eh_frame_info, eh_frame_instructions.get(),
-                                  regs_total);
-        QUT_DEBUG_LOG("QuickenInterface::GenerateUltraQUTSections eh_frame_instructions %llu",
-                      (ullint_t) eh_frame_instructions->size());
-
-        QUT_DEBUG_LOG(
-                "QuickenInterface::GenerateUltraQUTSections gnu_debug_frame_info size_:%llu, offset:%llu, section_bias:%llu",
-                (ullint_t) gnu_debug_frame_info.size_, (ullint_t) gnu_debug_frame_info.offset_,
-                (ullint_t) gnu_debug_frame_info.section_bias_);
-        DecodeDebugFrameEntriesInstr(gnu_debug_frame_info, gnu_debug_frame_instructions.get(),
-                                     regs_total, true);
-        QUT_DEBUG_LOG(
-                "QuickenInterface::GenerateUltraQUTSections gnu_debug_frame_instructions %llu",
-                (ullint_t) gnu_debug_frame_instructions->size());
-
-        QUT_DEBUG_LOG(
-                "QuickenInterface::GenerateUltraQUTSections gnu_eh_frame_hdr_info size_:%llu, offset:%llu, section_bias:%llu",
-                (ullint_t) gnu_eh_frame_hdr_info.size_, (ullint_t) gnu_eh_frame_hdr_info.offset_,
-                (ullint_t) gnu_eh_frame_hdr_info.section_bias_);
-        DecodeEhFrameEntriesInstr(gnu_eh_frame_hdr_info, gnu_eh_frame_info,
-                                  gnu_eh_frame_instructions.get(), regs_total, true);
-        QUT_DEBUG_LOG("QuickenInterface::GenerateUltraQUTSections gnu_eh_frame_instructions %llu",
-                      (ullint_t) gnu_eh_frame_instructions->size());
-
         shared_ptr<QutInstructionsOfEntries> merged;
-        merged = MergeFrameEntries(debug_frame_instructions, eh_frame_instructions);
-        merged = MergeFrameEntries(merged, gnu_debug_frame_instructions);
-        merged = MergeFrameEntries(merged, gnu_eh_frame_instructions);
 
-        if (arm_exidx_info.size_ != 0) {
-            auto exidx_instructions = make_shared<QutInstructionsOfEntries>();
-            DecodeExidxEntriesInstr(arm_exidx_info, exidx_instructions.get());
-            QUT_DEBUG_LOG("QuickenInterface::GenerateUltraQUTSections exidx_instructions %llu",
-                          (ullint_t) exidx_instructions->size());
-            merged = MergeFrameEntries(merged, exidx_instructions);
+        {
+            auto debug_frame_instructions = make_shared<QutInstructionsOfEntries>();
+            auto eh_frame_instructions = make_shared<QutInstructionsOfEntries>();
+            auto gnu_debug_frame_instructions = make_shared<QutInstructionsOfEntries>();
+            auto gnu_eh_frame_instructions = make_shared<QutInstructionsOfEntries>();
+
+            estimate_memory_usage_ = 0;
+            memory_overwhelmed_ = false;
+
+            uint16_t regs_total = REGS_TOTAL;
+            QUT_DEBUG_LOG(
+                    "QuickenInterface::GenerateUltraQUTSections debug_frame_info size_:%lld, "
+                    "offset:%llu, section_bias:%lld",
+                    (llint_t) debug_frame_info.size_, (ullint_t) debug_frame_info.offset_,
+                    (llint_t) debug_frame_info.section_bias_);
+            DecodeDebugFrameEntriesInstr(debug_frame_info, debug_frame_instructions.get(),
+                                         regs_total);
+            QUT_DEBUG_LOG(
+                    "QuickenInterface::GenerateUltraQUTSections debug_frame_info size_:%lld, "
+                    "offset:%llu, section_bias:%lld, instructions:%llu",
+                    (llint_t) debug_frame_info.size_, (ullint_t) debug_frame_info.offset_,
+                    (llint_t) debug_frame_info.section_bias_,
+                    (ullint_t) debug_frame_instructions->size());
+
+            if (memory_overwhelmed_) return false;
+
+            QUT_DEBUG_LOG(
+                    "QuickenInterface::GenerateUltraQUTSections eh_frame_hdr_info size_:%lld, "
+                    "offset:%llu, section_bias:%lld",
+                    (llint_t) eh_frame_hdr_info.size_, (ullint_t) eh_frame_hdr_info.offset_,
+                    (llint_t) eh_frame_hdr_info.section_bias_);
+            QUT_DEBUG_LOG(
+                    "QuickenInterface::GenerateUltraQUTSections eh_frame_info size_:%lld, "
+                    "offset:%llu, section_bias:%lld",
+                    (llint_t) eh_frame_info.size_, (ullint_t) eh_frame_info.offset_,
+                    (llint_t) eh_frame_info.section_bias_);
+            DecodeEhFrameEntriesInstr(eh_frame_hdr_info, eh_frame_info, eh_frame_instructions.get(),
+                                      regs_total);
+            QUT_DEBUG_LOG("QuickenInterface::GenerateUltraQUTSections eh_frame_instructions %llu",
+                          (ullint_t) eh_frame_instructions->size());
+
+            if (memory_overwhelmed_) return false;
+
+            // Merge debug_frame_instructions & eh_frame_instructions
+            merged = MergeFrameEntries(debug_frame_instructions, eh_frame_instructions);
+
+            QUT_DEBUG_LOG(
+                    "QuickenInterface::GenerateUltraQUTSections gnu_debug_frame_info size_:%lld, "
+                    "offset:%llu, section_bias:%lld",
+                    (llint_t) gnu_debug_frame_info.size_, (ullint_t) gnu_debug_frame_info.offset_,
+                    (llint_t) gnu_debug_frame_info.section_bias_);
+            DecodeDebugFrameEntriesInstr(gnu_debug_frame_info, gnu_debug_frame_instructions.get(),
+                                         regs_total, true);
+            QUT_DEBUG_LOG(
+                    "QuickenInterface::GenerateUltraQUTSections gnu_debug_frame_instructions %lld",
+                    (llint_t) gnu_debug_frame_instructions->size());
+
+            if (memory_overwhelmed_) return false;
+
+            // Merge gnu_debug_frame_instructions
+            merged = MergeFrameEntries(merged, gnu_debug_frame_instructions);
+
+            QUT_DEBUG_LOG(
+                    "QuickenInterface::GenerateUltraQUTSections gnu_eh_frame_hdr_info size_:%lld, "
+                    "offset:%llu, section_bias:%lld",
+                    (llint_t) gnu_eh_frame_hdr_info.size_, (ullint_t) gnu_eh_frame_hdr_info.offset_,
+                    (llint_t) gnu_eh_frame_hdr_info.section_bias_);
+            DecodeEhFrameEntriesInstr(gnu_eh_frame_hdr_info, gnu_eh_frame_info,
+                                      gnu_eh_frame_instructions.get(), regs_total, true);
+            QUT_DEBUG_LOG(
+                    "QuickenInterface::GenerateUltraQUTSections gnu_eh_frame_instructions %lld",
+                    (llint_t) gnu_eh_frame_instructions->size());
+
+            if (memory_overwhelmed_) return false;
+
+            // Merge gnu_eh_frame_instructions
+            merged = MergeFrameEntries(merged, gnu_eh_frame_instructions);
+
+            if (arm_exidx_info.size_ != 0) {
+                auto exidx_instructions = make_shared<QutInstructionsOfEntries>();
+                DecodeExidxEntriesInstr(arm_exidx_info, exidx_instructions.get());
+                QUT_DEBUG_LOG("QuickenInterface::GenerateUltraQUTSections exidx_instructions %llu",
+                              (ullint_t) exidx_instructions->size());
+
+                if (memory_overwhelmed_) return false;
+
+                // Merge exidx_instructions
+                merged = MergeFrameEntries(merged, exidx_instructions);
+            }
         }
+
+        QUT_LOG("Memory usage: %llu", (ullint_t) estimate_memory_usage_);
 
         QUT_DEBUG_LOG("QuickenInterface::GenerateUltraQUTSections merged %llu",
                       (ullint_t) merged->size());
-        PackEntriesToFutSections(merged.get(), fut_sections);
+        PackEntriesToQutSections(merged.get(), fut_sections);
 
         return true;
     }
@@ -554,6 +606,18 @@ namespace wechat_backtrace {
         // Sign extend the value if necessary.
         int32_t value = (static_cast<int32_t>(data) << 1) >> 1;
         *addr = offset + value;
+        return true;
+    }
+
+    template<typename AddressType>
+    bool QuickenTableGenerator<AddressType>::AccumulateMemoryUsage(uint64_t increments) {
+        estimate_memory_usage_ += increments;
+        memory_overwhelmed_ = CHECK_MEMORY_OVERWHELMED(estimate_memory_usage_);
+        if (memory_overwhelmed_) {
+            QUT_LOG("Found memory overwhelmed: %llu", (ullint_t) estimate_memory_usage_);
+            return false;
+        }
+
         return true;
     }
 

@@ -6,8 +6,9 @@ public interface WarmUpReporter {
         WarmedUp,
         CleanedUp,
         WarmUpThreadBlocked,
+        WarmUpFailed,
     }
 
-    void onReport(ReportEvent type);
+    void onReport(ReportEvent type, Object ... args);
 
 }

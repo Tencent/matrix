@@ -480,7 +480,7 @@ namespace wechat_backtrace {
 //		1001 0101 0nnn nnnn : vsp = x28 + (nnnnnnn << 2)						; # (nnnnnnn << 2) in [0, 0x1fc],  0nnnnnnn is an one bit ULEB128
 //		1001 0110 + SLEB128 : vsp = SLEB128							    		; # vsp set by IMM
 
-//		1001 0111 			: dex_pc = x20										; # Dex pc is saved in x29
+//		1001 0111 			: dex_pc = x20										; # Dex pc is saved in x20
 
 //		1001 1001			: End of instructions                				;
 //		1001 1111			: Finish                							;
@@ -594,6 +594,7 @@ namespace wechat_backtrace {
                                 }
                             }
                         } while (false);
+
                         // 1000 0000 : vsp = x29                                         ;
                         // 1000 0001 : vsp = x29 + 16, lr = [vsp - 8], sp = [vsp - 16]   ; # Have prologue
                         uint8_t byte;

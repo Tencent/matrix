@@ -34,6 +34,7 @@ namespace wechat_backtrace {
         FileLengthNotMatch = 11,
         InsertNewQutFailed = 12,
         TryInvokeJavaRequestQutGenerate = 13,
+        LoadFailed = 14,
     };
 
     class QuickenTableManager {
@@ -118,6 +119,7 @@ namespace wechat_backtrace {
         QutFileError
         SaveQutSections(const std::string &soname, const std::string &sopath,
                         const std::string &hash, const std::string &build_id,
+                        const bool only_save_file,
                         std::unique_ptr<QutSections> qut_sections);
 
         QutFileError

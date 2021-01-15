@@ -1,5 +1,6 @@
 package com.tencent.components.backtrace;
 
+import android.annotation.SuppressLint;
 import android.app.Service;
 import android.content.ComponentName;
 import android.content.Context;
@@ -17,7 +18,11 @@ import android.support.annotation.Nullable;
 
 import com.tencent.stubs.logger.Log;
 
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import static com.tencent.components.backtrace.WarmUpUtility.WARM_UP_FILE_MAX_RETRY;
+import static com.tencent.components.backtrace.WarmUpUtility.flushUnfinishedMaps;
 
 public class WarmUpService extends Service {
 
@@ -28,6 +33,7 @@ public class WarmUpService extends Service {
     }
 
     interface RemoteConnection {
+        boolean isConnected();
         boolean connect(Context context, Bundle args);
         void disconnect(Context context);
     }
@@ -42,8 +48,8 @@ public class WarmUpService extends Service {
         volatile Messenger mResp;
         volatile Messenger mReq;
 
-        volatile Bundle[] mResult = {null};
-        HandlerThread[] mHandlerThread = {null};
+        final Bundle[] mResult = {null};
+        final HandlerThread[] mHandlerThread = {null};
 
         ServiceConnection mConnection = new ServiceConnection() {
             @Override
@@ -61,17 +67,28 @@ public class WarmUpService extends Service {
                 mReq = null;
                 synchronized (mBound) {
                     mBound[0] = false;
+                    mBound.notifyAll();
                 }
                 Log.i(TAG, "This remote invoker(%s) disconnected.", this);
+
+                synchronized (mResult) {
+                    mResult[0] = null;
+                    mResult.notifyAll();
+                }
             }
         };
 
-        private volatile boolean[] mBound = {false};
+        private final boolean[] mBound = {false};
 
         private void checkThread() {
             if (Looper.getMainLooper() == Looper.myLooper()) {
                 throw new RuntimeException("Should not call this from main thread!");
             }
+        }
+
+        @Override
+        public boolean isConnected() {
+            return mBound[0];
         }
 
         @Override
@@ -117,7 +134,7 @@ public class WarmUpService extends Service {
 
             try {
                 synchronized (mBound) {
-                    mBound.wait(20000); // 20s
+                    mBound.wait(60000); // 60s
                 }
             } catch (InterruptedException e) {
                 Log.printStack(Log.ERROR, TAG, e);
@@ -143,6 +160,11 @@ public class WarmUpService extends Service {
                 }
             }
 
+            synchronized (mResult) {
+                mResult[0] = null;
+                mResult.notifyAll();
+            }
+
             if (mBound[0]) {
                 context.unbindService(mConnection);
             }
@@ -160,13 +182,11 @@ public class WarmUpService extends Service {
 
                     synchronized (mResult) {
                         mResult[0] = null;
-                        mResult.wait(30000); // 30s
+                        mResult.wait(300 * 1000); // 300s
                         return mResult[0];
                     }
                 }
-            } catch (RemoteException e) {
-                Log.printStack(Log.ERROR, TAG, e);
-            } catch (InterruptedException e) {
+            } catch (RemoteException | InterruptedException e) {
                 Log.printStack(Log.ERROR, TAG, e);
             }
 
@@ -184,9 +204,10 @@ public class WarmUpService extends Service {
 
     final static int CMD_WARM_UP_SINGLE_ELF_FILE = 100;
 
-    private Messenger mMessenger = new Messenger(new Handler() {
+    private final Messenger mMessenger = new Messenger(new Handler() {
+        @SuppressLint("HandlerLeak")
         @Override
-        public void handleMessage(Message msg) {
+        public void handleMessage(final Message msg) {
             super.handleMessage(msg);
 
             if (msg.obj instanceof Bundle) {
@@ -197,6 +218,7 @@ public class WarmUpService extends Service {
                 Bundle result = call(msg.what, args);
 
                 Messenger messenger = new Messenger(binder);
+
                 try {
                     messenger.send(Message.obtain(null, msg.what, result));
                 } catch (RemoteException e) {
@@ -206,16 +228,19 @@ public class WarmUpService extends Service {
         }
     });
 
+
     final static int OK = 0;
     public static final int INVALID_ARGUMENT = -1;
+    public static final int WARM_UP_FAILED = -2;
+    public static final int WARM_UP_FAILED_TOO_MANY_TIMES = -3;
 
     private static volatile boolean sHasInitiated = false;
     private static volatile boolean sHasLoaded = false;
-    private static HandlerThread mRecycler;
+    private static HandlerThread sRecycler;
     private static Handler sRecyclerHandler;
-    private static AtomicInteger sWorkingCall = new AtomicInteger(0);
+    private static final AtomicInteger sWorkingCall = new AtomicInteger(0);
     private final static byte[] sRecyclerLock = new byte[0];
-    private WarmUpDelegate mWarmUpDelegate = new WarmUpDelegate();
+    private final WarmUpDelegate mWarmUpDelegate = new WarmUpDelegate();
     private final static int MSG_SUICIDE = 1;
     private final static long INTERVAL_OF_CHECK = 60 * 1000; // ms
 
@@ -259,10 +284,10 @@ public class WarmUpService extends Service {
         }
 
         synchronized (sRecyclerLock) {
-            if (mRecycler == null) {
-                mRecycler = new HandlerThread("wechat-backtrace-proc-recycler");
-                mRecycler.start();
-                sRecyclerHandler = new Handler(mRecycler.getLooper(), new RecyclerCallback());
+            if (sRecycler == null) {
+                sRecycler = new HandlerThread("backtrace-recycler");
+                sRecycler.start();
+                sRecyclerHandler = new Handler(sRecycler.getLooper(), new RecyclerCallback());
             }
         }
 
@@ -296,7 +321,7 @@ public class WarmUpService extends Service {
         }
     }
 
-    private Bundle call(int cmd, Bundle args) {
+    private synchronized Bundle call(int cmd, Bundle args) {
 
         removeScheduledSuicide();
         try {
@@ -321,8 +346,17 @@ public class WarmUpService extends Service {
                 int offset = args.getInt(ARGS_WARM_UP_ELF_START_OFFSET, 0);
 
                 Log.i(TAG, "Warm up so path %s offset %s.", pathOfSo, offset);
-                mWarmUpDelegate.internalWarmUpSoPath(pathOfSo, offset);
-                result.putInt(RESULT_OF_WARM_UP, OK);
+
+                int ret = OK;
+                if (!WarmUpUtility.UnfinishedManagement.checkAndMark(this, pathOfSo, offset)) {
+                    ret = WARM_UP_FAILED_TOO_MANY_TIMES;
+                } else {
+                    boolean success = WarmUpDelegate.internalWarmUpSoPath(pathOfSo, offset, true);
+                    WarmUpUtility.UnfinishedManagement.result(this, pathOfSo, offset, success);
+                    ret = success ? OK : WARM_UP_FAILED;
+                }
+
+                result.putInt(RESULT_OF_WARM_UP, ret);
 
             } else {
                 Log.w(TAG, "Unknown cmd: %s", cmd);
@@ -341,8 +375,6 @@ public class WarmUpService extends Service {
         if (!sHasInitiated) {
             init();
         }
-
-        scheduleSuicide(true);
     }
 
     @Nullable

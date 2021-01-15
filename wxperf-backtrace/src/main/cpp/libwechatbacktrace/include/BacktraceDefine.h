@@ -43,6 +43,9 @@
     {MAX_FRAMES, 0, std::shared_ptr<wechat_backtrace::Frame>( \
     new wechat_backtrace::Frame[MAX_FRAMES], std::default_delete<wechat_backtrace::Frame[]>())}
 
+#define MEMORY_USAGE_UPPER_BOUND 800 * 10000 // Amount of instructions
+#define CHECK_MEMORY_OVERWHELMED(USAGE) (USAGE > MEMORY_USAGE_UPPER_BOUND)
+
 namespace wechat_backtrace {
 
     typedef uintptr_t uptr;
@@ -84,7 +87,7 @@ namespace wechat_backtrace {
         DwarfBased = 2
     };
 
-    typedef void(*quicken_generate_delegate_t)(const std::string &, const uint64_t);
+    typedef bool(*quicken_generate_delegate_func)(const std::string &, const uint64_t, const bool);
 
 }  // namespace wechat_backtrace
 
