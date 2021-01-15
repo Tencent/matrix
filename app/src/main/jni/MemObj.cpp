@@ -904,6 +904,21 @@ Java_com_tencent_wxperf_sample_JNIObj_concurrentMapTest(JNIEnv *env, jclass claz
 
 }
 
+static std::recursive_mutex m_r_mutex;
+
+void lock_fun(int i) {
+    std::lock_guard<std::recursive_mutex> lock(m_r_mutex);
+    LOGD(TAG, "i = %d", i);
+    if (i) {
+        lock_fun(--i);
+    }
+}
+
+JNIEXPORT void JNICALL
+Java_com_tencent_wxperf_sample_JNIObj_mutexTest(JNIEnv *env, jclass clazz) {
+    lock_fun(3);
+}
+
 #ifdef __cplusplus
 }
 #endif

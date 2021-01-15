@@ -45,6 +45,8 @@ public class JNIObj {
 
     public native static void concurrentMapTest();
 
+    public native static void mutexTest();
+
     public static String calledByJNI() {
         Log.d(TAG, "called By JNI");
         return stackTraceToString(new Throwable().getStackTrace());
