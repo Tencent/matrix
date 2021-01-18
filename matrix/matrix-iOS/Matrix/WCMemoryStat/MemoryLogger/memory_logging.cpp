@@ -55,7 +55,6 @@ static allocation_event_buffer *event_buffer = NULL;
 
 // activation variables
 static bool logging_is_enable = false; // set this to zero to stop logging memory ativities
-static bool is_debug_tools_running = false;
 
 // We set malloc_logger to NULL to disable logging, if we encounter errors
 // during file writing
@@ -451,17 +450,9 @@ void flush_last_data(const char *log_dir)
 int enable_memory_logging(const char *log_dir)
 {
 	err_code = MS_ERRC_SUCCESS;
-	
-#ifdef USE_PRIVATE_API
-	// stack_logging_enable_logging
-	int *stack_logging_enable_logging = (int *)dlsym(RTLD_DEFAULT, "stack_logging_enable_logging");
-	if (stack_logging_enable_logging != NULL && *stack_logging_enable_logging != 0) {
-		is_debug_tools_running = true;
-	}
-#endif
 
     // Check whether there's any analysis tool process logging memory.
-    if (is_debug_tools_running || is_being_debugged()) {
+    if (is_being_debugged()) {
         return MS_ERRC_ANALYSIS_TOOL_RUNNING;
     }
 	
