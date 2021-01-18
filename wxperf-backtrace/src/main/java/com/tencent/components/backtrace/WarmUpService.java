@@ -151,6 +151,8 @@ public class WarmUpService extends Service {
         @Override
         public void disconnect(Context context) {
 
+            context.unbindService(mConnection);
+
             Log.i(TAG, "Start disconnecting to remote. (%s)", this.hashCode());
 
             synchronized (mHandlerThread) {
@@ -163,10 +165,6 @@ public class WarmUpService extends Service {
             synchronized (mResult) {
                 mResult[0] = null;
                 mResult.notifyAll();
-            }
-
-            if (mBound[0]) {
-                context.unbindService(mConnection);
             }
         }
 
@@ -351,6 +349,11 @@ public class WarmUpService extends Service {
                 if (!WarmUpUtility.UnfinishedManagement.checkAndMark(this, pathOfSo, offset)) {
                     ret = WARM_UP_FAILED_TOO_MANY_TIMES;
                 } else {
+                    try {
+                        Thread.sleep(30000);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
                     boolean success = WarmUpDelegate.internalWarmUpSoPath(pathOfSo, offset, true);
                     WarmUpUtility.UnfinishedManagement.result(this, pathOfSo, offset, success);
                     ret = success ? OK : WARM_UP_FAILED;

@@ -45,6 +45,10 @@ class WarmUpDelegate {
     private final static String ACTION_WARMED_UP = "action.backtrace.warmed-up";
     private final static String PERMISSION_WARMED_UP = ".backtrace.warmed_up";
 
+    private final static String TASK_TAG_WARM_UP = "warm-up";
+    private final static String TASK_TAG_CLEAN_UP = "clean-up";
+    private final static String TASK_TAG_CONSUMING_UP = "consuming-up";
+
     private boolean mIsolateRemote = false;
     private String mSavingPath;
     private WarmedUpReceiver mWarmedUpReceiver;
@@ -274,7 +278,6 @@ class WarmUpDelegate {
                                         (absolutePath.endsWith(".so") ||
                                                 absolutePath.endsWith(".odex") ||
                                                 absolutePath.endsWith(".vdex") ||
-                                                absolutePath.endsWith(".art") ||
                                                 absolutePath.endsWith(".oat")
                                         )) {
                                     Log.i(TAG, "Warming up so %s", absolutePath);
@@ -305,7 +308,7 @@ class WarmUpDelegate {
                     Log.i(TAG, "Warm-up cancelled.");
                 }
             }
-        }, "warm-up");
+        }, TASK_TAG_WARM_UP);
     }
 
     void cleaningUp(final CancellationSignal cs) {
@@ -366,7 +369,7 @@ class WarmUpDelegate {
                     Log.i(TAG, "Clean up saving path(%s) cancelled.", savingDir.getAbsoluteFile());
                 }
             }
-        }, "clean-up");
+        }, TASK_TAG_CLEAN_UP);
     }
 
     void consumingRequestedQut(CancellationSignal cs) {
@@ -412,7 +415,7 @@ class WarmUpDelegate {
                     mWarmUpScheduler.taskFinished(TaskType.RequestConsuming);
                 }
             }
-        }, "consuming-up");
+        }, TASK_TAG_CONSUMING_UP);
     }
 
     private boolean warmUpBlocked(String pathOfElf, int offset) {
@@ -472,7 +475,7 @@ class WarmUpDelegate {
 
         private Handler mBlockedChecker = new Handler(Looper.getMainLooper(), this);
         private final static int MSG_BLOCKED_CHECK = 1;
-        private final static long BLOCKED_CHECK_INTERVAL = 600 * 1000;
+        private final static long BLOCKED_CHECK_INTERVAL = 300 * 1000;
 
         private boolean mThreadBlocked = false;
 
@@ -504,36 +507,66 @@ class WarmUpDelegate {
             }
         }
 
+        volatile long[] mTaskStartTS = {0};
+
         @Override
         public void run() {
 
             mThreadBlocked = false;
 
-            Runnable runnable = null;
-            String tag = null;
-            do {
+            synchronized (mTaskStartTS) {
+                mTaskStartTS[0] = System.currentTimeMillis();
+            }
 
-                if (runnable != null) {
-                    Log.i(TAG, "Before '%s' task execution..", tag);
-                    runnable.run();
-                    Log.i(TAG, "After '%s' task execution..", tag);
-                }
+            try {
+                Runnable runnable = null;
+                String tag = null;
+                do {
 
-                synchronized (mTaskQueue) {
-                    tag = mTaskQueue.poll();
-                    if (tag == null) {
-                        return;
+                    if (runnable != null) {
+                        long start = System.currentTimeMillis();
+                        Log.i(TAG, "Before '%s' task execution..", tag);
+                        runnable.run();
+                        Log.i(TAG, "After '%s' task execution..", tag);
+
+                        long duration = System.currentTimeMillis() - start;
+                        WarmUpReporter callback = WarmUpDelegate.sReporter;
+                        if (callback != null) {
+                            if (TASK_TAG_WARM_UP.equalsIgnoreCase(tag)) {
+                                callback.onReport(WarmUpReporter.ReportEvent.WarmUpDuration, duration);
+                            } else if (TASK_TAG_CONSUMING_UP.equalsIgnoreCase(tag)) {
+                                callback.onReport(WarmUpReporter.ReportEvent.ConsumeRequestDuration, duration);
+                            }
+                        }
                     }
-                    runnable = mRunnableTasks.remove(tag);
-                }
-            } while (runnable != null);
 
-            mBlockedChecker.removeMessages(MSG_BLOCKED_CHECK);
+                    synchronized (mTaskQueue) {
+                        tag = mTaskQueue.poll();
+                        if (tag == null) {
+                            return;
+                        }
+                        runnable = mRunnableTasks.remove(tag);
+                    }
+                } while (runnable != null);
+            } finally {
+                synchronized (mTaskStartTS) {
+                    mTaskStartTS[0] = 0;
+                }
+
+                mBlockedChecker.removeMessages(MSG_BLOCKED_CHECK);
+            }
+
         }
 
         @Override
         public boolean handleMessage(Message msg) {
             if (msg.what == MSG_BLOCKED_CHECK) {
+                synchronized (mTaskStartTS) {
+                    if (mTaskStartTS[0] == 0) {
+                        return false;
+                    }
+                }
+
                 mThreadBlocked = true;
 
                 WarmUpReporter callback = WarmUpDelegate.sReporter;

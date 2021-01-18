@@ -341,9 +341,9 @@ namespace wechat_backtrace {
                 } else if (log) {
                     QUT_DEBUG_LOG("--- Dump Instr %llu",
                                   (ullint_t) entry_pair->encoded_instructions.size());
-                    for (auto it = entry_pair->encoded_instructions.begin();
-                         it != entry_pair->encoded_instructions.end(); it++) {
-                        uint8_t instr = *it;
+                    for (auto i = entry_pair->encoded_instructions.begin();
+                         i != entry_pair->encoded_instructions.end(); i++) {
+                        uint8_t instr = *i;
                         (void) instr;
                         QUT_DEBUG_LOG(">>>> Instr: "
                                               BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(instr));

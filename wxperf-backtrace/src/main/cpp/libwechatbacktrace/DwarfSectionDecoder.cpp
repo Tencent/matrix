@@ -927,7 +927,7 @@ namespace wechat_backtrace {
                                                         QutInstructionsOfEntries *previous_entries,
                                                         uint64_t &estimate_memory_usage,
                                                         bool &memory_overwhelmed) {
-
+        
         FillFdes();
 
         QutInstructionsOfEntries *all_instructions = previous_entries;
@@ -949,7 +949,7 @@ namespace wechat_backtrace {
                 continue;
             }
 
-            deque<uint64_t> *prev_instructions = nullptr;
+            shared_ptr<deque<uint64_t>> prev_instructions;
             uint64_t prev_pc = -1;
             for (uint64_t pc = fde->pc_start; pc < fde->pc_end;) {
 
@@ -1020,7 +1020,7 @@ namespace wechat_backtrace {
                 auto entry = std::make_pair(pc_end, instructions);
                 (*all_instructions)[pc] = entry;
 
-                prev_instructions = instructions.get();
+                prev_instructions = instructions;
                 prev_pc = pc;
 
                 pc = pc_end;
@@ -1032,7 +1032,6 @@ namespace wechat_backtrace {
                 }
             }
         }
-
 
     }
 

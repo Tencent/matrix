@@ -162,7 +162,9 @@ public class WeChatBacktrace {
         // Load backtrace library.
         loadLibrary(configuration.mLibraryLoader);
 
-        enableLogger(configuration.mPathOfXLogSo, configuration.mEnableLog);
+        if (configuration.mEnableLog) {
+            enableLogger(configuration.mPathOfXLogSo, true);
+        }
 
         Log.i(TAG, configuration.toString());
 
