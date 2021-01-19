@@ -197,7 +197,7 @@ namespace wechat_backtrace {
     }
 
     inline bool
-    _QuickenInstructionsEncode32(std::deque<uint64_t> &instructions, std::deque<uint8_t> &encoded,
+    _QuickenInstructionsEncode32(std::vector<uint64_t> &instructions, std::vector<uint8_t> &encoded,
                                  bool *prologue_conformed, bool log) {
 
 // QUT encode for 32-bit:
@@ -239,11 +239,12 @@ namespace wechat_backtrace {
 
 //      1111 1111 + SLEB128 : vsp = vsp + SLEB128   							;
 
-        while (!instructions.empty()) {
+        auto it = instructions.begin();
+        while (it != instructions.end()) {
 
-            uint64_t instruction = instructions.front();
+            uint64_t instruction = *it;
 
-            instructions.pop_front();
+            it++;
 
 #ifdef QUT_STATISTIC_ENABLE
             CheckInstruction(instruction);
@@ -330,9 +331,9 @@ namespace wechat_backtrace {
                                          next_op == QUT_INSTRUCTION_R11_OFFSET))
                                     && (next_imm_fp == next_imm)) {
                                     have_prologue = true;
-                                    instructions.pop_front(); // vsp + 8
-                                    instructions.pop_front(); // pop lr = vsp - 4
-                                    instructions.pop_front(); // pop r7/r11 = vsp - 8
+                                    it++; // vsp + 8
+                                    it++; // pop lr = vsp - 4
+                                    it++; // pop r7/r11 = vsp - 8
                                 }
                             }
                         } while (false);
@@ -464,7 +465,7 @@ namespace wechat_backtrace {
     }
 
     inline bool
-    _QuickenInstructionsEncode64(std::deque<uint64_t> &instructions, std::deque<uint8_t> &encoded,
+    _QuickenInstructionsEncode64(std::vector<uint64_t> &instructions, std::vector<uint8_t> &encoded,
                                  bool *prologue_conformed, bool log) {
 
 // QUT encode for 64-bit:
@@ -503,11 +504,13 @@ namespace wechat_backtrace {
 
         (void) prologue_conformed;
 
-        while (!instructions.empty()) {
+        auto it = instructions.begin();
 
-            uint64_t instruction = instructions.front();
+        while (it != instructions.end()) {
 
-            instructions.pop_front();
+            uint64_t instruction = *it;
+
+            it++;
 
 #ifdef QUT_STATISTIC_ENABLE
             CheckInstruction(instruction);
@@ -588,9 +591,9 @@ namespace wechat_backtrace {
                                 if ((next_op == QUT_INSTRUCTION_X29_OFFSET)
                                     && (next_imm_fp == next_imm)) {
                                     have_prologue = true;
-                                    instructions.pop_front(); // vsp + 16       // TODO recheck this logic
-                                    instructions.pop_front(); // pop lr = vsp - 8
-                                    instructions.pop_front(); // pop x29 = vsp - 16
+                                    it++; // vsp + 16
+                                    it++; // pop lr = vsp - 8
+                                    it++; // pop x29 = vsp - 16
                                 }
                             }
                         } while (false);
@@ -714,7 +717,7 @@ namespace wechat_backtrace {
     }
 
     inline bool
-    QuickenInstructionsEncode(std::deque<uint64_t> &instructions, std::deque<uint8_t> &encoded,
+    QuickenInstructionsEncode(std::vector<uint64_t> &instructions, std::vector<uint8_t> &encoded,
                               bool *prologue_conformed, bool log = false) {
 #ifdef __arm__
         return _QuickenInstructionsEncode32(instructions, encoded, prologue_conformed, log);

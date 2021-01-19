@@ -62,7 +62,6 @@ public class MainActivity extends AppCompatActivity {
         WeChatBacktrace.instance().configure(getApplicationContext())
                 .setBacktraceMode(WeChatBacktrace.Mode.Quicken)
                 .warmUpSettings(WeChatBacktrace.WarmUpTiming.PostStartup, 10000)
-                .clearWarmUpDirectorySet()
                 .directoryToWarmUp("/system/framework/arm/boot.oat")
                 .directoryToWarmUp("/system/framework/arm/boot-framework.oat")
                 .enableIsolateProcessLogger(true)

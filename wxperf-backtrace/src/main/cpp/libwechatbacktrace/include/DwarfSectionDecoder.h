@@ -25,7 +25,8 @@ namespace wechat_backtrace {
         uint16_t reg_expression;
     };
 
-    typedef std::map<uint64_t, std::pair<uint64_t, std::shared_ptr<std::deque<uint64_t>>>> QutInstructionsOfEntries;
+    typedef std::vector<uint64_t> QutInstrCollection;
+    typedef std::map<uint64_t, std::pair<uint64_t, std::shared_ptr<QutInstrCollection>>> QutInstructionsOfEntries;
 
     template<typename AddressType>
     class DwarfSectionDecoder {
@@ -116,7 +117,7 @@ namespace wechat_backtrace {
 //        bool log = true;
 //        uptr log_pc = 0x14e350;
 
-        std::shared_ptr<std::deque<uint64_t>> temp_instructions_;
+        std::shared_ptr<QutInstrCollection> temp_instructions_;
     };
 
 }  // namespace wechat_backtrace

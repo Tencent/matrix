@@ -43,7 +43,7 @@
     {MAX_FRAMES, 0, std::shared_ptr<wechat_backtrace::Frame>( \
     new wechat_backtrace::Frame[MAX_FRAMES], std::default_delete<wechat_backtrace::Frame[]>())}
 
-#define MEMORY_USAGE_UPPER_BOUND 800 * 1000 // Amount of instructions, 80w
+#define MEMORY_USAGE_UPPER_BOUND 9 * 1000 * 1000 // Amount of instructions, 900w
 #define CHECK_MEMORY_OVERWHELMED(USAGE) (USAGE > MEMORY_USAGE_UPPER_BOUND)
 
 namespace wechat_backtrace {

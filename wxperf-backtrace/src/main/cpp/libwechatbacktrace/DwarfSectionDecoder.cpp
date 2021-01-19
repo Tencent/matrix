@@ -1,13 +1,14 @@
 //
 // Created by Carl on 2020-10-14.
 //
+#include <unistd.h>
+#include <map>
+#include <deque>
 
 #include <DwarfEncoding.h>
 #include <include/unwindstack/DwarfStructs.h>
 #include <include/unwindstack/MachineArm.h>
 #include <include/unwindstack/MachineArm64.h>
-#include <map>
-#include <deque>
 #include <QuickenTableGenerator.h>
 #include <QutStatistics.h>
 #include "DwarfCfa.h"
@@ -927,7 +928,7 @@ namespace wechat_backtrace {
                                                         QutInstructionsOfEntries *previous_entries,
                                                         uint64_t &estimate_memory_usage,
                                                         bool &memory_overwhelmed) {
-        
+
         FillFdes();
 
         QutInstructionsOfEntries *all_instructions = previous_entries;
@@ -949,7 +950,7 @@ namespace wechat_backtrace {
                 continue;
             }
 
-            shared_ptr<deque<uint64_t>> prev_instructions;
+            shared_ptr<QutInstrCollection> prev_instructions;
             uint64_t prev_pc = -1;
             for (uint64_t pc = fde->pc_start; pc < fde->pc_end;) {
 
@@ -978,7 +979,7 @@ namespace wechat_backtrace {
                     continue;
                 }
 
-                auto instructions = make_shared<deque<uint64_t>>();
+                auto instructions = make_shared<QutInstrCollection>();
 
                 temp_instructions_ = instructions;
 
@@ -1019,7 +1020,6 @@ namespace wechat_backtrace {
 
                 auto entry = std::make_pair(pc_end, instructions);
                 (*all_instructions)[pc] = entry;
-
                 prev_instructions = instructions;
                 prev_pc = pc;
 

@@ -24,7 +24,7 @@ namespace wechat_backtrace {
 
     struct TempEntryPair {
         uptr entry_point = 0;
-        deque<uint8_t> encoded_instructions;
+        vector<uint8_t> encoded_instructions;
     };
 
     template<typename AddressType>
@@ -100,7 +100,7 @@ namespace wechat_backtrace {
 
         QUT_STATISTIC(InstructionEntriesArmExidx, total_entries, 0);
 
-        shared_ptr<deque<uint64_t>> curr_instructions;
+        shared_ptr<QutInstrCollection> curr_instructions;
         uint32_t start_addr = 0;
 
         for (size_t i = 0; i < total_entries; i++) {
@@ -395,9 +395,10 @@ namespace wechat_backtrace {
         uptr *temp_qutbl = new uptr[temp_tbl_capacity];
 
         // Compress instructions.
-        while (!entries_encoded.empty()) {
-            shared_ptr<TempEntryPair> current_entry = entries_encoded.front();
-            entries_encoded.pop_front();
+        auto encoded_it = entries_encoded.begin();
+        while (encoded_it != entries_encoded.end()) {
+            shared_ptr<TempEntryPair> current_entry = *encoded_it;
+            encoded_it++;
 
             // part 1.
             temp_quidx[idx_size++] = current_entry->entry_point;

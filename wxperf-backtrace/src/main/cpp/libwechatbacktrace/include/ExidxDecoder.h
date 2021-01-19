@@ -86,7 +86,7 @@ namespace wechat_backtrace {
     public:
         ExidxDecoder(unwindstack::Memory *memory, unwindstack::Memory *process_memory)
                 : memory_(memory), process_memory_(process_memory) {
-            instructions_.reset(new std::deque<uint64_t>);
+            instructions_.reset(new QutInstrCollection);
         }
 
         ~ExidxDecoder() {};
@@ -95,7 +95,7 @@ namespace wechat_backtrace {
 
         bool Eval();
 
-        std::unique_ptr<std::deque<uint64_t>> instructions_;
+        std::unique_ptr<QutInstrCollection> instructions_;
 
         ArmStatus status_ = ARM_STATUS_NONE;
         uint64_t status_address_ = 0;
