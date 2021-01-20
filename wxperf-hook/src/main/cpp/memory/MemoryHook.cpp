@@ -201,6 +201,7 @@ static inline size_t collect_metas(std::map<void *, caller_meta_t> &heap_caller_
 }
 
 static inline void dump_callers(FILE *log_file,
+                                cJSON *json_size_arr,
 //                                const std::multimap<void *, ptr_meta_t> &ptr_metas,
                                 std::map<void *, caller_meta_t> &caller_metas) {
 
@@ -252,6 +253,9 @@ static inline void dump_callers(FILE *log_file,
     for (auto i                 = result_sort_by_size.rbegin();
          i != result_sort_by_size.rend(); ++i) {
         LOGD(TAG, "so = %s, caller alloc size = %zu", i->second.c_str(), i->first);
+        cJSON * so_size_obj = cJSON_CreateObject();
+        cJSON_AddStringToObject(so_size_obj, i->second.c_str(), std::to_string(i->first).c_str());
+        cJSON_AddItemToArray(json_size_arr, so_size_obj);
         flogger(log_file, "caller alloc size = %10zu b, so = %s\n", i->first, i->second.c_str());
 
         caller_total_size += i->first;
@@ -500,10 +504,12 @@ static inline void dump_impl(FILE *log_file, FILE *json_file, bool mmap) {
                                          heap_stack_metas,
                                          mmap_stack_metas);
 
-    // native heap allocation
-    dump_callers(log_file, heap_caller_metas);
+    cJSON *json_obj           = cJSON_CreateObject();
+    cJSON *so_native_size_arr = cJSON_AddArrayToObject(json_obj, "SoNativeSize");
 
-    cJSON *json_obj        = cJSON_CreateObject();
+    // native heap allocation
+    dump_callers(log_file, so_native_size_arr, heap_caller_metas);
+
     cJSON *native_heap_arr = cJSON_AddArrayToObject(json_obj, "NativeHeap");
 
     dump_stacks(log_file, native_heap_arr, heap_stack_metas);
@@ -514,7 +520,8 @@ static inline void dump_impl(FILE *log_file, FILE *json_file, bool mmap) {
         flogger(log_file,
                 "############################# mmap #############################\n\n");
 
-        dump_callers(log_file, mmap_caller_metas);
+        cJSON *so_mmap_size_arr = cJSON_AddArrayToObject(json_obj, "SoMmapSize");
+        dump_callers(log_file, so_mmap_size_arr, mmap_caller_metas);
         cJSON *mmap_arr = cJSON_AddArrayToObject(json_obj, "mmap");
         dump_stacks(log_file, mmap_arr, mmap_stack_metas);
     }
