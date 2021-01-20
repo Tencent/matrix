@@ -18,7 +18,7 @@ public class OtherProcessService extends Service {
     public IBinder onBind(Intent intent) {
 
         Log.e(TAG, "Service started");
-
+        
         if (mInit) {
             return null;
         }
@@ -28,5 +28,9 @@ public class OtherProcessService extends Service {
         WeChatBacktrace.instance().configure(getApplicationContext()).commit();
 
         return null;
+    }
+
+    public void onDestroy() {
+        Log.e(TAG, "Service onDestroy");
     }
 }

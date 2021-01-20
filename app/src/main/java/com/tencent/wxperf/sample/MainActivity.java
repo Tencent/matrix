@@ -35,7 +35,7 @@ import java.io.FileFilter;
 
 public class MainActivity extends AppCompatActivity {
 
-    private static final String TAG = "Wxperf.MainActivity";
+    private static final String TAG = "Wxperf.Main";
 
     String threadNameRegex = "[GT]TestHT-?".replace("[", "\\[").replace("]", "\\]").replace("?", "[0-9]*");
 
