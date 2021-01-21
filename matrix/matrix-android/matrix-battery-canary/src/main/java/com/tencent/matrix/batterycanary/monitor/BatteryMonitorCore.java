@@ -13,6 +13,7 @@ import android.support.annotation.WorkerThread;
 
 import com.tencent.matrix.AppActiveMatrixDelegate;
 import com.tencent.matrix.Matrix;
+import com.tencent.matrix.batterycanary.BatteryEventDelegate;
 import com.tencent.matrix.batterycanary.monitor.feature.AlarmMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.AppStatMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature;
@@ -187,6 +188,10 @@ public class BatteryMonitorCore implements
                     mWorkerTid = Process.myTid();
                 }
             });
+
+            if (BatteryEventDelegate.isInit()) {
+                BatteryEventDelegate.getInstance().attach(this).startListening();
+            }
         }
     }
 
@@ -234,6 +239,10 @@ public class BatteryMonitorCore implements
             return;
         }
         mAppForeground = isForeground;
+
+        if (BatteryEventDelegate.isInit()) {
+            BatteryEventDelegate.getInstance().onForeground(isForeground);
+        }
 
         if (!isForeground) {
             // back:
