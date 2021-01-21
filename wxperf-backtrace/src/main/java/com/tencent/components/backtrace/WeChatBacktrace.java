@@ -19,7 +19,7 @@ public class WeChatBacktrace {
     private final static String SYSTEM_LIBRARY_PATH = "/system/lib/";
     private final static String SYSTEM_LIBRARY_PATH_64 = "/system/lib64/";
 
-    public final static String ISOLATE_PROCESS_SUFFIX = ":__backtrace";
+    public final static String ISOLATE_PROCESS_SUFFIX = ":backtrace__";
 
     public static boolean is64BitRuntime() {
         final String currRuntimeABI = Build.CPU_ABI;

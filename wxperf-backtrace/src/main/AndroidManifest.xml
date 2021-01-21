@@ -12,7 +12,7 @@
             android:name=".WarmUpService"
             android:enabled="true"
             android:exported="false"
-            android:process=":__backtrace"></service>
+            android:process=":backtrace__"></service>
 
     </application>
 
