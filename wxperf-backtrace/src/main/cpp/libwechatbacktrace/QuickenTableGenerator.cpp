@@ -250,6 +250,8 @@ namespace wechat_backtrace {
         uint64_t from_end;
 
         while (to_it != to->end() || from_it != from->end()) {
+
+            // Reach end of 'from', fill all 'to' to 'result_frame_instructions'
             if (from_it == from->end()) {
                 (*result_frame_instructions)[to_it->first] = make_pair(to_it->second.first,
                                                                        to_it->second.second);
@@ -257,6 +259,7 @@ namespace wechat_backtrace {
                 continue;
             }
 
+            // The 'from_start' equals 'from_end' which means we should step to next 'from' entry.
             if (from_start == from_end) {
                 from_start = from_it->first;
                 from_end = from_it->second.first;
@@ -266,6 +269,7 @@ namespace wechat_backtrace {
                 break; // Unexpected.
             }
 
+            // Reach end of 'to', fill all 'from' to 'result_frame_instructions'
             if (to_it == to->end()) {
                 (*result_frame_instructions)[from_start] = make_pair(from_end,
                                                                      from_it->second.second);
@@ -275,23 +279,34 @@ namespace wechat_backtrace {
             }
 
             if (from_end <= to_it->first) {
+                // The 'to' entry is far higher than current 'from' entry, just fill 'from'
+                // to 'result_frame_instructions' and iterate to next.
                 (*result_frame_instructions)[from_start] = make_pair(from_end,
                                                                      to_it->second.second);
                 from_start = from_end;
                 from_it = from->erase(from_it);
+            } else if (from_start >= to_it->second.first) {
+                // The 'from' entry is far higher than current 'to' entry, just fill 'to'
+                // to 'result_frame_instructions' and iterate to next.
+                (*result_frame_instructions)[to_it->first] = to_it->second;
+                to_it = to->erase(to_it);
             } else {
                 if (from_start < to_it->first) {
+                    // 'from_start' is less than start of 'to', so fill [from_start, to_it->first)
+                    // into 'result_frame_instructions'.
                     (*result_frame_instructions)[from_start] = make_pair(to_it->first,
                                                                          to_it->second.second);
                 }
-                if (from_end < to_it->second.first) {
+
+                if (from_end <= to_it->second.first) {
+                    // The end of 'from' is in range of 'to' entry, so iterate to next 'from'.
                     from_start = from_end;
                     from_it = from->erase(from_it);
                 } else {
-                    (*result_frame_instructions)[to_it->first] = make_pair(to_it->second.first,
-                                                                           to_it->second.second);
-                    to_it = to->erase(to_it);
+                    // The end of 'from' is higher than end of 'to', fill 'to' and iterate.
+                    (*result_frame_instructions)[to_it->first] = to_it->second;
                     from_start = to_it->second.first;
+                    to_it = to->erase(to_it);
                     if (from_end == from_start) {
                         from_it = from->erase(from_it);
                     }
