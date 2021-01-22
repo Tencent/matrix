@@ -18,6 +18,8 @@ package com.tencent.matrix.batterycanary.utils;
 
 import android.app.ActivityManager;
 import android.content.Context;
+import android.os.Handler;
+import android.os.Looper;
 import android.os.Process;
 import android.os.SystemClock;
 import android.support.test.InstrumentationRegistry;
@@ -40,6 +42,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
@@ -712,8 +715,42 @@ public class ProcStatUtilsTest {
         }
 
         @Test
+        public void testConcurrentParsing() throws IOException, ProcStatUtil.ParseException, InterruptedException {
+            ProcStatUtil.setParseErrorListener(new ProcStatUtil.OnParseError() {
+                @Override
+                public void onError(final int mode, final String input) {
+                    new Handler(Looper.getMainLooper()).post(new Runnable() {
+                        @Override
+                        public void run() {
+                            Assert.fail("mode = " + mode + ", error = " + input);
+                        }
+                    });
+                }
+            });
+
+            List<Thread> threadList = new ArrayList<>();
+            for (int i = 0; i < 1000; i++) {
+                Thread thread = new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        ProcStatUtil.ProcStat computedStat = ProcStatUtil.of(Process.myTid());
+                        Assert.assertNotNull(computedStat);
+                    }
+                });
+                thread.start();
+                threadList.add(thread);
+            }
+
+            for (Thread item : threadList) {
+                item.join();
+            }
+        }
+
+        @Test
         public void testParsingIndividualCases() throws IOException, ProcStatUtil.ParseException {
             List<String> cases = Arrays.asList(
+                    "30109 ([GT]ColdPool#4) R 631 808 0 0 -1 4210752 2491 1245 0 0 48 15 0 1 30 10 179 0 23003491 44575170560 143434 18446744073709551615 419586322432 419586347040 548986306016 0 0 0 4608 4097 1073775868 0 0 0 -1 7 0 0 3 0 0 419586351104 419586352512 419837206528 548986310249 548986310326 548986310326 548986314718 0 0 0 8 0",
+                    "30712 ([GT]HotPool#1) R 631 808 0 0 -1 4210752 1858 1245 0 0 27 9 0 1 16 -4 173 0 23004238 44357824512 122121 18446744073709551615 419586322432 419586347040 548986306016 0 0 0 4612 4097 1073775868 0 0 0 -1 2 0 0 1 0 0 419586351104 419586352512 419837206528 548986310249 548986310326 548986310326 548986314718 0 0 0 0 0 0",
                     "11522 (default_matrix_) R 1670 1670 0 0 -1 4210752 45502 581 1275 0 1214 1521 0 0 20 0 173 0 14969918 14697058304 67774 18446744073709551615 373188939776 373188964816 549282126752 0 0 0 4612 4097 1073775868 0 0 0 -1 6 0 0 0 0 0 373188968448 373188969896 373791416320 549282129081 549282129180 549282129180 549282131934 0",
                     "20764:11151 (default_matrix_) R 634 810 0 0 -1 4210752 363390 25980 11017 62 9807 10924 19 14 20 0 201 0 7580454 15621533696 88111 18446744073709551615 387170705408 387170730016 549146763456 0 0 0 4612 4097 1073775868 0 0 0 -1 4 0 0 141 0 0 387170734080 387170735488 388046045184 549146766953 549146767030 549146767030 549146771422 0",
                     "1542:20423 (default_matrix_) R 655 655 0 0 -1 4210752 32711 5909 4 4 676 856 3 7 20 0 199 0 17686272 15023083520 151543 18446744073709551615 399329419264 399329443936 548751576320 0 0 0 4612 4097 1073775868 0 0 0 -1 5 0 0 0 0 0 399329447936 399329449344 400316149760 548751580613 548751580712 548751580712 548751585246 0",

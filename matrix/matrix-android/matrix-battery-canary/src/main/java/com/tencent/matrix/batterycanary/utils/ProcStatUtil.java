@@ -24,8 +24,15 @@ import java.nio.charset.StandardCharsets;
 @SuppressWarnings({"JavadocReference", "SpellCheckingInspection"})
 public final class ProcStatUtil {
     private static final String TAG = "Matrix.battery.ProcStatUtil";
-    private static final byte[] sBuffer = new byte[1024];
+    private static final ThreadLocal<byte[]> sBufferRef = new ThreadLocal<>();
     @Nullable private static OnParseError sParseError;
+
+    static byte[] getLocalBuffers() {
+        if (sBufferRef.get() == null) {
+            sBufferRef.set(new byte[128]);
+        }
+        return sBufferRef.get();
+    }
 
     ProcStatUtil() {
     }
@@ -55,7 +62,7 @@ public final class ProcStatUtil {
         try {
             ProcStat procStatInfo = null;
             try {
-                procStatInfo = parseWithBufferForPath(path, sBuffer);
+                procStatInfo = parseWithBufferForPath(path, getLocalBuffers());
             } catch (ParseException e) {
                 if (sParseError != null) {
                     sParseError.onError(1, e.content);
