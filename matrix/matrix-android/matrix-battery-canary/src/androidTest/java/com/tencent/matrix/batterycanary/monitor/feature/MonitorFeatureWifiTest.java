@@ -16,23 +16,14 @@
 
 package com.tencent.matrix.batterycanary.monitor.feature;
 
-import android.app.AlarmManager;
 import android.app.Application;
-import android.app.PendingIntent;
-import android.arch.core.util.Function;
 import android.content.Context;
-import android.content.Intent;
 import android.support.test.InstrumentationRegistry;
 import android.support.test.runner.AndroidJUnit4;
-import android.text.TextUtils;
-import android.util.Log;
 
 import com.tencent.matrix.Matrix;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorConfig;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
-import com.tencent.matrix.batterycanary.monitor.feature.AlarmMonitorFeature.AlarmRecord;
-import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Entry.BeanEntry;
-import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -40,12 +31,10 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-import java.util.concurrent.atomic.AtomicInteger;
-
 
 @RunWith(AndroidJUnit4.class)
-public class MonitorFeatureBlueToothest {
-    static final String TAG = "Matrix.test.MonitorFeatureAlarmTest";
+public class MonitorFeatureWifiTest {
+    static final String TAG = "Matrix.test.MonitorFeatureWifiTest";
 
     Context mContext;
 
@@ -63,7 +52,7 @@ public class MonitorFeatureBlueToothest {
 
     private BatteryMonitorCore mockMonitor() {
         BatteryMonitorConfig config = new BatteryMonitorConfig.Builder()
-                .enable(JiffiesMonitorFeature.class)
+                .enable(WifiMonitorFeature.class)
                 .enableBuiltinForegroundNotify(false)
                 .enableForegroundMode(false)
                 .wakelockTimeout(1000)
@@ -74,77 +63,46 @@ public class MonitorFeatureBlueToothest {
     }
 
     @Test
-    public void testRegister() throws InterruptedException {
-        BlueToothMonitorFeature feature = new BlueToothMonitorFeature();
-        feature.configure(mockMonitor());
-
-        BlueToothMonitorFeature.BlueToothSnapshot snapshot = feature.currentSnapshot();
-        Assert.assertEquals(0, (int) snapshot.regsCount.get());
-        Assert.assertEquals(0, (int) snapshot.discCount.get());
-        Assert.assertEquals(0, (int) snapshot.scanCount.get());
-
-        for (int i = 0; i < 50; i++) {
-            feature.mCounting.onRegisterScanner();
-            snapshot = feature.currentSnapshot();
-            Assert.assertEquals(i + 1, (int) snapshot.regsCount.get());
-            Assert.assertEquals(0, (int) snapshot.discCount.get());
-            Assert.assertEquals(0, (int) snapshot.scanCount.get());
-        }
-
-        feature.onTurnOff();
-        snapshot = feature.currentSnapshot();
-        Assert.assertEquals(0, (int) snapshot.regsCount.get());
-        Assert.assertEquals(0, (int) snapshot.discCount.get());
-        Assert.assertEquals(0, (int) snapshot.scanCount.get());
-    }
-
-    @Test
     public void testDiscovery() throws InterruptedException {
-        BlueToothMonitorFeature feature = new BlueToothMonitorFeature();
+        WifiMonitorFeature feature = new WifiMonitorFeature();
         feature.configure(mockMonitor());
 
-        BlueToothMonitorFeature.BlueToothSnapshot snapshot = feature.currentSnapshot();
-        Assert.assertEquals(0, (int) snapshot.regsCount.get());
-        Assert.assertEquals(0, (int) snapshot.discCount.get());
+        WifiMonitorFeature.WifiSnapshot snapshot = feature.currentSnapshot();
         Assert.assertEquals(0, (int) snapshot.scanCount.get());
+        Assert.assertEquals(0, (int) snapshot.queryCount.get());
 
         for (int i = 0; i < 50; i++) {
-            feature.mCounting.onStartDiscovery();
+            feature.mCounting.onGetScanResults();
             snapshot = feature.currentSnapshot();
-            Assert.assertEquals(0, (int) snapshot.regsCount.get());
-            Assert.assertEquals(i + 1, (int) snapshot.discCount.get());
             Assert.assertEquals(0, (int) snapshot.scanCount.get());
+            Assert.assertEquals(i + 1, (int) snapshot.queryCount.get());
         }
 
         feature.onTurnOff();
         snapshot = feature.currentSnapshot();
-        Assert.assertEquals(0, (int) snapshot.regsCount.get());
-        Assert.assertEquals(0, (int) snapshot.discCount.get());
         Assert.assertEquals(0, (int) snapshot.scanCount.get());
+        Assert.assertEquals(0, (int) snapshot.queryCount.get());
     }
 
     @Test
     public void testScan() throws InterruptedException {
-        BlueToothMonitorFeature feature = new BlueToothMonitorFeature();
+        WifiMonitorFeature feature = new WifiMonitorFeature();
         feature.configure(mockMonitor());
 
-        BlueToothMonitorFeature.BlueToothSnapshot snapshot = feature.currentSnapshot();
-        Assert.assertEquals(0, (int) snapshot.regsCount.get());
-        Assert.assertEquals(0, (int) snapshot.discCount.get());
+        WifiMonitorFeature.WifiSnapshot snapshot = feature.currentSnapshot();
         Assert.assertEquals(0, (int) snapshot.scanCount.get());
+        Assert.assertEquals(0, (int) snapshot.queryCount.get());
 
         for (int i = 0; i < 50; i++) {
             feature.mCounting.onStartScan();
             snapshot = feature.currentSnapshot();
-            Assert.assertEquals(0, (int) snapshot.regsCount.get());
-            Assert.assertEquals(0, (int) snapshot.discCount.get());
             Assert.assertEquals(i + 1, (int) snapshot.scanCount.get());
+            Assert.assertEquals(0, (int) snapshot.queryCount.get());
         }
 
         feature.onTurnOff();
         snapshot = feature.currentSnapshot();
-        Assert.assertEquals(0, (int) snapshot.regsCount.get());
-        Assert.assertEquals(0, (int) snapshot.discCount.get());
         Assert.assertEquals(0, (int) snapshot.scanCount.get());
+        Assert.assertEquals(0, (int) snapshot.queryCount.get());
     }
 }
