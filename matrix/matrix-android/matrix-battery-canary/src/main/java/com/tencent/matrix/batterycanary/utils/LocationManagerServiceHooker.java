@@ -23,17 +23,18 @@ import android.support.annotation.RestrictTo;
 
 import com.tencent.matrix.util.MatrixLog;
 
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 
 @RestrictTo(RestrictTo.Scope.LIBRARY)
-public final class WifiManagerServiceHooker {
-    private static final String TAG = "Matrix.battery.WifiHooker";
+public final class LocationManagerServiceHooker {
+    private static final String TAG = "Matrix.battery.LocationHooker";
 
     public interface IListener {
-        @AnyThread void onStartScan();
-        @AnyThread void onGetScanResults();
+        @AnyThread
+        void onRequestLocationUpdates(long minTimeMillis, float minDistance);
     }
 
     private static List<IListener> sListeners = new ArrayList<>();
@@ -41,10 +42,26 @@ public final class WifiManagerServiceHooker {
     private static SystemServiceBinderHooker.HookCallback sHookCallback = new SystemServiceBinderHooker.HookCallback() {
         @Override
         public void onServiceMethodInvoke(Method method, Object[] args) {
-            if ("startScan".equals(method.getName())) {
-                dispatchStartScan();
-            } else if ("getScanResults".equals(method.getName())) {
-                dispatchGetScanResults();
+            if ("requestLocationUpdates".equals(method.getName())) {
+                long minTime = -1;
+                float minDistance = -1;
+                if (args != null) {
+                    for (Object item : args) {
+                        if (item != null && "android.location.LocationRequest".equals(item.getClass().getName())) {
+                            try {
+                                Field mFastestInterval = item.getClass().getDeclaredField("mFastestInterval");
+                                mFastestInterval.setAccessible(true);
+                                minTime = mFastestInterval.getLong(item);
+                                Field mSmallestDisplacement = item.getClass().getDeclaredField("mSmallestDisplacement");
+                                mSmallestDisplacement.setAccessible(true);
+                                minDistance = mSmallestDisplacement.getFloat(item);
+                            } catch (Throwable throwable) {
+                                MatrixLog.printErrStackTrace(TAG, throwable, "");
+                            }
+                        }
+                    }
+                }
+                dispatchRequestLocationUpdates(minTime, minDistance);
             }
         }
 
@@ -55,7 +72,7 @@ public final class WifiManagerServiceHooker {
         }
     };
 
-    private static SystemServiceBinderHooker sHookHelper = new SystemServiceBinderHooker(Context.WIFI_SERVICE, "android.net.wifi.IWifiManager", sHookCallback);
+    private static SystemServiceBinderHooker sHookHelper = new SystemServiceBinderHooker(Context.LOCATION_SERVICE, "android.location.ILocationManager", sHookCallback);
 
     public synchronized static void addListener(IListener listener) {
         if (listener == null) {
@@ -113,15 +130,9 @@ public final class WifiManagerServiceHooker {
         sTryHook = false;
     }
 
-    private static void dispatchStartScan() {
+    private static void dispatchRequestLocationUpdates(long minTimeMillis, float minDistance) {
         for (IListener item : sListeners) {
-            item.onStartScan();
-        }
-    }
-
-    private static void dispatchGetScanResults() {
-        for (IListener item : sListeners) {
-            item.onGetScanResults();
+            item.onRequestLocationUpdates(minTimeMillis, minDistance);
         }
     }
 }

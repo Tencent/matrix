@@ -32,6 +32,7 @@ import android.support.annotation.BinderThread;
 import android.support.annotation.Nullable;
 import android.support.test.InstrumentationRegistry;
 import android.support.test.runner.AndroidJUnit4;
+import android.support.v4.content.ContextCompat;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -66,7 +67,7 @@ public class BleManagerHookerTest {
         BluetoothManager bluetoothManager = (BluetoothManager) mContext.getSystemService(Context.BLUETOOTH_SERVICE);
         BluetoothAdapter adapter = bluetoothManager.getAdapter();
         boolean discovery = adapter.startDiscovery();
-        Assert.assertFalse(discovery);
+        Assert.assertEquals(ContextCompat.checkSelfPermission(mContext, "android.permission.ACCESS_FINE_LOCATION") == 0, discovery);
     }
 
     @Test
