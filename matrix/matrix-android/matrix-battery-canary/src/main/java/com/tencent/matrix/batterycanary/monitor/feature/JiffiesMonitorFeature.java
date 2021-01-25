@@ -117,12 +117,14 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
             public int pid;
             public int tid;
             public String name;
+            public String stat;
             public long jiffies;
 
             public void loadProcStat() throws IOException {
                 ProcStatUtil.ProcStat stat = ProcStatUtil.of(pid, tid);
                 if (stat != null) {
-                    name = stat.comm;
+                    this.name = stat.comm;
+                    this.stat = stat.stat;
                     jiffies = stat.getJiffies();
                 } else {
                     throw new IOException("parse fail: " + BatteryCanaryUtil.cat("/proc/" + pid + "/task/" + tid + "/stat"));
@@ -166,8 +168,10 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
             }
 
             List<ThreadJiffiesSnapshot> threadJiffiesList = Collections.emptyList();
+            int threadNum = 0;
 
             if (processInfo.threadInfo.size() > 0) {
+                threadNum = processInfo.threadInfo.size();
                 threadJiffiesList = new ArrayList<>(processInfo.threadInfo.size());
                 for (ProcessInfo.ThreadInfo threadInfo : processInfo.threadInfo) {
                     ThreadJiffiesSnapshot threadJiffies = ThreadJiffiesSnapshot.parseThreadJiffies(threadInfo);
@@ -187,6 +191,7 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
             }
             snapshot.totalJiffies = DigitEntry.of(totalJiffies);
             snapshot.threadEntries = ListEntry.of(threadJiffiesList);
+            snapshot.threadNum = DigitEntry.of(threadNum);
             return snapshot;
         }
 
@@ -194,6 +199,7 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
         public String name;
         public DigitEntry<Long> totalJiffies;
         public ListEntry<ThreadJiffiesSnapshot> threadEntries;
+        public DigitEntry<Integer> threadNum;
 
         private JiffiesSnapshot() {}
 
@@ -206,6 +212,7 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
                     delta.pid = end.pid;
                     delta.name = end.name;
                     delta.totalJiffies = Differ.DigitDiffer.globalDiff(bgn.totalJiffies, end.totalJiffies);
+                    delta.threadNum = Differ.DigitDiffer.globalDiff(bgn.threadNum, end.threadNum);
                     delta.threadEntries = ListEntry.ofEmpty();
 
                     if (end.threadEntries.getList().size() > 0) {
@@ -224,6 +231,7 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
                                 ThreadJiffiesSnapshot deltaThreadJiffies = new ThreadJiffiesSnapshot(jiffiesConsumed);
                                 deltaThreadJiffies.tid = endRecord.tid;
                                 deltaThreadJiffies.name = endRecord.name;
+                                deltaThreadJiffies.stat = endRecord.stat;
                                 deltaThreadJiffies.isNewAdded = isNewAdded;
                                 deltaThreadEntries.add(deltaThreadJiffies);
                             }
@@ -257,6 +265,7 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
                     threadInfo.loadProcStat();
                     ThreadJiffiesSnapshot snapshot = new ThreadJiffiesSnapshot(threadInfo.jiffies);
                     snapshot.name = threadInfo.name;
+                    snapshot.stat = threadInfo.stat;
                     snapshot.tid = threadInfo.tid;
                     snapshot.isNewAdded = true;
                     return snapshot;
@@ -276,6 +285,8 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
             @NonNull
             public String name;
             public boolean isNewAdded;
+            @NonNull
+            public String stat;
 
             public ThreadJiffiesEntry(Long value) {
                 super(value);

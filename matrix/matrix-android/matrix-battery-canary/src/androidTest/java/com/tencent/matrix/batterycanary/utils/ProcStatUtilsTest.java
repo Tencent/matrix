@@ -196,6 +196,8 @@ public class ProcStatUtilsTest {
 
                 ProcStatUtil.ProcStat stat = parseJiffiesInfoWithSplitsForPath(catPath);
                 Assert.assertNotNull(stat.comm);
+                Assert.assertNotNull(stat.stat);
+                Assert.assertTrue(Arrays.asList("R", "S").contains(stat.stat));
                 Assert.assertTrue(stat.utime >= 0);
                 Assert.assertTrue(stat.stime >= 0);
                 Assert.assertTrue(stat.cutime >= 0);
@@ -292,6 +294,8 @@ public class ProcStatUtilsTest {
 
                 ProcStatUtil.ProcStat stat = parseJiffiesInfoWithBufferForPath(catPath, new byte[2 * 1024]);
                 Assert.assertNotNull(stat.comm);
+                Assert.assertNotNull(stat.stat);
+                Assert.assertTrue(Arrays.asList("R", "S").contains(stat.stat));
                 Assert.assertTrue(stat.utime >= 0);
                 Assert.assertTrue(stat.stime >= 0);
                 Assert.assertTrue(stat.cutime >= 0);
@@ -314,6 +318,8 @@ public class ProcStatUtilsTest {
 
                 ProcStatUtil.ProcStat stat = parseJiffiesInfoWithBufferForPathR2(catPath);
                 Assert.assertNotNull(stat.comm);
+                Assert.assertNotNull(stat.stat);
+                Assert.assertTrue(Arrays.asList("R", "S").contains(stat.stat));
                 Assert.assertTrue(stat.utime >= 0);
                 Assert.assertTrue(stat.stime >= 0);
                 Assert.assertTrue(stat.cutime >= 0);
@@ -336,6 +342,7 @@ public class ProcStatUtilsTest {
                 ProcStatUtil.ProcStat statInfo1 = ProcStatUtil.parseWithSplits(cat);
                 ProcStatUtil.ProcStat statInfo2 = parseJiffiesInfoWithBuffer(cat.getBytes());
                 Assert.assertEquals(statInfo1.comm, statInfo2.comm);
+                Assert.assertEquals(statInfo1.stat, statInfo2.stat);
                 Assert.assertEquals(statInfo1.utime, statInfo2.utime);
                 Assert.assertEquals(statInfo1.stime, statInfo2.stime);
                 Assert.assertEquals(statInfo1.cutime, statInfo2.cutime);
@@ -345,6 +352,7 @@ public class ProcStatUtilsTest {
                 statInfo1 = ProcStatUtil.parseWithSplits(cat);
                 statInfo2 = parseJiffiesInfoWithBuffer(cat.getBytes());
                 Assert.assertEquals(statInfo1.comm, statInfo2.comm);
+                Assert.assertEquals(statInfo1.stat, statInfo2.stat);
                 Assert.assertEquals(statInfo1.utime, statInfo2.utime);
                 Assert.assertEquals(statInfo1.stime, statInfo2.stime);
                 Assert.assertEquals(statInfo1.cutime, statInfo2.cutime);
@@ -361,6 +369,7 @@ public class ProcStatUtilsTest {
 
         ProcStatUtil.ProcStat stat = parseJiffiesInfoWithBuffer(sample.getBytes());
         Assert.assertEquals("terycanary.test", stat.comm);
+        Assert.assertEquals("S", stat.stat);
         Assert.assertEquals(22, stat.utime);
         Assert.assertEquals(2, stat.stime);
         Assert.assertEquals(33, stat.cutime);
@@ -371,6 +380,7 @@ public class ProcStatUtilsTest {
         sample = "10966 (terycanary test) S 699 699 0 0 -1 1077952832 6187 0 0 0 22 2 33 3";
         stat = parseJiffiesInfoWithBuffer(sample.getBytes());
         Assert.assertEquals("terycanary test", stat.comm);
+        Assert.assertEquals("S", stat.stat);
         Assert.assertEquals(22, stat.utime);
         Assert.assertEquals(2, stat.stime);
         Assert.assertEquals(33, stat.cutime);
@@ -381,6 +391,7 @@ public class ProcStatUtilsTest {
         sample = "10966 (tery canary test) S 699 699 0 0 -1 1077952832 6187 0 0 0 22 2 33 3";
         stat = parseJiffiesInfoWithBuffer(sample.getBytes());
         Assert.assertEquals("tery canary test", stat.comm);
+        Assert.assertEquals("S", stat.stat);
         Assert.assertEquals(22, stat.utime);
         Assert.assertEquals(2, stat.stime);
         Assert.assertEquals(33, stat.cutime);
@@ -433,6 +444,7 @@ public class ProcStatUtilsTest {
                 ProcStatUtil.ProcStat statInfo1 = parseJiffiesInfoWithBuffer(cat.getBytes());
                 ProcStatUtil.ProcStat statInfo2 = parseJiffiesInfoWithBuffer(Arrays.copyOfRange(cat.getBytes(), 0, 127));
                 Assert.assertEquals(statInfo1.comm, statInfo2.comm);
+                Assert.assertEquals(statInfo1.stat, statInfo2.stat);
                 Assert.assertEquals(statInfo1.utime, statInfo2.utime);
                 Assert.assertEquals(statInfo1.stime, statInfo2.stime);
                 Assert.assertEquals(statInfo1.cutime, statInfo2.cutime);

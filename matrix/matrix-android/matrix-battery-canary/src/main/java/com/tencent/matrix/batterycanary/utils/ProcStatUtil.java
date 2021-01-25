@@ -192,6 +192,16 @@ public final class ProcStatUtil {
                     break;
                 }
 
+                case 3: { // thread state
+                    int readIdx = i, window = 0;
+                    // seek next space
+                    // noinspection StatementWithEmptyBody
+                    for (; i < statBytes && !Character.isSpaceChar(statBuffer[i]); i++, window++)
+                        ;
+                    stat.stat = safeBytesToString(statBuffer, readIdx, window);
+                    break;
+                }
+
                 case 14: { // utime
                     int readIdx = i, window = 0;
                     // seek next space
@@ -277,7 +287,7 @@ public final class ProcStatUtil {
             if (!isNumeric(splits[15])) {
                 throw new ParseException(cat + "\ncstime: " + splits[15]);
             }
-
+            stat.stat = splits[1];
             stat.utime = MatrixUtil.parseLong(splits[12], 0);
             stat.stime = MatrixUtil.parseLong(splits[13], 0);
             stat.cutime = MatrixUtil.parseLong(splits[14], 0);
@@ -313,6 +323,7 @@ public final class ProcStatUtil {
     @SuppressWarnings("SpellCheckingInspection")
     public static class ProcStat {
         public String comm = "";
+        public String stat = "_";
         public long utime = -1;
         public long stime = -1;
         public long cutime = -1;

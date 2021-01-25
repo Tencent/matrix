@@ -186,20 +186,24 @@ public interface BatteryMonitorCallback extends
                 onReportJiffies(delta);
 
                 // header
-                long avgJiffies = delta.dlt.totalJiffies.get() / Math.max(1, delta.during / ONE_MIN);
+                long minute = Math.max(1, delta.during / ONE_MIN);
+                long avgJiffies = delta.dlt.totalJiffies.get() / minute;
                 mPrinter.append("| ").append("pid=").append(Process.myPid())
                         .tab().tab().append("fg=").append(isForeground)
-                        .tab().tab().append("during(min)=").append(delta.during / ONE_MIN)
+                        .tab().tab().append("during(min)=").append(minute)
                         .tab().tab().append("diff(jiffies)=").append(delta.dlt.totalJiffies.get())
                         .tab().tab().append("avg(jiffies/min)=").append(avgJiffies)
                         .enter();
 
                 // jiffies sections
                 mPrinter.createSection("jiffies(" + delta.dlt.threadEntries.getList().size() + ")");
+                mPrinter.writeLine("inc_thread_num", String.valueOf(delta.dlt.threadNum.get()));
+                mPrinter.writeLine("cur_thread_num", String.valueOf(delta.end.threadNum.get()));
                 for (ThreadJiffiesSnapshot threadJiffies : delta.dlt.threadEntries.getList().subList(0, Math.min(delta.dlt.threadEntries.getList().size(), 8))) {
-                    mPrinter.append("|   -> (").append(threadJiffies.isNewAdded ? "+" : "~").append(")")
+                    long entryJffies = threadJiffies.get();
+                    mPrinter.append("|   -> (").append(threadJiffies.isNewAdded ? "+" : "~").append("/").append(threadJiffies.stat).append(")")
                             .append(threadJiffies.name).append("(").append(threadJiffies.tid).append(")\t")
-                            .append(threadJiffies.get()).append("\tjiffies")
+                            .append(entryJffies/minute).append("/").append(entryJffies).append("\tjiffies")
                             .append("\n");
 
                     List<LooperTaskMonitorFeature.TaskTraceInfo> threadTasks = tasks.get(threadJiffies.tid);
