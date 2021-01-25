@@ -21,6 +21,8 @@ import com.tencent.matrix.batterycanary.monitor.feature.DeviceStatMonitorFeature
 import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature.JiffiesSnapshot;
 import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature.JiffiesSnapshot.ThreadJiffiesSnapshot;
+import com.tencent.matrix.batterycanary.monitor.feature.LocationMonitorFeature;
+import com.tencent.matrix.batterycanary.monitor.feature.LocationMonitorFeature.LocationSnapshot;
 import com.tencent.matrix.batterycanary.monitor.feature.LooperTaskMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Delta;
@@ -63,6 +65,7 @@ public interface BatteryMonitorCallback extends
         @Nullable protected BlueToothMonitorFeature mBlueToothFeat;
         @Nullable protected DeviceStatMonitorFeature mDevStatFeat;
         @Nullable protected JiffiesMonitorFeature mJiffiesFeat;
+        @Nullable protected LocationMonitorFeature mLocationFeat;
         @Nullable protected TrafficMonitorFeature mTrafficFeat;
         @Nullable protected WakeLockMonitorFeature mWakeLockFeat;
         @Nullable protected WifiMonitorFeature mWifiMonitorFeat;
@@ -72,6 +75,7 @@ public interface BatteryMonitorCallback extends
         @Nullable protected BatteryTmpSnapshot mLastBatteryTmpSnapshot;
         @Nullable protected CpuFreqSnapshot mLastCpuFreqSnapshot;
         @Nullable protected JiffiesSnapshot mLastJiffiesSnapshot;
+        @Nullable protected LocationSnapshot mLastLocationSnapshot;
         @Nullable protected RadioStatSnapshot mLastTrafficSnapshot;
         @Nullable protected WakeLockSnapshot mLastWakeWakeLockSnapshot;
         @Nullable protected WifiSnapshot mLastWifiSnapshot;
@@ -112,6 +116,11 @@ public interface BatteryMonitorCallback extends
             mJiffiesFeat = mMonitor.getMonitorFeature(JiffiesMonitorFeature.class);
             if (mJiffiesFeat != null) {
                 mLastJiffiesSnapshot = mJiffiesFeat.currentJiffiesSnapshot();
+            }
+
+            mLocationFeat = mMonitor.getMonitorFeature(LocationMonitorFeature.class);
+            if (mLocationFeat != null) {
+                mLastLocationSnapshot = mLocationFeat.currentSnapshot();
             }
 
             mTrafficFeat = mMonitor.getMonitorFeature(TrafficMonitorFeature.class);
@@ -272,8 +281,10 @@ public interface BatteryMonitorCallback extends
                 });
             }
 
-            if (/**/(mBlueToothFeat != null && mLastBlueToothSnapshot != null) ||
-                    (mWifiMonitorFeat != null && mLastWifiSnapshot != null)) {
+            if (/**/(mBlueToothFeat != null && mLastBlueToothSnapshot != null)
+                    || (mWifiMonitorFeat != null && mLastWifiSnapshot != null)
+                    || (mLocationFeat != null && mLastLocationSnapshot != null)
+            ) {
                 // Scanning
                 createSection("scanning", new Consumer<Printer>() {
                     @Override
@@ -298,6 +309,15 @@ public interface BatteryMonitorCallback extends
                             printer.writeLine(delta.during + "(mls)\t" + (delta.during / ONE_MIN) + "(min)");
                             printer.writeLine("inc_sacn_count", String.valueOf(delta.dlt.scanCount.get()));
                             printer.writeLine("inc_qury_count", String.valueOf(delta.dlt.queryCount.get()));
+                        }
+                        if (mLocationFeat != null) {
+                            // Location
+                            LocationSnapshot currSnapshot = mLocationFeat.currentSnapshot();
+                            Delta<LocationSnapshot> delta = currSnapshot.diff(mLastLocationSnapshot);
+                            onReportLocation(delta);
+                            printer.createSubSection("location");
+                            printer.writeLine(delta.during + "(mls)\t" + (delta.during / ONE_MIN) + "(min)");
+                            printer.writeLine("inc_sacn_count", String.valueOf(delta.dlt.scanCount.get()));
                         }
                     }
                 });
@@ -364,6 +384,7 @@ public interface BatteryMonitorCallback extends
         protected void onReportTemperature(@NonNull Delta<BatteryTmpSnapshot> delta) {}
         protected void onReportWakeLock(@NonNull Delta<WakeLockSnapshot> delta) {}
         protected void onReportWifi(@NonNull Delta<WifiSnapshot> delta) {}
+        protected void onReportLocation(@NonNull Delta<LocationSnapshot> delta) {}
 
         /**
          * Log Printer
