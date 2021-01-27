@@ -1,5 +1,6 @@
 package com.tencent.matrix.batterycanary.monitor.feature;
 
+import android.content.pm.ApplicationInfo;
 import android.support.annotation.CallSuper;
 import android.support.annotation.NonNull;
 import android.support.annotation.WorkerThread;
@@ -52,6 +53,11 @@ public abstract class AbsMonitorFeature implements MonitorFeature {
     @Override
     public void onBackgroundCheck(long duringMillis) {
         MatrixLog.i(getTag(), "#onBackgroundCheck, since background started millis = " + duringMillis);
+    }
+
+    protected boolean shouldTracing() {
+        if (mCore.getConfig().isTracingEnabled) return true;
+        return  0 != (mCore.getContext().getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE);
     }
 }
 

@@ -1,5 +1,8 @@
 package com.tencent.matrix.batterycanary.monitor.feature;
 
+import android.text.TextUtils;
+
+import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
 import com.tencent.matrix.batterycanary.utils.WifiManagerServiceHooker;
 import com.tencent.matrix.util.MatrixLog;
 
@@ -19,13 +22,17 @@ public final class WifiMonitorFeature extends AbsMonitorFeature {
         mListener = new WifiManagerServiceHooker.IListener() {
             @Override
             public void onStartScan() {
-                MatrixLog.i(TAG, "#onStartScan");
+                String stack = shouldTracing() ? BatteryCanaryUtil.stackTraceToString(new Throwable().getStackTrace()) : "";
+                MatrixLog.i(TAG, "#onStartScan, stack = " + stack);
+                mCounting.setStack(stack);
                 mCounting.onStartScan();
             }
 
             @Override
             public void onGetScanResults() {
-                MatrixLog.i(TAG, "#onGetScanResults");
+                String stack = shouldTracing() ? BatteryCanaryUtil.stackTraceToString(new Throwable().getStackTrace()) : "";
+                MatrixLog.i(TAG, "#onGetScanResults, stack = " + stack);
+                mCounting.setStack(stack);
                 mCounting.onGetScanResults();
 
             }
@@ -52,6 +59,13 @@ public final class WifiMonitorFeature extends AbsMonitorFeature {
     public static final class WifiCounting {
         private int mScanCount;
         private int mQueryCount;
+        private String mLastConfiguredStack = "";
+
+        public void setStack(String stack) {
+            if (!TextUtils.isEmpty(stack)) {
+                mLastConfiguredStack = stack;
+            }
+        }
 
         public void onStartScan() {
             mScanCount++;
@@ -70,7 +84,7 @@ public final class WifiMonitorFeature extends AbsMonitorFeature {
             WifiSnapshot snapshot = new WifiSnapshot();
             snapshot.scanCount = Snapshot.Entry.DigitEntry.of(mScanCount);
             snapshot.queryCount = Snapshot.Entry.DigitEntry.of(mQueryCount);
-            snapshot.stack = "";
+            snapshot.stack = mLastConfiguredStack;
             return snapshot;
         }
     }

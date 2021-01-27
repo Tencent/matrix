@@ -1,5 +1,8 @@
 package com.tencent.matrix.batterycanary.monitor.feature;
 
+import android.text.TextUtils;
+
+import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
 import com.tencent.matrix.batterycanary.utils.LocationManagerServiceHooker;
 import com.tencent.matrix.util.MatrixLog;
 
@@ -19,7 +22,9 @@ public final class LocationMonitorFeature extends AbsMonitorFeature {
         mListener = new LocationManagerServiceHooker.IListener() {
             @Override
             public void onRequestLocationUpdates(long minTimeMillis, float minDistance) {
-                MatrixLog.i(TAG, "#onRequestLocationUpdates, time = " + minTimeMillis + ", distance = " + minDistance);
+                String stack = shouldTracing() ? BatteryCanaryUtil.stackTraceToString(new Throwable().getStackTrace()) : "";
+                MatrixLog.i(TAG, "#onRequestLocationUpdates, time = " + minTimeMillis + ", distance = " + minDistance + ", stack = " + stack);
+                mCounting.setStack(stack);
                 mCounting.onStartScan();
             }
         };
@@ -44,6 +49,13 @@ public final class LocationMonitorFeature extends AbsMonitorFeature {
 
     public static final class LocationCounting {
         private int mScanCount;
+        private String mLastConfiguredStack = "";
+
+        public void setStack(String stack) {
+            if (!TextUtils.isEmpty(stack)) {
+                mLastConfiguredStack = stack;
+            }
+        }
 
         public void onStartScan() {
             mScanCount++;
@@ -56,7 +68,7 @@ public final class LocationMonitorFeature extends AbsMonitorFeature {
         public LocationSnapshot getSnapshot() {
             LocationSnapshot snapshot = new LocationSnapshot();
             snapshot.scanCount = Snapshot.Entry.DigitEntry.of(mScanCount);
-            snapshot.stack = "";
+            snapshot.stack = mLastConfiguredStack;
             return snapshot;
         }
     }

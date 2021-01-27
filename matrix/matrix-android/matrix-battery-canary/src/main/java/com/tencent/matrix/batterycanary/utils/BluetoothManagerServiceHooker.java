@@ -46,10 +46,16 @@ public final class BluetoothManagerServiceHooker {
         @AnyThread
         void onRegisterScanner();
 
+        /**
+         * Callback from H handler by AMS
+         */
         @TargetApi(Build.VERSION_CODES.LOLLIPOP)
         @BinderThread
         void onStartScan(int scanId, @Nullable ScanSettings scanSettings);
 
+        /**
+         * Callback from H handler by AMS
+         */
         @AnyThread
         @TargetApi(Build.VERSION_CODES.LOLLIPOP)
         void onStartScanForIntent(@Nullable ScanSettings scanSettings);

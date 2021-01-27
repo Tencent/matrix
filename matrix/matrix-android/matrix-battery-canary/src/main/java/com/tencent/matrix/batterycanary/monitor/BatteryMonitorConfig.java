@@ -42,6 +42,8 @@ public class BatteryMonitorConfig {
     public boolean isBuiltinForegroundNotifyEnabled = true;
     public boolean isStatAsSample = BuildConfig.DEBUG;
     public boolean isStatPidProc = BuildConfig.DEBUG;
+    public boolean isInspectiffiesError = BuildConfig.DEBUG;
+    public boolean isTracingEnabled = BuildConfig.DEBUG;
     public List<String> tagWhiteList = Collections.emptyList();
     public List<String> tagBlackList = Collections.emptyList();
     public final List<MonitorFeature> features = new ArrayList<>(3);
@@ -51,16 +53,22 @@ public class BatteryMonitorConfig {
     @Override
     public String toString() {
         return "BatteryMonitorConfig{" +
-                ", wakelockTimeout=" + wakelockTimeout +
+                "wakelockTimeout=" + wakelockTimeout +
                 ", wakelockWarnCount=" + wakelockWarnCount +
                 ", greyTime=" + greyTime +
                 ", foregroundLoopCheckTime=" + foregroundLoopCheckTime +
+                ", backgroundLoopCheckTime=" + backgroundLoopCheckTime +
                 ", overHeatCount=" + overHeatCount +
+                ", foregroundServiceLeakLimit=" + foregroundServiceLeakLimit +
                 ", isForegroundModeEnabled=" + isForegroundModeEnabled +
                 ", isBackgroundModeEnabled=" + isBackgroundModeEnabled +
                 ", isBuiltinForegroundNotifyEnabled=" + isBuiltinForegroundNotifyEnabled +
                 ", isStatAsSample=" + isStatAsSample +
+                ", isStatPidProc=" + isStatPidProc +
+                ", isInspectiffiesError=" + isInspectiffiesError +
+                ", isTracingEnabled=" + isTracingEnabled +
                 ", tagWhiteList=" + tagWhiteList +
+                ", tagBlackList=" + tagBlackList +
                 ", features=" + features +
                 '}';
     }
@@ -119,6 +127,16 @@ public class BatteryMonitorConfig {
 
         public Builder enableStatPidProc(boolean isEnable) {
             config.isStatPidProc = isEnable;
+            return this;
+        }
+
+        public Builder enableInspectJffiesError(boolean isEnable) {
+            config.isInspectiffiesError = isEnable;
+            return this;
+        }
+
+        public Builder enableTracing(boolean isEnable) {
+            config.isTracingEnabled = isEnable;
             return this;
         }
 

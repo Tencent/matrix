@@ -150,8 +150,7 @@ public final class WakeLockMonitorFeature extends AbsMonitorFeature implements P
     }
 
     private boolean shouldTracing(String tag) {
-        boolean debuggable = 0 != (mCore.getContext().getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE);
-        return debuggable || !mCore.getConfig().tagWhiteList.contains(tag) || mCore.getConfig().tagBlackList.contains(tag);
+        return shouldTracing() || !mCore.getConfig().tagWhiteList.contains(tag) || mCore.getConfig().tagBlackList.contains(tag);
     }
 
     private void dumpTracingForTag(String tag) {
