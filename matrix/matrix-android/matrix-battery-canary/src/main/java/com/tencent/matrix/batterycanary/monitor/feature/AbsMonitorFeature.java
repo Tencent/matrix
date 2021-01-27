@@ -56,7 +56,7 @@ public abstract class AbsMonitorFeature implements MonitorFeature {
     }
 
     protected boolean shouldTracing() {
-        if (mCore.getConfig().isTracingEnabled) return true;
+        if (mCore.getConfig().isAggressiveMode) return true;
         return  0 != (mCore.getContext().getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE);
     }
 }

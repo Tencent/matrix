@@ -43,7 +43,7 @@ public class BatteryMonitorConfig {
     public boolean isStatAsSample = BuildConfig.DEBUG;
     public boolean isStatPidProc = BuildConfig.DEBUG;
     public boolean isInspectiffiesError = BuildConfig.DEBUG;
-    public boolean isTracingEnabled = BuildConfig.DEBUG;
+    public boolean isAggressiveMode = BuildConfig.DEBUG;
     public List<String> tagWhiteList = Collections.emptyList();
     public List<String> tagBlackList = Collections.emptyList();
     public final List<MonitorFeature> features = new ArrayList<>(3);
@@ -66,7 +66,7 @@ public class BatteryMonitorConfig {
                 ", isStatAsSample=" + isStatAsSample +
                 ", isStatPidProc=" + isStatPidProc +
                 ", isInspectiffiesError=" + isInspectiffiesError +
-                ", isTracingEnabled=" + isTracingEnabled +
+                ", isAggressiveMode=" + isAggressiveMode +
                 ", tagWhiteList=" + tagWhiteList +
                 ", tagBlackList=" + tagBlackList +
                 ", features=" + features +
@@ -135,8 +135,8 @@ public class BatteryMonitorConfig {
             return this;
         }
 
-        public Builder enableTracing(boolean isEnable) {
-            config.isTracingEnabled = isEnable;
+        public Builder enableAggressive(boolean isEnable) {
+            config.isAggressiveMode = isEnable;
             return this;
         }
 
