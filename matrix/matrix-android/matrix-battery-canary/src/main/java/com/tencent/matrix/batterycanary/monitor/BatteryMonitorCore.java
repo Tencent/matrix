@@ -41,6 +41,10 @@ public class BatteryMonitorCore implements
 
     private static final String TAG = "Matrix.battery.BatteryMonitorCore";
 
+    public interface Callback<T extends MonitorFeature.Snapshot<T>> {
+        void onGetJiffies(T snapshot);
+    }
+
     public interface JiffiesListener {
         void onTraceBegin();
         void onTraceEnd(boolean isForeground); // TODO: configurable status support

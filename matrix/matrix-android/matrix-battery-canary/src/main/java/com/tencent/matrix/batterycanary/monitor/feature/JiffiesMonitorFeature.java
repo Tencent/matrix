@@ -2,12 +2,14 @@ package com.tencent.matrix.batterycanary.monitor.feature;
 
 import android.os.Process;
 import android.os.SystemClock;
+import android.support.annotation.AnyThread;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.annotation.RestrictTo;
 import android.support.annotation.WorkerThread;
 
 import com.tencent.matrix.Matrix;
+import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Entry.DigitEntry;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Entry.ListEntry;
 import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
@@ -26,6 +28,7 @@ import java.util.List;
 public final class JiffiesMonitorFeature extends AbsMonitorFeature {
     private static final String TAG = "Matrix.battery.JiffiesMonitorFeature";
 
+    @Deprecated
     public interface JiffiesListener {
         void onParseError(int pid, int tid);
     }
@@ -35,10 +38,6 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
         return TAG;
     }
 
-    private JiffiesListener getListener() {
-        return mCore;
-    }
-
     @Override
     public int weight() {
         return Integer.MAX_VALUE;
@@ -46,7 +45,17 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
 
     @WorkerThread
     public JiffiesSnapshot currentJiffiesSnapshot() {
-        return JiffiesSnapshot.currentJiffiesSnapshot(ProcessInfo.getProcessInfo(), mCore.getConfig().isStatPidProc, getListener());
+        return JiffiesSnapshot.currentJiffiesSnapshot(ProcessInfo.getProcessInfo(), mCore.getConfig().isStatPidProc);
+    }
+
+    @AnyThread
+    public void currentJiffiesSnapshot(@NonNull final BatteryMonitorCore.Callback<JiffiesSnapshot> callback) {
+        mCore.getHandler().post(new Runnable() {
+            @Override
+            public void run() {
+                callback.onGetJiffies(currentJiffiesSnapshot());
+            }
+        });
     }
 
     @SuppressWarnings("SpellCheckingInspection")
@@ -141,12 +150,7 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
 
     @SuppressWarnings({"SpellCheckingInspection", "deprecation"})
     public static class JiffiesSnapshot extends Snapshot<JiffiesSnapshot> {
-
         public static JiffiesSnapshot currentJiffiesSnapshot(ProcessInfo processInfo, boolean isStatPidProc) {
-            return currentJiffiesSnapshot(processInfo, isStatPidProc, null);
-        }
-
-        public static JiffiesSnapshot currentJiffiesSnapshot(ProcessInfo processInfo, boolean isStatPidProc, @Nullable JiffiesListener listener) {
             JiffiesSnapshot snapshot = new JiffiesSnapshot();
             snapshot.pid = processInfo.pid;
             snapshot.name = processInfo.name;
@@ -161,9 +165,6 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
                     MatrixLog.printErrStackTrace(TAG, e, "parseProcJiffies fail");
                     isStatPidProc = false;
                     snapshot.setValid(false);
-                    if (listener != null) {
-                        listener.onParseError(processInfo.pid, 0);
-                    }
                 }
             }
 
@@ -183,9 +184,6 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
                         }
                     } else {
                         snapshot.setValid(false);
-                        if (listener != null) {
-                            listener.onParseError(threadInfo.pid, threadInfo.tid);
-                        }
                     }
                 }
             }

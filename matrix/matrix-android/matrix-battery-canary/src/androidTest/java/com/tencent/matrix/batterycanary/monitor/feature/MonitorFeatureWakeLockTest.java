@@ -130,6 +130,7 @@ public class MonitorFeatureWakeLockTest {
 
     @Test
     public void testWakeLockRequiredConcurrent() throws InterruptedException {
+        if (TestUtils.isAssembleTest()) return;
         final WakeLockMonitorFeature feature = new WakeLockMonitorFeature();
         feature.configure(mockMonitor());
         feature.mOverTimeMillis = Integer.MAX_VALUE;
