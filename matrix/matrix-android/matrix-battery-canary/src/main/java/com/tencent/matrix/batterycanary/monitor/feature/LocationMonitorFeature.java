@@ -84,6 +84,7 @@ public final class LocationMonitorFeature extends AbsMonitorFeature {
                 protected LocationSnapshot computeDelta() {
                     LocationSnapshot snapshot = new LocationSnapshot();
                     snapshot.scanCount = Differ.DigitDiffer.globalDiff(bgn.scanCount, end.scanCount);
+                    snapshot.stack = end.stack;
                     return snapshot;
                 }
             };

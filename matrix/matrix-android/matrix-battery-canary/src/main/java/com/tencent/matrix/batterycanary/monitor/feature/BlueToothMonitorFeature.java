@@ -131,6 +131,7 @@ public final class BlueToothMonitorFeature extends AbsMonitorFeature {
                     snapshot.regsCount = Differ.DigitDiffer.globalDiff(bgn.regsCount, end.regsCount);
                     snapshot.discCount = Differ.DigitDiffer.globalDiff(bgn.discCount, end.discCount);
                     snapshot.scanCount = Differ.DigitDiffer.globalDiff(bgn.scanCount, end.scanCount);
+                    snapshot.stack = end.stack;
                     return snapshot;
                 }
             };

@@ -102,6 +102,7 @@ public final class WifiMonitorFeature extends AbsMonitorFeature {
                     WifiSnapshot snapshot = new WifiSnapshot();
                     snapshot.scanCount = Differ.DigitDiffer.globalDiff(bgn.scanCount, end.scanCount);
                     snapshot.queryCount = Differ.DigitDiffer.globalDiff(bgn.queryCount, end.queryCount);
+                    snapshot.stack = end.stack;
                     return snapshot;
                 }
             };
