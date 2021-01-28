@@ -360,4 +360,5 @@ public final class AppStatMonitorFeature extends AbsMonitorFeature {
     static TimeBreaker.TimePortions configureSceneSnapshot(List<TimeBreaker.Stamp> stampList, long windowMillis) {
         return TimeBreaker.configurePortions(stampList, windowMillis);
     }
+
 }

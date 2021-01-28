@@ -157,7 +157,9 @@ public final class DeviceStatMonitorFeature extends AbsMonitorFeature {
         snapshot.setValid(timePortions.isValid());
         snapshot.uptime = Snapshot.Entry.DigitEntry.of(timePortions.totalUptime);
         snapshot.chargingRatio = Snapshot.Entry.DigitEntry.of((long) timePortions.getRatio("1"));
+        snapshot.unChargingRatio = Snapshot.Entry.DigitEntry.of((long) timePortions.getRatio("2"));
         snapshot.screenOff = Snapshot.Entry.DigitEntry.of((long) timePortions.getRatio("3"));
+        snapshot.lowEnergyRatio = Snapshot.Entry.DigitEntry.of((long) timePortions.getRatio("4"));
         return snapshot;
     }
 
@@ -277,7 +279,9 @@ public final class DeviceStatMonitorFeature extends AbsMonitorFeature {
     public static final class DevStatSnapshot extends Snapshot<DevStatSnapshot> {
         public Entry.DigitEntry<Long> uptime = Entry.DigitEntry.of(0L);
         public Entry.DigitEntry<Long> chargingRatio = Entry.DigitEntry.of(0L);
+        public Entry.DigitEntry<Long> unChargingRatio = Entry.DigitEntry.of(0L);
         public Entry.DigitEntry<Long> screenOff = Entry.DigitEntry.of(0L);
+        public Entry.DigitEntry<Long> lowEnergyRatio = Entry.DigitEntry.of(0L);
 
         DevStatSnapshot() {}
 
@@ -289,7 +293,9 @@ public final class DeviceStatMonitorFeature extends AbsMonitorFeature {
                     DevStatSnapshot delta = new DevStatSnapshot();
                     delta.uptime = Differ.DigitDiffer.globalDiff(bgn.uptime, end.uptime);
                     delta.chargingRatio = Differ.DigitDiffer.globalDiff(bgn.chargingRatio, end.chargingRatio);
+                    delta.unChargingRatio = Differ.DigitDiffer.globalDiff(bgn.unChargingRatio, end.unChargingRatio);
                     delta.screenOff = Differ.DigitDiffer.globalDiff(bgn.screenOff, end.screenOff);
+                    delta.lowEnergyRatio = Differ.DigitDiffer.globalDiff(bgn.lowEnergyRatio, end.lowEnergyRatio);
                     return delta;
                 }
             };
