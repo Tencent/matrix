@@ -39,4 +39,20 @@ final public class BatteryCanary {
             }
         }
     }
+
+    public static void addBatteryStateListener(BatteryEventDelegate.Listener listener) {
+        if (listener != null) {
+            if (BatteryEventDelegate.isInit()) {
+                BatteryEventDelegate.getInstance().addListener(listener);
+            }
+        }
+    }
+
+    public static void removeBatteryStateListener(BatteryEventDelegate.Listener listener) {
+        if (listener != null) {
+            if (BatteryEventDelegate.isInit()) {
+                BatteryEventDelegate.getInstance().removeListener(listener);
+            }
+        }
+    }
 }

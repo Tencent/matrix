@@ -404,7 +404,7 @@ public interface BatteryMonitorCallback extends
                 printer.writeLine(delta.during + "(mls)\t" + (delta.during / ONE_MIN) + "(min)");
                 printer.writeLine("inc_regs_count", String.valueOf(delta.dlt.regsCount.get()));
                 printer.writeLine("inc_dics_count", String.valueOf(delta.dlt.discCount.get()));
-                printer.writeLine("inc_sacn_count", String.valueOf(delta.dlt.scanCount.get()));
+                printer.writeLine("inc_scan_count", String.valueOf(delta.dlt.scanCount.get()));
                 return true;
             }
 
@@ -414,7 +414,7 @@ public interface BatteryMonitorCallback extends
                 Delta<WifiSnapshot> delta = (Delta<WifiSnapshot>) sessionDelta;
                 printer.createSubSection("wifi");
                 printer.writeLine(delta.during + "(mls)\t" + (delta.during / ONE_MIN) + "(min)");
-                printer.writeLine("inc_sacn_count", String.valueOf(delta.dlt.scanCount.get()));
+                printer.writeLine("inc_scan_count", String.valueOf(delta.dlt.scanCount.get()));
                 printer.writeLine("inc_qury_count", String.valueOf(delta.dlt.queryCount.get()));
                 return true;
             }
@@ -425,7 +425,7 @@ public interface BatteryMonitorCallback extends
                 Delta<LocationSnapshot> delta = (Delta<LocationSnapshot>) sessionDelta;
                 printer.createSubSection("location");
                 printer.writeLine(delta.during + "(mls)\t" + (delta.during / ONE_MIN) + "(min)");
-                printer.writeLine("inc_sacn_count", String.valueOf(delta.dlt.scanCount.get()));
+                printer.writeLine("inc_scan_count", String.valueOf(delta.dlt.scanCount.get()));
                 return true;
             }
 
