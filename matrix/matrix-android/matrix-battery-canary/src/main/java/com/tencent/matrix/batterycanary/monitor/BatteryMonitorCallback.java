@@ -7,7 +7,9 @@ import android.os.SystemClock;
 import android.support.annotation.CallSuper;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.support.annotation.VisibleForTesting;
 import android.support.v4.util.Consumer;
+import android.text.TextUtils;
 import android.util.LongSparseArray;
 
 import com.tencent.matrix.Matrix;
@@ -36,10 +38,12 @@ import com.tencent.matrix.batterycanary.monitor.feature.WakeLockMonitorFeature.W
 import com.tencent.matrix.batterycanary.monitor.feature.WakeLockMonitorFeature.WakeLockTrace.WakeLockRecord;
 import com.tencent.matrix.batterycanary.monitor.feature.WifiMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.WifiMonitorFeature.WifiSnapshot;
+import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
 import com.tencent.matrix.util.MatrixLog;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
 /**
  * @author Kaede
@@ -85,7 +89,8 @@ public interface BatteryMonitorCallback extends
         @Nullable protected WifiSnapshot mLastWifiSnapshot;
 
         @SuppressWarnings("UnusedReturnValue")
-        final BatteryPrinter attach(BatteryMonitorCore monitorCore) {
+        @VisibleForTesting
+        public final BatteryPrinter attach(BatteryMonitorCore monitorCore) {
             mMonitor = monitorCore;
             return this;
         }
@@ -190,6 +195,7 @@ public interface BatteryMonitorCallback extends
             Printer printer = new Printer();
             printer.writeTitle();
             printer.append("| Thread WatchDog").append("\n");
+
             printer.createSection("jiffies(" + threadJiffiesList.getList().size() + ")");
             printer.writeLine("desc", "(status)name(pid)\ttotal");
             for (ThreadJiffiesEntry threadJiffies : threadJiffiesList.getList()) {
@@ -199,6 +205,29 @@ public interface BatteryMonitorCallback extends
                         .append(entryJffies).append("\tjiffies")
                         .append("\n");
             }
+
+            if (getMonitor().getConfig().isAggressiveMode) {
+                printer.createSection("stacks");
+                Map<Thread, StackTraceElement[]> stackTraces = Thread.getAllStackTraces();
+                if (stackTraces != null) {
+                    for (Map.Entry<Thread, StackTraceElement[]> entry : stackTraces.entrySet()) {
+                        String threadName = entry.getKey().getName();
+                        StackTraceElement[] elements = entry.getValue();
+                        for (ThreadJiffiesEntry threadJiffies: threadJiffiesList.getList()) {
+                            if (threadName.contains(threadJiffies.name)) {
+                                printer.append("|   -> ").append(threadName).append("\n");
+                                String stack = BatteryCanaryUtil.stackTraceToString(elements);
+                                if (!TextUtils.isEmpty(stack)) {
+                                    for (String line : stack.split("\n")) {
+                                        printer.append("|      ").append(line).append("\n");
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             printer.writeEnding();
             printer.dump();
         }
@@ -238,10 +267,12 @@ public interface BatteryMonitorCallback extends
 
                 long minute = appStats.getMinute();
                 for (ThreadJiffiesEntry threadJiffies : delta.dlt.threadEntries.getList()) {
-                    long avgJiffies = threadJiffies.get() / minute;
-                    if (!appStats.isForeground() && avgJiffies > 1000L && minute > 10) {
-                        // Watching thread state
-                        mJiffiesFeat.watchBackThreadSate(appStats.isForeground(), delta.dlt.pid, threadJiffies.tid);
+                    if (!appStats.isForeground()) {
+                        long avgJiffies = threadJiffies.get() / minute;
+                        if (avgJiffies > 1000L && minute > 10) {
+                            // Watching thread state
+                            mJiffiesFeat.watchBackThreadSate(false, delta.dlt.pid, threadJiffies.tid);
+                        }
                     }
                 }
                 onReportJiffies(delta);

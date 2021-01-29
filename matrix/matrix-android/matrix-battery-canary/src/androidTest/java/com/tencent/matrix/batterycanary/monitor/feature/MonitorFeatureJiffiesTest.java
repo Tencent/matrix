@@ -26,6 +26,7 @@ import android.support.test.InstrumentationRegistry;
 import android.support.test.runner.AndroidJUnit4;
 
 import com.tencent.matrix.Matrix;
+import com.tencent.matrix.batterycanary.BatteryMonitorPlugin;
 import com.tencent.matrix.batterycanary.TestUtils;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCallback;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorConfig;
@@ -73,13 +74,16 @@ public class MonitorFeatureJiffiesTest {
     }
 
     @Test
-    public void testDump() {
+    public void testDumpWatchingThreads() {
         JiffiesSnapshot snapshot = JiffiesSnapshot.currentJiffiesSnapshot(JiffiesMonitorFeature.ProcessInfo.getProcessInfo(), false);
         Assert.assertNotNull(snapshot);
         Assert.assertEquals(Process.myPid(), snapshot.pid);
         Assert.assertEquals(mContext.getPackageName(), snapshot.name);
         Assert.assertFalse(snapshot.threadEntries.getList().isEmpty());
-        new BatteryMonitorCallback.BatteryPrinter().onWatchingThreads(snapshot.threadEntries);
+
+        BatteryMonitorCore monitorCore = mockMonitor();
+        Matrix.with().getPlugins().add(new BatteryMonitorPlugin(monitorCore.getConfig()));
+        new BatteryMonitorCallback.BatteryPrinter().attach(monitorCore).onWatchingThreads(snapshot.threadEntries);
     }
 
     @Test
