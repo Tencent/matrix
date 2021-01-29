@@ -28,8 +28,8 @@ import java.util.List;
 public final class JiffiesMonitorFeature extends AbsMonitorFeature {
     private static final String TAG = "Matrix.battery.JiffiesMonitorFeature";
 
-    @Deprecated
     public interface JiffiesListener {
+        @Deprecated
         void onParseError(int pid, int tid);
         void onWatchingThreads(ListEntry<? extends JiffiesSnapshot.ThreadJiffiesEntry> threadJiffiesList);
     }
@@ -368,6 +368,7 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
 
         void start() {
             synchronized (mWatchingThreads) {
+                MatrixLog.i(TAG, "ThreadWatchDog start watching, count = " + mWatchingThreads.size());
                 if (!mWatchingThreads.isEmpty()) {
                     mCore.getHandler().postDelayed(this, reset());
                 }

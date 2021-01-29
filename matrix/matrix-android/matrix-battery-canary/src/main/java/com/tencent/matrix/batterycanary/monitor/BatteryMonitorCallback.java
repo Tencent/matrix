@@ -267,10 +267,14 @@ public interface BatteryMonitorCallback extends
 
                 long minute = appStats.getMinute();
                 for (ThreadJiffiesEntry threadJiffies : delta.dlt.threadEntries.getList()) {
-                    if (!appStats.isForeground()) {
-                        long avgJiffies = threadJiffies.get() / minute;
-                        if (avgJiffies > 1000L && minute > 10) {
-                            // Watching thread state
+                    // Watching thread state
+                    long avgJiffies = threadJiffies.get() / minute;
+                    if (appStats.isForeground()) {
+                        if (minute > 10 && avgJiffies > getMonitor().getConfig().fgThreadWatchingLimit) {
+                            mJiffiesFeat.watchBackThreadSate(true, delta.dlt.pid, threadJiffies.tid);
+                        }
+                    } else {
+                        if (minute > 10 && avgJiffies > getMonitor().getConfig().bgThreadWatchingLimit) {
                             mJiffiesFeat.watchBackThreadSate(false, delta.dlt.pid, threadJiffies.tid);
                         }
                     }

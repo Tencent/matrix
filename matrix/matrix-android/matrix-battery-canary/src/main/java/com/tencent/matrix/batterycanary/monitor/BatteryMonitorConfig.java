@@ -37,6 +37,8 @@ public class BatteryMonitorConfig {
     public long backgroundLoopCheckTime = DEF_BACKGROUND_SCHEDULE_TIME;
     public int overHeatCount = 1024;
     public int foregroundServiceLeakLimit = ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND;
+    public int fgThreadWatchingLimit = 10000;
+    public int bgThreadWatchingLimit = 5000;
     public boolean isForegroundModeEnabled = true;
     public boolean isBackgroundModeEnabled = false;
     public boolean isBuiltinForegroundNotifyEnabled = true;
@@ -50,6 +52,7 @@ public class BatteryMonitorConfig {
 
     private BatteryMonitorConfig() {}
 
+    @NonNull
     @Override
     public String toString() {
         return "BatteryMonitorConfig{" +
@@ -60,6 +63,8 @@ public class BatteryMonitorConfig {
                 ", backgroundLoopCheckTime=" + backgroundLoopCheckTime +
                 ", overHeatCount=" + overHeatCount +
                 ", foregroundServiceLeakLimit=" + foregroundServiceLeakLimit +
+                ", fgThreadWatchingLimit=" + fgThreadWatchingLimit +
+                ", bgThreadWatchingLimit=" + bgThreadWatchingLimit +
                 ", isForegroundModeEnabled=" + isForegroundModeEnabled +
                 ", isBackgroundModeEnabled=" + isBackgroundModeEnabled +
                 ", isBuiltinForegroundNotifyEnabled=" + isBuiltinForegroundNotifyEnabled +
@@ -156,6 +161,20 @@ public class BatteryMonitorConfig {
 
         public Builder foregroundServiceLeakLimit(int importanceLimit) {
             config.foregroundServiceLeakLimit = importanceLimit;
+            return this;
+        }
+
+        public Builder setFgThreadWatchingLimit(int fgThreadWatchingLimit) {
+            if (fgThreadWatchingLimit > 1000) {
+                config.fgThreadWatchingLimit = fgThreadWatchingLimit;
+            }
+            return this;
+        }
+
+        public Builder setBgThreadWatchingLimit(int bgThreadWatchingLimit) {
+            if (bgThreadWatchingLimit > 1000) {
+                config.bgThreadWatchingLimit = bgThreadWatchingLimit;
+            }
             return this;
         }
 
