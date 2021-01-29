@@ -184,7 +184,9 @@ public final class BatteryEventDelegate {
     void dispatchSateChangedEvent() {
         synchronized (mListenerList) {
             for (Listener item : mListenerList) {
-                item.onStateChanged(currentState());
+                if (item.onStateChanged(currentState())) {
+                    removeListener(item);
+                }
             }
         }
     }
@@ -193,7 +195,9 @@ public final class BatteryEventDelegate {
     void dispatchAppLowEnergyEvent(long duringMillis) {
         synchronized (mListenerList) {
             for (Listener item : mListenerList) {
-                item.onAppLowEnergy(currentState(), duringMillis);
+                if (item.onAppLowEnergy(currentState(), duringMillis)) {
+                    return;
+                }
             }
         }
     }
@@ -273,7 +277,16 @@ public final class BatteryEventDelegate {
     }
 
     public interface Listener {
-        @UiThread void onStateChanged(BatteryState batteryState);
-        @UiThread void onAppLowEnergy(BatteryState batteryState, long backgroundMillis);
+        /**
+         * @return return true if your listening is done, thus we remove your listener
+         */
+        @UiThread
+        boolean onStateChanged(BatteryState batteryState);
+
+        /**
+         * @return return true if your listening is done, thus we remove your listener
+         */
+        @UiThread
+        boolean onAppLowEnergy(BatteryState batteryState, long backgroundMillis);
     }
 }
