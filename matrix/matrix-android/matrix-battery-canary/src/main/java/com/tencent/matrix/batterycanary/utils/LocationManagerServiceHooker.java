@@ -49,12 +49,12 @@ public final class LocationManagerServiceHooker {
                     for (Object item : args) {
                         if (item != null && "android.location.LocationRequest".equals(item.getClass().getName())) {
                             try {
-                                Field mFastestInterval = item.getClass().getDeclaredField("mFastestInterval");
+                                Method mFastestInterval = item.getClass().getDeclaredMethod("getFastestInterval");
                                 mFastestInterval.setAccessible(true);
-                                minTime = mFastestInterval.getLong(item);
-                                Field mSmallestDisplacement = item.getClass().getDeclaredField("mSmallestDisplacement");
+                                minTime = (long) mFastestInterval.invoke(item);
+                                Method mSmallestDisplacement = item.getClass().getDeclaredMethod("getSmallestDisplacement");
                                 mSmallestDisplacement.setAccessible(true);
-                                minDistance = mSmallestDisplacement.getFloat(item);
+                                minDistance = (float) mSmallestDisplacement.invoke(item);
                             } catch (Throwable throwable) {
                                 MatrixLog.printErrStackTrace(TAG, throwable, "");
                             }

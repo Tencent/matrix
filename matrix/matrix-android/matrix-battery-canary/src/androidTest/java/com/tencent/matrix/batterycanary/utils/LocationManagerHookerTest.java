@@ -189,7 +189,7 @@ public class LocationManagerHookerTest {
     }
 
     @Test
-    public void testWifiCounting() {
+    public void testLocationCounting() {
         final AtomicLong minTimeRef = new AtomicLong();
         final AtomicReference<Float> minDistanceRef = new AtomicReference<>();
 
