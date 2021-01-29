@@ -17,10 +17,12 @@ import com.tencent.matrix.batterycanary.BatteryEventDelegate;
 import com.tencent.matrix.batterycanary.monitor.feature.AlarmMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.AppStatMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature;
+import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature.JiffiesSnapshot.ThreadJiffiesEntry;
 import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature.ProcessInfo.ThreadInfo;
 import com.tencent.matrix.batterycanary.monitor.feature.LooperTaskMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Delta;
+import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Entry.ListEntry;
 import com.tencent.matrix.batterycanary.monitor.feature.WakeLockMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.WakeLockMonitorFeature.WakeLockTrace.WakeLockRecord;
 import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
@@ -363,6 +365,11 @@ public class BatteryMonitorCore implements
     public void onParseError(int pid, int tid) {
         MatrixLog.d(TAG, "#onParseError, tid = " + tid);
         getConfig().callback.onParseError(pid, tid);
+    }
+
+    @Override
+    public void onWatchingThreads(ListEntry<? extends ThreadJiffiesEntry> threadJiffiesList) {
+        getConfig().callback.onWatchingThreads(threadJiffiesList);
     }
 
     @Override

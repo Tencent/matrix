@@ -1,5 +1,6 @@
 package com.tencent.matrix.batterycanary.monitor;
 
+import android.support.annotation.Nullable;
 import android.support.v4.util.Pair;
 
 import com.tencent.matrix.batterycanary.BatteryCanary;
@@ -7,11 +8,14 @@ import com.tencent.matrix.batterycanary.monitor.feature.AppStatMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.DeviceStatMonitorFeature;
 import com.tencent.matrix.batterycanary.utils.TimeBreaker;
 
+import java.util.concurrent.atomic.AtomicBoolean;
+
 /**
  * @author Kaede
  * @since 2021/1/27
  */
 final public class AppStats {
+    public static final int ONE_MIN = 60 * 1000;
 
     public static final int APP_STAT_FOREGROUND = 1;
     public static final int APP_STAT_FOREGROUND_SERVICE = 3;
@@ -37,12 +41,21 @@ final public class AppStats {
     public boolean isValid;
     public long duringMillis;
 
+    @Nullable  private AtomicBoolean mForeground;
+
     AppStats() {
         sceneTop1 = "undefine";
         isValid = false;
     }
 
+    public long getMinute() {
+        return Math.max(1, duringMillis / ONE_MIN);
+    }
+
     public boolean isForeground() {
+        if (mForeground != null) {
+            return mForeground.get();
+        }
         return getAppStat() == APP_STAT_FOREGROUND;
     }
 
@@ -54,6 +67,11 @@ final public class AppStats {
         if (appFgRatio >= 50) return APP_STAT_FOREGROUND;
         if (appFgSrvRatio >= 50) return APP_STAT_FOREGROUND_SERVICE;
         return APP_STAT_BACKGROUND;
+    }
+
+    public AppStats setForeground(boolean bool) {
+        mForeground = new AtomicBoolean(bool);
+        return this;
     }
 
     public int getDevStat() {

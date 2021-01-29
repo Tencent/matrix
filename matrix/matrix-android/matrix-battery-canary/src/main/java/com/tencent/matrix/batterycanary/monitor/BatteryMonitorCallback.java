@@ -28,6 +28,7 @@ import com.tencent.matrix.batterycanary.monitor.feature.LooperTaskMonitorFeature
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Delta;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Entry.BeanEntry;
+import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Entry.ListEntry;
 import com.tencent.matrix.batterycanary.monitor.feature.TrafficMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.TrafficMonitorFeature.RadioStatSnapshot;
 import com.tencent.matrix.batterycanary.monitor.feature.WakeLockMonitorFeature;
@@ -152,7 +153,7 @@ public interface BatteryMonitorCallback extends
                 return;
             }
 
-            onCanaryDump(AppStats.current(duringMillis));
+            onCanaryDump(AppStats.current(duringMillis).setForeground(isForeground));
         }
 
         @Override
@@ -182,6 +183,24 @@ public interface BatteryMonitorCallback extends
 
         @Override
         public void onParseError(int pid, int tid) {
+        }
+
+        @Override
+        public void onWatchingThreads(ListEntry<? extends ThreadJiffiesEntry> threadJiffiesList) {
+            Printer printer = new Printer();
+            printer.writeTitle();
+            printer.append("| Thread WatchDog").append("\n");
+            printer.createSection("jiffies(" + threadJiffiesList.getList().size() + ")");
+            printer.writeLine("desc", "(status)name(pid)\ttotal");
+            for (ThreadJiffiesEntry threadJiffies : threadJiffiesList.getList()) {
+                long entryJffies = threadJiffies.get();
+                printer.append("|   -> (").append(threadJiffies.isNewAdded ? "+" : "~").append("/").append(threadJiffies.stat).append(")")
+                        .append(threadJiffies.name).append("(").append(threadJiffies.tid).append(")\t")
+                        .append(entryJffies).append("\tjiffies")
+                        .append("\n");
+            }
+            printer.writeEnding();
+            printer.dump();
         }
 
         @Override
@@ -216,6 +235,15 @@ public interface BatteryMonitorCallback extends
             if (null != mJiffiesFeat && null != mLastJiffiesSnapshot) {
                 JiffiesSnapshot curr = mJiffiesFeat.currentJiffiesSnapshot();
                 Delta<JiffiesSnapshot> delta = curr.diff(mLastJiffiesSnapshot);
+
+                long minute = appStats.getMinute();
+                for (ThreadJiffiesEntry threadJiffies : delta.dlt.threadEntries.getList()) {
+                    long avgJiffies = threadJiffies.get() / minute;
+                    if (!appStats.isForeground() && avgJiffies > 1000L && minute > 10) {
+                        // Watching thread state
+                        mJiffiesFeat.watchBackThreadSate(appStats.isForeground(), delta.dlt.pid, threadJiffies.tid);
+                    }
+                }
                 onReportJiffies(delta);
                 onWritingSectionContent(delta, appStats, mPrinter);
             }
@@ -339,6 +367,7 @@ public interface BatteryMonitorCallback extends
 
                 // jiffies sections
                 printer.createSection("jiffies(" + delta.dlt.threadEntries.getList().size() + ")");
+                printer.writeLine("desc", "(status)name(pid)\tavg/diff/total");
                 printer.writeLine("inc_thread_num", String.valueOf(delta.dlt.threadNum.get()));
                 printer.writeLine("cur_thread_num", String.valueOf(delta.end.threadNum.get()));
                 for (ThreadJiffiesEntry threadJiffies : delta.dlt.threadEntries.getList().subList(0, Math.min(delta.dlt.threadEntries.getList().size(), 8))) {

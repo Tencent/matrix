@@ -31,7 +31,11 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
     @Deprecated
     public interface JiffiesListener {
         void onParseError(int pid, int tid);
+        void onWatchingThreads(ListEntry<? extends JiffiesSnapshot.ThreadJiffiesEntry> threadJiffiesList);
     }
+
+    private final ThreadWatchDog mFgThreadWatchDog = new ThreadWatchDog();
+    private final ThreadWatchDog mBgThreadWatchDog = new ThreadWatchDog();
 
     @Override
     protected String getTag() {
@@ -41,6 +45,26 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
     @Override
     public int weight() {
         return Integer.MAX_VALUE;
+    }
+
+    @Override
+    public void onForeground(boolean isForeground) {
+        super.onForeground(isForeground);
+        if (isForeground) {
+            mFgThreadWatchDog.start();
+            mBgThreadWatchDog.stop();
+        } else {
+            mBgThreadWatchDog.start();
+            mFgThreadWatchDog.stop();
+        }
+    }
+
+    public void watchBackThreadSate(boolean isForeground, int pid, int tid) {
+        if (isForeground) {
+            mFgThreadWatchDog.watch(pid, tid);
+        } else {
+            mBgThreadWatchDog.watch(pid, tid);
+        }
     }
 
     @WorkerThread
@@ -111,9 +135,7 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
                             continue;
                         }
                         try {
-                            ThreadInfo threadInfo = new ThreadInfo();
-                            threadInfo.pid = pid;
-                            threadInfo.tid = Integer.parseInt(file.getName());
+                            ThreadInfo threadInfo = of(pid, Integer.parseInt(file.getName()));
                             threadInfoList.add(threadInfo);
                         } catch (Exception ignored) {
                         }
@@ -121,6 +143,13 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
                     return threadInfoList;
                 }
                 return Collections.emptyList();
+            }
+
+            private static ThreadInfo of(int pid, int tid) {
+                ThreadInfo threadInfo = new ThreadInfo();
+                threadInfo.pid = pid;
+                threadInfo.tid = tid;
+                return threadInfo;
             }
 
             public int pid;
@@ -294,6 +323,70 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
             public Long diff(Long right) {
                 return value - right;
             }
+        }
+    }
+
+    class ThreadWatchDog implements Runnable {
+        private long duringMillis;
+        private final List<ProcessInfo.ThreadInfo> mWatchingThreads = new ArrayList<>();
+
+        @Override
+        public void run() {
+            // watch
+            List<JiffiesSnapshot.ThreadJiffiesSnapshot> threadJiffiesList = new ArrayList<>();
+            synchronized (mWatchingThreads) {
+                for (ProcessInfo.ThreadInfo item : mWatchingThreads) {
+                    JiffiesSnapshot.ThreadJiffiesSnapshot snapshot = JiffiesSnapshot.ThreadJiffiesSnapshot.parseThreadJiffies(item);
+                    if (snapshot != null) {
+                        threadJiffiesList.add(snapshot);
+                    }
+                }
+            }
+            if (!threadJiffiesList.isEmpty()) {
+                ListEntry<JiffiesSnapshot.ThreadJiffiesSnapshot> threadJiffiesListEntry = ListEntry.of(threadJiffiesList);
+                mCore.getConfig().callback.onWatchingThreads(threadJiffiesListEntry);
+            }
+
+            // next loop
+            if (duringMillis <= 5 * 60 * 1000L) {
+                mCore.getHandler().postDelayed(this, setNext(5 * 60 * 1000L));
+            } else if (duringMillis <= 10 * 60 * 1000L) {
+                mCore.getHandler().postDelayed(this, setNext(10 * 60 * 1000L));
+            } else {
+                // done
+                synchronized (mWatchingThreads) {
+                    mWatchingThreads.clear();
+                }
+            }
+        }
+
+        void watch(int pid, int tid) {
+            synchronized (mWatchingThreads) {
+                mWatchingThreads.add(ProcessInfo.ThreadInfo.of(pid, tid));
+            }
+        }
+
+        void start() {
+            synchronized (mWatchingThreads) {
+                if (!mWatchingThreads.isEmpty()) {
+                    mCore.getHandler().postDelayed(this, reset());
+                }
+            }
+        }
+
+        void stop() {
+            mCore.getHandler().removeCallbacks(this);
+        }
+
+        private long reset() {
+            duringMillis = 0L;
+            setNext(5 * 60 * 1000L);
+            return duringMillis;
+        }
+
+        private long setNext(long millis) {
+            duringMillis += millis;
+            return millis;
         }
     }
 }
