@@ -24,6 +24,7 @@ import android.support.test.InstrumentationRegistry;
 import android.support.test.runner.AndroidJUnit4;
 
 import com.tencent.matrix.Matrix;
+import com.tencent.matrix.batterycanary.BatteryMonitorPlugin;
 import com.tencent.matrix.batterycanary.TestUtils;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorConfig;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
@@ -87,6 +88,8 @@ public class MonitorFeatureOverAllTest {
 
         final JiffiesMonitorFeature feature = new JiffiesMonitorFeature();
         final BatteryMonitorCore monitor = mockMonitor();
+        BatteryMonitorPlugin plugin = new BatteryMonitorPlugin(monitor.getConfig());
+        Matrix.with().getPlugins().add(plugin);
         monitor.enableForegroundLoopCheck(true);
         monitor.start();
         Handler handler = new Handler(Looper.getMainLooper());

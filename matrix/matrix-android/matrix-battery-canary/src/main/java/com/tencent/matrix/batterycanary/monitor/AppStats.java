@@ -37,6 +37,8 @@ final public class AppStats {
 
     public String sceneTop1;
     public int sceneTop1Ratio;
+    public String sceneTop2;
+    public int sceneTop2Ratio;
 
     public boolean isValid;
     public long duringMillis;
@@ -44,7 +46,8 @@ final public class AppStats {
     @Nullable  private AtomicBoolean mForeground;
 
     AppStats() {
-        sceneTop1 = "undefine";
+        sceneTop1 = "";
+        sceneTop2 = "";
         isValid = false;
     }
 
@@ -105,6 +108,11 @@ final public class AppStats {
                 if (top1 != null) {
                     stats.sceneTop1 = top1.first;
                     stats.sceneTop1Ratio = top1.second == null ? 0 : top1.second;
+                    Pair<String, Integer> top2 = portions.top2();
+                    if (top2 != null) {
+                        stats.sceneTop2 = top2.first;
+                        stats.sceneTop2Ratio = top2.second == null ? 0 : top2.second;
+                    }
 
                     DeviceStatMonitorFeature devStatFeat = BatteryCanary.getMonitorFeature(DeviceStatMonitorFeature.class);
                     if (devStatFeat != null) {

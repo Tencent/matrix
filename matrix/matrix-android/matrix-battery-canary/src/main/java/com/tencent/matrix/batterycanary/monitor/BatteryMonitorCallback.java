@@ -27,7 +27,6 @@ import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature.Ji
 import com.tencent.matrix.batterycanary.monitor.feature.LocationMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.LocationMonitorFeature.LocationSnapshot;
 import com.tencent.matrix.batterycanary.monitor.feature.LooperTaskMonitorFeature;
-import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Delta;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Entry.BeanEntry;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Entry.ListEntry;
@@ -250,6 +249,7 @@ public interface BatteryMonitorCallback extends
             // sections
             onWritingJiffiesSection(appStats);
             onWritingSections(appStats);
+            onWritingAppStatSection(appStats);
 
             // end
             mPrinter.writeEnding();
@@ -282,6 +282,37 @@ public interface BatteryMonitorCallback extends
                 onReportJiffies(delta);
                 onWritingSectionContent(delta, appStats, mPrinter);
             }
+        }
+
+        @CallSuper
+        protected void onWritingAppStatSection(final AppStats appStats) {
+            createSection("app_stats", new Consumer<Printer>() {
+                @Override
+                public void accept(Printer printer) {
+                    printer.createSubSection("stat_time");
+                    printer.writeLine("time", appStats.getMinute() + "(min)");
+                    printer.writeLine("fg", String.valueOf(appStats.appFgRatio));
+                    printer.writeLine("bg", String.valueOf(appStats.appBgRatio));
+                    printer.writeLine("fgSrv", String.valueOf(appStats.appFgSrvRatio));
+                    printer.writeLine("devCharging", String.valueOf(appStats.devChargingRatio));
+                    printer.writeLine("devScreenOff", String.valueOf(appStats.devSceneOffRatio));
+                    if (!TextUtils.isEmpty(appStats.sceneTop1)) {
+                        printer.writeLine("sceneTop1", appStats.sceneTop1 + "/" + appStats.sceneTop1Ratio);
+                    }
+                    if (!TextUtils.isEmpty(appStats.sceneTop2)) {
+                        printer.writeLine("sceneTop2", appStats.sceneTop2 + "/" + appStats.sceneTop2Ratio);
+                    }
+
+                    if (mAppStatFeat != null) {
+                        AppStatMonitorFeature.AppStatSnapshot currSnapshot = mAppStatFeat.currentAppStatSnapshot();
+                        printer.createSubSection("run_time");
+                        printer.writeLine("time", currSnapshot.uptime.get() / ONE_MIN + "(min)");
+                        printer.writeLine("fg", String.valueOf(currSnapshot.fgRatio.get()));
+                        printer.writeLine("bg", String.valueOf(currSnapshot.bgRatio.get()));
+                        printer.writeLine("fgSrv", String.valueOf(currSnapshot.fgSrvRatio.get()));
+                    }
+                }
+            });
         }
 
         @CallSuper
@@ -347,7 +378,7 @@ public interface BatteryMonitorCallback extends
                     || (mDevStatFeat != null && mLastBatteryTmpSnapshot != null)
             ) {
                 // Status
-                createSection("app_stats", new Consumer<Printer>() {
+                createSection("dev_stats", new Consumer<Printer>() {
                     @Override
                     public void accept(Printer printer) {
                         if (mDevStatFeat != null && mLastCpuFreqSnapshot != null) {
@@ -356,22 +387,11 @@ public interface BatteryMonitorCallback extends
                             onReportCpuFreq(delta);
                             onWritingSectionContent(delta, appStats, mPrinter);
                         }
-
                         if (mDevStatFeat != null && mLastBatteryTmpSnapshot != null) {
                             BatteryTmpSnapshot batteryTmpSnapshot = mDevStatFeat.currentBatteryTemperature(Matrix.with().getApplication());
                             Delta<BatteryTmpSnapshot> delta = batteryTmpSnapshot.diff(mLastBatteryTmpSnapshot);
                             onReportTemperature(delta);
                             onWritingSectionContent(delta, appStats, mPrinter);
-                        }
-
-                        if (mAppStatFeat != null) {
-                            AppStatMonitorFeature.AppStatSnapshot currSnapshot = mAppStatFeat.currentAppStatSnapshot();
-                            printer.createSubSection("app_uptime");
-                            printer.writeLine(currSnapshot.uptime.get() / ONE_MIN + "(min)");
-                            printer.createSubSection("app_stat_ratio");
-                            printer.writeLine("fg", String.valueOf(currSnapshot.fgRatio.get()));
-                            printer.writeLine("bg", String.valueOf(currSnapshot.bgRatio.get()));
-                            printer.writeLine("fgSrv", String.valueOf(currSnapshot.fgSrvRatio.get()));
                         }
                     }
                 });

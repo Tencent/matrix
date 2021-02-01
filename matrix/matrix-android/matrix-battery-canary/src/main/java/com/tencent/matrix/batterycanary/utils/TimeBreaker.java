@@ -179,5 +179,13 @@ public final class TimeBreaker {
             }
             return null;
         }
+
+        @Nullable
+        public Pair<String, Integer> top2() {
+            if (portions.size() >= 2) {
+                return portions.get(1);
+            }
+            return null;
+        }
     }
 }
