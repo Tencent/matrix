@@ -10,18 +10,12 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
 import android.os.PowerManager;
-import android.os.Process;
 
 import com.tencent.stubs.logger.Log;
 
-import java.io.File;
-import java.io.IOException;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.Queue;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class WarmUpScheduler implements Handler.Callback {
 
@@ -35,6 +29,7 @@ public class WarmUpScheduler implements Handler.Callback {
     private final static int MSG_WARM_UP = 1;
     private final static int MSG_CONSUME_REQ_QUT = 2;
     private final static int MSG_CLEAN_UP = 3;
+    private final static int MSG_COMPUTE_DISK_USAGE = 4;
 
     private IdleReceiver mIdleReceiver;
     private WarmUpDelegate mDelegate;
@@ -47,7 +42,8 @@ public class WarmUpScheduler implements Handler.Callback {
     enum TaskType {
         WarmUp,
         CleanUp,
-        RequestConsuming
+        RequestConsuming,
+        DiskUsage,
     }
 
     WarmUpScheduler(WarmUpDelegate delegate, Context context, WeChatBacktrace.WarmUpTiming timing, long delay) {
@@ -160,6 +156,11 @@ public class WarmUpScheduler implements Handler.Callback {
                 mDelegate.cleaningUp(cs);
                 break;
             }
+            case MSG_COMPUTE_DISK_USAGE: {
+                CancellationSignal cs = (CancellationSignal) msg.obj;
+                mDelegate.computeDiskUsage(cs);
+                break;
+            }
         }
         return false;
     }
@@ -239,12 +240,24 @@ public class WarmUpScheduler implements Handler.Callback {
                             }
                             Log.i(TAG, "System idle, trigger clean up in %s seconds.", (DELAY_CLEAN_UP / 1000));
                             break;
+                        case DiskUsage:
+                            if (WarmUpUtility.shouldComputeDiskUsage(mContext)) {
+                                mIdleHandler.sendMessageDelayed(
+                                        Message.obtain(mIdleHandler, MSG_COMPUTE_DISK_USAGE, mCancellationSignal),
+                                        DELAY_SHORTLY
+                                );
+                            } else {
+                                it.remove();
+                            }
+                            Log.i(TAG, "System idle, trigger disk usage in %s seconds.", (DELAY_SHORTLY / 1000));
+                            break;
                     }
                 }
             } else if (!isIdle && mCancellationSignal != null) {
                 mIdleHandler.removeMessages(MSG_WARM_UP);
                 mIdleHandler.removeMessages(MSG_CONSUME_REQ_QUT);
                 mIdleHandler.removeMessages(MSG_CLEAN_UP);
+                mIdleHandler.removeMessages(MSG_COMPUTE_DISK_USAGE);
                 mCancellationSignal.cancel();
                 mCancellationSignal = null;
                 Log.i(TAG, "Exit idle state, task cancelled.");

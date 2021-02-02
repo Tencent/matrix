@@ -200,7 +200,9 @@ public class WeChatBacktrace {
                 }
             }
             WeChatBacktraceNative.setBacktraceMode(mode.value);
+
             Log.i(TAG, "Has warmed up: %s", hasWarmedUp);
+
             // Set warmed up flag
             WeChatBacktraceNative.setWarmedUp(hasWarmedUp);
 

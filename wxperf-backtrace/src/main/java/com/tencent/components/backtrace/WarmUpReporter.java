@@ -9,6 +9,7 @@ public interface WarmUpReporter {
         WarmUpFailed,
         WarmUpDuration,
         ConsumeRequestDuration,
+        DiskUsage,
     }
 
     void onReport(ReportEvent type, Object ... args);

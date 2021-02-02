@@ -10,9 +10,7 @@ import java.io.FileFilter;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
 
 class WarmUpUtility {
@@ -22,6 +20,7 @@ class WarmUpUtility {
     private final static String DIR_WECHAT_BACKTRACE = "wechat-backtrace";
     private final static String FILE_DEFAULT_SAVING_PATH = "saving-cache";
     private final static String FILE_WARMED_UP = "warmed-up";
+    private final static String FILE_DISK_USAGE = "disk-usage.timestamp";
     private final static String FILE_CLEAN_UP_TIMESTAMP = "clean-up.timestamp";
     private final static String FILE_BLOCKED_LIST = "blocked-list";
     private final static String FILE_UNFINISHED = "unfinished";
@@ -29,6 +28,7 @@ class WarmUpUtility {
     final static long DURATION_LAST_ACCESS_EXPIRED = 60L * 24 * 3600 * 1000; // milliseconds
     final static long DURATION_CLEAN_UP_EXPIRED = 3L * 24 * 3600 * 1000; // milliseconds
     final static long DURATION_CLEAN_UP = 7L * 24 * 3600 * 1000; // milliseconds
+    final static long DURATION_DISK_USAGE_COMPUTATION = 3L * 24 * 3600 * 1000; // milliseconds
 
     final static int WARM_UP_FILE_MAX_RETRY = 3;
 
@@ -97,6 +97,13 @@ class WarmUpUtility {
     static File warmUpMarkedFile(Context context) {
         File file = new File(context.getFilesDir().getAbsolutePath() + "/"
                 + DIR_WECHAT_BACKTRACE + "/" + FILE_WARMED_UP);
+        file.getParentFile().mkdirs();
+        return file;
+    }
+
+    static File diskUsageFile(Context context) {
+        File file = new File(context.getFilesDir().getAbsolutePath() + "/"
+                + DIR_WECHAT_BACKTRACE + "/" + FILE_DISK_USAGE);
         file.getParentFile().mkdirs();
         return file;
     }
@@ -207,6 +214,30 @@ class WarmUpUtility {
             return false;
         }
         return System.currentTimeMillis() - timestamp.lastModified() >= DURATION_CLEAN_UP;
+    }
+
+    static boolean shouldComputeDiskUsage(Context context) {
+        File timestamp = diskUsageFile(context);
+        if (!timestamp.exists()) {
+            try {
+                // Create disk usage timestamp file if necessary.
+                timestamp.createNewFile();
+            } catch (IOException e) {
+                Log.printStack(Log.ERROR, TAG, e);
+            }
+            return false;
+        }
+        return System.currentTimeMillis() - timestamp.lastModified() >= DURATION_DISK_USAGE_COMPUTATION;
+    }
+
+    static void markComputeDiskUsageTimestamp(Context context) {
+        File timestamp = WarmUpUtility.diskUsageFile(context);
+        try {
+            timestamp.createNewFile();
+            timestamp.setLastModified(System.currentTimeMillis());
+        } catch (IOException e) {
+            Log.printStack(Log.ERROR, TAG, e);
+        }
     }
 
     static boolean hasWarmedUp(Context context) {

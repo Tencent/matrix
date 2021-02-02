@@ -258,11 +258,10 @@ namespace wechat_backtrace {
             return 2;
         }
 
-        uint64_t adjusted_pc = pc - load_bias;
-        if (adjusted_pc & 1) {
+        if (pc & 1) {
             // This is a thumb instruction, it could be 2 or 4 bytes.
             uint32_t value;
-            adjusted_pc -= 5;
+            uint64_t adjusted_pc = pc - 5;
             if (!(map_info->flags & PROT_READ) ||
                 adjusted_pc < map_info->start ||
                 (adjusted_pc + sizeof(value)) >= map_info->end ||

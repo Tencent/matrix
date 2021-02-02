@@ -22,9 +22,9 @@ import java.io.File;
 import java.io.FileFilter;
 import java.io.IOException;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.Queue;
+import java.util.concurrent.CancellationException;
 
 import static com.tencent.components.backtrace.WarmUpService.ARGS_WARM_UP_ELF_START_OFFSET;
 import static com.tencent.components.backtrace.WarmUpService.ARGS_WARM_UP_PATH_OF_ELF;
@@ -48,6 +48,7 @@ class WarmUpDelegate {
     private final static String TASK_TAG_WARM_UP = "warm-up";
     private final static String TASK_TAG_CLEAN_UP = "clean-up";
     private final static String TASK_TAG_CONSUMING_UP = "consuming-up";
+    private final static String TASK_TAG_COMPUTE_DISK_USAGE = "compute-disk-usage";
 
     private boolean mIsolateRemote = false;
     private String mSavingPath;
@@ -87,6 +88,11 @@ class WarmUpDelegate {
             if (WarmUpUtility.needCleanUp(context)) {
                 Log.i(TAG, "Need clean up");
                 mWarmUpScheduler.scheduleTask(TaskType.CleanUp);
+            }
+
+            if (WarmUpUtility.shouldComputeDiskUsage(context)) {
+                Log.i(TAG, "Should schedule disk usage task.");
+                mWarmUpScheduler.scheduleTask(TaskType.DiskUsage);
             }
         }
     }
@@ -372,7 +378,7 @@ class WarmUpDelegate {
         }, TASK_TAG_CLEAN_UP);
     }
 
-    void consumingRequestedQut(CancellationSignal cs) {
+    void consumingRequestedQut(final CancellationSignal cs) {
         mThreadTaskExecutor.arrangeTask(new Runnable() {
             @Override
             public void run() {
@@ -383,6 +389,7 @@ class WarmUpDelegate {
                 WarmUpInvoker invoker = acquireWarmUpInvoker();
 
                 if (invoker == null) {
+                    mWarmUpScheduler.taskFinished(TaskType.RequestConsuming);
                     Log.w(TAG, "Failed to acquire warm-up invoker.");
                     return;
                 }
@@ -408,6 +415,11 @@ class WarmUpDelegate {
                         }
 
                         Log.i(TAG, "Consumed requested QUT -> %s", path);
+
+                        if (cs != null && cs.isCanceled()) {
+                            Log.i(TAG, "Consume requested QUT canceled.");
+                            break;
+                        }
                     }
                     Log.i(TAG, "Consume requested QUT done.");
                 } finally {
@@ -416,6 +428,45 @@ class WarmUpDelegate {
                 }
             }
         }, TASK_TAG_CONSUMING_UP);
+    }
+
+    void computeDiskUsage(final CancellationSignal cs) {
+        mThreadTaskExecutor.arrangeTask(new Runnable() {
+            @Override
+            public void run() {
+                File file = new File(mSavingPath);
+                if (!file.isDirectory()) {
+                    mWarmUpScheduler.taskFinished(TaskType.DiskUsage);
+                    return;
+                }
+
+                final long[] count = new long[2];
+
+                try {
+                    iterateTargetDirectory(file, cs, new FileFilter() {
+                        @Override
+                        public boolean accept(File pathname) {
+                            count[0] += 1;
+                            count[1] += pathname.isFile() ? pathname.length() : 0;
+                            return false;
+                        }
+                    });
+                } catch (CancellationException e) {
+                    return;
+                } finally {
+                    mWarmUpScheduler.taskFinished(TaskType.DiskUsage);
+                    WarmUpUtility.markComputeDiskUsageTimestamp(mConfiguration.mContext);
+
+                    Log.i(TAG, "Compute disk usage, file count(%s), disk usage(%s)",
+                            count[0], count[1]);
+                }
+
+                WarmUpReporter reporter = sReporter;
+                if (reporter != null) {
+                    reporter.onReport(WarmUpReporter.ReportEvent.DiskUsage, count[0], count[1]);
+                }
+            }
+        }, TASK_TAG_COMPUTE_DISK_USAGE);
     }
 
     private boolean warmUpBlocked(String pathOfElf, int offset) {
