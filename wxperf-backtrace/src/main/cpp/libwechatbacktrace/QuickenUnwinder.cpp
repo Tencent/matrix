@@ -154,8 +154,8 @@ namespace wechat_backtrace {
             }
 
             bool ret = interface->GenerateQuickenTable<addr_t>(elf->memory(), gnu_debug_data_memory,
-                                                    process_memory_.get(),
-                                                    qut_sections_ptr);
+                                                               process_memory_.get(),
+                                                               qut_sections_ptr);
             if (ret) {
                 QutFileError error = QuickenTableManager::getInstance().SaveQutSections(
                         soname, sopath, hash, build_id, only_save_file, std::move(qut_sections));
@@ -207,9 +207,9 @@ namespace wechat_backtrace {
             uint32_t value;
             adjusted_pc -= 5;
             if (!(map_info->flags & PROT_READ) ||
-                (adjusted_pc - 5) < map_info->start ||
-                (adjusted_pc - 5 + sizeof(value)) >= map_info->end ||
-                !process_memory->ReadFully(adjusted_pc - 5, &value, sizeof(value)) ||
+                adjusted_pc < map_info->start ||
+                (adjusted_pc + sizeof(value)) >= map_info->end ||
+                !process_memory->ReadFully(adjusted_pc, &value, sizeof(value)) ||
                 (value & 0xe000f000) != 0xe000f000) {
                 return 2;
             }

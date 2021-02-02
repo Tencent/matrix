@@ -175,7 +175,7 @@ public class WeChatBacktrace {
 
             // Init saving path
             String savingPath = WarmUpUtility.validateSavingPath(configuration);
-            Log.i(TAG, "Set saving path = %s", savingPath);
+            Log.i(TAG, "Set saving path: %s", savingPath);
             File file = new File(savingPath);
             file.mkdirs();
             if (!savingPath.endsWith(File.separator)) {
@@ -200,7 +200,7 @@ public class WeChatBacktrace {
                 }
             }
             WeChatBacktraceNative.setBacktraceMode(mode.value);
-
+            Log.i(TAG, "Has warmed up: %s", hasWarmedUp);
             // Set warmed up flag
             WeChatBacktraceNative.setWarmedUp(hasWarmedUp);
 
