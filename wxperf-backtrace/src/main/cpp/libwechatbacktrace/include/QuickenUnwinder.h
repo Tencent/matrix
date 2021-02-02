@@ -26,6 +26,11 @@ namespace wechat_backtrace {
             const std::string &sopath,
             const uint64_t elf_start_offset);
 
+    QUT_EXTERN_C bool
+    TestLoadQut(
+            const std::string &so_path,
+            const uint64_t elf_start_offset);
+
     QUT_EXTERN_C std::vector<std::string> ConsumeRequestingQut();
 
     QUT_EXTERN_C QutErrorCode

@@ -75,8 +75,9 @@ namespace wechat_backtrace {
         return result;
     }
 
-    static jboolean JNI_WarmUp(JNIEnv *env, jclass clazz, jstring sopath_jstr, jint elf_start_offset,
-                           jboolean only_save_file) {
+    static jboolean
+    JNI_WarmUp(JNIEnv *env, jclass clazz, jstring sopath_jstr, jint elf_start_offset,
+               jboolean only_save_file) {
         (void) clazz;
 
         jboolean ret = JNI_TRUE;
@@ -95,6 +96,18 @@ namespace wechat_backtrace {
         const char *sopath = env->GetStringUTFChars(sopath_jstr, 0);
         NotifyWarmedUpQut(sopath, (uint64_t) elf_start_offset);
         env->ReleaseStringUTFChars(sopath_jstr, sopath);
+    }
+
+    static jboolean
+    JNI_TestLoadQut(JNIEnv *env, jclass clazz, jstring sopath_jstr, jint elf_start_offset) {
+
+        (void) clazz;
+
+        const char *sopath = env->GetStringUTFChars(sopath_jstr, 0);
+        bool ret = TestLoadQut(sopath, (uint64_t) elf_start_offset);
+        env->ReleaseStringUTFChars(sopath_jstr, sopath);
+
+        return ret ? JNI_TRUE : JNI_FALSE;
     }
 
     static void JNI_SetBacktraceMode(JNIEnv *env, jclass clazz, jint mode) {
@@ -164,6 +177,7 @@ namespace wechat_backtrace {
             {"immediateGeneration", "(Z)V",                    (void *) JNI_SetImmediateGeneration},
             {"notifyWarmedUp",      "(Ljava/lang/String;I)V",  (void *) JNI_NotifyWarmedUp},
             {"enableLogger",        "(Ljava/lang/String;Z)V",  (void *) JNI_EnableLogger},
+            {"testLoadQut",        "(Ljava/lang/String;I)Z",  (void *) JNI_TestLoadQut},
     };
 
     static jclass JNIClass_WeChatBacktraceNative = nullptr;

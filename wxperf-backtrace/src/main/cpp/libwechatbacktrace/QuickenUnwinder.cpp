@@ -96,6 +96,63 @@ namespace wechat_backtrace {
         }
     }
 
+    bool TestLoadQut(const std::string &so_path, const uint64_t elf_start_offset) {
+
+        QUT_LOG("Try load Qut for so %s, elf_start_offset %llu.", so_path.c_str(),
+                (ullint_t) elf_start_offset);
+
+        const string hash = ToHash(
+                so_path + to_string(FileSize(so_path)) + to_string(elf_start_offset));
+        const std::string so_name = SplitSonameFromPath(so_path);
+
+        {
+            lock_guard<mutex> lock(generate_lock_);
+
+            if (!QuickenTableManager::CheckIfQutFileExistsWithHash(so_name, hash)) {
+                QUT_LOG("Try load qut, but not exists with hash %s.", hash.c_str());
+                return false;
+            }
+
+            // Will be destructed by 'elf' instance.
+            auto memory = QuickenMapInfo::CreateQuickenMemoryFromFile(so_path, elf_start_offset);
+            if (memory == nullptr) {
+                QUT_LOG("Try load qut, create quicken memory for so %s failed", so_path.c_str());
+                return false;
+            }
+            auto elf = make_unique<Elf>(memory);
+            elf->Init();
+            if (!elf->valid()) {
+                QUT_LOG("Try load qut, elf->valid() so %s invalid", so_path.c_str());
+                return false;
+            }
+
+            if (elf->arch() != CURRENT_ARCH) {
+                QUT_LOG("Try load qut, elf->arch() invalid %s", so_path.c_str());
+                return false;
+            }
+
+            const string build_id_hex = elf->GetBuildID();
+            const string build_id = build_id_hex.empty() ? FakeBuildId(so_path) : ToBuildId(
+                    build_id_hex);
+
+            if (!QuickenTableManager::CheckIfQutFileExistsWithBuildId(so_name, build_id)) {
+                QUT_LOG("Try load qut, but not exists with build id %s and return.",
+                        build_id.c_str());
+                return false;
+            }
+
+            QutSectionsPtr qut_sections_tmp = nullptr;  // Test only
+            QutFileError ret = QuickenTableManager::getInstance().TryLoadQutFile(
+                    so_name, so_path, hash, build_id, qut_sections_tmp, true);
+
+            QUT_LOG("Try load qut for so %s, hash %s, build id %s, result %llu",
+                    so_path.c_str(), hash.c_str(), build_id.c_str(),
+                    (ullint_t) ret);
+
+            return ret == NoneError;
+        }
+    }
+
     bool GenerateQutForLibrary(const std::string &sopath, const uint64_t elf_start_offset,
                                const bool only_save_file) {
 

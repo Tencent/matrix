@@ -75,13 +75,13 @@ class WarmUpUtility {
         public static void result(Context context, String pathOfElf, int offset, boolean success) {
             String key = WarmUpUtility.unfinishedKey(pathOfElf, offset);
             int retryCount = retryCount(context, key);
-//            if (success) {
-//                mUnfinishedWarmUp.remove(key);
-//            } else {
-//                mUnfinishedWarmUp.put(key, retryCount + 1);
-//            }
-
-            mUnfinishedWarmUp.put(key, retryCount + 1);
+            if (success) {
+                mUnfinishedWarmUp.remove(key);
+            } else {
+                mUnfinishedWarmUp.put(key, retryCount + 1);
+            }
+//
+//            mUnfinishedWarmUp.put(key, retryCount + 1);
 
             flushUnfinishedMaps(context, mUnfinishedWarmUp);
         }

@@ -61,7 +61,7 @@ namespace wechat_backtrace {
     QutFileError
     QuickenTableManager::TryLoadQutFile(const string &soname, const string &sopath,
                                         const string &hash, const string &build_id,
-                                        QutSectionsPtr &qut_sections) {
+                                        QutSectionsPtr &qut_sections, const bool testOnly) {
         (void) hash;
         (void) sopath;
 
@@ -155,25 +155,28 @@ namespace wechat_backtrace {
                 return FileLengthNotMatch;
             }
 
-            QutSectionsPtr qut_sections_tmp = new QutSections();
+            if (!testOnly) {
 
-            qut_sections_tmp->load_from_file = true;
-            qut_sections_tmp->mmap_ptr = data;
-            qut_sections_tmp->map_size = file_size;
+                QutSectionsPtr qut_sections_tmp = new QutSections();
 
-            qut_sections_tmp->idx_size = idx_size;
-            qut_sections_tmp->tbl_size = tbl_size;
-            qut_sections_tmp->quidx = (static_cast<uptr *>((void *) (data + idx_offset)));
-            qut_sections_tmp->qutbl = (static_cast<uptr *>((void *) (data + tbl_offset)));
+                qut_sections_tmp->load_from_file = true;
+                qut_sections_tmp->mmap_ptr = data;
+                qut_sections_tmp->map_size = file_size;
 
-            QutSectionsPtr qut_sections_insert = qut_sections_tmp;
-            if (!InsertQutSectionsNoLock(soname, hash, build_id, qut_sections_insert, true)) {
-                delete qut_sections_tmp;
-                close(fd);
-                return InsertNewQutFailed;
+                qut_sections_tmp->idx_size = idx_size;
+                qut_sections_tmp->tbl_size = tbl_size;
+                qut_sections_tmp->quidx = (static_cast<uptr *>((void *) (data + idx_offset)));
+                qut_sections_tmp->qutbl = (static_cast<uptr *>((void *) (data + tbl_offset)));
+
+                QutSectionsPtr qut_sections_insert = qut_sections_tmp;
+                if (!InsertQutSectionsNoLock(soname, hash, build_id, qut_sections_insert, true)) {
+                    delete qut_sections_tmp;
+                    close(fd);
+                    return InsertNewQutFailed;
+                }
+
+                qut_sections = qut_sections_tmp;
             }
-
-            qut_sections = qut_sections_tmp;
 
             close(fd);
 

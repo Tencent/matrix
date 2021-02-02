@@ -108,7 +108,7 @@ namespace wechat_backtrace {
         QutFileError
         TryLoadQutFile(const std::string &soname, const std::string &sopath,
                        const std::string &hash, const std::string &build_id,
-                       QutSectionsPtr &qut_sections);
+                       QutSectionsPtr &qut_sections, const bool testOnly = false);
 
         QutFileError
         RequestQutSections(const std::string &soname, const std::string &sopath,

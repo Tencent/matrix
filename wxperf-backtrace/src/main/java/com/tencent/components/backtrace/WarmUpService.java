@@ -350,6 +350,10 @@ public class WarmUpService extends Service {
                     ret = WARM_UP_FAILED_TOO_MANY_TIMES;
                 } else {
                     boolean success = WarmUpDelegate.internalWarmUpSoPath(pathOfSo, offset, true);
+                    if (!WeChatBacktraceNative.testLoadQut(pathOfSo, offset)) {
+                        Log.w(TAG, "Warm up elf %s:%s success, but test load qut failed!", pathOfSo, offset);
+                        success = false;
+                    }
                     WarmUpUtility.UnfinishedManagement.result(this, pathOfSo, offset, success);
                     ret = success ? OK : WARM_UP_FAILED;
                 }
