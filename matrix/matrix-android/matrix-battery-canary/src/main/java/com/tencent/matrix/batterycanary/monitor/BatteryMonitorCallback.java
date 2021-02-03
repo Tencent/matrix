@@ -1,5 +1,6 @@
 package com.tencent.matrix.batterycanary.monitor;
 
+import android.content.ComponentName;
 import android.os.HandlerThread;
 import android.os.Process;
 import android.support.annotation.CallSuper;
@@ -33,9 +34,15 @@ import java.util.List;
  * @author Kaede
  * @since 2020/10/27
  */
-public interface BatteryMonitorCallback extends BatteryMonitorCore.JiffiesListener, LooperTaskMonitorFeature.LooperTaskListener, WakeLockMonitorFeature.WakeLockListener, AlarmMonitorFeature.AlarmListener, JiffiesMonitorFeature.JiffiesListener {
+public interface BatteryMonitorCallback extends
+        BatteryMonitorCore.JiffiesListener,
+        LooperTaskMonitorFeature.LooperTaskListener,
+        WakeLockMonitorFeature.WakeLockListener,
+        AlarmMonitorFeature.AlarmListener,
+        JiffiesMonitorFeature.JiffiesListener,
+        AppStatMonitorFeature.AppStatListener {
 
-    @SuppressWarnings({"NotNullFieldNotInitialized", "SpellCheckingInspection"})
+    @SuppressWarnings({"NotNullFieldNotInitialized", "SpellCheckingInspection", "unused"})
     class BatteryPrinter implements BatteryMonitorCallback {
         private static final String TAG = "Matrix.battery.BatteryPrinter";
         private static final int ONE_MIN = 60 * 1000;
@@ -105,11 +112,23 @@ public interface BatteryMonitorCallback extends BatteryMonitorCore.JiffiesListen
         }
 
         @Override
+        public void onWakeLockTimeout(WakeLockRecord record, long backgroundMillis) {
+        }
+
+        @Override
         public void onAlarmDuplicated(int duplicatedCount, AlarmMonitorFeature.AlarmRecord record) {
         }
 
         @Override
         public void onParseError(int pid, int tid) {
+        }
+
+        @Override
+        public void onForegroundServiceLeak(boolean isMyself, int appImportance, int globalAppImportance, ComponentName componentName, long millis) {
+        }
+
+        @Override
+        public void onAppSateLeak(boolean isMyself, int appImportance, ComponentName componentName, long millis) {
         }
 
         @CallSuper

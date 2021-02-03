@@ -7,15 +7,19 @@ import com.tencent.matrix.batterycanary.monitor.BatteryMonitorConfig;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
 import com.tencent.matrix.plugin.Plugin;
 import com.tencent.matrix.plugin.PluginListener;
+import com.tencent.matrix.util.MatrixLog;
 import com.tencent.matrix.util.MatrixUtil;
 
 public class BatteryMonitorPlugin extends Plugin {
+    private static final String TAG = "Matrix.battery.BatteryMonitorPlugin";
+
     final BatteryMonitorCore mDelegate;
     private static String sPackageName = null;
     private static String sProcessName = null;
 
     public BatteryMonitorPlugin(BatteryMonitorConfig config) {
         mDelegate = new BatteryMonitorCore(config);
+        MatrixLog.i(TAG, "setUp battery monitor plugin with configs: " + config);
     }
 
     public BatteryMonitorCore core() {

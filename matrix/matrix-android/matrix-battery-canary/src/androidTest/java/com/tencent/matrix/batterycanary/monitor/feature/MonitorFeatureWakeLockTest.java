@@ -25,9 +25,15 @@ import android.support.test.runner.AndroidJUnit4;
 
 import com.tencent.matrix.Matrix;
 import com.tencent.matrix.batterycanary.BatteryMonitorPlugin;
+import com.tencent.matrix.batterycanary.TestUtils;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCallback;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorConfig;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
+import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Differ.ListDiffer;
+import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Entry.BeanEntry;
+import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Entry.ListEntry;
+import com.tencent.matrix.batterycanary.monitor.feature.WakeLockMonitorFeature.WakeLockCounting;
+import com.tencent.matrix.batterycanary.monitor.feature.WakeLockMonitorFeature.WakeLockTrace.WakeLockRecord;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -36,6 +42,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.mockito.Mockito.mock;
@@ -78,9 +85,9 @@ public class MonitorFeatureWakeLockTest {
     public void testWakeLockRequired() throws InterruptedException {
         WakeLockMonitorFeature feature = new WakeLockMonitorFeature();
         feature.configure(mockMonitor());
-        feature.mOverTimeMillis = Long.MAX_VALUE;
+        feature.mOverTimeMillis = Integer.MAX_VALUE;
         Assert.assertEquals(0, feature.mWorkingWakeLocks.size());
-        Assert.assertEquals(0, feature.mFinishedWakeLockRecords.size());
+        Assert.assertEquals(0, feature.mWakeLockCounting.getTotalCount());
         WakeLockMonitorFeature.WakeLockSnapshot wakeLockSnapshot = feature.currentWakeLocks();
         Assert.assertEquals(0, wakeLockSnapshot.totalWakeLockCount.get().intValue());
         Assert.assertEquals(0, wakeLockSnapshot.totalWakeLockTime.get().longValue());
@@ -91,47 +98,43 @@ public class MonitorFeatureWakeLockTest {
             int flag = PowerManager.ACQUIRE_CAUSES_WAKEUP;
             String pkg = mContext.getPackageName();
             feature.onAcquireWakeLock(mockToken, flag, tag, pkg, null, null);
-            Assert.assertEquals(0, feature.mFinishedWakeLockRecords.size());
+            Assert.assertEquals(0, feature.mWakeLockCounting.getTotalCount());
             Assert.assertEquals(i + 1, feature.mWorkingWakeLocks.size());
         }
 
-        Assert.assertEquals(0, feature.mFinishedWakeLockRecords.size());
+        Assert.assertEquals(0, feature.mWakeLockCounting.getTotalCount());
         Assert.assertEquals(100, feature.mWorkingWakeLocks.size());
         wakeLockSnapshot = feature.currentWakeLocks();
-        Assert.assertEquals(100, wakeLockSnapshot.totalWakeLockCount.get().intValue());
-        Assert.assertEquals(100, wakeLockSnapshot.totalWakeLockRecords.getList().size());
+        Assert.assertEquals(0, wakeLockSnapshot.totalWakeLockCount.get().intValue());
+        Assert.assertEquals(0, wakeLockSnapshot.totalWakeLockRecords.getList().size());
 
         ArrayList<WakeLockMonitorFeature.WakeLockTrace> workingList = new ArrayList<>(feature.mWorkingWakeLocks.values());
         for (int i = 0; i < workingList.size(); i++) {
             IBinder mockToken = workingList.get(i).token;
             int flag = workingList.get(i).record.flags;
             feature.onReleaseWakeLock(mockToken, flag);
-            Assert.assertEquals(i + 1, feature.mFinishedWakeLockRecords.size());
+            Assert.assertEquals(i + 1, feature.mWakeLockCounting.getTotalCount());
             Assert.assertEquals(workingList.size() - (i + 1), feature.mWorkingWakeLocks.size());
-            for (WakeLockMonitorFeature.WakeLockTrace.WakeLockRecord item : feature.mFinishedWakeLockRecords) {
-                Assert.assertTrue(item.isFinished());
-                Assert.assertTrue(item.getLockingTimeMillis() > 0L);
-            }
             for (WakeLockMonitorFeature.WakeLockTrace item : feature.mWorkingWakeLocks.values()) {
                 Assert.assertFalse(item.isFinished());
                 Assert.assertTrue(item.record.getLockingTimeMillis() >= 0L);
             }
         }
 
-        Assert.assertEquals(100, feature.mFinishedWakeLockRecords.size());
+        Assert.assertEquals(100, feature.mWakeLockCounting.getTotalCount());
         Assert.assertEquals(0, feature.mWorkingWakeLocks.size());
         wakeLockSnapshot = feature.currentWakeLocks();
         Assert.assertEquals(100, wakeLockSnapshot.totalWakeLockCount.get().intValue());
-        Assert.assertEquals(100, wakeLockSnapshot.totalWakeLockRecords.getList().size());
+        Assert.assertEquals(0, wakeLockSnapshot.totalWakeLockRecords.getList().size());
     }
 
     @Test
     public void testWakeLockRequiredConcurrent() throws InterruptedException {
         final WakeLockMonitorFeature feature = new WakeLockMonitorFeature();
         feature.configure(mockMonitor());
-        feature.mOverTimeMillis = Long.MAX_VALUE;
+        feature.mOverTimeMillis = Integer.MAX_VALUE;
         Assert.assertEquals(0, feature.mWorkingWakeLocks.size());
-        Assert.assertEquals(0, feature.mFinishedWakeLockRecords.size());
+        Assert.assertEquals(0, feature.mWakeLockCounting.getTotalCount());
         WakeLockMonitorFeature.WakeLockSnapshot wakeLockSnapshot = feature.currentWakeLocks();
         Assert.assertEquals(0, wakeLockSnapshot.totalWakeLockCount.get().intValue());
         Assert.assertEquals(0, wakeLockSnapshot.totalWakeLockTime.get().longValue());
@@ -155,11 +158,11 @@ public class MonitorFeatureWakeLockTest {
         for (Thread item : threads) {
             item.join();
         }
-        Assert.assertEquals(0, feature.mFinishedWakeLockRecords.size());
+        Assert.assertEquals(0, feature.mWakeLockCounting.getTotalCount());
         Assert.assertEquals(100, feature.mWorkingWakeLocks.size());
         wakeLockSnapshot = feature.currentWakeLocks();
-        Assert.assertEquals(100, wakeLockSnapshot.totalWakeLockCount.get().intValue());
-        Assert.assertEquals(100, wakeLockSnapshot.totalWakeLockRecords.getList().size());
+        Assert.assertEquals(0, wakeLockSnapshot.totalWakeLockCount.get().intValue());
+        Assert.assertEquals(0, wakeLockSnapshot.totalWakeLockRecords.getList().size());
 
         final ArrayList<WakeLockMonitorFeature.WakeLockTrace> workingList = new ArrayList<>(feature.mWorkingWakeLocks.values());
         threads = new ArrayList<>();
@@ -169,12 +172,8 @@ public class MonitorFeatureWakeLockTest {
             Thread thread = new Thread(new Runnable() {
                 @Override
                 public void run() {
-                    synchronized (feature.mFinishedWakeLockRecords) {
+                    synchronized (feature.mWorkingWakeLocks) {
                         feature.onReleaseWakeLock(mockToken, flag);
-                        for (WakeLockMonitorFeature.WakeLockTrace.WakeLockRecord item : feature.mFinishedWakeLockRecords) {
-                            Assert.assertTrue(item.isFinished());
-                            Assert.assertTrue(item.getLockingTimeMillis() > 0L);
-                        }
                         for (WakeLockMonitorFeature.WakeLockTrace item : feature.mWorkingWakeLocks.values()) {
                             Assert.assertFalse(item.isFinished());
                             Assert.assertTrue(item.record.getLockingTimeMillis() > 0L);
@@ -189,11 +188,11 @@ public class MonitorFeatureWakeLockTest {
         for (Thread item : threads) {
             item.join();
         }
-        Assert.assertEquals(100, feature.mFinishedWakeLockRecords.size());
+        Assert.assertEquals(100, feature.mWakeLockCounting.getTotalCount());
         Assert.assertEquals(0, feature.mWorkingWakeLocks.size());
         wakeLockSnapshot = feature.currentWakeLocks();
         Assert.assertEquals(100, wakeLockSnapshot.totalWakeLockCount.get().intValue());
-        Assert.assertEquals(100, wakeLockSnapshot.totalWakeLockRecords.getList().size());
+        Assert.assertEquals(0, wakeLockSnapshot.totalWakeLockRecords.getList().size());
     }
 
     @Test
@@ -207,14 +206,15 @@ public class MonitorFeatureWakeLockTest {
                 .wakelockTimeout(timeoutMillis)
                 .setCallback(new BatteryMonitorCallback.BatteryPrinter() {
                     @Override
-                    public void onWakeLockTimeout(int warningCount, WakeLockMonitorFeature.WakeLockTrace.WakeLockRecord record) {
+                    public void onWakeLockTimeout(int warningCount, WakeLockRecord record) {
                         super.onWakeLockTimeout(warningCount, record);
                         overTimeCount.incrementAndGet();
                     }
                 })
                 .build();
         final WakeLockMonitorFeature feature = new WakeLockMonitorFeature();
-        feature.configure(new BatteryMonitorCore(config));
+        BatteryMonitorCore monitorCore = new BatteryMonitorCore(config);
+        feature.configure(monitorCore);
 
         IBinder mockToken = mock(IBinder.class);
         int flag = PowerManager.ACQUIRE_CAUSES_WAKEUP;
@@ -224,7 +224,7 @@ public class MonitorFeatureWakeLockTest {
         Assert.assertEquals(0, overTimeCount.get());
         for (int i = 0; i < 10; i++) {
             final int expected = i;
-            feature.handler.post(new Runnable() {
+            monitorCore.getHandler().post(new Runnable() {
                 @Override
                 public void run() {
                     Assert.assertTrue(overTimeCount.get() >= expected - 1);
@@ -247,14 +247,15 @@ public class MonitorFeatureWakeLockTest {
                 .wakelockTimeout(timeoutMillis)
                 .setCallback(new BatteryMonitorCallback.BatteryPrinter() {
                     @Override
-                    public void onWakeLockTimeout(int warningCount, WakeLockMonitorFeature.WakeLockTrace.WakeLockRecord record) {
+                    public void onWakeLockTimeout(int warningCount, WakeLockRecord record) {
                         super.onWakeLockTimeout(warningCount, record);
                         overTimeCount.incrementAndGet();
                     }
                 })
                 .build();
         final WakeLockMonitorFeature feature = new WakeLockMonitorFeature();
-        feature.configure(new BatteryMonitorCore(config));
+        BatteryMonitorCore monitorCore = new BatteryMonitorCore(config);
+        feature.configure(monitorCore);
 
         for (int i = 0; i < concurrentNum; i++) {
             IBinder mockToken = mock(IBinder.class);
@@ -266,7 +267,7 @@ public class MonitorFeatureWakeLockTest {
         Assert.assertEquals(0, overTimeCount.get());
         for (int i = 0; i < 10; i++) {
             final int expected = i;
-            feature.handler.post(new Runnable() {
+            monitorCore.getHandler().post(new Runnable() {
                 @Override
                 public void run() {
                     Assert.assertTrue(overTimeCount.get() >= (expected - 1) * concurrentNum);
@@ -275,5 +276,72 @@ public class MonitorFeatureWakeLockTest {
             });
             Thread.sleep(timeoutMillis);
         }
+    }
+
+    @Test
+    public void testRecordListBenchmark() {
+        if (TestUtils.isAssembleTest()) return;
+
+        int round = 1000;
+
+        long str = System.currentTimeMillis();
+        List<BeanEntry<WakeLockRecord>> records = new ArrayList<>();
+        for (int i = 0; i < round; i++) {
+            WakeLockRecord mock = new WakeLockRecord("xxx", 0, "yyy", "zzz");
+            records.add(BeanEntry.of(mock));
+        }
+        ListEntry<BeanEntry<WakeLockRecord>> bgn = ListEntry.of(records);
+        for (int i = 0; i < round; i++) {
+            WakeLockRecord mock = new WakeLockRecord("xxx", 0, "yyy", "zzz");
+            records.add(BeanEntry.of(mock));
+        }
+        ListEntry<BeanEntry<WakeLockRecord>> end = ListEntry.of(records);
+        ListDiffer.globalDiff(bgn, end);
+        long differConsumed = System.currentTimeMillis() - str;
+
+        str = System.currentTimeMillis();
+        List<WakeLockRecord> bgnList = new ArrayList<>();
+        for (int i = 0; i < round; i++) {
+            WakeLockRecord mock = new WakeLockRecord("xxx", 0, "yyy", "zzz");
+            bgnList.add((mock));
+        }
+        List<WakeLockRecord> endList = new ArrayList<>(bgnList);
+        for (int i = 0; i < round; i++) {
+            WakeLockRecord mock = new WakeLockRecord("xxx", 0, "yyy", "zzz");
+            endList.add((mock));
+        }
+        List<WakeLockRecord> dltList = new ArrayList<>(bgnList);
+        for (WakeLockRecord endItem : endList) {
+            if (!bgnList.contains(endItem)) {
+                dltList.add(endItem);
+            }
+        }
+        long rawEqualsConsumed = System.currentTimeMillis() - str;
+
+        Assert.fail("Time consumed: " + differConsumed + " vs " + rawEqualsConsumed + " millis");
+    }
+
+
+    @Test
+    public void testWakeLockCountingBenchmark() {
+        WakeLockCounting counting = new WakeLockCounting();
+
+        int round = 10000;
+
+        long str = System.currentTimeMillis();
+        for (int i = 0; i < round; i++) {
+            WakeLockRecord mock = new WakeLockRecord("xxx", 0, "yyy", "zzz");
+            counting.add(mock);
+        }
+        WakeLockMonitorFeature.WakeLockSnapshot bgn = counting.getSnapshot();
+        for (int i = 0; i < round; i++) {
+            WakeLockRecord mock = new WakeLockRecord("xxx", 0, "yyy", "zzz");
+            counting.add(mock);
+        }
+        WakeLockMonitorFeature.WakeLockSnapshot end = counting.getSnapshot();
+        end.diff(bgn);
+        long differConsumed = System.currentTimeMillis() - str;
+
+        Assert.assertFalse("Time consumed: " + differConsumed, differConsumed > 100L);
     }
 }

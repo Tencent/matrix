@@ -1,5 +1,6 @@
 package com.tencent.matrix.batterycanary.monitor;
 
+import android.content.ComponentName;
 import android.content.Context;
 import android.os.Handler;
 import android.os.Message;
@@ -10,6 +11,7 @@ import android.support.annotation.VisibleForTesting;
 import com.tencent.matrix.AppActiveMatrixDelegate;
 import com.tencent.matrix.Matrix;
 import com.tencent.matrix.batterycanary.monitor.feature.AlarmMonitorFeature;
+import com.tencent.matrix.batterycanary.monitor.feature.AppStatMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.LooperTaskMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature;
@@ -20,10 +22,17 @@ import com.tencent.matrix.util.MatrixHandlerThread;
 import com.tencent.matrix.util.MatrixLog;
 
 import java.util.List;
+import java.util.concurrent.Callable;
 
-public class BatteryMonitorCore implements Handler.Callback, LooperTaskMonitorFeature.LooperTaskListener,
-        WakeLockMonitorFeature.WakeLockListener, AlarmMonitorFeature.AlarmListener, JiffiesMonitorFeature.JiffiesListener {
-    private static final String TAG = "Matrix.battery.watchdog";
+public class BatteryMonitorCore implements
+        LooperTaskMonitorFeature.LooperTaskListener,
+        WakeLockMonitorFeature.WakeLockListener,
+        AlarmMonitorFeature.AlarmListener,
+        JiffiesMonitorFeature.JiffiesListener,
+        AppStatMonitorFeature.AppStatListener,
+        Handler.Callback {
+
+    private static final String TAG = "Matrix.battery.BatteryMonitorCore";
 
     public interface JiffiesListener {
         void onTraceBegin();
@@ -40,7 +49,26 @@ public class BatteryMonitorCore implements Handler.Callback, LooperTaskMonitorFe
                 message.arg1 = MSG_ARG_FOREGROUND;
                 mHandler.sendMessageAtFrontOfQueue(message);
                 lastWhat = (lastWhat == MSG_ID_JIFFIES_END ? MSG_ID_JIFFIES_START : MSG_ID_JIFFIES_END);
-                mHandler.postDelayed(this, mLooperMillis);
+                mHandler.postDelayed(this, mFgLooperMillis);
+            }
+        }
+    }
+
+    private class BackgroundLoopCheckTask implements Runnable {
+        int round = 0;
+        @Override
+        public void run() {
+            round ++;
+            MatrixLog.i(TAG, "#onBackgroundLoopCheck, round = " + round);
+            if (!isForeground()) {
+                synchronized (BatteryMonitorCore.class) {
+                    for (MonitorFeature plugin : mConfig.features) {
+                        plugin.onBackgroundCheck(mBgLooperMillis * round);
+                    }
+                }
+            }
+            if (!isForeground()) {
+                mHandler.postDelayed(this, mBgLooperMillis);
             }
         }
     }
@@ -50,23 +78,39 @@ public class BatteryMonitorCore implements Handler.Callback, LooperTaskMonitorFe
     private static final int MSG_ARG_FOREGROUND = 0x3;
 
     @NonNull private Handler mHandler;
-    @Nullable private ForegroundLoopCheckTask mLooperTask;
+    @Nullable private ForegroundLoopCheckTask mFgLooperTask;
+    @Nullable private BackgroundLoopCheckTask mBgLooperTask;
     private final BatteryMonitorConfig mConfig;
+
+    @NonNull
+    Callable<String> mSupplier = new Callable<String>() {
+        @Override
+        public String call() {
+            return "unknown";
+        }
+    };
 
     private volatile boolean mTurnOn = false;
     private boolean mAppForeground = AppActiveMatrixDelegate.INSTANCE.isAppForeground();
     private boolean mForegroundModeEnabled;
+    private boolean mBackgroundModeEnabled;
     private static long mMonitorDelayMillis;
-    private static long mLooperMillis;
+    private static long mFgLooperMillis;
+    private static long mBgLooperMillis;
 
     public BatteryMonitorCore(BatteryMonitorConfig config) {
         mConfig = config;
         if (config.callback instanceof BatteryMonitorCallback.BatteryPrinter) ((BatteryMonitorCallback.BatteryPrinter) config.callback).attach(this);
+        if (config.onSceneSupplier != null) {
+            mSupplier = config.onSceneSupplier;
+        }
 
         mHandler = new Handler(MatrixHandlerThread.getDefaultHandlerThread().getLooper(), this);
         enableForegroundLoopCheck(config.isForegroundModeEnabled);
+        enableBackgroundLoopCheck(config.isBackgroundModeEnabled);
         mMonitorDelayMillis = config.greyTime;
-        mLooperMillis = config.foregroundLoopCheckTime;
+        mFgLooperMillis = config.foregroundLoopCheckTime;
+        mBgLooperMillis = config.backgroundLoopCheckTime;
 
         for (MonitorFeature plugin : config.features) {
             plugin.configure(this);
@@ -77,8 +121,13 @@ public class BatteryMonitorCore implements Handler.Callback, LooperTaskMonitorFe
     public void enableForegroundLoopCheck(boolean bool) {
         mForegroundModeEnabled = bool;
         if (mForegroundModeEnabled) {
-            mLooperTask = new ForegroundLoopCheckTask();
+            mFgLooperTask = new ForegroundLoopCheckTask();
         }
+    }
+
+    @VisibleForTesting
+    public void enableBackgroundLoopCheck(boolean bool) {
+        mBackgroundModeEnabled = bool;
     }
 
     @Override
@@ -149,21 +198,40 @@ public class BatteryMonitorCore implements Handler.Callback, LooperTaskMonitorFe
             // back:
             // 1. remove all checks
             mHandler.removeCallbacksAndMessages(null);
+
             // 2. start background jiffies check
             Message message = Message.obtain(mHandler);
             message.what = MSG_ID_JIFFIES_START;
             mHandler.sendMessageDelayed(message, mMonitorDelayMillis);
+
+            // 3. start background loop check task
+            if (mBackgroundModeEnabled) {
+                if (mBgLooperTask != null) {
+                    mHandler.removeCallbacks(mBgLooperTask);
+                    mBgLooperTask = null;
+                }
+                mBgLooperTask = new BackgroundLoopCheckTask();
+                mHandler.postDelayed(mBgLooperTask, mBgLooperMillis);
+            }
+
         } else if (!mHandler.hasMessages(MSG_ID_JIFFIES_START)) {
             // fore:
-            // 1. finish background jiffies check
+            // 1. remove background loop task
+            if (mBgLooperTask != null) {
+                mHandler.removeCallbacks(mBgLooperTask);
+                mBgLooperTask = null;
+            }
+
+            // 2. finish background jiffies check
             Message message = Message.obtain(mHandler);
             message.what = MSG_ID_JIFFIES_END;
             mHandler.sendMessageAtFrontOfQueue(message);
-            // 2. start foreground jiffies loop check
-            if (mForegroundModeEnabled && mLooperTask != null) {
-                mHandler.removeCallbacks(mLooperTask);
-                mLooperTask.lastWhat = MSG_ID_JIFFIES_START;
-                mHandler.post(mLooperTask);
+
+            // 3. start foreground jiffies loop check
+            if (mForegroundModeEnabled && mFgLooperTask != null) {
+                mHandler.removeCallbacks(mFgLooperTask);
+                mFgLooperTask.lastWhat = MSG_ID_JIFFIES_START;
+                mHandler.post(mFgLooperTask);
             }
         }
 
@@ -172,9 +240,22 @@ public class BatteryMonitorCore implements Handler.Callback, LooperTaskMonitorFe
         }
     }
 
+    @NonNull
+    public Handler getHandler() {
+        return mHandler;
+    }
+
     public Context getContext() {
         // FIXME: context api configs
         return Matrix.with().getApplication();
+    }
+
+    public String getScene() {
+        try {
+            return mSupplier.call();
+        } catch (Exception e) {
+            return "unknown";
+        }
     }
 
     public boolean isForeground() {
@@ -213,6 +294,12 @@ public class BatteryMonitorCore implements Handler.Callback, LooperTaskMonitorFe
     }
 
     @Override
+    public void onWakeLockTimeout(WakeLockRecord record, long backgroundMillis) {
+        MatrixLog.d(TAG, "#onWakeLockTimeout, tag = " + record.tag + ", pkg = " + record.packageName + ", backgroundMillis = " + backgroundMillis);
+        getConfig().callback.onWakeLockTimeout(record, backgroundMillis);
+    }
+
+    @Override
     public void onAlarmDuplicated(int duplicatedCount, AlarmMonitorFeature.AlarmRecord record) {
         MatrixLog.d(TAG, "#onAlarmDuplicated");
         getConfig().callback.onAlarmDuplicated(duplicatedCount, record);
@@ -220,7 +307,17 @@ public class BatteryMonitorCore implements Handler.Callback, LooperTaskMonitorFe
 
     @Override
     public void onParseError(int pid, int tid) {
-        MatrixLog.d(TAG, "#onParseError, tid " + tid);
+        MatrixLog.d(TAG, "#onParseError, tid = " + tid);
         getConfig().callback.onParseError(pid, tid);
+    }
+
+    @Override
+    public void onForegroundServiceLeak(boolean isMyself, int appImportance, int globalAppImportance, ComponentName componentName, long millis) {
+        getConfig().callback.onForegroundServiceLeak(isMyself, appImportance, globalAppImportance, componentName, millis);
+    }
+
+    @Override
+    public void onAppSateLeak(boolean isMyself, int appImportance, ComponentName componentName, long millis) {
+        getConfig().callback.onAppSateLeak(isMyself, appImportance, componentName, millis);
     }
 }

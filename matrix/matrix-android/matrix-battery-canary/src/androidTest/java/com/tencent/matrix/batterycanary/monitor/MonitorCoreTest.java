@@ -48,6 +48,9 @@ public class MonitorCoreTest {
     @Before
     public void setUp() {
         mContext = InstrumentationRegistry.getTargetContext();
+        if (!Matrix.isInstalled()) {
+            Matrix.init(new Matrix.Builder(((Application) mContext.getApplicationContext())).build());
+        }
         spyCallback = new BatteryMonitorCallback.BatteryPrinter() {
             @Override
             public void onTraceBegin() {
@@ -235,6 +238,26 @@ public class MonitorCoreTest {
 
         final BatteryMonitorCore core = new BatteryMonitorCore(config);
         core.start();
+        Thread.sleep(1000L);
+    }
+
+    @Test
+    public void testBgLoopTask() throws InterruptedException {
+        BatteryMonitorConfig config = new BatteryMonitorConfig.Builder()
+                .enable(JiffiesMonitorFeature.class)
+                .setCallback(spyCallback)
+                .backgroundLoopCheckTime(100)
+                .build();
+
+        final BatteryMonitorCore core = new BatteryMonitorCore(config);
+        core.start();
+        core.onForeground(false);
+        Thread.sleep(1000L);
+        core.onForeground(true);
+        Thread.sleep(1000L);
+        core.onForeground(false);
+        Thread.sleep(1000L);
+        core.onForeground(true);
         Thread.sleep(1000L);
     }
 }

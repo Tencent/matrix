@@ -195,9 +195,13 @@ public final class BatteryCanaryUtil {
     }
 
     public static int getBatteryTemperature(Context context) {
-        Intent batIntent = context.registerReceiver(null, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
-        if (batIntent == null) return 0;
-        return batIntent.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, 0);
+        try {
+            Intent batIntent = context.registerReceiver(null, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
+            if (batIntent == null) return 0;
+            return batIntent.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, 0);
+        } catch (Throwable ignored) {
+            return 0;
+        }
     }
 
     public static int getAppStat(Context context, boolean isForeground) {
@@ -230,10 +234,14 @@ public final class BatteryCanaryUtil {
                 return myBatteryManager.isCharging();
             }
         }
-        Intent batIntent = context.registerReceiver(null, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
-        if (batIntent == null) return false;
-        int plugged = batIntent.getIntExtra(BatteryManager.EXTRA_PLUGGED, -1);
-        return plugged == BatteryManager.BATTERY_PLUGGED_AC || plugged == BatteryManager.BATTERY_PLUGGED_USB || plugged == BatteryManager.BATTERY_PLUGGED_WIRELESS;
+        try {
+            Intent batIntent = context.registerReceiver(null, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
+            if (batIntent == null) return false;
+            int plugged = batIntent.getIntExtra(BatteryManager.EXTRA_PLUGGED, -1);
+            return plugged == BatteryManager.BATTERY_PLUGGED_AC || plugged == BatteryManager.BATTERY_PLUGGED_USB || plugged == BatteryManager.BATTERY_PLUGGED_WIRELESS;
+        } catch (Throwable ignored) {
+            return false;
+        }
     }
 
     public static boolean isDeviceScreenOn(Context context) {
@@ -265,11 +273,13 @@ public final class BatteryCanaryUtil {
             ActivityManager am = (ActivityManager) context.getSystemService(ACTIVITY_SERVICE);
             if (am != null) {
                 List<ActivityManager.RunningServiceInfo> runningServices = am.getRunningServices(Integer.MAX_VALUE);
-                for (ActivityManager.RunningServiceInfo runningServiceInfo : runningServices) {
-                    if (!TextUtils.isEmpty(runningServiceInfo.process)
-                            && runningServiceInfo.process.startsWith(context.getPackageName())) {
-                        if (runningServiceInfo.foreground) {
-                            return true;
+                if (runningServices != null) {
+                    for (ActivityManager.RunningServiceInfo runningServiceInfo : runningServices) {
+                        if (!TextUtils.isEmpty(runningServiceInfo.process)
+                                && runningServiceInfo.process.startsWith(context.getPackageName())) {
+                            if (runningServiceInfo.foreground) {
+                                return true;
+                            }
                         }
                     }
                 }
@@ -285,14 +295,16 @@ public final class BatteryCanaryUtil {
             ActivityManager am = (ActivityManager) context.getSystemService(ACTIVITY_SERVICE);
             if (am != null) {
                 List<ActivityManager.RunningServiceInfo> runningServices = am.getRunningServices(Integer.MAX_VALUE);
-                for (ActivityManager.RunningServiceInfo runningServiceInfo : runningServices) {
-                    if (!TextUtils.isEmpty(runningServiceInfo.process)
-                            && runningServiceInfo.process.startsWith(context.getPackageName())) {
-                        if (runningServiceInfo.foreground) {
-                            if (list.isEmpty()) {
-                                list = new ArrayList<>();
+                if (runningServices != null) {
+                    for (ActivityManager.RunningServiceInfo runningServiceInfo : runningServices) {
+                        if (!TextUtils.isEmpty(runningServiceInfo.process)
+                                && runningServiceInfo.process.startsWith(context.getPackageName())) {
+                            if (runningServiceInfo.foreground) {
+                                if (list.isEmpty()) {
+                                    list = new ArrayList<>();
+                                }
+                                list.add(runningServiceInfo);
                             }
-                            list.add(runningServiceInfo);
                         }
                     }
                 }

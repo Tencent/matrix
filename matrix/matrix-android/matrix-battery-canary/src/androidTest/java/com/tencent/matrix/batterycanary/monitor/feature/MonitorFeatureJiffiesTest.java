@@ -73,7 +73,7 @@ public class MonitorFeatureJiffiesTest {
 
     @Test
     public void getGetJiffiesSnapshot() {
-        JiffiesSnapshot snapshot = JiffiesSnapshot.currentJiffiesSnapshot(JiffiesMonitorFeature.ProcessInfo.getProcessInfo());
+        JiffiesSnapshot snapshot = JiffiesSnapshot.currentJiffiesSnapshot(JiffiesMonitorFeature.ProcessInfo.getProcessInfo(), false);
         Assert.assertNotNull(snapshot);
         Assert.assertEquals(Process.myPid(), snapshot.pid);
         Assert.assertEquals(mContext.getPackageName(), snapshot.name);
@@ -87,8 +87,8 @@ public class MonitorFeatureJiffiesTest {
 
     @Test
     public void testJiffiesDiff() {
-        final JiffiesSnapshot bgn = JiffiesSnapshot.currentJiffiesSnapshot(JiffiesMonitorFeature.ProcessInfo.getProcessInfo());
-        final JiffiesSnapshot end = JiffiesSnapshot.currentJiffiesSnapshot(JiffiesMonitorFeature.ProcessInfo.getProcessInfo());
+        final JiffiesSnapshot bgn = JiffiesSnapshot.currentJiffiesSnapshot(JiffiesMonitorFeature.ProcessInfo.getProcessInfo(), false);
+        final JiffiesSnapshot end = JiffiesSnapshot.currentJiffiesSnapshot(JiffiesMonitorFeature.ProcessInfo.getProcessInfo(), false);
         Delta<JiffiesSnapshot> delta = end.diff(bgn);
 
         Assert.assertNotNull(delta);
@@ -132,8 +132,8 @@ public class MonitorFeatureJiffiesTest {
 
     @Test
     public void testJiffiesDiffWithNewThread() {
-        final JiffiesSnapshot bgn = JiffiesSnapshot.currentJiffiesSnapshot(JiffiesMonitorFeature.ProcessInfo.getProcessInfo());
-        final JiffiesSnapshot end = JiffiesSnapshot.currentJiffiesSnapshot(JiffiesMonitorFeature.ProcessInfo.getProcessInfo());
+        final JiffiesSnapshot bgn = JiffiesSnapshot.currentJiffiesSnapshot(JiffiesMonitorFeature.ProcessInfo.getProcessInfo(), false);
+        final JiffiesSnapshot end = JiffiesSnapshot.currentJiffiesSnapshot(JiffiesMonitorFeature.ProcessInfo.getProcessInfo(), false);
 
         long jiffies = 10016L;
         final JiffiesSnapshot.ThreadJiffiesSnapshot mockThreadJiffies = new JiffiesSnapshot.ThreadJiffiesSnapshot(jiffies);
