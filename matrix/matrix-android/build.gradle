@@ -1,5 +1,4 @@
 buildscript { 
-    ext.kotlin_version = '1.3.61'
 
     repositories {
 
@@ -9,15 +8,15 @@ buildscript {
 
     }
 
+    gradle.ext.KOTLIN_VERSION = "1.3.72"
+
     dependencies {
         // classpath
         classpath 'com.android.tools.build:gradle:3.2.1'
         classpath 'com.jfrog.bintray.gradle:gradle-bintray-plugin:1.7.3'
         classpath 'digital.wup:android-maven-publish:3.6.2'
-        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$gradle.KOTLIN_VERSION"
     }
-
-
 
 }
 
@@ -30,6 +29,7 @@ allprojects {
         mavenLocal()
         google()
         jcenter()
+
     }
 
     tasks.withType(Javadoc).all {
@@ -46,7 +46,7 @@ ext {
     compileSdkVersion = 28
     buildToolsVersion = '28.0.3'
 
-    javaVersion = JavaVersion.VERSION_1_7
+    javaVersion = JavaVersion.VERSION_1_8
 
     GROUP = 'com.tencent.matrix'
     VERSION_NAME = "${VERSION_NAME_PREFIX}${VERSION_NAME_SUFFIX}"

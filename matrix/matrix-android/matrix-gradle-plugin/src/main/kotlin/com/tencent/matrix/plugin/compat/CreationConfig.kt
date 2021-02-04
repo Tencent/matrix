@@ -14,27 +14,29 @@
  * limitations under the License.
  */
 
-package com.tencent.matrix.plugin.extension
+package com.tencent.matrix.plugin.compat
 
-/**
- * Created by caichongyang on 2017/6/20.
- */
+import com.android.build.gradle.api.BaseVariant
+import com.android.builder.model.CodeShrinker
+import org.gradle.api.Project
 
-class MatrixExtension {
-    String clientVersion
-    String uuid
-    String output
+class CreationConfig(
+        val variant: BaseVariant,
+        val project: Project
+) {
+    companion object {
 
-    MatrixExtension() {
-        clientVersion = ""
-        uuid = ""
-        output = ""
-    }
+        fun getCodeShrinker(project: Project): CodeShrinker {
 
-    @Override
-    String toString() {
-        """| clientVersion = ${clientVersion}
-           | uuid = ${uuid}
-        """.stripMargin()
+            var enableR8: Boolean = when (val property = project.properties["android.enableR8"]) {
+                null -> true
+                else -> (property as String).toBoolean()
+            }
+
+            return when {
+                enableR8 -> CodeShrinker.R8
+                else -> CodeShrinker.PROGUARD
+            }
+        }
     }
 }

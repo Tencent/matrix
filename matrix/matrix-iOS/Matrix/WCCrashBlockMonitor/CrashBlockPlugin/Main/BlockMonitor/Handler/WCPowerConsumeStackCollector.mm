@@ -724,7 +724,7 @@ static float *g_cpuHighThreadValueArray = NULL;
             
             // the alloc size should contain async thread
             stack_matrix[i] = (uintptr_t *)malloc(sizeof(uintptr_t) * maxEntries * 2);
-            if (stack_matrix == NULL) {
+            if (stack_matrix[i] == NULL) {
                 have_null = YES;
             }
         }

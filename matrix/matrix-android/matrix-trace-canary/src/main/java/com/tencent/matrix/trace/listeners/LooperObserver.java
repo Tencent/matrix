@@ -2,7 +2,7 @@ package com.tencent.matrix.trace.listeners;
 
 import android.support.annotation.CallSuper;
 
-public abstract class LooperObserver  {
+public abstract class LooperObserver {
 
     private boolean isDispatchBegin = false;
 
@@ -10,8 +10,8 @@ public abstract class LooperObserver  {
     public void dispatchBegin(long beginNs, long cpuBeginNs, long token) {
         isDispatchBegin = true;
     }
-
-    public void doFrame(String focusedActivity, long startNs, long endNs, boolean isVsyncFrame, long intendedFrameTimeNs,long inputCostNs, long animationCostNs, long traversalCostNs) {
+    
+    public void doFrame(String focusedActivity, long startNs, long endNs, boolean isVsyncFrame, long intendedFrameTimeNs, long inputCostNs, long animationCostNs, long traversalCostNs) {
 
     }
 
