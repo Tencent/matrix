@@ -1,5 +1,6 @@
 package com.tencent.matrix.batterycanary.monitor.feature;
 
+import android.support.annotation.NonNull;
 import android.text.TextUtils;
 
 import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
@@ -8,7 +9,7 @@ import com.tencent.matrix.util.MatrixLog;
 
 public final class LocationMonitorFeature extends AbsMonitorFeature {
     private static final String TAG = "Matrix.battery.LocationMonitorFeature";
-    final LocationCounting mCounting = new LocationCounting();
+    final LocationTracing mTracing = new LocationTracing();
     LocationManagerServiceHooker.IListener mListener;
 
     @Override
@@ -19,23 +20,25 @@ public final class LocationMonitorFeature extends AbsMonitorFeature {
     @Override
     public void onTurnOn() {
         super.onTurnOn();
-        mListener = new LocationManagerServiceHooker.IListener() {
-            @Override
-            public void onRequestLocationUpdates(long minTimeMillis, float minDistance) {
-                String stack = shouldTracing() ? BatteryCanaryUtil.stackTraceToString(new Throwable().getStackTrace()) : "";
-                MatrixLog.i(TAG, "#onRequestLocationUpdates, time = " + minTimeMillis + ", distance = " + minDistance + ", stack = " + stack);
-                mCounting.setStack(stack);
-                mCounting.onStartScan();
-            }
-        };
-        LocationManagerServiceHooker.addListener(mListener);
+        if (mCore.getConfig().isAmsHookEnabled) {
+            mListener = new LocationManagerServiceHooker.IListener() {
+                @Override
+                public void onRequestLocationUpdates(long minTimeMillis, float minDistance) {
+                    String stack = shouldTracing() ? BatteryCanaryUtil.stackTraceToString(new Throwable().getStackTrace()) : "";
+                    MatrixLog.i(TAG, "#onRequestLocationUpdates, time = " + minTimeMillis + ", distance = " + minDistance + ", stack = " + stack);
+                    mTracing.setStack(stack);
+                    mTracing.onStartScan();
+                }
+            };
+            LocationManagerServiceHooker.addListener(mListener);
+        }
     }
 
     @Override
     public void onTurnOff() {
         super.onTurnOff();
         LocationManagerServiceHooker.removeListener(mListener);
-        mCounting.onClear();
+        mTracing.onClear();
     }
 
     @Override
@@ -43,11 +46,16 @@ public final class LocationMonitorFeature extends AbsMonitorFeature {
         return Integer.MIN_VALUE;
     }
 
-    public LocationSnapshot currentSnapshot() {
-        return mCounting.getSnapshot();
+    @NonNull
+    public LocationTracing getTracing() {
+        return mTracing;
     }
 
-    public static final class LocationCounting {
+    public LocationSnapshot currentSnapshot() {
+        return mTracing.getSnapshot();
+    }
+
+    public static final class LocationTracing {
         private int mScanCount;
         private String mLastConfiguredStack = "";
 

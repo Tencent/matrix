@@ -2,6 +2,7 @@ package com.tencent.matrix.batterycanary.monitor.feature;
 
 import android.bluetooth.le.ScanSettings;
 import android.os.Build;
+import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.text.TextUtils;
 
@@ -11,7 +12,7 @@ import com.tencent.matrix.util.MatrixLog;
 
 public final class BlueToothMonitorFeature extends AbsMonitorFeature {
     private static final String TAG = "Matrix.battery.BlueToothMonitorFeature";
-    final BlueToothCounting mCounting = new BlueToothCounting();
+    final BlueToothTracing mTracing = new BlueToothTracing();
     BluetoothManagerServiceHooker.IListener mListener;
 
     @Override
@@ -26,45 +27,47 @@ public final class BlueToothMonitorFeature extends AbsMonitorFeature {
             MatrixLog.w(TAG, "only support >= android 8.0 for the moment");
             return;
         }
-        mListener = new BluetoothManagerServiceHooker.IListener() {
-            @Override
-            public void onRegisterScanner() {
-                String stack = shouldTracing() ? BatteryCanaryUtil.stackTraceToString(new Throwable().getStackTrace()) : "";
-                MatrixLog.i(TAG, "#onRegisterScanner, stack = " + stack);
-                mCounting.setStack(stack);
-                mCounting.onRegisterScanner();
-            }
+        if (mCore.getConfig().isAmsHookEnabled) {
+            mListener = new BluetoothManagerServiceHooker.IListener() {
+                @Override
+                public void onRegisterScanner() {
+                    String stack = shouldTracing() ? BatteryCanaryUtil.stackTraceToString(new Throwable().getStackTrace()) : "";
+                    MatrixLog.i(TAG, "#onRegisterScanner, stack = " + stack);
+                    mTracing.setStack(stack);
+                    mTracing.onRegisterScanner();
+                }
 
-            @Override
-            public void onStartDiscovery() {
-                String stack = shouldTracing() ? BatteryCanaryUtil.stackTraceToString(new Throwable().getStackTrace()) : "";
-                MatrixLog.i(TAG, "#onStartDiscovery, stack = " + stack);
-                mCounting.setStack(stack);
-                mCounting.onStartDiscovery();
-            }
+                @Override
+                public void onStartDiscovery() {
+                    String stack = shouldTracing() ? BatteryCanaryUtil.stackTraceToString(new Throwable().getStackTrace()) : "";
+                    MatrixLog.i(TAG, "#onStartDiscovery, stack = " + stack);
+                    mTracing.setStack(stack);
+                    mTracing.onStartDiscovery();
+                }
 
-            @Override
-            public void onStartScan(int scanId, @Nullable ScanSettings scanSettings) {
-                // callback from H handler
-                MatrixLog.i(TAG, "#onStartScan, id = " + scanId);
-                mCounting.onStartScan();
-            }
+                @Override
+                public void onStartScan(int scanId, @Nullable ScanSettings scanSettings) {
+                    // callback from H handler
+                    MatrixLog.i(TAG, "#onStartScan, id = " + scanId);
+                    mTracing.onStartScan();
+                }
 
-            @Override
-            public void onStartScanForIntent(@Nullable ScanSettings scanSettings) {
-                // callback from H handler
-                MatrixLog.i(TAG, "#onStartScanForIntent");
-                mCounting.onStartScan();
-            }
-        };
-        BluetoothManagerServiceHooker.addListener(mListener);
+                @Override
+                public void onStartScanForIntent(@Nullable ScanSettings scanSettings) {
+                    // callback from H handler
+                    MatrixLog.i(TAG, "#onStartScanForIntent");
+                    mTracing.onStartScan();
+                }
+            };
+            BluetoothManagerServiceHooker.addListener(mListener);
+        }
     }
 
     @Override
     public void onTurnOff() {
         super.onTurnOff();
         BluetoothManagerServiceHooker.removeListener(mListener);
-        mCounting.onClear();
+        mTracing.onClear();
     }
 
     @Override
@@ -72,11 +75,16 @@ public final class BlueToothMonitorFeature extends AbsMonitorFeature {
         return Integer.MIN_VALUE;
     }
 
-    public BlueToothSnapshot currentSnapshot() {
-        return mCounting.getSnapshot();
+    @NonNull
+    public BlueToothTracing getTracing() {
+        return mTracing;
     }
 
-    public static final class BlueToothCounting {
+    public BlueToothSnapshot currentSnapshot() {
+        return mTracing.getSnapshot();
+    }
+
+    public static final class BlueToothTracing {
         private int mRegsCount;
         private int mDiscCount;
         private int mScanCount;

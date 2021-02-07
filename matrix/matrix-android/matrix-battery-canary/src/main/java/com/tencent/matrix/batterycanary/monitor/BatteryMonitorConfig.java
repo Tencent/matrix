@@ -45,6 +45,7 @@ public class BatteryMonitorConfig {
     public boolean isStatAsSample = BuildConfig.DEBUG;
     public boolean isStatPidProc = BuildConfig.DEBUG;
     public boolean isInspectiffiesError = BuildConfig.DEBUG;
+    public boolean isAmsHookEnabled = BuildConfig.DEBUG;
     public boolean isAggressiveMode = BuildConfig.DEBUG;
     public List<String> tagWhiteList = Collections.emptyList();
     public List<String> tagBlackList = Collections.emptyList();
@@ -71,6 +72,7 @@ public class BatteryMonitorConfig {
                 ", isStatAsSample=" + isStatAsSample +
                 ", isStatPidProc=" + isStatPidProc +
                 ", isInspectiffiesError=" + isInspectiffiesError +
+                ", isAmsHookEnabled=" + isAmsHookEnabled +
                 ", isAggressiveMode=" + isAggressiveMode +
                 ", tagWhiteList=" + tagWhiteList +
                 ", tagBlackList=" + tagBlackList +
@@ -137,6 +139,11 @@ public class BatteryMonitorConfig {
 
         public Builder enableInspectJffiesError(boolean isEnable) {
             config.isInspectiffiesError = isEnable;
+            return this;
+        }
+
+        public Builder enableAmsHook(boolean isEnable) {
+            config.isAmsHookEnabled = isEnable;
             return this;
         }
 

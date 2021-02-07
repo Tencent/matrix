@@ -1,5 +1,6 @@
 package com.tencent.matrix.batterycanary.monitor.feature;
 
+import android.support.annotation.NonNull;
 import android.text.TextUtils;
 
 import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
@@ -8,7 +9,7 @@ import com.tencent.matrix.util.MatrixLog;
 
 public final class WifiMonitorFeature extends AbsMonitorFeature {
     private static final String TAG = "Matrix.battery.WifiMonitorFeature";
-    final WifiCounting mCounting = new WifiCounting();
+    final WifiTracing mTracing = new WifiTracing();
     WifiManagerServiceHooker.IListener mListener;
 
     @Override
@@ -19,32 +20,34 @@ public final class WifiMonitorFeature extends AbsMonitorFeature {
     @Override
     public void onTurnOn() {
         super.onTurnOn();
-        mListener = new WifiManagerServiceHooker.IListener() {
-            @Override
-            public void onStartScan() {
-                String stack = shouldTracing() ? BatteryCanaryUtil.stackTraceToString(new Throwable().getStackTrace()) : "";
-                MatrixLog.i(TAG, "#onStartScan, stack = " + stack);
-                mCounting.setStack(stack);
-                mCounting.onStartScan();
-            }
+        if (mCore.getConfig().isAmsHookEnabled) {
+            mListener = new WifiManagerServiceHooker.IListener() {
+                @Override
+                public void onStartScan() {
+                    String stack = shouldTracing() ? BatteryCanaryUtil.stackTraceToString(new Throwable().getStackTrace()) : "";
+                    MatrixLog.i(TAG, "#onStartScan, stack = " + stack);
+                    mTracing.setStack(stack);
+                    mTracing.onStartScan();
+                }
 
-            @Override
-            public void onGetScanResults() {
-                String stack = shouldTracing() ? BatteryCanaryUtil.stackTraceToString(new Throwable().getStackTrace()) : "";
-                MatrixLog.i(TAG, "#onGetScanResults, stack = " + stack);
-                mCounting.setStack(stack);
-                mCounting.onGetScanResults();
+                @Override
+                public void onGetScanResults() {
+                    String stack = shouldTracing() ? BatteryCanaryUtil.stackTraceToString(new Throwable().getStackTrace()) : "";
+                    MatrixLog.i(TAG, "#onGetScanResults, stack = " + stack);
+                    mTracing.setStack(stack);
+                    mTracing.onGetScanResults();
 
-            }
-        };
-        WifiManagerServiceHooker.addListener(mListener);
+                }
+            };
+            WifiManagerServiceHooker.addListener(mListener);
+        }
     }
 
     @Override
     public void onTurnOff() {
         super.onTurnOff();
         WifiManagerServiceHooker.removeListener(mListener);
-        mCounting.onClear();
+        mTracing.onClear();
     }
 
     @Override
@@ -52,11 +55,16 @@ public final class WifiMonitorFeature extends AbsMonitorFeature {
         return Integer.MIN_VALUE;
     }
 
-    public WifiSnapshot currentSnapshot() {
-        return mCounting.getSnapshot();
+    @NonNull
+    public WifiTracing getTracing() {
+        return mTracing;
     }
 
-    public static final class WifiCounting {
+    public WifiSnapshot currentSnapshot() {
+        return mTracing.getSnapshot();
+    }
+
+    public static final class WifiTracing {
         private int mScanCount;
         private int mQueryCount;
         private String mLastConfiguredStack = "";

@@ -73,7 +73,7 @@ public class MonitorFeatureBlueToothTest {
         Assert.assertEquals(0, (int) snapshot.scanCount.get());
 
         for (int i = 0; i < 50; i++) {
-            feature.mCounting.onRegisterScanner();
+            feature.mTracing.onRegisterScanner();
             snapshot = feature.currentSnapshot();
             Assert.assertEquals(i + 1, (int) snapshot.regsCount.get());
             Assert.assertEquals(0, (int) snapshot.discCount.get());
@@ -98,7 +98,7 @@ public class MonitorFeatureBlueToothTest {
         Assert.assertEquals(0, (int) snapshot.scanCount.get());
 
         for (int i = 0; i < 50; i++) {
-            feature.mCounting.onStartDiscovery();
+            feature.mTracing.onStartDiscovery();
             snapshot = feature.currentSnapshot();
             Assert.assertEquals(0, (int) snapshot.regsCount.get());
             Assert.assertEquals(i + 1, (int) snapshot.discCount.get());
@@ -123,7 +123,7 @@ public class MonitorFeatureBlueToothTest {
         Assert.assertEquals(0, (int) snapshot.scanCount.get());
 
         for (int i = 0; i < 50; i++) {
-            feature.mCounting.onStartScan();
+            feature.mTracing.onStartScan();
             snapshot = feature.currentSnapshot();
             Assert.assertEquals(0, (int) snapshot.regsCount.get());
             Assert.assertEquals(0, (int) snapshot.discCount.get());

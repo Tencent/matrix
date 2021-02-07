@@ -71,7 +71,7 @@ public class MonitorFeatureLocationTest {
         Assert.assertEquals(0, (int) snapshot.scanCount.get());
 
         for (int i = 0; i < 50; i++) {
-            feature.mCounting.onStartScan();
+            feature.mTracing.onStartScan();
             snapshot = feature.currentSnapshot();
             Assert.assertEquals(i + 1, (int) snapshot.scanCount.get());
         }

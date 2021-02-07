@@ -72,7 +72,7 @@ public class MonitorFeatureWifiTest {
         Assert.assertEquals(0, (int) snapshot.queryCount.get());
 
         for (int i = 0; i < 50; i++) {
-            feature.mCounting.onStartScan();
+            feature.mTracing.onStartScan();
             snapshot = feature.currentSnapshot();
             Assert.assertEquals(i + 1, (int) snapshot.scanCount.get());
             Assert.assertEquals(0, (int) snapshot.queryCount.get());
@@ -94,7 +94,7 @@ public class MonitorFeatureWifiTest {
         Assert.assertEquals(0, (int) snapshot.queryCount.get());
 
         for (int i = 0; i < 50; i++) {
-            feature.mCounting.onGetScanResults();
+            feature.mTracing.onGetScanResults();
             snapshot = feature.currentSnapshot();
             Assert.assertEquals(0, (int) snapshot.scanCount.get());
             Assert.assertEquals(i + 1, (int) snapshot.queryCount.get());
