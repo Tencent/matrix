@@ -1,5 +1,7 @@
 apply plugin: 'com.android.application'
 
+apply from: rootProject.file('gradle/WeChatNativeDepend.gradle')
+
 android {
     compileSdkVersion rootProject.COMPILE_SDK_VERSION
     defaultConfig {
@@ -24,14 +26,30 @@ android {
         }
     }
 
-    sourceSets {
-        main {
-            jniLibs.srcDirs = ["libs"]
+    signingConfigs {
+        debug {
+            keyAlias 'androiddebugkey'
+            keyPassword 'android'
+            storeFile rootProject.file('compile/debug.keystore')
+            storePassword 'android'
+        }
+        release {
+            keyAlias signingConfigs.debug.keyAlias
+            keyPassword signingConfigs.debug.keyPassword
+            storeFile signingConfigs.debug.storeFile
+            storePassword signingConfigs.debug.storePassword
+            v2SigningEnabled false
         }
     }
 
     buildTypes {
+        debug {
+            debuggable true
+            signingConfig signingConfigs.debug
+            minifyEnabled false
+        }
         release {
+            signingConfig signingConfigs.release
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
@@ -47,6 +65,15 @@ android {
             path "CMakeLists.txt"
         }
     }
+
+    sourceSets {
+        main {
+            jniLibs {
+                setSrcDirs (['./libs'] as Set)
+            }
+        }
+
+    }
 }
 
 dependencies {
@@ -59,4 +86,7 @@ dependencies {
     implementation project(':wxperf-hook')
     implementation project(':wxperf-fd')
     implementation project(':wxperf-jectl')
+    implementation project(':wxperf-backtrace')
+    implementation project(':wxperf-benchmark')
+    implementation "com.tencent.stubs:logger:${rootProject.LOGGER_VERSION}"
 }

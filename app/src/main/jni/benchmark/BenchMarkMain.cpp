@@ -267,7 +267,7 @@ static size_t primes[] = {
 #endif
 
 int
-benchmark_run(int argc, char** argv);
+benchmark_run(int argc, const char** argv);
 
 static size_t
 get_process_memory_usage(void) {
@@ -630,7 +630,7 @@ benchmark_worker(void* argptr) {
 }
 
 int
-benchmark_run(int argc, char** argv) {
+benchmark_run(int argc, const char** argv) {
     if (timer_initialize() < 0)
         return -1;
     if (benchmark_initialize() < 0)
@@ -914,7 +914,7 @@ benchmark_run(int argc, char** argv) {
 #if !defined(NO_MAIN)
 
 int
-benchmark_entry(int argc, char** argv) {
+benchmark_entry(int argc, const char** argv) {
     return benchmark_run(argc, argv);
 }
 

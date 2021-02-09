@@ -17,8 +17,8 @@
 #include <sys/epoll.h>
 #include <sys/eventfd.h>
 #include "MallocTest.h"
-#include "../../../../wxperf-hook/src/main/cpp/common/Log.h"
-#include "../../../../wxperf-hook/src/main/cpp/common/ThreadPool.h"
+#include "Log.h"
+#include "ThreadPool.h"
 //#include "../../../../wxperf/src/main/cpp/memory/PointerMetaContainer.h"
 
 

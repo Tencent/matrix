@@ -1,0 +1,76 @@
+//
+// QUT v1.0 encode for 32-bit:
+//		00nn nnnn           : vsp = vsp + (nnnnnn << 2)             			; # (nnnnnnn << 2) in [0, 0xfc]
+//      01nn nnnn           : vsp = vsp - (nnnnnn << 2)             			; # (nnnnnnn << 2) in [0, 0xfc]
+
+//      1000 0000           : vsp = r7		              						; # r7 is fp reg in thumb mode
+//      1000 0001           : vsp = r7 + 8, lr = [vsp - 4], sp = [vsp - 8]      ; # Have prologue
+//      1000 0010           : vsp = r11		             						; # r11 is fp reg in arm mode
+//      1000 0011           : vsp = r11 + 8, lr = [vsp - 4], sp = [vsp - 8]     ; # Have prologue
+//      1000 0100           : vsp = sp                                    		; # TODO
+
+//      1000 0101 0nnn nnnn : vsp = r7 + (nnnnnnn << 2)							;
+//      1000 0110 0nnn nnnn : vsp = r11 + (nnnnnnn << 2)						;m
+
+//		1001 0101 0nnn nnnn : vsp = r10 + (nnnnnnn << 2)						; # (nnnnnnn << 2) in [0, 0x1fc],  0nnnnnnn is an one bit ULEB128
+//		1001 0110 + SLEB128 : vsp = SLEB128							    		; # vsp set by IMM
+
+//		1001 0111 			: dex_pc = r4										; # Dex pc is saved in r4
+
+//		1001 1001			: End of instructions                				;
+//		1001 1111			: Finish                							;
+
+//		1010 nnnn 			: r4 = [vsp - (nnnn << 2)]     						; # (nnnn << 2) in [0, 0x3c]
+//      1011 nnnn           : r7 = [vsp - (nnnn << 2)]     						; # Same as above
+//		1100 nnnn           : r10 = [vsp - (nnnn << 2)]    						; # Same as above. r10 will be used while unwinding through JNI function
+//      1101 nnnn           : r11 = [vsp - (nnnn << 2)]    						; # Same as above
+//      1110 nnnn           : lr = [vsp - (nnnn << 2)]     						; # Same as above
+
+//      1111 0xxx 			: Reserved											;
+//      1111 1000			: Reserved											;
+
+//      1111 1001 + SLEB128 : r7 = [vsp - SLEB128]  							; # [addr] means get value from pointed by addr
+//      1111 1010 + SLEB128 : r10 = [vsp - SLEB128] 							; # Same as above
+//      1111 1011 + SLEB128 : r11 = [vsp - SLEB128] 							; # Same as above
+//      1111 1100 + SLEB128 : sp = [vsp - SLEB128]  							; # Same as above
+//      1111 1101 + SLEB128 : lr = [vsp - SLEB128]  							; # Same as above
+//      1111 1110 + SLEB128 : pc = [vsp - SLEB128]  							; # Same as above
+
+//      1111 1111 + SLEB128 : vsp = vsp + SLEB128   							;
+
+
+
+// QUT v1.0 encode for 64-bit:
+//		00nn nnnn           : vsp = vsp + (nnnnnn << 2)             			; # (nnnnnnn << 2) in [0, 0xfc]
+//      01nn nnnn           : vsp = vsp - (nnnnnn << 2)             			; # (nnnnnnn << 2) in [0, 0xfc]
+
+//      1000 0000           : vsp = x29	            							; # x29 is fp reg
+//      1000 0001           : vsp = x29 + 16, lr = [vsp - 8], sp = [vsp - 16]   ; # Have prologue
+//      1000 0100           : vsp = sp                                    		;
+
+//      1000 0101 0nnn nnnn : vsp = x29 + (nnnnnnn << 2)						; # (nnnnnnn << 2) in [0, 0x1fc],  0nnnnnnn is an one bit ULEB128
+
+//		1001 0101 0nnn nnnn : vsp = x28 + (nnnnnnn << 2)						; # (nnnnnnn << 2) in [0, 0x1fc],  0nnnnnnn is an one bit ULEB128
+//		1001 0110 + SLEB128 : vsp = SLEB128							    		; # vsp set by IMM
+
+//		1001 0111 			: dex_pc = x20										; # Dex pc is saved in x29
+
+//		1001 1001			: End of instructions                				;
+//		1001 1111			: Finish                							;
+
+//		1010 nnnn 			: x20 = [vsp - (nnnn << 2)]     					; # (nnnn << 2) in [0, 0x3c]
+//		1100 nnnn           : x28 = [vsp - (nnnn << 2)]    						; # Same as above. x28 will be used while unwinding through JNI function
+//      1101 nnnn           : x29 = [vsp - (nnnn << 2)]    						; # Same as above
+//      1110 nnnn           : lr = [vsp - (nnnn << 2)]     						; # Same as above
+
+//      1111 0xxx 			: Reserved											;
+//      1111 1000			: Reserved											;
+
+//      1111 1001 + SLEB128 : x20 = [vsp - SLEB128] 							; # [addr] means get value from pointed by addr
+//      1111 1010 + SLEB128 : x28 = [vsp - SLEB128] 							; # Same as above
+//      1111 1011 + SLEB128 : x29 = [vsp - SLEB128] 							; # Same as above
+//      1111 1100 + SLEB128 : sp = [vsp - SLEB128]  							; # Same as above
+//      1111 1101 + SLEB128 : lr = [vsp - SLEB128]  							; # Same as above
+//      1111 1110 + SLEB128 : pc = [vsp - SLEB128]  							; # Same as above
+
+//      1111 1111 + SLEB128 : vsp = vsp + SLEB128   							;

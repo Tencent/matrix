@@ -7,9 +7,9 @@
 #include <sys/stat.h>
 #include "HookCommon.h"
 #include "Log.h"
-#include "Stacktrace.h"
 #include "JNICommon.h"
 #include "PthreadExt.h"
+#include "Backtrace.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -116,7 +116,8 @@ Java_com_tencent_wxperf_jni_HookManager_xhookRefreshNative(JNIEnv *env, jobject 
                                                                   jboolean async) {
     add_hook_init_callback(pthread_ext_init);
     hook_common_init();
-    unwindstack::update_maps();
+//    unwindstack::update_maps();
+    wechat_backtrace::notify_maps_changed();
 //    NanoSeconds_Start(TAG, begin);
     int ret = xhook_refresh(async);
 //    NanoSeconds_End(TAG, begin, "fist refresh");

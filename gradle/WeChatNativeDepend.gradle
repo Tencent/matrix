@@ -30,7 +30,6 @@
 //         TARGET_LINK_LIBRARIES(your-target PRIVATE ${EXT_DEP}/lib/${ANDROID_ABI}/依赖的so名称
 //////////////////////////////////////////////////////////////
 
-import org.gradle.util.GFileUtils
 
 //////////////////////////////////////////////////////////////
 //  Constant Declarations
@@ -118,7 +117,14 @@ if (project.pluginManager.hasPlugin(ANDROID_APP_PLUGIN_ID)) {
 //////////////////////////////////////////////////////////////
 //  Helper Methods
 //////////////////////////////////////////////////////////////
-def getGenerateOpsAnchorTask() {
+def cleanDirectory(File dir) {
+    if (dir.isDirectory()) {
+        dir.deleteDir()
+        dir.mkdirs()
+    }
+}
+
+def getGenerateOpsAnchorTask(variant) {
     final List<String> startTaskNames = gradle.startParameter.taskNames
     if (startTaskNames.isEmpty()) {
         return null
@@ -126,25 +132,30 @@ def getGenerateOpsAnchorTask() {
     final String firstTaskName = startTaskNames.get(0)
     return firstTaskName.equals('clean') || firstTaskName.endsWith(':clean')
             ? project.tasks.findByName(firstTaskName)
-            : project.tasks.findByName('preBuild')
+            : project.tasks.findByName("externalNativeBuild${variant.name.capitalize()}")
 }
 
 def handleAndroidApplication() {
     injectNativeDependenciesPath()
     injectBuildInfoModule()
     generateBuildInfoHeader(true)
-
+    
     def generateAction = {
-        generateBuildInfoModule()
-        generateBuildInfoHeader(false)
-        extractNativeDependencies(project.android.applicationVariants)
+//        extractNativeDependencies(project.android.applicationVariants)
     }
 
-    def anchorTask = getGenerateOpsAnchorTask()
-    if (anchorTask != null) {
-        anchorTask.doLast generateAction
-    } else {
-        project.afterEvaluate generateAction
+    project.afterEvaluate {
+        generateBuildInfoModule()
+        generateBuildInfoHeader(false)
+        project.android.applicationVariants.each { variant ->
+            def anchorTask = getGenerateOpsAnchorTask(variant)
+            if (anchorTask != null) {
+                anchorTask.doFirst generateAction
+            } else {
+                project.afterEvaluate generateAction
+            }
+        }
+        extractNativeDependencies(project.android.applicationVariants)
     }
 }
 
@@ -160,29 +171,34 @@ def handleAndroidLibrary() {
             exposeNativeArtifacts(variant)
         }
     }
+    
+    def generateBeforeAction = {
+        libVariants.each { variant ->
+            def externalNativeBuildTask = project.tasks.findByName("externalNativeBuild${variant.name.capitalize()}")
+            if (externalNativeBuildTask == null) {
+                copyExportedHeaders(variant)
+            }
+//            mountCopyNativePrebuiltsAction(variant)
+        }
+//        extractNativeDependencies(libVariants)
+    }
 
-    def generateAction = {
+    project.afterEvaluate {
         generateBuildInfoModule()
         generateBuildInfoHeader(false)
         libVariants.each { variant ->
-            def externalNativeBuildTask = project.tasks.findByName("externalNativeBuild${variant.name.capitalize()}")
-            if (externalNativeBuildTask != null) {
-                externalNativeBuildTask.doLast {
+            def anchorTask = getGenerateOpsAnchorTask(variant)
+            if (anchorTask != null) {
+                mountCopyNativePrebuiltsAction(variant)
+                anchorTask.doFirst generateBeforeAction
+                anchorTask.doLast {
                     copyExportedHeaders(variant)
                 }
             } else {
-                copyExportedHeaders(variant)
+                project.afterEvaluate generateBeforeAction
             }
-            mountCopyNativePrebuiltsAction(variant)
         }
         extractNativeDependencies(libVariants)
-    }
-
-    def anchorTask = getGenerateOpsAnchorTask()
-    if (anchorTask != null) {
-        anchorTask.doLast generateAction
-    } else {
-        project.afterEvaluate generateAction
     }
 }
 
@@ -224,7 +240,7 @@ def copyExportedHeaders(targetVariant) {
     if (!exportedHeadersDir.exists()) {
         exportedHeadersDir.mkdirs()
     } else {
-        org.gradle.util.GFileUtils.cleanDirectory(exportedHeadersDir)
+        cleanDirectory(exportedHeadersDir)
     }
     def headerFilters = getExportedHeaderFilters(targetVariant)
     headerFilters.each { filter ->
@@ -270,7 +286,7 @@ def mountCopyNativePrebuiltsAction(targetVariant) {
     def bundleTask = targetVariant.getPackageLibrary() as Zip
     targetVariant.getExternalNativeBuildTasks().each { nativeBuildTask ->
         nativeBuildTask.doLast {
-            org.gradle.util.GFileUtils.cleanDirectory(exportedPrebuiltsDir)
+            cleanDirectory(exportedPrebuiltsDir)
             copy {
                 duplicatesStrategy DuplicatesStrategy.FAIL
                 includeEmptyDirs = false
@@ -399,7 +415,34 @@ def extractNativeDependencies(targetVariants) {
         }
 
         targetVariant.getExternalNativeBuildTasks().each { nativeBuildTask ->
+
             nativeBuildTask.doFirst {
+
+                projectNativeDepDirs.each { projDir ->
+                    copy {
+                        duplicatesStrategy DuplicatesStrategy.FAIL
+                        includeEmptyDirs false
+                        from new File(projDir, HEADERS_DIR_NAME)
+                        into new File(extractedNativeDepsDir, HEADERS_DIR_NAME)
+                    }
+                }
+
+                aarPaths.each { aarPath ->
+                    copy {
+                        duplicatesStrategy DuplicatesStrategy.FAIL
+                        includeEmptyDirs false
+                        from zipTree(aarPath)
+                        into new File(extractedNativeDepsDir, HEADERS_DIR_NAME)
+                        eachFile { details ->
+                            if (details.path.endsWith('.h')) {
+                                details.path = details.path - AAR_HEADERS_DIRENTRY_NAME - '/'
+                            } else {
+                                details.exclude()
+                            }
+                        }
+                    }
+                }
+
                 projectNativeDepDirs.each { projDir ->
                     copy {
                         duplicatesStrategy DuplicatesStrategy.FAIL
@@ -470,7 +513,7 @@ def generateBuildInfoModule() {
     if (!buildInfoModuleDir.exists()) {
         buildInfoModuleDir.mkdirs()
     } else {
-        org.gradle.util.GFileUtils.cleanDirectory(buildInfoModuleDir)
+        cleanDirectory(buildInfoModuleDir)
     }
 
     def hasBuildVersion = project.extensions.findByName('wechatPublish') != null

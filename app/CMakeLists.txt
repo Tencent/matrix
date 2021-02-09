@@ -10,10 +10,12 @@ cmake_minimum_required(VERSION 3.4.1)
 # and CMake builds them for you. When you build your app, Gradle
 # automatically packages shared libraries with your APK.
 
+SET(TARGET native-lib)
+
 file(GLOB src "src/main/jni/*.cpp" "src/main/jni/benchmark/*.cpp" "src/main/jni/MallocTest.cpp")
 
 add_library( # Specifies the name of the library.
-             native-lib
+             ${TARGET}
 
              # Sets the library as a shared library.
              SHARED
@@ -35,13 +37,23 @@ find_library( # Sets the name of the path variable.
         # you want CMake to locate.
         log)
 
+
+TARGET_INCLUDE_DIRECTORIES(
+        ${TARGET}
+        PRIVATE ${EXT_DEP}/include
+)
+
 # Specifies libraries CMake should link to your target library. You
 # can link multiple libraries, such as libraries you define in this
 # build script, prebuilt third-party libraries, or system libraries.
 
 target_link_libraries( # Specifies the target library.
-        native-lib
+        ${TARGET}
 
         # Links the target library to the log library
         # included in the NDK.
-        ${log-lib})
+        PRIVATE ${log-lib}
+
+        PRIVATE ${EXT_DEP}/lib/${ANDROID_ABI}/libwxperf-benchmark.so
+        PRIVATE ${EXT_DEP}/lib/${ANDROID_ABI}/libwechatbacktrace.so
+        )

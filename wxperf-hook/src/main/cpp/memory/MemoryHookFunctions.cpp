@@ -5,6 +5,7 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include "BacktraceDefine.h"
 #include "MemoryHookFunctions.h"
 #include "MemoryHook.h"
 
@@ -114,7 +115,7 @@ void *h_mmap64(void *__addr, size_t __size, int __prot, int __flags, int __fd,
     if (p == MAP_FAILED) {
         return p;// just return
     }
-    LOGI(TAG, "+ mmap64 %p = mmap64(addr=%p, size=%zu, prot=%d, flag=%d, fd=%d, offset=%lld", p, __addr, __size, __prot, __flags, __fd, __offset);
+    LOGI(TAG, "+ mmap64 %p = mmap64(addr=%p, size=%zu, prot=%d, flag=%d, fd=%d, offset=%lld", p, __addr, __size, __prot, __flags, __fd, (wechat_backtrace::llint_t)__offset);
     GET_CALLER_ADDR(caller);
     on_mmap_memory(caller, p, __size);
     return p;

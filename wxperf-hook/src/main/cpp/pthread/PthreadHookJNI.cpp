@@ -5,7 +5,6 @@
 #include <jni.h>
 #include <xhook.h>
 #include "PthreadHook.h"
-#include "Stacktrace.h"
 
 #ifdef __cplusplus
 extern "C" {

@@ -1,6 +1,8 @@
 //
 // Created by Yves on 2020-03-16.
 //
+#include <QuickenUnwinder.h>
+#include <QuickenJNI.h>
 #include "JNICommon.h"
 #include "Log.h"
 #include "HookCommon.h"
@@ -66,6 +68,9 @@ JNIEXPORT jint JNI_OnLoad(JavaVM *vm, void *reserved) {
     }
 
     xhook_ignore(".*libwxperf-jni\\.so$", NULL);
+    xhook_ignore(".*libwechatbacktrace\\.so$", NULL);
+    xhook_ignore(".*libwechatcrash\\.so$", NULL);
+    xhook_ignore(".*libmemguard\\.so$", NULL);
     xhook_ignore(".*liblog\\.so$", NULL);
     xhook_ignore(".*libc\\.so$", NULL);
     xhook_ignore(".*libm\\.so$", NULL);
@@ -77,6 +82,7 @@ JNIEXPORT jint JNI_OnLoad(JavaVM *vm, void *reserved) {
     xhook_register(".*\\.so$", "__loader_android_dlopen_ext",
                    (void *) HANDLER_FUNC_NAME(__loader_android_dlopen_ext),
                    (void **) &ORIGINAL_FUNC_NAME(__loader_android_dlopen_ext));
+
 
     return JNI_VERSION_1_6;
 }

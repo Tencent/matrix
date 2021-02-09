@@ -28,7 +28,8 @@ void egl_hook() {
 }
 
 void egl_hook_on_dlopen(const char *__file_name) {
-    unwindstack::update_maps();
+//    unwindstack::update_maps();
+    wechat_backtrace::notify_maps_changed();
 }
 
 /*

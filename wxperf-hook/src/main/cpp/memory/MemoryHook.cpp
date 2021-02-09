@@ -12,6 +12,7 @@
 #include <unordered_set>
 #include <list>
 #include <map>
+#include <memory>
 #include <random>
 #include <xhook.h>
 #include <sstream>
@@ -21,22 +22,25 @@
 #include <condition_variable>
 #include <shared_mutex>
 #include <cJSON.h>
+#include <Log.h>
 #include "MemoryHookFunctions.h"
-#include "Stacktrace.h"
 #include "Utils.h"
 #include "unwindstack/Unwinder.h"
 #include "ThreadPool.h"
+#include "BacktraceDefine.h"
 #include "MemoryHookMetas.h"
 #include "MemoryHook.h"
 
+#define MEMHOOK_BACKTRACE_MAX_FRAMES MAX_FRAME_SHORT
+
 static memory_meta_container m_memory_meta_container;
 
-static bool is_stacktrace_enabled      = false;
+static bool is_stacktrace_enabled = false;
 static bool is_caller_sampling_enabled = false;
 
 static size_t m_sample_size_min = 0;
 static size_t m_sample_size_max = 0;
-static double m_sampling        = 1;
+static double m_sampling = 1;
 
 static size_t m_stacktrace_log_threshold;
 
@@ -98,11 +102,13 @@ static inline void on_acquire_memory(void *caller,
         return;
     }
 
-    std::vector<unwindstack::FrameData> stack_frames;
-    uint64_t                            stack_hash = 0;
+    wechat_backtrace::Backtrace backtrace;
+    uint64_t stack_hash = 0;
     if (is_stacktrace_enabled && should_do_unwind(byte_count, caller)) {
-        unwind_adapter(stack_frames);
-        stack_hash = hash_stack_frames(stack_frames);
+        backtrace = BACKTRACE_INITIALIZER(MEMHOOK_BACKTRACE_MAX_FRAMES);
+        wechat_backtrace::unwind_adapter(backtrace.frames.get(), backtrace.max_frames,
+                                         backtrace.frame_size);
+        stack_hash = hash_backtrace_frames(&backtrace);
         assert(stack_hash != 0);
     }
 
@@ -119,8 +125,8 @@ static inline void on_acquire_memory(void *caller,
                                        }
 
                                        stack_meta->size += byte_count;
-                                       if (stack_meta->stacktrace.empty()) { // 相同的堆栈只记录一个
-                                           stack_meta->stacktrace.swap(stack_frames);
+                                       if (!stack_meta->backtrace.frames) { // 相同的堆栈只记录一个
+                                           stack_meta->backtrace = backtrace;
                                            stack_meta->caller = caller;
                                        }
                                    });
@@ -187,7 +193,7 @@ static inline size_t collect_metas(std::map<void *, caller_meta_t> &heap_caller_
 
                 if (stack_meta) {
                     auto &dest_stack_meta = dest_stack_metas[meta->stack_hash];
-                    dest_stack_meta.stacktrace = stack_meta->stacktrace;
+                    dest_stack_meta.backtrace = stack_meta->backtrace;
                     // 没错, 这里的确使用 ptr_meta 的 size, 因为是在遍历 ptr_meta, 因此原来 stack_meta 的 size 仅起引用计数作用
                     dest_stack_meta.size += meta->size;
                     dest_stack_meta.caller     = stack_meta->caller;
@@ -212,13 +218,13 @@ static inline void dump_callers(FILE *log_file,
     LOGD(TAG, "dump_callers: count = %zu", caller_metas.size());
     flogger(log_file, "dump_callers: count = %zu\n", caller_metas.size());
 
-    std::unordered_map<std::string, size_t>                   caller_alloc_size_of_so;
+    std::unordered_map<std::string, size_t> caller_alloc_size_of_so;
     std::unordered_map<std::string, std::map<size_t, size_t>> same_size_count_of_so;
 
     LOGD(TAG, "caller so begin");
     // 按 so 聚类
     for (auto &i : caller_metas) {
-        auto caller      = i.first;
+        auto caller = i.first;
         auto caller_meta = i.second;
 
         Dl_info dl_info;
@@ -248,15 +254,15 @@ static inline void dump_callers(FILE *log_file,
                        return std::pair<size_t, std::string>(src.second, src.first);
                    });
 
-    size_t    caller_total_size = 0;
-    for (auto i                 = result_sort_by_size.rbegin();
+    size_t caller_total_size = 0;
+    for (auto i = result_sort_by_size.rbegin();
          i != result_sort_by_size.rend(); ++i) {
         LOGD(TAG, "so = %s, caller alloc size = %zu", i->second.c_str(), i->first);
         flogger(log_file, "caller alloc size = %10zu b, so = %s\n", i->first, i->second.c_str());
 
         caller_total_size += i->first;
 
-        auto                                             count_of_size = same_size_count_of_so[i->second];
+        auto count_of_size = same_size_count_of_so[i->second];
         std::multimap<size_t, std::pair<size_t, size_t>> result_sort_by_mul;
         std::transform(count_of_size.begin(),
                        count_of_size.end(),
@@ -273,7 +279,7 @@ static inline void dump_callers(FILE *log_file,
 
         for (auto sc = result_sort_by_mul.rbegin();
              sc != result_sort_by_mul.rend() && lines; ++sc, --lines) {
-            auto size  = sc->second.first;
+            auto size = sc->second.first;
             auto count = sc->second.second;
             LOGD(TAG, "   size = %10zu b, count = %zu", size, count);
             flogger(log_file, "   size = %10zu b, count = %zu\n", size, count);
@@ -326,7 +332,7 @@ static inline void dump_callers(FILE *log_file,
 //}
 
 struct stack_dump_meta_t {
-    size_t      size;
+    size_t size;
     std::string full_stacktrace;
     std::string brief_stacktrace;
 };
@@ -342,20 +348,19 @@ static inline void dump_stacks(FILE *log_file,
     LOGD(TAG, "dump_stacks: hash count = %zu", stack_metas.size());
     flogger(log_file, "dump_stacks: hash count = %zu\n", stack_metas.size());
 
-    std::unordered_map<std::string, size_t>                         stack_alloc_size_of_so;
+    std::unordered_map<std::string, size_t> stack_alloc_size_of_so;
     std::unordered_map<std::string, std::vector<stack_dump_meta_t>> stacktrace_of_so;
 
     for (auto &stack_meta_it : stack_metas) {
         auto hash       = stack_meta_it.first;
         auto size       = stack_meta_it.second.size;
-        auto stacktrace = stack_meta_it.second.stacktrace;
+        auto backtrace = stack_meta_it.second.backtrace;
         auto caller     = stack_meta_it.second.caller;
 
-        std::string       caller_so_name;
+        std::string caller_so_name;
         std::stringstream full_stack_builder;
         std::stringstream brief_stack_builder;
 
-        restore_frame_data(stacktrace);
 
         Dl_info caller_info{};
         dladdr(caller, &caller_info);
@@ -365,13 +370,13 @@ static inline void dump_stacks(FILE *log_file,
         }
 
         std::string last_so_name; // 上一帧所属 so 名字
-        for (auto   &it : stacktrace) {
 
+        auto _callback = [&](wechat_backtrace::FrameDetail it) {
             std::string so_name = it.map_name;
 
             char *demangled_name = nullptr;
-            int  status          = 0;
-            demangled_name = abi::__cxa_demangle(it.function_name.c_str(), nullptr, 0, &status);
+            int status = 0;
+            demangled_name = abi::__cxa_demangle(it.function_name, nullptr, 0, &status);
 
             full_stack_builder << "      | "
                                << "#pc " << std::hex << it.rel_pc << " "
@@ -396,13 +401,56 @@ static inline void dump_stacks(FILE *log_file,
                 LOGD(TAG, "fallback getting so name -> caller = %p", stack_meta_it.second.caller);
                 // fixme hard coding
                 if (/*so_name.find("com.tencent.mm") == std::string::npos ||*/
+                        so_name.find("libwechatbacktrace.so") != std::string::npos ||
                         so_name.find("libwxperf.so") != std::string::npos ||
                         so_name.find("libwxperf-jni.so") != std::string::npos) {
-                    continue;
+                    return;
                 }
                 caller_so_name = so_name;
             }
-        }
+        };
+
+        wechat_backtrace::restore_frame_detail(backtrace.frames.get(), backtrace.frame_size,
+                                               _callback);
+
+//        for (auto   &it : stacktrace) {
+//
+//            std::string so_name = it.map_name;
+//
+//            char *demangled_name = nullptr;
+//            int  status          = 0;
+//            demangled_name = abi::__cxa_demangle(it.function_name.c_str(), nullptr, 0, &status);
+//
+//            full_stack_builder << "      | "
+//                               << "#pc " << std::hex << it.rel_pc << " "
+//                               << (demangled_name ? demangled_name : "(null)")
+//                               << " ("
+//                               << it.map_name
+//                               << ")"
+//                               << std::endl;
+//
+//            if (last_so_name != it.map_name) {
+//                last_so_name = it.map_name;
+//                brief_stack_builder << it.map_name << ";";
+//            }
+//
+//            brief_stack_builder << std::hex << it.rel_pc << ";";
+//
+//            if (demangled_name) {
+//                free(demangled_name);
+//            }
+//
+//            if (caller_so_name.empty()) { // fallback
+//                LOGD(TAG, "fallback getting so name -> caller = %p", stack_meta_it.second.caller);
+//                // fixme hard coding
+//                if (/*so_name.find("com.tencent.mm") == std::string::npos ||*/
+//                        so_name.find("libwxperf.so") != std::string::npos ||
+//                        so_name.find("libwxperf-jni.so") != std::string::npos) {
+//                    continue;
+//                }
+//                caller_so_name = so_name;
+//            }
+//        }
         stack_alloc_size_of_so[caller_so_name] += size;
 
         stack_dump_meta_t stack_dump_meta{size,
@@ -428,7 +476,7 @@ static inline void dump_stacks(FILE *log_file,
     size_t json_so_count = 3;
 
     for (auto &p : so_sorted_by_size) {
-        auto so_name       = p.first;
+        auto so_name = p.first;
         auto so_alloc_size = p.second;
 
         LOGD(TAG, "\nmalloc size of so (%s) : remaining size = %zu", so_name.c_str(),
@@ -450,10 +498,11 @@ static inline void dump_stacks(FILE *log_file,
                       return v1.size > v2.size;
                   });
 
-        cJSON *so_obj       = nullptr; // nullable
+        cJSON *so_obj = nullptr; // nullable
         cJSON *so_stack_arr = nullptr; // nullable
         if (json_so_count) {
-            LOGE(TAG".json", "json_so_count = %zu", json_so_count);
+            LOGE(TAG
+                         ".json", "json_so_count = %zu", json_so_count);
             json_so_count--;
             so_obj = cJSON_CreateObject();
             cJSON_AddStringToObject(so_obj, "so", so_name.c_str());
@@ -475,7 +524,8 @@ static inline void dump_stacks(FILE *log_file,
 
             if (json_so_count && json_stacktrace_count) {
                 json_stacktrace_count--;
-                LOGE(TAG".json", "json_stacktrace_count = %zu", json_stacktrace_count);
+                LOGE(TAG
+                             ".json", "json_stacktrace_count = %zu", json_stacktrace_count);
                 cJSON *stack_obj = cJSON_CreateObject();
                 cJSON_AddStringToObject(stack_obj, "size",
                                         std::to_string(stack_dump_meta.size).c_str());
@@ -490,8 +540,8 @@ static inline void dump_stacks(FILE *log_file,
 
 static inline void dump_impl(FILE *log_file, FILE *json_file, bool mmap) {
 
-    std::map<void *, caller_meta_t>  heap_caller_metas;
-    std::map<void *, caller_meta_t>  mmap_caller_metas;
+    std::map<void *, caller_meta_t> heap_caller_metas;
+    std::map<void *, caller_meta_t> mmap_caller_metas;
     std::map<uint64_t, stack_meta_t> heap_stack_metas;
     std::map<uint64_t, stack_meta_t> mmap_stack_metas;
 
@@ -503,7 +553,7 @@ static inline void dump_impl(FILE *log_file, FILE *json_file, bool mmap) {
     // native heap allocation
     dump_callers(log_file, heap_caller_metas);
 
-    cJSON *json_obj        = cJSON_CreateObject();
+    cJSON *json_obj = cJSON_CreateObject();
     cJSON *native_heap_arr = cJSON_AddArrayToObject(json_obj, "NativeHeap");
 
     dump_stacks(log_file, native_heap_arr, heap_stack_metas);
@@ -580,7 +630,7 @@ void memory_hook_on_dlopen(const char *file_name) {
     LOGD(TAG, "memory_hook_on_dlopen: file %s, h_malloc %p, h_realloc %p, h_free %p", file_name,
          h_malloc, h_realloc, h_free);
     if (is_stacktrace_enabled) {
-        notify_maps_change();
+        wechat_backtrace::notify_maps_changed();
     }
     srand((unsigned int) time(NULL));
 }

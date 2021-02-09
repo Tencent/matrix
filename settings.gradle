@@ -1,3 +1,10 @@
+apply from:"$rootDir/gradle/Arguments.gradle"
+
+include ':app'
+include ':wxperf-hook', ':wxperf-fd'
+include ':wxperf-backtrace'
 include ':wxperf-common'
 include ':wxperf-jectl'
-include ':app', ':wxperf-hook', ':wxperf-fd'
+include ':wxperf-benchmark'
+
+//include ':test-backtrace'

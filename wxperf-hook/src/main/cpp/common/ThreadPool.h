@@ -17,6 +17,7 @@
 #include <sys/epoll.h>
 #include <linux/eventpoll.h>
 #include "Log.h"
+#include "BacktraceDefine.h"
 
 #define TAG "ThreadPool"
 
@@ -170,7 +171,7 @@ public:
         }
 
         ret = ret & (pool_size - 1);
-        LOGD(TAG, "worker_choose %lu & %zu -> %zu", __val, (pool_size - 1), ret);
+        LOGD(TAG, "worker_choose %llu & %zu -> %llu", (wechat_backtrace::ullint_t)__val, (pool_size - 1), (wechat_backtrace::ullint_t)ret);
         return ret;
     }
 
