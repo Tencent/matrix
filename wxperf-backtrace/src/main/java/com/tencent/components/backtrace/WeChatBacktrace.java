@@ -90,6 +90,10 @@ public class WeChatBacktrace {
         return mConfiguration;
     }
 
+    public String getSavingPath() {
+        return mWarmUpDelegate.mSavingPath;
+    }
+
     private void loadLibrary(LibraryLoader loader) {
         if (loader == null) {
             loadLibrary();

@@ -51,7 +51,7 @@ class WarmUpDelegate {
     private final static String TASK_TAG_COMPUTE_DISK_USAGE = "compute-disk-usage";
 
     private boolean mIsolateRemote = false;
-    private String mSavingPath;
+    String mSavingPath;
     private WarmedUpReceiver mWarmedUpReceiver;
     private ThreadTaskExecutor mThreadTaskExecutor;
     private WarmUpScheduler mWarmUpScheduler;
