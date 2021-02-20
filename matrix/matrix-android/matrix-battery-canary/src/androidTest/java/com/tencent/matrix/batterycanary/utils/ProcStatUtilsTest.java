@@ -132,6 +132,36 @@ public class ProcStatUtilsTest {
         }
     }
 
+    @Test
+    public void testGetSleepThreadJiffiesDelta() throws InterruptedException {
+        String message = "";
+        long bgnMillis, endMillis;
+        ProcStatUtil.ProcStat bgn, end;
+
+        for (int round = 0; round < 10; round++) {
+            message += "\nROUND " + round;
+
+            bgnMillis = SystemClock.currentThreadTimeMillis();
+            bgn = ProcStatUtil.current();
+            Assert.assertNotNull(bgn);
+
+            Thread.sleep(1000L);
+
+            endMillis = SystemClock.currentThreadTimeMillis();
+            end = ProcStatUtil.current();
+            Assert.assertNotNull(end);
+
+            message += "\nbgn: " + (bgnMillis) + " vs " + (bgn.getJiffies());
+            message += "\nend: " + (endMillis) + " vs " + (end.getJiffies());
+            message += "\ndlt:" + (endMillis - bgnMillis) + " vs " + (end.getJiffies() - bgn.getJiffies());
+            message += "\n";
+        }
+
+        if (!TestUtils.isAssembleTest()) {
+            Assert.fail(message);
+        }
+    }
+
     /**
      * cat: /proc/loadavg
      */
