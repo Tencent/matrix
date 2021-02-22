@@ -557,7 +557,7 @@ public interface BatteryMonitorCallback extends
          */
         @SuppressWarnings("UnusedReturnValue")
         public static class Printer {
-            private final StringBuilder sb = new StringBuilder("\t\n");
+            private final StringBuilder sb = new StringBuilder();
 
             public Printer() {
             }
