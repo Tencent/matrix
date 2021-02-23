@@ -37,7 +37,16 @@ public final class TimeBreaker {
         }
     }
 
-    public static TimePortions configurePortions(List<? extends Stamp> stampList, long windowMillis) {
+    public static TimePortions configurePortions(List<? extends Stamp> outerStampList, long windowMillis) {
+        List<Stamp> stampList = new ArrayList<>(outerStampList);
+        if (!stampList.isEmpty()) {
+            Stamp currStamp = new Stamp("CURR");
+            long millisFromLastStamp = currStamp.upTime - stampList.get(0).upTime;
+            if (millisFromLastStamp > 10L) {
+                stampList.add(0, currStamp);
+            }
+        }
+
         final Map<String, Long> mapper = new HashMap<>();
         long totalMillis = 0L;
         long lastStampMillis = Long.MIN_VALUE;
