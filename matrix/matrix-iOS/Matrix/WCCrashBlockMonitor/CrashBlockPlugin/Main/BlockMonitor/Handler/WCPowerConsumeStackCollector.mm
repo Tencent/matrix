@@ -26,7 +26,6 @@
 #import "KSThread.h"
 #import "MatrixLogDef.h"
 #import "KSMachineContext.h"
-#import "MatrixAsyncHook.h"
 #import <pthread.h>
 #import <os/lock.h>
 #import <execinfo.h>
@@ -753,35 +752,6 @@ static float *g_cpuHighThreadValueArray = NULL;
             break;
         }
         
-        uintptr_t **async_stack_trace_array = (uintptr_t **)malloc(sizeof(uintptr_t *) * cost_cpu_thread_count);
-        int *async_stack_trace_array_count = (int *)malloc(sizeof(int) * cost_cpu_thread_count);
-        
-        // get the origin async stack from MatrixAsyncHook
-        for (int i = 0; i < cost_cpu_thread_count; i++) {
-            thread_t current_thread = cost_cpu_thread_list[i];
-            AsyncStackTrace *asyncStackTrace = getAsyncStack((mach_port_t)current_thread);
-            
-            if (asyncStackTrace != NULL && asyncStackTrace->backTrace != NULL) {
-                async_stack_trace_array[i] = (uintptr_t *)malloc(sizeof(uintptr_t) * asyncStackTrace->size);
-                async_stack_trace_array_count[i] = (int)asyncStackTrace->size;
-                for (int j = 0; j < asyncStackTrace->size; j++) {
-                    async_stack_trace_array[i][j] = (unsigned long)asyncStackTrace->backTrace[j];
-                }
-            } else {
-                async_stack_trace_array[i] = NULL;
-                async_stack_trace_array_count[i] = 0;
-            }
-            
-            if (asyncStackTrace) {
-                if (asyncStackTrace->backTrace) {
-                    free(asyncStackTrace->backTrace);
-                    asyncStackTrace->backTrace = NULL;
-                }
-                free(asyncStackTrace);
-                asyncStackTrace = NULL;
-            }
-        }
-        
         ksmc_suspendEnvironment();
         for (int i = 0; i < cost_cpu_thread_count; i++) {
             thread_t current_thread = cost_cpu_thread_list[i];
@@ -793,23 +763,8 @@ static float *g_cpuHighThreadValueArray = NULL;
             for (; j < trace_length_matrix[i]; j++) {
                 stack_matrix[i][j] = backtrace_buffer[j];
             }
-            
-            if (async_stack_trace_array_count[i] != 0 && async_stack_trace_array[i] != NULL) {
-                trace_length_matrix[i] += async_stack_trace_array_count[i];
-                for (int k = 0; k < async_stack_trace_array_count[i]; j++, k++) {
-                    stack_matrix[i][j] = async_stack_trace_array[i][k];
-                }
-            }
         }
         ksmc_resumeEnvironment();
-        
-        for (int i = 0; i < cost_cpu_thread_count; i++) {
-            if (async_stack_trace_array[i] != NULL && async_stack_trace_array_count[i] != 0) {
-                free(async_stack_trace_array[i]);
-            }
-        }
-        free(async_stack_trace_array);
-        free(async_stack_trace_array_count);
         
         result = {stack_matrix, trace_length_matrix};
     } while (0);

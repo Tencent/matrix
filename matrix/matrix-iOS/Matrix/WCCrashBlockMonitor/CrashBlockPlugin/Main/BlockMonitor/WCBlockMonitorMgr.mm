@@ -33,7 +33,6 @@
 #import "WCFilterStackHandler.h"
 #import "KSSymbolicator.h"
 #import "WCPowerConsumeStackCollector.h"
-#import "MatrixAsyncHook.h"
 
 #if !TARGET_OS_OSX
 #import <UIKit/UIKit.h>
@@ -278,8 +277,6 @@ float *kscrash_pointCpuHighThreadArrayCallBack(void)
     [self setCPUUsagePercent:[_monitorConfigHandler getCPUUsagePercent]];
     [self setPerStackInterval:[_monitorConfigHandler getPerStackInterval]];
     
-    beginHookDispatch();
-
     m_nIntervalTime = 1;
     m_nLastTimeInterval = 1;
     m_blockDiffTime = 0;
