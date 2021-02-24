@@ -548,7 +548,7 @@ abstract class RemoveUnusedResourcesTaskV2 : DefaultTask() {
 
             if (resNames != null) {
                 for (resName in resNames) {
-                    if (!checkIfIgnored(resName, rulesOfIgnore)) {
+                    if (!checkIfIgnored(resName, regexpRules)) {
                         resultOfObfuscatedNames[resName] = "R." + resType + "." + resTypeBuilder.generateNextProguard()
                     } else {
                         Log.i(TAG, "ignore proguard resource name %s", resName)
