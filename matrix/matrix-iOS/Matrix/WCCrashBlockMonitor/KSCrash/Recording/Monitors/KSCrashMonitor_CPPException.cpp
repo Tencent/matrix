@@ -28,7 +28,6 @@
 #include "KSThread.h"
 #include "KSMachineContext.h"
 #include "KSStackCursor_SelfThread.h"
-#include "KSCrash_fishhook.h"
 
 //#define KSLogger_LocalLevel TRACE
 #include "KSLogger.h"
@@ -77,42 +76,30 @@ static bool g_capturedStackCursor = false;
 #pragma mark - Callbacks -
 // ============================================================================
 
-//typedef void (*cxa_throw_type)(void*, std::type_info*, void (*)(void*));
-//
-//extern "C"
-//{
-//    void __cxa_throw(void* thrown_exception, std::type_info* tinfo, void (*dest)(void*)) __attribute__ ((weak));
-//
-//    void __cxa_throw(void* thrown_exception, std::type_info* tinfo, void (*dest)(void*))
-//    {
-//        if(g_captureNextStackTrace)
-//        {
-//            kssc_initSelfThread(&g_stackCursor, 1);
-//            g_capturedStackCursor = true;
-//        }
-//
-//        static cxa_throw_type orig_cxa_throw = NULL;
-//        unlikely_if(orig_cxa_throw == NULL)
-//        {
-//            orig_cxa_throw = (cxa_throw_type) dlsym(RTLD_NEXT, "__cxa_throw");
-//        }
-//        orig_cxa_throw(thrown_exception, tinfo, dest);
-//        __builtin_unreachable();
-//    }
-//}
+typedef void (*cxa_throw_type)(void*, std::type_info*, void (*)(void*));
 
-static void (*orig_cxa_throw)(void* thrown_exception, std::type_info* tinfo, void (*dest)(void*));
-
-void my_cxa_throw(void* thrown_exception, std::type_info* tinfo, void (*dest)(void*))
+extern "C"
 {
-    if(g_captureNextStackTrace)
+    void __cxa_throw(void* thrown_exception, std::type_info* tinfo, void (*dest)(void*)) __attribute__ ((weak));
+
+    void __cxa_throw(void* thrown_exception, std::type_info* tinfo, void (*dest)(void*))
     {
-        kssc_initSelfThread(&g_stackCursor, 1);
-        g_capturedStackCursor = true;
-        KSLOG_DEBUG("Trapped C++ Stack");
+        if(g_captureNextStackTrace)
+        {
+            kssc_initSelfThread(&g_stackCursor, 1);
+            g_capturedStackCursor = true;
+        }
+
+        static cxa_throw_type orig_cxa_throw = NULL;
+        unlikely_if(orig_cxa_throw == NULL)
+        {
+            orig_cxa_throw = (cxa_throw_type) dlsym(RTLD_NEXT, "__cxa_throw");
+        }
+        orig_cxa_throw(thrown_exception, tinfo, dest);
+        __builtin_unreachable();
     }
-    return orig_cxa_throw(thrown_exception, tinfo, dest);
 }
+
 
 static void CPPExceptionTerminate(void)
 {
@@ -231,14 +218,6 @@ static void setEnabled(bool isEnabled)
 
             ksid_generate(g_eventID);
             g_originalTerminateHandler = std::set_terminate(CPPExceptionTerminate);
-            
-            ks_rebinding item;
-            item.name = "__cxa_throw";
-            item.replacement = (void *)my_cxa_throw;
-            item.replaced = (void **)&orig_cxa_throw;
-            ks_rebind_symbols(&item, 1);
-//            int ret_val = ks_rebind_symbols(&item, 1);
-//            KSLOG_DEBUG("rebind ret: %d", ret_val);
         }
         else
         {
