@@ -422,7 +422,7 @@ public interface BatteryMonitorCallback extends
 
                 // jiffies sections
                 printer.createSection("jiffies(" + delta.dlt.threadEntries.getList().size() + ")");
-                printer.writeLine("desc", "(status)name(pid)\tavg/diff/total");
+                printer.writeLine("desc", "(status)name(pid)\tavg/total");
                 printer.writeLine("inc_thread_num", String.valueOf(delta.dlt.threadNum.get()));
                 printer.writeLine("cur_thread_num", String.valueOf(delta.end.threadNum.get()));
                 for (ThreadJiffiesEntry threadJiffies : delta.dlt.threadEntries.getList().subList(0, Math.min(delta.dlt.threadEntries.getList().size(), 8))) {
