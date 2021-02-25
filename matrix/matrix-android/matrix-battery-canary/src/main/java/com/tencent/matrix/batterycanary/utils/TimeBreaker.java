@@ -37,12 +37,21 @@ public final class TimeBreaker {
         }
     }
 
-    public static TimePortions configurePortions(List<? extends Stamp> outerStampList, long windowMillis) {
+    public static TimePortions configurePortions(List<? extends Stamp> outerStampList, long windowToCurr) {
+        return configurePortions(outerStampList, windowToCurr, 10L, new Stamp.Stamper() {
+            @Override
+            public Stamp stamp(String key) {
+                return new Stamp(key);
+            }
+        });
+    }
+
+    public static TimePortions configurePortions(List<? extends Stamp> outerStampList, long windowToCurr, long delta, Stamp.Stamper stamper) {
         List<Stamp> stampList = new ArrayList<>(outerStampList);
         if (!stampList.isEmpty()) {
-            Stamp currStamp = new Stamp("CURR");
-            long millisFromLastStamp = currStamp.upTime - stampList.get(0).upTime;
-            if (millisFromLastStamp > 10L) {
+            Stamp currStamp = stamper.stamp("CURR_STAMP");
+            long deltaFromLastStamp = currStamp.upTime - stampList.get(0).upTime;
+            if (deltaFromLastStamp > delta) {
                 stampList.add(0, currStamp);
             }
         }
@@ -51,7 +60,7 @@ public final class TimeBreaker {
         long totalMillis = 0L;
         long lastStampMillis = Long.MIN_VALUE;
 
-        if (windowMillis <= 0L) {
+        if (windowToCurr <= 0L) {
             // configure for long all app uptime
             for (Stamp item : stampList) {
                 if (lastStampMillis != Long.MIN_VALUE) {
@@ -77,9 +86,9 @@ public final class TimeBreaker {
                     }
 
                     long interval = lastStampMillis - item.upTime;
-                    if (totalMillis + interval >= windowMillis) {
+                    if (totalMillis + interval >= windowToCurr) {
                         // reach widow edge
-                        long lastInterval = windowMillis - totalMillis;
+                        long lastInterval = windowToCurr - totalMillis;
                         totalMillis += lastInterval;
                         Long record = mapper.get(item.key);
                         mapper.put(item.key, lastInterval + (record == null ? 0 : record));
@@ -100,7 +109,7 @@ public final class TimeBreaker {
 
         } else {
             // window > uptime
-            if (windowMillis > totalMillis) {
+            if (windowToCurr > totalMillis) {
                 timePortions.mIsValid = false;
             }
 
@@ -141,6 +150,10 @@ public final class TimeBreaker {
     }
 
     public static class Stamp {
+        public interface Stamper {
+            Stamp stamp(String key);
+        }
+
         public final String key;
         public final long upTime;
 
