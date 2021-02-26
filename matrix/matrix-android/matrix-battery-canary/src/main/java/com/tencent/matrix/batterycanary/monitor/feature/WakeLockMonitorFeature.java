@@ -130,6 +130,7 @@ public final class WakeLockMonitorFeature extends AbsMonitorFeature {
         PowerManagerServiceHooker.removeListener(mListener);
         mCore.getHandler().removeCallbacksAndMessages(null);
         mWorkingWakeLocks.clear();
+        mWakeLockTracing.onClear();
     }
 
     @Override
@@ -313,8 +314,8 @@ public final class WakeLockMonitorFeature extends AbsMonitorFeature {
         private final byte[] mLock = new byte[]{};
         private int mCount;
         private long mMillis;
-        private int mAcquireCount;
-        private int mReleaseCount;
+        private int mTotalCount;
+        private int mTracingCount;
 
         public void add(WakeLockTrace.WakeLockRecord record) {
             synchronized (mLock) {
@@ -325,13 +326,14 @@ public final class WakeLockMonitorFeature extends AbsMonitorFeature {
 
         public void onAcquire() {
             synchronized (mLock) {
-                mAcquireCount++;
+                mTotalCount++;
+                mTracingCount++;
             }
         }
 
         public void onRelease() {
             synchronized (mLock) {
-                mReleaseCount++;
+                mTracingCount--;
             }
         }
 
@@ -343,12 +345,19 @@ public final class WakeLockMonitorFeature extends AbsMonitorFeature {
             return mMillis;
         }
 
+        public void onClear() {
+            mCount = 0;
+            mMillis = 0;
+            mTotalCount = 0;
+            mTracingCount = 0;
+        }
+
         public WakeLockSnapshot getSnapshot() {
             WakeLockSnapshot snapshot = new WakeLockSnapshot();
             snapshot.totalWakeLockTime = Snapshot.Entry.DigitEntry.of(getTimeMillis());
             snapshot.totalWakeLockCount = Snapshot.Entry.DigitEntry.of(getTotalCount());
-            snapshot.totalAcquireCount = Snapshot.Entry.DigitEntry.of(mAcquireCount);
-            snapshot.totalReleaseCount = Snapshot.Entry.DigitEntry.of(mReleaseCount);
+            snapshot.totalAcquireCount = Snapshot.Entry.DigitEntry.of(mTotalCount);
+            snapshot.totalReleaseCount = Snapshot.Entry.DigitEntry.of(mTracingCount);
             snapshot.totalWakeLockRecords = Snapshot.Entry.ListEntry.ofEmpty();
             return snapshot;
         }
