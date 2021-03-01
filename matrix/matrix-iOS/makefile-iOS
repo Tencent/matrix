@@ -21,10 +21,10 @@ lib:
 	
 	xcodebuild -version
 	
-	xcodebuild -project "$(PROJECT_NAME)" -target "$(TARGET_NAME)" -configuration Release -sdk iphonesimulator VALID_ARCHS="arm64 armv7 i386 x86_64" CONFIGURATION_BUILD_DIR="$(BUILD_DIR)"
+	xcodebuild -project "$(PROJECT_NAME)" -target "$(TARGET_NAME)" -configuration Release -sdk iphonesimulator VALID_ARCHS="i386 x86_64" CONFIGURATION_BUILD_DIR="$(BUILD_DIR)"
 	mv "$(FRAMEWORK_NAME)" "$(SIMULATOR_FRAMEWORK)"
 
-	xcodebuild -project "$(PROJECT_NAME)" -target "$(TARGET_NAME)" -configuration Release -sdk iphoneos VALID_ARCHS="arm64 armv7 i386 x86_64" CONFIGURATION_BUILD_DIR="$(BUILD_DIR)"
+	xcodebuild -project "$(PROJECT_NAME)" -target "$(TARGET_NAME)" -configuration Release -sdk iphoneos VALID_ARCHS="arm64 armv7" CONFIGURATION_BUILD_DIR="$(BUILD_DIR)"
 	mv "$(FRAMEWORK_NAME)" "$(GENEIC_DEVICE_FRAMEWORK)"
 
 	lipo -create -output "$(PRODUCT_NAME)_universal" "$(SIMULATOR_FRAMEWORK)/$(PRODUCT_NAME)" "$(GENEIC_DEVICE_FRAMEWORK)/$(PRODUCT_NAME)"
