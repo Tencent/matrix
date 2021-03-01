@@ -1,15 +1,13 @@
 package com.tencent.matrix.batterycanary.monitor.feature;
 
 import android.annotation.SuppressLint;
-import android.content.BroadcastReceiver;
 import android.content.Context;
-import android.content.Intent;
-import android.content.IntentFilter;
-import android.os.BatteryManager;
 import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.support.annotation.VisibleForTesting;
 import android.support.v4.util.Consumer;
 
+import com.tencent.matrix.batterycanary.BatteryEventDelegate;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
 import com.tencent.matrix.batterycanary.monitor.feature.AppStatMonitorFeature.AppStatStamp;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Differ.DigitDiffer;
@@ -82,13 +80,15 @@ public final class DeviceStatMonitorFeature extends AbsMonitorFeature {
             }
         });
 
-        mDevStatListener.startListen(mCore.getContext());
+        if (!mDevStatListener.isListening()) {
+            mDevStatListener.startListen();
+        }
     }
 
     @Override
     public void onTurnOff() {
         super.onTurnOff();
-        mDevStatListener.stopListen(mCore.getContext());
+        mDevStatListener.stopListen();
     }
 
     @Override
@@ -96,7 +96,7 @@ public final class DeviceStatMonitorFeature extends AbsMonitorFeature {
         super.onForeground(isForeground);
         if (!isForeground) {
             if (!mDevStatListener.isListening()) {
-                mDevStatListener.startListen(mCore.getContext());
+                mDevStatListener.startListen();
             }
         }
     }
@@ -163,7 +163,7 @@ public final class DeviceStatMonitorFeature extends AbsMonitorFeature {
         return snapshot;
     }
 
-    static final class DevStatListener extends BroadcastReceiver {
+    static final class DevStatListener {
         Consumer<Integer> mListener = new Consumer<Integer>() {
             @Override
             public void accept(Integer integer) {
@@ -172,37 +172,16 @@ public final class DeviceStatMonitorFeature extends AbsMonitorFeature {
         };
 
         boolean mIsCharging = false;
-        boolean mIsScreenOff = false;
+        boolean mIsScreenOn = false;
         boolean mIsListening = false;
+        @Nullable private BatteryEventDelegate.Listener mBatterStatListener;
 
         public void setListener(Consumer<Integer> listener) {
             mListener = listener;
         }
 
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            String action = intent.getAction();
-            if (action != null) {
-                if (action.equals(Intent.ACTION_BATTERY_CHANGED)) {
-                    int plugged = intent.getIntExtra(BatteryManager.EXTRA_PLUGGED, -1);
-                    mIsCharging = plugged == BatteryManager.BATTERY_PLUGGED_AC || plugged == BatteryManager.BATTERY_PLUGGED_USB || plugged == BatteryManager.BATTERY_PLUGGED_WIRELESS;
-                    updateStatus();
-                    return;
-                }
-                if (action.equals(Intent.ACTION_SCREEN_OFF)) {
-                    mIsScreenOff = true;
-                    updateStatus();
-                    return;
-                }
-                if (action.equals(Intent.ACTION_SCREEN_ON)) {
-                    mIsScreenOff = false;
-                    updateStatus();
-                }
-            }
-        }
-
         protected void updateStatus() {
-            int devStat = mIsCharging ? 1 : mIsScreenOff ? 3 : 2;
+            int devStat = mIsCharging ? 1 : mIsScreenOn ? 2 : 3;
             mListener.accept(devStat);
         }
 
@@ -210,21 +189,35 @@ public final class DeviceStatMonitorFeature extends AbsMonitorFeature {
             return mIsListening;
         }
 
-        public boolean startListen(Context context) {
+        public boolean startListen() {
             if (!mIsListening) {
                 try {
-                    IntentFilter filter = new IntentFilter(Intent.ACTION_SCREEN_ON);
-                    filter.addAction(Intent.ACTION_SCREEN_OFF);
-                    filter.addAction(Intent.ACTION_BATTERY_CHANGED);
-                    context.registerReceiver(this, filter);
+                    if (!BatteryEventDelegate.isInit()) {
+                        throw new IllegalStateException("BatteryEventDelegate is not yet init!");
+                    }
+                    mBatterStatListener = new BatteryEventDelegate.Listener() {
+                        @Override
+                        public boolean onStateChanged(BatteryEventDelegate.BatteryState batteryState) {
+                            if (batteryState.isChargingChanged()) {
+                                mIsCharging = batteryState.isCharging();
+                                updateStatus();
+                            } else if (batteryState.isInteractivityChanged()) {
+                                mIsScreenOn = batteryState.isScreenOn();
+                                updateStatus();
+                            }
+                            return false;
+                        }
+
+                        @Override
+                        public boolean onAppLowEnergy(BatteryEventDelegate.BatteryState batteryState, long backgroundMillis) {
+                            return false;
+                        }
+                    };
+                    BatteryEventDelegate.getInstance().addListener(mBatterStatListener);
                     mIsListening = true;
                     return true;
                 } catch (Throwable e) {
                     MatrixLog.printErrStackTrace(TAG, e, "#startListen failed");
-                    try {
-                        context.unregisterReceiver(this);
-                    } catch (Throwable ignored) {
-                    }
                     mIsListening = false;
                     return false;
                 }
@@ -233,10 +226,12 @@ public final class DeviceStatMonitorFeature extends AbsMonitorFeature {
             }
         }
 
-        public void stopListen(Context context) {
+        public void stopListen() {
             if (mIsListening) {
                 try {
-                    context.unregisterReceiver(this);
+                    if (mBatterStatListener != null && BatteryEventDelegate.isInit()) {
+                        BatteryEventDelegate.getInstance().removeListener(mBatterStatListener);
+                    }
                 } catch (Throwable ignored) {
                 }
                 mIsListening = false;

@@ -122,7 +122,7 @@ public final class BatteryEventDelegate {
                         case Intent.ACTION_SCREEN_OFF:
                         case Intent.ACTION_POWER_CONNECTED:
                         case Intent.ACTION_POWER_DISCONNECTED:
-                            onSateChangedEvent();
+                            onSateChangedEvent(intent);
                             break;
                     }
                 }
@@ -154,14 +154,14 @@ public final class BatteryEventDelegate {
         }
     }
 
-    private void onSateChangedEvent() {
+    private void onSateChangedEvent(final Intent intent) {
         if (Looper.myLooper() == Looper.getMainLooper()) {
-            dispatchSateChangedEvent();
+            dispatchSateChangedEvent(intent);
         } else {
             mUiHandler.post(new Runnable() {
                 @Override
                 public void run() {
-                    dispatchSateChangedEvent();
+                    dispatchSateChangedEvent(intent);
                 }
             });
         }
@@ -181,10 +181,10 @@ public final class BatteryEventDelegate {
     }
 
     @VisibleForTesting
-    void dispatchSateChangedEvent() {
+    void dispatchSateChangedEvent(Intent intent) {
         synchronized (mListenerList) {
             for (Listener item : mListenerList) {
-                if (item.onStateChanged(currentState())) {
+                if (item.onStateChanged(currentState().attach(intent))) {
                     removeListener(item);
                 }
             }
@@ -238,8 +238,8 @@ public final class BatteryEventDelegate {
 
 
     public static final class BatteryState {
-        @Nullable
-        BatteryMonitorCore mCore;
+        @Nullable BatteryMonitorCore mCore;
+        @Nullable Intent mActionIntent;
         final Context mContext;
 
         public BatteryState(Context context) {
@@ -253,6 +253,34 @@ public final class BatteryEventDelegate {
             return this;
         }
 
+        public BatteryState attach(Intent actionIntent) {
+            if (actionIntent != null) {
+                mActionIntent = actionIntent;
+            }
+            return this;
+        }
+
+        @Nullable
+        public Intent getActionIntent() {
+            return mActionIntent;
+        }
+
+        public boolean isChargingChanged() {
+            if (mActionIntent != null) {
+                String action = mActionIntent.getAction();
+                return Intent.ACTION_POWER_CONNECTED.equals(action) || Intent.ACTION_POWER_DISCONNECTED.equals(action);
+            }
+            return false;
+        }
+
+        public boolean isInteractivityChanged() {
+            if (mActionIntent != null) {
+                String action = mActionIntent.getAction();
+                return Intent.ACTION_SCREEN_ON.equals(action) || Intent.ACTION_SCREEN_OFF.equals(action);
+            }
+            return false;
+        }
+
         public boolean isOnBackground() {
             return mCore != null && !mCore.isForeground();
         }
@@ -261,8 +289,8 @@ public final class BatteryEventDelegate {
             return BatteryCanaryUtil.isDeviceCharging(mContext);
         }
 
-        public boolean isScreenOff() {
-            return !BatteryCanaryUtil.isDeviceScreenOn(mContext);
+        public boolean isScreenOn() {
+            return BatteryCanaryUtil.isDeviceScreenOn(mContext);
         }
 
         public boolean isPowerSaveMode() {

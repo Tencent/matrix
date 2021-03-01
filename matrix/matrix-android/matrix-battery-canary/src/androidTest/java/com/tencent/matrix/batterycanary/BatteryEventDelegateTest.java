@@ -18,6 +18,7 @@ package com.tencent.matrix.batterycanary;
 
 import android.app.Application;
 import android.content.Context;
+import android.content.Intent;
 import android.support.test.InstrumentationRegistry;
 import android.support.test.runner.AndroidJUnit4;
 
@@ -44,6 +45,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
 
 /**
  * Instrumented test, which will execute on an Android device.
@@ -138,7 +141,7 @@ public class BatteryEventDelegateTest {
         assertFalse(hasChanged.get());
         assertEquals(0L, millis.get());
 
-        BatteryEventDelegate.getInstance().dispatchSateChangedEvent();
+        BatteryEventDelegate.getInstance().dispatchSateChangedEvent(spy(Intent.class));
         assertTrue(hasChanged.get());
         assertEquals(0L, millis.get());
 
