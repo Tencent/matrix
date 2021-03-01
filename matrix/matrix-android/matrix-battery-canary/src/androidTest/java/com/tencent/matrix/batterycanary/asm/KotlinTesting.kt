@@ -1,5 +1,6 @@
 package com.tencent.matrix.batterycanary.asm
 
+import android.app.AlarmManager
 import android.app.PendingIntent
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothManager
@@ -12,6 +13,7 @@ import android.location.LocationListener
 import android.location.LocationManager
 import android.net.wifi.WifiManager
 import android.os.Looper
+import android.os.PowerManager
 import java.util.*
 
 /**
@@ -57,5 +59,24 @@ class KotlinTesting {
         locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0L, 0F, pendingIntent)
         locationManager.requestLocationUpdates(0L, 0F, criteria, pendingIntent)
         locationManager.requestLocationUpdates(0L, 0F, criteria, listener, Looper.getMainLooper())
+    }
+
+    fun testWakeLock(context: Context) {
+        val manager = context.getSystemService(Context.POWER_SERVICE) as PowerManager
+        val wakeLock = manager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "PowerManagerHookerTest.TAG")
+        wakeLock.acquire()
+        wakeLock.acquire(1000)
+        wakeLock.release()
+        wakeLock.release(2233)
+    }
+
+    fun testAlarm(context: Context) {
+        val pendingIntent: PendingIntent? = null
+        val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        am.set(AlarmManager.RTC, 1000L, pendingIntent);
+        am.setWindow(AlarmManager.RTC, 1000L, 2000L, pendingIntent);
+        am.setRepeating(AlarmManager.RTC, 1000L, 3000L, pendingIntent);
+        am.cancel(pendingIntent)
+        am.cancel {}
     }
 }
