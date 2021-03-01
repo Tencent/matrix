@@ -99,6 +99,19 @@ public interface BatteryMonitorCallback extends
             return mMonitor;
         }
 
+        protected String convertAppStat(int appStat) {
+            switch (appStat) {
+                case 1:
+                    return "fg";
+                case 2:
+                    return "bg";
+                case 3:
+                    return "fgSrv";
+                default:
+                    return "wtf";
+            }
+        }
+
         @CallSuper
         @Override
         public void onTraceBegin() {
@@ -414,7 +427,7 @@ public interface BatteryMonitorCallback extends
                 long minute = Math.max(1, delta.during / ONE_MIN);
                 long avgJiffies = delta.dlt.totalJiffies.get() / minute;
                 printer.append("| ").append("pid=").append(Process.myPid())
-                        .tab().tab().append("fg=").append(appStats.getAppStat())
+                        .tab().tab().append("fg=").append(convertAppStat(appStats.getAppStat()))
                         .tab().tab().append("during(min)=").append(minute)
                         .tab().tab().append("diff(jiffies)=").append(delta.dlt.totalJiffies.get())
                         .tab().tab().append("avg(jiffies/min)=").append(avgJiffies)
