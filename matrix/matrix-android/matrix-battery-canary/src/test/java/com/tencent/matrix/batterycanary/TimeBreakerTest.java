@@ -261,6 +261,30 @@ public class TimeBreakerTest {
         Assert.assertFalse(snapshot.isValid());
     }
 
+
+    /**
+     * Need mocking {@link SystemClock#uptimeMillis()}
+     */
+    @Test
+    public void testPortionsV3() throws InterruptedException {
+        new SystemMock();
+
+        List<TimeBreaker.Stamp> stampList = new ArrayList<>();
+        stampList.add(0, new TimeBreaker.Stamp("1", 0));
+        stampList.add(0, new TimeBreaker.Stamp("2", 100));
+        stampList.add(0, new TimeBreaker.Stamp("3", 149));
+        stampList.add(0, new TimeBreaker.Stamp("4", 181));
+
+        TimeBreaker.TimePortions snapshot = configurePortions(stampList, 40L, 10L, new TimeBreaker.Stamp.Stamper() {
+            @Override
+            public TimeBreaker.Stamp stamp(String key) {
+                return new TimeBreaker.Stamp(key, 181);
+            }
+        });
+
+        Assert.assertEquals(40L, snapshot.totalUptime, 1);
+    }
+
     @Test
     public void testConcurrentBenchmark() throws InterruptedException {
         final List<TimeBreaker.Stamp> stampList = new ArrayList<>();

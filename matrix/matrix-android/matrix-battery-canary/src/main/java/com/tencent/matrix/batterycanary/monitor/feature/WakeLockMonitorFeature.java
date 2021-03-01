@@ -1,6 +1,5 @@
 package com.tencent.matrix.batterycanary.monitor.feature;
 
-import android.content.pm.ApplicationInfo;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.SystemClock;
@@ -20,7 +19,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 @SuppressWarnings("NotNullFieldNotInitialized")
-public final class WakeLockMonitorFeature extends AbsMonitorFeature implements PowerManagerServiceHooker.IListener {
+public final class WakeLockMonitorFeature extends AbsMonitorFeature {
     private static final String TAG = "Matrix.battery.WakeLockMonitorFeature";
 
     public interface WakeLockListener {
@@ -32,7 +31,8 @@ public final class WakeLockMonitorFeature extends AbsMonitorFeature implements P
     @VisibleForTesting
     long mOverTimeMillis;
     final Map<IBinder, WakeLockTrace> mWorkingWakeLocks = new ConcurrentHashMap<>(2);
-    final WakeLockCounting mWakeLockCounting = new WakeLockCounting();
+    final WakeLockTracing mWakeLockTracing = new WakeLockTracing();
+    @Nullable PowerManagerServiceHooker.IListener mListener;
 
     private WakeLockListener getListener() {
         return mCore;
@@ -52,15 +52,85 @@ public final class WakeLockMonitorFeature extends AbsMonitorFeature implements P
     @Override
     public void onTurnOn() {
         super.onTurnOn();
-        PowerManagerServiceHooker.addListener(this);
+        if (mCore.getConfig().isAmsHookEnabled) {
+            mListener = new PowerManagerServiceHooker.IListener() {
+                @Override
+                public void onAcquireWakeLock(IBinder token, int flags, String tag, String packageName, @Nullable WorkSource workSource, @Nullable String historyTag) {
+                    String stack = shouldTracing(tag) ? BatteryCanaryUtil.stackTraceToString(new Throwable().getStackTrace()) : "";
+                    MatrixLog.i(TAG, "[onAcquireWakeLock] token=%s flags=%s tag=%s historyTag=%s packageName=%s workSource=%s stack=%s",
+                            String.valueOf(token), flags, tag, historyTag, packageName, workSource, stack);
+
+                    // remove duplicated old trace
+                    WakeLockTrace existingTrace = mWorkingWakeLocks.get(token);
+                    if (existingTrace != null) {
+                        existingTrace.finish(mCore.getHandler());
+                    }
+
+                    final WakeLockTrace wakeLockTrace = new WakeLockTrace(token, tag, flags, packageName, stack);
+                    wakeLockTrace.setListener(new WakeLockTrace.OverTimeListener() {
+                        @Override
+                        public void onWakeLockOvertime(int warningCount, WakeLockTrace.WakeLockRecord record) {
+                            getListener().onWakeLockTimeout(warningCount, record);
+                            if (wakeLockTrace.isExpired()) {
+                                wakeLockTrace.finish(mCore.getHandler());
+                                Iterator<Map.Entry<IBinder, WakeLockTrace>> iterator = mWorkingWakeLocks.entrySet().iterator();
+                                while (iterator.hasNext()) {
+                                    Map.Entry<IBinder, WakeLockTrace> next = iterator.next();
+                                    if (next.getValue() == wakeLockTrace) {
+                                        iterator.remove();
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    });
+                    wakeLockTrace.start(mCore.getHandler(), mOverTimeMillis);
+                    mWorkingWakeLocks.put(token, wakeLockTrace);
+
+                    // dump tracing info
+                    dumpTracingForTag(wakeLockTrace.record.tag);
+                }
+
+                @Override
+                public void onReleaseWakeLock(IBinder token, int flags) {
+                    MatrixLog.i(TAG, "[onReleaseWakeLock] token=%s flags=%s", token.hashCode(), flags);
+                    Iterator<Map.Entry<IBinder, WakeLockTrace>> iterator = mWorkingWakeLocks.entrySet().iterator();
+                    WakeLockTrace wakeLockTrace = null;
+                    while (iterator.hasNext()) {
+                        Map.Entry<IBinder, WakeLockTrace> next = iterator.next();
+                        if (next.getKey() == token) {
+                            wakeLockTrace = next.getValue();
+                            iterator.remove();
+                            break;
+                        }
+                    }
+
+                    if (wakeLockTrace != null) {
+                        wakeLockTrace.finish(mCore.getHandler());
+                        mWakeLockTracing.add(wakeLockTrace.record);
+                        String tag = wakeLockTrace.record.tag;
+                        String stack = shouldTracing(tag) ? BatteryCanaryUtil.stackTraceToString(new Throwable().getStackTrace()) : "";
+                        MatrixLog.i(TAG, "[onReleaseWakeLock] tag = " + tag + ", stack = " + stack);
+
+                        // dump tracing info
+                        dumpTracingForTag(tag);
+
+                    } else {
+                        MatrixLog.w(TAG, "missing tracking, token = " + token);
+                    }
+                }
+            };
+            PowerManagerServiceHooker.addListener(mListener);
+        }
     }
 
     @Override
     public void onTurnOff() {
         super.onTurnOff();
-        PowerManagerServiceHooker.removeListener(this);
+        PowerManagerServiceHooker.removeListener(mListener);
         mCore.getHandler().removeCallbacksAndMessages(null);
         mWorkingWakeLocks.clear();
+        mWakeLockTracing.onClear();
     }
 
     @Override
@@ -83,69 +153,17 @@ public final class WakeLockMonitorFeature extends AbsMonitorFeature implements P
         return Integer.MIN_VALUE;
     }
 
-    @Override
-    public void onAcquireWakeLock(IBinder token, int flags, final String tag, final String packageName, WorkSource workSource, String historyTag) {
-        String stack = shouldTracing(tag) ? BatteryCanaryUtil.stackTraceToString(new Throwable().getStackTrace()) : "";
-        MatrixLog.i(TAG, "[onAcquireWakeLock] token=%s flags=%s tag=%s historyTag=%s packageName=%s workSource=%s stack=%s",
-                String.valueOf(token), flags, tag, historyTag, packageName, workSource, stack);
-
-        // remove duplicated old trace
-        WakeLockTrace existingTrace = mWorkingWakeLocks.get(token);
-        if (existingTrace != null) {
-            existingTrace.finish(mCore.getHandler());
+    @VisibleForTesting
+    void onAcquireWakeLock(IBinder token, int flags, final String tag, final String packageName, WorkSource workSource, String historyTag) {
+        if (mListener != null) {
+            mListener.onAcquireWakeLock(token, flags, tag, packageName, workSource, historyTag);
         }
-
-        final WakeLockTrace wakeLockTrace = new WakeLockTrace(token, tag, flags, packageName, stack);
-        wakeLockTrace.setListener(new WakeLockTrace.OverTimeListener() {
-            @Override
-            public void onWakeLockOvertime(int warningCount, WakeLockTrace.WakeLockRecord record) {
-                getListener().onWakeLockTimeout(warningCount, record);
-                if (wakeLockTrace.isExpired()) {
-                    wakeLockTrace.finish(mCore.getHandler());
-                    Iterator<Map.Entry<IBinder, WakeLockTrace>> iterator = mWorkingWakeLocks.entrySet().iterator();
-                    while (iterator.hasNext()) {
-                        Map.Entry<IBinder, WakeLockTrace> next = iterator.next();
-                        if (next.getValue() == wakeLockTrace) {
-                            iterator.remove();
-                            break;
-                        }
-                    }
-                }
-            }
-        });
-        wakeLockTrace.start(mCore.getHandler(), mOverTimeMillis);
-        mWorkingWakeLocks.put(token, wakeLockTrace);
-
-        // dump tracing info
-        dumpTracingForTag(wakeLockTrace.record.tag);
     }
 
-    @Override
-    public void onReleaseWakeLock(IBinder token, int flags) {
-        MatrixLog.i(TAG, "[onReleaseWakeLock] token=%s flags=%s", token.hashCode(), flags);
-        Iterator<Map.Entry<IBinder, WakeLockTrace>> iterator = mWorkingWakeLocks.entrySet().iterator();
-        WakeLockTrace wakeLockTrace = null;
-        while (iterator.hasNext()) {
-            Map.Entry<IBinder, WakeLockTrace> next = iterator.next();
-            if (next.getKey() == token) {
-                wakeLockTrace = next.getValue();
-                iterator.remove();
-                break;
-            }
-        }
-
-        if (wakeLockTrace != null) {
-            wakeLockTrace.finish(mCore.getHandler());
-            mWakeLockCounting.add(wakeLockTrace.record);
-            String tag = wakeLockTrace.record.tag;
-            String stack = shouldTracing(tag) ? BatteryCanaryUtil.stackTraceToString(new Throwable().getStackTrace()) : "";
-            MatrixLog.i(TAG, "[onReleaseWakeLock] tag = " + tag + ", stack = " + stack);
-
-            // dump tracing info
-            dumpTracingForTag(tag);
-
-        } else {
-            MatrixLog.w(TAG, "missing tracking, token = " + token);
+    @VisibleForTesting
+    void onReleaseWakeLock(IBinder token, int flags) {
+        if (mListener != null) {
+            mListener.onReleaseWakeLock(token, flags);
         }
     }
 
@@ -165,8 +183,13 @@ public final class WakeLockMonitorFeature extends AbsMonitorFeature implements P
         }
     }
 
+    @NonNull
+    public WakeLockTracing getTracing() {
+        return mWakeLockTracing;
+    }
+
     public WakeLockSnapshot currentWakeLocks() {
-        return mWakeLockCounting.getSnapshot();
+        return mWakeLockTracing.getSnapshot();
     }
 
     public static class WakeLockTrace {
@@ -287,15 +310,30 @@ public final class WakeLockMonitorFeature extends AbsMonitorFeature implements P
         }
     }
 
-    public static final class WakeLockCounting {
+    public static final class WakeLockTracing {
         private final byte[] mLock = new byte[]{};
         private int mCount;
         private long mMillis;
+        private int mTotalCount;
+        private int mTracingCount;
 
         public void add(WakeLockTrace.WakeLockRecord record) {
             synchronized (mLock) {
                 mCount++;
                 mMillis += record.getLockingTimeMillis();
+            }
+        }
+
+        public void onAcquire() {
+            synchronized (mLock) {
+                mTotalCount++;
+                mTracingCount++;
+            }
+        }
+
+        public void onRelease() {
+            synchronized (mLock) {
+                mTracingCount--;
             }
         }
 
@@ -307,10 +345,19 @@ public final class WakeLockMonitorFeature extends AbsMonitorFeature implements P
             return mMillis;
         }
 
+        public void onClear() {
+            mCount = 0;
+            mMillis = 0;
+            mTotalCount = 0;
+            mTracingCount = 0;
+        }
+
         public WakeLockSnapshot getSnapshot() {
             WakeLockSnapshot snapshot = new WakeLockSnapshot();
-            snapshot.totalWakeLockCount = Snapshot.Entry.DigitEntry.of(getTotalCount());
             snapshot.totalWakeLockTime = Snapshot.Entry.DigitEntry.of(getTimeMillis());
+            snapshot.totalWakeLockCount = Snapshot.Entry.DigitEntry.of(getTotalCount());
+            snapshot.totalAcquireCount = Snapshot.Entry.DigitEntry.of(mTotalCount);
+            snapshot.totalReleaseCount = Snapshot.Entry.DigitEntry.of(mTracingCount);
             snapshot.totalWakeLockRecords = Snapshot.Entry.ListEntry.ofEmpty();
             return snapshot;
         }
@@ -319,6 +366,8 @@ public final class WakeLockMonitorFeature extends AbsMonitorFeature implements P
     public static class WakeLockSnapshot extends Snapshot<WakeLockSnapshot> {
         public Entry.DigitEntry<Long> totalWakeLockTime;
         public Entry.DigitEntry<Integer> totalWakeLockCount;
+        public Entry.DigitEntry<Integer> totalAcquireCount;
+        public Entry.DigitEntry<Integer> totalReleaseCount;
         public Entry.ListEntry<BeanEntry<WakeLockTrace.WakeLockRecord>> totalWakeLockRecords;
 
         WakeLockSnapshot() {}
