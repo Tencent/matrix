@@ -227,7 +227,18 @@ public final class BatteryCanaryUtil {
         return 2;
     }
 
-    public static boolean isDeviceCharging(Context context) {
+    public static boolean isDeviceChargingV1(Context context) {
+        try {
+            Intent batIntent = context.registerReceiver(null, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
+            if (batIntent == null) return false;
+            int status = batIntent.getIntExtra(BatteryManager.EXTRA_STATUS, -1);
+            return (status == BatteryManager.BATTERY_STATUS_CHARGING) || (status == BatteryManager.BATTERY_STATUS_FULL);
+        } catch (Throwable ignored) {
+            return false;
+        }
+    }
+
+    public static boolean isDeviceChargingV2(Context context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             BatteryManager myBatteryManager = (BatteryManager) context.getSystemService(Context.BATTERY_SERVICE);
             if (myBatteryManager != null) {
@@ -242,6 +253,10 @@ public final class BatteryCanaryUtil {
         } catch (Throwable ignored) {
             return false;
         }
+    }
+
+    public static boolean isDeviceCharging(Context context) {
+        return isDeviceChargingV1(context);
     }
 
     public static boolean isDeviceScreenOn(Context context) {
