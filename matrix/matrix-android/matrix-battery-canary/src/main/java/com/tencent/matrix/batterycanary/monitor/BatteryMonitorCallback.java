@@ -64,8 +64,12 @@ public interface BatteryMonitorCallback extends
         @NonNull
         private BatteryMonitorCore mMonitor;
         private final Printer mPrinter = new Printer();
-        private final LongSparseArray<List<LooperTaskMonitorFeature.TaskTraceInfo>> tasks = new LongSparseArray<>();
+
         private long mTraceBgnMillis;
+        private boolean mIsForeground;
+        @Nullable
+        AppStats mAppStats;
+        private final LongSparseArray<List<LooperTaskMonitorFeature.TaskTraceInfo>> tasks = new LongSparseArray<>();
 
         @Nullable protected AlarmMonitorFeature mAlarmFeat;
         @Nullable protected AppStatMonitorFeature mAppStatFeat;
@@ -99,17 +103,15 @@ public interface BatteryMonitorCallback extends
             return mMonitor;
         }
 
-        protected String convertAppStat(int appStat) {
-            switch (appStat) {
-                case 1:
-                    return "fg";
-                case 2:
-                    return "bg";
-                case 3:
-                    return "fgSrv";
-                default:
-                    return "wtf";
+        protected boolean isForegroundReport() {
+            return mIsForeground;
+        }
+
+        protected AppStats getAppStats() {
+            if (mAppStats != null) {
+                return mAppStats;
             }
+            return AppStats.current();
         }
 
         @CallSuper
@@ -164,13 +166,16 @@ public interface BatteryMonitorCallback extends
 
         @Override
         public void onTraceEnd(boolean isForeground) {
+            mIsForeground = isForeground;
             long duringMillis = SystemClock.uptimeMillis() - mTraceBgnMillis;
             if (mTraceBgnMillis <= 0L || duringMillis <= 0L) {
                 MatrixLog.w(TAG, "skip invalid battery tracing, bgn = " + mTraceBgnMillis + ", during = " + duringMillis);
                 return;
             }
 
-            onCanaryDump(AppStats.current(duringMillis).setForeground(isForeground));
+            mAppStats = AppStats.current(duringMillis).setForeground(isForeground);
+            onCanaryDump(mAppStats);
+            mAppStats = null;
         }
 
         @Override
@@ -251,6 +256,8 @@ public interface BatteryMonitorCallback extends
         @Override
         public void onAppSateLeak(boolean isMyself, int appImportance, ComponentName componentName, long millis) {
         }
+
+
 
         @CallSuper
         protected void onCanaryDump(AppStats appStats) {
@@ -427,7 +434,7 @@ public interface BatteryMonitorCallback extends
                 long minute = Math.max(1, delta.during / ONE_MIN);
                 long avgJiffies = delta.dlt.totalJiffies.get() / minute;
                 printer.append("| ").append("pid=").append(Process.myPid())
-                        .tab().tab().append("fg=").append(convertAppStat(appStats.getAppStat()))
+                        .tab().tab().append("fg=").append(BatteryCanaryUtil.convertAppStat(appStats.getAppStat()))
                         .tab().tab().append("during(min)=").append(minute)
                         .tab().tab().append("diff(jiffies)=").append(delta.dlt.totalJiffies.get())
                         .tab().tab().append("avg(jiffies/min)=").append(avgJiffies)

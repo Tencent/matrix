@@ -227,6 +227,35 @@ public final class BatteryCanaryUtil {
         return 2;
     }
 
+    public static String convertAppStat(int appStat) {
+        switch (appStat) {
+            case 1:
+                return "fg";
+            case 2:
+                return "bg";
+            case 3:
+                return "fgSrv";
+            default:
+                return "unknown";
+        }
+    }
+
+    public static String convertDevStat(int devStat) {
+        switch (devStat) {
+            case 1:
+                return "charging";
+            case 2:
+                return "non_charge";
+            case 3:
+                return "screen_off";
+            case 4:
+                return "doze";
+            default:
+                return "unknown";
+        }
+    }
+
+
     public static boolean isDeviceChargingV1(Context context) {
         try {
             Intent batIntent = context.registerReceiver(null, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
