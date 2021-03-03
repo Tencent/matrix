@@ -356,9 +356,9 @@ public final class WakeLockMonitorFeature extends AbsMonitorFeature {
             WakeLockSnapshot snapshot = new WakeLockSnapshot();
             snapshot.totalWakeLockTime = Snapshot.Entry.DigitEntry.of(getTimeMillis());
             snapshot.totalWakeLockCount = Snapshot.Entry.DigitEntry.of(getTotalCount());
+            snapshot.totalWakeLockRecords = Snapshot.Entry.ListEntry.ofEmpty();
             snapshot.totalAcquireCount = Snapshot.Entry.DigitEntry.of(mTotalCount);
             snapshot.totalReleaseCount = Snapshot.Entry.DigitEntry.of(mTracingCount);
-            snapshot.totalWakeLockRecords = Snapshot.Entry.ListEntry.ofEmpty();
             return snapshot;
         }
     }
@@ -366,9 +366,9 @@ public final class WakeLockMonitorFeature extends AbsMonitorFeature {
     public static class WakeLockSnapshot extends Snapshot<WakeLockSnapshot> {
         public Entry.DigitEntry<Long> totalWakeLockTime;
         public Entry.DigitEntry<Integer> totalWakeLockCount;
+        public Entry.ListEntry<BeanEntry<WakeLockTrace.WakeLockRecord>> totalWakeLockRecords;
         public Entry.DigitEntry<Integer> totalAcquireCount;
         public Entry.DigitEntry<Integer> totalReleaseCount;
-        public Entry.ListEntry<BeanEntry<WakeLockTrace.WakeLockRecord>> totalWakeLockRecords;
 
         WakeLockSnapshot() {}
 
@@ -381,6 +381,8 @@ public final class WakeLockMonitorFeature extends AbsMonitorFeature {
                     delta.totalWakeLockTime = Differ.DigitDiffer.globalDiff(bgn.totalWakeLockTime, end.totalWakeLockTime);
                     delta.totalWakeLockCount = Differ.DigitDiffer.globalDiff(bgn.totalWakeLockCount, end.totalWakeLockCount);
                     delta.totalWakeLockRecords = Differ.ListDiffer.globalDiff(bgn.totalWakeLockRecords, end.totalWakeLockRecords);
+                    delta.totalAcquireCount = Differ.DigitDiffer.globalDiff(bgn.totalAcquireCount, end.totalAcquireCount);
+                    delta.totalReleaseCount = Differ.DigitDiffer.globalDiff(bgn.totalReleaseCount, end.totalReleaseCount);
                     return delta;
                 }
             };
