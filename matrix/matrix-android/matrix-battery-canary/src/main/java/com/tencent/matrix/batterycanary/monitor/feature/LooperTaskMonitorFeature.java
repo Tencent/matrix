@@ -5,6 +5,7 @@ import android.os.HandlerThread;
 import android.os.Looper;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.support.annotation.WorkerThread;
 import android.util.LongSparseArray;
 
 import com.tencent.matrix.trace.core.LooperMonitor;
@@ -39,7 +40,7 @@ public final class LooperTaskMonitorFeature extends AbsMonitorFeature {
     @Override
     public void onTurnOff() {
         super.onTurnOff();
-        onUnbindLooperMonitor();
+        release();
     }
 
     @Override
@@ -48,17 +49,22 @@ public final class LooperTaskMonitorFeature extends AbsMonitorFeature {
         if (mCore.isTurnOn()) {
             Map<Thread, StackTraceElement[]> stacks = Thread.getAllStackTraces();
             Set<Thread> set = stacks.keySet();
+
+            // Iterate HandlerThread
             for (Thread thread : set) {
                 if (thread instanceof HandlerThread) {
                     Looper looper = ((HandlerThread) thread).getLooper();
                     if (null != looper) {
-                        if (!isForeground) {
-                            onBindLooperMonitor(thread, looper);
-                        } else {
-                            List<TaskTraceInfo> list = onUnbindLooperMonitor(thread);
+
+                        // Looper Tracing:
+                        // Start tracing when bg, finish tracing when fg
+                        if (isForeground) {
+                            List<TaskTraceInfo> list = onLooperTraceFinish((HandlerThread) thread);
                             if (!list.isEmpty()) {
                                 getListener().onTaskTrace(thread, list);
                             }
+                        } else {
+                            onLooperTraceStart((HandlerThread) thread);
                         }
                     }
                 }
@@ -71,16 +77,7 @@ public final class LooperTaskMonitorFeature extends AbsMonitorFeature {
         return 0;
     }
 
-
-    public void onBindLooperMonitor(Thread thread, Looper looper) {
-        synchronized (looperMonitorArray) {
-            if (looperMonitorArray.get(thread.getId()) == null) {
-                looperMonitorArray.put(thread.getId(), new LooperMonitor(looper));
-            }
-        }
-    }
-
-    private void onUnbindLooperMonitor() {
+    private void release() {
         synchronized (looperMonitorArray) {
             for (int i = 0; i < looperMonitorArray.size(); i++) {
                 looperMonitorArray.valueAt(i).onRelease();
@@ -89,7 +86,23 @@ public final class LooperTaskMonitorFeature extends AbsMonitorFeature {
         }
     }
 
-    public LinkedList<TaskTraceInfo> onUnbindLooperMonitor(Thread thread) {
+    @WorkerThread
+    public void onLooperTraceStart(HandlerThread thread) {
+        Looper looper = thread.getLooper();
+        if (looper == null) {
+            return;
+        }
+        synchronized (looperMonitorArray) {
+            if (looperMonitorArray.get(thread.getId()) == null) {
+                LooperMonitor looperMonitor = new LooperMonitor(looper);
+                looperMonitor.addListener(new Observer());
+                looperMonitorArray.put(thread.getId(), looperMonitor);
+            }
+        }
+    }
+
+    @WorkerThread
+    public List<TaskTraceInfo> onLooperTraceFinish(HandlerThread thread) {
         LooperMonitor looperMonitor;
         synchronized (looperMonitorArray) {
             looperMonitor = looperMonitorArray.get(thread.getId());
@@ -97,37 +110,41 @@ public final class LooperTaskMonitorFeature extends AbsMonitorFeature {
                 looperMonitorArray.remove(thread.getId());
             }
         }
-        LinkedList<TaskTraceInfo> list = new LinkedList<>();
+
+        List<TaskTraceInfo> list = Collections.emptyList();
         if (null != looperMonitor) {
             for (LooperMonitor.LooperDispatchListener listener : looperMonitor.getListeners()) {
                 if (listener instanceof Observer) {
                     Map<String, TaskTraceInfo> taskMap = ((Observer) listener).map;
-                    list.addAll(taskMap.values());
-                    taskMap.clear();
-                    Collections.sort(list, new Comparator<TaskTraceInfo>() {
-                        @Override
-                        public int compare(TaskTraceInfo o1, TaskTraceInfo o2) {
-                            return Integer.compare(o2.count, o1.count);
+                    if (!taskMap.isEmpty()) {
+                        if (list.isEmpty()) {
+                            list = new LinkedList<>();
                         }
-                    });
+                        list.addAll(taskMap.values());
+                        taskMap.clear();
+                    }
                     break;
                 }
             }
             looperMonitor.onRelease();
+        }
+
+        if (!list.isEmpty()) {
+            Collections.sort(list, new Comparator<TaskTraceInfo>() {
+                @Override
+                public int compare(TaskTraceInfo o1, TaskTraceInfo o2) {
+                    return Integer.compare(o2.count, o1.count);
+                }
+            });
         }
         return list;
     }
 
 
     private class Observer extends LooperMonitor.LooperDispatchListener {
+        private final HashMap<String, TaskTraceInfo> map = new HashMap<>();
 
-        private HashMap<String, TaskTraceInfo> map = new HashMap<>();
-
-        private ITaskTracer taskTracer;
-
-        public Observer(ITaskTracer taskTracer) {
-            this.taskTracer = taskTracer;
-        }
+        public Observer() {}
 
         @Override
         public boolean isValid() {
@@ -146,10 +163,10 @@ public final class LooperTaskMonitorFeature extends AbsMonitorFeature {
                 last = x.lastIndexOf(':');
             }
             int end = Math.max(last - MAX_CHAT_COUNT, begin);
-            onTaskTrace(Thread.currentThread(), x.substring(end));
+            onTaskTrace(x.substring(end));
         }
 
-        protected void onTaskTrace(Thread thread, String helpfulStr) {
+        protected void onTaskTrace(String helpfulStr) {
             TaskTraceInfo traceInfo = map.get(helpfulStr);
             if (traceInfo == null) {
                 traceInfo = new TaskTraceInfo();
@@ -157,23 +174,15 @@ public final class LooperTaskMonitorFeature extends AbsMonitorFeature {
             }
             traceInfo.helpfulStr = helpfulStr;
             traceInfo.increment();
-
-            if (null != taskTracer) {
-                taskTracer.onTaskTrace(thread, helpfulStr);
-            }
         }
-    }
-
-    public interface ITaskTracer {
-        void onTaskTrace(Thread thread, String helpfulStr);
     }
 
 
     public static class TaskTraceInfo {
         private static final int LENGTH = 1000;
         private int count;
-        String helpfulStr;
         private long[] times;
+        String helpfulStr;
 
         void increment() {
             if (times == null) {
