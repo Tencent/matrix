@@ -17,6 +17,7 @@ import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Delta;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Entry.DigitEntry;
 import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
+import com.tencent.matrix.batterycanary.utils.ProcStatUtil;
 import com.tencent.matrix.batterycanary.utils.TimeBreaker;
 import com.tencent.matrix.util.MatrixLog;
 
@@ -380,19 +381,19 @@ public abstract class AbsTaskMonitorFeature extends AbsMonitorFeature {
             snapshot.scene = "";
         }
 
-        // if (BatteryCanaryConfigs.useThreadClock()) {
-        //     snapshot.jiffies = DigitEntry.of(SystemClock.currentThreadTimeMillis() / 10);
-        // } else {
-        //     int pid = Process.myPid();
-        //     ProcStatUtil.ProcStat stat = ProcStatUtil.of(pid, tid);
-        //     if (stat == null) {
-        //         MatrixLog.w(TAG, "parse task procStat fail, name = " + name + ", tid = " + tid);
-        //         onParseTaskJiffiesFail(name, pid,tid);
-        //         return null;
-        //     }
-        //     snapshot.jiffies = DigitEntry.of(stat.getJiffies());
-        //     return snapshot;
-        // }
+        if (mCore.getConfig().isUseThreadClock) {
+            snapshot.jiffies = DigitEntry.of(SystemClock.currentThreadTimeMillis() / 10);
+        } else {
+            int pid = Process.myPid();
+            ProcStatUtil.ProcStat stat = ProcStatUtil.of(pid, tid);
+            if (stat == null) {
+                MatrixLog.w(TAG, "parse task procStat fail, name = " + name + ", tid = " + tid);
+                onParseTaskJiffiesFail(name, pid,tid);
+                return null;
+            }
+            snapshot.jiffies = DigitEntry.of(stat.getJiffies());
+            return snapshot;
+        }
 
         return snapshot;
     }

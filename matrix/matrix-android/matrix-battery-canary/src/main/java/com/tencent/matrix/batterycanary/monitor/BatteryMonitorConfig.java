@@ -47,6 +47,7 @@ public class BatteryMonitorConfig {
     public boolean isInspectiffiesError = BuildConfig.DEBUG;
     public boolean isAmsHookEnabled = BuildConfig.DEBUG;
     public boolean isAggressiveMode = BuildConfig.DEBUG;
+    public boolean isUseThreadClock = BuildConfig.DEBUG;
     public List<String> tagWhiteList = Collections.emptyList();
     public List<String> tagBlackList = Collections.emptyList();
     public final List<MonitorFeature> features = new ArrayList<>(3);
@@ -74,6 +75,7 @@ public class BatteryMonitorConfig {
                 ", isInspectiffiesError=" + isInspectiffiesError +
                 ", isAmsHookEnabled=" + isAmsHookEnabled +
                 ", isAggressiveMode=" + isAggressiveMode +
+                ", isUseThreadClock=" + isUseThreadClock +
                 ", tagWhiteList=" + tagWhiteList +
                 ", tagBlackList=" + tagBlackList +
                 ", features=" + features +
@@ -149,6 +151,11 @@ public class BatteryMonitorConfig {
 
         public Builder enableAggressive(boolean isEnable) {
             config.isAggressiveMode = isEnable;
+            return this;
+        }
+
+        public Builder useThreadClock(boolean isEnable) {
+            config.isUseThreadClock = isEnable;
             return this;
         }
 
