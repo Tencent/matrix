@@ -21,8 +21,7 @@
 #include <stack>
 #include <assert.h>
 
-typedef void *(*spt_reallocator)(void *context, void *oldMem, size_t newSize);
-typedef void  (*spt_deallocator)(void *context, void *mem);
+#include "buffer_source.h"
 
 template <typename T>
 class splay_tree {
@@ -47,72 +46,62 @@ private:
 	node			*n_buff = NULL; // node buffer
 	node_ptr		last_ptr = 0; // use for exist() and find()
 	uint32_t		i_size = 0; // increment/init size
-	spt_reallocator	reallocator = NULL;
-	spt_deallocator	deallocator = NULL;
-	void			*context = NULL;
-	
-	inline node &get_node(node_ptr ptr) {
-		return n_buff[ptr];
-	}
-	
-	inline node_ptr &get_node_lc(node_ptr ptr) {
-		return n_buff[ptr].left;
-	}
-	
-	inline node_ptr &get_node_rc(node_ptr ptr) {
-		return n_buff[ptr].right;
-	}
-	
-	inline T &get_node_key(node_ptr ptr) {
-		return n_buff[ptr].key;
-	}
+    buffer_source   *node_buffer_source;
+    
+#define get_node(ptr)       n_buff[ptr]
+    
+#define get_node_lc(ptr)    n_buff[ptr].left
+    
+#define get_node_rc(ptr)    n_buff[ptr].right
+    
+#define get_node_key(ptr)   n_buff[ptr].key
 	
 	bool splay(const T &key, node_ptr &root) {
 		/* Simple top down splay, not requiring i to be in the tree t.  */
 		/* What it does is described above.							 */
 		if (root == 0) return false;
 
-		node_ptr y, l = 0, r = 0, t = root;
-		bool ret = false;
-		
-		for (;;) {
-			if (get_node_key(t) > key) {
-				if (get_node_lc(t) == 0) break;
-				if (get_node_key(get_node_lc(t)) > key) {
-					y = get_node_lc(t);						   /* rotate right */
-					get_node_lc(t) = get_node_rc(y);
-					get_node_rc(y) = t;
-					t = y;
-					if (get_node_lc(t) == 0) break;
-				}
-				get_node_lc(r) = t;							   /* link right */
-				r = t;
-				t = get_node_lc(t);
-			} else if (get_node_key(t) < key) {
-				if (get_node_rc(t) == 0) break;
-				if (get_node_key(get_node_rc(t)) < key) {
-					y = get_node_rc(t);						  /* rotate left */
-					get_node_rc(t) = get_node_lc(y);
-					get_node_lc(y) = t;
-					t = y;
-					if (get_node_rc(t) == 0) break;
-				}
-				get_node_rc(l) = t;							  /* link left */
-				l = t;
-				t = get_node_rc(t);
-			} else {
-				ret = true;
-				break;
-			}
-		}
-		get_node_rc(l) = get_node_lc(t);								/* assemble */
-		get_node_lc(r) = get_node_rc(t);
-		get_node_lc(t) = get_node_rc(0);
-		get_node_rc(t) = get_node_lc(0);
-		get_node_lc(0) = 0;
-		get_node_rc(0) = 0;
-		root = t;
-		return ret;
+        node_ptr l = 0, r = 0, t = root;
+        bool ret = false;
+        
+        for (;;) {
+            if (get_node_key(t) > key) {
+                node_ptr tlc = get_node_lc(t);
+                if (tlc == 0) break;
+                if (get_node_key(tlc) > key) {
+                    get_node_lc(t) = get_node_rc(tlc);              /* rotate right */
+                    get_node_rc(tlc) = t;
+                    t = tlc;
+                    if (get_node_lc(t) == 0) break;
+                }
+                get_node_lc(r) = t;                                 /* link right */
+                r = t;
+                t = get_node_lc(t);
+            } else if (get_node_key(t) < key) {
+                node_ptr trc = get_node_rc(t);
+                if (trc == 0) break;
+                if (get_node_key(trc) < key) {
+                    get_node_rc(t) = get_node_lc(trc);              /* rotate left */
+                    get_node_lc(trc) = t;
+                    t = trc;
+                    if (get_node_rc(t) == 0) break;
+                }
+                get_node_rc(l) = t;                                 /* link left */
+                l = t;
+                t = get_node_rc(t);
+            } else {
+                ret = true;
+                break;
+            }
+        }
+        get_node_rc(l) = get_node_lc(t);                            /* assemble */
+        get_node_lc(r) = get_node_rc(t);
+        get_node_lc(t) = get_node_rc(0);
+        get_node_rc(t) = get_node_lc(0);
+        get_node_lc(0) = 0;
+        get_node_rc(0) = 0;
+        root = t;
+        return ret;
 	}
 	
 	node_ptr inter_find(const T &key) {
@@ -166,90 +155,58 @@ private:
 	}
 	
 	bool reallocate_memory(bool is_init) {
-		if (reallocator) {
-			return reallocate_memory_from_file(is_init);
-		} else {
-			return reallocate_memory_from_system(is_init);
-		}
-	}
-	
-	bool reallocate_memory_from_system(bool is_init) {
-		if (is_init) {
-			t_info = &t_empty;
-		}
-		
-		uint32_t malloc_size = (t_info->b_size + i_size) * sizeof(node);
-		void *new_buff = inter_realloc(n_buff, malloc_size);
-		if (new_buff) {
-			memset((char *)new_buff + t_info->b_size * sizeof(node), 0, i_size * sizeof(node));
-			t_info->b_size = t_info->b_size + i_size;
-			n_buff = (node *)new_buff;
-			return true;
-		} else {
-			return false;
-		}
-	}
-	
-	bool reallocate_memory_from_file(bool is_init) {
-		if (is_init) {
-			uint32_t malloc_size = sizeof(tree_info) + i_size * sizeof(node);
-			void *new_buff = reallocator(context, NULL, malloc_size);
-			if (new_buff) {
-				memset(new_buff, 0, malloc_size);
-				t_info = (tree_info *)new_buff;
-				t_info->b_size = i_size;
-				n_buff = (node *)((char *)new_buff + sizeof(tree_info));
-				return true;
-			} else {
-				return false;
-			}
-		} else {
-			t_empty = *t_info; // save t_info temporarily, t_info ptr will be invalid after reallocate new memory from file
-			uint32_t malloc_size = sizeof(tree_info) + (t_info->b_size + i_size) * sizeof(node);
-			void *new_buff = reallocator(context, t_info, malloc_size);
-			if (new_buff) {
-				memset((char *)new_buff + sizeof(tree_info) + t_empty.b_size * sizeof(node), 0, i_size * sizeof(node));
-				t_info = (tree_info *)new_buff;
-				*t_info = t_empty;
-				t_info->b_size = t_info->b_size + i_size;
-				n_buff = (node *)((char *)new_buff + sizeof(tree_info));
-				return true;
-			} else {
-				return false;
-			}
-		}
+        if (is_init) {
+            uint32_t malloc_size = sizeof(tree_info) + i_size * sizeof(node);
+            void *new_buff = node_buffer_source->realloc(malloc_size);
+            if (new_buff) {
+                memset(new_buff, 0, malloc_size);
+                t_info = (tree_info *)new_buff;
+                t_info->b_size = i_size;
+                n_buff = (node *)((char *)new_buff + sizeof(tree_info));
+                return true;
+            } else {
+                return false;
+            }
+        } else {
+            t_empty = *t_info; // save t_info temporarily, t_info ptr will be invalid after reallocate new memory from file
+            uint32_t malloc_size = sizeof(tree_info) + (t_empty.b_size + i_size) * sizeof(node);
+            void *new_buff = node_buffer_source->realloc(malloc_size);
+            if (new_buff) {
+                memset((char *)new_buff + sizeof(tree_info) + t_empty.b_size * sizeof(node), 0, i_size * sizeof(node));
+                t_info = (tree_info *)new_buff;
+                *t_info = t_empty;
+                t_info->b_size = t_info->b_size + i_size;
+                n_buff = (node *)((char *)new_buff + sizeof(tree_info));
+                return true;
+            } else {
+                return false;
+            }
+        }
 	}
 	
 public:
-	splay_tree(uint32_t _is=1024) {
-		i_size = (_is == 0 ? 1024 : _is);
-		reallocate_memory(true);
-	}
-	
-	splay_tree(uint32_t _is, spt_reallocator _a, spt_deallocator _d, void *_data=NULL, size_t _len=0, void *_context=NULL) : reallocator(_a), deallocator(_d), context(_context) {
-		assert(reallocator != NULL && deallocator != NULL);
-		i_size = (_is == 0 ? 1024 : _is);
-		if (_data != NULL && _len > sizeof(tree_info)) {
-			t_info = (tree_info *)_data;
+
+	splay_tree(uint32_t _is,
+               buffer_source *_bs) {
+        node_buffer_source = _bs;
+        i_size = (_is == 0 ? 1024 : _is);
+        
+        void *data = node_buffer_source->buffer();
+        size_t len = node_buffer_source->buffer_size();
+
+		if (data != NULL && len > sizeof(tree_info)) {
+			t_info = (tree_info *)data;
 			// check valid
-			if (t_info->b_size * sizeof(node) > _len - sizeof(tree_info) ||
+			if (t_info->b_size * sizeof(node) > len - sizeof(tree_info) ||
 				t_info->root_ptr >= t_info->b_size ||
 				t_info->free_ptr >= t_info->b_size ||
 				t_info->t_size >= t_info->b_size) {
 				reallocate_memory(true);
 			} else {
-				n_buff = (node *)((char *)_data + sizeof(tree_info));
+				n_buff = (node *)((char *)data + sizeof(tree_info));
 			}
 		} else {
 			reallocate_memory(true);
-		}
-	}
-	
-	~splay_tree() {
-		if (deallocator) {
-			deallocator(context, t_info);
-		} else {
-			inter_free(n_buff);
 		}
 	}
 	

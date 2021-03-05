@@ -14,23 +14,15 @@
  * limitations under the License.
  */
 
-#include <sys/mman.h>
-#include <sys/stat.h>
-#include <dlfcn.h>
-#include <unistd.h>
-
 #include "object_event_handler.h"
 #include "allocation_event_db.h"
 #include "nsobject_hook_method.h"
 #include "sb_tree.h"
-#include "logger_internal.h"
+
+#include <dlfcn.h>
 
 #pragma mark -
 #pragma mark Types
-
-#ifdef DEBUG
-#define USE_PRIVATE_API
-#endif
 
 struct object_type {
 	uint32_t type;
@@ -53,18 +45,20 @@ struct object_type {
 	}
 };
 
-struct object_type_file {
-	int			fd;
-	uint64_t	fs;
-	sb_tree<uintptr_t> *object_type_exists;
+struct object_type_db {
+    malloc_lock_s lock;
+    
+    buffer_source *buffer_source0; // memory
+    buffer_source *buffer_source1; // file
+
+    sb_tree<uintptr_t> *object_type_exists;
 	sb_tree<object_type> *object_type_list;
 };
 
 #pragma mark -
 #pragma mark Constants/Globals
 
-static malloc_lock_s object_types_mutex;
-static object_type_file *object_types_file = NULL;
+static object_type_db *s_object_type_db = NULL;
 
 static const char *vm_memory_type_names[] = {
 	"VM_MEMORY_MALLOC", // #define VM_MEMORY_MALLOC 1
@@ -196,100 +190,12 @@ static const char *vm_memory_type_names[] = {
 };
 
 // Private API, cannot use it directly!
+#ifdef USE_PRIVATE_API
 static void (**object_set_last_allocation_event_name_funcion)(void *, const char *); // void (*__CFObjectAllocSetLastAllocEventNameFunction)(void *, const char *) = NULL;
 static bool *object_record_allocation_event_enable; // bool __CFOASafe = false;
+#endif
 
-extern void __update_object_event(uint64_t address, uint32_t new_type);
-
-static void *__object_types_reallocator(void *context, void *old_mem, size_t new_size)
-{
-	object_type_file *file_context = (object_type_file *)context;
-	
-	if (old_mem) {
-		inter_munmap(old_mem, (size_t)file_context->fs);
-	}
-	
-	new_size = round_page(new_size);
-	if (ftruncate(file_context->fd, new_size) != 0) {
-		__malloc_printf("fail to ftruncate, %s, new_size: %llu, errno: %d", strerror(errno), (uint64_t)new_size, errno);
-		disable_memory_logging();
-		abort();
-		return NULL;
-	}
-	
-	void *new_mem = inter_mmap(NULL, new_size, PROT_READ | PROT_WRITE, MAP_SHARED, file_context->fd, 0);
-	if (new_mem == MAP_FAILED) {
-		__malloc_printf("fail to mmap, %s, new_size: %llu, errno: %d", strerror(errno), (uint64_t)new_size, errno);
-//		disable_memory_logging();
-//		abort();
-		return NULL;
-	}
-	
-	file_context->fs = new_size;
-	return new_mem;
-}
-
-static void __object_types_deallocator(void *context, void *mem)
-{
-	object_type_file *file_context = (object_type_file *)context;
-	
-	if (mem) {
-		inter_munmap(mem, (size_t)file_context->fs);
-	}
-}
-
-static object_type_file *__init_object_type_file(const char *dir_path)
-{
-	int fd = open_file(dir_path, "object_types.dat");
-	object_type_file *file = (object_type_file *)inter_malloc(sizeof(object_type_file));
-	
-	if (fd < 0) {
-		// should not be happened
-		err_code = MS_ERRC_OE_FILE_OPEN_FAIL;
-		goto init_fail;
-	} else {
-		struct stat st = {0};
-		if (fstat(fd, &st) == -1) {
-			err_code = MS_ERRC_OE_FILE_SIZE_FAIL;
-			goto init_fail;
-		} else {
-			file->fd = fd;
-			file->fs = st.st_size;
-			
-			if (st.st_size > 0) {
-				void *buff = inter_mmap(NULL, (size_t)st.st_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-				if (buff == MAP_FAILED) {
-					__malloc_printf("fail to mmap, %s", strerror(errno));
-					err_code = MS_ERRC_OE_FILE_MMAP_FAIL;
-					goto init_fail;
-				} else {
-					file->object_type_list = new sb_tree<object_type>(1 << 10, __object_types_reallocator, __object_types_deallocator, buff, (size_t)st.st_size, file);
-				}
-			} else {
-				file->object_type_list = new sb_tree<object_type>(1 << 10, __object_types_reallocator, __object_types_deallocator,NULL, 0, file);
-			}
-		}
-	}
-	file->object_type_exists = new sb_tree<uintptr_t>(1 << 10);
-	return file;
-	
-init_fail:
-	if (fd >= 0) close(fd);
-	inter_free(file);
-	return NULL;
-}
-
-static void __destory_object_type_file(object_type_file *file)
-{
-	if (file == NULL) {
-		return;
-	}
-	
-	delete file->object_type_list;
-	delete file->object_type_exists;
-	close(file->fd);
-	inter_free(file);
-}
+extern void __memory_event_update_object(uint64_t address, uint32_t new_type);
 
 #pragma mark -
 #pragma mark OC Event Logging
@@ -312,19 +218,19 @@ void object_set_last_allocation_event_name(void *ptr, const char *classname)
 	uint32_t type = 0;
 	uintptr_t str_hash = __string_hash(classname);
 
-	__malloc_lock_lock(&object_types_mutex);
-	
-	if (object_types_file->object_type_exists->exist(str_hash) == false) {
-		type = object_types_file->object_type_list->size() + 1;
-		object_types_file->object_type_exists->insert(str_hash);
-		object_types_file->object_type_list->insert(object_type(type, classname));
+	__malloc_lock_lock(&s_object_type_db->lock);
+
+	if (s_object_type_db->object_type_exists->exist(str_hash) == false) {
+		type = s_object_type_db->object_type_list->size() + 1;
+		s_object_type_db->object_type_exists->insert(str_hash);
+		s_object_type_db->object_type_list->insert(object_type(type, classname));
 	} else {
-		type = object_types_file->object_type_exists->foundIndex();
+		type = s_object_type_db->object_type_exists->foundIndex();
 	}
 	
-	__malloc_lock_unlock(&object_types_mutex);
-	
-	__update_object_event((uint64_t)ptr, type);
+	__malloc_lock_unlock(&s_object_type_db->lock);
+
+	__memory_event_update_object((uint64_t)ptr, type);
 }
 
 void nsobject_set_last_allocation_event_name(void *ptr, const char *classname)
@@ -334,38 +240,37 @@ void nsobject_set_last_allocation_event_name(void *ptr, const char *classname)
 	
 	uint32_t type = 0;
 	
-	__malloc_lock_lock(&object_types_mutex);
-	
-	if (object_types_file->object_type_exists->exist((uintptr_t)classname) == false) {
-		type = object_types_file->object_type_list->size() + 1;
-		object_types_file->object_type_exists->insert((uintptr_t)classname);
-		object_types_file->object_type_list->insert(object_type(type, classname, true));
+	__malloc_lock_lock(&s_object_type_db->lock);
+
+	if (s_object_type_db->object_type_exists->exist((uintptr_t)classname) == false) {
+		type = s_object_type_db->object_type_list->size() + 1;
+		s_object_type_db->object_type_exists->insert((uintptr_t)classname);
+		s_object_type_db->object_type_list->insert(object_type(type, classname, true));
 	} else {
-		type = object_types_file->object_type_exists->foundIndex();
+		type = s_object_type_db->object_type_exists->foundIndex();
 	}
 	
-	__malloc_lock_unlock(&object_types_mutex);
+	__malloc_lock_unlock(&s_object_type_db->lock);
 	
-	__update_object_event((uint64_t)ptr, type);
+	__memory_event_update_object((uint64_t)ptr, type);
 }
 
 #pragma mark - 
 #pragma mark Public Interface
 
-bool prepare_object_event_logger(const char *log_dir)
+object_type_db *prepare_object_event_logger(const char *log_dir)
 {
-	object_types_mutex = __malloc_lock_init();
-	object_types_file = __init_object_type_file(log_dir);
-	if (object_types_file == NULL) {
-		return false;
+	s_object_type_db = object_type_db_open_or_create(log_dir);
+	if (s_object_type_db == NULL) {
+		return NULL;
 	}
 	
 	// Insert vm memory type names
 	for (int i = 0; i < sizeof(vm_memory_type_names) / sizeof(char *); ++i) {
 		uintptr_t str_hash = __string_hash(vm_memory_type_names[i]);
-		uint32_t type = object_types_file->object_type_list->size() + 1;
-		object_types_file->object_type_exists->insert(str_hash);
-		object_types_file->object_type_list->insert(object_type(type, vm_memory_type_names[i]));
+		uint32_t type = s_object_type_db->object_type_list->size() + 1;
+		s_object_type_db->object_type_exists->insert(str_hash);
+		s_object_type_db->object_type_list->insert(object_type(type, vm_memory_type_names[i]));
 	}
 	
 #ifdef USE_PRIVATE_API
@@ -384,7 +289,7 @@ bool prepare_object_event_logger(const char *log_dir)
 	
 	nsobject_hook_alloc_method();
 	
-	return true;
+	return s_object_type_db;
 }
 
 void disable_object_event_logger()
@@ -396,34 +301,73 @@ void disable_object_event_logger()
     if (object_record_allocation_event_enable != NULL) {
         *object_record_allocation_event_enable = false;
     }
-	//nsobject_hook_alloc_method();
 #endif
+	//nsobject_hook_alloc_method();
 }
 
-object_type_file *open_object_type_file(const char *event_dir)
+object_type_db *object_type_db_open_or_create(const char *event_dir)
 {
-	return __init_object_type_file(event_dir);
-}
-
-void close_object_type_file(object_type_file *file_context)
-{
-	__destory_object_type_file(file_context);
-}
-
-const char *get_object_name_by_type(object_type_file *file_context, uint32_t type)
-{
-	if (file_context->object_type_list->exist(type)) {
-		return file_context->object_type_list->find().name;
+	object_type_db *db_context = (object_type_db *)inter_malloc(sizeof(object_type_db));
+    
+    db_context->lock = __malloc_lock_init();
+    db_context->buffer_source0 = new buffer_source_memory();
+    db_context->buffer_source1 = new buffer_source_file(event_dir, "object_types.dat");
+    
+    if (db_context->buffer_source1->init_fail()) {
+		// should not be happened
+		err_code = MS_ERRC_OE_FILE_OPEN_FAIL;
+		goto init_fail;
 	} else {
-		return NULL;
+        db_context->object_type_list = new sb_tree<object_type>(1 << 10, db_context->buffer_source1);
 	}
+    
+	db_context->object_type_exists = new sb_tree<uintptr_t>(1 << 10, db_context->buffer_source0);
+	return db_context;
+	
+init_fail:
+    object_type_db_close(db_context);
+	return NULL;
 }
 
-bool is_object_nsobject_by_type(object_type_file *file_context, uint32_t type)
+void object_type_db_close(object_type_db *db_context)
 {
-	if (file_context->object_type_list->exist(type)) {
-		return file_context->object_type_list->find().is_nsobject;
-	} else {
-		return false;
+	if (db_context == NULL) {
+		return;
 	}
+	
+	delete db_context->object_type_list;
+	delete db_context->object_type_exists;
+    delete db_context->buffer_source0;
+    delete db_context->buffer_source1;
+	inter_free(db_context);
+}
+
+const char *object_type_db_get_object_name(object_type_db *db_context, uint32_t type)
+{
+	const char *name = NULL;
+	
+	__malloc_lock_lock(&db_context->lock);
+	
+	if (db_context->object_type_list->exist(type)) {
+		name = db_context->object_type_list->find().name;
+	}
+	
+	__malloc_lock_unlock(&db_context->lock);
+	
+	return name;
+}
+
+bool object_type_db_is_nsobject(object_type_db *db_context, uint32_t type)
+{
+	bool is_nsobject = false;
+	
+	__malloc_lock_lock(&db_context->lock);
+	
+	if (db_context->object_type_list->exist(type)) {
+		is_nsobject = db_context->object_type_list->find().is_nsobject;
+	}
+	
+	__malloc_lock_unlock(&db_context->lock);
+	
+	return is_nsobject;
 }

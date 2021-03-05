@@ -75,10 +75,10 @@ typedef NS_ENUM(NSUInteger, EDumpUploadType) {
     return self;
 }
 
-- (void)start
+- (BOOL)start
 {
     if (_cbMonitor != nil) {
-        return;
+        return NO;
     }
     if (self.pluginConfig == nil) {
         self.pluginConfig = [WCCrashBlockMonitorConfig defaultConfiguration];
@@ -112,6 +112,8 @@ typedef NS_ENUM(NSUInteger, EDumpUploadType) {
                                                  name:NSApplicationDidBecomeActiveNotification
                                                object:nil];
 #endif
+    
+    return YES;
 }
 
 - (void)stop

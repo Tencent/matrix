@@ -14,14 +14,12 @@
  * limitations under the License.
  */
 
-#import <malloc/malloc.h>
-#import <mach/vm_statistics.h>
+#include "memory_logging_event.h"
 
-#include "memory_stat_err_code.h"
+#pragma mark -
+#pragma mark Functions
 
-int enable_memory_logging(const char *log_dir);
-void disable_memory_logging(void);
-
-uint32_t get_current_thread_memory_usage(void);
-
-bool dump_memory(void (*callback)(void *, void *, void *, void *, void *, void *));
+FORCE_INLINE size_t write_size_by_event(memory_logging_event *event)
+{
+    return MEMORY_LOGGING_EVENT_SIMPLE_SIZE + (event->stack_size << 3); // event->stack_size * sizeof(uintptr_t);
+}

@@ -15,12 +15,9 @@
  */
 
 #include <fcntl.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <dirent.h>
-#include <string.h>
 #include <unistd.h>
-
 #include <pthread/pthread.h>
 #include <sys/mman.h>
 #include <sys/sysctl.h>
@@ -33,9 +30,10 @@
 
 int err_code = MS_ERRC_SUCCESS;
 
-static thread_id thread_ignore_logging = 0;
+static pthread_key_t s_ignore_logging_key = 0;
+static pthread_key_t s_thread_id_key = 0;
 static malloc_lock_s shared_lock = __malloc_lock_init();
-static malloc_zone_t *inter_zone = malloc_create_zone(getpagesize(), 0);
+static malloc_zone_t *inter_zone = malloc_create_zone(1 << 20, 0);
 
 // Will lock these mapped memory while App is in background
 static void  *mapped_mem[32] = {NULL};
@@ -43,60 +41,138 @@ static size_t mapped_size[32] = {0};
 static bool app_is_in_backgound = false;
 
 #pragma mark -
+#pragma mark Lock Function
+
+#ifdef USE_SPIN_LOCK
+
+FORCE_INLINE malloc_lock_s __malloc_lock_init()
+{
+	return OS_SPINLOCK_INIT;
+}
+
+FORCE_INLINE void __malloc_lock_lock(malloc_lock_s *lock)
+{
+	OSSpinLockLock(lock);
+}
+
+FORCE_INLINE bool __malloc_lock_trylock(malloc_lock_s *lock)
+{
+    return OSSpinLockTry(lock);
+}
+
+FORCE_INLINE void __malloc_lock_unlock(malloc_lock_s *lock)
+{
+	OSSpinLockUnlock(lock);
+}
+
+#else
+
+FORCE_INLINE malloc_lock_s __malloc_lock_init()
+{
+	return OS_UNFAIR_LOCK_INIT;
+}
+
+FORCE_INLINE void __malloc_lock_lock(malloc_lock_s *lock)
+{
+	os_unfair_lock_lock(lock);
+}
+
+FORCE_INLINE bool __malloc_lock_trylock(malloc_lock_s *lock)
+{
+    return os_unfair_lock_trylock(lock);
+}
+
+FORCE_INLINE void __malloc_lock_unlock(malloc_lock_s *lock)
+{
+	os_unfair_lock_unlock(lock);
+}
+
+#endif
+
+#pragma mark -
 #pragma mark Thread ID
 
-__attribute__((always_inline))
-thread_id current_thread_id()
+FORCE_INLINE thread_id current_thread_id()
 {
-	return pthread_mach_thread_np(pthread_self());
+    thread_id t_id = (thread_id)(uintptr_t)pthread_getspecific(s_thread_id_key);
+    if (t_id == 0) {
+        t_id = pthread_mach_thread_np(pthread_self());
+        pthread_setspecific(s_thread_id_key, (void *)(uintptr_t)t_id);
+    }
+    
+	return t_id;
 }
 
-void __set_thread_to_ignore_logging(thread_id tid, bool ignore)
+FORCE_INLINE void set_curr_thread_ignore_logging(bool ignore)
 {
-	if (ignore) {
-		__malloc_lock_lock(&shared_lock);
-		thread_ignore_logging = tid;
-	} else {
-		thread_ignore_logging = 0;
-		__malloc_lock_unlock(&shared_lock);
-	}
+	pthread_setspecific(s_ignore_logging_key, (void *)ignore);
 }
 
-__attribute__((always_inline))
-bool is_thread_ignoring_logging(thread_id tid)
+FORCE_INLINE bool is_thread_ignoring_logging()
 {
-	return thread_ignore_logging == tid;
+	return pthread_getspecific(s_ignore_logging_key);
 }
 
 #pragma mark -
 #pragma mark Allocation/Deallocation Function without Logging
 
-void *inter_malloc(uint64_t memSize)
+void logger_internal_init(void)
 {
-	__set_thread_to_ignore_logging(current_thread_id(), true);
-	void *allocatedMem = inter_zone->malloc(inter_zone, (size_t)memSize);
-	__set_thread_to_ignore_logging(current_thread_id(), false);
-	return allocatedMem;
+	pthread_key_create(&s_ignore_logging_key, NULL);
+    pthread_key_create(&s_thread_id_key, NULL);
+}
+
+void *inter_malloc(size_t size)
+{
+    if (is_thread_ignoring_logging()) {
+        return inter_zone->malloc(inter_zone, size);
+    } else {
+        set_curr_thread_ignore_logging(true);
+        void *newMem = inter_zone->malloc(inter_zone, size);
+        set_curr_thread_ignore_logging(false);
+        return newMem;
+    }
+}
+
+void *inter_calloc(size_t num_items, size_t size)
+{
+    if (is_thread_ignoring_logging()) {
+        return inter_zone->calloc(inter_zone, num_items, size);
+    } else {
+        set_curr_thread_ignore_logging(true);
+        void *newMem = inter_zone->calloc(inter_zone, num_items, size);
+        set_curr_thread_ignore_logging(false);
+        return newMem;
+    }
 }
 
 void *inter_realloc(void *oldMem, size_t newSize)
 {
-	__set_thread_to_ignore_logging(current_thread_id(), true);
-	void *newMem = inter_zone->realloc(inter_zone, oldMem, newSize);
-	__set_thread_to_ignore_logging(current_thread_id(), false);
-	return newMem;
+    if (is_thread_ignoring_logging()) {
+        return inter_zone->realloc(inter_zone, oldMem, newSize);
+    } else {
+        set_curr_thread_ignore_logging(true);
+        void *newMem = inter_zone->realloc(inter_zone, oldMem, newSize);
+        set_curr_thread_ignore_logging(false);
+        return newMem;
+    }
 }
 
 void inter_free(void *ptr)
 {
-	__set_thread_to_ignore_logging(current_thread_id(), true);
-	inter_zone->free(inter_zone, ptr);
-	__set_thread_to_ignore_logging(current_thread_id(), false);
+    if (is_thread_ignoring_logging()) {
+        inter_zone->free(inter_zone, ptr);
+    } else {
+        set_curr_thread_ignore_logging(true);
+        inter_zone->free(inter_zone, ptr);
+        set_curr_thread_ignore_logging(false);
+    }
 }
 
 void __add_mapped_mem(void *mem, size_t size)
 {
 	__malloc_lock_lock(&shared_lock);
+
 	for (int i = 0; i < sizeof(mapped_mem) / sizeof(void *); ++i) {
 		if (mapped_mem[i] == NULL) {
 			mapped_mem[i] = mem;
@@ -107,12 +183,14 @@ void __add_mapped_mem(void *mem, size_t size)
 	if (app_is_in_backgound) {
 		mlock(mem, size);
 	}
+	
 	__malloc_lock_unlock(&shared_lock);
 }
 
 void __remove_mapped_mem(void *mem, size_t size)
 {
 	__malloc_lock_lock(&shared_lock);
+
 	for (int i = 0; i < sizeof(mapped_mem) / sizeof(void *); ++i) {
 		if (mapped_mem[i] == mem && mapped_size[i] == size) {
 			mapped_mem[i] = NULL;
@@ -123,14 +201,21 @@ void __remove_mapped_mem(void *mem, size_t size)
 	if (app_is_in_backgound) {
 		munlock(mem, size);
 	}
+	
 	__malloc_lock_unlock(&shared_lock);
 }
 
 void *inter_mmap(void *start, size_t length, int prot, int flags, int fd, off_t offset)
 {
-	__set_thread_to_ignore_logging(current_thread_id(), true);
-	void *mappedMem = mmap(start, length, prot, flags, fd, offset);
-	__set_thread_to_ignore_logging(current_thread_id(), false);
+    void *mappedMem = NULL;
+    
+    if (is_thread_ignoring_logging()) {
+        mappedMem = mmap(start, length, prot, flags, fd, offset);
+    } else {
+        set_curr_thread_ignore_logging(true);
+        mappedMem = mmap(start, length, prot, flags, fd, offset);
+        set_curr_thread_ignore_logging(false);
+    }
 
 	__add_mapped_mem(mappedMem, length);
 	
@@ -140,16 +225,25 @@ void *inter_mmap(void *start, size_t length, int prot, int flags, int fd, off_t 
 int inter_munmap(void *start, size_t length)
 {
 	__remove_mapped_mem(start, length);
-	
-	__set_thread_to_ignore_logging(current_thread_id(), true);
-	int ret = munmap(start, length);
-	if (ret != 0) {
-		__malloc_printf("munmap fail, %s, errno: %d", strerror(errno), errno);
-		abort();
-	}
-	__set_thread_to_ignore_logging(current_thread_id(), false);
-	
-	return ret;
+
+    if (is_thread_ignoring_logging()) {
+        int ret = munmap(start, length);
+        if (ret != 0) {
+            __malloc_printf("munmap fail, %s, errno: %d", strerror(errno), errno);
+            abort();
+        }
+        return ret;
+    } else {
+        set_curr_thread_ignore_logging(true);
+        int ret = munmap(start, length);
+        if (ret != 0) {
+            __malloc_printf("munmap fail, %s, errno: %d", strerror(errno), errno);
+            abort();
+        }
+        set_curr_thread_ignore_logging(false);
+        
+        return ret;
+    }
 }
 
 #pragma mark-

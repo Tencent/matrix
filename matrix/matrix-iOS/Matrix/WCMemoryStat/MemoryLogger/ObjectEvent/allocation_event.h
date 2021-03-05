@@ -14,14 +14,26 @@
  * limitations under the License.
  */
 
-#import <malloc/malloc.h>
-#import <mach/vm_statistics.h>
+#ifndef allocation_event_h
+#define allocation_event_h
 
-#include "memory_stat_err_code.h"
+#include <mach/mach.h>
 
-int enable_memory_logging(const char *log_dir);
-void disable_memory_logging(void);
+struct allocation_event {
+	//uint64_t address; // top 8 bits are actually the flags
+	uint16_t alloca_type; // allocation type, such as memory_logging_type_alloc or memory_logging_type_vm_allocate
+	uint16_t object_type; // object type, such as NSObject, NSData, CFString, etc...
+	uint32_t stack_identifier;
+	uint32_t size;
+	uint32_t t_id;
+	
+	allocation_event(uint16_t _at=0, uint16_t _ot=0, uint32_t _si=0, uint32_t _sz=0, uint32_t _id=0) {
+		alloca_type = _at;
+		object_type = _ot;
+		stack_identifier = _si;
+		size = _sz;
+		t_id = _id;
+	}
+};
 
-uint32_t get_current_thread_memory_usage(void);
-
-bool dump_memory(void (*callback)(void *, void *, void *, void *, void *, void *));
+#endif /* allocation_event_h */

@@ -59,7 +59,24 @@ Note:
  and then take the TOP M allocation source (stack) for each classification.
  **/
 
-std::string generate_summary_report(const char *event_dir, std::string phone, std::string os_ver, uint64_t launch_time, uint64_t report_time, std::string app_uuid, std::string foom_scene, std::unordered_map<std::string, std::string> &customInfo);
+struct summary_report_param {
+	int protocol_ver;
+	std::string phone;
+	std::string os_ver;
+	uint64_t launch_time;
+	uint64_t report_time;
+	std::string app_uuid;
+	std::string foom_scene;
+	std::unordered_map<std::string, std::string> customInfo;
+};
+
+struct allocation_event_db;
+struct stack_frames_db;
+struct dyld_image_info_db;
+struct object_type_db;
+
+std::shared_ptr<std::string> generate_summary_report(const char *event_dir, const summary_report_param &param);
+std::shared_ptr<std::string> generate_summary_report_i(allocation_event_db *, stack_frames_db *, dyld_image_info_db *, object_type_db *, const summary_report_param &param);
 std::unordered_map<uint64_t, uint64_t> thread_alloc_size(const char *event_dir);
 
 #endif /* stack_report_generator_h */

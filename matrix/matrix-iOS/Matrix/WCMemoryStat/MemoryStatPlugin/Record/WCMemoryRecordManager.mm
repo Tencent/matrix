@@ -39,6 +39,7 @@
 - (NSArray *)recordList
 {
     if (m_recordList.count > 0) {
+        [self sortRecordList];
         // Filter the record of this startup
         NSMutableArray *retList = [NSMutableArray arrayWithArray:m_recordList];
         [retList removeObject:m_currRecord];
@@ -104,6 +105,22 @@
     [self saveRecordList];
 }
 
+- (void)sortRecordList
+{
+    NSArray *sortedList = [m_recordList sortedArrayUsingComparator:^NSComparisonResult(id  _Nonnull obj1, id  _Nonnull obj2) {
+        MemoryRecordInfo *info1 = (MemoryRecordInfo *)obj1;
+        MemoryRecordInfo *info2 = (MemoryRecordInfo *)obj2;
+        
+        if (info1.launchTime < info2.launchTime) {
+            return NSOrderedDescending;
+        } else {
+            return NSOrderedAscending;
+        }
+    }];
+    
+    m_recordList = [NSMutableArray arrayWithArray:sortedList];
+}
+
 - (void)loadRecordList
 {
     @try {
@@ -123,12 +140,15 @@
 
     // just limit 3 record
     if (m_recordList.count > 3) {
-        while (m_recordList.count > 3) {
-            MemoryRecordInfo *record = m_recordList[0];
-            [m_recordList removeObjectAtIndex:0];
+        [self sortRecordList];
+        
+        for (int i = 3; i < m_recordList.count; ++i) {
+            MemoryRecordInfo *record = m_recordList[i];
             NSString *eventPath = [record recordDataPath];
             [[NSFileManager defaultManager] removeItemAtPath:eventPath error:NULL];
         }
+        [m_recordList removeObjectsInRange:NSMakeRange(3, m_recordList.count - 3)];
+        
         [self saveRecordList];
     }
 }

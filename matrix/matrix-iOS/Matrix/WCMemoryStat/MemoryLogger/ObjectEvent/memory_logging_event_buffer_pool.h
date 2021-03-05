@@ -14,14 +14,18 @@
  * limitations under the License.
  */
 
-#import <malloc/malloc.h>
-#import <mach/vm_statistics.h>
+#ifndef memory_logging_event_buffer_pool_h
+#define memory_logging_event_buffer_pool_h
 
-#include "memory_stat_err_code.h"
+#include "memory_logging_event_buffer.h"
 
-int enable_memory_logging(const char *log_dir);
-void disable_memory_logging(void);
+struct memory_logging_event_buffer_pool;
 
-uint32_t get_current_thread_memory_usage(void);
+memory_logging_event_buffer_pool *memory_logging_event_buffer_pool_create();
+void memory_logging_event_buffer_pool_free(memory_logging_event_buffer_pool *buffer_pool);
 
-bool dump_memory(void (*callback)(void *, void *, void *, void *, void *, void *));
+memory_logging_event_buffer *memory_logging_event_buffer_pool_new_buffer(memory_logging_event_buffer_pool *buffer_pool);
+void memory_logging_event_buffer_pool_free_buffer(memory_logging_event_buffer_pool *buffer_pool, memory_logging_event_buffer *event_buffer);
+
+#endif /* memory_logging_event_buffer_pool_h */
+

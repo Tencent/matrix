@@ -14,14 +14,33 @@
  * limitations under the License.
  */
 
-#import <malloc/malloc.h>
-#import <mach/vm_statistics.h>
+#ifndef memory_logging_event_h
+#define memory_logging_event_h
 
-#include "memory_stat_err_code.h"
+#include <mach/mach.h>
+#include "logger_internal.h"
 
-int enable_memory_logging(const char *log_dir);
-void disable_memory_logging(void);
+typedef enum {
+	EventType_Invalid = 0,
+	EventType_Alloc,
+	EventType_Free,
+	EventType_Update
+} event_type;
 
-uint32_t get_current_thread_memory_usage(void);
+typedef struct {
+    uint64_t    address;
+    uint32_t    size;
+    uint32_t    object_type;
+    uint32_t    t_id;
+    uint32_t    type_flags;
+    uint32_t    event_size;
+    uint8_t     event_type;
+    uint8_t     stack_size;
+    uintptr_t   stacks[STACK_LOGGING_MAX_STACK_SIZE];
+} memory_logging_event;
 
-bool dump_memory(void (*callback)(void *, void *, void *, void *, void *, void *));
+#define MEMORY_LOGGING_EVENT_SIMPLE_SIZE	offsetof(memory_logging_event, stacks)
+
+FORCE_INLINE size_t write_size_by_event(memory_logging_event *event);
+
+#endif /* memory_logging_event_h */

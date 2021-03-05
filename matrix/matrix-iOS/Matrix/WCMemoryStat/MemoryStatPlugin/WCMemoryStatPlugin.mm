@@ -32,6 +32,8 @@
 #import <AppKit/AppKit.h>
 #endif
 
+#import <objc/runtime.h>
+
 #define g_matrix_memory_stat_plguin_tag "MemoryStat"
 
 @interface WCMemoryStatPlugin () {
@@ -93,7 +95,7 @@
                         issue.issueID = [lastInfo recordID];
                         issue.dataType = EMatrixIssueDataType_Data;
                         issue.issueData = reportData;
-                        MatrixInfo(@"report memory record : %@", issue);
+                        MatrixInfo(@"report memory record: %@", issue);
                         dispatch_async(dispatch_get_main_queue(), ^{
                             [self reportIssue:issue];
                         });
@@ -150,9 +152,44 @@
     [m_recordManager updateRecord:m_currRecord];
 }
 
-- (uint32_t)getMemoryUsageOfCurrentThread;
+- (uint32_t)getMemoryUsageOfCurrentThread
 {
     return get_current_thread_memory_usage();
+}
+
+- (void)dumpMemoryAndGenerateReportData:(NSString *)issue customInfo:(NSDictionary *)customInfo callback:(void (^)(NSData *))callback
+{
+	if (m_currRecord == nil) {
+		MatrixInfo(@"memstat is not running");
+		return;
+	}
+	
+	__block IMP dump_memory_callback = imp_implementationWithBlock(^(void *self, void *p0, void *p1, void *p2, void *p3) {
+		@autoreleasepool {
+			summary_report_param param;
+			param.phone = [MatrixDeviceInfo platform].UTF8String;
+			param.os_ver = [MatrixDeviceInfo systemVersion].UTF8String;
+			param.launch_time = [MatrixAppRebootAnalyzer appLaunchTime] * 1000;
+			param.report_time = [[NSDate date] timeIntervalSince1970] * 1000;
+			param.app_uuid = app_uuid();
+			param.foom_scene = issue.UTF8String;
+			
+			for (id key in customInfo) {
+				std::string stdKey = [key UTF8String];
+				std::string stdVal = [[customInfo[key] description] UTF8String];
+				param.customInfo.insert(std::make_pair(stdKey, stdVal));
+			}
+			
+			auto content = generate_summary_report_i((allocation_event_db *)p0, (stack_frames_db *)p1, (dyld_image_info_db *)p2, (object_type_db *)p3, param);
+			NSData *reportData = [NSData dataWithBytes:content->c_str() length:content->size()];
+			callback(reportData);
+			imp_removeBlock(dump_memory_callback);
+		}
+	});
+	
+	if (dump_memory((void (*)(void *, void *, void *, void *, void *, void *))dump_memory_callback) == false) {
+		imp_removeBlock(dump_memory_callback);
+	}
 }
 
 // ============================================================================
@@ -207,21 +244,23 @@
 #pragma mark - MatrixPluginProtocol
 // ============================================================================
 
-- (void)start
+- (BOOL)start
 {
     if ([MatrixDeviceInfo isBeingDebugged]) {
         MatrixDebug(@"app is being debugged, cannot start memstat");
-        return;
+        return NO;
     }
     
     if (m_currRecord != nil) {
-        return;
+        return NO;
     }
     
-    [super start];
+    if ([super start] == NO) {
+        return NO;
+    }
     
     int ret = MS_ERRC_SUCCESS;
-
+    
     if (self.pluginConfig == nil) {
         self.pluginConfig = [WCMemoryStatConfig defaultConfiguration];
     }
@@ -229,24 +268,26 @@
         skip_max_stack_depth = self.pluginConfig.skipMaxStackDepth;
         skip_min_malloc_size = self.pluginConfig.skipMinMallocSize;
     }
-
+    
     m_currRecord = [[MemoryRecordInfo alloc] init];
     m_currRecord.launchTime = [MatrixAppRebootAnalyzer appLaunchTime];
     m_currRecord.systemVersion = [MatrixDeviceInfo systemVersion];
     m_currRecord.appUUID = @(app_uuid());
-
+    
     NSString *dataPath = [m_currRecord recordDataPath];
     [[NSFileManager defaultManager] removeItemAtPath:dataPath error:nil];
     [[NSFileManager defaultManager] createDirectoryAtPath:dataPath withIntermediateDirectories:YES attributes:nil error:nil];
-
+    
     if ((ret = enable_memory_logging(dataPath.UTF8String)) == MS_ERRC_SUCCESS) {
         [m_recordManager insertNewRecord:m_currRecord];
+        return YES;
     } else {
         MatrixError(@"MemStatPlugin start error: %d", ret);
         disable_memory_logging();
         [self.delegate onMemoryStatPlugin:self hasError:ret];
         [[NSFileManager defaultManager] removeItemAtPath:dataPath error:nil];
         m_currRecord = nil;
+        return NO;
     }
 }
 

@@ -20,8 +20,7 @@
 #include <functional>
 #include <assert.h>
 
-typedef void *(*sbt_reallocator)(void *context, void *oldMem, size_t newSize);
-typedef void  (*sbt_deallocator)(void *context, void *mem);
+#include "buffer_source.h"
 
 template <typename T>
 class sb_tree {
@@ -47,9 +46,7 @@ private:
 	node			*n_buff = NULL; // node buffer
 	node_ptr		last_ptr = 0; // use for exist() and find()
 	uint32_t		i_size = 0; // increment/init size
-	sbt_reallocator reallocator = NULL;
-	sbt_deallocator	deallocator = NULL;
-	void			*context = NULL;
+    buffer_source   *node_buffer_source;
 	
 	inline node &get_node(node_ptr ptr) {
 		return n_buff[ptr];
@@ -264,58 +261,33 @@ private:
 	}
 	
 	bool reallocate_memory(bool is_init) {
-		if (reallocator) {
-			return reallocate_memory_from_file(is_init);
-		} else {
-			return reallocate_memory_from_system(is_init);
-		}
-	}
-	
-	bool reallocate_memory_from_system(bool is_init) {
-		if (is_init) {
-			t_info = &t_empty;
-		}
-		
-		uint32_t malloc_size = (t_info->b_size + i_size) * sizeof(node);
-		void *new_buff = inter_realloc(n_buff, malloc_size);
-		if (new_buff) {
-			memset((char *)new_buff + t_info->b_size * sizeof(node), 0, i_size * sizeof(node));
-			t_info->b_size = t_info->b_size + i_size;
-			n_buff = (node *)new_buff;
-			return true;
-		} else {
-			return false;
-		}
-	}
-	
-	bool reallocate_memory_from_file(bool is_init) {
-		if (is_init) {
-			uint32_t malloc_size = sizeof(tree_info) + i_size * sizeof(node);
-			void *new_buff = reallocator(context, NULL, malloc_size);
-			if (new_buff) {
-				memset(new_buff, 0, malloc_size);
-				t_info = (tree_info *)new_buff;
-				t_info->b_size = i_size;
-				n_buff = (node *)((char *)new_buff + sizeof(tree_info));
-				return true;
-			} else {
-				return false;
-			}
-		} else {
-			t_empty = *t_info; // save t_info temporarily, t_info ptr will be invalid after reallocate new memory from file
-			uint32_t malloc_size = sizeof(tree_info) + (t_info->b_size + i_size) * sizeof(node);
-			void *new_buff = reallocator(context, t_info, malloc_size);
-			if (new_buff) {
-				memset((char *)new_buff + sizeof(tree_info) + t_empty.b_size * sizeof(node), 0, i_size * sizeof(node));
-				t_info = (tree_info *)new_buff;
-				*t_info = t_empty;
-				t_info->b_size = t_info->b_size + i_size;
-				n_buff = (node *)((char *)new_buff + sizeof(tree_info));
-				return true;
-			} else {
-				return false;
-			}
-		}
+        if (is_init) {
+            uint32_t malloc_size = sizeof(tree_info) + i_size * sizeof(node);
+            void *new_buff = node_buffer_source->realloc(malloc_size);
+            if (new_buff) {
+                memset(new_buff, 0, malloc_size);
+                t_info = (tree_info *)new_buff;
+                t_info->b_size = i_size;
+                n_buff = (node *)((char *)new_buff + sizeof(tree_info));
+                return true;
+            } else {
+                return false;
+            }
+        } else {
+            t_empty = *t_info; // save t_info temporarily, t_info ptr will be invalid after reallocate new memory from file
+            uint32_t malloc_size = sizeof(tree_info) + (t_empty.b_size + i_size) * sizeof(node);
+            void *new_buff = node_buffer_source->realloc(malloc_size);
+            if (new_buff) {
+                memset((char *)new_buff + sizeof(tree_info) + t_empty.b_size * sizeof(node), 0, i_size * sizeof(node));
+                t_info = (tree_info *)new_buff;
+                *t_info = t_empty;
+                t_info->b_size = t_info->b_size + i_size;
+                n_buff = (node *)((char *)new_buff + sizeof(tree_info));
+                return true;
+            } else {
+                return false;
+            }
+        }
 	}
 	
 	bool check_tree(node_ptr root) {
@@ -335,24 +307,25 @@ private:
 	}
 	
 public:
-	sb_tree(uint32_t _is=1024) {
+
+    sb_tree(uint32_t _is,
+            buffer_source *_bs) {
+        node_buffer_source = _bs;
 		i_size = (_is == 0 ? 1024 : _is);
-		reallocate_memory(true);
-	}
-	
-	sb_tree(uint32_t _is, sbt_reallocator _a, sbt_deallocator _d, void *_data=NULL, size_t _len=0, void *_context=NULL) : reallocator(_a), deallocator(_d), context(_context) {
-		assert(reallocator != NULL && deallocator != NULL);
-		i_size = (_is == 0 ? 1024 : _is);
-		if (_data != NULL && _len > sizeof(tree_info)) {
-			t_info = (tree_info *)_data;
+        
+        void *data = node_buffer_source->buffer();
+        size_t len = node_buffer_source->buffer_size();
+        
+		if (data != NULL && len > sizeof(tree_info)) {
+			t_info = (tree_info *)data;
 			// check valid
-			if (t_info->b_size * sizeof(node) > _len - sizeof(tree_info) ||
+			if (t_info->b_size * sizeof(node) > len - sizeof(tree_info) ||
 				t_info->root_ptr >= t_info->b_size ||
 				t_info->free_ptr >= t_info->b_size ||
 				t_info->t_size >= t_info->b_size) {
 				reallocate_memory(true);
 			} else {
-				n_buff = (node *)((char *)_data + sizeof(tree_info));
+				n_buff = (node *)((char *)data + sizeof(tree_info));
 				if (!check_tree(t_info->root_ptr)) {
 					reallocate_memory(true);
 				}
@@ -363,11 +336,6 @@ public:
 	}
 	
 	~sb_tree() {
-		if (deallocator) {
-			deallocator(context, t_info);
-		} else {
-			inter_free(n_buff);
-		}
 	}
 	
 	bool exist(const T &key) {

@@ -32,6 +32,9 @@
     self = [super init];
     if (self) {
         self.threadInfos = [[NSMutableDictionary alloc] init];
+		self.userScene = @"";
+		self.systemVersion = @"";
+		self.appUUID = @"";
     }
     return self;
 }
@@ -50,18 +53,23 @@
 - (NSData *)generateReportDataWithCustomInfo:(NSDictionary *)customInfo
 {
     NSString *dataPath = [self recordDataPath];
-    // Check if the last index is abnormal
-    flush_last_data(dataPath.UTF8String);
 
-    std::unordered_map<std::string, std::string> stdCustomInfo;
+	summary_report_param param;
+	param.phone = [MatrixDeviceInfo platform].UTF8String;
+	param.os_ver = [self systemVersion].UTF8String;
+	param.launch_time = self.launchTime * 1000;
+	param.report_time = [[NSDate date] timeIntervalSince1970] * 1000;
+	param.app_uuid = [self appUUID].UTF8String;
+	param.foom_scene = [self userScene].UTF8String;
+	
     for (id key in customInfo) {
         std::string stdKey = [key UTF8String];
         std::string stdVal = [[customInfo[key] description] UTF8String];
-        stdCustomInfo.insert(std::make_pair(stdKey, stdVal));
+		param.customInfo.insert(std::make_pair(stdKey, stdVal));
     }
 
-    std::string content = generate_summary_report(dataPath.UTF8String, [MatrixDeviceInfo platform].UTF8String, [self systemVersion].UTF8String, self.launchTime * 1000, [[NSDate date] timeIntervalSince1970] * 1000, [self appUUID].UTF8String, [self userScene].UTF8String, stdCustomInfo);
-    return [NSData dataWithBytes:content.c_str() length:content.size()];
+    auto content = generate_summary_report(dataPath.UTF8String, param);
+    return [NSData dataWithBytes:content->c_str() length:content->size()];
 }
 
 - (void)calculateAllThreadsMemoryUsage

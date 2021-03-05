@@ -32,11 +32,12 @@
     _pluginListener = pluginListener;
 }
 
-- (void)start
+- (BOOL)start
 {
     if ([_pluginListener respondsToSelector:@selector(onStart:)]) {
         [_pluginListener onStart:self];
     }
+    return YES;
 }
 
 - (void)stop

@@ -21,24 +21,30 @@
 
 static thread_id ignore_thread_id = 0;
 
-void set_memory_logging_invalid(void) {
+void set_memory_logging_invalid(void)
+{
 	WCMemoryStatPlugin *plugin = (WCMemoryStatPlugin *)[[Matrix sharedInstance] getPluginWithTag:[WCMemoryStatPlugin getTag]];
 	[plugin setCurrentRecordInvalid];
 }
 
-void log_internal(const char *file, int line, const char *funcname, char *msg) {
+void log_internal(const char *file, int line, const char *funcname, char *msg)
+{
 	if (ignore_thread_id == current_thread_id()) {
 		return;
 	}
 	
+	set_curr_thread_ignore_logging(true);
 	MatrixLogInternal(MXLogLevelInfo, "MemStat", file, line, funcname, @"INFO: ", @"%s", msg);
+	set_curr_thread_ignore_logging(false);
 }
 
-void log_internal_without_this_thread(thread_id tid) {
-	ignore_thread_id = tid;
+void log_internal_without_this_thread(thread_id t_id)
+{
+	ignore_thread_id = t_id;
 }
 
-void report_error(int error) {
+void report_error(int error)
+{
 	WCMemoryStatPlugin *plugin = (WCMemoryStatPlugin *)[[Matrix sharedInstance] getPluginWithTag:[WCMemoryStatPlugin getTag]];
 	[plugin reportError:error];
 }
