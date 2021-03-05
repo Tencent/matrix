@@ -5,32 +5,24 @@ import android.os.HandlerThread;
 import android.os.Looper;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
-import android.support.annotation.WorkerThread;
-import android.util.LongSparseArray;
+import android.text.TextUtils;
 
 import com.tencent.matrix.trace.core.LooperMonitor;
 
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.LinkedList;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
-@SuppressWarnings("NotNullFieldNotInitialized")
-public final class LooperTaskMonitorFeature extends AbsMonitorFeature {
+public final class LooperTaskMonitorFeature extends AbsTaskMonitorFeature {
     private static final String TAG = "Matrix.battery.LooperTaskMonitorFeature";
 
+    @Deprecated
     public interface LooperTaskListener {
         void onTaskTrace(Thread thread, List<LooperTaskMonitorFeature.TaskTraceInfo> sortList);
     }
-    private final LongSparseArray<LooperMonitor> looperMonitorArray = new LongSparseArray<>();
-    private static final int MAX_CHAT_COUNT = 60;
 
-    private LooperTaskListener getListener() {
-        return mCore;
-    }
+    @Nullable
+    LooperMonitor.LooperDispatchListener mListener;
+    final List<LooperMonitor> mLooperMonitors = new ArrayList<>();
 
     @Override
     protected String getTag() {
@@ -38,38 +30,73 @@ public final class LooperTaskMonitorFeature extends AbsMonitorFeature {
     }
 
     @Override
-    public void onTurnOff() {
-        super.onTurnOff();
-        release();
-    }
+    public void onTurnOn() {
+        super.onTurnOn();
+        mListener = new LooperMonitor.LooperDispatchListener() {
+            @Override
+            public boolean isValid() {
+                return mCore.isTurnOn();
+            }
 
-    @Override
-    public void onForeground(boolean isForeground) {
-        super.onForeground(isForeground);
-        if (mCore.isTurnOn()) {
-            Map<Thread, StackTraceElement[]> stacks = Thread.getAllStackTraces();
-            Set<Thread> set = stacks.keySet();
-
-            // Iterate HandlerThread
-            for (Thread thread : set) {
-                if (thread instanceof HandlerThread) {
-                    Looper looper = ((HandlerThread) thread).getLooper();
-                    if (null != looper) {
-
-                        // Looper Tracing:
-                        // Start tracing when bg, finish tracing when fg
-                        if (isForeground) {
-                            List<TaskTraceInfo> list = onLooperTraceFinish((HandlerThread) thread);
-                            if (!list.isEmpty()) {
-                                getListener().onTaskTrace(thread, list);
-                            }
-                        } else {
-                            onLooperTraceStart((HandlerThread) thread);
-                        }
+            @Override
+            public void onDispatchStart(String x) {
+                super.onDispatchStart(x);
+                String taskName = computeTaskName(x);
+                if (!TextUtils.isEmpty(taskName)) {
+                    int hashcode = computeHashcode(x);
+                    if (hashcode > 0) {
+                        onTaskStarted(taskName, hashcode);
                     }
                 }
             }
+
+            @Override
+            public void onDispatchEnd(String x) {
+                super.onDispatchEnd(x);
+                String taskName = computeTaskName(x);
+                if (!TextUtils.isEmpty(taskName)) {
+                    int hashcode = computeHashcode(x);
+                    if (hashcode > 0) {
+                        onTaskFinished(taskName, hashcode);
+                    }
+                }
+            }
+
+            private String computeTaskName(String rawInput) {
+                if (TextUtils.isEmpty(rawInput)) return null;
+                String symbolBgn = "} ";
+                String symbolEnd = "@";
+                int indexBgn = rawInput.indexOf(symbolBgn);
+                int indexEnd = rawInput.lastIndexOf(symbolEnd);
+                if (indexBgn >= indexEnd - 1) return null;
+                return rawInput.substring(indexBgn + symbolBgn.length(), indexEnd);
+            }
+
+            private int computeHashcode(String rawInput) {
+                if (TextUtils.isEmpty(rawInput)) return -1;
+                String symbolBgn = "@";
+                String symbolEnd = ": ";
+                int indexBgn = rawInput.indexOf(symbolBgn);
+                int indexEnd = rawInput.contains(symbolEnd) ? rawInput.lastIndexOf(symbolEnd) : Integer.MAX_VALUE;
+                if (indexBgn >= indexEnd - 1) return -1;
+                String hexString = indexEnd == Integer.MAX_VALUE ? rawInput.substring(indexBgn + symbolBgn.length()) : rawInput.substring(indexBgn + symbolBgn.length(), indexEnd);
+                try {
+                    return Integer.parseInt(hexString, 16);
+                } catch (NumberFormatException ignored) {
+                    return -1;
+                }
+            }
+        };
+    }
+
+    @Override
+    public void onTurnOff() {
+        super.onTurnOff();
+        mListener = null;
+        for (LooperMonitor item : mLooperMonitors) {
+            item.onRelease();
         }
+        mLooperMonitors.clear();
     }
 
     @Override
@@ -77,107 +104,32 @@ public final class LooperTaskMonitorFeature extends AbsMonitorFeature {
         return 0;
     }
 
-    private void release() {
-        synchronized (looperMonitorArray) {
-            for (int i = 0; i < looperMonitorArray.size(); i++) {
-                looperMonitorArray.valueAt(i).onRelease();
-            }
-            looperMonitorArray.clear();
-        }
+    public void watchLooper(HandlerThread handlerThread) {
+        Looper looper = handlerThread.getLooper();
+        watchLooper(looper);
     }
 
-    @WorkerThread
-    public void onLooperTraceStart(HandlerThread thread) {
-        Looper looper = thread.getLooper();
+    public void watchLooper(Looper looper) {
         if (looper == null) {
             return;
         }
-        synchronized (looperMonitorArray) {
-            if (looperMonitorArray.get(thread.getId()) == null) {
-                LooperMonitor looperMonitor = new LooperMonitor(looper);
-                looperMonitor.addListener(new Observer());
-                looperMonitorArray.put(thread.getId(), looperMonitor);
-            }
-        }
-    }
-
-    @WorkerThread
-    public List<TaskTraceInfo> onLooperTraceFinish(HandlerThread thread) {
-        LooperMonitor looperMonitor;
-        synchronized (looperMonitorArray) {
-            looperMonitor = looperMonitorArray.get(thread.getId());
-            if (null != looperMonitor) {
-                looperMonitorArray.remove(thread.getId());
-            }
-        }
-
-        List<TaskTraceInfo> list = Collections.emptyList();
-        if (null != looperMonitor) {
-            for (LooperMonitor.LooperDispatchListener listener : looperMonitor.getListeners()) {
-                if (listener instanceof Observer) {
-                    Map<String, TaskTraceInfo> taskMap = ((Observer) listener).map;
-                    if (!taskMap.isEmpty()) {
-                        if (list.isEmpty()) {
-                            list = new LinkedList<>();
-                        }
-                        list.addAll(taskMap.values());
-                        taskMap.clear();
-                    }
-                    break;
+        if (mListener != null) {
+            for (LooperMonitor item : mLooperMonitors) {
+                if (item.getLooper() == looper) {
+                    return;
                 }
             }
-            looperMonitor.onRelease();
-        }
-
-        if (!list.isEmpty()) {
-            Collections.sort(list, new Comparator<TaskTraceInfo>() {
-                @Override
-                public int compare(TaskTraceInfo o1, TaskTraceInfo o2) {
-                    return Integer.compare(o2.count, o1.count);
-                }
-            });
-        }
-        return list;
-    }
-
-
-    private class Observer extends LooperMonitor.LooperDispatchListener {
-        private final HashMap<String, TaskTraceInfo> map = new HashMap<>();
-
-        public Observer() {}
-
-        @Override
-        public boolean isValid() {
-            return !mCore.isForeground();
-        }
-
-        @Override
-        public void onDispatchStart(String x) {
-            if (mCore.isForeground()) {
-                return;
-            }
-            super.onDispatchStart(x);
-            int begin = x.indexOf("to ") + 3;
-            int last = x.lastIndexOf('@');
-            if (last < 0) {
-                last = x.lastIndexOf(':');
-            }
-            int end = Math.max(last - MAX_CHAT_COUNT, begin);
-            onTaskTrace(x.substring(end));
-        }
-
-        protected void onTaskTrace(String helpfulStr) {
-            TaskTraceInfo traceInfo = map.get(helpfulStr);
-            if (traceInfo == null) {
-                traceInfo = new TaskTraceInfo();
-                map.put(helpfulStr, traceInfo);
-            }
-            traceInfo.helpfulStr = helpfulStr;
-            traceInfo.increment();
+            LooperMonitor looperMonitor = new LooperMonitor(looper);
+            looperMonitor.addListener(mListener);
+            mLooperMonitors.add(looperMonitor);
         }
     }
 
+    protected void onTraceOverHeat(List<Snapshot.Delta<TaskJiffiesSnapshot>> deltas) {}
+    protected void onConcurrentOverHeat(String key, int concurrentCount, long duringMillis) {}
+    protected void onParseTaskJiffiesFail(String key, int pid, int tid) {}
 
+    @Deprecated
     public static class TaskTraceInfo {
         private static final int LENGTH = 1000;
         private int count;

@@ -16,13 +16,19 @@
 
 package com.tencent.matrix.batterycanary.monitor.feature;
 
+import android.app.Application;
 import android.content.Context;
 import android.os.Handler;
 import android.os.HandlerThread;
+import android.os.Process;
 import android.support.test.InstrumentationRegistry;
 import android.support.test.runner.AndroidJUnit4;
 import android.text.TextUtils;
 
+import com.tencent.matrix.Matrix;
+import com.tencent.matrix.batterycanary.BatteryMonitorPlugin;
+import com.tencent.matrix.batterycanary.monitor.BatteryMonitorConfig;
+import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
 import com.tencent.matrix.trace.core.LooperMonitor;
 
 import org.junit.After;
@@ -43,6 +49,9 @@ public class LooperMonitorTest {
     @Before
     public void setUp() {
         mContext = InstrumentationRegistry.getTargetContext();
+        if (!Matrix.isInstalled()) {
+            Matrix.init(new Matrix.Builder(((Application) mContext.getApplicationContext())).build());
+        }
     }
 
     @After
@@ -146,6 +155,22 @@ public class LooperMonitorTest {
 
                 String taskName = x.substring(indexBgn + symbolBgn.length(), indexEnd);
                 Assert.assertFalse(TextUtils.isEmpty(taskName));
+
+                symbolBgn = "@";
+                symbolEnd = ": ";
+                Assert.assertTrue(x.contains(symbolBgn));
+                Assert.assertTrue(x.contains(symbolEnd));
+
+                indexBgn = x.indexOf(symbolBgn);
+                indexEnd = x.lastIndexOf(symbolEnd);
+                Assert.assertTrue(indexBgn < indexEnd);
+
+                String hexString = x.substring(indexBgn + symbolBgn.length(), indexEnd);
+                int hashcode = Integer.parseInt(hexString, 16);
+                Assert.assertTrue(hashcode > 0);
+
+                Assert.assertEquals(taskName, computeTaskName(x));
+                Assert.assertEquals(hashcode, computeHashcode(x));
             }
 
             /**
@@ -174,6 +199,44 @@ public class LooperMonitorTest {
 
                 String taskName = x.substring(indexBgn + symbolBgn.length(), indexEnd);
                 Assert.assertFalse(TextUtils.isEmpty(taskName));
+
+                symbolBgn = "@";
+                Assert.assertTrue(x.contains(symbolBgn));
+
+                indexBgn = x.indexOf(symbolBgn);
+                Assert.assertTrue(indexBgn < x.length() - 1);
+
+                String hexString = x.substring(indexBgn + symbolBgn.length());
+                int hashcode = Integer.parseInt(hexString, 16);
+                Assert.assertTrue(hashcode > 0);
+
+                Assert.assertEquals(taskName, computeTaskName(x));
+                Assert.assertEquals(hashcode, computeHashcode(x));
+            }
+
+            private String computeTaskName(String rawInput) {
+                if (TextUtils.isEmpty(rawInput)) return null;
+                String symbolBgn = "} ";
+                String symbolEnd = "@";
+                int indexBgn = rawInput.indexOf(symbolBgn);
+                int indexEnd = rawInput.lastIndexOf(symbolEnd);
+                if (indexBgn >= indexEnd - 1) return null;
+                return rawInput.substring(indexBgn + symbolBgn.length(), indexEnd);
+            }
+
+            private int computeHashcode(String rawInput) {
+                if (TextUtils.isEmpty(rawInput)) return -1;
+                String symbolBgn = "@";
+                String symbolEnd = ": ";
+                int indexBgn = rawInput.indexOf(symbolBgn);
+                int indexEnd = rawInput.contains(symbolEnd) ? rawInput.lastIndexOf(symbolEnd) : Integer.MAX_VALUE;
+                if (indexBgn >= indexEnd - 1) return -1;
+                String hexString = indexEnd == Integer.MAX_VALUE ? rawInput.substring(indexBgn + symbolBgn.length()) : rawInput.substring(indexBgn + symbolBgn.length(), indexEnd);
+                try {
+                    return Integer.parseInt(hexString, 16);
+                } catch (NumberFormatException ignored) {
+                    return -1;
+                }
             }
         });
 
@@ -195,6 +258,73 @@ public class LooperMonitorTest {
         Assert.assertTrue(hasStart.get());
         Assert.assertTrue(hasFinish.get());
     }
+
+
+    private BatteryMonitorCore mockMonitor() {
+        BatteryMonitorConfig config = new BatteryMonitorConfig.Builder()
+                .enable(LocationMonitorFeature.class)
+                .enableBuiltinForegroundNotify(false)
+                .enableForegroundMode(false)
+                .wakelockTimeout(1000)
+                .greyJiffiesTime(100)
+                .foregroundLoopCheckTime(1000)
+                .build();
+        return new BatteryMonitorCore(config);
+    }
+
+    @Test
+    public void testWatchHandlerThread() throws InterruptedException {
+        final AtomicBoolean hasStart = new AtomicBoolean();
+        final AtomicBoolean hasCheck = new AtomicBoolean();
+
+        final LooperTaskMonitorFeature feature = new LooperTaskMonitorFeature();
+        BatteryMonitorCore core = mockMonitor();
+        core.start();
+        feature.configure(core);
+        BatteryMonitorPlugin plugin = new BatteryMonitorPlugin(core.getConfig());
+        Matrix.with().getPlugins().add(plugin);
+        feature.onTurnOn();
+
+        HandlerThread handlerThread = new HandlerThread("looper-test");
+        handlerThread.start();
+
+        Assert.assertTrue(feature.mLooperMonitors.isEmpty());
+        Assert.assertTrue(feature.mTaskJiffiesTrace.isEmpty());
+        Assert.assertTrue(feature.mDeltaList.isEmpty());
+
+        feature.watchLooper(handlerThread);
+        Assert.assertEquals(1, feature.mLooperMonitors.size());
+        Assert.assertTrue(feature.mTaskJiffiesTrace.isEmpty());
+        Assert.assertTrue(feature.mDeltaList.isEmpty());
+
+        Handler handler = new Handler(handlerThread.getLooper());
+        handler.post(new TestTask() {
+            @Override
+            public void run() {
+                Assert.assertEquals(1, feature.mLooperMonitors.size());
+                Assert.assertEquals(1, feature.mTaskJiffiesTrace.size());
+                Assert.assertTrue(feature.mTaskStampList.get(Process.myTid()).size() > 1);
+                Assert.assertTrue(feature.mTaskStampList.get(Process.myTid()).get(0).key.contains("com.tencent.matrix.batterycanary.monitor.feature.LooperMonitorTest$"));
+
+                hasStart.set(true);
+                while (!hasCheck.get()) {}
+            }
+        });
+
+        while (!hasStart.get()) {}
+
+        Assert.assertEquals(1, feature.mLooperMonitors.size());
+        Assert.assertEquals(1, feature.mTaskJiffiesTrace.size());
+        Assert.assertTrue(feature.mDeltaList.isEmpty());
+
+        hasCheck.set(true);
+
+        feature.onTurnOff();
+        Assert.assertTrue(feature.mLooperMonitors.isEmpty());
+        Assert.assertTrue(feature.mTaskJiffiesTrace.isEmpty());
+        Assert.assertTrue(feature.mDeltaList.isEmpty());
+    }
+
 
     private static class TestTask implements Runnable {
         @Override
