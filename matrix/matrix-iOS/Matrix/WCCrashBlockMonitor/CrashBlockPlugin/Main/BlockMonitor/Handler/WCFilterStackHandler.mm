@@ -24,9 +24,9 @@
 #define kStackFeat "stack_feat"
 #define kStackFeatTime "stack_feat_time"
 
-@interface WCStackFeatPool : NSObject <NSCoding,NSCopying>
+@interface WCStackFeatPool : NSObject <NSCoding, NSCopying>
 
-@property (nonatomic, strong) NSMutableDictionary<NSNumber *,NSNumber *> *stackFeatDict;
+@property (nonatomic, strong) NSMutableDictionary<NSNumber *, NSNumber *> *stackFeatDict;
 @property (nonatomic, assign) NSTimeInterval featStackTime;
 
 - (NSUInteger)addStackFeat:(NSUInteger)stackFeat;
@@ -35,8 +35,7 @@
 
 @implementation WCStackFeatPool
 
-- (id)init
-{
+- (id)init {
     self = [super init];
     if (self) {
         _stackFeatDict = [[NSMutableDictionary alloc] init];
@@ -45,8 +44,7 @@
     return self;
 }
 
-- (id)initWithCoder:(NSCoder *)aDecoder
-{
+- (id)initWithCoder:(NSCoder *)aDecoder {
     self = [super init];
     if (self) {
         _stackFeatDict = (NSMutableDictionary *)[aDecoder decodeObjectForKey:@kStackFeat];
@@ -55,14 +53,12 @@
     return self;
 }
 
-- (void)encodeWithCoder:(NSCoder *)aCoder
-{
+- (void)encodeWithCoder:(NSCoder *)aCoder {
     [aCoder encodeObject:_stackFeatDict forKey:@kStackFeat];
     [aCoder encodeDouble:_featStackTime forKey:@kStackFeatTime];
 }
 
-- (NSUInteger)addStackFeat:(NSUInteger)stackFeat
-{
+- (NSUInteger)addStackFeat:(NSUInteger)stackFeat {
     if (_stackFeatDict == nil) {
         return 0;
     }
@@ -99,8 +95,7 @@
 
 @implementation WCFilterStackHandler
 
-- (id)init
-{
+- (id)init {
     self = [super init];
     if (self) {
         [self loadStackFeat];
@@ -108,8 +103,7 @@
     return self;
 }
 
-- (void)loadStackFeat
-{
+- (void)loadStackFeat {
     NSString *featPath = [WCCrashBlockFileHandler getStackFeatFilePath];
     if ([[NSFileManager defaultManager] fileExistsAtPath:featPath]) {
         _stackFeatPool = (WCStackFeatPool *)[NSKeyedUnarchiver unarchiveObjectWithFile:featPath];
@@ -124,8 +118,7 @@
     }
 }
 
-- (void)saveStackFeat
-{
+- (void)saveStackFeat {
     if (_stackFeatPool == nil) {
         _stackFeatPool = [[WCStackFeatPool alloc] init];
     }
@@ -135,8 +128,7 @@
     });
 }
 
-- (NSUInteger)addStackFeat:(NSUInteger)stackFeat
-{
+- (NSUInteger)addStackFeat:(NSUInteger)stackFeat {
     if (_stackFeatPool == nil) {
         return 1;
     }

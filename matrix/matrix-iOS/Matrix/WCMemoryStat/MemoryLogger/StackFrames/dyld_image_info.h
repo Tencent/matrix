@@ -38,6 +38,12 @@ const char *app_uuid();
 dyld_image_info_db *dyld_image_info_db_open_or_create(const char *event_dir);
 void dyld_image_info_db_close(dyld_image_info_db *db_context);
 
-void dyld_image_info_db_transform_frames(dyld_image_info_db *db_context, uint64_t *src_frames, uint64_t *out_offsets, char const **out_uuids, char const **out_image_names, bool *out_is_app_images, int32_t count);
+void dyld_image_info_db_transform_frames(dyld_image_info_db *db_context,
+                                         uint64_t *src_frames,
+                                         uint64_t *out_offsets,
+                                         char const **out_uuids,
+                                         char const **out_image_names,
+                                         bool *out_is_app_images,
+                                         int32_t count);
 
 #endif /* dyld_image_info_h */

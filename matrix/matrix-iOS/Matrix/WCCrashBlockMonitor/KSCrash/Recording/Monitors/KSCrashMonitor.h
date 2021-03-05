@@ -24,17 +24,15 @@
 // THE SOFTWARE.
 //
 
-
 /** Keeps watch for crashes and informs via callback when on occurs.
  */
-
 
 #ifndef HDR_KSCrashMonitor_h
 #define HDR_KSCrashMonitor_h
 
 #include "KSCrashMonitorType.h"
 #include "KSThread.h"
-    
+
 #include <stdbool.h>
 #include <sys/signal.h>
 
@@ -43,7 +41,6 @@ extern "C" {
 #endif
 
 struct KSCrash_MonitorContext;
-
 
 // ============================================================================
 #pragma mark - External API -
@@ -63,13 +60,13 @@ KSCrashMonitorType kscm_getActiveMonitors(void);
  *
  * @param onEvent Called whenever an event is captured.
  */
-void kscm_setEventCallback(void (*onEvent)(struct KSCrash_MonitorContext* monitorContext));
+void kscm_setEventCallback(void (*onEvent)(struct KSCrash_MonitorContext *monitorContext));
 
 /** Set the callback to call when user dump
  *
  * @param onUserDump Called when user want to dump
  */
-void kscm_setUserDumpHandler(void (*onUserDump)(struct KSCrash_MonitorContext* monitorContext, const char *dumpFilePath));
+void kscm_setUserDumpHandler(void (*onUserDump)(struct KSCrash_MonitorContext *monitorContext, const char *dumpFilePath));
 
 /** Set the callback to call when crash report is written
  *
@@ -78,16 +75,15 @@ void kscm_setUserDumpHandler(void (*onUserDump)(struct KSCrash_MonitorContext* m
 void kscm_setHandleSignal(void (*KSCrashSentryHandleSignal)(siginfo_t *info));
 
 void kscm_setInnerHandleSingal(void (*KSCrashSentryHandleSignal)(siginfo_t *info));
-    
+
 // ============================================================================
 #pragma mark - Internal API -
 // ============================================================================
 
-typedef struct
-{
+typedef struct {
     void (*setEnabled)(bool isEnabled);
     bool (*isEnabled)(void);
-    void (*addContextualInfoToEvent)(struct KSCrash_MonitorContext* eventContext);
+    void (*addContextualInfoToEvent)(struct KSCrash_MonitorContext *eventContext);
 } KSCrashMonitorAPI;
 
 /** Notify that a fatal exception has been captured.
@@ -101,7 +97,7 @@ bool kscm_notifyFatalExceptionCaptured(bool isAsyncSafeEnvironment);
  *
  * @param context Contextual information about the exception.
  */
-void kscm_handleException(struct KSCrash_MonitorContext* context);
+void kscm_handleException(struct KSCrash_MonitorContext *context);
 
 /** Start general exception log of the user dump
  *
@@ -109,9 +105,9 @@ void kscm_handleException(struct KSCrash_MonitorContext* context);
  *
  * @param dumpFilePath File path used to save the exception log
  */
-void kscm_handleUserDump(struct KSCrash_MonitorContext* context, const char *dumpFilePath);
-    
-static siginfo_t ksTmpSingal = {0};
+void kscm_handleUserDump(struct KSCrash_MonitorContext *context, const char *dumpFilePath);
+
+static siginfo_t ksTmpSingal = { 0 };
 
 /** Pass the signal info raise when the crash happened
  *

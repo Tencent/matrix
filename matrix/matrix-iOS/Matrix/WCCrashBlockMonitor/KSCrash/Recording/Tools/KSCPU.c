@@ -24,7 +24,6 @@
 // THE SOFTWARE.
 //
 
-
 #include "KSCPU.h"
 
 #include "KSSystemCapabilities.h"
@@ -35,10 +34,8 @@
 //#define KSLogger_LocalLevel TRACE
 #include "KSLogger.h"
 
-
-const char* kscpu_currentArch(void)
-{
-    const NXArchInfo* archInfo = NXGetLocalArchInfo();
+const char *kscpu_currentArch(void) {
+    const NXArchInfo *archInfo = NXGetLocalArchInfo();
     return archInfo == NULL ? NULL : archInfo->name;
 }
 
@@ -46,15 +43,13 @@ const char* kscpu_currentArch(void)
 bool kscpu_i_fillState(const thread_t thread,
                        const thread_state_t state,
                        const thread_state_flavor_t flavor,
-                       const mach_msg_type_number_t stateCount)
-{
+                       const mach_msg_type_number_t stateCount) {
     KSLOG_TRACE("Filling thread state with flavor %x.", flavor);
     mach_msg_type_number_t stateCountBuff = stateCount;
     kern_return_t kr;
-    
+
     kr = thread_get_state(thread, flavor, state, &stateCountBuff);
-    if(kr != KERN_SUCCESS)
-    {
+    if (kr != KERN_SUCCESS) {
         KSLOG_ERROR("thread_get_state: %s", mach_error_string(kr));
         return false;
     }
@@ -64,8 +59,7 @@ bool kscpu_i_fillState(const thread_t thread,
 bool kscpu_i_fillState(__unused const thread_t thread,
                        __unused const thread_state_t state,
                        __unused const thread_state_flavor_t flavor,
-                       __unused const mach_msg_type_number_t stateCount)
-{
+                       __unused const mach_msg_type_number_t stateCount) {
     return false;
 }
 

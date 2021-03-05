@@ -24,9 +24,7 @@
 // THE SOFTWARE.
 //
 
-
 #import "KSCrashReportFilter.h"
-
 
 /**
  * Very basic filter that passes through reports untouched.
@@ -36,10 +34,9 @@
  */
 @interface KSCrashReportFilterPassthrough : NSObject <KSCrashReportFilter>
 
-+ (KSCrashReportFilterPassthrough*) filter;
++ (KSCrashReportFilterPassthrough *)filter;
 
 @end
-
 
 /**
  * Passes reports to a series of subfilters, then stores the results of those operations
@@ -56,7 +53,7 @@
  *                    Each "filter" can be id<KSCrashReportFilter> or an NSArray
  *                    of filters (which gets wrapped in a pipeline filter).
  */
-+ (KSCrashReportFilterCombine*) filterWithFiltersAndKeys:(id) firstFilter, ... NS_REQUIRES_NIL_TERMINATION;
++ (KSCrashReportFilterCombine *)filterWithFiltersAndKeys:(id)firstFilter, ... NS_REQUIRES_NIL_TERMINATION;
 
 /** Initializer.
  *
@@ -64,10 +61,9 @@
  *                    Each "filter" can be id<KSCrashReportFilter> or an NSArray
  *                    of filters (which gets wrapped in a pipeline filter).
  */
-- (id) initWithFiltersAndKeys:(id)firstFilter, ... NS_REQUIRES_NIL_TERMINATION;
+- (id)initWithFiltersAndKeys:(id)firstFilter, ... NS_REQUIRES_NIL_TERMINATION;
 
 @end
-
 
 /**
  * A pipeline of filters. Reports get passed through each subfilter in order.
@@ -78,24 +74,23 @@
 @interface KSCrashReportFilterPipeline : NSObject <KSCrashReportFilter>
 
 /** The filters in this pipeline. */
-@property(nonatomic,readonly,retain) NSArray* filters;
+@property (nonatomic, readonly, retain) NSArray *filters;
 
 /** Constructor.
  *
  * @param firstFilter The first filter, followed by filter, filter, ...
  */
-+ (KSCrashReportFilterPipeline*) filterWithFilters:(id) firstFilter, ... NS_REQUIRES_NIL_TERMINATION;
++ (KSCrashReportFilterPipeline *)filterWithFilters:(id)firstFilter, ... NS_REQUIRES_NIL_TERMINATION;
 
 /** Initializer.
  *
  * @param firstFilter The first filter, followed by filter, filter, ...
  */
-- (id) initWithFilters:(id) firstFilter, ... NS_REQUIRES_NIL_TERMINATION;
+- (id)initWithFilters:(id)firstFilter, ... NS_REQUIRES_NIL_TERMINATION;
 
-- (void) addFilter:(id<KSCrashReportFilter>) filter;
+- (void)addFilter:(id<KSCrashReportFilter>)filter;
 
 @end
-
 
 /**
  * Extracts data associated with a key from each report.
@@ -109,8 +104,7 @@
  * @param allowNotFound If NO, filtering will stop with an error if the key
  *                      was not found in a report.
  */
-+ (KSCrashReportFilterObjectForKey*) filterWithKey:(id) key
-                                     allowNotFound:(BOOL) allowNotFound;
++ (KSCrashReportFilterObjectForKey *)filterWithKey:(id)key allowNotFound:(BOOL)allowNotFound;
 
 /** Initializer.
  *
@@ -119,11 +113,9 @@
  * @param allowNotFound If NO, filtering will stop with an error if the key
  *                      was not found in a report.
  */
-- (id) initWithKey:(id) key
-     allowNotFound:(BOOL) allowNotFound;
+- (id)initWithKey:(id)key allowNotFound:(BOOL)allowNotFound;
 
 @end
-
 
 /**
  * Takes values by key from the report and concatenates their string representations.
@@ -139,8 +131,7 @@
  *                     %@ in the formatting text to include the key name as well.
  * @param firstKey Series of keys to extract from the source report.
  */
-+ (KSCrashReportFilterConcatenate*) filterWithSeparatorFmt:(NSString*) separatorFmt
-                                                      keys:(id) firstKey, ... NS_REQUIRES_NIL_TERMINATION;
++ (KSCrashReportFilterConcatenate *)filterWithSeparatorFmt:(NSString *)separatorFmt keys:(id)firstKey, ... NS_REQUIRES_NIL_TERMINATION;
 
 /** Constructor.
  *
@@ -148,11 +139,9 @@
  *                     %@ in the formatting text to include the key name as well.
  * @param firstKey Series of keys to extract from the source report.
  */
-- (id) initWithSeparatorFmt:(NSString*) separatorFmt
-                       keys:(id) firstKey, ... NS_REQUIRES_NIL_TERMINATION;
+- (id)initWithSeparatorFmt:(NSString *)separatorFmt keys:(id)firstKey, ... NS_REQUIRES_NIL_TERMINATION;
 
 @end
-
 
 /**
  * Fetches subsets of data from the source reports. All other data is discarded.
@@ -166,16 +155,15 @@
  *
  * @param firstKeyPath Series of key paths to search in the source reports.
  */
-+ (KSCrashReportFilterSubset*) filterWithKeys:(id) firstKeyPath, ... NS_REQUIRES_NIL_TERMINATION;
++ (KSCrashReportFilterSubset *)filterWithKeys:(id)firstKeyPath, ... NS_REQUIRES_NIL_TERMINATION;
 
 /** Initializer.
  *
  * @param firstKeyPath Series of key paths to search in the source reports.
  */
-- (id) initWithKeys:(id) firstKeyPath, ... NS_REQUIRES_NIL_TERMINATION;
+- (id)initWithKeys:(id)firstKeyPath, ... NS_REQUIRES_NIL_TERMINATION;
 
 @end
-
 
 /**
  * Convert UTF-8 data to an NSString.
@@ -185,10 +173,9 @@
  */
 @interface KSCrashReportFilterDataToString : NSObject <KSCrashReportFilter>
 
-+ (KSCrashReportFilterDataToString*) filter;
++ (KSCrashReportFilterDataToString *)filter;
 
 @end
-
 
 /**
  * Convert NSString to UTF-8 encoded NSData.
@@ -198,6 +185,6 @@
  */
 @interface KSCrashReportFilterStringToData : NSObject <KSCrashReportFilter>
 
-+ (KSCrashReportFilterStringToData*) filter;
++ (KSCrashReportFilterStringToData *)filter;
 
 @end

@@ -19,7 +19,6 @@
 #pragma mark -
 #pragma mark Functions
 
-FORCE_INLINE size_t write_size_by_event(memory_logging_event *event)
-{
+FORCE_INLINE size_t write_size_by_event(memory_logging_event *event) {
     return MEMORY_LOGGING_EVENT_SIMPLE_SIZE + (event->stack_size << 3); // event->stack_size * sizeof(uintptr_t);
 }

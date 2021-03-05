@@ -31,5 +31,5 @@ void object_type_db_close(object_type_db *db_context);
 
 const char *object_type_db_get_object_name(object_type_db *db_context, uint32_t type);
 bool object_type_db_is_nsobject(object_type_db *db_context, uint32_t type);
-	
+
 #endif /* object_event_handler_h */

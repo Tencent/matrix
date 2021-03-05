@@ -38,7 +38,7 @@
 
 - (id)initWithMaxStackTraceCount:(NSUInteger)maxStackTraceCount;
 - (void)addThreadStack:(uintptr_t *)stackArray andLength:(size_t)stackCount andCPU:(float)stackCPU;
-- (NSArray <NSDictionary *>*)makeCallTree;
+- (NSArray<NSDictionary *> *)makeCallTree;
 
 @end
 
@@ -48,7 +48,7 @@
 
 @protocol WCPowerConsumeStackCollectorDelegate <NSObject>
 
-- (void)powerConsumeStackCollectorConclude:(NSArray <NSDictionary *>*)stackTree;
+- (void)powerConsumeStackCollectorConclude:(NSArray<NSDictionary *> *)stackTree;
 
 @end
 

@@ -20,7 +20,6 @@
 
 - (id)initWithCPULimit:(float)cpuLimit;
 
-
 - (BOOL)cultivateCpuUsage:(float)cpuUsage periodTime:(float)periodSec;
 
 /**

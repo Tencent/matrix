@@ -20,20 +20,20 @@
 #include <mach/mach.h>
 
 struct allocation_event {
-	//uint64_t address; // top 8 bits are actually the flags
-	uint16_t alloca_type; // allocation type, such as memory_logging_type_alloc or memory_logging_type_vm_allocate
-	uint16_t object_type; // object type, such as NSObject, NSData, CFString, etc...
-	uint32_t stack_identifier;
-	uint32_t size;
-	uint32_t t_id;
-	
-	allocation_event(uint16_t _at=0, uint16_t _ot=0, uint32_t _si=0, uint32_t _sz=0, uint32_t _id=0) {
-		alloca_type = _at;
-		object_type = _ot;
-		stack_identifier = _si;
-		size = _sz;
-		t_id = _id;
-	}
+    //uint64_t address; // top 8 bits are actually the flags
+    uint16_t alloca_type; // allocation type, such as memory_logging_type_alloc or memory_logging_type_vm_allocate
+    uint16_t object_type; // object type, such as NSObject, NSData, CFString, etc...
+    uint32_t stack_identifier;
+    uint32_t size;
+    uint32_t t_id;
+
+    allocation_event(uint16_t _at = 0, uint16_t _ot = 0, uint32_t _si = 0, uint32_t _sz = 0, uint32_t _id = 0) {
+        alloca_type = _at;
+        object_type = _ot;
+        stack_identifier = _si;
+        size = _sz;
+        t_id = _id;
+    }
 };
 
 #endif /* allocation_event_h */

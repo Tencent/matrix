@@ -30,23 +30,17 @@ public:
         _buffer = NULL;
         _buffer_size = 0;
     }
-    
-    virtual ~buffer_source() {
-        
-    }
-    
-    inline void *buffer() {
-        return _buffer;
-    }
-    
-    inline size_t buffer_size() {
-        return _buffer_size;
-    }
-    
+
+    virtual ~buffer_source() {}
+
+    inline void *buffer() { return _buffer; }
+
+    inline size_t buffer_size() { return _buffer_size; }
+
     virtual void *realloc(size_t new_size) = 0;
     virtual void free() = 0;
     virtual bool init_fail() = 0;
-    
+
 protected:
     void *_buffer;
     size_t _buffer_size;
@@ -54,20 +48,16 @@ protected:
 
 class buffer_source_memory : public buffer_source {
 public:
-    ~buffer_source_memory() {
-        free();
-    }
-    
-    virtual bool init_fail() {
-        return false;
-    }
-    
+    ~buffer_source_memory() { free(); }
+
+    virtual bool init_fail() { return false; }
+
     virtual void *realloc(size_t new_size) {
         _buffer = inter_realloc(_buffer, new_size);
         _buffer_size = new_size;
         return _buffer;
     }
-    
+
     virtual void free() {
         if (_buffer) {
             inter_free(_buffer);
@@ -82,11 +72,11 @@ public:
     buffer_source_file(const char *dir, const char *file_name) {
         int fd = open_file(dir, file_name);
         _file_name = file_name;
-        
+
         if (fd < 0) {
             goto init_fail;
         } else {
-            struct stat st = {0};
+            struct stat st = { 0 };
             if (fstat(fd, &st) == -1) {
                 goto init_fail;
             } else {
@@ -110,28 +100,26 @@ public:
             }
         }
         return;
-        
+
     init_fail:
         if (fd >= 0) {
             close(fd);
             _fd = -1;
         }
     }
-    
+
     ~buffer_source_file() {
         if (_fd >= 0) {
             free();
             close(_fd);
         }
     }
-    
-    virtual bool init_fail() {
-        return _fd < 0;
-    }
-    
+
+    virtual bool init_fail() { return _fd < 0; }
+
     virtual void *realloc(size_t new_size) {
         free();
-        
+
         new_size = round_page(new_size);
         if (ftruncate(_fd, new_size) != 0) {
             disable_memory_logging();
@@ -139,7 +127,7 @@ public:
             abort();
             return NULL;
         }
-        
+
         void *new_mem = inter_mmap(NULL, new_size, PROT_READ | PROT_WRITE, MAP_SHARED, _fd, 0);
         if (new_mem == MAP_FAILED) {
             disable_memory_logging();
@@ -147,15 +135,15 @@ public:
             abort();
             return NULL;
         }
-        
+
         _fs = new_size;
         _buffer = new_mem;
         _buffer_size = new_size;
         //__malloc_printf("%s new file size: %lu", _file_name, _fs);
-        
+
         return _buffer;
     }
-    
+
     virtual void free() {
         if (_buffer && _buffer != MAP_FAILED) {
             inter_munmap(_buffer, _fs);
@@ -163,11 +151,11 @@ public:
             _buffer_size = 0;
         }
     }
-    
+
 private:
-    int         _fd;
-    size_t      _fs;
-    const char  *_file_name;
+    int _fd;
+    size_t _fs;
+    const char *_file_name;
 };
 
 class memory_pool_file {
@@ -175,7 +163,7 @@ public:
     memory_pool_file(const char *dir, const char *file_name) {
         _fd = open_file(dir, file_name);
         _file_name = file_name;
-        
+
         if (_fd < 0) {
             goto init_fail;
         } else {
@@ -186,24 +174,22 @@ public:
             _fs = 0;
         }
         return;
-        
+
     init_fail:
         if (_fd >= 0) {
             close(_fd);
             _fd = -1;
         }
     }
-    
+
     ~memory_pool_file() {
         if (_fd >= 0) {
             close(_fd);
         }
     }
-    
-    bool init_fail() {
-        return _fd < 0;
-    }
-    
+
+    bool init_fail() { return _fd < 0; }
+
     void *malloc(size_t size) {
         size_t new_size = round_page(size);
         if (ftruncate(_fd, _fs + new_size) != 0) {
@@ -212,30 +198,35 @@ public:
             abort();
             return NULL;
         }
-        
+
         void *new_mem = inter_mmap(NULL, new_size, PROT_READ | PROT_WRITE, MAP_SHARED, _fd, _fs);
         if (new_mem == MAP_FAILED) {
             disable_memory_logging();
-            __malloc_printf("%s fail to mmap, %s, new_size: %llu, offset: %llu, errno: %d", _file_name, strerror(errno), (uint64_t)new_size, (uint64_t)_fs, errno);
+            __malloc_printf("%s fail to mmap, %s, new_size: %llu, offset: %llu, errno: %d",
+                            _file_name,
+                            strerror(errno),
+                            (uint64_t)new_size,
+                            (uint64_t)_fs,
+                            errno);
             abort();
             return NULL;
         }
-        
+
         _fs += new_size;
 
         return new_mem;
     }
-    
+
     void free(void *ptr, size_t size) {
         if (ptr != MAP_FAILED && ptr != NULL) {
             inter_munmap(ptr, size);
         }
     }
-    
+
 private:
-    int         _fd;
-    size_t      _fs;
-    const char  *_file_name;
+    int _fd;
+    size_t _fs;
+    const char *_file_name;
 };
 
 #endif /* buffer_source_h */

@@ -24,8 +24,7 @@
     return config;
 }
 
-- (id)init
-{
+- (id)init {
     self = [super init];
     if (self) {
         self.appShortVersion = self.appVersion = @"";
@@ -34,7 +33,7 @@
         self.blockMonitorDelegate = nil;
         self.onAppendAdditionalInfoCallBack = NULL;
         self.onHandleSignalCallBack = NULL;
-        self.blockMonitorConfiguration= [WCBlockMonitorConfiguration defaultConfig];
+        self.blockMonitorConfiguration = [WCBlockMonitorConfiguration defaultConfig];
         self.reportStrategy = EWCCrashBlockReportStrategy_All;
     }
     return self;

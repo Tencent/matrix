@@ -24,10 +24,8 @@
 // THE SOFTWARE.
 //
 
-
 /* Writes a crash report to disk.
  */
-
 
 #ifndef HDR_KSCrashReport_h
 #define HDR_KSCrashReport_h
@@ -41,16 +39,15 @@ extern "C" {
 
 #include <stdbool.h>
 
-
 // ============================================================================
 #pragma mark - Configuration -
 // ============================================================================
-    
+
 /** Set custom user information to be stored in the report.
  *
  * @param userInfoJSON The user information, in JSON format.
  */
-void kscrashreport_setUserInfoJSON(const char* const userInfoJSON);
+void kscrashreport_setUserInfoJSON(const char *const userInfoJSON);
 
 /** Configure whether to introspect any interesting memory locations.
  *  This can find things like strings or Objective-C classes.
@@ -64,7 +61,7 @@ void kscrashreport_setIntrospectMemory(bool shouldIntrospectMemory);
  * @param doNotIntrospectClasses Array of class names.
  * @param length Length of the array.
  */
-void kscrashreport_setDoNotIntrospectClasses(const char** doNotIntrospectClasses, int length);
+void kscrashreport_setDoNotIntrospectClasses(const char **doNotIntrospectClasses, int length);
 
 /** Set the function to call when writing the user section of the report.
  *  This allows the user to add more fields to the user section at the time of the crash.
@@ -73,7 +70,7 @@ void kscrashreport_setDoNotIntrospectClasses(const char** doNotIntrospectClasses
  * @param userSectionWriteCallback The user section write callback.
  */
 void kscrashreport_setUserSectionWriteCallback(const KSReportWriteCallback userSectionWriteCallback);
-    
+
 /**
  *  Use to add point thread
  */
@@ -83,17 +80,17 @@ void kscrashreport_setPointThreadWriteCallback(const KSReportWritePointThreadCal
  * Use to add point thread repeat number
  **/
 void kscrashreport_setPointThreadRepeatNumberWriteCallback(const KSReportWritePointThreadRepeatNumberCallback pointThreadRepeatNumberWriteCallback);
-    
+
 void kscrashreport_setPointCpuHighThreadWriteCallback(const KSReportWritePointCpuHighThreadCallback pointCpuHighThreadWriteCallback);
-    
+
 void kscrashreport_setPointCpuHighThreadCountWriteCallback(const KSReportWritePointCpuHighThreadCountCallback pointCpuHighThreadCountWriteCallback);
-    
+
 void kscrashreport_setPointCpuHighThreadValueWriteCallback(const KSReportWritePointCpuHighThreadValueCallback pointCpuHighThreadValueWriteCallback);
 
 // ============================================================================
 #pragma mark - Main API -
 // ============================================================================
-    
+
 /** Write a standard crash report to a file.
  *
  * @param monitorContext Contextual information about the crash and environment.
@@ -101,8 +98,7 @@ void kscrashreport_setPointCpuHighThreadValueWriteCallback(const KSReportWritePo
  *
  * @param path The file to write to.
  */
-void kscrashreport_writeStandardReport(const struct KSCrash_MonitorContext* const monitorContext,
-                                       const char* path);
+void kscrashreport_writeStandardReport(const struct KSCrash_MonitorContext *const monitorContext, const char *path);
 
 /** Write a minimal crash report to a file.
  *
@@ -111,9 +107,7 @@ void kscrashreport_writeStandardReport(const struct KSCrash_MonitorContext* cons
  *
  * @param path The file to write to.
  */
-void kscrashreport_writeRecrashReport(const struct KSCrash_MonitorContext* const monitorContext,
-                                      const char* path);
-
+void kscrashreport_writeRecrashReport(const struct KSCrash_MonitorContext *const monitorContext, const char *path);
 
 #ifdef __cplusplus
 }

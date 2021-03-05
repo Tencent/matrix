@@ -22,7 +22,6 @@
 // THE SOFTWARE.
 //
 
-
 #ifndef KSSymbolicator_h
 #define KSSymbolicator_h
 
@@ -57,7 +56,7 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-    
+
 /** Symbolicate a stack cursor.
  *
  * @param cursor The cursor to symbolicate.

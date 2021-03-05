@@ -33,8 +33,7 @@ extern "C" {
 
 /** Access the Monitor API.
  */
-KSCrashMonitorAPI* kscm_cppexception_getAPI(void);
-
+KSCrashMonitorAPI *kscm_cppexception_getAPI(void);
 
 #ifdef __cplusplus
 }

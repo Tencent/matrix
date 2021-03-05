@@ -24,7 +24,13 @@ struct allocation_event_db;
 allocation_event_db *allocation_event_db_open_or_create(const char *event_dir);
 void allocation_event_db_close(allocation_event_db *db_context);
 
-void allocation_event_db_add(allocation_event_db *db_context, uint64_t address, uint32_t type_flags, uint32_t object_type, uint32_t size, uint32_t stack_identifier, uint32_t t_id);
+void allocation_event_db_add(allocation_event_db *db_context,
+                             uint64_t address,
+                             uint32_t type_flags,
+                             uint32_t object_type,
+                             uint32_t size,
+                             uint32_t stack_identifier,
+                             uint32_t t_id);
 void allocation_event_db_del(allocation_event_db *db_context, uint64_t address, uint32_t type_flags);
 void allocation_event_db_update_object_type(allocation_event_db *db_context, uint64_t address, uint32_t new_type);
 

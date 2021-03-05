@@ -10,8 +10,8 @@
 
 @interface KSCrashDoctor : NSObject
 
-+ (KSCrashDoctor*) doctor;
++ (KSCrashDoctor *)doctor;
 
-- (NSString*) diagnoseCrash:(NSDictionary*) crashReport;
+- (NSString *)diagnoseCrash:(NSDictionary *)crashReport;
 
 @end

@@ -37,16 +37,14 @@
 
 @implementation NSObject (ObjectEventLogging)
 
-+ (id)event_logging_alloc
-{
-	id object = [self event_logging_alloc];
-    
++ (id)event_logging_alloc {
+    id object = [self event_logging_alloc];
+
     if (is_thread_ignoring_logging()) {
         return object;
     }
     nsobject_set_last_allocation_event_name(object, class_getName(self.class));
-	return object;
+    return object;
 }
 
 @end
-

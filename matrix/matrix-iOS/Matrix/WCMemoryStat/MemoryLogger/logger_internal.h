@@ -30,38 +30,33 @@
 #define USE_PRIVATE_API
 #endif
 
-#define memory_logging_type_free            0
-#define memory_logging_type_generic     	1	/* anything that is not allocation/deallocation */
-#define memory_logging_type_alloc	        2	/* malloc, realloc, etc... */
-#define memory_logging_type_dealloc	        4	/* free, realloc, etc... */
-#define memory_logging_type_vm_allocate     16  /* vm_allocate or mmap */
-#define memory_logging_type_vm_deallocate   32	/* vm_deallocate or munmap */
-#define memory_logging_type_mapped_file_or_shared_mem	128
+#define memory_logging_type_free 0
+#define memory_logging_type_generic 1 /* anything that is not allocation/deallocation */
+#define memory_logging_type_alloc 2 /* malloc, realloc, etc... */
+#define memory_logging_type_dealloc 4 /* free, realloc, etc... */
+#define memory_logging_type_vm_allocate 16 /* vm_allocate or mmap */
+#define memory_logging_type_vm_deallocate 32 /* vm_deallocate or munmap */
+#define memory_logging_type_mapped_file_or_shared_mem 128
 
 // The valid flags include those from VM_FLAGS_ALIAS_MASK, which give the user_tag of allocated VM regions.
-#define memory_logging_valid_type_flags ( \
-	memory_logging_type_generic | \
-	memory_logging_type_alloc | \
-	memory_logging_type_dealloc | \
-	memory_logging_type_vm_allocate | \
-	memory_logging_type_vm_deallocate | \
-	memory_logging_type_mapped_file_or_shared_mem | \
-	VM_FLAGS_ALIAS_MASK)
+#define memory_logging_valid_type_flags                                                                                      \
+    (memory_logging_type_generic | memory_logging_type_alloc | memory_logging_type_dealloc | memory_logging_type_vm_allocate \
+     | memory_logging_type_vm_deallocate | memory_logging_type_mapped_file_or_shared_mem | VM_FLAGS_ALIAS_MASK)
 
-#define STACK_LOGGING_MAX_STACK_SIZE        60
+#define STACK_LOGGING_MAX_STACK_SIZE 60
 
 #ifndef __FILE_NAME__
 #define __FILE_NAME__ (strrchr(__FILE__, '/') + 1)
 #endif
 
-#define __malloc_printf(FORMAT, ...) \
-	do { \
-		char msg[256] = {0}; \
-		sprintf(msg, FORMAT, ##__VA_ARGS__); \
-		log_internal(__FILE_NAME__, __LINE__, __FUNCTION__, msg); \
-	} while(0)
+#define __malloc_printf(FORMAT, ...)                              \
+    do {                                                          \
+        char msg[256] = { 0 };                                    \
+        sprintf(msg, FORMAT, ##__VA_ARGS__);                      \
+        log_internal(__FILE_NAME__, __LINE__, __FUNCTION__, msg); \
+    } while (0)
 
-#define FORCE_INLINE	__attribute__((always_inline))
+#define FORCE_INLINE __attribute__((always_inline))
 
 extern int err_code;
 
@@ -111,7 +106,7 @@ void inter_free(void *ptr);
 
 void *inter_mmap(void *start, size_t length, int prot, int flags, int fd, off_t offset);
 int inter_munmap(void *start, size_t length);
-	
+
 // File Functions
 int open_file(const char *dir_name, const char *file_name);
 void remove_file(const char *dir_name, const char *file_name);

@@ -24,7 +24,6 @@
 // THE SOFTWARE.
 //
 
-
 /* Poor man's zombie tracking.
  *
  * Benefits:
@@ -48,19 +47,17 @@ extern "C" {
 #include "KSCrashMonitor.h"
 #include <stdbool.h>
 
-
 /** Get the class of a deallocated object pointer, if it was tracked.
  *
  * @param object A pointer to a deallocated object.
  *
  * @return The object's class name, or NULL if it wasn't found.
  */
-const char* kszombie_className(const void* object);
+const char *kszombie_className(const void *object);
 
 /** Access the Monitor API.
  */
-KSCrashMonitorAPI* kscm_zombie_getAPI(void);
-
+KSCrashMonitorAPI *kscm_zombie_getAPI(void);
 
 #ifdef __cplusplus
 }

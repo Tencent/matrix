@@ -35,8 +35,7 @@
 
 @implementation WCBlockMonitorConfiguration
 
-+ (id)defaultConfig
-{
++ (id)defaultConfig {
     WCBlockMonitorConfiguration *configuration = [[WCBlockMonitorConfiguration alloc] init];
     configuration.runloopTimeOut = g_defaultRunLoopTimeOut;
     configuration.checkPeriodTime = g_defaultCheckPeriodTime;
@@ -46,7 +45,7 @@
     configuration.limitCPUPercent = g_defaultCPUUsagePercent;
     configuration.bPrintCPUUsage = NO;
     configuration.bGetCPUHighLog = NO;
-    
+
     configuration.bGetPowerConsumeStack = NO;
     configuration.powerConsumeStackCPULimit = g_defaultPowerConsumeCPULimit;
     configuration.bFilterSameStack = NO;
@@ -56,8 +55,7 @@
     return configuration;
 }
 
-- (id)initWithCoder:(NSCoder *)aDecoder
-{
+- (id)initWithCoder:(NSCoder *)aDecoder {
     self = [super init];
     if (self) {
         _runloopTimeOut = (uint32_t)[aDecoder decodeInt32ForKey:@kRunloopTimeOut];
@@ -77,8 +75,7 @@
     return self;
 }
 
-- (void)encodeWithCoder:(NSCoder *)aCoder
-{
+- (void)encodeWithCoder:(NSCoder *)aCoder {
     [aCoder encodeInt64:_runloopTimeOut forKey:@kRunloopTimeOut];
     [aCoder encodeInt32:_checkPeriodTime forKey:@kCheckPeriodTime];
     [aCoder encodeBool:_bMainThreadHandle forKey:@kMainThreadHandle];
@@ -94,19 +91,25 @@
     [aCoder encodeBool:_bPrintMemomryUse forKey:@kPrintMemoryUsage];
 }
 
-- (NSString *)description
-{
+- (NSString *)description {
     return [NSString stringWithFormat:@"RunLoopTimeOut[%u],CheckPeriodTime[%d],\
             \nMainThreadHandle[%d],PerStackInterval[%d],MainThreadCount[%d],\
             \nCPUUsagePercent[%f],PrintCPU[%d],GetCPUHighLog[%d],GetPowerConsumeStack[%d],\
             \nPowerConsumeCPULimit[%f],FilterSameStact[%d],TriggerBeFilteredCount[%u],\
             \nPrintMemory[%d]",
-            self.checkPeriodTime, self.runloopTimeOut,
-            self.bMainThreadHandle, self.perStackInterval, self.mainThreadCount,
-            self.limitCPUPercent, self.bPrintCPUUsage, self.bGetCPUHighLog, self.bGetPowerConsumeStack,
-            self.powerConsumeStackCPULimit, self.bFilterSameStack, self.triggerToBeFilteredCount,
-            self.bPrintMemomryUse];
+                                      self.checkPeriodTime,
+                                      self.runloopTimeOut,
+                                      self.bMainThreadHandle,
+                                      self.perStackInterval,
+                                      self.mainThreadCount,
+                                      self.limitCPUPercent,
+                                      self.bPrintCPUUsage,
+                                      self.bGetCPUHighLog,
+                                      self.bGetPowerConsumeStack,
+                                      self.powerConsumeStackCPULimit,
+                                      self.bFilterSameStack,
+                                      self.triggerToBeFilteredCount,
+                                      self.bPrintMemomryUse];
 }
 
 @end
-

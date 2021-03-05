@@ -20,26 +20,21 @@
 #include <mach/mach.h>
 #include "logger_internal.h"
 
-typedef enum {
-	EventType_Invalid = 0,
-	EventType_Alloc,
-	EventType_Free,
-	EventType_Update
-} event_type;
+typedef enum { EventType_Invalid = 0, EventType_Alloc, EventType_Free, EventType_Update } event_type;
 
 typedef struct {
-    uint64_t    address;
-    uint32_t    size;
-    uint32_t    object_type;
-    uint32_t    t_id;
-    uint32_t    type_flags;
-    uint32_t    event_size;
-    uint8_t     event_type;
-    uint8_t     stack_size;
-    uintptr_t   stacks[STACK_LOGGING_MAX_STACK_SIZE];
+    uint64_t address;
+    uint32_t size;
+    uint32_t object_type;
+    uint32_t t_id;
+    uint32_t type_flags;
+    uint32_t event_size;
+    uint8_t event_type;
+    uint8_t stack_size;
+    uintptr_t stacks[STACK_LOGGING_MAX_STACK_SIZE];
 } memory_logging_event;
 
-#define MEMORY_LOGGING_EVENT_SIMPLE_SIZE	offsetof(memory_logging_event, stacks)
+#define MEMORY_LOGGING_EVENT_SIMPLE_SIZE offsetof(memory_logging_event, stacks)
 
 FORCE_INLINE size_t write_size_by_event(memory_logging_event *event);
 

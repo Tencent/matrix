@@ -18,35 +18,32 @@
 #include "llvm-config.h"
 
 #ifndef __has_feature
-# define __has_feature(x) 0
+#define __has_feature(x) 0
 #endif
 
 #ifndef __has_extension
-# define __has_extension(x) 0
+#define __has_extension(x) 0
 #endif
 
 #ifndef __has_attribute
-# define __has_attribute(x) 0
+#define __has_attribute(x) 0
 #endif
 
 #ifndef __has_builtin
-# define __has_builtin(x) 0
+#define __has_builtin(x) 0
 #endif
 
 /// \macro LLVM_GNUC_PREREQ
 /// \brief Extend the default __GNUC_PREREQ even if glibc's features.h isn't
 /// available.
 #ifndef LLVM_GNUC_PREREQ
-# if defined(__GNUC__) && defined(__GNUC_MINOR__) && defined(__GNUC_PATCHLEVEL__)
-#  define LLVM_GNUC_PREREQ(maj, min, patch) \
-    ((__GNUC__ << 20) + (__GNUC_MINOR__ << 10) + __GNUC_PATCHLEVEL__ >= \
-     ((maj) << 20) + ((min) << 10) + (patch))
-# elif defined(__GNUC__) && defined(__GNUC_MINOR__)
-#  define LLVM_GNUC_PREREQ(maj, min, patch) \
-    ((__GNUC__ << 20) + (__GNUC_MINOR__ << 10) >= ((maj) << 20) + ((min) << 10))
-# else
-#  define LLVM_GNUC_PREREQ(maj, min, patch) 0
-# endif
+#if defined(__GNUC__) && defined(__GNUC_MINOR__) && defined(__GNUC_PATCHLEVEL__)
+#define LLVM_GNUC_PREREQ(maj, min, patch) ((__GNUC__ << 20) + (__GNUC_MINOR__ << 10) + __GNUC_PATCHLEVEL__ >= ((maj) << 20) + ((min) << 10) + (patch))
+#elif defined(__GNUC__) && defined(__GNUC_MINOR__)
+#define LLVM_GNUC_PREREQ(maj, min, patch) ((__GNUC__ << 20) + (__GNUC_MINOR__ << 10) >= ((maj) << 20) + ((min) << 10))
+#else
+#define LLVM_GNUC_PREREQ(maj, min, patch) 0
+#endif
 #endif
 
 /// \macro LLVM_MSC_PREREQ
@@ -93,9 +90,9 @@
 #endif
 
 #if __has_feature(cxx_constexpr) || defined(__GXX_EXPERIMENTAL_CXX0X__)
-# define LLVM_CONSTEXPR constexpr
+#define LLVM_CONSTEXPR constexpr
 #else
-# define LLVM_CONSTEXPR
+#define LLVM_CONSTEXPR
 #endif
 
 /// LLVM_LIBRARY_VISIBILITY - If a class marked with this attribute is linked
@@ -103,9 +100,8 @@
 /// not accessible from outside it.  Can also be used to mark variables and
 /// functions, making them private to any shared library they are linked into.
 /// On PE/COFF targets, library visibility is the default, so this isn't needed.
-#if (__has_attribute(visibility) || LLVM_GNUC_PREREQ(4, 0, 0)) &&              \
-    !defined(__MINGW32__) && !defined(__CYGWIN__) && !defined(LLVM_ON_WIN32)
-#define LLVM_LIBRARY_VISIBILITY __attribute__ ((visibility("hidden")))
+#if (__has_attribute(visibility) || LLVM_GNUC_PREREQ(4, 0, 0)) && !defined(__MINGW32__) && !defined(__CYGWIN__) && !defined(LLVM_ON_WIN32)
+#define LLVM_LIBRARY_VISIBILITY __attribute__((visibility("hidden")))
 #else
 #define LLVM_LIBRARY_VISIBILITY
 #endif
@@ -143,8 +139,7 @@
 #endif
 
 // FIXME: Provide this for PE/COFF targets.
-#if (__has_attribute(weak) || LLVM_GNUC_PREREQ(4, 0, 0)) &&                    \
-    (!defined(__MINGW32__) && !defined(__CYGWIN__) && !defined(LLVM_ON_WIN32))
+#if (__has_attribute(weak) || LLVM_GNUC_PREREQ(4, 0, 0)) && (!defined(__MINGW32__) && !defined(__CYGWIN__) && !defined(LLVM_ON_WIN32))
 #define LLVM_ATTRIBUTE_WEAK __attribute__((__weak__))
 #else
 #define LLVM_ATTRIBUTE_WEAK
@@ -230,52 +225,47 @@
 
 // LLVM_ATTRIBUTE_DEPRECATED(decl, "message")
 #if __has_feature(attribute_deprecated_with_message)
-# define LLVM_ATTRIBUTE_DEPRECATED(decl, message) \
-  decl __attribute__((deprecated(message)))
+#define LLVM_ATTRIBUTE_DEPRECATED(decl, message) decl __attribute__((deprecated(message)))
 #elif defined(__GNUC__)
-# define LLVM_ATTRIBUTE_DEPRECATED(decl, message) \
-  decl __attribute__((deprecated))
+#define LLVM_ATTRIBUTE_DEPRECATED(decl, message) decl __attribute__((deprecated))
 #elif defined(_MSC_VER)
-# define LLVM_ATTRIBUTE_DEPRECATED(decl, message) \
-  __declspec(deprecated(message)) decl
+#define LLVM_ATTRIBUTE_DEPRECATED(decl, message) __declspec(deprecated(message)) decl
 #else
-# define LLVM_ATTRIBUTE_DEPRECATED(decl, message) \
-  decl
+#define LLVM_ATTRIBUTE_DEPRECATED(decl, message) decl
 #endif
 
 /// LLVM_BUILTIN_UNREACHABLE - On compilers which support it, expands
 /// to an expression which states that it is undefined behavior for the
 /// compiler to reach this point.  Otherwise is not defined.
 #if __has_builtin(__builtin_unreachable) || LLVM_GNUC_PREREQ(4, 5, 0)
-# define LLVM_BUILTIN_UNREACHABLE __builtin_unreachable()
+#define LLVM_BUILTIN_UNREACHABLE __builtin_unreachable()
 #elif defined(_MSC_VER)
-# define LLVM_BUILTIN_UNREACHABLE __assume(false)
+#define LLVM_BUILTIN_UNREACHABLE __assume(false)
 #endif
 
 /// LLVM_BUILTIN_TRAP - On compilers which support it, expands to an expression
 /// which causes the program to exit abnormally.
 #if __has_builtin(__builtin_trap) || LLVM_GNUC_PREREQ(4, 3, 0)
-# define LLVM_BUILTIN_TRAP __builtin_trap()
+#define LLVM_BUILTIN_TRAP __builtin_trap()
 #elif defined(_MSC_VER)
 // The __debugbreak intrinsic is supported by MSVC, does not require forward
 // declarations involving platform-specific typedefs (unlike RaiseException),
 // results in a call to vectored exception handlers, and encodes to a short
 // instruction that still causes the trapping behavior we want.
-# define LLVM_BUILTIN_TRAP __debugbreak()
+#define LLVM_BUILTIN_TRAP __debugbreak()
 #else
-# define LLVM_BUILTIN_TRAP *(volatile int*)0x11 = 0
+#define LLVM_BUILTIN_TRAP *(volatile int *)0x11 = 0
 #endif
 
 /// \macro LLVM_ASSUME_ALIGNED
 /// \brief Returns a pointer with an assumed alignment.
 #if __has_builtin(__builtin_assume_aligned) || LLVM_GNUC_PREREQ(4, 7, 0)
-# define LLVM_ASSUME_ALIGNED(p, a) __builtin_assume_aligned(p, a)
+#define LLVM_ASSUME_ALIGNED(p, a) __builtin_assume_aligned(p, a)
 #elif defined(LLVM_BUILTIN_UNREACHABLE)
 // As of today, clang does not support __builtin_assume_aligned.
-# define LLVM_ASSUME_ALIGNED(p, a) \
-           (((uintptr_t(p) % (a)) == 0) ? (p) : (LLVM_BUILTIN_UNREACHABLE, (p)))
+#define LLVM_ASSUME_ALIGNED(p, a) (((uintptr_t(p) % (a)) == 0) ? (p) : (LLVM_BUILTIN_UNREACHABLE, (p)))
 #else
-# define LLVM_ASSUME_ALIGNED(p, a) (p)
+#define LLVM_ASSUME_ALIGNED(p, a) (p)
 #endif
 
 /// \macro LLVM_ALIGNAS
@@ -286,11 +276,11 @@
 /// Note that __declspec(align) has special quirks, it's not legal to pass a
 /// structure with __declspec(align) as a formal parameter.
 #ifdef _MSC_VER
-# define LLVM_ALIGNAS(x) __declspec(align(x))
+#define LLVM_ALIGNAS(x) __declspec(align(x))
 #elif __GNUC__ && !__has_feature(cxx_alignas) && !LLVM_GNUC_PREREQ(4, 8, 0)
-# define LLVM_ALIGNAS(x) __attribute__((aligned(x)))
+#define LLVM_ALIGNAS(x) __attribute__((aligned(x)))
 #else
-# define LLVM_ALIGNAS(x) alignas(x)
+#define LLVM_ALIGNAS(x) alignas(x)
 #endif
 
 /// \macro LLVM_PACKED
@@ -310,15 +300,15 @@
 ///   int k;
 ///   long long l;
 /// };
-/// LLVM_PACKED_END 
+/// LLVM_PACKED_END
 #ifdef _MSC_VER
-# define LLVM_PACKED(d) __pragma(pack(push, 1)) d __pragma(pack(pop))
-# define LLVM_PACKED_START __pragma(pack(push, 1))
-# define LLVM_PACKED_END   __pragma(pack(pop))
+#define LLVM_PACKED(d) __pragma(pack(push, 1)) d __pragma(pack(pop))
+#define LLVM_PACKED_START __pragma(pack(push, 1))
+#define LLVM_PACKED_END __pragma(pack(pop))
 #else
-# define LLVM_PACKED(d) d __attribute__((packed))
-# define LLVM_PACKED_START _Pragma("pack(push, 1)")
-# define LLVM_PACKED_END   _Pragma("pack(pop)")
+#define LLVM_PACKED(d) d __attribute__((packed))
+#define LLVM_PACKED_START _Pragma("pack(push, 1)")
+#define LLVM_PACKED_END _Pragma("pack(pop)")
 #endif
 
 /// \macro LLVM_PTR_SIZE
@@ -326,54 +316,54 @@
 /// Generally used in combination with LLVM_ALIGNAS or when doing computation in
 /// the preprocessor.
 #ifdef __SIZEOF_POINTER__
-# define LLVM_PTR_SIZE __SIZEOF_POINTER__
+#define LLVM_PTR_SIZE __SIZEOF_POINTER__
 #elif defined(_WIN64)
-# define LLVM_PTR_SIZE 8
+#define LLVM_PTR_SIZE 8
 #elif defined(_WIN32)
-# define LLVM_PTR_SIZE 4
+#define LLVM_PTR_SIZE 4
 #elif defined(_MSC_VER)
-# error "could not determine LLVM_PTR_SIZE as a constant int for MSVC"
+#error "could not determine LLVM_PTR_SIZE as a constant int for MSVC"
 #else
-# define LLVM_PTR_SIZE sizeof(void *)
+#define LLVM_PTR_SIZE sizeof(void *)
 #endif
 
 /// \macro LLVM_FUNCTION_NAME
 /// \brief Expands to __func__ on compilers which support it.  Otherwise,
 /// expands to a compiler-dependent replacement.
 #if defined(_MSC_VER)
-# define LLVM_FUNCTION_NAME __FUNCTION__
+#define LLVM_FUNCTION_NAME __FUNCTION__
 #else
-# define LLVM_FUNCTION_NAME __func__
+#define LLVM_FUNCTION_NAME __func__
 #endif
 
 /// \macro LLVM_MEMORY_SANITIZER_BUILD
 /// \brief Whether LLVM itself is built with MemorySanitizer instrumentation.
 #if __has_feature(memory_sanitizer)
-# define LLVM_MEMORY_SANITIZER_BUILD 1
-# include <sanitizer/msan_interface.h>
+#define LLVM_MEMORY_SANITIZER_BUILD 1
+#include <sanitizer/msan_interface.h>
 #else
-# define LLVM_MEMORY_SANITIZER_BUILD 0
-# define __msan_allocated_memory(p, size)
-# define __msan_unpoison(p, size)
+#define LLVM_MEMORY_SANITIZER_BUILD 0
+#define __msan_allocated_memory(p, size)
+#define __msan_unpoison(p, size)
 #endif
 
 /// \macro LLVM_ADDRESS_SANITIZER_BUILD
 /// \brief Whether LLVM itself is built with AddressSanitizer instrumentation.
 #if __has_feature(address_sanitizer) || defined(__SANITIZE_ADDRESS__)
-# define LLVM_ADDRESS_SANITIZER_BUILD 1
-# include <sanitizer/asan_interface.h>
+#define LLVM_ADDRESS_SANITIZER_BUILD 1
+#include <sanitizer/asan_interface.h>
 #else
-# define LLVM_ADDRESS_SANITIZER_BUILD 0
-# define __asan_poison_memory_region(p, size)
-# define __asan_unpoison_memory_region(p, size)
+#define LLVM_ADDRESS_SANITIZER_BUILD 0
+#define __asan_poison_memory_region(p, size)
+#define __asan_unpoison_memory_region(p, size)
 #endif
 
 /// \macro LLVM_THREAD_SANITIZER_BUILD
 /// \brief Whether LLVM itself is built with ThreadSanitizer instrumentation.
 #if __has_feature(thread_sanitizer) || defined(__SANITIZE_THREAD__)
-# define LLVM_THREAD_SANITIZER_BUILD 1
+#define LLVM_THREAD_SANITIZER_BUILD 1
 #else
-# define LLVM_THREAD_SANITIZER_BUILD 0
+#define LLVM_THREAD_SANITIZER_BUILD 0
 #endif
 
 #if LLVM_THREAD_SANITIZER_BUILD
@@ -390,21 +380,21 @@ void AnnotateIgnoreWritesEnd(const char *file, int line);
 // This marker is used to define a happens-before arc. The race detector will
 // infer an arc from the begin to the end when they share the same pointer
 // argument.
-# define TsanHappensBefore(cv) AnnotateHappensBefore(__FILE_NAME__, __LINE__, cv)
+#define TsanHappensBefore(cv) AnnotateHappensBefore(__FILE_NAME__, __LINE__, cv)
 
 // This marker defines the destination of a happens-before arc.
-# define TsanHappensAfter(cv) AnnotateHappensAfter(__FILE_NAME__, __LINE__, cv)
+#define TsanHappensAfter(cv) AnnotateHappensAfter(__FILE_NAME__, __LINE__, cv)
 
 // Ignore any races on writes between here and the next TsanIgnoreWritesEnd.
-# define TsanIgnoreWritesBegin() AnnotateIgnoreWritesBegin(__FILE_NAME__, __LINE__)
+#define TsanIgnoreWritesBegin() AnnotateIgnoreWritesBegin(__FILE_NAME__, __LINE__)
 
 // Resume checking for racy writes.
-# define TsanIgnoreWritesEnd() AnnotateIgnoreWritesEnd(__FILE_NAME__, __LINE__)
+#define TsanIgnoreWritesEnd() AnnotateIgnoreWritesEnd(__FILE_NAME__, __LINE__)
 #else
-# define TsanHappensBefore(cv)
-# define TsanHappensAfter(cv)
-# define TsanIgnoreWritesBegin()
-# define TsanIgnoreWritesEnd()
+#define TsanHappensBefore(cv)
+#define TsanHappensAfter(cv)
+#define TsanIgnoreWritesBegin()
+#define TsanIgnoreWritesEnd()
 #endif
 
 /// \brief Mark debug helper function definitions like dump() that should not be

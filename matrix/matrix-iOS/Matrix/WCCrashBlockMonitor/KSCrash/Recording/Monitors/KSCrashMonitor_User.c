@@ -34,44 +34,36 @@
 #include <memory.h>
 #include <stdlib.h>
 
-
 /** Context to fill with crash information. */
 
 static volatile bool g_isEnabled = false;
 
-void kscm_reportUserExceptionSelfDefinePath(const char* name,
-                                            const char* reason,
-                                            const char* language,
-                                            const char* lineOfCode,
-                                            const char* stackTrace,
+void kscm_reportUserExceptionSelfDefinePath(const char *name,
+                                            const char *reason,
+                                            const char *language,
+                                            const char *lineOfCode,
+                                            const char *stackTrace,
                                             bool logAllThreads,
                                             bool terminateProgram,
-                                            const char* dumpFilePath,
-                                            int dumpType)
-{
-    if(!g_isEnabled)
-    {
+                                            const char *dumpFilePath,
+                                            int dumpType) {
+    if (!g_isEnabled) {
         KSLOG_WARN("User-reported exception monitor is not installed. Exception has not been recorded.");
-    }
-    else
-    {
-        if(logAllThreads)
-        {
+    } else {
+        if (logAllThreads) {
             ksmc_suspendEnvironment();
         }
-        if(terminateProgram)
-        {
+        if (terminateProgram) {
             kscm_notifyFatalExceptionCaptured(false);
         }
-        
+
         char eventID[37];
         ksid_generate(eventID);
         KSMC_NEW_CONTEXT(machineContext);
         ksmc_getContextForThread(ksthread_self(), machineContext, true);
         KSStackCursor stackCursor;
         kssc_initSelfThread(&stackCursor, 0);
-        
-        
+
         KSLOG_DEBUG("Filling out context.");
         KSCrash_MonitorContext context;
         memset(&context, 0, sizeof(context));
@@ -86,40 +78,32 @@ void kscm_reportUserExceptionSelfDefinePath(const char* name,
         context.userException.customStackTrace = stackTrace;
         context.userException.userDumpType = dumpType;
         context.stackCursor = &stackCursor;
-        
+
         kscm_handleUserDump(&context, dumpFilePath);
-        
-        if(logAllThreads)
-        {
+
+        if (logAllThreads) {
             ksmc_resumeEnvironment();
         }
-        if(terminateProgram)
-        {
+        if (terminateProgram) {
             abort();
         }
     }
 }
 
-void kscm_reportUserException(const char* name,
-                              const char* reason,
-                              const char* language,
-                              const char* lineOfCode,
-                              const char* stackTrace,
+void kscm_reportUserException(const char *name,
+                              const char *reason,
+                              const char *language,
+                              const char *lineOfCode,
+                              const char *stackTrace,
                               bool logAllThreads,
-                              bool terminateProgram)
-{
-    if(!g_isEnabled)
-    {
+                              bool terminateProgram) {
+    if (!g_isEnabled) {
         KSLOG_WARN("User-reported exception monitor is not installed. Exception has not been recorded.");
-    }
-    else
-    {
-        if(logAllThreads)
-        {
+    } else {
+        if (logAllThreads) {
             ksmc_suspendEnvironment();
         }
-        if(terminateProgram)
-        {
+        if (terminateProgram) {
             kscm_notifyFatalExceptionCaptured(false);
         }
 
@@ -129,7 +113,6 @@ void kscm_reportUserException(const char* name,
         ksmc_getContextForThread(ksthread_self(), machineContext, true);
         KSStackCursor stackCursor;
         kssc_initSelfThread(&stackCursor, 0);
-
 
         KSLOG_DEBUG("Filling out context.");
         KSCrash_MonitorContext context;
@@ -147,33 +130,24 @@ void kscm_reportUserException(const char* name,
 
         kscm_handleException(&context);
 
-        if(logAllThreads)
-        {
+        if (logAllThreads) {
             ksmc_resumeEnvironment();
         }
-        if(terminateProgram)
-        {
+        if (terminateProgram) {
             abort();
         }
     }
 }
 
-static void setEnabled(bool isEnabled)
-{
+static void setEnabled(bool isEnabled) {
     g_isEnabled = isEnabled;
 }
 
-static bool isEnabled()
-{
+static bool isEnabled() {
     return g_isEnabled;
 }
 
-KSCrashMonitorAPI* kscm_user_getAPI()
-{
-    static KSCrashMonitorAPI api =
-    {
-        .setEnabled = setEnabled,
-        .isEnabled = isEnabled
-    };
+KSCrashMonitorAPI *kscm_user_getAPI() {
+    static KSCrashMonitorAPI api = { .setEnabled = setEnabled, .isEnabled = isEnabled };
     return &api;
 }

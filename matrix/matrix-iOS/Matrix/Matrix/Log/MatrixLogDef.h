@@ -34,13 +34,13 @@
 #define Matrix_release(x) [x release]
 #endif
 
-#define MatrixLogInternal(LOGLEVEL, MODULE, FILE, LINE, FUNC, PREFIX, FORMAT, ...)\
-    if (matrix_shouldlog(LOGLEVEL)) {\
-        @autoreleasepool {\
+#define MatrixLogInternal(LOGLEVEL, MODULE, FILE, LINE, FUNC, PREFIX, FORMAT, ...)                                                               \
+    if (matrix_shouldlog(LOGLEVEL)) {                                                                                                            \
+        @autoreleasepool {                                                                                                                       \
             NSString *__log_message = [[NSString alloc] initWithFormat:@"%@%@", PREFIX, [NSString stringWithFormat:FORMAT, ##__VA_ARGS__, nil]]; \
-            matrix_log(LOGLEVEL, MODULE, FILE, LINE, FUNC, __log_message);\
-            Matrix_release(__log_message);\
-        }\
+            matrix_log(LOGLEVEL, MODULE, FILE, LINE, FUNC, __log_message);                                                                       \
+            Matrix_release(__log_message);                                                                                                       \
+        }                                                                                                                                        \
     }
 
 #define MatrixErrorWithModule(MODULE, FORMAT, ...) \

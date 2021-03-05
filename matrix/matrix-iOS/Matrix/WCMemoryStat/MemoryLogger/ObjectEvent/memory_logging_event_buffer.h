@@ -26,9 +26,9 @@ struct memory_logging_event_buffer {
     int32_t read_index;
     int32_t buffer_size;
     uint8_t *buffer;
-    
+
     malloc_lock_s lock;
-    
+
     volatile thread_id t_id;
     memory_logging_event_buffer *next_event_buffer;
 };

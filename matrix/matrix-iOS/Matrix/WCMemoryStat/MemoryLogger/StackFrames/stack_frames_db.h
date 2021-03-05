@@ -26,6 +26,7 @@ stack_frames_db *stack_frames_db_open_or_create(const char *db_dir);
 void stack_frames_db_close(stack_frames_db *db_context);
 
 uint32_t add_stack_frames_in_table(stack_frames_db *db_context, uintptr_t *frames, int32_t count);
-void unwind_stack_from_table_index(stack_frames_db *db_context, uint32_t stack_identifier, uint64_t *out_frames_buffer, uint32_t *out_frames_count, uint32_t max_frames);
+void unwind_stack_from_table_index(
+stack_frames_db *db_context, uint32_t stack_identifier, uint64_t *out_frames_buffer, uint32_t *out_frames_count, uint32_t max_frames);
 
 #endif /* stack_frames_db_h */

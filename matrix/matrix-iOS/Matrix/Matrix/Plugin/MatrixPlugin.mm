@@ -27,47 +27,40 @@
 
 @synthesize pluginConfig;
 
-- (void)setupPluginListener:(id<MatrixPluginListenerDelegate>)pluginListener
-{
+- (void)setupPluginListener:(id<MatrixPluginListenerDelegate>)pluginListener {
     _pluginListener = pluginListener;
 }
 
-- (BOOL)start
-{
+- (BOOL)start {
     if ([_pluginListener respondsToSelector:@selector(onStart:)]) {
         [_pluginListener onStart:self];
     }
     return YES;
 }
 
-- (void)stop
-{
+- (void)stop {
     if ([_pluginListener respondsToSelector:@selector(onStop:)]) {
         [_pluginListener onStop:self];
     }
 }
 
-- (void)destroy
-{
+- (void)destroy {
     if ([_pluginListener respondsToSelector:@selector(onDestroy:)]) {
         [_pluginListener onDestroy:self];
     }
 }
 
-- (void)reportIssue:(MatrixIssue *)issue
-{
+- (void)reportIssue:(MatrixIssue *)issue {
     if (_pluginListener != nil) {
         [_pluginListener onReportIssue:issue];
     }
 }
 
-- (void)reportIssueCompleteWithIssue:(MatrixIssue *)issue success:(BOOL)bSuccess
-{
+- (void)reportIssueCompleteWithIssue:(MatrixIssue *)issue success:(BOOL)bSuccess {
     MatrixError(@"base class not deal with this");
 }
 
-+ (NSString *)getTag
-{
++ (NSString *)getTag {
     MatrixError(@"base class has no tag");
     return nil;
 }

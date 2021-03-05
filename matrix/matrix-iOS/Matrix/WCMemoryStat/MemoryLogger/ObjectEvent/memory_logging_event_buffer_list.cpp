@@ -28,8 +28,7 @@ struct memory_logging_event_buffer_list {
 #pragma mark -
 #pragma mark Functions
 
-memory_logging_event_buffer_list *memory_logging_event_buffer_list_create()
-{
+memory_logging_event_buffer_list *memory_logging_event_buffer_list_create() {
     memory_logging_event_buffer_list *buffer_list = (memory_logging_event_buffer_list *)inter_malloc(sizeof(memory_logging_event_buffer_list));
 
     buffer_list->lock = __malloc_lock_init();
@@ -39,19 +38,17 @@ memory_logging_event_buffer_list *memory_logging_event_buffer_list_create()
     return buffer_list;
 }
 
-void memory_logging_event_buffer_list_free(memory_logging_event_buffer_list *buffer_list)
-{
+void memory_logging_event_buffer_list_free(memory_logging_event_buffer_list *buffer_list) {
     if (buffer_list == NULL) {
         return;
     }
-    
+
     inter_free(buffer_list);
 }
 
-void memory_logging_event_buffer_list_push_back(memory_logging_event_buffer_list *buffer_list, memory_logging_event_buffer *event_buffer)
-{
+void memory_logging_event_buffer_list_push_back(memory_logging_event_buffer_list *buffer_list, memory_logging_event_buffer *event_buffer) {
     __malloc_lock_lock(&buffer_list->lock);
-    
+
     if (buffer_list->curr_buffer == NULL) {
         buffer_list->curr_buffer = event_buffer;
         buffer_list->tail_buffer = event_buffer;
@@ -59,28 +56,26 @@ void memory_logging_event_buffer_list_push_back(memory_logging_event_buffer_list
         buffer_list->tail_buffer->next_event_buffer = event_buffer;
         buffer_list->tail_buffer = event_buffer;
     }
-    
+
     event_buffer->next_event_buffer = NULL;
 
     __malloc_lock_unlock(&buffer_list->lock);
 }
 
-memory_logging_event_buffer *memory_logging_event_buffer_list_pop_front(memory_logging_event_buffer_list *buffer_list)
-{
+memory_logging_event_buffer *memory_logging_event_buffer_list_pop_front(memory_logging_event_buffer_list *buffer_list) {
     __malloc_lock_lock(&buffer_list->lock);
-    
+
     memory_logging_event_buffer *curr_buffer = buffer_list->curr_buffer;
     if (curr_buffer) {
         buffer_list->curr_buffer = curr_buffer->next_event_buffer;
     }
-    
+
     __malloc_lock_unlock(&buffer_list->lock);
-    
+
     return curr_buffer;
 }
 
-memory_logging_event_buffer *memory_logging_event_buffer_list_reset(memory_logging_event_buffer_list *buffer_list)
-{
+memory_logging_event_buffer *memory_logging_event_buffer_list_reset(memory_logging_event_buffer_list *buffer_list) {
     __malloc_lock_lock(&buffer_list->lock);
 
     memory_logging_event_buffer *curr_buffer = buffer_list->curr_buffer;
@@ -89,6 +84,6 @@ memory_logging_event_buffer *memory_logging_event_buffer_list_reset(memory_loggi
     }
 
     __malloc_lock_unlock(&buffer_list->lock);
-    
+
     return curr_buffer;
 }

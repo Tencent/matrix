@@ -28,8 +28,7 @@
 
 @implementation WCBlockMonitorConfigHandler
 
-- (id)init
-{
+- (id)init {
     self = [super init];
     if (self) {
         m_cpuCount = [WCBlockMonitorConfigHandler getDeviceCPUCount];
@@ -38,91 +37,75 @@
     return self;
 }
 
-- (void)setConfiguration:(WCBlockMonitorConfiguration *)monitorConfig
-{
+- (void)setConfiguration:(WCBlockMonitorConfiguration *)monitorConfig {
     m_currentConfiguration = monitorConfig;
     MatrixInfo(@"%@", [m_currentConfiguration description]);
 }
 
-- (useconds_t)getRunloopTimeOut
-{
+- (useconds_t)getRunloopTimeOut {
     return m_currentConfiguration.runloopTimeOut;
 }
 
-- (float)getCPUUsagePercent
-{
+- (float)getCPUUsagePercent {
     return m_currentConfiguration.limitCPUPercent * m_cpuCount;
 }
 
-- (BOOL)getMainThreadHandle
-{
+- (BOOL)getMainThreadHandle {
     return m_currentConfiguration.bMainThreadHandle;
 }
 
-- (useconds_t)getCheckPeriodTime
-{
+- (useconds_t)getCheckPeriodTime {
     return m_currentConfiguration.checkPeriodTime;
 }
 
-- (useconds_t)getPerStackInterval
-{
+- (useconds_t)getPerStackInterval {
     return m_currentConfiguration.perStackInterval;
 }
 
-- (int)getMainThreadCount
-{
+- (int)getMainThreadCount {
     return m_currentConfiguration.mainThreadCount;
 }
 
-+ (int)getDeviceCPUCount
-{
++ (int)getDeviceCPUCount {
     size_t size = sizeof(int);
     int results;
-    int mib[2] = {CTL_HW, (int) HW_NCPU};
+    int mib[2] = { CTL_HW, (int)HW_NCPU };
     sysctl(mib, 2, &results, &size, NULL, 0);
     return results;
 }
 
-- (BOOL)getShouldPrintCPUUsage
-{
+- (BOOL)getShouldPrintCPUUsage {
     return m_currentConfiguration.bPrintCPUUsage;
 }
 
-- (BOOL)getShouldGetCPUHighLog
-{
+- (BOOL)getShouldGetCPUHighLog {
     return m_currentConfiguration.bGetCPUHighLog;
 }
 
-- (BOOL)getShouldGetPowerConsumeStack
-{
+- (BOOL)getShouldGetPowerConsumeStack {
     return m_currentConfiguration.bGetPowerConsumeStack;
 }
 
-- (float)getPowerConsumeCPULimit
-{
+- (float)getPowerConsumeCPULimit {
     return m_currentConfiguration.powerConsumeStackCPULimit;
 }
 
-- (BOOL)getShouldFilterSameStack
-{
+- (BOOL)getShouldFilterSameStack {
     return m_currentConfiguration.bFilterSameStack;
 }
 
-- (uint32_t)getTriggerFilterCount
-{
+- (uint32_t)getTriggerFilterCount {
     if (m_currentConfiguration.triggerToBeFilteredCount == 0) {
         m_currentConfiguration.triggerToBeFilteredCount = 1;
     }
     return m_currentConfiguration.triggerToBeFilteredCount;
 }
 
-- (BOOL)getShouldPrintMemoryUse
-{
+- (BOOL)getShouldPrintMemoryUse {
     return m_currentConfiguration.bPrintMemomryUse;
 }
 
-- (BOOL)getEnableLocalSymbolicate
-{
+- (BOOL)getEnableLocalSymbolicate {
     return m_currentConfiguration.bEnableLocalSymbolicate;
 }
 

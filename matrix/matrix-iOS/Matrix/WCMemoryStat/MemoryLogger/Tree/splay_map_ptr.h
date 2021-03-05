@@ -23,59 +23,63 @@
 
 #include "buffer_source.h"
 
-template <typename TKey, typename TVal>
-class splay_map_ptr {
+template<typename TKey, typename TVal> class splay_map_ptr {
 private:
     struct node;
     typedef struct node *node_ptr;
-    
+
     struct node {
         TKey key;
         TVal val;
         node_ptr left, right;
     };
 
-    node_ptr            root_ptr = NULL;
-    node_ptr            last_ptr = NULL; // use for exist() and find()
-    node_ptr            free_ptr = NULL;
-    uint32_t            t_size; // tree size
-    
-    memory_pool_file    *memory_pool;
-    
+    node_ptr root_ptr = NULL;
+    node_ptr last_ptr = NULL; // use for exist() and find()
+    node_ptr free_ptr = NULL;
+    uint32_t t_size; // tree size
+
+    memory_pool_file *memory_pool;
+
     bool splay(TKey key, node_ptr &root) {
         /* Simple top down splay, not requiring i to be in the tree t.  */
         /* What it does is described above.                             */
-        if (root == NULL) return false;
+        if (root == NULL)
+            return false;
         node N;
         node_ptr l, r, t;
         N.left = N.right = NULL;
         l = r = &N;
         t = root;
         bool ret = false;
-        
+
         for (;;) {
             if (t->key > key) {
                 node_ptr tlc = t->left;
-                if (tlc == NULL) break;
+                if (tlc == NULL)
+                    break;
                 if (tlc->key > key) {
-                    t->left = tlc->right;                   /* rotate right */
+                    t->left = tlc->right; /* rotate right */
                     tlc->right = t;
                     t = tlc;
-                    if (t->left == NULL) break;
+                    if (t->left == NULL)
+                        break;
                 }
-                r->left = t;                                /* link right */
+                r->left = t; /* link right */
                 r = t;
                 t = t->left;
             } else if (t->key < key) {
                 node_ptr trc = t->right;
-                if (trc == NULL) break;
+                if (trc == NULL)
+                    break;
                 if (trc->key < key) {
-                    t->right = trc->left;                   /* rotate left */
+                    t->right = trc->left; /* rotate left */
                     trc->left = t;
                     t = trc;
-                    if (t->right == NULL) break;
+                    if (t->right == NULL)
+                        break;
                 }
-                l->right = t;                               /* link left */
+                l->right = t; /* link left */
                 l = t;
                 t = t->right;
             } else {
@@ -83,14 +87,14 @@ private:
                 break;
             }
         }
-        l->right = t->left;                                 /* assemble */
+        l->right = t->left; /* assemble */
         r->left = t->right;
         t->left = N.right;
         t->right = N.left;
         root = t;
         return ret;
     }
-    
+
     node_ptr inter_find(TKey key) {
         if (splay(key, root_ptr)) {
             return root_ptr;
@@ -98,18 +102,19 @@ private:
             return NULL;
         }
     }
-    
-    void inter_enumerate(node_ptr root, void (^callback)(const TKey& key, const TVal& val)) {
-        if (root == NULL) return;
-        
+
+    void inter_enumerate(node_ptr root, void (^callback)(const TKey &key, const TVal &val)) {
+        if (root == NULL)
+            return;
+
         // not support
     }
-    
+
     void free_node(node_ptr ptr) {
         ptr->left = free_ptr;
         free_ptr = ptr;
     }
-    
+
     node_ptr next_free_node() {
         node_ptr new_ptr = free_ptr;
         if (new_ptr == NULL) {
@@ -126,16 +131,12 @@ private:
         }
         return new_ptr;
     }
-    
-public:
 
-    splay_map_ptr(memory_pool_file *_pool) {
-        memory_pool = _pool;
-    }
-    
-    ~splay_map_ptr() {
-    }
-    
+public:
+    splay_map_ptr(memory_pool_file *_pool) { memory_pool = _pool; }
+
+    ~splay_map_ptr() {}
+
     void insert(TKey key, const TVal &val) {
         ++t_size;
         /* Insert i into the tree t, unless it's already there.    */
@@ -149,7 +150,7 @@ public:
             root_ptr = n;
             return;
         }
-        
+
         splay(key, root_ptr);
         if (root_ptr->key > key) {
             n->left = root_ptr->left;
@@ -168,13 +169,14 @@ public:
             --t_size;
         }
     }
-    
+
     void remove(TKey key) {
         /* Deletes i from the tree if it's there.               */
         /* Return a pointer to the resulting tree.              */
         node_ptr x;
-        if (root_ptr == NULL) return;
-        if (splay(key, root_ptr)) {               /* found it */
+        if (root_ptr == NULL)
+            return;
+        if (splay(key, root_ptr)) { /* found it */
             if (root_ptr->left == NULL) {
                 x = root_ptr->right;
             } else {
@@ -187,23 +189,15 @@ public:
             root_ptr = x;
         }
     }
-    
-    bool exist(TKey key) {
-        return (last_ptr = inter_find(key)) != NULL;
-    }
-    
+
+    bool exist(TKey key) { return (last_ptr = inter_find(key)) != NULL; }
+
     // should check exist() first
-    TVal &find() {
-        return last_ptr->val;
-    }
-    
-    uint32_t size() {
-        return t_size;
-    }
-    
-    void enumerate(void (^callback)(const TKey& key, const TVal& val)) {
-        inter_enumerate(root_ptr, callback);
-    }
+    TVal &find() { return last_ptr->val; }
+
+    uint32_t size() { return t_size; }
+
+    void enumerate(void (^callback)(const TKey &key, const TVal &val)) { inter_enumerate(root_ptr, callback); }
 };
 
 #endif /* splay_map_ptr_h */

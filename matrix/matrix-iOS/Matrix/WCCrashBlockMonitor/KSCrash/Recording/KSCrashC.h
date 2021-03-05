@@ -24,10 +24,8 @@
 // THE SOFTWARE.
 //
 
-
 /* Primary C entry point into the crash reporting system.
  */
-
 
 #ifndef HDR_KSCrashC_h
 #define HDR_KSCrashC_h
@@ -36,12 +34,10 @@
 extern "C" {
 #endif
 
-
 #include "KSCrashMonitorType.h"
 #include "KSCrashReportWriter.h"
 
 #include <stdbool.h>
-
 
 /** Install the crash reporter. The reporter will record the next crash and then
  * terminate the program.
@@ -50,7 +46,7 @@ extern "C" {
  *
  * @return The crash types that are being handled.
  */
-KSCrashMonitorType kscrash_install(const char* appName, const char* const installPath);
+KSCrashMonitorType kscrash_install(const char *appName, const char *const installPath);
 
 /** Set the crash types that will be handled.
  * Some crash types may not be enabled depending on circumstances (e.g. running
@@ -70,7 +66,7 @@ KSCrashMonitorType kscrash_setMonitoring(KSCrashMonitorType monitors);
  * @param userInfoJSON Pre-baked JSON containing user-supplied information.
  *                     NULL = delete.
  */
-void kscrash_setUserInfoJSON(const char* const userInfoJSON);
+void kscrash_setUserInfoJSON(const char *const userInfoJSON);
 
 /** Set the maximum time to allow the main thread to run without returning.
  * If a task occupies the main thread for longer than this interval, the
@@ -114,7 +110,7 @@ void kscrash_setIntrospectMemory(bool introspectMemory);
  *
  * Default: NULL
  */
-void kscrash_setDoNotIntrospectClasses(const char** doNotIntrospectClasses, int length);
+void kscrash_setDoNotIntrospectClasses(const char **doNotIntrospectClasses, int length);
 
 /** Set the callback to invoke upon a crash.
  *
@@ -130,17 +126,17 @@ void kscrash_setDoNotIntrospectClasses(const char** doNotIntrospectClasses, int 
 void kscrash_setCrashNotifyCallback(const KSReportWriteCallback onCrashNotify);
 
 void kscrash_setInnerHandleSignalCallback(const KSCrashSentryHandleSignal onInnerHandleSignal);
-    
+
 void kscrash_setHandleSignalCallback(const KSCrashSentryHandleSignal onHandleSignal);
 
 void kscrash_setPointThreadCallback(const KSReportWritePointThreadCallback onWritePointThread);
-    
+
 void kscrash_setPointThreadRepeatNumberCallback(const KSReportWritePointThreadRepeatNumberCallback onWritePointThreadRepeatNumber);
-    
+
 void kscrash_setPointCpuHighThreadCallback(const KSReportWritePointCpuHighThreadCallback onWritePointCpuHighThread);
 
 void kscrash_setPointCpuHighThreadCountCallback(const KSReportWritePointCpuHighThreadCountCallback onWritePointCpuHighThreadCount);
-    
+
 void kscrash_setPointCpuHighThreadValueCallback(const KSReportWritePointCpuHighThreadValueCallback onWritePointCpuHighThreadValue);
 
 /** Set if KSLOG console messages should be appended to the report.
@@ -182,25 +178,25 @@ void kscrash_setMaxReportCount(int maxReportCount);
  *
  * @param terminateProgram If true, do not return from this function call. Terminate the program instead.
  */
-void kscrash_reportUserException(const char* name,
-                                 const char* reason,
-                                 const char* language,
-                                 const char* lineOfCode,
-                                 const char* stackTrace,
+void kscrash_reportUserException(const char *name,
+                                 const char *reason,
+                                 const char *language,
+                                 const char *lineOfCode,
+                                 const char *stackTrace,
                                  bool logAllThreads,
                                  bool terminateProgram);
 
-void kscrash_reportUserExceptionWithSelfDefinedPath(const char* name,
-                                                    const char* reason,
-                                                    const char* language,
-                                                    const char* lineOfCode,
-                                                    const char* stackTrace,
+void kscrash_reportUserExceptionWithSelfDefinedPath(const char *name,
+                                                    const char *reason,
+                                                    const char *language,
+                                                    const char *lineOfCode,
+                                                    const char *stackTrace,
                                                     bool logAllThreads,
                                                     bool terminateProgram,
-                                                    const char* dumpFilePath,
+                                                    const char *dumpFilePath,
                                                     int dumpType);
-    
-#pragma mark -- Notifications --
+
+#pragma mark-- Notifications --
 
 /** Notify the crash reporter of KSCrash being added to Objective-C runtime system.
  */
@@ -227,8 +223,7 @@ void kscrash_notifyAppTerminate(void);
  */
 void kscrash_notifyAppCrash(void);
 
-    
-#pragma mark -- Reporting --
+#pragma mark-- Reporting --
 
 /** Get the number of reports on disk.
  */
@@ -241,7 +236,7 @@ int kscrash_getReportCount(void);
  *
  * @return The number of report IDs that were placed in the array.
  */
-int kscrash_getReportIDs(int64_t* reportIDs, int count);
+int kscrash_getReportIDs(int64_t *reportIDs, int count);
 
 /** Read a report.
  *
@@ -250,9 +245,9 @@ int kscrash_getReportIDs(int64_t* reportIDs, int count);
  * @return The NULL terminated report, or NULL if not found.
  *         MEMORY MANAGEMENT WARNING: User is responsible for calling free() on the returned value.
  */
-char* kscrash_readReport(int64_t reportID);
+char *kscrash_readReport(int64_t reportID);
 
-char* kscrash_readReportStringID(const char* reportID);
+char *kscrash_readReportStringID(const char *reportID);
 
 /** Add a custom report to the store.
  *
@@ -261,17 +256,17 @@ char* kscrash_readReportStringID(const char* reportID);
  *
  * @return the new report's ID.
  */
-int64_t kscrash_addUserReport(const char* report, int reportLength);
+int64_t kscrash_addUserReport(const char *report, int reportLength);
 
 /** Delete all reports on disk.
  */
 void kscrash_deleteAllReports(void);
 
-void kscrash_setCustomVersion(const char* fullVersion, const char* shortVersion);
+void kscrash_setCustomVersion(const char *fullVersion, const char *shortVersion);
 
-const char* kscrash_getCustomShortVersion(void);
+const char *kscrash_getCustomShortVersion(void);
 
-const char* kscrash_getCustomFullVersion(void);
+const char *kscrash_getCustomFullVersion(void);
 
 #ifdef __cplusplus
 }

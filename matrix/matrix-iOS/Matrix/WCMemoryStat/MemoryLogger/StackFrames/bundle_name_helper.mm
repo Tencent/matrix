@@ -17,8 +17,7 @@
 #import <Foundation/Foundation.h>
 #import "bundle_name_helper.h"
 
-const char *bundleHelperGetAppBundleName()
-{
+const char *bundleHelperGetAppBundleName() {
     NSString *bundleName = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleName"];
     if (!bundleName) {
         return "";
@@ -26,8 +25,7 @@ const char *bundleHelperGetAppBundleName()
     return [[NSString stringWithFormat:@"/%@.app/", bundleName] cStringUsingEncoding:NSUTF8StringEncoding];
 }
 
-const char *bundleHelperGetAppName()
-{
+const char *bundleHelperGetAppName() {
     NSString *bundleName = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleName"];
     if (!bundleName) {
         return "";

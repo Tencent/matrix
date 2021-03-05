@@ -27,53 +27,48 @@
 
 @implementation MemoryRecordInfo
 
-- (id)init
-{
+- (id)init {
     self = [super init];
     if (self) {
         self.threadInfos = [[NSMutableDictionary alloc] init];
-		self.userScene = @"";
-		self.systemVersion = @"";
-		self.appUUID = @"";
+        self.userScene = @"";
+        self.systemVersion = @"";
+        self.appUUID = @"";
     }
     return self;
 }
 
-- (NSString *)recordID
-{
+- (NSString *)recordID {
     return [NSString stringWithFormat:@"%lld", self.launchTime];
 }
 
-- (NSString *)recordDataPath
-{
+- (NSString *)recordDataPath {
     NSString *pathComponent = [NSString stringWithFormat:@"Data/%lld", self.launchTime];
     return [[MatrixPathUtil memoryStatPluginCachePath] stringByAppendingPathComponent:pathComponent];
 }
 
-- (NSData *)generateReportDataWithCustomInfo:(NSDictionary *)customInfo
-{
+- (NSData *)generateReportDataWithCustomInfo:(NSDictionary *)customInfo {
     NSString *dataPath = [self recordDataPath];
 
-	summary_report_param param;
-	param.phone = [MatrixDeviceInfo platform].UTF8String;
-	param.os_ver = [self systemVersion].UTF8String;
-	param.launch_time = self.launchTime * 1000;
-	param.report_time = [[NSDate date] timeIntervalSince1970] * 1000;
-	param.app_uuid = [self appUUID].UTF8String;
-	param.foom_scene = [self userScene].UTF8String;
-	
+    summary_report_param param;
+    param.phone = [MatrixDeviceInfo platform].UTF8String;
+    param.os_ver = [self systemVersion].UTF8String;
+    param.launch_time = self.launchTime * 1000;
+    param.report_time = [[NSDate date] timeIntervalSince1970] * 1000;
+    param.app_uuid = [self appUUID].UTF8String;
+    param.foom_scene = [self userScene].UTF8String;
+
     for (id key in customInfo) {
         std::string stdKey = [key UTF8String];
         std::string stdVal = [[customInfo[key] description] UTF8String];
-		param.customInfo.insert(std::make_pair(stdKey, stdVal));
+        param.customInfo.insert(std::make_pair(stdKey, stdVal));
     }
 
     auto content = generate_summary_report(dataPath.UTF8String, param);
     return [NSData dataWithBytes:content->c_str() length:content->size()];
 }
 
-- (void)calculateAllThreadsMemoryUsage
-{
+- (void)calculateAllThreadsMemoryUsage {
     std::unordered_map<uint64_t, uint64_t> threadAllocSizes = thread_alloc_size([self recordDataPath].UTF8String);
 
     for (NSString *threadID in self.threadInfos.allKeys) {
