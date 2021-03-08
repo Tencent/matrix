@@ -97,18 +97,34 @@ public final class LooperTaskMonitorFeature extends AbsTaskMonitorFeature {
     }
 
     @Override
+    public void onForeground(boolean isForeground) {
+        super.onForeground(isForeground);
+        if (!isForeground) {
+            startWatching();
+        }
+    }
+
+    @Override
     public void onTurnOff() {
         super.onTurnOff();
-        mLooperTaskListener = null;
-        for (LooperMonitor item : mLooperMonitors) {
-            item.onRelease();
-        }
-        mLooperMonitors.clear();
+        stopWatching();
     }
 
     @Override
     public int weight() {
         return 0;
+    }
+
+    void startWatching() {
+        // TODO: start looper watching with given configs
+    }
+
+    void stopWatching() {
+        mLooperTaskListener = null;
+        for (LooperMonitor item : mLooperMonitors) {
+            item.onRelease();
+        }
+        mLooperMonitors.clear();
     }
 
     public void watchLooper(HandlerThread handlerThread) {

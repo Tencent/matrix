@@ -50,6 +50,7 @@ public class BatteryMonitorConfig {
     public boolean isUseThreadClock = BuildConfig.DEBUG;
     public List<String> tagWhiteList = Collections.emptyList();
     public List<String> tagBlackList = Collections.emptyList();
+    public List<String> looperWhiteList = Collections.emptyList();
     public final List<MonitorFeature> features = new ArrayList<>(3);
 
     private BatteryMonitorConfig() {}
@@ -78,6 +79,7 @@ public class BatteryMonitorConfig {
                 ", isUseThreadClock=" + isUseThreadClock +
                 ", tagWhiteList=" + tagWhiteList +
                 ", tagBlackList=" + tagBlackList +
+                ", looperWhiteList=" + looperWhiteList +
                 ", features=" + features +
                 '}';
     }
@@ -218,6 +220,14 @@ public class BatteryMonitorConfig {
                 config.tagBlackList = new ArrayList<>();
             }
             config.tagBlackList.add(tag);
+            return this;
+        }
+
+        public Builder addLooperBlackList(String handlerThreadName) {
+            if (config.looperWhiteList == Collections.EMPTY_LIST) {
+                config.looperWhiteList = new ArrayList<>();
+            }
+            config.looperWhiteList.add(handlerThreadName);
             return this;
         }
 
