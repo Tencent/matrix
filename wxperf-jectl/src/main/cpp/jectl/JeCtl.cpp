@@ -61,6 +61,7 @@ large_dalloc_t                   large_dalloc                   = nullptr;
 arena_choose_hard_t              arena_choose_hard              = nullptr;
 arena_extent_dalloc_large_prep_t arena_extent_dalloc_large_prep = nullptr;
 arena_extents_dirty_dalloc_t     arena_extents_dirty_dalloc     = nullptr;
+bool * p_je_opt_retain = nullptr;
 
 
 static inline bool end_with(std::string const &value, std::string const &ending) {
@@ -102,10 +103,11 @@ static bool init() {
 //        return false;
 //    }
 
-//    opt_retain = (bool *) enhance::dlsym(handle, "je_opt_retain");
-//    if (!opt_retain) {
-//        return false;
-//    }
+    p_je_opt_retain = (bool *) enhance::dlsym(handle, "je_opt_retain");
+    if (!p_je_opt_retain) {
+        return false;
+    }
+    *p_je_opt_retain = true; // enable retain
 
     arena_extent_alloc_large =
             (arena_extent_alloc_large_t) enhance::dlsym(handle, "je_arena_extent_alloc_large");
