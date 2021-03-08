@@ -31,6 +31,7 @@ import com.tencent.matrix.batterycanary.monitor.BatteryMonitorConfig;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
 import com.tencent.matrix.batterycanary.monitor.feature.AbsTaskMonitorFeature.TaskJiffiesSnapshot;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Delta;
+import com.tencent.matrix.batterycanary.utils.TimeBreaker;
 import com.tencent.matrix.trace.core.LooperMonitor;
 
 import org.junit.After;
@@ -39,6 +40,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -309,8 +311,11 @@ public class MonitorFeatureLooperTest {
                 Assert.assertEquals(1, feature.mWatchingList.size());
                 Assert.assertEquals(1, feature.mLooperMonitorTrace.size());
                 Assert.assertEquals(1, feature.mTaskJiffiesTrace.size());
-                Assert.assertTrue(feature.mTaskStampList.get(Process.myTid()).size() > 1);
-                Assert.assertTrue(feature.mTaskStampList.get(Process.myTid()).get(0).key.contains(MonitorFeatureLooperTest.class.getName() + "$"));
+
+                ArrayList<TimeBreaker.Stamp> taskStamps = feature.getTaskStamps(Process.myTid());
+                Assert.assertNotNull(taskStamps);
+                Assert.assertTrue(taskStamps.size() > 1);
+                Assert.assertTrue(taskStamps.get(0).key.contains(MonitorFeatureLooperTest.class.getName() + "$"));
 
                 hasStart.set(true);
                 while (!hasCheck.get()) {}

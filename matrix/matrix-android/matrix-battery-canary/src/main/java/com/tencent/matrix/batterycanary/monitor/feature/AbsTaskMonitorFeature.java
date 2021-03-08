@@ -171,6 +171,17 @@ public abstract class AbsTaskMonitorFeature extends AbsMonitorFeature {
         }
     }
 
+    @Nullable
+    public ArrayList<TimeBreaker.Stamp> getTaskStamps(int tid) {
+        synchronized (mTaskStampList) {
+            List<TimeBreaker.Stamp> stamps = mTaskStampList.get(tid);
+            if (stamps != null) {
+                return new ArrayList<>(stamps);
+            }
+            return null;
+        }
+    }
+
     @SuppressLint("RestrictedApi")
     public TimeBreaker.TimePortions getTaskPortions(int tid, long jiffiesDelta, final long jiffiesEnd) {
         synchronized (mTaskStampList) {
