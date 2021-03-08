@@ -376,11 +376,15 @@ void *__memory_event_writing_thread(void *param) {
 
     s_working_thread_id = current_thread_id();
     log_internal_without_this_thread(s_working_thread_id);
+    
+    int usleep_time = 0;
 
     // Wait for enable_memory_logging finished
     usleep(30000);
 
     while (s_logging_is_enable) {
+        bool thread_is_woken = false;
+        
         // Can't lock like this without brain, or affect performance
         if (s_working_thread_lock == 1) {
             s_working_thread_lock = 2;
@@ -432,7 +436,9 @@ void *__memory_event_writing_thread(void *param) {
             }
 
             memory_logging_event_buffer *next_event_buffer = event_buffer->next_event_buffer;
-            memory_logging_event_buffer_pool_free_buffer(s_buffer_pool, event_buffer);
+            if (memory_logging_event_buffer_pool_free_buffer(s_buffer_pool, event_buffer)) {
+                thread_is_woken = true;
+            }
             event_buffer = next_event_buffer;
         }
 
@@ -441,7 +447,14 @@ void *__memory_event_writing_thread(void *param) {
             s_dump_memory_callback = NULL;
         }
 
-        usleep(20000);
+        if (thread_is_woken == false) {
+            if (usleep_time < 20000) {
+                usleep_time += 10000;
+            }
+            usleep(usleep_time);
+        } else {
+            usleep_time = 0;
+        }
     }
     return NULL;
 }
