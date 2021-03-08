@@ -9,9 +9,14 @@ import android.text.TextUtils;
 
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Delta;
 import com.tencent.matrix.trace.core.LooperMonitor;
+import com.tencent.matrix.util.MatrixLog;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public final class LooperTaskMonitorFeature extends AbsTaskMonitorFeature {
     private static final String TAG = "Matrix.battery.LooperTaskMonitorFeature";
@@ -23,17 +28,19 @@ public final class LooperTaskMonitorFeature extends AbsTaskMonitorFeature {
         void onLooperConcurrentOverHeat(String key, int concurrentCount, long duringMillis);
     }
 
-    LooperTaskListener getListener() {
-        return mCore;
-    }
+    final List<String> mWatchingList = new ArrayList<>();
+    final Map<Looper, LooperMonitor> mLooperMonitorTrace = new HashMap<>();
 
-    @Nullable
-    LooperMonitor.LooperDispatchListener mLooperTaskListener;
-    final List<LooperMonitor> mLooperMonitors = new ArrayList<>();
+    @Nullable LooperMonitor.LooperDispatchListener mLooperTaskListener;
+    @Nullable Runnable mDelayWatchingTask;
 
     @Override
     protected String getTag() {
         return TAG;
+    }
+
+    LooperTaskListener getListener() {
+        return mCore;
     }
 
     @Override
@@ -99,8 +106,18 @@ public final class LooperTaskMonitorFeature extends AbsTaskMonitorFeature {
     @Override
     public void onForeground(boolean isForeground) {
         super.onForeground(isForeground);
-        if (!isForeground) {
-            startWatching();
+        if (isForeground) {
+            if (mDelayWatchingTask != null) {
+                mCore.getHandler().removeCallbacks(mDelayWatchingTask);
+            }
+        } else {
+            mDelayWatchingTask = new Runnable() {
+                @Override
+                public void run() {
+                    startWatching();
+                }
+            };
+            mCore.getHandler().postDelayed(mDelayWatchingTask, mCore.getConfig().greyTime);
         }
     }
 
@@ -116,35 +133,95 @@ public final class LooperTaskMonitorFeature extends AbsTaskMonitorFeature {
     }
 
     void startWatching() {
-        // TODO: start looper watching with given configs
+        synchronized (mWatchingList) {
+            if (mLooperTaskListener == null) {
+                return;
+            }
+            MatrixLog.i(TAG, "#startWatching");
+            if (mCore.getConfig().looperWhiteList.contains("all")) {
+                // 1. Update watching for all handler threads
+                Collection<Thread> allThreads = getAllThreads();
+                for (Thread thread : allThreads) {
+                    if (thread instanceof HandlerThread) {
+                        Looper looper = ((HandlerThread) thread).getLooper();
+                        if (looper != null) {
+                            if (!mLooperMonitorTrace.containsKey(looper)) {
+                                // update watch
+                                watchLooper((HandlerThread) thread);
+                            }
+                        }
+                    }
+                }
+
+            } else {
+                // 2. Update watching for configured threads
+                Collection<Thread> allThreads = Collections.emptyList();
+                for (String threadToWatch : mCore.getConfig().looperWhiteList) {
+                    if (TextUtils.isEmpty(threadToWatch)) {
+                        continue;
+                    }
+                    if (!mWatchingList.contains(threadToWatch)) {
+                        if (allThreads.isEmpty()) {
+                            // for lazy load
+                            allThreads = getAllThreads();
+                        }
+                        for (Thread thread : allThreads) {
+                            if (thread.getName().contains(threadToWatch)) {
+                                if (thread instanceof HandlerThread) {
+                                    Looper looper = ((HandlerThread) thread).getLooper();
+                                    if (looper != null) {
+                                        // update watch
+                                        watchLooper(threadToWatch, looper);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private Collection<Thread> getAllThreads() {
+        Map<Thread, StackTraceElement[]> stackTraces = Thread.getAllStackTraces();
+        return stackTraces == null ? Collections.<Thread>emptyList() : stackTraces.keySet();
     }
 
     void stopWatching() {
-        mLooperTaskListener = null;
-        for (LooperMonitor item : mLooperMonitors) {
-            item.onRelease();
+        synchronized (mWatchingList) {
+            mLooperTaskListener = null;
+            for (LooperMonitor item : mLooperMonitorTrace.values()) {
+                item.onRelease();
+            }
+            mLooperMonitorTrace.clear();
+            mWatchingList.clear();
         }
-        mLooperMonitors.clear();
     }
 
     public void watchLooper(HandlerThread handlerThread) {
         Looper looper = handlerThread.getLooper();
-        watchLooper(looper);
+        watchLooper(handlerThread.getName(), looper);
     }
 
-    public void watchLooper(Looper looper) {
-        if (looper == null) {
+    void watchLooper(String name, Looper looper) {
+        if (TextUtils.isEmpty(name) || looper == null) {
             return;
         }
-        if (mLooperTaskListener != null) {
-            for (LooperMonitor item : mLooperMonitors) {
-                if (item.getLooper() == looper) {
-                    return;
+
+        synchronized (mWatchingList) {
+            if (mLooperTaskListener != null) {
+                // remove if existing
+                mWatchingList.remove(name);
+                LooperMonitor remove = mLooperMonitorTrace.remove(looper);
+                if (remove != null) {
+                    remove.onRelease();
                 }
+                // add looper tracing
+                LooperMonitor looperMonitor = new LooperMonitor(looper);
+                looperMonitor.addListener(mLooperTaskListener);
+                mWatchingList.add(name);
+                mLooperMonitorTrace.put(looper, looperMonitor);
             }
-            LooperMonitor looperMonitor = new LooperMonitor(looper);
-            looperMonitor.addListener(mLooperTaskListener);
-            mLooperMonitors.add(looperMonitor);
         }
     }
 
