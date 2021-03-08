@@ -69,5 +69,5 @@ public class JeCtl {
 
     private static native String getVersionNative();
 
-    public static native void setRetain(boolean enable);
+    public static native boolean setRetain(boolean enable);
 }

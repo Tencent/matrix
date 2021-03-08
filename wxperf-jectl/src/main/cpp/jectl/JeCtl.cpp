@@ -441,14 +441,17 @@ Java_com_tencent_wxperf_jectl_JeCtl_getVersionNative(JNIEnv *env, jclass clazz) 
 #endif
 }
 
-JNIEXPORT void JNICALL
+JNIEXPORT jboolean JNICALL
 Java_com_tencent_wxperf_jectl_JeCtl_setRetain(JNIEnv *env, jclass clazz, jboolean enable) {
 #ifdef __LP64__
-    return;
+    return true;
 #else
+    bool old = *p_je_opt_retain;
     if (!p_je_opt_retain) {
         *p_je_opt_retain = enable;
+        LOGD(TAG, "retain = %d", *p_je_opt_retain);
     }
+    return old;
 #endif
 }
 
