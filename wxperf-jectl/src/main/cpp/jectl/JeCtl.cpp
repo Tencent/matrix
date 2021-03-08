@@ -107,7 +107,6 @@ static bool init() {
     if (!p_je_opt_retain) {
         return false;
     }
-    *p_je_opt_retain = true; // enable retain
 
     arena_extent_alloc_large =
             (arena_extent_alloc_large_t) enhance::dlsym(handle, "je_arena_extent_alloc_large");
@@ -439,6 +438,17 @@ Java_com_tencent_wxperf_jectl_JeCtl_getVersionNative(JNIEnv *env, jclass clazz) 
     LOGD(TAG, "jemalloc version: %s", version);
 
     return env->NewStringUTF(version);
+#endif
+}
+
+JNIEXPORT void JNICALL
+Java_com_tencent_wxperf_jectl_JeCtl_setRetain(JNIEnv *env, jclass clazz, jboolean enable) {
+#ifdef __LP64__
+    return;
+#else
+    if (!p_je_opt_retain) {
+        *p_je_opt_retain = enable;
+    }
 #endif
 }
 
