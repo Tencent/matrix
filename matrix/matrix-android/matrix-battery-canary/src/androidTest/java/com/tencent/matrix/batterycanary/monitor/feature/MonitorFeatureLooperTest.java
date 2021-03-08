@@ -29,6 +29,8 @@ import com.tencent.matrix.Matrix;
 import com.tencent.matrix.batterycanary.BatteryMonitorPlugin;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorConfig;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
+import com.tencent.matrix.batterycanary.monitor.feature.AbsTaskMonitorFeature.TaskJiffiesSnapshot;
+import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Delta;
 import com.tencent.matrix.trace.core.LooperMonitor;
 
 import org.junit.After;
@@ -37,11 +39,12 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 
 @RunWith(AndroidJUnit4.class)
-public class LooperMonitorTest {
+public class MonitorFeatureLooperTest {
     static final String TAG = "Matrix.test.LooperMonitorTest";
 
     Context mContext;
@@ -304,7 +307,7 @@ public class LooperMonitorTest {
                 Assert.assertEquals(1, feature.mLooperMonitors.size());
                 Assert.assertEquals(1, feature.mTaskJiffiesTrace.size());
                 Assert.assertTrue(feature.mTaskStampList.get(Process.myTid()).size() > 1);
-                Assert.assertTrue(feature.mTaskStampList.get(Process.myTid()).get(0).key.contains("com.tencent.matrix.batterycanary.monitor.feature.LooperMonitorTest$"));
+                Assert.assertTrue(feature.mTaskStampList.get(Process.myTid()).get(0).key.contains(MonitorFeatureLooperTest.class.getName() + "$"));
 
                 hasStart.set(true);
                 while (!hasCheck.get()) {}
@@ -318,6 +321,21 @@ public class LooperMonitorTest {
         Assert.assertTrue(feature.mDeltaList.isEmpty());
 
         hasCheck.set(true);
+        while (feature.mDeltaList.isEmpty()) {}
+
+        Assert.assertEquals(1, feature.mDeltaList.size());
+        Assert.assertTrue(feature.mDeltaList.get(0).dlt.name.contains(MonitorFeatureLooperTest.class.getName() + "$"));
+
+        List<Delta<TaskJiffiesSnapshot>> deltas = feature.currentJiffies();
+        Assert.assertEquals(1, deltas.size());
+        Assert.assertEquals(feature.mDeltaList, deltas);
+
+        feature.clearFinishedJiffies();
+        Assert.assertEquals(1, feature.mLooperMonitors.size());
+        Assert.assertTrue(feature.mTaskJiffiesTrace.isEmpty());
+        Assert.assertTrue(feature.mDeltaList.isEmpty());
+
+        feature.mDeltaList.addAll(deltas);
 
         feature.onTurnOff();
         Assert.assertTrue(feature.mLooperMonitors.isEmpty());

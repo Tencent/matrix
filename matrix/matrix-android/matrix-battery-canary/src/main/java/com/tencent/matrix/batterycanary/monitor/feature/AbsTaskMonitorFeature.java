@@ -310,7 +310,7 @@ public abstract class AbsTaskMonitorFeature extends AbsMonitorFeature {
 
         // Compute task jiffies consumed
         Delta<TaskJiffiesSnapshot> delta = end.diff(bgn);
-        if (delta.during <= 1000L || delta.dlt.jiffies.get() <= 100L) {
+        if (!BuildConfig.DEBUG && (delta.during <= 1000L || delta.dlt.jiffies.get() <= 100L)) {
             return;
         }
 
