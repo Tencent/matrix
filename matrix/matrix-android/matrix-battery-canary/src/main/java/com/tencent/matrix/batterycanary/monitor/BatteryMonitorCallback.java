@@ -13,6 +13,7 @@ import android.text.TextUtils;
 import android.util.LongSparseArray;
 
 import com.tencent.matrix.Matrix;
+import com.tencent.matrix.batterycanary.monitor.feature.AbsTaskMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.AlarmMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.AlarmMonitorFeature.AlarmSnapshot;
 import com.tencent.matrix.batterycanary.monitor.feature.AppStatMonitorFeature;
@@ -189,6 +190,14 @@ public interface BatteryMonitorCallback extends
                     tasks.put(((HandlerThread) thread).getThreadId(), sortList);
                 }
             }
+        }
+
+        @Override
+        public void onLooperTaskOverHeat(@NonNull List<Delta<AbsTaskMonitorFeature.TaskJiffiesSnapshot>> deltas) {
+        }
+
+        @Override
+        public void onLooperConcurrentOverHeat(String key, int concurrentCount, long duringMillis) {
         }
 
         @Override

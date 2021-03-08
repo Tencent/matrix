@@ -7,6 +7,7 @@ import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.text.TextUtils;
 
+import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Delta;
 import com.tencent.matrix.trace.core.LooperMonitor;
 
 import java.util.ArrayList;
@@ -15,13 +16,19 @@ import java.util.List;
 public final class LooperTaskMonitorFeature extends AbsTaskMonitorFeature {
     private static final String TAG = "Matrix.battery.LooperTaskMonitorFeature";
 
-    @Deprecated
     public interface LooperTaskListener {
+        @Deprecated
         void onTaskTrace(Thread thread, List<LooperTaskMonitorFeature.TaskTraceInfo> sortList);
+        void onLooperTaskOverHeat(@NonNull List<Delta<TaskJiffiesSnapshot>> deltas);
+        void onLooperConcurrentOverHeat(String key, int concurrentCount, long duringMillis);
+    }
+
+    LooperTaskListener getListener() {
+        return mCore;
     }
 
     @Nullable
-    LooperMonitor.LooperDispatchListener mListener;
+    LooperMonitor.LooperDispatchListener mLooperTaskListener;
     final List<LooperMonitor> mLooperMonitors = new ArrayList<>();
 
     @Override
@@ -32,7 +39,7 @@ public final class LooperTaskMonitorFeature extends AbsTaskMonitorFeature {
     @Override
     public void onTurnOn() {
         super.onTurnOn();
-        mListener = new LooperMonitor.LooperDispatchListener() {
+        mLooperTaskListener = new LooperMonitor.LooperDispatchListener() {
             @Override
             public boolean isValid() {
                 return mCore.isTurnOn();
@@ -92,7 +99,7 @@ public final class LooperTaskMonitorFeature extends AbsTaskMonitorFeature {
     @Override
     public void onTurnOff() {
         super.onTurnOff();
-        mListener = null;
+        mLooperTaskListener = null;
         for (LooperMonitor item : mLooperMonitors) {
             item.onRelease();
         }
@@ -113,21 +120,31 @@ public final class LooperTaskMonitorFeature extends AbsTaskMonitorFeature {
         if (looper == null) {
             return;
         }
-        if (mListener != null) {
+        if (mLooperTaskListener != null) {
             for (LooperMonitor item : mLooperMonitors) {
                 if (item.getLooper() == looper) {
                     return;
                 }
             }
             LooperMonitor looperMonitor = new LooperMonitor(looper);
-            looperMonitor.addListener(mListener);
+            looperMonitor.addListener(mLooperTaskListener);
             mLooperMonitors.add(looperMonitor);
         }
     }
 
-    protected void onTraceOverHeat(List<Snapshot.Delta<TaskJiffiesSnapshot>> deltas) {}
-    protected void onConcurrentOverHeat(String key, int concurrentCount, long duringMillis) {}
+    @Override
+    protected void onTraceOverHeat(List<Delta<TaskJiffiesSnapshot>> deltas) {
+        getListener().onLooperTaskOverHeat(deltas);
+    }
+
+    @Override
+    protected void onConcurrentOverHeat(String key, int concurrentCount, long duringMillis) {
+        getListener().onLooperConcurrentOverHeat(key, concurrentCount, duringMillis);
+    }
+
+    @Override
     protected void onParseTaskJiffiesFail(String key, int pid, int tid) {}
+
 
     @Deprecated
     public static class TaskTraceInfo {

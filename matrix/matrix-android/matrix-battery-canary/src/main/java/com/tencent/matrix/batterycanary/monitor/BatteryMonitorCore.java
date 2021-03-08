@@ -14,6 +14,7 @@ import android.support.annotation.WorkerThread;
 import com.tencent.matrix.AppActiveMatrixDelegate;
 import com.tencent.matrix.Matrix;
 import com.tencent.matrix.batterycanary.BatteryEventDelegate;
+import com.tencent.matrix.batterycanary.monitor.feature.AbsTaskMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.AlarmMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.AppStatMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature;
@@ -344,26 +345,32 @@ public class BatteryMonitorCore implements
     }
 
     @Override
+    public void onLooperTaskOverHeat(@NonNull List<Delta<AbsTaskMonitorFeature.TaskJiffiesSnapshot>> deltas) {
+        getConfig().callback.onLooperTaskOverHeat(deltas);
+    }
+
+    @Override
+    public void onLooperConcurrentOverHeat(String key, int concurrentCount, long duringMillis) {
+        getConfig().callback.onLooperConcurrentOverHeat(key, concurrentCount, duringMillis);
+    }
+
+    @Override
     public void onWakeLockTimeout(int warningCount, WakeLockRecord record) {
-        MatrixLog.d(TAG, "#onWakeLockTimeout, tag = " + record.tag + ", pkg = " + record.packageName + ", count = " + warningCount);
         getConfig().callback.onWakeLockTimeout(warningCount, record);
     }
 
     @Override
     public void onWakeLockTimeout(WakeLockRecord record, long backgroundMillis) {
-        MatrixLog.d(TAG, "#onWakeLockTimeout, tag = " + record.tag + ", pkg = " + record.packageName + ", backgroundMillis = " + backgroundMillis);
         getConfig().callback.onWakeLockTimeout(record, backgroundMillis);
     }
 
     @Override
     public void onAlarmDuplicated(int duplicatedCount, AlarmMonitorFeature.AlarmRecord record) {
-        MatrixLog.d(TAG, "#onAlarmDuplicated");
         getConfig().callback.onAlarmDuplicated(duplicatedCount, record);
     }
 
     @Override
     public void onParseError(int pid, int tid) {
-        MatrixLog.d(TAG, "#onParseError, tid = " + tid);
         getConfig().callback.onParseError(pid, tid);
     }
 
