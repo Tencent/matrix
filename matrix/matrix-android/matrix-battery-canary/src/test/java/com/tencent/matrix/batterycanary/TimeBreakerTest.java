@@ -18,6 +18,8 @@ package com.tencent.matrix.batterycanary;
 
 import android.os.SystemClock;
 
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 import com.tencent.matrix.batterycanary.utils.TimeBreaker;
 
 import org.junit.Assert;
@@ -30,6 +32,8 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
 import mockit.Mock;
 import mockit.MockUp;
@@ -52,13 +56,15 @@ public class TimeBreakerTest {
         }
     }
 
+    static {
+        new SystemMock();
+    }
+
     /**
      * Need mocking {@link SystemClock#uptimeMillis()}
      */
     @Test
     public void testPortions() throws InterruptedException {
-        new SystemMock();
-
         //           100s       200s       300s       400s
         //            |          |          |          |
         // +----------+----------+----------+----------+
@@ -163,8 +169,6 @@ public class TimeBreakerTest {
      */
     @Test
     public void testPortionsV2() throws InterruptedException {
-        new SystemMock();
-
         //          100s       200s       300s       400s
         //            |          |          |          |
         // +----------+----------+----------+--------------------------------
@@ -267,8 +271,6 @@ public class TimeBreakerTest {
      */
     @Test
     public void testPortionsV3() throws InterruptedException {
-        new SystemMock();
-
         List<TimeBreaker.Stamp> stampList = new ArrayList<>();
         stampList.add(0, new TimeBreaker.Stamp("1", 0));
         stampList.add(0, new TimeBreaker.Stamp("2", 100));
