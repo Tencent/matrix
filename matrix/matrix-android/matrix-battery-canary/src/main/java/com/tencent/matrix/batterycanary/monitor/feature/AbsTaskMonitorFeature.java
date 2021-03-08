@@ -39,11 +39,11 @@ public abstract class AbsTaskMonitorFeature extends AbsMonitorFeature {
 
     public static final String IDLE_TASK = "thread_pool@idle";
 
-    @NonNull final List<Delta<TaskJiffiesSnapshot>> mDeltaList = new ArrayList<>();
-    @NonNull final Map<Integer, TaskJiffiesSnapshot> mTaskJiffiesTrace = new ConcurrentHashMap<>();
-    @NonNull final Map<String, Pair<? extends List<Integer>, Long>> mTaskConcurrentTrace = new ConcurrentHashMap<>();
-    @NonNull final SparseArray<List<TimeBreaker.Stamp>> mTaskStampList = new SparseArray<>();
-    @NonNull TimeBreaker.Stamp mFirstTaskStamp;
+    @NonNull final protected List<Delta<TaskJiffiesSnapshot>> mDeltaList = new ArrayList<>();
+    @NonNull final protected Map<Integer, TaskJiffiesSnapshot> mTaskJiffiesTrace = new ConcurrentHashMap<>();
+    @NonNull final protected Map<String, Pair<? extends List<Integer>, Long>> mTaskConcurrentTrace = new ConcurrentHashMap<>();
+    @NonNull final protected SparseArray<List<TimeBreaker.Stamp>> mTaskStampList = new SparseArray<>();
+    @NonNull protected TimeBreaker.Stamp mFirstTaskStamp;
 
     @Nullable protected AppStatMonitorFeature mAppStatFeat;
     @Nullable protected DeviceStatMonitorFeature mDevStatFeat;
