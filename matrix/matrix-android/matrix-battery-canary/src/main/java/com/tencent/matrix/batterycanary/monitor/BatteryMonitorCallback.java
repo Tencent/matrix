@@ -14,6 +14,7 @@ import android.util.LongSparseArray;
 
 import com.tencent.matrix.Matrix;
 import com.tencent.matrix.batterycanary.monitor.feature.AbsTaskMonitorFeature;
+import com.tencent.matrix.batterycanary.monitor.feature.AbsTaskMonitorFeature.TaskJiffiesSnapshot;
 import com.tencent.matrix.batterycanary.monitor.feature.AlarmMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.AlarmMonitorFeature.AlarmSnapshot;
 import com.tencent.matrix.batterycanary.monitor.feature.AppStatMonitorFeature;
@@ -180,7 +181,7 @@ public interface BatteryMonitorCallback extends
         }
 
         @Override
-        public void onReportInternalJiffies(Delta<BatteryMonitorCore.TaskJiffiesSnapshot> delta) {
+        public void onReportInternalJiffies(Delta<TaskJiffiesSnapshot> delta) {
         }
 
         @Override
@@ -193,7 +194,7 @@ public interface BatteryMonitorCallback extends
         }
 
         @Override
-        public void onLooperTaskOverHeat(@NonNull List<Delta<AbsTaskMonitorFeature.TaskJiffiesSnapshot>> deltas) {
+        public void onLooperTaskOverHeat(@NonNull List<Delta<TaskJiffiesSnapshot>> deltas) {
         }
 
         @Override

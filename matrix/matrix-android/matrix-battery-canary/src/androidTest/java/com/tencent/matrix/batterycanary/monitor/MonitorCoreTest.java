@@ -24,12 +24,11 @@ import android.support.test.InstrumentationRegistry;
 import android.support.test.runner.AndroidJUnit4;
 
 import com.tencent.matrix.Matrix;
-import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore.TaskJiffiesSnapshot;
+import com.tencent.matrix.batterycanary.monitor.feature.AbsTaskMonitorFeature.TaskJiffiesSnapshot;
 import com.tencent.matrix.batterycanary.monitor.feature.AlarmMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.DeviceStatMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.LooperTaskMonitorFeature;
-import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Delta;
 import com.tencent.matrix.batterycanary.monitor.feature.WakeLockMonitorFeature;
 

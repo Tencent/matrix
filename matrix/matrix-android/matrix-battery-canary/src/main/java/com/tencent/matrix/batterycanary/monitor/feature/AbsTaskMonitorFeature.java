@@ -422,7 +422,7 @@ public abstract class AbsTaskMonitorFeature extends AbsMonitorFeature {
         public long chargeRatio = 100;
         public long sceneRatio = 100;
 
-        TaskJiffiesSnapshot() {}
+        public TaskJiffiesSnapshot() {}
 
         @Override
         public Delta<TaskJiffiesSnapshot> diff(TaskJiffiesSnapshot bgn) {
