@@ -14,10 +14,8 @@
  * limitations under the License.
  */
 
-package com.tencent.analyzer;
+package com.tencent.matrix.resource.analyzer;
 
-import com.tencent.matrix.resource.analyzer.ActivityLeakAnalyzer;
-import com.tencent.matrix.resource.analyzer.DuplicatedBitmapAnalyzer;
 import com.tencent.matrix.resource.analyzer.model.ActivityLeakResult;
 import com.tencent.matrix.resource.analyzer.model.AndroidExcludedBmpRefs;
 import com.tencent.matrix.resource.analyzer.model.AndroidExcludedRefs;
@@ -60,11 +58,11 @@ import java.util.zip.ZipOutputStream;
 
 import javax.imageio.ImageIO;
 
-import static com.tencent.analyzer.CLIMain.AnalyzerOptions.OPTION_COMPRESS_OUTPUT;
-import static com.tencent.analyzer.CLIMain.AnalyzerOptions.OPTION_HELP;
-import static com.tencent.analyzer.CLIMain.AnalyzerOptions.OPTION_INPUT;
-import static com.tencent.analyzer.CLIMain.AnalyzerOptions.OPTION_MIN_BMPLEAK_SIZE;
-import static com.tencent.analyzer.CLIMain.AnalyzerOptions.OPTION_OUTPUT;
+import static com.tencent.matrix.resource.analyzer.CLIMain.AnalyzerOptions.OPTION_COMPRESS_OUTPUT;
+import static com.tencent.matrix.resource.analyzer.CLIMain.AnalyzerOptions.OPTION_HELP;
+import static com.tencent.matrix.resource.analyzer.CLIMain.AnalyzerOptions.OPTION_INPUT;
+import static com.tencent.matrix.resource.analyzer.CLIMain.AnalyzerOptions.OPTION_MIN_BMPLEAK_SIZE;
+import static com.tencent.matrix.resource.analyzer.CLIMain.AnalyzerOptions.OPTION_OUTPUT;
 import static com.tencent.matrix.resource.analyzer.model.DuplicatedBitmapResult.DuplicatedBitmapEntry;
 
 /**
