@@ -446,8 +446,9 @@ Java_com_tencent_wxperf_jectl_JeCtl_setRetain(JNIEnv *env, jclass clazz, jboolea
 #ifdef __LP64__
     return true;
 #else
-    bool old = *p_je_opt_retain;
-    if (p_je_opt_retain) {
+    bool old = true;
+    if (initialized && p_je_opt_retain) {
+        old = *p_je_opt_retain;
         *p_je_opt_retain = enable;
         LOGD(TAG, "retain = %d", *p_je_opt_retain);
     }
