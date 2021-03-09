@@ -1,0 +1,61 @@
+import org.gradle.api.internal.artifacts.configurations.DefaultConfiguration
+
+apply plugin: 'java'
+
+version rootProject.ext.VERSION_NAME
+group rootProject.ext.GROUP
+
+project.afterEvaluate {
+    def canBeResolvedField = DefaultConfiguration.class.getDeclaredField('canBeResolved')
+    canBeResolvedField.setAccessible(true)
+    canBeResolvedField.set(configurations.implementation, true)
+}
+
+jar {
+    manifest {
+        attributes 'Main-Class': 'com.tencent.matrix.resource.analyzer.CLIMain'
+        attributes 'Manifest-Version': version
+    }
+    from {
+        exclude 'META-INF/MANIFEST.MF'
+        exclude 'META-INF/*.SF'
+        exclude 'META-INF/*.DSA'
+        exclude 'META-INF/*.RSA'
+        configurations.implementation.resolve().collect {
+            it.isDirectory() ? it : zipTree(it)
+        }
+    }
+    from {
+        exclude 'META-INF/MANIFEST.MF'
+        exclude 'META-INF/*.SF'
+        exclude 'META-INF/*.DSA'
+        exclude 'META-INF/*.RSA'
+        configurations.runtime.resolve().collect {
+            it.isDirectory() ? it : zipTree(it)
+        }
+    }
+}
+
+// copy the jar to work directory
+task buildResourceCheckJar(type: Copy, dependsOn: [build, jar]) {
+    group = "matrix"
+    from('build/libs') {
+        include '*.jar'
+        exclude '*-javadoc.jar'
+        exclude '*-sources.jar'
+    }
+    into(project.file("tools_output"))
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_1_7
+    targetCompatibility = JavaVersion.VERSION_1_7
+}
+
+dependencies {
+    implementation 'org.json:json:20170516'
+    implementation 'commons-cli:commons-cli:1.3.1'
+
+    implementation project(':matrix-resource-canary:matrix-resource-canary-analyzer')
+    implementation project(':matrix-resource-canary:matrix-resource-canary-common')
+}

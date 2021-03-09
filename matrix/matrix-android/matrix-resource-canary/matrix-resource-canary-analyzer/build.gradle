@@ -8,48 +8,8 @@ targetCompatibility = rootProject.ext.javaVersion
 version rootProject.ext.VERSION_NAME
 group rootProject.ext.GROUP
 
-project.afterEvaluate {
-    def canBeResolvedField = DefaultConfiguration.class.getDeclaredField('canBeResolved')
-    canBeResolvedField.setAccessible(true)
-    canBeResolvedField.set(configurations.implementation, true)
-}
-
-jar {
-    manifest {
-        attributes 'Main-Class': 'com.tencent.matrix.resource.analyzer.CLIMain'
-        attributes 'Manifest-Version': version
-    }
-    from {
-        exclude 'META-INF/MANIFEST.MF'
-        exclude 'META-INF/*.SF'
-        exclude 'META-INF/*.DSA'
-        exclude 'META-INF/*.RSA'
-        configurations.implementation.resolve().collect { 
-            it.isDirectory() ? it : zipTree(it)
-        }
-    }
-    from {
-        exclude 'META-INF/MANIFEST.MF'
-        exclude 'META-INF/*.SF'
-        exclude 'META-INF/*.DSA'
-        exclude 'META-INF/*.RSA'
-        configurations.runtime.resolve().collect {
-            it.isDirectory() ? it : zipTree(it)
-        }
-    }
-}
-
-// copy the jar to work directory
-task buildResourceCheckJar(type: Copy, dependsOn: [build, jar]) {
-    group = "matrix"
-    from('build/libs') {
-        include '*.jar'
-        exclude '*-javadoc.jar'
-        exclude '*-sources.jar'
-    }
-    into(project.file("tools_output"))
-}
-
+sourceCompatibility = JavaVersion.VERSION_1_7
+targetCompatibility = JavaVersion.VERSION_1_7
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
@@ -60,4 +20,14 @@ dependencies {
     implementation 'commons-cli:commons-cli:1.3.1'
 }
 
-apply from: "${rootDir}/gradle/check.gradle"
+if("External" == rootProject.ext.PUBLISH_CHANNEL) {
+    apply from: rootProject.file('gradle/java-publish.gradle')
+}
+else {
+    apply from: rootProject.file('gradle/WeChatPublish.gradle')
+    wechatPublish {
+        artifactId = POM_ARTIFACT_ID
+    }
+}
+
+//apply from: "${rootDir}/gradle/check.gradle"

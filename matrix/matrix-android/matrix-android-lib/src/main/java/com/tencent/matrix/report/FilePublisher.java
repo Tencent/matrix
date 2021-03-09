@@ -31,21 +31,21 @@ import java.util.HashSet;
 public class FilePublisher extends IssuePublisher {
     private static final String TAG = "Matrix.FilePublisher";
 
-    private final long                     expiredTime;
-    private final SharedPreferences        sharedPreferences;
-    private final SharedPreferences.Editor editor;
+    private final long                     mExpiredTime;
+    private final SharedPreferences.Editor mEditor;
     private final HashMap<String, Long>    mPublishedMap;
-    protected final Context context;
+
+    private final Context mContext;
 
 
     public FilePublisher(Context context, long expire, String tag, OnIssueDetectListener issueDetectListener) {
         super(issueDetectListener);
-        this.context = context;
-        expiredTime = expire;
-        sharedPreferences = context.getSharedPreferences(tag + MatrixUtil.getProcessName(context), Context.MODE_PRIVATE);
+        this.mContext = context;
+        mExpiredTime = expire;
+        SharedPreferences sharedPreferences = context.getSharedPreferences(tag + MatrixUtil.getProcessName(context), Context.MODE_PRIVATE);
         mPublishedMap = new HashMap<>();
         long current = System.currentTimeMillis();
-        editor = sharedPreferences.edit();
+        mEditor = sharedPreferences.edit();
         HashSet<String> spKeys = null;
         if (null != sharedPreferences.getAll()) {
             spKeys = new HashSet<>(sharedPreferences.getAll().keySet());
@@ -54,32 +54,39 @@ public class FilePublisher extends IssuePublisher {
             for (String key : spKeys) {
                 long start = sharedPreferences.getLong(key, 0);
                 long costTime = current - start;
-                if (start <= 0 || costTime > expiredTime) {
-                    editor.remove(key);
+                if (start <= 0 || costTime > mExpiredTime) {
+                    mEditor.remove(key);
                 } else {
                     mPublishedMap.put(key, start);
                 }
             }
         }
-        if (null != editor) {
-            editor.apply();
+        if (null != mEditor) {
+            mEditor.apply();
+        }
+    }
+
+    public void markPublished(String key, boolean persist) {
+        if (key == null) {
+            return;
+        }
+        if (mPublishedMap.containsKey(key)) {
+            return;
+        }
+        final long now = System.currentTimeMillis();
+        mPublishedMap.put(key, now);
+
+        if (persist) {
+            SharedPreferences.Editor e = mEditor.putLong(key, now);
+            if (null != e) {
+                e.apply();
+            }
         }
     }
 
     @Override
     public void markPublished(String key) {
-        if (key == null) {
-            return;
-        }
-        if (!mPublishedMap.containsKey(key)) {
-            final long now = System.currentTimeMillis();
-            mPublishedMap.put(key, now);
-            SharedPreferences.Editor e = editor.putLong(key, now);
-            if (null != e) {
-                e.apply();
-            }
-            return;
-        }
+        markPublished(key, true);
     }
 
     @Override
@@ -91,7 +98,7 @@ public class FilePublisher extends IssuePublisher {
             return;
         }
         mPublishedMap.remove(key);
-        SharedPreferences.Editor e = editor.remove(key);
+        SharedPreferences.Editor e = mEditor.remove(key);
         if (null != e) {
             e.apply();
         }
@@ -103,8 +110,8 @@ public class FilePublisher extends IssuePublisher {
             return false;
         }
         long start = mPublishedMap.get(key);
-        if (start <= 0 || (System.currentTimeMillis() - start) > expiredTime) {
-            SharedPreferences.Editor e = editor.remove(key);
+        if (start <= 0 || (System.currentTimeMillis() - start) > mExpiredTime) {
+            SharedPreferences.Editor e = mEditor.remove(key);
             if (null != e) {
                 e.apply();
             }
@@ -112,5 +119,9 @@ public class FilePublisher extends IssuePublisher {
             return false;
         }
         return true;
+    }
+
+    public Context getContext() {
+        return mContext;
     }
 }

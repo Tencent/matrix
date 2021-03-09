@@ -30,7 +30,12 @@ public final class ResourceConfig {
     public static final String TAG = "Matrix.ResourceConfig";
 
     public enum DumpMode {
-        NO_DUMP, AUTO_DUMP, MANUAL_DUMP, SILENCE_DUMP
+        NO_DUMP, // report only
+        AUTO_DUMP, // auto dump hprof
+        MANUAL_DUMP, // notify only
+        SILENCE_ANALYSE, // dump and analyse hprof when screen off
+        FORK_DUMP, // fork dump hprof immediately TODO
+        FORK_ANALYSE, // fork dump and analyse hprof immediately TODO
     }
 
     private static final long DEFAULT_DETECT_INTERVAL_MILLIS = TimeUnit.MINUTES.toMillis(1);
