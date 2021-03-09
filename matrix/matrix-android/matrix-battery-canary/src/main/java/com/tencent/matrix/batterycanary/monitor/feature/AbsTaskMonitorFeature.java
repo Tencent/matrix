@@ -51,7 +51,7 @@ public abstract class AbsTaskMonitorFeature extends AbsMonitorFeature {
     protected int mOverHeatCount = 1024;
     protected int mConcurrentLimit = 50;
 
-    @NonNull private Runnable coolingTask = new Runnable() {
+    @NonNull protected Runnable coolingTask = new Runnable() {
         @SuppressLint("RestrictedApi")
         @Override
         public void run() {
@@ -67,13 +67,13 @@ public abstract class AbsTaskMonitorFeature extends AbsMonitorFeature {
 
             // task jiffies list overheat
             if (mDeltaList.size() > mOverHeatCount) {
-                MatrixLog.w(TAG, "cooling thread pools jiffies, before = " + mDeltaList.size());
+                MatrixLog.w(TAG, "cooling task jiffies list, before = " + mDeltaList.size());
                 List<Delta<TaskJiffiesSnapshot>> deltas = currentJiffies();
                 clearFinishedJiffies();
-                MatrixLog.w(TAG, "cooling thread pools jiffies, after = " + mDeltaList.size());
+                MatrixLog.w(TAG, "cooling task jiffies list, after = " + mDeltaList.size());
 
                 // report
-                MatrixLog.w(TAG, "report thread pools jiffies");
+                MatrixLog.w(TAG, "report task jiffies list overheat");
                 onTraceOverHeat(deltas);
             }
         }
@@ -327,6 +327,45 @@ public abstract class AbsTaskMonitorFeature extends AbsMonitorFeature {
 
         MatrixLog.i(TAG, "onTaskReport: " + delta.dlt.name + ", jiffies = " + delta.dlt.jiffies.get() + ", millis = " + delta.during);
 
+        // Compute task context info
+        if (mAppStatFeat != null) {
+            AppStatMonitorFeature.AppStatSnapshot appStats = mAppStatFeat.currentAppStatSnapshot(delta.during);
+            if (!appStats.isValid()) {
+                delta.end.setValid(false);
+                delta.dlt.setValid(false);
+            }
+            String scene = delta.dlt.scene;
+            long sceneRatio = 100;
+            TimeBreaker.TimePortions portions = mAppStatFeat.currentSceneSnapshot(delta.during);
+            Pair<String, Integer> top1 = portions.top1();
+            if (top1 != null) {
+                scene = top1.first;
+                sceneRatio = top1.second == null ? 0 : top1.second;
+            }
+            delta.dlt.bgRatio = appStats.bgRatio.get();
+            delta.dlt.scene = scene;
+            delta.dlt.sceneRatio = sceneRatio;
+        }
+        if (mDevStatFeat != null) {
+            DeviceStatMonitorFeature.DevStatSnapshot devStat = mDevStatFeat.currentDevStatSnapshot(delta.during);
+            if (!devStat.isValid()) {
+                delta.end.setValid(false);
+                delta.dlt.setValid(false);
+            }
+            delta.dlt.chargeRatio = devStat.chargingRatio.get();
+        }
+
+        // Update records
+        updateDeltas(delta);
+
+        // Cooling down if need
+        if (mDeltaList.size() >= mOverHeatCount) {
+            MatrixLog.w(TAG, "task list overheat, size = " + mDeltaList.size());
+            checkOverHeat();
+        }
+    }
+
+    protected void updateDeltas(Delta<TaskJiffiesSnapshot> delta) {
         synchronized (mDeltaList) {
             // remove pre records of current task
             Iterator<Delta<TaskJiffiesSnapshot>> iterator = mDeltaList.iterator();
@@ -338,40 +377,13 @@ public abstract class AbsTaskMonitorFeature extends AbsMonitorFeature {
                     }
                 }
             }
-
-            if (mAppStatFeat != null) {
-                AppStatMonitorFeature.AppStatSnapshot appStats = mAppStatFeat.currentAppStatSnapshot(delta.during);
-                if (!appStats.isValid()) {
-                    delta.end.setValid(false);
-                    delta.dlt.setValid(false);
-                }
-                String scene = delta.dlt.scene;
-                long sceneRatio = 100;
-                TimeBreaker.TimePortions portions = mAppStatFeat.currentSceneSnapshot(delta.during);
-                Pair<String, Integer> top1 = portions.top1();
-                if (top1 != null) {
-                    scene = top1.first;
-                    sceneRatio = top1.second == null ? 0 : top1.second;
-                }
-                delta.dlt.bgRatio = appStats.bgRatio.get();
-                delta.dlt.scene = scene;
-                delta.dlt.sceneRatio = sceneRatio;
-            }
-            if (mDevStatFeat != null) {
-                DeviceStatMonitorFeature.DevStatSnapshot devStat = mDevStatFeat.currentDevStatSnapshot(delta.during);
-                if (!devStat.isValid()) {
-                    delta.end.setValid(false);
-                    delta.dlt.setValid(false);
-                }
-                delta.dlt.chargeRatio = devStat.chargingRatio.get();
-            }
             mDeltaList.add(delta);
         }
+    }
 
-        if (mDeltaList.size() >= mOverHeatCount) {
-            MatrixLog.w(TAG, "task list overheat, size = " + mDeltaList.size());
-            mCore.getHandler().post(coolingTask);
-        }
+    protected void checkOverHeat() {
+        mCore.getHandler().removeCallbacks(coolingTask);
+        mCore.getHandler().postDelayed(coolingTask, 1000L);
     }
 
     protected void onTraceOverHeat(List<Delta<TaskJiffiesSnapshot>> deltas) {}

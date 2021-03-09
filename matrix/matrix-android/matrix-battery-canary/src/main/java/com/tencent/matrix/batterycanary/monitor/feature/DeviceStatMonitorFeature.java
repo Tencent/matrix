@@ -150,6 +150,12 @@ public final class DeviceStatMonitorFeature extends AbsMonitorFeature {
         }
     }
 
+    @NonNull
+    public List<TimeBreaker.Stamp> getStampList() {
+        if (mStampList.isEmpty()) return Collections.emptyList();
+        return new ArrayList<>(mStampList);
+    }
+
     @VisibleForTesting
     static DevStatSnapshot configureSnapshot(List<TimeBreaker.Stamp> stampList, long windowMillis) {
         TimeBreaker.TimePortions timePortions = TimeBreaker.configurePortions(stampList, windowMillis);
