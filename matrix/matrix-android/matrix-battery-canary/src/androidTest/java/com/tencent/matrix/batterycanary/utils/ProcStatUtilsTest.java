@@ -325,7 +325,7 @@ public class ProcStatUtilsTest {
                 ProcStatUtil.ProcStat stat = parseJiffiesInfoWithBufferForPath(catPath, new byte[2 * 1024]);
                 Assert.assertNotNull(stat.comm);
                 Assert.assertNotNull(stat.stat);
-                Assert.assertTrue(Arrays.asList("R", "S").contains(stat.stat));
+                Assert.assertTrue("thread state is: " + stat.stat, Arrays.asList("R", "S").contains(stat.stat));
                 Assert.assertTrue(stat.utime >= 0);
                 Assert.assertTrue(stat.stime >= 0);
                 Assert.assertTrue(stat.cutime >= 0);
