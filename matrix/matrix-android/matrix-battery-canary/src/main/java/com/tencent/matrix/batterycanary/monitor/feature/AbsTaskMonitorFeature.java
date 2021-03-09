@@ -299,6 +299,8 @@ public abstract class AbsTaskMonitorFeature extends AbsMonitorFeature {
             }
             stampList.add(0, new TimeBreaker.Stamp(taskName, currJiffies));
         }
+
+        checkOverHeat();
     }
 
     protected void updateDeltas(TaskJiffiesSnapshot bgn, TaskJiffiesSnapshot end) {
