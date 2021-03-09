@@ -6,10 +6,13 @@ buildscript {
         jcenter()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:3.5.0'
+        classpath 'com.android.tools.build:gradle:4.1.0'
         classpath 'com.google.code.gson:gson:2.7'
         classpath  'com.google.gradle:osdetector-gradle-plugin:1.6.0'
-        classpath ("com.tencent.matrix:matrix-gradle-plugin:${MATRIX_VERSION}") { changing = true }
+        classpath ("com.tencent.matrix:matrix-gradle-plugin:${MATRIX_VERSION}") {
+            changing = true
+            exclude group: 'com.android.tools.build', module: 'gradle'
+        }
     }
 }
 

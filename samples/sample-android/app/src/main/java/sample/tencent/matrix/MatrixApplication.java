@@ -27,10 +27,10 @@ import android.support.annotation.NonNull;
 import android.view.Choreographer;
 
 import com.tencent.matrix.Matrix;
-import com.tencent.matrix.batterycanary.monitor.BatteryMonitor;
-import com.tencent.matrix.batterycanary.monitor.plugin.JiffiesMonitorPlugin;
-import com.tencent.matrix.batterycanary.monitor.plugin.LooperTaskMonitorPlugin;
-import com.tencent.matrix.batterycanary.monitor.plugin.WakeLockMonitorPlugin;
+//import com.tencent.matrix.batterycanary.monitor.BatteryMonitor;
+//import com.tencent.matrix.batterycanary.monitor.plugin.JiffiesMonitorPlugin;
+//import com.tencent.matrix.batterycanary.monitor.plugin.LooperTaskMonitorPlugin;
+//import com.tencent.matrix.batterycanary.monitor.plugin.WakeLockMonitorPlugin;
 import com.tencent.matrix.iocanary.IOCanaryPlugin;
 import com.tencent.matrix.iocanary.config.IOConfig;
 import com.tencent.matrix.resource.ResourcePlugin;
@@ -142,16 +142,16 @@ public class MatrixApplication extends Application {
             ThreadMonitor threadMonitor = new ThreadMonitor(new ThreadMonitorConfig.Builder().build());
             builder.plugin(threadMonitor);
 
-            BatteryMonitor batteryMonitor = new BatteryMonitor(new BatteryMonitor.Builder()
-                    .installPlugin(LooperTaskMonitorPlugin.class)
-                    .installPlugin(JiffiesMonitorPlugin.class)
-                    .installPlugin(WakeLockMonitorPlugin.class)
-                    .disableAppForegroundNotifyByMatrix(false)
-                    .wakelockTimeout(2 * 60 * 1000)
-                    .greyJiffiesTime(2 * 1000)
-                    .build()
-            );
-            builder.plugin(batteryMonitor);
+//            BatteryMonitor batteryMonitor = new BatteryMonitor(new BatteryMonitor.Builder()
+//                    .installPlugin(LooperTaskMonitorPlugin.class)
+//                    .installPlugin(JiffiesMonitorPlugin.class)
+//                    .installPlugin(WakeLockMonitorPlugin.class)
+//                    .disableAppForegroundNotifyByMatrix(false)
+//                    .wakelockTimeout(2 * 60 * 1000)
+//                    .greyJiffiesTime(2 * 1000)
+//                    .build()
+//            );
+//            builder.plugin(batteryMonitor);
         }
 
         Matrix.init(builder.build());
@@ -159,7 +159,7 @@ public class MatrixApplication extends Application {
         //start only startup tracer, close other tracer.
         tracePlugin.start();
         Matrix.with().getPluginByClass(ThreadMonitor.class).start();
-        Matrix.with().getPluginByClass(BatteryMonitor.class).start();
+//        Matrix.with().getPluginByClass(BatteryMonitor.class).start();
         MatrixLog.i("Matrix.HackCallback", "end:%s", System.currentTimeMillis());
 
 

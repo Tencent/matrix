@@ -16,6 +16,7 @@
 
 package com.tencent.matrix.javalib.util;
 
+import java.util.Locale;
 import java.util.regex.Pattern;
 
 /**
@@ -122,4 +123,52 @@ public final class Util {
         }
         return to;
     }
+
+    public static String capitalize(String word) {
+        if (word.isEmpty()) {
+            return word;
+        }
+
+        char c = word.charAt(0);
+
+        char upperChar = Character.toUpperCase(c);
+
+        return upperChar + word.substring(1);
+
+    }
+
+//    public static String capitalizedString(String word) {
+//        if (word.isEmpty()) {
+//            return word;
+//        }
+//
+//        char c = word.charAt(0);
+//
+//        // see if the letter is using more than one char.
+//        if (c >= Character.MIN_HIGH_SURROGATE && c <= Character.MAX_HIGH_SURROGATE) {
+//            int codePoint = word.codePointAt(0);
+//            int charCount = Character.charCount(codePoint);
+//
+//            String upperString = word.substring(0, charCount).toUpperCase(Locale.US);
+//            String leftString = word.substring(charCount);
+//            return upperString + leftString;
+//        } else {
+//            char upperChar = Character.toUpperCase(c);
+//
+//            // it's not clear where non surrogate-pair values can trigger this but this is safer.
+//            if (upperChar == -0x1) { // Character.ERROR (internal!)
+//                upperChar = word.substring(0, 1).toUpperCase(Locale.US).charAt(0);
+//            }
+//
+//            return upperChar + word.substring(1);
+//        }
+//    }
+//
+//    public String appendCapitalized(String prefix, String name, String suffix) {
+//        StringBuilder sb = new StringBuilder(prefix.length() + name.length() + suffix.length());
+//        sb.append(prefix);
+//        sb.append(capitalizedString(name));
+//        sb.append(capitalizedString(suffix));
+//        return sb.toString();
+//    }
 }
