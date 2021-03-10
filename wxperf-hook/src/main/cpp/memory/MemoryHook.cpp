@@ -249,18 +249,22 @@ static inline void dump_callers(FILE *log_file,
                        return std::pair<size_t, std::string>(src.second, src.first);
                    });
 
-    size_t    caller_total_size = 0;
-    for (auto i                 = result_sort_by_size.rbegin();
-         i != result_sort_by_size.rend(); ++i) {
+    size_t caller_total_size = 0;
+
+    for (auto i = result_sort_by_size.rbegin(); i != result_sort_by_size.rend(); ++i) {
+        auto &so_name = i->second;
+        auto &so_size = i->first;
         LOGD(TAG, "so = %s, caller alloc size = %zu", i->second.c_str(), i->first);
-        cJSON * so_size_obj = cJSON_CreateObject();
-        cJSON_AddStringToObject(so_size_obj, i->second.c_str(), std::to_string(i->first).c_str());
+        cJSON *so_size_obj = cJSON_CreateObject();
+        cJSON_AddStringToObject(so_size_obj, "so", so_name.c_str());
+        cJSON_AddStringToObject(so_size_obj, "size", std::to_string(so_size).c_str());
         cJSON_AddItemToArray(json_size_arr, so_size_obj);
-        flogger(log_file, "caller alloc size = %10zu b, so = %s\n", i->first, i->second.c_str());
+        flogger(log_file, "caller alloc size = %10zu b, so = %s\n", so_size, so_name.c_str());
 
-        caller_total_size += i->first;
+        caller_total_size += so_size;
 
-        auto                                             count_of_size = same_size_count_of_so[i->second];
+        auto count_of_size = same_size_count_of_so[so_name];
+
         std::multimap<size_t, std::pair<size_t, size_t>> result_sort_by_mul;
         std::transform(count_of_size.begin(),
                        count_of_size.end(),
@@ -273,7 +277,7 @@ static inline void dump_callers(FILE *log_file,
 
         int lines = 20; // fixme hard coding
         LOGD(TAG, "top %d (size * count):", lines);
-        flogger(log_file, "top %d (size * count):\n", lines);
+        flogger(log_file, "top %d (size * count):\n", lines); // fixme using json
 
         for (auto sc = result_sort_by_mul.rbegin();
              sc != result_sort_by_mul.rend() && lines; ++sc, --lines) {
