@@ -21,8 +21,12 @@
 
 package sample.tencent.matrix.config;
 
+import android.util.Log;
+
 import com.tencent.matrix.util.MatrixLog;
 import com.tencent.mrs.plugin.IDynamicConfig;
+
+import java.util.concurrent.TimeUnit;
 
 public class DynamicConfigImplDemo implements IDynamicConfig {
     private static final String TAG = "Matrix.DynamicConfigImplDemo";
@@ -46,6 +50,18 @@ public class DynamicConfigImplDemo implements IDynamicConfig {
     @Override
     public String get(String key, String defStr) {
         //TODO here return default value which is inside sdk, you can change it as you wish. matrix-sdk-key in class MatrixEnum.
+
+        // for Activity leak detect
+        if ((ExptEnum.clicfg_matrix_resource_detect_interval_millis.name().equals(key) || ExptEnum.clicfg_matrix_resource_detect_interval_millis_bg.name().equals(key))) {
+            Log.d("DynamicConfig", "Matrix.ActivityRefWatcher: clicfg_matrix_resource_detect_interval_millis 10s");
+            return String.valueOf(TimeUnit.SECONDS.toMillis(10));
+        }
+
+        if (ExptEnum.clicfg_matrix_resource_max_detect_times.name().equals(key)) {
+            Log.d("DynamicConfig", "Matrix.ActivityRefWatcher: clicfg_matrix_resource_max_detect_times 5");
+            return String.valueOf(5);
+        }
+
         return defStr;
     }
 

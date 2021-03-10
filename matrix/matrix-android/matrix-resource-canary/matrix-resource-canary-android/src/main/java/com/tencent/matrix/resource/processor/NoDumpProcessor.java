@@ -22,6 +22,7 @@ public class NoDumpProcessor extends BaseLeakProcessor{
         // Lightweight mode, just report leaked activity name.
         MatrixLog.i(TAG, "lightweight mode, just report leaked activity name.");
         getWatcher().markPublished(destroyedActivityInfo.mActivityName);
+        getWatcher().triggerGc();
 
         publishIssue(SharePluginInfo.IssueType.LEAK_FOUND, ResourceConfig.DumpMode.NO_DUMP, destroyedActivityInfo.mActivityName, destroyedActivityInfo.mKey, "no dump", "0");
 

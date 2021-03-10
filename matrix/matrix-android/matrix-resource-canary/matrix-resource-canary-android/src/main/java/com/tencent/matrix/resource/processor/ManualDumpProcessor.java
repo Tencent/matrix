@@ -42,6 +42,7 @@ public class ManualDumpProcessor extends BaseLeakProcessor{
     @Override
     public boolean process(DestroyedActivityInfo destroyedActivityInfo) {
         final Context context = getWatcher().getContext();
+        getWatcher().triggerGc();
 
         NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
         String dumpingHeapContent = context.getString(R.string.resource_canary_leak_tip);

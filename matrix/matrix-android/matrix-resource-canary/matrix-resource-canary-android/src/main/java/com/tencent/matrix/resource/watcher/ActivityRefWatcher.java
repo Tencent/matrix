@@ -20,8 +20,6 @@ import android.app.Application;
 import android.os.Debug;
 import android.os.HandlerThread;
 
-import com.tencent.matrix.AppActiveMatrixDelegate;
-import com.tencent.matrix.listeners.IAppForeground;
 import com.tencent.matrix.report.FilePublisher;
 import com.tencent.matrix.resource.ResourcePlugin;
 import com.tencent.matrix.resource.analyzer.model.DestroyedActivityInfo;
@@ -35,13 +33,10 @@ import com.tencent.matrix.resource.watcher.RetryableTaskExecutor.RetryableTask;
 import com.tencent.matrix.util.MatrixHandlerThread;
 import com.tencent.matrix.util.MatrixLog;
 
-import java.lang.ref.WeakReference;
 import java.util.Iterator;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.TimeUnit;
-
-import static java.lang.Thread.NORM_PRIORITY;
 
 /**
  * Created by tangyinsheng on 2017/6/2.
@@ -49,7 +44,7 @@ import static java.lang.Thread.NORM_PRIORITY;
  * This class is ported from LeakCanary.
  */
 
-public class ActivityRefWatcher extends FilePublisher implements Watcher, IAppForeground {
+public class ActivityRefWatcher extends FilePublisher implements Watcher {
     private static final String TAG = "Matrix.ActivityRefWatcher";
 
     private static final int  CREATED_ACTIVITY_COUNT_THRESHOLD = 1;
@@ -113,7 +108,7 @@ public class ActivityRefWatcher extends FilePublisher implements Watcher, IAppFo
         super(app, FILE_CONFIG_EXPIRED_TIME_MILLIS, resourcePlugin.getTag(), resourcePlugin);
         this.mResourcePlugin = resourcePlugin;
         final ResourceConfig config = resourcePlugin.getConfig();
-        mHandlerThread = MatrixHandlerThread.getNewHandlerThread("matrix_res", NORM_PRIORITY); // avoid blocking default matrix thread
+        mHandlerThread = MatrixHandlerThread.getNewHandlerThread("matrix_res"); // avoid blocking default matrix thread
         mDumpHprofMode = config.getDumpHprofMode();
         mBgScanTimes = config.getBgScanIntervalMillis();
         mFgScanTimes = config.getScanIntervalMillis();
@@ -123,7 +118,6 @@ public class ActivityRefWatcher extends FilePublisher implements Watcher, IAppFo
         mDestroyedActivityInfos = new ConcurrentLinkedQueue<>();
     }
 
-    @Override
     public void onForeground(boolean isForeground) {
         if (isForeground) {
             MatrixLog.i(TAG, "we are in foreground, modify scan time[%sms].", mFgScanTimes);
@@ -150,7 +144,6 @@ public class ActivityRefWatcher extends FilePublisher implements Watcher, IAppFo
         final Application app = mResourcePlugin.getApplication();
         if (app != null) {
             app.registerActivityLifecycleCallbacks(mRemovedActivityMonitor);
-            AppActiveMatrixDelegate.INSTANCE.addListener(this);
             scheduleDetectProcedure();
             MatrixLog.i(TAG, "watcher is started.");
         }
@@ -166,7 +159,6 @@ public class ActivityRefWatcher extends FilePublisher implements Watcher, IAppFo
         final Application app = mResourcePlugin.getApplication();
         if (app != null) {
             app.unregisterActivityLifecycleCallbacks(mRemovedActivityMonitor);
-            AppActiveMatrixDelegate.INSTANCE.removeListener(this);
             unscheduleDetectProcedure();
         }
     }
@@ -234,13 +226,15 @@ public class ActivityRefWatcher extends FilePublisher implements Watcher, IAppFo
                 return Status.RETRY;
             }
 
-            final WeakReference<Object> sentinelRef = new WeakReference<>(new Object());
+//            final WeakReference<Object[]> sentinelRef = new WeakReference<>(new Object[1024 * 1024]); // alloc big object
             triggerGc();
-            if (sentinelRef.get() != null) {
-                // System ignored our gc request, we will retry later.
-                MatrixLog.d(TAG, "system ignore our gc request, wait for next detection.");
-                return Status.RETRY;
-            }
+            triggerGc();
+            triggerGc();
+//            if (sentinelRef.get() != null) {
+//                // System ignored our gc request, we will retry later.
+//                MatrixLog.d(TAG, "system ignore our gc request, wait for next detection.");
+//                return Status.RETRY;
+//            }
 
             final Iterator<DestroyedActivityInfo> infoIt = mDestroyedActivityInfos.iterator();
 
@@ -253,6 +247,7 @@ public class ActivityRefWatcher extends FilePublisher implements Watcher, IAppFo
                     infoIt.remove();
                     continue;
                 }
+                triggerGc();
                 if (destroyedActivityInfo.mActivityRef.get() == null) {
                     // The activity was recycled by a gc triggered outside.
                     MatrixLog.v(TAG, "activity with key [%s] was already recycled.", destroyedActivityInfo.mKey);
@@ -268,6 +263,8 @@ public class ActivityRefWatcher extends FilePublisher implements Watcher, IAppFo
                     // system may still ignore it, so try again until we reach max retry times.
                     MatrixLog.i(TAG, "activity with key [%s] should be recycled but actually still exists in %s times, wait for next detection to confirm.",
                             destroyedActivityInfo.mKey, destroyedActivityInfo.mDetectedCount);
+
+                    triggerGc();
                     continue;
                 }
 
@@ -277,12 +274,14 @@ public class ActivityRefWatcher extends FilePublisher implements Watcher, IAppFo
                     throw new NullPointerException("LeakProcessor not found!!!");
                 }
 
+                triggerGc();
                 if (mLeakProcessor.process(destroyedActivityInfo)) {
                     MatrixLog.i(TAG, "the leaked activity [%s] with key [%s] has been processed. stop polling", destroyedActivityInfo.mActivityName, destroyedActivityInfo.mKey);
                     infoIt.remove();
                 }
             }
 
+            triggerGc();
             return Status.RETRY;
         }
     };
@@ -295,9 +294,14 @@ public class ActivityRefWatcher extends FilePublisher implements Watcher, IAppFo
         return mResourcePlugin;
     }
 
-    private void triggerGc() {
+    public void triggerGc() {
         MatrixLog.v(TAG, "triggering gc...");
         Runtime.getRuntime().gc();
+        try {
+            Thread.sleep(100);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
         Runtime.getRuntime().runFinalization();
         MatrixLog.v(TAG, "gc was triggered.");
     }

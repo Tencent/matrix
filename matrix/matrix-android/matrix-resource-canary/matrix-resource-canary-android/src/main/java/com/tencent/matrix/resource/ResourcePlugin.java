@@ -103,6 +103,11 @@ public class ResourcePlugin extends Plugin {
         return SharePluginInfo.TAG_PLUGIN;
     }
 
+    @Override
+    public void onForeground(boolean isForeground) {
+        MatrixLog.d(TAG, "onForeground: %s", isForeground);
+        mWatcher.onForeground(isForeground);
+    }
 
     public ResourceConfig getConfig() {
         return mConfig;

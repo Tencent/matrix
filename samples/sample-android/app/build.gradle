@@ -22,6 +22,9 @@ android {
         debug {
             storeFile file("./keystore/debug.keystore")
         }
+        release {
+            storeFile file("./keystore/debug.keystore")
+        }
     }
 
     defaultConfig {
@@ -133,39 +136,39 @@ if (!removeUnusedResourcesV2Enable) {
     project.ext.unusedResourcesSet = new HashSet<String>()
 }
 
-apply plugin: 'com.tencent.matrix-plugin'
-matrix {
-
-    logLevel "D"
-
-    trace {
-        enable = true
-        baseMethodMapFile = "${project.projectDir}/matrixTrace/methodMapping.txt"
-        blackListFile = "${project.projectDir}/matrixTrace/blackMethodList.txt"
-    }
-    removeUnusedResources {
-        variant = "debug"
-
-        v2 = removeUnusedResourcesV2Enable
-
-        if (!v2) {
-            unusedResources = project.ext.unusedResourcesSet
-        }
-
-        enable true
-        needSign true
-        shrinkArsc true
-        shrinkDuplicates true
-        use7zip = true
-        zipAlign = true
-        withResGuard true
-
-        apkCheckerPath = "${project.configurations.apkCheckerDependency.resolve().find { it.name.startsWith("matrix-apk-canary") }.getAbsolutePath()}"
-        sevenZipPath = "${project.configurations.sevenZipDependency.resolve().getAt(0).getAbsolutePath()}"
-        //Notice: You need to modify the  value of $apksignerPath on different platform. the value below only suitable for Mac Platform,
-        //if on Windows, you may have to  replace apksigner with apksigner.bat.
-        apksignerPath = "${android.getSdkDirectory().getAbsolutePath()}/build-tools/${android.getBuildToolsVersion()}/apksigner"
-        zipAlignPath = "${android.getSdkDirectory().getAbsolutePath()}/build-tools/${android.getBuildToolsVersion()}/zipalign"
-        ignoreResources = ["R.id.*", "R.bool.*", "R.layout.unused_layout"]
-    }
-}
+//apply plugin: 'com.tencent.matrix-plugin'
+//matrix {
+//
+//    logLevel "D"
+//
+//    trace {
+//        enable = true
+//        baseMethodMapFile = "${project.projectDir}/matrixTrace/methodMapping.txt"
+//        blackListFile = "${project.projectDir}/matrixTrace/blackMethodList.txt"
+//    }
+//    removeUnusedResources {
+//        variant = "debug"
+//
+//        v2 = removeUnusedResourcesV2Enable
+//
+//        if (!v2) {
+//            unusedResources = project.ext.unusedResourcesSet
+//        }
+//
+//        enable true
+//        needSign true
+//        shrinkArsc true
+//        shrinkDuplicates true
+//        use7zip = true
+//        zipAlign = true
+//        withResGuard true
+//
+//        apkCheckerPath = "${project.configurations.apkCheckerDependency.resolve().find { it.name.startsWith("matrix-apk-canary") }.getAbsolutePath()}"
+//        sevenZipPath = "${project.configurations.sevenZipDependency.resolve().getAt(0).getAbsolutePath()}"
+//        //Notice: You need to modify the  value of $apksignerPath on different platform. the value below only suitable for Mac Platform,
+//        //if on Windows, you may have to  replace apksigner with apksigner.bat.
+//        apksignerPath = "${android.getSdkDirectory().getAbsolutePath()}/build-tools/${android.getBuildToolsVersion()}/apksigner"
+//        zipAlignPath = "${android.getSdkDirectory().getAbsolutePath()}/build-tools/${android.getBuildToolsVersion()}/zipalign"
+//        ignoreResources = ["R.id.*", "R.bool.*", "R.layout.unused_layout"]
+//    }
+//}

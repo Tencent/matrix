@@ -109,7 +109,7 @@ public class MatrixApplication extends Application {
 
             //resource
             Intent intent = new Intent();
-            ResourceConfig.DumpMode mode = ResourceConfig.DumpMode.AUTO_DUMP;
+            ResourceConfig.DumpMode mode = ResourceConfig.DumpMode.SILENCE_ANALYSE;
             MatrixLog.i(TAG, "Dump Activity Leak Mode=%s", mode);
             intent.setClassName(this.getPackageName(), "com.tencent.mm.ui.matrix.ManualDumpActivity");
             ResourceConfig resourceConfig = new ResourceConfig.Builder()

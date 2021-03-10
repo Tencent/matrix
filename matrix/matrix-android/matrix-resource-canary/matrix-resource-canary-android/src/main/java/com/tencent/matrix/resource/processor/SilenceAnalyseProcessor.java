@@ -81,6 +81,8 @@ public class SilenceAnalyseProcessor extends BaseLeakProcessor {
         if (!isProcessing && isScreenOff) {
             isProcessing = true;
 
+            getWatcher().triggerGc();
+
             boolean res = dumpAndAnalyse(activity, refString);
 
             if (res) {
@@ -118,8 +120,10 @@ public class SilenceAnalyseProcessor extends BaseLeakProcessor {
             String refChain = result.toString();
             if (result.mLeakFound) {
                 publishIssue(SharePluginInfo.IssueType.LEAK_FOUND, activity, refString, refChain, String.valueOf(System.currentTimeMillis() - dumpBegin));
+                MatrixLog.i(TAG, refChain);
+            } else {
+                MatrixLog.i(TAG, "leak not found");
             }
-            MatrixLog.i(TAG, refChain);
         } catch (OutOfMemoryError error) {
             publishIssue(SharePluginInfo.IssueType.ERR_ANALYSE_OOM, activity, refString, "OutOfMemoryError", "0");
             MatrixLog.printErrStackTrace(TAG, error.getCause(), "");

@@ -23,6 +23,7 @@ public class AutoDumpProcessor extends BaseLeakProcessor {
         final File hprofFile = getHeapDumper().dumpHeap(true);
         if (hprofFile != null) {
             getWatcher().markPublished(destroyedActivityInfo.mActivityName);
+            getWatcher().triggerGc();
             final HeapDump heapDump = new HeapDump(hprofFile, destroyedActivityInfo.mKey, destroyedActivityInfo.mActivityName);
             getHeapDumpHandler().process(heapDump);
         } else {
