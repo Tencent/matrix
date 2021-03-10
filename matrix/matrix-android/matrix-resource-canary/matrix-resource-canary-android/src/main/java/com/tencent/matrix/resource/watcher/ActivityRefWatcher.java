@@ -314,7 +314,7 @@ public class ActivityRefWatcher extends FilePublisher implements Watcher {
         try {
             Thread.sleep(100);
         } catch (InterruptedException e) {
-            e.printStackTrace();
+            MatrixLog.printErrStackTrace(TAG, e, "");
         }
         Runtime.getRuntime().runFinalization();
         MatrixLog.v(TAG, "gc was triggered.");
