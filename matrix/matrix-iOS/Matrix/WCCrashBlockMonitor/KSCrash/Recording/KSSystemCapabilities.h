@@ -22,7 +22,6 @@
 // THE SOFTWARE.
 //
 
-
 #ifndef HDR_KSSystemCapabilities_h
 #define HDR_KSSystemCapabilities_h
 

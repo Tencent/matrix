@@ -19,12 +19,11 @@
 #import <sys/stat.h>
 #import <sys/time.h>
 
-static NSString* g_matrixCacheRootPath = nil;
+static NSString *g_matrixCacheRootPath = nil;
 
 @implementation MatrixPathUtil
 
-+ (NSString *)matrixCacheRootPath
-{
++ (NSString *)matrixCacheRootPath {
     if (g_matrixCacheRootPath.length > 0) {
         return g_matrixCacheRootPath;
     }
@@ -40,8 +39,7 @@ static NSString* g_matrixCacheRootPath = nil;
     return s_rootPath;
 }
 
-+ (NSString *)crashBlockPluginCachePath
-{
++ (NSString *)crashBlockPluginCachePath {
     NSString *rootPath = [[self matrixCacheRootPath] stringByAppendingPathComponent:@"CrashBlock"];
     if ([[NSFileManager defaultManager] fileExistsAtPath:rootPath] == NO) {
         [[NSFileManager defaultManager] createDirectoryAtPath:rootPath withIntermediateDirectories:YES attributes:nil error:nil];
@@ -49,8 +47,7 @@ static NSString* g_matrixCacheRootPath = nil;
     return rootPath;
 }
 
-+ (NSString *)appRebootAnalyzerCachePath
-{
++ (NSString *)appRebootAnalyzerCachePath {
     NSString *rootPath = [[self matrixCacheRootPath] stringByAppendingPathComponent:@"AppReboot"];
     if ([[NSFileManager defaultManager] fileExistsAtPath:rootPath] == NO) {
         [[NSFileManager defaultManager] createDirectoryAtPath:rootPath withIntermediateDirectories:YES attributes:nil error:nil];
@@ -58,8 +55,7 @@ static NSString* g_matrixCacheRootPath = nil;
     return rootPath;
 }
 
-+ (NSString *)memoryStatPluginCachePath
-{
++ (NSString *)memoryStatPluginCachePath {
     NSString *rootPath = [[self matrixCacheRootPath] stringByAppendingPathComponent:@"MemoryStat"];
     if ([[NSFileManager defaultManager] fileExistsAtPath:rootPath] == NO) {
         [[NSFileManager defaultManager] createDirectoryAtPath:rootPath withIntermediateDirectories:YES attributes:nil error:nil];
@@ -71,10 +67,9 @@ static NSString* g_matrixCacheRootPath = nil;
 #pragma mark - Auto Clean
 // ============================================================================
 
-+ (void)autoCleanDiretory:(NSString *)folderPath withTimeout:(NSTimeInterval)timeoutSecond
-{
++ (void)autoCleanDiretory:(NSString *)folderPath withTimeout:(NSTimeInterval)timeoutSecond {
     NSArray *allFiles = [[NSFileManager defaultManager] subpathsAtPath:folderPath];
-    
+
     time_t latestTime = 0U;
     time_t curTime = 0U;
     struct timeval curTimeVal;
@@ -92,7 +87,7 @@ static NSString* g_matrixCacheRootPath = nil;
                 time_t ctime = st.st_ctime;
                 time_t btime = st.st_birthtime;
                 latestTime = [MatrixPathUtil latestTimeWithCurTime:curTime accessTime:atime modifyTime:mtime changeTime:ctime birthTime:btime];
-                
+
                 if ((curTime - latestTime) >= timeoutSecond) {
                     NSError *removeError = nil;
                     [[NSFileManager defaultManager] removeItemAtPath:filePath error:&removeError];
@@ -107,14 +102,9 @@ static NSString* g_matrixCacheRootPath = nil;
     }
 }
 
-+ (time_t)latestTimeWithCurTime:(time_t)curTime
-                     accessTime:(time_t)atime
-                     modifyTime:(time_t)mtime
-                     changeTime:(time_t)ctime
-                      birthTime:(time_t)btime
-{
++ (time_t)latestTimeWithCurTime:(time_t)curTime accessTime:(time_t)atime modifyTime:(time_t)mtime changeTime:(time_t)ctime birthTime:(time_t)btime {
     time_t latestTime = 0;
-    time_t times[] = {atime, mtime, ctime, btime};
+    time_t times[] = { atime, mtime, ctime, btime };
     int len = sizeof(times) / sizeof(times[0]);
     for (int i = 0; i < len; i++) {
         time_t t = times[i];

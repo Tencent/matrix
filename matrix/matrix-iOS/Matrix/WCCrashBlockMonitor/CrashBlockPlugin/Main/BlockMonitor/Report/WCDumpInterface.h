@@ -32,9 +32,7 @@
                    withExceptionReason:(NSString *)exceptionReason
                        selfDefinedPath:(BOOL)bSelfDefined;
 
-+ (NSString *)dumpReportWithReportType:(EDumpType)dumpType
-                         withBlockTime:(uint64_t)blockTime
-                   withExceptionReason:(NSString *)exceptionReason;
++ (NSString *)dumpReportWithReportType:(EDumpType)dumpType withBlockTime:(uint64_t)blockTime withExceptionReason:(NSString *)exceptionReason;
 
 /**
  *  @brief dump custom crash report (which has current thread state, etc) without abort
@@ -42,8 +40,7 @@
  *  @param blockTime the block time which defined by developer (can use to measure)
  *  @return NSString * the file path of the crash report
  */
-+ (NSString *)dumpReportWithReportType:(EDumpType)dumpType
-                         withBlockTime:(uint64_t)blockTime;
++ (NSString *)dumpReportWithReportType:(EDumpType)dumpType withBlockTime:(uint64_t)blockTime;
 
 /**
  *  @brief save dump data to file
@@ -51,8 +48,6 @@
  *  @param dumpType the dump type of this data
  *  @param reportID the reportID of this data
  */
-+ (NSString *)saveDump:(NSData *)dumpData
-        withReportType:(EDumpType)dumpType
-          withReportID:(NSString *)reportID;
++ (NSString *)saveDump:(NSData *)dumpData withReportType:(EDumpType)dumpType withReportID:(NSString *)reportID;
 
 @end

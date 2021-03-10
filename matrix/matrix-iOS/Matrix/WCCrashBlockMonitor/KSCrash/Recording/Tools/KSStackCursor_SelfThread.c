@@ -22,7 +22,6 @@
 // THE SOFTWARE.
 //
 
-
 #include "KSStackCursor_SelfThread.h"
 #include "KSStackCursor_Backtrace.h"
 #include "KSStackCursor_MachineContext.h"
@@ -31,33 +30,29 @@
 //#define KSLogger_LocalLevel TRACE
 #include "KSLogger.h"
 
-#define MAX_BACKTRACE_LENGTH (KSSC_CONTEXT_SIZE - sizeof(KSStackCursor_Backtrace_Context) / sizeof(void*) - 1)
+#define MAX_BACKTRACE_LENGTH (KSSC_CONTEXT_SIZE - sizeof(KSStackCursor_Backtrace_Context) / sizeof(void *) - 1)
 
-typedef struct
-{
+typedef struct {
     KSStackCursor_Backtrace_Context SelfThreadContextSpacer;
     uintptr_t backtrace[0];
 } SelfThreadContext;
 
-void kssc_initSelfThread(KSStackCursor *cursor, int skipEntries)
-{
-    SelfThreadContext* context = (SelfThreadContext*)cursor->context;
-    int backtraceLength = backtrace((void**)context->backtrace, MAX_BACKTRACE_LENGTH);
+void kssc_initSelfThread(KSStackCursor *cursor, int skipEntries) {
+    SelfThreadContext *context = (SelfThreadContext *)cursor->context;
+    int backtraceLength = backtrace((void **)context->backtrace, MAX_BACKTRACE_LENGTH);
     kssc_initWithBacktrace(cursor, context->backtrace, backtraceLength, skipEntries + 1);
 }
 
-int kssc_backtraceCurrentThread(KSThread currentThread, uintptr_t* backtraceBuffer, int maxEntries)
-{
-    if (maxEntries == 0)
-    {
+int kssc_backtraceCurrentThread(KSThread currentThread, uintptr_t *backtraceBuffer, int maxEntries) {
+    if (maxEntries == 0) {
         return 0;
     }
-    
+
     KSMC_NEW_CONTEXT(machineContext);
     ksmc_getContextForThread(currentThread, machineContext, false);
     KSStackCursor stackCursor;
     kssc_initWithMachineContext(&stackCursor, maxEntries, machineContext);
-    
+
     int i = 0;
     while (stackCursor.advanceCursor(&stackCursor)) {
         backtraceBuffer[i] = stackCursor.stackEntry.address;

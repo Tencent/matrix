@@ -29,17 +29,21 @@
 extern int skip_max_stack_depth;
 extern int skip_min_malloc_size;
 
-extern bool is_ios9_plus;
+struct dyld_image_info_db;
 
-struct dyld_image_info_file;
-
-bool prepare_dyld_image_logger(const char *event_dir);
+dyld_image_info_db *prepare_dyld_image_logger(const char *event_dir);
 bool is_stack_frames_should_skip(uintptr_t *frames, int32_t count, uint64_t malloc_size, uint32_t type_flags);
 const char *app_uuid();
 
-dyld_image_info_file *open_dyld_image_info_file(const char *event_dir);
-void close_dyld_image_info_file(dyld_image_info_file *file_context);
+dyld_image_info_db *dyld_image_info_db_open_or_create(const char *event_dir);
+void dyld_image_info_db_close(dyld_image_info_db *db_context);
 
-void transform_frames(dyld_image_info_file *file_context, uint64_t *src_frames, uint64_t *out_offsets, char const **out_uuids, char const **out_image_names, bool *out_is_app_images, int32_t count);
+void dyld_image_info_db_transform_frames(dyld_image_info_db *db_context,
+                                         uint64_t *src_frames,
+                                         uint64_t *out_offsets,
+                                         char const **out_uuids,
+                                         char const **out_image_names,
+                                         bool *out_is_app_images,
+                                         int32_t count);
 
 #endif /* dyld_image_info_h */

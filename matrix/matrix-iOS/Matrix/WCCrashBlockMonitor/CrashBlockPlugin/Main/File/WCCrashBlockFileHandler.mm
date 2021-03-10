@@ -29,29 +29,26 @@
 #pragma mark - Crash File
 // ============================================================================
 
-+ (NSDictionary *)getPendingCrashReportInfo
-{
++ (NSDictionary *)getPendingCrashReportInfo {
     NSString *newestID = [WCCrashBlockFileHandler loadPendingCrashReportID];
     if (newestID.length == 0 || newestID == nil) {
         return nil;
     }
     NSDictionary *reportDic = [[KSCrash sharedInstance] reportWithStringID:newestID];
     NSData *jsonData = [WCCrashBlockJsonUtil jsonEncode:reportDic withError:nil];
-    
+
     if (jsonData.length == 0 || jsonData == nil) {
         MatrixWarning(@"load pending crash report, json data is nil");
         [WCCrashBlockFileHandler deleteCrashDataWithReportID:newestID];
         return nil;
     }
 
-    NSDictionary *reportInfoData = @{ @"reportID" : newestID,
-                                      @"crashData" : jsonData };
+    NSDictionary *reportInfoData = @{ @"reportID" : newestID, @"crashData" : jsonData };
     MatrixInfo(@"load pending crash report data %@", newestID);
     return reportInfoData;
 }
 
-+ (NSString *)loadPendingCrashReportID
-{
++ (NSString *)loadPendingCrashReportID {
     KSCrash *handler = [KSCrash sharedInstance];
     NSArray *reportIDSArray = [handler allReportID];
 
@@ -63,8 +60,7 @@
     return nil;
 }
 
-+ (NSArray *)getAllCrashReportPath
-{
++ (NSArray *)getAllCrashReportPath {
     NSArray *reportIDArray = [WCCrashBlockFileHandler getAllCrashReportID];
     if ([reportIDArray count] == 0) {
         return nil;
@@ -77,8 +73,7 @@
     return [reportFileArray copy];
 }
 
-+ (NSArray *)getAllCrashReportID
-{
++ (NSArray *)getAllCrashReportID {
     NSArray *reportIDArray = [[KSCrash sharedInstance] allReportID];
     if ([reportIDArray count] == 0) {
         return nil;
@@ -92,8 +87,7 @@
     return [crashReportIDArray copy];
 }
 
-+ (BOOL)hasCrashReport
-{
++ (BOOL)hasCrashReport {
     NSArray *reportIDArray = [[KSCrash sharedInstance] allReportID];
     if ([reportIDArray count] == 0) {
         return NO;
@@ -106,8 +100,7 @@
     return NO;
 }
 
-+ (void)deleteCrashDataWithReportID:(NSString *)reportID
-{
++ (void)deleteCrashDataWithReportID:(NSString *)reportID {
     MatrixInfo(@"delete crash report data with reportID : %@", reportID);
     KSCrash *handler = [KSCrash sharedInstance];
     [handler deleteReportWithID:reportID];
@@ -116,8 +109,7 @@
 // 判断文件名，crash和卡顿日志的格式不同
 // crash report id format: 58D5E212-165B-4CA0-909B-C86B9CEE0111
 // dump report id format: 58D5E212-165B-4CA0-909B-C86B9CEE0111-2016-6-28-2016
-+ (BOOL)p_isCrashReportID:(NSString *)reportID
-{
++ (BOOL)p_isCrashReportID:(NSString *)reportID {
     NSArray *stringArray = [reportID componentsSeparatedByString:@"-"];
     return [stringArray count] < 6;
 }
@@ -128,8 +120,7 @@
 
 static NSString *g_userDumpCachePath = nil;
 
-+ (NSString *)diretoryOfUserDump
-{
++ (NSString *)diretoryOfUserDump {
     if (g_userDumpCachePath != nil && [g_userDumpCachePath length] > 0) {
         return g_userDumpCachePath;
     }
@@ -138,31 +129,24 @@ static NSString *g_userDumpCachePath = nil;
     NSFileManager *oFileMgr = [NSFileManager defaultManager];
     if (oFileMgr != nil && [oFileMgr fileExistsAtPath:g_userDumpCachePath] == NO) {
         NSError *err;
-        [oFileMgr createDirectoryAtPath:g_userDumpCachePath
-            withIntermediateDirectories:YES
-                             attributes:nil
-                                  error:&err];
+        [oFileMgr createDirectoryAtPath:g_userDumpCachePath withIntermediateDirectories:YES attributes:nil error:&err];
     }
     return g_userDumpCachePath;
 }
 
-+ (NSString *)diretoryOfUserDumpWithType:(EDumpType)type
-{
-    NSString *typeDiretory = [[WCCrashBlockFileHandler diretoryOfUserDump] stringByAppendingPathComponent:[NSString stringWithFormat:@"%lu", (unsigned long) type]];
++ (NSString *)diretoryOfUserDumpWithType:(EDumpType)type {
+    NSString *typeDiretory =
+    [[WCCrashBlockFileHandler diretoryOfUserDump] stringByAppendingPathComponent:[NSString stringWithFormat:@"%lu", (unsigned long)type]];
 
     NSFileManager *oFileMgr = [NSFileManager defaultManager];
     if (oFileMgr != nil && [oFileMgr fileExistsAtPath:typeDiretory] == NO) {
         NSError *err;
-        [oFileMgr createDirectoryAtPath:typeDiretory
-            withIntermediateDirectories:YES
-                             attributes:nil
-                                  error:&err];
+        [oFileMgr createDirectoryAtPath:typeDiretory withIntermediateDirectories:YES attributes:nil error:&err];
     }
     return typeDiretory;
 }
 
-+ (NSArray *)getLagReportIDWithType:(EDumpType)dumpType withDate:(NSString *)limitDate
-{
++ (NSArray *)getLagReportIDWithType:(EDumpType)dumpType withDate:(NSString *)limitDate {
     NSString *fileSuffix = [WCCrashBlockFileHandler p_getFileSuffixWithType:dumpType withDate:limitDate];
 
     NSArray *reportIDArray = [[KSCrash sharedInstance] allReportIDWithPath:[WCCrashBlockFileHandler diretoryOfUserDumpWithType:dumpType]];
@@ -190,6 +174,11 @@ static NSString *g_userDumpCachePath = nil;
             [WCCrashBlockFileHandler deleteLagDataWithReportID:reportID andReportType:dumpType];
             continue;
         }
+        if ([jsonData length] > 4 * 1000 * 1000) {
+            MatrixError(@"file is too big %@ fail", path);
+            [WCCrashBlockFileHandler deleteLagDataWithReportID:reportID andReportType:dumpType];
+            continue;
+        }
 
         NSMutableDictionary *report = [WCCrashBlockJsonUtil jsonDecode:jsonData withError:&error];
         if (error != nil) {
@@ -204,8 +193,7 @@ static NSString *g_userDumpCachePath = nil;
     return [WCCrashBlockJsonUtil jsonEncode:reportArray withError:nil];
 }
 
-+ (NSData *)getLagDataWithReportID:(NSString *)reportID andReportType:(EDumpType)dumpType
-{
++ (NSData *)getLagDataWithReportID:(NSString *)reportID andReportType:(EDumpType)dumpType {
     NSString *storePath = [WCCrashBlockFileHandler diretoryOfUserDumpWithType:dumpType];
     NSString *path = [[KSCrash sharedInstance] pathToCrashReportWithID:reportID withStorePath:storePath];
     NSData *jsonData = [NSData dataWithContentsOfFile:path];
@@ -219,22 +207,19 @@ static NSString *g_userDumpCachePath = nil;
     return jsonData;
 }
 
-+ (void)deleteLagDataWithReportID:(NSString *)reportID andReportType:(EDumpType)dumpType
-{
++ (void)deleteLagDataWithReportID:(NSString *)reportID andReportType:(EDumpType)dumpType {
     NSString *storePath = [WCCrashBlockFileHandler diretoryOfUserDumpWithType:dumpType];
     [[KSCrash sharedInstance] deleteReportWithID:reportID withStorePath:storePath];
 }
 
-+ (NSString *)p_getFileSuffixWithType:(EDumpType)type withDate:(NSString *)limitDate
-{
++ (NSString *)p_getFileSuffixWithType:(EDumpType)type withDate:(NSString *)limitDate {
     if (limitDate.length == 0 || !limitDate) {
-        return [NSString stringWithFormat:@"-%lu", (unsigned long) type];
+        return [NSString stringWithFormat:@"-%lu", (unsigned long)type];
     }
-    return [NSString stringWithFormat:@"%@-%lu", limitDate, (unsigned long) type];
+    return [NSString stringWithFormat:@"%@-%lu", limitDate, (unsigned long)type];
 }
 
-+ (BOOL)haveLagFiles
-{
++ (BOOL)haveLagFiles {
     for (NSNumber *type in WXGDumpReportTypeConfig) {
         if (type == nil) {
             continue;
@@ -246,8 +231,7 @@ static NSString *g_userDumpCachePath = nil;
     return NO;
 }
 
-+ (BOOL)haveLagFilesOnDate:(NSString *)nsDate
-{
++ (BOOL)haveLagFilesOnDate:(NSString *)nsDate {
     for (NSNumber *type in WXGDumpReportTypeConfig) {
         if (type == nil) {
             continue;
@@ -259,14 +243,12 @@ static NSString *g_userDumpCachePath = nil;
     return NO;
 }
 
-+ (BOOL)haveLagFilesOnType:(EDumpType)dumpType
-{
++ (BOOL)haveLagFilesOnType:(EDumpType)dumpType {
     NSArray *reportIDArray = [[KSCrash sharedInstance] allReportIDWithPath:[WCCrashBlockFileHandler diretoryOfUserDumpWithType:dumpType]];
     return [reportIDArray count] > 0;
 }
 
-+ (BOOL)haveLagFilesOnDate:(NSString *)nsDate onType:(EDumpType)dumpType
-{
++ (BOOL)haveLagFilesOnDate:(NSString *)nsDate onType:(EDumpType)dumpType {
     NSString *fileSuffix = [WCCrashBlockFileHandler p_getFileSuffixWithType:dumpType withDate:nsDate];
     NSArray *reportIDArray = [[KSCrash sharedInstance] allReportIDWithPath:[WCCrashBlockFileHandler diretoryOfUserDumpWithType:dumpType]];
     NSMutableArray *arrResult = [[NSMutableArray alloc] init];
@@ -282,8 +264,7 @@ static NSString *g_userDumpCachePath = nil;
 #pragma mark - Launch Lag Info
 // ============================================================================
 
-+ (NSString *)getLaunchBlockRecordFilePath
-{
++ (NSString *)getLaunchBlockRecordFilePath {
     NSString *ret = [WCCrashBlockFileHandler diretoryOfUserDump];
     ret = [ret stringByAppendingPathComponent:@"LaunchBlockRecord.dat"];
     return ret;
@@ -293,8 +274,7 @@ static NSString *g_userDumpCachePath = nil;
 #pragma mark - Stack Feat
 // ============================================================================
 
-+ (NSString *)getStackFeatFilePath
-{
++ (NSString *)getStackFeatFilePath {
     NSString *ret = [WCCrashBlockFileHandler diretoryOfUserDump];
     ret = [ret stringByAppendingPathComponent:@"stackfeat.dat"];
     return ret;
@@ -304,8 +284,7 @@ static NSString *g_userDumpCachePath = nil;
 #pragma mark - Handle OOM
 // ============================================================================
 
-+ (void)handleOOMDumpFile:(NSString *)lagFilePath
-{
++ (void)handleOOMDumpFile:(NSString *)lagFilePath {
     if (lagFilePath == nil || lagFilePath.length == 0) {
         return;
     }
@@ -327,24 +306,28 @@ static NSString *g_userDumpCachePath = nil;
         MatrixWarning(@"%@ is not exist", trueLagFilePath);
         return;
     }
-    
+
     MatrixInfo(@"last oom dump file path: %@", trueLagFilePath);
-    
+
     NSData *jsonData = [NSData dataWithContentsOfFile:trueLagFilePath];
     NSError *error = nil;
-    NSMutableDictionary* report = [WCCrashBlockJsonUtil jsonDecode:jsonData withError:&error];
-    
+    NSMutableDictionary *report = [WCCrashBlockJsonUtil jsonDecode:jsonData withError:&error];
+
     if (error != nil) {
         MatrixWarning(@"Error decoding JSON data from %@: %@", trueLagFilePath, error);
         return;
     }
-    
-    report[@KSCrashField_Crash][@KSCrashField_Error][@KSCrashField_UserReported][@KSCrashField_DumpType] = [NSNumber numberWithUnsignedInteger:EDumpType_BlockAndBeKilled];
-    
+
+    report[@KSCrashField_Crash][@KSCrashField_Error][@KSCrashField_UserReported][@KSCrashField_DumpType] =
+    [NSNumber numberWithUnsignedInteger:EDumpType_BlockAndBeKilled];
+
     jsonData = [WCCrashBlockJsonUtil jsonEncode:report withError:nil];
-    
-    NSString *newLagLastPathComponent = [lagLastPathComponent stringByReplacingOccurrencesOfString:dumpTypeString withString:[NSString stringWithFormat:@"%lu", (unsigned long)EDumpType_BlockAndBeKilled]];
-    NSString *newLagFilePath = [[WCCrashBlockFileHandler diretoryOfUserDumpWithType:EDumpType_BlockAndBeKilled] stringByAppendingPathComponent:newLagLastPathComponent];
+
+    NSString *newLagLastPathComponent =
+    [lagLastPathComponent stringByReplacingOccurrencesOfString:dumpTypeString
+                                                    withString:[NSString stringWithFormat:@"%lu", (unsigned long)EDumpType_BlockAndBeKilled]];
+    NSString *newLagFilePath =
+    [[WCCrashBlockFileHandler diretoryOfUserDumpWithType:EDumpType_BlockAndBeKilled] stringByAppendingPathComponent:newLagLastPathComponent];
 
     if ([jsonData writeToFile:newLagFilePath atomically:YES]) {
         [fileMgr removeItemAtPath:trueLagFilePath error:nil];

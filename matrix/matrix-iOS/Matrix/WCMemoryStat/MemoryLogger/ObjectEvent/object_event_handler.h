@@ -20,16 +20,16 @@
 #include <stdio.h>
 #include <mach/mach.h>
 
-struct object_type_file;
+struct object_type_db;
 
-bool prepare_object_event_logger(const char *log_dir);
+object_type_db *prepare_object_event_logger(const char *log_dir);
 void disable_object_event_logger();
 void nsobject_set_last_allocation_event_name(void *ptr, const char *classname);
 
-object_type_file *open_object_type_file(const char *event_dir);
-void close_object_type_file(object_type_file *file_context);
+object_type_db *object_type_db_open_or_create(const char *event_dir);
+void object_type_db_close(object_type_db *db_context);
 
-const char *get_object_name_by_type(object_type_file *file_context, uint32_t type);
-bool is_object_nsobject_by_type(object_type_file *file_context, uint32_t type);
-	
+const char *object_type_db_get_object_name(object_type_db *db_context, uint32_t type);
+bool object_type_db_is_nsobject(object_type_db *db_context, uint32_t type);
+
 #endif /* object_event_handler_h */

@@ -17,5 +17,4 @@
 #ifndef nsobject_hook_h
 #define nsobject_hook_h
 
-
 #endif /* nsobject_hook_h */

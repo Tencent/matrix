@@ -32,12 +32,7 @@ extern "C" {
 #endif
 
 BOOL matrix_shouldlog(MXLogLevel level);
-void matrix_log(MXLogLevel log_level,
-                const char *module,
-                const char *file,
-                int line,
-                const char *funcname,
-                NSString *message);
+void matrix_log(MXLogLevel log_level, const char *module, const char *file, int line, const char *funcname, NSString *message);
 
 #ifdef __cplusplus
 }
@@ -63,4 +58,3 @@ void matrix_log(MXLogLevel log_level,
 @property (nonatomic, weak) id<MatrixAdapterDelegate> delegate;
 
 @end
-

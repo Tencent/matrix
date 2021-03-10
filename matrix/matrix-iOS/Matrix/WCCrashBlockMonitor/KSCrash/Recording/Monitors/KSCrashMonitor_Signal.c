@@ -43,7 +43,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-
 // ============================================================================
 #pragma mark - Globals -
 // ============================================================================
@@ -55,11 +54,11 @@ static KSStackCursor g_stackCursor;
 
 #if KSCRASH_HAS_SIGNAL_STACK
 /** Our custom signal stack. The signal handler will use this as its stack. */
-static stack_t g_signalStack = {0};
+static stack_t g_signalStack = { 0 };
 #endif
 
 /** Signal handlers that were installed before we installed ours. */
-static struct sigaction* g_previousSignalHandlers = NULL;
+static struct sigaction *g_previousSignalHandlers = NULL;
 
 static char g_eventID[37];
 
@@ -79,11 +78,9 @@ static char g_eventID[37];
  *
  * @param userContext Other contextual information.
  */
-static void handleSignal(int sigNum, siginfo_t* signalInfo, void* userContext)
-{
+static void handleSignal(int sigNum, siginfo_t *signalInfo, void *userContext) {
     KSLOG_DEBUG("Trapped signal %d", sigNum);
-    if(g_isEnabled)
-    {
+    if (g_isEnabled) {
         ksmc_suspendEnvironment();
         kscm_notifyFatalExceptionCaptured(false);
 
@@ -92,7 +89,7 @@ static void handleSignal(int sigNum, siginfo_t* signalInfo, void* userContext)
         ksmc_getContextForSignal(userContext, machineContext);
         kssc_initWithMachineContext(&g_stackCursor, 10000, machineContext);
 
-        KSCrash_MonitorContext* crashContext = &g_monitorContext;
+        KSCrash_MonitorContext *crashContext = &g_monitorContext;
         memset(crashContext, 0, sizeof(*crashContext));
         crashContext->crashType = KSCrashMonitorTypeSignal;
         crashContext->eventID = g_eventID;
@@ -115,43 +112,37 @@ static void handleSignal(int sigNum, siginfo_t* signalInfo, void* userContext)
     raise(sigNum);
 }
 
-
 // ============================================================================
 #pragma mark - API -
 // ============================================================================
 
-static bool installSignalHandler()
-{
+static bool installSignalHandler() {
     KSLOG_DEBUG("Installing signal handler.");
 
 #if KSCRASH_HAS_SIGNAL_STACK
 
-    if(g_signalStack.ss_size == 0)
-    {
+    if (g_signalStack.ss_size == 0) {
         KSLOG_DEBUG("Allocating signal stack area.");
         g_signalStack.ss_size = SIGSTKSZ;
         g_signalStack.ss_sp = malloc(g_signalStack.ss_size);
     }
 
     KSLOG_DEBUG("Setting signal stack area.");
-    if(sigaltstack(&g_signalStack, NULL) != 0)
-    {
+    if (sigaltstack(&g_signalStack, NULL) != 0) {
         KSLOG_ERROR("signalstack: %s", strerror(errno));
         goto failed;
     }
 #endif
 
-    const int* fatalSignals = kssignal_fatalSignals();
+    const int *fatalSignals = kssignal_fatalSignals();
     int fatalSignalsCount = kssignal_numFatalSignals();
 
-    if(g_previousSignalHandlers == NULL)
-    {
+    if (g_previousSignalHandlers == NULL) {
         KSLOG_DEBUG("Allocating memory to store previous signal handlers.");
-        g_previousSignalHandlers = malloc(sizeof(*g_previousSignalHandlers)
-                                          * (unsigned)fatalSignalsCount);
+        g_previousSignalHandlers = malloc(sizeof(*g_previousSignalHandlers) * (unsigned)fatalSignalsCount);
     }
 
-    struct sigaction action = {{0}};
+    struct sigaction action = { { 0 } };
     action.sa_flags = SA_SIGINFO | SA_ONSTACK;
 #if KSCRASH_HOST_APPLE && defined(__LP64__)
     action.sa_flags |= SA_64REGSET;
@@ -159,22 +150,18 @@ static bool installSignalHandler()
     sigemptyset(&action.sa_mask);
     action.sa_sigaction = &handleSignal;
 
-    for(int i = 0; i < fatalSignalsCount; i++)
-    {
+    for (int i = 0; i < fatalSignalsCount; i++) {
         KSLOG_DEBUG("Assigning handler for signal %d", fatalSignals[i]);
-        if(sigaction(fatalSignals[i], &action, &g_previousSignalHandlers[i]) != 0)
-        {
+        if (sigaction(fatalSignals[i], &action, &g_previousSignalHandlers[i]) != 0) {
             char sigNameBuff[30];
-            const char* sigName = kssignal_signalName(fatalSignals[i]);
-            if(sigName == NULL)
-            {
+            const char *sigName = kssignal_signalName(fatalSignals[i]);
+            if (sigName == NULL) {
                 snprintf(sigNameBuff, sizeof(sigNameBuff), "%d", fatalSignals[i]);
                 sigName = sigNameBuff;
             }
             KSLOG_ERROR("sigaction (%s): %s", sigName, strerror(errno));
             // Try to reverse the damage
-            for(i--;i >= 0; i--)
-            {
+            for (i--; i >= 0; i--) {
                 sigaction(fatalSignals[i], &g_previousSignalHandlers[i], NULL);
             }
             goto failed;
@@ -188,62 +175,49 @@ failed:
     return false;
 }
 
-static void uninstallSignalHandler(void)
-{
+static void uninstallSignalHandler(void) {
     KSLOG_DEBUG("Uninstalling signal handlers.");
 
-    const int* fatalSignals = kssignal_fatalSignals();
+    const int *fatalSignals = kssignal_fatalSignals();
     int fatalSignalsCount = kssignal_numFatalSignals();
 
-    for(int i = 0; i < fatalSignalsCount; i++)
-    {
+    for (int i = 0; i < fatalSignalsCount; i++) {
         KSLOG_DEBUG("Restoring original handler for signal %d", fatalSignals[i]);
         sigaction(fatalSignals[i], &g_previousSignalHandlers[i], NULL);
     }
-    
-    g_signalStack = (stack_t){0};
+
+    g_signalStack = (stack_t){ 0 };
     KSLOG_DEBUG("Signal handlers uninstalled.");
 }
 
-static void setEnabled(bool isEnabled)
-{
-    if(isEnabled != g_isEnabled)
-    {
+static void setEnabled(bool isEnabled) {
+    if (isEnabled != g_isEnabled) {
         g_isEnabled = isEnabled;
-        if(isEnabled)
-        {
+        if (isEnabled) {
             ksid_generate(g_eventID);
-            if(!installSignalHandler())
-            {
+            if (!installSignalHandler()) {
                 return;
             }
-        }
-        else
-        {
+        } else {
             uninstallSignalHandler();
         }
     }
 }
 
-static bool isEnabled()
-{
+static bool isEnabled() {
     return g_isEnabled;
 }
 
-static void addContextualInfoToEvent(struct KSCrash_MonitorContext* eventContext)
-{
-    if(!(eventContext->crashType & (KSCrashMonitorTypeSignal | KSCrashMonitorTypeMachException)))
-    {
+static void addContextualInfoToEvent(struct KSCrash_MonitorContext *eventContext) {
+    if (!(eventContext->crashType & (KSCrashMonitorTypeSignal | KSCrashMonitorTypeMachException))) {
         eventContext->signal.signum = SIGABRT;
     }
 }
 
 #endif
 
-KSCrashMonitorAPI* kscm_signal_getAPI()
-{
-    static KSCrashMonitorAPI api =
-    {
+KSCrashMonitorAPI *kscm_signal_getAPI() {
+    static KSCrashMonitorAPI api = {
 #if KSCRASH_HAS_SIGNAL
         .setEnabled = setEnabled,
         .isEnabled = isEnabled,

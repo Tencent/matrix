@@ -24,9 +24,7 @@
 // THE SOFTWARE.
 //
 
-
 #import <Foundation/Foundation.h>
-
 
 /**
  * GNU zip/unzip support for NSData.
@@ -47,8 +45,7 @@
  *
  * @return A new NSData with the gzipped contents of this object.
  */
-- (NSData*) gzippedWithCompressionLevel:(int) compressionLevel
-                                  error:(NSError**) error;
+- (NSData *)gzippedWithCompressionLevel:(int)compressionLevel error:(NSError **)error;
 
 /**
  * Gunzip the data in this object (no header).
@@ -58,6 +55,6 @@
  *
  * @return A new NSData with the gunzipped contents of this object.
  */
-- (NSData*) gunzippedWithError:(NSError**) error;
+- (NSData *)gunzippedWithError:(NSError **)error;
 
 @end

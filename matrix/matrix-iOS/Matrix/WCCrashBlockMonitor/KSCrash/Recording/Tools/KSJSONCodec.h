@@ -24,10 +24,8 @@
 // THE SOFTWARE.
 //
 
-
 /* Reads and writes JSON encoded data.
  */
-
 
 #ifndef HDR_KSJSONCodec_h
 #define HDR_KSJSONCodec_h
@@ -35,7 +33,6 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -45,8 +42,7 @@ extern "C" {
  */
 #define KSJSON_SIZE_AUTOMATIC -1
 
-enum
-{
+enum {
     /** Encoding or decoding: Everything completed without error */
     KSJSON_OK = 0,
 
@@ -79,8 +75,7 @@ enum
  *
  * @return A string describing the error.
  */
-const char* ksjson_stringForError(const int error);
-
+const char *ksjson_stringForError(const int error);
 
 // ============================================================================
 // Encode
@@ -97,15 +92,14 @@ const char* ksjson_stringForError(const int error);
  * @return KSJSON_OK if the data was handled.
  *         otherwise KSJSON_ERROR_CANNOT_ADD_DATA.
  */
-typedef int (*KSJSONAddDataFunc)(const char* data, int length, void* userData);
+typedef int (*KSJSONAddDataFunc)(const char *data, int length, void *userData);
 
-typedef struct
-{
+typedef struct {
     /** Function to call to add more encoded JSON data. */
     KSJSONAddDataFunc addJSONData;
 
     /** User-specified data */
-    void* userData;
+    void *userData;
 
     /** How many containers deep we are. */
     int containerLevel;
@@ -120,7 +114,6 @@ typedef struct
 
 } KSJSONEncodeContext;
 
-
 /** Begin a new encoding process.
  *
  * @param context The encoding context.
@@ -131,16 +124,13 @@ typedef struct
  *
  * @param userData User-specified data which gets passed to addJSONData.
  */
-void ksjson_beginEncode(KSJSONEncodeContext* context,
-                        bool prettyPrint,
-                        KSJSONAddDataFunc addJSONData,
-                        void* userData);
+void ksjson_beginEncode(KSJSONEncodeContext *context, bool prettyPrint, KSJSONAddDataFunc addJSONData, void *userData);
 
 /** End the encoding process, ending any remaining open containers.
  *
  * @return KSJSON_OK if the process was successful.
  */
-int ksjson_endEncode(KSJSONEncodeContext* context);
+int ksjson_endEncode(KSJSONEncodeContext *context);
 
 /** Add a boolean element.
  *
@@ -152,9 +142,7 @@ int ksjson_endEncode(KSJSONEncodeContext* context);
  *
  * @return KSJSON_OK if the process was successful.
  */
-int ksjson_addBooleanElement(KSJSONEncodeContext* context,
-                             const char* name,
-                             bool value);
+int ksjson_addBooleanElement(KSJSONEncodeContext *context, const char *name, bool value);
 
 /** Add an integer element.
  *
@@ -166,9 +154,7 @@ int ksjson_addBooleanElement(KSJSONEncodeContext* context,
  *
  * @return KSJSON_OK if the process was successful.
  */
-int ksjson_addIntegerElement(KSJSONEncodeContext* context,
-                             const char* name,
-                             int64_t value);
+int ksjson_addIntegerElement(KSJSONEncodeContext *context, const char *name, int64_t value);
 
 /** Add a floating point element.
  *
@@ -180,9 +166,7 @@ int ksjson_addIntegerElement(KSJSONEncodeContext* context,
  *
  * @return KSJSON_OK if the process was successful.
  */
-int ksjson_addFloatingPointElement(KSJSONEncodeContext* context,
-                                   const char* name,
-                                   double value);
+int ksjson_addFloatingPointElement(KSJSONEncodeContext *context, const char *name, double value);
 
 /** Add a null element.
  *
@@ -192,8 +176,7 @@ int ksjson_addFloatingPointElement(KSJSONEncodeContext* context,
  *
  * @return KSJSON_OK if the process was successful.
  */
-int ksjson_addNullElement(KSJSONEncodeContext* context,
-                          const char* name);
+int ksjson_addNullElement(KSJSONEncodeContext *context, const char *name);
 
 /** Add a string element.
  *
@@ -207,10 +190,7 @@ int ksjson_addNullElement(KSJSONEncodeContext* context,
  *
  * @return KSJSON_OK if the process was successful.
  */
-int ksjson_addStringElement(KSJSONEncodeContext* context,
-                            const char* name,
-                            const char* value,
-                            int length);
+int ksjson_addStringElement(KSJSONEncodeContext *context, const char *name, const char *value, int length);
 
 /** Start an incrementally-built string element.
  *
@@ -222,8 +202,7 @@ int ksjson_addStringElement(KSJSONEncodeContext* context,
  *
  * @return KSJSON_OK if the process was successful.
  */
-int ksjson_beginStringElement(KSJSONEncodeContext* context,
-                              const char* name);
+int ksjson_beginStringElement(KSJSONEncodeContext *context, const char *name);
 
 /** Add a string fragment to an incrementally-built string element.
  *
@@ -235,9 +214,7 @@ int ksjson_beginStringElement(KSJSONEncodeContext* context,
  *
  * @return KSJSON_OK if the process was successful.
  */
-int ksjson_appendStringElement(KSJSONEncodeContext* context,
-                               const char* value,
-                               int length);
+int ksjson_appendStringElement(KSJSONEncodeContext *context, const char *value, int length);
 
 /** End an incrementally-built string element.
  *
@@ -245,7 +222,7 @@ int ksjson_appendStringElement(KSJSONEncodeContext* context,
  *
  * @return KSJSON_OK if the process was successful.
  */
-int ksjson_endStringElement(KSJSONEncodeContext* context);
+int ksjson_endStringElement(KSJSONEncodeContext *context);
 
 /** Add a string element. The element will be converted to string-coded hex.
  *
@@ -259,10 +236,7 @@ int ksjson_endStringElement(KSJSONEncodeContext* context);
  *
  * @return KSJSON_OK if the process was successful.
  */
-int ksjson_addDataElement(KSJSONEncodeContext* const context,
-                          const char* name,
-                          const char* value,
-                          int length);
+int ksjson_addDataElement(KSJSONEncodeContext *const context, const char *name, const char *value, int length);
 
 /** Start an incrementally-built data element. The element will be converted
  * to string-coded hex.
@@ -275,8 +249,7 @@ int ksjson_addDataElement(KSJSONEncodeContext* const context,
  *
  * @return KSJSON_OK if the process was successful.
  */
-int ksjson_beginDataElement(KSJSONEncodeContext* const context,
-                            const char* const name);
+int ksjson_beginDataElement(KSJSONEncodeContext *const context, const char *const name);
 
 /** Add a data fragment to an incrementally-built data element.
  *
@@ -288,9 +261,7 @@ int ksjson_beginDataElement(KSJSONEncodeContext* const context,
  *
  * @return KSJSON_OK if the process was successful.
  */
-int ksjson_appendDataElement(KSJSONEncodeContext* const context,
-                             const char* const value,
-                             int length);
+int ksjson_appendDataElement(KSJSONEncodeContext *const context, const char *const value, int length);
 
 /** End an incrementally-built data element.
  *
@@ -298,7 +269,7 @@ int ksjson_appendDataElement(KSJSONEncodeContext* const context,
  *
  * @return KSJSON_OK if the process was successful.
  */
-int ksjson_endDataElement(KSJSONEncodeContext* const context);
+int ksjson_endDataElement(KSJSONEncodeContext *const context);
 
 /** Add a pre-formatted JSON element.
  *
@@ -314,9 +285,9 @@ int ksjson_endDataElement(KSJSONEncodeContext* const context);
  *
  * @return KSJSON_OK if the process was successful.
  */
-int ksjson_addJSONElement(KSJSONEncodeContext* const encodeContext,
-                          const char* restrict const name,
-                          const char* restrict const jsonData,
+int ksjson_addJSONElement(KSJSONEncodeContext *const encodeContext,
+                          const char *restrict const name,
+                          const char *restrict const jsonData,
                           const int jsonDataLength,
                           const bool closeLastContainer);
 
@@ -328,8 +299,7 @@ int ksjson_addJSONElement(KSJSONEncodeContext* const encodeContext,
  *
  * @return KSJSON_OK if the process was successful.
  */
-int ksjson_beginObject(KSJSONEncodeContext* context,
-                       const char* name);
+int ksjson_beginObject(KSJSONEncodeContext *context, const char *name);
 
 /** Begin a new array container.
  *
@@ -339,8 +309,7 @@ int ksjson_beginObject(KSJSONEncodeContext* context,
  *
  * @return KSJSON_OK if the process was successful.
  */
-int ksjson_beginArray(KSJSONEncodeContext* context,
-                      const char* name);
+int ksjson_beginArray(KSJSONEncodeContext *context, const char *name);
 
 /** Begin a generic JSON element, adding any necessary JSON preamble text,
  *  including commas and names.
@@ -350,8 +319,7 @@ int ksjson_beginArray(KSJSONEncodeContext* context,
  *
  * @param name The name of the next element (only needed if parent is a dictionary).
  */
-int ksjson_beginElement(KSJSONEncodeContext* const context,
-                        const char* const name);
+int ksjson_beginElement(KSJSONEncodeContext *const context, const char *const name);
 
 /** Add JSON data manually.
  * This function just passes your data directly through, even if it's malforned.
@@ -364,9 +332,7 @@ int ksjson_beginElement(KSJSONEncodeContext* const context,
  *
  * @return KSJSON_OK if the process was successful.
  */
-int ksjson_addRawJSONData(KSJSONEncodeContext* const context,
-                          const char* const data,
-                          const int length);
+int ksjson_addRawJSONData(KSJSONEncodeContext *const context, const char *const data, const int length);
 
 /** End the current container and return to the next higher level.
  *
@@ -374,7 +340,7 @@ int ksjson_addRawJSONData(KSJSONEncodeContext* const context,
  *
  * @return KSJSON_OK if the process was successful.
  */
-int ksjson_endContainer(KSJSONEncodeContext* context);
+int ksjson_endContainer(KSJSONEncodeContext *context);
 
 /** Decode and add JSON data from a file.
  *
@@ -386,23 +352,20 @@ int ksjson_endContainer(KSJSONEncodeContext* context);
  *
  * @param closeLastContainer If false, do not close the last container.
  */
-int ksjson_addJSONFromFile(KSJSONEncodeContext* const context,
-                           const char* restrict const name,
-                           const char* restrict const filename,
+int ksjson_addJSONFromFile(KSJSONEncodeContext *const context,
+                           const char *restrict const name,
+                           const char *restrict const filename,
                            const bool closeLastContainer);
-
 
 // ============================================================================
 // Decode
 // ============================================================================
 
-
 /**
  * Callbacks called during a JSON decode process.
  * All function pointers must point to valid functions.
  */
-typedef struct KSJSONDecodeCallbacks
-{
+typedef struct KSJSONDecodeCallbacks {
     /** Called when a boolean element is decoded.
      *
      * @param name The element's name.
@@ -413,9 +376,7 @@ typedef struct KSJSONDecodeCallbacks
      *
      * @return KSJSON_OK if decoding should continue.
      */
-    int (*onBooleanElement)(const char* name,
-                            bool value,
-                            void* userData);
+    int (*onBooleanElement)(const char *name, bool value, void *userData);
 
     /** Called when a floating point element is decoded.
      *
@@ -427,9 +388,7 @@ typedef struct KSJSONDecodeCallbacks
      *
      * @return KSJSON_OK if decoding should continue.
      */
-    int (*onFloatingPointElement)(const char* name,
-                                  double value,
-                                  void* userData);
+    int (*onFloatingPointElement)(const char *name, double value, void *userData);
 
     /** Called when an integer element is decoded.
      *
@@ -441,9 +400,7 @@ typedef struct KSJSONDecodeCallbacks
      *
      * @return KSJSON_OK if decoding should continue.
      */
-    int (*onIntegerElement)(const char* name,
-                            int64_t value,
-                            void* userData);
+    int (*onIntegerElement)(const char *name, int64_t value, void *userData);
 
     /** Called when a null element is decoded.
      *
@@ -453,8 +410,7 @@ typedef struct KSJSONDecodeCallbacks
      *
      * @return KSJSON_OK if decoding should continue.
      */
-    int (*onNullElement)(const char* name,
-                         void* userData);
+    int (*onNullElement)(const char *name, void *userData);
 
     /** Called when a string element is decoded.
      *
@@ -466,9 +422,7 @@ typedef struct KSJSONDecodeCallbacks
      *
      * @return KSJSON_OK if decoding should continue.
      */
-    int (*onStringElement)(const char* name,
-                           const char* value,
-                           void* userData);
+    int (*onStringElement)(const char *name, const char *value, void *userData);
 
     /** Called when a new object is encountered.
      *
@@ -478,8 +432,7 @@ typedef struct KSJSONDecodeCallbacks
      *
      * @return KSJSON_OK if decoding should continue.
      */
-    int (*onBeginObject)(const char* name,
-                         void* userData);
+    int (*onBeginObject)(const char *name, void *userData);
 
     /** Called when a new array is encountered.
      *
@@ -489,8 +442,7 @@ typedef struct KSJSONDecodeCallbacks
      *
      * @return KSJSON_OK if decoding should continue.
      */
-    int (*onBeginArray)(const char* name,
-                        void* userData);
+    int (*onBeginArray)(const char *name, void *userData);
 
     /** Called when leaving the current container and returning to the next
      * higher level container.
@@ -499,7 +451,7 @@ typedef struct KSJSONDecodeCallbacks
      *
      * @return KSJSON_OK if decoding should continue.
      */
-    int (*onEndContainer)(void* userData);
+    int (*onEndContainer)(void *userData);
 
     /** Called when the end of the input data is reached.
      *
@@ -507,10 +459,9 @@ typedef struct KSJSONDecodeCallbacks
      *
      * @return KSJSON_OK if decoding should continue.
      */
-    int (*onEndData)(void* userData);
+    int (*onEndData)(void *userData);
 
 } KSJSONDecodeCallbacks;
-
 
 /** Read a JSON encoded file from the specified FD.
  *
@@ -532,14 +483,8 @@ typedef struct KSJSONDecodeCallbacks
  *
  * @return KSJSON_OK if succesful. An error code otherwise.
  */
-int ksjson_decode(const char* data,
-                  int length,
-                  char* stringBuffer,
-                  int stringBufferLength,
-                  KSJSONDecodeCallbacks* callbacks,
-                  void* userData,
-                  int* errorOffset);
-
+int ksjson_decode(
+const char *data, int length, char *stringBuffer, int stringBufferLength, KSJSONDecodeCallbacks *callbacks, void *userData, int *errorOffset);
 
 #ifdef __cplusplus
 }

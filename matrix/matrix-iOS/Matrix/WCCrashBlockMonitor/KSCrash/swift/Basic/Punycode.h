@@ -38,14 +38,12 @@ namespace Punycode {
 /// Encodes a sequence of code points into Punycode.
 ///
 /// Returns false if input contains surrogate code points.
-bool encodePunycode(const std::vector<uint32_t> &InputCodePoints,
-                    std::string &OutPunycode);
+bool encodePunycode(const std::vector<uint32_t> &InputCodePoints, std::string &OutPunycode);
 
 /// Decodes a Punycode string into a sequence of Unicode scalars.
 ///
 /// Returns false if decoding failed.
-bool decodePunycode(StringRef InputPunycode,
-                    std::vector<uint32_t> &OutCodePoints);
+bool decodePunycode(StringRef InputPunycode, std::vector<uint32_t> &OutCodePoints);
 
 bool encodePunycodeUTF8(StringRef InputUTF8, std::string &OutPunycode);
 
@@ -55,4 +53,3 @@ bool decodePunycodeUTF8(StringRef InputPunycode, std::string &OutUTF8);
 } // end namespace swift
 
 #endif // SWIFT_BASIC_PUNYCODE_H
-

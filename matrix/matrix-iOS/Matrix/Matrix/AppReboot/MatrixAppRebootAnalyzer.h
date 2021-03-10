@@ -56,6 +56,7 @@
 + (void)isForegroundMainThreadBlock:(BOOL)yn;
 + (void)setDumpFileName:(NSString *)fileName;
 + (NSString *)lastDumpFileName;
++ (BOOL)checkXPCReboot;
 
 + (MatrixAppRebootType)lastRebootType;
 + (uint64_t)appLaunchTime;
