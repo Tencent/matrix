@@ -68,4 +68,6 @@ public class JeCtl {
     private static native int preAllocRetainNative(int size0, int size1, int limit0, int limit1);
 
     private static native String getVersionNative();
+
+    public static native boolean setRetain(boolean enable);
 }

@@ -61,6 +61,7 @@ large_dalloc_t                   large_dalloc                   = nullptr;
 arena_choose_hard_t              arena_choose_hard              = nullptr;
 arena_extent_dalloc_large_prep_t arena_extent_dalloc_large_prep = nullptr;
 arena_extents_dirty_dalloc_t     arena_extents_dirty_dalloc     = nullptr;
+bool * p_je_opt_retain = nullptr;
 
 
 static inline bool end_with(std::string const &value, std::string const &ending) {
@@ -102,10 +103,10 @@ static bool init() {
 //        return false;
 //    }
 
-//    opt_retain = (bool *) enhance::dlsym(handle, "je_opt_retain");
-//    if (!opt_retain) {
-//        return false;
-//    }
+    p_je_opt_retain = (bool *) enhance::dlsym(handle, "je_opt_retain");
+    if (!p_je_opt_retain) {
+        return false;
+    }
 
     arena_extent_alloc_large =
             (arena_extent_alloc_large_t) enhance::dlsym(handle, "je_arena_extent_alloc_large");
@@ -437,6 +438,21 @@ Java_com_tencent_wxperf_jectl_JeCtl_getVersionNative(JNIEnv *env, jclass clazz) 
     LOGD(TAG, "jemalloc version: %s", version);
 
     return env->NewStringUTF(version);
+#endif
+}
+
+JNIEXPORT jboolean JNICALL
+Java_com_tencent_wxperf_jectl_JeCtl_setRetain(JNIEnv *env, jclass clazz, jboolean enable) {
+#ifdef __LP64__
+    return true;
+#else
+    bool old = true;
+    if (initialized && p_je_opt_retain) {
+        old = *p_je_opt_retain;
+        *p_je_opt_retain = enable;
+        LOGD(TAG, "retain = %d", *p_je_opt_retain);
+    }
+    return old;
 #endif
 }
 

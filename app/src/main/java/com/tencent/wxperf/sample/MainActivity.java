@@ -510,6 +510,7 @@ public class MainActivity extends AppCompatActivity {
 //        int ret = JeCtl.compact();
 //        Log.d(TAG, "tryDisableRetain result :" + ret);
         Log.d(TAG, "jemalloc version = " + JeCtl.version());
+        Log.d(TAG, "set retain, old value = " +  JeCtl.setRetain(true));
     }
 
     public void killSelf(View view) {
