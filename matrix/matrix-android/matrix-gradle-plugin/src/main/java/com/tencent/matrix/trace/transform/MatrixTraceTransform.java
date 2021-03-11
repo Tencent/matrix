@@ -17,6 +17,7 @@ import com.android.utils.FileUtils;
 import com.google.common.base.Charsets;
 import com.google.common.base.Joiner;
 import com.google.common.hash.Hashing;
+import com.tencent.matrix.javalib.util.FileUtil;
 import com.tencent.matrix.javalib.util.IOUtil;
 import com.tencent.matrix.javalib.util.Log;
 import com.tencent.matrix.javalib.util.ReflectUtil;
@@ -374,6 +375,8 @@ public class MatrixTraceTransform extends Transform {
                         dirInputOutMap.put(changedFileInput, changedFileOutput);
                     } else if (status == Status.REMOVED) {
                         changedFileOutput.delete();
+                    } else if (status == Status.NOTCHANGED) {
+                        FileUtil.traversalCopy(changedFileInput, changedFileOutput);
                     }
                     outChangedFiles.put(changedFileOutput, status);
                 }
@@ -427,6 +430,8 @@ public class MatrixTraceTransform extends Transform {
                         jarInputOutMap.put(jarInput, jarOutput);
                     } else if (inputJar.getStatus() == Status.REMOVED) {
                         jarOutput.delete();
+                    } else if (inputJar.getStatus() == Status.NOTCHANGED) {
+                        FileUtil.traversalCopy(jarInput, jarOutput);
                     }
 
                 } else {
