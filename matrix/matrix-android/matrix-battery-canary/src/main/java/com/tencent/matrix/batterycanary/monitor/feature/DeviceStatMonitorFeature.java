@@ -9,7 +9,6 @@ import android.support.v4.util.Consumer;
 
 import com.tencent.matrix.batterycanary.BatteryEventDelegate;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
-import com.tencent.matrix.batterycanary.monitor.feature.AppStatMonitorFeature.AppStatStamp;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Differ.DigitDiffer;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Differ.ListDiffer;
 import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
@@ -61,7 +60,7 @@ public final class DeviceStatMonitorFeature extends AbsMonitorFeature {
     public void onTurnOn() {
         super.onTurnOn();
         int deviceStat = BatteryCanaryUtil.getDeviceStat(mCore.getContext());
-        @SuppressLint("VisibleForTests") AppStatStamp firstStamp = new AppStatStamp(deviceStat);
+        @SuppressLint("VisibleForTests") TimeBreaker.Stamp firstStamp = new TimeBreaker.Stamp(String.valueOf(deviceStat));
         synchronized (TAG) {
             mStampList = new ArrayList<>();
             mStampList.add(0, firstStamp);
@@ -134,14 +133,21 @@ public final class DeviceStatMonitorFeature extends AbsMonitorFeature {
 
     public DevStatSnapshot currentDevStatSnapshot(long windowMillis) {
         try {
-            int devStat = BatteryCanaryUtil.getDeviceStat(mCore.getContext());
-            @SuppressLint("VisibleForTests") TimeBreaker.Stamp lastStamp = new TimeBreaker.Stamp(String.valueOf(devStat));
-            synchronized (TAG) {
-                if (mStampList != Collections.EMPTY_LIST) {
-                    mStampList.add(0, lastStamp);
+            TimeBreaker.TimePortions timePortions = TimeBreaker.configurePortions(mStampList, windowMillis, 10L, new TimeBreaker.Stamp.Stamper() {
+                @Override
+                public TimeBreaker.Stamp stamp(String key) {
+                    int devStat = BatteryCanaryUtil.getDeviceStat(mCore.getContext());
+                    return  new TimeBreaker.Stamp(String.valueOf(devStat));
                 }
-            }
-            return configureSnapshot(mStampList, windowMillis);
+            });
+            DevStatSnapshot snapshot = new DevStatSnapshot();
+            snapshot.setValid(timePortions.isValid());
+            snapshot.uptime = Snapshot.Entry.DigitEntry.of(timePortions.totalUptime);
+            snapshot.chargingRatio = Snapshot.Entry.DigitEntry.of((long) timePortions.getRatio("1"));
+            snapshot.unChargingRatio = Snapshot.Entry.DigitEntry.of((long) timePortions.getRatio("2"));
+            snapshot.screenOff = Snapshot.Entry.DigitEntry.of((long) timePortions.getRatio("3"));
+            snapshot.lowEnergyRatio = Snapshot.Entry.DigitEntry.of((long) timePortions.getRatio("4"));
+            return snapshot;
         } catch (Throwable e) {
             MatrixLog.w(TAG, "configureSnapshot fail: " + e.getMessage());
             DevStatSnapshot snapshot = new DevStatSnapshot();
@@ -156,18 +162,6 @@ public final class DeviceStatMonitorFeature extends AbsMonitorFeature {
         return new ArrayList<>(mStampList);
     }
 
-    @VisibleForTesting
-    static DevStatSnapshot configureSnapshot(List<TimeBreaker.Stamp> stampList, long windowMillis) {
-        TimeBreaker.TimePortions timePortions = TimeBreaker.configurePortions(stampList, windowMillis);
-        DevStatSnapshot snapshot = new DevStatSnapshot();
-        snapshot.setValid(timePortions.isValid());
-        snapshot.uptime = Snapshot.Entry.DigitEntry.of(timePortions.totalUptime);
-        snapshot.chargingRatio = Snapshot.Entry.DigitEntry.of((long) timePortions.getRatio("1"));
-        snapshot.unChargingRatio = Snapshot.Entry.DigitEntry.of((long) timePortions.getRatio("2"));
-        snapshot.screenOff = Snapshot.Entry.DigitEntry.of((long) timePortions.getRatio("3"));
-        snapshot.lowEnergyRatio = Snapshot.Entry.DigitEntry.of((long) timePortions.getRatio("4"));
-        return snapshot;
-    }
 
     static final class DevStatListener {
         Consumer<Integer> mListener = new Consumer<Integer>() {
