@@ -191,9 +191,11 @@ public final class DeviceStatMonitorFeature extends AbsMonitorFeature {
                     public boolean onStateChanged(String event) {
                         switch (event) {
                             case Intent.ACTION_POWER_CONNECTED:
+                                mIsCharging = true;
                                 mListener.accept(1);
                                 break;
                             case Intent.ACTION_POWER_DISCONNECTED:
+                                mIsCharging = false;
                                 mListener.accept(2);
                                 break;
                             case Intent.ACTION_SCREEN_ON:
