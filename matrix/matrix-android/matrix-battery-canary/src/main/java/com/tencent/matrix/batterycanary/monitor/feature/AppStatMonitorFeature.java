@@ -9,6 +9,7 @@ import android.support.annotation.VisibleForTesting;
 import android.support.annotation.WorkerThread;
 import android.text.TextUtils;
 
+import com.tencent.matrix.batterycanary.BatteryEventDelegate;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
 import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
 import com.tencent.matrix.batterycanary.utils.TimeBreaker;
@@ -97,6 +98,7 @@ public final class AppStatMonitorFeature extends AbsMonitorFeature {
         int appStat = BatteryCanaryUtil.getAppStat(mCore.getContext(), isForeground);
         synchronized (TAG) {
             if (mStampList != Collections.EMPTY_LIST) {
+                MatrixLog.i(BatteryEventDelegate.TAG, "onStat >> " + BatteryCanaryUtil.convertAppStat(appStat));
                 mStampList.add(0, new TimeBreaker.Stamp(String.valueOf(appStat)));
                 checkOverHeat();
             }

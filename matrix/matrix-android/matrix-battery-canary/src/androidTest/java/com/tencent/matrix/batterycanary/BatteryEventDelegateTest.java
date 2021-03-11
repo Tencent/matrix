@@ -126,11 +126,12 @@ public class BatteryEventDelegateTest {
         BatteryEventDelegate.init((Application) mContext.getApplicationContext());
         BatteryEventDelegate.getInstance().addListener(new BatteryEventDelegate.Listener() {
             @Override
-            public boolean onStateChanged(BatteryEventDelegate.BatteryState batteryState) {
-                assertTrue(batteryState.isCharging());
+            public boolean onStateChanged(String event) {
+                assertTrue(BatteryEventDelegate.getInstance().currentState().isCharging());
                 hasChanged.set(true);
                 return false;
             }
+
             @Override
             public boolean onAppLowEnergy(BatteryEventDelegate.BatteryState batteryState, long backgroundMillis) {
                 millis.set(backgroundMillis);
