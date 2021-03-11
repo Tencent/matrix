@@ -156,6 +156,7 @@ public final class TimeBreaker {
 
         public final String key;
         public final long upTime;
+        public final long statMillis = System.currentTimeMillis();
 
         public Stamp(String key) {
             this.key = key;

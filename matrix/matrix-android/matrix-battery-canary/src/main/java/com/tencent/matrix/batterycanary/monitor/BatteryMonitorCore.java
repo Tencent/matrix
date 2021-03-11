@@ -1,5 +1,6 @@
 package com.tencent.matrix.batterycanary.monitor;
 
+import android.annotation.SuppressLint;
 import android.content.ComponentName;
 import android.content.Context;
 import android.os.Handler;
@@ -14,22 +15,23 @@ import android.support.annotation.WorkerThread;
 import com.tencent.matrix.AppActiveMatrixDelegate;
 import com.tencent.matrix.Matrix;
 import com.tencent.matrix.batterycanary.BatteryEventDelegate;
+import com.tencent.matrix.batterycanary.monitor.feature.AbsTaskMonitorFeature.TaskJiffiesSnapshot;
 import com.tencent.matrix.batterycanary.monitor.feature.AlarmMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.AppStatMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature.JiffiesSnapshot.ThreadJiffiesEntry;
-import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature.ProcessInfo.ThreadInfo;
 import com.tencent.matrix.batterycanary.monitor.feature.LooperTaskMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Delta;
+import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Entry.DigitEntry;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Entry.ListEntry;
 import com.tencent.matrix.batterycanary.monitor.feature.WakeLockMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.WakeLockMonitorFeature.WakeLockTrace.WakeLockRecord;
 import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
+import com.tencent.matrix.batterycanary.utils.ProcStatUtil;
 import com.tencent.matrix.util.MatrixHandlerThread;
 import com.tencent.matrix.util.MatrixLog;
 
-import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.Callable;
 
@@ -92,7 +94,7 @@ public class BatteryMonitorCore implements
     private static final int MSG_ARG_FOREGROUND = 0x3;
 
     private final BatteryMonitorConfig mConfig;
-    @NonNull private Handler mHandler;
+    @NonNull private final Handler mHandler;
     @Nullable private ForegroundLoopCheckTask mFgLooperTask;
     @Nullable private BackgroundLoopCheckTask mBgLooperTask;
     @Nullable private TaskJiffiesSnapshot mLastInternalSnapshot;
@@ -109,11 +111,12 @@ public class BatteryMonitorCore implements
     private boolean mAppForeground = AppActiveMatrixDelegate.INSTANCE.isAppForeground();
     private boolean mForegroundModeEnabled;
     private boolean mBackgroundModeEnabled;
-    private long mMonitorDelayMillis;
-    private long mFgLooperMillis;
-    private long mBgLooperMillis;
+    private final long mMonitorDelayMillis;
+    private final long mFgLooperMillis;
+    private final long mBgLooperMillis;
     private int mWorkerTid = -1;
 
+    @SuppressLint("VisibleForTests")
     public BatteryMonitorCore(BatteryMonitorConfig config) {
         mConfig = config;
         if (config.callback instanceof BatteryMonitorCallback.BatteryPrinter) ((BatteryMonitorCallback.BatteryPrinter) config.callback).attach(this);
@@ -222,11 +225,7 @@ public class BatteryMonitorCore implements
 
         if (mWorkerTid > 0) {
             MatrixLog.i(TAG, "#configureMonitorConsuming, tid = " + mWorkerTid);
-            ThreadInfo threadInfo = new ThreadInfo();
-            threadInfo.pid = Process.myPid();
-            threadInfo.tid = mWorkerTid;
-            TaskJiffiesSnapshot snapshot = TaskJiffiesSnapshot.parse(threadInfo);
-
+            TaskJiffiesSnapshot snapshot = createSnapshot(mWorkerTid);
             if (snapshot != null) {
                 if (mLastInternalSnapshot != null) {
                     Delta<TaskJiffiesSnapshot> delta = snapshot.diff(mLastInternalSnapshot);
@@ -344,26 +343,32 @@ public class BatteryMonitorCore implements
     }
 
     @Override
+    public void onLooperTaskOverHeat(@NonNull List<Delta<TaskJiffiesSnapshot>> deltas) {
+        getConfig().callback.onLooperTaskOverHeat(deltas);
+    }
+
+    @Override
+    public void onLooperConcurrentOverHeat(String key, int concurrentCount, long duringMillis) {
+        getConfig().callback.onLooperConcurrentOverHeat(key, concurrentCount, duringMillis);
+    }
+
+    @Override
     public void onWakeLockTimeout(int warningCount, WakeLockRecord record) {
-        MatrixLog.d(TAG, "#onWakeLockTimeout, tag = " + record.tag + ", pkg = " + record.packageName + ", count = " + warningCount);
         getConfig().callback.onWakeLockTimeout(warningCount, record);
     }
 
     @Override
     public void onWakeLockTimeout(WakeLockRecord record, long backgroundMillis) {
-        MatrixLog.d(TAG, "#onWakeLockTimeout, tag = " + record.tag + ", pkg = " + record.packageName + ", backgroundMillis = " + backgroundMillis);
         getConfig().callback.onWakeLockTimeout(record, backgroundMillis);
     }
 
     @Override
     public void onAlarmDuplicated(int duplicatedCount, AlarmMonitorFeature.AlarmRecord record) {
-        MatrixLog.d(TAG, "#onAlarmDuplicated");
         getConfig().callback.onAlarmDuplicated(duplicatedCount, record);
     }
 
     @Override
     public void onParseError(int pid, int tid) {
-        MatrixLog.d(TAG, "#onParseError, tid = " + tid);
         getConfig().callback.onParseError(pid, tid);
     }
 
@@ -382,33 +387,25 @@ public class BatteryMonitorCore implements
         getConfig().callback.onAppSateLeak(isMyself, appImportance, componentName, millis);
     }
 
-
-    public static class TaskJiffiesSnapshot extends MonitorFeature.Snapshot<TaskJiffiesSnapshot> {
-        @Nullable
-        public static TaskJiffiesSnapshot parse(JiffiesMonitorFeature.ProcessInfo.ThreadInfo threadInfo) {
-            try {
-                threadInfo.loadProcStat();
-                TaskJiffiesSnapshot snapshot = new TaskJiffiesSnapshot();
-                snapshot.jiffies = Entry.DigitEntry.of(threadInfo.jiffies);
-                return snapshot;
-            } catch (IOException e) {
-                MatrixLog.printErrStackTrace(TAG, e, "parseThreadJiffies fail");
-                return null;
-            }
+    @Nullable
+    protected TaskJiffiesSnapshot createSnapshot(int tid) {
+        TaskJiffiesSnapshot snapshot = new TaskJiffiesSnapshot();
+        snapshot.tid = tid;
+        snapshot.appStat = BatteryCanaryUtil.getAppStat(getContext(), isForeground());
+        snapshot.devStat = BatteryCanaryUtil.getDeviceStat(getContext());
+        try {
+            Callable<String> supplier = getConfig().onSceneSupplier;
+            snapshot.scene = supplier == null ? "" : supplier.call();
+        } catch (Exception ignored) {
+            snapshot.scene = "";
         }
 
-        public Entry.DigitEntry<Long> jiffies;
-
-        @Override
-        public Delta<TaskJiffiesSnapshot> diff(TaskJiffiesSnapshot bgn) {
-            return new Delta<TaskJiffiesSnapshot>(bgn, this) {
-                @Override
-                protected TaskJiffiesSnapshot computeDelta() {
-                    TaskJiffiesSnapshot delta = new TaskJiffiesSnapshot();
-                    delta.jiffies = Differ.DigitDiffer.globalDiff(bgn.jiffies,  end.jiffies);
-                    return delta;
-                }
-            };
+        ProcStatUtil.ProcStat stat = ProcStatUtil.of(Process.myPid(), tid);
+        if (stat == null) {
+            return null;
         }
+        snapshot.jiffies = DigitEntry.of(stat.getJiffies());
+        snapshot.name = stat.comm;
+        return snapshot;
     }
 }

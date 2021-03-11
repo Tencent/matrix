@@ -294,6 +294,43 @@ public final class AppStatMonitorFeature extends AbsMonitorFeature {
         }
     }
 
+    public TimeBreaker.TimePortions currentSceneSnapshot() {
+        return currentSceneSnapshot(0L);
+    }
+
+    public TimeBreaker.TimePortions currentSceneSnapshot(long windowMillis) {
+        try {
+            TimeBreaker.Stamp lastSceneStamp = new TimeBreaker.Stamp(mCore.getScene());
+            synchronized (TAG) {
+                if (mSceneStampList != Collections.EMPTY_LIST) {
+                    mSceneStampList.add(0, lastSceneStamp);
+                }
+            }
+            return configureSceneSnapshot(mSceneStampList, windowMillis);
+        } catch (Throwable e) {
+            MatrixLog.w(TAG, "currentSceneSnapshot fail: " + e.getMessage());
+            return TimeBreaker.TimePortions.ofInvalid();
+        }
+    }
+
+    @VisibleForTesting
+    static TimeBreaker.TimePortions configureSceneSnapshot(List<TimeBreaker.Stamp> stampList, long windowMillis) {
+        return TimeBreaker.configurePortions(stampList, windowMillis);
+    }
+
+
+    @NonNull
+    public List<AppStatStamp> getAppStatStampList() {
+        if (mStampList.isEmpty()) return Collections.emptyList();
+        return new ArrayList<>(mStampList);
+    }
+
+    @NonNull
+    public List<TimeBreaker.Stamp> getSceneStampList() {
+        if (mSceneStampList.isEmpty()) return Collections.emptyList();
+        return new ArrayList<>(mSceneStampList);
+    }
+
     @VisibleForTesting
     static AppStatSnapshot configureSnapshot(List<AppStatStamp> stampList, long windowMillis) {
         TimeBreaker.TimePortions timePortions = TimeBreaker.configurePortions(stampList, windowMillis);
@@ -336,29 +373,4 @@ public final class AppStatMonitorFeature extends AbsMonitorFeature {
             };
         }
     }
-
-    public TimeBreaker.TimePortions currentSceneSnapshot() {
-        return currentSceneSnapshot(0L);
-    }
-
-    public TimeBreaker.TimePortions currentSceneSnapshot(long windowMillis) {
-        try {
-            TimeBreaker.Stamp lastSceneStamp = new TimeBreaker.Stamp(mCore.getScene());
-            synchronized (TAG) {
-                if (mSceneStampList != Collections.EMPTY_LIST) {
-                    mSceneStampList.add(0, lastSceneStamp);
-                }
-            }
-            return configureSceneSnapshot(mSceneStampList, windowMillis);
-        } catch (Throwable e) {
-            MatrixLog.w(TAG, "currentSceneSnapshot fail: " + e.getMessage());
-            return TimeBreaker.TimePortions.ofInvalid();
-        }
-    }
-
-    @VisibleForTesting
-    static TimeBreaker.TimePortions configureSceneSnapshot(List<TimeBreaker.Stamp> stampList, long windowMillis) {
-        return TimeBreaker.configurePortions(stampList, windowMillis);
-    }
-
 }
