@@ -24,10 +24,8 @@
 // THE SOFTWARE.
 //
 
-
 /* Catches fatal unix signals.
  */
-
 
 #ifndef HDR_KSCrashMonitor_Signal_h
 #define HDR_KSCrashMonitor_Signal_h
@@ -36,14 +34,11 @@
 extern "C" {
 #endif
 
-
 #include "KSCrashMonitor.h"
-
 
 /** Access the Monitor API.
  */
-KSCrashMonitorAPI* kscm_signal_getAPI(void);
-
+KSCrashMonitorAPI *kscm_signal_getAPI(void);
 
 #ifdef __cplusplus
 }

@@ -24,10 +24,8 @@
 // THE SOFTWARE.
 //
 
-
 #import "KSCrashReportFilter.h"
 #import "KSJSONCodecObjC.h"
-
 
 /** Converts reports from dict to JSON.
  *
@@ -36,12 +34,11 @@
  */
 @interface KSCrashReportFilterJSONEncode : NSObject <KSCrashReportFilter>
 
-+ (KSCrashReportFilterJSONEncode*) filterWithOptions:(KSJSONEncodeOption) options;
++ (KSCrashReportFilterJSONEncode *)filterWithOptions:(KSJSONEncodeOption)options;
 
-- (id) initWithOptions:(KSJSONEncodeOption) options;
+- (id)initWithOptions:(KSJSONEncodeOption)options;
 
 @end
-
 
 /** Converts reports from JSON to dict.
  *
@@ -50,8 +47,8 @@
  */
 @interface KSCrashReportFilterJSONDecode : NSObject <KSCrashReportFilter>
 
-+ (KSCrashReportFilterJSONDecode*) filterWithOptions:(KSJSONDecodeOption) options;
++ (KSCrashReportFilterJSONDecode *)filterWithOptions:(KSJSONDecodeOption)options;
 
-- (id) initWithOptions:(KSJSONDecodeOption) options;
+- (id)initWithOptions:(KSJSONDecodeOption)options;
 
 @end

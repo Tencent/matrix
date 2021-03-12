@@ -25,82 +25,80 @@
 @implementation MatrixBaseModel
 
 - (void)encodeWithCoder:(NSCoder *)encoder {
-	Class cls = [self class];
-	while (cls != [NSObject class]) {
-		unsigned int numberOfIvars = 0;
-		Ivar *ivars = class_copyIvarList(cls, &numberOfIvars);
-		for (int i = 0; i < numberOfIvars; ++i) {
-			const char *type = ivar_getTypeEncoding(ivars[i]);
-			NSString *key = [NSString stringWithUTF8String:ivar_getName(ivars[i])];
-			if (key == nil || key.length == 0) {
-				continue;
-			}
-			id value = [self valueForKey:key];
-			if (value) {
-				switch (type[0]) {
-					case _C_STRUCT_B: {
-						NSUInteger ivarSize = 0;
-						NSUInteger ivarAlignment = 0;
-						NSGetSizeAndAlignment(type, &ivarSize, &ivarAlignment);
-						NSData *data = [NSData dataWithBytes:(const char *)self + ivar_getOffset(ivars[i]) length:ivarSize];
-						[encoder encodeObject:data forKey:key];
-					}
-						break;
-					default:
-						[encoder encodeObject:value forKey:key];
-						break;
-				}
-			}
-		}
-		if (ivars) {
-			free(ivars);
-		}
-		
-		cls = class_getSuperclass(cls);
-	}
+    Class cls = [self class];
+    while (cls != [NSObject class]) {
+        unsigned int numberOfIvars = 0;
+        Ivar *ivars = class_copyIvarList(cls, &numberOfIvars);
+        for (int i = 0; i < numberOfIvars; ++i) {
+            const char *type = ivar_getTypeEncoding(ivars[i]);
+            NSString *key = [NSString stringWithUTF8String:ivar_getName(ivars[i])];
+            if (key == nil || key.length == 0) {
+                continue;
+            }
+            id value = [self valueForKey:key];
+            if (value) {
+                switch (type[0]) {
+                    case _C_STRUCT_B: {
+                        NSUInteger ivarSize = 0;
+                        NSUInteger ivarAlignment = 0;
+                        NSGetSizeAndAlignment(type, &ivarSize, &ivarAlignment);
+                        NSData *data = [NSData dataWithBytes:(const char *)self + ivar_getOffset(ivars[i]) length:ivarSize];
+                        [encoder encodeObject:data forKey:key];
+                    } break;
+                    default:
+                        [encoder encodeObject:value forKey:key];
+                        break;
+                }
+            }
+        }
+        if (ivars) {
+            free(ivars);
+        }
+
+        cls = class_getSuperclass(cls);
+    }
 }
 
 - (id)initWithCoder:(NSCoder *)decoder {
-	self = [super init];
-	if (self) {
-		Class cls = [self class];
-		while (cls != [NSObject class]) {
-			unsigned int numberOfIvars = 0;
-			Ivar *ivars = class_copyIvarList(cls, &numberOfIvars);
-			for (int i = 0; i < numberOfIvars; ++i) {
-				const char *type = ivar_getTypeEncoding(ivars[i]);
-				NSString *key = [NSString stringWithUTF8String:ivar_getName(ivars[i])];
-				if (key == nil || key.length == 0) {
-					continue;
-				}
-				id value = [decoder decodeObjectForKey:key];
-				if (value) {
-					switch (type[0]) {
-						case _C_STRUCT_B: {
-							NSUInteger ivarSize = 0;
-							NSUInteger ivarAlignment = 0;
-							NSGetSizeAndAlignment(type, &ivarSize, &ivarAlignment);
-							NSData *data = [decoder decodeObjectForKey:key];
-							char *sourceIvarLocation = (char *)self+ ivar_getOffset(ivars[i]);
-							[data getBytes:sourceIvarLocation length:ivarSize];
-							memcpy((char *)self + ivar_getOffset(ivars[i]), sourceIvarLocation, ivarSize);
-						}
-							break;
-						default:
-							[self setValue:value forKey:key];
-							break;
-					}
-				}
-			}
-			
-			if (ivars) {
-				free(ivars);
-			}
-			cls = class_getSuperclass(cls);
-		}
-	}
-	
-	return self;
+    self = [super init];
+    if (self) {
+        Class cls = [self class];
+        while (cls != [NSObject class]) {
+            unsigned int numberOfIvars = 0;
+            Ivar *ivars = class_copyIvarList(cls, &numberOfIvars);
+            for (int i = 0; i < numberOfIvars; ++i) {
+                const char *type = ivar_getTypeEncoding(ivars[i]);
+                NSString *key = [NSString stringWithUTF8String:ivar_getName(ivars[i])];
+                if (key == nil || key.length == 0) {
+                    continue;
+                }
+                id value = [decoder decodeObjectForKey:key];
+                if (value) {
+                    switch (type[0]) {
+                        case _C_STRUCT_B: {
+                            NSUInteger ivarSize = 0;
+                            NSUInteger ivarAlignment = 0;
+                            NSGetSizeAndAlignment(type, &ivarSize, &ivarAlignment);
+                            NSData *data = [decoder decodeObjectForKey:key];
+                            char *sourceIvarLocation = (char *)self + ivar_getOffset(ivars[i]);
+                            [data getBytes:sourceIvarLocation length:ivarSize];
+                            memcpy((char *)self + ivar_getOffset(ivars[i]), sourceIvarLocation, ivarSize);
+                        } break;
+                        default:
+                            [self setValue:value forKey:key];
+                            break;
+                    }
+                }
+            }
+
+            if (ivars) {
+                free(ivars);
+            }
+            cls = class_getSuperclass(cls);
+        }
+    }
+
+    return self;
 }
 
 @end

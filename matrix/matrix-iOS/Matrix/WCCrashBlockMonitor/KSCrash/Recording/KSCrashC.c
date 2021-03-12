@@ -24,7 +24,6 @@
 // THE SOFTWARE.
 //
 
-
 #include "KSCrashC.h"
 
 #include "KSCrashCachedData.h"
@@ -50,8 +49,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-typedef enum
-{
+typedef enum {
     KSApplicationStateNone,
     KSApplicationStateDidBecomeActive,
     KSApplicationStateWillResignActiveActive,
@@ -80,12 +78,10 @@ static KSApplicationState g_lastApplicationState = KSApplicationStateNone;
 #pragma mark - Utility -
 // ============================================================================
 
-static void printPreviousLog(const char* filePath)
-{
-    char* data = NULL;
+static void printPreviousLog(const char *filePath) {
+    char *data = NULL;
     int length = 0;
-    if(ksfu_readEntireFile(filePath, &data, &length, 0))
-    {
+    if (ksfu_readEntireFile(filePath, &data, &length, 0)) {
         printf("\nvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv Previous Log vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv\n\n");
         printf("%s\n", data);
         free(data);
@@ -95,11 +91,9 @@ static void printPreviousLog(const char* filePath)
     }
 }
 
-static void notifyOfBeforeInstallationState(void)
-{
+static void notifyOfBeforeInstallationState(void) {
     KSLOG_DEBUG("Notifying of pre-installation state");
-    switch (g_lastApplicationState)
-    {
+    switch (g_lastApplicationState) {
         case KSApplicationStateDidBecomeActive:
             return kscrash_notifyAppActive(true);
         case KSApplicationStateWillResignActiveActive:
@@ -123,8 +117,7 @@ static void notifyOfBeforeInstallationState(void)
  *
  * This function gets passed as a callback to a crash handler.
  */
-static void onCrash(struct KSCrash_MonitorContext* monitorContext)
-{
+static void onCrash(struct KSCrash_MonitorContext *monitorContext) {
     KSLOG_DEBUG("Updating application state to note crash.");
     kscrashstate_notifyAppCrash();
 
@@ -137,13 +130,10 @@ static void onCrash(struct KSCrash_MonitorContext* monitorContext)
         monitorContext->UserDefinedVersion.bundleShortVersion = NULL;
         monitorContext->UserDefinedVersion.bundleVersion = NULL;
     }
-    
-    if(monitorContext->crashedDuringCrashHandling)
-    {
+
+    if (monitorContext->crashedDuringCrashHandling) {
         kscrashreport_writeRecrashReport(monitorContext, g_lastCrashReportFilePath);
-    }
-    else
-    {
+    } else {
         char crashReportFilePath[KSFU_MAX_PATH_LENGTH];
         kscrs_getNextCrashReportPath(crashReportFilePath);
         strlcpy(g_lastCrashReportFilePath, crashReportFilePath, sizeof(g_lastCrashReportFilePath));
@@ -155,12 +145,11 @@ static void onCrash(struct KSCrash_MonitorContext* monitorContext)
  *
  * This function gets paseed as a callback to a user dump
  */
-static void onUserDump(struct KSCrash_MonitorContext* monitorContext, const char* dumpFilePath)
-{
+static void onUserDump(struct KSCrash_MonitorContext *monitorContext, const char *dumpFilePath) {
     KSLOG_DEBUG("UserDump");
-    
+
     monitorContext->consoleLogPath = g_shouldAddConsoleLogToReport ? g_consoleLogPath : NULL;
-    
+
     if (g_customShortVersion != NULL && g_customFullVersion != NULL) {
         monitorContext->UserDefinedVersion.bundleShortVersion = g_customShortVersion;
         monitorContext->UserDefinedVersion.bundleVersion = g_customFullVersion;
@@ -169,12 +158,9 @@ static void onUserDump(struct KSCrash_MonitorContext* monitorContext, const char
         monitorContext->UserDefinedVersion.bundleVersion = "unknown";
     }
 
-    if(monitorContext->crashedDuringCrashHandling)
-    {
+    if (monitorContext->crashedDuringCrashHandling) {
         kscrashreport_writeRecrashReport(monitorContext, dumpFilePath);
-    }
-    else
-    {
+    } else {
         kscrashreport_writeStandardReport(monitorContext, dumpFilePath);
     }
 }
@@ -183,12 +169,10 @@ static void onUserDump(struct KSCrash_MonitorContext* monitorContext, const char
 #pragma mark - API -
 // ============================================================================
 
-KSCrashMonitorType kscrash_install(const char* appName, const char* const installPath)
-{
+KSCrashMonitorType kscrash_install(const char *appName, const char *const installPath) {
     KSLOG_DEBUG("Installing crash reporter.");
 
-    if(g_installed)
-    {
+    if (g_installed) {
         KSLOG_DEBUG("Crash reporter already installed.");
         return g_monitoring;
     }
@@ -205,12 +189,11 @@ KSCrashMonitorType kscrash_install(const char* appName, const char* const instal
     kscrashstate_initialize(path);
 
     snprintf(g_consoleLogPath, sizeof(g_consoleLogPath), "%s/Data/ConsoleLog.txt", installPath);
-    if(g_shouldPrintPreviousLog)
-    {
+    if (g_shouldPrintPreviousLog) {
         printPreviousLog(g_consoleLogPath);
     }
     kslog_setLogFilename(g_consoleLogPath, true);
-    
+
     ksccd_init(60);
 
     kscm_setEventCallback(onCrash);
@@ -224,12 +207,10 @@ KSCrashMonitorType kscrash_install(const char* appName, const char* const instal
     return monitors;
 }
 
-KSCrashMonitorType kscrash_setMonitoring(KSCrashMonitorType monitors)
-{
+KSCrashMonitorType kscrash_setMonitoring(KSCrashMonitorType monitors) {
     g_monitoring = monitors;
-    
-    if(g_installed)
-    {
+
+    if (g_installed) {
         kscm_setActiveMonitors(monitors);
         return kscm_getActiveMonitors();
     }
@@ -237,203 +218,151 @@ KSCrashMonitorType kscrash_setMonitoring(KSCrashMonitorType monitors)
     return g_monitoring;
 }
 
-void kscrash_setUserInfoJSON(const char* const userInfoJSON)
-{
+void kscrash_setUserInfoJSON(const char *const userInfoJSON) {
     kscrashreport_setUserInfoJSON(userInfoJSON);
 }
 
-void kscrash_setDeadlockWatchdogInterval(double deadlockWatchdogInterval)
-{
+void kscrash_setDeadlockWatchdogInterval(double deadlockWatchdogInterval) {
 #if KSCRASH_HAS_OBJC
     kscm_setDeadlockHandlerWatchdogInterval(deadlockWatchdogInterval);
 #endif
 }
 
-void kscrash_setSearchQueueNames(bool searchQueueNames)
-{
+void kscrash_setSearchQueueNames(bool searchQueueNames) {
     ksccd_setSearchQueueNames(searchQueueNames);
 }
 
-void kscrash_setIntrospectMemory(bool introspectMemory)
-{
+void kscrash_setIntrospectMemory(bool introspectMemory) {
     kscrashreport_setIntrospectMemory(introspectMemory);
 }
 
-void kscrash_setDoNotIntrospectClasses(const char** doNotIntrospectClasses, int length)
-{
+void kscrash_setDoNotIntrospectClasses(const char **doNotIntrospectClasses, int length) {
     kscrashreport_setDoNotIntrospectClasses(doNotIntrospectClasses, length);
 }
 
-void kscrash_setCrashNotifyCallback(const KSReportWriteCallback onCrashNotify)
-{
+void kscrash_setCrashNotifyCallback(const KSReportWriteCallback onCrashNotify) {
     kscrashreport_setUserSectionWriteCallback(onCrashNotify);
 }
 
-void kscrash_setPointThreadCallback(const KSReportWritePointThreadCallback onWritePointThread)
-{
+void kscrash_setPointThreadCallback(const KSReportWritePointThreadCallback onWritePointThread) {
     kscrashreport_setPointThreadWriteCallback(onWritePointThread);
 }
 
-void kscrash_setPointThreadRepeatNumberCallback(const KSReportWritePointThreadRepeatNumberCallback onWritePointThreadRepeatNumber)
-{
+void kscrash_setPointThreadRepeatNumberCallback(const KSReportWritePointThreadRepeatNumberCallback onWritePointThreadRepeatNumber) {
     kscrashreport_setPointThreadRepeatNumberWriteCallback(onWritePointThreadRepeatNumber);
 }
 
-void kscrash_setPointCpuHighThreadCallback(const KSReportWritePointCpuHighThreadCallback onWritePointCpuHighThread)
-{
+void kscrash_setPointCpuHighThreadCallback(const KSReportWritePointCpuHighThreadCallback onWritePointCpuHighThread) {
     kscrashreport_setPointCpuHighThreadWriteCallback(onWritePointCpuHighThread);
 }
 
-void kscrash_setPointCpuHighThreadCountCallback(const KSReportWritePointCpuHighThreadCountCallback onWritePointCpuHighThreadCount)
-{
+void kscrash_setPointCpuHighThreadCountCallback(const KSReportWritePointCpuHighThreadCountCallback onWritePointCpuHighThreadCount) {
     kscrashreport_setPointCpuHighThreadCountWriteCallback(onWritePointCpuHighThreadCount);
 }
 
-void kscrash_setPointCpuHighThreadValueCallback(const KSReportWritePointCpuHighThreadValueCallback onWritePointCpuHighThreadValue)
-{
+void kscrash_setPointCpuHighThreadValueCallback(const KSReportWritePointCpuHighThreadValueCallback onWritePointCpuHighThreadValue) {
     kscrashreport_setPointCpuHighThreadValueWriteCallback(onWritePointCpuHighThreadValue);
 }
 
-void kscrash_setHandleSignalCallback(const KSCrashSentryHandleSignal onHandleSignal)
-{
+void kscrash_setHandleSignalCallback(const KSCrashSentryHandleSignal onHandleSignal) {
     kscm_setHandleSignal(onHandleSignal);
 }
 
-void kscrash_setInnerHandleSignalCallback(const KSCrashSentryHandleSignal onInnerHandleSignal)
-{
+void kscrash_setInnerHandleSignalCallback(const KSCrashSentryHandleSignal onInnerHandleSignal) {
     kscm_setInnerHandleSingal(onInnerHandleSignal);
 }
 
-void kscrash_setAddConsoleLogToReport(bool shouldAddConsoleLogToReport)
-{
+void kscrash_setAddConsoleLogToReport(bool shouldAddConsoleLogToReport) {
     g_shouldAddConsoleLogToReport = shouldAddConsoleLogToReport;
 }
 
-void kscrash_setPrintPreviousLog(bool shouldPrintPreviousLog)
-{
+void kscrash_setPrintPreviousLog(bool shouldPrintPreviousLog) {
     g_shouldPrintPreviousLog = shouldPrintPreviousLog;
 }
 
-void kscrash_setMaxReportCount(int maxReportCount)
-{
+void kscrash_setMaxReportCount(int maxReportCount) {
     kscrs_setMaxReportCount(maxReportCount);
 }
 
-void kscrash_reportUserException(const char* name,
-                                 const char* reason,
-                                 const char* language,
-                                 const char* lineOfCode,
-                                 const char* stackTrace,
+void kscrash_reportUserException(const char *name,
+                                 const char *reason,
+                                 const char *language,
+                                 const char *lineOfCode,
+                                 const char *stackTrace,
                                  bool logAllThreads,
-                                 bool terminateProgram)
-{
-    kscm_reportUserException(name,
-                             reason,
-                             language,
-                             lineOfCode,
-                             stackTrace,
-                             logAllThreads,
-                             terminateProgram);
-    if(g_shouldAddConsoleLogToReport)
-    {
+                                 bool terminateProgram) {
+    kscm_reportUserException(name, reason, language, lineOfCode, stackTrace, logAllThreads, terminateProgram);
+    if (g_shouldAddConsoleLogToReport) {
         kslog_clearLogFile();
     }
 }
 
-void kscrash_reportUserExceptionWithSelfDefinedPath(const char* name,
-                                                    const char* reason,
-                                                    const char* language,
-                                                    const char* lineOfCode,
-                                                    const char* stackTrace,
+void kscrash_reportUserExceptionWithSelfDefinedPath(const char *name,
+                                                    const char *reason,
+                                                    const char *language,
+                                                    const char *lineOfCode,
+                                                    const char *stackTrace,
                                                     bool logAllThreads,
                                                     bool terminateProgram,
-                                                    const char* dumpFilePath,
-                                                    int dumpType)
-{
-    kscm_reportUserExceptionSelfDefinePath(name,
-                                           reason,
-                                           language,
-                                           lineOfCode,
-                                           stackTrace,
-                                           logAllThreads,
-                                           terminateProgram,
-                                           dumpFilePath,
-                                           dumpType);
-    if(g_shouldAddConsoleLogToReport)
-    {
+                                                    const char *dumpFilePath,
+                                                    int dumpType) {
+    kscm_reportUserExceptionSelfDefinePath(name, reason, language, lineOfCode, stackTrace, logAllThreads, terminateProgram, dumpFilePath, dumpType);
+    if (g_shouldAddConsoleLogToReport) {
         kslog_clearLogFile();
     }
 }
 
-void kscrash_notifyObjCLoad(void)
-{
+void kscrash_notifyObjCLoad(void) {
     kscrashstate_notifyObjCLoad();
 }
 
-void kscrash_notifyAppActive(bool isActive)
-{
-    if (g_installed)
-    {
+void kscrash_notifyAppActive(bool isActive) {
+    if (g_installed) {
         kscrashstate_notifyAppActive(isActive);
     }
-    g_lastApplicationState = isActive
-        ? KSApplicationStateDidBecomeActive
-        : KSApplicationStateWillResignActiveActive;
+    g_lastApplicationState = isActive ? KSApplicationStateDidBecomeActive : KSApplicationStateWillResignActiveActive;
 }
 
-void kscrash_notifyAppInForeground(bool isInForeground)
-{
-    if (g_installed)
-    {
+void kscrash_notifyAppInForeground(bool isInForeground) {
+    if (g_installed) {
         kscrashstate_notifyAppInForeground(isInForeground);
     }
-    g_lastApplicationState = isInForeground
-        ? KSApplicationStateWillEnterForeground
-        : KSApplicationStateDidEnterBackground;
+    g_lastApplicationState = isInForeground ? KSApplicationStateWillEnterForeground : KSApplicationStateDidEnterBackground;
 }
 
-void kscrash_notifyAppTerminate(void)
-{
-    if (g_installed)
-    {
+void kscrash_notifyAppTerminate(void) {
+    if (g_installed) {
         kscrashstate_notifyAppTerminate();
     }
     g_lastApplicationState = KSApplicationStateWillTerminate;
 }
 
-void kscrash_notifyAppCrash(void)
-{
+void kscrash_notifyAppCrash(void) {
     kscrashstate_notifyAppCrash();
 }
 
-int kscrash_getReportCount()
-{
+int kscrash_getReportCount() {
     return kscrs_getReportCount();
 }
 
-int kscrash_getReportIDs(int64_t* reportIDs, int count)
-{
+int kscrash_getReportIDs(int64_t *reportIDs, int count) {
     return kscrs_getReportIDs(reportIDs, count);
 }
 
-char* kscrash_readReport(int64_t reportID)
-{
-    if(reportID <= 0)
-    {
+char *kscrash_readReport(int64_t reportID) {
+    if (reportID <= 0) {
         KSLOG_ERROR("Report ID was %" PRIx64, reportID);
         return NULL;
     }
 
-    char* rawReport = kscrs_readReport(reportID);
-    if(rawReport == NULL)
-    {
+    char *rawReport = kscrs_readReport(reportID);
+    if (rawReport == NULL) {
         KSLOG_ERROR("Failed to load report ID %" PRIx64, reportID);
         return NULL;
     }
 
-    char* fixedReport = kscrf_fixupCrashReport(rawReport);
-    if(fixedReport == NULL)
-    {
+    char *fixedReport = kscrf_fixupCrashReport(rawReport);
+    if (fixedReport == NULL) {
         KSLOG_ERROR("Failed to fixup report ID %" PRIx64, reportID);
     }
 
@@ -441,55 +370,48 @@ char* kscrash_readReport(int64_t reportID)
     return fixedReport;
 }
 
-char* kscrash_readReportStringID(const char* reportID)
-{
-    if(reportID == NULL) {
+char *kscrash_readReportStringID(const char *reportID) {
+    if (reportID == NULL) {
         KSLOG_ERROR("Report ID null string");
         return NULL;
     }
-    
-    if(reportID[0] == '\0')
-    {
+
+    if (reportID[0] == '\0') {
         KSLOG_ERROR("Report ID was %s", reportID);
         return NULL;
     }
-    
-    char* rawReport = kscrs_readReportStringID(reportID);
-    if(rawReport == NULL)
-    {
+
+    char *rawReport = kscrs_readReportStringID(reportID);
+    if (rawReport == NULL) {
         KSLOG_ERROR("Failed to load report ID %s", reportID);
         return NULL;
     }
-    
-    char* fixedReport = kscrf_fixupCrashReport(rawReport);
-    if(fixedReport == NULL)
-    {
+
+    char *fixedReport = kscrf_fixupCrashReport(rawReport);
+    if (fixedReport == NULL) {
         KSLOG_ERROR("Failed to fixup report ID %s", reportID);
     }
-    
+
     free(rawReport);
     return fixedReport;
 }
 
-int64_t kscrash_addUserReport(const char* report, int reportLength)
-{
+int64_t kscrash_addUserReport(const char *report, int reportLength) {
     return kscrs_addUserReport(report, reportLength);
 }
 
-void kscrash_deleteAllReports()
-{
+void kscrash_deleteAllReports() {
     kscrs_deleteAllReports();
 }
 
-void kscrash_setCustomVersion(const char* fullVersion, const char* shortVersion)
-{
+void kscrash_setCustomVersion(const char *fullVersion, const char *shortVersion) {
     if (g_customFullVersion != NULL) {
         free(g_customFullVersion);
     }
     if (g_customShortVersion != NULL) {
         free(g_customShortVersion);
     }
-    
+
     if (shortVersion != NULL && strlen(shortVersion) > 0) {
         size_t length = strlen(shortVersion) + 1;
         g_customShortVersion = (char *)malloc(sizeof(char) * length);
@@ -516,12 +438,10 @@ void kscrash_setCustomVersion(const char* fullVersion, const char* shortVersion)
     }
 }
 
-const char* kscrash_getCustomShortVersion()
-{
+const char *kscrash_getCustomShortVersion() {
     return g_customShortVersion;
 }
 
-const char* kscrash_getCustomFullVersion()
-{
+const char *kscrash_getCustomFullVersion() {
     return g_customFullVersion;
 }

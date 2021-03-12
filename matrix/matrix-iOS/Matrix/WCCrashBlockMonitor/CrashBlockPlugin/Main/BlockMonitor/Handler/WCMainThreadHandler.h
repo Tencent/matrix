@@ -38,4 +38,3 @@
 - (size_t)getStackMaxCount;
 
 @end
-

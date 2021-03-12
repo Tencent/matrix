@@ -23,8 +23,7 @@
 #pragma mark - Interface
 // ============================================================================
 
-+ (WCDumpReportTaskData *)getTodayOneReportDataWithLimitType:(NSString *)limitTypeString
-{
++ (WCDumpReportTaskData *)getTodayOneReportDataWithLimitType:(NSString *)limitTypeString {
     NSMutableArray *arrPriorityHigh = [[NSMutableArray alloc] init];
     NSMutableArray *arrPriorityDefault = [[NSMutableArray alloc] init];
     NSMutableArray *arrPriorityLow = [[NSMutableArray alloc] init];
@@ -35,7 +34,7 @@
         }
         NSNumber *numPriority = WXGDumpReportTypeConfig[type];
         EReportPriority priority = (EReportPriority)[numPriority intValue];
-        NSString *tmpDumpTypeString = [NSString stringWithFormat:@"%lu", (unsigned long) [type unsignedIntegerValue]];
+        NSString *tmpDumpTypeString = [NSString stringWithFormat:@"%lu", (unsigned long)[type unsignedIntegerValue]];
         if (tmpDumpTypeString && [tmpDumpTypeString length] > 0 && limitTypeString && [limitTypeString length] > 0) {
             if ([limitTypeString containsString:tmpDumpTypeString]) {
                 continue;
@@ -89,9 +88,8 @@
     return retReportData;
 }
 
-+ (NSArray <WCDumpReportTaskData *>*)getAllTypeReportDataWithDate:(NSString *)limitDate
-{
-    NSMutableArray <WCDumpReportTaskData *>*arrReportData = [[NSMutableArray alloc] init];
++ (NSArray<WCDumpReportTaskData *> *)getAllTypeReportDataWithDate:(NSString *)limitDate {
+    NSMutableArray<WCDumpReportTaskData *> *arrReportData = [[NSMutableArray alloc] init];
     NSArray *keyArray = [WXGDumpReportTypeConfig allKeys];
 
     for (NSNumber *reportTypeNum in keyArray) {
@@ -112,8 +110,7 @@
     return [arrReportData copy];
 }
 
-+ (NSArray <WCDumpReportTaskData *>*)getReportDataWithType:(EDumpType)dumpType onDate:(NSString *)nsDate
-{
++ (NSArray<WCDumpReportTaskData *> *)getReportDataWithType:(EDumpType)dumpType onDate:(NSString *)nsDate {
     NSMutableArray *arrReportData = [[NSMutableArray alloc] init];
 
     WCDumpReportTaskData *dumpReportData;
@@ -134,13 +131,11 @@
 #pragma mark - Utility
 // ============================================================================
 
-+ (WCDumpReportTaskData *)getDumpReportDataWithDumpType:(EDumpType)dumpType
-{
++ (WCDumpReportTaskData *)getDumpReportDataWithDumpType:(EDumpType)dumpType {
     return [WCDumpReportDataProvider getDumpReportDataWithDumpType:dumpType withDate:@""];
 }
 
-+ (WCDumpReportTaskData *)getDumpReportDataWithDumpType:(EDumpType)dumpType withDate:(NSString *)limitDate
-{
++ (WCDumpReportTaskData *)getDumpReportDataWithDumpType:(EDumpType)dumpType withDate:(NSString *)limitDate {
     WCDumpReportTaskData *reportData = [[WCDumpReportTaskData alloc] init];
     reportData.m_uploadFilesArray = [[WCCrashBlockFileHandler getLagReportIDWithType:dumpType withDate:limitDate] mutableCopy];
     reportData.m_dumpType = dumpType;

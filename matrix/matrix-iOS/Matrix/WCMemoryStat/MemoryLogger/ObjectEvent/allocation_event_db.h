@@ -17,55 +17,23 @@
 #ifndef allocation_event_db_h
 #define allocation_event_db_h
 
-#include <mach/mach.h>
-
-struct allocation_event {
-	uint64_t address; // top 8 bits are actually the flags
-	uint16_t alloca_type; // allocation type, such as memory_logging_type_alloc or memory_logging_type_vm_allocate
-	uint16_t object_type; // object type, such as NSObject, NSData, CFString, etc...
-//	struct {
-//		uint64_t address:48;
-//		uint64_t object_type:16;
-//	} detail;
-	uint32_t stack_identifier;
-	uint32_t size;
-	uint32_t t_id;
-	
-	allocation_event(uint64_t _a=0, uint16_t _at=0, uint16_t _ot=0, uint32_t _si=0, uint32_t _sz=0, uint32_t _id=0) {
-		address = _a;
-		alloca_type = _at;
-		object_type = _ot;
-		stack_identifier = _si;
-		size = _sz;
-		t_id = _id;
-	}
-	
-	inline bool operator != (const allocation_event &another) const {
-		return address != another.address;
-	}
-	
-	inline bool operator == (const allocation_event &another) const {
-		return address == another.address;
-	}
-	
-	inline bool operator > (const allocation_event &another) const {
-		return address > another.address;
-	}
-	
-	inline bool operator < (const allocation_event &another) const {
-		return address < another.address;
-	}
-};
+#include "allocation_event.h"
 
 struct allocation_event_db;
 
-allocation_event_db *open_or_create_allocation_event_db(const char *event_dir);
-void close_allocation_event_db(allocation_event_db *db_context);
+allocation_event_db *allocation_event_db_open_or_create(const char *event_dir);
+void allocation_event_db_close(allocation_event_db *db_context);
 
-void add_allocation_event(allocation_event_db *db_context, uint64_t address, uint32_t type_flags, uint32_t object_type, uint32_t size, uint32_t stack_identifier, uint32_t t_id);
-void del_allocation_event(allocation_event_db *db_context, uint64_t address, uint32_t type_flags);
-void update_allocation_event_object_type(allocation_event_db *db_context, uint64_t address, uint32_t new_type);
+void allocation_event_db_add(allocation_event_db *db_context,
+                             uint64_t address,
+                             uint32_t type_flags,
+                             uint32_t object_type,
+                             uint32_t size,
+                             uint32_t stack_identifier,
+                             uint32_t t_id);
+void allocation_event_db_del(allocation_event_db *db_context, uint64_t address, uint32_t type_flags);
+void allocation_event_db_update_object_type(allocation_event_db *db_context, uint64_t address, uint32_t new_type);
 
-void enumerate_allocation_event(allocation_event_db *db_context, void (^callback)(const allocation_event &event));
+void allocation_event_db_enumerate(allocation_event_db *db_context, void (^callback)(const uint64_t &address, const allocation_event &event));
 
 #endif /* allocation_event_db_h */

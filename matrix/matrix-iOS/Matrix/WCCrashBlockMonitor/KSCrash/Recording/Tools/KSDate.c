@@ -26,13 +26,14 @@
 #include <stdio.h>
 #include <time.h>
 
-void ksdate_utcStringFromTimestamp(time_t timestamp, char* buffer21Chars)
-{
-    struct tm result = {0};
+void ksdate_utcStringFromTimestamp(time_t timestamp, char *buffer21Chars) {
+    struct tm result = { 0 };
     gmtime_r(&timestamp, &result);
-    snprintf(buffer21Chars, 21, "%04d-%02d-%02dT%02d:%02d:%02dZ",
+    snprintf(buffer21Chars,
+             21,
+             "%04d-%02d-%02dT%02d:%02d:%02dZ",
              result.tm_year + 1900,
-             result.tm_mon+1,
+             result.tm_mon + 1,
              result.tm_mday,
              result.tm_hour,
              result.tm_min,

@@ -22,7 +22,7 @@
 
 void set_memory_logging_invalid(void);
 void log_internal(const char *file, int line, const char *funcname, char *msg);
-void log_internal_without_this_thread(thread_id tid);
+void log_internal_without_this_thread(thread_id t_id);
 void report_error(int error);
 
 #endif /* memory_logging_adapter_hpp */

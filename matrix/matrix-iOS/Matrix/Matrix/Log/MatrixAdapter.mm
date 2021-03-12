@@ -18,8 +18,7 @@
 
 @implementation MatrixAdapter
 
-+ (MatrixAdapter *)sharedInstance
-{
++ (MatrixAdapter *)sharedInstance {
     static MatrixAdapter *s_instance = nil;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
@@ -30,8 +29,7 @@
 
 @end
 
-BOOL matrix_shouldlog(MXLogLevel level)
-{
+BOOL matrix_shouldlog(MXLogLevel level) {
     id<MatrixAdapterDelegate> delegate = [MatrixAdapter sharedInstance].delegate;
     if (delegate) {
         return [delegate matrixShouldLog:level];
@@ -39,21 +37,9 @@ BOOL matrix_shouldlog(MXLogLevel level)
     return NO;
 }
 
-void matrix_log(MXLogLevel log_level,
-                const char *module,
-                const char *file,
-                int line,
-                const char *funcname,
-                NSString *message)
-{
+void matrix_log(MXLogLevel log_level, const char *module, const char *file, int line, const char *funcname, NSString *message) {
     id<MatrixAdapterDelegate> delegate = [MatrixAdapter sharedInstance].delegate;
     if (delegate) {
-        [delegate matrixLog:log_level
-                     module:module
-                       file:file
-                       line:line
-                   funcName:funcname
-                    message:message];
+        [delegate matrixLog:log_level module:module file:file line:line funcName:funcname message:message];
     }
 }
-

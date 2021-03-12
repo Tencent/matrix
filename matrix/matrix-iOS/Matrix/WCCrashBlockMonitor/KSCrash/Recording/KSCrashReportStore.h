@@ -31,7 +31,6 @@
 extern "C" {
 #endif
 
-
 #include <stdint.h>
 
 #define KSCRS_MAX_PATH_LENGTH 500
@@ -41,14 +40,14 @@ extern "C" {
  * @param appName The application's name.
  * @param reportsPath Full path to directory where the reports are to be stored (path will be created if needed).
  */
-void kscrs_initialize(const char* appName, const char* reportsPath);
+void kscrs_initialize(const char *appName, const char *reportsPath);
 
 /** Get the path to the next crash report to be generated.
  * Max length for paths is KSCRS_MAX_PATH_LENGTH
  *
  * @param crashReportPathBuffer Buffer to store the crash report path.
  */
-void kscrs_getNextCrashReportPath(char* crashReportPathBuffer);
+void kscrs_getNextCrashReportPath(char *crashReportPathBuffer);
 
 /** Get the number of reports on disk.
  */
@@ -61,7 +60,7 @@ int kscrs_getReportCount(void);
  *
  * @return The number of report IDs that were placed in the array.
  */
-int kscrs_getReportIDs(int64_t* reportIDs, int count);
+int kscrs_getReportIDs(int64_t *reportIDs, int count);
 
 /** Read a report.
  *
@@ -70,7 +69,7 @@ int kscrs_getReportIDs(int64_t* reportIDs, int count);
  * @return The NULL terminated report, or NULL if not found.
  *         MEMORY MANAGEMENT WARNING: User is responsible for calling free() on the returned value.
  */
-char* kscrs_readReport(int64_t reportID);
+char *kscrs_readReport(int64_t reportID);
 
 /** Read a report by a string ID.
  *
@@ -79,7 +78,7 @@ char* kscrs_readReport(int64_t reportID);
  * @return The NULL terminated report, or NULL if not found.
  *         MEMORY MANAGEMENT WARNING: User is responsible for calling free() on the returned value.
  */
-char* kscrs_readReportStringID(const char* reportID);
+char *kscrs_readReportStringID(const char *reportID);
 
 /** Add a custom report to the store.
  *
@@ -88,7 +87,7 @@ char* kscrs_readReportStringID(const char* reportID);
  *
  * @return the new report's ID.
  */
-int64_t kscrs_addUserReport(const char* report, int reportLength);
+int64_t kscrs_addUserReport(const char *report, int reportLength);
 
 /** Delete all reports on disk.
  */
@@ -98,7 +97,7 @@ void kscrs_deleteAllReports(void);
  *
  * @param maxReportCount The maximum number of reports.
  */
-    void kscrs_setMaxReportCount(int maxReportCount);
+void kscrs_setMaxReportCount(int maxReportCount);
 
 #ifdef __cplusplus
 }

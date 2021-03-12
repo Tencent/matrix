@@ -19,16 +19,15 @@
 
 @implementation WCCrashBlockJsonUtil
 
-+ (NSData *)jsonEncode:(id)object withError:(NSError **)error
-{
++ (NSData *)jsonEncode:(id)object withError:(NSError **)error {
     return [KSJSONCodec encode:object options:KSJSONEncodeOptionPretty error:nil];
 }
 
-+ (id)jsonDecode:(NSData *)jsonData withError:(NSError **)error
-{
-    return [KSJSONCodec decode:jsonData
-                       options:(KSJSONDecodeOption)(KSJSONDecodeOptionIgnoreNullInArray | KSJSONDecodeOptionIgnoreNullInObject | KSJSONDecodeOptionKeepPartialObject)
-                         error:error];
++ (id)jsonDecode:(NSData *)jsonData withError:(NSError **)error {
+    return [KSJSONCodec
+     decode:jsonData
+    options:(KSJSONDecodeOption)(KSJSONDecodeOptionIgnoreNullInArray | KSJSONDecodeOptionIgnoreNullInObject | KSJSONDecodeOptionKeepPartialObject)
+      error:error];
 }
 
 @end

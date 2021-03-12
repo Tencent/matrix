@@ -29,7 +29,6 @@
 extern "C" {
 #endif
 
-
 #include <sys/types.h>
 
 /** Convert a UNIX timestamp to an RFC3339 string representation.
@@ -38,7 +37,7 @@ extern "C" {
  *
  * @param buffer21Chars A buffer of at least 21 chars to hold the RFC3339 date string.
  */
-void ksdate_utcStringFromTimestamp(time_t timestamp, char* buffer21Chars);
+void ksdate_utcStringFromTimestamp(time_t timestamp, char *buffer21Chars);
 
 #ifdef __cplusplus
 }

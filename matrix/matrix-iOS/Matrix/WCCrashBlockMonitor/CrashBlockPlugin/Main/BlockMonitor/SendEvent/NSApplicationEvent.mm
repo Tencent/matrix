@@ -23,48 +23,39 @@
 
 @implementation NSApplicationEvent
 
-- (void)wc_sendEvent:(NSEvent *)event
-{    
+- (void)wc_sendEvent:(NSEvent *)event {
     [WCBlockMonitorMgr signalEventStart];
     [self wc_sendEvent:event];
     [WCBlockMonitorMgr signalEventEnd];
 }
 
 #pragma mark - Swizzle
-- (void)tryswizzle
-{
+- (void)tryswizzle {
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
         Class originalClass = NSClassFromString(@"NSApplication");
         Class swizzledClass = [self class];
         SEL originalSelector = NSSelectorFromString(@"sendEvent:");
         SEL swizzledSelector = @selector(wc_sendEvent:);
-        
+
         Method originalMethod = class_getInstanceMethod(originalClass, originalSelector);
         Method swizzledMethod = class_getInstanceMethod(swizzledClass, swizzledSelector);
-        
-        BOOL registerMethod = class_addMethod(originalClass,
-                                              swizzledSelector,
-                                              method_getImplementation(swizzledMethod),
-                                              method_getTypeEncoding(swizzledMethod));
+
+        BOOL registerMethod =
+        class_addMethod(originalClass, swizzledSelector, method_getImplementation(swizzledMethod), method_getTypeEncoding(swizzledMethod));
         if (!registerMethod) {
             return;
         }
-        
+
         swizzledMethod = class_getInstanceMethod(originalClass, swizzledSelector);
         if (!swizzledMethod) {
             return;
         }
-        
-        BOOL didAddMethod = class_addMethod(originalClass,
-                                            originalSelector,
-                                            method_getImplementation(swizzledMethod),
-                                            method_getTypeEncoding(swizzledMethod));
+
+        BOOL didAddMethod =
+        class_addMethod(originalClass, originalSelector, method_getImplementation(swizzledMethod), method_getTypeEncoding(swizzledMethod));
         if (didAddMethod) {
-            class_replaceMethod(originalClass,
-                                swizzledSelector,
-                                method_getImplementation(originalMethod),
-                                method_getTypeEncoding(originalMethod));
+            class_replaceMethod(originalClass, swizzledSelector, method_getImplementation(originalMethod), method_getTypeEncoding(originalMethod));
         } else {
             method_exchangeImplementations(originalMethod, swizzledMethod);
         }

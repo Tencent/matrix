@@ -28,45 +28,31 @@
 
 @implementation KSError
 
-+ (NSError*) errorWithDomain:(NSString*) domain code:(NSInteger) code description:(NSString*) fmt, ...
-{
++ (NSError *)errorWithDomain:(NSString *)domain code:(NSInteger)code description:(NSString *)fmt, ... {
     va_list args;
     va_start(args, fmt);
-    
-    NSString* desc = [[NSString alloc] initWithFormat:fmt arguments:args];
+
+    NSString *desc = [[NSString alloc] initWithFormat:fmt arguments:args];
     va_end(args);
-    
-    return [NSError errorWithDomain:domain
-                               code:code
-                           userInfo:[NSDictionary dictionaryWithObject:desc
-                                                                forKey:NSLocalizedDescriptionKey]];
+
+    return [NSError errorWithDomain:domain code:code userInfo:[NSDictionary dictionaryWithObject:desc forKey:NSLocalizedDescriptionKey]];
 }
 
-+ (BOOL) fillError:(NSError* __autoreleasing *) error
-        withDomain:(NSString*) domain
-              code:(NSInteger) code
-       description:(NSString*) fmt, ...
-{
-    if(error != nil)
-    {
++ (BOOL)fillError:(NSError *__autoreleasing *)error withDomain:(NSString *)domain code:(NSInteger)code description:(NSString *)fmt, ... {
+    if (error != nil) {
         va_list args;
         va_start(args, fmt);
-        
-        NSString* desc = [[NSString alloc] initWithFormat:fmt arguments:args];
+
+        NSString *desc = [[NSString alloc] initWithFormat:fmt arguments:args];
         va_end(args);
-        
-        *error = [NSError errorWithDomain:domain
-                                     code:code
-                                 userInfo:[NSDictionary dictionaryWithObject:desc
-                                                                      forKey:NSLocalizedDescriptionKey]];
+
+        *error = [NSError errorWithDomain:domain code:code userInfo:[NSDictionary dictionaryWithObject:desc forKey:NSLocalizedDescriptionKey]];
     }
     return NO;
 }
 
-+ (BOOL) clearError:(NSError* __autoreleasing *) error
-{
-    if(error != nil)
-    {
++ (BOOL)clearError:(NSError *__autoreleasing *)error {
+    if (error != nil) {
         *error = nil;
     }
     return NO;

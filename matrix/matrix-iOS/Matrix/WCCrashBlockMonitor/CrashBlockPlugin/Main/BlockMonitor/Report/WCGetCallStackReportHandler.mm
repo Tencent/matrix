@@ -24,15 +24,13 @@
 #define CustomStackString "stack_string"
 #define CustomReportField "scene"
 
-static NSString* g_bundleName = nil;
+static NSString *g_bundleName = nil;
 
-static NSString* getBundleName()
-{
+static NSString *getBundleName() {
     if (g_bundleName == nil) {
         g_bundleName = [[[NSBundle mainBundle] infoDictionary] objectForKey:@"CFBundleName"];
     }
-    if (g_bundleName == nil)
-    {
+    if (g_bundleName == nil) {
         g_bundleName = @"Unknown";
     }
     return g_bundleName;
@@ -43,8 +41,7 @@ static NSString* getBundleName()
 + (NSData *)getReportJsonDataWithCallStackArray:(KSStackCursor **)stackCursorArray
                                  callStackCount:(NSUInteger)stackCount
                                    withReportID:(NSString *)reportID
-                                   withDumpType:(EDumpType)dumpType
-{
+                                   withDumpType:(EDumpType)dumpType {
     return [WCGetCallStackReportHandler getReportJsonDataWithCallStackArray:stackCursorArray
                                                              callStackCount:stackCount
                                                                withReportID:reportID
@@ -56,8 +53,7 @@ static NSString* getBundleName()
                                  callStackCount:(NSUInteger)stackCount
                                    withReportID:(NSString *)reportID
                                    withDumpType:(EDumpType)dumpType
-                                      withScene:(NSString *)scene
-{
+                                      withScene:(NSString *)scene {
     NSMutableDictionary *reportDictionary = [[NSMutableDictionary alloc] init];
 
     NSMutableArray *topStackAddressArray = [[NSMutableArray alloc] init];
@@ -70,7 +66,8 @@ static NSString* getBundleName()
             NSMutableDictionary *pointInfoDic = [[NSMutableDictionary alloc] init];
             if (stackCursor->symbolicate(stackCursor)) {
                 if (stackCursor->stackEntry.imageName != NULL) {
-                    [pointInfoDic setObject:[NSString stringWithUTF8String:wxg_lastPathEntry(stackCursor->stackEntry.imageName)] forKey:@KSCrashField_ObjectName];
+                    [pointInfoDic setObject:[NSString stringWithUTF8String:wxg_lastPathEntry(stackCursor->stackEntry.imageName)]
+                                     forKey:@KSCrashField_ObjectName];
                 }
                 [pointInfoDic setValue:[NSNumber numberWithUnsignedInteger:stackCursor->stackEntry.imageAddress] forKey:@KSCrashField_ObjectAddr];
                 if (stackCursor->stackEntry.symbolName != NULL) {
@@ -99,7 +96,7 @@ static NSString* getBundleName()
             if (index == (checkcount - 1)) {
                 break;
             }
-            NSNumber *topAddress = topStackAddressArray[index]; 
+            NSNumber *topAddress = topStackAddressArray[index];
             NSUInteger repeatCount = 0;
             NSUInteger beginIndex = index + 1;
             for (NSUInteger j = beginIndex; j < checkcount; j++) {
@@ -116,7 +113,7 @@ static NSString* getBundleName()
             [topRepeatArray addObject:[NSNumber numberWithUnsignedInteger:repeatCount]];
         }
         for (NSUInteger index = 0; index < topRepeatArray.count; index++) {
-            NSUInteger currentCount = [(NSNumber *) topRepeatArray[index] unsignedIntegerValue];
+            NSUInteger currentCount = [(NSNumber *)topRepeatArray[index] unsignedIntegerValue];
             if (currentCount == maxValue) {
                 NSArray *framePointArray = [stackArray[index] copy];
                 if ([framePointArray count] > 10) {
@@ -133,13 +130,10 @@ static NSString* getBundleName()
         return nil;
     }
 
-    [reportDictionary setValue:[WCGetCallStackReportHandler getCustomReportInfoWithReportID:reportID]
-                        forKey:@KSCrashField_Report];
-    [reportDictionary setValue:[[WCCrashReportInfoUtil sharedInstance] getSystemInfo]
-                        forKey:@KSCrashField_System];
-    [reportDictionary setValue:[[WCCrashReportInfoUtil sharedInstance] getBinaryImages]
-                        forKey:@KSCrashField_BinaryImages];
-    
+    [reportDictionary setValue:[WCGetCallStackReportHandler getCustomReportInfoWithReportID:reportID] forKey:@KSCrashField_Report];
+    [reportDictionary setValue:[[WCCrashReportInfoUtil sharedInstance] getSystemInfo] forKey:@KSCrashField_System];
+    [reportDictionary setValue:[[WCCrashReportInfoUtil sharedInstance] getBinaryImages] forKey:@KSCrashField_BinaryImages];
+
     NSDictionary *userDic = [[WCBlockMonitorMgr shareInstance] getUserInfoForCurrentDumpForDumpType:dumpType];
     [reportDictionary setValue:userDic forKey:@KSCrashExcType_User];
 
@@ -151,8 +145,7 @@ static NSString* getBundleName()
     return jsonData;
 }
 
-+ (NSDictionary *)getCustomReportInfoWithReportID:(NSString *)reportID
-{
++ (NSDictionary *)getCustomReportInfoWithReportID:(NSString *)reportID {
     long timestamp = time(NULL);
     NSMutableDictionary *reportDictionary = [[NSMutableDictionary alloc] init];
     [reportDictionary setValue:@"0.5" forKey:@KSCrashField_Version];
@@ -166,16 +159,13 @@ static NSString* getBundleName()
 + (NSData *)getReportJsonDataWithCallStackString:(NSString *)callStackString
                                     withReportID:(NSString *)reportID
                                     withDumpType:(EDumpType)dumpType
-                                       withScene:(NSString *)scene
-{
+                                       withScene:(NSString *)scene {
     if (callStackString == nil || [callStackString length] == 0) {
         return nil;
     }
     NSMutableDictionary *reportDictionary = [NSMutableDictionary dictionary];
-    [reportDictionary setValue:[WCGetCallStackReportHandler getCustomReportInfoWithReportID:reportID]
-                        forKey:@KSCrashField_Report];
-    [reportDictionary setValue:[[WCCrashReportInfoUtil sharedInstance] getSystemInfo]
-                        forKey:@KSCrashField_System];
+    [reportDictionary setValue:[WCGetCallStackReportHandler getCustomReportInfoWithReportID:reportID] forKey:@KSCrashField_Report];
+    [reportDictionary setValue:[[WCCrashReportInfoUtil sharedInstance] getSystemInfo] forKey:@KSCrashField_System];
     if (scene != nil && [scene length] > 0) {
         [reportDictionary setValue:scene forKey:@CustomReportField];
     }
@@ -186,20 +176,17 @@ static NSString* getBundleName()
     return jsonData;
 }
 
-+ (NSData *)getReportJsonDataWithPowerConsumeStack:(NSArray <NSDictionary *> *)PowerConsumeStackArray
-                                     withReportID:(NSString *)reportID
-                                     withDumpType:(EDumpType)dumpType;
++ (NSData *)getReportJsonDataWithPowerConsumeStack:(NSArray<NSDictionary *> *)PowerConsumeStackArray
+                                      withReportID:(NSString *)reportID
+                                      withDumpType:(EDumpType)dumpType;
 {
     if (PowerConsumeStackArray == nil || [PowerConsumeStackArray count] == 0) {
         return nil;
     }
     NSMutableDictionary *reportDictionary = [NSMutableDictionary dictionary];
-    [reportDictionary setValue:[WCGetCallStackReportHandler getCustomReportInfoWithReportID:reportID]
-                        forKey:@KSCrashField_Report];
-    [reportDictionary setValue:[[WCCrashReportInfoUtil sharedInstance] getBinaryImages]
-                        forKey:@KSCrashField_BinaryImages];
-    [reportDictionary setValue:[[WCCrashReportInfoUtil sharedInstance] getSystemInfo]
-                        forKey:@KSCrashField_System];
+    [reportDictionary setValue:[WCGetCallStackReportHandler getCustomReportInfoWithReportID:reportID] forKey:@KSCrashField_Report];
+    [reportDictionary setValue:[[WCCrashReportInfoUtil sharedInstance] getBinaryImages] forKey:@KSCrashField_BinaryImages];
+    [reportDictionary setValue:[[WCCrashReportInfoUtil sharedInstance] getSystemInfo] forKey:@KSCrashField_System];
     NSDictionary *userDic = [[WCBlockMonitorMgr shareInstance] getUserInfoForCurrentDumpForDumpType:dumpType];
     [reportDictionary setValue:userDic forKey:@KSCrashExcType_User];
     [reportDictionary setValue:[NSNumber numberWithUnsignedInteger:dumpType] forKey:@KSCrashField_DumpType];

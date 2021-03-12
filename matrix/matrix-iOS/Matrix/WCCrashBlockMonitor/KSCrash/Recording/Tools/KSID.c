@@ -22,13 +22,10 @@
 // THE SOFTWARE.
 //
 
-
 #include <stdio.h>
 #include <uuid/uuid.h>
 
-
-void ksid_generate(char* destinationBuffer37Bytes)
-{
+void ksid_generate(char *destinationBuffer37Bytes) {
     uuid_t uuid;
     uuid_generate(uuid);
     sprintf(destinationBuffer37Bytes,
@@ -48,6 +45,5 @@ void ksid_generate(char* destinationBuffer37Bytes)
             (unsigned)uuid[12],
             (unsigned)uuid[13],
             (unsigned)uuid[14],
-            (unsigned)uuid[15]
-            );
+            (unsigned)uuid[15]);
 }

@@ -19,10 +19,9 @@
 
 #include "memory_stat_err_code.h"
 
-void flush_last_data(const char *log_dir);
-
 int enable_memory_logging(const char *log_dir);
 void disable_memory_logging(void);
 
-uint32_t get_current_thread_memory_usage();
+uint32_t get_current_thread_memory_usage(void);
 
+bool dump_memory(void (*callback)(void *, void *, void *, void *, void *, void *));

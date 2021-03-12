@@ -18,8 +18,7 @@
 #import <Foundation/Foundation.h>
 #import <objc/runtime.h>
 
-void nsobject_hook_alloc_method()
-{
+void nsobject_hook_alloc_method() {
     Class cls = object_getClass([NSObject class]);
     SEL origSel = @selector(alloc);
 
@@ -30,7 +29,7 @@ void nsobject_hook_alloc_method()
 
     Method originMethod = class_getInstanceMethod(cls, origSel);
     Method newMethod = class_getInstanceMethod(cls, altSel);
-    
+
     if (originMethod && newMethod) {
         if (class_addMethod(cls, origSel, method_getImplementation(newMethod), method_getTypeEncoding(newMethod))) {
             class_replaceMethod(cls, altSel, method_getImplementation(originMethod), method_getTypeEncoding(originMethod));

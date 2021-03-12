@@ -35,7 +35,6 @@ typedef NS_ENUM(NSUInteger, EWCMemStatReportStrategy) {
 // the stack also be saved. Default to 8
 @property (nonatomic, assign) int skipMaxStackDepth;
 
-
 @property (nonatomic, assign) EWCMemStatReportStrategy reportStrategy;
 
 @end
