@@ -301,4 +301,13 @@ public final class MatrixUtil {
 
         return sb.toString();
     }
+
+    public static long parseLong(final String string, final long def) {
+        try {
+            return (string == null || string.length() <= 0) ? def : Long.decode(string);
+        } catch (NumberFormatException e) {
+            MatrixLog.w(TAG, "parseLong error: " + e.getMessage());
+        }
+        return def;
+    }
 }

@@ -1,22 +1,18 @@
-apply plugin: 'groovy'
 apply plugin: 'java'
+apply plugin: 'kotlin'
 
 dependencies {
-    compile fileTree(include: ['*.jar'], dir: 'libs')
-    compile gradleApi()
-    compile localGroovy()
-    compile project(':matrix-commons')
-    compile group: 'org.ow2.asm', name: 'asm', version: '5.1'
-    compile group: 'org.ow2.asm', name: 'asm-commons', version: '5.1'
-    compile 'com.android.tools.build:gradle:2.1.0'
-    compile project(':matrix-arscutil')
+    implementation fileTree(include: ['*.jar'], dir: 'libs')
+    implementation gradleApi()
+    implementation project(':matrix-commons')
+    implementation group: 'org.ow2.asm', name: 'asm', version: '5.1'
+    implementation group: 'org.ow2.asm', name: 'asm-commons', version: '5.1'
+    implementation 'com.android.tools.build:gradle:4.0.0'
+    implementation project(':matrix-arscutil')
+    implementation "org.jetbrains.kotlin:kotlin-stdlib:${gradle.KOTLIN_VERSION}"
 }
 sourceSets {
     main {
-        groovy {
-            srcDir '../matrix-gradle-plugin/src/main/groovy'
-        }
-
         java {
             srcDir "../matrix-gradle-plugin/src/main/java"
         }
@@ -29,11 +25,6 @@ sourceSets {
 
 version rootProject.ext.VERSION_NAME
 group rootProject.ext.GROUP
-
-compileGroovy {
-    sourceCompatibility = 1.7
-    targetCompatibility = 1.7
-}
 
 if("External" == rootProject.ext.PUBLISH_CHANNEL) {
     apply from: rootProject.file('gradle/java-publish.gradle')

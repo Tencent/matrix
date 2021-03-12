@@ -10,7 +10,7 @@ public abstract class LooperObserver {
     public void dispatchBegin(long beginNs, long cpuBeginNs, long token) {
         isDispatchBegin = true;
     }
-
+    
     public void doFrame(String focusedActivity, long startNs, long endNs, boolean isVsyncFrame, long intendedFrameTimeNs, long inputCostNs, long animationCostNs, long traversalCostNs) {
 
     }

@@ -20,14 +20,18 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.Message;
 import android.os.SystemClock;
+import android.support.annotation.RequiresApi;
 
+import com.tencent.matrix.trace.config.IssueFixConfig;
 import com.tencent.matrix.trace.core.AppMethodBeat;
 import com.tencent.matrix.util.MatrixLog;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
  * Created by caichongyang on 2017/5/26.
@@ -36,7 +40,6 @@ public class ActivityThreadHacker {
     private static final String TAG = "Matrix.ActivityThreadHacker";
     private static long sApplicationCreateBeginTime = 0L;
     private static long sApplicationCreateEndTime = 0L;
-    private static long sLastLaunchActivityTime = 0L;
     public static AppMethodBeat.IndexRecord sLastLaunchActivityMethodIndex = new AppMethodBeat.IndexRecord();
     public static AppMethodBeat.IndexRecord sApplicationCreateBeginMethodIndex = new AppMethodBeat.IndexRecord();
     public static int sApplicationCreateScene = Integer.MIN_VALUE;
@@ -93,10 +96,6 @@ public class ActivityThreadHacker {
         return ActivityThreadHacker.sApplicationCreateBeginTime;
     }
 
-    public static long getLastLaunchActivityTime() {
-        return ActivityThreadHacker.sLastLaunchActivityTime;
-    }
-
     public static boolean isCreatedByLaunchActivity() {
         return sIsCreatedByLaunchActivity;
     }
@@ -105,12 +104,19 @@ public class ActivityThreadHacker {
     private final static class HackCallback implements Handler.Callback {
         private static final int LAUNCH_ACTIVITY = 100;
         private static final int CREATE_SERVICE = 114;
+        private static final int RELAUNCH_ACTIVITY = 126;
         private static final int RECEIVER = 113;
         private static final int EXECUTE_TRANSACTION = 159; // for Android 9.0
         private static boolean isCreated = false;
-        private static int hasPrint = 10;
+        private static int hasPrint = Integer.MAX_VALUE;
 
         private final Handler.Callback mOriginalCallback;
+
+        private static final int SERIVCE_ARGS = 115;
+        private static final int STOP_SERVICE = 116;
+        private static final int STOP_ACTIVITY_SHOW = 103;
+        private static final int STOP_ACTIVITY_HIDE = 104;
+        private static final int SLEEPING = 137;
 
         HackCallback(Handler.Callback callback) {
             this.mOriginalCallback = callback;
@@ -118,6 +124,12 @@ public class ActivityThreadHacker {
 
         @Override
         public boolean handleMessage(Message msg) {
+            if (Build.VERSION.SDK_INT >= 21 && Build.VERSION.SDK_INT <= 25) {
+                if (msg.what == SERIVCE_ARGS || msg.what == STOP_SERVICE || msg.what == STOP_ACTIVITY_SHOW || msg.what == STOP_ACTIVITY_HIDE || msg.what == SLEEPING) {
+                    MatrixLog.i(TAG, "[Matrix.fix.sp.apply] start to fix msg.waht=" + msg.what);
+                    fix();
+                }
+            }
 
             if (!AppMethodBeat.isRealTrace()) {
                 return null != mOriginalCallback && mOriginalCallback.handleMessage(msg);
@@ -126,12 +138,8 @@ public class ActivityThreadHacker {
             boolean isLaunchActivity = isLaunchActivity(msg);
 
             if (hasPrint > 0) {
-                MatrixLog.i(TAG, "[handleMessage] msg.what:%s begin:%s isLaunchActivity:%s", msg.what, SystemClock.uptimeMillis(), isLaunchActivity);
+                MatrixLog.i(TAG, "[handleMessage] msg.what:%s begin:%s isLaunchActivity:%s SDK_INT=%s", msg.what, SystemClock.uptimeMillis(), isLaunchActivity, Build.VERSION.SDK_INT);
                 hasPrint--;
-            }
-            if (isLaunchActivity) {
-                ActivityThreadHacker.sLastLaunchActivityTime = SystemClock.uptimeMillis();
-                ActivityThreadHacker.sLastLaunchActivityMethodIndex = AppMethodBeat.getInstance().maskIndex("LastLaunchActivityMethodIndex");
             }
 
             if (!isCreated) {
@@ -148,8 +156,34 @@ public class ActivityThreadHacker {
                     }
                 }
             }
-
             return null != mOriginalCallback && mOriginalCallback.handleMessage(msg);
+        }
+
+        @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
+        private void fix(){
+            try {
+                Class cls = Class.forName("android.app.QueuedWork");
+                Field field = cls.getDeclaredField("sPendingWorkFinishers");
+                if(field != null) {
+                    field.setAccessible(true);
+                    ConcurrentLinkedQueue<Runnable> runnables = (ConcurrentLinkedQueue<Runnable>)field.get(null);
+                    runnables.clear();
+                    MatrixLog.i(TAG, "[Matrix.fix.sp.apply] sPendingWorkFinishers.clear successful");
+                }
+            } catch (ClassNotFoundException e) {
+                MatrixLog.e(TAG, "[Matrix.fix.sp.apply] ClassNotFoundException = "+e.getMessage());
+                e.printStackTrace();
+            } catch (IllegalAccessException e) {
+                MatrixLog.e(TAG, "[Matrix.fix.sp.apply] IllegalAccessException ="+e.getMessage());
+                e.printStackTrace();
+            } catch (NoSuchFieldException e) {
+                MatrixLog.e(TAG, "[Matrix.fix.sp.apply] NoSuchFieldException = "+e.getMessage());
+                e.printStackTrace();
+            } catch (Exception e){
+                MatrixLog.e(TAG, "[Matrix.fix.sp.apply] Exception = "+e.getMessage());
+                e.printStackTrace();
+            }
+
         }
 
         private Method method = null;
@@ -173,7 +207,7 @@ public class ActivityThreadHacker {
                 }
                 return msg.what == LAUNCH_ACTIVITY;
             } else {
-                return msg.what == LAUNCH_ACTIVITY;
+                return msg.what == LAUNCH_ACTIVITY || msg.what == RELAUNCH_ACTIVITY;
             }
         }
     }

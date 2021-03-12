@@ -90,7 +90,7 @@ public class ActivityRefWatcher extends FilePublisher implements Watcher, IAppFo
     }
 
     public interface IActivityLeakCallback {
-        boolean onLeak(String activity, String ref);
+        boolean onLeak(ResourceConfig.DumpMode dumpMode, String activity, String ref);
     }
 
     public static class ComponentFactory {
@@ -298,7 +298,11 @@ public class ActivityRefWatcher extends FilePublisher implements Watcher, IAppFo
                         mResourcePlugin.onDetectIssue(new Issue(resultJson));
                     }
                     if (null != activityLeakCallback) {
-                        activityLeakCallback.onLeak(destroyedActivityInfo.mActivityName, destroyedActivityInfo.mKey);
+                        boolean dumped = activityLeakCallback.onLeak(ResourceConfig.DumpMode.SILENCE_DUMP, destroyedActivityInfo.mActivityName, destroyedActivityInfo.mKey);
+                        if (dumped) {
+                            MatrixLog.i(TAG, "activity [%s] with key [%s] has been dumped. stop polling", destroyedActivityInfo.mActivityName, destroyedActivityInfo.mKey);
+                            infoIt.remove();
+                        }
                     }
                 } else if (mDumpHprofMode == ResourceConfig.DumpMode.AUTO_DUMP) {
                     final File hprofFile = mHeapDumper.dumpHeap(true);
@@ -306,12 +310,11 @@ public class ActivityRefWatcher extends FilePublisher implements Watcher, IAppFo
                         markPublished(destroyedActivityInfo.mActivityName);
                         final HeapDump heapDump = new HeapDump(hprofFile, destroyedActivityInfo.mKey, destroyedActivityInfo.mActivityName);
                         mHeapDumpHandler.process(heapDump);
-                        infoIt.remove();
                     } else {
                         MatrixLog.i(TAG, "heap dump for further analyzing activity with key [%s] was failed, just ignore.",
                                 destroyedActivityInfo.mKey);
-                        infoIt.remove();
                     }
+                    infoIt.remove();
                 } else if (mDumpHprofMode == ResourceConfig.DumpMode.MANUAL_DUMP) {
                     NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
                     String dumpingHeapContent = context.getString(R.string.resource_canary_leak_tip);
@@ -341,6 +344,9 @@ public class ActivityRefWatcher extends FilePublisher implements Watcher, IAppFo
                         MatrixLog.printErrStackTrace(TAG, e, "unexpected exception.");
                     }
                     mResourcePlugin.onDetectIssue(new Issue(resultJson));
+                    if (null != activityLeakCallback) {
+                        activityLeakCallback.onLeak(ResourceConfig.DumpMode.NO_DUMP, destroyedActivityInfo.mActivityName, destroyedActivityInfo.mKey);
+                    }
                 }
             }
 

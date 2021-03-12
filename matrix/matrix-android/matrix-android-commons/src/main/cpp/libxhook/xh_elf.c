@@ -482,6 +482,10 @@ static int xh_elf_replace_function(xh_elf_t *self, const char *symbol, ElfW(Addr
 
     if(old_prot != need_prot)
     {
+        if ((old_prot & PROT_READ) == 0) {
+            XH_LOG_WARN("old addr has no read permission, it's not usual and may cause segment fault.");
+            old_prot |= PROT_READ;
+        }
         //restore the old prot
         if(0 != (r = xh_util_set_addr_protect(addr, old_prot)))
         {

@@ -16,6 +16,7 @@
 package com.tencent.matrix.resource.watcher;
 
 import android.content.Context;
+import android.os.Environment;
 
 import com.tencent.matrix.util.MatrixLog;
 
@@ -88,16 +89,13 @@ public class DumpStorageManager {
     }
 
     private File getStorageDirectory() {
-//        final String sdcardState = Environment.getExternalStorageState();
-//        File root = null;
-//        if (Environment.MEDIA_MOUNTED.equals(sdcardState)) {
-//            root = mContext.getExternalCacheDir();
-//        } else {
-//            root = mContext.getCacheDir();
-//        }
-        //文件存储在外部存储中。即使将模式设置为 "MODE_PRIVATE"，其他应用程序也始终具有读写权限。
-        //除非该文件应由其他应用程序访问，否则请考虑在包含访问限制的存储上创建它，例如 "Context.getFilesDir" 指向的目录。
-        final File root = mContext.getFilesDir();
+        final String sdcardState = Environment.getExternalStorageState();
+        File root = null;
+        if (Environment.MEDIA_MOUNTED.equals(sdcardState)) {
+            root = mContext.getExternalCacheDir();
+        } else {
+            root = mContext.getCacheDir();
+        }
         final File result = new File(root, "matrix_resource");
 
         MatrixLog.i(TAG, "path to store hprof and result: %s", result.getAbsolutePath());

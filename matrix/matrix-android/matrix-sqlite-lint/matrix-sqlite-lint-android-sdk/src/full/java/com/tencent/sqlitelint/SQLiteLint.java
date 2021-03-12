@@ -34,12 +34,11 @@ import java.util.List;
 
 public class SQLiteLint {
 
-    static {
-        SQLiteLintNativeBridge.loadLibrary();
+    private SQLiteLint() {
     }
 
-    private SQLiteLint() {
-
+    public static void init() {
+        SQLiteLintNativeBridge.loadLibrary();
     }
 
     private static SqlExecutionCallbackMode sSqlExecutionCallbackMode = null;

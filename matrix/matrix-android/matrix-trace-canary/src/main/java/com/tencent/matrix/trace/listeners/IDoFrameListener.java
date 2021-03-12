@@ -22,6 +22,7 @@ import com.tencent.matrix.trace.constants.Constants;
 
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Executor;
 
 /**
