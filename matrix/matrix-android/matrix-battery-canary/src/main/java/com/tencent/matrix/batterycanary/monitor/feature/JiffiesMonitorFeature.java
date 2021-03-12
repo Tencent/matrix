@@ -2,11 +2,14 @@ package com.tencent.matrix.batterycanary.monitor.feature;
 
 import android.os.Process;
 import android.os.SystemClock;
+import android.support.annotation.AnyThread;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.support.annotation.RestrictTo;
 import android.support.annotation.WorkerThread;
 
 import com.tencent.matrix.Matrix;
+import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Entry.DigitEntry;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Entry.ListEntry;
 import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
@@ -26,11 +29,17 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
     private static final String TAG = "Matrix.battery.JiffiesMonitorFeature";
 
     public interface JiffiesListener {
+        @Deprecated
         void onParseError(int pid, int tid);
+        void onWatchingThreads(ListEntry<? extends JiffiesSnapshot.ThreadJiffiesEntry> threadJiffiesList);
     }
 
-    private JiffiesListener getListener() {
-        return mCore;
+    private final ThreadWatchDog mFgThreadWatchDog = new ThreadWatchDog();
+    private final ThreadWatchDog mBgThreadWatchDog = new ThreadWatchDog();
+
+    @Override
+    protected String getTag() {
+        return TAG;
     }
 
     @Override
@@ -38,12 +47,43 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
         return Integer.MAX_VALUE;
     }
 
+    @Override
+    public void onForeground(boolean isForeground) {
+        super.onForeground(isForeground);
+        if (isForeground) {
+            mFgThreadWatchDog.start();
+            mBgThreadWatchDog.stop();
+        } else {
+            mBgThreadWatchDog.start();
+            mFgThreadWatchDog.stop();
+        }
+    }
+
+    public void watchBackThreadSate(boolean isForeground, int pid, int tid) {
+        if (isForeground) {
+            mFgThreadWatchDog.watch(pid, tid);
+        } else {
+            mBgThreadWatchDog.watch(pid, tid);
+        }
+    }
+
     @WorkerThread
     public JiffiesSnapshot currentJiffiesSnapshot() {
-        return JiffiesSnapshot.currentJiffiesSnapshot(ProcessInfo.getProcessInfo(), mCore.getConfig().isStatPidProc, getListener());
+        return JiffiesSnapshot.currentJiffiesSnapshot(ProcessInfo.getProcessInfo(), mCore.getConfig().isStatPidProc);
+    }
+
+    @AnyThread
+    public void currentJiffiesSnapshot(@NonNull final BatteryMonitorCore.Callback<JiffiesSnapshot> callback) {
+        mCore.getHandler().post(new Runnable() {
+            @Override
+            public void run() {
+                callback.onGetJiffies(currentJiffiesSnapshot());
+            }
+        });
     }
 
     @SuppressWarnings("SpellCheckingInspection")
+    @RestrictTo(RestrictTo.Scope.LIBRARY)
     public static class ProcessInfo {
         static ProcessInfo getProcessInfo() {
             ProcessInfo processInfo = new ProcessInfo();
@@ -61,9 +101,6 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
         long upTime;
         public long jiffies;
         List<ThreadInfo> threadInfo = Collections.emptyList();
-
-        private ProcessInfo() {
-        }
 
         public void loadProcStat() throws IOException {
             ProcStatUtil.ProcStat stat = ProcStatUtil.of(pid);
@@ -98,9 +135,7 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
                             continue;
                         }
                         try {
-                            ThreadInfo threadInfo = new ThreadInfo();
-                            threadInfo.pid = pid;
-                            threadInfo.tid = Integer.parseInt(file.getName());
+                            ThreadInfo threadInfo = of(pid, Integer.parseInt(file.getName()));
                             threadInfoList.add(threadInfo);
                         } catch (Exception ignored) {
                         }
@@ -110,17 +145,24 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
                 return Collections.emptyList();
             }
 
+            private static ThreadInfo of(int pid, int tid) {
+                ThreadInfo threadInfo = new ThreadInfo();
+                threadInfo.pid = pid;
+                threadInfo.tid = tid;
+                return threadInfo;
+            }
+
             public int pid;
             public int tid;
             public String name;
+            public String stat;
             public long jiffies;
-
-            private ThreadInfo() {}
 
             public void loadProcStat() throws IOException {
                 ProcStatUtil.ProcStat stat = ProcStatUtil.of(pid, tid);
                 if (stat != null) {
-                    name = stat.comm;
+                    this.name = stat.comm;
+                    this.stat = stat.stat;
                     jiffies = stat.getJiffies();
                 } else {
                     throw new IOException("parse fail: " + BatteryCanaryUtil.cat("/proc/" + pid + "/task/" + tid + "/stat"));
@@ -135,14 +177,9 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
         }
     }
 
-    @SuppressWarnings("SpellCheckingInspection")
+    @SuppressWarnings({"SpellCheckingInspection", "deprecation"})
     public static class JiffiesSnapshot extends Snapshot<JiffiesSnapshot> {
-
         public static JiffiesSnapshot currentJiffiesSnapshot(ProcessInfo processInfo, boolean isStatPidProc) {
-            return currentJiffiesSnapshot(processInfo, isStatPidProc, null);
-        }
-
-        public static JiffiesSnapshot currentJiffiesSnapshot(ProcessInfo processInfo, boolean isStatPidProc, @Nullable JiffiesListener listener) {
             JiffiesSnapshot snapshot = new JiffiesSnapshot();
             snapshot.pid = processInfo.pid;
             snapshot.name = processInfo.name;
@@ -157,15 +194,14 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
                     MatrixLog.printErrStackTrace(TAG, e, "parseProcJiffies fail");
                     isStatPidProc = false;
                     snapshot.setValid(false);
-                    if (listener != null) {
-                        listener.onParseError(processInfo.pid, 0);
-                    }
                 }
             }
 
             List<ThreadJiffiesSnapshot> threadJiffiesList = Collections.emptyList();
+            int threadNum = 0;
 
             if (processInfo.threadInfo.size() > 0) {
+                threadNum = processInfo.threadInfo.size();
                 threadJiffiesList = new ArrayList<>(processInfo.threadInfo.size());
                 for (ProcessInfo.ThreadInfo threadInfo : processInfo.threadInfo) {
                     ThreadJiffiesSnapshot threadJiffies = ThreadJiffiesSnapshot.parseThreadJiffies(threadInfo);
@@ -177,14 +213,12 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
                         }
                     } else {
                         snapshot.setValid(false);
-                        if (listener != null) {
-                            listener.onParseError(threadInfo.pid, threadInfo.tid);
-                        }
                     }
                 }
             }
             snapshot.totalJiffies = DigitEntry.of(totalJiffies);
             snapshot.threadEntries = ListEntry.of(threadJiffiesList);
+            snapshot.threadNum = DigitEntry.of(threadNum);
             return snapshot;
         }
 
@@ -192,6 +226,7 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
         public String name;
         public DigitEntry<Long> totalJiffies;
         public ListEntry<ThreadJiffiesSnapshot> threadEntries;
+        public DigitEntry<Integer> threadNum;
 
         private JiffiesSnapshot() {}
 
@@ -204,6 +239,7 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
                     delta.pid = end.pid;
                     delta.name = end.name;
                     delta.totalJiffies = Differ.DigitDiffer.globalDiff(bgn.totalJiffies, end.totalJiffies);
+                    delta.threadNum = Differ.DigitDiffer.globalDiff(bgn.threadNum, end.threadNum);
                     delta.threadEntries = ListEntry.ofEmpty();
 
                     if (end.threadEntries.getList().size() > 0) {
@@ -222,6 +258,7 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
                                 ThreadJiffiesSnapshot deltaThreadJiffies = new ThreadJiffiesSnapshot(jiffiesConsumed);
                                 deltaThreadJiffies.tid = endRecord.tid;
                                 deltaThreadJiffies.name = endRecord.name;
+                                deltaThreadJiffies.stat = endRecord.stat;
                                 deltaThreadJiffies.isNewAdded = isNewAdded;
                                 deltaThreadEntries.add(deltaThreadJiffies);
                             }
@@ -244,13 +281,18 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
             };
         }
 
-        public static class ThreadJiffiesSnapshot extends DigitEntry<Long> {
+        /**
+         * Use {@link ThreadJiffiesEntry} instead.
+         */
+        @Deprecated
+        public static class ThreadJiffiesSnapshot extends ThreadJiffiesEntry {
             @Nullable
             public static ThreadJiffiesSnapshot parseThreadJiffies(ProcessInfo.ThreadInfo threadInfo) {
                 try {
                     threadInfo.loadProcStat();
                     ThreadJiffiesSnapshot snapshot = new ThreadJiffiesSnapshot(threadInfo.jiffies);
                     snapshot.name = threadInfo.name;
+                    snapshot.stat = threadInfo.stat;
                     snapshot.tid = threadInfo.tid;
                     snapshot.isNewAdded = true;
                     return snapshot;
@@ -260,12 +302,20 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
                 }
             }
 
+            public ThreadJiffiesSnapshot(Long value) {
+                super(value);
+            }
+        }
+
+        public static class ThreadJiffiesEntry extends DigitEntry<Long> {
             public int tid;
             @NonNull
             public String name;
             public boolean isNewAdded;
+            @NonNull
+            public String stat;
 
-            public ThreadJiffiesSnapshot(Long value) {
+            public ThreadJiffiesEntry(Long value) {
                 super(value);
             }
 
@@ -273,6 +323,71 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
             public Long diff(Long right) {
                 return value - right;
             }
+        }
+    }
+
+    class ThreadWatchDog implements Runnable {
+        private long duringMillis;
+        private final List<ProcessInfo.ThreadInfo> mWatchingThreads = new ArrayList<>();
+
+        @Override
+        public void run() {
+            // watch
+            List<JiffiesSnapshot.ThreadJiffiesSnapshot> threadJiffiesList = new ArrayList<>();
+            synchronized (mWatchingThreads) {
+                for (ProcessInfo.ThreadInfo item : mWatchingThreads) {
+                    JiffiesSnapshot.ThreadJiffiesSnapshot snapshot = JiffiesSnapshot.ThreadJiffiesSnapshot.parseThreadJiffies(item);
+                    if (snapshot != null) {
+                        threadJiffiesList.add(snapshot);
+                    }
+                }
+            }
+            if (!threadJiffiesList.isEmpty()) {
+                ListEntry<JiffiesSnapshot.ThreadJiffiesSnapshot> threadJiffiesListEntry = ListEntry.of(threadJiffiesList);
+                mCore.getConfig().callback.onWatchingThreads(threadJiffiesListEntry);
+            }
+
+            // next loop
+            if (duringMillis <= 5 * 60 * 1000L) {
+                mCore.getHandler().postDelayed(this, setNext(5 * 60 * 1000L));
+            } else if (duringMillis <= 10 * 60 * 1000L) {
+                mCore.getHandler().postDelayed(this, setNext(10 * 60 * 1000L));
+            } else {
+                // done
+                synchronized (mWatchingThreads) {
+                    mWatchingThreads.clear();
+                }
+            }
+        }
+
+        void watch(int pid, int tid) {
+            synchronized (mWatchingThreads) {
+                mWatchingThreads.add(ProcessInfo.ThreadInfo.of(pid, tid));
+            }
+        }
+
+        void start() {
+            synchronized (mWatchingThreads) {
+                MatrixLog.i(TAG, "ThreadWatchDog start watching, count = " + mWatchingThreads.size());
+                if (!mWatchingThreads.isEmpty()) {
+                    mCore.getHandler().postDelayed(this, reset());
+                }
+            }
+        }
+
+        void stop() {
+            mCore.getHandler().removeCallbacks(this);
+        }
+
+        private long reset() {
+            duringMillis = 0L;
+            setNext(5 * 60 * 1000L);
+            return duringMillis;
+        }
+
+        private long setNext(long millis) {
+            duringMillis += millis;
+            return millis;
         }
     }
 }

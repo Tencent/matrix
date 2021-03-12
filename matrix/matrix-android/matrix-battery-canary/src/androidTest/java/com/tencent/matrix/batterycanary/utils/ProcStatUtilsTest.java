@@ -18,6 +18,8 @@ package com.tencent.matrix.batterycanary.utils;
 
 import android.app.ActivityManager;
 import android.content.Context;
+import android.os.Handler;
+import android.os.Looper;
 import android.os.Process;
 import android.os.SystemClock;
 import android.support.test.InstrumentationRegistry;
@@ -32,6 +34,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.internal.util.io.IOUtil;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -39,9 +42,11 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Instrumented test, which will execute on an Android device.
@@ -127,6 +132,36 @@ public class ProcStatUtilsTest {
         }
     }
 
+    @Test
+    public void testGetSleepThreadJiffiesDelta() throws InterruptedException {
+        String message = "";
+        long bgnMillis, endMillis;
+        ProcStatUtil.ProcStat bgn, end;
+
+        for (int round = 0; round < 10; round++) {
+            message += "\nROUND " + round;
+
+            bgnMillis = SystemClock.currentThreadTimeMillis();
+            bgn = ProcStatUtil.current();
+            Assert.assertNotNull(bgn);
+
+            Thread.sleep(1000L);
+
+            endMillis = SystemClock.currentThreadTimeMillis();
+            end = ProcStatUtil.current();
+            Assert.assertNotNull(end);
+
+            message += "\nbgn: " + (bgnMillis) + " vs " + (bgn.getJiffies());
+            message += "\nend: " + (endMillis) + " vs " + (end.getJiffies());
+            message += "\ndlt:" + (endMillis - bgnMillis) + " vs " + (end.getJiffies() - bgn.getJiffies());
+            message += "\n";
+        }
+
+        if (!TestUtils.isAssembleTest()) {
+            Assert.fail(message);
+        }
+    }
+
     /**
      * cat: /proc/loadavg
      */
@@ -151,7 +186,7 @@ public class ProcStatUtilsTest {
      * 11159 (terycanary.test) S 699 699 0 0 -1 1077952832 11204 0 0 0 39 8 0 0 20 0 20 0 9092893 5475467264 22598 18446744073709551615 421814448128 421814472944 549131058960 0 0 0 4612 1 1073775864 0 0 0 17 5 0 0 0 0 0 421814476800 421814478232 422247952384 549131060923 549131061022 549131061022 549131063262 0
      */
     @Test
-    public void testGetMyProcStat() {
+    public void testGetMyProcStat() throws ProcStatUtil.ParseException {
         String catPath = "/proc/" + Process.myPid() + "/stat";
         String cat = BatteryCanaryUtil.cat(catPath);
         Assert.assertFalse(TextUtils.isEmpty(cat));
@@ -181,7 +216,7 @@ public class ProcStatUtilsTest {
      * 10966 (terycanary.test) S 699 699 0 0 -1 1077952832 6187 0 0 0 22 2 0 0 20 0 17 0 9087400 5414273024 24109 18446744073709551615 421814448128 421814472944 549131058960 0 0 0 4612 1 1073775864 1 0 0 17 7 0 0 0 0 0 421814476800 421814478232 422247952384 549131060923 549131061022 549131061022 549131063262 0
      */
     @Test
-    public void testGetMyProcThreadStat() {
+    public void testGetMyProcThreadStat() throws ProcStatUtil.ParseException {
         String dirPath = "/proc/" + Process.myPid() + "/task";
         for (File item : new File(dirPath).listFiles()) {
             if (item.isDirectory()) {
@@ -191,6 +226,8 @@ public class ProcStatUtilsTest {
 
                 ProcStatUtil.ProcStat stat = parseJiffiesInfoWithSplitsForPath(catPath);
                 Assert.assertNotNull(stat.comm);
+                Assert.assertNotNull(stat.stat);
+                Assert.assertTrue(Arrays.asList("R", "S").contains(stat.stat));
                 Assert.assertTrue(stat.utime >= 0);
                 Assert.assertTrue(stat.stime >= 0);
                 Assert.assertTrue(stat.cutime >= 0);
@@ -203,7 +240,7 @@ public class ProcStatUtilsTest {
 
 
     @Test
-    public void testGetMyProcStatAndTProcThreadStat() {
+    public void testGetMyProcStatAndTProcThreadStat() throws ProcStatUtil.ParseException {
         ProcStatUtil.ProcStat procStat = parseJiffiesInfoWithBufferForPathR2("/proc/" + Process.myPid() + "/stat");
         Assert.assertNotNull(procStat);
 
@@ -235,7 +272,7 @@ public class ProcStatUtilsTest {
     }
 
     @Test
-    public void testProcStatShouldAlwaysInc() throws InterruptedException {
+    public void testProcStatShouldAlwaysInc() throws InterruptedException, ProcStatUtil.ParseException {
         final ProcStatUtil.ProcStat procStat = parseJiffiesInfoWithBufferForPathR2("/proc/" + Process.myPid() + "/stat");
         Assert.assertNotNull(procStat);
 
@@ -245,7 +282,12 @@ public class ProcStatUtilsTest {
                 @Override
                 public void run() {
                     for (int j = 0; j < Integer.MAX_VALUE; j++);
-                    ProcStatUtil.ProcStat curr = parseJiffiesInfoWithBufferForPathR2("/proc/" + Process.myPid() + "/stat");
+                    ProcStatUtil.ProcStat curr = null;
+                    try {
+                        curr = parseJiffiesInfoWithBufferForPathR2("/proc/" + Process.myPid() + "/stat");
+                    } catch (ProcStatUtil.ParseException e) {
+                        e.printStackTrace();
+                    }
                     Assert.assertNotNull(curr);
                     Assert.assertTrue(curr.getJiffies() >= procStat.getJiffies());
                 }
@@ -270,7 +312,7 @@ public class ProcStatUtilsTest {
 
     @SuppressWarnings("ConstantConditions")
     @Test
-    public void testGetMyProcThreadStatOpt() {
+    public void testGetMyProcThreadStatOpt() throws ProcStatUtil.ParseException {
         String dirPath = "/proc/" + Process.myPid() + "/task";
 
         File[] tasksFile = new File(dirPath).listFiles();
@@ -282,6 +324,8 @@ public class ProcStatUtilsTest {
 
                 ProcStatUtil.ProcStat stat = parseJiffiesInfoWithBufferForPath(catPath, new byte[2 * 1024]);
                 Assert.assertNotNull(stat.comm);
+                Assert.assertNotNull(stat.stat);
+                Assert.assertTrue("thread state is: " + stat.stat, Arrays.asList("R", "S").contains(stat.stat));
                 Assert.assertTrue(stat.utime >= 0);
                 Assert.assertTrue(stat.stime >= 0);
                 Assert.assertTrue(stat.cutime >= 0);
@@ -294,7 +338,7 @@ public class ProcStatUtilsTest {
 
     @SuppressWarnings("ConstantConditions")
     @Test
-    public void testGetMyProcThreadStatOptR2() {
+    public void testGetMyProcThreadStatOptR2() throws ProcStatUtil.ParseException {
         String dirPath = "/proc/" + Process.myPid() + "/task";
         for (File item : new File(dirPath).listFiles()) {
             if (item.isDirectory()) {
@@ -304,6 +348,8 @@ public class ProcStatUtilsTest {
 
                 ProcStatUtil.ProcStat stat = parseJiffiesInfoWithBufferForPathR2(catPath);
                 Assert.assertNotNull(stat.comm);
+                Assert.assertNotNull(stat.stat);
+                Assert.assertTrue(Arrays.asList("R", "S").contains(stat.stat));
                 Assert.assertTrue(stat.utime >= 0);
                 Assert.assertTrue(stat.stime >= 0);
                 Assert.assertTrue(stat.cutime >= 0);
@@ -316,7 +362,7 @@ public class ProcStatUtilsTest {
 
     @SuppressWarnings("ConstantConditions")
     @Test
-    public void testGetMyProcThreadStatAndCompare() {
+    public void testGetMyProcThreadStatAndCompare() throws ProcStatUtil.ParseException {
         String dirPath = "/proc/" + Process.myPid() + "/task";
         for (File item : new File(dirPath).listFiles()) {
             if (item.isDirectory()) {
@@ -326,6 +372,7 @@ public class ProcStatUtilsTest {
                 ProcStatUtil.ProcStat statInfo1 = ProcStatUtil.parseWithSplits(cat);
                 ProcStatUtil.ProcStat statInfo2 = parseJiffiesInfoWithBuffer(cat.getBytes());
                 Assert.assertEquals(statInfo1.comm, statInfo2.comm);
+                Assert.assertEquals(statInfo1.stat, statInfo2.stat);
                 Assert.assertEquals(statInfo1.utime, statInfo2.utime);
                 Assert.assertEquals(statInfo1.stime, statInfo2.stime);
                 Assert.assertEquals(statInfo1.cutime, statInfo2.cutime);
@@ -335,6 +382,7 @@ public class ProcStatUtilsTest {
                 statInfo1 = ProcStatUtil.parseWithSplits(cat);
                 statInfo2 = parseJiffiesInfoWithBuffer(cat.getBytes());
                 Assert.assertEquals(statInfo1.comm, statInfo2.comm);
+                Assert.assertEquals(statInfo1.stat, statInfo2.stat);
                 Assert.assertEquals(statInfo1.utime, statInfo2.utime);
                 Assert.assertEquals(statInfo1.stime, statInfo2.stime);
                 Assert.assertEquals(statInfo1.cutime, statInfo2.cutime);
@@ -344,13 +392,14 @@ public class ProcStatUtilsTest {
     }
 
     @Test
-    public void testReadBuffer() {
+    public void testReadBuffer() throws ProcStatUtil.ParseException {
         String sample = "10966 (terycanary.test) S 699 699 0 0 -1 1077952832 6187 0 0 0 22 2 33 3";
         Assert.assertEquals(72, sample.length());
         Assert.assertEquals(72, sample.getBytes().length);
 
         ProcStatUtil.ProcStat stat = parseJiffiesInfoWithBuffer(sample.getBytes());
         Assert.assertEquals("terycanary.test", stat.comm);
+        Assert.assertEquals("S", stat.stat);
         Assert.assertEquals(22, stat.utime);
         Assert.assertEquals(2, stat.stime);
         Assert.assertEquals(33, stat.cutime);
@@ -361,6 +410,7 @@ public class ProcStatUtilsTest {
         sample = "10966 (terycanary test) S 699 699 0 0 -1 1077952832 6187 0 0 0 22 2 33 3";
         stat = parseJiffiesInfoWithBuffer(sample.getBytes());
         Assert.assertEquals("terycanary test", stat.comm);
+        Assert.assertEquals("S", stat.stat);
         Assert.assertEquals(22, stat.utime);
         Assert.assertEquals(2, stat.stime);
         Assert.assertEquals(33, stat.cutime);
@@ -371,6 +421,7 @@ public class ProcStatUtilsTest {
         sample = "10966 (tery canary test) S 699 699 0 0 -1 1077952832 6187 0 0 0 22 2 33 3";
         stat = parseJiffiesInfoWithBuffer(sample.getBytes());
         Assert.assertEquals("tery canary test", stat.comm);
+        Assert.assertEquals("S", stat.stat);
         Assert.assertEquals(22, stat.utime);
         Assert.assertEquals(2, stat.stime);
         Assert.assertEquals(33, stat.cutime);
@@ -379,9 +430,41 @@ public class ProcStatUtilsTest {
         Assert.assertEquals(22 + 2 + 33 + 3, jiffies);
     }
 
+    @Test
+    public void testParseExceptionListener() throws IOException {
+        String sample = "10966 (terycanary.test) S 699 699 0 0 -1 1077952832 6187 0 0 0 22 x 33 3";
+        Assert.assertEquals(72, sample.length());
+        Assert.assertEquals(72, sample.getBytes().length);
+        try {
+            ProcStatUtil.parseWithBuffer(sample.getBytes());
+            Assert.fail("should fail");
+        } catch (ProcStatUtil.ParseException e) {
+            e.printStackTrace();
+        }
+        try {
+            ProcStatUtil.parseWithSplits(sample);
+            Assert.fail("should fail");
+        } catch (ProcStatUtil.ParseException e) {
+            e.printStackTrace();
+        }
+
+        final AtomicInteger inc = new AtomicInteger();
+        ProcStatUtil.setParseErrorListener(new ProcStatUtil.OnParseError() {
+            @Override
+            public void onError(int mode, String input) {
+                inc.incrementAndGet();
+            }
+        });
+        File tempFile = File.createTempFile("temp_", "_test_parse_proc_stat_" + System.currentTimeMillis());
+        IOUtil.writeText(sample, tempFile);
+        ProcStatUtil.ProcStat parse = ProcStatUtil.parse(tempFile.getPath());
+        Assert.assertEquals(2, inc.get());
+        Assert.assertNull(parse);
+    }
+
     @SuppressWarnings("ConstantConditions")
     @Test
-    public void testGetMyProcThreadStatAndCompare2() {
+    public void testGetMyProcThreadStatAndCompare2() throws ProcStatUtil.ParseException {
         String dirPath = "/proc/" + Process.myPid() + "/task";
         for (File item : new File(dirPath).listFiles()) {
             if (item.isDirectory()) {
@@ -391,6 +474,7 @@ public class ProcStatUtilsTest {
                 ProcStatUtil.ProcStat statInfo1 = parseJiffiesInfoWithBuffer(cat.getBytes());
                 ProcStatUtil.ProcStat statInfo2 = parseJiffiesInfoWithBuffer(Arrays.copyOfRange(cat.getBytes(), 0, 127));
                 Assert.assertEquals(statInfo1.comm, statInfo2.comm);
+                Assert.assertEquals(statInfo1.stat, statInfo2.stat);
                 Assert.assertEquals(statInfo1.utime, statInfo2.utime);
                 Assert.assertEquals(statInfo1.stime, statInfo2.stime);
                 Assert.assertEquals(statInfo1.cutime, statInfo2.cutime);
@@ -399,11 +483,11 @@ public class ProcStatUtilsTest {
         }
     }
 
-    static ProcStatUtil.ProcStat parseJiffiesInfoWithSplitsForPath(String path) {
+    static ProcStatUtil.ProcStat parseJiffiesInfoWithSplitsForPath(String path) throws ProcStatUtil.ParseException {
         return ProcStatUtil.parseWithSplits(BatteryCanaryUtil.cat(path));
     }
 
-    static ProcStatUtil.ProcStat parseJiffiesInfoWithBufferForPath(String path, byte[] buffer) {
+    static ProcStatUtil.ProcStat parseJiffiesInfoWithBufferForPath(String path, byte[] buffer) throws ProcStatUtil.ParseException {
         File file = new File(path);
         if (!file.exists()) {
             return null;
@@ -423,7 +507,7 @@ public class ProcStatUtilsTest {
         return parseJiffiesInfoWithBuffer(buffer);
     }
 
-    static ProcStatUtil.ProcStat parseJiffiesInfoWithBufferForPathR2(String path) {
+    static ProcStatUtil.ProcStat parseJiffiesInfoWithBufferForPathR2(String path) throws ProcStatUtil.ParseException {
         String text = getProStatText(path);
         if (TextUtils.isEmpty(text)) return null;
         //noinspection ConstantConditions
@@ -462,7 +546,7 @@ public class ProcStatUtilsTest {
         return sb.toString();
     }
 
-    static ProcStatUtil.ProcStat parseJiffiesInfoWithBuffer(byte[] statBuffer) {
+    static ProcStatUtil.ProcStat parseJiffiesInfoWithBuffer(byte[] statBuffer) throws ProcStatUtil.ParseException {
         ProcStatUtil.ProcStat stat = ProcStatUtil.parseWithBuffer(statBuffer);
 
         Assert.assertNotNull(stat.comm);
@@ -517,7 +601,7 @@ public class ProcStatUtilsTest {
         }
 
         @Test
-        public void testGetMyProcThreadStatBenchmark() {
+        public void testGetMyProcThreadStatBenchmark() throws ProcStatUtil.ParseException {
             if (TestUtils.isAssembleTest()) return;
 
             int times = 100;
@@ -561,7 +645,7 @@ public class ProcStatUtilsTest {
         }
 
         @Test
-        public void testGetMyProcThreadStatWithBufferBenchmark() {
+        public void testGetMyProcThreadStatWithBufferBenchmark() throws ProcStatUtil.ParseException {
             if (TestUtils.isAssembleTest()) return;
 
             int times = 100;
@@ -608,6 +692,22 @@ public class ProcStatUtilsTest {
 
     }
 
+    @Test
+    public void testSafeByteToString() {
+        String foo = "ffffoooo";
+        byte[] fooBytes = foo.getBytes(StandardCharsets.UTF_8);
+        Assert.assertEquals(8, fooBytes.length);
+        Assert.assertEquals(foo, new String(fooBytes, StandardCharsets.UTF_8));
+        Assert.assertEquals(foo, ProcStatUtil.safeBytesToString(fooBytes, 0, fooBytes.length));
+        Assert.assertEquals(new String(fooBytes, StandardCharsets.UTF_8), ProcStatUtil.safeBytesToString(fooBytes, 0, fooBytes.length));
+        Assert.assertEquals("ffff", ProcStatUtil.safeBytesToString(fooBytes, 0, 4));
+        Assert.assertEquals("oooo", ProcStatUtil.safeBytesToString(fooBytes, 4, 4));
+
+        // Bounded
+        Assert.assertEquals("", ProcStatUtil.safeBytesToString(fooBytes, -1, 4));
+        Assert.assertEquals("", ProcStatUtil.safeBytesToString(fooBytes, 4, 5));
+    }
+
 
     @RunWith(AndroidJUnit4.class)
     public static class MultiProcess {
@@ -637,6 +737,80 @@ public class ProcStatUtilsTest {
             }
             Assert.assertEquals(1, pids.size());
             Assert.assertEquals(Process.myPid(), pids.get(0).intValue());
+        }
+    }
+
+
+    @RunWith(AndroidJUnit4.class)
+    public static class IndividualCases {
+        static final String TAG = "Matrix.test.ProcessCpuTrackUtilsTest$MultiProcess";
+
+        Context mContext;
+
+        @Before
+        public void setUp() {
+            mContext = InstrumentationRegistry.getTargetContext();
+        }
+
+        @After
+        public void shutDown() {
+        }
+
+        @Test
+        public void testConcurrentParsing() throws IOException, ProcStatUtil.ParseException, InterruptedException {
+            ProcStatUtil.setParseErrorListener(new ProcStatUtil.OnParseError() {
+                @Override
+                public void onError(final int mode, final String input) {
+                    new Handler(Looper.getMainLooper()).post(new Runnable() {
+                        @Override
+                        public void run() {
+                            Assert.fail("mode = " + mode + ", error = " + input);
+                        }
+                    });
+                }
+            });
+
+            List<Thread> threadList = new ArrayList<>();
+            for (int i = 0; i < 1000; i++) {
+                Thread thread = new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        ProcStatUtil.ProcStat computedStat = ProcStatUtil.of(Process.myTid());
+                        Assert.assertNotNull(computedStat);
+                    }
+                });
+                thread.start();
+                threadList.add(thread);
+            }
+
+            for (Thread item : threadList) {
+                item.join();
+            }
+        }
+
+        @Test
+        public void testParsingIndividualCases() throws IOException, ProcStatUtil.ParseException {
+            List<String> cases = Arrays.asList(
+                    "30109 ([GT]ColdPool#4) R 631 808 0 0 -1 4210752 2491 1245 0 0 48 15 0 1 30 10 179 0 23003491 44575170560 143434 18446744073709551615 419586322432 419586347040 548986306016 0 0 0 4608 4097 1073775868 0 0 0 -1 7 0 0 3 0 0 419586351104 419586352512 419837206528 548986310249 548986310326 548986310326 548986314718 0 0 0 8 0",
+                    "30712 ([GT]HotPool#1) R 631 808 0 0 -1 4210752 1858 1245 0 0 27 9 0 1 16 -4 173 0 23004238 44357824512 122121 18446744073709551615 419586322432 419586347040 548986306016 0 0 0 4612 4097 1073775868 0 0 0 -1 2 0 0 1 0 0 419586351104 419586352512 419837206528 548986310249 548986310326 548986310326 548986314718 0 0 0 0 0 0",
+                    "11522 (default_matrix_) R 1670 1670 0 0 -1 4210752 45502 581 1275 0 1214 1521 0 0 20 0 173 0 14969918 14697058304 67774 18446744073709551615 373188939776 373188964816 549282126752 0 0 0 4612 4097 1073775868 0 0 0 -1 6 0 0 0 0 0 373188968448 373188969896 373791416320 549282129081 549282129180 549282129180 549282131934 0",
+                    "20764:11151 (default_matrix_) R 634 810 0 0 -1 4210752 363390 25980 11017 62 9807 10924 19 14 20 0 201 0 7580454 15621533696 88111 18446744073709551615 387170705408 387170730016 549146763456 0 0 0 4612 4097 1073775868 0 0 0 -1 4 0 0 141 0 0 387170734080 387170735488 388046045184 549146766953 549146767030 549146767030 549146771422 0",
+                    "1542:20423 (default_matrix_) R 655 655 0 0 -1 4210752 32711 5909 4 4 676 856 3 7 20 0 199 0 17686272 15023083520 151543 18446744073709551615 399329419264 399329443936 548751576320 0 0 0 4612 4097 1073775868 0 0 0 -1 5 0 0 0 0 0 399329447936 399329449344 400316149760 548751580613 548751580712 548751580712 548751585246 0",
+                    "6057:5761 (default_matrix_) R 619 764 0 0 -1 4210752 3114 9540 77 13 3786 2261 4 6 20 0 213 0 99587445 12487331840 57725 18446744073709551615 405469245440 405469263388 549287708384 0 0 0 4612 4097 1073775868 0 0 0 -1 6 0 0 4 0 0 405469375048 405469376512 405563015168 549287712662 549287712739 549287712739 549287714782 0",
+                    "4712:24905 (default_matrix_) R 678 910 0 0 -1 4210752 136335 18833 44 26 2525 2167 7 13 20 0 201 0 890128192 16258711552 42328 18446744073709551615 396501762048 396501786656 549401098288 0 0 0 4612 4097 1073775868 0 0 0 -1 4 0 0 1 0 0 396501790720 396501792128 397494910976 549401099883 549401099960 549401099960 549401104350 0"
+            );
+
+            for (String cat : cases) {
+                ProcStatUtil.ProcStat exceptedStat = ProcStatUtil.parseWithSplits(cat);
+                Assert.assertNotNull(exceptedStat);
+                File tempFile = File.createTempFile("temp_", "_test_parse_proc_stat_" + System.currentTimeMillis());
+                IOUtil.writeText(cat, tempFile);
+                ProcStatUtil.ProcStat computedStat = ProcStatUtil.parse(tempFile.getPath());
+                Assert.assertNotNull(computedStat);
+
+                Assert.assertEquals(exceptedStat.getJiffies(), computedStat.getJiffies());
+                Assert.assertEquals(exceptedStat.comm, computedStat.comm);
+            }
         }
     }
 }

@@ -9,6 +9,7 @@ import android.support.annotation.VisibleForTesting;
 import android.support.annotation.WorkerThread;
 import android.text.TextUtils;
 
+import com.tencent.matrix.batterycanary.BatteryEventDelegate;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
 import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
 import com.tencent.matrix.batterycanary.utils.TimeBreaker;
@@ -40,7 +41,7 @@ public final class AppStatMonitorFeature extends AbsMonitorFeature {
     int mGlobalAppImportance = IMPORTANCE_LEAST;
     int mForegroundServiceImportanceLimit = ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND;
 
-    @NonNull List<AppStatStamp> mStampList = Collections.emptyList();
+    @NonNull List<TimeBreaker.Stamp> mStampList = Collections.emptyList();
     @NonNull List<TimeBreaker.Stamp> mSceneStampList = Collections.emptyList();
     @NonNull Runnable coolingTask = new Runnable() {
         @Override
@@ -59,6 +60,11 @@ public final class AppStatMonitorFeature extends AbsMonitorFeature {
     };
 
     @Override
+    protected String getTag() {
+        return TAG;
+    }
+
+    @Override
     public void configure(BatteryMonitorCore monitor) {
         super.configure(monitor);
         mForegroundServiceImportanceLimit = Math.max(monitor.getConfig().foregroundServiceLeakLimit, ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND);
@@ -67,7 +73,7 @@ public final class AppStatMonitorFeature extends AbsMonitorFeature {
     @Override
     public void onTurnOn() {
         super.onTurnOn();
-        AppStatStamp firstStamp = new AppStatStamp(1);
+        TimeBreaker.Stamp firstStamp = new TimeBreaker.Stamp("1");
         TimeBreaker.Stamp firstSceneStamp = new TimeBreaker.Stamp(mCore.getScene());
         synchronized (TAG) {
             mStampList = new ArrayList<>();
@@ -92,7 +98,8 @@ public final class AppStatMonitorFeature extends AbsMonitorFeature {
         int appStat = BatteryCanaryUtil.getAppStat(mCore.getContext(), isForeground);
         synchronized (TAG) {
             if (mStampList != Collections.EMPTY_LIST) {
-                mStampList.add(0, new AppStatStamp(appStat));
+                MatrixLog.i(BatteryEventDelegate.TAG, "onStat >> " + BatteryCanaryUtil.convertAppStat(appStat));
+                mStampList.add(0, new TimeBreaker.Stamp(String.valueOf(appStat)));
                 checkOverHeat();
             }
         }
@@ -273,14 +280,21 @@ public final class AppStatMonitorFeature extends AbsMonitorFeature {
 
     public AppStatSnapshot currentAppStatSnapshot(long windowMillis) {
         try {
-            int appStat = BatteryCanaryUtil.getAppStat(mCore.getContext(), mCore.isForeground());
-            AppStatStamp lastStamp = new AppStatStamp(appStat);
-            synchronized (TAG) {
-                if (mStampList != Collections.EMPTY_LIST) {
-                    mStampList.add(0, lastStamp);
+            TimeBreaker.TimePortions timePortions = TimeBreaker.configurePortions(mStampList, windowMillis, 10L, new TimeBreaker.Stamp.Stamper() {
+                @Override
+                public TimeBreaker.Stamp stamp(String key) {
+                    int appStat = BatteryCanaryUtil.getAppStat(mCore.getContext(), mCore.isForeground());
+                    return new TimeBreaker.Stamp(String.valueOf(appStat));
                 }
-            }
-            return configureSnapshot(mStampList, windowMillis);
+            });
+            AppStatSnapshot snapshot = new AppStatSnapshot();
+            snapshot.setValid(timePortions.isValid());
+            snapshot.uptime = Snapshot.Entry.DigitEntry.of(timePortions.totalUptime);
+            snapshot.fgRatio = Snapshot.Entry.DigitEntry.of((long) timePortions.getRatio("1"));
+            snapshot.bgRatio = Snapshot.Entry.DigitEntry.of((long) timePortions.getRatio("2"));
+            snapshot.fgSrvRatio = Snapshot.Entry.DigitEntry.of((long) timePortions.getRatio("3"));
+            return snapshot;
+
         } catch (Throwable e) {
             MatrixLog.w(TAG, "configureSnapshot fail: " + e.getMessage());
             AppStatSnapshot snapshot = new AppStatSnapshot();
@@ -289,24 +303,43 @@ public final class AppStatMonitorFeature extends AbsMonitorFeature {
         }
     }
 
-    @VisibleForTesting
-    static AppStatSnapshot configureSnapshot(List<AppStatStamp> stampList, long windowMillis) {
-        TimeBreaker.TimePortions timePortions = TimeBreaker.configurePortions(stampList, windowMillis);
-        AppStatSnapshot snapshot = new AppStatSnapshot();
-        snapshot.setValid(timePortions.isValid());
-        snapshot.uptime = Snapshot.Entry.DigitEntry.of(timePortions.totalUptime);
-        snapshot.fgRatio = Snapshot.Entry.DigitEntry.of((long) timePortions.getRatio("1"));
-        snapshot.bgRatio = Snapshot.Entry.DigitEntry.of((long) timePortions.getRatio("2"));
-        snapshot.fgSrvRatio = Snapshot.Entry.DigitEntry.of((long) timePortions.getRatio("3"));
-        return snapshot;
+    public TimeBreaker.TimePortions currentSceneSnapshot() {
+        return currentSceneSnapshot(0L);
     }
 
-    @VisibleForTesting
-    static final class AppStatStamp extends TimeBreaker.Stamp {
-        public AppStatStamp(int appStat) {
-            super(String.valueOf(appStat));
+    public TimeBreaker.TimePortions currentSceneSnapshot(long windowMillis) {
+        try {
+            return TimeBreaker.configurePortions(mSceneStampList, windowMillis, 10L, new TimeBreaker.Stamp.Stamper() {
+                @Override
+                public TimeBreaker.Stamp stamp(String key) {
+                    return new TimeBreaker.Stamp(mCore.getScene());
+                }
+            });
+        } catch (Throwable e) {
+            MatrixLog.w(TAG, "currentSceneSnapshot fail: " + e.getMessage());
+            return TimeBreaker.TimePortions.ofInvalid();
         }
     }
+
+    @NonNull
+    public List<TimeBreaker.Stamp> getAppStatStampList() {
+        if (mStampList.isEmpty()) return Collections.emptyList();
+        return new ArrayList<>(mStampList);
+    }
+
+    @NonNull
+    public List<TimeBreaker.Stamp> getSceneStampList() {
+        if (mSceneStampList.isEmpty()) return Collections.emptyList();
+        return new ArrayList<>(mSceneStampList);
+    }
+
+
+    // @VisibleForTesting
+    // static final class AppStatStamp extends TimeBreaker.Stamp {
+    //     public AppStatStamp(int appStat) {
+    //         super(String.valueOf(appStat));
+    //     }
+    // }
 
     public static final class AppStatSnapshot extends Snapshot<AppStatSnapshot> {
         public Entry.DigitEntry<Long> uptime = Entry.DigitEntry.of(0L);
@@ -330,29 +363,5 @@ public final class AppStatMonitorFeature extends AbsMonitorFeature {
                 }
             };
         }
-    }
-
-    public TimeBreaker.TimePortions currentSceneSnapshot() {
-        return currentSceneSnapshot(0L);
-    }
-
-    public TimeBreaker.TimePortions currentSceneSnapshot(long windowMillis) {
-        try {
-            TimeBreaker.Stamp lastSceneStamp = new TimeBreaker.Stamp(mCore.getScene());
-            synchronized (TAG) {
-                if (mSceneStampList != Collections.EMPTY_LIST) {
-                    mSceneStampList.add(0, lastSceneStamp);
-                }
-            }
-            return configureSceneSnapshot(mSceneStampList, windowMillis);
-        } catch (Throwable e) {
-            MatrixLog.w(TAG, "currentSceneSnapshot fail: " + e.getMessage());
-            return TimeBreaker.TimePortions.ofInvalid();
-        }
-    }
-
-    @VisibleForTesting
-    static TimeBreaker.TimePortions configureSceneSnapshot(List<TimeBreaker.Stamp> stampList, long windowMillis) {
-        return TimeBreaker.configurePortions(stampList, windowMillis);
     }
 }

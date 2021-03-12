@@ -3,6 +3,7 @@ package com.tencent.matrix.batterycanary;
 import android.app.Application;
 
 import com.tencent.matrix.AppActiveMatrixDelegate;
+import com.tencent.matrix.Matrix;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorConfig;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
 import com.tencent.matrix.plugin.Plugin;
@@ -67,7 +68,10 @@ public class BatteryMonitorPlugin extends Plugin {
                 if (sProcessName == null) {
                     Application application = getApplication();
                     if (application == null) {
-                        throw new IllegalStateException(getTag() + " is not yet init!");
+                        if (!Matrix.isInstalled()) {
+                            throw new IllegalStateException(getTag() + " is not yet init!");
+                        }
+                        application = Matrix.with().getApplication();
                     }
                     sProcessName = MatrixUtil.getProcessName(application);
                 }
@@ -82,9 +86,12 @@ public class BatteryMonitorPlugin extends Plugin {
                 if (sPackageName == null) {
                     Application application = getApplication();
                     if (application == null) {
-                        throw new IllegalStateException(getTag() + " is not yet init!");
+                        if (!Matrix.isInstalled()) {
+                            throw new IllegalStateException(getTag() + " is not yet init!");
+                        }
+                        application = Matrix.with().getApplication();
                     }
-                    sPackageName = getApplication().getPackageName();
+                    sPackageName = application.getPackageName();
                 }
             }
         }
