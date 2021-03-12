@@ -96,7 +96,7 @@ memory_logging_event_buffer *memory_logging_event_buffer_pool_new_buffer(memory_
     return event_buffer;
 }
 
-void memory_logging_event_buffer_pool_free_buffer(memory_logging_event_buffer_pool *buffer_pool, memory_logging_event_buffer *event_buffer) {
+bool memory_logging_event_buffer_pool_free_buffer(memory_logging_event_buffer_pool *buffer_pool, memory_logging_event_buffer *event_buffer) {
     __malloc_lock_lock(&buffer_pool->lock);
 
     if (buffer_pool->curr_buffer == NULL) {
@@ -111,5 +111,5 @@ void memory_logging_event_buffer_pool_free_buffer(memory_logging_event_buffer_po
 
     __malloc_lock_unlock(&buffer_pool->lock);
 
-    dispatch_semaphore_signal(buffer_pool->pool_semaphore);
+    return dispatch_semaphore_signal(buffer_pool->pool_semaphore) != 0;
 }
