@@ -28,15 +28,13 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-    
 
 /** Generate a new human readabale, null terminated, globally unique ID string.
  *
  * @param destinationBuffer37Bytes Buffer of at least 37 bytes to hold the ID.
  */
-void ksid_generate(char* destinationBuffer37Bytes);
-    
-    
+void ksid_generate(char *destinationBuffer37Bytes);
+
 #ifdef __cplusplus
 }
 #endif

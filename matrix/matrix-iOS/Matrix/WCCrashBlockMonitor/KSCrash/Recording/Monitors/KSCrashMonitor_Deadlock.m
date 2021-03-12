@@ -34,9 +34,7 @@
 //#define KSLogger_LocalLevel TRACE
 #import "KSLogger.h"
 
-
 #define kIdleInterval 5.0f
-
 
 @class KSCrashDeadlockMonitor;
 
@@ -49,22 +47,21 @@ static volatile bool g_isEnabled = false;
 static KSCrash_MonitorContext g_monitorContext;
 
 /** Thread which monitors other threads. */
-static KSCrashDeadlockMonitor* g_monitor;
+static KSCrashDeadlockMonitor *g_monitor;
 
 static KSThread g_mainQueueThread;
 
 /** Interval between watchdog pulses. */
 static NSTimeInterval g_watchdogInterval = 0;
 
-
 // ============================================================================
 #pragma mark - X -
 // ============================================================================
 
-@interface KSCrashDeadlockMonitor: NSObject
+@interface KSCrashDeadlockMonitor : NSObject
 
-@property(nonatomic, readwrite, retain) NSThread* monitorThread;
-@property(atomic, readwrite, assign) BOOL awaitingResponse;
+@property (nonatomic, readwrite, retain) NSThread *monitorThread;
+@property (atomic, readwrite, assign) BOOL awaitingResponse;
 
 @end
 
@@ -73,10 +70,8 @@ static NSTimeInterval g_watchdogInterval = 0;
 @synthesize monitorThread = _monitorThread;
 @synthesize awaitingResponse = _awaitingResponse;
 
-- (id) init
-{
-    if((self = [super init]))
-    {
+- (id)init {
+    if ((self = [super init])) {
         // target (self) is retained until selector (runMonitor) exits.
         self.monitorThread = [[NSThread alloc] initWithTarget:self selector:@selector(runMonitor) object:nil];
         self.monitorThread.name = @"KSCrash Deadlock Detection Thread";
@@ -85,28 +80,23 @@ static NSTimeInterval g_watchdogInterval = 0;
     return self;
 }
 
-- (void) cancel
-{
+- (void)cancel {
     [self.monitorThread cancel];
 }
 
-- (void) watchdogPulse
-{
+- (void)watchdogPulse {
     __block id blockSelf = self;
     self.awaitingResponse = YES;
-    dispatch_async(dispatch_get_main_queue(), ^
-                   {
-                       [blockSelf watchdogAnswer];
-                   });
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [blockSelf watchdogAnswer];
+    });
 }
 
-- (void) watchdogAnswer
-{
+- (void)watchdogAnswer {
     self.awaitingResponse = NO;
 }
 
-- (void) handleDeadlock
-{
+- (void)handleDeadlock {
     ksmc_suspendEnvironment();
     kscm_notifyFatalExceptionCaptured(false);
 
@@ -118,14 +108,14 @@ static NSTimeInterval g_watchdogInterval = 0;
     ksid_generate(eventID);
 
     KSLOG_DEBUG(@"Filling out context.");
-    KSCrash_MonitorContext* crashContext = &g_monitorContext;
+    KSCrash_MonitorContext *crashContext = &g_monitorContext;
     memset(crashContext, 0, sizeof(*crashContext));
     crashContext->crashType = KSCrashMonitorTypeMainThreadDeadlock;
     crashContext->eventID = eventID;
     crashContext->registersAreValid = false;
     crashContext->offendingMachineContext = machineContext;
     crashContext->stackCursor = &stackCursor;
-    
+
     kscm_handleException(crashContext);
     ksmc_resumeEnvironment();
 
@@ -133,30 +123,23 @@ static NSTimeInterval g_watchdogInterval = 0;
     abort();
 }
 
-- (void) runMonitor
-{
+- (void)runMonitor {
     BOOL cancelled = NO;
-    do
-    {
+    do {
         // Only do a watchdog check if the watchdog interval is > 0.
         // If the interval is <= 0, just idle until the user changes it.
         @autoreleasepool {
             NSTimeInterval sleepInterval = g_watchdogInterval;
             BOOL runWatchdogCheck = sleepInterval > 0;
-            if(!runWatchdogCheck)
-            {
+            if (!runWatchdogCheck) {
                 sleepInterval = kIdleInterval;
             }
             [NSThread sleepForTimeInterval:sleepInterval];
             cancelled = self.monitorThread.isCancelled;
-            if(!cancelled && runWatchdogCheck)
-            {
-                if(self.awaitingResponse)
-                {
+            if (!cancelled && runWatchdogCheck) {
+                if (self.awaitingResponse) {
                     [self handleDeadlock];
-                }
-                else
-                {
+                } else {
                     [self watchdogPulse];
                 }
             }
@@ -170,29 +153,24 @@ static NSTimeInterval g_watchdogInterval = 0;
 #pragma mark - API -
 // ============================================================================
 
-static void initialize()
-{
+static void initialize() {
     static bool isInitialized = false;
-    if(!isInitialized)
-    {
+    if (!isInitialized) {
         isInitialized = true;
-        dispatch_async(dispatch_get_main_queue(), ^{g_mainQueueThread = ksthread_self();});
+        dispatch_async(dispatch_get_main_queue(), ^{
+            g_mainQueueThread = ksthread_self();
+        });
     }
 }
 
-static void setEnabled(bool isEnabled)
-{
-    if(isEnabled != g_isEnabled)
-    {
+static void setEnabled(bool isEnabled) {
+    if (isEnabled != g_isEnabled) {
         g_isEnabled = isEnabled;
-        if(isEnabled)
-        {
+        if (isEnabled) {
             KSLOG_DEBUG(@"Creating new deadlock monitor.");
             initialize();
             g_monitor = [[KSCrashDeadlockMonitor alloc] init];
-        }
-        else
-        {
+        } else {
             KSLOG_DEBUG(@"Stopping deadlock monitor.");
             [g_monitor cancel];
             g_monitor = nil;
@@ -200,22 +178,15 @@ static void setEnabled(bool isEnabled)
     }
 }
 
-static bool isEnabled()
-{
+static bool isEnabled() {
     return g_isEnabled;
 }
 
-KSCrashMonitorAPI* kscm_deadlock_getAPI()
-{
-    static KSCrashMonitorAPI api =
-    {
-        .setEnabled = setEnabled,
-        .isEnabled = isEnabled
-    };
+KSCrashMonitorAPI *kscm_deadlock_getAPI() {
+    static KSCrashMonitorAPI api = { .setEnabled = setEnabled, .isEnabled = isEnabled };
     return &api;
 }
 
-void kscm_setDeadlockHandlerWatchdogInterval(double value)
-{
+void kscm_setDeadlockHandlerWatchdogInterval(double value) {
     g_watchdogInterval = value;
 }

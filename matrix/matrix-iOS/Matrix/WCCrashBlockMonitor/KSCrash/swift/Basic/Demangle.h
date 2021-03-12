@@ -24,72 +24,72 @@
 #include "Malloc.h"
 
 namespace llvm {
-  class raw_ostream;
+class raw_ostream;
 }
 
 namespace swift {
 namespace Demangle {
 
 struct DemangleOptions {
-  bool SynthesizeSugarOnTypes = false;
-  bool DisplayTypeOfIVarFieldOffset = true;
-  bool DisplayDebuggerGeneratedModule = true;
-  bool QualifyEntities = true;
-  bool DisplayExtensionContexts = true;
-  bool DisplayUnmangledSuffix = true;
-  bool DisplayModuleNames = true;
-  bool DisplayGenericSpecializations = true;
-  bool DisplayProtocolConformances = true;
-  bool DisplayWhereClauses = true;
-  bool DisplayEntityTypes = true;
-  bool ShortenPartialApply = false;
-  bool ShortenThunk = false;
-  bool ShortenValueWitness = false;
-  bool ShortenArchetype = false;
-  bool ShowPrivateDiscriminators = true;
+    bool SynthesizeSugarOnTypes = false;
+    bool DisplayTypeOfIVarFieldOffset = true;
+    bool DisplayDebuggerGeneratedModule = true;
+    bool QualifyEntities = true;
+    bool DisplayExtensionContexts = true;
+    bool DisplayUnmangledSuffix = true;
+    bool DisplayModuleNames = true;
+    bool DisplayGenericSpecializations = true;
+    bool DisplayProtocolConformances = true;
+    bool DisplayWhereClauses = true;
+    bool DisplayEntityTypes = true;
+    bool ShortenPartialApply = false;
+    bool ShortenThunk = false;
+    bool ShortenValueWitness = false;
+    bool ShortenArchetype = false;
+    bool ShowPrivateDiscriminators = true;
 
-  DemangleOptions() {}
+    DemangleOptions() {}
 
-  static DemangleOptions SimplifiedUIDemangleOptions() {
-    auto Opt = DemangleOptions();
-    Opt.SynthesizeSugarOnTypes = true;
-    Opt.QualifyEntities = true;
-    Opt.DisplayExtensionContexts = false;
-    Opt.DisplayUnmangledSuffix = false;
-    Opt.DisplayModuleNames = false;
-    Opt.DisplayGenericSpecializations = false;
-    Opt.DisplayProtocolConformances = false;
-    Opt.DisplayWhereClauses = false;
-    Opt.DisplayEntityTypes = false;
-    Opt.ShortenPartialApply = true;
-    Opt.ShortenThunk = true;
-    Opt.ShortenValueWitness = true;
-    Opt.ShortenArchetype = true;
-    Opt.ShowPrivateDiscriminators = false;
-    return Opt;
-  };
+    static DemangleOptions SimplifiedUIDemangleOptions() {
+        auto Opt = DemangleOptions();
+        Opt.SynthesizeSugarOnTypes = true;
+        Opt.QualifyEntities = true;
+        Opt.DisplayExtensionContexts = false;
+        Opt.DisplayUnmangledSuffix = false;
+        Opt.DisplayModuleNames = false;
+        Opt.DisplayGenericSpecializations = false;
+        Opt.DisplayProtocolConformances = false;
+        Opt.DisplayWhereClauses = false;
+        Opt.DisplayEntityTypes = false;
+        Opt.ShortenPartialApply = true;
+        Opt.ShortenThunk = true;
+        Opt.ShortenValueWitness = true;
+        Opt.ShortenArchetype = true;
+        Opt.ShowPrivateDiscriminators = false;
+        return Opt;
+    };
 };
 
 class Node;
 typedef std::shared_ptr<Node> NodePointer;
 
 enum class FunctionSigSpecializationParamKind : unsigned {
-  // Option Flags use bits 0-5. This give us 6 bits implying 64 entries to
-  // work with.
-  ConstantPropFunction = 0,
-  ConstantPropGlobal = 1,
-  ConstantPropInteger = 2,
-  ConstantPropFloat = 3,
-  ConstantPropString = 4,
-  ClosureProp = 5,
-  BoxToValue = 6,
-  BoxToStack = 7,
+    // Option Flags use bits 0-5. This give us 6 bits implying 64 entries to
+    // work with.
+    ConstantPropFunction = 0,
+    ConstantPropGlobal = 1,
+    ConstantPropInteger = 2,
+    ConstantPropFloat = 3,
+    ConstantPropString = 4,
+    ClosureProp = 5,
+    BoxToValue = 6,
+    BoxToStack = 7,
 
-  // Option Set Flags use bits 6-31. This gives us 26 bits to use for option
-  // flags.
-  Dead = 1 << 6,
-  OwnedToGuaranteed = 1 << 7,
-  SROA = 1 << 8,
+    // Option Set Flags use bits 6-31. This gives us 26 bits to use for option
+    // flags.
+    Dead = 1 << 6,
+    OwnedToGuaranteed = 1 << 7,
+    SROA = 1 << 8,
 };
 
 /// The pass that caused the specialization to occur. We use this to make sure
@@ -97,135 +97,123 @@ enum class FunctionSigSpecializationParamKind : unsigned {
 /// mangling. This currently cannot happen, so this is just a safety measure
 /// that creates separate name spaces.
 enum class SpecializationPass : uint8_t {
-  AllocBoxToStack,
-  ClosureSpecializer,
-  CapturePromotion,
-  CapturePropagation,
-  FunctionSignatureOpts,
-  GenericSpecializer,
+    AllocBoxToStack,
+    ClosureSpecializer,
+    CapturePromotion,
+    CapturePropagation,
+    FunctionSignatureOpts,
+    GenericSpecializer,
 };
 
 static inline char encodeSpecializationPass(SpecializationPass Pass) {
-  return char(uint8_t(Pass)) + '0';
+    return char(uint8_t(Pass)) + '0';
 }
 
 enum class ValueWitnessKind {
-  AllocateBuffer,
-  AssignWithCopy,
-  AssignWithTake,
-  DeallocateBuffer,
-  Destroy,
-  DestroyBuffer,
-  InitializeBufferWithCopyOfBuffer,
-  InitializeBufferWithCopy,
-  InitializeWithCopy,
-  InitializeBufferWithTake,
-  InitializeWithTake,
-  ProjectBuffer,
-  InitializeBufferWithTakeOfBuffer,
-  DestroyArray,
-  InitializeArrayWithCopy,
-  InitializeArrayWithTakeFrontToBack,
-  InitializeArrayWithTakeBackToFront,
-  StoreExtraInhabitant,
-  GetExtraInhabitantIndex,
-  GetEnumTag,
-  DestructiveProjectEnumData,
+    AllocateBuffer,
+    AssignWithCopy,
+    AssignWithTake,
+    DeallocateBuffer,
+    Destroy,
+    DestroyBuffer,
+    InitializeBufferWithCopyOfBuffer,
+    InitializeBufferWithCopy,
+    InitializeWithCopy,
+    InitializeBufferWithTake,
+    InitializeWithTake,
+    ProjectBuffer,
+    InitializeBufferWithTakeOfBuffer,
+    DestroyArray,
+    InitializeArrayWithCopy,
+    InitializeArrayWithTakeFrontToBack,
+    InitializeArrayWithTakeBackToFront,
+    StoreExtraInhabitant,
+    GetExtraInhabitantIndex,
+    GetEnumTag,
+    DestructiveProjectEnumData,
 };
 
-enum class Directness {
-  Direct, Indirect
-};
+enum class Directness { Direct, Indirect };
 
 class Node : public std::enable_shared_from_this<Node> {
 public:
-  enum class Kind : uint16_t {
+    enum class Kind : uint16_t {
 #define NODE(ID) ID,
 //#include "swift/Basic/DemangleNodes.def"
 #include "DemangleNodes.h"
-  };
+    };
 
-  typedef uint64_t IndexType;
+    typedef uint64_t IndexType;
 
 private:
-  Kind NodeKind;
+    Kind NodeKind;
 
-  enum class PayloadKind : uint8_t {
-    None, Text, Index
-  };
-  PayloadKind NodePayloadKind;
+    enum class PayloadKind : uint8_t { None, Text, Index };
+    PayloadKind NodePayloadKind;
 
-  union {
-    std::string TextPayload;
-    IndexType IndexPayload;
-  };
+    union {
+        std::string TextPayload;
+        IndexType IndexPayload;
+    };
 
-  // FIXME: use allocator.
-  typedef std::vector<NodePointer> NodeVector;
-  NodeVector Children;
+    // FIXME: use allocator.
+    typedef std::vector<NodePointer> NodeVector;
+    NodeVector Children;
 
-  Node(Kind k)
-      : NodeKind(k), NodePayloadKind(PayloadKind::None) {
-  }
-  Node(Kind k, std::string &&t)
-      : NodeKind(k), NodePayloadKind(PayloadKind::Text) {
-    new (&TextPayload) std::string(std::move(t));
-  }
-  Node(Kind k, IndexType index)
-      : NodeKind(k), NodePayloadKind(PayloadKind::Index) {
-    IndexPayload = index;
-  }
-  Node(const Node &) = delete;
-  Node &operator=(const Node &) = delete;
+    Node(Kind k) : NodeKind(k), NodePayloadKind(PayloadKind::None) {}
+    Node(Kind k, std::string &&t) : NodeKind(k), NodePayloadKind(PayloadKind::Text) { new (&TextPayload) std::string(std::move(t)); }
+    Node(Kind k, IndexType index) : NodeKind(k), NodePayloadKind(PayloadKind::Index) { IndexPayload = index; }
+    Node(const Node &) = delete;
+    Node &operator=(const Node &) = delete;
 
-  friend struct NodeFactory;
+    friend struct NodeFactory;
 
 public:
-  ~Node();
+    ~Node();
 
-  Kind getKind() const { return NodeKind; }
+    Kind getKind() const { return NodeKind; }
 
-  bool hasText() const { return NodePayloadKind == PayloadKind::Text; }
-  const std::string &getText() const {
-    assert(hasText());
-    return TextPayload;
-  }
+    bool hasText() const { return NodePayloadKind == PayloadKind::Text; }
+    const std::string &getText() const {
+        assert(hasText());
+        return TextPayload;
+    }
 
-  bool hasIndex() const { return NodePayloadKind == PayloadKind::Index; }
-  uint64_t getIndex() const {
-    assert(hasIndex());
-    return IndexPayload;
-  }
-  
-  typedef NodeVector::iterator iterator;
-  typedef NodeVector::const_iterator const_iterator;
-  typedef NodeVector::size_type size_type;
+    bool hasIndex() const { return NodePayloadKind == PayloadKind::Index; }
+    uint64_t getIndex() const {
+        assert(hasIndex());
+        return IndexPayload;
+    }
 
-  bool hasChildren() const { return !Children.empty(); }
-  size_t getNumChildren() const { return Children.size(); }
-  iterator begin() { return Children.begin(); }
-  iterator end() { return Children.end(); }
-  const_iterator begin() const { return Children.begin(); }
-  const_iterator end() const { return Children.end(); }
+    typedef NodeVector::iterator iterator;
+    typedef NodeVector::const_iterator const_iterator;
+    typedef NodeVector::size_type size_type;
 
-  NodePointer getFirstChild() const { return Children.front(); }
-  NodePointer getChild(size_t index) const { return Children[index]; }
+    bool hasChildren() const { return !Children.empty(); }
+    size_t getNumChildren() const { return Children.size(); }
+    iterator begin() { return Children.begin(); }
+    iterator end() { return Children.end(); }
+    const_iterator begin() const { return Children.begin(); }
+    const_iterator end() const { return Children.end(); }
 
-  /// Add a new node as a child of this one.
-  ///
-  /// \param child - should have no parent or siblings
-  /// \returns child
-  NodePointer addChild(NodePointer child) {
-    assert(child && "adding null child!");
-    Children.push_back(child);
-    return child;
-  }
+    NodePointer getFirstChild() const { return Children.front(); }
+    NodePointer getChild(size_t index) const { return Children[index]; }
 
-  /// A convenience method for adding two children at once.
-  void addChildren(NodePointer child1, NodePointer child2) {
-    addChild(std::move(child1));
-    addChild(std::move(child2));
-  }
+    /// Add a new node as a child of this one.
+    ///
+    /// \param child - should have no parent or siblings
+    /// \returns child
+    NodePointer addChild(NodePointer child) {
+        assert(child && "adding null child!");
+        Children.push_back(child);
+        return child;
+    }
+
+    /// A convenience method for adding two children at once.
+    void addChildren(NodePointer child1, NodePointer child2) {
+        addChild(std::move(child1));
+        addChild(std::move(child2));
+    }
 };
 
 /// \brief Demangle the given string as a Swift symbol.
@@ -243,14 +231,10 @@ public:
 /// \returns A parse tree for the demangled string - or a null pointer
 /// on failure.
 ///
-NodePointer
-demangleSymbolAsNode(const char *mangledName, size_t mangledNameLength,
-                     const DemangleOptions &options = DemangleOptions());
+NodePointer demangleSymbolAsNode(const char *mangledName, size_t mangledNameLength, const DemangleOptions &options = DemangleOptions());
 
-inline NodePointer
-demangleSymbolAsNode(const std::string &mangledName,
-                     const DemangleOptions &options = DemangleOptions()) {
-  return demangleSymbolAsNode(mangledName.data(), mangledName.size(), options);
+inline NodePointer demangleSymbolAsNode(const std::string &mangledName, const DemangleOptions &options = DemangleOptions()) {
+    return demangleSymbolAsNode(mangledName.data(), mangledName.size(), options);
 }
 
 /// \brief Demangle the given string as a Swift symbol.
@@ -267,15 +251,10 @@ demangleSymbolAsNode(const std::string &mangledName,
 ///
 /// \returns A string representing the demangled name.
 ///
-std::string
-demangleSymbolAsString(const char *mangledName, size_t mangledNameLength,
-                       const DemangleOptions &options = DemangleOptions());
+std::string demangleSymbolAsString(const char *mangledName, size_t mangledNameLength, const DemangleOptions &options = DemangleOptions());
 
-inline std::string
-demangleSymbolAsString(const std::string &mangledName,
-                       const DemangleOptions &options = DemangleOptions()) {
-  return demangleSymbolAsString(mangledName.data(), mangledName.size(),
-                                options);
+inline std::string demangleSymbolAsString(const std::string &mangledName, const DemangleOptions &options = DemangleOptions()) {
+    return demangleSymbolAsString(mangledName.data(), mangledName.size(), options);
 }
 
 /// \brief Demangle the given string as a Swift type.
@@ -293,14 +272,10 @@ demangleSymbolAsString(const std::string &mangledName,
 /// \returns A parse tree for the demangled string - or a null pointer
 /// on failure.
 ///
-NodePointer
-demangleTypeAsNode(const char *mangledName, size_t mangledNameLength,
-                   const DemangleOptions &options = DemangleOptions());
+NodePointer demangleTypeAsNode(const char *mangledName, size_t mangledNameLength, const DemangleOptions &options = DemangleOptions());
 
-inline NodePointer
-demangleTypeAsNode(const std::string &mangledName,
-                   const DemangleOptions &options = DemangleOptions()) {
-  return demangleTypeAsNode(mangledName.data(), mangledName.size(), options);
+inline NodePointer demangleTypeAsNode(const std::string &mangledName, const DemangleOptions &options = DemangleOptions()) {
+    return demangleTypeAsNode(mangledName.data(), mangledName.size(), options);
 }
 
 /// \brief Demangle the given string as a Swift type mangling.
@@ -310,27 +285,21 @@ demangleTypeAsNode(const std::string &mangledName,
 ///
 ///
 /// \returns A string representing the demangled name.
-std::string
-demangleTypeAsString(const char *mangledName, size_t mangledNameLength,
-                     const DemangleOptions &options = DemangleOptions());
+std::string demangleTypeAsString(const char *mangledName, size_t mangledNameLength, const DemangleOptions &options = DemangleOptions());
 
-inline std::string
-demangleTypeAsString(const std::string &mangledName,
-                     const DemangleOptions &options = DemangleOptions()) {
-  return demangleTypeAsString(mangledName.data(), mangledName.size(), options);
+inline std::string demangleTypeAsString(const std::string &mangledName, const DemangleOptions &options = DemangleOptions()) {
+    return demangleTypeAsString(mangledName.data(), mangledName.size(), options);
 }
 
 enum class OperatorKind {
-  NotOperator,
-  Prefix,
-  Postfix,
-  Infix,
+    NotOperator,
+    Prefix,
+    Postfix,
+    Infix,
 };
 
 /// \brief Mangle an identifier using Swift's mangling rules.
-void mangleIdentifier(const char *data, size_t length,
-                      OperatorKind operatorKind, std::string &out,
-                      bool usePunycode = true);
+void mangleIdentifier(const char *data, size_t length, OperatorKind operatorKind, std::string &out, bool usePunycode = true);
 
 /// \brief Remangle a demangled parse tree.
 ///
@@ -350,66 +319,43 @@ std::string mangleNode(const NodePointer &root);
 ///
 /// \returns A string representing the demangled name.
 ///
-std::string nodeToString(NodePointer Root,
-                         const DemangleOptions &Options = DemangleOptions());
+std::string nodeToString(NodePointer Root, const DemangleOptions &Options = DemangleOptions());
 
 struct NodeFactory {
-  static NodePointer create(Node::Kind K) {
-    return NodePointer(new Node(K));
-  }
-  static NodePointer create(Node::Kind K, Node::IndexType Index) {
-    return NodePointer(new Node(K, Index));
-  }
-  static NodePointer create(Node::Kind K, llvm::StringRef Text) {
-    return NodePointer(new Node(K, Text));
-  }
-  static NodePointer create(Node::Kind K, std::string &&Text) {
-    return NodePointer(new Node(K, std::move(Text)));
-  }
-  template <size_t N>
-  static NodePointer create(Node::Kind K, const char (&Text)[N]) {
-    return NodePointer(new Node(K, llvm::StringRef(Text)));
-  }
+    static NodePointer create(Node::Kind K) { return NodePointer(new Node(K)); }
+    static NodePointer create(Node::Kind K, Node::IndexType Index) { return NodePointer(new Node(K, Index)); }
+    static NodePointer create(Node::Kind K, llvm::StringRef Text) { return NodePointer(new Node(K, Text)); }
+    static NodePointer create(Node::Kind K, std::string &&Text) { return NodePointer(new Node(K, std::move(Text))); }
+    template<size_t N> static NodePointer create(Node::Kind K, const char (&Text)[N]) { return NodePointer(new Node(K, llvm::StringRef(Text))); }
 };
 
-  /// A class for printing to a std::string.
+/// A class for printing to a std::string.
 class DemanglerPrinter {
 public:
-  DemanglerPrinter() = default;
+    DemanglerPrinter() = default;
 
-  DemanglerPrinter &operator<<(llvm::StringRef Value) & {
-    Stream.append(Value.data(), Value.size());
-    return *this;
-  }
-  
-  DemanglerPrinter &operator<<(char c) & {
-    Stream.push_back(c);
-    return *this;
-  }
-  DemanglerPrinter &operator<<(unsigned long long n) &;
-  DemanglerPrinter &operator<<(long long n) &;
-  DemanglerPrinter &operator<<(unsigned long n) & {
-    return *this << (unsigned long long)n;
-  }
-  DemanglerPrinter &operator<<(long n) & {
-    return *this << (long long)n;
-  }
-  DemanglerPrinter &operator<<(unsigned n) & {
-    return *this << (unsigned long long)n;
-  }
-  DemanglerPrinter &operator<<(int n) & {
-    return *this << (long long)n;
-  }
-  
-  template<typename T>
-  DemanglerPrinter &&operator<<(T &&x) && {
-    return std::move(*this << std::forward<T>(x));
-  }
-  
-  std::string &&str() && { return std::move(Stream); }
-  
+    DemanglerPrinter &operator<<(llvm::StringRef Value) & {
+        Stream.append(Value.data(), Value.size());
+        return *this;
+    }
+
+    DemanglerPrinter &operator<<(char c) & {
+        Stream.push_back(c);
+        return *this;
+    }
+    DemanglerPrinter &operator<<(unsigned long long n) &;
+    DemanglerPrinter &operator<<(long long n) &;
+    DemanglerPrinter &operator<<(unsigned long n) & { return *this << (unsigned long long)n; }
+    DemanglerPrinter &operator<<(long n) & { return *this << (long long)n; }
+    DemanglerPrinter &operator<<(unsigned n) & { return *this << (unsigned long long)n; }
+    DemanglerPrinter &operator<<(int n) & { return *this << (long long)n; }
+
+    template<typename T> DemanglerPrinter &&operator<<(T &&x) && { return std::move(*this << std::forward<T>(x)); }
+
+    std::string &&str() && { return std::move(Stream); }
+
 private:
-  std::string Stream;
+    std::string Stream;
 };
 
 /// Is a character considered a digit by the demangling grammar?
@@ -417,9 +363,9 @@ private:
 /// Yes, this is equivalent to the standard C isdigit(3), but some platforms
 /// give isdigit suboptimal implementations.
 static inline bool isDigit(int c) {
-  return c >= '0' && c <= '9';
+    return c >= '0' && c <= '9';
 }
-  
+
 } // end namespace Demangle
 } // end namespace swift
 

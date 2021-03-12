@@ -27,8 +27,7 @@
 
 @implementation MatrixDeviceInfo
 
-+ (BOOL)isiPad
-{
++ (BOOL)isiPad {
     static BOOL s_isiPad = NO;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
@@ -38,8 +37,7 @@
     return s_isiPad;
 }
 
-+ (NSString *)SystemNameForDeviceType
-{
++ (NSString *)SystemNameForDeviceType {
     NSString *systemName = [MatrixDeviceInfo systemName];
     if ([MatrixDeviceInfo isiPad]) {
         systemName = [kIPadSystemNamePrefix stringByAppendingString:systemName];
@@ -47,8 +45,7 @@
     return systemName;
 }
 
-+ (NSString *)getDeviceType
-{
++ (NSString *)getDeviceType {
     static NSString *deviceType = @"";
     if (deviceType.length == 0) {
         NSString *systemName = [self SystemNameForDeviceType];
@@ -58,11 +55,10 @@
     return deviceType;
 }
 
-+ (NSString *)getSysInfoByName:(char *)typeSpeifier
-{
++ (NSString *)getSysInfoByName:(char *)typeSpeifier {
     size_t size;
     sysctlbyname(typeSpeifier, NULL, &size, NULL, 0);
-    char *answer = (char *) malloc(size);
+    char *answer = (char *)malloc(size);
     sysctlbyname(typeSpeifier, answer, &size, NULL, 0);
     NSString *results = [NSString stringWithCString:answer encoding:NSUTF8StringEncoding];
     if (results == nil) {
@@ -72,17 +68,15 @@
     return results;
 }
 
-+ (int)getSysInfo:(uint)typeSpecifier
-{
++ (int)getSysInfo:(uint)typeSpecifier {
     size_t size = sizeof(int);
     int results;
-    int mib[2] = {CTL_HW, (int) typeSpecifier};
+    int mib[2] = { CTL_HW, (int)typeSpecifier };
     sysctl(mib, 2, &results, &size, NULL, 0);
     return results;
 }
 
-+ (NSString *)systemName
-{
++ (NSString *)systemName {
 #if !TARGET_OS_OSX
     return [UIDevice currentDevice].systemName;
 #else
@@ -91,9 +85,7 @@
 #endif
 }
 
-
-+ (NSString *)systemVersion
-{
++ (NSString *)systemVersion {
 #if !TARGET_OS_OSX
     return [UIDevice currentDevice].systemVersion;
 #else
@@ -108,99 +100,86 @@
 #endif
 }
 
-+ (NSString *)model
-{
++ (NSString *)model {
 #if !TARGET_OS_OSX
     return [UIDevice currentDevice].model;
 #endif
     return [MatrixDeviceInfo getSysInfoByName:(char *)"hw.model"];
 }
 
-+ (NSString *)platform
-{
++ (NSString *)platform {
     return [MatrixDeviceInfo getSysInfoByName:(char *)"hw.machine"];
 }
 
-+ (int)cpuCount
-{
++ (int)cpuCount {
     return [MatrixDeviceInfo getSysInfo:HW_NCPU];
 }
 
-+ (int)cpuFrequency
-{
++ (int)cpuFrequency {
     return [MatrixDeviceInfo getSysInfo:HW_CPU_FREQ];
 }
 
-+ (int)busFrequency
-{
++ (int)busFrequency {
     return [MatrixDeviceInfo getSysInfo:HW_BUS_FREQ];
 }
 
-+ (int)totalMemory
-{
++ (int)totalMemory {
     return [MatrixDeviceInfo getSysInfo:HW_PHYSMEM];
 }
 
-+ (int)userMemory
-{
++ (int)userMemory {
     return [MatrixDeviceInfo getSysInfo:HW_USERMEM];
 }
 
-+ (int)cacheLine
-{
++ (int)cacheLine {
     return [MatrixDeviceInfo getSysInfo:HW_CACHELINE];
 }
 
-+ (int)L1ICacheSize
-{
++ (int)L1ICacheSize {
     return [MatrixDeviceInfo getSysInfo:HW_L1ICACHESIZE];
 }
 
-+ (int)L1DCacheSize
-{
++ (int)L1DCacheSize {
     return [MatrixDeviceInfo getSysInfo:HW_L1DCACHESIZE];
 }
 
-+ (int)L2CacheSize
-{
++ (int)L2CacheSize {
     return [MatrixDeviceInfo getSysInfo:HW_L2CACHESIZE];
 }
 
-+ (int)L3CacheSize
-{
++ (int)L3CacheSize {
     return [MatrixDeviceInfo getSysInfo:HW_L3CACHESIZE];
 }
 
-+ (BOOL)isBeingDebugged
-{
++ (BOOL)isBeingDebugged {
     // Returns true if the current process is being debugged (either
-	// running under the debugger or has a debugger attached post facto).
-	int                 junk;
-	int                 mib[4];
-	struct kinfo_proc   info;
-	size_t              size;
-	
-	// Initialize the flags so that, if sysctl fails for some bizarre
-	// reason, we get a predictable result.
-	
-	info.kp_proc.p_flag = 0;
-	
-	// Initialize mib, which tells sysctl the info we want, in this case
-	// we're looking for information about a specific process ID.
-	
-	mib[0] = CTL_KERN;
-	mib[1] = KERN_PROC;
-	mib[2] = KERN_PROC_PID;
-	mib[3] = getpid();
-	
-	// Call sysctl.
-	
-	size = sizeof(info);
-	junk = sysctl(mib, sizeof(mib) / sizeof(*mib), &info, &size, NULL, 0);
-	assert(junk == 0);
-	
-	// We're being debugged if the P_TRACED flag is set.
-	return ((info.kp_proc.p_flag & P_TRACED) != 0);
+    // running under the debugger or has a debugger attached post facto).
+    int junk;
+    int mib[4];
+    struct kinfo_proc info;
+    size_t size;
+
+    // Initialize the flags so that, if sysctl fails for some bizarre
+    // reason, we get a predictable result.
+
+    info.kp_proc.p_flag = 0;
+
+    // Initialize mib, which tells sysctl the info we want, in this case
+    // we're looking for information about a specific process ID.
+
+    mib[0] = CTL_KERN;
+    mib[1] = KERN_PROC;
+    mib[2] = KERN_PROC_PID;
+    mib[3] = getpid();
+
+    // Call sysctl.
+
+    size = sizeof(info);
+    junk = sysctl(mib, sizeof(mib) / sizeof(*mib), &info, &size, NULL, 0);
+    assert(junk == 0);
+
+    // We're being debugged if the P_TRACED flag is set.
+    return ((info.kp_proc.p_flag & P_TRACED) != 0);
 }
 
 @end

@@ -25,32 +25,28 @@
 #import <AppKit/AppKit.h>
 #endif
 
-class MyException: public std::exception
-{
+class MyException : public std::exception {
 public:
-    virtual const char* what() const noexcept;
+    virtual const char *what() const noexcept;
 };
 
-const char* MyException::what() const noexcept
-{
+const char *MyException::what() const noexcept {
     return "Something bad happened...";
 }
 
-class MyCPPClass
-{
+class MyCPPClass {
 public:
-    void throwAnException()
-    {
-        throw MyException();
-    }
+    void throwAnException() { throw MyException(); }
 };
 
 // ============================================================================
 #pragma mark - ForceCrashException
 // ============================================================================
 
-@interface ForceCrashException : NSException @end
-@implementation ForceCrashException @end
+@interface ForceCrashException : NSException
+@end
+@implementation ForceCrashException
+@end
 
 // ============================================================================
 #pragma mark - MatrixTester
@@ -69,40 +65,34 @@ public:
 #pragma mark - Crash
 // ============================================================================
 
-- (void)notFoundSelectorCrash
-{
+- (void)notFoundSelectorCrash {
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wundeclared-selector"
     [self performSelector:@selector(forceToCloseXxxx)];
 #pragma clang diagnostic pop
 }
 
-- (void)wrongFormatCrash
-{
+- (void)wrongFormatCrash {
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wformat"
     NSLog(@"%@", 1);
 #pragma clang diagnostic pop
 }
 
-- (void)deadSignalCrash
-{
+- (void)deadSignalCrash {
     raise(SIGBUS);
 }
 
-- (void)nsexceptionCrash
-{
+- (void)nsexceptionCrash {
     [NSException raise:@"testcrash" format:@""];
 }
 
-- (void)cppexceptionCrash
-{
+- (void)cppexceptionCrash {
     MyCPPClass instance;
     instance.throwAnException();
 }
 
-- (void)cppToNsExceptionCrash
-{
+- (void)cppToNsExceptionCrash {
     try {
         [self cppexceptionCrash];
     } catch (const std::exception &e) {
@@ -110,19 +100,17 @@ public:
     }
 }
 
-- (void)childNsexceptionCrash
-{
+- (void)childNsexceptionCrash {
     throw [ForceCrashException exceptionWithName:@"child nsexception" reason:nil userInfo:nil];
 }
 
-- (void)overflowCrash
-{
+- (void)overflowCrash {
     [self foo];
 }
 
--(void)foo
-{
-    char tmpChar[] = "onTest stackoverflowonTest stackoverflowonTest stackoverflowonTest stackoverflowonTest stackoverflowonTest stackoverflowonTest stackoverflowonTest stackoverflowonTest stackoverflow\
+- (void)foo {
+    char tmpChar[] =
+    "onTest stackoverflowonTest stackoverflowonTest stackoverflowonTest stackoverflowonTest stackoverflowonTest stackoverflowonTest stackoverflowonTest stackoverflowonTest stackoverflow\
     onTest stackoverflowonTest stackoverflowonTest stackoverflowonTest stackoverflowonTest stackoverflowonTest stackoverflowonTest stackoverflowonTest stackoverflowonTest stackoverflow\
     onTest stackoverflowonTest stackoverflowonTest stackoverflowonTest stackoverflowonTest stackoverflowonTest stackoverflowonTest stackoverflowonTest stackoverflowonTest stackoverflow\
     onTest stackoverflowonTest stackoverflowonTest stackoverflowonTest stackoverflowonTest stackoverflowonTest stackoverflowonTest stackoverflowonTest stackoverflowonTest stackoverflow\
@@ -149,8 +137,7 @@ public:
     [self fooo:tmpChar];
 }
 
--(void)fooo:(char *)tmpChar
-{
+- (void)fooo:(char *)tmpChar {
     tmpChar[0] = '1';
     [self foo];
 }
@@ -159,8 +146,7 @@ public:
 #pragma mark - Lag
 // ============================================================================
 
-- (void)generateMainThreadLagLog
-{
+- (void)generateMainThreadLagLog {
     dispatch_async(dispatch_get_main_queue(), ^{
         NSDate *lastDate = [NSDate date];
         int i = 1;
@@ -174,8 +160,7 @@ public:
     });
 }
 
-- (void)generateMainThreadBlockToBeKilledLog
-{
+- (void)generateMainThreadBlockToBeKilledLog {
     dispatch_async(dispatch_get_main_queue(), ^{
         int i = 1;
         while (1) {
@@ -190,33 +175,28 @@ public:
     });
 }
 
-- (void)testSpecialSceneOfLag
-{
+- (void)testSpecialSceneOfLag {
     // a magical test code
     _runloopTimer = [NSTimer scheduledTimerWithTimeInterval:2 target:self selector:@selector(runloop1Selector) userInfo:nil repeats:YES];
     _runloop2Timer = [NSTimer scheduledTimerWithTimeInterval:2 target:self selector:@selector(runloop2Selector) userInfo:nil repeats:YES];
 }
 
-- (void)runloop1Selector
-{
+- (void)runloop1Selector {
     NSLog(@"I'm timer");
     dispatch_async(dispatch_get_main_queue(), ^{
         NSLog(@"I want to sleep");
         sleep(1);
     });
-
 }
 
-- (void)runloop2Selector
-{
+- (void)runloop2Selector {
     NSLog(@"I'm timer2, sleep1");
     sleep(1);
 }
 
 static bool g_testCPUOrNot = false;
 
-- (void)costCPUALot
-{
+- (void)costCPUALot {
     if (g_testCPUOrNot) {
         g_testCPUOrNot = false;
         return;

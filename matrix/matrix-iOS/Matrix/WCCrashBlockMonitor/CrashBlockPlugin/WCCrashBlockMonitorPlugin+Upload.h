@@ -62,7 +62,6 @@
  * @param dumpType given type
  * @param nsDate given date
  */
-- (void)reportOneTypeLag:(EDumpType)dumpType
-                  onDate:(NSString *)nsDate;
+- (void)reportOneTypeLag:(EDumpType)dumpType onDate:(NSString *)nsDate;
 
 @end

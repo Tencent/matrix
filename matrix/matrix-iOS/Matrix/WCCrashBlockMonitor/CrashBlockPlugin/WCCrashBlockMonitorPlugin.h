@@ -83,8 +83,6 @@ typedef NS_ENUM(NSUInteger, EMCrashBlockReportType) {
 // ============================================================================
 
 /// generate a lag file immediately.
-- (void)generateLiveReportWithDumpType:(EDumpType)dumpType
-                            withReason:(NSString *)reason
-                       selfDefinedPath:(BOOL)bSelfDefined;
+- (void)generateLiveReportWithDumpType:(EDumpType)dumpType withReason:(NSString *)reason selfDefinedPath:(BOOL)bSelfDefined;
 
 @end

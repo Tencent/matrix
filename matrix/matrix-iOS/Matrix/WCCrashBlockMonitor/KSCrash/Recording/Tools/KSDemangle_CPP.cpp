@@ -24,14 +24,12 @@
 // THE SOFTWARE.
 //
 
-
 #include <cxxabi.h>
 #include "KSDemangle_CPP.h"
 #include "KSLogger.h"
 
-extern "C" char* ksdm_demangleCPP(const char* mangledSymbol)
-{
+extern "C" char *ksdm_demangleCPP(const char *mangledSymbol) {
     int status = 0;
-    char* demangled = __cxxabiv1::__cxa_demangle(mangledSymbol, NULL, NULL, &status);
+    char *demangled = __cxxabiv1::__cxa_demangle(mangledSymbol, NULL, NULL, &status);
     return status == 0 ? demangled : NULL;
 }

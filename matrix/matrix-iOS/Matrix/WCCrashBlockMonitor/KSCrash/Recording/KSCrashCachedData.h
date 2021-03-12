@@ -22,10 +22,8 @@
 // THE SOFTWARE.
 //
 
-
 /* Maintains a cache of difficult-to-retrieve data.
  */
-
 
 #include "KSThread.h"
 
@@ -36,8 +34,8 @@ void ksccd_unfreeze(void);
 
 void ksccd_setSearchQueueNames(bool searchQueueNames);
 
-KSThread* ksccd_getAllThreads(int* threadCount);
+KSThread *ksccd_getAllThreads(int *threadCount);
 
-const char* ksccd_getThreadName(KSThread thread);
+const char *ksccd_getThreadName(KSThread thread);
 
-const char* ksccd_getQueueName(KSThread thread);
+const char *ksccd_getQueueName(KSThread thread);

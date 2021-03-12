@@ -31,9 +31,8 @@
 extern "C" {
 #endif
 
-
 #include <mach/mach_types.h>
-    
+
 /** Fill in state information about a thread.
  *
  * @param thread The thread to get information about.
@@ -46,11 +45,8 @@ extern "C" {
  *
  * @return true if state fetching was successful.
  */
-bool kscpu_i_fillState(thread_t thread,
-                       thread_state_t state,
-                       thread_state_flavor_t flavor,
-                       mach_msg_type_number_t stateCount);
-   
+bool kscpu_i_fillState(thread_t thread, thread_state_t state, thread_state_flavor_t flavor, mach_msg_type_number_t stateCount);
+
 #ifdef __cplusplus
 }
 #endif

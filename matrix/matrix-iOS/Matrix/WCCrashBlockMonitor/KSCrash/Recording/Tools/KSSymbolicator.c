@@ -22,21 +22,18 @@
 // THE SOFTWARE.
 //
 
-
 #include "KSSymbolicator.h"
 
-bool kssymbolicator_symbolicate(KSStackCursor *cursor)
-{
+bool kssymbolicator_symbolicate(KSStackCursor *cursor) {
     Dl_info symbolsBuffer;
-    if(ksdl_dladdr(CALL_INSTRUCTION_FROM_RETURN_ADDRESS(cursor->stackEntry.address), &symbolsBuffer))
-    {
+    if (ksdl_dladdr(CALL_INSTRUCTION_FROM_RETURN_ADDRESS(cursor->stackEntry.address), &symbolsBuffer)) {
         cursor->stackEntry.imageAddress = (uintptr_t)symbolsBuffer.dli_fbase;
         cursor->stackEntry.imageName = symbolsBuffer.dli_fname;
         cursor->stackEntry.symbolAddress = (uintptr_t)symbolsBuffer.dli_saddr;
         cursor->stackEntry.symbolName = symbolsBuffer.dli_sname;
         return true;
     }
-    
+
     cursor->stackEntry.imageAddress = 0;
     cursor->stackEntry.imageName = 0;
     cursor->stackEntry.symbolAddress = 0;
@@ -44,11 +41,9 @@ bool kssymbolicator_symbolicate(KSStackCursor *cursor)
     return false;
 }
 
-uintptr_t kssymbolicate_symboladdress(uintptr_t stackAddress)
-{
+uintptr_t kssymbolicate_symboladdress(uintptr_t stackAddress) {
     Dl_info symbolsBuffer;
-    if(ksdl_dladdr(CALL_INSTRUCTION_FROM_RETURN_ADDRESS(stackAddress), &symbolsBuffer))
-    {
+    if (ksdl_dladdr(CALL_INSTRUCTION_FROM_RETURN_ADDRESS(stackAddress), &symbolsBuffer)) {
         return (uintptr_t)symbolsBuffer.dli_saddr;
     }
     return 0;

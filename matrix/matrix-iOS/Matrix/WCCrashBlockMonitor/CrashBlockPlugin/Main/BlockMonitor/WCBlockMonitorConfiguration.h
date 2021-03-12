@@ -71,4 +71,7 @@ const static int g_defaultFrameDropCount = 8;
 /// enable printing the memory use
 @property (nonatomic, assign) BOOL bPrintMemomryUse;
 
+/// enable local symbolicate, default YES (! currently only work in powercomsume stack)
+@property (nonatomic, assign) BOOL bEnableLocalSymbolicate;
+
 @end
