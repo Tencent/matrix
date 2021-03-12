@@ -24,6 +24,7 @@ import android.support.test.runner.AndroidJUnit4;
 import com.tencent.matrix.Matrix;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorConfig;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
+import com.tencent.matrix.batterycanary.utils.TimeBreaker;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -81,8 +82,8 @@ public class MonitorAppStatTest {
         Thread.sleep(100);
         AppStatMonitorFeature.AppStatSnapshot snapshot = feature.currentAppStatSnapshot();
         Assert.assertNotNull(snapshot);
-        Assert.assertEquals(2, feature.mStampList.size());
-        Assert.assertEquals(2, Integer.valueOf(feature.mStampList.get(0).key).intValue());
+        Assert.assertEquals(1, feature.mStampList.size());
+        Assert.assertEquals(1, Integer.valueOf(feature.mStampList.get(0).key).intValue());
         Assert.assertTrue(snapshot.uptime.get() >= 100L);
         Assert.assertTrue(snapshot.fgRatio.get() > 0L);
         Assert.assertEquals(0L, (long) snapshot.bgRatio.get());
@@ -99,8 +100,8 @@ public class MonitorAppStatTest {
         AppStatMonitorFeature.AppStatSnapshot snapshot = feature.currentAppStatSnapshot();
         Assert.assertNotNull(snapshot);
 
-        Assert.assertEquals(2, feature.mStampList.size());
-        Assert.assertEquals(2, Integer.valueOf(feature.mStampList.get(0).key).intValue());
+        Assert.assertEquals(1, feature.mStampList.size());
+        Assert.assertEquals(1, Integer.valueOf(feature.mStampList.get(0).key).intValue());
         Assert.assertTrue(snapshot.uptime.get() >= 100L);
         Assert.assertTrue(snapshot.fgRatio.get() > 99);
         Assert.assertEquals(0L, (long) snapshot.bgRatio.get());
@@ -110,28 +111,28 @@ public class MonitorAppStatTest {
         Thread.sleep(100);
         snapshot = feature.currentAppStatSnapshot();
         Assert.assertNotNull(snapshot);
-        Assert.assertEquals(4, feature.mStampList.size());
+        Assert.assertEquals(2, feature.mStampList.size());
         Assert.assertEquals(2, Integer.valueOf(feature.mStampList.get(0).key).intValue());
         Assert.assertTrue(snapshot.uptime.get() >= 200L);
-        Assert.assertTrue(snapshot.fgRatio.get() > 0L && snapshot.fgRatio.get() <= 50);
-        Assert.assertTrue(snapshot.bgRatio.get() > 0L && snapshot.fgRatio.get() <= 50);
+        Assert.assertEquals(50, snapshot.fgRatio.get(), 5);
+        Assert.assertEquals(50, snapshot.bgRatio.get(), 5);
         Assert.assertEquals(0L, (long) snapshot.fgSrvRatio.get());
 
-        AppStatMonitorFeature.AppStatStamp stamp = new AppStatMonitorFeature.AppStatStamp(3);
+        TimeBreaker.Stamp stamp = new TimeBreaker.Stamp("3");
         feature.mStampList.add(0, stamp);
-        Assert.assertEquals(5, feature.mStampList.size());
+        Assert.assertEquals(3, feature.mStampList.size());
         Assert.assertEquals(3, Integer.valueOf(feature.mStampList.get(0).key).intValue());
 
         Thread.sleep(100);
 
         snapshot = feature.currentAppStatSnapshot();
         Assert.assertNotNull(snapshot);
-        Assert.assertEquals(6, feature.mStampList.size());
-        Assert.assertEquals(2, Integer.valueOf(feature.mStampList.get(0).key).intValue());
+        Assert.assertEquals(3, feature.mStampList.size());
+        Assert.assertEquals(3, Integer.valueOf(feature.mStampList.get(0).key).intValue());
         Assert.assertTrue(snapshot.uptime.get() >= 300L);
-        Assert.assertTrue(snapshot.fgRatio.get() > 0L && snapshot.fgRatio.get() <= 35);
-        Assert.assertTrue(snapshot.bgRatio.get() > 0L && snapshot.fgRatio.get() <= 35);
-        Assert.assertTrue(snapshot.fgSrvRatio.get() > 0L && snapshot.fgSrvRatio.get() <= 35);
+        Assert.assertEquals(33, snapshot.fgRatio.get(), 5);
+        Assert.assertEquals(33, snapshot.bgRatio.get(), 5);
+        Assert.assertEquals(33, snapshot.fgSrvRatio.get(), 5);
     }
 
     @Test

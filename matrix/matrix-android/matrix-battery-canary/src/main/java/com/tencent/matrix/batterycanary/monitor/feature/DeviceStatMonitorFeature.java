@@ -2,6 +2,7 @@ package com.tencent.matrix.batterycanary.monitor.feature;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
+import android.content.Intent;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.annotation.VisibleForTesting;
@@ -9,7 +10,6 @@ import android.support.v4.util.Consumer;
 
 import com.tencent.matrix.batterycanary.BatteryEventDelegate;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
-import com.tencent.matrix.batterycanary.monitor.feature.AppStatMonitorFeature.AppStatStamp;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Differ.DigitDiffer;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Differ.ListDiffer;
 import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
@@ -61,7 +61,7 @@ public final class DeviceStatMonitorFeature extends AbsMonitorFeature {
     public void onTurnOn() {
         super.onTurnOn();
         int deviceStat = BatteryCanaryUtil.getDeviceStat(mCore.getContext());
-        @SuppressLint("VisibleForTests") AppStatStamp firstStamp = new AppStatStamp(deviceStat);
+        @SuppressLint("VisibleForTests") TimeBreaker.Stamp firstStamp = new TimeBreaker.Stamp(String.valueOf(deviceStat));
         synchronized (TAG) {
             mStampList = new ArrayList<>();
             mStampList.add(0, firstStamp);
@@ -73,6 +73,7 @@ public final class DeviceStatMonitorFeature extends AbsMonitorFeature {
             public void accept(Integer integer) {
                 synchronized (TAG) {
                     if (mStampList != Collections.EMPTY_LIST) {
+                        MatrixLog.i(BatteryEventDelegate.TAG, "onStat >> " + BatteryCanaryUtil.convertDevStat(integer));
                         mStampList.add(0, new TimeBreaker.Stamp(String.valueOf(integer)));
                         checkOverHeat();
                     }
@@ -81,7 +82,7 @@ public final class DeviceStatMonitorFeature extends AbsMonitorFeature {
         });
 
         if (!mDevStatListener.isListening()) {
-            mDevStatListener.startListen();
+            mDevStatListener.startListen(mCore.getContext());
         }
     }
 
@@ -94,11 +95,6 @@ public final class DeviceStatMonitorFeature extends AbsMonitorFeature {
     @Override
     public void onForeground(boolean isForeground) {
         super.onForeground(isForeground);
-        if (!isForeground) {
-            if (!mDevStatListener.isListening()) {
-                mDevStatListener.startListen();
-            }
-        }
     }
 
     private void checkOverHeat() {
@@ -134,14 +130,21 @@ public final class DeviceStatMonitorFeature extends AbsMonitorFeature {
 
     public DevStatSnapshot currentDevStatSnapshot(long windowMillis) {
         try {
-            int devStat = BatteryCanaryUtil.getDeviceStat(mCore.getContext());
-            @SuppressLint("VisibleForTests") TimeBreaker.Stamp lastStamp = new TimeBreaker.Stamp(String.valueOf(devStat));
-            synchronized (TAG) {
-                if (mStampList != Collections.EMPTY_LIST) {
-                    mStampList.add(0, lastStamp);
+            TimeBreaker.TimePortions timePortions = TimeBreaker.configurePortions(mStampList, windowMillis, 10L, new TimeBreaker.Stamp.Stamper() {
+                @Override
+                public TimeBreaker.Stamp stamp(String key) {
+                    int devStat = BatteryCanaryUtil.getDeviceStat(mCore.getContext());
+                    return  new TimeBreaker.Stamp(String.valueOf(devStat));
                 }
-            }
-            return configureSnapshot(mStampList, windowMillis);
+            });
+            DevStatSnapshot snapshot = new DevStatSnapshot();
+            snapshot.setValid(timePortions.isValid());
+            snapshot.uptime = Snapshot.Entry.DigitEntry.of(timePortions.totalUptime);
+            snapshot.chargingRatio = Snapshot.Entry.DigitEntry.of((long) timePortions.getRatio("1"));
+            snapshot.unChargingRatio = Snapshot.Entry.DigitEntry.of((long) timePortions.getRatio("2"));
+            snapshot.screenOff = Snapshot.Entry.DigitEntry.of((long) timePortions.getRatio("3"));
+            snapshot.lowEnergyRatio = Snapshot.Entry.DigitEntry.of((long) timePortions.getRatio("4"));
+            return snapshot;
         } catch (Throwable e) {
             MatrixLog.w(TAG, "configureSnapshot fail: " + e.getMessage());
             DevStatSnapshot snapshot = new DevStatSnapshot();
@@ -156,18 +159,6 @@ public final class DeviceStatMonitorFeature extends AbsMonitorFeature {
         return new ArrayList<>(mStampList);
     }
 
-    @VisibleForTesting
-    static DevStatSnapshot configureSnapshot(List<TimeBreaker.Stamp> stampList, long windowMillis) {
-        TimeBreaker.TimePortions timePortions = TimeBreaker.configurePortions(stampList, windowMillis);
-        DevStatSnapshot snapshot = new DevStatSnapshot();
-        snapshot.setValid(timePortions.isValid());
-        snapshot.uptime = Snapshot.Entry.DigitEntry.of(timePortions.totalUptime);
-        snapshot.chargingRatio = Snapshot.Entry.DigitEntry.of((long) timePortions.getRatio("1"));
-        snapshot.unChargingRatio = Snapshot.Entry.DigitEntry.of((long) timePortions.getRatio("2"));
-        snapshot.screenOff = Snapshot.Entry.DigitEntry.of((long) timePortions.getRatio("3"));
-        snapshot.lowEnergyRatio = Snapshot.Entry.DigitEntry.of((long) timePortions.getRatio("4"));
-        return snapshot;
-    }
 
     static final class DevStatListener {
         Consumer<Integer> mListener = new Consumer<Integer>() {
@@ -177,8 +168,7 @@ public final class DeviceStatMonitorFeature extends AbsMonitorFeature {
             }
         };
 
-        boolean mIsCharging = false;
-        boolean mIsScreenOn = false;
+        boolean mIsCharging = true;
         boolean mIsListening = false;
         @Nullable private BatteryEventDelegate.Listener mBatterStatListener;
 
@@ -186,50 +176,54 @@ public final class DeviceStatMonitorFeature extends AbsMonitorFeature {
             mListener = listener;
         }
 
-        protected void updateStatus() {
-            int devStat = mIsCharging ? 1 : mIsScreenOn ? 2 : 3;
-            mListener.accept(devStat);
-        }
-
         public boolean isListening() {
             return mIsListening;
         }
 
-        public boolean startListen() {
+        public boolean startListen(Context context) {
             if (!mIsListening) {
-                try {
-                    if (!BatteryEventDelegate.isInit()) {
-                        throw new IllegalStateException("BatteryEventDelegate is not yet init!");
-                    }
-                    mBatterStatListener = new BatteryEventDelegate.Listener() {
-                        @Override
-                        public boolean onStateChanged(BatteryEventDelegate.BatteryState batteryState) {
-                            if (batteryState.isChargingChanged()) {
-                                mIsCharging = batteryState.isCharging();
-                                updateStatus();
-                            } else if (batteryState.isInteractivityChanged()) {
-                                mIsScreenOn = batteryState.isScreenOn();
-                                updateStatus();
-                            }
-                            return false;
-                        }
-
-                        @Override
-                        public boolean onAppLowEnergy(BatteryEventDelegate.BatteryState batteryState, long backgroundMillis) {
-                            return false;
-                        }
-                    };
-                    BatteryEventDelegate.getInstance().addListener(mBatterStatListener);
-                    mIsListening = true;
-                    return true;
-                } catch (Throwable e) {
-                    MatrixLog.printErrStackTrace(TAG, e, "#startListen failed");
-                    mIsListening = false;
-                    return false;
+                if (!BatteryEventDelegate.isInit()) {
+                    throw new IllegalStateException("BatteryEventDelegate is not yet init!");
                 }
-            } else {
-                return true;
+
+                mBatterStatListener = new BatteryEventDelegate.Listener() {
+                    @Override
+                    public boolean onStateChanged(String event) {
+                        switch (event) {
+                            case Intent.ACTION_POWER_CONNECTED:
+                                mIsCharging = true;
+                                mListener.accept(1);
+                                break;
+                            case Intent.ACTION_POWER_DISCONNECTED:
+                                mIsCharging = false;
+                                mListener.accept(2);
+                                break;
+                            case Intent.ACTION_SCREEN_ON:
+                                if (!mIsCharging) {
+                                    mListener.accept(2);
+                                }
+                            case Intent.ACTION_SCREEN_OFF:
+                                if (!mIsCharging) {
+                                    mListener.accept(3);
+                                }
+                                break;
+                            default:
+                                break;
+                        }
+                        return false;
+                    }
+
+                    @Override
+                    public boolean onAppLowEnergy(BatteryEventDelegate.BatteryState batteryState, long backgroundMillis) {
+                        return false;
+                    }
+                };
+
+                mIsCharging = BatteryCanaryUtil.isDeviceCharging(context);
+                BatteryEventDelegate.getInstance().addListener(mBatterStatListener);
+                mIsListening = true;
             }
+            return true;
         }
 
         public void stopListen() {

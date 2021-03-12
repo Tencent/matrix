@@ -31,6 +31,8 @@ import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 
+import static com.tencent.matrix.batterycanary.monitor.BatteryMonitorConfig.DEF_STAMP_OVERHEAT;
+
 @SuppressWarnings("NotNullFieldNotInitialized")
 public abstract class AbsTaskMonitorFeature extends AbsMonitorFeature {
     private static final String TAG = "Matrix.battery.AbsTaskMonitorFeature";
@@ -48,37 +50,16 @@ public abstract class AbsTaskMonitorFeature extends AbsMonitorFeature {
     @Nullable protected AppStatMonitorFeature mAppStatFeat;
     @Nullable protected DeviceStatMonitorFeature mDevStatFeat;
 
-    protected int mOverHeatCount = 1024;
+    protected int mOverHeatCount = DEF_STAMP_OVERHEAT;
     protected int mConcurrentLimit = 50;
 
     @NonNull protected Runnable coolingTask = new Runnable() {
         @SuppressLint("RestrictedApi")
         @Override
         public void run() {
-            // task stamp list overheat
-            synchronized (mTaskStampList) {
-                for(int i = 0; i < mTaskStampList.size(); i++) {
-                    List<TimeBreaker.Stamp> stampList = mTaskStampList.valueAt(i);
-                    if (stampList != null && stampList.size() > mOverHeatCount) {
-                        TimeBreaker.gcList(stampList);
-                    }
-                }
-            }
-
-            // task jiffies list overheat
-            if (mDeltaList.size() > mOverHeatCount) {
-                MatrixLog.w(TAG, "cooling task jiffies list, before = " + mDeltaList.size());
-                List<Delta<TaskJiffiesSnapshot>> deltas = currentJiffies();
-                clearFinishedJiffies();
-                MatrixLog.w(TAG, "cooling task jiffies list, after = " + mDeltaList.size());
-
-                // report
-                MatrixLog.w(TAG, "report task jiffies list overheat");
-                onTraceOverHeat(deltas);
-            }
+            onCoolingDown();
         }
     };
-
 
     @Override
     protected String getTag() {
@@ -212,14 +193,14 @@ public abstract class AbsTaskMonitorFeature extends AbsMonitorFeature {
         }
 
         // Trace task concurrent count +
-        onTaskConcurrentInc(key, hashcode);
+        // onTaskConcurrentInc(key, hashcode);
     }
 
     @WorkerThread
     protected void onTaskFinished(final String key, final int hashcode) {
         final TaskJiffiesSnapshot bgn =  mTaskJiffiesTrace.remove(hashcode);
         // Trace task concurrent count -
-        onTaskConcurrentDec(hashcode);
+        // onTaskConcurrentDec(hashcode);
 
         if (Looper.myLooper() != Looper.getMainLooper() && bgn != null) {
             TaskJiffiesSnapshot end = createSnapshot(key, Process.myTid());
@@ -236,7 +217,7 @@ public abstract class AbsTaskMonitorFeature extends AbsMonitorFeature {
     protected void onTaskRemoved(final int hashcode) {
         mTaskJiffiesTrace.remove(hashcode);
         // Trace task concurrent count -
-        onTaskConcurrentDec(hashcode);
+        // onTaskConcurrentDec(hashcode);
     }
 
     protected void onTaskConcurrentInc(final String key, final int hashcode) {
@@ -386,6 +367,30 @@ public abstract class AbsTaskMonitorFeature extends AbsMonitorFeature {
     protected void checkOverHeat() {
         mCore.getHandler().removeCallbacks(coolingTask);
         mCore.getHandler().postDelayed(coolingTask, 1000L);
+    }
+
+    protected void onCoolingDown() {
+        // task stamp list overheat
+        synchronized (mTaskStampList) {
+            for(int i = 0; i < mTaskStampList.size(); i++) {
+                List<TimeBreaker.Stamp> stampList = mTaskStampList.valueAt(i);
+                if (stampList != null && stampList.size() > mOverHeatCount) {
+                    TimeBreaker.gcList(stampList);
+                }
+            }
+        }
+
+        // task jiffies list overheat
+        if (mDeltaList.size() > mOverHeatCount) {
+            MatrixLog.w(TAG, "cooling task jiffies list, before = " + mDeltaList.size());
+            List<Delta<TaskJiffiesSnapshot>> deltas = currentJiffies();
+            clearFinishedJiffies();
+            MatrixLog.w(TAG, "cooling task jiffies list, after = " + mDeltaList.size());
+
+            // report
+            MatrixLog.w(TAG, "report task jiffies list overheat");
+            onTraceOverHeat(deltas);
+        }
     }
 
     protected void onTraceOverHeat(List<Delta<TaskJiffiesSnapshot>> deltas) {}

@@ -37,6 +37,7 @@ import android.support.v4.content.ContextCompat;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -62,6 +63,7 @@ public class BleManagerHookerTest {
         PowerManagerServiceHooker.release();
     }
 
+    @Ignore
     @Test
     public void testDiscovery() {
         BluetoothManager bluetoothManager = (BluetoothManager) mContext.getSystemService(Context.BLUETOOTH_SERVICE);
@@ -70,6 +72,7 @@ public class BleManagerHookerTest {
         Assert.assertEquals(ContextCompat.checkSelfPermission(mContext, "android.permission.ACCESS_FINE_LOCATION") == 0, discovery);
     }
 
+    @Ignore
     @Test
     public void testScanning() throws Exception {
         final AtomicInteger discInc = new AtomicInteger();
@@ -289,6 +292,7 @@ public class BleManagerHookerTest {
         hooker.doUnHook();
     }
 
+    @Ignore
     @Test
     public void testBleHooker() throws InterruptedException {
         final AtomicInteger discInc = new AtomicInteger();

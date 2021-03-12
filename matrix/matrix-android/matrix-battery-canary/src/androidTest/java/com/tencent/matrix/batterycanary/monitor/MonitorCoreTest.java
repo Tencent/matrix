@@ -24,6 +24,7 @@ import android.support.test.InstrumentationRegistry;
 import android.support.test.runner.AndroidJUnit4;
 
 import com.tencent.matrix.Matrix;
+import com.tencent.matrix.batterycanary.BatteryEventDelegate;
 import com.tencent.matrix.batterycanary.monitor.feature.AbsTaskMonitorFeature.TaskJiffiesSnapshot;
 import com.tencent.matrix.batterycanary.monitor.feature.AlarmMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.DeviceStatMonitorFeature;
@@ -76,6 +77,10 @@ public class MonitorCoreTest {
                 super.onWakeLockTimeout(warningCount, record);
             }
         };
+
+        if (!BatteryEventDelegate.isInit()) {
+            BatteryEventDelegate.init((Application) mContext.getApplicationContext());
+        }
     }
 
     @After

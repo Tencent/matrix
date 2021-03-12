@@ -12,12 +12,16 @@ import android.os.SystemClock;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.annotation.RestrictTo;
+import android.support.annotation.StringDef;
 import android.support.annotation.UiThread;
 import android.support.annotation.VisibleForTesting;
 
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
 import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
+import com.tencent.matrix.util.MatrixLog;
 
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -27,7 +31,7 @@ import java.util.List;
  * @since 2021/1/11
  */
 public final class BatteryEventDelegate {
-    static final String TAG = "Matrix.battery.EventDelegate";
+    public static final String TAG = "Matrix.battery.LifeCycle";
 
     @SuppressLint("StaticFieldLeak")
     static volatile BatteryEventDelegate sInstance;
@@ -182,9 +186,10 @@ public final class BatteryEventDelegate {
 
     @VisibleForTesting
     void dispatchSateChangedEvent(Intent intent) {
+        MatrixLog.i(TAG, "onSateChanged >> " + intent.getAction());
         synchronized (mListenerList) {
             for (Listener item : mListenerList) {
-                if (item.onStateChanged(currentState().attach(intent))) {
+                if (item.onStateChanged(intent.getAction())) {
                     removeListener(item);
                 }
             }
@@ -239,7 +244,6 @@ public final class BatteryEventDelegate {
 
     public static final class BatteryState {
         @Nullable BatteryMonitorCore mCore;
-        @Nullable Intent mActionIntent;
         final Context mContext;
 
         public BatteryState(Context context) {
@@ -253,36 +257,8 @@ public final class BatteryEventDelegate {
             return this;
         }
 
-        public BatteryState attach(Intent actionIntent) {
-            if (actionIntent != null) {
-                mActionIntent = actionIntent;
-            }
-            return this;
-        }
-
-        @Nullable
-        public Intent getActionIntent() {
-            return mActionIntent;
-        }
-
-        public boolean isChargingChanged() {
-            if (mActionIntent != null) {
-                String action = mActionIntent.getAction();
-                return Intent.ACTION_POWER_CONNECTED.equals(action) || Intent.ACTION_POWER_DISCONNECTED.equals(action);
-            }
-            return false;
-        }
-
-        public boolean isInteractivityChanged() {
-            if (mActionIntent != null) {
-                String action = mActionIntent.getAction();
-                return Intent.ACTION_SCREEN_ON.equals(action) || Intent.ACTION_SCREEN_OFF.equals(action);
-            }
-            return false;
-        }
-
-        public boolean isOnBackground() {
-            return mCore != null && !mCore.isForeground();
+        public boolean isForeground() {
+            return mCore == null || mCore.isForeground();
         }
 
         public boolean isCharging() {
@@ -298,18 +274,27 @@ public final class BatteryEventDelegate {
         }
 
         public long getBackgroundTimeMillis() {
-            if (!isOnBackground()) return 0L;
+            if (isForeground()) return 0L;
             if (sBackgroundBgnMillis <= 0L) return 0L;
             return SystemClock.uptimeMillis() - sBackgroundBgnMillis;
         }
     }
 
     public interface Listener {
+        @StringDef(value = {
+                Intent.ACTION_SCREEN_ON,
+                Intent.ACTION_SCREEN_OFF,
+                Intent.ACTION_POWER_CONNECTED,
+                Intent.ACTION_POWER_DISCONNECTED
+        })
+        @Retention(RetentionPolicy.SOURCE)
+        @interface BatteryEventDef {}
+
         /**
          * @return return true if your listening is done, thus we remove your listener
          */
         @UiThread
-        boolean onStateChanged(BatteryState batteryState);
+        boolean onStateChanged(@BatteryEventDef String event);
 
         /**
          * @return return true if your listening is done, thus we remove your listener

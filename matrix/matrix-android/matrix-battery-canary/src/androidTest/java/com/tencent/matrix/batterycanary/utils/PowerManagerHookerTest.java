@@ -32,6 +32,7 @@ import com.tencent.matrix.util.ReflectUtils;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -56,6 +57,7 @@ public class PowerManagerHookerTest {
         PowerManagerServiceHooker.release();
     }
 
+    @Ignore
     @Test
     public void testAcquireWakeup() throws Exception {
         final AtomicBoolean hasAcquired = new AtomicBoolean();
@@ -105,6 +107,7 @@ public class PowerManagerHookerTest {
         Assert.assertTrue(hasRelease.get());
     }
 
+    @Ignore
     @Test
     public void testAcquireWakeupTimeout() throws Exception {
         final AtomicBoolean hasAcquired = new AtomicBoolean();
