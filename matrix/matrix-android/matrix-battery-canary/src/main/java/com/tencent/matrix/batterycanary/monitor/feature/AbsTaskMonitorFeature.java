@@ -84,13 +84,9 @@ public abstract class AbsTaskMonitorFeature extends AbsMonitorFeature {
     public void onTurnOff() {
         super.onTurnOff();
         mTaskJiffiesTrace.clear();
-        mTaskConcurrentTrace.clear();
-        synchronized (mDeltaList) {
-            mDeltaList.clear();
-        }
-        synchronized (mTaskStampList) {
-            mTaskStampList.clear();
-        }
+        synchronized (mTaskConcurrentTrace) { mTaskConcurrentTrace.clear(); }
+        synchronized (mDeltaList) { mDeltaList.clear(); }
+        synchronized (mTaskStampList) { mTaskStampList.clear(); }
     }
 
     public List<Delta<TaskJiffiesSnapshot>> currentJiffies() {
@@ -224,13 +220,16 @@ public abstract class AbsTaskMonitorFeature extends AbsMonitorFeature {
         mCore.getHandler().post(new Runnable() {
             @Override
             public void run() {
-                Pair<? extends List<Integer>, Long> workingTasks = mTaskConcurrentTrace.get(key);
-                if (workingTasks == null) {
-                    workingTasks = new Pair<>(new LinkedList<Integer>(), SystemClock.uptimeMillis());
+                Pair<? extends List<Integer>, Long> workingTasks;
+                synchronized (mTaskConcurrentTrace) {
+                    workingTasks = mTaskConcurrentTrace.get(key);
+                    if (workingTasks == null) {
+                        workingTasks = new Pair<>(new LinkedList<Integer>(), SystemClock.uptimeMillis());
+                    }
+                    //noinspection ConstantConditions
+                    workingTasks.first.add(hashcode);
+                    mTaskConcurrentTrace.put(key, workingTasks);
                 }
-                //noinspection ConstantConditions
-                workingTasks.first.add(hashcode);
-                mTaskConcurrentTrace.put(key, workingTasks);
 
                 if (workingTasks.first.size() > mConcurrentLimit) {
                     MatrixLog.w(TAG, "reach task concurrent limit, count = " + workingTasks.first.size()+ ", key = " + key);
@@ -248,22 +247,24 @@ public abstract class AbsTaskMonitorFeature extends AbsMonitorFeature {
             @SuppressWarnings("ConstantConditions")
             @Override
             public void run() {
-                boolean found = false;
-                for (Iterator<Map.Entry<String, Pair<? extends List<Integer>, Long>>> entryIterator = mTaskConcurrentTrace.entrySet().iterator(); entryIterator.hasNext(); ) {
-                    Map.Entry<String, Pair<? extends List<Integer>, Long>> entry = entryIterator.next();
-                    for (Iterator<Integer> iterator = entry.getValue().first.iterator(); iterator.hasNext(); ) {
-                        Integer item = iterator.next();
-                        if (item == hashcode) {
-                            iterator.remove();
-                            found = true;
+                synchronized (mTaskConcurrentTrace) {
+                    boolean found = false;
+                    for (Iterator<Map.Entry<String, Pair<? extends List<Integer>, Long>>> entryIterator = mTaskConcurrentTrace.entrySet().iterator(); entryIterator.hasNext(); ) {
+                        Map.Entry<String, Pair<? extends List<Integer>, Long>> entry = entryIterator.next();
+                        for (Iterator<Integer> iterator = entry.getValue().first.iterator(); iterator.hasNext(); ) {
+                            Integer item = iterator.next();
+                            if (item == hashcode) {
+                                iterator.remove();
+                                found = true;
+                                break;
+                            }
+                        }
+                        if (entry.getValue().first.isEmpty()) {
+                            entryIterator.remove();
+                        }
+                        if (found) {
                             break;
                         }
-                    }
-                    if (entry.getValue().first.isEmpty()) {
-                        entryIterator.remove();
-                    }
-                    if (found) {
-                        break;
                     }
                 }
             }
