@@ -207,6 +207,7 @@ static inline size_t collect_metas(std::map<void *, caller_meta_t> &heap_caller_
 }
 
 static inline void dump_callers(FILE *log_file,
+                                cJSON *json_size_arr,
 //                                const std::multimap<void *, ptr_meta_t> &ptr_metas,
                                 std::map<void *, caller_meta_t> &caller_metas) {
 
@@ -255,14 +256,20 @@ static inline void dump_callers(FILE *log_file,
                    });
 
     size_t caller_total_size = 0;
-    for (auto i = result_sort_by_size.rbegin();
-         i != result_sort_by_size.rend(); ++i) {
+
+    for (auto i = result_sort_by_size.rbegin(); i != result_sort_by_size.rend(); ++i) {
+        auto &so_name = i->second;
+        auto &so_size = i->first;
         LOGD(TAG, "so = %s, caller alloc size = %zu", i->second.c_str(), i->first);
-        flogger(log_file, "caller alloc size = %10zu b, so = %s\n", i->first, i->second.c_str());
+        cJSON *so_size_obj = cJSON_CreateObject();
+        cJSON_AddStringToObject(so_size_obj, "so", so_name.c_str());
+        cJSON_AddStringToObject(so_size_obj, "size", std::to_string(so_size).c_str());
+        cJSON_AddItemToArray(json_size_arr, so_size_obj);
+        flogger(log_file, "caller alloc size = %10zu b, so = %s\n", so_size, so_name.c_str());
 
-        caller_total_size += i->first;
+        caller_total_size += so_size;
 
-        auto count_of_size = same_size_count_of_so[i->second];
+        auto count_of_size = same_size_count_of_so[so_name];
         std::multimap<size_t, std::pair<size_t, size_t>> result_sort_by_mul;
         std::transform(count_of_size.begin(),
                        count_of_size.end(),
@@ -275,7 +282,7 @@ static inline void dump_callers(FILE *log_file,
 
         int lines = 20; // fixme hard coding
         LOGD(TAG, "top %d (size * count):", lines);
-        flogger(log_file, "top %d (size * count):\n", lines);
+        flogger(log_file, "top %d (size * count):\n", lines); // fixme using json
 
         for (auto sc = result_sort_by_mul.rbegin();
              sc != result_sort_by_mul.rend() && lines; ++sc, --lines) {
@@ -550,10 +557,11 @@ static inline void dump_impl(FILE *log_file, FILE *json_file, bool mmap) {
                                          heap_stack_metas,
                                          mmap_stack_metas);
 
-    // native heap allocation
-    dump_callers(log_file, heap_caller_metas);
+    cJSON *json_obj           = cJSON_CreateObject();
+    cJSON *so_native_size_arr = cJSON_AddArrayToObject(json_obj, "SoNativeSize");
 
-    cJSON *json_obj = cJSON_CreateObject();
+    // native heap allocation
+    dump_callers(log_file, so_native_size_arr, heap_caller_metas);
     cJSON *native_heap_arr = cJSON_AddArrayToObject(json_obj, "NativeHeap");
 
     dump_stacks(log_file, native_heap_arr, heap_stack_metas);
@@ -564,7 +572,8 @@ static inline void dump_impl(FILE *log_file, FILE *json_file, bool mmap) {
         flogger(log_file,
                 "############################# mmap #############################\n\n");
 
-        dump_callers(log_file, mmap_caller_metas);
+        cJSON *so_mmap_size_arr = cJSON_AddArrayToObject(json_obj, "SoMmapSize");
+        dump_callers(log_file, so_mmap_size_arr, mmap_caller_metas);
         cJSON *mmap_arr = cJSON_AddArrayToObject(json_obj, "mmap");
         dump_stacks(log_file, mmap_arr, mmap_stack_metas);
     }
