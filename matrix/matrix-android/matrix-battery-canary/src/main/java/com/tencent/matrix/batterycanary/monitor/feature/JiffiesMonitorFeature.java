@@ -123,24 +123,29 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
             private static List<ThreadInfo> parseThreadsInfo(int pid) {
                 String rootPath = "/proc/" + pid + "/task/";
                 File taskDir = new File(rootPath);
-                if (taskDir.isDirectory()) {
-                    File[] subDirs = taskDir.listFiles();
-                    if (null == subDirs) {
-                        return Collections.emptyList();
-                    }
+                try {
+                    if (taskDir.isDirectory()) {
+                        File[] subDirs = taskDir.listFiles();
+                        if (null == subDirs) {
+                            return Collections.emptyList();
+                        }
 
-                    List<ThreadInfo> threadInfoList = new ArrayList<>(subDirs.length);
-                    for (File file : subDirs) {
-                        if (!file.isDirectory()) {
-                            continue;
+                        List<ThreadInfo> threadInfoList = new ArrayList<>(subDirs.length);
+                        for (File file : subDirs) {
+                            if (!file.isDirectory()) {
+                                continue;
+                            }
+                            try {
+                                ThreadInfo threadInfo = of(pid, Integer.parseInt(file.getName()));
+                                threadInfoList.add(threadInfo);
+                            } catch (Exception e) {
+                                MatrixLog.printErrStackTrace(TAG, e, "parse thread error: " + file.getName());
+                            }
                         }
-                        try {
-                            ThreadInfo threadInfo = of(pid, Integer.parseInt(file.getName()));
-                            threadInfoList.add(threadInfo);
-                        } catch (Exception ignored) {
-                        }
+                        return threadInfoList;
                     }
-                    return threadInfoList;
+                } catch (Exception e) {
+                    MatrixLog.printErrStackTrace(TAG, e, "list thread dir error");
                 }
                 return Collections.emptyList();
             }

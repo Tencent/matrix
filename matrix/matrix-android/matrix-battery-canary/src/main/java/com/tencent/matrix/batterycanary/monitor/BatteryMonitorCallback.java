@@ -297,7 +297,13 @@ public interface BatteryMonitorCallback extends
 
                 long minute = appStats.getMinute();
                 for (ThreadJiffiesEntry threadJiffies : delta.dlt.threadEntries.getList()) {
-                    // Watching thread state
+                    if (!threadJiffies.stat.toUpperCase().contains("R")) {
+                        continue;
+                    }
+                    // Watching thread state when thread is:
+                    // 1. still running (status 'R')
+                    // 2. runing time > 10min
+                    // 3. avgJiffies > THRESHOLD
                     long avgJiffies = threadJiffies.get() / minute;
                     if (appStats.isForeground()) {
                         if (minute > 10 && avgJiffies > getMonitor().getConfig().fgThreadWatchingLimit) {
