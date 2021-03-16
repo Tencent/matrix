@@ -106,7 +106,9 @@ public class ResourcePlugin extends Plugin {
     @Override
     public void onForeground(boolean isForeground) {
         MatrixLog.d(TAG, "onForeground: %s", isForeground);
-        mWatcher.onForeground(isForeground);
+        if (isPluginStarted() && mWatcher != null) {
+            mWatcher.onForeground(isForeground);
+        }
     }
 
     public ResourceConfig getConfig() {
