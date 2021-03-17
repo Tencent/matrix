@@ -59,14 +59,26 @@ public class MainActivity extends AppCompatActivity {
         }, BIND_AUTO_CREATE);
 
         // Init backtrace
-        WeChatBacktrace.instance().configure(getApplicationContext())
-                .setBacktraceMode(WeChatBacktrace.Mode.Quicken)
-                .warmUpSettings(WeChatBacktrace.WarmUpTiming.PostStartup, 10000)
-                .directoryToWarmUp("/system/framework/arm/boot.oat")
-                .directoryToWarmUp("/system/framework/arm/boot-framework.oat")
-                .enableIsolateProcessLogger(true)
-                .enableOtherProcessLogger(true)
-                .commit();
+
+//        if (IS_ARM64) {
+//            WeChatBacktrace.instance()
+//                    .configure(getApplication())
+//                    .setBacktraceMode(WeChatBacktrace.Mode.Fp)
+//                    .commit();
+//        } else {
+
+            String additionalLibsDir = "/path/to/libs/";
+
+            // run before commit hooks for warm up.
+            WeChatBacktrace.instance().configure(getApplicationContext())
+                    .setBacktraceMode(WeChatBacktrace.Mode.FpUntilQuickenWarmedUp)
+//                    .directoryToWarmUp(additionalLibsDir) // your additional native library dir like tinker-patch library dir, application libs/system libs/odex are configured by default
+//                    .coolDown(versionUpdated) // set true if your app version updated, redo warm up
+                    .warmUpInIsolateProcess(true) // optional, true by default
+                    .enableIsolateProcessLogger(true) // optional
+                    .xLoggerPath(getApplication().getApplicationInfo().nativeLibraryDir + "/libwechatxlog.so") // optional, xlogger work when enableIsolateProcessLogger is true
+                    .commit();
+//        }
 
         try {
             HookManager.INSTANCE
@@ -76,7 +88,7 @@ public class MainActivity extends AppCompatActivity {
                             .addHookSo(".*libnative-lib\\.so$")
                             .enableStacktrace(true)
                             .stacktraceLogThreshold(0)
-                            .enableMmapHook(false))
+                            .enableMmapHook(true))
 
                     // Thread hook
                     .addHook(PthreadHook.INSTANCE
