@@ -18,6 +18,7 @@ package com.tencent.matrix.resource.watcher;
 import android.app.Activity;
 import android.app.Application;
 import android.os.Debug;
+import android.os.Handler;
 import android.os.HandlerThread;
 
 import com.tencent.matrix.report.FilePublisher;
@@ -60,6 +61,7 @@ public class ActivityRefWatcher extends FilePublisher implements Watcher {
     private final long                              mFgScanTimes;
 
     private final HandlerThread                     mHandlerThread;
+    private final Handler                           mHandler;
 
     private final ConcurrentLinkedQueue<DestroyedActivityInfo> mDestroyedActivityInfos;
 
@@ -109,6 +111,7 @@ public class ActivityRefWatcher extends FilePublisher implements Watcher {
         this.mResourcePlugin = resourcePlugin;
         final ResourceConfig config = resourcePlugin.getConfig();
         mHandlerThread = MatrixHandlerThread.getNewHandlerThread("matrix_res"); // avoid blocking default matrix thread
+        mHandler = new Handler(mHandlerThread.getLooper());
         mDumpHprofMode = config.getDumpHprofMode();
         mBgScanTimes = config.getBgScanIntervalMillis();
         mFgScanTimes = config.getScanIntervalMillis();
@@ -135,6 +138,12 @@ public class ActivityRefWatcher extends FilePublisher implements Watcher {
         @Override
         public void onActivityDestroyed(Activity activity) {
             pushDestroyedActivityInfo(activity);
+            mHandler.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    triggerGc();
+                }
+            }, 2000);
         }
     };
 
