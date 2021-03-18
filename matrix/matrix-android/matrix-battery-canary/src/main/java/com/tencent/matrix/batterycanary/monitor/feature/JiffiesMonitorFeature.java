@@ -338,6 +338,9 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
         @Override
         public void run() {
             // watch
+            MatrixLog.i(TAG, "threadWatchDog start, size = " + mWatchingThreads.size()
+                    + ", delayMillis = " + duringMillis);
+
             List<JiffiesSnapshot.ThreadJiffiesSnapshot> threadJiffiesList = new ArrayList<>();
             synchronized (mWatchingThreads) {
                 for (ProcessInfo.ThreadInfo item : mWatchingThreads) {
@@ -367,6 +370,12 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
 
         void watch(int pid, int tid) {
             synchronized (mWatchingThreads) {
+                // Distinct
+                for (ProcessInfo.ThreadInfo item : mWatchingThreads) {
+                    if (item.pid == pid && item.tid == tid) {
+                        return;
+                    }
+                }
                 mWatchingThreads.add(ProcessInfo.ThreadInfo.of(pid, tid));
             }
         }
