@@ -1,9 +1,16 @@
 package com.tencent.matrix.resource.processor;
 
+import android.os.Build;
+
 import com.tencent.matrix.report.Issue;
 import com.tencent.matrix.resource.CanaryWorkerService;
+import com.tencent.matrix.resource.analyzer.ActivityLeakAnalyzer;
+import com.tencent.matrix.resource.analyzer.model.ActivityLeakResult;
+import com.tencent.matrix.resource.analyzer.model.AndroidExcludedRefs;
 import com.tencent.matrix.resource.analyzer.model.DestroyedActivityInfo;
+import com.tencent.matrix.resource.analyzer.model.ExcludedRefs;
 import com.tencent.matrix.resource.analyzer.model.HeapDump;
+import com.tencent.matrix.resource.analyzer.model.HeapSnapshot;
 import com.tencent.matrix.resource.config.ResourceConfig;
 import com.tencent.matrix.resource.config.SharePluginInfo;
 import com.tencent.matrix.resource.watcher.ActivityRefWatcher;
@@ -13,6 +20,9 @@ import com.tencent.matrix.util.MatrixLog;
 
 import org.json.JSONException;
 import org.json.JSONObject;
+
+import java.io.File;
+import java.io.IOException;
 
 /**
  * Created by Yves on 2021/2/25
@@ -64,6 +74,19 @@ public abstract class BaseLeakProcessor {
     }
 
     public void onDestroy() {
+    }
+
+    protected ActivityLeakResult analyze(File hprofFile, String referenceKey) {
+        final HeapSnapshot heapSnapshot;
+        ActivityLeakResult result;
+        final ExcludedRefs excludedRefs = AndroidExcludedRefs.createAppDefaults(Build.VERSION.SDK_INT, Build.MANUFACTURER).build();
+        try {
+            heapSnapshot = new HeapSnapshot(hprofFile);
+            result = new ActivityLeakAnalyzer(referenceKey, excludedRefs).analyze(heapSnapshot);
+        } catch (IOException e) {
+            result = ActivityLeakResult.failure(e, 0);
+        }
+        return result;
     }
 
     final protected void publishIssue(int issueType, ResourceConfig.DumpMode dumpMode, String activity, String refKey, String detail, String cost) {

@@ -133,19 +133,6 @@ public class SilenceAnalyseProcessor extends BaseLeakProcessor {
         return true;
     }
 
-    private ActivityLeakResult analyze(File hprofFile, String referenceKey) {
-        final HeapSnapshot heapSnapshot;
-        ActivityLeakResult result;
-        final ExcludedRefs excludedRefs = AndroidExcludedRefs.createAppDefaults(Build.VERSION.SDK_INT, Build.MANUFACTURER).build();
-        try {
-            heapSnapshot = new HeapSnapshot(hprofFile);
-            result = new ActivityLeakAnalyzer(referenceKey, excludedRefs).analyze(heapSnapshot);
-        } catch (IOException e) {
-            result = ActivityLeakResult.failure(e, 0);
-        }
-        return result;
-    }
-
     private void publishIssue(int issueType, String activity, String refKey, String detail, String cost) {
         publishIssue(issueType, ResourceConfig.DumpMode.SILENCE_ANALYSE, activity, refKey, detail, cost);
     }

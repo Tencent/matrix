@@ -34,6 +34,7 @@ import com.tencent.matrix.resource.watcher.RetryableTaskExecutor.RetryableTask;
 import com.tencent.matrix.util.MatrixHandlerThread;
 import com.tencent.matrix.util.MatrixLog;
 
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -89,7 +90,7 @@ public class ActivityRefWatcher extends FilePublisher implements Watcher {
                 case AUTO_DUMP:
                     return new AutoDumpProcessor(watcher);
                 case MANUAL_DUMP:
-                    return new ManualDumpProcessor(watcher, watcher.getResourcePlugin().getConfig().getNotificationContentIntent());
+                    return new ManualDumpProcessor(watcher, watcher.getResourcePlugin().getConfig().getTargetActivity());
                 case SILENCE_ANALYSE:
                     return new SilenceAnalyseProcessor(watcher);
                 case NO_DUMP:
@@ -301,6 +302,10 @@ public class ActivityRefWatcher extends FilePublisher implements Watcher {
 
     public ResourcePlugin getResourcePlugin() {
         return mResourcePlugin;
+    }
+
+    public Collection<DestroyedActivityInfo> getDestroyedActivityInfos() {
+        return mDestroyedActivityInfos;
     }
 
     public void triggerGc() {

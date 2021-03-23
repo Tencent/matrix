@@ -46,14 +46,13 @@ public final class ResourceConfig {
     private final IDynamicConfig mDynamicConfig;
     private final DumpMode mDumpHprofMode;
     private final boolean mDetectDebugger;
-    private final Intent mContentIntent;
+    private final String  mTargetActivity;
 
-
-    private ResourceConfig(IDynamicConfig dynamicConfig, DumpMode dumpHprofMode, boolean detectDebuger, Intent pendingIntent) {
+    private ResourceConfig(IDynamicConfig dynamicConfig, DumpMode dumpHprofMode, boolean detectDebuger, String targetActivity) {
         this.mDynamicConfig = dynamicConfig;
         this.mDumpHprofMode = dumpHprofMode;
-        mDetectDebugger = detectDebuger;
-        mContentIntent = pendingIntent;
+        this.mDetectDebugger = detectDebuger;
+        this.mTargetActivity = targetActivity;
     }
 
     public long getScanIntervalMillis() {
@@ -72,8 +71,8 @@ public final class ResourceConfig {
         return mDumpHprofMode;
     }
 
-    public Intent getNotificationContentIntent() {
-        return mContentIntent;
+    public String getTargetActivity() {
+        return mTargetActivity;
     }
 
     public boolean getDetectDebugger() {
@@ -84,7 +83,7 @@ public final class ResourceConfig {
 
         private DumpMode mDefaultDumpHprofMode = DEFAULT_DUMP_HPROF_MODE;
         private IDynamicConfig dynamicConfig;
-        private Intent mContentIntent;
+        private String mTargetActivity;
         private boolean mDetectDebugger = false;
 
         public Builder dynamicConfig(IDynamicConfig dynamicConfig) {
@@ -102,13 +101,13 @@ public final class ResourceConfig {
             return this;
         }
 
-        public Builder setNotificationContentIntent(Intent intent) {
-            mContentIntent = intent;
+        public Builder setManualDumpTargetActivity(String targetActivity) {
+            mTargetActivity = targetActivity;
             return this;
         }
 
         public ResourceConfig build() {
-            return new ResourceConfig(dynamicConfig, mDefaultDumpHprofMode, mDetectDebugger, mContentIntent);
+            return new ResourceConfig(dynamicConfig, mDefaultDumpHprofMode, mDetectDebugger, mTargetActivity);
         }
     }
 }

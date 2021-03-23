@@ -29,14 +29,16 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
-        <activity android:name=".io.TestIOActivity"></activity>
-        <activity android:name=".resource.TestLeakActivity"></activity>
-        <activity android:name=".trace.TestTraceMainActivity"></activity>
-        <activity android:name=".trace.TestTraceFragmentActivity"></activity>
-        <activity android:name=".trace.TestEnterActivity"></activity>
-        <activity android:name=".trace.TestFpsActivity"></activity>
-        <activity android:name=".sqlitelint.TestSQLiteLintActivity"></activity>
-        <activity android:name=".battery.TestBatteryActivity"></activity>
+        <activity android:name=".resource.ManualDumpActivity"/>
+        <activity android:name=".io.TestIOActivity" />
+        <activity android:name=".resource.TestLeakActivity"
+            android:process=":leaktest"/>
+        <activity android:name=".trace.TestTraceMainActivity" />
+        <activity android:name=".trace.TestTraceFragmentActivity" />
+        <activity android:name=".trace.TestEnterActivity" />
+        <activity android:name=".trace.TestFpsActivity" />
+        <activity android:name=".sqlitelint.TestSQLiteLintActivity" />
+        <activity android:name=".battery.TestBatteryActivity" />
     </application>
 
 </manifest>

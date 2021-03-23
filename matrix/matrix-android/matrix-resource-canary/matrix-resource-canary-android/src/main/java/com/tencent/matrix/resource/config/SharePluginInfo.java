@@ -30,6 +30,8 @@ public class SharePluginInfo {
     public static final String ISSUE_REF_KEY       = "ref_key";
     public static final String ISSUE_LEAK_DETAIL   = "leak_detail";
     public static final String ISSUE_COST_MILLIS   = "cost_millis";
+    public static final String ISSUE_LEAK_PROCESS  = "leak_process";
+    public static final String ISSUE_NOTIFICATION_ID     = "notification_id";
 
     public static final class IssueType {
         public static final int LEAK_FOUND         = 0;
