@@ -14,7 +14,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Configure timeline portions & ratio for the given stamps as splits.
+ * Configure timeline portions & ratio for the given stamps and return split-portions with each weight.
  *
  * @author Kaede
  * @since 2020/12/22
@@ -122,16 +122,16 @@ public final class TimeBreaker {
                 }
             };
 
-            List<Pair<String, Integer>> portions = new ArrayList<>();
+            List<TimePortions.Portion> portions = new ArrayList<>();
             for (Map.Entry<String, Long> item : mapper.entrySet()) {
                 String key  = item.getKey();
                 long value = item.getValue();
-                portions.add(new Pair<>(key, configureRatio(value, totalMillis)));
+                portions.add(new TimePortions.Portion(key, configureRatio(value, totalMillis)));
             }
-            Collections.sort(portions, new Comparator<Pair<String, Integer>>() {
+            Collections.sort(portions, new Comparator<TimePortions.Portion>() {
                 @Override
-                public int compare(Pair<String, Integer> o1, Pair<String, Integer> o2) {
-                    long minus = (o1.second == null ? 0 : o1.second) - (o2.second == null ? 0 : o2.second);
+                public int compare(TimePortions.Portion o1, TimePortions.Portion o2) {
+                    long minus = o1.ratio - o2.ratio;
                     if (minus == 0) return 0;
                     if (minus > 0) return -1;
                     return 1;
@@ -156,20 +156,33 @@ public final class TimeBreaker {
 
         public final String key;
         public final long upTime;
-        public final long statMillis = System.currentTimeMillis();
+        public final long statMillis;
 
         public Stamp(String key) {
             this.key = key;
             this.upTime = SystemClock.uptimeMillis();
+            this.statMillis = System.currentTimeMillis();
         }
 
         public Stamp(String key, long upTime) {
             this.key = key;
             this.upTime = upTime;
+            this.statMillis = System.currentTimeMillis();
         }
     }
 
     public static final class TimePortions {
+        public static final class Portion {
+            public final String key;
+            public final int ratio;
+            public int totalMillis = 0;
+
+            public Portion(String key, int ratio) {
+                this.key = key;
+                this.ratio = ratio;
+            }
+        }
+
         public static TimePortions ofInvalid() {
             TimePortions item = new TimePortions();
             item.mIsValid = false;
@@ -177,7 +190,7 @@ public final class TimeBreaker {
         }
 
         public long totalUptime;
-        public List<Pair<String, Integer>> portions = Collections.emptyList();
+        public List<Portion> portions = Collections.emptyList();
         private boolean mIsValid = true;
 
         TimePortions() {}
@@ -187,16 +200,16 @@ public final class TimeBreaker {
         }
 
         public int getRatio(String key) {
-            for (Pair<String, Integer> item : portions) {
-                if (item.first != null && item.first.equals(key)) {
-                    return item.second == null ? 0 : item.second;
+            for (Portion item : portions) {
+                if (item.key != null && item.key.equals(key)) {
+                    return item.ratio;
                 }
             }
             return 0;
         }
 
         @Nullable
-        public Pair<String, Integer> top1() {
+        public Portion top1() {
             if (portions.size() >= 1) {
                 return portions.get(0);
             }
@@ -204,7 +217,7 @@ public final class TimeBreaker {
         }
 
         @Nullable
-        public Pair<String, Integer> top2() {
+        public Portion top2() {
             if (portions.size() >= 2) {
                 return portions.get(1);
             }

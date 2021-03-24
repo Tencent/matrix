@@ -321,10 +321,10 @@ public abstract class AbsTaskMonitorFeature extends AbsMonitorFeature {
             String scene = delta.dlt.scene;
             long sceneRatio = 100;
             TimeBreaker.TimePortions portions = mAppStatFeat.currentSceneSnapshot(delta.during);
-            Pair<String, Integer> top1 = portions.top1();
+            TimeBreaker.TimePortions.Portion top1 = portions.top1();
             if (top1 != null) {
-                scene = top1.first;
-                sceneRatio = top1.second == null ? 0 : top1.second;
+                scene = top1.key;
+                sceneRatio = top1.ratio;
             }
             delta.dlt.bgRatio = appStats.bgRatio.get();
             delta.dlt.scene = scene;
