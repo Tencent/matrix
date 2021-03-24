@@ -257,8 +257,11 @@ public class TimerBreakerTest {
     public void testPortionsV3() throws InterruptedException {
         List<TimeBreaker.Stamp> stampList = new ArrayList<>();
         stampList.add(0, new TimeBreaker.Stamp("1", 0));
+        Thread.sleep(100L);
         stampList.add(0, new TimeBreaker.Stamp("2", 100));
+        Thread.sleep(100L);
         stampList.add(0, new TimeBreaker.Stamp("3", 149));
+        Thread.sleep(100L);
         stampList.add(0, new TimeBreaker.Stamp("4", 181));
 
         TimeBreaker.TimePortions snapshot = configurePortions(stampList, 40L, 10L, new TimeBreaker.Stamp.Stamper() {
@@ -269,6 +272,12 @@ public class TimerBreakerTest {
         });
 
         Assert.assertEquals(40L, snapshot.totalUptime, 1);
+        Assert.assertEquals(2, snapshot.portions.size());
+
+
+        for (TimePortions.Portion item : snapshot.portions) {
+            Assert.assertTrue(item.totalStatMillis > 0L);
+        }
     }
 
     @Test

@@ -1,10 +1,8 @@
 package com.tencent.matrix.batterycanary.utils;
 
-import android.arch.core.util.Function;
 import android.os.SystemClock;
 import android.support.annotation.Nullable;
 import android.support.annotation.RestrictTo;
-import android.support.v4.util.Pair;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -56,9 +54,10 @@ public final class TimeBreaker {
             }
         }
 
-        final Map<String, Long> mapper = new HashMap<>();
+        final Map<String, StatRecord> mapper = new HashMap<>();
         long totalMillis = 0L;
         long lastStampMillis = Long.MIN_VALUE;
+        long lastStampStatMillis = Long.MIN_VALUE;
 
         if (windowToCurr <= 0L) {
             // configure for long all app uptime
@@ -71,10 +70,16 @@ public final class TimeBreaker {
 
                     long interval = lastStampMillis - item.upTime;
                     totalMillis += interval;
-                    Long record = mapper.get(item.key);
-                    mapper.put(item.key, interval + (record == null ? 0 : record));
+                    StatRecord record = mapper.get(item.key);
+                    if (record == null) {
+                        record = new StatRecord();
+                        mapper.put(item.key, record);
+                    }
+                    record.weight += interval;
+                    record.millis += (lastStampStatMillis - item.statMillis);
                 }
                 lastStampMillis = item.upTime;
+                lastStampStatMillis = item.statMillis;
             }
         } else {
             // just configure for long of the given window
@@ -90,16 +95,27 @@ public final class TimeBreaker {
                         // reach widow edge
                         long lastInterval = windowToCurr - totalMillis;
                         totalMillis += lastInterval;
-                        Long record = mapper.get(item.key);
-                        mapper.put(item.key, lastInterval + (record == null ? 0 : record));
+                        StatRecord record = mapper.get(item.key);
+                        if (record == null) {
+                            record = new StatRecord();
+                            mapper.put(item.key, record);
+                        }
+                        record.weight += lastInterval;
+                        record.millis += (lastStampStatMillis - item.statMillis) * (((float) lastInterval) / interval);
                         break;
                     }
 
                     totalMillis += interval;
-                    Long record = mapper.get(item.key);
-                    mapper.put(item.key, interval + (record == null ? 0 : record));
+                    StatRecord record = mapper.get(item.key);
+                    if (record == null) {
+                        record = new StatRecord();
+                        mapper.put(item.key, record);
+                    }
+                    record.weight += interval;
+                    record.millis += (lastStampStatMillis - item.statMillis);
                 }
                 lastStampMillis = item.upTime;
+                lastStampStatMillis = item.statMillis;
             }
         }
 
@@ -114,19 +130,13 @@ public final class TimeBreaker {
             }
 
             timePortions.totalUptime = totalMillis;
-            Function<String, Long> block = new Function<String, Long>() {
-                @Override
-                public Long apply(String input) {
-                    Long millis = mapper.get(input);
-                    return millis == null ? 0 : millis;
-                }
-            };
-
             List<TimePortions.Portion> portions = new ArrayList<>();
-            for (Map.Entry<String, Long> item : mapper.entrySet()) {
+            for (Map.Entry<String, StatRecord> item : mapper.entrySet()) {
                 String key  = item.getKey();
-                long value = item.getValue();
-                portions.add(new TimePortions.Portion(key, configureRatio(value, totalMillis)));
+                StatRecord value = item.getValue();
+                TimePortions.Portion portion = new TimePortions.Portion(key, configureRatio(value.weight, totalMillis));
+                portion.totalStatMillis = value.millis;
+                portions.add(portion);
             }
             Collections.sort(portions, new Comparator<TimePortions.Portion>() {
                 @Override
@@ -147,6 +157,11 @@ public final class TimeBreaker {
         if (round >= 100) return 100;
         if (round <= 0) return 0;
         return (int) round;
+    }
+
+    static final class StatRecord {
+        long weight;
+        long millis;
     }
 
     public static class Stamp {
@@ -175,7 +190,7 @@ public final class TimeBreaker {
         public static final class Portion {
             public final String key;
             public final int ratio;
-            public int totalMillis = 0;
+            public long totalStatMillis = 0;
 
             public Portion(String key, int ratio) {
                 this.key = key;
