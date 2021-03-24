@@ -13,6 +13,7 @@ import android.support.v4.util.Pair;
 import android.util.SparseArray;
 
 import com.tencent.matrix.batterycanary.BuildConfig;
+import com.tencent.matrix.batterycanary.monitor.AppStats;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Delta;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Entry.DigitEntry;
@@ -31,6 +32,7 @@ import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 
+import static com.tencent.matrix.batterycanary.monitor.AppStats.*;
 import static com.tencent.matrix.batterycanary.monitor.BatteryMonitorConfig.DEF_STAMP_OVERHEAT;
 
 @SuppressWarnings("NotNullFieldNotInitialized")
@@ -305,7 +307,7 @@ public abstract class AbsTaskMonitorFeature extends AbsMonitorFeature {
 
         // Compute task jiffies consumed
         Delta<TaskJiffiesSnapshot> delta = end.diff(bgn);
-        if (!BuildConfig.DEBUG && (delta.during <= 1000L || delta.dlt.jiffies.get() <= 100L)) {
+        if (!shouldTraceTask(delta)) {
             return;
         }
 
@@ -347,6 +349,10 @@ public abstract class AbsTaskMonitorFeature extends AbsMonitorFeature {
             MatrixLog.w(TAG, "task list overheat, size = " + mDeltaList.size());
             checkOverHeat();
         }
+    }
+
+    protected boolean shouldTraceTask(Delta<TaskJiffiesSnapshot> delta) {
+        return BuildConfig.DEBUG || (delta.during > 1000L && delta.dlt.jiffies.get() / Math.max(1, delta.during / ONE_MIN) > 100L);
     }
 
     protected void updateDeltas(Delta<TaskJiffiesSnapshot> delta) {
