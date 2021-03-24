@@ -16,7 +16,6 @@
 
 package com.tencent.mm.arscutil.data;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
@@ -30,7 +29,9 @@ public class ResEntry {
 
     protected short size; // 总大小（包括size字段），2 bytes, 不包含后面紧跟的ResValue或者ResMapValue
     protected short flag; // 标识entry（FLAG_COMPLEX=0X001、FLAG_PUBLIC=0X002），2 bytes
-    protected int stringPoolIndex; // 资源名称在全局资源池中的index，4 bytes
+    protected int stringPoolIndex; // 资源名称在资源项名称字符串池中的index，4 bytes
+
+    protected String entryName;
 
     //FLAG_COMPLEX 为0
     private ResValue resValue;            //紧跟在ResEntry后面，不计入ResEntry的大小
@@ -81,6 +82,14 @@ public class ResEntry {
         this.pairCount = pairCount;
     }
 
+    public String getEntryName() {
+        return entryName;
+    }
+
+    public void setEntryName(String entryName) {
+        this.entryName = entryName;
+    }
+
     public ResValue getResValue() {
         return resValue;
     }
@@ -97,7 +106,7 @@ public class ResEntry {
         this.resMapValues = resMapValues;
     }
 
-    public byte[] toBytes() throws IOException {
+    public byte[] toBytes() {
         ByteBuffer headBuffer = ByteBuffer.allocate(size);
         headBuffer.order(ByteOrder.LITTLE_ENDIAN);
         headBuffer.clear();

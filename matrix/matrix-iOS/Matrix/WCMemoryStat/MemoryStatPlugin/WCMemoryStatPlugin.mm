@@ -32,6 +32,8 @@
 #import <AppKit/AppKit.h>
 #endif
 
+#import <objc/runtime.h>
+
 #define g_matrix_memory_stat_plguin_tag "MemoryStat"
 
 @interface WCMemoryStatPlugin () {
@@ -49,8 +51,7 @@
 
 @dynamic pluginConfig;
 
-- (id)init
-{
+- (id)init {
     self = [super init];
     if (self) {
         m_recordManager = [[WCMemoryRecordManager alloc] init];
@@ -60,9 +61,9 @@
             m_lastRecord.userScene = [MatrixAppRebootAnalyzer userSceneOfLastRun];
             [m_recordManager updateRecord:m_lastRecord];
         }
-        
+
         self.pluginReportQueue = dispatch_queue_create("matrix.memorystat", DISPATCH_QUEUE_SERIAL);
-        
+
         [self deplayTryReportOOMInfo];
     }
     return self;
@@ -72,8 +73,7 @@
 #pragma mark - Report
 // ============================================================================
 
-- (void)deplayTryReportOOMInfo
-{
+- (void)deplayTryReportOOMInfo {
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(2 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
         if (self.pluginConfig != nil && self.pluginConfig.reportStrategy == EWCMemStatReportStrategy_Manual) {
             return;
@@ -93,7 +93,7 @@
                         issue.issueID = [lastInfo recordID];
                         issue.dataType = EMatrixIssueDataType_Data;
                         issue.issueData = reportData;
-                        MatrixInfo(@"report memory record : %@", issue);
+                        MatrixInfo(@"report memory record: %@", issue);
                         dispatch_async(dispatch_get_main_queue(), ^{
                             [self reportIssue:issue];
                         });
@@ -104,17 +104,16 @@
     });
 }
 
-- (MatrixIssue *)uploadReport:(MemoryRecordInfo *)record withCustomInfo:(NSDictionary *)customInfo
-{
+- (MatrixIssue *)uploadReport:(MemoryRecordInfo *)record withCustomInfo:(NSDictionary *)customInfo {
     if (record == nil) {
         return nil;
     }
-    
+
     NSData *reportData = [record generateReportDataWithCustomInfo:customInfo];
     if (reportData == nil) {
         return nil;
     }
-    
+
     MatrixIssue *issue = [[MatrixIssue alloc] init];
     issue.issueTag = [WCMemoryStatPlugin getTag];
     issue.issueID = [record recordID];
@@ -122,7 +121,7 @@
     issue.issueData = reportData;
     MatrixInfo(@"memory record : %@", issue);
     [self reportIssue:issue];
-    
+
     return issue;
 }
 
@@ -130,8 +129,7 @@
 #pragma mark - Current Thread
 // ============================================================================
 
-- (void)addTagToCurrentThread:(NSString *)tagString
-{
+- (void)addTagToCurrentThread:(NSString *)tagString {
     if (m_currRecord == nil) {
         return;
     }
@@ -141,8 +139,7 @@
     [m_recordManager updateRecord:m_currRecord];
 }
 
-- (void)removeTagOfCurrentThread
-{
+- (void)removeTagOfCurrentThread {
     if (m_currRecord == nil) {
         return;
     }
@@ -150,37 +147,66 @@
     [m_recordManager updateRecord:m_currRecord];
 }
 
-- (uint32_t)getMemoryUsageOfCurrentThread;
-{
+- (uint32_t)getMemoryUsageOfCurrentThread {
     return get_current_thread_memory_usage();
+}
+
+- (void)dumpMemoryAndGenerateReportData:(NSString *)issue customInfo:(NSDictionary *)customInfo callback:(void (^)(NSData *))callback {
+    if (m_currRecord == nil) {
+        MatrixInfo(@"memstat is not running");
+        return;
+    }
+
+    __block IMP dump_memory_callback = imp_implementationWithBlock(^(void *self, void *p0, void *p1, void *p2, void *p3) {
+        @autoreleasepool {
+            summary_report_param param;
+            param.phone = [MatrixDeviceInfo platform].UTF8String;
+            param.os_ver = [MatrixDeviceInfo systemVersion].UTF8String;
+            param.launch_time = [MatrixAppRebootAnalyzer appLaunchTime] * 1000;
+            param.report_time = [[NSDate date] timeIntervalSince1970] * 1000;
+            param.app_uuid = app_uuid();
+            param.foom_scene = issue.UTF8String;
+
+            for (id key in customInfo) {
+                std::string stdKey = [key UTF8String];
+                std::string stdVal = [[customInfo[key] description] UTF8String];
+                param.customInfo.insert(std::make_pair(stdKey, stdVal));
+            }
+
+            auto content =
+            generate_summary_report_i((allocation_event_db *)p0, (stack_frames_db *)p1, (dyld_image_info_db *)p2, (object_type_db *)p3, param);
+            NSData *reportData = [NSData dataWithBytes:content->c_str() length:content->size()];
+            callback(reportData);
+            imp_removeBlock(dump_memory_callback);
+        }
+    });
+
+    if (dump_memory((void (*)(void *, void *, void *, void *, void *, void *))dump_memory_callback) == false) {
+        imp_removeBlock(dump_memory_callback);
+    }
 }
 
 // ============================================================================
 #pragma mark - Record
 // ============================================================================
 
-- (NSArray *)recordList
-{
+- (NSArray *)recordList {
     return [m_recordManager recordList];
 }
 
-- (MemoryRecordInfo *)recordOfLastRun
-{
+- (MemoryRecordInfo *)recordOfLastRun {
     return m_lastRecord;
 }
 
-- (MemoryRecordInfo *)recordByLaunchTime:(uint64_t)launchTime
-{
+- (MemoryRecordInfo *)recordByLaunchTime:(uint64_t)launchTime {
     return [m_recordManager getRecordByLaunchTime:launchTime];
 }
 
-- (void)deleteRecord:(MemoryRecordInfo *)record
-{
+- (void)deleteRecord:(MemoryRecordInfo *)record {
     [m_recordManager deleteRecord:record];
 }
 
-- (void)deleteAllRecords
-{
+- (void)deleteAllRecords {
     [m_recordManager deleteAllRecords];
 }
 
@@ -188,18 +214,16 @@
 #pragma mark - Private
 // ============================================================================
 
-- (void)setCurrentRecordInvalid
-{
+- (void)setCurrentRecordInvalid {
     if (m_currRecord == nil) {
         return;
     }
-    
+
     [m_recordManager deleteRecord:m_currRecord];
     m_currRecord = nil;
 }
 
-- (void)reportError:(int)errorCode
-{
+- (void)reportError:(int)errorCode {
     [self.delegate onMemoryStatPlugin:self hasError:errorCode];
 }
 
@@ -207,19 +231,20 @@
 #pragma mark - MatrixPluginProtocol
 // ============================================================================
 
-- (void)start
-{
+- (BOOL)start {
     if ([MatrixDeviceInfo isBeingDebugged]) {
         MatrixDebug(@"app is being debugged, cannot start memstat");
-        return;
+        return NO;
     }
-    
+
     if (m_currRecord != nil) {
-        return;
+        return NO;
     }
-    
-    [super start];
-    
+
+    if ([super start] == NO) {
+        return NO;
+    }
+
     int ret = MS_ERRC_SUCCESS;
 
     if (self.pluginConfig == nil) {
@@ -241,17 +266,18 @@
 
     if ((ret = enable_memory_logging(dataPath.UTF8String)) == MS_ERRC_SUCCESS) {
         [m_recordManager insertNewRecord:m_currRecord];
+        return YES;
     } else {
         MatrixError(@"MemStatPlugin start error: %d", ret);
         disable_memory_logging();
         [self.delegate onMemoryStatPlugin:self hasError:ret];
         [[NSFileManager defaultManager] removeItemAtPath:dataPath error:nil];
         m_currRecord = nil;
+        return NO;
     }
 }
 
-- (void)stop
-{
+- (void)stop {
     [super stop];
     if (m_currRecord == nil) {
         return;
@@ -261,23 +287,19 @@
     disable_memory_logging();
 }
 
-- (void)destroy
-{
+- (void)destroy {
     [super destroy];
 }
 
-- (void)setupPluginListener:(id<MatrixPluginListenerDelegate>)pluginListener
-{
+- (void)setupPluginListener:(id<MatrixPluginListenerDelegate>)pluginListener {
     [super setupPluginListener:pluginListener];
 }
 
-- (void)reportIssue:(MatrixIssue *)issue
-{
+- (void)reportIssue:(MatrixIssue *)issue {
     [super reportIssue:issue];
 }
 
-- (void)reportIssueCompleteWithIssue:(MatrixIssue *)issue success:(BOOL)bSuccess
-{
+- (void)reportIssueCompleteWithIssue:(MatrixIssue *)issue success:(BOOL)bSuccess {
     if (bSuccess) {
         MatrixInfo(@"report issuse success: %@", issue);
     } else {
@@ -294,8 +316,7 @@
     }
 }
 
-+ (NSString *)getTag
-{
++ (NSString *)getTag {
     return @g_matrix_memory_stat_plguin_tag;
 }
 

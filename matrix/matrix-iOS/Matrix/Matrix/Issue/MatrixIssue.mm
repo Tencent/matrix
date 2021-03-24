@@ -18,10 +18,12 @@
 
 @implementation MatrixIssue
 
-- (NSString *)description
-{
+- (NSString *)description {
     return [NSString stringWithFormat:@"[issueTag : %@] [issueID : %@] [dataType : %d] [reportType : %d]",
-            self.issueTag, self.issueID, (int)self.dataType, self.reportType];
+                                      self.issueTag,
+                                      self.issueID,
+                                      (int)self.dataType,
+                                      self.reportType];
 }
 
 @end

@@ -38,7 +38,7 @@ extern "C" {
  * @return A demangled symbol, or NULL if demangling failed.
  *         MEMORY MANAGEMENT WARNING: User is responsible for calling free() on the returned value.
  */
-char* ksdm_demangleCPP(const char* mangledSymbol);
+char *ksdm_demangleCPP(const char *mangledSymbol);
 
 #ifdef __cplusplus
 }

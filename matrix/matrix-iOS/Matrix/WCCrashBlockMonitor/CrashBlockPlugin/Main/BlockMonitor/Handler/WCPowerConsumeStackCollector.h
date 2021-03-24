@@ -34,9 +34,11 @@
 
 @interface WCStackTracePool : NSObject
 
+@property (nonatomic, assign) BOOL bTryToSymbolicate;
+
 - (id)initWithMaxStackTraceCount:(NSUInteger)maxStackTraceCount;
 - (void)addThreadStack:(uintptr_t *)stackArray andLength:(size_t)stackCount andCPU:(float)stackCPU;
-- (NSArray <NSDictionary *>*)makeCallTree;
+- (NSArray<NSDictionary *> *)makeCallTree;
 
 @end
 
@@ -46,13 +48,14 @@
 
 @protocol WCPowerConsumeStackCollectorDelegate <NSObject>
 
-- (void)powerConsumeStackCollectorConclude:(NSArray <NSDictionary *>*)stackTree;
+- (void)powerConsumeStackCollectorConclude:(NSArray<NSDictionary *> *)stackTree;
 
 @end
 
 @interface WCPowerConsumeStackCollector : NSObject
 
 @property (nonatomic, weak) id<WCPowerConsumeStackCollectorDelegate> delegate;
+@property (nonatomic, assign) BOOL bTryToSymbolicate;
 
 - (id)initWithCPULimit:(float)cpuLimit;
 

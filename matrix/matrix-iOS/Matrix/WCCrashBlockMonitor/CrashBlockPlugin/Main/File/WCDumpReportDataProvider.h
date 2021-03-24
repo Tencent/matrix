@@ -20,7 +20,7 @@
 @interface WCDumpReportDataProvider : NSObject
 
 + (WCDumpReportTaskData *)getTodayOneReportDataWithLimitType:(NSString *)limitTypeString;
-+ (NSArray <WCDumpReportTaskData *>*)getAllTypeReportDataWithDate:(NSString *)limitDate;
-+ (NSArray <WCDumpReportTaskData *>*)getReportDataWithType:(EDumpType)reportType onDate:(NSString *)nsDate;
++ (NSArray<WCDumpReportTaskData *> *)getAllTypeReportDataWithDate:(NSString *)limitDate;
++ (NSArray<WCDumpReportTaskData *> *)getReportDataWithType:(EDumpType)reportType onDate:(NSString *)nsDate;
 
 @end

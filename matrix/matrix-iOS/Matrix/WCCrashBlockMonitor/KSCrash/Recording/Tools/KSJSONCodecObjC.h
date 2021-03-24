@@ -24,13 +24,10 @@
 // THE SOFTWARE.
 //
 
-
 #import <Foundation/Foundation.h>
 
-
 /** Optional behavior when encoding JSON data */
-typedef enum
-{
+typedef enum {
     KSJSONEncodeOptionNone = 0,
 
     /** Indent 4 spaces per object/array level */
@@ -40,10 +37,8 @@ typedef enum
     KSJSONEncodeOptionSorted = 2,
 } KSJSONEncodeOption;
 
-
 /** Optional behavior when decoding JSON data */
-typedef enum
-{
+typedef enum {
     KSJSONDecodeOptionNone = 0,
 
     /** Normally, null elements get stored as [NSNull null].
@@ -65,7 +60,6 @@ typedef enum
     KSJSONDecodeOptionKeepPartialObject = 4,
 } KSJSONDecodeOption;
 
-
 /**
  * Encodes and decodes UTF-8 JSON data.
  */
@@ -82,9 +76,7 @@ typedef enum
  *
  * @return The encoded UTF-8 JSON data or nil if an error occurred.
  */
-+ (NSData*) encode:(id) object
-           options:(KSJSONEncodeOption) options
-             error:(NSError**) error;
++ (NSData *)encode:(id)object options:(KSJSONEncodeOption)options error:(NSError **)error;
 
 /** Decode JSON data to an object.
  *
@@ -98,8 +90,6 @@ typedef enum
  * @return The decoded object or, if the KSJSONDecodeOptionKeepPartialFile
  *         option is not set, nil when an error occurs.
  */
-+ (id) decode:(NSData*) JSONData
-      options:(KSJSONDecodeOption) options
-        error:(NSError**) error;
++ (id)decode:(NSData *)JSONData options:(KSJSONDecodeOption)options error:(NSError **)error;
 
 @end

@@ -61,8 +61,7 @@ typedef NS_ENUM(NSUInteger, EDumpUploadType) {
 #pragma mark - MatrixPluginProtocol
 // ============================================================================
 
-- (id)init
-{
+- (id)init {
     self = [super init];
     if (self) {
         self.uploadingLagFileIDArray = [[NSMutableArray alloc] init];
@@ -75,10 +74,9 @@ typedef NS_ENUM(NSUInteger, EDumpUploadType) {
     return self;
 }
 
-- (void)start
-{
+- (BOOL)start {
     if (_cbMonitor != nil) {
-        return;
+        return NO;
     }
     if (self.pluginConfig == nil) {
         self.pluginConfig = [WCCrashBlockMonitorConfig defaultConfiguration];
@@ -100,7 +98,7 @@ typedef NS_ENUM(NSUInteger, EDumpUploadType) {
 
     [self delayReportCrash];
     [self autoClean];
-    
+
 #if !TARGET_OS_OSX
     [[NSNotificationCenter defaultCenter] addObserver:self
                                              selector:@selector(notifyAppEnterForeground)
@@ -112,35 +110,31 @@ typedef NS_ENUM(NSUInteger, EDumpUploadType) {
                                                  name:NSApplicationDidBecomeActiveNotification
                                                object:nil];
 #endif
+
+    return YES;
 }
 
-- (void)stop
-{
+- (void)stop {
     [super stop];
 }
 
-- (void)setupPluginListener:(id<MatrixPluginListenerDelegate>)pluginListener
-{
+- (void)setupPluginListener:(id<MatrixPluginListenerDelegate>)pluginListener {
     [super setupPluginListener:pluginListener];
 }
 
-- (void)destroy
-{
+- (void)destroy {
     [super destroy];
 }
 
-- (void)reportIssue:(MatrixIssue *)issue
-{
+- (void)reportIssue:(MatrixIssue *)issue {
     [super reportIssue:issue];
 }
 
-+ (NSString *)getTag
-{
++ (NSString *)getTag {
     return @g_matrix_crash_block_plguin_tag;
 }
 
-- (void)reportIssueCompleteWithIssue:(MatrixIssue *)issue success:(BOOL)bSuccess
-{
+- (void)reportIssueCompleteWithIssue:(MatrixIssue *)issue success:(BOOL)bSuccess {
     dispatch_async(self.pluginReportQueue, ^{
         if (bSuccess) {
             MatrixInfo(@"report issuse success: %@", issue);
@@ -176,8 +170,8 @@ typedef NS_ENUM(NSUInteger, EDumpUploadType) {
                     }
                 }
                 if (bSuccess) {
-                    MatrixInfo(@"delete lag: dumpType: %d, reportIDS: %@", [dumpType intValue], reportIDS)
-                    if ([self.uploadingLagFileIDArray count] < 1) {
+                    MatrixInfo(@"delete lag: dumpType: %d, reportIDS: %@", [dumpType intValue], reportIDS) if ([self.uploadingLagFileIDArray count]
+                                                                                                               < 1) {
                         if (self.dumpUploadType == EDumpUploadType_All) {
                             self.dumpUploadType = EDumpUploadType_None;
                             [self reportAllLagFileOnDate:self.currentUploadDate];
@@ -190,7 +184,6 @@ typedef NS_ENUM(NSUInteger, EDumpUploadType) {
                             self.dumpUploadType = EDumpUploadType_None;
                             // just autoUpload will use today
                         }
-
                     }
                 }
             }
@@ -204,8 +197,7 @@ typedef NS_ENUM(NSUInteger, EDumpUploadType) {
 #pragma mark - Utility
 // ============================================================================
 
-- (void)resetAppFullVersion:(NSString *)fullVersion shortVersion:(NSString *)shortVersion
-{
+- (void)resetAppFullVersion:(NSString *)fullVersion shortVersion:(NSString *)shortVersion {
     [_cbMonitor resetAppFullVersion:fullVersion shortVersion:shortVersion];
 }
 
@@ -215,13 +207,11 @@ typedef NS_ENUM(NSUInteger, EDumpUploadType) {
 
 #if !TARGET_OS_OSX
 
-- (void)handleBackgroundLaunch
-{
+- (void)handleBackgroundLaunch {
     [_cbMonitor handleBackgroundLaunch];
 }
 
-- (void)handleSuspend
-{
+- (void)handleSuspend {
     [_cbMonitor handleSuspend];
 }
 
@@ -231,13 +221,11 @@ typedef NS_ENUM(NSUInteger, EDumpUploadType) {
 #pragma mark - Control of Block Monitor
 // ============================================================================
 
-- (void)startBlockMonitor
-{
+- (void)startBlockMonitor {
     [_cbMonitor startBlockMonitor];
 }
 
-- (void)stopBlockMonitor
-{
+- (void)stopBlockMonitor {
     [_cbMonitor stopBlockMonitor];
 }
 
@@ -245,18 +233,15 @@ typedef NS_ENUM(NSUInteger, EDumpUploadType) {
 #pragma mark - CPU
 // ============================================================================
 
-- (void)startTrackCPU
-{
+- (void)startTrackCPU {
     [_cbMonitor startTrackCPU];
 }
 
-- (void)stopTrackCPU
-{
+- (void)stopTrackCPU {
     [_cbMonitor stopTrackCPU];
 }
 
-- (BOOL)isBackgroundCPUTooSmall
-{
+- (BOOL)isBackgroundCPUTooSmall {
     return [_cbMonitor isBackgroundCPUTooSmall];
 }
 
@@ -264,10 +249,7 @@ typedef NS_ENUM(NSUInteger, EDumpUploadType) {
 #pragma mark - Custom Dump
 // ============================================================================
 
-- (void)generateLiveReportWithDumpType:(EDumpType)dumpType
-                            withReason:(NSString *)reason
-                       selfDefinedPath:(BOOL)bSelfDefined
-{
+- (void)generateLiveReportWithDumpType:(EDumpType)dumpType withReason:(NSString *)reason selfDefinedPath:(BOOL)bSelfDefined {
     [_cbMonitor generateLiveReportWithDumpType:dumpType withReason:reason selfDefinedPath:bSelfDefined];
 }
 
@@ -275,8 +257,7 @@ typedef NS_ENUM(NSUInteger, EDumpUploadType) {
 #pragma mark - ReportID Uploading
 // ============================================================================
 
-- (BOOL)isLagUploading:(NSString *)reportID
-{
+- (BOOL)isLagUploading:(NSString *)reportID {
     for (NSString *exReportID in self.uploadingLagFileIDArray) {
         if ([reportID isEqualToString:exReportID]) {
             return YES;
@@ -285,8 +266,7 @@ typedef NS_ENUM(NSUInteger, EDumpUploadType) {
     return NO;
 }
 
-- (void)addLagToUploadingArray:(NSString *)reportID
-{
+- (void)addLagToUploadingArray:(NSString *)reportID {
     if (reportID == nil || [reportID length] == 0) {
         return;
     }
@@ -296,8 +276,7 @@ typedef NS_ENUM(NSUInteger, EDumpUploadType) {
     }
 }
 
-- (void)removeLagFromUploadingArray:(NSString *)reportID
-{
+- (void)removeLagFromUploadingArray:(NSString *)reportID {
     if (reportID == nil || [reportID length] == 0) {
         return;
     }
@@ -305,8 +284,7 @@ typedef NS_ENUM(NSUInteger, EDumpUploadType) {
     [self.uploadingLagFileIDArray removeObject:reportID];
 }
 
-- (BOOL)isCrashUploading:(NSString *)reportID
-{
+- (BOOL)isCrashUploading:(NSString *)reportID {
     for (NSString *exReportID in self.uploadingCrashFileIDArray) {
         if ([reportID isEqualToString:exReportID]) {
             return YES;
@@ -315,8 +293,7 @@ typedef NS_ENUM(NSUInteger, EDumpUploadType) {
     return NO;
 }
 
-- (void)addCrashToUploadingArray:(NSString *)reportID
-{
+- (void)addCrashToUploadingArray:(NSString *)reportID {
     if (reportID == nil || [reportID length] == 0) {
         return;
     }
@@ -326,8 +303,7 @@ typedef NS_ENUM(NSUInteger, EDumpUploadType) {
     }
 }
 
-- (void)removeCrashFromUploadingArray:(NSString *)reportID
-{
+- (void)removeCrashFromUploadingArray:(NSString *)reportID {
     if (reportID == nil || [reportID length] == 0) {
         return;
     }
@@ -335,13 +311,11 @@ typedef NS_ENUM(NSUInteger, EDumpUploadType) {
     [self.uploadingCrashFileIDArray removeObject:reportID];
 }
 
-
 // ============================================================================
 #pragma mark - Report Issue
 // ============================================================================
 
-- (void)notifyAppEnterForeground
-{
+- (void)notifyAppEnterForeground {
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(3 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
         switch (self.pluginConfig.reportStrategy) {
             case EWCCrashBlockReportStrategy_Auto:
@@ -359,8 +333,7 @@ typedef NS_ENUM(NSUInteger, EDumpUploadType) {
     });
 }
 
-- (void)delayReportCrash
-{
+- (void)delayReportCrash {
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(2 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
         switch (self.pluginConfig.reportStrategy) {
             case EWCCrashBlockReportStrategy_Auto:
@@ -378,8 +351,7 @@ typedef NS_ENUM(NSUInteger, EDumpUploadType) {
     });
 }
 
-- (void)autoClean
-{
+- (void)autoClean {
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(10 * NSEC_PER_SEC)), self.pluginReportQueue, ^{
         // 自动清理 10天 以外的 crash 和 lag 文件
         [MatrixPathUtil autoCleanDiretory:[MatrixPathUtil crashBlockPluginCachePath] withTimeout:10 * 86400];
@@ -390,8 +362,7 @@ typedef NS_ENUM(NSUInteger, EDumpUploadType) {
 #pragma mark - Crash
 // ============================================================================
 
-- (void)autoReportCrash
-{
+- (void)autoReportCrash {
     dispatch_async(self.pluginReportQueue, ^{
         if ([WCCrashBlockFileHandler hasCrashReport]) {
             if (self.reportDelegate) {
@@ -405,8 +376,7 @@ typedef NS_ENUM(NSUInteger, EDumpUploadType) {
     });
 }
 
-- (void)reportCrash
-{
+- (void)reportCrash {
     dispatch_async(self.pluginReportQueue, ^{
         if ([WCCrashBlockFileHandler hasCrashReport]) {
             NSDictionary *crashDataDic = [WCCrashBlockFileHandler getPendingCrashReportInfo];
@@ -435,8 +405,7 @@ typedef NS_ENUM(NSUInteger, EDumpUploadType) {
     });
 }
 
-+ (BOOL)hasCrashReport
-{
++ (BOOL)hasCrashReport {
     return [WCCrashBlockFileHandler hasCrashReport];
 }
 
@@ -444,28 +413,23 @@ typedef NS_ENUM(NSUInteger, EDumpUploadType) {
 #pragma mark - Lag & Lag File
 // ============================================================================
 
-+ (BOOL)haveLagFiles
-{
++ (BOOL)haveLagFiles {
     return [WCCrashBlockFileHandler haveLagFiles];
 }
 
-+ (BOOL)haveLagFilesOnDate:(NSString *)nsDate
-{
++ (BOOL)haveLagFilesOnDate:(NSString *)nsDate {
     return [WCCrashBlockFileHandler haveLagFilesOnDate:nsDate];
 }
 
-+ (BOOL)haveLagFilesOnType:(EDumpType)dumpType
-{
++ (BOOL)haveLagFilesOnType:(EDumpType)dumpType {
     return [WCCrashBlockFileHandler haveLagFilesOnType:dumpType];
 }
 
-+ (BOOL)haveLagFilesOnDate:(NSString *)nsDate onType:(EDumpType)dumpType
-{
++ (BOOL)haveLagFilesOnDate:(NSString *)nsDate onType:(EDumpType)dumpType {
     return [WCCrashBlockFileHandler haveLagFilesOnDate:nsDate onType:dumpType];
 }
 
-- (void)autoReportLag
-{
+- (void)autoReportLag {
     dispatch_async(self.pluginReportQueue, ^{
         if (self.reportDelegate) {
             if ([self.reportDelegate isReportLagLimit:self]) {
@@ -485,13 +449,11 @@ typedef NS_ENUM(NSUInteger, EDumpUploadType) {
     });
 }
 
-- (void)reportAllLagFile
-{
+- (void)reportAllLagFile {
     [self reportAllLagFileOnDate:@""];
 }
 
-- (void)reportAllLagFileOnDate:(NSString *)nsDate
-{
+- (void)reportAllLagFileOnDate:(NSString *)nsDate {
     dispatch_async(self.pluginReportQueue, ^{
         if (self.dumpUploadType != EDumpUploadType_None) {
             MatrixInfo(@"uploading lag, return");
@@ -516,15 +478,13 @@ typedef NS_ENUM(NSUInteger, EDumpUploadType) {
                 }
                 taskData.m_uploadFilesArray = trimFilesArray;
             }
-            NSArray *matrixIssue = [self getMatrixIssueFromReportTaskData:taskData
-                                                           withReportType:EMCrashBlockReportType_Lag
-                                                              quickUpload:NO];
+            NSArray *matrixIssue = [self getMatrixIssueFromReportTaskData:taskData withReportType:EMCrashBlockReportType_Lag quickUpload:NO];
             [matrixIssueArray addObjectsFromArray:matrixIssue];
         }
-        
+
         self.dumpUploadType = EDumpUploadType_All;
         self.currentUploadDate = nsDate;
-        
+
         NSArray *retIssueArray = [matrixIssueArray copy];
         for (MatrixIssue *issue in retIssueArray) {
             MatrixInfo(@"report dump : %@", issue);
@@ -535,22 +495,20 @@ typedef NS_ENUM(NSUInteger, EDumpUploadType) {
     });
 }
 
-- (void)reportOneTypeLag:(EDumpType)dumpType
-                  onDate:(NSString *)nsDate
-{
+- (void)reportOneTypeLag:(EDumpType)dumpType onDate:(NSString *)nsDate {
     dispatch_async(self.pluginReportQueue, ^{
         if (self.dumpUploadType != EDumpUploadType_None) {
             MatrixInfo(@"uploading lag, return");
             return;
         }
-        
+
         NSArray *reportDataArray = [WCDumpReportDataProvider getReportDataWithType:dumpType onDate:nsDate];
         if (reportDataArray == nil || [reportDataArray count] <= 0) {
             MatrixInfo(@"no lag can upload");
             return;
         }
-        
-        MatrixInfo(@"report lag one type %lu on date %@ ", (unsigned long) dumpType, nsDate);
+
+        MatrixInfo(@"report lag one type %lu on date %@ ", (unsigned long)dumpType, nsDate);
 
         NSMutableArray *matrixIssueArray = [[NSMutableArray alloc] init];
         for (WCDumpReportTaskData *taskData in reportDataArray) {
@@ -564,12 +522,10 @@ typedef NS_ENUM(NSUInteger, EDumpUploadType) {
                 }
                 taskData.m_uploadFilesArray = trimFilesArray;
             }
-            NSArray *matrixIssue = [self getMatrixIssueFromReportTaskData:taskData
-                                                           withReportType:EMCrashBlockReportType_Lag
-                                                              quickUpload:NO];
+            NSArray *matrixIssue = [self getMatrixIssueFromReportTaskData:taskData withReportType:EMCrashBlockReportType_Lag quickUpload:NO];
             [matrixIssueArray addObjectsFromArray:matrixIssue];
         }
-        
+
         self.dumpUploadType = EDumpUploadType_SpecificType;
         self.currentUploadType = dumpType;
         self.currentUploadDate = nsDate;
@@ -584,26 +540,21 @@ typedef NS_ENUM(NSUInteger, EDumpUploadType) {
     });
 }
 
-- (void)reportTodayOneTypeLag
-{
+- (void)reportTodayOneTypeLag {
     [self reportTodayOneTypeLagWithlimitUploadConfig:@""];
 }
 
-- (void)reportTodayOneTypeLagWithlimitUploadConfig:(NSString *)limitConfigStr
-{
-    [self reportTodayOneTypeLagWithlimitUploadConfig:limitConfigStr
-                                withLimitReportCount:kTodayOneTypeFilesLimit];
+- (void)reportTodayOneTypeLagWithlimitUploadConfig:(NSString *)limitConfigStr {
+    [self reportTodayOneTypeLagWithlimitUploadConfig:limitConfigStr withLimitReportCount:kTodayOneTypeFilesLimit];
 }
 
-- (void)reportTodayOneTypeLagWithlimitUploadConfig:(NSString *)limitConfigStr
-                              withLimitReportCount:(NSUInteger)reportCntLimit
-{
+- (void)reportTodayOneTypeLagWithlimitUploadConfig:(NSString *)limitConfigStr withLimitReportCount:(NSUInteger)reportCntLimit {
     dispatch_async(self.pluginReportQueue, ^{
         if (self.dumpUploadType != EDumpUploadType_None) {
             MatrixInfo(@"uploading lag, return");
             return;
         }
-        
+
         WCDumpReportTaskData *reportData = [WCDumpReportDataProvider getTodayOneReportDataWithLimitType:limitConfigStr];
         if (reportData == nil || [reportData.m_uploadFilesArray count] == 0) {
             MatrixInfo(@"no lag can upload");
@@ -618,12 +569,13 @@ typedef NS_ENUM(NSUInteger, EDumpUploadType) {
             currentCount += 1;
         }
         MatrixInfo(@"report today one type: %@,limit: %lu, limitFilesCount: %lu, filesCount: %lu",
-                   limitConfigStr, (unsigned long) reportCntLimit, (unsigned long) [limitFilesArray count], (unsigned long) [reportData.m_uploadFilesArray count]);
+                   limitConfigStr,
+                   (unsigned long)reportCntLimit,
+                   (unsigned long)[limitFilesArray count],
+                   (unsigned long)[reportData.m_uploadFilesArray count]);
         reportData.m_uploadFilesArray = limitFilesArray;
-        NSArray *matrixIssueArray = [self getMatrixIssueFromReportTaskData:reportData
-                                                            withReportType:EMCrashBlockReportType_Lag
-                                                               quickUpload:NO];
-        
+        NSArray *matrixIssueArray = [self getMatrixIssueFromReportTaskData:reportData withReportType:EMCrashBlockReportType_Lag quickUpload:NO];
+
         self.dumpUploadType = EDumpUploadType_Today;
 
         for (MatrixIssue *issue in matrixIssueArray) {
@@ -639,10 +591,7 @@ typedef NS_ENUM(NSUInteger, EDumpUploadType) {
 #pragma mark - DumpReportData To Matrix Issue
 // ============================================================================
 
-- (NSArray *)getMatrixIssueFromReportTaskData:(WCDumpReportTaskData *)taskData
-                               withReportType:(int)reportType
-                                  quickUpload:(BOOL)bQuick
-{
+- (NSArray *)getMatrixIssueFromReportTaskData:(WCDumpReportTaskData *)taskData withReportType:(int)reportType quickUpload:(BOOL)bQuick {
     NSMutableArray *issueArray = [[NSMutableArray alloc] init];
 
     NSArray *dumpItems = taskData.m_uploadFilesArray;
@@ -662,9 +611,10 @@ typedef NS_ENUM(NSUInteger, EDumpUploadType) {
                     currentIssue.issueID = fileReportID;
                     currentIssue.dataType = EMatrixIssueDataType_Data;
                     currentIssue.issueData = [WCCrashBlockFileHandler getLagDataWithReportID:fileReportID andReportType:taskData.m_dumpType];
-                    currentIssue.customInfo = @{ @g_crash_block_monitor_custom_file_count : @1,
-                                                 @g_crash_block_monitor_custom_dump_type : [NSNumber numberWithUnsignedInteger:taskData.m_dumpType],
-                                                 @g_crash_block_monitor_custom_report_id : @[ fileReportID ]
+                    currentIssue.customInfo = @{
+                        @g_crash_block_monitor_custom_file_count : @1,
+                        @g_crash_block_monitor_custom_dump_type : [NSNumber numberWithUnsignedInteger:taskData.m_dumpType],
+                        @g_crash_block_monitor_custom_report_id : @[ fileReportID ]
                     };
 
                     [issueArray addObject:currentIssue];
@@ -681,9 +631,10 @@ typedef NS_ENUM(NSUInteger, EDumpUploadType) {
                     currentIssue.dataType = EMatrixIssueDataType_Data;
                     currentIssue.issueData = [WCCrashBlockFileHandler getLagDataWithReportIDArray:[currentUploadingItems copy]
                                                                                     andReportType:taskData.m_dumpType];
-                    currentIssue.customInfo = @{ @g_crash_block_monitor_custom_file_count : [NSNumber numberWithUnsignedInteger:currentUploadingItems.count],
-                                                 @g_crash_block_monitor_custom_dump_type : [NSNumber numberWithUnsignedInteger:taskData.m_dumpType],
-                                                 @g_crash_block_monitor_custom_report_id : [currentUploadingItems copy]
+                    currentIssue.customInfo = @{
+                        @g_crash_block_monitor_custom_file_count : [NSNumber numberWithUnsignedInteger:currentUploadingItems.count],
+                        @g_crash_block_monitor_custom_dump_type : [NSNumber numberWithUnsignedInteger:taskData.m_dumpType],
+                        @g_crash_block_monitor_custom_report_id : [currentUploadingItems copy]
                     };
                     [issueArray addObject:currentIssue];
                     [currentUploadingItems removeAllObjects];
@@ -707,9 +658,10 @@ typedef NS_ENUM(NSUInteger, EDumpUploadType) {
                 currentIssue.dataType = EMatrixIssueDataType_Data;
                 currentIssue.issueData = [WCCrashBlockFileHandler getLagDataWithReportIDArray:[currentUploadingItems copy]
                                                                                 andReportType:taskData.m_dumpType];
-                currentIssue.customInfo = @{ @g_crash_block_monitor_custom_file_count : [NSNumber numberWithUnsignedInteger:currentUploadingItems.count],
-                                             @g_crash_block_monitor_custom_dump_type : [NSNumber numberWithUnsignedInteger:taskData.m_dumpType],
-                                             @g_crash_block_monitor_custom_report_id : [currentUploadingItems copy]
+                currentIssue.customInfo = @{
+                    @g_crash_block_monitor_custom_file_count : [NSNumber numberWithUnsignedInteger:currentUploadingItems.count],
+                    @g_crash_block_monitor_custom_dump_type : [NSNumber numberWithUnsignedInteger:taskData.m_dumpType],
+                    @g_crash_block_monitor_custom_report_id : [currentUploadingItems copy]
                 };
                 [issueArray addObject:currentIssue];
             }

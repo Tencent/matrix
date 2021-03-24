@@ -56,7 +56,7 @@
 
 @required
 
-- (void)start;
+- (BOOL)start;
 
 - (void)stop;
 

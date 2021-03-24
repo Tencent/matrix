@@ -22,7 +22,6 @@
 // THE SOFTWARE.
 //
 
-
 #ifndef KSSymbolicator_h
 #define KSSymbolicator_h
 
@@ -50,15 +49,14 @@
  */
 #define CALL_INSTRUCTION_FROM_RETURN_ADDRESS(A) (DETAG_INSTRUCTION_ADDRESS((A)) - 1)
 
+#include "KSStackCursor.h"
+#include <stdbool.h>
+#include "KSDynamicLinker.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-
-#include "KSStackCursor.h"
-#include <stdbool.h>
-#include "KSDynamicLinker.h"
-    
 /** Symbolicate a stack cursor.
  *
  * @param cursor The cursor to symbolicate.

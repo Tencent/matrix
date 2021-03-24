@@ -20,32 +20,31 @@
 
 @implementation WCCrashReportInterpreter
 
-+ (NSData *)interpretReport:(NSData *)reportFileData
-{
++ (NSData *)interpretReport:(NSData *)reportFileData {
     NSString *fileString = [[NSString alloc] initWithData:reportFileData encoding:NSUTF8StringEncoding];
     NSArray *reportLineArray = [fileString componentsSeparatedByString:@"\n"];
     NSArray *addressArray = [WCCrashReportInterpreter p_getAddressFromArray:reportLineArray];
     NSArray *symbolicatedAdressArray = [WCCrashReportInterpreter p_getSymbolicatedStack:addressArray];
     NSMutableDictionary *reportUUIDDict = [WCCrashReportInterpreter p_getBinaryImageUUID:reportLineArray];
-    NSString *symbolicatedReport = [WCCrashReportInterpreter p_getReportWithReportLineArray:reportLineArray withSymblicatedAddressArray:symbolicatedAdressArray withBinaryUUID:reportUUIDDict];
+    NSString *symbolicatedReport = [WCCrashReportInterpreter p_getReportWithReportLineArray:reportLineArray
+                                                                withSymblicatedAddressArray:symbolicatedAdressArray
+                                                                             withBinaryUUID:reportUUIDDict];
     return [symbolicatedReport dataUsingEncoding:NSUTF8StringEncoding];
 }
 
-+ (NSString *)interpretText:(NSString *)reportString
-{
++ (NSString *)interpretText:(NSString *)reportString {
     NSArray *reportLineArray = [WCCrashReportInterpreter p_cleanEmptyString:[reportString componentsSeparatedByString:@"\n"]];
     NSArray *addressArray = [WCCrashReportInterpreter p_getTextStackArray:reportLineArray];
     NSArray *symbolicatedAddressArray = [WCCrashReportInterpreter p_getSymbolicatedStack:addressArray];
     return [WCCrashReportInterpreter p_getNewCrashTextString:symbolicatedAddressArray];
 }
 
-+ (NSArray *)p_getTextStackArray:(NSArray *)reportLineArray
-{
++ (NSArray *)p_getTextStackArray:(NSArray *)reportLineArray {
     NSUInteger lineNum = 0;
-    
+
     NSMutableArray *addressArray = [[NSMutableArray alloc] init];
-    
-    for (lineNum = 0; lineNum < [reportLineArray count]; lineNum ++) {
+
+    for (lineNum = 0; lineNum < [reportLineArray count]; lineNum++) {
         NSString *lineString = [reportLineArray objectAtIndex:lineNum];
         if (lineString != nil && lineString.length > 0) {
             NSString *addrlineString = [lineString stringByTrimmingCharactersInSet:[NSCharacterSet characterSetWithCharactersInString:@"\t"]];
@@ -70,14 +69,13 @@
     return [addressArray copy];
 }
 
-+ (NSArray *)p_getSymbolicatedStack:(NSArray *)addressArray
-{
++ (NSArray *)p_getSymbolicatedStack:(NSArray *)addressArray {
     NSArray *cleanedAddressArray = [WCCrashReportInterpreter p_cleanAddressArray:addressArray];
     size_t addressCount = [cleanedAddressArray count];
     NSMutableArray *symbolicatedStack = [[NSMutableArray alloc] init];
 
     if (addressCount > 0) {
-        uintptr_t *currentThreadStack = (uintptr_t *) malloc(sizeof(uintptr_t) * addressCount);
+        uintptr_t *currentThreadStack = (uintptr_t *)malloc(sizeof(uintptr_t) * addressCount);
         if (currentThreadStack != NULL) {
             for (int i = 0; i < addressCount; i++) {
                 NSDictionary *currentAddressInfo = cleanedAddressArray[i];
@@ -91,15 +89,16 @@
                     currentThreadStack[i] = 0;
                 }
             }
-            KSStackCursor *stackCursor = (KSStackCursor *) malloc(sizeof(KSStackCursor));
-            kssc_initWithBacktrace(stackCursor, currentThreadStack, (int) addressCount, 0);
+            KSStackCursor *stackCursor = (KSStackCursor *)malloc(sizeof(KSStackCursor));
+            kssc_initWithBacktrace(stackCursor, currentThreadStack, (int)addressCount, 0);
 
             NSUInteger index = 0;
             while (stackCursor->advanceCursor(stackCursor)) {
                 NSMutableDictionary *addrInfoDict = [[NSMutableDictionary alloc] init];
                 if (stackCursor->symbolicate(stackCursor)) {
                     if (stackCursor->stackEntry.imageName != NULL) {
-                        [addrInfoDict setObject:[NSString stringWithUTF8String:wxg_lastPathEntry(stackCursor->stackEntry.imageName)] forKey:@"imageName"];
+                        [addrInfoDict setObject:[NSString stringWithUTF8String:wxg_lastPathEntry(stackCursor->stackEntry.imageName)]
+                                         forKey:@"imageName"];
                     }
                     [addrInfoDict setValue:[NSNumber numberWithUnsignedInteger:stackCursor->stackEntry.imageAddress] forKey:@"imageAddress"];
                     if (stackCursor->stackEntry.symbolName != NULL) {
@@ -119,9 +118,9 @@
                 [symbolicatedStack addObject:[addrInfoDict copy]];
             }
 
-            KSStackCursor_Backtrace_Context *context = (KSStackCursor_Backtrace_Context *) stackCursor->context;
+            KSStackCursor_Backtrace_Context *context = (KSStackCursor_Backtrace_Context *)stackCursor->context;
             if (context->backtrace) {
-                free((uintptr_t *) context->backtrace);
+                free((uintptr_t *)context->backtrace);
             }
             free(stackCursor);
         }
@@ -129,8 +128,7 @@
     return symbolicatedStack;
 }
 
-+ (uintptr_t)getImageStartAddr:(NSString *)currentImageName
-{
++ (uintptr_t)getImageStartAddr:(NSString *)currentImageName {
     NSArray *binaryImages = [[WCCrashReportInfoUtil sharedInstance] getBinaryImages];
     for (NSDictionary *imageInfoDict in binaryImages) {
         NSString *imageName = imageInfoDict[@"name"];
@@ -142,8 +140,7 @@
     return 0;
 }
 
-+ (NSString *)getImageUUID:(NSString *)currentImageName
-{
++ (NSString *)getImageUUID:(NSString *)currentImageName {
     NSArray *binaryImages = [[WCCrashReportInfoUtil sharedInstance] getBinaryImages];
     for (NSDictionary *imageInfoDict in binaryImages) {
         NSString *imageName = imageInfoDict[@"name"];
@@ -155,8 +152,7 @@
     return @"";
 }
 
-+ (NSArray *)p_cleanEmptyString:(NSArray *)stringArray
-{
++ (NSArray *)p_cleanEmptyString:(NSArray *)stringArray {
     NSMutableArray *cleanedStringArray = [[NSMutableArray alloc] init];
     for (NSString *oneString in stringArray) {
         if (oneString && [oneString length] > 0) {
@@ -166,8 +162,7 @@
     return [cleanedStringArray copy];
 }
 
-+ (NSArray *)p_cleanAddressArray:(NSArray *)addressArray
-{
++ (NSArray *)p_cleanAddressArray:(NSArray *)addressArray {
     NSMutableArray *cleanedAddressArray = [[NSMutableArray alloc] init];
     for (NSDictionary *currentAddressInfo in addressArray) {
         NSString *imgName = currentAddressInfo[@"imageName"];
@@ -179,10 +174,9 @@
     return [cleanedAddressArray copy];
 }
 
-+ (NSString *)p_getNewCrashTextString:(NSArray *)symbolicatedAddressArray
-{
++ (NSString *)p_getNewCrashTextString:(NSArray *)symbolicatedAddressArray {
     NSString *newCrashReport = @"";
-    
+
     int index = 0;
     for (NSDictionary *addressInfo in symbolicatedAddressArray) {
         newCrashReport = [newCrashReport stringByAppendingString:[NSString stringWithFormat:@"%d  ", index]];
@@ -192,21 +186,26 @@
         newCrashReport = [newCrashReport stringByAppendingString:[NSString stringWithFormat:@"%@ ", addressInfo[@"symbolName"]]];
         NSNumber *instructionAddrsss = (NSNumber *)addressInfo[@"instructionAddress"];
         NSNumber *symbolAddress = (NSNumber *)addressInfo[@"symbolAddress"];
-        newCrashReport = [newCrashReport stringByAppendingString:[NSString stringWithFormat:@"+ %lld \n", [instructionAddrsss unsignedLongLongValue] - [symbolAddress unsignedLongLongValue]]];
+        newCrashReport = [newCrashReport
+        stringByAppendingString:[NSString
+                                stringWithFormat:@"+ %lld \n", [instructionAddrsss unsignedLongLongValue] - [symbolAddress unsignedLongLongValue]]];
         newCrashReport = [newCrashReport stringByAppendingString:@"\n"];
-        
-        index ++;
+
+        index++;
     }
-    
+
     return newCrashReport;
 }
 
-+ (NSString *)p_getReportWithReportLineArray:(NSArray *)reportLineArray withSymblicatedAddressArray:(NSArray *)symbolicatedAddressArray withBinaryUUID:(NSMutableDictionary *)reportUUIDDict
-{
++ (NSString *)p_getReportWithReportLineArray:(NSArray *)reportLineArray
+                 withSymblicatedAddressArray:(NSArray *)symbolicatedAddressArray
+                              withBinaryUUID:(NSMutableDictionary *)reportUUIDDict {
     NSMutableString *newReport = [@"" mutableCopy];
     for (NSString *lineString in reportLineArray) {
         if ([WCCrashReportInterpreter p_validStackFormat:lineString]) {
-            NSString *symString = [WCCrashReportInterpreter p_getSymbolicatedLine:lineString withSymblicatedAddressArray:symbolicatedAddressArray withBinaryUUID:reportUUIDDict];
+            NSString *symString = [WCCrashReportInterpreter p_getSymbolicatedLine:lineString
+                                                      withSymblicatedAddressArray:symbolicatedAddressArray
+                                                                   withBinaryUUID:reportUUIDDict];
             [newReport appendFormat:@"%@\n", symString];
         } else {
             [newReport appendFormat:@"%@\n", lineString];
@@ -215,8 +214,7 @@
     return [newReport copy];
 }
 
-+ (BOOL)p_validStackFormat:(NSString *)reportLineString
-{
++ (BOOL)p_validStackFormat:(NSString *)reportLineString {
     NSArray *linePartArray = [WCCrashReportInterpreter p_cleanEmptyString:[reportLineString componentsSeparatedByString:@" "]];
     if ([WCCrashReportInterpreter p_hasPlusPartInArray:linePartArray]) { // 有加号，说明有可能有堆栈
         if ([WCCrashReportInterpreter p_validFirstStackFormat:linePartArray]) {
@@ -229,13 +227,15 @@
     return NO;
 }
 
-+ (NSString *)p_getSymbolicatedLine:(NSString *)reportLineString withSymblicatedAddressArray:(NSArray *)symbolicatedAddressArray withBinaryUUID:(NSMutableDictionary *)reportUUIDDict
-{
++ (NSString *)p_getSymbolicatedLine:(NSString *)reportLineString
+        withSymblicatedAddressArray:(NSArray *)symbolicatedAddressArray
+                     withBinaryUUID:(NSMutableDictionary *)reportUUIDDict {
     NSArray *linePartArray = [WCCrashReportInterpreter p_cleanEmptyString:[reportLineString componentsSeparatedByString:@" "]];
     if ([WCCrashReportInterpreter p_validFirstStackFormat:linePartArray]) {
         // 0   libsystem_kernel.dylib            0x0000000238bdb104 0x238bb8000 + 143620
         NSMutableDictionary *addressInfo = [WCCrashReportInterpreter p_getAddressInfoFromFirstStackFormat:linePartArray];
-        NSMutableDictionary *symAddressInfo = [WCCrashReportInterpreter p_getSymblicatedAddressInfo:addressInfo fromSymblicatedAddressArray:symbolicatedAddressArray];
+        NSMutableDictionary *symAddressInfo = [WCCrashReportInterpreter p_getSymblicatedAddressInfo:addressInfo
+                                                                        fromSymblicatedAddressArray:symbolicatedAddressArray];
         if (symAddressInfo == nil) {
             return reportLineString;
         }
@@ -254,11 +254,12 @@
             }
         }
     }
-    
+
     if ([WCCrashReportInterpreter p_validSecondStackFormat:linePartArray]) {
         //7  ??? (libsystem_pthread.dylib + 45580) [0x203f6b20c]
         NSMutableDictionary *addressInfo = [WCCrashReportInterpreter p_getAddressInfoFromSecondStackFormat:linePartArray];
-        NSMutableDictionary *symAddressInfo = [WCCrashReportInterpreter p_getSymblicatedAddressInfo:addressInfo fromSymblicatedAddressArray:symbolicatedAddressArray];
+        NSMutableDictionary *symAddressInfo = [WCCrashReportInterpreter p_getSymblicatedAddressInfo:addressInfo
+                                                                        fromSymblicatedAddressArray:symbolicatedAddressArray];
         if (symAddressInfo == nil) {
             return reportLineString;
         }
@@ -279,7 +280,8 @@
             if ([reportUUID isEqualToString:deviceUUID]) {
                 [newString appendFormat:@"  %@ %@ %@ %@ %@", symbolName, linePartArray[2], linePartArray[3], linePartArray[4], linePartArray[5]];
             } else {
-                [newString appendFormat:@"  %@ %@ %@ %@ %@", @"Images Not Matched", linePartArray[2], linePartArray[3], linePartArray[4], linePartArray[5]];
+                [newString
+                appendFormat:@"  %@ %@ %@ %@ %@", @"Images Not Matched", linePartArray[2], linePartArray[3], linePartArray[4], linePartArray[5]];
             }
             return [newString copy];
         }
@@ -287,8 +289,8 @@
     return @"";
 }
 
-+ (NSMutableDictionary *)p_getSymblicatedAddressInfo:(NSMutableDictionary *)addressInfo fromSymblicatedAddressArray:(NSArray *)symbolicatedAddressArray
-{
++ (NSMutableDictionary *)p_getSymblicatedAddressInfo:(NSMutableDictionary *)addressInfo
+                         fromSymblicatedAddressArray:(NSArray *)symbolicatedAddressArray {
     NSString *firstImage = addressInfo[@"imageName"];
     NSString *firstBias = addressInfo[@"biaAddress"];
     long long biaAddress = [firstBias longLongValue];
@@ -296,7 +298,7 @@
         NSString *curImage = symbAddressInfo[@"imageName"];
         if ([curImage isEqualToString:firstImage]) {
             NSNumber *imageAddress = (NSNumber *)symbAddressInfo[@"imageAddress"];
-            NSNumber *instructionAddrsss = (NSNumber *) symbAddressInfo[@"instructionAddress"];
+            NSNumber *instructionAddrsss = (NSNumber *)symbAddressInfo[@"instructionAddress"];
             long long curBias = [instructionAddrsss longLongValue] - [imageAddress longLongValue];
             if (curBias == biaAddress) {
                 return symbAddressInfo;
@@ -306,10 +308,9 @@
     return nil;
 }
 
-+ (NSArray *)p_getAddressFromArray:(NSArray *)reportLineArray
-{
++ (NSArray *)p_getAddressFromArray:(NSArray *)reportLineArray {
     NSMutableArray *addressArray = [[NSMutableArray alloc] init];
-    
+
     for (NSString *reportLine in reportLineArray) {
         if (reportLine.length == 0 || reportLine == nil) {
             continue;
@@ -344,8 +345,7 @@
     return NO;
 }
 
-+ (NSMutableDictionary *)p_getAddressInfoFromFirstStackFormat:(NSArray *)linePartArray
-{
++ (NSMutableDictionary *)p_getAddressInfoFromFirstStackFormat:(NSArray *)linePartArray {
     NSMutableDictionary *stackInfo = [[NSMutableDictionary alloc] init];
     NSString *binaryPart = linePartArray[1];
     NSString *biasPart = linePartArray[5];
@@ -369,15 +369,14 @@
     }
     NSString *fourPart = linePartArray[4];
     NSString *fivePart = linePartArray[5];
-    if ([secPart containsString:@"("] && [fourPart containsString:@")"] &&
-        [fivePart containsString:@"["] && [fivePart containsString:@"]"]) {
+    if ([secPart containsString:@"("] && [fourPart containsString:@")"] && [fivePart containsString:@"["] && [fivePart containsString:@"]"]) {
         return YES;
     }
-    return NO;;
+    return NO;
+    ;
 }
 
-+ (NSMutableDictionary *)p_getAddressInfoFromSecondStackFormat:(NSArray *)linePartArray
-{
++ (NSMutableDictionary *)p_getAddressInfoFromSecondStackFormat:(NSArray *)linePartArray {
     NSMutableDictionary *stackInfo = [[NSMutableDictionary alloc] init];
     NSString *binaryPart = [linePartArray[2] stringByReplacingOccurrencesOfString:@"(" withString:@""];
     NSString *biasPart = [linePartArray[4] stringByReplacingOccurrencesOfString:@")" withString:@""];
@@ -389,8 +388,7 @@
     return nil;
 }
 
-+ (BOOL)p_hasPlusPartInArray:(NSArray *)linePartArray
-{
++ (BOOL)p_hasPlusPartInArray:(NSArray *)linePartArray {
     for (NSString *linePart in linePartArray) {
         if ([linePart isEqualToString:@"+"]) {
             return YES;
@@ -399,8 +397,7 @@
     return NO;
 }
 
-+ (NSMutableDictionary *)p_getBinaryImageUUID:(NSArray *)reportLineArray
-{
++ (NSMutableDictionary *)p_getBinaryImageUUID:(NSArray *)reportLineArray {
     BOOL startGetBinaryImages = NO;
     NSMutableDictionary *binaryImageDict = [[NSMutableDictionary alloc] init];
     for (NSString *reportLine in reportLineArray) {

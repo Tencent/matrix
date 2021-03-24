@@ -22,24 +22,20 @@
 // THE SOFTWARE.
 //
 
-
 #include "KSStackCursor_Backtrace.h"
 #include "KSCPU.h"
 
 //#define KSLogger_LocalLevel TRACE
 #include "KSLogger.h"
 
-static bool advanceCursor(KSStackCursor *cursor)
-{
-    KSStackCursor_Backtrace_Context* context = (KSStackCursor_Backtrace_Context*)cursor->context;
+static bool advanceCursor(KSStackCursor *cursor) {
+    KSStackCursor_Backtrace_Context *context = (KSStackCursor_Backtrace_Context *)cursor->context;
     int endDepth = context->backtraceLength - context->skippedEntries;
-    if(cursor->state.currentDepth < endDepth)
-    {
+    if (cursor->state.currentDepth < endDepth) {
         int currentIndex = cursor->state.currentDepth + context->skippedEntries;
         uintptr_t nextAddress = context->backtrace[currentIndex];
         // Bug: The system sometimes gives a backtrace with an extra 0x00000001 at the end.
-        if(nextAddress > 1)
-        {
+        if (nextAddress > 1) {
             cursor->stackEntry.address = kscpu_normaliseInstructionPointer(nextAddress);
             cursor->state.currentDepth++;
             return true;
@@ -48,10 +44,9 @@ static bool advanceCursor(KSStackCursor *cursor)
     return false;
 }
 
-void kssc_initWithBacktrace(KSStackCursor *cursor, const uintptr_t* backtrace, int backtraceLength, int skipEntries)
-{
+void kssc_initWithBacktrace(KSStackCursor *cursor, const uintptr_t *backtrace, int backtraceLength, int skipEntries) {
     kssc_initCursor(cursor, kssc_resetCursor, advanceCursor);
-    KSStackCursor_Backtrace_Context* context = (KSStackCursor_Backtrace_Context*)cursor->context;
+    KSStackCursor_Backtrace_Context *context = (KSStackCursor_Backtrace_Context *)cursor->context;
     context->skippedEntries = skipEntries;
     context->backtraceLength = backtraceLength;
     context->backtrace = backtrace;

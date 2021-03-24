@@ -24,55 +24,41 @@
 // THE SOFTWARE.
 //
 
-
 #import "KSCrashReportFilterJSON.h"
 
 //#define KSLogger_LocalLevel TRACE
 #import "KSLogger.h"
 
-
 @interface KSCrashReportFilterJSONEncode ()
 
-@property(nonatomic,readwrite,assign) KSJSONEncodeOption encodeOptions;
+@property (nonatomic, readwrite, assign) KSJSONEncodeOption encodeOptions;
 
 @end
-
 
 @implementation KSCrashReportFilterJSONEncode
 
 @synthesize encodeOptions = _encodeOptions;
 
-+ (KSCrashReportFilterJSONEncode*) filterWithOptions:(KSJSONEncodeOption) options
-{
-    return [(KSCrashReportFilterJSONEncode*)[self alloc] initWithOptions:options];
++ (KSCrashReportFilterJSONEncode *)filterWithOptions:(KSJSONEncodeOption)options {
+    return [(KSCrashReportFilterJSONEncode *)[self alloc] initWithOptions:options];
 }
 
-- (id) initWithOptions:(KSJSONEncodeOption) options
-{
-    if((self = [super init]))
-    {
+- (id)initWithOptions:(KSJSONEncodeOption)options {
+    if ((self = [super init])) {
         self.encodeOptions = options;
     }
     return self;
 }
 
-- (void) filterReports:(NSArray*) reports
-          onCompletion:(KSCrashReportFilterCompletion) onCompletion
-{
-    NSMutableArray* filteredReports = [NSMutableArray arrayWithCapacity:[reports count]];
-    for(NSDictionary* report in reports)
-    {
-        NSError* error = nil;
-        NSData* jsonData = [KSJSONCodec encode:report
-                                       options:self.encodeOptions
-                                         error:&error];
-        if(jsonData == nil)
-        {
+- (void)filterReports:(NSArray *)reports onCompletion:(KSCrashReportFilterCompletion)onCompletion {
+    NSMutableArray *filteredReports = [NSMutableArray arrayWithCapacity:[reports count]];
+    for (NSDictionary *report in reports) {
+        NSError *error = nil;
+        NSData *jsonData = [KSJSONCodec encode:report options:self.encodeOptions error:&error];
+        if (jsonData == nil) {
             kscrash_callCompletion(onCompletion, filteredReports, NO, error);
             return;
-        }
-        else
-        {
+        } else {
             [filteredReports addObject:jsonData];
         }
     }
@@ -82,49 +68,36 @@
 
 @end
 
-
 @interface KSCrashReportFilterJSONDecode ()
 
-@property(nonatomic,readwrite,assign) KSJSONDecodeOption decodeOptions;
+@property (nonatomic, readwrite, assign) KSJSONDecodeOption decodeOptions;
 
 @end
-
 
 @implementation KSCrashReportFilterJSONDecode
 
 @synthesize decodeOptions = _encodeOptions;
 
-+ (KSCrashReportFilterJSONDecode*) filterWithOptions:(KSJSONDecodeOption) options
-{
-    return [(KSCrashReportFilterJSONDecode*)[self alloc] initWithOptions:options];
++ (KSCrashReportFilterJSONDecode *)filterWithOptions:(KSJSONDecodeOption)options {
+    return [(KSCrashReportFilterJSONDecode *)[self alloc] initWithOptions:options];
 }
 
-- (id) initWithOptions:(KSJSONDecodeOption) options
-{
-    if((self = [super init]))
-    {
+- (id)initWithOptions:(KSJSONDecodeOption)options {
+    if ((self = [super init])) {
         self.decodeOptions = options;
     }
     return self;
 }
 
-- (void) filterReports:(NSArray*) reports
-          onCompletion:(KSCrashReportFilterCompletion) onCompletion
-{
-    NSMutableArray* filteredReports = [NSMutableArray arrayWithCapacity:[reports count]];
-    for(NSData* data in reports)
-    {
-        NSError* error = nil;
-        NSDictionary* report = [KSJSONCodec decode:data
-                                           options:self.decodeOptions
-                                             error:&error];
-        if(report == nil)
-        {
+- (void)filterReports:(NSArray *)reports onCompletion:(KSCrashReportFilterCompletion)onCompletion {
+    NSMutableArray *filteredReports = [NSMutableArray arrayWithCapacity:[reports count]];
+    for (NSData *data in reports) {
+        NSError *error = nil;
+        NSDictionary *report = [KSJSONCodec decode:data options:self.decodeOptions error:&error];
+        if (report == nil) {
             kscrash_callCompletion(onCompletion, filteredReports, NO, error);
             return;
-        }
-        else
-        {
+        } else {
             [filteredReports addObject:report];
         }
     }

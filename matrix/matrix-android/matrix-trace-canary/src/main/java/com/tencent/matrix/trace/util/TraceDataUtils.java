@@ -108,7 +108,8 @@ public class TraceDataUtils {
             addMethodItem(result, methodItem);
         }
         TreeNode root = new TreeNode(null, null);
-        stackToTree(result, root);
+        int count = stackToTree(result, root);
+        MatrixLog.i(TAG, "stackToTree: count=%s", count);
         result.clear();
         treeToStack(root, result);
     }
@@ -143,23 +144,12 @@ public class TraceDataUtils {
         }
     }
 
-    private static void rechange(TreeNode root) {
-        if (root.children.isEmpty()) {
-            return;
-        }
-        TreeNode[] nodes = new TreeNode[root.children.size()];
-        root.children.toArray(nodes);
-        root.children.clear();
-        for (TreeNode node : nodes) {
-            root.children.addFirst(node);
-            rechange(node);
-        }
-    }
 
     private static void treeToStack(TreeNode root, LinkedList<MethodItem> list) {
 
         for (int i = 0; i < root.children.size(); i++) {
             TreeNode node = root.children.get(i);
+            if(null == node) continue;
             if (node.item != null) {
                 list.add(node.item);
             }

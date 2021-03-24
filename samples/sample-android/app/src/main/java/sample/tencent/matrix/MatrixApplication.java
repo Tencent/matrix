@@ -18,19 +18,36 @@ package sample.tencent.matrix;
 
 import android.app.Application;
 import android.content.Context;
+import android.os.Handler;
+import android.os.HandlerThread;
 import android.content.Intent;
+import android.os.Looper;
+import android.os.Message;
+import android.support.annotation.NonNull;
+import android.view.Choreographer;
 
 import com.tencent.matrix.Matrix;
+//import com.tencent.matrix.batterycanary.monitor.BatteryMonitor;
+//import com.tencent.matrix.batterycanary.monitor.plugin.JiffiesMonitorPlugin;
+//import com.tencent.matrix.batterycanary.monitor.plugin.LooperTaskMonitorPlugin;
+//import com.tencent.matrix.batterycanary.monitor.plugin.WakeLockMonitorPlugin;
 import com.tencent.matrix.iocanary.IOCanaryPlugin;
 import com.tencent.matrix.iocanary.config.IOConfig;
 import com.tencent.matrix.resource.ResourcePlugin;
 import com.tencent.matrix.resource.config.ResourceConfig;
+import com.tencent.matrix.threadcanary.ThreadMonitor;
+import com.tencent.matrix.threadcanary.ThreadMonitorConfig;
 import com.tencent.matrix.trace.TracePlugin;
 import com.tencent.matrix.trace.config.TraceConfig;
+import com.tencent.matrix.util.MatrixHandlerThread;
 import com.tencent.matrix.util.MatrixLog;
 import com.tencent.sqlitelint.SQLiteLint;
 import com.tencent.sqlitelint.SQLiteLintPlugin;
 import com.tencent.sqlitelint.config.SQLiteLintConfig;
+
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 
 import sample.tencent.matrix.config.DynamicConfigImplDemo;
 import sample.tencent.matrix.listener.TestPluginListener;
@@ -121,12 +138,30 @@ public class MatrixApplication extends Application {
             }
             builder.plugin(new SQLiteLintPlugin(sqlLiteConfig));
 
+
+            ThreadMonitor threadMonitor = new ThreadMonitor(new ThreadMonitorConfig.Builder().build());
+            builder.plugin(threadMonitor);
+
+//            BatteryMonitor batteryMonitor = new BatteryMonitor(new BatteryMonitor.Builder()
+//                    .installPlugin(LooperTaskMonitorPlugin.class)
+//                    .installPlugin(JiffiesMonitorPlugin.class)
+//                    .installPlugin(WakeLockMonitorPlugin.class)
+//                    .disableAppForegroundNotifyByMatrix(false)
+//                    .wakelockTimeout(2 * 60 * 1000)
+//                    .greyJiffiesTime(2 * 1000)
+//                    .build()
+//            );
+//            builder.plugin(batteryMonitor);
         }
 
         Matrix.init(builder.build());
 
         //start only startup tracer, close other tracer.
         tracePlugin.start();
+        Matrix.with().getPluginByClass(ThreadMonitor.class).start();
+//        Matrix.with().getPluginByClass(BatteryMonitor.class).start();
+        MatrixLog.i("Matrix.HackCallback", "end:%s", System.currentTimeMillis());
+
 
     }
 

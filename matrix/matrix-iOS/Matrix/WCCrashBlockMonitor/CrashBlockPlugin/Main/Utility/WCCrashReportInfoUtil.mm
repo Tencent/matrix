@@ -18,6 +18,7 @@
 #import <mach-o/dyld.h>
 #import <map>
 #import "KSCrash.h"
+#import "KSCrash_BinaryImageHandler.h"
 
 #ifdef __LP64__
 typedef mach_header_64 wxg_mach_header;
@@ -31,17 +32,13 @@ typedef segment_command wxg_mach_segment_command;
 #endif
 
 /** Used for writing hex string values. */
-static const char g_hexNybbles[] =
-    {
-        '0', '1', '2', '3', '4', '5', '6', '7',
-        '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
+static const char g_hexNybbles[] = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F' };
 
-NSString *wxg_uuidToString(const unsigned char *const value)
-{
+NSString *wxg_uuidToString(const unsigned char *const value) {
     if (value == NULL) {
         return @"";
     } else {
-        char uuidBuffer[37] = {0};
+        char uuidBuffer[37] = { 0 };
         const unsigned char *src = value;
         char *dst = uuidBuffer;
         for (int i = 0; i < 4; i++) {
@@ -72,13 +69,12 @@ NSString *wxg_uuidToString(const unsigned char *const value)
     }
 }
 
-const char *wxg_lastPathEntry(const char *const path)
-{
+const char *wxg_lastPathEntry(const char *const path) {
     if (path == NULL) {
         return NULL;
     }
 
-    const char *lastFile = (const char *) strrchr(path, '/');
+    const char *lastFile = (const char *)strrchr(path, '/');
     return lastFile == NULL ? path : lastFile + 1;
 }
 
@@ -91,8 +87,7 @@ const char *wxg_lastPathEntry(const char *const path)
 
 @implementation WCCrashReportInfoUtil
 
-+ (id)sharedInstance
-{
++ (id)sharedInstance {
     static WCCrashReportInfoUtil *sharedInstance = nil;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
@@ -101,8 +96,7 @@ const char *wxg_lastPathEntry(const char *const path)
     return sharedInstance;
 }
 
-- (id)init
-{
+- (id)init {
     self = [super init];
     if (self) {
         [self setupSystemInfo];
@@ -111,13 +105,11 @@ const char *wxg_lastPathEntry(const char *const path)
     return self;
 }
 
-- (void)setupSystemInfo
-{
+- (void)setupSystemInfo {
     _systemInfo = [[KSCrash sharedInstance] systemInfo];
 }
 
-- (void)setupBinaryImages
-{
+- (void)setupBinaryImages {
     _binaryImages = [[NSMutableArray alloc] init];
 
     // This extract the starting slide of every module in the app
@@ -125,20 +117,24 @@ const char *wxg_lastPathEntry(const char *const path)
 
     // These operations is NOT thread-safe according to Apple docs
     // Do not call this multiple times
-    int images = _dyld_image_count();
+    int images = __ks_dyld_image_count();
 
     for (int i = 0; i < images; i++) {
         // Here we extract the module name from the full path
         // Typically it looks something like: /path/to/lib/UIKit
         // And I just extract UIKit
 
-        NSString *fullName = [NSString stringWithUTF8String:_dyld_get_image_name(i)];
+        const char *image_name = __ks_dyld_get_image_name(i);
+        if (image_name == NULL) {
+            continue;
+        }
+        NSString *fullName = [NSString stringWithUTF8String:image_name];
         NSRange range = [fullName rangeOfString:@"/" options:NSBackwardsSearch];
 
         NSUInteger startP = (range.location != NSNotFound) ? range.location + 1 : 0;
         NSString *imageName = [fullName substringFromIndex:startP];
 
-        wxg_mach_header *header = (wxg_mach_header *) _dyld_get_image_header(i);
+        wxg_mach_header *header = (wxg_mach_header *)__ks_dyld_get_image_header(i);
         if (!header) {
             continue;
         }
@@ -148,7 +144,7 @@ const char *wxg_lastPathEntry(const char *const path)
         uint8_t *uuid = NULL;
         uint64_t imageSize = 0;
         uint64_t imageVmAddr = 0;
-        uint64_t imageAddr = (uintptr_t) header;
+        uint64_t imageAddr = (uintptr_t)header;
 
         // This is parsing the mach header in order to extract the slide.
         // See https://developer.apple.com/library/mac/documentation/DeveloperTools/Conceptual/MachORuntime/index.html
@@ -165,11 +161,11 @@ const char *wxg_lastPathEntry(const char *const path)
                 }
             }
             if (cmd->cmd == LC_UUID) {
-                struct uuid_command *uuidCmd = (struct uuid_command *) cmd;
+                struct uuid_command *uuidCmd = (struct uuid_command *)cmd;
                 uuid = uuidCmd->uuid;
             }
 
-            cmd = reinterpret_cast<struct load_command *>((char *) cmd + cmd->cmdsize);
+            cmd = reinterpret_cast<struct load_command *>((char *)cmd + cmd->cmdsize);
         }
 
         NSString *uuidString = wxg_uuidToString(uuid);
@@ -179,28 +175,27 @@ const char *wxg_lastPathEntry(const char *const path)
         NSNumber *cpuTypeNum = [NSNumber numberWithInteger:cpuType];
         NSNumber *cpuSubtypeNum = [NSNumber numberWithInteger:cpuSubType];
 
-        if (imageName != nil && uuidString != nil && iAddrNum != nil &&
-            iSizeNum != nil && iVMAddrNum != nil && cpuTypeNum != nil &&
-            cpuSubtypeNum != nil) {
-            NSDictionary *imageInfoDict = @{ @"image_addr" : iAddrNum,
-                                             @"image_size" : iSizeNum,
-                                             @"image_vmaddr" : iVMAddrNum,
-                                             @"name" : imageName,
-                                             @"uuid" : uuidString,
-                                             @"cpu_type" : cpuTypeNum,
-                                             @"cpu_subtype" : cpuSubtypeNum };
+        if (imageName != nil && uuidString != nil && iAddrNum != nil && iSizeNum != nil && iVMAddrNum != nil && cpuTypeNum != nil
+            && cpuSubtypeNum != nil) {
+            NSDictionary *imageInfoDict = @{
+                @"image_addr" : iAddrNum,
+                @"image_size" : iSizeNum,
+                @"image_vmaddr" : iVMAddrNum,
+                @"name" : imageName,
+                @"uuid" : uuidString,
+                @"cpu_type" : cpuTypeNum,
+                @"cpu_subtype" : cpuSubtypeNum
+            };
             [_binaryImages addObject:imageInfoDict];
         }
     }
 }
 
-- (NSArray *)getBinaryImages
-{
+- (NSArray *)getBinaryImages {
     return [_binaryImages copy];
 }
 
-- (NSDictionary *)getSystemInfo
-{
+- (NSDictionary *)getSystemInfo {
     return _systemInfo;
 }
 

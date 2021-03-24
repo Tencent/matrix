@@ -23,8 +23,7 @@
 
 + (void)getCurrentMainThreadStack:(void (^)(NSUInteger pc))saveResultBlock;
 
-+ (int)getCurrentMainThreadStack:(void (^)(NSUInteger pc))saveResultBlock
-                  withMaxEntries:(NSUInteger)maxEntries;
++ (int)getCurrentMainThreadStack:(void (^)(NSUInteger pc))saveResultBlock withMaxEntries:(NSUInteger)maxEntries;
 
 + (int)getCurrentMainThreadStack:(void (^)(NSUInteger pc))saveResultBlock
                   withMaxEntries:(NSUInteger)maxEntries

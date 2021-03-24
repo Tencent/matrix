@@ -477,6 +477,7 @@ class WeChatAndroidLibraryPublishExtension extends WeChatPublishExtension {
                             withXml {
                                 // Resolve dependencies
                                 final depsNode = asNode().appendNode('dependencies')
+                                def visitedDeps = [] as Set<Dependency>
                                 final addDep = { Dependency dep, String scope ->
                                     if (dep.group == null || dep.version == null || dep.name == null
                                             || dep.name == "unspecified")
@@ -520,7 +521,14 @@ class WeChatAndroidLibraryPublishExtension extends WeChatPublishExtension {
                                         'implementation':   'runtime',
                                         'runtimeOnly':      'runtime'
                                 ].each { conf, scope ->
-                                    project.configurations[conf].allDependencies.each { addDep(it, scope) }
+//                                    project.configurations[conf].allDependencies.each { addDep(it, scope) }
+                                    project.configurations[conf].allDependencies.each {
+                                        if (visitedDeps.contains(it)) {
+                                            return
+                                        }
+                                        visitedDeps.add(it)
+                                        addDep(it, scope)
+                                    }
                                 }
                             }
                         }

@@ -35,7 +35,6 @@
 //#define KSLogger_LocalLevel TRACE
 #import "KSLogger.h"
 
-
 // ============================================================================
 #pragma mark - Globals -
 // ============================================================================
@@ -45,8 +44,7 @@ static volatile bool g_isEnabled = 0;
 static KSCrash_MonitorContext g_monitorContext;
 
 /** The exception handler that was in place before we installed ours. */
-static NSUncaughtExceptionHandler* g_previousUncaughtExceptionHandler;
-
+static NSUncaughtExceptionHandler *g_previousUncaughtExceptionHandler;
 
 // ============================================================================
 #pragma mark - Callbacks -
@@ -57,20 +55,17 @@ static NSUncaughtExceptionHandler* g_previousUncaughtExceptionHandler;
  *
  * @param exception The exception that was raised.
  */
-static void handleException(NSException* exception)
-{
+static void handleException(NSException *exception) {
     KSLOG_DEBUG(@"Trapped exception %@", exception);
-    if(g_isEnabled)
-    {
+    if (g_isEnabled) {
         ksmc_suspendEnvironment();
         kscm_notifyFatalExceptionCaptured(false);
 
         KSLOG_DEBUG(@"Filling out context.");
-        NSArray* addresses = [exception callStackReturnAddresses];
+        NSArray *addresses = [exception callStackReturnAddresses];
         NSUInteger numFrames = addresses.count;
-        uintptr_t* callstack = malloc(numFrames * sizeof(*callstack));
-        for(NSUInteger i = 0; i < numFrames; i++)
-        {
+        uintptr_t *callstack = malloc(numFrames * sizeof(*callstack));
+        for (NSUInteger i = 0; i < numFrames; i++) {
             callstack[i] = (uintptr_t)[addresses[i] unsignedLongLongValue];
         }
 
@@ -81,7 +76,7 @@ static void handleException(NSException* exception)
         KSStackCursor cursor;
         kssc_initWithBacktrace(&cursor, callstack, (int)numFrames, 0);
 
-        KSCrash_MonitorContext* crashContext = &g_monitorContext;
+        KSCrash_MonitorContext *crashContext = &g_monitorContext;
         memset(crashContext, 0, sizeof(*crashContext));
         crashContext->crashType = KSCrashMonitorTypeNSException;
         crashContext->eventID = eventID;
@@ -103,53 +98,39 @@ static void handleException(NSException* exception)
 
         free(callstack);
 
-        if (g_previousUncaughtExceptionHandler != NULL)
-        {
+        if (g_previousUncaughtExceptionHandler != NULL) {
             KSLOG_DEBUG(@"Calling original exception handler.");
             g_previousUncaughtExceptionHandler(exception);
         }
-        
     }
 }
-
 
 // ============================================================================
 #pragma mark - API -
 // ============================================================================
 
-static void setEnabled(bool isEnabled)
-{
-    if(isEnabled != g_isEnabled)
-    {
+static void setEnabled(bool isEnabled) {
+    if (isEnabled != g_isEnabled) {
         g_isEnabled = isEnabled;
-        if(isEnabled)
-        {
+        if (isEnabled) {
             KSLOG_DEBUG(@"Backing up original handler.");
             g_previousUncaughtExceptionHandler = NSGetUncaughtExceptionHandler();
-            
+
             KSLOG_DEBUG(@"Setting new handler.");
             NSSetUncaughtExceptionHandler(&handleException);
             KSCrash.sharedInstance.uncaughtExceptionHandler = &handleException;
-        }
-        else
-        {
+        } else {
             KSLOG_DEBUG(@"Restoring original handler.");
             NSSetUncaughtExceptionHandler(g_previousUncaughtExceptionHandler);
         }
     }
 }
 
-static bool isEnabled()
-{
+static bool isEnabled() {
     return g_isEnabled;
 }
 
-KSCrashMonitorAPI* kscm_nsexception_getAPI()
-{
-    static KSCrashMonitorAPI api =
-    {
-        .setEnabled = setEnabled,
-        .isEnabled = isEnabled
-    };
+KSCrashMonitorAPI *kscm_nsexception_getAPI() {
+    static KSCrashMonitorAPI api = { .setEnabled = setEnabled, .isEnabled = isEnabled };
     return &api;
 }
