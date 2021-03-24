@@ -53,6 +53,7 @@ import static android.content.Context.ACTIVITY_SERVICE;
 public final class BatteryCanaryUtil {
     private static final String TAG = "Matrix.battery.Utils";
     private static final int DEFAULT_MAX_STACK_LAYER = 10;
+    public  static final int ONE_MIN = 60 * 1000;
 
     public static String getProcessName() {
         BatteryMonitorPlugin plugin = Matrix.with().getPluginByClass(BatteryMonitorPlugin.class);
@@ -373,5 +374,15 @@ public final class BatteryCanaryUtil {
             }
         }
         return TextUtils.join(";", stacks.subList(0, Math.min(5, stacks.size())));
+    }
+
+    public static long computeAvgByMinute(long input, long millis) {
+        if (millis < ONE_MIN) {
+            long scale = 100L;
+            long divideBase = Math.max(1, (millis * scale) / ONE_MIN);
+            return (input / divideBase) * scale;
+        } else {
+            return input / Math.max(1, (millis) / ONE_MIN);
+        }
     }
 }

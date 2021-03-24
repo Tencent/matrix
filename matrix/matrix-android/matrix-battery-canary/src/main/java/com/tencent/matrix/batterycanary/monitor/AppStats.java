@@ -6,6 +6,7 @@ import android.support.v4.util.Pair;
 import com.tencent.matrix.batterycanary.BatteryCanary;
 import com.tencent.matrix.batterycanary.monitor.feature.AppStatMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.DeviceStatMonitorFeature;
+import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
 import com.tencent.matrix.batterycanary.utils.TimeBreaker;
 
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -15,7 +16,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * @since 2021/1/27
  */
 final public class AppStats {
-    public static final int ONE_MIN = 60 * 1000;
 
     public static final int APP_STAT_FOREGROUND = 1;
     public static final int APP_STAT_FOREGROUND_SERVICE = 3;
@@ -52,7 +52,7 @@ final public class AppStats {
     }
 
     public long getMinute() {
-        return Math.max(1, duringMillis / ONE_MIN);
+        return Math.max(1, duringMillis / BatteryCanaryUtil.ONE_MIN);
     }
 
     public boolean isForeground() {
