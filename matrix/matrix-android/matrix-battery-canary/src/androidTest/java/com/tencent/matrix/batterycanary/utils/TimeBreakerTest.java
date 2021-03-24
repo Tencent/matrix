@@ -17,7 +17,6 @@
 package com.tencent.matrix.batterycanary.utils;
 
 import android.content.Context;
-import android.os.SystemClock;
 import android.support.test.InstrumentationRegistry;
 import android.support.test.runner.AndroidJUnit4;
 
@@ -33,14 +32,13 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
-import static com.tencent.matrix.batterycanary.utils.TimeBreaker.Stamp;
 import static com.tencent.matrix.batterycanary.utils.TimeBreaker.TimePortions;
 import static com.tencent.matrix.batterycanary.utils.TimeBreaker.configurePortions;
 import static com.tencent.matrix.batterycanary.utils.TimeBreaker.gcList;
 
 
 @RunWith(AndroidJUnit4.class)
-public class TimerBreakerTest {
+public class TimeBreakerTest {
     static final String TAG = "Matrix.test.TimerBreakerTest";
 
     Context mContext;
@@ -289,7 +287,7 @@ public class TimerBreakerTest {
             Thread thread = new Thread(new Runnable() {
                 @Override
                 public void run() {
-                    synchronized (TimerBreakerTest.class) {
+                    synchronized (TimeBreakerTest.class) {
                         stampList.add(0, new TimeBreaker.Stamp(String.valueOf(finalI)));
                     }
                 }
@@ -302,7 +300,7 @@ public class TimerBreakerTest {
             Thread thread = new Thread(new Runnable() {
                 @Override
                 public void run() {
-                    synchronized (TimerBreakerTest.class) {
+                    synchronized (TimeBreakerTest.class) {
                         TimeBreaker.gcList(stampList);
                     }
                 }
