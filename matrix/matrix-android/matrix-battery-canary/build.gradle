@@ -41,7 +41,7 @@ dependencies {
     androidTestImplementation "org.mockito:mockito-core:2.8.9"
     androidTestImplementation "org.mockito:mockito-android:2.8.9"
 
-    implementation 'androidx.appcompat:appcompat:1.0.0'
+    implementation 'androidx.core:core:1.0.0'
     implementation project(':matrix-android-lib')
     api project(path: ':matrix-trace-canary')
 }
