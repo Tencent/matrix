@@ -92,9 +92,15 @@ public abstract class AbsTaskMonitorFeature extends AbsMonitorFeature {
     public void onTurnOff() {
         super.onTurnOff();
         mTaskJiffiesTrace.clear();
-        synchronized (mTaskConcurrentTrace) { mTaskConcurrentTrace.clear(); }
-        synchronized (mDeltaList) { mDeltaList.clear(); }
-        synchronized (mTaskStampList) { mTaskStampList.clear(); }
+        synchronized (mTaskConcurrentTrace) {
+            mTaskConcurrentTrace.clear();
+        }
+        synchronized (mDeltaList) {
+            mDeltaList.clear();
+        }
+        synchronized (mTaskStampList) {
+            mTaskStampList.clear();
+        }
     }
 
     public List<Delta<TaskJiffiesSnapshot>> currentJiffies() {
@@ -213,7 +219,8 @@ public abstract class AbsTaskMonitorFeature extends AbsMonitorFeature {
                 updateDeltas(bgn, end);
             }
             // Update task stamp list
-            onStatTask(Process.myTid(), IDLE_TASK, end == null ? bgn.jiffies.get() : end.jiffies.get());
+            onStatTask(Process.myTid(), IDLE_TASK,
+                    end == null ? bgn.jiffies.get() : end.jiffies.get());
         }
     }
 
@@ -240,7 +247,9 @@ public abstract class AbsTaskMonitorFeature extends AbsMonitorFeature {
                 }
 
                 if (workingTasks.first.size() > mConcurrentLimit) {
-                    MatrixLog.w(TAG, "reach task concurrent limit, count = " + workingTasks.first.size() + ", key = " + key);
+                    MatrixLog.w(TAG,
+                            "reach task concurrent limit, count = " + workingTasks.first.size()
+                                    + ", key = " + key);
                     //noinspection ConstantConditions
                     long duringMillis = SystemClock.uptimeMillis() - workingTasks.second;
                     MatrixLog.w(TAG, "onConcurrentOverHeat, during = " + duringMillis);
@@ -255,11 +264,11 @@ public abstract class AbsTaskMonitorFeature extends AbsMonitorFeature {
             @SuppressWarnings("ConstantConditions")
             @Override
             public void run() {
-                synchronized(mTaskConcurrentTrace) {
+                synchronized (mTaskConcurrentTrace) {
                     boolean found = false;
-                    for (Iterator<Map.Entry<String, Pair<? extends List<Integer>, Long>>> entryIterator = mTaskConcurrentTrace.entrySet().iterator(); entryIterator.hasNext();) {
+                    for (Iterator<Map.Entry<String, Pair<? extends List<Integer>, Long>>> entryIterator = mTaskConcurrentTrace.entrySet().iterator(); entryIterator.hasNext(); ) {
                         Map.Entry<String, Pair<? extends List<Integer>, Long>> entry = entryIterator.next();
-                        for (Iterator<Integer> iterator = entry.getValue().first.iterator(); iterator.hasNext();) {
+                        for (Iterator<Integer> iterator = entry.getValue().first.iterator(); iterator.hasNext(); ) {
                             Integer item = iterator.next();
                             if (item == hashcode) {
                                 iterator.remove();
@@ -317,7 +326,9 @@ public abstract class AbsTaskMonitorFeature extends AbsMonitorFeature {
             return;
         }
 
-        MatrixLog.i(TAG, "onTaskReport: " + delta.dlt.name + ", jiffies = " + delta.dlt.jiffies.get() + ", millis = " + delta.during);
+        MatrixLog.i(TAG,
+                "onTaskReport: " + delta.dlt.name + ", jiffies = " + delta.dlt.jiffies.get()
+                        + ", millis = " + delta.during);
 
         // Compute task context info
         if (mAppStatFeat != null) {
