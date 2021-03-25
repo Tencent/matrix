@@ -191,6 +191,9 @@ publishing.repositories {
     }
 }
 
+println "WTF ------ ${getRepositoryUsername()} ${getRepositoryPassword()} " +
+        "${isReleaseBuild() ? getReleaseRepositoryUrl() : getSnapshotRepositoryUrl()}"
+
 ///**
 // * Then update bintray configurations
 // */
