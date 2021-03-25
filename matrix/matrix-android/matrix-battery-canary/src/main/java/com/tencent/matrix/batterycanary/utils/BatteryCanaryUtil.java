@@ -16,7 +16,6 @@
 
 package com.tencent.matrix.batterycanary.utils;
 
-import android.annotation.SuppressLint;
 import android.app.ActivityManager;
 import android.app.AlarmManager;
 import android.content.Context;
@@ -26,8 +25,8 @@ import android.os.BatteryManager;
 import android.os.Build;
 import android.os.PowerManager;
 import android.os.SystemClock;
-import android.support.annotation.Nullable;
-import android.support.annotation.RestrictTo;
+import androidx.annotation.Nullable;
+import androidx.annotation.RestrictTo;
 import android.text.TextUtils;
 
 import com.tencent.matrix.Matrix;

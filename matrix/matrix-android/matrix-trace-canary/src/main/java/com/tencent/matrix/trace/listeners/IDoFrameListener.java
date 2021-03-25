@@ -16,13 +16,12 @@
 
 package com.tencent.matrix.trace.listeners;
 
-import android.support.annotation.CallSuper;
+import androidx.annotation.CallSuper;
 
 import com.tencent.matrix.trace.constants.Constants;
 
 import java.util.LinkedList;
 import java.util.List;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Executor;
 
 /**

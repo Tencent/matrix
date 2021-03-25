@@ -20,16 +20,14 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.Message;
 import android.os.SystemClock;
-import android.support.annotation.RequiresApi;
+import androidx.annotation.RequiresApi;
 
-import com.tencent.matrix.trace.config.IssueFixConfig;
 import com.tencent.matrix.trace.core.AppMethodBeat;
 import com.tencent.matrix.util.MatrixLog;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
 

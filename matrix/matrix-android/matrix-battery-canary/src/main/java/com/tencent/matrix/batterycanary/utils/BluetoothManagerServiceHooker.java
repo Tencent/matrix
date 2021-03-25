@@ -22,10 +22,10 @@ import android.bluetooth.le.ScanSettings;
 import android.os.Build;
 import android.os.IBinder;
 import android.os.IInterface;
-import android.support.annotation.AnyThread;
-import android.support.annotation.BinderThread;
-import android.support.annotation.Nullable;
-import android.support.annotation.RestrictTo;
+import androidx.annotation.AnyThread;
+import androidx.annotation.BinderThread;
+import androidx.annotation.Nullable;
+import androidx.annotation.RestrictTo;
 
 import com.tencent.matrix.util.MatrixLog;
 

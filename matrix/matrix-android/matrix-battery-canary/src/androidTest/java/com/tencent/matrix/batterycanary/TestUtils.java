@@ -1,6 +1,6 @@
 package com.tencent.matrix.batterycanary;
 
-import android.support.test.InstrumentationRegistry;
+import androidx.test.platform.app.InstrumentationRegistry;
 
 /**
  * @author Kaede

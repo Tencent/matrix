@@ -2,7 +2,7 @@ package com.tencent.matrix.batterycanary.monitor.feature;
 
 
 import android.os.SystemClock;
-import android.support.annotation.NonNull;
+import androidx.annotation.NonNull;
 
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
 

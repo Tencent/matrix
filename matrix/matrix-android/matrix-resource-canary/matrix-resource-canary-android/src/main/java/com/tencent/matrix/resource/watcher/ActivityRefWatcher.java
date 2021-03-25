@@ -26,7 +26,7 @@ import android.content.Intent;
 import android.os.Build;
 import android.os.Debug;
 import android.os.HandlerThread;
-import android.support.v4.app.NotificationCompat;
+import androidx.core.app.NotificationCompat;
 
 import com.tencent.matrix.AppActiveMatrixDelegate;
 import com.tencent.matrix.listeners.IAppForeground;

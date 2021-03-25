@@ -1,8 +1,8 @@
 package com.tencent.matrix.batterycanary.utils;
 
 import android.os.Process;
-import android.support.annotation.Nullable;
-import android.support.annotation.VisibleForTesting;
+import androidx.annotation.Nullable;
+import androidx.annotation.VisibleForTesting;
 import android.text.TextUtils;
 
 import com.tencent.matrix.util.MatrixLog;

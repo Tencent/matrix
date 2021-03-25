@@ -1,6 +1,6 @@
 package com.tencent.matrix.trace.listeners;
 
-import android.support.annotation.CallSuper;
+import androidx.annotation.CallSuper;
 
 public abstract class LooperObserver {
 

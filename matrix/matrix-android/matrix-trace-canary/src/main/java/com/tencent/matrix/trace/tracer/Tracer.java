@@ -1,6 +1,6 @@
 package com.tencent.matrix.trace.tracer;
 
-import android.support.annotation.CallSuper;
+import androidx.annotation.CallSuper;
 
 import com.tencent.matrix.AppActiveMatrixDelegate;
 import com.tencent.matrix.trace.listeners.LooperObserver;
