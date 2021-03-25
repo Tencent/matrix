@@ -58,6 +58,10 @@ def pomConfig = {
             name POM_DEVELOPER_NAME
         }
     }
+
+    name POM_DESCRIPTION
+    description POM_DESCRIPTION
+    url POM_URL
 }
 
 /**
