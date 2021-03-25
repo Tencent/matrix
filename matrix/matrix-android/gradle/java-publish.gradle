@@ -7,8 +7,6 @@
  */
 apply plugin: 'maven-publish'
 apply plugin: 'signing'
-//apply plugin: 'com.jfrog.bintray'
-
 
 def isReleaseBuild() {
     return version.contains("SNAPSHOT") == false
@@ -39,14 +37,6 @@ def getRepositoryUsername() {
 def getRepositoryPassword() {
     return hasProperty('REPOSITORY_PASSWORD') ? REPOSITORY_PASSWORD : readPropertyFromLocalProperties('REPOSITORY_PASSWORD')
 }
-
-//def getBintrayUser() {
-//    return hasProperty('BINTRAY_USER') ? BINTRAY_USER : readPropertyFromLocalProperties('BINTRAY_USER')
-//}
-//
-//def getBintrayKey() {
-//    return hasProperty('BINTRAY_APIKEY') ? BINTRAY_APIKEY : readPropertyFromLocalProperties('BINTRAY_APIKEY')
-//}
 
 def pomConfig = {
     scm {
@@ -124,30 +114,6 @@ publishing.repositories {
     }
 }
 
-///**
-// * Then update bintray configurations
-// */
-//afterEvaluate {
-//    bintray {
-//        user = getBintrayUser()
-//        key = getBintrayKey()
-//        publications = ['Component']
-//
-//        pkg {
-//            repo = 'maven'
-//            userOrg = BINTRAY_ORGANIZATION
-//            name = "${GROUP}:${POM_ARTIFACT_ID}"
-//            licenses = BINTRAY_LICENCE
-//            vcsUrl = POM_SCM_URL
-//            websiteUrl = POM_URL
-//            issueTrackerUrl = POM_ISSUE_URL
-//            publicDownloadNumbers = true
-//            publish = true
-//            dryRun = false
-//        }
-//    }
-//}
-
 if (JavaVersion.current().isJava8Compatible()) {
     allprojects {
         tasks.withType(Javadoc) {
@@ -185,13 +151,5 @@ task buildAndPublishRepo(type: Copy, dependsOn: ['build', 'publish']) {
         println "* published to repo: ${project.group}:${project.name}:${project.version}"
     }
 }
-
-//tasks.getByName("bintrayUpload") {
-//    it.doFirst {
-//        if (!isReleaseBuild()) {
-//            throw new GradleException("bintrayUpload only support release version")
-//        }
-//    }
-//}
 
 apply from: rootProject.file('gradle/check.gradle')
