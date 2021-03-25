@@ -102,8 +102,9 @@ public class ManualDumpProcessor extends BaseLeakProcessor {
         Notification notification = builder.build();
 
         mNotificationManager.notify(NOTIFICATION_ID + destroyedActivityInfo.mKey.hashCode(), notification);
+
+        publishIssue(destroyedActivityInfo.mActivityName, destroyedActivityInfo.mKey);
         MatrixLog.i(TAG, "shown notification!!!3");
-//        getWatcher().markPublished(destroyedActivityInfo.mActivityName, false); we notify for every leaked instance
         return true;
     }
 
@@ -140,7 +141,7 @@ public class ManualDumpProcessor extends BaseLeakProcessor {
 
         File file = getHeapDumper().dumpHeap(false);
         if (file == null || file.length() <= 0) {
-            publishIssue(SharePluginInfo.IssueType.ERR_FILE_NOT_FOUND, activity, refString, "file is null", "0");
+//            publishIssue(SharePluginInfo.IssueType.ERR_FILE_NOT_FOUND, activity, refString, "file is null", "0");
             MatrixLog.e(TAG, "file is null!");
             return null;
         }
@@ -154,7 +155,7 @@ public class ManualDumpProcessor extends BaseLeakProcessor {
 
             String refChain = result.toString();
             if (result.mLeakFound) {
-                publishIssue(SharePluginInfo.IssueType.LEAK_FOUND, activity, refString, refChain, String.valueOf(System.currentTimeMillis() - dumpBegin));
+//                publishIssue(SharePluginInfo.IssueType.LEAK_FOUND, activity, refString, refChain, String.valueOf(System.currentTimeMillis() - dumpBegin));
                 MatrixLog.i(TAG, "leakFound,refcChain = %s",refChain);
                 return new ManualDumpData(file.getAbsolutePath(), refChain);
             } else {
@@ -162,14 +163,14 @@ public class ManualDumpProcessor extends BaseLeakProcessor {
                 return new ManualDumpData(file.getAbsolutePath(), null);
             }
         } catch (OutOfMemoryError error) {
-            publishIssue(SharePluginInfo.IssueType.ERR_ANALYSE_OOM, activity, refString, "OutOfMemoryError", "0");
+//            publishIssue(SharePluginInfo.IssueType.ERR_ANALYSE_OOM, activity, refString, "OutOfMemoryError", "0");
             MatrixLog.printErrStackTrace(TAG, error.getCause(), "");
         }
         return null;
     }
 
-    private void publishIssue(int issueType, String activity, String refKey, String detail, String cost) {
-        publishIssue(issueType, ResourceConfig.DumpMode.MANUAL_DUMP, activity, refKey, detail, cost);
+    private void publishIssue(String activity, String refKey) {
+        publishIssue(SharePluginInfo.IssueType.LEAK_FOUND, ResourceConfig.DumpMode.MANUAL_DUMP, activity, refKey, "manual_dump", "0");
     }
 
     /**
