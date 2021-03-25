@@ -42,6 +42,8 @@ allprojects {
         options.setEncoding('UTF-8')
     }
 
+    SigningFromLocalProperties(localProperties, project, 'REPOSITORY_USERNAME' as String)
+    SigningFromLocalProperties(localProperties, project, 'REPOSITORY_PASSWORD' as String)
     SigningFromLocalProperties(localProperties, project, 'signing.keyId' as String)
     SigningFromLocalProperties(localProperties, project, 'signing.password' as String)
     SigningFromLocalProperties(localProperties, project, 'signing.secretKeyRingFile' as String)
