@@ -164,7 +164,7 @@ public class ResStringBlock extends ResChunk {
             resultBuf = ByteBuffer.allocate(content.length + 2 + 1);
             resultBuf.order(ByteOrder.LITTLE_ENDIAN);
             if (len > 0xFF) {
-                resultBuf.put( (byte) (((len & 0x7F00) >> 8) | 0x80));
+                resultBuf.put((byte) (((len & 0x7F00) >> 8) | 0x80));
                 resultBuf.put((byte) (len & 0xFF));
             } else {
                 resultBuf.put((byte) (len & 0xFF));
@@ -234,7 +234,7 @@ public class ResStringBlock extends ResChunk {
     }
 
     @Override
-    public byte[] toBytes()  {
+    public byte[] toBytes() {
         ByteBuffer byteBuffer = ByteBuffer.allocate(chunkSize);
         byteBuffer.order(ByteOrder.LITTLE_ENDIAN);
         byteBuffer.clear();

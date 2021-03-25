@@ -13,7 +13,6 @@ import android.text.TextUtils;
 import android.util.LongSparseArray;
 
 import com.tencent.matrix.Matrix;
-import com.tencent.matrix.batterycanary.monitor.feature.AbsTaskMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.AbsTaskMonitorFeature.TaskJiffiesSnapshot;
 import com.tencent.matrix.batterycanary.monitor.feature.AlarmMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.AlarmMonitorFeature.AlarmSnapshot;
@@ -73,25 +72,43 @@ public interface BatteryMonitorCallback extends
         AppStats mAppStats;
         private final LongSparseArray<List<LooperTaskMonitorFeature.TaskTraceInfo>> tasks = new LongSparseArray<>();
 
-        @Nullable protected AlarmMonitorFeature mAlarmFeat;
-        @Nullable protected AppStatMonitorFeature mAppStatFeat;
-        @Nullable protected BlueToothMonitorFeature mBlueToothFeat;
-        @Nullable protected DeviceStatMonitorFeature mDevStatFeat;
-        @Nullable protected JiffiesMonitorFeature mJiffiesFeat;
-        @Nullable protected LocationMonitorFeature mLocationFeat;
-        @Nullable protected TrafficMonitorFeature mTrafficFeat;
-        @Nullable protected WakeLockMonitorFeature mWakeLockFeat;
-        @Nullable protected WifiMonitorFeature mWifiMonitorFeat;
+        @Nullable
+        protected AlarmMonitorFeature mAlarmFeat;
+        @Nullable
+        protected AppStatMonitorFeature mAppStatFeat;
+        @Nullable
+        protected BlueToothMonitorFeature mBlueToothFeat;
+        @Nullable
+        protected DeviceStatMonitorFeature mDevStatFeat;
+        @Nullable
+        protected JiffiesMonitorFeature mJiffiesFeat;
+        @Nullable
+        protected LocationMonitorFeature mLocationFeat;
+        @Nullable
+        protected TrafficMonitorFeature mTrafficFeat;
+        @Nullable
+        protected WakeLockMonitorFeature mWakeLockFeat;
+        @Nullable
+        protected WifiMonitorFeature mWifiMonitorFeat;
 
-        @Nullable protected AlarmSnapshot mLastAlarmSnapshot;
-        @Nullable protected BlueToothSnapshot mLastBlueToothSnapshot;
-        @Nullable protected BatteryTmpSnapshot mLastBatteryTmpSnapshot;
-        @Nullable protected CpuFreqSnapshot mLastCpuFreqSnapshot;
-        @Nullable protected JiffiesSnapshot mLastJiffiesSnapshot;
-        @Nullable protected LocationSnapshot mLastLocationSnapshot;
-        @Nullable protected RadioStatSnapshot mLastTrafficSnapshot;
-        @Nullable protected WakeLockSnapshot mLastWakeWakeLockSnapshot;
-        @Nullable protected WifiSnapshot mLastWifiSnapshot;
+        @Nullable
+        protected AlarmSnapshot mLastAlarmSnapshot;
+        @Nullable
+        protected BlueToothSnapshot mLastBlueToothSnapshot;
+        @Nullable
+        protected BatteryTmpSnapshot mLastBatteryTmpSnapshot;
+        @Nullable
+        protected CpuFreqSnapshot mLastCpuFreqSnapshot;
+        @Nullable
+        protected JiffiesSnapshot mLastJiffiesSnapshot;
+        @Nullable
+        protected LocationSnapshot mLastLocationSnapshot;
+        @Nullable
+        protected RadioStatSnapshot mLastTrafficSnapshot;
+        @Nullable
+        protected WakeLockSnapshot mLastWakeWakeLockSnapshot;
+        @Nullable
+        protected WifiSnapshot mLastWifiSnapshot;
 
         @SuppressWarnings("UnusedReturnValue")
         @VisibleForTesting
@@ -240,7 +257,7 @@ public interface BatteryMonitorCallback extends
                     for (Map.Entry<Thread, StackTraceElement[]> entry : stackTraces.entrySet()) {
                         String threadName = entry.getKey().getName();
                         StackTraceElement[] elements = entry.getValue();
-                        for (ThreadJiffiesEntry threadJiffies: threadJiffiesList.getList()) {
+                        for (ThreadJiffiesEntry threadJiffies : threadJiffiesList.getList()) {
                             if (threadName.contains(threadJiffies.name)) {
                                 printer.append("|   -> ").append(threadName).append("\n");
                                 String stack = BatteryCanaryUtil.stackTraceToString(elements);
@@ -266,7 +283,6 @@ public interface BatteryMonitorCallback extends
         @Override
         public void onAppSateLeak(boolean isMyself, int appImportance, ComponentName componentName, long millis) {
         }
-
 
 
         @CallSuper
@@ -438,7 +454,8 @@ public interface BatteryMonitorCallback extends
 
         @Deprecated
         @CallSuper
-        protected void onWritingSections() {}
+        protected void onWritingSections() {
+        }
 
         @CallSuper
         protected boolean onWritingSectionContent(@NonNull Delta<?> sessionDelta, AppStats appStats, Printer printer) {
@@ -465,7 +482,7 @@ public interface BatteryMonitorCallback extends
                     long entryJffies = threadJiffies.get();
                     printer.append("|   -> (").append(threadJiffies.isNewAdded ? "+" : "~").append("/").append(threadJiffies.stat).append(")")
                             .append(threadJiffies.name).append("(").append(threadJiffies.tid).append(")\t")
-                            .append(entryJffies/minute).append("/").append(entryJffies).append("\tjiffies")
+                            .append(entryJffies / minute).append("/").append(entryJffies).append("\tjiffies")
                             .append("\n");
 
                     List<LooperTaskMonitorFeature.TaskTraceInfo> threadTasks = tasks.get(threadJiffies.tid);
@@ -579,14 +596,29 @@ public interface BatteryMonitorCallback extends
             printerConsumer.accept(mPrinter);
         }
 
-        protected void onReportAlarm(@NonNull Delta<AlarmSnapshot> delta) {}
-        protected void onReportBlueTooth(@NonNull Delta<BlueToothSnapshot> delta) {}
-        protected void onReportCpuFreq(@NonNull Delta<CpuFreqSnapshot> delta) {}
-        protected void onReportJiffies(@NonNull Delta<JiffiesSnapshot> delta) {}
-        protected void onReportTemperature(@NonNull Delta<BatteryTmpSnapshot> delta) {}
-        protected void onReportWakeLock(@NonNull Delta<WakeLockSnapshot> delta) {}
-        protected void onReportWifi(@NonNull Delta<WifiSnapshot> delta) {}
-        protected void onReportLocation(@NonNull Delta<LocationSnapshot> delta) {}
+        protected void onReportAlarm(@NonNull Delta<AlarmSnapshot> delta) {
+        }
+
+        protected void onReportBlueTooth(@NonNull Delta<BlueToothSnapshot> delta) {
+        }
+
+        protected void onReportCpuFreq(@NonNull Delta<CpuFreqSnapshot> delta) {
+        }
+
+        protected void onReportJiffies(@NonNull Delta<JiffiesSnapshot> delta) {
+        }
+
+        protected void onReportTemperature(@NonNull Delta<BatteryTmpSnapshot> delta) {
+        }
+
+        protected void onReportWakeLock(@NonNull Delta<WakeLockSnapshot> delta) {
+        }
+
+        protected void onReportWifi(@NonNull Delta<WifiSnapshot> delta) {
+        }
+
+        protected void onReportLocation(@NonNull Delta<LocationSnapshot> delta) {
+        }
 
         /**
          * Log Printer

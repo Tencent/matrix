@@ -49,21 +49,21 @@ import java.io.Serializable;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
-import java.util.TreeSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
+import java.util.TreeSet;
 
 /**
  * 1. There will be a estimate count of the alarm triggers in a stat period (1 hour)
  * and a issue will be publish if the count is over the threshold which can be custom
  * {@link BatteryDetectorConfig.Builder#alarmTriggerNum1HThreshold(int)} and {@link BatteryDetectorConfig.Builder#wakeUpAlarmTriggerNum1HThreshold(int)}.
- *
+ * <p>
  * 2. The history of alarms will be record if enable the record feature {@link BatteryDetectorConfig.Builder#enableRecordAlarm()}.
  * also see {@link AlarmInfoRecorder}
  *
  * @author liyongjie
- *         Created by liyongjie on 2017/11/2.
+ * Created by liyongjie on 2017/11/2.
  */
 public class AlarmDetector extends IssuePublisher {
     private static final String TAG = "MicroMsg.AlarmDetector";
@@ -108,13 +108,14 @@ public class AlarmDetector extends IssuePublisher {
 
     /**
      * Run in {@link BatteryCanaryDetectScheduler} single thread
+     *
      * @see BatteryDetectorCore
      */
     public void onAlarmSet(int type, long triggerAtMillis, long windowMillis, long intervalMillis,
                            int flags, PendingIntent operation, AlarmManager.OnAlarmListener onAlarmListener,
                            String stackTrace) {
 
-        if(isForeground) {
+        if (isForeground) {
             MatrixLog.i(TAG, "in foreground, ignore alarm event");
             return;
         }
@@ -134,6 +135,7 @@ public class AlarmDetector extends IssuePublisher {
 
     /**
      * Run in {@link BatteryCanaryDetectScheduler} single thread
+     *
      * @see BatteryDetectorCore
      */
     public void onAlarmRemove(PendingIntent operation, AlarmManager.OnAlarmListener onAlarmListener, String stackTrace) {
@@ -143,12 +145,13 @@ public class AlarmDetector extends IssuePublisher {
 
         doMarkRemoveLogic(onAlarmListener, new OperationInfo(operation));
 
-        if(!isForeground)
+        if (!isForeground) {
             countAndDetect();
+        }
     }
 
-    public void onForeground(boolean _isForeground) {
-        isForeground = _isForeground;
+    public void onForeground(boolean isForeground) {
+        this.isForeground = isForeground;
     }
 
     private void countAndDetect() {
@@ -198,7 +201,7 @@ public class AlarmDetector extends IssuePublisher {
             triggerAtMillisUTC = alarmInfo.getUTCTriggerAtMillis();
 
             //MatrixLog.d(TAG, "doCountAndDetect triggerAtMillisUTC:%d type:%d intervalMillis:%d removeTimeAtMillis:%d",
-              //      triggerAtMillisUTC, alarmInfo.type, alarmInfo.intervalMillis, alarmInfo.removeTimeAtMillis);
+            //      triggerAtMillisUTC, alarmInfo.type, alarmInfo.intervalMillis, alarmInfo.removeTimeAtMillis);
 
             if (triggerAtMillisUTC < mCurrentCountPeriodFrom && alarmInfo.intervalMillis <= 0) {
                 //MatrixLog.v(TAG, "doCountAndDetect no-repeat alarm triggerAtMillisUTC less than mCurrentCountPeriodFrom, removed");
@@ -286,13 +289,13 @@ public class AlarmDetector extends IssuePublisher {
 
     private String join(Set<String> set, String sep) {
         String result = null;
-        if(set != null) {
+        if (set != null) {
             StringBuilder sb = new StringBuilder();
             Iterator<String> it = set.iterator();
-            if(it.hasNext()) {
+            if (it.hasNext()) {
                 sb.append(it.next());
             }
-            while(it.hasNext()) {
+            while (it.hasNext()) {
                 sb.append(sep).append(it.next());
             }
             result = sb.toString();
@@ -342,7 +345,7 @@ public class AlarmDetector extends IssuePublisher {
         long removeTimeAtMillis;
 
         AlarmInfo(int type, long triggerAtMillis, long intervalMillis, PendingIntent operation,
-                         AlarmManager.OnAlarmListener onAlarmListener, String stackTrace) {
+                  AlarmManager.OnAlarmListener onAlarmListener, String stackTrace) {
             this.type = type;
             this.triggerAtMillis = adjustTriggerAtMillis(type, triggerAtMillis);
             this.intervalMillis = adjustIntervalMillis(intervalMillis);
@@ -353,8 +356,8 @@ public class AlarmDetector extends IssuePublisher {
         }
 
         /**
-         *
          * from file
+         *
          * @see InfoWrapper#parseAlarmInfoList()
          */
         AlarmInfo(int type, long triggerAtMillis, long intervalMillis, OperationInfo operationInfo, String stackTrace, long removeTimeAtMillis) {
@@ -448,11 +451,10 @@ public class AlarmDetector extends IssuePublisher {
         /**
          * a acceptable bug : ignore the requestCode when compared by operationIntent or operationIntentTag,
          * even though the requestCode do concern with the comparision of PendingIntent
-         * @see PendingIntent#getBroadcast(Context, int, Intent, int)
-         *
-         * @see #doMarkRemoveLogic(AlarmManager.OnAlarmListener, OperationInfo)
          *
          * @return
+         * @see PendingIntent#getBroadcast(Context, int, Intent, int)
+         * @see #doMarkRemoveLogic(AlarmManager.OnAlarmListener, OperationInfo)
          */
         @SuppressWarnings("PMD")
         public boolean isTheTargetOperation(OperationInfo targetOperationInfo) {
@@ -494,6 +496,7 @@ public class AlarmDetector extends IssuePublisher {
         /**
          * 1. no such method : below than {@link android.os.Build.VERSION_CODES#KITKAT}), this case I am the Ostrich.
          * 2. throws SecurityException: above than {@link android.os.Build.VERSION_CODES#N}, this case will use {@link #getOperationIntentTag(PendingIntent)} as instead
+         *
          * @param operation
          * @return
          */
@@ -652,7 +655,7 @@ public class AlarmDetector extends IssuePublisher {
                         operationInfo, alarmInfoSer.stackTrace, alarmInfoSer.removeTimeAtMillis));
             }
 
-            return  currentRunningAlarms;
+            return currentRunningAlarms;
         }
     }
 

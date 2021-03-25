@@ -8,8 +8,8 @@ public class ProguardStringBuilder {
     private static char[] alphaArray = new char[26];
     private static char[] numberArray = new char[10];
 
-    private static List<String> WIN_INVALID_FILE_NAME = Arrays.asList(
-            "aux","nul", "prn", "nul", "con",
+    private final static List<String> WIN_INVALID_FILE_NAME = Arrays.asList(
+            "aux", "nul", "prn", "nul", "con",
             "com1", "com2", "com3", "com4", "com5", "com6", "com7", "com8", "com9",
             "lpt1", "lpt2", "lpt3", "lpt4", "lpt5", "lpt6", "lpt7", "lpt8", "lpt9"
     );
@@ -21,11 +21,11 @@ public class ProguardStringBuilder {
 
     public ProguardStringBuilder() {
         int i = 0;
-        for (char alpha = 'a'; alpha <= 'z'; alpha ++) {
+        for (char alpha = 'a'; alpha <= 'z'; alpha++) {
             alphaArray[i++]  = alpha;
         }
         i = 0;
-        for (char num = '0'; num <= '9'; num ++) {
+        for (char num = '0'; num <= '9'; num++) {
             numberArray[i++] = num;
         }
     }
@@ -83,7 +83,7 @@ public class ProguardStringBuilder {
 
     public String generateNextProguardFileName() {
         String result = generateNextProguard();
-        while(WIN_INVALID_FILE_NAME.contains(result.toLowerCase())) {
+        while (WIN_INVALID_FILE_NAME.contains(result.toLowerCase())) {
             result = generateNextProguard();
         }
         return result;

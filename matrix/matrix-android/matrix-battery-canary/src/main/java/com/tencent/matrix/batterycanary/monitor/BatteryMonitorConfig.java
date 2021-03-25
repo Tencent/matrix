@@ -19,8 +19,8 @@ import java.util.concurrent.Callable;
  */
 @SuppressWarnings({"SpellCheckingInspection"})
 public class BatteryMonitorConfig {
-    public static final int  DEF_STAMP_OVERHEAT = 200;
-    public static final int  DEF_WAKELOCK_WARN_COUNT = 30;
+    public static final int DEF_STAMP_OVERHEAT = 200;
+    public static final int DEF_WAKELOCK_WARN_COUNT = 30;
     public static final long DEF_WAKELOCK_TIMEOUT = 2 * 60 * 1000L; // 2min
     public static final long DEF_JIFFIES_DELAY = 30 * 1000L; // 30s
     public static final long DEF_FOREGROUND_SCHEDULE_TIME = 20 * 60 * 1000L; // 10min
@@ -54,35 +54,36 @@ public class BatteryMonitorConfig {
     public List<String> looperWhiteList = Collections.emptyList();
     public final List<MonitorFeature> features = new ArrayList<>(3);
 
-    private BatteryMonitorConfig() {}
+    private BatteryMonitorConfig() {
+    }
 
     @NonNull
     @Override
     public String toString() {
-        return "BatteryMonitorConfig{" +
-                "wakelockTimeout=" + wakelockTimeout +
-                ", wakelockWarnCount=" + wakelockWarnCount +
-                ", greyTime=" + greyTime +
-                ", foregroundLoopCheckTime=" + foregroundLoopCheckTime +
-                ", backgroundLoopCheckTime=" + backgroundLoopCheckTime +
-                ", overHeatCount=" + overHeatCount +
-                ", foregroundServiceLeakLimit=" + foregroundServiceLeakLimit +
-                ", fgThreadWatchingLimit=" + fgThreadWatchingLimit +
-                ", bgThreadWatchingLimit=" + bgThreadWatchingLimit +
-                ", isForegroundModeEnabled=" + isForegroundModeEnabled +
-                ", isBackgroundModeEnabled=" + isBackgroundModeEnabled +
-                ", isBuiltinForegroundNotifyEnabled=" + isBuiltinForegroundNotifyEnabled +
-                ", isStatAsSample=" + isStatAsSample +
-                ", isStatPidProc=" + isStatPidProc +
-                ", isInspectiffiesError=" + isInspectiffiesError +
-                ", isAmsHookEnabled=" + isAmsHookEnabled +
-                ", isAggressiveMode=" + isAggressiveMode +
-                ", isUseThreadClock=" + isUseThreadClock +
-                ", tagWhiteList=" + tagWhiteList +
-                ", tagBlackList=" + tagBlackList +
-                ", looperWhiteList=" + looperWhiteList +
-                ", features=" + features +
-                '}';
+        return "BatteryMonitorConfig{"
+                + "wakelockTimeout=" + wakelockTimeout
+                + ", wakelockWarnCount=" + wakelockWarnCount
+                + ", greyTime=" + greyTime
+                + ", foregroundLoopCheckTime=" + foregroundLoopCheckTime
+                + ", backgroundLoopCheckTime=" + backgroundLoopCheckTime
+                + ", overHeatCount=" + overHeatCount
+                + ", foregroundServiceLeakLimit=" + foregroundServiceLeakLimit
+                + ", fgThreadWatchingLimit=" + fgThreadWatchingLimit
+                + ", bgThreadWatchingLimit=" + bgThreadWatchingLimit
+                + ", isForegroundModeEnabled=" + isForegroundModeEnabled
+                + ", isBackgroundModeEnabled=" + isBackgroundModeEnabled
+                + ", isBuiltinForegroundNotifyEnabled=" + isBuiltinForegroundNotifyEnabled
+                + ", isStatAsSample=" + isStatAsSample
+                + ", isStatPidProc=" + isStatPidProc
+                + ", isInspectiffiesError=" + isInspectiffiesError
+                + ", isAmsHookEnabled=" + isAmsHookEnabled
+                + ", isAggressiveMode=" + isAggressiveMode
+                + ", isUseThreadClock=" + isUseThreadClock
+                + ", tagWhiteList=" + tagWhiteList
+                + ", tagBlackList=" + tagBlackList
+                + ", looperWhiteList=" + looperWhiteList
+                + ", features=" + features
+                + '}';
     }
 
     /**
