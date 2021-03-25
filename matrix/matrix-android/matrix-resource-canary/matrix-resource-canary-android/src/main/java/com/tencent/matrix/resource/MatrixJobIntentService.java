@@ -37,8 +37,6 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
 
-import androidx.legacy.content.WakefulBroadcastReceiver;
-
 import com.tencent.matrix.util.MatrixLog;
 
 import java.util.ArrayList;
