@@ -1,0 +1,256 @@
+// --------- Download ---------
+ext.maven_base_url = "https://dl.bintray.com/matrix/maven/com/tencent/matrix"
+ext.bintray_components = [
+        "matrix-android-commons",
+        "matrix-android-lib",
+        "matrix-apk-canary",
+        "matrix-arscutil",
+        "matrix-battery-canary",
+        "matrix-commons",
+        "matrix-gradle-plugin",
+        "matrix-io-canary",
+        "matrix-memory-canary",
+        "matrix-resource-canary-android",
+        "matrix-resource-canary-common",
+        "matrix-sqlite-lint-android-sdk-no-op",
+        "matrix-sqlite-lint-android-sdk",
+        "matrix-thread-canary",
+        "matrix-trace-canary"
+]
+
+ext.bintray_archive_exts = [
+        "-javadoc.jar",
+        "-sources.jar",
+        "-so-symbols.jar",
+        ".jar",
+        ".aar",
+        ".pom",
+]
+
+ext.bintray_saving_dir = new File(rootProject.buildDir, "bintray")
+
+def downloadFile(String url, File f, boolean override) {
+    if (f.exists() && override) {
+        f.isDirectory() ? f.deleteDir() : f.delete()
+    }
+    if (!f.exists()) {
+        try {
+            new URL(url).withInputStream { i -> f.withOutputStream { it << i } }
+            println "[OK] Download ${url} success."
+        } catch (Throwable t) {
+            println "[Err] Failed downloading ${url} -> message: ${t.getMessage()}"
+        }
+    }
+}
+
+def downloadAll(String componentsUrl, String component) {
+    String maven_metadata = "maven-metadata.xml"
+    File component_dir = new File(bintray_saving_dir, component)
+    component_dir.mkdirs()
+    File metadata_file = new File(component_dir, maven_metadata)
+
+    println "------ Start downloading $component -------"
+    // download
+    downloadFile("$componentsUrl/$maven_metadata", metadata_file, true)
+
+    if (!metadata_file.exists()) {
+        println "Error! ${componet}'s $maven_metadata download failed!"
+        return
+    }
+
+    // load metadata
+    def metadata = new XmlParser().parse(metadata_file)
+
+    metadata.versioning.versions.version.each { version ->
+        def versionString = version.text()
+
+        File version_dir = new File(component_dir, versionString)
+        version_dir.mkdirs()
+
+        bintray_archive_exts.each { ext ->
+
+            def archive = "$component-$versionString$ext"
+            File archive_file = new File(version_dir, archive)
+
+            // download archive
+            downloadFile("$componentsUrl/$versionString/$archive", archive_file, true)
+        }
+    }
+
+    println "------- End of $component ------\n"
+}
+
+if (gradle.startParameter.projectProperties.containsKey("DownloadBintray")) {
+    bintray_components.each { component ->
+        downloadAll("$maven_base_url/$component", component)
+    }
+}
+
+// --------- Publishing ---------
+
+ext.target_components = null
+if (gradle.startParameter.projectProperties.containsKey("Components")) {
+    target_components = gradle.startParameter.projectProperties.get("Components")
+}
+
+ext.target_versions = null
+if (gradle.startParameter.projectProperties.containsKey("Versions")) {
+    target_versions = gradle.startParameter.projectProperties.get("Versions")
+}
+
+apply plugin: 'maven-publish'
+apply plugin: 'signing'
+
+def getReleaseRepositoryUrl() {
+    return "https://oss.sonatype.org/service/local/staging/deploy/maven2/"
+}
+
+def readPropertyFromLocalProperties(String key) {
+    Properties properties = new Properties()
+    try {
+        properties.load(project.rootProject.file('local.properties').newDataInputStream())
+    } catch (Exception e) {
+        println("load local properties failed msg:${e.message}")
+    }
+    return properties.getProperty(key)
+}
+
+def getRepositoryUsername() {
+    return hasProperty('REPOSITORY_USERNAME') ? REPOSITORY_USERNAME : readPropertyFromLocalProperties('REPOSITORY_USERNAME')
+}
+
+def getRepositoryPassword() {
+    return hasProperty('REPOSITORY_PASSWORD') ? REPOSITORY_PASSWORD : readPropertyFromLocalProperties('REPOSITORY_PASSWORD')
+}
+
+if (!project.hasProperty("signing.keyId")) {
+    throw new RuntimeException("No signing configurations.")
+}
+
+ext.transmition_tasks = [:]
+
+// Declare publications
+publishing.publications {
+
+    (bintray_saving_dir as File).listFiles().each { component_file ->
+        transmition_tasks[component_file.name] = [] as Set
+
+        if (target_components != null && component_file.name != target_components) {
+            return
+        }
+
+        component_file.listFiles().each { version_file ->
+            if (!version_file.isDirectory()) {
+                return
+            }
+
+            if (target_versions != null && version_file.name != target_versions) {
+                return
+            }
+
+            File pom_file = new File(version_file, "${component_file.name}-${version_file.name}.pom")
+            String pom_content = pom_file.text
+            def pomXml = new XmlParser().parse(pom_file)
+            String thisArtifactId = pomXml.artifactId[0].text()
+            String thisVersion = pomXml.version[0].text()
+            String thisGroupId = pomXml.groupId[0].text()
+
+            def artifacts = []
+
+            version_file.listFiles().each { archive_file ->
+
+                if (archive_file.name.endsWith(".pom")) {
+                    return
+                }
+
+                if (archive_file.name.endsWith(".asc")) {
+                    return
+                }
+
+                String classifier = null
+                if (archive_file.name.endsWith(".aar")) {
+                    classifier = "aar"
+                } else if (archive_file.name.endsWith("-javadoc.jar")) {
+                    classifier = "javadoc"
+                } else if (archive_file.name.endsWith("-so-symbols.jar")) {
+                    classifier = "so-symbols"
+                } else if (archive_file.name.endsWith("-sources.jar")) {
+                    classifier = "sources"
+                } else if (archive_file.name.endsWith(".jar")) {
+                    classifier = "jar"
+                }
+
+                String suffix = archive_file.absolutePath.substring(archive_file.absolutePath.lastIndexOf(".") + 1)
+
+                artifacts.add([archive_file.absolutePath, suffix, classifier] as Set)
+
+            }
+            def artifactIdentity = "$thisArtifactId-$thisVersion".capitalize()
+
+            transmition_tasks[component_file.name].add("publish${artifactIdentity}PublicationToMavenRepository")
+
+            "$thisArtifactId-$thisVersion" (MavenPublication) {
+
+                artifactId thisArtifactId
+                groupId thisGroupId
+                version thisVersion
+
+                artifacts.each { arti ->
+                    def thisArtifact = arti[0]
+                    def suffix = arti[1]
+                    def thisClassifier = arti[2]
+                    artifact("${thisArtifact}") {
+                        classifier thisClassifier
+                        extension suffix
+                    }
+                }
+
+                // append additional configurations
+                pom.withXml {
+                    StringBuilder sb = asString()
+                    sb.delete(0, sb.length())
+                    sb.append(pom_content)
+                }
+
+                pom.withXml {
+
+                    // refill necessary pom.
+
+                    asNode().appendNode("name", POM_NAME)
+                    asNode().appendNode("url", POM_URL)
+                    asNode().appendNode('description', POM_DESCRIPTION) // Needed by MavenCentral
+                }
+
+            }
+        }
+    }
+
+}
+
+signing {
+    publishing.publications.all { publication ->
+        sign publication
+    }
+}
+
+/**
+ * Setup custom maven repo
+ */
+publishing.repositories {
+    maven {
+        url "${getReleaseRepositoryUrl()}"
+        credentials {
+            username "${getRepositoryUsername()}"
+            password "${getRepositoryPassword()}"
+        }
+    }
+}
+
+ext.componets_tasks = [] as Set
+
+transmition_tasks.each { key, value ->
+    task("BintrayToMavenCentral-$key").dependsOn(value)
+    componets_tasks.add("BintrayToMavenCentral-$key" as String)
+}
+
+task BintrayToMavenCentral(dependsOn: componets_tasks)

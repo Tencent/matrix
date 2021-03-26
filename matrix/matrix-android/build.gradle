@@ -104,3 +104,5 @@ task generateVersionTxt() {
         file.write(rootProject.ext.VERSION_NAME)
     }
 }
+
+//apply from: file("gradle/bintray-to-maven-central.gradle")
