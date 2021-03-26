@@ -5,18 +5,4 @@
     android:background="@drawable/welcome_bg"
     android:orientation="vertical">
 
-    <Button
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="center"
-        android:onClick="showNotification"
-        android:text="show"/>
-
-    <Button
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="center"
-        android:onClick="showNotification2"
-        android:text="show2"/>
-
 </LinearLayout>
