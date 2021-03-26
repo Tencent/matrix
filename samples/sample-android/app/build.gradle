@@ -22,6 +22,9 @@ android {
         debug {
             storeFile file("./keystore/debug.keystore")
         }
+        release {
+            storeFile file("./keystore/debug.keystore")
+        }
     }
 
     defaultConfig {
