@@ -66,7 +66,7 @@ public final class BatteryEventDelegate {
         if (sInstance == null) {
             synchronized (TAG) {
                 if (sInstance == null) {
-                   throw new IllegalStateException("Call #init() first!");
+                    throw new IllegalStateException("Call #init() first!");
                 }
             }
         }
@@ -149,7 +149,7 @@ public final class BatteryEventDelegate {
 
     public void removeListener(@NonNull Listener listener) {
         synchronized (mListenerList) {
-            for (Iterator<Listener> iterator = mListenerList.listIterator(); iterator.hasNext(); ) {
+            for (Iterator<Listener> iterator = mListenerList.listIterator(); iterator.hasNext();) {
                 Listener item = iterator.next();
                 if (item == listener) {
                     iterator.remove();
@@ -243,7 +243,8 @@ public final class BatteryEventDelegate {
 
 
     public static final class BatteryState {
-        @Nullable BatteryMonitorCore mCore;
+        @Nullable
+        BatteryMonitorCore mCore;
         final Context mContext;
 
         public BatteryState(Context context) {
@@ -288,7 +289,8 @@ public final class BatteryEventDelegate {
                 Intent.ACTION_POWER_DISCONNECTED
         })
         @Retention(RetentionPolicy.SOURCE)
-        @interface BatteryEventDef {}
+        @interface BatteryEventDef {
+        }
 
         /**
          * @return return true if your listening is done, thus we remove your listener

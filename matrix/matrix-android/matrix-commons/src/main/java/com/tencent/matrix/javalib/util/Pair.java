@@ -14,7 +14,7 @@ public final class Pair<L, R> {
             return true;
         } else if (o != null && this.getClass() == o.getClass()) {
             boolean equal = false;
-            Pair<?, ?> pair = (Pair)o;
+            Pair<?, ?> pair = (Pair) o;
             if (this.left != null) {
                 if (this.left.equals(pair.left)) {
                     equal = true;

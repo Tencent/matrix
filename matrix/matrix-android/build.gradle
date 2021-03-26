@@ -4,38 +4,50 @@ buildscript {
 
         mavenLocal()
         google()
-        jcenter()
+        mavenCentral()
 
+        jcenter()   // Need 'org.jetbrains.trove4j:trove4j:20160824'
     }
 
     gradle.ext.KOTLIN_VERSION = "1.3.72"
 
     dependencies {
         // classpath
-        classpath 'com.android.tools.build:gradle:3.2.1'
-        classpath 'com.jfrog.bintray.gradle:gradle-bintray-plugin:1.7.3'
+        classpath 'com.android.tools.build:gradle:4.1.0'
         classpath 'digital.wup:android-maven-publish:3.6.2'
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$gradle.KOTLIN_VERSION"
     }
 
 }
 
-//for upload
-//apply from: rootProject.file('gradle/oss-android-template.gradle')
-
+Properties localProperties = new Properties()
+localProperties.load(project.rootProject.file('local.properties').newDataInputStream())
+def SigningFromLocalProperties(properties, project, String prop) {
+    if (properties.getProperty(prop)) {
+        project.ext[prop] = properties.getProperty(prop)
+    }
+}
 allprojects {
     repositories {
 
         mavenLocal()
         google()
-        jcenter()
+        mavenCentral()
 
+        jcenter() // Need 'com.tencent.tinker:tinker-ziputils:1.9.2'
     }
 
     tasks.withType(Javadoc).all {
         enabled = false // TODO:
         options.setEncoding('UTF-8')
     }
+
+    SigningFromLocalProperties(localProperties, project, 'REPOSITORY_USERNAME' as String)
+    SigningFromLocalProperties(localProperties, project, 'REPOSITORY_PASSWORD' as String)
+    SigningFromLocalProperties(localProperties, project, 'signing.keyId' as String)
+    SigningFromLocalProperties(localProperties, project, 'signing.password' as String)
+    SigningFromLocalProperties(localProperties, project, 'signing.secretKeyRingFile' as String)
+
 }
 
 
@@ -43,8 +55,8 @@ ext {
     // For android sub-projects
     minSdkVersion = 19
     targetSdkVersion = 23
-    compileSdkVersion = 28
-    buildToolsVersion = '28.0.3'
+    compileSdkVersion = 29
+    buildToolsVersion = '29.0.2'
 
     javaVersion = JavaVersion.VERSION_1_8
 
@@ -53,7 +65,8 @@ ext {
     PUBLISH_CHANNEL = "${PUBLISH_CHANNEL}"
 
     POM_PACKAGING = "pom"
-    POM_DESCRIPTION = "matrix"
+    POM_NAME = "Matrix for Android"
+    POM_DESCRIPTION = "Matrix is an APM (Application Performance Manage) used in Wechat to monitor, locate and analyse performance problems. It is a plugin style, non-invasive solution and is currently available on iOS, macOS and Android."
 
     POM_URL = "https://github.com/Tencent/Matrix"
     POM_SCM_URL = "https://github.com/Tencent/Matrix.git"

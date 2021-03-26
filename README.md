@@ -1,6 +1,6 @@
 ![Matrix-icon](assets/img/readme/header.png)
 
-[![license](http://img.shields.io/badge/license-BSD3-brightgreen.svg?style=flat)](https://github.com/Tencent/matrix/blob/master/LICENSE)[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/Tencent/matrix/pulls)[![WeChat Approved](https://img.shields.io/badge/Wechat%20Approved-0.6.6-red.svg)](https://github.com/Tencent/matrix/wiki)
+[![license](http://img.shields.io/badge/license-BSD3-brightgreen.svg?style=flat)](https://github.com/Tencent/matrix/blob/master/LICENSE)[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/Tencent/matrix/pulls)[![WeChat Approved](https://img.shields.io/badge/Wechat%20Approved-0.8.0-red.svg)](https://github.com/Tencent/matrix/wiki)
 
 (中文版本请参看[这里](#matrix_cn))  
 
@@ -169,10 +169,11 @@ At this point, Matrix has been integrated into the app and is beginning to colle
 - **Compatible with Android P.**
 
 ## Getting Started
+***The JCenter repository will stop service on February 1, 2022. So we uploaded Matrix(since 0.8.0) to the MavenCentral repository.***
 
 1. Configure `MATRIX_VERSION` in gradle.properties.
 ``` gradle
-  MATRIX_VERSION=0.6.6
+  MATRIX_VERSION=0.8.0
 ```
 
 2. Add `matrix-gradle-plugin` in your build.gradle:
@@ -224,6 +225,8 @@ At this point, Matrix has been integrated into the app and is beginning to colle
     }
 }
 ```
+
+Matrix gradle plugin could work with Android Gradle Plugin 3.5.0/4.0.0/4.1.0 currently.
 
 5. Implement `DynamicConfig` to change parameters of Matrix.
 ``` java
@@ -289,11 +292,11 @@ You can get more about Matrix output at the wiki [The output of Matrix](https://
 
 #### APK Checker Usage
 
-APK Checker can run independently in Jar ([matrix-apk-canary-0.6.6.jar](https://jcenter.bintray.com/com/tencent/matrix/matrix-apk-canary/0.6.6/matrix-apk-canary-0.6.6.jar)）  mode, usage:
+APK Checker can run independently in Jar ([matrix-apk-canary-0.8.0.jar](https://repo.maven.apache.org/maven2/com/tencent/matrix/matrix-apk-canary/0.8.0/matrix-apk-canary-0.8.0.jar)）  mode, usage:
 
 
 ```shell
-java -jar matrix-apk-canary-0.6.6.jar
+java -jar matrix-apk-canary-0.8.0.jar
 Usages: 
     --config CONFIG-FILE-PATH
 or
@@ -352,7 +355,7 @@ Matrix is under the BSD license. See the [LICENSE](https://github.com/Tencent/Ma
 
 # <a name="matrix_cn">Matrix</a>
 ![Matrix-icon](assets/img/readme/header.png)
-[![license](http://img.shields.io/badge/license-BSD3-brightgreen.svg?style=flat)](https://github.com/Tencent/matrix/blob/master/LICENSE)[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/Tencent/matrix/pulls)  [![WeChat Approved](https://img.shields.io/badge/Wechat%20Approved-0.6.6-red.svg)](https://github.com/Tencent/matrix/wiki)
+[![license](http://img.shields.io/badge/license-BSD3-brightgreen.svg?style=flat)](https://github.com/Tencent/matrix/blob/master/LICENSE)[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/Tencent/matrix/pulls)  [![WeChat Approved](https://img.shields.io/badge/Wechat%20Approved-0.8.0-red.svg)](https://github.com/Tencent/matrix/wiki)
 
 **Matrix** 是一款微信研发并日常使用的应用性能接入框架，支持iOS, macOS和Android。
 Matrix 通过接入各种性能监控方案，对性能监控项的异常数据进行采集和分析，输出相应的问题分析、定位与优化建议，从而帮助开发者开发出更高质量的应用。
@@ -470,7 +473,6 @@ Matrix-android 当前监控范围包括：应用安装包大小，帧率变化�
 - IO Canary:
   检测文件 IO 问题，包括：文件 IO 监控和 Closeable Leak 监控
 
-
 ## 特性
 
 与常规的 APM 工具相比，Matrix 拥有以下特点：
@@ -507,10 +509,11 @@ Matrix-android 当前监控范围包括：应用安装包大小，帧率变化�
 - 兼容到 Android P
 
 ## 使用方法
+***由于 JCenter 服务将于 2022 年 2 月 1 日下线，我们已将 Matrix 新版本（>= 0.8.0) maven repo 发布至 MavenCentral。***
 
 1. 在你项目根目录下的 gradle.properties 中配置要依赖的 Matrix 版本号，如：
 ``` gradle
-  MATRIX_VERSION=0.6.6
+  MATRIX_VERSION=0.8.0
 ```
 
 2. 在你项目根目录下的 build.gradle 文件添加 Matrix 依赖，如：
@@ -519,6 +522,7 @@ Matrix-android 当前监控范围包括：应用安装包大小，帧率变化�
       classpath ("com.tencent.matrix:matrix-gradle-plugin:${MATRIX_VERSION}") { changing = true }
   }
 ```
+
 3. 接着，在 app/build.gradle 文件中添加 Matrix 各模块的依赖，如：
 ``` gradle
   dependencies {
@@ -540,6 +544,8 @@ Matrix-android 当前监控范围包括：应用安装包大小，帧率变化�
     }
   }
 ```
+
+目前 Matrix gradle plugin 支持 Android Gradle Plugin 3.5.0/4.0.0/4.1.0。
 
 4. 实现 PluginListener，接收 Matrix 处理后的数据, 如：
 ``` java
@@ -624,10 +630,10 @@ Matrix 分析后的输出字段的含义请查看 [Matrix 输出内容的含义�
 
 #### APK Checker
 
-APK Check 以独立的 jar 包提供 ([matrix-apk-canary-0.6.6.jar](https://jcenter.bintray.com/com/tencent/matrix/matrix-apk-canary/0.6.6/matrix-apk-canary-0.6.6.jar)），你可以运行：
+APK Check 以独立的 jar 包提供 ([matrix-apk-canary-0.8.0.jar](https://repo.maven.apache.org/maven2/com/tencent/matrix/matrix-apk-canary/0.8.0/matrix-apk-canary-0.8.0.jar)），你可以运行：
 
 ```cmd
-java -jar matrix-apk-canary-0.6.6.jar
+java -jar matrix-apk-canary-0.8.0.jar
 ```
 
 查看 Usages 来使用它。

@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.tencent.matrix.resource.watcher;
+package com.tencent.matrix.resource.dumper;
 
 import android.content.Context;
 import android.os.Debug;
@@ -75,6 +75,11 @@ public class AndroidHeapDumper {
 
         if (!hprofDir.canWrite()) {
             MatrixLog.w(TAG, "hprof file path: %s cannot be written.", hprofFile.getAbsolutePath());
+            return null;
+        }
+
+        if (hprofDir.getFreeSpace() < 1.5 * 1024 * 1024 * 1024) {
+            MatrixLog.w(TAG, "hprof file path: %s free space not enough", hprofDir.getAbsolutePath());
             return null;
         }
 

@@ -43,7 +43,7 @@ final public class AppStats {
     public boolean isValid;
     public long duringMillis;
 
-    @Nullable  private AtomicBoolean mForeground;
+    @Nullable  private AtomicBoolean mForegroundOverride;
 
     AppStats() {
         sceneTop1 = "";
@@ -56,8 +56,8 @@ final public class AppStats {
     }
 
     public boolean isForeground() {
-        if (mForeground != null) {
-            return mForeground.get();
+        if (mForegroundOverride != null) {
+            return mForegroundOverride.get();
         }
         return getAppStat() == APP_STAT_FOREGROUND;
     }
@@ -73,7 +73,7 @@ final public class AppStats {
     }
 
     public AppStats setForeground(boolean bool) {
-        mForeground = new AtomicBoolean(bool);
+        mForegroundOverride = new AtomicBoolean(bool);
         return this;
     }
 
@@ -82,6 +82,26 @@ final public class AppStats {
         if (devSceneOffRatio >= 50) return DEV_STAT_SCREEN_OFF;
         if (devLowEnergyRatio >= 50) return DEV_STAT_SAVE_POWER_MODE;
         return DEV_STAT_UN_CHARGING;
+    }
+
+    @Override
+    public String toString() {
+        return "AppStats{" +
+                "appFgRatio=" + appFgRatio +
+                ", appBgRatio=" + appBgRatio +
+                ", appFgSrvRatio=" + appFgSrvRatio +
+                ", devChargingRatio=" + devChargingRatio +
+                ", devUnChargingRatio=" + devUnChargingRatio +
+                ", devSceneOffRatio=" + devSceneOffRatio +
+                ", devLowEnergyRatio=" + devLowEnergyRatio +
+                ", sceneTop1='" + sceneTop1 + '\'' +
+                ", sceneTop1Ratio=" + sceneTop1Ratio +
+                ", sceneTop2='" + sceneTop2 + '\'' +
+                ", sceneTop2Ratio=" + sceneTop2Ratio +
+                ", isValid=" + isValid +
+                ", duringMillis=" + duringMillis +
+                ", foregroundOverride=" + mForegroundOverride +
+                '}';
     }
 
     public static AppStats current() {

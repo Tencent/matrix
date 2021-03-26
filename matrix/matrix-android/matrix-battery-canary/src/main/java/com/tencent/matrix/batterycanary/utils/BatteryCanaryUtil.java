@@ -16,7 +16,6 @@
 
 package com.tencent.matrix.batterycanary.utils;
 
-import android.annotation.SuppressLint;
 import android.app.ActivityManager;
 import android.app.AlarmManager;
 import android.content.Context;
@@ -47,7 +46,7 @@ import static android.content.Context.ACTIVITY_SERVICE;
 
 /**
  * @author liyongjie
- *         Created by liyongjie on 2017/8/14.
+ * Created by liyongjie on 2017/8/14.
  */
 @RestrictTo(RestrictTo.Scope.LIBRARY)
 public final class BatteryCanaryUtil {
@@ -143,8 +142,8 @@ public final class BatteryCanaryUtil {
                 break;
             default:
                 break;
-         }
-         return typeStr;
+        }
+        return typeStr;
     }
 
     public static int[] getCpuCurrentFreq() {
@@ -292,7 +291,7 @@ public final class BatteryCanaryUtil {
         try {
             PowerManager pm = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
             if (pm != null) {
-                return Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT_WATCH ? pm.isInteractive() : pm .isScreenOn();
+                return Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT_WATCH ? pm.isInteractive() : pm.isScreenOn();
             }
         } catch (Exception ignored) {
         }

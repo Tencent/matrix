@@ -56,7 +56,7 @@ public class RemoveUnusedResourceHelper {
             }
             for (String styleable : styleableMap.keySet()) {
                 StringBuilder strBuilder = new StringBuilder();
-                Pair<String, Integer> styleableAttrs[] = styleableMap.get(styleable);
+                Pair<String, Integer>[] styleableAttrs = styleableMap.get(styleable);
                 strBuilder.append("int[]").append(" ")
                         .append("styleable").append(" ")
                         .append(styleable.substring(styleable.indexOf('.', 2) + 1)).append(" ")
@@ -123,7 +123,7 @@ public class RemoveUnusedResourceHelper {
                                         styleableAttrs.add(columns[i]);
                                     }
                                 }
-                                Pair<String, Integer> array[] =
+                                Pair<String, Integer>[] array =
                                         (Pair<String, Integer>[]) Array.newInstance(Pair.class, styleableAttrs.size());
                                 styleableMap.put(styleableName, array);
                             }

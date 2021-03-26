@@ -22,7 +22,7 @@ import android.os.Build;
 
 import com.tencent.matrix.resource.analyzer.model.HeapDump;
 import com.tencent.matrix.resource.hproflib.HprofBufferShrinker;
-import com.tencent.matrix.resource.watcher.DumpStorageManager;
+import com.tencent.matrix.resource.dumper.DumpStorageManager;
 import com.tencent.matrix.util.MatrixLog;
 
 import java.io.BufferedOutputStream;

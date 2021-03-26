@@ -142,7 +142,7 @@ public class AnrTracer extends Tracer {
             return beginRecord;
         }
 
-        public AnrHandleTask() {
+        AnrHandleTask() {
         }
 
         AnrHandleTask(AppMethodBeat.IndexRecord record, long token) {
