@@ -62,7 +62,6 @@ def pomConfig = {
     }
 
     name POM_NAME
-    description POM_DESCRIPTION
     url POM_URL
 }
 
@@ -154,6 +153,7 @@ android.libraryVariants.all { variant ->
             // append additional configurations
             pom.withXml {
                 asNode().children().last() + pomConfig
+                asNode().appendNode('description', POM_DESCRIPTION) // Needed by MavenCentral
             }
         }
     }

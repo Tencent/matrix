@@ -59,8 +59,7 @@ def pomConfig = {
         }
     }
 
-    name POM_DESCRIPTION
-    description POM_DESCRIPTION
+    name POM_NAME
     url POM_URL
 }
 
@@ -90,6 +89,7 @@ publishing {
             // append additional configurations
             pom.withXml {
                 asNode().children().last() + pomConfig
+                asNode().appendNode('description', POM_DESCRIPTION)
             }
         }
     }

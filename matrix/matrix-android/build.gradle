@@ -16,6 +16,7 @@ buildscript {
         classpath 'com.android.tools.build:gradle:4.1.0'
         classpath 'digital.wup:android-maven-publish:3.6.2'
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$gradle.KOTLIN_VERSION"
+        classpath 'commons-io:commons-io:2.6'
     }
 
 }
@@ -65,7 +66,7 @@ ext {
     PUBLISH_CHANNEL = "${PUBLISH_CHANNEL}"
 
     POM_PACKAGING = "pom"
-    POM_NAME = "matrix"
+    POM_NAME = "Matrix for Android"
     POM_DESCRIPTION = "Matrix is an APM (Application Performance Manage) used in Wechat to monitor, locate and analyse performance problems. It is a plugin style, non-invasive solution and is currently available on iOS, macOS and Android."
 
     POM_URL = "https://github.com/Tencent/Matrix"
