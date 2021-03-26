@@ -158,7 +158,7 @@ matrix {
         shrinkDuplicates true
         use7zip = true
         zipAlign = true
-        withResGuard true
+        embedResGuard true
 
         apkCheckerPath = "${project.configurations.apkCheckerDependency.resolve().find { it.name.startsWith("matrix-apk-canary") }.getAbsolutePath()}"
         sevenZipPath = "${project.configurations.sevenZipDependency.resolve().getAt(0).getAbsolutePath()}"
