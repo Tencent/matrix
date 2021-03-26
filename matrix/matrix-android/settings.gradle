@@ -12,6 +12,10 @@ include ':matrix-io-canary'
 include ':matrix-sqlite-lint:matrix-sqlite-lint-android-sdk'
 include ':matrix-battery-canary'
 include ':matrix-arscutil'
+
+// WIP
 include ':work-in-progress:matrix-memory-canary'
 include ':work-in-progress:matrix-thread-canary'
+
+// Sample
 //include ':matrix-sample-android:app'

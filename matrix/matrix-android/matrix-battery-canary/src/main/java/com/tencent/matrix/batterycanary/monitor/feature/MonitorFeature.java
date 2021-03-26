@@ -13,10 +13,15 @@ import java.util.Objects;
 
 public interface MonitorFeature {
     void configure(BatteryMonitorCore monitor);
+
     void onTurnOn();
+
     void onTurnOff();
+
     void onForeground(boolean isForeground);
+
     void onBackgroundCheck(long duringMillis);
+
     int weight();
 
     @SuppressWarnings("rawtypes")
@@ -83,10 +88,16 @@ public interface MonitorFeature {
 
                 @SuppressWarnings("unchecked")
                 public static <DIGIT extends Number> DigitEntry<DIGIT> of(DIGIT digit) {
-                    if (digit instanceof Integer) return (DigitEntry<DIGIT>) new IntDigit((Integer) digit);
-                    if (digit instanceof Long)    return (DigitEntry<DIGIT>) new LongDigit((Long) digit);
-                    if (digit instanceof Float)   return (DigitEntry<DIGIT>) new FloatDigit((Float) digit);
-                    if (digit instanceof Double)   return (DigitEntry<DIGIT>) new DoubleDigit((Double) digit);
+                    if (digit instanceof Integer) {
+                        return (DigitEntry<DIGIT>) new IntDigit((Integer) digit);
+                    } else if (digit instanceof Long) {
+                        return (DigitEntry<DIGIT>) new LongDigit((Long) digit);
+                    } else if (digit instanceof Float) {
+                        return (DigitEntry<DIGIT>) new FloatDigit((Float) digit);
+                    } else if (digit instanceof Double) {
+                        return (DigitEntry<DIGIT>) new DoubleDigit((Double) digit);
+                    }
+
                     throw new RuntimeException("unsupported digit: " + digit.getClass());
                 }
 
@@ -122,9 +133,10 @@ public interface MonitorFeature {
                 public abstract DIGIT diff(DIGIT right);
 
                 static class IntDigit extends DigitEntry<Integer> {
-                    public IntDigit(Integer value) {
+                    IntDigit(Integer value) {
                         super(value);
                     }
+
                     @Override
                     public Integer diff(Integer right) {
                         return value - right;
@@ -132,9 +144,10 @@ public interface MonitorFeature {
                 }
 
                 static class LongDigit extends DigitEntry<Long> {
-                    public LongDigit(Long value) {
+                    LongDigit(Long value) {
                         super(value);
                     }
+
                     @Override
                     public Long diff(Long right) {
                         return value - right;
@@ -142,9 +155,10 @@ public interface MonitorFeature {
                 }
 
                 static class FloatDigit extends DigitEntry<Float> {
-                    public FloatDigit(Float value) {
+                    FloatDigit(Float value) {
                         super(value);
                     }
+
                     @Override
                     public Float diff(Float right) {
                         return value - right;
@@ -152,9 +166,10 @@ public interface MonitorFeature {
                 }
 
                 static class DoubleDigit extends DigitEntry<Double> {
-                    public DoubleDigit(Double value) {
+                    DoubleDigit(Double value) {
                         super(value);
                     }
+
                     @Override
                     public Double diff(Double right) {
                         return value - right;
@@ -175,10 +190,15 @@ public interface MonitorFeature {
                 }
 
                 BEAN value;
-                public BeanEntry(BEAN value) { this.value = value; }
+
+                public BeanEntry(BEAN value) {
+                    this.value = value;
+                }
+
                 public boolean isEmpty() {
                     return false;
                 }
+
                 public BEAN get() {
                     return value;
                 }
@@ -281,7 +301,9 @@ public interface MonitorFeature {
 
 
                 List<ITEM> list;
-                private ListEntry() {}
+
+                private ListEntry() {
+                }
 
                 @Override
                 public boolean isValid() {
@@ -304,11 +326,13 @@ public interface MonitorFeature {
 
             class DigitDiffer<DIGIT extends Number> implements Differ<Entry.DigitEntry<DIGIT>> {
                 static final DigitDiffer sGlobal = new DigitDiffer();
+
                 @NonNull
                 public static <DIGIT extends Number> Entry.DigitEntry<DIGIT> globalDiff(@NonNull Entry.DigitEntry<DIGIT> bgn, @NonNull Entry.DigitEntry<DIGIT> end) {
                     //noinspection unchecked
                     return sGlobal.diff(bgn, end);
                 }
+
                 @Override
                 @NonNull
                 public Entry.DigitEntry<DIGIT> diff(@NonNull Entry.DigitEntry<DIGIT> bgn, @NonNull Entry.DigitEntry<DIGIT> end) {
@@ -319,11 +343,13 @@ public interface MonitorFeature {
 
             class BeanDiffer<BEAN> implements Differ<Entry.BeanEntry<BEAN>> {
                 static final BeanDiffer sGlobal = new BeanDiffer<>();
+
                 @NonNull
                 public static <BEAN> Entry.BeanEntry<BEAN> globalDiff(@NonNull Entry.BeanEntry<BEAN> bgn, @NonNull Entry.BeanEntry<BEAN> end) {
                     //noinspection unchecked
                     return sGlobal.diff(bgn, end);
                 }
+
                 @Override
                 @NonNull
                 public Entry.BeanEntry<BEAN> diff(@NonNull Entry.BeanEntry<BEAN> bgn, @NonNull Entry.BeanEntry<BEAN> end) {
@@ -337,6 +363,7 @@ public interface MonitorFeature {
 
             class ListDiffer<ENTRY extends Entry> implements Differ<Entry.ListEntry<ENTRY>> {
                 static final ListDiffer sGlobal = new ListDiffer<>();
+
                 @NonNull
                 public static <ENTRY extends Entry> Entry.ListEntry<ENTRY> globalDiff(@NonNull Entry.ListEntry<ENTRY> bgn, @NonNull Entry.ListEntry<ENTRY> end) {
                     //noinspection unchecked
@@ -355,7 +382,7 @@ public interface MonitorFeature {
                                 ENTRY bgnEntry = bgn.list.get(i);
                                 if (bgnEntry instanceof Entry.DigitEntry) {
                                     //noinspection unchecked
-                                    diff.list.add((ENTRY) DigitDiffer.globalDiff((Entry.DigitEntry)bgnEntry, (Entry.DigitEntry)endEntry));
+                                    diff.list.add((ENTRY) DigitDiffer.globalDiff((Entry.DigitEntry) bgnEntry, (Entry.DigitEntry) endEntry));
                                     continue;
                                 }
                             }
@@ -372,7 +399,7 @@ public interface MonitorFeature {
                                 if (!(bgnEntry instanceof Entry.BeanEntry)) {
                                     continue;
                                 }
-                                if (BeanDiffer.globalDiff((Entry.BeanEntry)bgnEntry, (Entry.BeanEntry) endEntry) == Entry.BeanEntry.sEmpty) {
+                                if (BeanDiffer.globalDiff((Entry.BeanEntry) bgnEntry, (Entry.BeanEntry) endEntry) == Entry.BeanEntry.sEmpty) {
                                     find = true;
                                     break;
                                 }

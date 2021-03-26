@@ -126,63 +126,63 @@ public class ArscUtil {
     public static boolean replaceFileResource(ResTable resTable, int sourceResId, String sourceFile, int targetResId, String targetFile) throws IOException {
         int sourcePkgId = getPackageId(sourceResId);
         int targetPkgId = getPackageId(targetResId);
-    	Log.i(TAG, "try to replace %H(%s) with %H(%s)", sourceResId, sourceFile, targetResId, targetFile);
-    	if (sourcePkgId == targetPkgId) {
-    		ResPackage resPackage = findResPackage(resTable, sourcePkgId);
+        Log.i(TAG, "try to replace %H(%s) with %H(%s)", sourceResId, sourceFile, targetResId, targetFile);
+        if (sourcePkgId == targetPkgId) {
+            ResPackage resPackage = findResPackage(resTable, sourcePkgId);
             if (resPackage != null) {
-            	List<ResType> targetResTypeList = findResType(resPackage, targetResId);
-            	int targetFileIndex = -1;
-            	//find the index of targetFile in the string pool
-            	for (ResType targetResType : targetResTypeList) {
-            		int entryId = getResourceEntryId(targetResId);
-            		ResEntry resEntry = targetResType.getEntryTable().get(entryId);
-            		boolean isComplex = (resEntry.getFlag() & ArscConstants.RES_TABLE_ENTRY_FLAG_COMPLEX) != 0;
-            		if (!isComplex && resEntry.getResValue() != null) {
-            			if (resEntry.getResValue().getDataType() == ArscConstants.RES_VALUE_DATA_TYPE_STRING) {
-            				String filePath = ResStringBlock.resolveStringPoolEntry(resTable.getGlobalStringPool().getStrings().get(resEntry.getResValue().getData()).array(), resTable.getGlobalStringPool().getCharSet());
-            				if (filePath.equals(targetFile)) {
-            					targetFileIndex = resEntry.getResValue().getData();
-            					break;
-            				} else {
-            					Log.w(TAG, "find target file %s, %s was expected", filePath, targetFile);
-            					continue;
-            				}
-            			}
-            		}
-            	}
-            	if (targetFileIndex == -1) {
-            		Log.w(TAG, "can not find target file %s in resource %H", targetFile, targetResId);
-            		return false;
-            	}
-            	//find the index of sourceFile in the string pool, and then replace it with the index of targetFile
-            	int sourceFileIndex = -1;
+                List<ResType> targetResTypeList = findResType(resPackage, targetResId);
+                int targetFileIndex = -1;
+                //find the index of targetFile in the string pool
+                for (ResType targetResType : targetResTypeList) {
+                    int entryId = getResourceEntryId(targetResId);
+                    ResEntry resEntry = targetResType.getEntryTable().get(entryId);
+                    boolean isComplex = (resEntry.getFlag() & ArscConstants.RES_TABLE_ENTRY_FLAG_COMPLEX) != 0;
+                    if (!isComplex && resEntry.getResValue() != null) {
+                        if (resEntry.getResValue().getDataType() == ArscConstants.RES_VALUE_DATA_TYPE_STRING) {
+                            String filePath = ResStringBlock.resolveStringPoolEntry(resTable.getGlobalStringPool().getStrings().get(resEntry.getResValue().getData()).array(), resTable.getGlobalStringPool().getCharSet());
+                            if (filePath.equals(targetFile)) {
+                                targetFileIndex = resEntry.getResValue().getData();
+                                break;
+                            } else {
+                                Log.w(TAG, "find target file %s, %s was expected", filePath, targetFile);
+                                continue;
+                            }
+                        }
+                    }
+                }
+                if (targetFileIndex == -1) {
+                    Log.w(TAG, "can not find target file %s in resource %H", targetFile, targetResId);
+                    return false;
+                }
+                //find the index of sourceFile in the string pool, and then replace it with the index of targetFile
+                int sourceFileIndex = -1;
                 List<ResType> sourceResTypeList = findResType(resPackage, sourceResId);
                 for (ResType sourceResType : sourceResTypeList) {
                     int entryId = getResourceEntryId(sourceResId);
                     ResEntry resEntry = sourceResType.getEntryTable().get(entryId);
                     boolean isComplex = (resEntry.getFlag() & ArscConstants.RES_TABLE_ENTRY_FLAG_COMPLEX) != 0;
                     if (!isComplex && resEntry.getResValue() != null) {
-                    	if (resEntry.getResValue().getDataType() == ArscConstants.RES_VALUE_DATA_TYPE_STRING) {
-                    		String filePath = ResStringBlock.resolveStringPoolEntry(resTable.getGlobalStringPool().getStrings().get(resEntry.getResValue().getData()).array(), resTable.getGlobalStringPool().getCharSet());
-                    		if (filePath.equals(sourceFile)) {
-                    			sourceFileIndex = resEntry.getResValue().getData();
-                    			resEntry.getResValue().setData(targetFileIndex);
-                    			sourceResType.refresh();
-                    		} else {
-                    			Log.w(TAG, "find source file %s, %s was expected", filePath, sourceFile);
-            					continue;
-                    		}
-                    	}
+                        if (resEntry.getResValue().getDataType() == ArscConstants.RES_VALUE_DATA_TYPE_STRING) {
+                            String filePath = ResStringBlock.resolveStringPoolEntry(resTable.getGlobalStringPool().getStrings().get(resEntry.getResValue().getData()).array(), resTable.getGlobalStringPool().getCharSet());
+                            if (filePath.equals(sourceFile)) {
+                                sourceFileIndex = resEntry.getResValue().getData();
+                                resEntry.getResValue().setData(targetFileIndex);
+                                sourceResType.refresh();
+                            } else {
+                                Log.w(TAG, "find source file %s, %s was expected", filePath, sourceFile);
+                                continue;
+                            }
+                        }
                     }
                 }
                 if (sourceFileIndex != -1) {
-                	return true;
+                    return true;
                 }
             }
-    	} else {
-    		Log.w(TAG, "sourcePkgId %d != targetPkgId %d, quit replace!", sourcePkgId, targetPkgId);
-    	}
-    	return false;
+        } else {
+            Log.w(TAG, "sourcePkgId %d != targetPkgId %d, quit replace!", sourcePkgId, targetPkgId);
+        }
+        return false;
     }
 
     public static void replaceResEntryName(ResTable resTable, Map<Integer, String> resIdProguard) {
@@ -252,8 +252,8 @@ public class ArscUtil {
     }
 
     public static boolean replaceResFileName(ResTable resTable, int resId, String srcFileName, String targetFileName) {
-    	Log.i(TAG, "try to replace resource (%H) file %s with %s", resId, srcFileName, targetFileName);
-    	ResPackage resPackage = findResPackage(resTable, getPackageId(resId));
+        Log.i(TAG, "try to replace resource (%H) file %s with %s", resId, srcFileName, targetFileName);
+        ResPackage resPackage = findResPackage(resTable, getPackageId(resId));
         boolean result = false;
         if (resPackage != null) {
             List<ResType> resTypeList = findResType(resPackage, resId);
@@ -261,12 +261,12 @@ public class ArscUtil {
                 int entryId = getResourceEntryId(resId);
                 ResEntry resEntry = resType.getEntryTable().get(entryId);
                 if (resEntry.getResValue().getDataType() == ArscConstants.RES_VALUE_DATA_TYPE_STRING) {
-                	String filePath = ResStringBlock.resolveStringPoolEntry(resTable.getGlobalStringPool().getStrings().get(resEntry.getResValue().getData()).array(), resTable.getGlobalStringPool().getCharSet());
-                	if (filePath.equals(srcFileName)) {
-                		resTable.getGlobalStringPool().getStrings().set(resEntry.getResValue().getData(), ByteBuffer.wrap(ResStringBlock.encodeStringPoolEntry(targetFileName, resTable.getGlobalStringPool().getCharSet())));
-                		result = true;
-                		break;
-                	}
+                    String filePath = ResStringBlock.resolveStringPoolEntry(resTable.getGlobalStringPool().getStrings().get(resEntry.getResValue().getData()).array(), resTable.getGlobalStringPool().getCharSet());
+                    if (filePath.equals(srcFileName)) {
+                        resTable.getGlobalStringPool().getStrings().set(resEntry.getResValue().getData(), ByteBuffer.wrap(ResStringBlock.encodeStringPoolEntry(targetFileName, resTable.getGlobalStringPool().getCharSet())));
+                        result = true;
+                        break;
+                    }
                 }
             }
             if (result) {

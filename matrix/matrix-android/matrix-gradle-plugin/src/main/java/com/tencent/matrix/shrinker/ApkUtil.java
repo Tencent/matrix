@@ -17,8 +17,9 @@
 package com.tencent.matrix.shrinker;
 
 import com.android.builder.model.SigningConfig;
-import com.tencent.matrix.javalib.util.Util;
 import com.tencent.matrix.javalib.util.Pair;
+import com.tencent.matrix.javalib.util.Util;
+
 import org.gradle.api.GradleException;
 
 import java.io.BufferedInputStream;
@@ -28,7 +29,6 @@ import java.io.BufferedWriter;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
@@ -37,7 +37,6 @@ import java.io.InputStream;
 import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.zip.CRC32;
@@ -103,11 +102,8 @@ public class ApkUtil {
                 return false;
             }
         }
-        if (Util.isNullOrNil(resType)) {
-            return false;
-        } else {
-            return true;
-        }
+
+        return !Util.isNullOrNil(resType);
     }
 
     public static String parseResourceType(String resource) {
@@ -256,7 +252,8 @@ public class ApkUtil {
                                 styleableName = "R." + columns[1] + "." + columns[2];
                                 for (int i = 4; i < columns.length - 1; i++) {
                                     if (columns[i].endsWith(",")) {
-                                        styleableAttrs.add(columns[i].substring(0, columns[i].length() - 1));
+                                        styleableAttrs.add(columns[i].substring(0,
+                                                columns[i].length() - 1));
                                     } else {
                                         styleableAttrs.add(columns[i]);
                                     }
@@ -306,7 +303,8 @@ public class ApkUtil {
                         .append("{ ");
                 for (int i = 0; i < styleableAttrs.length; i++) {
                     if (i != styleableAttrs.length - 1) {
-                        strBuilder.append("0x" + Integer.toHexString(styleableAttrs[i].right)).append(", ");
+                        strBuilder.append(
+                                "0x" + Integer.toHexString(styleableAttrs[i].right)).append(", ");
                     } else {
                         strBuilder.append("0x" + Integer.toHexString(styleableAttrs[i].right));
                     }

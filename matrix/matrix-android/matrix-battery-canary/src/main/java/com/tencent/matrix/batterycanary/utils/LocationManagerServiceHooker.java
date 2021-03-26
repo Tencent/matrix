@@ -23,7 +23,6 @@ import android.support.annotation.RestrictTo;
 
 import com.tencent.matrix.util.MatrixLog;
 
-import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;

@@ -9,7 +9,6 @@ import com.tencent.matrix.trace.config.TraceConfig;
 import com.tencent.matrix.trace.constants.Constants;
 import com.tencent.matrix.trace.listeners.LooperObserver;
 import com.tencent.matrix.trace.util.Utils;
-import com.tencent.matrix.util.DeviceUtil;
 import com.tencent.matrix.util.MatrixLog;
 import com.tencent.matrix.util.ReflectUtils;
 

@@ -16,8 +16,6 @@
 
 package com.tencent.matrix.resource.config;
 
-import android.content.Intent;
-
 import com.tencent.mrs.plugin.IDynamicConfig;
 
 import java.util.concurrent.TimeUnit;
@@ -46,7 +44,7 @@ public final class ResourceConfig {
     private final IDynamicConfig mDynamicConfig;
     private final DumpMode mDumpHprofMode;
     private final boolean mDetectDebugger;
-    private final String  mTargetActivity;
+    private final String mTargetActivity;
 
     private ResourceConfig(IDynamicConfig dynamicConfig, DumpMode dumpHprofMode, boolean detectDebuger, String targetActivity) {
         this.mDynamicConfig = dynamicConfig;

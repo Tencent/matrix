@@ -7,14 +7,12 @@ import android.os.SystemClock;
 import android.util.LongSparseArray;
 
 import com.tencent.matrix.AppActiveMatrixDelegate;
-import com.tencent.matrix.Matrix;
 import com.tencent.matrix.plugin.Plugin;
 import com.tencent.matrix.report.Issue;
 import com.tencent.matrix.trace.core.AppMethodBeat;
 import com.tencent.matrix.util.MatrixHandlerThread;
 import com.tencent.matrix.util.MatrixLog;
 import com.tencent.matrix.util.MatrixUtil;
-import com.tencent.matrix.util.ReflectUtils;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -149,7 +147,8 @@ public class ThreadMonitor extends Plugin {
                         if (threadInfo.tid == mainTid) {
                             threadInfo.name = "main";
                         } else {
-                            threadInfo.name = appThreadInfo.name.replaceAll("-?[0-9]\\d*", "?") + "J";
+                            threadInfo.name =
+                                    appThreadInfo.name.replaceAll("-?[0-9]\\d*", "?") + "J";
                         }
                         threadInfo.stackTrace = appThreadInfo.stackTrace;
                         threadInfo.isHandlerThread = appThreadInfo.isHandlerThread;

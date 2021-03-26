@@ -16,6 +16,12 @@ task('checkstyle', type: Checkstyle) {
     classpath = files()
 }
 
+if ("External" != rootProject.ext.PUBLISH_CHANNEL) {
+    project.afterEvaluate {
+        project.publish.dependsOn("checkstyle")
+        project.publishToMavenLocal.dependsOn("checkstyle")
+    }
+}
 check.dependsOn('checkstyle')
 
 

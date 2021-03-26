@@ -90,7 +90,7 @@ public class MatrixHandlerThread {
         return handlerThread;
     }
 
-    public static HandlerThread getNewHandlerThread(String name,int priority) {
+    public static HandlerThread getNewHandlerThread(String name, int priority) {
         HandlerThread handlerThread = getNewHandlerThread(name);
         handlerThread.setPriority(priority);
         return handlerThread;
@@ -147,7 +147,8 @@ public class MatrixHandlerThread {
                 });
                 hashMap.clear();
                 if (!list.isEmpty()) {
-                    MatrixLog.i(TAG, "matrix default thread has exec in background! %s cost:%s", list, System.currentTimeMillis() - start);
+                    MatrixLog.i(TAG, "matrix default thread has exec in background! %s cost:%s", list,
+                            System.currentTimeMillis() - start);
                 }
             } else {
                 hashMap.clear();
