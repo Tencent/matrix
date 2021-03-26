@@ -4,21 +4,15 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.os.Build;
 
-import com.tencent.matrix.resource.analyzer.ActivityLeakAnalyzer;
 import com.tencent.matrix.resource.analyzer.model.ActivityLeakResult;
-import com.tencent.matrix.resource.analyzer.model.AndroidExcludedRefs;
 import com.tencent.matrix.resource.analyzer.model.DestroyedActivityInfo;
-import com.tencent.matrix.resource.analyzer.model.ExcludedRefs;
-import com.tencent.matrix.resource.analyzer.model.HeapSnapshot;
 import com.tencent.matrix.resource.config.ResourceConfig;
 import com.tencent.matrix.resource.config.SharePluginInfo;
 import com.tencent.matrix.resource.watcher.ActivityRefWatcher;
 import com.tencent.matrix.util.MatrixLog;
 
 import java.io.File;
-import java.io.IOException;
 
 /**
  * Created by Yves on 2021/2/25
@@ -110,16 +104,19 @@ public class SilenceAnalyseProcessor extends BaseLeakProcessor {
             return true;
         }
 
-        MatrixLog.i(TAG, String.format("dump cost=%sms refString=%s path=%s", System.currentTimeMillis() - dumpBegin, refString, file.getAbsolutePath()));
+        MatrixLog.i(TAG, String.format("dump cost=%sms refString=%s path=%s",
+                System.currentTimeMillis() - dumpBegin, refString, file.getAbsolutePath()));
 
         long analyseBegin = System.currentTimeMillis();
         try {
             final ActivityLeakResult result = analyze(file, refString);
-            MatrixLog.i(TAG, String.format("analyze cost=%sms refString=%s", System.currentTimeMillis() - analyseBegin, refString));
+            MatrixLog.i(TAG, String.format("analyze cost=%sms refString=%s",
+                    System.currentTimeMillis() - analyseBegin, refString));
 
             String refChain = result.toString();
             if (result.mLeakFound) {
-                publishIssue(SharePluginInfo.IssueType.LEAK_FOUND, activity, refString, refChain, String.valueOf(System.currentTimeMillis() - dumpBegin));
+                publishIssue(SharePluginInfo.IssueType.LEAK_FOUND, activity, refString, refChain, String.valueOf(
+                        System.currentTimeMillis() - dumpBegin));
                 MatrixLog.i(TAG, refChain);
             } else {
                 MatrixLog.i(TAG, "leak not found");

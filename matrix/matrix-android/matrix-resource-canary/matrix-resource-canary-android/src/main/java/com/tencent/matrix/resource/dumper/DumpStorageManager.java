@@ -19,7 +19,6 @@ import android.content.Context;
 import android.os.Environment;
 import android.os.Process;
 
-import com.tencent.matrix.Matrix;
 import com.tencent.matrix.util.MatrixLog;
 import com.tencent.matrix.util.MatrixUtil;
 
@@ -28,7 +27,6 @@ import java.io.FilenameFilter;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
-import java.util.UUID;
 
 /**
  * Created by tangyinsheng on 2017/6/2.
@@ -67,7 +65,8 @@ public class DumpStorageManager {
         final String hprofFileName = "dump"
                 + "_" + MatrixUtil.getProcessName(mContext).replace(".", "_").replace(":", "_")
                 + "_" + Process.myPid()
-                + "_" + new SimpleDateFormat("yyyyMMddHHmmss", Locale.getDefault()).format(new Date())
+                + "_"
+                + new SimpleDateFormat("yyyyMMddHHmmss", Locale.getDefault()).format(new Date())
                 + HPROF_EXT;
         return new File(storageDir, hprofFileName);
     }
