@@ -51,6 +51,7 @@ import java.lang.reflect.Method;
 
 import sample.tencent.matrix.config.DynamicConfigImplDemo;
 import sample.tencent.matrix.listener.TestPluginListener;
+import sample.tencent.matrix.resource.ManualDumpActivity;
 import sample.tencent.matrix.sqlitelint.TestSQLiteLintActivity;
 
 /**
@@ -109,14 +110,15 @@ public class MatrixApplication extends Application {
 
             //resource
             Intent intent = new Intent();
-            ResourceConfig.DumpMode mode = ResourceConfig.DumpMode.AUTO_DUMP;
+            ResourceConfig.DumpMode mode = ResourceConfig.DumpMode.MANUAL_DUMP;
             MatrixLog.i(TAG, "Dump Activity Leak Mode=%s", mode);
             intent.setClassName(this.getPackageName(), "com.tencent.mm.ui.matrix.ManualDumpActivity");
             ResourceConfig resourceConfig = new ResourceConfig.Builder()
                     .dynamicConfig(dynamicConfig)
                     .setAutoDumpHprofMode(mode)
 //                .setDetectDebuger(true) //matrix test code
-                    .setNotificationContentIntent(intent)
+//                    .set(intent)
+                    .setManualDumpTargetActivity(ManualDumpActivity.class.getName())
                     .build();
             builder.plugin(new ResourcePlugin(resourceConfig));
             ResourcePlugin.activityLeakFixer(this);

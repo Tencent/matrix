@@ -2,6 +2,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
           package="com.tencent.matrix.resource">
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
+    <permission android:name="${applicationId}.manual.dump" android:protectionLevel="signature" />
+
+    <uses-permission android:name="${applicationId}.manual.dump" />
 
     <application>
         <service
