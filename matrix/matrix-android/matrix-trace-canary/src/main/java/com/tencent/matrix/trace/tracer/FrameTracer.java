@@ -46,7 +46,7 @@ public class FrameTracer extends Tracer implements Application.ActivityLifecycle
     private long normalThreshold;
     private int droppedSum = 0;
     private long durationSum = 0;
-    private Map<String,Long> lastResumeTimeMap = new HashMap<>();
+    private Map<String, Long> lastResumeTimeMap = new HashMap<>();
 
     public FrameTracer(TraceConfig config) {
         this.config = config;
@@ -116,15 +116,15 @@ public class FrameTracer extends Tracer implements Application.ActivityLifecycle
         try {
             final long jiter = endNs - intendedFrameTimeNs;
             final int dropFrame = (int) (jiter / frameIntervalNs);
-            if(dropFrameListener != null) {
-                if(dropFrame > dropFrameListenerThreshold) {
+            if (dropFrameListener != null) {
+                if (dropFrame > dropFrameListenerThreshold) {
                     try {
                         if (AppActiveMatrixDelegate.getTopActivityName() != null) {
                             long lastResumeTime = lastResumeTimeMap.get(AppActiveMatrixDelegate.getTopActivityName());
                             dropFrameListener.dropFrame(dropFrame, AppActiveMatrixDelegate.getTopActivityName(), lastResumeTime);
                         }
-                    }catch (Exception e){
-                        MatrixLog.e(TAG,"dropFrameListener error e:" + e.getMessage());
+                    } catch (Exception e) {
+                        MatrixLog.e(TAG, "dropFrameListener error e:" + e.getMessage());
                     }
                 }
             }
@@ -238,7 +238,8 @@ public class FrameTracer extends Tracer implements Application.ActivityLifecycle
         }
 
         void collect(int droppedFrames) {
-            float frameIntervalCost = 1f * UIThreadMonitor.getMonitor().getFrameIntervalNanos() / Constants.TIME_MILLIS_TO_NANO;
+            float frameIntervalCost = 1f * UIThreadMonitor.getMonitor().getFrameIntervalNanos()
+                    / Constants.TIME_MILLIS_TO_NANO;
             sumFrameCost += (droppedFrames + 1) * frameIntervalCost;
             sumDroppedFrames += droppedFrames;
             sumFrame++;
@@ -326,16 +327,16 @@ public class FrameTracer extends Tracer implements Application.ActivityLifecycle
 
     }
 
-    public void addDropFrameListener(int dropFrameListenerThreshold, DropFrameListener dropFrameListener){
+    public void addDropFrameListener(int dropFrameListenerThreshold, DropFrameListener dropFrameListener) {
         this.dropFrameListener = dropFrameListener;
         this.dropFrameListenerThreshold = dropFrameListenerThreshold;
     }
 
-    public void removeDropFrameListener(){
+    public void removeDropFrameListener() {
         this.dropFrameListener = null;
     }
 
-    public interface DropFrameListener{
+    public interface DropFrameListener {
         void dropFrame(int dropedFrame, String scene, long lastResume);
     }
 

@@ -52,40 +52,40 @@ public class ResValue {
     }
 
     public int getData() {
-    	return data;
+        return data;
     }
 
     public void setData(int data) {
-    	this.data = data;
+        this.data = data;
     }
 
     public String printData() {
-    	switch (dataType) {
-    		case ArscConstants.RES_VALUE_DATA_TYPE_NULL:
-    			return "[Null]";
-    		case ArscConstants.RES_VALUE_DATA_TYPE_REFERENCE:
-    			return "reference:" + data;
-    		case ArscConstants.RES_VALUE_DATA_TYPE_STRING:
-    			return "string:" + data;
-    		case ArscConstants.RES_VALUE_DATA_TYPE_FLOAT:
-    			return "float:" + Float.intBitsToFloat(data);
-    		case ArscConstants.RES_VALUE_DATA_TYPE_INT_DEC:
-    			return "integer:" + String.format("%d", data);
-    		case ArscConstants.RES_VALUE_DATA_TYPE_INT_HEX:
-    			return "integer:" + String.format("%x", data);
-    		case ArscConstants.RES_VALUE_DATA_TYPE_INT_BOOLEAN:
-    			return "boolean:" + String.format("%b", data);
-    		case ArscConstants.RES_VALUE_DATA_TYPE_INT_COLOR_ARGB8:
-    			return "color:" + String.format("#%8x", data);
-    		case ArscConstants.RES_VALUE_DATA_TYPE_INT_COLOR_RGB8:
-    			return "color:" + String.format("#%6x", data);
-    		case ArscConstants.RES_VALUE_DATA_TYPE_INT_COLOR_ARGB4:
-    			return "color:" + String.format("#%4x", data);
-    		case ArscConstants.RES_VALUE_DATA_TYPE_INT_COLOR_RGB4:
-    			return "color:" + String.format("#%3x", data);
-    		default:
-    			return "other:" + data;
-    	}
+        switch (dataType) {
+            case ArscConstants.RES_VALUE_DATA_TYPE_NULL:
+                return "[Null]";
+            case ArscConstants.RES_VALUE_DATA_TYPE_REFERENCE:
+                return "reference:" + data;
+            case ArscConstants.RES_VALUE_DATA_TYPE_STRING:
+                return "string:" + data;
+            case ArscConstants.RES_VALUE_DATA_TYPE_FLOAT:
+                return "float:" + Float.intBitsToFloat(data);
+            case ArscConstants.RES_VALUE_DATA_TYPE_INT_DEC:
+                return "integer:" + String.format("%d", data);
+            case ArscConstants.RES_VALUE_DATA_TYPE_INT_HEX:
+                return "integer:" + String.format("%x", data);
+            case ArscConstants.RES_VALUE_DATA_TYPE_INT_BOOLEAN:
+                return "boolean:" + String.format("%b", data);
+            case ArscConstants.RES_VALUE_DATA_TYPE_INT_COLOR_ARGB8:
+                return "color:" + String.format("#%8x", data);
+            case ArscConstants.RES_VALUE_DATA_TYPE_INT_COLOR_RGB8:
+                return "color:" + String.format("#%6x", data);
+            case ArscConstants.RES_VALUE_DATA_TYPE_INT_COLOR_ARGB4:
+                return "color:" + String.format("#%4x", data);
+            case ArscConstants.RES_VALUE_DATA_TYPE_INT_COLOR_RGB4:
+                return "color:" + String.format("#%3x", data);
+            default:
+                return "other:" + data;
+        }
     }
 
     public byte[] toBytes() {

@@ -24,15 +24,19 @@ public final class LooperTaskMonitorFeature extends AbsTaskMonitorFeature {
     public interface LooperTaskListener {
         @Deprecated
         void onTaskTrace(Thread thread, List<LooperTaskMonitorFeature.TaskTraceInfo> sortList);
+
         void onLooperTaskOverHeat(@NonNull List<Delta<TaskJiffiesSnapshot>> deltas);
+
         void onLooperConcurrentOverHeat(String key, int concurrentCount, long duringMillis);
     }
 
     final List<String> mWatchingList = new ArrayList<>();
     final Map<Looper, LooperMonitor> mLooperMonitorTrace = new HashMap<>();
 
-    @Nullable LooperMonitor.LooperDispatchListener mLooperTaskListener;
-    @Nullable Runnable mDelayWatchingTask;
+    @Nullable
+    LooperMonitor.LooperDispatchListener mLooperTaskListener;
+    @Nullable
+    Runnable mDelayWatchingTask;
 
     @Override
     protected String getTag() {
@@ -236,7 +240,8 @@ public final class LooperTaskMonitorFeature extends AbsTaskMonitorFeature {
     }
 
     @Override
-    protected void onParseTaskJiffiesFail(String key, int pid, int tid) {}
+    protected void onParseTaskJiffiesFail(String key, int pid, int tid) {
+    }
 
 
     @Deprecated

@@ -17,7 +17,7 @@ public class Configuration {
     public String traceClassOut;
     public HashSet<String> blockSet = new HashSet<>();
 
-    public Configuration() {}
+    public Configuration() { }
 
     Configuration(String packageName, String mappingDir, String baseMethodMapPath, String methodMapFilePath,
                   String ignoreMethodMapFilePath, String blockListFilePath, String traceClassOut) {

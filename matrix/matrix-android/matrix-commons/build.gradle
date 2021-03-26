@@ -5,6 +5,11 @@ group rootProject.ext.GROUP
 
 [compileJava, compileTestJava, javadoc]*.options*.encoding = 'UTF-8'
 
+java {
+    sourceCompatibility = rootProject.ext.javaVersion
+    targetCompatibility = rootProject.ext.javaVersion
+}
+
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
     implementation 'commons-io:commons-io:2.6'

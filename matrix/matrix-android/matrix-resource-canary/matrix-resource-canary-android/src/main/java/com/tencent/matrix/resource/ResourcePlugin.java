@@ -49,6 +49,7 @@ public class ResourcePlugin extends Plugin {
             public void onActivityDestroyed(Activity activity) {
                 ActivityLeakFixer.fixInputMethodManagerLeak(activity);
                 ActivityLeakFixer.unbindDrawables(activity);
+                ActivityLeakFixer.fixViewLocationHolderLeakApi28(activity);
             }
         });
     }
@@ -103,6 +104,13 @@ public class ResourcePlugin extends Plugin {
         return SharePluginInfo.TAG_PLUGIN;
     }
 
+    @Override
+    public void onForeground(boolean isForeground) {
+        MatrixLog.d(TAG, "onForeground: %s", isForeground);
+        if (isPluginStarted() && mWatcher != null) {
+            mWatcher.onForeground(isForeground);
+        }
+    }
 
     public ResourceConfig getConfig() {
         return mConfig;
