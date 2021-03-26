@@ -61,7 +61,7 @@ def pomConfig = {
         }
     }
 
-    name POM_DESCRIPTION
+    name POM_NAME
     description POM_DESCRIPTION
     url POM_URL
 }

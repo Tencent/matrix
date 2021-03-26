@@ -65,7 +65,8 @@ ext {
     PUBLISH_CHANNEL = "${PUBLISH_CHANNEL}"
 
     POM_PACKAGING = "pom"
-    POM_DESCRIPTION = "matrix"
+    POM_NAME = "matrix"
+    POM_DESCRIPTION = "Matrix is an APM (Application Performance Manage) used in Wechat to monitor, locate and analyse performance problems. It is a plugin style, non-invasive solution and is currently available on iOS, macOS and Android."
 
     POM_URL = "https://github.com/Tencent/Matrix"
     POM_SCM_URL = "https://github.com/Tencent/Matrix.git"
