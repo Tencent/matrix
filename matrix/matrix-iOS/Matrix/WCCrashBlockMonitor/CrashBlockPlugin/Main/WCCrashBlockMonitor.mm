@@ -22,8 +22,7 @@
 #import "WCBlockMonitorMgr.h"
 #import "MatrixAppRebootAnalyzer.h"
 
-void kscrash_innerHandleSignalCallback(siginfo_t *info)
-{
+void kscrash_innerHandleSignalCallback(siginfo_t *info) {
     [MatrixAppRebootAnalyzer notifyAppCrashed];
 }
 
@@ -36,8 +35,7 @@ void kscrash_innerHandleSignalCallback(siginfo_t *info)
 
 @implementation WCCrashBlockMonitor
 
-- (id)init
-{
+- (id)init {
     self = [super init];
     if (self) {
         _appVersion = @"";
@@ -59,14 +57,13 @@ void kscrash_innerHandleSignalCallback(siginfo_t *info)
     } else {
         handler.monitoring = KSCrashMonitorType(KSCrashMonitorTypeManual);
     }
-    
-    if (_appVersion != nil && _appShortVersion != nil &&
-        [_appVersion length] > 0 && [_appShortVersion length] > 0) {
+
+    if (_appVersion != nil && _appShortVersion != nil && [_appVersion length] > 0 && [_appShortVersion length] > 0) {
         [KSCrash setCustomFullVersion:_appVersion shortVersion:_appShortVersion];
     }
-    
+
     MatrixInfo(@"install kscrash, version : %@ , %@", _appVersion, _appShortVersion);
-    
+
     if (_onHandleSignalCallBack != nil) {
         handler.onHandleSignalCallBack = _onHandleSignalCallBack;
     }
@@ -89,7 +86,7 @@ void kscrash_innerHandleSignalCallback(siginfo_t *info)
         MatrixInfo(@"KSCrash install success");
         _bInstallSuccess = ret;
     }
-    
+
     NSString *lagFilePath = [MatrixAppRebootAnalyzer lastDumpFileName];
     if (lagFilePath && lagFilePath.length > 0) {
         MatrixInfo(@"should handle oom dump file, %@", lagFilePath);
@@ -98,108 +95,89 @@ void kscrash_innerHandleSignalCallback(siginfo_t *info)
     return ret;
 }
 
-- (void)enableBlockMonitor
-{
+- (void)enableBlockMonitor {
     if (_bInstallSuccess == NO) {
         MatrixError(@"KSCrash not install success, cannot use block monitor");
     }
     MatrixInfo(@"install block monitor");
-    
+
     _blockMonitor = [WCBlockMonitorMgr shareInstance];
     _blockMonitor.delegate = self;
     [_blockMonitor resetConfiguration:_bmConfiguration];
     [_blockMonitor start];
 }
 
-- (void)startBlockMonitor
-{
+- (void)startBlockMonitor {
     assert([NSThread mainThread]);
     if (_blockMonitor) {
         [_blockMonitor start];
     }
 }
 
-- (void)stopBlockMonitor
-{
+- (void)stopBlockMonitor {
     assert([NSThread mainThread]);
     if (_blockMonitor) {
         [_blockMonitor stop];
     }
 }
 
-- (void)resetAppFullVersion:(NSString *)fullVersion shortVersion:(NSString *)shortVersion
-{
+- (void)resetAppFullVersion:(NSString *)fullVersion shortVersion:(NSString *)shortVersion {
     _appVersion = fullVersion;
     _appShortVersion = shortVersion;
     MatrixInfo(@"reset version : %@ , %@", fullVersion, shortVersion);
-    
-    if (_appVersion != nil && _appShortVersion != nil &&
-        [_appVersion length] > 0 && [_appShortVersion length] > 0) {
+
+    if (_appVersion != nil && _appShortVersion != nil && [_appVersion length] > 0 && [_appShortVersion length] > 0) {
         [KSCrash setCustomFullVersion:fullVersion shortVersion:shortVersion];
     }
 }
 
 #if !TARGET_OS_OSX
 
-- (void)handleBackgroundLaunch
-{
+- (void)handleBackgroundLaunch {
     MatrixDebug(@"handle background launch");
     [_blockMonitor handleBackgroundLaunch];
 }
 
-- (void)handleSuspend
-{
+- (void)handleSuspend {
     MatrixDebug(@"handle suspend");
     [_blockMonitor handleSuspend];
 }
 
 #endif
 
-- (void)startTrackCPU
-{
+- (void)startTrackCPU {
     MatrixDebug(@"start track CPU");
     [_blockMonitor startTrackCPU];
 }
 
-- (void)stopTrackCPU
-{
+- (void)stopTrackCPU {
     MatrixDebug(@"stop track CPU");
     [_blockMonitor stopTrackCPU];
 }
 
-- (BOOL)isBackgroundCPUTooSmall
-{
+- (BOOL)isBackgroundCPUTooSmall {
     return [_blockMonitor isBackgroundCPUTooSmall];
 }
 
-- (void)generateLiveReportWithDumpType:(EDumpType)dumpType
-                            withReason:(NSString *)reason
-                       selfDefinedPath:(BOOL)bSelfDefined
-{
-    [WCDumpInterface dumpReportWithReportType:dumpType
-                                withBlockTime:0
-                          withExceptionReason:reason
-                              selfDefinedPath:bSelfDefined];
+- (void)generateLiveReportWithDumpType:(EDumpType)dumpType withReason:(NSString *)reason selfDefinedPath:(BOOL)bSelfDefined {
+    [WCDumpInterface dumpReportWithReportType:dumpType withBlockTime:0 withExceptionReason:reason selfDefinedPath:bSelfDefined];
 }
 
 // ============================================================================
 #pragma mark - WCBlockMonitorDelegate
 // ============================================================================
 
-+ (BOOL)p_isDumpTypeRelatedToFOOM:(EDumpType)dumType
-{
++ (BOOL)p_isDumpTypeRelatedToFOOM:(EDumpType)dumType {
     return dumType == EDumpType_MainThreadBlock || dumType == EDumpType_CPUBlock;
 }
 
-- (void)onBlockMonitor:(WCBlockMonitorMgr *)bmMgr beginDump:(EDumpType)dumpType blockTime:(uint64_t)blockTime
-{
+- (void)onBlockMonitor:(WCBlockMonitorMgr *)bmMgr beginDump:(EDumpType)dumpType blockTime:(uint64_t)blockTime {
     if (_delegate != nil && [_delegate respondsToSelector:@selector(onCrashBlockMonitorBeginDump:blockTime:)]) {
         [_delegate onCrashBlockMonitorBeginDump:dumpType blockTime:blockTime];
     }
 }
 
-- (void)onBlockMonitor:(WCBlockMonitorMgr *)bmMgr enterNextCheckWithDumpType:(EDumpType)dumpType
-{
+- (void)onBlockMonitor:(WCBlockMonitorMgr *)bmMgr enterNextCheckWithDumpType:(EDumpType)dumpType {
     [MatrixAppRebootAnalyzer isForegroundMainThreadBlock:[WCCrashBlockMonitor p_isDumpTypeRelatedToFOOM:dumpType]];
 
     if (_delegate != nil && [_delegate respondsToSelector:@selector(onCrashBlockMonitorEnterNextCheckWithDumpType:)]) {
@@ -207,8 +185,7 @@ void kscrash_innerHandleSignalCallback(siginfo_t *info)
     }
 }
 
-- (void)onBlockMonitor:(WCBlockMonitorMgr *)bmMgr getDumpFile:(NSString *)dumpFile withDumpType:(EDumpType)dumpType
-{
+- (void)onBlockMonitor:(WCBlockMonitorMgr *)bmMgr getDumpFile:(NSString *)dumpFile withDumpType:(EDumpType)dumpType {
     if ([WCCrashBlockMonitor p_isDumpTypeRelatedToFOOM:dumpType]) {
         [MatrixAppRebootAnalyzer setDumpFileName:dumpFile];
     }
@@ -218,30 +195,26 @@ void kscrash_innerHandleSignalCallback(siginfo_t *info)
     }
 }
 
-- (void)onBlockMonitor:(WCBlockMonitorMgr *)bmMgr dumpType:(EDumpType)dumpType filter:(EFilterType)filterType
-{
+- (void)onBlockMonitor:(WCBlockMonitorMgr *)bmMgr dumpType:(EDumpType)dumpType filter:(EFilterType)filterType {
     if (_delegate != nil && [_delegate respondsToSelector:@selector(onCrashBlockMonitorDumpType:filter:)]) {
         [_delegate onCrashBlockMonitorDumpType:dumpType filter:filterType];
     }
 }
 
-- (NSDictionary *)onBlockMonitor:(WCBlockMonitorMgr *)bmMgr getCustomUserInfoForDumpType:(EDumpType)dumpType
-{
+- (NSDictionary *)onBlockMonitor:(WCBlockMonitorMgr *)bmMgr getCustomUserInfoForDumpType:(EDumpType)dumpType {
     if (_delegate != nil && [_delegate respondsToSelector:@selector(onCrashBlockMonitorGetCustomUserInfoForDumpType:)]) {
         return [_delegate onCrashBlockMonitorGetCustomUserInfoForDumpType:dumpType];
     }
     return nil;
 }
 
-- (void)onBlockMonitorCurrentCPUTooHigh:(WCBlockMonitorMgr *)bmMgr
-{
+- (void)onBlockMonitorCurrentCPUTooHigh:(WCBlockMonitorMgr *)bmMgr {
     if (_delegate != nil && [_delegate respondsToSelector:@selector(onCrashBlockMonitorCurrentCPUTooHigh)]) {
         [_delegate onCrashBlockMonitorCurrentCPUTooHigh];
     }
 }
 
-- (void)onBlockMonitorIntervalCPUTooHigh:(WCBlockMonitorMgr *)bmMgr
-{
+- (void)onBlockMonitorIntervalCPUTooHigh:(WCBlockMonitorMgr *)bmMgr {
     if (_delegate != nil && [_delegate respondsToSelector:@selector(onCrashBlockMonitorIntervalCPUTooHigh)]) {
         [_delegate onCrashBlockMonitorIntervalCPUTooHigh];
     }

@@ -38,7 +38,7 @@ static int TICK_TOCK_COUNT = 60;
     float m_totalCPUCost;
     float m_totalTrackingTime;
     BOOL m_bTracking;
-    
+
     float m_backgroundTotalCPU;
     float m_backgroundTotalSec;
     BOOL m_background;
@@ -49,28 +49,26 @@ static int TICK_TOCK_COUNT = 60;
 
 @implementation WCCPUHandler
 
-- (id)init
-{
+- (id)init {
     return [self initWithCPULimit:80.];
 }
 
-- (id)initWithCPULimit:(float)cpuLimit
-{
+- (id)initWithCPULimit:(float)cpuLimit {
     self = [super init];
     if (self) {
         kOverCPULimit = cpuLimit;
-        
+
         m_tickTok = 0;
         m_bTracking = NO;
-        
+
         m_totalTrackingTime = 0.;
         m_totalCPUCost = 0.;
-        
+
         m_background = NO;
         m_backgroundTotalCPU = 0.;
         m_backgroundTotalSec = 0.;
         m_backgroundCPUTooSmall = NO;
-        
+
 #if !TARGET_OS_OSX
         [[NSNotificationCenter defaultCenter] addObserver:self
                                                  selector:@selector(willEnterForeground)
@@ -86,16 +84,14 @@ static int TICK_TOCK_COUNT = 60;
     return self;
 }
 
-- (void)willEnterForeground
-{
+- (void)willEnterForeground {
     m_background = NO;
     m_backgroundCPUTooSmall = NO;
     m_backgroundTotalCPU = 0.;
     m_backgroundTotalSec = 0.;
 }
 
-- (void)didEnterBackground
-{
+- (void)didEnterBackground {
     m_background = YES;
     m_backgroundCPUTooSmall = NO;
     m_backgroundTotalCPU = 0.;
@@ -106,21 +102,19 @@ static int TICK_TOCK_COUNT = 60;
 #pragma mark - CPU Related
 // ============================================================================
 
-- (BOOL)isBackgroundCPUTooSmall
-{
+- (BOOL)isBackgroundCPUTooSmall {
     return m_backgroundCPUTooSmall;
 }
 
 // run on the check child thread
-- (BOOL)cultivateCpuUsage:(float)cpuUsage periodTime:(float)periodSec
-{
+- (BOOL)cultivateCpuUsage:(float)cpuUsage periodTime:(float)periodSec {
     [self cultivateBackgroundCpu:cpuUsage periodTime:periodSec];
 
     if (periodSec < 0 || periodSec > 5.) {
         MatrixDebug(@"abnormal period sec : %f", periodSec);
         return NO;
     }
-    
+
     if (m_tickTok > 0) {
         m_tickTok -= 1; // Annealing algorithm
         if (m_tickTok == 0) {
@@ -135,16 +129,16 @@ static int TICK_TOCK_COUNT = 60;
         m_totalTrackingTime = 0.;
         m_bTracking = YES;
     }
-    
+
     if (m_bTracking == NO) {
         return NO;
     }
-    
+
     m_totalTrackingTime += periodSec;
     m_totalCPUCost += periodSec * cpuUsage;
 
     float halfCPUZone = kOverCPULimit * m_totalTrackingTime / 2.;
-    
+
     if (m_totalCPUCost < halfCPUZone) {
         MatrixInfo(@"stop track cpu usage");
         m_totalCPUCost = 0.;
@@ -152,7 +146,7 @@ static int TICK_TOCK_COUNT = 60;
         m_bTracking = NO;
         return NO;
     }
-    
+
     if (m_totalTrackingTime >= kOverCPULimitSecLimit) {
         BOOL exceedLimit = NO;
         float fullCPUZone = halfCPUZone + halfCPUZone;
@@ -160,7 +154,7 @@ static int TICK_TOCK_COUNT = 60;
             MatrixInfo(@"exceed cpu limit");
             exceedLimit = YES;
         }
-        
+
         if (exceedLimit) {
             m_totalCPUCost = 0;
             m_totalTrackingTime = 0.;
@@ -169,12 +163,11 @@ static int TICK_TOCK_COUNT = 60;
         }
         return exceedLimit;
     }
-    
+
     return NO;
 }
 
-- (void)cultivateBackgroundCpu:(float)cpuUsage periodTime:(float)periodSec
-{
+- (void)cultivateBackgroundCpu:(float)cpuUsage periodTime:(float)periodSec {
     if (m_background == NO) {
         return;
     }

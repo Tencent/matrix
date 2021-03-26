@@ -24,14 +24,12 @@
 // THE SOFTWARE.
 //
 
-
 #import "KSCrashReportFilterGZip.h"
 #import "NSData+KarlGZip.h"
 
-
 @interface KSCrashReportFilterGZipCompress ()
 
-@property(nonatomic,readwrite,assign) int compressionLevel;
+@property (nonatomic, readwrite, assign) int compressionLevel;
 
 @end
 
@@ -39,36 +37,26 @@
 
 @synthesize compressionLevel = _compressionLevel;
 
-+ (KSCrashReportFilterGZipCompress*) filterWithCompressionLevel:(int) compressionLevel
-{
++ (KSCrashReportFilterGZipCompress *)filterWithCompressionLevel:(int)compressionLevel {
     return [[self alloc] initWithCompressionLevel:compressionLevel];
 }
 
-- (id) initWithCompressionLevel:(int) compressionLevel
-{
-    if((self = [super init]))
-    {
+- (id)initWithCompressionLevel:(int)compressionLevel {
+    if ((self = [super init])) {
         self.compressionLevel = compressionLevel;
     }
     return self;
 }
 
-- (void) filterReports:(NSArray*) reports
-          onCompletion:(KSCrashReportFilterCompletion) onCompletion
-{
-    NSMutableArray* filteredReports = [NSMutableArray arrayWithCapacity:[reports count]];
-    for(NSData* report in reports)
-    {
-        NSError* error = nil;
-        NSData* compressedData = [report gzippedWithCompressionLevel:self.compressionLevel
-                                                               error:&error];
-        if(compressedData == nil)
-        {
+- (void)filterReports:(NSArray *)reports onCompletion:(KSCrashReportFilterCompletion)onCompletion {
+    NSMutableArray *filteredReports = [NSMutableArray arrayWithCapacity:[reports count]];
+    for (NSData *report in reports) {
+        NSError *error = nil;
+        NSData *compressedData = [report gzippedWithCompressionLevel:self.compressionLevel error:&error];
+        if (compressedData == nil) {
             kscrash_callCompletion(onCompletion, filteredReports, NO, error);
             return;
-        }
-        else
-        {
+        } else {
             [filteredReports addObject:compressedData];
         }
     }
@@ -78,29 +66,21 @@
 
 @end
 
-
 @implementation KSCrashReportFilterGZipDecompress
 
-+ (KSCrashReportFilterGZipDecompress*) filter
-{
++ (KSCrashReportFilterGZipDecompress *)filter {
     return [[self alloc] init];
 }
 
-- (void) filterReports:(NSArray*) reports
-          onCompletion:(KSCrashReportFilterCompletion) onCompletion
-{
-    NSMutableArray* filteredReports = [NSMutableArray arrayWithCapacity:[reports count]];
-    for(NSData* report in reports)
-    {
-        NSError* error = nil;
-        NSData* decompressedData = [report gunzippedWithError:&error];
-        if(decompressedData == nil)
-        {
+- (void)filterReports:(NSArray *)reports onCompletion:(KSCrashReportFilterCompletion)onCompletion {
+    NSMutableArray *filteredReports = [NSMutableArray arrayWithCapacity:[reports count]];
+    for (NSData *report in reports) {
+        NSError *error = nil;
+        NSData *decompressedData = [report gunzippedWithError:&error];
+        if (decompressedData == nil) {
             kscrash_callCompletion(onCompletion, filteredReports, NO, error);
             return;
-        }
-        else
-        {
+        } else {
             [filteredReports addObject:decompressedData];
         }
     }

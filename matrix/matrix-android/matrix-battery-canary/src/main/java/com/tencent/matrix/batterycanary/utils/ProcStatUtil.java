@@ -24,7 +24,15 @@ import java.nio.charset.StandardCharsets;
 @SuppressWarnings({"JavadocReference", "SpellCheckingInspection"})
 public final class ProcStatUtil {
     private static final String TAG = "Matrix.battery.ProcStatUtil";
-    private static final byte[] sBuffer = new byte[128];
+    private static final ThreadLocal<byte[]> sBufferRef = new ThreadLocal<>();
+    @Nullable private static OnParseError sParseError;
+
+    static byte[] getLocalBuffers() {
+        if (sBufferRef.get() == null) {
+            sBufferRef.set(new byte[128]);
+        }
+        return sBufferRef.get();
+    }
 
     ProcStatUtil() {
     }
@@ -52,23 +60,40 @@ public final class ProcStatUtil {
     @Nullable
     public static ProcStat parse(String path) {
         try {
-            ProcStat procStatInfo = parseWithBufferForPath(path, sBuffer);
+            ProcStat procStatInfo = null;
+            try {
+                procStatInfo = parseWithBufferForPath(path, getLocalBuffers());
+            } catch (ParseException e) {
+                if (sParseError != null) {
+                    sParseError.onError(1, e.content);
+                }
+            }
+
             if (procStatInfo == null || procStatInfo.comm == null) {
                 MatrixLog.w(TAG, "#parseJiffies read with buffer fail, fallback with spilts");
-                procStatInfo = parseWithSplits(BatteryCanaryUtil.cat(path));
-                if (procStatInfo.comm == null) {
+                try {
+                    procStatInfo = parseWithSplits(BatteryCanaryUtil.cat(path));
+                } catch (ParseException e) {
+                    if (sParseError != null) {
+                        sParseError.onError(2, e.content);
+                    }
+                }
+                if (procStatInfo == null || procStatInfo.comm == null) {
                     MatrixLog.w(TAG, "#parseJiffies read with splits fail");
                     return null;
                 }
             }
             return procStatInfo;
         } catch (Throwable e) {
-            MatrixLog.printErrStackTrace(TAG, e, "#parseJiffies fail");
+            MatrixLog.w(TAG, "#parseJiffies fail: " + e.getMessage());
+            if (sParseError != null) {
+                sParseError.onError(0, BatteryCanaryUtil.cat(path) + "\n" + e.getMessage());
+            }
             return null;
         }
     }
 
-    public static ProcStat parseWithBufferForPath(String path, byte[] buffer) {
+    public static ProcStat parseWithBufferForPath(String path, byte[] buffer) throws ParseException {
         File file = new File(path);
         if (!file.exists()) {
             return null;
@@ -92,7 +117,7 @@ public final class ProcStatUtil {
      * Do NOT modfiy this method untlil all the test cases within {@link ProcStatUtilsTest} is passed.
      */
     @VisibleForTesting
-    static ProcStat parseWithBuffer(byte[] statBuffer) {
+    static ProcStat parseWithBuffer(byte[] statBuffer) throws ParseException {
         /*
          * 样本:
          * 10966 (terycanary.test) S 699 699 0 0 -1 1077952832 6187 0 0 0 22 2 0 0 20 0 17 0 9087400 5414273024
@@ -167,6 +192,16 @@ public final class ProcStatUtil {
                     break;
                 }
 
+                case 3: { // thread state
+                    int readIdx = i, window = 0;
+                    // seek next space
+                    // noinspection StatementWithEmptyBody
+                    for (; i < statBytes && !Character.isSpaceChar(statBuffer[i]); i++, window++)
+                        ;
+                    stat.stat = safeBytesToString(statBuffer, readIdx, window);
+                    break;
+                }
+
                 case 14: { // utime
                     int readIdx = i, window = 0;
                     // seek next space
@@ -174,6 +209,9 @@ public final class ProcStatUtil {
                     for (; i < statBytes && !Character.isSpaceChar(statBuffer[i]); i++, window++)
                         ;
                     String num = safeBytesToString(statBuffer, readIdx, window);
+                    if (!isNumeric(num)) {
+                        throw new ParseException(safeBytesToString(statBuffer, 0, statBuffer.length) + "\nutime: " + num);
+                    }
                     stat.utime = MatrixUtil.parseLong(num, 0);
                     break;
                 }
@@ -184,6 +222,9 @@ public final class ProcStatUtil {
                     for (; i < statBytes && !Character.isSpaceChar(statBuffer[i]); i++, window++)
                         ;
                     String num = safeBytesToString(statBuffer, readIdx, window);
+                    if (!isNumeric(num)) {
+                        throw new ParseException(safeBytesToString(statBuffer, 0, statBuffer.length) + "\nstime: " + num);
+                    }
                     stat.stime = MatrixUtil.parseLong(num, 0);
                     break;
                 }
@@ -194,6 +235,9 @@ public final class ProcStatUtil {
                     for (; i < statBytes && !Character.isSpaceChar(statBuffer[i]); i++, window++)
                         ;
                     String num = safeBytesToString(statBuffer, readIdx, window);
+                    if (!isNumeric(num)) {
+                        throw new ParseException(safeBytesToString(statBuffer, 0, statBuffer.length) + "\ncutime: " + num);
+                    }
                     stat.cutime = MatrixUtil.parseLong(num, 0);
                     break;
                 }
@@ -204,6 +248,9 @@ public final class ProcStatUtil {
                     for (; i < statBytes && !Character.isSpaceChar(statBuffer[i]); i++, window++)
                         ;
                     String num = safeBytesToString(statBuffer, readIdx, window);
+                    if (!isNumeric(num)) {
+                        throw new ParseException(safeBytesToString(statBuffer, 0, statBuffer.length) + "\ncstime: " + num);
+                    }
                     stat.cstime = MatrixUtil.parseLong(num, 0);
                     break;
                 }
@@ -216,7 +263,7 @@ public final class ProcStatUtil {
     }
 
     @VisibleForTesting
-    static ProcStat parseWithSplits(String cat) {
+    static ProcStat parseWithSplits(String cat) throws ParseException {
         ProcStat stat = new ProcStat();
         if (!TextUtils.isEmpty(cat)) {
             int index = cat.indexOf(")");
@@ -228,6 +275,19 @@ public final class ProcStatUtil {
             String suffix = cat.substring(index + ")".length());
             String[] splits = suffix.split(" ");
 
+            if (!isNumeric(splits[12])) {
+                throw new ParseException(cat + "\nutime: " + splits[12]);
+            }
+            if (!isNumeric(splits[13])) {
+                throw new ParseException(cat + "\nstime: " + splits[13]);
+            }
+            if (!isNumeric(splits[14])) {
+                throw new ParseException(cat + "\ncutime: " + splits[14]);
+            }
+            if (!isNumeric(splits[15])) {
+                throw new ParseException(cat + "\ncstime: " + splits[15]);
+            }
+            stat.stat = splits[1];
             stat.utime = MatrixUtil.parseLong(splits[12], 0);
             stat.stime = MatrixUtil.parseLong(splits[13], 0);
             stat.cutime = MatrixUtil.parseLong(splits[14], 0);
@@ -238,13 +298,32 @@ public final class ProcStatUtil {
 
     @VisibleForTesting
     static String safeBytesToString(byte[] buffer, int offset, int length) {
-        CharBuffer charBuffer = StandardCharsets.UTF_8.decode(ByteBuffer.wrap(buffer, offset, length));
-        return String.valueOf(charBuffer.array(), 0, charBuffer.limit());
+        try {
+            CharBuffer charBuffer = StandardCharsets.UTF_8.decode(ByteBuffer.wrap(buffer, offset, length));
+            return String.valueOf(charBuffer.array(), 0, charBuffer.limit());
+        } catch (IndexOutOfBoundsException e) {
+            MatrixLog.w(TAG, "#safeBytesToString failed: " + e.getMessage());
+            return "";
+        }
+    }
+
+    static boolean isNumeric(String text) {
+        if (TextUtils.isEmpty(text)) return false;
+        if (text.startsWith("-")) {
+            // negative number
+            return TextUtils.isDigitsOnly(text.substring(1));
+        }
+        return TextUtils.isDigitsOnly(text);
+    }
+
+    public static void setParseErrorListener(OnParseError parseError) {
+        sParseError = parseError;
     }
 
     @SuppressWarnings("SpellCheckingInspection")
     public static class ProcStat {
         public String comm = "";
+        public String stat = "_";
         public long utime = -1;
         public long stime = -1;
         public long cutime = -1;
@@ -252,6 +331,17 @@ public final class ProcStatUtil {
 
         public long getJiffies() {
             return utime + stime + cutime + cstime;
+        }
+    }
+
+    public interface OnParseError {
+        void onError(int mode, String input);
+    }
+
+    public static class ParseException extends Exception {
+        public final String content;
+        public ParseException(String content) {
+            this.content = content;
         }
     }
 }

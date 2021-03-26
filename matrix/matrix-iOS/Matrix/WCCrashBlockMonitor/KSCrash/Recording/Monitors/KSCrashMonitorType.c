@@ -22,19 +22,16 @@
 // THE SOFTWARE.
 //
 
-
 #include "KSCrashMonitorType.h"
 
 #include <stdlib.h>
 
-
-static const struct
-{
+static const struct {
     const KSCrashMonitorType type;
-    const char* const name;
-} g_monitorTypes[] =
-{
-#define MONITORTYPE(NAME) {NAME, #NAME}
+    const char *const name;
+} g_monitorTypes[] = {
+#define MONITORTYPE(NAME) \
+    { NAME, #NAME }
     MONITORTYPE(KSCrashMonitorTypeMachException),
     MONITORTYPE(KSCrashMonitorTypeSignal),
     MONITORTYPE(KSCrashMonitorTypeCPPException),
@@ -47,13 +44,9 @@ static const struct
 };
 static const int g_monitorTypesCount = sizeof(g_monitorTypes) / sizeof(*g_monitorTypes);
 
-
-const char* kscrashmonitortype_name(const KSCrashMonitorType monitorType)
-{
-    for(int i = 0; i < g_monitorTypesCount; i++)
-    {
-        if(g_monitorTypes[i].type == monitorType)
-        {
+const char *kscrashmonitortype_name(const KSCrashMonitorType monitorType) {
+    for (int i = 0; i < g_monitorTypesCount; i++) {
+        if (g_monitorTypes[i].type == monitorType) {
             return g_monitorTypes[i].name;
         }
     }

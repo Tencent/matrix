@@ -24,9 +24,7 @@
 // THE SOFTWARE.
 //
 
-
 #import "KSCrashReportFilter.h"
-
 
 /** Gzip compresses reports.
  *
@@ -39,9 +37,9 @@
  *
  * @param compressionLevel 0 = none, 9 = best, -1 = default
  */
-+ (KSCrashReportFilterGZipCompress*) filterWithCompressionLevel:(int) compressionLevel;
++ (KSCrashReportFilterGZipCompress *)filterWithCompressionLevel:(int)compressionLevel;
 
-- (id) initWithCompressionLevel:(int) compressionLevel;
+- (id)initWithCompressionLevel:(int)compressionLevel;
 
 @end
 
@@ -52,6 +50,6 @@
  */
 @interface KSCrashReportFilterGZipDecompress : NSObject <KSCrashReportFilter>
 
-+ (KSCrashReportFilterGZipDecompress*) filter;
++ (KSCrashReportFilterGZipDecompress *)filter;
 
 @end

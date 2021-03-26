@@ -19,23 +19,23 @@
 #define IntNumberObject(Name) [NSNumber numberWithInt:Name]
 
 const NSDictionary *WXGDumpReportTypeConfig = @{
-                                                IntNumberObject(EDumpType_BlockAndBeKilled) : IntNumberObject(EReportPriority_High),
-                                                IntNumberObject(EDumpType_MainThreadBlock) : IntNumberObject(EReportPriority_High),
-                                                IntNumberObject(EDumpType_BlockThreadTooMuch) : IntNumberObject(EReportPriority_High),
-                                                IntNumberObject(EDumpType_LaunchBlock) : IntNumberObject(EReportPriority_High),
-                                                IntNumberObject(EDumpType_PowerConsume) : IntNumberObject(EReportPriority_High),
-                                                IntNumberObject(EDumpType_BackgroundMainThreadBlock) : IntNumberObject(EReportPriority_Low),
-                                                IntNumberObject(EDumpType_CPUBlock) : IntNumberObject(EReportPriority_Low),
-                                                };
+    IntNumberObject(EDumpType_BlockAndBeKilled) : IntNumberObject(EReportPriority_High),
+    IntNumberObject(EDumpType_MainThreadBlock) : IntNumberObject(EReportPriority_High),
+    IntNumberObject(EDumpType_BlockThreadTooMuch) : IntNumberObject(EReportPriority_High),
+    IntNumberObject(EDumpType_LaunchBlock) : IntNumberObject(EReportPriority_High),
+    IntNumberObject(EDumpType_PowerConsume) : IntNumberObject(EReportPriority_High),
+    IntNumberObject(EDumpType_BackgroundMainThreadBlock) : IntNumberObject(EReportPriority_Low),
+    IntNumberObject(EDumpType_CPUBlock) : IntNumberObject(EReportPriority_Low),
+};
 
 @implementation WCDumpReportTaskData
 
 @synthesize m_uploadFilesArray;
 @synthesize m_dumpType;
 
-- (NSString *)description
-{
-    return [NSString stringWithFormat:@"Task info: dumpType[%lu] fileCount[%lu]", (unsigned long)m_dumpType, (unsigned long)[m_uploadFilesArray count]];
+- (NSString *)description {
+    return
+    [NSString stringWithFormat:@"Task info: dumpType[%lu] fileCount[%lu]", (unsigned long)m_dumpType, (unsigned long)[m_uploadFilesArray count]];
 }
 
 @end

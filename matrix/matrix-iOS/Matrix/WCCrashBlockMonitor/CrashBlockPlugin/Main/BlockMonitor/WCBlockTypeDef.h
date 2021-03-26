@@ -29,18 +29,18 @@ typedef NS_ENUM(NSUInteger, EFilterType) {
 // Define the type of the lag
 typedef NS_ENUM(NSUInteger, EDumpType) {
     EDumpType_Unlag = 2000,
-    EDumpType_MainThreadBlock = 2001,            // foreground main thread block
-    EDumpType_BackgroundMainThreadBlock = 2002,  // background main thread block
-    EDumpType_CPUBlock = 2003,                   // CPU too high
+    EDumpType_MainThreadBlock = 2001, // foreground main thread block
+    EDumpType_BackgroundMainThreadBlock = 2002, // background main thread block
+    EDumpType_CPUBlock = 2003, // CPU too high
     //EDumpType_FrameDropBlock = 2004,             // frame drop too much,no use currently
     //EDumpType_SelfDefinedDump = 2005,             // no use currently
     //EDumpType_B2FBlock = 2006,                   // no use currently
-    EDumpType_LaunchBlock = 2007,                // main thread block during the launch of the app
+    EDumpType_LaunchBlock = 2007, // main thread block during the launch of the app
     //EDumpType_CPUIntervalHigh = 2008,            // CPU too high within a time period
-    EDumpType_BlockThreadTooMuch = 2009,         // main thread block and the thread is too much. (more than 64 threads)
-    EDumpType_BlockAndBeKilled = 2010,           // main thread block and killed by the system
+    EDumpType_BlockThreadTooMuch = 2009, // main thread block and the thread is too much. (more than 64 threads)
+    EDumpType_BlockAndBeKilled = 2010, // main thread block and killed by the system
     //EDumpType_JSStack = 2011,                    // no use currently
-    EDumpType_PowerConsume = 2011,                // battery cost stack report
+    EDumpType_PowerConsume = 2011, // battery cost stack report
     EDumpType_Test = 10000,
 };
 

@@ -24,18 +24,23 @@ import android.support.test.InstrumentationRegistry;
 import android.support.test.runner.AndroidJUnit4;
 
 import com.tencent.matrix.Matrix;
+import com.tencent.matrix.batterycanary.BatteryEventDelegate;
+import com.tencent.matrix.batterycanary.monitor.feature.AbsTaskMonitorFeature.TaskJiffiesSnapshot;
 import com.tencent.matrix.batterycanary.monitor.feature.AlarmMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.DeviceStatMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.LooperTaskMonitorFeature;
+import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Delta;
 import com.tencent.matrix.batterycanary.monitor.feature.WakeLockMonitorFeature;
 
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 
 
 @RunWith(AndroidJUnit4.class)
@@ -72,6 +77,10 @@ public class MonitorCoreTest {
                 super.onWakeLockTimeout(warningCount, record);
             }
         };
+
+        if (!BatteryEventDelegate.isInit()) {
+            BatteryEventDelegate.init((Application) mContext.getApplicationContext());
+        }
     }
 
     @After
@@ -259,5 +268,44 @@ public class MonitorCoreTest {
         Thread.sleep(1000L);
         core.onForeground(true);
         Thread.sleep(1000L);
+    }
+
+    @Test
+    public void testConfigureMonitorConsuming() throws InterruptedException {
+        final AtomicReference<Delta<TaskJiffiesSnapshot>> ref = new AtomicReference<>();
+        BatteryMonitorConfig config = new BatteryMonitorConfig.Builder()
+                .enable(JiffiesMonitorFeature.class)
+                .setCallback(new BatteryMonitorCallback.BatteryPrinter() {
+                    @Override
+                    public void onReportInternalJiffies(Delta<TaskJiffiesSnapshot> delta) {
+                        ref.set(delta);
+                    }
+                })
+                .build();
+
+        final BatteryMonitorCore core = new BatteryMonitorCore(config);
+        core.start();
+        core.getHandler().post(new Runnable() {
+            @Override
+            public void run() {
+                for (;;) {
+                    new Handler(Looper.myLooper());
+                }
+            }
+        });
+        Thread.sleep(100L);
+        TaskJiffiesSnapshot bgn = core.configureMonitorConsuming();
+        Assert.assertNotNull(bgn);
+        Assert.assertNull(ref.get());
+
+        Thread.sleep(500L);
+        TaskJiffiesSnapshot end = core.configureMonitorConsuming();
+        Assert.assertNotNull(end);
+        Assert.assertNotNull(ref.get());
+        Assert.assertEquals(500L, ref.get().during, 10);
+        Assert.assertEquals(ref.get().during, end.diff(bgn).during);
+        Assert.assertEquals(ref.get().dlt.jiffies, end.diff(bgn).dlt.jiffies);
+        Assert.assertTrue(ref.get().dlt.jiffies.get() > 0);
+        Assert.assertEquals(ref.get().dlt.jiffies.get().longValue(), end.jiffies.get() - bgn.jiffies.get());
     }
 }

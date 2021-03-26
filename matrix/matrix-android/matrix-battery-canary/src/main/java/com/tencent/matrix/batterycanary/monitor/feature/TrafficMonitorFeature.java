@@ -23,6 +23,11 @@ public final class TrafficMonitorFeature extends AbsMonitorFeature {
     private static final String TAG = "Matrix.battery.TrafficMonitorFeature";
 
     @Override
+    protected String getTag() {
+        return TAG;
+    }
+
+    @Override
     public int weight() {
         return Integer.MIN_VALUE;
     }

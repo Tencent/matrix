@@ -39,6 +39,7 @@ public class SystemServiceBinderHooker {
 
     public interface HookCallback {
         void onServiceMethodInvoke(Method method, Object[] args);
+        @Nullable Object onServiceMethodIntercept(Object receiver, Method method, Object[] args) throws Throwable;
     }
 
     private final String mServiceName;
@@ -167,6 +168,10 @@ public class SystemServiceBinderHooker {
                         public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
                             if (callback != null) {
                                 callback.onServiceMethodInvoke(method, args);
+                                Object result = callback.onServiceMethodIntercept(originManagerService, method, args);
+                                if (result != null) {
+                                    return result;
+                                }
                             }
                             return method.invoke(originManagerService, args);
                         }

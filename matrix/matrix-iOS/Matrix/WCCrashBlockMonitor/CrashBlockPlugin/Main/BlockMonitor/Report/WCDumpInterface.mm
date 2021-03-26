@@ -21,31 +21,20 @@
 
 @implementation WCDumpInterface
 
-+ (NSString *)dumpReportWithReportType:(EDumpType)dumpType
-                         withBlockTime:(uint64_t)blockTime
-{
-    return [WCDumpInterface dumpReportWithReportType:dumpType
-                                       withBlockTime:blockTime
-                                 withExceptionReason:@""];
++ (NSString *)dumpReportWithReportType:(EDumpType)dumpType withBlockTime:(uint64_t)blockTime {
+    return [WCDumpInterface dumpReportWithReportType:dumpType withBlockTime:blockTime withExceptionReason:@""];
+}
+
++ (NSString *)dumpReportWithReportType:(EDumpType)dumpType withBlockTime:(uint64_t)blockTime withExceptionReason:(NSString *)exceptionReason {
+    return [WCDumpInterface dumpReportWithReportType:dumpType withBlockTime:blockTime withExceptionReason:@"" selfDefinedPath:YES];
 }
 
 + (NSString *)dumpReportWithReportType:(EDumpType)dumpType
                          withBlockTime:(uint64_t)blockTime
                    withExceptionReason:(NSString *)exceptionReason
-{
-    return [WCDumpInterface dumpReportWithReportType:dumpType
-                                       withBlockTime:blockTime
-                                 withExceptionReason:@""
-                                     selfDefinedPath:YES];
-}
-
-+ (NSString *)dumpReportWithReportType:(EDumpType)dumpType
-                         withBlockTime:(uint64_t)blockTime
-                   withExceptionReason:(NSString *)exceptionReason
-                       selfDefinedPath:(BOOL)bSelfDefined
-{
+                       selfDefinedPath:(BOOL)bSelfDefined {
     KSCrash *handler = [KSCrash sharedInstance];
-    NSString *name = [NSString stringWithFormat:@"%lu", (unsigned long) dumpType];
+    NSString *name = [NSString stringWithFormat:@"%lu", (unsigned long)dumpType];
     NSString *crashReportPath = @"";
     if (bSelfDefined) {
         crashReportPath = [WCDumpInterface genFilePathWithReportType:dumpType];
@@ -70,23 +59,18 @@
     return crashReportPath;
 }
 
-+ (NSString *)saveDump:(NSData *)dumpData
-        withReportType:(EDumpType)dumpType
-          withReportID:(NSString *)reportID
-{
++ (NSString *)saveDump:(NSData *)dumpData withReportType:(EDumpType)dumpType withReportID:(NSString *)reportID {
     NSString *crashReportPath = [WCDumpInterface genFilePathWithReportType:dumpType withReportID:reportID];
     [dumpData writeToFile:crashReportPath atomically:YES];
     return crashReportPath;
 }
 
-+ (NSString *)genFilePathWithReportType:(EDumpType)dumpType
-{
++ (NSString *)genFilePathWithReportType:(EDumpType)dumpType {
     NSString *reportID = [[NSUUID UUID] UUIDString];
     return [WCDumpInterface genFilePathWithReportType:dumpType withReportID:reportID];
 }
 
-+ (NSString *)genFilePathWithReportType:(EDumpType)dumpType withReportID:(NSString *)reportIDString
-{
++ (NSString *)genFilePathWithReportType:(EDumpType)dumpType withReportID:(NSString *)reportIDString {
     static NSDateFormatter *formatter = nil;
     if (!formatter) {
         formatter = [[NSDateFormatter alloc] init];
@@ -101,10 +85,9 @@
     NSDate *date = [NSDate date];
     NSString *formateDate = [weakFormatter stringFromDate:date];
 
-    NSString *name = [NSString stringWithFormat:@"%lu", (unsigned long) dumpType];
+    NSString *name = [NSString stringWithFormat:@"%lu", (unsigned long)dumpType];
     NSString *reportTypeDumpDir = [WCCrashBlockFileHandler diretoryOfUserDumpWithType:dumpType];
-    NSString *crashReportFilePath = [[KSCrash sharedInstance] pathToCrashReportWithID:reportIDString
-                                                                        withStorePath:reportTypeDumpDir];
+    NSString *crashReportFilePath = [[KSCrash sharedInstance] pathToCrashReportWithID:reportIDString withStorePath:reportTypeDumpDir];
     NSString *appendStr = [NSString stringWithFormat:@"-%@-%@.%@", formateDate, name, [crashReportFilePath pathExtension]];
     NSString *preStr = [crashReportFilePath stringByDeletingPathExtension];
     NSString *true_crashReportLastPathComponent = [preStr stringByAppendingString:appendStr];

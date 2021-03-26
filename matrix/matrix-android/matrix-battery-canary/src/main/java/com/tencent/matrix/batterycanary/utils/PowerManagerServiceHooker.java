@@ -64,6 +64,12 @@ public final class PowerManagerServiceHooker {
             MatrixLog.v(TAG, "onServiceMethodInvoke: method name %s", method.getName());
             dispatchListeners(method, args);
         }
+
+        @Nullable
+        @Override
+        public Object onServiceMethodIntercept(Object receiver, Method method, Object[] args) {
+            return null;
+        }
     };
     private static SystemServiceBinderHooker sHookHelper = new SystemServiceBinderHooker(Context.POWER_SERVICE, "android.os.IPowerManager", sHookCallback);
 

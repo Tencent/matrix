@@ -25,17 +25,15 @@
 #ifndef HDR_KSCrashMonitor_CPPException_h
 #define HDR_KSCrashMonitor_CPPException_h
 
+#include "KSCrashMonitor.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#include "KSCrashMonitor.h"
-
-
 /** Access the Monitor API.
  */
-KSCrashMonitorAPI* kscm_cppexception_getAPI(void);
-
+KSCrashMonitorAPI *kscm_cppexception_getAPI(void);
 
 #ifdef __cplusplus
 }

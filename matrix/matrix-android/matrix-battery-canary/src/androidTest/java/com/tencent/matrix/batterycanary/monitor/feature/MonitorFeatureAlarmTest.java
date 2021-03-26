@@ -84,6 +84,7 @@ public class MonitorFeatureAlarmTest {
     public void testSetAlarm() throws InterruptedException {
         AlarmMonitorFeature feature = new AlarmMonitorFeature();
         feature.configure(mockMonitor());
+        feature.onTurnOn();
 
         AlarmMonitorFeature.AlarmSnapshot snapshot = feature.currentAlarms();
         Assert.assertEquals(0, (long) snapshot.totalCount.get());
@@ -112,6 +113,7 @@ public class MonitorFeatureAlarmTest {
     public void testSetAlarmDuplicated() throws InterruptedException {
         AlarmMonitorFeature feature = new AlarmMonitorFeature();
         feature.configure(mockMonitor());
+        feature.onTurnOn();
 
         AlarmMonitorFeature.AlarmSnapshot snapshot = feature.currentAlarms();
         Assert.assertEquals(0, (long) snapshot.totalCount.get());
@@ -190,7 +192,7 @@ public class MonitorFeatureAlarmTest {
 
     @Test
     public void testAlarmCountingBenchmark() {
-        AlarmMonitorFeature.AlarmCounting counting = new AlarmMonitorFeature.AlarmCounting();
+        AlarmMonitorFeature.AlarmTracing counting = new AlarmMonitorFeature.AlarmTracing();
         final AtomicInteger inc = new AtomicInteger(0);
         Function<String, AlarmRecord> supplier = new Function<String, AlarmRecord>() {
             @Override

@@ -302,23 +302,11 @@ public final class MatrixUtil {
         return sb.toString();
     }
 
-    public static int parseInt(final String string, final int def) {
-        try {
-            return (string == null || string.length() <= 0) ? def : Integer.decode(string);//decode不能解决"09"、"08"等转换
-
-        } catch (NumberFormatException e) {
-            MatrixLog.printErrStackTrace(TAG, e, "");
-        }
-
-        return def;
-    }
-
     public static long parseLong(final String string, final long def) {
         try {
             return (string == null || string.length() <= 0) ? def : Long.decode(string);
-
         } catch (NumberFormatException e) {
-            MatrixLog.printErrStackTrace(TAG, e, "");
+            MatrixLog.w(TAG, "parseLong error: " + e.getMessage());
         }
         return def;
     }

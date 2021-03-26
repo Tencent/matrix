@@ -90,6 +90,10 @@ public class LooperMonitor implements MessageQueue.IdleHandler {
         this(Looper.getMainLooper());
     }
 
+    public Looper getLooper() {
+        return looper;
+    }
+
     @Override
     public boolean queueIdle() {
         if (SystemClock.uptimeMillis() - lastCheckPrinterTime >= CHECK_TIME) {

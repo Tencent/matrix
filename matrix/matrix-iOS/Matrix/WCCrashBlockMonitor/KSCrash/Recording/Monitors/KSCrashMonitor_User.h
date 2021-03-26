@@ -29,11 +29,9 @@
 extern "C" {
 #endif
 
-
 #include "KSCrashMonitor.h"
 
 #include <stdbool.h>
-
 
 /** Report a custom, user defined exception.
  * If terminateProgram is true, all sentries will be uninstalled and the application will
@@ -55,14 +53,14 @@ extern "C" {
  *
  * @param terminateProgram If true, do not return from this function call. Terminate the program instead.
  */
-void kscm_reportUserException(const char* name,
-                              const char* reason,
-                              const char* language,
-                              const char* lineOfCode,
-                              const char* stackTrace,
+void kscm_reportUserException(const char *name,
+                              const char *reason,
+                              const char *language,
+                              const char *lineOfCode,
+                              const char *stackTrace,
                               bool logAllThreads,
                               bool terminateProgram);
-    
+
 /** Report a custom, user defined exception.
  * If terminateProgram is true, all sentries will be uninstalled and the application will
  * terminate with an abort().
@@ -86,20 +84,19 @@ void kscm_reportUserException(const char* name,
  * @param dumpFilePath The self defined path where the user when the dump saved
  */
 
-void kscm_reportUserExceptionSelfDefinePath(const char* name,
-                                            const char* reason,
-                                            const char* language,
-                                            const char* lineOfCode,
-                                            const char* stackTrace,
+void kscm_reportUserExceptionSelfDefinePath(const char *name,
+                                            const char *reason,
+                                            const char *language,
+                                            const char *lineOfCode,
+                                            const char *stackTrace,
                                             bool logAllThreads,
                                             bool terminateProgram,
-                                            const char* dumpFilePath,
+                                            const char *dumpFilePath,
                                             int dumpType);
 
 /** Access the Monitor API.
  */
-KSCrashMonitorAPI* kscm_user_getAPI(void);
-
+KSCrashMonitorAPI *kscm_user_getAPI(void);
 
 #ifdef __cplusplus
 }

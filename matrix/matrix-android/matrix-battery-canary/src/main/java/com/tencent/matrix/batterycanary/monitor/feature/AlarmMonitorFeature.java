@@ -4,6 +4,7 @@ import android.app.AlarmManager;
 import android.app.PendingIntent;
 import android.os.Handler;
 import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.support.annotation.VisibleForTesting;
 import android.util.Log;
 
@@ -13,7 +14,7 @@ import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
 import com.tencent.matrix.util.MatrixLog;
 
 @SuppressWarnings("NotNullFieldNotInitialized")
-public final class AlarmMonitorFeature extends AbsMonitorFeature implements AlarmManagerServiceHooker.IListener {
+public final class AlarmMonitorFeature extends AbsMonitorFeature {
     private static final String TAG = "Matrix.battery.AlarmMonitorFeature";
 
     public interface AlarmListener {
@@ -23,10 +24,16 @@ public final class AlarmMonitorFeature extends AbsMonitorFeature implements Alar
     @NonNull
     @VisibleForTesting
     Handler handler;
-    final AlarmCounting mAlarmCounting = new AlarmCounting();
+    final AlarmTracing mAlarmTracing = new AlarmTracing();
+    @Nullable AlarmManagerServiceHooker.IListener mListener;
 
     private AlarmListener getListener() {
         return mCore;
+    }
+
+    @Override
+    protected String getTag() {
+        return TAG;
     }
 
     @Override
@@ -38,15 +45,43 @@ public final class AlarmMonitorFeature extends AbsMonitorFeature implements Alar
     @Override
     public void onTurnOn() {
         super.onTurnOn();
-        AlarmManagerServiceHooker.addListener(this);
+        if (mCore.getConfig().isAmsHookEnabled) {
+            mListener = new AlarmManagerServiceHooker.IListener() {
+                @Override
+                public void onAlarmSet(int type, long triggerAtMillis, long windowMillis, long intervalMillis, int flags, PendingIntent operation, AlarmManager.OnAlarmListener onAlarmListener) {
+                    String stack = "";
+                    if (mCore.getConfig().isStatAsSample) {
+                        stack = BatteryCanaryUtil.polishStack(Log.getStackTraceString(new Throwable()), "at android.app.AlarmManager");
+                    }
+
+                    AlarmRecord alarmRecord = new AlarmRecord(type, triggerAtMillis, windowMillis, intervalMillis, flags, stack);
+                    MatrixLog.i(TAG, "#onAlarmSet, target = " + alarmRecord);
+
+                    if (operation != null || onAlarmListener != null) {
+                        int traceKey = operation != null ? operation.hashCode() : onAlarmListener.hashCode();
+                        mAlarmTracing.onSet(traceKey, alarmRecord);
+                    }
+                }
+
+                @Override
+                public void onAlarmRemove(PendingIntent operation, AlarmManager.OnAlarmListener onAlarmListener) {
+                    if (operation != null || onAlarmListener != null) {
+                        int traceKey = operation != null ? operation.hashCode() : onAlarmListener.hashCode();
+                        mAlarmTracing.onRemove(traceKey);
+                    }
+                }
+            };
+            AlarmManagerServiceHooker.addListener(mListener);
+        }
+
     }
 
     @Override
     public void onTurnOff() {
         super.onTurnOff();
-        AlarmManagerServiceHooker.removeListener(this);
+        AlarmManagerServiceHooker.removeListener(mListener);
         handler.removeCallbacksAndMessages(null);
-        mAlarmCounting.onClear();
+        mAlarmTracing.onClear();
     }
 
     @Override
@@ -54,32 +89,27 @@ public final class AlarmMonitorFeature extends AbsMonitorFeature implements Alar
         return Integer.MIN_VALUE;
     }
 
-    @Override
-    public void onAlarmSet(int type, long triggerAtMillis, long windowMillis, long intervalMillis, int flags, PendingIntent operation, AlarmManager.OnAlarmListener onAlarmListener) {
-        String stack = "";
-        if (mCore.getConfig().isStatAsSample) {
-            stack = BatteryCanaryUtil.polishStack(Log.getStackTraceString(new Throwable()), "at android.app.AlarmManager");
-        }
-
-        AlarmRecord alarmRecord = new AlarmRecord(type, triggerAtMillis, windowMillis, intervalMillis, flags, stack);
-        MatrixLog.i(TAG, "#onAlarmSet, target = " + alarmRecord);
-
-        if (operation != null || onAlarmListener != null) {
-            int traceKey = operation != null ? operation.hashCode() : onAlarmListener.hashCode();
-            mAlarmCounting.onSet(traceKey, alarmRecord);
+    @VisibleForTesting
+    void onAlarmSet(int type, long triggerAtMillis, long windowMillis, long intervalMillis, int flags, PendingIntent operation, AlarmManager.OnAlarmListener onAlarmListener) {
+        if (mListener != null) {
+            mListener.onAlarmSet(type, triggerAtMillis, windowMillis, intervalMillis, flags, operation, onAlarmListener);
         }
     }
 
-    @Override
-    public void onAlarmRemove(PendingIntent operation, AlarmManager.OnAlarmListener onAlarmListener) {
-        if (operation != null || onAlarmListener != null) {
-            int traceKey = operation != null ? operation.hashCode() : onAlarmListener.hashCode();
-            mAlarmCounting.onRemove(traceKey);
+    @VisibleForTesting
+    void onAlarmRemove(PendingIntent operation, AlarmManager.OnAlarmListener onAlarmListener) {
+        if (mListener != null) {
+            mListener.onAlarmRemove(operation, onAlarmListener);
         }
+    }
+
+    @NonNull
+    public AlarmTracing getTracing() {
+        return mAlarmTracing;
     }
 
     public AlarmSnapshot currentAlarms() {
-        return mAlarmCounting.getSnapshot();
+        return mAlarmTracing.getSnapshot();
     }
 
     public static class AlarmRecord {
@@ -124,7 +154,7 @@ public final class AlarmMonitorFeature extends AbsMonitorFeature implements Alar
         }
     }
 
-    public static final class AlarmCounting {
+    public static final class AlarmTracing {
         private final byte[] mLock = new byte[]{};
         private int mTotalCount;
         private int mTracingCount;
@@ -133,19 +163,28 @@ public final class AlarmMonitorFeature extends AbsMonitorFeature implements Alar
 
         public void onSet(int key, AlarmRecord record) {
             synchronized (mLock) {
-                mTotalCount ++;
-                mTracingCount ++;
+                mTotalCount++;
+                mTracingCount++;
+            }
+        }
+
+        public void onSet() {
+            synchronized (mLock) {
+                mTotalCount++;
+                mTracingCount++;
             }
         }
 
         public void onRemove(int key) {
             synchronized (mLock) {
-                mTracingCount --;
+                mTracingCount--;
             }
         }
 
-        public int getTotalCount() {
-            return mTotalCount;
+        public void onRemove() {
+            synchronized (mLock) {
+                mTracingCount--;
+            }
         }
 
         public void onClear() {

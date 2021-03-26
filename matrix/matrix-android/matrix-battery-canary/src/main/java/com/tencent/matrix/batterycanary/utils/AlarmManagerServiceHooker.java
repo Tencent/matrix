@@ -20,6 +20,7 @@ import android.app.AlarmManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.os.Build;
+import android.support.annotation.Nullable;
 import android.support.annotation.RestrictTo;
 
 import com.tencent.matrix.util.MatrixLog;
@@ -47,6 +48,12 @@ public class AlarmManagerServiceHooker {
         public void onServiceMethodInvoke(Method method, Object[] args) {
             MatrixLog.v(TAG, "onServiceMethodInvoke: method name %s", method.getName());
             dispatchListeners(method, args);
+        }
+
+        @Nullable
+        @Override
+        public Object onServiceMethodIntercept(Object receiver, Method method, Object[] args) {
+            return null;
         }
     };
     private static SystemServiceBinderHooker sHookHelper = new SystemServiceBinderHooker(Context.ALARM_SERVICE, "android.app.IAlarmManager", sHookCallback);

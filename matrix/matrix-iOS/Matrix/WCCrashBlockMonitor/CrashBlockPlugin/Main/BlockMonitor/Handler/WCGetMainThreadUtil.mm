@@ -29,24 +29,18 @@
 
 @implementation WCGetMainThreadUtil
 
-+ (void)getCurrentMainThreadStack:(void (^)(NSUInteger pc))saveResultBlock
-{
++ (void)getCurrentMainThreadStack:(void (^)(NSUInteger pc))saveResultBlock {
     [WCGetMainThreadUtil getCurrentMainThreadStack:saveResultBlock withMaxEntries:WXGBackTraceMaxEntries];
 }
 
-+ (int)getCurrentMainThreadStack:(void (^)(NSUInteger pc))saveResultBlock
-                  withMaxEntries:(NSUInteger)maxEntries
-{
++ (int)getCurrentMainThreadStack:(void (^)(NSUInteger pc))saveResultBlock withMaxEntries:(NSUInteger)maxEntries {
     NSUInteger tmpThreadCount;
-    return [WCGetMainThreadUtil getCurrentMainThreadStack:saveResultBlock
-                                           withMaxEntries:maxEntries
-                                          withThreadCount:tmpThreadCount];
+    return [WCGetMainThreadUtil getCurrentMainThreadStack:saveResultBlock withMaxEntries:maxEntries withThreadCount:tmpThreadCount];
 }
 
 + (int)getCurrentMainThreadStack:(void (^)(NSUInteger pc))saveResultBlock
                   withMaxEntries:(NSUInteger)maxEntries
-                 withThreadCount:(NSUInteger &)retThreadCount
-{
+                 withThreadCount:(NSUInteger &)retThreadCount {
     thread_act_array_t threads;
     mach_msg_type_number_t thread_count;
 
@@ -67,7 +61,7 @@
 
     uintptr_t backtraceBuffer[maxEntries];
 
-    int backTraceLength = kssc_backtraceCurrentThread(mainThread, backtraceBuffer, (int) maxEntries);
+    int backTraceLength = kssc_backtraceCurrentThread(mainThread, backtraceBuffer, (int)maxEntries);
 
     for (int i = 0; i < backTraceLength; i++) {
         NSUInteger pc = backtraceBuffer[i];
@@ -80,7 +74,7 @@
     for (mach_msg_type_number_t i = 0; i < thread_count; i++) {
         mach_port_deallocate(mach_task_self(), threads[i]);
     }
-    vm_deallocate(mach_task_self(), (vm_address_t) threads, sizeof(thread_t) * thread_count);
+    vm_deallocate(mach_task_self(), (vm_address_t)threads, sizeof(thread_t) * thread_count);
 
     return backTraceLength;
 }

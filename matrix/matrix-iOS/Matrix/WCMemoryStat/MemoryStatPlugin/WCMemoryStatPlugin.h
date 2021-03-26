@@ -52,6 +52,7 @@
 - (void)removeTagOfCurrentThread;
 
 - (uint32_t)getMemoryUsageOfCurrentThread;
+- (void)dumpMemoryAndGenerateReportData:(NSString *)issue customInfo:(NSDictionary *)customInfo callback:(void (^)(NSData *))callback;
 
 // ============================================================================
 #pragma mark - Record

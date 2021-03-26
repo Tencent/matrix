@@ -33,11 +33,12 @@ android {
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
     testImplementation 'junit:junit:4.12'
-    testImplementation "org.mockito:mockito-core:2.8.9"
     testImplementation 'org.jmockit:jmockit:1.28'
+    testImplementation 'com.google.code.gson:gson:2.8.6'
     androidTestImplementation 'com.android.support:support-annotations:28.0.0'
     androidTestImplementation 'com.android.support.test:runner:1.0.2'
     androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.2'
+    androidTestImplementation "org.mockito:mockito-core:2.8.9"
     androidTestImplementation "org.mockito:mockito-android:2.8.9"
 
     implementation 'com.android.support:appcompat-v7:28.0.0'

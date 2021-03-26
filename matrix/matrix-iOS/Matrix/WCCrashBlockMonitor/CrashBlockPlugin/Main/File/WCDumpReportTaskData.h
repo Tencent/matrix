@@ -32,7 +32,6 @@ typedef NS_ENUM(NSUInteger, EReportPriority) {
 
 @end
 
-
 // define the report type and the report priority,
 // if adding one new lag type and want to be reported,
 // you must add the lag type in this report configuration.
