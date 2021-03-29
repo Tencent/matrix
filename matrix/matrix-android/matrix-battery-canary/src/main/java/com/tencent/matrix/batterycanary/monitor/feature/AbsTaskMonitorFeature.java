@@ -41,19 +41,27 @@ public abstract class AbsTaskMonitorFeature extends AbsMonitorFeature {
 
     public static final String IDLE_TASK = "thread_pool@idle";
 
-    @NonNull final protected List<Delta<TaskJiffiesSnapshot>> mDeltaList = new ArrayList<>();
-    @NonNull final protected Map<Integer, TaskJiffiesSnapshot> mTaskJiffiesTrace = new ConcurrentHashMap<>();
-    @NonNull final protected Map<String, Pair<? extends List<Integer>, Long>> mTaskConcurrentTrace = new ConcurrentHashMap<>();
-    @NonNull final protected SparseArray<List<TimeBreaker.Stamp>> mTaskStampList = new SparseArray<>();
-    @NonNull protected TimeBreaker.Stamp mFirstTaskStamp;
+    @NonNull
+    final protected List<Delta<TaskJiffiesSnapshot>> mDeltaList = new ArrayList<>();
+    @NonNull
+    final protected Map<Integer, TaskJiffiesSnapshot> mTaskJiffiesTrace = new ConcurrentHashMap<>();
+    @NonNull
+    final protected Map<String, Pair<? extends List<Integer>, Long>> mTaskConcurrentTrace = new ConcurrentHashMap<>();
+    @NonNull
+    final protected SparseArray<List<TimeBreaker.Stamp>> mTaskStampList = new SparseArray<>();
+    @NonNull
+    protected TimeBreaker.Stamp mFirstTaskStamp;
 
-    @Nullable protected AppStatMonitorFeature mAppStatFeat;
-    @Nullable protected DeviceStatMonitorFeature mDevStatFeat;
+    @Nullable
+    protected AppStatMonitorFeature mAppStatFeat;
+    @Nullable
+    protected DeviceStatMonitorFeature mDevStatFeat;
 
     protected int mOverHeatCount = DEF_STAMP_OVERHEAT;
     protected int mConcurrentLimit = 50;
 
-    @NonNull protected Runnable coolingTask = new Runnable() {
+    @NonNull
+    protected Runnable coolingTask = new Runnable() {
         @SuppressLint("RestrictedApi")
         @Override
         public void run() {
@@ -84,9 +92,15 @@ public abstract class AbsTaskMonitorFeature extends AbsMonitorFeature {
     public void onTurnOff() {
         super.onTurnOff();
         mTaskJiffiesTrace.clear();
-        synchronized (mTaskConcurrentTrace) { mTaskConcurrentTrace.clear(); }
-        synchronized (mDeltaList) { mDeltaList.clear(); }
-        synchronized (mTaskStampList) { mTaskStampList.clear(); }
+        synchronized (mTaskConcurrentTrace) {
+            mTaskConcurrentTrace.clear();
+        }
+        synchronized (mDeltaList) {
+            mDeltaList.clear();
+        }
+        synchronized (mTaskStampList) {
+            mTaskStampList.clear();
+        }
     }
 
     public List<Delta<TaskJiffiesSnapshot>> currentJiffies() {
@@ -194,7 +208,7 @@ public abstract class AbsTaskMonitorFeature extends AbsMonitorFeature {
 
     @WorkerThread
     protected void onTaskFinished(final String key, final int hashcode) {
-        final TaskJiffiesSnapshot bgn =  mTaskJiffiesTrace.remove(hashcode);
+        final TaskJiffiesSnapshot bgn = mTaskJiffiesTrace.remove(hashcode);
         // Trace task concurrent count -
         // onTaskConcurrentDec(hashcode);
 
@@ -205,7 +219,8 @@ public abstract class AbsTaskMonitorFeature extends AbsMonitorFeature {
                 updateDeltas(bgn, end);
             }
             // Update task stamp list
-            onStatTask(Process.myTid(), IDLE_TASK, end == null ? bgn.jiffies.get() : end.jiffies.get());
+            onStatTask(Process.myTid(), IDLE_TASK,
+                    end == null ? bgn.jiffies.get() : end.jiffies.get());
         }
     }
 
@@ -232,7 +247,9 @@ public abstract class AbsTaskMonitorFeature extends AbsMonitorFeature {
                 }
 
                 if (workingTasks.first.size() > mConcurrentLimit) {
-                    MatrixLog.w(TAG, "reach task concurrent limit, count = " + workingTasks.first.size()+ ", key = " + key);
+                    MatrixLog.w(TAG,
+                            "reach task concurrent limit, count = " + workingTasks.first.size()
+                                    + ", key = " + key);
                     //noinspection ConstantConditions
                     long duringMillis = SystemClock.uptimeMillis() - workingTasks.second;
                     MatrixLog.w(TAG, "onConcurrentOverHeat, during = " + duringMillis);
@@ -309,7 +326,9 @@ public abstract class AbsTaskMonitorFeature extends AbsMonitorFeature {
             return;
         }
 
-        MatrixLog.i(TAG, "onTaskReport: " + delta.dlt.name + ", jiffies = " + delta.dlt.jiffies.get() + ", millis = " + delta.during);
+        MatrixLog.i(TAG,
+                "onTaskReport: " + delta.dlt.name + ", jiffies = " + delta.dlt.jiffies.get()
+                        + ", millis = " + delta.during);
 
         // Compute task context info
         if (mAppStatFeat != null) {
@@ -377,7 +396,7 @@ public abstract class AbsTaskMonitorFeature extends AbsMonitorFeature {
     protected void onCoolingDown() {
         // task stamp list overheat
         synchronized (mTaskStampList) {
-            for(int i = 0; i < mTaskStampList.size(); i++) {
+            for (int i = 0; i < mTaskStampList.size(); i++) {
                 List<TimeBreaker.Stamp> stampList = mTaskStampList.valueAt(i);
                 if (stampList != null && stampList.size() > mOverHeatCount) {
                     TimeBreaker.gcList(stampList);
@@ -398,9 +417,14 @@ public abstract class AbsTaskMonitorFeature extends AbsMonitorFeature {
         }
     }
 
-    protected void onTraceOverHeat(List<Delta<TaskJiffiesSnapshot>> deltas) {}
-    protected void onConcurrentOverHeat(String key, int concurrentCount, long duringMillis) {}
-    protected void onParseTaskJiffiesFail(String key, int pid, int tid) {}
+    protected void onTraceOverHeat(List<Delta<TaskJiffiesSnapshot>> deltas) {
+    }
+
+    protected void onConcurrentOverHeat(String key, int concurrentCount, long duringMillis) {
+    }
+
+    protected void onParseTaskJiffiesFail(String key, int pid, int tid) {
+    }
 
     @Nullable
     protected TaskJiffiesSnapshot createSnapshot(String name, int tid) {
@@ -423,7 +447,7 @@ public abstract class AbsTaskMonitorFeature extends AbsMonitorFeature {
             ProcStatUtil.ProcStat stat = ProcStatUtil.of(pid, tid);
             if (stat == null) {
                 MatrixLog.w(TAG, "parse task procStat fail, name = " + name + ", tid = " + tid);
-                onParseTaskJiffiesFail(name, pid,tid);
+                onParseTaskJiffiesFail(name, pid, tid);
                 return null;
             }
             snapshot.jiffies = DigitEntry.of(stat.getJiffies());
@@ -446,7 +470,8 @@ public abstract class AbsTaskMonitorFeature extends AbsMonitorFeature {
         public long chargeRatio = 100;
         public long sceneRatio = 100;
 
-        public TaskJiffiesSnapshot() {}
+        public TaskJiffiesSnapshot() {
+        }
 
         @Override
         public Delta<TaskJiffiesSnapshot> diff(TaskJiffiesSnapshot bgn) {
@@ -486,13 +511,13 @@ public abstract class AbsTaskMonitorFeature extends AbsMonitorFeature {
 
         @Override
         public String toString() {
-            return "TaskJiffiesSnapshot{" +
-                    "appStat=" + appStat +
-                    ", devStat=" + devStat +
-                    ", tid=" + tid +
-                    ", name='" + name + '\'' +
-                    ", jiffies=" + jiffies +
-                    '}';
+            return "TaskJiffiesSnapshot{"
+                    + "appStat=" + appStat
+                    + ", devStat=" + devStat
+                    + ", tid=" + tid
+                    + ", name='" + name + '\''
+                    + ", jiffies=" + jiffies
+                    + '}';
         }
     }
 }

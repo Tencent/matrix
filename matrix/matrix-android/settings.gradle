@@ -4,6 +4,7 @@ include ':matrix-android-lib'
 include ':matrix-commons'
 include ':matrix-resource-canary:matrix-resource-canary-common'
 include ':matrix-resource-canary:matrix-resource-canary-analyzer'
+include ':matrix-resource-canary:matrix-resource-canary-analyzer-cli'
 include ':matrix-resource-canary:matrix-resource-canary-android'
 include ':matrix-trace-canary'
 include ':matrix-apk-canary'
@@ -11,6 +12,10 @@ include ':matrix-io-canary'
 include ':matrix-sqlite-lint:matrix-sqlite-lint-android-sdk'
 include ':matrix-battery-canary'
 include ':matrix-arscutil'
+
+// WIP
 include ':work-in-progress:matrix-memory-canary'
 include ':work-in-progress:matrix-thread-canary'
+
+// Sample
 //include ':matrix-sample-android:app'

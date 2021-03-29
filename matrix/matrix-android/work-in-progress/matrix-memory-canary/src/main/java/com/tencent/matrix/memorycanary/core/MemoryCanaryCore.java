@@ -16,17 +16,6 @@
 
 package com.tencent.matrix.memorycanary.core;
 
-import com.tencent.matrix.memorycanary.MemoryCanaryPlugin;
-import com.tencent.matrix.memorycanary.config.MemoryConfig;
-import com.tencent.matrix.memorycanary.config.SharePluginInfo;
-import com.tencent.matrix.memorycanary.util.DebugMemoryInfoUtil;
-import com.tencent.matrix.report.Issue;
-import com.tencent.matrix.report.IssuePublisher;
-import com.tencent.matrix.util.DeviceUtil;
-import com.tencent.matrix.util.MatrixHandlerThread;
-import com.tencent.matrix.util.MatrixLog;
-import com.tencent.matrix.plugin.PluginShareConstants;
-
 import android.app.Activity;
 import android.app.Application;
 import android.content.ComponentCallbacks2;
@@ -36,6 +25,17 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Debug;
 import android.os.Handler;
+
+import com.tencent.matrix.memorycanary.MemoryCanaryPlugin;
+import com.tencent.matrix.memorycanary.config.MemoryConfig;
+import com.tencent.matrix.memorycanary.config.SharePluginInfo;
+import com.tencent.matrix.memorycanary.util.DebugMemoryInfoUtil;
+import com.tencent.matrix.plugin.PluginShareConstants;
+import com.tencent.matrix.report.Issue;
+import com.tencent.matrix.report.IssuePublisher;
+import com.tencent.matrix.util.DeviceUtil;
+import com.tencent.matrix.util.MatrixHandlerThread;
+import com.tencent.matrix.util.MatrixLog;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -200,7 +200,8 @@ public class MemoryCanaryCore implements IssuePublisher.OnIssueDetectListener {
 
     public void start() {
         mLevel = DeviceUtil.getLevel(mContext);
-        if (!isApiLevelOk() || mLevel == DeviceUtil.LEVEL.LOW || mLevel == DeviceUtil.LEVEL.BAD || mLevel == DeviceUtil.LEVEL.UN_KNOW) {
+        if (!isApiLevelOk() || mLevel == DeviceUtil.LEVEL.LOW || mLevel == DeviceUtil.LEVEL.BAD
+                || mLevel == DeviceUtil.LEVEL.UN_KNOW) {
             mIsOpen = false;
             return;
         }
@@ -218,7 +219,8 @@ public class MemoryCanaryCore implements IssuePublisher.OnIssueDetectListener {
         mTotalMemory = DeviceUtil.getTotalMemory(mContext) / 1024;
         mLowMemoryThreshold = DeviceUtil.getLowMemoryThresold(mContext) / 1024;
         mMemoryClass = DeviceUtil.getMemoryClass(mContext);
-        if (mLowMemoryThreshold >= mTotalMemory || mLowMemoryThreshold <= 0 || mMemoryClass <= (100 * 1024) || mTotalMemory <= 0) {
+        if (mLowMemoryThreshold >= mTotalMemory || mLowMemoryThreshold <= 0 || mMemoryClass <= (100
+                * 1024) || mTotalMemory <= 0) {
             mIsOpen = false;
             return;
         }
@@ -253,8 +255,9 @@ public class MemoryCanaryCore implements IssuePublisher.OnIssueDetectListener {
     }
 
     private void detectAppMemoryInfo(boolean bDetectAll, int flag) {
-        if(!mIsOpen)
+        if (!mIsOpen) {
             return;
+        }
 
         if (!bDetectAll) {
             detectRuntimeMemoryInfo();
@@ -302,14 +305,15 @@ public class MemoryCanaryCore implements IssuePublisher.OnIssueDetectListener {
                 return;
             }
 
-            json.put(SharePluginInfo.ISSUE_STARTED_TIME, (int) (System.currentTimeMillis() - mStartTime) / (60 * 1000));
+            json.put(SharePluginInfo.ISSUE_STARTED_TIME,
+                    (int) (System.currentTimeMillis() - mStartTime) / (60 * 1000));
 
             long start = System.currentTimeMillis();
             Debug.MemoryInfo memoryInfo = DeviceUtil.getAppMemory(mContext);
             if (memoryInfo != null) {
                 long cost = System.currentTimeMillis() - start;
                 MatrixLog.i(TAG, "get app memory cost:" + cost);
-                if(cost > MAX_COST) {
+                if (cost > MAX_COST) {
                     mIsOpen = false;
                     return;
                 }
@@ -338,7 +342,8 @@ public class MemoryCanaryCore implements IssuePublisher.OnIssueDetectListener {
             return;
         }
 
-        if (mTrimedFlags.containsKey(flag) && (System.currentTimeMillis() - mTrimedFlags.get(flag)) < TRIM_MEMORY_SPAN) {
+        if (mTrimedFlags.containsKey(flag)
+                && (System.currentTimeMillis() - mTrimedFlags.get(flag)) < TRIM_MEMORY_SPAN) {
             MatrixLog.w(TAG, "trim memory too freq activity:%s, flag:%d", mShowingActivity, flag);
             return;
         }
@@ -351,7 +356,7 @@ public class MemoryCanaryCore implements IssuePublisher.OnIssueDetectListener {
 
         long cost = System.currentTimeMillis() - start;
         MatrixLog.i(TAG, "get app memory cost:" + cost);
-        if(cost > MAX_COST) {
+        if (cost > MAX_COST) {
             mIsOpen = false;
             return;
         }
@@ -442,9 +447,12 @@ public class MemoryCanaryCore implements IssuePublisher.OnIssueDetectListener {
         matrixMemoryInfo.mDalvikHeap = (int) DeviceUtil.getDalvikHeap();
         matrixMemoryInfo.mNativeHeap = (int) DeviceUtil.getNativeHeap();
 
-        MatrixLog.i(TAG, "activity:" + mShowingActivity + ", totalpss:" + matrixMemoryInfo.mTotalPss + ", uss:" + matrixMemoryInfo.mTotalUss + ", java:" + matrixMemoryInfo.mJavaHeap
-                + " , Native:" + matrixMemoryInfo.mNativePss + ", code:" + matrixMemoryInfo.mCode + ", stack:" + matrixMemoryInfo.mStack
-                + ", Graphics:" + matrixMemoryInfo.mGraphics + ", other:" + matrixMemoryInfo.mOther);
+        MatrixLog.i(TAG, "activity:" + mShowingActivity + ", totalpss:" + matrixMemoryInfo.mTotalPss
+                + ", uss:" + matrixMemoryInfo.mTotalUss + ", java:" + matrixMemoryInfo.mJavaHeap
+                + " , Native:" + matrixMemoryInfo.mNativePss + ", code:" + matrixMemoryInfo.mCode
+                + ", stack:" + matrixMemoryInfo.mStack
+                + ", Graphics:" + matrixMemoryInfo.mGraphics + ", other:"
+                + matrixMemoryInfo.mOther);
     }
 
     private long getNextDelay() {
@@ -468,7 +476,7 @@ public class MemoryCanaryCore implements IssuePublisher.OnIssueDetectListener {
             return 1;
         } else if (n == 2) {
             return 2;
-        } else if(n >= 8) {
+        } else if (n >= 8) {
             return 30;
         } else {
             return getFib(n - 1) + getFib(n - 2);

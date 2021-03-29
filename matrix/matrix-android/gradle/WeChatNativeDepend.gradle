@@ -210,13 +210,30 @@ def getExtractedNativeDependenciesDir() {
     return new File(getNativeDependencyRoot(), EXTRACTED_NATIVE_DEPENDENCIES_DIR_NAME)
 }
 
+def cleanDirectory(directory) {
+    if (!directory.exists()) {
+        return
+    } else if (!directory.isDirectory()) {
+        return
+    } else {
+        File[] files = directory.listFiles();
+        if (files == null) {
+            return
+        }
+
+        for (File file: files) {
+            org.gradle.util.GFileUtils.forceDelete(file)
+        }
+    }
+}
+
 def copyExportedHeaders(targetVariant) {
     def exportedArtifactsDir = getExportedNativeArtifactsDir(targetVariant)
     def exportedHeadersDir = new File(exportedArtifactsDir, HEADERS_DIR_NAME)
     if (!exportedHeadersDir.exists()) {
         exportedHeadersDir.mkdirs()
     } else {
-        org.gradle.util.GFileUtils.cleanDirectory(exportedHeadersDir)
+        cleanDirectory(exportedHeadersDir)
     }
     def headerFilters = getExportedHeaderFilters(targetVariant)
     copy {
@@ -262,7 +279,7 @@ def mountCopyNativePrebuiltsAction(targetVariant) {
     def bundleTask = targetVariant.getPackageLibrary() as Zip
     targetVariant.getExternalNativeBuildTasks().each { nativeBuildTask ->
         nativeBuildTask.doLast {
-            org.gradle.util.GFileUtils.cleanDirectory(exportedPrebuiltsDir)
+            cleanDirectory(exportedPrebuiltsDir)
             copy {
                 duplicatesStrategy DuplicatesStrategy.FAIL
                 includeEmptyDirs = false
@@ -462,7 +479,7 @@ def generateBuildInfoModule() {
     if (!buildInfoModuleDir.exists()) {
         buildInfoModuleDir.mkdirs()
     } else {
-        org.gradle.util.GFileUtils.cleanDirectory(buildInfoModuleDir)
+        cleanDirectory(buildInfoModuleDir)
     }
 
     def hasBuildVersion = project.extensions.findByName('wechatPublish') != null

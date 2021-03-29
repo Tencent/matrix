@@ -131,7 +131,7 @@ public class ResPackage extends ResChunk {
         HashMap<Integer, Integer> countMap = new HashMap<>();
         for (ResChunk resType : resTypeArray) {
             if (resType.getType() == ArscConstants.RES_TABLE_TYPE_TYPE) {
-                for ( int index : ((ResType) resType).getResNameStringCountMap().keySet()) {
+                for (int index : ((ResType) resType).getResNameStringCountMap().keySet()) {
                     if (!countMap.containsKey(index)) {
                         countMap.put(index, 0);
                     }

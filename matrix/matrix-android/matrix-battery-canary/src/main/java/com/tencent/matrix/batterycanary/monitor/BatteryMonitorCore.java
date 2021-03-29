@@ -74,7 +74,7 @@ public class BatteryMonitorCore implements
         int round = 0;
         @Override
         public void run() {
-            round ++;
+            round++;
             MatrixLog.i(TAG, "#onBackgroundLoopCheck, round = " + round);
             if (!isForeground()) {
                 synchronized (BatteryMonitorCore.class) {

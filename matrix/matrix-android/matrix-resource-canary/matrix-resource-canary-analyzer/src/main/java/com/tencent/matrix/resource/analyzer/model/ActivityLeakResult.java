@@ -99,4 +99,16 @@ public final class ActivityLeakResult extends AnalyzeResult {
                   .put("analysisDurationMs", mAnalysisDurationMs)
                   .put("referenceChain", leakTraceJSONArray);
     }
+
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder("Leak Reference:");
+        if (referenceChain != null) {
+            for (ReferenceTraceElement element : referenceChain.elements) {
+                sb.append(element.toString()).append(";");
+            }
+        }
+
+        return sb.toString();
+    }
 }
