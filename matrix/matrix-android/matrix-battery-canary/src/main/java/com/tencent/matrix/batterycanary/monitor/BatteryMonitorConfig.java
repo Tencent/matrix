@@ -51,7 +51,8 @@ public class BatteryMonitorConfig {
     public boolean isUseThreadClock = BuildConfig.DEBUG;
     public List<String> tagWhiteList = Collections.emptyList();
     public List<String> tagBlackList = Collections.emptyList();
-    public List<String> looperWhiteList = Collections.emptyList();
+    public List<String> looperWatchList = Collections.emptyList();
+    public List<String> threadWatchList = Collections.emptyList();
     public final List<MonitorFeature> features = new ArrayList<>(3);
 
     private BatteryMonitorConfig() {}
@@ -59,30 +60,31 @@ public class BatteryMonitorConfig {
     @NonNull
     @Override
     public String toString() {
-        return "BatteryMonitorConfig{" +
-                "wakelockTimeout=" + wakelockTimeout +
-                ", wakelockWarnCount=" + wakelockWarnCount +
-                ", greyTime=" + greyTime +
-                ", foregroundLoopCheckTime=" + foregroundLoopCheckTime +
-                ", backgroundLoopCheckTime=" + backgroundLoopCheckTime +
-                ", overHeatCount=" + overHeatCount +
-                ", foregroundServiceLeakLimit=" + foregroundServiceLeakLimit +
-                ", fgThreadWatchingLimit=" + fgThreadWatchingLimit +
-                ", bgThreadWatchingLimit=" + bgThreadWatchingLimit +
-                ", isForegroundModeEnabled=" + isForegroundModeEnabled +
-                ", isBackgroundModeEnabled=" + isBackgroundModeEnabled +
-                ", isBuiltinForegroundNotifyEnabled=" + isBuiltinForegroundNotifyEnabled +
-                ", isStatAsSample=" + isStatAsSample +
-                ", isStatPidProc=" + isStatPidProc +
-                ", isInspectiffiesError=" + isInspectiffiesError +
-                ", isAmsHookEnabled=" + isAmsHookEnabled +
-                ", isAggressiveMode=" + isAggressiveMode +
-                ", isUseThreadClock=" + isUseThreadClock +
-                ", tagWhiteList=" + tagWhiteList +
-                ", tagBlackList=" + tagBlackList +
-                ", looperWhiteList=" + looperWhiteList +
-                ", features=" + features +
-                '}';
+        return "BatteryMonitorConfig{"
+                + "wakelockTimeout=" + wakelockTimeout
+                + ", wakelockWarnCount=" + wakelockWarnCount
+                + ", greyTime=" + greyTime
+                + ", foregroundLoopCheckTime=" + foregroundLoopCheckTime
+                + ", backgroundLoopCheckTime=" + backgroundLoopCheckTime
+                + ", overHeatCount=" + overHeatCount
+                + ", foregroundServiceLeakLimit=" + foregroundServiceLeakLimit
+                + ", fgThreadWatchingLimit=" + fgThreadWatchingLimit
+                + ", bgThreadWatchingLimit=" + bgThreadWatchingLimit
+                + ", isForegroundModeEnabled=" + isForegroundModeEnabled
+                + ", isBackgroundModeEnabled=" + isBackgroundModeEnabled
+                + ", isBuiltinForegroundNotifyEnabled=" + isBuiltinForegroundNotifyEnabled
+                + ", isStatAsSample=" + isStatAsSample
+                + ", isStatPidProc=" + isStatPidProc
+                + ", isInspectiffiesError=" + isInspectiffiesError
+                + ", isAmsHookEnabled=" + isAmsHookEnabled
+                + ", isAggressiveMode=" + isAggressiveMode
+                + ", isUseThreadClock=" + isUseThreadClock
+                + ", tagWhiteList=" + tagWhiteList
+                + ", tagBlackList=" + tagBlackList
+                + ", looperWatchList=" + looperWatchList
+                + ", threadWatchList=" + threadWatchList
+                + ", features=" + features
+                + '}';
     }
 
     /**
@@ -224,11 +226,19 @@ public class BatteryMonitorConfig {
             return this;
         }
 
-        public Builder addLooperBlackList(String handlerThreadName) {
-            if (config.looperWhiteList == Collections.EMPTY_LIST) {
-                config.looperWhiteList = new ArrayList<>();
+        public Builder addLooperWatchList(String handlerThreadName) {
+            if (config.looperWatchList == Collections.EMPTY_LIST) {
+                config.looperWatchList = new ArrayList<>();
             }
-            config.looperWhiteList.add(handlerThreadName);
+            config.looperWatchList.add(handlerThreadName);
+            return this;
+        }
+
+        public Builder addThreadWatchList(String threadName) {
+            if (config.threadWatchList == Collections.EMPTY_LIST) {
+                config.threadWatchList = new ArrayList<>();
+            }
+            config.threadWatchList.add(threadName);
             return this;
         }
 

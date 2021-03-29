@@ -138,7 +138,7 @@ public final class LooperTaskMonitorFeature extends AbsTaskMonitorFeature {
                 return;
             }
             MatrixLog.i(TAG, "#startWatching");
-            if (mCore.getConfig().looperWhiteList.contains("all")) {
+            if (mCore.getConfig().looperWatchList.contains("all")) {
                 // 1. Update watching for all handler threads
                 Collection<Thread> allThreads = getAllThreads();
                 for (Thread thread : allThreads) {
@@ -156,7 +156,7 @@ public final class LooperTaskMonitorFeature extends AbsTaskMonitorFeature {
             } else {
                 // 2. Update watching for configured threads
                 Collection<Thread> allThreads = Collections.emptyList();
-                for (String threadToWatch : mCore.getConfig().looperWhiteList) {
+                for (String threadToWatch : mCore.getConfig().looperWatchList) {
                     if (TextUtils.isEmpty(threadToWatch)) {
                         continue;
                     }

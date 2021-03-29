@@ -233,9 +233,22 @@ public interface BatteryMonitorCallback extends
                         .append("\n");
             }
 
-            if (getMonitor().getConfig().isAggressiveMode) {
+            // Dump thread stacks if need
+            boolean dumpStacks = getMonitor().getConfig().isAggressiveMode;
+            if (!dumpStacks && !getMonitor().getConfig().threadWatchList.isEmpty()) {
+                for (String item : getMonitor().getConfig().threadWatchList) {
+                    for (ThreadJiffiesEntry threadJiffies : threadJiffiesList.getList()) {
+                        if (item.equalsIgnoreCase(threadJiffies.name) || threadJiffies.name.startsWith(item)) {
+                            dumpStacks = true;
+                            break;
+                        }
+                    }
+                }
+            }
+            if (dumpStacks) {
                 printer.createSection("stacks");
                 Map<Thread, StackTraceElement[]> stackTraces = Thread.getAllStackTraces();
+                //noinspection ConstantConditions
                 if (stackTraces != null) {
                     for (Map.Entry<Thread, StackTraceElement[]> entry : stackTraces.entrySet()) {
                         String threadName = entry.getKey().getName();
