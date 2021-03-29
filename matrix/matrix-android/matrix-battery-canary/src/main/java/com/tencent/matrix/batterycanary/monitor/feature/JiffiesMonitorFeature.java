@@ -349,6 +349,7 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
                 for (ProcessInfo.ThreadInfo item : mWatchingThreads) {
                     JiffiesSnapshot.ThreadJiffiesSnapshot snapshot = JiffiesSnapshot.ThreadJiffiesSnapshot.parseThreadJiffies(item);
                     if (snapshot != null) {
+                        snapshot.isNewAdded = false;
                         threadJiffiesList.add(snapshot);
                     }
                 }
