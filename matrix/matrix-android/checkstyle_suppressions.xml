@@ -7,4 +7,6 @@
 <suppressions>
     <suppress files=".*[/\\]src[/\\]test[/\\].*" checks="Javadoc.*"/>
     <suppress files=".*RequestBuilder.java" checks="NoClone"/>
+    <suppress files=".*[/\\]src[/\\]androidTest[/\\].*" checks="[a-zA-Z0-9]*"/>
+    <suppress files=".*[/\\]src[/\\]test[/\\].*" checks="[a-zA-Z0-9]*"/>
 </suppressions>

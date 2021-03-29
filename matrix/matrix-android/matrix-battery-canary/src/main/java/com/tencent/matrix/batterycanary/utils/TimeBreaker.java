@@ -208,7 +208,8 @@ public final class TimeBreaker {
         public List<Portion> portions = Collections.emptyList();
         private boolean mIsValid = true;
 
-        TimePortions() {}
+        TimePortions() {
+        }
 
         public boolean isValid() {
             return mIsValid;
