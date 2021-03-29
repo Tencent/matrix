@@ -1,11 +1,11 @@
 package com.tencent.matrix.batterycanary.monitor;
 
 import android.support.annotation.Nullable;
-import android.support.v4.util.Pair;
 
 import com.tencent.matrix.batterycanary.BatteryCanary;
 import com.tencent.matrix.batterycanary.monitor.feature.AppStatMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.DeviceStatMonitorFeature;
+import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
 import com.tencent.matrix.batterycanary.utils.TimeBreaker;
 
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -15,7 +15,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * @since 2021/1/27
  */
 final public class AppStats {
-    public static final int ONE_MIN = 60 * 1000;
 
     public static final int APP_STAT_FOREGROUND = 1;
     public static final int APP_STAT_FOREGROUND_SERVICE = 3;
@@ -52,7 +51,7 @@ final public class AppStats {
     }
 
     public long getMinute() {
-        return Math.max(1, duringMillis / ONE_MIN);
+        return Math.max(1, duringMillis / BatteryCanaryUtil.ONE_MIN);
     }
 
     public boolean isForeground() {
@@ -124,14 +123,14 @@ final public class AppStats {
                 stats.appFgSrvRatio = appStats.fgSrvRatio.get().intValue();
 
                 TimeBreaker.TimePortions portions = appStatFeat.currentSceneSnapshot(duringMillis);
-                Pair<String, Integer> top1 = portions.top1();
+                TimeBreaker.TimePortions.Portion top1 = portions.top1();
                 if (top1 != null) {
-                    stats.sceneTop1 = top1.first;
-                    stats.sceneTop1Ratio = top1.second == null ? 0 : top1.second;
-                    Pair<String, Integer> top2 = portions.top2();
+                    stats.sceneTop1 = top1.key;
+                    stats.sceneTop1Ratio = top1.ratio;
+                    TimeBreaker.TimePortions.Portion top2 = portions.top2();
                     if (top2 != null) {
-                        stats.sceneTop2 = top2.first;
-                        stats.sceneTop2Ratio = top2.second == null ? 0 : top2.second;
+                        stats.sceneTop2 = top2.key;
+                        stats.sceneTop2Ratio = top2.ratio;
                     }
 
                     DeviceStatMonitorFeature devStatFeat = BatteryCanary.getMonitorFeature(DeviceStatMonitorFeature.class);

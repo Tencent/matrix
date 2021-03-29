@@ -59,5 +59,10 @@ public abstract class AbsMonitorFeature implements MonitorFeature {
         if (mCore.getConfig().isAggressiveMode) return true;
         return  0 != (mCore.getContext().getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE);
     }
+
+    @Override
+    public String toString() {
+        return getTag();
+    }
 }
 

@@ -14,55 +14,44 @@
  * limitations under the License.
  */
 
-package com.tencent.matrix.batterycanary;
+package com.tencent.matrix.batterycanary.utils;
 
-import android.os.SystemClock;
+import android.content.Context;
+import android.support.test.InstrumentationRegistry;
+import android.support.test.runner.AndroidJUnit4;
 
-import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
-import com.tencent.matrix.batterycanary.utils.TimeBreaker;
-
+import org.junit.After;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.mockito.junit.MockitoJUnitRunner;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.AtomicReference;
 
-import mockit.Mock;
-import mockit.MockUp;
-
+import static com.tencent.matrix.batterycanary.utils.TimeBreaker.TimePortions;
 import static com.tencent.matrix.batterycanary.utils.TimeBreaker.configurePortions;
 import static com.tencent.matrix.batterycanary.utils.TimeBreaker.gcList;
 
-/**
- * Example local unit test, which will execute on the development machine (host).
- *
- * @see <a href="http://d.android.com/tools/testing">Testing documentation</a>
- */
-@RunWith(MockitoJUnitRunner.class)
+
+@RunWith(AndroidJUnit4.class)
 public class TimeBreakerTest {
+    static final String TAG = "Matrix.test.TimerBreakerTest";
 
-    private static class SystemMock extends MockUp<SystemClock> {
-        @Mock
-        public static long uptimeMillis() {
-            return System.currentTimeMillis();
-        }
+    Context mContext;
+
+    @Before
+    public void setUp() {
+        mContext = InstrumentationRegistry.getTargetContext();
     }
 
-    static {
-        new SystemMock();
+    @After
+    public void shutDown() {
     }
 
-    /**
-     * Need mocking {@link SystemClock#uptimeMillis()}
-     */
     @Test
     public void testPortions() throws InterruptedException {
         //           100s       200s       300s       400s
@@ -163,10 +152,6 @@ public class TimeBreakerTest {
         Assert.assertFalse(snapshot.isValid());
     }
 
-
-    /**
-     * Need mocking {@link SystemClock#uptimeMillis()}
-     */
     @Test
     public void testPortionsV2() throws InterruptedException {
         //          100s       200s       300s       400s
@@ -266,15 +251,15 @@ public class TimeBreakerTest {
     }
 
 
-    /**
-     * Need mocking {@link SystemClock#uptimeMillis()}
-     */
     @Test
     public void testPortionsV3() throws InterruptedException {
         List<TimeBreaker.Stamp> stampList = new ArrayList<>();
         stampList.add(0, new TimeBreaker.Stamp("1", 0));
+        Thread.sleep(100L);
         stampList.add(0, new TimeBreaker.Stamp("2", 100));
+        Thread.sleep(100L);
         stampList.add(0, new TimeBreaker.Stamp("3", 149));
+        Thread.sleep(100L);
         stampList.add(0, new TimeBreaker.Stamp("4", 181));
 
         TimeBreaker.TimePortions snapshot = configurePortions(stampList, 40L, 10L, new TimeBreaker.Stamp.Stamper() {
@@ -285,6 +270,12 @@ public class TimeBreakerTest {
         });
 
         Assert.assertEquals(40L, snapshot.totalUptime, 1);
+        Assert.assertEquals(2, snapshot.portions.size());
+
+
+        for (TimePortions.Portion item : snapshot.portions) {
+            Assert.assertTrue(item.totalStatMillis > 0L);
+        }
     }
 
     @Test

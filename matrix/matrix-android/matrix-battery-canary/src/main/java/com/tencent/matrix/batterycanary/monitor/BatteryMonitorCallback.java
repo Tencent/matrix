@@ -307,10 +307,16 @@ public interface BatteryMonitorCallback extends
                     long avgJiffies = threadJiffies.get() / minute;
                     if (appStats.isForeground()) {
                         if (minute > 10 && avgJiffies > getMonitor().getConfig().fgThreadWatchingLimit) {
+                            MatrixLog.i(TAG, "threadWatchDog fg set, name = " + delta.dlt.name
+                                    + ", pid = " + delta.dlt.pid
+                                    + ", tid = " + threadJiffies.tid);
                             mJiffiesFeat.watchBackThreadSate(true, delta.dlt.pid, threadJiffies.tid);
                         }
                     } else {
                         if (minute > 10 && avgJiffies > getMonitor().getConfig().bgThreadWatchingLimit) {
+                            MatrixLog.i(TAG, "threadWatchDog bg set, name = " + delta.dlt.name
+                                    + ", pid = " + delta.dlt.pid
+                                    + ", tid = " + threadJiffies.tid);
                             mJiffiesFeat.watchBackThreadSate(false, delta.dlt.pid, threadJiffies.tid);
                         }
                     }

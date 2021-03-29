@@ -7,6 +7,7 @@ import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.annotation.RestrictTo;
 import android.support.annotation.WorkerThread;
+import android.text.TextUtils;
 
 import com.tencent.matrix.Matrix;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
@@ -165,7 +166,7 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
 
             public void loadProcStat() throws IOException {
                 ProcStatUtil.ProcStat stat = ProcStatUtil.of(pid, tid);
-                if (stat != null) {
+                if (stat != null && !TextUtils.isEmpty(stat.comm)) {
                     this.name = stat.comm;
                     this.stat = stat.stat;
                     jiffies = stat.getJiffies();
@@ -338,6 +339,9 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
         @Override
         public void run() {
             // watch
+            MatrixLog.i(TAG, "threadWatchDog start, size = " + mWatchingThreads.size()
+                    + ", delayMillis = " + duringMillis);
+
             List<JiffiesSnapshot.ThreadJiffiesSnapshot> threadJiffiesList = new ArrayList<>();
             synchronized (mWatchingThreads) {
                 for (ProcessInfo.ThreadInfo item : mWatchingThreads) {
@@ -367,6 +371,12 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
 
         void watch(int pid, int tid) {
             synchronized (mWatchingThreads) {
+                // Distinct
+                for (ProcessInfo.ThreadInfo item : mWatchingThreads) {
+                    if (item.pid == pid && item.tid == tid) {
+                        return;
+                    }
+                }
                 mWatchingThreads.add(ProcessInfo.ThreadInfo.of(pid, tid));
             }
         }
