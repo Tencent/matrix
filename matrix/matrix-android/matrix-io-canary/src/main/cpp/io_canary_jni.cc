@@ -42,6 +42,7 @@ namespace iocanary {
     static ssize_t (*original_write) (int fd, const void *buf, size_t size);
     static ssize_t (*original_write_chk) (int fd, const void* buf, size_t count, size_t buf_size);
     static int (*original_close) (int fd);
+    static int (*original_android_fdsan_close_with_tag) (int fd, uint64_t ownerId);
 
     static bool kInitSuc = false;
     static JavaVM *kJvm;
@@ -316,6 +317,17 @@ namespace iocanary {
 
             return ret;
         }
+        /**
+         *  Proxy for close above android 10: callback to the java layer
+         */
+        int Proxy_android_fdsan_close_with_tag(int fd,uint64_t ownerId){
+            if(!IsMainThread()) {
+                return original_android_fdsan_close_with_tag(fd,ownerId);
+            }
+            int ret = original_android_fdsan_close_with_tag(fd,ownerId);
+            iocanary::IOCanary::Get().OnClose(fd, ret);
+            return ret;
+        }
 
         JNIEXPORT void JNICALL
         Java_com_tencent_matrix_iocanary_core_IOCanaryJniBridge_enableDetector(JNIEnv *env, jclass type, jint detector_type) {
@@ -366,6 +378,7 @@ namespace iocanary {
                 }
 
                 xhook_hook_symbol(soinfo, "close", (void*)ProxyClose, (void**)&original_close);
+                xhook_hook_symbol(soinfo,"android_fdsan_close_with_tag",(void *)Proxy_android_fdsan_close_with_tag,(void**)&original_android_fdsan_close_with_tag);
 
                 xhook_elf_close(soinfo);
             }
