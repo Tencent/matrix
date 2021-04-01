@@ -94,9 +94,9 @@ bool get_java_stacktrace(char *stack_dst, size_t size) {
 
         LOGD(TAG, "get_java_stacktrace called");
         const char *stacktrace = env->GetStringUTFChars(j_stacktrace, NULL);
-        const jsize stack_len  = env->GetStringUTFLength(j_stacktrace);
         if (stacktrace) {
-            const size_t cpy_len = std::min((size_t)stack_len, size - 1);
+            const size_t stack_len = strlen(stacktrace);
+            const size_t cpy_len = std::min(stack_len, size - 1);
             memcpy(stack_dst, stacktrace, cpy_len);
             stack_dst[cpy_len] = '\0';
         } else {
