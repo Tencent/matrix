@@ -136,6 +136,11 @@ At this point, Matrix has been integrated into the app and is beginning to colle
 
   Detect the file IO issues, including performance of file IO and closeable leak 
 
+- **Battery Canary:**
+
+  App thread activities monitor (Background watch & foreground loop watch), Sonsor usage monitor (WakeLock/Alarm/Gps/Wifi/Bluetooth), Background network activities (Wifi/Mobile) monitor.
+
+
 ## Features
 #### APK Checker
 
@@ -167,6 +172,11 @@ At this point, Matrix has been integrated into the app and is beginning to colle
 - **Easy-to-use.** Non-invasive.
 - **More feature.** Including performance of file IO and closeable leak.
 - **Compatible with Android P.**
+
+#### Battery Canary
+- **Easy-to-use.** Use out of box (unit tests as example).
+- **More feature.** Flexible extending with base and utils APIs.
+
 
 ## Getting Started
 ***The JCenter repository will stop service on February 1, 2022. So we uploaded Matrix(since 0.8.0) to the MavenCentral repository.***
