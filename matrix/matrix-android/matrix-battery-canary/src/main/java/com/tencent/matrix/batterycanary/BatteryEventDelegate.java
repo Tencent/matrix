@@ -279,6 +279,17 @@ public final class BatteryEventDelegate {
             if (sBackgroundBgnMillis <= 0L) return 0L;
             return SystemClock.uptimeMillis() - sBackgroundBgnMillis;
         }
+
+        @Override
+        public String toString() {
+            return "BatteryState{" +
+                    "fg=" + isForeground() +
+                    ", charge=" + isCharging() +
+                    ", screen=" + isScreenOn() +
+                    ", doze=" + isPowerSaveMode() +
+                    ", bgMillis=" + getBackgroundTimeMillis() +
+                    '}';
+        }
     }
 
     public interface Listener {
