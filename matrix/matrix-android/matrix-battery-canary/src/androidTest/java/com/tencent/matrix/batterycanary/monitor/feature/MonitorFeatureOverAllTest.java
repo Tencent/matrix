@@ -24,6 +24,7 @@ import android.support.test.InstrumentationRegistry;
 import android.support.test.runner.AndroidJUnit4;
 
 import com.tencent.matrix.Matrix;
+import com.tencent.matrix.batterycanary.BatteryEventDelegate;
 import com.tencent.matrix.batterycanary.BatteryMonitorPlugin;
 import com.tencent.matrix.batterycanary.TestUtils;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorConfig;
@@ -46,6 +47,9 @@ public class MonitorFeatureOverAllTest {
         mContext = InstrumentationRegistry.getTargetContext();
         if (!Matrix.isInstalled()) {
             Matrix.init(new Matrix.Builder(((Application) mContext.getApplicationContext())).build());
+        }
+        if (!BatteryEventDelegate.isInit()) {
+            BatteryEventDelegate.init((Application) mContext.getApplicationContext());
         }
     }
 
