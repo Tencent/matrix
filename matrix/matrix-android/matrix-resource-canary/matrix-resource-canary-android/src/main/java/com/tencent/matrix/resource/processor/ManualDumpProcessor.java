@@ -9,7 +9,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.Build;
-import android.support.v4.app.NotificationCompat;
+
+import androidx.core.app.NotificationCompat;
 
 import com.tencent.matrix.resource.R;
 import com.tencent.matrix.resource.analyzer.model.ActivityLeakResult;
