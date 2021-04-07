@@ -65,7 +65,8 @@ public final class BluetoothManagerServiceHooker {
     private static boolean sTryHook;
     private static SystemServiceBinderHooker.HookCallback sHookCallback = new SystemServiceBinderHooker.HookCallback() {
         @Override
-        public void onServiceMethodInvoke(Method method, Object[] args) {}
+        public void onServiceMethodInvoke(Method method, Object[] args) {
+        }
 
         @Nullable
         @Override
@@ -143,8 +144,7 @@ public final class BluetoothManagerServiceHooker {
 
     private static Object proxyBluetooth(final Object delegate) {
         try {
-            @SuppressLint("PrivateApi")
-            final Class<?> clazz = Class.forName("android.bluetooth.IBluetooth");
+            @SuppressLint("PrivateApi") final Class<?> clazz = Class.forName("android.bluetooth.IBluetooth");
             final Class<?>[] interfaces = new Class<?>[]{IBinder.class, IInterface.class, clazz};
             final ClassLoader loader = delegate.getClass().getClassLoader();
             final InvocationHandler handler = new InvocationHandler() {
@@ -171,8 +171,7 @@ public final class BluetoothManagerServiceHooker {
 
     private static Object proxyBluetoothGatt(final Object delegate) {
         try {
-            @SuppressLint("PrivateApi")
-            final Class<?> clazz = Class.forName("android.bluetooth.IBluetoothGatt");
+            @SuppressLint("PrivateApi") final Class<?> clazz = Class.forName("android.bluetooth.IBluetoothGatt");
             final Class<?>[] interfaces = new Class<?>[]{IBinder.class, IInterface.class, clazz};
             final ClassLoader loader = delegate.getClass().getClassLoader();
             final InvocationHandler handler = new InvocationHandler() {

@@ -25,7 +25,8 @@ public final class AlarmMonitorFeature extends AbsMonitorFeature {
     @VisibleForTesting
     Handler handler;
     final AlarmTracing mAlarmTracing = new AlarmTracing();
-    @Nullable AlarmManagerServiceHooker.IListener mListener;
+    @Nullable
+    AlarmManagerServiceHooker.IListener mListener;
 
     private AlarmListener getListener() {
         return mCore;
@@ -142,15 +143,15 @@ public final class AlarmMonitorFeature extends AbsMonitorFeature {
         @NonNull
         @Override
         public String toString() {
-            return "AlarmRecord{" +
-                    "type=" + type +
-                    ", triggerAtMillis=" + triggerAtMillis +
-                    ", windowMillis=" + windowMillis +
-                    ", intervalMillis=" + intervalMillis +
-                    ", flag=" + flag +
-                    ", timeBgn=" + timeBgn +
-                    ", stack='" + stack + '\'' +
-                    '}';
+            return "AlarmRecord{"
+                    + "type=" + type
+                    + ", triggerAtMillis=" + triggerAtMillis
+                    + ", windowMillis=" + windowMillis
+                    + ", intervalMillis=" + intervalMillis
+                    + ", flag=" + flag
+                    + ", timeBgn=" + timeBgn
+                    + ", stack='" + stack + '\''
+                    + '}';
         }
     }
 

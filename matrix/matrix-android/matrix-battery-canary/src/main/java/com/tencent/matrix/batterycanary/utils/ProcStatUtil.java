@@ -25,7 +25,8 @@ import java.nio.charset.StandardCharsets;
 public final class ProcStatUtil {
     private static final String TAG = "Matrix.battery.ProcStatUtil";
     private static final ThreadLocal<byte[]> sBufferRef = new ThreadLocal<>();
-    @Nullable private static OnParseError sParseError;
+    @Nullable
+    private static OnParseError sParseError;
 
     static byte[] getLocalBuffers() {
         if (sBufferRef.get() == null) {
@@ -165,7 +166,7 @@ public final class ProcStatUtil {
 
         ProcStat stat = new ProcStat();
         int statBytes = statBuffer.length;
-        for (int i = 0, spaceIdx = 0; i < statBytes; ) {
+        for (int i = 0, spaceIdx = 0; i < statBytes;) {
             if (Character.isSpaceChar(statBuffer[i])) {
                 spaceIdx++;
                 i++;
@@ -177,7 +178,10 @@ public final class ProcStatUtil {
                     int readIdx = i, window = 0;
                     // seek end symobl of comm: ')'
                     // noinspection StatementWithEmptyBody
-                    for (; i < statBytes && ')' != statBuffer[i]; i++, window++) ;
+                    while (i < statBytes && ')' != statBuffer[i]) {
+                        i++;
+                        window++;
+                    }
                     if ('(' == statBuffer[readIdx]) {
                         readIdx++;
                         window--;
@@ -196,8 +200,10 @@ public final class ProcStatUtil {
                     int readIdx = i, window = 0;
                     // seek next space
                     // noinspection StatementWithEmptyBody
-                    for (; i < statBytes && !Character.isSpaceChar(statBuffer[i]); i++, window++)
-                        ;
+                    while (i < statBytes && !Character.isSpaceChar(statBuffer[i])) {
+                        i++;
+                        window++;
+                    }
                     stat.stat = safeBytesToString(statBuffer, readIdx, window);
                     break;
                 }
@@ -206,8 +212,10 @@ public final class ProcStatUtil {
                     int readIdx = i, window = 0;
                     // seek next space
                     // noinspection StatementWithEmptyBody
-                    for (; i < statBytes && !Character.isSpaceChar(statBuffer[i]); i++, window++)
-                        ;
+                    while (i < statBytes && !Character.isSpaceChar(statBuffer[i])) {
+                        i++;
+                        window++;
+                    }
                     String num = safeBytesToString(statBuffer, readIdx, window);
                     if (!isNumeric(num)) {
                         throw new ParseException(safeBytesToString(statBuffer, 0, statBuffer.length) + "\nutime: " + num);
@@ -219,8 +227,10 @@ public final class ProcStatUtil {
                     int readIdx = i, window = 0;
                     // seek next space
                     // noinspection StatementWithEmptyBody
-                    for (; i < statBytes && !Character.isSpaceChar(statBuffer[i]); i++, window++)
-                        ;
+                    while (i < statBytes && !Character.isSpaceChar(statBuffer[i])) {
+                        i++;
+                        window++;
+                    }
                     String num = safeBytesToString(statBuffer, readIdx, window);
                     if (!isNumeric(num)) {
                         throw new ParseException(safeBytesToString(statBuffer, 0, statBuffer.length) + "\nstime: " + num);
@@ -232,8 +242,10 @@ public final class ProcStatUtil {
                     int readIdx = i, window = 0;
                     // seek next space
                     // noinspection StatementWithEmptyBody
-                    for (; i < statBytes && !Character.isSpaceChar(statBuffer[i]); i++, window++)
-                        ;
+                    while (i < statBytes && !Character.isSpaceChar(statBuffer[i])) {
+                        i++;
+                        window++;
+                    }
                     String num = safeBytesToString(statBuffer, readIdx, window);
                     if (!isNumeric(num)) {
                         throw new ParseException(safeBytesToString(statBuffer, 0, statBuffer.length) + "\ncutime: " + num);
@@ -245,8 +257,10 @@ public final class ProcStatUtil {
                     int readIdx = i, window = 0;
                     // seek next space
                     // noinspection StatementWithEmptyBody
-                    for (; i < statBytes && !Character.isSpaceChar(statBuffer[i]); i++, window++)
-                        ;
+                    while (i < statBytes && !Character.isSpaceChar(statBuffer[i])) {
+                        i++;
+                        window++;
+                    }
                     String num = safeBytesToString(statBuffer, readIdx, window);
                     if (!isNumeric(num)) {
                         throw new ParseException(safeBytesToString(statBuffer, 0, statBuffer.length) + "\ncstime: " + num);
@@ -340,6 +354,7 @@ public final class ProcStatUtil {
 
     public static class ParseException extends Exception {
         public final String content;
+
         public ParseException(String content) {
             this.content = content;
         }

@@ -5,7 +5,6 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.os.Looper;
 import androidx.annotation.NonNull;
-import androidx.annotation.VisibleForTesting;
 import androidx.annotation.WorkerThread;
 import android.text.TextUtils;
 
@@ -28,6 +27,7 @@ public final class AppStatMonitorFeature extends AbsMonitorFeature {
 
     public interface AppStatListener {
         void onForegroundServiceLeak(boolean isMyself, int appImportance, int globalAppImportance, ComponentName componentName, long millis);
+
         void onAppSateLeak(boolean isMyself, int appImportance, ComponentName componentName, long millis);
     }
 
@@ -41,9 +41,12 @@ public final class AppStatMonitorFeature extends AbsMonitorFeature {
     int mGlobalAppImportance = IMPORTANCE_LEAST;
     int mForegroundServiceImportanceLimit = ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND;
 
-    @NonNull List<TimeBreaker.Stamp> mStampList = Collections.emptyList();
-    @NonNull List<TimeBreaker.Stamp> mSceneStampList = Collections.emptyList();
-    @NonNull Runnable coolingTask = new Runnable() {
+    @NonNull
+    List<TimeBreaker.Stamp> mStampList = Collections.emptyList();
+    @NonNull
+    List<TimeBreaker.Stamp> mSceneStampList = Collections.emptyList();
+    @NonNull
+    Runnable coolingTask = new Runnable() {
         @Override
         public void run() {
             if (mStampList.size() >= mCore.getConfig().overHeatCount) {
@@ -172,8 +175,8 @@ public final class AppStatMonitorFeature extends AbsMonitorFeature {
     }
 
     private void checkOverHeat() {
-       mCore.getHandler().removeCallbacks(coolingTask);
-       mCore.getHandler().postDelayed(coolingTask, 1000L);
+        mCore.getHandler().removeCallbacks(coolingTask);
+        mCore.getHandler().postDelayed(coolingTask, 1000L);
     }
 
     private void updateAppImportance() {
@@ -222,7 +225,7 @@ public final class AppStatMonitorFeature extends AbsMonitorFeature {
         if (Looper.myLooper() == Looper.getMainLooper()) {
             mCore.getHandler().post(runnable);
         } else {
-            runnable.run();;
+            runnable.run();
         }
     }
 
@@ -265,7 +268,7 @@ public final class AppStatMonitorFeature extends AbsMonitorFeature {
         if (Looper.myLooper() == Looper.getMainLooper()) {
             mCore.getHandler().post(runnable);
         } else {
-            runnable.run();;
+            runnable.run();
         }
     }
 
@@ -347,7 +350,8 @@ public final class AppStatMonitorFeature extends AbsMonitorFeature {
         public Entry.DigitEntry<Long> bgRatio = Entry.DigitEntry.of(0L);
         public Entry.DigitEntry<Long> fgSrvRatio = Entry.DigitEntry.of(0L);
 
-        AppStatSnapshot() {}
+        AppStatSnapshot() {
+        }
 
         @Override
         public Delta<AppStatSnapshot> diff(AppStatSnapshot bgn) {

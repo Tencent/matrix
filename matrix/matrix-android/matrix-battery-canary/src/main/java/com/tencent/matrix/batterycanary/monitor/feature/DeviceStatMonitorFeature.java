@@ -5,7 +5,6 @@ import android.content.Context;
 import android.content.Intent;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.annotation.VisibleForTesting;
 import androidx.core.util.Consumer;
 
 import com.tencent.matrix.batterycanary.BatteryEventDelegate;
@@ -33,9 +32,12 @@ import java.util.List;
 public final class DeviceStatMonitorFeature extends AbsMonitorFeature {
     private static final String TAG = "Matrix.battery.DeviceStatusMonitorFeature";
 
-    @NonNull private DevStatListener mDevStatListener;
-    @NonNull List<TimeBreaker.Stamp> mStampList = Collections.emptyList();
-    @NonNull Runnable coolingTask = new Runnable() {
+    @NonNull
+    private DevStatListener mDevStatListener;
+    @NonNull
+    List<TimeBreaker.Stamp> mStampList = Collections.emptyList();
+    @NonNull
+    Runnable coolingTask = new Runnable() {
         @Override
         public void run() {
             if (mStampList.size() >= mCore.getConfig().overHeatCount) {
@@ -134,7 +136,7 @@ public final class DeviceStatMonitorFeature extends AbsMonitorFeature {
                 @Override
                 public TimeBreaker.Stamp stamp(String key) {
                     int devStat = BatteryCanaryUtil.getDeviceStat(mCore.getContext());
-                    return  new TimeBreaker.Stamp(String.valueOf(devStat));
+                    return new TimeBreaker.Stamp(String.valueOf(devStat));
                 }
             });
             DevStatSnapshot snapshot = new DevStatSnapshot();
@@ -170,7 +172,8 @@ public final class DeviceStatMonitorFeature extends AbsMonitorFeature {
 
         boolean mIsCharging = true;
         boolean mIsListening = false;
-        @Nullable private BatteryEventDelegate.Listener mBatterStatListener;
+        @Nullable
+        private BatteryEventDelegate.Listener mBatterStatListener;
 
         public void setListener(Consumer<Integer> listener) {
             mListener = listener;
@@ -260,7 +263,7 @@ public final class DeviceStatMonitorFeature extends AbsMonitorFeature {
         public Entry.DigitEntry<Integer> temp;
 
         @Override
-        public Delta<BatteryTmpSnapshot>  diff(BatteryTmpSnapshot bgn) {
+        public Delta<BatteryTmpSnapshot> diff(BatteryTmpSnapshot bgn) {
             return new Delta<BatteryTmpSnapshot>(bgn, this) {
                 @Override
                 protected BatteryTmpSnapshot computeDelta() {
@@ -279,7 +282,8 @@ public final class DeviceStatMonitorFeature extends AbsMonitorFeature {
         public Entry.DigitEntry<Long> screenOff = Entry.DigitEntry.of(0L);
         public Entry.DigitEntry<Long> lowEnergyRatio = Entry.DigitEntry.of(0L);
 
-        DevStatSnapshot() {}
+        DevStatSnapshot() {
+        }
 
         @Override
         public Delta<DevStatSnapshot> diff(DevStatSnapshot bgn) {

@@ -124,7 +124,7 @@ public final class TimeBreaker {
 
             List<Pair<String, Integer>> portions = new ArrayList<>();
             for (Map.Entry<String, Long> item : mapper.entrySet()) {
-                String key  = item.getKey();
+                String key = item.getKey();
                 long value = item.getValue();
                 portions.add(new Pair<>(key, configureRatio(value, totalMillis)));
             }
@@ -180,7 +180,8 @@ public final class TimeBreaker {
         public List<Pair<String, Integer>> portions = Collections.emptyList();
         private boolean mIsValid = true;
 
-        TimePortions() {}
+        TimePortions() {
+        }
 
         public boolean isValid() {
             return mIsValid;

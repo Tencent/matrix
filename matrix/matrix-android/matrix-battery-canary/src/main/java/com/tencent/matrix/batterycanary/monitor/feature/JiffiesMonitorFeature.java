@@ -31,6 +31,7 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
     public interface JiffiesListener {
         @Deprecated
         void onParseError(int pid, int tid);
+
         void onWatchingThreads(ListEntry<? extends JiffiesSnapshot.ThreadJiffiesEntry> threadJiffiesList);
     }
 
@@ -233,7 +234,8 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
         public ListEntry<ThreadJiffiesSnapshot> threadEntries;
         public DigitEntry<Integer> threadNum;
 
-        private JiffiesSnapshot() {}
+        private JiffiesSnapshot() {
+        }
 
         @Override
         public Delta<JiffiesSnapshot> diff(JiffiesSnapshot bgn) {

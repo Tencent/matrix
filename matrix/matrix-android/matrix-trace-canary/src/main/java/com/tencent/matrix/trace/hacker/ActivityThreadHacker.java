@@ -87,7 +87,8 @@ public class ActivityThreadHacker {
     }
 
     public static long getApplicationCost() {
-        return ActivityThreadHacker.sApplicationCreateEndTime - ActivityThreadHacker.sApplicationCreateBeginTime;
+        return ActivityThreadHacker.sApplicationCreateEndTime
+                - ActivityThreadHacker.sApplicationCreateBeginTime;
     }
 
     public static long getEggBrokenTime() {
@@ -123,7 +124,9 @@ public class ActivityThreadHacker {
         @Override
         public boolean handleMessage(Message msg) {
             if (Build.VERSION.SDK_INT >= 21 && Build.VERSION.SDK_INT <= 25) {
-                if (msg.what == SERIVCE_ARGS || msg.what == STOP_SERVICE || msg.what == STOP_ACTIVITY_SHOW || msg.what == STOP_ACTIVITY_HIDE || msg.what == SLEEPING) {
+                if (msg.what == SERIVCE_ARGS || msg.what == STOP_SERVICE
+                        || msg.what == STOP_ACTIVITY_SHOW || msg.what == STOP_ACTIVITY_HIDE
+                        || msg.what == SLEEPING) {
                     MatrixLog.i(TAG, "[Matrix.fix.sp.apply] start to fix msg.waht=" + msg.what);
                     fix();
                 }
@@ -141,7 +144,8 @@ public class ActivityThreadHacker {
             }
 
             if (!isCreated) {
-                if (isLaunchActivity || msg.what == CREATE_SERVICE || msg.what == RECEIVER) { // todo for provider
+                if (isLaunchActivity || msg.what == CREATE_SERVICE
+                        || msg.what == RECEIVER) { // todo for provider
                     ActivityThreadHacker.sApplicationCreateEndTime = SystemClock.uptimeMillis();
                     ActivityThreadHacker.sApplicationCreateScene = msg.what;
                     isCreated = true;
@@ -158,27 +162,28 @@ public class ActivityThreadHacker {
         }
 
         @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
-        private void fix(){
+        private void fix() {
             try {
                 Class cls = Class.forName("android.app.QueuedWork");
                 Field field = cls.getDeclaredField("sPendingWorkFinishers");
-                if(field != null) {
+                if (field != null) {
                     field.setAccessible(true);
-                    ConcurrentLinkedQueue<Runnable> runnables = (ConcurrentLinkedQueue<Runnable>)field.get(null);
+                    ConcurrentLinkedQueue<Runnable> runnables = (ConcurrentLinkedQueue<Runnable>) field.get(null);
                     runnables.clear();
                     MatrixLog.i(TAG, "[Matrix.fix.sp.apply] sPendingWorkFinishers.clear successful");
                 }
             } catch (ClassNotFoundException e) {
-                MatrixLog.e(TAG, "[Matrix.fix.sp.apply] ClassNotFoundException = "+e.getMessage());
+                MatrixLog.e(TAG,
+                        "[Matrix.fix.sp.apply] ClassNotFoundException = " + e.getMessage());
                 e.printStackTrace();
             } catch (IllegalAccessException e) {
-                MatrixLog.e(TAG, "[Matrix.fix.sp.apply] IllegalAccessException ="+e.getMessage());
+                MatrixLog.e(TAG, "[Matrix.fix.sp.apply] IllegalAccessException =" + e.getMessage());
                 e.printStackTrace();
             } catch (NoSuchFieldException e) {
-                MatrixLog.e(TAG, "[Matrix.fix.sp.apply] NoSuchFieldException = "+e.getMessage());
+                MatrixLog.e(TAG, "[Matrix.fix.sp.apply] NoSuchFieldException = " + e.getMessage());
                 e.printStackTrace();
-            } catch (Exception e){
-                MatrixLog.e(TAG, "[Matrix.fix.sp.apply] Exception = "+e.getMessage());
+            } catch (Exception e) {
+                MatrixLog.e(TAG, "[Matrix.fix.sp.apply] Exception = " + e.getMessage());
                 e.printStackTrace();
             }
 

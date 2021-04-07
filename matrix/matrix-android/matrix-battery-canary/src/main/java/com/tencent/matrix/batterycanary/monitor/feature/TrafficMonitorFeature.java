@@ -1,7 +1,6 @@
 package com.tencent.matrix.batterycanary.monitor.feature;
 
 import android.content.Context;
-import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Differ.DigitDiffer;

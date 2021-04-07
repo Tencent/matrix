@@ -13,16 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.tencent.matrix.resource.watcher;
+package com.tencent.matrix.resource.dumper;
 
 import android.content.Context;
 import android.os.Environment;
+import android.os.Process;
 
 import com.tencent.matrix.util.MatrixLog;
+import com.tencent.matrix.util.MatrixUtil;
 
 import java.io.File;
 import java.io.FilenameFilter;
-import java.util.UUID;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
 
 /**
  * Created by tangyinsheng on 2017/6/2.
@@ -58,10 +62,12 @@ public class DumpStorageManager {
         if (storageDir == null) {
             return null;
         }
-        final UUID uuid = UUID.randomUUID();
-        final String hprofFileName = "dump_"
-                + Long.toHexString(uuid.getMostSignificantBits())
-                + Long.toHexString(uuid.getLeastSignificantBits()) + HPROF_EXT;
+        final String hprofFileName = "dump"
+                + "_" + MatrixUtil.getProcessName(mContext).replace(".", "_").replace(":", "_")
+                + "_" + Process.myPid()
+                + "_"
+                + new SimpleDateFormat("yyyyMMddHHmmss", Locale.getDefault()).format(new Date())
+                + HPROF_EXT;
         return new File(storageDir, hprofFileName);
     }
 

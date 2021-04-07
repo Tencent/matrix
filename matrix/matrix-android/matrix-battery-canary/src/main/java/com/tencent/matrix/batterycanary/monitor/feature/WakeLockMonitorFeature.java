@@ -25,6 +25,7 @@ public final class WakeLockMonitorFeature extends AbsMonitorFeature {
     public interface WakeLockListener {
         @Deprecated
         void onWakeLockTimeout(int warningCount, WakeLockTrace.WakeLockRecord record);
+
         void onWakeLockTimeout(WakeLockTrace.WakeLockRecord record, long backgroundMillis);
     }
 
@@ -32,7 +33,8 @@ public final class WakeLockMonitorFeature extends AbsMonitorFeature {
     long mOverTimeMillis;
     final Map<IBinder, WakeLockTrace> mWorkingWakeLocks = new ConcurrentHashMap<>(2);
     final WakeLockTracing mWakeLockTracing = new WakeLockTracing();
-    @Nullable PowerManagerServiceHooker.IListener mListener;
+    @Nullable
+    PowerManagerServiceHooker.IListener mListener;
 
     private WakeLockListener getListener() {
         return mCore;
@@ -298,14 +300,14 @@ public final class WakeLockMonitorFeature extends AbsMonitorFeature {
             @NonNull
             @Override
             public String toString() {
-                return "WakeLockRecord{" +
-                        "flags=" + flags +
-                        ", tag='" + tag + '\'' +
-                        ", packageName='" + packageName + '\'' +
-                        ", stack='" + stack + '\'' +
-                        ", timeBgn=" + timeBgn +
-                        ", timeEnd=" + timeEnd +
-                        '}';
+                return "WakeLockRecord{"
+                        + "flags=" + flags
+                        + ", tag='" + tag
+                        + '\'' + ", packageName='" + packageName + '\''
+                        + ", stack='" + stack + '\''
+                        + ", timeBgn=" + timeBgn
+                        + ", timeEnd=" + timeEnd
+                        + '}';
             }
         }
     }
@@ -370,7 +372,8 @@ public final class WakeLockMonitorFeature extends AbsMonitorFeature {
         public Entry.DigitEntry<Integer> totalAcquireCount;
         public Entry.DigitEntry<Integer> totalReleaseCount;
 
-        WakeLockSnapshot() {}
+        WakeLockSnapshot() {
+        }
 
         @Override
         public Delta<WakeLockSnapshot> diff(WakeLockSnapshot bgn) {

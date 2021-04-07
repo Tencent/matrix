@@ -16,7 +16,6 @@
 
 package com.tencent.matrix.javalib.util;
 
-import java.util.Locale;
 import java.util.regex.Pattern;
 
 /**

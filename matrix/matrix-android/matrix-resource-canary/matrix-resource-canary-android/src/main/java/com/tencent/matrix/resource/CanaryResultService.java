@@ -67,20 +67,21 @@ public class CanaryResultService extends MatrixJobIntentService {
         }
     }
 
+    // notice: compatible
     private void doReportHprofResult(String resultPath, String activityName) {
+        Issue issue = new Issue(SharePluginInfo.IssueType.LEAK_FOUND);
+        final JSONObject resultJson = new JSONObject();
         try {
-            final JSONObject resultJson = new JSONObject();
-//            resultJson = DeviceUtil.getDeviceInfo(resultJson, getApplication());
-
             resultJson.put(SharePluginInfo.ISSUE_RESULT_PATH, resultPath);
             resultJson.put(SharePluginInfo.ISSUE_ACTIVITY_NAME, activityName);
-            Plugin plugin =  Matrix.with().getPluginByClass(ResourcePlugin.class);
-
-            if (plugin != null) {
-                plugin.onDetectIssue(new Issue(resultJson));
-            }
+            issue.setContent(resultJson);
         } catch (Throwable thr) {
             MatrixLog.printErrStackTrace(TAG, thr, "unexpected exception, skip reporting.");
+        }
+
+        Plugin plugin =  Matrix.with().getPluginByClass(ResourcePlugin.class);
+        if (plugin != null) {
+            plugin.onDetectIssue(issue);
         }
     }
 }

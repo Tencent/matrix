@@ -26,6 +26,7 @@ dependencies {
     implementation project(':matrix-resource-canary:matrix-resource-canary-common')
     implementation "com.tencent.tinker:tinker-ziputils:1.9.2"
     implementation project(':matrix-android-lib')
+    implementation project(':matrix-resource-canary:matrix-resource-canary-analyzer')
     implementation 'androidx.core:core:1.0.0'
 }
 
