@@ -237,12 +237,15 @@ public interface BatteryMonitorCallback extends
             printer.createSection("stacks");
             boolean dumpStacks = getMonitor().getConfig().isAggressiveMode;
             if (!dumpStacks || !getMonitor().getConfig().threadWatchList.isEmpty()) {
-                for (String item : getMonitor().getConfig().threadWatchList) {
-                    for (ThreadJiffiesEntry threadJiffies : threadJiffiesList.getList()) {
-                        if (item.equalsIgnoreCase(threadJiffies.name) || threadJiffies.name.startsWith(item)) {
+                for (ThreadJiffiesEntry threadJiffies : threadJiffiesList.getList()) {
+                    for (String settingItem : getMonitor().getConfig().threadWatchList) {
+                        if (settingItem.equalsIgnoreCase(threadJiffies.name) || threadJiffies.name.contains(settingItem)) {
                             dumpStacks = true;
                             break;
                         }
+                    }
+                    if (dumpStacks) {
+                        break;
                     }
                 }
             }
