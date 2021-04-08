@@ -32,6 +32,7 @@ import android.text.TextUtils;
 
 import com.tencent.matrix.Matrix;
 import com.tencent.matrix.batterycanary.BatteryMonitorPlugin;
+import com.tencent.matrix.batterycanary.monitor.AppStats;
 import com.tencent.matrix.util.MatrixLog;
 
 import java.io.File;
@@ -44,6 +45,13 @@ import java.util.ListIterator;
 import java.util.regex.Pattern;
 
 import static android.content.Context.ACTIVITY_SERVICE;
+import static com.tencent.matrix.batterycanary.monitor.AppStats.APP_STAT_BACKGROUND;
+import static com.tencent.matrix.batterycanary.monitor.AppStats.APP_STAT_FOREGROUND;
+import static com.tencent.matrix.batterycanary.monitor.AppStats.APP_STAT_FOREGROUND_SERVICE;
+import static com.tencent.matrix.batterycanary.monitor.AppStats.DEV_STAT_CHARGING;
+import static com.tencent.matrix.batterycanary.monitor.AppStats.DEV_STAT_SAVE_POWER_MODE;
+import static com.tencent.matrix.batterycanary.monitor.AppStats.DEV_STAT_SCREEN_OFF;
+import static com.tencent.matrix.batterycanary.monitor.AppStats.DEV_STAT_UN_CHARGING;
 
 /**
  * @author liyongjie
@@ -205,51 +213,53 @@ public final class BatteryCanaryUtil {
         }
     }
 
+    @AppStats.AppStatusDef
     public static int getAppStat(Context context, boolean isForeground) {
-        if (isForeground) return 1; // 前台
+        if (isForeground) return APP_STAT_FOREGROUND; // 前台
         if (hasForegroundService(context)) {
-            return 3; // 后台（有前台服务）
+            return APP_STAT_FOREGROUND_SERVICE; // 后台（有前台服务）
         }
-        return 2; // 后台
+        return APP_STAT_BACKGROUND; // 后台
     }
 
+    @AppStats.DevStatusDef
     public static int getDeviceStat(Context context) {
         if (isDeviceCharging(context)) {
-            return 1; // 充电中
+            return DEV_STAT_CHARGING; // 充电中
         }
 
         // 未充电状态细分:
         if (!isDeviceScreenOn(context)) {
-            return 3; // 息屏
+            return DEV_STAT_SCREEN_OFF; // 息屏
         }
         if (isDeviceOnPowerSave(context)) {
-            return 4; // 省电模式开启
+            return DEV_STAT_SAVE_POWER_MODE; // 省电模式开启
         }
-        return 2;
+        return DEV_STAT_UN_CHARGING;
     }
 
-    public static String convertAppStat(int appStat) {
+    public static String convertAppStat(@AppStats.AppStatusDef int appStat) {
         switch (appStat) {
-            case 1:
+            case APP_STAT_FOREGROUND:
                 return "fg";
-            case 2:
+            case APP_STAT_BACKGROUND:
                 return "bg";
-            case 3:
+            case APP_STAT_FOREGROUND_SERVICE:
                 return "fgSrv";
             default:
                 return "unknown";
         }
     }
 
-    public static String convertDevStat(int devStat) {
+    public static String convertDevStat(@AppStats.DevStatusDef int devStat) {
         switch (devStat) {
-            case 1:
+            case DEV_STAT_CHARGING:
                 return "charging";
-            case 2:
+            case DEV_STAT_UN_CHARGING:
                 return "non_charge";
-            case 3:
+            case DEV_STAT_SCREEN_OFF:
                 return "screen_off";
-            case 4:
+            case DEV_STAT_SAVE_POWER_MODE:
                 return "doze";
             default:
                 return "unknown";
