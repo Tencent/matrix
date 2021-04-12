@@ -268,19 +268,28 @@ public interface BatteryMonitorCallback extends
             }
             if (dumpStacks) {
                 Map<Thread, StackTraceElement[]> stackTraces = Thread.getAllStackTraces();
-                if (stackTraces != null) {
-                    for (Map.Entry<Thread, StackTraceElement[]> entry : stackTraces.entrySet()) {
-                        String threadName = entry.getKey().getName();
-                        StackTraceElement[] elements = entry.getValue();
-                        for (ThreadJiffiesEntry threadJiffies : threadJiffiesList.getList()) {
-                            if (threadName.contains(threadJiffies.name)) {
-                                printer.append("|   -> ").append(threadName).append("\n");
-                                String stack = BatteryCanaryUtil.stackTraceToString(elements);
-                                if (!TextUtils.isEmpty(stack)) {
-                                    for (String line : stack.split("\n")) {
-                                        printer.append("|      ").append(line).append("\n");
-                                    }
-                                }
+                MatrixLog.i(TAG, "onWatchingThreads dump stacks, get all threads size = " + stackTraces);
+
+                for (Map.Entry<Thread, StackTraceElement[]> entry : stackTraces.entrySet()) {
+                    Thread thread = entry.getKey();
+                    StackTraceElement[] elements = entry.getValue();
+                    String threadName = thread.getName();
+
+                    for (ThreadJiffiesEntry threadJiffies: threadJiffiesList.getList()) {
+                        String targetThreadName = threadJiffies.name;
+                        if (targetThreadName.equalsIgnoreCase(threadName)
+                                || threadName.contains(targetThreadName)) {
+
+                            // Dump stacks of traced thread
+                            // thread name
+                            printer.append("|   -> ")
+                                    .append("(").append(thread.getState()).append(")")
+                                    .append(threadName).append("(").append(thread.getId()).append(")")
+                                    .append("\n");
+                            String stack = BatteryCanaryUtil.stackTraceToString(elements);
+                            // thread stacks
+                            for (StackTraceElement item : elements) {
+                                printer.append("|      ").append(item).append("\n");
                             }
                         }
                     }
