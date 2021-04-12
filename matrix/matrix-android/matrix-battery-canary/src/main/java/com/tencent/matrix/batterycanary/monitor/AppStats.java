@@ -1,20 +1,42 @@
 package com.tencent.matrix.batterycanary.monitor;
 
+import android.support.annotation.IntDef;
 import android.support.annotation.Nullable;
 
+import com.tencent.matrix.Matrix;
 import com.tencent.matrix.batterycanary.BatteryCanary;
+import com.tencent.matrix.batterycanary.BatteryMonitorPlugin;
 import com.tencent.matrix.batterycanary.monitor.feature.AppStatMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.DeviceStatMonitorFeature;
 import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
 import com.tencent.matrix.batterycanary.utils.TimeBreaker;
 
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * @author Kaede
  * @since 2021/1/27
  */
-final public class AppStats {
+public class AppStats {
+
+    @IntDef(value = {
+            APP_STAT_FOREGROUND,
+            APP_STAT_FOREGROUND_SERVICE,
+            APP_STAT_BACKGROUND
+    })
+    @Retention(RetentionPolicy.SOURCE)
+    public @interface AppStatusDef {}
+
+    @IntDef(value = {
+            DEV_STAT_CHARGING,
+            DEV_STAT_UN_CHARGING,
+            DEV_STAT_SCREEN_OFF,
+            DEV_STAT_SAVE_POWER_MODE
+    })
+    @Retention(RetentionPolicy.SOURCE)
+    public @interface DevStatusDef {}
 
     public static final int APP_STAT_FOREGROUND = 1;
     public static final int APP_STAT_FOREGROUND_SERVICE = 3;
@@ -61,26 +83,32 @@ final public class AppStats {
         return getAppStat() == APP_STAT_FOREGROUND;
     }
 
+    public boolean hasForegroundService() {
+        return getAppStat() == APP_STAT_FOREGROUND_SERVICE;
+    }
+
     public boolean isCharging() {
         return getDevStat() == DEV_STAT_CHARGING;
     }
 
+    @AppStatusDef
     public int getAppStat() {
         if (appFgRatio >= 50) return APP_STAT_FOREGROUND;
         if (appFgSrvRatio >= 50) return APP_STAT_FOREGROUND_SERVICE;
         return APP_STAT_BACKGROUND;
     }
 
-    public AppStats setForeground(boolean bool) {
-        mForegroundOverride = new AtomicBoolean(bool);
-        return this;
-    }
-
+    @DevStatusDef
     public int getDevStat() {
         if (devChargingRatio >= 50) return DEV_STAT_CHARGING;
         if (devSceneOffRatio >= 50) return DEV_STAT_SCREEN_OFF;
         if (devLowEnergyRatio >= 50) return DEV_STAT_SAVE_POWER_MODE;
         return DEV_STAT_UN_CHARGING;
+    }
+
+    public AppStats setForeground(boolean bool) {
+        mForegroundOverride = new AtomicBoolean(bool);
+        return this;
     }
 
     @Override
@@ -104,7 +132,13 @@ final public class AppStats {
     }
 
     public static AppStats current() {
-        return current(0L);
+        if (Matrix.isInstalled()) {
+            BatteryMonitorPlugin plugin = Matrix.with().getPluginByClass(BatteryMonitorPlugin.class);
+            if (plugin != null) {
+                return new CurrAppStats(plugin.core());
+            }
+        }
+        return current(1L);
     }
 
     public static AppStats current(long millisFromNow) {
@@ -149,5 +183,42 @@ final public class AppStats {
             }
         }
         return stats;
+    }
+
+    static final class CurrAppStats extends AppStats {
+        final BatteryMonitorCore mCore;
+        public CurrAppStats(BatteryMonitorCore core) {
+            mCore = core;
+        }
+
+        @Override
+        public long getMinute() {
+            return 0;
+        }
+
+        @Override
+        public boolean isForeground() {
+            return mCore.isForeground();
+        }
+
+        @Override
+        public boolean hasForegroundService() {
+            return BatteryCanaryUtil.hasForegroundService(mCore.getContext());
+        }
+
+        @Override
+        public boolean isCharging() {
+            return BatteryCanaryUtil.isDeviceCharging(mCore.getContext());
+        }
+
+        @Override
+        public int getAppStat() {
+            return BatteryCanaryUtil.getAppStat(mCore.getContext(), isForeground());
+        }
+
+        @Override
+        public int getDevStat() {
+            return BatteryCanaryUtil.getDeviceStat(mCore.getContext());
+        }
     }
 }

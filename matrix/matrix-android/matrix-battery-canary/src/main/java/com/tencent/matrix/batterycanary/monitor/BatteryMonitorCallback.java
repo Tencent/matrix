@@ -251,21 +251,23 @@ public interface BatteryMonitorCallback extends
             }
 
             // Dump thread stacks if need
+            printer.createSection("stacks");
             boolean dumpStacks = getMonitor().getConfig().isAggressiveMode;
-            if (!dumpStacks && !getMonitor().getConfig().threadWatchList.isEmpty()) {
-                for (String item : getMonitor().getConfig().threadWatchList) {
-                    for (ThreadJiffiesEntry threadJiffies : threadJiffiesList.getList()) {
-                        if (item.equalsIgnoreCase(threadJiffies.name) || threadJiffies.name.startsWith(item)) {
+            if (!dumpStacks || !getMonitor().getConfig().threadWatchList.isEmpty()) {
+                for (ThreadJiffiesEntry threadJiffies : threadJiffiesList.getList()) {
+                    for (String settingItem : getMonitor().getConfig().threadWatchList) {
+                        if (settingItem.equalsIgnoreCase(threadJiffies.name) || threadJiffies.name.contains(settingItem)) {
                             dumpStacks = true;
                             break;
                         }
                     }
+                    if (dumpStacks) {
+                        break;
+                    }
                 }
             }
             if (dumpStacks) {
-                printer.createSection("stacks");
                 Map<Thread, StackTraceElement[]> stackTraces = Thread.getAllStackTraces();
-                //noinspection ConstantConditions
                 if (stackTraces != null) {
                     for (Map.Entry<Thread, StackTraceElement[]> entry : stackTraces.entrySet()) {
                         String threadName = entry.getKey().getName();
@@ -283,6 +285,8 @@ public interface BatteryMonitorCallback extends
                         }
                     }
                 }
+            } else {
+                printer.append("|   disabled").append("\n");
             }
 
             printer.writeEnding();
