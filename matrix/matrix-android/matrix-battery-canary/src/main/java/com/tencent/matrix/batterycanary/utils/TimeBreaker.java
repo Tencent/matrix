@@ -1,10 +1,6 @@
 package com.tencent.matrix.batterycanary.utils;
 
-import androidx.arch.core.util.Function;
 import android.os.SystemClock;
-import androidx.annotation.Nullable;
-import androidx.annotation.RestrictTo;
-import androidx.core.util.Pair;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -12,6 +8,9 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import androidx.annotation.Nullable;
+import androidx.annotation.RestrictTo;
 
 /**
  * Configure timeline portions & ratio for the given stamps and return split-portions with each weight.

@@ -275,7 +275,7 @@ public interface BatteryMonitorCallback extends
                     StackTraceElement[] elements = entry.getValue();
                     String threadName = thread.getName();
 
-                    for (ThreadJiffiesEntry threadJiffies: threadJiffiesList.getList()) {
+                    for (ThreadJiffiesEntry threadJiffies : threadJiffiesList.getList()) {
                         String targetThreadName = threadJiffies.name;
                         if (targetThreadName.equalsIgnoreCase(threadName)
                                 || threadName.contains(targetThreadName)) {

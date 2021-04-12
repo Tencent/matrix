@@ -1,9 +1,5 @@
 package com.tencent.matrix.batterycanary.monitor;
 
-import androidx.annotation.IntDef;
-import androidx.annotation.Nullable;
-import androidx.core.util.Pair;
-
 import com.tencent.matrix.Matrix;
 import com.tencent.matrix.batterycanary.BatteryCanary;
 import com.tencent.matrix.batterycanary.BatteryMonitorPlugin;
@@ -15,6 +11,9 @@ import com.tencent.matrix.batterycanary.utils.TimeBreaker;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.util.concurrent.atomic.AtomicBoolean;
+
+import androidx.annotation.IntDef;
+import androidx.annotation.Nullable;
 
 /**
  * @author Kaede
@@ -28,7 +27,8 @@ public class AppStats {
             APP_STAT_BACKGROUND
     })
     @Retention(RetentionPolicy.SOURCE)
-    public @interface AppStatusDef {}
+    public @interface AppStatusDef {
+    }
 
     @IntDef(value = {
             DEV_STAT_CHARGING,
@@ -37,7 +37,8 @@ public class AppStats {
             DEV_STAT_SAVE_POWER_MODE
     })
     @Retention(RetentionPolicy.SOURCE)
-    public @interface DevStatusDef {}
+    public @interface DevStatusDef {
+    }
 
     public static final int APP_STAT_FOREGROUND = 1;
     public static final int APP_STAT_FOREGROUND_SERVICE = 3;
@@ -65,7 +66,8 @@ public class AppStats {
     public boolean isValid;
     public long duringMillis;
 
-    @Nullable  private AtomicBoolean mForegroundOverride;
+    @Nullable
+    private AtomicBoolean mForegroundOverride;
 
     AppStats() {
         sceneTop1 = "";
@@ -188,7 +190,8 @@ public class AppStats {
 
     static final class CurrAppStats extends AppStats {
         final BatteryMonitorCore mCore;
-        public CurrAppStats(BatteryMonitorCore core) {
+
+        CurrAppStats(BatteryMonitorCore core) {
             mCore = core;
         }
 
