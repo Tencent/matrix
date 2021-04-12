@@ -3,7 +3,7 @@ package com.tencent.matrix.batterycanary.utils;
 import android.annotation.SuppressLint;
 import android.os.Build;
 import android.os.SystemClock;
-import android.support.annotation.NonNull;
+import androidx.annotation.NonNull;
 
 import java.util.Arrays;
 import java.util.LinkedList;

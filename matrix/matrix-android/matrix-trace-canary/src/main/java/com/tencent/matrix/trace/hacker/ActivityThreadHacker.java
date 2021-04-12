@@ -20,7 +20,7 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.Message;
 import android.os.SystemClock;
-import android.support.annotation.RequiresApi;
+import androidx.annotation.RequiresApi;
 
 import com.tencent.matrix.trace.core.AppMethodBeat;
 import com.tencent.matrix.util.MatrixLog;

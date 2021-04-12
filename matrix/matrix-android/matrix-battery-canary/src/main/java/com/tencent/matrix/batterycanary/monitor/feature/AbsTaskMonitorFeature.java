@@ -5,11 +5,11 @@ import android.annotation.SuppressLint;
 import android.os.Looper;
 import android.os.Process;
 import android.os.SystemClock;
-import android.support.annotation.AnyThread;
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
-import android.support.annotation.WorkerThread;
-import android.support.v4.util.Pair;
+import androidx.annotation.AnyThread;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.annotation.WorkerThread;
+import androidx.core.util.Pair;
 import android.util.SparseArray;
 
 import com.tencent.matrix.batterycanary.BuildConfig;

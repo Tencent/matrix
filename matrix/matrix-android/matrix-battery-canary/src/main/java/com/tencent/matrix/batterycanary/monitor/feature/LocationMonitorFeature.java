@@ -1,6 +1,6 @@
 package com.tencent.matrix.batterycanary.monitor.feature;
 
-import android.support.annotation.NonNull;
+import androidx.annotation.NonNull;
 import android.text.TextUtils;
 
 import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
