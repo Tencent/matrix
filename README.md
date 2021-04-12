@@ -136,6 +136,11 @@ At this point, Matrix has been integrated into the app and is beginning to colle
 
   Detect the file IO issues, including performance of file IO and closeable leak 
 
+- **Battery Canary:**
+
+  App thread activities monitor (Background watch & foreground loop watch), Sonsor usage monitor (WakeLock/Alarm/Gps/Wifi/Bluetooth), Background network activities (Wifi/Mobile) monitor.
+
+
 ## Features
 #### APK Checker
 
@@ -168,6 +173,11 @@ At this point, Matrix has been integrated into the app and is beginning to colle
 - **More feature.** Including performance of file IO and closeable leak.
 - **Compatible with Android P.**
 
+#### Battery Canary
+- **Easy-to-use.** Use out of box (unit tests as example).
+- **More feature.** Flexible extending with base and utils APIs.
+
+
 ## Getting Started
 ***The JCenter repository will stop service on February 1, 2022. So we uploaded Matrix(since 0.8.0) to the MavenCentral repository.***
 
@@ -194,6 +204,7 @@ At this point, Matrix has been integrated into the app and is beginning to colle
     implementation group: "com.tencent.matrix", name: "matrix-resource-canary-common", version: MATRIX_VERSION, changing: true
     implementation group: "com.tencent.matrix", name: "matrix-io-canary", version: MATRIX_VERSION, changing: true
     implementation group: "com.tencent.matrix", name: "matrix-sqlite-lint-android-sdk", version: MATRIX_VERSION, changing: true
+    implementation group: "com.tencent.matrix", name: "matrix-battery-canary", version: MATRIX_VERSION, changing: true
   }
   
   apply plugin: 'com.tencent.matrix-plugin'
@@ -289,6 +300,24 @@ For more Matrix configurations, look at the [sample](https://github.com/Tencent/
 
 Note:
 You can get more about Matrix output at the wiki [The output of Matrix](https://github.com/Tencent/matrix/wiki/Matrix-Android--data-format); 
+
+
+#### Battery Canary Usage
+
+Init BatteryCanary as the following codes:
+```java
+BatteryMonitorConfig config = new BatteryMonitorConfig.Builder()
+        .enable(JiffiesMonitorFeature.class)
+        .enableStatPidProc(true)
+        .greyJiffiesTime(30 * 1000L)
+        .setCallback(new BatteryMonitorCallback.BatteryPrinter())
+        .build();
+
+BatteryMonitorPlugin plugin = new BatteryMonitorPlugin(config);
+```
+
+For detail usage, please reference showcase tests at `com.tencent.matrix.batterycanary.ApisTest`.
+
 
 #### APK Checker Usage
 
@@ -472,6 +501,8 @@ Matrix-android 当前监控范围包括：应用安装包大小，帧率变化�
   按官方最佳实践自动化检测 SQLite 语句的使用质量
 - IO Canary:
   检测文件 IO 问题，包括：文件 IO 监控和 Closeable Leak 监控
+- Battery Canary:
+  监控 App 活跃线程（待机状态 & 前台 Loop 监控）、ASM 调用 (WakeLock/Alarm/Gps/Wifi/Bluetooth 等传感器)、 后台流量 (Wifi/移动网络)等 Battery Historian 统计 App 耗电的数据
 
 ## 特性
 
@@ -508,6 +539,12 @@ Matrix-android 当前监控范围包括：应用安装包大小，帧率变化�
 - 性能、泄漏全面监控，对 IO 质量心中有数
 - 兼容到 Android P
 
+#### Battery Canary
+
+- 接入简单，开箱即用
+- 预留 Base 类和 Utility 工具以便扩展监控特性
+
+
 ## 使用方法
 ***由于 JCenter 服务将于 2022 年 2 月 1 日下线，我们已将 Matrix 新版本（>= 0.8.0) maven repo 发布至 MavenCentral。***
 
@@ -533,6 +570,7 @@ Matrix-android 当前监控范围包括：应用安装包大小，帧率变化�
     implementation group: "com.tencent.matrix", name: "matrix-resource-canary-common", version: MATRIX_VERSION, changing: true
     implementation group: "com.tencent.matrix", name: "matrix-io-canary", version: MATRIX_VERSION, changing: true
     implementation group: "com.tencent.matrix", name: "matrix-sqlite-lint-android-sdk", version: MATRIX_VERSION, changing: true
+    implementation group: "com.tencent.matrix", name: "matrix-battery-canary", version: MATRIX_VERSION, changing: true
   }
 
   apply plugin: 'com.tencent.matrix-plugin'
@@ -627,6 +665,24 @@ Matrix-android 当前监控范围包括：应用安装包大小，帧率变化�
 
 PS：
 Matrix 分析后的输出字段的含义请查看 [Matrix 输出内容的含义解析](https://github.com/Tencent/matrix/wiki/Matrix-Android--data-format)
+
+
+#### Battery Canary Usage
+
+相关初始化代码如下：
+```java
+BatteryMonitorConfig config = new BatteryMonitorConfig.Builder()
+        .enable(JiffiesMonitorFeature.class)
+        .enableStatPidProc(true)
+        .greyJiffiesTime(30 * 1000L)
+        .setCallback(new BatteryMonitorCallback.BatteryPrinter())
+        .build();
+
+BatteryMonitorPlugin plugin = new BatteryMonitorPlugin(config);
+```
+
+具体使用方式，请参考单元测试里相关用例的代码： `com.tencent.matrix.batterycanary.ApisTest`.
+
 
 #### APK Checker
 
