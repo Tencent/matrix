@@ -30,8 +30,8 @@ dependencies {
     implementation project(':matrix-android-lib')
     testImplementation 'junit:junit:4.12'
 
-    androidTestImplementation 'com.android.support:support-annotations:27.0.2'
-    androidTestImplementation 'com.android.support.test:runner:1.0.1'
+    androidTestImplementation 'androidx.annotation:annotation:1.0.0'
+    androidTestImplementation 'androidx.test.ext:junit:1.1.1'
 }
 
 version = rootProject.ext.VERSION_NAME

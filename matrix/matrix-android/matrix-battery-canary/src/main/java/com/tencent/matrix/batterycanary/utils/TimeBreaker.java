@@ -1,8 +1,10 @@
 package com.tencent.matrix.batterycanary.utils;
 
+import androidx.arch.core.util.Function;
 import android.os.SystemClock;
-import android.support.annotation.Nullable;
-import android.support.annotation.RestrictTo;
+import androidx.annotation.Nullable;
+import androidx.annotation.RestrictTo;
+import androidx.core.util.Pair;
 
 import java.util.ArrayList;
 import java.util.Collections;

@@ -4,7 +4,7 @@ import android.os.Build;
 import android.os.Looper;
 import android.os.MessageQueue;
 import android.os.SystemClock;
-import android.support.annotation.CallSuper;
+import androidx.annotation.CallSuper;
 import android.util.Log;
 import android.util.Printer;
 

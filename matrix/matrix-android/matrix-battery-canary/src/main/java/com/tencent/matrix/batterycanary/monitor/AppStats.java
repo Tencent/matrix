@@ -1,7 +1,8 @@
 package com.tencent.matrix.batterycanary.monitor;
 
-import android.support.annotation.IntDef;
-import android.support.annotation.Nullable;
+import androidx.annotation.IntDef;
+import androidx.annotation.Nullable;
+import androidx.core.util.Pair;
 
 import com.tencent.matrix.Matrix;
 import com.tencent.matrix.batterycanary.BatteryCanary;
