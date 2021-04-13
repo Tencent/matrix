@@ -250,26 +250,52 @@ public interface BatteryMonitorCallback extends
                         .append("\n");
             }
 
-            if (getMonitor().getConfig().isAggressiveMode) {
-                printer.createSection("stacks");
+            // Dump thread stacks if need
+            printer.createSection("stacks");
+            boolean dumpStacks = getMonitor().getConfig().isAggressiveMode;
+            if (!dumpStacks || !getMonitor().getConfig().threadWatchList.isEmpty()) {
+                for (ThreadJiffiesEntry threadJiffies : threadJiffiesList.getList()) {
+                    for (String settingItem : getMonitor().getConfig().threadWatchList) {
+                        if (settingItem.equalsIgnoreCase(threadJiffies.name) || threadJiffies.name.contains(settingItem)) {
+                            dumpStacks = true;
+                            break;
+                        }
+                    }
+                    if (dumpStacks) {
+                        break;
+                    }
+                }
+            }
+            if (dumpStacks) {
                 Map<Thread, StackTraceElement[]> stackTraces = Thread.getAllStackTraces();
-                if (stackTraces != null) {
-                    for (Map.Entry<Thread, StackTraceElement[]> entry : stackTraces.entrySet()) {
-                        String threadName = entry.getKey().getName();
-                        StackTraceElement[] elements = entry.getValue();
-                        for (ThreadJiffiesEntry threadJiffies : threadJiffiesList.getList()) {
-                            if (threadName.contains(threadJiffies.name)) {
-                                printer.append("|   -> ").append(threadName).append("\n");
-                                String stack = BatteryCanaryUtil.stackTraceToString(elements);
-                                if (!TextUtils.isEmpty(stack)) {
-                                    for (String line : stack.split("\n")) {
-                                        printer.append("|      ").append(line).append("\n");
-                                    }
-                                }
+                MatrixLog.i(TAG, "onWatchingThreads dump stacks, get all threads size = " + stackTraces);
+
+                for (Map.Entry<Thread, StackTraceElement[]> entry : stackTraces.entrySet()) {
+                    Thread thread = entry.getKey();
+                    StackTraceElement[] elements = entry.getValue();
+                    String threadName = thread.getName();
+
+                    for (ThreadJiffiesEntry threadJiffies : threadJiffiesList.getList()) {
+                        String targetThreadName = threadJiffies.name;
+                        if (targetThreadName.equalsIgnoreCase(threadName)
+                                || threadName.contains(targetThreadName)) {
+
+                            // Dump stacks of traced thread
+                            // thread name
+                            printer.append("|   -> ")
+                                    .append("(").append(thread.getState()).append(")")
+                                    .append(threadName).append("(").append(thread.getId()).append(")")
+                                    .append("\n");
+                            String stack = BatteryCanaryUtil.stackTraceToString(elements);
+                            // thread stacks
+                            for (StackTraceElement item : elements) {
+                                printer.append("|      ").append(item).append("\n");
                             }
                         }
                     }
                 }
+            } else {
+                printer.append("|   disabled").append("\n");
             }
 
             printer.writeEnding();
@@ -323,10 +349,16 @@ public interface BatteryMonitorCallback extends
                     long avgJiffies = threadJiffies.get() / minute;
                     if (appStats.isForeground()) {
                         if (minute > 10 && avgJiffies > getMonitor().getConfig().fgThreadWatchingLimit) {
+                            MatrixLog.i(TAG, "threadWatchDog fg set, name = " + delta.dlt.name
+                                    + ", pid = " + delta.dlt.pid
+                                    + ", tid = " + threadJiffies.tid);
                             mJiffiesFeat.watchBackThreadSate(true, delta.dlt.pid, threadJiffies.tid);
                         }
                     } else {
                         if (minute > 10 && avgJiffies > getMonitor().getConfig().bgThreadWatchingLimit) {
+                            MatrixLog.i(TAG, "threadWatchDog bg set, name = " + delta.dlt.name
+                                    + ", pid = " + delta.dlt.pid
+                                    + ", tid = " + threadJiffies.tid);
                             mJiffiesFeat.watchBackThreadSate(false, delta.dlt.pid, threadJiffies.tid);
                         }
                     }
