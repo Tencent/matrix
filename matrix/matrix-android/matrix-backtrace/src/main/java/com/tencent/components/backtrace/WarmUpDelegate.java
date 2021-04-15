@@ -505,7 +505,11 @@ class WarmUpDelegate {
                 case ACTION_WARMED_UP:
                     WeChatBacktraceNative.setWarmedUp(true);
                     updateBacktraceMode(mCurrentBacktraceMode);
-                    context.unregisterReceiver(this);
+                    try {
+                        context.unregisterReceiver(this);
+                    } catch (Throwable e) {
+                        MatrixLog.printErrStackTrace(TAG, e, "Unregister receiver twice.");
+                    }
                     break;
             }
         }
