@@ -1,6 +1,8 @@
 package com.tencent.matrix.jectl;
 
 
+import androidx.annotation.Keep;
+
 import com.tencent.matrix.util.MatrixLog;
 
 /**
@@ -62,13 +64,18 @@ public class JeCtl {
         return getVersionNative();
     }
 
+    @Keep
     private static native void initNative();
 
+    @Keep
     private static native int compactNative();
 
+    @Keep
     private static native int preAllocRetainNative(int size0, int size1, int limit0, int limit1);
 
+    @Keep
     private static native String getVersionNative();
 
+    @Keep
     public static native boolean setRetain(boolean enable);
 }

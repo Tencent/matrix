@@ -9,7 +9,7 @@ android {
         versionCode rootProject.VERSION_CODE
         versionName rootProject.VERSION_NAME
 
-        testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+        testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
         consumerProguardFiles "consumer-rules.pro"
 
         ndk {
