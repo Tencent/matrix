@@ -1,0 +1,173 @@
+//
+// Copyright (C) 2015 The Android Open Source Project
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+
+cc_defaults {
+    name: "libbase_cflags_defaults",
+    cflags: [
+        "-Wall",
+        "-Werror",
+        "-Wextra",
+        "-D_FILE_OFFSET_BITS=64",
+    ],
+}
+
+cc_library_headers {
+    name: "libbase_headers",
+    vendor_available: true,
+    recovery_available: true,
+    host_supported: true,
+    export_include_dirs: ["include"],
+
+    target: {
+        linux_bionic: {
+            enabled: true,
+        },
+        windows: {
+            enabled: true,
+        },
+    },
+}
+
+cc_defaults {
+    name: "libbase_defaults",
+    defaults: ["libbase_cflags_defaults"],
+    srcs: [
+        "chrono_utils.cpp",
+        "cmsg.cpp",
+        "file.cpp",
+        "logging.cpp",
+        "mapped_file.cpp",
+        "parsenetaddress.cpp",
+        "properties.cpp",
+        "quick_exit.cpp",
+        "stringprintf.cpp",
+        "strings.cpp",
+        "threads.cpp",
+        "test_utils.cpp",
+    ],
+
+    cppflags: ["-Wexit-time-destructors"],
+    shared_libs: ["liblog"],
+    target: {
+        android: {
+            sanitize: {
+                misc_undefined: ["integer"],
+            },
+
+        },
+        linux: {
+            srcs: [
+                "errors_unix.cpp",
+            ],
+        },
+        darwin: {
+            srcs: [
+                "errors_unix.cpp",
+            ],
+        },
+        linux_bionic: {
+            enabled: true,
+        },
+        windows: {
+            srcs: [
+                "errors_windows.cpp",
+                "utf8.cpp",
+            ],
+            exclude_srcs: [
+                "cmsg.cpp",
+            ],
+            enabled: true,
+        },
+    },
+}
+
+cc_library {
+    name: "libbase",
+    defaults: ["libbase_defaults"],
+    vendor_available: true,
+    recovery_available: true,
+    host_supported: true,
+    vndk: {
+        enabled: true,
+        support_system_process: true,
+    },
+    header_libs: [
+        "libbase_headers",
+    ],
+    export_header_lib_headers: ["libbase_headers"],
+}
+
+cc_library_static {
+    name: "libbase_ndk",
+    defaults: ["libbase_defaults"],
+    sdk_version: "current",
+    stl: "c++_static",
+    export_include_dirs: ["include"],
+}
+
+// Tests
+// ------------------------------------------------------------------------------
+cc_test {
+    name: "libbase_test",
+    defaults: ["libbase_cflags_defaults"],
+    host_supported: true,
+    srcs: [
+        "cmsg_test.cpp",
+        "endian_test.cpp",
+        "errors_test.cpp",
+        "file_test.cpp",
+        "logging_test.cpp",
+        "macros_test.cpp",
+        "mapped_file_test.cpp",
+        "parsedouble_test.cpp",
+        "parseint_test.cpp",
+        "parsenetaddress_test.cpp",
+        "properties_test.cpp",
+        "quick_exit_test.cpp",
+        "scopeguard_test.cpp",
+        "stringprintf_test.cpp",
+        "strings_test.cpp",
+        "test_main.cpp",
+        "test_utils_test.cpp",
+    ],
+    target: {
+        android: {
+            sanitize: {
+                misc_undefined: ["integer"],
+            },
+        },
+        linux: {
+            srcs: ["chrono_utils_test.cpp"],
+        },
+        windows: {
+            srcs: ["utf8_test.cpp"],
+            cflags: ["-Wno-unused-parameter"],
+            enabled: true,
+        },
+    },
+    local_include_dirs: ["."],
+    shared_libs: ["libbase"],
+    compile_multilib: "both",
+    multilib: {
+        lib32: {
+            suffix: "32",
+        },
+        lib64: {
+            suffix: "64",
+        },
+    },
+    test_suites: ["device-tests"],
+}

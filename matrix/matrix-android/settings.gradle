@@ -1,3 +1,5 @@
+apply from:"$rootDir/gradle/Arguments.gradle"
+
 include ':matrix-gradle-plugin'
 include ':matrix-android-commons'
 include ':matrix-android-lib'
@@ -12,6 +14,13 @@ include ':matrix-io-canary'
 include ':matrix-sqlite-lint:matrix-sqlite-lint-android-sdk'
 include ':matrix-battery-canary'
 include ':matrix-arscutil'
+
+// from wxperf
+include ':matrix-backtrace'
+include ':matrix-backtrace-benchmark'
+include ':matrix-hooks'
+include ':matrix-jectl'
+include ':matrix-fd'
 
 // WIP
 include ':work-in-progress:matrix-memory-canary'

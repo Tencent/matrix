@@ -1,0 +1,77 @@
+apply plugin: 'com.android.library'
+
+apply from: rootProject.file('gradle/WeChatNativeDepend.gradle')
+
+android {
+    compileSdkVersion rootProject.compileSdkVersion
+
+    defaultConfig {
+        minSdkVersion rootProject.MIN_SDK_VERSION_FOR_HOOK
+        targetSdkVersion rootProject.targetSdkVersion
+        versionCode rootProject.VERSION_CODE
+        versionName rootProject.VERSION_NAME
+
+        testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+
+        ndk {
+            abiFilters rootProject.ABI_FILTERS as String[]
+        }
+
+        externalNativeBuild {
+            cmake {
+                arguments = ['-DANDROID_STL=c++_shared', "-DEnableLOG=${gradle.enableLog() ? "ON" : "OFF"}" as String]
+            }
+
+            exportHeaders {
+                from('src/main/cpp/common') {
+                    include '**/*.h'
+                }
+                from('src/main/cpp/libwechatbacktrace/include') {
+                    include '**/*.h'
+                }
+                from('src/main/cpp/external/libunwindstack/include') {
+                    include '**/*.h'
+                }
+            }
+        }
+    }
+
+    buildTypes {
+
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    externalNativeBuild {
+        cmake {
+            path "CMakeLists.txt"
+        }
+    }
+
+}
+
+dependencies {
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+
+    implementation 'com.android.support:appcompat-v7:28.0.0'
+    testImplementation 'junit:junit:4.12'
+    androidTestImplementation 'com.android.support.test:runner:1.0.2'
+    androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.2'
+//    implementation "com.tencent.stubs:logger:${rootProject.LOGGER_VERSION}"
+    implementation project(':matrix-android-lib')
+}
+
+group = rootProject.GROUP
+version = rootProject.VERSION_NAME
+
+if("External" == rootProject.ext.PUBLISH_CHANNEL) {
+    apply from: rootProject.file('gradle/android-publish.gradle')
+}
+else {
+    apply from: rootProject.file('gradle/WeChatPublish.gradle')
+    wechatPublish {
+        artifactId = POM_ARTIFACT_ID
+    }
+}

@@ -1,0 +1,92 @@
+apply plugin: 'com.android.application'
+
+apply from: rootProject.file('gradle/WeChatNativeDepend.gradle')
+
+android {
+    compileSdkVersion rootProject.COMPILE_SDK_VERSION
+    defaultConfig {
+        minSdkVersion rootProject.MIN_SDK_VERSION
+        targetSdkVersion rootProject.TARGET_SDK_VERSION
+        versionCode rootProject.VERSION_CODE
+        versionName rootProject.VERSION_NAME
+
+        testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+        consumerProguardFiles "consumer-rules.pro"
+
+        ndk {
+            abiFilters rootProject.ABI_FILTERS as String[]
+        }
+
+        externalNativeBuild {
+            cmake {
+                arguments = ['-DANDROID_STL=c++_shared']
+//                arguments "-Dplatform=android"
+//                cppFlags "-std=gnu++11"
+            }
+        }
+    }
+
+    signingConfigs {
+        debug {
+            keyAlias 'androiddebugkey'
+            keyPassword 'android'
+            storeFile rootProject.file('compile/debug.keystore')
+            storePassword 'android'
+        }
+        release {
+            keyAlias signingConfigs.debug.keyAlias
+            keyPassword signingConfigs.debug.keyPassword
+            storeFile signingConfigs.debug.storeFile
+            storePassword signingConfigs.debug.storePassword
+            v2SigningEnabled false
+        }
+    }
+
+    buildTypes {
+        debug {
+            debuggable true
+            signingConfig signingConfigs.debug
+            minifyEnabled false
+        }
+        release {
+            signingConfig signingConfigs.release
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    // Encapsulates your external native build configurations.
+    externalNativeBuild {
+
+        // Encapsulates your CMake build configurations.
+        cmake {
+
+            // Provides a relative path to your CMake build script.
+            path "CMakeLists.txt"
+        }
+    }
+
+    sourceSets {
+        main {
+            jniLibs {
+                setSrcDirs (['./libs'] as Set)
+            }
+        }
+
+    }
+}
+
+dependencies {
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+    implementation 'com.android.support:appcompat-v7:28.0.0'
+    implementation 'com.android.support.constraint:constraint-layout:1.1.3'
+    testImplementation 'junit:junit:4.12'
+    androidTestImplementation 'com.android.support.test:runner:1.0.2'
+    androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.2'
+    implementation project(':wxperf-hook')
+    implementation project(':wxperf-fd')
+    implementation project(':wxperf-jectl')
+    implementation project(':wxperf-backtrace')
+    implementation project(':wxperf-benchmark')
+    implementation "com.tencent.stubs:logger:${rootProject.LOGGER_VERSION}"
+}
