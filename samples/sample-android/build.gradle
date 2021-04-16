@@ -1,5 +1,29 @@
 
 buildscript {
+    ext {
+        minSdkVersion = 19
+        targetSdkVersion = 23
+        compileSdkVersion = 29
+        buildToolsVersion = '29.0.2'
+        javaVersion = JavaVersion.VERSION_1_8
+
+        MATRIX_VERSION = "0.8.1"
+        GROUP = 'com.tencent.matrix'
+        VERSION_NAME = "${MATRIX_VERSION}"
+
+        compileMatrixWithSrc = true
+
+        useLocalMaven = {
+            return compileMatrixWithSrc
+        }
+
+        if (useLocalMaven()) {
+            if (!MATRIX_VERSION.endsWith("-SNAPSHOT")) {
+                MATRIX_VERSION = "${MATRIX_VERSION}-SNAPSHOT"
+            }
+        }
+    }
+
     repositories {
         mavenLocal()
         google()
