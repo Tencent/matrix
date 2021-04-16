@@ -7,14 +7,18 @@ buildscript {
         buildToolsVersion = '29.0.2'
         javaVersion = JavaVersion.VERSION_1_8
 
-        MATRIX_VERSION = "0.8.1"
+        MATRIX_VERSION = "0.9.1"
         GROUP = 'com.tencent.matrix'
         VERSION_NAME = "${MATRIX_VERSION}"
 
-        compileMatrixWithSrc = true
+        /**
+         * Set 'compileMatrixWithSrc = true' or with compile args '-PcompileWithSrc=true'
+         * to compile Sample module with matrix source code for further debug.
+         */
+        compileMatrixWithSrc = false
 
         useLocalMaven = {
-            return compileMatrixWithSrc
+            return compileMatrixWithSrc ?: properties?.compileWithSrc ?: false
         }
 
         if (useLocalMaven()) {
