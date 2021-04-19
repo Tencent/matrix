@@ -18,8 +18,6 @@ package com.tencent.matrix.batterycanary.monitor;
 
 import android.app.Application;
 import android.content.Context;
-import android.support.test.InstrumentationRegistry;
-import android.support.test.runner.AndroidJUnit4;
 
 import com.tencent.matrix.Matrix;
 import com.tencent.matrix.batterycanary.BatteryMonitorPlugin;
@@ -30,6 +28,9 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import androidx.test.InstrumentationRegistry;
+import androidx.test.ext.junit.runners.AndroidJUnit4;
+
 
 @RunWith(AndroidJUnit4.class)
 public class AppStatsTest {
@@ -39,7 +40,7 @@ public class AppStatsTest {
 
     @Before
     public void setUp() {
-        mContext = InstrumentationRegistry.getTargetContext();
+        mContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
         if (!Matrix.isInstalled()) {
             Matrix.init(new Matrix.Builder(((Application) mContext.getApplicationContext())).build());
         }
