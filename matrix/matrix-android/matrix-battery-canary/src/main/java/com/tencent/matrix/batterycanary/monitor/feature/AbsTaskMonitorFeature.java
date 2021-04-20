@@ -5,11 +5,6 @@ import android.annotation.SuppressLint;
 import android.os.Looper;
 import android.os.Process;
 import android.os.SystemClock;
-import androidx.annotation.AnyThread;
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.annotation.WorkerThread;
-import androidx.core.util.Pair;
 import android.util.SparseArray;
 
 import com.tencent.matrix.batterycanary.BuildConfig;
@@ -30,6 +25,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
+
+import androidx.annotation.AnyThread;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.annotation.WorkerThread;
+import androidx.core.util.Pair;
 
 import static com.tencent.matrix.batterycanary.monitor.BatteryMonitorConfig.DEF_STAMP_OVERHEAT;
 
@@ -208,19 +209,22 @@ public abstract class AbsTaskMonitorFeature extends AbsMonitorFeature {
 
     @WorkerThread
     protected void onTaskFinished(final String key, final int hashcode) {
-        final TaskJiffiesSnapshot bgn = mTaskJiffiesTrace.remove(hashcode);
+        final TaskJiffiesSnapshot bgn = mTaskJiffiesTrace.get(hashcode);
         // Trace task concurrent count -
         // onTaskConcurrentDec(hashcode);
 
-        if (Looper.myLooper() != Looper.getMainLooper() && bgn != null) {
-            TaskJiffiesSnapshot end = createSnapshot(key, Process.myTid());
-            if (end != null) {
-                end.isFinished = true;
-                updateDeltas(bgn, end);
+        if (bgn != null) {
+            mTaskJiffiesTrace.remove(hashcode);
+            if (Looper.myLooper() != Looper.getMainLooper()) {
+                TaskJiffiesSnapshot end = createSnapshot(key, Process.myTid());
+                if (end != null) {
+                    end.isFinished = true;
+                    updateDeltas(bgn, end);
+                }
+                // Update task stamp list
+                onStatTask(Process.myTid(), IDLE_TASK,
+                        end == null ? bgn.jiffies.get() : end.jiffies.get());
             }
-            // Update task stamp list
-            onStatTask(Process.myTid(), IDLE_TASK,
-                    end == null ? bgn.jiffies.get() : end.jiffies.get());
         }
     }
 
@@ -431,8 +435,11 @@ public abstract class AbsTaskMonitorFeature extends AbsMonitorFeature {
         TaskJiffiesSnapshot snapshot = new TaskJiffiesSnapshot();
         snapshot.tid = tid;
         snapshot.name = name;
+
+        // FIXME: perf opt needed via devStat & appStat caching
         snapshot.appStat = BatteryCanaryUtil.getAppStat(mCore.getContext(), mCore.isForeground());
         snapshot.devStat = BatteryCanaryUtil.getDeviceStat(mCore.getContext());
+
         try {
             Callable<String> supplier = mCore.getConfig().onSceneSupplier;
             snapshot.scene = supplier == null ? "" : supplier.call();
