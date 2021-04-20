@@ -135,6 +135,7 @@ public class MonitorFeatureTaskTracingTest {
             latch1.await();
             endMillis = System.currentTimeMillis();
             delta1 = endMillis - bgnMillis;
+            Assert.assertEquals(0, feat.mTaskJiffiesTrace.size());
 
 
             feat.setEnabled(true);
@@ -159,6 +160,7 @@ public class MonitorFeatureTaskTracingTest {
             endMillis = System.currentTimeMillis();
             delta2 = endMillis - bgnMillis;
             float incRatio = (delta2 - delta1) / ((float) delta1);
+            Assert.assertEquals(0, feat.mTaskJiffiesTrace.size());
             Assert.assertTrue("TIME CONSUMED: " + delta1 + " vs " + delta2 + ", inc: " + incRatio, incRatio <= 0.02f);
         }
 
@@ -203,7 +205,7 @@ public class MonitorFeatureTaskTracingTest {
             latch1.await();
             endMillis = System.currentTimeMillis();
             delta1 = endMillis - bgnMillis;
-
+            Assert.assertEquals(0, feat.mTaskJiffiesTrace.size());
 
             feat.setEnabled(true);
             final CountDownLatch latch2 = new CountDownLatch(loopCount);
@@ -227,6 +229,7 @@ public class MonitorFeatureTaskTracingTest {
             endMillis = System.currentTimeMillis();
             delta2 = endMillis - bgnMillis;
             float incRatio = (delta2 - delta1) / ((float) delta1);
+            Assert.assertEquals(0, feat.mTaskJiffiesTrace.size());
             Assert.assertTrue("TIME CONSUMED: " + delta1 + " vs " + delta2 + ", inc: " + incRatio, incRatio <= 0.02f);
         }
 
@@ -271,7 +274,7 @@ public class MonitorFeatureTaskTracingTest {
             latch1.await();
             endMillis = System.currentTimeMillis();
             delta1 = endMillis - bgnMillis;
-
+            Assert.assertEquals(0, feat.mTaskJiffiesTrace.size());
 
             feat.setEnabled(true);
             final CountDownLatch latch2 = new CountDownLatch(loopCount);
@@ -295,6 +298,7 @@ public class MonitorFeatureTaskTracingTest {
             endMillis = System.currentTimeMillis();
             delta2 = endMillis - bgnMillis;
             float incRatio = (delta2 - delta1) / ((float) delta1);
+            Assert.assertEquals(0, feat.mTaskJiffiesTrace.size());
             Assert.assertTrue("TIME CONSUMED: " + delta1 + " vs " + delta2 + ", inc: " + incRatio, incRatio <= 0.02f);
         }
     }

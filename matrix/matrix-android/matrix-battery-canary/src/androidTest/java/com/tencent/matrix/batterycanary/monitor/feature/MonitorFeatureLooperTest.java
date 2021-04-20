@@ -295,13 +295,13 @@ public class MonitorFeatureLooperTest {
 
         Assert.assertTrue(feature.mWatchingList.isEmpty());
         Assert.assertTrue(feature.mLooperMonitorTrace.isEmpty());
-        Assert.assertTrue(feature.mTaskJiffiesTrace.isEmpty());
+        Assert.assertEquals(0, feature.mTaskJiffiesTrace.size());
         Assert.assertTrue(feature.mDeltaList.isEmpty());
 
         feature.watchLooper(handlerThread);
         Assert.assertEquals(1, feature.mWatchingList.size());
         Assert.assertEquals(1, feature.mLooperMonitorTrace.size());
-        Assert.assertTrue(feature.mTaskJiffiesTrace.isEmpty());
+        Assert.assertEquals(0, feature.mTaskJiffiesTrace.size());
         Assert.assertTrue(feature.mDeltaList.isEmpty());
 
         Handler handler = new Handler(handlerThread.getLooper());
@@ -342,7 +342,7 @@ public class MonitorFeatureLooperTest {
         feature.clearFinishedJiffies();
         Assert.assertEquals(1, feature.mWatchingList.size());
         Assert.assertEquals(1, feature.mLooperMonitorTrace.size());
-        Assert.assertTrue(feature.mTaskJiffiesTrace.isEmpty());
+        Assert.assertEquals(0, feature.mTaskJiffiesTrace.size());
         Assert.assertTrue(feature.mDeltaList.isEmpty());
 
         feature.mDeltaList.addAll(deltas);
@@ -350,7 +350,7 @@ public class MonitorFeatureLooperTest {
         feature.onTurnOff();
         Assert.assertTrue(feature.mWatchingList.isEmpty());
         Assert.assertTrue(feature.mLooperMonitorTrace.isEmpty());
-        Assert.assertTrue(feature.mTaskJiffiesTrace.isEmpty());
+        Assert.assertEquals(0, feature.mTaskJiffiesTrace.size());
         Assert.assertTrue(feature.mDeltaList.isEmpty());
     }
 
