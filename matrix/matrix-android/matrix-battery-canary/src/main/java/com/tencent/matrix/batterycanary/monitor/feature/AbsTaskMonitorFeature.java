@@ -9,7 +9,7 @@ import androidx.annotation.AnyThread;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.WorkerThread;
-import androidx.core.util.Pair;
+import android.util.Pair;
 import android.util.SparseArray;
 
 import com.tencent.matrix.batterycanary.BuildConfig;
