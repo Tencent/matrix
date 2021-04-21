@@ -431,8 +431,11 @@ public abstract class AbsTaskMonitorFeature extends AbsMonitorFeature {
         TaskJiffiesSnapshot snapshot = new TaskJiffiesSnapshot();
         snapshot.tid = tid;
         snapshot.name = name;
+
+        // FIXME: perf opt needed via devStat & appStat caching
         snapshot.appStat = BatteryCanaryUtil.getAppStat(mCore.getContext(), mCore.isForeground());
         snapshot.devStat = BatteryCanaryUtil.getDeviceStat(mCore.getContext());
+        
         try {
             Callable<String> supplier = mCore.getConfig().onSceneSupplier;
             snapshot.scene = supplier == null ? "" : supplier.call();
