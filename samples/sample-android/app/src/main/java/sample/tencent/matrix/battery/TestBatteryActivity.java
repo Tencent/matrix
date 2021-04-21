@@ -26,7 +26,7 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.Bundle;
 import android.os.Process;
-import android.support.annotation.Nullable;
+import androidx.annotation.Nullable;
 
 import com.tencent.matrix.Matrix;
 //import com.tencent.matrix.batterycanary.BatteryCanaryPlugin;

@@ -5,12 +5,13 @@ import android.annotation.SuppressLint;
 import android.os.Looper;
 import android.os.Process;
 import android.os.SystemClock;
+import android.util.Pair;
+import android.util.SparseArray;
+
 import androidx.annotation.AnyThread;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.WorkerThread;
-import android.util.Pair;
-import android.util.SparseArray;
 
 import com.tencent.matrix.batterycanary.BuildConfig;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
@@ -369,7 +370,9 @@ public abstract class AbsTaskMonitorFeature extends AbsMonitorFeature {
     }
 
     protected boolean shouldTraceTask(Delta<TaskJiffiesSnapshot> delta) {
-        return BuildConfig.DEBUG || (delta.during > 1000L && delta.dlt.jiffies.get() / Math.max(1, delta.during / BatteryCanaryUtil.ONE_MIN) > 100L);
+        return BuildConfig.DEBUG || (delta.during > 1000L
+                && delta.dlt.jiffies.get() / Math.max(1, delta.during / BatteryCanaryUtil.ONE_MIN)
+                > 100L);
     }
 
     protected void updateDeltas(Delta<TaskJiffiesSnapshot> delta) {
@@ -435,7 +438,7 @@ public abstract class AbsTaskMonitorFeature extends AbsMonitorFeature {
         // FIXME: perf opt needed via devStat & appStat caching
         snapshot.appStat = BatteryCanaryUtil.getAppStat(mCore.getContext(), mCore.isForeground());
         snapshot.devStat = BatteryCanaryUtil.getDeviceStat(mCore.getContext());
-        
+
         try {
             Callable<String> supplier = mCore.getConfig().onSceneSupplier;
             snapshot.scene = supplier == null ? "" : supplier.call();

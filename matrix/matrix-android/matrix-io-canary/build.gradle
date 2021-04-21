@@ -57,13 +57,15 @@ dependencies {
 version = rootProject.ext.VERSION_NAME
 group = rootProject.ext.GROUP
 
-if("External" == rootProject.ext.PUBLISH_CHANNEL) {
-    apply from: rootProject.file('gradle/android-publish.gradle')
-}
-else {
-    apply from: rootProject.file('gradle/WeChatPublish.gradle')
-    apply from: rootProject.file('gradle/WeChatNativeDepend.gradle')
-    wechatPublish {
-        artifactId = POM_ARTIFACT_ID
+if (rootProject.file('gradle/WeChatPublish.gradle').exists()) {
+    if("External" == rootProject.ext.PUBLISH_CHANNEL) {
+        apply from: rootProject.file('gradle/android-publish.gradle')
+    }
+    else {
+        apply from: rootProject.file('gradle/WeChatPublish.gradle')
+        apply from: rootProject.file('gradle/WeChatNativeDepend.gradle')
+        wechatPublish {
+            artifactId = POM_ARTIFACT_ID
+        }
     }
 }

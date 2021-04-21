@@ -1,0 +1,42 @@
+dependencies {
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+
+    def matrixModules = [
+            "matrix-commons",
+            "matrix-thread-canary",
+            "matrix-battery-canary",
+            "matrix-android-lib",
+            "matrix-android-commons",
+            "matrix-trace-canary",
+            "matrix-resource-canary-android",
+            "matrix-resource-canary-common",
+            "matrix-io-canary",
+            "matrix-sqlite-lint-android-sdk",
+    ]
+
+    matrixModules.each { moduleName ->
+        implementation group: "com.tencent.matrix", name: moduleName, version: MATRIX_VERSION, changing: true
+    }
+
+    // releaseImplementation group: "com.tencent.matrix", name: "matrix-sqlite-lint-android-sdk-no-op", version: MATRIX_VERSION, changing: true
+
+    implementation "androidx.appcompat:appcompat:1.1.0"
+    implementation 'androidx.recyclerview:recyclerview:1.1.0'
+
+    // TODO
+    apkCheckerDependency group: "com.tencent.matrix", name: "matrix-apk-canary", version: MATRIX_VERSION, changing: true
+
+    testImplementation 'junit:junit:4.12'
+    androidTestCompile('com.android.support.test.espresso:espresso-core:2.2.2', {
+        exclude group: 'com.android.support', module: 'support-annotations'
+    })
+
+    apkCheckerDependency("com.tencent.matrix:matrix-apk-canary:${MATRIX_VERSION}")
+    sevenZipDependency('com.tencent.mm:SevenZip:1.2.17') {
+        artifact {
+            classifier = project.osdetector.classifier
+            name = "SevenZip"
+            type = 'exe'
+        }
+    }
+}
