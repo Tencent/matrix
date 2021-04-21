@@ -20,8 +20,8 @@ dependencies {
 
     // releaseImplementation group: "com.tencent.matrix", name: "matrix-sqlite-lint-android-sdk-no-op", version: MATRIX_VERSION, changing: true
 
-    implementation 'com.android.support:appcompat-v7:28.0.0'
-    implementation 'com.android.support:recyclerview-v7:28.0.0'
+    implementation "androidx.appcompat:appcompat:1.1.0"
+    implementation 'androidx.recyclerview:recyclerview:1.1.0'
 
     // TODO
     apkCheckerDependency group: "com.tencent.matrix", name: "matrix-apk-canary", version: MATRIX_VERSION, changing: true

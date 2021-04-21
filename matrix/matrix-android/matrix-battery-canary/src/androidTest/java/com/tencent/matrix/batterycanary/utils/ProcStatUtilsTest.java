@@ -62,7 +62,7 @@ public class ProcStatUtilsTest {
 
     @Before
     public void setUp() {
-        mContext = InstrumentationRegistry.getTargetContext();
+        mContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
     }
 
     @After
@@ -569,7 +569,7 @@ public class ProcStatUtilsTest {
 
         @Before
         public void setUp() {
-            mContext = InstrumentationRegistry.getTargetContext();
+            mContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
         }
 
         @After
@@ -717,7 +717,7 @@ public class ProcStatUtilsTest {
 
         @Before
         public void setUp() {
-            mContext = InstrumentationRegistry.getTargetContext();
+            mContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
         }
 
         @After
@@ -749,7 +749,7 @@ public class ProcStatUtilsTest {
 
         @Before
         public void setUp() {
-            mContext = InstrumentationRegistry.getTargetContext();
+            mContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
         }
 
         @After

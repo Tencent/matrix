@@ -8,7 +8,6 @@ import androidx.annotation.CallSuper;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.VisibleForTesting;
-import androidx.core.util.Consumer;
 import android.text.TextUtils;
 import android.util.LongSparseArray;
 
@@ -39,6 +38,7 @@ import com.tencent.matrix.batterycanary.monitor.feature.WakeLockMonitorFeature.W
 import com.tencent.matrix.batterycanary.monitor.feature.WifiMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.WifiMonitorFeature.WifiSnapshot;
 import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
+import com.tencent.matrix.batterycanary.utils.Consumer;
 import com.tencent.matrix.util.MatrixLog;
 
 import java.util.Arrays;

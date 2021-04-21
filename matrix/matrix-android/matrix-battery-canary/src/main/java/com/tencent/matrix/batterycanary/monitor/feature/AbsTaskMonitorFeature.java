@@ -9,7 +9,7 @@ import androidx.annotation.AnyThread;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.WorkerThread;
-import androidx.core.util.Pair;
+import android.util.Pair;
 import android.util.SparseArray;
 
 import com.tencent.matrix.batterycanary.BuildConfig;
@@ -431,8 +431,11 @@ public abstract class AbsTaskMonitorFeature extends AbsMonitorFeature {
         TaskJiffiesSnapshot snapshot = new TaskJiffiesSnapshot();
         snapshot.tid = tid;
         snapshot.name = name;
+
+        // FIXME: perf opt needed via devStat & appStat caching
         snapshot.appStat = BatteryCanaryUtil.getAppStat(mCore.getContext(), mCore.isForeground());
         snapshot.devStat = BatteryCanaryUtil.getDeviceStat(mCore.getContext());
+        
         try {
             Callable<String> supplier = mCore.getConfig().onSceneSupplier;
             snapshot.scene = supplier == null ? "" : supplier.call();
