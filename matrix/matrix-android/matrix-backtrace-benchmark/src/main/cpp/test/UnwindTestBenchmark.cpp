@@ -32,7 +32,7 @@ extern "C" {
 #define BENCHMARK(mode, test_func) BENCHMARK_TIMES(mode, benchmark_times, test_func)
 
 JNIEXPORT void JNICALL
-Java_com_tencent_wxperf_jni_test_UnwindBenckmarkTest_benchmarkInitNative(JNIEnv *env,
+Java_com_tencent_matrix_benchmark_test_UnwindBenckmarkTest_benchmarkInitNative(JNIEnv *env,
                                                                          jclass clazz) {
 
     wechat_backtrace::BACKTRACE_FUNC_WRAPPER(notify_maps_changed)();
@@ -40,7 +40,7 @@ Java_com_tencent_wxperf_jni_test_UnwindBenckmarkTest_benchmarkInitNative(JNIEnv 
 
 
 JNIEXPORT void JNICALL
-Java_com_tencent_wxperf_jni_test_UnwindBenckmarkTest_benchmarkNative(JNIEnv *env, jclass clazz) {
+Java_com_tencent_matrix_benchmark_test_UnwindBenckmarkTest_benchmarkNative(JNIEnv *env, jclass clazz) {
 
     // DWARF_UNWIND mode benchmark
     BENCHMARK(DWARF_UNWIND, func_selfso)
@@ -55,7 +55,7 @@ Java_com_tencent_wxperf_jni_test_UnwindBenckmarkTest_benchmarkNative(JNIEnv *env
 }
 
 JNIEXPORT void JNICALL
-Java_com_tencent_wxperf_jni_test_UnwindBenckmarkTest_debugNative(JNIEnv *env, jclass clazz) {
+Java_com_tencent_matrix_benchmark_test_UnwindBenckmarkTest_debugNative(JNIEnv *env, jclass clazz) {
 //    BENCHMARK_TIMES(DWARF_UNWIND, 1, func_selfso);
 //    BENCHMARK_TIMES(FP_UNWIND, 1, func_selfso);
     for (int i = 0; i < 1; i++) {
@@ -69,12 +69,12 @@ Java_com_tencent_wxperf_jni_test_UnwindBenckmarkTest_debugNative(JNIEnv *env, jc
 }
 
 JNIEXPORT void JNICALL
-Java_com_tencent_wxperf_jni_test_UnwindBenckmarkTest_refreshMapsInfoNative(JNIEnv *env, jclass clazz) {
+Java_com_tencent_matrix_benchmark_test_UnwindBenckmarkTest_refreshMapsInfoNative(JNIEnv *env, jclass clazz) {
     wechat_backtrace::notify_maps_changed();
 }
 
 JNIEXPORT void JNICALL
-Java_com_tencent_wxperf_jni_test_UnwindBenckmarkTest_unwindAdapter(JNIEnv *env, jclass clazz) {
+Java_com_tencent_matrix_benchmark_test_UnwindBenckmarkTest_unwindAdapter(JNIEnv *env, jclass clazz) {
     BENCHMARK_TIMES(UNWIND_ADAPTER, 1, func_selfso);
 }
 

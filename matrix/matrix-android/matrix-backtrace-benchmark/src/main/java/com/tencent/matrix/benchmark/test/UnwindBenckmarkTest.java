@@ -1,12 +1,12 @@
-package com.tencent.wxperf.jni.test;
+package com.tencent.matrix.benchmark.test;
 
 public class UnwindBenckmarkTest {
 
     private final static String TAG = "Wxperf.UnwindBenckmarkTest";
 
     static {
-        System.loadLibrary("wxperf-jni");
-        System.loadLibrary("wxperf-benchmark");
+        System.loadLibrary("matrix-hooks");
+        System.loadLibrary("backtrace-benchmark");
     }
 
     public static native void benchmarkInitNative();
