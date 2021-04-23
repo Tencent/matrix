@@ -18,8 +18,8 @@ package com.tencent.matrix.batterycanary.utils;
 
 import android.os.IBinder;
 import android.os.IInterface;
-import android.support.annotation.Nullable;
-import android.support.annotation.RestrictTo;
+import androidx.annotation.Nullable;
+import androidx.annotation.RestrictTo;
 
 import com.tencent.matrix.util.MatrixLog;
 

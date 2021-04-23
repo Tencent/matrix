@@ -1,7 +1,7 @@
 package com.tencent.matrix.batterycanary.monitor.feature;
 
 import android.content.Context;
-import android.support.annotation.Nullable;
+import androidx.annotation.Nullable;
 
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Differ.DigitDiffer;
 import com.tencent.matrix.batterycanary.utils.RadioStatUtil;

@@ -1,6 +1,6 @@
 ![Matrix-icon](assets/img/readme/header.png)
 
-[![license](http://img.shields.io/badge/license-BSD3-brightgreen.svg?style=flat)](https://github.com/Tencent/matrix/blob/master/LICENSE)[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/Tencent/matrix/pulls)[![WeChat Approved](https://img.shields.io/badge/Wechat%20Approved-0.8.0-red.svg)](https://github.com/Tencent/matrix/wiki)
+[![license](http://img.shields.io/badge/license-BSD3-brightgreen.svg?style=flat)](https://github.com/Tencent/matrix/blob/master/LICENSE)[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/Tencent/matrix/pulls)[![WeChat Approved](https://img.shields.io/badge/Wechat%20Approved-0.9.0-red.svg)](https://github.com/Tencent/matrix/wiki)
 
 (中文版本请参看[这里](#matrix_cn))  
 
@@ -136,6 +136,11 @@ At this point, Matrix has been integrated into the app and is beginning to colle
 
   Detect the file IO issues, including performance of file IO and closeable leak 
 
+- **Battery Canary:**
+
+  App thread activities monitor (Background watch & foreground loop watch), Sonsor usage monitor (WakeLock/Alarm/Gps/Wifi/Bluetooth), Background network activities (Wifi/Mobile) monitor.
+
+
 ## Features
 #### APK Checker
 
@@ -168,12 +173,17 @@ At this point, Matrix has been integrated into the app and is beginning to colle
 - **More feature.** Including performance of file IO and closeable leak.
 - **Compatible with Android P.**
 
+#### Battery Canary
+- **Easy-to-use.** Use out of box (unit tests as example).
+- **More feature.** Flexible extending with base and utils APIs.
+
+
 ## Getting Started
 ***The JCenter repository will stop service on February 1, 2022. So we uploaded Matrix(since 0.8.0) to the MavenCentral repository.***
 
 1. Configure `MATRIX_VERSION` in gradle.properties.
 ``` gradle
-  MATRIX_VERSION=0.8.0
+  MATRIX_VERSION=0.9.0
 ```
 
 2. Add `matrix-gradle-plugin` in your build.gradle:
@@ -194,6 +204,7 @@ At this point, Matrix has been integrated into the app and is beginning to colle
     implementation group: "com.tencent.matrix", name: "matrix-resource-canary-common", version: MATRIX_VERSION, changing: true
     implementation group: "com.tencent.matrix", name: "matrix-io-canary", version: MATRIX_VERSION, changing: true
     implementation group: "com.tencent.matrix", name: "matrix-sqlite-lint-android-sdk", version: MATRIX_VERSION, changing: true
+    implementation group: "com.tencent.matrix", name: "matrix-battery-canary", version: MATRIX_VERSION, changing: true
   }
   
   apply plugin: 'com.tencent.matrix-plugin'
@@ -288,15 +299,34 @@ Matrix gradle plugin could work with Android Gradle Plugin 3.5.0/4.0.0/4.1.0 cur
 For more Matrix configurations, look at the [sample](https://github.com/Tencent/matrix/tree/dev/samples/sample-android).
 
 Note:
-You can get more about Matrix output at the wiki [The output of Matrix](https://github.com/Tencent/matrix/wiki/Matrix-Android--data-format); 
+1. Since Matrix for Android has migrated to AndroidX since v0.9.0. You may need to add 'android.useAndroidX=true' flag to gradle.properties
+2. You can get more about Matrix output at the wiki [The output of Matrix](https://github.com/Tencent/matrix/wiki/Matrix-Android--data-format); 
+
+
+#### Battery Canary Usage
+
+Init BatteryCanary as the following codes:
+```java
+BatteryMonitorConfig config = new BatteryMonitorConfig.Builder()
+        .enable(JiffiesMonitorFeature.class)
+        .enableStatPidProc(true)
+        .greyJiffiesTime(30 * 1000L)
+        .setCallback(new BatteryMonitorCallback.BatteryPrinter())
+        .build();
+
+BatteryMonitorPlugin plugin = new BatteryMonitorPlugin(config);
+```
+
+For detail usage, please reference showcase tests at `com.tencent.matrix.batterycanary.ApisTest` or `sample.tencent.matrix.battery.BatteryCanaryInitHelper`.
+
 
 #### APK Checker Usage
 
-APK Checker can run independently in Jar ([matrix-apk-canary-0.8.0.jar](https://repo.maven.apache.org/maven2/com/tencent/matrix/matrix-apk-canary/0.8.0/matrix-apk-canary-0.8.0.jar)）  mode, usage:
+APK Checker can run independently in Jar ([matrix-apk-canary-0.9.0.jar](https://repo.maven.apache.org/maven2/com/tencent/matrix/matrix-apk-canary/0.9.0/matrix-apk-canary-0.9.0.jar)）  mode, usage:
 
 
 ```shell
-java -jar matrix-apk-canary-0.8.0.jar
+java -jar matrix-apk-canary-0.9.0.jar
 Usages: 
     --config CONFIG-FILE-PATH
 or
@@ -355,7 +385,7 @@ Matrix is under the BSD license. See the [LICENSE](https://github.com/Tencent/Ma
 
 # <a name="matrix_cn">Matrix</a>
 ![Matrix-icon](assets/img/readme/header.png)
-[![license](http://img.shields.io/badge/license-BSD3-brightgreen.svg?style=flat)](https://github.com/Tencent/matrix/blob/master/LICENSE)[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/Tencent/matrix/pulls)  [![WeChat Approved](https://img.shields.io/badge/Wechat%20Approved-0.8.0-red.svg)](https://github.com/Tencent/matrix/wiki)
+[![license](http://img.shields.io/badge/license-BSD3-brightgreen.svg?style=flat)](https://github.com/Tencent/matrix/blob/master/LICENSE)[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/Tencent/matrix/pulls)  [![WeChat Approved](https://img.shields.io/badge/Wechat%20Approved-0.9.0-red.svg)](https://github.com/Tencent/matrix/wiki)
 
 **Matrix** 是一款微信研发并日常使用的应用性能接入框架，支持iOS, macOS和Android。
 Matrix 通过接入各种性能监控方案，对性能监控项的异常数据进行采集和分析，输出相应的问题分析、定位与优化建议，从而帮助开发者开发出更高质量的应用。
@@ -472,6 +502,8 @@ Matrix-android 当前监控范围包括：应用安装包大小，帧率变化�
   按官方最佳实践自动化检测 SQLite 语句的使用质量
 - IO Canary:
   检测文件 IO 问题，包括：文件 IO 监控和 Closeable Leak 监控
+- Battery Canary:
+  监控 App 活跃线程（待机状态 & 前台 Loop 监控）、ASM 调用 (WakeLock/Alarm/Gps/Wifi/Bluetooth 等传感器)、 后台流量 (Wifi/移动网络)等 Battery Historian 统计 App 耗电的数据
 
 ## 特性
 
@@ -508,12 +540,18 @@ Matrix-android 当前监控范围包括：应用安装包大小，帧率变化�
 - 性能、泄漏全面监控，对 IO 质量心中有数
 - 兼容到 Android P
 
+#### Battery Canary
+
+- 接入简单，开箱即用
+- 预留 Base 类和 Utility 工具以便扩展监控特性
+
+
 ## 使用方法
 ***由于 JCenter 服务将于 2022 年 2 月 1 日下线，我们已将 Matrix 新版本（>= 0.8.0) maven repo 发布至 MavenCentral。***
 
 1. 在你项目根目录下的 gradle.properties 中配置要依赖的 Matrix 版本号，如：
 ``` gradle
-  MATRIX_VERSION=0.8.0
+  MATRIX_VERSION=0.9.0
 ```
 
 2. 在你项目根目录下的 build.gradle 文件添加 Matrix 依赖，如：
@@ -533,6 +571,7 @@ Matrix-android 当前监控范围包括：应用安装包大小，帧率变化�
     implementation group: "com.tencent.matrix", name: "matrix-resource-canary-common", version: MATRIX_VERSION, changing: true
     implementation group: "com.tencent.matrix", name: "matrix-io-canary", version: MATRIX_VERSION, changing: true
     implementation group: "com.tencent.matrix", name: "matrix-sqlite-lint-android-sdk", version: MATRIX_VERSION, changing: true
+    implementation group: "com.tencent.matrix", name: "matrix-battery-canary", version: MATRIX_VERSION, changing: true
   }
 
   apply plugin: 'com.tencent.matrix-plugin'
@@ -626,14 +665,33 @@ Matrix-android 当前监控范围包括：应用安装包大小，帧率变化�
 至此，Matrix就已成功集成到你的项目中，并且开始收集和分析性能相关异常数据，如仍有疑问，请查看 [示例](https://github.com/Tencent/Matrix/tree/dev/samples/sample-android/).
 
 PS：
-Matrix 分析后的输出字段的含义请查看 [Matrix 输出内容的含义解析](https://github.com/Tencent/matrix/wiki/Matrix-Android--data-format)
+1. 从 v0.9.0 开始，Matrix for Android 迁移到了 AndroidX. 你可能需要添加 'android.useAndroidX=true' 标志到 gradle.properties 文件里。
+2. Matrix 分析后的输出字段的含义请查看 [Matrix 输出内容的含义解析](https://github.com/Tencent/matrix/wiki/Matrix-Android--data-format)
+
+
+#### Battery Canary Usage
+
+相关初始化代码如下：
+```java
+BatteryMonitorConfig config = new BatteryMonitorConfig.Builder()
+        .enable(JiffiesMonitorFeature.class)
+        .enableStatPidProc(true)
+        .greyJiffiesTime(30 * 1000L)
+        .setCallback(new BatteryMonitorCallback.BatteryPrinter())
+        .build();
+
+BatteryMonitorPlugin plugin = new BatteryMonitorPlugin(config);
+```
+
+具体使用方式，请参考单元测试里相关用例的代码： `com.tencent.matrix.batterycanary.ApisTest` 或 `sample.tencent.matrix.battery.BatteryCanaryInitHelper`.
+
 
 #### APK Checker
 
-APK Check 以独立的 jar 包提供 ([matrix-apk-canary-0.8.0.jar](https://repo.maven.apache.org/maven2/com/tencent/matrix/matrix-apk-canary/0.8.0/matrix-apk-canary-0.8.0.jar)），你可以运行：
+APK Check 以独立的 jar 包提供 ([matrix-apk-canary-0.9.0.jar](https://repo.maven.apache.org/maven2/com/tencent/matrix/matrix-apk-canary/0.9.0/matrix-apk-canary-0.9.0.jar)），你可以运行：
 
 ```cmd
-java -jar matrix-apk-canary-0.8.0.jar
+java -jar matrix-apk-canary-0.9.0.jar
 ```
 
 查看 Usages 来使用它。

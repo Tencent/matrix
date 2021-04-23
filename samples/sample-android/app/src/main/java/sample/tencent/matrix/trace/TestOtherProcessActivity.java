@@ -2,7 +2,7 @@ package sample.tencent.matrix.trace;
 
 import android.app.Activity;
 import android.os.Bundle;
-import android.support.annotation.Nullable;
+import androidx.annotation.Nullable;
 
 public class TestOtherProcessActivity extends Activity {
     @Override
