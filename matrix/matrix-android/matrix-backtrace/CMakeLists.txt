@@ -49,7 +49,6 @@ SET(
         ${SOURCE_DIR}/libwechatbacktrace/LocalMaps.cpp
         ${SOURCE_DIR}/libwechatbacktrace/FpUnwinder.cpp
         ${SOURCE_DIR}/libwechatbacktrace/Backtrace.cpp
-        #        ${SOURCE_DIR}/QuickenTableReverse.cpp
 )
 
 ADD_LIBRARY(

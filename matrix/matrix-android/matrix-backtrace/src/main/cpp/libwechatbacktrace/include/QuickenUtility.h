@@ -60,8 +60,7 @@ namespace wechat_backtrace {
 
     inline static bool IsOatFile(const std::string &soname) {
         return EndsWith(soname, ".oat") ||
-               EndsWith(soname, ".odex") ||
-               EndsWith(soname, ".vdex")
+               EndsWith(soname, ".odex")
                ;
     }
 
