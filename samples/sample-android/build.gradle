@@ -15,7 +15,7 @@ buildscript {
          * Set 'compileMatrixWithSrc = true' or with compile args '-PcompileWithSrc=true'
          * to compile Sample module with matrix source code for further debug.
          */
-        compileMatrixWithSrc = false
+        compileMatrixWithSrc = true
 
         useLocalMaven = {
             return compileMatrixWithSrc ?: properties?.compileWithSrc ?: false

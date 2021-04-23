@@ -31,6 +31,21 @@ import com.tencent.matrix.Matrix;
 //import com.tencent.matrix.batterycanary.monitor.plugin.JiffiesMonitorPlugin;
 //import com.tencent.matrix.batterycanary.monitor.plugin.LooperTaskMonitorPlugin;
 //import com.tencent.matrix.batterycanary.monitor.plugin.WakeLockMonitorPlugin;
+import com.tencent.matrix.batterycanary.BatteryMonitorPlugin;
+import com.tencent.matrix.batterycanary.monitor.AppStats;
+import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCallback;
+import com.tencent.matrix.batterycanary.monitor.BatteryMonitorConfig;
+import com.tencent.matrix.batterycanary.monitor.feature.AlarmMonitorFeature;
+import com.tencent.matrix.batterycanary.monitor.feature.AppStatMonitorFeature;
+import com.tencent.matrix.batterycanary.monitor.feature.BlueToothMonitorFeature;
+import com.tencent.matrix.batterycanary.monitor.feature.DeviceStatMonitorFeature;
+import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature;
+import com.tencent.matrix.batterycanary.monitor.feature.LocationMonitorFeature;
+import com.tencent.matrix.batterycanary.monitor.feature.LooperTaskMonitorFeature;
+import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature;
+import com.tencent.matrix.batterycanary.monitor.feature.TrafficMonitorFeature;
+import com.tencent.matrix.batterycanary.monitor.feature.WakeLockMonitorFeature;
+import com.tencent.matrix.batterycanary.monitor.feature.WifiMonitorFeature;
 import com.tencent.matrix.iocanary.IOCanaryPlugin;
 import com.tencent.matrix.iocanary.config.IOConfig;
 import com.tencent.matrix.resource.ResourcePlugin;
@@ -48,7 +63,9 @@ import com.tencent.sqlitelint.config.SQLiteLintConfig;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.concurrent.Callable;
 
+import sample.tencent.matrix.battery.BatteryCanaryInitHelper;
 import sample.tencent.matrix.config.DynamicConfigImplDemo;
 import sample.tencent.matrix.listener.TestPluginListener;
 import sample.tencent.matrix.resource.ManualDumpActivity;
@@ -144,16 +161,9 @@ public class MatrixApplication extends Application {
             ThreadMonitor threadMonitor = new ThreadMonitor(new ThreadMonitorConfig.Builder().build());
             builder.plugin(threadMonitor);
 
-//            BatteryMonitor batteryMonitor = new BatteryMonitor(new BatteryMonitor.Builder()
-//                    .installPlugin(LooperTaskMonitorPlugin.class)
-//                    .installPlugin(JiffiesMonitorPlugin.class)
-//                    .installPlugin(WakeLockMonitorPlugin.class)
-//                    .disableAppForegroundNotifyByMatrix(false)
-//                    .wakelockTimeout(2 * 60 * 1000)
-//                    .greyJiffiesTime(2 * 1000)
-//                    .build()
-//            );
-//            builder.plugin(batteryMonitor);
+
+            BatteryMonitorPlugin batteryMonitorPlugin = BatteryCanaryInitHelper.createMonitor();
+            builder.plugin(batteryMonitorPlugin);
         }
 
         Matrix.init(builder.build());
