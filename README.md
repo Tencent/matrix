@@ -316,7 +316,7 @@ BatteryMonitorConfig config = new BatteryMonitorConfig.Builder()
 BatteryMonitorPlugin plugin = new BatteryMonitorPlugin(config);
 ```
 
-For detail usage, please reference showcase tests at `com.tencent.matrix.batterycanary.ApisTest`.
+For detail usage, please reference showcase tests at `com.tencent.matrix.batterycanary.ApisTest` or `sample.tencent.matrix.battery.BatteryCanaryInitHelper`.
 
 
 #### APK Checker Usage
@@ -681,7 +681,7 @@ BatteryMonitorConfig config = new BatteryMonitorConfig.Builder()
 BatteryMonitorPlugin plugin = new BatteryMonitorPlugin(config);
 ```
 
-具体使用方式，请参考单元测试里相关用例的代码： `com.tencent.matrix.batterycanary.ApisTest`.
+具体使用方式，请参考单元测试里相关用例的代码： `com.tencent.matrix.batterycanary.ApisTest` 或 `sample.tencent.matrix.battery.BatteryCanaryInitHelper`.
 
 
 #### APK Checker
