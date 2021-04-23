@@ -16,16 +16,38 @@
 
 package com.tencent.matrix.batterycanary;
 
+import android.app.Application;
 import android.content.Context;
-import androidx.test.platform.app.InstrumentationRegistry;
-import androidx.test.ext.junit.runners.AndroidJUnit4;
+import android.os.Handler;
+import android.os.Looper;
 
+import androidx.annotation.NonNull;
+import androidx.test.ext.junit.runners.AndroidJUnit4;
+import androidx.test.platform.app.InstrumentationRegistry;
+
+import com.tencent.matrix.Matrix;
+import com.tencent.matrix.batterycanary.monitor.AppStats;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCallback;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorConfig;
+import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
+import com.tencent.matrix.batterycanary.monitor.feature.AlarmMonitorFeature;
+import com.tencent.matrix.batterycanary.monitor.feature.AlarmMonitorFeature.AlarmSnapshot;
+import com.tencent.matrix.batterycanary.monitor.feature.AppStatMonitorFeature;
+import com.tencent.matrix.batterycanary.monitor.feature.BlueToothMonitorFeature;
+import com.tencent.matrix.batterycanary.monitor.feature.BlueToothMonitorFeature.BlueToothSnapshot;
+import com.tencent.matrix.batterycanary.monitor.feature.DeviceStatMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature;
+import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature.JiffiesSnapshot;
+import com.tencent.matrix.batterycanary.monitor.feature.LocationMonitorFeature;
+import com.tencent.matrix.batterycanary.monitor.feature.LocationMonitorFeature.LocationSnapshot;
 import com.tencent.matrix.batterycanary.monitor.feature.LooperTaskMonitorFeature;
+import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Delta;
+import com.tencent.matrix.batterycanary.monitor.feature.TrafficMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.WakeLockMonitorFeature;
-import com.tencent.matrix.plugin.Plugin;
+import com.tencent.matrix.batterycanary.monitor.feature.WakeLockMonitorFeature.WakeLockSnapshot;
+import com.tencent.matrix.batterycanary.monitor.feature.WakeLockMonitorFeature.WakeLockTrace.WakeLockRecord;
+import com.tencent.matrix.batterycanary.monitor.feature.WifiMonitorFeature;
+import com.tencent.matrix.batterycanary.monitor.feature.WifiMonitorFeature.WifiSnapshot;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -33,7 +55,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-import static org.junit.Assert.*;
+import java.util.concurrent.Callable;
 
 /**
  * Instrumented test, which will execute on an Android device.
@@ -56,27 +78,177 @@ public class ApisTest {
     }
 
     @Test
-    public void useAppContext() throws Exception {
-        // Context of the app under test.
-        Context appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
-        assertEquals("com.tencent.matrix.batterycanary.test", appContext.getPackageName());
+    public void testMonitorPluginConfigs() {
+        BatteryMonitorConfig config = new BatteryMonitorConfig.Builder()
+                // Thread Activities Monitor
+                .enable(JiffiesMonitorFeature.class)
+                .enableStatPidProc(true)
+                .greyJiffiesTime(30 * 1000L)
+                .enableBackgroundMode(false)
+                .backgroundLoopCheckTime(30 * 60 * 1000L)
+                .enableForegroundMode(true)
+                .foregroundLoopCheckTime(20 * 60 * 1000L)
+                .setBgThreadWatchingLimit(5000)
+                .setBgThreadWatchingLimit(8000)
+
+                // App & Device Status Monitor For Better Invalid Battery Activities Configure
+                .setOverHeatCount(1024)
+                .enable(DeviceStatMonitorFeature.class)
+                .enable(AppStatMonitorFeature.class)
+                .setSceneSupplier(new Callable<String>() {
+                    @Override
+                    public String call() {
+                        return "Current AppScene";
+                    }
+                })
+
+                // AMS Activities Monitor:
+                // alarm/wakelock watch
+                .enableAmsHook(true)
+                .enable(AlarmMonitorFeature.class)
+                .enable(WakeLockMonitorFeature.class)
+                .wakelockTimeout(2 * 60 * 1000L)
+                .wakelockWarnCount(3)
+                .addWakeLockWhiteList("Ignore WakeLock TAG1")
+                .addWakeLockWhiteList("Ignore WakeLock TAG2")
+                // scanning watch (wifi/gps/bluetooth)
+                .enable(WifiMonitorFeature.class)
+                .enable(LocationMonitorFeature.class)
+                .enable(BlueToothMonitorFeature.class)
+
+                // Lab Feature:
+                // network monitor
+                // looper task monitor
+                .enable(TrafficMonitorFeature.class)
+                .enable(LooperTaskMonitorFeature.class)
+                .addLooperWatchList("HandlerThread Name To Watch")
+                .useThreadClock(false)
+                .enableAggressive(false)
+
+                // Monitor Callback
+                .setCallback(new BatteryMonitorCallback.BatteryPrinter() {
+                    @Override
+                    public void onWakeLockTimeout(WakeLockRecord record, long backgroundMillis) {
+                        // WakeLock acquired too long
+                    }
+
+                    @Override
+                    protected void onCanaryDump(AppStats appStats) {
+                        // Dump battery stats data periodically
+                        long statMinute = appStats.getMinute();
+                        boolean foreground = appStats.isForeground();
+                        boolean charging = appStats.isCharging();
+                        super.onCanaryDump(appStats);
+                    }
+
+                    @Override
+                    protected void onReportJiffies(@NonNull Delta<JiffiesSnapshot> delta) {
+                        // Report all threads jiffies consumed during the statMinute time
+                    }
+
+                    @Override
+                    protected void onReportAlarm(@NonNull Delta<AlarmSnapshot> delta) {
+                        // Report all alarm set during the statMinute time
+                    }
+
+                    @Override
+                    protected void onReportWakeLock(@NonNull Delta<WakeLockSnapshot> delta) {
+                        // Report all wakelock acquired during the statMinute time
+                    }
+
+                    @Override
+                    protected void onReportBlueTooth(@NonNull Delta<BlueToothSnapshot> delta) {
+                        // Report all bluetooth scanned during the statMinute time
+                    }
+
+                    @Override
+                    protected void onReportWifi(@NonNull Delta<WifiSnapshot> delta) {
+                        // Report all wifi scanned during the statMinute time
+                    }
+
+                    @Override
+                    protected void onReportLocation(@NonNull Delta<LocationSnapshot> delta) {
+                        // Report all gps scanned during the statMinute time
+                    }
+                })
+                .build();
+
+        BatteryMonitorPlugin plugin = new BatteryMonitorPlugin(config);
+
+        Assert.assertEquals("BatteryMonitorPlugin", plugin.getTag());
     }
 
+    /**
+     * Run this test case individually and checkout logcat output with tag 'PowerTest'.
+     */
     @Test
-    public void testInitMonitorPlugin() {
+    public void testForegroundLoopCheckAsShowCase() throws InterruptedException {
+        if (TestUtils.isAssembleTest()) return;
+        BatteryEventDelegate.init((Application) mContext.getApplicationContext());
+
+        // Demo battery-used thread
+        Thread thread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                while (true) {
+                    new Handler(Looper.getMainLooper());
+                }
+            }
+        });
+        thread.setPriority(Thread.MAX_PRIORITY);
+        thread.setName("test-jiffies-thread");
+        thread.start();
+
+
         BatteryMonitorConfig config = new BatteryMonitorConfig.Builder()
                 .enable(JiffiesMonitorFeature.class)
-                .enable(WakeLockMonitorFeature.class)
-                .enable(LooperTaskMonitorFeature.class)
-                .enableBuiltinForegroundNotify(false)
+                .enableStatPidProc(true)
+                .greyJiffiesTime(100)
                 .enableForegroundMode(true)
+                .foregroundLoopCheckTime(1000)
+
+                .enable(DeviceStatMonitorFeature.class)
+                .enable(AppStatMonitorFeature.class)
+                .setSceneSupplier(new Callable<String>() {
+                    @Override
+                    public String call() {
+                        return "UnitTest";
+                    }
+                })
+
+                .enableAmsHook(true)
+                .enable(AlarmMonitorFeature.class)
+                .enable(WakeLockMonitorFeature.class)
+                .enable(WifiMonitorFeature.class)
+                .enable(LocationMonitorFeature.class)
+                .enable(BlueToothMonitorFeature.class)
+
+                .enable(TrafficMonitorFeature.class)
+                .enable(LooperTaskMonitorFeature.class)
+                .useThreadClock(false)
+                .enableAggressive(true)
+
                 .setCallback(new BatteryMonitorCallback.BatteryPrinter())
-                .wakelockTimeout(2 * 60 * 1000L)
-                .greyJiffiesTime(30 * 1000L)
-                .foregroundLoopCheckTime(20 * 60 * 1000L)
                 .build();
+
         BatteryMonitorPlugin plugin = new BatteryMonitorPlugin(config);
-        Assert.assertEquals("BatteryMonitorPlugin", plugin.getTag());
-        Assert.assertTrue(plugin instanceof Plugin);
+        Matrix.init(
+                new Matrix.Builder(((Application) mContext.getApplicationContext()))
+                        .plugin(plugin)
+                        .build()
+        );
+
+        final BatteryMonitorCore monitor = plugin.core();
+        monitor.enableForegroundLoopCheck(true);
+        monitor.start();
+        Handler handler = new Handler(Looper.getMainLooper());
+        handler.post(new Runnable() {
+            @Override
+            public void run() {
+                monitor.onForeground(true);
+            }
+        });
+
+        Thread.sleep(Integer.MAX_VALUE);
     }
 }
