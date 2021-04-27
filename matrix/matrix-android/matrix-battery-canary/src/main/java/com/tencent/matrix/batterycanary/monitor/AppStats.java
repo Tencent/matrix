@@ -1,21 +1,44 @@
 package com.tencent.matrix.batterycanary.monitor;
 
-import android.support.annotation.Nullable;
-import android.support.v4.util.Pair;
-
+import com.tencent.matrix.Matrix;
 import com.tencent.matrix.batterycanary.BatteryCanary;
+import com.tencent.matrix.batterycanary.BatteryMonitorPlugin;
 import com.tencent.matrix.batterycanary.monitor.feature.AppStatMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.DeviceStatMonitorFeature;
+import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
 import com.tencent.matrix.batterycanary.utils.TimeBreaker;
 
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 import java.util.concurrent.atomic.AtomicBoolean;
+
+import androidx.annotation.IntDef;
+import androidx.annotation.Nullable;
 
 /**
  * @author Kaede
  * @since 2021/1/27
  */
-final public class AppStats {
-    public static final int ONE_MIN = 60 * 1000;
+public class AppStats {
+
+    @IntDef(value = {
+            APP_STAT_FOREGROUND,
+            APP_STAT_FOREGROUND_SERVICE,
+            APP_STAT_BACKGROUND
+    })
+    @Retention(RetentionPolicy.SOURCE)
+    public @interface AppStatusDef {
+    }
+
+    @IntDef(value = {
+            DEV_STAT_CHARGING,
+            DEV_STAT_UN_CHARGING,
+            DEV_STAT_SCREEN_OFF,
+            DEV_STAT_SAVE_POWER_MODE
+    })
+    @Retention(RetentionPolicy.SOURCE)
+    public @interface DevStatusDef {
+    }
 
     public static final int APP_STAT_FOREGROUND = 1;
     public static final int APP_STAT_FOREGROUND_SERVICE = 3;
@@ -43,7 +66,8 @@ final public class AppStats {
     public boolean isValid;
     public long duringMillis;
 
-    @Nullable  private AtomicBoolean mForegroundOverride;
+    @Nullable
+    private AtomicBoolean mForegroundOverride;
 
     AppStats() {
         sceneTop1 = "";
@@ -52,7 +76,7 @@ final public class AppStats {
     }
 
     public long getMinute() {
-        return Math.max(1, duringMillis / ONE_MIN);
+        return Math.max(1, duringMillis / BatteryCanaryUtil.ONE_MIN);
     }
 
     public boolean isForeground() {
@@ -62,26 +86,32 @@ final public class AppStats {
         return getAppStat() == APP_STAT_FOREGROUND;
     }
 
+    public boolean hasForegroundService() {
+        return getAppStat() == APP_STAT_FOREGROUND_SERVICE;
+    }
+
     public boolean isCharging() {
         return getDevStat() == DEV_STAT_CHARGING;
     }
 
+    @AppStatusDef
     public int getAppStat() {
         if (appFgRatio >= 50) return APP_STAT_FOREGROUND;
         if (appFgSrvRatio >= 50) return APP_STAT_FOREGROUND_SERVICE;
         return APP_STAT_BACKGROUND;
     }
 
-    public AppStats setForeground(boolean bool) {
-        mForegroundOverride = new AtomicBoolean(bool);
-        return this;
-    }
-
+    @DevStatusDef
     public int getDevStat() {
         if (devChargingRatio >= 50) return DEV_STAT_CHARGING;
         if (devSceneOffRatio >= 50) return DEV_STAT_SCREEN_OFF;
         if (devLowEnergyRatio >= 50) return DEV_STAT_SAVE_POWER_MODE;
         return DEV_STAT_UN_CHARGING;
+    }
+
+    public AppStats setForeground(boolean bool) {
+        mForegroundOverride = new AtomicBoolean(bool);
+        return this;
     }
 
     @Override
@@ -105,7 +135,13 @@ final public class AppStats {
     }
 
     public static AppStats current() {
-        return current(0L);
+        if (Matrix.isInstalled()) {
+            BatteryMonitorPlugin plugin = Matrix.with().getPluginByClass(BatteryMonitorPlugin.class);
+            if (plugin != null) {
+                return new CurrAppStats(plugin.core());
+            }
+        }
+        return current(1L);
     }
 
     public static AppStats current(long millisFromNow) {
@@ -124,14 +160,14 @@ final public class AppStats {
                 stats.appFgSrvRatio = appStats.fgSrvRatio.get().intValue();
 
                 TimeBreaker.TimePortions portions = appStatFeat.currentSceneSnapshot(duringMillis);
-                Pair<String, Integer> top1 = portions.top1();
+                TimeBreaker.TimePortions.Portion top1 = portions.top1();
                 if (top1 != null) {
-                    stats.sceneTop1 = top1.first;
-                    stats.sceneTop1Ratio = top1.second == null ? 0 : top1.second;
-                    Pair<String, Integer> top2 = portions.top2();
+                    stats.sceneTop1 = top1.key;
+                    stats.sceneTop1Ratio = top1.ratio;
+                    TimeBreaker.TimePortions.Portion top2 = portions.top2();
                     if (top2 != null) {
-                        stats.sceneTop2 = top2.first;
-                        stats.sceneTop2Ratio = top2.second == null ? 0 : top2.second;
+                        stats.sceneTop2 = top2.key;
+                        stats.sceneTop2Ratio = top2.ratio;
                     }
 
                     DeviceStatMonitorFeature devStatFeat = BatteryCanary.getMonitorFeature(DeviceStatMonitorFeature.class);
@@ -150,5 +186,43 @@ final public class AppStats {
             }
         }
         return stats;
+    }
+
+    static final class CurrAppStats extends AppStats {
+        final BatteryMonitorCore mCore;
+
+        CurrAppStats(BatteryMonitorCore core) {
+            mCore = core;
+        }
+
+        @Override
+        public long getMinute() {
+            return 0;
+        }
+
+        @Override
+        public boolean isForeground() {
+            return mCore.isForeground();
+        }
+
+        @Override
+        public boolean hasForegroundService() {
+            return BatteryCanaryUtil.hasForegroundService(mCore.getContext());
+        }
+
+        @Override
+        public boolean isCharging() {
+            return BatteryCanaryUtil.isDeviceCharging(mCore.getContext());
+        }
+
+        @Override
+        public int getAppStat() {
+            return BatteryCanaryUtil.getAppStat(mCore.getContext(), isForeground());
+        }
+
+        @Override
+        public int getDevStat() {
+            return BatteryCanaryUtil.getDeviceStat(mCore.getContext());
+        }
     }
 }

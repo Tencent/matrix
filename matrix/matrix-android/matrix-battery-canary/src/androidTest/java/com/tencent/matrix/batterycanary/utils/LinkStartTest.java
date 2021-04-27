@@ -17,21 +17,16 @@
 package com.tencent.matrix.batterycanary.utils;
 
 import android.content.Context;
-import android.net.wifi.WifiManager;
-import android.support.annotation.Nullable;
-import android.support.test.InstrumentationRegistry;
-import android.support.test.runner.AndroidJUnit4;
 
-import com.tencent.matrix.batterycanary.TestUtils;
+import androidx.annotation.Nullable;
+import androidx.test.platform.app.InstrumentationRegistry;
+import androidx.test.ext.junit.runners.AndroidJUnit4;
 
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-
-import java.lang.reflect.Method;
-import java.util.concurrent.atomic.AtomicInteger;
 
 
 @RunWith(AndroidJUnit4.class)
@@ -42,7 +37,7 @@ public class LinkStartTest {
 
     @Before
     public void setUp() {
-        mContext = InstrumentationRegistry.getTargetContext();
+        mContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
     }
 
     @After

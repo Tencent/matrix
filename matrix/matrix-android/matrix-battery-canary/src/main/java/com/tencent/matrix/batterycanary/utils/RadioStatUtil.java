@@ -4,8 +4,8 @@ import android.app.usage.NetworkStats;
 import android.app.usage.NetworkStatsManager;
 import android.content.Context;
 import android.net.NetworkCapabilities;
-import android.support.annotation.Nullable;
-import android.support.annotation.RestrictTo;
+import androidx.annotation.Nullable;
+import androidx.annotation.RestrictTo;
 
 import com.tencent.matrix.batterycanary.BuildConfig;
 import com.tencent.matrix.util.MatrixLog;

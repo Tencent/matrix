@@ -97,39 +97,10 @@ configurations {
     sevenZipDependency
 }
 
-dependencies {
-    implementation fileTree(dir: 'libs', include: ['*.jar'])
-    implementation group: "com.tencent.matrix", name: "matrix-commons", version: MATRIX_VERSION, changing: true
-    implementation group: "com.tencent.matrix", name: "matrix-thread-canary", version: MATRIX_VERSION, changing: true
-    implementation group: "com.tencent.matrix", name: "matrix-battery-canary", version: MATRIX_VERSION, changing: true
-    implementation group: "com.tencent.matrix", name: "matrix-android-lib", version: MATRIX_VERSION, changing: true
-    implementation group: "com.tencent.matrix", name: "matrix-android-commons", version: MATRIX_VERSION, changing: true
-    implementation group: "com.tencent.matrix", name: "matrix-trace-canary", version: MATRIX_VERSION, changing: true
-    implementation group: "com.tencent.matrix", name: "matrix-resource-canary-android", version: MATRIX_VERSION, changing: true
-    implementation group: "com.tencent.matrix", name: "matrix-resource-canary-common", version: MATRIX_VERSION, changing: true
-    implementation group: "com.tencent.matrix", name: "matrix-io-canary", version: MATRIX_VERSION, changing: true
-    implementation group: "com.tencent.matrix", name: "matrix-sqlite-lint-android-sdk", version: MATRIX_VERSION, changing: true
-//    releaseImplementation group: "com.tencent.matrix", name: "matrix-sqlite-lint-android-sdk-no-op", version: MATRIX_VERSION, changing: true
-
-    implementation 'com.android.support:appcompat-v7:28.0.0'
-    implementation 'com.android.support:recyclerview-v7:28.0.0'
-
-    // TODO
-    apkCheckerDependency group: "com.tencent.matrix", name: "matrix-apk-canary", version: MATRIX_VERSION, changing: true
-
-    testImplementation 'junit:junit:4.12'
-    androidTestCompile('com.android.support.test.espresso:espresso-core:2.2.2', {
-        exclude group: 'com.android.support', module: 'support-annotations'
-    })
-
-    apkCheckerDependency ("com.tencent.matrix:matrix-apk-canary:${MATRIX_VERSION}")
-    sevenZipDependency ('com.tencent.mm:SevenZip:1.2.17') {
-        artifact {
-            classifier = project.osdetector.classifier
-            name = "SevenZip"
-            type = 'exe'
-        }
-    }
+if (useLocalMaven()) {
+    apply from: project.file('dependencies-src.gradle')
+} else {
+    apply from: project.file('dependencies-aar.gradle')
 }
 
 if (!removeUnusedResourcesV2Enable) {

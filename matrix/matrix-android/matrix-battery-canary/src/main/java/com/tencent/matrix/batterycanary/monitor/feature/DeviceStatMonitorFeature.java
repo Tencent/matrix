@@ -3,15 +3,15 @@ package com.tencent.matrix.batterycanary.monitor.feature;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
-import android.support.v4.util.Consumer;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import com.tencent.matrix.batterycanary.BatteryEventDelegate;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Differ.DigitDiffer;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Differ.ListDiffer;
 import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
+import com.tencent.matrix.batterycanary.utils.Consumer;
 import com.tencent.matrix.batterycanary.utils.TimeBreaker;
 import com.tencent.matrix.util.MatrixLog;
 

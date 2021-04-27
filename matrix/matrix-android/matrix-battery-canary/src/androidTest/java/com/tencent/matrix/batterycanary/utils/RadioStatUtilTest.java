@@ -17,16 +17,8 @@
 package com.tencent.matrix.batterycanary.utils;
 
 import android.content.Context;
-import android.support.test.InstrumentationRegistry;
-import android.support.test.runner.AndroidJUnit4;
-
-import com.tencent.matrix.batterycanary.BatteryMonitorPlugin;
-import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCallback;
-import com.tencent.matrix.batterycanary.monitor.BatteryMonitorConfig;
-import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature;
-import com.tencent.matrix.batterycanary.monitor.feature.LooperTaskMonitorFeature;
-import com.tencent.matrix.batterycanary.monitor.feature.WakeLockMonitorFeature;
-import com.tencent.matrix.plugin.Plugin;
+import androidx.test.platform.app.InstrumentationRegistry;
+import androidx.test.ext.junit.runners.AndroidJUnit4;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -34,7 +26,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-import static com.tencent.matrix.batterycanary.utils.RadioStatUtil.MIN_QUERY_INTERVAL;
 import static org.junit.Assert.assertEquals;
 
 /**
@@ -50,7 +41,7 @@ public class RadioStatUtilTest {
 
     @Before
     public void setUp() {
-        mContext = InstrumentationRegistry.getTargetContext();
+        mContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
     }
 
     @After

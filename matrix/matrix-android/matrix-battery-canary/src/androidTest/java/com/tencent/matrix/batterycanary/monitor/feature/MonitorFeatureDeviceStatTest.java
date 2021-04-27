@@ -18,16 +18,14 @@ package com.tencent.matrix.batterycanary.monitor.feature;
 
 import android.app.Application;
 import android.content.Context;
-import android.support.test.InstrumentationRegistry;
-import android.support.test.runner.AndroidJUnit4;
+import androidx.test.platform.app.InstrumentationRegistry;
+import androidx.test.ext.junit.runners.AndroidJUnit4;
 
 import com.tencent.matrix.Matrix;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorConfig;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
 import com.tencent.matrix.batterycanary.monitor.feature.DeviceStatMonitorFeature.CpuFreqSnapshot;
-import com.tencent.matrix.batterycanary.monitor.feature.TrafficMonitorFeature.RadioStatSnapshot;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Delta;
-import com.tencent.matrix.batterycanary.utils.RadioStatUtil;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -44,7 +42,7 @@ public class MonitorFeatureDeviceStatTest {
 
     @Before
     public void setUp() {
-        mContext = InstrumentationRegistry.getTargetContext();
+        mContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
         if (!Matrix.isInstalled()) {
             Matrix.init(new Matrix.Builder(((Application) mContext.getApplicationContext())).build());
         }

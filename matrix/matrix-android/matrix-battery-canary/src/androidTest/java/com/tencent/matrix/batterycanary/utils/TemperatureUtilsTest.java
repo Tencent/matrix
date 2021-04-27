@@ -21,12 +21,11 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
-import android.hardware.SensorEventCallback;
 import android.hardware.SensorEventListener2;
 import android.hardware.SensorManager;
 import android.os.BatteryManager;
-import android.support.test.InstrumentationRegistry;
-import android.support.test.runner.AndroidJUnit4;
+import androidx.test.platform.app.InstrumentationRegistry;
+import androidx.test.ext.junit.runners.AndroidJUnit4;
 import android.util.Log;
 
 import com.tencent.matrix.batterycanary.TestUtils;
@@ -38,16 +37,12 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileFilter;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.RandomAccessFile;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.util.Locale;
-import java.util.regex.Pattern;
 
 import static android.content.Context.SENSOR_SERVICE;
 import static org.junit.Assert.assertEquals;
@@ -65,7 +60,7 @@ public class TemperatureUtilsTest {
 
     @Before
     public void setUp() {
-        mContext = InstrumentationRegistry.getTargetContext();
+        mContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
     }
 
     @After

@@ -17,30 +17,25 @@
 package sample.tencent.matrix.battery;
 
 import android.app.Activity;
-import android.app.AlarmManager;
+import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
-import android.content.SharedPreferences;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
+import android.content.res.Resources;
 import android.os.Bundle;
-import android.os.Process;
-import android.support.annotation.Nullable;
 
 import com.tencent.matrix.Matrix;
-//import com.tencent.matrix.batterycanary.BatteryCanaryPlugin;
+import com.tencent.matrix.batterycanary.BatteryEventDelegate;
+import com.tencent.matrix.batterycanary.BatteryMonitorPlugin;
 import com.tencent.matrix.plugin.Plugin;
-import com.tencent.matrix.resource.ResourcePlugin;
 import com.tencent.matrix.util.MatrixLog;
-import com.tencent.matrix.util.MatrixUtil;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.Set;
+import androidx.annotation.Nullable;
+import androidx.core.app.NotificationCompat;
 
-import sample.tencent.matrix.R;
-import sample.tencent.matrix.issue.IssueFilter;
+//import com.tencent.matrix.batterycanary.BatteryCanaryPlugin;
 
 /**
  * Created by zhangshaowen on 17/6/13.
@@ -65,11 +60,15 @@ public class TestBatteryActivity extends Activity {
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-//        Plugin plugin = Matrix.with().getPluginByClass(BatteryCanaryPlugin.class);
-//        if (!plugin.isPluginStarted()) {
-//            MatrixLog.i(TAG, "plugin-battery start");
-//            plugin.start();
-//        }
+       Plugin plugin = Matrix.with().getPluginByClass(BatteryMonitorPlugin.class);
+       if (!plugin.isPluginStarted()) {
+           if (!BatteryEventDelegate.isInit()) {
+               BatteryEventDelegate.init(this.getApplication());
+           }
+
+           MatrixLog.i(TAG, "plugin-battery start");
+           plugin.start();
+       }
 //
 //        final AlarmManager am = (AlarmManager) getApplicationContext().getSystemService(Context.ALARM_SERVICE);
 //        if (am == null) {
@@ -95,6 +94,13 @@ public class TestBatteryActivity extends Activity {
 //                pendingIntent.cancel();
 //            }
 //        }).start();
+
+
+
+        // Test make notification
+        // if (BatteryCanary.getMonitorFeature(NotificationMonitorFeature.class) != null) {
+        //     tryNotify();
+        // }
     }
 
     @Override
@@ -119,5 +125,46 @@ public class TestBatteryActivity extends Activity {
 //                Runtime.getRuntime().gc();
 //            }
 //        }).start();
+    }
+
+    void tryNotify() {
+        NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+
+        String channelId = "TEST_CHANNEL_ID";
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+            NotificationChannel channel = new NotificationChannel(channelId, "TEST_CHANNEL_NAME", NotificationManager.IMPORTANCE_DEFAULT);
+            manager.createNotificationChannel(channel);
+        }
+
+        Intent intent = new Intent(this, TestBatteryActivity.class);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, intent, 0);
+
+        Notification notification = new NotificationCompat.Builder(this, channelId)
+                .setContentTitle("NOTIFICATION_TILE")
+                .setContentText(tryGetAppRunningNotificationText())
+                .setContentIntent(pendingIntent)
+                .setAutoCancel(true)
+                .setSmallIcon(com.tencent.matrix.batterycanary.R.drawable.ic_launcher)
+                .setWhen(System.currentTimeMillis())
+                .build();
+
+        notificationManager.notify(16657, notification);
+    }
+
+    private String tryGetAppRunningNotificationText() {
+        Resources resources = Resources.getSystem();
+        if (resources != null) {
+            int appRunningNotifyTextId = resources.getIdentifier(
+                    "app_running_notification_text",
+                    "string",
+                    "android"
+            );
+            if (appRunningNotifyTextId > 0) {
+                return resources.getString(appRunningNotifyTextId);
+            }
+        }
+        return null;
     }
 }

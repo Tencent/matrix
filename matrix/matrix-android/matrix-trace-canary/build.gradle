@@ -20,9 +20,8 @@ android {
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
-    implementation 'com.android.support:appcompat-v7:28.0.0'
-    androidTestImplementation 'com.android.support:support-annotations:28.0.0'
-    androidTestImplementation 'com.android.support.test:runner:1.0.1'
+    androidTestImplementation 'androidx.annotation:annotation:1.0.0'
+    androidTestImplementation 'androidx.test.ext:junit:1.1.1'
 
     testImplementation 'junit:junit:4.12'
     implementation project(':matrix-android-lib')
@@ -31,13 +30,15 @@ dependencies {
 version = rootProject.ext.VERSION_NAME
 group = rootProject.ext.GROUP
 
-if("External" == rootProject.ext.PUBLISH_CHANNEL) {
-    apply from: rootProject.file('gradle/android-publish.gradle')
-}
-else {
-    apply from: rootProject.file('gradle/WeChatPublish.gradle')
-    apply from: rootProject.file('gradle/WeChatNativeDepend.gradle')
-    wechatPublish {
-        artifactId = POM_ARTIFACT_ID
+if (rootProject.file('gradle/WeChatPublish.gradle').exists()) {
+    if("External" == rootProject.ext.PUBLISH_CHANNEL) {
+        apply from: rootProject.file('gradle/android-publish.gradle')
+    }
+    else {
+        apply from: rootProject.file('gradle/WeChatPublish.gradle')
+        apply from: rootProject.file('gradle/WeChatNativeDepend.gradle')
+        wechatPublish {
+            artifactId = POM_ARTIFACT_ID
+        }
     }
 }

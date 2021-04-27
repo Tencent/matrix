@@ -1,8 +1,8 @@
 package com.tencent.matrix.batterycanary.monitor;
 
 import android.app.ActivityManager;
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import com.tencent.matrix.batterycanary.BuildConfig;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature;
@@ -51,7 +51,8 @@ public class BatteryMonitorConfig {
     public boolean isUseThreadClock = BuildConfig.DEBUG;
     public List<String> tagWhiteList = Collections.emptyList();
     public List<String> tagBlackList = Collections.emptyList();
-    public List<String> looperWhiteList = Collections.emptyList();
+    public List<String> looperWatchList = Collections.emptyList();
+    public List<String> threadWatchList = Collections.emptyList();
     public final List<MonitorFeature> features = new ArrayList<>(3);
 
     private BatteryMonitorConfig() {
@@ -81,7 +82,8 @@ public class BatteryMonitorConfig {
                 + ", isUseThreadClock=" + isUseThreadClock
                 + ", tagWhiteList=" + tagWhiteList
                 + ", tagBlackList=" + tagBlackList
-                + ", looperWhiteList=" + looperWhiteList
+                + ", looperWatchList=" + looperWatchList
+                + ", threadWatchList=" + threadWatchList
                 + ", features=" + features
                 + '}';
     }
@@ -225,11 +227,19 @@ public class BatteryMonitorConfig {
             return this;
         }
 
-        public Builder addLooperBlackList(String handlerThreadName) {
-            if (config.looperWhiteList == Collections.EMPTY_LIST) {
-                config.looperWhiteList = new ArrayList<>();
+        public Builder addLooperWatchList(String handlerThreadName) {
+            if (config.looperWatchList == Collections.EMPTY_LIST) {
+                config.looperWatchList = new ArrayList<>();
             }
-            config.looperWhiteList.add(handlerThreadName);
+            config.looperWatchList.add(handlerThreadName);
+            return this;
+        }
+
+        public Builder addThreadWatchList(String threadName) {
+            if (config.threadWatchList == Collections.EMPTY_LIST) {
+                config.threadWatchList = new ArrayList<>();
+            }
+            config.threadWatchList.add(threadName);
             return this;
         }
 

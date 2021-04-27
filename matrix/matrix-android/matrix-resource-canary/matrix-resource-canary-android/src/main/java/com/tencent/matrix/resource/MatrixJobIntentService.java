@@ -33,9 +33,9 @@ import android.os.Build;
 import android.os.IBinder;
 import android.os.PowerManager;
 import android.os.Process;
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
-import android.support.annotation.RequiresApi;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.annotation.RequiresApi;
 
 import com.tencent.matrix.util.MatrixLog;
 
@@ -65,7 +65,7 @@ import java.util.HashMap;
  * dispatched to and handled by your service.  It will be executed in
  * {@link #onHandleWork(Intent)}.</p>
  *
- * <p>You do not need to use {@link android.support.v4.content.WakefulBroadcastReceiver}
+ * <p>You do not need to use {@link WakefulBroadcastReceiver}
  * when using this class.  When running on {@link android.os.Build.VERSION_CODES#O Android O},
  * the JobScheduler will take care of wake locks for you (holding a wake lock from the time
  * you enqueue work until the job has been dispatched and while it is running).  When running

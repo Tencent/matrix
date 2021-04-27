@@ -1,1 +1,23 @@
+import java.nio.file.Files
+
 include ':app'
+
+def matrixModules = [
+        "matrix-commons",
+        "matrix-thread-canary",
+        "matrix-battery-canary",
+        "matrix-android-lib",
+        "matrix-android-commons",
+        "matrix-trace-canary",
+        "matrix-resource-canary-android",
+        "matrix-resource-canary-common",
+        "matrix-io-canary",
+        "matrix-sqlite-lint-android-sdk",
+]
+
+matrixModules.each { moduleName ->
+    if (file("../../matrix/matrix-android/${moduleName}/build.gradle").exists()) {
+        include(":${moduleName}")
+        project(":${moduleName}").projectDir = file("../../matrix/matrix-android/${moduleName}")
+    }
+}

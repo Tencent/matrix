@@ -19,11 +19,11 @@ package com.tencent.matrix.batterycanary.monitor.feature;
 import android.app.AlarmManager;
 import android.app.Application;
 import android.app.PendingIntent;
-import android.arch.core.util.Function;
+import androidx.arch.core.util.Function;
 import android.content.Context;
 import android.content.Intent;
-import android.support.test.InstrumentationRegistry;
-import android.support.test.runner.AndroidJUnit4;
+import androidx.test.platform.app.InstrumentationRegistry;
+import androidx.test.ext.junit.runners.AndroidJUnit4;
 import android.text.TextUtils;
 import android.util.Log;
 
@@ -51,7 +51,7 @@ public class MonitorFeatureAlarmTest {
 
     @Before
     public void setUp() {
-        mContext = InstrumentationRegistry.getTargetContext();
+        mContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
         if (!Matrix.isInstalled()) {
             Matrix.init(new Matrix.Builder(((Application) mContext.getApplicationContext())).build());
         }

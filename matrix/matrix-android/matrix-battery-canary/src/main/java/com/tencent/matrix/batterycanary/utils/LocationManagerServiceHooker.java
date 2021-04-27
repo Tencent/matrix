@@ -17,9 +17,9 @@
 package com.tencent.matrix.batterycanary.utils;
 
 import android.content.Context;
-import android.support.annotation.AnyThread;
-import android.support.annotation.Nullable;
-import android.support.annotation.RestrictTo;
+import androidx.annotation.AnyThread;
+import androidx.annotation.Nullable;
+import androidx.annotation.RestrictTo;
 
 import com.tencent.matrix.util.MatrixLog;
 

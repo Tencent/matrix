@@ -5,12 +5,13 @@ import android.annotation.SuppressLint;
 import android.os.Looper;
 import android.os.Process;
 import android.os.SystemClock;
-import android.support.annotation.AnyThread;
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
-import android.support.annotation.WorkerThread;
-import android.support.v4.util.Pair;
+import android.util.Pair;
 import android.util.SparseArray;
+
+import androidx.annotation.AnyThread;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.annotation.WorkerThread;
 
 import com.tencent.matrix.batterycanary.BuildConfig;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
@@ -322,7 +323,7 @@ public abstract class AbsTaskMonitorFeature extends AbsMonitorFeature {
 
         // Compute task jiffies consumed
         Delta<TaskJiffiesSnapshot> delta = end.diff(bgn);
-        if (!BuildConfig.DEBUG && (delta.during <= 1000L || delta.dlt.jiffies.get() <= 100L)) {
+        if (!shouldTraceTask(delta)) {
             return;
         }
 
@@ -340,10 +341,10 @@ public abstract class AbsTaskMonitorFeature extends AbsMonitorFeature {
             String scene = delta.dlt.scene;
             long sceneRatio = 100;
             TimeBreaker.TimePortions portions = mAppStatFeat.currentSceneSnapshot(delta.during);
-            Pair<String, Integer> top1 = portions.top1();
+            TimeBreaker.TimePortions.Portion top1 = portions.top1();
             if (top1 != null) {
-                scene = top1.first;
-                sceneRatio = top1.second == null ? 0 : top1.second;
+                scene = top1.key;
+                sceneRatio = top1.ratio;
             }
             delta.dlt.bgRatio = appStats.bgRatio.get();
             delta.dlt.scene = scene;
@@ -366,6 +367,12 @@ public abstract class AbsTaskMonitorFeature extends AbsMonitorFeature {
             MatrixLog.w(TAG, "task list overheat, size = " + mDeltaList.size());
             checkOverHeat();
         }
+    }
+
+    protected boolean shouldTraceTask(Delta<TaskJiffiesSnapshot> delta) {
+        return BuildConfig.DEBUG || (delta.during > 1000L
+                && delta.dlt.jiffies.get() / Math.max(1, delta.during / BatteryCanaryUtil.ONE_MIN)
+                > 100L);
     }
 
     protected void updateDeltas(Delta<TaskJiffiesSnapshot> delta) {
@@ -427,8 +434,11 @@ public abstract class AbsTaskMonitorFeature extends AbsMonitorFeature {
         TaskJiffiesSnapshot snapshot = new TaskJiffiesSnapshot();
         snapshot.tid = tid;
         snapshot.name = name;
+
+        // FIXME: perf opt needed via devStat & appStat caching
         snapshot.appStat = BatteryCanaryUtil.getAppStat(mCore.getContext(), mCore.isForeground());
         snapshot.devStat = BatteryCanaryUtil.getDeviceStat(mCore.getContext());
+
         try {
             Callable<String> supplier = mCore.getConfig().onSceneSupplier;
             snapshot.scene = supplier == null ? "" : supplier.call();

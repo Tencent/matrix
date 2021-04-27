@@ -1,9 +1,9 @@
 package com.tencent.matrix.batterycanary.monitor.feature;
 
 import android.content.pm.ApplicationInfo;
-import android.support.annotation.CallSuper;
-import android.support.annotation.NonNull;
-import android.support.annotation.WorkerThread;
+import androidx.annotation.CallSuper;
+import androidx.annotation.NonNull;
+import androidx.annotation.WorkerThread;
 
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
 import com.tencent.matrix.util.MatrixLog;
@@ -58,6 +58,11 @@ public abstract class AbsMonitorFeature implements MonitorFeature {
     protected boolean shouldTracing() {
         if (mCore.getConfig().isAggressiveMode) return true;
         return  0 != (mCore.getContext().getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE);
+    }
+
+    @Override
+    public String toString() {
+        return getTag();
     }
 }
 

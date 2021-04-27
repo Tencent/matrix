@@ -16,7 +16,7 @@
 
 package com.tencent.matrix.trace.listeners;
 
-import android.support.annotation.CallSuper;
+import androidx.annotation.CallSuper;
 
 import com.tencent.matrix.trace.constants.Constants;
 
