@@ -10,8 +10,6 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.Build;
 
-import androidx.core.app.NotificationCompat;
-
 import com.tencent.matrix.resource.R;
 import com.tencent.matrix.resource.analyzer.model.ActivityLeakResult;
 import com.tencent.matrix.resource.analyzer.model.DestroyedActivityInfo;
@@ -92,10 +90,15 @@ public class ManualDumpProcessor extends BaseLeakProcessor {
                         TimeUnit.MILLISECONDS.toMinutes(
                                 config.getScanIntervalMillis() * config.getMaxRedetectTimes()));
 
-        NotificationCompat.Builder builder = new NotificationCompat.Builder(context, getNotificationChannelIdCompat(context))
-                .setContentTitle(dumpingHeapTitle)
-                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-                .setStyle(new NotificationCompat.BigTextStyle().bigText(dumpingHeapContent))
+        Notification.Builder builder = null;
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            builder = new Notification.Builder(context, getNotificationChannelIdCompat(context));
+        } else {
+            builder = new Notification.Builder(context);
+        }
+        builder.setContentTitle(dumpingHeapTitle)
+                .setPriority(Notification.PRIORITY_DEFAULT)
+                .setStyle(new Notification.BigTextStyle().bigText(dumpingHeapContent))
                 .setContentIntent(pIntent)
                 .setAutoCancel(true)
                 .setSmallIcon(R.drawable.ic_launcher)

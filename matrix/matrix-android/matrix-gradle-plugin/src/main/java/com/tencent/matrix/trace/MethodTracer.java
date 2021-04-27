@@ -366,7 +366,8 @@ public class MethodTracer {
         className = className.replace(".", "/");
         boolean isActivity = className.equals(TraceBuildConstants.MATRIX_TRACE_ACTIVITY_CLASS)
                 || className.equals(TraceBuildConstants.MATRIX_TRACE_V4_ACTIVITY_CLASS)
-                || className.equals(TraceBuildConstants.MATRIX_TRACE_V7_ACTIVITY_CLASS);
+                || className.equals(TraceBuildConstants.MATRIX_TRACE_V7_ACTIVITY_CLASS)
+                || className.equals(TraceBuildConstants.MATRIX_TRACE_ANDROIDX_ACTIVITY_CLASS);
         if (isActivity) {
             return true;
         } else {

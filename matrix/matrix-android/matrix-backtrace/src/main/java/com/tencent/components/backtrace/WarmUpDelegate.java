@@ -283,8 +283,8 @@ class WarmUpDelegate {
                                         !warmUpBlocked(absolutePath, offset) &&
                                         (absolutePath.endsWith(".so") ||
                                                 absolutePath.endsWith(".odex") ||
-                                                absolutePath.endsWith(".vdex") ||
-                                                absolutePath.endsWith(".oat")
+                                                absolutePath.endsWith(".oat") ||
+                                                absolutePath.endsWith(".dex") // maybe
                                         )) {
                                     MatrixLog.i(TAG, "Warming up so %s", absolutePath);
                                     boolean ret = invokerFinal.warmUp(absolutePath, offset);

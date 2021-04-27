@@ -17,7 +17,7 @@
 package com.tencent.matrix.batterycanary.utils;
 
 import android.content.Context;
-
+¬
 import androidx.test.InstrumentationRegistry;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 
@@ -46,7 +46,7 @@ public class TimeBreakerTest {
 
     @Before
     public void setUp() {
-        mContext = InstrumentationRegistry.getTargetContext();
+        mContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
     }
 
     @After

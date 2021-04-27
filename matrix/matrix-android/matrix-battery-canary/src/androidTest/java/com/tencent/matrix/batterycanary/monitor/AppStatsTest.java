@@ -31,7 +31,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-
 @RunWith(AndroidJUnit4.class)
 public class AppStatsTest {
     static final String TAG = "Matrix.test.AppStatsTest";
@@ -40,7 +39,7 @@ public class AppStatsTest {
 
     @Before
     public void setUp() {
-        mContext = InstrumentationRegistry.getTargetContext();
+        mContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
         if (!Matrix.isInstalled()) {
             Matrix.init(new Matrix.Builder(((Application) mContext.getApplicationContext())).build());
         }
