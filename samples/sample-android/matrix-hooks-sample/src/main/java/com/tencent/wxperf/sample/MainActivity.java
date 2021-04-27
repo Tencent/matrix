@@ -1,6 +1,7 @@
 package com.tencent.wxperf.sample;
 
 import android.Manifest;
+import android.app.Activity;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
@@ -13,27 +14,27 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.IBinder;
 import android.os.Process;
-import android.support.annotation.RequiresApi;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
-import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
 import android.view.View;
 
+import androidx.annotation.RequiresApi;
+
 import com.tencent.components.backtrace.WeChatBacktrace;
-import com.tencent.stubs.logger.Log;
-import com.tencent.wxperf.fd.FDDumpBridge;
-import com.tencent.wxperf.jectl.JeCtl;
-import com.tencent.wxperf.jni.HookManager;
-import com.tencent.wxperf.jni.egl.EglHook;
-import com.tencent.wxperf.jni.memory.MemoryHook;
-import com.tencent.wxperf.jni.pthread.PthreadHook;
-import com.tencent.wxperf.jni.test.UnwindBenckmarkTest;
-import com.tencent.wxperf.jni.test.UnwindTest;
+import com.tencent.matrix.benchmark.test.UnwindBenckmarkTest;
+import com.tencent.matrix.benchmark.test.UnwindTest;
+import com.tencent.matrix.fd.FDDumpBridge;
+import com.tencent.matrix.hook.HookManager;
+import com.tencent.matrix.hook.egl.EglHook;
+import com.tencent.matrix.hook.memory.MemoryHook;
+import com.tencent.matrix.hook.pthread.PthreadHook;
+import com.tencent.matrix.jectl.JeCtl;
 
 import java.io.File;
 import java.io.FileFilter;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends Activity {
 
     private static final String TAG = "Wxperf.Main";
 

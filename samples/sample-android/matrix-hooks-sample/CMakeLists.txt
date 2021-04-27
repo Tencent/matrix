@@ -54,6 +54,6 @@ target_link_libraries( # Specifies the target library.
         # included in the NDK.
         PRIVATE ${log-lib}
 
-        PRIVATE ${EXT_DEP}/lib/${ANDROID_ABI}/libwxperf-benchmark.so
+        PRIVATE ${EXT_DEP}/lib/${ANDROID_ABI}/libbacktrace-benchmark.so
         PRIVATE ${EXT_DEP}/lib/${ANDROID_ABI}/libwechatbacktrace.so
         )

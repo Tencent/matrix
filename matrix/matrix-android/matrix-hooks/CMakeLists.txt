@@ -46,7 +46,7 @@ add_library( # Specifies the name of the library.
         ${TEST_SOURCE_FILES}
         )
 
-add_subdirectory(${SOURCE_DIR}/external/libxhook)
+#add_subdirectory(${SOURCE_DIR}/external/libxhook)
 add_subdirectory(${SOURCE_DIR}/external/libcJSON)
 
 target_include_directories(
@@ -74,14 +74,16 @@ find_library( # Sets the name of the path variable.
 # can link multiple libraries, such as libraries you define in this
 # build script, prebuilt third-party libraries, or system libraries.
 
+TARGET_INCLUDE_DIRECTORIES(${TARGET} PRIVATE ${EXT_DEP}/include)
+
 target_link_libraries( # Specifies the target library.
         ${TARGET}
-        PRIVATE xhook
         PRIVATE cJSON
         # Links the target library to the log library
         # included in the NDK.
         PRIVATE ${log-lib}
         PRIVATE ${EXT_DEP}/lib/${ANDROID_ABI}/libwechatbacktrace.so
+        PRIVATE ${EXT_DEP}/lib/${ANDROID_ABI}/libxhook.a
 )
 
 TARGET_COMPILE_OPTIONS(

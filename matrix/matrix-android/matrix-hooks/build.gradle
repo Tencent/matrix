@@ -56,6 +56,7 @@ dependencies {
 //    implementation "com.tencent.stubs:logger:${rootProject.LOGGER_VERSION}"
     implementation project(':matrix-android-lib')
     implementation project(':matrix-backtrace')
+    implementation project(':matrix-android-commons')
 }
 
 group = rootProject.GROUP
