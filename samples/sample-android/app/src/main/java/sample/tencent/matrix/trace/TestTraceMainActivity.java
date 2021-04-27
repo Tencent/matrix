@@ -24,7 +24,7 @@ import android.os.Bundle;
 import android.os.Debug;
 import android.os.SystemClock;
 import android.provider.Settings;
-import android.support.annotation.Nullable;
+import androidx.annotation.Nullable;
 import android.util.Log;
 import android.view.View;
 import android.widget.Toast;

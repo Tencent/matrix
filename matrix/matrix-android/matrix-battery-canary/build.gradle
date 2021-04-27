@@ -35,7 +35,6 @@ dependencies {
     testImplementation 'junit:junit:4.12'
     testImplementation "org.mockito:mockito-core:2.8.9"
     testImplementation 'org.jmockit:jmockit:1.28'
-    testImplementation "org.mockito:mockito-core:2.8.9"
     testImplementation 'com.google.code.gson:gson:2.8.6'
     androidTestImplementation 'androidx.annotation:annotation:1.0.0'
     androidTestImplementation 'androidx.test.ext:junit:1.1.1'
@@ -43,7 +42,6 @@ dependencies {
     androidTestImplementation "org.mockito:mockito-core:2.8.9"
     androidTestImplementation "org.mockito:mockito-android:2.8.9"
 
-    implementation 'androidx.core:core:1.0.0'
     implementation project(':matrix-android-lib')
     api project(path: ':matrix-trace-canary')
 }
@@ -51,14 +49,16 @@ dependencies {
 version = rootProject.ext.VERSION_NAME
 group = rootProject.ext.GROUP
 
-if("External" == rootProject.ext.PUBLISH_CHANNEL) {
-    apply from: rootProject.file('gradle/android-publish.gradle')
-}
-else {
-    apply from: rootProject.file('gradle/WeChatPublish.gradle')
-    apply from: rootProject.file('gradle/WeChatNativeDepend.gradle')
-    wechatPublish {
-        artifactId = POM_ARTIFACT_ID
+if (rootProject.file('gradle/WeChatPublish.gradle').exists()) {
+    if("External" == rootProject.ext.PUBLISH_CHANNEL) {
+        apply from: rootProject.file('gradle/android-publish.gradle')
+    }
+    else {
+        apply from: rootProject.file('gradle/WeChatPublish.gradle')
+        apply from: rootProject.file('gradle/WeChatNativeDepend.gradle')
+        wechatPublish {
+            artifactId = POM_ARTIFACT_ID
+        }
     }
 }
 
