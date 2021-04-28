@@ -10,7 +10,7 @@ CMAKE_MINIMUM_REQUIRED(VERSION 3.4.1)
 # and CMake builds them for you. When you build your app, Gradle
 # automatically packages shared libraries with your APK.
 
-SET(TARGET wxperf-benchmark)
+SET(TARGET backtrace-benchmark)
 
 SET(SOURCE_DIR src/main/cpp)
 

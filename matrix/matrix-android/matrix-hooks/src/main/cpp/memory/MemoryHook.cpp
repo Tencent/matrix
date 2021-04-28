@@ -1,8 +1,5 @@
 //
 // Created by Yves on 2019-08-08.
-// TODO 代码整理, 逻辑拆分
-// TODO 大批量分配后大批量删除 case 的性能
-// notice: 加锁顺序, 谨防死锁
 //
 
 #include <malloc.h>

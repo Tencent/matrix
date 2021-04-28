@@ -744,7 +744,7 @@ void func0() {
 
 
 JNIEXPORT void JNICALL
-Java_com_tencent_wxperf_jni_test_UnwindTest_testNative(JNIEnv *env, jclass clazz) {
+Java_com_tencent_matrix_benchmark_test_UnwindTest_testNative(JNIEnv *env, jclass clazz) {
     func0();
 }
 
@@ -760,12 +760,12 @@ void func2(JNIEnv *env, jclass clazz) {
 }
 
 JNIEXPORT void JNICALL
-Java_com_tencent_wxperf_jni_test_UnwindTest_testNative2(JNIEnv *env, jclass clazz) {
+Java_com_tencent_matrix_benchmark_test_UnwindTest_testNative2(JNIEnv *env, jclass clazz) {
     func2(env, clazz);
 }
 
 JNIEXPORT void JNICALL
-Java_com_tencent_wxperf_jni_test_UnwindTest_initNative(JNIEnv *env, jclass clazz) {
+Java_com_tencent_matrix_benchmark_test_UnwindTest_initNative(JNIEnv *env, jclass clazz) {
     LOGD("Yves-test", "Unwind init");
     wechat_backtrace::BACKTRACE_FUNC_WRAPPER(notify_maps_changed)();
 }

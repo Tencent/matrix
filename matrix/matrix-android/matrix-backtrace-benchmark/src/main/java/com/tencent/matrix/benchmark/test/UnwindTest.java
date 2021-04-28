@@ -1,4 +1,4 @@
-package com.tencent.wxperf.jni.test;
+package com.tencent.matrix.benchmark.test;
 
 
 import com.tencent.matrix.util.MatrixLog;

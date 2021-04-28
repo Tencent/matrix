@@ -1,20 +1,20 @@
 apply plugin: 'com.android.application'
 
-apply from: rootProject.file('gradle/WeChatNativeDepend.gradle')
+apply from: rootProject.file('../../matrix/matrix-android/gradle/WeChatNativeDepend.gradle')
 
 android {
-    compileSdkVersion rootProject.COMPILE_SDK_VERSION
+    compileSdkVersion 29
     defaultConfig {
-        minSdkVersion rootProject.MIN_SDK_VERSION
-        targetSdkVersion rootProject.TARGET_SDK_VERSION
-        versionCode rootProject.VERSION_CODE
-        versionName rootProject.VERSION_NAME
+        minSdkVersion 21
+        targetSdkVersion 29
+        versionCode 1
+        versionName "1.0"
 
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
         consumerProguardFiles "consumer-rules.pro"
 
         ndk {
-            abiFilters rootProject.ABI_FILTERS as String[]
+            abiFilters 'armeabi-v7a', 'arm64-v8a'
         }
 
         externalNativeBuild {
@@ -27,12 +27,12 @@ android {
     }
 
     signingConfigs {
-        debug {
-            keyAlias 'androiddebugkey'
-            keyPassword 'android'
-            storeFile rootProject.file('compile/debug.keystore')
-            storePassword 'android'
-        }
+//        debug {
+//            keyAlias 'androiddebugkey'
+//            keyPassword 'android'
+//            storeFile rootProject.file('compile/debug.keystore')
+//            storePassword 'android'
+//        }
         release {
             keyAlias signingConfigs.debug.keyAlias
             keyPassword signingConfigs.debug.keyPassword
@@ -83,10 +83,10 @@ dependencies {
     testImplementation 'junit:junit:4.12'
     androidTestImplementation 'com.android.support.test:runner:1.0.2'
     androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.2'
-    implementation project(':wxperf-hook')
-    implementation project(':wxperf-fd')
-    implementation project(':wxperf-jectl')
-    implementation project(':wxperf-backtrace')
-    implementation project(':wxperf-benchmark')
-    implementation "com.tencent.stubs:logger:${rootProject.LOGGER_VERSION}"
+    implementation "com.tencent.matrix:matrix-hooks:$MATRIX_VERSION"
+    implementation "com.tencent.matrix:matrix-fd:$MATRIX_VERSION"
+    implementation "com.tencent.matrix:matrix-jectl:$MATRIX_VERSION"
+    implementation "com.tencent.matrix:matrix-backtrace:$MATRIX_VERSION"
+    implementation "com.tencent.matrix:matrix-backtrace-benchmark:$MATRIX_VERSION"
+//    implementation "com.tencent.stubs:logger:${rootProject.LOGGER_VERSION}"
 }
