@@ -213,7 +213,7 @@ namespace wechat_backtrace {
 //      1000 0101 0nnn nnnn : vsp = r7 + (nnnnnnn << 2)							;
 //      1000 0110 0nnn nnnn : vsp = r11 + (nnnnnnn << 2)						;
 
-//		1001 0101 0nnn nnnn : vsp = r10 + (nnnnnnn << 2)						; # (nnnnnnn << 2) in [0, 0x1fc],  0nnnnnnn is an one bit ULEB128
+//		1001 0101 0nnn nnnn : vsp = r10 + (nnnnnnn << 2)						; # (nnnnnnn << 2) in [0, 0x1fc],  0nnnnnnn is an one byte ULEB128
 //		1001 0110 + SLEB128 : vsp = SLEB128							    		; # vsp set by IMM
 
 //		1001 0111 			: dex_pc = r4										; # Dex pc is saved in r4
@@ -476,9 +476,9 @@ namespace wechat_backtrace {
 //      1000 0001           : vsp = x29 + 16, lr = [vsp - 8], sp = [vsp - 16]   ; # Have prologue
 //      1000 0100           : vsp = sp                                    		;
 
-//      1000 0101 0nnn nnnn : vsp = x29 + (nnnnnnn << 2)						; # (nnnnnnn << 2) in [0, 0x1fc],  0nnnnnnn is an one bit ULEB128
+//      1000 0101 0nnn nnnn : vsp = x29 + (nnnnnnn << 2)						; # (nnnnnnn << 2) in [0, 0x1fc],  0nnnnnnn is an one byte ULEB128
 
-//		1001 0101 0nnn nnnn : vsp = x28 + (nnnnnnn << 2)						; # (nnnnnnn << 2) in [0, 0x1fc],  0nnnnnnn is an one bit ULEB128
+//		1001 0101 0nnn nnnn : vsp = x28 + (nnnnnnn << 2)						; # (nnnnnnn << 2) in [0, 0x1fc],  0nnnnnnn is an one byte ULEB128
 //		1001 0110 + SLEB128 : vsp = SLEB128							    		; # vsp set by IMM
 
 //		1001 0111 			: dex_pc = x20										; # Dex pc is saved in x20
