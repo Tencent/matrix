@@ -1,9 +1,15 @@
 package com.tencent.matrix.trace.tracer;
 
+import android.os.Build;
 import android.os.Handler;
+import android.os.HandlerThread;
 import android.os.Looper;
+import android.os.MessageQueue;
 import android.os.Process;
 import android.os.SystemClock;
+
+import androidx.annotation.Nullable;
+import androidx.annotation.RequiresApi;
 
 import com.tencent.matrix.Matrix;
 import com.tencent.matrix.report.Issue;
@@ -23,11 +29,15 @@ import com.tencent.matrix.util.MatrixLog;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
-public class AnrTracer extends Tracer {
+public class LooperAnrTracer extends Tracer {
 
     private static final String TAG = "Matrix.AnrTracer";
     private Handler anrHandler;
@@ -37,7 +47,7 @@ public class AnrTracer extends Tracer {
     private volatile LagHandleTask lagTask = new LagHandleTask();
     private boolean isAnrTraceEnable;
 
-    public AnrTracer(TraceConfig traceConfig) {
+    public LooperAnrTracer(TraceConfig traceConfig) {
         this.traceConfig = traceConfig;
         this.isAnrTraceEnable = traceConfig.isAnrTraceEnable();
     }
@@ -252,6 +262,10 @@ public class AnrTracer extends Tracer {
 
         }
 
+
+
+
+
         private String printAnr(String scene, int[] processStat, long[] memoryInfo, Thread.State state, StringBuilder stack, boolean isForeground,
                                 long stackSize, String stackKey, String dumpStack, long inputCost, long animationCost, long traversalCost, long stackCost) {
             StringBuilder print = new StringBuilder();
@@ -312,6 +326,5 @@ public class AnrTracer extends Tracer {
         memory[2] = DeviceUtil.getVmSize();
         return memory;
     }
-
 
 }

@@ -30,8 +30,18 @@ public interface IDefaultConfig {
 
     boolean isAnrTraceEnable();
 
+    boolean isIdleHandlerEnable();
+
+    boolean isSignalAnrTraceEnable();
+
+    boolean isMainThreadPriorityTraceEnable();
+
     boolean isDebug();
 
     boolean isDevEnv();
+
+    String getAnrTraceFilePath();
+
+    String getPrintTraceFilePath();
 
 }

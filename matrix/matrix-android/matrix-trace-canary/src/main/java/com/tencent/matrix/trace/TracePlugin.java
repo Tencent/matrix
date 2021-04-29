@@ -26,10 +26,13 @@ import com.tencent.matrix.trace.config.SharePluginInfo;
 import com.tencent.matrix.trace.config.TraceConfig;
 import com.tencent.matrix.trace.core.AppMethodBeat;
 import com.tencent.matrix.trace.core.UIThreadMonitor;
-import com.tencent.matrix.trace.tracer.AnrTracer;
+import com.tencent.matrix.trace.tracer.IdleHandlerLagTracer;
+import com.tencent.matrix.trace.tracer.LooperAnrTracer;
+import com.tencent.matrix.trace.tracer.SignalAnrTracer;
 import com.tencent.matrix.trace.tracer.EvilMethodTracer;
 import com.tencent.matrix.trace.tracer.FrameTracer;
 import com.tencent.matrix.trace.tracer.StartupTracer;
+import com.tencent.matrix.trace.tracer.ThreadPriorityTracer;
 import com.tencent.matrix.util.MatrixHandlerThread;
 import com.tencent.matrix.util.MatrixLog;
 
@@ -43,7 +46,10 @@ public class TracePlugin extends Plugin {
     private EvilMethodTracer evilMethodTracer;
     private StartupTracer startupTracer;
     private FrameTracer frameTracer;
-    private AnrTracer anrTracer;
+    private LooperAnrTracer looperAnrTracer;
+    private SignalAnrTracer signalAnrTracer;
+    private IdleHandlerLagTracer idleHandlerLagTracer;
+    private ThreadPriorityTracer threadPriorityTracer;
 
     public TracePlugin(TraceConfig config) {
         this.traceConfig = config;
@@ -59,7 +65,7 @@ public class TracePlugin extends Plugin {
             return;
         }
 
-        anrTracer = new AnrTracer(traceConfig);
+        looperAnrTracer = new LooperAnrTracer(traceConfig);
 
         frameTracer = new FrameTracer(traceConfig);
 
@@ -98,7 +104,24 @@ public class TracePlugin extends Plugin {
                 UIThreadMonitor.getMonitor().onStart();
 
                 if (traceConfig.isAnrTraceEnable()) {
-                    anrTracer.onStartTrace();
+                    looperAnrTracer.onStartTrace();
+                }
+
+                if (traceConfig.isIdleHandlerEnable()) {
+                    idleHandlerLagTracer = new IdleHandlerLagTracer(traceConfig);
+                    idleHandlerLagTracer.onStartTrace();
+                }
+
+                if (traceConfig.isSignalAnrTraceEnable()) {
+                    if(!SignalAnrTracer.hasInstance) {
+                        signalAnrTracer = new SignalAnrTracer(traceConfig);
+                        signalAnrTracer.onStartTrace();
+                    }
+                }
+
+                if (traceConfig.isMainThreadPriorityTraceEnable()) {
+                    threadPriorityTracer = new ThreadPriorityTracer();
+                    threadPriorityTracer.onStartTrace();
                 }
 
                 if (traceConfig.isFPSEnable()) {
@@ -112,6 +135,9 @@ public class TracePlugin extends Plugin {
                 if (traceConfig.isStartupEnable()) {
                     startupTracer.onStartTrace();
                 }
+
+
+
             }
         };
 
@@ -140,13 +166,25 @@ public class TracePlugin extends Plugin {
 
                 UIThreadMonitor.getMonitor().onStop();
 
-                anrTracer.onCloseTrace();
+                looperAnrTracer.onCloseTrace();
 
                 frameTracer.onCloseTrace();
 
                 evilMethodTracer.onCloseTrace();
 
                 startupTracer.onCloseTrace();
+
+                if (signalAnrTracer != null) {
+                    signalAnrTracer.onCloseTrace();
+                }
+
+                if (idleHandlerLagTracer != null) {
+                    idleHandlerLagTracer.onCloseTrace();
+                }
+
+                if (threadPriorityTracer != null) {
+                    threadPriorityTracer.onCloseTrace();
+                }
 
             }
         };
@@ -171,8 +209,8 @@ public class TracePlugin extends Plugin {
             frameTracer.onForeground(isForeground);
         }
 
-        if (anrTracer != null) {
-            anrTracer.onForeground(isForeground);
+        if (looperAnrTracer != null) {
+            looperAnrTracer.onForeground(isForeground);
         }
 
         if (evilMethodTracer != null) {
@@ -203,8 +241,8 @@ public class TracePlugin extends Plugin {
         return AppMethodBeat.getInstance();
     }
 
-    public AnrTracer getAnrTracer() {
-        return anrTracer;
+    public LooperAnrTracer getLooperAnrTracer() {
+        return looperAnrTracer;
     }
 
     public EvilMethodTracer getEvilMethodTracer() {
