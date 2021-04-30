@@ -5,22 +5,25 @@
 #ifndef MATRIX_HOOK_LOG_H
 #define MATRIX_HOOK_LOG_H
 
-#ifdef EnableLOG
-
 #include <android/log.h>
+
+#ifdef EnableLOG
 
 #undef LOGD
 #undef LOGI
+#undef LOGW
 #undef LOGE
 
 #define LOGD(TAG, FMT, args...) __android_log_print(ANDROID_LOG_DEBUG, TAG, FMT, ##args)
 #define LOGI(TAG, FMT, args...) __android_log_print(ANDROID_LOG_INFO, TAG, FMT, ##args)
+#define LOGW(TAG, FMT, args...) __android_log_print(ANDROID_LOG_WARN, TAG, FMT, ##args)
 #define LOGE(TAG, FMT, args...) __android_log_print(ANDROID_LOG_ERROR, TAG, FMT, ##args)
 
 #else
 
 #define LOGD(TAG, FMT, args...) //__android_log_print(ANDROID_LOG_DEBUG, TAG, FMT, ##args)
 #define LOGI(TAG, FMT, args...) //__android_log_print(ANDROID_LOG_INFO, TAG, FMT, ##args)
+#define LOGW(TAG, FMT, args...) // __android_log_print(ANDROID_LOG_WARN, TAG, FMT, ##args)
 #define LOGE(TAG, FMT, args...) //__android_log_print(ANDROID_LOG_ERROR, TAG, FMT, ##args)
 
 #endif

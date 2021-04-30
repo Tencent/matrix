@@ -5,27 +5,22 @@
 #include <jni.h>
 #include <xhook.h>
 #include "PthreadHook.h"
+#include "ThreadTrace.h"
+#include "ThreadStackShink.h"
+
+using namespace pthread_hook;
+using namespace thread_trace;
+using namespace thread_stack_shink;
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-static HookFunction const HOOK_FUNCTIONS[] = {
-        {"pthread_create",     (void *) HANDLER_FUNC_NAME(pthread_create),     NULL},
-        {"pthread_setname_np", (void *) HANDLER_FUNC_NAME(pthread_setname_np), NULL}
-};
-
-static void hook_impl(const char *regex) {
-    for (auto f: HOOK_FUNCTIONS) {
-        xhook_register(regex, f.name, f.handler_ptr, f.origin_ptr);
-    }
-}
-
-static void ignore_impl(const char *regex) {
-    for (auto f: HOOK_FUNCTIONS) {
-        xhook_ignore(regex, f.name);
-    }
-}
+// static void ignore_impl(const char *regex) {
+//     for (auto f: HOOK_FUNCTIONS) {
+//         xhook_ignore(regex, f.name);
+//     }
+// }
 
 // JNIEXPORT void JNICALL
 // Java_com_tencent_matrix_hook_pthread_PthreadHook_addHookSoNative(JNIEnv *env, jobject thiz,
@@ -40,7 +35,7 @@ static void ignore_impl(const char *regex) {
 //     }
 //
 //     add_dlopen_hook_callback(pthread_hook_on_dlopen);
-//     add_hook_init_callback(pthread_hook_init);
+//     add_hook_init_callback(thread_trace_init);
 // }
 //
 // JNIEXPORT void JNICALL
@@ -57,9 +52,17 @@ static void ignore_impl(const char *regex) {
 // }
 
 JNIEXPORT void JNICALL
-Java_com_tencent_matrix_hook_pthread_PthreadHook_addHookThreadNameNative(JNIEnv *env,
-                                                                                jobject thiz,
-                                                                                jobjectArray thread_names) {
+Java_com_tencent_matrix_hook_pthread_PthreadHook_setThreadTraceEnabledNative(JNIEnv *env, jobject thiz, jboolean enabled) {
+    pthread_hook::SetThreadTraceEnabled(enabled);
+}
+
+JNIEXPORT void JNICALL
+Java_com_tencent_matrix_hook_pthread_PthreadHook_setThreadStackShinkEnabledNative(JNIEnv *env, jobject thiz, jboolean enabled) {
+    pthread_hook::SetThreadStackShinkEnabled(enabled);
+}
+
+JNIEXPORT void JNICALL
+Java_com_tencent_matrix_hook_pthread_PthreadHook_addHookThreadNameNative(JNIEnv *env, jobject thiz, jobjectArray thread_names) {
     jsize size = env->GetArrayLength(thread_names);
 
     for (int i = 0; i < size; ++i) {
@@ -71,8 +74,7 @@ Java_com_tencent_matrix_hook_pthread_PthreadHook_addHookThreadNameNative(JNIEnv 
 }
 
 JNIEXPORT void JNICALL
-Java_com_tencent_matrix_hook_pthread_PthreadHook_dumpNative(JNIEnv *env, jobject thiz,
-                                                                   jstring jpath) {
+Java_com_tencent_matrix_hook_pthread_PthreadHook_dumpNative(JNIEnv *env, jobject thiz, jstring jpath) {
     if (jpath) {
         const char *path = env->GetStringUTFChars(jpath, NULL);
         pthread_dump_json(path);
@@ -80,6 +82,11 @@ Java_com_tencent_matrix_hook_pthread_PthreadHook_dumpNative(JNIEnv *env, jobject
     } else {
         pthread_dump_json();
     }
+}
+
+JNIEXPORT void JNICALL
+Java_com_tencent_matrix_hook_pthread_PthreadHook_installHooksNative(JNIEnv *env, jobject thiz) {
+    pthread_hook::InstallHooks();
 }
 
 #ifdef __cplusplus

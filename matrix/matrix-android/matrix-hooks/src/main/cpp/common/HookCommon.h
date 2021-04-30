@@ -28,6 +28,13 @@
     ORIGINAL_FUNC_PTR(sym); \
     ret HANDLER_FUNC_NAME(sym)(params)
 
+#define FETCH_ORIGIN_FUNC(sym) \
+    if (!ORIGINAL_FUNC_NAME(sym)) { \
+        void *handle = dlopen(ORIGINAL_LIB, RTLD_LAZY); \
+        if (handle) { \
+            ORIGINAL_FUNC_NAME(sym) = (FUNC_TYPE(sym))dlsym(handle, #sym); \
+        } \
+    }
 
 #define CALL_ORIGIN_FUNC_RET(retType, ret, sym, params...) \
     if (!ORIGINAL_FUNC_NAME(sym)) { \

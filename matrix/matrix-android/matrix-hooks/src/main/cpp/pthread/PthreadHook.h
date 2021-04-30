@@ -1,36 +1,18 @@
 //
-// Created by Yves on 2020-03-11.
+// Created by YinSheng Tang on 2021/4/29.
 //
 
-#ifndef LIBMATRIX_HOOK_PTHREADHOOK_H
-#define LIBMATRIX_HOOK_PTHREADHOOK_H
+#ifndef LIBMATRIX_ANDROID_PTHREADHOOK_H
+#define LIBMATRIX_ANDROID_PTHREADHOOK_H
 
-#include <pthread.h>
-#include "HookCommon.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+namespace pthread_hook {
+    typedef void* (*pthread_routine_t)(void*);
 
-//void add_hook_parent_thread_name(const char *__regex_str);
-void pthread_hook_init();
-
-void add_hook_thread_name(const char *__regex_str);
-
-void pthread_dump(const char *path = "/sdcard/pthread_hook.log");
-
-void pthread_dump_json(const char *path = "/sdcard/pthread_hook.log");
-
-void pthread_hook_on_dlopen(const char *file_name);
-
-inline int wrap_pthread_getname_np(pthread_t pthread, char *buf, size_t n);
-
-DECLARE_HOOK_ORIG(int, pthread_create, pthread_t* pthread_ptr, pthread_attr_t const* attr, void* (*start_routine)(void*), void* arg);
-
-DECLARE_HOOK_ORIG(int, pthread_setname_np, pthread_t pthread, const char* name);
-
-#ifdef __cplusplus
+    extern void SetThreadTraceEnabled(bool enabled);
+    extern void SetThreadStackShinkEnabled(bool enabled);
+    extern void InstallHooks();
 }
-#endif
 
-#endif //LIBMATRIX_HOOK_PTHREADHOOK_H
+
+#endif //LIBMATRIX_ANDROID_PTHREADHOOK_H
