@@ -1,6 +1,8 @@
 ![Matrix-icon](assets/img/readme/header.png)
-
-[![license](http://img.shields.io/badge/license-BSD3-brightgreen.svg?style=flat)](https://github.com/Tencent/matrix/blob/master/LICENSE)[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/Tencent/matrix/pulls)[![WeChat Approved](https://img.shields.io/badge/Wechat%20Approved-0.9.0-red.svg)](https://github.com/Tencent/matrix/wiki)
+[![license](http://img.shields.io/badge/license-BSD3-brightgreen.svg?style=flat)](https://github.com/Tencent/matrix/blob/master/LICENSE)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/Tencent/matrix/pulls)
+[![WeChat Approved](https://img.shields.io/badge/Wechat%20Approved-0.9.0-red.svg)](https://github.com/Tencent/matrix/wiki)
+[![CircleCI](https://circleci.com/gh/Tencent/matrix.svg?style=shield)](https://app.circleci.com/pipelines/github/Tencent/matrix)
 
 (中文版本请参看[这里](#matrix_cn))  
 

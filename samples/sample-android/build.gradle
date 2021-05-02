@@ -12,8 +12,12 @@ buildscript {
         VERSION_NAME = "${MATRIX_VERSION}"
 
         /**
-         * Set 'compileMatrixWithSrc = true' or with compile args '-PcompileWithSrc=true'
-         * to compile Sample module with matrix source code for further debug.
+         * To compile Sample App with matrix source code for further debug:
+         *
+         * 1. Run `gradle publishToMavenLocal`
+         * 2. Set 'compileMatrixWithSrc = true' or with run gradle with args '-PcompileWithSrc=true'
+         *
+         # Or see `testBuildAndroid` in `.circleci/config.yaml`.
          */
         compileMatrixWithSrc = false
 
