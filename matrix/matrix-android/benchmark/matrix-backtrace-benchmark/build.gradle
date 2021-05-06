@@ -52,21 +52,19 @@ dependencies {
     testImplementation 'junit:junit:4.12'
     androidTestImplementation 'androidx.test.ext:junit:1.1.1'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.1.0'
-//    implementation "com.tencent.stubs:logger:${rootProject.LOGGER_VERSION}"
     implementation project(':matrix-backtrace')
     implementation project(':matrix-android-lib')
 }
 
-group = rootProject.GROUP
-version = rootProject.VERSION_NAME
-//artifactId = 'wxperf-backtrace'
-
-if("External" == rootProject.ext.PUBLISH_CHANNEL) {
-    apply from: rootProject.file('gradle/android-publish.gradle')
-}
-else {
-    apply from: rootProject.file('gradle/WeChatPublish.gradle')
-    wechatPublish {
-        artifactId = POM_ARTIFACT_ID
-    }
-}
+//group = rootProject.GROUP
+//version = rootProject.VERSION_NAME
+//
+//if("External" == rootProject.ext.PUBLISH_CHANNEL) {
+//    apply from: rootProject.file('gradle/android-publish.gradle')
+//}
+//else {
+//    apply from: rootProject.file('gradle/WeChatPublish.gradle')
+//    wechatPublish {
+//        artifactId = POM_ARTIFACT_ID
+//    }
+//}

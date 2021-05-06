@@ -5,8 +5,8 @@ apply from: rootProject.file('gradle/WeChatNativeDepend.gradle')
 android {
     compileSdkVersion rootProject.compileSdkVersion
     defaultConfig {
-        minSdkVersion rootProject.MIN_SDK_VERSION
-        targetSdkVersion rootProject.TARGET_SDK_VERSION
+        minSdkVersion rootProject.minSdkVersion
+        targetSdkVersion rootProject.targetSdkVersion
         versionCode rootProject.VERSION_CODE
         versionName rootProject.VERSION_NAME
 
@@ -85,7 +85,7 @@ dependencies {
     testImplementation 'junit:junit:4.12'
     androidTestImplementation 'com.android.support.test:runner:1.0.2'
     androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.2'
-    implementation project(':wxperf-benchmark')
+    implementation project(':benchmark:matrix-backtrace-benchmark')
     implementation project(':wxperf-backtrace-test')
     implementation "com.tencent.wxperf:wxperf-hook:${WXPERF_VERSION}"
     implementation "com.tencent.stubs:logger:${rootProject.LOGGER_VERSION}"
