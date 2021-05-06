@@ -7,7 +7,7 @@
 
 Pod::Spec.new do |matrix|
   matrix.name             = 'matrix-wechat'
-  matrix.version          = '0.6.1'
+  matrix.version          = '0.6.5'
   matrix.summary          = 'Matrix for iOS/macOS is a performance probe tool developed and used by WeChat.'
   matrix.description      = <<-DESC
                             Matrix for iOS/macOS is a performance probe tool developed and used by WeChat. 
@@ -21,11 +21,11 @@ Pod::Spec.new do |matrix|
   matrix.homepage         = 'https://github.com/Tencent/matrix'
   matrix.license          = { :type => 'BSD', :file => 'LICENSE' }
   matrix.author           = { 'johnzjchen' => 'johnzjchen@tencent.com' }
-  matrix.source           = { :git => 'https://github.com/Tencent/matrix.git', :tag => "V#{matrix.version}" }
+  matrix.source           = { :git => 'https://github.com/Tencent/matrix.git', :branch => "feature/ios-matrix-cocopods-0.6.5" }
   matrix.module_name      = "Matrix"
 
   matrix.ios.deployment_target = '8.0'
-  matrix.osx.deployment_target = "10.10"
+  matrix.osx.deployment_target = "10.9"
   matrix.libraries        = "z", "c++"
   matrix.frameworks       = "CoreFoundation", "Foundation"
   matrix.ios.frameworks   = "UIKit"
