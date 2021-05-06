@@ -111,7 +111,7 @@ public class ActivityRefWatcher extends FilePublisher implements Watcher {
         super(app, FILE_CONFIG_EXPIRED_TIME_MILLIS, resourcePlugin.getTag(), resourcePlugin);
         this.mResourcePlugin = resourcePlugin;
         final ResourceConfig config = resourcePlugin.getConfig();
-        mHandlerThread = MatrixHandlerThread.getNewHandlerThread("matrix_res"); // avoid blocking default matrix thread
+        mHandlerThread = MatrixHandlerThread.getNewHandlerThread("matrix_res", Thread.NORM_PRIORITY); // avoid blocking default matrix thread
         mHandler = new Handler(mHandlerThread.getLooper());
         mDumpHprofMode = config.getDumpHprofMode();
         mBgScanTimes = config.getBgScanIntervalMillis();
