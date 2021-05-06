@@ -17,7 +17,6 @@
 #include <android/log.h>
 #include <unwindstack/RegsArm.h>
 #include "BacktraceDefine.h"
-#include "Log.h"
 
 namespace wechat_backtrace {
 

@@ -1,3 +1,4 @@
 <resources>
-    <string name="app_name">libwxperf-jni-sample</string>
+    <string name="app_name">Matrix Backtrace Benchmark</string>
+    <string name="usage"> 启动后请等待一段时间，预热(warm-up) 生成 Quicken Unwind Table(QUT) 数据。</string>
 </resources>

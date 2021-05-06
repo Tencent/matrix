@@ -228,6 +228,10 @@ public class WeChatBacktrace {
 
     }
 
+    public static boolean hasWarmedUp(Context context) {
+        return WarmUpUtility.hasWarmedUp(context);
+    }
+
     public enum Mode {
         Fp(0),
         Quicken(1),

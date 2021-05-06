@@ -9,7 +9,6 @@ enum UnwindTestMode {
     FP_UNWIND,
     WECHAT_QUICKEN_UNWIND,
     UNWIND_ADAPTER,
-//    WECHAT_QUICKEN_UNWIND_V2_WIP,
 };
 
 void set_unwind_mode(UnwindTestMode mode);

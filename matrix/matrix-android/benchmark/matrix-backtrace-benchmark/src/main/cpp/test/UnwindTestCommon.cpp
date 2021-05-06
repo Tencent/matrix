@@ -6,18 +6,13 @@
 #include <MinimalRegs.h>
 #include <QuickenUnwinder.h>
 #include <QuickenMaps.h>
-#include "Log.h"
 #include "Backtrace.h"
 #include "UnwindTestCommon.h"
+#include "BenchmarkLog.h"
 
 #define DWARF_UNWIND_TAG "Dwarf-Unwind"
 #define FP_UNWIND_TAG "Fp-Unwind"
 #define WECHAT_BACKTRACE_TAG "WeChat-Quicken-Unwind"
-
-//#define DWARF_UNWIND_TAG UNWIND_TEST_TAG
-//#define FP_FAST_UNWIND_TAG UNWIND_TEST_TAG
-//#define FP_FAST_UNWIND_WITH_FALLBACK_TAG UNWIND_TEST_TAG
-//#define DWARF_FAST_UNWIND_TAG UNWIND_TEST_TAG
 
 #define FRAME_MAX_SIZE 60
 
@@ -26,7 +21,7 @@
         { \
             struct timespec tms; \
             if (clock_gettime(CLOCK_REALTIME, &tms)) { \
-                LOGE(UNWIND_TEST_TAG, "Err: Get time failed."); \
+                BENCHMARK_LOGE(UNWIND_TEST_TAG, "Err: Get time failed."); \
             } else { \
                 timestamp = tms.tv_nsec; \
             } \
@@ -36,9 +31,9 @@
         { \
             struct timespec tms; \
             if (clock_gettime(CLOCK_REALTIME, &tms)) { \
-                LOGE(UNWIND_TEST_TAG, "Err: Get time failed."); \
+                BENCHMARK_LOGE(UNWIND_TEST_TAG, "Err: Get time failed."); \
             } \
-            LOGE(UNWIND_TEST_TAG, #tag" %ld(ns) - %ld(ns) = costs: %ld(ns)" \
+            BENCHMARK_LOGE(UNWIND_TEST_TAG, #tag" %ld(ns) - %ld(ns) = costs: %ld(ns)" \
                 , tms.tv_nsec, timestamp, (tms.tv_nsec - timestamp)); \
         }
 
@@ -54,8 +49,6 @@ void set_unwind_mode(UnwindTestMode mode) {
 
 inline void print_dwarf_unwind() {
 
-//    abort();
-
     auto *tmp_ns = new std::vector<unwindstack::FrameData>;
 
     TEST_NanoSeconds_Start(nano);
@@ -67,7 +60,7 @@ inline void print_dwarf_unwind() {
 
     TEST_NanoSeconds_End(unwindstack::dwarf_unwind, nano);
 
-    LOGE(DWARF_UNWIND_TAG, "frames = %"
+    BENCHMARK_LOGE(DWARF_UNWIND_TAG, "frames = %"
             PRIuPTR, tmp_ns->size());
 
     for (auto p_frame = tmp_ns->begin(); p_frame != tmp_ns->end(); ++p_frame) {
@@ -76,7 +69,7 @@ inline void print_dwarf_unwind() {
 
         std::string so_name = std::string(stack_info.dli_fname);
 
-        LOGE(DWARF_UNWIND_TAG, "  #pc 0x%"
+        BENCHMARK_LOGE(DWARF_UNWIND_TAG, "  #pc 0x%"
                 PRIx64
                 " rel_pc 0x%"
                 PRIx64
@@ -106,7 +99,7 @@ inline void print_fp_unwind() {
 
     TEST_NanoSeconds_End(wechat_backtrace::fp_unwind, nano);
 
-    LOGE(FP_UNWIND_TAG, "frames = %"
+    BENCHMARK_LOGE(FP_UNWIND_TAG, "frames = %"
             PRIuPTR, frame_size);
 
     for (size_t i = 0; i < frame_size; i++) {
@@ -115,7 +108,7 @@ inline void print_fp_unwind() {
 
         std::string so_name = std::string(stack_info.dli_fname);
 
-        LOGE(FP_UNWIND_TAG, "  #pc 0x%"
+        BENCHMARK_LOGE(FP_UNWIND_TAG, "  #pc 0x%"
                 PRIxPTR
                 " %"
                 PRIxPTR
@@ -147,12 +140,12 @@ inline void print_wechat_quicken_unwind() {
         dladdr((void *) frames[i].pc, &stack_info);
 
         if (!stack_info.dli_fname) {
-            LOGE(WECHAT_BACKTRACE_TAG, "  #pc stack_info.dli_fname is null");
+            BENCHMARK_LOGE(WECHAT_BACKTRACE_TAG, "  #pc stack_info.dli_fname is null");
             continue;
         }
         std::string so_name = std::string(stack_info.dli_fname);
 
-        LOGE(WECHAT_BACKTRACE_TAG, "  #pc 0x%"
+        BENCHMARK_LOGE(WECHAT_BACKTRACE_TAG, "  #pc 0x%"
                 PRIxPTR
                 " %"
                 PRIuPTR
@@ -174,7 +167,7 @@ inline void print_unwind_adapter() {
 
     TEST_NanoSeconds_End(print_unwind_adapter, nano);
 
-    LOGE(WECHAT_BACKTRACE_TAG, "frames = %"
+    BENCHMARK_LOGE(WECHAT_BACKTRACE_TAG, "frames = %"
             PRIuPTR, frame_size);
 
     for (size_t i = 0; i < frame_size; i++) {
@@ -182,12 +175,12 @@ inline void print_unwind_adapter() {
         dladdr((void *) frames[i].pc, &stack_info);
 
         if (!stack_info.dli_fname) {
-            LOGE(WECHAT_BACKTRACE_TAG, "  #pc stack_info.dli_fname is null");
+            BENCHMARK_LOGE(WECHAT_BACKTRACE_TAG, "  #pc stack_info.dli_fname is null");
             continue;
         }
         std::string so_name = std::string(stack_info.dli_fname);
 
-        LOGE(WECHAT_BACKTRACE_TAG, "  #pc 0x%"
+        BENCHMARK_LOGE(WECHAT_BACKTRACE_TAG, "  #pc 0x%"
                 PRIxPTR
                 " %"
                 PRIuPTR
@@ -200,7 +193,7 @@ inline void print_unwind_adapter() {
 
 void leaf_func(const char *testcase) {
 
-    LOGD(UNWIND_TEST_TAG, "Test %s unwind start with mode %d.", testcase, gMode);
+    BENCHMARK_LOGD(UNWIND_TEST_TAG, "Test %s unwind start with mode %d.", testcase, gMode);
 
     switch (gMode) {
         case FP_UNWIND:
@@ -216,11 +209,11 @@ void leaf_func(const char *testcase) {
             print_unwind_adapter();
             break;
         default:
-            LOGE(UNWIND_TEST_TAG, "Unknown test %s with mode %d.", testcase, gMode);
+            BENCHMARK_LOGE(UNWIND_TEST_TAG, "Unknown test %s with mode %d.", testcase, gMode);
             break;
     }
 
-    LOGD(UNWIND_TEST_TAG, "Test %s unwind finished.", testcase);
+    BENCHMARK_LOGD(UNWIND_TEST_TAG, "Test %s unwind finished.", testcase);
 }
 
 #ifdef __cplusplus

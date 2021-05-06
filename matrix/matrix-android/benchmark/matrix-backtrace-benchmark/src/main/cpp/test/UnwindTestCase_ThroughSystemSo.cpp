@@ -12,12 +12,6 @@
 extern "C" {
 #endif
 
-#ifdef LOGD
-#undef LOGD
-#endif
-
-#define LOGD(TAG, FMT, args...) //
-
 void throughsystemso_func0f() {
 
     const int len = 70;
@@ -45,8 +39,6 @@ void throughsystemso_func0f() {
     for (int i = 0; i < len; ++i) {
         a[i] = a[i] + b[i] + c[i] - d[i] + e[i] * f[i] - g[i] * 2 - h[i];
     }
-
-    LOGD(UNWIND_TEST_TAG, "a[9] = %d", a[9]);
 
     leaf_func(TESTCASE_THROUGH_SYS_SO);
 }
@@ -79,13 +71,10 @@ void throughsystemso_func0e() {
         a[i] = a[i] + b[i] + c[i] - d[i] + e[i] * f[i] - g[i] * 2 - h[i];
     }
 
-    LOGD(UNWIND_TEST_TAG, "a[9] = %d", a[9]);
-
     throughsystemso_func0f();
 }
 
 void func_throughsystemso() {
-    LOGD(DWARF_UNWIND_TEST, "func_throughsystemso");
 
     const int len = 70;
 
@@ -130,8 +119,6 @@ void func_throughsystemso() {
                                            * f[i] - g[i] * 2 - h[i] - j[i] + k[i] // / l[i]
                + m[i] + n[i] * o[i] + p[i] + q[i];
     }
-
-    LOGD(UNWIND_TEST_TAG, "a[9] = %d", a[9]);
 
     throughsystemso_func0e();
 //    func1();

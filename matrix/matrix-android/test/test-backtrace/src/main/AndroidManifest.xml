@@ -13,7 +13,7 @@
         android:supportsRtl="true"
         android:extractNativeLibs="true"
         android:theme="@style/AppTheme">
-        <activity android:name=".DemoActivity">
+        <activity android:name=".BenchmarkActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 

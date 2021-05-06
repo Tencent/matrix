@@ -22,7 +22,6 @@ ENDIF()
 SET(
         SOURCE_FILES
 
-        ${SOURCE_DIR}/test/UnwindTestJNI.cpp
         ${SOURCE_DIR}/test/UnwindTestCommon.cpp
         ${SOURCE_DIR}/test/UnwindTestCase_SelfSo.cpp
         ${SOURCE_DIR}/test/UnwindTestCase_ThroughJNI.cpp

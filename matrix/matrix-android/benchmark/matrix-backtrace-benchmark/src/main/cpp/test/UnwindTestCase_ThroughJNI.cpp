@@ -12,12 +12,6 @@
 extern "C" {
 #endif
 
-#ifdef LOGD
-#undef LOGD
-#endif
-
-#define LOGD(TAG, FMT, args...) //
-
 void throughjni_func0f() {
 
     const int len = 70;
@@ -244,13 +238,10 @@ void throughjni_func09(){
         a[i] = a[i] + b[i] + c[i] - d[i] + e[i] * f[i] - g[i] * 2 - h[i] - j[i] + k[i];
     }
 
-    LOGD(UNWIND_TEST_TAG, "a[9] = %d", a[9]);
-
     throughjni_func0a();
 }
 
 void func_throughjni() {
-    LOGD(DWARF_UNWIND_TEST, "func_throughjni");
 
     const int len = 70;
 

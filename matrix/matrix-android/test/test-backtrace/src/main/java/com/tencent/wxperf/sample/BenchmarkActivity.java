@@ -6,25 +6,24 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
+import android.os.Handler;
 import android.os.IBinder;
+import android.os.Looper;
 import android.os.Process;
-import android.support.v4.app.ActivityCompat;
-import android.support.v4.content.ContextCompat;
-import android.support.v7.app.AppCompatActivity;
 import android.view.View;
+import android.widget.Toast;
 
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+
+import com.tencent.components.backtrace.WarmUpReporter;
 import com.tencent.components.backtrace.WeChatBacktrace;
-import com.tencent.components.backtrace.WeChatBacktraceTest;
-import com.tencent.wxperf.jni.HookManager;
-import com.tencent.wxperf.jni.memory.MemoryHook;
-import com.tencent.wxperf.jni.test.UnwindBenckmarkTest;
-import com.tencent.wxperf.jni.test.UnwindTest;
+import com.tencent.matrix.benchmark.test.UnwindBenchmarkTest;
 
-import java.io.File;
+public class BenchmarkActivity extends AppCompatActivity {
 
-public class DemoActivity extends AppCompatActivity {
-
-    private static final String TAG = "Wxperf.DemoActivity";
+    private static final String TAG = "Backtrace.BenchmarkActivity";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -43,33 +42,9 @@ public class DemoActivity extends AppCompatActivity {
             }
         }, BIND_AUTO_CREATE);
 
-        initMemHook();
-
         checkPermission();
-    }
 
-    private void initMemHook() {
-        // Init backtrace
-        WeChatBacktrace.instance().configure(getApplicationContext())
-                .directoryToWarmUp(getApplicationInfo().nativeLibraryDir)
-                .directoryToWarmUp(WeChatBacktrace.getSystemLibraryPath())
-                .setBacktraceMode(WeChatBacktrace.Mode.Quicken)
-                .immediateGeneration(false)
-                .isWarmUpProcess(false)
-                .commit();
-
-        try {
-            HookManager.INSTANCE
-                    // Memory hook
-                    .addHook(MemoryHook.INSTANCE
-                            .addHookSo(".*libwechatbacktrace_test\\.so$")
-                            .enableStacktrace(true)
-                            .stacktraceLogThreshold(0)
-                            .enableMmapHook(false))
-                    .commitHooks();
-        } catch (HookManager.HookFailedException e) {
-            e.printStackTrace();
-        }
+        backtraceInit();
     }
 
     @Override
@@ -106,9 +81,21 @@ public class DemoActivity extends AppCompatActivity {
         }
     }
 
+    private void warmedUpToast() {
+        mHandler.post(new Runnable() {
+            @Override
+            public void run() {
+                Toast.makeText(BenchmarkActivity.this, "Warm-up has been done!", Toast.LENGTH_LONG).show();
+            }
+        });
+
+    }
+
     private boolean mBacktraceTestInitialized = false;
 
-    public void backtraceInit(View view) {
+    private Handler mHandler = new Handler(Looper.getMainLooper());
+
+    public void backtraceInit() {
 
         if (mBacktraceTestInitialized) {
             return;
@@ -116,32 +103,38 @@ public class DemoActivity extends AppCompatActivity {
 
         mBacktraceTestInitialized = true;
 
+
+        if (WeChatBacktrace.hasWarmedUp(this)) {
+            warmedUpToast();
+        }
+
+        WeChatBacktrace.setReporter(new WarmUpReporter() {
+            @Override
+            public void onReport(ReportEvent type, Object... args) {
+                if (type == ReportEvent.WarmedUp) {
+                    warmedUpToast();
+                }
+            }
+        });
+
         // Init backtrace
-        WeChatBacktraceTest.instance().configure(getApplicationContext())
-                .directoryToWarmUp(getApplicationInfo().nativeLibraryDir)
-                .directoryToWarmUp(WeChatBacktraceTest.getSystemLibraryPath())
-                .setBacktraceMode(WeChatBacktraceTest.Mode.Quicken)
-                .immediateGeneration(false)
-                .isWarmUpProcess(true)
+        WeChatBacktrace.instance().configure(getApplicationContext())
+                .warmUpSettings(WeChatBacktrace.WarmUpTiming.PostStartup, 0)
                 .commit();
+
+    }
+
+    public void backtraceBenchmark(View view) {
+        UnwindBenchmarkTest.nativeInit();
+        UnwindBenchmarkTest.nativeBenchmark();
     }
 
     public void backtrace(View view) {
-        UnwindBenckmarkTest.debugNative();
-    }
-
-    public void dump(View view) {
-        java.io.File file = new File("/sdcard/dump/");
-        file.mkdirs();
-        MemoryHook.INSTANCE.dump(file.getAbsolutePath() + "/backtrace-test.log", file.getAbsolutePath() + "/backtrace-test.json");
+        UnwindBenchmarkTest.nativeTry();
     }
 
     public void testMapsUpdate(View view) {
-        UnwindTest.init();
-    }
-
-    public void testWarmUp(View view) {
-        WeChatBacktraceTest.instance().TestWarmUp();
+        UnwindBenchmarkTest.nativeRefreshMaps();
     }
 
     public void killSelf(View view) {

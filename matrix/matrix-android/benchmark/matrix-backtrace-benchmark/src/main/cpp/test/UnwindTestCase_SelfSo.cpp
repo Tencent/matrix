@@ -12,13 +12,6 @@
 extern "C" {
 #endif
 
-#ifdef LOGD
-#undef LOGD
-#endif
-
-#define LOGD(TAG, FMT, args...) //__android_log_print(ANDROID_LOG_DEBUG, TAG, FMT, ##args)
-#define DWARF_UNWIND_TEST "Wxperf.UnwindBenchmark"
-
 void selfso_func0f() {
 
     const int len = 70;
@@ -524,12 +517,6 @@ void selfso_func03(){
                + m[i] + n[i] * o[i];
     }
 
-    LOGD(DWARF_UNWIND_TEST, "a[9] = %d", a[9]);
-
-
-
-    LOGD(DWARF_UNWIND_TEST, "a[9] = %d", a[9]);
-
     selfso_func04();
 }
 
@@ -593,10 +580,6 @@ void selfso_func02(long a0, int a1, int a2){
         d[i] = d[i - 1] + d [i - 2];
     }
 
-
-    LOGD(DWARF_UNWIND_TEST, "a[9] = %d %d%d%d", a[9], a0, a1, a2);
-
-
     selfso_func03();
 }
 
@@ -644,15 +627,10 @@ void selfso_func01(int arg) {
                + m[i] + n[i] * o[i] + p[i];
     }
 
-    // if else
-
-    LOGD(DWARF_UNWIND_TEST, "a[9] = %d", a[9]);
-
     selfso_func02(a[0],a[2],a[2]);
 }
 
 void func_selfso() {
-    LOGD(DWARF_UNWIND_TEST, "func_selfso");
 
     const int len = 70;
 
@@ -698,10 +676,7 @@ void func_selfso() {
                + m[i] + n[i] * o[i] + p[i] + q[i];
     }
 
-    LOGD(UNWIND_TEST_TAG, "a[9] = %d", a[9]);
-
     selfso_func01(1);
-//    func1();
 }
 
 #ifdef __cplusplus
