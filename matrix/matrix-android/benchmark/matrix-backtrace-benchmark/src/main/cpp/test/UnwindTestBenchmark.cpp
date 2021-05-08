@@ -1,5 +1,6 @@
 #include <jni.h>
 #include <dlfcn.h>
+#include <unistd.h>
 #include <cinttypes>
 #include <memory>
 #include <cxxabi.h>
@@ -24,9 +25,12 @@ extern "C" {
 #define BENCHMARK_TIMES(mode, times, test_func) {\
     set_unwind_mode(mode); \
     BENCHMARK_LOGE(UNWIND_TEST_TAG, "Start "#test_func" case benchmark for mode "#mode); \
+    reset_benchmark_counting(); \
     for (int i = 0; i < times; i++) { \
         test_func(); \
+        usleep(100); \
     } \
+    dump_benchmark_calculation(#mode); \
 };
 
 #define BENCHMARK(mode, test_func) BENCHMARK_TIMES(mode, benchmark_times, test_func)

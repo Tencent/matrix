@@ -14,7 +14,8 @@
 #define FP_UNWIND_TAG "Fp-Unwind"
 #define WECHAT_BACKTRACE_TAG "WeChat-Quicken-Unwind"
 
-#define FRAME_MAX_SIZE 18
+//#define FRAME_MAX_SIZE 18 // Native only
+#define FRAME_MAX_SIZE 60 // Through native/JNI/AOT
 
 #define TEST_NanoSeconds_Start(timestamp) \
         long timestamp = 0; \
@@ -33,8 +34,11 @@
             if (clock_gettime(CLOCK_REALTIME, &tms)) { \
                 BENCHMARK_LOGE(UNWIND_TEST_TAG, "Err: Get time failed."); \
             } \
+            long duration = (tms.tv_nsec - timestamp); \
+            duration = duration == 0 ? 100 : duration; /* At least 100ns */\
             BENCHMARK_LOGE(UNWIND_TEST_TAG, #tag" %ld(ns) - %ld(ns) = costs: %ld(ns), frames = %zu" \
-                , tms.tv_nsec, timestamp, (tms.tv_nsec - timestamp), (size_t) frames); \
+                , tms.tv_nsec, timestamp, duration, (size_t) frames); \
+            benchmark_counting(duration); \
         }
 
 #ifdef __cplusplus
@@ -45,6 +49,27 @@ static UnwindTestMode gMode = DWARF_UNWIND;
 
 void set_unwind_mode(UnwindTestMode mode) {
     gMode = mode;
+}
+
+uint64_t sTotalDuration = 0;
+size_t sBenchmarkTimes = 0;
+
+void reset_benchmark_counting() {
+    sTotalDuration = 0;
+    sBenchmarkTimes = 0;
+}
+
+void benchmark_counting(uint64_t duration) {
+    sTotalDuration += duration;
+    sBenchmarkTimes++;
+}
+
+void dump_benchmark_calculation(const char *tag) {
+    BENCHMARK_LOGE(UNWIND_TEST_TAG,
+                   "%s Accumulated duration = %llu, times = %zu, avg = %llu, per-frame = %llu.",
+                   tag, (unsigned long long) sTotalDuration, sBenchmarkTimes,
+                   (unsigned long long) (sTotalDuration / sBenchmarkTimes),
+                   (unsigned long long) (((unsigned long long) (sTotalDuration / sBenchmarkTimes)) / FRAME_MAX_SIZE));
 }
 
 inline void print_dwarf_unwind() {
@@ -78,8 +103,8 @@ inline void print_dwarf_unwind() {
                 " cal_rel_pc 0x%"
                 PRIxPTR
                 " %s (%s)", p_frame->pc, p_frame->rel_pc, (uptr) stack_info.dli_fbase,
-             (uptr) (p_frame->pc - (uptr) stack_info.dli_fbase), stack_info.dli_sname,
-             stack_info.dli_fname);
+                       (uptr) (p_frame->pc - (uptr) stack_info.dli_fbase), stack_info.dli_sname,
+                       stack_info.dli_fname);
     }
 }
 
@@ -115,7 +140,8 @@ inline void print_fp_unwind() {
                 " 0x%"
                 PRIxPTR
                 " %s (%s)", frames[i].pc, (uptr) stack_info.dli_fbase,
-             frames[i].pc - (uptr) stack_info.dli_fbase, stack_info.dli_sname, stack_info.dli_fname);
+                       frames[i].pc - (uptr) stack_info.dli_fbase, stack_info.dli_sname,
+                       stack_info.dli_fname);
     }
 }
 
@@ -128,7 +154,8 @@ inline void print_wechat_quicken_unwind() {
     wechat_backtrace::Frame frames[FRAME_MAX_SIZE];
     uptr frame_size = 0;
 
-    wechat_backtrace::BACKTRACE_FUNC_WRAPPER(quicken_unwind)(regs, frames, FRAME_MAX_SIZE, frame_size);
+    wechat_backtrace::BACKTRACE_FUNC_WRAPPER(quicken_unwind)(regs, frames, FRAME_MAX_SIZE,
+                                                             frame_size);
 
     TEST_NanoSeconds_End(print_wechat_quicken_unwind, nano, frame_size);
 
@@ -152,7 +179,7 @@ inline void print_wechat_quicken_unwind() {
                 " 0x%"
                 PRIxPTR
                 " %s (%s)", frames[i].pc, frames[i].pc, frames[i].pc, stack_info.dli_sname,
-             stack_info.dli_fname);
+                       stack_info.dli_fname);
     }
 }
 
@@ -187,7 +214,7 @@ inline void print_unwind_adapter() {
                 " 0x%"
                 PRIxPTR
                 " %s (%s)", frames[i].pc, frames[i].pc, frames[i].pc, stack_info.dli_sname,
-             stack_info.dli_fname);
+                       stack_info.dli_fname);
     }
 }
 

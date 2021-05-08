@@ -12,6 +12,7 @@ import android.os.Looper;
 import android.os.Process;
 import android.util.Log;
 import android.view.View;
+import android.widget.Button;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -109,16 +110,20 @@ public class BenchmarkActivity extends AppCompatActivity {
 
         mBacktraceTestInitialized = true;
 
-
-        if (WeChatBacktrace.hasWarmedUp(this)) {
-            warmedUpToast();
-        }
+        final Button btn = findViewById(R.id.btn_wechat_backtrace_benchmark);
+        btn.setEnabled(false);
 
         WeChatBacktrace.setReporter(new WarmUpReporter() {
             @Override
             public void onReport(ReportEvent type, Object... args) {
                 if (type == ReportEvent.WarmedUp) {
                     warmedUpToast();
+                    mHandler.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            btn.setEnabled(true);
+                        }
+                    });
                 }
             }
         });
@@ -126,12 +131,16 @@ public class BenchmarkActivity extends AppCompatActivity {
         // Init backtrace
         WeChatBacktrace.instance().configure(getApplicationContext())
                 .warmUpSettings(WeChatBacktrace.WarmUpTiming.PostStartup, 0)
-                .directoryToWarmUp(WeChatBacktrace.getSystemFrameworkOATPath() + "boot.oat")
-                .directoryToWarmUp(WeChatBacktrace.getSystemFrameworkOATPath() + "boot-framework.oat")
-//                .enableIsolateProcessLogger(true)
-//                .enableOtherProcessLogger(true)
+//                .directoryToWarmUp(WeChatBacktrace.getSystemFrameworkOATPath() + "boot.oat")
+//                .directoryToWarmUp(WeChatBacktrace.getSystemFrameworkOATPath() + "boot-framework.oat")
+                .enableIsolateProcessLogger(true)
+                .enableOtherProcessLogger(true)
                 .commit();
 
+        if (WeChatBacktrace.hasWarmedUp(this)) {
+            warmedUpToast();
+            btn.setEnabled(true);
+        }
     }
 
     public void backtraceBenchmark(View view) {

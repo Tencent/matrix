@@ -13,6 +13,10 @@ enum UnwindTestMode {
 
 void set_unwind_mode(UnwindTestMode mode);
 
+void reset_benchmark_counting();
+
+void dump_benchmark_calculation(const char* tag);
+
 void leaf_func(const char * testcase);
 
 #ifdef __cplusplus
