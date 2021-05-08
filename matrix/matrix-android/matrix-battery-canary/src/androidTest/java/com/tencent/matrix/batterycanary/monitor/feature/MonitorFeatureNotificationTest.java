@@ -21,6 +21,7 @@ import android.content.Context;
 
 import com.tencent.matrix.Matrix;
 import com.tencent.matrix.batterycanary.BatteryMonitorPlugin;
+import com.tencent.matrix.batterycanary.TestUtils;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCallback;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorConfig;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
@@ -76,6 +77,10 @@ public class MonitorFeatureNotificationTest {
 
     @Test
     public void testNotify() throws InterruptedException {
+        if (TestUtils.isAssembleTest()) {
+            return;
+        }
+
         final AtomicReference<String> textRef = new AtomicReference<>();
         final AtomicLong bgMillisRef = new AtomicLong();
         final CountDownLatch latch = new CountDownLatch(1);
