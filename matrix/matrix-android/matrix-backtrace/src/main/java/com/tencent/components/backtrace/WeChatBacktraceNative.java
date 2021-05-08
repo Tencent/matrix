@@ -77,7 +77,7 @@ public class WeChatBacktraceNative {
      * @param so_path
      */
     @Keep
-    static native void statistic(String so_path);
+    static native int[] statistic(String so_path);
 
     /**
      * Generate quicken table immediately while stepping stack.

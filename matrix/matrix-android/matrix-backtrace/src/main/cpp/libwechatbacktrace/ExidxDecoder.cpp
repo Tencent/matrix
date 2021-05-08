@@ -332,7 +332,7 @@ namespace wechat_backtrace {
             }
             SaveInstructions(QUT_INSTRUCTION_VSP_SET_BY_R11);
         } else {
-            QUT_STATISTIC(UnsupportedArmExdix, bits, byte);
+            QUT_STATISTIC(IgnoreUnsupportedArmExidx, bits, byte);
             return false;
         }
 

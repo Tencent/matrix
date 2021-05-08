@@ -640,14 +640,10 @@ namespace wechat_backtrace {
                                 "DwarfSectionDecoder::EvalRegister reg == eval_info->cie->return_address_register");
                     }
                     temp_instructions_->push_back((QUT_FIN << 32));
-                } else {
-                    last_error_.code = DWARF_ERROR_NOT_SUPPORT;
-                    QUT_STATISTIC(UnsupportedDwarfLocationUndefined, reg, DWARF_ERROR_NOT_SUPPORT);
-                    return false;
                 }
                 break;
             default:
-                QUT_STATISTIC(UnsupportedDwarfLocation, reg, DWARF_ERROR_NOT_SUPPORT);
+                QUT_STATISTIC(IgnoreUnsupportedDwarfLocation, reg, DWARF_ERROR_NOT_SUPPORT);
                 break;
         }
 
@@ -684,7 +680,7 @@ namespace wechat_backtrace {
                 break;
 #endif
             default:
-                QUT_STATISTIC(UnsupportedCfaDwarfLocationRegister, reg, value);
+                QUT_STATISTIC(IgnoreUnsupportedCfaDwarfLocationRegister, reg, value);
                 return false;
         }
 
@@ -747,7 +743,7 @@ namespace wechat_backtrace {
                 break;
 #endif
             default:
-                QUT_STATISTIC(UnsupportedDwarfLocationOffset, reg, value);
+                QUT_STATISTIC(IgnoreUnsupportedDwarfLocationOffset, reg, value);
                 return false;
         }
 
@@ -837,13 +833,13 @@ namespace wechat_backtrace {
                 }
                 ValueExpression<AddressType> value_expression;
                 if (!EvalExpression(*loc, regular_memory, total_regs, &value_expression, nullptr)) {
+//                    QUT_STATISTIC(UnsupportedCfaDwarfLocationValExpression, loc->values[0], loc->values[1]);
                     return false;
                 }
                 AddressType value = value_expression.value;
                 // TODO check value overflow
                 temp_instructions_->push_back(
                         (QUT_INSTRUCTION_VSP_SET_IMM << 32) | (0xffffffff & value));
-                QUT_STATISTIC(UnsupportedCfaDwarfLocationValExpression, value, 0);
                 break;
             }
             default:
@@ -879,7 +875,7 @@ namespace wechat_backtrace {
             // Why evaluate x0:
             // Why evaluate x20:
             // Why evaluate x28:
-            if (reg != ARM64_REG_R0 &&reg != ARM64_REG_R20 && reg != ARM64_REG_R28 && reg < ARM64_REG_R29) {
+            if (reg != ARM64_REG_R0 && reg != ARM64_REG_R20 && reg != ARM64_REG_R28 && reg < ARM64_REG_R29) {
                 continue;
             }
 #endif

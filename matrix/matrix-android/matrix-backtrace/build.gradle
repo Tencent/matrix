@@ -19,7 +19,9 @@ android {
 
         externalNativeBuild {
             cmake {
-                arguments = ['-DANDROID_STL=c++_shared', "-DEnableLOG=${gradle.enableLog() ? "ON" : "OFF"}" as String]
+                arguments = ['-DANDROID_STL=c++_shared',
+                             "-DEnableLOG=${gradle.enableLog() ? "ON" : "OFF"}" as String,
+                             "-DQUT_STATISTIC_ENABLE=${gradle.enableLog() ? "ON" : "OFF"}" as String]
             }
 
             exportHeaders {

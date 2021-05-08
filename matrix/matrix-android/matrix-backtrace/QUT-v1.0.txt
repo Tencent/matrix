@@ -10,7 +10,7 @@
 //      1000 0100           : vsp = sp                                    		; # TODO
 
 //      1000 0101 0nnn nnnn : vsp = r7 + (nnnnnnn << 2)							;
-//      1000 0110 0nnn nnnn : vsp = r11 + (nnnnnnn << 2)						;m
+//      1000 0110 0nnn nnnn : vsp = r11 + (nnnnnnn << 2)						;
 
 //		1001 0101 0nnn nnnn : vsp = r10 + (nnnnnnn << 2)						; # (nnnnnnn << 2) in [0, 0x1fc],  0nnnnnnn is an one bit ULEB128
 //		1001 0110 + SLEB128 : vsp = SLEB128							    		; # vsp set by IMM
@@ -49,6 +49,7 @@
 //      1000 0100           : vsp = sp                                    		;
 
 //      1000 0101 0nnn nnnn : vsp = x29 + (nnnnnnn << 2)						; # (nnnnnnn << 2) in [0, 0x1fc],  0nnnnnnn is an one bit ULEB128
+//      1000 0111 + SLEB128 : vsp = x29 + SLEB128						        ; # vsp set by x29 offset
 
 //		1001 0101 0nnn nnnn : vsp = x28 + (nnnnnnn << 2)						; # (nnnnnnn << 2) in [0, 0x1fc],  0nnnnnnn is an one bit ULEB128
 //		1001 0110 + SLEB128 : vsp = SLEB128							    		; # vsp set by IMM

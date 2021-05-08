@@ -52,6 +52,7 @@
 #define QUT_INSTRUCTION_VSP_SET_BY_X29_OP           OP(1000, 0000)
 #define QUT_INSTRUCTION_VSP_SET_BY_X29_PROLOGUE_OP  OP(1000, 0001)
 #define QUT_INSTRUCTION_VSP_SET_BY_X29_IMM_OP       OP(1000, 0101)
+#define QUT_INSTRUCTION_VSP_SET_BY_X29_OFFSET_OP    OP(1000, 0110)
 
 #define QUT_INSTRUCTION_VSP_SET_BY_SP_OP            OP(1000, 0100)
 
@@ -172,7 +173,7 @@ namespace wechat_backtrace {
                 if (op == QUT_INSTRUCTION_VSP_SET_BY_R7) type = InstructionOpOverflowR7;
                 else if (op == QUT_INSTRUCTION_VSP_SET_BY_R11) type = InstructionOpOverflowR11;
                 else if (op == QUT_INSTRUCTION_VSP_SET_BY_JNI_SP) type = InstructionOpOverflowJNISP;
-                else if (op == QUT_INSTRUCTION_VSP_SET_BY_X29) type = InstructionOpOverflowX29;
+                else if (op == QUT_INSTRUCTION_VSP_SET_BY_X29) type = IgnoreInstructionOpOverflowX29;
                 else return;
                 QUT_STATISTIC(type, op, imm);
             }
@@ -187,7 +188,7 @@ namespace wechat_backtrace {
                     if (op == QUT_INSTRUCTION_R4_OFFSET) QUT_STATISTIC(InstructionOpOverflowR4, op,
                                                                        imm);
                     else if (op == QUT_INSTRUCTION_X20_OFFSET) QUT_STATISTIC(
-                            InstructionOpOverflowX20, op, imm);
+                                IgnoreInstructionOpOverflowX20, op, imm);
                 } else {
                     QUT_STATISTIC_TIPS(InstructionOp, op, imm);
                 }
@@ -477,6 +478,7 @@ namespace wechat_backtrace {
 //      1000 0100           : vsp = sp                                    		;
 
 //      1000 0101 0nnn nnnn : vsp = x29 + (nnnnnnn << 2)						; # (nnnnnnn << 2) in [0, 0x1fc],  0nnnnnnn is an one byte ULEB128
+//      1000 0111 + SLEB128 : vsp = x29 + SLEB128						        ; # vsp set by x29 offset
 
 //		1001 0101 0nnn nnnn : vsp = x28 + (nnnnnnn << 2)						; # (nnnnnnn << 2) in [0, 0x1fc],  0nnnnnnn is an one byte ULEB128
 //		1001 0110 + SLEB128 : vsp = SLEB128							    		; # vsp set by IMM
@@ -552,16 +554,15 @@ namespace wechat_backtrace {
 
                     if (imm != 0) {
                         uint8_t byte;
-                        byte = QUT_INSTRUCTION_VSP_SET_BY_X29_IMM_OP;
-                        encoded.push_back(byte);
                         if (imm > 0 && imm <= IMM(7)) {
+                            byte = QUT_INSTRUCTION_VSP_SET_BY_X29_IMM_OP;
+                            encoded.push_back(byte);
                             byte = FILL_WITH_IMM(0, imm, 7);
                             encoded.push_back(byte);
                         } else {
-                            if (log) {
-                                QUT_DEBUG_LOG("QUT_INSTRUCTION_VSP_SET_BY_X29 overflow");
-                            }
-                            return false; // overflow, bad entry
+                            byte = QUT_INSTRUCTION_VSP_SET_BY_X29_OFFSET_OP;
+                            encoded.push_back(byte);
+                            EncodeSLEB128_PUSHBACK(encoded, imm);
                         }
                         break;
                     } else {

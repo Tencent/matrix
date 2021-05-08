@@ -130,12 +130,23 @@ namespace wechat_backtrace {
         }
     }
 
-    static void JNI_Statistic(JNIEnv *env, jclass clazz, jstring sopath_jstr) {
+    static jintArray JNI_Statistic(JNIEnv *env, jclass clazz, jstring sopath_jstr) {
         (void) clazz;
 
         const char *sopath = env->GetStringUTFChars(sopath_jstr, 0);
-        StatisticWeChatQuickenUnwindTable(sopath);
+
+        std::vector<uint32_t> processed_result;
+        StatisticWeChatQuickenUnwindTable(sopath, processed_result);
         env->ReleaseStringUTFChars(sopath_jstr, sopath);
+
+        size_t array_size = processed_result.size();
+        jintArray result = env->NewIntArray(array_size);
+        if (array_size > 0) {
+            env->SetIntArrayRegion(result, 0, processed_result.size(),
+                                   (jint *) &processed_result[0]);
+        }
+
+        return result;
     }
 
     extern "C" int init_xlog_logger(const char *xlog_so_path);
@@ -173,11 +184,11 @@ namespace wechat_backtrace {
             {"consumeRequestedQut", "()[Ljava/lang/String;",   (void *) JNI_ConsumeRequestedQut},
             {"warmUp",              "(Ljava/lang/String;IZ)Z", (void *) JNI_WarmUp},
             {"setBacktraceMode",    "(I)V",                    (void *) JNI_SetBacktraceMode},
-            {"statistic",           "(Ljava/lang/String;)V",   (void *) JNI_Statistic},
+            {"statistic",           "(Ljava/lang/String;)[I",  (void *) JNI_Statistic},
             {"immediateGeneration", "(Z)V",                    (void *) JNI_SetImmediateGeneration},
             {"notifyWarmedUp",      "(Ljava/lang/String;I)V",  (void *) JNI_NotifyWarmedUp},
             {"enableLogger",        "(Ljava/lang/String;Z)V",  (void *) JNI_EnableLogger},
-            {"testLoadQut",        "(Ljava/lang/String;I)Z",  (void *) JNI_TestLoadQut},
+            {"testLoadQut",         "(Ljava/lang/String;I)Z",  (void *) JNI_TestLoadQut},
     };
 
     static jclass JNIClass_WeChatBacktraceNative = nullptr;

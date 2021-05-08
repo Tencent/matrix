@@ -14,7 +14,7 @@ SET(TARGET wechatbacktrace)
 
 SET(SOURCE_DIR src/main/cpp)
 
-OPTION(EnableLOG "Enable QUT Logs" ON)
+OPTION(EnableLOG "Enable QUT Logs" OFF)
 OPTION(QUT_STATISTIC_ENABLE "Enable QUT Statistics" OFF)
 
 IF(EnableLOG)

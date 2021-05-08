@@ -13,8 +13,14 @@ android {
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
         consumerProguardFiles "consumer-rules.pro"
 
-        ndk {
-            abiFilters rootProject.ABI_FILTERS as String[]
+        if (gradle.forceArm32()) {
+            ndk {
+                abiFilters 'armeabi-v7a'
+            }
+        } else {
+            ndk {
+                abiFilters rootProject.ABI_FILTERS as String[]
+            }
         }
     }
 

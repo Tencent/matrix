@@ -13,7 +13,7 @@ namespace wechat_backtrace {
 
     QUT_EXTERN_C void
     StatisticWeChatQuickenUnwindTable(
-            const std::string &sopath);
+            const std::string &sopath, std::vector<uint32_t> &processed_result);
 
     QUT_EXTERN_C bool
     GenerateQutForLibrary(

@@ -1,4 +1,6 @@
 <resources>
     <string name="app_name">Matrix Backtrace Benchmark</string>
     <string name="usage"> 启动后请等待一段时间，预热(warm-up) 生成 Quicken Unwind Table(QUT) 数据。</string>
+
+    <string name="stat_usage"> 如何对 elf 的 QUT 支持情况进行统计：将对应当前 demo abi 的 so 或 oat 文件 adb push 到 /data/local/tmp/backtrace-statistics 目录下，然后点击下方 Statistic 按钮，结果将输出到 Logcat 中。</string>
 </resources>

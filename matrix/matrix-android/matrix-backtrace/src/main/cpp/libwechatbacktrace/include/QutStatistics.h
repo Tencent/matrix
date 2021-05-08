@@ -5,8 +5,6 @@
 #ifndef _LIBWECHATBACKTRACE_QUT_STATISTICS_H
 #define _LIBWECHATBACKTRACE_QUT_STATISTICS_H
 
-//#define QUT_STATISTIC_ENABLE  // TODO
-
 #include "BacktraceDefine.h"
 
 #ifdef QUT_STATISTIC_ENABLE
@@ -26,30 +24,28 @@ namespace wechat_backtrace {
         InstructionOpOverflowR7 = 1,
         InstructionOpOverflowR11 = 2,
         InstructionOpOverflowJNISP = 3,
-        InstructionOpOverflowX29 = 4,
-        InstructionOpOverflowR4 = 5,
-        InstructionOpOverflowX20 = 6,
+        InstructionOpOverflowR4 = 4,
+        InstructionOpImmNotAligned = 5,
 
-        InstructionOpImmNotAligned = 9,
-        UnsupportedArmExdix = 10,
+        IgnoreUnsupportedArmExidx = 10,
+        IgnoreInstructionOpOverflowX29 = 11,
+        IgnoreInstructionOpOverflowX20 = 12,
 
         InstructionEntriesArmExidx = 20,
         InstructionEntriesEhFrame = 21,
         InstructionEntriesDebugFrame = 22,
 
-        UnsupportedDwarfLocation = 30,
-        UnsupportedDwarfLocationValOffset = 31,
-        UnsupportedDwarfLocationRegister = 32,
-        UnsupportedDwarfLocationExpression = 33,
-        UnsupportedDwarfLocationValExpressionWithoutDexPc = 34,
-        UnsupportedDwarfLocationUndefined = 35,
-        UnsupportedDwarfLocationOffset = 36,
+        IgnoreUnsupportedDwarfLocation = 30,
+        IgnoreUnsupportedDwarfLocationOffset = 31,
+        IgnoreUnsupportedCfaDwarfLocationRegister = 32,
 
-        UnsupportedCfaDwarfLocationRegister = 37,
-        UnsupportedCfaDwarfLocationValExpression = 38,
-
-        UnsupportedDwarfOp_OpBreg_Reg = 41,
-        UnsupportedDwarfOp_OpBregx_Reg = 42,
+        UnsupportedDwarfOp_OpBreg_Reg = 33,
+        UnsupportedDwarfOp_OpBregx_Reg = 34,
+        UnsupportedDwarfLocationValOffset = 35,
+        UnsupportedDwarfLocationRegister = 36,
+        UnsupportedDwarfLocationExpression = 37,
+        UnsupportedDwarfLocationValExpressionWithoutDexPc = 38,
+        UnsupportedCfaDwarfLocationValExpression = 39,
 
     };
 
@@ -59,7 +55,7 @@ namespace wechat_backtrace {
 
     void QutStatisticTips(QutStatisticType, uint64_t, uint64_t);
 
-    void DumpQutStatResult();
+    void DumpQutStatResult(std::vector<uint32_t> &processed_result);
 
     QUT_EXTERN_C_BLOCK_END
 }  // namespace wechat_backtrace

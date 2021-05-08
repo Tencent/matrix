@@ -354,6 +354,11 @@ namespace wechat_backtrace {
                             cfa_ = R29(regs_) + ((byte & 0x7f) << 2);
                             break;
                         }
+                        case QUT_INSTRUCTION_VSP_SET_BY_X29_OFFSET_OP: {
+                            int64_t value = 0;
+                            DecodeSLEB128(value, instructions, amount, j, i)
+                            cfa_ = R29(regs_) + value;
+                        }
                         case QUT_INSTRUCTION_DEX_PC_SET_OP: {
                             dex_pc_ = R20(regs_);
                             break;

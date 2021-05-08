@@ -232,6 +232,10 @@ public class WeChatBacktrace {
         return WarmUpUtility.hasWarmedUp(context);
     }
 
+    public static int[] _DoStatistic(String pathOfSo) {
+        return WeChatBacktraceNative.statistic(pathOfSo);
+    }
+
     public enum Mode {
         Fp(0),
         Quicken(1),

@@ -35,14 +35,15 @@ namespace wechat_backtrace {
 
     DEFINE_STATIC_LOCAL(mutex, generate_lock_,);
 
-    void StatisticWeChatQuickenUnwindTable(const string &sopath) {
+    void
+    StatisticWeChatQuickenUnwindTable(const string &sopath, vector<uint32_t> &processed_result) {
 
         string soname = SplitSonameFromPath(sopath);
 
-        QUT_STAT_LOG("Statistic sopath %s so %s", sopath, soname.c_str());
+        QUT_STAT_LOG("Statistic sopath %s so %s", sopath.c_str(), soname.c_str());
         auto memory = QuickenMapInfo::CreateQuickenMemoryFromFile(sopath, 0);
         if (memory == nullptr) {
-            QUT_STAT_LOG("memory->Init so %s failed", sopath);
+            QUT_STAT_LOG("memory->Init so %s failed", sopath.c_str());
             return;
         }
 
@@ -50,7 +51,7 @@ namespace wechat_backtrace {
 
         elf->Init();
         if (!elf->valid()) {
-            QUT_STAT_LOG("elf->valid() so %s invalid", sopath);
+            QUT_STAT_LOG("elf->valid() so %s invalid", sopath.c_str());
             return;
         }
 
@@ -72,7 +73,8 @@ namespace wechat_backtrace {
                                                 process_memory_.get(),
                                                 &qut_sections);
 
-        DumpQutStatResult();
+        DumpQutStatResult(processed_result);
+
     }
 
     void NotifyWarmedUpQut(const std::string &sopath, const uint64_t elf_start_offset) {

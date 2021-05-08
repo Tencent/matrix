@@ -159,7 +159,7 @@ class WarmUpDelegate {
             Bundle args = new Bundle();
             args.putString(ARGS_WARM_UP_SAVING_PATH, mSavingPath);
             args.putString(ARGS_WARM_UP_PATH_OF_ELF, pathOfElf);
-            args.putLong(ARGS_WARM_UP_ELF_START_OFFSET, offset);
+            args.putInt(ARGS_WARM_UP_ELF_START_OFFSET, offset);
             Bundle result = mImpl.call(CMD_WARM_UP_SINGLE_ELF_FILE, args);
             int retCode = result != null ? result.getInt(RESULT_OF_WARM_UP) : -100;
             boolean ret = retCode == OK;

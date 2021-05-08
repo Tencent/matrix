@@ -34,6 +34,9 @@ namespace wechat_backtrace {
     }
 
     void QutStatistic(QutStatisticType type, uint64_t val1, uint64_t val2) {
+        if (!sStatisticInfo) {
+            return;
+        }
         vector<pair<uint64_t, uint64_t>> *v;
         if (sStatisticInfo->find(type) == sStatisticInfo->end()) {
             (*sStatisticInfo)[type] = make_shared<vector<pair<uint64_t, uint64_t>>>();
@@ -44,6 +47,9 @@ namespace wechat_backtrace {
     }
 
     void QutStatisticTips(QutStatisticType type, uint64_t val1, uint64_t val2) {
+        if (!sStatisticTipsInfo) {
+            return;
+        }
         vector<pair<uint64_t, uint64_t>> *v;
         if (sStatisticTipsInfo->find(type) == sStatisticTipsInfo->end()) {
             (*sStatisticTipsInfo)[type] = make_shared<vector<pair<uint64_t, uint64_t>>>();
@@ -53,15 +59,29 @@ namespace wechat_backtrace {
         v->push_back(make_pair(val1, val2));
     }
 
-    void DumpQutStatResult() {
+    void DumpQutStatResult(vector<uint32_t> &processed_result) {
 #ifdef QUT_STATISTIC_ENABLE
-        auto iter = sStatisticInfo->begin();
-        QUT_STAT_LOG("Dump Qut Statistic for so %s:", gCurrStatLib.c_str());
-        while (iter != sStatisticInfo->end()) {
-            QutStatisticType type = (QutStatisticType) iter->first;
-            vector<pair<uint64_t, uint64_t>> *v = iter->second.get();
-            QUT_STAT_LOG("\t Type %u, Count %llu:", type, (uint64_t) v->size());
-            iter++;
+        auto it = sStatisticInfo->begin();
+        QUT_STAT_LOG("Dump Qut Statistic for elf file %s:", gCurrStatLib.c_str());
+        while (it != sStatisticInfo->end()) {
+            QutStatisticType type = (QutStatisticType) it->first;
+            vector<pair<uint64_t, uint64_t>> *v = it->second.get();
+            switch (type) {
+                case InstructionEntriesArmExidx:
+                case InstructionEntriesEhFrame:
+                case InstructionEntriesDebugFrame:
+                    QUT_STAT_LOG("\t Type %u, Value %llu:", type, (uint64_t) v->at(0).first);
+                    processed_result.push_back(type);
+                    processed_result.push_back((uint32_t) v->at(0).first);
+                    break;
+                default:
+                    QUT_STAT_LOG("\t Type %u, Count %llu:", type, (uint64_t) v->size());
+                    processed_result.push_back(type);
+                    processed_result.push_back((uint32_t) v->size());
+                    break;
+            }
+
+            it++;
         }
         QUT_STAT_LOG("Dump Qut Statistic End.\n\n");
 #endif
