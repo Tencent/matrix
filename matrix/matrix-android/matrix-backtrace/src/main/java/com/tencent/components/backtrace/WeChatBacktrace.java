@@ -20,6 +20,9 @@ public class WeChatBacktrace {
     private final static String SYSTEM_LIBRARY_PATH = "/system/lib/";
     private final static String SYSTEM_LIBRARY_PATH_64 = "/system/lib64/";
 
+    private final static String SYSTEM_BOOT_OAT_PATH = "/system/framework/arm/";
+    private final static String SYSTEM_BOOT_OAT_PATH_64 = "/system/framework/arm64/";
+
     public final static String ISOLATE_PROCESS_SUFFIX = ":backtrace__";
 
     public static boolean is64BitRuntime() {
@@ -35,6 +38,10 @@ public class WeChatBacktrace {
         } else {
             return !is64BitRuntime() ? SYSTEM_LIBRARY_PATH : SYSTEM_LIBRARY_PATH_64;
         }
+    }
+
+    public static String getSystemFrameworkOATPath() {
+        return !is64BitRuntime() ? SYSTEM_BOOT_OAT_PATH_64 : SYSTEM_BOOT_OAT_PATH;
     }
 
     public static String getBaseODEXPath(Context context) {

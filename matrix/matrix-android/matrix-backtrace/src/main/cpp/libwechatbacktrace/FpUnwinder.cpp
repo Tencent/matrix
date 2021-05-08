@@ -76,7 +76,6 @@ namespace wechat_backtrace {
         while (IsValidFrame((uptr) frame, stack_top, bottom) &&
                IsAligned((uptr) frame, sizeof(*frame)) &&
                frame_size < frame_max_size) {
-
             uptr pc1 = frame[1];
             // Let's assume that any pointer in the 0th page (i.e. <0x1000 on i386 and
             // x86_64) is invalid and stop unwinding here.  If we're adding support for

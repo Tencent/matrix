@@ -53,7 +53,6 @@ namespace wechat_backtrace {
         std::lock_guard<std::mutex> guard(lock_);
 
         if (!quicken_interface_ & !quicken_interface_failed_) {
-
             string name_without_delete = RemoveMapsDeleteSuffix(name);
 
             string so_key = name_without_delete + ":" + to_string(start) + ":" + to_string(end);
@@ -69,7 +68,6 @@ namespace wechat_backtrace {
             }
 
             Memory *memory = CreateQuickenMemory(process_memory);
-
             if (memory == nullptr) {
                 quicken_interface_failed_ = true;
                 QUT_LOG("Create quicken interface failed by creating memory failed.");
@@ -83,11 +81,9 @@ namespace wechat_backtrace {
                 QUT_LOG("Create quicken interface failed by creating elf failed.");
                 return nullptr;
             }
-
             string soname = elf->GetSoname();
             string build_id_hex = elf->GetBuildID();
             elf_load_bias_ = elf->GetLoadBias();
-
             QUT_LOG("GetQuickenInterface elf_offset %llu, offset %llu, elf_load_bias_ %llu"
                     ", soname %s, build_id %s, name_without_delete %s.",
                     (ullint_t) elf_offset, (ullint_t) offset, (ullint_t) elf_load_bias_,
@@ -102,7 +98,6 @@ namespace wechat_backtrace {
                     elf_start_offset,
                     build_id_hex
             ));
-
             cached_quicken_interface_[so_key] = quicken_interface_;
         }
 
@@ -115,7 +110,7 @@ namespace wechat_backtrace {
         (void) so_path;
 
         auto elf = make_unique<Elf>(memory);
-        elf->Init();
+        elf->Init(true); // Ignore .gnu_debug_data
         if (!elf->valid()) {
             QUT_LOG("elf->valid() so %s invalid", so_path.c_str());
             return nullptr;

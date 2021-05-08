@@ -60,6 +60,7 @@ namespace wechat_backtrace {
     }
 
     void DumpQutStatResult(vector<uint32_t> &processed_result) {
+        (void) processed_result;
 #ifdef QUT_STATISTIC_ENABLE
         auto it = sStatisticInfo->begin();
         QUT_STAT_LOG("Dump Qut Statistic for elf file %s:", gCurrStatLib.c_str());

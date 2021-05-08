@@ -41,7 +41,7 @@ bool Elf::cache_enabled_;
 std::unordered_map<std::string, std::pair<std::shared_ptr<Elf>, bool>>* Elf::cache_;
 std::mutex* Elf::cache_lock_;
 
-bool Elf::Init() {
+bool Elf::Init(bool ignore_gnu_debug_data) {
   load_bias_ = 0;
   if (!memory_) {
     return false;
@@ -55,7 +55,9 @@ bool Elf::Init() {
   valid_ = interface_->Init(&load_bias_);
   if (valid_) {
     interface_->InitHeaders();
-    InitGnuDebugdata();
+    if (!ignore_gnu_debug_data) {
+      InitGnuDebugdata();
+    }
   } else {
     interface_.reset(nullptr);
   }

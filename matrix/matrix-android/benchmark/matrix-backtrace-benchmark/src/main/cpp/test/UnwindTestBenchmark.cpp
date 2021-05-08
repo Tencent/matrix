@@ -44,18 +44,18 @@ Java_com_tencent_matrix_benchmark_test_UnwindBenchmarkTest_nativeBenchmark(JNIEn
 
     // DWARF_UNWIND mode benchmark
     BENCHMARK(DWARF_UNWIND, func_selfso)
-    BENCHMARK(DWARF_UNWIND, func_throughjni)
-    BENCHMARK(DWARF_UNWIND, func_throughsystemso)
+//    BENCHMARK(DWARF_UNWIND, func_throughjni)
+//    BENCHMARK(DWARF_UNWIND, func_throughsystemso)
 
     // FP_UNWIND mode benchmark
     BENCHMARK(FP_UNWIND, func_selfso);
-    BENCHMARK(FP_UNWIND, func_throughjni);
-    BENCHMARK(FP_UNWIND, func_throughsystemso);
+//    BENCHMARK(FP_UNWIND, func_throughjni);
+//    BENCHMARK(FP_UNWIND, func_throughsystemso);
 
     // QUICKEN_UNWIND mode benchmark
     BENCHMARK(WECHAT_QUICKEN_UNWIND, func_selfso);
-    BENCHMARK(WECHAT_QUICKEN_UNWIND, func_throughjni);
-    BENCHMARK(WECHAT_QUICKEN_UNWIND, func_throughsystemso);
+//    BENCHMARK(WECHAT_QUICKEN_UNWIND, func_throughjni);
+//    BENCHMARK(WECHAT_QUICKEN_UNWIND, func_throughsystemso);
 
 }
 

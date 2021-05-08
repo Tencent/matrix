@@ -14,7 +14,7 @@
 #define FP_UNWIND_TAG "Fp-Unwind"
 #define WECHAT_BACKTRACE_TAG "WeChat-Quicken-Unwind"
 
-#define FRAME_MAX_SIZE 60
+#define FRAME_MAX_SIZE 18
 
 #define TEST_NanoSeconds_Start(timestamp) \
         long timestamp = 0; \
@@ -27,14 +27,14 @@
             } \
         }
 
-#define TEST_NanoSeconds_End(tag, timestamp) \
+#define TEST_NanoSeconds_End(tag, timestamp, frames) \
         { \
             struct timespec tms; \
             if (clock_gettime(CLOCK_REALTIME, &tms)) { \
                 BENCHMARK_LOGE(UNWIND_TEST_TAG, "Err: Get time failed."); \
             } \
-            BENCHMARK_LOGE(UNWIND_TEST_TAG, #tag" %ld(ns) - %ld(ns) = costs: %ld(ns)" \
-                , tms.tv_nsec, timestamp, (tms.tv_nsec - timestamp)); \
+            BENCHMARK_LOGE(UNWIND_TEST_TAG, #tag" %ld(ns) - %ld(ns) = costs: %ld(ns), frames = %zu" \
+                , tms.tv_nsec, timestamp, (tms.tv_nsec - timestamp), (size_t) frames); \
         }
 
 #ifdef __cplusplus
@@ -58,7 +58,7 @@ inline void print_dwarf_unwind() {
 
     wechat_backtrace::BACKTRACE_FUNC_WRAPPER(dwarf_unwind)(regs.get(), *tmp_ns, FRAME_MAX_SIZE);
 
-    TEST_NanoSeconds_End(unwindstack::dwarf_unwind, nano);
+    TEST_NanoSeconds_End(unwindstack::dwarf_unwind, nano, tmp_ns->size());
 
     BENCHMARK_LOGE(DWARF_UNWIND_TAG, "frames = %"
             PRIuPTR, tmp_ns->size());
@@ -97,7 +97,7 @@ inline void print_fp_unwind() {
 
     wechat_backtrace::BACKTRACE_FUNC_WRAPPER(fp_unwind)(regs, frames, FRAME_MAX_SIZE, frame_size);
 
-    TEST_NanoSeconds_End(wechat_backtrace::fp_unwind, nano);
+    TEST_NanoSeconds_End(wechat_backtrace::fp_unwind, nano, frame_size);
 
     BENCHMARK_LOGE(FP_UNWIND_TAG, "frames = %"
             PRIuPTR, frame_size);
@@ -130,7 +130,7 @@ inline void print_wechat_quicken_unwind() {
 
     wechat_backtrace::BACKTRACE_FUNC_WRAPPER(quicken_unwind)(regs, frames, FRAME_MAX_SIZE, frame_size);
 
-    TEST_NanoSeconds_End(print_wechat_quicken_unwind, nano);
+    TEST_NanoSeconds_End(print_wechat_quicken_unwind, nano, frame_size);
 
     LOGE(WECHAT_BACKTRACE_TAG, "frames = %"
             PRIuPTR, frame_size);
@@ -165,7 +165,7 @@ inline void print_unwind_adapter() {
 
     wechat_backtrace::BACKTRACE_FUNC_WRAPPER(unwind_adapter)(frames, FRAME_MAX_SIZE, frame_size);
 
-    TEST_NanoSeconds_End(print_unwind_adapter, nano);
+    TEST_NanoSeconds_End(print_unwind_adapter, nano, frame_size);
 
     BENCHMARK_LOGE(WECHAT_BACKTRACE_TAG, "frames = %"
             PRIuPTR, frame_size);

@@ -5,6 +5,7 @@
 #include "Log.h"
 #include "UnwindTestCommon.h"
 #include "UnwindTestCase_SelfSo.h"
+#include "BenchmarkLog.h"
 
 #define TESTCASE_SELF_SO "self-so"
 
@@ -12,7 +13,7 @@
 extern "C" {
 #endif
 
-void selfso_func0f() {
+NO_INLINE void selfso_func0f() {
 
     const int len = 70;
 
@@ -45,7 +46,7 @@ void selfso_func0f() {
     leaf_func(TESTCASE_SELF_SO);
 }
 
-void selfso_func0e() {
+NO_INLINE void selfso_func0e() {
 
     const int len = 70;
 
@@ -78,7 +79,7 @@ void selfso_func0e() {
     selfso_func0f();
 }
 
-void selfso_func0d(int vargs ...) {
+NO_INLINE void selfso_func0d(int vargs ...) {
 
     va_list args;
     va_start(args, vargs);
@@ -118,7 +119,7 @@ void selfso_func0d(int vargs ...) {
     selfso_func0e();
 }
 
-void selfso_func0c() {
+NO_INLINE void selfso_func0c() {
 
     const int len = 70;
 
@@ -148,11 +149,11 @@ void selfso_func0c() {
 
     LOGD(UNWIND_TEST_TAG, "a[9] = %d", a[9]);
 
-    selfso_func0d(0, 1, 2, 3);
+//    selfso_func0d(0, 1, 2, 3);
     selfso_func0d(0, 1, 2, 3, 4, 5, 6, 7);
 }
 
-void selfso_func0b() {
+NO_INLINE void selfso_func0b() {
 
     const int len = 64;
 
@@ -184,7 +185,7 @@ void selfso_func0b() {
     selfso_func0c();
 }
 
-void selfso_func0a(){
+NO_INLINE void selfso_func0a(){
 
     const int len = 64;
 
@@ -215,7 +216,7 @@ void selfso_func0a(){
     selfso_func0b();
 }
 
-void selfso_func09(){
+NO_INLINE void selfso_func09(){
     const int len = 70;
 
     long a[len] = {0};
@@ -251,7 +252,7 @@ void selfso_func09(){
     selfso_func0a();
 }
 
-void selfso_func08(){
+NO_INLINE void selfso_func08(){
 
     const int len = 32;
 
@@ -279,7 +280,7 @@ void selfso_func08(){
     selfso_func09();
 }
 
-void selfso_func07() {
+NO_INLINE void selfso_func07() {
 
     const int len = 70;
 
@@ -319,7 +320,7 @@ void selfso_func07() {
     selfso_func08();
 }
 
-void selfso_func06(long a1,long a2, long a3, long a4, long a5,long a6, long a7) {
+NO_INLINE void selfso_func06(long a1,long a2, long a3, long a4, long a5,long a6, long a7) {
 
     const int len = 70;
 
@@ -362,7 +363,7 @@ void selfso_func06(long a1,long a2, long a3, long a4, long a5,long a6, long a7) 
     selfso_func07();
 }
 
-void selfso_func05(long a1,long a2, long a3, long a4, long a5,long a6) {
+NO_INLINE void selfso_func05(long a1,long a2, long a3, long a4, long a5,long a6) {
 
     const int len = 70;
 
@@ -421,7 +422,7 @@ void selfso_func05(long a1,long a2, long a3, long a4, long a5,long a6) {
     selfso_func06(a[0],a[1],a[2],a[3],a[4],a[5], b[6]);
 }
 
-void selfso_func04() {
+NO_INLINE void selfso_func04() {
 
     const int len = 32;
 
@@ -475,7 +476,7 @@ void selfso_func04() {
     selfso_func05(a[0],a[1],a[2],a[3],a[4],a[5]);
 }
 
-void selfso_func03(){
+NO_INLINE void selfso_func03(){
 
     const int len = 70;
 
@@ -520,7 +521,7 @@ void selfso_func03(){
     selfso_func04();
 }
 
-void selfso_func02(long a0, int a1, int a2){
+NO_INLINE void selfso_func02(long a0, int a1, int a2){
     const int len = 11;
 
     uint64_t a[len] = {0};
@@ -583,7 +584,7 @@ void selfso_func02(long a0, int a1, int a2){
     selfso_func03();
 }
 
-void selfso_func01(int arg) {
+NO_INLINE void selfso_func01(int arg) {
 
     const int len = 70;
 
@@ -630,7 +631,7 @@ void selfso_func01(int arg) {
     selfso_func02(a[0],a[2],a[2]);
 }
 
-void func_selfso() {
+NO_INLINE void func_selfso() {
 
     const int len = 70;
 

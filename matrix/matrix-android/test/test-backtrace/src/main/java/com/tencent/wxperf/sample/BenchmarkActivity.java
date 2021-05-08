@@ -126,6 +126,8 @@ public class BenchmarkActivity extends AppCompatActivity {
         // Init backtrace
         WeChatBacktrace.instance().configure(getApplicationContext())
                 .warmUpSettings(WeChatBacktrace.WarmUpTiming.PostStartup, 0)
+                .directoryToWarmUp(WeChatBacktrace.getSystemFrameworkOATPath() + "boot.oat")
+                .directoryToWarmUp(WeChatBacktrace.getSystemFrameworkOATPath() + "boot-framework.oat")
 //                .enableIsolateProcessLogger(true)
 //                .enableOtherProcessLogger(true)
                 .commit();

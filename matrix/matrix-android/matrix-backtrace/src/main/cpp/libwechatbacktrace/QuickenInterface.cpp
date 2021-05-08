@@ -110,7 +110,6 @@ namespace wechat_backtrace {
             }
         }
 
-
         return false;
     }
 
@@ -197,58 +196,8 @@ namespace wechat_backtrace {
 
         // If the pc was set to zero, consider this the final frame.
         *finished = (PC(regs) == 0) ? true : false;
-
         return return_value;
     }
-
-//    bool QuickenInterface::StepBack(uptr pc, uptr sp, uptr fp, uint8_t &regs_bits, uptr *regs,
-//                                    unwindstack::Memory *process_memory, bool *finish) {
-//
-//        // Adjust the load bias to get the real relative pc.
-//        if (UNLIKELY(pc < load_bias_)) {
-//            last_error_code_ = QUT_ERROR_UNWIND_INFO;
-//            return false;
-//        }
-//
-//        if (!qut_sections_) {
-//            if (!GenerateQuickenTable<addr_t>(process_memory)) {
-//                last_error_code_ = QUT_ERROR_QUT_SECTION_INVALID;
-//                return false;
-//            }
-//        }
-//
-//        QuickenTableReverse quicken(qut_sections_, regs, memory_, process_memory);
-//        size_t entry_offset;
-//
-//        pc -= load_bias_;
-//
-//        if (UNLIKELY(!FindEntry(pc, &entry_offset))) {
-//            return false;
-//        }
-//
-//        quicken.cfa_ = sp - sizeof(uptr) * 2;   // TODO check this
-//        quicken.cfa_next_ = fp - sizeof(uptr) * 2;
-//        quicken.regs_bits_ = regs_bits;
-//        bool return_value = false;
-//
-//        if (quicken.EvalReverse(entry_offset)) {
-//            return_value = true;
-//            regs_bits = quicken.regs_bits_ | quicken.regs_bits_tmp_;
-//            QUT_TMP_LOG("regs_bits "
-//                                BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(regs_bits));
-//            QUT_TMP_LOG("quicken.regs_bits_ "
-//                                BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(quicken.regs_bits_));
-//            QUT_TMP_LOG("quicken.regs_bits_tmp_ "
-//                                BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(quicken.regs_bits_tmp_));
-//            if (regs_bits == OP(0100, 1111)) {
-//                *finish = true;
-//            }
-//        } else {
-//            last_error_code_ = QUT_ERROR_INVALID_QUT_INSTR;
-//        }
-//
-//        return return_value;
-//    }
 
     template bool
     QuickenInterface::GenerateQuickenTable<addr_t>(

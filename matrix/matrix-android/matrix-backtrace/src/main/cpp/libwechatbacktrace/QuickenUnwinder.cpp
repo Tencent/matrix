@@ -281,7 +281,6 @@ namespace wechat_backtrace {
                         Frame *backtrace, uptr &frame_size) {
 
         std::shared_ptr<Maps> maps = Maps::current();
-
         if (!maps) {
             QUT_LOG("Maps is null.");
             return QUT_ERROR_MAPS_IS_NULL;
@@ -303,7 +302,6 @@ namespace wechat_backtrace {
         uptr stack_top = reinterpret_cast<uptr>(attr.stack_base) + attr.stack_size;
 
         for (; frame_size < frame_max_size;) {
-
             uint64_t cur_pc = PC(regs);
             uint64_t cur_sp = SP(regs);
             MapInfoPtr map_info = nullptr;
