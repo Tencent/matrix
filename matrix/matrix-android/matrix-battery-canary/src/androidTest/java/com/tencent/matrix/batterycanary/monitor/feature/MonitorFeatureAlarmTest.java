@@ -19,9 +19,10 @@ package com.tencent.matrix.batterycanary.monitor.feature;
 import android.app.AlarmManager;
 import android.app.Application;
 import android.app.PendingIntent;
-import androidx.arch.core.util.Function;
 import android.content.Context;
 import android.content.Intent;
+
+import androidx.arch.core.util.Function;
 import androidx.test.platform.app.InstrumentationRegistry;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import android.text.TextUtils;

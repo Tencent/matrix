@@ -72,7 +72,6 @@ public class BleManagerHookerTest {
         Assert.assertEquals(ContextCompat.checkSelfPermission(mContext, "android.permission.ACCESS_FINE_LOCATION") == 0, discovery);
     }
 
-    @Ignore
     @Test
     public void testScanning() throws Exception {
         final AtomicInteger discInc = new AtomicInteger();
@@ -292,7 +291,6 @@ public class BleManagerHookerTest {
         hooker.doUnHook();
     }
 
-    @Ignore
     @Test
     public void testBleHooker() throws InterruptedException {
         final AtomicInteger discInc = new AtomicInteger();
