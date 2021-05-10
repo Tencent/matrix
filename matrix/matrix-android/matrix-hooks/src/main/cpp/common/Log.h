@@ -5,9 +5,9 @@
 #ifndef MATRIX_HOOK_LOG_H
 #define MATRIX_HOOK_LOG_H
 
-#ifdef EnableLOG
-
 #include <android/log.h>
+
+#ifdef EnableLOG
 
 #undef LOGD
 #undef LOGI
@@ -39,5 +39,7 @@
 #define LOG_ALWAYS_FATAL(LOG_TAG, ...) \
   (((void)android_printAssert(NULL, LOG_TAG, ##__VA_ARGS__)))
 #endif
+
+int flogger(FILE *fp, const char *fmt, ...);
 
 #endif //MATRIX_HOOK_LOG_H

@@ -7,17 +7,6 @@
 #include "Log.h"
 #include "Predefined.h"
 
-extern "C" BACKTRACE_EXPORT int flogger(FILE *fp, const char *fmt, ...) {
-    if (!fp) {
-        return 0;
-    }
-    va_list args;
-    va_start(args, fmt);
-    int ret = vfprintf(fp, fmt, args);
-    va_end(args);
-    return ret;
-}
-
 namespace wechat_backtrace {
 
     static volatile internal_logger_func _logger_func = nullptr;
