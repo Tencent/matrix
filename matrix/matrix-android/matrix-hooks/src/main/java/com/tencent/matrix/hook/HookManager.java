@@ -2,7 +2,6 @@ package com.tencent.matrix.hook;
 
 
 import androidx.annotation.Keep;
-import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.tencent.matrix.util.MatrixLog;
@@ -20,12 +19,6 @@ public class HookManager {
 
     private volatile boolean hasHooked;
     private Set<AbsHook> mHooks = new HashSet<>();
-
-    private NativeLibraryLoader mNativeLibLoader = null;
-
-    public interface NativeLibraryLoader {
-        void loadLibrary(@NonNull String libName);
-    }
 
     private HookManager(){
     }
@@ -49,11 +42,7 @@ public class HookManager {
         }
 
         try {
-            if (mNativeLibLoader != null) {
-                mNativeLibLoader.loadLibrary("matrix-hooks");
-            } else {
-                System.loadLibrary("matrix-hooks");
-            }
+            System.loadLibrary("matrix-hooks");
         } catch (Throwable e) {
             MatrixLog.printErrStackTrace(TAG, e, "");
             return;
@@ -66,11 +55,6 @@ public class HookManager {
             hook.onHook();
         }
         exclusiveHook();
-    }
-
-    public HookManager setNativeLibraryLoader(@Nullable NativeLibraryLoader loader) {
-        mNativeLibLoader = loader;
-        return this;
     }
 
     public HookManager addHook(@Nullable AbsHook hook) {
