@@ -27,34 +27,34 @@ static void ignore_impl(const char *regex) {
     }
 }
 
-// JNIEXPORT void JNICALL
-// Java_com_tencent_matrix_hook_pthread_PthreadHook_addHookSoNative(JNIEnv *env, jobject thiz,
-//                                                                         jobjectArray hook_so_list) {
-//     jsize size = env->GetArrayLength(hook_so_list);
-//
-//     for (int i = 0; i < size; ++i) {
-//         auto       jregex = (jstring) (env->GetObjectArrayElement(hook_so_list, i));
-//         const char *regex = env->GetStringUTFChars(jregex, NULL);
-//         hook_impl(regex);
-//         env->ReleaseStringUTFChars(jregex, regex);
-//     }
-//
-//     add_dlopen_hook_callback(pthread_hook_on_dlopen);
-//     add_hook_init_callback(pthread_hook_init);
-// }
-//
-// JNIEXPORT void JNICALL
-// Java_com_tencent_matrix_hook_pthread_PthreadHook_addIgnoreSoNative(JNIEnv *env, jobject thiz,
-//                                                                           jobjectArray hook_so_list) {
-//     jsize size = env->GetArrayLength(hook_so_list);
-//
-//     for (int i = 0; i < size; ++i) {
-//         auto       jregex = (jstring) (env->GetObjectArrayElement(hook_so_list, i));
-//         const char *regex = env->GetStringUTFChars(jregex, NULL);
-//         ignore_impl(regex);
-//         env->ReleaseStringUTFChars(jregex, regex);
-//     }
-// }
+JNIEXPORT void JNICALL
+Java_com_tencent_matrix_hook_pthread_PthreadHook_addHookSoNative(JNIEnv *env, jobject thiz,
+                                                                        jobjectArray hook_so_list) {
+    jsize size = env->GetArrayLength(hook_so_list);
+
+    for (int i = 0; i < size; ++i) {
+        auto       jregex = (jstring) (env->GetObjectArrayElement(hook_so_list, i));
+        const char *regex = env->GetStringUTFChars(jregex, NULL);
+        hook_impl(regex);
+        env->ReleaseStringUTFChars(jregex, regex);
+    }
+
+    add_dlopen_hook_callback(pthread_hook_on_dlopen);
+    add_hook_init_callback(pthread_hook_init);
+}
+
+JNIEXPORT void JNICALL
+Java_com_tencent_matrix_hook_pthread_PthreadHook_addIgnoreSoNative(JNIEnv *env, jobject thiz,
+                                                                          jobjectArray hook_so_list) {
+    jsize size = env->GetArrayLength(hook_so_list);
+
+    for (int i = 0; i < size; ++i) {
+        auto       jregex = (jstring) (env->GetObjectArrayElement(hook_so_list, i));
+        const char *regex = env->GetStringUTFChars(jregex, NULL);
+        ignore_impl(regex);
+        env->ReleaseStringUTFChars(jregex, regex);
+    }
+}
 
 JNIEXPORT void JNICALL
 Java_com_tencent_matrix_hook_pthread_PthreadHook_addHookThreadNameNative(JNIEnv *env,
