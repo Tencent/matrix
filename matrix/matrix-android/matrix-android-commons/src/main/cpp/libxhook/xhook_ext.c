@@ -133,7 +133,7 @@ static int xhook_find_library_base_addr(const char* owner_lib_name, char path_na
 
         //check elf header format
         //We are trying to do ELF header checking as late as possible.
-        if (0 != xh_elf_check_elfheader(base_addr)) continue;
+        if (0 != xh_core_check_elf_header(base_addr, pathname)) continue;
 
         XH_LOG_DEBUG("found library, owner_lib_name: %s, path: %s, base: %" PRIxPTR,
                      owner_lib_name, pathname, base_addr);

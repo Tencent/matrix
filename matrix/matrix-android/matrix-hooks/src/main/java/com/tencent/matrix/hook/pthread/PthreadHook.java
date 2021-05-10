@@ -20,8 +20,6 @@ public class PthreadHook extends AbsHook {
     // private Set<String> mHookSoSet      = new HashSet<>();
     // private Set<String> mIgnoreSoSet    = new HashSet<>();
     private Set<String> mHookThreadName = new HashSet<>();
-    private boolean mThreadTraceEnabled = false;
-    private boolean mThreadStackShinkEnabled = false;
 
     private PthreadHook() {
     }
@@ -73,16 +71,6 @@ public class PthreadHook extends AbsHook {
         return this;
     }
 
-    public PthreadHook setThreadTraceEnabled(boolean enabled) {
-        mThreadTraceEnabled = enabled;
-        return this;
-    }
-
-    public PthreadHook setThreadStackShinkEnabled(boolean enabled) {
-        mThreadStackShinkEnabled = enabled;
-        return this;
-    }
-
     /**
      * notice: it is an exclusive interface
      */
@@ -102,30 +90,20 @@ public class PthreadHook extends AbsHook {
     @Override
     public void onConfigure() {
         addHookThreadNameNative(mHookThreadName.toArray(new String[0]));
-        setThreadStackShinkEnabledNative(mThreadStackShinkEnabled);
-        setThreadTraceEnabledNative(mThreadTraceEnabled);
     }
 
     @Override
     protected void onHook() {
         // addHookSoNative(mHookSoSet.toArray(new String[0]));
         // addIgnoreSoNative(mIgnoreSoSet.toArray(new String[0]));
-        if (mThreadTraceEnabled || mThreadStackShinkEnabled) {
-            installHooksNative();
-        }
     }
 
     // private native void addHookSoNative(String[] hookSoList);
 
     // private native void addIgnoreSoNative(String[] hookSoList);
 
-    private native void setThreadTraceEnabledNative(boolean enabled);
-
-    private native void setThreadStackShinkEnabledNative(boolean enabled);
-
     private native void addHookThreadNameNative(String[] threadNames);
 
     private native void dumpNative(String path);
 
-    private native void installHooksNative();
 }
