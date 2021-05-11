@@ -27,12 +27,9 @@ set(
         ${SOURCE_DIR}/common/JNICommon.cpp
         ${SOURCE_DIR}/common/HookCommon.cpp
         ${SOURCE_DIR}/common/ReentrantPrevention.cpp
-        ${SOURCE_DIR}/pthread/ThreadTrace.cpp
-        ${SOURCE_DIR}/pthread/ThreadStackShink.cpp
+        ${SOURCE_DIR}/common/Log.cpp
         ${SOURCE_DIR}/pthread/PthreadHook.cpp
         ${SOURCE_DIR}/pthread/PthreadHookJNI.cpp
-        ${SOURCE_DIR}/egl/EglHook.cpp
-        ${SOURCE_DIR}/egl/EglHookJNI.cpp
 )
 
 add_library( # Specifies the name of the library.
@@ -48,11 +45,13 @@ add_library( # Specifies the name of the library.
         ${TEST_SOURCE_FILES}
         )
 
+#add_subdirectory(${SOURCE_DIR}/external/libxhook)
 add_subdirectory(${SOURCE_DIR}/external/libcJSON)
 
 target_include_directories(
         ${TARGET}
         PRIVATE ${SOURCE_DIR}/common
+        PRIVATE ${SOURCE_DIR}/external/libxhook
         PRIVATE ${SOURCE_DIR}/external/libcJSON
         PRIVATE ${EXT_DEP}/include
 )
