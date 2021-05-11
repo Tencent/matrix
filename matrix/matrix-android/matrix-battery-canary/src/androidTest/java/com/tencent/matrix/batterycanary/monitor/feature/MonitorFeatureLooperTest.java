@@ -43,6 +43,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -454,6 +455,7 @@ public class MonitorFeatureLooperTest {
         Assert.assertTrue(feature.mDeltaList.isEmpty());
 
         feature.watchLooper("main", Looper.getMainLooper());
+
         Assert.assertEquals(1, feature.mWatchingList.size());
         Assert.assertEquals(1, feature.mLooperMonitorTrace.size());
         Assert.assertEquals(0, feature.mTaskJiffiesTrace.size());
@@ -482,6 +484,82 @@ public class MonitorFeatureLooperTest {
 
         hasCheck.set(true);
         while (feature.mDeltaList.isEmpty()) {}
+    }
+
+    @Test
+    public void testWatchMainThreadByConfig() throws InterruptedException {
+        final AtomicBoolean hasStart = new AtomicBoolean();
+        final AtomicBoolean hasCheck = new AtomicBoolean();
+
+        final LooperTaskMonitorFeature feature = new LooperTaskMonitorFeature();
+        BatteryMonitorCore core = mockMonitor();
+        core.getConfig().looperWatchList = Arrays.asList("main");
+        core.start();
+        feature.configure(core);
+        BatteryMonitorPlugin plugin = new BatteryMonitorPlugin(core.getConfig());
+        Matrix.with().getPlugins().add(plugin);
+        feature.onTurnOn();
+
+        Assert.assertTrue(feature.mWatchingList.isEmpty());
+        Assert.assertTrue(feature.mLooperMonitorTrace.isEmpty());
+        Assert.assertEquals(0, feature.mTaskJiffiesTrace.size());
+        Assert.assertTrue(feature.mDeltaList.isEmpty());
+
+        feature.startWatching();
+
+        Assert.assertEquals(1, feature.mWatchingList.size());
+        Assert.assertEquals(1, feature.mLooperMonitorTrace.size());
+        Assert.assertEquals(0, feature.mTaskJiffiesTrace.size());
+        Assert.assertTrue(feature.mDeltaList.isEmpty());
+
+        Handler handler = new Handler(Looper.getMainLooper());
+        handler.post(new TestTask() {
+            @Override
+            public void run() {
+                Assert.assertEquals(1, feature.mWatchingList.size());
+                Assert.assertEquals(1, feature.mLooperMonitorTrace.size());
+                Assert.assertEquals(1, feature.mTaskJiffiesTrace.size());
+
+                ArrayList<TimeBreaker.Stamp> taskStamps = feature.getTaskStamps(Process.myTid());
+                Assert.assertNotNull(taskStamps);
+                Assert.assertTrue(taskStamps.size() > 1);
+                Assert.assertTrue(taskStamps.get(0).key.contains(MonitorFeatureLooperTest.class.getName() + "$"));
+
+                hasStart.set(true);
+                while (!hasCheck.get()) {}
+            }
+        });
+
+        while (!hasStart.get()) {}
+
+        Assert.assertEquals(1, feature.mWatchingList.size());
+        Assert.assertEquals(1, feature.mLooperMonitorTrace.size());
+        Assert.assertEquals(1, feature.mTaskJiffiesTrace.size());
+        Assert.assertTrue(feature.mDeltaList.isEmpty());
+
+        hasCheck.set(true);
+        while (feature.mDeltaList.isEmpty()) {}
+
+        Assert.assertEquals(1, feature.mDeltaList.size());
+        Assert.assertTrue(feature.mDeltaList.get(0).dlt.name.contains(MonitorFeatureLooperTest.class.getName() + "$"));
+
+        List<Delta<TaskJiffiesSnapshot>> deltas = feature.currentJiffies();
+        Assert.assertEquals(1, deltas.size());
+        Assert.assertEquals(feature.mDeltaList, deltas);
+
+        feature.clearFinishedJiffies();
+        Assert.assertEquals(1, feature.mWatchingList.size());
+        Assert.assertEquals(1, feature.mLooperMonitorTrace.size());
+        Assert.assertEquals(0, feature.mTaskJiffiesTrace.size());
+        Assert.assertTrue(feature.mDeltaList.isEmpty());
+
+        feature.mDeltaList.addAll(deltas);
+
+        feature.onTurnOff();
+        Assert.assertTrue(feature.mWatchingList.isEmpty());
+        Assert.assertTrue(feature.mLooperMonitorTrace.isEmpty());
+        Assert.assertEquals(0, feature.mTaskJiffiesTrace.size());
+        Assert.assertTrue(feature.mDeltaList.isEmpty());
     }
 
     @Test

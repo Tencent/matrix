@@ -3,10 +3,6 @@ package com.tencent.matrix.batterycanary.monitor.feature;
 
 import android.os.HandlerThread;
 import android.os.Looper;
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.annotation.WorkerThread;
-
 import android.os.Process;
 import android.text.TextUtils;
 
@@ -20,7 +16,10 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.annotation.WorkerThread;
 
 public final class LooperTaskMonitorFeature extends AbsTaskMonitorFeature {
     private static final String TAG = "Matrix.battery.LooperTaskMonitorFeature";
@@ -64,7 +63,7 @@ public final class LooperTaskMonitorFeature extends AbsTaskMonitorFeature {
             public void onDispatchStart(String x) {
                 super.onDispatchStart(x);
                 if (mCore.getConfig().isAggressiveMode) {
-                    MatrixLog.i(TAG, x);
+                    MatrixLog.i(TAG, "[" + Thread.currentThread().getName() + "]" + x);
                 }
                 String taskName = computeTaskName(x);
                 if (!TextUtils.isEmpty(taskName)) {
@@ -79,7 +78,7 @@ public final class LooperTaskMonitorFeature extends AbsTaskMonitorFeature {
             public void onDispatchEnd(String x) {
                 super.onDispatchEnd(x);
                 if (mCore.getConfig().isAggressiveMode) {
-                    MatrixLog.i(TAG, x);
+                    MatrixLog.i(TAG, "[" + Thread.currentThread().getName() + "]" + x);
                 }
                 String taskName = computeTaskName(x);
                 if (!TextUtils.isEmpty(taskName)) {
@@ -164,13 +163,20 @@ public final class LooperTaskMonitorFeature extends AbsTaskMonitorFeature {
                 Collection<Thread> allThreads = getAllThreads();
                 for (Thread thread : allThreads) {
                     if (thread instanceof HandlerThread) {
+                        // update watch for handler thread
                         Looper looper = ((HandlerThread) thread).getLooper();
                         if (looper != null) {
                             if (!mLooperMonitorTrace.containsKey(looper)) {
-                                // update watch
                                 watchLooper((HandlerThread) thread);
                             }
                         }
+
+                    } else if (Looper.getMainLooper().getThread() == thread) {
+                        // update watch for main thread
+                        if (!mLooperMonitorTrace.containsKey(Looper.getMainLooper())) {
+                            watchLooper("main", Looper.getMainLooper());
+                        }
+
                     }
                 }
 
@@ -181,18 +187,32 @@ public final class LooperTaskMonitorFeature extends AbsTaskMonitorFeature {
                     if (TextUtils.isEmpty(threadToWatch)) {
                         continue;
                     }
+                    if ("main".equalsIgnoreCase(threadToWatch)) {
+                        // update watch for main thread
+                        Looper mainLooper = Looper.getMainLooper();
+                        if (!mLooperMonitorTrace.containsKey(mainLooper)) {
+                            watchLooper("main", mainLooper);
+                        }
+                        continue;
+                    }
+
                     if (!mWatchingList.contains(threadToWatch)) {
                         if (allThreads.isEmpty()) {
                             // for lazy load
                             allThreads = getAllThreads();
                         }
                         for (Thread thread : allThreads) {
+                            if (Looper.getMainLooper().getThread() == thread) {
+                                continue;
+                            }
                             if (thread.getName().contains(threadToWatch)) {
+                                // update watch for configured thread
                                 if (thread instanceof HandlerThread) {
                                     Looper looper = ((HandlerThread) thread).getLooper();
                                     if (looper != null) {
-                                        // update watch
-                                        watchLooper(threadToWatch, looper);
+                                        if (!mLooperMonitorTrace.containsKey(looper)) {
+                                            watchLooper(thread.getName(), looper);
+                                        }
                                     }
                                 }
                             }
@@ -221,7 +241,9 @@ public final class LooperTaskMonitorFeature extends AbsTaskMonitorFeature {
 
     public void watchLooper(HandlerThread handlerThread) {
         Looper looper = handlerThread.getLooper();
-        watchLooper(handlerThread.getName(), looper);
+        if (looper != null) {
+            watchLooper(handlerThread.getName(), looper);
+        }
     }
 
     void watchLooper(String name, Looper looper) {
