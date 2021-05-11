@@ -17,7 +17,6 @@ include ':matrix-io-canary'
 include ':matrix-sqlite-lint:matrix-sqlite-lint-android-sdk'
 include ':matrix-battery-canary'
 include ':matrix-arscutil'
-include ':matrix-thread-canary'
 
 // Components for memory hook
 include ':matrix-backtrace'
