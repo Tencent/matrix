@@ -5,6 +5,9 @@ import android.os.HandlerThread;
 import android.os.Looper;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.WorkerThread;
+
+import android.os.Process;
 import android.text.TextUtils;
 
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Delta;
@@ -17,6 +20,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public final class LooperTaskMonitorFeature extends AbsTaskMonitorFeature {
     private static final String TAG = "Matrix.battery.LooperTaskMonitorFeature";
@@ -59,6 +63,9 @@ public final class LooperTaskMonitorFeature extends AbsTaskMonitorFeature {
             @Override
             public void onDispatchStart(String x) {
                 super.onDispatchStart(x);
+                if (mCore.getConfig().isAggressiveMode) {
+                    MatrixLog.i(TAG, x);
+                }
                 String taskName = computeTaskName(x);
                 if (!TextUtils.isEmpty(taskName)) {
                     int hashcode = computeHashcode(x);
@@ -71,6 +78,9 @@ public final class LooperTaskMonitorFeature extends AbsTaskMonitorFeature {
             @Override
             public void onDispatchEnd(String x) {
                 super.onDispatchEnd(x);
+                if (mCore.getConfig().isAggressiveMode) {
+                    MatrixLog.i(TAG, x);
+                }
                 String taskName = computeTaskName(x);
                 if (!TextUtils.isEmpty(taskName)) {
                     int hashcode = computeHashcode(x);
@@ -80,6 +90,13 @@ public final class LooperTaskMonitorFeature extends AbsTaskMonitorFeature {
                 }
             }
 
+            // Samples:
+            // >>>>> Dispatching to Handler (android.os.Handler) {5774ba9} null: 22
+            // <<<<< Finished to Handler (android.os.Handler) {5774ba9} null
+            // >>>>> Dispatching to Handler (android.os.Handler) {5774ba9} null: 33
+            // <<<<< Finished to Handler (android.os.Handler) {5774ba9} null
+            // >>>>> Dispatching to Handler (android.os.Handler) {5774ba9} com.tencent.matrix.batterycanary.monitor.feature.MonitorFeatureLooperTest$6$1@a8ee52e: 0
+            // <<<<< Finished to Handler (android.os.Handler) {5774ba9} com.tencent.matrix.batterycanary.monitor.feature.MonitorFeatureLooperTest$6$1@a8ee52e
             private String computeTaskName(String rawInput) {
                 if (TextUtils.isEmpty(rawInput)) return null;
                 String symbolBgn = "} ";
@@ -226,6 +243,34 @@ public final class LooperTaskMonitorFeature extends AbsTaskMonitorFeature {
                 mWatchingList.add(name);
                 mLooperMonitorTrace.put(looper, looperMonitor);
             }
+        }
+    }
+
+    @WorkerThread
+    @Override
+    protected void onTaskStarted(final String key, final int hashcode) {
+        // Trace task jiffies
+        final TaskJiffiesSnapshot bgn = createSnapshot(key, Process.myTid());
+        if (bgn != null) {
+            mTaskJiffiesTrace.put(hashcode, bgn);
+            // Update task stamp list
+            onStatTask(Process.myTid(), key, bgn.jiffies.get());
+        }
+    }
+
+    @WorkerThread
+    @Override
+    protected void onTaskFinished(final String key, final int hashcode) {
+        final TaskJiffiesSnapshot bgn = mTaskJiffiesTrace.remove(hashcode);
+        if (bgn != null) {
+            TaskJiffiesSnapshot end = createSnapshot(key, Process.myTid());
+            if (end != null) {
+                end.isFinished = true;
+                updateDeltas(bgn, end);
+            }
+            // Update task stamp list
+            onStatTask(Process.myTid(), IDLE_TASK,
+                    end == null ? bgn.jiffies.get() : end.jiffies.get());
         }
     }
 
