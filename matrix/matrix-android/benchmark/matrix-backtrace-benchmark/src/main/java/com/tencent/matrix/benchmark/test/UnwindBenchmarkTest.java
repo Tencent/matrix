@@ -14,9 +14,4 @@ public class UnwindBenchmarkTest {
 
     public static native void nativeRefreshMaps();
 
-    public static native void nativeUnwindAdapter();
-
-    public static void testWarmUp() {
-
-    }
 }

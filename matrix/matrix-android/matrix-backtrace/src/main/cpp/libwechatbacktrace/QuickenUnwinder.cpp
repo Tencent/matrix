@@ -356,6 +356,7 @@ namespace wechat_backtrace {
             }
 
             backtrace[frame_size].pc = PC(regs) - pc_adjustment;
+            backtrace[frame_size].rel_pc = step_pc;
 
             adjust_pc = true;
 

@@ -618,7 +618,7 @@ namespace wechat_backtrace {
                     }
                     if (is_dex_pc) {
                         AddressType value = value_expression.value;
-                        temp_instructions_->push_back(
+                        temp_instructions_->insert(temp_instructions_->begin(),
                                 (QUT_INSTRUCTION_DEX_PC_SET << 32) | (0xffffffff & value));
                     } else {
                         last_error_.code = DWARF_ERROR_NOT_SUPPORT;
@@ -807,8 +807,6 @@ namespace wechat_backtrace {
                     }
                     return false;
                 }
-//            eval_info.cfa = (*cur_regs)[];
-//            eval_info.cfa += loc->values[1];
 
                 if (!CfaOffsetInstruction(loc->values[0], loc->values[1])) {
                     last_error_.code = DWARF_ERROR_NOT_SUPPORT;
@@ -965,6 +963,8 @@ namespace wechat_backtrace {
 
                 uint64_t pc_end = loc_regs.pc_end;
 
+//                log = (log_pc >= pc && log_pc < pc_end);
+
                 if (pc_end <= pc) {
                     // TODO bad entry
                     prev_instructions = nullptr;
@@ -983,10 +983,13 @@ namespace wechat_backtrace {
 
                 temp_instructions_ = nullptr;
 
-//                log = log_pc >= pc && log_pc < pc_end;
-
                 if (log) {
                     QUT_DEBUG_LOG("Evaluated instructions size: %zu", instructions->size());
+                    auto it = instructions->begin();
+                    while (it != instructions->end()) {
+                        QUT_DEBUG_LOG("Evaluated instructions -> %llx", *it);
+                        it++;
+                    }
                 }
 
                 // Try merge same entries.

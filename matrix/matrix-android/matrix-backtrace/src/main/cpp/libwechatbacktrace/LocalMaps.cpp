@@ -11,7 +11,7 @@ namespace wechat_backtrace {
     DEFINE_STATIC_LOCAL(std::shared_ptr<unwindstack::LocalMaps>, local_maps_, );
     DEFINE_STATIC_LOCAL(std::mutex, unwind_mutex, );
 
-    void UpdateLocalMaps() {
+    BACKTRACE_EXPORT void UpdateLocalMaps() {
 
         std::lock_guard lock(unwind_mutex);
 
@@ -24,7 +24,7 @@ namespace wechat_backtrace {
         local_maps_ = new_maps;
     }
 
-    std::shared_ptr<unwindstack::LocalMaps> GetMapsCache() {
+    BACKTRACE_EXPORT std::shared_ptr<unwindstack::LocalMaps> GetMapsCache() {
         if (!local_maps_) {
             UpdateLocalMaps();
         }

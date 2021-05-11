@@ -10,14 +10,13 @@
 #include <QuickenMaps.h>
 #include <LocalMaps.h>
 #include <QuickenTableManager.h>
+#include <android-base/macros.h>
 
 #define WECHAT_BACKTRACE_TAG "Wechat.Backtrace"
 
 namespace wechat_backtrace {
 
     QUT_EXTERN_C_BLOCK
-
-    static pthread_mutex_t unwind_mutex = PTHREAD_MUTEX_INITIALIZER;
 
     static BacktraceMode backtrace_mode = FramePointer;
 
@@ -131,7 +130,6 @@ namespace wechat_backtrace {
         }
         return;
 #endif
-//        __android_log_assert("NOT SUPPORT ARCH", "WeChatBacktrace", "NOT SUPPORT ARCH");
     }
 
     BACKTRACE_EXPORT void BACKTRACE_FUNC_WRAPPER(notify_maps_changed)() {
@@ -156,18 +154,8 @@ namespace wechat_backtrace {
                                          std::vector<unwindstack::FrameData> &dst,
                                          size_t frameSize) {
 
-        if (regs == nullptr) {
-            LOGE(WECHAT_BACKTRACE_TAG, "Err: unable to get remote reg data.");
-            return;
-        }
-
-        unwindstack::SetFastFlag(false);
-
-        pthread_mutex_lock(&unwind_mutex);
-
         std::shared_ptr<unwindstack::LocalMaps> local_maps = GetMapsCache();
         if (!local_maps) {
-            pthread_mutex_unlock(&unwind_mutex);
             LOGE(WECHAT_BACKTRACE_TAG, "Err: unable to get maps.");
             return;
         }
@@ -179,8 +167,6 @@ namespace wechat_backtrace {
         unwinder.SetResolveNames(false);
         unwinder.Unwind();
 
-        pthread_mutex_unlock(&unwind_mutex);
-
         dst = unwinder.frames();
     }
 
@@ -189,7 +175,6 @@ namespace wechat_backtrace {
                                       size_t &frameSize) {
         FpUnwind(regs, frames, frameMaxSize, frameSize);
     }
-
 
     QUT_EXTERN_C_BLOCK_END
 }

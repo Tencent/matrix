@@ -65,8 +65,9 @@ namespace wechat_backtrace {
     typedef long int lint_t;
 
     struct Frame {
-        uptr pc;
-        bool is_dex_pc;
+        uptr pc = 0;
+        uptr rel_pc = 0;
+        bool is_dex_pc = false;
     };
 
     struct FrameDetail {

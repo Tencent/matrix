@@ -41,7 +41,7 @@ namespace wechat_backtrace {
     }
 
 #define DWARF_CFA_LOG(FMT, args...) //wechat_backtrace::internal_logger(ANDROID_LOG_ERROR, "Matrix.Backtrace.DWARF-CFA", FMT, ##args)
-#define DWARF_OP_LOG(FMT, args...) //wechat_backtrace::internal_logger(ANDROID_LOG_ERROR, "Matrix.Backtrace.DWARF-OP", FMT, ##args)
+#define DWARF_OP_LOG(FMT, args...) wechat_backtrace::internal_logger(ANDROID_LOG_ERROR, "Matrix.Backtrace.DWARF-OP", FMT, ##args)
 #define QUT_TMP_LOG(FMT, args...) //wechat_backtrace::internal_logger(ANDROID_LOG_ERROR, "Matrix.Backtrace.TMP", FMT, ##args)
 #define QUT_STAT_LOG(FMT, args...) wechat_backtrace::internal_logger(ANDROID_LOG_ERROR, "Matrix.Backtrace.STAT", FMT, ##args)
 #define QUT_DEBUG_LOG(FMT, args...) wechat_backtrace::internal_logger(ANDROID_LOG_ERROR, "Matrix.Backtrace.DEBUG", FMT, ##args)
@@ -83,22 +83,6 @@ namespace wechat_backtrace {
 #define LOG_ALWAYS_FATAL(LOG_TAG, ...) \
   (((void)android_printAssert(NULL, LOG_TAG, ##__VA_ARGS__)))
 #endif
-
-#define NanoSeconds_Start(timestamp) \
-//        struct timespec timestamp; \
-//        if (clock_gettime(CLOCK_REALTIME, &timestamp)) { \
-//            LOGE(MEMORY_BENCHMARK_TAG, "Err: Get time failed."); \
-//        }
-
-#define NanoSeconds_End(result, timestamp) \
-//        long long result = 0; \
-//        { \
-//            struct timespec tms_end; \
-//            if (clock_gettime(CLOCK_REALTIME, &tms_end)) { \
-//                LOGE(MEMORY_BENCHMARK_TAG, "Err: Get time failed."); \
-//            } \
-//            result = (tms_end.tv_sec * 1000 * 1000 * 1000 + tms_end.tv_nsec - (timestamp.tv_sec * 1000 * 1000 * 1000 + timestamp.tv_nsec)); \
-//        }
 
 #define BYTE_TO_BINARY_PATTERN "%c%c%c%c%c%c%c%c"
 

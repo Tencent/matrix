@@ -131,8 +131,8 @@ public class BenchmarkActivity extends AppCompatActivity {
         // Init backtrace
         WeChatBacktrace.instance().configure(getApplicationContext())
                 .warmUpSettings(WeChatBacktrace.WarmUpTiming.PostStartup, 0)
-//                .directoryToWarmUp(WeChatBacktrace.getSystemFrameworkOATPath() + "boot.oat")
-//                .directoryToWarmUp(WeChatBacktrace.getSystemFrameworkOATPath() + "boot-framework.oat")
+                .directoryToWarmUp(WeChatBacktrace.getSystemFrameworkOATPath() + "boot.oat")
+                .directoryToWarmUp(WeChatBacktrace.getSystemFrameworkOATPath() + "boot-framework.oat")
                 .enableIsolateProcessLogger(true)
                 .enableOtherProcessLogger(true)
                 .commit();
@@ -144,8 +144,32 @@ public class BenchmarkActivity extends AppCompatActivity {
     }
 
     public void backtraceBenchmark(View view) {
+        warpFunction(-1);
+    }
+
+    public int warpFunctionImpl(int i) {
+
+        int b = i + 1;
+
+        if (i == 0 || i == 15000) {
+            UnwindBenchmarkTest.nativeBenchmark();
+        }
+
+        return b;
+    }
+
+
+    public int warpFunction(int i) {
+
         UnwindBenchmarkTest.nativeInit();
-        UnwindBenchmarkTest.nativeBenchmark();
+
+//        warpFunctionImpl(i);
+
+        for (int j = 0; j < 100; j++) {
+            warpFunctionImpl(j);
+        }
+
+        return 20000;
     }
 
     public void backtrace(View view) {

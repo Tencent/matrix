@@ -41,8 +41,6 @@ NO_INLINE void selfso_func0f() {
         a[i] = a[i] + b[i] + c[i] - d[i] + e[i] * f[i] - g[i] * 2 - h[i];
     }
 
-    LOGD(UNWIND_TEST_TAG, "a[9] = %d", a[9]);
-
     leaf_func(TESTCASE_SELF_SO);
 }
 
@@ -73,8 +71,6 @@ NO_INLINE void selfso_func0e() {
     for (int i = 0; i < len; ++i) {
         a[i] = a[i] + b[i] + c[i] - d[i] + e[i] * f[i] - g[i] * 2 - h[i];
     }
-
-    LOGD(UNWIND_TEST_TAG, "a[9] = %d", a[9]);
 
     selfso_func0f();
 }
@@ -149,7 +145,6 @@ NO_INLINE void selfso_func0c() {
 
     LOGD(UNWIND_TEST_TAG, "a[9] = %d", a[9]);
 
-//    selfso_func0d(0, 1, 2, 3);
     selfso_func0d(0, 1, 2, 3, 4, 5, 6, 7);
 }
 

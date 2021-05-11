@@ -44,23 +44,29 @@ Java_com_tencent_matrix_benchmark_test_UnwindBenchmarkTest_nativeInit(JNIEnv *en
 
 
 JNIEXPORT void JNICALL
-Java_com_tencent_matrix_benchmark_test_UnwindBenchmarkTest_nativeBenchmark(JNIEnv *env, jclass clazz) {
+Java_com_tencent_matrix_benchmark_test_UnwindBenchmarkTest_nativeBenchmark(JNIEnv *env,
+                                                                           jclass clazz) {
 
     // DWARF_UNWIND mode benchmark
-    BENCHMARK(DWARF_UNWIND, func_selfso)
+//    BENCHMARK(DWARF_UNWIND, func_selfso)
 //    BENCHMARK(DWARF_UNWIND, func_throughjni)
 //    BENCHMARK(DWARF_UNWIND, func_throughsystemso)
 
     // FP_UNWIND mode benchmark
-    BENCHMARK(FP_UNWIND, func_selfso);
+//    BENCHMARK(FP_UNWIND, func_selfso);
 //    BENCHMARK(FP_UNWIND, func_throughjni);
 //    BENCHMARK(FP_UNWIND, func_throughsystemso);
 
     // QUICKEN_UNWIND mode benchmark
-    BENCHMARK(WECHAT_QUICKEN_UNWIND, func_selfso);
+//    BENCHMARK(WECHAT_QUICKEN_UNWIND, func_selfso);
 //    BENCHMARK(WECHAT_QUICKEN_UNWIND, func_throughjni);
 //    BENCHMARK(WECHAT_QUICKEN_UNWIND, func_throughsystemso);
 
+    for (int i = 0; i < 1; i++) {
+        BENCHMARK_TIMES(DWARF_UNWIND, 1, func_selfso);
+//        BENCHMARK_TIMES(FP_UNWIND, 1, func_selfso);
+        BENCHMARK_TIMES(WECHAT_QUICKEN_UNWIND, 1, func_selfso);
+    }
 }
 
 JNIEXPORT void JNICALL
@@ -74,15 +80,10 @@ Java_com_tencent_matrix_benchmark_test_UnwindBenchmarkTest_nativeTry(JNIEnv *env
 }
 
 JNIEXPORT void JNICALL
-Java_com_tencent_matrix_benchmark_test_UnwindBenchmarkTest_nativeRefreshMaps(JNIEnv *env, jclass clazz) {
+Java_com_tencent_matrix_benchmark_test_UnwindBenchmarkTest_nativeRefreshMaps(JNIEnv *env,
+                                                                             jclass clazz) {
     wechat_backtrace::notify_maps_changed();
 }
-
-JNIEXPORT void JNICALL
-Java_com_tencent_matrix_benchmark_test_UnwindBenchmarkTest_nativeUnwindAdapter(JNIEnv *env, jclass clazz) {
-    BENCHMARK_TIMES(UNWIND_ADAPTER, 1, func_selfso);
-}
-
 
 #ifdef __cplusplus
 }

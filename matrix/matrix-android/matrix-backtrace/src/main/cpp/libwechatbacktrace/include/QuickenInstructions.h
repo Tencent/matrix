@@ -58,6 +58,7 @@
 
 #define QUT_INSTRUCTION_VSP_SET_BY_JNI_SP_OP        OP(1001, 0101)
 #define QUT_INSTRUCTION_VSP_SET_IMM_OP              OP(1001, 0110)
+#define QUT_INSTRUCTION_DEX_PC_SET_OP_FOR_SWITCH    OP(1001, 0100)  // Not implemented. Arm64 ExecuteSwitchImpl saved dex pc in x19.
 #define QUT_INSTRUCTION_DEX_PC_SET_OP               OP(1001, 0111)
 #define QUT_END_OF_INS_OP                           OP(1001, 1001)
 #define QUT_FINISH_OP                               OP(1001, 1111)
@@ -80,7 +81,7 @@
 #define QUT_INSTRUCTION_R10_OFFSET_OP_PREFIX        (BIT(1100) << 4)
 #define QUT_INSTRUCTION_R11_OFFSET_OP_PREFIX        (BIT(1101) << 4)
 
-#define QUT_INSTRUCTION_X20_OFFSET_OP_PREFIX        (BIT(1010) << 4)
+#define QUT_INSTRUCTION_X20_OFFSET_OP_PREFIX        (BIT(1011) << 4)
 #define QUT_INSTRUCTION_X28_OFFSET_OP_PREFIX        (BIT(1100) << 4)
 #define QUT_INSTRUCTION_X29_OFFSET_OP_PREFIX        (BIT(1101) << 4)
 
@@ -124,9 +125,10 @@ namespace wechat_backtrace {
         QUT_INSTRUCTION_VSP_SET_BY_SP = 15,  // vsp_set_by_sp
         QUT_INSTRUCTION_VSP_SET_BY_JNI_SP = 16, // vsp_set_by_jni_sp
         QUT_INSTRUCTION_DEX_PC_SET = 17,  // dex_pc_set
-        QUT_END_OF_INS = 18,
-        QUT_FIN = 19,
-        QUT_NOP = 20, // No meaning.
+        QUT_INSTRUCTION_DEX_PC_SET_FOR_SWITCH_INTERPRETER = 18,  // dex_pc_set for arm64 switch interpreter. Not implemented.
+        QUT_END_OF_INS = 19,
+        QUT_FIN = 20,
+        QUT_NOP = 0xFF, // No meaning.
     };
 
 
@@ -475,7 +477,7 @@ namespace wechat_backtrace {
 
 //      1000 0000           : vsp = x29	            							; # x29 is fp reg
 //      1000 0001           : vsp = x29 + 16, lr = [vsp - 8], sp = [vsp - 16]   ; # Have prologue
-//      1000 0100           : vsp = sp                                    		;
+//      1000 0100           : vsp = sp                                    		; # Removed
 
 //      1000 0101 0nnn nnnn : vsp = x29 + (nnnnnnn << 2)						; # (nnnnnnn << 2) in [0, 0x1fc],  0nnnnnnn is an one byte ULEB128
 //      1000 0111 + SLEB128 : vsp = x29 + SLEB128						        ; # vsp set by x29 offset
@@ -483,7 +485,8 @@ namespace wechat_backtrace {
 //		1001 0101 0nnn nnnn : vsp = x28 + (nnnnnnn << 2)						; # (nnnnnnn << 2) in [0, 0x1fc],  0nnnnnnn is an one byte ULEB128
 //		1001 0110 + SLEB128 : vsp = SLEB128							    		; # vsp set by IMM
 
-//		1001 0111 			: dex_pc = x20										; # Dex pc is saved in x20
+//		1001 0100 			: dex_pc = x19										; # Dex pc is saved in x19 for ExecuteSwitchImplAsm
+//		1001 0111 			: dex_pc = x20										; # Dex pc is saved in x20 for ExecuteMterpImpl
 
 //		1001 1001			: End of instructions                				;
 //		1001 1111			: Finish                							;
@@ -613,11 +616,11 @@ namespace wechat_backtrace {
                         break;
                     }
                 }
-                case QUT_INSTRUCTION_VSP_SET_BY_SP:
-                    // 1000 0100 : vsp = sp
-                    byte = QUT_INSTRUCTION_VSP_SET_BY_SP_OP;
-                    encoded.push_back(byte);
-                    break;
+//                case QUT_INSTRUCTION_VSP_SET_BY_SP:
+//                    // 1000 0100 : vsp = sp
+//                    byte = QUT_INSTRUCTION_VSP_SET_BY_SP_OP;
+//                    encoded.push_back(byte);
+//                    break;
                 case QUT_INSTRUCTION_VSP_SET_BY_JNI_SP:
                     byte = QUT_INSTRUCTION_VSP_SET_BY_JNI_SP_OP;
                     encoded.push_back(byte);

@@ -8,7 +8,6 @@ enum UnwindTestMode {
     DWARF_UNWIND, // baseline
     FP_UNWIND,
     WECHAT_QUICKEN_UNWIND,
-    UNWIND_ADAPTER,
 };
 
 void set_unwind_mode(UnwindTestMode mode);

@@ -115,7 +115,7 @@ namespace wechat_backtrace {
         const bool log = false;
         const uptr log_pc = 0;
 //        bool log = true;
-//        uptr log_pc = 0x14e350;
+//        uptr log_pc = 0x13f994;
 
         std::shared_ptr<QutInstrCollection> temp_instructions_;
     };

@@ -158,10 +158,6 @@ namespace wechat_backtrace {
             return false;
         }
 
-//        if (HasSuffix(sopath_, ".odex")) {
-//            QUT_DEBUG_LOG("Step in %s", sopath_.c_str());
-//        }
-
         if (!qut_sections_) {
             if (!TryInitQuickenTable()) {
                 last_error_code_ = QUT_ERROR_REQUEST_QUT_FILE_FAILED;
