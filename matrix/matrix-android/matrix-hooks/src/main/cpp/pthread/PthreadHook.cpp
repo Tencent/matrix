@@ -79,8 +79,9 @@ struct regex_wrapper {
     }
 };
 
-static std::recursive_mutex m_pthread_meta_mutex;
-typedef std::lock_guard<std::recursive_mutex> pthread_meta_lock;
+static std::mutex m_pthread_meta_mutex;
+static std::timed_mutex m_java_stacktrace_mutex;
+typedef std::lock_guard<std::mutex> pthread_meta_lock;
 
 static std::map<pthread_t, pthread_meta_t> m_pthread_metas;
 static std::set<pthread_t> m_filtered_pthreads;
@@ -210,16 +211,19 @@ static void on_pthread_create(const pthread_t __pthread) {
         notify_routine(__pthread);
         return;
     }
-//
-    // 反射 Java 获取堆栈时加锁会造成死锁, 提前获取堆栈
-    // todo move to on_pthread_create_locked
+
     const size_t BUF_SIZE = 1024;
     char *java_stacktrace = static_cast<char *>(malloc(BUF_SIZE));
-    if (java_stacktrace) {
-        get_java_stacktrace(java_stacktrace, BUF_SIZE);
-//        strncpy(java_stacktrace, " (fake stacktrace)", BUF_SIZE);
+    strncpy(java_stacktrace, "(init stacktrace)", BUF_SIZE);
+    if (m_java_stacktrace_mutex.try_lock_for(std::chrono::milliseconds(100))) {
+        if (java_stacktrace) {
+            get_java_stacktrace(java_stacktrace, BUF_SIZE);
+        }
+        m_java_stacktrace_mutex.unlock();
+    } else {
+        LOGE(TAG, "maybe reentrant!");
     }
-//
+
     LOGD(TAG, "parent_tid: %d -> tid: %d", pthread_gettid_np(pthread_self()), tid);
     bool recorded = on_pthread_create_locked(__pthread, java_stacktrace, tid);
 
