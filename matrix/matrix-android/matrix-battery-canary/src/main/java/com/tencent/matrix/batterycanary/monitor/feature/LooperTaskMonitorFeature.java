@@ -260,7 +260,7 @@ public final class LooperTaskMonitorFeature extends AbsTaskMonitorFeature {
                     remove.onRelease();
                 }
                 // add looper tracing
-                LooperMonitor looperMonitor = new LooperMonitor(looper);
+                LooperMonitor looperMonitor = LooperMonitor.of(looper);
                 looperMonitor.addListener(mLooperTaskListener);
                 mWatchingList.add(name);
                 mLooperMonitorTrace.put(looper, looperMonitor);
