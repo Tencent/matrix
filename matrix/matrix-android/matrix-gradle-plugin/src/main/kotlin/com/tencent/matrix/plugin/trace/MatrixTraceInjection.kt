@@ -26,7 +26,6 @@ import com.tencent.matrix.plugin.compat.CreationConfig
 import com.tencent.matrix.plugin.compat.CreationConfig.Companion.getCodeShrinker
 import com.tencent.matrix.plugin.task.BaseCreationAction
 import com.tencent.matrix.plugin.task.MatrixTraceTask
-import com.tencent.matrix.plugin.transform.MatrixTraceLegacyTransform
 import com.tencent.matrix.plugin.transform.MatrixTraceTransform
 import com.tencent.matrix.trace.extension.ITraceSwitchListener
 import com.tencent.matrix.trace.extension.MatrixTraceExtension

@@ -58,7 +58,7 @@ class MatrixTraceCompat : ITraceSwitchListener {
         }
     }
 
-    fun legacyInject(appExtension: AppExtension,
+    private fun legacyInject(appExtension: AppExtension,
                      project: Project,
                      extension: MatrixTraceExtension) {
 
