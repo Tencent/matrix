@@ -45,40 +45,12 @@ class MatrixTraceInjection : ITraceSwitchListener {
         traceEnable = enable
     }
 
-    fun legacyInject(appExtension: AppExtension,
-                             project: Project,
-                             extension: MatrixTraceExtension) {
-
-        project.afterEvaluate {
-
-            if (!extension.isEnable) {
-                return@afterEvaluate
-            }
-
-            doLegacyInject(appExtension, project, extension)
-        }
-    }
-
-    fun doLegacyInject(appExtension: AppExtension,
-                       project: Project,
-                       extension: MatrixTraceExtension) {
-        appExtension.applicationVariants.all {
-            MatrixTraceLegacyTransform.inject(extension, project, it)
-        }
-    }
-
     fun inject(appExtension: AppExtension,
                project: Project,
                extension: MatrixTraceExtension) {
         injectTransparentTransform(appExtension, project, extension)
         project.afterEvaluate {
-            if (!extension.isEnable) {
-                return@afterEvaluate
-            }
-
-            if (extension.isLegacy) {
-                doLegacyInject(appExtension, project, extension)
-            } else {
+            if (extension.isEnable) {
                 doInjection(appExtension, project, extension)
             }
         }
