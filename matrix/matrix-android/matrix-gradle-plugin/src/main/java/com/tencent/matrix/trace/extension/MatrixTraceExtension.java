@@ -7,6 +7,7 @@ public class MatrixTraceExtension {
     String customDexTransformName;
 
     boolean enable;
+    boolean legacy;
 
 //    public void setEnable(boolean enable) {
 //        this.enable = enable;
@@ -31,5 +32,9 @@ public class MatrixTraceExtension {
 
     public boolean isEnable() {
         return enable;
+    }
+
+    public boolean isLegacy() {
+        return legacy;
     }
 }
