@@ -45,33 +45,12 @@ class MatrixTraceCompat : ITraceSwitchListener {
     fun inject(appExtension: AppExtension, project: Project, extension: MatrixTraceExtension) {
         when {
             VersionsCompat.lessThan(AGPVersion.AGP_3_6_0) ->
-                legacyInject(appExtension, project, extension)
+                traceInjection!!.legacyInject(appExtension, project, extension)
             VersionsCompat.greatThanOrEqual(AGPVersion.AGP_4_0_0) -> {
-                if (extension.isLegacy) {
-                    legacyInject(appExtension, project, extension)
-                } else {
-                    traceInjection!!.inject(appExtension, project, extension)
-                }
+                traceInjection!!.inject(appExtension, project, extension)
             }
             else -> Log.e(TAG, "Matrix does not support Android Gradle Plugin " +
                     "${VersionsCompat.androidGradlePluginVersion}!.")
         }
     }
-
-    private fun legacyInject(appExtension: AppExtension,
-                             project: Project,
-                             extension: MatrixTraceExtension) {
-
-        project.afterEvaluate {
-
-            if (!extension.isEnable) {
-                return@afterEvaluate
-            }
-
-            appExtension.applicationVariants.all {
-                MatrixTraceLegacyTransform.inject(extension, project, it)
-            }
-        }
-    }
-
 }

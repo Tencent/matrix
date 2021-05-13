@@ -26,6 +26,7 @@ import com.tencent.matrix.plugin.compat.CreationConfig
 import com.tencent.matrix.plugin.compat.CreationConfig.Companion.getCodeShrinker
 import com.tencent.matrix.plugin.task.BaseCreationAction
 import com.tencent.matrix.plugin.task.MatrixTraceTask
+import com.tencent.matrix.plugin.transform.MatrixTraceLegacyTransform
 import com.tencent.matrix.plugin.transform.MatrixTraceTransform
 import com.tencent.matrix.trace.extension.ITraceSwitchListener
 import com.tencent.matrix.trace.extension.MatrixTraceExtension
@@ -44,12 +45,40 @@ class MatrixTraceInjection : ITraceSwitchListener {
         traceEnable = enable
     }
 
+    fun legacyInject(appExtension: AppExtension,
+                             project: Project,
+                             extension: MatrixTraceExtension) {
+
+        project.afterEvaluate {
+
+            if (!extension.isEnable) {
+                return@afterEvaluate
+            }
+
+            doLegacyInject(appExtension, project, extension)
+        }
+    }
+
+    fun doLegacyInject(appExtension: AppExtension,
+                       project: Project,
+                       extension: MatrixTraceExtension) {
+        appExtension.applicationVariants.all {
+            MatrixTraceLegacyTransform.inject(extension, project, it)
+        }
+    }
+
     fun inject(appExtension: AppExtension,
                project: Project,
                extension: MatrixTraceExtension) {
         injectTransparentTransform(appExtension, project, extension)
         project.afterEvaluate {
-            if (extension.isEnable) {
+            if (!extension.isEnable) {
+                return@afterEvaluate
+            }
+
+            if (extension.isLegacy) {
+                doLegacyInject(appExtension, project, extension)
+            } else {
                 doInjection(appExtension, project, extension)
             }
         }
