@@ -117,7 +117,14 @@ if (project.pluginManager.hasPlugin(ANDROID_APP_PLUGIN_ID)) {
 //////////////////////////////////////////////////////////////
 //  Helper Methods
 //////////////////////////////////////////////////////////////
-def getGenerateOpsAnchorTask() {
+def cleanDirectory(File dir) {
+    if (dir.isDirectory()) {
+        dir.deleteDir()
+        dir.mkdirs()
+    }
+}
+
+def getGenerateOpsAnchorTask(variant) {
     final List<String> startTaskNames = gradle.startParameter.taskNames
     if (startTaskNames.isEmpty()) {
         return null
@@ -125,7 +132,7 @@ def getGenerateOpsAnchorTask() {
     final String firstTaskName = startTaskNames.get(0)
     return firstTaskName.equals('clean') || firstTaskName.endsWith(':clean')
             ? project.tasks.findByName(firstTaskName)
-            : project.tasks.findByName('preBuild')
+            : project.tasks.findByName("externalNativeBuild${variant.name.capitalize()}")
 }
 
 def handleAndroidApplication() {
@@ -134,16 +141,21 @@ def handleAndroidApplication() {
     generateBuildInfoHeader(true)
     
     def generateAction = {
-        generateBuildInfoModule()
-        generateBuildInfoHeader(false)
-        extractNativeDependencies(project.android.applicationVariants)
+//        extractNativeDependencies(project.android.applicationVariants)
     }
 
-    def anchorTask = getGenerateOpsAnchorTask()
-    if (anchorTask != null) {
-        anchorTask.doLast generateAction
-    } else {
-        project.afterEvaluate generateAction
+    project.afterEvaluate {
+        generateBuildInfoModule()
+        generateBuildInfoHeader(false)
+        project.android.applicationVariants.each { variant ->
+            def anchorTask = getGenerateOpsAnchorTask(variant)
+            if (anchorTask != null) {
+                anchorTask.doFirst generateAction
+            } else {
+                project.afterEvaluate generateAction
+            }
+        }
+        extractNativeDependencies(project.android.applicationVariants)
     }
 }
 
@@ -160,21 +172,33 @@ def handleAndroidLibrary() {
         }
     }
     
-    def generateAction = {
+    def generateBeforeAction = {
+        libVariants.each { variant ->
+            def externalNativeBuildTask = project.tasks.findByName("externalNativeBuild${variant.name.capitalize()}")
+            if (externalNativeBuildTask == null) {
+                copyExportedHeaders(variant)
+            }
+//            mountCopyNativePrebuiltsAction(variant)
+        }
+//        extractNativeDependencies(libVariants)
+    }
+
+    project.afterEvaluate {
         generateBuildInfoModule()
         generateBuildInfoHeader(false)
         libVariants.each { variant ->
-            copyExportedHeaders(variant)
-            mountCopyNativePrebuiltsAction(variant)
+            def anchorTask = getGenerateOpsAnchorTask(variant)
+            if (anchorTask != null) {
+                mountCopyNativePrebuiltsAction(variant)
+                anchorTask.doFirst generateBeforeAction
+                anchorTask.doLast {
+                    copyExportedHeaders(variant)
+                }
+            } else {
+                project.afterEvaluate generateBeforeAction
+            }
         }
         extractNativeDependencies(libVariants)
-    }
-
-    def anchorTask = getGenerateOpsAnchorTask()
-    if (anchorTask != null) {
-        anchorTask.doLast generateAction
-    } else {
-        project.afterEvaluate generateAction
     }
 }
 
@@ -210,23 +234,6 @@ def getExtractedNativeDependenciesDir() {
     return new File(getNativeDependencyRoot(), EXTRACTED_NATIVE_DEPENDENCIES_DIR_NAME)
 }
 
-def cleanDirectory(directory) {
-    if (!directory.exists()) {
-        return
-    } else if (!directory.isDirectory()) {
-        return
-    } else {
-        File[] files = directory.listFiles();
-        if (files == null) {
-            return
-        }
-
-        for (File file: files) {
-            org.gradle.util.GFileUtils.forceDelete(file)
-        }
-    }
-}
-
 def copyExportedHeaders(targetVariant) {
     def exportedArtifactsDir = getExportedNativeArtifactsDir(targetVariant)
     def exportedHeadersDir = new File(exportedArtifactsDir, HEADERS_DIR_NAME)
@@ -236,11 +243,11 @@ def copyExportedHeaders(targetVariant) {
         cleanDirectory(exportedHeadersDir)
     }
     def headerFilters = getExportedHeaderFilters(targetVariant)
-    copy {
-        exclude exportedHeadersDir.absolutePath
-        duplicatesStrategy DuplicatesStrategy.FAIL
-        includeEmptyDirs false
-        headerFilters.each { filter ->
+    headerFilters.each { filter ->
+        copy {
+            exclude exportedHeadersDir.absolutePath
+            duplicatesStrategy DuplicatesStrategy.FAIL
+            includeEmptyDirs false
             from(getUniformedPath(filter.dirPath)) {
                 filter.includePatterns.each { pattern -> include pattern }
                 filter.excludePatterns.each { pattern -> exclude pattern }
@@ -248,8 +255,8 @@ def copyExportedHeaders(targetVariant) {
             rename { name ->
                 return name.replace(filter.dirPath, '')
             }
+            into exportedHeadersDir
         }
-        into exportedHeadersDir
     }
 }
 
@@ -408,7 +415,34 @@ def extractNativeDependencies(targetVariants) {
         }
 
         targetVariant.getExternalNativeBuildTasks().each { nativeBuildTask ->
+
             nativeBuildTask.doFirst {
+
+                projectNativeDepDirs.each { projDir ->
+                    copy {
+                        duplicatesStrategy DuplicatesStrategy.FAIL
+                        includeEmptyDirs false
+                        from new File(projDir, HEADERS_DIR_NAME)
+                        into new File(extractedNativeDepsDir, HEADERS_DIR_NAME)
+                    }
+                }
+
+                aarPaths.each { aarPath ->
+                    copy {
+                        duplicatesStrategy DuplicatesStrategy.FAIL
+                        includeEmptyDirs false
+                        from zipTree(aarPath)
+                        into new File(extractedNativeDepsDir, HEADERS_DIR_NAME)
+                        eachFile { details ->
+                            if (details.path.endsWith('.h')) {
+                                details.path = details.path - AAR_HEADERS_DIRENTRY_NAME - '/'
+                            } else {
+                                details.exclude()
+                            }
+                        }
+                    }
+                }
+
                 projectNativeDepDirs.each { projDir ->
                     copy {
                         duplicatesStrategy DuplicatesStrategy.FAIL

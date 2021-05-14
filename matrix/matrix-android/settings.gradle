@@ -1,4 +1,9 @@
+apply from:"$rootDir/gradle/Arguments.gradle"
+
+// Gradle plugin
 include ':matrix-gradle-plugin'
+
+// Components
 include ':matrix-android-commons'
 include ':matrix-android-lib'
 include ':matrix-commons'
@@ -13,9 +18,14 @@ include ':matrix-sqlite-lint:matrix-sqlite-lint-android-sdk'
 include ':matrix-battery-canary'
 include ':matrix-arscutil'
 
-// WIP
-include ':work-in-progress:matrix-memory-canary'
-include ':work-in-progress:matrix-thread-canary'
+// Components for memory hook
+include ':matrix-backtrace'
+include ':matrix-hooks'
+include ':matrix-jectl'
+include ':matrix-fd'
 
-// Sample
-//include ':matrix-sample-android:app'
+// Benchmark
+include ':benchmark:matrix-backtrace-benchmark'
+
+// TEST
+include ':test:test-backtrace'
