@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:paddingTop="16dp"
+    android:paddingLeft="32dp"
+    android:paddingRight="32dp"
+    tools:context=".BenchmarkActivity">
+
+    <TextView
+        android:id="@+id/textview_bactrace_usage"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingTop="16dp"
+        android:paddingBottom="16dp"
+        android:text="@string/usage"
+        app:layout_constraintTop_toTopOf="parent"
+        />
+
+    <Button
+        android:id="@+id/btn_wechat_backtrace_benchmark"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:onClick="backtraceBenchmark"
+        android:text="Backtrace Benchmark"
+        android:textAllCaps="false"
+        app:layout_constraintTop_toBottomOf="@+id/textview_bactrace_usage"
+        />
+
+    <View
+        android:id="@+id/horizontal_line_1"
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginTop="32dp"
+        app:layout_constraintTop_toBottomOf="@+id/btn_wechat_backtrace_benchmark"
+        android:background="#c0c0c0"/>
+
+    <TextView
+        android:id="@+id/textview_statistic_usage"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:paddingTop="16dp"
+        android:paddingBottom="16dp"
+        android:text="@string/stat_usage"
+        app:layout_constraintTop_toBottomOf="@+id/horizontal_line_1"
+        />
+
+    <Button
+        android:id="@+id/btn_wechat_backtrace_statistics"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:onClick="doStatistics"
+        android:layout_marginBottom="8dp"
+        android:text="Statistics"
+        android:textAllCaps="false"
+        app:layout_constraintTop_toBottomOf="@+id/textview_statistic_usage"
+        />
+<!--    <Button-->
+<!--        android:id="@+id/btn_wechat_backtrace"-->
+<!--        android:layout_width="wrap_content"-->
+<!--        android:layout_height="wrap_content"-->
+<!--        android:layout_marginStart="8dp"-->
+<!--        android:onClick="backtrace"-->
+<!--        android:text="Do Backtrace"-->
+<!--        app:layout_constraintStart_toEndOf="@+id/btn_wechat_backtrace_benchmark"-->
+<!--        tools:layout_editor_absoluteY="76dp" />-->
+
+<!--    <Button-->
+<!--        android:id="@+id/btn_wechat_test_maps_update"-->
+<!--        android:layout_width="wrap_content"-->
+<!--        android:layout_height="wrap_content"-->
+<!--        android:onClick="testMapsUpdate"-->
+<!--        android:text="Update Maps"-->
+<!--        app:layout_constraintTop_toBottomOf="@+id/btn_wechat_backtrace_benchmark"-->
+<!--        />-->
+
+
+</androidx.constraintlayout.widget.ConstraintLayout>

@@ -21,3 +21,5 @@ matrixModules.each { moduleName ->
         project(":${moduleName}").projectDir = file("../../matrix/matrix-android/${moduleName}")
     }
 }
+
+//include 'matrix-hooks-sample'

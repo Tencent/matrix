@@ -1,0 +1,8 @@
+56573000-56577000 r-xp 0 00:00 0   dalvikvm32
+eb833000-eb8cc000 r-xp 0 00:00 0   libarttestd.so
+ec604000-ec606000 r--p 0 00:00 0   137-cfi.odex
+ec606000-ec607000 r-xp 2000 00:00 0   137-cfi.odex
+ee74c000-f074c000 r-xp 0 00:00 0   anonymous:ee74c000
+f6be1000-f732b000 r-xp 0 00:00 0   libartd.so
+f732b000-f732c000 rw-p 1000 00:00 0   libartd.so
+f734b000-f74fc000 r-xp 0 00:00 0   libc.so

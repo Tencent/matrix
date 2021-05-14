@@ -1,0 +1,9 @@
+eax: eb8cccd0
+ebx: eb8cccd0
+ecx: ff
+edx: ffeb2ca8
+ebp: ffeb5298
+edi: ffeb5c08
+esi: ffeb5c00
+esp: ffeb5280
+eip: eb89bfb8

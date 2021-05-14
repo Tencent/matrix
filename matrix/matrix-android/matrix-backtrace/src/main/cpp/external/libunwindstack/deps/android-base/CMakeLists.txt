@@ -1,0 +1,43 @@
+CMAKE_MINIMUM_REQUIRED(VERSION 3.4.1)
+
+PROJECT(AndroidBase C CXX)
+
+SET(TARGET android-base)
+
+SET(
+  ${TARGET}_SOURCE_FILES
+  ${CMAKE_CURRENT_SOURCE_DIR}/stringprintf.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/file.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/logging.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/chrono_utils.cpp
+#  ${CMAKE_CURRENT_SOURCE_DIR}/cmsg.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/mapped_file.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/parsenetaddress.cpp
+#  ${CMAKE_CURRENT_SOURCE_DIR}/properties.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/quick_exit.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/stringprintf.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/strings.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/threads.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/test_utils.cpp
+)
+
+ADD_LIBRARY(
+  ${TARGET}
+  STATIC
+  ${${TARGET}_SOURCE_FILES}
+)
+
+TARGET_INCLUDE_DIRECTORIES(
+  ${TARGET}
+  PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}
+  PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+
+TARGET_COMPILE_OPTIONS(
+  ${TARGET}
+  PUBLIC -Wall
+#  PUBLIC -Werror
+  PUBLIC -Wextra
+#  PUBLIC -D_FILE_OFFSET_BITS=64
+  PUBLIC -Wexit-time-destructors
+)

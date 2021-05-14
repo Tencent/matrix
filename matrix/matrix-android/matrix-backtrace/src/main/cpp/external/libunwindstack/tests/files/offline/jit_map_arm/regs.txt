@@ -1,0 +1,16 @@
+r0: e814103c
+r1: 12dcf218
+r2: 1a90df75
+r3: ffffffbf
+r4: 0
+r5: 12dc0800
+r6: 12dcf218
+r7: 1a90df75
+r8: 0
+r9: dd23cc00
+r10: 1c
+r11: cd4ff16c
+ip: 0
+sp: cd4ff140
+lr: d025cdd7
+pc: d025c788

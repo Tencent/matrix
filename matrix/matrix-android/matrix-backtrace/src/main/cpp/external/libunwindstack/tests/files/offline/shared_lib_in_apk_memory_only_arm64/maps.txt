@@ -1,0 +1,7 @@
+7dabc03000-7dabc3f000 r--p 21d5000 00:00 0   ANGLEPrebuilt.apk
+7dabc3f000-7dabcf0000 r-xp 2211000 00:00 0   ANGLEPrebuilt.apk
+7e7ee48000-7e7ee88000 r--p 0 00:00 0   libc.so
+7e7ee88000-7e7ef32000 r-xp 40000 00:00 0   libc.so
+7e82b01000-7e82b03000 r-xp 0 00:00 0   vdso.so
+7e82b03000-7e82b3c000 r--p 0 00:00 0   linker64
+7e82b3c000-7e82c77000 r-xp 39000 00:00 0   linker64
