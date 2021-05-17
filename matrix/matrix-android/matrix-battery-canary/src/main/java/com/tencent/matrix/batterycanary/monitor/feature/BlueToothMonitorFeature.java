@@ -6,9 +6,12 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import android.text.TextUtils;
 
+import com.tencent.matrix.batterycanary.monitor.BatteryMonitorConfig;
 import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
 import com.tencent.matrix.batterycanary.utils.BluetoothManagerServiceHooker;
 import com.tencent.matrix.util.MatrixLog;
+
+import static com.tencent.matrix.batterycanary.monitor.BatteryMonitorConfig.AMS_HOOK_FLAG_BT;
 
 public final class BlueToothMonitorFeature extends AbsMonitorFeature {
     private static final String TAG = "Matrix.battery.BlueToothMonitorFeature";
@@ -27,7 +30,9 @@ public final class BlueToothMonitorFeature extends AbsMonitorFeature {
             MatrixLog.w(TAG, "only support >= android 8.0 for the moment");
             return;
         }
-        if (mCore.getConfig().isAmsHookEnabled) {
+        if (mCore.getConfig().isAmsHookEnabled
+                || ((mCore.getConfig().amsHookEnableFlag & AMS_HOOK_FLAG_BT) == AMS_HOOK_FLAG_BT)) {
+
             mListener = new BluetoothManagerServiceHooker.IListener() {
                 @Override
                 public void onRegisterScanner() {

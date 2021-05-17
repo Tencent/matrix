@@ -155,7 +155,7 @@ public final class BluetoothManagerServiceHooker {
                     }
 
                     try {
-                        return method.invoke(proxy, args);
+                        return method.invoke(delegate, args);
                     } catch (Throwable e) {
                         MatrixLog.printErrStackTrace(TAG, e, "invokeBluetooth fail");
                         return null;
@@ -209,7 +209,7 @@ public final class BluetoothManagerServiceHooker {
                     }
 
                     try {
-                        return method.invoke(proxy, args);
+                        return method.invoke(delegate, args);
                     } catch (Throwable e) {
                         MatrixLog.printErrStackTrace(TAG, e, "invokeBluetoothGatt fail");
                         return null;

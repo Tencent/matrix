@@ -25,6 +25,8 @@ import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Delta;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Entry.DigitEntry;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Entry.ListEntry;
+import com.tencent.matrix.batterycanary.monitor.feature.NotificationMonitorFeature;
+import com.tencent.matrix.batterycanary.monitor.feature.NotificationMonitorFeature.BadNotification;
 import com.tencent.matrix.batterycanary.monitor.feature.WakeLockMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.WakeLockMonitorFeature.WakeLockTrace.WakeLockRecord;
 import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
@@ -41,6 +43,7 @@ public class BatteryMonitorCore implements
         AlarmMonitorFeature.AlarmListener,
         JiffiesMonitorFeature.JiffiesListener,
         AppStatMonitorFeature.AppStatListener,
+        NotificationMonitorFeature.NotificationListener,
         Handler.Callback {
 
     private static final String TAG = "Matrix.battery.BatteryMonitorCore";
@@ -385,6 +388,11 @@ public class BatteryMonitorCore implements
     @Override
     public void onAppSateLeak(boolean isMyself, int appImportance, ComponentName componentName, long millis) {
         getConfig().callback.onAppSateLeak(isMyself, appImportance, componentName, millis);
+    }
+
+    @Override
+    public void onNotify(BadNotification notification) {
+        getConfig().callback.onNotify(notification);
     }
 
     @Nullable
