@@ -76,7 +76,7 @@ public class MonitorFeatureLooperTest {
 
         HandlerThread handlerThread = new HandlerThread("looper-test");
         handlerThread.start();
-        LooperMonitor looperMonitor = new LooperMonitor(handlerThread.getLooper());
+        LooperMonitor looperMonitor = LooperMonitor.of(handlerThread.getLooper());
         looperMonitor.addListener(new LooperMonitor.LooperDispatchListener() {
             @Override
             public boolean isValid() {
@@ -135,7 +135,7 @@ public class MonitorFeatureLooperTest {
 
         HandlerThread handlerThread = new HandlerThread("looper-test");
         handlerThread.start();
-        LooperMonitor looperMonitor = new LooperMonitor(handlerThread.getLooper());
+        LooperMonitor looperMonitor = LooperMonitor.of(handlerThread.getLooper());
         looperMonitor.addListener(new LooperMonitor.LooperDispatchListener() {
             @Override
             public boolean isValid() {
@@ -483,7 +483,9 @@ public class MonitorFeatureLooperTest {
         Assert.assertTrue(feature.mDeltaList.isEmpty());
 
         hasCheck.set(true);
-        while (feature.mDeltaList.isEmpty()) {}
+        while (!hasStart.get()) {}
+
+        Assert.assertTrue(feature.mDeltaList.isEmpty());
     }
 
     @Test

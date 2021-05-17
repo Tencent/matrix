@@ -135,6 +135,15 @@ public class LooperMonitor implements MessageQueue.IdleHandler {
                 if (originPrinter == printer && null != printer) {
                     return;
                 }
+                // Fix issues that printer loaded by different classloader
+                if (originPrinter != null && printer != null) {
+                    if (originPrinter.getClass().getName().equals(printer.getClass().getName())) {
+                        MatrixLog.w(TAG, "LooperPrinter might be loaded by different classloader"
+                                + ", my = " + printer.getClass().getClassLoader()
+                                + ", other = " + originPrinter.getClass().getClassLoader());
+                        return;
+                    }
+                }
             }
         } catch (Exception e) {
             isReflectLoggingError = true;
