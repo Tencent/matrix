@@ -19,14 +19,6 @@ JavaVM *m_java_vm;
 jclass m_class_HookManager;
 jmethodID m_method_getStack;
 
-jclass m_class_EglHook;
-jmethodID m_method_egl_create_context;
-jmethodID m_method_egl_destroy_context;
-jmethodID m_method_egl_create_window_surface;
-jmethodID m_method_egl_create_pbuffer_surface;
-jmethodID m_method_egl_destroy_surface;
-
-// fixme 解偶
 JNIEXPORT jint JNI_OnLoad(JavaVM *vm, void *reserved) {
     LOGD(TAG, "JNI OnLoad...");
     m_java_vm = vm;
@@ -45,25 +37,6 @@ JNIEXPORT jint JNI_OnLoad(JavaVM *vm, void *reserved) {
                                                        "()Ljava/lang/String;");
         } else {
             LOGD(TAG, "j_PthreadHook null!");
-        }
-
-        jclass j_EglHook = env->FindClass("com/tencent/matrix/hook/egl/EglHook");
-        if (j_EglHook) {
-            m_class_EglHook = (jclass) env->NewGlobalRef(j_EglHook);
-            m_method_egl_create_context = env->GetStaticMethodID(m_class_EglHook, "onCreateEglContext",
-                                                     "(J)V");
-            m_method_egl_destroy_context = env->GetStaticMethodID(m_class_EglHook, "onDeleteEglContext",
-                                                          "(J)V");
-            m_method_egl_create_window_surface = env->GetStaticMethodID(m_class_EglHook,
-                                                                        "onCreateEglWindowSurface",
-                                                                        "(J)V");
-            m_method_egl_create_pbuffer_surface = env->GetStaticMethodID(m_class_EglHook,
-                                                                         "onCreatePbufferSurface",
-                                                                         "(J)V");
-            m_method_egl_destroy_surface = env->GetStaticMethodID(m_class_EglHook,
-                                                                  "onDeleteEglSurface", "(J)V");
-
-            LOGD(TAG, "j_EglHook success");
         }
     }
 
