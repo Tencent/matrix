@@ -155,7 +155,7 @@ public final class BluetoothManagerServiceHooker {
                     }
 
                     try {
-                        return method.invoke(delegate, args);
+                        return safeInvocationReturn(delegate, method, args);
                     } catch (Throwable e) {
                         MatrixLog.printErrStackTrace(TAG, e, "invokeBluetooth fail");
                         return null;
@@ -209,7 +209,7 @@ public final class BluetoothManagerServiceHooker {
                     }
 
                     try {
-                        return method.invoke(delegate, args);
+                        return safeInvocationReturn(delegate, method, args);
                     } catch (Throwable e) {
                         MatrixLog.printErrStackTrace(TAG, e, "invokeBluetoothGatt fail");
                         return null;
@@ -245,5 +245,48 @@ public final class BluetoothManagerServiceHooker {
         for (IListener item : sListeners) {
             item.onStartScanForIntent(scanSettings);
         }
+    }
+
+    private static Object safeInvocationReturn(Object receiver, Method method, Object[] args) {
+        Object invokeResult = null;
+        try {
+            invokeResult = method.invoke(receiver, args);
+        } catch (Throwable e) {
+            MatrixLog.printErrStackTrace(TAG, e, "reflect invocation fail");
+        }
+
+        if (invokeResult != null) {
+            return invokeResult;
+        }
+
+        Class<?> returnType = method.getReturnType();
+        if (returnType == null || !returnType.isPrimitive()) {
+            return null;
+        }
+
+        // return primitive default value
+        // refer: "https://docs.oracle.com/javase/tutorial/java/nutsandbolts/datatypes.html"
+        if (returnType == byte.class
+                || returnType == short.class
+                || returnType == int.class) {
+            return 0;
+        }
+        if (returnType == long.class) {
+            return 0L;
+        }
+        if (returnType == float.class) {
+            return 0.0f;
+        }
+        if (returnType == double.class) {
+            return 0.0d;
+        }
+        if (returnType == char.class) {
+            return '\u0000';
+        }
+        if (returnType == boolean.class) {
+            return false;
+        }
+
+        return null;
     }
 }
