@@ -76,6 +76,10 @@ public class LooperMonitor implements MessageQueue.IdleHandler {
     private static final long CHECK_TIME = 60 * 1000L;
     private long lastCheckPrinterTime = 0;
 
+    /**
+     * It will be thread-unsafe if you get the listeners and literate.
+     */
+    @Deprecated
     public HashSet<LooperDispatchListener> getListeners() {
         return listeners;
     }
@@ -221,26 +225,23 @@ public class LooperMonitor implements MessageQueue.IdleHandler {
         }
     }
 
-
     private void dispatch(boolean isBegin, String log) {
-
-        for (LooperDispatchListener listener : listeners) {
-            if (listener.isValid()) {
-                if (isBegin) {
-                    if (!listener.isHasDispatchStart) {
-                        listener.onDispatchStart(log);
+        synchronized (listeners) {
+            for (LooperDispatchListener listener : listeners) {
+                if (listener.isValid()) {
+                    if (isBegin) {
+                        if (!listener.isHasDispatchStart) {
+                            listener.onDispatchStart(log);
+                        }
+                    } else {
+                        if (listener.isHasDispatchStart) {
+                            listener.onDispatchEnd(log);
+                        }
                     }
-                } else {
-                    if (listener.isHasDispatchStart) {
-                        listener.onDispatchEnd(log);
-                    }
+                } else if (!isBegin && listener.isHasDispatchStart) {
+                    listener.dispatchEnd();
                 }
-            } else if (!isBegin && listener.isHasDispatchStart) {
-                listener.dispatchEnd();
             }
         }
-
     }
-
-
 }
