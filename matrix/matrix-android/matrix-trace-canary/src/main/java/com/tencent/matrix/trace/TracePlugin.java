@@ -89,7 +89,7 @@ public class TracePlugin extends Plugin {
                     }
                 }
 
-                if(traceConfig.isAppMethodBeatEnable()) {
+                if (traceConfig.isAppMethodBeatEnable()) {
                     AppMethodBeat.getInstance().onStart();
                 }
 

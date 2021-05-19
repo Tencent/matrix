@@ -38,7 +38,7 @@ public class TraceConfig implements IDefaultConfig {
     public boolean defaultFpsEnable;
     public boolean defaultMethodTraceEnable;
     public boolean defaultStartupEnable;
-    public boolean defaultAppMethodBeatEnable;
+    public boolean defaultAppMethodBeatEnable = true;
     public boolean defaultAnrEnable;
     public boolean isDebug;
     public boolean isDevEnv;
