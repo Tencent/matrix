@@ -49,6 +49,19 @@ SET(
         ${SOURCE_DIR}/libwechatbacktrace/LocalMaps.cpp
         ${SOURCE_DIR}/libwechatbacktrace/FpUnwinder.cpp
         ${SOURCE_DIR}/libwechatbacktrace/Backtrace.cpp
+
+        ${SOURCE_DIR}/dexfile/dex_file_loader.cc
+        ${SOURCE_DIR}/dexfile/compact_offset_table.cc
+        ${SOURCE_DIR}/dexfile/primitive.cc
+        ${SOURCE_DIR}/dexfile/descriptors_names.cc
+        ${SOURCE_DIR}/dexfile/dex_file.cc
+        ${SOURCE_DIR}/dexfile/standard_dex_file.cc
+        ${SOURCE_DIR}/dexfile/compact_dex_file.cc
+        ${SOURCE_DIR}/dexfile/dex_file_ext.cc
+
+        ${SOURCE_DIR}/libwechatbacktrace/DebugGlobal.cpp
+        ${SOURCE_DIR}/libwechatbacktrace/DebugDexFiles.cpp
+        ${SOURCE_DIR}/libwechatbacktrace/DebugJit.cpp
 )
 
 ADD_LIBRARY(
@@ -75,6 +88,7 @@ TARGET_INCLUDE_DIRECTORIES(
         PUBLIC ${SOURCE_DIR}/common
         PUBLIC ${SOURCE_DIR}/libwechatbacktrace/include
         PUBLIC ${SOURCE_DIR}/external/libunwindstack/include
+        PUBLIC ${SOURCE_DIR}/dexfile/include
 )
 
 # Searches for a specified prebuilt library and stores the path as a

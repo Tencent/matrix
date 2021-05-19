@@ -32,7 +32,6 @@
 #include "DwarfEncoding.h"
 #include "DwarfOp.h"
 #include "RegsInfo.h"
-#include "../../common/Log.h"
 
 namespace unwindstack {
 

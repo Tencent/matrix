@@ -29,12 +29,23 @@
         app:layout_constraintTop_toBottomOf="@+id/textview_bactrace_usage"
         />
 
+    <Button
+        android:id="@+id/btn_wechat_backtrace_benchmark_with_jit"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:onClick="backtraceBenchmarkWithJit"
+        android:text="Backtrace Benchmark(With Jit)"
+        android:textAllCaps="false"
+        app:layout_constraintTop_toBottomOf="@+id/btn_wechat_backtrace_benchmark"
+        />
+
     <View
         android:id="@+id/horizontal_line_1"
         android:layout_width="match_parent"
         android:layout_height="1dp"
         android:layout_marginTop="32dp"
-        app:layout_constraintTop_toBottomOf="@+id/btn_wechat_backtrace_benchmark"
+        app:layout_constraintTop_toBottomOf="@+id/btn_wechat_backtrace_benchmark_with_jit"
         android:background="#c0c0c0"/>
 
     <TextView

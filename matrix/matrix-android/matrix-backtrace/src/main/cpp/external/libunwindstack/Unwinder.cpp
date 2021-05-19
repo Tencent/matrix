@@ -35,7 +35,6 @@
 #include <unwindstack/Unwinder.h>
 #include <libgen.h>
 #include <android/log.h>
-#include "../../common/Log.h"
 
 #include <unwindstack/DexFiles.h>
 

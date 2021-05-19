@@ -29,7 +29,6 @@
 #include <unwindstack/Regs.h>
 
 #include "DwarfOp.h"
-#include "../../common/Log.h"
 
 namespace unwindstack {
 

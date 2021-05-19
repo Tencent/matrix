@@ -42,11 +42,11 @@ namespace wechat_backtrace {
     QuickenMapInfo::GetQuickenInterface(std::shared_ptr<Memory> &process_memory,
                                         ArchEnum expected_arch) {
 
-        if (quicken_interface_) {
+        if (LIKELY(quicken_interface_)) {
             return quicken_interface_.get();
         }
 
-        if (quicken_interface_failed_) {
+        if (UNLIKELY(quicken_interface_failed_)) {
             return nullptr;
         }
 
@@ -68,22 +68,33 @@ namespace wechat_backtrace {
             }
 
             Memory *memory = CreateQuickenMemory(process_memory);
-            if (memory == nullptr) {
+            if (UNLIKELY(memory == nullptr)) {
                 quicken_interface_failed_ = true;
                 QUT_LOG("Create quicken interface failed by creating memory failed.");
                 return nullptr;
             }
+            string soname;
+            string build_id_hex;
 
             unique_ptr<Elf> elf = CreateElf(name, memory, expected_arch);
+            bool jit_cache = false;
+            if (UNLIKELY(!elf)) {
+                if (!StartsWith(name, "/memfd:/jit-cache")
+                        && !EndsWith(name, "jit-code-cache]")) {    // TODO
+                    quicken_interface_failed_ = true;
+                    QUT_LOG("Create quicken interface failed by creating elf failed.");
+                    return nullptr;
+                } else {
+                    soname = name;
+                    jit_cache = true;
+                    QUT_LOG("It's a jit cache memory region.");
+                }
+            } else {
+                soname = elf->GetSoname();
+                build_id_hex = elf->GetBuildID();
+                elf_load_bias_ = elf->GetLoadBias();
+            };
 
-            if (!elf) {
-                quicken_interface_failed_ = true;
-                QUT_LOG("Create quicken interface failed by creating elf failed.");
-                return nullptr;
-            }
-            string soname = elf->GetSoname();
-            string build_id_hex = elf->GetBuildID();
-            elf_load_bias_ = elf->GetLoadBias();
             QUT_LOG("GetQuickenInterface elf_offset %llu, offset %llu, elf_load_bias_ %llu"
                     ", soname %s, build_id %s, name_without_delete %s.",
                     (ullint_t) elf_offset, (ullint_t) offset, (ullint_t) elf_load_bias_,
@@ -96,8 +107,14 @@ namespace wechat_backtrace {
                     elf_load_bias_,
                     elf_offset,
                     elf_start_offset,
-                    build_id_hex
+                    build_id_hex,
+                    jit_cache
             ));
+
+            if (jit_cache) {
+                quicken_interface_->InitDebugJit();
+            }
+
             cached_quicken_interface_[so_key] = quicken_interface_;
         }
 
@@ -125,17 +142,18 @@ namespace wechat_backtrace {
     }
 
     QuickenInterface *QuickenMapInfo::CreateQuickenInterfaceFromElf(
-            ArchEnum expected_arch,
+            const ArchEnum expected_arch,
             const string &so_path,
             const string &so_name,
             const uint64_t load_bias_,
             const uint64_t elf_offset,
             const uint64_t elf_start_offset,
-            const string &build_id_hex
+            const string &build_id_hex,
+            const bool jit_cache
     ) {
         std::unique_ptr<QuickenInterface> quicken_interface_ =
                 make_unique<QuickenInterface>(load_bias_, elf_offset, elf_start_offset, expected_arch);
-        quicken_interface_->SetSoInfo(so_path, so_name, build_id_hex, elf_start_offset);
+        quicken_interface_->InitSoInfo(so_path, so_name, build_id_hex, elf_start_offset, jit_cache);
 
         return quicken_interface_.release();
     }
@@ -154,9 +172,10 @@ namespace wechat_backtrace {
                 sopath,
                 soname,
                 elf->GetLoadBias(),
-                0, // Not use while generating
+                /* elf_offset = */ 0, // Not use while generating
                 elf_start_offset,
-                build_id_hex
+                build_id_hex,
+                /* jit_cache = */ false
         ));
 
         ArchEnum expected_arch = elf->arch();
@@ -311,73 +330,82 @@ namespace wechat_backtrace {
         (void) process_memory;
 
         if (end <= start) {
-//            QUT_DEBUG_LOG("CreateQuickenMemory, map name %s, (%llu, %llu)", name.c_str(), (ullint_t)start, (ullint_t)end);
+            QUT_DEBUG_LOG("CreateQuickenMemory, map name %s, (%llu, %llu)", name.c_str(), (ullint_t)start, (ullint_t)end);
             return nullptr;
         }
 
         elf_offset = 0;
 
-        // Fail on device maps.
         if (flags & MAPS_FLAGS_DEVICE_MAP) {
-//            QUT_DEBUG_LOG("CreateQuickenMemory, in device map, map name %s, (%llu, %llu)", name.c_str(), (ullint_t)start, (ullint_t)end);
+            // Fail on device maps.
+            QUT_DEBUG_LOG("CreateQuickenMemory, in device map, map name %s, (%llu, %llu)", name.c_str(), (ullint_t)start, (ullint_t)end);
             return nullptr;
         }
 
-        // First try and use the file associated with the info.
         if (!name.empty()) {
             Memory *memory = GetFileQuickenMemory();
             if (memory != nullptr) {
                 return memory;
             }
+
+            // Return MemoryRange while it's jit cache region.
+            if (IsJitCacheMap(name)) {
+                std::unique_ptr<MemoryRange> memory(
+                    new MemoryRange(process_memory, start, end - start, offset));
+                elf_offset = offset;
+                return memory.release();
+            }
         }
 
-//        if (HasSuffix(name, "odex (deleted)")) {
-//            // XXX Currently not support memory backed elf.
-//            if (process_memory == nullptr) {
-//                return nullptr;
-//            }
-//
-//            if (!(flags & PROT_READ)) {
-//                return nullptr;
-//            }
-//
-//            // Need to verify that this elf is valid. It's possible that
-//            // only part of the elf file to be mapped into memory is in the executable
-//            // map. In this case, there will be another read-only map that includes the
-//            // first part of the elf file. This is done if the linker rosegment
-//            // option is used.
-//            std::unique_ptr<MemoryRange> memory(
-//                    new MemoryRange(process_memory, start, end - start, 0));
-//            if (Elf::IsValidElf(memory.get())) {
-//                memory_backed_elf = true;
-//                return memory.release();
-//            }
-//
-//            // Find the read-only map by looking at the previous map. The linker
-//            // doesn't guarantee that this invariant will always be true. However,
-//            // if that changes, there is likely something else that will change and
-//            // break something.
-//            if (offset == 0 || name.empty() || prev_real_map == nullptr ||
-//                prev_real_map->name != name ||
-//                prev_real_map->offset >= offset) {
-//                return nullptr;
-//            }
-//
-//            // Make sure that relative pc values are corrected properly.
-//            elf_offset = offset - prev_real_map->offset;
-//            // Use this as the elf start offset, otherwise, you always get offsets into
-//            // the r-x section, which is not quite the right information.
-//            elf_start_offset = prev_real_map->offset;
-//
-//            MemoryRanges *ranges = new MemoryRanges;
-//            ranges->Insert(new MemoryRange(process_memory, prev_real_map->start,
-//                                           prev_real_map->end - prev_real_map->start, 0));
-//            ranges->Insert(new MemoryRange(process_memory, start, end - start, elf_offset));
-//
-//            memory_backed_elf = true;
-//            return ranges;
-//        }
+// XXX Currently not support memory backed elf.
+/*
+        if (HasSuffix(name, "odex (deleted)")) {
 
+            if (process_memory == nullptr) {
+                return nullptr;
+            }
+
+            if (!(flags & PROT_READ)) {
+                return nullptr;
+            }
+
+            // Need to verify that this elf is valid. It's possible that
+            // only part of the elf file to be mapped into memory is in the executable
+            // map. In this case, there will be another read-only map that includes the
+            // first part of the elf file. This is done if the linker rosegment
+            // option is used.
+            std::unique_ptr<MemoryRange> memory(
+                    new MemoryRange(process_memory, start, end - start, 0));
+            if (Elf::IsValidElf(memory.get())) {
+                memory_backed_elf = true;
+                return memory.release();
+            }
+
+            // Find the read-only map by looking at the previous map. The linker
+            // doesn't guarantee that this invariant will always be true. However,
+            // if that changes, there is likely something else that will change and
+            // break something.
+            if (offset == 0 || name.empty() || prev_real_map == nullptr ||
+                prev_real_map->name != name ||
+                prev_real_map->offset >= offset) {
+                return nullptr;
+            }
+
+            // Make sure that relative pc values are corrected properly.
+            elf_offset = offset - prev_real_map->offset;
+            // Use this as the elf start offset, otherwise, you always get offsets into
+            // the r-x section, which is not quite the right information.
+            elf_start_offset = prev_real_map->offset;
+
+            MemoryRanges *ranges = new MemoryRanges;
+            ranges->Insert(new MemoryRange(process_memory, prev_real_map->start,
+                                           prev_real_map->end - prev_real_map->start, 0));
+            ranges->Insert(new MemoryRange(process_memory, start, end - start, elf_offset));
+
+            memory_backed_elf = true;
+            return ranges;
+        }
+*/
 //        QUT_DEBUG_LOG("CreateQuickenMemory, return nullptr, map name %s, (%llu, %llu)", name.c_str(), (ullint_t)start, (ullint_t)end);
 
         return nullptr;
@@ -403,11 +431,13 @@ namespace wechat_backtrace {
         return maps_size_;
     }
 
+    BACKTRACE_EXPORT
     MapInfoPtr Maps::Find(uint64_t pc) {
 
-        if (!local_maps_) {
+        if (UNLIKELY(!local_maps_)) {
             return nullptr;
         }
+
         size_t first = 0;
         size_t last = maps_size_;
 
@@ -438,8 +468,10 @@ namespace wechat_backtrace {
     }
 
     void Maps::ReleaseLocalMaps() {
-        for (size_t i = 0; i < maps_size_; i++) {
-            delete local_maps_[i];
+        if (!compat_maps) {
+            for (size_t i = 0; i < maps_size_; i++) {
+                delete local_maps_[i];
+            }
         }
 
         free(local_maps_);
@@ -447,6 +479,7 @@ namespace wechat_backtrace {
         maps_size_ = 0;
     }
 
+    BACKTRACE_EXPORT
     std::shared_ptr<Maps> Maps::current() {
         if (!current_maps_) {
             Parse();

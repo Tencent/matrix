@@ -109,6 +109,10 @@ struct MapInfo {
 
   inline bool IsBlank() { return offset == 0 && flags == 0 && name.empty(); }
 
+  // Dex file info. Add for Wechat.
+  uint64_t dex_file_offset = 0;
+  bool memory_backed_dex_file = false;
+
  private:
   MapInfo(const MapInfo&) = delete;
   void operator=(const MapInfo&) = delete;

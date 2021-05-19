@@ -59,7 +59,13 @@ namespace wechat_backtrace {
         bool load_from_file = false;
     };
 
+    struct QutSectionsInMemory : QutSections {
+        uint64_t pc_start;
+        uint64_t pc_end;
+    };
+
     typedef QutSections *QutSectionsPtr;
+    typedef QutSectionsInMemory *QutSectionsInMemoryPtr;
 
     class QuickenTable {
 

@@ -230,6 +230,79 @@ namespace wechat_backtrace {
     }
 
     template<typename AddressType>
+    void
+    QuickenTableGenerator<AddressType>::DecodeDebugFrameSingleEntry(
+            FrameInfo debug_frame_info,
+            const unwindstack::DwarfFde *fde,
+            QutInstructionsOfEntries *entries_instructions,
+            uint16_t regs_total,
+            bool gnu_debug_data) {
+
+        Memory *memory = gnu_debug_data ? gnu_debug_data_memory_ : memory_;
+
+        if (memory != nullptr && debug_frame_info.offset_ != 0) {
+            auto debug_frame_ = make_shared<DwarfDebugFrameDecoder<AddressType>>(memory);
+            if (!debug_frame_->Init(debug_frame_info.offset_, debug_frame_info.size_,
+                                    debug_frame_info.section_bias_)) {
+                return;
+            }
+
+            debug_frame_->ParseSingleFde(
+                    fde, process_memory_, regs_total, entries_instructions,
+                    estimate_memory_usage_, memory_overwhelmed_
+            );
+        }
+
+        return;
+    }
+
+    template<typename AddressType>
+    bool
+    QuickenTableGenerator<AddressType>::GenerateSingleQUTSections(
+            FrameInfo debug_frame_info,
+            const unwindstack::DwarfFde *fde,
+            QutSections *fut_sections,
+            bool gnu_debug_data
+    ) {
+
+        if (UNLIKELY(fut_sections == nullptr)) {
+            return false;
+        }
+
+
+        auto debug_frame_instructions = make_shared<QutInstructionsOfEntries>();
+
+        estimate_memory_usage_ = 0;
+        memory_overwhelmed_ = false;
+
+        uint16_t regs_total = REGS_TOTAL;
+
+        QUT_DEBUG_LOG(
+                "QuickenInterface::GenerateSingleQUTSections debug_frame_info size_:%lld, "
+                "offset:%llu, section_bias:%lld, gnu_debug_data: %d",
+                (llint_t) debug_frame_info.size_, (ullint_t) debug_frame_info.offset_,
+                (llint_t) debug_frame_info.section_bias_, gnu_debug_data);
+        DecodeDebugFrameSingleEntry(debug_frame_info, fde, debug_frame_instructions.get(),
+                                    regs_total, gnu_debug_data);
+        QUT_DEBUG_LOG(
+                "QuickenInterface::GenerateSingleQUTSections debug_frame_info size_:%lld, "
+                "offset:%llu, section_bias:%lld, instructions:%llu, gnu_debug_data: %d",
+                (llint_t) debug_frame_info.size_, (ullint_t) debug_frame_info.offset_,
+                (llint_t) debug_frame_info.section_bias_,
+                (ullint_t) debug_frame_instructions->size(), gnu_debug_data);
+
+
+        QUT_LOG("Memory usage: %llu, Overwhelmed: %d", (ullint_t) estimate_memory_usage_,
+                memory_overwhelmed_);
+
+        QUT_DEBUG_LOG("QuickenInterface::GenerateSingleQUTSections debug_frame_instructions %llu",
+                      (ullint_t) debug_frame_instructions->size());
+        PackEntriesToQutSections(debug_frame_instructions.get(), fut_sections);
+
+        return true;
+    }
+
+    template<typename AddressType>
     shared_ptr<QutInstructionsOfEntries> QuickenTableGenerator<AddressType>::MergeFrameEntries(
             shared_ptr<QutInstructionsOfEntries> to, shared_ptr<QutInstructionsOfEntries> from) {
 
@@ -648,5 +721,19 @@ namespace wechat_backtrace {
             FrameInfo gnu_eh_frame_hdr_info, FrameInfo gnu_eh_frame_info,
             FrameInfo gnu_debug_frame_info,
             FrameInfo arm_exidx_info, QutSections *fut_sections);
+
+    template bool QuickenTableGenerator<uint32_t>::GenerateSingleQUTSections(
+            FrameInfo debug_frame_info,
+            const unwindstack::DwarfFde *fde,
+            QutSections *fut_sections,
+            bool gnu_debug_data
+    );
+
+    template bool QuickenTableGenerator<uint64_t>::GenerateSingleQUTSections(
+            FrameInfo debug_frame_info,
+            const unwindstack::DwarfFde *fde,
+            QutSections *fut_sections,
+            bool gnu_debug_data
+    );
 
 }  // namespace wechat_backtrace

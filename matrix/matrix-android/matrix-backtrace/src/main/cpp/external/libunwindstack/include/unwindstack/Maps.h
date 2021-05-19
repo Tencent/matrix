@@ -75,6 +75,9 @@ class Maps {
     return maps_[index].get();
   }
 
+  std::vector<std::unique_ptr<MapInfo>>* GetMaps() {
+    return &maps_;
+  }
  protected:
   std::vector<std::unique_ptr<MapInfo>> maps_;
 };

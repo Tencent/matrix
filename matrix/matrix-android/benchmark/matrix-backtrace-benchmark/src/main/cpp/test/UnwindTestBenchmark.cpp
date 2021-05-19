@@ -63,9 +63,9 @@ Java_com_tencent_matrix_benchmark_test_UnwindBenchmarkTest_nativeBenchmark(JNIEn
 //    BENCHMARK(WECHAT_QUICKEN_UNWIND, func_throughsystemso);
 
     for (int i = 0; i < 1; i++) {
-        BENCHMARK_TIMES(DWARF_UNWIND, 1, func_selfso);
-//        BENCHMARK_TIMES(FP_UNWIND, 1, func_selfso);
-        BENCHMARK_TIMES(WECHAT_QUICKEN_UNWIND, 1, func_selfso);
+        BENCHMARK_TIMES(DWARF_UNWIND, 20, func_selfso);
+        BENCHMARK_TIMES(FP_UNWIND, 20, func_selfso);
+        BENCHMARK_TIMES(WECHAT_QUICKEN_UNWIND, 20, func_selfso);
     }
 }
 

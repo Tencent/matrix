@@ -53,6 +53,14 @@ namespace wechat_backtrace {
                                QutInstructionsOfEntries *, uint64_t &estimate_memory_usage,
                                bool &memory_overwhelmed);
 
+        bool ParseSingleFde(
+                const unwindstack::DwarfFde *fde,
+                unwindstack::Memory *process_memory,
+                uint16_t regs_total,
+                /* out */ QutInstructionsOfEntries *all_instructions,
+                /* out */ uint64_t &estimate_memory_usage,
+                /* out */ bool &memory_overwhelmed);
+
         bool Eval(const unwindstack::DwarfCie *, unwindstack::Memory *,
                   const unwindstack::dwarf_loc_regs_t &, uint16_t total_regs);
 

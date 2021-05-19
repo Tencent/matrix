@@ -189,7 +189,6 @@ namespace wechat_backtrace {
         }
     }
 
-
     QutFileError
     QuickenTableManager::RequestQutSections(const string &soname, const string &sopath,
                                             const string &hash, const string &build_id,

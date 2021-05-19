@@ -40,7 +40,15 @@ namespace wechat_backtrace {
                 FrameInfo eh_frame_hdr_info, FrameInfo eh_frame_info, FrameInfo debug_frame_info,
                 FrameInfo gnu_eh_frame_hdr_info, FrameInfo gnu_eh_frame_info,
                 FrameInfo gnu_debug_frame_info,
-                FrameInfo arm_exidx_info, QutSections *fut_sections);
+                FrameInfo arm_exidx_info, QutSections *fut_sections
+        );
+
+        bool GenerateSingleQUTSections(
+                FrameInfo debug_frame_info,
+                const unwindstack::DwarfFde *fde,
+                QutSections *fut_sections,
+                bool gnu_debug_data
+        );
 
         QutErrorCode last_error_code;
 
@@ -70,6 +78,11 @@ namespace wechat_backtrace {
 
         bool PackEntriesToQutSections(
                 QutInstructionsOfEntries *entries, QutSections *fut_sections);
+
+        void DecodeDebugFrameSingleEntry(FrameInfo debug_frame_info,
+                                         const unwindstack::DwarfFde *fde,
+                                         QutInstructionsOfEntries *entries_instructions,
+                                         uint16_t regs_total, bool gnu_debug_data);
 
         bool GetPrel31Addr(unwindstack::Memory *memory_, uint32_t offset, uint32_t *addr);
 

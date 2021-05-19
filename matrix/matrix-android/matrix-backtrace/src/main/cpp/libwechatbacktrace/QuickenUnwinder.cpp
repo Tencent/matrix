@@ -161,6 +161,7 @@ namespace wechat_backtrace {
         QUT_LOG("Generate qut for so %s, elf_start_offset %llu.", sopath.c_str(),
                 (ullint_t) elf_start_offset);
 
+        // Gen hash string
         const string hash = ToHash(
                 sopath + to_string(FileSize(sopath)) + to_string(elf_start_offset));
         const std::string soname = SplitSonameFromPath(sopath);
@@ -366,8 +367,17 @@ namespace wechat_backtrace {
                 break;
             }
 
-            if (!interface->Step(step_pc, regs, nullptr, stack_top, stack_bottom,
-                                 frame_size, &dex_pc, &finished)) {
+            bool step_ret;
+            if (UNLIKELY(interface->jit_cache_)) {
+                uptr adjust_jit_pc = PC(regs) - pc_adjustment;
+                step_ret = interface->StepJIT(adjust_jit_pc, regs, maps.get(), stack_top,
+                                              stack_bottom, frame_size, &dex_pc, &finished);
+            } else {
+                step_ret = interface->Step(step_pc, regs, stack_top, stack_bottom,
+                                           frame_size, &dex_pc, &finished);
+            }
+
+            if (UNLIKELY(!step_ret)) {
                 ret = interface->last_error_code_;
                 break;
             }

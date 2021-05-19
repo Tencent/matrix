@@ -41,7 +41,7 @@ public class WeChatBacktrace {
     }
 
     public static String getSystemFrameworkOATPath() {
-        return !is64BitRuntime() ? SYSTEM_BOOT_OAT_PATH_64 : SYSTEM_BOOT_OAT_PATH;
+        return !is64BitRuntime() ? SYSTEM_BOOT_OAT_PATH : SYSTEM_BOOT_OAT_PATH_64;
     }
 
     public static String getBaseODEXPath(Context context) {

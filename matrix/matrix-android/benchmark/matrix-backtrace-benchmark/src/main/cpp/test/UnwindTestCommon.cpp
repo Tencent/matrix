@@ -7,10 +7,12 @@
 #include <QuickenUnwinder.h>
 #include <QuickenMaps.h>
 #include <LocalMaps.h>
+#include <DebugJit.h>
 #include "Backtrace.h"
 #include "UnwindTestCommon.h"
 #include "BenchmarkLog.h"
 #include "BacktraceDefine.h"
+#include "DebugDexFiles.h"
 #include "../../../../../../matrix-backtrace/src/main/cpp/external/libunwindstack/deps/android-base/include/android-base/stringprintf.h"
 
 #define DWARF_UNWIND_TAG "Dwarf-Unwind"
@@ -239,32 +241,39 @@ inline void print_dwarf_unwind() {
             PRIuPTR, frames->size());
 
     wechat_backtrace::UpdateLocalMaps();
-    std::shared_ptr<unwindstack::LocalMaps> local_maps = wechat_backtrace::GetMapsCache();
-    if (!local_maps) {
+    std::shared_ptr<wechat_backtrace::Maps> quicken_maps = wechat_backtrace::Maps::current();
+    if (!quicken_maps) {
         BENCHMARK_LOGE(DWARF_UNWIND_TAG, "Err: unable to get maps.");
         return;
     }
     auto process_memory = unwindstack::Memory::CreateProcessMemory(getpid());
-    unwindstack::JitDebug jit_debug(process_memory);
-    jit_debug.SetArch(regs->Arch());
-
+    auto jit_debug = wechat_backtrace::DebugJit::Instance();
+    auto dex_debug = wechat_backtrace::DebugDexFiles::Instance();
     size_t num = 0;
     for (auto p_frame = frames->begin(); p_frame != frames->end(); ++p_frame, num++) {
 
-        unwindstack::MapInfo *map_info = local_maps->Find(p_frame->pc);
+        unwindstack::MapInfo *map_info = quicken_maps->Find(p_frame->pc);
         unwindstack::Elf *elf = nullptr;
-        if (map_info) {
-            elf = map_info->GetElf(process_memory, regs->Arch());
-            elf->GetFunctionName(p_frame->rel_pc, &p_frame->function_name,
-                                 &p_frame->function_offset);
-            if (!elf->valid()) {
-                unwindstack::Elf *jit_elf = jit_debug.GetElf(local_maps.get(), p_frame->pc);
-                if (jit_elf) {
-                    jit_elf->GetFunctionName(p_frame->pc, &p_frame->function_name,
-                                         &p_frame->function_offset);
-                }
-            }
-        }
+//        if (map_info) {
+//
+//            if (p_frame->is_dex_pc) {
+//                dex_debug->GetMethodInformation(quicken_maps.get(), map_info, p_frame->pc,
+//                                                &p_frame->function_name,
+//                                                &p_frame->function_offset);
+//            } else {
+//
+//                elf = map_info->GetElf(process_memory, regs->Arch());
+//                elf->GetFunctionName(p_frame->rel_pc, &p_frame->function_name,
+//                                     &p_frame->function_offset);
+//                if (!elf->valid()) {
+//                    unwindstack::Elf *jit_elf = jit_debug->GetElf(quicken_maps.get(), p_frame->pc);
+//                    if (jit_elf) {
+//                        jit_elf->GetFunctionName(p_frame->pc, &p_frame->function_name,
+//                                                 &p_frame->function_offset);
+//                    }
+//                }
+//            }
+//        }
         std::string formatted;
         dwarf_format_frame(*p_frame, map_info, elf, regs->Arch() == unwindstack::ARCH_ARM,
                            formatted);
@@ -318,41 +327,45 @@ inline void print_wechat_quicken_unwind() {
             PRIuPTR, frame_size);;
 
     wechat_backtrace::UpdateLocalMaps();
-    std::shared_ptr<unwindstack::LocalMaps> local_maps = wechat_backtrace::GetMapsCache();
-    if (!local_maps) {
+    std::shared_ptr<wechat_backtrace::Maps> quicken_maps = wechat_backtrace::Maps::current();
+    if (!quicken_maps) {
         BENCHMARK_LOGE(DWARF_UNWIND_TAG, "Err: unable to get maps.");
         return;
     }
     auto process_memory = unwindstack::Memory::CreateProcessMemory(getpid());
-    unwindstack::JitDebug jit_debug(process_memory);
-    jit_debug.SetArch(unwindstack::Regs::CurrentArch());
 
+    auto dex_debug = wechat_backtrace::DebugDexFiles::Instance();
+    auto jit_debug = wechat_backtrace::DebugJit::Instance();
     for (size_t num = 0; num < frame_size; num++) {
 
-        unwindstack::MapInfo *map_info = local_maps->Find(frames[num].pc);
-        std::string function_name;
+        unwindstack::MapInfo *map_info = quicken_maps->Find(frames[num].pc);
+        std::string function_name = "";
         uint64_t function_offset = 0;
         unwindstack::Elf *elf = nullptr;
-        if (map_info) {
-
-            if (frames[num].is_dex_pc) {
-                frames[num].rel_pc = frames[num].pc - map_info->start;
-            } else {
-
-                elf = map_info->GetElf(process_memory,
-                                       unwindstack::Regs::CurrentArch());
-
-                elf->GetFunctionName(frames[num].rel_pc, &function_name, &function_offset);
-                if (!elf->valid()) {
-                    unwindstack::Elf *jit_elf = jit_debug.GetElf(local_maps.get(),
-                                                                 frames[num].rel_pc);
-                    if (jit_elf) {
-                        jit_elf->GetFunctionName(frames[num].rel_pc, &function_name,
-                                                 &function_offset);
-                    }
-                }
-            }
-        }
+//        if (map_info) {
+//
+//            if (frames[num].is_dex_pc) {
+//                frames[num].rel_pc = frames[num].pc - map_info->start;
+//
+//                dex_debug->GetMethodInformation(quicken_maps.get(), map_info, frames[num].pc,
+//                                                     &function_name,
+//                                                     &function_offset);
+//            } else {
+//
+//                elf = map_info->GetElf(process_memory,
+//                                       unwindstack::Regs::CurrentArch());
+//
+//                elf->GetFunctionName(frames[num].rel_pc, &function_name, &function_offset);
+//                if (!elf->valid()) {
+//                    unwindstack::Elf *jit_elf = jit_debug->GetElf(quicken_maps.get(),
+//                                                                 frames[num].pc);
+//                    if (jit_elf) {
+//                        jit_elf->GetFunctionName(frames[num].pc, &function_name,
+//                                                 &function_offset);
+//                    }
+//                }
+//            }
+//        }
 
         std::string formatted;
         quicken_format_frame(frames[num], map_info, elf, num,

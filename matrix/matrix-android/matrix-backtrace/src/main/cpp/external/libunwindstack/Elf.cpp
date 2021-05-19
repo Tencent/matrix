@@ -33,7 +33,6 @@
 
 #include "ElfInterfaceArm.h"
 #include "Symbols.h"
-#include "../../common/Log.h"
 
 namespace unwindstack {
 
@@ -41,7 +40,7 @@ bool Elf::cache_enabled_;
 std::unordered_map<std::string, std::pair<std::shared_ptr<Elf>, bool>>* Elf::cache_;
 std::mutex* Elf::cache_lock_;
 
-bool Elf::Init(bool ignore_gnu_debug_data) {
+bool Elf::Init(bool ignore_gnu_debug_data) { // 'ignore_gnu_debug_data' add by Matrix
   load_bias_ = 0;
   if (!memory_) {
     return false;
@@ -51,7 +50,6 @@ bool Elf::Init(bool ignore_gnu_debug_data) {
   if (!interface_) {
     return false;
   }
-
   valid_ = interface_->Init(&load_bias_);
   if (valid_) {
     interface_->InitHeaders();

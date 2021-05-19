@@ -127,7 +127,7 @@ namespace wechat_backtrace {
     // ------------------------------------------------------------------------------------
 
     size_t QuickenMemoryLocal::Read(uint64_t remote_src, void* dst, size_t len) {
-        memcpy(dst, reinterpret_cast<const void *>(remote_src), len);
+        memcpy(dst, reinterpret_cast<const void *>(remote_src), len);   // Should we use process_vm_readv()?
         return len;
     }
 

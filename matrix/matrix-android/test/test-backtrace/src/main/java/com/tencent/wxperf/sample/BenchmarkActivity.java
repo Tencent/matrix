@@ -112,6 +112,8 @@ public class BenchmarkActivity extends AppCompatActivity {
 
         final Button btn = findViewById(R.id.btn_wechat_backtrace_benchmark);
         btn.setEnabled(false);
+        final Button jitbtn = findViewById(R.id.btn_wechat_backtrace_benchmark_with_jit);
+        jitbtn.setEnabled(false);
 
         WeChatBacktrace.setReporter(new WarmUpReporter() {
             @Override
@@ -122,6 +124,7 @@ public class BenchmarkActivity extends AppCompatActivity {
                         @Override
                         public void run() {
                             btn.setEnabled(true);
+                            jitbtn.setEnabled(true);
                         }
                     });
                 }
@@ -140,6 +143,7 @@ public class BenchmarkActivity extends AppCompatActivity {
         if (WeChatBacktrace.hasWarmedUp(this)) {
             warmedUpToast();
             btn.setEnabled(true);
+            jitbtn.setEnabled(true);
         }
     }
 
@@ -147,15 +151,34 @@ public class BenchmarkActivity extends AppCompatActivity {
         warpFunction(-1);
     }
 
-    public int warpFunctionImpl(int i) {
+    public void backtraceBenchmarkWithJit(View view) {
+        warpJitFunction(50000);
+    }
+
+    public void warpFunctionImpl2(int i, int j) {
+        warpFunctionImpl(i, j);
+    }
+
+    public int warpFunctionImpl(int i, int j) {
 
         int b = i + 1;
 
-        if (i == 0 || i == 15000) {
+        if (i == j) {
             UnwindBenchmarkTest.nativeBenchmark();
         }
 
         return b;
+    }
+
+    public int warpJitFunction(int i) {
+
+        UnwindBenchmarkTest.nativeInit();
+
+        for (int j = 0; j < i; j++) {
+            warpFunctionImpl2(j, i);
+        }
+
+        return i;
     }
 
 
@@ -163,13 +186,9 @@ public class BenchmarkActivity extends AppCompatActivity {
 
         UnwindBenchmarkTest.nativeInit();
 
-//        warpFunctionImpl(i);
+        warpFunctionImpl(i, i);
 
-        for (int j = 0; j < 100; j++) {
-            warpFunctionImpl(j);
-        }
-
-        return 20000;
+        return i;
     }
 
     public void backtrace(View view) {
