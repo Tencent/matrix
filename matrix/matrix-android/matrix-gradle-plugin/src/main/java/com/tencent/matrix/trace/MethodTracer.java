@@ -264,12 +264,12 @@ public class MethodTracer {
         @Override
         public MethodVisitor visitMethod(int access, String name, String desc,
                                          String signature, String[] exceptions) {
+            if (!hasWindowFocusMethod) {
+                hasWindowFocusMethod = MethodCollector.isWindowFocusChangeMethod(name, desc);
+            }
             if (isABSClass) {
                 return super.visitMethod(access, name, desc, signature, exceptions);
             } else {
-                if (!hasWindowFocusMethod) {
-                    hasWindowFocusMethod = MethodCollector.isWindowFocusChangeMethod(name, desc);
-                }
                 MethodVisitor methodVisitor = cv.visitMethod(access, name, desc, signature, exceptions);
                 return new TraceMethodAdapter(api, methodVisitor, access, name, desc, this.className,
                         hasWindowFocusMethod, isActivityOrSubClass, isNeedTrace);
