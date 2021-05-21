@@ -451,7 +451,7 @@ class WarmUpDelegate {
                             return false;
                         }
                     });
-                } catch (CancellationException e) {
+                } catch (CancellationException | OperationCanceledException e) {
                     return;
                 } finally {
                     mWarmUpScheduler.taskFinished(TaskType.DiskUsage);
