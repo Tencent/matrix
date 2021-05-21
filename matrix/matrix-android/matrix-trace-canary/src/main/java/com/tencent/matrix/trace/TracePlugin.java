@@ -91,6 +91,8 @@ public class TracePlugin extends Plugin {
 
                 if (traceConfig.isAppMethodBeatEnable()) {
                     AppMethodBeat.getInstance().onStart();
+                } else {
+                    AppMethodBeat.getInstance().forceStop();
                 }
 
                 UIThreadMonitor.getMonitor().onStart();
