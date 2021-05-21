@@ -65,7 +65,6 @@ abstract class MatrixTraceTask : DefaultTask() {
     @get:Input
     abstract val traceClassOutputDirectory: Property<String>
 
-    @get:OutputFiles
     abstract val classOutputs: ConfigurableFileCollection
 
     @get:OutputFile
