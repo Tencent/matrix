@@ -97,13 +97,21 @@ public class TracePlugin extends Plugin {
 
                 UIThreadMonitor.getMonitor().onStart();
 
-                anrTracer.onStartTrace();
+                if (traceConfig.isAnrTraceEnable()) {
+                    anrTracer.onStartTrace();
+                }
 
-                frameTracer.onStartTrace();
+                if (traceConfig.isFPSEnable()) {
+                    frameTracer.onStartTrace();
+                }
 
-                evilMethodTracer.onStartTrace();
+                if (traceConfig.isEvilMethodTraceEnable()) {
+                    evilMethodTracer.onStartTrace();
+                }
 
-                startupTracer.onStartTrace();
+                if (traceConfig.isStartupEnable()) {
+                    startupTracer.onStartTrace();
+                }
             }
         };
 
