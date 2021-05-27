@@ -115,7 +115,7 @@ namespace wechat_backtrace {
         const bool log = false;
         const uptr log_pc = 0;
 //        const bool log = true;
-//        const uptr log_pc = 0x14e350;
+//        const uptr log_pc = 0x598f9;
 
         bool jit_cache_ = false;
 

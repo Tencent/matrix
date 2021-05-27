@@ -39,10 +39,6 @@ namespace wechat_backtrace {
             const uptr frame_max_size,
             Frame *backtrace, uptr &frame_size);
 
-//    QUT_EXTERN_C QutErrorCode
-//    WeChatQuickenUnwindV2_WIP(unwindstack::ArchEnum arch, uptr *regs, uptr *backtrace,
-//                              uptr frame_max_size, uptr &frame_size);
-
 }  // namespace wechat_backtrace
 
 #endif  // _LIBWECHATBACKTRACE_QUICKEN_UNWINDER_H

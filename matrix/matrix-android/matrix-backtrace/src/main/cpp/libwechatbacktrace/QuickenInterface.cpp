@@ -164,7 +164,7 @@ namespace wechat_backtrace {
 
         quicken.cfa_ = SP(regs);
         bool return_value = false;
-        quicken.log = log && log_pc == pc;
+//        quicken.log = log && log_pc == pc;
         last_error_code_ = quicken.Eval(entry_offset);
         if (LIKELY(last_error_code_ == QUT_ERROR_NONE)) {
             if (!quicken.pc_set_) {
@@ -186,7 +186,7 @@ namespace wechat_backtrace {
                               bool *finished) {
 
         std::shared_ptr<QutSections> qut_sections_for_jit;
-        if (LIKELY(debug_jit_ != nullptr)) {
+        if (LIKELY(debug_jit_.get() != nullptr)) {
             bool ret = debug_jit_->GetFutSectionsInMemory(
                     maps, pc,
                     qut_sections_for_jit);
@@ -194,6 +194,9 @@ namespace wechat_backtrace {
                 last_error_code_ = QUT_ERROR_REQUEST_QUT_INMEM_FAILED;
                 return false;
             }
+        } else {
+            last_error_code_ = QUT_ERROR_REQUEST_QUT_INMEM_FAILED;
+            return false;
         }
 
         return StepInternal(pc, regs, const_cast<QutSections *>(qut_sections_for_jit.get()),
@@ -208,7 +211,7 @@ namespace wechat_backtrace {
             last_error_code_ = QUT_ERROR_UNWIND_INFO;
             return false;
         }
-        if (!qut_sections_) {
+        if (UNLIKELY(!qut_sections_)) {
             if (!TryInitQuickenTable()) {
                 last_error_code_ = QUT_ERROR_REQUEST_QUT_FILE_FAILED;
                 return false;

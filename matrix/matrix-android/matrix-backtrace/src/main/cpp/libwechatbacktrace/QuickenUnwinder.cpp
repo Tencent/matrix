@@ -247,14 +247,14 @@ namespace wechat_backtrace {
     inline uint32_t
     GetPcAdjustment(Memory *process_memory, MapInfoPtr map_info, uint64_t pc, uint32_t rel_pc,
                     uint32_t load_bias) {
-        if (rel_pc < load_bias) {
+        if (UNLIKELY(rel_pc < load_bias)) {
             if (rel_pc < 2) {
                 return 0;
             }
             return 2;
         }
         uint32_t adjusted_rel_pc = rel_pc - load_bias;
-        if (adjusted_rel_pc < 5) {
+        if (UNLIKELY(adjusted_rel_pc < 5)) {
             if (adjusted_rel_pc < 2) {
                 return 0;
             }

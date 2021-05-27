@@ -96,12 +96,12 @@ namespace wechat_backtrace {
         pthread_attr_t attr;
         BACKTRACE_FUNC_WRAPPER(pthread_getattr_ext)(pthread_self(), &attr);
         uptr stack_bottom = reinterpret_cast<uptr>(attr.stack_base);
-        uptr tack_top = reinterpret_cast<uptr>(attr.stack_base) + attr.stack_size;
+        uptr stack_top = reinterpret_cast<uptr>(attr.stack_base) + attr.stack_size;
 
         uptr fp = regs[0]; // x29 or r7
         uptr pc = regs[3]; // x32 or r15
 
-        fpUnwindImpl(pc, fp, tack_top, stack_bottom, backtrace, max_size, frame_size);
+        fpUnwindImpl(pc, fp, stack_top, stack_bottom, backtrace, max_size, frame_size);
 
     }
 

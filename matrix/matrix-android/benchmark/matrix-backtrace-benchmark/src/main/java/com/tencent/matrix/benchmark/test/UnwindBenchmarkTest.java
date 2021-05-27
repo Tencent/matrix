@@ -10,6 +10,8 @@ public class UnwindBenchmarkTest {
 
     public static native void nativeBenchmark();
 
+    public static native void nativeBenchmarkJavaStack();
+
     public static native void nativeTry();
 
     public static native void nativeRefreshMaps();

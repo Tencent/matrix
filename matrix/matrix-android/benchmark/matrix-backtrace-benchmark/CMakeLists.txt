@@ -21,12 +21,10 @@ ENDIF()
 
 SET(
         SOURCE_FILES
-
         ${SOURCE_DIR}/test/UnwindTestCommon.cpp
         ${SOURCE_DIR}/test/UnwindTestCase_SelfSo.cpp
-        ${SOURCE_DIR}/test/UnwindTestCase_ThroughJNI.cpp
-        ${SOURCE_DIR}/test/UnwindTestCase_ThroughSystemSo.cpp
         ${SOURCE_DIR}/test/UnwindTestBenchmark.cpp
+        ${SOURCE_DIR}/test/JavaStacktrace.cpp
 )
 
 ADD_LIBRARY( # Specifies the name of the library.

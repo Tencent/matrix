@@ -54,7 +54,7 @@ class Elf {
   Elf(Memory* memory) : memory_(memory) {}
   virtual ~Elf() = default;
 
-  bool Init(bool ignore_gnu_debug_data = false);
+  bool Init(bool ignore_gnu_debug_data = false, bool ignore_headers = false);
 
   void InitGnuDebugdata();
 

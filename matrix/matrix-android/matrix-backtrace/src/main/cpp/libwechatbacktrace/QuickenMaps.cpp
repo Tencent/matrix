@@ -90,7 +90,7 @@ namespace wechat_backtrace {
                     QUT_LOG("It's a jit cache memory region.");
                 }
             } else {
-                soname = elf->GetSoname();
+//                soname = elf->GetSoname();
                 build_id_hex = elf->GetBuildID();
                 elf_load_bias_ = elf->GetLoadBias();
             };
@@ -127,7 +127,7 @@ namespace wechat_backtrace {
         (void) so_path;
 
         auto elf = make_unique<Elf>(memory);
-        elf->Init(true); // Ignore .gnu_debug_data
+        elf->Init(true, true); // Ignore .gnu_debug_data
         if (!elf->valid()) {
             QUT_LOG("elf->valid() so %s invalid", so_path.c_str());
             return nullptr;

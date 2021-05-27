@@ -412,6 +412,9 @@ namespace wechat_backtrace {
         // Look for the cached copy of the cie data.
         auto reg_entry = cie_loc_regs_.find(fde->cie_offset);
         if (reg_entry == cie_loc_regs_.end()) {
+            if (log) {
+                QUT_DEBUG_LOG("GetCfaLocationInfo cie_loc_regs_ miss cache.");
+            }
             if (!cfa.GetLocationInfo(pc, fde->cie->cfa_instructions_offset,
                                      fde->cie->cfa_instructions_end,
                                      loc_regs)) {
@@ -940,10 +943,8 @@ namespace wechat_backtrace {
             const DwarfFde *fde = it->second.second;
 
             it++;
-
             bool ret = ParseSingleFde(fde, process_memory, regs_total, all_instructions,
                                       estimate_memory_usage, memory_overwhelmed);
-
             if (!ret && memory_overwhelmed) {
                 return;
             }
@@ -964,17 +965,23 @@ namespace wechat_backtrace {
             return false;
         }
 
+        if (log) {
+            QUT_LOG("Dump Fde -> [%llx, %llx]", fde->pc_start, fde->pc_end);
+        }
+
         shared_ptr<QutInstrCollection> prev_instructions;
         uint64_t prev_pc = -1;
+        size_t ins_size = (sizeof(AddressType) == 8) ? 4 : 2;
+        size_t row_size = 0;
         for (uint64_t pc = fde->pc_start; pc < fde->pc_end;) {
-
+            row_size++;
             // Now get the location information for this pc.
             dwarf_loc_regs_t loc_regs;
             if (!GetCfaLocationInfo(pc, fde, &loc_regs)) {
                 // bad entry
                 prev_instructions = nullptr;
                 prev_pc = -1;
-                pc += 2;
+                pc += ins_size;
 
                 QUT_DEBUG_LOG("Bad entry will GetCfaLocationInfo return false.");
                 continue;
@@ -989,7 +996,7 @@ namespace wechat_backtrace {
                 // bad entry
                 prev_instructions = nullptr;
                 prev_pc = -1;
-                pc += 2;
+                pc += ins_size;
 
                 QUT_DEBUG_LOG("Bad entry will pc_end <= pc.");
                 continue;
@@ -1050,6 +1057,8 @@ namespace wechat_backtrace {
                 return false;
             }
         }
+
+        if (log) QUT_DEBUG_LOG("Row size %zu", row_size);
 
         return true;
     }

@@ -114,6 +114,8 @@ public class BenchmarkActivity extends AppCompatActivity {
         btn.setEnabled(false);
         final Button jitbtn = findViewById(R.id.btn_wechat_backtrace_benchmark_with_jit);
         jitbtn.setEnabled(false);
+        final Button javabtn = findViewById(R.id.btn_wechat_backtrace_benchmark_for_java);
+        javabtn.setEnabled(false);
 
         WeChatBacktrace.setReporter(new WarmUpReporter() {
             @Override
@@ -125,8 +127,11 @@ public class BenchmarkActivity extends AppCompatActivity {
                         public void run() {
                             btn.setEnabled(true);
                             jitbtn.setEnabled(true);
+                            javabtn.setEnabled(true);
                         }
                     });
+                } else if (type == ReportEvent.WarmUpDuration && args.length == 1) {
+                    Log.e(TAG, String.format("Warm-up duration: %sms", (long) args[0]));
                 }
             }
         });
@@ -137,13 +142,14 @@ public class BenchmarkActivity extends AppCompatActivity {
                 .directoryToWarmUp(WeChatBacktrace.getSystemFrameworkOATPath() + "boot.oat")
                 .directoryToWarmUp(WeChatBacktrace.getSystemFrameworkOATPath() + "boot-framework.oat")
                 .enableIsolateProcessLogger(true)
-                .enableOtherProcessLogger(true)
+                .enableOtherProcessLogger(false)
                 .commit();
 
         if (WeChatBacktrace.hasWarmedUp(this)) {
             warmedUpToast();
             btn.setEnabled(true);
             jitbtn.setEnabled(true);
+            javabtn.setEnabled(true);
         }
     }
 
@@ -151,8 +157,12 @@ public class BenchmarkActivity extends AppCompatActivity {
         warpFunction(-1);
     }
 
+    public void backtraceBenchmarkForJava(View view) {
+        warpFunctionForJava(-1);
+    }
+
     public void backtraceBenchmarkWithJit(View view) {
-        warpJitFunction(50000);
+        warpJitFunction(30000);
     }
 
     public void warpFunctionImpl2(int i, int j) {
@@ -170,23 +180,65 @@ public class BenchmarkActivity extends AppCompatActivity {
         return b;
     }
 
+
+    public int warpFunctionForJavaImpl(int i, int j) {
+
+        int b = i + 1;
+
+        if (i == j) {
+            UnwindBenchmarkTest.nativeBenchmarkJavaStack();
+        }
+
+        return b;
+    }
+
+    public void javaFunctionImpl(int i, int j) {
+        if (i == j) {
+            long duration_sum = 0;
+            long times = 0;
+            Throwable throwable = null;
+            for (int t = 0; t < 100; t++) {
+                long start = System.nanoTime();
+                throwable = new Throwable();
+                long end = System.nanoTime();
+                long duration = System.nanoTime() - start;
+                duration_sum += duration;
+                times++;
+                Log.e("Unwind-test", String.format(
+                        "Java fillInStackTrace %s(ns) - %s(ns) = costs: %s(ns)", end, start, duration));
+            }
+            Log.e("Unwind-test", String.format(
+                    "Java fillInStackTrace Accumulated duration = %s, times = %s, avg = %s, per-frame = %s", duration_sum, times,
+                    duration_sum / times,
+                    (duration_sum / times) / throwable.getStackTrace().length));
+        }
+    }
+
     public int warpJitFunction(int i) {
 
         UnwindBenchmarkTest.nativeInit();
 
-        for (int j = 0; j < i; j++) {
+        for (int j = 0; j <= i; j++) {
             warpFunctionImpl2(j, i);
         }
 
         return i;
     }
 
-
     public int warpFunction(int i) {
 
         UnwindBenchmarkTest.nativeInit();
 
         warpFunctionImpl(i, i);
+
+        return i;
+    }
+
+    public int warpFunctionForJava(int i) {
+
+        UnwindBenchmarkTest.nativeInit();
+
+        warpFunctionForJavaImpl(i, i);
 
         return i;
     }

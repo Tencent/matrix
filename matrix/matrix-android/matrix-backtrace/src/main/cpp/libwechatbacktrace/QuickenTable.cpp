@@ -103,7 +103,7 @@ namespace wechat_backtrace {
                     break;
                 case 1:
                     // 01nn nnnn : vsp = vsp - (nnnnnn << 2) ; # (nnnnnnn << 2) in [0, 0xfc]
-                    cfa_ -= (byte << 2);
+                    cfa_ -= (uint8_t)(byte << 2);
                     break;
                 case 2:
                     switch (byte) {
@@ -317,7 +317,7 @@ namespace wechat_backtrace {
                     break;
                 case 1:
                     // 01nn nnnn : vsp = vsp - (nnnnnn << 2) ; # (nnnnnnn << 2) in [0, 0xfc]
-                    cfa_ -= (byte << 2);
+                    cfa_ -= (uint8_t)(byte << 2);
                     break;
                 case 2:
                     switch (byte) {
