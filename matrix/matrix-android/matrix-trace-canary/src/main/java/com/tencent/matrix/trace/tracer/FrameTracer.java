@@ -79,8 +79,8 @@ public class FrameTracer extends Tracer implements Application.ActivityLifecycle
     @Override
     public void onAlive() {
         super.onAlive();
-        UIThreadMonitor.getMonitor().addObserver(this);
         if (isFPSEnable) {
+            UIThreadMonitor.getMonitor().addObserver(this);
             Matrix.with().getApplication().registerActivityLifecycleCallbacks(this);
         }
     }
@@ -88,9 +88,9 @@ public class FrameTracer extends Tracer implements Application.ActivityLifecycle
     @Override
     public void onDead() {
         super.onDead();
-        UIThreadMonitor.getMonitor().removeObserver(this);
         removeDropFrameListener();
         if (isFPSEnable) {
+            UIThreadMonitor.getMonitor().removeObserver(this);
             Matrix.with().getApplication().unregisterActivityLifecycleCallbacks(this);
         }
     }
