@@ -34,6 +34,7 @@
         void *handle = dlopen(ORIGINAL_LIB, RTLD_LAZY); \
         if (handle) { \
             ORIGINAL_FUNC_NAME(sym) = (FUNC_TYPE(sym))dlsym(handle, #sym); \
+            dlclose(handle);                                                   \
         } \
     } \
     retType ret = ORIGINAL_FUNC_NAME(sym)(params)
@@ -43,6 +44,7 @@
         void *handle = dlopen(ORIGINAL_LIB, RTLD_LAZY); \
         if (handle) { \
             ORIGINAL_FUNC_NAME(sym) = (FUNC_TYPE(sym))dlsym(handle, #sym); \
+            dlclose(handle);                                              \
         } \
     } \
     ORIGINAL_FUNC_NAME(sym)(params)
