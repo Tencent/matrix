@@ -53,6 +53,10 @@ namespace wechat_backtrace {
         return build_id;
     }
 
+    inline bool StartsWith(std::string_view s, std::string_view prefix) {
+        return s.substr(0, prefix.size()) == prefix;
+    }
+
     inline static bool EndsWith(std::string_view s, std::string_view suffix) {
         return s.size() >= suffix.size() &&
                s.substr(s.size() - suffix.size(), suffix.size()) == suffix;
@@ -60,8 +64,12 @@ namespace wechat_backtrace {
 
     inline static bool IsOatFile(const std::string &soname) {
         return EndsWith(soname, ".oat") ||
-               EndsWith(soname, ".odex")
-               ;
+               EndsWith(soname, ".odex");
+    }
+
+    inline static bool IsJitCacheMap(const std::string &name) {
+        return StartsWith(name, "/memfd:/jit-cache") ||
+               EndsWith(name, "jit-code-cache]");
     }
 
     inline static size_t FileSize(const std::string &sopath) {

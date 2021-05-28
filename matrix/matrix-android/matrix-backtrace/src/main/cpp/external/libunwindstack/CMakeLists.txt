@@ -31,7 +31,6 @@ SET(
         ${CMAKE_CURRENT_SOURCE_DIR}/Unwinder.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/Symbols.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/Global.cpp
-#        ${CMAKE_CURRENT_SOURCE_DIR}/MemFnWrapper.cpp
 
 )
 
@@ -80,7 +79,6 @@ TARGET_COMPILE_OPTIONS(
         PRIVATE -ffunction-sections
         PRIVATE -Wexit-time-destructors
         PRIVATE -Wno-unused-value
-        PRIVATE -DNO_LIBDEXFILE_SUPPORT
         PRIVATE $<$<COMPILE_LANGUAGE:CXX>:-std=c++17>
 )
 

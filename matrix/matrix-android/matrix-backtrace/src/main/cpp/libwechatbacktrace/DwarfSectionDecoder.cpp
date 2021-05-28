@@ -412,6 +412,9 @@ namespace wechat_backtrace {
         // Look for the cached copy of the cie data.
         auto reg_entry = cie_loc_regs_.find(fde->cie_offset);
         if (reg_entry == cie_loc_regs_.end()) {
+            if (log) {
+                QUT_DEBUG_LOG("GetCfaLocationInfo cie_loc_regs_ miss cache.");
+            }
             if (!cfa.GetLocationInfo(pc, fde->cie->cfa_instructions_offset,
                                      fde->cie->cfa_instructions_end,
                                      loc_regs)) {
@@ -619,7 +622,8 @@ namespace wechat_backtrace {
                     if (is_dex_pc) {
                         AddressType value = value_expression.value;
                         temp_instructions_->insert(temp_instructions_->begin(),
-                                (QUT_INSTRUCTION_DEX_PC_SET << 32) | (0xffffffff & value));
+                                                   (QUT_INSTRUCTION_DEX_PC_SET << 32) |
+                                                   (0xffffffff & value));
                     } else {
                         last_error_.code = DWARF_ERROR_NOT_SUPPORT;
                         QUT_STATISTIC(UnsupportedDwarfLocationValExpressionWithoutDexPc, reg,
@@ -873,7 +877,8 @@ namespace wechat_backtrace {
             // Why evaluate x0:
             // Why evaluate x20:
             // Why evaluate x28:
-            if (reg != ARM64_REG_R0 && reg != ARM64_REG_R20 && reg != ARM64_REG_R28 && reg < ARM64_REG_R29) {
+            if (reg != ARM64_REG_R0 && reg != ARM64_REG_R20 && reg != ARM64_REG_R28 &&
+                reg < ARM64_REG_R29) {
                 continue;
             }
 #endif
@@ -938,100 +943,124 @@ namespace wechat_backtrace {
             const DwarfFde *fde = it->second.second;
 
             it++;
+            bool ret = ParseSingleFde(fde, process_memory, regs_total, all_instructions,
+                                      estimate_memory_usage, memory_overwhelmed);
+            if (!ret && memory_overwhelmed) {
+                return;
+            }
+        }
+    }
 
-            if (fde == nullptr || fde->cie == nullptr) {
-                // TODO bad entry
+    template<typename AddressType>
+    bool DwarfSectionDecoder<AddressType>::ParseSingleFde(
+            const DwarfFde *fde,
+            unwindstack::Memory *process_memory,
+            uint16_t regs_total,
+            /* out */ QutInstructionsOfEntries *all_instructions,
+            /* out */ uint64_t &estimate_memory_usage,
+            /* out */ bool &memory_overwhelmed) {
+
+        if (fde == nullptr || fde->cie == nullptr) {
+            // bad entry
+            return false;
+        }
+
+        if (log) {
+            QUT_LOG("Dump Fde -> [%llx, %llx]", fde->pc_start, fde->pc_end);
+        }
+
+        shared_ptr<QutInstrCollection> prev_instructions;
+        uint64_t prev_pc = -1;
+        size_t ins_size = (sizeof(AddressType) == 8) ? 4 : 2;
+        size_t row_size = 0;
+        for (uint64_t pc = fde->pc_start; pc < fde->pc_end;) {
+            row_size++;
+            // Now get the location information for this pc.
+            dwarf_loc_regs_t loc_regs;
+            if (!GetCfaLocationInfo(pc, fde, &loc_regs)) {
+                // bad entry
+                prev_instructions = nullptr;
+                prev_pc = -1;
+                pc += ins_size;
+
+                QUT_DEBUG_LOG("Bad entry will GetCfaLocationInfo return false.");
+                continue;
+            }
+            loc_regs.cie = fde->cie;
+
+            uint64_t pc_end = loc_regs.pc_end;
+
+//          log = (log_pc >= pc && log_pc < pc_end);
+
+            if (pc_end <= pc) {
+                // bad entry
+                prev_instructions = nullptr;
+                prev_pc = -1;
+                pc += ins_size;
+
+                QUT_DEBUG_LOG("Bad entry will pc_end <= pc.");
                 continue;
             }
 
-            shared_ptr<QutInstrCollection> prev_instructions;
-            uint64_t prev_pc = -1;
-            for (uint64_t pc = fde->pc_start; pc < fde->pc_end;) {
+            auto instructions = make_shared<QutInstrCollection>();
 
-                // Now get the location information for this pc.
-                dwarf_loc_regs_t loc_regs;
-                if (!GetCfaLocationInfo(pc, fde, &loc_regs)) {
-                    // TODO bad entry
-                    prev_instructions = nullptr;
-                    prev_pc = -1;
-                    pc += 2;
+            temp_instructions_ = instructions;
 
-                    QUT_DEBUG_LOG("Bad entry will GetCfaLocationInfo return false.");
-                    continue;
+            Eval(loc_regs.cie, process_memory, loc_regs, regs_total);
+
+            temp_instructions_ = nullptr;
+
+            if (log) {
+                QUT_DEBUG_LOG("Evaluated instructions size: %zu", instructions->size());
+                auto it = instructions->begin();
+                while (it != instructions->end()) {
+                    QUT_DEBUG_LOG("Evaluated instructions -> %llx", *it);
+                    it++;
                 }
-                loc_regs.cie = fde->cie;
+            }
 
-                uint64_t pc_end = loc_regs.pc_end;
+            // Try merge same entries.
+            bool same_entry = false;
+            if (prev_instructions != nullptr &&
+                prev_instructions->size() == instructions.get()->size()) {
 
-//                log = (log_pc >= pc && log_pc < pc_end);
-
-                if (pc_end <= pc) {
-                    // TODO bad entry
-                    prev_instructions = nullptr;
-                    prev_pc = -1;
-                    pc += 2;
-
-                    QUT_DEBUG_LOG("Bad entry will pc_end <= pc.");
-                    continue;
-                }
-
-                auto instructions = make_shared<QutInstrCollection>();
-
-                temp_instructions_ = instructions;
-
-                Eval(loc_regs.cie, process_memory, loc_regs, regs_total);
-
-                temp_instructions_ = nullptr;
-
-                if (log) {
-                    QUT_DEBUG_LOG("Evaluated instructions size: %zu", instructions->size());
-                    auto it = instructions->begin();
-                    while (it != instructions->end()) {
-                        QUT_DEBUG_LOG("Evaluated instructions -> %llx", *it);
-                        it++;
+                same_entry = true;
+                for (size_t i = 0; i < instructions.get()->size(); i++) {
+                    if (instructions.get()->at(i) != prev_instructions->at(i)) {
+                        same_entry = false;
+                        break;
                     }
                 }
+            }
 
-                // Try merge same entries.
-                bool same_entry = false;
-                if (prev_instructions != nullptr &&
-                    prev_instructions->size() == instructions.get()->size()) {
+            if (log) {
+                QUT_DEBUG_LOG("Evaluated same_entry: %d", same_entry);
+                QUT_DEBUG_LOG("Evaluated pc: %llx", (ullint_t) pc);
+            }
 
-                    same_entry = true;
-                    for (size_t i = 0; i < instructions.get()->size(); i++) {
-                        if (instructions.get()->at(i) != prev_instructions->at(i)) {
-                            same_entry = false;
-                            break;
-                        }
-                    }
-                }
-
-                if (log) {
-                    QUT_DEBUG_LOG("Evaluated same_entry: %d", same_entry);
-                    QUT_DEBUG_LOG("Evaluated pc: %llx", (ullint_t) pc);
-                }
-
-                if (same_entry) {
-                    (*all_instructions)[prev_pc].first = pc_end;
-                    pc = pc_end;
-                    continue;
-                }
-
-                auto entry = std::make_pair(pc_end, instructions);
-                (*all_instructions)[pc] = entry;
-                prev_instructions = instructions;
-                prev_pc = pc;
-
+            if (same_entry) {
+                (*all_instructions)[prev_pc].first = pc_end;
                 pc = pc_end;
+                continue;
+            }
 
-                estimate_memory_usage += instructions->size();
-                memory_overwhelmed = CHECK_MEMORY_OVERWHELMED(estimate_memory_usage);
-                if (memory_overwhelmed) {
-                    return;
-                }
+            auto entry = std::make_pair(pc_end, instructions);
+            (*all_instructions)[pc] = entry;
+            prev_instructions = instructions;
+            prev_pc = pc;
+
+            pc = pc_end;
+
+            estimate_memory_usage += instructions->size();
+            memory_overwhelmed = CHECK_MEMORY_OVERWHELMED(estimate_memory_usage);
+            if (memory_overwhelmed) {
+                return false;
             }
         }
 
+        if (log) QUT_DEBUG_LOG("Row size %zu", row_size);
+
+        return true;
     }
 
     template<typename AddressType>

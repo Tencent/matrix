@@ -19,6 +19,7 @@ enum QutErrorCode {
     QUT_ERROR_MAPS_IS_NULL,             // Could not get maps
 
     QUT_ERROR_REQUEST_QUT_FILE_FAILED,  // Request QUT file failed.
+    QUT_ERROR_REQUEST_QUT_INMEM_FAILED, // Request QUT in memory failed.
     QUT_ERROR_READ_STACK_FAILED,        // Read memory from stack failed.
     QUT_ERROR_TABLE_INDEX_OVERFLOW,     //
 };

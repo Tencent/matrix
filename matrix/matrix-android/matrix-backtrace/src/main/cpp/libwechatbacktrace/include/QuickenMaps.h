@@ -36,13 +36,14 @@ namespace wechat_backtrace {
 
         static QuickenInterface *
         CreateQuickenInterfaceFromElf(
-                unwindstack::ArchEnum expected_arch,
+                const unwindstack::ArchEnum expected_arch,
                 const std::string &so_path,
                 const std::string &so_name,
                 const uint64_t load_bias_,
                 const uint64_t elf_offset,
                 const uint64_t elf_start_offset,
-                const std::string &build_id_hex
+                const std::string &build_id_hex,
+                const bool jit_cache
         );
 
         static std::unique_ptr<QuickenInterface>
@@ -69,9 +70,9 @@ namespace wechat_backtrace {
 
         std::shared_ptr<QuickenInterface> quicken_interface_;
 
-        bool quicken_interface_failed_ = false;
+        volatile bool quicken_interface_failed_ = false;
 
-        uint64_t elf_load_bias_;
+        uint64_t elf_load_bias_ = 0;
 
     protected:
 
@@ -136,6 +137,8 @@ namespace wechat_backtrace {
 
     private:
         bool ParseImpl();
+
+        std::shared_ptr<unwindstack::Maps> compat_maps;
 
     };
 

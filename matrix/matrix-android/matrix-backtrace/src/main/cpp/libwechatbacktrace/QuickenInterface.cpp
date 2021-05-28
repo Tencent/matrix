@@ -113,12 +113,12 @@ namespace wechat_backtrace {
         return false;
     }
 
-    bool QuickenInterface::FindEntry(uptr pc, size_t *entry_offset) {
+    bool QuickenInterface::FindEntry(QutSections *qut_sections, uptr pc, size_t *entry_offset) {
         size_t first = 0;
-        size_t last = qut_sections_->idx_size;
+        size_t last = qut_sections->idx_size;
         while (first < last) {
             size_t current = ((first + last) / 2) & 0xfffffffe;
-            uptr addr = qut_sections_->quidx[current];
+            uptr addr = qut_sections->quidx[current];
             if (log && pc == log_pc) {
                 QUT_LOG(">>> QuickenInterface::FindEntry current:%llu addr:%llx pc:%llx",
                         (ullint_t) current, (ullint_t) addr, (ullint_t) pc);
@@ -149,50 +149,76 @@ namespace wechat_backtrace {
         return false;
     }
 
+    inline bool
+    QuickenInterface::StepInternal(uptr pc, uptr *regs, QutSections *sections, uptr stack_top,
+                                   uptr stack_bottom, uptr frame_size, uint64_t *dex_pc,
+                                   bool *finished) {
+
+        QuickenTable quicken(sections, regs, nullptr, stack_top, stack_bottom, frame_size);
+
+        size_t entry_offset;
+
+        if (UNLIKELY(!FindEntry(sections, pc, &entry_offset))) {
+            return false;
+        }
+
+        quicken.cfa_ = SP(regs);
+        bool return_value = false;
+//        quicken.log = log && log_pc == pc;
+        last_error_code_ = quicken.Eval(entry_offset);
+        if (LIKELY(last_error_code_ == QUT_ERROR_NONE)) {
+            if (!quicken.pc_set_) {
+                PC(regs) = LR(regs);
+            }
+            SP(regs) = quicken.cfa_;
+            return_value = true;
+            *dex_pc = quicken.dex_pc_;
+        }
+
+        // If the pc was set to zero, consider this the final frame.
+        *finished = (PC(regs) == 0);
+        return return_value;
+    }
+
     bool
-    QuickenInterface::Step(uptr pc, uptr *regs, unwindstack::Memory *process_memory, uptr stack_top,
+    QuickenInterface::StepJIT(uptr pc, uptr *regs, Maps *maps, uptr stack_top,
+                              uptr stack_bottom, uptr frame_size, uint64_t *dex_pc,
+                              bool *finished) {
+
+        std::shared_ptr<QutSections> qut_sections_for_jit;
+        if (LIKELY(debug_jit_.get() != nullptr)) {
+            bool ret = debug_jit_->GetFutSectionsInMemory(
+                    maps, pc,
+                    qut_sections_for_jit);
+            if (!ret || qut_sections_for_jit.get() == nullptr) {
+                last_error_code_ = QUT_ERROR_REQUEST_QUT_INMEM_FAILED;
+                return false;
+            }
+        } else {
+            last_error_code_ = QUT_ERROR_REQUEST_QUT_INMEM_FAILED;
+            return false;
+        }
+
+        return StepInternal(pc, regs, const_cast<QutSections *>(qut_sections_for_jit.get()),
+                stack_top, stack_bottom, frame_size, dex_pc, finished);
+    }
+
+    bool
+    QuickenInterface::Step(uptr pc, uptr *regs, uptr stack_top,
                            uptr stack_bottom, uptr frame_size, uint64_t *dex_pc, bool *finished) {
 
         if (UNLIKELY(pc < load_bias_)) {
             last_error_code_ = QUT_ERROR_UNWIND_INFO;
             return false;
         }
-
-        if (!qut_sections_) {
+        if (UNLIKELY(!qut_sections_)) {
             if (!TryInitQuickenTable()) {
                 last_error_code_ = QUT_ERROR_REQUEST_QUT_FILE_FAILED;
                 return false;
             }
         }
-        QuickenTable quicken(const_cast<QutSections *>(qut_sections_), regs,
-                             process_memory, stack_top, stack_bottom, frame_size);
-        size_t entry_offset;
-
-        // Adjust the load bias to get the real relative pc.
-        pc -= load_bias_;
-
-        if (UNLIKELY(!FindEntry(pc, &entry_offset))) {
-            return false;
-        }
-
-        quicken.cfa_ = SP(regs);
-        bool return_value = false;
-        last_error_code_ = quicken.Eval(entry_offset);
-        if (last_error_code_ == QUT_ERROR_NONE) {
-            if (!quicken.pc_set_) {
-                PC(regs) = LR(regs);
-            }
-            SP(regs) = quicken.cfa_;
-            return_value = true;
-
-            if (quicken.dex_pc_ != 0) {
-                *dex_pc = quicken.dex_pc_;
-            }
-        }
-
-        // If the pc was set to zero, consider this the final frame.
-        *finished = (PC(regs) == 0) ? true : false;
-        return return_value;
+        return StepInternal(pc, regs, const_cast<QutSections *>(qut_sections_),
+                            stack_top, stack_bottom, frame_size, dex_pc, finished);
     }
 
     template bool

@@ -43,7 +43,6 @@
 #include "MemoryOfflineBuffer.h"
 #include "MemoryRange.h"
 #include "MemoryRemote.h"
-#include "../../common/Log.h"
 
 namespace unwindstack {
 

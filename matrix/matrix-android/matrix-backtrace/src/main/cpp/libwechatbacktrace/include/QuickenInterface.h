@@ -11,6 +11,7 @@
 #include "Errors.h"
 #include "QuickenMaps.h"
 #include "QuickenUtility.h"
+#include "DebugJit.h"
 
 namespace wechat_backtrace {
 
@@ -27,13 +28,14 @@ namespace wechat_backtrace {
                   elf_start_offset_(elf_start_offset),
                   arch_(arch) {}
 
-        bool FindEntry(uptr pc, size_t *entry_offset);
+        bool FindEntry(QutSections *qut_sections, uptr pc, size_t *entry_offset);
 
-        bool Step(uptr pc, uptr *regs, unwindstack::Memory *process_memory, uptr stack_top,
+        bool StepJIT(uptr pc, uptr *regs, wechat_backtrace::Maps *maps,
+                     uptr stack_top, uptr stack_bottom, uptr frame_size,
+                     /* out */ uint64_t *dex_pc, /* out */ bool *finished);
+
+        bool Step(uptr pc, uptr *regs, uptr stack_top,
                   uptr stack_bottom, uptr frame_size, uint64_t *dex_pc, bool *finished);
-
-        bool StepBack(uptr pc, uptr sp, uptr fp, uint8_t &regs_bits, uptr *regs,
-                      unwindstack::Memory *process_memory, bool *finish);
 
         template<typename AddressType>
         bool GenerateQuickenTable(unwindstack::Memory *memory,
@@ -78,11 +80,12 @@ namespace wechat_backtrace {
         }
 
         void
-        SetSoInfo(const std::string &sopath, const std::string &soname,
-                  const std::string &build_id_hex, const uint64_t elf_start_offset) {
+        InitSoInfo(const std::string &sopath, const std::string &soname,
+                   const std::string &build_id_hex, const uint64_t elf_start_offset,
+                   const bool jit_cache) {
             (void) soname;
-//            soname_ = soname;
-            soname_ = SplitSonameFromPath(sopath);
+            jit_cache_ = jit_cache;
+            soname_ = jit_cache_ ? sopath : SplitSonameFromPath(sopath);
             sopath_ = sopath;
             if (build_id_hex.empty()) {
                 build_id_ = FakeBuildId(sopath);
@@ -91,6 +94,12 @@ namespace wechat_backtrace {
             }
             hash_ = ToHash(
                     sopath_ + std::to_string(FileSize(sopath)) + std::to_string(elf_start_offset));
+        }
+
+        void InitDebugJit() {
+            if (jit_cache_) {
+                debug_jit_ = DebugJit::Instance();
+            }
         }
 
         static void
@@ -106,7 +115,9 @@ namespace wechat_backtrace {
         const bool log = false;
         const uptr log_pc = 0;
 //        const bool log = true;
-//        const uptr log_pc = 0x14e350;
+//        const uptr log_pc = 0x598f9;
+
+        bool jit_cache_ = false;
 
     protected:
 
@@ -136,6 +147,11 @@ namespace wechat_backtrace {
         std::mutex lock_;
 
         size_t try_load_qut_failed_count_ = 0;
+
+        std::shared_ptr<DebugJit> debug_jit_;
+
+        bool StepInternal(uptr pc, uptr *regs, QutSections *sections, uptr stack_top,
+                          uptr stack_bottom, uptr frame_size, uint64_t *dex_pc, bool *finished);
 
         static quicken_generate_delegate_func quicken_generate_delegate_;
     };

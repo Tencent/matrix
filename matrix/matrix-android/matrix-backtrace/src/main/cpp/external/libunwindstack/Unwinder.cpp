@@ -35,7 +35,6 @@
 #include <unwindstack/Unwinder.h>
 #include <libgen.h>
 #include <android/log.h>
-#include "../../common/Log.h"
 
 #include <unwindstack/DexFiles.h>
 
@@ -139,6 +138,15 @@ FrameData* Unwinder::FillInFrame(MapInfo* map_info, Elf* elf, uint64_t rel_pc,
   frame->map_end = map_info->end;
   frame->map_flags = map_info->flags;
   frame->map_load_bias = elf->GetLoadBias();
+
+  frame->function_name = "";
+  frame->function_offset = 0;
+
+//  if (!resolve_names_ ||
+//      !elf->GetFunctionName(func_pc, &frame->function_name, &frame->function_offset)) {
+//    frame->function_name = "";
+//    frame->function_offset = 0;
+//  }
 
   return frame;
 }

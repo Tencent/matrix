@@ -36,7 +36,6 @@
 #include "DwarfEhFrameWithHdr.h"
 #include "MemoryBuffer.h"
 #include "Symbols.h"
-#include "../../common/Log.h"
 
 namespace unwindstack {
 

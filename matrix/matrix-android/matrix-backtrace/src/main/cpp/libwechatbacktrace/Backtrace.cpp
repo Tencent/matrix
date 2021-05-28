@@ -19,6 +19,7 @@ namespace wechat_backtrace {
     QUT_EXTERN_C_BLOCK
 
     static BacktraceMode backtrace_mode = FramePointer;
+    static bool enable_jit_unwind = false;
 
     BacktraceMode get_backtrace_mode() {
         return backtrace_mode;
@@ -26,6 +27,14 @@ namespace wechat_backtrace {
 
     void set_backtrace_mode(BacktraceMode mode) {
         backtrace_mode = mode;
+    }
+
+    void set_jit_unwind_enable(bool enable) {
+        enable_jit_unwind = enable;
+    }
+
+    bool get_jit_unwind_enable() {
+        return enable_jit_unwind;
     }
 
     BACKTRACE_EXPORT void
@@ -109,14 +118,6 @@ namespace wechat_backtrace {
     BACKTRACE_FUNC_WRAPPER(unwind_adapter)(Frame *frames, const size_t max_frames,
                                            size_t &frame_size) {
 
-#ifdef __aarch64__
-        uptr regs[FP_MINIMAL_REG_SIZE];
-        GetFramePointerMinimalRegs(regs);
-        FpUnwind(regs, frames, max_frames, frame_size);
-        return;
-#endif
-
-#ifdef __arm__
         switch (get_backtrace_mode()) {
             case FramePointer:
                 fp_based_unwind(frames, max_frames, frame_size);
@@ -129,7 +130,6 @@ namespace wechat_backtrace {
                 break;
         }
         return;
-#endif
     }
 
     BACKTRACE_EXPORT void BACKTRACE_FUNC_WRAPPER(notify_maps_changed)() {

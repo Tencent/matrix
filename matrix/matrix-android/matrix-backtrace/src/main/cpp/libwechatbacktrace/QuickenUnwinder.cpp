@@ -161,6 +161,7 @@ namespace wechat_backtrace {
         QUT_LOG("Generate qut for so %s, elf_start_offset %llu.", sopath.c_str(),
                 (ullint_t) elf_start_offset);
 
+        // Gen hash string
         const string hash = ToHash(
                 sopath + to_string(FileSize(sopath)) + to_string(elf_start_offset));
         const std::string soname = SplitSonameFromPath(sopath);
@@ -246,14 +247,14 @@ namespace wechat_backtrace {
     inline uint32_t
     GetPcAdjustment(Memory *process_memory, MapInfoPtr map_info, uint64_t pc, uint32_t rel_pc,
                     uint32_t load_bias) {
-        if (rel_pc < load_bias) {
+        if (UNLIKELY(rel_pc < load_bias)) {
             if (rel_pc < 2) {
                 return 0;
             }
             return 2;
         }
         uint32_t adjusted_rel_pc = rel_pc - load_bias;
-        if (adjusted_rel_pc < 5) {
+        if (UNLIKELY(adjusted_rel_pc < 5)) {
             if (adjusted_rel_pc < 2) {
                 return 0;
             }
@@ -366,8 +367,17 @@ namespace wechat_backtrace {
                 break;
             }
 
-            if (!interface->Step(step_pc, regs, nullptr, stack_top, stack_bottom,
-                                 frame_size, &dex_pc, &finished)) {
+            bool step_ret;
+            if (UNLIKELY(interface->jit_cache_)) {
+                uptr adjust_jit_pc = PC(regs) - pc_adjustment;
+                step_ret = interface->StepJIT(adjust_jit_pc, regs, maps.get(), stack_top,
+                                              stack_bottom, frame_size, &dex_pc, &finished);
+            } else {
+                step_ret = interface->Step(step_pc, regs, stack_top, stack_bottom,
+                                           frame_size, &dex_pc, &finished);
+            }
+
+            if (UNLIKELY(!step_ret)) {
                 ret = interface->last_error_code_;
                 break;
             }
