@@ -46,6 +46,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.zip.ZipEntry;
+import java.util.zip.ZipException;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
 
@@ -194,9 +195,16 @@ public class MethodTracer {
                 }
             }
         } catch (Exception e) {
-            Log.e(TAG, "[innerTraceMethodFromJar] input:%s output:%s e:%s", input.getName(), output, e);
+            Log.e(TAG, "[innerTraceMethodFromJar] input:%s output:%s e:%s", input, output, e);
+            if (e instanceof ZipException) {
+                e.printStackTrace();
+            }
             try {
-                Files.copy(input.toPath(), output.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                if (input.length() > 0) {
+                    Files.copy(input.toPath(), output.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                } else {
+                    Log.e(TAG, "[innerTraceMethodFromJar] input:%s is empty", input);
+                }
             } catch (Exception e1) {
                 e1.printStackTrace();
             }
