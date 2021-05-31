@@ -3,7 +3,6 @@ dependencies {
 
     def matrixModules = [
             "matrix-commons",
-            "matrix-thread-canary",
             "matrix-battery-canary",
             "matrix-android-lib",
             "matrix-android-commons",

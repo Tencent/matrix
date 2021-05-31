@@ -28,6 +28,8 @@ class MatrixTraceCompat : ITraceSwitchListener {
 
     companion object {
         const val TAG = "Matrix.TraceCompat"
+
+        const val LEGACY_FLAG = "matrix_trace_legacy"
     }
 
     var traceInjection: MatrixTraceInjection? = null
@@ -47,7 +49,8 @@ class MatrixTraceCompat : ITraceSwitchListener {
             VersionsCompat.lessThan(AGPVersion.AGP_3_6_0) ->
                 legacyInject(appExtension, project, extension)
             VersionsCompat.greatThanOrEqual(AGPVersion.AGP_4_0_0) -> {
-                if ((project.extensions.extraProperties.get("matrix_trace_legacy") as? String?) == "true") {
+                if (project.extensions.extraProperties.has(LEGACY_FLAG) &&
+                    (project.extensions.extraProperties.get(LEGACY_FLAG) as? String?) == "true") {
                     legacyInject(appExtension, project, extension)
                 } else {
                     traceInjection!!.inject(appExtension, project, extension)
@@ -59,8 +62,8 @@ class MatrixTraceCompat : ITraceSwitchListener {
     }
 
     private fun legacyInject(appExtension: AppExtension,
-                     project: Project,
-                     extension: MatrixTraceExtension) {
+                             project: Project,
+                             extension: MatrixTraceExtension) {
 
         project.afterEvaluate {
 
