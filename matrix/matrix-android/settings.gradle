@@ -25,7 +25,7 @@ include ':matrix-jectl'
 include ':matrix-fd'
 
 // Benchmark
-include ':benchmark:matrix-backtrace-benchmark'
+include ':test:matrix-backtrace-benchmark'
 
 // TEST
 include ':test:test-backtrace'
