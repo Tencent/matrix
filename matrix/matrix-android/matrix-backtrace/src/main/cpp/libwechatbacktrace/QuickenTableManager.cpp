@@ -30,6 +30,7 @@
 #include <sys/mman.h>
 #include <QuickenJNI.h>
 #include <utime.h>
+#include <QuickenTableGenerator.h>
 #include "QuickenTableManager.h"
 #include "Log.h"
 
@@ -452,6 +453,92 @@ namespace wechat_backtrace {
 
         QUT_LOG("Saving qut file %s for so %s", qut_file_name.c_str(), sopath.c_str());
         return NoneError;
+    }
+
+    bool QuickenTableManager::GetFutSectionsInMemory(
+            Elf *elf,
+            uint64_t pc,
+            Memory *process_memory,
+            /* out */ std::shared_ptr<wechat_backtrace::QutSections> &fut_sections) {
+
+        bool log = false;   // TODO
+        {
+            std::lock_guard<std::mutex> guard(lock_for_qut_);
+
+            if (log) {
+                for (auto it : qut_in_memory_) {
+                    QUT_LOG("GetFutSectionsInMemory dump cache qut [%llx, %llx]", it.second->pc_start, it.second->pc_end);
+                }
+            }
+
+            if (qut_in_memory_.size() > 0) {
+                auto it = qut_in_memory_.upper_bound(pc);
+                if (it != qut_in_memory_.begin()) {
+                    it--;
+                }
+
+                QUT_LOG("GetFutSectionsInMemory found cache qut pc %llx in range of fde[%llx, %llx]",
+                        pc, it->second->pc_start, it->second->pc_end);
+                if (pc >= it->second->pc_start && pc <= it->second->pc_end) {
+                    fut_sections = it->second;
+                    return true;
+                }
+            }
+        }
+
+        QUT_LOG("GetFutSectionsInMemory miss cache qut pc %llx", pc);
+
+        const DwarfFde *fde;
+
+        wechat_backtrace::FrameInfo debug_frame_info;
+        Memory *gnu_debug_data_memory = nullptr;
+        if (elf->gnu_debugdata_interface()) {
+            gnu_debug_data_memory = elf->gnu_debugdata_interface()->memory();
+            debug_frame_info = {
+                    .offset_ = elf->gnu_debugdata_interface()->debug_frame_offset(),
+                    .section_bias_ = elf->gnu_debugdata_interface()->debug_frame_section_bias(),
+                    .size_ = elf->gnu_debugdata_interface()->debug_frame_size(),
+            };
+            fde = elf->gnu_debugdata_interface()->debug_frame()->GetFdeFromPc(pc);
+        } else {
+            debug_frame_info = {
+                    .offset_ = elf->interface()->debug_frame_offset(),
+                    .section_bias_ = elf->interface()->debug_frame_section_bias(),
+                    .size_ = elf->interface()->debug_frame_size(),
+            };
+            fde = elf->interface()->debug_frame()->GetFdeFromPc(pc);
+        }
+
+        if (fde == nullptr) {
+            return false;
+        }
+
+        QuickenTableGenerator<wechat_backtrace::addr_t>
+                generator(elf->memory(), gnu_debug_data_memory, process_memory);
+
+        std::shared_ptr<wechat_backtrace::QutSectionsInMemory> fut_sections_sp
+                = std::make_shared<wechat_backtrace::QutSectionsInMemory>();
+        bool ret = generator.GenerateSingleQUTSections(debug_frame_info, fde, fut_sections_sp.get(),
+                                                       gnu_debug_data_memory != nullptr);
+        if (ret) {
+
+            QUT_LOG("GetFutSectionsInMemory found pc %llx in range of fde[%llx, %llx]", pc, fde->pc_start, fde->pc_end);
+
+            if (log) {
+                for (size_t i = 0; i < fut_sections_sp->idx_size; i += 1) {
+                    QUT_LOG("GetFutSectionsInMemory dump fut sections -> %llx", fut_sections_sp->quidx[i]);
+                }
+            }
+
+            fut_sections_sp->pc_start = fde->pc_start;
+            fut_sections_sp->pc_end = fde->pc_end;
+            fut_sections = fut_sections_sp;
+
+            std::lock_guard<std::mutex> guard(lock_for_qut_);
+            qut_in_memory_[fde->pc_start] = fut_sections_sp;
+            return true;
+        }
+        return false;
     }
 
 }  // namespace wechat_backtrace

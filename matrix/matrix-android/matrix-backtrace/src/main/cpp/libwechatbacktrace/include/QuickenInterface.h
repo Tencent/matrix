@@ -135,6 +135,9 @@ namespace wechat_backtrace {
 
         bool jit_cache_ = false;
 
+        std::unique_ptr<unwindstack::Elf> elf_;
+        std::shared_ptr<uunwindstack::Memory> process_memory_;
+
     protected:
 
         std::string soname_;

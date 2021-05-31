@@ -106,7 +106,6 @@ namespace wechat_backtrace {
                     QUT_LOG("It's a jit cache memory region.");
                 }
             } else {
-//                soname = elf->GetSoname();
                 build_id_hex = elf->GetBuildID();
                 elf_load_bias_ = elf->GetLoadBias();
             };
@@ -126,6 +125,13 @@ namespace wechat_backtrace {
                     build_id_hex,
                     jit_cache
             ));
+
+            if (!quicken_interface_->TryInitQuickenTable()) {
+                quicken_interface_->elf_ = std::move(elf);
+                quicken_interface_->elf_->interface()->InitHeaders();
+                quicken_interface_->elf_->InitGnuDebugdata();
+                quicken_interface_->process_memory_ = process_memory;
+            }
 
             if (jit_cache) {
                 quicken_interface_->InitDebugJit();

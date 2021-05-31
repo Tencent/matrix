@@ -94,7 +94,6 @@ namespace wechat_backtrace {
                           build_id_.c_str(), ret);
             if (ret == NoneError) {
                 qut_sections_ = qut_sections_tmp;
-
                 QUT_DEBUG_LOG("Request %s build id(%s) quicken table success.",
                               sopath_.c_str(), build_id_.c_str());
 
@@ -224,10 +223,19 @@ namespace wechat_backtrace {
             return false;
         }
         if (UNLIKELY(!qut_sections_)) {
-            if (!TryInitQuickenTable()) {
+//            if (!TryInitQuickenTable())
+//            {
+//                last_error_code_ = QUT_ERROR_REQUEST_QUT_FILE_FAILED;
+//                return false;
+//            }
+            std::shared_ptr<QutSections> qut_sections_for_jit;
+            bool ret = QuickenTableManager::getInstance().GetFutSectionsInMemory(elf_.get(), pc, process_memory_.get(), qut_sections_for_jit);
+            if (UNLIKELY(!ret)) {
                 last_error_code_ = QUT_ERROR_REQUEST_QUT_FILE_FAILED;
                 return false;
             }
+            return StepInternal(pc, regs, const_cast<QutSections *>(qut_sections_for_jit.get()),
+                                stack_top, stack_bottom, frame_size, dex_pc, finished);
         }
         return StepInternal(pc, regs, const_cast<QutSections *>(qut_sections_),
                             stack_top, stack_bottom, frame_size, dex_pc, finished);
