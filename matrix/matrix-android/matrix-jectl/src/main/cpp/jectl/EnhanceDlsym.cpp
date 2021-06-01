@@ -144,7 +144,10 @@ namespace enhance {
         }
 
         off_t elf_size  = lseek(fd, 0, SEEK_END);
-        ElfW(Ehdr) *elf = static_cast<ElfW(Ehdr) *>(mmap(0, elf_size, PROT_READ, MAP_SHARED, fd,
+        if (-1 == elf_size) {
+            return false;
+        }
+        ElfW(Ehdr) *elf = static_cast<ElfW(Ehdr) *>(mmap(nullptr, elf_size, PROT_READ, MAP_SHARED, fd,
                                                          0));
         // TODO check elf header ?
 
@@ -248,6 +251,7 @@ namespace enhance {
         auto info = new DlInfo;
 
         if (!load(suffix_name, *info)) {
+            delete info;
             return nullptr;
         }
 
