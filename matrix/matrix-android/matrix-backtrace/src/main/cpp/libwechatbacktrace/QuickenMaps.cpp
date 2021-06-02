@@ -73,9 +73,10 @@ namespace wechat_backtrace {
 
         if (!quicken_interface_ & !quicken_interface_failed_) {
             name_without_delete = RemoveMapsDeleteSuffix(name);
-
             string so_key = name_without_delete + ":" + to_string(start) + ":" + to_string(end);
             auto it = cached_quicken_interface_.find(so_key);
+
+            maybe_java = !IsSoFile(name_without_delete);
 
             // Search in caches.
             if (it != cached_quicken_interface_.end()) {

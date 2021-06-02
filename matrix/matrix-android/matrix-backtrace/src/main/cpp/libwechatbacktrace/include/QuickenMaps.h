@@ -95,6 +95,8 @@ namespace wechat_backtrace {
 
         std::string name_without_delete;
 
+        bool maybe_java = false;
+
         const bool quicken_in_memory_enable_ = true;
 
     protected:

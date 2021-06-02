@@ -57,7 +57,7 @@ Java_com_tencent_matrix_benchmark_test_UnwindBenchmarkTest_nativeBenchmark(JNIEn
 
     if (FRAME_MAX_SIZE >= 60) {
         BENCHMARK_TIMES(DWARF_UNWIND, times, func_selfso());
-//        BENCHMARK_TIMES(FP_AND_JAVA_UNWIND, times, func_selfso());
+        BENCHMARK_TIMES(FP_AND_JAVA_UNWIND, times, func_selfso());
         BENCHMARK_TIMES(WECHAT_QUICKEN_UNWIND, times, func_selfso());
     } else {
         BENCHMARK_TIMES(DWARF_UNWIND, times, func_selfso());

@@ -84,6 +84,7 @@ namespace wechat_backtrace {
         uptr pc = 0;
         uptr rel_pc = 0;
         bool is_dex_pc = false;
+        bool maybe_java = false;
     };
 
     struct FrameDetail {

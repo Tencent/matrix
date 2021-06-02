@@ -308,6 +308,7 @@ namespace wechat_backtrace {
         QUT_LOG("EraseQutRequestingByHash, hash %s.", hash.c_str());
         if (interface) {
             QutFileError ret = interface->TryInitQuickenTable();
+            (void) ret;
             QUT_LOG("Refresh requested qut ret %llu, hash %s.", (ullint_t)ret, hash.c_str());
         }
     }

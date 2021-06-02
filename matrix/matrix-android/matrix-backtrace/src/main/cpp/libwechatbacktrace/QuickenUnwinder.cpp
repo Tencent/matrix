@@ -362,6 +362,7 @@ namespace wechat_backtrace {
 
             if (dex_pc != 0) {
                 backtrace[frame_size].is_dex_pc = true;
+                backtrace[frame_size].maybe_java = true;
                 backtrace[frame_size].pc = dex_pc;
                 dex_pc = 0;
 
@@ -374,6 +375,7 @@ namespace wechat_backtrace {
 
             backtrace[frame_size].pc = PC(regs) - pc_adjustment;
             backtrace[frame_size].rel_pc = step_pc;
+            backtrace[frame_size].maybe_java = map_info->maybe_java;
 
             adjust_pc = true;
 

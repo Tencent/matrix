@@ -58,6 +58,7 @@ static UnwindTestMode gMode = DWARF_UNWIND;
 
 static bool gBenchmarkWarmUp = false;
 static bool gPrintStack = false;
+static bool gShrinkJavaStack = false;
 
 void set_unwind_mode(UnwindTestMode mode) {
     gMode = mode;
@@ -82,12 +83,13 @@ void benchmark_counting(uint64_t duration, size_t frame_size) {
 
 void dump_benchmark_calculation(const char *tag) {
     BENCHMARK_RESULT_LOGE(UNWIND_TEST_TAG,
-                   "%s Accumulated duration = %llu, times = %zu, avg = %llu, frame-size = %zu, per-frame = %llu.",
-                   tag, (unsigned long long) sTotalDuration, sBenchmarkTimes,
-                   (unsigned long long) (sTotalDuration / sBenchmarkTimes),
-                   sLastFrameSize,
-                   (unsigned long long) (((unsigned long long) (sTotalDuration / sBenchmarkTimes)) /
-                           sLastFrameSize));
+                          "%s Accumulated duration = %llu, times = %zu, avg = %llu, frame-size = %zu, per-frame = %llu.",
+                          tag, (unsigned long long) sTotalDuration, sBenchmarkTimes,
+                          (unsigned long long) (sTotalDuration / sBenchmarkTimes),
+                          sLastFrameSize,
+                          (unsigned long long) (
+                                  ((unsigned long long) (sTotalDuration / sBenchmarkTimes)) /
+                                  sLastFrameSize));
 }
 
 void dwarf_format_frame(const unwindstack::FrameData &frame, unwindstack::MapInfo *map_info,
@@ -236,12 +238,40 @@ quicken_format_frame(wechat_backtrace::Frame &frame, unwindstack::MapInfo *map_i
     }
 }
 
+void
+quicken_simple_format_frame(wechat_backtrace::Frame &frame, size_t num, bool is32Bit,
+                            std::string &function_name, uint64_t function_offset,
+                            std::string &data) {
+
+    if (is32Bit) {
+        data += android::base::StringPrintf("  #%02zu pc %08" PRIx64, num, (uint64_t) frame.rel_pc);
+    } else {
+        data += android::base::StringPrintf("  #%02zu pc %016" PRIx64, num,
+                                            (uint64_t) frame.rel_pc);
+    }
+
+    if (!function_name.empty()) {
+        char *demangled_name = abi::__cxa_demangle(function_name.c_str(), nullptr, nullptr,
+                                                   nullptr);
+        if (demangled_name == nullptr) {
+            data += " (" + function_name;
+        } else {
+            data += " (";
+            data += demangled_name;
+            free(demangled_name);
+        }
+        if (function_offset != 0) {
+            data += android::base::StringPrintf("+%" PRId64, function_offset);
+        }
+        data += ')';
+    }
+}
+
 inline void print_java_unwind() {
     TEST_NanoSeconds_Start(nano);
     jobject throwable;
     java_unwind(throwable);
     TEST_NanoSeconds_End(java_unwind, nano, 20);
-//    pin_object(throwable);
     // TODO print java stack
 }
 
@@ -351,7 +381,8 @@ inline void print_fp_and_java_unwind() {
 
     for (size_t num = 0; num < frame_size; num++) {
         std::string formatted;
-        fp_format_frame(frames[num].pc, num, unwindstack::Regs::CurrentArch() == unwindstack::ARCH_ARM,
+        fp_format_frame(frames[num].pc, num,
+                        unwindstack::Regs::CurrentArch() == unwindstack::ARCH_ARM,
                         formatted);
 
         BENCHMARK_LOGE(FP_UNWIND_TAG, formatted.c_str(), "");
@@ -381,7 +412,8 @@ inline void print_fp_unwind() {
 
     for (size_t num = 0; num < frame_size; num++) {
         std::string formatted;
-        fp_format_frame(frames[num].pc, num, unwindstack::Regs::CurrentArch() == unwindstack::ARCH_ARM,
+        fp_format_frame(frames[num].pc, num,
+                        unwindstack::Regs::CurrentArch() == unwindstack::ARCH_ARM,
                         formatted);
 
         BENCHMARK_LOGE(FP_UNWIND_TAG, formatted.c_str(), "");
@@ -402,60 +434,118 @@ inline void print_wechat_quicken_unwind() {
 
     TEST_NanoSeconds_End(wechat_quicken_unwind, nano, frame_size);
 
-//    BENCHMARK_LOGE(WECHAT_BACKTRACE_TAG, "frames = %"
-//            PRIuPTR, frame_size);;
-
     if (!gPrintStack) {
         return;
     }
 
-    wechat_backtrace::UpdateLocalMaps();
-    std::shared_ptr<wechat_backtrace::Maps> quicken_maps = wechat_backtrace::Maps::current();
-    if (!quicken_maps) {
-        BENCHMARK_LOGE(DWARF_UNWIND_TAG, "Err: unable to get maps.");
-        return;
-    }
-    auto process_memory = unwindstack::Memory::CreateProcessMemory(getpid());
+    if (gShrinkJavaStack) {
+        std::shared_ptr<wechat_backtrace::Maps> quicken_maps = wechat_backtrace::Maps::current();
+        auto process_memory = unwindstack::Memory::CreateProcessMemory(getpid());
+        auto dex_debug = wechat_backtrace::DebugDexFiles::Instance();
+        auto jit_debug = wechat_backtrace::DebugJit::Instance();
+        bool found_java_frame = false;
+        for (size_t num = 0; num < frame_size; num++) {
 
-    auto dex_debug = wechat_backtrace::DebugDexFiles::Instance();
-    auto jit_debug = wechat_backtrace::DebugJit::Instance();
-    for (size_t num = 0; num < frame_size; num++) {
+            if (found_java_frame && !frames[num].maybe_java) continue;
 
-        unwindstack::MapInfo *map_info = quicken_maps->Find(frames[num].pc);
-        std::string function_name = "";
-        uint64_t function_offset = 0;
-        unwindstack::Elf *elf = nullptr;
-        if (map_info) {
+            if (found_java_frame != frames[num].maybe_java) {
+                BENCHMARK_LOGE(WECHAT_BACKTRACE_TAG, "Java stacktrace:");
+                found_java_frame = frames[num].maybe_java;
+            }
 
-            if (frames[num].is_dex_pc) {
-                frames[num].rel_pc = frames[num].pc - map_info->start;
+            unwindstack::MapInfo *map_info = quicken_maps->Find(frames[num].pc);
+            std::string function_name = "";
+            uint64_t function_offset = 0;
+            unwindstack::Elf *elf = nullptr;
+            if (map_info) {
 
-                dex_debug->GetMethodInformation(quicken_maps.get(), map_info, frames[num].pc,
-                                                     &function_name,
+                if (frames[num].is_dex_pc) {
+                    frames[num].rel_pc = frames[num].pc - map_info->start;
+
+                    dex_debug->GetMethodInformation(quicken_maps.get(), map_info, frames[num].pc,
+                                                    &function_name,
+                                                    &function_offset);
+                } else {
+
+                    elf = map_info->GetElf(process_memory,
+                                           unwindstack::Regs::CurrentArch());
+
+                    elf->GetFunctionName(frames[num].rel_pc, &function_name, &function_offset);
+                    if (!elf->valid()) {
+                        unwindstack::Elf *jit_elf = jit_debug->GetElf(quicken_maps.get(),
+                                                                      frames[num].pc);
+                        if (jit_elf) {
+                            jit_elf->GetFunctionName(frames[num].pc, &function_name,
                                                      &function_offset);
-            } else {
-
-                elf = map_info->GetElf(process_memory,
-                                       unwindstack::Regs::CurrentArch());
-
-                elf->GetFunctionName(frames[num].rel_pc, &function_name, &function_offset);
-                if (!elf->valid()) {
-                    unwindstack::Elf *jit_elf = jit_debug->GetElf(quicken_maps.get(),
-                                                                 frames[num].pc);
-                    if (jit_elf) {
-                        jit_elf->GetFunctionName(frames[num].pc, &function_name,
-                                                 &function_offset);
+                        }
                     }
                 }
             }
+
+            std::string formatted;
+            if (!found_java_frame) {
+                quicken_format_frame(
+                        frames[num], map_info, elf, num,
+                        unwindstack::Regs::CurrentArch() == unwindstack::ARCH_ARM,
+                        function_name, function_offset, formatted);
+            } else {
+                quicken_simple_format_frame(
+                        frames[num], num,
+                        unwindstack::Regs::CurrentArch() == unwindstack::ARCH_ARM,
+                        function_name, function_offset, formatted);
+            }
+
+            BENCHMARK_LOGE(WECHAT_BACKTRACE_TAG, formatted.c_str(), "");
         }
+    } else {
+        wechat_backtrace::UpdateLocalMaps();
+        std::shared_ptr<wechat_backtrace::Maps> quicken_maps = wechat_backtrace::Maps::current();
+        if (!quicken_maps) {
+            BENCHMARK_LOGE(DWARF_UNWIND_TAG, "Err: unable to get maps.");
+            return;
+        }
+        auto process_memory = unwindstack::Memory::CreateProcessMemory(getpid());
 
-        std::string formatted;
-        quicken_format_frame(frames[num], map_info, elf, num,
-                             unwindstack::Regs::CurrentArch() == unwindstack::ARCH_ARM,
-                             function_name, function_offset, formatted);
+        auto dex_debug = wechat_backtrace::DebugDexFiles::Instance();
+        auto jit_debug = wechat_backtrace::DebugJit::Instance();
+        for (size_t num = 0; num < frame_size; num++) {
 
-        BENCHMARK_LOGE(WECHAT_BACKTRACE_TAG, formatted.c_str(), "");
+            unwindstack::MapInfo *map_info = quicken_maps->Find(frames[num].pc);
+            std::string function_name = "";
+            uint64_t function_offset = 0;
+            unwindstack::Elf *elf = nullptr;
+            if (map_info) {
+
+                if (frames[num].is_dex_pc) {
+                    frames[num].rel_pc = frames[num].pc - map_info->start;
+
+                    dex_debug->GetMethodInformation(quicken_maps.get(), map_info, frames[num].pc,
+                                                    &function_name,
+                                                    &function_offset);
+                } else {
+
+                    elf = map_info->GetElf(process_memory,
+                                           unwindstack::Regs::CurrentArch());
+
+                    elf->GetFunctionName(frames[num].rel_pc, &function_name, &function_offset);
+                    if (!elf->valid()) {
+                        unwindstack::Elf *jit_elf = jit_debug->GetElf(quicken_maps.get(),
+                                                                      frames[num].pc);
+                        if (jit_elf) {
+                            jit_elf->GetFunctionName(frames[num].pc, &function_name,
+                                                     &function_offset);
+                        }
+                    }
+                }
+            }
+
+            std::string formatted;
+            quicken_format_frame(frames[num], map_info, elf, num,
+                                 unwindstack::Regs::CurrentArch() == unwindstack::ARCH_ARM,
+                                 function_name, function_offset, formatted);
+
+            BENCHMARK_LOGE(WECHAT_BACKTRACE_TAG, formatted.c_str(), "");
+        }
     }
 }
 

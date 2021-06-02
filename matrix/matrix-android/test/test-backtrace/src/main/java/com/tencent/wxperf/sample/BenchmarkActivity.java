@@ -142,7 +142,7 @@ public class BenchmarkActivity extends AppCompatActivity {
                 .directoryToWarmUp(WeChatBacktrace.getSystemFrameworkOATPath() + "boot.oat")
                 .directoryToWarmUp(WeChatBacktrace.getSystemFrameworkOATPath() + "boot-framework.oat")
                 .enableIsolateProcessLogger(true)
-                .enableOtherProcessLogger(true)
+                .enableOtherProcessLogger(false)
                 .commit();
 
         if (WeChatBacktrace.hasWarmedUp(this)) {
@@ -197,13 +197,20 @@ public class BenchmarkActivity extends AppCompatActivity {
             long duration_sum = 0;
             long times = 0;
             Throwable throwable = null;
-            for (int t = 0; t < 100; t++) {
+            for (int t = 0; t < 1; t++) {
                 long start = System.nanoTime();
                 throwable = new Throwable();
                 long end = System.nanoTime();
                 long duration = System.nanoTime() - start;
                 duration_sum += duration;
                 times++;
+
+                int n = 0;
+                for (StackTraceElement element : throwable.getStackTrace()) {
+                    Log.e("Unwind-test", String.format("#%d %s.%s(line:%s)", n, element.getClassName(), element.getMethodName(), element.getLineNumber()));
+                    n++;
+                }
+
                 Log.e("Unwind-test", String.format(
                         "Java fillInStackTrace %s(ns) - %s(ns) = costs: %s(ns)", end, start, duration));
             }

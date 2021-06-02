@@ -78,6 +78,10 @@ namespace wechat_backtrace {
                s.substr(s.size() - suffix.size(), suffix.size()) == suffix;
     }
 
+    inline static bool IsSoFile(const std::string &soname) {
+        return EndsWith(soname, ".so");
+    }
+
     inline static bool IsOatFile(const std::string &soname) {
         return EndsWith(soname, ".oat") ||
                EndsWith(soname, ".odex");
@@ -87,6 +91,13 @@ namespace wechat_backtrace {
         return StartsWith(name, "/memfd:jit-cache") ||
                StartsWith(name, "/memfd:/jit-cache") ||
                EndsWith(name, "jit-code-cache]");
+    }
+
+    inline static bool MaybeDexFile(const std::string &soname) {
+        return EndsWith(soname, ".jar") ||
+               EndsWith(soname, ".apk") ||
+               EndsWith(soname, ".vdex") ||
+               EndsWith(soname, ".dex");
     }
 
     inline static size_t FileSize(const std::string &sopath) {
