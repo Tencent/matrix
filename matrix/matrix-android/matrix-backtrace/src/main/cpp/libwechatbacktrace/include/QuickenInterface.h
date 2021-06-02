@@ -27,6 +27,7 @@
 #include "Errors.h"
 #include "QuickenMaps.h"
 #include "QuickenUtility.h"
+#include "QuickenInMemory.h"
 #include "DebugJit.h"
 
 namespace wechat_backtrace {
@@ -48,7 +49,7 @@ namespace wechat_backtrace {
 
         bool StepJIT(uptr pc, uptr *regs, wechat_backtrace::Maps *maps,
                      uptr stack_top, uptr stack_bottom, uptr frame_size,
-                     /* out */ uint64_t *dex_pc, /* out */ bool *finished);
+                /* out */ uint64_t *dex_pc, /* out */ bool *finished);
 
         bool Step(uptr pc, uptr *regs, uptr stack_top,
                   uptr stack_bottom, uptr frame_size, uint64_t *dex_pc, bool *finished);
@@ -61,11 +62,11 @@ namespace wechat_backtrace {
 
         bool TryInitQuickenTable();
 
-        uint64_t GetLoadBias();
+        uint64_t GetLoadBias() const;
 
-        uint64_t GetElfOffset();
+        uint64_t GetElfOffset() const;
 
-        uint64_t GetElfStartOffset();
+        uint64_t GetElfStartOffset() const;
 
         void SetArmExidxInfo(uint64_t start_offset, uint64_t total_entries) {
             arm_exidx_info_ = {start_offset, 0, total_entries};
@@ -118,6 +119,16 @@ namespace wechat_backtrace {
             }
         }
 
+        void FillQuickenInMemory() {
+            if (quicken_in_memory_) {
+                quicken_in_memory_->Init(
+                        elf_.get(), process_memory_,
+                        eh_frame_hdr_info_, eh_frame_info_, debug_frame_info_,
+                        gnu_eh_frame_hdr_info_, gnu_eh_frame_info_,
+                        gnu_debug_frame_info_, arm_exidx_info_);
+            }
+        }
+
         static void
         SetQuickenGenerateDelegate(quicken_generate_delegate_func quicken_generate_delegate);
 
@@ -126,7 +137,7 @@ namespace wechat_backtrace {
         }
 
         QutErrorCode last_error_code_ = QUT_ERROR_NONE;
-        size_t bad_entries_ = 0;    // TODO
+        size_t bad_entries_ = 0;
 
         const bool log = false;
         const uptr log_pc = 0;
@@ -136,7 +147,9 @@ namespace wechat_backtrace {
         bool jit_cache_ = false;
 
         std::unique_ptr<unwindstack::Elf> elf_;
-        std::shared_ptr<uunwindstack::Memory> process_memory_;
+        std::shared_ptr<unwindstack::Memory> process_memory_;
+
+        std::unique_ptr<QuickenInMemory<addr_t>> quicken_in_memory_;
 
     protected:
 
@@ -165,13 +178,13 @@ namespace wechat_backtrace {
 
         std::mutex lock_;
 
-        size_t try_load_qut_failed_count_ = 0;
-
         std::shared_ptr<DebugJit> debug_jit_;
 
         bool StepInternal(uptr pc, uptr *regs, QutSections *sections, uptr stack_top,
                           uptr stack_bottom, uptr frame_size, uint64_t *dex_pc, bool *finished);
 
+        // TODO Should remove.
+        size_t try_load_qut_failed_count_ = 0;
         static quicken_generate_delegate_func quicken_generate_delegate_;
     };
 

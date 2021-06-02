@@ -84,7 +84,8 @@ namespace wechat_backtrace {
     }
 
     inline static bool IsJitCacheMap(const std::string &name) {
-        return StartsWith(name, "/memfd:/jit-cache") ||
+        return StartsWith(name, "/memfd:jit-cache") ||
+               StartsWith(name, "/memfd:/jit-cache") ||
                EndsWith(name, "jit-code-cache]");
     }
 

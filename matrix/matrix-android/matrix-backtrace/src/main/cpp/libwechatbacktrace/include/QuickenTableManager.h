@@ -28,6 +28,7 @@
 #include "Errors.h"
 #include "QuickenTable.h"
 #include "Log.h"
+#include "QuickenInterface.h"
 
 namespace wechat_backtrace {
 
@@ -63,9 +64,9 @@ namespace wechat_backtrace {
         std::unordered_map<std::string, QutSectionsPtr> qut_sections_map_;          // TODO destruction
         std::unordered_map<std::string, std::pair<uint64_t, std::string>> qut_sections_requesting_;      // TODO destruction
         std::unordered_map<std::string, std::string> qut_sections_hash_to_build_id_;      // TODO destruction
-        std::map<uint64_t, std::shared_ptr<wechat_backtrace::QutSectionsInMemory>> qut_in_memory_; // TODO destruction
-
-        std::mutex lock_for_qut_;
+//        std::map<uint64_t, std::shared_ptr<wechat_backtrace::QutSectionsInMemory>> qut_in_memory_; // TODO destruction
+//
+//        std::mutex lock_for_qut_;
 
         std::mutex lock_;
 
@@ -152,12 +153,6 @@ namespace wechat_backtrace {
         void
         EraseQutRequestingByHash(const std::string &hash);
 
-        bool
-        GetFutSectionsInMemory(
-                unwindstack::Elf *elf,
-                uint64_t pc,
-                unwindstack::Memory *process_memory,
-                /* out */ std::shared_ptr<wechat_backtrace::QutSections> &fut_sections)
     };
 }  // namespace wechat_backtrace
 

@@ -30,6 +30,7 @@
 #include "BacktraceDefine.h"
 #include "QuickenTable.h"
 #include "DebugGlobal.h"
+#include "QuickenInMemory.h"
 
 namespace unwindstack {
     enum ArchEnum : uint8_t;
@@ -53,7 +54,7 @@ namespace wechat_backtrace {
         bool GetFutSectionsInMemory(
                 Maps *maps,
                 uint64_t pc,
-                /* out */ std::shared_ptr<wechat_backtrace::QutSections> &fut_sections);
+                /* out */ std::shared_ptr<wechat_backtrace::QutSectionsInMemory> &fut_sections);
 
         static std::shared_ptr<DebugJit> &Instance();
 
@@ -82,13 +83,15 @@ namespace wechat_backtrace {
         bool initialized_ = false;
         std::vector<unwindstack::Elf *> elf_list_;      // TODO
 
-        std::map<uint64_t, std::shared_ptr<wechat_backtrace::QutSectionsInMemory>> qut_in_memory_;
+//        std::map<uint64_t, std::shared_ptr<wechat_backtrace::QutSectionsInMemory>> qut_in_memory_;
 
         std::mutex lock_;
 
-        std::mutex lock_for_qut_;
+//        std::mutex lock_for_qut_;
 
-        const bool log = false;
+        std::unique_ptr<QuickenInMemory<addr_t>> quicken_in_memory_;
+
+//        const bool log = false;
     };
 
 }  // namespace unwindstack

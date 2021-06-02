@@ -69,6 +69,9 @@ namespace wechat_backtrace {
                 const uint64_t elf_start_offset
         );
 
+        static void
+        FillQuickenInterfaceForGenerate(QuickenInterface *interface, unwindstack::Elf *elf);
+
         static std::unique_ptr<unwindstack::Elf>
         CreateElf(
                 const std::string &so_path,
@@ -90,9 +93,13 @@ namespace wechat_backtrace {
 
         uint64_t elf_load_bias_ = 0;
 
+        std::string name_without_delete;
+
+        const bool quicken_in_memory_enable_ = true;
+
     protected:
 
-        unwindstack::Memory *GetFileQuickenMemory();
+        unwindstack::Memory *CreateFileQuickenMemory();
 
         bool InitFileMemoryFromPreviousReadOnlyMap(QuickenMemoryFile *memory);
 
@@ -148,7 +155,7 @@ namespace wechat_backtrace {
         void ReleaseLocalMaps();
 
         static std::mutex &maps_lock_;
-        static std::shared_ptr<Maps>& current_maps_;
+        static std::shared_ptr<Maps> &current_maps_;
         static size_t latest_maps_capacity_;
 
     private:

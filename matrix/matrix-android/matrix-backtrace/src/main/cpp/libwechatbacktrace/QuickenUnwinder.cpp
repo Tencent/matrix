@@ -321,8 +321,8 @@ namespace wechat_backtrace {
         for (; frame_size < frame_max_size;) {
             uint64_t cur_pc = PC(regs);
             uint64_t cur_sp = SP(regs);
-            MapInfoPtr map_info = nullptr;
-            QuickenInterface *interface = nullptr;
+            MapInfoPtr map_info;
+            QuickenInterface *interface;
 
             if (last_map_info && last_map_info->start <= cur_pc && last_map_info->end > cur_pc) {
                 map_info = last_map_info;

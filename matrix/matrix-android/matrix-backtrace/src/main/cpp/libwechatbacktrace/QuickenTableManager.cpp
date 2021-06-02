@@ -16,7 +16,7 @@
 
 #include <vector>
 #include <utility>
-#include <stdio.h>
+#include <cstdio>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -40,7 +40,7 @@ namespace wechat_backtrace {
     using namespace unwindstack;
 
     string &QuickenTableManager::sSavingPath = *new string;
-    string &QuickenTableManager::sPackageName = *new string;
+    /* string &QuickenTableManager::sPackageName = *new string; */
     bool QuickenTableManager::sHasWarmedUp = false;
 
     inline string
@@ -50,7 +50,7 @@ namespace wechat_backtrace {
 
     inline string
     ToTempQutFileName(const string &saving_path, const string &soname, const string &build_id) {
-        time_t seconds = time(NULL);
+        time_t seconds = time(nullptr);
         return saving_path + FILE_SEPERATOR + soname + "." + build_id + "_temp_" +
                to_string(seconds);
     }
@@ -61,7 +61,7 @@ namespace wechat_backtrace {
     }
 
     inline void RenameToMalformed(const string &qut_file_name) {
-        time_t seconds = time(NULL);
+        time_t seconds = time(nullptr);
         string malformed = qut_file_name + "_malformed_" + to_string(seconds);
         rename(qut_file_name.c_str(), malformed.c_str());
     }
@@ -89,7 +89,7 @@ namespace wechat_backtrace {
 
         if (fd >= 0) {
 
-            struct stat file_stat;
+            struct stat file_stat{};
             if (fstat(fd, &file_stat) != 0 || file_stat.st_size < 0) {
                 close(fd);
                 return FileStateError;
@@ -103,7 +103,7 @@ namespace wechat_backtrace {
                 return FileTooShort;
             }
 
-            char *data = static_cast<char *>(mmap(NULL, file_size, PROT_READ, MAP_SHARED,
+            char *data = static_cast<char *>(mmap(nullptr, file_size, PROT_READ, MAP_SHARED,
                                                   fd, 0));
             if (data == MAP_FAILED) {
                 munmap(data, file_size);
@@ -171,7 +171,7 @@ namespace wechat_backtrace {
 
             if (!testOnly) {
 
-                QutSectionsPtr qut_sections_tmp = new QutSections();
+                auto qut_sections_tmp = new QutSections();
 
                 qut_sections_tmp->load_from_file = true;
                 qut_sections_tmp->mmap_ptr = data;
@@ -195,7 +195,7 @@ namespace wechat_backtrace {
             close(fd);
 
             // change last modified time, to prevent self clean-up logic.
-            utime(qut_file_name.c_str(), NULL);
+            utime(qut_file_name.c_str(), nullptr);
 
             return NoneError;
         } else {
@@ -332,7 +332,7 @@ namespace wechat_backtrace {
     bool
     QuickenTableManager::CheckIfQutFileExistsWithHash(const string &soname, const string &hash) {
         string symbolic_qut_file = ToSymbolicQutFileName(sSavingPath, soname, hash);
-        struct stat buf;
+        struct stat buf{};
         return stat(symbolic_qut_file.c_str(), &buf) == 0;
     }
 
@@ -340,7 +340,7 @@ namespace wechat_backtrace {
     QuickenTableManager::CheckIfQutFileExistsWithBuildId(const string &soname,
                                                          const string &build_id) {
         string qut_file = ToQutFileName(sSavingPath, soname, build_id);
-        struct stat buf;
+        struct stat buf{};
         return stat(qut_file.c_str(), &buf) == 0;
     }
 
@@ -355,8 +355,8 @@ namespace wechat_backtrace {
         {
             lock_guard<mutex> guard(lock_);
             if (qut_sections_insert == nullptr ||
-                    (!only_save_file && !InsertQutSectionsNoLock(
-                         soname, hash, build_id, qut_sections_insert, false))) {
+                (!only_save_file && !InsertQutSectionsNoLock(
+                        soname, hash, build_id, qut_sections_insert, false))) {
                 QUT_LOG("qut_sections_insert %llx", (ullint_t) qut_sections_insert);
                 return InsertNewQutFailed;
             }
@@ -453,92 +453,6 @@ namespace wechat_backtrace {
 
         QUT_LOG("Saving qut file %s for so %s", qut_file_name.c_str(), sopath.c_str());
         return NoneError;
-    }
-
-    bool QuickenTableManager::GetFutSectionsInMemory(
-            Elf *elf,
-            uint64_t pc,
-            Memory *process_memory,
-            /* out */ std::shared_ptr<wechat_backtrace::QutSections> &fut_sections) {
-
-        bool log = false;   // TODO
-        {
-            std::lock_guard<std::mutex> guard(lock_for_qut_);
-
-            if (log) {
-                for (auto it : qut_in_memory_) {
-                    QUT_LOG("GetFutSectionsInMemory dump cache qut [%llx, %llx]", it.second->pc_start, it.second->pc_end);
-                }
-            }
-
-            if (qut_in_memory_.size() > 0) {
-                auto it = qut_in_memory_.upper_bound(pc);
-                if (it != qut_in_memory_.begin()) {
-                    it--;
-                }
-
-                QUT_LOG("GetFutSectionsInMemory found cache qut pc %llx in range of fde[%llx, %llx]",
-                        pc, it->second->pc_start, it->second->pc_end);
-                if (pc >= it->second->pc_start && pc <= it->second->pc_end) {
-                    fut_sections = it->second;
-                    return true;
-                }
-            }
-        }
-
-        QUT_LOG("GetFutSectionsInMemory miss cache qut pc %llx", pc);
-
-        const DwarfFde *fde;
-
-        wechat_backtrace::FrameInfo debug_frame_info;
-        Memory *gnu_debug_data_memory = nullptr;
-        if (elf->gnu_debugdata_interface()) {
-            gnu_debug_data_memory = elf->gnu_debugdata_interface()->memory();
-            debug_frame_info = {
-                    .offset_ = elf->gnu_debugdata_interface()->debug_frame_offset(),
-                    .section_bias_ = elf->gnu_debugdata_interface()->debug_frame_section_bias(),
-                    .size_ = elf->gnu_debugdata_interface()->debug_frame_size(),
-            };
-            fde = elf->gnu_debugdata_interface()->debug_frame()->GetFdeFromPc(pc);
-        } else {
-            debug_frame_info = {
-                    .offset_ = elf->interface()->debug_frame_offset(),
-                    .section_bias_ = elf->interface()->debug_frame_section_bias(),
-                    .size_ = elf->interface()->debug_frame_size(),
-            };
-            fde = elf->interface()->debug_frame()->GetFdeFromPc(pc);
-        }
-
-        if (fde == nullptr) {
-            return false;
-        }
-
-        QuickenTableGenerator<wechat_backtrace::addr_t>
-                generator(elf->memory(), gnu_debug_data_memory, process_memory);
-
-        std::shared_ptr<wechat_backtrace::QutSectionsInMemory> fut_sections_sp
-                = std::make_shared<wechat_backtrace::QutSectionsInMemory>();
-        bool ret = generator.GenerateSingleQUTSections(debug_frame_info, fde, fut_sections_sp.get(),
-                                                       gnu_debug_data_memory != nullptr);
-        if (ret) {
-
-            QUT_LOG("GetFutSectionsInMemory found pc %llx in range of fde[%llx, %llx]", pc, fde->pc_start, fde->pc_end);
-
-            if (log) {
-                for (size_t i = 0; i < fut_sections_sp->idx_size; i += 1) {
-                    QUT_LOG("GetFutSectionsInMemory dump fut sections -> %llx", fut_sections_sp->quidx[i]);
-                }
-            }
-
-            fut_sections_sp->pc_start = fde->pc_start;
-            fut_sections_sp->pc_end = fde->pc_end;
-            fut_sections = fut_sections_sp;
-
-            std::lock_guard<std::mutex> guard(lock_for_qut_);
-            qut_in_memory_[fde->pc_start] = fut_sections_sp;
-            return true;
-        }
-        return false;
     }
 
 }  // namespace wechat_backtrace

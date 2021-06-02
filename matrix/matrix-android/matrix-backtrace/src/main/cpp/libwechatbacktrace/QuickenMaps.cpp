@@ -62,6 +62,7 @@ namespace wechat_backtrace {
             return quicken_interface_.get();
         }
 
+        // Had requested interface and failed earlier.
         if (UNLIKELY(quicken_interface_failed_)) {
             return nullptr;
         }
@@ -69,10 +70,12 @@ namespace wechat_backtrace {
         std::lock_guard<std::mutex> guard(lock_);
 
         if (!quicken_interface_ & !quicken_interface_failed_) {
-            string name_without_delete = RemoveMapsDeleteSuffix(name);
+            name_without_delete = RemoveMapsDeleteSuffix(name);
 
             string so_key = name_without_delete + ":" + to_string(start) + ":" + to_string(end);
             auto it = cached_quicken_interface_.find(so_key);
+
+            // Search in caches.
             if (it != cached_quicken_interface_.end()) {
                 quicken_interface_ = it->second;
 
@@ -83,27 +86,34 @@ namespace wechat_backtrace {
                 return quicken_interface_.get();
             }
 
+            // Elf object should take care of this memory.
             Memory *memory = CreateQuickenMemory(process_memory);
             if (UNLIKELY(memory == nullptr)) {
                 quicken_interface_failed_ = true;
                 QUT_LOG("Create quicken interface failed by creating memory failed.");
                 return nullptr;
             }
+
             string soname;
             string build_id_hex;
 
+            // Keep elf object is memory costly and that's why using quicken_in_memory has
+            // large memory overhead.
             unique_ptr<Elf> elf = CreateElf(name, memory, expected_arch);
-            bool jit_cache = false;
+
+            bool is_jit_cache = false;
+
             if (UNLIKELY(!elf)) {
-                if (!StartsWith(name, "/memfd:/jit-cache")
-                        && !EndsWith(name, "jit-code-cache]")) {    // TODO
+                // Elf invalid. Check if it is jit-cache memory.
+                if (!IsJitCacheMap(name)) {
                     quicken_interface_failed_ = true;
-                    QUT_LOG("Create quicken interface failed by creating elf failed.");
+                    QUT_LOG("Create quicken interface failed by creating elf %s.",
+                            name_without_delete.c_str());
                     return nullptr;
                 } else {
                     soname = name;
-                    jit_cache = true;
-                    QUT_LOG("It's a jit cache memory region.");
+                    is_jit_cache = true;
+                    QUT_LOG("%s is a jit cache memory region.", name_without_delete.c_str());
                 }
             } else {
                 build_id_hex = elf->GetBuildID();
@@ -123,18 +133,24 @@ namespace wechat_backtrace {
                     elf_offset,
                     elf_start_offset,
                     build_id_hex,
-                    jit_cache
+                    is_jit_cache
             ));
 
-            if (!quicken_interface_->TryInitQuickenTable()) {
-                quicken_interface_->elf_ = std::move(elf);
-                quicken_interface_->elf_->interface()->InitHeaders();
-                quicken_interface_->elf_->InitGnuDebugdata();
-                quicken_interface_->process_memory_ = process_memory;
-            }
-
-            if (jit_cache) {
+            if (is_jit_cache) {
                 quicken_interface_->InitDebugJit();
+            } else if (!quicken_interface_->TryInitQuickenTable()) {
+                if (quicken_in_memory_enable_) {
+                    if (elf->valid() && elf->interface()) {
+                        elf->interface()->InitHeaders();
+                        elf->InitGnuDebugdata();
+                        quicken_interface_->elf_ = std::move(elf);
+                        quicken_interface_->process_memory_ = process_memory;
+                        quicken_interface_->quicken_in_memory_.reset(new QuickenInMemory<addr_t>());
+                        FillQuickenInterfaceForGenerate(
+                                quicken_interface_.get(), quicken_interface_->elf_.get());
+                        quicken_interface_->FillQuickenInMemory();
+                    }
+                }
             }
 
             cached_quicken_interface_[so_key] = quicken_interface_;
@@ -174,14 +190,16 @@ namespace wechat_backtrace {
             const bool jit_cache
     ) {
         std::unique_ptr<QuickenInterface> quicken_interface_ =
-                make_unique<QuickenInterface>(load_bias_, elf_offset, elf_start_offset, expected_arch);
+                make_unique<QuickenInterface>(load_bias_, elf_offset, elf_start_offset,
+                                              expected_arch);
         quicken_interface_->InitSoInfo(so_path, so_name, build_id_hex, elf_start_offset, jit_cache);
 
         return quicken_interface_.release();
     }
 
     unique_ptr<QuickenInterface>
-    QuickenMapInfo::CreateQuickenInterfaceForGenerate(const string &sopath, Elf *elf, const uint64_t elf_start_offset) {
+    QuickenMapInfo::CreateQuickenInterfaceForGenerate(const string &sopath, Elf *elf,
+                                                      const uint64_t elf_start_offset) {
 
         string soname = elf->GetSoname();
         string build_id_hex = elf->GetBuildID();
@@ -199,6 +217,15 @@ namespace wechat_backtrace {
                 build_id_hex,
                 /* jit_cache = */ false
         ));
+
+        FillQuickenInterfaceForGenerate(quicken_interface_.get(), elf);
+
+        return quicken_interface_;
+    }
+
+    void
+    QuickenMapInfo::FillQuickenInterfaceForGenerate(
+            QuickenInterface *quicken_interface_, Elf *elf) {
 
         ArchEnum expected_arch = elf->arch();
 
@@ -240,15 +267,18 @@ namespace wechat_backtrace {
                     gnu_debugdata_interface->debug_frame_section_bias(),
                     gnu_debugdata_interface->debug_frame_size());
         }
-
-        return quicken_interface_;
     }
 
     uint64_t QuickenMapInfo::GetRelPc(uint64_t pc) {
         return pc - start + elf_load_bias_ + elf_offset;
     }
 
-    Memory *QuickenMapInfo::GetFileQuickenMemory() {
+    Memory *QuickenMapInfo::CreateFileQuickenMemory() {
+
+        if (StartsWith(name, "/memfd:")) {
+            return nullptr;
+        }
+
         std::unique_ptr<QuickenMemoryFile> memory(new QuickenMemoryFile);
         if (offset == 0) {
             if (memory->Init(name, 0)) {
@@ -352,7 +382,8 @@ namespace wechat_backtrace {
         (void) process_memory;
 
         if (end <= start) {
-            QUT_DEBUG_LOG("CreateQuickenMemory, map name %s, (%llu, %llu)", name.c_str(), (ullint_t)start, (ullint_t)end);
+            QUT_DEBUG_LOG("CreateQuickenMemory, map name %s, (%llu, %llu)", name.c_str(),
+                          (ullint_t) start, (ullint_t) end);
             return nullptr;
         }
 
@@ -360,26 +391,30 @@ namespace wechat_backtrace {
 
         if (flags & MAPS_FLAGS_DEVICE_MAP) {
             // Fail on device maps.
-            QUT_DEBUG_LOG("CreateQuickenMemory, in device map, map name %s, (%llu, %llu)", name.c_str(), (ullint_t)start, (ullint_t)end);
+            QUT_DEBUG_LOG("CreateQuickenMemory, in device map, map name %s, (%llu, %llu)",
+                          name.c_str(), (ullint_t) start, (ullint_t) end);
             return nullptr;
         }
 
         if (!name.empty()) {
-            Memory *memory = GetFileQuickenMemory();
+            Memory *memory = CreateFileQuickenMemory();
             if (memory != nullptr) {
                 return memory;
             }
 
+            QUT_LOG("CreateQuickenMemory name %s, is jit %s", name.c_str(),
+                    IsJitCacheMap(name) ? "true" : "false");
+
             // Return MemoryRange while it's jit cache region.
             if (IsJitCacheMap(name)) {
                 std::unique_ptr<MemoryRange> memory(
-                    new MemoryRange(process_memory, start, end - start, offset));
+                        new MemoryRange(process_memory, start, end - start, offset));
                 elf_offset = offset;
                 return memory.release();
             }
         }
 
-// XXX Currently not support memory backed elf.
+// TODO Currently not support memory backed elf.
 /*
         if (HasSuffix(name, "odex (deleted)")) {
 

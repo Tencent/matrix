@@ -43,6 +43,7 @@ SET(
         ${SOURCE_DIR}/libwechatbacktrace/QuickenTableManager.cpp
         ${SOURCE_DIR}/libwechatbacktrace/QuickenMaps.cpp
         ${SOURCE_DIR}/libwechatbacktrace/QuickenTableGenerator.cpp
+        ${SOURCE_DIR}/libwechatbacktrace/QuickenInMemory.cpp
         ${SOURCE_DIR}/libwechatbacktrace/QuickenInterface.cpp
         ${SOURCE_DIR}/libwechatbacktrace/QuickenUnwinder.cpp
         ${SOURCE_DIR}/libwechatbacktrace/QuickenJNI.cpp

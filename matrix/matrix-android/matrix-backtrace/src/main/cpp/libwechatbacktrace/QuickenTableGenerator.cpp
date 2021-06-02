@@ -315,6 +315,34 @@ namespace wechat_backtrace {
     }
 
     template<typename AddressType>
+    bool
+    QuickenTableGenerator<AddressType>::GenerateSingleQUTSections(
+            DwarfSectionDecoder<AddressType> *section_decoder,
+            const unwindstack::DwarfFde *fde,
+            /* out */ QutSections *fut_sections
+    ) {
+        CHECK(section_decoder);
+        CHECK(fde);
+        CHECK(fut_sections);
+
+        auto instructions = make_shared<QutInstructionsOfEntries>();
+
+        estimate_memory_usage_ = 0;
+        memory_overwhelmed_ = false;
+
+        uint16_t regs_total = REGS_TOTAL;
+
+        section_decoder->ParseSingleFde(
+                fde, process_memory_, regs_total, instructions.get(),
+                estimate_memory_usage_, memory_overwhelmed_
+        );
+
+        PackEntriesToQutSections(instructions.get(), fut_sections);
+
+        return true;
+    }
+
+    template<typename AddressType>
     shared_ptr<QutInstructionsOfEntries> QuickenTableGenerator<AddressType>::MergeFrameEntries(
             shared_ptr<QutInstructionsOfEntries> to, shared_ptr<QutInstructionsOfEntries> from) {
 
@@ -746,6 +774,19 @@ namespace wechat_backtrace {
             const unwindstack::DwarfFde *fde,
             QutSections *fut_sections,
             bool gnu_debug_data
+    );
+
+
+    template bool QuickenTableGenerator<uint32_t>::GenerateSingleQUTSections(
+            DwarfSectionDecoder<uint32_t> *section_decoder,
+            const unwindstack::DwarfFde *fde,
+            /* out */ QutSections *fut_sections
+    );
+
+    template bool QuickenTableGenerator<uint64_t>::GenerateSingleQUTSections(
+            DwarfSectionDecoder<uint64_t> *section_decoder,
+            const unwindstack::DwarfFde *fde,
+            /* out */ QutSections *fut_sections
     );
 
 }  // namespace wechat_backtrace

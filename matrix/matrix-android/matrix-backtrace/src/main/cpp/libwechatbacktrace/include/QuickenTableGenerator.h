@@ -62,6 +62,16 @@ namespace wechat_backtrace {
                 bool gnu_debug_data
         );
 
+        bool
+        GenerateSingleQUTSections(
+                DwarfSectionDecoder<AddressType> *section_decoder,
+                const unwindstack::DwarfFde *fde,
+                /* out */ QutSections *fut_sections
+        );
+
+        bool PackEntriesToQutSections(
+                QutInstructionsOfEntries *entries, QutSections *fut_sections);
+
         QutErrorCode last_error_code;
 
         const bool log = false;
@@ -87,9 +97,6 @@ namespace wechat_backtrace {
         std::shared_ptr<QutInstructionsOfEntries> MergeFrameEntries(
                 std::shared_ptr<QutInstructionsOfEntries> to,
                 std::shared_ptr<QutInstructionsOfEntries> from);
-
-        bool PackEntriesToQutSections(
-                QutInstructionsOfEntries *entries, QutSections *fut_sections);
 
         void DecodeDebugFrameSingleEntry(FrameInfo debug_frame_info,
                                          const unwindstack::DwarfFde *fde,
