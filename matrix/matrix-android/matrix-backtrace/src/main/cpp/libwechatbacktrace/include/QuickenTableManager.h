@@ -32,24 +32,6 @@
 
 namespace wechat_backtrace {
 
-    enum QutFileError : uint16_t {
-        NoneError = 0,
-        NotInitialized = 1,
-        NotWarmedUp = 2,
-        LoadRequesting = 3,
-        OpenFileFailed = 4,
-        FileStateError = 5,
-        FileTooShort = 6,
-        MmapFailed = 7,
-        QutVersionNotMatch = 8,
-        ArchNotMatch = 9,
-        BuildIdNotMatch = 10,
-        FileLengthNotMatch = 11,
-        InsertNewQutFailed = 12,
-        TryInvokeJavaRequestQutGenerate = 13,
-        LoadFailed = 14,
-    };
-
     class QuickenTableManager {
 
     private:
@@ -61,12 +43,11 @@ namespace wechat_backtrace {
 
         QuickenTableManager &operator=(const QuickenTableManager &);
 
-        std::unordered_map<std::string, QutSectionsPtr> qut_sections_map_;          // TODO destruction
-        std::unordered_map<std::string, std::pair<uint64_t, std::string>> qut_sections_requesting_;      // TODO destruction
-        std::unordered_map<std::string, std::string> qut_sections_hash_to_build_id_;      // TODO destruction
-//        std::map<uint64_t, std::shared_ptr<wechat_backtrace::QutSectionsInMemory>> qut_in_memory_; // TODO destruction
-//
-//        std::mutex lock_for_qut_;
+        /* Never release */
+        std::unordered_map<std::string, QutSectionsPtr> qut_sections_map_;
+        std::unordered_map<std::string, std::pair<uint64_t, std::string>> qut_sections_requesting_;
+        std::unordered_map<std::string, std::string> qut_sections_hash_to_build_id_;
+        std::unordered_map<std::string, std::shared_ptr<QuickenInterface>> qut_sections_hash_to_interface_;
 
         std::mutex lock_;
 
@@ -152,6 +133,9 @@ namespace wechat_backtrace {
 
         void
         EraseQutRequestingByHash(const std::string &hash);
+
+        void
+        RecordQutRequestInterface(std::shared_ptr<QuickenInterface> &self_ptr);
 
     };
 }  // namespace wechat_backtrace

@@ -74,7 +74,7 @@ namespace wechat_backtrace {
         return ret;
     }
 
-    bool QuickenInterface::TryInitQuickenTable() {
+    QutFileError QuickenInterface::TryInitQuickenTable() {
 
         QutFileError ret;
 
@@ -82,7 +82,7 @@ namespace wechat_backtrace {
             lock_guard<mutex> lock(lock_);
 
             if (qut_sections_) {
-                return true;
+                return NoneError;
             }
 
             QutSectionsPtr qut_sections_tmp = nullptr;
@@ -98,7 +98,9 @@ namespace wechat_backtrace {
                               sopath_.c_str(), build_id_.c_str());
 
                 if (qut_sections_) {
-                    return true;
+                    return NoneError;
+                } else {
+                    ret = LoadFailed;
                 }
             }
         }
@@ -115,13 +117,9 @@ namespace wechat_backtrace {
                     try_load_qut_failed_count_ = 0;
                 }
             }
-        } else {
-            if (ret == TryInvokeJavaRequestQutGenerate) {
-                InvokeJava_RequestQutGenerate();
-            }
         }
 
-        return false;
+        return ret;
     }
 
     bool QuickenInterface::FindEntry(QutSections *qut_sections, uptr pc, size_t *entry_offset) {
@@ -224,11 +222,16 @@ namespace wechat_backtrace {
             return false;
         }
         if (UNLIKELY(!qut_sections_)) {
-            if (quicken_in_memory_) {
+            std::shared_ptr<QuickenInMemory<addr_t>> quicken_in_memory;
+            {
+                lock_guard<mutex> lock(lock_quicken_in_memory_);
+                quicken_in_memory = quicken_in_memory_;
+            }
+            if (quicken_in_memory) {
                 QUT_LOG("QuickenInterface::Step using quicken_in_memory_, elf: %s, frame: %llu",
                         soname_.c_str(), frame_size);
                 std::shared_ptr<QutSectionsInMemory> qut_section_in_memory;
-                bool ret = quicken_in_memory_->GetFutSectionsInMemory(
+                bool ret = quicken_in_memory->GetFutSectionsInMemory(
                         pc, /* out */ qut_section_in_memory);
                 if (UNLIKELY(!ret)) {
                     QUT_LOG("QuickenInterface::Step quicken_in_memory_ failed");
@@ -245,6 +248,13 @@ namespace wechat_backtrace {
         }
         return StepInternal(pc, regs, const_cast<QutSections *>(qut_sections_),
                             stack_top, stack_bottom, frame_size, dex_pc, finished);
+    }
+
+    void QuickenInterface::ResetQuickenInMemory() {
+        {
+            lock_guard<mutex> lock(lock_quicken_in_memory_);
+            quicken_in_memory_ = nullptr;
+        }
     }
 
     template bool

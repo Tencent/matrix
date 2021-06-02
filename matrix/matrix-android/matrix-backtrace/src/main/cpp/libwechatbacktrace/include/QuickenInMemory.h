@@ -115,7 +115,7 @@ namespace wechat_backtrace {
         std::unique_ptr<DwarfSectionDecoder<AddressType>> debug_frame_from_gnu_debug_data_;
         std::unique_ptr<ExidxDecoderHelper> exidx_decoder_;
 
-        unwindstack::Elf *elf_; // hold by quicken interface.
+        std::unique_ptr<unwindstack::Elf> elf_;
 
         std::shared_ptr<unwindstack::Memory> process_memory_;
 

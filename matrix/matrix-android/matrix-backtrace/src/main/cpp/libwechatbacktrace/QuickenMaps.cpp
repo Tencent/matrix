@@ -35,6 +35,8 @@
 #include <LocalMaps.h>
 #include <QuickenMemory.h>
 #include <MemoryRange.h>
+#include <QuickenTableManager.h>
+#include <QuickenJNI.h>
 
 #include "QuickenUtility.h"
 #include "ElfInterfaceArm.h"
@@ -138,17 +140,24 @@ namespace wechat_backtrace {
 
             if (is_jit_cache) {
                 quicken_interface_->InitDebugJit();
-            } else if (!quicken_interface_->TryInitQuickenTable()) {
-                if (quicken_in_memory_enable_) {
-                    if (elf->valid() && elf->interface()) {
-                        elf->interface()->InitHeaders();
-                        elf->InitGnuDebugdata();
-                        quicken_interface_->elf_ = std::move(elf);
-                        quicken_interface_->process_memory_ = process_memory;
-                        quicken_interface_->quicken_in_memory_.reset(new QuickenInMemory<addr_t>());
-                        FillQuickenInterfaceForGenerate(
-                                quicken_interface_.get(), quicken_interface_->elf_.get());
-                        quicken_interface_->FillQuickenInMemory();
+            } else {
+                QutFileError ret = quicken_interface_->TryInitQuickenTable();
+                if (ret != NoneError) {
+                    if (quicken_in_memory_enable_) {
+                        if (elf->valid() && elf->interface()) {
+                            elf->interface()->InitHeaders();
+                            elf->InitGnuDebugdata();
+                            quicken_interface_->process_memory_ = process_memory;
+                            quicken_interface_->quicken_in_memory_.reset(
+                                    new QuickenInMemory<addr_t>());
+                            FillQuickenInterfaceForGenerate(
+                                    quicken_interface_.get(), elf.get());
+                            quicken_interface_->FillQuickenInMemory(elf);
+                        }
+                    }
+                    if (ret == TryInvokeJavaRequestQutGenerate) {
+                        QuickenTableManager::getInstance().RecordQutRequestInterface(quicken_interface_);
+                        InvokeJava_RequestQutGenerate();
                     }
                 }
             }

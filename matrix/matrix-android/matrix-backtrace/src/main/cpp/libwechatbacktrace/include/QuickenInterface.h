@@ -60,7 +60,7 @@ namespace wechat_backtrace {
                                   unwindstack::Memory *process_memory,
                                   QutSectionsPtr qut_sections);
 
-        bool TryInitQuickenTable();
+        QutFileError TryInitQuickenTable();
 
         uint64_t GetLoadBias() const;
 
@@ -96,6 +96,10 @@ namespace wechat_backtrace {
             gnu_debug_frame_info_ = {offset, section_bias, size};
         }
 
+        std::string &GetHash() {
+            return hash_;
+        }
+
         void
         InitSoInfo(const std::string &sopath, const std::string &soname,
                    const std::string &build_id_hex, const uint64_t elf_start_offset,
@@ -119,22 +123,19 @@ namespace wechat_backtrace {
             }
         }
 
-        void FillQuickenInMemory() {
+        void FillQuickenInMemory(std::unique_ptr<unwindstack::Elf> &elf) {
             if (quicken_in_memory_) {
-                quicken_in_memory_->Init(
-                        elf_.get(), process_memory_,
+                quicken_in_memory_->Init(elf.release(), process_memory_,
                         eh_frame_hdr_info_, eh_frame_info_, debug_frame_info_,
                         gnu_eh_frame_hdr_info_, gnu_eh_frame_info_,
                         gnu_debug_frame_info_, arm_exidx_info_);
             }
         }
 
+        void ResetQuickenInMemory();
+
         static void
         SetQuickenGenerateDelegate(quicken_generate_delegate_func quicken_generate_delegate);
-
-        volatile QutSections *GetQutSections() {
-            return qut_sections_;
-        }
 
         QutErrorCode last_error_code_ = QUT_ERROR_NONE;
         size_t bad_entries_ = 0;
@@ -145,11 +146,12 @@ namespace wechat_backtrace {
 //        const uptr log_pc = 0x598f9;
 
         bool jit_cache_ = false;
+        std::shared_ptr<DebugJit> debug_jit_;
 
-        std::unique_ptr<unwindstack::Elf> elf_;
         std::shared_ptr<unwindstack::Memory> process_memory_;
+        std::shared_ptr<QuickenInMemory<addr_t>> quicken_in_memory_;
 
-        std::unique_ptr<QuickenInMemory<addr_t>> quicken_in_memory_;
+        std::mutex lock_quicken_in_memory_;
 
     protected:
 
@@ -177,8 +179,6 @@ namespace wechat_backtrace {
         volatile QutSections *qut_sections_ = nullptr;
 
         std::mutex lock_;
-
-        std::shared_ptr<DebugJit> debug_jit_;
 
         bool StepInternal(uptr pc, uptr *regs, QutSections *sections, uptr stack_top,
                           uptr stack_bottom, uptr frame_size, uint64_t *dex_pc, bool *finished);

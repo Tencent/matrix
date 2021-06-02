@@ -66,6 +66,25 @@ struct DwarfErrorData {
     DwarfErrorCode code;
     uint64_t address;
 };
+
+enum QutFileError : uint16_t {
+    NoneError = 0,
+    NotInitialized = 1,
+    NotWarmedUp = 2,
+    LoadRequesting = 3,
+    OpenFileFailed = 4,
+    FileStateError = 5,
+    FileTooShort = 6,
+    MmapFailed = 7,
+    QutVersionNotMatch = 8,
+    ArchNotMatch = 9,
+    BuildIdNotMatch = 10,
+    FileLengthNotMatch = 11,
+    InsertNewQutFailed = 12,
+    TryInvokeJavaRequestQutGenerate = 13,
+    LoadFailed = 14,
+};
+
 }  // namespace wechat_backtrace
 
 #endif  // _LIBWECHATBACKTRACE_ERRORS_H

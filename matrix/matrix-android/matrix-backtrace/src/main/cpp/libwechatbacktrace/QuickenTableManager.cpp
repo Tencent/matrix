@@ -40,7 +40,7 @@ namespace wechat_backtrace {
     using namespace unwindstack;
 
     string &QuickenTableManager::sSavingPath = *new string;
-    /* string &QuickenTableManager::sPackageName = *new string; */
+    string &QuickenTableManager::sPackageName = *new string;
     bool QuickenTableManager::sHasWarmedUp = false;
 
     inline string
@@ -291,13 +291,32 @@ namespace wechat_backtrace {
 
     void
     QuickenTableManager::EraseQutRequestingByHash(const string &hash) {
-        lock_guard<mutex> guard(lock_);
-        auto it = qut_sections_hash_to_build_id_.find(hash);
-        if (it != qut_sections_hash_to_build_id_.end()) {
-            qut_sections_requesting_.erase(it->second);
-            QUT_LOG("Erase qut requesting build id %s.", it->second.c_str());
+        std::shared_ptr<QuickenInterface> interface;
+        {
+            lock_guard<mutex> guard(lock_);
+            auto it = qut_sections_hash_to_build_id_.find(hash);
+            if (it != qut_sections_hash_to_build_id_.end()) {
+                qut_sections_requesting_.erase(it->second);
+                QUT_LOG("Erase qut requesting build id %s.", it->second.c_str());
+            }
+            qut_sections_hash_to_build_id_.erase(hash);
+
+            interface = qut_sections_hash_to_interface_[hash];
+            qut_sections_hash_to_interface_.erase(hash);
         }
-        qut_sections_hash_to_build_id_.erase(hash);
+
+        QUT_LOG("EraseQutRequestingByHash, hash %s.", hash.c_str());
+        if (interface) {
+            QutFileError ret = interface->TryInitQuickenTable();
+            QUT_LOG("Refresh requested qut ret %llu, hash %s.", (ullint_t)ret, hash.c_str());
+        }
+    }
+
+    void
+    QuickenTableManager::RecordQutRequestInterface(std::shared_ptr<QuickenInterface> &self_ptr) {
+        QUT_LOG("RecordQutRequestInterface, hash %s.", self_ptr->GetHash().c_str());
+        lock_guard<mutex> guard(lock_);
+        qut_sections_hash_to_interface_[self_ptr->GetHash()] = self_ptr;
     }
 
     QutFileError

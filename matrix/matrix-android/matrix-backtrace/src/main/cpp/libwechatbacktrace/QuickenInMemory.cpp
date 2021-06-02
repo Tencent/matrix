@@ -203,6 +203,8 @@ namespace wechat_backtrace {
         CHECK(process_memory);
         CHECK(elf);
 
+        elf_.reset(elf);
+
         Memory *memory = elf->memory();
 
         InitDebugFrame<AddressType>(
@@ -232,10 +234,6 @@ namespace wechat_backtrace {
         }
 
         process_memory_ = process_memory;
-
-        elf_ = elf;
-
-        CHECK(elf);
     }
 
     template<typename AddressType>
@@ -363,7 +361,7 @@ namespace wechat_backtrace {
         {
             const DwarfFde *fde = nullptr;
             std::lock_guard<std::mutex> guard(lock_decode_);
-            Elf *elf = elf_;
+            Elf *elf = elf_.get();
 
             DwarfSectionDecoder<AddressType> *decoder = nullptr;
 
