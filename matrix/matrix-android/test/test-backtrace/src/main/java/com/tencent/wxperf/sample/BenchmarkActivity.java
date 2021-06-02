@@ -111,11 +111,11 @@ public class BenchmarkActivity extends AppCompatActivity {
         mBacktraceTestInitialized = true;
 
         final Button btn = findViewById(R.id.btn_wechat_backtrace_benchmark);
-        btn.setEnabled(false);
+//        btn.setEnabled(false);
         final Button jitbtn = findViewById(R.id.btn_wechat_backtrace_benchmark_with_jit);
-        jitbtn.setEnabled(false);
+//        jitbtn.setEnabled(false);
         final Button javabtn = findViewById(R.id.btn_wechat_backtrace_benchmark_for_java);
-        javabtn.setEnabled(false);
+//        javabtn.setEnabled(false);
 
         WeChatBacktrace.setReporter(new WarmUpReporter() {
             @Override
@@ -138,7 +138,7 @@ public class BenchmarkActivity extends AppCompatActivity {
 
         // Init backtrace
         WeChatBacktrace.instance().configure(getApplicationContext())
-                .warmUpSettings(WeChatBacktrace.WarmUpTiming.PostStartup, 0)
+//                .warmUpSettings(WeChatBacktrace.WarmUpTiming.PostStartup, 0)
                 .directoryToWarmUp(WeChatBacktrace.getSystemFrameworkOATPath() + "boot.oat")
                 .directoryToWarmUp(WeChatBacktrace.getSystemFrameworkOATPath() + "boot-framework.oat")
                 .enableIsolateProcessLogger(true)
