@@ -22,6 +22,10 @@ public class PthreadHook extends AbsHook {
     private Set<String> mIgnoreSoSet    = new HashSet<>();
     private Set<String> mHookThreadName = new HashSet<>();
 
+    private boolean mEnableQuicken = false;
+
+    private boolean mConfigured = false;
+
     private PthreadHook() {
     }
 
@@ -88,13 +92,19 @@ public class PthreadHook extends AbsHook {
         }
     }
 
+
     public void enableQuicken(boolean enable) {
-        enableQuickenNative(enable);
+        mEnableQuicken = enable;
+        if (mConfigured) {
+            enableQuickenNative(mEnableQuicken);
+        }
     }
 
     @Override
     public void onConfigure() {
         addHookThreadNameNative(mHookThreadName.toArray(new String[0]));
+        enableQuickenNative(mEnableQuicken);
+        mConfigured = true;
     }
 
     @Override
