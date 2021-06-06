@@ -360,10 +360,9 @@ inline void print_quicken_unwind() {
     get_stacktrace_elements(frames, frame_size, gShrinkJavaStack, stacktrace_elements,
                             FRAME_ELEMENTS_MAX_SIZE, elements_size);
 
-    bool is_32bit = unwindstack::Regs::CurrentArch() == unwindstack::ARCH_ARM;
     for (size_t i = 0; i < elements_size; i++) {
         std::string data;
-        wechat_backtrace::quicken_frame_format(stacktrace_elements[i], i, is_32bit, data);
+        wechat_backtrace::quicken_frame_format(stacktrace_elements[i], i, data);
         BENCHMARK_LOGE(WECHAT_BACKTRACE_TAG, data.c_str(), "");
     }
 
@@ -418,10 +417,9 @@ inline void print_quicken_unwind_stacktrace() {
     }
 
     {
-        bool is_32bit = unwindstack::Regs::CurrentArch() == unwindstack::ARCH_ARM;
         for (size_t i = 0; i < elements_size; i++) {
             std::string data;
-            wechat_backtrace::quicken_frame_format(stacktrace_elements[i], i, is_32bit, data);
+            wechat_backtrace::quicken_frame_format(stacktrace_elements[i], i, data);
             BENCHMARK_LOGE(WECHAT_BACKTRACE_TAG, data.c_str(), "");
         }
     }

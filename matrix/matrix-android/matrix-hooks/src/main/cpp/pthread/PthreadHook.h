@@ -23,6 +23,8 @@ void pthread_dump_json(const char *path = "/sdcard/pthread_hook.log");
 
 void pthread_hook_on_dlopen(const char *file_name);
 
+void enable_quicken_unwind(const bool enable);
+
 inline int wrap_pthread_getname_np(pthread_t pthread, char *buf, size_t n);
 
 DECLARE_HOOK_ORIG(int, pthread_create, pthread_t* pthread_ptr, pthread_attr_t const* attr, void* (*start_routine)(void*), void* arg);

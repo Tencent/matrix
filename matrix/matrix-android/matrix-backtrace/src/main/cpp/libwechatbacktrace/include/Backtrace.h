@@ -65,7 +65,7 @@ namespace wechat_backtrace {
             const std::function<void(FrameDetail)> &frame_callback);
 
     void
-    quicken_frame_format(wechat_backtrace::FrameElement &frame_element, size_t num, bool is_32_Bit,
+    quicken_frame_format(wechat_backtrace::FrameElement &frame_element, size_t num,
                          std::string &data);
 
     void

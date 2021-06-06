@@ -35,6 +35,12 @@ namespace wechat_backtrace {
 
     static BacktraceMode backtrace_mode = FramePointer;
 
+#ifdef __aarch64__
+    static const bool m_is_arm32 = false;
+#else
+    static const bool m_is_arm32 = true;
+#endif
+
     BACKTRACE_EXPORT
     BacktraceMode get_backtrace_mode() {
         return backtrace_mode;
@@ -79,10 +85,10 @@ namespace wechat_backtrace {
     }
 
     BACKTRACE_EXPORT void
-    quicken_frame_format(wechat_backtrace::FrameElement &frame_element, size_t num, bool is32Bit,
+    quicken_frame_format(wechat_backtrace::FrameElement &frame_element, size_t num,
                          std::string &data) {
 
-        if (is32Bit) {
+        if (m_is_arm32) {
             data += android::base::StringPrintf("  #%02zu pc %08" PRIx64, num,
                                                 (uint64_t) frame_element.rel_pc);
         } else {
@@ -119,6 +125,7 @@ namespace wechat_backtrace {
                                   FrameElement &frame_element) {
 
         frame_element.rel_pc = frame.rel_pc;
+        frame_element.maybe_java = frame.maybe_java;
 
         if (fill_map_info) {
             if (map_info == nullptr) {

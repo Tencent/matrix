@@ -82,6 +82,12 @@ Java_com_tencent_matrix_hook_pthread_PthreadHook_dumpNative(JNIEnv *env, jobject
     }
 }
 
+JNIEXPORT void JNICALL
+Java_com_tencent_matrix_hook_pthread_PthreadHook_enableQuickenNative(JNIEnv *env, jobject thiz,
+                                                            jboolean enable) {
+    enable_quicken_unwind(enable);
+}
+
 #ifdef __cplusplus
 }
 #endif

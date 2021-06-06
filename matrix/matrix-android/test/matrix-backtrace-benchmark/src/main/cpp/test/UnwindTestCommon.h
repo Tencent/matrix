@@ -34,6 +34,7 @@ void print_java_unwind();
 void print_quicken_unwind();
 
 void print_java_unwind_formatted();
+
 void print_quicken_unwind_stacktrace();
 
 void reset_benchmark_counting();

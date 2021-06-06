@@ -88,6 +88,10 @@ public class PthreadHook extends AbsHook {
         }
     }
 
+    public void enableQuicken(boolean enable) {
+        enableQuickenNative(enable);
+    }
+
     @Override
     public void onConfigure() {
         addHookThreadNameNative(mHookThreadName.toArray(new String[0]));
@@ -106,5 +110,7 @@ public class PthreadHook extends AbsHook {
     private native void addHookThreadNameNative(String[] threadNames);
 
     private native void dumpNative(String path);
+
+    private native void enableQuickenNative(boolean enable);
 
 }
