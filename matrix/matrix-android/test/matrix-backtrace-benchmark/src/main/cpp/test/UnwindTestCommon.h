@@ -19,8 +19,8 @@ enum UnwindTestMode {
     FP_AND_JAVA_UNWIND,                 // FP + Java throwable object
     JAVA_UNWIND,                        // Java throwable object
 
-    JAVA_UNWIND_PRINT_STACKTRACE,       // Java get throwable object + print stacktrace.
-    QUICKEN_UNWIND_PRINT_STACKTRACE,    // Quicken unwind + print stacktrace.
+    JAVA_UNWIND_PRINT_STACKTRACE,       // Java get StacktraceElements.
+    QUICKEN_UNWIND_PRINT_STACKTRACE,    // Quicken unwind + find symbols.
 };
 
 void benchmark_warm_up();
