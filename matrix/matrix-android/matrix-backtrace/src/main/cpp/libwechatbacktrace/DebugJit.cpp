@@ -243,6 +243,8 @@ namespace wechat_backtrace {
                 return elf;
             }
         }
+
+        QUT_LOG("DebugJit entry_addr_ %llx", entry_addr_);
         return nullptr;
     }
 
@@ -260,6 +262,10 @@ namespace wechat_backtrace {
         }
 
         unwindstack::Elf *elf = GetElf(maps, pc);
+
+        if (!elf) {
+            return false;
+        }
 
         return quicken_in_memory_->GenerateFutSectionsInMemoryForJIT(
                 elf, memory_.get(), pc, fut_sections);

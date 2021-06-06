@@ -24,6 +24,7 @@
 #include "DwarfSectionDecoder.h"
 #include "QuickenTable.h"
 #include "QuickenTableGenerator.h"
+#include "ElfWrapper.h"
 
 namespace wechat_backtrace {
 
@@ -81,7 +82,7 @@ namespace wechat_backtrace {
         ~QuickenInMemory() {};
 
         void
-        Init(unwindstack::Elf *elf, const std::shared_ptr<unwindstack::Memory>& process_memory,
+        Init(ElfWrapper *elf_wrapper, const std::shared_ptr<unwindstack::Memory>& process_memory,
              FrameInfo &eh_frame_hdr_info, FrameInfo &eh_frame_info,
              FrameInfo &debug_frame_info,
              FrameInfo &gnu_eh_frame_hdr_info, FrameInfo &gnu_eh_frame_info,
@@ -115,7 +116,7 @@ namespace wechat_backtrace {
         std::unique_ptr<DwarfSectionDecoder<AddressType>> debug_frame_from_gnu_debug_data_;
         std::unique_ptr<ExidxDecoderHelper> exidx_decoder_;
 
-        std::unique_ptr<unwindstack::Elf> elf_;
+        ElfWrapper *elf_wrapper_;
 
         std::shared_ptr<unwindstack::Memory> process_memory_;
 

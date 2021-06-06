@@ -29,6 +29,7 @@
 #include "QuickenUtility.h"
 #include "QuickenInMemory.h"
 #include "DebugJit.h"
+#include "ElfWrapper.h"
 
 namespace wechat_backtrace {
 
@@ -100,19 +101,19 @@ namespace wechat_backtrace {
             return hash_;
         }
 
+        std::string &GetSoname() {
+            return soname_;
+        }
+
         void
         InitSoInfo(const std::string &sopath, const std::string &soname,
-                   const std::string &build_id_hex, const uint64_t elf_start_offset,
+                   const std::string &build_id, const uint64_t elf_start_offset,
                    const bool jit_cache) {
             (void) soname;
             jit_cache_ = jit_cache;
             soname_ = jit_cache_ ? sopath : SplitSonameFromPath(sopath);
             sopath_ = sopath;
-            if (build_id_hex.empty()) {
-                build_id_ = FakeBuildId(sopath);
-            } else {
-                build_id_ = ToBuildId(build_id_hex);
-            }
+            build_id_ = build_id;
             hash_ = ToHash(
                     sopath_ + std::to_string(FileSize(sopath)) + std::to_string(elf_start_offset));
         }
@@ -123,9 +124,15 @@ namespace wechat_backtrace {
             }
         }
 
-        void FillQuickenInMemory(std::unique_ptr<unwindstack::Elf> &elf) {
-            if (quicken_in_memory_) {
-                quicken_in_memory_->Init(elf.release(), process_memory_,
+        void FillQuickenInMemory(std::shared_ptr<unwindstack::Memory> &process_memory) {
+
+            if (!quicken_in_memory_) {
+
+                quicken_in_memory_ = std::make_shared<QuickenInMemory<addr_t>>();
+
+                elf_wrapper_->FillQuickenInterface(this);
+
+                quicken_in_memory_->Init(elf_wrapper_.get(), process_memory,
                         eh_frame_hdr_info_, eh_frame_info_, debug_frame_info_,
                         gnu_eh_frame_hdr_info_, gnu_eh_frame_info_,
                         gnu_debug_frame_info_, arm_exidx_info_);
@@ -148,10 +155,12 @@ namespace wechat_backtrace {
         bool jit_cache_ = false;
         std::shared_ptr<DebugJit> debug_jit_;
 
-        std::shared_ptr<unwindstack::Memory> process_memory_;
+//        std::shared_ptr<unwindstack::Memory> process_memory_;
         std::shared_ptr<QuickenInMemory<addr_t>> quicken_in_memory_;
 
         std::mutex lock_quicken_in_memory_;
+
+        std::unique_ptr<ElfWrapper> elf_wrapper_;
 
     protected:
 

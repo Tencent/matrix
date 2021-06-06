@@ -35,7 +35,7 @@
 #include "DwarfEhFrame.h"
 #include "DwarfEhFrameWithHdr.h"
 #include "MemoryBuffer.h"
-#include "Symbols.h"
+#include "include/unwindstack/Symbols.h"
 
 namespace unwindstack {
 

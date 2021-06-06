@@ -105,6 +105,26 @@ namespace wechat_backtrace {
         DwarfBased = 2
     };
 
+//    struct FrameElement : Frame {
+//        std::string map_name;
+//        std::string function_name;
+//        std::string build_id;
+//        uint64_t map_offset = 0;
+//        uint64_t function_offset = 0;
+//    };
+
+    struct FrameElement {
+        uint64_t rel_pc = 0;
+
+        std::string map_name;
+        uint64_t map_offset = 0;
+
+        std::string function_name;
+        uint64_t function_offset = 0;
+
+        std::string build_id;
+    };
+
     typedef bool(*quicken_generate_delegate_func)(const std::string &, const uint64_t, const bool);
 
 }  // namespace wechat_backtrace

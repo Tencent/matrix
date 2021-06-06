@@ -83,11 +83,7 @@ namespace wechat_backtrace {
         bool initialized_ = false;
         std::vector<unwindstack::Elf *> elf_list_;      // TODO
 
-//        std::map<uint64_t, std::shared_ptr<wechat_backtrace::QutSectionsInMemory>> qut_in_memory_;
-
         std::mutex lock_;
-
-//        std::mutex lock_for_qut_;
 
         std::unique_ptr<QuickenInMemory<addr_t>> quicken_in_memory_;
 

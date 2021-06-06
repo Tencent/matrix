@@ -81,21 +81,41 @@ namespace wechat_backtrace {
         //   f2000-f3000 1000 r-x /system/lib/libc.so
         //   f3000-f4000 2000 rw- /system/lib/libc.so
         wechat_backtrace::QuickenMapInfo *map_zero = nullptr;
+        wechat_backtrace::QuickenMapInfo *map_rx = nullptr;
+        bool find_rw_map = false;
+        uint64_t candidate_ptr;
+
         for (size_t i = 0; i < maps->maps_size_; i++) {
             auto info = maps->local_maps_[i];
-            if (info->offset != 0 &&
-                (info->flags & (PROT_READ | PROT_WRITE)) == (PROT_READ | PROT_WRITE) &&
-                map_zero != nullptr && Searchable(info->name) && info->name == map_zero->name) {
-                Elf *elf = map_zero->GetElf(memory_, arch());
-                uint64_t ptr;
-                if (elf->GetGlobalVariableOffset(variable, &ptr) && ptr != 0) {
+            if (info->offset != 0) {
+                if (find_rw_map &&
+                    (info->flags & (PROT_READ | PROT_WRITE)) == (PROT_READ | PROT_WRITE) &&
+                    map_rx != nullptr && info->name == map_rx->name
+                        ) {
                     uint64_t offset_end = info->offset + info->end - info->start;
-                    if (ptr >= info->offset && ptr < offset_end) {
-                        ptr = info->start + ptr - info->offset;
-                        if (ReadVariableData(ptr)) {
-                            break;
+                    if (candidate_ptr >= info->offset && candidate_ptr < offset_end) {
+                        candidate_ptr = info->start + candidate_ptr - info->offset;
+                        if (ReadVariableData(candidate_ptr)) {
+                            break;  // Found
                         }
                     }
+                }
+                if ((info->flags & (PROT_READ | PROT_EXEC)) == (PROT_READ | PROT_EXEC) &&
+                    map_zero != nullptr && Searchable(info->name) && info->name == map_zero->name) {
+                    QuickenInterface *interface = info->GetQuickenInterface(memory_,
+                                                                            CURRENT_ARCH);
+                    if (!interface || !interface->elf_wrapper_) {
+                        QUT_LOG("FindAndReadVariable failed for so %s, elf invalid", info->name.c_str());
+                        continue;
+                    }
+                    Elf *elf = interface->elf_wrapper_->GetMemoryBackedElf().get();
+                    uint64_t ptr;
+                    if (elf->GetGlobalVariableOffset(variable, &ptr) && ptr != 0) {
+                        find_rw_map = true;
+                        map_rx = info;
+                        candidate_ptr = ptr;
+                    } else
+                        QUT_LOG("FindAndReadVariable get global variable offset failed fo so %s", info->name.c_str());
                 }
             } else if (info->offset == 0 && !info->name.empty()) {
                 map_zero = info;

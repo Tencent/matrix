@@ -252,7 +252,7 @@ namespace wechat_backtrace {
             }
         } else {
             uint64_t addr = 0;
-            QUT_LOG("GetMethodInformation search dex dex pc -> %llx, maps -> %s [%llx, %llx](+%llx, +%llx, +%llx)",
+            QUT_LOG("GetMethodInformation search dex file pc -> %llx, maps -> %s [%llx, %llx](+%llx, +%llx, +%llx)",
                     (uint64_t) dex_pc, info->name.c_str(),
                     (uint64_t) info->start, (uint64_t) info->end, (uint64_t) info->offset,
                     (uint64_t) info->elf_start_offset, (uint64_t) info->elf_offset);

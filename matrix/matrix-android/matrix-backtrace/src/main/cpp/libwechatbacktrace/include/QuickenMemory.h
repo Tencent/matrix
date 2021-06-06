@@ -46,6 +46,10 @@ namespace wechat_backtrace {
 
         void Clear() override;
 
+        std::string file_;
+        uint64_t init_offset_;
+        uint64_t init_size_;
+
     protected:
 
         size_t size_ = 0;
@@ -59,11 +63,13 @@ namespace wechat_backtrace {
     class QuickenMemoryLocal : public unwindstack::Memory {
     public:
         QuickenMemoryLocal() = default;
+
         virtual ~QuickenMemoryLocal() = default;
 
         bool IsLocal() const override { return true; }
 
-        size_t Read(uint64_t addr, void* dst, size_t size) override;
+        size_t Read(uint64_t addr, void *dst, size_t size) override;
+
         long ReadTag(uint64_t addr) override;
     };
 

@@ -38,6 +38,7 @@ SET(
         ${SOURCE_DIR}/libwechatbacktrace/DwarfSectionDecoder.cpp
         ${SOURCE_DIR}/libwechatbacktrace/DwarfEhFrameWithHdrDecoder.cpp
         ${SOURCE_DIR}/libwechatbacktrace/DwarfOp.cpp
+        ${SOURCE_DIR}/libwechatbacktrace/ElfWrapper.cpp
         ${SOURCE_DIR}/libwechatbacktrace/QuickenTable.cpp
         ${SOURCE_DIR}/libwechatbacktrace/QuickenMemory.cpp
         ${SOURCE_DIR}/libwechatbacktrace/QuickenTableManager.cpp

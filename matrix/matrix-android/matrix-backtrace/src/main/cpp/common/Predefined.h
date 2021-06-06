@@ -27,4 +27,10 @@
 
 #define BACKTRACE_FUNC_WRAPPER(fn) fn
 
+#if defined(__LP64__)
+#define ElfW(type) Elf64_ ## type
+#else
+#define ElfW(type) Elf32_ ## type
+#endif
+
 #endif //WECHAT_BACKTRACE_PREDEFINED_H

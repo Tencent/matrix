@@ -29,6 +29,7 @@
 #include <android/log.h>
 #include <unwindstack/RegsArm.h>
 #include "BacktraceDefine.h"
+#include "ElfWrapper.h"
 
 namespace wechat_backtrace {
 
@@ -38,22 +39,46 @@ namespace wechat_backtrace {
 
     void set_backtrace_mode(BacktraceMode mode);
 
-    void BACKTRACE_FUNC_WRAPPER(dwarf_unwind)(unwindstack::Regs *regs, std::vector<unwindstack::FrameData> &, size_t);
+    void BACKTRACE_FUNC_WRAPPER(dwarf_unwind)(
+            unwindstack::Regs *regs, std::vector<unwindstack::FrameData> &, size_t);
 
-    void BACKTRACE_FUNC_WRAPPER(fp_unwind)(uptr *regs, Frame *frames, const size_t frameMaxSize, size_t &frameSize);
+    void BACKTRACE_FUNC_WRAPPER(fp_unwind)(
+            uptr *regs, Frame *frames, const size_t frameMaxSize, size_t &frameSize);
 
-    void BACKTRACE_FUNC_WRAPPER(quicken_unwind)(uptr *regs, Frame *frames, const size_t frame_max_size, uptr &frame_size);
+    void BACKTRACE_FUNC_WRAPPER(quicken_unwind)(
+            uptr *regs, Frame *frames, const size_t frame_max_size, uptr &frame_size);
 
-    void BACKTRACE_FUNC_WRAPPER(quicken_based_unwind)(Frame *frames, const size_t max_frames, size_t &frame_size);
+    void BACKTRACE_FUNC_WRAPPER(quicken_based_unwind)(
+            Frame *frames, const size_t max_frames, size_t &frame_size);
 
-    void BACKTRACE_FUNC_WRAPPER(fp_based_unwind)(Frame *frames, const size_t max_frames, size_t &frame_size);
+    void BACKTRACE_FUNC_WRAPPER(fp_based_unwind)(
+            Frame *frames, const size_t max_frames, size_t &frame_size);
 
-    void BACKTRACE_FUNC_WRAPPER(dwarf_based_unwind)(Frame *frames, const size_t max_frames, size_t &frame_size);
+    void BACKTRACE_FUNC_WRAPPER(dwarf_based_unwind)(
+            Frame *frames, const size_t max_frames, size_t &frame_size);
 
-    void BACKTRACE_FUNC_WRAPPER(unwind_adapter)(Frame *frames, const size_t max_frames, size_t &frame_size);
+    void BACKTRACE_FUNC_WRAPPER(unwind_adapter)(
+            Frame *frames, const size_t max_frames, size_t &frame_size);
 
-    void BACKTRACE_FUNC_WRAPPER(restore_frame_detail)(const Frame *frames, const size_t frame_size,
-                                                      std::function<void(FrameDetail)> frame_callback);
+    void BACKTRACE_FUNC_WRAPPER(restore_frame_detail)(
+            const Frame *frames, const size_t frame_size,
+            const std::function<void(FrameDetail)> &frame_callback);
+
+    void
+    quicken_frame_format(wechat_backtrace::FrameElement &frame_element, size_t num, bool is_32_Bit,
+                         std::string &data);
+
+    void
+    to_quicken_frame_element(wechat_backtrace::Frame &frame, unwindstack::MapInfo *map_info,
+                             wechat_backtrace::ElfWrapper *elf_wrapper,
+                             bool fill_map_info, bool fill_build_id,
+            /* out */ FrameElement &frame_element);
+
+    void
+    get_stacktrace_elements(wechat_backtrace::Frame *frames, const size_t frame_size,
+                            bool shrunk_java_stacktrace,
+            /* out */ FrameElement *stacktrace_elements, const size_t max_elements,
+            /* out */ size_t &elements_size);
 
     void BACKTRACE_FUNC_WRAPPER(notify_maps_changed)();
 

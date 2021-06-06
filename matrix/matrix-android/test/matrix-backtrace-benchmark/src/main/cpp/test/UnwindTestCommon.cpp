@@ -25,7 +25,7 @@
 #define TEST_NanoSeconds_Start(timestamp) \
         long timestamp = 0; \
         if (!gBenchmarkWarmUp) { \
-            struct timespec tms; \
+            struct timespec tms {}; \
             if (clock_gettime(CLOCK_MONOTONIC, &tms)) { \
                 BENCHMARK_LOGE(UNWIND_TEST_TAG, "Err: Get time failed."); \
             } else { \
@@ -35,7 +35,7 @@
 
 #define TEST_NanoSeconds_End(tag, timestamp, frames) \
         if (!gBenchmarkWarmUp) { \
-            struct timespec tms; \
+            struct timespec tms {}; \
             if (clock_gettime(CLOCK_MONOTONIC, &tms)) { \
                 BENCHMARK_LOGE(UNWIND_TEST_TAG, "Err: Get time failed."); \
             } \
@@ -176,7 +176,7 @@ void fp_format_frame(uptr pc, size_t num, bool is32Bit, std::string &data) {
             free(demangled_name);
         }
         if (stack_info.dli_saddr != 0) {
-            uptr offset = (uptr) stack_info.dli_saddr - (uptr) stack_info.dli_fbase;
+            uptr offset = pc - (uptr) stack_info.dli_saddr;
             data += android::base::StringPrintf("+%" PRId64, (uint64_t) offset);
         }
         data += ')';
@@ -184,95 +184,11 @@ void fp_format_frame(uptr pc, size_t num, bool is32Bit, std::string &data) {
 
 }
 
-void
-quicken_format_frame(wechat_backtrace::Frame &frame, unwindstack::MapInfo *map_info,
-                     unwindstack::Elf *elf, size_t num, bool is32Bit, std::string &function_name,
-                     uint64_t function_offset, std::string &data) {
-
-    if (is32Bit) {
-        data += android::base::StringPrintf("  #%02zu pc %08" PRIx64, num, (uint64_t) frame.rel_pc);
-    } else {
-        data += android::base::StringPrintf("  #%02zu pc %016" PRIx64, num,
-                                            (uint64_t) frame.rel_pc);
-    }
-
-    if (map_info == nullptr) {
-        // No valid map associated with this frame.
-        data += "  <unknown>";
-    } else if (elf != nullptr && !elf->GetSoname().empty()) {
-        data += "  " + elf->GetSoname();
-    } else if (!map_info->name.empty()) {
-        data += "  " + map_info->name;
-    } else {
-        data += android::base::StringPrintf("  <anonymous:%" PRIx64 ">", map_info->start);
-    }
-
-    if (map_info) {
-        if (map_info->elf_start_offset != 0) {
-            data += android::base::StringPrintf(" (offset 0x%" PRIx64 ")",
-                                                map_info->elf_start_offset);
-        }
-    }
-
-    if (!function_name.empty()) {
-        char *demangled_name = abi::__cxa_demangle(function_name.c_str(), nullptr, nullptr,
-                                                   nullptr);
-        if (demangled_name == nullptr) {
-            data += " (" + function_name;
-        } else {
-            data += " (";
-            data += demangled_name;
-            free(demangled_name);
-        }
-        if (function_offset != 0) {
-            data += android::base::StringPrintf("+%" PRId64, function_offset);
-        }
-        data += ')';
-    }
-
-    if (map_info != nullptr) {
-        std::string build_id = map_info->GetPrintableBuildID();
-        if (!build_id.empty()) {
-            data += " (BuildId: " + build_id + ')';
-        }
-    }
-}
-
-void
-quicken_simple_format_frame(wechat_backtrace::Frame &frame, size_t num, bool is32Bit,
-                            std::string &function_name, uint64_t function_offset,
-                            std::string &data) {
-
-    if (is32Bit) {
-        data += android::base::StringPrintf("  #%02zu pc %08" PRIx64, num, (uint64_t) frame.rel_pc);
-    } else {
-        data += android::base::StringPrintf("  #%02zu pc %016" PRIx64, num,
-                                            (uint64_t) frame.rel_pc);
-    }
-
-    if (!function_name.empty()) {
-        char *demangled_name = abi::__cxa_demangle(function_name.c_str(), nullptr, nullptr,
-                                                   nullptr);
-        if (demangled_name == nullptr) {
-            data += " (" + function_name;
-        } else {
-            data += " (";
-            data += demangled_name;
-            free(demangled_name);
-        }
-        if (function_offset != 0) {
-            data += android::base::StringPrintf("+%" PRId64, function_offset);
-        }
-        data += ')';
-    }
-}
-
 inline void print_java_unwind() {
     TEST_NanoSeconds_Start(nano);
     jobject throwable;
     java_unwind(throwable);
     TEST_NanoSeconds_End(java_unwind, nano, 20);
-    // TODO print java stack
 }
 
 inline void print_eh_unwind() {
@@ -420,7 +336,7 @@ inline void print_fp_unwind() {
     }
 }
 
-inline void print_wechat_quicken_unwind() {
+inline void print_quicken_unwind() {
 
     TEST_NanoSeconds_Start(nano);
 
@@ -438,115 +354,78 @@ inline void print_wechat_quicken_unwind() {
         return;
     }
 
-    if (gShrinkJavaStack) {
-        std::shared_ptr<wechat_backtrace::Maps> quicken_maps = wechat_backtrace::Maps::current();
-        auto process_memory = unwindstack::Memory::CreateProcessMemory(getpid());
-        auto dex_debug = wechat_backtrace::DebugDexFiles::Instance();
-        auto jit_debug = wechat_backtrace::DebugJit::Instance();
-        bool found_java_frame = false;
-        for (size_t num = 0; num < frame_size; num++) {
+    wechat_backtrace::FrameElement stacktrace_elements[FRAME_ELEMENTS_MAX_SIZE];
+    size_t elements_size = 0;
 
-            if (found_java_frame && !frames[num].maybe_java) continue;
+    get_stacktrace_elements(frames, frame_size, gShrinkJavaStack, stacktrace_elements,
+                            FRAME_ELEMENTS_MAX_SIZE, elements_size);
 
-            if (found_java_frame != frames[num].maybe_java) {
-                BENCHMARK_LOGE(WECHAT_BACKTRACE_TAG, "Java stacktrace:");
-                found_java_frame = frames[num].maybe_java;
-            }
+    bool is_32bit = unwindstack::Regs::CurrentArch() == unwindstack::ARCH_ARM;
+    for (size_t i = 0; i < elements_size; i++) {
+        std::string data;
+        wechat_backtrace::quicken_frame_format(stacktrace_elements[i], i, is_32bit, data);
+        BENCHMARK_LOGE(WECHAT_BACKTRACE_TAG, data.c_str(), "");
+    }
 
-            unwindstack::MapInfo *map_info = quicken_maps->Find(frames[num].pc);
-            std::string function_name = "";
-            uint64_t function_offset = 0;
-            unwindstack::Elf *elf = nullptr;
-            if (map_info) {
+}
 
-                if (frames[num].is_dex_pc) {
-                    frames[num].rel_pc = frames[num].pc - map_info->start;
+inline void print_java_unwind_formatted() {
 
-                    dex_debug->GetMethodInformation(quicken_maps.get(), map_info, frames[num].pc,
-                                                    &function_name,
-                                                    &function_offset);
-                } else {
+    TEST_NanoSeconds_Start(nano);
+    jobjectArray traces;
+    JavaVM *vm = getJavaVM();
+    JNIEnv *env;
+    vm->GetEnv((void **) &env, JNI_VERSION_1_6);
+    java_get_stack_traces(env, traces);
 
-                    elf = map_info->GetElf(process_memory,
-                                           unwindstack::Regs::CurrentArch());
+    size_t size = env->GetArrayLength(traces);
+    TEST_NanoSeconds_End(print_java_unwind_formatted, nano, size);
 
-                    elf->GetFunctionName(frames[num].rel_pc, &function_name, &function_offset);
-                    if (!elf->valid()) {
-                        unwindstack::Elf *jit_elf = jit_debug->GetElf(quicken_maps.get(),
-                                                                      frames[num].pc);
-                        if (jit_elf) {
-                            jit_elf->GetFunctionName(frames[num].pc, &function_name,
-                                                     &function_offset);
-                        }
-                    }
-                }
-            }
+    if (!gPrintStack) {
+        return;
+    }
 
-            std::string formatted;
-            if (!found_java_frame) {
-                quicken_format_frame(
-                        frames[num], map_info, elf, num,
-                        unwindstack::Regs::CurrentArch() == unwindstack::ARCH_ARM,
-                        function_name, function_offset, formatted);
-            } else {
-                quicken_simple_format_frame(
-                        frames[num], num,
-                        unwindstack::Regs::CurrentArch() == unwindstack::ARCH_ARM,
-                        function_name, function_offset, formatted);
-            }
+    for (int i = 0; i < size; i++) {
+        jstring string_obj = static_cast<jstring>(env->GetObjectArrayElement(traces, i));
+        const char *trace = env->GetStringUTFChars(string_obj, 0);
+        BENCHMARK_LOGE("Java-Print-StackTrace", trace, "");
+        env->ReleaseStringUTFChars(string_obj, trace);
+        env->DeleteLocalRef(string_obj);
+    }
+}
 
-            BENCHMARK_LOGE(WECHAT_BACKTRACE_TAG, formatted.c_str(), "");
-        }
-    } else {
-        wechat_backtrace::UpdateLocalMaps();
-        std::shared_ptr<wechat_backtrace::Maps> quicken_maps = wechat_backtrace::Maps::current();
-        if (!quicken_maps) {
-            BENCHMARK_LOGE(DWARF_UNWIND_TAG, "Err: unable to get maps.");
-            return;
-        }
-        auto process_memory = unwindstack::Memory::CreateProcessMemory(getpid());
+inline void print_quicken_unwind_stacktrace() {
 
-        auto dex_debug = wechat_backtrace::DebugDexFiles::Instance();
-        auto jit_debug = wechat_backtrace::DebugJit::Instance();
-        for (size_t num = 0; num < frame_size; num++) {
+    TEST_NanoSeconds_Start(nano);
 
-            unwindstack::MapInfo *map_info = quicken_maps->Find(frames[num].pc);
-            std::string function_name = "";
-            uint64_t function_offset = 0;
-            unwindstack::Elf *elf = nullptr;
-            if (map_info) {
+    uptr regs[QUT_MINIMAL_REG_SIZE];
+    GetQuickenMinimalRegs(regs);
+    wechat_backtrace::Frame frames[FRAME_MAX_SIZE];
+    wechat_backtrace::FrameElement stacktrace_elements[FRAME_ELEMENTS_MAX_SIZE];
+    uptr frame_size = 0;
+    size_t elements_size = 0;
 
-                if (frames[num].is_dex_pc) {
-                    frames[num].rel_pc = frames[num].pc - map_info->start;
+    wechat_backtrace::BACKTRACE_FUNC_WRAPPER(quicken_unwind)(regs, frames, FRAME_MAX_SIZE,
+                                                             frame_size);
+    get_stacktrace_elements(
+            frames, frame_size, true, stacktrace_elements,
+            FRAME_ELEMENTS_MAX_SIZE, elements_size);
 
-                    dex_debug->GetMethodInformation(quicken_maps.get(), map_info, frames[num].pc,
-                                                    &function_name,
-                                                    &function_offset);
-                } else {
+    TEST_NanoSeconds_End(print_quicken_unwind_stacktrace, nano, frame_size);
 
-                    elf = map_info->GetElf(process_memory,
-                                           unwindstack::Regs::CurrentArch());
+    if (!gPrintStack) {
+        return;
+    }
 
-                    elf->GetFunctionName(frames[num].rel_pc, &function_name, &function_offset);
-                    if (!elf->valid()) {
-                        unwindstack::Elf *jit_elf = jit_debug->GetElf(quicken_maps.get(),
-                                                                      frames[num].pc);
-                        if (jit_elf) {
-                            jit_elf->GetFunctionName(frames[num].pc, &function_name,
-                                                     &function_offset);
-                        }
-                    }
-                }
-            }
-
-            std::string formatted;
-            quicken_format_frame(frames[num], map_info, elf, num,
-                                 unwindstack::Regs::CurrentArch() == unwindstack::ARCH_ARM,
-                                 function_name, function_offset, formatted);
-
-            BENCHMARK_LOGE(WECHAT_BACKTRACE_TAG, formatted.c_str(), "");
+    {
+        bool is_32bit = unwindstack::Regs::CurrentArch() == unwindstack::ARCH_ARM;
+        for (size_t i = 0; i < elements_size; i++) {
+            std::string data;
+            wechat_backtrace::quicken_frame_format(stacktrace_elements[i], i, is_32bit, data);
+            BENCHMARK_LOGE(WECHAT_BACKTRACE_TAG, data.c_str(), "");
         }
     }
+
 }
 
 void leaf_func(const char *testcase) {
@@ -561,7 +440,7 @@ void leaf_func(const char *testcase) {
             print_fp_and_java_unwind();
             break;
         case WECHAT_QUICKEN_UNWIND:
-            print_wechat_quicken_unwind();
+            print_quicken_unwind();
             break;
         case DWARF_UNWIND:
             print_dwarf_unwind();
@@ -571,6 +450,12 @@ void leaf_func(const char *testcase) {
             break;
         case COMM_EH_UNWIND:
             print_eh_unwind();
+            break;
+        case JAVA_UNWIND_PRINT_STACKTRACE:
+            print_java_unwind_formatted();
+            break;
+        case QUICKEN_UNWIND_PRINT_STACKTRACE:
+            print_quicken_unwind_stacktrace();
             break;
         default:
             BENCHMARK_LOGE(UNWIND_TEST_TAG, "Unknown test %s with mode %d.", testcase, gMode);
@@ -587,10 +472,12 @@ void benchmark_warm_up() {
     for (size_t i = 0; i < 100; i++) {
         print_fp_unwind();
         print_fp_and_java_unwind();
-        print_wechat_quicken_unwind();
+        print_quicken_unwind();
         print_dwarf_unwind();
         print_java_unwind();
         print_eh_unwind();
+        print_java_unwind_formatted();
+        print_quicken_unwind_stacktrace();
     }
     gBenchmarkWarmUp = false;
     gPrintStack = preValue;

@@ -44,6 +44,9 @@ namespace wechat_backtrace {
 
     void QuickenMemoryFile::Clear() {
         if (data_) {
+
+            QUT_LOG("QuickenMemoryFile Clear file %s, on addr %llx", file_.c_str(), &data_[-offset_]);
+
             munmap(&data_[-offset_], size_ + offset_);
             data_ = nullptr;
         }
@@ -108,8 +111,8 @@ namespace wechat_backtrace {
         }
 
         if (slice_size_ > 0) {
-            // Cut off e_ident from elf mapping to broke elf header's completeness. So we can prevent
-            // some kind of custom loaders finding our mapping elf as the one loaded by dl.
+            // Cut off e_ident from elf mapping to broke elf header's completeness. So we can
+            // prevent some kind of custom loaders finding our mapping elf as the one loaded by dl.
             size_t slice_size = slice_size_;
             memcpy(slice_, map, slice_size);
             memset(map, 0, slice_size);
@@ -119,6 +122,12 @@ namespace wechat_backtrace {
 
         data_ = &reinterpret_cast<uint8_t *>(map)[offset_];
         size_ -= offset_;
+
+        file_ = file;
+        init_offset_ = offset;
+        init_size_ = size;
+
+        QUT_LOG("QuickenMemoryFile Init file %s, on addr %llx", file_.c_str(), &data_[-offset_]);
 
         return true;
     }

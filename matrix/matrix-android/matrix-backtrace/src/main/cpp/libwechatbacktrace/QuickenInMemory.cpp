@@ -17,6 +17,7 @@
 #include <android-base/logging.h>
 
 #include <memory>
+#include <ElfWrapper.h>
 #include "Log.h"
 #include "DwarfEhFrameWithHdrDecoder.h"
 #include "DwarfDebugFrameDecoder.h"
@@ -190,7 +191,7 @@ namespace wechat_backtrace {
 
     template<typename AddressType>
     void
-    QuickenInMemory<AddressType>::Init(Elf *elf,
+    QuickenInMemory<AddressType>::Init(ElfWrapper *elf_wrapper,
                                        const std::shared_ptr<unwindstack::Memory> &process_memory,
                                        FrameInfo &eh_frame_hdr_info,
                                        FrameInfo &eh_frame_info,
@@ -201,21 +202,21 @@ namespace wechat_backtrace {
                                        FrameInfo &arm_exidx_info) {
 
         CHECK(process_memory);
-        CHECK(elf);
+        CHECK(elf_wrapper);
 
-        elf_.reset(elf);
+        elf_wrapper_ = elf_wrapper;
 
-        Memory *memory = elf->memory();
+        Memory *memory = elf_wrapper->GetMemoryBackedElf()->memory();
 
         InitDebugFrame<AddressType>(
                 memory, debug_frame_info, debug_frame_);
         InitEhFrame<AddressType>(
                 memory, eh_frame_hdr_info, eh_frame_info, eh_frame_);
 
-        if (elf->gnu_debugdata_interface()) {
+        if (elf_wrapper->GetGnuDebugDataInterface()) {
             QUT_LOG("QuickenInMemory::Init elf %s has gnu_debugdata_interface",
-                    elf->GetSoname().c_str());
-            Memory *gnu_debug_data_memory = elf->gnu_debugdata_interface()->memory();
+                    elf_wrapper->GetSoname().c_str());
+            Memory *gnu_debug_data_memory = elf_wrapper->GetGnuDebugDataInterface()->memory();
             InitDebugFrame<AddressType>(
                     gnu_debug_data_memory, gnu_debug_frame_info, debug_frame_from_gnu_debug_data_);
             InitEhFrame<AddressType>(
@@ -223,7 +224,7 @@ namespace wechat_backtrace {
                     eh_frame_from_gnu_debug_data_);
         }
 
-        QUT_LOG("QuickenInMemory::Init elf %s, %llx, %llx, %llx, %llx", elf->GetSoname().c_str(),
+        QUT_LOG("QuickenInMemory::Init elf %s, %llx, %llx, %llx, %llx", elf_wrapper->GetSoname().c_str(),
                 (ullint_t) debug_frame_.get(), (ullint_t) eh_frame_.get(),
                 (ullint_t) debug_frame_from_gnu_debug_data_.get(),
                 (ullint_t) eh_frame_from_gnu_debug_data_.get());
@@ -361,7 +362,7 @@ namespace wechat_backtrace {
         {
             const DwarfFde *fde = nullptr;
             std::lock_guard<std::mutex> guard(lock_decode_);
-            Elf *elf = elf_.get();
+            Elf *elf = elf_wrapper_->GetMemoryBackedElf().get();
 
             DwarfSectionDecoder<AddressType> *decoder = nullptr;
 
@@ -369,17 +370,22 @@ namespace wechat_backtrace {
                 fde = elf->interface()->eh_frame()->GetFdeFromPc(pc);
                 decoder = eh_frame_.get();
                 QUT_LOG("GetFutSectionsInMemory decoder eh_frame_");
-            } else if (elf->interface()->debug_frame()) {
+            }
+            // Memory backed elf no debug frame.
+            /*
+            else if (elf->interface()->debug_frame()) {
                 fde = elf->interface()->debug_frame()->GetFdeFromPc(pc);
                 decoder = debug_frame_.get();
                 QUT_LOG("GetFutSectionsInMemory decoder debug_frame_");
-            } else if (elf->gnu_debugdata_interface()) {
-                if (elf->gnu_debugdata_interface()->eh_frame()) {
-                    fde = elf->gnu_debugdata_interface()->eh_frame()->GetFdeFromPc(pc);
+            }
+            */
+            else if (elf_wrapper_->GetGnuDebugDataInterface()) {
+                if (elf_wrapper_->GetGnuDebugDataInterface()->eh_frame()) {
+                    fde = elf_wrapper_->GetGnuDebugDataInterface()->eh_frame()->GetFdeFromPc(pc);
                     decoder = eh_frame_from_gnu_debug_data_.get();
                     QUT_LOG("GetFutSectionsInMemory decoder eh_frame_from_gnu_debug_data_");
-                } else if (elf->gnu_debugdata_interface()->debug_frame()) {
-                    fde = elf->gnu_debugdata_interface()->debug_frame()->GetFdeFromPc(pc);
+                } else if (elf_wrapper_->GetGnuDebugDataInterface()->debug_frame()) {
+                    fde = elf_wrapper_->GetGnuDebugDataInterface()->debug_frame()->GetFdeFromPc(pc);
                     decoder = debug_frame_from_gnu_debug_data_.get();
                     QUT_LOG("GetFutSectionsInMemory decoder debug_frame_from_gnu_debug_data_");
                 }
@@ -426,7 +432,7 @@ namespace wechat_backtrace {
     }
 
     template void QuickenInMemory<uint32_t>::Init(
-            Elf *elf,
+            ElfWrapper *elf_wrapper,
             const std::shared_ptr<unwindstack::Memory> &process_memory,
             FrameInfo &eh_frame_hdr_info,
             FrameInfo &eh_frame_info,
@@ -437,7 +443,7 @@ namespace wechat_backtrace {
             FrameInfo &arm_exidx_info);
 
     template void QuickenInMemory<uint64_t>::Init(
-            Elf *elf,
+            ElfWrapper *elf_wrapper,
             const std::shared_ptr<unwindstack::Memory> &process_memory,
             FrameInfo &eh_frame_hdr_info,
             FrameInfo &eh_frame_info,

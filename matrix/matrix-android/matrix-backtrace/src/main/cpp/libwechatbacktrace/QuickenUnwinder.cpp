@@ -30,7 +30,7 @@
 #include <jni.h>
 #include <QuickenUtility.h>
 #include <QuickenMemory.h>
-
+#include "MemoryLocal.h"
 #include "QuickenUnwinder.h"
 #include "QuickenMaps.h"
 
@@ -47,9 +47,13 @@ namespace wechat_backtrace {
 
     QUT_EXTERN_C_BLOCK
 
-    DEFINE_STATIC_LOCAL(shared_ptr<Memory>, process_memory_, (new QuickenMemoryLocal));
+    DEFINE_STATIC_LOCAL(shared_ptr<Memory>, process_memory_, (new MemoryLocal));
 
     DEFINE_STATIC_LOCAL(mutex, generate_lock_,);
+
+    BACKTRACE_EXPORT shared_ptr<Memory> &GetLocalProcessMemory() {
+        return process_memory_;
+    }
 
     void
     StatisticWeChatQuickenUnwindTable(const string &sopath, vector<uint32_t> &processed_result) {
@@ -76,7 +80,7 @@ namespace wechat_backtrace {
         unique_ptr<QuickenInterface> interface = QuickenMapInfo::CreateQuickenInterfaceForGenerate(
                 sopath,
                 elf.get(),
-                0   // TODO fix this bug here
+                0
         );
         QutSections qut_sections;
 

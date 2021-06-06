@@ -51,6 +51,13 @@ class Symbols {
     remap_.reset();
   }
 
+  // Matrix-changed: add getter
+  uint64_t offset() const { return offset_; }
+  uint64_t count() const { return count_; }
+  uint64_t entry_size() const { return entry_size_; }
+  uint64_t str_offset() const { return str_offset_; }
+  uint64_t str_end() const { return str_end_; }
+
  private:
   template <typename SymType>
   const Info* ReadFuncInfo(uint32_t symbol_index, Memory* elf_memory);

@@ -21,6 +21,7 @@
 #include <unordered_map>
 #include "QuickenInterface.h"
 #include "QuickenMemory.h"
+#include "ElfWrapper.h"
 
 namespace wechat_backtrace {
 
@@ -40,9 +41,12 @@ namespace wechat_backtrace {
     class QuickenMapInfo : public unwindstack::MapInfo {
 
     public:
-        QuickenMapInfo(MapInfo *prevMap, MapInfo *prevRealMap, uint64_t start, uint64_t end,
+        QuickenMapInfo(QuickenMapInfo *prevMap, QuickenMapInfo *prevRealMap, uint64_t start,
+                       uint64_t end,
                        uint64_t offset, uint64_t flags, const char *name) :
-                MapInfo(prevMap, prevRealMap, start, end, offset, flags, name) {};
+                MapInfo(prevMap, prevRealMap, start, end, offset, flags, name) {
+            if (prevRealMap != nullptr) prevRealMap->next_real_map_ = this;
+        };
 
         QuickenInterface *
         GetQuickenInterface(
@@ -85,7 +89,16 @@ namespace wechat_backtrace {
                 const uint64_t elf_start_offset
         );
 
+        unwindstack::Memory *
+        CreateQuickenMemory(const std::shared_ptr<unwindstack::Memory> &process_memory,
+                uint64_t &range_offset_end);
+
+        unwindstack::Memory *
+        CreateFileQuickenMemory(const std::shared_ptr<unwindstack::Memory> &process_memory);
+
         uint64_t GetRelPc(uint64_t pc);
+
+        unwindstack::Elf * GetLightElf();
 
         std::shared_ptr<QuickenInterface> quicken_interface_;
 
@@ -99,14 +112,14 @@ namespace wechat_backtrace {
 
         const bool quicken_in_memory_enable_ = true;
 
-    protected:
+        QuickenMapInfo *next_real_map_ = nullptr;
 
+    protected:
         unwindstack::Memory *CreateFileQuickenMemory();
 
-        bool InitFileMemoryFromPreviousReadOnlyMap(QuickenMemoryFile *memory);
+        unwindstack::Memory *CreateFileQuickenMemoryImpl();
 
-        unwindstack::Memory *
-        CreateQuickenMemory(const std::shared_ptr<unwindstack::Memory> &process_memory);
+        bool InitFileMemoryFromPreviousReadOnlyMap(QuickenMemoryFile *memory);
 
         static std::mutex &lock_;
 
@@ -138,11 +151,11 @@ namespace wechat_backtrace {
 
         Maps &operator=(Maps &&) = default;
 
-        size_t GetSize();
+        size_t GetSize() const;
 
-        MapInfoPtr Find(uint64_t pc);
+        MapInfoPtr Find(uint64_t pc) const;
 
-        std::vector<MapInfoPtr> FindMapInfoByName(std::string soname);
+        std::vector<MapInfoPtr> FindMapInfoByName(std::string soname) const;
 
         static bool Parse();
 
