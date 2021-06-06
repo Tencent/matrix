@@ -240,12 +240,19 @@ namespace wechat_backtrace {
         WeChatQuickenUnwind(CURRENT_ARCH, regs, frame_max_size, frames, frame_size);
     }
 
-    BACKTRACE_EXPORT inline void
-    BACKTRACE_FUNC_WRAPPER(quicken_based_unwind)(Frame *frames, const size_t max_frames,
+    void
+    quicken_based_unwind_inlined(Frame *frames, const size_t max_frames,
                                                  size_t &frame_size) {
         uptr regs[QUT_MINIMAL_REG_SIZE];
         GetQuickenMinimalRegs(regs);
         WeChatQuickenUnwind(CURRENT_ARCH, regs, max_frames, frames, frame_size);
+    }
+
+
+    BACKTRACE_EXPORT void
+    BACKTRACE_FUNC_WRAPPER(quicken_based_unwind)(Frame *frames, const size_t max_frames,
+                                                 size_t &frame_size) {
+        quicken_based_unwind_inlined(frames, max_frames, frame_size);
     }
 
     BACKTRACE_EXPORT inline void
@@ -283,7 +290,7 @@ namespace wechat_backtrace {
                 fp_based_unwind(frames, max_frames, frame_size);
                 break;
             case Quicken:
-                quicken_based_unwind(frames, max_frames, frame_size);
+                quicken_based_unwind_inlined(frames, max_frames, frame_size);
                 break;
             case DwarfBased:
                 dwarf_based_unwind(frames, max_frames, frame_size);
