@@ -1,6 +1,18 @@
-//
-// Created by Carl on 2020-09-21.
-//
+/*
+ * Tencent is pleased to support the open source community by making wechat-matrix available.
+ * Copyright (C) 2018 THL A29 Limited, a Tencent company. All rights reserved.
+ * Licensed under the BSD 3-Clause License (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      https://opensource.org/licenses/BSD-3-Clause
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #include <android-base/macros.h>
 #include <MinimalRegs.h>
@@ -27,15 +39,15 @@ namespace wechat_backtrace {
         quicken_generate_delegate_ = quicken_generate_delegate;
     }
 
-    uint64_t QuickenInterface::GetLoadBias() {
+    uint64_t QuickenInterface::GetLoadBias() const {
         return load_bias_;
     }
 
-    uint64_t QuickenInterface::GetElfOffset() {
+    uint64_t QuickenInterface::GetElfOffset() const {
         return elf_offset_;
     }
 
-    uint64_t QuickenInterface::GetElfStartOffset() {
+    uint64_t QuickenInterface::GetElfStartOffset() const {
         return elf_start_offset_;
     }
 
@@ -62,7 +74,7 @@ namespace wechat_backtrace {
         return ret;
     }
 
-    bool QuickenInterface::TryInitQuickenTable() {
+    QutFileError QuickenInterface::TryInitQuickenTable() {
 
         QutFileError ret;
 
@@ -70,7 +82,7 @@ namespace wechat_backtrace {
             lock_guard<mutex> lock(lock_);
 
             if (qut_sections_) {
-                return true;
+                return NoneError;
             }
 
             QutSectionsPtr qut_sections_tmp = nullptr;
@@ -82,12 +94,13 @@ namespace wechat_backtrace {
                           build_id_.c_str(), ret);
             if (ret == NoneError) {
                 qut_sections_ = qut_sections_tmp;
-
                 QUT_DEBUG_LOG("Request %s build id(%s) quicken table success.",
                               sopath_.c_str(), build_id_.c_str());
 
                 if (qut_sections_) {
-                    return true;
+                    return NoneError;
+                } else {
+                    ret = LoadFailed;
                 }
             }
         }
@@ -104,13 +117,9 @@ namespace wechat_backtrace {
                     try_load_qut_failed_count_ = 0;
                 }
             }
-        } else {
-            if (ret == TryInvokeJavaRequestQutGenerate) {
-                InvokeJava_RequestQutGenerate();
-            }
         }
 
-        return false;
+        return ret;
     }
 
     bool QuickenInterface::FindEntry(QutSections *qut_sections, uptr pc, size_t *entry_offset) {
@@ -154,7 +163,8 @@ namespace wechat_backtrace {
                                    uptr stack_bottom, uptr frame_size, uint64_t *dex_pc,
                                    bool *finished) {
 
-        QuickenTable quicken(sections, regs, nullptr, stack_top, stack_bottom, frame_size);
+        QuickenTable quicken(
+                sections, regs, nullptr, stack_top, stack_bottom, frame_size);
 
         size_t entry_offset;
 
@@ -185,12 +195,12 @@ namespace wechat_backtrace {
                               uptr stack_bottom, uptr frame_size, uint64_t *dex_pc,
                               bool *finished) {
 
-        std::shared_ptr<QutSections> qut_sections_for_jit;
+        std::shared_ptr<QutSectionsInMemory> qut_sections_for_jit;
         if (LIKELY(debug_jit_.get() != nullptr)) {
             bool ret = debug_jit_->GetFutSectionsInMemory(
                     maps, pc,
                     qut_sections_for_jit);
-            if (!ret || qut_sections_for_jit.get() == nullptr) {
+            if (!ret || qut_sections_for_jit == nullptr) {
                 last_error_code_ = QUT_ERROR_REQUEST_QUT_INMEM_FAILED;
                 return false;
             }
@@ -199,8 +209,8 @@ namespace wechat_backtrace {
             return false;
         }
 
-        return StepInternal(pc, regs, const_cast<QutSections *>(qut_sections_for_jit.get()),
-                stack_top, stack_bottom, frame_size, dex_pc, finished);
+        return StepInternal(pc, regs, qut_sections_for_jit.get(),
+                            stack_top, stack_bottom, frame_size, dex_pc, finished);
     }
 
     bool
@@ -212,13 +222,39 @@ namespace wechat_backtrace {
             return false;
         }
         if (UNLIKELY(!qut_sections_)) {
-            if (!TryInitQuickenTable()) {
+            std::shared_ptr<QuickenInMemory<addr_t>> quicken_in_memory;
+            {
+                lock_guard<mutex> lock(lock_quicken_in_memory_);
+                quicken_in_memory = quicken_in_memory_;
+            }
+            if (quicken_in_memory) {
+                QUT_LOG("QuickenInterface::Step using quicken_in_memory_, elf: %s, frame: %llu",
+                        soname_.c_str(), frame_size);
+                std::shared_ptr<QutSectionsInMemory> qut_section_in_memory;
+                bool ret = quicken_in_memory->GetFutSectionsInMemory(
+                        pc, /* out */ qut_section_in_memory);
+                if (UNLIKELY(!ret)) {
+                    QUT_LOG("QuickenInterface::Step quicken_in_memory_ failed");
+                    last_error_code_ = QUT_ERROR_REQUEST_QUT_FILE_FAILED;
+                    return false;
+                }
+                return StepInternal(pc, regs,
+                                    qut_section_in_memory.get(),
+                                    stack_top, stack_bottom, frame_size, dex_pc, finished);
+            } else {
                 last_error_code_ = QUT_ERROR_REQUEST_QUT_FILE_FAILED;
                 return false;
             }
         }
         return StepInternal(pc, regs, const_cast<QutSections *>(qut_sections_),
                             stack_top, stack_bottom, frame_size, dex_pc, finished);
+    }
+
+    void QuickenInterface::ResetQuickenInMemory() {
+        {
+            lock_guard<mutex> lock(lock_quicken_in_memory_);
+            quicken_in_memory_ = nullptr;
+        }
     }
 
     template bool
@@ -228,4 +264,4 @@ namespace wechat_backtrace {
             unwindstack::Memory *process_memory,
             QutSectionsPtr qut_sections);
 
-}  // namespace unwindstack
+}  // namespace wechat_backtrace

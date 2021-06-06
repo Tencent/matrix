@@ -107,6 +107,9 @@ struct MapInfo {
   // Returns the printable version of the build id (hex dump of raw data).
   std::string GetPrintableBuildID();
 
+  // Matrix-changed: Add GetCachedPrintableBuildID
+  std::string GetCachedPrintableBuildID();
+
   inline bool IsBlank() { return offset == 0 && flags == 0 && name.empty(); }
 
   // Dex file info. Add for Wechat.
@@ -122,6 +125,10 @@ struct MapInfo {
 
   // Protect the creation of the elf object.
   std::mutex mutex_;
+
+  // Matrix-changed: Add printable_build_id_ field.
+  std::string printable_build_id_;
+  std::mutex mutex_printable_build_id_;
 };
 
 }  // namespace unwindstack

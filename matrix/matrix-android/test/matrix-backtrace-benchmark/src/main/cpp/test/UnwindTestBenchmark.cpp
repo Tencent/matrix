@@ -40,24 +40,26 @@ extern "C" {
 #define BENCHMARK(mode, test_func) BENCHMARK_TIMES(mode, benchmark_times, test_func)
 
 JNIEXPORT void JNICALL
-Java_com_tencent_matrix_benchmark_test_UnwindBenchmarkTest_nativeInit(JNIEnv *env,
-                                                                      jclass clazz) {
+Java_com_tencent_matrix_benchmark_test_UnwindBenchmarkTest_nativeInit(
+        JNIEnv *env, jclass clazz) {
 
     wechat_backtrace::BACKTRACE_FUNC_WRAPPER(notify_maps_changed)();
 }
 
 
 JNIEXPORT void JNICALL
-Java_com_tencent_matrix_benchmark_test_UnwindBenchmarkTest_nativeBenchmark(JNIEnv *env,
-                                                                           jclass clazz) {
+Java_com_tencent_matrix_benchmark_test_UnwindBenchmarkTest_nativeBenchmark(
+        JNIEnv *env, jclass clazz) {
 
     benchmark_warm_up();
 
     size_t times = 10000;
 
-    if (FRAME_MAX_SIZE >= 60) {
+    if (FRAME_MAX_SIZE >= 100) {
+        BENCHMARK_TIMES(JAVA_UNWIND_PRINT_STACKTRACE, times, func_selfso());
+        BENCHMARK_TIMES(QUICKEN_UNWIND_PRINT_STACKTRACE, times, func_selfso());
+    } else if (FRAME_MAX_SIZE >= 60) {
         BENCHMARK_TIMES(DWARF_UNWIND, times, func_selfso());
-//        BENCHMARK_TIMES(FP_AND_JAVA_UNWIND, times, func_selfso());
         BENCHMARK_TIMES(WECHAT_QUICKEN_UNWIND, times, func_selfso());
     } else {
         BENCHMARK_TIMES(DWARF_UNWIND, times, func_selfso());
@@ -67,16 +69,17 @@ Java_com_tencent_matrix_benchmark_test_UnwindBenchmarkTest_nativeBenchmark(JNIEn
 }
 
 JNIEXPORT void JNICALL
-Java_com_tencent_matrix_benchmark_test_UnwindBenchmarkTest_nativeBenchmarkJavaStack(JNIEnv *env,
-                                                                           jclass clazz) {
+Java_com_tencent_matrix_benchmark_test_UnwindBenchmarkTest_nativeBenchmarkJavaStack(
+        JNIEnv *env, jclass clazz) {
 
     benchmark_warm_up();
 
     size_t times = 10000;
     BENCHMARK_TIMES(DWARF_UNWIND, times, print_dwarf_unwind());
     BENCHMARK_TIMES(JAVA_UNWIND, times, print_java_unwind());
-    BENCHMARK_TIMES(WECHAT_QUICKEN_UNWIND, times, print_wechat_quicken_unwind());
-
+    BENCHMARK_TIMES(WECHAT_QUICKEN_UNWIND, times, print_quicken_unwind());
+    BENCHMARK_TIMES(JAVA_UNWIND_PRINT_STACKTRACE, times, print_java_unwind_formatted());
+    BENCHMARK_TIMES(QUICKEN_UNWIND_PRINT_STACKTRACE, times, print_quicken_unwind_stacktrace());
 }
 
 JNIEXPORT void JNICALL

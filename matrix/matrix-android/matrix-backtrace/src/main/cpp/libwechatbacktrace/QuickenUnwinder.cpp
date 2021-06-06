@@ -1,3 +1,19 @@
+/*
+ * Tencent is pleased to support the open source community by making wechat-matrix available.
+ * Copyright (C) 2018 THL A29 Limited, a Tencent company. All rights reserved.
+ * Licensed under the BSD 3-Clause License (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      https://opensource.org/licenses/BSD-3-Clause
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 #include <stdint.h>
 #include <bits/pthread_types.h>
 #include <cstdlib>
@@ -14,7 +30,7 @@
 #include <jni.h>
 #include <QuickenUtility.h>
 #include <QuickenMemory.h>
-
+#include "MemoryLocal.h"
 #include "QuickenUnwinder.h"
 #include "QuickenMaps.h"
 
@@ -31,9 +47,13 @@ namespace wechat_backtrace {
 
     QUT_EXTERN_C_BLOCK
 
-    DEFINE_STATIC_LOCAL(shared_ptr<Memory>, process_memory_, (new QuickenMemoryLocal));
+    DEFINE_STATIC_LOCAL(shared_ptr<Memory>, process_memory_, (new MemoryLocal));
 
     DEFINE_STATIC_LOCAL(mutex, generate_lock_,);
+
+    BACKTRACE_EXPORT shared_ptr<Memory> &GetLocalProcessMemory() {
+        return process_memory_;
+    }
 
     void
     StatisticWeChatQuickenUnwindTable(const string &sopath, vector<uint32_t> &processed_result) {
@@ -60,7 +80,7 @@ namespace wechat_backtrace {
         unique_ptr<QuickenInterface> interface = QuickenMapInfo::CreateQuickenInterfaceForGenerate(
                 sopath,
                 elf.get(),
-                0   // TODO fix this bug here
+                0
         );
         QutSections qut_sections;
 
@@ -305,8 +325,8 @@ namespace wechat_backtrace {
         for (; frame_size < frame_max_size;) {
             uint64_t cur_pc = PC(regs);
             uint64_t cur_sp = SP(regs);
-            MapInfoPtr map_info = nullptr;
-            QuickenInterface *interface = nullptr;
+            MapInfoPtr map_info;
+            QuickenInterface *interface;
 
             if (last_map_info && last_map_info->start <= cur_pc && last_map_info->end > cur_pc) {
                 map_info = last_map_info;
@@ -346,6 +366,7 @@ namespace wechat_backtrace {
 
             if (dex_pc != 0) {
                 backtrace[frame_size].is_dex_pc = true;
+                backtrace[frame_size].maybe_java = true;
                 backtrace[frame_size].pc = dex_pc;
                 dex_pc = 0;
 
@@ -358,6 +379,7 @@ namespace wechat_backtrace {
 
             backtrace[frame_size].pc = PC(regs) - pc_adjustment;
             backtrace[frame_size].rel_pc = step_pc;
+            backtrace[frame_size].maybe_java = map_info->maybe_java;
 
             adjust_pc = true;
 

@@ -1,14 +1,14 @@
 /*
- * Copyright (C) 2017 The Android Open Source Project
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
+ * Tencent is pleased to support the open source community by making wechat-matrix available.
+ * Copyright (C) 2018 THL A29 Limited, a Tencent company. All rights reserved.
+ * Licensed under the BSD 3-Clause License (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://opensource.org/licenses/BSD-3-Clause
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
@@ -30,6 +30,7 @@
 #include "BacktraceDefine.h"
 #include "QuickenTable.h"
 #include "DebugGlobal.h"
+#include "QuickenInMemory.h"
 
 namespace unwindstack {
     enum ArchEnum : uint8_t;
@@ -46,7 +47,6 @@ namespace wechat_backtrace {
     public:
         explicit DebugJit(std::shared_ptr<unwindstack::Memory> &memory);
 
-//        DebugJit(std::shared_ptr<Memory>& memory, std::vector<std::string>& search_libs);
         virtual ~DebugJit();
 
         unwindstack::Elf *GetElf(Maps *maps, uint64_t pc);
@@ -54,7 +54,7 @@ namespace wechat_backtrace {
         bool GetFutSectionsInMemory(
                 Maps *maps,
                 uint64_t pc,
-                /* out */ std::shared_ptr<wechat_backtrace::QutSections> &fut_sections);
+                /* out */ std::shared_ptr<wechat_backtrace::QutSectionsInMemory> &fut_sections);
 
         static std::shared_ptr<DebugJit> &Instance();
 
@@ -83,13 +83,11 @@ namespace wechat_backtrace {
         bool initialized_ = false;
         std::vector<unwindstack::Elf *> elf_list_;      // TODO
 
-        std::map<uint64_t, std::shared_ptr<wechat_backtrace::QutSectionsInMemory>> qut_in_memory_;
-
         std::mutex lock_;
 
-        std::mutex lock_for_qut_;
+        std::unique_ptr<QuickenInMemory<addr_t>> quicken_in_memory_;
 
-        const bool log = false;
+//        const bool log = false;
     };
 
 }  // namespace unwindstack

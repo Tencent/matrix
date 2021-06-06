@@ -1,6 +1,18 @@
-//
-// Created by Carl on 2020-09-21.
-//
+/*
+ * Tencent is pleased to support the open source community by making wechat-matrix available.
+ * Copyright (C) 2018 THL A29 Limited, a Tencent company. All rights reserved.
+ * Licensed under the BSD 3-Clause License (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      https://opensource.org/licenses/BSD-3-Clause
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #include <cstdint>
 #include <android-base/logging.h>
@@ -298,6 +310,34 @@ namespace wechat_backtrace {
         QUT_DEBUG_LOG("QuickenInterface::GenerateSingleQUTSections debug_frame_instructions %llu",
                       (ullint_t) debug_frame_instructions->size());
         PackEntriesToQutSections(debug_frame_instructions.get(), fut_sections);
+
+        return true;
+    }
+
+    template<typename AddressType>
+    bool
+    QuickenTableGenerator<AddressType>::GenerateSingleQUTSections(
+            DwarfSectionDecoder<AddressType> *section_decoder,
+            const unwindstack::DwarfFde *fde,
+            /* out */ QutSections *fut_sections
+    ) {
+        CHECK(section_decoder);
+        CHECK(fde);
+        CHECK(fut_sections);
+
+        auto instructions = make_shared<QutInstructionsOfEntries>();
+
+        estimate_memory_usage_ = 0;
+        memory_overwhelmed_ = false;
+
+        uint16_t regs_total = REGS_TOTAL;
+
+        section_decoder->ParseSingleFde(
+                fde, process_memory_, regs_total, instructions.get(),
+                estimate_memory_usage_, memory_overwhelmed_
+        );
+
+        PackEntriesToQutSections(instructions.get(), fut_sections);
 
         return true;
     }
@@ -734,6 +774,19 @@ namespace wechat_backtrace {
             const unwindstack::DwarfFde *fde,
             QutSections *fut_sections,
             bool gnu_debug_data
+    );
+
+
+    template bool QuickenTableGenerator<uint32_t>::GenerateSingleQUTSections(
+            DwarfSectionDecoder<uint32_t> *section_decoder,
+            const unwindstack::DwarfFde *fde,
+            /* out */ QutSections *fut_sections
+    );
+
+    template bool QuickenTableGenerator<uint64_t>::GenerateSingleQUTSections(
+            DwarfSectionDecoder<uint64_t> *section_decoder,
+            const unwindstack::DwarfFde *fde,
+            /* out */ QutSections *fut_sections
     );
 
 }  // namespace wechat_backtrace

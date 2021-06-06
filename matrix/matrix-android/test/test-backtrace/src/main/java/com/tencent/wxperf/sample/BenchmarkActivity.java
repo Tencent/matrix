@@ -197,7 +197,7 @@ public class BenchmarkActivity extends AppCompatActivity {
             long duration_sum = 0;
             long times = 0;
             Throwable throwable = null;
-            for (int t = 0; t < 100; t++) {
+            for (int t = 0; t < 10000; t++) {
                 long start = System.nanoTime();
                 throwable = new Throwable();
                 long end = System.nanoTime();

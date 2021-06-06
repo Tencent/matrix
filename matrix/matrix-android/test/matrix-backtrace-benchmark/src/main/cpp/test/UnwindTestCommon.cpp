@@ -25,7 +25,7 @@
 #define TEST_NanoSeconds_Start(timestamp) \
         long timestamp = 0; \
         if (!gBenchmarkWarmUp) { \
-            struct timespec tms; \
+            struct timespec tms {}; \
             if (clock_gettime(CLOCK_MONOTONIC, &tms)) { \
                 BENCHMARK_LOGE(UNWIND_TEST_TAG, "Err: Get time failed."); \
             } else { \
@@ -35,7 +35,7 @@
 
 #define TEST_NanoSeconds_End(tag, timestamp, frames) \
         if (!gBenchmarkWarmUp) { \
-            struct timespec tms; \
+            struct timespec tms {}; \
             if (clock_gettime(CLOCK_MONOTONIC, &tms)) { \
                 BENCHMARK_LOGE(UNWIND_TEST_TAG, "Err: Get time failed."); \
             } \
@@ -58,6 +58,7 @@ static UnwindTestMode gMode = DWARF_UNWIND;
 
 static bool gBenchmarkWarmUp = false;
 static bool gPrintStack = false;
+static bool gShrinkJavaStack = false;
 
 void set_unwind_mode(UnwindTestMode mode) {
     gMode = mode;
@@ -82,12 +83,13 @@ void benchmark_counting(uint64_t duration, size_t frame_size) {
 
 void dump_benchmark_calculation(const char *tag) {
     BENCHMARK_RESULT_LOGE(UNWIND_TEST_TAG,
-                   "%s Accumulated duration = %llu, times = %zu, avg = %llu, frame-size = %zu, per-frame = %llu.",
-                   tag, (unsigned long long) sTotalDuration, sBenchmarkTimes,
-                   (unsigned long long) (sTotalDuration / sBenchmarkTimes),
-                   sLastFrameSize,
-                   (unsigned long long) (((unsigned long long) (sTotalDuration / sBenchmarkTimes)) /
-                           sLastFrameSize));
+                          "%s Accumulated duration = %llu, times = %zu, avg = %llu, frame-size = %zu, per-frame = %llu.",
+                          tag, (unsigned long long) sTotalDuration, sBenchmarkTimes,
+                          (unsigned long long) (sTotalDuration / sBenchmarkTimes),
+                          sLastFrameSize,
+                          (unsigned long long) (
+                                  ((unsigned long long) (sTotalDuration / sBenchmarkTimes)) /
+                                  sLastFrameSize));
 }
 
 void dwarf_format_frame(const unwindstack::FrameData &frame, unwindstack::MapInfo *map_info,
@@ -174,7 +176,7 @@ void fp_format_frame(uptr pc, size_t num, bool is32Bit, std::string &data) {
             free(demangled_name);
         }
         if (stack_info.dli_saddr != 0) {
-            uptr offset = (uptr) stack_info.dli_saddr - (uptr) stack_info.dli_fbase;
+            uptr offset = pc - (uptr) stack_info.dli_saddr;
             data += android::base::StringPrintf("+%" PRId64, (uint64_t) offset);
         }
         data += ')';
@@ -182,67 +184,11 @@ void fp_format_frame(uptr pc, size_t num, bool is32Bit, std::string &data) {
 
 }
 
-void
-quicken_format_frame(wechat_backtrace::Frame &frame, unwindstack::MapInfo *map_info,
-                     unwindstack::Elf *elf, size_t num, bool is32Bit, std::string &function_name,
-                     uint64_t function_offset, std::string &data) {
-
-    if (is32Bit) {
-        data += android::base::StringPrintf("  #%02zu pc %08" PRIx64, num, (uint64_t) frame.rel_pc);
-    } else {
-        data += android::base::StringPrintf("  #%02zu pc %016" PRIx64, num,
-                                            (uint64_t) frame.rel_pc);
-    }
-
-    if (map_info == nullptr) {
-        // No valid map associated with this frame.
-        data += "  <unknown>";
-    } else if (elf != nullptr && !elf->GetSoname().empty()) {
-        data += "  " + elf->GetSoname();
-    } else if (!map_info->name.empty()) {
-        data += "  " + map_info->name;
-    } else {
-        data += android::base::StringPrintf("  <anonymous:%" PRIx64 ">", map_info->start);
-    }
-
-    if (map_info) {
-        if (map_info->elf_start_offset != 0) {
-            data += android::base::StringPrintf(" (offset 0x%" PRIx64 ")",
-                                                map_info->elf_start_offset);
-        }
-    }
-
-    if (!function_name.empty()) {
-        char *demangled_name = abi::__cxa_demangle(function_name.c_str(), nullptr, nullptr,
-                                                   nullptr);
-        if (demangled_name == nullptr) {
-            data += " (" + function_name;
-        } else {
-            data += " (";
-            data += demangled_name;
-            free(demangled_name);
-        }
-        if (function_offset != 0) {
-            data += android::base::StringPrintf("+%" PRId64, function_offset);
-        }
-        data += ')';
-    }
-
-    if (map_info != nullptr) {
-        std::string build_id = map_info->GetPrintableBuildID();
-        if (!build_id.empty()) {
-            data += " (BuildId: " + build_id + ')';
-        }
-    }
-}
-
 inline void print_java_unwind() {
     TEST_NanoSeconds_Start(nano);
     jobject throwable;
     java_unwind(throwable);
     TEST_NanoSeconds_End(java_unwind, nano, 20);
-//    pin_object(throwable);
-    // TODO print java stack
 }
 
 inline void print_eh_unwind() {
@@ -351,7 +297,8 @@ inline void print_fp_and_java_unwind() {
 
     for (size_t num = 0; num < frame_size; num++) {
         std::string formatted;
-        fp_format_frame(frames[num].pc, num, unwindstack::Regs::CurrentArch() == unwindstack::ARCH_ARM,
+        fp_format_frame(frames[num].pc, num,
+                        unwindstack::Regs::CurrentArch() == unwindstack::ARCH_ARM,
                         formatted);
 
         BENCHMARK_LOGE(FP_UNWIND_TAG, formatted.c_str(), "");
@@ -381,14 +328,15 @@ inline void print_fp_unwind() {
 
     for (size_t num = 0; num < frame_size; num++) {
         std::string formatted;
-        fp_format_frame(frames[num].pc, num, unwindstack::Regs::CurrentArch() == unwindstack::ARCH_ARM,
+        fp_format_frame(frames[num].pc, num,
+                        unwindstack::Regs::CurrentArch() == unwindstack::ARCH_ARM,
                         formatted);
 
         BENCHMARK_LOGE(FP_UNWIND_TAG, formatted.c_str(), "");
     }
 }
 
-inline void print_wechat_quicken_unwind() {
+inline void print_quicken_unwind() {
 
     TEST_NanoSeconds_Start(nano);
 
@@ -402,61 +350,82 @@ inline void print_wechat_quicken_unwind() {
 
     TEST_NanoSeconds_End(wechat_quicken_unwind, nano, frame_size);
 
-//    BENCHMARK_LOGE(WECHAT_BACKTRACE_TAG, "frames = %"
-//            PRIuPTR, frame_size);;
+    if (!gPrintStack) {
+        return;
+    }
+
+    wechat_backtrace::FrameElement stacktrace_elements[FRAME_ELEMENTS_MAX_SIZE];
+    size_t elements_size = 0;
+
+    get_stacktrace_elements(frames, frame_size, gShrinkJavaStack, stacktrace_elements,
+                            FRAME_ELEMENTS_MAX_SIZE, elements_size);
+
+    bool is_32bit = unwindstack::Regs::CurrentArch() == unwindstack::ARCH_ARM;
+    for (size_t i = 0; i < elements_size; i++) {
+        std::string data;
+        wechat_backtrace::quicken_frame_format(stacktrace_elements[i], i, is_32bit, data);
+        BENCHMARK_LOGE(WECHAT_BACKTRACE_TAG, data.c_str(), "");
+    }
+
+}
+
+inline void print_java_unwind_formatted() {
+
+    TEST_NanoSeconds_Start(nano);
+    jobjectArray traces;
+    JavaVM *vm = getJavaVM();
+    JNIEnv *env;
+    vm->GetEnv((void **) &env, JNI_VERSION_1_6);
+    java_get_stack_traces(env, traces);
+
+    size_t size = env->GetArrayLength(traces);
+    TEST_NanoSeconds_End(print_java_unwind_formatted, nano, size);
 
     if (!gPrintStack) {
         return;
     }
 
-    wechat_backtrace::UpdateLocalMaps();
-    std::shared_ptr<wechat_backtrace::Maps> quicken_maps = wechat_backtrace::Maps::current();
-    if (!quicken_maps) {
-        BENCHMARK_LOGE(DWARF_UNWIND_TAG, "Err: unable to get maps.");
+    for (int i = 0; i < size; i++) {
+        jstring string_obj = static_cast<jstring>(env->GetObjectArrayElement(traces, i));
+        const char *trace = env->GetStringUTFChars(string_obj, 0);
+        BENCHMARK_LOGE("Java-Print-StackTrace", trace, "");
+        env->ReleaseStringUTFChars(string_obj, trace);
+        env->DeleteLocalRef(string_obj);
+    }
+}
+
+inline void print_quicken_unwind_stacktrace() {
+
+    TEST_NanoSeconds_Start(nano);
+
+    uptr regs[QUT_MINIMAL_REG_SIZE];
+    GetQuickenMinimalRegs(regs);
+    wechat_backtrace::Frame frames[FRAME_MAX_SIZE];
+    wechat_backtrace::FrameElement stacktrace_elements[FRAME_ELEMENTS_MAX_SIZE];
+    uptr frame_size = 0;
+    size_t elements_size = 0;
+
+    wechat_backtrace::BACKTRACE_FUNC_WRAPPER(quicken_unwind)(regs, frames, FRAME_MAX_SIZE,
+                                                             frame_size);
+    get_stacktrace_elements(
+            frames, frame_size, true, stacktrace_elements,
+            FRAME_ELEMENTS_MAX_SIZE, elements_size);
+
+    TEST_NanoSeconds_End(print_quicken_unwind_stacktrace, nano, frame_size);
+
+    if (!gPrintStack) {
         return;
     }
-    auto process_memory = unwindstack::Memory::CreateProcessMemory(getpid());
 
-    auto dex_debug = wechat_backtrace::DebugDexFiles::Instance();
-    auto jit_debug = wechat_backtrace::DebugJit::Instance();
-    for (size_t num = 0; num < frame_size; num++) {
-
-        unwindstack::MapInfo *map_info = quicken_maps->Find(frames[num].pc);
-        std::string function_name = "";
-        uint64_t function_offset = 0;
-        unwindstack::Elf *elf = nullptr;
-        if (map_info) {
-
-            if (frames[num].is_dex_pc) {
-                frames[num].rel_pc = frames[num].pc - map_info->start;
-
-                dex_debug->GetMethodInformation(quicken_maps.get(), map_info, frames[num].pc,
-                                                     &function_name,
-                                                     &function_offset);
-            } else {
-
-                elf = map_info->GetElf(process_memory,
-                                       unwindstack::Regs::CurrentArch());
-
-                elf->GetFunctionName(frames[num].rel_pc, &function_name, &function_offset);
-                if (!elf->valid()) {
-                    unwindstack::Elf *jit_elf = jit_debug->GetElf(quicken_maps.get(),
-                                                                 frames[num].pc);
-                    if (jit_elf) {
-                        jit_elf->GetFunctionName(frames[num].pc, &function_name,
-                                                 &function_offset);
-                    }
-                }
-            }
+    {
+        bool is_32bit = unwindstack::Regs::CurrentArch() == unwindstack::ARCH_ARM;
+        for (size_t i = 0; i < elements_size; i++) {
+            std::string data;
+            wechat_backtrace::quicken_frame_format(stacktrace_elements[i], i, is_32bit, data);
+            BENCHMARK_LOGE(WECHAT_BACKTRACE_TAG, data.c_str(), "");
         }
-
-        std::string formatted;
-        quicken_format_frame(frames[num], map_info, elf, num,
-                             unwindstack::Regs::CurrentArch() == unwindstack::ARCH_ARM,
-                             function_name, function_offset, formatted);
-
-        BENCHMARK_LOGE(WECHAT_BACKTRACE_TAG, formatted.c_str(), "");
     }
+
 }
 
 void leaf_func(const char *testcase) {
@@ -471,7 +440,7 @@ void leaf_func(const char *testcase) {
             print_fp_and_java_unwind();
             break;
         case WECHAT_QUICKEN_UNWIND:
-            print_wechat_quicken_unwind();
+            print_quicken_unwind();
             break;
         case DWARF_UNWIND:
             print_dwarf_unwind();
@@ -481,6 +450,12 @@ void leaf_func(const char *testcase) {
             break;
         case COMM_EH_UNWIND:
             print_eh_unwind();
+            break;
+        case JAVA_UNWIND_PRINT_STACKTRACE:
+            print_java_unwind_formatted();
+            break;
+        case QUICKEN_UNWIND_PRINT_STACKTRACE:
+            print_quicken_unwind_stacktrace();
             break;
         default:
             BENCHMARK_LOGE(UNWIND_TEST_TAG, "Unknown test %s with mode %d.", testcase, gMode);
@@ -497,10 +472,12 @@ void benchmark_warm_up() {
     for (size_t i = 0; i < 100; i++) {
         print_fp_unwind();
         print_fp_and_java_unwind();
-        print_wechat_quicken_unwind();
+        print_quicken_unwind();
         print_dwarf_unwind();
         print_java_unwind();
         print_eh_unwind();
+        print_java_unwind_formatted();
+        print_quicken_unwind_stacktrace();
     }
     gBenchmarkWarmUp = false;
     gPrintStack = preValue;

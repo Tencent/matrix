@@ -1,14 +1,14 @@
 /*
- * Copyright (C) 2017 The Android Open Source Project
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
+ * Tencent is pleased to support the open source community by making wechat-matrix available.
+ * Copyright (C) 2018 THL A29 Limited, a Tencent company. All rights reserved.
+ * Licensed under the BSD 3-Clause License (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://opensource.org/licenses/BSD-3-Clause
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
@@ -22,6 +22,7 @@
 
 #include <unwindstack/Elf.h>
 #include <unwindstack/Maps.h>
+#include <android-base/macros.h>
 
 #include "DebugJit.h"
 #include "MemoryRange.h"
@@ -35,8 +36,8 @@ namespace wechat_backtrace {
 
     using namespace unwindstack;
 
-    DEFINE_STATIC_LOCAL(std::shared_ptr<DebugJit>, sInstance_, );
-    DEFINE_STATIC_LOCAL(std::mutex, instance_lock_, );
+    DEFINE_STATIC_LOCAL(std::shared_ptr<DebugJit>, sInstance_,);
+    DEFINE_STATIC_LOCAL(std::mutex, instance_lock_,);
 
     BACKTRACE_EXPORT
     std::shared_ptr<DebugJit> &DebugJit::Instance() {
@@ -48,7 +49,7 @@ namespace wechat_backtrace {
             return sInstance_;
         } else {
             auto process_memory = unwindstack::Memory::CreateProcessMemory(getpid());
-            sInstance_.reset(new DebugJit(process_memory));
+            sInstance_ = std::make_shared<DebugJit>(process_memory);
         }
         return sInstance_;
     }
@@ -95,10 +96,9 @@ namespace wechat_backtrace {
     BACKTRACE_EXPORT
     DebugJit::DebugJit(std::shared_ptr<Memory> &memory) : DebugGlobal(memory) {
         SetArch(unwindstack::Regs::CurrentArch());
+        quicken_in_memory_.reset(new QuickenInMemory<addr_t>());
+        search_libs_.push_back("libart.so");
     }
-
-//    DebugJit::DebugJit(std::shared_ptr<Memory> &memory, std::vector<std::string> &search_libs)
-//            : DebugGlobal(memory, search_libs) {}
 
     BACKTRACE_EXPORT
     DebugJit::~DebugJit() {
@@ -243,92 +243,33 @@ namespace wechat_backtrace {
                 return elf;
             }
         }
+
+        QUT_LOG("DebugJit entry_addr_ %llx", entry_addr_);
         return nullptr;
     }
 
     bool DebugJit::GetFutSectionsInMemory(
             Maps *maps,
             uint64_t pc,
-            /* out */ std::shared_ptr<wechat_backtrace::QutSections> &fut_sections) {
+            /* out */ std::shared_ptr<wechat_backtrace::QutSectionsInMemory> &fut_sections) {
 
-        {
-            std::lock_guard<std::mutex> guard(lock_for_qut_);
-
-            if (log) {
-                for (auto it : qut_in_memory_) {
-                    QUT_LOG("GetFutSectionsInMemory dump cache qut [%llx, %llx]", it.second->pc_start, it.second->pc_end);
-                }
-            }
-
-            if (qut_in_memory_.size() > 0) {
-                auto it = qut_in_memory_.upper_bound(pc);
-                if (it != qut_in_memory_.begin()) {
-                    it--;
-                }
-
-                QUT_LOG("GetFutSectionsInMemory found cache qut pc %llx in range of fde[%llx, %llx]",
-                        pc, it->second->pc_start, it->second->pc_end);
-                if (pc >= it->second->pc_start && pc <= it->second->pc_end) {
-                    fut_sections = it->second;
-                    return true;
-                }
-            }
-        }
-
-        QUT_LOG("GetFutSectionsInMemory miss cache qut pc %llx", pc);
-
-        unwindstack::Elf *elf = GetElf(maps, pc);
-        const DwarfFde *fde;
-
-        wechat_backtrace::FrameInfo debug_frame_info;
-        Memory *gnu_debug_data_memory = nullptr;
-        if (elf->gnu_debugdata_interface()) {
-            gnu_debug_data_memory = elf->gnu_debugdata_interface()->memory();
-            debug_frame_info = {
-                    .offset_ = elf->gnu_debugdata_interface()->debug_frame_offset(),
-                    .section_bias_ = elf->gnu_debugdata_interface()->debug_frame_section_bias(),
-                    .size_ = elf->gnu_debugdata_interface()->debug_frame_size(),
-            };
-            fde = elf->gnu_debugdata_interface()->debug_frame()->GetFdeFromPc(pc);
-        } else {
-            debug_frame_info = {
-                    .offset_ = elf->interface()->debug_frame_offset(),
-                    .section_bias_ = elf->interface()->debug_frame_section_bias(),
-                    .size_ = elf->interface()->debug_frame_size(),
-            };
-            fde = elf->interface()->debug_frame()->GetFdeFromPc(pc);
-        }
-
-        if (fde == nullptr) {
+        if (UNLIKELY(!quicken_in_memory_)) {
             return false;
         }
 
-        wechat_backtrace::QuickenTableGenerator<wechat_backtrace::addr_t>
-                generator(elf->memory(), gnu_debug_data_memory, memory_.get());
-
-        std::shared_ptr<wechat_backtrace::QutSectionsInMemory> fut_sections_sp
-                = std::make_shared<wechat_backtrace::QutSectionsInMemory>();
-        bool ret = generator.GenerateSingleQUTSections(debug_frame_info, fde, fut_sections_sp.get(),
-                                                       gnu_debug_data_memory != nullptr);
-        if (ret) {
-
-            QUT_LOG("GetFutSectionsInMemory found pc %llx in range of fde[%llx, %llx]", pc, fde->pc_start, fde->pc_end);
-
-            if (log) {
-                for (size_t i = 0; i < fut_sections_sp->idx_size; i += 1) {
-                    QUT_LOG("GetFutSectionsInMemory dump fut sections -> %llx", fut_sections_sp->quidx[i]);
-                }
-            }
-
-            fut_sections_sp->pc_start = fde->pc_start;
-            fut_sections_sp->pc_end = fde->pc_end;
-            fut_sections = fut_sections_sp;
-
-            std::lock_guard<std::mutex> guard(lock_for_qut_);
-            qut_in_memory_[fde->pc_start] = fut_sections_sp;
+        if (quicken_in_memory_->FindInCache(pc, fut_sections)) {
             return true;
         }
-        return false;
+
+        unwindstack::Elf *elf = GetElf(maps, pc);
+
+        if (!elf) {
+            return false;
+        }
+
+        return quicken_in_memory_->GenerateFutSectionsInMemoryForJIT(
+                elf, memory_.get(), pc, fut_sections);
+
     }
 
 

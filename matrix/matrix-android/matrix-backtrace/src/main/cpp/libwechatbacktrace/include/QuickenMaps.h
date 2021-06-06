@@ -1,3 +1,19 @@
+/*
+ * Tencent is pleased to support the open source community by making wechat-matrix available.
+ * Copyright (C) 2018 THL A29 Limited, a Tencent company. All rights reserved.
+ * Licensed under the BSD 3-Clause License (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      https://opensource.org/licenses/BSD-3-Clause
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 #ifndef _LIBWECHATBACKTRACE_QUICKEN_MAPS_H
 #define _LIBWECHATBACKTRACE_QUICKEN_MAPS_H
 
@@ -5,6 +21,7 @@
 #include <unordered_map>
 #include "QuickenInterface.h"
 #include "QuickenMemory.h"
+#include "ElfWrapper.h"
 
 namespace wechat_backtrace {
 
@@ -24,9 +41,12 @@ namespace wechat_backtrace {
     class QuickenMapInfo : public unwindstack::MapInfo {
 
     public:
-        QuickenMapInfo(MapInfo *prevMap, MapInfo *prevRealMap, uint64_t start, uint64_t end,
+        QuickenMapInfo(QuickenMapInfo *prevMap, QuickenMapInfo *prevRealMap, uint64_t start,
+                       uint64_t end,
                        uint64_t offset, uint64_t flags, const char *name) :
-                MapInfo(prevMap, prevRealMap, start, end, offset, flags, name) {};
+                MapInfo(prevMap, prevRealMap, start, end, offset, flags, name) {
+            if (prevRealMap != nullptr) prevRealMap->next_real_map_ = this;
+        };
 
         QuickenInterface *
         GetQuickenInterface(
@@ -53,6 +73,9 @@ namespace wechat_backtrace {
                 const uint64_t elf_start_offset
         );
 
+        static void
+        FillQuickenInterfaceForGenerate(QuickenInterface *interface, unwindstack::Elf *elf);
+
         static std::unique_ptr<unwindstack::Elf>
         CreateElf(
                 const std::string &so_path,
@@ -66,7 +89,16 @@ namespace wechat_backtrace {
                 const uint64_t elf_start_offset
         );
 
+        unwindstack::Memory *
+        CreateQuickenMemory(const std::shared_ptr<unwindstack::Memory> &process_memory,
+                uint64_t &range_offset_end);
+
+        unwindstack::Memory *
+        CreateFileQuickenMemory(const std::shared_ptr<unwindstack::Memory> &process_memory);
+
         uint64_t GetRelPc(uint64_t pc);
+
+        unwindstack::Elf * GetLightElf();
 
         std::shared_ptr<QuickenInterface> quicken_interface_;
 
@@ -74,14 +106,20 @@ namespace wechat_backtrace {
 
         uint64_t elf_load_bias_ = 0;
 
-    protected:
+        std::string name_without_delete;
 
-        unwindstack::Memory *GetFileQuickenMemory();
+        bool maybe_java = false;
+
+        const bool quicken_in_memory_enable_ = true;
+
+        QuickenMapInfo *next_real_map_ = nullptr;
+
+    protected:
+        unwindstack::Memory *CreateFileQuickenMemory();
+
+        unwindstack::Memory *CreateFileQuickenMemoryImpl();
 
         bool InitFileMemoryFromPreviousReadOnlyMap(QuickenMemoryFile *memory);
-
-        unwindstack::Memory *
-        CreateQuickenMemory(const std::shared_ptr<unwindstack::Memory> &process_memory);
 
         static std::mutex &lock_;
 
@@ -113,11 +151,11 @@ namespace wechat_backtrace {
 
         Maps &operator=(Maps &&) = default;
 
-        size_t GetSize();
+        size_t GetSize() const;
 
-        MapInfoPtr Find(uint64_t pc);
+        MapInfoPtr Find(uint64_t pc) const;
 
-        std::vector<MapInfoPtr> FindMapInfoByName(std::string soname);
+        std::vector<MapInfoPtr> FindMapInfoByName(std::string soname) const;
 
         static bool Parse();
 
@@ -132,7 +170,7 @@ namespace wechat_backtrace {
         void ReleaseLocalMaps();
 
         static std::mutex &maps_lock_;
-        static std::shared_ptr<Maps>& current_maps_;
+        static std::shared_ptr<Maps> &current_maps_;
         static size_t latest_maps_capacity_;
 
     private:

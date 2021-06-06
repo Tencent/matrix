@@ -99,17 +99,6 @@ void Unwinder::FillInDexFrame() {
 FrameData* Unwinder::FillInFrame(MapInfo* map_info, Elf* elf, uint64_t rel_pc,
                                  uint64_t pc_adjustment) {
 
-  if (GetFastFlag()) {
-    size_t frame_num = frames_.size();
-    frames_.resize(frame_num + 1);
-    FrameData* frame = &frames_.at(frame_num);
-    frame->num = frame_num;
-    frame->sp = regs_->sp();
-    frame->rel_pc = rel_pc - pc_adjustment;
-    frame->pc = regs_->pc() - pc_adjustment;
-    return frame;
-  }
-
   size_t frame_num = frames_.size();
   frames_.resize(frame_num + 1);
   FrameData* frame = &frames_.at(frame_num);
@@ -176,23 +165,11 @@ void Unwinder::Unwind(const std::vector<std::string>* initial_map_names_to_skip,
 
   bool return_address_attempt = false;
   bool adjust_pc = false;
-  MapInfo* last_map_info = nullptr;
-  bool fast_flag = GetFastFlag();
   for (; frames_.size() < max_frames_;) {
     uint64_t cur_pc = regs_->pc();
     uint64_t cur_sp = regs_->sp();
 
-    MapInfo *map_info = nullptr;
-    if (fast_flag) {
-      if (last_map_info && last_map_info->start <= cur_pc && last_map_info->end > cur_pc) {
-        map_info = last_map_info;
-      } else {
-        MapInfo *map_info = maps_->Find(regs_->pc());
-        last_map_info = map_info;
-      }
-    } else {
-      map_info = maps_->Find(regs_->pc());
-    }
+    MapInfo *map_info = maps_->Find(regs_->pc());
 
     uint64_t pc_adjustment = 0;
     uint64_t step_pc;

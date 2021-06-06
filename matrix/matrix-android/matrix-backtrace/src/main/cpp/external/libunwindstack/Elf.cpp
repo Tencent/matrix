@@ -32,7 +32,7 @@
 #include <unwindstack/Regs.h>
 
 #include "ElfInterfaceArm.h"
-#include "Symbols.h"
+#include "include/unwindstack/Symbols.h"
 
 namespace unwindstack {
 

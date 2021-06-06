@@ -1,9 +1,22 @@
-//
-// Created by Carl on 2020-09-21.
-//
+/*
+ * Tencent is pleased to support the open source community by making wechat-matrix available.
+ * Copyright (C) 2018 THL A29 Limited, a Tencent company. All rights reserved.
+ * Licensed under the BSD 3-Clause License (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      https://opensource.org/licenses/BSD-3-Clause
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 #include <vector>
 #include <utility>
-#include <stdio.h>
+#include <cstdio>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -17,6 +30,7 @@
 #include <sys/mman.h>
 #include <QuickenJNI.h>
 #include <utime.h>
+#include <QuickenTableGenerator.h>
 #include "QuickenTableManager.h"
 #include "Log.h"
 
@@ -36,7 +50,7 @@ namespace wechat_backtrace {
 
     inline string
     ToTempQutFileName(const string &saving_path, const string &soname, const string &build_id) {
-        time_t seconds = time(NULL);
+        time_t seconds = time(nullptr);
         return saving_path + FILE_SEPERATOR + soname + "." + build_id + "_temp_" +
                to_string(seconds);
     }
@@ -47,7 +61,7 @@ namespace wechat_backtrace {
     }
 
     inline void RenameToMalformed(const string &qut_file_name) {
-        time_t seconds = time(NULL);
+        time_t seconds = time(nullptr);
         string malformed = qut_file_name + "_malformed_" + to_string(seconds);
         rename(qut_file_name.c_str(), malformed.c_str());
     }
@@ -75,7 +89,7 @@ namespace wechat_backtrace {
 
         if (fd >= 0) {
 
-            struct stat file_stat;
+            struct stat file_stat{};
             if (fstat(fd, &file_stat) != 0 || file_stat.st_size < 0) {
                 close(fd);
                 return FileStateError;
@@ -89,7 +103,7 @@ namespace wechat_backtrace {
                 return FileTooShort;
             }
 
-            char *data = static_cast<char *>(mmap(NULL, file_size, PROT_READ, MAP_SHARED,
+            char *data = static_cast<char *>(mmap(nullptr, file_size, PROT_READ, MAP_SHARED,
                                                   fd, 0));
             if (data == MAP_FAILED) {
                 munmap(data, file_size);
@@ -157,7 +171,7 @@ namespace wechat_backtrace {
 
             if (!testOnly) {
 
-                QutSectionsPtr qut_sections_tmp = new QutSections();
+                auto qut_sections_tmp = new QutSections();
 
                 qut_sections_tmp->load_from_file = true;
                 qut_sections_tmp->mmap_ptr = data;
@@ -181,7 +195,7 @@ namespace wechat_backtrace {
             close(fd);
 
             // change last modified time, to prevent self clean-up logic.
-            utime(qut_file_name.c_str(), NULL);
+            utime(qut_file_name.c_str(), nullptr);
 
             return NoneError;
         } else {
@@ -277,13 +291,33 @@ namespace wechat_backtrace {
 
     void
     QuickenTableManager::EraseQutRequestingByHash(const string &hash) {
-        lock_guard<mutex> guard(lock_);
-        auto it = qut_sections_hash_to_build_id_.find(hash);
-        if (it != qut_sections_hash_to_build_id_.end()) {
-            qut_sections_requesting_.erase(it->second);
-            QUT_LOG("Erase qut requesting build id %s.", it->second.c_str());
+        std::shared_ptr<QuickenInterface> interface;
+        {
+            lock_guard<mutex> guard(lock_);
+            auto it = qut_sections_hash_to_build_id_.find(hash);
+            if (it != qut_sections_hash_to_build_id_.end()) {
+                qut_sections_requesting_.erase(it->second);
+                QUT_LOG("Erase qut requesting build id %s.", it->second.c_str());
+            }
+            qut_sections_hash_to_build_id_.erase(hash);
+
+            interface = qut_sections_hash_to_interface_[hash];
+            qut_sections_hash_to_interface_.erase(hash);
         }
-        qut_sections_hash_to_build_id_.erase(hash);
+
+        QUT_LOG("EraseQutRequestingByHash, hash %s.", hash.c_str());
+        if (interface) {
+            QutFileError ret = interface->TryInitQuickenTable();
+            (void) ret;
+            QUT_LOG("Refresh requested qut ret %llu, hash %s.", (ullint_t)ret, hash.c_str());
+        }
+    }
+
+    void
+    QuickenTableManager::RecordQutRequestInterface(std::shared_ptr<QuickenInterface> &self_ptr) {
+        QUT_LOG("RecordQutRequestInterface, hash %s.", self_ptr->GetHash().c_str());
+        lock_guard<mutex> guard(lock_);
+        qut_sections_hash_to_interface_[self_ptr->GetHash()] = self_ptr;
     }
 
     QutFileError
@@ -318,7 +352,7 @@ namespace wechat_backtrace {
     bool
     QuickenTableManager::CheckIfQutFileExistsWithHash(const string &soname, const string &hash) {
         string symbolic_qut_file = ToSymbolicQutFileName(sSavingPath, soname, hash);
-        struct stat buf;
+        struct stat buf{};
         return stat(symbolic_qut_file.c_str(), &buf) == 0;
     }
 
@@ -326,7 +360,7 @@ namespace wechat_backtrace {
     QuickenTableManager::CheckIfQutFileExistsWithBuildId(const string &soname,
                                                          const string &build_id) {
         string qut_file = ToQutFileName(sSavingPath, soname, build_id);
-        struct stat buf;
+        struct stat buf{};
         return stat(qut_file.c_str(), &buf) == 0;
     }
 
@@ -341,8 +375,8 @@ namespace wechat_backtrace {
         {
             lock_guard<mutex> guard(lock_);
             if (qut_sections_insert == nullptr ||
-                    (!only_save_file && !InsertQutSectionsNoLock(
-                         soname, hash, build_id, qut_sections_insert, false))) {
+                (!only_save_file && !InsertQutSectionsNoLock(
+                        soname, hash, build_id, qut_sections_insert, false))) {
                 QUT_LOG("qut_sections_insert %llx", (ullint_t) qut_sections_insert);
                 return InsertNewQutFailed;
             }

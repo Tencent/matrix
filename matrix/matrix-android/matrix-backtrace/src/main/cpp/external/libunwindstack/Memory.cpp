@@ -102,12 +102,6 @@ static size_t ProcessVmRead(pid_t pid, uint64_t remote_src, void* dst, size_t le
   return total_read;
 }
 
-static inline size_t ProcessLocalVmRead(pid_t pid, uint64_t remote_src, void* dst, size_t len) {
-  (void) pid;
-  memcpy(dst, reinterpret_cast<const void *>(remote_src), len);
-  return len;
-}
-
 static bool PtraceReadLong(pid_t pid, uint64_t addr, long* value) {
   // ptrace() returns -1 and sets errno when the operation fails.
   // To disambiguate -1 from a valid result, we clear errno beforehand.
@@ -342,11 +336,7 @@ size_t MemoryRemote::Read(uint64_t addr, void* dst, size_t size) {
 }
 
 size_t MemoryLocal::Read(uint64_t addr, void* dst, size_t size) {
-  if (GetFastFlag()) {
-    return ProcessLocalVmRead(getpid(), addr, dst, size);
-  } else {
-    return ProcessVmRead(getpid(), addr, dst, size);
-  }
+  return ProcessVmRead(getpid(), addr, dst, size);
 }
 
 #if !defined(ANDROID_EXPERIMENTAL_MTE)
