@@ -177,6 +177,17 @@ At this point, Matrix has been integrated into the app and is beginning to colle
 - **Easy-to-use.** Use out of box (unit tests as example).
 - **More feature.** Flexible extending with base and utils APIs.
 
+#### Memory Hook
+
+- A native memory leak detection tool for Android.
+- **Non-invasive.** It is based on PLT-hook([iqiyi/xHook](https://github.com/iqiyi/xHook)), so we do NOT need to recompile the native libraries.
+- **High performance.** we use WeChat-Backtrace for fast unwinding which supports both aarch64 and armeabi-v7a architectures.
+
+#### Pthread Hook
+
+- A Java and native thread leak detection tool for Android.
+- **Non-invasive.** It is based on PLT-hook([iqiyi/xHook](https://github.com/iqiyi/xHook)), so we do NOT need to recompile the native libraries.
+
 
 ## Getting Started
 ***The JCenter repository will stop service on February 1, 2022. So we uploaded Matrix(since 0.8.0) to the MavenCentral repository.***
@@ -205,6 +216,7 @@ At this point, Matrix has been integrated into the app and is beginning to colle
     implementation group: "com.tencent.matrix", name: "matrix-io-canary", version: MATRIX_VERSION, changing: true
     implementation group: "com.tencent.matrix", name: "matrix-sqlite-lint-android-sdk", version: MATRIX_VERSION, changing: true
     implementation group: "com.tencent.matrix", name: "matrix-battery-canary", version: MATRIX_VERSION, changing: true
+    implementation group: "com.tencent.matrix", name: "matrix-hooks", version: MATRIX_VERSION, changing: true
   }
   
   apply plugin: 'com.tencent.matrix-plugin'
@@ -545,8 +557,19 @@ Matrix-android 当前监控范围包括：应用安装包大小，帧率变化�
 - 接入简单，开箱即用
 - 预留 Base 类和 Utility 工具以便扩展监控特性
 
+#### Memory Hook
+
+- 一个检测 Android native 内存泄漏的工具
+- 无侵入，基于 PLT-hook([iqiyi/xHook](https://github.com/iqiyi/xHook))，无需重编 native 库
+- 高性能，基于 Wechat-Backtrace 进行快速 unwind 堆栈，支持 aarch64 和 armeabi-v7a 架构
+
+#### Pthread Hook
+
+- 一个检测 Android Java 和 native 线程泄漏的工具
+- 无侵入，基于 PLT-hook([iqiyi/xHook](https://github.com/iqiyi/xHook))，无需重编 native 库
 
 ## 使用方法
+
 ***由于 JCenter 服务将于 2022 年 2 月 1 日下线，我们已将 Matrix 新版本（>= 0.8.0) maven repo 发布至 MavenCentral。***
 
 1. 在你项目根目录下的 gradle.properties 中配置要依赖的 Matrix 版本号，如：
@@ -572,6 +595,7 @@ Matrix-android 当前监控范围包括：应用安装包大小，帧率变化�
     implementation group: "com.tencent.matrix", name: "matrix-io-canary", version: MATRIX_VERSION, changing: true
     implementation group: "com.tencent.matrix", name: "matrix-sqlite-lint-android-sdk", version: MATRIX_VERSION, changing: true
     implementation group: "com.tencent.matrix", name: "matrix-battery-canary", version: MATRIX_VERSION, changing: true
+    implementation group: "com.tencent.matrix", name: "matrix-hooks", version: MATRIX_VERSION, changing: true
   }
 
   apply plugin: 'com.tencent.matrix-plugin'
