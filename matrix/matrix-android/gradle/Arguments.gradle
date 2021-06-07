@@ -1,0 +1,11 @@
+gradle.ext.enableLog = {
+    return gradle.startParameter.projectProperties.containsKey("EnableLog" as String)
+}
+
+gradle.ext.enableStatistic = {
+    return gradle.startParameter.projectProperties.containsKey("EnableStatistic" as String)
+}
+
+gradle.ext.forceArm32 = {
+    return gradle.startParameter.projectProperties.containsKey("forceArm32" as String)
+}

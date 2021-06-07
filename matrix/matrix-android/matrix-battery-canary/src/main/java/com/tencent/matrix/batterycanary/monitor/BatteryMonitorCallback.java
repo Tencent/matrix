@@ -4,10 +4,6 @@ import android.content.ComponentName;
 import android.os.HandlerThread;
 import android.os.Process;
 import android.os.SystemClock;
-import androidx.annotation.CallSuper;
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.annotation.VisibleForTesting;
 import android.text.TextUtils;
 import android.util.LongSparseArray;
 
@@ -30,6 +26,8 @@ import com.tencent.matrix.batterycanary.monitor.feature.LooperTaskMonitorFeature
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Delta;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Entry.BeanEntry;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Entry.ListEntry;
+import com.tencent.matrix.batterycanary.monitor.feature.NotificationMonitorFeature;
+import com.tencent.matrix.batterycanary.monitor.feature.NotificationMonitorFeature.BadNotification;
 import com.tencent.matrix.batterycanary.monitor.feature.TrafficMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.TrafficMonitorFeature.RadioStatSnapshot;
 import com.tencent.matrix.batterycanary.monitor.feature.WakeLockMonitorFeature;
@@ -45,6 +43,11 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
+import androidx.annotation.CallSuper;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.annotation.VisibleForTesting;
+
 /**
  * @author Kaede
  * @since 2020/10/27
@@ -55,6 +58,7 @@ public interface BatteryMonitorCallback extends
         WakeLockMonitorFeature.WakeLockListener,
         AlarmMonitorFeature.AlarmListener,
         JiffiesMonitorFeature.JiffiesListener,
+        NotificationMonitorFeature.NotificationListener,
         AppStatMonitorFeature.AppStatListener {
 
     @SuppressWarnings({"NotNullFieldNotInitialized", "SpellCheckingInspection", "unused"})
@@ -235,13 +239,17 @@ public interface BatteryMonitorCallback extends
         }
 
         @Override
+        public void onNotify(@NonNull BadNotification notification) {
+        }
+
+        @Override
         public void onWatchingThreads(ListEntry<? extends ThreadJiffiesEntry> threadJiffiesList) {
             Printer printer = new Printer();
             printer.writeTitle();
             printer.append("| Thread WatchDog").append("\n");
 
             printer.createSection("jiffies(" + threadJiffiesList.getList().size() + ")");
-            printer.writeLine("desc", "(status)name(pid)\ttotal");
+            printer.writeLine("desc", "(status)name(tid)\ttotal");
             for (ThreadJiffiesEntry threadJiffies : threadJiffiesList.getList()) {
                 long entryJffies = threadJiffies.get();
                 printer.append("|   -> (").append(threadJiffies.isNewAdded ? "+" : "~").append("/").append(threadJiffies.stat).append(")")
@@ -507,7 +515,7 @@ public interface BatteryMonitorCallback extends
 
                 // jiffies sections
                 printer.createSection("jiffies(" + delta.dlt.threadEntries.getList().size() + ")");
-                printer.writeLine("desc", "(status)name(pid)\tavg/total");
+                printer.writeLine("desc", "(status)name(tid)\tavg/total");
                 printer.writeLine("inc_thread_num", String.valueOf(delta.dlt.threadNum.get()));
                 printer.writeLine("cur_thread_num", String.valueOf(delta.end.threadNum.get()));
                 for (ThreadJiffiesEntry threadJiffies : delta.dlt.threadEntries.getList().subList(0, Math.min(delta.dlt.threadEntries.getList().size(), 8))) {
@@ -714,7 +722,7 @@ public interface BatteryMonitorCallback extends
 
             public void dump() {
                 try {
-                    MatrixLog.i(TAG, "\t\n" + sb.toString());
+                    MatrixLog.i(TAG, "%s", "\t\n" + sb.toString());
                 } catch (Throwable e) {
                     MatrixLog.printErrStackTrace(TAG, e, "log format error");
                 }

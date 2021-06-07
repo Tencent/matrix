@@ -1224,6 +1224,7 @@ CollSeq *sqlite3LocateCollSeq(Parse *pParse, const char *zName, int nName){
 /*   } */
 
 /*   return pColl; */
+  return NULL;
 }
 
 

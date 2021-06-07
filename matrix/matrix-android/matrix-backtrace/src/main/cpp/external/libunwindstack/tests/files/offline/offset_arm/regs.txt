@@ -1,0 +1,16 @@
+r0: 5
+r1: 5
+r2: 4
+r3: 1
+r4: 73804b6b
+r5: f3c9c000
+r6: 2ea09ac
+r7: 10624dd3
+r8: f41b5d8c
+r9: f3c9c000
+r10: 6f17
+r11: f3c94048
+ip: 2ea0807
+sp: f43d2ccc
+lr: 2e55fef
+pc: 2e55fa0

@@ -17,6 +17,8 @@
 package com.tencent.matrix.batterycanary.utils;
 
 import android.content.Context;
+import androidx.test.InstrumentationRegistry;
+import androidx.test.ext.junit.runners.AndroidJUnit4;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -29,9 +31,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
-
-import androidx.test.InstrumentationRegistry;
-import androidx.test.ext.junit.runners.AndroidJUnit4;
 
 import static com.tencent.matrix.batterycanary.utils.TimeBreaker.TimePortions;
 import static com.tencent.matrix.batterycanary.utils.TimeBreaker.configurePortions;

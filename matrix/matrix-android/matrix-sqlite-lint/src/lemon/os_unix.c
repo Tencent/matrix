@@ -1529,7 +1529,7 @@ static int unixUnlock(OsFile *id, int locktype){
 /*
 ** Close a file.
 */
-/* static int unixClose(OsFile **pId){ */
+static int unixClose(OsFile **pId){
 /*   unixFile *id = (unixFile*)*pId; */
 
 /*   if( !id ) return SQLITE_OK; */
@@ -1568,7 +1568,8 @@ static int unixUnlock(OsFile *id, int locktype){
 /*   sqlite3ThreadSafeFree(id); */
 /*   *pId = 0; */
 /*   return SQLITE_OK; */
-/* } */
+    return SQLITE_OK;
+}
 
 /*
 ** Turn a relative pathname into a full pathname.  Return a pointer
@@ -1647,7 +1648,7 @@ static int unixLockState(OsFile *id){
 ** for unix.
 */
 static const IoMethod sqlite3UnixIoMethod = {
-  //unixClose,
+  unixClose,
   unixOpenDirectory,
   unixRead,
   unixWrite,

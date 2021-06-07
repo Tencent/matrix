@@ -89,17 +89,29 @@ public class TracePlugin extends Plugin {
                     }
                 }
 
-                AppMethodBeat.getInstance().onStart();
+                if (traceConfig.isAppMethodBeatEnable()) {
+                    AppMethodBeat.getInstance().onStart();
+                } else {
+                    AppMethodBeat.getInstance().forceStop();
+                }
 
                 UIThreadMonitor.getMonitor().onStart();
 
-                anrTracer.onStartTrace();
+                if (traceConfig.isAnrTraceEnable()) {
+                    anrTracer.onStartTrace();
+                }
 
-                frameTracer.onStartTrace();
+                if (traceConfig.isFPSEnable()) {
+                    frameTracer.onStartTrace();
+                }
 
-                evilMethodTracer.onStartTrace();
+                if (traceConfig.isEvilMethodTraceEnable()) {
+                    evilMethodTracer.onStartTrace();
+                }
 
-                startupTracer.onStartTrace();
+                if (traceConfig.isStartupEnable()) {
+                    startupTracer.onStartTrace();
+                }
             }
         };
 

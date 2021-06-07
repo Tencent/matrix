@@ -75,7 +75,7 @@ public class MatrixHandlerThread {
         return defaultHandler;
     }
 
-    public static HandlerThread getNewHandlerThread(String name) {
+    public static HandlerThread getNewHandlerThread(String name, int priority) {
         for (Iterator<HandlerThread> i = handlerThreads.iterator(); i.hasNext(); ) {
             HandlerThread element = i.next();
             if (!element.isAlive()) {
@@ -84,15 +84,10 @@ public class MatrixHandlerThread {
             }
         }
         HandlerThread handlerThread = new HandlerThread(name);
+        handlerThread.setPriority(priority);
         handlerThread.start();
         handlerThreads.add(handlerThread);
         MatrixLog.w(TAG, "warning: create new handler thread with name %s, alive thread size:%d", name, handlerThreads.size());
-        return handlerThread;
-    }
-
-    public static HandlerThread getNewHandlerThread(String name, int priority) {
-        HandlerThread handlerThread = getNewHandlerThread(name);
-        handlerThread.setPriority(priority);
         return handlerThread;
     }
 

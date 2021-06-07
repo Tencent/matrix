@@ -1,0 +1,9 @@
+eax: 1d88ef8c
+ebx: 56599fe8
+ecx: 3
+edx: ffcf9ea4
+ebp: ffcf9e48
+edi: f75e5000
+esi: 1
+esp: ffcf9e38
+eip: 56598685

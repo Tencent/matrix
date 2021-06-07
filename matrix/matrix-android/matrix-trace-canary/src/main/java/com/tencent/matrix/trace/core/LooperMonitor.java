@@ -5,6 +5,8 @@ import android.os.Looper;
 import android.os.MessageQueue;
 import android.os.SystemClock;
 import androidx.annotation.CallSuper;
+import androidx.annotation.NonNull;
+
 import android.util.Log;
 import android.util.Printer;
 
@@ -12,16 +14,14 @@ import com.tencent.matrix.util.MatrixLog;
 import com.tencent.matrix.util.ReflectUtils;
 
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class LooperMonitor implements MessageQueue.IdleHandler {
-
-    private final HashSet<LooperDispatchListener> listeners = new HashSet<>();
     private static final String TAG = "Matrix.LooperMonitor";
-    private LooperPrinter printer;
-    private Looper looper;
-    private static final long CHECK_TIME = 60 * 1000L;
-    private long lastCheckPrinterTime = 0;
+    private static final Map<Looper, LooperMonitor> sLooperMonitorMap = new ConcurrentHashMap<>();
+    private static final LooperMonitor sMainMonitor = LooperMonitor.of(Looper.getMainLooper());
 
     public abstract static class LooperDispatchListener {
 
@@ -53,15 +53,28 @@ public class LooperMonitor implements MessageQueue.IdleHandler {
         }
     }
 
-    private static final LooperMonitor mainMonitor = new LooperMonitor();
+    public static LooperMonitor of(@NonNull Looper looper) {
+        LooperMonitor looperMonitor = sLooperMonitorMap.get(looper);
+        if (looperMonitor == null) {
+            looperMonitor = new LooperMonitor(looper);
+            sLooperMonitorMap.put(looper, looperMonitor);
+        }
+        return looperMonitor;
+    }
 
     static void register(LooperDispatchListener listener) {
-        mainMonitor.addListener(listener);
+        sMainMonitor.addListener(listener);
     }
 
     static void unregister(LooperDispatchListener listener) {
-        mainMonitor.removeListener(listener);
+        sMainMonitor.removeListener(listener);
     }
+
+    private final HashSet<LooperDispatchListener> listeners = new HashSet<>();
+    private LooperPrinter printer;
+    private Looper looper;
+    private static final long CHECK_TIME = 60 * 1000L;
+    private long lastCheckPrinterTime = 0;
 
     public HashSet<LooperDispatchListener> getListeners() {
         return listeners;
@@ -79,15 +92,11 @@ public class LooperMonitor implements MessageQueue.IdleHandler {
         }
     }
 
-    public LooperMonitor(Looper looper) {
+    private LooperMonitor(Looper looper) {
         Objects.requireNonNull(looper);
         this.looper = looper;
         resetPrinter();
         addIdleHandler(looper);
-    }
-
-    private LooperMonitor() {
-        this(Looper.getMainLooper());
     }
 
     public Looper getLooper() {
@@ -125,6 +134,15 @@ public class LooperMonitor implements MessageQueue.IdleHandler {
                 originPrinter = ReflectUtils.get(looper.getClass(), "mLogging", looper);
                 if (originPrinter == printer && null != printer) {
                     return;
+                }
+                // Fix issues that printer loaded by different classloader
+                if (originPrinter != null && printer != null) {
+                    if (originPrinter.getClass().getName().equals(printer.getClass().getName())) {
+                        MatrixLog.w(TAG, "LooperPrinter might be loaded by different classloader"
+                                + ", my = " + printer.getClass().getClassLoader()
+                                + ", other = " + originPrinter.getClass().getClassLoader());
+                        return;
+                    }
                 }
             }
         } catch (Exception e) {

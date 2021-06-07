@@ -24,6 +24,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4;
 import com.tencent.matrix.Matrix;
 import com.tencent.matrix.batterycanary.BatteryCanary;
 import com.tencent.matrix.batterycanary.BatteryMonitorPlugin;
+import com.tencent.matrix.batterycanary.TestUtils;
 import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature;
 
 import org.junit.After;
@@ -55,6 +56,9 @@ public class BatteryCanaryApiTest {
 
     @Test
     public void testGetCurrentJiffies() {
+        if (TestUtils.isAssembleTest()) {
+            return;
+        }
         final AtomicReference<JiffiesMonitorFeature.JiffiesSnapshot> ref = new AtomicReference<>(null);
 
         BatteryCanary.currentJiffies(new BatteryMonitorCore.Callback<JiffiesMonitorFeature.JiffiesSnapshot>() {

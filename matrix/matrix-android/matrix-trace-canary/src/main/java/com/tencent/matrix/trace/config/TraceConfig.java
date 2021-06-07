@@ -38,6 +38,7 @@ public class TraceConfig implements IDefaultConfig {
     public boolean defaultFpsEnable;
     public boolean defaultMethodTraceEnable;
     public boolean defaultStartupEnable;
+    public boolean defaultAppMethodBeatEnable = true;
     public boolean defaultAnrEnable;
     public boolean isDebug;
     public boolean isDevEnv;
@@ -62,6 +63,11 @@ public class TraceConfig implements IDefaultConfig {
         ss.append("* defaultAnrEnable:\t").append(defaultAnrEnable).append("\n");
         ss.append("* splashActivities:\t").append(splashActivities).append("\n");
         return ss.toString();
+    }
+
+    @Override
+    public boolean isAppMethodBeatEnable() {
+        return defaultAppMethodBeatEnable;
     }
 
     @Override
@@ -179,6 +185,11 @@ public class TraceConfig implements IDefaultConfig {
 
         public Builder dynamicConfig(IDynamicConfig dynamicConfig) {
             config.dynamicConfig = dynamicConfig;
+            return this;
+        }
+
+        public Builder enableAppMethodBeat(boolean enable) {
+            config.defaultAppMethodBeatEnable = enable;
             return this;
         }
 

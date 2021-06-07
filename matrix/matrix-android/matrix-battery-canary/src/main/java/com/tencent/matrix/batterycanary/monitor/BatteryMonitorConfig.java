@@ -26,6 +26,8 @@ public class BatteryMonitorConfig {
     public static final long DEF_FOREGROUND_SCHEDULE_TIME = 20 * 60 * 1000L; // 10min
     public static final long DEF_BACKGROUND_SCHEDULE_TIME = 10 * 60 * 1000L; // 10min
 
+    public static final int AMS_HOOK_FLAG_BT = 0b00000001;
+
     @NonNull
     public BatteryMonitorCallback callback = new BatteryMonitorCallback.BatteryPrinter();
     @Nullable
@@ -47,6 +49,7 @@ public class BatteryMonitorConfig {
     public boolean isStatPidProc = BuildConfig.DEBUG;
     public boolean isInspectiffiesError = BuildConfig.DEBUG;
     public boolean isAmsHookEnabled = BuildConfig.DEBUG;
+    public int amsHookEnableFlag = 0;
     public boolean isAggressiveMode = BuildConfig.DEBUG;
     public boolean isUseThreadClock = BuildConfig.DEBUG;
     public List<String> tagWhiteList = Collections.emptyList();
@@ -152,6 +155,13 @@ public class BatteryMonitorConfig {
 
         public Builder enableAmsHook(boolean isEnable) {
             config.isAmsHookEnabled = isEnable;
+            return this;
+        }
+
+        public Builder setAmsHookEnableFlag(int flag) {
+            if (flag >= 0) {
+                config.amsHookEnableFlag = flag;
+            }
             return this;
         }
 

@@ -5,12 +5,9 @@
     android:layout_height="match_parent">
     <Toolbar
         android:id="@+id/toolbar"
-        android:layout_height="@dimen/abc_action_bar_default_height_material"
+        android:layout_height="56dp"
         android:layout_width="match_parent"
-        android:background="#ff009688"
-        app:navigationIcon="@drawable/back_icon_normal"
-        app:titleTextColor="#FFFFFF"
-        app:logo="@null">
+        android:background="#ff009688">
     </Toolbar>
     <FrameLayout
         android:id="@+id/content"
