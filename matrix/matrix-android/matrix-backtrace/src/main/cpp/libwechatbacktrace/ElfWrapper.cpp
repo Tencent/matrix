@@ -108,13 +108,26 @@ namespace wechat_backtrace {
             memory_backed_elf_->interface()->symbols() = file_backed_elf_->interface()->symbols();
             file_backed_elf_->interface()->symbols().clear();
 
-
             memory_backed_elf_->interface()->set_data_offset(
                     file_backed_elf_->interface()->data_offset());
             memory_backed_elf_->interface()->set_data_vaddr_start(
                     file_backed_elf_->interface()->data_vaddr_start());
             memory_backed_elf_->interface()->set_data_vaddr_end(
                     file_backed_elf_->interface()->data_vaddr_end());
+
+            memory_backed_elf_->interface()->set_eh_frame_hdr_offset(
+                    file_backed_elf_->interface()->eh_frame_hdr_offset());
+            memory_backed_elf_->interface()->set_eh_frame_hdr_section_bias(
+                    file_backed_elf_->interface()->eh_frame_hdr_section_bias());
+            memory_backed_elf_->interface()->set_eh_frame_hdr_size(
+                    file_backed_elf_->interface()->eh_frame_hdr_size());
+
+            memory_backed_elf_->interface()->set_eh_frame_offset(
+                    file_backed_elf_->interface()->eh_frame_offset());
+            memory_backed_elf_->interface()->set_eh_frame_section_bias(
+                    file_backed_elf_->interface()->eh_frame_section_bias());
+            memory_backed_elf_->interface()->set_eh_frame_size(
+                    file_backed_elf_->interface()->eh_frame_size());
 
             QUT_LOG("How many symbols: %zu.", memory_backed_elf_->interface()->symbols().size());
 
@@ -133,6 +146,8 @@ namespace wechat_backtrace {
         }
 
         debug_data_handed_over_ = true;
+
+        memory_backed_elf_->interface()->InitHeaders();
 
         if (file_backed_elf && file_backed_elf->valid() && file_backed_elf->interface()) {
 

@@ -19,7 +19,8 @@
 
 #include <stdint.h>
 #include <time.h>
-
+#include <android/log.h>
+#define _LOGE_(TAG, FMT, args...) __android_log_print(ANDROID_LOG_ERROR, TAG, FMT, ##args)
 namespace unwindstack {
 
 void log_to_stdout(bool enable);

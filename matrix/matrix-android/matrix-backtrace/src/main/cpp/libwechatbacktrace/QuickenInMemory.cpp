@@ -391,6 +391,8 @@ namespace wechat_backtrace {
                 }
             }
 
+            QUT_LOG("GetFutSectionsInMemory get fde -> %llx, pc -> %llx.", fde, pc);
+
             if (fde) {
                 if (UNLIKELY(decoder == nullptr)) {
                     QUT_LOG("GetFutSectionsInMemory get null decoder, pc -> %llx.", pc);

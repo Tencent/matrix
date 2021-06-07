@@ -193,9 +193,9 @@ namespace wechat_backtrace {
                 last_map_info = map_info;
             }
 
-            auto frame_element = stacktrace_elements[elements_size++];
-            std::string *function_name = &frame_element.function_name;
-            uint64_t *function_offset = &frame_element.function_offset;
+            auto frame_element = &stacktrace_elements[elements_size++];
+            std::string *function_name = &frame_element->function_name;
+            uint64_t *function_offset = &frame_element->function_offset;
             wechat_backtrace::ElfWrapper *elf_wrapper = nullptr;
             if (map_info != nullptr) {
 
@@ -223,14 +223,14 @@ namespace wechat_backtrace {
                         }
                     }
                 }
-                frame_element.map_offset = map_info->elf_start_offset;
+                frame_element->map_offset = map_info->elf_start_offset;
             }
 
             to_quicken_frame_element(
                     frames[num], map_info, elf_wrapper,
                     /* fill_map_info */ !shrunk_java_stacktrace || !frames[num].maybe_java,
                     /* fill_build_id */ false,
-                    frame_element);
+                    *frame_element);
         }
     }
 

@@ -88,7 +88,7 @@ namespace sqlitelint {
     }
 
     void LintEnv::ReleaseHistory(int count) {
-        int size = sql_history_.size();
+        size_t size = sql_history_.size();
         if(count < size){
             auto it = sql_history_.begin();
             for (int i=0; i< count; i++){
@@ -97,7 +97,7 @@ namespace sqlitelint {
             }
             sql_history_.erase(sql_history_.begin(),it);
         }
-        sVerbose("releaseHistory %d/%d",sql_history_.size(),size);
+        sVerbose("releaseHistory %zu/%zu",sql_history_.size(),size);
     }
 
     void LintEnv::CheckReleaseHistory() {

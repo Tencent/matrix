@@ -760,7 +760,6 @@ void DwarfSectionImpl<AddressType>::GetFdes(std::vector<const DwarfFde*>* fdes) 
     }
   }
 }
-
 template <typename AddressType>
 const DwarfFde* DwarfSectionImpl<AddressType>::GetFdeFromPc(uint64_t pc) {
   // Search in the list of fdes we already have.

@@ -380,7 +380,9 @@ namespace wechat_backtrace {
             return nullptr;
         }
 
-        if (!(flags & PROT_READ)) {
+        if (!(flags & PROT_READ) && !(flags & PROT_EXEC)) {
+            QUT_DEBUG_LOG("CreateQuickenMemory, map not readable %s, (%llu, %llu)",
+                          name.c_str(), (ullint_t) start, (ullint_t) end);
             return nullptr;
         }
 

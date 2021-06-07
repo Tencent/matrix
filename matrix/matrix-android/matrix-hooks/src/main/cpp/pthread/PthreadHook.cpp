@@ -28,13 +28,13 @@
 
 #define THREAD_NAME_LEN 16
 #define PTHREAD_BACKTRACE_MAX_FRAMES MAX_FRAME_SHORT
-#define PTHREAD_BACKTRACE_MAX_FRAMES_LONG MAX_FRAME_LONG
+#define PTHREAD_BACKTRACE_MAX_FRAMES_LONG MAX_FRAME_LONG_LONG
 #define PTHREAD_BACKTRACE_FRAME_ELEMENTS_MAX_SIZE MAX_FRAME_NORMAL
 
 typedef void *(*pthread_routine_t)(void *);
 
-static bool m_quicken_unwind = false;
-static size_t m_pthread_backtrace_max_frames =
+static volatile bool m_quicken_unwind = false;
+static volatile size_t m_pthread_backtrace_max_frames =
         m_quicken_unwind ? PTHREAD_BACKTRACE_MAX_FRAMES_LONG : PTHREAD_BACKTRACE_MAX_FRAMES;
 
 struct pthread_meta_t {
@@ -146,7 +146,7 @@ static bool test_match_thread_name(pthread_meta_t &__meta) {
 }
 
 static inline bool
-on_pthread_create_locked(const pthread_t __pthread, char *__java_stacktrace, pid_t __tid) {
+on_pthread_create_locked(const pthread_t __pthread, char *__java_stacktrace, bool quicken_unwind, pid_t __tid) {
     pthread_meta_lock meta_lock(m_pthread_meta_mutex);
 
     if (m_pthread_metas.count(__pthread)) {
@@ -176,7 +176,7 @@ on_pthread_create_locked(const pthread_t __pthread, char *__java_stacktrace, pid
     uint64_t native_hash = 0;
     uint64_t java_hash = 0;
 
-    if (!m_quicken_unwind) {
+    if (quicken_unwind) {
         meta.unwind_mode = wechat_backtrace::Quicken;
         wechat_backtrace::quicken_based_unwind(meta.native_backtrace.frames.get(),
                                                meta.native_backtrace.max_frames,
@@ -230,10 +230,9 @@ static void on_pthread_create(const pthread_t __pthread) {
         return;
     }
 
-    char *java_stacktrace = nullptr;
     if (!m_quicken_unwind) {
         const size_t BUF_SIZE = 1024;
-        java_stacktrace = static_cast<char *>(malloc(BUF_SIZE));
+        char *java_stacktrace = static_cast<char *>(malloc(BUF_SIZE));
         strncpy(java_stacktrace, "(init stacktrace)", BUF_SIZE);
         if (m_java_stacktrace_mutex.try_lock_for(std::chrono::milliseconds(100))) {
             if (java_stacktrace) {
@@ -243,13 +242,16 @@ static void on_pthread_create(const pthread_t __pthread) {
         } else {
             LOGE(TAG, "maybe reentrant!");
         }
-    }
 
-    LOGD(TAG, "parent_tid: %d -> tid: %d", pthread_gettid_np(pthread_self()), tid);
-    bool recorded = on_pthread_create_locked(__pthread, java_stacktrace, tid);
+        LOGD(TAG, "parent_tid: %d -> tid: %d", pthread_gettid_np(pthread_self()), tid);
+        bool recorded = on_pthread_create_locked(__pthread, java_stacktrace, false, tid);
 
-    if (!recorded && java_stacktrace) {
-        free(java_stacktrace);
+        if (!recorded && java_stacktrace) {
+            free(java_stacktrace);
+        }
+    } else {
+        LOGD(TAG, "parent_tid: %d -> tid: %d", pthread_gettid_np(pthread_self()), tid);
+        on_pthread_create_locked(__pthread, nullptr, true, tid);
     }
 //
     rp_release();
@@ -404,7 +406,7 @@ static inline void pthread_dump_impl(FILE *__log_file) {
             for (size_t i = 0; i < elements_size; i++) {
                 std::string data;
                 wechat_backtrace::quicken_frame_format(stacktrace_elements[i], i, data);
-                LOGD(TAG, data.c_str());
+                LOGD(TAG, "%s", data.c_str());
                 flogger(__log_file, data.c_str());
 
             }
@@ -476,7 +478,7 @@ static inline void pthread_dump_json_impl(FILE *__log_file) {
         assert(!metas.empty());
 
         auto meta = metas.front();
-        auto front_backtrace = metas.front().native_backtrace;
+        auto front_backtrace = &metas.front().native_backtrace;
         if (meta.unwind_mode == wechat_backtrace::FramePointer) {
             std::stringstream stack_builder;
 
@@ -503,7 +505,7 @@ static inline void pthread_dump_json_impl(FILE *__log_file) {
             };
 
             wechat_backtrace::restore_frame_detail(
-                    front_backtrace.frames.get(), front_backtrace.frame_size, frame_detail_lambda);
+                    front_backtrace->frames.get(), front_backtrace->frame_size, frame_detail_lambda);
 
             LOGE(TAG, "-------------------");
             cJSON_AddStringToObject(hash_obj, "native", stack_builder.str().c_str());
@@ -518,24 +520,26 @@ static inline void pthread_dump_json_impl(FILE *__log_file) {
             size_t elements_size = 0;
             const size_t max_elements = PTHREAD_BACKTRACE_FRAME_ELEMENTS_MAX_SIZE;
             wechat_backtrace::FrameElement stacktrace_elements[max_elements];
-            get_stacktrace_elements(front_backtrace.frames.get(),
-                                    front_backtrace.frame_size,
+            get_stacktrace_elements(front_backtrace->frames.get(),
+                                    front_backtrace->frame_size,
                                     true, stacktrace_elements,
                                     max_elements, elements_size);
             bool found_java = false;
+            LOGI(TAG, "Pthread using quicken: elements_size %zu, frames_size %zu", elements_size, front_backtrace->frame_size);
             for (size_t i = 0; i < elements_size; i++) {
-                auto element = stacktrace_elements[i];
-                if (!found_java) found_java = element.maybe_java;
+                auto element = &stacktrace_elements[i];
+                LOGI(TAG, "elements #%zu: %llx %s %d", i, element->rel_pc, element->function_name.c_str(), element->maybe_java);
+                if (!found_java) found_java = element->maybe_java;
                 if (!found_java) {
-                    native_stack_builder << "#pc " << std::hex << element.rel_pc << " "
-                                  << (!element.function_name.empty() ? element.function_name : "(null)")
+                    native_stack_builder << "#pc " << std::hex << element->rel_pc << " "
+                                  << (!element->function_name.empty() ? element->function_name : "(null)")
                                   << " ("
-                                  << element.map_name
+                                  << element->map_name
                                   << ");";
                 } else {
-                    java_stack_builder << (!element.function_name.empty() ? element.function_name : "(null)")
+                    java_stack_builder << (!element->function_name.empty() ? element->function_name : "(null)")
                                          << " (+"
-                                         << element.function_offset
+                                         << element->function_offset
                                          << ");";
                 }
             }

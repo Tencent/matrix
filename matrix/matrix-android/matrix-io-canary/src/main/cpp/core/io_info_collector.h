@@ -54,7 +54,6 @@ namespace iocanary {
     //rw short for read/write operation
     class IOInfo {
     public:
-        IOInfo() = default;
         IOInfo(const std::string path, const JavaContext java_context)
                 : start_time_μs_(GetSysTimeMicros()),op_type_(kInit)
                 , path_(path), java_context_(java_context) {
