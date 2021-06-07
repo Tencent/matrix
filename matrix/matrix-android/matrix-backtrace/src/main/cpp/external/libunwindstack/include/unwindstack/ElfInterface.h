@@ -101,6 +101,14 @@ class ElfInterface {
   void set_data_vaddr_start(uint64_t start) { data_vaddr_start_ = start; }
   void set_data_vaddr_end(uint64_t end) { data_vaddr_end_ = end; }
 
+    // Matrix-changed: add eh frame setter
+  void set_eh_frame_hdr_offset(uint64_t offset) { eh_frame_hdr_offset_ = offset; }
+  void set_eh_frame_hdr_section_bias(int64_t bias) { eh_frame_hdr_section_bias_ = bias; }
+  void set_eh_frame_hdr_size(uint64_t size) { eh_frame_hdr_size_ = size; }
+  void set_eh_frame_offset(uint64_t offset) { eh_frame_offset_ = offset; }
+  void set_eh_frame_section_bias(int64_t bias) { eh_frame_section_bias_ = bias; }
+  void set_eh_frame_size(uint64_t size) { eh_frame_size_ = size; }
+
   DwarfSection* eh_frame() { return eh_frame_.get(); }
   DwarfSection* debug_frame() { return debug_frame_.get(); }
 

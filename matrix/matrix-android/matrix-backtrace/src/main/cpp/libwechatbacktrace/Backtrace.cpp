@@ -1,6 +1,6 @@
 /*
  * Tencent is pleased to support the open source community by making wechat-matrix available.
- * Copyright (C) 2018 THL A29 Limited, a Tencent company. All rights reserved.
+ * Copyright (C) 2021 THL A29 Limited, a Tencent company. All rights reserved.
  * Licensed under the BSD 3-Clause License (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -34,6 +34,12 @@ namespace wechat_backtrace {
     QUT_EXTERN_C_BLOCK
 
     static BacktraceMode backtrace_mode = FramePointer;
+
+#ifdef __aarch64__
+    static const bool m_is_arm32 = false;
+#else
+    static const bool m_is_arm32 = true;
+#endif
 
     BACKTRACE_EXPORT
     BacktraceMode get_backtrace_mode() {
@@ -79,10 +85,10 @@ namespace wechat_backtrace {
     }
 
     BACKTRACE_EXPORT void
-    quicken_frame_format(wechat_backtrace::FrameElement &frame_element, size_t num, bool is32Bit,
+    quicken_frame_format(wechat_backtrace::FrameElement &frame_element, size_t num,
                          std::string &data) {
 
-        if (is32Bit) {
+        if (m_is_arm32) {
             data += android::base::StringPrintf("  #%02zu pc %08" PRIx64, num,
                                                 (uint64_t) frame_element.rel_pc);
         } else {
@@ -119,6 +125,7 @@ namespace wechat_backtrace {
                                   FrameElement &frame_element) {
 
         frame_element.rel_pc = frame.rel_pc;
+        frame_element.maybe_java = frame.maybe_java;
 
         if (fill_map_info) {
             if (map_info == nullptr) {
@@ -186,9 +193,9 @@ namespace wechat_backtrace {
                 last_map_info = map_info;
             }
 
-            auto frame_element = stacktrace_elements[elements_size++];
-            std::string *function_name = &frame_element.function_name;
-            uint64_t *function_offset = &frame_element.function_offset;
+            auto frame_element = &stacktrace_elements[elements_size++];
+            std::string *function_name = &frame_element->function_name;
+            uint64_t *function_offset = &frame_element->function_offset;
             wechat_backtrace::ElfWrapper *elf_wrapper = nullptr;
             if (map_info != nullptr) {
 
@@ -216,14 +223,14 @@ namespace wechat_backtrace {
                         }
                     }
                 }
-                frame_element.map_offset = map_info->elf_start_offset;
+                frame_element->map_offset = map_info->elf_start_offset;
             }
 
             to_quicken_frame_element(
                     frames[num], map_info, elf_wrapper,
                     /* fill_map_info */ !shrunk_java_stacktrace || !frames[num].maybe_java,
                     /* fill_build_id */ false,
-                    frame_element);
+                    *frame_element);
         }
     }
 
@@ -233,12 +240,19 @@ namespace wechat_backtrace {
         WeChatQuickenUnwind(CURRENT_ARCH, regs, frame_max_size, frames, frame_size);
     }
 
-    BACKTRACE_EXPORT inline void
-    BACKTRACE_FUNC_WRAPPER(quicken_based_unwind)(Frame *frames, const size_t max_frames,
+    void
+    quicken_based_unwind_inlined(Frame *frames, const size_t max_frames,
                                                  size_t &frame_size) {
         uptr regs[QUT_MINIMAL_REG_SIZE];
         GetQuickenMinimalRegs(regs);
         WeChatQuickenUnwind(CURRENT_ARCH, regs, max_frames, frames, frame_size);
+    }
+
+
+    BACKTRACE_EXPORT void
+    BACKTRACE_FUNC_WRAPPER(quicken_based_unwind)(Frame *frames, const size_t max_frames,
+                                                 size_t &frame_size) {
+        quicken_based_unwind_inlined(frames, max_frames, frame_size);
     }
 
     BACKTRACE_EXPORT inline void
@@ -276,7 +290,7 @@ namespace wechat_backtrace {
                 fp_based_unwind(frames, max_frames, frame_size);
                 break;
             case Quicken:
-                quicken_based_unwind(frames, max_frames, frame_size);
+                quicken_based_unwind_inlined(frames, max_frames, frame_size);
                 break;
             case DwarfBased:
                 dwarf_based_unwind(frames, max_frames, frame_size);

@@ -1,6 +1,6 @@
 /*
  * Tencent is pleased to support the open source community by making wechat-matrix available.
- * Copyright (C) 2018 THL A29 Limited, a Tencent company. All rights reserved.
+ * Copyright (C) 2021 THL A29 Limited, a Tencent company. All rights reserved.
  * Licensed under the BSD 3-Clause License (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -65,7 +65,7 @@ namespace wechat_backtrace {
             const std::function<void(FrameDetail)> &frame_callback);
 
     void
-    quicken_frame_format(wechat_backtrace::FrameElement &frame_element, size_t num, bool is_32_Bit,
+    quicken_frame_format(wechat_backtrace::FrameElement &frame_element, size_t num,
                          std::string &data);
 
     void

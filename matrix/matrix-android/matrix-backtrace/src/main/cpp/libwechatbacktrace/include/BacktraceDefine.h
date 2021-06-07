@@ -1,6 +1,6 @@
 /*
  * Tencent is pleased to support the open source community by making wechat-matrix available.
- * Copyright (C) 2018 THL A29 Limited, a Tencent company. All rights reserved.
+ * Copyright (C) 2021 THL A29 Limited, a Tencent company. All rights reserved.
  * Licensed under the BSD 3-Clause License (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -28,6 +28,7 @@
 #define MAX_FRAME_SHORT 16
 #define MAX_FRAME_NORMAL 32
 #define MAX_FRAME_LONG 64
+#define MAX_FRAME_LONG_LONG 80
 
 #define QUT_ARCH_ARM 0x1
 #define QUT_ARCH_ARM64 0x2
@@ -105,16 +106,9 @@ namespace wechat_backtrace {
         DwarfBased = 2
     };
 
-//    struct FrameElement : Frame {
-//        std::string map_name;
-//        std::string function_name;
-//        std::string build_id;
-//        uint64_t map_offset = 0;
-//        uint64_t function_offset = 0;
-//    };
-
     struct FrameElement {
         uint64_t rel_pc = 0;
+        bool maybe_java = false;
 
         std::string map_name;
         uint64_t map_offset = 0;

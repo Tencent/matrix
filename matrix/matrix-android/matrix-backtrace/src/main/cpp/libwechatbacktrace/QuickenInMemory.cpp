@@ -1,6 +1,6 @@
 /*
  * Tencent is pleased to support the open source community by making wechat-matrix available.
- * Copyright (C) 2018 THL A29 Limited, a Tencent company. All rights reserved.
+ * Copyright (C) 2021 THL A29 Limited, a Tencent company. All rights reserved.
  * Licensed under the BSD 3-Clause License (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -390,6 +390,8 @@ namespace wechat_backtrace {
                     QUT_LOG("GetFutSectionsInMemory decoder debug_frame_from_gnu_debug_data_");
                 }
             }
+
+            QUT_LOG("GetFutSectionsInMemory get fde -> %llx, pc -> %llx.", fde, pc);
 
             if (fde) {
                 if (UNLIKELY(decoder == nullptr)) {

@@ -1,6 +1,6 @@
 /*
  * Tencent is pleased to support the open source community by making wechat-matrix available.
- * Copyright (C) 2018 THL A29 Limited, a Tencent company. All rights reserved.
+ * Copyright (C) 2021 THL A29 Limited, a Tencent company. All rights reserved.
  * Licensed under the BSD 3-Clause License (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -108,13 +108,26 @@ namespace wechat_backtrace {
             memory_backed_elf_->interface()->symbols() = file_backed_elf_->interface()->symbols();
             file_backed_elf_->interface()->symbols().clear();
 
-
             memory_backed_elf_->interface()->set_data_offset(
                     file_backed_elf_->interface()->data_offset());
             memory_backed_elf_->interface()->set_data_vaddr_start(
                     file_backed_elf_->interface()->data_vaddr_start());
             memory_backed_elf_->interface()->set_data_vaddr_end(
                     file_backed_elf_->interface()->data_vaddr_end());
+
+            memory_backed_elf_->interface()->set_eh_frame_hdr_offset(
+                    file_backed_elf_->interface()->eh_frame_hdr_offset());
+            memory_backed_elf_->interface()->set_eh_frame_hdr_section_bias(
+                    file_backed_elf_->interface()->eh_frame_hdr_section_bias());
+            memory_backed_elf_->interface()->set_eh_frame_hdr_size(
+                    file_backed_elf_->interface()->eh_frame_hdr_size());
+
+            memory_backed_elf_->interface()->set_eh_frame_offset(
+                    file_backed_elf_->interface()->eh_frame_offset());
+            memory_backed_elf_->interface()->set_eh_frame_section_bias(
+                    file_backed_elf_->interface()->eh_frame_section_bias());
+            memory_backed_elf_->interface()->set_eh_frame_size(
+                    file_backed_elf_->interface()->eh_frame_size());
 
             QUT_LOG("How many symbols: %zu.", memory_backed_elf_->interface()->symbols().size());
 
@@ -133,6 +146,8 @@ namespace wechat_backtrace {
         }
 
         debug_data_handed_over_ = true;
+
+        memory_backed_elf_->interface()->InitHeaders();
 
         if (file_backed_elf && file_backed_elf->valid() && file_backed_elf->interface()) {
 
