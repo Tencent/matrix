@@ -71,6 +71,7 @@ decrease_stack_size(std::map<uint64_t, stack_meta_t> &stack_metas,
 
 void memory_hook_init() {
     LOGI(TAG, "memory_hook_init");
+    srand((unsigned int) time(NULL));
 }
 
 static inline bool should_do_unwind(size_t byte_count, void *caller) {
@@ -637,6 +638,5 @@ void memory_hook_on_dlopen(const char *file_name) {
     if (is_stacktrace_enabled) {
         wechat_backtrace::notify_maps_changed();
     }
-    srand((unsigned int) time(NULL));
 }
 
