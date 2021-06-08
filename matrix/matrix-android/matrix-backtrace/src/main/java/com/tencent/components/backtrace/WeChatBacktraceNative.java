@@ -53,6 +53,12 @@ public class WeChatBacktraceNative {
     static native void setBacktraceMode(int mode);
 
     /**
+     * @param set quicken always enabled.
+     */
+    @Keep
+    static native void setQuickenAlwaysOn(boolean enable);
+
+    /**
      * Consume all so/oat files that waiting to generate quicken unwind table.
      *
      * @return Array of consumed file paths, end with elf start offset.

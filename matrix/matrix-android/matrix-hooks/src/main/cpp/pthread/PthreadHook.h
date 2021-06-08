@@ -37,7 +37,7 @@ void pthread_dump(const char *path = "/sdcard/pthread_hook.log");
 
 void pthread_dump_json(const char *path = "/sdcard/pthread_hook.log");
 
-void pthread_hook_on_dlopen(const char *file_name);
+void pthread_hook_on_dlopen(const char *file_name, bool *maps_refreshed);
 
 void enable_quicken_unwind(const bool enable);
 

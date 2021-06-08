@@ -39,6 +39,8 @@ namespace wechat_backtrace {
 
     void set_backtrace_mode(BacktraceMode mode);
 
+    void set_quicken_always_enable(bool enable);
+
     void BACKTRACE_FUNC_WRAPPER(dwarf_unwind)(
             unwindstack::Regs *regs, std::vector<unwindstack::FrameData> &, size_t);
 

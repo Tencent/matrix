@@ -20,13 +20,24 @@
         />
 
     <Button
+        android:id="@+id/btn_wechat_backtrace_try"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:onClick="backtraceTry"
+        android:text="Backtrace Have A Try"
+        android:textAllCaps="false"
+        app:layout_constraintTop_toBottomOf="@+id/textview_bactrace_usage"
+        />
+
+    <Button
         android:id="@+id/btn_wechat_backtrace_benchmark"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
         android:onClick="backtraceBenchmark"
         android:text="Backtrace Benchmark"
         android:textAllCaps="false"
-        app:layout_constraintTop_toBottomOf="@+id/textview_bactrace_usage"
+        app:layout_constraintTop_toBottomOf="@+id/btn_wechat_backtrace_try"
         />
 
     <Button
