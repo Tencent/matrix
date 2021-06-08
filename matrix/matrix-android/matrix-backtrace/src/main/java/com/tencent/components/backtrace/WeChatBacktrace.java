@@ -23,7 +23,9 @@ import android.os.Build;
 import com.tencent.matrix.util.MatrixLog;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 
 import static com.tencent.components.backtrace.WarmUpScheduler.DELAY_SHORTLY;
 
@@ -196,9 +198,14 @@ public class WeChatBacktrace {
 
         MatrixLog.i(TAG, configuration.toString());
 
+        if (configuration.mBacktraceMode == Mode.Fp || configuration.mBacktraceMode == Mode.Dwarf) {
+            WeChatBacktraceNative.setBacktraceMode(configuration.mBacktraceMode.value);
+        }
+
         if (configuration.mBacktraceMode == Mode.Quicken ||
                 configuration.mBacktraceMode == Mode.FpUntilQuickenWarmedUp ||
-                configuration.mBacktraceMode == Mode.DwarfUntilQuickenWarmedUp
+                configuration.mBacktraceMode == Mode.DwarfUntilQuickenWarmedUp ||
+                configuration.mQuickenAlwaysOn
         ) {
 
             // Init saving path
@@ -219,15 +226,18 @@ public class WeChatBacktrace {
 
             // Set backtrace mode
             boolean hasWarmedUp = WarmUpUtility.hasWarmedUp(configuration.mContext);
-            Mode mode = Mode.Quicken;
-            if (!hasWarmedUp) {
-                if (configuration.mBacktraceMode == Mode.FpUntilQuickenWarmedUp) {
-                    mode = Mode.Fp;
-                } else if (configuration.mBacktraceMode == Mode.DwarfUntilQuickenWarmedUp) {
-                    mode = Mode.Dwarf;
+            if (configuration.mBacktraceMode == Mode.Quicken
+                    || !configuration.mQuickenAlwaysOn) {
+                Mode mode = Mode.Quicken;
+                if (!hasWarmedUp) {
+                    if (configuration.mBacktraceMode == Mode.FpUntilQuickenWarmedUp) {
+                        mode = Mode.Fp;
+                    } else if (configuration.mBacktraceMode == Mode.DwarfUntilQuickenWarmedUp) {
+                        mode = Mode.Dwarf;
+                    }
                 }
+                WeChatBacktraceNative.setBacktraceMode(mode.value);
             }
-            WeChatBacktraceNative.setBacktraceMode(mode.value);
 
             MatrixLog.i(TAG, "Has warmed up: %s", hasWarmedUp);
 
@@ -241,10 +251,9 @@ public class WeChatBacktrace {
 
             // Register warmed up receiver for other processes.
             if (!configuration.mIsWarmUpProcess) {
-                mWarmUpDelegate.registerWarmedUpReceiver(configuration, mode);
+                mWarmUpDelegate.registerWarmedUpReceiver(
+                        configuration, configuration.mBacktraceMode);
             }
-        } else {
-            WeChatBacktraceNative.setBacktraceMode(configuration.mBacktraceMode.value);
         }
 
         mConfigured = true;
@@ -303,6 +312,7 @@ public class WeChatBacktrace {
         Mode mBacktraceMode = Mode.Quicken;
         LibraryLoader mLibraryLoader = null;
         boolean mCoolDown = false;
+        boolean mQuickenAlwaysOn = false;
         boolean mCoolDownIfApkUpdated = true;   // Default true.
         boolean mIsWarmUpProcess = false;
         boolean mImmediateGeneration = false;
@@ -343,6 +353,14 @@ public class WeChatBacktrace {
             if (mode != null) {
                 mBacktraceMode = mode;
             }
+            return this;
+        }
+
+        public Configuration setQuickenAlwaysOn() {
+            if (mCommitted) {
+                return this;
+            }
+            mQuickenAlwaysOn = true;
             return this;
         }
 
@@ -464,6 +482,7 @@ public class WeChatBacktrace {
             return "\n" +
                     "WeChat backtrace configurations: \n" +
                     ">>> Backtrace Mode: " + mBacktraceMode + "\n" +
+                    ">>> Quicken always on: " + mQuickenAlwaysOn + "\n" +
                     ">>> Saving Path: " + (mSavingPath != null ? mSavingPath : WarmUpUtility.defaultSavingPath(this)) + "\n" +
                     ">>> Custom Library Loader: " + (mLibraryLoader != null) + "\n" +
                     ">>> Directories to Warm-up: " + mWarmUpDirectoriesList.toString() + "\n" +

@@ -82,14 +82,22 @@ void benchmark_counting(uint64_t duration, size_t frame_size) {
 }
 
 void dump_benchmark_calculation(const char *tag) {
-    BENCHMARK_RESULT_LOGE(UNWIND_TEST_TAG,
-                          "%s Accumulated duration = %llu, times = %zu, avg = %llu, frame-size = %zu, per-frame = %llu.",
-                          tag, (unsigned long long) sTotalDuration, sBenchmarkTimes,
-                          (unsigned long long) (sTotalDuration / sBenchmarkTimes),
-                          sLastFrameSize,
-                          (unsigned long long) (
-                                  ((unsigned long long) (sTotalDuration / sBenchmarkTimes)) /
-                                  sLastFrameSize));
+    if (sLastFrameSize == 0) {
+        BENCHMARK_RESULT_LOGE(UNWIND_TEST_TAG,
+                              "%s Accumulated duration = %llu, times = %zu, avg = %llu, frame-size = %zu",
+                              tag, (unsigned long long) sTotalDuration, sBenchmarkTimes,
+                              (unsigned long long) (sTotalDuration / sBenchmarkTimes),
+                              sLastFrameSize);
+    } else {
+        BENCHMARK_RESULT_LOGE(UNWIND_TEST_TAG,
+                              "%s Accumulated duration = %llu, times = %zu, avg = %llu, frame-size = %zu, per-frame = %llu.",
+                              tag, (unsigned long long) sTotalDuration, sBenchmarkTimes,
+                              (unsigned long long) (sTotalDuration / sBenchmarkTimes),
+                              sLastFrameSize,
+                              (unsigned long long) (
+                                      ((unsigned long long) (sTotalDuration / sBenchmarkTimes)) /
+                                      sLastFrameSize));
+    }
 }
 
 void dwarf_format_frame(const unwindstack::FrameData &frame, unwindstack::MapInfo *map_info,
@@ -354,11 +362,13 @@ inline void print_quicken_unwind() {
         return;
     }
 
-    wechat_backtrace::FrameElement stacktrace_elements[FRAME_ELEMENTS_MAX_SIZE];
+    const size_t frame_elements_max_size = gShrinkJavaStack ? FRAME_ELEMENTS_MAX_SIZE : FRAME_MAX_SIZE;
+
+    wechat_backtrace::FrameElement stacktrace_elements[frame_elements_max_size];
     size_t elements_size = 0;
 
     get_stacktrace_elements(frames, frame_size, gShrinkJavaStack, stacktrace_elements,
-                            FRAME_ELEMENTS_MAX_SIZE, elements_size);
+                            frame_elements_max_size, elements_size);
 
     for (size_t i = 0; i < elements_size; i++) {
         std::string data;
@@ -394,13 +404,13 @@ inline void print_java_unwind_formatted() {
 }
 
 inline void print_quicken_unwind_stacktrace() {
-
+    const size_t frame_elements_max_size = gShrinkJavaStack ? FRAME_ELEMENTS_MAX_SIZE : FRAME_MAX_SIZE;
     TEST_NanoSeconds_Start(nano);
 
     uptr regs[QUT_MINIMAL_REG_SIZE];
     GetQuickenMinimalRegs(regs);
     wechat_backtrace::Frame frames[FRAME_MAX_SIZE];
-    wechat_backtrace::FrameElement stacktrace_elements[FRAME_ELEMENTS_MAX_SIZE];
+    wechat_backtrace::FrameElement stacktrace_elements[frame_elements_max_size];
     uptr frame_size = 0;
     size_t elements_size = 0;
 
@@ -408,7 +418,7 @@ inline void print_quicken_unwind_stacktrace() {
                                                              frame_size);
     get_stacktrace_elements(
             frames, frame_size, true, stacktrace_elements,
-            FRAME_ELEMENTS_MAX_SIZE, elements_size);
+            frame_elements_max_size, elements_size);
 
     TEST_NanoSeconds_End(print_quicken_unwind_stacktrace, nano, frame_size);
 
@@ -461,6 +471,12 @@ void leaf_func(const char *testcase) {
     }
 
     BENCHMARK_LOGD(UNWIND_TEST_TAG, "Test %s unwind finished.", testcase);
+}
+
+bool switch_print_stack(bool enable) {
+    bool preValue = gPrintStack;
+    gPrintStack = enable;
+    return preValue;
 }
 
 void benchmark_warm_up() {

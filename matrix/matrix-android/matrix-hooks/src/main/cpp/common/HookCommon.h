@@ -75,7 +75,7 @@ typedef struct {
     void       **origin_ptr;
 } HookFunction;
 
-typedef void (*dlopen_callback_t)(const char *__file_name);
+typedef void (*dlopen_callback_t)(const char *__file_name, bool *maps_refreshed);
 
 void add_dlopen_hook_callback(dlopen_callback_t callback);
 

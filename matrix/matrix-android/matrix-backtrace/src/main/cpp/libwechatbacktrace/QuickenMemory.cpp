@@ -32,6 +32,7 @@
 #include <unwindstack/Elf.h>
 #include <BacktraceDefine.h>
 #include "QuickenMemory.h"
+#include "MemoryLocal.h"
 
 namespace wechat_backtrace {
 

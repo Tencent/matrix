@@ -135,6 +135,13 @@ namespace wechat_backtrace {
         set_backtrace_mode(static_cast<BacktraceMode>(mode));
     }
 
+    static void JNI_SetQuickenAlwaysOn(JNIEnv *env, jclass clazz, jboolean enable) {
+        (void) env;
+        (void) clazz;
+
+        set_quicken_always_enable(enable);
+    }
+
     static void JNI_SetImmediateGeneration(JNIEnv *env, jclass clazz, jboolean immediate) {
         (void) env;
         (void) clazz;
@@ -200,6 +207,7 @@ namespace wechat_backtrace {
             {"consumeRequestedQut", "()[Ljava/lang/String;",   (void *) JNI_ConsumeRequestedQut},
             {"warmUp",              "(Ljava/lang/String;IZ)Z", (void *) JNI_WarmUp},
             {"setBacktraceMode",    "(I)V",                    (void *) JNI_SetBacktraceMode},
+            {"setQuickenAlwaysOn",  "(Z)V",                    (void *) JNI_SetQuickenAlwaysOn},
             {"statistic",           "(Ljava/lang/String;)[I",  (void *) JNI_Statistic},
             {"immediateGeneration", "(Z)V",                    (void *) JNI_SetImmediateGeneration},
             {"notifyWarmedUp",      "(Ljava/lang/String;I)V",  (void *) JNI_NotifyWarmedUp},
