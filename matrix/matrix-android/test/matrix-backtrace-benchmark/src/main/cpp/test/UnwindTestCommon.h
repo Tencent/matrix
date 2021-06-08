@@ -23,6 +23,8 @@ enum UnwindTestMode {
     QUICKEN_UNWIND_PRINT_STACKTRACE,    // Quicken unwind + find symbols.
 };
 
+bool switch_print_stack(bool enable);
+
 void benchmark_warm_up();
 
 void set_unwind_mode(UnwindTestMode mode);

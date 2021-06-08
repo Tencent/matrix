@@ -30,13 +30,14 @@
 #include <jni.h>
 #include <QuickenUtility.h>
 #include <QuickenMemory.h>
-#include "MemoryLocal.h"
 #include "QuickenUnwinder.h"
 #include "QuickenMaps.h"
 
 #include "android-base/macros.h"
 #include "Log.h"
 #include "PthreadExt.h"
+
+#include "MemoryLocal.h"
 
 #define WECHAT_BACKTRACE_TAG "WeChatBacktrace"
 
@@ -46,14 +47,18 @@ namespace wechat_backtrace {
     using namespace unwindstack;
 
     QUT_EXTERN_C_BLOCK
-
     DEFINE_STATIC_LOCAL(shared_ptr<Memory>, process_memory_, (new MemoryLocal));
-
-    DEFINE_STATIC_LOCAL(mutex, generate_lock_,);
+    DEFINE_STATIC_LOCAL(shared_ptr<Memory>, process_memory_unsafe_, (new QuickenMemoryLocal));
 
     BACKTRACE_EXPORT shared_ptr<Memory> &GetLocalProcessMemory() {
         return process_memory_;
     }
+
+    BACKTRACE_EXPORT shared_ptr<Memory> &GetUnsafeLocalProcessMemory() {
+        return process_memory_unsafe_;
+    }
+
+    DEFINE_STATIC_LOCAL(mutex, generate_lock_,);
 
     void
     StatisticWeChatQuickenUnwindTable(const string &sopath, vector<uint32_t> &processed_result) {
@@ -265,7 +270,7 @@ namespace wechat_backtrace {
     }
 
     inline uint32_t
-    GetPcAdjustment(Memory *process_memory, MapInfoPtr map_info, uint64_t pc, uint32_t rel_pc,
+    GetPcAdjustment(MapInfoPtr map_info, uint64_t pc, uint32_t rel_pc,
                     uint32_t load_bias) {
         if (UNLIKELY(rel_pc < load_bias)) {
             if (rel_pc < 2) {
@@ -285,10 +290,10 @@ namespace wechat_backtrace {
             // This is a thumb instruction, it could be 2 or 4 bytes.
             uint32_t value;
             uint64_t adjusted_pc = pc - 5;
-            if (!(map_info->flags & PROT_READ) ||
+            if (!(map_info->flags & PROT_READ || map_info->flags & PROT_EXEC) ||
                 adjusted_pc < map_info->start ||
                 (adjusted_pc + sizeof(value)) >= map_info->end ||
-                !process_memory->ReadFully(adjusted_pc, &value, sizeof(value)) ||
+                !process_memory_unsafe_->ReadFully(adjusted_pc, &value, sizeof(value)) ||
                 (value & 0xe000f000) != 0xe000f000) {
                 return 2;
             }
@@ -356,7 +361,7 @@ namespace wechat_backtrace {
             uint64_t step_pc = rel_pc;
 
             if (adjust_pc) {
-                pc_adjustment = GetPcAdjustment(process_memory_.get(), map_info, PC(regs), rel_pc,
+                pc_adjustment = GetPcAdjustment(map_info, PC(regs), rel_pc,
                                                 last_load_bias);
             } else {
                 pc_adjustment = 0;

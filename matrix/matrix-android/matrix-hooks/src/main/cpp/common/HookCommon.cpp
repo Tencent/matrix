@@ -51,8 +51,9 @@ DEFINE_HOOK_FUN(void *, __loader_android_dlopen_ext, const char *file_name,
 
 //    NanoSeconds_Start(TAG, begin);
 
+    bool map_refreshed = false;
     for (auto &callback : m_dlopen_callbacks) {
-        callback(file_name);
+        callback(file_name, &map_refreshed);
     }
 
     xhook_refresh(false);

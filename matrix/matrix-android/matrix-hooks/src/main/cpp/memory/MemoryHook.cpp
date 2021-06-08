@@ -647,11 +647,14 @@ void dump(bool enable_mmap, const char *log_path, const char *json_path) {
          ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> memory dump end <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
 }
 
-void memory_hook_on_dlopen(const char *file_name) {
+void memory_hook_on_dlopen(const char *file_name, bool *maps_refreshed) {
     LOGD(TAG, "memory_hook_on_dlopen: file %s, h_malloc %p, h_realloc %p, h_free %p", file_name,
          h_malloc, h_realloc, h_free);
     if (is_stacktrace_enabled) {
-        wechat_backtrace::notify_maps_changed();
+        if (!*maps_refreshed) {
+            wechat_backtrace::notify_maps_changed();
+            *maps_refreshed = true;
+        }
     }
     srand((unsigned int) time(NULL));
 }
