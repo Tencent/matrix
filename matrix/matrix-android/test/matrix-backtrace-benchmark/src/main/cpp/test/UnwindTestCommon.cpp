@@ -239,7 +239,6 @@ inline void print_dwarf_unwind() {
         return;
     }
 
-    wechat_backtrace::UpdateLocalMaps();
     std::shared_ptr<wechat_backtrace::Maps> quicken_maps = wechat_backtrace::Maps::current();
     if (!quicken_maps) {
         BENCHMARK_LOGE(DWARF_UNWIND_TAG, "Err: unable to get maps.");

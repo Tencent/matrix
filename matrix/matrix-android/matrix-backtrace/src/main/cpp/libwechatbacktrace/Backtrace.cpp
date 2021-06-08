@@ -336,10 +336,10 @@ namespace wechat_backtrace {
             return;
         }
 
-        auto process_memory = unwindstack::Memory::CreateProcessMemory(getpid());
+        auto process_memory = GetLocalProcessMemory();
         unwindstack::Unwinder unwinder(frameSize, local_maps.get(), regs, process_memory);
-        unwindstack::JitDebug jit_debug(process_memory);
-        unwinder.SetJitDebug(&jit_debug, regs->Arch());
+        auto jit_debug = wechat_backtrace::GetJitDebug(process_memory);
+        unwinder.SetJitDebug(jit_debug.get(), regs->Arch());
         unwinder.SetResolveNames(false);
         unwinder.Unwind();
 
