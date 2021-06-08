@@ -42,8 +42,8 @@ extern "C" {
 JNIEXPORT void JNICALL
 Java_com_tencent_matrix_benchmark_test_UnwindBenchmarkTest_nativeInit(
         JNIEnv *env, jclass clazz) {
-
-    wechat_backtrace::BACKTRACE_FUNC_WRAPPER(notify_maps_changed)();
+    wechat_backtrace::UpdateLocalMaps();
+    wechat_backtrace::Maps::Parse();
 }
 
 
