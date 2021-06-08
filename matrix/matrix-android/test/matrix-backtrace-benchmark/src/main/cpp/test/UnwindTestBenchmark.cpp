@@ -97,7 +97,8 @@ Java_com_tencent_matrix_benchmark_test_UnwindBenchmarkTest_nativeTry(JNIEnv *env
 JNIEXPORT void JNICALL
 Java_com_tencent_matrix_benchmark_test_UnwindBenchmarkTest_nativeRefreshMaps(JNIEnv *env,
                                                                              jclass clazz) {
-    wechat_backtrace::notify_maps_changed();
+    wechat_backtrace::UpdateLocalMaps();
+    wechat_backtrace::Maps::Parse();
 }
 
 JNIEXPORT jint JNI_OnLoad(JavaVM *vm, void *reserved) {
