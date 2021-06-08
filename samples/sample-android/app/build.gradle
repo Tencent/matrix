@@ -143,3 +143,19 @@ matrix {
         ignoreResources = ["R.id.*", "R.bool.*", "R.layout.unused_layout"]
     }
 }
+
+project.tasks.whenTaskAdded {
+    if (it.name?.equals("assembleDebug") || it.name?.equals("assembleRelease")) {
+        it.dependsOn "cleanBuildDirTask".with { taskName ->
+            if (tasks.findByName(taskName)) {
+                return tasks.findByName(taskName)
+            }
+            return task(taskName) {
+                doFirst {
+                    logger.lifecycle "Clean app bulid dir before assemble"
+                    project.file(project.buildDir).deleteDir()
+                }
+            }
+        }
+    }
+}

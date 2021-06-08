@@ -134,6 +134,12 @@ public class AppMethodBeat implements BeatLifecycle {
         }
     }
 
+    public void forceStop() {
+        synchronized (statusLock) {
+            status = STATUS_STOPPED;
+        }
+    }
+
     @Override
     public boolean isAlive() {
         return status >= STATUS_STARTED;

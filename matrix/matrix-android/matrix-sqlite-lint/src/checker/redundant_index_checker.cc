@@ -35,7 +35,7 @@ namespace sqlitelint {
                                       std::vector<Issue> *issues) {
         std::vector<TableInfo> tables = env.GetTablesInfo();
 
-        sVerbose("RedundantIndexChecker::Check tableInfoList size %d",tables.size());
+        sVerbose("RedundantIndexChecker::Check tableInfoList size %zu",tables.size());
 
         for (const TableInfo& table_info : tables) {
 
@@ -159,7 +159,7 @@ namespace sqlitelint {
     }
 
     bool RedundantIndexGroup::Try2AddToGroup(const IndexInfo &candidate) {
-        sVerbose("RedundantIndexChecker::Check Try2AddToGroup %d %d", candidate.index_elements_.size(), main_index_.index_elements_.size());
+        sVerbose("RedundantIndexChecker::Check Try2AddToGroup %zu %zu", candidate.index_elements_.size(), main_index_.index_elements_.size());
 
         if (candidate.index_elements_.size() > main_index_.index_elements_.size()) {
             return false;

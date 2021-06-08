@@ -17,11 +17,12 @@
 package com.tencent.matrix.batterycanary.monitor.feature;
 
 import android.app.Application;
-import androidx.arch.core.util.Function;
 import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Process;
+
+import androidx.arch.core.util.Function;
 import androidx.test.platform.app.InstrumentationRegistry;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 

@@ -1,0 +1,16 @@
+r0: 3
+r1: c0306201
+r2: ffd4a658
+r3: 0
+r4: f0c36d8c
+r5: ffd4a658
+r6: f0168000
+r7: 36
+r8: ffd4a678
+r9: f016802c
+r10: ffd4a660
+r11: 0
+ip: 0
+sp: ffd4a638
+lr: f0bb2413
+pc: f0be238c

@@ -327,9 +327,7 @@ public abstract class AbsTaskMonitorFeature extends AbsMonitorFeature {
             return;
         }
 
-        MatrixLog.i(TAG,
-                "onTaskReport: " + delta.dlt.name + ", jiffies = " + delta.dlt.jiffies.get()
-                        + ", millis = " + delta.during);
+        MatrixLog.i(TAG, "onTaskReport: %s, jiffies = %s, millis = %s", delta.dlt.name, delta.dlt.jiffies.get(), delta.during);
 
         // Compute task context info
         if (mAppStatFeat != null) {

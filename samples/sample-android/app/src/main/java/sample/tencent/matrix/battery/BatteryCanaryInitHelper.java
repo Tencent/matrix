@@ -33,7 +33,7 @@ public final class BatteryCanaryInitHelper {
                 // Thread Activities Monitor
                 .enable(JiffiesMonitorFeature.class)
                 .enableStatPidProc(true)
-                .greyJiffiesTime(30 * 1000L)
+                .greyJiffiesTime(3 * 1000L)
                 .enableBackgroundMode(false)
                 .backgroundLoopCheckTime(30 * 60 * 1000L)
                 .enableForegroundMode(true)
@@ -72,9 +72,9 @@ public final class BatteryCanaryInitHelper {
                 // looper task monitor
                 .enable(TrafficMonitorFeature.class)
                 .enable(LooperTaskMonitorFeature.class)
-                .addLooperWatchList("HandlerThread Name To Watch")
+                .addLooperWatchList("main")
                 .useThreadClock(false)
-                .enableAggressive(false)
+                .enableAggressive(true)
 
                 // Monitor Callback
                 .setCallback(new BatteryMonitorCallback.BatteryPrinter() {

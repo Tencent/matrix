@@ -1,7 +1,7 @@
 ![Matrix-icon](assets/img/readme/header.png)
 [![license](http://img.shields.io/badge/license-BSD3-brightgreen.svg?style=flat)](https://github.com/Tencent/matrix/blob/master/LICENSE)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/Tencent/matrix/pulls)
-[![WeChat Approved](https://img.shields.io/badge/Wechat%20Approved-0.9.0-red.svg)](https://github.com/Tencent/matrix/wiki)
+[![WeChat Approved](https://img.shields.io/badge/Wechat%20Approved-1.0.0-red.svg)](https://github.com/Tencent/matrix/wiki)
 [![CircleCI](https://circleci.com/gh/Tencent/matrix.svg?style=shield)](https://app.circleci.com/pipelines/github/Tencent/matrix)
 
 (中文版本请参看[这里](#matrix_cn))  
@@ -179,13 +179,29 @@ At this point, Matrix has been integrated into the app and is beginning to colle
 - **Easy-to-use.** Use out of box (unit tests as example).
 - **More feature.** Flexible extending with base and utils APIs.
 
+#### Memory Hook
+
+- A native memory leak detection tool for Android.
+- **Non-invasive.** It is based on PLT-hook([iqiyi/xHook](https://github.com/iqiyi/xHook)), so we do NOT need to recompile the native libraries.
+- **High performance.** we use WeChat-Backtrace for fast unwinding which supports both aarch64 and armeabi-v7a architectures.
+
+#### Pthread Hook
+
+- A Java and native thread leak detection tool for Android.
+- **Non-invasive.** It is based on PLT-hook([iqiyi/xHook](https://github.com/iqiyi/xHook)), so we do NOT need to recompile the native libraries.
+
+
+#### Backtrace Component
+
+- A fast native backtrace component designed by Matrix based on quicken unwind tables that are generated and simplified from DWARF and ARM exception handling informations. It is about 15x ~ 30x faster than libunwindstack.
+
 
 ## Getting Started
 ***The JCenter repository will stop service on February 1, 2022. So we uploaded Matrix(since 0.8.0) to the MavenCentral repository.***
 
 1. Configure `MATRIX_VERSION` in gradle.properties.
 ``` gradle
-  MATRIX_VERSION=0.9.0
+  MATRIX_VERSION=1.0.0
 ```
 
 2. Add `matrix-gradle-plugin` in your build.gradle:
@@ -207,6 +223,8 @@ At this point, Matrix has been integrated into the app and is beginning to colle
     implementation group: "com.tencent.matrix", name: "matrix-io-canary", version: MATRIX_VERSION, changing: true
     implementation group: "com.tencent.matrix", name: "matrix-sqlite-lint-android-sdk", version: MATRIX_VERSION, changing: true
     implementation group: "com.tencent.matrix", name: "matrix-battery-canary", version: MATRIX_VERSION, changing: true
+    implementation group: "com.tencent.matrix", name: "matrix-hooks", version: MATRIX_VERSION, changing: true
+    implementation group: "com.tencent.matrix", name: "matrix-backtrace", version: MATRIX_VERSION, changing: true
   }
   
   apply plugin: 'com.tencent.matrix-plugin'
@@ -324,11 +342,11 @@ For detail usage, please reference showcase tests at `com.tencent.matrix.battery
 
 #### APK Checker Usage
 
-APK Checker can run independently in Jar ([matrix-apk-canary-0.9.0.jar](https://repo.maven.apache.org/maven2/com/tencent/matrix/matrix-apk-canary/0.9.0/matrix-apk-canary-0.9.0.jar)）  mode, usage:
+APK Checker can run independently in Jar ([matrix-apk-canary-1.0.0.jar](https://repo.maven.apache.org/maven2/com/tencent/matrix/matrix-apk-canary/1.0.0/matrix-apk-canary-1.0.0.jar)）  mode, usage:
 
 
 ```shell
-java -jar matrix-apk-canary-0.9.0.jar
+java -jar matrix-apk-canary-1.0.0.jar
 Usages: 
     --config CONFIG-FILE-PATH
 or
@@ -387,7 +405,7 @@ Matrix is under the BSD license. See the [LICENSE](https://github.com/Tencent/Ma
 
 # <a name="matrix_cn">Matrix</a>
 ![Matrix-icon](assets/img/readme/header.png)
-[![license](http://img.shields.io/badge/license-BSD3-brightgreen.svg?style=flat)](https://github.com/Tencent/matrix/blob/master/LICENSE)[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/Tencent/matrix/pulls)  [![WeChat Approved](https://img.shields.io/badge/Wechat%20Approved-0.9.0-red.svg)](https://github.com/Tencent/matrix/wiki)
+[![license](http://img.shields.io/badge/license-BSD3-brightgreen.svg?style=flat)](https://github.com/Tencent/matrix/blob/master/LICENSE)[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/Tencent/matrix/pulls)  [![WeChat Approved](https://img.shields.io/badge/Wechat%20Approved-1.0.0-red.svg)](https://github.com/Tencent/matrix/wiki)
 
 **Matrix** 是一款微信研发并日常使用的应用性能接入框架，支持iOS, macOS和Android。
 Matrix 通过接入各种性能监控方案，对性能监控项的异常数据进行采集和分析，输出相应的问题分析、定位与优化建议，从而帮助开发者开发出更高质量的应用。
@@ -547,13 +565,27 @@ Matrix-android 当前监控范围包括：应用安装包大小，帧率变化�
 - 接入简单，开箱即用
 - 预留 Base 类和 Utility 工具以便扩展监控特性
 
+#### Memory Hook
+
+- 一个检测 Android native 内存泄漏的工具
+- 无侵入，基于 PLT-hook([iqiyi/xHook](https://github.com/iqiyi/xHook))，无需重编 native 库
+- 高性能，基于 Wechat-Backtrace 进行快速 unwind 堆栈，支持 aarch64 和 armeabi-v7a 架构
+
+#### Pthread Hook
+
+- 一个检测 Android Java 和 native 线程泄漏的工具
+- 无侵入，基于 PLT-hook([iqiyi/xHook](https://github.com/iqiyi/xHook))，无需重编 native 库
+
+#### Backtrace Component
+- 基于 DWARF 以及 ARM 异常处理数据进行简化并生成全新的 quicken unwind tables 数据，用于实现可快速回溯 native 调用栈的 backtrace 组件。回溯速度约是 libunwindstack 的 15x ~ 30x 左右。
 
 ## 使用方法
+
 ***由于 JCenter 服务将于 2022 年 2 月 1 日下线，我们已将 Matrix 新版本（>= 0.8.0) maven repo 发布至 MavenCentral。***
 
 1. 在你项目根目录下的 gradle.properties 中配置要依赖的 Matrix 版本号，如：
 ``` gradle
-  MATRIX_VERSION=0.9.0
+  MATRIX_VERSION=1.0.0
 ```
 
 2. 在你项目根目录下的 build.gradle 文件添加 Matrix 依赖，如：
@@ -574,6 +606,7 @@ Matrix-android 当前监控范围包括：应用安装包大小，帧率变化�
     implementation group: "com.tencent.matrix", name: "matrix-io-canary", version: MATRIX_VERSION, changing: true
     implementation group: "com.tencent.matrix", name: "matrix-sqlite-lint-android-sdk", version: MATRIX_VERSION, changing: true
     implementation group: "com.tencent.matrix", name: "matrix-battery-canary", version: MATRIX_VERSION, changing: true
+    implementation group: "com.tencent.matrix", name: "matrix-hooks", version: MATRIX_VERSION, changing: true
   }
 
   apply plugin: 'com.tencent.matrix-plugin'
@@ -690,10 +723,10 @@ BatteryMonitorPlugin plugin = new BatteryMonitorPlugin(config);
 
 #### APK Checker
 
-APK Check 以独立的 jar 包提供 ([matrix-apk-canary-0.9.0.jar](https://repo.maven.apache.org/maven2/com/tencent/matrix/matrix-apk-canary/0.9.0/matrix-apk-canary-0.9.0.jar)），你可以运行：
+APK Check 以独立的 jar 包提供 ([matrix-apk-canary-1.0.0.jar](https://repo.maven.apache.org/maven2/com/tencent/matrix/matrix-apk-canary/1.0.0/matrix-apk-canary-1.0.0.jar)），你可以运行：
 
 ```cmd
-java -jar matrix-apk-canary-0.9.0.jar
+java -jar matrix-apk-canary-1.0.0.jar
 ```
 
 查看 Usages 来使用它。

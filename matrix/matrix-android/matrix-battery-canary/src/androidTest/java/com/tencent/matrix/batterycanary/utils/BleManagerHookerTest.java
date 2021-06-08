@@ -28,6 +28,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.IBinder;
 import android.os.IInterface;
+import android.util.Log;
+
 import androidx.annotation.BinderThread;
 import androidx.annotation.Nullable;
 import androidx.test.platform.app.InstrumentationRegistry;
@@ -72,7 +74,6 @@ public class BleManagerHookerTest {
         Assert.assertEquals(ContextCompat.checkSelfPermission(mContext, "android.permission.ACCESS_FINE_LOCATION") == 0, discovery);
     }
 
-    @Ignore
     @Test
     public void testScanning() throws Exception {
         final AtomicInteger discInc = new AtomicInteger();
@@ -292,7 +293,6 @@ public class BleManagerHookerTest {
         hooker.doUnHook();
     }
 
-    @Ignore
     @Test
     public void testBleHooker() throws InterruptedException {
         final AtomicInteger discInc = new AtomicInteger();
@@ -377,5 +377,67 @@ public class BleManagerHookerTest {
 
         BluetoothManagerServiceHooker.release();
     }
+
+    @Test
+    public void testGetBluetoothHeadset() throws InterruptedException {
+        final AtomicInteger discInc = new AtomicInteger();
+        final AtomicInteger regsInc = new AtomicInteger();
+        final AtomicInteger scanInc = new AtomicInteger();
+        final AtomicInteger scanForIntentInc = new AtomicInteger();
+        BluetoothManagerServiceHooker.addListener(new BluetoothManagerServiceHooker.IListener() {
+            @Override
+            public void onStartDiscovery() {
+                discInc.incrementAndGet();
+            }
+
+            @Override
+            public void onRegisterScanner() {
+                regsInc.incrementAndGet();
+            }
+
+            @BinderThread
+            @Override
+            public void onStartScan(int scanId, @Nullable ScanSettings scanSettings) {
+                scanInc.incrementAndGet();
+
+            }
+
+            @Override
+            public void onStartScanForIntent(@Nullable ScanSettings scanSettings) {
+                scanForIntentInc.incrementAndGet();
+            }
+        });
+
+        hasBluetoothHeadset(mContext);
+        BluetoothManagerServiceHooker.release();
+    }
+
+
+    /**
+     * Copycat of {@link "https://chromium.googlesource.com/chromium/src/media/+/8e0372543244a611b08ea0b581b791c8203df8bd/base/android/java/src/org/chromium/media/AudioManagerAndroid.java"}
+     * Gets the current Bluetooth headset state.
+     * android.bluetooth.BluetoothAdapter.getProfileConnectionState() requires
+     * the BLUETOOTH permission.
+     */
+    private boolean hasBluetoothHeadset(Context context) {
+        BluetoothManager btManager =
+                (BluetoothManager) context.getApplicationContext().getSystemService(
+                        Context.BLUETOOTH_SERVICE);
+        BluetoothAdapter btAdapter = btManager.getAdapter();
+        if (btAdapter == null) {
+            // Bluetooth not supported on this platform.
+            return false;
+        }
+        int profileConnectionState;
+        profileConnectionState = btAdapter.getProfileConnectionState(
+                android.bluetooth.BluetoothProfile.HEADSET);
+        // Ensure that Bluetooth is enabled and that a device which supports the
+        // headset and handsfree profile is connected.
+        // TODO(henrika): it is possible that btAdapter.isEnabled() is
+        // redundant. It might be sufficient to only check the profile state.
+        return btAdapter.isEnabled()
+                && profileConnectionState == android.bluetooth.BluetoothProfile.STATE_CONNECTED;
+    }
+
 }
 
