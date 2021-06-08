@@ -110,6 +110,8 @@ public class BenchmarkActivity extends AppCompatActivity {
 
         mBacktraceTestInitialized = true;
 
+        final Button trybtn = findViewById(R.id.btn_wechat_backtrace_try);
+        trybtn.setEnabled(false);
         final Button btn = findViewById(R.id.btn_wechat_backtrace_benchmark);
         btn.setEnabled(false);
         final Button jitbtn = findViewById(R.id.btn_wechat_backtrace_benchmark_with_jit);
@@ -125,6 +127,7 @@ public class BenchmarkActivity extends AppCompatActivity {
                     mHandler.post(new Runnable() {
                         @Override
                         public void run() {
+                            trybtn.setEnabled(true);
                             btn.setEnabled(true);
                             jitbtn.setEnabled(true);
                             javabtn.setEnabled(true);
@@ -147,10 +150,18 @@ public class BenchmarkActivity extends AppCompatActivity {
 
         if (WeChatBacktrace.hasWarmedUp(this)) {
             warmedUpToast();
+            trybtn.setEnabled(true);
             btn.setEnabled(true);
             jitbtn.setEnabled(true);
             javabtn.setEnabled(true);
         }
+
+        // We need this to refresh maps
+        UnwindBenchmarkTest.nativeInit();
+    }
+
+    public void backtraceTry(View view) {
+        UnwindBenchmarkTest.nativeTry();
     }
 
     public void backtraceBenchmark(View view) {
@@ -179,7 +190,6 @@ public class BenchmarkActivity extends AppCompatActivity {
 
         return b;
     }
-
 
     public int warpFunctionForJavaImpl(int i, int j) {
 
@@ -227,8 +237,6 @@ public class BenchmarkActivity extends AppCompatActivity {
 
     public int warpFunction(int i) {
 
-        UnwindBenchmarkTest.nativeInit();
-
         warpFunctionImpl(i, i);
 
         return i;
@@ -241,10 +249,6 @@ public class BenchmarkActivity extends AppCompatActivity {
         warpFunctionForJavaImpl(i, i);
 
         return i;
-    }
-
-    public void backtrace(View view) {
-        UnwindBenchmarkTest.nativeTry();
     }
 
     public void testMapsUpdate(View view) {

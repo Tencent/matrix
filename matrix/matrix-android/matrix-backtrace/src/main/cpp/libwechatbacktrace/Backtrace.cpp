@@ -34,6 +34,7 @@ namespace wechat_backtrace {
     QUT_EXTERN_C_BLOCK
 
     static BacktraceMode backtrace_mode = FramePointer;
+    static bool quicken_unwind_always_enabled = false;
 
 #ifdef __aarch64__
     static const bool m_is_arm32 = false;
@@ -49,6 +50,11 @@ namespace wechat_backtrace {
     BACKTRACE_EXPORT
     void set_backtrace_mode(BacktraceMode mode) {
         backtrace_mode = mode;
+    }
+
+    BACKTRACE_EXPORT
+    void set_quicken_always_enable(bool enable) {
+        quicken_unwind_always_enabled = enable;
     }
 
     BACKTRACE_EXPORT void
@@ -240,7 +246,7 @@ namespace wechat_backtrace {
         WeChatQuickenUnwind(CURRENT_ARCH, regs, frame_max_size, frames, frame_size);
     }
 
-    void
+    inline void
     quicken_based_unwind_inlined(Frame *frames, const size_t max_frames,
                                                  size_t &frame_size) {
         uptr regs[QUT_MINIMAL_REG_SIZE];
@@ -248,23 +254,16 @@ namespace wechat_backtrace {
         WeChatQuickenUnwind(CURRENT_ARCH, regs, max_frames, frames, frame_size);
     }
 
-
-    BACKTRACE_EXPORT void
-    BACKTRACE_FUNC_WRAPPER(quicken_based_unwind)(Frame *frames, const size_t max_frames,
-                                                 size_t &frame_size) {
-        quicken_based_unwind_inlined(frames, max_frames, frame_size);
-    }
-
-    BACKTRACE_EXPORT inline void
-    BACKTRACE_FUNC_WRAPPER(fp_based_unwind)(Frame *frames, const size_t max_frames,
-                                            size_t &frame_size) {
+    inline void
+    fp_based_unwind_inlined(Frame *frames, const size_t max_frames,
+                            size_t &frame_size) {
         uptr regs[FP_MINIMAL_REG_SIZE];
         GetFramePointerMinimalRegs(regs);
         FpUnwind(regs, frames, max_frames, frame_size);
     }
 
-    BACKTRACE_EXPORT inline void
-    BACKTRACE_FUNC_WRAPPER(dwarf_based_unwind)(Frame *frames, const size_t max_frames,
+    inline void
+    dwarf_based_unwind_inlined(Frame *frames, const size_t max_frames,
                                                size_t &frame_size) {
         std::vector<unwindstack::FrameData> dst;
         unwindstack::RegsArm regs;
@@ -282,34 +281,47 @@ namespace wechat_backtrace {
     }
 
     BACKTRACE_EXPORT void
+    BACKTRACE_FUNC_WRAPPER(quicken_based_unwind)(Frame *frames, const size_t max_frames,
+                                                 size_t &frame_size) {
+        quicken_based_unwind_inlined(frames, max_frames, frame_size);
+    }
+
+    BACKTRACE_EXPORT void
+    BACKTRACE_FUNC_WRAPPER(fp_based_unwind)(Frame *frames, const size_t max_frames,
+                                            size_t &frame_size) {
+        fp_based_unwind_inlined(frames, max_frames, frame_size);
+    }
+
+    BACKTRACE_EXPORT void
+    BACKTRACE_FUNC_WRAPPER(dwarf_based_unwind)(Frame *frames, const size_t max_frames,
+                                               size_t &frame_size) {
+        dwarf_based_unwind_inlined(frames, max_frames, frame_size);
+    }
+
+    BACKTRACE_EXPORT void
     BACKTRACE_FUNC_WRAPPER(unwind_adapter)(Frame *frames, const size_t max_frames,
                                            size_t &frame_size) {
 
         switch (get_backtrace_mode()) {
             case FramePointer:
-                fp_based_unwind(frames, max_frames, frame_size);
+                fp_based_unwind_inlined(frames, max_frames, frame_size);
                 break;
             case Quicken:
                 quicken_based_unwind_inlined(frames, max_frames, frame_size);
                 break;
             case DwarfBased:
-                dwarf_based_unwind(frames, max_frames, frame_size);
+                dwarf_based_unwind_inlined(frames, max_frames, frame_size);
                 break;
         }
     }
 
     BACKTRACE_EXPORT void BACKTRACE_FUNC_WRAPPER(notify_maps_changed)() {
-
-        switch (backtrace_mode) {
-            case DwarfBased:
-                wechat_backtrace::UpdateLocalMaps();
-                break;
-            case Quicken:
-                // Parse quicken maps
-                wechat_backtrace::Maps::Parse();
-                break;
-            default:
-                break;
+        if (backtrace_mode == DwarfBased) {
+            wechat_backtrace::UpdateLocalMaps();
+        }
+        if (quicken_unwind_always_enabled || backtrace_mode == Quicken) {
+            // Parse quicken maps
+            wechat_backtrace::Maps::Parse();
         }
     }
 

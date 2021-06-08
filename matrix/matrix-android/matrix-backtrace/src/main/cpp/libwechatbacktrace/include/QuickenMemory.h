@@ -25,6 +25,10 @@
 
 namespace wechat_backtrace {
 
+    QUT_EXTERN_C std::shared_ptr<unwindstack::Memory> &GetLocalProcessMemory();
+    QUT_EXTERN_C std::shared_ptr<unwindstack::Memory> &GetSafeLocalProcessMemory();
+    QUT_EXTERN_C std::shared_ptr<unwindstack::Memory> &GetUnsafeLocalProcessMemory();
+
     class QuickenMemory : public unwindstack::Memory {
     public:
         QuickenMemory() = default;

@@ -110,7 +110,7 @@ namespace wechat_backtrace {
 
         bool maybe_java = false;
 
-        const bool quicken_in_memory_enable_ = true;
+        const bool quicken_in_memory_enable_ = false;
 
         QuickenMapInfo *next_real_map_ = nullptr;
 

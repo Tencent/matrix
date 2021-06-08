@@ -44,12 +44,14 @@ namespace wechat_backtrace {
             return false;
         }
 
+        QUT_LOG("ExidxDecoderHelper::FindEntry pc %llx, total_entries_ %llx, start_offset_ %llx",
+                (ullint_t) pc, (ullint_t) total_entries_, (ullint_t) start_offset_);
         size_t first = 0;
         size_t last = total_entries_;
         uint32_t addr;
         while (first < last) {
             size_t current = (first + last) / 2;
-            if (GetAddr(current, &addr)) {
+            if (!GetAddr(current, &addr)) {
                 return false;
             }
             if (pc == addr) {
@@ -57,6 +59,7 @@ namespace wechat_backtrace {
                 *start_addr = addr;
                 if (last >= total_entries_ || !GetAddr(current + 1, end_addr)) {
                     *end_addr = INT32_MAX;
+                    return false;
                 }
                 return true;
             }
@@ -68,9 +71,18 @@ namespace wechat_backtrace {
         }
         if (last != 0) {
             *entry_offset = start_offset_ + (last - 1) * 8;
-            *start_addr = addr;
+            if (pc > addr) {
+                *start_addr = addr;
+            } else {
+                if (!GetAddr(last - 1, start_addr)) {
+                    *start_addr = INT32_MAX;
+                    return false;
+                }
+            }
+
             if (last >= total_entries_ || !GetAddr(last, end_addr)) {
                 *end_addr = INT32_MAX;
+                return false;
             }
             return true;
         }
@@ -109,13 +121,17 @@ namespace wechat_backtrace {
         uint32_t start_addr;
         uint32_t end_addr;
 
-        FindEntry(pc, &entry_offset, &start_addr, &end_addr);
+        bool ret = FindEntry(pc, &entry_offset, &start_addr, &end_addr);
+
+        QUT_LOG("QuickenInMemory::DecodeEntry pc %llx, entry_offset %llx, "
+                "start_addr %llx, end_addr %llx, ret: %d",
+                (ullint_t) pc, (ullint_t) entry_offset,
+                (ullint_t) start_addr, (ullint_t) end_addr, ret);
 
         *pc_start = start_addr;
         *pc_end = end_addr;
 
         ExidxDecoder decoder(memory_, process_memory_);
-
         // Extract data, evaluate instructions and re-encode it.
         if (decoder.ExtractEntryData(entry_offset) && decoder.Eval()) {
             (*instructions)[start_addr] = std::make_pair(start_addr, move(decoder.instructions_));
@@ -155,9 +171,11 @@ namespace wechat_backtrace {
             FrameInfo eh_frame_info,
             std::unique_ptr<DwarfSectionDecoder<AddressType>> &eh_frame_) {
         {   // eh_frame & eh_frame_hdr
-            QUT_LOG("QuickenInMemory::InitEhFrame memory %llx, eh_frame_hdr_info.size_ %llx "
+            QUT_LOG("QuickenInMemory::InitEhFrame memory %llx, eh_frame_hdr_info.offset_ %llx, "
+                    "eh_frame_hdr_info.size_ %llx, eh_frame_info.offset_ %llx, "
                     "eh_frame_info.size_ %llx",
-                    (ullint_t) memory, (ullint_t) eh_frame_hdr_info.size_,
+                    (ullint_t) memory, (ullint_t) eh_frame_hdr_info.offset_,
+                    (ullint_t) eh_frame_hdr_info.size_, (ullint_t) eh_frame_info.offset_,
                     (ullint_t) eh_frame_info.size_);
             if (memory != nullptr && eh_frame_hdr_info.offset_ != 0) {
 
@@ -224,10 +242,11 @@ namespace wechat_backtrace {
                     eh_frame_from_gnu_debug_data_);
         }
 
-        QUT_LOG("QuickenInMemory::Init elf %s, %llx, %llx, %llx, %llx", elf_wrapper->GetSoname().c_str(),
+        QUT_LOG("QuickenInMemory::Init elf %s, %llx, %llx, %llx, %llx, exidx %llx", elf_wrapper->GetSoname().c_str(),
                 (ullint_t) debug_frame_.get(), (ullint_t) eh_frame_.get(),
                 (ullint_t) debug_frame_from_gnu_debug_data_.get(),
-                (ullint_t) eh_frame_from_gnu_debug_data_.get());
+                (ullint_t) eh_frame_from_gnu_debug_data_.get(),
+                (ullint_t) arm_exidx_info.size_);
 
         if (arm_exidx_info.size_ > 0) {
             exidx_decoder_ = std::make_unique<ExidxDecoderHelper>(memory, process_memory.get());
@@ -246,7 +265,7 @@ namespace wechat_backtrace {
             for (const auto &it : qut_in_memory_) {
                 (void) it;
                 QUT_LOG("GetFutSectionsInMemory dump cache qut [%llx, %llx]",
-                        it.second->pc_start, it.second->pc_end);
+                        (ullint_t) it.second->pc_start, (ullint_t) it.second->pc_end);
             }
         }
 
@@ -258,7 +277,7 @@ namespace wechat_backtrace {
             }
 
             QUT_LOG("GetFutSectionsInMemory found cache qut pc %llx in range of fde[%llx, %llx]",
-                    pc, it->second->pc_start, it->second->pc_end);
+                    (ullint_t) pc, (ullint_t) it->second->pc_start, (ullint_t) it->second->pc_end);
             if (pc >= it->second->pc_start && pc <= it->second->pc_end) {
                 fut_sections = it->second;
                 return true;
@@ -276,7 +295,7 @@ namespace wechat_backtrace {
         if (log) {
             for (size_t i = 0; i < fut_sections->idx_size; i += 1) {
                 QUT_LOG("GetFutSectionsInMemory dump fut sections -> %llx",
-                        fut_sections->quidx[i]);
+                        (ullint_t) fut_sections->quidx[i]);
             }
         }
 
@@ -335,7 +354,7 @@ namespace wechat_backtrace {
 
         if (ret) {
             QUT_LOG("GetFutSectionsInMemory found pc %llx in range of fde[%llx, %llx]", pc,
-                    fde->pc_start, fde->pc_end);
+                    (ullint_t) fde->pc_start, (ullint_t) fde->pc_end);
             fut_sections = fut_sections_sp;
             UpdateCache(fde->pc_start, fde->pc_end, fut_sections);
             return true;
@@ -352,7 +371,7 @@ namespace wechat_backtrace {
             return true;
         }
 
-        QUT_LOG("GetFutSectionsInMemory miss cache qut pc %llx", pc);
+        QUT_LOG("GetFutSectionsInMemory miss cache qut pc %llx", (ullint_t) pc);
 
         uint64_t pc_start = 0;
         uint64_t pc_end = 0;
@@ -391,11 +410,11 @@ namespace wechat_backtrace {
                 }
             }
 
-            QUT_LOG("GetFutSectionsInMemory get fde -> %llx, pc -> %llx.", fde, pc);
+            QUT_LOG("GetFutSectionsInMemory get fde -> %llx, pc -> %llx.", (ullint_t) fde, (ullint_t) pc);
 
             if (fde) {
                 if (UNLIKELY(decoder == nullptr)) {
-                    QUT_LOG("GetFutSectionsInMemory get null decoder, pc -> %llx.", pc);
+                    QUT_LOG("GetFutSectionsInMemory get null decoder, pc -> %llx.", (ullint_t) pc);
                     return false;
                 }
 
@@ -417,14 +436,14 @@ namespace wechat_backtrace {
                     ret = generator.PackEntriesToQutSections(instructions.get(),
                                                              fut_sections_sp.get());
                 } else {
-                    QUT_LOG("GetFutSectionsInMemory decode exidx failed, pc -> %llx.", pc);
+                    QUT_LOG("GetFutSectionsInMemory decode exidx failed, pc -> %llx.",(ullint_t) pc);
                 }
             }
         }
 
         if (ret) {
-            QUT_LOG("GetFutSectionsInMemory found pc %llx in range of fde[%llx, %llx]", pc,
-                    pc_start, pc_end);
+            QUT_LOG("GetFutSectionsInMemory found pc %llx in range of fde[%llx, %llx]",(ullint_t) pc,
+                    (ullint_t) pc_start, (ullint_t) pc_end);
             fut_sections = fut_sections_sp;
             UpdateCache(pc_start, pc_end, fut_sections);
             return true;

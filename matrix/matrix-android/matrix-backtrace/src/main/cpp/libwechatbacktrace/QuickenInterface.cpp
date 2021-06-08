@@ -229,7 +229,7 @@ namespace wechat_backtrace {
             }
             if (quicken_in_memory) {
                 QUT_LOG("QuickenInterface::Step using quicken_in_memory_, elf: %s, frame: %llu",
-                        soname_.c_str(), frame_size);
+                        soname_.c_str(), (ullint_t) frame_size);
                 std::shared_ptr<QutSectionsInMemory> qut_section_in_memory;
                 bool ret = quicken_in_memory->GetFutSectionsInMemory(
                         pc, /* out */ qut_section_in_memory);

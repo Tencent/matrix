@@ -27,8 +27,6 @@ typedef uintptr_t uptr;
 
 namespace wechat_backtrace {
 
-    QUT_EXTERN_C std::shared_ptr<unwindstack::Memory> &GetLocalProcessMemory();
-
     QUT_EXTERN_C void
     StatisticWeChatQuickenUnwindTable(
             const std::string &sopath, std::vector<uint32_t> &processed_result);
