@@ -147,14 +147,16 @@ public class WarmUpService extends Service {
 
             try {
                 synchronized (mBound) {
-                    mBound.wait(60000); // 60s
+                    if (!mBound[0]) {
+                        mBound.wait(60000); // 60s
+                    }
                 }
             } catch (InterruptedException e) {
                 MatrixLog.printErrStackTrace(TAG, e, "");
             }
 
             if (!mBound[0]) {
-                context.unbindService(mConnection);
+                disconnect(context);
             }
 
             return mBound[0];
@@ -163,8 +165,11 @@ public class WarmUpService extends Service {
 
         @Override
         public void disconnect(Context context) {
-
-            context.unbindService(mConnection);
+            try {
+                context.unbindService(mConnection);
+            } catch (Throwable e) {
+                MatrixLog.printErrStackTrace(TAG, e, "");
+            }
 
             MatrixLog.i(TAG, "Start disconnecting to remote. (%s)", this.hashCode());
 
