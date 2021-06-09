@@ -33,11 +33,9 @@
 static memory_meta_container m_memory_meta_container;
 
 static bool is_stacktrace_enabled = false;
-static bool is_caller_sampling_enabled = false;
 
-static size_t m_sample_size_min = 0;
-static size_t m_sample_size_max = 0;
-static double m_sampling = 1;
+static size_t m_tracing_alloc_size_min = 0;
+static size_t m_tracing_alloc_size_max = 0;
 
 static size_t m_stacktrace_log_threshold;
 
@@ -49,17 +47,9 @@ void set_stacktrace_log_threshold(size_t threshold) {
     m_stacktrace_log_threshold = threshold;
 }
 
-void set_sample_size_range(size_t min, size_t max) {
-    m_sample_size_min = min;
-    m_sample_size_max = max;
-}
-
-void set_sampling(double sampling) {
-    m_sampling = sampling;
-}
-
-void enable_caller_sampling(bool enable) {
-    is_caller_sampling_enabled = enable;
+void set_tracing_alloc_size_range(size_t min, size_t max) {
+    m_tracing_alloc_size_min = min;
+    m_tracing_alloc_size_max = max;
 }
 
 static inline void
@@ -71,20 +61,11 @@ decrease_stack_size(std::map<uint64_t, stack_meta_t> &stack_metas,
 
 void memory_hook_init() {
     LOGI(TAG, "memory_hook_init");
-    srand((unsigned int) time(NULL));
 }
 
-static inline bool should_do_unwind(size_t byte_count, void *caller) {
-    if (!is_caller_sampling_enabled) {
-
-        return ((m_sample_size_min == 0 || byte_count >= m_sample_size_min)
-                && (m_sample_size_max == 0 || byte_count <= m_sample_size_max)
-                && rand() <= m_sampling * RAND_MAX);
-
-    }
-
-    // TODO caller sampling
-    return false;
+static inline bool should_do_unwind(size_t byte_count) {
+    return ((m_tracing_alloc_size_min == 0 || byte_count >= m_tracing_alloc_size_min)
+            && (m_tracing_alloc_size_max == 0 || byte_count <= m_tracing_alloc_size_max));
 }
 
 static inline void on_acquire_memory(void *caller,
@@ -101,8 +82,8 @@ static inline void on_acquire_memory(void *caller,
     }
 
     wechat_backtrace::Backtrace backtrace;
-    uint64_t stack_hash = 0;
-    if (is_stacktrace_enabled && should_do_unwind(byte_count, caller)) {
+    uint64_t                    stack_hash = 0;
+    if (is_stacktrace_enabled && should_do_unwind(byte_count)) {
         backtrace = BACKTRACE_INITIALIZER(MEMHOOK_BACKTRACE_MAX_FRAMES);
         wechat_backtrace::unwind_adapter(backtrace.frames.get(), backtrace.max_frames,
                                          backtrace.frame_size);
@@ -125,7 +106,7 @@ static inline void on_acquire_memory(void *caller,
                                        stack_meta->size += byte_count;
                                        if (!stack_meta->backtrace.frames) { // 相同的堆栈只记录一个
                                            stack_meta->backtrace = backtrace;
-                                           stack_meta->caller = caller;
+                                           stack_meta->caller    = caller;
                                        }
                                    });
 
@@ -194,7 +175,7 @@ static inline size_t collect_metas(std::map<void *, caller_meta_t> &heap_caller_
                     dest_stack_meta.backtrace = stack_meta->backtrace;
                     // 没错, 这里的确使用 ptr_meta 的 size, 因为是在遍历 ptr_meta, 因此原来 stack_meta 的 size 仅起引用计数作用
                     dest_stack_meta.size += meta->size;
-                    dest_stack_meta.caller     = stack_meta->caller;
+                    dest_stack_meta.caller    = stack_meta->caller;
                 }
 
                 ptr_meta_size++;
@@ -217,13 +198,13 @@ static inline void dump_callers(FILE *log_file,
     LOGD(TAG, "dump_callers: count = %zu", caller_metas.size());
     flogger(log_file, "dump_callers: count = %zu\n", caller_metas.size());
 
-    std::unordered_map<std::string, size_t> caller_alloc_size_of_so;
+    std::unordered_map<std::string, size_t>                   caller_alloc_size_of_so;
     std::unordered_map<std::string, std::map<size_t, size_t>> same_size_count_of_so;
 
     LOGD(TAG, "caller so begin");
     // 按 so 聚类
     for (auto &i : caller_metas) {
-        auto caller = i.first;
+        auto caller      = i.first;
         auto caller_meta = i.second;
 
         Dl_info dl_info;
@@ -268,6 +249,7 @@ static inline void dump_callers(FILE *log_file,
         caller_total_size += so_size;
 
         auto count_of_size = same_size_count_of_so[so_name];
+
         std::multimap<size_t, std::pair<size_t, size_t>> result_sort_by_mul;
         std::transform(count_of_size.begin(),
                        count_of_size.end(),
@@ -280,11 +262,11 @@ static inline void dump_callers(FILE *log_file,
 
         int lines = 20; // fixme hard coding
         LOGD(TAG, "top %d (size * count):", lines);
-        flogger(log_file, "top %d (size * count):\n", lines); // fixme using json
+        flogger(log_file, "top %d (size * count):\n", lines);
 
         for (auto sc = result_sort_by_mul.rbegin();
              sc != result_sort_by_mul.rend() && lines; ++sc, --lines) {
-            auto size = sc->second.first;
+            auto size  = sc->second.first;
             auto count = sc->second.second;
             LOGD(TAG, "   size = %10zu b, count = %zu", size, count);
             flogger(log_file, "   size = %10zu b, count = %zu\n", size, count);
@@ -337,7 +319,7 @@ static inline void dump_callers(FILE *log_file,
 //}
 
 struct stack_dump_meta_t {
-    size_t size;
+    size_t      size;
     std::string full_stacktrace;
     std::string brief_stacktrace;
 };
@@ -353,16 +335,16 @@ static inline void dump_stacks(FILE *log_file,
     LOGD(TAG, "dump_stacks: hash count = %zu", stack_metas.size());
     flogger(log_file, "dump_stacks: hash count = %zu\n", stack_metas.size());
 
-    std::unordered_map<std::string, size_t> stack_alloc_size_of_so;
+    std::unordered_map<std::string, size_t>                         stack_alloc_size_of_so;
     std::unordered_map<std::string, std::vector<stack_dump_meta_t>> stacktrace_of_so;
 
     for (auto &stack_meta_it : stack_metas) {
-        auto hash       = stack_meta_it.first;
-        auto size       = stack_meta_it.second.size;
+        auto hash      = stack_meta_it.first;
+        auto size      = stack_meta_it.second.size;
         auto backtrace = stack_meta_it.second.backtrace;
-        auto caller     = stack_meta_it.second.caller;
+        auto caller    = stack_meta_it.second.caller;
 
-        std::string caller_so_name;
+        std::string       caller_so_name;
         std::stringstream full_stack_builder;
         std::stringstream brief_stack_builder;
 
@@ -380,7 +362,7 @@ static inline void dump_stacks(FILE *log_file,
             std::string so_name = it.map_name;
 
             char *demangled_name = nullptr;
-            int status = 0;
+            int  status          = 0;
             demangled_name = abi::__cxa_demangle(it.function_name, nullptr, 0, &status);
 
             full_stack_builder << "      | "
@@ -480,7 +462,7 @@ static inline void dump_stacks(FILE *log_file,
     size_t json_so_count = 3;
 
     for (auto &p : so_sorted_by_size) {
-        auto so_name = p.first;
+        auto so_name       = p.first;
         auto so_alloc_size = p.second;
 
         LOGD(TAG, "\nmalloc size of so (%s) : remaining size = %zu", so_name.c_str(),
@@ -502,7 +484,7 @@ static inline void dump_stacks(FILE *log_file,
                       return v1.size > v2.size;
                   });
 
-        cJSON *so_obj = nullptr; // nullable
+        cJSON *so_obj       = nullptr; // nullable
         cJSON *so_stack_arr = nullptr; // nullable
         if (json_so_count) {
             LOGE(TAG
@@ -544,8 +526,8 @@ static inline void dump_stacks(FILE *log_file,
 
 static inline void dump_impl(FILE *log_file, FILE *json_file, bool mmap) {
 
-    std::map<void *, caller_meta_t> heap_caller_metas;
-    std::map<void *, caller_meta_t> mmap_caller_metas;
+    std::map<void *, caller_meta_t>  heap_caller_metas;
+    std::map<void *, caller_meta_t>  mmap_caller_metas;
     std::map<uint64_t, stack_meta_t> heap_stack_metas;
     std::map<uint64_t, stack_meta_t> mmap_stack_metas;
 

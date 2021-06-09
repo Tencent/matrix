@@ -15,17 +15,16 @@ import java.util.Set;
  */
 public class MemoryHook extends AbsHook {
 
-    private static final String TAG = "Matrix.Memory";
+    private static final String TAG = "Matrix.MemoryHook";
 
     public static final MemoryHook INSTANCE = new MemoryHook();
 
-    private Set<String> mHookSoSet   = new HashSet<>();
-    private Set<String> mIgnoreSoSet = new HashSet<>();
+    private final Set<String> mHookSoSet   = new HashSet<>();
+    private final Set<String> mIgnoreSoSet = new HashSet<>();
 
     private int     mMinTraceSize;
     private int     mMaxTraceSize;
     private int     mStacktraceLogThreshold = 10 * 1024 * 1024;
-    private double  mSampling = 1;
     private boolean mEnableStacktrace;
     private boolean mEnableMmap;
 
@@ -69,38 +68,14 @@ public class MemoryHook extends AbsHook {
     }
 
     /**
-     * >= 0, 0 表示不限制
      *
-     * @param size
+     * @param min >= 0, 0 表示不限制
+     * @param max 0 或 > minSize, 0 表示不限制
      * @return
      */
-    public MemoryHook minTraceSize(int size) {
-        mMinTraceSize = size;
-        return this;
-    }
-
-    /**
-     * 0 或 > minSize, 0 表示不限制
-     *
-     * @param size
-     * @return
-     */
-    public MemoryHook maxTraceSize(int size) {
-        mMaxTraceSize = size;
-        return this;
-    }
-
-    /**
-     * [0,1]
-     *
-     * @param sampling
-     * @return
-     */
-    public MemoryHook sampling(double sampling) {
-        if (mSampling < 0 || mSampling > 1) {
-            throw new IllegalArgumentException("sampling should be between 0 and 1: " + sampling);
-        }
-        mSampling = sampling;
+    public MemoryHook tracingAllocSizeRange(int min, int max) {
+        mMinTraceSize = min;
+        mMaxTraceSize = max;
         return this;
     }
 
@@ -131,12 +106,10 @@ public class MemoryHook extends AbsHook {
                     "0 or greater than minSize: min = " + mMinTraceSize + ", max = " + mMaxTraceSize);
         }
 
-        MatrixLog.d("Yves.debug", "enable mmap? " + mEnableMmap);
+        MatrixLog.d(TAG, "enable mmap? " + mEnableMmap);
         enableMmapHookNative(mEnableMmap);
 
-        setSampleSizeRangeNative(mMinTraceSize, mMaxTraceSize);
-        setSamplingNative(mSampling);
-
+        setTracingAllocSizeRangeNative(mMinTraceSize, mMaxTraceSize);
         setStacktraceLogThresholdNative(mStacktraceLogThreshold);
         enableStacktraceNative(mEnableStacktrace);
     }
@@ -155,9 +128,7 @@ public class MemoryHook extends AbsHook {
 
     private native void dumpNative(String logPath, String jsonPath);
 
-    private native void setSamplingNative(double sampling);
-
-    private native void setSampleSizeRangeNative(int minSize, int maxSize);
+    private native void setTracingAllocSizeRangeNative(int minSize, int maxSize);
 
     private native void enableStacktraceNative(boolean enable);
 

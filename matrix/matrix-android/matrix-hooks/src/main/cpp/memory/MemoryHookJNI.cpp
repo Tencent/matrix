@@ -147,21 +147,12 @@ Java_com_tencent_matrix_hook_memory_MemoryHook_addIgnoreSoNative(JNIEnv *env,
 }
 
 JNIEXPORT void JNICALL
-Java_com_tencent_matrix_hook_memory_MemoryHook_setSamplingNative(JNIEnv *env,
-                                                                jobject instance,
-                                                                jdouble sampling) {
+Java_com_tencent_matrix_hook_memory_MemoryHook_setTracingAllocSizeRangeNative(JNIEnv *env,
+                                                                              jobject instance,
+                                                                              jint minSize,
+                                                                              jint maxSize) {
 
-    set_sampling(sampling);
-
-}
-
-JNIEXPORT void JNICALL
-Java_com_tencent_matrix_hook_memory_MemoryHook_setSampleSizeRangeNative(JNIEnv *env,
-                                                                       jobject instance,
-                                                                       jint minSize,
-                                                                       jint maxSize) {
-
-    set_sample_size_range((size_t) minSize, (size_t) maxSize);
+    set_tracing_alloc_size_range((size_t) minSize, (size_t) maxSize);
 
 }
 
