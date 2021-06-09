@@ -1,6 +1,18 @@
-//
-// Created by Carl on 2020-09-21.
-//
+/*
+ * Tencent is pleased to support the open source community by making wechat-matrix available.
+ * Copyright (C) 2021 THL A29 Limited, a Tencent company. All rights reserved.
+ * Licensed under the BSD 3-Clause License (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      https://opensource.org/licenses/BSD-3-Clause
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #ifndef _LIBWECHATBACKTRACE_QUICKEN_TABLE_MANAGER_H
 #define _LIBWECHATBACKTRACE_QUICKEN_TABLE_MANAGER_H
@@ -16,26 +28,9 @@
 #include "Errors.h"
 #include "QuickenTable.h"
 #include "Log.h"
+#include "QuickenInterface.h"
 
 namespace wechat_backtrace {
-
-    enum QutFileError : uint16_t {
-        NoneError = 0,
-        NotInitialized = 1,
-        NotWarmedUp = 2,
-        LoadRequesting = 3,
-        OpenFileFailed = 4,
-        FileStateError = 5,
-        FileTooShort = 6,
-        MmapFailed = 7,
-        QutVersionNotMatch = 8,
-        ArchNotMatch = 9,
-        BuildIdNotMatch = 10,
-        FileLengthNotMatch = 11,
-        InsertNewQutFailed = 12,
-        TryInvokeJavaRequestQutGenerate = 13,
-        LoadFailed = 14,
-    };
 
     class QuickenTableManager {
 
@@ -48,9 +43,11 @@ namespace wechat_backtrace {
 
         QuickenTableManager &operator=(const QuickenTableManager &);
 
-        std::unordered_map<std::string, QutSectionsPtr> qut_sections_map_;          // TODO destruction
-        std::unordered_map<std::string, std::pair<uint64_t, std::string>> qut_sections_requesting_;      // TODO destruction
-        std::unordered_map<std::string, std::string> qut_sections_hash_to_build_id_;      // TODO destruction
+        /* Never release */
+        std::unordered_map<std::string, QutSectionsPtr> qut_sections_map_;
+        std::unordered_map<std::string, std::pair<uint64_t, std::string>> qut_sections_requesting_;
+        std::unordered_map<std::string, std::string> qut_sections_hash_to_build_id_;
+        std::unordered_map<std::string, std::shared_ptr<QuickenInterface>> qut_sections_hash_to_interface_;
 
         std::mutex lock_;
 
@@ -136,6 +133,10 @@ namespace wechat_backtrace {
 
         void
         EraseQutRequestingByHash(const std::string &hash);
+
+        void
+        RecordQutRequestInterface(std::shared_ptr<QuickenInterface> &self_ptr);
+
     };
 }  // namespace wechat_backtrace
 

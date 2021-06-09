@@ -1,3 +1,19 @@
+/*
+ * Tencent is pleased to support the open source community by making wechat-matrix available.
+ * Copyright (C) 2021 THL A29 Limited, a Tencent company. All rights reserved.
+ * Licensed under the BSD 3-Clause License (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      https://opensource.org/licenses/BSD-3-Clause
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 #include <stdint.h>
 #include <bits/pthread_types.h>
 #include <cstdlib>
@@ -14,13 +30,14 @@
 #include <jni.h>
 #include <QuickenUtility.h>
 #include <QuickenMemory.h>
-
 #include "QuickenUnwinder.h"
 #include "QuickenMaps.h"
 
 #include "android-base/macros.h"
 #include "Log.h"
 #include "PthreadExt.h"
+
+#include "MemoryLocal.h"
 
 #define WECHAT_BACKTRACE_TAG "WeChatBacktrace"
 
@@ -30,8 +47,16 @@ namespace wechat_backtrace {
     using namespace unwindstack;
 
     QUT_EXTERN_C_BLOCK
+    DEFINE_STATIC_LOCAL(shared_ptr<Memory>, process_memory_, (new MemoryLocal));
+    DEFINE_STATIC_LOCAL(shared_ptr<Memory>, process_memory_unsafe_, (new QuickenMemoryLocal));
 
-    DEFINE_STATIC_LOCAL(shared_ptr<Memory>, process_memory_, (new QuickenMemoryLocal));
+    BACKTRACE_EXPORT shared_ptr<Memory> &GetLocalProcessMemory() {
+        return process_memory_;
+    }
+
+    BACKTRACE_EXPORT shared_ptr<Memory> &GetUnsafeLocalProcessMemory() {
+        return process_memory_unsafe_;
+    }
 
     DEFINE_STATIC_LOCAL(mutex, generate_lock_,);
 
@@ -60,7 +85,7 @@ namespace wechat_backtrace {
         unique_ptr<QuickenInterface> interface = QuickenMapInfo::CreateQuickenInterfaceForGenerate(
                 sopath,
                 elf.get(),
-                0   // TODO fix this bug here
+                0
         );
         QutSections qut_sections;
 
@@ -161,6 +186,7 @@ namespace wechat_backtrace {
         QUT_LOG("Generate qut for so %s, elf_start_offset %llu.", sopath.c_str(),
                 (ullint_t) elf_start_offset);
 
+        // Gen hash string
         const string hash = ToHash(
                 sopath + to_string(FileSize(sopath)) + to_string(elf_start_offset));
         const std::string soname = SplitSonameFromPath(sopath);
@@ -244,16 +270,16 @@ namespace wechat_backtrace {
     }
 
     inline uint32_t
-    GetPcAdjustment(Memory *process_memory, MapInfoPtr map_info, uint64_t pc, uint32_t rel_pc,
+    GetPcAdjustment(MapInfoPtr map_info, uint64_t pc, uint32_t rel_pc,
                     uint32_t load_bias) {
-        if (rel_pc < load_bias) {
+        if (UNLIKELY(rel_pc < load_bias)) {
             if (rel_pc < 2) {
                 return 0;
             }
             return 2;
         }
         uint32_t adjusted_rel_pc = rel_pc - load_bias;
-        if (adjusted_rel_pc < 5) {
+        if (UNLIKELY(adjusted_rel_pc < 5)) {
             if (adjusted_rel_pc < 2) {
                 return 0;
             }
@@ -264,10 +290,10 @@ namespace wechat_backtrace {
             // This is a thumb instruction, it could be 2 or 4 bytes.
             uint32_t value;
             uint64_t adjusted_pc = pc - 5;
-            if (!(map_info->flags & PROT_READ) ||
+            if (!(map_info->flags & PROT_READ || map_info->flags & PROT_EXEC) ||
                 adjusted_pc < map_info->start ||
                 (adjusted_pc + sizeof(value)) >= map_info->end ||
-                !process_memory->ReadFully(adjusted_pc, &value, sizeof(value)) ||
+                !process_memory_unsafe_->ReadFully(adjusted_pc, &value, sizeof(value)) ||
                 (value & 0xe000f000) != 0xe000f000) {
                 return 2;
             }
@@ -304,8 +330,8 @@ namespace wechat_backtrace {
         for (; frame_size < frame_max_size;) {
             uint64_t cur_pc = PC(regs);
             uint64_t cur_sp = SP(regs);
-            MapInfoPtr map_info = nullptr;
-            QuickenInterface *interface = nullptr;
+            MapInfoPtr map_info;
+            QuickenInterface *interface;
 
             if (last_map_info && last_map_info->start <= cur_pc && last_map_info->end > cur_pc) {
                 map_info = last_map_info;
@@ -335,7 +361,7 @@ namespace wechat_backtrace {
             uint64_t step_pc = rel_pc;
 
             if (adjust_pc) {
-                pc_adjustment = GetPcAdjustment(process_memory_.get(), map_info, PC(regs), rel_pc,
+                pc_adjustment = GetPcAdjustment(map_info, PC(regs), rel_pc,
                                                 last_load_bias);
             } else {
                 pc_adjustment = 0;
@@ -345,6 +371,7 @@ namespace wechat_backtrace {
 
             if (dex_pc != 0) {
                 backtrace[frame_size].is_dex_pc = true;
+                backtrace[frame_size].maybe_java = true;
                 backtrace[frame_size].pc = dex_pc;
                 dex_pc = 0;
 
@@ -357,6 +384,7 @@ namespace wechat_backtrace {
 
             backtrace[frame_size].pc = PC(regs) - pc_adjustment;
             backtrace[frame_size].rel_pc = step_pc;
+            backtrace[frame_size].maybe_java = map_info->maybe_java;
 
             adjust_pc = true;
 
@@ -366,8 +394,17 @@ namespace wechat_backtrace {
                 break;
             }
 
-            if (!interface->Step(step_pc, regs, nullptr, stack_top, stack_bottom,
-                                 frame_size, &dex_pc, &finished)) {
+            bool step_ret;
+            if (UNLIKELY(interface->jit_cache_)) {
+                uptr adjust_jit_pc = PC(regs) - pc_adjustment;
+                step_ret = interface->StepJIT(adjust_jit_pc, regs, maps.get(), stack_top,
+                                              stack_bottom, frame_size, &dex_pc, &finished);
+            } else {
+                step_ret = interface->Step(step_pc, regs, stack_top, stack_bottom,
+                                           frame_size, &dex_pc, &finished);
+            }
+
+            if (UNLIKELY(!step_ret)) {
                 ret = interface->last_error_code_;
                 break;
             }

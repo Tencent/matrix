@@ -96,6 +96,19 @@ class ElfInterface {
   uint64_t gnu_build_id_offset() { return gnu_build_id_offset_; }
   uint64_t gnu_build_id_size() { return gnu_build_id_size_; }
 
+  // Matrix-changed: add setter for .data offset
+  void set_data_offset(uint64_t offset) { data_offset_ = offset; }
+  void set_data_vaddr_start(uint64_t start) { data_vaddr_start_ = start; }
+  void set_data_vaddr_end(uint64_t end) { data_vaddr_end_ = end; }
+
+    // Matrix-changed: add eh frame setter
+  void set_eh_frame_hdr_offset(uint64_t offset) { eh_frame_hdr_offset_ = offset; }
+  void set_eh_frame_hdr_section_bias(int64_t bias) { eh_frame_hdr_section_bias_ = bias; }
+  void set_eh_frame_hdr_size(uint64_t size) { eh_frame_hdr_size_ = size; }
+  void set_eh_frame_offset(uint64_t offset) { eh_frame_offset_ = offset; }
+  void set_eh_frame_section_bias(int64_t bias) { eh_frame_section_bias_ = bias; }
+  void set_eh_frame_size(uint64_t size) { eh_frame_size_ = size; }
+
   DwarfSection* eh_frame() { return eh_frame_.get(); }
   DwarfSection* debug_frame() { return debug_frame_.get(); }
 
@@ -104,6 +117,9 @@ class ElfInterface {
   const ErrorData& last_error() { return last_error_; }
   ErrorCode LastErrorCode() { return last_error_.code; }
   uint64_t LastErrorAddress() { return last_error_.address; }
+
+  // Matrix-changed: get symbols_
+  std::vector<Symbols*> &symbols() { return symbols_;};
 
   template <typename EhdrType, typename PhdrType>
   static int64_t GetLoadBias(Memory* memory);

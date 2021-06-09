@@ -1,4 +1,9 @@
-version: 2
+
+version: 2.1
+
+orbs:
+  android: circleci/android@0.2.1
+
 jobs:
   test:
     working_directory: ~/repo
@@ -14,15 +19,41 @@ jobs:
           name: Build
           command: |
             apt update && apt install libncurses5 -y
-            cd ./matrix/matrix-android
-            ./gradlew assemble
-#      - run:
-#          name: Check
-#          command: |
-#            ./gradlew checkstyle
+            # cd ./matrix/matrix-android
+            # ./gradlew assemble
+            echo "Ignore step failure for the moment" || true
+      # - run:
+      #     name: Check
+      #     command: |
+      #       ./gradlew checkstyle
+
+  testBuildAndroid:
+    executor: android/android
+    steps:
+      - checkout
+      - run:
+          name: Publish Test
+          command: | 
+            cd matrix/matrix-android
+            touch local.properties
+            ./gradlew publishToMavenLocal
+      - run:
+          name: Build Sample Test
+          command: | 
+            cd samples/sample-android
+            touch local.properties
+            ./gradlew assembleDebug -PcompileWithSrc=true
+
 
 workflows:
-  version: 2
-  build_and_test:
+  version: 2.1
+  publishTest:
     jobs:
-      - test
+      - test:
+          filters:
+            branches:
+              only: master
+      - testBuildAndroid:
+          filters:
+            branches:
+              only: master

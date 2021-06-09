@@ -1,3 +1,19 @@
+/*
+ * Tencent is pleased to support the open source community by making wechat-matrix available.
+ * Copyright (C) 2021 THL A29 Limited, a Tencent company. All rights reserved.
+ * Licensed under the BSD 3-Clause License (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      https://opensource.org/licenses/BSD-3-Clause
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 #include <stdint.h>
 #include <bits/pthread_types.h>
 #include <cstdlib>
@@ -16,6 +32,7 @@
 #include <unwindstack/Elf.h>
 #include <BacktraceDefine.h>
 #include "QuickenMemory.h"
+#include "MemoryLocal.h"
 
 namespace wechat_backtrace {
 
@@ -28,6 +45,9 @@ namespace wechat_backtrace {
 
     void QuickenMemoryFile::Clear() {
         if (data_) {
+
+            QUT_LOG("QuickenMemoryFile Clear file %s, on addr %llx", file_.c_str(), &data_[-offset_]);
+
             munmap(&data_[-offset_], size_ + offset_);
             data_ = nullptr;
         }
@@ -92,8 +112,8 @@ namespace wechat_backtrace {
         }
 
         if (slice_size_ > 0) {
-            // Cut off e_ident from elf mapping to broke elf header's completeness. So we can prevent
-            // some kind of custom loaders finding our mapping elf as the one loaded by dl.
+            // Cut off e_ident from elf mapping to broke elf header's completeness. So we can
+            // prevent some kind of custom loaders finding our mapping elf as the one loaded by dl.
             size_t slice_size = slice_size_;
             memcpy(slice_, map, slice_size);
             memset(map, 0, slice_size);
@@ -103,6 +123,12 @@ namespace wechat_backtrace {
 
         data_ = &reinterpret_cast<uint8_t *>(map)[offset_];
         size_ -= offset_;
+
+        file_ = file;
+        init_offset_ = offset;
+        init_size_ = size;
+
+        QUT_LOG("QuickenMemoryFile Init file %s, on addr %llx", file_.c_str(), &data_[-offset_]);
 
         return true;
     }
@@ -127,7 +153,7 @@ namespace wechat_backtrace {
     // ------------------------------------------------------------------------------------
 
     size_t QuickenMemoryLocal::Read(uint64_t remote_src, void* dst, size_t len) {
-        memcpy(dst, reinterpret_cast<const void *>(remote_src), len);
+        memcpy(dst, reinterpret_cast<const void *>(remote_src), len);   // Should we use process_vm_readv()?
         return len;
     }
 

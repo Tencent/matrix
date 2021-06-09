@@ -18,52 +18,20 @@ package sample.tencent.matrix;
 
 import android.app.Application;
 import android.content.Context;
-import android.os.Handler;
-import android.os.HandlerThread;
 import android.content.Intent;
-import android.os.Looper;
-import android.os.Message;
-import androidx.annotation.NonNull;
-import android.view.Choreographer;
 
 import com.tencent.matrix.Matrix;
-//import com.tencent.matrix.batterycanary.monitor.BatteryMonitor;
-//import com.tencent.matrix.batterycanary.monitor.plugin.JiffiesMonitorPlugin;
-//import com.tencent.matrix.batterycanary.monitor.plugin.LooperTaskMonitorPlugin;
-//import com.tencent.matrix.batterycanary.monitor.plugin.WakeLockMonitorPlugin;
 import com.tencent.matrix.batterycanary.BatteryMonitorPlugin;
-import com.tencent.matrix.batterycanary.monitor.AppStats;
-import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCallback;
-import com.tencent.matrix.batterycanary.monitor.BatteryMonitorConfig;
-import com.tencent.matrix.batterycanary.monitor.feature.AlarmMonitorFeature;
-import com.tencent.matrix.batterycanary.monitor.feature.AppStatMonitorFeature;
-import com.tencent.matrix.batterycanary.monitor.feature.BlueToothMonitorFeature;
-import com.tencent.matrix.batterycanary.monitor.feature.DeviceStatMonitorFeature;
-import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature;
-import com.tencent.matrix.batterycanary.monitor.feature.LocationMonitorFeature;
-import com.tencent.matrix.batterycanary.monitor.feature.LooperTaskMonitorFeature;
-import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature;
-import com.tencent.matrix.batterycanary.monitor.feature.TrafficMonitorFeature;
-import com.tencent.matrix.batterycanary.monitor.feature.WakeLockMonitorFeature;
-import com.tencent.matrix.batterycanary.monitor.feature.WifiMonitorFeature;
 import com.tencent.matrix.iocanary.IOCanaryPlugin;
 import com.tencent.matrix.iocanary.config.IOConfig;
 import com.tencent.matrix.resource.ResourcePlugin;
 import com.tencent.matrix.resource.config.ResourceConfig;
-import com.tencent.matrix.threadcanary.ThreadMonitor;
-import com.tencent.matrix.threadcanary.ThreadMonitorConfig;
 import com.tencent.matrix.trace.TracePlugin;
 import com.tencent.matrix.trace.config.TraceConfig;
-import com.tencent.matrix.util.MatrixHandlerThread;
 import com.tencent.matrix.util.MatrixLog;
 import com.tencent.sqlitelint.SQLiteLint;
 import com.tencent.sqlitelint.SQLiteLintPlugin;
 import com.tencent.sqlitelint.config.SQLiteLintConfig;
-
-import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.util.concurrent.Callable;
 
 import sample.tencent.matrix.battery.BatteryCanaryInitHelper;
 import sample.tencent.matrix.config.DynamicConfigImplDemo;
@@ -157,11 +125,6 @@ public class MatrixApplication extends Application {
             }
             builder.plugin(new SQLiteLintPlugin(sqlLiteConfig));
 
-
-            ThreadMonitor threadMonitor = new ThreadMonitor(new ThreadMonitorConfig.Builder().build());
-            builder.plugin(threadMonitor);
-
-
             BatteryMonitorPlugin batteryMonitorPlugin = BatteryCanaryInitHelper.createMonitor();
             builder.plugin(batteryMonitorPlugin);
         }
@@ -170,7 +133,6 @@ public class MatrixApplication extends Application {
 
         //start only startup tracer, close other tracer.
         tracePlugin.start();
-        Matrix.with().getPluginByClass(ThreadMonitor.class).start();
 //        Matrix.with().getPluginByClass(BatteryMonitor.class).start();
         MatrixLog.i("Matrix.HackCallback", "end:%s", System.currentTimeMillis());
 

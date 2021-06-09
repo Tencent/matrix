@@ -34,6 +34,9 @@ android {
                 from('src/main/cpp/external/libunwindstack/include') {
                     include '**/*.h'
                 }
+                from('src/main/cpp/dexfile/include') {
+                    include '**/*.h'
+                }
             }
         }
     }
