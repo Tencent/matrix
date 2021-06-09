@@ -1,3 +1,19 @@
+/*
+ * Tencent is pleased to support the open source community by making wechat-matrix available.
+ * Copyright (C) 2021 THL A29 Limited, a Tencent company. All rights reserved.
+ * Licensed under the BSD 3-Clause License (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      https://opensource.org/licenses/BSD-3-Clause
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 #include <stdint.h>
 #include <bits/pthread_types.h>
 #include <cstdlib>
@@ -96,12 +112,12 @@ namespace wechat_backtrace {
         pthread_attr_t attr;
         BACKTRACE_FUNC_WRAPPER(pthread_getattr_ext)(pthread_self(), &attr);
         uptr stack_bottom = reinterpret_cast<uptr>(attr.stack_base);
-        uptr tack_top = reinterpret_cast<uptr>(attr.stack_base) + attr.stack_size;
+        uptr stack_top = reinterpret_cast<uptr>(attr.stack_base) + attr.stack_size;
 
         uptr fp = regs[0]; // x29 or r7
         uptr pc = regs[3]; // x32 or r15
 
-        fpUnwindImpl(pc, fp, tack_top, stack_bottom, backtrace, max_size, frame_size);
+        fpUnwindImpl(pc, fp, stack_top, stack_bottom, backtrace, max_size, frame_size);
 
     }
 

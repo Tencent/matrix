@@ -1,3 +1,19 @@
+/*
+ * Tencent is pleased to support the open source community by making wechat-matrix available.
+ * Copyright (C) 2021 THL A29 Limited, a Tencent company. All rights reserved.
+ * Licensed under the BSD 3-Clause License (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      https://opensource.org/licenses/BSD-3-Clause
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 //
 // Created by Yves on 2020-04-28.
 //
@@ -15,7 +31,7 @@ void on_mmap_memory(void *caller, void *ptr, size_t byte_count);
 
 void on_munmap_memory(void *ptr);
 
-void memory_hook_on_dlopen(const char *file_name);
+void memory_hook_on_dlopen(const char *file_name, bool *maps_refreshed);
 
 void dump(bool enable_mmap = false,
           const char *log_path = nullptr,

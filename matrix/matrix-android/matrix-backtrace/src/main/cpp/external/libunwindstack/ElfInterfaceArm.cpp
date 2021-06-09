@@ -23,7 +23,6 @@
 
 #include "ArmExidx.h"
 #include "ElfInterfaceArm.h"
-#include "../../common/Log.h"
 
 namespace unwindstack {
 

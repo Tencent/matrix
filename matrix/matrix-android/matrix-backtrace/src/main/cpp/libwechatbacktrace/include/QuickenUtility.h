@@ -1,3 +1,19 @@
+/*
+ * Tencent is pleased to support the open source community by making wechat-matrix available.
+ * Copyright (C) 2021 THL A29 Limited, a Tencent company. All rights reserved.
+ * Licensed under the BSD 3-Clause License (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      https://opensource.org/licenses/BSD-3-Clause
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 #ifndef _LIBWECHATBACKTRACE_QUICKEN_UTILITY_H
 #define _LIBWECHATBACKTRACE_QUICKEN_UTILITY_H
 
@@ -53,15 +69,35 @@ namespace wechat_backtrace {
         return build_id;
     }
 
+    inline bool StartsWith(std::string_view s, std::string_view prefix) {
+        return s.substr(0, prefix.size()) == prefix;
+    }
+
     inline static bool EndsWith(std::string_view s, std::string_view suffix) {
         return s.size() >= suffix.size() &&
                s.substr(s.size() - suffix.size(), suffix.size()) == suffix;
     }
 
+    inline static bool IsSoFile(const std::string &soname) {
+        return EndsWith(soname, ".so");
+    }
+
     inline static bool IsOatFile(const std::string &soname) {
         return EndsWith(soname, ".oat") ||
-               EndsWith(soname, ".odex")
-               ;
+               EndsWith(soname, ".odex");
+    }
+
+    inline static bool IsJitCacheMap(const std::string &name) {
+        return StartsWith(name, "/memfd:jit-cache") ||
+               StartsWith(name, "/memfd:/jit-cache") ||
+               EndsWith(name, "jit-code-cache]");
+    }
+
+    inline static bool MaybeDexFile(const std::string &soname) {
+        return EndsWith(soname, ".jar") ||
+               EndsWith(soname, ".apk") ||
+               EndsWith(soname, ".vdex") ||
+               EndsWith(soname, ".dex");
     }
 
     inline static size_t FileSize(const std::string &sopath) {

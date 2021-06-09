@@ -31,7 +31,6 @@
 
 #include "MemoryFileAtOffset.h"
 #include "MemoryRange.h"
-#include "../../common/Log.h"
 
 namespace unwindstack {
 
@@ -348,6 +347,14 @@ std::string MapInfo::GetPrintableBuildID() {
     printable_build_id += android::base::StringPrintf("%02hhx", c);
   }
   return printable_build_id;
+}
+
+std::string MapInfo::GetCachedPrintableBuildID() {
+  std::lock_guard<std::mutex> guard(mutex_printable_build_id_);
+  if (printable_build_id_.empty()) {
+    printable_build_id_ = GetPrintableBuildID();
+  }
+  return printable_build_id_;
 }
 
 }  // namespace unwindstack

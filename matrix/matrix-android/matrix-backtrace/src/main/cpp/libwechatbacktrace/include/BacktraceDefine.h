@@ -1,3 +1,19 @@
+/*
+ * Tencent is pleased to support the open source community by making wechat-matrix available.
+ * Copyright (C) 2021 THL A29 Limited, a Tencent company. All rights reserved.
+ * Licensed under the BSD 3-Clause License (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      https://opensource.org/licenses/BSD-3-Clause
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 #ifndef _LIBWECHATBACKTRACE_DEFINE_H
 #define _LIBWECHATBACKTRACE_DEFINE_H
 
@@ -12,6 +28,7 @@
 #define MAX_FRAME_SHORT 16
 #define MAX_FRAME_NORMAL 32
 #define MAX_FRAME_LONG 64
+#define MAX_FRAME_LONG_LONG 80
 
 #define QUT_ARCH_ARM 0x1
 #define QUT_ARCH_ARM64 0x2
@@ -68,6 +85,7 @@ namespace wechat_backtrace {
         uptr pc = 0;
         uptr rel_pc = 0;
         bool is_dex_pc = false;
+        bool maybe_java = false;
     };
 
     struct FrameDetail {
@@ -86,6 +104,19 @@ namespace wechat_backtrace {
         FramePointer = 0,
         Quicken = 1,
         DwarfBased = 2
+    };
+
+    struct FrameElement {
+        uint64_t rel_pc = 0;
+        bool maybe_java = false;
+
+        std::string map_name;
+        uint64_t map_offset = 0;
+
+        std::string function_name;
+        uint64_t function_offset = 0;
+
+        std::string build_id;
     };
 
     typedef bool(*quicken_generate_delegate_func)(const std::string &, const uint64_t, const bool);

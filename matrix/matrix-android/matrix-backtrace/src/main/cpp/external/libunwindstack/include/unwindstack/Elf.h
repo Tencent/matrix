@@ -54,7 +54,7 @@ class Elf {
   Elf(Memory* memory) : memory_(memory) {}
   virtual ~Elf() = default;
 
-  bool Init(bool ignore_gnu_debug_data = false);
+  bool Init(bool ignore_gnu_debug_data = false, bool ignore_headers = false);
 
   void InitGnuDebugdata();
 
@@ -115,6 +115,10 @@ class Elf {
   static bool CacheGet(MapInfo* info);
   static bool CacheAfterCreateMemory(MapInfo* info);
 
+  // Matrix-changed: move to public.
+  std::unique_ptr<Memory> gnu_debugdata_memory_;
+  std::unique_ptr<ElfInterface> gnu_debugdata_interface_;
+
  protected:
   bool valid_ = false;
   int64_t load_bias_ = 0;
@@ -125,9 +129,6 @@ class Elf {
   ArchEnum arch_;
   // Protect calls that can modify internal state of the interface object.
   std::mutex lock_;
-
-  std::unique_ptr<Memory> gnu_debugdata_memory_;
-  std::unique_ptr<ElfInterface> gnu_debugdata_interface_;
 
   static bool cache_enabled_;
   static std::unordered_map<std::string, std::pair<std::shared_ptr<Elf>, bool>>* cache_;

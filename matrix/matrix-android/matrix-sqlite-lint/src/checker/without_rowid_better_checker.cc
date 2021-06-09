@@ -30,7 +30,7 @@ namespace sqlitelint {
                                           std::vector<Issue> *issues) {
         std::vector<TableInfo> tables = env.GetTablesInfo();
 
-        sVerbose("WithoutRowIdBetterChecker::Check tables count: %d", tables.size());
+        sVerbose("WithoutRowIdBetterChecker::Check tables count: %zu", tables.size());
 
         std::string create_sql;
         for (TableInfo table_info : tables) {

@@ -46,6 +46,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.zip.ZipEntry;
+import java.util.zip.ZipException;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
 
@@ -194,9 +195,16 @@ public class MethodTracer {
                 }
             }
         } catch (Exception e) {
-            Log.e(TAG, "[innerTraceMethodFromJar] input:%s output:%s e:%s", input.getName(), output, e);
+            Log.e(TAG, "[innerTraceMethodFromJar] input:%s output:%s e:%s", input, output, e);
+            if (e instanceof ZipException) {
+                e.printStackTrace();
+            }
             try {
-                Files.copy(input.toPath(), output.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                if (input.length() > 0) {
+                    Files.copy(input.toPath(), output.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                } else {
+                    Log.e(TAG, "[innerTraceMethodFromJar] input:%s is empty", input);
+                }
             } catch (Exception e1) {
                 e1.printStackTrace();
             }
@@ -264,12 +272,12 @@ public class MethodTracer {
         @Override
         public MethodVisitor visitMethod(int access, String name, String desc,
                                          String signature, String[] exceptions) {
+            if (!hasWindowFocusMethod) {
+                hasWindowFocusMethod = MethodCollector.isWindowFocusChangeMethod(name, desc);
+            }
             if (isABSClass) {
                 return super.visitMethod(access, name, desc, signature, exceptions);
             } else {
-                if (!hasWindowFocusMethod) {
-                    hasWindowFocusMethod = MethodCollector.isWindowFocusChangeMethod(name, desc);
-                }
                 MethodVisitor methodVisitor = cv.visitMethod(access, name, desc, signature, exceptions);
                 return new TraceMethodAdapter(api, methodVisitor, access, name, desc, this.className,
                         hasWindowFocusMethod, isActivityOrSubClass, isNeedTrace);

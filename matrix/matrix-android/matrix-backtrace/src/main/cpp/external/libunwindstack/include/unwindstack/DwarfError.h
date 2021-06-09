@@ -39,11 +39,6 @@ struct DwarfErrorData {
   uint64_t address;
 };
 
-
-bool GetFastFlag();
-
-void SetFastFlag(bool flag);
-
 }  // namespace unwindstack
 
 #endif  // _LIBUNWINDSTACK_DWARF_ERROR_H
