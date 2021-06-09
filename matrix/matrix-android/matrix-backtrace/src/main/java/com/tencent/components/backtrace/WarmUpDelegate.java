@@ -128,7 +128,7 @@ class WarmUpDelegate {
         return true;
     }
 
-    public void setSavingPath(String savingPath) {
+    void setSavingPath(String savingPath) {
         mSavingPath = savingPath;
         WeChatBacktraceNative.setSavingPath(savingPath);
     }
