@@ -53,7 +53,4 @@ target_link_libraries( # Specifies the target library.
         # Links the target library to the log library
         # included in the NDK.
         PRIVATE ${log-lib}
-
-        PRIVATE ${EXT_DEP}/lib/${ANDROID_ABI}/libbacktrace-benchmark.so
-        PRIVATE ${EXT_DEP}/lib/${ANDROID_ABI}/libwechatbacktrace.so
         )
