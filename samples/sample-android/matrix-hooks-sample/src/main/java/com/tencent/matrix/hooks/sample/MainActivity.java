@@ -29,7 +29,7 @@ import java.io.File;
 
 public class MainActivity extends Activity {
 
-    private static final String TAG = "Wxperf.Main";
+    private static final String TAG = "Matrix.test.Main";
 
     String threadNameRegex = "[GT]TestHT-?".replace("[", "\\[").replace("]", "\\]").replace("?", "[0-9]*");
 

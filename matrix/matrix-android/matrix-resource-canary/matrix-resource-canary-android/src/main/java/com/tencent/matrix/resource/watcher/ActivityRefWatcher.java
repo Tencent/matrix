@@ -221,7 +221,9 @@ public class ActivityRefWatcher extends FilePublisher implements Watcher {
                 MatrixLog.i(TAG, "DestroyedActivityInfo is empty! wait...");
                 synchronized (mDestroyedActivityInfos) {
                     try {
-                        mDestroyedActivityInfos.wait();
+                        while (mDestroyedActivityInfos.isEmpty()) {
+                            mDestroyedActivityInfos.wait();
+                        }
                     } catch (Throwable ignored) {
                         // Ignored.
                     }

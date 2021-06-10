@@ -161,6 +161,7 @@ namespace enhance {
 
         off_t elf_size  = lseek(fd, 0, SEEK_END);
         if (-1 == elf_size) {
+            close(fd);
             return false;
         }
         ElfW(Ehdr) *elf = static_cast<ElfW(Ehdr) *>(mmap(nullptr, elf_size, PROT_READ, MAP_SHARED, fd,
