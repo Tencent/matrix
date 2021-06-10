@@ -343,7 +343,10 @@ public class WarmUpService extends Service {
         try {
             final Bundle result = new Bundle();
             result.putInt(RESULT_OF_WARM_UP, INVALID_ARGUMENT);
-
+            if (args == null) {
+                MatrixLog.i(TAG, "Args is null.");
+                return result;
+            }
             String savingPath = args.getString(ARGS_WARM_UP_SAVING_PATH, null);
             MatrixLog.i(TAG, "Invoke from client with savingPath: %s.", savingPath);
             if (isNullOrNil(savingPath)) {

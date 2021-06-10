@@ -58,6 +58,9 @@ namespace wechat_backtrace {
         size_t offset_ = 0;
         uint8_t *data_ = nullptr;
 
+        void *map_addr_ = 0;
+        size_t map_size_ = 0;
+
         unsigned char slice_[QUICKEN_MEMORY_SLICE];
         size_t slice_size_ = QUICKEN_MEMORY_SLICE;
     };

@@ -579,7 +579,7 @@ class WarmUpDelegate {
             }
         }
 
-        volatile long[] mTaskStartTS = {0};
+        long[] mTaskStartTS = {0};
 
         @Override
         public void run() {
