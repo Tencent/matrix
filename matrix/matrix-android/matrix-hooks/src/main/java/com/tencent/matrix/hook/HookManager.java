@@ -33,10 +33,10 @@ public class HookManager {
 
     public static final HookManager INSTANCE = new HookManager();
 
-    private volatile boolean hasHooked;
-    private Set<AbsHook> mHooks = new HashSet<>();
+    private volatile boolean      hasHooked;
+    private          Set<AbsHook> mHooks = new HashSet<>();
 
-    private HookManager(){
+    private HookManager() {
     }
 
     private void exclusiveHook() {
@@ -114,8 +114,11 @@ public class HookManager {
     }
 
     private native int xhookRefreshNative(boolean async);
+
     private native void xhookEnableDebugNative(boolean flag);
+
     private native void xhookEnableSigSegvProtectionNative(boolean flag);
+
     private native void xhookClearNative();
 
     public static class HookFailedException extends Exception {
