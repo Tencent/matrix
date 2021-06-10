@@ -99,8 +99,8 @@ namespace wechat_backtrace {
         std::unique_ptr<unwindstack::Elf> file_backed_elf_;
 
         std::string file_memory_name_;
-        uint64_t file_memory_offset_;
-        uint64_t file_memory_size_;
+        uint64_t file_memory_offset_ = 0;
+        uint64_t file_memory_size_ = 0;
 
         std::string soname_;
 

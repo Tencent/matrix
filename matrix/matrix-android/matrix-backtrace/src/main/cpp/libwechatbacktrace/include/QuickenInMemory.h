@@ -77,7 +77,7 @@ namespace wechat_backtrace {
     template<typename AddressType>
     class QuickenInMemory {
     public:
-        QuickenInMemory() {};
+        QuickenInMemory() : elf_wrapper_(nullptr) {};
 
         ~QuickenInMemory() {};
 
