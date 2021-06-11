@@ -16,8 +16,8 @@
         android:paddingTop="16dp"
         android:paddingBottom="16dp"
         android:text="@string/usage"
-        app:layout_constraintTop_toTopOf="parent"
-        />
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
 
     <Button
         android:id="@+id/btn_wechat_backtrace_try"
@@ -26,8 +26,8 @@
         android:onClick="backtraceTry"
         android:text="Backtrace Have A Try"
         android:textAllCaps="false"
-        app:layout_constraintTop_toBottomOf="@+id/textview_bactrace_usage"
-        />
+        app:layout_constraintStart_toStartOf="@+id/textview_bactrace_usage"
+        app:layout_constraintTop_toBottomOf="@+id/textview_bactrace_usage" />
 
     <Button
         android:id="@+id/btn_wechat_backtrace_benchmark"
@@ -37,8 +37,8 @@
         android:onClick="backtraceBenchmark"
         android:text="Backtrace Benchmark"
         android:textAllCaps="false"
-        app:layout_constraintTop_toBottomOf="@+id/btn_wechat_backtrace_try"
-        />
+        app:layout_constraintStart_toStartOf="@+id/btn_wechat_backtrace_try"
+        app:layout_constraintTop_toBottomOf="@+id/btn_wechat_backtrace_try" />
 
     <Button
         android:id="@+id/btn_wechat_backtrace_benchmark_with_jit"
@@ -48,8 +48,8 @@
         android:onClick="backtraceBenchmarkWithJit"
         android:text="Backtrace Benchmark(With Jit)"
         android:textAllCaps="false"
-        app:layout_constraintTop_toBottomOf="@+id/btn_wechat_backtrace_benchmark"
-        />
+        app:layout_constraintStart_toStartOf="@+id/btn_wechat_backtrace_benchmark"
+        app:layout_constraintTop_toBottomOf="@+id/btn_wechat_backtrace_benchmark" />
 
     <Button
         android:id="@+id/btn_wechat_backtrace_benchmark_for_java"
@@ -59,16 +59,17 @@
         android:onClick="backtraceBenchmarkForJava"
         android:text="Java Backtrace Benchmark"
         android:textAllCaps="false"
-        app:layout_constraintTop_toBottomOf="@+id/btn_wechat_backtrace_benchmark_with_jit"
-        />
+        app:layout_constraintStart_toStartOf="@+id/btn_wechat_backtrace_benchmark_with_jit"
+        app:layout_constraintTop_toBottomOf="@+id/btn_wechat_backtrace_benchmark_with_jit" />
 
     <View
         android:id="@+id/horizontal_line_1"
         android:layout_width="match_parent"
         android:layout_height="1dp"
         android:layout_marginTop="32dp"
-        app:layout_constraintTop_toBottomOf="@+id/btn_wechat_backtrace_benchmark_for_java"
-        android:background="#c0c0c0"/>
+        android:background="#c0c0c0"
+        app:layout_constraintStart_toStartOf="@+id/btn_wechat_backtrace_benchmark_for_java"
+        app:layout_constraintTop_toBottomOf="@+id/btn_wechat_backtrace_benchmark_for_java" />
 
     <TextView
         android:id="@+id/textview_statistic_usage"
@@ -78,19 +79,18 @@
         android:paddingTop="16dp"
         android:paddingBottom="16dp"
         android:text="@string/stat_usage"
-        app:layout_constraintTop_toBottomOf="@+id/horizontal_line_1"
-        />
+        app:layout_constraintStart_toStartOf="@+id/btn_wechat_backtrace_benchmark_for_java"
+        app:layout_constraintTop_toBottomOf="@+id/horizontal_line_1" />
 
     <Button
         android:id="@+id/btn_wechat_backtrace_statistics"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:onClick="doStatistics"
-        android:layout_marginBottom="8dp"
         android:text="Statistics"
         android:textAllCaps="false"
-        app:layout_constraintTop_toBottomOf="@+id/textview_statistic_usage"
-        />
+        app:layout_constraintStart_toStartOf="@+id/textview_statistic_usage"
+        app:layout_constraintTop_toBottomOf="@+id/textview_statistic_usage" />
 <!--    <Button-->
 <!--        android:id="@+id/btn_wechat_backtrace"-->
 <!--        android:layout_width="wrap_content"-->
