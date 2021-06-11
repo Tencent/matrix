@@ -42,17 +42,7 @@
 
 - (MatrixIssue *)uploadReport:(MemoryRecordInfo *)record withCustomInfo:(NSDictionary *)customInfo;
 
-// ============================================================================
-#pragma mark - Current Thread
-// ============================================================================
-
-/// add a tag to current thread, then you can distinguish it from threads.
-- (void)addTagToCurrentThread:(NSString *)tagString;
-/// remove the tag of current thread.
-- (void)removeTagOfCurrentThread;
-
-- (uint32_t)getMemoryUsageOfCurrentThread;
-- (void)dumpMemoryAndGenerateReportData:(NSString *)issue customInfo:(NSDictionary *)customInfo callback:(void (^)(NSData *))callback;
+- (void)memoryDumpAndGenerateReportData:(NSString *)issue customInfo:(NSDictionary *)customInfo callback:(void (^)(NSData *))callback;
 
 // ============================================================================
 #pragma mark - Record

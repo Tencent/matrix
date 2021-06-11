@@ -23,6 +23,7 @@
     WCMemoryStatConfig *config = [[WCMemoryStatConfig alloc] init];
     config.skipMinMallocSize = (int)vm_page_size;
     config.skipMaxStackDepth = 8;
+    config.dumpCallStacks = 1;
     config.reportStrategy = EWCMemStatReportStrategy_Auto;
     return config;
 }

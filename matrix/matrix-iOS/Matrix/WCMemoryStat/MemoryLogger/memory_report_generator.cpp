@@ -36,14 +36,20 @@ struct allocation_stack {
     template<typename Writer> void Serialize(Writer &writer, stack_frames_db *stack_frames_reader, dyld_image_info_db *dyld_image_info_reader) {
         // Parse the stack first
         uint32_t fcount = 0;
-        uint64_t frames[64];
-        char const *uuids[64];
-        char const *image_names[64];
-        bool is_app_image[64];
+        uint64_t frames[STACK_LOGGING_MAX_STACK_SIZE];
+        char const *uuids[STACK_LOGGING_MAX_STACK_SIZE];
+        char const *image_names[STACK_LOGGING_MAX_STACK_SIZE];
+        bool is_app_image[STACK_LOGGING_MAX_STACK_SIZE];
 
-        unwind_stack_from_table_index(stack_frames_reader, stack_identifier, frames, &fcount, 64);
-        if (fcount <= 0)
+        if (stack_frames_reader == NULL) {
             return;
+        }
+
+        unwind_stack_from_table_index(stack_frames_reader, stack_identifier, frames, &fcount, STACK_LOGGING_MAX_STACK_SIZE);
+        if (fcount <= 0) {
+            return;
+        }
+
         dyld_image_info_db_transform_frames(dyld_image_info_reader, frames, frames, uuids, image_names, is_app_image, fcount);
 
         // Find Responsible Caller, priority app symbol, if not found, have to find the first stack symbol; skip the main symbol
@@ -153,6 +159,11 @@ struct allocation_category {
         writer.String("count");
         writer.Uint64(count);
 
+        if (stacks.size() == 0) {
+            writer.EndObject();
+            return;
+        }
+
         // Take top N or assign a size larger than 1M or UI category
         if (size >= 1024 * 1024 || index < 15) {
             std::sort(stacks.begin(), stacks.end(), comparison_allocation_stack);
@@ -225,7 +236,7 @@ std::shared_ptr<std::string> generate_summary_report(const char *event_dir, cons
     dyld_image_info_db *dyld_image_info_reader = dyld_image_info_db_open_or_create(event_dir);
     object_type_db *object_type_reader = object_type_db_open_or_create(event_dir);
 
-    if (!allocation_event_reader || !stack_frames_reader || !dyld_image_info_reader || !object_type_reader) {
+    if (!allocation_event_reader || !dyld_image_info_reader || !object_type_reader) {
         allocation_event_db_close(allocation_event_reader);
         stack_frames_db_close(stack_frames_reader);
         dyld_image_info_db_close(dyld_image_info_reader);
@@ -252,13 +263,10 @@ std::shared_ptr<std::string> generate_summary_report_i(allocation_event_db *allo
     // Classify alloc events first
     std::unordered_map<uint64_t, allocation_category *> *category_map = new std::unordered_map<uint64_t, allocation_category *>(); // key=object_type
     allocation_event_db_enumerate(allocation_event_reader, ^(const uint64_t &address, const allocation_event &event) {
-      if (event.stack_identifier == 0) {
-          //__malloc_printf("address: %lld, objtype: %u, size: %d", event.address, event.object_type, event.size);
-          return;
-      }
-
       uint64_t object_type = event.object_type;
       uint64_t org_address = address; //ORIGINL_ADDRESS_FROM_ADDRESS(event.address);
+      // align to 16
+      uint32_t event_size = (((event.size + 15) >> 4) << 4);
 
       // if object_type=0
       // 1. If the assignment fails, it is classified into Alloc Fail
@@ -269,7 +277,7 @@ std::shared_ptr<std::string> generate_summary_report_i(allocation_event_db *allo
           if (org_address == 0) {
               object_type = UINT32_MAX;
           } else if (event.alloca_type & memory_logging_type_alloc) {
-              object_type = (((uint64_t)1 << 32) | event.size);
+              object_type = (((uint64_t)1 << 32) | event_size);
           } else if (event.alloca_type & memory_logging_type_vm_allocate) {
               object_type = (((uint64_t)2 << 32));
           } else {
@@ -295,12 +303,12 @@ std::shared_ptr<std::string> generate_summary_report_i(allocation_event_db *allo
                   sprintf(buff, "Alloc Fail");
                   new_category->name = buff;
               } else if (event.alloca_type & memory_logging_type_alloc) {
-                  if (event.size < 1024) {
-                      sprintf(buff, "Malloc %u Bytes", event.size);
-                  } else if (event.size < 1024 * 1024) {
-                      sprintf(buff, "Malloc %0.02f KiB", event.size / 1024.0);
+                  if (event_size < 1024) {
+                      sprintf(buff, "Malloc %u Bytes", event_size);
+                  } else if (event_size < 1024 * 1024) {
+                      sprintf(buff, "Malloc %0.02f KiB", event_size / 1024.0);
                   } else {
-                      sprintf(buff, "Malloc %0.02f MiB", event.size / (1024.0 * 1024.0));
+                      sprintf(buff, "Malloc %0.02f MiB", event_size / (1024.0 * 1024.0));
                   }
                   new_category->name = buff;
               } else if (event.alloca_type & memory_logging_type_vm_allocate) {
@@ -314,21 +322,23 @@ std::shared_ptr<std::string> generate_summary_report_i(allocation_event_db *allo
           iter = category_map->insert(std::make_pair(object_type, new_category)).first;
       }
 
-      iter->second->size += event.size;
+      iter->second->size += event_size;
       iter->second->count++;
 
       // After finding the object classification, sort by stack type
-      auto iter2 = iter->second->stack_map.find(event.stack_identifier);
-      if (iter2 == iter->second->stack_map.end()) {
-          allocation_stack *new_stack = new allocation_stack();
-          new_stack->stack_identifier = event.stack_identifier;
-          new_stack->is_nsobject = object_type_db_is_nsobject(object_type_reader, event.object_type);
-          iter->second->stacks.push_back(new_stack);
-          iter2 = iter->second->stack_map.insert(std::make_pair(event.stack_identifier, new_stack)).first;
-      }
+      if (event.stack_identifier > 0) {
+          auto iter2 = iter->second->stack_map.find(event.stack_identifier);
+          if (iter2 == iter->second->stack_map.end()) {
+              allocation_stack *new_stack = new allocation_stack();
+              new_stack->stack_identifier = event.stack_identifier;
+              new_stack->is_nsobject = object_type_db_is_nsobject(object_type_reader, event.object_type);
+              iter->second->stacks.push_back(new_stack);
+              iter2 = iter->second->stack_map.insert(std::make_pair(event.stack_identifier, new_stack)).first;
+          }
 
-      iter2->second->size += event.size;
-      iter2->second->count++;
+          iter2->second->size += event_size;
+          iter2->second->count++;
+      }
     });
 
     // map to vector
@@ -374,6 +384,7 @@ std::shared_ptr<std::string> generate_summary_report_i(allocation_event_db *allo
     // serialize to json
     rapidjson::StringBuffer sb;
     rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(sb);
+    writer.SetIndent(' ', 0);
     writer.SetFormatOptions(rapidjson::kFormatSingleLineArray);
 
     writer.StartObject();
@@ -386,7 +397,7 @@ std::shared_ptr<std::string> generate_summary_report_i(allocation_event_db *allo
     // Take top M or malloc size > 1M category
     for (int i = 0; i < category_list->size(); ++i) {
         allocation_category *category = (*category_list)[i];
-        category->Serialize(writer, i, stack_frames_reader, dyld_image_info_reader, param.app_uuid, param.foom_scene);
+        category->Serialize(writer, i, stack_frames_reader, dyld_image_info_reader, param.app_uuid, (i == 0 ? param.foom_scene : ""));
     }
     writer.EndArray();
 
@@ -399,28 +410,4 @@ std::shared_ptr<std::string> generate_summary_report_i(allocation_event_db *allo
     delete category_list;
 
     return std::make_shared<std::string>(sb.GetString());
-}
-
-std::unordered_map<uint64_t, uint64_t> thread_alloc_size(const char *event_dir) {
-    allocation_event_db *allocation_event_reader = allocation_event_db_open_or_create(event_dir);
-
-    if (!allocation_event_reader) {
-        allocation_event_db_close(allocation_event_reader);
-        return std::unordered_map<uint64_t, uint64_t>();
-    }
-
-    std::unordered_map<uint64_t, uint64_t> alloc_sizes;
-    std::unordered_map<uint64_t, uint64_t> *alloc_sizes_in_block = &alloc_sizes;
-    allocation_event_db_enumerate(allocation_event_reader, ^(const uint64_t &address, const allocation_event &event) {
-      auto iter = alloc_sizes_in_block->find(event.t_id);
-      if (iter != alloc_sizes_in_block->end()) {
-          iter->second += event.size;
-      } else {
-          alloc_sizes_in_block->insert(std::make_pair(event.t_id, event.size));
-      }
-    });
-
-    allocation_event_db_close(allocation_event_reader);
-
-    return alloc_sizes;
 }

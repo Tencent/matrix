@@ -206,7 +206,6 @@
 		B9620E0825F238F900CD8AD7 /* splay_map.h in Headers */ = {isa = PBXBuildFile; fileRef = B9620E0425F238F900CD8AD7 /* splay_map.h */; };
 		B9620E0925F238F900CD8AD7 /* buffer_source.h in Headers */ = {isa = PBXBuildFile; fileRef = B9620E0525F238F900CD8AD7 /* buffer_source.h */; };
 		B9620E1825F2393A00CD8AD7 /* allocation_event_db_old.h in Headers */ = {isa = PBXBuildFile; fileRef = B9620E0D25F2393A00CD8AD7 /* allocation_event_db_old.h */; };
-		B9620E1925F2393A00CD8AD7 /* memory_logging_event.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B9620E0E25F2393A00CD8AD7 /* memory_logging_event.cpp */; };
 		B9620E1A25F2393A00CD8AD7 /* memory_logging_event_buffer_pool.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B9620E0F25F2393A00CD8AD7 /* memory_logging_event_buffer_pool.cpp */; };
 		B9620E1B25F2393A00CD8AD7 /* memory_logging_event_buffer_list.h in Headers */ = {isa = PBXBuildFile; fileRef = B9620E1025F2393A00CD8AD7 /* memory_logging_event_buffer_list.h */; };
 		B9620E1C25F2393A00CD8AD7 /* memory_logging_event_buffer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B9620E1125F2393A00CD8AD7 /* memory_logging_event_buffer.cpp */; };
@@ -492,7 +491,6 @@
 		B9620E0425F238F900CD8AD7 /* splay_map.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = splay_map.h; sourceTree = "<group>"; };
 		B9620E0525F238F900CD8AD7 /* buffer_source.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = buffer_source.h; sourceTree = "<group>"; };
 		B9620E0D25F2393A00CD8AD7 /* allocation_event_db_old.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = allocation_event_db_old.h; sourceTree = "<group>"; };
-		B9620E0E25F2393A00CD8AD7 /* memory_logging_event.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = memory_logging_event.cpp; sourceTree = "<group>"; };
 		B9620E0F25F2393A00CD8AD7 /* memory_logging_event_buffer_pool.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = memory_logging_event_buffer_pool.cpp; sourceTree = "<group>"; };
 		B9620E1025F2393A00CD8AD7 /* memory_logging_event_buffer_list.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = memory_logging_event_buffer_list.h; sourceTree = "<group>"; };
 		B9620E1125F2393A00CD8AD7 /* memory_logging_event_buffer.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = memory_logging_event_buffer.cpp; sourceTree = "<group>"; };
@@ -1134,7 +1132,6 @@
 				B9620E1325F2393A00CD8AD7 /* memory_logging_event_buffer_pool.h */,
 				B9620E0F25F2393A00CD8AD7 /* memory_logging_event_buffer_pool.cpp */,
 				B9620E1525F2393A00CD8AD7 /* memory_logging_event.h */,
-				B9620E0E25F2393A00CD8AD7 /* memory_logging_event.cpp */,
 				116834C722538BB500D6ED61 /* nsobject_hook_method.h */,
 				116834C822538BB500D6ED61 /* nsobject_hook_method.mm */,
 				BB77ACC722368582008C67D9 /* nsobject_hook.h */,
@@ -1475,7 +1472,6 @@
 				1127770325ECD92E00F7A6E4 /* KSCrash_BinaryImageHandler.mm in Sources */,
 				BB77AD1E22368582008C67D9 /* nsobject_hook.mm in Sources */,
 				116460B82111AF190069B5DE /* KSStackCursor_MachineContext.c in Sources */,
-				B9620E1925F2393A00CD8AD7 /* memory_logging_event.cpp in Sources */,
 				116460B92111AF190069B5DE /* KSCrashMonitor_Zombie.c in Sources */,
 				116460BA2111AF190069B5DE /* KSDynamicLinker.c in Sources */,
 				B9620E2225F2393A00CD8AD7 /* allocation_event_db_old.cpp in Sources */,
