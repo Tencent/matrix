@@ -294,6 +294,9 @@ uint64_t MapInfo::GetLoadBias(const std::shared_ptr<Memory>& process_memory) {
 
 MapInfo::~MapInfo() {
   uintptr_t id = build_id.load();
+#ifdef __aarch64__
+  id = id & ((1ULL << 48) - 1);
+#endif
   if (id != 0) {
     delete reinterpret_cast<std::string*>(id);
   }

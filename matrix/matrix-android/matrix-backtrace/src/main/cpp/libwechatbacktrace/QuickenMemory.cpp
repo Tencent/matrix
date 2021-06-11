@@ -44,12 +44,13 @@ namespace wechat_backtrace {
     }
 
     void QuickenMemoryFile::Clear() {
-        if (data_) {
+        if (map_addr_) {
 
             QUT_LOG("QuickenMemoryFile Clear file %s, on addr %llx", file_.c_str(), &data_[-offset_]);
 
-            munmap(&data_[-offset_], size_ + offset_);
-            data_ = nullptr;
+            munmap(map_addr_, map_size_);
+            map_addr_ = nullptr;
+            map_size_ = 0;
         }
     }
 
@@ -121,6 +122,8 @@ namespace wechat_backtrace {
 
         mprotect(map, size_, PROT_READ);
 
+        map_addr_ = map;
+        map_size_ = size_;
         data_ = &reinterpret_cast<uint8_t *>(map)[offset_];
         size_ -= offset_;
 

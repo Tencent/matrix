@@ -114,7 +114,8 @@ namespace wechat_backtrace {
                 build_id = FakeBuildId(name_without_delete);
             }
 
-            quicken_interface_.reset(CreateQuickenInterfaceFromElf(
+            shared_ptr<QuickenInterface> interface;
+            interface.reset(CreateQuickenInterfaceFromElf(
                     expected_arch,
                     name_without_delete,
                     soname,
@@ -125,28 +126,30 @@ namespace wechat_backtrace {
                     is_jit_cache
             ));
 
+
             // Hand over elf_wrapper
-            quicken_interface_->elf_wrapper_ = move(elf_wrapper);
+            interface->elf_wrapper_ = move(elf_wrapper);
 
             if (is_jit_cache) {
-                quicken_interface_->InitDebugJit();
+                interface->InitDebugJit();
             } else {
-                QutFileError ret = quicken_interface_->TryInitQuickenTable();
+                QutFileError ret = interface->TryInitQuickenTable();
                 if (ret != NoneError && quicken_in_memory_enable_) {
-                    if (quicken_interface_->elf_wrapper_->HandOverGnuDebugData()) {
-                        quicken_interface_->FillQuickenInMemory(process_memory);
+                    if (interface->elf_wrapper_->HandOverGnuDebugData()) {
+                        interface->FillQuickenInMemory(process_memory);
                     } else {
                         QUT_LOG("Hand over headers and gnu debug data failed.");
                     }
                 }
                 if (ret == TryInvokeJavaRequestQutGenerate) {
                     QuickenTableManager::getInstance().RecordQutRequestInterface(
-                            quicken_interface_);
+                            interface);
                     InvokeJava_RequestQutGenerate();
                 }
             }
-            quicken_interface_->elf_wrapper_->ReleaseFileBackedElf();
+            interface->elf_wrapper_->ReleaseFileBackedElf();
 
+            quicken_interface_ = interface;
             cached_quicken_interface_[so_key] = quicken_interface_;
         }
 
@@ -215,9 +218,11 @@ namespace wechat_backtrace {
 
         if (expected_arch == ARCH_ARM) {
             auto *elf_interface_arm = dynamic_cast<ElfInterfaceArm *>(elf_interface);
-            quicken_interface_->SetArmExidxInfo(
-                    elf_interface_arm->start_offset(),
-                    elf_interface_arm->total_entries());
+            if (elf_interface_arm) {
+                quicken_interface_->SetArmExidxInfo(
+                        elf_interface_arm->start_offset(),
+                        elf_interface_arm->total_entries());
+            }
         }
 
         quicken_interface_->SetEhFrameInfo(

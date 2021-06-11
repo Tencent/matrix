@@ -190,6 +190,8 @@ namespace wechat_backtrace {
                 }
 
                 qut_sections = qut_sections_tmp;
+            } else {
+                munmap(data, file_size);
             }
 
             close(fd);
