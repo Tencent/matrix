@@ -128,7 +128,7 @@ class WarmUpDelegate {
         return true;
     }
 
-    public void setSavingPath(String savingPath) {
+    void setSavingPath(String savingPath) {
         mSavingPath = savingPath;
         WeChatBacktraceNative.setSavingPath(savingPath);
     }
@@ -552,15 +552,15 @@ class WarmUpDelegate {
 
         private boolean mThreadBlocked = false;
 
-        public ThreadTaskExecutor(String threadName) {
+        ThreadTaskExecutor(String threadName) {
             mThreadName = threadName;
         }
 
-        public boolean isThreadBlocked() {
+        boolean isThreadBlocked() {
             return mThreadBlocked;
         }
 
-        public void arrangeTask(Runnable runnable, String tag) {
+        void arrangeTask(Runnable runnable, String tag) {
             synchronized (mTaskQueue) {
                 if (mTaskQueue.contains(tag)) {
                     return;

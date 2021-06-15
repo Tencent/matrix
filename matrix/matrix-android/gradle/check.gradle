@@ -13,15 +13,20 @@ checkstyle {
 task('checkstyle', type: Checkstyle) {
     source 'src/main/java'
     include '**/*.java'
+    include '**/*.kt'
     classpath = files()
 }
 
-if ("External" != rootProject.ext.PUBLISH_CHANNEL) {
+//if ("External" != rootProject.ext.PUBLISH_CHANNEL) {
     project.afterEvaluate {
-        project.publish.dependsOn("checkstyle")
-        project.publishToMavenLocal.dependsOn("checkstyle")
+//        project.publish.dependsOn("checkstyle")
+//        project.publishToMavenLocal.dependsOn("checkstyle")
+        project.build.dependsOn("checkstyle")
+        if (project.plugins.hasPlugin("com.android.application") || project.plugins.hasPlugin("com.android.library")) {
+            project.preBuild.dependsOn("checkstyle")
+        }
     }
-}
+//}
 check.dependsOn('checkstyle')
 
 

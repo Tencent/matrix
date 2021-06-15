@@ -2,11 +2,11 @@ package com.tencent.matrix.batterycanary.monitor.feature;
 
 import android.bluetooth.le.ScanSettings;
 import android.os.Build;
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 import android.text.TextUtils;
 
-import com.tencent.matrix.batterycanary.monitor.BatteryMonitorConfig;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
 import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
 import com.tencent.matrix.batterycanary.utils.BluetoothManagerServiceHooker;
 import com.tencent.matrix.util.MatrixLog;

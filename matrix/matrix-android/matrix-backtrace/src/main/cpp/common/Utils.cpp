@@ -44,6 +44,7 @@ BACKTRACE_EXPORT uint64_t hash_backtrace_frames(wechat_backtrace::Backtrace *bac
 BACKTRACE_EXPORT uint64_t hash_str(const char * str) {
     if (!str) {
         LOGD("DEBUG", "str is NULL");
+        return 0;
     }
 
     int seed = 31;

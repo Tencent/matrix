@@ -1,6 +1,6 @@
 apply plugin: 'com.android.application'
 
-apply from: rootProject.file('../../matrix/matrix-android/gradle/WeChatNativeDepend.gradle')
+//apply from: rootProject.file('../../matrix/matrix-android/gradle/WeChatNativeDepend.gradle')
 
 android {
     compileSdkVersion 29
@@ -24,6 +24,11 @@ android {
 //                cppFlags "-std=gnu++11"
             }
         }
+    }
+
+    packagingOptions {
+        pickFirst 'lib/armeabi-v7a/libc++_shared.so'
+        pickFirst 'lib/arm64-v8a/libc++_shared.so'
     }
 
     signingConfigs {
@@ -81,12 +86,12 @@ dependencies {
     implementation 'androidx.appcompat:appcompat:1.1.0'
     implementation 'androidx.constraintlayout:constraintlayout:1.1.0'
     testImplementation 'junit:junit:4.12'
-    androidTestImplementation 'com.android.support.test:runner:1.0.2'
-    androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.2'
+    androidTestImplementation 'androidx.test:runner:1.1.0'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.1.0'
     implementation "com.tencent.matrix:matrix-hooks:$MATRIX_VERSION"
     implementation "com.tencent.matrix:matrix-fd:$MATRIX_VERSION"
     implementation "com.tencent.matrix:matrix-jectl:$MATRIX_VERSION"
     implementation "com.tencent.matrix:matrix-backtrace:$MATRIX_VERSION"
-    implementation "com.tencent.matrix:matrix-backtrace-benchmark:$MATRIX_VERSION"
+//    implementation "com.tencent.matrix:matrix-backtrace-benchmark:$MATRIX_VERSION"
 //    implementation "com.tencent.stubs:logger:${rootProject.LOGGER_VERSION}"
 }

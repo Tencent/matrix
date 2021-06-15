@@ -9,7 +9,7 @@
     android:paddingTop="80dp"
     android:paddingRight="10dp"
     android:paddingBottom="80dp"
-    tools:context="com.tencent.matrix.sample.MainActivity">
+    tools:context="com.tencent.matrix.hooks.sample.MainActivity">
 
     <Button
         android:id="@+id/test_trace"

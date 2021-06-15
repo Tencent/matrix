@@ -1,4 +1,4 @@
-package com.tencent.wxperf.sample;
+package com.tencent.matrix.hooks.sample;
 
 import org.junit.Test;
 

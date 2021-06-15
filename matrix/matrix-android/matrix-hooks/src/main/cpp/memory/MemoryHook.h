@@ -41,11 +41,7 @@ void enable_stacktrace(bool);
 
 void set_stacktrace_log_threshold(size_t threshold);
 
-void set_sample_size_range(size_t min, size_t max);
-
-void set_sampling(double);
-
-void enable_caller_sampling(bool enable);
+void set_tracing_alloc_size_range(size_t min, size_t max);
 
 void memory_hook_init();
 
