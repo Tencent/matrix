@@ -17,19 +17,55 @@
 #include <android/log.h>
 #include <dlfcn.h>
 #include <unistd.h>
+#include <mutex>
+#include <jni.h>
 #include "Log.h"
 #include "Predefined.h"
 
 namespace wechat_backtrace {
 
-    static volatile internal_logger_func _logger_func = nullptr;
+    static internal_logger_func logger_func_ = nullptr;
+    static bool enable_logger_ = false;
+    static char *xlog_so_path_ = nullptr;
+
+    DEFINE_STATIC_LOCAL(std::mutex, lock_,);
+
+    extern "C" BACKTRACE_EXPORT void enable_backtrace_logger(bool enable) {
+        enable_logger_ = enable;
+    }
+
+    extern "C" BACKTRACE_EXPORT int set_xlog_logger_path(const char *xlog_so_path, const size_t size) {
+        std::lock_guard<std::mutex> lock_guard(lock_);
+        if (xlog_so_path_) {
+            free(xlog_so_path_);
+            xlog_so_path_ = nullptr;
+        }
+
+        if (xlog_so_path != nullptr) {
+            xlog_so_path_ = static_cast<char *>(malloc(size + 1));
+            strncpy(xlog_so_path_, xlog_so_path, size);
+            xlog_so_path_[size] = '\0';
+        }
+    }
+
+    extern "C" BACKTRACE_EXPORT char *get_xlog_logger_path() {
+        std::lock_guard<std::mutex> lock_guard(lock_);
+        return xlog_so_path_;
+    }
 
     extern "C" BACKTRACE_EXPORT void internal_init_logger(internal_logger_func logger_func) {
-        _logger_func = logger_func;
+        logger_func_ = logger_func;
+    }
+
+    extern "C" BACKTRACE_EXPORT internal_logger_func logger_func() {
+        return logger_func_;
     }
 
     extern "C" BACKTRACE_EXPORT void
     internal_logger(int log_level, const char *tag, const char *format, ...) {
+        if (!enable_logger_) {
+            return;
+        }
         va_list ap;
         va_start(ap, format);
         internal_vlogger(log_level, tag, format, ap);
@@ -38,7 +74,10 @@ namespace wechat_backtrace {
 
     extern "C" BACKTRACE_EXPORT void
     internal_vlogger(int log_level, const char *tag, const char *format, va_list varargs) {
-        internal_logger_func tmp_logger_func = _logger_func;
+        if (!enable_logger_) {
+            return;
+        }
+        internal_logger_func tmp_logger_func = logger_func_;
         if (tmp_logger_func) {
             tmp_logger_func(log_level, tag, format, varargs);
         }

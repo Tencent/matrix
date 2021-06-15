@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.tencent.components.backtrace;
+package com.tencent.matrix.backtrace;
 
 public interface WarmUpInvoker {
     boolean warmUp(String pathOfElf, int offset);

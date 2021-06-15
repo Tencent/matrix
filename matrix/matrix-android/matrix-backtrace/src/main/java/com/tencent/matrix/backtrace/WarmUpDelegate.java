@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.tencent.components.backtrace;
+package com.tencent.matrix.backtrace;
 
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -31,8 +31,9 @@ import android.system.ErrnoException;
 import android.system.Os;
 import android.system.StructStat;
 
-import com.tencent.components.backtrace.WarmUpScheduler.TaskType;
+import com.tencent.matrix.backtrace.WarmUpScheduler.TaskType;
 import com.tencent.matrix.util.MatrixLog;
+import com.tencent.matrix.xlog.XLogNative;
 
 import java.io.File;
 import java.io.FileFilter;
@@ -42,17 +43,17 @@ import java.util.LinkedList;
 import java.util.Queue;
 import java.util.concurrent.CancellationException;
 
-import static com.tencent.components.backtrace.WarmUpService.ARGS_WARM_UP_ELF_START_OFFSET;
-import static com.tencent.components.backtrace.WarmUpService.ARGS_WARM_UP_PATH_OF_ELF;
-import static com.tencent.components.backtrace.WarmUpService.ARGS_WARM_UP_SAVING_PATH;
-import static com.tencent.components.backtrace.WarmUpService.BIND_ARGS_ENABLE_LOGGER;
-import static com.tencent.components.backtrace.WarmUpService.BIND_ARGS_PATH_OF_XLOG_SO;
-import static com.tencent.components.backtrace.WarmUpService.CMD_WARM_UP_SINGLE_ELF_FILE;
-import static com.tencent.components.backtrace.WarmUpService.OK;
-import static com.tencent.components.backtrace.WarmUpService.RESULT_OF_WARM_UP;
-import static com.tencent.components.backtrace.WarmUpUtility.DURATION_CLEAN_UP_EXPIRED;
-import static com.tencent.components.backtrace.WarmUpUtility.DURATION_LAST_ACCESS_EXPIRED;
-import static com.tencent.components.backtrace.WarmUpUtility.iterateTargetDirectory;
+import static com.tencent.matrix.backtrace.WarmUpService.ARGS_WARM_UP_ELF_START_OFFSET;
+import static com.tencent.matrix.backtrace.WarmUpService.ARGS_WARM_UP_PATH_OF_ELF;
+import static com.tencent.matrix.backtrace.WarmUpService.ARGS_WARM_UP_SAVING_PATH;
+import static com.tencent.matrix.backtrace.WarmUpService.BIND_ARGS_ENABLE_LOGGER;
+import static com.tencent.matrix.backtrace.WarmUpService.BIND_ARGS_PATH_OF_XLOG_SO;
+import static com.tencent.matrix.backtrace.WarmUpService.CMD_WARM_UP_SINGLE_ELF_FILE;
+import static com.tencent.matrix.backtrace.WarmUpService.OK;
+import static com.tencent.matrix.backtrace.WarmUpService.RESULT_OF_WARM_UP;
+import static com.tencent.matrix.backtrace.WarmUpUtility.DURATION_CLEAN_UP_EXPIRED;
+import static com.tencent.matrix.backtrace.WarmUpUtility.DURATION_LAST_ACCESS_EXPIRED;
+import static com.tencent.matrix.backtrace.WarmUpUtility.iterateTargetDirectory;
 
 class WarmUpDelegate {
 
@@ -202,7 +203,7 @@ class WarmUpDelegate {
 
             Bundle args = new Bundle();
             args.putBoolean(BIND_ARGS_ENABLE_LOGGER, mConfiguration.mEnableIsolateProcessLog);
-            args.putString(BIND_ARGS_PATH_OF_XLOG_SO, mConfiguration.mPathOfXLogSo);
+            args.putString(BIND_ARGS_PATH_OF_XLOG_SO, XLogNative.getXLogger());
             if (invoker.connect(mConfiguration.mContext, args)) {
                 return invoker;
             }

@@ -112,7 +112,7 @@ namespace wechat_backtrace {
                 (ullint_t) elf_start_offset, hash.c_str());
 
         {
-            lock_guard<mutex> lock(generate_lock_);
+//            lock_guard<mutex> lock(generate_lock_);
 
             if (!QuickenTableManager::CheckIfQutFileExistsWithHash(soname, hash)) {
                 QUT_LOG("False warmed-up: %s %s", soname.c_str(), hash.c_str());
@@ -262,7 +262,6 @@ namespace wechat_backtrace {
         vector<string> consumed;
         while (it != requesting_qut.end()) {
             consumed.push_back(it->second.second + ":" + to_string(it->second.first));
-//            GenerateQutForLibrary(it->second.second, it->second.first);
             it++;
         }
 

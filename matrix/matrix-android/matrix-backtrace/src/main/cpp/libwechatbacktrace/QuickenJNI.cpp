@@ -176,28 +176,45 @@ namespace wechat_backtrace {
     extern "C" int xlog_vlogger(int log_level, const char *tag, const char *format, ...);
 
     static void
-    JNI_EnableLogger(JNIEnv *env, jclass clazz, jstring xlog_so_path, jboolean enable) {
+    JNI_EnableLogger(JNIEnv *env, jclass clazz, jboolean enable) {
+        (void) env;
+        (void) clazz;
+        enable_backtrace_logger(enable);
+    }
+
+    static void
+    JNI_SetXLogger(JNIEnv *env, jclass clazz, jstring xlog_so_path) {
         (void) clazz;
 
-        if (!enable) {
-            wechat_backtrace::internal_init_logger(nullptr);
-        } else {
-            if (!xlog_so_path) {
-                wechat_backtrace::internal_init_logger(
-                        reinterpret_cast<internal_logger_func>(__android_log_vprint));
-                return;
-            }
-            const char *xlog_sopath = env->GetStringUTFChars(xlog_so_path, 0);
-            if (env->GetStringUTFLength(xlog_so_path) > 0 &&
-                wechat_backtrace::init_xlog_logger(xlog_sopath) == 0) {
-                wechat_backtrace::internal_init_logger(
-                        reinterpret_cast<internal_logger_func>(wechat_backtrace::xlog_vlogger));
-            } else {
-                wechat_backtrace::internal_init_logger(
-                        reinterpret_cast<internal_logger_func>(__android_log_vprint));
-            }
-            env->ReleaseStringUTFChars(xlog_so_path, xlog_sopath);
+        if (!xlog_so_path) {
+            wechat_backtrace::internal_init_logger(
+                    reinterpret_cast<internal_logger_func>(__android_log_vprint));
+            return;
         }
+        const char *xlog_sopath = env->GetStringUTFChars(xlog_so_path, 0);
+        size_t size = env->GetStringUTFLength(xlog_so_path);
+        if (size > 0 && wechat_backtrace::init_xlog_logger(xlog_sopath) == 0) {
+            set_xlog_logger_path(xlog_sopath, size);
+            wechat_backtrace::internal_init_logger(
+                    reinterpret_cast<internal_logger_func>(wechat_backtrace::xlog_vlogger));
+        } else {
+            set_xlog_logger_path(nullptr, 0);
+            wechat_backtrace::internal_init_logger(
+                    reinterpret_cast<internal_logger_func>(__android_log_vprint));
+        }
+        env->ReleaseStringUTFChars(xlog_so_path, xlog_sopath);
+
+    }
+
+    static jstring
+    JNI_GetXLogger(JNIEnv *env, jclass clazz) {
+        (void) clazz;
+        char * xlog_logger = get_xlog_logger_path();
+        if (xlog_logger == nullptr) {
+            return env->NewStringUTF("");
+        }
+        return env->NewStringUTF(xlog_logger);
+
     }
 
     static JNINativeMethod g_qut_methods[] = {
@@ -211,17 +228,23 @@ namespace wechat_backtrace {
             {"statistic",           "(Ljava/lang/String;)[I",  (void *) JNI_Statistic},
             {"immediateGeneration", "(Z)V",                    (void *) JNI_SetImmediateGeneration},
             {"notifyWarmedUp",      "(Ljava/lang/String;I)V",  (void *) JNI_NotifyWarmedUp},
-            {"enableLogger",        "(Ljava/lang/String;Z)V",  (void *) JNI_EnableLogger},
+            {"enableLogger",        "(Z)V",                    (void *) JNI_EnableLogger},
             {"testLoadQut",         "(Ljava/lang/String;I)Z",  (void *) JNI_TestLoadQut},
     };
 
+    static JNINativeMethod g_xlog_methods[] = {
+            {"setXLoggerNative", "(Ljava/lang/String;)V", (void *) JNI_SetXLogger},
+            {"getXLoggerNative", "()Ljava/lang/String;", (void *) JNI_GetXLogger},
+    };
+
     static jclass JNIClass_WeChatBacktraceNative = nullptr;
+    static jclass JNIClass_XLogNative = nullptr;
     static jmethodID JNIMethod_RequestQutGenerate = nullptr;
     static JavaVM *CurrentJavaVM = nullptr;
 
     static int RegisterQutJNINativeMethods(JNIEnv *env) {
 
-        static const char *cls_name = "com/tencent/components/backtrace/WeChatBacktraceNative";
+        static const char *cls_name = "com/tencent/matrix/backtrace/WeChatBacktraceNative";
         jclass clazz = env->FindClass(cls_name);
         if (!clazz) {
             QUT_LOG("Find Class %s failed.", cls_name);
@@ -237,6 +260,21 @@ namespace wechat_backtrace {
             QUT_LOG("requestQutGenerate() method not found.");
             return -2;
         }
+        return ret;
+    }
+
+    static int RegisterXLogNativeMethods(JNIEnv *env) {
+
+        static const char *cls_name = "com/tencent/matrix/xlog/XLogNative";
+        jclass clazz = env->FindClass(cls_name);
+        if (!clazz) {
+            QUT_LOG("Find Class %s failed.", cls_name);
+            return -1;
+        }
+        JNIClass_XLogNative = reinterpret_cast<jclass>(env->NewGlobalRef(clazz));
+        int ret = env->RegisterNatives(JNIClass_XLogNative, g_xlog_methods,
+                                       sizeof(g_xlog_methods) / sizeof(g_xlog_methods[0]));
+
         return ret;
     }
 
@@ -272,6 +310,10 @@ JNIEXPORT jint JNI_OnLoad(JavaVM *vm, void *reserved) {
     if (env) {
         if (wechat_backtrace::RegisterQutJNINativeMethods(env) != 0) {
             QUT_LOG("Register Quicken Unwinder JNINativeMethods Failed.");
+        }
+
+        if (wechat_backtrace::RegisterXLogNativeMethods(env) != 0) {
+            QUT_LOG("Register XLog JNINativeMethods Failed.");
         }
     }
 

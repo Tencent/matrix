@@ -14,20 +14,23 @@
  * limitations under the License.
  */
 
-package com.tencent.components.backtrace;
+package com.tencent.matrix.backtrace;
 
 import android.content.Context;
 import android.os.Build;
+import android.os.Handler;
+import android.os.Looper;
 
 
 import com.tencent.matrix.util.MatrixLog;
+import com.tencent.matrix.xlog.XLogNative;
 
 import java.io.File;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 
-import static com.tencent.components.backtrace.WarmUpScheduler.DELAY_SHORTLY;
+import static com.tencent.matrix.backtrace.WarmUpScheduler.DELAY_SHORTLY;
 
 public class WeChatBacktrace {
 
@@ -76,6 +79,7 @@ public class WeChatBacktrace {
     private volatile boolean mConfigured;
     private volatile Configuration mConfiguration;
     private WarmUpDelegate mWarmUpDelegate = new WarmUpDelegate();
+    private Handler mHandler = new Handler(Looper.getMainLooper());
 
     public interface LibraryLoader {
         void load(String library);
@@ -97,13 +101,27 @@ public class WeChatBacktrace {
         return mWarmUpDelegate.isBacktraceThreadBlocked();
     }
 
-    public void requestQutGenerate() {
+    private void requestQutGenerate() {
 
         if (!mInitialized || !mConfigured) {
             return;
         }
 
         mWarmUpDelegate.requestConsuming();
+    }
+
+    private boolean mScheduleQutGenerationRequestsRunning = false;
+    private void startScheduleQutGenerationRequests() {
+        if (mScheduleQutGenerationRequestsRunning) return;
+        mScheduleQutGenerationRequestsRunning = false;
+        mHandler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                requestQutGenerate();
+                mScheduleQutGenerationRequestsRunning = false;
+                startScheduleQutGenerationRequests();
+            }
+        }, 6 * 3600 * 1000);    // per 6 hour.
     }
 
     public synchronized Configuration configure(Context context) {
@@ -134,8 +152,8 @@ public class WeChatBacktrace {
         System.loadLibrary(BACKTRACE_LIBRARY_NAME);
     }
 
-    static void enableLogger(String pathOfXLog, boolean enableLogger) {
-        WeChatBacktraceNative.enableLogger(pathOfXLog, enableLogger);
+    static void enableLogger(boolean enableLogger) {
+        WeChatBacktraceNative.enableLogger(enableLogger);
     }
 
     private void dealWithCoolDown(Configuration configuration) {
@@ -193,7 +211,7 @@ public class WeChatBacktrace {
         loadLibrary(configuration.mLibraryLoader);
 
         if (configuration.mEnableLog) {
-            enableLogger(configuration.mPathOfXLogSo, true);
+            enableLogger(true);
         }
 
         MatrixLog.i(TAG, configuration.toString());
@@ -248,6 +266,8 @@ public class WeChatBacktrace {
             if (configuration.mImmediateGeneration) {
                 WeChatBacktraceNative.immediateGeneration(true);
             }
+
+            startScheduleQutGenerationRequests();
 
             // Register warmed up receiver for other processes.
             if (!configuration.mIsWarmUpProcess) {
@@ -321,7 +341,6 @@ public class WeChatBacktrace {
         long mWarmUpDelay = DELAY_SHORTLY;
         boolean mEnableLog = false;
         boolean mEnableIsolateProcessLog = false;
-        String mPathOfXLogSo = null;
 
         private boolean mCommitted = false;
         private WeChatBacktrace mWeChatBacktrace;
@@ -439,15 +458,6 @@ public class WeChatBacktrace {
             return this;
         }
 
-        public Configuration xLoggerPath(String pathOfXLogSo) {
-            if (mCommitted) {
-                return this;
-            }
-
-            mPathOfXLogSo = pathOfXLogSo;
-            return this;
-        }
-
         public Configuration enableOtherProcessLogger(boolean enable) {
             if (mCommitted) {
                 return this;
@@ -493,7 +503,6 @@ public class WeChatBacktrace {
                     ">>> Invoke quicken generation immediately: " + mImmediateGeneration + "\n" +
                     ">>> Enable logger: " + mEnableLog + "\n" +
                     ">>> Enable Isolate Process logger: " + mEnableIsolateProcessLog + "\n" +
-                    ">>> Path of XLog: " + mPathOfXLogSo + "\n" +
                     ">>> Cool-down: " + mCoolDown + "\n" +
                     ">>> Cool-down if Apk Updated: " + mCoolDownIfApkUpdated + "\n"
                     ;

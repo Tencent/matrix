@@ -183,7 +183,7 @@ on_pthread_create_locked(const pthread_t __pthread, char *__java_stacktrace, boo
         strncpy(meta.thread_name, temp_name, THREAD_NAME_LEN);
     }
 
-    LOGD(TAG, "on_pthread_create: pthread = %ld, thread name: %s", __pthread, meta.thread_name);
+    LOGD(TAG, "on_pthread_create: pthread = %ld, thread name: %s, %llu", __pthread, meta.thread_name, (uint64_t)__tid);
 
     if (test_match_thread_name(meta)) {
         m_filtered_pthreads.insert(__pthread);
@@ -211,6 +211,8 @@ on_pthread_create_locked(const pthread_t __pthread, char *__java_stacktrace, boo
         java_hash = hash_str(__java_stacktrace);
         LOGD(TAG, "on_pthread_create: java hash = %llu", (wechat_backtrace::ullint_t) java_hash);
     }
+
+    LOGD(TAG, "on_pthread_create: pthread = %ld, thread name: %s end.", __pthread, meta.thread_name);
 
     if (native_hash || java_hash) {
         meta.hash = hash_combine(native_hash, java_hash);
@@ -269,10 +271,10 @@ static void on_pthread_create(const pthread_t __pthread) {
         LOGD(TAG, "parent_tid: %d -> tid: %d", pthread_gettid_np(pthread_self()), tid);
         on_pthread_create_locked(__pthread, nullptr, true, tid);
     }
+
 //
     rp_release();
     notify_routine(__pthread);
-
     LOGD(TAG, "------ on_pthread_create end");
 }
 
@@ -309,7 +311,6 @@ static void on_pthread_setname(pthread_t __pthread, const char *__name) {
                  "on_pthread_setname: pthread hook lost: {%s} -> {%s}, maybe on_create has not been called",
                  lost_thread_name, __name);
             free(lost_thread_name);
-
             return;
         }
 
@@ -544,7 +545,7 @@ static inline void pthread_dump_json_impl(FILE *__log_file) {
             LOGI(TAG, "Pthread using quicken: elements_size %zu, frames_size %zu", elements_size, front_backtrace->frame_size);
             for (size_t i = 0; i < elements_size; i++) {
                 auto element = &stacktrace_elements[i];
-                LOGI(TAG, "elements #%zu: %llx %s %d", i, element->rel_pc, element->function_name.c_str(), element->maybe_java);
+                LOGI(TAG, "elements #%zu: %llx %s %d", i, (uint64_t) element->rel_pc, element->function_name.c_str(), element->maybe_java);
                 if (!found_java) found_java = element->maybe_java;
                 if (!found_java) {
                     native_stack_builder << "#pc " << std::hex << element->rel_pc << " "
@@ -603,7 +604,6 @@ static inline void pthread_dump_json_impl(FILE *__log_file) {
     err:
     LOGD(TAG, "ERROR: create cJSON object failed");
     cJSON_Delete(json_obj);
-
     return;
 }
 
@@ -673,7 +673,6 @@ static void on_pthread_destroy(void *specific) {
 }
 
 static void *pthread_routine_wrapper(void *arg) {
-
     auto *specific = (char *) malloc(sizeof(char));
     *specific = 'P';
 
@@ -684,7 +683,6 @@ static void *pthread_routine_wrapper(void *arg) {
     auto *args_wrapper = (routine_wrapper_t *) arg;
     void *ret = args_wrapper->origin_func(args_wrapper->origin_args);
     free(args_wrapper);
-
     return ret;
 }
 

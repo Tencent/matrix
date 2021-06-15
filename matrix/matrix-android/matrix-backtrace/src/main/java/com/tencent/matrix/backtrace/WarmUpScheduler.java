@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.tencent.components.backtrace;
+package com.tencent.matrix.backtrace;
 
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -136,20 +136,20 @@ public class WarmUpScheduler implements Handler.Callback {
         if (mIdleReceiver == null) {
             mIdleReceiver = new IdleReceiver(context, mHandler, mTiming, mWarmUpDelay);
             mIdleReceiver.arrange(type);
+
+            MatrixLog.i(TAG, "Register idle receiver.");
+
+            IntentFilter filter = new IntentFilter();
+            filter.addAction(Intent.ACTION_SCREEN_ON);
+            filter.addAction(Intent.ACTION_SCREEN_OFF);
+            filter.addAction(Intent.ACTION_POWER_CONNECTED);
+            filter.addAction(Intent.ACTION_POWER_DISCONNECTED);
+            context.registerReceiver(mIdleReceiver, filter);
+            mIdleReceiver.refreshIdleStatus(context);
         } else {
             mIdleReceiver.arrange(type);
             return;
         }
-
-        MatrixLog.i(TAG, "Register idle receiver.");
-
-        IntentFilter filter = new IntentFilter();
-        filter.addAction(Intent.ACTION_SCREEN_ON);
-        filter.addAction(Intent.ACTION_SCREEN_OFF);
-        filter.addAction(Intent.ACTION_POWER_CONNECTED);
-        filter.addAction(Intent.ACTION_POWER_DISCONNECTED);
-        context.registerReceiver(mIdleReceiver, filter);
-        mIdleReceiver.refreshIdleStatus(context);
     }
 
     private synchronized void finishTaskToIdleReceiver(Context context, TaskType type) {

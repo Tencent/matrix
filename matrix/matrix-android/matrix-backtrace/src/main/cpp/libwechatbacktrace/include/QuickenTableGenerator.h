@@ -55,10 +55,13 @@ namespace wechat_backtrace {
                 FrameInfo arm_exidx_info, QutSections *fut_sections
         );
 
-        bool GenerateSingleQUTSections(
+        bool GenerateSingleQUTSectionsForJIT(
                 FrameInfo debug_frame_info,
                 const unwindstack::DwarfFde *fde,
-                QutSections *fut_sections,
+                const uint64_t pc,
+                /*out*/ uint64_t &range_start,
+                /*out*/ uint64_t &range_end,
+                /*out*/ QutSections *fut_sections,
                 bool gnu_debug_data
         );
 
@@ -66,7 +69,10 @@ namespace wechat_backtrace {
         GenerateSingleQUTSections(
                 DwarfSectionDecoder<AddressType> *section_decoder,
                 const unwindstack::DwarfFde *fde,
-                /* out */ QutSections *fut_sections
+                const uint64_t pc,
+                /*out*/ uint64_t &range_start,
+                /*out*/ uint64_t &range_end,
+                /*out*/ QutSections *fut_sections
         );
 
         bool PackEntriesToQutSections(
@@ -100,6 +106,7 @@ namespace wechat_backtrace {
 
         void DecodeDebugFrameSingleEntry(FrameInfo debug_frame_info,
                                          const unwindstack::DwarfFde *fde,
+                                         const uint64_t pc,
                                          QutInstructionsOfEntries *entries_instructions,
                                          uint16_t regs_total, bool gnu_debug_data);
 

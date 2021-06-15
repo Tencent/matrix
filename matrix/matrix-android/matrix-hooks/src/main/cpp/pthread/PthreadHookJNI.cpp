@@ -21,6 +21,7 @@
 #include <jni.h>
 #include <xhook.h>
 #include "PthreadHook.h"
+#include "Log.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -102,6 +103,14 @@ JNIEXPORT void JNICALL
 Java_com_tencent_matrix_hook_pthread_PthreadHook_enableQuickenNative(JNIEnv *env, jobject thiz,
                                                             jboolean enable) {
     enable_quicken_unwind(enable);
+}
+
+JNIEXPORT void JNICALL
+Java_com_tencent_matrix_hook_pthread_PthreadHook_enableLoggerNative(
+        JNIEnv *env, jclass clazz, jboolean enable) {
+    (void) env;
+    (void) clazz;
+    enable_hook_logger(enable);
 }
 
 #ifdef __cplusplus

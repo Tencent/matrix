@@ -408,9 +408,6 @@ namespace wechat_backtrace {
                             if (UNLIKELY(!ReadStack((cfa_ - ((byte & 0xf) << 2)), &R29(regs_)))) {
                                 return QUT_ERROR_READ_STACK_FAILED;
                             }
-                            if (R29(regs_) == 0) {  // reach end
-                                return QUT_ERROR_NONE;
-                            }
                             break;
                         case QUT_INSTRUCTION_LR_OFFSET_OP_PREFIX:
                             if (UNLIKELY(!ReadStack((cfa_ - ((byte & 0xf) << 2)), &LR(regs_)))) {

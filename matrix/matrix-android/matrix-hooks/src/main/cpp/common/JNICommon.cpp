@@ -57,10 +57,12 @@ JNIEXPORT jint JNI_OnLoad(JavaVM *vm, void *reserved) {
     }
 
     xhook_ignore(".*libmatrix-hooks\\.so$", NULL);
+    xhook_ignore(".*librabbiteye\\.so$", NULL);
     xhook_ignore(".*libwechatbacktrace\\.so$", NULL);
     xhook_ignore(".*libwechatcrash\\.so$", NULL);
     xhook_ignore(".*libmemguard\\.so$", NULL);
     xhook_ignore(".*liblog\\.so$", NULL);
+    xhook_ignore(".*libwechatxlog\\.so$", NULL);
     xhook_ignore(".*libc\\.so$", NULL);
     xhook_ignore(".*libm\\.so$", NULL);
     xhook_ignore(".*libc\\+\\+\\.so$", NULL);

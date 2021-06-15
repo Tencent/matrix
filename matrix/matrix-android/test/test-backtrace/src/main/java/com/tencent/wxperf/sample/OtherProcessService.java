@@ -5,7 +5,7 @@ import android.content.Intent;
 import android.os.IBinder;
 import android.util.Log;
 
-import com.tencent.components.backtrace.WeChatBacktrace;
+import com.tencent.matrix.backtrace.WeChatBacktrace;
 
 public class OtherProcessService extends Service {
 
