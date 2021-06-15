@@ -123,6 +123,7 @@ namespace wechat_backtrace {
 
         bool ret = FindEntry(pc, &entry_offset, &start_addr, &end_addr);
 
+        (void) ret;
         QUT_LOG("QuickenInMemory::DecodeEntry pc %llx, entry_offset %llx, "
                 "start_addr %llx, end_addr %llx, ret: %d",
                 (ullint_t) pc, (ullint_t) entry_offset,

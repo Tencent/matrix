@@ -34,7 +34,7 @@ namespace wechat_backtrace {
         enable_logger_ = enable;
     }
 
-    extern "C" BACKTRACE_EXPORT int set_xlog_logger_path(const char *xlog_so_path, const size_t size) {
+    extern "C" BACKTRACE_EXPORT void set_xlog_logger_path(const char *xlog_so_path, const size_t size) {
         std::lock_guard<std::mutex> lock_guard(lock_);
         if (xlog_so_path_) {
             free(xlog_so_path_);
