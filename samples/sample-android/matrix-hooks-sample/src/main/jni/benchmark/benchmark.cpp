@@ -1,6 +1,4 @@
-//
-// Created by Yves on 2020/6/28.
-//
+// ported from https://github.com/mjansson/rpmalloc-benchmark
 
 #ifdef __cplusplus
 extern "C" {

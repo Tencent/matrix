@@ -23,7 +23,7 @@ package com.tencent.matrix.trace.listeners;
 public interface IDefaultConfig {
 
     boolean isAppMethodBeatEnable();
-    
+
     boolean isFPSEnable();
 
     boolean isEvilMethodTraceEnable();

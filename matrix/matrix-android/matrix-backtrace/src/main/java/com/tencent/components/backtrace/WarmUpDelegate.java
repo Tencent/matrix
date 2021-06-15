@@ -128,7 +128,7 @@ class WarmUpDelegate {
         return true;
     }
 
-    public void setSavingPath(String savingPath) {
+    void setSavingPath(String savingPath) {
         mSavingPath = savingPath;
         WeChatBacktraceNative.setSavingPath(savingPath);
     }
@@ -170,7 +170,9 @@ class WarmUpDelegate {
         @Override
         public boolean warmUp(String pathOfElf, int offset) {
             if (!isConnected()) {
-                connect(mContext, mArgs);
+                if (!connect(mContext, mArgs)) {
+                    return false;
+                }
             }
             Bundle args = new Bundle();
             args.putString(ARGS_WARM_UP_SAVING_PATH, mSavingPath);
@@ -422,15 +424,15 @@ class WarmUpDelegate {
                             } catch (Throwable ignore) {
                             }
                         }
-
+                        boolean ret = false;
                         if (!warmUpBlocked(pathOfElf, offset)) {
-                            boolean ret = invoker.warmUp(pathOfElf, offset);
+                            ret = invoker.warmUp(pathOfElf, offset);
                             if (!ret) {
                                 warmUpFailed(pathOfElf, offset);
                             }
                         }
 
-                        MatrixLog.i(TAG, "Consumed requested QUT -> %s", path);
+                        MatrixLog.i(TAG, "Consumed requested QUT -> %s, ret = %s.", path, ret);
 
                         if (cs != null && cs.isCanceled()) {
                             MatrixLog.i(TAG, "Consume requested QUT canceled.");
@@ -550,15 +552,15 @@ class WarmUpDelegate {
 
         private boolean mThreadBlocked = false;
 
-        public ThreadTaskExecutor(String threadName) {
+        ThreadTaskExecutor(String threadName) {
             mThreadName = threadName;
         }
 
-        public boolean isThreadBlocked() {
+        boolean isThreadBlocked() {
             return mThreadBlocked;
         }
 
-        public void arrangeTask(Runnable runnable, String tag) {
+        void arrangeTask(Runnable runnable, String tag) {
             synchronized (mTaskQueue) {
                 if (mTaskQueue.contains(tag)) {
                     return;
@@ -570,7 +572,6 @@ class WarmUpDelegate {
             synchronized (this) {
                 if (mThreadExecutor == null || !mThreadExecutor.isAlive()) {
                     mThreadExecutor = new Thread(this, mThreadName);
-                    mThreadExecutor.setPriority(Thread.NORM_PRIORITY);
                     mThreadExecutor.start();
                     mBlockedChecker.removeMessages(MSG_BLOCKED_CHECK);
                     mBlockedChecker.sendEmptyMessageDelayed(MSG_BLOCKED_CHECK, BLOCKED_CHECK_INTERVAL);
@@ -578,7 +579,7 @@ class WarmUpDelegate {
             }
         }
 
-        volatile long[] mTaskStartTS = {0};
+        long[] mTaskStartTS = {0};
 
         @Override
         public void run() {

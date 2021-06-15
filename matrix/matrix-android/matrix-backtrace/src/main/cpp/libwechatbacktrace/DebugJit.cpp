@@ -41,9 +41,6 @@ namespace wechat_backtrace {
 
     BACKTRACE_EXPORT
     std::shared_ptr<DebugJit> &DebugJit::Instance() {
-        if (sInstance_) {
-            return sInstance_;
-        }
         std::lock_guard<std::mutex> guard(instance_lock_);
         if (sInstance_) {
             return sInstance_;

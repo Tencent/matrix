@@ -147,14 +147,16 @@ public class WarmUpService extends Service {
 
             try {
                 synchronized (mBound) {
-                    mBound.wait(60000); // 60s
+                    if (!mBound[0]) {
+                        mBound.wait(60000); // 60s
+                    }
                 }
             } catch (InterruptedException e) {
                 MatrixLog.printErrStackTrace(TAG, e, "");
             }
 
             if (!mBound[0]) {
-                context.unbindService(mConnection);
+                disconnect(context);
             }
 
             return mBound[0];
@@ -163,8 +165,11 @@ public class WarmUpService extends Service {
 
         @Override
         public void disconnect(Context context) {
-
-            context.unbindService(mConnection);
+            try {
+                context.unbindService(mConnection);
+            } catch (Throwable e) {
+                MatrixLog.printErrStackTrace(TAG, e, "");
+            }
 
             MatrixLog.i(TAG, "Start disconnecting to remote. (%s)", this.hashCode());
 
@@ -338,7 +343,10 @@ public class WarmUpService extends Service {
         try {
             final Bundle result = new Bundle();
             result.putInt(RESULT_OF_WARM_UP, INVALID_ARGUMENT);
-
+            if (args == null) {
+                MatrixLog.i(TAG, "Args is null.");
+                return result;
+            }
             String savingPath = args.getString(ARGS_WARM_UP_SAVING_PATH, null);
             MatrixLog.i(TAG, "Invoke from client with savingPath: %s.", savingPath);
             if (isNullOrNil(savingPath)) {

@@ -196,7 +196,7 @@ namespace wechat_backtrace {
                               bool *finished) {
 
         std::shared_ptr<QutSectionsInMemory> qut_sections_for_jit;
-        if (LIKELY(debug_jit_.get() != nullptr)) {
+        if (LIKELY(debug_jit_)) {
             bool ret = debug_jit_->GetFutSectionsInMemory(
                     maps, pc,
                     qut_sections_for_jit);

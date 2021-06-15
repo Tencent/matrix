@@ -75,7 +75,16 @@ public class WarmUpScheduler implements Handler.Callback {
         mWarmUpDelay = Math.max(delay, DELAY_SHORTLY);
     }
 
-    void scheduleTask(TaskType type) {
+    void scheduleTask(final TaskType type) {
+        mHandler.post(new Runnable() {
+            @Override
+            public void run() {
+                scheduleTaskImpl(type);
+            }
+        });
+    }
+
+    void scheduleTaskImpl(TaskType type) {
         switch (mTiming) {
             case PostStartup:
                 arrangeTaskDirectly(type);

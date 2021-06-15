@@ -19,13 +19,10 @@ package com.tencent.components.backtrace;
 import android.content.Context;
 import android.os.Build;
 
-
 import com.tencent.matrix.util.MatrixLog;
 
 import java.io.File;
-import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.List;
 
 import static com.tencent.components.backtrace.WarmUpScheduler.DELAY_SHORTLY;
 
@@ -264,7 +261,7 @@ public class WeChatBacktrace {
         return WarmUpUtility.hasWarmedUp(context);
     }
 
-    public static int[] _DoStatistic(String pathOfSo) {
+    public static int[] doStatistic(String pathOfSo) {
         return WeChatBacktraceNative.statistic(pathOfSo);
     }
 
@@ -495,8 +492,7 @@ public class WeChatBacktrace {
                     ">>> Enable Isolate Process logger: " + mEnableIsolateProcessLog + "\n" +
                     ">>> Path of XLog: " + mPathOfXLogSo + "\n" +
                     ">>> Cool-down: " + mCoolDown + "\n" +
-                    ">>> Cool-down if Apk Updated: " + mCoolDownIfApkUpdated + "\n"
-                    ;
+                    ">>> Cool-down if Apk Updated: " + mCoolDownIfApkUpdated + "\n";
         }
 
     }

@@ -308,9 +308,11 @@ namespace wechat_backtrace {
 
         if (expected_arch == ARCH_ARM) {
             ElfInterfaceArm *elf_interface_arm = dynamic_cast<ElfInterfaceArm *>(elf_interface);
-            quicken_interface_->SetArmExidxInfo(
-                    elf_interface_arm->start_offset(),
-                    elf_interface_arm->total_entries());
+            if (elf_interface_arm) {
+                quicken_interface_->SetArmExidxInfo(
+                        elf_interface_arm->start_offset(),
+                        elf_interface_arm->total_entries());
+            }
         }
 
         quicken_interface_->SetEhFrameInfo(
