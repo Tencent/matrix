@@ -1,6 +1,4 @@
-//
-// Created by Yves on 2020-05-12.
-//
+// ported from https://github.com/mjansson/rpmalloc-benchmark
 
 #ifndef LIBWXPERF_JNI_BENCHMARKCOMMON_H
 #define LIBWXPERF_JNI_BENCHMARKCOMMON_H

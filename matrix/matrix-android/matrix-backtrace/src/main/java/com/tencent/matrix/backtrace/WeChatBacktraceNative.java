@@ -69,36 +69,36 @@ public class WeChatBacktraceNative {
     /**
      * Warm-up specific so file path.
      *
-     * @param so_path
+     * @param soPath
      */
     @Keep
-    static native boolean warmUp(String so_path, int elf_start_offset, boolean only_save_file);
+    static native boolean warmUp(String soPath, int elfStartOffset, boolean onlySaveFile);
 
     /**
      * Notify warmed-up elf file to native library.
      *
-     * @param so_path
-     * @param elf_start_offset
+     * @param soPath
+     * @param elfStartOffset
      */
     @Keep
-    static native void notifyWarmedUp(String so_path, int elf_start_offset);
+    static native void notifyWarmedUp(String soPath, int elfStartOffset);
 
     /**
      * Test loading qut.
      *
-     * @param so_path
-     * @param elf_start_offset
+     * @param soPath
+     * @param elfStartOffset
      */
     @Keep
-    static native boolean testLoadQut(String so_path, int elf_start_offset);
+    static native boolean testLoadQut(String soPath, int elfStartOffset);
 
     /**
      * Some statistic.
      *
-     * @param so_path
+     * @param soPath
      */
     @Keep
-    static native int[] statistic(String so_path);
+    static native int[] statistic(String soPath);
 
     /**
      * Generate quicken table immediately while stepping stack.

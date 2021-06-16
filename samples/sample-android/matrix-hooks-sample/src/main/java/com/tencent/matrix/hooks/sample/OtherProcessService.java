@@ -1,4 +1,4 @@
-package com.tencent.wxperf.sample;
+package com.tencent.matrix.hooks.sample;
 
 import android.app.Service;
 import android.content.Intent;
