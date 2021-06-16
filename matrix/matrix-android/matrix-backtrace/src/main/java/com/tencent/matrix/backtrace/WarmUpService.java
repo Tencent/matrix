@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.tencent.components.backtrace;
+package com.tencent.matrix.backtrace;
 
 import android.annotation.SuppressLint;
 import android.app.Service;
@@ -34,6 +34,7 @@ import android.os.RemoteException;
 import androidx.annotation.Nullable;
 
 import com.tencent.matrix.util.MatrixLog;
+import com.tencent.matrix.xlog.XLogNative;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -288,7 +289,8 @@ public class WarmUpService extends Service {
         MatrixLog.i(TAG, "Enable logger: %s", enableLogger);
         MatrixLog.i(TAG, "Path of XLog: %s", pathOfXLogSo);
 
-        WeChatBacktrace.enableLogger(pathOfXLogSo, enableLogger);
+        XLogNative.setXLogger(pathOfXLogSo);
+        WeChatBacktrace.enableLogger(enableLogger);
 
         sHasLoaded = true;
     }

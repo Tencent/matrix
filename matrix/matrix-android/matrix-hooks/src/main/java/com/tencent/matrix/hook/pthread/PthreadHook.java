@@ -26,6 +26,8 @@ import com.tencent.matrix.hook.HookManager;
 import java.util.HashSet;
 import java.util.Set;
 
+import androidx.annotation.Keep;
+
 /**
  * Created by Yves on 2020-03-11
  */
@@ -39,6 +41,8 @@ public class PthreadHook extends AbsHook {
     private Set<String> mHookThreadName = new HashSet<>();
 
     private boolean mEnableQuicken = false;
+
+    private boolean mEnableLog = false;
 
     private boolean mConfigured = false;
 
@@ -108,7 +112,6 @@ public class PthreadHook extends AbsHook {
         }
     }
 
-
     public void enableQuicken(boolean enable) {
         mEnableQuicken = enable;
         if (mConfigured) {
@@ -116,10 +119,18 @@ public class PthreadHook extends AbsHook {
         }
     }
 
+    public void enableLogger(boolean enable) {
+        mEnableLog = enable;
+        if (mConfigured) {
+            enableLoggerNative(mEnableLog);
+        }
+    }
+
     @Override
     public void onConfigure() {
         addHookThreadNameNative(mHookThreadName.toArray(new String[0]));
         enableQuickenNative(mEnableQuicken);
+        enableLoggerNative(mEnableLog);
         mConfigured = true;
     }
 
@@ -137,6 +148,9 @@ public class PthreadHook extends AbsHook {
 
     private native void dumpNative(String path);
 
-    private native void enableQuickenNative(boolean enable);
+    @Keep private native void enableQuickenNative(boolean enable);
+
+    @Keep
+    private static native void enableLoggerNative(boolean enable);
 
 }

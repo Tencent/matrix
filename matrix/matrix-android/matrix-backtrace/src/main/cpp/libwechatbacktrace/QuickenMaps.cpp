@@ -37,6 +37,7 @@
 #include <MemoryRange.h>
 #include <QuickenTableManager.h>
 #include <QuickenJNI.h>
+#include <deps/android-base/include/android-base/logging.h>
 
 #include "QuickenUtility.h"
 #include "ElfInterfaceArm.h"
@@ -59,6 +60,7 @@ namespace wechat_backtrace {
     BACKTRACE_EXPORT QuickenInterface *
     QuickenMapInfo::GetQuickenInterface(std::shared_ptr<Memory> &process_memory,
                                         ArchEnum expected_arch) {
+        std::lock_guard<std::mutex> guard(lock_);
 
         if (LIKELY(quicken_interface_)) {
             return quicken_interface_.get();
@@ -68,8 +70,6 @@ namespace wechat_backtrace {
         if (UNLIKELY(quicken_interface_failed_)) {
             return nullptr;
         }
-
-        std::lock_guard<std::mutex> guard(lock_);
 
         if (!quicken_interface_ & !quicken_interface_failed_) {
             name_without_delete = RemoveMapsDeleteSuffix(name);
@@ -126,7 +126,6 @@ namespace wechat_backtrace {
                     is_jit_cache
             ));
 
-
             // Hand over elf_wrapper
             interface->elf_wrapper_ = move(elf_wrapper);
 
@@ -144,7 +143,8 @@ namespace wechat_backtrace {
                 if (ret == TryInvokeJavaRequestQutGenerate) {
                     QuickenTableManager::getInstance().RecordQutRequestInterface(
                             interface);
-                    InvokeJava_RequestQutGenerate();
+                    // TODO by carl
+//                    InvokeJava_RequestQutGenerate();
                 }
             }
             interface->elf_wrapper_->ReleaseFileBackedElf();
@@ -576,6 +576,7 @@ namespace wechat_backtrace {
         MapInfoPtr prev_map = nullptr;
         MapInfoPtr prev_real_map = nullptr;
 
+        CHECK(maps_capacity_ != 0);
         size_t tmp_capacity = maps_capacity_, tmp_idx = 0;
         auto *tmp_maps = new MapInfoPtr[tmp_capacity];
 

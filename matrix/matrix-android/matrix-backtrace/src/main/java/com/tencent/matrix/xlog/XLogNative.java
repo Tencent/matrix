@@ -14,20 +14,19 @@
  * limitations under the License.
  */
 
-package com.tencent.components.backtrace;
+package com.tencent.matrix.xlog;
 
-public interface WarmUpReporter {
+import androidx.annotation.Keep;
 
-    enum ReportEvent {
-        WarmedUp,
-        CleanedUp,
-        WarmUpThreadBlocked,
-        WarmUpFailed,
-        WarmUpDuration,
-        ConsumeRequestDuration,
-        DiskUsage,
+public class XLogNative {
+
+    public static void setXLogger(String pathOfXlogSo) {
+        setXLoggerNative(pathOfXlogSo);
     }
 
-    void onReport(ReportEvent type, Object ... args);
-
+    /**
+     * Set XLog so path
+     */
+    @Keep
+    private static native void setXLoggerNative(String pathOfXlogSo);
 }

@@ -24,6 +24,7 @@
 #include <include/unwindstack/MachineArm64.h>
 #include <QuickenTableGenerator.h>
 #include <QutStatistics.h>
+#include <deps/android-base/include/android-base/macros.h>
 #include "DwarfCfa.h"
 #include "DwarfSectionDecoder.h"
 #include "DwarfOp.h"
@@ -430,6 +431,7 @@ namespace wechat_backtrace {
             }
             if (!cfa.GetLocationInfo(pc, fde->cie->cfa_instructions_offset,
                                      fde->cie->cfa_instructions_end,
+                                     fde->pc_start,
                                      loc_regs)) {
                 last_error_ = cfa.last_error();
                 return false;
@@ -438,6 +440,7 @@ namespace wechat_backtrace {
         }
         cfa.set_cie_loc_regs(&cie_loc_regs_[fde->cie_offset]);
         if (!cfa.GetLocationInfo(pc, fde->cfa_instructions_offset, fde->cfa_instructions_end,
+                                 fde->pc_start,
                                  loc_regs)) {
             last_error_ = cfa.last_error();
             return false;
@@ -864,7 +867,6 @@ namespace wechat_backtrace {
                 }
                 return false;
         }
-
         for (const auto &entry : loc_regs) {
             uint32_t reg = entry.first;
             // Already handled the CFA register.
@@ -956,7 +958,7 @@ namespace wechat_backtrace {
             const DwarfFde *fde = it->second.second;
 
             it++;
-            bool ret = ParseSingleFde(fde, process_memory, regs_total, all_instructions,
+            bool ret = ParseSingleFde(fde, 0, true, process_memory, regs_total, all_instructions,
                                       estimate_memory_usage, memory_overwhelmed);
             if (!ret && memory_overwhelmed) {
                 return;
@@ -964,16 +966,135 @@ namespace wechat_backtrace {
         }
     }
 
+
+//    template<typename AddressType>
+//    bool DwarfSectionDecoder<AddressType>::ParseSingleFde(
+//            const DwarfFde *fde,
+//            const uint64_t pc__,
+//            const bool iterate_loc,
+//            unwindstack::Memory *process_memory,
+//            uint16_t regs_total,
+//            /* out */ QutInstructionsOfEntries *all_instructions,
+//            /* out */ uint64_t &estimate_memory_usage,
+//            /* out */ bool &memory_overwhelmed) {
+//        if (fde == nullptr || fde->cie == nullptr) {
+//            // bad entry
+//            return false;
+//        }
+//
+//        if (log) {
+//            QUT_LOG("Dump Fde -> [%llx, %llx]", fde->pc_start, fde->pc_end);
+//        }
+//
+//        WTF_LOG__("Dump Fde -> [%llx, %llx]", fde->pc_start, fde->pc_end);
+//
+//        // Look for the cached copy of the cie data.
+//        auto reg_entry = cie_loc_regs_.find(fde->cie_offset);
+//        dwarf_loc_regs_t *cie_loc_reg = nullptr;
+//        if (reg_entry != cie_loc_regs_.end()) {
+//            cie_loc_reg = &reg_entry->second;
+//        }
+//        shared_ptr<QutInstrCollection> prev_instructions;
+//        uint64_t prev_pc = -1;
+//        size_t ins_size = (sizeof(AddressType) == 8) ? 4 : 2;
+//        size_t row_size = 0;
+//        for (uint64_t pc = fde->pc_start; pc < fde->pc_end;) {
+//            row_size++;
+//            // Now get the location information for this pc.
+//            dwarf_loc_regs_t loc_regs;
+//            if (!GetCfaLocationInfo(pc, fde, &loc_regs)) {
+//                // bad entry
+//                prev_instructions = nullptr;
+//                prev_pc = -1;
+//                pc += ins_size;
+//
+//                QUT_DEBUG_LOG("Bad entry will GetCfaLocationInfo return false.");
+//                continue;
+//            }
+//            loc_regs.cie = fde->cie;
+//
+//            uint64_t pc_end = loc_regs.pc_end;
+//
+//          log = (log_pc >= pc && log_pc < pc_end);
+//
+//            if (pc_end <= pc) {
+//                // bad entry
+//                prev_instructions = nullptr;
+//                prev_pc = -1;
+//                pc += ins_size;
+//
+//                QUT_DEBUG_LOG("Bad entry will pc_end <= pc.");
+//                continue;
+//            }
+//
+//            auto instructions = make_shared<QutInstrCollection>();
+//
+//            temp_instructions_ = instructions;
+//
+//            Eval(loc_regs.cie, process_memory, loc_regs, regs_total);
+//            temp_instructions_ = nullptr;
+//
+//            if (log) {
+//                QUT_DEBUG_LOG("Evaluated instructions size: %zu", instructions->size());
+//                auto it = instructions->begin();
+//                while (it != instructions->end()) {
+//                    QUT_DEBUG_LOG("Evaluated instructions -> %llx", *it);
+//                    it++;
+//                }
+//            }
+//
+//            // Try merge same entries.
+//            bool same_entry = false;
+//            if (prev_instructions != nullptr &&
+//                prev_instructions->size() == instructions.get()->size()) {
+//
+//                same_entry = true;
+//                for (size_t i = 0; i < instructions.get()->size(); i++) {
+//                    if (instructions.get()->at(i) != prev_instructions->at(i)) {
+//                        same_entry = false;
+//                        break;
+//                    }
+//                }
+//            }
+//            if (log) {
+//                QUT_DEBUG_LOG("Evaluated same_entry: %d", same_entry);
+//                QUT_DEBUG_LOG("Evaluated pc: %llx", (ullint_t) pc);
+//            }
+//
+//            if (same_entry) {
+//                (*all_instructions)[prev_pc].first = pc_end;
+//                pc = pc_end;
+//                continue;
+//            }
+//
+//            auto entry = std::make_pair(pc_end, instructions);
+//            (*all_instructions)[pc] = entry;
+//            prev_instructions = instructions;
+//            prev_pc = pc;
+//
+//            pc = pc_end;
+//
+//            estimate_memory_usage += instructions->size();
+//            memory_overwhelmed = CHECK_MEMORY_OVERWHELMED(estimate_memory_usage);
+//            if (memory_overwhelmed) {
+//                return false;
+//            }
+//        }
+//        if (log) QUT_DEBUG_LOG("Row size %zu", row_size);
+//        return true;
+//    }
+
     template<typename AddressType>
     bool DwarfSectionDecoder<AddressType>::ParseSingleFde(
             const DwarfFde *fde,
+            const uint64_t pc,
+            const bool iterate_loc,
             unwindstack::Memory *process_memory,
             uint16_t regs_total,
             /* out */ QutInstructionsOfEntries *all_instructions,
             /* out */ uint64_t &estimate_memory_usage,
             /* out */ bool &memory_overwhelmed) {
-
-        if (fde == nullptr || fde->cie == nullptr) {
+        if (UNLIKELY(fde == nullptr || fde->cie == nullptr)) {
             // bad entry
             return false;
         }
@@ -982,45 +1103,49 @@ namespace wechat_backtrace {
             QUT_LOG("Dump Fde -> [%llx, %llx]", fde->pc_start, fde->pc_end);
         }
 
+        // Look for the cached copy of the cie data.
+        auto reg_entry = cie_loc_regs_.find(fde->cie_offset);
+        dwarf_loc_regs_t *cie_loc_reg = nullptr;
+        DwarfCfa<AddressType> cfa(&memory_, fde);
+        if (reg_entry == cie_loc_regs_.end()) {
+            if (log) {
+                QUT_DEBUG_LOG("GetCfaLocationInfo cie_loc_regs_ miss cache.");
+            }
+            dwarf_loc_regs_t _loc_regs;
+            if (!cfa.GetLocationInfo(fde->pc_start, fde->cie->cfa_instructions_offset,
+                                     fde->cie->cfa_instructions_end,
+                                     fde->pc_start,
+                                     &_loc_regs)) {
+                last_error_ = cfa.last_error();
+                return false;
+            }
+            cie_loc_regs_[fde->cie_offset] = _loc_regs;
+            cie_loc_reg = &cie_loc_regs_[fde->cie_offset];
+        } else {
+            cie_loc_reg = &reg_entry->second;
+        }
+
+        cfa.set_cie_loc_regs(cie_loc_reg);
+
         shared_ptr<QutInstrCollection> prev_instructions;
         uint64_t prev_pc = -1;
-        size_t ins_size = (sizeof(AddressType) == 8) ? 4 : 2;
-        size_t row_size = 0;
-        for (uint64_t pc = fde->pc_start; pc < fde->pc_end;) {
-            row_size++;
-            // Now get the location information for this pc.
-            dwarf_loc_regs_t loc_regs;
-            if (!GetCfaLocationInfo(pc, fde, &loc_regs)) {
-                // bad entry
-                prev_instructions = nullptr;
-                prev_pc = -1;
-                pc += ins_size;
 
-                QUT_DEBUG_LOG("Bad entry will GetCfaLocationInfo return false.");
-                continue;
-            }
+        auto callback = [&](unwindstack::dwarf_loc_regs_t *_loc_regs)->bool{
+            dwarf_loc_regs_t loc_regs = *_loc_regs;
             loc_regs.cie = fde->cie;
 
+            QUT_LOG("WTF--------- pc %llx, pc_start %llx", pc, loc_regs.pc_start);
+
+            uint64_t pc_start = loc_regs.pc_start;
             uint64_t pc_end = loc_regs.pc_end;
 
-//          log = (log_pc >= pc && log_pc < pc_end);
-
-            if (pc_end <= pc) {
-                // bad entry
-                prev_instructions = nullptr;
-                prev_pc = -1;
-                pc += ins_size;
-
-                QUT_DEBUG_LOG("Bad entry will pc_end <= pc.");
-                continue;
-            }
+//            log = (log_pc >= pc_start && log_pc < pc_end);
 
             auto instructions = make_shared<QutInstrCollection>();
 
             temp_instructions_ = instructions;
 
             Eval(loc_regs.cie, process_memory, loc_regs, regs_total);
-
             temp_instructions_ = nullptr;
 
             if (log) {
@@ -1032,48 +1157,50 @@ namespace wechat_backtrace {
                 }
             }
 
-            // Try merge same entries.
-            bool same_entry = false;
-            if (prev_instructions != nullptr &&
-                prev_instructions->size() == instructions.get()->size()) {
+            if (iterate_loc) {
+                // Try merge same entries.
+                bool same_entry = false;
+                if (prev_instructions != nullptr &&
+                    prev_instructions->size() == instructions.get()->size()) {
 
-                same_entry = true;
-                for (size_t i = 0; i < instructions.get()->size(); i++) {
-                    if (instructions.get()->at(i) != prev_instructions->at(i)) {
-                        same_entry = false;
-                        break;
+                    same_entry = true;
+                    for (size_t i = 0; i < instructions.get()->size(); i++) {
+                        if (instructions.get()->at(i) != prev_instructions->at(i)) {
+                            same_entry = false;
+                            break;
+                        }
                     }
                 }
-            }
+                if (log) {
+                    QUT_DEBUG_LOG("Evaluated same_entry: %d", same_entry);
+                    QUT_DEBUG_LOG("Evaluated pc: %llx", (ullint_t) pc);
+                }
 
-            if (log) {
-                QUT_DEBUG_LOG("Evaluated same_entry: %d", same_entry);
-                QUT_DEBUG_LOG("Evaluated pc: %llx", (ullint_t) pc);
-            }
+                if (same_entry) {
+                    (*all_instructions)[prev_pc].first = pc_end;
+                    return true;
+                }
 
-            if (same_entry) {
-                (*all_instructions)[prev_pc].first = pc_end;
-                pc = pc_end;
-                continue;
-            }
+                prev_instructions = instructions;
+                prev_pc = pc_start;
 
+                estimate_memory_usage += instructions->size();
+                memory_overwhelmed = CHECK_MEMORY_OVERWHELMED(estimate_memory_usage);
+            }
             auto entry = std::make_pair(pc_end, instructions);
-            (*all_instructions)[pc] = entry;
-            prev_instructions = instructions;
-            prev_pc = pc;
+            (*all_instructions)[pc_start] = entry;
 
-            pc = pc_end;
+            return !memory_overwhelmed;
 
-            estimate_memory_usage += instructions->size();
-            memory_overwhelmed = CHECK_MEMORY_OVERWHELMED(estimate_memory_usage);
-            if (memory_overwhelmed) {
-                return false;
-            }
-        }
+        };
 
-        if (log) QUT_DEBUG_LOG("Row size %zu", row_size);
+        bool ret = cfa.IterateLocationInfo(fde->pc_start, iterate_loc ? fde->pc_end : pc,
+                                           fde->cfa_instructions_offset,
+                                           fde->cfa_instructions_end, iterate_loc, callback);
 
-        return true;
+        QUT_LOG("CFA iterate locations ret: %d", ret);
+
+        return ret;
     }
 
     template<typename AddressType>

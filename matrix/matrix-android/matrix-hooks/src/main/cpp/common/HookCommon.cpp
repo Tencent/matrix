@@ -56,6 +56,7 @@ DEFINE_HOOK_FUN(void *, __loader_android_dlopen_ext, const char *file_name,
         callback(file_name, &map_refreshed);
     }
 
+    LOGD(TAG, "before call xhook_refresh");
     xhook_refresh(false);
 //    NanoSeconds_End(TAG, begin, "refresh");
 
@@ -131,15 +132,14 @@ bool get_java_stacktrace(char *stack_dst, size_t size) {
 JNIEXPORT jint JNICALL
 Java_com_tencent_matrix_hook_HookManager_xhookRefreshNative(JNIEnv *env, jobject thiz,
                                                                   jboolean async) {
+    LOGI(TAG, "call xhookRefreshNative");
     add_hook_init_callback(pthread_ext_init);
     hook_common_init();
-//    unwindstack::update_maps();
+    LOGI(TAG, "call notify_maps_changed");
     wechat_backtrace::notify_maps_changed();
-//    NanoSeconds_Start(TAG, begin);
+    LOGI(TAG, "call xhook_refresh");
     int ret = xhook_refresh(async);
-//    NanoSeconds_End(TAG, begin, "fist refresh");
 
-//    LOGD(TAG, "xhook_refresh in JNI cost %lld", cost);
     return ret;
 }
 

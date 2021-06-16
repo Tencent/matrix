@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.tencent.components.backtrace;
+package com.tencent.matrix.backtrace;
 
 import androidx.annotation.Keep;
 
@@ -111,7 +111,7 @@ public class WeChatBacktraceNative {
      * Enable logger if compilation options defined 'EnableLog'
      */
     @Keep
-    static native void enableLogger(String pathOfXlogSo, boolean enable);
+    static native void enableLogger(boolean enable);
 
     /**
      * A callback from wechat backtrace native code that will schedule an task
@@ -119,6 +119,6 @@ public class WeChatBacktraceNative {
      */
     @Keep
     static void requestQutGenerate() { // Be called from native.
-        WeChatBacktrace.instance().requestQutGenerate();
+//        WeChatBacktrace.instance().requestQutGenerate();
     }
 }

@@ -14,17 +14,20 @@
  * limitations under the License.
  */
 
-package com.tencent.components.backtrace;
+package com.tencent.matrix.backtrace;
 
 import android.content.Context;
 import android.os.Build;
+import android.os.Handler;
+import android.os.Looper;
 
 import com.tencent.matrix.util.MatrixLog;
+import com.tencent.matrix.xlog.XLogNative;
 
 import java.io.File;
 import java.util.HashSet;
 
-import static com.tencent.components.backtrace.WarmUpScheduler.DELAY_SHORTLY;
+import static com.tencent.matrix.backtrace.WarmUpScheduler.DELAY_SHORTLY;
 
 public class WeChatBacktrace {
 
@@ -73,6 +76,9 @@ public class WeChatBacktrace {
     private volatile boolean mConfigured;
     private volatile Configuration mConfiguration;
     private WarmUpDelegate mWarmUpDelegate = new WarmUpDelegate();
+    private Handler mHandler = new Handler(Looper.getMainLooper());
+
+    private static boolean sLibraryLoaded = false;
 
     public interface LibraryLoader {
         void load(String library);
@@ -94,13 +100,27 @@ public class WeChatBacktrace {
         return mWarmUpDelegate.isBacktraceThreadBlocked();
     }
 
-    public void requestQutGenerate() {
+    private void requestQutGenerate() {
 
         if (!mInitialized || !mConfigured) {
             return;
         }
 
         mWarmUpDelegate.requestConsuming();
+    }
+
+    private boolean mScheduleQutGenerationRequestsRunning = false;
+    private void startScheduleQutGenerationRequests() {
+        if (mScheduleQutGenerationRequestsRunning) return;
+        mScheduleQutGenerationRequestsRunning = false;
+        mHandler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                requestQutGenerate();
+                mScheduleQutGenerationRequestsRunning = false;
+                startScheduleQutGenerationRequests();
+            }
+        }, 6 * 3600 * 1000);    // per 6 hour.
     }
 
     public synchronized Configuration configure(Context context) {
@@ -117,13 +137,15 @@ public class WeChatBacktrace {
         return mWarmUpDelegate.mSavingPath;
     }
 
-    private void loadLibrary(LibraryLoader loader) {
+    public static void loadLibrary(LibraryLoader loader) {
+        if (sLibraryLoaded) return;
         if (loader == null) {
             loadLibrary();
         } else {
             MatrixLog.i(TAG, "Using custom library loader: %s.", loader);
             loader.load(BACKTRACE_LIBRARY_NAME);
         }
+        sLibraryLoaded = true;
     }
 
     // Invoke by warm-up provider
@@ -131,8 +153,8 @@ public class WeChatBacktrace {
         System.loadLibrary(BACKTRACE_LIBRARY_NAME);
     }
 
-    static void enableLogger(String pathOfXLog, boolean enableLogger) {
-        WeChatBacktraceNative.enableLogger(pathOfXLog, enableLogger);
+    static void enableLogger(boolean enableLogger) {
+        WeChatBacktraceNative.enableLogger(enableLogger);
     }
 
     private void dealWithCoolDown(Configuration configuration) {
@@ -189,9 +211,11 @@ public class WeChatBacktrace {
         // Load backtrace library.
         loadLibrary(configuration.mLibraryLoader);
 
-        if (configuration.mEnableLog) {
-            enableLogger(configuration.mPathOfXLogSo, true);
-        }
+        // Init xlog
+        XLogNative.setXLogger(configuration.mPathOfXLogSo);
+
+        // Enable log
+        enableLogger(configuration.mEnableLog);
 
         MatrixLog.i(TAG, configuration.toString());
 
@@ -245,6 +269,8 @@ public class WeChatBacktrace {
             if (configuration.mImmediateGeneration) {
                 WeChatBacktraceNative.immediateGeneration(true);
             }
+
+            startScheduleQutGenerationRequests();
 
             // Register warmed up receiver for other processes.
             if (!configuration.mIsWarmUpProcess) {

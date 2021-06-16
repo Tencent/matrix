@@ -67,6 +67,8 @@ namespace wechat_backtrace {
 
         bool ParseSingleFde(
                 const unwindstack::DwarfFde *fde,
+                const uint64_t pc,
+                const bool iterate_loc,
                 unwindstack::Memory *process_memory,
                 uint16_t regs_total,
                 /* out */ QutInstructionsOfEntries *all_instructions,
