@@ -33,7 +33,6 @@ import android.system.StructStat;
 
 import com.tencent.matrix.backtrace.WarmUpScheduler.TaskType;
 import com.tencent.matrix.util.MatrixLog;
-import com.tencent.matrix.xlog.XLogNative;
 
 import java.io.File;
 import java.io.FileFilter;
