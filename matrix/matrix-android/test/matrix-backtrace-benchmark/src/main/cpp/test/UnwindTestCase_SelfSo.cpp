@@ -35,6 +35,7 @@ NO_INLINE void selfso_func0f() {
         f[i] = i + 2;
         g[i] = i + 2;
         h[i] = i + 2;
+        h[i] = h[i] + 2;
     }
 
     for (int i = 0; i < len; ++i) {

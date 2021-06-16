@@ -27,9 +27,9 @@ import android.os.Looper;
 import android.os.Message;
 import android.os.OperationCanceledException;
 import android.os.Process;
-import android.system.ErrnoException;
 import android.system.Os;
 import android.system.StructStat;
+import android.util.Pair;
 
 import com.tencent.matrix.backtrace.WarmUpScheduler.TaskType;
 import com.tencent.matrix.util.MatrixLog;
@@ -52,6 +52,7 @@ import static com.tencent.matrix.backtrace.WarmUpService.OK;
 import static com.tencent.matrix.backtrace.WarmUpService.RESULT_OF_WARM_UP;
 import static com.tencent.matrix.backtrace.WarmUpUtility.DURATION_CLEAN_UP_EXPIRED;
 import static com.tencent.matrix.backtrace.WarmUpUtility.DURATION_LAST_ACCESS_EXPIRED;
+import static com.tencent.matrix.backtrace.WarmUpUtility.DURATION_LAST_ACCESS_FAR_FUTURE;
 import static com.tencent.matrix.backtrace.WarmUpUtility.iterateTargetDirectory;
 
 class WarmUpDelegate {
@@ -348,28 +349,81 @@ class WarmUpDelegate {
                     return;
                 }
 
+                final HashMap<String, Pair<File, Long>> visitedFiles = new HashMap<>();
+
                 boolean cancelled = false;
                 try {
                     iterateTargetDirectory(savingDir, cs, new FileFilter() {
                         @Override
                         public boolean accept(File pathname) {
-                            if (pathname.getName().contains("_malformed_") || pathname.getName().contains("_temp_")) {
-                                if (System.currentTimeMillis() - pathname.lastModified() >= DURATION_CLEAN_UP_EXPIRED) {
-                                    MatrixLog.i(TAG, "Delete malformed and temp file %s", pathname.getAbsolutePath());
-                                    pathname.delete();
-                                }
-                            } else {
-                                try {
-                                    StructStat stat = Os.lstat(pathname.getAbsolutePath());
-                                    long lastAccessTime = Math.max(stat.st_atime, stat.st_mtime) * 1000L;
-                                    MatrixLog.i(TAG, "File(%s) last access time %s", pathname.getAbsolutePath(), lastAccessTime);
-                                    if ((System.currentTimeMillis() - lastAccessTime) > DURATION_LAST_ACCESS_EXPIRED) {
+                            try {
+
+                                String filename = pathname.getName();
+                                String absolutePath = pathname.getAbsolutePath();
+
+                                if (filename.contains("_malformed_") || filename.contains("_temp_")) {
+
+                                    // Remove expired malform and temp files.
+                                    if (System.currentTimeMillis() - pathname.lastModified() >= DURATION_CLEAN_UP_EXPIRED) {
+                                        MatrixLog.i(TAG, "Delete malformed and temp file %s",
+                                                absolutePath);
                                         pathname.delete();
-                                        MatrixLog.i(TAG, "Delete long time no access file(%s)", pathname.getAbsolutePath());
                                     }
-                                } catch (ErrnoException e) {
-                                    MatrixLog.printErrStackTrace(TAG, e, "");
+                                } else {
+                                    StructStat stat = Os.lstat(absolutePath);
+                                    long lastAccessTime =
+                                            Math.max(stat.st_atime, stat.st_mtime) * 1000L;
+                                    MatrixLog.i(TAG, "File(%s) last access time %s",
+                                            absolutePath, lastAccessTime);
+
+                                    if ((System.currentTimeMillis() - lastAccessTime) > DURATION_LAST_ACCESS_EXPIRED) {
+
+                                        // Delete expired files.
+                                        pathname.delete();
+                                        MatrixLog.i(TAG, "Delete long time no access " +
+                                                "file(%s)", absolutePath);
+                                    } else if (lastAccessTime >= System.currentTimeMillis()) {
+
+                                        // Delete future files.
+                                        if ((lastAccessTime - System.currentTimeMillis()) >= DURATION_LAST_ACCESS_FAR_FUTURE) {
+                                            pathname.delete();
+                                            MatrixLog.i(TAG, "Delete future file(%s)",
+                                                    absolutePath);
+                                        }
+                                    } else {
+
+                                        // Delete older file.
+                                        int indexOfDot = filename.lastIndexOf('.');
+                                        if (indexOfDot == -1) {
+                                            return false;
+                                        }
+                                        String elfName = filename.substring(0, indexOfDot);
+                                        if (filename.endsWith(".hash")) {
+                                            return false;
+                                        }
+                                        Pair<File, Long> pair = visitedFiles.get(elfName);
+                                        if (pair != null) {
+                                            if (lastAccessTime > pair.second) {
+                                                if (System.currentTimeMillis() - pair.second >= DURATION_CLEAN_UP_EXPIRED) {
+                                                    pair.first.delete();
+                                                    MatrixLog.i(TAG, "Delete file(%s) cause %s is newer(%s vs %s).",
+                                                            pair.first.getName(), filename, pair.second, lastAccessTime);
+                                                }
+                                                visitedFiles.put(elfName, new Pair<>(pathname, lastAccessTime));
+                                            } else {
+                                                if (System.currentTimeMillis() - lastAccessTime >= DURATION_CLEAN_UP_EXPIRED) {
+                                                    pathname.delete();
+                                                    MatrixLog.i(TAG, "Delete file(%s) cause %s is newer(%s vs %s).",
+                                                            filename, pair.first.getName(), lastAccessTime, pair.second);
+                                                }
+                                            }
+                                        } else {
+                                            visitedFiles.put(elfName, new Pair<>(pathname, lastAccessTime));
+                                        }
+                                    }
                                 }
+                            } catch (Throwable e) {
+                                MatrixLog.printErrStackTrace(TAG, e, "");
                             }
                             return false;
                         }
