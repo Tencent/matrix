@@ -10,7 +10,7 @@ android {
         versionCode rootProject.VERSION_CODE
         versionName rootProject.VERSION_NAME
 
-        testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+        testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
         consumerProguardFiles "consumer-rules.pro"
 
         if (gradle.forceArm32()) {
@@ -63,8 +63,8 @@ dependencies {
     implementation 'androidx.constraintlayout:constraintlayout:1.1.0'
 
     testImplementation 'junit:junit:4.12'
-    androidTestImplementation 'com.android.support.test:runner:1.0.2'
-    androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.2'
+    androidTestImplementation 'androidx.test.ext:junit:1.1.1'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.1.0'
 
     implementation project(':test:matrix-backtrace-benchmark')
 }
