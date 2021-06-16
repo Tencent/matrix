@@ -194,11 +194,11 @@ namespace wechat_backtrace {
         const char *xlog_sopath = env->GetStringUTFChars(xlog_so_path, 0);
         size_t size = env->GetStringUTFLength(xlog_so_path);
         if (size > 0 && wechat_backtrace::init_xlog_logger(xlog_sopath) == 0) {
-            set_xlog_logger_path(xlog_sopath, size);
+            /* set_xlog_logger_path(xlog_sopath, size); */
             wechat_backtrace::internal_init_logger(
                     reinterpret_cast<internal_logger_func>(wechat_backtrace::xlog_vlogger));
         } else {
-            set_xlog_logger_path(nullptr, 0);
+            /* set_xlog_logger_path(nullptr, 0); */
             wechat_backtrace::internal_init_logger(
                     reinterpret_cast<internal_logger_func>(__android_log_vprint));
         }
@@ -206,6 +206,7 @@ namespace wechat_backtrace {
 
     }
 
+    /*
     static jstring
     JNI_GetXLogger(JNIEnv *env, jclass clazz) {
         (void) clazz;
@@ -214,8 +215,8 @@ namespace wechat_backtrace {
             return env->NewStringUTF("");
         }
         return env->NewStringUTF(xlog_logger);
-
     }
+    */
 
     static JNINativeMethod g_qut_methods[] = {
             {"setPackageName",      "(Ljava/lang/String;)V",   (void *) JNI_SetPackageName},
@@ -234,7 +235,7 @@ namespace wechat_backtrace {
 
     static JNINativeMethod g_xlog_methods[] = {
             {"setXLoggerNative", "(Ljava/lang/String;)V", (void *) JNI_SetXLogger},
-            {"getXLoggerNative", "()Ljava/lang/String;", (void *) JNI_GetXLogger},
+            /* {"getXLoggerNative", "()Ljava/lang/String;", (void *) JNI_GetXLogger}, */
     };
 
     static jclass JNIClass_WeChatBacktraceNative = nullptr;

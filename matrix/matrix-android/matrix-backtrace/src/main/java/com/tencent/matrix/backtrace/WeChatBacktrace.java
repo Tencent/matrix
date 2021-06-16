@@ -81,6 +81,8 @@ public class WeChatBacktrace {
     private WarmUpDelegate mWarmUpDelegate = new WarmUpDelegate();
     private Handler mHandler = new Handler(Looper.getMainLooper());
 
+    private static boolean sLibraryLoaded = false;
+
     public interface LibraryLoader {
         void load(String library);
     }
@@ -138,13 +140,15 @@ public class WeChatBacktrace {
         return mWarmUpDelegate.mSavingPath;
     }
 
-    private void loadLibrary(LibraryLoader loader) {
+    public static void loadLibrary(LibraryLoader loader) {
+        if (sLibraryLoaded) return;
         if (loader == null) {
             loadLibrary();
         } else {
             MatrixLog.i(TAG, "Using custom library loader: %s.", loader);
             loader.load(BACKTRACE_LIBRARY_NAME);
         }
+        sLibraryLoaded = true;
     }
 
     // Invoke by warm-up provider
@@ -210,9 +214,11 @@ public class WeChatBacktrace {
         // Load backtrace library.
         loadLibrary(configuration.mLibraryLoader);
 
-        if (configuration.mEnableLog) {
-            enableLogger(true);
-        }
+        // Init xlog
+        XLogNative.setXLogger(configuration.mPathOfXLogSo);
+
+        // Enable log
+        enableLogger(configuration.mEnableLog);
 
         MatrixLog.i(TAG, configuration.toString());
 
@@ -341,6 +347,7 @@ public class WeChatBacktrace {
         long mWarmUpDelay = DELAY_SHORTLY;
         boolean mEnableLog = false;
         boolean mEnableIsolateProcessLog = false;
+        String mPathOfXLogSo = null;
 
         private boolean mCommitted = false;
         private WeChatBacktrace mWeChatBacktrace;
@@ -458,6 +465,15 @@ public class WeChatBacktrace {
             return this;
         }
 
+        public Configuration xLoggerPath(String pathOfXLogSo) {
+            if (mCommitted) {
+                return this;
+            }
+
+            mPathOfXLogSo = pathOfXLogSo;
+            return this;
+        }
+
         public Configuration enableOtherProcessLogger(boolean enable) {
             if (mCommitted) {
                 return this;
@@ -503,6 +519,7 @@ public class WeChatBacktrace {
                     ">>> Invoke quicken generation immediately: " + mImmediateGeneration + "\n" +
                     ">>> Enable logger: " + mEnableLog + "\n" +
                     ">>> Enable Isolate Process logger: " + mEnableIsolateProcessLog + "\n" +
+                    ">>> Path of XLog: " + mPathOfXLogSo + "\n" +
                     ">>> Cool-down: " + mCoolDown + "\n" +
                     ">>> Cool-down if Apk Updated: " + mCoolDownIfApkUpdated + "\n"
                     ;

@@ -26,7 +26,7 @@ namespace wechat_backtrace {
 
     static internal_logger_func logger_func_ = nullptr;
     static bool enable_logger_ = false;
-    static char *xlog_so_path_ = nullptr;
+    /* static char *xlog_so_path_ = nullptr; */
 
     DEFINE_STATIC_LOCAL(std::mutex, lock_,);
 
@@ -34,6 +34,7 @@ namespace wechat_backtrace {
         enable_logger_ = enable;
     }
 
+    /*
     extern "C" BACKTRACE_EXPORT void set_xlog_logger_path(const char *xlog_so_path, const size_t size) {
         std::lock_guard<std::mutex> lock_guard(lock_);
         if (xlog_so_path_) {
@@ -52,6 +53,7 @@ namespace wechat_backtrace {
         std::lock_guard<std::mutex> lock_guard(lock_);
         return xlog_so_path_;
     }
+    */
 
     extern "C" BACKTRACE_EXPORT void internal_init_logger(internal_logger_func logger_func) {
         logger_func_ = logger_func;

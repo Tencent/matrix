@@ -25,9 +25,10 @@ namespace wechat_backtrace {
 
     typedef int (*internal_logger_func)(int log_level, const char *tag, const char *format,
                                         va_list varargs);
-
+    /*
     extern "C" char *get_xlog_logger_path();
     extern "C" void set_xlog_logger_path(const char *xlog_so_path, const size_t len);
+    */
 
     extern "C" void enable_backtrace_logger(bool enable);
 

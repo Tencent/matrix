@@ -203,7 +203,7 @@ class WarmUpDelegate {
 
             Bundle args = new Bundle();
             args.putBoolean(BIND_ARGS_ENABLE_LOGGER, mConfiguration.mEnableIsolateProcessLog);
-            args.putString(BIND_ARGS_PATH_OF_XLOG_SO, XLogNative.getXLogger());
+            args.putString(BIND_ARGS_PATH_OF_XLOG_SO, mConfiguration.mPathOfXLogSo);
             if (invoker.connect(mConfiguration.mContext, args)) {
                 return invoker;
             }

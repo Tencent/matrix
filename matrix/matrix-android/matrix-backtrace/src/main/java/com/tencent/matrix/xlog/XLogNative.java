@@ -24,20 +24,9 @@ public class XLogNative {
         setXLoggerNative(pathOfXlogSo);
     }
 
-    public static String getXLogger() {
-        return getXLoggerNative();
-    }
-
     /**
      * Set XLog so path
      */
     @Keep
     private static native void setXLoggerNative(String pathOfXlogSo);
-
-
-    /**
-     * Get XLog so path
-     */
-    @Keep
-    private static native String getXLoggerNative();
 }
