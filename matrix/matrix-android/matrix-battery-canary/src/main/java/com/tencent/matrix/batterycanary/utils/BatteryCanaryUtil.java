@@ -125,10 +125,7 @@ public final class BatteryCanaryUtil {
             if (mLastAppStat != null && !mLastAppStat.isExpired()) {
                 return mLastAppStat.value;
             }
-            int value = APP_STAT_BACKGROUND; // 后台
-            if (hasForegroundService(context)) {
-                value = APP_STAT_FOREGROUND_SERVICE; // 后台（有前台服务）
-            }
+            int value = getAppStatImmediately(context, false);
             mLastAppStat = new ExpireRef(value, DEFAULT_AMS_CACHE_MILLIS);
             return mLastAppStat.value;
         }
@@ -138,17 +135,7 @@ public final class BatteryCanaryUtil {
             if (mLastDevStat != null && !mLastDevStat.isExpired()) {
                 return mLastDevStat.value;
             }
-            int value = DEV_STAT_UN_CHARGING;
-            if (isDeviceCharging(context)) {
-                value = DEV_STAT_CHARGING; // 充电中
-            }
-            // 未充电状态细分:
-            if (!isDeviceScreenOn(context)) {
-                value = DEV_STAT_SCREEN_OFF; // 息屏
-            }
-            if (isDeviceOnPowerSave(context)) {
-                value = DEV_STAT_SAVE_POWER_MODE; // 省电模式开启
-            }
+            int value = getDeviceStatImmediately(context);
             mLastDevStat = new ExpireRef(value, DEFAULT_AMS_CACHE_MILLIS);
             return mLastDevStat.value;
         }
@@ -156,6 +143,10 @@ public final class BatteryCanaryUtil {
 
     public static void setProxy(Proxy stub) {
         sCacheStub = stub;
+    }
+
+    public static Proxy getProxy() {
+        return sCacheStub;
     }
 
     public static String getProcessName() {
@@ -305,9 +296,34 @@ public final class BatteryCanaryUtil {
         return sCacheStub.getAppStat(context, isForeground);
     }
 
+    @AppStats.AppStatusDef
+    public static int getAppStatImmediately(Context context, boolean isForeground) {
+        if (isForeground) return APP_STAT_FOREGROUND; // 前台
+        if (hasForegroundService(context)) {
+            return APP_STAT_FOREGROUND_SERVICE; // 后台（有前台服务）
+        }
+        return APP_STAT_BACKGROUND; // 后台
+    }
+
     @AppStats.DevStatusDef
     public static int getDeviceStat(Context context) {
         return sCacheStub.getDevStat(context);
+    }
+
+    @AppStats.DevStatusDef
+    public static int getDeviceStatImmediately(Context context) {
+        if (isDeviceCharging(context)) {
+            return DEV_STAT_CHARGING; // 充电中
+        }
+
+        // 未充电状态细分:
+        if (!isDeviceScreenOn(context)) {
+            return DEV_STAT_SCREEN_OFF; // 息屏
+        }
+        if (isDeviceOnPowerSave(context)) {
+            return DEV_STAT_SAVE_POWER_MODE; // 省电模式开启
+        }
+        return DEV_STAT_UN_CHARGING;
     }
 
     public static String convertAppStat(@AppStats.AppStatusDef int appStat) {
