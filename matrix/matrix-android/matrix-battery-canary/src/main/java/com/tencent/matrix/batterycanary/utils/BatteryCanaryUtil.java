@@ -69,6 +69,8 @@ public final class BatteryCanaryUtil {
         String getPackageName();
         @AppStats.AppStatusDef int getAppStat(Context context, boolean isForeground);
         @AppStats.DevStatusDef int getDevStat(Context context);
+        void updateAppStat(int value);
+        void updateDevStat(int value);
 
         final class ExpireRef {
             final int value;
@@ -138,6 +140,20 @@ public final class BatteryCanaryUtil {
             int value = getDeviceStatImmediately(context);
             mLastDevStat = new ExpireRef(value, DEFAULT_AMS_CACHE_MILLIS);
             return mLastDevStat.value;
+        }
+
+        @Override
+        public void updateAppStat(int value) {
+            synchronized (this) {
+                mLastAppStat = new ExpireRef(value, DEFAULT_AMS_CACHE_MILLIS);
+            }
+        }
+
+        @Override
+        public void updateDevStat(int value) {
+            synchronized (this) {
+                mLastDevStat = new ExpireRef(value, DEFAULT_AMS_CACHE_MILLIS);
+            }
         }
     };
 
