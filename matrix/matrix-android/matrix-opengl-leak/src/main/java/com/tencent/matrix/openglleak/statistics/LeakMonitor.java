@@ -168,34 +168,6 @@ public class LeakMonitor implements Application.ActivityLifecycleCallbacks {
 
             if (isLeak) {
                 OpenGLResRecorder.getInstance().getNativeStack(destroy);
-
-                if (TextUtils.isEmpty(destroy.getJavaStack())) {
-                    boolean isIgnore = true;
-
-                    String nativeStack = destroy.getNativeStack();
-                    if (!TextUtils.isEmpty(nativeStack)) {
-                        String[] lines = nativeStack.split("\n");
-                        for (String line : lines) {
-                            if (!TextUtils.isEmpty(line)) {
-                                if (!line.contains("libmatrix-opengl-leak.so")
-                                        && !line.contains("libwechatbacktrace.so")
-                                        && !line.contains("libGLESv1_CM.so")
-                                        && !line.contains("libhwui.so")
-                                        && !line.contains("libutils.so")
-                                        && !line.contains("libandroid_runtime.so")
-                                        && !line.contains("libc.so")) {
-                                    isIgnore = false;
-                                    break;
-                                }
-                            }
-                        }
-                    }
-
-                    if (isIgnore) {
-                        continue;
-                    }
-                }
-
                 OpenGLResRecorder.getInstance().setMaybeLeak(destroy);
 
                 hasLeak = true;

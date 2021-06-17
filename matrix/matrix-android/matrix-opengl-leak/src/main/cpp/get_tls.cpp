@@ -14,7 +14,7 @@ gl_hooks_t *get_gl_hooks() {
             reinterpret_cast<gl_hooks_t *volatile *>(tls_base);
     gl_hooks_t *hooks = NULL;
 
-    // android 10 TLS 为止有变化
+    // android >= 10 TLS 位置有变化
     char sdk[128] = "0";
     __system_property_get("ro.build.version.sdk", sdk);
     int sdk_version = atoi(sdk);

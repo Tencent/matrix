@@ -44,6 +44,14 @@ extern "C" JNIEXPORT jboolean JNICALL Java_com_tencent_matrix_openglleak_hook_Op
     return false;
 }
 
+extern "C" JNIEXPORT void JNICALL Java_com_tencent_matrix_openglleak_hook_OpenGLHook_setNativeStackDump (JNIEnv *, jobject thiz, jboolean open) {
+    enable_stacktrace(open);
+}
+
+extern "C" JNIEXPORT void JNICALL Java_com_tencent_matrix_openglleak_hook_OpenGLHook_setJavaStackDump (JNIEnv *, jobject thiz, jboolean open) {
+    enable_javastack(open);
+}
+
 JNIEXPORT jint JNI_OnLoad(JavaVM *vm, void *reserved) {
     m_java_vm = vm;
     return JNI_VERSION_1_6;

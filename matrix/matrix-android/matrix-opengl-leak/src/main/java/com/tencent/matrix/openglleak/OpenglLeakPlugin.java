@@ -85,17 +85,6 @@ public class OpenglLeakPlugin extends Plugin {
 
                     // 泄漏监控
                     LeakMonitor.getInstance().start((Application) context.getApplicationContext());
-                    LeakMonitor.getInstance().setListener(new LeakMonitor.LeakListener() {
-                        @Override
-                        public void onMaybeLeak(OpenGLInfo info) {
-                            Log.i("opdeng", "onMaybeLeak:" + info);
-                        }
-
-                        @Override
-                        public void onLeak(OpenGLInfo info) {
-                            Log.i("opdeng", "onLeak:" + info);
-                        }
-                    });
                 } catch (RemoteException e) {
                     e.printStackTrace();
                 } finally {

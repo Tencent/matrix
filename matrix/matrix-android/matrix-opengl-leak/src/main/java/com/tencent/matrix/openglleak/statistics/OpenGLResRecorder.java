@@ -2,6 +2,7 @@ package com.tencent.matrix.openglleak.statistics;
 
 import android.os.Handler;
 import android.os.HandlerThread;
+import android.text.TextUtils;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -130,6 +131,12 @@ public class OpenGLResRecorder {
                     break;
                 }
 
+                if (isNeedIgnore(info)) {
+                    item.release();
+                    iterator.remove();
+                    continue;
+                }
+
                 if ((item.getType() == info.getType()) && (item.getThreadId().equals(info.getThreadId())) && (item.getId() == info.getId())) {
                     if (mListener != null) {
                         mListener.onLeak(item);
@@ -150,6 +157,10 @@ public class OpenGLResRecorder {
                     break;
                 }
 
+                if (isNeedIgnore(info)) {
+                    continue;
+                }
+
                 if ((item.getType() == info.getType()) && (item.getThreadId().equals(info.getThreadId())) && (item.getId() == info.getId())) {
                     item.setMaybeLeak(true);
                     info.setMaybeLeak(true);
@@ -166,6 +177,35 @@ public class OpenGLResRecorder {
                 }
             }
         }
+    }
+
+    private boolean isNeedIgnore(OpenGLInfo info) {
+        if (TextUtils.isEmpty(info.getJavaStack())) {
+            boolean isIgnore = true;
+
+            String nativeStack = info.getNativeStack();
+            if (!TextUtils.isEmpty(nativeStack)) {
+                String[] lines = nativeStack.split("\n");
+                for (String line : lines) {
+                    if (!TextUtils.isEmpty(line)) {
+                        if (!line.contains("libmatrix-opengl-leak.so")
+                                && !line.contains("libwechatbacktrace.so")
+                                && !line.contains("libGLESv1_CM.so")
+                                && !line.contains("libhwui.so")
+                                && !line.contains("libutils.so")
+                                && !line.contains("libandroid_runtime.so")
+                                && !line.contains("libc.so")) {
+                            isIgnore = false;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            return isIgnore;
+        }
+
+        return false;
     }
 
 }

@@ -17,6 +17,22 @@ JNIEXPORT jboolean JNICALL Java_com_tencent_matrix_openglleak_hook_OpenGLHook_in
         (JNIEnv *, jobject thiz);
 
 /*
+* Class:     com_tencent_matrix_openglleak_hook_OpenGLHook
+* Method:    setNativeStackDump
+* Signature: (Z)V
+*/
+JNIEXPORT void JNICALL Java_com_tencent_matrix_openglleak_hook_OpenGLHook_setNativeStackDump
+        (JNIEnv *, jobject thiz, jboolean);
+
+/*
+* Class:     com_tencent_matrix_openglleak_hook_OpenGLHook
+* Method:    setJavaStackDump
+* Signature: (Z)V
+*/
+JNIEXPORT void JNICALL Java_com_tencent_matrix_openglleak_hook_OpenGLHook_setJavaStackDump
+        (JNIEnv *, jobject thiz, jboolean);
+
+/*
  * Class:     com_tencent_matrix_openglleak_hook_OpenGLHook
  * Method:    hookGlGenTextures
  * Signature: (I)Z
