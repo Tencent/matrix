@@ -15,11 +15,11 @@ import com.tencent.matrix.openglleak.hook.OpenGLHook;
 import com.tencent.matrix.openglleak.hook.OpenGLInfo;
 import com.tencent.matrix.openglleak.listener.LeakMonitor;
 import com.tencent.matrix.openglleak.utils.EGLHelper;
-import com.tencent.matrix.openglleak.utils.OpenGLLeakMonitorLog;
 import com.tencent.matrix.plugin.Plugin;
 import com.tencent.matrix.plugin.PluginListener;
 
 import com.tencent.matrix.openglleak.detector.OpenglIndexDetectorService;
+import com.tencent.matrix.util.MatrixLog;
 
 import java.util.Map;
 
@@ -50,27 +50,27 @@ public class OpenglLeakPlugin extends Plugin {
         }).start();
     }
 
-    public void _start() {
+    private void _start() {
         Intent service = new Intent(context, OpenglIndexDetectorService.class);
         context.bindService(service, new ServiceConnection() {
             @Override
             public void onServiceConnected(ComponentName componentName, IBinder iBinder) {
-                OpenGLLeakMonitorLog.i(TAG, "onServiceConnected");
+                MatrixLog.i(TAG, "onServiceConnected");
                 IOpenglIndexDetector ipc = IOpenglIndexDetector.Stub.asInterface(iBinder);
 
                 try {
                     // 通过实验进程获取 index
                     Map<String, Integer> map = ipc.seekIndex();
                     if (map == null) {
-                        OpenGLLeakMonitorLog.e(TAG, "indexMap null");
+                        MatrixLog.e(TAG, "indexMap null");
                         return;
                     }
-                    OpenGLLeakMonitorLog.i(TAG, "indexMap:" + map);
+                    MatrixLog.i(TAG, "indexMap:" + map);
 
                     // 初始化
                     EGLHelper.initOpenGL();
                     OpenGLHook.getInstance().init();
-                    OpenGLLeakMonitorLog.i(TAG, "init env");
+                    MatrixLog.i(TAG, "init env");
 
                     // hook
                     OpenGLHook.getInstance().hook(FuncNameString.GL_GEN_TEXTURES, map.get(FuncNameString.GL_GEN_TEXTURES));
@@ -81,7 +81,7 @@ public class OpenglLeakPlugin extends Plugin {
                     OpenGLHook.getInstance().hook(FuncNameString.GL_DELETE_FRAMEBUFFERS, map.get(FuncNameString.GL_DELETE_FRAMEBUFFERS));
                     OpenGLHook.getInstance().hook(FuncNameString.GL_GEN_RENDERBUFFERS, map.get(FuncNameString.GL_GEN_RENDERBUFFERS));
                     OpenGLHook.getInstance().hook(FuncNameString.GL_DELETE_RENDERBUFFERS, map.get(FuncNameString.GL_DELETE_RENDERBUFFERS));
-                    OpenGLLeakMonitorLog.i(TAG, "hook finish");
+                    MatrixLog.i(TAG, "hook finish");
 
                     // 泄漏监控
                     LeakMonitor.getInstance().start((Application) context.getApplicationContext());
@@ -101,7 +101,7 @@ public class OpenglLeakPlugin extends Plugin {
                 } finally {
                     // 销毁实验进程
                     try {
-                        OpenGLLeakMonitorLog.i(TAG, "destory test process");
+                        MatrixLog.i(TAG, "destory test process");
                         ipc.destory();
                     } catch (RemoteException e) {
                         e.printStackTrace();
