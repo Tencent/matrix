@@ -12,8 +12,8 @@ import android.util.Log;
 import com.tencent.matrix.openglleak.comm.FuncNameString;
 import com.tencent.matrix.openglleak.detector.IOpenglIndexDetector;
 import com.tencent.matrix.openglleak.hook.OpenGLHook;
-import com.tencent.matrix.openglleak.hook.OpenGLInfo;
-import com.tencent.matrix.openglleak.listener.LeakMonitor;
+import com.tencent.matrix.openglleak.statistics.OpenGLInfo;
+import com.tencent.matrix.openglleak.statistics.LeakMonitor;
 import com.tencent.matrix.openglleak.utils.EGLHelper;
 import com.tencent.matrix.plugin.Plugin;
 import com.tencent.matrix.plugin.PluginListener;
@@ -50,7 +50,7 @@ public class OpenglLeakPlugin extends Plugin {
         }).start();
     }
 
-    private void _start() {
+    public void _start() {
         Intent service = new Intent(context, OpenglIndexDetectorService.class);
         context.bindService(service, new ServiceConnection() {
             @Override
@@ -129,6 +129,18 @@ public class OpenglLeakPlugin extends Plugin {
     @Override
     public String getTag() {
         return "OpenglLeak";
+    }
+
+    public void setNativeStackDump(boolean open) {
+        OpenGLHook.getInstance().setNativeStackDump(open);
+    }
+
+    public void setJavaStackDump(boolean open) {
+        OpenGLHook.getInstance().setJavaStackDump(true);
+    }
+
+    public void setDoubleCheckTime(long time) {
+        LeakMonitor.getInstance().setDoubleCheckTime(time);
     }
 
 }

@@ -1,4 +1,4 @@
-package com.tencent.matrix.openglleak.listener;
+package com.tencent.matrix.openglleak.statistics;
 
 import android.app.Activity;
 import android.app.Application;
@@ -6,9 +6,8 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
+import android.text.TextUtils;
 
-import com.tencent.matrix.openglleak.hook.OpenGLInfo;
-import com.tencent.matrix.openglleak.statistics.OpenGLResRecorder;
 import com.tencent.matrix.util.MatrixLog;
 
 import java.lang.ref.WeakReference;
@@ -29,8 +28,8 @@ public class LeakMonitor implements Application.ActivityLifecycleCallbacks {
     private Map<WeakReference<Activity>, List<OpenGLInfo>> maps;
     private String currentActivityName = "";
 
-    private final long DOUBLE_CHECK_TIME = 1000 * 60 * 30;
-    private final long DOUBLE_CHECK_LOOPER = 1000 * 60 * 10;
+    private long DOUBLE_CHECK_TIME = 1000 * 60 * 30;
+    private final long DOUBLE_CHECK_LOOPER = 1000 * 60 * 1;
 
     private LeakMonitor() {
         mHT = new HandlerThread("LeakMonitor");
@@ -47,6 +46,10 @@ public class LeakMonitor implements Application.ActivityLifecycleCallbacks {
             mInstance = new LeakMonitor();
         }
         return mInstance;
+    }
+
+    public void setDoubleCheckTime(long doubleCheckTime) {
+        DOUBLE_CHECK_TIME = doubleCheckTime;
     }
 
     public void setListener(LeakListener l) {
@@ -165,6 +168,34 @@ public class LeakMonitor implements Application.ActivityLifecycleCallbacks {
 
             if (isLeak) {
                 OpenGLResRecorder.getInstance().getNativeStack(destroy);
+
+                if (TextUtils.isEmpty(destroy.getJavaStack())) {
+                    boolean isIgnore = true;
+
+                    String nativeStack = destroy.getNativeStack();
+                    if (!TextUtils.isEmpty(nativeStack)) {
+                        String[] lines = nativeStack.split("\n");
+                        for (String line : lines) {
+                            if (!TextUtils.isEmpty(line)) {
+                                if (!line.contains("libmatrix-opengl-leak.so")
+                                        && !line.contains("libwechatbacktrace.so")
+                                        && !line.contains("libGLESv1_CM.so")
+                                        && !line.contains("libhwui.so")
+                                        && !line.contains("libutils.so")
+                                        && !line.contains("libandroid_runtime.so")
+                                        && !line.contains("libc.so")) {
+                                    isIgnore = false;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    if (isIgnore) {
+                        continue;
+                    }
+                }
+
                 OpenGLResRecorder.getInstance().setMaybeLeak(destroy);
 
                 hasLeak = true;

@@ -22,6 +22,4 @@ typedef void (*System_GlNormal_TYPE)(GLsizei n, const GLuint *normal);
 
 System_GlNormal_TYPE get_target_func_ptr(const char *func_name);
 
-char* get_type_string(int opengl_type);
-
 #endif //OPENGL_API_HOOK_TYPE_H

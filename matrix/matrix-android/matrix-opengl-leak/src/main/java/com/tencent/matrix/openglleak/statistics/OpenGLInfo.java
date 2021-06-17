@@ -1,4 +1,4 @@
-package com.tencent.matrix.openglleak.hook;
+package com.tencent.matrix.openglleak.statistics;
 
 import android.text.TextUtils;
 
@@ -47,20 +47,21 @@ public class OpenGLInfo {
         this.isReported = clone.isReported;
         this.maybeLeak = clone.maybeLeak;
         this.activityName = clone.activityName;
+        this.counter = clone.counter;
     }
 
-    protected OpenGLInfo(int error) {
+    public OpenGLInfo(int error) {
         this.error = error;
     }
 
-    protected OpenGLInfo(TYPE type, int id, String threadId, boolean genOrDelete) {
+    public OpenGLInfo(TYPE type, int id, String threadId, boolean genOrDelete) {
         this.id = id;
         this.threadId = threadId;
         this.genOrDelete = genOrDelete;
         this.type = type;
     }
 
-    protected OpenGLInfo(TYPE type, int id, String threadId, String javaStack, long nativeStackPtr, boolean genOrDelete, String activityName, AtomicInteger counter) {
+    public OpenGLInfo(TYPE type, int id, String threadId, String javaStack, long nativeStackPtr, boolean genOrDelete, String activityName, AtomicInteger counter) {
         this.id = id;
         this.threadId = threadId;
         this.javaStack = javaStack;
@@ -100,7 +101,11 @@ public class OpenGLInfo {
             if (!isRelease) {
                 synchronized (counter) {
                     if (counter.get() > 0) {
-                        nativeStack = dumpNativeStack(this.nativeStackPtr);
+                        if (this.nativeStackPtr != 0) {
+                            nativeStack = dumpNativeStack(this.nativeStackPtr);
+                        } else {
+                            nativeStack = "";
+                        }
                     }
                 }
             }
@@ -137,6 +142,10 @@ public class OpenGLInfo {
             return;
         }
         isRelease = true;
+
+        if (nativeStackPtr == 0) {
+            return;
+        }
 
         synchronized (counter) {
             int count = counter.get();

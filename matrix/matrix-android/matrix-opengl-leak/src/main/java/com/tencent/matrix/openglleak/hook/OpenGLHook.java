@@ -1,7 +1,8 @@
 package com.tencent.matrix.openglleak.hook;
 
 import com.tencent.matrix.openglleak.comm.FuncNameString;
-import com.tencent.matrix.openglleak.listener.LeakMonitor;
+import com.tencent.matrix.openglleak.statistics.LeakMonitor;
+import com.tencent.matrix.openglleak.statistics.OpenGLInfo;
 import com.tencent.matrix.openglleak.statistics.OpenGLResRecorder;
 
 import java.util.concurrent.atomic.AtomicInteger;
@@ -53,6 +54,10 @@ public class OpenGLHook {
     }
 
     public native boolean init();
+
+    public native void setNativeStackDump(boolean open);
+
+    public native void setJavaStackDump(boolean open);
 
     private static native boolean hookGlGenTextures(int index);
 

@@ -46,9 +46,13 @@ static jmethodID method_onGetError;
 const size_t BUF_SIZE = 1024;
 
 static bool is_stacktrace_enabled = true;
-
 void enable_stacktrace(bool enable) {
     is_stacktrace_enabled = enable;
+}
+
+static bool is_javastack_enabled = true;
+void enable_javastack(bool enable) {
+    is_javastack_enabled = enable;
 }
 
 void thread_id_to_string(thread::id thread_id, char *&result) {
@@ -125,7 +129,7 @@ GL_APICALL void GL_APIENTRY my_glGenTextures(GLsizei n, GLuint *textures) {
         get_thread_id_string(thread_id);
         jstring j_thread_id = env->NewStringUTF(thread_id);
 
-        wechat_backtrace::Backtrace* backtracePrt;
+        wechat_backtrace::Backtrace* backtracePrt = 0;
         if (is_stacktrace_enabled) {
             wechat_backtrace::Backtrace backtrace_zero = BACKTRACE_INITIALIZER(MEMHOOK_BACKTRACE_MAX_FRAMES);
 
@@ -137,14 +141,22 @@ GL_APICALL void GL_APIENTRY my_glGenTextures(GLsizei n, GLuint *textures) {
             wechat_backtrace::unwind_adapter(backtracePrt->frames.get(), backtracePrt->max_frames, backtracePrt->frame_size);
         }
 
-        char *javaStack = get_java_stack();
-        jstring java_stack = env->NewStringUTF(javaStack);
+        jstring java_stack;
+        char *javaStack;
+        if(is_javastack_enabled) {
+            javaStack = get_java_stack();
+            java_stack = env->NewStringUTF(javaStack);
+        } else {
+            java_stack = env->NewStringUTF("");
+        }
 
         env->CallStaticVoidMethod(class_OpenGLHook, method_onGlGenTextures, newArr, j_thread_id,
                                   java_stack, (int64_t) backtracePrt);
 
         delete[] result;
-        free(javaStack);
+        if(is_javastack_enabled) {
+            free(javaStack);
+        }
 
         env->DeleteLocalRef(newArr);
         env->DeleteLocalRef(j_thread_id);
@@ -202,7 +214,7 @@ GL_APICALL void GL_APIENTRY my_glGenBuffers(GLsizei n, GLuint *buffers) {
         get_thread_id_string(thread_id);
         jstring j_thread_id = env->NewStringUTF(thread_id);
 
-        wechat_backtrace::Backtrace* backtracePrt;
+        wechat_backtrace::Backtrace* backtracePrt = 0;
         if (is_stacktrace_enabled) {
             wechat_backtrace::Backtrace backtrace_zero = BACKTRACE_INITIALIZER(MEMHOOK_BACKTRACE_MAX_FRAMES);
 
@@ -214,15 +226,22 @@ GL_APICALL void GL_APIENTRY my_glGenBuffers(GLsizei n, GLuint *buffers) {
             wechat_backtrace::unwind_adapter(backtracePrt->frames.get(), backtracePrt->max_frames, backtracePrt->frame_size);
         }
 
-
-        char *javaStack = get_java_stack();
-        jstring java_stack = env->NewStringUTF(javaStack);
+        jstring java_stack;
+        char *javaStack;
+        if(is_javastack_enabled) {
+            javaStack = get_java_stack();
+            java_stack = env->NewStringUTF(javaStack);
+        } else {
+            java_stack = env->NewStringUTF("");
+        }
 
         env->CallStaticVoidMethod(class_OpenGLHook, method_onGlGenBuffers, newArr, j_thread_id,
                                   java_stack, (int64_t) backtracePrt);
 
         delete[] result;
-        free(javaStack);
+        if(is_javastack_enabled) {
+            free(javaStack);
+        }
 
         env->DeleteLocalRef(newArr);
         env->DeleteLocalRef(j_thread_id);
@@ -279,7 +298,7 @@ GL_APICALL void GL_APIENTRY my_glGenFramebuffers(GLsizei n, GLuint *buffers) {
         get_thread_id_string(thread_id);
         jstring j_thread_id = env->NewStringUTF(thread_id);
 
-        wechat_backtrace::Backtrace* backtracePrt;
+        wechat_backtrace::Backtrace* backtracePrt = 0;
         if (is_stacktrace_enabled) {
             wechat_backtrace::Backtrace backtrace_zero = BACKTRACE_INITIALIZER(MEMHOOK_BACKTRACE_MAX_FRAMES);
 
@@ -291,14 +310,22 @@ GL_APICALL void GL_APIENTRY my_glGenFramebuffers(GLsizei n, GLuint *buffers) {
             wechat_backtrace::unwind_adapter(backtracePrt->frames.get(), backtracePrt->max_frames, backtracePrt->frame_size);
         }
 
-        char *javaStack = get_java_stack();
-        jstring java_stack = env->NewStringUTF(javaStack);
+        jstring java_stack;
+        char *javaStack;
+        if(is_javastack_enabled) {
+            javaStack = get_java_stack();
+            java_stack = env->NewStringUTF(javaStack);
+        } else {
+            java_stack = env->NewStringUTF("");
+        }
 
         env->CallStaticVoidMethod(class_OpenGLHook, method_onGlGenFramebuffers, newArr,
                                   j_thread_id, java_stack, (int64_t) backtracePrt);
 
         delete[] result;
-        free(javaStack);
+        if(is_javastack_enabled) {
+            free(javaStack);
+        }
 
         env->DeleteLocalRef(newArr);
         env->DeleteLocalRef(j_thread_id);
@@ -356,18 +383,34 @@ GL_APICALL void GL_APIENTRY my_glGenRenderbuffers(GLsizei n, GLuint *buffers) {
         get_thread_id_string(thread_id);
         jstring j_thread_id = env->NewStringUTF(thread_id);
 
-//        vector<FrameData> *native_stacktrace = new std::vector<FrameData>;;
-//        unwind_adapter(*native_stacktrace);
-        int native_stacktrace = 0;
+        wechat_backtrace::Backtrace* backtracePrt = 0;
+        if (is_stacktrace_enabled) {
+            wechat_backtrace::Backtrace backtrace_zero = BACKTRACE_INITIALIZER(MEMHOOK_BACKTRACE_MAX_FRAMES);
 
-        char *javaStack = get_java_stack();
-        jstring java_stack = env->NewStringUTF(javaStack);
+            backtracePrt = new wechat_backtrace::Backtrace;
+            backtracePrt->max_frames = backtrace_zero.max_frames;
+            backtracePrt->frame_size = backtrace_zero.frame_size;
+            backtracePrt->frames = backtrace_zero.frames;
+
+            wechat_backtrace::unwind_adapter(backtracePrt->frames.get(), backtracePrt->max_frames, backtracePrt->frame_size);
+        }
+
+        jstring java_stack;
+        char *javaStack;
+        if(is_javastack_enabled) {
+            javaStack = get_java_stack();
+            java_stack = env->NewStringUTF(javaStack);
+        } else {
+            java_stack = env->NewStringUTF("");
+        }
 
         env->CallStaticVoidMethod(class_OpenGLHook, method_onGlGenRenderbuffers, newArr,
-                                  j_thread_id, java_stack, (int64_t) native_stacktrace);
+                                  j_thread_id, java_stack, (int64_t) backtracePrt);
 
         delete[] result;
-        free(javaStack);
+        if(is_javastack_enabled) {
+            free(javaStack);
+        }
 
         env->DeleteLocalRef(newArr);
         env->DeleteLocalRef(j_thread_id);

@@ -3,9 +3,6 @@ package com.tencent.matrix.openglleak.statistics;
 import android.os.Handler;
 import android.os.HandlerThread;
 
-import com.tencent.matrix.openglleak.hook.OpenGLInfo;
-import com.tencent.matrix.openglleak.listener.LeakMonitor;
-
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
