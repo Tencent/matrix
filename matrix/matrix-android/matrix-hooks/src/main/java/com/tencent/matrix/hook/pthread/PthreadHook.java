@@ -140,15 +140,20 @@ public class PthreadHook extends AbsHook {
         addIgnoreSoNative(mIgnoreSoSet.toArray(new String[0]));
     }
 
+    @Keep
     private native void addHookSoNative(String[] hookSoList);
 
+    @Keep
     private native void addIgnoreSoNative(String[] hookSoList);
 
+    @Keep
     private native void addHookThreadNameNative(String[] threadNames);
 
+    @Keep
     private native void dumpNative(String path);
 
-    @Keep private native void enableQuickenNative(boolean enable);
+    @Keep
+    private native void enableQuickenNative(boolean enable);
 
     @Keep
     private static native void enableLoggerNative(boolean enable);
