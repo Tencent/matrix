@@ -15,7 +15,8 @@ ext.bintray_components = [
         "matrix-sqlite-lint-android-sdk-no-op",
         "matrix-sqlite-lint-android-sdk",
         "matrix-thread-canary",
-        "matrix-trace-canary"
+        "matrix-trace-canary",
+        "matrix-opengl-leak"
 ]
 
 ext.bintray_archive_exts = [
