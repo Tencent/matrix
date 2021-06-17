@@ -19,6 +19,8 @@ package com.tencent.matrix.hook.memory;
 import android.text.TextUtils;
 
 
+import androidx.annotation.Keep;
+
 import com.tencent.matrix.util.MatrixLog;
 import com.tencent.matrix.hook.AbsHook;
 import com.tencent.matrix.hook.HookManager;
@@ -142,18 +144,25 @@ public class MemoryHook extends AbsHook {
         }
     }
 
+    @Keep
     private native void dumpNative(String logPath, String jsonPath);
 
+    @Keep
     private native void setTracingAllocSizeRangeNative(int minSize, int maxSize);
 
+    @Keep
     private native void enableStacktraceNative(boolean enable);
 
+    @Keep
     private native void enableMmapHookNative(boolean enable);
 
+    @Keep
     private native void addHookSoNative(String[] hookSoList);
 
+    @Keep
     private native void addIgnoreSoNative(String[] ignoreSoList);
 
+    @Keep
     private native void setStacktraceLogThresholdNative(int threshold);
 }
 
