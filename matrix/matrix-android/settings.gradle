@@ -23,6 +23,7 @@ include ':matrix-backtrace'
 include ':matrix-hooks'
 include ':matrix-jectl'
 include ':matrix-fd'
+include ':matrix-opengl-leak'
 
 // Benchmark
 include ':test:matrix-backtrace-benchmark'
