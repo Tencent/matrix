@@ -33,7 +33,7 @@ public class Configuration {
     public int parseBlockFile(MappingCollector processor) {
         String blockStr = TraceBuildConstants.DEFAULT_BLOCK_TRACE + FileUtil.readFileAsString(blockListFilePath);
 
-        String[] blockArray = blockStr.trim().replace("/", ".").split("\n");
+        String[] blockArray = blockStr.trim().replace("/", ".").replace("\r","").split("\n");
 
         if (blockArray != null) {
             for (String block : blockArray) {
