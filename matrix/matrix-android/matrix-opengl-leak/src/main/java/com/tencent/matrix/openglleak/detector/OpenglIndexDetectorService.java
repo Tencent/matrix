@@ -7,9 +7,8 @@ import android.os.RemoteException;
 
 import com.tencent.matrix.openglleak.comm.FuncNameString;
 import com.tencent.matrix.openglleak.hook.OpenGLHook;
-import com.tencent.matrix.openglleak.hook.OpenGLInfo;
 import com.tencent.matrix.openglleak.utils.EGLHelper;
-import com.tencent.matrix.openglleak.utils.OpenGLLeakMonitorLog;
+import com.tencent.matrix.util.MatrixLog;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -42,30 +41,30 @@ public class OpenglIndexDetectorService extends Service {
         EGLHelper.initOpenGL();
 
         OpenGLHook.getInstance().init();
-        OpenGLLeakMonitorLog.i(TAG, "init env succ");
+        MatrixLog.i(TAG, "init env succ");
 
         int glGenTexturesIndex = FuncSeeker.getFuncIndex(FuncNameString.GL_GEN_TEXTURES);
-        OpenGLLeakMonitorLog.i(TAG, "glGenTextures index:" + glGenTexturesIndex);
+        MatrixLog.i(TAG, "glGenTextures index:" + glGenTexturesIndex);
         int glDeleteTexturesIndex = FuncSeeker.getFuncIndex(FuncNameString.GL_DELETE_TEXTURES);
-        OpenGLLeakMonitorLog.i(TAG, "glDeleteTextures index:" + glDeleteTexturesIndex);
+        MatrixLog.i(TAG, "glDeleteTextures index:" + glDeleteTexturesIndex);
 
         int glGenBuffersIndex = FuncSeeker.getFuncIndex(FuncNameString.GL_GEN_BUFFERS);
-        OpenGLLeakMonitorLog.i(TAG, "glGenBuffers index:" + glGenBuffersIndex);
+        MatrixLog.i(TAG, "glGenBuffers index:" + glGenBuffersIndex);
         int glDeleteBuffersIndex = FuncSeeker.getFuncIndex(FuncNameString.GL_DELETE_BUFFERS);
-        OpenGLLeakMonitorLog.i(TAG, "glDeleteBuffers index:" + glDeleteBuffersIndex);
+        MatrixLog.i(TAG, "glDeleteBuffers index:" + glDeleteBuffersIndex);
 
         int glGenFramebuffersIndex = FuncSeeker.getFuncIndex(FuncNameString.GL_GEN_FRAMEBUFFERS);
-        OpenGLLeakMonitorLog.i(TAG, "glGenFramebuffers index:" + glGenFramebuffersIndex);
+        MatrixLog.i(TAG, "glGenFramebuffers index:" + glGenFramebuffersIndex);
         int glDeleteFramebuffersIndex = FuncSeeker.getFuncIndex(FuncNameString.GL_DELETE_FRAMEBUFFERS);
-        OpenGLLeakMonitorLog.i(TAG, "glDeleteFramebuffers index:" + glDeleteFramebuffersIndex);
+        MatrixLog.i(TAG, "glDeleteFramebuffers index:" + glDeleteFramebuffersIndex);
 
         int glGenRenderbuffersIndex = FuncSeeker.getFuncIndex(FuncNameString.GL_GEN_RENDERBUFFERS);
-        OpenGLLeakMonitorLog.i(TAG, "glGenRenderbuffers index:" + glGenRenderbuffersIndex);
+        MatrixLog.i(TAG, "glGenRenderbuffers index:" + glGenRenderbuffersIndex);
         int glDeleteRenderbuffersIndex = FuncSeeker.getFuncIndex(FuncNameString.GL_DELETE_RENDERBUFFERS);
-        OpenGLLeakMonitorLog.i(TAG, "glDeleteRenderbuffers index:" + glDeleteRenderbuffersIndex);
+        MatrixLog.i(TAG, "glDeleteRenderbuffers index:" + glDeleteRenderbuffersIndex);
 
         if ((glGenTexturesIndex * glDeleteTexturesIndex * glGenBuffersIndex * glDeleteBuffersIndex * glGenFramebuffersIndex * glDeleteFramebuffersIndex * glGenRenderbuffersIndex * glDeleteRenderbuffersIndex) == 0) {
-            OpenGLLeakMonitorLog.e(TAG, "seek func index fail!");
+            MatrixLog.e(TAG, "seek func index fail!");
             return null;
         }
 
@@ -79,7 +78,7 @@ public class OpenglIndexDetectorService extends Service {
         out.put(FuncNameString.GL_GEN_RENDERBUFFERS, glGenRenderbuffersIndex);
         out.put(FuncNameString.GL_DELETE_RENDERBUFFERS, glDeleteRenderbuffersIndex);
 
-        OpenGLLeakMonitorLog.i(TAG, "seek func index succ!");
+        MatrixLog.i(TAG, "seek func index succ!");
         return out;
     }
 

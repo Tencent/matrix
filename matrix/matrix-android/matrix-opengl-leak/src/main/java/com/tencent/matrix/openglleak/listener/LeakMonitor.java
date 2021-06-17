@@ -9,7 +9,7 @@ import android.os.HandlerThread;
 
 import com.tencent.matrix.openglleak.hook.OpenGLInfo;
 import com.tencent.matrix.openglleak.statistics.OpenGLResRecorder;
-import com.tencent.matrix.openglleak.utils.OpenGLLeakMonitorLog;
+import com.tencent.matrix.util.MatrixLog;
 
 import java.lang.ref.WeakReference;
 import java.util.HashMap;
@@ -54,7 +54,7 @@ public class LeakMonitor implements Application.ActivityLifecycleCallbacks {
     }
 
     public void start(Application context) {
-        OpenGLLeakMonitorLog.i(TAG, "start");
+        MatrixLog.i(TAG, "start");
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.ICE_CREAM_SANDWICH) {
             (context).registerActivityLifecycleCallbacks(mInstance);
@@ -69,7 +69,7 @@ public class LeakMonitor implements Application.ActivityLifecycleCallbacks {
     public void onActivityCreated(Activity activity, Bundle savedInstanceState) {
         currentActivityName = activity.getLocalClassName();
 
-        OpenGLLeakMonitorLog.i(TAG, "activity oncreate:" + currentActivityName + "  :" + activity.hashCode());
+        MatrixLog.i(TAG, "activity oncreate:" + currentActivityName + "  :" + activity.hashCode());
 
         WeakReference<Activity> weakReference = new WeakReference<>(activity);
         List<OpenGLInfo> actvityList = OpenGLResRecorder.getInstance().getCopyList();
@@ -79,7 +79,7 @@ public class LeakMonitor implements Application.ActivityLifecycleCallbacks {
 
     @Override
     public void onActivityDestroyed(Activity activity) {
-        OpenGLLeakMonitorLog.i(TAG, "activity ondestroy:" + activity.getLocalClassName() + "  :" + activity.hashCode());
+        MatrixLog.i(TAG, "activity ondestroy:" + activity.getLocalClassName() + "  :" + activity.hashCode());
 
         WeakReference<Activity> target = null;
 
@@ -121,7 +121,7 @@ public class LeakMonitor implements Application.ActivityLifecycleCallbacks {
             public void run() {
                 boolean result = findLeak(createList, destroyList);
                 if (result) {
-                    OpenGLLeakMonitorLog.i(TAG, activityStr + " leak! ");
+                    MatrixLog.i(TAG, activityStr + " leak! ");
                 }
             }
         });
@@ -211,7 +211,7 @@ public class LeakMonitor implements Application.ActivityLifecycleCallbacks {
             long now = System.currentTimeMillis();
 
             List<OpenGLInfo> copyList = OpenGLResRecorder.getInstance().getCopyList();
-            OpenGLLeakMonitorLog.i(TAG, "double check list size:" + copyList.size());
+            MatrixLog.i(TAG, "double check list size:" + copyList.size());
 
             for (OpenGLInfo item : copyList) {
                 if (item == null) {

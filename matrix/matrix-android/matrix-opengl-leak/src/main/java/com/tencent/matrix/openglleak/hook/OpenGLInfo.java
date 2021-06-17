@@ -2,7 +2,7 @@ package com.tencent.matrix.openglleak.hook;
 
 import android.text.TextUtils;
 
-import com.tencent.matrix.openglleak.utils.OpenGLLeakMonitorLog;
+import com.tencent.matrix.util.MatrixLog;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -141,7 +141,7 @@ public class OpenGLInfo {
         synchronized (counter) {
             int count = counter.get();
             if (count == 1) {
-                OpenGLLeakMonitorLog.i(TAG, "release:" + nativeStackPtr);
+                MatrixLog.i(TAG, "release:" + nativeStackPtr);
                 releaseNative(nativeStackPtr);
             }
 
