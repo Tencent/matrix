@@ -12,12 +12,13 @@ android {
         versionCode 1
         versionName rootProject.ext.VERSION_NAME
 
+        ndk {
+            abiFilters rootProject.ABI_FILTERS as String[]
+        }
+
         externalNativeBuild {
             cmake {
-                cppFlags "-std=gnu++11 -frtti -fexceptions"
-            }
-            ndk {
-                abiFilters "armeabi-v7a", "arm64-v8a", "x86", "x86_64"
+                arguments = ['-DANDROID_STL=c++_shared', "-DEnableLOG=${gradle.enableLog() ? "ON" : "OFF"}" as String]
             }
         }
     }
