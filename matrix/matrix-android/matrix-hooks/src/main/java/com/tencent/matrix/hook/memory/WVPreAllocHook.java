@@ -1,4 +1,4 @@
-package com.tencent.matrix.hook.extras;
+package com.tencent.matrix.hook.memory;
 
 import android.os.Build;
 
@@ -12,7 +12,7 @@ public class WVPreAllocHook extends AbsHook {
     @Nullable
     @Override
     protected String getNativeLibraryName() {
-        return "matrix-extrashook";
+        return "matrix-memoryhook";
     }
 
     @Override

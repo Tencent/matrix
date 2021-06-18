@@ -58,12 +58,14 @@ add_library(
         ${SOURCE_DIR}/memory/MemoryHookJNI.cpp
         ${SOURCE_DIR}/memory/MemoryHook.cpp
         ${SOURCE_DIR}/memory/MemoryHookFunctions.cpp
+        ${SOURCE_DIR}/memory/WVPreAllocTrimmer.cpp
+        ${SOURCE_DIR}/memory/WVPreAllocHookJNI.cpp
 )
 
 target_link_libraries(
-        ${TARGET}
-        PRIVATE matrix-hookcommon
-        PRIVATE ${EXT_DEP}/lib/${ANDROID_ABI}/libxhook.a
+      ${TARGET}
+      PRIVATE matrix-hookcommon
+      PRIVATE ${EXT_DEP}/lib/${ANDROID_ABI}/libxhook.a
       PRIVATE -Wl,--version-script=${SOURCE_DIR}/memory/memory.ver
 )
 #################################################################################
@@ -86,26 +88,4 @@ target_link_libraries(
       PRIVATE ${EXT_DEP}/lib/${ANDROID_ABI}/libxhook.a
       PRIVATE -Wl,--version-script=${SOURCE_DIR}/pthread/pthread.ver
 )
-#################################################################################
-
-#################################### Extras #####################################
-set(TARGET matrix-extrashook)
-
-add_library(
-      ${TARGET}
-      SHARED
-      ${SOURCE_DIR}/extras/WVPreAllocTrimmer.cpp
-      ${SOURCE_DIR}/extras/WVPreAllocHookJNI.cpp
-)
-
-target_link_libraries(
-      ${TARGET}
-      PRIVATE matrix-hookcommon
-      PRIVATE ${EXT_DEP}/lib/${ANDROID_ABI}/libxhook.a
-      PRIVATE -Wl,--version-script=${SOURCE_DIR}/extras/extras.ver
-)
-#################################################################################
-
-################################### EGL Hook ####################################
-# TODO ??
 #################################################################################

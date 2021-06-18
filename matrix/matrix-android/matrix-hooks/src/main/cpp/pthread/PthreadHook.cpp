@@ -3,6 +3,7 @@
 //
 
 #include <sys/types.h>
+#include <unistd.h>
 #include <common/Log.h>
 #include <xhook.h>
 #include <xhook_ext.h>
@@ -16,13 +17,20 @@
 #define ORIGINAL_LIB "libc.so"
 
 static volatile bool sThreadTraceEnabled = false;
-static volatile bool sThreadStackShinkEnabled = false;
+static volatile bool sThreadStackShrinkEnabled = false;
 
 DECLARE_HOOK_ORIG(int, pthread_create, pthread_t*, pthread_attr_t const*, pthread_hook::pthread_routine_t, void*);
 DECLARE_HOOK_ORIG(int, pthread_setname_np, pthread_t, const char*);
 
 DEFINE_HOOK_FUN(int, pthread_create,
         pthread_t* pthread, pthread_attr_t const* attr, pthread_hook::pthread_routine_t start_routine, void* args) {
+    Dl_info callerInfo = {};
+    bool callerInfoOk = true;
+    if (dladdr(__builtin_return_address(0), &callerInfo) == 0) {
+        LOGE(LOG_TAG, "%d >> Fail to get caller info.", ::getpid());
+        callerInfoOk = false;
+    }
+
     pthread_attr_t tmpAttr;
     if (LIKELY(attr == nullptr)) {
         int ret = pthread_attr_init(&tmpAttr);
@@ -33,8 +41,8 @@ DEFINE_HOOK_FUN(int, pthread_create,
         tmpAttr = *attr;
     }
 
-    if (sThreadStackShinkEnabled) {
-        thread_stack_shink::OnPThreadCreate(pthread, &tmpAttr, start_routine, args);
+    if (callerInfoOk && sThreadStackShrinkEnabled) {
+        thread_stack_shink::OnPThreadCreate(&callerInfo, pthread, &tmpAttr, start_routine, args);
     }
 
     int ret = 0;
@@ -73,15 +81,21 @@ namespace pthread_hook {
         sThreadTraceEnabled = enabled;
     }
 
-    void SetThreadStackShinkEnabled(bool enabled) {
-        LOGD(LOG_TAG, "[*] Calling SetThreadStackShinkEnabled, enabled: %d", enabled);
-        sThreadStackShinkEnabled = enabled;
+    void SetThreadStackShrinkEnabled(bool enabled) {
+        LOGD(LOG_TAG, "[*] Calling SetThreadStackShrinkEnabled, enabled: %d", enabled);
+        sThreadStackShrinkEnabled = enabled;
+    }
+
+    void SetThreadStackShrinkIgnoredCreatorSoPatterns(const char** patterns, size_t pattern_count) {
+        LOGD(LOG_TAG, "[*] Calling SetThreadStackShrinkIgnoredCreatorSoPatterns, patterns: %p, count: %d",
+                patterns, pattern_count);
+        thread_stack_shink::SetIgnoredCreatorSoPatterns(patterns, pattern_count);
     }
 
     void InstallHooks(bool enable_debug) {
         LOGI(LOG_TAG, "[+] Calling InstallHooks, sThreadTraceEnabled: %d, sThreadStackShinkEnabled: %d",
-                sThreadTraceEnabled, sThreadStackShinkEnabled);
-        if (!sThreadTraceEnabled && !sThreadStackShinkEnabled) {
+             sThreadTraceEnabled, sThreadStackShrinkEnabled);
+        if (!sThreadTraceEnabled && !sThreadStackShrinkEnabled) {
             LOGD(LOG_TAG, "[*] InstallHooks was ignored.");
             return;
         }

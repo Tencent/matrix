@@ -2,6 +2,7 @@
 // Created by tomystang on 2021/2/3.
 //
 
+#include <atomic>
 #include <cstdio>
 #include <unistd.h>
 #include <dlfcn.h>
@@ -14,13 +15,34 @@
 #include <cstdlib>
 #include <memory>
 #include <common/Macros.h>
+#include <vector>
+#include <mutex>
+#include <regex.h>
 #include "ThreadStackShink.h"
 
 #define LOG_TAG "Matrix.ThreadStackShinker"
 
-static size_t sDefaultStackSize = 1 * 1024 * 1024 + 512 * 1024;
+static std::atomic_size_t sDefaultNativeStackSize(0);
+static std::atomic_bool sShrinkJavaThread(false);
+static std::vector<regex_t> sIgnoredCreatorSoPatterns;
+static std::mutex sConfigLock;
 
 namespace thread_stack_shink {
+    static size_t GetDefaultNativeStackSize() {
+        size_t stackSize = sDefaultNativeStackSize.load();
+        if (UNLIKELY(stackSize == 0)) {
+            pthread_attr_t defAttr = {};
+            pthread_attr_init(&defAttr);
+            pthread_attr_getstacksize(&defAttr, &stackSize);
+            if (stackSize == 0) {
+                constexpr size_t SIGNAL_STACK_SIZE_WITHOUT_GUARD = 16 * 1024;
+                stackSize = 1 * 1024 * 1024 - SIGNAL_STACK_SIZE_WITHOUT_GUARD;
+            }
+            sDefaultNativeStackSize.store(stackSize);
+        }
+        return stackSize;
+    }
+
     static int AdjustStackSize(pthread_attr_t* attr) {
         size_t origStackSize = 0;
         {
@@ -30,9 +52,10 @@ namespace thread_stack_shink {
                 return ret;
             }
         }
-        if (origStackSize > sDefaultStackSize) {
-            LOGE(LOG_TAG, "Stack size is larger than default stack size (%u > %u), give up adjusting.",
-                  origStackSize, sDefaultStackSize);
+        const size_t defaultNativeStackSize = GetDefaultNativeStackSize();
+        if (origStackSize != defaultNativeStackSize) {
+            LOGW(LOG_TAG, "Stack size is not equal to default native stack size (%u != %u), give up adjusting.",
+                 origStackSize, defaultNativeStackSize);
             return ERANGE;
         }
         if (origStackSize < 2 * PTHREAD_STACK_MIN) {
@@ -64,40 +87,50 @@ namespace thread_stack_shink {
         return ::strncmp(str + strLen - suffixLen, suffix, suffixLen) == 0;
     }
 
-    void OnPThreadCreate(pthread_t* pthread_ptr, pthread_attr_t const* attr, void* (*start_routine)(void*), void* args) {
+    void SetShrinkJavaThread(bool value) {
+        sShrinkJavaThread.store(value);
+    }
+
+    void SetIgnoredCreatorSoPatterns(const char** patterns, size_t pattern_count) {
+        std::lock_guard configLockGuard(sConfigLock);
+        for (auto & pattern : sIgnoredCreatorSoPatterns) {
+            auto pRegEx = const_cast<regex_t*>(&pattern);
+            ::regfree(pRegEx);
+        }
+        sIgnoredCreatorSoPatterns.clear();
+        if (patterns != nullptr) {
+            for (int i = 0; i < pattern_count; ++i) {
+                regex_t regex = {};
+                int ret = regcomp(&regex, patterns[i], 0);
+                if (ret == 0) {
+                    sIgnoredCreatorSoPatterns.push_back(regex);
+                } else {
+                    LOGE(LOG_TAG, "Bad pattern: %s, compile error code: %d", patterns[i], ret);
+                }
+            }
+        }
+    }
+
+    void OnPThreadCreate(const Dl_info* caller_info, pthread_t* pthread_ptr, pthread_attr_t const* attr, void* (*start_routine)(void*), void* args) {
         if (attr == nullptr) {
             LOGE(LOG_TAG, "attr is null, skip adjusting.");
             return;
         }
-        Dl_info callerDlInfo = {};
-        if (dladdr(__builtin_return_address(0), &callerDlInfo) == 0) {
-            LOGE(LOG_TAG, "%d >> Fail to get caller info.", ::getpid());
+
+        if (strEndsWith(caller_info->dli_fname, "/libhwui.so")) {
+            LOGW(LOG_TAG, "Inside libhwui.so, skip adjusting.");
             return;
         }
-        if (strstr(callerDlInfo.dli_fname, "/app_tbs/") != nullptr) {
-            LOGE(LOG_TAG, "Inside %s, skip adjusting.", callerDlInfo.dli_fname);
-            return;
+        {
+            std::lock_guard configLockGuard(sConfigLock);
+            for (const auto & pattern : sIgnoredCreatorSoPatterns) {
+                if (::regexec(&pattern, caller_info->dli_fname, 0, nullptr, 0) == 0) {
+                    LOGW(LOG_TAG, "Thread in %s was ignored according to ignored creator so patterns.", caller_info->dli_fname);
+                    return;
+                }
+            }
         }
-        if (strEndsWith(callerDlInfo.dli_fname, "/libmttwebview.so")) {
-            LOGE(LOG_TAG, "Inside libmttwebview.so, skip adjusting.");
-            return;
-        }
-        if (strEndsWith(callerDlInfo.dli_fname, "/libmtticu.so")) {
-            LOGE(LOG_TAG, "Inside libmtticu.so, skip adjusting.");
-            return;
-        }
-        if (strEndsWith(callerDlInfo.dli_fname, "/libtbs_v8.so")) {
-            LOGE(LOG_TAG, "Inside libtbs_v8.so, skip adjusting.");
-            return;
-        }
-        if (strEndsWith(callerDlInfo.dli_fname, "/libhwui.so")) {
-            LOGE(LOG_TAG, "Inside libhwui.so, skip adjusting.");
-            return;
-        }
-        if (strEndsWith(callerDlInfo.dli_fname, "/libmagicbrush.so")) {
-            LOGE(LOG_TAG, "Inside libmagicbrush.so, skip adjusting.");
-            return;
-        }
+
         int ret = AdjustStackSize(const_cast<pthread_attr_t*>(attr));
         if (UNLIKELY(ret != 0)) {
             LOGE(LOG_TAG, "Fail to adjust stack size, ret: %d", ret);

@@ -3,12 +3,14 @@ package com.tencent.matrix.hook.pthread;
 import android.text.TextUtils;
 
 import androidx.annotation.Keep;
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.tencent.matrix.hook.AbsHook;
 import com.tencent.matrix.hook.HookManager;
 import com.tencent.matrix.util.MatrixLog;
 
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -28,8 +30,32 @@ public class PthreadHook extends AbsHook {
 
     private boolean mConfigured = false;
     private boolean mThreadTraceEnabled = false;
-    private boolean mThreadStackShinkEnabled = false;
+    private ThreadStackShrinkConfig mThreadStackShrinkConfig = null;
     private boolean mHookInstalled = false;
+
+    public static class ThreadStackShrinkConfig {
+        public boolean enabled = false;
+        public final Set<String> ignoreCreatorSoPatterns = new HashSet<>(5);
+
+        public ThreadStackShrinkConfig setEnabled(boolean value) {
+            this.enabled = value;
+            return this;
+        }
+
+        public ThreadStackShrinkConfig setIgnoreCreatorSoPatterns(@Nullable String... patterns) {
+            if (patterns == null || patterns.length == 0) {
+                ignoreCreatorSoPatterns.clear();
+            } else {
+                ignoreCreatorSoPatterns.addAll(Arrays.asList(patterns));
+            }
+            return this;
+        }
+
+        public ThreadStackShrinkConfig addIgnoreCreatorSoPatterns(@NonNull String pattern) {
+            ignoreCreatorSoPatterns.add(pattern);
+            return this;
+        }
+    }
 
     private PthreadHook() {
     }
@@ -55,8 +81,8 @@ public class PthreadHook extends AbsHook {
         return this;
     }
 
-    public PthreadHook setThreadStackShinkEnabled(boolean enabled) {
-        mThreadStackShinkEnabled = enabled;
+    public PthreadHook setThreadStackShrinkConfig(@Nullable ThreadStackShrinkConfig config) {
+        mThreadStackShrinkConfig = config;
         return this;
     }
 
@@ -101,7 +127,19 @@ public class PthreadHook extends AbsHook {
         addHookThreadNameNative(mHookThreadName.toArray(new String[0]));
         enableQuickenNative(mEnableQuicken);
         enableLoggerNative(mEnableLog);
-        setThreadStackShinkEnabledNative(mThreadStackShinkEnabled);
+        if (mThreadStackShrinkConfig != null) {
+            final String[] patterns = new String[mThreadStackShrinkConfig.ignoreCreatorSoPatterns.size()];
+            if (setThreadStackShrinkIgnoredCreatorSoPatternsNative(
+                    mThreadStackShrinkConfig.ignoreCreatorSoPatterns.toArray(patterns))) {
+                setThreadStackShrinkEnabledNative(mThreadStackShrinkConfig.enabled);
+            } else {
+                MatrixLog.e(TAG, "setThreadStackShrinkIgnoredCreatorSoPatternsNative return false, do not enable ThreadStackShrinker.");
+                setThreadStackShrinkEnabledNative(false);
+            }
+        } else {
+            setThreadStackShrinkIgnoredCreatorSoPatternsNative(null);
+            setThreadStackShrinkEnabledNative(false);
+        }
         setThreadTraceEnabledNative(mThreadTraceEnabled);
         mConfigured = true;
         return true;
@@ -109,7 +147,7 @@ public class PthreadHook extends AbsHook {
 
     @Override
     protected boolean onHook(boolean enableDebug) {
-        if (mThreadTraceEnabled || mThreadStackShinkEnabled) {
+        if (mThreadTraceEnabled || (mThreadStackShrinkConfig != null && mThreadStackShrinkConfig.enabled)) {
             if (!mHookInstalled) {
                 installHooksNative(enableDebug);
                 mHookInstalled = true;
@@ -125,7 +163,10 @@ public class PthreadHook extends AbsHook {
     private native void setThreadTraceEnabledNative(boolean enabled);
 
     @Keep
-    private native void setThreadStackShinkEnabledNative(boolean enabled);
+    private native void setThreadStackShrinkEnabledNative(boolean enabled);
+    
+    @Keep
+    private native boolean setThreadStackShrinkIgnoredCreatorSoPatternsNative(String[] patterns);
 
     @Keep
     private native void enableLoggerNative(boolean enable);
