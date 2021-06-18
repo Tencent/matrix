@@ -1,29 +1,13 @@
-/*
- * Tencent is pleased to support the open source community by making wechat-matrix available.
- * Copyright (C) 2021 THL A29 Limited, a Tencent company. All rights reserved.
- * Licensed under the BSD 3-Clause License (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      https://opensource.org/licenses/BSD-3-Clause
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 package com.tencent.matrix.hook.memory;
 
 import android.text.TextUtils;
 
-
 import androidx.annotation.Keep;
+import androidx.annotation.Nullable;
 
-import com.tencent.matrix.util.MatrixLog;
 import com.tencent.matrix.hook.AbsHook;
 import com.tencent.matrix.hook.HookManager;
+import com.tencent.matrix.util.MatrixLog;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -45,6 +29,7 @@ public class MemoryHook extends AbsHook {
     private int     mStacktraceLogThreshold = 10 * 1024 * 1024;
     private boolean mEnableStacktrace;
     private boolean mEnableMmap;
+    private boolean mHookInstalled = false;
 
     private MemoryHook() {
     }
@@ -86,9 +71,9 @@ public class MemoryHook extends AbsHook {
     }
 
     /**
+     * >= 0, 0 表示不限制
      *
-     * @param min >= 0, 0 表示不限制
-     * @param max 0 或 > minSize, 0 表示不限制
+     * @param size
      * @return
      */
     public MemoryHook tracingAllocSizeRange(int min, int max) {
@@ -117,8 +102,14 @@ public class MemoryHook extends AbsHook {
                 .commitHooks();
     }
 
+    @Nullable
     @Override
-    public void onConfigure() {
+    protected String getNativeLibraryName() {
+        return "matrix-memoryhook";
+    }
+
+    @Override
+    public boolean onConfigure() {
         if (mMinTraceSize < 0 || (mMaxTraceSize != 0 && mMaxTraceSize < mMinTraceSize)) {
             throw new IllegalArgumentException("sizes should not be negative and maxSize should be " +
                     "0 or greater than minSize: min = " + mMinTraceSize + ", max = " + mMaxTraceSize);
@@ -130,12 +121,19 @@ public class MemoryHook extends AbsHook {
         setTracingAllocSizeRangeNative(mMinTraceSize, mMaxTraceSize);
         setStacktraceLogThresholdNative(mStacktraceLogThreshold);
         enableStacktraceNative(mEnableStacktrace);
+
+        return true;
     }
 
     @Override
-    protected void onHook() {
+    protected boolean onHook(boolean enableDebug) {
         addHookSoNative(mHookSoSet.toArray(new String[0]));
         addIgnoreSoNative(mIgnoreSoSet.toArray(new String[0]));
+        if (!mHookInstalled) {
+            installHooksNative(enableDebug);
+            mHookInstalled = true;
+        }
+        return true;
     }
 
     public void dump(String logPath, String jsonPath) {
@@ -164,5 +162,8 @@ public class MemoryHook extends AbsHook {
 
     @Keep
     private native void setStacktraceLogThresholdNative(int threshold);
+
+    @Keep
+    private native void installHooksNative(boolean enableDebug);
 }
 

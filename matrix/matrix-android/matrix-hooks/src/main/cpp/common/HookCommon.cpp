@@ -1,31 +1,14 @@
-/*
- * Tencent is pleased to support the open source community by making wechat-matrix available.
- * Copyright (C) 2021 THL A29 Limited, a Tencent company. All rights reserved.
- * Licensed under the BSD 3-Clause License (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      https://opensource.org/licenses/BSD-3-Clause
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 //
 // Created by Yves on 2020-03-17.
 //
 
 #include <jni.h>
-#include <xhook.h>
 #include <sys/stat.h>
+#include <backtrace/Backtrace.h>
+#include <xhook.h>
 #include "HookCommon.h"
 #include "Log.h"
 #include "JNICommon.h"
-#include "PthreadExt.h"
-#include "Backtrace.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -36,43 +19,60 @@ extern "C" {
 std::vector<dlopen_callback_t> m_dlopen_callbacks;
 std::vector<hook_init_callback_t> m_init_callbacks;
 
+static std::atomic_bool dlopen_pausing_mark(false);
 static std::recursive_mutex dlopen_mutex;
 
 DEFINE_HOOK_FUN(void *, __loader_android_dlopen_ext, const char *file_name,
                 int                                             flag,
                 const void                                      *extinfo,
                 const void                                      *caller_addr) {
-    std::lock_guard<std::recursive_mutex> dlopen_lock(dlopen_mutex);
+    bool should_block = dlopen_pausing_mark.load();
+    if (should_block) {
+        dlopen_mutex.lock();
+    }
 
-    void *ret = (*ORIGINAL_FUNC_NAME(__loader_android_dlopen_ext))(file_name, flag, extinfo,
-                                                                   caller_addr);
+    void *ret = (*ORIGINAL_FUNC_NAME(__loader_android_dlopen_ext))(file_name, flag, extinfo, caller_addr);
 
     LOGD(TAG, "call into dlopen hook");
 
 //    NanoSeconds_Start(TAG, begin);
+
+    wechat_backtrace::notify_maps_changed();
 
     bool map_refreshed = false;
     for (auto &callback : m_dlopen_callbacks) {
         callback(file_name, &map_refreshed);
     }
 
-    LOGD(TAG, "before call xhook_refresh");
-    xhook_refresh(false);
+    // This line only refresh xhook in matrix-hookcommon library now.
+    xhook_refresh(0);
+
 //    NanoSeconds_End(TAG, begin, "refresh");
 
 //    LOGD(TAG, "xhook_refresh cost : %lld", cost);
 
+    if (should_block) {
+        dlopen_mutex.unlock();
+    }
     return ret;
 }
 
-static void hook_common_init() {
-    for (auto &callback : m_init_callbacks) {
-        callback();
-    }
+void add_dlopen_hook_callback(dlopen_callback_t callback) {
+    pause_dlopen();
+    m_dlopen_callbacks.push_back(callback);
+    resume_dlopen();
 }
 
-void add_dlopen_hook_callback(dlopen_callback_t callback) {
-    m_dlopen_callbacks.push_back(callback);
+void pause_dlopen() {
+    LOGD(TAG, "pause_dlopen called.");
+    dlopen_mutex.lock();
+    dlopen_pausing_mark.store(true);
+}
+
+void resume_dlopen() {
+    LOGD(TAG, "resume_dlopen called.");
+    dlopen_pausing_mark.store(false);
+    dlopen_mutex.unlock();
 }
 
 void add_hook_init_callback(hook_init_callback_t callback) {
@@ -127,38 +127,6 @@ bool get_java_stacktrace(char *stack_dst, size_t size) {
 
     strncpy(stack_dst, "\tnull", size);
     return false;
-}
-
-JNIEXPORT jint JNICALL
-Java_com_tencent_matrix_hook_HookManager_xhookRefreshNative(JNIEnv *env, jobject thiz,
-                                                                  jboolean async) {
-    LOGI(TAG, "call xhookRefreshNative");
-    add_hook_init_callback(pthread_ext_init);
-    hook_common_init();
-    LOGI(TAG, "call notify_maps_changed");
-    wechat_backtrace::notify_maps_changed();
-    LOGI(TAG, "call xhook_refresh");
-    int ret = xhook_refresh(async);
-
-    return ret;
-}
-
-JNIEXPORT void JNICALL
-Java_com_tencent_matrix_hook_HookManager_xhookEnableDebugNative(JNIEnv *env, jobject thiz,
-                                                                      jboolean flag) {
-    xhook_enable_debug(flag);
-}
-
-JNIEXPORT void JNICALL
-Java_com_tencent_matrix_hook_HookManager_xhookEnableSigSegvProtectionNative(JNIEnv *env,
-                                                                                  jobject thiz,
-                                                                                  jboolean flag) {
-    xhook_enable_sigsegv_protection(flag);
-}
-
-JNIEXPORT void JNICALL
-Java_com_tencent_matrix_hook_HookManager_xhookClearNative(JNIEnv *env, jobject thiz) {
-    xhook_clear();
 }
 
 #ifdef __cplusplus
