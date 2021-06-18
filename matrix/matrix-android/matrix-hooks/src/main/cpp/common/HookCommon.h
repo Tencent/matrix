@@ -68,6 +68,7 @@
       xhook_ignore(".*libc\\+\\+_shared\\.so$", NULL); \
       xhook_ignore(".*libstdc\\+\\+.so\\.so$", NULL); \
       xhook_ignore(".*libstlport_shared\\.so$", NULL); \
+      xhook_ignore(".*/libwebviewchromium_loader\\.so$", NULL); \
     } while (0)
 
 #include <vector>

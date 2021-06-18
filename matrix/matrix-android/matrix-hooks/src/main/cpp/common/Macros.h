@@ -14,5 +14,7 @@
 
 #define EXPORT_C extern "C" __attribute__ ((visibility ("default")))
 
+#define NELEM(...) ((sizeof(__VA_ARGS__)) / (sizeof(__VA_ARGS__[0])))
+
 
 #endif //LIBMATRIX_JNI_MACROS_H

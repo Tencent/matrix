@@ -88,6 +88,24 @@ target_link_libraries(
 )
 #################################################################################
 
+#################################### Extras #####################################
+set(TARGET matrix-extrashook)
+
+add_library(
+      ${TARGET}
+      SHARED
+      ${SOURCE_DIR}/extras/WVPreAllocTrimmer.cpp
+      ${SOURCE_DIR}/extras/WVPreAllocHookJNI.cpp
+)
+
+target_link_libraries(
+      ${TARGET}
+      PRIVATE matrix-hookcommon
+      PRIVATE ${EXT_DEP}/lib/${ANDROID_ABI}/libxhook.a
+      PRIVATE -Wl,--version-script=${SOURCE_DIR}/extras/extras.ver
+)
+#################################################################################
+
 ################################### EGL Hook ####################################
 # TODO ??
 #################################################################################

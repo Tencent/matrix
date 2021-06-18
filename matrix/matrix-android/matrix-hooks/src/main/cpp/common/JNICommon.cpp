@@ -91,6 +91,12 @@ JNIEXPORT jboolean Java_com_tencent_matrix_hook_HookManager_doPreHookInitializeN
         return false;
     }
 
+    ret = xhook_ignore(".*/libwebviewchromium_loader\\.so$", nullptr);
+    if (ret != 0) {
+        LOGE(TAG, "xhook_ignore with libwebviewchromium_loader.so failed, ret: %d", ret);
+        return false;
+    }
+
     pthread_ext_init();
     rp_init();
 
