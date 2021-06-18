@@ -50,7 +50,7 @@ public class OpenglLeakPlugin extends Plugin {
         }).start();
     }
 
-    public void _start() {
+    private void _start() {
         Intent service = new Intent(context, OpenglIndexDetectorService.class);
         context.bindService(service, new ServiceConnection() {
             @Override
