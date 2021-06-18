@@ -59,7 +59,7 @@ void thread_id_to_string(thread::id thread_id, char *&result) {
     stringstream stream;
     stream << thread_id;
     result = new char[stream.str().size() + 1];
-    stpcpy(result, stream.str().c_str());
+    strcpy(result, stream.str().c_str());
 }
 
 JNIEnv *GET_ENV() {
