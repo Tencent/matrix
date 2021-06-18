@@ -1,27 +1,15 @@
-/*
- * Tencent is pleased to support the open source community by making wechat-matrix available.
- * Copyright (C) 2021 THL A29 Limited, a Tencent company. All rights reserved.
- * Licensed under the BSD 3-Clause License (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      https://opensource.org/licenses/BSD-3-Clause
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 //
 // Created by Yves on 2020-03-16.
 //
-#include <QuickenUnwinder.h>
-#include <QuickenJNI.h>
+#include <backtrace/QuickenUnwinder.h>
+#include <backtrace/QuickenJNI.h>
+#include <xh_errno.h>
+#include <backtrace/common/PthreadExt.h>
+#include <backtrace/Backtrace.h>
 #include "JNICommon.h"
 #include "Log.h"
 #include "HookCommon.h"
+#include "ScopedCleaner.h"
 #include "xhook.h"
 
 #define TAG "Matrix.JNICommon"
@@ -38,48 +26,77 @@ jmethodID m_method_getStack;
 JNIEXPORT jint JNI_OnLoad(JavaVM *vm, void *reserved) {
     LOGD(TAG, "JNI OnLoad...");
     m_java_vm = vm;
-
-    JNIEnv *env;
-
-    vm->GetEnv((void **) &env, JNI_VERSION_1_6);
-
-    if (env) {
-        jclass j_HookManager = env->FindClass("com/tencent/matrix/hook/HookManager");
-
-        if (j_HookManager) {
-            LOGD(TAG, "j_PthreadHook not null");
-            m_class_HookManager = (jclass) env->NewGlobalRef(j_HookManager);
-            m_method_getStack = env->GetStaticMethodID(m_class_HookManager, "getStack",
-                                                       "()Ljava/lang/String;");
-        } else {
-            LOGD(TAG, "j_PthreadHook null!");
-        }
-    }
-
-    xhook_ignore(".*libmatrix-hooks\\.so$", NULL);
-    xhook_ignore(".*librabbiteye\\.so$", NULL);
-    xhook_ignore(".*libwechatbacktrace\\.so$", NULL);
-    xhook_ignore(".*libwechatcrash\\.so$", NULL);
-    xhook_ignore(".*libmemguard\\.so$", NULL);
-    xhook_ignore(".*liblog\\.so$", NULL);
-    xhook_ignore(".*libwechatxlog\\.so$", NULL);
-    xhook_ignore(".*libc\\.so$", NULL);
-    xhook_ignore(".*libm\\.so$", NULL);
-    xhook_ignore(".*libc\\+\\+\\.so$", NULL);
-    xhook_ignore(".*libc\\+\\+_shared\\.so$", NULL);
-    xhook_ignore(".*libstdc\\+\\+.so\\.so$", NULL);
-    xhook_ignore(".*libstlport_shared\\.so$", NULL);
-
-    xhook_register(".*\\.so$", "__loader_android_dlopen_ext",
-                   (void *) HANDLER_FUNC_NAME(__loader_android_dlopen_ext),
-                   (void **) &ORIGINAL_FUNC_NAME(__loader_android_dlopen_ext));
-
-
     return JNI_VERSION_1_6;
 }
 
-JNIEXPORT void JNI_OnUnload(JavaVM *vm, void *reserved) {
+static jclass FindClass(JNIEnv* env, const char* desc, bool ret_global_ref = false) {
+    jclass clazz = env->FindClass(desc);
+    if (clazz == nullptr) {
+        env->ExceptionClear();
+        LOGE(TAG, "Cannot find class: %s", desc);
+    }
+    if (ret_global_ref) {
+        clazz = reinterpret_cast<jclass>(env->NewGlobalRef(clazz));
+        if (clazz == nullptr) {
+            LOGE(TAG, "Cannot create global ref for class: %s", desc);
+        }
+    }
+    return clazz;
+}
 
+static jmethodID GetStaticMethodID(JNIEnv* env, jclass clazz, const char* name, const char* sig) {
+    jmethodID mid = env->GetStaticMethodID(clazz, name, sig);
+    if (mid == nullptr) {
+        env->ExceptionClear();
+        LOGE(TAG, "Fail to get static method id of %s:%s", name, sig);
+    }
+    return mid;
+}
+
+// fixme 解偶 EglHook
+JNIEXPORT jboolean Java_com_tencent_matrix_hook_HookManager_doPreHookInitializeNative(JNIEnv *env, jobject thiz) {
+    m_class_HookManager = FindClass(env, "com/tencent/matrix/hook/HookManager", true);
+    if (m_class_HookManager == nullptr) {
+        return false;
+    }
+    auto jHookMgrCleaner = matrix::MakeScopedCleaner([env]() {
+        if (m_class_HookManager != nullptr) {
+            env->DeleteGlobalRef(m_class_HookManager);
+            m_class_HookManager = nullptr;
+        }
+    });
+
+    m_method_getStack = GetStaticMethodID(env, m_class_HookManager, "getStack", "()Ljava/lang/String;");
+    if (m_method_getStack == nullptr) {
+        return false;
+    }
+    auto getStackMethodCleaner = matrix::MakeScopedCleaner([]() {
+        m_method_getStack = nullptr;
+    });
+
+    int ret = xhook_register(".*\\.so$", "__loader_android_dlopen_ext",
+                             (void *) HANDLER_FUNC_NAME(__loader_android_dlopen_ext),
+                             (void **) &ORIGINAL_FUNC_NAME(__loader_android_dlopen_ext));
+    if (ret != 0) {
+        LOGE(TAG, "xhook_register with __loader_android_dlopen_ext failed, ret: %d", ret);
+        return false;
+    }
+
+    pthread_ext_init();
+
+    getStackMethodCleaner.Omit();
+    jHookMgrCleaner.Omit();
+    return true;
+}
+
+JNIEXPORT void JNICALL
+Java_com_tencent_matrix_hook_HookManager_doFinalInitializeNative(JNIEnv *env, jobject thiz) {
+    wechat_backtrace::notify_maps_changed();
+    // This line only refresh xhook in matrix-hookcommon library now.
+    int ret = xhook_refresh(0);
+    if (ret != 0) {
+        LOGE(TAG, "Fail to call xhook_refresh, ret: %d", ret);
+    }
 }
 
 #ifdef __cplusplus

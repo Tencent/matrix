@@ -1,32 +1,16 @@
-/*
- * Tencent is pleased to support the open source community by making wechat-matrix available.
- * Copyright (C) 2021 THL A29 Limited, a Tencent company. All rights reserved.
- * Licensed under the BSD 3-Clause License (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      https://opensource.org/licenses/BSD-3-Clause
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 package com.tencent.matrix.hook.pthread;
 
 import android.text.TextUtils;
 
+import androidx.annotation.Keep;
+import androidx.annotation.Nullable;
 
-import com.tencent.matrix.util.MatrixLog;
 import com.tencent.matrix.hook.AbsHook;
 import com.tencent.matrix.hook.HookManager;
+import com.tencent.matrix.util.MatrixLog;
 
 import java.util.HashSet;
 import java.util.Set;
-
-import androidx.annotation.Keep;
 
 /**
  * Created by Yves on 2020-03-11
@@ -36,8 +20,6 @@ public class PthreadHook extends AbsHook {
 
     public static final PthreadHook INSTANCE = new PthreadHook();
 
-    private Set<String> mHookSoSet      = new HashSet<>();
-    private Set<String> mIgnoreSoSet    = new HashSet<>();
     private Set<String> mHookThreadName = new HashSet<>();
 
     private boolean mEnableQuicken = false;
@@ -45,39 +27,10 @@ public class PthreadHook extends AbsHook {
     private boolean mEnableLog = false;
 
     private boolean mConfigured = false;
+    private boolean mThreadTraceEnabled = false;
+    private boolean mThreadStackShinkEnabled = false;
 
     private PthreadHook() {
-    }
-
-    public PthreadHook addHookSo(String regex) {
-        if (TextUtils.isEmpty(regex)) {
-            MatrixLog.e(TAG, "so regex is empty");
-        } else {
-            mHookSoSet.add(regex);
-        }
-        return this;
-    }
-
-    public PthreadHook addHookSo(String... regexArr) {
-        for (String regex : regexArr) {
-            addHookSo(regex);
-        }
-        return this;
-    }
-
-    public PthreadHook addIgnoreSo(String regex) {
-        if (TextUtils.isEmpty(regex)) {
-            return this;
-        }
-        mIgnoreSoSet.add(regex);
-        return this;
-    }
-
-    public PthreadHook addIgnoreSo(String... regexArr) {
-        for (String regex : regexArr) {
-            addIgnoreSo(regex);
-        }
-        return this;
     }
 
     public PthreadHook addHookThread(String regex) {
@@ -93,6 +46,16 @@ public class PthreadHook extends AbsHook {
         for (String regex : regexArr) {
             addHookThread(regex);
         }
+        return this;
+    }
+
+    public PthreadHook setThreadTraceEnabled(boolean enabled) {
+        mThreadTraceEnabled = enabled;
+        return this;
+    }
+
+    public PthreadHook setThreadStackShinkEnabled(boolean enabled) {
+        mThreadStackShinkEnabled = enabled;
         return this;
     }
 
@@ -126,36 +89,47 @@ public class PthreadHook extends AbsHook {
         }
     }
 
+    @Nullable
+    @Override
+    protected String getNativeLibraryName() {
+        return "matrix-pthreadhook";
+    }
+
     @Override
     public void onConfigure() {
         addHookThreadNameNative(mHookThreadName.toArray(new String[0]));
         enableQuickenNative(mEnableQuicken);
         enableLoggerNative(mEnableLog);
+        setThreadStackShinkEnabledNative(mThreadStackShinkEnabled);
+        setThreadTraceEnabledNative(mThreadTraceEnabled);
         mConfigured = true;
     }
 
     @Override
-    protected void onHook() {
-        addHookSoNative(mHookSoSet.toArray(new String[0]));
-        addIgnoreSoNative(mIgnoreSoSet.toArray(new String[0]));
+    protected void onHook(boolean enableDebug) {
+        if (mThreadTraceEnabled || mThreadStackShinkEnabled) {
+            installHooksNative(enableDebug);
+        }
     }
-
-    @Keep
-    private native void addHookSoNative(String[] hookSoList);
-
-    @Keep
-    private native void addIgnoreSoNative(String[] hookSoList);
 
     @Keep
     private native void addHookThreadNameNative(String[] threadNames);
 
     @Keep
-    private native void dumpNative(String path);
+    private native void setThreadTraceEnabledNative(boolean enabled);
+
+    @Keep
+    private native void setThreadStackShinkEnabledNative(boolean enabled);
+
+    @Keep
+    private native void enableLoggerNative(boolean enable);
 
     @Keep
     private native void enableQuickenNative(boolean enable);
 
     @Keep
-    private static native void enableLoggerNative(boolean enable);
+    private native void dumpNative(String path);
 
+    @Keep
+    private native void installHooksNative(boolean enableDebug);
 }

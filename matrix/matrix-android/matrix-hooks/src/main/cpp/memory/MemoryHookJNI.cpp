@@ -1,28 +1,12 @@
-/*
- * Tencent is pleased to support the open source community by making wechat-matrix available.
- * Copyright (C) 2021 THL A29 Limited, a Tencent company. All rights reserved.
- * Licensed under the BSD 3-Clause License (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      https://opensource.org/licenses/BSD-3-Clause
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 //
 // Created by Yves on 2019-08-08.
 //
 #include <jni.h>
-#include "xhook.h"
+#include <xhook.h>
+#include <xh_errno.h>
+#include <common/HookCommon.h>
 #include "MemoryHookFunctions.h"
 #include "MemoryHook.h"
-#include "xh_errno.h"
-#include "HookCommon.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -96,7 +80,8 @@ bool enable_mmap_hook = false;
 static void hook(const char *regex) {
 
     for (auto f : HOOK_MALL_FUNCTIONS) {
-        xhook_register(regex, f.name, f.handler_ptr, f.origin_ptr);
+        int ret = xhook_register(regex, f.name, f.handler_ptr, f.origin_ptr);
+        LOGD(TAG, "hook fn, regex: %s, sym: %s, ret: %d", regex, f.name, ret);
     }
     LOGD(TAG, "mmap enabled ? %d", enable_mmap_hook);
     if (enable_mmap_hook) {
@@ -113,7 +98,7 @@ static void ignore(const char *regex) {
     }
 
     if (enable_mmap_hook) {
-        for (auto f : HOOK_MALL_FUNCTIONS) {
+        for (auto f : HOOK_MMAP_FUNCTIONS) {
             xhook_ignore(regex, f.name);
         }
     }
@@ -139,8 +124,6 @@ Java_com_tencent_matrix_hook_memory_MemoryHook_addHookSoNative(JNIEnv *env, jobj
         hook(regex);
         env->ReleaseStringUTFChars(jregex, regex);
     }
-    add_hook_init_callback(memory_hook_init);
-    add_dlopen_hook_callback(memory_hook_on_dlopen);
 }
 
 JNIEXPORT void JNICALL
@@ -171,7 +154,6 @@ Java_com_tencent_matrix_hook_memory_MemoryHook_setTracingAllocSizeRangeNative(JN
     set_tracing_alloc_size_range((size_t) minSize, (size_t) maxSize);
 
 }
-
 JNIEXPORT void JNICALL
 Java_com_tencent_matrix_hook_memory_MemoryHook_dumpNative(JNIEnv *env, jobject instance,
                                                          jstring j_log_path, jstring j_json_path) {
@@ -205,6 +187,22 @@ Java_com_tencent_matrix_hook_memory_MemoryHook_setStacktraceLogThresholdNative(J
                                                                               jint threshold) {
     assert(threshold >= 0);
     set_stacktrace_log_threshold(threshold);
+}
+
+JNIEXPORT void JNICALL
+Java_com_tencent_matrix_hook_memory_MemoryHook_installHooksNative(JNIEnv* env, jobject thiz, jboolean enable_debug) {
+    add_dlopen_hook_callback(memory_hook_on_dlopen);
+
+    memory_hook_init();
+
+    NOTIFY_COMMON_IGNORE_LIBS();
+    xhook_ignore(".*/libmatrix-memoryhook\\.so$", nullptr);
+
+    xhook_enable_debug(enable_debug ? 1 : 0);
+    xhook_enable_sigsegv_protection(0);
+
+    // This line only refreshes xhook in matrix-memoryhook library now.
+    xhook_refresh(0);
 }
 
 #ifdef __cplusplus

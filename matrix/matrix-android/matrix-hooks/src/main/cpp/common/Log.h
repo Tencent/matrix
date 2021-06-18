@@ -21,14 +21,16 @@
 #ifndef MATRIX_HOOK_LOG_H
 #define MATRIX_HOOK_LOG_H
 
+#include <stdio.h>
 #include <android/log.h>
+#include "Macros.h"
 
 typedef int (*internal_logger_func)(int log_level, const char *tag, const char *format,
                                     va_list varargs);
 
-extern "C" void enable_hook_logger(bool enable);
-extern "C" void internal_hook_logger(int log_level, const char *tag, const char *format, ...);
-extern "C" void
+EXPORT_C void enable_hook_logger(bool enable);
+EXPORT_C void internal_hook_logger(int log_level, const char *tag, const char *format, ...);
+EXPORT_C void
 internal_hook_vlogger(int log_level, const char *tag, const char *format, va_list varargs);
 
 #ifdef EnableLOG
@@ -63,6 +65,6 @@ internal_hook_vlogger(int log_level, const char *tag, const char *format, va_lis
   (((void)android_printAssert(NULL, LOG_TAG, ##__VA_ARGS__)))
 #endif
 
-int flogger(FILE *fp, const char *fmt, ...);
+EXPORT_C int flogger0(FILE *fp, const char *fmt, ...);
 
 #endif //MATRIX_HOOK_LOG_H

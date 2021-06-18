@@ -20,7 +20,8 @@
 #include <cstdio>
 #include "Log.h"
 
-int flogger(FILE *fp, const char *fmt, ...) {
+extern "C"
+int flogger0(FILE *fp, const char *fmt, ...) {
     if (!fp) {
         return 0;
     }
@@ -35,7 +36,8 @@ extern "C" internal_logger_func logger_func();
 
 static bool enable_hook_logger_ = false;
 
-extern "C" void enable_hook_logger(bool enable) {
+extern "C"
+void enable_hook_logger(bool enable) {
     enable_hook_logger_ = enable;
 }
 
