@@ -26,16 +26,18 @@ DEFINE_HOOK_FUN(void *, __loader_android_dlopen_ext, const char *file_name,
                 int                                             flag,
                 const void                                      *extinfo,
                 const void                                      *caller_addr) {
-    if (dlopen_pausing_mark.load()) {
-        std::lock_guard<std::recursive_mutex> dlopen_lock(dlopen_mutex);
+    bool should_block = dlopen_pausing_mark.load();
+    if (should_block) {
+        dlopen_mutex.lock();
     }
 
-    void *ret = (*ORIGINAL_FUNC_NAME(__loader_android_dlopen_ext))(file_name, flag, extinfo,
-                                                                   caller_addr);
+    void *ret = (*ORIGINAL_FUNC_NAME(__loader_android_dlopen_ext))(file_name, flag, extinfo, caller_addr);
 
     LOGD(TAG, "call into dlopen hook");
 
 //    NanoSeconds_Start(TAG, begin);
+
+    wechat_backtrace::notify_maps_changed();
 
     bool map_refreshed = false;
     for (auto &callback : m_dlopen_callbacks) {
@@ -43,12 +45,15 @@ DEFINE_HOOK_FUN(void *, __loader_android_dlopen_ext, const char *file_name,
     }
 
     // This line only refresh xhook in matrix-hookcommon library now.
-    xhook_refresh(false);
+    xhook_refresh(0);
 
 //    NanoSeconds_End(TAG, begin, "refresh");
 
 //    LOGD(TAG, "xhook_refresh cost : %lld", cost);
 
+    if (should_block) {
+        dlopen_mutex.unlock();
+    }
     return ret;
 }
 

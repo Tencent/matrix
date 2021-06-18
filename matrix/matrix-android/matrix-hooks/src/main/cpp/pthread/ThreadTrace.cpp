@@ -627,16 +627,6 @@ void thread_trace::pthread_dump_json(const char *path) {
          ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> pthread dump json end <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
 }
 
-void thread_trace::pthread_hook_on_dlopen(const char *file_name, bool *maps_refreshed) {
-    LOGD(TAG, "pthread_hook_on_dlopen");
-    if (!*maps_refreshed) {
-        *maps_refreshed = true;
-        pthread_meta_lock meta_lock(m_pthread_meta_mutex);
-        wechat_backtrace::notify_maps_changed();
-    }
-    LOGD(TAG, "pthread_hook_on_dlopen end");
-}
-
 static void on_pthread_destroy(void *specific) {
     LOGD(TAG, "on_pthread_destroy++++");
     pthread_meta_lock meta_lock(m_pthread_meta_mutex);
