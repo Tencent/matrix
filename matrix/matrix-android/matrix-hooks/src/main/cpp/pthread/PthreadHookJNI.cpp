@@ -33,13 +33,13 @@ Java_com_tencent_matrix_hook_pthread_PthreadHook_setThreadStackShrinkEnabledNati
 JNIEXPORT jboolean JNICALL
 Java_com_tencent_matrix_hook_pthread_PthreadHook_setThreadStackShrinkIgnoredCreatorSoPatternsNative(JNIEnv *env, jobject thiz, jobjectArray j_patterns) {
     if (j_patterns == nullptr) {
-        LOGW(LOG_TAG, "nullptr was past as patterns, clear previous set patterns.");
+        LOGE(LOG_TAG, "nullptr was past as patterns, clear previous set patterns.");
         pthread_hook::SetThreadStackShrinkIgnoredCreatorSoPatterns(nullptr, 0);
         return true;
     }
     jsize patternCount = env->GetArrayLength(j_patterns);
     if (patternCount == 0) {
-        LOGW(LOG_TAG, "Zero-length array was past as patterns, clear previous set patterns.");
+        LOGE(LOG_TAG, "Zero-length array was past as patterns, clear previous set patterns.");
         pthread_hook::SetThreadStackShrinkIgnoredCreatorSoPatterns(nullptr, 0);
         return true;
     }

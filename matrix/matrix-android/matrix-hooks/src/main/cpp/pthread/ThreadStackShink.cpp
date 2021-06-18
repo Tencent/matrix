@@ -54,7 +54,7 @@ namespace thread_stack_shink {
         }
         const size_t defaultNativeStackSize = GetDefaultNativeStackSize();
         if (origStackSize != defaultNativeStackSize) {
-            LOGW(LOG_TAG, "Stack size is not equal to default native stack size (%u != %u), give up adjusting.",
+            LOGE(LOG_TAG, "Stack size is not equal to default native stack size (%u != %u), give up adjusting.",
                  origStackSize, defaultNativeStackSize);
             return ERANGE;
         }
@@ -118,14 +118,14 @@ namespace thread_stack_shink {
         }
 
         if (strEndsWith(caller_info->dli_fname, "/libhwui.so")) {
-            LOGW(LOG_TAG, "Inside libhwui.so, skip adjusting.");
+            LOGE(LOG_TAG, "Inside libhwui.so, skip adjusting.");
             return;
         }
         {
             std::lock_guard configLockGuard(sConfigLock);
             for (const auto & pattern : sIgnoredCreatorSoPatterns) {
                 if (::regexec(&pattern, caller_info->dli_fname, 0, nullptr, 0) == 0) {
-                    LOGW(LOG_TAG, "Thread in %s was ignored according to ignored creator so patterns.", caller_info->dli_fname);
+                    LOGE(LOG_TAG, "Thread in %s was ignored according to ignored creator so patterns.", caller_info->dli_fname);
                     return;
                 }
             }

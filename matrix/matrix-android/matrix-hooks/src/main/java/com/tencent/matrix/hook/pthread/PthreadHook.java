@@ -164,7 +164,7 @@ public class PthreadHook extends AbsHook {
 
     @Keep
     private native void setThreadStackShrinkEnabledNative(boolean enabled);
-    
+
     @Keep
     private native boolean setThreadStackShrinkIgnoredCreatorSoPatternsNative(String[] patterns);
 
