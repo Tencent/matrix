@@ -25,8 +25,6 @@ import android.os.BatteryManager;
 import android.os.Build;
 import android.os.PowerManager;
 import android.os.SystemClock;
-import androidx.annotation.Nullable;
-import androidx.annotation.RestrictTo;
 import android.text.TextUtils;
 
 import com.tencent.matrix.Matrix;
@@ -42,6 +40,9 @@ import java.util.Collections;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.regex.Pattern;
+
+import androidx.annotation.Nullable;
+import androidx.annotation.RestrictTo;
 
 import static android.content.Context.ACTIVITY_SERVICE;
 import static com.tencent.matrix.batterycanary.monitor.AppStats.APP_STAT_BACKGROUND;
@@ -60,22 +61,116 @@ import static com.tencent.matrix.batterycanary.monitor.AppStats.DEV_STAT_UN_CHAR
 public final class BatteryCanaryUtil {
     private static final String TAG = "Matrix.battery.Utils";
     private static final int DEFAULT_MAX_STACK_LAYER = 10;
+    private static final int DEFAULT_AMS_CACHE_MILLIS = 5 * 1000;
     public  static final int ONE_MIN = 60 * 1000;
 
-    public static String getProcessName() {
-        BatteryMonitorPlugin plugin = Matrix.with().getPluginByClass(BatteryMonitorPlugin.class);
-        if (plugin == null) {
-            throw new IllegalStateException("BatteryMonitorPlugin is not yet installed!");
+    public interface Proxy {
+        String getProcessName();
+        String getPackageName();
+        @AppStats.AppStatusDef int getAppStat(Context context, boolean isForeground);
+        @AppStats.DevStatusDef int getDevStat(Context context);
+        void updateAppStat(int value);
+        void updateDevStat(int value);
+
+        final class ExpireRef {
+            final int value;
+            final long aliveMillis;
+            final long lastMillis;
+
+            ExpireRef(int value, long aliveMillis) {
+                this.value = value;
+                this.aliveMillis = aliveMillis;
+                this.lastMillis = SystemClock.uptimeMillis();
+            }
+
+            boolean isExpired() {
+                return (SystemClock.uptimeMillis() - lastMillis) >= aliveMillis;
+            }
         }
-        return plugin.getProcessName();
+    }
+
+    static Proxy sCacheStub = new Proxy() {
+        private String mProcessName;
+        private String mPackageName;
+        private ExpireRef mLastAppStat;
+        private ExpireRef mLastDevStat;
+
+        @Override
+        public String getProcessName() {
+            if (!TextUtils.isEmpty(mProcessName)) {
+                return mProcessName;
+            }
+            BatteryMonitorPlugin plugin = Matrix.with().getPluginByClass(BatteryMonitorPlugin.class);
+            if (plugin == null) {
+                throw new IllegalStateException("BatteryMonitorPlugin is not yet installed!");
+            }
+            mProcessName = plugin.getProcessName();
+            return mProcessName;
+        }
+
+        @Override
+        public String getPackageName() {
+            if (!TextUtils.isEmpty(mPackageName)) {
+                return mPackageName;
+            }
+            BatteryMonitorPlugin plugin = Matrix.with().getPluginByClass(BatteryMonitorPlugin.class);
+            if (plugin == null) {
+                throw new IllegalStateException("BatteryMonitorPlugin is not yet installed!");
+            }
+            mPackageName = plugin.getPackageName();
+            return mPackageName;
+        }
+
+        @Override
+        public int getAppStat(Context context, boolean isForeground) {
+            if (isForeground) return APP_STAT_FOREGROUND; // 前台
+            if (mLastAppStat != null && !mLastAppStat.isExpired()) {
+                return mLastAppStat.value;
+            }
+            int value = getAppStatImmediately(context, false);
+            mLastAppStat = new ExpireRef(value, DEFAULT_AMS_CACHE_MILLIS);
+            return mLastAppStat.value;
+        }
+
+        @Override
+        public int getDevStat(Context context) {
+            if (mLastDevStat != null && !mLastDevStat.isExpired()) {
+                return mLastDevStat.value;
+            }
+            int value = getDeviceStatImmediately(context);
+            mLastDevStat = new ExpireRef(value, DEFAULT_AMS_CACHE_MILLIS);
+            return mLastDevStat.value;
+        }
+
+        @Override
+        public void updateAppStat(int value) {
+            synchronized (this) {
+                mLastAppStat = new ExpireRef(value, DEFAULT_AMS_CACHE_MILLIS);
+            }
+        }
+
+        @Override
+        public void updateDevStat(int value) {
+            synchronized (this) {
+                mLastDevStat = new ExpireRef(value, DEFAULT_AMS_CACHE_MILLIS);
+            }
+        }
+    };
+
+    public static void setProxy(Proxy stub) {
+        sCacheStub = stub;
+    }
+
+    public static Proxy getProxy() {
+        return sCacheStub;
+    }
+
+    public static String getProcessName() {
+        return sCacheStub.getProcessName();
     }
 
     public static String getPackageName() {
-        BatteryMonitorPlugin plugin = Matrix.with().getPluginByClass(BatteryMonitorPlugin.class);
-        if (plugin == null) {
-            throw new IllegalStateException("BatteryMonitorPlugin is not yet installed!");
-        }
-        return plugin.getPackageName();
+        return sCacheStub.getPackageName();
     }
 
     public static String stackTraceToString(final StackTraceElement[] arr) {
@@ -214,6 +309,11 @@ public final class BatteryCanaryUtil {
 
     @AppStats.AppStatusDef
     public static int getAppStat(Context context, boolean isForeground) {
+        return sCacheStub.getAppStat(context, isForeground);
+    }
+
+    @AppStats.AppStatusDef
+    public static int getAppStatImmediately(Context context, boolean isForeground) {
         if (isForeground) return APP_STAT_FOREGROUND; // 前台
         if (hasForegroundService(context)) {
             return APP_STAT_FOREGROUND_SERVICE; // 后台（有前台服务）
@@ -223,6 +323,11 @@ public final class BatteryCanaryUtil {
 
     @AppStats.DevStatusDef
     public static int getDeviceStat(Context context) {
+        return sCacheStub.getDevStat(context);
+    }
+
+    @AppStats.DevStatusDef
+    public static int getDeviceStatImmediately(Context context) {
         if (isDeviceCharging(context)) {
             return DEV_STAT_CHARGING; // 充电中
         }
