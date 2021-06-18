@@ -25,17 +25,17 @@ android {
             }
 
             exportHeaders {
-                from('src/main/cpp/common') {
-                    include '**/*.h'
+                from('src/main/cpp') {
+                    include 'common/*.h'
+                    moveToDir 'backtrace'
                 }
                 from('src/main/cpp/libwechatbacktrace/include') {
                     include '**/*.h'
+                    moveToDir 'backtrace'
                 }
                 from('src/main/cpp/external/libunwindstack/include') {
                     include '**/*.h'
-                }
-                from('src/main/cpp/dexfile/include') {
-                    include '**/*.h'
+                    moveToDir 'backtrace'
                 }
             }
         }
