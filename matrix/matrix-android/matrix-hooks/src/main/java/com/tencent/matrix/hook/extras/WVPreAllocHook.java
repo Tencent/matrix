@@ -16,14 +16,15 @@ public class WVPreAllocHook extends AbsHook {
     }
 
     @Override
-    protected void onConfigure() {
+    protected boolean onConfigure() {
         // Ignored.
+        return true;
     }
 
     @Override
-    protected void onHook(boolean enableDebug) {
-        installHooksNative(Build.VERSION.SDK_INT, this.getClass().getClassLoader(), enableDebug);
+    protected boolean onHook(boolean enableDebug) {
+        return installHooksNative(Build.VERSION.SDK_INT, this.getClass().getClassLoader(), enableDebug);
     }
 
-    private native void installHooksNative(int sdkVer, ClassLoader classLoader, boolean enableDebug);
+    private native boolean installHooksNative(int sdkVer, ClassLoader classLoader, boolean enableDebug);
 }

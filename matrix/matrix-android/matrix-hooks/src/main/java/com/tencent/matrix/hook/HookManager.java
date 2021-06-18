@@ -22,7 +22,6 @@ public class HookManager {
 
     private volatile boolean hasHooked = false;
     private final Set<AbsHook> mPendingHooks = new HashSet<>();
-    private final Set<AbsHook> mCommitedHooks = new HashSet<>();
     private volatile boolean mEnableDebug = BuildConfig.DEBUG;
 
     private NativeLibraryLoader mNativeLibLoader = null;
@@ -57,11 +56,7 @@ public class HookManager {
             }
         }
 
-        final Set<AbsHook> failureHooks = new HashSet<>();
         for (AbsHook hook : mPendingHooks) {
-            if (mCommitedHooks.contains(hook)) {
-                continue;
-            }
             final String nativeLibName = hook.getNativeLibraryName();
             if (TextUtils.isEmpty(nativeLibName)) {
                 continue;
@@ -76,28 +71,34 @@ public class HookManager {
                 MatrixLog.printErrStackTrace(TAG, e, "");
                 MatrixLog.e(TAG, "Fail to load native library for %s, skip next steps.",
                         hook.getClass().getName());
-                failureHooks.add(hook);
+                hook.setStatus(AbsHook.Status.COMMIT_FAIL_ON_LOAD_LIB);
             }
         }
         for (AbsHook hook : mPendingHooks) {
-            if (failureHooks.contains(hook)) {
+            if (hook.getStatus() != AbsHook.Status.UNCOMMIT) {
                 MatrixLog.e(TAG, "%s has failed steps before, skip calling onConfigure on it.",
                         hook.getClass().getName());
                 continue;
             }
-            hook.onConfigure();
+            if (!hook.onConfigure()) {
+                MatrixLog.e(TAG, "Fail to configure %s, skip next steps", hook.getClass().getName());
+                hook.setStatus(AbsHook.Status.COMMIT_FAIL_ON_CONFIGURE);
+            }
         }
         for (AbsHook hook : mPendingHooks) {
-            if (failureHooks.contains(hook)) {
+            if (hook.getStatus() != AbsHook.Status.UNCOMMIT) {
                 MatrixLog.e(TAG, "%s has failed steps before, skip calling onHook on it.",
                         hook.getClass().getName());
                 continue;
             }
-            hook.onHook(mEnableDebug);
+            if (hook.onHook(mEnableDebug)) {
+                MatrixLog.i(TAG, "%s is committed successfully.", hook.getClass().getName());
+                hook.setStatus(AbsHook.Status.COMMIT_SUCCESS);
+            } else {
+                MatrixLog.e(TAG, "Fail to do hook in %s.", hook.getClass().getName());
+                hook.setStatus(AbsHook.Status.COMMIT_FAIL_ON_HOOK);
+            }
         }
-
-        mPendingHooks.removeAll(failureHooks);
-        mCommitedHooks.addAll(mPendingHooks);
         mPendingHooks.clear();
 
         if (!hasHooked()) {
@@ -117,7 +118,7 @@ public class HookManager {
     }
 
     public HookManager addHook(@Nullable AbsHook hook) {
-        if (hook != null) {
+        if (hook != null && hook.getStatus() != AbsHook.Status.COMMIT_SUCCESS) {
             mPendingHooks.add(hook);
         }
         return this;

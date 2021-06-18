@@ -97,23 +97,25 @@ public class PthreadHook extends AbsHook {
     }
 
     @Override
-    public void onConfigure() {
+    public boolean onConfigure() {
         addHookThreadNameNative(mHookThreadName.toArray(new String[0]));
         enableQuickenNative(mEnableQuicken);
         enableLoggerNative(mEnableLog);
         setThreadStackShinkEnabledNative(mThreadStackShinkEnabled);
         setThreadTraceEnabledNative(mThreadTraceEnabled);
         mConfigured = true;
+        return true;
     }
 
     @Override
-    protected void onHook(boolean enableDebug) {
+    protected boolean onHook(boolean enableDebug) {
         if (mThreadTraceEnabled || mThreadStackShinkEnabled) {
             if (!mHookInstalled) {
                 installHooksNative(enableDebug);
                 mHookInstalled = true;
             }
         }
+        return true;
     }
 
     @Keep

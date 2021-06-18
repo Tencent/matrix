@@ -109,7 +109,7 @@ public class MemoryHook extends AbsHook {
     }
 
     @Override
-    public void onConfigure() {
+    public boolean onConfigure() {
         if (mMinTraceSize < 0 || (mMaxTraceSize != 0 && mMaxTraceSize < mMinTraceSize)) {
             throw new IllegalArgumentException("sizes should not be negative and maxSize should be " +
                     "0 or greater than minSize: min = " + mMinTraceSize + ", max = " + mMaxTraceSize);
@@ -121,16 +121,19 @@ public class MemoryHook extends AbsHook {
         setTracingAllocSizeRangeNative(mMinTraceSize, mMaxTraceSize);
         setStacktraceLogThresholdNative(mStacktraceLogThreshold);
         enableStacktraceNative(mEnableStacktrace);
+
+        return true;
     }
 
     @Override
-    protected void onHook(boolean enableDebug) {
+    protected boolean onHook(boolean enableDebug) {
         addHookSoNative(mHookSoSet.toArray(new String[0]));
         addIgnoreSoNative(mIgnoreSoSet.toArray(new String[0]));
         if (!mHookInstalled) {
             installHooksNative(enableDebug);
             mHookInstalled = true;
         }
+        return true;
     }
 
     public void dump(String logPath, String jsonPath) {
