@@ -7,9 +7,10 @@
 #include <sys/mman.h>
 #include <cinttypes>
 #include <common/Log.h>
-#include "WVPreAllocTrimmer.h"
 #include <common/ScopedCleaner.h>
 #include <common/Macros.h>
+#include <common/Macros.h>
+#include "WVPreAllocTrimmer.h"
 
 #define LOG_TAG "Matrix.WVPreAllocTrimmer"
 
@@ -223,14 +224,14 @@ namespace matrix {
         jclass loaderClazz = env->FindClass("android/webkit/WebViewLibraryLoader");
         if (loaderClazz == nullptr) {
             env->ExceptionClear();
-            LOGW(LOG_TAG, "Cannot find loader class, try factory class next.");
+            LOGE(LOG_TAG, "Cannot find loader class, try factory class next.");
             loaderClazz = env->FindClass("android/webkit/WebViewFactory");
         }
         if (loaderClazz != nullptr) {
             LOGD(LOG_TAG, "Found loader/factory class.");
         } else {
             env->ExceptionClear();
-            LOGW(LOG_TAG, "Cannot find loader/factory class, go failure directly.");
+            LOGE(LOG_TAG, "Cannot find loader/factory class, go failure directly.");
             return false;
         }
 
@@ -328,7 +329,7 @@ namespace matrix {
 
     bool wv_prealloc_trimmer::Install(JNIEnv* env, jint sdk_ver, jobject classloader) {
         if (sInstalled.load()) {
-            LOGW(LOG_TAG, "Already installed.");
+            LOGE(LOG_TAG, "Already installed.");
             return true;
         }
 
