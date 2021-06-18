@@ -29,6 +29,7 @@ public class MemoryHook extends AbsHook {
     private int     mStacktraceLogThreshold = 10 * 1024 * 1024;
     private boolean mEnableStacktrace;
     private boolean mEnableMmap;
+    private boolean mHookInstalled = false;
 
     private MemoryHook() {
     }
@@ -126,7 +127,10 @@ public class MemoryHook extends AbsHook {
     protected void onHook(boolean enableDebug) {
         addHookSoNative(mHookSoSet.toArray(new String[0]));
         addIgnoreSoNative(mIgnoreSoSet.toArray(new String[0]));
-        installHooksNative(enableDebug);
+        if (!mHookInstalled) {
+            installHooksNative(enableDebug);
+            mHookInstalled = true;
+        }
     }
 
     public void dump(String logPath, String jsonPath) {

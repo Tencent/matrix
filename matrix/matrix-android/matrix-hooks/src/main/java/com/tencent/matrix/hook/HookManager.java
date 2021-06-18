@@ -21,7 +21,8 @@ public class HookManager {
     public static final HookManager INSTANCE = new HookManager();
 
     private volatile boolean hasHooked = false;
-    private Set<AbsHook> mHooks = new HashSet<>();
+    private final Set<AbsHook> mPendingHooks = new HashSet<>();
+    private final Set<AbsHook> mCommitedHooks = new HashSet<>();
     private volatile boolean mEnableDebug = BuildConfig.DEBUG;
 
     private NativeLibraryLoader mNativeLibLoader = null;
@@ -35,30 +36,32 @@ public class HookManager {
     }
 
     public void commitHooks() throws HookFailedException {
-        if (hasHooked) {
-            throw new HookFailedException("this process has already been hooked!");
-        }
-
-        if (mHooks.isEmpty()) {
+        if (mPendingHooks.isEmpty()) {
             return;
         }
 
-        try {
-            if (mNativeLibLoader != null) {
-                mNativeLibLoader.loadLibrary("matrix-hookcommon");
-            } else {
-                System.loadLibrary("matrix-hookcommon");
+        if (!hasHooked()) {
+            try {
+                if (mNativeLibLoader != null) {
+                    mNativeLibLoader.loadLibrary("matrix-hookcommon");
+                } else {
+                    System.loadLibrary("matrix-hookcommon");
+                }
+            } catch (Throwable e) {
+                MatrixLog.printErrStackTrace(TAG, e, "");
+                return;
             }
-        } catch (Throwable e) {
-            MatrixLog.printErrStackTrace(TAG, e, "");
-            return;
+
+            if (!doPreHookInitializeNative()) {
+                throw new HookFailedException("Fail to do hook common pre-hook initialize.");
+            }
         }
 
-        if (!doPreHookInitializeNative()) {
-            throw new HookFailedException("Fail to do hook common pre-hook initialize.");
-        }
-
-        for (AbsHook hook : mHooks) {
+        final Set<AbsHook> failureHooks = new HashSet<>();
+        for (AbsHook hook : mPendingHooks) {
+            if (mCommitedHooks.contains(hook)) {
+                continue;
+            }
             final String nativeLibName = hook.getNativeLibraryName();
             if (TextUtils.isEmpty(nativeLibName)) {
                 continue;
@@ -71,17 +74,36 @@ public class HookManager {
                 }
             } catch (Throwable e) {
                 MatrixLog.printErrStackTrace(TAG, e, "");
-                return;
+                MatrixLog.e(TAG, "Fail to load native library for %s, skip next steps.",
+                        hook.getClass().getName());
+                failureHooks.add(hook);
             }
         }
-        for (AbsHook hook : mHooks) {
+        for (AbsHook hook : mPendingHooks) {
+            if (failureHooks.contains(hook)) {
+                MatrixLog.e(TAG, "%s has failed steps before, skip calling onConfigure on it.",
+                        hook.getClass().getName());
+                continue;
+            }
             hook.onConfigure();
         }
-        for (AbsHook hook : mHooks) {
+        for (AbsHook hook : mPendingHooks) {
+            if (failureHooks.contains(hook)) {
+                MatrixLog.e(TAG, "%s has failed steps before, skip calling onHook on it.",
+                        hook.getClass().getName());
+                continue;
+            }
             hook.onHook(mEnableDebug);
         }
-        doFinalInitializeNative();
-        hasHooked = true;
+
+        mPendingHooks.removeAll(failureHooks);
+        mCommitedHooks.addAll(mPendingHooks);
+        mPendingHooks.clear();
+
+        if (!hasHooked()) {
+            doFinalInitializeNative();
+            hasHooked = true;
+        }
     }
 
     public HookManager setEnableDebug(boolean enabled) {
@@ -96,13 +118,13 @@ public class HookManager {
 
     public HookManager addHook(@Nullable AbsHook hook) {
         if (hook != null) {
-            mHooks.add(hook);
+            mPendingHooks.add(hook);
         }
         return this;
     }
 
     public HookManager clearHooks() {
-        mHooks.clear();
+        mPendingHooks.clear();
         return this;
     }
 

@@ -53,7 +53,9 @@ DEFINE_HOOK_FUN(void *, __loader_android_dlopen_ext, const char *file_name,
 }
 
 void add_dlopen_hook_callback(dlopen_callback_t callback) {
+    pause_dlopen();
     m_dlopen_callbacks.push_back(callback);
+    resume_dlopen();
 }
 
 void pause_dlopen() {

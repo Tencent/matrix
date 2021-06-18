@@ -11,6 +11,7 @@
 #include "HookCommon.h"
 #include "ScopedCleaner.h"
 #include "xhook.h"
+#include "ReentrantPrevention.h"
 
 #define TAG "Matrix.JNICommon"
 
@@ -20,6 +21,8 @@ extern "C" {
 
 JavaVM *m_java_vm;
 
+static std::atomic_flag s_prehook_initialized(false);
+static std::atomic_flag s_finalhook_initialized(false);
 jclass m_class_HookManager;
 jmethodID m_method_getStack;
 
@@ -54,11 +57,17 @@ static jmethodID GetStaticMethodID(JNIEnv* env, jclass clazz, const char* name, 
 }
 
 // fixme 解偶 EglHook
-JNIEXPORT jboolean Java_com_tencent_matrix_hook_HookManager_doPreHookInitializeNative(JNIEnv *env, jobject thiz) {
+JNIEXPORT jboolean Java_com_tencent_matrix_hook_HookManager_doPreHookInitializeNative(JNIEnv *env, jobject) {
+    if (s_prehook_initialized.test_and_set()) {
+        LOGE(TAG, "doPreHookInitializeNative was already called.");
+        return true;
+    }
+
     m_class_HookManager = FindClass(env, "com/tencent/matrix/hook/HookManager", true);
     if (m_class_HookManager == nullptr) {
         return false;
     }
+    m_class_HookManager = reinterpret_cast<jclass>(env->NewGlobalRef(m_class_HookManager));
     auto jHookMgrCleaner = matrix::MakeScopedCleaner([env]() {
         if (m_class_HookManager != nullptr) {
             env->DeleteGlobalRef(m_class_HookManager);
@@ -83,6 +92,7 @@ JNIEXPORT jboolean Java_com_tencent_matrix_hook_HookManager_doPreHookInitializeN
     }
 
     pthread_ext_init();
+    rp_init();
 
     getStackMethodCleaner.Omit();
     jHookMgrCleaner.Omit();
@@ -91,6 +101,11 @@ JNIEXPORT jboolean Java_com_tencent_matrix_hook_HookManager_doPreHookInitializeN
 
 JNIEXPORT void JNICALL
 Java_com_tencent_matrix_hook_HookManager_doFinalInitializeNative(JNIEnv *env, jobject thiz) {
+    if (s_finalhook_initialized.test_and_set()) {
+        LOGE(TAG, "doFinalInitializeNative was already called.");
+        return;
+    }
+
     wechat_backtrace::notify_maps_changed();
     // This line only refresh xhook in matrix-hookcommon library now.
     int ret = xhook_refresh(0);

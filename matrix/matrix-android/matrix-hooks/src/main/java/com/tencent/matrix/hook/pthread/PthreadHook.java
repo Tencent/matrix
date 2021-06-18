@@ -29,6 +29,7 @@ public class PthreadHook extends AbsHook {
     private boolean mConfigured = false;
     private boolean mThreadTraceEnabled = false;
     private boolean mThreadStackShinkEnabled = false;
+    private boolean mHookInstalled = false;
 
     private PthreadHook() {
     }
@@ -108,7 +109,10 @@ public class PthreadHook extends AbsHook {
     @Override
     protected void onHook(boolean enableDebug) {
         if (mThreadTraceEnabled || mThreadStackShinkEnabled) {
-            installHooksNative(enableDebug);
+            if (!mHookInstalled) {
+                installHooksNative(enableDebug);
+                mHookInstalled = true;
+            }
         }
     }
 
