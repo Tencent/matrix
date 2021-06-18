@@ -437,7 +437,7 @@ static int xh_elf_gnu_hash_lookup(xh_elf_t *self, const char *symbol, uint32_t *
     return XH_ERRNO_NOTFND;
 }
 
-static int xh_elf_find_symidx_by_name(xh_elf_t *self, const char *symbol, uint32_t *symidx)
+int xh_elf_find_symidx_by_name(xh_elf_t *self, const char *symbol, uint32_t *symidx)
 {
     int ret = 0;
     if(self->is_use_gnu_hash)
