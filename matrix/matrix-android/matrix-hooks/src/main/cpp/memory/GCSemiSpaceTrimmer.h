@@ -10,6 +10,7 @@
 
 namespace matrix {
     namespace gc_ss_trimmer {
+        extern bool IsCompatible();
         extern bool Install(JNIEnv *env);
     }
 }

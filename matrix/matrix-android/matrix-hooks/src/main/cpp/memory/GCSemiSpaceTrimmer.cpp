@@ -203,6 +203,12 @@ private:
     uintptr_t mSpace2Size;
 };
 
+bool matrix::gc_ss_trimmer::IsCompatible() {
+    SemiSpaceSearcher semiSpaceSearcher;
+    matrix::IterateMaps(std::ref(semiSpaceSearcher));
+    return semiSpaceSearcher.foundAllSpaces();
+}
+
 bool matrix::gc_ss_trimmer::Install(JNIEnv* env) {
     std::lock_guard installLock(sInstallMutex);
 
