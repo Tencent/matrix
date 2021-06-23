@@ -161,8 +161,8 @@ namespace matrix {
                 continue;
             }
             char* pathname = line + pathnamePos;
-            while (pathLen >= 0 && pathname[pathLen - 1] == '\n') {
-                pathname[pathLen - 1] = '\0';
+            for (int i = static_cast<int>(pathLen - 1); i >= 0 && pathname[i] == '\n'; --i) {
+                pathname[i] = '\0';
                 --pathLen;
             }
             if (pathLen > 0 && ::strncmp(pathname, "[anon:libwebview reservation]", pathLen) == 0) {
