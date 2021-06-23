@@ -58,6 +58,7 @@
 #define NOTIFY_COMMON_IGNORE_LIBS() \
     do { \
       xhook_ignore(".*libwechatbacktrace\\.so$", NULL); \
+      xhook_ignore(".*librabbiteye\\.so$", NULL); \
       xhook_ignore(".*libwechatcrash\\.so$", NULL); \
       xhook_ignore(".*libmemguard\\.so$", NULL); \
       xhook_ignore(".*libmemmisc\\.so$", NULL); \
@@ -69,6 +70,9 @@
       xhook_ignore(".*libstdc\\+\\+.so\\.so$", NULL); \
       xhook_ignore(".*libstlport_shared\\.so$", NULL); \
       xhook_ignore(".*/libwebviewchromium_loader\\.so$", NULL); \
+      xhook_ignore(".*/libmatrix-hookcommon\\.so$", nullptr); \
+      xhook_ignore(".*/libmatrix-memoryhook\\.so$", nullptr); \
+      xhook_ignore(".*/libmatrix-pthreadhook\\.so$", nullptr); \
     } while (0)
 
 #include <vector>
