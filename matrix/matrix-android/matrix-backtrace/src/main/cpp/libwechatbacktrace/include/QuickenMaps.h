@@ -50,8 +50,7 @@ namespace wechat_backtrace {
 
         QuickenInterface *
         GetQuickenInterface(
-                std::shared_ptr<unwindstack::Memory> &process_memory,
-                unwindstack::ArchEnum expected_arch
+                std::shared_ptr<unwindstack::Memory> &process_memory
         );
 
         static QuickenInterface *

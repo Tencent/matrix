@@ -48,12 +48,9 @@ namespace wechat_backtrace {
 
         bool FindEntry(QutSections *qut_sections, uptr pc, size_t *entry_offset);
 
-        bool StepJIT(uptr pc, uptr *regs, wechat_backtrace::Maps *maps,
-                     uptr stack_top, uptr stack_bottom, uptr frame_size,
-                /* out */ uint64_t *dex_pc, /* out */ bool *finished);
+        bool StepJIT(StepContext *step_context, wechat_backtrace::Maps *maps);
 
-        bool Step(uptr pc, uptr *regs, uptr stack_top,
-                  uptr stack_bottom, uptr frame_size, uint64_t *dex_pc, bool *finished);
+        bool Step(StepContext *step_context);
 
         template<typename AddressType>
         bool GenerateQuickenTable(unwindstack::Memory *memory,
@@ -189,8 +186,7 @@ namespace wechat_backtrace {
 
         std::mutex lock_;
 
-        bool StepInternal(uptr pc, uptr *regs, QutSections *sections, uptr stack_top,
-                          uptr stack_bottom, uptr frame_size, uint64_t *dex_pc, bool *finished);
+        bool StepInternal(StepContext *step_context, QutSections *sections);
 
         // TODO Should remove.
         size_t try_load_qut_failed_count_ = 0;

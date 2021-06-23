@@ -20,7 +20,7 @@
 #include <memory>
 #include <unwindstack/Elf.h>
 
-#include "Predefined.h"
+#include <Predefined.h>
 
 // *** Version ***
 #define QUT_VERSION 0x1
@@ -108,15 +108,33 @@ namespace wechat_backtrace {
 
     struct FrameElement {
         uint64_t rel_pc = 0;
-        bool maybe_java = false;
-
-        std::string map_name;
         uint64_t map_offset = 0;
-
-        std::string function_name;
         uint64_t function_offset = 0;
 
+        std::string map_name;
+        std::string function_name;
         std::string build_id;
+
+        bool maybe_java = false;
+    };
+
+    struct QuickenContext {
+        uptr stack_bottom;
+        uptr stack_top;
+        uptr *regs;
+        uptr frame_max_size;
+        wechat_backtrace::Frame *backtrace;
+        uptr frame_size;
+    };
+
+    struct StepContext {
+        const uptr stack_bottom;
+        const uptr stack_top;
+        uptr *regs;
+        uptr pc;
+        uptr dex_pc;
+        uptr frame_index;
+        bool finished;
     };
 
     typedef bool(*quicken_generate_delegate_func)(const std::string &, const uint64_t, const bool);

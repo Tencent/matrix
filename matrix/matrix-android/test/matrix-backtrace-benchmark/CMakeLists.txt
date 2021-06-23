@@ -41,6 +41,8 @@ TARGET_INCLUDE_DIRECTORIES(
         ${TARGET}
         PUBLIC ${SOURCE_DIR}/test
         PRIVATE ${EXT_DEP}/include
+        PRIVATE ${EXT_DEP}/include/backtrace
+        PRIVATE ${EXT_DEP}/include/backtrace/common
 )
 
 # Searches for a specified prebuilt library and stores the path as a

@@ -58,8 +58,7 @@ namespace wechat_backtrace {
     DEFINE_STATIC_CPP_FIELD(interface_caches_t, QuickenMapInfo::cached_quicken_interface_,);
 
     BACKTRACE_EXPORT QuickenInterface *
-    QuickenMapInfo::GetQuickenInterface(std::shared_ptr<Memory> &process_memory,
-                                        ArchEnum expected_arch) {
+    QuickenMapInfo::GetQuickenInterface(std::shared_ptr<Memory> &process_memory) {
         std::lock_guard<std::mutex> guard(lock_);
 
         if (LIKELY(quicken_interface_)) {
@@ -88,6 +87,8 @@ namespace wechat_backtrace {
 
                 return quicken_interface_.get();
             }
+
+            ArchEnum expected_arch = CURRENT_ARCH;
 
             auto elf_wrapper = make_unique<ElfWrapper>();
             bool valid = elf_wrapper->Init(this, process_memory, expected_arch);
@@ -143,8 +144,6 @@ namespace wechat_backtrace {
                 if (ret == TryInvokeJavaRequestQutGenerate) {
                     QuickenTableManager::getInstance().RecordQutRequestInterface(
                             interface);
-                    // TODO by carl
-//                    InvokeJava_RequestQutGenerate();
                 }
             }
             interface->elf_wrapper_->ReleaseFileBackedElf();

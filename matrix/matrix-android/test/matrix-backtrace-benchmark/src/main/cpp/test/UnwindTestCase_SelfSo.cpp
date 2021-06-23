@@ -2,7 +2,7 @@
 #include <dlfcn.h>
 #include <cinttypes>
 #include <cxxabi.h>
-#include "Log.h"
+#include <backtrace/common/Log.h>
 #include "UnwindTestCommon.h"
 #include "UnwindTestCase_SelfSo.h"
 #include "BenchmarkLog.h"

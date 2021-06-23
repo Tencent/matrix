@@ -4,11 +4,10 @@
 #include <cinttypes>
 #include <memory>
 #include <cxxabi.h>
-#include <Backtrace.h>
-#include <QuickenMaps.h>
-#include <LocalMaps.h>
-#include <QuickenUnwinder.h>
-#include "Backtrace.h"
+#include <backtrace/Backtrace.h>
+#include <backtrace/QuickenMaps.h>
+#include <backtrace/LocalMaps.h>
+#include <backtrace/QuickenUnwinder.h>
 
 #include "BenchmarkLog.h"
 #include "UnwindTestCase_SelfSo.h"

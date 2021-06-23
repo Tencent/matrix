@@ -82,12 +82,10 @@ namespace wechat_backtrace {
     class QuickenTable {
 
     public:
-        QuickenTable(QutSections *qut_sections, uintptr_t *regs,
-                     unwindstack::Memory *process_memory, uptr stack_top, uptr stack_bottom,
-                     uptr frame_size)
-                : regs_(regs), process_memory_(process_memory),
-                  qut_sections_(qut_sections), stack_top_(stack_top),
-                  stack_bottom_(stack_bottom), frame_size(frame_size) {};
+        QuickenTable(QutSections *qut_sections, StepContext *step_context)
+                : regs_(step_context->regs),
+                  qut_sections_(qut_sections),
+                  step_context_(step_context) {};
 
         ~QuickenTable() {};
 
@@ -116,12 +114,9 @@ namespace wechat_backtrace {
 
         uptr *regs_ = nullptr;
 
-        unwindstack::Memory *process_memory_ = nullptr;
         QutSections *qut_sections_ = nullptr;
 
-        const uptr stack_top_;
-        const uptr stack_bottom_;
-        uptr frame_size;
+        const StepContext *step_context_;
     };
 
 

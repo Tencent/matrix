@@ -37,6 +37,10 @@ android {
                     include '**/*.h'
                     moveToDir 'backtrace'
                 }
+                from('src/main/cpp/dexfile/include') {
+                    include '**/*.h'
+                    moveToDir 'backtrace'
+                }
             }
         }
     }
