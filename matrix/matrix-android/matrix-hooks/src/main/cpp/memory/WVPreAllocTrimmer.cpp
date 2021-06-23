@@ -125,6 +125,11 @@ namespace matrix {
             LOGE(LOG_TAG, "Fail to open /proc/self/maps");
             return false;
         }
+        auto fpCleaner = MakeScopedCleaner([&fp]() {
+            if (fp != nullptr) {
+                ::fclose(fp);
+            }
+        });
 
         bool found = false;
         while(::fgets(line, sizeof(line), fp) != nullptr) {
@@ -142,7 +147,7 @@ namespace matrix {
                 // Not match '---p'
                 continue;
             }
-            if (pathnamePos <= 0) {
+            if (pathnamePos <= 0 || pathnamePos > static_cast<int>(sizeof(line) - 1)) {
                 continue;
             }
             while (::isspace(line[pathnamePos]) && pathnamePos <= static_cast<int>(sizeof(line) - 1)) {
@@ -151,13 +156,13 @@ namespace matrix {
             if (pathnamePos > static_cast<int>(sizeof(line) - 1)) {
                 continue;
             }
-            size_t pathLen = strlen(line + pathnamePos);
+            char* pathname = line + pathnamePos;
+            size_t pathLen = strlen(pathname);
             if (pathLen == 0 || pathLen > static_cast<int>(sizeof(line) - 1)) {
                 continue;
             }
-            char* pathname = line + pathnamePos;
-            while (pathLen >= 0 && pathname[pathLen - 1] == '\n') {
-                pathname[pathLen - 1] = '\0';
+            for (int i = static_cast<int>(pathLen - 1); i >= 0 && pathname[i] == '\n'; --i) {
+                pathname[i] = '\0';
                 --pathLen;
             }
             if (pathLen > 0 && ::strncmp(pathname, "[anon:libwebview reservation]", pathLen) == 0) {

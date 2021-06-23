@@ -12,7 +12,7 @@ namespace matrix {
     template <class TDtor>
     class ScopedCleaner {
     public:
-        ScopedCleaner(const TDtor& dtor): mDtor(dtor) {}
+        ScopedCleaner(const TDtor& dtor): mDtor(dtor), mOmitted(false) {}
 
         ScopedCleaner(ScopedCleaner&& other): mDtor(other.mDtor), mOmitted(other.mOmitted) {
             other.omit();

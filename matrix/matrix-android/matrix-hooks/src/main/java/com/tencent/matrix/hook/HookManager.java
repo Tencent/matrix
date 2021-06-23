@@ -20,7 +20,7 @@ public class HookManager {
 
     public static final HookManager INSTANCE = new HookManager();
 
-    private volatile boolean hasHooked = false;
+    private volatile boolean hasNativeInitialized = false;
     private final Set<AbsHook> mPendingHooks = new HashSet<>();
     private volatile boolean mEnableDebug = BuildConfig.DEBUG;
 
@@ -39,7 +39,7 @@ public class HookManager {
             return;
         }
 
-        if (!hasHooked()) {
+        if (!hasNativeInitialized()) {
             try {
                 if (mNativeLibLoader != null) {
                     mNativeLibLoader.loadLibrary("matrix-hookcommon");
@@ -101,9 +101,9 @@ public class HookManager {
         }
         mPendingHooks.clear();
 
-        if (!hasHooked()) {
+        if (!hasNativeInitialized()) {
             doFinalInitializeNative();
-            hasHooked = true;
+            hasNativeInitialized = true;
         }
     }
 
@@ -153,8 +153,8 @@ public class HookManager {
         return sb.toString();
     }
 
-    public boolean hasHooked() {
-        return hasHooked;
+    private boolean hasNativeInitialized() {
+        return hasNativeInitialized;
     }
 
     private native boolean doPreHookInitializeNative();

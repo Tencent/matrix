@@ -97,7 +97,7 @@ public class PthreadHook extends AbsHook {
     }
 
     public void dump(String path) {
-        if (HookManager.INSTANCE.hasHooked()) {
+        if (getStatus() == Status.COMMIT_SUCCESS) {
             dumpNative(path);
         }
     }

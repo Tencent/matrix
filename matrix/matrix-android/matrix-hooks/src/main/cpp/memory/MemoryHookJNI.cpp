@@ -196,7 +196,6 @@ Java_com_tencent_matrix_hook_memory_MemoryHook_installHooksNative(JNIEnv* env, j
     memory_hook_init();
 
     NOTIFY_COMMON_IGNORE_LIBS();
-    xhook_ignore(".*/libmatrix-memoryhook\\.so$", nullptr);
 
     xhook_enable_debug(enable_debug ? 1 : 0);
     xhook_enable_sigsegv_protection(0);

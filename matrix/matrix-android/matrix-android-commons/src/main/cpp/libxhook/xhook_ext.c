@@ -123,7 +123,7 @@ static int xhook_find_library_base_addr(const char* owner_lib_name, char path_na
         //check pathname
         //if we need to hook this elf?
         char real_suffix[PATH_MAX + 1] = {};
-        size_t real_suffix_len = sprintf(real_suffix, "/%s", owner_lib_name);
+        size_t real_suffix_len = snprintf(real_suffix, sizeof(real_suffix), "/%s", owner_lib_name);
         if (pathname_len < real_suffix_len) {
             continue;
         }
