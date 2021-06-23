@@ -125,6 +125,11 @@ namespace matrix {
             LOGE(LOG_TAG, "Fail to open /proc/self/maps");
             return false;
         }
+        auto fpCleaner = MakeScopedCleaner([&fp]() {
+            if (fp != nullptr) {
+                ::fclose(fp);
+            }
+        });
 
         bool found = false;
         while(::fgets(line, sizeof(line), fp) != nullptr) {
