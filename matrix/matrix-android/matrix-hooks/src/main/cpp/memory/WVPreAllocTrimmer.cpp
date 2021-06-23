@@ -150,7 +150,7 @@ namespace matrix {
             if (pathnamePos <= 0 || pathnamePos > static_cast<int>(sizeof(line) - 1)) {
                 continue;
             }
-            while (::isspace(line[pathnamePos]) && pathnamePos <= static_cast<int>(sizeof(line) - 1)) {
+            while (pathnamePos <= static_cast<int>(sizeof(line) - 1) && ::isspace(line[pathnamePos])) {
                 ++pathnamePos;
             }
             if (pathnamePos > static_cast<int>(sizeof(line) - 1)) {
