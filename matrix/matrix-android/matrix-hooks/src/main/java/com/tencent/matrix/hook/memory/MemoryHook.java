@@ -137,7 +137,7 @@ public class MemoryHook extends AbsHook {
     }
 
     public void dump(String logPath, String jsonPath) {
-        if (HookManager.INSTANCE.hasHooked()) {
+        if (getStatus() == Status.COMMIT_SUCCESS) {
             dumpNative(logPath, jsonPath);
         }
     }

@@ -105,7 +105,6 @@ Java_com_tencent_matrix_hook_pthread_PthreadHook_enableLoggerNative(JNIEnv *, jc
 JNIEXPORT void JNICALL
 Java_com_tencent_matrix_hook_pthread_PthreadHook_installHooksNative(JNIEnv *env, jobject thiz, jboolean enable_debug) {
     NOTIFY_COMMON_IGNORE_LIBS();
-    xhook_ignore(".*/libmatrix-pthreadhook\\.so$", nullptr);
 
     pthread_hook::InstallHooks(enable_debug);
 }
