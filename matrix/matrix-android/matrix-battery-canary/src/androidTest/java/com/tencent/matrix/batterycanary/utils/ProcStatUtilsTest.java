@@ -25,8 +25,12 @@ import android.os.SystemClock;
 import androidx.test.platform.app.InstrumentationRegistry;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import android.text.TextUtils;
+import android.util.Pair;
+import android.util.SparseArray;
 
 import com.tencent.matrix.batterycanary.TestUtils;
+import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature;
+import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature;
 import com.tencent.matrix.util.MatrixLog;
 
 import org.junit.After;
@@ -810,6 +814,46 @@ public class ProcStatUtilsTest {
 
                 Assert.assertEquals(exceptedStat.getJiffies(), computedStat.getJiffies());
                 Assert.assertEquals(exceptedStat.comm, computedStat.comm);
+            }
+        }
+
+        @Test
+        public  void testThreadPollingJiffies() throws InterruptedException {
+            if (TestUtils.isAssembleTest()) { return; }
+
+            final SparseArray<ProcStatUtil.ProcStat> threadProcStatDict = new SparseArray<>();
+            int count = 3;
+            for (int i = 0; i < count; i++) {
+                Thread thread = new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        ProcStatUtil.ProcStat procStat = ProcStatUtil.of(Process.myPid(), Process.myTid());
+                        threadProcStatDict.put(Process.myTid(), procStat);
+                        while (true) {
+                            try {
+                                Thread.sleep(10L);
+                            } catch (InterruptedException ignored) {
+                            }
+                        }
+                    }
+                });
+                thread.setName("test-jiffies-thread-" + i);
+                thread.start();
+            }
+
+            long runingMillis = 6 * 1000L;
+            Thread.sleep(runingMillis);
+
+            List<Long> jffiesConsumptions = new LinkedList<>();
+            for (int i = 0; i < threadProcStatDict.size(); i++) {
+                ProcStatUtil.ProcStat end = ProcStatUtil.of(Process.myPid(), threadProcStatDict.keyAt(i));
+                jffiesConsumptions.add(end.getJiffies() - threadProcStatDict.valueAt(i).getJiffies());
+            }
+
+            Assert.assertFalse(jffiesConsumptions.isEmpty());
+            for (long item : jffiesConsumptions) {
+                float cpuLoad = (item * 10f) / runingMillis;
+                Assert.assertTrue("Thread CPU LOAD: " + cpuLoad, cpuLoad <= 0.005);
             }
         }
     }
