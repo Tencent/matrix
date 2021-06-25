@@ -268,9 +268,11 @@ namespace wechat_backtrace {
                 .regs = regs,
                 .frame_max_size = max_frames,
                 .backtrace = frames,
-                .frame_size = frame_size
+                .frame_size = 0
         };
         WeChatQuickenUnwind(&context);
+
+        frame_size = context.frame_size;
     }
 
     inline void
