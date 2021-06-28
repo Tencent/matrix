@@ -270,7 +270,7 @@ namespace wechat_backtrace {
             }
         }
 
-        std::lock_guard<std::mutex> guard(lock_cache_);
+        std::shared_lock<std::shared_mutex> guard(lock_cache_);
         if (!qut_in_memory_.empty()) {
             auto it = qut_in_memory_.upper_bound(pc);
             if (it != qut_in_memory_.begin()) {
@@ -303,7 +303,7 @@ namespace wechat_backtrace {
         fut_sections->pc_start = pc_start;
         fut_sections->pc_end = pc_end;
 
-        std::lock_guard<std::mutex> guard(lock_cache_);
+        std::unique_lock<std::shared_mutex> guard(lock_cache_);
         qut_in_memory_[pc_start] = fut_sections;
     }
 

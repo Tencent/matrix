@@ -268,7 +268,8 @@ namespace wechat_backtrace {
                 .regs = regs,
                 .frame_max_size = max_frames,
                 .backtrace = frames,
-                .frame_size = 0
+                .frame_size = 0,
+                .update_maps_as_need = false
         };
         WeChatQuickenUnwind(&context);
 

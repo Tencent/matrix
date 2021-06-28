@@ -125,6 +125,7 @@ namespace wechat_backtrace {
         uptr frame_max_size;
         wechat_backtrace::Frame *backtrace;
         uptr frame_size;
+        bool update_maps_as_need;
     };
 
     struct StepContext {

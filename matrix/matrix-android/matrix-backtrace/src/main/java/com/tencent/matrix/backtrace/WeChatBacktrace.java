@@ -265,11 +265,6 @@ public class WeChatBacktrace {
             // Set warmed up flag
             WeChatBacktraceNative.setWarmedUp(hasWarmedUp);
 
-            // Set if invoke generation immediately.
-            if (configuration.mImmediateGeneration) {
-                WeChatBacktraceNative.immediateGeneration(true);
-            }
-
             startScheduleQutGenerationRequests();
 
             // Register warmed up receiver for other processes.
@@ -338,7 +333,6 @@ public class WeChatBacktrace {
         boolean mQuickenAlwaysOn = false;
         boolean mCoolDownIfApkUpdated = true;   // Default true.
         boolean mIsWarmUpProcess = false;
-        boolean mImmediateGeneration = false;
         boolean mWarmUpInIsolateProcess = true;
         WarmUpTiming mWarmUpTiming = WarmUpTiming.WhileScreenOff;
         long mWarmUpDelay = DELAY_SHORTLY;
@@ -392,14 +386,6 @@ public class WeChatBacktrace {
                 return this;
             }
             mLibraryLoader = loader;
-            return this;
-        }
-
-        public Configuration immediateGeneration(boolean immedate) {
-            if (mCommitted) {
-                return this;
-            }
-            mImmediateGeneration = immedate;
             return this;
         }
 
@@ -513,7 +499,6 @@ public class WeChatBacktrace {
                     ">>> Warm-up Timing: " + mWarmUpTiming + "\n" +
                     ">>> Warm-up Delay: " + mWarmUpDelay + "ms\n" +
                     ">>> Warm-up in isolate process: " + mWarmUpInIsolateProcess + "\n" +
-                    ">>> Invoke quicken generation immediately: " + mImmediateGeneration + "\n" +
                     ">>> Enable logger: " + mEnableLog + "\n" +
                     ">>> Enable Isolate Process logger: " + mEnableIsolateProcessLog + "\n" +
                     ">>> Path of XLog: " + mPathOfXLogSo + "\n" +

@@ -152,10 +152,9 @@ namespace wechat_backtrace {
         bool jit_cache_ = false;
         std::shared_ptr<DebugJit> debug_jit_;
 
-//        std::shared_ptr<unwindstack::Memory> process_memory_;
         std::shared_ptr<QuickenInMemory<addr_t>> quicken_in_memory_;
 
-        std::mutex lock_quicken_in_memory_;
+        std::shared_mutex lock_quicken_in_memory_;
 
         std::unique_ptr<ElfWrapper> elf_wrapper_;
 
@@ -182,7 +181,7 @@ namespace wechat_backtrace {
         FrameInfo gnu_eh_frame_info_ = {0};
         FrameInfo gnu_debug_frame_info_ = {0};
 
-        volatile QutSections *qut_sections_ = nullptr;
+        QutSections *qut_sections_ = nullptr;
 
         std::mutex lock_;
 

@@ -99,9 +99,11 @@ namespace wechat_backtrace {
 
         unwindstack::Elf * GetLightElf();
 
+        std::atomic<QuickenInterface*> quicken_interface_atomic_ {0};
+
         std::shared_ptr<QuickenInterface> quicken_interface_;
 
-        volatile bool quicken_interface_failed_ = false;
+        std::atomic_bool quicken_interface_failed_ = false;
 
         uint64_t elf_load_bias_ = 0;
 
@@ -156,7 +158,7 @@ namespace wechat_backtrace {
 
         std::vector<MapInfoPtr> FindMapInfoByName(std::string soname) const;
 
-        static bool Parse();
+        static bool Parse(Maps *maps = nullptr);
 
         static std::shared_ptr<Maps> current();
 

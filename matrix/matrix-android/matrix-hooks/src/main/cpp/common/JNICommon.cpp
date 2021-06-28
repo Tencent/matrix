@@ -2,7 +2,6 @@
 // Created by Yves on 2020-03-16.
 //
 #include <backtrace/QuickenUnwinder.h>
-#include <backtrace/QuickenJNI.h>
 #include <xh_errno.h>
 #include <backtrace/common/PthreadExt.h>
 #include <backtrace/Backtrace.h>

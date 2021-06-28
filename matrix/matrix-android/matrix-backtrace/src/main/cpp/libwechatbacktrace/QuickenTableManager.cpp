@@ -28,7 +28,6 @@
 #include <QuickenInstructions.h>
 #include <MinimalRegs.h>
 #include <sys/mman.h>
-#include <QuickenJNI.h>
 #include <utime.h>
 #include <QuickenTableGenerator.h>
 #include "QuickenTableManager.h"
@@ -310,6 +309,11 @@ namespace wechat_backtrace {
         QUT_LOG("EraseQutRequestingByHash, hash %s.", hash.c_str());
         if (interface) {
             QutFileError ret = interface->TryInitQuickenTable();
+            /*
+            if (ret == NoneError) {
+                interface->ResetQuickenInMemory();
+            }
+            */
             (void) ret;
             QUT_LOG("Refresh requested qut ret %llu, hash %s.", (ullint_t)ret, hash.c_str());
         }

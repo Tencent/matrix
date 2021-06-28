@@ -33,7 +33,6 @@
 
 #include "PthreadExt.h"
 #include "QuickenUnwinder.h"
-#include "QuickenJNI.h"
 #include "Log.h"
 
 #include "android-base/macros.h"

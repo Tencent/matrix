@@ -18,7 +18,6 @@
 #include <MinimalRegs.h>
 #include <QuickenTableManager.h>
 #include <deps/android-base/include/android-base/logging.h>
-#include <QuickenJNI.h>
 #include "Log.h"
 #include "QuickenInterface.h"
 #include "QuickenMaps.h"
@@ -219,7 +218,7 @@ namespace wechat_backtrace {
         if (UNLIKELY(!qut_sections_)) {
             std::shared_ptr<QuickenInMemory<addr_t>> quicken_in_memory;
             {
-                lock_guard<mutex> lock(lock_quicken_in_memory_);
+                shared_lock<shared_mutex> lock(lock_quicken_in_memory_);
                 quicken_in_memory = quicken_in_memory_;
             }
             if (quicken_in_memory) {
@@ -244,7 +243,7 @@ namespace wechat_backtrace {
 
     void QuickenInterface::ResetQuickenInMemory() {
         {
-            lock_guard<mutex> lock(lock_quicken_in_memory_);
+            unique_lock<shared_mutex> lock(lock_quicken_in_memory_);
             quicken_in_memory_ = nullptr;
         }
     }

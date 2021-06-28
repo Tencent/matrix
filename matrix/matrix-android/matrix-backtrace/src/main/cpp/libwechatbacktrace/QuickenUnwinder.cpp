@@ -301,6 +301,19 @@ namespace wechat_backtrace {
         return 4;
     }
 
+    static inline MapInfoPtr GetMapInfo(std::shared_ptr<Maps> &maps, uptr pc) {
+        auto map_info = maps->Find(pc);
+        if (map_info == nullptr) {
+            uint16_t tmp = 0;
+            if (process_memory_->Read(pc, &tmp, sizeof(tmp))) {
+                Maps::Parse(maps.get());
+                map_info = maps->Find(pc);
+                maps = Maps::current();
+            }
+        }
+
+        return map_info;
+    }
 
     QutErrorCode
     WeChatQuickenUnwind(QuickenContext *context) {
@@ -339,8 +352,8 @@ namespace wechat_backtrace {
         uptr *regs = step_context.regs;
 
         for (; step_context.frame_index < frame_max_size;) {
-            uint64_t cur_pc = PC(regs);
-            uint64_t cur_sp = SP(regs);
+            uptr cur_pc = PC(regs);
+            uptr cur_sp = SP(regs);
             MapInfoPtr map_info;
             QuickenInterface *interface;
 
@@ -348,7 +361,12 @@ namespace wechat_backtrace {
                 map_info = last_map_info;
                 interface = last_interface;
             } else {
-                map_info = maps->Find(cur_pc);
+
+                if (context->update_maps_as_need) {
+                    map_info = GetMapInfo(maps, cur_pc);
+                } else {
+                    map_info = maps->Find(cur_pc);
+                }
 
                 if (UNLIKELY(map_info == nullptr)) {
                     backtrace[step_context.frame_index++].pc = PC(regs) - 2;
