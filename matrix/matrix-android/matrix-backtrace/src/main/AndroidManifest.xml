@@ -1,5 +1,5 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.tencent.matrix.backtrace">
+    package="com.tencent.components.backtrace">
 
     <permission
         android:name="${applicationId}.backtrace.warmed_up"

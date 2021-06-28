@@ -29,7 +29,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
-class WarmUpUtility {
+public class WarmUpUtility {
 
     private final static String TAG = "Matrix.Backtrace.WarmUp";
 
@@ -52,7 +52,7 @@ class WarmUpUtility {
     final static String UNFINISHED_KEY_SPLIT = ":";
     final static String UNFINISHED_RETRY_SPLIT = "|";
 
-    static class UnfinishedManagement {
+    public static class UnfinishedManagement {
 
         private static Map<String, Integer> mUnfinishedWarmUp;
 
