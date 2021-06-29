@@ -62,8 +62,9 @@ private:
     bool splay(TKey key, node_ptr &root) {
         /* Simple top down splay, not requiring i to be in the tree t.  */
         /* What it does is described above.                             */
-        if (root == 0)
+        if (root == 0) {
             return false;
+        }
 
         node_ptr l = 0, r = 0, t = root;
         bool ret = false;
@@ -72,28 +73,32 @@ private:
             TKey tkey = get_node_key(t);
             if (tkey > key) {
                 node_ptr tlc = get_node_lc(t);
-                if (tlc == 0)
+                if (tlc == 0) {
                     break;
+                }
                 if (get_node_key(tlc) > key) {
                     get_node_lc(t) = get_node_rc(tlc); /* rotate right */
                     get_node_rc(tlc) = t;
                     t = tlc;
-                    if (get_node_lc(t) == 0)
+                    if (get_node_lc(t) == 0) {
                         break;
+                    }
                 }
                 get_node_lc(r) = t; /* link right */
                 r = t;
                 t = get_node_lc(t);
             } else if (tkey < key) {
                 node_ptr trc = get_node_rc(t);
-                if (trc == 0)
+                if (trc == 0) {
                     break;
+                }
                 if (get_node_key(trc) < key) {
                     get_node_rc(t) = get_node_lc(trc); /* rotate left */
                     get_node_lc(trc) = t;
                     t = trc;
-                    if (get_node_rc(t) == 0)
+                    if (get_node_rc(t) == 0) {
                         break;
+                    }
                 }
                 get_node_rc(l) = t; /* link left */
                 l = t;
@@ -122,8 +127,9 @@ private:
     }
 
     void inter_enumerate(node_ptr root, void (^callback)(const TKey &key, const TVal &val)) {
-        if (root == 0)
+        if (root == 0) {
             return;
+        }
 
         std::stack<node_ptr> s;
         uint32_t count = 0;
@@ -131,7 +137,7 @@ private:
             while (root != 0) {
                 s.push(root);
                 if (s.size() > t_info->t_size) {
-                    abort();
+                    return;
                 }
                 root = get_node_lc(root);
             }
@@ -140,7 +146,7 @@ private:
                 root = s.top();
                 callback(get_node_key(root), get_val(root));
                 if (++count > t_info->t_size) {
-                    abort();
+                    return;
                 }
                 s.pop();
                 root = get_node_rc(root);
@@ -149,8 +155,9 @@ private:
     }
 
     void free_node(node_ptr ptr) {
-        if (ptr == 0)
+        if (ptr == 0) {
             return;
+        }
         get_node(ptr).left = t_info->free_ptr; // ticky
         t_info->free_ptr = ptr;
     }
@@ -173,7 +180,6 @@ private:
             if (new_buff) {
                 memset(new_buff, 0, malloc_size);
                 t_info = (tree_info *)new_buff;
-                t_info->b_size = i_size;
                 k_buff = (node *)((char *)new_buff + sizeof(tree_info));
             } else {
                 return false;
@@ -184,6 +190,7 @@ private:
             new_buff = val_buffer_source->realloc(malloc_size);
             if (new_buff) {
                 memset(new_buff, 0, malloc_size);
+                t_info->b_size = i_size;
                 v_buff = (TVal *)new_buff;
                 return true;
             } else {
@@ -245,43 +252,12 @@ public:
     ~splay_map_simple_key() {}
 
     void insert(TKey key, const TVal &val) {
-        if (t_info->t_size == t_info->b_size - 1 && reallocate_memory(false) == false) {
+        if (t_info->t_size + 1 == t_info->b_size && reallocate_memory(false) == false) {
             return; // malloc fail
         }
 
-        if (t_info->root_ptr != 0) {
-            splay(key, t_info->root_ptr);
-
-            node_ptr root_ptr = t_info->root_ptr;
-            TKey rkey = get_node_key(root_ptr);
-            if (rkey > key) {
-                ++t_info->t_size;
-
-                node_ptr n = next_free_node();
-                get_node_key(n) = key;
-                get_node_lc(n) = get_node_lc(root_ptr);
-                get_node_rc(n) = root_ptr;
-                get_val(n) = val;
-
-                get_node_lc(root_ptr) = 0;
-                t_info->root_ptr = n;
-            } else if (rkey < key) {
-                ++t_info->t_size;
-
-                node_ptr n = next_free_node();
-                get_node_key(n) = key;
-                get_node_rc(n) = get_node_rc(root_ptr);
-                get_node_lc(n) = root_ptr;
-                get_val(n) = val;
-
-                get_node_rc(root_ptr) = 0;
-                t_info->root_ptr = n;
-            } else { /* We get here if it's already in the tree */
-                /* Don't add it again                      */
-                get_val(t_info->root_ptr) = val;
-            }
-        } else {
-            ++t_info->t_size;
+        if (t_info->root_ptr == 0) {
+            t_info->t_size = 1;
 
             node_ptr n = next_free_node();
             get_node_key(n) = key;
@@ -289,16 +265,48 @@ public:
             get_node_rc(n) = 0;
             get_val(n) = val;
             t_info->root_ptr = n;
+            return;
+        }
+
+        if (splay(key, t_info->root_ptr)) {
+            /* We get here if it's already in the tree */
+            /* Don't add it again                      */
+            get_val(t_info->root_ptr) = val;
+            return;
+        }
+
+        node_ptr root_ptr = t_info->root_ptr;
+        if (get_node_key(root_ptr) > key) {
+            ++t_info->t_size;
+
+            node_ptr n = next_free_node();
+            get_node_key(n) = key;
+            get_node_lc(n) = get_node_lc(root_ptr);
+            get_node_rc(n) = root_ptr;
+            get_val(n) = val;
+
+            get_node_lc(root_ptr) = 0;
+            t_info->root_ptr = n;
+        } else {
+            ++t_info->t_size;
+
+            node_ptr n = next_free_node();
+            get_node_key(n) = key;
+            get_node_rc(n) = get_node_rc(root_ptr);
+            get_node_lc(n) = root_ptr;
+            get_val(n) = val;
+
+            get_node_rc(root_ptr) = 0;
+            t_info->root_ptr = n;
         }
     }
 
     void remove(TKey key) {
         /* Deletes i from the tree if it's there.               */
         /* Return a pointer to the resulting tree.              */
-        node_ptr x;
-        if (t_info->root_ptr == 0)
-            return;
         if (splay(key, t_info->root_ptr)) { /* found it */
+            node_ptr x;
+
             if (get_node_lc(t_info->root_ptr) == 0) {
                 x = get_node_rc(t_info->root_ptr);
             } else {

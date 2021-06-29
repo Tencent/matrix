@@ -21,31 +21,33 @@
 #include "memory_logging_event.h"
 
 struct memory_logging_event_buffer {
-    int32_t write_index;
-    int32_t last_write_index;
-    int32_t read_index;
-    int32_t buffer_size;
-    uint8_t *buffer;
+    int16_t write_index;
+    int16_t last_write_index;
+    int16_t buffer_size;
+
+    bool is_from_buffer_pool;
 
     malloc_lock_s lock;
-
     volatile thread_id t_id;
+
+    uint8_t *buffer;
     memory_logging_event_buffer *next_event_buffer;
 };
 
+void memory_logging_event_buffer_init(memory_logging_event_buffer *event_buffer);
 void memory_logging_event_buffer_compress(memory_logging_event_buffer *event_buffer);
 
-FORCE_INLINE void memory_logging_event_buffer_lock(memory_logging_event_buffer *event_buffer);
-FORCE_INLINE void memory_logging_event_buffer_unlock(memory_logging_event_buffer *event_buffer);
+void memory_logging_event_buffer_lock(memory_logging_event_buffer *event_buffer);
+void memory_logging_event_buffer_unlock(memory_logging_event_buffer *event_buffer);
 
-FORCE_INLINE bool memory_logging_event_buffer_is_full(memory_logging_event_buffer *event_buffer, bool is_alloc = false);
-FORCE_INLINE memory_logging_event *memory_logging_event_buffer_new_event(memory_logging_event_buffer *event_buffer);
-FORCE_INLINE memory_logging_event *memory_logging_event_buffer_last_event(memory_logging_event_buffer *event_buffer);
+bool memory_logging_event_buffer_is_full(memory_logging_event_buffer *event_buffer, bool is_dump_call_stacks = false);
+memory_logging_event *memory_logging_event_buffer_new_event(memory_logging_event_buffer *event_buffer);
+memory_logging_event *memory_logging_event_buffer_last_event(memory_logging_event_buffer *event_buffer);
 
-FORCE_INLINE memory_logging_event *memory_logging_event_buffer_begin(memory_logging_event_buffer *event_buffer);
-FORCE_INLINE memory_logging_event *memory_logging_event_buffer_next(memory_logging_event_buffer *event_buffer);
+memory_logging_event *memory_logging_event_buffer_begin(memory_logging_event_buffer *event_buffer);
+memory_logging_event *memory_logging_event_buffer_next(memory_logging_event_buffer *event_buffer, memory_logging_event *curr_event);
 
-FORCE_INLINE void memory_logging_event_buffer_update_write_index_with_size(memory_logging_event_buffer *event_buffer, size_t write_size);
-FORCE_INLINE void memory_logging_event_buffer_update_to_last_write_index(memory_logging_event_buffer *event_buffer);
+void memory_logging_event_buffer_update_write_index_with_size(memory_logging_event_buffer *event_buffer, size_t write_size);
+void memory_logging_event_buffer_update_to_last_write_index(memory_logging_event_buffer *event_buffer);
 
 #endif /* memory_logging_event_buffer_h */

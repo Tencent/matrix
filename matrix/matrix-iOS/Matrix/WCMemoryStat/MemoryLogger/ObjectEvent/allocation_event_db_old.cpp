@@ -20,7 +20,7 @@
 #pragma mark -
 #pragma mark Types
 
-// Implememt by splay_map
+// Implememt by splay_map_simple_key
 struct allocation_event_db_old {
     buffer_source *key_buffer;
     buffer_source *val_buffer;
@@ -62,14 +62,9 @@ void allocation_event_db_old_close(allocation_event_db_old *db_context) {
     inter_free(db_context);
 }
 
-void allocation_event_db_old_add(allocation_event_db_old *db_context,
-                                 uint64_t address,
-                                 uint32_t type_flags,
-                                 uint32_t object_type,
-                                 uint32_t size,
-                                 uint32_t stack_identifier,
-                                 uint32_t t_id) {
-    db_context->allocation_event_list->insert(address, allocation_event(type_flags, object_type, stack_identifier, size, t_id));
+void allocation_event_db_old_add(
+allocation_event_db_old *db_context, uint64_t address, uint32_t type_flags, uint32_t object_type, uint32_t size, uint32_t stack_identifier) {
+    db_context->allocation_event_list->insert(address, allocation_event(type_flags, object_type, stack_identifier, size));
 }
 
 void allocation_event_db_old_del(allocation_event_db_old *db_context, uint64_t address, uint32_t type_flags) {

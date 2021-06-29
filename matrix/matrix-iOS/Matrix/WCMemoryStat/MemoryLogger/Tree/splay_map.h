@@ -131,7 +131,7 @@ private:
             while (root != 0) {
                 s.push(root);
                 if (s.size() > t_info->t_size) {
-                    abort();
+                    return;
                 }
                 root = get_node_lc(root);
             }
@@ -140,7 +140,7 @@ private:
                 root = s.top();
                 callback(get_node_key(root), get_val(root));
                 if (++count > t_info->t_size) {
-                    abort();
+                    return;
                 }
                 s.pop();
                 root = get_node_rc(root);
@@ -173,7 +173,6 @@ private:
             if (new_buff) {
                 memset(new_buff, 0, malloc_size);
                 t_info = (tree_info *)new_buff;
-                t_info->b_size = i_size;
                 k_buff = (node *)((char *)new_buff + sizeof(tree_info));
             } else {
                 return false;
@@ -184,6 +183,7 @@ private:
             new_buff = val_buffer_source->realloc(malloc_size);
             if (new_buff) {
                 memset(new_buff, 0, malloc_size);
+                t_info->b_size = i_size;
                 v_buff = (TVal *)new_buff;
                 return true;
             } else {
@@ -245,7 +245,7 @@ public:
     ~splay_map() {}
 
     void insert(const TKey &key, const TVal &val) {
-        if (t_info->t_size == t_info->b_size - 1 && reallocate_memory(false) == false) {
+        if (t_info->t_size + 1 == t_info->b_size && reallocate_memory(false) == false) {
             return; // malloc fail
         }
 
