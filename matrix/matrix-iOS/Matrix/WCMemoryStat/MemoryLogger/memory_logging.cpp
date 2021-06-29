@@ -761,10 +761,6 @@ void disable_memory_logging(void) {
     if (syscall_logger != NULL) {
         *syscall_logger = NULL;
     }
-#else
-    if (memory_stat_callback[2] != NULL) {
-        *((malloc_logger_t **)memory_stat_callback[2]) = NULL;
-    }
 #endif
 
     // make current logging invalid
