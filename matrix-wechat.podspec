@@ -24,7 +24,7 @@ Pod::Spec.new do |matrix|
   matrix.source           = { :git => 'https://github.com/Tencent/matrix.git', :branch => "feature/ios-matrix-cocopods-1.0.1" }
   matrix.module_name      = "Matrix"
 
-  matrix.ios.deployment_target = '10.0'
+  matrix.ios.deployment_target = '9.0'
   matrix.osx.deployment_target = "10.10"
   matrix.libraries        = "z", "c++"
   matrix.frameworks       = "CoreFoundation", "Foundation"
