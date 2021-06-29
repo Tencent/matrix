@@ -24,7 +24,7 @@ struct memory_logging_event_buffer_pool;
 memory_logging_event_buffer_pool *memory_logging_event_buffer_pool_create();
 void memory_logging_event_buffer_pool_free(memory_logging_event_buffer_pool *buffer_pool);
 
-memory_logging_event_buffer *memory_logging_event_buffer_pool_new_buffer(memory_logging_event_buffer_pool *buffer_pool);
+memory_logging_event_buffer *memory_logging_event_buffer_pool_new_buffer(memory_logging_event_buffer_pool *buffer_pool, thread_id t_id);
 bool memory_logging_event_buffer_pool_free_buffer(memory_logging_event_buffer_pool *buffer_pool, memory_logging_event_buffer *event_buffer);
 
 #endif /* memory_logging_event_buffer_pool_h */

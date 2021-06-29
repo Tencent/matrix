@@ -21,16 +21,11 @@
 #import "memory_logging.h"
 #import "memory_report_generator.h"
 
-@implementation MSThreadInfo
-
-@end
-
 @implementation MemoryRecordInfo
 
 - (id)init {
     self = [super init];
     if (self) {
-        self.threadInfos = [[NSMutableDictionary alloc] init];
         self.userScene = @"";
         self.systemVersion = @"";
         self.appUUID = @"";
@@ -66,17 +61,6 @@
 
     auto content = generate_summary_report(dataPath.UTF8String, param);
     return [NSData dataWithBytes:content->c_str() length:content->size()];
-}
-
-- (void)calculateAllThreadsMemoryUsage {
-    std::unordered_map<uint64_t, uint64_t> threadAllocSizes = thread_alloc_size([self recordDataPath].UTF8String);
-
-    for (NSString *threadID in self.threadInfos.allKeys) {
-        auto iter = threadAllocSizes.find([threadID intValue]);
-        if (iter != threadAllocSizes.end()) {
-            self.threadInfos[threadID].allocSize = iter->second;
-        }
-    }
 }
 
 @end
