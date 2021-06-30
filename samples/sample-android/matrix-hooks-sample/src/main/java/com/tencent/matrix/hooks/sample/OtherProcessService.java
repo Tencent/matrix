@@ -7,7 +7,7 @@ import android.util.Log;
 
 import androidx.annotation.Nullable;
 
-import com.tencent.components.backtrace.WeChatBacktrace;
+import com.tencent.matrix.backtrace.WeChatBacktrace;
 
 public class OtherProcessService extends Service {
 

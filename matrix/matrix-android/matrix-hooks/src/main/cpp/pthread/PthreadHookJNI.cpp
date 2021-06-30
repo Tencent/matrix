@@ -109,6 +109,13 @@ Java_com_tencent_matrix_hook_pthread_PthreadHook_installHooksNative(JNIEnv *env,
     pthread_hook::InstallHooks(enable_debug);
 }
 
+JNIEXPORT void JNICALL
+Java_com_tencent_matrix_hook_pthread_PthreadHook_enableTracePthreadReleaseNative(JNIEnv *env,
+                                                                           jobject thiz,
+                                                                           jboolean enable) {
+    enable_trace_pthread_release(enable);
+}
+
 #ifdef __cplusplus
 }
 #endif

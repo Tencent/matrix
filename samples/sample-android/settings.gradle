@@ -1,2 +1,2 @@
-include ':app'
-//include ':matrix-hooks-sample'
+//include ':app'
+include ':matrix-hooks-sample'

@@ -81,6 +81,88 @@ Java_com_tencent_matrix_hooks_sample_JNIObj_mallocTest(JNIEnv *env, jclass clazz
 #undef LEN
 }
 
+pthread_key_t exit_key;
+void test_destructor(void *arg) {
+    LOGD(TAG, "exit");
+}
+
+#define THREAD_NAME_LEN 16
+static int read_thread_name(pthread_t pthread, char *buf, size_t buf_size) {
+    if (!buf || buf_size < THREAD_NAME_LEN) {
+        LOGD(TAG, "read_thread_name: buffer error");
+        return ERANGE;
+    }
+
+    char proc_path[64];
+    pid_t tid = pthread_gettid_np(pthread);
+
+    snprintf(proc_path, sizeof(proc_path), "/proc/self/task/%d/comm", tid);
+
+    FILE *file = fopen(proc_path, "r");
+
+    if (!file) {
+        LOGD(TAG, "read_thread_name: file not found: %s", proc_path);
+        return errno;
+    }
+
+    size_t n = fread(buf, sizeof(char), buf_size, file);
+
+    fclose(file);
+
+    if (n > THREAD_NAME_LEN) {
+        LOGD(TAG, "buf overflowed %zu", n);
+        abort();
+    }
+
+    if (n > 0 && buf[n - 1] == '\n') {
+        LOGD(TAG, "read_thread_name: end with \\0");
+        buf[n - 1] = '\0';
+    }
+
+    LOGD(TAG, "read_thread_name: %d -> name %s, len %zu, n = %zu", tid, buf, strlen(buf), n);
+
+    return 0;
+}
+
+void *thread_test(void *) {
+    pthread_attr_t attr{};
+    pthread_getattr_np(pthread_self(), &attr);
+    char thread_name[THREAD_NAME_LEN];
+    read_thread_name(pthread_self(), thread_name, THREAD_NAME_LEN);
+
+    LOGD(TAG, "thread_run: name %s stack %p-%p", thread_name, attr.stack_base, (void *) ((uint64_t)attr.stack_base - attr.stack_size));
+    return nullptr;
+}
+
+#define PTHREAD_COUNT 10 //3000
+
+JNIEXPORT void JNICALL
+Java_com_tencent_matrix_hooks_sample_JNIObj_threadTest(JNIEnv *env, jclass clazz) {
+//    pthread_key_create(&exit_key, test_destructor);
+
+    pthread_t pthreads[PTHREAD_COUNT];
+    for (int i = 0; i < PTHREAD_COUNT; ++i) {
+        pthread_attr_t attr;
+        pthread_attr_init(&attr);
+//        pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+        int ret = pthread_create(&pthreads[i], nullptr, thread_test, nullptr);
+//        pthread_detach(pthreads[i]);
+
+//        pthread_getattr_np(pthreads[i], &attr);
+//        int state = PTHREAD_CREATE_JOINABLE;
+//        pthread_attr_getdetachstate(&attr, &state);
+//        LOGD(TAG, "detach state = %d", state);
+        if (i % 500 == 0) {
+            LOGD(TAG, "sleep");
+            sleep(1);
+        }
+        if (ret != 0) {
+            LOGD(TAG, "pthread_create error[%d]: %d", i, ret);
+            break;
+        }
+    }
+}
+
 #ifdef __cplusplus
 }
 #endif

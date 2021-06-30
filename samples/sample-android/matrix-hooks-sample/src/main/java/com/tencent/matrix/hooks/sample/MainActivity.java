@@ -18,7 +18,7 @@ import android.view.View;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
-import com.tencent.components.backtrace.WeChatBacktrace;
+import com.tencent.matrix.backtrace.WeChatBacktrace;
 import com.tencent.matrix.fd.FDDumpBridge;
 import com.tencent.matrix.hook.HookManager;
 import com.tencent.matrix.hook.memory.MemoryHook;
@@ -55,39 +55,43 @@ public class MainActivity extends Activity {
         // Init backtrace
 
 //        if (IS_ARM64) {
-            WeChatBacktrace.instance()
-                    .configure(getApplication())
-                    .setBacktraceMode(WeChatBacktrace.Mode.Fp)
-                    .commit();
+//            WeChatBacktrace.instance()
+//                    .configure(getApplication())
+//                    .setBacktraceMode(WeChatBacktrace.Mode.Fp)
+//                    .commit();
 //        } else {
 //
 //            String additionalLibsDir = "/path/to/libs/";
 //
 //            // run before commit hooks for warm up.
-//            WeChatBacktrace.instance().configure(getApplicationContext())
-//                    .setBacktraceMode(WeChatBacktrace.Mode.FpUntilQuickenWarmedUp)
-////                    .directoryToWarmUp(additionalLibsDir) // your additional native library dir like tinker-patch library dir, application libs/system libs/odex are configured by default
-////                    .coolDown(versionUpdated) // set true if your app version updated, redo warm up
-//                    .warmUpInIsolateProcess(true) // optional, true by default
-//                    .enableIsolateProcessLogger(true) // optional
+            WeChatBacktrace.instance().configure(getApplicationContext())
+                    .setBacktraceMode(WeChatBacktrace.Mode.FpUntilQuickenWarmedUp)
+//                    .directoryToWarmUp(additionalLibsDir) // your additional native library dir like tinker-patch library dir, application libs/system libs/odex are configured by default
+//                    .coolDown(versionUpdated) // set true if your app version updated, redo warm up
+                    .warmUpInIsolateProcess(true) // optional, true by default
+                    .enableIsolateProcessLogger(true) // optional
+                    .xLoggerPath(null)
 //                    .xLoggerPath(getApplication().getApplicationInfo().nativeLibraryDir + "/libwechatxlog.so") // optional, xlogger work when enableIsolateProcessLogger is true
-//                    .commit();
+                    .commit();
 //        }
 
         try {
             HookManager.INSTANCE
 
                     // Memory hook
-                    .addHook(MemoryHook.INSTANCE
-                            .addHookSo(".*libnative-lib\\.so$")
-                            .enableStacktrace(true)
-                            .stacktraceLogThreshold(0)
-                            .enableMmapHook(true))
+//                    .addHook(MemoryHook.INSTANCE
+//                            .addHookSo(".*libnative-lib\\.so$")
+//                            .enableStacktrace(true)
+//                            .stacktraceLogThreshold(0)
+//                            .enableMmapHook(true))
 
                     // Thread hook
                     .addHook(PthreadHook.INSTANCE
-                                    .addHookSo(".*\\.so$")
+//                                    .addHookSo(".*\\.so$")
                                     .addHookThread(".*")
+                                    .setThreadTraceEnabled(true)
+                                    .enableTracePthreadRelease(true)
+
 //                            .addHookSo(".*libnative-lib\\.so$")
 //                            .addIgnoreSo(".*libart\\.so$")
 //                                    .addHookThread(threadNameRegex)
@@ -95,6 +99,8 @@ public class MainActivity extends Activity {
 //                            .addHookThread("\\[GT\\]MediaCodecR$")
                     )
                     .commitHooks();
+
+//            PthreadHook.INSTANCE.enableLogger(true);
         } catch (HookManager.HookFailedException e) {
             e.printStackTrace();
         }
@@ -181,20 +187,23 @@ public class MainActivity extends Activity {
 
     public void threadTest(View view) {
 
-        for (int i = 0; i < 50; i++) {
-            new HandlerThread("Test").start();
-//            new Thread(new Runnable() {
-//                @Override
-//                public void run() {
-//                    Log.d(TAG, "run");
-//                }
-//            }).start();
-        }
+        JNIObj.threadTest();
 
+//        for (int i = 0; i < 50; i++) {
+//            new HandlerThread("Test").start();
+////            new Thread(new Runnable() {
+////                @Override
+////                public void run() {
+////                    Log.d(TAG, "run");
+////                }
+////            }).start();
+//        }
+//
         new Handler().postDelayed(new Runnable() {
             @Override
             public void run() {
-                PthreadHook.INSTANCE.dump("/sdcard/pthread_hook_test.json");
+                Log.d(TAG, "dump...");
+                PthreadHook.INSTANCE.dump(getExternalCacheDir().getAbsolutePath() + "/pthread_hook_test.json");
             }
         }, 5000);
 
