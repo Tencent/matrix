@@ -51,7 +51,6 @@ static struct StacktraceJNI {
 int (*original_setpriority)(int __which, id_t __who, int __priority);
 int my_setpriority(int __which, id_t __who, int __priority) {
 
-    ALOGI("[leafjia]...my_setpriority...");
     if (__priority <= 0) {
         return original_setpriority(__which, __who, __priority);
     }
@@ -71,16 +70,15 @@ int (*original_prctl)(int option, unsigned long arg2, unsigned long arg3,
 
 int my_prctl(int option, unsigned long arg2, unsigned long arg3,
              unsigned long arg4, unsigned long arg5) {
-    if(option == PR_SET_TIMERSLACK) {
-        ALOGI("[leafjia]...my_PR_SET_TIMERSLACK...");
 
+    if(option == PR_SET_TIMERSLACK) {
         if (gettid()==getpid() && arg2 > 50000) {
             JNIEnv *env = JniInvocation::getEnv();
             env->CallStaticVoidMethod(gJ.ThreadPriorityDetective, gJ.ThreadPriorityDetective_onMainThreadTimerSlackModified, arg2);
 
         }
-
     }
+
     return original_prctl(option, arg2, arg3, arg4, arg5);
 }
 
