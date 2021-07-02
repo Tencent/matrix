@@ -35,12 +35,7 @@
 #define O_CREAT 00000100
 #define O_TRUNC 00001000
 
-
-#define voidp void*
-using std::string;
-
 namespace MatrixTracer {
-
 
 AnrDumper::AnrDumper(const char* anrTraceFile, const char* printTraceFile, AnrDumper::DumpCallbackFunction &&callback) :
         mAnrTraceFile(anrTraceFile), mPrintTraceFile(printTraceFile), mCallback(callback) {
@@ -51,16 +46,6 @@ AnrDumper::AnrDumper(const char* anrTraceFile, const char* printTraceFile, AnrDu
     sigaddset(&sigSet, SIGQUIT);
     pthread_sigmask(SIG_UNBLOCK, &sigSet, nullptr);
 }
-
-
-//AnrDumper::AnrDumper(char* anrTraceFile, char* printTraceFile, DumpCallbackFunction&& callback) : mCallback(callback) {
-//    // ART blocks SIGQUIT for its internal use. Re-enable it.
-//    // 必须unblock，否则signal handler无法接收到信号，而是由signal_cahcher线程中的sigwait接收信号，走一般的ANR流程
-//    sigset_t sigSet;
-//    sigemptyset(&sigSet);
-//    sigaddset(&sigSet, SIGQUIT);
-//    pthread_sigmask(SIG_UNBLOCK, &sigSet, nullptr);
-//}
 
 struct ArtInterface {
     static constexpr const char *kLibcxxCerrName = "_ZNSt3__14cerrE";
@@ -107,7 +92,6 @@ struct ArtInterface {
 
     bool valid() const { return libcxxCerr && libartRuntimeInstance && libartRuntimeDump; }
 };
-std::optional<const ArtInterface> sArtInterface(std::nullopt);
 
 static int getSignalCatcherThreadId() {
     char taskDirPath[128];
@@ -145,7 +129,6 @@ static int getSignalCatcherThreadId() {
             if (1 == sscanf(line, "SigBlk: %" SCNx64, &sigblk)) break;
             lr.popLine(len);
         }
-;
         if (SIGNAL_CATCHER_THREAD_SIGBLK != sigblk) continue;
         signalCatcherTid = tid;
         break;
@@ -185,9 +168,6 @@ static void *print_trace_callback(void* args) {
     return nullptr;
 }
 
-
-
-
 int AnrDumper::doDump(bool isAnr) {
 
     const char* dumpFile;
@@ -205,7 +185,7 @@ int AnrDumper::doDump(bool isAnr) {
     } else {
         dumpFile = mPrintTraceFile;
     }
-
+    std::optional<const ArtInterface> sArtInterface(std::nullopt);
     // Initialize ART interface, if not initialized yet. SignalHandler ensures that
     // handlers are called serialized, so it's safe to be done without synchronization.
     if (!sArtInterface) {
@@ -240,16 +220,12 @@ int AnrDumper::doDump(bool isAnr) {
         return errno;
     }
 
-    // Magically call Runtime::dumpForSigQuit in libart, specifying std::ostream object std::cerr
-    // as its destination. This will make ART to print dump info to stderr, which was replaced
-    // with our dump file.
     try {
         void *runtime = *(sArtInterface->libartRuntimeInstance);
         sArtInterface->libartRuntimeDump(runtime, sArtInterface->libcxxCerr);
     } catch (std::exception& e) {
     }
 
-    // Recover stderr.
     dup2(savedStderr.get(), STDERR_FILENO);
 
     pthread_t thd;
@@ -261,6 +237,4 @@ int AnrDumper::doDump(bool isAnr) {
     pthread_detach(thd);
     return 0;
 }
-
-
 }   // namespace MatrixTracer
