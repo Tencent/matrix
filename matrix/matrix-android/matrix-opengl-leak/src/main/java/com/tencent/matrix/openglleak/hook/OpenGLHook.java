@@ -1,5 +1,8 @@
 package com.tencent.matrix.openglleak.hook;
 
+import android.opengl.EGL14;
+import android.opengl.EGLContext;
+
 import com.tencent.matrix.openglleak.comm.FuncNameString;
 import com.tencent.matrix.openglleak.statistics.LeakMonitor;
 import com.tencent.matrix.openglleak.statistics.OpenGLInfo;
@@ -81,8 +84,13 @@ public class OpenGLHook {
         if (ids.length > 0) {
             AtomicInteger counter = new AtomicInteger(ids.length);
 
+            long eglContextId = 0l;
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+                eglContextId = EGL14.eglGetCurrentContext().getNativeHandle();
+            }
+
             for (int id : ids) {
-                OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.TEXTURE, id, threadId, javaStack, nativeStackPtr, true, LeakMonitor.getInstance().getCurrentActivityName(), counter);
+                OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.TEXTURE, id, threadId, eglContextId, javaStack, nativeStackPtr, true, LeakMonitor.getInstance().getCurrentActivityName(), counter);
                 OpenGLResRecorder.getInstance().gen(openGLInfo);
 
                 if (getInstance().mListener != null) {
@@ -94,8 +102,14 @@ public class OpenGLHook {
 
     public static void onGlDeleteTextures(int[] ids, String threadId) {
         if (ids.length > 0) {
+
+            long eglContextId = 0l;
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+                eglContextId = EGL14.eglGetCurrentContext().getNativeHandle();
+            }
+
             for (int id : ids) {
-                OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.TEXTURE, id, threadId, false);
+                OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.TEXTURE, id, threadId, eglContextId, false);
                 OpenGLResRecorder.getInstance().delete(openGLInfo);
 
                 if (getInstance().mListener != null) {
@@ -109,8 +123,13 @@ public class OpenGLHook {
         if (ids.length > 0) {
             AtomicInteger counter = new AtomicInteger(ids.length);
 
+            long eglContextId = 0l;
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+                eglContextId = EGL14.eglGetCurrentContext().getNativeHandle();
+            }
+
             for (int id : ids) {
-                OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.BUFFER, id, threadId, javaStack, nativeStackPtr, true, LeakMonitor.getInstance().getCurrentActivityName(), counter);
+                OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.BUFFER, id, threadId, eglContextId, javaStack, nativeStackPtr, true, LeakMonitor.getInstance().getCurrentActivityName(), counter);
                 OpenGLResRecorder.getInstance().gen(openGLInfo);
 
                 if (getInstance().mListener != null) {
@@ -122,8 +141,14 @@ public class OpenGLHook {
 
     public static void onGlDeleteBuffers(int[] ids, String threadId) {
         if (ids.length > 0) {
+
+            long eglContextId = 0l;
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+                eglContextId = EGL14.eglGetCurrentContext().getNativeHandle();
+            }
+
             for (int id : ids) {
-                OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.BUFFER, id, threadId, false);
+                OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.BUFFER, id, threadId, eglContextId, false);
                 OpenGLResRecorder.getInstance().delete(openGLInfo);
 
                 if (getInstance().mListener != null) {
@@ -137,8 +162,13 @@ public class OpenGLHook {
         if (ids.length > 0) {
             AtomicInteger counter = new AtomicInteger(ids.length);
 
+            long eglContextId = 0l;
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+                eglContextId = EGL14.eglGetCurrentContext().getNativeHandle();
+            }
+
             for (int id : ids) {
-                OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.FRAME_BUFFERS, id, threadId, javaStack, nativeStackPtr, true, LeakMonitor.getInstance().getCurrentActivityName(), counter);
+                OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.FRAME_BUFFERS, id, threadId, eglContextId, javaStack, nativeStackPtr, true, LeakMonitor.getInstance().getCurrentActivityName(), counter);
                 OpenGLResRecorder.getInstance().gen(openGLInfo);
 
                 if (getInstance().mListener != null) {
@@ -150,8 +180,14 @@ public class OpenGLHook {
 
     public static void onGlDeleteFramebuffers(int[] ids, String threadId) {
         if (ids.length > 0) {
+
+            long eglContextId = 0l;
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+                eglContextId = EGL14.eglGetCurrentContext().getNativeHandle();
+            }
+
             for (int id : ids) {
-                OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.FRAME_BUFFERS, id, threadId, false);
+                OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.FRAME_BUFFERS, id, threadId, eglContextId, false);
                 OpenGLResRecorder.getInstance().delete(openGLInfo);
 
                 if (getInstance().mListener != null) {
@@ -165,8 +201,13 @@ public class OpenGLHook {
         if (ids.length > 0) {
             AtomicInteger counter = new AtomicInteger(ids.length);
 
+            long eglContextId = 0l;
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+                eglContextId = EGL14.eglGetCurrentContext().getNativeHandle();
+            }
+
             for (int id : ids) {
-                OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.RENDER_BUFFERS, id, threadId, javaStack, nativeStackPtr, true, LeakMonitor.getInstance().getCurrentActivityName(), counter);
+                OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.RENDER_BUFFERS, id, threadId, eglContextId, javaStack, nativeStackPtr, true, LeakMonitor.getInstance().getCurrentActivityName(), counter);
                 OpenGLResRecorder.getInstance().gen(openGLInfo);
 
                 if (getInstance().mListener != null) {
@@ -178,8 +219,14 @@ public class OpenGLHook {
 
     public static void onGlDeleteRenderbuffers(int[] ids, String threadId) {
         if (ids.length > 0) {
+
+            long eglContextId = 0l;
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+                eglContextId = EGL14.eglGetCurrentContext().getNativeHandle();
+            }
+
             for (int id : ids) {
-                OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.RENDER_BUFFERS, id, threadId, false);
+                OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.RENDER_BUFFERS, id, threadId, eglContextId, false);
                 OpenGLResRecorder.getInstance().delete(openGLInfo);
 
                 if (getInstance().mListener != null) {

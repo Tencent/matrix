@@ -13,6 +13,7 @@ public class OpenGLInfo {
     private int id;
     private int error;
     private String threadId = "";
+    private long eglContextNativeHandle;
     private String javaStack = "";
     private String nativeStack = "";
     private long nativeStackPtr;
@@ -37,6 +38,7 @@ public class OpenGLInfo {
         this.id = clone.id;
         this.error = clone.error;
         this.threadId = clone.threadId;
+        this.eglContextNativeHandle = clone.eglContextNativeHandle;
         this.javaStack = clone.javaStack;
         this.nativeStack = clone.nativeStack;
         this.nativeStackPtr = clone.nativeStackPtr;
@@ -54,16 +56,18 @@ public class OpenGLInfo {
         this.error = error;
     }
 
-    public OpenGLInfo(TYPE type, int id, String threadId, boolean genOrDelete) {
+    public OpenGLInfo(TYPE type, int id, String threadId, long eglContextNativeHandle, boolean genOrDelete) {
         this.id = id;
         this.threadId = threadId;
+        this.eglContextNativeHandle = eglContextNativeHandle;
         this.genOrDelete = genOrDelete;
         this.type = type;
     }
 
-    public OpenGLInfo(TYPE type, int id, String threadId, String javaStack, long nativeStackPtr, boolean genOrDelete, String activityName, AtomicInteger counter) {
+    public OpenGLInfo(TYPE type, int id, String threadId, long eglContextId, String javaStack, long nativeStackPtr, boolean genOrDelete, String activityName, AtomicInteger counter) {
         this.id = id;
         this.threadId = threadId;
+        this.eglContextNativeHandle = eglContextNativeHandle;
         this.javaStack = javaStack;
         this.nativeStackPtr = nativeStackPtr;
         this.genOrDelete = genOrDelete;
@@ -86,6 +90,10 @@ public class OpenGLInfo {
 
     public String getThreadId() {
         return threadId;
+    }
+
+    public long getEglContextNativeHandle(){
+        return eglContextNativeHandle;
     }
 
     public TYPE getType() {
@@ -171,6 +179,7 @@ public class OpenGLInfo {
                 ", error=" + error +
                 ", isGen=" + genOrDelete +
                 ", threadId='" + threadId + '\'' +
+                ", eglContextNativeHandle='" + eglContextNativeHandle + '\'' +
                 ", javaStack='" + javaStack + '\'' +
                 ", nativeStack='" + nativeStack + '\'' +
                 ", nativeStackPtr=" + nativeStackPtr +

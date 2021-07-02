@@ -85,7 +85,7 @@ public class OpenglLeakPlugin extends Plugin {
 
                     // 泄漏监控
                     LeakMonitor.getInstance().start((Application) context.getApplicationContext());
-                } catch (RemoteException e) {
+                } catch (Throwable e) {
                     e.printStackTrace();
                 } finally {
                     // 销毁实验进程

@@ -69,13 +69,17 @@ public class OpenGLResRecorder {
                             continue;
                         }
 
-                        if (gen.getType() == del.getType()) {
-                            if (gen.getThreadId().equals(del.getThreadId())) {
-                                if (gen.getId() == del.getId()) {
+                        if ((gen.getType() == del.getType()) && gen.getId() == del.getId()) {
+                            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+                                if (gen.getEglContextNativeHandle() == del.getEglContextNativeHandle()) {
                                     gen.release();
                                     iterator.remove();
                                     break;
                                 }
+                            } else if (gen.getThreadId().equals(del.getThreadId())) {
+                                gen.release();
+                                iterator.remove();
+                                break;
                             }
                         }
                     }
