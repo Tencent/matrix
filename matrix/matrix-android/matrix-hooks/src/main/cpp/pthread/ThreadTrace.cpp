@@ -93,6 +93,7 @@ struct pthread_meta_t {
         native_backtrace = src.native_backtrace;
         java_stacktrace.store(src.java_stacktrace.load(std::memory_order_acquire),
                               std::memory_order_release);
+        exited = src.exited;
     }
 };
 
