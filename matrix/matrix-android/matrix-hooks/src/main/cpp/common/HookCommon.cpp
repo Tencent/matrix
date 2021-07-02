@@ -26,10 +26,10 @@ DEFINE_HOOK_FUN(void *, __loader_android_dlopen_ext, const char *file_name,
                 int                                             flag,
                 const void                                      *extinfo,
                 const void                                      *caller_addr) {
-    bool should_block = dlopen_pausing_mark.load();
-    if (should_block) {
+    // bool should_block = dlopen_pausing_mark.load();
+    // if (should_block) {
         dlopen_mutex.lock();
-    }
+    // }
 
     void *ret = (*ORIGINAL_FUNC_NAME(__loader_android_dlopen_ext))(file_name, flag, extinfo, caller_addr);
 
@@ -51,9 +51,9 @@ DEFINE_HOOK_FUN(void *, __loader_android_dlopen_ext, const char *file_name,
 
 //    LOGD(TAG, "xhook_refresh cost : %lld", cost);
 
-    if (should_block) {
+    // if (should_block) {
         dlopen_mutex.unlock();
-    }
+    // }
     return ret;
 }
 
