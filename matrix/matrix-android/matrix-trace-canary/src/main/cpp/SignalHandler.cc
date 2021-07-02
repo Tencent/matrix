@@ -6,7 +6,6 @@
 
 #include "SignalHandler.h"
 
-#include <string.h>
 #include <malloc.h>
 #include <syscall.h>
 #include <dirent.h>
@@ -107,7 +106,6 @@ SignalHandler::~SignalHandler() {
     if (sHandlerStack->empty()) {
         delete sHandlerStack;
         sHandlerStack = nullptr;
-
         restoreHandlersLocked();
     }
 }
