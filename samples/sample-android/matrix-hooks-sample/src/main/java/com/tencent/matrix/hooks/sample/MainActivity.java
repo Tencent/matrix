@@ -189,15 +189,15 @@ public class MainActivity extends Activity {
 
         JNIObj.threadTest();
 
-//        for (int i = 0; i < 50; i++) {
+        for (int i = 0; i < 10; i++) {
 //            new HandlerThread("Test").start();
-////            new Thread(new Runnable() {
-////                @Override
-////                public void run() {
-////                    Log.d(TAG, "run");
-////                }
-////            }).start();
-//        }
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    Log.d(TAG, "run");
+                }
+            }).start();
+        }
 //
         new Handler().postDelayed(new Runnable() {
             @Override

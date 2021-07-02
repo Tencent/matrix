@@ -78,7 +78,8 @@ struct pthread_meta_t {
                        unwind_mode(wechat_backtrace::FramePointer),
                        hash(0),
                        native_backtrace(BACKTRACE_INITIALIZER(m_pthread_backtrace_max_frames)),
-                       java_stacktrace(nullptr) {
+                       java_stacktrace(nullptr),
+                       exited(false) {
     }
 
     ~pthread_meta_t() = default;
@@ -612,7 +613,6 @@ static inline void pthread_dump_json_impl(FILE *log_file) {
         if (meta.hash) {
             auto &hash_bucket = pthread_metas_not_released[meta.hash];
             hash_bucket.emplace_back(meta);
-            LOGD(TAG, "====> meta.name = %s", meta.thread_name);
         }
     }
 
