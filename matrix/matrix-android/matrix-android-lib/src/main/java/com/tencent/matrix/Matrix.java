@@ -149,7 +149,7 @@ public class Matrix {
             return this;
         }
 
-        public Builder patchListener(PluginListener pluginListener) {
+        public Builder pluginListener(PluginListener pluginListener) {
             this.pluginListener = pluginListener;
             return this;
         }

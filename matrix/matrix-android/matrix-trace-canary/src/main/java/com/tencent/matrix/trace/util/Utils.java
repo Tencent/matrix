@@ -1,6 +1,16 @@
 package com.tencent.matrix.trace.util;
 
+import android.os.FileUtils;
+import android.os.Looper;
+
 import com.tencent.matrix.util.DeviceUtil;
+import com.tencent.matrix.util.MatrixLog;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.Reader;
 
 public class Utils {
 
@@ -32,6 +42,14 @@ public class Utils {
 
         }
         return t.toString();
+    }
+
+    public static String getMainThreadJavaStackTrace() {
+        StringBuilder stackTrace = new StringBuilder();
+        for (StackTraceElement stackTraceElement : Looper.getMainLooper().getThread().getStackTrace()) {
+            stackTrace.append(stackTraceElement.toString()).append("\n");
+        }
+        return stackTrace.toString();
     }
 
     public static String calculateCpuUsage(long threadMs, long ms) {
@@ -66,6 +84,7 @@ public class Utils {
         }
         return new int[]{priority, nice};
     }
+
 
     public static String formatTime(final long timestamp) {
         return new java.text.SimpleDateFormat("[yy-MM-dd HH:mm:ss]").format(new java.util.Date(timestamp));
