@@ -22,7 +22,7 @@ class AnrDumper : public SignalHandler {
 
     AnrDumper(const char* anrTraceFile, const char* printTraceFile, DumpCallbackFunction&& callback);
     int doDump(bool isAnr);
-    ~AnrDumper() = default;
+    virtual ~AnrDumper();
 
  private:
     Result handleSignal(int sig, const siginfo_t *info, void *uc) final;

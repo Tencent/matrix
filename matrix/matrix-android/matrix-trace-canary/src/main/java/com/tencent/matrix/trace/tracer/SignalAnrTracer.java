@@ -37,7 +37,6 @@ import java.util.List;
 
 public class SignalAnrTracer extends Tracer{
     private static final String TAG = "SignalAnrTracer";
-    private volatile SignalAnrTracer INSTANCE;
 
     private static final int CHECK_ERROR_STATE_INTERVAL = 500;
     private static final int ANR_DUMP_MAX_TIME = 20000;
@@ -45,8 +44,8 @@ public class SignalAnrTracer extends Tracer{
     private static final long FOREGROUND_MSG_THRESHOLD = -2000;
     private static final long BACKGROUND_MSG_THRESHOLD = -10000;
     private static boolean currentForeground = false;
-    private static String sAnrTraceFilePath;
-    private static String sPrintTraceFilePath;
+    private static String sAnrTraceFilePath = "";
+    private static String sPrintTraceFilePath = "";
     private static SignalAnrDetectedListener sSignalAnrDetectedListener;
     private static Application sApplication;
     private static boolean hasInit = false;
@@ -54,7 +53,7 @@ public class SignalAnrTracer extends Tracer{
 
 
     static {
-        System.loadLibrary("anr-canary");
+        System.loadLibrary("trace-canary");
     }
 
     @Override
@@ -66,6 +65,12 @@ public class SignalAnrTracer extends Tracer{
             hasInit = true;
         }
 
+    }
+
+    @Override
+    protected void onDead() {
+        super.onDead();
+        nativeFreeSignalAnrDetective();
     }
 
     public SignalAnrTracer(TraceConfig traceConfig) {
@@ -234,9 +239,23 @@ public class SignalAnrTracer extends Tracer{
         return false;
     }
 
+    public static void printTrace() {
+        if (!hasInstance) {
+            MatrixLog.e(TAG, "SignalAnrTracer has not been initialize");
+            return;
+        }
+        if (sPrintTraceFilePath.equals("")) {
+            MatrixLog.e(TAG, "PrintTraceFilePath has not been set");
+            return;
+        }
+        nativePrintTrace();
+    }
+
     private static native void nativeInitSignalAnrDetective(String anrPrintTraceFilePath, String printTraceFilePath);
 
-    public static native void printTrace();
+    private static native void nativeFreeSignalAnrDetective();
+
+    private static native void nativePrintTrace();
 
     public interface SignalAnrDetectedListener {
         void onAnrDetected(String stackTrace);
