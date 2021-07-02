@@ -9,7 +9,7 @@
 #include <common/Log.h>
 #include <common/ScopedCleaner.h>
 #include <common/Macros.h>
-#include <common/Macros.h>
+#include <common/Maps.h>
 #include "WVPreAllocTrimmer.h"
 
 #define LOG_TAG "Matrix.WVPreAllocTrimmer"
@@ -118,61 +118,20 @@ namespace matrix {
     }
 
     static bool LocateReservedSpaceByParsingMaps(void** start_out, size_t* size_out) {
-        FILE* fp = nullptr;
-        char line[512] = {};
-
-        if ((fp = ::fopen("/proc/self/maps", "r")) == nullptr) {
-            LOGE(LOG_TAG, "Fail to open /proc/self/maps");
-            return false;
-        }
-        auto fpCleaner = MakeScopedCleaner([&fp]() {
-            if (fp != nullptr) {
-                ::fclose(fp);
-            }
-        });
-
         bool found = false;
-        while(::fgets(line, sizeof(line), fp) != nullptr) {
-            uintptr_t start = 0;
-            uintptr_t end = 0;
-            char perm[4] = {};
-            int pathnamePos = 0;
-
-            if(::sscanf(line, "%" PRIxPTR "-%" PRIxPTR " %4s %*x %*x:%*x %*d%n",
-                    &start, &end, perm, &pathnamePos) != 3) {
-                continue;
-            }
-
-            if (perm[0] != '-' || perm[1] != '-' || perm[2] != '-' || perm[3] != 'p') {
+        matrix::IterateMaps([&](uintptr_t start, uintptr_t end, char perms[4], const char* path, void* args) -> bool {
+            if (perms[0] != '-' || perms[1] != '-' || perms[2] != '-' || perms[3] != 'p') {
                 // Not match '---p'
-                continue;
+                return false;
             }
-            if (pathnamePos <= 0 || pathnamePos > static_cast<int>(sizeof(line) - 1)) {
-                continue;
-            }
-            while (pathnamePos <= static_cast<int>(sizeof(line) - 1) && ::isspace(line[pathnamePos])) {
-                ++pathnamePos;
-            }
-            if (pathnamePos > static_cast<int>(sizeof(line) - 1)) {
-                continue;
-            }
-            char* pathname = line + pathnamePos;
-            size_t pathLen = strlen(pathname);
-            if (pathLen == 0 || pathLen > static_cast<int>(sizeof(line) - 1)) {
-                continue;
-            }
-            for (int i = static_cast<int>(pathLen - 1); i >= 0 && pathname[i] == '\n'; --i) {
-                pathname[i] = '\0';
-                --pathLen;
-            }
-            if (pathLen > 0 && ::strncmp(pathname, "[anon:libwebview reservation]", pathLen) == 0) {
+            if (::strcmp(path, "[anon:libwebview reservation]") == 0) {
                 *start_out = reinterpret_cast<void*>(start);
                 *size_out = static_cast<size_t>(static_cast<uint64_t>(end) - static_cast<uint64_t>(start));
                 found = true;
-                break;
+                return true;
             }
-        }
-
+            return false;
+        });
         return found;
     }
 
