@@ -166,14 +166,12 @@ public class SignalAnrTracer extends Tracer{
             Field field = mainQueue.getClass().getDeclaredField("mMessages");
             field.setAccessible(true);
             final Message mMessage = (Message) field.get(mainQueue);
-            //anrFirstCheckMessage = mMessage;
             if (mMessage != null) {
                 long when = mMessage.getWhen();
                 if(when == 0) {
                     return false;
                 }
                 long time = when - SystemClock.uptimeMillis();
-                //anrFirstCheckMessageWhen = time;
                 long timeThreshold = BACKGROUND_MSG_THRESHOLD;
                 if (currentForeground) {
                     timeThreshold = FOREGROUND_MSG_THRESHOLD;
@@ -186,18 +184,6 @@ public class SignalAnrTracer extends Tracer{
         return false;
     }
 
-
-//    private static void checkErrorStateCycle(final boolean hasReportedBefore, final String stack, final String scene, final int type, final boolean isForeground, final String processName){
-//        int checkErrorStateCount = 0;
-//        while(checkErrorStateCount < CHECK_ERROR_STATE_COUNT) {
-//            checkErrorStateCount++;
-//            boolean myAnr = checkErrorState();
-//            if(myAnr){
-//                report();
-//                break;
-//            }
-//        }
-//    }
 
     private static void checkErrorStateCycle(){
         int checkErrorStateCount = 0;
