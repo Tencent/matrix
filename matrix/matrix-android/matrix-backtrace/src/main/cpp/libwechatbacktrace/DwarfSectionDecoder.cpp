@@ -1134,7 +1134,7 @@ namespace wechat_backtrace {
             dwarf_loc_regs_t loc_regs = *_loc_regs;
             loc_regs.cie = fde->cie;
 
-            QUT_LOG("WTF--------- pc %llx, pc_start %llx", pc, loc_regs.pc_start);
+            QUT_TMP_LOG("pc %llx, pc_start %llx", pc, loc_regs.pc_start);
 
             uint64_t pc_start = loc_regs.pc_start;
             uint64_t pc_end = loc_regs.pc_end;
@@ -1198,7 +1198,7 @@ namespace wechat_backtrace {
                                            fde->cfa_instructions_offset,
                                            fde->cfa_instructions_end, iterate_loc, callback);
 
-        QUT_LOG("CFA iterate locations ret: %d", ret);
+        QUT_TMP_LOG("CFA iterate locations ret: %d", ret);
 
         return ret;
     }
