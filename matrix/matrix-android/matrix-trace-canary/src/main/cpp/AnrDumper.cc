@@ -36,6 +36,7 @@
 #define O_TRUNC 00001000
 
 namespace MatrixTracer {
+static sigset_t old_sigSet;
 
 AnrDumper::AnrDumper(const char* anrTraceFile, const char* printTraceFile, AnrDumper::DumpCallbackFunction &&callback) :
         mAnrTraceFile(anrTraceFile), mPrintTraceFile(printTraceFile), mCallback(callback) {
@@ -44,7 +45,7 @@ AnrDumper::AnrDumper(const char* anrTraceFile, const char* printTraceFile, AnrDu
     sigset_t sigSet;
     sigemptyset(&sigSet);
     sigaddset(&sigSet, SIGQUIT);
-    pthread_sigmask(SIG_UNBLOCK, &sigSet, nullptr);
+    pthread_sigmask(SIG_UNBLOCK, &sigSet , &old_sigSet);
 }
 
 struct ArtInterface {
@@ -237,4 +238,9 @@ int AnrDumper::doDump(bool isAnr) {
     pthread_detach(thd);
     return 0;
 }
+
+AnrDumper::~AnrDumper() {
+    pthread_sigmask(SIG_SETMASK, &old_sigSet, nullptr);
+}
+
 }   // namespace MatrixTracer

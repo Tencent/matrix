@@ -36,8 +36,9 @@ bool SignalHandler::installHandlersLocked() {
         return false;
     }
 
-    if (sigaction(TARGET_SIG, nullptr, &sOldHandlers) == -1)
+    if (sigaction(TARGET_SIG, nullptr, &sOldHandlers) == -1) {
         return false;
+    }
 
     struct sigaction sa;
     sa.sa_sigaction = signalHandler;
@@ -71,7 +72,6 @@ static void restoreHandlersLocked() {
     }
 
     sHandlerInstalled = false;
-
     ALOGV("Signal handler restored.");
 }
 
@@ -86,7 +86,9 @@ void SignalHandler::signalHandler(int sig, siginfo_t* info, void* uc) {
 
     lock.unlock();
     ALOGV("Signal handler mutex released.");
+
 }
+
 
 SignalHandler::SignalHandler() {
     std::lock_guard<std::mutex> lock(sHandlerStackMutex);

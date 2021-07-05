@@ -19,7 +19,7 @@ public class ThreadPriorityTracer extends Tracer{
     private static MainThreadPriorityModifiedListener sMainThreadPriorityModifiedListener;
 
     static {
-        System.loadLibrary("anr-canary");
+        System.loadLibrary("trace-canary");
     }
 
     @Override
