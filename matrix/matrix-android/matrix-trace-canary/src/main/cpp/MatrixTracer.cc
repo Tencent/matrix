@@ -116,14 +116,17 @@ static void nativeInitSignalAnrDetective(JNIEnv *env, jclass, jstring anrTracePa
     sAnrDumper.emplace(anrTracePathChar, printTracePathChar, anrDumpCallback);
 }
 
+static void nativeFreeSignalAnrDetective(JNIEnv *env, jclass) {
+    sAnrDumper.reset();
+}
+
 static void nativeInitMainThreadPriorityDetective(JNIEnv *env, jclass) {
-    ALOGI("[leafjia]...nativeInitMainThreadPriorityDetective");
     xhook_register(".*\\.so$", "setpriority", (void *) my_setpriority, (void **) (&original_setpriority));
     xhook_register(".*\\.so$", "prctl", (void *) my_prctl, (void **) (&original_prctl));
     xhook_refresh(true);
 }
 
-static void printTrace() {
+static void nativePrintTrace() {
     sAnrDumper->doDump(false);
 }
 
@@ -133,7 +136,8 @@ static inline constexpr std::size_t NELEM(const T(&)[sz]) { return sz; }
 
 static const JNINativeMethod ANR_METHODS[] = {
     {"nativeInitSignalAnrDetective", "(Ljava/lang/String;Ljava/lang/String;)V", (voidp) nativeInitSignalAnrDetective},
-    {"printTrace", "()V", (voidp) printTrace},
+    {"nativeFreeSignalAnrDetective", "()V", (voidp) nativeFreeSignalAnrDetective},
+    {"nativePrintTrace", "()V", (voidp) nativePrintTrace},
 };
 
 static const JNINativeMethod THREAD_PRIORITY_METHODS[] = {
