@@ -120,7 +120,6 @@ public class TestTraceMainActivity extends Activity implements IAppForeground {
     public void testFps(View view) {
         Intent intent = new Intent(this, TestFpsActivity.class);
         startActivity(intent);
-        overridePendingTransition(R.anim.slide_right_in, 0);
     }
 
     public void testJankiess(View view) {

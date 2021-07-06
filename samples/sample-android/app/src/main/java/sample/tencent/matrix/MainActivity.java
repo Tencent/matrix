@@ -48,7 +48,7 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        Button testTrace = (Button) findViewById(R.id.test_trace);
+        Button testTrace = findViewById(R.id.test_trace);
         testTrace.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -57,7 +57,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        Button testIO = (Button) findViewById(R.id.test_io);
+        Button testIO = findViewById(R.id.test_io);
         testIO.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -66,7 +66,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        Button testLeak = (Button) findViewById(R.id.test_leak);
+        Button testLeak = findViewById(R.id.test_leak);
         testLeak.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -75,7 +75,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        Button testSQLiteLint = (Button) findViewById(R.id.test_sqlite_lint);
+        Button testSQLiteLint = findViewById(R.id.test_sqlite_lint);
         testSQLiteLint.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -84,7 +84,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        Button testBattery = (Button) findViewById(R.id.test_battery);
+        Button testBattery = findViewById(R.id.test_battery);
         testBattery.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {

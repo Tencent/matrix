@@ -29,9 +29,9 @@ public class IssueFilter {
     }
 
     public static final String ISSUE_IO = "ISSUE_IO";
-    public static final String ISSUE_LEAK = "ISSUR_LEAK";
-    public static final String ISSUE_TRACE = "ISSUR_TRACE";
-    public static final String ISSUE_SQLITELINT = "ISSUR_SQLITELINT";
+    public static final String ISSUE_LEAK = "ISSUE_LEAK";
+    public static final String ISSUE_TRACE = "ISSUE_TRACE";
+    public static final String ISSUE_SQLITELINT = "ISSUE_SQLITELINT";
 
     @FILTER
     private static String CURRENT_FILTER = ISSUE_IO;
