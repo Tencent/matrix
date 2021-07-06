@@ -178,6 +178,8 @@ publishing.publications {
                     classifier = "sources"
                 } else if (archive_file.name.endsWith(".jar")) {
                     classifier = "jar"
+                } else if (archive_file.name.endsWith(".exe")) {
+                    classifier = "exe"
                 }
 
                 String suffix = archive_file.absolutePath.substring(archive_file.absolutePath.lastIndexOf(".") + 1)

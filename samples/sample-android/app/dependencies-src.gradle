@@ -36,7 +36,6 @@ dependencies {
     apkCheckerDependency("com.tencent.matrix:matrix-apk-canary:${MATRIX_VERSION}")
     sevenZipDependency('com.tencent.mm:SevenZip:1.2.17') {
         artifact {
-            classifier = project.osdetector.classifier
             name = "SevenZip"
             type = 'exe'
         }

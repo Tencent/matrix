@@ -1,7 +1,7 @@
 ![Matrix-icon](assets/img/readme/header.png)
 [![license](http://img.shields.io/badge/license-BSD3-brightgreen.svg?style=flat)](https://github.com/Tencent/matrix/blob/master/LICENSE)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/Tencent/matrix/pulls)
-[![WeChat Approved](https://img.shields.io/badge/Wechat%20Approved-1.0.0-red.svg)](https://github.com/Tencent/matrix/wiki)
+[![WeChat Approved](https://img.shields.io/badge/Wechat%20Approved-2.0.0-beta-red.svg)](https://github.com/Tencent/matrix/wiki)
 [![CircleCI](https://circleci.com/gh/Tencent/matrix.svg?style=shield)](https://app.circleci.com/pipelines/github/Tencent/matrix)
 
 (中文版本请参看[这里](#matrix_cn))  
@@ -201,7 +201,7 @@ At this point, Matrix has been integrated into the app and is beginning to colle
 
 1. Configure `MATRIX_VERSION` in gradle.properties.
 ``` gradle
-  MATRIX_VERSION=1.0.0
+  MATRIX_VERSION=2.0.0-beta
 ```
 
 2. Add `matrix-gradle-plugin` in your build.gradle:
@@ -339,14 +339,22 @@ BatteryMonitorPlugin plugin = new BatteryMonitorPlugin(config);
 
 For detail usage, please reference showcase tests at `com.tencent.matrix.batterycanary.ApisTest` or `sample.tencent.matrix.battery.BatteryCanaryInitHelper`.
 
+#### Backtrace Component Usage
+
+How to init backtrace component：
+```java
+WeChatBacktrace.instance().configure(getApplicationContext()).commit();
+```
+
+Then other components in Matrix could use Quikcen Backtrace to unwind stacktrace. See more configuration comments in 'WeChatBacktrace.Configuration'.
 
 #### APK Checker Usage
 
-APK Checker can run independently in Jar ([matrix-apk-canary-1.0.0.jar](https://repo.maven.apache.org/maven2/com/tencent/matrix/matrix-apk-canary/1.0.0/matrix-apk-canary-1.0.0.jar)）  mode, usage:
+APK Checker can run independently in Jar ([matrix-apk-canary-2.0.0-beta.jar](https://repo.maven.apache.org/maven2/com/tencent/matrix/matrix-apk-canary/2.0.0-beta/matrix-apk-canary-2.0.0-beta.jar)）  mode, usage:
 
 
 ```shell
-java -jar matrix-apk-canary-1.0.0.jar
+java -jar matrix-apk-canary-2.0.0-beta.jar
 Usages: 
     --config CONFIG-FILE-PATH
 or
@@ -405,7 +413,7 @@ Matrix is under the BSD license. See the [LICENSE](https://github.com/Tencent/Ma
 
 # <a name="matrix_cn">Matrix</a>
 ![Matrix-icon](assets/img/readme/header.png)
-[![license](http://img.shields.io/badge/license-BSD3-brightgreen.svg?style=flat)](https://github.com/Tencent/matrix/blob/master/LICENSE)[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/Tencent/matrix/pulls)  [![WeChat Approved](https://img.shields.io/badge/Wechat%20Approved-1.0.0-red.svg)](https://github.com/Tencent/matrix/wiki)
+[![license](http://img.shields.io/badge/license-BSD3-brightgreen.svg?style=flat)](https://github.com/Tencent/matrix/blob/master/LICENSE)[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/Tencent/matrix/pulls)  [![WeChat Approved](https://img.shields.io/badge/Wechat%20Approved-2.0.0-beta-red.svg)](https://github.com/Tencent/matrix/wiki)
 
 **Matrix** 是一款微信研发并日常使用的应用性能接入框架，支持iOS, macOS和Android。
 Matrix 通过接入各种性能监控方案，对性能监控项的异常数据进行采集和分析，输出相应的问题分析、定位与优化建议，从而帮助开发者开发出更高质量的应用。
@@ -585,7 +593,7 @@ Matrix-android 当前监控范围包括：应用安装包大小，帧率变化�
 
 1. 在你项目根目录下的 gradle.properties 中配置要依赖的 Matrix 版本号，如：
 ``` gradle
-  MATRIX_VERSION=1.0.0
+  MATRIX_VERSION=2.0.0-beta
 ```
 
 2. 在你项目根目录下的 build.gradle 文件添加 Matrix 依赖，如：
@@ -720,13 +728,21 @@ BatteryMonitorPlugin plugin = new BatteryMonitorPlugin(config);
 
 具体使用方式，请参考单元测试里相关用例的代码： `com.tencent.matrix.batterycanary.ApisTest` 或 `sample.tencent.matrix.battery.BatteryCanaryInitHelper`.
 
+#### Backtrace Component Usage
+
+如何初始化 backtrace 组件：
+```java
+WeChatBacktrace.instance().configure(getApplicationContext()).commit();
+```
+
+初始化后其他 Matrix 组件就可以使用 Quicken Backtrace 进行回溯。更多参数的配置请查看 WeChatBacktrace.Configuration 的接口注释。
 
 #### APK Checker
 
-APK Check 以独立的 jar 包提供 ([matrix-apk-canary-1.0.0.jar](https://repo.maven.apache.org/maven2/com/tencent/matrix/matrix-apk-canary/1.0.0/matrix-apk-canary-1.0.0.jar)），你可以运行：
+APK Check 以独立的 jar 包提供 ([matrix-apk-canary-2.0.0-beta.jar](https://repo.maven.apache.org/maven2/com/tencent/matrix/matrix-apk-canary/2.0.0-beta/matrix-apk-canary-2.0.0-beta.jar)），你可以运行：
 
 ```cmd
-java -jar matrix-apk-canary-1.0.0.jar
+java -jar matrix-apk-canary-2.0.0-beta.jar
 ```
 
 查看 Usages 来使用它。
