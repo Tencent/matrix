@@ -386,7 +386,7 @@ static void xh_core_refresh_impl()
 
                 match = 1;
             check_continue:
-                break;
+                continue;
             }
         }
     check_finished:
