@@ -58,7 +58,7 @@
 #define NOTIFY_COMMON_IGNORE_LIBS() \
     do { \
       xhook_ignore(".*libwechatbacktrace\\.so$", NULL); \
-      xhook_ignore(".*librabbiteye\\.so$", NULL); \
+      xhook_ignore(".*libtrace-canary\\.so$", NULL); \
       xhook_ignore(".*libwechatcrash\\.so$", NULL); \
       xhook_ignore(".*libmemguard\\.so$", NULL); \
       xhook_ignore(".*libmemmisc\\.so$", NULL); \
