@@ -26,11 +26,11 @@ import com.tencent.matrix.trace.config.SharePluginInfo;
 import com.tencent.matrix.trace.config.TraceConfig;
 import com.tencent.matrix.trace.core.AppMethodBeat;
 import com.tencent.matrix.trace.core.UIThreadMonitor;
+import com.tencent.matrix.trace.tracer.EvilMethodTracer;
+import com.tencent.matrix.trace.tracer.FrameTracer;
 import com.tencent.matrix.trace.tracer.IdleHandlerLagTracer;
 import com.tencent.matrix.trace.tracer.LooperAnrTracer;
 import com.tencent.matrix.trace.tracer.SignalAnrTracer;
-import com.tencent.matrix.trace.tracer.EvilMethodTracer;
-import com.tencent.matrix.trace.tracer.FrameTracer;
 import com.tencent.matrix.trace.tracer.StartupTracer;
 import com.tencent.matrix.trace.tracer.ThreadPriorityTracer;
 import com.tencent.matrix.util.MatrixHandlerThread;
@@ -113,7 +113,7 @@ public class TracePlugin extends Plugin {
                 }
 
                 if (traceConfig.isSignalAnrTraceEnable()) {
-                    if(!SignalAnrTracer.hasInstance) {
+                    if (!SignalAnrTracer.hasInstance) {
                         signalAnrTracer = new SignalAnrTracer(traceConfig);
                         signalAnrTracer.onStartTrace();
                     }
@@ -135,7 +135,6 @@ public class TracePlugin extends Plugin {
                 if (traceConfig.isStartupEnable()) {
                     startupTracer.onStartTrace();
                 }
-
 
 
             }

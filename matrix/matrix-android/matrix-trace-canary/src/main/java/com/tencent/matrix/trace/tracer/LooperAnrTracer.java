@@ -1,15 +1,9 @@
 package com.tencent.matrix.trace.tracer;
 
-import android.os.Build;
 import android.os.Handler;
-import android.os.HandlerThread;
 import android.os.Looper;
-import android.os.MessageQueue;
 import android.os.Process;
 import android.os.SystemClock;
-
-import androidx.annotation.Nullable;
-import androidx.annotation.RequiresApi;
 
 import com.tencent.matrix.Matrix;
 import com.tencent.matrix.report.Issue;
@@ -29,13 +23,9 @@ import com.tencent.matrix.util.MatrixLog;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.lang.reflect.Field;
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 
 public class LooperAnrTracer extends Tracer {
 
@@ -97,7 +87,8 @@ public class LooperAnrTracer extends Tracer {
         if (traceConfig.isDevEnv()) {
             long cost = (endNs - beginNs) / Constants.TIME_MILLIS_TO_NANO;
             MatrixLog.v(TAG, "[dispatchEnd] token:%s cost:%sms cpu:%sms usage:%s",
-                    token, cost, cpuEndMs - cpuBeginMs, Utils.calculateCpuUsage(cpuEndMs - cpuBeginMs, cost));
+                    token, cost,
+                    cpuEndMs - cpuBeginMs, Utils.calculateCpuUsage(cpuEndMs - cpuBeginMs, cost));
         }
         if (null != anrTask) {
             anrTask.getBeginRecord().release();
@@ -219,7 +210,8 @@ public class LooperAnrTracer extends Tracer {
             String stackKey = TraceDataUtils.getTreeKey(stack, stackCost);
             MatrixLog.w(TAG, "%s \npostTime:%s curTime:%s",
                     printAnr(scene, processStat, memoryInfo, status, logcatBuilder, isForeground, stack.size(),
-                            stackKey, dumpStack, inputCost, animationCost, traversalCost, stackCost), token / Constants.TIME_MILLIS_TO_NANO, curTime); // for logcat
+                            stackKey, dumpStack, inputCost, animationCost, traversalCost, stackCost),
+                    token / Constants.TIME_MILLIS_TO_NANO, curTime); // for logcat
 
             if (stackCost >= Constants.DEFAULT_ANR_INVALID) {
                 MatrixLog.w(TAG, "The checked anr task was not executed on time. "
@@ -261,9 +253,6 @@ public class LooperAnrTracer extends Tracer {
             }
 
         }
-
-
-
 
 
         private String printAnr(String scene, int[] processStat, long[] memoryInfo, Thread.State state, StringBuilder stack, boolean isForeground,

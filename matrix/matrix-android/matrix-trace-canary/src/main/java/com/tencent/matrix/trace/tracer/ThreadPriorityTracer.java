@@ -13,7 +13,7 @@ import com.tencent.matrix.util.MatrixLog;
 
 import org.json.JSONObject;
 
-public class ThreadPriorityTracer extends Tracer{
+public class ThreadPriorityTracer extends Tracer {
 
     private static final String TAG = "ThreadPriorityTracer";
     private static MainThreadPriorityModifiedListener sMainThreadPriorityModifiedListener;
@@ -106,6 +106,7 @@ public class ThreadPriorityTracer extends Tracer{
 
     public interface MainThreadPriorityModifiedListener {
         void onMainThreadPriorityModified(int priority);
+
         void onMainThreadTimerSlackModified(long timerSlack);
     }
 }

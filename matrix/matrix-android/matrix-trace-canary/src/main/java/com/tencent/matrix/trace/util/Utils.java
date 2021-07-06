@@ -1,16 +1,8 @@
 package com.tencent.matrix.trace.util;
 
-import android.os.FileUtils;
 import android.os.Looper;
 
 import com.tencent.matrix.util.DeviceUtil;
-import com.tencent.matrix.util.MatrixLog;
-
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.Reader;
 
 public class Utils {
 

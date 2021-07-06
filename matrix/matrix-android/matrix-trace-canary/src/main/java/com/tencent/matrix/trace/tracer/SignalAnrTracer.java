@@ -4,7 +4,6 @@ import android.app.ActivityManager;
 import android.app.Application;
 import android.content.Context;
 import android.os.Build;
-import android.os.Environment;
 import android.os.Looper;
 import android.os.Message;
 import android.os.MessageQueue;
@@ -13,7 +12,6 @@ import android.os.SystemClock;
 import androidx.annotation.Keep;
 import androidx.annotation.RequiresApi;
 
-import com.tencent.matrix.AppActiveMatrixDelegate;
 import com.tencent.matrix.Matrix;
 import com.tencent.matrix.report.Issue;
 import com.tencent.matrix.trace.TracePlugin;
@@ -30,17 +28,17 @@ import com.tencent.matrix.util.MatrixUtil;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.List;
 
-public class SignalAnrTracer extends Tracer{
+public class SignalAnrTracer extends Tracer {
     private static final String TAG = "SignalAnrTracer";
 
     private static final int CHECK_ERROR_STATE_INTERVAL = 500;
     private static final int ANR_DUMP_MAX_TIME = 20000;
-    private static final int CHECK_ERROR_STATE_COUNT = ANR_DUMP_MAX_TIME / CHECK_ERROR_STATE_INTERVAL;
+    private static final int CHECK_ERROR_STATE_COUNT =
+            ANR_DUMP_MAX_TIME / CHECK_ERROR_STATE_INTERVAL;
     private static final long FOREGROUND_MSG_THRESHOLD = -2000;
     private static final long BACKGROUND_MSG_THRESHOLD = -10000;
     private static boolean currentForeground = false;
@@ -79,7 +77,7 @@ public class SignalAnrTracer extends Tracer{
         sPrintTraceFilePath = traceConfig.printTraceFilePath;
     }
 
-    public SignalAnrTracer(Application application, String  anrTraceFilePath, String printTraceFilePath) {
+    public SignalAnrTracer(Application application, String anrTraceFilePath, String printTraceFilePath) {
         hasInstance = true;
         sAnrTraceFilePath = anrTraceFilePath;
         sPrintTraceFilePath = printTraceFilePath;
@@ -160,7 +158,7 @@ public class SignalAnrTracer extends Tracer{
     }
 
 
-    private static boolean firstCheckMessage(){
+    private static boolean firstCheckMessage() {
         try {
             MessageQueue mainQueue = Looper.getMainLooper().getQueue();
             Field field = mainQueue.getClass().getDeclaredField("mMessages");
@@ -168,7 +166,7 @@ public class SignalAnrTracer extends Tracer{
             final Message mMessage = (Message) field.get(mainQueue);
             if (mMessage != null) {
                 long when = mMessage.getWhen();
-                if(when == 0) {
+                if (when == 0) {
                     return false;
                 }
                 long time = when - SystemClock.uptimeMillis();
@@ -178,19 +176,19 @@ public class SignalAnrTracer extends Tracer{
                 }
                 return time < timeThreshold;
             }
-        } catch (Exception e){
+        } catch (Exception e) {
             return false;
         }
         return false;
     }
 
 
-    private static void checkErrorStateCycle(){
+    private static void checkErrorStateCycle() {
         int checkErrorStateCount = 0;
-        while(checkErrorStateCount < CHECK_ERROR_STATE_COUNT) {
+        while (checkErrorStateCount < CHECK_ERROR_STATE_COUNT) {
             checkErrorStateCount++;
             boolean myAnr = checkErrorState();
-            if(myAnr){
+            if (myAnr) {
                 break;
             }
         }
@@ -198,7 +196,8 @@ public class SignalAnrTracer extends Tracer{
 
     private static boolean checkErrorState() {
         try {
-            Application application = sApplication == null ? Matrix.with().getApplication() : sApplication;
+            Application application =
+                    sApplication == null ? Matrix.with().getApplication() : sApplication;
             ActivityManager am = (ActivityManager) application
                     .getSystemService(Context.ACTIVITY_SERVICE);
 
@@ -208,19 +207,22 @@ public class SignalAnrTracer extends Tracer{
             for (ActivityManager.ProcessErrorStateInfo proc : procs) {
                 MatrixLog.i(TAG, "[checkErrorState] found Error State proccessName = %s, proc.condition = %d", proc.processName, proc.condition);
 
-                if(proc.uid != android.os.Process.myUid() && proc.condition == ActivityManager.ProcessErrorStateInfo.NOT_RESPONDING){
+                if (proc.uid != android.os.Process.myUid()
+                        && proc.condition == ActivityManager.ProcessErrorStateInfo.NOT_RESPONDING) {
                     MatrixLog.i(TAG, "maybe received other apps ANR signal");
                 }
 
                 if (proc.pid != android.os.Process.myPid()) continue;
 
-                if (proc.condition != ActivityManager.ProcessErrorStateInfo.NOT_RESPONDING) continue;
+                if (proc.condition != ActivityManager.ProcessErrorStateInfo.NOT_RESPONDING) {
+                    continue;
+                }
 
                 return true;
             }
             return false;
-        } catch (Throwable t){
-            MatrixLog.e(TAG,"[checkErrorState] error : %s", t.getMessage());
+        } catch (Throwable t) {
+            MatrixLog.e(TAG, "[checkErrorState] error : %s", t.getMessage());
         }
         return false;
     }
