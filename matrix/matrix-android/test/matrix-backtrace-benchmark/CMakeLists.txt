@@ -27,6 +27,20 @@ SET(
         ${SOURCE_DIR}/test/JavaStacktrace.cpp
 )
 
+IF(${ANDROID_ABI} STREQUAL armeabi-v7a)
+        SET(
+            SOURCE_FILES
+            ${SOURCE_FILES}
+
+            ${SOURCE_DIR}/test/unwind32/backtrace.c
+            ${SOURCE_DIR}/test/unwind32/backtrace-arm.c
+            ${SOURCE_DIR}/test/unwind32/backtrace-helper.c
+            ${SOURCE_DIR}/test/unwind32/map_info.c
+            ${SOURCE_DIR}/test/unwind32/ptrace.c
+        )
+ENDIF()
+
+
 ADD_LIBRARY( # Specifies the name of the library.
         ${TARGET}
 
