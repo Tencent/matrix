@@ -42,20 +42,15 @@
             <View style="@style/Divider" />
 
             <Button
-                android:id="@+id/test_io"
+                android:id="@+id/test_hooks"
                 style="@style/EntryButton"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="IO Canary" />
+                android:text="Matrix Hooks" />
 
-            <Button
-                android:id="@+id/test_sqlite_lint"
-                style="@style/EntryButton"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="SQLite Lint" />
+            <TextView
+                style="@style/DescText"
+                android:text="Include allocation hooks, pthread creation hooks and some other hack tools to mitigate 32 bit virtual memory address insufficiency." />
 
             <View style="@style/Divider" />
 
@@ -73,11 +68,20 @@
             <View style="@style/Divider" />
 
             <Button
-                android:id="@+id/test_hooks"
+                android:id="@+id/test_io"
                 style="@style/EntryButton"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Matrix Hooks" />
+                android:layout_weight="1"
+                android:text="IO Canary" />
+
+            <Button
+                android:id="@+id/test_sqlite_lint"
+                style="@style/EntryButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="SQLite Lint" />
 
         </LinearLayout>
     </ScrollView>
