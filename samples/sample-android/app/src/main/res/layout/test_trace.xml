@@ -34,14 +34,14 @@
         android:text="Catch ANR"
         style="@style/EntryButton" />
 
-    <Button
-        android:id="@+id/test_evil_method"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:onClick="testJankiess"
-        android:text="Tracing Method"
-        style="@style/EntryButton" />
+<!--    <Button-->
+<!--        android:id="@+id/test_evil_method"-->
+<!--        android:layout_width="match_parent"-->
+<!--        android:layout_height="wrap_content"-->
+<!--        android:layout_marginTop="16dp"-->
+<!--        android:onClick="testJankiess"-->
+<!--        android:text="Janky"-->
+<!--        style="@style/EntryButton" />-->
 
     <Button
         android:id="@+id/test_stop_app_method_beat"
@@ -49,7 +49,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
         android:onClick="stopAppMethodBeat"
-        android:text="start/stop AppMethodBeat"
+        android:text="Start/Stop AppMethodBeat"
         style="@style/EntryButton" />
 
     <Button
@@ -58,8 +58,8 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
         android:minWidth="200dp"
-        android:onClick="testANR"
-        android:text="Catch ANR Signal(TODO)"
+        android:onClick="testSignalANR"
+        android:text="Catch ANR Signal"
         style="@style/EntryButton" />
 
     <TextView

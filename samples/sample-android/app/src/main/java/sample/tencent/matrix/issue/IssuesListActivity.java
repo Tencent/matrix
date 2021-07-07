@@ -62,7 +62,7 @@ public class IssuesListActivity extends AppCompatActivity {
 
         setContentView(R.layout.activity_issue_list);
 
-        setTitle(IssueFilter.getCurrentFilter());
+        setTitle("ISSUE List");
         initRecyclerView();
 
         if (currToastCount < toastCount) {
@@ -98,7 +98,7 @@ public class IssuesListActivity extends AppCompatActivity {
         public void onBindViewHolder(final ViewHolder holder, int position) {
 
             holder.bindPosition(position);
-            final Issue issue = IssuesMap.get(IssueFilter.getCurrentFilter()).get(position);
+            final Issue issue = IssuesMap.getIssueReverse(position);
             holder.bind(issue);
 
             holder.itemView.setOnClickListener(new View.OnClickListener() {
@@ -116,7 +116,7 @@ public class IssuesListActivity extends AppCompatActivity {
 
         @Override
         public int getItemCount() {
-            return IssuesMap.getCount();
+            return IssuesMap.amountOfIssues();
         }
     }
 

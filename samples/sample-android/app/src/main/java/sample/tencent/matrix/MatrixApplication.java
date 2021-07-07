@@ -21,7 +21,6 @@ import android.content.Context;
 import android.content.Intent;
 
 import com.tencent.matrix.Matrix;
-import com.tencent.matrix.batterycanary.BatteryCanary;
 import com.tencent.matrix.batterycanary.BatteryMonitorPlugin;
 import com.tencent.matrix.iocanary.IOCanaryPlugin;
 import com.tencent.matrix.iocanary.config.IOConfig;
@@ -30,7 +29,6 @@ import com.tencent.matrix.resource.config.ResourceConfig;
 import com.tencent.matrix.trace.TracePlugin;
 import com.tencent.matrix.trace.config.TraceConfig;
 import com.tencent.matrix.util.MatrixLog;
-import com.tencent.mrs.plugin.IDynamicConfig;
 import com.tencent.sqlitelint.SQLiteLint;
 import com.tencent.sqlitelint.SQLiteLintPlugin;
 import com.tencent.sqlitelint.config.SQLiteLintConfig;
@@ -39,7 +37,6 @@ import sample.tencent.matrix.battery.BatteryCanaryInitHelper;
 import sample.tencent.matrix.config.DynamicConfigImplDemo;
 import sample.tencent.matrix.listener.TestPluginListener;
 import sample.tencent.matrix.resource.ManualDumpActivity;
-import sample.tencent.matrix.sqlitelint.TestSQLiteLintActivity;
 
 /**
  * Created by caichongyang on 17/5/18.
@@ -49,21 +46,6 @@ public class MatrixApplication extends Application {
     private static final String TAG = "Matrix.Application";
 
     private static Context sContext;
-
-    // TODO Remove this.
-    private static SQLiteLintConfig initSQLiteLintConfig() {
-        try {
-            /**
-             * HOOK模式下，SQLiteLint会自己去获取所有已执行的sql语句及其耗时(by hooking sqlite3_profile)
-             * @see 而另一个模式：SQLiteLint.SqlExecutionCallbackMode.CUSTOM_NOTIFY , 则需要调用 {@link SQLiteLint#notifySqlExecution(String, String, int)}来通知
-             * SQLiteLint 需要分析的、已执行的sql语句及其耗时
-             * @see TestSQLiteLintActivity#doTest()
-             */
-            return new SQLiteLintConfig(SQLiteLint.SqlExecutionCallbackMode.HOOK);
-        } catch (Throwable t) {
-            return new SQLiteLintConfig(SQLiteLint.SqlExecutionCallbackMode.HOOK);
-        }
-    }
 
     @Override
     public void onCreate() {
@@ -103,6 +85,9 @@ public class MatrixApplication extends Application {
 
         Matrix.init(builder.build());
 
+        // Trace Plugin need call start() at the beginning.
+        tracePlugin.start();
+
         MatrixLog.i(TAG, "Matrix configurations done.");
 
     }
@@ -111,14 +96,17 @@ public class MatrixApplication extends Application {
 
         boolean fpsEnable = dynamicConfig.isFPSEnable();
         boolean traceEnable = dynamicConfig.isTraceEnable();
+        boolean signalAnrTraceEnable = dynamicConfig.isSignalAnrTraceEnable();
 
         TraceConfig traceConfig = new TraceConfig.Builder()
                 .dynamicConfig(dynamicConfig)
                 .enableFPS(fpsEnable)
                 .enableEvilMethodTrace(traceEnable)
                 .enableAnrTrace(traceEnable)
-                .enableSignalAnrTrace(true)
                 .enableStartup(traceEnable)
+                .enableIdleHandlerTrace(traceEnable)                    // Introduced in Matrix 2.0
+                .enableMainThreadPriorityTrace(true)                    // Introduced in Matrix 2.0
+                .enableSignalAnrTrace(signalAnrTraceEnable)             // Introduced in Matrix 2.0
                 .splashActivities("sample.tencent.matrix.SplashActivity;")
                 .isDebug(true)
                 .isDevEnv(false)
@@ -135,8 +123,6 @@ public class MatrixApplication extends Application {
         ResourceConfig resourceConfig = new ResourceConfig.Builder()
                 .dynamicConfig(dynamicConfig)
                 .setAutoDumpHprofMode(mode)
-//                .setDetectDebuger(true) //matrix test code
-//                    .set(intent)
                 .setManualDumpTargetActivity(ManualDumpActivity.class.getName())
                 .build();
         ResourcePlugin.activityLeakFixer(this);
@@ -152,6 +138,15 @@ public class MatrixApplication extends Application {
 
     private SQLiteLintPlugin configureSQLiteLintPlugin() {
         SQLiteLintConfig sqlLiteConfig;
+
+        /*
+         * HOOK模式下，SQLiteLint会自己去获取所有已执行的sql语句及其耗时(by hooking sqlite3_profile)
+         * @see 而另一个模式：SQLiteLint.SqlExecutionCallbackMode.CUSTOM_NOTIFY , 则需要调用 {@link SQLiteLint#notifySqlExecution(String, String, int)}来通知
+         * SQLiteLint 需要分析的、已执行的sql语句及其耗时
+         * @see TestSQLiteLintActivity#doTest()
+         */
+        // sqlLiteConfig = new SQLiteLintConfig(SQLiteLint.SqlExecutionCallbackMode.HOOK);
+
         sqlLiteConfig = new SQLiteLintConfig(SQLiteLint.SqlExecutionCallbackMode.CUSTOM_NOTIFY);
         return new SQLiteLintPlugin(sqlLiteConfig);
     }

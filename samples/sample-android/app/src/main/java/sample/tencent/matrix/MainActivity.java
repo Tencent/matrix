@@ -17,15 +17,22 @@
 package sample.tencent.matrix;
 
 import android.content.Intent;
+import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
-import android.os.SystemClock;
+import android.provider.Settings;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
+
+import com.tencent.matrix.trace.view.FrameDecorator;
+import com.tencent.matrix.util.MatrixLog;
+
 import sample.tencent.matrix.battery.TestBatteryActivity;
 import sample.tencent.matrix.io.TestIOActivity;
 import sample.tencent.matrix.issue.IssuesMap;
@@ -93,17 +100,17 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        for (int i = 0; i < 20; i++) {
-            HandlerThread handlerThread = new HandlerThread(TAG + i);
-            handlerThread.start();
-            new Handler(handlerThread.getLooper()).post(new Runnable() {
-                @Override
-                public void run() {
-                    Log.i(TAG, "run");
-//                    SystemClock.sleep(10000000);
-                }
-            });
-        }
+//        for (int i = 0; i < 20; i++) {
+//            HandlerThread handlerThread = new HandlerThread(TAG + i);
+//            handlerThread.start();
+//            new Handler(handlerThread.getLooper()).post(new Runnable() {
+//                @Override
+//                public void run() {
+//                    Log.i(TAG, "run");
+////                    SystemClock.sleep(10000000);
+//                }
+//            });
+//        }
 
     }
 

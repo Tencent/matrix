@@ -45,12 +45,6 @@ import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 import sample.tencent.matrix.R;
 
-//import com.tencent.matrix.batterycanary.BatteryCanaryPlugin;
-
-/**
- * Created by zhangshaowen on 17/6/13.
- */
-
 public class TestBatteryActivity extends Activity {
     private static final String TAG = "Matrix.TestBatteryActivity";
 

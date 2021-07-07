@@ -24,43 +24,7 @@
 
             <TextView
                 style="@style/DescText"
-                android:text="Provide several functions like FPS monitor/ANR Catch/Method Tracing and other gadgets to detect some specific problems." />
-
-            <View style="@style/Divider" />
-
-            <Button
-                android:id="@+id/test_battery"
-                style="@style/EntryButton"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Battery Canary" />
-
-            <TextView
-                style="@style/DescText"
-                android:text="Battery Canary detects thread jiffies abnormal usage." />
-
-            <View style="@style/Divider" />
-
-            <Button
-                android:id="@+id/test_memory_hook"
-                style="@style/EntryButton"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Memory Hook(TODO)" />
-
-            <Button
-                android:id="@+id/test_memory_misc"
-                style="@style/EntryButton"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Memory Misc(TODO)" />
-
-            <Button
-                android:id="@+id/test_pthread_hook"
-                style="@style/EntryButton"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Pthread Hook(TODO)" />
+                android:text="Provide multiple functions like FPS monitor/ANR Catch/Method Tracing and other gadgets to detect some specific problems." />
 
             <View style="@style/Divider" />
 
@@ -92,6 +56,42 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:text="SQLite Lint" />
+
+            <View style="@style/Divider" />
+
+            <Button
+                android:id="@+id/test_battery"
+                style="@style/EntryButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Battery Canary" />
+
+            <TextView
+                style="@style/DescText"
+                android:text="Battery Canary detects abnormal usage of thread jiffies." />
+
+            <View style="@style/Divider" />
+
+            <Button
+                android:id="@+id/test_memory_hook"
+                style="@style/EntryButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Memory Hook(TODO)" />
+
+            <Button
+                android:id="@+id/test_memory_misc"
+                style="@style/EntryButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Memory Misc(TODO)" />
+
+            <Button
+                android:id="@+id/test_pthread_hook"
+                style="@style/EntryButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Pthread Hook(TODO)" />
 
         </LinearLayout>
     </ScrollView>
