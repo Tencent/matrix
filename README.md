@@ -59,7 +59,6 @@ In the following places:
 * Program `main` function;
 * `application:didFinishLaunchingWithOptions:` of  `AppDelegate`;
 * Or other places running as earlier as possible after application launching.
-  
 
 Add a code similar to the following to start the plugin:
 
@@ -187,8 +186,15 @@ At this point, Matrix has been integrated into the app and is beginning to colle
 
 #### Pthread Hook
 
-- A Java and native thread leak detection tool for Android.
+- A Java and native thread leak detection and native thread stack space trimming tool for Android.
 - **Non-invasive.** It is based on PLT-hook([iqiyi/xHook](https://github.com/iqiyi/xHook)), so we do NOT need to recompile the native libraries.
+- It saves virtual memory overhead by trimming default stack size of native thread in half, which can reduce crashes caused by virtual memory insufficient under 32bit environment.
+
+#### WVPreAllocHook
+
++ A tool for saving virtual memory overhead caused by WebView preloading when WebView is not actually used. It's useful for reducing crashes caused by virtual memory insufficient under 32bit environment.
++ **Non-invasive.** It is based on PLT-hook([iqiyi/xHook](https://github.com/iqiyi/xHook)), so we do NOT need to recompile the native libraries.
++ WebView still works after using this tool.
 
 
 #### Backtrace Component
@@ -581,8 +587,15 @@ Matrix-android 当前监控范围包括：应用安装包大小，帧率变化�
 
 #### Pthread Hook
 
-- 一个检测 Android Java 和 native 线程泄漏的工具
+- 一个检测 Android Java 和 native 线程泄漏及缩减 native 线程栈空间的工具
 - 无侵入，基于 PLT-hook([iqiyi/xHook](https://github.com/iqiyi/xHook))，无需重编 native 库
+- 通过对 native 线程的默认栈大小进行减半降低线程带来的虚拟内存开销，在 32 位环境下可缓解虚拟内存不足导致的崩溃问题
+
+#### WVPreAllocHook
+
++ 一个用于安全释放 WebView 预分配内存以在不加载 WebView 时节省虚拟内存的工具，在 32 位环境下可缓解虚拟内存不足导致的崩溃问题
++ 无侵入，基于 PLT-hook([iqiyi/xHook](https://github.com/iqiyi/xHook))，无需重编 native 库
++ 使用该工具后 WebView 仍可正常工作
 
 #### Backtrace Component
 - 基于 DWARF 以及 ARM 异常处理数据进行简化并生成全新的 quicken unwind tables 数据，用于实现可快速回溯 native 调用栈的 backtrace 组件。回溯速度约是 libunwindstack 的 15x ~ 30x 左右。
