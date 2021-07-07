@@ -34,6 +34,7 @@ import com.tencent.matrix.trace.view.FrameDecorator;
 import com.tencent.matrix.util.MatrixLog;
 
 import sample.tencent.matrix.battery.TestBatteryActivity;
+import sample.tencent.matrix.hooks.TestHooksActivity;
 import sample.tencent.matrix.io.TestIOActivity;
 import sample.tencent.matrix.issue.IssuesMap;
 import sample.tencent.matrix.resource.TestLeakActivity;
@@ -100,17 +101,14 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-//        for (int i = 0; i < 20; i++) {
-//            HandlerThread handlerThread = new HandlerThread(TAG + i);
-//            handlerThread.start();
-//            new Handler(handlerThread.getLooper()).post(new Runnable() {
-//                @Override
-//                public void run() {
-//                    Log.i(TAG, "run");
-////                    SystemClock.sleep(10000000);
-//                }
-//            });
-//        }
+        Button testHooks = findViewById(R.id.test_hooks);
+        testHooks.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent(MainActivity.this, TestHooksActivity.class);
+                startActivity(intent);
+            }
+        });
 
     }
 

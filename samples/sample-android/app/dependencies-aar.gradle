@@ -11,6 +11,10 @@ dependencies {
             "matrix-resource-canary-common",
             "matrix-io-canary",
             "matrix-sqlite-lint-android-sdk",
+            "matrix-hooks",
+            "matrix-fd",
+            "matrix-jectl",
+            "matrix-backtrace",
     ]
 
     matrixModules.each { moduleName ->

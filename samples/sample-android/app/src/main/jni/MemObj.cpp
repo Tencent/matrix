@@ -31,7 +31,7 @@ using namespace std;
 int count = 0;
 
 JNIEXPORT void JNICALL
-Java_com_tencent_matrix_hooks_sample_JNIObj_doMmap(JNIEnv *env, jobject instance) {
+Java_sample_tencent_matrix_hooks_JNIObj_doMmap(JNIEnv *env, jobject instance) {
 
     void *p_mmap = mmap(NULL, 1024, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
     LOGD(TAG, "map ptr = %p", p_mmap);
@@ -53,7 +53,7 @@ Java_com_tencent_matrix_hooks_sample_JNIObj_doMmap(JNIEnv *env, jobject instance
 }
 
 JNIEXPORT void JNICALL
-Java_com_tencent_matrix_hooks_sample_JNIObj_reallocTest(JNIEnv *env, jobject instance) {
+Java_sample_tencent_matrix_hooks_JNIObj_reallocTest(JNIEnv *env, jobject instance) {
     void *p = malloc(1024);
     p = realloc(p, 2048);
     // leak p
@@ -69,7 +69,7 @@ Java_com_tencent_matrix_hooks_sample_JNIObj_reallocTest(JNIEnv *env, jobject ins
 }
 
 JNIEXPORT void JNICALL
-Java_com_tencent_matrix_hooks_sample_JNIObj_mallocTest(JNIEnv *env, jclass clazz) {
+Java_sample_tencent_matrix_hooks_JNIObj_mallocTest(JNIEnv *env, jclass clazz) {
 //    malloc_test();
 #define LEN 20
     void *p = malloc(300 * 1024 * 1024);

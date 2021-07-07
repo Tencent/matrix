@@ -73,25 +73,11 @@
             <View style="@style/Divider" />
 
             <Button
-                android:id="@+id/test_memory_hook"
+                android:id="@+id/test_hooks"
                 style="@style/EntryButton"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Memory Hook(TODO)" />
-
-            <Button
-                android:id="@+id/test_memory_misc"
-                style="@style/EntryButton"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Memory Misc(TODO)" />
-
-            <Button
-                android:id="@+id/test_pthread_hook"
-                style="@style/EntryButton"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Pthread Hook(TODO)" />
+                android:text="Matrix Hooks" />
 
         </LinearLayout>
     </ScrollView>
