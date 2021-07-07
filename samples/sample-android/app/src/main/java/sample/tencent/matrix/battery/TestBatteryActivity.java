@@ -32,12 +32,14 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.tencent.matrix.Matrix;
 import com.tencent.matrix.batterycanary.BatteryCanary;
 import com.tencent.matrix.batterycanary.BatteryEventDelegate;
 import com.tencent.matrix.batterycanary.BatteryMonitorPlugin;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
+import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature.JiffiesSnapshot.ThreadJiffiesEntry;
 import com.tencent.matrix.plugin.Plugin;
 import com.tencent.matrix.util.MatrixLog;
 
@@ -148,7 +150,7 @@ public class TestBatteryActivity extends Activity {
             public void run() {
                 while (!isDestroyed()) {}
             }
-        }, "BatteryCanaryTest").start();
+        }, "Benchmark").start();
     }
 
     public void onDumpBatteryStats(View view) {
@@ -161,13 +163,24 @@ public class TestBatteryActivity extends Activity {
             public void onGetJiffies(JiffiesSnapshot currJiffiesSnapshot) {
                 if (mLastJiffiesSnapshot != null) {
                     // Configure jiffies delta
-                    Snapshot.Delta<JiffiesSnapshot> delta = currJiffiesSnapshot.diff(mLastJiffiesSnapshot);
-                    final String text = BatteryCanaryInitHelper.convertStatsToReadFriendlyText(delta);
-                    Log.i(TAG, "dump jiffies stats: " + text);
+                    final Snapshot.Delta<JiffiesSnapshot> delta = currJiffiesSnapshot.diff(mLastJiffiesSnapshot);
                     findViewById(R.id.tv_battery_stats).post(new Runnable() {
                         @Override
                         public void run() {
+                            final String text = BatteryCanaryInitHelper.convertStatsToReadFriendlyText(delta);
+                            Log.i(TAG, "dump jiffies stats: " + text);
                             TextView.class.cast(findViewById(R.id.tv_battery_stats)).setText(text);
+
+                            if (delta.dlt.threadEntries.getList().size() > 0) {
+                                ThreadJiffiesEntry topThread = delta.dlt.threadEntries.getList().get(0);
+                                if (topThread.get() >= 1000) {
+                                    Toast.makeText(
+                                            getApplication(),
+                                            "Abnormal thread found: " + topThread.name + ", jiffies = " + topThread.get(),
+                                            Toast.LENGTH_LONG
+                                    ).show();
+                                }
+                            }
                         }
                     });
                 }
