@@ -64,6 +64,9 @@ Java_com_tencent_matrix_benchmark_test_UnwindBenchmarkTest_nativeBenchmark(
         BENCHMARK_TIMES(DWARF_UNWIND, times, func_selfso());
         BENCHMARK_TIMES(FP_UNWIND, times, func_selfso());
         BENCHMARK_TIMES(WECHAT_QUICKEN_UNWIND, times, func_selfso());
+#ifdef __arm__
+        BENCHMARK_TIMES(LIBUDF_UNWIND, times, func_selfso());
+#endif
     }
 }
 
@@ -86,9 +89,13 @@ Java_com_tencent_matrix_benchmark_test_UnwindBenchmarkTest_nativeTry(JNIEnv *env
 
     bool previous = switch_print_stack(true);
     for (int i = 0; i < 1; i++) {
+
         BENCHMARK_TIMES(DWARF_UNWIND, 1, func_selfso());
         BENCHMARK_TIMES(FP_UNWIND, 1, func_selfso());
         BENCHMARK_TIMES(WECHAT_QUICKEN_UNWIND, 1, func_selfso());
+#ifdef __arm__
+        BENCHMARK_TIMES(LIBUDF_UNWIND, 1, func_selfso());
+#endif
     }
     switch_print_stack(previous);
 }
