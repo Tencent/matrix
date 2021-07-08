@@ -90,7 +90,7 @@ public class WeChatBacktraceNative {
      * @param elfStartOffset
      */
     @Keep
-    public static native boolean testLoadQut(String soPath, int elfStartOffset);
+    static native boolean testLoadQut(String soPath, int elfStartOffset);
 
     /**
      * Some statistic.

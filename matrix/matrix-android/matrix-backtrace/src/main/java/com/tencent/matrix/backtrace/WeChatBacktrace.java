@@ -149,11 +149,11 @@ public class WeChatBacktrace {
     }
 
     // Invoke by warm-up provider
-    public static void loadLibrary() {
+    static void loadLibrary() {
         System.loadLibrary(BACKTRACE_LIBRARY_NAME);
     }
 
-    public static void enableLogger(boolean enableLogger) {
+    static void enableLogger(boolean enableLogger) {
         WeChatBacktraceNative.enableLogger(enableLogger);
     }
 

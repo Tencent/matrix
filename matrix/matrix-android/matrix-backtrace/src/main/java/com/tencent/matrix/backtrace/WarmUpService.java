@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.tencent.components.backtrace;
+package com.tencent.matrix.backtrace;
 
 import android.annotation.SuppressLint;
 import android.app.Service;
@@ -33,10 +33,6 @@ import android.os.RemoteException;
 
 import androidx.annotation.Nullable;
 
-import com.tencent.matrix.backtrace.WarmUpDelegate;
-import com.tencent.matrix.backtrace.WarmUpUtility;
-import com.tencent.matrix.backtrace.WeChatBacktrace;
-import com.tencent.matrix.backtrace.WeChatBacktraceNative;
 import com.tencent.matrix.util.MatrixLog;
 import com.tencent.matrix.xlog.XLogNative;
 
@@ -50,7 +46,7 @@ public class WarmUpService extends Service {
         Bundle call(int cmd, Bundle args);
     }
 
-    public interface RemoteConnection {
+    interface RemoteConnection {
         boolean isConnected();
         boolean connect(Context context, Bundle args);
         void disconnect(Context context);
@@ -59,7 +55,7 @@ public class WarmUpService extends Service {
     private final static String INVOKE_ARGS = "invoke-args";
     private final static String INVOKE_RESP = "invoke-resp";
 
-    public final static class RemoteInvokerImpl implements RemoteInvoker, RemoteConnection {
+    final static class RemoteInvokerImpl implements RemoteInvoker, RemoteConnection {
 
         private final static String TAG = "Matrix.WarmUpInvoker";
 
@@ -215,15 +211,15 @@ public class WarmUpService extends Service {
         }
     }
 
-    public final static String BIND_ARGS_PATH_OF_XLOG_SO = "path-of-xlog-so";
-    public final static String BIND_ARGS_ENABLE_LOGGER = "enable-logger";
+    final static String BIND_ARGS_PATH_OF_XLOG_SO = "path-of-xlog-so";
+    final static String BIND_ARGS_ENABLE_LOGGER = "enable-logger";
 
-    public final static String ARGS_WARM_UP_SAVING_PATH = "saving-path";
-    public final static String ARGS_WARM_UP_PATH_OF_ELF = "path-of-elf";
-    public final static String ARGS_WARM_UP_ELF_START_OFFSET = "elf-start-offset";
-    public final static String RESULT_OF_WARM_UP = "warm-up-result";
+    final static String ARGS_WARM_UP_SAVING_PATH = "saving-path";
+    final static String ARGS_WARM_UP_PATH_OF_ELF = "path-of-elf";
+    final static String ARGS_WARM_UP_ELF_START_OFFSET = "elf-start-offset";
+    final static String RESULT_OF_WARM_UP = "warm-up-result";
 
-    public final static int CMD_WARM_UP_SINGLE_ELF_FILE = 100;
+    final static int CMD_WARM_UP_SINGLE_ELF_FILE = 100;
 
     private final Messenger mMessenger = new Messenger(new Handler() {
         @SuppressLint("HandlerLeak")
@@ -250,7 +246,7 @@ public class WarmUpService extends Service {
     });
 
 
-    public final static int OK = 0;
+    final static int OK = 0;
     public static final int INVALID_ARGUMENT = -1;
     public static final int WARM_UP_FAILED = -2;
     public static final int WARM_UP_FAILED_TOO_MANY_TIMES = -3;
