@@ -22,6 +22,8 @@ add_library(
       ${SOURCE_DIR}/common/ReentrantPrevention.cpp
       ${SOURCE_DIR}/common/Log.cpp
       ${SOURCE_DIR}/common/Maps.cpp
+      ${SOURCE_DIR}/common/SoLoadMonitor.cpp
+      ${SOURCE_DIR}/common/SemiDlfcn.cpp
 )
 
 target_include_directories(

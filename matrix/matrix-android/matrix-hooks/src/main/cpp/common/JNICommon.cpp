@@ -12,6 +12,7 @@
 #include "ScopedCleaner.h"
 #include "xhook.h"
 #include "ReentrantPrevention.h"
+#include "SoLoadMonitor.h"
 
 #define TAG "Matrix.JNICommon"
 
@@ -83,17 +84,7 @@ JNIEXPORT jboolean Java_com_tencent_matrix_hook_HookManager_doPreHookInitializeN
         m_method_getStack = nullptr;
     });
 
-    int ret = xhook_register(".*\\.so$", "__loader_android_dlopen_ext",
-                             (void *) HANDLER_FUNC_NAME(__loader_android_dlopen_ext),
-                             (void **) &ORIGINAL_FUNC_NAME(__loader_android_dlopen_ext));
-    if (ret != 0) {
-        LOGE(TAG, "xhook_register with __loader_android_dlopen_ext failed, ret: %d", ret);
-        return false;
-    }
-
-    ret = xhook_ignore(".*/libwebviewchromium_loader\\.so$", nullptr);
-    if (ret != 0) {
-        LOGE(TAG, "xhook_ignore with libwebviewchromium_loader.so failed, ret: %d", ret);
+    if (!matrix::InstallSoLoadMonitor()) {
         return false;
     }
 

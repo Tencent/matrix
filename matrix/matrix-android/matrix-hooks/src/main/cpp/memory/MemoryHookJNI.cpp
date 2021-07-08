@@ -5,6 +5,7 @@
 #include <xhook.h>
 #include <xh_errno.h>
 #include <common/HookCommon.h>
+#include <common/SoLoadMonitor.h>
 #include "MemoryHookFunctions.h"
 #include "MemoryHook.h"
 
@@ -191,7 +192,7 @@ Java_com_tencent_matrix_hook_memory_MemoryHook_setStacktraceLogThresholdNative(J
 
 JNIEXPORT void JNICALL
 Java_com_tencent_matrix_hook_memory_MemoryHook_installHooksNative(JNIEnv* env, jobject thiz, jboolean enable_debug) {
-    add_dlopen_hook_callback(memory_hook_on_dlopen);
+    matrix::AddOnSoLoadCallback(memory_hook_on_dlopen);
 
     memory_hook_init();
 
