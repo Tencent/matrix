@@ -65,8 +65,16 @@ namespace wechat_backtrace {
             uint32_t QUT_INSTR = (sorted_regs.at(j).first);
             if (context_.transformed_bits & (1 << QUT_INSTR)) {
                 CHECK((context_.regs_[QUT_INSTR] & 0x3) == 0);
-                uint64_t instr = (((uint64_t) QUT_INSTR) << 32) | context_.regs_[QUT_INSTR];
-                instructions_->push_back(instr);
+                if (UNLIKELY(generation_context_ != nullptr && generation_context_->native_only)) {
+                    if (QUT_INSTR == QUT_INSTRUCTION_R7_OFFSET ||
+                        QUT_INSTR >= QUT_INSTRUCTION_SP_OFFSET) {
+                        uint64_t instr = (((uint64_t) QUT_INSTR) << 32) | context_.regs_[QUT_INSTR];
+                        instructions_->push_back(instr);
+                    }
+                } else {
+                    uint64_t instr = (((uint64_t) QUT_INSTR) << 32) | context_.regs_[QUT_INSTR];
+                    instructions_->push_back(instr);
+                }
             }
         }
 
@@ -83,9 +91,15 @@ namespace wechat_backtrace {
 
         FlushInstructions();
 
-        if (instruction == QUT_INSTRUCTION_VSP_SET_BY_R7 ||
-            instruction == QUT_INSTRUCTION_VSP_SET_BY_R11) {
-            instructions_->push_back((((uint64_t) instruction) << 32));
+        if (UNLIKELY(generation_context_ != nullptr && generation_context_->native_only)) {
+            if (instruction == QUT_INSTRUCTION_VSP_SET_BY_R7) {
+                instructions_->push_back((((uint64_t) instruction) << 32));
+            }
+        } else {
+            if (instruction == QUT_INSTRUCTION_VSP_SET_BY_R7 ||
+                instruction == QUT_INSTRUCTION_VSP_SET_BY_R11) {
+                instructions_->push_back((((uint64_t) instruction) << 32));
+            }
         }
     }
 

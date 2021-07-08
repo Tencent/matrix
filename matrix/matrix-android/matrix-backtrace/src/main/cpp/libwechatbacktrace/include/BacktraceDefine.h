@@ -24,6 +24,8 @@
 
 // *** Version ***
 #define QUT_VERSION 0x1
+#define QUT_NATIVE_ONLY_MASK 0x1000000
+#define QUT_NATIVE_ONLY_VERSION (QUT_NATIVE_ONLY_MASK | QUT_VERSION)
 
 #define MAX_FRAME_SHORT 16
 #define MAX_FRAME_NORMAL 32
@@ -136,6 +138,15 @@ namespace wechat_backtrace {
         uptr dex_pc;
         uptr frame_index;
         bool finished;
+    };
+
+    struct QuickenGenerationContext {
+
+        uint16_t regs_total;
+        bool native_only;
+
+        uint64_t estimate_memory_usage;
+        bool memory_overwhelmed;
     };
 
     typedef bool(*quicken_generate_delegate_func)(const std::string &, const uint64_t, const bool);

@@ -117,12 +117,14 @@ namespace wechat_backtrace {
             QUT_LOG("Checking file size = %llu, qut_version = %u, offset = %u",
                     (ullint_t) file_size, (uint32_t) qut_version, (uint32_t) offset);
             offset += sizeof(qut_version);
-            if (qut_version != QUT_VERSION) {
+            if (qut_version != QUT_VERSION && qut_version != QUT_NATIVE_ONLY_VERSION) {
                 munmap(data, file_size);
                 close(fd);
                 RenameToMalformed(qut_file_name);
                 return QutVersionNotMatch;
             }
+
+            bool native_only = (qut_version & QUT_NATIVE_ONLY_MASK) != 0;
 
             size_t arch = 0;
             memcpy(&arch, (data + offset), sizeof(arch));
@@ -180,6 +182,7 @@ namespace wechat_backtrace {
                 qut_sections_tmp->tbl_size = tbl_size;
                 qut_sections_tmp->quidx = (static_cast<uptr *>((void *) (data + idx_offset)));
                 qut_sections_tmp->qutbl = (static_cast<uptr *>((void *) (data + tbl_offset)));
+                qut_sections_tmp->native_only = native_only;
 
                 QutSectionsPtr qut_sections_insert = qut_sections_tmp;
                 if (!InsertQutSectionsNoLock(soname, hash, build_id, qut_sections_insert, true)) {
@@ -414,7 +417,7 @@ namespace wechat_backtrace {
         size_t offset = 0;
 
         // Write Qut Version
-        size_t qut_version = QUT_VERSION;
+        size_t qut_version = qut_sections->native_only ? QUT_NATIVE_ONLY_VERSION : QUT_VERSION;
         write(fd, reinterpret_cast<const void *>(&qut_version), sizeof(qut_version));
         offset += sizeof(qut_version);
 

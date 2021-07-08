@@ -69,6 +69,8 @@ namespace wechat_backtrace {
         size_t map_size = 0;
 
         bool load_from_file = false;
+
+        bool native_only = false;
     };
 
     struct QutSectionsInMemory : QutSections {
@@ -95,10 +97,10 @@ namespace wechat_backtrace {
         uptr dex_pc_ = 0;
         bool pc_set_ = false;
 
-        const bool log = false;
-        const size_t log_entry = 0;
-//        bool log = false;
-//        size_t log_entry = 646;
+//        const bool log = false;
+//        const size_t log_entry = 0;
+        bool log = false;
+        size_t log_entry = 646;
 
     protected:
 

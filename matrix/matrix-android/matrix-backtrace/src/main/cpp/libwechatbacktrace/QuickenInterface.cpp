@@ -173,6 +173,7 @@ namespace wechat_backtrace {
         quicken.cfa_ = SP(regs);
         bool return_value = false;
 //        quicken.log = log && log_pc == pc;
+        quicken.log = true;
         last_error_code_ = quicken.Eval(entry_offset);
         if (LIKELY(last_error_code_ == QUT_ERROR_NONE)) {
             if (!quicken.pc_set_) {

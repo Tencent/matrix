@@ -234,6 +234,8 @@ namespace wechat_backtrace {
             std::unique_ptr<QutSections> qut_sections = make_unique<QutSections>();
             QutSectionsPtr qut_sections_ptr = qut_sections.get();
 
+            qut_sections->native_only = true;
+
             Memory *gnu_debug_data_memory = nullptr;
             if (elf->gnu_debugdata_interface()) {
                 gnu_debug_data_memory = elf->gnu_debugdata_interface()->memory();
