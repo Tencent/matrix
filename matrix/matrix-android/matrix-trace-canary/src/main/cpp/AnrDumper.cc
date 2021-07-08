@@ -40,8 +40,7 @@ static sigset_t old_sigSet;
 
 AnrDumper::AnrDumper(const char* anrTraceFile, const char* printTraceFile, AnrDumper::DumpCallbackFunction &&callback) :
         mAnrTraceFile(anrTraceFile), mPrintTraceFile(printTraceFile), mCallback(callback) {
-    // ART blocks SIGQUIT for its internal use. Re-enable it.
-    // 必须unblock，否则signal handler无法接收到信号，而是由signal_cahcher线程中的sigwait接收信号，走一般的ANR流程
+    // must unblocked SIGQUIT, otherwise the signal handler can not capture SIGQUIT
     sigset_t sigSet;
     sigemptyset(&sigSet);
     sigaddset(&sigSet, SIGQUIT);
