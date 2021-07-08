@@ -6,7 +6,7 @@
 
         <service
             android:name="com.tencent.matrix.openglleak.detector.OpenglIndexDetectorService"
-            android:process=":gpuhook" />
+            android:process=":opengl_detector" />
 
     </application>
 
