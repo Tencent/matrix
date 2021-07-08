@@ -79,6 +79,11 @@ public class SignalAnrTracer extends Tracer{
         sPrintTraceFilePath = traceConfig.printTraceFilePath;
     }
 
+    public SignalAnrTracer(Application application) {
+        hasInstance = true;
+        sApplication = application;
+    }
+
     public SignalAnrTracer(Application application, String  anrTraceFilePath, String printTraceFilePath) {
         hasInstance = true;
         sAnrTraceFilePath = anrTraceFilePath;
