@@ -44,6 +44,8 @@ add_library( # Specifies the name of the library.
 target_include_directories(
         ${TARGET}
         PRIVATE ${EXT_DEP}/include
+        PRIVATE ${EXT_DEP}/include/backtrace
+        PRIVATE ${EXT_DEP}/include/backtrace/common
 )
 
 # Searches for a specified prebuilt library and stores the path as a

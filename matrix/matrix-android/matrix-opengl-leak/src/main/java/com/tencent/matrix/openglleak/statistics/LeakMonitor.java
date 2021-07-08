@@ -6,7 +6,6 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
-import android.text.TextUtils;
 
 import com.tencent.matrix.util.MatrixLog;
 
@@ -28,15 +27,15 @@ public class LeakMonitor implements Application.ActivityLifecycleCallbacks {
     private Map<WeakReference<Activity>, List<OpenGLInfo>> maps;
     private String currentActivityName = "";
 
-    private long DOUBLE_CHECK_TIME = 1000 * 60 * 30;
-    private final long DOUBLE_CHECK_LOOPER = 1000 * 60 * 1;
+    private long mDoubleCheckTime = 1000 * 60 * 30;
+    private final long mDoubleCheckLooper = 1000 * 60 * 1;
 
     private LeakMonitor() {
         mHT = new HandlerThread("LeakMonitor");
         mHT.start();
         mH = new Handler(mHT.getLooper());
 
-        mH.postDelayed(doubleCheckRunnable, DOUBLE_CHECK_LOOPER);
+        mH.postDelayed(doubleCheckRunnable, mDoubleCheckLooper);
 
         maps = new HashMap<>();
     }
@@ -49,7 +48,7 @@ public class LeakMonitor implements Application.ActivityLifecycleCallbacks {
     }
 
     public void setDoubleCheckTime(long doubleCheckTime) {
-        DOUBLE_CHECK_TIME = doubleCheckTime;
+        mDoubleCheckTime = doubleCheckTime;
     }
 
     public void setListener(LeakListener l) {
@@ -82,7 +81,8 @@ public class LeakMonitor implements Application.ActivityLifecycleCallbacks {
 
     @Override
     public void onActivityDestroyed(Activity activity) {
-        MatrixLog.i(TAG, "activity ondestroy:" + activity.getLocalClassName() + "  :" + activity.hashCode());
+        MatrixLog.i(TAG,
+                "activity ondestroy:" + activity.getLocalClassName() + "  :" + activity.hashCode());
 
         WeakReference<Activity> target = null;
 
@@ -153,7 +153,9 @@ public class LeakMonitor implements Application.ActivityLifecycleCallbacks {
                     continue;
                 }
 
-                if ((create.getType() == destroy.getType()) && (create.getThreadId().equals(destroy.getThreadId())) && (create.getId() == destroy.getId())) {
+                if ((create.getType() == destroy.getType())
+                        && (create.getThreadId().equals(destroy.getThreadId())) && (create.getId()
+                        == destroy.getId())) {
                     break;
                 }
 
@@ -222,13 +224,13 @@ public class LeakMonitor implements Application.ActivityLifecycleCallbacks {
                 }
 
                 if (item.getMaybeLeak()) {
-                    if ((now - item.getMaybeLeakTime()) > DOUBLE_CHECK_TIME) {
+                    if ((now - item.getMaybeLeakTime()) > mDoubleCheckTime) {
                         OpenGLResRecorder.getInstance().setLeak(item);
                     }
                 }
             }
 
-            mH.postDelayed(doubleCheckRunnable, DOUBLE_CHECK_LOOPER);
+            mH.postDelayed(doubleCheckRunnable, mDoubleCheckLooper);
         }
     };
 }

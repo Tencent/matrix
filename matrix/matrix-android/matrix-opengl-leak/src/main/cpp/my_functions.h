@@ -8,7 +8,6 @@
 #include <string>
 #include <sstream>
 #include <thread>
-#include "unwindstack/Unwinder.h"
 #include "BacktraceDefine.h"
 #include "Backtrace.h"
 

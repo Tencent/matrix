@@ -23,7 +23,7 @@ public class OpenGLInfo {
     private boolean isRelease;
 
     private boolean maybeLeak = false;
-    private long maybeLeakCheckTime = 0l;
+    private long maybeLeakCheckTime = 0L;
     private boolean isReported = false;
 
     private String activityName;
@@ -92,7 +92,7 @@ public class OpenGLInfo {
         return threadId;
     }
 
-    public long getEglContextNativeHandle(){
+    public long getEglContextNativeHandle() {
         return eglContextNativeHandle;
     }
 
