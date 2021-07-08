@@ -105,12 +105,10 @@ public class DeviceUtil {
         } else if (totalMemory >= 2 * 1024 * MB) {
             if (coresNum >= 4) {
                 sLevelCache = LEVEL.MIDDLE;
-            } else if (coresNum >= 2) {
-                sLevelCache = LEVEL.LOW;
             } else if (coresNum > 0) {
                 sLevelCache = LEVEL.LOW;
             }
-        } else if (0 <= totalMemory && totalMemory < 1024 * MB) {
+        } else if (totalMemory >= 0) {
             sLevelCache = LEVEL.BAD;
         } else {
             sLevelCache = LEVEL.UN_KNOW;
