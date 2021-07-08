@@ -19,9 +19,10 @@
 #include "JavaStacktrace.h"
 
 #define JAVA_UNWIND_TAG "Java-Unwind"
-#define DWARF_UNWIND_TAG "Dwarf-Unwind"
+#define DWARF_UNWIND_TAG "Libunwindstack-Unwind"
 #define FP_UNWIND_TAG "Fp-Unwind"
-#define WECHAT_BACKTRACE_TAG "WeChat-Quicken-Unwind"
+#define WECHAT_BACKTRACE_TAG "Quicken-Unwind"
+#define LIBUDF_UNWIND_TAG "Libudf-Unwind"
 
 #define TEST_NanoSeconds_Start(timestamp) \
         long timestamp = 0; \
@@ -83,11 +84,11 @@ void benchmark_counting(uint64_t duration, size_t frame_size) {
 }
 
 void dump_benchmark_calculation(const char *tag) {
-    if (sLastFrameSize == 0) {
+    if (sLastFrameSize == 0 || sBenchmarkTimes == 0) {
         BENCHMARK_RESULT_LOGE(UNWIND_TEST_TAG,
                               "%s Accumulated duration = %llu, times = %zu, avg = %llu, frame-size = %zu",
                               tag, (unsigned long long) sTotalDuration, sBenchmarkTimes,
-                              (unsigned long long) (sTotalDuration / sBenchmarkTimes),
+                              (unsigned long long) 0,
                               sLastFrameSize);
     } else {
         BENCHMARK_RESULT_LOGE(UNWIND_TEST_TAG,
@@ -403,7 +404,7 @@ inline void print_java_unwind_formatted() {
     }
 
     for (int i = 0; i < size; i++) {
-        jstring string_obj = static_cast<jstring>(env->GetObjectArrayElement(traces, i));
+        auto string_obj = static_cast<jstring>(env->GetObjectArrayElement(traces, i));
         const char *trace = env->GetStringUTFChars(string_obj, 0);
         BENCHMARK_LOGE("Java-Print-StackTrace", trace, "");
         env->ReleaseStringUTFChars(string_obj, trace);
@@ -453,7 +454,7 @@ inline void print_quicken_unwind_stacktrace() {
 
 typedef struct {
     uint32_t          depth;
-    uintptr_t         trace[16];
+    uintptr_t         trace[FRAME_MAX_SIZE];
 } Backtrace;
 
 inline void print_libudf_unwind() {
@@ -467,6 +468,15 @@ inline void print_libudf_unwind() {
 
     if (!gPrintStack) {
         return;
+    }
+
+    for (size_t num = 0; num < backtrace.depth; num++) {
+        std::string formatted;
+        fp_format_frame(backtrace.trace[num], num,
+                        unwindstack::Regs::CurrentArch() == unwindstack::ARCH_ARM,
+                        formatted);
+
+        BENCHMARK_LOGE(LIBUDF_UNWIND_TAG, formatted.c_str(), "");
     }
 #endif
 }
