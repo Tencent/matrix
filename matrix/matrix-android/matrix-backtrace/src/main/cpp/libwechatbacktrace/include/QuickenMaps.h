@@ -75,13 +75,6 @@ namespace wechat_backtrace {
         static void
         FillQuickenInterfaceForGenerate(QuickenInterface *interface, unwindstack::Elf *elf);
 
-        static std::unique_ptr<unwindstack::Elf>
-        CreateElf(
-                const std::string &so_path,
-                unwindstack::Memory *memory,
-                unwindstack::ArchEnum expected_arch
-        );
-
         static unwindstack::Memory *
         CreateQuickenMemoryFromFile(
                 const std::string &so_path,
@@ -96,8 +89,6 @@ namespace wechat_backtrace {
         CreateFileQuickenMemory(const std::shared_ptr<unwindstack::Memory> &process_memory);
 
         uint64_t GetRelPc(uint64_t pc);
-
-        unwindstack::Elf * GetLightElf();
 
         std::atomic<QuickenInterface*> quicken_interface_atomic_ {0};
 
@@ -116,7 +107,6 @@ namespace wechat_backtrace {
         QuickenMapInfo *next_real_map_ = nullptr;
 
     protected:
-        unwindstack::Memory *CreateFileQuickenMemory();
 
         unwindstack::Memory *CreateFileQuickenMemoryImpl();
 

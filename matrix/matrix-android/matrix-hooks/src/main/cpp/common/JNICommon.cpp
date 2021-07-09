@@ -71,7 +71,6 @@ static jmethodID GetStaticMethodID(JNIEnv* env, jclass clazz, const char* name, 
     return mid;
 }
 
-// fixme 解偶 EglHook
 JNIEXPORT jboolean Java_com_tencent_matrix_hook_HookManager_doPreHookInitializeNative(JNIEnv *env, jobject) {
     if (s_prehook_initialized.test_and_set()) {
         LOGE(TAG, "doPreHookInitializeNative was already called.");
