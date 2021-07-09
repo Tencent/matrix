@@ -22,6 +22,7 @@ import android.os.Message;
 import android.os.SystemClock;
 import androidx.annotation.RequiresApi;
 
+import com.tencent.matrix.trace.config.IssueFixConfig;
 import com.tencent.matrix.trace.core.AppMethodBeat;
 import com.tencent.matrix.util.MatrixLog;
 
@@ -128,7 +129,9 @@ public class ActivityThreadHacker {
                         || msg.what == STOP_ACTIVITY_SHOW || msg.what == STOP_ACTIVITY_HIDE
                         || msg.what == SLEEPING) {
                     MatrixLog.i(TAG, "[Matrix.fix.sp.apply] start to fix msg.waht=" + msg.what);
-                    fix();
+                    if (IssueFixConfig.getsInstance().isEnableFixSpApply()) {
+                        fix();
+                    }
                 }
             }
 
@@ -170,20 +173,20 @@ public class ActivityThreadHacker {
                     field.setAccessible(true);
                     ConcurrentLinkedQueue<Runnable> runnables = (ConcurrentLinkedQueue<Runnable>) field.get(null);
                     runnables.clear();
-                    MatrixLog.i(TAG, "[Matrix.fix.sp.apply] sPendingWorkFinishers.clear successful");
+                    MatrixLog.i(TAG, "Fix SP sPendingWorkFinishers.clear successful");
                 }
             } catch (ClassNotFoundException e) {
                 MatrixLog.e(TAG,
-                        "[Matrix.fix.sp.apply] ClassNotFoundException = " + e.getMessage());
+                        "Fix SP ClassNotFoundException = " + e.getMessage());
                 e.printStackTrace();
             } catch (IllegalAccessException e) {
-                MatrixLog.e(TAG, "[Matrix.fix.sp.apply] IllegalAccessException =" + e.getMessage());
+                MatrixLog.e(TAG, "Fix SP IllegalAccessException =" + e.getMessage());
                 e.printStackTrace();
             } catch (NoSuchFieldException e) {
-                MatrixLog.e(TAG, "[Matrix.fix.sp.apply] NoSuchFieldException = " + e.getMessage());
+                MatrixLog.e(TAG, "Fix SP NoSuchFieldException = " + e.getMessage());
                 e.printStackTrace();
             } catch (Exception e) {
-                MatrixLog.e(TAG, "[Matrix.fix.sp.apply] Exception = " + e.getMessage());
+                MatrixLog.e(TAG, "Fix SP Exception = " + e.getMessage());
                 e.printStackTrace();
             }
 
