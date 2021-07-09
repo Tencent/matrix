@@ -11,8 +11,6 @@ add_library(trace-canary
         src/main/cpp/Support.cc
         src/main/cpp/AnrDumper.cc
         src/main/cpp/nativehelper/managed_jnienv.cc
-        src/main/cpp/SafeMaps.cpp
-        src/main/cpp/DynamicLoader.cpp
              )
 
 TARGET_INCLUDE_DIRECTORIES(trace-canary PRIVATE ${EXT_DEP}/include)

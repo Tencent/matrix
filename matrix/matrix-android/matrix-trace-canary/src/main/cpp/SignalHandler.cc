@@ -54,7 +54,7 @@ bool SignalHandler::installHandlersLocked() {
         return false;
     }
 
-    struct sigaction sa;
+    struct sigaction sa{};
     sa.sa_sigaction = signalHandler;
     sa.sa_flags = SA_ONSTACK | SA_SIGINFO | SA_RESTART;
 
