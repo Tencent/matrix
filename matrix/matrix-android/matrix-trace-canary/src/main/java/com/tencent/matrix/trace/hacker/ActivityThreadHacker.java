@@ -124,14 +124,14 @@ public class ActivityThreadHacker {
 
         @Override
         public boolean handleMessage(Message msg) {
-            if (Build.VERSION.SDK_INT >= 21 && Build.VERSION.SDK_INT <= 25) {
-                if (msg.what == SERIVCE_ARGS || msg.what == STOP_SERVICE
-                        || msg.what == STOP_ACTIVITY_SHOW || msg.what == STOP_ACTIVITY_HIDE
-                        || msg.what == SLEEPING) {
-                    if (IssueFixConfig.getsInstance().isEnableFixSpApply()) {
-                        MatrixLog.i(TAG, "Fix SP ANR is enabled");
-                        fix();
-                    }
+            if (IssueFixConfig.getsInstance().isEnableFixSpApply()) {
+                if (Build.VERSION.SDK_INT >= 21 && Build.VERSION.SDK_INT <= 25) {
+                    if (msg.what == SERIVCE_ARGS || msg.what == STOP_SERVICE
+                            || msg.what == STOP_ACTIVITY_SHOW || msg.what == STOP_ACTIVITY_HIDE
+                            || msg.what == SLEEPING) {
+                            MatrixLog.i(TAG, "Fix SP ANR is enabled");
+                            fix();
+                        }
                 }
             }
 
