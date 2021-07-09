@@ -249,6 +249,9 @@ namespace matrix {
                 } else {
                     LOGE(LOG_TAG, "Cannot find base of linker.");
                 }
+                if (ret != 0) {
+                    return ret;
+                }
                 ret = dl_iterate_phdr([](dl_phdr_info *info, size_t info_size, void *data) -> int {
                     auto iterData = reinterpret_cast<IterData *>(data);
                     return iterData->cb(info->dlpi_name,
@@ -265,6 +268,9 @@ namespace matrix {
                     ret = cb(LINKER_SUFFIX, linkerBase, data);
                 } else {
                     LOGE(LOG_TAG, "Cannot find base of linker.");
+                }
+                if (ret != 0) {
+                    return ret;
                 }
                 ret = dl_iterate_phdr([](dl_phdr_info *info, size_t info_size, void *data) -> int {
                     auto iterData = reinterpret_cast<IterData *>(data);
@@ -337,6 +343,7 @@ namespace matrix {
             if (::strncmp(pathname + pathLen - nameSuffixLen, nameSuffix, nameSuffixLen) == 0) {
                 semiDlInfo->pathname = pathname;
                 semiDlInfo->base_addr = base;
+                return 1;
             }
             return 0;
         }, nullptr);
