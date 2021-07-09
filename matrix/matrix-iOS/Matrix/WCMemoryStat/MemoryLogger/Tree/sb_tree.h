@@ -326,7 +326,7 @@ public:
     bool exist(const T &key) { return (last_ptr = inter_find(t_info->root_ptr, key)) != 0; }
 
     void insert(const T &key) {
-        if ((!t_info->b_size || t_info->t_size == t_info->b_size - 1) && reallocate_memory(false) == false) {
+        if ((!t_info->b_size || t_info->t_size + 1 == t_info->b_size) && reallocate_memory(false) == false) {
             return; // malloc fail
         }
         ++t_info->t_size;

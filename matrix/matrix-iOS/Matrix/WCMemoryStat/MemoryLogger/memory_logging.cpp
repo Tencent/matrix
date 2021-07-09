@@ -33,8 +33,6 @@
 #include <execinfo.h>
 #include <mach-o/dyld.h>
 
-#include <atomic>
-
 #include "logger_internal.h"
 #include "memory_logging.h"
 #include "object_event_handler.h"
@@ -56,10 +54,10 @@ static object_type_db *s_object_type_writer = NULL;
 static memory_logging_event_buffer_list *s_buffer_list = NULL;
 static memory_logging_event_buffer_pool *s_buffer_pool = NULL;
 
-static pthread_key_t s_event_buffer_key = 0;
-
 // activation variables
 static bool s_logging_is_enable = false; // set this to zero to stop logging memory ativities
+
+int dump_call_stacks = 1; // 0 = not dump, 1 = dump all objects' call stacks, 2 = dump only objc objects'
 
 // We set malloc_logger to NULL to disable logging, if we encounter errors
 // during file writing
@@ -71,18 +69,21 @@ extern malloc_logger_t *malloc_logger;
 static malloc_logger_t **syscall_logger; // use this to set up syscall logging (e.g., vm_allocate, vm_deallocate, mmap, munmap)
 #endif
 
-thread_id s_main_thread_id = 0;
 static pthread_t s_working_thread = 0;
 static thread_id s_working_thread_id = 0;
-//extern thread_id g_matrix_block_monitor_dumping_thread_id;
+thread_id s_main_thread_id = 0;
 
-static std::atomic_int s_working_thread_lock(0); // 1 is require for locking, 2 is should lock
+static pthread_key_t s_event_buffer_key = 0;
 
 // Some callback in memory logging thread
-static void (*s_dump_memory_callback)(void *, void *, void *, void *, void *, void *) = NULL;
+static pthread_t s_dumping_thread = 0;
+static std::shared_ptr<std::string> s_memory_dump_data = NULL;
+static summary_report_param s_memory_dump_param;
+static void (*s_memory_dump_callback)(const char *, size_t) = NULL;
 
 // pre-declarations
 void *__memory_event_writing_thread(void *param);
+void *__memory_event_dumping_thread(void *param);
 
 #pragma mark -
 #pragma mark Memory Logging
@@ -106,6 +107,31 @@ bool __prepare_working_thread() {
 
     if (pthread_create(&s_working_thread, &tattr, __memory_event_writing_thread, NULL) == KERN_SUCCESS) {
         pthread_detach(s_working_thread);
+        return true;
+    } else {
+        return false;
+    }
+}
+
+bool __prepare_dumping_thread() {
+    int ret;
+    pthread_attr_t tattr;
+    sched_param param;
+
+    /* initialized with default attributes */
+    ret = pthread_attr_init(&tattr);
+
+    /* safe to get existing scheduling param */
+    ret = pthread_attr_getschedparam(&tattr, &param);
+
+    /* set the highest priority; others are unchanged */
+    param.sched_priority = MAX(sched_get_priority_max(SCHED_RR), param.sched_priority);
+
+    /* setting the new scheduling param */
+    ret = pthread_attr_setschedparam(&tattr, &param);
+
+    if (pthread_create(&s_dumping_thread, &tattr, __memory_event_dumping_thread, (void *)s_memory_dump_callback) == KERN_SUCCESS) {
+        pthread_detach(s_dumping_thread);
         return true;
     } else {
         return false;
@@ -182,8 +208,7 @@ __attribute__((noinline, not_tail_called)) static unsigned __thread_stack_pcs(ui
 }
 
 memory_logging_event_buffer *__new_event_buffer_and_lock(thread_id t_id) {
-    memory_logging_event_buffer *event_buffer = memory_logging_event_buffer_pool_new_buffer(s_buffer_pool);
-    event_buffer->t_id = t_id;
+    memory_logging_event_buffer *event_buffer = memory_logging_event_buffer_pool_new_buffer(s_buffer_pool, t_id);
     memory_logging_event_buffer_lock(event_buffer);
     memory_logging_event_buffer_list_push_back(s_buffer_list, event_buffer);
     pthread_setspecific(s_event_buffer_key, event_buffer);
@@ -200,16 +225,24 @@ uint32_t type_flags, uintptr_t zone_ptr, uintptr_t arg2, uintptr_t arg3, uintptr
         return;
     }
 
-    if (is_thread_ignoring_logging()) {
-        // Prevent a thread from deadlocking against itself if vm_allocate() or malloc()
-        // is called below here, from woking thread or dumping thread
-        return;
-    }
-
     uint32_t alias = 0;
     VM_GET_FLAGS_ALIAS(type_flags, alias);
     // skip all VM allocation events from malloc_zone
     if (alias >= VM_MEMORY_MALLOC && alias <= VM_MEMORY_MALLOC_NANO) {
+        return;
+    }
+
+    // skip allocation events from mapped_file
+    if (type_flags & memory_logging_type_mapped_file_or_shared_mem) {
+        return;
+    }
+
+    thread_info_for_logging_t thread_info;
+    thread_info.value = current_thread_info_for_logging();
+
+    if (thread_info.detail.is_ignore) {
+        // Prevent a thread from deadlocking against itself if vm_allocate() or malloc()
+        // is called below here, from woking thread or dumping thread
         return;
     }
 
@@ -244,42 +277,46 @@ uint32_t type_flags, uintptr_t zone_ptr, uintptr_t arg2, uintptr_t arg3, uintptr
         is_alloc = true;
     }
 
-    type_flags &= memory_logging_valid_type_flags;
+    //type_flags &= memory_logging_valid_type_flags;
 
-    thread_id t_id = current_thread_id();
+    thread_id t_id = thread_info.detail.t_id;
     memory_logging_event_buffer *event_buffer = (memory_logging_event_buffer *)pthread_getspecific(s_event_buffer_key);
     if (event_buffer == NULL || event_buffer->t_id != t_id) {
         event_buffer = __new_event_buffer_and_lock(t_id);
     } else {
         memory_logging_event_buffer_lock(event_buffer);
-    }
 
-    if (event_buffer->t_id != t_id) {
-        memory_logging_event_buffer_unlock(event_buffer);
+        // check t_id again
+        if (event_buffer->t_id != t_id) {
+            memory_logging_event_buffer_unlock(event_buffer);
 
-        event_buffer = __new_event_buffer_and_lock(t_id);
+            event_buffer = __new_event_buffer_and_lock(t_id);
+        }
     }
 
     // gather stack, only alloc type
     if (is_alloc) {
-        if (memory_logging_event_buffer_is_full(event_buffer, true)) {
+        if (memory_logging_event_buffer_is_full(event_buffer, dump_call_stacks == 1)) {
             memory_logging_event_buffer_unlock(event_buffer);
 
             event_buffer = __new_event_buffer_and_lock(t_id);
         }
 
         memory_logging_event *new_event = memory_logging_event_buffer_new_event(event_buffer);
-        new_event->stack_size = __thread_stack_pcs(new_event->stacks, STACK_LOGGING_MAX_STACK_SIZE, num_hot_to_skip);
-        //new_event->stack_size = backtrace((void **)new_event->stacks, STACK_LOGGING_MAX_STACK_SIZE);
         new_event->address = return_val;
         new_event->size = (uint32_t)size;
         new_event->object_type = 0;
-        new_event->t_id = t_id;
         new_event->type_flags = type_flags;
-        new_event->event_size = (uint32_t)write_size_by_event(new_event);
         new_event->event_type = EventType_Alloc;
-
-        memory_logging_event_buffer_update_write_index_with_size(event_buffer, new_event->event_size);
+        if (dump_call_stacks == 1) {
+            new_event->stack_size = __thread_stack_pcs(new_event->stacks, STACK_LOGGING_MAX_STACK_SIZE, num_hot_to_skip);
+            new_event->event_size = (uint16_t)write_size_by_event(new_event);
+            memory_logging_event_buffer_update_write_index_with_size(event_buffer, new_event->event_size);
+        } else {
+            new_event->stack_size = 0;
+            new_event->event_size = MEMORY_LOGGING_EVENT_SIMPLE_SIZE;
+            memory_logging_event_buffer_update_write_index_with_size(event_buffer, MEMORY_LOGGING_EVENT_SIMPLE_SIZE);
+        }
     } else {
         // compaction
         memory_logging_event *last_event = memory_logging_event_buffer_last_event(event_buffer);
@@ -305,12 +342,11 @@ uint32_t type_flags, uintptr_t zone_ptr, uintptr_t arg2, uintptr_t arg3, uintptr
 
         memory_logging_event *new_event = memory_logging_event_buffer_new_event(event_buffer);
         new_event->address = ptr_arg;
-        new_event->size = (uint32_t)size;
         new_event->type_flags = type_flags;
         new_event->event_size = MEMORY_LOGGING_EVENT_SIMPLE_SIZE;
         new_event->event_type = EventType_Free;
 
-        memory_logging_event_buffer_update_write_index_with_size(event_buffer, new_event->event_size);
+        memory_logging_event_buffer_update_write_index_with_size(event_buffer, MEMORY_LOGGING_EVENT_SIMPLE_SIZE);
     }
 
     memory_logging_event_buffer_unlock(event_buffer);
@@ -321,50 +357,104 @@ void __memory_event_update_object(uint64_t address, uint32_t new_type) {
         return;
     }
 
-    if (is_thread_ignoring_logging()) {
+    thread_info_for_logging_t thread_info;
+    thread_info.value = current_thread_info_for_logging();
+
+    if (thread_info.detail.is_ignore) {
         return;
     }
 
-    thread_id t_id = current_thread_id();
+    thread_id t_id = thread_info.detail.t_id;
     memory_logging_event_buffer *event_buffer = (memory_logging_event_buffer *)pthread_getspecific(s_event_buffer_key);
     if (event_buffer == NULL || event_buffer->t_id != t_id) {
         event_buffer = __new_event_buffer_and_lock(t_id);
     } else {
         memory_logging_event_buffer_lock(event_buffer);
-    }
 
-    if (event_buffer->t_id != t_id) {
-        memory_logging_event_buffer_unlock(event_buffer);
-
-        event_buffer = __new_event_buffer_and_lock(t_id);
-    }
-
-    // compaction
-    memory_logging_event *last_event = memory_logging_event_buffer_last_event(event_buffer);
-    if (last_event != NULL && last_event->address == address) {
-        if (last_event->type_flags & memory_logging_type_alloc) {
-            // skip events
-            last_event->object_type = new_type;
+        // check t_id again
+        if (event_buffer->t_id != t_id) {
             memory_logging_event_buffer_unlock(event_buffer);
-            return;
+
+            event_buffer = __new_event_buffer_and_lock(t_id);
         }
     }
 
-    if (memory_logging_event_buffer_is_full(event_buffer)) {
+    if (dump_call_stacks == 2) {
+        // compaction
+        memory_logging_event *last_event = memory_logging_event_buffer_last_event(event_buffer);
+        if (last_event != NULL && last_event->address == address) {
+            if (last_event->type_flags & memory_logging_type_alloc) {
+                // skip events
+                uint32_t size = last_event->size;
+                uint32_t type_flags = last_event->type_flags;
+                memory_logging_event_buffer_update_to_last_write_index(event_buffer);
+
+                if (memory_logging_event_buffer_is_full(event_buffer, true)) {
+                    memory_logging_event_buffer_unlock(event_buffer);
+
+                    event_buffer = __new_event_buffer_and_lock(t_id);
+                }
+
+                memory_logging_event *new_event = memory_logging_event_buffer_new_event(event_buffer);
+                new_event->address = address;
+                new_event->size = size;
+                new_event->object_type = new_type;
+                new_event->type_flags = type_flags;
+                new_event->stack_size = __thread_stack_pcs(new_event->stacks, STACK_LOGGING_MAX_STACK_SIZE, 1);
+                new_event->event_size = (uint16_t)write_size_by_event(new_event);
+                new_event->event_type = EventType_Alloc;
+                memory_logging_event_buffer_update_write_index_with_size(event_buffer, new_event->event_size);
+
+                memory_logging_event_buffer_unlock(event_buffer);
+                return;
+            }
+        }
+
+        if (memory_logging_event_buffer_is_full(event_buffer, true)) {
+            memory_logging_event_buffer_unlock(event_buffer);
+
+            event_buffer = __new_event_buffer_and_lock(t_id);
+        }
+
+        memory_logging_event *new_event = memory_logging_event_buffer_new_event(event_buffer);
+        new_event->address = address;
+        new_event->object_type = new_type;
+        new_event->type_flags = 0;
+        new_event->stack_size = __thread_stack_pcs(new_event->stacks, STACK_LOGGING_MAX_STACK_SIZE, 1);
+        new_event->event_size = (uint16_t)write_size_by_event(new_event);
+        new_event->event_type = EventType_Update;
+        memory_logging_event_buffer_update_write_index_with_size(event_buffer, new_event->event_size);
+
         memory_logging_event_buffer_unlock(event_buffer);
+    } else {
+        // compaction
+        memory_logging_event *last_event = memory_logging_event_buffer_last_event(event_buffer);
+        if (last_event != NULL && last_event->address == address) {
+            if (last_event->type_flags & memory_logging_type_alloc) {
+                // skip events
+                last_event->object_type = new_type;
+                memory_logging_event_buffer_unlock(event_buffer);
+                return;
+            }
+        }
 
-        event_buffer = __new_event_buffer_and_lock(t_id);
+        if (memory_logging_event_buffer_is_full(event_buffer)) {
+            memory_logging_event_buffer_unlock(event_buffer);
+
+            event_buffer = __new_event_buffer_and_lock(t_id);
+        }
+
+        memory_logging_event *new_event = memory_logging_event_buffer_new_event(event_buffer);
+        new_event->address = address;
+        new_event->object_type = new_type;
+        new_event->type_flags = 0;
+        new_event->stack_size = 0;
+        new_event->event_size = MEMORY_LOGGING_EVENT_SIMPLE_SIZE;
+        new_event->event_type = EventType_Update;
+        memory_logging_event_buffer_update_write_index_with_size(event_buffer, MEMORY_LOGGING_EVENT_SIMPLE_SIZE);
+
+        memory_logging_event_buffer_unlock(event_buffer);
     }
-
-    memory_logging_event *new_event = memory_logging_event_buffer_new_event(event_buffer);
-    new_event->address = address;
-    new_event->object_type = new_type;
-    new_event->event_size = MEMORY_LOGGING_EVENT_SIMPLE_SIZE;
-    new_event->event_type = EventType_Update;
-
-    memory_logging_event_buffer_update_write_index_with_size(event_buffer, new_event->event_size);
-
-    memory_logging_event_buffer_unlock(event_buffer);
 }
 
 #pragma mark - Writing Process
@@ -376,23 +466,18 @@ void *__memory_event_writing_thread(void *param) {
 
     s_working_thread_id = current_thread_id();
     log_internal_without_this_thread(s_working_thread_id);
-    
+
     int usleep_time = 0;
 
     // Wait for enable_memory_logging finished
-    usleep(30000);
+    while (s_logging_is_enable == false) {
+        usleep(10000);
+    }
 
     while (s_logging_is_enable) {
         bool thread_is_woken = false;
-        
-        // Can't lock like this without brain, or affect performance
-        if (s_working_thread_lock == 1) {
-            s_working_thread_lock = 2;
-            while (s_working_thread_lock == 2)
-                ;
-        }
 
-        memory_logging_event_buffer *event_buffer = memory_logging_event_buffer_list_reset(s_buffer_list);
+        memory_logging_event_buffer *event_buffer = memory_logging_event_buffer_list_pop_all(s_buffer_list);
         while (event_buffer != NULL) {
             memory_logging_event_buffer_lock(event_buffer);
             event_buffer->t_id = 0;
@@ -403,9 +488,24 @@ void *__memory_event_writing_thread(void *param) {
 
             while (curr_event != NULL) {
                 if (curr_event->event_type == EventType_Alloc) {
-                    if (is_stack_frames_should_skip(curr_event->stacks, curr_event->stack_size, curr_event->size, curr_event->type_flags) == false) {
-                        uint32_t stack_identifier =
-                        add_stack_frames_in_table(s_stack_frames_writer, curr_event->stacks, curr_event->stack_size); // unique stack in memory
+                    if (curr_event->stack_size > 0) {
+                        if (is_stack_frames_should_skip(curr_event->stacks, curr_event->stack_size, curr_event->size) == false) {
+                            // unique stack in memory
+                            uint32_t stack_identifier = add_stack_frames_in_table(s_stack_frames_writer, curr_event->stacks, curr_event->stack_size);
+
+                            // Try to get vm memory type from type_flags
+                            uint32_t object_type = curr_event->object_type;
+                            if (object_type == 0) {
+                                VM_GET_FLAGS_ALIAS(curr_event->type_flags, object_type);
+                            }
+                            allocation_event_db_add(s_allocation_event_writer,
+                                                    curr_event->address,
+                                                    curr_event->type_flags,
+                                                    object_type,
+                                                    curr_event->size,
+                                                    stack_identifier);
+                        }
+                    } else {
                         // Try to get vm memory type from type_flags
                         uint32_t object_type = curr_event->object_type;
                         if (object_type == 0) {
@@ -416,23 +516,44 @@ void *__memory_event_writing_thread(void *param) {
                                                 curr_event->type_flags,
                                                 object_type,
                                                 curr_event->size,
-                                                stack_identifier,
-                                                curr_event->t_id);
+                                                0);
                     }
                 } else if (curr_event->event_type == EventType_Free) {
                     allocation_event_db_del(s_allocation_event_writer, curr_event->address, curr_event->type_flags);
                 } else if (curr_event->event_type == EventType_Update) {
-                    allocation_event_db_update_object_type(s_allocation_event_writer, curr_event->address, curr_event->object_type);
+                    if (curr_event->stack_size > 0) {
+                        if (is_stack_frames_should_skip(curr_event->stacks, curr_event->stack_size, curr_event->size) == false) {
+                            // unique stack in memory
+                            uint32_t stack_identifier = add_stack_frames_in_table(s_stack_frames_writer, curr_event->stacks, curr_event->stack_size);
+
+                            allocation_event_db_update_object_type_and_stack_identifier(s_allocation_event_writer,
+                                                                                        curr_event->address,
+                                                                                        curr_event->object_type,
+                                                                                        stack_identifier);
+                        } else {
+                            allocation_event_db_update_object_type(s_allocation_event_writer, curr_event->address, curr_event->object_type);
+                        }
+                    } else {
+                        allocation_event_db_update_object_type(s_allocation_event_writer, curr_event->address, curr_event->object_type);
+                    }
                 } else if (curr_event->event_type != EventType_Invalid) {
                     disable_memory_logging();
                     report_error(MS_ERRC_DATA_CORRUPTED);
                     __malloc_printf("Data corrupted?!");
 
-                    return NULL;
+                    break;
                     // Restore abort()?
                 }
 
-                curr_event = memory_logging_event_buffer_next(event_buffer);
+                if (s_logging_is_enable == false) {
+                    break;
+                }
+
+                curr_event = memory_logging_event_buffer_next(event_buffer, curr_event);
+            }
+
+            if (s_logging_is_enable == false) {
+                break;
             }
 
             memory_logging_event_buffer *next_event_buffer = event_buffer->next_event_buffer;
@@ -442,20 +563,66 @@ void *__memory_event_writing_thread(void *param) {
             event_buffer = next_event_buffer;
         }
 
-        if (s_dump_memory_callback) {
-            s_dump_memory_callback(NULL, NULL, s_allocation_event_writer, s_stack_frames_writer, s_dyld_image_info_writer, s_object_type_writer);
-            s_dump_memory_callback = NULL;
+        if (s_logging_is_enable == false) {
+            break;
+        }
+
+        if (s_memory_dump_callback && s_memory_dump_data == NULL) {
+            s_memory_dump_data = generate_summary_report_i(s_allocation_event_writer,
+                                                           s_stack_frames_writer,
+                                                           s_dyld_image_info_writer,
+                                                           s_object_type_writer,
+                                                           s_memory_dump_param);
+            __prepare_dumping_thread();
         }
 
         if (thread_is_woken == false) {
-            if (usleep_time < 20000) {
-                usleep_time += 10000;
+            if (usleep_time < 15000) {
+                usleep_time += 5000;
             }
             usleep(usleep_time);
         } else {
             usleep_time = 0;
         }
     }
+
+    log_internal_without_this_thread(0);
+
+    usleep(100000);
+
+    stack_frames_db_close(s_stack_frames_writer);
+    s_stack_frames_writer = NULL;
+
+    allocation_event_db_close(s_allocation_event_writer);
+    s_allocation_event_writer = NULL;
+
+    dyld_image_info_db_close(s_dyld_image_info_writer);
+    s_dyld_image_info_writer = NULL;
+
+    object_type_db_close(s_object_type_writer);
+    s_object_type_writer = NULL;
+
+    memory_logging_event_buffer_pool_free(s_buffer_pool);
+    s_buffer_pool = NULL;
+
+    memory_logging_event_buffer_list_free(s_buffer_list);
+    s_buffer_list = NULL;
+
+    __malloc_printf("memory logging cleanup finished\n");
+
+    return NULL;
+}
+
+void *__memory_event_dumping_thread(void *param) {
+    pthread_setname_np("Memory Dumping");
+
+    set_curr_thread_ignore_logging(true); // for preventing deadlock'ing on memory logging on a single thread
+
+    void (*memory_dump_callback)(const char *, size_t) = (void (*)(const char *, size_t))param;
+    memory_dump_callback(s_memory_dump_data->c_str(), s_memory_dump_data->size());
+    s_memory_dump_data = NULL;
+    s_memory_dump_callback = NULL;
+
     return NULL;
 }
 
@@ -504,6 +671,10 @@ bool is_analysis_tool_running(void) {
 int enable_memory_logging(const char *log_dir) {
     err_code = MS_ERRC_SUCCESS;
 
+    if (logger_internal_init() == false) {
+        return MS_ERRC_WORKING_THREAD_CREATE_FAIL;
+    }
+
     // Check whether there's any analysis tool process logging memory.
     if (is_analysis_tool_running()) {
         return MS_ERRC_ANALYSIS_TOOL_RUNNING;
@@ -514,9 +685,11 @@ int enable_memory_logging(const char *log_dir) {
         return err_code;
     }
 
-    s_stack_frames_writer = stack_frames_db_open_or_create(log_dir);
-    if (s_stack_frames_writer == NULL) {
-        return err_code;
+    if (dump_call_stacks != 0) {
+        s_stack_frames_writer = stack_frames_db_open_or_create(log_dir);
+        if (s_stack_frames_writer == NULL) {
+            return err_code;
+        }
     }
 
     s_dyld_image_info_writer = prepare_dyld_image_logger(log_dir);
@@ -539,12 +712,15 @@ int enable_memory_logging(const char *log_dir) {
         return err_code;
     }
 
+    if (pthread_key_create(&s_event_buffer_key, NULL) != 0) {
+        __malloc_printf("pthread_key_create fail");
+        return MS_ERRC_WORKING_THREAD_CREATE_FAIL;
+    }
+
     if (__prepare_working_thread() == false) {
         __malloc_printf("create writing thread fail");
         return MS_ERRC_WORKING_THREAD_CREATE_FAIL;
     }
-
-    pthread_key_create(&s_event_buffer_key, NULL);
 
     malloc_logger = __memory_event_callback;
 
@@ -556,13 +732,13 @@ int enable_memory_logging(const char *log_dir) {
     }
 #endif
 
-    if (pthread_main_np()) {
-        s_main_thread_id = current_thread_id();
-    } else {
+    if (pthread_main_np() == 0) {
         // memory logging shoule be enable in main thread
         abort();
+    } else {
+        s_main_thread_id = current_thread_id();
     }
-    logger_internal_init();
+
     s_logging_is_enable = true;
 
     return MS_ERRC_SUCCESS;
@@ -577,9 +753,6 @@ void disable_memory_logging(void) {
         return;
     }
 
-    log_internal_without_this_thread(0);
-    __malloc_printf("memory logging disabled due to previous errors.\n");
-
     s_logging_is_enable = false;
 
     disable_object_event_logger();
@@ -590,48 +763,26 @@ void disable_memory_logging(void) {
     }
 #endif
 
-    // avoid that after the memory monitoring stops, there are still some events being written.
-    //memory_logging_event_buffer_pool_free(s_buffer_pool);
-    //allocation_event_db_close(s_allocation_event_writer);
-    //stack_frames_db_close(s_stack_frames_writer);
     // make current logging invalid
-    set_memory_logging_invalid();
+    //set_memory_logging_invalid();
+
+    log_internal_without_this_thread(0);
+    __malloc_printf("memory logging disabled due to previous errors\n");
 }
 
-uint32_t get_current_thread_memory_usage() {
-    if (!s_logging_is_enable || !s_allocation_event_writer) {
-        return 0;
-    }
-
-    __block uint32_t total = 0;
-    __block thread_id curr_thread = current_thread_id();
-
-    s_working_thread_lock = 1;
-    while (s_working_thread_lock != 2)
-        ;
-
-    allocation_event_db_enumerate(s_allocation_event_writer, ^(const uint64_t &address, const allocation_event &event) {
-      if (event.t_id == curr_thread) {
-          total += event.size;
-      }
-    });
-
-    s_working_thread_lock = 0;
-
-    return total;
-}
-
-bool dump_memory(void (*callback)(void *, void *, void *, void *, void *, void *)) {
+bool memory_dump(void (*callback)(const char *, size_t), summary_report_param param) {
     if (!s_logging_is_enable) {
-        __malloc_printf("memory logging is disabled.\n");
+        __malloc_printf("memory logging is disabled\n");
         return false;
     }
 
-    if (s_dump_memory_callback) {
-        __malloc_printf("s_dump_memory_callback is not null.\n");
+    if (s_memory_dump_callback) {
+        __malloc_printf("memory_dump_callback is not NULL\n");
         return false;
     }
 
-    s_dump_memory_callback = callback;
+    s_memory_dump_param = param;
+    s_memory_dump_callback = callback;
+
     return true;
 }

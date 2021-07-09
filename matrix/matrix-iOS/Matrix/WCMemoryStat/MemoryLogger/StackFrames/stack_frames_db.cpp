@@ -39,9 +39,8 @@
 
 #define STACK_FRAMES_MAX_LEVEL STACK_LOGGING_MAX_STACK_SIZE
 
-#define STACK_FRAMES_DB_DIR "db"
-#define STACK_FRAMES_DB_FILE "stack_frames.db"
-#define STACK_FRAMES_DB_INDEX_FILE "stack_frames.db.index"
+#define STACK_FRAMES_DB_FILE "stack_frames_entry.dat"
+#define STACK_FRAMES_DB_INDEX_FILE "stack_frames_index.dat"
 
 #pragma mark -
 #pragma mark Types
@@ -187,7 +186,6 @@ static bool __expand_uniquing_table(backtrace_uniquing_table *uniquing_table) {
                         strerror(errno),
                         (uint64_t)uniquing_table->fs + DEFAULT_UNIQUING_BAND_SIZE,
                         errno);
-        abort();
         return false;
     }
 
@@ -196,7 +194,6 @@ static bool __expand_uniquing_table(backtrace_uniquing_table *uniquing_table) {
     if (newBand == MAP_FAILED) {
         disable_memory_logging();
         __malloc_printf("fail to mmap, %s, new_size: %llu, errno: %d", strerror(errno), (uint64_t)DEFAULT_UNIQUING_BAND_SIZE, errno);
-        abort();
         return false;
     }
 
@@ -263,9 +260,6 @@ uint32_t __enter_frames_in_table(backtrace_uniquing_table *uniquing_table, uintp
 
         while (true) {
             hash_index_t bandIndex = __enter_address_in_band(uniquing_table, thisPC, uParent);
-            if (bandIndex >= (1 << 28)) {
-                abort();
-            }
             if (bandIndex != 0) {
                 uParent = bandIndex + baseIndex;
                 break;
@@ -422,9 +416,6 @@ uint32_t add_stack_frames_in_table(stack_frames_db *db_context, uintptr_t *frame
         }
     }
 #endif
-
-    if (!stack_identifier)
-        abort();
 
     return stack_identifier;
 }

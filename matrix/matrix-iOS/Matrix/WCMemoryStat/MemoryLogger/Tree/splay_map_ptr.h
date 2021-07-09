@@ -44,8 +44,10 @@ private:
     bool splay(TKey key, node_ptr &root) {
         /* Simple top down splay, not requiring i to be in the tree t.  */
         /* What it does is described above.                             */
-        if (root == NULL)
+        if (root == NULL) {
             return false;
+        }
+
         node N;
         node_ptr l, r, t;
         N.left = N.right = NULL;
@@ -56,28 +58,32 @@ private:
         for (;;) {
             if (t->key > key) {
                 node_ptr tlc = t->left;
-                if (tlc == NULL)
+                if (tlc == NULL) {
                     break;
+                }
                 if (tlc->key > key) {
                     t->left = tlc->right; /* rotate right */
                     tlc->right = t;
                     t = tlc;
-                    if (t->left == NULL)
+                    if (t->left == NULL) {
                         break;
+                    }
                 }
                 r->left = t; /* link right */
                 r = t;
                 t = t->left;
             } else if (t->key < key) {
                 node_ptr trc = t->right;
-                if (trc == NULL)
+                if (trc == NULL) {
                     break;
+                }
                 if (trc->key < key) {
                     t->right = trc->left; /* rotate left */
                     trc->left = t;
                     t = trc;
-                    if (t->right == NULL)
+                    if (t->right == NULL) {
                         break;
+                    }
                 }
                 l->right = t; /* link left */
                 l = t;
@@ -104,8 +110,9 @@ private:
     }
 
     void inter_enumerate(node_ptr root, void (^callback)(const TKey &key, const TVal &val)) {
-        if (root == NULL)
+        if (root == NULL) {
             return;
+        }
 
         // not support
     }
@@ -120,6 +127,10 @@ private:
         if (new_ptr == NULL) {
             int new_count = (4 << 10);
             node_ptr new_buffer = (node_ptr)memory_pool->malloc(new_count * sizeof(node));
+            if (new_buffer == NULL) {
+                return NULL;
+            }
+
             for (int i = 1; i < new_count; ++i) {
                 new_buffer[i - 1].left = &new_buffer[i];
             }
@@ -138,45 +149,58 @@ public:
     ~splay_map_ptr() {}
 
     void insert(TKey key, const TVal &val) {
-        ++t_size;
-        /* Insert i into the tree t, unless it's already there.    */
-        /* Return a pointer to the resulting tree.                 */
-        node_ptr n = next_free_node();
-        n->left = n->right = NULL;
-        n->key = key;
-        n->val = val;
-
         if (root_ptr == NULL) {
-            root_ptr = n;
+            root_ptr = next_free_node();
+            if (root_ptr == NULL) {
+                return;
+            }
+
+            t_size = 1;
+            root_ptr->left = root_ptr->right = NULL;
+            root_ptr->key = key;
+            root_ptr->val = val;
             return;
         }
 
-        splay(key, root_ptr);
-        if (root_ptr->key > key) {
+        if (splay(key, root_ptr)) {
+            /* We get here if it's already in the tree */
+            /* Don't add it again                      */
+            root_ptr->val = val;
+        } else if (root_ptr->key > key) {
+            node_ptr n = next_free_node();
+            if (n == NULL) {
+                return;
+            }
+
+            ++t_size;
+            n->key = key;
+            n->val = val;
             n->left = root_ptr->left;
             n->right = root_ptr;
             root_ptr->left = NULL;
             root_ptr = n;
-        } else if (root_ptr->key < key) {
+        } else {
+            node_ptr n = next_free_node();
+            if (n == NULL) {
+                return;
+            }
+
+            ++t_size;
+            n->key = key;
+            n->val = val;
             n->right = root_ptr->right;
             n->left = root_ptr;
             root_ptr->right = NULL;
             root_ptr = n;
-        } else { /* We get here if it's already in the tree */
-            /* Don't add it again                      */
-            root_ptr->val = val;
-            free_node(n);
-            --t_size;
         }
     }
 
     void remove(TKey key) {
         /* Deletes i from the tree if it's there.               */
         /* Return a pointer to the resulting tree.              */
-        node_ptr x;
-        if (root_ptr == NULL)
-            return;
         if (splay(key, root_ptr)) { /* found it */
+            node_ptr x;
+
             if (root_ptr->left == NULL) {
                 x = root_ptr->right;
             } else {
