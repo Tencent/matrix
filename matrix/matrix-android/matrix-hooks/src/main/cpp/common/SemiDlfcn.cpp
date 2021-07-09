@@ -242,6 +242,12 @@ namespace matrix {
                 if (dlMutex != nullptr) {
                     pthread_mutex_lock(dlMutex);
                 }
+                auto mutexUnlocker = MakeScopedCleaner([&dlMutex]() {
+                    if (dlMutex != nullptr) {
+                        pthread_mutex_unlock(dlMutex);
+                    }
+                });
+
                 int ret = 0;
                 const void* linkerBase = FindLinkerBaseAddr();
                 if (linkerBase != nullptr) {
@@ -252,14 +258,12 @@ namespace matrix {
                 if (ret != 0) {
                     return ret;
                 }
+
                 ret = dl_iterate_phdr([](dl_phdr_info *info, size_t info_size, void *data) -> int {
                     auto iterData = reinterpret_cast<IterData *>(data);
                     return iterData->cb(info->dlpi_name,
                                         reinterpret_cast<const void *>(info->dlpi_addr), iterData->data);
                 }, &iterData);
-                if (dlMutex != nullptr) {
-                    pthread_mutex_unlock(dlMutex);
-                }
                 return ret;
             } else if (sdk >= 23 && sdk <= 26) {
                 int ret = 0;
@@ -272,6 +276,7 @@ namespace matrix {
                 if (ret != 0) {
                     return ret;
                 }
+
                 ret = dl_iterate_phdr([](dl_phdr_info *info, size_t info_size, void *data) -> int {
                     auto iterData = reinterpret_cast<IterData *>(data);
                     return iterData->cb(info->dlpi_name,
