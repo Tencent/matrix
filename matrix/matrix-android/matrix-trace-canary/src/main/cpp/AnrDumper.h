@@ -31,10 +31,9 @@ namespace MatrixTracer {
 
 class AnrDumper : public SignalHandler {
  public:
-    using DumpCallbackFunction = std::function<bool(int, const char *)>;
+    using DumpCallbackFunction = std::function<bool()>;
 
     AnrDumper(const char* anrTraceFile, const char* printTraceFile, DumpCallbackFunction&& callback);
-    int doDump(bool isAnr);
     virtual ~AnrDumper();
 
  private:

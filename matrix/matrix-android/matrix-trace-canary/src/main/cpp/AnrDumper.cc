@@ -37,7 +37,6 @@
 #include <fcntl.h>
 #include <nativehelper/scoped_utf_chars.h>
 
-#include "DynamicLoader.h"
 #include "nativehelper/scoped_local_ref.h"
 #include "MatrixTracer.h"
 #include "Logging.h"
@@ -51,6 +50,7 @@
 
 namespace MatrixTracer {
 static sigset_t old_sigSet;
+static bool anrTraceHasHooked = false;
 
 AnrDumper::AnrDumper(const char* anrTraceFile, const char* printTraceFile, AnrDumper::DumpCallbackFunction &&callback) :
         mAnrTraceFile(anrTraceFile), mPrintTraceFile(printTraceFile), mCallback(callback) {
@@ -60,52 +60,6 @@ AnrDumper::AnrDumper(const char* anrTraceFile, const char* printTraceFile, AnrDu
     sigaddset(&sigSet, SIGQUIT);
     pthread_sigmask(SIG_UNBLOCK, &sigSet , &old_sigSet);
 }
-
-struct ArtInterface {
-    static constexpr const char *kLibcxxCerrName = "_ZNSt3__14cerrE";
-    static constexpr const char *kLibartRuntimeInstanceName = "_ZN3art7Runtime9instance_E";
-    static constexpr const char *kLibartRuntimeDumpName =
-            "_ZN3art7Runtime14DumpForSigQuitERNSt3__113basic_ostreamIcNS1_11char_traitsIcEEEE";
-
-    void *libcxxCerr;
-    void **libartRuntimeInstance;
-    void (*libartRuntimeDump)(void *, void *);
-
-    ArtInterface() :
-            libcxxCerr(nullptr),
-            libartRuntimeInstance(nullptr),
-            libartRuntimeDump(nullptr) {
-        DynamicLoader libartSo("libart.so");
-        if (libartSo) {
-            libartRuntimeInstance = static_cast<void **>(
-                    libartSo.findSymbol(kLibartRuntimeInstanceName));
-            libartRuntimeDump = reinterpret_cast<void (*)(void *, void *)>(
-                    libartSo.findSymbol(kLibartRuntimeDumpName));
-        } else {
-            ALOGE("Cannot find libart.so");
-        }
-
-        const std::string& artPath = libartSo.fullPath();
-        if (Support::stringEndsWith(artPath, "libart.so")) {
-            std::string cxxPath(artPath);
-            constexpr std::string_view sv("libart.so");
-            cxxPath.replace(cxxPath.size() - sv.size(), sv.size(), "libc++.so");
-
-            libcxxCerr = DynamicLoader(cxxPath.c_str()).findSymbol(kLibcxxCerrName);
-        }
-
-        if (!libcxxCerr) {
-            DynamicLoader libcxxSo("libc++.so");
-            if (libcxxSo) {
-                libcxxCerr = libcxxSo.findSymbol(kLibcxxCerrName);
-            } else {
-                ALOGE("Cannot find libc++.so");
-            }
-        }
-    }
-
-    bool valid() const { return libcxxCerr && libartRuntimeInstance && libartRuntimeDump; }
-};
 
 static int getSignalCatcherThreadId() {
     char taskDirPath[128];
@@ -152,7 +106,7 @@ static int getSignalCatcherThreadId() {
 }
 
 static void *anr_callback(void* args) {
-    anrDumpCallback(0, "");
+    anrDumpCallback();
     return nullptr;
 }
 
@@ -160,11 +114,17 @@ SignalHandler::Result AnrDumper::handleSignal(int sig, const siginfo_t *, void *
     // Only process SIGQUIT, which indicates an ANR.
     if (sig != SIGQUIT) return NOT_HANDLED;
     // Call dumper in separated thread.
+
+    if (!anrTraceHasHooked) {
+        if (strlen(mPrintTraceFile) > 0 || strlen(mAnrTraceFile) > 0) {
+            hookAnrTraceWrite();
+            anrTraceHasHooked = true;
+        }
+    }
+
     pthread_t thd;
     pthread_create(&thd, nullptr, anr_callback, nullptr);
     pthread_join(thd,nullptr);
-
-    doDump(true);
 
     int tid = getSignalCatcherThreadId();
     syscall(SYS_tgkill, getpid(), tid, SIGQUIT);
@@ -182,75 +142,6 @@ static void *print_trace_callback(void* args) {
     return nullptr;
 }
 
-int AnrDumper::doDump(bool isAnr) {
-
-    const char* dumpFile;
-
-    if (isAnr && strlen(mAnrTraceFile) == 0) {
-        return EINVAL;
-    }
-
-    if(!isAnr && strlen(mPrintTraceFile) == 0) {
-        return EINVAL;
-    }
-
-    if(isAnr) {
-        dumpFile = mAnrTraceFile;
-    } else {
-        dumpFile = mPrintTraceFile;
-    }
-    std::optional<const ArtInterface> sArtInterface(std::nullopt);
-    // Initialize ART interface, if not initialized yet. SignalHandler ensures that
-    // handlers are called serialized, so it's safe to be done without synchronization.
-    if (!sArtInterface) {
-        sArtInterface.emplace();
-        if (!sArtInterface->valid()) {
-            ALOGE("Cannot load need symbols. [%p, %p, %p]",
-                  sArtInterface->libcxxCerr,
-                  sArtInterface->libartRuntimeInstance,
-                  sArtInterface->libartRuntimeDump);
-
-            sArtInterface.reset();
-            return ELIBBAD;
-        }
-    }
-
-    // Open log file for writing.
-    ScopedFileDescriptor dumpFd(open(dumpFile, O_WRONLY | O_CREAT | O_TRUNC, 0600));
-    if (!dumpFd.valid()) {
-        return errno;
-    }
-
-    // Save stderr descriptor for later recovery.
-    ScopedFileDescriptor savedStderr(dup(STDERR_FILENO));
-    if (!savedStderr.valid()) {
-        ALOGI("dup(stderr) failed, errno: %d", errno);
-        return errno;
-    }
-
-    // dup dump file to stderr.
-    if (dup2(dumpFd.get(), STDERR_FILENO) != STDERR_FILENO) {
-        ALOGI("dup2(dump, stderr) failed, errno: %d", errno);
-        return errno;
-    }
-
-    try {
-        void *runtime = *(sArtInterface->libartRuntimeInstance);
-        sArtInterface->libartRuntimeDump(runtime, sArtInterface->libcxxCerr);
-    } catch (std::exception& e) {
-    }
-
-    dup2(savedStderr.get(), STDERR_FILENO);
-
-    pthread_t thd;
-    if (isAnr) {
-        pthread_create(&thd, nullptr, anr_trace_callback, nullptr);
-    } else {
-        pthread_create(&thd, nullptr, print_trace_callback, nullptr);
-    }
-    pthread_detach(thd);
-    return 0;
-}
 
 AnrDumper::~AnrDumper() {
     pthread_sigmask(SIG_SETMASK, &old_sigSet, nullptr);

@@ -64,6 +64,7 @@ public class SignalAnrTracer extends Tracer {
     private static Application sApplication;
     private static boolean hasInit = false;
     public static boolean hasInstance = false;
+    private static boolean hasReported = false;
 
 
     static {
@@ -111,12 +112,14 @@ public class SignalAnrTracer extends Tracer {
 
     @RequiresApi(api = Build.VERSION_CODES.M)
     @Keep
-    private static void onANRDumped(final int status, final String dumpFile) {
+    private static void onANRDumped() {
+        hasReported = false;
         currentForeground = AppForegroundUtil.isInterestingToUser();
-        boolean needReport = firstCheckMessage();
+        boolean needReport = isMainThreadBlocked();
 
         if (needReport) {
             report();
+            hasReported = true;
         } else {
             checkErrorStateCycle();
         }
@@ -179,7 +182,7 @@ public class SignalAnrTracer extends Tracer {
     }
 
 
-    private static boolean firstCheckMessage() {
+    private static boolean isMainThreadBlocked() {
         try {
             MessageQueue mainQueue = Looper.getMainLooper().getQueue();
             Field field = mainQueue.getClass().getDeclaredField("mMessages");
@@ -209,7 +212,8 @@ public class SignalAnrTracer extends Tracer {
         while (checkErrorStateCount < CHECK_ERROR_STATE_COUNT) {
             checkErrorStateCount++;
             boolean myAnr = checkErrorState();
-            if (myAnr) {
+            if (myAnr && !hasReported) {
+                report();
                 break;
             }
         }
