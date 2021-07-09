@@ -146,7 +146,6 @@ ssize_t my_write(int fd, const void* const buf, size_t count) {
             if (!targetFilePath.empty()) {
                 char *content = (char *) buf;
                 writeAnr(content, targetFilePath);
-                ALOGI("[leafjia]...isMySelfSigQuit = %d", isMySelfSigQuit);
                 if(!isMySelfSigQuit) {
                     anrDumpTraceCallback();
                 } else {
@@ -166,7 +165,6 @@ ssize_t my_write(int fd, const void* const buf, size_t count) {
 bool anrDumpCallback() {
     JNIEnv *env = JniInvocation::getEnv();
     if (!env) return false;
-    ALOGI("[leafjia]...anrDumpCallback");
     env->CallStaticVoidMethod(gJ.AnrDetective, gJ.AnrDetector_onANRDumped);
     return true;
 }
@@ -255,20 +253,6 @@ static const JNINativeMethod ANR_METHODS[] = {
 static const JNINativeMethod THREAD_PRIORITY_METHODS[] = {
         {"nativeInitMainThreadPriorityDetective", "()V", (voidp) nativeInitMainThreadPriorityDetective},
 };
-
-
-#ifndef NDEBUG
-static void nativeTestSegv(JNIEnv *, jclass) {
-    ALOGI("I'm going to die with SIGSEGV().");
-}
-
-static void nativeTestAbrt(JNIEnv *, jclass) {
-    ALOGI("I'm going to die with abort().");
-    abort();
-}
-
-#endif
-
 
 JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *) {
     JniInvocation::init(vm);
