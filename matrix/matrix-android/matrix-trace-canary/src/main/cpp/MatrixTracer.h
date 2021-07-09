@@ -21,7 +21,8 @@
 #ifndef LAGDETECTOR_LAG_DETECTOR_MAIN_CPP_MatrixTracer_H_
 #define LAGDETECTOR_LAG_DETECTOR_MAIN_CPP_MatrixTracer_H_
 
-bool anrDumpCallback(int status, const char *dumpFile);
+bool anrDumpCallback();
 bool anrDumpTraceCallback();
 bool printTraceCallback();
+void hookAnrTraceWrite();
 #endif  // LAGDETECTOR_LAG_DETECTOR_MAIN_CPP_MatrixTracer_H_

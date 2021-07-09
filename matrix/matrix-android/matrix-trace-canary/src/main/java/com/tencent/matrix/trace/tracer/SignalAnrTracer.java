@@ -111,7 +111,7 @@ public class SignalAnrTracer extends Tracer {
 
     @RequiresApi(api = Build.VERSION_CODES.M)
     @Keep
-    private static void onANRDumped(final int status, final String dumpFile) {
+    private static void onANRDumped() {
         currentForeground = AppForegroundUtil.isInterestingToUser();
         boolean needReport = firstCheckMessage();
 
