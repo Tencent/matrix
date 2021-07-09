@@ -22,6 +22,8 @@ namespace matrix {
     static std::recursive_mutex sDlOpenMutex;
 
     static void NotifySoLoad(const char* pathname) {
+        xhook_refresh(0);
+
         wechat_backtrace::notify_maps_changed();
 
         for (auto cb : sSoLoadCallbacks) {
