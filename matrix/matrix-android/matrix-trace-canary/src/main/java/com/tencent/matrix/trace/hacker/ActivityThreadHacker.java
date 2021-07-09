@@ -128,8 +128,8 @@ public class ActivityThreadHacker {
                 if (msg.what == SERIVCE_ARGS || msg.what == STOP_SERVICE
                         || msg.what == STOP_ACTIVITY_SHOW || msg.what == STOP_ACTIVITY_HIDE
                         || msg.what == SLEEPING) {
-                    MatrixLog.i(TAG, "[Matrix.fix.sp.apply] start to fix msg.waht=" + msg.what);
                     if (IssueFixConfig.getsInstance().isEnableFixSpApply()) {
+                        MatrixLog.i(TAG, "Fix SP ANR is enabled");
                         fix();
                     }
                 }
@@ -173,20 +173,20 @@ public class ActivityThreadHacker {
                     field.setAccessible(true);
                     ConcurrentLinkedQueue<Runnable> runnables = (ConcurrentLinkedQueue<Runnable>) field.get(null);
                     runnables.clear();
-                    MatrixLog.i(TAG, "Fix SP sPendingWorkFinishers.clear successful");
+                    MatrixLog.i(TAG, "Fix SP ANR sPendingWorkFinishers.clear successful");
                 }
             } catch (ClassNotFoundException e) {
                 MatrixLog.e(TAG,
-                        "Fix SP ClassNotFoundException = " + e.getMessage());
+                        "Fix SP ANR ClassNotFoundException = " + e.getMessage());
                 e.printStackTrace();
             } catch (IllegalAccessException e) {
-                MatrixLog.e(TAG, "Fix SP IllegalAccessException =" + e.getMessage());
+                MatrixLog.e(TAG, "Fix SP ANR IllegalAccessException =" + e.getMessage());
                 e.printStackTrace();
             } catch (NoSuchFieldException e) {
-                MatrixLog.e(TAG, "Fix SP NoSuchFieldException = " + e.getMessage());
+                MatrixLog.e(TAG, "Fix SP ANR NoSuchFieldException = " + e.getMessage());
                 e.printStackTrace();
             } catch (Exception e) {
-                MatrixLog.e(TAG, "Fix SP Exception = " + e.getMessage());
+                MatrixLog.e(TAG, "Fix SP ANR Exception = " + e.getMessage());
                 e.printStackTrace();
             }
 
