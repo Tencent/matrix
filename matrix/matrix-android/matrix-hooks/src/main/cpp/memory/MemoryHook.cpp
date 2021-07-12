@@ -630,7 +630,7 @@ void dump(bool enable_mmap, const char *log_path, const char *json_path) {
          ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> memory dump end <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
 }
 
-void memory_hook_on_dlopen(const char *file_name, bool *maps_refreshed) {
+void memory_hook_on_dlopen(const char *file_name) {
     LOGD(TAG, "memory_hook_on_dlopen: file %s, h_malloc %p, h_realloc %p, h_free %p", file_name,
          h_malloc, h_realloc, h_free);
 

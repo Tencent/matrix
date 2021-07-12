@@ -103,22 +103,9 @@ typedef struct {
     void       **origin_ptr;
 } HookFunction;
 
-typedef void (*dlopen_callback_t)(const char *__file_name, bool *maps_refreshed);
-
-EXPORT void add_dlopen_hook_callback(dlopen_callback_t callback);
-
-EXPORT void pause_dlopen();
-
-EXPORT void resume_dlopen();
-
 typedef void (*hook_init_callback_t)();
 
 EXPORT bool get_java_stacktrace(char *stack_dst, size_t size);
-
-DECLARE_HOOK_ORIG(void *, __loader_android_dlopen_ext, const char *filename,
-                  int                                             flag,
-                  const void                                      *extinfo,
-                  const void                                      *caller_addr) ;
 
 #ifdef __cplusplus
 }

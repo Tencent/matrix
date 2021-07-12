@@ -24,6 +24,7 @@
 #include <xhook.h>
 #include <xhook_ext.h>
 #include <common/HookCommon.h>
+#include <common/SoLoadMonitor.h>
 #include <common/Macros.h>
 #include "PthreadHook.h"
 #include "ThreadTrace.h"
@@ -123,7 +124,7 @@ namespace pthread_hook {
             thread_trace::thread_trace_init();
         }
 
-        pause_dlopen();
+        matrix::PauseLoadSo();
         {
             int ret = xhook_export_symtable_hook("libc.so", "pthread_create",
                                                  (void *) HANDLER_FUNC_NAME(pthread_create), nullptr);
@@ -139,6 +140,6 @@ namespace pthread_hook {
             xhook_enable_sigsegv_protection(0);
             xhook_refresh(0);
         }
-        resume_dlopen();
+        matrix::ResumeLoadSo();
     }
 }
