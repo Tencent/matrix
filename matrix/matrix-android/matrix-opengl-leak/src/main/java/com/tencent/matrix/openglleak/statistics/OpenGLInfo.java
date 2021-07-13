@@ -64,7 +64,7 @@ public class OpenGLInfo {
         this.type = type;
     }
 
-    public OpenGLInfo(TYPE type, int id, String threadId, long eglContextId, String javaStack, long nativeStackPtr, boolean genOrDelete, String activityName, AtomicInteger counter) {
+    public OpenGLInfo(TYPE type, int id, String threadId, long eglContextNativeHandle, String javaStack, long nativeStackPtr, boolean genOrDelete, String activityName, AtomicInteger counter) {
         this.id = id;
         this.threadId = threadId;
         this.eglContextNativeHandle = eglContextNativeHandle;

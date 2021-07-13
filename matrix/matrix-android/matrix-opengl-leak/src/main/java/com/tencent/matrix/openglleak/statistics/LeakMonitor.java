@@ -153,7 +153,9 @@ public class LeakMonitor implements Application.ActivityLifecycleCallbacks {
                     continue;
                 }
 
-                if ((create.getType() == destroy.getType()) && (create.getThreadId().equals(destroy.getThreadId())) && (create.getId() == destroy.getId())) {
+                if ((create.getType() == destroy.getType())
+                        && (create.getThreadId().equals(destroy.getThreadId())) && (create.getId()
+                        == destroy.getId()) && (create.getEglContextNativeHandle() == destroy.getEglContextNativeHandle())) {
                     break;
                 }
 
