@@ -538,13 +538,14 @@ namespace wechat_backtrace {
         auto reg_entry = cie_loc_regs_->find(reg);
         if (reg_entry == cie_loc_regs_->end()) {
             loc_regs->erase(reg);
+            DWARF_CFA_LOG("DwarfCfa:   cfa_restore reg(%u) erase;", (uint32_t) operands_[0]);
         } else {
             (*loc_regs)[reg] = reg_entry->second;
+            DWARF_CFA_LOG("DwarfCfa:   cfa_restore reg(%u) = %d (%x, %x) ;", (uint32_t) operands_[0],
+                          (uint32_t) reg_entry->second.type, (uint32_t) reg_entry->second.values[0],
+                          (uint32_t) reg_entry->second.values[1]);
         }
 
-        DWARF_CFA_LOG("DwarfCfa:   cfa_restore reg(%u) = %d (%x, %x) ;", (uint32_t) operands_[0],
-                      (uint32_t) reg_entry->second.type, (uint32_t) reg_entry->second.values[0],
-                      (uint32_t) reg_entry->second.values[1]);
         return true;
     }
 

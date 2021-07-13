@@ -16,8 +16,6 @@
 
 package com.tencent.matrix.trace.config;
 
-import android.os.Build;
-
 import com.tencent.matrix.trace.constants.Constants;
 import com.tencent.matrix.trace.listeners.IDefaultConfig;
 import com.tencent.mrs.plugin.IDynamicConfig;
@@ -25,7 +23,6 @@ import com.tencent.mrs.plugin.IDynamicConfig;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
-
 
 /**
  * Created by caichongyang on 17/5/18.

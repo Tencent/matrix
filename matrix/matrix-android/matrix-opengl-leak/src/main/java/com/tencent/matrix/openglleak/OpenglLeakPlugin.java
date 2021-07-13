@@ -7,18 +7,15 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.os.IBinder;
 import android.os.RemoteException;
-import android.util.Log;
 
 import com.tencent.matrix.openglleak.comm.FuncNameString;
 import com.tencent.matrix.openglleak.detector.IOpenglIndexDetector;
+import com.tencent.matrix.openglleak.detector.OpenglIndexDetectorService;
 import com.tencent.matrix.openglleak.hook.OpenGLHook;
-import com.tencent.matrix.openglleak.statistics.OpenGLInfo;
 import com.tencent.matrix.openglleak.statistics.LeakMonitor;
 import com.tencent.matrix.openglleak.utils.EGLHelper;
 import com.tencent.matrix.plugin.Plugin;
 import com.tencent.matrix.plugin.PluginListener;
-
-import com.tencent.matrix.openglleak.detector.OpenglIndexDetectorService;
 import com.tencent.matrix.util.MatrixLog;
 
 import java.util.Map;
@@ -45,12 +42,12 @@ public class OpenglLeakPlugin extends Plugin {
         new Thread(new Runnable() {
             @Override
             public void run() {
-                _start();
+                startImpl();
             }
         }).start();
     }
 
-    private void _start() {
+    private void startImpl() {
         Intent service = new Intent(context, OpenglIndexDetectorService.class);
         context.bindService(service, new ServiceConnection() {
             @Override

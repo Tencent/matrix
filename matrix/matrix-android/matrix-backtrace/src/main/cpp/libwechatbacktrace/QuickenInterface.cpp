@@ -173,6 +173,7 @@ namespace wechat_backtrace {
         quicken.cfa_ = SP(regs);
         bool return_value = false;
 //        quicken.log = log && log_pc == pc;
+        quicken.log = true;
         last_error_code_ = quicken.Eval(entry_offset);
         if (LIKELY(last_error_code_ == QUT_ERROR_NONE)) {
             if (!quicken.pc_set_) {
@@ -223,7 +224,7 @@ namespace wechat_backtrace {
             }
             if (quicken_in_memory) {
                 QUT_LOG("QuickenInterface::Step using quicken_in_memory_, elf: %s, frame: %llu",
-                        soname_.c_str(), (ullint_t) frame_size);
+                        soname_.c_str(), (ullint_t) step_context->frame_index);
                 std::shared_ptr<QutSectionsInMemory> qut_section_in_memory;
                 bool ret = quicken_in_memory->GetFutSectionsInMemory(
                         step_context->pc, /* out */ qut_section_in_memory);

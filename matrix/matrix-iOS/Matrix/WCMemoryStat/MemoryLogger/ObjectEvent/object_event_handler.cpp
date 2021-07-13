@@ -207,10 +207,13 @@ inline size_t __string_hash(const char *str) {
 }
 
 void object_set_last_allocation_event_name(void *ptr, const char *classname) {
-    if (!ptr)
+    if (!ptr) {
         return;
-    if (!classname)
+    }
+
+    if (!classname) {
         classname = "(no class)";
+    }
 
     uint32_t type = 0;
     uintptr_t str_hash = __string_hash(classname);
@@ -231,10 +234,13 @@ void object_set_last_allocation_event_name(void *ptr, const char *classname) {
 }
 
 void nsobject_set_last_allocation_event_name(void *ptr, const char *classname) {
-    if (!ptr)
+    if (!ptr) {
         return;
-    if (!classname)
+    }
+
+    if (!classname) {
         classname = "(no class)";
+    }
 
     uint32_t type = 0;
 

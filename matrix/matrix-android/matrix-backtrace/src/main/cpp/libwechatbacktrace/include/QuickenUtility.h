@@ -116,18 +116,16 @@ namespace wechat_backtrace {
 
     inline static std::string FakeBuildId(const std::string &sopath) {
         std::string build_id = "";
-        if (IsOatFile(sopath)) {
-            int fd = open(sopath.c_str(), O_RDONLY);
-            if (fd >= 0) {
-                struct stat file_stat;
-                if (fstat(fd, &file_stat) == 0 && file_stat.st_size > 0) {
-                    std::string build_id_raw =
-                            std::to_string((ullint_t) file_stat.st_size) + sopath +
-                            std::to_string((ullint_t) file_stat.st_mtim.tv_sec);
-                    build_id = ToHash(build_id_raw);
-                }
-                close(fd);
+        int fd = open(sopath.c_str(), O_RDONLY);
+        if (fd >= 0) {
+            struct stat file_stat;
+            if (fstat(fd, &file_stat) == 0 && file_stat.st_size > 0) {
+                std::string build_id_raw =
+                        std::to_string((ullint_t) file_stat.st_size) + sopath +
+                        std::to_string((ullint_t) file_stat.st_mtim.tv_sec);
+                build_id = ToHash(build_id_raw);
             }
+            close(fd);
         }
 
         return build_id;

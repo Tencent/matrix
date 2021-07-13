@@ -1015,10 +1015,7 @@ int xh_elf_hook(xh_elf_t *self, const char *symbol, void *new_func, void **old_f
     XH_LOG_INFO("hooking %s in %s\n", symbol, self->pathname);
 
     //find symbol index by symbol name
-    if(0 != (r = xh_elf_find_symidx_by_name(self, symbol, &symidx))) {
-        symidx = 0;
-    }
-//    if(0 != (r = xh_elf_find_symidx_by_name(self, symbol, &symidx))) return 0;
+    if(0 != (r = xh_elf_find_symidx_by_name(self, symbol, &symidx))) return r;
 
     //replace for .rel(a).plt
     if(0 != self->relplt)

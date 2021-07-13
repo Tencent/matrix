@@ -19,6 +19,9 @@ package sample.tencent.matrix.listener;
 import android.app.Application;
 import android.content.Context;
 import android.content.Intent;
+import android.os.Handler;
+import android.os.Looper;
+import android.widget.Toast;
 
 import com.tencent.matrix.plugin.DefaultPluginListener;
 import com.tencent.matrix.report.Issue;
@@ -40,18 +43,37 @@ public class TestPluginListener extends DefaultPluginListener {
 
     public SoftReference<Context> softReference;
 
+    private final Handler mHandler = new Handler(Looper.getMainLooper());
+
     public TestPluginListener(Context context) {
         super(context);
         softReference = new SoftReference<>(context);
     }
 
     @Override
-    public void onReportIssue(Issue issue) {
+    public void onReportIssue(final Issue issue) {
         super.onReportIssue(issue);
         MatrixLog.e(TAG, issue.toString());
 
         IssuesMap.put(IssueFilter.getCurrentFilter(), issue);
+
+        mHandler.post(new Runnable() {
+            @Override
+            public void run() {
+                showToast(issue);
+            }
+        });
+
         jumpToIssueActivity();
+    }
+
+    private void showToast(Issue issue) {
+
+        String message = String.format("Report an issue - [%s].", issue.getTag());
+        Context context = softReference.get();
+        if (context != null) {
+            Toast.makeText(context, message, Toast.LENGTH_LONG);
+        }
     }
 
     public void jumpToIssueActivity() {
@@ -63,7 +85,6 @@ public class TestPluginListener extends DefaultPluginListener {
         }
 
         context.startActivity(intent);
-
     }
 
 }

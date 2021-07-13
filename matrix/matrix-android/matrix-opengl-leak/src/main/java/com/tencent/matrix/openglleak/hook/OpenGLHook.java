@@ -1,7 +1,6 @@
 package com.tencent.matrix.openglleak.hook;
 
 import android.opengl.EGL14;
-import android.opengl.EGLContext;
 
 import com.tencent.matrix.openglleak.comm.FuncNameString;
 import com.tencent.matrix.openglleak.statistics.LeakMonitor;
@@ -84,7 +83,7 @@ public class OpenGLHook {
         if (ids.length > 0) {
             AtomicInteger counter = new AtomicInteger(ids.length);
 
-            long eglContextId = 0l;
+            long eglContextId = 0L;
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
                 eglContextId = EGL14.eglGetCurrentContext().getNativeHandle();
             }
@@ -103,7 +102,7 @@ public class OpenGLHook {
     public static void onGlDeleteTextures(int[] ids, String threadId) {
         if (ids.length > 0) {
 
-            long eglContextId = 0l;
+            long eglContextId = 0L;
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
                 eglContextId = EGL14.eglGetCurrentContext().getNativeHandle();
             }
@@ -123,7 +122,7 @@ public class OpenGLHook {
         if (ids.length > 0) {
             AtomicInteger counter = new AtomicInteger(ids.length);
 
-            long eglContextId = 0l;
+            long eglContextId = 0L;
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
                 eglContextId = EGL14.eglGetCurrentContext().getNativeHandle();
             }
@@ -142,7 +141,7 @@ public class OpenGLHook {
     public static void onGlDeleteBuffers(int[] ids, String threadId) {
         if (ids.length > 0) {
 
-            long eglContextId = 0l;
+            long eglContextId = 0L;
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
                 eglContextId = EGL14.eglGetCurrentContext().getNativeHandle();
             }
@@ -162,7 +161,7 @@ public class OpenGLHook {
         if (ids.length > 0) {
             AtomicInteger counter = new AtomicInteger(ids.length);
 
-            long eglContextId = 0l;
+            long eglContextId = 0L;
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
                 eglContextId = EGL14.eglGetCurrentContext().getNativeHandle();
             }
@@ -181,7 +180,7 @@ public class OpenGLHook {
     public static void onGlDeleteFramebuffers(int[] ids, String threadId) {
         if (ids.length > 0) {
 
-            long eglContextId = 0l;
+            long eglContextId = 0L;
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
                 eglContextId = EGL14.eglGetCurrentContext().getNativeHandle();
             }
@@ -201,7 +200,7 @@ public class OpenGLHook {
         if (ids.length > 0) {
             AtomicInteger counter = new AtomicInteger(ids.length);
 
-            long eglContextId = 0l;
+            long eglContextId = 0L;
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
                 eglContextId = EGL14.eglGetCurrentContext().getNativeHandle();
             }
@@ -220,7 +219,7 @@ public class OpenGLHook {
     public static void onGlDeleteRenderbuffers(int[] ids, String threadId) {
         if (ids.length > 0) {
 
-            long eglContextId = 0l;
+            long eglContextId = 0L;
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
                 eglContextId = EGL14.eglGetCurrentContext().getNativeHandle();
             }

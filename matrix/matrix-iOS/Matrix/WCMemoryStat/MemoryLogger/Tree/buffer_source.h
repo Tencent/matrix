@@ -53,9 +53,12 @@ public:
     virtual bool init_fail() { return false; }
 
     virtual void *realloc(size_t new_size) {
-        _buffer = inter_realloc(_buffer, new_size);
-        _buffer_size = new_size;
-        return _buffer;
+        void *ptr = inter_realloc(_buffer, new_size);
+        if (ptr != NULL) {
+            _buffer = ptr;
+            _buffer_size = new_size;
+        }
+        return ptr;
     }
 
     virtual void free() {
@@ -70,29 +73,27 @@ public:
 class buffer_source_file : public buffer_source {
 public:
     buffer_source_file(const char *dir, const char *file_name) {
-        int fd = open_file(dir, file_name);
+        _fd = open_file(dir, file_name);
         _file_name = file_name;
 
-        if (fd < 0) {
+        if (_fd < 0) {
             goto init_fail;
         } else {
             struct stat st = { 0 };
-            if (fstat(fd, &st) == -1) {
+            if (fstat(_fd, &st) == -1) {
                 goto init_fail;
             } else {
                 if (st.st_size > 0) {
-                    void *buff = inter_mmap(NULL, (size_t)st.st_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+                    void *buff = inter_mmap(NULL, (size_t)st.st_size, PROT_READ | PROT_WRITE, MAP_SHARED, _fd, 0);
                     if (buff == MAP_FAILED) {
                         __malloc_printf("fail to mmap, %s", strerror(errno));
                         goto init_fail;
                     } else {
-                        _fd = fd;
-                        _fs = st.st_size;
+                        _fs = (size_t)st.st_size;
                         _buffer = buff;
                         _buffer_size = _fs;
                     }
                 } else {
-                    _fd = fd;
                     _fs = 0;
                     _buffer = NULL;
                     _buffer_size = 0;
@@ -102,8 +103,8 @@ public:
         return;
 
     init_fail:
-        if (fd >= 0) {
-            close(fd);
+        if (_fd >= 0) {
+            close(_fd);
             _fd = -1;
         }
     }
@@ -118,13 +119,10 @@ public:
     virtual bool init_fail() { return _fd < 0; }
 
     virtual void *realloc(size_t new_size) {
-        free();
-
         new_size = round_page(new_size);
         if (ftruncate(_fd, new_size) != 0) {
             disable_memory_logging();
             __malloc_printf("%s fail to ftruncate, %s, new_size: %llu, errno: %d", _file_name, strerror(errno), (uint64_t)new_size, errno);
-            abort();
             return NULL;
         }
 
@@ -132,9 +130,10 @@ public:
         if (new_mem == MAP_FAILED) {
             disable_memory_logging();
             __malloc_printf("%s fail to mmap, %s, new_size: %llu, errno: %d", _file_name, strerror(errno), (uint64_t)new_size, errno);
-            abort();
             return NULL;
         }
+
+        free();
 
         _fs = new_size;
         _buffer = new_mem;
@@ -161,17 +160,19 @@ private:
 class memory_pool_file {
 public:
     memory_pool_file(const char *dir, const char *file_name) {
+        _fs = 0;
         _fd = open_file(dir, file_name);
         _file_name = file_name;
 
         if (_fd < 0) {
             goto init_fail;
         } else {
-            if (ftruncate(_fd, 0) != 0) {
+            struct stat st = { 0 };
+            if (fstat(_fd, &st) == -1) {
                 goto init_fail;
+            } else {
+                _fs = (size_t)st.st_size;
             }
-
-            _fs = 0;
         }
         return;
 
@@ -188,6 +189,9 @@ public:
         }
     }
 
+    inline int fd() { return _fd; }
+    inline size_t fs() { return _fs; }
+
     bool init_fail() { return _fd < 0; }
 
     void *malloc(size_t size) {
@@ -195,7 +199,6 @@ public:
         if (ftruncate(_fd, _fs + new_size) != 0) {
             disable_memory_logging();
             __malloc_printf("%s fail to ftruncate, %s, new_size: %llu, errno: %d", _file_name, strerror(errno), (uint64_t)_fs + new_size, errno);
-            abort();
             return NULL;
         }
 
@@ -208,7 +211,6 @@ public:
                             (uint64_t)new_size,
                             (uint64_t)_fs,
                             errno);
-            abort();
             return NULL;
         }
 

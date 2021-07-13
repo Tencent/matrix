@@ -1,5 +1,19 @@
-// Copyright 2020 Tencent Inc.  All rights reserved.
-//
+/*
+ * Tencent is pleased to support the open source community by making wechat-matrix available.
+ * Copyright (C) 2021 THL A29 Limited, a Tencent company. All rights reserved.
+ * Licensed under the BSD 3-Clause License (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      https://opensource.org/licenses/BSD-3-Clause
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 // Author: leafjia@tencent.com
 //
 // MatrixTracer.cpp
@@ -23,6 +37,8 @@
 #include <memory>
 #include <string>
 #include <optional>
+#include <sstream>
+#include <fstream>
 
 #include "Logging.h"
 #include "Support.h"
@@ -32,10 +48,15 @@
 #include "AnrDumper.h"
 
 #define voidp void*
+#define PROP_VALUE_MAX  92
 
 using namespace MatrixTracer;
 
 static std::optional<AnrDumper> sAnrDumper;
+static bool isTraceWrite = false;
+static bool isMySelfSigQuit = false;
+static std::string anrTracePathstring;
+static std::string printTracePathstring;
 
 static struct StacktraceJNI {
     jclass AnrDetective;
@@ -83,15 +104,68 @@ int my_prctl(int option, unsigned long arg2, unsigned long arg3,
 }
 
 
+void writeAnr(const std::string& content, const std::string &filePath) {
+    std::stringstream stringStream(content);
+    std::string to;
+    std::ofstream outfile;
+    outfile.open(filePath);
+    outfile << content;
+}
 
-bool anrDumpCallback(int status, const char *nativeStack) {
+int (*original_connect)(int __fd, const struct sockaddr* __addr, socklen_t __addr_length);
+int my_connect(int __fd, const struct sockaddr* __addr, socklen_t __addr_length) {
+    if (__addr!= nullptr) {
+        if (strcmp(__addr->sa_data, "/dev/socket/tombstoned_java_trace") == 0) {
+            isTraceWrite = true;
+        }
+    }
+    return original_connect(__fd, __addr, __addr_length);
+}
+
+int (*original_open)(const char *pathname, int flags, mode_t mode);
+
+int my_open(const char *pathname, int flags, mode_t mode) {
+    if (pathname!= nullptr) {
+        if (strcmp(pathname, "/data/anr/traces.txt") == 0) {
+            isTraceWrite = true;
+        }
+    }
+    return original_open(pathname, flags, mode);
+}
+
+ssize_t (*original_write)(int fd, const void* const __pass_object_size0 buf, size_t count);
+ssize_t my_write(int fd, const void* const buf, size_t count) {
+    if(isTraceWrite) {
+        if (buf != nullptr) {
+            std::string targetFilePath;
+            if (isMySelfSigQuit) {
+                targetFilePath = printTracePathstring;
+            } else {
+                targetFilePath = anrTracePathstring;
+            }
+            if (!targetFilePath.empty()) {
+                char *content = (char *) buf;
+                writeAnr(content, targetFilePath);
+                if(!isMySelfSigQuit) {
+                    anrDumpTraceCallback();
+                } else {
+                    printTraceCallback();
+                }
+                isMySelfSigQuit = false;
+            }
+        }
+    }
+    isTraceWrite = false;
+
+    return original_write(fd, buf, count);
+}
+
+
+
+bool anrDumpCallback() {
     JNIEnv *env = JniInvocation::getEnv();
     if (!env) return false;
-    ScopedLocalRef<jstring> nativeStackStr(env);
-    if (nativeStack)
-        nativeStackStr.reset(env->NewStringUTF(nativeStack));
-    env->CallStaticVoidMethod(gJ.AnrDetective, gJ.AnrDetector_onANRDumped,
-                                                   status, nativeStackStr.get());
+    env->CallStaticVoidMethod(gJ.AnrDetective, gJ.AnrDetector_onANRDumped);
     return true;
 }
 
@@ -109,50 +183,76 @@ bool printTraceCallback() {
     return true;
 }
 
+int getApiLevel() {
+    char buf[PROP_VALUE_MAX];
+    int len = __system_property_get("ro.build.version.sdk", buf);
+    if (len <= 0)
+        return 0;
+
+    return atoi(buf);
+}
+
+void hookAnrTraceWrite() {
+    int apiLevel = getApiLevel();
+    if (apiLevel < 19) {
+        return;
+    }
+
+    if (apiLevel >= 27) {
+        xhook_register("libcutils.so", "connect", (void *) my_connect, (void **) (&original_connect));
+    } else {
+        xhook_register("libart.so", "open", (void *) my_open, (void **) (&original_open));
+    }
+
+    if (apiLevel >= 30 || apiLevel == 25 || apiLevel ==24) {
+        xhook_register("libc.so", "write", (void *) my_write, (void **) (&original_write));
+    } else if (apiLevel == 29) {
+        xhook_register("libbase.so", "write", (void *) my_write, (void **) (&original_write));
+    } else {
+        xhook_register("libart.so", "write", (void *) my_write, (void **) (&original_write));
+    }
+
+    xhook_enable_sigsegv_protection(1);
+    xhook_refresh(true);
+}
+
+
 
 static void nativeInitSignalAnrDetective(JNIEnv *env, jclass, jstring anrTracePath, jstring printTracePath) {
     const char* anrTracePathChar = env->GetStringUTFChars(anrTracePath, nullptr);
     const char* printTracePathChar = env->GetStringUTFChars(printTracePath, nullptr);
+    anrTracePathstring = std::string(anrTracePathChar);
+    printTracePathstring = std::string(printTracePathChar);
     sAnrDumper.emplace(anrTracePathChar, printTracePathChar, anrDumpCallback);
 }
 
+static void nativeFreeSignalAnrDetective(JNIEnv *env, jclass) {
+    sAnrDumper.reset();
+}
+
 static void nativeInitMainThreadPriorityDetective(JNIEnv *env, jclass) {
-    ALOGI("[leafjia]...nativeInitMainThreadPriorityDetective");
     xhook_register(".*\\.so$", "setpriority", (void *) my_setpriority, (void **) (&original_setpriority));
     xhook_register(".*\\.so$", "prctl", (void *) my_prctl, (void **) (&original_prctl));
     xhook_refresh(true);
 }
 
-static void printTrace() {
-    sAnrDumper->doDump(false);
+static void nativePrintTrace() {
+    isMySelfSigQuit = true;
+    kill(getpid(), SIGQUIT);
 }
-
 
 template <typename T, std::size_t sz>
 static inline constexpr std::size_t NELEM(const T(&)[sz]) { return sz; }
 
 static const JNINativeMethod ANR_METHODS[] = {
     {"nativeInitSignalAnrDetective", "(Ljava/lang/String;Ljava/lang/String;)V", (voidp) nativeInitSignalAnrDetective},
-    {"printTrace", "()V", (voidp) printTrace},
+    {"nativeFreeSignalAnrDetective", "()V", (voidp) nativeFreeSignalAnrDetective},
+    {"nativePrintTrace", "()V", (voidp) nativePrintTrace},
 };
 
 static const JNINativeMethod THREAD_PRIORITY_METHODS[] = {
         {"nativeInitMainThreadPriorityDetective", "()V", (voidp) nativeInitMainThreadPriorityDetective},
 };
-
-
-#ifndef NDEBUG
-static void nativeTestSegv(JNIEnv *, jclass) {
-    ALOGI("I'm going to die with SIGSEGV().");
-}
-
-static void nativeTestAbrt(JNIEnv *, jclass) {
-    ALOGI("I'm going to die with abort().");
-    abort();
-}
-
-#endif
-
 
 JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *) {
     JniInvocation::init(vm);
@@ -166,7 +266,7 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *) {
         return -1;
     gJ.AnrDetective = static_cast<jclass>(env->NewGlobalRef(anrDetectiveCls));
     gJ.AnrDetector_onANRDumped =
-            env->GetStaticMethodID(anrDetectiveCls, "onANRDumped", "(ILjava/lang/String;)V");
+            env->GetStaticMethodID(anrDetectiveCls, "onANRDumped", "()V");
     gJ.AnrDetector_onANRDumpTrace =
             env->GetStaticMethodID(anrDetectiveCls, "onANRDumpTrace", "()V");
     gJ.AnrDetector_onPrintTrace =

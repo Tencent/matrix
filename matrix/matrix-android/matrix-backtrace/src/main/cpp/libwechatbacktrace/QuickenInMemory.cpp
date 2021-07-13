@@ -18,6 +18,7 @@
 
 #include <memory>
 #include <ElfWrapper.h>
+#include <QuickenProperties.h>
 #include "Log.h"
 #include "DwarfEhFrameWithHdrDecoder.h"
 #include "DwarfDebugFrameDecoder.h"
@@ -132,7 +133,14 @@ namespace wechat_backtrace {
         *pc_start = start_addr;
         *pc_end = end_addr;
 
-        ExidxDecoder decoder(memory_, process_memory_);
+        QuickenGenerationContext context = {
+                .regs_total = 0,
+                .native_only = QutNativeOnly(),
+                .estimate_memory_usage = 0,
+                .memory_overwhelmed = false,
+        };
+
+        ExidxDecoder decoder(memory_, process_memory_, &context);
         // Extract data, evaluate instructions and re-encode it.
         if (decoder.ExtractEntryData(entry_offset) && decoder.Eval()) {
             (*instructions)[start_addr] = std::make_pair(start_addr, move(decoder.instructions_));

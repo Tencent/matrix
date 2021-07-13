@@ -6,7 +6,6 @@
 #include "com_tencent_matrix_openglleak_statistics_OpenGLInfo.h"
 #include <sstream>
 #include <cxxabi.h>
-#include "unwindstack/Unwinder.h"
 #include "BacktraceDefine.h"
 #include "Backtrace.h"
 

@@ -116,7 +116,6 @@
     NSLog(@"Make OOM");
     
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-        [[[MatrixHandler sharedInstance] getMemoryStatPlugin] addTagToCurrentThread:@"com.wechat.memdemo1"];
         NSMutableArray *array = [NSMutableArray array];
         while (1) {
             TestContact *contact = [[TestContact alloc] init];
