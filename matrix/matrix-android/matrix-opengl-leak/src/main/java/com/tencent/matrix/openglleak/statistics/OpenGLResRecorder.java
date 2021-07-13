@@ -105,6 +105,22 @@ public class OpenGLResRecorder {
         return ll;
     }
 
+    public List<Integer> getAllHashCode() {
+        List<Integer> ll = new ArrayList<>();
+
+        synchronized (infoList) {
+            for (OpenGLInfo item : infoList) {
+                if (item == null) {
+                    break;
+                }
+
+                ll.add(item.hashCode());
+            }
+        }
+
+        return ll;
+    }
+
     public void getNativeStack(OpenGLInfo info) {
         synchronized (infoList) {
             for (OpenGLInfo item : infoList) {
@@ -210,6 +226,22 @@ public class OpenGLResRecorder {
         }
 
         return false;
+    }
+
+    public OpenGLInfo getItemByHashCode(int hashCode) {
+        synchronized (infoList) {
+            for (OpenGLInfo item : infoList) {
+                if (item == null) {
+                    break;
+                }
+
+                if (item.hashCode() == hashCode) {
+                    return item;
+                }
+            }
+        }
+
+        return null;
     }
 
 }
