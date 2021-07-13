@@ -24,7 +24,7 @@ public class LeakMonitor implements Application.ActivityLifecycleCallbacks {
     private HandlerThread mHT;
     private Handler mH;
 
-    private Map<WeakReference<Activity>, List<OpenGLInfo>> maps;
+    private Map<WeakReference<Activity>, List<Integer>> maps;
     private String currentActivityName = "";
 
     private long mDoubleCheckTime = 1000 * 60 * 30;
@@ -74,7 +74,7 @@ public class LeakMonitor implements Application.ActivityLifecycleCallbacks {
         MatrixLog.i(TAG, "activity oncreate:" + currentActivityName + "  :" + activity.hashCode());
 
         WeakReference<Activity> weakReference = new WeakReference<>(activity);
-        List<OpenGLInfo> actvityList = OpenGLResRecorder.getInstance().getCopyList();
+        List<Integer> actvityList = OpenGLResRecorder.getInstance().getAllHashCode();
 
         maps.put(weakReference, actvityList);
     }
@@ -116,8 +116,8 @@ public class LeakMonitor implements Application.ActivityLifecycleCallbacks {
         }
 
         final String activityStr = activityName;
-        final List<OpenGLInfo> createList = maps.get(target);
-        final List<OpenGLInfo> destroyList = OpenGLResRecorder.getInstance().getCopyList();
+        final List<Integer> createList = maps.get(target);
+        final List<Integer> destroyList = OpenGLResRecorder.getInstance().getAllHashCode();
 
         mH.post(new Runnable() {
             @Override
@@ -133,29 +133,27 @@ public class LeakMonitor implements Application.ActivityLifecycleCallbacks {
         maps.remove(target);
     }
 
-    private boolean findLeak(List<OpenGLInfo> createList, List<OpenGLInfo> destroyList) {
+    private boolean findLeak(List<Integer> createList, List<Integer> destroyList) {
         if ((createList == null) || (destroyList == null)) {
             return false;
         }
 
         boolean hasLeak = false;
 
-        for (OpenGLInfo destroy : destroyList) {
+        for (Integer destroy : destroyList) {
             if (destroy == null) {
                 continue;
             }
 
             boolean isLeak;
             int i = 0;
-            for (OpenGLInfo create : createList) {
+            for (Integer create : createList) {
                 if (create == null) {
                     i = i + 1;
                     continue;
                 }
 
-                if ((create.getType() == destroy.getType())
-                        && (create.getThreadId().equals(destroy.getThreadId())) && (create.getId()
-                        == destroy.getId())) {
+                if (create.intValue() == destroy.intValue()) {
                     break;
                 }
 
@@ -169,10 +167,14 @@ public class LeakMonitor implements Application.ActivityLifecycleCallbacks {
             }
 
             if (isLeak) {
-                OpenGLResRecorder.getInstance().getNativeStack(destroy);
-                OpenGLResRecorder.getInstance().setMaybeLeak(destroy);
+                OpenGLInfo leakInfo = OpenGLResRecorder.getInstance().getItemByHashCode(destroy);
 
-                hasLeak = true;
+                if (!leakInfo.getMaybeLeak()) {
+                    OpenGLResRecorder.getInstance().getNativeStack(leakInfo);
+                    OpenGLResRecorder.getInstance().setMaybeLeak(leakInfo);
+
+                    hasLeak = true;
+                }
             }
         }
 
