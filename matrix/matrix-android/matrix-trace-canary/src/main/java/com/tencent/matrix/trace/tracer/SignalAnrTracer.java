@@ -65,7 +65,8 @@ public class SignalAnrTracer extends Tracer {
     private static boolean hasInit = false;
     public static boolean hasInstance = false;
     private static boolean hasReported = false;
-
+    private static long anrMessageWhen = 0L;
+    private static String anrMessageString = "";
 
     static {
         System.loadLibrary("trace-canary");
@@ -110,7 +111,7 @@ public class SignalAnrTracer extends Tracer {
         sSignalAnrDetectedListener = listener;
     }
 
-    @RequiresApi(api = Build.VERSION_CODES.M)
+
     @Keep
     private static void onANRDumped() {
         hasReported = false;
@@ -118,14 +119,13 @@ public class SignalAnrTracer extends Tracer {
         boolean needReport = isMainThreadBlocked();
 
         if (needReport) {
-            report();
+            report(false);
             hasReported = true;
         } else {
             checkErrorStateCycle();
         }
     }
 
-    @RequiresApi(api = Build.VERSION_CODES.M)
     @Keep
     private static void onANRDumpTrace() {
         try {
@@ -136,7 +136,6 @@ public class SignalAnrTracer extends Tracer {
         }
     }
 
-    @RequiresApi(api = Build.VERSION_CODES.M)
     @Keep
     private static void onPrintTrace() {
         try {
@@ -147,14 +146,13 @@ public class SignalAnrTracer extends Tracer {
         }
     }
 
-    private static void report() {
+    private static void report(boolean fromProcessErrorState) {
         try {
             String stackTrace = Utils.getMainThreadJavaStackTrace();
             if (sSignalAnrDetectedListener != null) {
-                sSignalAnrDetectedListener.onAnrDetected(stackTrace);
+                sSignalAnrDetectedListener.onAnrDetected(stackTrace, anrMessageString, anrMessageWhen, fromProcessErrorState);
                 return;
             }
-
 
             TracePlugin plugin = Matrix.with().getPluginByClass(TracePlugin.class);
             if (null == plugin) {
@@ -182,6 +180,7 @@ public class SignalAnrTracer extends Tracer {
     }
 
 
+    @RequiresApi(api = Build.VERSION_CODES.M)
     private static boolean isMainThreadBlocked() {
         try {
             MessageQueue mainQueue = Looper.getMainLooper().getQueue();
@@ -189,11 +188,13 @@ public class SignalAnrTracer extends Tracer {
             field.setAccessible(true);
             final Message mMessage = (Message) field.get(mainQueue);
             if (mMessage != null) {
+                anrMessageString = mMessage.toString();
                 long when = mMessage.getWhen();
                 if (when == 0) {
                     return false;
                 }
                 long time = when - SystemClock.uptimeMillis();
+                anrMessageWhen = time;
                 long timeThreshold = BACKGROUND_MSG_THRESHOLD;
                 if (currentForeground) {
                     timeThreshold = FOREGROUND_MSG_THRESHOLD;
@@ -213,7 +214,7 @@ public class SignalAnrTracer extends Tracer {
             checkErrorStateCount++;
             boolean myAnr = checkErrorState();
             if (myAnr && !hasReported) {
-                report();
+                report(true);
                 break;
             }
         }
@@ -271,6 +272,6 @@ public class SignalAnrTracer extends Tracer {
     private static native void nativePrintTrace();
 
     public interface SignalAnrDetectedListener {
-        void onAnrDetected(String stackTrace);
+        void onAnrDetected(String stackTrace, String mMessageString, long mMessageWhen, boolean fromProcessErrorState);
     }
 }

@@ -44,6 +44,30 @@ bool sHandlerInstalled = false;
 
 static std::vector<SignalHandler*>* sHandlerStack = nullptr;
 static std::mutex sHandlerStackMutex;
+static bool sStackInstalled = false;
+static stack_t sOldStack;
+static stack_t sNewStack;
+
+static void installAlternateStackLocked() {
+    if (sStackInstalled)
+        return;
+
+    memset(&sOldStack, 0, sizeof(sOldStack));
+    memset(&sNewStack, 0, sizeof(sNewStack));
+    static constexpr unsigned kSigStackSize = std::max(16384, SIGSTKSZ);
+
+    if (sigaltstack(nullptr, &sOldStack) == -1 || !sOldStack.ss_sp || sOldStack.ss_size < kSigStackSize) {
+        sNewStack.ss_sp = calloc(1, kSigStackSize);
+        sNewStack.ss_size = kSigStackSize;
+        if (sigaltstack(&sNewStack, nullptr) == -1) {
+            free(sNewStack.ss_sp);
+            return;
+        }
+    }
+
+    sStackInstalled = true;
+    ALOGV("Alternative stack installed.");
+}
 
 bool SignalHandler::installHandlersLocked() {
     if (sHandlerInstalled) {
@@ -89,6 +113,30 @@ static void restoreHandlersLocked() {
     ALOGV("Signal handler restored.");
 }
 
+static void restoreAlternateStackLocked() {
+    if (!sStackInstalled)
+        return;
+
+    stack_t current_stack;
+    if (sigaltstack(nullptr, &current_stack) == -1)
+        return;
+
+    if (current_stack.ss_sp == sNewStack.ss_sp) {
+        if (sOldStack.ss_sp) {
+            if (sigaltstack(&sOldStack, nullptr) == -1)
+                return;
+        } else {
+            stack_t disable_stack;
+            disable_stack.ss_flags = SS_DISABLE;
+            if (sigaltstack(&disable_stack, nullptr) == -1)
+                return;
+        }
+    }
+
+    free(sNewStack.ss_sp);
+    sStackInstalled = false;
+}
+
 void SignalHandler::signalHandler(int sig, siginfo_t* info, void* uc) {
     ALOGV("Entered signal handler.");
 
@@ -99,8 +147,6 @@ void SignalHandler::signalHandler(int sig, siginfo_t* info, void* uc) {
     }
 
     lock.unlock();
-    ALOGV("Signal handler mutex released.");
-
 }
 
 
@@ -110,6 +156,7 @@ SignalHandler::SignalHandler() {
     if (!sHandlerStack)
         sHandlerStack = new std::vector<SignalHandler*>;
 
+    installAlternateStackLocked();
     installHandlersLocked();
     sHandlerStack->push_back(this);
 }
@@ -122,6 +169,7 @@ SignalHandler::~SignalHandler() {
     if (sHandlerStack->empty()) {
         delete sHandlerStack;
         sHandlerStack = nullptr;
+        restoreAlternateStackLocked();
         restoreHandlersLocked();
     }
 }
