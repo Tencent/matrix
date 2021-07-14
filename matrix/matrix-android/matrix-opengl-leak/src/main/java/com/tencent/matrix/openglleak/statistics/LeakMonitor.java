@@ -169,7 +169,7 @@ public class LeakMonitor implements Application.ActivityLifecycleCallbacks {
             if (isLeak) {
                 OpenGLInfo leakInfo = OpenGLResRecorder.getInstance().getItemByHashCode(destroy);
 
-                if (!leakInfo.getMaybeLeak()) {
+                if ((leakInfo != null) && !leakInfo.getMaybeLeak()) {
                     OpenGLResRecorder.getInstance().getNativeStack(leakInfo);
                     OpenGLResRecorder.getInstance().setMaybeLeak(leakInfo);
 
