@@ -105,10 +105,12 @@ public class OpenGLResRecorder {
         return ll;
     }
 
-    public void removeAll() {
-        if(infoList == null) return;
+    public void remove(OpenGLInfo info) {
+        if (infoList == null) {
+            return;
+        }
         synchronized (infoList) {
-           infoList.clear();
+            infoList.remove(info);
         }
     }
 
