@@ -136,6 +136,7 @@ int my_open(const char *pathname, int flags, mode_t mode) {
 ssize_t (*original_write)(int fd, const void* const __pass_object_size0 buf, size_t count);
 ssize_t my_write(int fd, const void* const buf, size_t count) {
     if(isTraceWrite) {
+        isTraceWrite = false;
         if (buf != nullptr) {
             std::string targetFilePath;
             if (isMySelfSigQuit) {
@@ -155,12 +156,8 @@ ssize_t my_write(int fd, const void* const buf, size_t count) {
             }
         }
     }
-    isTraceWrite = false;
-
     return original_write(fd, buf, count);
 }
-
-
 
 bool anrDumpCallback() {
     JNIEnv *env = JniInvocation::getEnv();

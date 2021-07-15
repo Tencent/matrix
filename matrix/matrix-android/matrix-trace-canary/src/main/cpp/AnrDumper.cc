@@ -124,7 +124,7 @@ SignalHandler::Result AnrDumper::handleSignal(int sig, const siginfo_t *, void *
 
     pthread_t thd;
     pthread_create(&thd, nullptr, anr_callback, nullptr);
-    pthread_join(thd,nullptr);
+    pthread_detach(thd);
 
     int tid = getSignalCatcherThreadId();
     syscall(SYS_tgkill, getpid(), tid, SIGQUIT);
