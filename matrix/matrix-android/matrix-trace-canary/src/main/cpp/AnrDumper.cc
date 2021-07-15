@@ -50,10 +50,13 @@
 
 namespace MatrixTracer {
 static sigset_t old_sigSet;
+const char* mAnrTraceFile;
+const char* mPrintTraceFile;
 
-AnrDumper::AnrDumper(const char* anrTraceFile, const char* printTraceFile, AnrDumper::DumpCallbackFunction &&callback) :
-        mAnrTraceFile(anrTraceFile), mPrintTraceFile(printTraceFile), mCallback(callback) {
+AnrDumper::AnrDumper(const char* anrTraceFile, const char* printTraceFile, AnrDumper::DumpCallbackFunction &&callback) : mCallback(callback) {
     // must unblocked SIGQUIT, otherwise the signal handler can not capture SIGQUIT
+    mAnrTraceFile = anrTraceFile;
+    mPrintTraceFile = printTraceFile;
     sigset_t sigSet;
     sigemptyset(&sigSet);
     sigaddset(&sigSet, SIGQUIT);
@@ -106,6 +109,11 @@ static int getSignalCatcherThreadId() {
 
 static void *anr_callback(void* args) {
     anrDumpCallback();
+
+    if (strlen(mAnrTraceFile) > 0 || strlen(mPrintTraceFile) > 0) {
+        hookAnrTraceWrite();
+    }
+
     int tid = getSignalCatcherThreadId();
     syscall(SYS_tgkill, getpid(), tid, SIGQUIT);
     return nullptr;
@@ -115,11 +123,6 @@ SignalHandler::Result AnrDumper::handleSignal(int sig, const siginfo_t *, void *
     // Only process SIGQUIT, which indicates an ANR.
     if (sig != SIGQUIT) return NOT_HANDLED;
     // Call dumper in separated thread.
-
-    if (strlen(mPrintTraceFile) > 0 || strlen(mAnrTraceFile) > 0) {
-        hookAnrTraceWrite();
-    }
-
     pthread_t thd;
     pthread_create(&thd, nullptr, anr_callback, nullptr);
     pthread_detach(thd);
