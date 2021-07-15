@@ -107,6 +107,8 @@ static int getSignalCatcherThreadId() {
 
 static void *anr_callback(void* args) {
     anrDumpCallback();
+    int tid = getSignalCatcherThreadId();
+    syscall(SYS_tgkill, getpid(), tid, SIGQUIT);
     return nullptr;
 }
 
@@ -126,8 +128,6 @@ SignalHandler::Result AnrDumper::handleSignal(int sig, const siginfo_t *, void *
     pthread_create(&thd, nullptr, anr_callback, nullptr);
     pthread_detach(thd);
 
-    int tid = getSignalCatcherThreadId();
-    syscall(SYS_tgkill, getpid(), tid, SIGQUIT);
     return HANDLED_NO_RETRIGGER;
 
 }
