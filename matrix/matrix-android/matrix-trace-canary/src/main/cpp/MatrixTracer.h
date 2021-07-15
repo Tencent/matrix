@@ -25,4 +25,5 @@ bool anrDumpCallback();
 bool anrDumpTraceCallback();
 bool printTraceCallback();
 void hookAnrTraceWrite();
+void unHookAnrTraceWrite();
 #endif  // LAGDETECTOR_LAG_DETECTOR_MAIN_CPP_MatrixTracer_H_

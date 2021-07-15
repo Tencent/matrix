@@ -110,6 +110,7 @@ void writeAnr(const std::string& content, const std::string &filePath) {
     std::ofstream outfile;
     outfile.open(filePath);
     outfile << content;
+    unHookAnrTraceWrite();
 }
 
 int (*original_connect)(int __fd, const struct sockaddr* __addr, socklen_t __addr_length);
@@ -189,6 +190,7 @@ int getApiLevel() {
     return atoi(buf);
 }
 
+
 void hookAnrTraceWrite() {
     int apiLevel = getApiLevel();
     if (apiLevel < 19) {
@@ -196,24 +198,53 @@ void hookAnrTraceWrite() {
     }
 
     if (apiLevel >= 27) {
-        xhook_register("libcutils.so", "connect", (void *) my_connect, (void **) (&original_connect));
+        void *libcutils_info = xhook_elf_open("/system/lib64/libcutils.so");
+        if(!libcutils_info) {
+            libcutils_info = xhook_elf_open("/system/lib/libcutils.so");
+        }
+        xhook_hook_symbol(libcutils_info, "connect", (void *) my_connect, (void **) (&original_connect));
     } else {
-        xhook_register("libart.so", "open", (void *) my_open, (void **) (&original_open));
+        void* libart_info = xhook_elf_open("libart.so");
+        xhook_hook_symbol(libart_info, "open", (void *) my_open, (void **) (&original_open));
+    }
+
+    if (apiLevel >= 30 || apiLevel == 25 || apiLevel == 24) {
+        void* libc_info = xhook_elf_open("libc.so");
+        xhook_hook_symbol(libc_info, "write", (void *) my_write, (void **) (&original_write));
+    } else if (apiLevel == 29) {
+        void* libbase_info = xhook_elf_open("/system/lib64/libbase.so");
+        if(!libbase_info) {
+            libbase_info = xhook_elf_open("/system/lib/libbase.so");
+        }
+        xhook_hook_symbol(libbase_info, "write", (void *) my_write, (void **) (&original_write));
+        xhook_elf_close(libbase_info);
+    } else {
+        void* libart_info = xhook_elf_open("libart.so");
+        xhook_hook_symbol(libart_info, "write", (void *) my_write, (void **) (&original_write));
+    }
+}
+
+void unHookAnrTraceWrite() {
+    int apiLevel = getApiLevel();
+    if (apiLevel >= 27) {
+        void *libcutils_info = xhook_elf_open("/system/lib64/libcutils.so");
+        xhook_hook_symbol(libcutils_info, "connect", (void *) original_connect, nullptr);
+    } else {
+        void* libart_info = xhook_elf_open("libart.so");
+        xhook_hook_symbol(libart_info, "open", (void *) original_connect, nullptr);
     }
 
     if (apiLevel >= 30 || apiLevel == 25 || apiLevel ==24) {
-        xhook_register("libc.so", "write", (void *) my_write, (void **) (&original_write));
+        void* libc_info = xhook_elf_open("libc.so");
+        xhook_hook_symbol(libc_info, "write", (void *) original_write, nullptr);
     } else if (apiLevel == 29) {
-        xhook_register("libbase.so", "write", (void *) my_write, (void **) (&original_write));
+        void* libbase_info = xhook_elf_open("/system/lib64/libbase.so");
+        xhook_hook_symbol(libbase_info, "write", (void *) original_write, nullptr);
     } else {
-        xhook_register("libart.so", "write", (void *) my_write, (void **) (&original_write));
+        void* libart_info = xhook_elf_open("libart.so");
+        xhook_hook_symbol(libart_info, "write", (void *) original_write, nullptr);
     }
-
-    xhook_enable_sigsegv_protection(1);
-    xhook_refresh(true);
 }
-
-
 
 static void nativeInitSignalAnrDetective(JNIEnv *env, jclass, jstring anrTracePath, jstring printTracePath) {
     const char* anrTracePathChar = env->GetStringUTFChars(anrTracePath, nullptr);

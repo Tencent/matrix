@@ -50,7 +50,6 @@
 
 namespace MatrixTracer {
 static sigset_t old_sigSet;
-static bool anrTraceHasHooked = false;
 
 AnrDumper::AnrDumper(const char* anrTraceFile, const char* printTraceFile, AnrDumper::DumpCallbackFunction &&callback) :
         mAnrTraceFile(anrTraceFile), mPrintTraceFile(printTraceFile), mCallback(callback) {
@@ -117,11 +116,8 @@ SignalHandler::Result AnrDumper::handleSignal(int sig, const siginfo_t *, void *
     if (sig != SIGQUIT) return NOT_HANDLED;
     // Call dumper in separated thread.
 
-    if (!anrTraceHasHooked) {
-        if (strlen(mPrintTraceFile) > 0 || strlen(mAnrTraceFile) > 0) {
-            hookAnrTraceWrite();
-            anrTraceHasHooked = true;
-        }
+    if (strlen(mPrintTraceFile) > 0 || strlen(mAnrTraceFile) > 0) {
+        hookAnrTraceWrite();
     }
 
     pthread_t thd;
