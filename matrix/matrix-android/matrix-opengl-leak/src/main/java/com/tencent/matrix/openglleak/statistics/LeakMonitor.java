@@ -27,7 +27,8 @@ public class LeakMonitor implements Application.ActivityLifecycleCallbacks {
     private Map<WeakReference<Activity>, List<Integer>> maps;
     private String currentActivityName = "";
 
-    private long mDoubleCheckTime = 1000 * 60 * 30;
+    //    private long mDoubleCheckTime = 1000 * 60 * 30;
+    private long mDoubleCheckTime = 1;
     private final long mDoubleCheckLooper = 1000 * 60 * 1;
 
     private LeakMonitor() {
@@ -228,6 +229,7 @@ public class LeakMonitor implements Application.ActivityLifecycleCallbacks {
                 if (item.getMaybeLeak()) {
                     if ((now - item.getMaybeLeakTime()) > mDoubleCheckTime) {
                         OpenGLResRecorder.getInstance().setLeak(item);
+                        OpenGLResRecorder.getInstance().removeAll();
                     }
                 }
             }

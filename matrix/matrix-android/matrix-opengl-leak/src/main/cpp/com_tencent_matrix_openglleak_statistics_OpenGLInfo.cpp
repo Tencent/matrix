@@ -75,5 +75,9 @@ extern "C" JNIEXPORT jstring JNICALL Java_com_tencent_matrix_openglleak_statisti
     char *native_stack = nullptr;
     get_native_stack(ptr, native_stack);
 
-    return env->NewStringUTF(native_stack);
+    jstring ret = env->NewStringUTF(native_stack);
+    if(native_stack != nullptr) {
+        free(native_stack);
+    }
+    return ret;
 }
