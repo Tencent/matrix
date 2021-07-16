@@ -44,7 +44,6 @@ import com.tencent.matrix.util.MatrixUtil;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.List;
 
@@ -112,6 +111,7 @@ public class SignalAnrTracer extends Tracer {
     }
 
 
+    @RequiresApi(api = Build.VERSION_CODES.M)
     @Keep
     private static void onANRDumped() {
         hasReported = false;
@@ -129,20 +129,18 @@ public class SignalAnrTracer extends Tracer {
     @Keep
     private static void onANRDumpTrace() {
         try {
-            String trace = MatrixUtil.getStringFromFile(sAnrTraceFilePath);
-            MatrixLog.i(TAG, trace);
-        } catch (IOException e) {
-            MatrixLog.e(TAG, "onANRDumpTrace error: %s", e.getMessage());
+            MatrixUtil.printFileByLine(TAG, sAnrTraceFilePath);
+        } catch (Throwable t) {
+            MatrixLog.e(TAG, "onANRDumpTrace error: %s", t.getMessage());
         }
     }
 
     @Keep
     private static void onPrintTrace() {
         try {
-            String trace = MatrixUtil.getStringFromFile(sPrintTraceFilePath);
-            MatrixLog.i(TAG, trace);
-        } catch (IOException e) {
-            MatrixLog.e(TAG, "onANRDumpTrace error: %s", e.getMessage());
+            MatrixUtil.printFileByLine(TAG, sPrintTraceFilePath);
+        } catch (Throwable t) {
+            MatrixLog.e(TAG, "onPrintTrace error: %s", t.getMessage());
         }
     }
 

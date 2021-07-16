@@ -310,4 +310,21 @@ public final class MatrixUtil {
         }
         return def;
     }
+
+    public static void printFileByLine(String printTAG, String filePath) throws IOException {
+        BufferedReader reader = null;
+        try {
+            reader = new BufferedReader(new InputStreamReader(new FileInputStream(new File(filePath)), "UTF-8"));
+            String line;
+            while ((line = reader.readLine()) != null) {
+                MatrixLog.i(printTAG, line);
+            }
+        } catch (Throwable t) {
+            MatrixLog.e(printTAG, "printFileByLine failed e : " + t.getMessage());
+        } finally {
+            if (null != reader) {
+                reader.close();
+            }
+        }
+    }
 }
