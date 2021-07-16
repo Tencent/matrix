@@ -105,6 +105,15 @@ public class OpenGLResRecorder {
         return ll;
     }
 
+    public void remove(OpenGLInfo info) {
+        if (infoList == null) {
+            return;
+        }
+        synchronized (infoList) {
+            infoList.remove(info);
+        }
+    }
+
     public List<Integer> getAllHashCode() {
         List<Integer> ll = new ArrayList<>();
 
