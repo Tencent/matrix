@@ -86,12 +86,14 @@ public class TracePlugin extends Plugin {
             @Override
             public void run() {
 
-                if (!UIThreadMonitor.getMonitor().isInit()) {
-                    try {
-                        UIThreadMonitor.getMonitor().init(traceConfig);
-                    } catch (java.lang.RuntimeException e) {
-                        MatrixLog.e(TAG, "[start] RuntimeException:%s", e);
-                        return;
+                if (willUiThreadMonitorRunning(traceConfig)) {
+                    if (!UIThreadMonitor.getMonitor().isInit()) {
+                        try {
+                            UIThreadMonitor.getMonitor().init(traceConfig);
+                        } catch (java.lang.RuntimeException e) {
+                            MatrixLog.e(TAG, "[start] RuntimeException:%s", e);
+                            return;
+                        }
                     }
                 }
 
@@ -220,6 +222,10 @@ public class TracePlugin extends Plugin {
             startupTracer.onForeground(isForeground);
         }
 
+    }
+
+    private boolean willUiThreadMonitorRunning(TraceConfig traceConfig) {
+        return traceConfig.isEvilMethodTraceEnable() || traceConfig.isAnrTraceEnable() || traceConfig.isFPSEnable();
     }
 
     @Override
