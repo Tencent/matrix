@@ -38,10 +38,6 @@ class AnrDumper : public SignalHandler {
 
  private:
     Result handleSignal(int sig, const siginfo_t *info, void *uc) final;
-
-    const char* mAnrTraceFile;
-    const char* mPrintTraceFile;
-
     const DumpCallbackFunction mCallback;
 };
 }   // namespace MatrixTracer

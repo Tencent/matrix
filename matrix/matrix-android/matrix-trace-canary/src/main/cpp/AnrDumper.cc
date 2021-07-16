@@ -50,11 +50,13 @@
 
 namespace MatrixTracer {
 static sigset_t old_sigSet;
-static bool anrTraceHasHooked = false;
+const char* mAnrTraceFile;
+const char* mPrintTraceFile;
 
-AnrDumper::AnrDumper(const char* anrTraceFile, const char* printTraceFile, AnrDumper::DumpCallbackFunction &&callback) :
-        mAnrTraceFile(anrTraceFile), mPrintTraceFile(printTraceFile), mCallback(callback) {
+AnrDumper::AnrDumper(const char* anrTraceFile, const char* printTraceFile, AnrDumper::DumpCallbackFunction &&callback) : mCallback(callback) {
     // must unblocked SIGQUIT, otherwise the signal handler can not capture SIGQUIT
+    mAnrTraceFile = anrTraceFile;
+    mPrintTraceFile = printTraceFile;
     sigset_t sigSet;
     sigemptyset(&sigSet);
     sigaddset(&sigSet, SIGQUIT);
@@ -105,29 +107,44 @@ static int getSignalCatcherThreadId() {
     return signalCatcherTid;
 }
 
-static void *anr_callback(void* args) {
+static void sendSigToSignalCatcher() {
+    int tid = getSignalCatcherThreadId();
+    syscall(SYS_tgkill, getpid(), tid, SIGQUIT);
+}
+
+static void *anrCallback(void* arg) {
     anrDumpCallback();
+
+    if (strlen(mAnrTraceFile) > 0) {
+        hookAnrTraceWrite(false);
+    }
+
+    sendSigToSignalCatcher();
     return nullptr;
 }
 
-SignalHandler::Result AnrDumper::handleSignal(int sig, const siginfo_t *, void *uc) {
-    // Only process SIGQUIT, which indicates an ANR.
-    if (sig != SIGQUIT) return NOT_HANDLED;
-    // Call dumper in separated thread.
-
-    if (!anrTraceHasHooked) {
-        if (strlen(mPrintTraceFile) > 0 || strlen(mAnrTraceFile) > 0) {
-            hookAnrTraceWrite();
-            anrTraceHasHooked = true;
-        }
+static void *siUserCallback(void* arg) {
+    if (strlen(mPrintTraceFile) > 0) {
+        hookAnrTraceWrite(true);
     }
 
-    pthread_t thd;
-    pthread_create(&thd, nullptr, anr_callback, nullptr);
-    pthread_join(thd,nullptr);
+    sendSigToSignalCatcher();
+    return nullptr;
+}
 
-    int tid = getSignalCatcherThreadId();
-    syscall(SYS_tgkill, getpid(), tid, SIGQUIT);
+SignalHandler::Result AnrDumper::handleSignal(int sig, const siginfo_t *info, void *uc) {
+    // Only process SIGQUIT, which indicates an ANR.
+    if (sig != SIGQUIT) return NOT_HANDLED;
+
+    pthread_t thd;
+    if (info->si_code == SI_USER) {
+        pthread_create(&thd, nullptr, siUserCallback, nullptr);
+    } else {
+        pthread_create(&thd, nullptr, anrCallback, nullptr);
+    }
+    pthread_detach(thd);
+
+
     return HANDLED_NO_RETRIGGER;
 
 }

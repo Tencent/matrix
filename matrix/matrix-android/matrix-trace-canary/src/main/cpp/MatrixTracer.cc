@@ -54,9 +54,10 @@ using namespace MatrixTracer;
 
 static std::optional<AnrDumper> sAnrDumper;
 static bool isTraceWrite = false;
-static bool isMySelfSigQuit = false;
+static bool fromMyPrintTrace = false;
 static std::string anrTracePathstring;
 static std::string printTracePathstring;
+static int signalCatcherTid;
 
 static struct StacktraceJNI {
     jclass AnrDetective;
@@ -110,12 +111,14 @@ void writeAnr(const std::string& content, const std::string &filePath) {
     std::ofstream outfile;
     outfile.open(filePath);
     outfile << content;
+    unHookAnrTraceWrite();
 }
 
 int (*original_connect)(int __fd, const struct sockaddr* __addr, socklen_t __addr_length);
 int my_connect(int __fd, const struct sockaddr* __addr, socklen_t __addr_length) {
     if (__addr!= nullptr) {
         if (strcmp(__addr->sa_data, "/dev/socket/tombstoned_java_trace") == 0) {
+            signalCatcherTid = gettid();
             isTraceWrite = true;
         }
     }
@@ -127,6 +130,7 @@ int (*original_open)(const char *pathname, int flags, mode_t mode);
 int my_open(const char *pathname, int flags, mode_t mode) {
     if (pathname!= nullptr) {
         if (strcmp(pathname, "/data/anr/traces.txt") == 0) {
+            signalCatcherTid = gettid();
             isTraceWrite = true;
         }
     }
@@ -135,10 +139,11 @@ int my_open(const char *pathname, int flags, mode_t mode) {
 
 ssize_t (*original_write)(int fd, const void* const __pass_object_size0 buf, size_t count);
 ssize_t my_write(int fd, const void* const buf, size_t count) {
-    if(isTraceWrite) {
+    if(isTraceWrite && gettid() == signalCatcherTid) {
+        isTraceWrite = false;
         if (buf != nullptr) {
             std::string targetFilePath;
-            if (isMySelfSigQuit) {
+            if (fromMyPrintTrace) {
                 targetFilePath = printTracePathstring;
             } else {
                 targetFilePath = anrTracePathstring;
@@ -146,21 +151,17 @@ ssize_t my_write(int fd, const void* const buf, size_t count) {
             if (!targetFilePath.empty()) {
                 char *content = (char *) buf;
                 writeAnr(content, targetFilePath);
-                if(!isMySelfSigQuit) {
+                if(!fromMyPrintTrace) {
                     anrDumpTraceCallback();
                 } else {
                     printTraceCallback();
                 }
-                isMySelfSigQuit = false;
+                fromMyPrintTrace = false;
             }
         }
     }
-    isTraceWrite = false;
-
     return original_write(fd, buf, count);
 }
-
-
 
 bool anrDumpCallback() {
     JNIEnv *env = JniInvocation::getEnv();
@@ -192,31 +193,65 @@ int getApiLevel() {
     return atoi(buf);
 }
 
-void hookAnrTraceWrite() {
+
+void hookAnrTraceWrite(bool isSiUser) {
+    if (!fromMyPrintTrace && isSiUser) {
+        return;
+    }
+
     int apiLevel = getApiLevel();
     if (apiLevel < 19) {
         return;
     }
 
     if (apiLevel >= 27) {
-        xhook_register("libcutils.so", "connect", (void *) my_connect, (void **) (&original_connect));
+        void *libcutils_info = xhook_elf_open("/system/lib64/libcutils.so");
+        if(!libcutils_info) {
+            libcutils_info = xhook_elf_open("/system/lib/libcutils.so");
+        }
+        xhook_hook_symbol(libcutils_info, "connect", (void *) my_connect, (void **) (&original_connect));
     } else {
-        xhook_register("libart.so", "open", (void *) my_open, (void **) (&original_open));
+        void* libart_info = xhook_elf_open("libart.so");
+        xhook_hook_symbol(libart_info, "open", (void *) my_open, (void **) (&original_open));
+    }
+
+    if (apiLevel >= 30 || apiLevel == 25 || apiLevel == 24) {
+        void* libc_info = xhook_elf_open("libc.so");
+        xhook_hook_symbol(libc_info, "write", (void *) my_write, (void **) (&original_write));
+    } else if (apiLevel == 29) {
+        void* libbase_info = xhook_elf_open("/system/lib64/libbase.so");
+        if(!libbase_info) {
+            libbase_info = xhook_elf_open("/system/lib/libbase.so");
+        }
+        xhook_hook_symbol(libbase_info, "write", (void *) my_write, (void **) (&original_write));
+        xhook_elf_close(libbase_info);
+    } else {
+        void* libart_info = xhook_elf_open("libart.so");
+        xhook_hook_symbol(libart_info, "write", (void *) my_write, (void **) (&original_write));
+    }
+}
+
+void unHookAnrTraceWrite() {
+    int apiLevel = getApiLevel();
+    if (apiLevel >= 27) {
+        void *libcutils_info = xhook_elf_open("/system/lib64/libcutils.so");
+        xhook_hook_symbol(libcutils_info, "connect", (void *) original_connect, nullptr);
+    } else {
+        void* libart_info = xhook_elf_open("libart.so");
+        xhook_hook_symbol(libart_info, "open", (void *) original_connect, nullptr);
     }
 
     if (apiLevel >= 30 || apiLevel == 25 || apiLevel ==24) {
-        xhook_register("libc.so", "write", (void *) my_write, (void **) (&original_write));
+        void* libc_info = xhook_elf_open("libc.so");
+        xhook_hook_symbol(libc_info, "write", (void *) original_write, nullptr);
     } else if (apiLevel == 29) {
-        xhook_register("libbase.so", "write", (void *) my_write, (void **) (&original_write));
+        void* libbase_info = xhook_elf_open("/system/lib64/libbase.so");
+        xhook_hook_symbol(libbase_info, "write", (void *) original_write, nullptr);
     } else {
-        xhook_register("libart.so", "write", (void *) my_write, (void **) (&original_write));
+        void* libart_info = xhook_elf_open("libart.so");
+        xhook_hook_symbol(libart_info, "write", (void *) original_write, nullptr);
     }
-
-    xhook_enable_sigsegv_protection(1);
-    xhook_refresh(true);
 }
-
-
 
 static void nativeInitSignalAnrDetective(JNIEnv *env, jclass, jstring anrTracePath, jstring printTracePath) {
     const char* anrTracePathChar = env->GetStringUTFChars(anrTracePath, nullptr);
@@ -237,7 +272,7 @@ static void nativeInitMainThreadPriorityDetective(JNIEnv *env, jclass) {
 }
 
 static void nativePrintTrace() {
-    isMySelfSigQuit = true;
+    fromMyPrintTrace = true;
     kill(getpid(), SIGQUIT);
 }
 
