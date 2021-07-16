@@ -54,9 +54,10 @@ using namespace MatrixTracer;
 
 static std::optional<AnrDumper> sAnrDumper;
 static bool isTraceWrite = false;
-static bool isMySelfSigQuit = false;
+static bool fromMyPrintTrace = false;
 static std::string anrTracePathstring;
 static std::string printTracePathstring;
+static int signalCatcherTid;
 
 static struct StacktraceJNI {
     jclass AnrDetective;
@@ -117,6 +118,7 @@ int (*original_connect)(int __fd, const struct sockaddr* __addr, socklen_t __add
 int my_connect(int __fd, const struct sockaddr* __addr, socklen_t __addr_length) {
     if (__addr!= nullptr) {
         if (strcmp(__addr->sa_data, "/dev/socket/tombstoned_java_trace") == 0) {
+            signalCatcherTid = gettid();
             isTraceWrite = true;
         }
     }
@@ -128,6 +130,7 @@ int (*original_open)(const char *pathname, int flags, mode_t mode);
 int my_open(const char *pathname, int flags, mode_t mode) {
     if (pathname!= nullptr) {
         if (strcmp(pathname, "/data/anr/traces.txt") == 0) {
+            signalCatcherTid = gettid();
             isTraceWrite = true;
         }
     }
@@ -136,11 +139,11 @@ int my_open(const char *pathname, int flags, mode_t mode) {
 
 ssize_t (*original_write)(int fd, const void* const __pass_object_size0 buf, size_t count);
 ssize_t my_write(int fd, const void* const buf, size_t count) {
-    if(isTraceWrite) {
+    if(isTraceWrite && gettid() == signalCatcherTid) {
         isTraceWrite = false;
         if (buf != nullptr) {
             std::string targetFilePath;
-            if (isMySelfSigQuit) {
+            if (fromMyPrintTrace) {
                 targetFilePath = printTracePathstring;
             } else {
                 targetFilePath = anrTracePathstring;
@@ -148,12 +151,12 @@ ssize_t my_write(int fd, const void* const buf, size_t count) {
             if (!targetFilePath.empty()) {
                 char *content = (char *) buf;
                 writeAnr(content, targetFilePath);
-                if(!isMySelfSigQuit) {
+                if(!fromMyPrintTrace) {
                     anrDumpTraceCallback();
                 } else {
                     printTraceCallback();
                 }
-                isMySelfSigQuit = false;
+                fromMyPrintTrace = false;
             }
         }
     }
@@ -191,7 +194,11 @@ int getApiLevel() {
 }
 
 
-void hookAnrTraceWrite() {
+void hookAnrTraceWrite(bool isSiUser) {
+    if (!fromMyPrintTrace && isSiUser) {
+        return;
+    }
+
     int apiLevel = getApiLevel();
     if (apiLevel < 19) {
         return;
@@ -265,7 +272,7 @@ static void nativeInitMainThreadPriorityDetective(JNIEnv *env, jclass) {
 }
 
 static void nativePrintTrace() {
-    isMySelfSigQuit = true;
+    fromMyPrintTrace = true;
     kill(getpid(), SIGQUIT);
 }
 

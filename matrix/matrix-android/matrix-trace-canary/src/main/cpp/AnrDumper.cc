@@ -107,25 +107,43 @@ static int getSignalCatcherThreadId() {
     return signalCatcherTid;
 }
 
-static void *anr_callback(void* args) {
-    anrDumpCallback();
-
-    if (strlen(mAnrTraceFile) > 0 || strlen(mPrintTraceFile) > 0) {
-        hookAnrTraceWrite();
-    }
-
+static void sendSigToSignalCatcher() {
     int tid = getSignalCatcherThreadId();
     syscall(SYS_tgkill, getpid(), tid, SIGQUIT);
+}
+
+static void *anrCallback(void* arg) {
+    anrDumpCallback();
+
+    if (strlen(mAnrTraceFile) > 0) {
+        hookAnrTraceWrite(false);
+    }
+
+    sendSigToSignalCatcher();
     return nullptr;
 }
 
-SignalHandler::Result AnrDumper::handleSignal(int sig, const siginfo_t *, void *uc) {
+static void *siUserCallback(void* arg) {
+    if (strlen(mPrintTraceFile) > 0) {
+        hookAnrTraceWrite(true);
+    }
+
+    sendSigToSignalCatcher();
+    return nullptr;
+}
+
+SignalHandler::Result AnrDumper::handleSignal(int sig, const siginfo_t *info, void *uc) {
     // Only process SIGQUIT, which indicates an ANR.
     if (sig != SIGQUIT) return NOT_HANDLED;
-    // Call dumper in separated thread.
+
     pthread_t thd;
-    pthread_create(&thd, nullptr, anr_callback, nullptr);
+    if (info->si_code == SI_USER) {
+        pthread_create(&thd, nullptr, siUserCallback, nullptr);
+    } else {
+        pthread_create(&thd, nullptr, anrCallback, nullptr);
+    }
     pthread_detach(thd);
+
 
     return HANDLED_NO_RETRIGGER;
 
