@@ -159,6 +159,7 @@ namespace matrix {
             }
         }
         xhook_ignore(LINKER_NAME_PATTERN, nullptr);
+        xhook_ignore(".*/libpatrons\\.so$", nullptr);
         xhook_ignore(".*/libwebviewchromium_loader\\.so$", nullptr);
         sInstalled = true;
         return true;
