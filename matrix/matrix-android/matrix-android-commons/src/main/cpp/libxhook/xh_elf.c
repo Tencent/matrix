@@ -966,7 +966,7 @@ static int xh_elf_find_and_replace_func(xh_elf_t *self, const char *section,
     r_sym = XH_ELF_R_SYM(r_info);
 
     // modified: fix
-    if(r_sym != symidx) return XH_ERRNO_NOTFND;
+    if(r_sym != symidx) return 0;
 
     //check type
     r_type = XH_ELF_R_TYPE(r_info);
