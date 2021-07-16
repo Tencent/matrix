@@ -966,13 +966,7 @@ static int xh_elf_find_and_replace_func(xh_elf_t *self, const char *section,
     r_sym = XH_ELF_R_SYM(r_info);
 
     // modified: fix
-    if(r_sym != symidx) {
-        const char* sym_name_in_tbl = self->strtab + self->symtab[r_sym].st_name;
-        if (strcmp(sym_name_in_tbl, symbol) != 0) {
-            return 0;
-        }
-    }
-//    if(r_sym != symidx) return 0;
+    if(r_sym != symidx) return XH_ERRNO_NOTFND;
 
     //check type
     r_type = XH_ELF_R_TYPE(r_info);
@@ -1021,13 +1015,14 @@ int xh_elf_hook(xh_elf_t *self, const char *symbol, void *new_func, void **old_f
     if(0 != self->relplt)
     {
         xh_elf_plain_reloc_iterator_init(&plain_iter, self->relplt, self->relplt_sz, self->is_use_rela);
+        found = 0;
         while(NULL != (rel_common = xh_elf_plain_reloc_iterator_next(&plain_iter)))
         {
             if(0 != (r = xh_elf_find_and_replace_func(self,
                                                       (self->is_use_rela ? ".rela.plt" : ".rel.plt"), 1,
                                                       symbol, new_func, old_func,
                                                       symidx, rel_common, &found))) return r;
-            if(found) break;
+            if (found) break;
         }
     }
 
@@ -1035,12 +1030,14 @@ int xh_elf_hook(xh_elf_t *self, const char *symbol, void *new_func, void **old_f
     if(0 != self->reldyn)
     {
         xh_elf_plain_reloc_iterator_init(&plain_iter, self->reldyn, self->reldyn_sz, self->is_use_rela);
+        found = 0;
         while(NULL != (rel_common = xh_elf_plain_reloc_iterator_next(&plain_iter)))
         {
             if(0 != (r = xh_elf_find_and_replace_func(self,
                                                       (self->is_use_rela ? ".rela.dyn" : ".rel.dyn"), 0,
                                                       symbol, new_func, old_func,
-                                                      symidx, rel_common, NULL))) return r;
+                                                      symidx, rel_common, &found))) return r;
+            if (found) break;
         }
     }
 
@@ -1048,12 +1045,14 @@ int xh_elf_hook(xh_elf_t *self, const char *symbol, void *new_func, void **old_f
     if(0 != self->relandroid)
     {
         xh_elf_packed_reloc_iterator_init(&packed_iter, self->relandroid, self->relandroid_sz, self->is_use_rela);
+        found = 0;
         while(NULL != (rel_common = xh_elf_packed_reloc_iterator_next(&packed_iter)))
         {
             if(0 != (r = xh_elf_find_and_replace_func(self,
                                                       (self->is_use_rela ? ".rela.android" : ".rel.android"), 0,
                                                       symbol, new_func, old_func,
-                                                      symidx, rel_common, NULL))) return r;
+                                                      symidx, rel_common, &found))) return r;
+            if (found) break;
         }
     }
 
