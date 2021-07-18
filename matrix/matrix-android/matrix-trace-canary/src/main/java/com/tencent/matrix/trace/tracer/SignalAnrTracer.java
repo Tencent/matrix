@@ -50,6 +50,7 @@ import java.util.List;
 public class SignalAnrTracer extends Tracer {
     private static final String TAG = "SignalAnrTracer";
 
+    private static final String CHECK_ANR_STATE_THREAD_NAME = "Check-ANR-State-Thread";
     private static final int CHECK_ERROR_STATE_INTERVAL = 500;
     private static final int ANR_DUMP_MAX_TIME = 20000;
     private static final int CHECK_ERROR_STATE_COUNT =
@@ -63,7 +64,6 @@ public class SignalAnrTracer extends Tracer {
     private static Application sApplication;
     private static boolean hasInit = false;
     public static boolean hasInstance = false;
-    private static boolean hasReported = false;
     private static long anrMessageWhen = 0L;
     private static String anrMessageString = "";
 
@@ -114,15 +114,18 @@ public class SignalAnrTracer extends Tracer {
     @RequiresApi(api = Build.VERSION_CODES.M)
     @Keep
     private static void onANRDumped() {
-        hasReported = false;
         currentForeground = AppForegroundUtil.isInterestingToUser();
         boolean needReport = isMainThreadBlocked();
 
         if (needReport) {
             report(false);
-            hasReported = true;
         } else {
-            checkErrorStateCycle();
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    checkErrorStateCycle();
+                }
+            }, CHECK_ANR_STATE_THREAD_NAME).start();
         }
     }
 
@@ -209,10 +212,17 @@ public class SignalAnrTracer extends Tracer {
     private static void checkErrorStateCycle() {
         int checkErrorStateCount = 0;
         while (checkErrorStateCount < CHECK_ERROR_STATE_COUNT) {
-            checkErrorStateCount++;
-            boolean myAnr = checkErrorState();
-            if (myAnr && !hasReported) {
-                report(true);
+            try {
+                checkErrorStateCount++;
+                boolean myAnr = checkErrorState();
+                if (myAnr) {
+                    report(true);
+                    break;
+                }
+
+                Thread.sleep(CHECK_ERROR_STATE_INTERVAL);
+            } catch (Throwable t) {
+                MatrixLog.e(TAG, "checkErrorStateCycle error, e : " + t.getMessage());
                 break;
             }
         }
