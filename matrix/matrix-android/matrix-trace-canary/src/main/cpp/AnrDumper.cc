@@ -135,9 +135,12 @@ static void *siUserCallback(void* arg) {
 SignalHandler::Result AnrDumper::handleSignal(int sig, const siginfo_t *info, void *uc) {
     // Only process SIGQUIT, which indicates an ANR.
     if (sig != SIGQUIT) return NOT_HANDLED;
-    int fromPid = info->_si_pad[4];
+    int fromPid1 = info->_si_pad[3];
+    int fromPid2 = info->_si_pad[4];
+    int myPid = getpid();
+
     pthread_t thd;
-    if (info->si_code == SI_QUEUE || fromPid != getpid()) {
+    if (fromPid1 != myPid && fromPid2 != myPid) {
         pthread_create(&thd, nullptr, anrCallback, nullptr);
     } else {
         pthread_create(&thd, nullptr, siUserCallback, nullptr);
