@@ -8,6 +8,7 @@
 #include <xhook.h>
 #include <xhook_ext.h>
 #include <android/log.h>
+#include <sys/resource.h>
 #include "ScopedCleaner.h"
 #include "Log.h"
 #include "HookCommon.h"
@@ -22,6 +23,12 @@ namespace matrix {
     static std::recursive_mutex sDlOpenMutex;
 
     static void NotifySoLoad(const char* pathname) {
+        if (UNLIKELY(pathname == nullptr)) {
+            // pathname == nullptr indicates dlopen was called with RTLD_DEFAULT, which doesn't load any new libraries.
+            // So we can skip the rest logic below in such situation.
+            return;
+        }
+
         xhook_refresh(0);
 
         wechat_backtrace::notify_maps_changed();
