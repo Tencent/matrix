@@ -40,7 +40,7 @@ public class TestEnterActivity extends Activity {
         findViewById(R.id.content).setVisibility(View.GONE);
 
         IssueFilter.setCurrentFilter(IssueFilter.ISSUE_TRACE);
-        ListView listView = (ListView) findViewById(R.id.list_view);
+        ListView listView = findViewById(R.id.list_view);
         String[] data = new String[200];
         for (int i = 0; i < 200; i++) {
             data[i] = "MatrixTrace:" + i;

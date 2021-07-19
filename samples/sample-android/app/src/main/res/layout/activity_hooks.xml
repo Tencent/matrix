@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <LinearLayout
+            style="@style/Container"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_horizontal"
+            tools:ignore="HardcodedText">
+
+            <Button
+                android:id="@+id/btn_mmap"
+                style="@style/EntryButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:onClick="memoryAllocTest"
+                android:text="Test Memory Hook" />
+
+            <TextView
+                style="@style/DescText"
+                android:text="Will dump hook information into file at '/sdcard/Android/data/sample.tencent.matrix/cache/memory_hook.log'." />
+
+            <View style="@style/Divider" />
+
+            <Button
+                android:id="@+id/btn_thread"
+                style="@style/EntryButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:onClick="threadTest"
+                android:text="Test Thread Hook" />
+
+            <TextView
+                style="@style/DescText"
+                android:text="Will dump hook information into file at '/sdcard/Android/data/sample.tencent.matrix/cache/pthread_hook.log'." />
+
+            <View style="@style/Divider" />
+
+<!--            <Button-->
+<!--                android:id="@+id/button5"-->
+<!--                style="@style/EntryButton"-->
+<!--                android:layout_width="match_parent"-->
+<!--                android:layout_height="wrap_content"-->
+<!--                android:onClick="jectlTest"-->
+<!--                android:text="Print JeCtl" />-->
+
+<!--            <Button-->
+<!--                android:id="@+id/button7"-->
+<!--                style="@style/EntryButton"-->
+<!--                android:layout_width="match_parent"-->
+<!--                android:layout_height="wrap_content"-->
+<!--                android:onClick="fdLimit"-->
+<!--                android:text="Print fd limit" />-->
+
+            <Button
+                android:id="@+id/button6"
+                style="@style/EntryButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:onClick="killSelf"
+                android:text="Kill Self" />
+
+        </LinearLayout>
+    </ScrollView>
+</LinearLayout>

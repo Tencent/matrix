@@ -23,8 +23,9 @@
 #ifndef LIBMATRIX_JNI_HOOKCOMMON_H
 #define LIBMATRIX_JNI_HOOKCOMMON_H
 
-#include "JNICommon.h"
 #include <dlfcn.h>
+#include "JNICommon.h"
+#include "Macros.h"
 
 #define GET_CALLER_ADDR(__caller_addr) \
     void * __caller_addr = __builtin_return_address(0)
@@ -44,6 +45,13 @@
     ORIGINAL_FUNC_PTR(sym); \
     ret HANDLER_FUNC_NAME(sym)(params)
 
+#define FETCH_ORIGIN_FUNC(sym) \
+    if (!ORIGINAL_FUNC_NAME(sym)) { \
+        void *handle = dlopen(ORIGINAL_LIB, RTLD_LAZY); \
+        if (handle) { \
+            ORIGINAL_FUNC_NAME(sym) = (FUNC_TYPE(sym))dlsym(handle, #sym); \
+        } \
+    }
 
 #define CALL_ORIGIN_FUNC_RET(retType, ret, sym, params...) \
     if (!ORIGINAL_FUNC_NAME(sym)) { \
@@ -63,6 +71,26 @@
     } \
     ORIGINAL_FUNC_NAME(sym)(params)
 
+#define NOTIFY_COMMON_IGNORE_LIBS() \
+    do { \
+      xhook_ignore(".*libwechatbacktrace\\.so$", NULL); \
+      xhook_ignore(".*libtrace-canary\\.so$", NULL); \
+      xhook_ignore(".*libwechatcrash\\.so$", NULL); \
+      xhook_ignore(".*libmemguard\\.so$", NULL); \
+      xhook_ignore(".*libmemmisc\\.so$", NULL); \
+      xhook_ignore(".*liblog\\.so$", NULL); \
+      xhook_ignore(".*libc\\.so$", NULL); \
+      xhook_ignore(".*libm\\.so$", NULL); \
+      xhook_ignore(".*libc\\+\\+\\.so$", NULL); \
+      xhook_ignore(".*libc\\+\\+_shared\\.so$", NULL); \
+      xhook_ignore(".*libstdc\\+\\+.so\\.so$", NULL); \
+      xhook_ignore(".*libstlport_shared\\.so$", NULL); \
+      xhook_ignore(".*/libwebviewchromium_loader\\.so$", NULL); \
+      xhook_ignore(".*/libmatrix-hookcommon\\.so$", nullptr); \
+      xhook_ignore(".*/libmatrix-memoryhook\\.so$", nullptr); \
+      xhook_ignore(".*/libmatrix-pthreadhook\\.so$", nullptr); \
+    } while (0)
+
 #include <vector>
 
 #ifdef __cplusplus
@@ -75,20 +103,10 @@ typedef struct {
     void       **origin_ptr;
 } HookFunction;
 
-typedef void (*dlopen_callback_t)(const char *__file_name, bool *maps_refreshed);
-
-void add_dlopen_hook_callback(dlopen_callback_t callback);
-
 typedef void (*hook_init_callback_t)();
 
-void add_hook_init_callback(hook_init_callback_t callback);
+EXPORT bool get_java_stacktrace(char *stack_dst, size_t size);
 
-bool get_java_stacktrace(char *stack_dst, size_t size);
-
-DECLARE_HOOK_ORIG(void *, __loader_android_dlopen_ext, const char *filename,
-                  int                                             flag,
-                  const void                                      *extinfo,
-                  const void                                      *caller_addr) ;
 #ifdef __cplusplus
 }
 #endif

@@ -3,8 +3,6 @@ package com.tencent.matrix.batterycanary.monitor.feature;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 
 import com.tencent.matrix.batterycanary.BatteryEventDelegate;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
@@ -18,6 +16,9 @@ import com.tencent.matrix.util.MatrixLog;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 /**
  * Device Status Monitoring:
@@ -73,6 +74,7 @@ public final class DeviceStatMonitorFeature extends AbsMonitorFeature {
             @SuppressLint("VisibleForTests")
             @Override
             public void accept(Integer integer) {
+                BatteryCanaryUtil.getProxy().updateDevStat(integer);
                 synchronized (TAG) {
                     if (mStampList != Collections.EMPTY_LIST) {
                         MatrixLog.i(BatteryEventDelegate.TAG, "onStat >> " + BatteryCanaryUtil.convertDevStat(integer));

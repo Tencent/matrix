@@ -36,7 +36,7 @@
 #include <QuickenMemory.h>
 #include <MemoryRange.h>
 #include <QuickenTableManager.h>
-#include <QuickenJNI.h>
+#include <deps/android-base/include/android-base/logging.h>
 
 #include "QuickenUtility.h"
 #include "ElfInterfaceArm.h"
@@ -57,11 +57,11 @@ namespace wechat_backtrace {
     DEFINE_STATIC_CPP_FIELD(interface_caches_t, QuickenMapInfo::cached_quicken_interface_,);
 
     BACKTRACE_EXPORT QuickenInterface *
-    QuickenMapInfo::GetQuickenInterface(std::shared_ptr<Memory> &process_memory,
-                                        ArchEnum expected_arch) {
+    QuickenMapInfo::GetQuickenInterface(std::shared_ptr<Memory> &process_memory) {
 
-        if (LIKELY(quicken_interface_)) {
-            return quicken_interface_.get();
+        QuickenInterface * interface = quicken_interface_atomic_.load(memory_order_relaxed);
+        if (LIKELY(interface)) {
+            return interface;
         }
 
         // Had requested interface and failed earlier.
@@ -86,8 +86,11 @@ namespace wechat_backtrace {
                 elf_offset = quicken_interface_->GetElfOffset();
                 elf_start_offset = quicken_interface_->GetElfStartOffset();
 
-                return quicken_interface_.get();
+                quicken_interface_atomic_.store(quicken_interface_.get());
+                return quicken_interface_atomic_.load(memory_order_relaxed);
             }
+
+            ArchEnum expected_arch = CURRENT_ARCH;
 
             auto elf_wrapper = make_unique<ElfWrapper>();
             bool valid = elf_wrapper->Init(this, process_memory, expected_arch);
@@ -114,7 +117,8 @@ namespace wechat_backtrace {
                 build_id = FakeBuildId(name_without_delete);
             }
 
-            quicken_interface_.reset(CreateQuickenInterfaceFromElf(
+            shared_ptr<QuickenInterface> interface;
+            interface.reset(CreateQuickenInterfaceFromElf(
                     expected_arch,
                     name_without_delete,
                     soname,
@@ -126,31 +130,31 @@ namespace wechat_backtrace {
             ));
 
             // Hand over elf_wrapper
-            quicken_interface_->elf_wrapper_ = move(elf_wrapper);
+            interface->elf_wrapper_ = move(elf_wrapper);
 
             if (is_jit_cache) {
-                quicken_interface_->InitDebugJit();
+                interface->InitDebugJit();
             } else {
-                QutFileError ret = quicken_interface_->TryInitQuickenTable();
+                QutFileError ret = interface->TryInitQuickenTable();
                 if (ret != NoneError && quicken_in_memory_enable_) {
-                    if (quicken_interface_->elf_wrapper_->HandOverGnuDebugData()) {
-                        quicken_interface_->FillQuickenInMemory(process_memory);
+                    if (interface->elf_wrapper_->HandOverGnuDebugData()) {
+                        interface->FillQuickenInMemory(process_memory);
                     } else {
                         QUT_LOG("Hand over headers and gnu debug data failed.");
                     }
                 }
                 if (ret == TryInvokeJavaRequestQutGenerate) {
                     QuickenTableManager::getInstance().RecordQutRequestInterface(
-                            quicken_interface_);
-                    InvokeJava_RequestQutGenerate();
+                            interface);
                 }
             }
-            quicken_interface_->elf_wrapper_->ReleaseFileBackedElf();
+            interface->elf_wrapper_->ReleaseFileBackedElf();
 
+            quicken_interface_ = interface;
             cached_quicken_interface_[so_key] = quicken_interface_;
         }
-
-        return quicken_interface_.get();
+        quicken_interface_atomic_.store(quicken_interface_.get());
+        return quicken_interface_atomic_.load(memory_order_relaxed);
     }
 
     QuickenInterface *QuickenMapInfo::CreateQuickenInterfaceFromElf(
@@ -215,9 +219,11 @@ namespace wechat_backtrace {
 
         if (expected_arch == ARCH_ARM) {
             auto *elf_interface_arm = dynamic_cast<ElfInterfaceArm *>(elf_interface);
-            quicken_interface_->SetArmExidxInfo(
-                    elf_interface_arm->start_offset(),
-                    elf_interface_arm->total_entries());
+            if (elf_interface_arm) {
+                quicken_interface_->SetArmExidxInfo(
+                        elf_interface_arm->start_offset(),
+                        elf_interface_arm->total_entries());
+            }
         }
 
         quicken_interface_->SetEhFrameInfo(
@@ -551,17 +557,21 @@ namespace wechat_backtrace {
     };
 
     BACKTRACE_EXPORT
-    bool Maps::Parse() {
+    bool Maps::Parse(Maps *maps) {
 
         std::lock_guard<std::mutex> guard(maps_lock_);
 
-        shared_ptr<Maps> maps = make_shared<Maps>(latest_maps_capacity_);
+        if (maps != nullptr && maps == current_maps_.get()) {
+            return true;
+        }
 
-        bool ret = maps->ParseImpl();
+        shared_ptr<Maps> new_maps = make_shared<Maps>(latest_maps_capacity_);
+
+        bool ret = new_maps->ParseImpl();
 
         if (ret) {
-            latest_maps_capacity_ = maps->maps_capacity_;
-            current_maps_ = move(maps);
+            latest_maps_capacity_ = new_maps->maps_capacity_;
+            current_maps_ = move(new_maps);
         }
 
         return ret;
@@ -571,6 +581,7 @@ namespace wechat_backtrace {
         MapInfoPtr prev_map = nullptr;
         MapInfoPtr prev_real_map = nullptr;
 
+        CHECK(maps_capacity_ != 0);
         size_t tmp_capacity = maps_capacity_, tmp_idx = 0;
         auto *tmp_maps = new MapInfoPtr[tmp_capacity];
 
@@ -578,8 +589,6 @@ namespace wechat_backtrace {
                 "/proc/self/maps",
                 [&](uint64_t start, uint64_t end, uint16_t flags, uint64_t pgoff, ino_t,
                     const char *name) {
-
-//                    QUT_DEBUG_LOG("0x%llx-0x%llx %llu %s", (ullint_t) start, (ullint_t)end, (ullint_t)flags, name);
 
                     // Mark a device map in /dev/ and not in /dev/ashmem/ specially.
                     if (strncmp(name, "/dev/", 5) == 0 && strncmp(name + 5, "ashmem/", 7) != 0) {

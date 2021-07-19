@@ -1,4 +1,4 @@
-buildscript { 
+buildscript {
 
     repositories {
 
@@ -6,7 +6,6 @@ buildscript {
         google()
         mavenCentral()
 
-        jcenter()   // Need 'org.jetbrains.trove4j:trove4j:20160824'
     }
 
     gradle.ext.KOTLIN_VERSION = "1.3.72"
@@ -33,8 +32,6 @@ allprojects {
         mavenLocal()
         google()
         mavenCentral()
-
-        jcenter() // Need 'com.tencent.tinker:tinker-ziputils:1.9.2'
     }
 
     tasks.withType(Javadoc).all {

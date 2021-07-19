@@ -96,8 +96,8 @@ namespace wechat_backtrace {
     class ExidxDecoder {
 
     public:
-        ExidxDecoder(unwindstack::Memory *memory, unwindstack::Memory *process_memory)
-                : memory_(memory), process_memory_(process_memory) {
+        ExidxDecoder(unwindstack::Memory *memory, unwindstack::Memory *process_memory, QuickenGenerationContext *context)
+                : memory_(memory), process_memory_(process_memory), generation_context_(context) {
             instructions_.reset(new QutInstrCollection);
         }
 
@@ -111,12 +111,13 @@ namespace wechat_backtrace {
 
         ArmStatus status_ = ARM_STATUS_NONE;
         uint64_t status_address_ = 0;
-
         const bool log = false;
 
     protected:
         unwindstack::Memory *memory_;
         unwindstack::Memory *process_memory_;
+
+        QuickenGenerationContext *generation_context_;
 
         bool DecodePrefix_10_00(uint8_t byte);
 

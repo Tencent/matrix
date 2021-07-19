@@ -27,6 +27,20 @@ SET(
         ${SOURCE_DIR}/test/JavaStacktrace.cpp
 )
 
+IF(${ANDROID_ABI} STREQUAL armeabi-v7a)
+        SET(
+            SOURCE_FILES
+            ${SOURCE_FILES}
+
+            ${SOURCE_DIR}/test/unwind32/backtrace.c
+            ${SOURCE_DIR}/test/unwind32/backtrace-arm.c
+            ${SOURCE_DIR}/test/unwind32/backtrace-helper.c
+            ${SOURCE_DIR}/test/unwind32/map_info.c
+            ${SOURCE_DIR}/test/unwind32/ptrace.c
+        )
+ENDIF()
+
+
 ADD_LIBRARY( # Specifies the name of the library.
         ${TARGET}
 
@@ -41,6 +55,8 @@ TARGET_INCLUDE_DIRECTORIES(
         ${TARGET}
         PUBLIC ${SOURCE_DIR}/test
         PRIVATE ${EXT_DEP}/include
+        PRIVATE ${EXT_DEP}/include/backtrace
+        PRIVATE ${EXT_DEP}/include/backtrace/common
 )
 
 # Searches for a specified prebuilt library and stores the path as a

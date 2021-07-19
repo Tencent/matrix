@@ -19,8 +19,8 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
-import com.tencent.components.backtrace.WarmUpReporter;
-import com.tencent.components.backtrace.WeChatBacktrace;
+import com.tencent.matrix.backtrace.WarmUpReporter;
+import com.tencent.matrix.backtrace.WeChatBacktrace;
 import com.tencent.matrix.benchmark.test.UnwindBenchmarkTest;
 
 import java.io.File;
@@ -289,7 +289,7 @@ public class BenchmarkActivity extends AppCompatActivity {
                             if (file.getName().endsWith(".so") || file.getName().endsWith(".oat")
                                     || file.getName().endsWith(".odex")) {
                                 Log.e(TAG, "Start statistics -> " + file.getAbsolutePath());
-                                int[] result = WeChatBacktrace._DoStatistic(file.getAbsolutePath());
+                                int[] result = WeChatBacktrace.doStatistic(file.getAbsolutePath());
                                 maps.put(file.getName(), result);
                                 Log.e(TAG,
                                         "Start statistics <- " + file.getAbsolutePath() + " end.");

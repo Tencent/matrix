@@ -21,10 +21,14 @@
 #ifndef LIBMATRIX_HOOK_REENTRANTPREVENTION_H
 #define LIBMATRIX_HOOK_REENTRANTPREVENTION_H
 
-void rp_init();
 
-bool rp_acquire() ;
+#include "Macros.h"
 
-void rp_release();
+EXPORT void rp_init();
+
+EXPORT bool rp_acquire();
+
+EXPORT void rp_release();
+
 
 #endif //LIBMATRIX_HOOK_REENTRANTPREVENTION_H

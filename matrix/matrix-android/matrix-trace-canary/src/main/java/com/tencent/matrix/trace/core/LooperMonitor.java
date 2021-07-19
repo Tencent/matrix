@@ -1,3 +1,19 @@
+/*
+ * Tencent is pleased to support the open source community by making wechat-matrix available.
+ * Copyright (C) 2021 THL A29 Limited, a Tencent company. All rights reserved.
+ * Licensed under the BSD 3-Clause License (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      https://opensource.org/licenses/BSD-3-Clause
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.tencent.matrix.trace.core;
 
 import android.os.Build;
@@ -76,6 +92,10 @@ public class LooperMonitor implements MessageQueue.IdleHandler {
     private static final long CHECK_TIME = 60 * 1000L;
     private long lastCheckPrinterTime = 0;
 
+    /**
+     * It will be thread-unsafe if you get the listeners and literate.
+     */
+    @Deprecated
     public HashSet<LooperDispatchListener> getListeners() {
         return listeners;
     }
@@ -221,26 +241,23 @@ public class LooperMonitor implements MessageQueue.IdleHandler {
         }
     }
 
-
     private void dispatch(boolean isBegin, String log) {
-
-        for (LooperDispatchListener listener : listeners) {
-            if (listener.isValid()) {
-                if (isBegin) {
-                    if (!listener.isHasDispatchStart) {
-                        listener.onDispatchStart(log);
+        synchronized (listeners) {
+            for (LooperDispatchListener listener : listeners) {
+                if (listener.isValid()) {
+                    if (isBegin) {
+                        if (!listener.isHasDispatchStart) {
+                            listener.onDispatchStart(log);
+                        }
+                    } else {
+                        if (listener.isHasDispatchStart) {
+                            listener.onDispatchEnd(log);
+                        }
                     }
-                } else {
-                    if (listener.isHasDispatchStart) {
-                        listener.onDispatchEnd(log);
-                    }
+                } else if (!isBegin && listener.isHasDispatchStart) {
+                    listener.dispatchEnd();
                 }
-            } else if (!isBegin && listener.isHasDispatchStart) {
-                listener.dispatchEnd();
             }
         }
-
     }
-
-
 }

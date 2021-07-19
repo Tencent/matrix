@@ -33,6 +33,7 @@ enum QutErrorCode {
     QUT_ERROR_QUT_SECTION_INVALID,      // Quicken unwind table is invalid.
     QUT_ERROR_INVALID_QUT_INSTR,        // Met a invalid quicken instruction.
     QUT_ERROR_MAPS_IS_NULL,             // Could not get maps
+    QUT_ERROR_CONTEXT_IS_NULL,             // Could not get maps
 
     QUT_ERROR_REQUEST_QUT_FILE_FAILED,  // Request QUT file failed.
     QUT_ERROR_REQUEST_QUT_INMEM_FAILED, // Request QUT in memory failed.

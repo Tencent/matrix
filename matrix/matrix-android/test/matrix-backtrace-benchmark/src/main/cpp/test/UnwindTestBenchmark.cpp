@@ -4,11 +4,10 @@
 #include <cinttypes>
 #include <memory>
 #include <cxxabi.h>
-#include <Backtrace.h>
-#include <QuickenMaps.h>
-#include <LocalMaps.h>
-#include <QuickenUnwinder.h>
-#include "Backtrace.h"
+#include <backtrace/Backtrace.h>
+#include <backtrace/QuickenMaps.h>
+#include <backtrace/LocalMaps.h>
+#include <backtrace/QuickenUnwinder.h>
 
 #include "BenchmarkLog.h"
 #include "UnwindTestCase_SelfSo.h"
@@ -42,8 +41,8 @@ extern "C" {
 JNIEXPORT void JNICALL
 Java_com_tencent_matrix_benchmark_test_UnwindBenchmarkTest_nativeInit(
         JNIEnv *env, jclass clazz) {
-
-    wechat_backtrace::BACKTRACE_FUNC_WRAPPER(notify_maps_changed)();
+    wechat_backtrace::UpdateLocalMaps();
+    wechat_backtrace::Maps::Parse();
 }
 
 
@@ -65,6 +64,9 @@ Java_com_tencent_matrix_benchmark_test_UnwindBenchmarkTest_nativeBenchmark(
         BENCHMARK_TIMES(DWARF_UNWIND, times, func_selfso());
         BENCHMARK_TIMES(FP_UNWIND, times, func_selfso());
         BENCHMARK_TIMES(WECHAT_QUICKEN_UNWIND, times, func_selfso());
+#ifdef __arm__
+        BENCHMARK_TIMES(LIBUDF_UNWIND, times, func_selfso());
+#endif
     }
 }
 
@@ -87,9 +89,13 @@ Java_com_tencent_matrix_benchmark_test_UnwindBenchmarkTest_nativeTry(JNIEnv *env
 
     bool previous = switch_print_stack(true);
     for (int i = 0; i < 1; i++) {
+
         BENCHMARK_TIMES(DWARF_UNWIND, 1, func_selfso());
         BENCHMARK_TIMES(FP_UNWIND, 1, func_selfso());
         BENCHMARK_TIMES(WECHAT_QUICKEN_UNWIND, 1, func_selfso());
+#ifdef __arm__
+        BENCHMARK_TIMES(LIBUDF_UNWIND, 1, func_selfso());
+#endif
     }
     switch_print_stack(previous);
 }
@@ -97,7 +103,8 @@ Java_com_tencent_matrix_benchmark_test_UnwindBenchmarkTest_nativeTry(JNIEnv *env
 JNIEXPORT void JNICALL
 Java_com_tencent_matrix_benchmark_test_UnwindBenchmarkTest_nativeRefreshMaps(JNIEnv *env,
                                                                              jclass clazz) {
-    wechat_backtrace::notify_maps_changed();
+    wechat_backtrace::UpdateLocalMaps();
+    wechat_backtrace::Maps::Parse();
 }
 
 JNIEXPORT jint JNI_OnLoad(JavaVM *vm, void *reserved) {

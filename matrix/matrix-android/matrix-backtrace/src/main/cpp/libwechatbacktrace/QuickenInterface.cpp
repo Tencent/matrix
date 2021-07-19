@@ -18,7 +18,6 @@
 #include <MinimalRegs.h>
 #include <QuickenTableManager.h>
 #include <deps/android-base/include/android-base/logging.h>
-#include <QuickenJNI.h>
 #include "Log.h"
 #include "QuickenInterface.h"
 #include "QuickenMaps.h"
@@ -159,22 +158,22 @@ namespace wechat_backtrace {
     }
 
     inline bool
-    QuickenInterface::StepInternal(uptr pc, uptr *regs, QutSections *sections, uptr stack_top,
-                                   uptr stack_bottom, uptr frame_size, uint64_t *dex_pc,
-                                   bool *finished) {
+    QuickenInterface::StepInternal(StepContext *step_context, QutSections *sections) {
 
-        QuickenTable quicken(
-                sections, regs, nullptr, stack_top, stack_bottom, frame_size);
+        QuickenTable quicken(sections, step_context);
 
         size_t entry_offset;
 
-        if (UNLIKELY(!FindEntry(sections, pc, &entry_offset))) {
+        if (UNLIKELY(!FindEntry(sections, step_context->pc, &entry_offset))) {
             return false;
         }
+
+        uptr *regs = step_context->regs;
 
         quicken.cfa_ = SP(regs);
         bool return_value = false;
 //        quicken.log = log && log_pc == pc;
+        quicken.log = true;
         last_error_code_ = quicken.Eval(entry_offset);
         if (LIKELY(last_error_code_ == QUT_ERROR_NONE)) {
             if (!quicken.pc_set_) {
@@ -182,23 +181,21 @@ namespace wechat_backtrace {
             }
             SP(regs) = quicken.cfa_;
             return_value = true;
-            *dex_pc = quicken.dex_pc_;
+            step_context->dex_pc = quicken.dex_pc_;
         }
 
         // If the pc was set to zero, consider this the final frame.
-        *finished = (PC(regs) == 0);
+        step_context->finished = (PC(regs) == 0);
         return return_value;
     }
 
     bool
-    QuickenInterface::StepJIT(uptr pc, uptr *regs, Maps *maps, uptr stack_top,
-                              uptr stack_bottom, uptr frame_size, uint64_t *dex_pc,
-                              bool *finished) {
+    QuickenInterface::StepJIT(StepContext *step_context, wechat_backtrace::Maps *maps) {
 
         std::shared_ptr<QutSectionsInMemory> qut_sections_for_jit;
-        if (LIKELY(debug_jit_.get() != nullptr)) {
+        if (LIKELY(debug_jit_)) {
             bool ret = debug_jit_->GetFutSectionsInMemory(
-                    maps, pc,
+                    maps, step_context->pc,
                     qut_sections_for_jit);
             if (!ret || qut_sections_for_jit == nullptr) {
                 last_error_code_ = QUT_ERROR_REQUEST_QUT_INMEM_FAILED;
@@ -209,50 +206,45 @@ namespace wechat_backtrace {
             return false;
         }
 
-        return StepInternal(pc, regs, qut_sections_for_jit.get(),
-                            stack_top, stack_bottom, frame_size, dex_pc, finished);
+        return StepInternal(step_context, qut_sections_for_jit.get());
     }
 
     bool
-    QuickenInterface::Step(uptr pc, uptr *regs, uptr stack_top,
-                           uptr stack_bottom, uptr frame_size, uint64_t *dex_pc, bool *finished) {
+    QuickenInterface::Step(StepContext *step_context) {
 
-        if (UNLIKELY(pc < load_bias_)) {
+        if (UNLIKELY(step_context->pc < load_bias_)) {
             last_error_code_ = QUT_ERROR_UNWIND_INFO;
             return false;
         }
         if (UNLIKELY(!qut_sections_)) {
             std::shared_ptr<QuickenInMemory<addr_t>> quicken_in_memory;
             {
-                lock_guard<mutex> lock(lock_quicken_in_memory_);
+                shared_lock<shared_mutex> lock(lock_quicken_in_memory_);
                 quicken_in_memory = quicken_in_memory_;
             }
             if (quicken_in_memory) {
                 QUT_LOG("QuickenInterface::Step using quicken_in_memory_, elf: %s, frame: %llu",
-                        soname_.c_str(), (ullint_t) frame_size);
+                        soname_.c_str(), (ullint_t) step_context->frame_index);
                 std::shared_ptr<QutSectionsInMemory> qut_section_in_memory;
                 bool ret = quicken_in_memory->GetFutSectionsInMemory(
-                        pc, /* out */ qut_section_in_memory);
+                        step_context->pc, /* out */ qut_section_in_memory);
                 if (UNLIKELY(!ret)) {
                     QUT_LOG("QuickenInterface::Step quicken_in_memory_ failed");
                     last_error_code_ = QUT_ERROR_REQUEST_QUT_FILE_FAILED;
                     return false;
                 }
-                return StepInternal(pc, regs,
-                                    qut_section_in_memory.get(),
-                                    stack_top, stack_bottom, frame_size, dex_pc, finished);
+                return StepInternal(step_context, qut_section_in_memory.get());
             } else {
                 last_error_code_ = QUT_ERROR_REQUEST_QUT_FILE_FAILED;
                 return false;
             }
         }
-        return StepInternal(pc, regs, const_cast<QutSections *>(qut_sections_),
-                            stack_top, stack_bottom, frame_size, dex_pc, finished);
+        return StepInternal(step_context, const_cast<QutSections *>(qut_sections_));
     }
 
     void QuickenInterface::ResetQuickenInMemory() {
         {
-            lock_guard<mutex> lock(lock_quicken_in_memory_);
+            unique_lock<shared_mutex> lock(lock_quicken_in_memory_);
             quicken_in_memory_ = nullptr;
         }
     }

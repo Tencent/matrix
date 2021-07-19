@@ -18,10 +18,12 @@ package com.tencent.matrix.hook.memory;
 
 import android.text.TextUtils;
 
+import androidx.annotation.Keep;
+import androidx.annotation.Nullable;
 
-import com.tencent.matrix.util.MatrixLog;
 import com.tencent.matrix.hook.AbsHook;
 import com.tencent.matrix.hook.HookManager;
+import com.tencent.matrix.util.MatrixLog;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -31,19 +33,19 @@ import java.util.Set;
  */
 public class MemoryHook extends AbsHook {
 
-    private static final String TAG = "Matrix.Memory";
+    private static final String TAG = "Matrix.MemoryHook";
 
     public static final MemoryHook INSTANCE = new MemoryHook();
 
-    private Set<String> mHookSoSet   = new HashSet<>();
-    private Set<String> mIgnoreSoSet = new HashSet<>();
+    private final Set<String> mHookSoSet   = new HashSet<>();
+    private final Set<String> mIgnoreSoSet = new HashSet<>();
 
     private int     mMinTraceSize;
     private int     mMaxTraceSize;
     private int     mStacktraceLogThreshold = 10 * 1024 * 1024;
-    private double  mSampling = 1;
     private boolean mEnableStacktrace;
     private boolean mEnableMmap;
+    private boolean mHookInstalled = false;
 
     private MemoryHook() {
     }
@@ -90,33 +92,9 @@ public class MemoryHook extends AbsHook {
      * @param size
      * @return
      */
-    public MemoryHook minTraceSize(int size) {
-        mMinTraceSize = size;
-        return this;
-    }
-
-    /**
-     * 0 或 > minSize, 0 表示不限制
-     *
-     * @param size
-     * @return
-     */
-    public MemoryHook maxTraceSize(int size) {
-        mMaxTraceSize = size;
-        return this;
-    }
-
-    /**
-     * [0,1]
-     *
-     * @param sampling
-     * @return
-     */
-    public MemoryHook sampling(double sampling) {
-        if (mSampling < 0 || mSampling > 1) {
-            throw new IllegalArgumentException("sampling should be between 0 and 1: " + sampling);
-        }
-        mSampling = sampling;
+    public MemoryHook tracingAllocSizeRange(int min, int max) {
+        mMinTraceSize = min;
+        mMaxTraceSize = max;
         return this;
     }
 
@@ -140,49 +118,68 @@ public class MemoryHook extends AbsHook {
                 .commitHooks();
     }
 
+    @Nullable
     @Override
-    public void onConfigure() {
+    protected String getNativeLibraryName() {
+        return "matrix-memoryhook";
+    }
+
+    @Override
+    public boolean onConfigure() {
         if (mMinTraceSize < 0 || (mMaxTraceSize != 0 && mMaxTraceSize < mMinTraceSize)) {
             throw new IllegalArgumentException("sizes should not be negative and maxSize should be " +
                     "0 or greater than minSize: min = " + mMinTraceSize + ", max = " + mMaxTraceSize);
         }
 
-        MatrixLog.d("Yves.debug", "enable mmap? " + mEnableMmap);
+        MatrixLog.d(TAG, "enable mmap? " + mEnableMmap);
         enableMmapHookNative(mEnableMmap);
 
-        setSampleSizeRangeNative(mMinTraceSize, mMaxTraceSize);
-        setSamplingNative(mSampling);
-
+        setTracingAllocSizeRangeNative(mMinTraceSize, mMaxTraceSize);
         setStacktraceLogThresholdNative(mStacktraceLogThreshold);
         enableStacktraceNative(mEnableStacktrace);
+
+        return true;
     }
 
     @Override
-    protected void onHook() {
+    protected boolean onHook(boolean enableDebug) {
         addHookSoNative(mHookSoSet.toArray(new String[0]));
         addIgnoreSoNative(mIgnoreSoSet.toArray(new String[0]));
+        if (!mHookInstalled) {
+            installHooksNative(enableDebug);
+            mHookInstalled = true;
+        }
+        return true;
     }
 
     public void dump(String logPath, String jsonPath) {
-        if (HookManager.INSTANCE.hasHooked()) {
+        if (getStatus() == Status.COMMIT_SUCCESS) {
             dumpNative(logPath, jsonPath);
         }
     }
 
+    @Keep
     private native void dumpNative(String logPath, String jsonPath);
 
-    private native void setSamplingNative(double sampling);
+    @Keep
+    private native void setTracingAllocSizeRangeNative(int minSize, int maxSize);
 
-    private native void setSampleSizeRangeNative(int minSize, int maxSize);
-
+    @Keep
     private native void enableStacktraceNative(boolean enable);
 
+    @Keep
     private native void enableMmapHookNative(boolean enable);
 
+    @Keep
     private native void addHookSoNative(String[] hookSoList);
 
+    @Keep
     private native void addIgnoreSoNative(String[] ignoreSoList);
 
+    @Keep
     private native void setStacktraceLogThresholdNative(int threshold);
+
+    @Keep
+    private native void installHooksNative(boolean enableDebug);
 }
 

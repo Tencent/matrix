@@ -259,10 +259,6 @@ namespace wechat_backtrace {
                 QUT_LOG("CompleteSymbolsNoLock for so %s", soname_.c_str());
                 CompleteSymbolsNoLock(memory_ranges_end_, file_memory_offset_);
             }
-        }
-
-        {
-            lock_guard<mutex> guard(lock_);
 
             if (need_debug_data_ && !debug_data_handed_over_) {
 
@@ -308,9 +304,11 @@ namespace wechat_backtrace {
 
         if (expected_arch == ARCH_ARM) {
             ElfInterfaceArm *elf_interface_arm = dynamic_cast<ElfInterfaceArm *>(elf_interface);
-            quicken_interface_->SetArmExidxInfo(
-                    elf_interface_arm->start_offset(),
-                    elf_interface_arm->total_entries());
+            if (elf_interface_arm) {
+                quicken_interface_->SetArmExidxInfo(
+                        elf_interface_arm->start_offset(),
+                        elf_interface_arm->total_entries());
+            }
         }
 
         quicken_interface_->SetEhFrameInfo(

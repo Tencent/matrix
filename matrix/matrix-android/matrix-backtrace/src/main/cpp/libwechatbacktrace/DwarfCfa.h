@@ -67,6 +67,8 @@ namespace wechat_backtrace {
         const static Info kTable[64];
     };
 
+    typedef bool(*loc_regs_callback)(unwindstack::dwarf_loc_regs_t *loc_regs);
+
     template<typename AddressType>
     class DwarfCfa {
         // Signed version of AddressType
@@ -79,7 +81,13 @@ namespace wechat_backtrace {
         virtual ~DwarfCfa() = default;
 
         bool GetLocationInfo(uint64_t pc, uint64_t start_offset, uint64_t end_offset,
+                             uint64_t pc_start,
                              unwindstack::dwarf_loc_regs_t *loc_regs);
+
+        bool
+        IterateLocationInfo(uint64_t pc_start, uint64_t pc_end, uint64_t start_offset, uint64_t end_offset,
+                            const bool iterate_loc,
+                            const std::function<bool(unwindstack::dwarf_loc_regs_t*)>& callback);
 
         bool Log(uint32_t indent, uint64_t pc, uint64_t start_offset, uint64_t end_offset);
 

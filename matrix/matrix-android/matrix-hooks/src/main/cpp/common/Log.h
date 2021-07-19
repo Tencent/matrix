@@ -21,7 +21,17 @@
 #ifndef MATRIX_HOOK_LOG_H
 #define MATRIX_HOOK_LOG_H
 
+#include <stdio.h>
 #include <android/log.h>
+#include "Macros.h"
+
+typedef int (*internal_logger_func)(int log_level, const char *tag, const char *format,
+                                    va_list varargs);
+
+EXPORT_C void enable_hook_logger(bool enable);
+EXPORT_C void internal_hook_logger(int log_level, const char *tag, const char *format, ...);
+EXPORT_C void
+internal_hook_vlogger(int log_level, const char *tag, const char *format, va_list varargs);
 
 #ifdef EnableLOG
 
@@ -29,15 +39,14 @@
 #undef LOGI
 #undef LOGE
 
-#define LOGD(TAG, FMT, args...) __android_log_print(ANDROID_LOG_DEBUG, TAG, FMT, ##args)
-#define LOGI(TAG, FMT, args...) __android_log_print(ANDROID_LOG_INFO, TAG, FMT, ##args)
-#define LOGE(TAG, FMT, args...) __android_log_print(ANDROID_LOG_ERROR, TAG, FMT, ##args)
+#define LOGD(TAG, FMT, args...) internal_hook_logger(ANDROID_LOG_DEBUG, TAG, FMT, ##args)
+#define LOGI(TAG, FMT, args...) internal_hook_logger(ANDROID_LOG_INFO, TAG, FMT, ##args)
+#define LOGE(TAG, FMT, args...) internal_hook_logger(ANDROID_LOG_ERROR, TAG, FMT, ##args)
 
 #else
-
-#define LOGD(TAG, FMT, args...) //__android_log_print(ANDROID_LOG_DEBUG, TAG, FMT, ##args)
-#define LOGI(TAG, FMT, args...) //__android_log_print(ANDROID_LOG_INFO, TAG, FMT, ##args)
-#define LOGE(TAG, FMT, args...) //__android_log_print(ANDROID_LOG_ERROR, TAG, FMT, ##args)
+#define LOGD(TAG, FMT, args...)
+#define LOGI(TAG, FMT, args...)
+#define LOGE(TAG, FMT, args...)
 
 #endif
 
@@ -56,6 +65,6 @@
   (((void)android_printAssert(NULL, LOG_TAG, ##__VA_ARGS__)))
 #endif
 
-int flogger(FILE *fp, const char *fmt, ...);
+EXPORT_C int flogger0(FILE *fp, const char *fmt, ...);
 
 #endif //MATRIX_HOOK_LOG_H
