@@ -108,6 +108,9 @@ public class IdleHandlerLagTracer extends Tracer {
 
     private static void detectIdleHandler() {
         try {
+            if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.M) {
+                return;
+            }
             MessageQueue mainQueue = Looper.getMainLooper().getQueue();
             Field field = MessageQueue.class.getDeclaredField("mIdleHandlers");
             field.setAccessible(true);
