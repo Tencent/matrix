@@ -141,6 +141,7 @@ ssize_t (*original_write)(int fd, const void* const __pass_object_size0 buf, siz
 ssize_t my_write(int fd, const void* const buf, size_t count) {
     if(isTraceWrite && gettid() == signalCatcherTid) {
         isTraceWrite = false;
+        signalCatcherTid = 0;
         if (buf != nullptr) {
             std::string targetFilePath;
             if (fromMyPrintTrace) {
