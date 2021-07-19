@@ -137,10 +137,10 @@ class Primitive {
     }
   }
 
-  static const char* PrettyDescriptor(Type type);
-
-  // Returns the descriptor corresponding to the boxed type of |type|.
-  static const char* BoxedDescriptor(Type type);
+//  static const char* PrettyDescriptor(Type type);
+//
+//  // Returns the descriptor corresponding to the boxed type of |type|.
+//  static const char* BoxedDescriptor(Type type);
 
   // Returns true if |type| is an numeric type.
   static constexpr bool IsNumericType(Type type) {

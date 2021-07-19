@@ -51,9 +51,7 @@ namespace wechat_backtrace {
 
     QUT_EXTERN_C QutErrorCode
     WeChatQuickenUnwind(
-            const unwindstack::ArchEnum arch, uptr *regs,
-            const uptr frame_max_size,
-            Frame *backtrace, uptr &frame_size);
+            QuickenContext *context);
 
 }  // namespace wechat_backtrace
 

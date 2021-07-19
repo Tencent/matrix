@@ -31,34 +31,34 @@ static const char* kTypeNames[] = {
   "PrimVoid",
 };
 
-static const char* kBoxedDescriptors[] = {
-  "Ljava/lang/Object;",
-  "Ljava/lang/Boolean;",
-  "Ljava/lang/Byte;",
-  "Ljava/lang/Character;",
-  "Ljava/lang/Short;",
-  "Ljava/lang/Integer;",
-  "Ljava/lang/Long;",
-  "Ljava/lang/Float;",
-  "Ljava/lang/Double;",
-  "Ljava/lang/Void;",
-};
+//static const char* kBoxedDescriptors[] = {
+//  "Ljava/lang/Object;",
+//  "Ljava/lang/Boolean;",
+//  "Ljava/lang/Byte;",
+//  "Ljava/lang/Character;",
+//  "Ljava/lang/Short;",
+//  "Ljava/lang/Integer;",
+//  "Ljava/lang/Long;",
+//  "Ljava/lang/Float;",
+//  "Ljava/lang/Double;",
+//  "Ljava/lang/Void;",
+//};
 
 #define COUNT_OF(x) (sizeof(x) / sizeof((x)[0]))
 
-const char* Primitive::PrettyDescriptor(Primitive::Type type) {
-  static_assert(COUNT_OF(kTypeNames) == static_cast<size_t>(Primitive::kPrimLast) + 1,
-                "Missing element");
-  CHECK(Primitive::kPrimNot <= type && type <= Primitive::kPrimVoid) << static_cast<int>(type);
-  return kTypeNames[type];
-}
-
-const char* Primitive::BoxedDescriptor(Primitive::Type type) {
-  static_assert(COUNT_OF(kBoxedDescriptors) == static_cast<size_t>(Primitive::kPrimLast) + 1,
-                "Missing element");
-  CHECK(Primitive::kPrimNot <= type && type <= Primitive::kPrimVoid) << static_cast<int>(type);
-  return kBoxedDescriptors[type];
-}
+//const char* Primitive::PrettyDescriptor(Primitive::Type type) {
+//  static_assert(COUNT_OF(kTypeNames) == static_cast<size_t>(Primitive::kPrimLast) + 1,
+//                "Missing element");
+//  CHECK(Primitive::kPrimNot <= type && type <= Primitive::kPrimVoid) << static_cast<int>(type);
+//  return kTypeNames[type];
+//}
+//
+//const char* Primitive::BoxedDescriptor(Primitive::Type type) {
+//  static_assert(COUNT_OF(kBoxedDescriptors) == static_cast<size_t>(Primitive::kPrimLast) + 1,
+//                "Missing element");
+//  CHECK(Primitive::kPrimNot <= type && type <= Primitive::kPrimVoid) << static_cast<int>(type);
+//  return kBoxedDescriptors[type];
+//}
 
 std::ostream& operator<<(std::ostream& os, Primitive::Type type) {
   uint32_t int_type = static_cast<uint32_t>(type);

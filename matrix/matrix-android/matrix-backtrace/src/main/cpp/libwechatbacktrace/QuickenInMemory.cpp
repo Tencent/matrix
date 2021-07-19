@@ -18,6 +18,7 @@
 
 #include <memory>
 #include <ElfWrapper.h>
+#include <QuickenProperties.h>
 #include "Log.h"
 #include "DwarfEhFrameWithHdrDecoder.h"
 #include "DwarfDebugFrameDecoder.h"
@@ -123,6 +124,7 @@ namespace wechat_backtrace {
 
         bool ret = FindEntry(pc, &entry_offset, &start_addr, &end_addr);
 
+        (void) ret;
         QUT_LOG("QuickenInMemory::DecodeEntry pc %llx, entry_offset %llx, "
                 "start_addr %llx, end_addr %llx, ret: %d",
                 (ullint_t) pc, (ullint_t) entry_offset,
@@ -131,7 +133,14 @@ namespace wechat_backtrace {
         *pc_start = start_addr;
         *pc_end = end_addr;
 
-        ExidxDecoder decoder(memory_, process_memory_);
+        QuickenGenerationContext context = {
+                .regs_total = 0,
+                .native_only = QutNativeOnly(),
+                .estimate_memory_usage = 0,
+                .memory_overwhelmed = false,
+        };
+
+        ExidxDecoder decoder(memory_, process_memory_, &context);
         // Extract data, evaluate instructions and re-encode it.
         if (decoder.ExtractEntryData(entry_offset) && decoder.Eval()) {
             (*instructions)[start_addr] = std::make_pair(start_addr, move(decoder.instructions_));
@@ -257,7 +266,7 @@ namespace wechat_backtrace {
     }
 
     template<typename AddressType>
-    inline bool QuickenInMemory<AddressType>::FindInCache(
+    bool QuickenInMemory<AddressType>::FindInCache(
             uint64_t pc,
             /* out */ std::shared_ptr<QutSectionsInMemory> &fut_sections) {
 
@@ -269,7 +278,7 @@ namespace wechat_backtrace {
             }
         }
 
-        std::lock_guard<std::mutex> guard(lock_cache_);
+        std::shared_lock<std::shared_mutex> guard(lock_cache_);
         if (!qut_in_memory_.empty()) {
             auto it = qut_in_memory_.upper_bound(pc);
             if (it != qut_in_memory_.begin()) {
@@ -302,7 +311,7 @@ namespace wechat_backtrace {
         fut_sections->pc_start = pc_start;
         fut_sections->pc_end = pc_end;
 
-        std::lock_guard<std::mutex> guard(lock_cache_);
+        std::unique_lock<std::shared_mutex> guard(lock_cache_);
         qut_in_memory_[pc_start] = fut_sections;
     }
 
@@ -339,7 +348,6 @@ namespace wechat_backtrace {
                 fde = elf->interface()->debug_frame()->GetFdeFromPc(pc);
             }
         }
-
         if (fde == nullptr) {
             return false;
         }
@@ -348,15 +356,18 @@ namespace wechat_backtrace {
                 generator(elf->memory(), gnu_debug_data_memory, process_memory);
 
         auto fut_sections_sp = make_shared<QutSectionsInMemory>();
-        bool ret = generator.GenerateSingleQUTSections(
-                debug_frame_info, fde, fut_sections_sp.get(),
+
+        uint64_t range_start = 0;
+        uint64_t range_end = 0;
+        bool ret = generator.GenerateSingleQUTSectionsForJIT(
+                debug_frame_info, fde, pc, range_start, range_end, fut_sections_sp.get(),
                 gnu_debug_data_memory != nullptr);
 
         if (ret) {
-            QUT_LOG("GetFutSectionsInMemory found pc %llx in range of fde[%llx, %llx]", pc,
+            QUT_LOG("GetFutSectionsInMemoryForJIT found pc %llx in range of fde[%llx, %llx]", pc,
                     (ullint_t) fde->pc_start, (ullint_t) fde->pc_end);
             fut_sections = fut_sections_sp;
-            UpdateCache(fde->pc_start, fde->pc_end, fut_sections);
+            UpdateCache(range_start, range_end, fut_sections);
             return true;
         }
         return false;
@@ -409,9 +420,7 @@ namespace wechat_backtrace {
                     QUT_LOG("GetFutSectionsInMemory decoder debug_frame_from_gnu_debug_data_");
                 }
             }
-
             QUT_LOG("GetFutSectionsInMemory get fde -> %llx, pc -> %llx.", (ullint_t) fde, (ullint_t) pc);
-
             if (fde) {
                 if (UNLIKELY(decoder == nullptr)) {
                     QUT_LOG("GetFutSectionsInMemory get null decoder, pc -> %llx.", (ullint_t) pc);
@@ -422,10 +431,7 @@ namespace wechat_backtrace {
                         generator(/* no use */ nullptr, /* no use */ nullptr,
                                                process_memory_.get());
 
-                ret = generator.GenerateSingleQUTSections(decoder, fde, fut_sections_sp.get());
-
-                pc_start = fde->pc_start;
-                pc_end = fde->pc_end;
+                ret = generator.GenerateSingleQUTSections(decoder, fde, pc, pc_start, pc_end, fut_sections_sp.get());
             } else if (exidx_decoder_) {
                 // Maybe Arm exidx
                 auto instructions = make_shared<QutInstructionsOfEntries>();
@@ -440,7 +446,6 @@ namespace wechat_backtrace {
                 }
             }
         }
-
         if (ret) {
             QUT_LOG("GetFutSectionsInMemory found pc %llx in range of fde[%llx, %llx]",(ullint_t) pc,
                     (ullint_t) pc_start, (ullint_t) pc_end);

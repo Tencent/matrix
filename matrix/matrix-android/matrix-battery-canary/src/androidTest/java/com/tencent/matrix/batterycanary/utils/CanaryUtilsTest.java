@@ -282,6 +282,17 @@ public class CanaryUtilsTest {
         // Assert.fail(flag + " vs " + Integer.toBinaryString(flag) ); // 127
     }
 
+    @Test
+    public void testExpireRef() throws InterruptedException {
+        for (int i = 0; i < 10; i++) {
+            BatteryCanaryUtil.Proxy.ExpireRef ref = new BatteryCanaryUtil.Proxy.ExpireRef(22, 100);
+            Assert.assertEquals(22, ref.value);
+            Assert.assertFalse(ref.isExpired());
+            Thread.sleep(100);
+            Assert.assertTrue(ref.isExpired());
+        }
+    }
+
     private static boolean diceWithBase(int base) {
         double dice = Math.random();
         if (base >= 1 && dice < (1 / ((double) base))) {

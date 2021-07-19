@@ -43,6 +43,7 @@ namespace wechat_backtrace {
     template<typename AddressType>
     bool
     DwarfCfa<AddressType>::GetLocationInfo(uint64_t pc, uint64_t start_offset, uint64_t end_offset,
+                                           uint64_t pc_start,
                                            dwarf_loc_regs_t *loc_regs) {
         if (cie_loc_regs_ != nullptr) {
             for (const auto &entry : *cie_loc_regs_) {
@@ -54,7 +55,8 @@ namespace wechat_backtrace {
 
         memory_->set_cur_offset(start_offset);
         uint64_t cfa_offset;
-        cur_pc_ = fde_->pc_start;
+//        cur_pc_ = fde_->pc_start;
+        cur_pc_ = pc_start;
         loc_regs->pc_start = cur_pc_;
         while (true) {
             if (cur_pc_ > pc) {
@@ -64,6 +66,145 @@ namespace wechat_backtrace {
             if ((cfa_offset = memory_->cur_offset()) >= end_offset) {
                 loc_regs->pc_end = fde_->pc_end;
                 return true;
+            }
+            loc_regs->pc_start = cur_pc_;
+            operands_.clear();
+            // Read the cfa information.
+            uint8_t cfa_value;
+            if (!memory_->ReadBytes(&cfa_value, 1)) {
+                last_error_.code = DWARF_ERROR_MEMORY_INVALID;
+                last_error_.address = memory_->cur_offset();
+                return false;
+            }
+            uint8_t cfa_low = cfa_value & 0x3f;
+            // Check the 2 high bits.
+            switch (cfa_value >> 6) {
+                case 1:
+                    cur_pc_ += cfa_low * fde_->cie->code_alignment_factor;
+                    if (cie_loc_regs_ == nullptr) {
+                        DWARF_CFA_LOG("CIE + GetLocationInfo:   cur_pc_ += %" "d" " ;",
+                                      (uint32_t) (cfa_low * fde_->cie->code_alignment_factor));
+                    } else {
+                        DWARF_CFA_LOG("FDE + GetLocationInfo:   cur_pc_ += %" "d" " ;",
+                                      (uint32_t) (cfa_low * fde_->cie->code_alignment_factor));
+                    }
+                    break;
+                case 2: {
+                    uint64_t offset;
+                    if (!memory_->ReadULEB128(&offset)) {
+                        last_error_.code = DWARF_ERROR_MEMORY_INVALID;
+                        last_error_.address = memory_->cur_offset();
+                        return false;
+                    }
+                    SignedType signed_offset =
+                            static_cast<SignedType>(offset) * fde_->cie->data_alignment_factor;
+                    (*loc_regs)[cfa_low] = {.type = DWARF_LOCATION_OFFSET,
+                            .values = {static_cast<uint64_t>(signed_offset)}};
+
+                    if (cie_loc_regs_ == nullptr) {
+                        DWARF_CFA_LOG("CIE + GetLocationInfo:   reg(%" "d" ") = offset(%lld) ;",
+                                      (uint32_t) cfa_low, static_cast<int64_t>(signed_offset));
+                    } else {
+                        DWARF_CFA_LOG("FDE + GetLocationInfo:   reg(%" "d" ") = offset(%lld) ;",
+                                      (uint32_t) cfa_low, static_cast<int64_t>(signed_offset));
+                    }
+                    break;
+                }
+                case 3: {
+                    if (cie_loc_regs_ == nullptr) {
+                        log(0, "restore while processing cie");
+                        last_error_.code = DWARF_ERROR_ILLEGAL_STATE;
+                        return false;
+                    }
+
+                    auto reg_entry = cie_loc_regs_->find(cfa_low);
+                    if (reg_entry == cie_loc_regs_->end()) {
+                        loc_regs->erase(cfa_low);
+                        DWARF_CFA_LOG("FDE + GetLocationInfo:   loc_regs->erase(%d) ;",
+                                      (uint32_t) cfa_low);
+                    } else {
+                        (*loc_regs)[cfa_low] = reg_entry->second;
+                        DWARF_CFA_LOG("FDE + GetLocationInfo:   reg(%u) = %u (%u, %u);",
+                                      (uint32_t) cfa_low, (uint32_t) reg_entry->second.type,
+                                      (uint32_t) reg_entry->second.values[0],
+                                      (uint32_t) reg_entry->second.values[1]);
+                    }
+                    break;
+                }
+                case 0: {
+                    const auto handle_func = DwarfCfa<AddressType>::kCallbackTable[cfa_low];
+                    if (handle_func == nullptr) {
+                        last_error_.code = DWARF_ERROR_ILLEGAL_VALUE;
+                        return false;
+                    }
+
+                    const auto cfa = &DwarfCfaInfo::kTable[cfa_low];
+                    for (size_t i = 0; i < cfa->num_operands; i++) {
+                        if (cfa->operands[i] == DW_EH_PE_block) {
+                            uint64_t block_length;
+                            if (!memory_->ReadULEB128(&block_length)) {
+                                last_error_.code = DWARF_ERROR_MEMORY_INVALID;
+                                last_error_.address = memory_->cur_offset();
+                                return false;
+                            }
+                            operands_.push_back(block_length);
+                            memory_->set_cur_offset(memory_->cur_offset() + block_length);
+                            continue;
+                        }
+                        uint64_t value;
+                        if (!memory_->ReadEncodedValue<AddressType>(cfa->operands[i], &value)) {
+                            last_error_.code = DWARF_ERROR_MEMORY_INVALID;
+                            last_error_.address = memory_->cur_offset();
+                            return false;
+                        }
+                        operands_.push_back(value);
+                    }
+
+                    if (!(this->*handle_func)(loc_regs)) {
+                        return false;
+                    }
+                    break;
+                }
+            }
+        }
+    }
+
+    template<typename AddressType>
+    bool
+    DwarfCfa<AddressType>::IterateLocationInfo(
+            uint64_t pc_start, uint64_t pc,
+            uint64_t start_offset, uint64_t end_offset,
+            const bool iterate_loc,
+            const std::function<bool(unwindstack::dwarf_loc_regs_t *)> &callback) {
+        dwarf_loc_regs_t loc_regs_;
+        auto loc_regs = &loc_regs_;
+        if (cie_loc_regs_ != nullptr) {
+            for (const auto &entry : *cie_loc_regs_) {
+                (*loc_regs)[entry.first] = entry.second;
+            }
+        }
+        last_error_.code = DWARF_ERROR_NONE;
+        last_error_.address = 0;
+
+        memory_->set_cur_offset(start_offset);
+        uint64_t cfa_offset;
+        cur_pc_ = pc_start;
+        loc_regs->pc_start = cur_pc_;
+        AddressType last_cur_pc = cur_pc_;
+        while (true) {
+            if (iterate_loc && cur_pc_ != last_cur_pc) {
+                if (!callback(loc_regs)) {
+                    return false;
+                }
+                last_cur_pc = cur_pc_;
+            }
+            if (cur_pc_ >= pc) {
+                loc_regs->pc_end = cur_pc_;
+                return callback(loc_regs);
+            }
+            if ((cfa_offset = memory_->cur_offset()) >= end_offset) {
+                loc_regs->pc_end = fde_->pc_end;
+                return callback(loc_regs);
             }
             loc_regs->pc_start = cur_pc_;
             operands_.clear();
@@ -397,13 +538,14 @@ namespace wechat_backtrace {
         auto reg_entry = cie_loc_regs_->find(reg);
         if (reg_entry == cie_loc_regs_->end()) {
             loc_regs->erase(reg);
+            DWARF_CFA_LOG("DwarfCfa:   cfa_restore reg(%u) erase;", (uint32_t) operands_[0]);
         } else {
             (*loc_regs)[reg] = reg_entry->second;
+            DWARF_CFA_LOG("DwarfCfa:   cfa_restore reg(%u) = %d (%x, %x) ;", (uint32_t) operands_[0],
+                          (uint32_t) reg_entry->second.type, (uint32_t) reg_entry->second.values[0],
+                          (uint32_t) reg_entry->second.values[1]);
         }
 
-        DWARF_CFA_LOG("DwarfCfa:   cfa_restore reg(%u) = %d (%x, %x) ;", (uint32_t) operands_[0],
-                      (uint32_t) reg_entry->second.type, (uint32_t) reg_entry->second.values[0],
-                      (uint32_t) reg_entry->second.values[1]);
         return true;
     }
 

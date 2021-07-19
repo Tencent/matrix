@@ -24,11 +24,11 @@
 #include <cstddef>
 #include <string>
 #include <dlfcn.h>
-#include "Log.h"
 #include <jni.h>
 #include <new>
+#include <common/HookCommon.h>
+#include <common/Log.h>
 #include "MemoryHookCXXFunctions.h"
-#include "HookCommon.h"
 
 #ifdef __cplusplus
 extern "C" {

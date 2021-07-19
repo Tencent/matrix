@@ -33,6 +33,7 @@ public class Constants {
     public static final int DEFAULT_INPUT_EXPIRED_TIME = 500;
     public static final int DEFAULT_ANR = 5 * 1000;
     public static final int DEFAULT_NORMAL_LAG = 2 * 1000;
+    public static final int DEFAULT_IDLE_HANDLER_LAG = 2 * 1000;
     public static final int DEFAULT_ANR_INVALID = 6 * 1000;
     public static final long DEFAULT_FRAME_DURATION = 16666667L;
 
@@ -52,6 +53,6 @@ public class Constants {
 
 
     public enum Type {
-        NORMAL, ANR, STARTUP, LAG
+        NORMAL, ANR, STARTUP, LAG, SIGNAL_ANR, LAG_IDLE_HANDLER, PRIORITY_MODIFIED, TIMERSLACK_MODIFIED
     }
 }

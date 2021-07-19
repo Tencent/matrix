@@ -2,7 +2,7 @@
 #include <dlfcn.h>
 #include <cinttypes>
 #include <cxxabi.h>
-#include "Log.h"
+#include <backtrace/common/Log.h>
 #include "UnwindTestCommon.h"
 #include "UnwindTestCase_SelfSo.h"
 #include "BenchmarkLog.h"
@@ -35,6 +35,7 @@ NO_INLINE void selfso_func0f() {
         f[i] = i + 2;
         g[i] = i + 2;
         h[i] = i + 2;
+        h[i] = h[i] + 2;
     }
 
     for (int i = 0; i < len; ++i) {

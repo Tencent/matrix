@@ -20,6 +20,7 @@
 #include <stdint.h>
 #include <memory>
 #include <mutex>
+#include <shared_mutex>
 #include "Errors.h"
 #include "DwarfSectionDecoder.h"
 #include "QuickenTable.h"
@@ -77,7 +78,7 @@ namespace wechat_backtrace {
     template<typename AddressType>
     class QuickenInMemory {
     public:
-        QuickenInMemory() {};
+        QuickenInMemory() : elf_wrapper_(nullptr) {};
 
         ~QuickenInMemory() {};
 
@@ -121,7 +122,7 @@ namespace wechat_backtrace {
         std::shared_ptr<unwindstack::Memory> process_memory_;
 
         std::mutex lock_decode_;
-        std::mutex lock_cache_;
+        std::shared_mutex lock_cache_;
 
         std::map<uint64_t, std::shared_ptr<QutSectionsInMemory>> qut_in_memory_;
 

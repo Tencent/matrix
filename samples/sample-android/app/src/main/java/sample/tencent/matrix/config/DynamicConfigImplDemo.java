@@ -43,6 +43,10 @@ public class DynamicConfigImplDemo implements IDynamicConfig {
         return true;
     }
 
+    public boolean isSignalAnrTraceEnable() {
+        return true;
+    }
+
     public boolean isMatrixEnable() {
         return true;
     }

@@ -24,10 +24,11 @@ import android.os.Bundle;
 import android.os.Debug;
 import android.os.SystemClock;
 import android.provider.Settings;
-import androidx.annotation.Nullable;
 import android.util.Log;
 import android.view.View;
 import android.widget.Toast;
+
+import androidx.annotation.Nullable;
 
 import com.tencent.matrix.AppActiveMatrixDelegate;
 import com.tencent.matrix.Matrix;
@@ -120,19 +121,22 @@ public class TestTraceMainActivity extends Activity implements IAppForeground {
     public void testFps(View view) {
         Intent intent = new Intent(this, TestFpsActivity.class);
         startActivity(intent);
-        overridePendingTransition(R.anim.slide_right_in, 0);
     }
 
     public void testJankiess(View view) {
         A();
     }
 
-
     public void testANR(final View view) {
-       /* for (long i = 0; i < 1l; i++) {
-            testInnerSleep();
-        }*/
         A();
+    }
+
+    public void testSignalANR(final View view) {
+        try {
+            Thread.sleep(10000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
     }
 
     private void A() {
@@ -223,7 +227,7 @@ public class TestTraceMainActivity extends Activity implements IAppForeground {
         return;
     }
 
-    class AssertionArrayException extends  Exception {
+    class AssertionArrayException extends Exception {
 
     }
 

@@ -16,17 +16,22 @@
 
 package sample.tencent.matrix.issue;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.os.Environment;
-import androidx.annotation.Nullable;
 import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import androidx.annotation.Nullable;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import com.tencent.matrix.report.Issue;
 
@@ -42,9 +47,6 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
 import sample.tencent.matrix.R;
 
 public class IssuesListActivity extends AppCompatActivity {
@@ -60,7 +62,7 @@ public class IssuesListActivity extends AppCompatActivity {
 
         setContentView(R.layout.activity_issue_list);
 
-        setTitle(IssueFilter.getCurrentFilter());
+        setTitle("ISSUE List");
         initRecyclerView();
 
         if (currToastCount < toastCount) {
@@ -96,24 +98,25 @@ public class IssuesListActivity extends AppCompatActivity {
         public void onBindViewHolder(final ViewHolder holder, int position) {
 
             holder.bindPosition(position);
-            final Issue issue = IssuesMap.get(IssueFilter.getCurrentFilter()).get(position);
+            final Issue issue = IssuesMap.getIssueReverse(position);
             holder.bind(issue);
 
             holder.itemView.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
 
-                    if (!holder.isShow)
+                    if (!holder.isShow) {
                         holder.showIssue(issue);
-                    else
+                    } else {
                         holder.hideIssue();
+                    }
                 }
             });
         }
 
         @Override
         public int getItemCount() {
-            return IssuesMap.getCount();
+            return IssuesMap.amountOfIssues();
         }
     }
 
@@ -128,36 +131,45 @@ public class IssuesListActivity extends AppCompatActivity {
 
         public ViewHolder(View itemView) {
             super(itemView);
-            tvTime = (TextView) itemView.findViewById(R.id.item_time);
-            tvTag = (TextView) itemView.findViewById(R.id.item_tag);
-            tvKey = (TextView) itemView.findViewById(R.id.item_key);
-            tvType = (TextView) itemView.findViewById(R.id.item_type);
-            tvContent = (TextView) itemView.findViewById(R.id.item_content);
-            tvIndex = (TextView) itemView.findViewById(R.id.item_index);
+            tvTime = itemView.findViewById(R.id.item_time);
+            tvTag = itemView.findViewById(R.id.item_tag);
+            tvKey = itemView.findViewById(R.id.item_key);
+            tvType = itemView.findViewById(R.id.item_type);
+            tvContent = itemView.findViewById(R.id.item_content);
+            tvIndex = itemView.findViewById(R.id.item_index);
         }
 
         public void bindPosition(int position) {
             this.position = position;
         }
 
+        @SuppressLint("SetTextI18n")
         public void bind(Issue issue) {
 
-            SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy年MM月dd日 HH:mm:ss:SSS");
+            @SuppressLint("SimpleDateFormat")
+            SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy 年 MM 月 dd 日 HH:mm:ss:SSS");
             Date date = new Date(Long.parseLong(issue.getContent().optString("time")));
-            tvTime.setText("IssueTime -> " + simpleDateFormat.format(date));
+            tvTime.setText("ISSUE Time Stamp: " + simpleDateFormat.format(date));
 
-            if (TextUtils.isEmpty(issue.getTag())) tvTag.setVisibility(View.GONE);
-            else tvTag.setText("TAG -> " + issue.getTag());
+            if (TextUtils.isEmpty(issue.getTag())) {
+                tvTag.setVisibility(View.GONE);
+            } else {
+                tvTag.setText("ISSUE TAG: " + issue.getTag());
+            }
 
-            if (TextUtils.isEmpty(issue.getKey())) tvKey.setVisibility(View.GONE);
-            else tvKey.setText("KEY -> " + issue.getKey());
+            if (TextUtils.isEmpty(issue.getKey())) {
+                tvKey.setVisibility(View.GONE);
+            } else {
+                tvKey.setText("ISSUE KEY: " + issue.getKey());
+            }
 
             tvIndex.setText((IssuesMap.getCount() - position) + "");
             tvIndex.setTextColor(getColor(position));
-            if (isShow)
+            if (isShow) {
                 showIssue(issue);
-            else
+            } else {
                 hideIssue();
+            }
         }
 
         public void readMappingFile(Map<Integer, String> methoMap) {
@@ -185,13 +197,13 @@ public class IssuesListActivity extends AppCompatActivity {
 
         public void showIssue(Issue issue) {
             String key = "stack";
-            if(issue.getContent().has(key)){
+            if (issue.getContent().has(key)) {
                 try {
                     String stack = issue.getContent().getString(key);
                     Map<Integer, String> map = new HashMap<>();
                     readMappingFile(map);
 
-                    if(map.size() > 0) {
+                    if (map.size() > 0) {
                         StringBuilder stringBuilder = new StringBuilder(" ");
 
                         String[] lines = stack.split("\n");
@@ -218,7 +230,7 @@ public class IssuesListActivity extends AppCompatActivity {
                         issue.getContent().put(key, stringBuilder.toString());
                     }
 
-                }catch (JSONException ex){
+                } catch (JSONException ex) {
                     System.out.println(ex.getMessage());
                 }
             }
