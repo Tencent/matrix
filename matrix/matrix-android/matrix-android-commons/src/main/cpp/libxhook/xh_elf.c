@@ -365,9 +365,12 @@ static int xh_elf_hash_lookup(xh_elf_t *self, const char *symbol, uint32_t *symi
 
         if(0 == strcmp(symbol, symbol_cur))
         {
-            *symidx = i;
-            XH_LOG_INFO("found %s at symidx: %u (ELF_HASH)\n", symbol, *symidx);
-            return 0;
+            ElfW(Sym)* sym = self->symtab + i;
+            if (ELF_ST_TYPE(sym->st_info) == STT_FUNC) {
+                *symidx = i;
+                XH_LOG_INFO("found %s at symidx: %u (ELF_HASH)\n", symbol, *symidx);
+                return 0;
+            }
         }
     }
 
@@ -399,9 +402,12 @@ static int xh_elf_gnu_hash_lookup_def(xh_elf_t *self, const char *symbol, uint32
 
         if((hash | (uint32_t)1) == (symhash | (uint32_t)1) && 0 == strcmp(symbol, symname))
         {
-            *symidx = i;
-            XH_LOG_INFO("found %s at symidx: %u (GNU_HASH DEF)\n", symbol, *symidx);
-            return 0;
+            ElfW(Sym)* sym = self->symtab + i;
+            if (ELF_ST_TYPE(sym->st_info) == STT_FUNC) {
+                *symidx = i;
+                XH_LOG_INFO("found %s at symidx: %u (GNU_HASH DEF)\n", symbol, *symidx);
+                return 0;
+            }
         }
 
         //chain ends with an element with the lowest bit set to 1
@@ -422,9 +428,12 @@ static int xh_elf_gnu_hash_lookup_undef(xh_elf_t *self, const char *symbol, uint
         const char *symname = self->strtab + self->symtab[i].st_name;
         if(0 == strcmp(symname, symbol))
         {
-            *symidx = i;
-            XH_LOG_INFO("found %s at symidx: %u (GNU_HASH UNDEF)\n", symbol, *symidx);
-            return 0;
+            ElfW(Sym)* sym = self->symtab + i;
+            if (ELF_ST_TYPE(sym->st_info) == STT_FUNC) {
+                *symidx = i;
+                XH_LOG_INFO("found %s at symidx: %u (GNU_HASH UNDEF)\n", symbol, *symidx);
+                return 0;
+            }
         }
     }
     return XH_ERRNO_NOTFND;
