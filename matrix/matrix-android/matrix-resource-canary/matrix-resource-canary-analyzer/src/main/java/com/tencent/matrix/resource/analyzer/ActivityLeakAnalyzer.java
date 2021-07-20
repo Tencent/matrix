@@ -28,6 +28,7 @@ import com.tencent.matrix.resource.analyzer.utils.AnalyzeUtil;
 import com.tencent.matrix.resource.analyzer.utils.ShortestPathFinder;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 import static com.squareup.haha.perflib.HahaHelper.asString;
@@ -84,24 +85,31 @@ public class ActivityLeakAnalyzer implements HeapSnapshotAnalyzer<ActivityLeakRe
     }
 
     private Instance findLeakingReference(String key, Snapshot snapshot) {
-        final ClassObj infoClass = snapshot.findClass(DESTROYED_ACTIVITY_INFO_CLASSNAME);
-        if (infoClass == null) {
+        final Collection<ClassObj> infoClassList = snapshot.findClasses(DESTROYED_ACTIVITY_INFO_CLASSNAME);
+        if (infoClassList == null || infoClassList.isEmpty()) {
             throw new IllegalStateException("Unabled to find destroy activity info class with name: "
                     + DESTROYED_ACTIVITY_INFO_CLASSNAME);
         }
         List<String> keysFound = new ArrayList<>();
-        for (Instance infoInstance : infoClass.getInstancesList()) {
-            final List<ClassInstance.FieldValue> values = classInstanceValues(infoInstance);
-            final String keyCandidate = asString(fieldValue(values, ACTIVITY_REFERENCE_KEY_FIELDNAME));
-            if (keyCandidate.equals(key)) {
-                final Instance weakRefObj = fieldValue(values, ACTIVITY_REFERENCE_FIELDNAME);
-                if (weakRefObj == null) {
-                    continue;
+        for(ClassObj infoClass : infoClassList) {
+            for (Instance infoInstance : infoClass.getInstancesList()) {
+                final List<ClassInstance.FieldValue> values = classInstanceValues(infoInstance);
+                final String keyCandidate = asString(fieldValue(values, ACTIVITY_REFERENCE_KEY_FIELDNAME));
+                if (keyCandidate.equals(key)) {
+                    final Instance weakRefObj = fieldValue(values, ACTIVITY_REFERENCE_FIELDNAME);
+                    if (weakRefObj == null) {
+                        continue;
+                    }
+                    final List<ClassInstance.FieldValue> activityRefs = classInstanceValues(weakRefObj);
+                    Instance instance = fieldValue(activityRefs, "referent");
+                    if(null != instance) {
+                        return instance;
+                    } else {
+                        break;
+                    }
                 }
-                final List<ClassInstance.FieldValue> activityRefs = classInstanceValues(weakRefObj);
-                return fieldValue(activityRefs, "referent");
+                keysFound.add(keyCandidate);
             }
-            keysFound.add(keyCandidate);
         }
         throw new IllegalStateException(
                 "Could not find weak reference with key " + key + " in " + keysFound);
