@@ -392,14 +392,14 @@ static void xh_core_refresh_impl()
     check_finished:
         if(0 == match) continue;
 
+        //check elf header format
+        //We are trying to do ELF header checking as late as possible.
+        if(0 != xh_core_check_elf_header(base_addr, pathname)) continue;
+
         if (0 == xh_check_loaded_so((void *)base_addr)) {
             XH_LOG_ERROR("%p is not loaded by linker %s", (void *)base_addr, line + pathname_pos);
             continue; // do not touch the so that not loaded by linker
         }
-
-        //check elf header format
-        //We are trying to do ELF header checking as late as possible.
-        if(0 != xh_core_check_elf_header(base_addr, pathname)) continue;
 
         //check existed map item
         mi_key.pathname = pathname;
