@@ -365,6 +365,7 @@ static void xh_core_refresh_impl(bool with_caller_maps_only)
         }
         if(0 == pathname_len) continue;
         if('[' == pathname[0]) continue;
+        if (pathname_len >= 5 && strncmp(pathname, "/dev/", 5) == 0) continue;
 
         //check pathname
         //if we need to hook this elf?
