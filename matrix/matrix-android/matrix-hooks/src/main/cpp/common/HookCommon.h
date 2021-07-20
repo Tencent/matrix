@@ -89,6 +89,7 @@
       xhook_ignore(".*/libmatrix-hookcommon\\.so$", nullptr); \
       xhook_ignore(".*/libmatrix-memoryhook\\.so$", nullptr); \
       xhook_ignore(".*/libmatrix-pthreadhook\\.so$", nullptr); \
+      xhook_ignore(".*/libmatrix-opengl-leak\\.so$", nullptr); \
     } while (0)
 
 #include <vector>
