@@ -66,7 +66,8 @@ static int last_page = 0;
 #ifdef SQLITE_PERFORMANCE_TRACE
 __inline__ unsigned long long int hwtime(void){
   unsigned long long int x;
-  __asm__("rdtsc\n\t"
+  __asm__ __volatile__(
+          "rdtsc\n\t"
           "mov %%edx, %%ecx\n\t"
           :"=A" (x));
   return x;
