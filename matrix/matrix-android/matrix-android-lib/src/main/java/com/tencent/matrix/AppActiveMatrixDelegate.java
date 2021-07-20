@@ -129,8 +129,7 @@ public enum AppActiveMatrixDelegate {
 
         @Override
         public void onActivityStarted(Activity activity) {
-            updateScene(activity);
-            onDispatchForeground(getVisibleScene());
+
         }
 
 
@@ -154,7 +153,9 @@ public enum AppActiveMatrixDelegate {
 
         @Override
         public void onActivityResumed(Activity activity) {
-
+            // Consider the case of top activity state: pause to resume
+            updateScene(activity);
+            onDispatchForeground(getVisibleScene());
         }
 
         @Override
