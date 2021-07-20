@@ -106,12 +106,12 @@ int my_prctl(int option, unsigned long arg2, unsigned long arg3,
 
 
 void writeAnr(const std::string& content, const std::string &filePath) {
+    unHookAnrTraceWrite();
     std::stringstream stringStream(content);
     std::string to;
     std::ofstream outfile;
     outfile.open(filePath);
     outfile << content;
-    unHookAnrTraceWrite();
 }
 
 int (*original_connect)(int __fd, const struct sockaddr* __addr, socklen_t __addr_length);
