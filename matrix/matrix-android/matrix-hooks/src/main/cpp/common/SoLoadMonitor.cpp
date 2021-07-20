@@ -29,7 +29,7 @@ namespace matrix {
             return;
         }
 
-        xhook_refresh(0);
+        xhook_refresh_with_caller_thread_maps();
 
         wechat_backtrace::notify_maps_changed();
 

@@ -32,6 +32,7 @@
 #include <setjmp.h>
 #include <errno.h>
 #include <dlfcn.h>
+#include <stdbool.h>
 #include "queue.h"
 #include "tree.h"
 #include "xh_errno.h"
@@ -312,7 +313,7 @@ static int xh_check_loaded_so(void *addr) {
     return dladdr(addr, &stack_info);
 }
 
-static void xh_core_refresh_impl()
+static void xh_core_refresh_impl(bool with_caller_maps_only)
 {
     char                     line[512];
     FILE                    *fp;
@@ -329,7 +330,7 @@ static void xh_core_refresh_impl()
     int                      match;
     xh_core_map_info_tree_t  map_info_refreshed = RB_INITIALIZER(&map_info_refreshed);
 
-    if(NULL == (fp = fopen("/proc/self/maps", "r")))
+    if(NULL == (fp = fopen(with_caller_maps_only ? "/proc/thread-self/maps" : "/proc/self/maps", "r")))
     {
         XH_LOG_ERROR("fopen /proc/self/maps failed");
         return;
@@ -502,7 +503,7 @@ static void *xh_core_refresh_thread_func(void *arg)
 
         //refresh
         pthread_mutex_lock(&xh_core_refresh_mutex);
-        xh_core_refresh_impl();
+        xh_core_refresh_impl(false);
         pthread_mutex_unlock(&xh_core_refresh_mutex);
     }
 
@@ -589,10 +590,18 @@ int xh_core_refresh(int async)
     {
         //refresh sync
         pthread_mutex_lock(&xh_core_refresh_mutex);
-        xh_core_refresh_impl();
+        xh_core_refresh_impl(false);
         pthread_mutex_unlock(&xh_core_refresh_mutex);
     }
 
+    return 0;
+}
+
+int xh_core_refresh_with_caller_thread_maps() {
+    //refresh sync
+    pthread_mutex_lock(&xh_core_refresh_mutex);
+    xh_core_refresh_impl(true);
+    pthread_mutex_unlock(&xh_core_refresh_mutex);
     return 0;
 }
 

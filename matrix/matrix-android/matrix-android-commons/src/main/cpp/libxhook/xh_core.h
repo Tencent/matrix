@@ -35,6 +35,8 @@ int xh_core_ignore(const char *pathname_regex_str, const char *symbol);
 
 int xh_core_refresh(int async);
 
+int xh_core_refresh_with_caller_thread_maps();
+
 void xh_core_clear();
 
 void xh_core_enable_debug(int flag);
