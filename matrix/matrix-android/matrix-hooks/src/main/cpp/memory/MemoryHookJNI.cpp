@@ -214,7 +214,7 @@ Java_com_tencent_matrix_hook_memory_MemoryHook_installHooksNative(JNIEnv* env, j
     NOTIFY_COMMON_IGNORE_LIBS();
 
     xhook_enable_debug(enable_debug ? 1 : 0);
-    xhook_enable_sigsegv_protection(0);
+    xhook_enable_sigsegv_protection(enable_debug ? 0 : 1);
 
     // This line only refreshes xhook in matrix-memoryhook library now.
     xhook_refresh(0);

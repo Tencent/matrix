@@ -69,13 +69,13 @@ public class HookManager {
                     return;
                 }
 
-                if (!doPreHookInitializeNative()) {
+                if (!doPreHookInitializeNative(mEnableDebug)) {
                     throw new HookFailedException("Fail to do hook common pre-hook initialize.");
                 }
 
                 commitHooksLocked();
 
-                doFinalInitializeNative();
+                doFinalInitializeNative(mEnableDebug);
                 mHasNativeInitialized = true;
             } else {
                 commitHooksLocked();
@@ -182,9 +182,9 @@ public class HookManager {
         return sb.toString();
     }
 
-    private native boolean doPreHookInitializeNative();
+    private native boolean doPreHookInitializeNative(boolean debug);
 
-    private native void doFinalInitializeNative();
+    private native void doFinalInitializeNative(boolean debug);
 
     public static class HookFailedException extends Exception {
         public HookFailedException(String message) {

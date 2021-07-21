@@ -74,7 +74,7 @@ static jmethodID GetStaticMethodID(JNIEnv* env, jclass clazz, const char* name, 
     return mid;
 }
 
-JNIEXPORT jboolean Java_com_tencent_matrix_hook_HookManager_doPreHookInitializeNative(JNIEnv *env, jobject) {
+JNIEXPORT jboolean Java_com_tencent_matrix_hook_HookManager_doPreHookInitializeNative(JNIEnv *env, jobject, jboolean /* debug */) {
     std::lock_guard prehookInitLock(s_prehook_init_mutex);
 
     if (s_prehook_initialized) {
@@ -117,7 +117,7 @@ JNIEXPORT jboolean Java_com_tencent_matrix_hook_HookManager_doPreHookInitializeN
 }
 
 JNIEXPORT void JNICALL
-Java_com_tencent_matrix_hook_HookManager_doFinalInitializeNative(JNIEnv *env, jobject thiz) {
+Java_com_tencent_matrix_hook_HookManager_doFinalInitializeNative(JNIEnv *env, jobject thiz, jboolean debug) {
     std::lock_guard finalInitLock(s_finalhook_init_mutex);
 
     if (s_finalook_initialized) {
@@ -126,6 +126,10 @@ Java_com_tencent_matrix_hook_HookManager_doFinalInitializeNative(JNIEnv *env, jo
     }
 
     wechat_backtrace::notify_maps_changed();
+
+    xhook_enable_debug(debug ? 1 : 0);
+    xhook_enable_sigsegv_protection(debug ? 0 : 1);
+
     // This line only refresh xhook in matrix-hookcommon library now.
     int ret = xhook_refresh(0);
     if (ret != 0) {
