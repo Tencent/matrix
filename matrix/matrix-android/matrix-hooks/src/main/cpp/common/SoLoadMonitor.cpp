@@ -28,6 +28,18 @@ namespace matrix {
             // So we can skip the rest logic below in such situation.
             return;
         }
+        size_t pathnameLen = strlen(pathname);
+        if (pathnameLen >= 5) {
+            if (strncmp(pathname + pathnameLen - 4, ".oat", 4) == 0) {
+                return;
+            }
+            if (strncmp(pathname + pathnameLen - 4, ".dex", 4) == 0) {
+                return;
+            }
+            if (strncmp(pathname + pathnameLen - 5, ".odex", 5) == 0) {
+                return;
+            }
+        }
 
         xhook_refresh_with_caller_thread_maps();
 
