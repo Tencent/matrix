@@ -635,6 +635,6 @@ void memory_hook_on_dlopen(const char *file_name) {
          h_malloc, h_realloc, h_free);
 
     // This line only refresh xhook in matrix-memoryhook library now.
-    xhook_refresh_with_caller_thread_maps();
+    xhook_refresh(0);
 }
 

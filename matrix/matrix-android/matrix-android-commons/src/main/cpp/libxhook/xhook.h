@@ -37,8 +37,6 @@ int xhook_ignore(const char *pathname_regex_str, const char *symbol) XHOOK_EXPOR
 
 int xhook_refresh(int async) XHOOK_EXPORT;
 
-int xhook_refresh_with_caller_thread_maps() XHOOK_EXPORT;
-
 void xhook_clear() XHOOK_EXPORT;
 
 void xhook_enable_debug(int flag) XHOOK_EXPORT;

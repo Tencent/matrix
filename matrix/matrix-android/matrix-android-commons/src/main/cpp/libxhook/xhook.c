@@ -40,10 +40,6 @@ int xhook_refresh(int async)
     return xh_core_refresh(async);
 }
 
-int xhook_refresh_with_caller_thread_maps() {
-    return xh_core_refresh_with_caller_thread_maps();
-}
-
 void xhook_clear()
 {
     return xh_core_clear();

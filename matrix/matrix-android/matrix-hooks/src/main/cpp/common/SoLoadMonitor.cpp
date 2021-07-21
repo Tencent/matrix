@@ -41,7 +41,7 @@ namespace matrix {
             }
         }
 
-        xhook_refresh_with_caller_thread_maps();
+        xhook_refresh(0);
 
         wechat_backtrace::notify_maps_changed();
 
