@@ -9,6 +9,7 @@
 #include <xhook_ext.h>
 #include <android/log.h>
 #include <sys/resource.h>
+#include <set>
 #include "ScopedCleaner.h"
 #include "Log.h"
 #include "HookCommon.h"
@@ -20,7 +21,9 @@
 namespace matrix {
     static std::atomic_bool sInstalled(false);
     static std::vector<so_load_callback_t> sSoLoadCallbacks;
-    static std::recursive_mutex sDlOpenMutex;
+    static std::mutex sDlOpenBlockerMutex;
+    static std::condition_variable sDlOpenBlocker;
+    static bool sDlOpenPaused = false;
 
     static void NotifySoLoad(const char* pathname) {
         if (UNLIKELY(pathname == nullptr)) {
@@ -41,6 +44,8 @@ namespace matrix {
             }
         }
 
+        PauseLoadSo();
+
         xhook_refresh(0);
 
         wechat_backtrace::notify_maps_changed();
@@ -48,13 +53,20 @@ namespace matrix {
         for (auto cb : sSoLoadCallbacks) {
             cb(pathname);
         }
+
+        ResumeLoadSo();
     }
 
     static void* (*orig__loader_dlopen)(const char* filename, int flags, const void* caller_addr) = nullptr;
     static void* __loader_dlopen_handler(const char* filename, int flags, const void* caller_addr) {
-        std::lock_guard dlopenLock(sDlOpenMutex);
-        void *hLib = orig__loader_dlopen(filename, flags, caller_addr);
-        if (hLib != nullptr) {
+        {
+            std::unique_lock lock(sDlOpenBlockerMutex);
+            if (sDlOpenPaused) {
+                sDlOpenBlocker.wait(lock, []() { return !sDlOpenPaused; });
+            }
+        }
+        void* hLib = orig__loader_dlopen(filename, flags, caller_addr);
+        if (hLib != nullptr && (flags & RTLD_NOLOAD) == 0) {
             NotifySoLoad(filename);
         }
         return hLib;
@@ -64,9 +76,14 @@ namespace matrix {
             int flag, const void* extinfo, const void* caller_addr) = nullptr;
     static void* __loader_android_dlopen_ext_handler(const char* filename,
             int flag, const void* extinfo, const void* caller_addr) {
-        std::lock_guard dlopenLock(sDlOpenMutex);
-        void *hLib = orig__loader_android_dlopen_ext(filename, flag, extinfo, caller_addr);
-        if (hLib != nullptr) {
+        {
+            std::unique_lock lock(sDlOpenBlockerMutex);
+            if (sDlOpenPaused) {
+                sDlOpenBlocker.wait(lock, []() { return !sDlOpenPaused; });
+            }
+        }
+        void* hLib = orig__loader_android_dlopen_ext(filename, flag, extinfo, caller_addr);
+        if (hLib != nullptr && (flag & RTLD_NOLOAD) == 0) {
             NotifySoLoad(filename);
         }
         return hLib;
@@ -74,28 +91,32 @@ namespace matrix {
 
     static void* (*orig_dlopen)(const char* filename, int flags) = nullptr;
     static void* dlopen_handler(const char* filename, int flags) {
-        int sdkVer = android_get_device_api_level();
         {
-            std::lock_guard dlopenLock(sDlOpenMutex);
-            void *hLib = orig_dlopen(filename, flags);
-            if (hLib != nullptr) {
-                NotifySoLoad(filename);
+            std::unique_lock lock(sDlOpenBlockerMutex);
+            if (sDlOpenPaused) {
+                sDlOpenBlocker.wait(lock, []() { return !sDlOpenPaused; });
             }
-            return hLib;
         }
+        void* hLib = orig_dlopen(filename, flags);
+        if (hLib != nullptr && (flags & RTLD_NOLOAD) == 0) {
+            NotifySoLoad(filename);
+        }
+        return hLib;
     }
 
     static void* (*orig_android_dlopen_ext)(const char* filename, int flag, const void* extinfo) = nullptr;
     static void* android_dlopen_ext_handler(const char* filename, int flag, const void* extinfo) {
-        int sdkVer = android_get_device_api_level();
         {
-            std::lock_guard dlopenLock(sDlOpenMutex);
-            void *hLib = orig_android_dlopen_ext(filename, flag, extinfo);
-            if (hLib != nullptr) {
-                NotifySoLoad(filename);
+            std::unique_lock lock(sDlOpenBlockerMutex);
+            if (sDlOpenPaused) {
+                sDlOpenBlocker.wait(lock, []() { return !sDlOpenPaused; });
             }
-            return hLib;
         }
+        void* hLib = orig_android_dlopen_ext(filename, flag, extinfo);
+        if (hLib != nullptr && (flag & RTLD_NOLOAD) == 0) {
+            NotifySoLoad(filename);
+        }
+        return hLib;
     }
 
     #ifdef __LP64__
@@ -199,11 +220,18 @@ namespace matrix {
 
     void PauseLoadSo() {
         EnsureInstalled();
-        sDlOpenMutex.lock();
+        {
+            std::lock_guard lock(sDlOpenBlockerMutex);
+            sDlOpenPaused = true;
+        }
     }
 
     void ResumeLoadSo() {
         EnsureInstalled();
-        sDlOpenMutex.unlock();
+        {
+            std::lock_guard lock(sDlOpenBlockerMutex);
+            sDlOpenPaused = false;
+        }
+        sDlOpenBlocker.notify_all();
     }
 }
