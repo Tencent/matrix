@@ -219,7 +219,8 @@ public class OpenGLResRecorder {
                                 && !line.contains("libhwui.so")
                                 && !line.contains("libutils.so")
                                 && !line.contains("libandroid_runtime.so")
-                                && !line.contains("libc.so")) {
+                                && !line.contains("libc.so")
+                                && line.contains(".so")) {
                             isIgnore = false;
                             break;
                         }
