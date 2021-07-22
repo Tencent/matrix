@@ -127,7 +127,7 @@ At this point, Matrix has been integrated into the app and is beginning to colle
 
 - **Trace Canary:**
 
-  FPS Monitor, Startup Performance, UI-Block / Slow Method Detection
+  FPS Monitor, Startup Performance, ANR, UI-Block / Slow Method Detection
 
 - **SQLite Lint:**
 
@@ -161,6 +161,7 @@ At this point, Matrix has been integrated into the app and is beginning to colle
 - **Accurate call stack of ui-block.** Provide informations such as call stack, function cost, execution times to solve the problem of ui-block quickly.
 - **Non-hack.** High compatibility to Android versions.
 - **More features.** Automatically covers multiple fluency indicators such as ui-block, startup time, activity switching, slow function detection.
+- **High-accuracy ANR detector.**  Detect ANRs accurately and give ANR trace file with high compatibility and high stability.
 
 #### SQLite Lint
 
@@ -520,7 +521,7 @@ curBuilder.pluginListener = <一个遵循 MatrixPluginListenerDelegate 的对象
 
 ## Demo
 
-至此，Matrix 已经集成到应用中并且开始收集崩溃、卡顿和爆内存数据，如仍有疑问，请查看示例：`samples/sample-apple/MatrixDemo`。
+至此，Matrix 已经集成到应用中并且开始收集崩溃、ANR、卡顿和爆内存数据，如仍有疑问，请查看示例：`samples/sample-apple/MatrixDemo`。
 
 
 # <a name='matrix_android_cn'>Matrix for Android </a>
@@ -531,7 +532,7 @@ Matrix-android 当前监控范围包括：应用安装包大小，帧率变化�
 - Resource Canary:
   基于 WeakReference 的特性和 [Square Haha](https://github.com/square/haha) 库开发的 Activity 泄漏和 Bitmap 重复创建检测工具
 - Trace Canary:
-  监控界面流畅性、启动耗时、页面切换耗时、慢函数及卡顿等问题
+  监控ANR、界面流畅性、启动耗时、页面切换耗时、慢函数及卡顿等问题
 - SQLite Lint:
   按官方最佳实践自动化检测 SQLite 语句的使用质量
 - IO Canary:
@@ -560,6 +561,7 @@ Matrix-android 当前监控范围包括：应用安装包大小，帧率变化�
 - 编译期动态修改字节码, 高性能记录执行耗时与调用堆栈
 - 准确的定位到发生卡顿的函数，提供执行堆栈、执行耗时、执行次数等信息，帮助快速解决卡顿问题
 - 自动涵盖卡顿、启动耗时、页面切换、慢函数检测等多个流畅性指标
+- 准确监控ANR，并且能够高兼容性和稳定性地保存系统产生的ANR Trace文件
 
 #### SQLite Lint
 
