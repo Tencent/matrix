@@ -703,7 +703,7 @@ Matrix-android 当前监控范围包括：应用安装包大小，帧率变化�
 6. 选择程序启动的位置对 Matrix 进行初始化，如在 Application 的继承类中， Init 核心逻辑如下：
 ``` java 
   Matrix.Builder builder = new Matrix.Builder(application); // build matrix
-  builder.patchListener(new TestPluginListener(this)); // add general pluginListener
+  builder.pluginListener(new TestPluginListener(this)); // add general pluginListener
   DynamicConfigImplDemo dynamicConfig = new DynamicConfigImplDemo(); // dynamic config
   
   // init plugin 
