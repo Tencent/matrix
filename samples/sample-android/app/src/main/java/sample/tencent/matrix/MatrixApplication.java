@@ -141,6 +141,7 @@ public class MatrixApplication extends Application {
                 // got an ANR
             }
         });
+        signalAnrTracer.onStartTrace();
     }
 
     private ResourcePlugin configureResourcePlugin(DynamicConfigImplDemo dynamicConfig) {
