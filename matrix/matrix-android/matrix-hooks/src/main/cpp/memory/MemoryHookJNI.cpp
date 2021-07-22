@@ -109,15 +109,7 @@ static void hook(const char *regex) {
 }
 
 static void ignore(const char *regex) {
-    for (auto f : HOOK_MALL_FUNCTIONS) {
-        xhook_ignore(regex, nullptr);
-    }
-
-    if (enable_mmap_hook) {
-        for (auto f : HOOK_MMAP_FUNCTIONS) {
-            xhook_ignore(regex, nullptr);
-        }
-    }
+    xhook_ignore(regex, nullptr);
 }
 
 JNIEXPORT void JNICALL
