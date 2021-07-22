@@ -34,12 +34,16 @@ namespace matrix {
 
         PauseLoadSo();
 
-        xhook_refresh(0);
-
         wechat_backtrace::notify_maps_changed();
 
-        for (auto cb : sSoLoadCallbacks) {
-            cb(pathname);
+        size_t pathnameLen = strlen(pathname);
+        if (pathnameLen >= 3) {
+            if (strncmp(pathname + pathnameLen - 3, ".so", 3) == 0) {
+                xhook_refresh(0);
+                for (auto cb : sSoLoadCallbacks) {
+                    cb(pathname);
+                }
+            }
         }
 
         ResumeLoadSo();
