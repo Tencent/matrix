@@ -366,10 +366,6 @@ static void xh_core_refresh_impl()
         if('[' == pathname[0]) continue;
         if (pathname_len >= 5 && strncmp(pathname, "/dev/", 5) == 0) continue;
 
-        //check elf header format
-        //We are trying to do ELF header checking as late as possible.
-        if(0 != xh_core_check_elf_header(base_addr, pathname)) continue;
-
         //check pathname
         //if we need to hook this elf?
         match = 0;
@@ -401,6 +397,10 @@ static void xh_core_refresh_impl()
             XH_LOG_ERROR("%p is not loaded by linker %s", (void *)base_addr, line + pathname_pos);
             continue; // do not touch the so that not loaded by linker
         }
+
+        //check elf header format
+        //We are trying to do ELF header checking as late as possible.
+        if(0 != xh_core_check_elf_header(base_addr, pathname)) continue;
 
         //check existed map item
         mi_key.pathname = pathname;
