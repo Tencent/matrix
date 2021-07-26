@@ -28,10 +28,13 @@ import com.tencent.matrix.resource.ResourcePlugin;
 import com.tencent.matrix.resource.config.ResourceConfig;
 import com.tencent.matrix.trace.TracePlugin;
 import com.tencent.matrix.trace.config.TraceConfig;
+import com.tencent.matrix.trace.tracer.SignalAnrTracer;
 import com.tencent.matrix.util.MatrixLog;
 import com.tencent.sqlitelint.SQLiteLint;
 import com.tencent.sqlitelint.SQLiteLintPlugin;
 import com.tencent.sqlitelint.config.SQLiteLintConfig;
+
+import java.io.File;
 
 import sample.tencent.matrix.battery.BatteryCanaryInitHelper;
 import sample.tencent.matrix.config.DynamicConfigImplDemo;
@@ -98,6 +101,16 @@ public class MatrixApplication extends Application {
         boolean traceEnable = dynamicConfig.isTraceEnable();
         boolean signalAnrTraceEnable = dynamicConfig.isSignalAnrTraceEnable();
 
+        File traceFileDir = new File(getApplicationContext().getFilesDir(), "matrix_trace");
+        if (!traceFileDir.exists()) {
+            if (traceFileDir.mkdirs()) {
+                MatrixLog.e(TAG, "failed to create traceFileDir");
+            }
+        }
+
+        File anrTraceFile = new File(traceFileDir, "anr_trace");    // path : /data/user/0/sample.tencent.matrix/files/matrix_trace/anr_trace
+        File printTraceFile = new File(traceFileDir, "print_trace");    // path : /data/user/0/sample.tencent.matrix/files/matrix_trace/print_trace
+
         TraceConfig traceConfig = new TraceConfig.Builder()
                 .dynamicConfig(dynamicConfig)
                 .enableFPS(fpsEnable)
@@ -107,12 +120,28 @@ public class MatrixApplication extends Application {
                 .enableIdleHandlerTrace(traceEnable)                    // Introduced in Matrix 2.0
                 .enableMainThreadPriorityTrace(true)                    // Introduced in Matrix 2.0
                 .enableSignalAnrTrace(signalAnrTraceEnable)             // Introduced in Matrix 2.0
+                .anrTracePath(anrTraceFile.getAbsolutePath())
+                .printTracePath(printTraceFile.getAbsolutePath())
                 .splashActivities("sample.tencent.matrix.SplashActivity;")
                 .isDebug(true)
                 .isDevEnv(false)
                 .build();
 
+        //Another way to use SignalAnrTracer separately
+        //useSignalAnrTraceAlone(anrTraceFile.getAbsolutePath(), printTraceFile.getAbsolutePath());
+
         return new TracePlugin(traceConfig);
+    }
+
+    private void useSignalAnrTraceAlone(String anrFilePath, String printTraceFile) {
+        SignalAnrTracer signalAnrTracer = new SignalAnrTracer(this, anrFilePath, printTraceFile);
+        signalAnrTracer.setSignalAnrDetectedListener(new SignalAnrTracer.SignalAnrDetectedListener() {
+            @Override
+            public void onAnrDetected(String stackTrace, String mMessageString, long mMessageWhen, boolean fromProcessErrorState) {
+                // got an ANR
+            }
+        });
+        signalAnrTracer.onStartTrace();
     }
 
     private ResourcePlugin configureResourcePlugin(DynamicConfigImplDemo dynamicConfig) {

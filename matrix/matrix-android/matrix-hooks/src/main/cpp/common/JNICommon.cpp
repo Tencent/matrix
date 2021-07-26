@@ -37,8 +37,10 @@ extern "C" {
 
 JavaVM *m_java_vm;
 
-static std::atomic_flag s_prehook_initialized(false);
-static std::atomic_flag s_finalhook_initialized(false);
+static volatile bool s_prehook_initialized = false;
+static std::mutex s_prehook_init_mutex;
+static volatile bool s_finalook_initialized = false;
+static std::mutex s_finalhook_init_mutex;
 jclass m_class_HookManager;
 jmethodID m_method_getStack;
 
@@ -72,8 +74,10 @@ static jmethodID GetStaticMethodID(JNIEnv* env, jclass clazz, const char* name, 
     return mid;
 }
 
-JNIEXPORT jboolean Java_com_tencent_matrix_hook_HookManager_doPreHookInitializeNative(JNIEnv *env, jobject) {
-    if (s_prehook_initialized.test_and_set()) {
+JNIEXPORT jboolean Java_com_tencent_matrix_hook_HookManager_doPreHookInitializeNative(JNIEnv *env, jobject, jboolean /* debug */) {
+    std::lock_guard prehookInitLock(s_prehook_init_mutex);
+
+    if (s_prehook_initialized) {
         LOGE(TAG, "doPreHookInitializeNative was already called.");
         return true;
     }
@@ -107,22 +111,32 @@ JNIEXPORT jboolean Java_com_tencent_matrix_hook_HookManager_doPreHookInitializeN
 
     getStackMethodCleaner.Omit();
     jHookMgrCleaner.Omit();
+
+    s_prehook_initialized = true;
     return true;
 }
 
 JNIEXPORT void JNICALL
-Java_com_tencent_matrix_hook_HookManager_doFinalInitializeNative(JNIEnv *env, jobject thiz) {
-    if (s_finalhook_initialized.test_and_set()) {
+Java_com_tencent_matrix_hook_HookManager_doFinalInitializeNative(JNIEnv *env, jobject thiz, jboolean debug) {
+    std::lock_guard finalInitLock(s_finalhook_init_mutex);
+
+    if (s_finalook_initialized) {
         LOGE(TAG, "doFinalInitializeNative was already called.");
         return;
     }
 
     wechat_backtrace::notify_maps_changed();
+
+    xhook_enable_debug(debug ? 1 : 0);
+    xhook_enable_sigsegv_protection(debug ? 0 : 1);
+
     // This line only refresh xhook in matrix-hookcommon library now.
     int ret = xhook_refresh(0);
     if (ret != 0) {
         LOGE(TAG, "Fail to call xhook_refresh, ret: %d", ret);
     }
+
+    s_finalook_initialized = true;
 }
 
 #ifdef __cplusplus

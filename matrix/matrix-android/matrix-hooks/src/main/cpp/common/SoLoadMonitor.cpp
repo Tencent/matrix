@@ -8,6 +8,8 @@
 #include <xhook.h>
 #include <xhook_ext.h>
 #include <android/log.h>
+#include <sys/resource.h>
+#include <set>
 #include "ScopedCleaner.h"
 #include "Log.h"
 #include "HookCommon.h"
@@ -16,66 +18,131 @@
 
 #define LOG_TAG "Matrix.SoLoadMonitor"
 
+#define TLSVAR __thread __attribute__((tls_model("initial-exec")))
+
 namespace matrix {
-    static std::atomic_bool sInstalled(false);
+    static bool sInstalled = false;
+    static std::mutex sInstalledMaskMutex;
+    static std::mutex sSoLoadCallbacksMutex;
     static std::vector<so_load_callback_t> sSoLoadCallbacks;
-    static std::recursive_mutex sDlOpenMutex;
+    static std::mutex sDlOpenBlockerMutex;
+    static std::condition_variable sDlOpenBlocker;
+    static bool sDlOpenPaused = false;
+    static std::recursive_mutex sDlOpenHandlerMutex;
 
     static void NotifySoLoad(const char* pathname) {
-        xhook_refresh(0);
+        if (UNLIKELY(pathname == nullptr)) {
+            // pathname == nullptr indicates dlopen was called with RTLD_DEFAULT, which doesn't load any new libraries.
+            // So we can skip the rest logic below in such situation.
+            return;
+        }
 
         wechat_backtrace::notify_maps_changed();
 
-        for (auto cb : sSoLoadCallbacks) {
-            cb(pathname);
+        size_t pathnameLen = strlen(pathname);
+        if (pathnameLen >= 3) {
+            if (strncmp(pathname + pathnameLen - 3, ".so", 3) == 0) {
+                xhook_refresh(0);
+                for (auto cb : sSoLoadCallbacks) {
+                    cb(pathname);
+                }
+            }
         }
     }
 
+    #define MARK_REENTERED(mask_tlsvar) \
+        mask_tlsvar = true; \
+        auto reenterCleaner = MakeScopedCleaner([]() { \
+            mask_tlsvar = false; \
+        })
+
+    #define WAIT_ON_COND(mutex, cond_var, cond) \
+        do { \
+            std::unique_lock lock_##cond_var(mutex); \
+            if ((cond)) { \
+                (cond_var).wait(lock_##cond_var, []() { return !(cond); }); \
+            } \
+        } while (false)
+
+    struct DlOpenArgs {
+        const char* filename;
+        int flags;
+        const void* extinfo;
+        const void* caller_addr;
+    };
+
+    static void* HandleDlOpenCommon(const std::function<void* (const DlOpenArgs*)> dlopen_fn, const DlOpenArgs* args) {
+        std::lock_guard lock(sDlOpenHandlerMutex);
+        void* hLib = dlopen_fn(args);
+        if (hLib != nullptr && (args->flags & RTLD_NOLOAD) == 0) {
+            NotifySoLoad(args->filename);
+        }
+        return hLib;
+    }
+
+    static TLSVAR bool __loader_dlopen_handler_reentered = false;
     static void* (*orig__loader_dlopen)(const char* filename, int flags, const void* caller_addr) = nullptr;
     static void* __loader_dlopen_handler(const char* filename, int flags, const void* caller_addr) {
-        std::lock_guard dlopenLock(sDlOpenMutex);
-        void *hLib = orig__loader_dlopen(filename, flags, caller_addr);
-        if (hLib != nullptr) {
-            NotifySoLoad(filename);
+        auto implFn = [](const DlOpenArgs* args) {
+            return orig__loader_dlopen(args->filename, args->flags, args->caller_addr);
+        };
+        DlOpenArgs args = { .filename = filename, .flags = flags, .caller_addr = caller_addr };
+        if (UNLIKELY(__loader_dlopen_handler_reentered)) {
+            return HandleDlOpenCommon(implFn, &args);
+        } else {
+            MARK_REENTERED(__loader_dlopen_handler_reentered);
+            WAIT_ON_COND(sDlOpenBlockerMutex, sDlOpenBlocker, sDlOpenPaused);
+            return HandleDlOpenCommon(implFn, &args);
         }
-        return hLib;
     }
 
+    static TLSVAR bool __loader_android_dlopen_ext_handler_reentered = false;
     static void* (*orig__loader_android_dlopen_ext)(const char* filename,
-            int flag, const void* extinfo, const void* caller_addr) = nullptr;
+            int flags, const void* extinfo, const void* caller_addr) = nullptr;
     static void* __loader_android_dlopen_ext_handler(const char* filename,
-            int flag, const void* extinfo, const void* caller_addr) {
-        std::lock_guard dlopenLock(sDlOpenMutex);
-        void *hLib = orig__loader_android_dlopen_ext(filename, flag, extinfo, caller_addr);
-        if (hLib != nullptr) {
-            NotifySoLoad(filename);
+                                                     int flags, const void* extinfo, const void* caller_addr) {
+        auto implFn = [](const DlOpenArgs* args) {
+            return orig__loader_android_dlopen_ext(args->filename, args->flags, args->extinfo, args->caller_addr);
+        };
+        DlOpenArgs args = { .filename = filename, .flags = flags, .extinfo = extinfo, .caller_addr = caller_addr };
+        if (UNLIKELY(__loader_android_dlopen_ext_handler_reentered)) {
+            return HandleDlOpenCommon(implFn, &args);
+        } else {
+            MARK_REENTERED(__loader_android_dlopen_ext_handler_reentered);
+            WAIT_ON_COND(sDlOpenBlockerMutex, sDlOpenBlocker, sDlOpenPaused);
+            return HandleDlOpenCommon(implFn, &args);
         }
-        return hLib;
     }
 
+    static TLSVAR bool dlopen_handler_reentered = false;
     static void* (*orig_dlopen)(const char* filename, int flags) = nullptr;
     static void* dlopen_handler(const char* filename, int flags) {
-        int sdkVer = android_get_device_api_level();
-        {
-            std::lock_guard dlopenLock(sDlOpenMutex);
-            void *hLib = orig_dlopen(filename, flags);
-            if (hLib != nullptr) {
-                NotifySoLoad(filename);
-            }
-            return hLib;
+        auto implFn = [](const DlOpenArgs* args) {
+            return orig_dlopen(args->filename, args->flags);
+        };
+        DlOpenArgs args = { .filename = filename, .flags = flags };
+        if (UNLIKELY(dlopen_handler_reentered)) {
+            return HandleDlOpenCommon(implFn, &args);
+        } else {
+            MARK_REENTERED(dlopen_handler_reentered);
+            WAIT_ON_COND(sDlOpenBlockerMutex, sDlOpenBlocker, sDlOpenPaused);
+            return HandleDlOpenCommon(implFn, &args);
         }
     }
 
+    static TLSVAR bool android_dlopen_ext_handler_reentered = false;
     static void* (*orig_android_dlopen_ext)(const char* filename, int flag, const void* extinfo) = nullptr;
-    static void* android_dlopen_ext_handler(const char* filename, int flag, const void* extinfo) {
-        int sdkVer = android_get_device_api_level();
-        {
-            std::lock_guard dlopenLock(sDlOpenMutex);
-            void *hLib = orig_android_dlopen_ext(filename, flag, extinfo);
-            if (hLib != nullptr) {
-                NotifySoLoad(filename);
-            }
-            return hLib;
+    static void* android_dlopen_ext_handler(const char* filename, int flags, const void* extinfo) {
+        auto implFn = [](const DlOpenArgs* args) {
+            return orig_android_dlopen_ext(args->filename, args->flags, args->extinfo);
+        };
+        DlOpenArgs args = { .filename = filename, .flags = flags, .extinfo = extinfo };
+        if (UNLIKELY(android_dlopen_ext_handler_reentered)) {
+            return HandleDlOpenCommon(implFn, &args);
+        } else {
+            MARK_REENTERED(android_dlopen_ext_handler_reentered);
+            WAIT_ON_COND(sDlOpenBlockerMutex, sDlOpenBlocker, sDlOpenPaused);
+            return HandleDlOpenCommon(implFn, &args);
         }
     }
 
@@ -88,6 +155,7 @@ namespace matrix {
     #endif
 
     bool InstallSoLoadMonitor() {
+        std::lock_guard lock(sInstalledMaskMutex);
         if (sInstalled) {
             return true;
         }
@@ -166,6 +234,7 @@ namespace matrix {
     }
 
     static void EnsureInstalled() {
+        std::lock_guard lock(sInstalledMaskMutex);
         if (UNLIKELY(!sInstalled)) {
             __android_log_assert(nullptr, LOG_TAG, "Please call Install first and confirm it returns true.");
         }
@@ -174,17 +243,29 @@ namespace matrix {
     void AddOnSoLoadCallback(so_load_callback_t cb) {
         EnsureInstalled();
         PauseLoadSo();
-        sSoLoadCallbacks.push_back(cb);
+        {
+            std::lock_guard lock(sSoLoadCallbacksMutex);
+            sSoLoadCallbacks.push_back(cb);
+        }
         ResumeLoadSo();
     }
 
     void PauseLoadSo() {
         EnsureInstalled();
-        sDlOpenMutex.lock();
+        // If any dlopen procedure was on going, wait for it.
+        std::lock_guard handlerLock(sDlOpenHandlerMutex);
+        {
+            std::lock_guard lock(sDlOpenBlockerMutex);
+            sDlOpenPaused = true;
+        }
     }
 
     void ResumeLoadSo() {
         EnsureInstalled();
-        sDlOpenMutex.unlock();
+        {
+            std::lock_guard lock(sDlOpenBlockerMutex);
+            sDlOpenPaused = false;
+        }
+        sDlOpenBlocker.notify_all();
     }
 }

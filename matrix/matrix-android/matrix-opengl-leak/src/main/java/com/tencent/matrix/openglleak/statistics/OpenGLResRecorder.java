@@ -12,7 +12,7 @@ public class OpenGLResRecorder {
 
     private List<OpenGLInfo> infoList = new ArrayList<>();
 
-    private static OpenGLResRecorder mInstance;
+    private static OpenGLResRecorder mInstance = new OpenGLResRecorder();
 
     private HandlerThread mHandlerThread;
     private Handler mH;
@@ -27,10 +27,6 @@ public class OpenGLResRecorder {
     }
 
     public static OpenGLResRecorder getInstance() {
-        if (null == mInstance) {
-            mInstance = new OpenGLResRecorder();
-        }
-
         return mInstance;
     }
 
@@ -223,7 +219,8 @@ public class OpenGLResRecorder {
                                 && !line.contains("libhwui.so")
                                 && !line.contains("libutils.so")
                                 && !line.contains("libandroid_runtime.so")
-                                && !line.contains("libc.so")) {
+                                && !line.contains("libc.so")
+                                && line.contains(".so")) {
                             isIgnore = false;
                             break;
                         }

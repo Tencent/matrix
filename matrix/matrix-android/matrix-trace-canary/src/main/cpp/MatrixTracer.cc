@@ -55,6 +55,7 @@ using namespace MatrixTracer;
 static std::optional<AnrDumper> sAnrDumper;
 static bool isTraceWrite = false;
 static bool fromMyPrintTrace = false;
+static bool isHooking = false;
 static std::string anrTracePathstring;
 static std::string printTracePathstring;
 static int signalCatcherTid;
@@ -106,12 +107,12 @@ int my_prctl(int option, unsigned long arg2, unsigned long arg3,
 
 
 void writeAnr(const std::string& content, const std::string &filePath) {
+    unHookAnrTraceWrite();
     std::stringstream stringStream(content);
     std::string to;
     std::ofstream outfile;
     outfile.open(filePath);
     outfile << content;
-    unHookAnrTraceWrite();
 }
 
 int (*original_connect)(int __fd, const struct sockaddr* __addr, socklen_t __addr_length);
@@ -196,14 +197,20 @@ int getApiLevel() {
 
 
 void hookAnrTraceWrite(bool isSiUser) {
-    if (!fromMyPrintTrace && isSiUser) {
-        return;
-    }
-
     int apiLevel = getApiLevel();
     if (apiLevel < 19) {
         return;
     }
+
+    if (!fromMyPrintTrace && isSiUser) {
+        return;
+    }
+
+    if (isHooking) {
+        return;
+    }
+
+    isHooking = true;
 
     if (apiLevel >= 27) {
         void *libcutils_info = xhook_elf_open("/system/lib64/libcutils.so");
@@ -252,6 +259,7 @@ void unHookAnrTraceWrite() {
         void* libart_info = xhook_elf_open("libart.so");
         xhook_hook_symbol(libart_info, "write", (void *) original_write, nullptr);
     }
+    isHooking = false;
 }
 
 static void nativeInitSignalAnrDetective(JNIEnv *env, jclass, jstring anrTracePath, jstring printTracePath) {
