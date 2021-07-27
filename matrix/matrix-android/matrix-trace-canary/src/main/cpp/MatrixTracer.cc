@@ -49,7 +49,7 @@
 
 #define PROP_VALUE_MAX  92
 #define PROP_SDK_NAME "ro.build.version.sdk"
-#define HOOK_CONNECT_PAHT "/dev/socket/tombstoned_java_trace"
+#define HOOK_CONNECT_PATH "/dev/socket/tombstoned_java_trace"
 #define HOOK_OPEN_PATH "/data/anr/traces.txt"
 
 using namespace MatrixTracer;
@@ -120,7 +120,7 @@ void writeAnr(const std::string& content, const std::string &filePath) {
 int (*original_connect)(int __fd, const struct sockaddr* __addr, socklen_t __addr_length);
 int my_connect(int __fd, const struct sockaddr* __addr, socklen_t __addr_length) {
     if (__addr!= nullptr) {
-        if (strcmp(__addr->sa_data, HOOK_CONNECT_PAHT) == 0) {
+        if (strcmp(__addr->sa_data, HOOK_CONNECT_PATH) == 0) {
             signalCatcherTid = gettid();
             isTraceWrite = true;
         }
