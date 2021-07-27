@@ -68,6 +68,7 @@ static int getSignalCatcherThreadId() {
     DIR *taskDir;
     uint64_t sigblk;
     uint32_t signalCatcherTid = -1;
+    uint32_t firstSignalCatcherTid = -1;
 
     snprintf(taskDirPath, sizeof(taskDirPath), "/proc/%d/task", getpid());
     if ((taskDir = opendir(taskDirPath)) == nullptr) return -1;
@@ -83,8 +84,12 @@ static int getSignalCatcherThreadId() {
 
         Support::readFileAsString(commFilePath, threadName, sizeof(threadName));
 
-        if(strncmp(SIGNAL_CATCHER_THREAD_NAME, threadName , sizeof(SIGNAL_CATCHER_THREAD_NAME)-1) != 0) {
+        if (strncmp(SIGNAL_CATCHER_THREAD_NAME, threadName , sizeof(SIGNAL_CATCHER_THREAD_NAME)-1) != 0) {
             continue;
+        }
+
+        if (firstSignalCatcherTid == -1) {
+            firstSignalCatcherTid = tid;
         }
 
         sigblk = 0;
@@ -104,6 +109,10 @@ static int getSignalCatcherThreadId() {
         break;
     }
     closedir(taskDir);
+
+    if (signalCatcherTid == -1) {
+        signalCatcherTid = firstSignalCatcherTid;
+    }
     return signalCatcherTid;
 }
 
