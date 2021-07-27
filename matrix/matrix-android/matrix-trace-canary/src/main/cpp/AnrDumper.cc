@@ -66,17 +66,21 @@ AnrDumper::AnrDumper(const char* anrTraceFile, const char* printTraceFile, AnrDu
 static int getSignalCatcherThreadId() {
     char taskDirPath[128];
     DIR *taskDir;
-    uint64_t sigblk;
-    uint32_t signalCatcherTid = -1;
-    uint32_t firstSignalCatcherTid = -1;
+    long long sigblk;
+    int signalCatcherTid = -1;
+    int firstSignalCatcherTid = -1;
 
     snprintf(taskDirPath, sizeof(taskDirPath), "/proc/%d/task", getpid());
-    if ((taskDir = opendir(taskDirPath)) == nullptr) return -1;
+    if ((taskDir = opendir(taskDirPath)) == nullptr) {
+        return -1;
+    }
     struct dirent *dent;
     pid_t tid;
     while ((dent = readdir(taskDir)) != nullptr) {
         tid = atoi(dent->d_name);
-        if (tid <= 0) continue;
+        if (tid <= 0) {
+            continue;
+        }
 
         char threadName[1024];
         char commFilePath[1024];
@@ -101,10 +105,14 @@ static int getSignalCatcherThreadId() {
         const char *line;
         size_t len;
         while (lr.getNextLine(&line, &len)) {
-            if (1 == sscanf(line, "SigBlk: %" SCNx64, &sigblk)) break;
+            if (1 == sscanf(line, "SigBlk: %" SCNx64, &sigblk)) {
+                break;
+            }
             lr.popLine(len);
         }
-        if (SIGNAL_CATCHER_THREAD_SIGBLK != sigblk) continue;
+        if (SIGNAL_CATCHER_THREAD_SIGBLK != sigblk) {
+            continue;
+        }
         signalCatcherTid = tid;
         break;
     }
