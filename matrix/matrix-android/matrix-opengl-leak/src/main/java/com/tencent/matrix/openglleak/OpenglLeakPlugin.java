@@ -33,7 +33,7 @@ public class OpenglLeakPlugin extends Plugin {
     }
 
     public void registerReportCallback(OpenglReportCallback callback) {
-        if(sCallback != null) {
+        if (sCallback != null) {
             MatrixLog.e(TAG, "OpenglReportCallback register again, May be overwrite !!!");
         }
         sCallback = callback;
