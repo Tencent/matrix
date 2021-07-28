@@ -4,6 +4,8 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.text.TextUtils;
 
+import com.tencent.matrix.openglleak.OpenglLeakPlugin;
+
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -42,6 +44,8 @@ public class OpenGLResRecorder {
                     return;
                 }
 
+                OpenglLeakPlugin.sCallback.onGenOpenGLResource(oinfo);
+
                 synchronized (infoList) {
                     infoList.add(oinfo);
                 }
@@ -70,11 +74,17 @@ public class OpenGLResRecorder {
                                 if (gen.getEglContextNativeHandle() == del.getEglContextNativeHandle()) {
                                     gen.release();
                                     iterator.remove();
+
+                                    OpenglLeakPlugin.sCallback.onDeleteOpenGLResource(del);
+
                                     break;
                                 }
                             } else if (gen.getThreadId().equals(del.getThreadId())) {
                                 gen.release();
                                 iterator.remove();
+
+                                OpenglLeakPlugin.sCallback.onDeleteOpenGLResource(del);
+
                                 break;
                             }
                         }
@@ -156,7 +166,10 @@ public class OpenGLResRecorder {
                     break;
                 }
 
+                OpenglLeakPlugin.sCallback.onBeforeIgnore(info);
+
                 if (isNeedIgnore(info)) {
+                    OpenglLeakPlugin.sCallback.onIgnoreGLResource(info);
                     item.release();
                     iterator.remove();
                     continue;
@@ -165,6 +178,7 @@ public class OpenGLResRecorder {
                 if ((item.getType() == info.getType()) && (item.getThreadId().equals(info.getThreadId())) && (item.getId() == info.getId())) {
                     if (mListener != null) {
                         mListener.onLeak(item);
+                        OpenglLeakPlugin.sCallback.onLeakTrigger(item);
                     }
 
                     item.release();
@@ -196,6 +210,7 @@ public class OpenGLResRecorder {
 
                     if (mListener != null) {
                         mListener.onMaybeLeak(item);
+                        OpenglLeakPlugin.sCallback.onMaybeLeakTrigger(item);
                     }
 
                     return;

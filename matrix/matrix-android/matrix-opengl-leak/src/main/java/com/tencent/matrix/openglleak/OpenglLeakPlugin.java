@@ -24,11 +24,21 @@ public class OpenglLeakPlugin extends Plugin {
 
     private static final String TAG = "matrix.OpenglLeakPlugin";
 
+    public static OpenglReportCallback sCallback;
+
     private Context context;
 
     public OpenglLeakPlugin(Context c) {
         context = c;
     }
+
+    public void registerReportCallback(OpenglReportCallback callback) {
+        if(sCallback != null) {
+            MatrixLog.e(TAG, "OpenglReportCallback register again, May be overwrite !!!");
+        }
+        sCallback = callback;
+    }
+
 
     @Override
     public void init(Application app, PluginListener listener) {
