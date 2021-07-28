@@ -222,6 +222,11 @@ namespace matrix {
         if (hLinker == nullptr) {
             return nullptr;
         }
+        auto hLinkerCleaner = MakeScopedCleaner([&hLinker]() {
+            if (hLinker != nullptr) {
+                SemiDlClose(hLinker);
+            }
+        });
         sDlIterateMutexPtr = reinterpret_cast<pthread_mutex_t*>(SemiDlSym(hLinker, LINKER_DL_MUTEX_SYMNAME));
         return sDlIterateMutexPtr;
     }
