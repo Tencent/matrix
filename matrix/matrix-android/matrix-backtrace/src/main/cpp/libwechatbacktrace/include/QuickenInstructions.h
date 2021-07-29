@@ -320,15 +320,15 @@ namespace wechat_backtrace {
                         bool have_prologue = false;
 
                         do {
-                            if (instructions.size() >= 3) {
-                                uint64_t next = instructions.at(0);
+                            if (instructions.end() - it >= 3) {
+                                uint64_t next = *(it);
                                 int32_t next_op = next >> 32;
                                 int32_t next_imm = next & 0xFFFFFFFF;
                                 if (!(next_op == QUT_INSTRUCTION_VSP_OFFSET)) {
                                     break;
                                 }
 
-                                next = instructions.at(1);
+                                next = *(it + 1);
                                 next_op = next >> 32;
                                 int32_t next_imm_lr = next & 0xFFFFFFFF;
                                 if (!(next_op == QUT_INSTRUCTION_LR_OFFSET &&
@@ -336,7 +336,7 @@ namespace wechat_backtrace {
                                     break;
                                 }
 
-                                next = instructions.at(2);
+                                next = *(it + 2);
                                 next_op = next >> 32;
                                 int32_t next_imm_fp = next & 0xFFFFFFFF;
 
@@ -346,9 +346,9 @@ namespace wechat_backtrace {
                                          next_op == QUT_INSTRUCTION_R11_OFFSET))
                                     && (next_imm_fp == next_imm)) {
                                     have_prologue = true;
-                                    it++; // vsp + 8
-                                    it++; // pop lr = vsp - 4
-                                    it++; // pop r7/r11 = vsp - 8
+                                    it++; // skip vsp + 8
+                                    it++; // skip pop lr = vsp - 4
+                                    it++; // skip pop r7/r11 = vsp - 8
                                 }
                             }
                         } while (false);
@@ -584,15 +584,15 @@ namespace wechat_backtrace {
                         bool have_prologue = false;
 
                         do {
-                            if (instructions.size() >= 3) {
-                                uint64_t next = instructions.at(0);
+                            if (instructions.end() - it >= 3) {
+                                uint64_t next = *(it);
                                 uint32_t next_op = (uint32_t) (next >> 32);
                                 int32_t next_imm = (int32_t) (next & 0xFFFFFFFF);
                                 if (!(next_op == QUT_INSTRUCTION_VSP_OFFSET)) {
                                     break;
                                 }
 
-                                next = instructions.at(1);
+                                next = *(it + 1);
                                 next_op = (uint32_t) (next >> 32);
                                 int32_t next_imm_lr = (int32_t) (next & 0xFFFFFFFF);
                                 if (!(next_op == QUT_INSTRUCTION_LR_OFFSET &&
@@ -600,7 +600,7 @@ namespace wechat_backtrace {
                                     break;
                                 }
 
-                                next = instructions.at(2);
+                                next = *(it + 2);
                                 next_op = (uint32_t) (next >> 32);
                                 int32_t next_imm_fp = (int32_t) (next & 0xFFFFFFFF);
 

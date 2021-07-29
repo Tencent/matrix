@@ -3,24 +3,26 @@
 #include <cinttypes>
 #include <cxxabi.h>
 #include <inttypes.h>
-#include <MinimalRegs.h>
-#include <QuickenUnwinder.h>
-#include <QuickenMaps.h>
-#include <LocalMaps.h>
-#include <DebugJit.h>
-#include "Backtrace.h"
+#include <backtrace/MinimalRegs.h>
+#include <backtrace/QuickenUnwinder.h>
+#include <backtrace/QuickenMaps.h>
+#include <backtrace/LocalMaps.h>
+#include <backtrace/DebugJit.h>
+#include <unwind32/backtrace.h>
+#include "backtrace/Backtrace.h"
 #include "UnwindTestCommon.h"
 #include "BenchmarkLog.h"
-#include "BacktraceDefine.h"
-#include "DebugDexFiles.h"
+#include "backtrace/BacktraceDefine.h"
+#include "backtrace/DebugDexFiles.h"
 #include "../../../../../../matrix-backtrace/src/main/cpp/external/libunwindstack/deps/android-base/include/android-base/stringprintf.h"
 #include "EHUnwindBacktrace.h"
 #include "JavaStacktrace.h"
 
 #define JAVA_UNWIND_TAG "Java-Unwind"
-#define DWARF_UNWIND_TAG "Dwarf-Unwind"
+#define DWARF_UNWIND_TAG "Libunwindstack-Unwind"
 #define FP_UNWIND_TAG "Fp-Unwind"
-#define WECHAT_BACKTRACE_TAG "WeChat-Quicken-Unwind"
+#define WECHAT_BACKTRACE_TAG "Quicken-Unwind"
+#define LIBUDF_UNWIND_TAG "Libudf-Unwind"
 
 #define TEST_NanoSeconds_Start(timestamp) \
         long timestamp = 0; \
@@ -82,11 +84,11 @@ void benchmark_counting(uint64_t duration, size_t frame_size) {
 }
 
 void dump_benchmark_calculation(const char *tag) {
-    if (sLastFrameSize == 0) {
+    if (sLastFrameSize == 0 || sBenchmarkTimes == 0) {
         BENCHMARK_RESULT_LOGE(UNWIND_TEST_TAG,
                               "%s Accumulated duration = %llu, times = %zu, avg = %llu, frame-size = %zu",
                               tag, (unsigned long long) sTotalDuration, sBenchmarkTimes,
-                              (unsigned long long) (sTotalDuration / sBenchmarkTimes),
+                              (unsigned long long) 0,
                               sLastFrameSize);
     } else {
         BENCHMARK_RESULT_LOGE(UNWIND_TEST_TAG,
@@ -350,13 +352,21 @@ inline void print_quicken_unwind() {
     uptr regs[QUT_MINIMAL_REG_SIZE];
     GetQuickenMinimalRegs(regs);
     wechat_backtrace::Frame frames[FRAME_MAX_SIZE];
-    uptr frame_size = 0;
 
-    wechat_backtrace::BACKTRACE_FUNC_WRAPPER(quicken_unwind)(regs, frames, FRAME_MAX_SIZE,
-                                                             frame_size);
+    wechat_backtrace::QuickenContext context = {
+            .stack_bottom = 0,
+            .stack_top = 0,
+            .regs = regs,
+            .frame_max_size = FRAME_MAX_SIZE,
+            .backtrace = frames,
+            .frame_size = 0
+    };
 
-    TEST_NanoSeconds_End(wechat_quicken_unwind, nano, frame_size);
+    wechat_backtrace::BACKTRACE_FUNC_WRAPPER(quicken_unwind)(&context);
 
+    TEST_NanoSeconds_End(wechat_quicken_unwind, nano, context.frame_size);
+
+    uptr frame_size = context.frame_size;
     if (!gPrintStack) {
         return;
     }
@@ -394,7 +404,7 @@ inline void print_java_unwind_formatted() {
     }
 
     for (int i = 0; i < size; i++) {
-        jstring string_obj = static_cast<jstring>(env->GetObjectArrayElement(traces, i));
+        auto string_obj = static_cast<jstring>(env->GetObjectArrayElement(traces, i));
         const char *trace = env->GetStringUTFChars(string_obj, 0);
         BENCHMARK_LOGE("Java-Print-StackTrace", trace, "");
         env->ReleaseStringUTFChars(string_obj, trace);
@@ -410,16 +420,23 @@ inline void print_quicken_unwind_stacktrace() {
     GetQuickenMinimalRegs(regs);
     wechat_backtrace::Frame frames[FRAME_MAX_SIZE];
     wechat_backtrace::FrameElement stacktrace_elements[frame_elements_max_size];
-    uptr frame_size = 0;
     size_t elements_size = 0;
 
-    wechat_backtrace::BACKTRACE_FUNC_WRAPPER(quicken_unwind)(regs, frames, FRAME_MAX_SIZE,
-                                                             frame_size);
+    wechat_backtrace::QuickenContext context = {
+            .stack_bottom = 0,
+            .stack_top = 0,
+            .regs = regs,
+            .frame_max_size = FRAME_MAX_SIZE,
+            .backtrace = frames,
+            .frame_size = 0
+    };
+
+    wechat_backtrace::BACKTRACE_FUNC_WRAPPER(quicken_unwind)(&context);
     get_stacktrace_elements(
-            frames, frame_size, true, stacktrace_elements,
+            frames, context.frame_size, true, stacktrace_elements,
             frame_elements_max_size, elements_size);
 
-    TEST_NanoSeconds_End(print_quicken_unwind_stacktrace, nano, frame_size);
+    TEST_NanoSeconds_End(print_quicken_unwind_stacktrace, nano, context.frame_size);
 
     if (!gPrintStack) {
         return;
@@ -433,6 +450,35 @@ inline void print_quicken_unwind_stacktrace() {
         }
     }
 
+}
+
+typedef struct {
+    uint32_t          depth;
+    uintptr_t         trace[FRAME_MAX_SIZE];
+} Backtrace;
+
+inline void print_libudf_unwind() {
+#ifdef __arm__
+    const size_t frame_elements_max_size = FRAME_MAX_SIZE;
+    TEST_NanoSeconds_Start(nano);
+    Backtrace backtrace;
+    backtrace.depth = 0;
+    backtrace.depth = libudf_unwind_backtrace(backtrace.trace, 2, frame_elements_max_size - 2);
+    TEST_NanoSeconds_End(print_libudf_unwind, nano, backtrace.depth);
+
+    if (!gPrintStack) {
+        return;
+    }
+
+    for (size_t num = 0; num < backtrace.depth; num++) {
+        std::string formatted;
+        fp_format_frame(backtrace.trace[num], num,
+                        unwindstack::Regs::CurrentArch() == unwindstack::ARCH_ARM,
+                        formatted);
+
+        BENCHMARK_LOGE(LIBUDF_UNWIND_TAG, formatted.c_str(), "");
+    }
+#endif
 }
 
 void leaf_func(const char *testcase) {
@@ -464,6 +510,9 @@ void leaf_func(const char *testcase) {
         case QUICKEN_UNWIND_PRINT_STACKTRACE:
             print_quicken_unwind_stacktrace();
             break;
+        case LIBUDF_UNWIND:
+            print_libudf_unwind();
+            break;
         default:
             BENCHMARK_LOGE(UNWIND_TEST_TAG, "Unknown test %s with mode %d.", testcase, gMode);
             break;
@@ -491,6 +540,7 @@ void benchmark_warm_up() {
         print_eh_unwind();
         print_java_unwind_formatted();
         print_quicken_unwind_stacktrace();
+        print_libudf_unwind();
     }
     gBenchmarkWarmUp = false;
     gPrintStack = preValue;

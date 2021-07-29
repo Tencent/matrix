@@ -7,7 +7,7 @@ buildscript {
         buildToolsVersion = '29.0.2'
         javaVersion = JavaVersion.VERSION_1_8
 
-        MATRIX_VERSION = "1.0.0"
+        MATRIX_VERSION = "2.0.0-beta"
         GROUP = 'com.tencent.matrix'
         VERSION_NAME = "${MATRIX_VERSION}"
 
@@ -36,7 +36,6 @@ buildscript {
         mavenLocal()
         google()
         mavenCentral()
-        jcenter()
     }
     dependencies {
         classpath 'com.android.tools.build:gradle:4.1.0'
@@ -54,7 +53,6 @@ allprojects {
         mavenLocal()
         mavenCentral()
         google()
-        jcenter()
     }
 }
 

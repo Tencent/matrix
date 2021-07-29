@@ -78,6 +78,5 @@ struct object_type_db;
 std::shared_ptr<std::string> generate_summary_report(const char *event_dir, const summary_report_param &param);
 std::shared_ptr<std::string>
 generate_summary_report_i(allocation_event_db *, stack_frames_db *, dyld_image_info_db *, object_type_db *, const summary_report_param &param);
-std::unordered_map<uint64_t, uint64_t> thread_alloc_size(const char *event_dir);
 
 #endif /* stack_report_generator_h */

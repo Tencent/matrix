@@ -25,6 +25,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class IssuesMap {
 
     private static final ConcurrentHashMap<String, List<Issue>> issues = new ConcurrentHashMap<>();
+    private static final ArrayList<Issue> allIssues = new ArrayList<>();
 
     public static void put(@IssueFilter.FILTER String filter, Issue issue) {
         List<Issue> list = issues.get(filter);
@@ -33,6 +34,10 @@ public class IssuesMap {
         }
         list.add(0, issue);
         issues.put(filter, list);
+
+        synchronized (allIssues) {
+            allIssues.add(issue);
+        }
     }
 
     public static List<Issue> get(@IssueFilter.FILTER String filter) {
@@ -46,6 +51,22 @@ public class IssuesMap {
 
     public static void clear() {
         issues.clear();
+    }
+
+    public static Issue getIssueReverse(int index) {
+        synchronized (allIssues) {
+            if (allIssues.size() <= index) {
+                return null;
+            }
+
+            return allIssues.get(allIssues.size() - index - 1);
+        }
+    }
+
+    public static int amountOfIssues() {
+        synchronized (allIssues) {
+            return allIssues.size();
+        }
     }
 
 }

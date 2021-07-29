@@ -32,7 +32,7 @@ extern int skip_min_malloc_size;
 struct dyld_image_info_db;
 
 dyld_image_info_db *prepare_dyld_image_logger(const char *event_dir);
-bool is_stack_frames_should_skip(uintptr_t *frames, int32_t count, uint64_t malloc_size, uint32_t type_flags);
+bool is_stack_frames_should_skip(uintptr_t *frames, int32_t count, uint64_t malloc_size);
 const char *app_uuid();
 
 dyld_image_info_db *dyld_image_info_db_open_or_create(const char *event_dir);

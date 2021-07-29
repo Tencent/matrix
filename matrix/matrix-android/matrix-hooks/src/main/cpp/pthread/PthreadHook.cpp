@@ -1,3 +1,19 @@
+/*
+ * Tencent is pleased to support the open source community by making wechat-matrix available.
+ * Copyright (C) 2021 THL A29 Limited, a Tencent company. All rights reserved.
+ * Licensed under the BSD 3-Clause License (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      https://opensource.org/licenses/BSD-3-Clause
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 //
 // Created by YinSheng Tang on 2021/4/29.
 //
@@ -8,6 +24,7 @@
 #include <xhook.h>
 #include <xhook_ext.h>
 #include <common/HookCommon.h>
+#include <common/SoLoadMonitor.h>
 #include <common/Macros.h>
 #include "PthreadHook.h"
 #include "ThreadTrace.h"
@@ -107,7 +124,7 @@ namespace pthread_hook {
             thread_trace::thread_trace_init();
         }
 
-        pause_dlopen();
+        matrix::PauseLoadSo();
         {
             int ret = xhook_export_symtable_hook("libc.so", "pthread_create",
                                                  (void *) HANDLER_FUNC_NAME(pthread_create), nullptr);
@@ -120,9 +137,9 @@ namespace pthread_hook {
             xhook_register(".*/.*\\.so$", "pthread_setname_np",
                            (void *) HANDLER_FUNC_NAME(pthread_setname_np), nullptr);
             xhook_enable_debug(enable_debug ? 1 : 0);
-            xhook_enable_sigsegv_protection(0);
+            xhook_enable_sigsegv_protection(enable_debug ? 0 : 1);
             xhook_refresh(0);
         }
-        resume_dlopen();
+        matrix::ResumeLoadSo();
     }
 }

@@ -671,37 +671,65 @@ namespace wechat_backtrace {
     }
 
     template<typename AddressType>
-    bool DwarfSectionDecoder<AddressType>::CfaOffsetInstruction(uint64_t reg, uint64_t value) {
+    inline bool DwarfSectionDecoder<AddressType>::CfaOffsetInstruction(
+            const QuickenGenerationContext &context, const uint64_t reg, const uint64_t value) {
 
         QutInstruction instruction;
-        switch (reg) {
+        if (UNLIKELY(context.native_only)) {
+            switch (reg) {
 #ifdef __arm__
-            case ARM_REG_SP:
-                instruction = QUT_INSTRUCTION_VSP_OFFSET;
-                break;
-            case ARM_REG_R10:
-                instruction = QUT_INSTRUCTION_VSP_SET_BY_JNI_SP;
-                break;
-            case ARM_REG_R7:
-                instruction = QUT_INSTRUCTION_VSP_SET_BY_R7;
-                break;
-            case ARM_REG_R11:
-                instruction = QUT_INSTRUCTION_VSP_SET_BY_R11;
-                break;
+                case ARM_REG_SP:
+                    instruction = QUT_INSTRUCTION_VSP_OFFSET;
+                    break;
+                case ARM_REG_R7:
+                    instruction = QUT_INSTRUCTION_VSP_SET_BY_R7;
+                    break;
+
+                /* case ARM_REG_R11:
+                    instruction = QUT_INSTRUCTION_VSP_SET_BY_R11;
+                    break; */
 #else
-            case ARM64_REG_SP:
-                instruction = QUT_INSTRUCTION_VSP_OFFSET;
-                break;
-            case ARM64_REG_R28:
-                instruction = QUT_INSTRUCTION_VSP_SET_BY_JNI_SP;
-                break;
-            case ARM64_REG_R29:
-                instruction = QUT_INSTRUCTION_VSP_SET_BY_X29;
-                break;
+                case ARM64_REG_SP:
+                    instruction = QUT_INSTRUCTION_VSP_OFFSET;
+                    break;
+                case ARM64_REG_R29:
+                    instruction = QUT_INSTRUCTION_VSP_SET_BY_X29;
+                    break;
 #endif
-            default:
-                QUT_STATISTIC(IgnoreUnsupportedCfaDwarfLocationRegister, reg, value);
-                return false;
+                default:
+                    QUT_STATISTIC(IgnoreUnsupportedCfaDwarfLocationRegister, reg, value);
+                    return false;
+            }
+        } else {
+            switch (reg) {
+#ifdef __arm__
+                case ARM_REG_SP:
+                    instruction = QUT_INSTRUCTION_VSP_OFFSET;
+                    break;
+                case ARM_REG_R10:
+                    instruction = QUT_INSTRUCTION_VSP_SET_BY_JNI_SP;
+                    break;
+                case ARM_REG_R7:
+                    instruction = QUT_INSTRUCTION_VSP_SET_BY_R7;
+                    break;
+                case ARM_REG_R11:
+                    instruction = QUT_INSTRUCTION_VSP_SET_BY_R11;
+                    break;
+#else
+                case ARM64_REG_SP:
+                    instruction = QUT_INSTRUCTION_VSP_OFFSET;
+                    break;
+                case ARM64_REG_R28:
+                    instruction = QUT_INSTRUCTION_VSP_SET_BY_JNI_SP;
+                    break;
+                case ARM64_REG_R29:
+                    instruction = QUT_INSTRUCTION_VSP_SET_BY_X29;
+                    break;
+#endif
+                default:
+                    QUT_STATISTIC(IgnoreUnsupportedCfaDwarfLocationRegister, reg, value);
+                    return false;
+            }
         }
 
         // TODO check value overflow
@@ -780,13 +808,17 @@ namespace wechat_backtrace {
     }
 
     template<typename AddressType>
-    bool DwarfSectionDecoder<AddressType>::Eval(const DwarfCie *cie, Memory *regular_memory,
-                                                const dwarf_loc_regs_t &loc_regs,
-                                                uint16_t total_regs) {
+    bool DwarfSectionDecoder<AddressType>::Eval(
+            const QuickenGenerationContext &context,
+            const DwarfCie *cie, Memory *regular_memory,
+            const dwarf_loc_regs_t &loc_regs) {
+
         if (log) {
             QUT_DEBUG_LOG("DwarfSectionImpl<AddressType>::Eval %llx",
                           (ullint_t) cie->cfa_instructions_offset);
         }
+
+        uint16_t total_regs = context.regs_total;
 
         if (cie->return_address_register >= total_regs) {
             last_error_.code = DWARF_ERROR_ILLEGAL_VALUE;
@@ -812,8 +844,8 @@ namespace wechat_backtrace {
         };
 
         const DwarfLocation *loc = &cfa_entry->second;
-        // Only a few location types are valid for the cfa.
 
+        // Only a few location types are valid for the cfa.
         switch (loc->type) {
             case DWARF_LOCATION_REGISTER:
                 if (log) {
@@ -828,7 +860,7 @@ namespace wechat_backtrace {
                     return false;
                 }
 
-                if (!CfaOffsetInstruction(loc->values[0], loc->values[1])) {
+                if (!CfaOffsetInstruction(context, loc->values[0], loc->values[1])) {
                     last_error_.code = DWARF_ERROR_NOT_SUPPORT;
                     if (log) {
                         QUT_DEBUG_LOG(
@@ -849,6 +881,11 @@ namespace wechat_backtrace {
                     QUT_DEBUG_LOG(
                             "DwarfSectionDecoder::Eval DWARF_LOCATION_VAL_EXPRESSION");
                 }
+
+                if (UNLIKELY(context.native_only)) {
+                    break;
+                }
+
                 ValueExpression<AddressType> value_expression;
                 if (!EvalExpression(*loc, regular_memory, total_regs, &value_expression, nullptr)) {
 //                    QUT_STATISTIC(UnsupportedCfaDwarfLocationValExpression, loc->values[0], loc->values[1]);
@@ -877,26 +914,31 @@ namespace wechat_backtrace {
                 continue;
             }
 
+            if (UNLIKELY(context.native_only)) {
 #ifdef __arm__
-            // TODO why ARM_REG_R0, add comment here
-            // Why evaluate r0:
-            // Why evaluate r4:
-            // Why evaluate r7:
-            // Why evaluate r10:
-            // Why evaluate r11:
-            if (reg != ARM_REG_R0 && reg != ARM_REG_R4 && reg != ARM_REG_R7 && reg != ARM_REG_R10 &&
-                reg != ARM_REG_R11 && reg < ARM_REG_R13) {
-                continue;
-            }
+                if (reg != ARM_REG_R7
+                    /* && reg != ARM_REG_R11 */
+                    && reg < ARM_REG_R13) {
+                    continue;
+                }
 #else
-            // Why evaluate x0:
-            // Why evaluate x20:
-            // Why evaluate x28:
-            if (reg != ARM64_REG_R0 && reg != ARM64_REG_R20 && reg != ARM64_REG_R28 &&
-                reg < ARM64_REG_R29) {
-                continue;
-            }
+                if (reg < ARM64_REG_R29) {
+                    continue;
+                }
 #endif
+            } else {
+#ifdef __arm__
+                if (reg != ARM_REG_R0 && reg != ARM_REG_R4 && reg != ARM_REG_R7 && reg != ARM_REG_R10 &&
+                    reg != ARM_REG_R11 && reg < ARM_REG_R13) {
+                    continue;
+                }
+#else
+                if (reg != ARM64_REG_R0 && reg != ARM64_REG_R20 && reg != ARM64_REG_R28 &&
+                    reg < ARM64_REG_R29) {
+                    continue;
+                }
+#endif
+            }
 
             if (!EvalRegister(&entry.second, total_regs, reg, &eval_info)) {
                 if (log) {
@@ -937,11 +979,10 @@ namespace wechat_backtrace {
 
     template<typename AddressType>
     void
-    DwarfSectionDecoder<AddressType>::IterateAllEntries(uint16_t regs_total,
-                                                        unwindstack::Memory *process_memory,
-                                                        QutInstructionsOfEntries *previous_entries,
-                                                        uint64_t &estimate_memory_usage,
-                                                        bool &memory_overwhelmed) {
+    DwarfSectionDecoder<AddressType>::IterateAllEntries(
+            QuickenGenerationContext &context,
+            unwindstack::Memory *process_memory,
+            /* out */ QutInstructionsOfEntries *previous_entries) {
 
         FillFdes();
 
@@ -958,142 +999,22 @@ namespace wechat_backtrace {
             const DwarfFde *fde = it->second.second;
 
             it++;
-            bool ret = ParseSingleFde(fde, 0, true, process_memory, regs_total, all_instructions,
-                                      estimate_memory_usage, memory_overwhelmed);
-            if (!ret && memory_overwhelmed) {
+            bool ret = ParseSingleFde(context, fde, 0, true, process_memory, all_instructions);
+            if (!ret && context.memory_overwhelmed) {
                 return;
             }
         }
     }
 
-
-//    template<typename AddressType>
-//    bool DwarfSectionDecoder<AddressType>::ParseSingleFde(
-//            const DwarfFde *fde,
-//            const uint64_t pc__,
-//            const bool iterate_loc,
-//            unwindstack::Memory *process_memory,
-//            uint16_t regs_total,
-//            /* out */ QutInstructionsOfEntries *all_instructions,
-//            /* out */ uint64_t &estimate_memory_usage,
-//            /* out */ bool &memory_overwhelmed) {
-//        if (fde == nullptr || fde->cie == nullptr) {
-//            // bad entry
-//            return false;
-//        }
-//
-//        if (log) {
-//            QUT_LOG("Dump Fde -> [%llx, %llx]", fde->pc_start, fde->pc_end);
-//        }
-//
-//        WTF_LOG__("Dump Fde -> [%llx, %llx]", fde->pc_start, fde->pc_end);
-//
-//        // Look for the cached copy of the cie data.
-//        auto reg_entry = cie_loc_regs_.find(fde->cie_offset);
-//        dwarf_loc_regs_t *cie_loc_reg = nullptr;
-//        if (reg_entry != cie_loc_regs_.end()) {
-//            cie_loc_reg = &reg_entry->second;
-//        }
-//        shared_ptr<QutInstrCollection> prev_instructions;
-//        uint64_t prev_pc = -1;
-//        size_t ins_size = (sizeof(AddressType) == 8) ? 4 : 2;
-//        size_t row_size = 0;
-//        for (uint64_t pc = fde->pc_start; pc < fde->pc_end;) {
-//            row_size++;
-//            // Now get the location information for this pc.
-//            dwarf_loc_regs_t loc_regs;
-//            if (!GetCfaLocationInfo(pc, fde, &loc_regs)) {
-//                // bad entry
-//                prev_instructions = nullptr;
-//                prev_pc = -1;
-//                pc += ins_size;
-//
-//                QUT_DEBUG_LOG("Bad entry will GetCfaLocationInfo return false.");
-//                continue;
-//            }
-//            loc_regs.cie = fde->cie;
-//
-//            uint64_t pc_end = loc_regs.pc_end;
-//
-//          log = (log_pc >= pc && log_pc < pc_end);
-//
-//            if (pc_end <= pc) {
-//                // bad entry
-//                prev_instructions = nullptr;
-//                prev_pc = -1;
-//                pc += ins_size;
-//
-//                QUT_DEBUG_LOG("Bad entry will pc_end <= pc.");
-//                continue;
-//            }
-//
-//            auto instructions = make_shared<QutInstrCollection>();
-//
-//            temp_instructions_ = instructions;
-//
-//            Eval(loc_regs.cie, process_memory, loc_regs, regs_total);
-//            temp_instructions_ = nullptr;
-//
-//            if (log) {
-//                QUT_DEBUG_LOG("Evaluated instructions size: %zu", instructions->size());
-//                auto it = instructions->begin();
-//                while (it != instructions->end()) {
-//                    QUT_DEBUG_LOG("Evaluated instructions -> %llx", *it);
-//                    it++;
-//                }
-//            }
-//
-//            // Try merge same entries.
-//            bool same_entry = false;
-//            if (prev_instructions != nullptr &&
-//                prev_instructions->size() == instructions.get()->size()) {
-//
-//                same_entry = true;
-//                for (size_t i = 0; i < instructions.get()->size(); i++) {
-//                    if (instructions.get()->at(i) != prev_instructions->at(i)) {
-//                        same_entry = false;
-//                        break;
-//                    }
-//                }
-//            }
-//            if (log) {
-//                QUT_DEBUG_LOG("Evaluated same_entry: %d", same_entry);
-//                QUT_DEBUG_LOG("Evaluated pc: %llx", (ullint_t) pc);
-//            }
-//
-//            if (same_entry) {
-//                (*all_instructions)[prev_pc].first = pc_end;
-//                pc = pc_end;
-//                continue;
-//            }
-//
-//            auto entry = std::make_pair(pc_end, instructions);
-//            (*all_instructions)[pc] = entry;
-//            prev_instructions = instructions;
-//            prev_pc = pc;
-//
-//            pc = pc_end;
-//
-//            estimate_memory_usage += instructions->size();
-//            memory_overwhelmed = CHECK_MEMORY_OVERWHELMED(estimate_memory_usage);
-//            if (memory_overwhelmed) {
-//                return false;
-//            }
-//        }
-//        if (log) QUT_DEBUG_LOG("Row size %zu", row_size);
-//        return true;
-//    }
-
     template<typename AddressType>
     bool DwarfSectionDecoder<AddressType>::ParseSingleFde(
+            QuickenGenerationContext &context,
             const DwarfFde *fde,
             const uint64_t pc,
             const bool iterate_loc,
             unwindstack::Memory *process_memory,
-            uint16_t regs_total,
-            /* out */ QutInstructionsOfEntries *all_instructions,
-            /* out */ uint64_t &estimate_memory_usage,
-            /* out */ bool &memory_overwhelmed) {
+            /* out */ QutInstructionsOfEntries *all_instructions) {
+
         if (UNLIKELY(fde == nullptr || fde->cie == nullptr)) {
             // bad entry
             return false;
@@ -1130,11 +1051,11 @@ namespace wechat_backtrace {
         shared_ptr<QutInstrCollection> prev_instructions;
         uint64_t prev_pc = -1;
 
-        auto callback = [&](unwindstack::dwarf_loc_regs_t *_loc_regs)->bool{
+        auto callback = [&](unwindstack::dwarf_loc_regs_t *_loc_regs) -> bool {
             dwarf_loc_regs_t loc_regs = *_loc_regs;
             loc_regs.cie = fde->cie;
 
-            QUT_LOG("WTF--------- pc %llx, pc_start %llx", pc, loc_regs.pc_start);
+            QUT_TMP_LOG("pc %llx, pc_start %llx", pc, loc_regs.pc_start);
 
             uint64_t pc_start = loc_regs.pc_start;
             uint64_t pc_end = loc_regs.pc_end;
@@ -1145,7 +1066,7 @@ namespace wechat_backtrace {
 
             temp_instructions_ = instructions;
 
-            Eval(loc_regs.cie, process_memory, loc_regs, regs_total);
+            Eval(context, loc_regs.cie, process_memory, loc_regs);
             temp_instructions_ = nullptr;
 
             if (log) {
@@ -1184,13 +1105,14 @@ namespace wechat_backtrace {
                 prev_instructions = instructions;
                 prev_pc = pc_start;
 
-                estimate_memory_usage += instructions->size();
-                memory_overwhelmed = CHECK_MEMORY_OVERWHELMED(estimate_memory_usage);
+                context.estimate_memory_usage += instructions->size();
+                context.memory_overwhelmed = CHECK_MEMORY_OVERWHELMED(
+                        context.estimate_memory_usage);
             }
             auto entry = std::make_pair(pc_end, instructions);
             (*all_instructions)[pc_start] = entry;
 
-            return !memory_overwhelmed;
+            return !context.memory_overwhelmed;
 
         };
 
@@ -1198,7 +1120,7 @@ namespace wechat_backtrace {
                                            fde->cfa_instructions_offset,
                                            fde->cfa_instructions_end, iterate_loc, callback);
 
-        QUT_LOG("CFA iterate locations ret: %d", ret);
+        QUT_TMP_LOG("CFA iterate locations ret: %d", ret);
 
         return ret;
     }

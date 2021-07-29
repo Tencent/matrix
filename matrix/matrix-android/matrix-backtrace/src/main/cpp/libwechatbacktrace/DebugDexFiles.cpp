@@ -30,6 +30,7 @@
 #include <unwindstack/Regs.h>
 #include <Log.h>
 #include <Predefined.h>
+#include <deps/android-base/include/android-base/logging.h>
 #include "dex_file_external.h"
 
 namespace wechat_backtrace {
@@ -251,6 +252,9 @@ namespace wechat_backtrace {
                 }
             }
         } else {
+
+            // Slow path.
+
             uint64_t addr = 0;
             QUT_LOG("GetMethodInformation search dex file pc -> %llx, maps -> %s [%llx, %llx](+%llx, +%llx, +%llx)",
                     (uint64_t) dex_pc, info->name.c_str(),
@@ -312,26 +316,32 @@ namespace wechat_backtrace {
             return false;
         }
 
-        size_t step_max = _size > 0x1000 ? 0x1000 : (0x1000 - 8);
+        // Search 4K range of memory
+        size_t step_max = (_size > 0x1000) ? 0x1000 : (0x1000 - 8);
 
-        char * start_addr = reinterpret_cast<char *>(info->start);
-        char * _addr = start_addr;
         bool compact_dex = false;
         bool standard_dex = false;
 
-        // Search 4K range of memory
-        for (size_t step = 0; step < step_max;) {
-            _addr = start_addr + step;
+        auto buff = new char[step_max];
+        size_t offset = 0;
+
+        size_t max_read = memory_->Read(info->start, buff, step_max);
+
+        CHECK(max_read <= step_max);
+
+        for (size_t step = 0; step < max_read;) {
+            char * _addr = buff + step;
             if (memcmp(_addr, "dex", 3) == 0) {
                 step += 3;
                 if ((step > 3) && *(_addr - 1) == 'c' && *(_addr + 3) == '0' && *(_addr + 6) == '\0') {
-                    _addr = _addr - 1;
+                    offset = _addr - 1 - buff;
                     compact_dex = true;
                     break;
                 }
 
                 if (*(_addr + 3) == '\n' && *(_addr + 4) == '0' && *(_addr + 7) == '\0') {
                     standard_dex = true;
+                    offset = _addr - buff;
                     break;
                 }
             } else {
@@ -339,9 +349,10 @@ namespace wechat_backtrace {
             }
         }
 
+        delete[] buff;
 
         if (compact_dex || standard_dex) {
-            *addr = reinterpret_cast<uint64_t>(_addr);
+            *addr = reinterpret_cast<uint64_t>(info->start + offset);
             return true;
         }
 

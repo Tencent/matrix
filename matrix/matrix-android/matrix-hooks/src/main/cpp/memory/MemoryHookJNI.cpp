@@ -1,3 +1,19 @@
+/*
+ * Tencent is pleased to support the open source community by making wechat-matrix available.
+ * Copyright (C) 2021 THL A29 Limited, a Tencent company. All rights reserved.
+ * Licensed under the BSD 3-Clause License (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      https://opensource.org/licenses/BSD-3-Clause
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 //
 // Created by Yves on 2019-08-08.
 //
@@ -5,6 +21,7 @@
 #include <xhook.h>
 #include <xh_errno.h>
 #include <common/HookCommon.h>
+#include <common/SoLoadMonitor.h>
 #include "MemoryHookFunctions.h"
 #include "MemoryHook.h"
 
@@ -92,16 +109,7 @@ static void hook(const char *regex) {
 }
 
 static void ignore(const char *regex) {
-
-    for (auto f : HOOK_MALL_FUNCTIONS) {
-        xhook_ignore(regex, f.name);
-    }
-
-    if (enable_mmap_hook) {
-        for (auto f : HOOK_MMAP_FUNCTIONS) {
-            xhook_ignore(regex, f.name);
-        }
-    }
+    xhook_ignore(regex, nullptr);
 }
 
 JNIEXPORT void JNICALL
@@ -191,14 +199,14 @@ Java_com_tencent_matrix_hook_memory_MemoryHook_setStacktraceLogThresholdNative(J
 
 JNIEXPORT void JNICALL
 Java_com_tencent_matrix_hook_memory_MemoryHook_installHooksNative(JNIEnv* env, jobject thiz, jboolean enable_debug) {
-    add_dlopen_hook_callback(memory_hook_on_dlopen);
+    matrix::AddOnSoLoadCallback(memory_hook_on_dlopen);
 
     memory_hook_init();
 
     NOTIFY_COMMON_IGNORE_LIBS();
 
     xhook_enable_debug(enable_debug ? 1 : 0);
-    xhook_enable_sigsegv_protection(0);
+    xhook_enable_sigsegv_protection(enable_debug ? 0 : 1);
 
     // This line only refreshes xhook in matrix-memoryhook library now.
     xhook_refresh(0);

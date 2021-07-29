@@ -253,27 +253,9 @@ dyld_image_info_db *prepare_dyld_image_logger(const char *event_dir) {
     }
 }
 
-bool is_stack_frames_should_skip(uintptr_t *frames, int32_t count, uint64_t malloc_size, uint32_t type_flags) {
-    if (count < 3) {
+bool is_stack_frames_should_skip(uintptr_t *frames, int32_t count, uint64_t malloc_size) {
+    if (count < 2) {
         return true;
-    }
-
-    // skip allocation events from mapped_file
-    if (type_flags & memory_logging_type_mapped_file_or_shared_mem) {
-        if (mmap_func_info.vm_str == 0) {
-            Dl_info info = { 0 };
-            dladdr((const void *)frames[0], &info);
-            if (info.dli_sname && strcmp(info.dli_sname, "mmap") == 0) {
-                mmap_func_info.vm_str = frames[0];
-            }
-        }
-        if (mmap_func_info.vm_str == frames[0]) {
-            if (frames[1] >= app_image_info.vm_str && frames[1] < app_image_info.vm_end) {
-                return false;
-            } else {
-                return true;
-            }
-        }
     }
 
     if (malloc_size >= skip_min_malloc_size) {
@@ -281,7 +263,7 @@ bool is_stack_frames_should_skip(uintptr_t *frames, int32_t count, uint64_t mall
     }
 
     // check whether there's any symbol not in this APP
-    for (int i = MIN(count - 3, skip_max_stack_depth); i >= 1; --i) {
+    for (int i = MIN(count - 1, skip_max_stack_depth); i >= 1; --i) {
         if (frames[i] >= app_image_info.vm_str && frames[i] < app_image_info.vm_end) {
             return false;
         }

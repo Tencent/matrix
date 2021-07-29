@@ -21,6 +21,9 @@ add_library(
       ${SOURCE_DIR}/common/HookCommon.cpp
       ${SOURCE_DIR}/common/ReentrantPrevention.cpp
       ${SOURCE_DIR}/common/Log.cpp
+      ${SOURCE_DIR}/common/Maps.cpp
+      ${SOURCE_DIR}/common/SoLoadMonitor.cpp
+      ${SOURCE_DIR}/common/SemiDlfcn.cpp
 )
 
 target_include_directories(
@@ -55,6 +58,8 @@ set(TARGET matrix-memoryhook)
 add_library(
         ${TARGET}
         SHARED
+        ${SOURCE_DIR}/memory/GCSemiSpaceTrimmer.cpp
+        ${SOURCE_DIR}/memory/GCSemiSpaceTrimmerJNI.cpp
         ${SOURCE_DIR}/memory/MemoryHookJNI.cpp
         ${SOURCE_DIR}/memory/MemoryHook.cpp
         ${SOURCE_DIR}/memory/MemoryHookFunctions.cpp

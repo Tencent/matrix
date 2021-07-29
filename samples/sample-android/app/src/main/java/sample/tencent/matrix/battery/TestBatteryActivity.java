@@ -16,7 +16,6 @@
 
 package sample.tencent.matrix.battery;
 
-import android.animation.Animator;
 import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.app.Activity;
@@ -31,12 +30,16 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.animation.TranslateAnimation;
 import android.widget.Button;
+import android.widget.TextView;
+import android.widget.Toast;
 
 import com.tencent.matrix.Matrix;
+import com.tencent.matrix.batterycanary.BatteryCanary;
 import com.tencent.matrix.batterycanary.BatteryEventDelegate;
 import com.tencent.matrix.batterycanary.BatteryMonitorPlugin;
+import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
+import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature.JiffiesSnapshot.ThreadJiffiesEntry;
 import com.tencent.matrix.plugin.Plugin;
 import com.tencent.matrix.util.MatrixLog;
 
@@ -45,14 +48,13 @@ import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 import sample.tencent.matrix.R;
 
-//import com.tencent.matrix.batterycanary.BatteryCanaryPlugin;
+import static com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature.JiffiesSnapshot;
+import static com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature.Snapshot;
 
-/**
- * Created by zhangshaowen on 17/6/13.
- */
-
+@SuppressLint("LongLogTag")
 public class TestBatteryActivity extends Activity {
     private static final String TAG = "Matrix.TestBatteryActivity";
+    private JiffiesSnapshot mLastJiffiesSnapshot;
 
     private PendingIntent getAlarmPendingIntent(final Context context, final int id, Intent intent) {
         PendingIntent pendingIntent;
@@ -80,6 +82,9 @@ public class TestBatteryActivity extends Activity {
            MatrixLog.i(TAG, "plugin-battery start");
            plugin.start();
        }
+
+        benchmark();
+
 //
 //        final AlarmManager am = (AlarmManager) getApplicationContext().getSystemService(Context.ALARM_SERVICE);
 //        if (am == null) {
@@ -136,6 +141,52 @@ public class TestBatteryActivity extends Activity {
 //                Runtime.getRuntime().gc();
 //            }
 //        }).start();
+    }
+
+    private void benchmark() {
+        tryDumpBatteryStats();
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                while (!isDestroyed()) {}
+            }
+        }, "Benchmark").start();
+    }
+
+    public void onDumpBatteryStats(View view) {
+        tryDumpBatteryStats();
+    }
+
+    void tryDumpBatteryStats() {
+        BatteryCanary.currentJiffies(new BatteryMonitorCore.Callback<JiffiesSnapshot>() {
+            @Override
+            public void onGetJiffies(JiffiesSnapshot currJiffiesSnapshot) {
+                if (mLastJiffiesSnapshot != null) {
+                    // Configure jiffies delta
+                    final Snapshot.Delta<JiffiesSnapshot> delta = currJiffiesSnapshot.diff(mLastJiffiesSnapshot);
+                    findViewById(R.id.tv_battery_stats).post(new Runnable() {
+                        @Override
+                        public void run() {
+                            final String text = BatteryCanaryInitHelper.convertStatsToReadFriendlyText(delta);
+                            Log.i(TAG, "dump jiffies stats: " + text);
+                            TextView.class.cast(findViewById(R.id.tv_battery_stats)).setText(text);
+
+                            if (delta.dlt.threadEntries.getList().size() > 0) {
+                                ThreadJiffiesEntry topThread = delta.dlt.threadEntries.getList().get(0);
+                                if (topThread.get() >= 1000) {
+                                    Toast.makeText(
+                                            getApplication(),
+                                            "Abnormal thread found: " + topThread.name + ", jiffies = " + topThread.get(),
+                                            Toast.LENGTH_LONG
+                                    ).show();
+                                }
+                            }
+                        }
+                    });
+                }
+                mLastJiffiesSnapshot = currJiffiesSnapshot;
+            }
+        });
     }
 
     void tryNotify() {

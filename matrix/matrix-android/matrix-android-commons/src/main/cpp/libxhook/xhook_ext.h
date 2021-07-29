@@ -15,9 +15,6 @@ extern "C" {
 extern int xhook_export_symtable_hook(const char* owner_lib_name, const char* symbol_name, void* handler,
       void** original_address) XHOOK_EXPORT;
 
-extern void* xhook_find_symbol(const char* owner_lib_name, const char* symbol_name);
-
-
 #ifdef __cplusplus
 }
 #endif

@@ -312,6 +312,52 @@ static int xh_check_loaded_so(void *addr) {
     return dladdr(addr, &stack_info);
 }
 
+struct {
+    const char* reversed_suffix;
+    size_t reversed_suffix_len;
+} s_reversed_candidate_suffixes[] = {
+        {"os.", sizeof("os.") - 1},
+#ifdef __LP64__
+        {"46reknil/", sizeof("46reknil/") - 1},
+#else
+        {"reknil/", sizeof("reknil/") - 1},
+#endif
+};
+
+/**
+ * Judge if specified path is ** NOT ** ends with '.so' and '/linker', '/linker64'
+ * return 1 if such path should not be considered to do further parsing.
+ */
+static int xh_is_not_candidate_path(const char* pathname) {
+    if (pathname == NULL) {
+        return 1;
+    }
+    size_t pathname_len = strlen(pathname);
+    size_t reversed_suffix_count = sizeof(s_reversed_candidate_suffixes) / sizeof(s_reversed_candidate_suffixes[0]);
+
+    int idx = 0;
+    int not_match_all_suffixes = 1;
+    for (const char* ch = pathname + pathname_len - 1; ch != pathname; --ch, ++idx) {
+        not_match_all_suffixes = 1;
+        for (int suffix_idx = 0; suffix_idx < reversed_suffix_count; ++suffix_idx) {
+            size_t reversed_suffix_len = s_reversed_candidate_suffixes[suffix_idx].reversed_suffix_len;
+            if (idx >= reversed_suffix_len) {
+                not_match_all_suffixes = 0;
+                break;
+            }
+            const char* reversed_suffix = s_reversed_candidate_suffixes[suffix_idx].reversed_suffix;
+            if (reversed_suffix[idx] == *ch) {
+                not_match_all_suffixes = 0;
+                break;
+            }
+        }
+        if (not_match_all_suffixes) {
+            break;
+        }
+    }
+    return not_match_all_suffixes;
+}
+
 static void xh_core_refresh_impl()
 {
     char                     line[512];
@@ -364,6 +410,7 @@ static void xh_core_refresh_impl()
         }
         if(0 == pathname_len) continue;
         if('[' == pathname[0]) continue;
+        if (xh_is_not_candidate_path(pathname)) continue;
 
         //check pathname
         //if we need to hook this elf?
@@ -386,7 +433,7 @@ static void xh_core_refresh_impl()
 
                 match = 1;
             check_continue:
-                break;
+                continue;
             }
         }
     check_finished:

@@ -64,6 +64,8 @@ SET(
         ${SOURCE_DIR}/libwechatbacktrace/DebugGlobal.cpp
         ${SOURCE_DIR}/libwechatbacktrace/DebugDexFiles.cpp
         ${SOURCE_DIR}/libwechatbacktrace/DebugJit.cpp
+
+        ${SOURCE_DIR}/libwechatbacktrace/QuickenProperties.cpp
 )
 
 ADD_LIBRARY(
