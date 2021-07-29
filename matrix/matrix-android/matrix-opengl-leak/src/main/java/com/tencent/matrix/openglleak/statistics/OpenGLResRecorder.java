@@ -166,10 +166,7 @@ public class OpenGLResRecorder {
                     break;
                 }
 
-                OpenglLeakPlugin.sCallback.onBeforeIgnore(info);
-
                 if (isNeedIgnore(info)) {
-                    OpenglLeakPlugin.sCallback.onIgnoreGLResource(info);
                     item.release();
                     iterator.remove();
                     continue;
@@ -241,6 +238,12 @@ public class OpenGLResRecorder {
                         }
                     }
                 }
+            }
+
+            OpenGLInfo originInfo = OpenGLResRecorder.getInstance().getItemByHashCode(info.hashCode());
+            if (isIgnore && !originInfo.hasIgnored()) {
+                originInfo.registerIgnore();
+                OpenglLeakPlugin.sCallback.onIgnoreGLResource(originInfo);
             }
 
             return isIgnore;

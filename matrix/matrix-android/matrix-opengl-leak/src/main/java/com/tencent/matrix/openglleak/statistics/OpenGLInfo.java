@@ -22,6 +22,8 @@ public class OpenGLInfo {
 
     private boolean isRelease;
 
+    private boolean hasIgnore = false;
+
     private boolean maybeLeak = false;
     private long maybeLeakCheckTime = 0L;
     private boolean isReported = false;
@@ -119,6 +121,14 @@ public class OpenGLInfo {
             }
         }
         return nativeStack;
+    }
+
+    public void registerIgnore() {
+        hasIgnore = true;
+    }
+
+    public boolean hasIgnored() {
+        return hasIgnore;
     }
 
     public boolean getMaybeLeak() {
