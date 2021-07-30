@@ -110,8 +110,6 @@ typedef struct {
     void       **origin_ptr;
 } HookFunction;
 
-typedef void (*hook_init_callback_t)();
-
 EXPORT bool get_java_stacktrace(char *stack_dst, size_t size);
 
 #ifdef __cplusplus
