@@ -26,6 +26,17 @@
   #define XH_LOG_TAG "xhook_ext"
 #endif
 
+int xhook_grouped_register(int group_id, const char *pathname_regex_str, const char *symbol, void *new_func,
+        void **old_func)
+{
+    return xh_core_grouped_register(group_id, pathname_regex_str, symbol, new_func, old_func);
+}
+
+int xhook_grouped_ignore(int group_id, const char *pathname_regex_str, const char *symbol)
+{
+    return xh_core_grouped_ignore(group_id, pathname_regex_str, symbol);
+}
+
 void* xhook_elf_open(const char *path)
 {
     return xh_core_elf_open(path);

@@ -42,47 +42,6 @@
 
 #define XH_CORE_DEBUG 0
 
-//registered hook info collection
-typedef struct xh_core_hook_info
-{
-#if XH_CORE_DEBUG
-    char     *pathname_regex_str;
-#endif
-    regex_t   pathname_regex;
-    char     *symbol;
-    void     *new_func;
-    void    **old_func;
-    TAILQ_ENTRY(xh_core_hook_info,) link;
-} xh_core_hook_info_t;
-typedef TAILQ_HEAD(xh_core_hook_info_queue, xh_core_hook_info,) xh_core_hook_info_queue_t;
-
-//ignored hook info collection
-typedef struct xh_core_ignore_info
-{
-#if XH_CORE_DEBUG
-    char     *pathname_regex_str;
-#endif
-    regex_t   pathname_regex;
-    char     *symbol; //NULL meaning for all symbols
-    TAILQ_ENTRY(xh_core_ignore_info,) link;
-} xh_core_ignore_info_t;
-typedef TAILQ_HEAD(xh_core_ignore_info_queue, xh_core_ignore_info,) xh_core_ignore_info_queue_t;
-
-//required info from /proc/self/maps
-typedef struct xh_core_map_info
-{
-    char      *pathname;
-    uintptr_t  base_addr;
-    xh_elf_t   elf;
-    RB_ENTRY(xh_core_map_info) link;
-} xh_core_map_info_t;
-static __inline__ int xh_core_map_info_cmp(xh_core_map_info_t *a, xh_core_map_info_t *b)
-{
-    return strcmp(a->pathname, b->pathname);
-}
-typedef RB_HEAD(xh_core_map_info_tree, xh_core_map_info) xh_core_map_info_tree_t;
-RB_GENERATE_STATIC(xh_core_map_info_tree, xh_core_map_info, link, xh_core_map_info_cmp)
-
 //signal handler for SIGSEGV
 //for xh_elf_init(), xh_elf_hook(), xh_elf_check_elfheader()
 static int              xh_core_sigsegv_enable = 1; //enable by default
@@ -120,23 +79,90 @@ static void xh_core_del_sigsegv_handler()
 }
 
 
-static xh_core_hook_info_queue_t   xh_core_hook_info   = TAILQ_HEAD_INITIALIZER(xh_core_hook_info);
-static xh_core_ignore_info_queue_t xh_core_ignore_info = TAILQ_HEAD_INITIALIZER(xh_core_ignore_info);
-static xh_core_map_info_tree_t     xh_core_map_info    = RB_INITIALIZER(&xh_core_map_info);
-static pthread_mutex_t             xh_core_mutex       = PTHREAD_MUTEX_INITIALIZER;
-static pthread_cond_t              xh_core_cond        = PTHREAD_COND_INITIALIZER;
-static volatile int                xh_core_inited      = 0;
-static volatile int                xh_core_init_ok     = 0;
-static volatile int                xh_core_async_inited  = 0;
-static volatile int                xh_core_async_init_ok = 0;
-static pthread_mutex_t             xh_core_refresh_mutex = PTHREAD_MUTEX_INITIALIZER;
-static pthread_t                   xh_core_refresh_thread_tid;
-static volatile int                xh_core_refresh_thread_running = 0;
-static volatile int                xh_core_refresh_thread_do = 0;
+//registered hook info collection
+typedef struct xh_core_hook_info
+{
+#if XH_CORE_DEBUG
+    char     *pathname_regex_str;
+#endif
+    regex_t   pathname_regex;
+    char     *symbol;
+    void     *new_func;
+    void    **old_func;
+    TAILQ_ENTRY(xh_core_hook_info,) link;
+} xh_core_hook_info_t;
+typedef TAILQ_HEAD(xh_core_hook_info_queue, xh_core_hook_info,) xh_core_hook_info_queue_t;
+
+//ignored hook info collection
+typedef struct xh_core_ignore_info
+{
+#if XH_CORE_DEBUG
+    char     *pathname_regex_str;
+#endif
+    regex_t   pathname_regex;
+    char     *symbol; //NULL meaning for all symbols
+    TAILQ_ENTRY(xh_core_ignore_info,) link;
+} xh_core_ignore_info_t;
+typedef TAILQ_HEAD(xh_core_ignore_info_queue, xh_core_ignore_info,) xh_core_ignore_info_queue_t;
+
+//required for grouped requests
+typedef struct xh_core_request_group
+{
+    int group_id;
+    xh_core_hook_info_queue_t hook_infos;
+    xh_core_ignore_info_queue_t ignore_infos;
+    RB_ENTRY(xh_core_request_group) link;
+} xh_core_request_group_t;
+static __inline__ int xh_core_request_group_cmp(xh_core_request_group_t *a, xh_core_request_group_t *b)
+{
+    return a->group_id - b->group_id;
+}
+typedef RB_HEAD(xh_core_request_group_tree, xh_core_request_group) xh_core_request_group_tree_t;
+RB_GENERATE_STATIC(xh_core_request_group_tree, xh_core_request_group, link, xh_core_request_group_cmp)
+
+static void xh_core_init_request_group(xh_core_request_group_t* request_group, int group_id)
+{
+    request_group->group_id = group_id;
+    request_group->hook_infos.tqh_first = NULL;
+    request_group->hook_infos.tqh_last = &request_group->hook_infos.tqh_first;
+    request_group->ignore_infos.tqh_first = NULL;
+    request_group->ignore_infos.tqh_last = &request_group->ignore_infos.tqh_first;
+}
+
+//required info from /proc/self/maps
+typedef struct xh_core_map_info
+{
+    char      *pathname;
+    uintptr_t  base_addr;
+    xh_elf_t   elf;
+    RB_ENTRY(xh_core_map_info) link;
+} xh_core_map_info_t;
+static __inline__ int xh_core_map_info_cmp(xh_core_map_info_t *a, xh_core_map_info_t *b)
+{
+    return strcmp(a->pathname, b->pathname);
+}
+typedef RB_HEAD(xh_core_map_info_tree, xh_core_map_info) xh_core_map_info_tree_t;
+RB_GENERATE_STATIC(xh_core_map_info_tree, xh_core_map_info, link, xh_core_map_info_cmp)
+
+static xh_core_hook_info_queue_t    xh_core_hook_info = TAILQ_HEAD_INITIALIZER(xh_core_hook_info);
+static xh_core_ignore_info_queue_t  xh_core_ignore_info = TAILQ_HEAD_INITIALIZER(xh_core_ignore_info);
+static xh_core_request_group_tree_t xh_core_request_groups = RB_INITIALIZER(&xh_core_request_groups);
+static xh_core_map_info_tree_t      xh_core_map_info = RB_INITIALIZER(&xh_core_map_info);
+static pthread_mutex_t              xh_core_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t               xh_core_cond = PTHREAD_COND_INITIALIZER;
+static volatile int                 xh_core_inited = 0;
+static volatile int                 xh_core_init_ok = 0;
+static volatile int                 xh_core_async_inited = 0;
+static volatile int                 xh_core_async_init_ok = 0;
+static pthread_mutex_t              xh_core_refresh_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_t                    xh_core_refresh_thread_tid;
+static volatile int                 xh_core_refresh_thread_running = 0;
+static volatile int                 xh_core_refresh_thread_do = 0;
 
 
-int xh_core_register(const char *pathname_regex_str, const char *symbol,
-                     void *new_func, void **old_func)
+static int xh_core_register_impl(xh_core_hook_info_queue_t *info_queue,
+                                 const char *pathname_regex_str, const char *symbol,
+                                 void *new_func, void **old_func)
 {
     xh_core_hook_info_t *hi;
     regex_t              regex;
@@ -170,13 +196,20 @@ int xh_core_register(const char *pathname_regex_str, const char *symbol,
     hi->old_func = old_func;
 
     pthread_mutex_lock(&xh_core_mutex);
-    TAILQ_INSERT_TAIL(&xh_core_hook_info, hi, link);
+    TAILQ_INSERT_TAIL(info_queue, hi, link);
     pthread_mutex_unlock(&xh_core_mutex);
 
     return 0;
 }
 
-int xh_core_ignore(const char *pathname_regex_str, const char *symbol)
+int xh_core_register(const char *pathname_regex_str, const char *symbol,
+                     void *new_func, void **old_func)
+{
+    return xh_core_register_impl(&xh_core_hook_info, pathname_regex_str, symbol, new_func, old_func);
+}
+
+static int xh_core_ignore_impl(xh_core_ignore_info_queue_t *info_queue,
+                               const char *pathname_regex_str, const char *symbol)
 {
     xh_core_ignore_info_t *ii;
     regex_t                regex;
@@ -215,10 +248,54 @@ int xh_core_ignore(const char *pathname_regex_str, const char *symbol)
     ii->pathname_regex = regex;
 
     pthread_mutex_lock(&xh_core_mutex);
-    TAILQ_INSERT_TAIL(&xh_core_ignore_info, ii, link);
+    TAILQ_INSERT_TAIL(info_queue, ii, link);
     pthread_mutex_unlock(&xh_core_mutex);
 
     return 0;
+}
+
+int xh_core_ignore(const char *pathname_regex_str, const char *symbol)
+{
+    return xh_core_ignore_impl(&xh_core_ignore_info, pathname_regex_str, symbol);
+}
+
+int xh_core_grouped_register(int group_id, const char *pathname_regex_str, const char *symbol,
+                             void *new_func, void **old_func)
+{
+    xh_core_request_group_t *group = NULL;
+
+    xh_core_request_group_t group_key = {};
+    group_key.group_id = group_id;
+
+    if ((group = RB_FIND(xh_core_request_group_tree, &xh_core_request_groups, &group_key)) != NULL)
+    {
+        return xh_core_register_impl(&group->hook_infos, pathname_regex_str, symbol, new_func, old_func);
+    } else {
+        group = (xh_core_request_group_t*) malloc(sizeof(xh_core_request_group_t));
+        if (group == NULL) return XH_ERRNO_NOMEM;
+        xh_core_init_request_group(group, group_id);
+        RB_INSERT(xh_core_request_group_tree, &xh_core_request_groups, group);
+        return xh_core_register_impl(&group->hook_infos, pathname_regex_str, symbol, new_func, old_func);
+    }
+}
+
+int xh_core_grouped_ignore(int group_id, const char *pathname_regex_str, const char *symbol)
+{
+    xh_core_request_group_t *group = NULL;
+
+    xh_core_request_group_t group_key = {};
+    group_key.group_id = group_id;
+
+    if ((group = RB_FIND(xh_core_request_group_tree, &xh_core_request_groups, &group_key)) != NULL)
+    {
+        return xh_core_ignore_impl(&group->ignore_infos, pathname_regex_str, symbol);
+    } else {
+        group = (xh_core_request_group_t*) malloc(sizeof(xh_core_request_group_t));
+        if (group == NULL) return XH_ERRNO_NOMEM;
+        xh_core_init_request_group(group, group_id);
+        RB_INSERT(xh_core_request_group_tree, &xh_core_request_groups, group);
+        return xh_core_ignore_impl(&group->ignore_infos, pathname_regex_str, symbol);
+    }
 }
 
 static int xh_core_check_elf_header(uintptr_t base_addr, const char *pathname)
@@ -246,7 +323,9 @@ static int xh_core_check_elf_header(uintptr_t base_addr, const char *pathname)
     }
 }
 
-static void xh_core_hook_impl(xh_core_map_info_t *mi)
+static void xh_core_hook_impl_with_spec_info(xh_core_map_info_t *mi,
+                                             xh_core_hook_info_queue_t *hook_infos,
+                                             xh_core_ignore_info_queue_t *ignore_infos)
 {
     //init
     if(0 != xh_elf_init(&(mi->elf), mi->base_addr, mi->pathname)) return;
@@ -255,12 +334,12 @@ static void xh_core_hook_impl(xh_core_map_info_t *mi)
     xh_core_hook_info_t   *hi;
     xh_core_ignore_info_t *ii;
     int ignore;
-    TAILQ_FOREACH(hi, &xh_core_hook_info, link) //find hook info
+    TAILQ_FOREACH(hi, hook_infos, link) //find hook info
     {
         if(0 == regexec(&(hi->pathname_regex), mi->pathname, 0, NULL, 0))
         {
             ignore = 0;
-            TAILQ_FOREACH(ii, &xh_core_ignore_info, link) //find ignore info
+            TAILQ_FOREACH(ii, ignore_infos, link) //find ignore info
             {
                 if(0 == regexec(&(ii->pathname_regex), mi->pathname, 0, NULL, 0))
                 {
@@ -278,6 +357,18 @@ static void xh_core_hook_impl(xh_core_map_info_t *mi)
             if(0 == ignore)
                 xh_elf_hook(&(mi->elf), hi->symbol, hi->new_func, hi->old_func);
         }
+    }
+}
+
+static void xh_core_hook_impl(xh_core_map_info_t *mi)
+{
+    xh_core_request_group_t *group, *tmp_group;
+
+    xh_core_hook_impl_with_spec_info(mi, &xh_core_hook_info, &xh_core_ignore_info);
+
+    RB_FOREACH_SAFE(group, xh_core_request_group_tree, &xh_core_request_groups, tmp_group)
+    {
+        xh_core_hook_impl_with_spec_info(mi, &group->hook_infos, &group->ignore_infos);
     }
 }
 
@@ -358,6 +449,40 @@ static int xh_is_not_candidate_path(const char* pathname) {
     return not_match_all_suffixes;
 }
 
+static int is_current_pathname_matches_any_requests(xh_core_hook_info_queue_t *hook_infos,
+                                                    xh_core_ignore_info_queue_t *ignore_infos,
+                                                    const char *pathname)
+{
+    xh_core_hook_info_t *hi;
+    xh_core_ignore_info_t *ii;
+    int match = 0;
+    TAILQ_FOREACH(hi, hook_infos, link) //find hook info
+    {
+        if(0 == regexec(&(hi->pathname_regex), pathname, 0, NULL, 0))
+        {
+            TAILQ_FOREACH(ii, ignore_infos, link) //find ignore info
+            {
+                if(0 == regexec(&(ii->pathname_regex), pathname, 0, NULL, 0))
+                {
+                    if(NULL == ii->symbol)
+                        goto check_finished;
+
+                    if(0 == strcmp(ii->symbol, hi->symbol))
+                        goto check_continue;
+                }
+            }
+
+            match = 1;
+            break;
+
+            check_continue:
+            continue;
+        }
+    }
+    check_finished:
+    return match;
+}
+
 static void xh_core_refresh_impl()
 {
     char                     line[512];
@@ -372,7 +497,7 @@ static void xh_core_refresh_impl()
     xh_core_map_info_t       mi_key;
     xh_core_hook_info_t     *hi;
     xh_core_ignore_info_t   *ii;
-    int                      match;
+    xh_core_request_group_t *req_group, *req_group_tmp;
     xh_core_map_info_tree_t  map_info_refreshed = RB_INITIALIZER(&map_info_refreshed);
 
     if(NULL == (fp = fopen("/proc/self/maps", "r")))
@@ -414,30 +539,25 @@ static void xh_core_refresh_impl()
 
         //check pathname
         //if we need to hook this elf?
-        match = 0;
-        TAILQ_FOREACH(hi, &xh_core_hook_info, link) //find hook info
+        if (!is_current_pathname_matches_any_requests(&xh_core_hook_info, &xh_core_ignore_info, pathname))
         {
-            if(0 == regexec(&(hi->pathname_regex), pathname, 0, NULL, 0))
+            XH_LOG_INFO("'%s' does not match default request group, try other groups.", pathname);
+            RB_FOREACH_SAFE(req_group, xh_core_request_group_tree, &xh_core_request_groups, req_group_tmp)
             {
-                TAILQ_FOREACH(ii, &xh_core_ignore_info, link) //find ignore info
+                XH_LOG_DEBUG("loop group: %d", req_group->group_id);
+                if (is_current_pathname_matches_any_requests(&req_group->hook_infos,
+                                                             &req_group->ignore_infos, pathname))
                 {
-                    if(0 == regexec(&(ii->pathname_regex), pathname, 0, NULL, 0))
-                    {
-                        if(NULL == ii->symbol)
-                            goto check_finished;
-
-                        if(0 == strcmp(ii->symbol, hi->symbol))
-                            goto check_continue;
-                    }
+                    goto check_finished;
                 }
-
-                match = 1;
-            check_continue:
-                continue;
+                XH_LOG_INFO("'%s' does not match group %d, try other groups.", pathname, req_group->group_id);
             }
+            // Does not match any requests, parse next map line.
+            continue;
         }
-    check_finished:
-        if(0 == match) continue;
+
+        check_finished:
+        XH_LOG_INFO("'%s' matches hook request, do further checks.", pathname);
 
         if (0 == xh_check_loaded_so((void *)base_addr)) {
             XH_LOG_ERROR("%p is not loaded by linker %s", (void *)base_addr, line + pathname_pos);
