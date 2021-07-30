@@ -169,11 +169,11 @@ static int xh_core_register_impl(xh_core_hook_info_queue_t *info_queue,
 
     if(NULL == pathname_regex_str || NULL == symbol || NULL == new_func) return XH_ERRNO_INVAL;
 
-    if(xh_core_inited)
-    {
-        XH_LOG_ERROR("do not register hook after refresh(): %s, %s", pathname_regex_str, symbol);
-        return XH_ERRNO_INVAL;
-    }
+    // if(xh_core_inited)
+    // {
+    //     XH_LOG_ERROR("do not register hook after refresh(): %s, %s", pathname_regex_str, symbol);
+    //     return XH_ERRNO_INVAL;
+    // }
 
     if(0 != regcomp(&regex, pathname_regex_str, REG_NOSUB)) return XH_ERRNO_INVAL;
 
@@ -216,11 +216,11 @@ static int xh_core_ignore_impl(xh_core_ignore_info_queue_t *info_queue,
 
     if(NULL == pathname_regex_str) return XH_ERRNO_INVAL;
 
-    if(xh_core_inited)
-    {
-        XH_LOG_ERROR("do not ignore hook after refresh(): %s, %s", pathname_regex_str, symbol ? symbol : "ALL");
-        return XH_ERRNO_INVAL;
-    }
+    // if(xh_core_inited)
+    // {
+    //     XH_LOG_ERROR("do not ignore hook after refresh(): %s, %s", pathname_regex_str, symbol ? symbol : "ALL");
+    //     return XH_ERRNO_INVAL;
+    // }
 
     if(0 != regcomp(&regex, pathname_regex_str, REG_NOSUB)) return XH_ERRNO_INVAL;
 
