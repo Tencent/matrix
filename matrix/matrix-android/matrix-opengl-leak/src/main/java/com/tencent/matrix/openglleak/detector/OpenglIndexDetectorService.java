@@ -5,6 +5,7 @@ import android.content.Intent;
 import android.os.IBinder;
 import android.os.RemoteException;
 
+import com.tencent.matrix.openglleak.OpenglLeakPlugin;
 import com.tencent.matrix.openglleak.comm.FuncNameString;
 import com.tencent.matrix.openglleak.hook.OpenGLHook;
 import com.tencent.matrix.openglleak.utils.EGLHelper;
@@ -65,6 +66,7 @@ public class OpenglIndexDetectorService extends Service {
 
         if ((glGenTexturesIndex * glDeleteTexturesIndex * glGenBuffersIndex * glDeleteBuffersIndex * glGenFramebuffersIndex * glDeleteFramebuffersIndex * glGenRenderbuffersIndex * glDeleteRenderbuffersIndex) == 0) {
             MatrixLog.e(TAG, "seek func index fail!");
+            OpenglLeakPlugin.sCallback.onHookFail();
             return null;
         }
 
@@ -79,6 +81,8 @@ public class OpenglIndexDetectorService extends Service {
         out.put(FuncNameString.GL_DELETE_RENDERBUFFERS, glDeleteRenderbuffersIndex);
 
         MatrixLog.i(TAG, "seek func index succ!");
+        OpenglLeakPlugin.sCallback.onHookSuccess();
+
         return out;
     }
 

@@ -16,5 +16,12 @@ public interface OpenglReportCallback {
 
     void onLeakTrigger(OpenGLInfo info);
 
+    void onExpProcessSuccess();
+
+    void onExpProcessFail();
+
+    void onHookSuccess();
+
+    void onHookFail();
 
 }

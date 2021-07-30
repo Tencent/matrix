@@ -106,6 +106,7 @@ public class OpenglLeakPlugin extends Plugin {
         context.bindService(service, new ServiceConnection() {
             @Override
             public void onServiceConnected(ComponentName componentName, final IBinder iBinder) {
+                OpenglLeakPlugin.sCallback.onExpProcessSuccess();
                 new Thread(new Runnable() {
                     @Override
                     public void run() {
@@ -117,6 +118,7 @@ public class OpenglLeakPlugin extends Plugin {
             @Override
             public void onServiceDisconnected(ComponentName componentName) {
                 context.unbindService(this);
+                OpenglLeakPlugin.sCallback.onExpProcessFail();
             }
         }, context.BIND_AUTO_CREATE);
     }
