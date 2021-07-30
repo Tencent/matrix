@@ -200,17 +200,9 @@ Java_com_tencent_matrix_hook_memory_MemoryHook_setStacktraceLogThresholdNative(J
 
 JNIEXPORT void JNICALL
 Java_com_tencent_matrix_hook_memory_MemoryHook_installHooksNative(JNIEnv* env, jobject thiz, jboolean enable_debug) {
-    matrix::AddOnSoLoadCallback(memory_hook_on_dlopen);
-
     memory_hook_init();
 
     NOTIFY_COMMON_IGNORE_LIBS(HOOK_REQUEST_GROUPID_MEMORY);
-
-    xhook_enable_debug(enable_debug ? 1 : 0);
-    xhook_enable_sigsegv_protection(enable_debug ? 0 : 1);
-
-    // This line only refreshes xhook in matrix-memoryhook library now.
-    xhook_refresh(0);
 }
 
 #ifdef __cplusplus

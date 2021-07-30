@@ -138,7 +138,6 @@ namespace pthread_hook {
                                    (void *) HANDLER_FUNC_NAME(pthread_setname_np), nullptr);
             xhook_enable_debug(enable_debug ? 1 : 0);
             xhook_enable_sigsegv_protection(enable_debug ? 0 : 1);
-            xhook_refresh(0);
         }
         matrix::ResumeLoadSo();
     }

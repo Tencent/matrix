@@ -130,7 +130,6 @@ Java_com_tencent_matrix_hook_HookManager_doFinalInitializeNative(JNIEnv *env, jo
     xhook_enable_debug(debug ? 1 : 0);
     xhook_enable_sigsegv_protection(debug ? 0 : 1);
 
-    // This line only refresh xhook in matrix-hookcommon library now.
     int ret = xhook_refresh(0);
     if (ret != 0) {
         LOGE(TAG, "Fail to call xhook_refresh, ret: %d", ret);
