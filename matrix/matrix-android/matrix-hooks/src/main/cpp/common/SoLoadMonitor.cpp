@@ -189,8 +189,8 @@ namespace matrix {
                 LOGE(LOG_TAG, "Fail to find original __loader_dlopen.");
                 return false;
             }
-            if (UNLIKELY(xhook_register(".*\\.so$", "__loader_dlopen",
-                    reinterpret_cast<void*>(__loader_dlopen_handler), nullptr) != 0)) {
+            if (UNLIKELY(xhook_grouped_register(HOOK_REQUEST_GROUPID_DLOPEN_MON, ".*\\.so$", "__loader_dlopen",
+                                                reinterpret_cast<void*>(__loader_dlopen_handler), nullptr) != 0)) {
                 LOGE(LOG_TAG, "Fail to register __loader_dlopen hook handler.");
                 return false;
             }
@@ -205,8 +205,8 @@ namespace matrix {
                 LOGE(LOG_TAG, "Fail to find original __loader_android_dlopen_ext.");
                 return false;
             }
-            if (UNLIKELY(xhook_register(".*\\.so$", "__loader_android_dlopen_ext",
-                    reinterpret_cast<void*>(__loader_android_dlopen_ext_handler), nullptr) != 0)) {
+            if (UNLIKELY(xhook_grouped_register(HOOK_REQUEST_GROUPID_DLOPEN_MON, ".*\\.so$", "__loader_android_dlopen_ext",
+                                                reinterpret_cast<void*>(__loader_android_dlopen_ext_handler), nullptr) != 0)) {
                 LOGE(LOG_TAG, "Fail to register __loader_android_dlopen_ext hook handler.");
                 return false;
             }
@@ -216,8 +216,8 @@ namespace matrix {
                 LOGE(LOG_TAG, "Fail to find original dlopen.");
                 return false;
             }
-            if (UNLIKELY(xhook_register(".*\\.so$", "dlopen",
-                    reinterpret_cast<void*>(dlopen_handler), nullptr) != 0)) {
+            if (UNLIKELY(xhook_grouped_register(HOOK_REQUEST_GROUPID_DLOPEN_MON, ".*\\.so$", "dlopen",
+                                                reinterpret_cast<void*>(dlopen_handler), nullptr) != 0)) {
                 LOGE(LOG_TAG, "Fail to register dlopen hook handler.");
                 return false;
             }
@@ -228,15 +228,15 @@ namespace matrix {
                 LOGE(LOG_TAG, "Fail to find original android_dlopen_ext.");
                 return false;
             }
-            if (UNLIKELY(xhook_register(".*\\.so$", "android_dlopen_ext",
-                    reinterpret_cast<void*>(android_dlopen_ext_handler), nullptr) != 0)) {
+            if (UNLIKELY(xhook_grouped_register(HOOK_REQUEST_GROUPID_DLOPEN_MON, ".*\\.so$", "android_dlopen_ext",
+                                                reinterpret_cast<void*>(android_dlopen_ext_handler), nullptr) != 0)) {
                 LOGE(LOG_TAG, "Fail to register android_dlopen_ext hook handler.");
                 return false;
             }
         }
-        xhook_ignore(LINKER_NAME_PATTERN, nullptr);
-        xhook_ignore(".*/libpatrons\\.so$", nullptr);
-        xhook_ignore(".*/libwebviewchromium_loader\\.so$", nullptr);
+        xhook_grouped_ignore(HOOK_REQUEST_GROUPID_DLOPEN_MON, LINKER_NAME_PATTERN, nullptr);
+        xhook_grouped_ignore(HOOK_REQUEST_GROUPID_DLOPEN_MON, ".*/libpatrons\\.so$", nullptr);
+        xhook_grouped_ignore(HOOK_REQUEST_GROUPID_DLOPEN_MON, ".*/libwebviewchromium_loader\\.so$", nullptr);
         sInstalled = true;
         return true;
     }

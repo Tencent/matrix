@@ -132,10 +132,10 @@ namespace pthread_hook {
             ret = xhook_export_symtable_hook("libc.so", "pthread_setname_np",
                                              (void *) HANDLER_FUNC_NAME(pthread_setname_np), nullptr);
             LOGD(LOG_TAG, "export table hook sym: pthread_setname_np, ret: %d", ret);
-            xhook_register(".*/.*\\.so$", "pthread_create",
-                           (void *) HANDLER_FUNC_NAME(pthread_create), nullptr);
-            xhook_register(".*/.*\\.so$", "pthread_setname_np",
-                           (void *) HANDLER_FUNC_NAME(pthread_setname_np), nullptr);
+            xhook_grouped_register(HOOK_REQUEST_GROUPID_PTHREAD, ".*/.*\\.so$", "pthread_create",
+                                   (void *) HANDLER_FUNC_NAME(pthread_create), nullptr);
+            xhook_grouped_register(HOOK_REQUEST_GROUPID_PTHREAD, ".*/.*\\.so$", "pthread_setname_np",
+                                   (void *) HANDLER_FUNC_NAME(pthread_setname_np), nullptr);
             xhook_enable_debug(enable_debug ? 1 : 0);
             xhook_enable_sigsegv_protection(enable_debug ? 0 : 1);
             xhook_refresh(0);

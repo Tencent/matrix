@@ -52,6 +52,8 @@
 #define HOOK_CONNECT_PATH "/dev/socket/tombstoned_java_trace"
 #define HOOK_OPEN_PATH "/data/anr/traces.txt"
 
+#define HOOK_REQUEST_GROUPID_THREAD_PRIO_TRACE 0x01
+
 using namespace MatrixTracer;
 
 static std::optional<AnrDumper> sAnrDumper;
@@ -277,8 +279,10 @@ static void nativeFreeSignalAnrDetective(JNIEnv *env, jclass) {
 }
 
 static void nativeInitMainThreadPriorityDetective(JNIEnv *env, jclass) {
-    xhook_register(".*\\.so$", "setpriority", (void *) my_setpriority, (void **) (&original_setpriority));
-    xhook_register(".*\\.so$", "prctl", (void *) my_prctl, (void **) (&original_prctl));
+    xhook_grouped_register(HOOK_REQUEST_GROUPID_THREAD_PRIO_TRACE, ".*\\.so$", "setpriority",
+            (void *) my_setpriority, (void **) (&original_setpriority));
+    xhook_grouped_register(HOOK_REQUEST_GROUPID_THREAD_PRIO_TRACE, ".*\\.so$", "prctl",
+            (void *) my_prctl, (void **) (&original_prctl));
     xhook_refresh(true);
 }
 

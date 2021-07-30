@@ -1,5 +1,4 @@
 {
     local:
         xh_*;
-        xhook_*;
 };
