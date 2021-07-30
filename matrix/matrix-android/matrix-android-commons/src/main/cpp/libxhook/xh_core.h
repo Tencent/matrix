@@ -43,7 +43,7 @@ void xh_core_enable_sigsegv_protection(int flag);
 
 void* xh_core_elf_open(const char *path);
 
-int xh_core_hook_symbol(void* h_lib, const char* symbol, void* new_func, void** old_func);
+int xh_core_got_hook_symbol(void* h_lib, const char* symbol, void* new_func, void** old_func);
 
 void xh_core_elf_close(void *h_lib);
 
