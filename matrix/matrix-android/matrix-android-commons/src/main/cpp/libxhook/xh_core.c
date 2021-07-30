@@ -39,6 +39,7 @@
 #include "xh_elf.h"
 #include "xh_version.h"
 #include "xh_core.h"
+#include "xh_maps.h"
 
 #define XH_CORE_DEBUG 0
 
@@ -327,9 +328,6 @@ static void xh_core_hook_impl_with_spec_info(xh_core_map_info_t *mi,
                                              xh_core_hook_info_queue_t *hook_infos,
                                              xh_core_ignore_info_queue_t *ignore_infos)
 {
-    //init
-    if(0 != xh_elf_init(&(mi->elf), mi->base_addr, mi->pathname)) return;
-
     //hook
     xh_core_hook_info_t   *hi;
     xh_core_ignore_info_t *ii;
@@ -362,10 +360,12 @@ static void xh_core_hook_impl_with_spec_info(xh_core_map_info_t *mi,
 
 static void xh_core_hook_impl(xh_core_map_info_t *mi)
 {
-    xh_core_request_group_t *group, *tmp_group;
+    //init
+    if(0 != xh_elf_init(&(mi->elf), mi->base_addr, mi->pathname)) return;
 
     xh_core_hook_impl_with_spec_info(mi, &xh_core_hook_info, &xh_core_ignore_info);
 
+    xh_core_request_group_t *group, *tmp_group;
     RB_FOREACH_SAFE(group, xh_core_request_group_tree, &xh_core_request_groups, tmp_group)
     {
         xh_core_hook_impl_with_spec_info(mi, &group->hook_infos, &group->ignore_infos);
@@ -437,144 +437,116 @@ static int is_current_pathname_matches_any_requests(xh_core_hook_info_queue_t *h
     return match;
 }
 
+static int xh_core_maps_iterate_cb(void* data, uintptr_t start, uintptr_t end, char* perms, int offset, char* pathname)
+{
+    xh_core_map_info_tree_t* map_info_refreshed = (xh_core_map_info_tree_t*) data;
+
+    //check permission
+    if (perms[0] != 'r') return 0;
+    if (perms[3] != 'p') return 0; //do not touch the shared memory
+
+    //check offset
+    //
+    //We are trying to find ELF header in memory.
+    //It can only be found at the beginning of a mapped memory regions
+    //whose offset is 0.
+    if(0 != offset) return 0;
+
+    if('[' == pathname[0]) return 0;
+
+    //check pathname
+    //if we need to hook this elf?
+    if (!is_current_pathname_matches_any_requests(&xh_core_hook_info, &xh_core_ignore_info, pathname))
+    {
+        XH_LOG_INFO("'%s' does not match default request group, try other groups.", pathname);
+        xh_core_request_group_t* req_group;
+        xh_core_request_group_t* req_group_tmp;
+        RB_FOREACH_SAFE(req_group, xh_core_request_group_tree, &xh_core_request_groups, req_group_tmp)
+        {
+            XH_LOG_DEBUG("loop group: %d", req_group->group_id);
+            if (is_current_pathname_matches_any_requests(&req_group->hook_infos,
+                                                         &req_group->ignore_infos, pathname))
+            {
+                goto check_finished;
+            }
+            XH_LOG_INFO("'%s' does not match group %d, try other groups.", pathname, req_group->group_id);
+        }
+        // Does not match any requests, parse next map line.
+        return 0;
+    }
+
+    check_finished:
+    XH_LOG_INFO("'%s' matches hook request, do further checks.", pathname);
+
+    if (0 == xh_check_loaded_so((void *) start)) {
+        XH_LOG_ERROR("%p is not loaded by linker %s", (void *) start, pathname);
+        return 0; // do not touch the so that not loaded by linker
+    }
+
+    //check elf header format
+    //We are trying to do ELF header checking as late as possible.
+    if(0 != xh_core_check_elf_header(start, pathname)) return 0;
+
+    //check existed map item
+    xh_core_map_info_t mi_key;
+    mi_key.pathname = pathname;
+    xh_core_map_info_t* mi;
+    if(NULL != (mi = RB_FIND(xh_core_map_info_tree, &xh_core_map_info, &mi_key)))
+    {
+        //exist
+        RB_REMOVE(xh_core_map_info_tree, &xh_core_map_info, mi);
+
+        //repeated?
+        //We only keep the first one, that is the real base address
+        if(NULL != RB_INSERT(xh_core_map_info_tree, map_info_refreshed, mi))
+        {
+            free(mi->pathname);
+            free(mi);
+            return 0;
+        }
+
+        //re-hook if base_addr changed
+        if(mi->base_addr != start)
+        {
+            mi->base_addr = start;
+            xh_core_hook(mi);
+        }
+    }
+    else
+    {
+        //not exist, create a new map info
+        if(NULL == (mi = (xh_core_map_info_t *) malloc(sizeof(xh_core_map_info_t)))) return 0;
+        if(NULL == (mi->pathname = strdup(pathname)))
+        {
+            free(mi);
+            return 0;
+        }
+        mi->base_addr = start;
+
+        //repeated?
+        //We only keep the first one, that is the real base address
+        if(NULL != RB_INSERT(xh_core_map_info_tree, map_info_refreshed, mi))
+        {
+            free(mi->pathname);
+            free(mi);
+            return 0;
+        }
+
+        //hook
+        xh_core_hook(mi); //hook
+    }
+    return 0;
+}
+
 static void xh_core_refresh_impl()
 {
-    char                     line[512];
-    FILE                    *fp;
-    uintptr_t                base_addr;
-    char                     perm[5];
-    unsigned long            offset;
-    int                      pathname_pos;
-    char                    *pathname;
-    size_t                   pathname_len;
-    xh_core_map_info_t      *mi, *mi_tmp;
-    xh_core_map_info_t       mi_key;
-    xh_core_hook_info_t     *hi;
-    xh_core_ignore_info_t   *ii;
-    xh_core_request_group_t *req_group, *req_group_tmp;
-    xh_core_map_info_tree_t  map_info_refreshed = RB_INITIALIZER(&map_info_refreshed);
+    xh_maps_invalidate();
 
-    if(NULL == (fp = fopen("/proc/self/maps", "r")))
-    {
-        XH_LOG_ERROR("fopen /proc/self/maps failed");
-        return;
-    }
+    xh_core_map_info_tree_t map_info_refreshed = RB_INITIALIZER(&map_info_refreshed);
+    xh_maps_iterate((xh_maps_iterate_cb_t) xh_core_maps_iterate_cb, &map_info_refreshed);
 
-    while(fgets(line, sizeof(line), fp))
-    {
-        if(sscanf(line, "%"PRIxPTR"-%*lx %4s %lx %*x:%*x %*d%n", &base_addr, perm, &offset, &pathname_pos) != 3) continue;
-
-        //check permission
-        if(perm[0] != 'r') continue;
-        if(perm[3] != 'p') continue; //do not touch the shared memory
-
-        //check offset
-        //
-        //We are trying to find ELF header in memory.
-        //It can only be found at the beginning of a mapped memory regions
-        //whose offset is 0.
-        if(0 != offset) continue;
-
-        //get pathname
-        while(isspace(line[pathname_pos]) && pathname_pos < (int)(sizeof(line) - 1))
-            pathname_pos += 1;
-        if(pathname_pos >= (int)(sizeof(line) - 1)) continue;
-        pathname = line + pathname_pos;
-        pathname_len = strlen(pathname);
-        if(0 == pathname_len) continue;
-        if(pathname[pathname_len - 1] == '\n')
-        {
-            pathname[pathname_len - 1] = '\0';
-            pathname_len -= 1;
-        }
-        if(0 == pathname_len) continue;
-        if('[' == pathname[0]) continue;
-
-        //check pathname
-        //if we need to hook this elf?
-        if (!is_current_pathname_matches_any_requests(&xh_core_hook_info, &xh_core_ignore_info, pathname))
-        {
-            XH_LOG_INFO("'%s' does not match default request group, try other groups.", pathname);
-            RB_FOREACH_SAFE(req_group, xh_core_request_group_tree, &xh_core_request_groups, req_group_tmp)
-            {
-                XH_LOG_DEBUG("loop group: %d", req_group->group_id);
-                if (is_current_pathname_matches_any_requests(&req_group->hook_infos,
-                                                             &req_group->ignore_infos, pathname))
-                {
-                    goto check_finished;
-                }
-                XH_LOG_INFO("'%s' does not match group %d, try other groups.", pathname, req_group->group_id);
-            }
-            // Does not match any requests, parse next map line.
-            continue;
-        }
-
-        check_finished:
-        XH_LOG_INFO("'%s' matches hook request, do further checks.", pathname);
-
-        if (0 == xh_check_loaded_so((void *)base_addr)) {
-            XH_LOG_ERROR("%p is not loaded by linker %s", (void *)base_addr, line + pathname_pos);
-            continue; // do not touch the so that not loaded by linker
-        }
-
-        //check elf header format
-        //We are trying to do ELF header checking as late as possible.
-        if(0 != xh_core_check_elf_header(base_addr, pathname)) continue;
-
-        //check existed map item
-        mi_key.pathname = pathname;
-        if(NULL != (mi = RB_FIND(xh_core_map_info_tree, &xh_core_map_info, &mi_key)))
-        {
-            //exist
-            RB_REMOVE(xh_core_map_info_tree, &xh_core_map_info, mi);
-
-            //repeated?
-            //We only keep the first one, that is the real base address
-            if(NULL != RB_INSERT(xh_core_map_info_tree, &map_info_refreshed, mi))
-            {
-#if XH_CORE_DEBUG
-                XH_LOG_DEBUG("repeated map info when update: %s", line);
-#endif
-                free(mi->pathname);
-                free(mi);
-                continue;
-            }
-
-            //re-hook if base_addr changed
-            if(mi->base_addr != base_addr)
-            {
-                mi->base_addr = base_addr;
-                xh_core_hook(mi);
-            }
-        }
-        else
-        {
-            //not exist, create a new map info
-            if(NULL == (mi = (xh_core_map_info_t *)malloc(sizeof(xh_core_map_info_t)))) continue;
-            if(NULL == (mi->pathname = strdup(pathname)))
-            {
-                free(mi);
-                continue;
-            }
-            mi->base_addr = base_addr;
-
-            //repeated?
-            //We only keep the first one, that is the real base address
-            if(NULL != RB_INSERT(xh_core_map_info_tree, &map_info_refreshed, mi))
-            {
-#if XH_CORE_DEBUG
-                XH_LOG_DEBUG("repeated map info when create: %s", line);
-#endif
-                free(mi->pathname);
-                free(mi);
-                continue;
-            }
-
-            //hook
-            xh_core_hook(mi); //hook
-        }
-    }
-    fclose(fp);
+    xh_core_map_info_t* mi;
+    xh_core_map_info_t* mi_tmp;
 
     //free all missing map item, maybe dlclosed?
     RB_FOREACH_SAFE(mi, xh_core_map_info_tree, &xh_core_map_info, mi_tmp)
@@ -583,7 +555,7 @@ static void xh_core_refresh_impl()
         XH_LOG_DEBUG("remove missing map info: %s", mi->pathname);
 #endif
         RB_REMOVE(xh_core_map_info_tree, &xh_core_map_info, mi);
-        if(mi->pathname) free(mi->pathname);
+        if (mi->pathname) free(mi->pathname);
         free(mi);
     }
 
