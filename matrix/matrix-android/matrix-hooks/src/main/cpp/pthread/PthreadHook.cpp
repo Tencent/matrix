@@ -136,8 +136,6 @@ namespace pthread_hook {
                                    (void *) HANDLER_FUNC_NAME(pthread_create), nullptr);
             xhook_grouped_register(HOOK_REQUEST_GROUPID_PTHREAD, ".*/.*\\.so$", "pthread_setname_np",
                                    (void *) HANDLER_FUNC_NAME(pthread_setname_np), nullptr);
-            xhook_enable_debug(enable_debug ? 1 : 0);
-            xhook_enable_sigsegv_protection(enable_debug ? 0 : 1);
         }
         matrix::ResumeLoadSo();
     }
