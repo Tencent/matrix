@@ -1,4 +1,5 @@
 {
     local:
         xh_*;
+        semi_*;
 };

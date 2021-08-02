@@ -23,7 +23,6 @@ add_library(
       ${SOURCE_DIR}/common/Log.cpp
       ${SOURCE_DIR}/common/Maps.cpp
       ${SOURCE_DIR}/common/SoLoadMonitor.cpp
-      ${SOURCE_DIR}/common/SemiDlfcn.cpp
 )
 
 target_include_directories(
@@ -48,6 +47,7 @@ target_link_libraries(
       PUBLIC ${log-lib}
       PUBLIC ${EXT_DEP}/lib/${ANDROID_ABI}/libwechatbacktrace.so
       PRIVATE -Wl,--whole-archive ${EXT_DEP}/lib/${ANDROID_ABI}/libxhook.a -Wl,--no-whole-archive
+      PRIVATE -Wl,--whole-archive ${EXT_DEP}/lib/${ANDROID_ABI}/libsemi_dlfcn.a -Wl,--no-whole-archive
       PRIVATE -Wl,--version-script=${SOURCE_DIR}/common/common.ver
 )
 #################################################################################
