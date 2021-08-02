@@ -38,10 +38,9 @@ void xh_maps_invalidate()
 
 void xh_maps_update()
 {
+    pthread_rwlock_wrlock(&s_xh_maps_access_lock);
 
     if (atomic_exchange(&s_xh_maps_invalidated, true)) return;
-
-    pthread_rwlock_wrlock(&s_xh_maps_access_lock);
 
     FILE* f_maps = fopen("/proc/self/maps", "r");
     if (f_maps == NULL) {
@@ -109,7 +108,7 @@ void xh_maps_update()
 int xh_maps_query(const void* addr_in, uintptr_t* start_out, uintptr_t* end_out, char** perms_out, int* offset_out,
                   char** pathname_out)
 {
-    if (!atomic_load(&s_xh_maps_invalidated)) xh_maps_update();
+    xh_maps_update();
 
     pthread_rwlock_rdlock(&s_xh_maps_access_lock);
 
@@ -141,7 +140,7 @@ int xh_maps_query(const void* addr_in, uintptr_t* start_out, uintptr_t* end_out,
 
 int xh_maps_iterate(xh_maps_iterate_cb_t cb, void* data)
 {
-    if (!atomic_load(&s_xh_maps_invalidated)) xh_maps_update();
+    xh_maps_update();
 
     pthread_rwlock_rdlock(&s_xh_maps_access_lock);
 
