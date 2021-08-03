@@ -161,27 +161,3 @@ int xhook_export_symtable_hook(const char* owner_lib_name, const char* symbol_na
         return XH_ERRNO_NOTFND;
     }
 }
-
-void* xhook_find_symbol(const char* owner_lib_name, const char* symbol_name) {
-    char path_name[PATH_MAX + 1] = {};
-    const void* base_addr = NULL;
-    if (xhook_find_library_base_addr(owner_lib_name, path_name, &base_addr) == 0) {
-        xh_elf_t self = {};
-        {
-            int error = xh_elf_init(&self, (uintptr_t) base_addr, path_name);
-            if (error != 0) return NULL;
-        }
-
-        //find symbol index by symbol name
-        uint32_t symidx = 0;
-        {
-            int error = xh_elf_find_symidx_by_name(&self, symbol_name, &symidx);
-            if (error != 0) return NULL;
-        }
-
-        ElfW(Sym)* target_sym = self.symtab + symidx;
-        return (void*) (self.bias_addr + target_sym->st_value);
-    } else {
-        return NULL;
-    }
-}

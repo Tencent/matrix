@@ -182,6 +182,10 @@ namespace matrix {
             orig__loader_dlopen = reinterpret_cast<decltype(orig__loader_dlopen)>(
                     matrix::SemiDlSym(hLinker, "__dl___loader_dlopen"));
             if (UNLIKELY(orig__loader_dlopen == nullptr)) {
+                orig__loader_dlopen = reinterpret_cast<decltype(orig__loader_dlopen)>(
+                        matrix::SemiDlSym(hLinker, "__dl__Z8__dlopenPKciPKv"));
+            }
+            if (UNLIKELY(orig__loader_dlopen == nullptr)) {
                 LOGE(LOG_TAG, "Fail to find original __loader_dlopen.");
                 return false;
             }
@@ -193,6 +197,10 @@ namespace matrix {
 
             orig__loader_android_dlopen_ext = reinterpret_cast<decltype(orig__loader_android_dlopen_ext)>(
                     matrix::SemiDlSym(hLinker, "__dl___loader_android_dlopen_ext"));
+            if (UNLIKELY(orig__loader_android_dlopen_ext == nullptr)) {
+                orig__loader_android_dlopen_ext = reinterpret_cast<decltype(orig__loader_android_dlopen_ext)>(
+                        matrix::SemiDlSym(hLinker, "__dl__Z20__android_dlopen_extPKciPK17android_dlextinfoPKv"));
+            }
             if (UNLIKELY(orig__loader_android_dlopen_ext == nullptr)) {
                 LOGE(LOG_TAG, "Fail to find original __loader_android_dlopen_ext.");
                 return false;

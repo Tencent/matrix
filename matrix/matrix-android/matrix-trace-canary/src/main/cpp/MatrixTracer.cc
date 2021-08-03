@@ -47,8 +47,10 @@
 #include "nativehelper/scoped_local_ref.h"
 #include "AnrDumper.h"
 
-#define voidp void*
 #define PROP_VALUE_MAX  92
+#define PROP_SDK_NAME "ro.build.version.sdk"
+#define HOOK_CONNECT_PATH "/dev/socket/tombstoned_java_trace"
+#define HOOK_OPEN_PATH "/data/anr/traces.txt"
 
 using namespace MatrixTracer;
 
@@ -118,7 +120,7 @@ void writeAnr(const std::string& content, const std::string &filePath) {
 int (*original_connect)(int __fd, const struct sockaddr* __addr, socklen_t __addr_length);
 int my_connect(int __fd, const struct sockaddr* __addr, socklen_t __addr_length) {
     if (__addr!= nullptr) {
-        if (strcmp(__addr->sa_data, "/dev/socket/tombstoned_java_trace") == 0) {
+        if (strcmp(__addr->sa_data, HOOK_CONNECT_PATH) == 0) {
             signalCatcherTid = gettid();
             isTraceWrite = true;
         }
@@ -130,7 +132,7 @@ int (*original_open)(const char *pathname, int flags, mode_t mode);
 
 int my_open(const char *pathname, int flags, mode_t mode) {
     if (pathname!= nullptr) {
-        if (strcmp(pathname, "/data/anr/traces.txt") == 0) {
+        if (strcmp(pathname, HOOK_OPEN_PATH) == 0) {
             signalCatcherTid = gettid();
             isTraceWrite = true;
         }
@@ -188,7 +190,7 @@ bool printTraceCallback() {
 
 int getApiLevel() {
     char buf[PROP_VALUE_MAX];
-    int len = __system_property_get("ro.build.version.sdk", buf);
+    int len = __system_property_get(PROP_SDK_NAME, buf);
     if (len <= 0)
         return 0;
 
@@ -289,13 +291,13 @@ template <typename T, std::size_t sz>
 static inline constexpr std::size_t NELEM(const T(&)[sz]) { return sz; }
 
 static const JNINativeMethod ANR_METHODS[] = {
-    {"nativeInitSignalAnrDetective", "(Ljava/lang/String;Ljava/lang/String;)V", (voidp) nativeInitSignalAnrDetective},
-    {"nativeFreeSignalAnrDetective", "()V", (voidp) nativeFreeSignalAnrDetective},
-    {"nativePrintTrace", "()V", (voidp) nativePrintTrace},
+    {"nativeInitSignalAnrDetective", "(Ljava/lang/String;Ljava/lang/String;)V", (void *) nativeInitSignalAnrDetective},
+    {"nativeFreeSignalAnrDetective", "()V", (void *) nativeFreeSignalAnrDetective},
+    {"nativePrintTrace", "()V", (void *) nativePrintTrace},
 };
 
 static const JNINativeMethod THREAD_PRIORITY_METHODS[] = {
-        {"nativeInitMainThreadPriorityDetective", "()V", (voidp) nativeInitMainThreadPriorityDetective},
+        {"nativeInitMainThreadPriorityDetective", "()V", (void *) nativeInitMainThreadPriorityDetective},
 };
 
 JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *) {

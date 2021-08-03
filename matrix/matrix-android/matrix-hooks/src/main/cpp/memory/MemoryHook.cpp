@@ -631,9 +631,7 @@ void dump(bool enable_mmap, const char *log_path, const char *json_path) {
 }
 
 void memory_hook_on_dlopen(const char *file_name) {
-    LOGD(TAG, "memory_hook_on_dlopen: file %s, h_malloc %p, h_realloc %p, h_free %p", file_name,
-         h_malloc, h_realloc, h_free);
-
+    LOGD(TAG, "memory_hook_on_dlopen: file %s", file_name);
     // This line only refresh xhook in matrix-memoryhook library now.
     xhook_refresh(0);
 }
