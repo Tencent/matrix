@@ -16,6 +16,7 @@
 #include "SemiDlfcn.h"
 #include "ScopedCleaner.h"
 #include "Log.h"
+#include "Maps.h"
 
 
 #define LOG_TAG "Matrix.SemiDlfcn"
@@ -222,6 +223,11 @@ namespace matrix {
         if (hLinker == nullptr) {
             return nullptr;
         }
+        auto hLinkerCleaner = MakeScopedCleaner([&hLinker]() {
+            if (hLinker != nullptr) {
+                SemiDlClose(hLinker);
+            }
+        });
         sDlIterateMutexPtr = reinterpret_cast<pthread_mutex_t*>(SemiDlSym(hLinker, LINKER_DL_MUTEX_SYMNAME));
         return sDlIterateMutexPtr;
     }
@@ -229,8 +235,12 @@ namespace matrix {
     static int DlIteratePhdrCompat(const std::function<int(const char*, const void*, void*)>& cb, void* data) {
         int sdk = android_get_device_api_level();
         if (sdk <= 20) {
-            // TODO support by parsing maps.
-            return 0;
+            int ret = 0;
+            IterateMaps([&cb, &ret](uintptr_t start, uintptr_t end, char perms[4], const char* pathname, void* data) -> bool {
+                ret = cb(pathname, reinterpret_cast<const void*>(start), data);
+                return (ret != 0);
+            }, data);
+            return ret;
         } else {
             struct IterData {
                 decltype(cb) cb;
