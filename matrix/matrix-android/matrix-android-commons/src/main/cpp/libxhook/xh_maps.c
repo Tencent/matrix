@@ -30,6 +30,34 @@ typedef struct maps_item_list {
 static maps_item_list_t s_xh_maps_maps_items = { NULL, 0 };
 static atomic_bool s_xh_maps_invalidated = ATOMIC_VAR_INIT(false);
 static pthread_rwlock_t s_xh_maps_access_lock = PTHREAD_RWLOCK_INITIALIZER;
+static __thread bool s_xh_maps_access_locked = false;
+
+static void _xh_lock_read_accesslock()
+{
+    if (!s_xh_maps_access_locked)
+    {
+        s_xh_maps_access_locked = true;
+        pthread_rwlock_rdlock(&s_xh_maps_access_lock);
+    }
+}
+
+static void _xh_lock_write_accesslock()
+{
+    if (!s_xh_maps_access_locked)
+    {
+        s_xh_maps_access_locked = true;
+        pthread_rwlock_wrlock(&s_xh_maps_access_lock);
+    }
+}
+
+static void _xh_unlock_accesslock()
+{
+    if (s_xh_maps_access_locked)
+    {
+        pthread_rwlock_unlock(&s_xh_maps_access_lock);
+        s_xh_maps_access_locked = false;
+    }
+}
 
 void xh_maps_invalidate()
 {
@@ -38,9 +66,9 @@ void xh_maps_invalidate()
 
 void xh_maps_update()
 {
-    pthread_rwlock_wrlock(&s_xh_maps_access_lock);
+    _xh_lock_write_accesslock();
 
-    if (atomic_exchange(&s_xh_maps_invalidated, true)) return;
+    if (atomic_exchange(&s_xh_maps_invalidated, true)) goto bail;
 
     FILE* f_maps = fopen("/proc/self/maps", "r");
     if (f_maps == NULL) {
@@ -102,7 +130,8 @@ void xh_maps_update()
     fclose(f_maps);
     f_maps = NULL;
 
-    pthread_rwlock_unlock(&s_xh_maps_access_lock);
+    bail:
+    _xh_unlock_accesslock();
 }
 
 int xh_maps_query(const void* addr_in, uintptr_t* start_out, uintptr_t* end_out, char** perms_out, int* offset_out,
@@ -110,7 +139,7 @@ int xh_maps_query(const void* addr_in, uintptr_t* start_out, uintptr_t* end_out,
 {
     xh_maps_update();
 
-    pthread_rwlock_rdlock(&s_xh_maps_access_lock);
+    _xh_lock_read_accesslock();
 
     int left = 0;
     int right = s_xh_maps_maps_items.count;
@@ -133,7 +162,7 @@ int xh_maps_query(const void* addr_in, uintptr_t* start_out, uintptr_t* end_out,
         }
     }
 
-    pthread_rwlock_unlock(&s_xh_maps_access_lock);
+    _xh_unlock_accesslock();
 
     return found;
 }
@@ -142,7 +171,7 @@ int xh_maps_iterate(xh_maps_iterate_cb_t cb, void* data)
 {
     xh_maps_update();
 
-    pthread_rwlock_rdlock(&s_xh_maps_access_lock);
+    _xh_lock_read_accesslock();
 
     int ret = 0;
     for (int i = 0; i < s_xh_maps_maps_items.count; ++i)
@@ -152,6 +181,7 @@ int xh_maps_iterate(xh_maps_iterate_cb_t cb, void* data)
         if (ret != 0) break;
     }
 
-    pthread_rwlock_unlock(&s_xh_maps_access_lock);
+    _xh_unlock_accesslock();
+
     return ret;
 }
