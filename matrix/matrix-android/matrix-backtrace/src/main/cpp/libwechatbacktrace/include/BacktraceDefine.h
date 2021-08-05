@@ -90,6 +90,10 @@ namespace wechat_backtrace {
         bool maybe_java = false;
     };
 
+    struct FrameCompact {
+        uptr pc = 0;
+    };
+
     struct FrameDetail {
         const uptr rel_pc;
         const char *map_name;
@@ -100,6 +104,13 @@ namespace wechat_backtrace {
         size_t max_frames = 0;
         size_t frame_size = 0;
         std::shared_ptr<Frame> frames;
+    };
+
+    template <size_t _Max>
+    struct BacktraceFixed {
+        size_t max_frames = _Max;
+        size_t frame_size = 0;
+        Frame frames[_Max];
     };
 
     enum BacktraceMode {
@@ -128,6 +139,7 @@ namespace wechat_backtrace {
         wechat_backtrace::Frame *backtrace;
         uptr frame_size;
         bool update_maps_as_need;
+        bool native_only;
     };
 
     struct StepContext {

@@ -23,6 +23,10 @@
 
 #define TAG "Matrix.MemoryHook"
 
+extern "C" void fake_malloc(void * ptr, size_t byte_count);
+
+extern "C" void fake_free(void * ptr);
+
 void on_alloc_memory(void *caller, void *ptr, size_t byte_count);
 
 void on_free_memory(void *ptr);

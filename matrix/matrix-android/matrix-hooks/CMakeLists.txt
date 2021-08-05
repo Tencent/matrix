@@ -24,6 +24,7 @@ add_library(
       ${SOURCE_DIR}/common/Maps.cpp
       ${SOURCE_DIR}/common/SoLoadMonitor.cpp
       ${SOURCE_DIR}/common/SemiDlfcn.cpp
+      ${SOURCE_DIR}/common/ProfileRecord.cpp
 )
 
 target_include_directories(

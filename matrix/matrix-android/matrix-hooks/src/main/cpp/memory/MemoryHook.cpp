@@ -39,12 +39,11 @@
 #include <unwindstack/Unwinder.h>
 #include <common/ThreadPool.h>
 #include <backtrace/BacktraceDefine.h>
+#include <common/ProfileRecord.h>
 #include "MemoryHookFunctions.h"
 #include "Utils.h"
 #include "MemoryHookMetas.h"
 #include "MemoryHook.h"
-
-#define MEMHOOK_BACKTRACE_MAX_FRAMES MAX_FRAME_SHORT
 
 static memory_meta_container m_memory_meta_container;
 
@@ -83,51 +82,59 @@ static inline bool should_do_unwind(size_t byte_count) {
     return ((m_tracing_alloc_size_min == 0 || byte_count >= m_tracing_alloc_size_min)
             && (m_tracing_alloc_size_max == 0 || byte_count <= m_tracing_alloc_size_max));
 }
+static inline void do_unwind(wechat_backtrace::Frame *frames, const size_t max_frames,
+                                  size_t &frame_size) {
+#ifndef FAKE_BACKTRACE_DATA
+    fake_unwind(frames, max_frames, frame_size);
+#else
+    ON_RECORD_START(durations);
+    wechat_backtrace::unwind_adapter(frames, max_frames, frame_size);
+    ON_RECORD_END(durations);
+    ON_MEMORY_BACKTRACE((uint64_t) ptr, &backtrace, (uint64_t) durations);
+#endif
+}
 
-static inline void on_acquire_memory(void *caller,
-                                     void *ptr,
-                                     size_t byte_count,
-                                     bool is_mmap) {
-//    NanoSeconds_Start(alloc_begin);
-////    NanoSeconds_End(alloc_cost, alloc_begin);
-////    LOGD(TAG, "alloc stamp cost %lld", alloc_cost);
 
-    if (!ptr) {
+static inline void on_acquire_memory(
+        void *caller,
+        void *ptr,
+        size_t byte_count,
+        bool is_mmap) {
+
+    if (UNLIKELY(!ptr)) {
         LOGE(TAG, "on_acquire_memory: invalid pointer");
         return;
     }
 
-    wechat_backtrace::Backtrace backtrace;
-    uint64_t                    stack_hash = 0;
-    if (is_stacktrace_enabled && should_do_unwind(byte_count)) {
-        backtrace = BACKTRACE_INITIALIZER(MEMHOOK_BACKTRACE_MAX_FRAMES);
-        wechat_backtrace::unwind_adapter(backtrace.frames.get(), backtrace.max_frames,
-                                         backtrace.frame_size);
-        stack_hash = hash_backtrace_frames(&backtrace);
-        assert(stack_hash != 0);
+    ON_MEMORY_ALLOCATED((uint64_t) ptr, byte_count);
+
+    MemoryHookBacktrace backtrace;
+    uint64_t            stack_hash = 0;
+    if (LIKELY(is_stacktrace_enabled && should_do_unwind(byte_count))) {
+        do_unwind(backtrace.frames, backtrace.max_frames, backtrace.frame_size);
+        stack_hash = hash_frames(backtrace.frames, backtrace.frame_size);
     }
 
-    m_memory_meta_container.insert(ptr,
-                                   stack_hash,
-                                   [&](ptr_meta_t *ptr_meta, stack_meta_t *stack_meta) {
-                                       ptr_meta->ptr     = ptr;
-                                       ptr_meta->size    = byte_count;
-                                       ptr_meta->caller  = caller;
-                                       ptr_meta->is_mmap = is_mmap;
+    m_memory_meta_container.insert(
+            ptr,
+            stack_hash,
+            [&](ptr_meta_t *ptr_meta, stack_meta_t *stack_meta) {
+               ptr_meta->ptr     = ptr;
+               ptr_meta->size    = byte_count;
+               ptr_meta->caller  = caller;
+               ptr_meta->is_mmap = is_mmap;
 
-                                       if (!stack_meta) {
-                                           return;
-                                       }
+               if (UNLIKELY(!stack_meta)) {
+                   return;
+               }
 
-                                       stack_meta->size += byte_count;
-                                       if (!stack_meta->backtrace.frames) { // 相同的堆栈只记录一个
-                                           stack_meta->backtrace = backtrace;
-                                           stack_meta->caller    = caller;
-                                       }
-                                   });
+               stack_meta->size += byte_count;
+               if (stack_meta->backtrace.frame_size == 0 && backtrace.frame_size != 0) {
+                   stack_meta->backtrace = backtrace;
+                   stack_meta->caller    = caller;
+               }
+            });
 
-//    NanoSeconds_End(alloc_cost, alloc_begin);
-//    LOGD(TAG, "alloc cost %lld", alloc_cost);
 }
 
 static inline void on_release_memory(void *ptr, bool is_mmap) {
@@ -135,11 +142,10 @@ static inline void on_release_memory(void *ptr, bool is_mmap) {
         LOGE(TAG, "on_release_memory: invalid pointer");
         return;
     }
-//    NanoSeconds_Start(release_begin);
+
+    ON_MEMORY_RELEASED((uint64_t) ptr);
 
     m_memory_meta_container.erase(ptr);
-//    NanoSeconds_End(release_cost, release_begin);
-//    LOGD(TAG, "release cost %lld", release_cost);
 }
 
 void on_alloc_memory(void *caller, void *ptr, size_t byte_count) {
@@ -147,7 +153,7 @@ void on_alloc_memory(void *caller, void *ptr, size_t byte_count) {
 }
 
 void on_free_memory(void *ptr) {
-    on_release_memory(ptr, true);
+    on_release_memory(ptr, false);
 }
 
 void on_mmap_memory(void *caller, void *ptr, size_t byte_count) {
@@ -217,11 +223,15 @@ static inline void dump_callers(FILE *log_file,
     std::unordered_map<std::string, size_t>                   caller_alloc_size_of_so;
     std::unordered_map<std::string, std::map<size_t, size_t>> same_size_count_of_so;
 
+    size_t ptr_counter = 0;
+
     LOGD(TAG, "caller so begin");
     // 按 so 聚类
     for (auto &i : caller_metas) {
         auto caller      = i.first;
         auto caller_meta = i.second;
+
+        ptr_counter += caller_meta.pointers.size();
 
         Dl_info dl_info;
         dladdr(caller, &dl_info);
@@ -292,47 +302,10 @@ static inline void dump_callers(FILE *log_file,
     LOGD(TAG, "\n---------------------------------------------------");
     flogger0(log_file, "\n---------------------------------------------------\n");
     LOGD(TAG, "| caller total size = %zu b", caller_total_size);
-    flogger0(log_file, "| caller total size = %zu b\n", caller_total_size);
+    flogger0(log_file, "| caller total size = %zu b, ptr totals counts = %zu.\n", caller_total_size, ptr_counter);
     LOGD(TAG, "---------------------------------------------------\n");
     flogger0(log_file, "---------------------------------------------------\n\n");
 }
-
-//static inline void dump_debug_stacks() {
-//    for (auto map_it : m_debug_lost_ptr_stack) {
-//        auto ptr        = map_it.first;
-//        auto stack_meta = map_it.second;
-//
-//        LOGD(TAG, "LOST ptr %p, stack = ", ptr);
-//        for (auto &it : *stack_meta.p_stacktraces) {
-//            Dl_info stack_info = {nullptr};
-//            int     success    = dladdr((void *) it.pc, &stack_info);
-//
-//            std::stringstream stack_builder;
-//
-//            char *demangled_name = nullptr;
-//            if (success > 0) {
-//                int status = 0;
-//                demangled_name = abi::__cxa_demangle(stack_info.dli_sname, nullptr, 0, &status);
-//            }
-//
-//            stack_builder << "      | "
-//                          << "#pc " << std::hex << it.rel_pc << " "
-//                          << (demangled_name ? demangled_name : "(null)")
-//                          << " ("
-//                          << (success && stack_info.dli_fname ? stack_info.dli_fname : "(null)")
-//                          << ")"
-//                          << std::endl;
-//
-//            LOGD(TAG, "%s", stack_builder.str().c_str());
-//
-//            if (demangled_name) {
-//                free(demangled_name);
-//            }
-//        }
-//    }
-//
-//    m_debug_lost_ptr_stack.clear();
-//}
 
 struct stack_dump_meta_t {
     size_t      size;
@@ -354,6 +327,8 @@ static inline void dump_stacks(FILE *log_file,
     std::unordered_map<std::string, size_t>                         stack_alloc_size_of_so;
     std::unordered_map<std::string, std::vector<stack_dump_meta_t>> stacktrace_of_so;
 
+    size_t backtrace_counter = 0;
+
     for (auto &stack_meta_it : stack_metas) {
         auto hash      = stack_meta_it.first;
         auto size      = stack_meta_it.second.size;
@@ -364,6 +339,7 @@ static inline void dump_stacks(FILE *log_file,
         std::stringstream full_stack_builder;
         std::stringstream brief_stack_builder;
 
+        backtrace_counter += stack_meta_it.second.backtrace.frame_size;
 
         Dl_info caller_info{};
         dladdr(caller, &caller_info);
@@ -412,47 +388,9 @@ static inline void dump_stacks(FILE *log_file,
             }
         };
 
-        wechat_backtrace::restore_frame_detail(backtrace.frames.get(), backtrace.frame_size,
+        wechat_backtrace::restore_frame_detail(backtrace.frames, backtrace.frame_size,
                                                _callback);
 
-//        for (auto   &it : stacktrace) {
-//
-//            std::string so_name = it.map_name;
-//
-//            char *demangled_name = nullptr;
-//            int  status          = 0;
-//            demangled_name = abi::__cxa_demangle(it.function_name.c_str(), nullptr, 0, &status);
-//
-//            full_stack_builder << "      | "
-//                               << "#pc " << std::hex << it.rel_pc << " "
-//                               << (demangled_name ? demangled_name : "(null)")
-//                               << " ("
-//                               << it.map_name
-//                               << ")"
-//                               << std::endl;
-//
-//            if (last_so_name != it.map_name) {
-//                last_so_name = it.map_name;
-//                brief_stack_builder << it.map_name << ";";
-//            }
-//
-//            brief_stack_builder << std::hex << it.rel_pc << ";";
-//
-//            if (demangled_name) {
-//                free(demangled_name);
-//            }
-//
-//            if (caller_so_name.empty()) { // fallback
-//                LOGD(TAG, "fallback getting so name -> caller = %p", stack_meta_it.second.caller);
-//                // fixme hard coding
-//                if (/*so_name.find("com.tencent.mm") == std::string::npos ||*/
-//                        so_name.find("libwxperf.so") != std::string::npos ||
-//                        so_name.find("libwxperf-jni.so") != std::string::npos) {
-//                    continue;
-//                }
-//                caller_so_name = so_name;
-//            }
-//        }
         stack_alloc_size_of_so[caller_so_name] += size;
 
         stack_dump_meta_t stack_dump_meta{size,
@@ -460,6 +398,9 @@ static inline void dump_stacks(FILE *log_file,
                                           brief_stack_builder.str()};
         stacktrace_of_so[caller_so_name].emplace_back(stack_dump_meta);
     }
+
+    LOGD(TAG, "dump_stacks: backtrace frame counts = %zu", backtrace_counter);
+    flogger0(log_file, "dump_stacks: backtrace frame counts = %zu\n", backtrace_counter);
 
     // 从大到小排序
     std::vector<std::pair<std::string, size_t>> so_sorted_by_size;
@@ -617,6 +558,8 @@ void dump(bool enable_mmap, const char *log_path, const char *json_path) {
 
     dump_impl(log_file, json_file, enable_mmap);
 
+    DUMP_RECORD("/sdcard/Android/data/com.tencent.mm/memory-record.dump");
+
     if (log_file) {
         fflush(log_file);
         fclose(log_file);
@@ -636,3 +579,11 @@ void memory_hook_on_dlopen(const char *file_name) {
     xhook_refresh(0);
 }
 
+EXPORT_C void fake_malloc(void * ptr, size_t byte_count) {
+    void * caller = __builtin_return_address(0);
+    on_alloc_memory(caller, ptr, byte_count);
+}
+
+EXPORT_C void fake_free(void * ptr) {
+    on_free_memory(ptr);
+}

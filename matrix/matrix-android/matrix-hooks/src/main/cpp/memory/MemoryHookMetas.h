@@ -26,9 +26,11 @@
 #include <set>
 #include "unwindstack/Unwinder.h"
 #include "Utils.h"
-// TODO #include "pool_allocator.h"
+#include "common/tree/splay_map.h"
 
 #define TAG "Matrix.MemoryHook.Container"
+
+#define MEMHOOK_BACKTRACE_MAX_FRAMES MAX_FRAME_SHORT
 
 struct ptr_meta_t {
     void     *ptr;
@@ -43,26 +45,29 @@ struct caller_meta_t {
     std::set<const void *> pointers;
 };
 
+typedef wechat_backtrace::BacktraceFixed<MEMHOOK_BACKTRACE_MAX_FRAMES> MemoryHookBacktrace;
+
 struct stack_meta_t {
     /**
      * size 在分配释放阶段仅起引用计数作用, 因为在 dump 时会重新以 ptr_meta 的 size 进行统计
      */
     size_t                              size;
     void                                *caller;
-    wechat_backtrace::Backtrace         backtrace;
+    MemoryHookBacktrace                 backtrace;
 };
+
+typedef splay_map<const void *, ptr_meta_t> memory_map_t;
+typedef splay_map<uint64_t, stack_meta_t> stack_map_t;
 
 class memory_meta_container {
 
     typedef struct {
-
-        std::map<const void *, ptr_meta_t> container;
+        memory_map_t container = memory_map_t(64);
         std::mutex                         mutex;
-
     } ptr_meta_container_wrapper_t;
 
     typedef struct {
-        std::map<uint64_t, stack_meta_t> container;
+        stack_map_t container  = stack_map_t(8);
         std::mutex                       mutex;
     } stack_container_wrapper_t;
 
@@ -90,96 +95,87 @@ public:
         }
     }
 
-    inline ptr_meta_t &operator[](const void *__k) {
-        TARGET_PTR_CONTAINER_LOCKED(target, __k);
-        return target->container[__k];
-    }
-
     inline void insert(const void *__ptr,
                        uint64_t __stack_hash,
                        std::function<void(ptr_meta_t *, stack_meta_t *)> __callback) {
         TARGET_PTR_CONTAINER_LOCKED(ptr_meta_container, __ptr);
-        auto ptr_meta = &ptr_meta_container->container[__ptr];
+        auto ptr_meta = ptr_meta_container->container.insert(__ptr, { 0 });
+
+        if (UNLIKELY(ptr_meta == nullptr)) {
+            return;
+        }
+
         ptr_meta->stack_hash = __stack_hash;
+
         if (__stack_hash) {
+            stack_meta_t *stack_meta;
             TARGET_STACK_CONTAINER_LOCKED(stack_meta_container, __stack_hash);
-            auto stack_meta = &stack_meta_container->container[__stack_hash];
+            if (LIKELY(stack_meta_container->container.exist(__stack_hash))) {
+                stack_meta = &stack_meta_container->container.find();
+            } else {
+                stack_meta = stack_meta_container->container.insert(__stack_hash, {0});
+            }
             __callback(ptr_meta, stack_meta);
         } else {
             __callback(ptr_meta, nullptr);
         }
     }
 
-//    inline ptr_meta_t &at(const void *__k) {
-//        TARGET_PTR_CONTAINER_LOCKED(target, __k);
-//        auto &ret = target->container.at(__k);
-//        return target->container.at(__k);
-//    }
-
     template<class _Callable>
     inline void get(const void *__k, _Callable __callable) {
         TARGET_PTR_CONTAINER_LOCKED(target, __k);
-        if (0 != target->container.count(__k)) {
-            auto &meta = target->container.at(__k);
+        if (target->container.exist(__k)) {
+            auto &meta = target->container.find();
             __callable(meta);
         }
     }
 
-//    template<class _Callback>
     inline bool erase(const void *__k) {
         TARGET_PTR_CONTAINER_LOCKED(ptr_meta_container, __k);
 
-        auto it = ptr_meta_container->container.find(__k);
-        if (it == ptr_meta_container->container.end()) { // not contains
+        auto removed_ptr_meta = ptr_meta_container->container.remove(__k);
+
+        if (UNLIKELY(!removed_ptr_meta)) { // not contains
             return false;
         }
 
-        auto &ptr_meta = it->second;
+        auto ptr_meta = *removed_ptr_meta;
 
         if (ptr_meta.stack_hash) {
             TARGET_STACK_CONTAINER_LOCKED(stack_meta_container, ptr_meta.stack_hash);
-            if (stack_meta_container->container.count(ptr_meta.stack_hash)) {
-                auto &stack_meta = stack_meta_container->container.at(ptr_meta.stack_hash);
+            if (LIKELY(stack_meta_container->container.exist(ptr_meta.stack_hash))) {
+                auto &stack_meta = stack_meta_container->container.find();
                 if (stack_meta.size > ptr_meta.size) { // 减去同堆栈的 size
                     stack_meta.size -= ptr_meta.size;
                 } else { // 删除 size 为 0 的堆栈
-                    stack_meta_container->container.erase(ptr_meta.stack_hash);
+                    stack_meta_container->container.remove(ptr_meta.stack_hash);
                 }
             }
         }
-
-        ptr_meta_container->container.erase(it);
 
         return true;
     }
 
     bool contains(const void *__k) {
         TARGET_PTR_CONTAINER_LOCKED(ptr_meta_container, __k);
-        return 0 != ptr_meta_container->container.count(__k);
+        return ptr_meta_container->container.exist(__k);
     }
 
-//    template<class _Callback>
     void for_each(std::function<void(const void *, ptr_meta_t *, stack_meta_t *)> __callback) {
         for (const auto cw : ptr_meta_containers) {
             std::lock_guard<std::mutex> container_lock(cw->mutex);
-
-            for (auto it : cw->container) {
-                auto &ptr      = it.first;
-                auto ptr_meta = &it.second;
-
-                if (ptr_meta->stack_hash) {
-                    TARGET_STACK_CONTAINER_LOCKED(stack_meta_container, ptr_meta->stack_hash);
+            cw->container.enumerate([&](const void * ptr, ptr_meta_t &ptr_meta) {
+                if (ptr_meta.stack_hash) {
+                    TARGET_STACK_CONTAINER_LOCKED(stack_meta_container, ptr_meta.stack_hash);
                     stack_meta_t *stack_meta = nullptr;
-                    if (stack_meta_container->container.count(ptr_meta->stack_hash)) {
-                        stack_meta = &stack_meta_container->container.at(ptr_meta->stack_hash);
+                    if (stack_meta_container->container.exist(ptr_meta.stack_hash)) {
+                        stack_meta = &stack_meta_container->container.find();
                     }
-                    __callback(ptr, ptr_meta, stack_meta); // within lock scope
+                    __callback(ptr, &ptr_meta, stack_meta); // within lock scope
                 } else {
-                    __callback(ptr, ptr_meta, nullptr);
+                    __callback(ptr, &ptr_meta, nullptr);
                 }
-
-
-            }
+            });
         }
     }
 

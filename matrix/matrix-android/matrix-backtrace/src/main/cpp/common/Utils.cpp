@@ -15,6 +15,7 @@
  */
 
 #include <cassert>
+#include <deps/android-base/include/android-base/macros.h>
 #include "Utils.h"
 #include "Log.h"
 #include "Backtrace.h"
@@ -31,7 +32,7 @@ BACKTRACE_EXPORT uint64_t hash_uint64(uint64_t *p_pc_stacks, size_t stack_size) 
 }
 
 BACKTRACE_EXPORT uint64_t hash_backtrace_frames(wechat_backtrace::Backtrace *backtrace) {
-    uptr sum = 1;
+    uint64_t sum = 1;
     if (backtrace == nullptr) {
         return (uint64_t) sum;
     }
