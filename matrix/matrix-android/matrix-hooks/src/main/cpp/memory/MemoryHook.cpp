@@ -169,7 +169,7 @@ private:
         alloc_message_queue_ = static_cast<allocation_message_t *>(buffer);
 
         msg_queue_size_ = alloc_queue_size_ * 1.5f;
-        buffer = realloc(alloc_message_queue_, sizeof(allocation_message_t) * msg_queue_size_);
+        buffer = realloc(message_queue_, sizeof(allocation_message_t) * msg_queue_size_);
         message_queue_ = static_cast<message_t *>(buffer);
     }
 
@@ -225,76 +225,80 @@ public:
 
     bool processing = false;
 
-    static void process_routine(BufferContainer *this_) {
-        while(true) {
-            if (!this_->queue_swapped_) this_->queue_swapped_ = new BufferQueue(32);
-
-            for (auto container : this_->containers_) {
-                BufferQueue * swapped = nullptr;
-                {
-                    std::lock_guard<std::mutex> lock(container->mutex);
-                    if (container->queue) {
-                        swapped = container->queue;
-                        container->queue = this_->queue_swapped_;
-                    }
-                }
-                if (swapped) {
-                    swapped->process([](message_t* message, allocation_message_t* allocation_message) {
-                        if (message->type == message_type_allocation || message->type == message_type_mmap) {
-                            if (UNLIKELY(allocation_message == nullptr)) return;
-                            uint64_t stack_hash = 0;
-                            if (allocation_message->backtrace.frame_size != 0) {
-                                stack_hash = hash_frames(allocation_message->backtrace.frames, allocation_message->backtrace.frame_size);
-                            }
-                            m_memory_meta_container.insert(
-                                    reinterpret_cast<const void *>(allocation_message->ptr),
-                                    stack_hash,
-                                    [&](ptr_meta_t *ptr_meta, stack_meta_t *stack_meta) {
-                                        ptr_meta->ptr     = reinterpret_cast<void *>(allocation_message->ptr);
-                                        ptr_meta->size    = allocation_message->size;
-                                        ptr_meta->caller  = reinterpret_cast<void *>(allocation_message->caller);
-                                        ptr_meta->is_mmap = message->type == message_type_mmap;
-
-                                        if (UNLIKELY(!stack_meta)) {
-                                            return;
-                                        }
-
-                                        stack_meta->size += allocation_message->size;
-                                        if (stack_meta->backtrace.frame_size == 0 && allocation_message->backtrace.frame_size != 0) {
-                                            stack_meta->backtrace = allocation_message->backtrace;
-                                            stack_meta->caller    = reinterpret_cast<void *>(allocation_message->caller);
-                                        }
-                                    });
-                        } else if (message->type == message_type_deletion || message->type == message_type_munmap) {
-                            m_memory_meta_container.erase(
-                                    reinterpret_cast<const void *>(message->ptr));
-                        }
-                    });
-
-                    swapped->reset();
-                    this_->queue_swapped_ = swapped;
-                }
-            }
-
-            usleep(100000000);
-        }
-    }
-
-    void start_process() {
-        if (processing) return;
-        processing = true;
-//        auto th = new std::thread(&BufferContainer::process_routine);
-        pthread_t thread;
-        pthread_create(&thread, nullptr, reinterpret_cast<void *(*)(void *)>(process_routine), this);
-        pthread_detach(thread);
-    }
-
 };
 
+#define SIZE_AUGMENT 1024
+#define TEST_LOG_WARN(fmt, ...) __android_log_print(ANDROID_LOG_WARN,  "TestHook", fmt, ##__VA_ARGS__)
+
+static void process_routine(BufferContainer *this_) {
+    while(true) {
+        if (!this_->queue_swapped_) this_->queue_swapped_ = new BufferQueue(SIZE_AUGMENT);
+
+        for (auto container : this_->containers_) {
+            TEST_LOG_WARN("process_routine ... ");
+            BufferQueue * swapped = nullptr;
+            {
+                std::lock_guard<std::mutex> lock(container->mutex);
+                if (container->queue) {
+                    swapped = container->queue;
+                    container->queue = this_->queue_swapped_;
+                }
+            }
+            if (swapped) {
+                TEST_LOG_WARN("Swapped ... ");
+                swapped->process([](message_t* message, allocation_message_t* allocation_message) {
+                    if (message->type == message_type_allocation || message->type == message_type_mmap) {
+                        if (UNLIKELY(allocation_message == nullptr)) return;
+                        uint64_t stack_hash = 0;
+                        if (allocation_message->backtrace.frame_size != 0) {
+                            stack_hash = hash_frames(allocation_message->backtrace.frames, allocation_message->backtrace.frame_size);
+                        }
+                        m_memory_meta_container.insert(
+                                reinterpret_cast<const void *>(allocation_message->ptr),
+                                stack_hash,
+                                [&](ptr_meta_t *ptr_meta, stack_meta_t *stack_meta) {
+                                    ptr_meta->ptr     = reinterpret_cast<void *>(allocation_message->ptr);
+                                    ptr_meta->size    = allocation_message->size;
+                                    ptr_meta->caller  = reinterpret_cast<void *>(allocation_message->caller);
+                                    ptr_meta->is_mmap = message->type == message_type_mmap;
+
+                                    if (UNLIKELY(!stack_meta)) {
+                                        return;
+                                    }
+
+                                    stack_meta->size += allocation_message->size;
+                                    if (stack_meta->backtrace.frame_size == 0 && allocation_message->backtrace.frame_size != 0) {
+                                        stack_meta->backtrace = allocation_message->backtrace;
+                                        stack_meta->caller    = reinterpret_cast<void *>(allocation_message->caller);
+                                    }
+                                });
+                    } else if (message->type == message_type_deletion || message->type == message_type_munmap) {
+                        m_memory_meta_container.erase(
+                                reinterpret_cast<const void *>(message->ptr));
+                    }
+                });
+
+                swapped->reset();
+                this_->queue_swapped_ = swapped;
+            }
+        }
+
+        usleep(100000);
+    }
+}
+
 static BufferContainer m_memory_messages_containers_;
+void start_process() {
+    if (m_memory_messages_containers_.processing) return;
+    m_memory_messages_containers_.processing = true;
+//        auto th = new std::thread(&BufferContainer::process_routine);
+    pthread_t thread;
+    pthread_create(&thread, nullptr, reinterpret_cast<void *(*)(void *)>(process_routine), &m_memory_messages_containers_);
+//    pthread_detach(thread);   // TODO
+}
 
 void memory_hook_init() {
-    m_memory_messages_containers_.start_process();
+    start_process();
 }
 
 void enable_stacktrace(bool enable) {
@@ -345,7 +349,7 @@ static inline void on_acquire_memory(
 
     std::lock_guard<std::mutex> lock(container->mutex);
     if (!container->queue) {
-        container->queue = new BufferQueue(32);
+        container->queue = new BufferQueue(SIZE_AUGMENT);
     }
     auto message = container->queue->enqueue_allocation_message(is_mmap);
     message->ptr = reinterpret_cast<uintptr_t>(ptr);
@@ -399,7 +403,7 @@ static inline void on_release_memory(void *ptr, bool is_mmap) {
 
     std::lock_guard<std::mutex> lock(container->mutex);
     if (!container->queue) {
-        container->queue = new BufferQueue(32);
+        container->queue = new BufferQueue(SIZE_AUGMENT);
     }
     container->queue->enqueue_deletion_message(reinterpret_cast<uintptr_t>(ptr), is_mmap);
 #else
