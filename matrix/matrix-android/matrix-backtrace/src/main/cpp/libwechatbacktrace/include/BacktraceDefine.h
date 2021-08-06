@@ -83,15 +83,12 @@ namespace wechat_backtrace {
     typedef unsigned long int ulint_t;
     typedef long int lint_t;
 
+#define frame_attr_is_dex_pc    ((unsigned) 0x1)
+#define frame_attr_maybe_java   ((unsigned) 0x2)
+
     struct Frame {
         uptr pc = 0;
-        uptr rel_pc = 0;
-        bool is_dex_pc = false;
-        bool maybe_java = false;
-    };
-
-    struct FrameCompact {
-        uptr pc = 0;
+        unsigned char attr = 0;
     };
 
     struct FrameDetail {
@@ -139,7 +136,6 @@ namespace wechat_backtrace {
         wechat_backtrace::Frame *backtrace;
         uptr frame_size;
         bool update_maps_as_need;
-        bool native_only;
     };
 
     struct StepContext {

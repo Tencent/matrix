@@ -59,6 +59,8 @@ struct stack_meta_t {
 typedef splay_map<const void *, ptr_meta_t> memory_map_t;
 typedef splay_map<uint64_t, stack_meta_t> stack_map_t;
 
+#define USE_SPLAY_MAP_SAVE_STACK
+
 class memory_meta_container {
 
     typedef struct {
@@ -67,7 +69,11 @@ class memory_meta_container {
     } ptr_meta_container_wrapper_t;
 
     typedef struct {
+#ifdef USE_SPLAY_MAP_SAVE_STACK
         stack_map_t container  = stack_map_t(8);
+#else
+        std::map<uint64_t, stack_meta_t> container;
+#endif
         std::mutex                       mutex;
     } stack_container_wrapper_t;
 
@@ -110,11 +116,20 @@ public:
         if (__stack_hash) {
             stack_meta_t *stack_meta;
             TARGET_STACK_CONTAINER_LOCKED(stack_meta_container, __stack_hash);
+#ifdef USE_SPLAY_MAP_SAVE_STACK
             if (LIKELY(stack_meta_container->container.exist(__stack_hash))) {
                 stack_meta = &stack_meta_container->container.find();
             } else {
                 stack_meta = stack_meta_container->container.insert(__stack_hash, {0});
             }
+#else
+            auto it = stack_meta_container->container.find(__stack_hash);
+            if (LIKELY(it != stack_meta_container->container.end())) {
+                stack_meta = &it->second;
+            } else {
+                stack_meta = &stack_meta_container->container[__stack_hash];
+            }
+#endif
             __callback(ptr_meta, stack_meta);
         } else {
             __callback(ptr_meta, nullptr);
@@ -143,6 +158,7 @@ public:
 
         if (ptr_meta.stack_hash) {
             TARGET_STACK_CONTAINER_LOCKED(stack_meta_container, ptr_meta.stack_hash);
+#ifdef USE_SPLAY_MAP_SAVE_STACK
             if (LIKELY(stack_meta_container->container.exist(ptr_meta.stack_hash))) {
                 auto &stack_meta = stack_meta_container->container.find();
                 if (stack_meta.size > ptr_meta.size) { // 减去同堆栈的 size
@@ -151,6 +167,17 @@ public:
                     stack_meta_container->container.remove(ptr_meta.stack_hash);
                 }
             }
+#else
+            auto it = stack_meta_container->container.find(ptr_meta.stack_hash);
+            if (LIKELY(it != stack_meta_container->container.end())) {
+                auto &stack_meta = it->second;
+                if (stack_meta.size > ptr_meta.size) { // 减去同堆栈的 size
+                    stack_meta.size -= ptr_meta.size;
+                } else { // 删除 size 为 0 的堆栈
+                    stack_meta_container->container.erase(it);
+                }
+            }
+#endif
         }
 
         return true;
@@ -168,9 +195,16 @@ public:
                 if (ptr_meta.stack_hash) {
                     TARGET_STACK_CONTAINER_LOCKED(stack_meta_container, ptr_meta.stack_hash);
                     stack_meta_t *stack_meta = nullptr;
+#ifdef USE_SPLAY_MAP_SAVE_STACK
                     if (stack_meta_container->container.exist(ptr_meta.stack_hash)) {
                         stack_meta = &stack_meta_container->container.find();
                     }
+#else
+                    auto it = stack_meta_container->container.find(ptr_meta.stack_hash);
+                    if (it != stack_meta_container->container.end()) {
+                        stack_meta = &it->second;
+                    }
+#endif
                     __callback(ptr, &ptr_meta, stack_meta); // within lock scope
                 } else {
                     __callback(ptr, &ptr_meta, nullptr);
