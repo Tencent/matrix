@@ -84,7 +84,7 @@ static inline bool should_do_unwind(size_t byte_count) {
 }
 static inline void do_unwind(wechat_backtrace::Frame *frames, const size_t max_frames,
                                   size_t &frame_size) {
-#ifndef FAKE_BACKTRACE_DATA
+#ifdef FAKE_BACKTRACE_DATA
     fake_unwind(frames, max_frames, frame_size);
 #else
     ON_RECORD_START(durations);
