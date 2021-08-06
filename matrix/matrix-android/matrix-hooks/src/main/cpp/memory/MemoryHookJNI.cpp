@@ -202,6 +202,7 @@ Java_com_tencent_matrix_hook_memory_MemoryHook_installHooksNative(JNIEnv* env, j
     matrix::AddOnSoLoadCallback(memory_hook_on_dlopen);
 
     memory_hook_init();
+    LOGI(TAG, "memory_hook_init");
 
     NOTIFY_COMMON_IGNORE_LIBS();
 

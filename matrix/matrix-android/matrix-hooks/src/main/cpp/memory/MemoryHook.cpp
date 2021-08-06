@@ -26,6 +26,7 @@
 #include <list>
 #include <map>
 #include <memory>
+#include <thread>
 #include <random>
 #include <xhook.h>
 #include <sstream>
@@ -45,7 +46,11 @@
 #include "MemoryHookMetas.h"
 #include "MemoryHook.h"
 
+#if USE_MEMORY_MESSAGE_QUEUE == false
 static memory_meta_container m_memory_meta_container;
+#else
+static memory_meta_container_2 m_memory_meta_container;
+#endif
 
 static bool is_stacktrace_enabled = false;
 
@@ -53,6 +58,244 @@ static size_t m_tracing_alloc_size_min = 0;
 static size_t m_tracing_alloc_size_max = 0;
 
 static size_t m_stacktrace_log_threshold;
+
+typedef enum : uint8_t {
+    message_type_nil = 0,
+    message_type_allocation = 1,
+    message_type_deletion = 2,
+    message_type_mmap = 3,
+    message_type_munmap = 4
+} message_type;
+
+typedef wechat_backtrace::BacktraceFixed<MEMHOOK_BACKTRACE_MAX_FRAMES> memory_backtrace_t;
+
+typedef struct {
+    uintptr_t ptr = 0;
+    uintptr_t caller = 0;
+    size_t size = 0;
+    memory_backtrace_t backtrace {};
+} allocation_message_t;
+
+typedef struct {
+    uintptr_t ptr = 0;
+} deletion_message_t;
+
+typedef struct {
+    union {
+        uintptr_t index;
+        uintptr_t ptr;
+    };
+    message_type type = message_type_nil;
+} message_t;
+
+class BufferQueue {
+
+public:
+    BufferQueue(size_t size_augment) {
+        size_augment_ = size_augment;
+        buffer_realloc();
+    };
+
+    ~BufferQueue() {
+        if (message_queue_) {
+            free(message_queue_);
+            message_queue_ = nullptr;
+        }
+        if (alloc_message_queue_) {
+            free(alloc_message_queue_);
+            alloc_message_queue_ = nullptr;
+        }
+    };
+
+    allocation_message_t * enqueue_allocation_message(bool is_mmap) {
+        if (msg_queue_idx >= msg_queue_size_ || alloc_msg_queue_idx >= alloc_queue_size_) {
+            buffer_realloc();
+        }
+
+        message_t *msg_idx = &message_queue_[msg_queue_idx++];
+        msg_idx->type = is_mmap ? message_type_mmap : message_type_allocation;
+        msg_idx->index = alloc_msg_queue_idx;
+
+        allocation_message_t * buffer = &alloc_message_queue_[alloc_msg_queue_idx++];
+        *buffer = {};
+        return buffer;
+    }
+
+    void enqueue_deletion_message(uintptr_t ptr, bool is_munmap) {
+
+        // Fast path.
+        if (msg_queue_idx > 0) {
+            message_t *msg_idx = &message_queue_[msg_queue_idx - 1];
+            if ((msg_idx->type == message_type_allocation || msg_idx->type == message_type_mmap)
+                    && alloc_message_queue_[msg_idx->index].ptr == ptr) {
+                msg_idx->type = message_type_nil;
+                msg_queue_idx--;
+                alloc_msg_queue_idx--;
+                return;
+            }
+        }
+
+        if (msg_queue_idx >= msg_queue_size_) {
+            buffer_realloc();
+        }
+
+        message_t *msg_idx = &message_queue_[msg_queue_idx++];
+        msg_idx->type = is_munmap ? message_type_munmap : message_type_deletion;
+        msg_idx->ptr = ptr;
+    }
+
+    void reset() {
+        msg_queue_idx = 0;
+        alloc_msg_queue_idx = 0;
+    }
+
+    void process(std::function<void(message_t*, allocation_message_t*)> callback) {
+        for (size_t i = 0; i < msg_queue_idx; i++) {
+            message_t * message = &message_queue_[i];
+            allocation_message_t * allocation_message = nullptr;
+            if (message->type == message_type_allocation || message->type == message_type_mmap) {
+                allocation_message = &alloc_message_queue_[message->index];
+            }
+            callback(message, allocation_message);
+        }
+    }
+
+private:
+
+    void buffer_realloc() {
+        alloc_queue_size_ += size_augment_;
+
+        void * buffer = realloc(alloc_message_queue_, sizeof(allocation_message_t) * alloc_queue_size_);
+        alloc_message_queue_ = static_cast<allocation_message_t *>(buffer);
+
+        msg_queue_size_ = alloc_queue_size_ * 1.5f;
+        buffer = realloc(alloc_message_queue_, sizeof(allocation_message_t) * msg_queue_size_);
+        message_queue_ = static_cast<message_t *>(buffer);
+    }
+
+    size_t size_augment_ = 0;
+
+    size_t msg_queue_size_ = 0;
+    size_t msg_queue_idx = 0;
+    message_t * message_queue_ = nullptr;
+
+    size_t alloc_queue_size_ = 0;
+    size_t alloc_msg_queue_idx = 0;
+    allocation_message_t * alloc_message_queue_ = nullptr;
+
+};
+
+typedef struct {
+    BufferQueue * queue = nullptr;
+    std::mutex mutex;
+} buffer_queue_container_t;
+
+static const unsigned int MAX_PTR_SLOT   = 1 << 10;
+static const unsigned int PTR_MASK       = MAX_PTR_SLOT - 1;
+
+static inline size_t memory_ptr_hash(uintptr_t _key) {
+    return static_cast<size_t>((_key ^ (_key >> 16)) & PTR_MASK);
+}
+
+class BufferContainer {
+public:
+    BufferContainer() {
+        containers_.reserve(MAX_PTR_SLOT);
+        for (int i = 0; i < MAX_PTR_SLOT; ++i) {
+            containers_[i] = new buffer_queue_container_t();
+        }
+    };
+
+    ~BufferContainer() {
+        for (auto container : containers_) {
+            if (container->queue) {
+                delete container->queue;
+            }
+            delete container;
+        }
+
+        if (queue_swapped_) {
+            delete queue_swapped_;
+        }
+    };
+
+    std::vector<buffer_queue_container_t *> containers_;
+
+    BufferQueue * queue_swapped_ = nullptr;
+
+    bool processing = false;
+
+    static void process_routine(BufferContainer *this_) {
+        while(true) {
+            if (!this_->queue_swapped_) this_->queue_swapped_ = new BufferQueue(32);
+
+            for (auto container : this_->containers_) {
+                BufferQueue * swapped = nullptr;
+                {
+                    std::lock_guard<std::mutex> lock(container->mutex);
+                    if (container->queue) {
+                        swapped = container->queue;
+                        container->queue = this_->queue_swapped_;
+                    }
+                }
+                if (swapped) {
+                    swapped->process([](message_t* message, allocation_message_t* allocation_message) {
+                        if (message->type == message_type_allocation || message->type == message_type_mmap) {
+                            if (UNLIKELY(allocation_message == nullptr)) return;
+                            uint64_t stack_hash = 0;
+                            if (allocation_message->backtrace.frame_size != 0) {
+                                stack_hash = hash_frames(allocation_message->backtrace.frames, allocation_message->backtrace.frame_size);
+                            }
+                            m_memory_meta_container.insert(
+                                    reinterpret_cast<const void *>(allocation_message->ptr),
+                                    stack_hash,
+                                    [&](ptr_meta_t *ptr_meta, stack_meta_t *stack_meta) {
+                                        ptr_meta->ptr     = reinterpret_cast<void *>(allocation_message->ptr);
+                                        ptr_meta->size    = allocation_message->size;
+                                        ptr_meta->caller  = reinterpret_cast<void *>(allocation_message->caller);
+                                        ptr_meta->is_mmap = message->type == message_type_mmap;
+
+                                        if (UNLIKELY(!stack_meta)) {
+                                            return;
+                                        }
+
+                                        stack_meta->size += allocation_message->size;
+                                        if (stack_meta->backtrace.frame_size == 0 && allocation_message->backtrace.frame_size != 0) {
+                                            stack_meta->backtrace = allocation_message->backtrace;
+                                            stack_meta->caller    = reinterpret_cast<void *>(allocation_message->caller);
+                                        }
+                                    });
+                        } else if (message->type == message_type_deletion || message->type == message_type_munmap) {
+                            m_memory_meta_container.erase(
+                                    reinterpret_cast<const void *>(message->ptr));
+                        }
+                    });
+
+                    swapped->reset();
+                    this_->queue_swapped_ = swapped;
+                }
+            }
+
+            usleep(100000000);
+        }
+    }
+
+    void start_process() {
+        if (processing) return;
+        processing = true;
+//        auto th = new std::thread(&BufferContainer::process_routine);
+        pthread_t thread;
+        pthread_create(&thread, nullptr, reinterpret_cast<void *(*)(void *)>(process_routine), this);
+        pthread_detach(thread);
+    }
+
+};
+
+static BufferContainer m_memory_messages_containers_;
+
+void memory_hook_init() {
+    m_memory_messages_containers_.start_process();
+}
 
 void enable_stacktrace(bool enable) {
     is_stacktrace_enabled = enable;
@@ -67,24 +310,13 @@ void set_tracing_alloc_size_range(size_t min, size_t max) {
     m_tracing_alloc_size_max = max;
 }
 
-static inline void
-decrease_stack_size(std::map<uint64_t, stack_meta_t> &stack_metas,
-                    const ptr_meta_t &meta) {
-    LOGI(TAG, "calculate_stack_size");
-
-}
-
-void memory_hook_init() {
-    LOGI(TAG, "memory_hook_init");
-}
-
 static inline bool should_do_unwind(size_t byte_count) {
     return ((m_tracing_alloc_size_min == 0 || byte_count >= m_tracing_alloc_size_min)
             && (m_tracing_alloc_size_max == 0 || byte_count <= m_tracing_alloc_size_max));
 }
 static inline void do_unwind(wechat_backtrace::Frame *frames, const size_t max_frames,
                                   size_t &frame_size) {
-#ifdef FAKE_BACKTRACE_DATA
+#ifndef FAKE_BACKTRACE_DATA
     fake_unwind(frames, max_frames, frame_size);
 #else
     ON_RECORD_START(durations);
@@ -108,6 +340,21 @@ static inline void on_acquire_memory(
 
     ON_MEMORY_ALLOCATED((uint64_t) ptr, byte_count);
 
+#if USE_MEMORY_MESSAGE_QUEUE == true
+    buffer_queue_container_t * container = m_memory_messages_containers_.containers_[memory_ptr_hash((uintptr_t) ptr)];
+
+    std::lock_guard<std::mutex> lock(container->mutex);
+    if (!container->queue) {
+        container->queue = new BufferQueue(32);
+    }
+    auto message = container->queue->enqueue_allocation_message(is_mmap);
+    message->ptr = reinterpret_cast<uintptr_t>(ptr);
+    message->size = byte_count;
+    message->caller = reinterpret_cast<uintptr_t>(caller);
+    if (LIKELY(is_stacktrace_enabled && should_do_unwind(byte_count))) {
+        do_unwind(message->backtrace.frames, message->backtrace.max_frames, message->backtrace.frame_size);
+    }
+#else
     MemoryHookBacktrace backtrace;
     uint64_t            stack_hash = 0;
     if (LIKELY(is_stacktrace_enabled && should_do_unwind(byte_count))) {
@@ -134,18 +381,30 @@ static inline void on_acquire_memory(
                    stack_meta->caller    = caller;
                }
             });
+#endif
 
 }
 
 static inline void on_release_memory(void *ptr, bool is_mmap) {
-    if (!ptr) {
+
+    if (UNLIKELY(!ptr)) {
         LOGE(TAG, "on_release_memory: invalid pointer");
         return;
     }
 
     ON_MEMORY_RELEASED((uint64_t) ptr);
 
+#if USE_MEMORY_MESSAGE_QUEUE == true
+    buffer_queue_container_t * container = m_memory_messages_containers_.containers_[memory_ptr_hash((uintptr_t) ptr)];
+
+    std::lock_guard<std::mutex> lock(container->mutex);
+    if (!container->queue) {
+        container->queue = new BufferQueue(32);
+    }
+    container->queue->enqueue_deletion_message(reinterpret_cast<uintptr_t>(ptr), is_mmap);
+#else
     m_memory_meta_container.erase(ptr);
+#endif
 }
 
 void on_alloc_memory(void *caller, void *ptr, size_t byte_count) {
@@ -163,6 +422,14 @@ void on_mmap_memory(void *caller, void *ptr, size_t byte_count) {
 void on_munmap_memory(void *ptr) {
     on_release_memory(ptr, true);
 }
+
+void memory_hook_on_dlopen(const char *file_name) {
+    LOGD(TAG, "memory_hook_on_dlopen: file %s", file_name);
+    // This line only refresh xhook in matrix-memoryhook library now.
+    xhook_refresh(0);
+}
+
+// -------------------- Dump --------------------
 
 /**
  * 区分 native heap 和 mmap 的 caller 和 stack
@@ -558,7 +825,7 @@ void dump(bool enable_mmap, const char *log_path, const char *json_path) {
 
     dump_impl(log_file, json_file, enable_mmap);
 
-    DUMP_RECORD("/sdcard/Android/data/com.tencent.mm/memory-record.dump");
+//    DUMP_RECORD("/sdcard/Android/data/com.tencent.mm/memory-record.dump");
 
     if (log_file) {
         fflush(log_file);
@@ -573,17 +840,13 @@ void dump(bool enable_mmap, const char *log_path, const char *json_path) {
          ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> memory dump end <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
 }
 
-void memory_hook_on_dlopen(const char *file_name) {
-    LOGD(TAG, "memory_hook_on_dlopen: file %s", file_name);
-    // This line only refresh xhook in matrix-memoryhook library now.
-    xhook_refresh(0);
-}
-
+// For testing.
 EXPORT_C void fake_malloc(void * ptr, size_t byte_count) {
     void * caller = __builtin_return_address(0);
     on_alloc_memory(caller, ptr, byte_count);
 }
 
+// For testing.
 EXPORT_C void fake_free(void * ptr) {
     on_free_memory(ptr);
 }
