@@ -18,27 +18,16 @@
 
 #import "MatrixBaseModel.h"
 
-// record the thread info
-@interface MSThreadInfo : MatrixBaseModel
-
-@property (nonatomic, strong) NSString *threadName;
-@property (nonatomic, assign) UInt64 allocSize;
-
-@end
-
 @interface MemoryRecordInfo : MatrixBaseModel
 
 @property (nonatomic, assign) uint64_t launchTime;
 @property (nonatomic, strong) NSString *userScene;
 @property (nonatomic, strong) NSString *systemVersion;
 @property (nonatomic, strong) NSString *appUUID;
-@property (nonatomic, strong) NSMutableDictionary<NSString *, MSThreadInfo *> *threadInfos;
 
 - (NSString *)recordID;
 - (NSString *)recordDataPath;
 
 - (NSData *)generateReportDataWithCustomInfo:(NSDictionary *)customInfo;
-
-- (void)calculateAllThreadsMemoryUsage;
 
 @end

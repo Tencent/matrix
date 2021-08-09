@@ -24,10 +24,11 @@ import android.os.Bundle;
 import android.os.Debug;
 import android.os.SystemClock;
 import android.provider.Settings;
-import androidx.annotation.Nullable;
 import android.util.Log;
 import android.view.View;
 import android.widget.Toast;
+
+import androidx.annotation.Nullable;
 
 import com.tencent.matrix.AppActiveMatrixDelegate;
 import com.tencent.matrix.Matrix;
@@ -35,6 +36,7 @@ import com.tencent.matrix.listeners.IAppForeground;
 import com.tencent.matrix.plugin.Plugin;
 import com.tencent.matrix.trace.TracePlugin;
 import com.tencent.matrix.trace.core.AppMethodBeat;
+import com.tencent.matrix.trace.tracer.SignalAnrTracer;
 import com.tencent.matrix.trace.view.FrameDecorator;
 import com.tencent.matrix.util.MatrixLog;
 
@@ -120,19 +122,26 @@ public class TestTraceMainActivity extends Activity implements IAppForeground {
     public void testFps(View view) {
         Intent intent = new Intent(this, TestFpsActivity.class);
         startActivity(intent);
-        overridePendingTransition(R.anim.slide_right_in, 0);
     }
 
     public void testJankiess(View view) {
         A();
     }
 
-
     public void testANR(final View view) {
-       /* for (long i = 0; i < 1l; i++) {
-            testInnerSleep();
-        }*/
         A();
+    }
+
+    public void testPrintTrace(final View view) {
+        SignalAnrTracer.printTrace();
+    }
+
+    public void testSignalANR(final View view) {
+        try {
+            Thread.sleep(20000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
     }
 
     private void A() {
@@ -223,7 +232,7 @@ public class TestTraceMainActivity extends Activity implements IAppForeground {
         return;
     }
 
-    class AssertionArrayException extends  Exception {
+    class AssertionArrayException extends Exception {
 
     }
 

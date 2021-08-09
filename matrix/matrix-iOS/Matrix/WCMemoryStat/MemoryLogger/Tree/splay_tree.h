@@ -126,7 +126,7 @@ private:
             while (root != 0) {
                 s.push(root);
                 if (s.size() > t_info->t_size) {
-                    abort();
+                    return;
                 }
                 root = get_node_lc(root);
             }
@@ -135,7 +135,7 @@ private:
                 root = s.top();
                 callback(get_node_key(root));
                 if (++count > t_info->t_size) {
-                    abort();
+                    return;
                 }
                 s.pop();
                 root = get_node_rc(root);
@@ -213,7 +213,7 @@ public:
     }
 
     void insert(const T &key) {
-        if (t_info->t_size == t_info->b_size - 1 && reallocate_memory(false) == false) {
+        if (t_info->t_size + 1 == t_info->b_size && reallocate_memory(false) == false) {
             return; // malloc fail
         }
 

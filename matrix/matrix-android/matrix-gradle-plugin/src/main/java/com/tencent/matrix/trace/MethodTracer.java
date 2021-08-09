@@ -46,6 +46,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.zip.ZipEntry;
+import java.util.zip.ZipException;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
 
@@ -194,9 +195,16 @@ public class MethodTracer {
                 }
             }
         } catch (Exception e) {
-            Log.e(TAG, "[innerTraceMethodFromJar] input:%s output:%s e:%s", input.getName(), output, e);
+            Log.e(TAG, "[innerTraceMethodFromJar] input:%s output:%s e:%s", input, output, e);
+            if (e instanceof ZipException) {
+                e.printStackTrace();
+            }
             try {
-                Files.copy(input.toPath(), output.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                if (input.length() > 0) {
+                    Files.copy(input.toPath(), output.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                } else {
+                    Log.e(TAG, "[innerTraceMethodFromJar] input:%s is empty", input);
+                }
             } catch (Exception e1) {
                 e1.printStackTrace();
             }
@@ -240,6 +248,7 @@ public class MethodTracer {
     private class TraceClassAdapter extends ClassVisitor {
 
         private String className;
+        private String superName;
         private boolean isABSClass = false;
         private boolean hasWindowFocusMethod = false;
         private boolean isActivityOrSubClass;
@@ -253,6 +262,7 @@ public class MethodTracer {
         public void visit(int version, int access, String name, String signature, String superName, String[] interfaces) {
             super.visit(version, access, name, signature, superName, interfaces);
             this.className = name;
+            this.superName = superName;
             this.isActivityOrSubClass = isActivityOrSubClass(className, collectedClassExtendMap);
             this.isNeedTrace = MethodCollector.isNeedTrace(configuration, className, mappingCollector);
             if ((access & Opcodes.ACC_ABSTRACT) > 0 || (access & Opcodes.ACC_INTERFACE) > 0) {
@@ -264,12 +274,12 @@ public class MethodTracer {
         @Override
         public MethodVisitor visitMethod(int access, String name, String desc,
                                          String signature, String[] exceptions) {
+            if (!hasWindowFocusMethod) {
+                hasWindowFocusMethod = MethodCollector.isWindowFocusChangeMethod(name, desc);
+            }
             if (isABSClass) {
                 return super.visitMethod(access, name, desc, signature, exceptions);
             } else {
-                if (!hasWindowFocusMethod) {
-                    hasWindowFocusMethod = MethodCollector.isWindowFocusChangeMethod(name, desc);
-                }
                 MethodVisitor methodVisitor = cv.visitMethod(access, name, desc, signature, exceptions);
                 return new TraceMethodAdapter(api, methodVisitor, access, name, desc, this.className,
                         hasWindowFocusMethod, isActivityOrSubClass, isNeedTrace);
@@ -280,7 +290,7 @@ public class MethodTracer {
         @Override
         public void visitEnd() {
             if (!hasWindowFocusMethod && isActivityOrSubClass && isNeedTrace) {
-                insertWindowFocusChangeMethod(cv, className);
+                insertWindowFocusChangeMethod(cv, className, superName);
             }
             super.visitEnd();
         }
@@ -385,13 +395,13 @@ public class MethodTracer {
         mv.visitMethodInsn(Opcodes.INVOKESTATIC, TraceBuildConstants.MATRIX_TRACE_CLASS, "at", "(Landroid/app/Activity;Z)V", false);
     }
 
-    private void insertWindowFocusChangeMethod(ClassVisitor cv, String classname) {
+    private void insertWindowFocusChangeMethod(ClassVisitor cv, String classname, String superClassName) {
         MethodVisitor methodVisitor = cv.visitMethod(Opcodes.ACC_PUBLIC, TraceBuildConstants.MATRIX_TRACE_ON_WINDOW_FOCUS_METHOD,
                 TraceBuildConstants.MATRIX_TRACE_ON_WINDOW_FOCUS_METHOD_ARGS, null, null);
         methodVisitor.visitCode();
         methodVisitor.visitVarInsn(Opcodes.ALOAD, 0);
         methodVisitor.visitVarInsn(Opcodes.ILOAD, 1);
-        methodVisitor.visitMethodInsn(Opcodes.INVOKESPECIAL, TraceBuildConstants.MATRIX_TRACE_ACTIVITY_CLASS, TraceBuildConstants.MATRIX_TRACE_ON_WINDOW_FOCUS_METHOD,
+        methodVisitor.visitMethodInsn(Opcodes.INVOKESPECIAL, superClassName, TraceBuildConstants.MATRIX_TRACE_ON_WINDOW_FOCUS_METHOD,
                 TraceBuildConstants.MATRIX_TRACE_ON_WINDOW_FOCUS_METHOD_ARGS, false);
         traceWindowFocusChangeMethod(methodVisitor, classname);
         methodVisitor.visitInsn(Opcodes.RETURN);

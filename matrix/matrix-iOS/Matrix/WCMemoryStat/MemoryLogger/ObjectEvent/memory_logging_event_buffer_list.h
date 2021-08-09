@@ -25,8 +25,6 @@ memory_logging_event_buffer_list *memory_logging_event_buffer_list_create();
 void memory_logging_event_buffer_list_free(memory_logging_event_buffer_list *buffer_list);
 
 void memory_logging_event_buffer_list_push_back(memory_logging_event_buffer_list *buffer_list, memory_logging_event_buffer *event_buffer);
-memory_logging_event_buffer *memory_logging_event_buffer_list_pop_front(memory_logging_event_buffer_list *buffer_list);
-
-memory_logging_event_buffer *memory_logging_event_buffer_list_reset(memory_logging_event_buffer_list *buffer_list);
+memory_logging_event_buffer *memory_logging_event_buffer_list_pop_all(memory_logging_event_buffer_list *buffer_list);
 
 #endif /* memory_logging_event_buffer_list_h */

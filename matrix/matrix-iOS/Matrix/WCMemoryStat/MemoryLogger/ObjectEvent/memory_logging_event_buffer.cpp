@@ -31,7 +31,6 @@ void memory_logging_event_buffer_compress(memory_logging_event_buffer *event_buf
     while (curr_event < event_buffer_end) {
         if (curr_event->event_type == EventType_Alloc) {
             alloc_events[alloc_event_count++] = curr_event;
-            curr_event = (memory_logging_event *)((uint8_t *)curr_event + curr_event->event_size);
         } else {
             uint64_t address = curr_event->address;
 
@@ -43,50 +42,64 @@ void memory_logging_event_buffer_compress(memory_logging_event_buffer *event_buf
                             // *waves hand* current allocation never occurred
                             last_alloc_event->event_type = EventType_Invalid;
                             curr_event->event_type = EventType_Invalid;
-                            alloc_events[i] = alloc_events[end];
+
+                            for (int j = i; j < end; ++j) {
+                                alloc_events[j] = alloc_events[j + 1];
+                            }
                             --alloc_event_count;
                             break;
                         } else if (curr_event->event_type == EventType_Update) {
-                            last_alloc_event->object_type = curr_event->object_type;
-                            curr_event->event_type = EventType_Invalid;
+                            if (curr_event->stack_size == 0) {
+                                last_alloc_event->object_type = curr_event->object_type;
+                                curr_event->event_type = EventType_Invalid;
+                            } else {
+                                curr_event->size = last_alloc_event->size;
+                                curr_event->type_flags = last_alloc_event->type_flags;
+                                curr_event->event_type = EventType_Alloc;
+                                last_alloc_event->event_type = EventType_Invalid;
+                                alloc_events[i] = curr_event;
+                            }
+                            break;
                         }
                     } else if (curr_event->type_flags & memory_logging_type_vm_deallocate) {
                         // *waves hand* current allocation never occurred
                         last_alloc_event->event_type = EventType_Invalid;
                         curr_event->event_type = EventType_Invalid;
-                        alloc_events[i] = alloc_events[end];
+
+                        for (int j = i; j < end; ++j) {
+                            alloc_events[j] = alloc_events[j + 1];
+                        }
                         --alloc_event_count;
                         break;
                     }
                 }
             }
-
-            curr_event = (memory_logging_event *)((uint8_t *)curr_event + MEMORY_LOGGING_EVENT_SIMPLE_SIZE);
         }
+        curr_event = (memory_logging_event *)((uint8_t *)curr_event + curr_event->event_size);
     }
 }
 
-FORCE_INLINE void memory_logging_event_buffer_lock(memory_logging_event_buffer *event_buffer) {
+void memory_logging_event_buffer_lock(memory_logging_event_buffer *event_buffer) {
     __malloc_lock_lock(&event_buffer->lock);
 }
 
-FORCE_INLINE void memory_logging_event_buffer_unlock(memory_logging_event_buffer *event_buffer) {
+void memory_logging_event_buffer_unlock(memory_logging_event_buffer *event_buffer) {
     __malloc_lock_unlock(&event_buffer->lock);
 }
 
-FORCE_INLINE bool memory_logging_event_buffer_is_full(memory_logging_event_buffer *event_buffer, bool is_alloc) {
-    if (is_alloc) {
+bool memory_logging_event_buffer_is_full(memory_logging_event_buffer *event_buffer, bool is_dump_call_stacks) {
+    if (is_dump_call_stacks) {
         return event_buffer->write_index > event_buffer->buffer_size - sizeof(memory_logging_event);
     } else {
         return event_buffer->write_index > event_buffer->buffer_size - MEMORY_LOGGING_EVENT_SIMPLE_SIZE;
     }
 }
 
-FORCE_INLINE memory_logging_event *memory_logging_event_buffer_new_event(memory_logging_event_buffer *event_buffer) {
+memory_logging_event *memory_logging_event_buffer_new_event(memory_logging_event_buffer *event_buffer) {
     return (memory_logging_event *)(event_buffer->buffer + event_buffer->write_index);
 }
 
-FORCE_INLINE memory_logging_event *memory_logging_event_buffer_last_event(memory_logging_event_buffer *event_buffer) {
+memory_logging_event *memory_logging_event_buffer_last_event(memory_logging_event_buffer *event_buffer) {
     if (event_buffer->last_write_index < event_buffer->write_index) {
         return (memory_logging_event *)(event_buffer->buffer + event_buffer->last_write_index);
     } else {
@@ -94,40 +107,40 @@ FORCE_INLINE memory_logging_event *memory_logging_event_buffer_last_event(memory
     }
 }
 
-FORCE_INLINE memory_logging_event *memory_logging_event_buffer_begin(memory_logging_event_buffer *event_buffer) {
+memory_logging_event *memory_logging_event_buffer_begin(memory_logging_event_buffer *event_buffer) {
     if (event_buffer->write_index == 0) {
         return NULL;
     }
 
-    event_buffer->read_index = 0;
     return (memory_logging_event *)event_buffer->buffer;
 }
 
-FORCE_INLINE memory_logging_event *memory_logging_event_buffer_next(memory_logging_event_buffer *event_buffer) {
-    memory_logging_event *curr_event = (memory_logging_event *)(event_buffer->buffer + event_buffer->read_index);
-    event_buffer->read_index += curr_event->event_size;
+memory_logging_event *memory_logging_event_buffer_next(memory_logging_event_buffer *event_buffer, memory_logging_event *curr_event) {
+    void *event_buffer_end = event_buffer->buffer + event_buffer->write_index;
+    memory_logging_event *next_event = (memory_logging_event *)((uint8_t *)curr_event + curr_event->event_size);
 
-    if (event_buffer->read_index < event_buffer->write_index) {
-        return (memory_logging_event *)(event_buffer->buffer + event_buffer->read_index);
-    } else if (event_buffer->read_index == event_buffer->write_index) {
+    if (next_event < event_buffer_end) {
+        return next_event;
+    } else if (next_event == event_buffer_end) {
         return NULL;
     } else {
         disable_memory_logging();
-        __malloc_printf("read: %d, write: %d, buffer_size: %u, self: %p, self->buffer: %p",
-                        event_buffer->read_index,
+        __malloc_printf("curr_event: %p, next_event: %p, write_index: %d, buffer_size: %u, self: %p, self->buffer: %p",
+                        curr_event,
+                        next_event,
                         event_buffer->write_index,
                         event_buffer->buffer_size,
                         event_buffer,
                         event_buffer->buffer);
-        abort();
+        return NULL;
     }
 }
 
-FORCE_INLINE void memory_logging_event_buffer_update_write_index_with_size(memory_logging_event_buffer *event_buffer, size_t write_size) {
+void memory_logging_event_buffer_update_write_index_with_size(memory_logging_event_buffer *event_buffer, size_t write_size) {
     event_buffer->last_write_index = event_buffer->write_index;
     event_buffer->write_index += write_size;
 }
 
-FORCE_INLINE void memory_logging_event_buffer_update_to_last_write_index(memory_logging_event_buffer *event_buffer) {
+void memory_logging_event_buffer_update_to_last_write_index(memory_logging_event_buffer *event_buffer) {
     event_buffer->write_index = event_buffer->last_write_index;
 }

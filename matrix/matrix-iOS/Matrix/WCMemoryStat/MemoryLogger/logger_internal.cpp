@@ -30,8 +30,7 @@
 
 int err_code = MS_ERRC_SUCCESS;
 
-static pthread_key_t s_ignore_logging_key = 0;
-static pthread_key_t s_thread_id_key = 0;
+static pthread_key_t s_thread_info_key = 0;
 static malloc_lock_s shared_lock = __malloc_lock_init();
 static malloc_zone_t *inter_zone = malloc_create_zone(1 << 20, 0);
 
@@ -41,73 +40,46 @@ static size_t mapped_size[32] = { 0 };
 static bool app_is_in_backgound = false;
 
 #pragma mark -
-#pragma mark Lock Function
+#pragma mark Thread Info
 
-#ifdef USE_SPIN_LOCK
+uint64_t current_thread_info_for_logging() {
+    uint64_t value = (uintptr_t)pthread_getspecific(s_thread_info_key);
 
-FORCE_INLINE malloc_lock_s __malloc_lock_init() {
-    return OS_SPINLOCK_INIT;
-}
-
-FORCE_INLINE void __malloc_lock_lock(malloc_lock_s *lock) {
-    OSSpinLockLock(lock);
-}
-
-FORCE_INLINE bool __malloc_lock_trylock(malloc_lock_s *lock) {
-    return OSSpinLockTry(lock);
-}
-
-FORCE_INLINE void __malloc_lock_unlock(malloc_lock_s *lock) {
-    OSSpinLockUnlock(lock);
-}
-
-#else
-
-FORCE_INLINE malloc_lock_s __malloc_lock_init() {
-    return OS_UNFAIR_LOCK_INIT;
-}
-
-FORCE_INLINE void __malloc_lock_lock(malloc_lock_s *lock) {
-    os_unfair_lock_lock(lock);
-}
-
-FORCE_INLINE bool __malloc_lock_trylock(malloc_lock_s *lock) {
-    return os_unfair_lock_trylock(lock);
-}
-
-FORCE_INLINE void __malloc_lock_unlock(malloc_lock_s *lock) {
-    os_unfair_lock_unlock(lock);
-}
-
-#endif
-
-#pragma mark -
-#pragma mark Thread ID
-
-FORCE_INLINE thread_id current_thread_id() {
-    thread_id t_id = (thread_id)(uintptr_t)pthread_getspecific(s_thread_id_key);
-    if (t_id == 0) {
-        t_id = pthread_mach_thread_np(pthread_self());
-        pthread_setspecific(s_thread_id_key, (void *)(uintptr_t)t_id);
+    if (value == 0) {
+        thread_info_for_logging_t thread_info;
+        thread_info.detail.is_ignore = false;
+        thread_info.detail.t_id = pthread_mach_thread_np(pthread_self());
+        pthread_setspecific(s_thread_info_key, (void *)(uintptr_t)thread_info.value);
+        return thread_info.value;
     }
 
-    return t_id;
+    return value;
 }
 
-FORCE_INLINE void set_curr_thread_ignore_logging(bool ignore) {
-    pthread_setspecific(s_ignore_logging_key, (void *)ignore);
+thread_id current_thread_id() {
+    thread_info_for_logging_t thread_info;
+    thread_info.value = current_thread_info_for_logging();
+    return thread_info.detail.t_id;
 }
 
-FORCE_INLINE bool is_thread_ignoring_logging() {
-    return pthread_getspecific(s_ignore_logging_key);
+void set_curr_thread_ignore_logging(bool ignore) {
+    thread_info_for_logging_t thread_info;
+    thread_info.value = current_thread_info_for_logging();
+    thread_info.detail.is_ignore = ignore;
+    pthread_setspecific(s_thread_info_key, (void *)(uintptr_t)thread_info.value);
+}
+
+bool is_thread_ignoring_logging() {
+    thread_info_for_logging_t thread_info;
+    thread_info.value = current_thread_info_for_logging();
+    return thread_info.detail.is_ignore;
 }
 
 #pragma mark -
 #pragma mark Allocation/Deallocation Function without Logging
 
-void logger_internal_init(void) {
-    pthread_key_create(&s_ignore_logging_key, NULL);
-    pthread_key_create(&s_thread_id_key, NULL);
+bool logger_internal_init(void) {
+    return pthread_key_create(&s_thread_info_key, NULL) == 0;
 }
 
 void *inter_malloc(size_t size) {
@@ -210,7 +182,6 @@ int inter_munmap(void *start, size_t length) {
         int ret = munmap(start, length);
         if (ret != 0) {
             __malloc_printf("munmap fail, %s, errno: %d", strerror(errno), errno);
-            abort();
         }
         return ret;
     } else {
@@ -218,7 +189,6 @@ int inter_munmap(void *start, size_t length) {
         int ret = munmap(start, length);
         if (ret != 0) {
             __malloc_printf("munmap fail, %s, errno: %d", strerror(errno), errno);
-            abort();
         }
         set_curr_thread_ignore_logging(false);
 

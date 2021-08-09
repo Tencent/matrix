@@ -249,6 +249,7 @@ Expr *sqlite3RegisterExpr(Parse *pParse, Token *pToken){
   /* sqlite3VdbeAddOp(v, OP_Dup, depth, 0); */
   /* sqlite3VdbeAddOp(v, OP_MemStore, p->iTable, 1); */
   /* return p; */
+  return NULL;
 }
 
 /*
@@ -1004,7 +1005,7 @@ int sqlite3IsRowid(const char *z){
 /*     } */
 /* #endif /1* !defined(SQLITE_OMIT_TRIGGER) *1/ */
 
-/*     /* */
+       /* */
 /*     ** Perhaps the name is a reference to the ROWID */
 /*     *1/ */
 /*     if( cnt==0 && cntTab==1 && sqlite3IsRowid(zCol) ){ */
@@ -1013,7 +1014,7 @@ int sqlite3IsRowid(const char *z){
 /*       pExpr->affinity = SQLITE_AFF_INTEGER; */
 /*     } */
 
-/*     /* */
+       /* */
 /*     ** If the input is of the form Z (not Y.Z or X.Y.Z) then the name Z */
 /*     ** might refer to an result-set alias.  This happens, for example, when */
 /*     ** we are resolving names in the WHERE clause of the following command: */
@@ -1048,7 +1049,7 @@ int sqlite3IsRowid(const char *z){
 /*     } */
 /*   } */
 
-/*   /* */
+     /* */
 /*   ** If X and Y are NULL (in other words if only the column name Z is */
 /*   ** supplied) and the value of Z is enclosed in double-quotes, then */
 /*   ** Z is a string literal if it doesn't match any column names.  In that */
@@ -1063,7 +1064,7 @@ int sqlite3IsRowid(const char *z){
 /*     return 0; */
 /*   } */
 
-/*   /* */
+     /* */
 /*   ** cnt==0 means there was not match.  cnt>1 means there were two or */
 /*   ** more matches.  Either way, we have an error. */
 /*   *1/ */

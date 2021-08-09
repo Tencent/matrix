@@ -16,6 +16,8 @@
 
 package sample.tencent.matrix.battery;
 
+import android.animation.ValueAnimator;
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.Notification;
 import android.app.NotificationChannel;
@@ -25,24 +27,34 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.res.Resources;
 import android.os.Bundle;
+import android.util.Log;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.Button;
+import android.widget.TextView;
+import android.widget.Toast;
 
 import com.tencent.matrix.Matrix;
+import com.tencent.matrix.batterycanary.BatteryCanary;
 import com.tencent.matrix.batterycanary.BatteryEventDelegate;
 import com.tencent.matrix.batterycanary.BatteryMonitorPlugin;
+import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
+import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature.JiffiesSnapshot.ThreadJiffiesEntry;
 import com.tencent.matrix.plugin.Plugin;
 import com.tencent.matrix.util.MatrixLog;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
+import sample.tencent.matrix.R;
 
-//import com.tencent.matrix.batterycanary.BatteryCanaryPlugin;
+import static com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature.JiffiesSnapshot;
+import static com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature.Snapshot;
 
-/**
- * Created by zhangshaowen on 17/6/13.
- */
-
+@SuppressLint("LongLogTag")
 public class TestBatteryActivity extends Activity {
     private static final String TAG = "Matrix.TestBatteryActivity";
+    private JiffiesSnapshot mLastJiffiesSnapshot;
 
     private PendingIntent getAlarmPendingIntent(final Context context, final int id, Intent intent) {
         PendingIntent pendingIntent;
@@ -59,6 +71,7 @@ public class TestBatteryActivity extends Activity {
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        setContentView(R.layout.test_battery);
 
        Plugin plugin = Matrix.with().getPluginByClass(BatteryMonitorPlugin.class);
        if (!plugin.isPluginStarted()) {
@@ -69,6 +82,9 @@ public class TestBatteryActivity extends Activity {
            MatrixLog.i(TAG, "plugin-battery start");
            plugin.start();
        }
+
+        benchmark();
+
 //
 //        final AlarmManager am = (AlarmManager) getApplicationContext().getSystemService(Context.ALARM_SERVICE);
 //        if (am == null) {
@@ -127,6 +143,52 @@ public class TestBatteryActivity extends Activity {
 //        }).start();
     }
 
+    private void benchmark() {
+        tryDumpBatteryStats();
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                while (!isDestroyed()) {}
+            }
+        }, "Benchmark").start();
+    }
+
+    public void onDumpBatteryStats(View view) {
+        tryDumpBatteryStats();
+    }
+
+    void tryDumpBatteryStats() {
+        BatteryCanary.currentJiffies(new BatteryMonitorCore.Callback<JiffiesSnapshot>() {
+            @Override
+            public void onGetJiffies(JiffiesSnapshot currJiffiesSnapshot) {
+                if (mLastJiffiesSnapshot != null) {
+                    // Configure jiffies delta
+                    final Snapshot.Delta<JiffiesSnapshot> delta = currJiffiesSnapshot.diff(mLastJiffiesSnapshot);
+                    findViewById(R.id.tv_battery_stats).post(new Runnable() {
+                        @Override
+                        public void run() {
+                            final String text = BatteryCanaryInitHelper.convertStatsToReadFriendlyText(delta);
+                            Log.i(TAG, "dump jiffies stats: " + text);
+                            TextView.class.cast(findViewById(R.id.tv_battery_stats)).setText(text);
+
+                            if (delta.dlt.threadEntries.getList().size() > 0) {
+                                ThreadJiffiesEntry topThread = delta.dlt.threadEntries.getList().get(0);
+                                if (topThread.get() >= 1000) {
+                                    Toast.makeText(
+                                            getApplication(),
+                                            "Abnormal thread found: " + topThread.name + ", jiffies = " + topThread.get(),
+                                            Toast.LENGTH_LONG
+                                    ).show();
+                                }
+                            }
+                        }
+                    });
+                }
+                mLastJiffiesSnapshot = currJiffiesSnapshot;
+            }
+        });
+    }
+
     void tryNotify() {
         NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
 
@@ -166,5 +228,77 @@ public class TestBatteryActivity extends Activity {
             }
         }
         return null;
+    }
+
+    @SuppressLint("NewApi")
+    public void onStartAnim(final View view) {
+        ValueAnimator animator = ValueAnimator.ofArgb(0xff94E1F7, 0xffF35519);
+        animator.setDuration(1000);
+        animator.setRepeatCount(5);
+        animator.setRepeatMode(ValueAnimator.REVERSE);
+        animator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+            @Override
+            public void onAnimationUpdate(ValueAnimator animation) {
+                Button.class.cast(view).setTextColor((Integer) animation.getAnimatedValue());
+            }
+        });
+        animator.start();
+
+        view.post(new Runnable() {
+            @Override
+            public void run() {
+                Button.class.cast(view).setText("Changing Text Color");
+                dumpWindowViewTree();
+            }
+        });
+    }
+
+    private static void dumpWindowViewTree() {
+        try {
+            Class<?> wmgClass = Class.forName("android.view.WindowManagerGlobal");
+            Object wmgInstance = wmgClass.getMethod("getInstance").invoke(null);
+            String[] rootViews = (String[]) wmgClass.getDeclaredMethod("getViewRootNames").invoke(wmgInstance);
+            if (rootViews != null) {
+                for (String item : rootViews) {
+                    Object rootView = wmgClass.getDeclaredMethod("getRootView", String.class).invoke(wmgInstance, item);
+                    if (rootView != null ) {
+                        String string = getViewHierarchy((View) rootView);
+                        MatrixLog.i(TAG, "window = \t\n" + string);
+                    }
+                }
+            }
+        } catch (Throwable e) {
+            MatrixLog.e(TAG,"getBallInfoListSync fail!", e);
+        }
+    }
+
+
+
+    private static String getViewHierarchy(@NonNull View v) {
+        StringBuilder desc = new StringBuilder();
+        getViewHierarchy(v, desc, 0);
+        return desc.toString();
+    }
+
+    private static void getViewHierarchy(View v, StringBuilder desc, int margin) {
+        desc.append(getViewMessage(v, margin));
+        if (v instanceof ViewGroup) {
+            margin++;
+            ViewGroup vg = (ViewGroup) v;
+            for (int i = 0; i < vg.getChildCount(); i++) {
+                getViewHierarchy(vg.getChildAt(i), desc, margin);
+            }
+        }
+    }
+
+    @SuppressLint("ResourceType")
+    private static String getViewMessage(View v, int marginOffset) {
+        String repeated = new String(new char[marginOffset]).replace("\0", "  ");
+        try {
+             String resourceId = v.getResources() != null ? (v.getId() > 0 ? v.getResources().getResourceName(v.getId()) : "no_id") : "no_resources";
+            return repeated + "[" + v.getClass().getSimpleName() + "] " + resourceId + "\n";
+        } catch (Resources.NotFoundException e) {
+            return repeated + "[" + v.getClass().getSimpleName() + "] name_not_found\n";
+        }
     }
 }

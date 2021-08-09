@@ -1,5 +1,7 @@
 apply plugin: 'com.android.library'
 
+apply from: rootProject.file('gradle/WeChatNativeDepend.gradle')
+
 android {
     compileSdkVersion rootProject.ext.compileSdkVersion
     buildToolsVersion rootProject.ext.buildToolsVersion
@@ -63,9 +65,7 @@ if (rootProject.file('gradle/WeChatPublish.gradle').exists()) {
     }
     else {
         apply from: rootProject.file('gradle/WeChatPublish.gradle')
-        apply from: rootProject.file('gradle/WeChatNativeDepend.gradle')
         wechatPublish {
-            artifactId = POM_ARTIFACT_ID
-        }
+        artifactId = POM_ARTIFACT_ID}
     }
 }

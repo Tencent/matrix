@@ -111,7 +111,7 @@ public class ActivityRefWatcher extends FilePublisher implements Watcher {
         super(app, FILE_CONFIG_EXPIRED_TIME_MILLIS, resourcePlugin.getTag(), resourcePlugin);
         this.mResourcePlugin = resourcePlugin;
         final ResourceConfig config = resourcePlugin.getConfig();
-        mHandlerThread = MatrixHandlerThread.getNewHandlerThread("matrix_res"); // avoid blocking default matrix thread
+        mHandlerThread = MatrixHandlerThread.getNewHandlerThread("matrix_res", Thread.NORM_PRIORITY); // avoid blocking default matrix thread
         mHandler = new Handler(mHandlerThread.getLooper());
         mDumpHprofMode = config.getDumpHprofMode();
         mBgScanTimes = config.getBgScanIntervalMillis();
@@ -221,7 +221,9 @@ public class ActivityRefWatcher extends FilePublisher implements Watcher {
                 MatrixLog.i(TAG, "DestroyedActivityInfo is empty! wait...");
                 synchronized (mDestroyedActivityInfos) {
                     try {
-                        mDestroyedActivityInfos.wait();
+                        while (mDestroyedActivityInfos.isEmpty()) {
+                            mDestroyedActivityInfos.wait();
+                        }
                     } catch (Throwable ignored) {
                         // Ignored.
                     }
@@ -314,7 +316,7 @@ public class ActivityRefWatcher extends FilePublisher implements Watcher {
         try {
             Thread.sleep(100);
         } catch (InterruptedException e) {
-            e.printStackTrace();
+            MatrixLog.printErrStackTrace(TAG, e, "");
         }
         Runtime.getRuntime().runFinalization();
         MatrixLog.v(TAG, "gc was triggered.");

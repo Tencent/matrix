@@ -1,6 +1,8 @@
 ![Matrix-icon](assets/img/readme/header.png)
-
-[![license](http://img.shields.io/badge/license-BSD3-brightgreen.svg?style=flat)](https://github.com/Tencent/matrix/blob/master/LICENSE)[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/Tencent/matrix/pulls)[![WeChat Approved](https://img.shields.io/badge/Wechat%20Approved-0.9.0-red.svg)](https://github.com/Tencent/matrix/wiki)
+[![license](http://img.shields.io/badge/license-BSD3-brightgreen.svg?style=flat)](https://github.com/Tencent/matrix/blob/master/LICENSE)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/Tencent/matrix/pulls)
+[![WeChat Approved](https://img.shields.io/badge/Wechat%20Approved-2.0.0-red.svg)](https://github.com/Tencent/matrix/wiki)
+[![CircleCI](https://circleci.com/gh/Tencent/matrix.svg?style=shield)](https://app.circleci.com/pipelines/github/Tencent/matrix)
 
 (中文版本请参看[这里](#matrix_cn))  
 
@@ -57,7 +59,6 @@ In the following places:
 * Program `main` function;
 * `application:didFinishLaunchingWithOptions:` of  `AppDelegate`;
 * Or other places running as earlier as possible after application launching.
-  
 
 Add a code similar to the following to start the plugin:
 
@@ -126,7 +127,7 @@ At this point, Matrix has been integrated into the app and is beginning to colle
 
 - **Trace Canary:**
 
-  FPS Monitor, Startup Performance, UI-Block / Slow Method Detection
+  FPS Monitor, Startup Performance, ANR, UI-Block / Slow Method Detection
 
 - **SQLite Lint:**
 
@@ -160,6 +161,7 @@ At this point, Matrix has been integrated into the app and is beginning to colle
 - **Accurate call stack of ui-block.** Provide informations such as call stack, function cost, execution times to solve the problem of ui-block quickly.
 - **Non-hack.** High compatibility to Android versions.
 - **More features.** Automatically covers multiple fluency indicators such as ui-block, startup time, activity switching, slow function detection.
+- **High-accuracy ANR detector.**  Detect ANRs accurately and give ANR trace file with high compatibility and high stability.
 
 #### SQLite Lint
 
@@ -177,13 +179,36 @@ At this point, Matrix has been integrated into the app and is beginning to colle
 - **Easy-to-use.** Use out of box (unit tests as example).
 - **More feature.** Flexible extending with base and utils APIs.
 
+#### Memory Hook
+
+- A native memory leak detection tool for Android.
+- **Non-invasive.** It is based on PLT-hook([iqiyi/xHook](https://github.com/iqiyi/xHook)), so we do NOT need to recompile the native libraries.
+- **High performance.** we use WeChat-Backtrace for fast unwinding which supports both aarch64 and armeabi-v7a architectures.
+
+#### Pthread Hook
+
+- A Java and native thread leak detection and native thread stack space trimming tool for Android.
+- **Non-invasive.** It is based on PLT-hook([iqiyi/xHook](https://github.com/iqiyi/xHook)), so we do NOT need to recompile the native libraries.
+- It saves virtual memory overhead by trimming default stack size of native thread in half, which can reduce crashes caused by virtual memory insufficient under 32bit environment.
+
+#### WVPreAllocHook
+
++ A tool for saving virtual memory overhead caused by WebView preloading when WebView is not actually used. It's useful for reducing crashes caused by virtual memory insufficient under 32bit environment.
++ **Non-invasive.** It is based on PLT-hook([iqiyi/xHook](https://github.com/iqiyi/xHook)), so we do NOT need to recompile the native libraries.
++ WebView still works after using this tool.
+
+
+#### Backtrace Component
+
+- A fast native backtrace component designed by Matrix based on quicken unwind tables that are generated and simplified from DWARF and ARM exception handling informations. It is about 15x ~ 30x faster than libunwindstack.
+
 
 ## Getting Started
 ***The JCenter repository will stop service on February 1, 2022. So we uploaded Matrix(since 0.8.0) to the MavenCentral repository.***
 
 1. Configure `MATRIX_VERSION` in gradle.properties.
 ``` gradle
-  MATRIX_VERSION=0.9.0
+  MATRIX_VERSION=2.0.0
 ```
 
 2. Add `matrix-gradle-plugin` in your build.gradle:
@@ -205,6 +230,8 @@ At this point, Matrix has been integrated into the app and is beginning to colle
     implementation group: "com.tencent.matrix", name: "matrix-io-canary", version: MATRIX_VERSION, changing: true
     implementation group: "com.tencent.matrix", name: "matrix-sqlite-lint-android-sdk", version: MATRIX_VERSION, changing: true
     implementation group: "com.tencent.matrix", name: "matrix-battery-canary", version: MATRIX_VERSION, changing: true
+    implementation group: "com.tencent.matrix", name: "matrix-hooks", version: MATRIX_VERSION, changing: true
+    implementation group: "com.tencent.matrix", name: "matrix-backtrace", version: MATRIX_VERSION, changing: true
   }
   
   apply plugin: 'com.tencent.matrix-plugin'
@@ -319,14 +346,22 @@ BatteryMonitorPlugin plugin = new BatteryMonitorPlugin(config);
 
 For detail usage, please reference showcase tests at `com.tencent.matrix.batterycanary.ApisTest` or `sample.tencent.matrix.battery.BatteryCanaryInitHelper`.
 
+#### Backtrace Component Usage
+
+How to init backtrace component：
+```java
+WeChatBacktrace.instance().configure(getApplicationContext()).commit();
+```
+
+Then other components in Matrix could use Quikcen Backtrace to unwind stacktrace. See more configuration comments in 'WeChatBacktrace.Configuration'.
 
 #### APK Checker Usage
 
-APK Checker can run independently in Jar ([matrix-apk-canary-0.9.0.jar](https://repo.maven.apache.org/maven2/com/tencent/matrix/matrix-apk-canary/0.9.0/matrix-apk-canary-0.9.0.jar)）  mode, usage:
+APK Checker can run independently in Jar ([matrix-apk-canary-2.0.0.jar](https://repo.maven.apache.org/maven2/com/tencent/matrix/matrix-apk-canary/2.0.0/matrix-apk-canary-2.0.0.jar)）  mode, usage:
 
 
 ```shell
-java -jar matrix-apk-canary-0.9.0.jar
+java -jar matrix-apk-canary-2.0.0.jar
 Usages: 
     --config CONFIG-FILE-PATH
 or
@@ -385,7 +420,7 @@ Matrix is under the BSD license. See the [LICENSE](https://github.com/Tencent/Ma
 
 # <a name="matrix_cn">Matrix</a>
 ![Matrix-icon](assets/img/readme/header.png)
-[![license](http://img.shields.io/badge/license-BSD3-brightgreen.svg?style=flat)](https://github.com/Tencent/matrix/blob/master/LICENSE)[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/Tencent/matrix/pulls)  [![WeChat Approved](https://img.shields.io/badge/Wechat%20Approved-0.9.0-red.svg)](https://github.com/Tencent/matrix/wiki)
+[![license](http://img.shields.io/badge/license-BSD3-brightgreen.svg?style=flat)](https://github.com/Tencent/matrix/blob/master/LICENSE)[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/Tencent/matrix/pulls)  [![WeChat Approved](https://img.shields.io/badge/Wechat%20Approved-2.0.0-red.svg)](https://github.com/Tencent/matrix/wiki)
 
 **Matrix** 是一款微信研发并日常使用的应用性能接入框架，支持iOS, macOS和Android。
 Matrix 通过接入各种性能监控方案，对性能监控项的异常数据进行采集和分析，输出相应的问题分析、定位与优化建议，从而帮助开发者开发出更高质量的应用。
@@ -486,7 +521,7 @@ curBuilder.pluginListener = <一个遵循 MatrixPluginListenerDelegate 的对象
 
 ## Demo
 
-至此，Matrix 已经集成到应用中并且开始收集崩溃、卡顿和爆内存数据，如仍有疑问，请查看示例：`samples/sample-apple/MatrixDemo`。
+至此，Matrix 已经集成到应用中并且开始收集崩溃、ANR、卡顿和爆内存数据，如仍有疑问，请查看示例：`samples/sample-apple/MatrixDemo`。
 
 
 # <a name='matrix_android_cn'>Matrix for Android </a>
@@ -497,7 +532,7 @@ Matrix-android 当前监控范围包括：应用安装包大小，帧率变化�
 - Resource Canary:
   基于 WeakReference 的特性和 [Square Haha](https://github.com/square/haha) 库开发的 Activity 泄漏和 Bitmap 重复创建检测工具
 - Trace Canary:
-  监控界面流畅性、启动耗时、页面切换耗时、慢函数及卡顿等问题
+  监控ANR、界面流畅性、启动耗时、页面切换耗时、慢函数及卡顿等问题
 - SQLite Lint:
   按官方最佳实践自动化检测 SQLite 语句的使用质量
 - IO Canary:
@@ -526,6 +561,7 @@ Matrix-android 当前监控范围包括：应用安装包大小，帧率变化�
 - 编译期动态修改字节码, 高性能记录执行耗时与调用堆栈
 - 准确的定位到发生卡顿的函数，提供执行堆栈、执行耗时、执行次数等信息，帮助快速解决卡顿问题
 - 自动涵盖卡顿、启动耗时、页面切换、慢函数检测等多个流畅性指标
+- 准确监控ANR，并且能够高兼容性和稳定性地保存系统产生的ANR Trace文件
 
 #### SQLite Lint
 
@@ -545,13 +581,34 @@ Matrix-android 当前监控范围包括：应用安装包大小，帧率变化�
 - 接入简单，开箱即用
 - 预留 Base 类和 Utility 工具以便扩展监控特性
 
+#### Memory Hook
+
+- 一个检测 Android native 内存泄漏的工具
+- 无侵入，基于 PLT-hook([iqiyi/xHook](https://github.com/iqiyi/xHook))，无需重编 native 库
+- 高性能，基于 Wechat-Backtrace 进行快速 unwind 堆栈，支持 aarch64 和 armeabi-v7a 架构
+
+#### Pthread Hook
+
+- 一个检测 Android Java 和 native 线程泄漏及缩减 native 线程栈空间的工具
+- 无侵入，基于 PLT-hook([iqiyi/xHook](https://github.com/iqiyi/xHook))，无需重编 native 库
+- 通过对 native 线程的默认栈大小进行减半降低线程带来的虚拟内存开销，在 32 位环境下可缓解虚拟内存不足导致的崩溃问题
+
+#### WVPreAllocHook
+
++ 一个用于安全释放 WebView 预分配内存以在不加载 WebView 时节省虚拟内存的工具，在 32 位环境下可缓解虚拟内存不足导致的崩溃问题
++ 无侵入，基于 PLT-hook([iqiyi/xHook](https://github.com/iqiyi/xHook))，无需重编 native 库
++ 使用该工具后 WebView 仍可正常工作
+
+#### Backtrace Component
+- 基于 DWARF 以及 ARM 异常处理数据进行简化并生成全新的 quicken unwind tables 数据，用于实现可快速回溯 native 调用栈的 backtrace 组件。回溯速度约是 libunwindstack 的 15x ~ 30x 左右。
 
 ## 使用方法
+
 ***由于 JCenter 服务将于 2022 年 2 月 1 日下线，我们已将 Matrix 新版本（>= 0.8.0) maven repo 发布至 MavenCentral。***
 
 1. 在你项目根目录下的 gradle.properties 中配置要依赖的 Matrix 版本号，如：
 ``` gradle
-  MATRIX_VERSION=0.9.0
+  MATRIX_VERSION=2.0.0
 ```
 
 2. 在你项目根目录下的 build.gradle 文件添加 Matrix 依赖，如：
@@ -572,6 +629,7 @@ Matrix-android 当前监控范围包括：应用安装包大小，帧率变化�
     implementation group: "com.tencent.matrix", name: "matrix-io-canary", version: MATRIX_VERSION, changing: true
     implementation group: "com.tencent.matrix", name: "matrix-sqlite-lint-android-sdk", version: MATRIX_VERSION, changing: true
     implementation group: "com.tencent.matrix", name: "matrix-battery-canary", version: MATRIX_VERSION, changing: true
+    implementation group: "com.tencent.matrix", name: "matrix-hooks", version: MATRIX_VERSION, changing: true
   }
 
   apply plugin: 'com.tencent.matrix-plugin'
@@ -645,7 +703,7 @@ Matrix-android 当前监控范围包括：应用安装包大小，帧率变化�
 6. 选择程序启动的位置对 Matrix 进行初始化，如在 Application 的继承类中， Init 核心逻辑如下：
 ``` java 
   Matrix.Builder builder = new Matrix.Builder(application); // build matrix
-  builder.patchListener(new TestPluginListener(this)); // add general pluginListener
+  builder.pluginListener(new TestPluginListener(this)); // add general pluginListener
   DynamicConfigImplDemo dynamicConfig = new DynamicConfigImplDemo(); // dynamic config
   
   // init plugin 
@@ -685,13 +743,21 @@ BatteryMonitorPlugin plugin = new BatteryMonitorPlugin(config);
 
 具体使用方式，请参考单元测试里相关用例的代码： `com.tencent.matrix.batterycanary.ApisTest` 或 `sample.tencent.matrix.battery.BatteryCanaryInitHelper`.
 
+#### Backtrace Component Usage
+
+如何初始化 backtrace 组件：
+```java
+WeChatBacktrace.instance().configure(getApplicationContext()).commit();
+```
+
+初始化后其他 Matrix 组件就可以使用 Quicken Backtrace 进行回溯。更多参数的配置请查看 WeChatBacktrace.Configuration 的接口注释。
 
 #### APK Checker
 
-APK Check 以独立的 jar 包提供 ([matrix-apk-canary-0.9.0.jar](https://repo.maven.apache.org/maven2/com/tencent/matrix/matrix-apk-canary/0.9.0/matrix-apk-canary-0.9.0.jar)），你可以运行：
+APK Check 以独立的 jar 包提供 ([matrix-apk-canary-2.0.0.jar](https://repo.maven.apache.org/maven2/com/tencent/matrix/matrix-apk-canary/2.0.0/matrix-apk-canary-2.0.0.jar)），你可以运行：
 
 ```cmd
-java -jar matrix-apk-canary-0.9.0.jar
+java -jar matrix-apk-canary-2.0.0.jar
 ```
 
 查看 Usages 来使用它。

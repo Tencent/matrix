@@ -1,0 +1,70 @@
+apply plugin: 'com.android.application'
+
+apply from: rootProject.file('gradle/WeChatNativeDepend.gradle')
+
+android {
+    compileSdkVersion rootProject.compileSdkVersion
+    defaultConfig {
+        minSdkVersion rootProject.MIN_SDK_VERSION_FOR_HOOK
+        targetSdkVersion rootProject.targetSdkVersion
+        versionCode rootProject.VERSION_CODE
+        versionName rootProject.VERSION_NAME
+
+        testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
+        consumerProguardFiles "consumer-rules.pro"
+
+        if (gradle.forceArm32() && !gradle.gonnaPublish()) {
+            ndk {
+                abiFilters 'armeabi-v7a'
+            }
+        } else {
+            ndk {
+                abiFilters rootProject.ABI_FILTERS as String[]
+            }
+        }
+    }
+
+    signingConfigs {
+        release {
+            keyAlias signingConfigs.debug.keyAlias
+            keyPassword signingConfigs.debug.keyPassword
+            storeFile signingConfigs.debug.storeFile
+            storePassword signingConfigs.debug.storePassword
+            v2SigningEnabled false
+        }
+    }
+
+    buildTypes {
+        debug {
+            debuggable true
+            signingConfig signingConfigs.debug
+            minifyEnabled false
+        }
+        release {
+            signingConfig signingConfigs.release
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    sourceSets {
+        main {
+            jniLibs {
+                setSrcDirs (['./libs'] as Set)
+            }
+        }
+
+    }
+}
+
+dependencies {
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+    implementation 'androidx.appcompat:appcompat:1.1.0'
+    implementation 'androidx.constraintlayout:constraintlayout:1.1.0'
+
+    testImplementation 'junit:junit:4.12'
+    androidTestImplementation 'androidx.test.ext:junit:1.1.1'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.1.0'
+
+    implementation project(':test:matrix-backtrace-benchmark')
+}

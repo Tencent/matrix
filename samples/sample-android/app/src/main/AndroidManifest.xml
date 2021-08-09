@@ -39,6 +39,9 @@
         <activity android:name=".trace.TestFpsActivity" />
         <activity android:name=".sqlitelint.TestSQLiteLintActivity" />
         <activity android:name=".battery.TestBatteryActivity" />
+        <activity android:name=".hooks.TestHooksActivity" />
+
+        <service android:name=".hooks.OtherProcessService" android:process=":other"/>
     </application>
 
 </manifest>

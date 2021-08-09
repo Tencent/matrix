@@ -138,7 +138,9 @@ public class AppStats {
         if (Matrix.isInstalled()) {
             BatteryMonitorPlugin plugin = Matrix.with().getPluginByClass(BatteryMonitorPlugin.class);
             if (plugin != null) {
-                return new CurrAppStats(plugin.core());
+                AppStats currAppStats = new CurrAppStats(plugin.core());
+                currAppStats.isValid = true;
+                return currAppStats;
             }
         }
         return current(1L);

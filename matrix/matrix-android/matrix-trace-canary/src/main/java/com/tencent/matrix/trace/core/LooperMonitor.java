@@ -1,3 +1,19 @@
+/*
+ * Tencent is pleased to support the open source community by making wechat-matrix available.
+ * Copyright (C) 2021 THL A29 Limited, a Tencent company. All rights reserved.
+ * Licensed under the BSD 3-Clause License (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      https://opensource.org/licenses/BSD-3-Clause
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.tencent.matrix.trace.core;
 
 import android.os.Build;
@@ -5,6 +21,8 @@ import android.os.Looper;
 import android.os.MessageQueue;
 import android.os.SystemClock;
 import androidx.annotation.CallSuper;
+import androidx.annotation.NonNull;
+
 import android.util.Log;
 import android.util.Printer;
 
@@ -12,16 +30,14 @@ import com.tencent.matrix.util.MatrixLog;
 import com.tencent.matrix.util.ReflectUtils;
 
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class LooperMonitor implements MessageQueue.IdleHandler {
-
-    private final HashSet<LooperDispatchListener> listeners = new HashSet<>();
     private static final String TAG = "Matrix.LooperMonitor";
-    private LooperPrinter printer;
-    private Looper looper;
-    private static final long CHECK_TIME = 60 * 1000L;
-    private long lastCheckPrinterTime = 0;
+    private static final Map<Looper, LooperMonitor> sLooperMonitorMap = new ConcurrentHashMap<>();
+    private static final LooperMonitor sMainMonitor = LooperMonitor.of(Looper.getMainLooper());
 
     public abstract static class LooperDispatchListener {
 
@@ -53,16 +69,33 @@ public class LooperMonitor implements MessageQueue.IdleHandler {
         }
     }
 
-    private static final LooperMonitor mainMonitor = new LooperMonitor();
+    public static LooperMonitor of(@NonNull Looper looper) {
+        LooperMonitor looperMonitor = sLooperMonitorMap.get(looper);
+        if (looperMonitor == null) {
+            looperMonitor = new LooperMonitor(looper);
+            sLooperMonitorMap.put(looper, looperMonitor);
+        }
+        return looperMonitor;
+    }
 
     static void register(LooperDispatchListener listener) {
-        mainMonitor.addListener(listener);
+        sMainMonitor.addListener(listener);
     }
 
     static void unregister(LooperDispatchListener listener) {
-        mainMonitor.removeListener(listener);
+        sMainMonitor.removeListener(listener);
     }
 
+    private final HashSet<LooperDispatchListener> listeners = new HashSet<>();
+    private LooperPrinter printer;
+    private Looper looper;
+    private static final long CHECK_TIME = 60 * 1000L;
+    private long lastCheckPrinterTime = 0;
+
+    /**
+     * It will be thread-unsafe if you get the listeners and literate.
+     */
+    @Deprecated
     public HashSet<LooperDispatchListener> getListeners() {
         return listeners;
     }
@@ -79,15 +112,11 @@ public class LooperMonitor implements MessageQueue.IdleHandler {
         }
     }
 
-    public LooperMonitor(Looper looper) {
+    private LooperMonitor(Looper looper) {
         Objects.requireNonNull(looper);
         this.looper = looper;
         resetPrinter();
         addIdleHandler(looper);
-    }
-
-    private LooperMonitor() {
-        this(Looper.getMainLooper());
     }
 
     public Looper getLooper() {
@@ -125,6 +154,15 @@ public class LooperMonitor implements MessageQueue.IdleHandler {
                 originPrinter = ReflectUtils.get(looper.getClass(), "mLogging", looper);
                 if (originPrinter == printer && null != printer) {
                     return;
+                }
+                // Fix issues that printer loaded by different classloader
+                if (originPrinter != null && printer != null) {
+                    if (originPrinter.getClass().getName().equals(printer.getClass().getName())) {
+                        MatrixLog.w(TAG, "LooperPrinter might be loaded by different classloader"
+                                + ", my = " + printer.getClass().getClassLoader()
+                                + ", other = " + originPrinter.getClass().getClassLoader());
+                        return;
+                    }
                 }
             }
         } catch (Exception e) {
@@ -203,26 +241,23 @@ public class LooperMonitor implements MessageQueue.IdleHandler {
         }
     }
 
-
     private void dispatch(boolean isBegin, String log) {
-
-        for (LooperDispatchListener listener : listeners) {
-            if (listener.isValid()) {
-                if (isBegin) {
-                    if (!listener.isHasDispatchStart) {
-                        listener.onDispatchStart(log);
+        synchronized (listeners) {
+            for (LooperDispatchListener listener : listeners) {
+                if (listener.isValid()) {
+                    if (isBegin) {
+                        if (!listener.isHasDispatchStart) {
+                            listener.onDispatchStart(log);
+                        }
+                    } else {
+                        if (listener.isHasDispatchStart) {
+                            listener.onDispatchEnd(log);
+                        }
                     }
-                } else {
-                    if (listener.isHasDispatchStart) {
-                        listener.onDispatchEnd(log);
-                    }
+                } else if (!isBegin && listener.isHasDispatchStart) {
+                    listener.dispatchEnd();
                 }
-            } else if (!isBegin && listener.isHasDispatchStart) {
-                listener.dispatchEnd();
             }
         }
-
     }
-
-
 }

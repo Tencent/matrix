@@ -20,6 +20,8 @@ import android.app.Application;
 import android.content.Context;
 import android.os.Handler;
 import android.os.HandlerThread;
+import android.os.Looper;
+import android.os.Message;
 import android.os.Process;
 import androidx.test.platform.app.InstrumentationRegistry;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
@@ -41,8 +43,12 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 
 @RunWith(AndroidJUnit4.class)
@@ -70,7 +76,7 @@ public class MonitorFeatureLooperTest {
 
         HandlerThread handlerThread = new HandlerThread("looper-test");
         handlerThread.start();
-        LooperMonitor looperMonitor = new LooperMonitor(handlerThread.getLooper());
+        LooperMonitor looperMonitor = LooperMonitor.of(handlerThread.getLooper());
         looperMonitor.addListener(new LooperMonitor.LooperDispatchListener() {
             @Override
             public boolean isValid() {
@@ -129,7 +135,7 @@ public class MonitorFeatureLooperTest {
 
         HandlerThread handlerThread = new HandlerThread("looper-test");
         handlerThread.start();
-        LooperMonitor looperMonitor = new LooperMonitor(handlerThread.getLooper());
+        LooperMonitor looperMonitor = LooperMonitor.of(handlerThread.getLooper());
         looperMonitor.addListener(new LooperMonitor.LooperDispatchListener() {
             @Override
             public boolean isValid() {
@@ -352,6 +358,225 @@ public class MonitorFeatureLooperTest {
         Assert.assertTrue(feature.mLooperMonitorTrace.isEmpty());
         Assert.assertEquals(0, feature.mTaskJiffiesTrace.size());
         Assert.assertTrue(feature.mDeltaList.isEmpty());
+    }
+
+    @Test
+    public void testWatchMainThread() throws InterruptedException {
+        final AtomicBoolean hasStart = new AtomicBoolean();
+        final AtomicBoolean hasCheck = new AtomicBoolean();
+
+        final LooperTaskMonitorFeature feature = new LooperTaskMonitorFeature();
+        BatteryMonitorCore core = mockMonitor();
+        core.start();
+        feature.configure(core);
+        BatteryMonitorPlugin plugin = new BatteryMonitorPlugin(core.getConfig());
+        Matrix.with().getPlugins().add(plugin);
+        feature.onTurnOn();
+
+
+        Assert.assertTrue(feature.mWatchingList.isEmpty());
+        Assert.assertTrue(feature.mLooperMonitorTrace.isEmpty());
+        Assert.assertEquals(0, feature.mTaskJiffiesTrace.size());
+        Assert.assertTrue(feature.mDeltaList.isEmpty());
+
+        feature.watchLooper("main", Looper.getMainLooper());
+        Assert.assertEquals(1, feature.mWatchingList.size());
+        Assert.assertEquals(1, feature.mLooperMonitorTrace.size());
+        Assert.assertEquals(0, feature.mTaskJiffiesTrace.size());
+        Assert.assertTrue(feature.mDeltaList.isEmpty());
+
+        Handler handler = new Handler(Looper.getMainLooper());
+        handler.post(new TestTask() {
+            @Override
+            public void run() {
+                Assert.assertEquals(1, feature.mWatchingList.size());
+                Assert.assertEquals(1, feature.mLooperMonitorTrace.size());
+                Assert.assertEquals(1, feature.mTaskJiffiesTrace.size());
+
+                ArrayList<TimeBreaker.Stamp> taskStamps = feature.getTaskStamps(Process.myTid());
+                Assert.assertNotNull(taskStamps);
+                Assert.assertTrue(taskStamps.size() > 1);
+                Assert.assertTrue(taskStamps.get(0).key.contains(MonitorFeatureLooperTest.class.getName() + "$"));
+
+                hasStart.set(true);
+                while (!hasCheck.get()) {}
+            }
+        });
+
+        while (!hasStart.get()) {}
+
+        Assert.assertEquals(1, feature.mWatchingList.size());
+        Assert.assertEquals(1, feature.mLooperMonitorTrace.size());
+        Assert.assertEquals(1, feature.mTaskJiffiesTrace.size());
+        Assert.assertTrue(feature.mDeltaList.isEmpty());
+
+        hasCheck.set(true);
+        while (feature.mDeltaList.isEmpty()) {}
+
+        Assert.assertEquals(1, feature.mDeltaList.size());
+        Assert.assertTrue(feature.mDeltaList.get(0).dlt.name.contains(MonitorFeatureLooperTest.class.getName() + "$"));
+
+        List<Delta<TaskJiffiesSnapshot>> deltas = feature.currentJiffies();
+        Assert.assertEquals(1, deltas.size());
+        Assert.assertEquals(feature.mDeltaList, deltas);
+
+        feature.clearFinishedJiffies();
+        Assert.assertEquals(1, feature.mWatchingList.size());
+        Assert.assertEquals(1, feature.mLooperMonitorTrace.size());
+        Assert.assertEquals(0, feature.mTaskJiffiesTrace.size());
+        Assert.assertTrue(feature.mDeltaList.isEmpty());
+
+        feature.mDeltaList.addAll(deltas);
+
+        feature.onTurnOff();
+        Assert.assertTrue(feature.mWatchingList.isEmpty());
+        Assert.assertTrue(feature.mLooperMonitorTrace.isEmpty());
+        Assert.assertEquals(0, feature.mTaskJiffiesTrace.size());
+        Assert.assertTrue(feature.mDeltaList.isEmpty());
+    }
+
+    @Test
+    public void testHandlerMessageTrace() throws InterruptedException {
+        final AtomicBoolean hasStart = new AtomicBoolean();
+        final AtomicBoolean hasCheck = new AtomicBoolean();
+
+        final LooperTaskMonitorFeature feature = new LooperTaskMonitorFeature();
+        BatteryMonitorCore core = mockMonitor();
+        core.start();
+        feature.configure(core);
+        BatteryMonitorPlugin plugin = new BatteryMonitorPlugin(core.getConfig());
+        Matrix.with().getPlugins().add(plugin);
+        feature.onTurnOn();
+
+
+        Assert.assertTrue(feature.mWatchingList.isEmpty());
+        Assert.assertTrue(feature.mLooperMonitorTrace.isEmpty());
+        Assert.assertEquals(0, feature.mTaskJiffiesTrace.size());
+        Assert.assertTrue(feature.mDeltaList.isEmpty());
+
+        feature.watchLooper("main", Looper.getMainLooper());
+
+        Assert.assertEquals(1, feature.mWatchingList.size());
+        Assert.assertEquals(1, feature.mLooperMonitorTrace.size());
+        Assert.assertEquals(0, feature.mTaskJiffiesTrace.size());
+        Assert.assertTrue(feature.mDeltaList.isEmpty());
+
+        final Handler handler = new Handler(Looper.getMainLooper());
+        core.getHandler().post(new Runnable() {
+            @Override
+            public void run() {
+                handler.sendEmptyMessage(22);
+                Message message = Message.obtain();
+                message.what = 33;
+                handler.sendMessage(message);
+                handler.post(new Runnable() {
+                    @Override
+                    public void run() {
+
+                    }
+                });
+                hasStart.set(true);
+                while (!hasCheck.get()) {}
+            }
+        });
+
+        Assert.assertTrue(feature.mDeltaList.isEmpty());
+
+        hasCheck.set(true);
+        while (!hasStart.get()) {}
+
+        Assert.assertTrue(feature.mDeltaList.isEmpty());
+    }
+
+    @Test
+    public void testWatchMainThreadByConfig() throws InterruptedException {
+        final AtomicBoolean hasStart = new AtomicBoolean();
+        final AtomicBoolean hasCheck = new AtomicBoolean();
+
+        final LooperTaskMonitorFeature feature = new LooperTaskMonitorFeature();
+        BatteryMonitorCore core = mockMonitor();
+        core.getConfig().looperWatchList = Arrays.asList("main");
+        core.start();
+        feature.configure(core);
+        BatteryMonitorPlugin plugin = new BatteryMonitorPlugin(core.getConfig());
+        Matrix.with().getPlugins().add(plugin);
+        feature.onTurnOn();
+
+        Assert.assertTrue(feature.mWatchingList.isEmpty());
+        Assert.assertTrue(feature.mLooperMonitorTrace.isEmpty());
+        Assert.assertEquals(0, feature.mTaskJiffiesTrace.size());
+        Assert.assertTrue(feature.mDeltaList.isEmpty());
+
+        feature.startWatching();
+
+        Assert.assertEquals(1, feature.mWatchingList.size());
+        Assert.assertEquals(1, feature.mLooperMonitorTrace.size());
+        Assert.assertEquals(0, feature.mTaskJiffiesTrace.size());
+        Assert.assertTrue(feature.mDeltaList.isEmpty());
+
+        Handler handler = new Handler(Looper.getMainLooper());
+        handler.post(new TestTask() {
+            @Override
+            public void run() {
+                Assert.assertEquals(1, feature.mWatchingList.size());
+                Assert.assertEquals(1, feature.mLooperMonitorTrace.size());
+                Assert.assertEquals(1, feature.mTaskJiffiesTrace.size());
+
+                ArrayList<TimeBreaker.Stamp> taskStamps = feature.getTaskStamps(Process.myTid());
+                Assert.assertNotNull(taskStamps);
+                Assert.assertTrue(taskStamps.size() > 1);
+                Assert.assertTrue(taskStamps.get(0).key.contains(MonitorFeatureLooperTest.class.getName() + "$"));
+
+                hasStart.set(true);
+                while (!hasCheck.get()) {}
+            }
+        });
+
+        while (!hasStart.get()) {}
+
+        Assert.assertEquals(1, feature.mWatchingList.size());
+        Assert.assertEquals(1, feature.mLooperMonitorTrace.size());
+        Assert.assertEquals(1, feature.mTaskJiffiesTrace.size());
+        Assert.assertTrue(feature.mDeltaList.isEmpty());
+
+        hasCheck.set(true);
+        while (feature.mDeltaList.isEmpty()) {}
+
+        Assert.assertEquals(1, feature.mDeltaList.size());
+        Assert.assertTrue(feature.mDeltaList.get(0).dlt.name.contains(MonitorFeatureLooperTest.class.getName() + "$"));
+
+        List<Delta<TaskJiffiesSnapshot>> deltas = feature.currentJiffies();
+        Assert.assertEquals(1, deltas.size());
+        Assert.assertEquals(feature.mDeltaList, deltas);
+
+        feature.clearFinishedJiffies();
+        Assert.assertEquals(1, feature.mWatchingList.size());
+        Assert.assertEquals(1, feature.mLooperMonitorTrace.size());
+        Assert.assertEquals(0, feature.mTaskJiffiesTrace.size());
+        Assert.assertTrue(feature.mDeltaList.isEmpty());
+
+        feature.mDeltaList.addAll(deltas);
+
+        feature.onTurnOff();
+        Assert.assertTrue(feature.mWatchingList.isEmpty());
+        Assert.assertTrue(feature.mLooperMonitorTrace.isEmpty());
+        Assert.assertEquals(0, feature.mTaskJiffiesTrace.size());
+        Assert.assertTrue(feature.mDeltaList.isEmpty());
+    }
+
+    @Test
+    public void testTraceUiThread() throws InterruptedException {
+        AtomicReference<Integer> integer = new AtomicReference(new Integer(0));
+        AtomicReference<Integer> ref = new AtomicReference();
+
+        final CountDownLatch latch = new CountDownLatch(1);
+        new Handler(Looper.getMainLooper()).post(new Runnable() {
+            @Override
+            public void run() {
+                latch.countDown();
+            }
+        });
+        latch.await();
     }
 
 

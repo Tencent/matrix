@@ -1,0 +1,3 @@
+7be5e48000-7be6b2b000 r-xp 5000 00:00 0   test.apk
+7cbe030000-7cbe070000 r--p 0 00:00 0   libc.so
+7cbe070000-7cbe11a000 r-xp 40000 00:00 0   libc.so

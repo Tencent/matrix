@@ -1,0 +1,90 @@
+﻿<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProductVersion>8.0.50727</ProductVersion>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{CE33DF18-F9C8-4D6F-9057-DBB4DB96E973}</ProjectGuid>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>LzmaAlone</RootNamespace>
+    <AssemblyName>Lzma#</AssemblyName>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>.\bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugSymbols>false</DebugSymbols>
+    <Optimize>true</Optimize>
+    <OutputPath>.\bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="..\..\Common\CommandLineParser.cs">
+      <Link>Common\CommandLineParser.cs</Link>
+    </Compile>
+    <Compile Include="..\..\Common\CRC.cs">
+      <Link>Common\CRC.cs</Link>
+    </Compile>
+    <Compile Include="..\..\ICoder.cs">
+      <Link>ICoder.cs</Link>
+    </Compile>
+    <Compile Include="..\LZ\IMatchFinder.cs">
+      <Link>LZ\IMatchFinder.cs</Link>
+    </Compile>
+    <Compile Include="..\LZ\LzBinTree.cs">
+      <Link>LZ\LzBinTree.cs</Link>
+    </Compile>
+    <Compile Include="..\LZ\LzInWindow.cs">
+      <Link>LZ\LzInWindow.cs</Link>
+    </Compile>
+    <Compile Include="..\LZ\LzOutWindow.cs">
+      <Link>LZ\LzOutWindow.cs</Link>
+    </Compile>
+    <Compile Include="..\LZMA\LzmaBase.cs">
+      <Link>LZMA\LzmaBase.cs</Link>
+    </Compile>
+    <Compile Include="..\LZMA\LzmaDecoder.cs">
+      <Link>LZMA\LzmaDecoder.cs</Link>
+    </Compile>
+    <Compile Include="..\LZMA\LzmaEncoder.cs">
+      <Link>LZMA\LzmaEncoder.cs</Link>
+    </Compile>
+    <Compile Include="..\RangeCoder\RangeCoder.cs">
+      <Link>RangeCoder\RangeCoder.cs</Link>
+    </Compile>
+    <Compile Include="..\RangeCoder\RangeCoderBit.cs">
+      <Link>RangeCoder\RangeCoderBit.cs</Link>
+    </Compile>
+    <Compile Include="..\RangeCoder\RangeCoderBitTree.cs">
+      <Link>RangeCoder\RangeCoderBitTree.cs</Link>
+    </Compile>
+    <Compile Include="LzmaAlone.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="LzmaBench.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Properties\Settings.cs">
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Settings.settings</DependentUpon>
+    </Compile>
+    <None Include="Properties\Settings.settings">
+      <Generator>SettingsSingleFileGenerator</Generator>
+      <LastGenOutput>Settings.cs</LastGenOutput>
+    </None>
+    <AppDesigner Include="Properties\" />
+  </ItemGroup>
+  <Import Project="$(MSBuildBinPath)\Microsoft.CSHARP.Targets" />
+</Project>

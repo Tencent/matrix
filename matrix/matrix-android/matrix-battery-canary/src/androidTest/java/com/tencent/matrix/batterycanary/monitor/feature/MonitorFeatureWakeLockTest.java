@@ -20,6 +20,8 @@ import android.app.Application;
 import android.content.Context;
 import android.os.IBinder;
 import android.os.PowerManager;
+
+import androidx.test.core.app.ApplicationProvider;
 import androidx.test.platform.app.InstrumentationRegistry;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 
@@ -56,6 +58,7 @@ public class MonitorFeatureWakeLockTest {
 
     @Before
     public void setUp() {
+        System.setProperty("org.mockito.android.target", ApplicationProvider.getApplicationContext().getCacheDir().getPath());
         mContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
         if (!Matrix.isInstalled()) {
             Matrix.init(new Matrix.Builder(((Application) mContext.getApplicationContext())).build());

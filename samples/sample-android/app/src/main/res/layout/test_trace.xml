@@ -1,57 +1,82 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    style="@style/Container"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:gravity="center_horizontal"
-    android:orientation="vertical"
-    android:paddingLeft="10dp"
-    android:paddingTop="80dp"
-    android:paddingRight="10dp"
-    android:paddingBottom="80dp">
+    tools:ignore="HardcodedText">
 
     <Button
         android:id="@+id/test_fps"
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
         android:minWidth="200dp"
         android:onClick="testFps"
-        android:text="fps" />
+        android:text="Monitor FPS"
+        style="@style/EntryButton" />
 
     <Button
         android:id="@+id/test_enter"
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
-        android:minWidth="200dp"
         android:onClick="testEnter"
-        android:text="activity enter" />
+        android:text="Monitor Activity Startup Duration"
+        style="@style/EntryButton" />
 
     <Button
         android:id="@+id/test_anr"
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
-        android:minWidth="200dp"
         android:onClick="testANR"
-        android:text="anr" />
+        android:text="Catch ANR"
+        style="@style/EntryButton" />
 
-    <Button
-        android:id="@+id/test_evil_method"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:minWidth="200dp"
-        android:onClick="testJankiess"
-        android:text="evil_method" />
+<!--    <Button-->
+<!--        android:id="@+id/test_evil_method"-->
+<!--        android:layout_width="match_parent"-->
+<!--        android:layout_height="wrap_content"-->
+<!--        android:layout_marginTop="16dp"-->
+<!--        android:onClick="testJankiess"-->
+<!--        android:text="Janky"-->
+<!--        style="@style/EntryButton" />-->
 
     <Button
         android:id="@+id/test_stop_app_method_beat"
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:onClick="stopAppMethodBeat"
+        android:text="Start/Stop AppMethodBeat"
+        style="@style/EntryButton" />
+
+    <Button
+        android:id="@+id/test_print_trace"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
         android:minWidth="200dp"
-        android:onClick="stopAppMethodBeat"
-        android:text="start/stop AppMethodBeat" />
+        android:onClick="testPrintTrace"
+        android:text="Print Trace"
+        style="@style/EntryButton" />
+
+    <Button
+        android:id="@+id/test_anr_signal_handler"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:minWidth="200dp"
+        android:onClick="testSignalANR"
+        android:text="Catch ANR Signal"
+        style="@style/EntryButton" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="5dp"
+        android:text="Introduced in Matrix 2.0"
+        android:textSize="16sp" />
 
 </LinearLayout>

@@ -18,58 +18,28 @@ package sample.tencent.matrix;
 
 import android.app.Application;
 import android.content.Context;
-import android.os.Handler;
-import android.os.HandlerThread;
 import android.content.Intent;
-import android.os.Looper;
-import android.os.Message;
-import androidx.annotation.NonNull;
-import android.view.Choreographer;
 
 import com.tencent.matrix.Matrix;
-//import com.tencent.matrix.batterycanary.monitor.BatteryMonitor;
-//import com.tencent.matrix.batterycanary.monitor.plugin.JiffiesMonitorPlugin;
-//import com.tencent.matrix.batterycanary.monitor.plugin.LooperTaskMonitorPlugin;
-//import com.tencent.matrix.batterycanary.monitor.plugin.WakeLockMonitorPlugin;
 import com.tencent.matrix.batterycanary.BatteryMonitorPlugin;
-import com.tencent.matrix.batterycanary.monitor.AppStats;
-import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCallback;
-import com.tencent.matrix.batterycanary.monitor.BatteryMonitorConfig;
-import com.tencent.matrix.batterycanary.monitor.feature.AlarmMonitorFeature;
-import com.tencent.matrix.batterycanary.monitor.feature.AppStatMonitorFeature;
-import com.tencent.matrix.batterycanary.monitor.feature.BlueToothMonitorFeature;
-import com.tencent.matrix.batterycanary.monitor.feature.DeviceStatMonitorFeature;
-import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature;
-import com.tencent.matrix.batterycanary.monitor.feature.LocationMonitorFeature;
-import com.tencent.matrix.batterycanary.monitor.feature.LooperTaskMonitorFeature;
-import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature;
-import com.tencent.matrix.batterycanary.monitor.feature.TrafficMonitorFeature;
-import com.tencent.matrix.batterycanary.monitor.feature.WakeLockMonitorFeature;
-import com.tencent.matrix.batterycanary.monitor.feature.WifiMonitorFeature;
 import com.tencent.matrix.iocanary.IOCanaryPlugin;
 import com.tencent.matrix.iocanary.config.IOConfig;
 import com.tencent.matrix.resource.ResourcePlugin;
 import com.tencent.matrix.resource.config.ResourceConfig;
-import com.tencent.matrix.threadcanary.ThreadMonitor;
-import com.tencent.matrix.threadcanary.ThreadMonitorConfig;
 import com.tencent.matrix.trace.TracePlugin;
 import com.tencent.matrix.trace.config.TraceConfig;
-import com.tencent.matrix.util.MatrixHandlerThread;
+import com.tencent.matrix.trace.tracer.SignalAnrTracer;
 import com.tencent.matrix.util.MatrixLog;
 import com.tencent.sqlitelint.SQLiteLint;
 import com.tencent.sqlitelint.SQLiteLintPlugin;
 import com.tencent.sqlitelint.config.SQLiteLintConfig;
 
-import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.util.concurrent.Callable;
+import java.io.File;
 
 import sample.tencent.matrix.battery.BatteryCanaryInitHelper;
 import sample.tencent.matrix.config.DynamicConfigImplDemo;
 import sample.tencent.matrix.listener.TestPluginListener;
 import sample.tencent.matrix.resource.ManualDumpActivity;
-import sample.tencent.matrix.sqlitelint.TestSQLiteLintActivity;
 
 /**
  * Created by caichongyang on 17/5/18.
@@ -80,101 +50,140 @@ public class MatrixApplication extends Application {
 
     private static Context sContext;
 
-    private static SQLiteLintConfig initSQLiteLintConfig() {
-        try {
-            /**
-             * HOOK模式下，SQLiteLint会自己去获取所有已执行的sql语句及其耗时(by hooking sqlite3_profile)
-             * @see 而另一个模式：SQLiteLint.SqlExecutionCallbackMode.CUSTOM_NOTIFY , 则需要调用 {@link SQLiteLint#notifySqlExecution(String, String, int)}来通知
-             * SQLiteLint 需要分析的、已执行的sql语句及其耗时
-             * @see TestSQLiteLintActivity#doTest()
-             */
-            return new SQLiteLintConfig(SQLiteLint.SqlExecutionCallbackMode.HOOK);
-        } catch (Throwable t) {
-            return new SQLiteLintConfig(SQLiteLint.SqlExecutionCallbackMode.HOOK);
-        }
-    }
-
     @Override
     public void onCreate() {
         super.onCreate();
+
+        // Switch.
         DynamicConfigImplDemo dynamicConfig = new DynamicConfigImplDemo();
-        boolean matrixEnable = dynamicConfig.isMatrixEnable();
-        boolean fpsEnable = dynamicConfig.isFPSEnable();
-        boolean traceEnable = dynamicConfig.isTraceEnable();
 
         sContext = this;
-        MatrixLog.i(TAG, "MatrixApplication.onCreate");
+        MatrixLog.i(TAG, "Start Matrix configurations.");
 
+        // Builder. Not necessary while some plugins can be configured separately.
         Matrix.Builder builder = new Matrix.Builder(this);
-        builder.patchListener(new TestPluginListener(this));
 
-        //trace
+        // Reporter. Matrix will callback this listener when found issue then emitting it.
+        builder.pluginListener(new TestPluginListener(this));
+
+        // Configure trace canary.
+        TracePlugin tracePlugin = configureTracePlugin(dynamicConfig);
+        builder.plugin(tracePlugin);
+
+        // Configure resource canary.
+        ResourcePlugin resourcePlugin = configureResourcePlugin(dynamicConfig);
+        builder.plugin(resourcePlugin);
+
+        // Configure io canary.
+        IOCanaryPlugin ioCanaryPlugin = configureIOCanaryPlugin(dynamicConfig);
+        builder.plugin(ioCanaryPlugin);
+
+        // Configure SQLite lint plugin.
+        SQLiteLintPlugin sqLiteLintPlugin = configureSQLiteLintPlugin();
+        builder.plugin(sqLiteLintPlugin);
+
+        // Configure battery canary.
+        BatteryMonitorPlugin batteryMonitorPlugin = configureBatteryCanary();
+        builder.plugin(batteryMonitorPlugin);
+
+        Matrix.init(builder.build());
+
+        // Trace Plugin need call start() at the beginning.
+        tracePlugin.start();
+
+        MatrixLog.i(TAG, "Matrix configurations done.");
+
+    }
+
+    private TracePlugin configureTracePlugin(DynamicConfigImplDemo dynamicConfig) {
+
+        boolean fpsEnable = dynamicConfig.isFPSEnable();
+        boolean traceEnable = dynamicConfig.isTraceEnable();
+        boolean signalAnrTraceEnable = dynamicConfig.isSignalAnrTraceEnable();
+
+        File traceFileDir = new File(getApplicationContext().getFilesDir(), "matrix_trace");
+        if (!traceFileDir.exists()) {
+            if (traceFileDir.mkdirs()) {
+                MatrixLog.e(TAG, "failed to create traceFileDir");
+            }
+        }
+
+        File anrTraceFile = new File(traceFileDir, "anr_trace");    // path : /data/user/0/sample.tencent.matrix/files/matrix_trace/anr_trace
+        File printTraceFile = new File(traceFileDir, "print_trace");    // path : /data/user/0/sample.tencent.matrix/files/matrix_trace/print_trace
+
         TraceConfig traceConfig = new TraceConfig.Builder()
                 .dynamicConfig(dynamicConfig)
                 .enableFPS(fpsEnable)
                 .enableEvilMethodTrace(traceEnable)
                 .enableAnrTrace(traceEnable)
                 .enableStartup(traceEnable)
+                .enableIdleHandlerTrace(traceEnable)                    // Introduced in Matrix 2.0
+                .enableMainThreadPriorityTrace(true)                    // Introduced in Matrix 2.0
+                .enableSignalAnrTrace(signalAnrTraceEnable)             // Introduced in Matrix 2.0
+                .anrTracePath(anrTraceFile.getAbsolutePath())
+                .printTracePath(printTraceFile.getAbsolutePath())
                 .splashActivities("sample.tencent.matrix.SplashActivity;")
                 .isDebug(true)
                 .isDevEnv(false)
                 .build();
 
-        TracePlugin tracePlugin = (new TracePlugin(traceConfig));
-        builder.plugin(tracePlugin);
+        //Another way to use SignalAnrTracer separately
+        //useSignalAnrTraceAlone(anrTraceFile.getAbsolutePath(), printTraceFile.getAbsolutePath());
 
-        if (matrixEnable) {
+        return new TracePlugin(traceConfig);
+    }
 
-            //resource
-            Intent intent = new Intent();
-            ResourceConfig.DumpMode mode = ResourceConfig.DumpMode.MANUAL_DUMP;
-            MatrixLog.i(TAG, "Dump Activity Leak Mode=%s", mode);
-            intent.setClassName(this.getPackageName(), "com.tencent.mm.ui.matrix.ManualDumpActivity");
-            ResourceConfig resourceConfig = new ResourceConfig.Builder()
-                    .dynamicConfig(dynamicConfig)
-                    .setAutoDumpHprofMode(mode)
-//                .setDetectDebuger(true) //matrix test code
-//                    .set(intent)
-                    .setManualDumpTargetActivity(ManualDumpActivity.class.getName())
-                    .build();
-            builder.plugin(new ResourcePlugin(resourceConfig));
-            ResourcePlugin.activityLeakFixer(this);
-
-            //io
-            IOCanaryPlugin ioCanaryPlugin = new IOCanaryPlugin(new IOConfig.Builder()
-                    .dynamicConfig(dynamicConfig)
-                    .build());
-            builder.plugin(ioCanaryPlugin);
-
-
-            // prevent api 19 UnsatisfiedLinkError
-            //sqlite
-            SQLiteLintConfig sqlLiteConfig;
-            try {
-                sqlLiteConfig = new SQLiteLintConfig(SQLiteLint.SqlExecutionCallbackMode.CUSTOM_NOTIFY);
-            } catch (Throwable t) {
-                sqlLiteConfig = new SQLiteLintConfig(SQLiteLint.SqlExecutionCallbackMode.CUSTOM_NOTIFY);
+    private void useSignalAnrTraceAlone(String anrFilePath, String printTraceFile) {
+        SignalAnrTracer signalAnrTracer = new SignalAnrTracer(this, anrFilePath, printTraceFile);
+        signalAnrTracer.setSignalAnrDetectedListener(new SignalAnrTracer.SignalAnrDetectedListener() {
+            @Override
+            public void onAnrDetected(String stackTrace, String mMessageString, long mMessageWhen, boolean fromProcessErrorState) {
+                // got an ANR
             }
-            builder.plugin(new SQLiteLintPlugin(sqlLiteConfig));
+        });
+        signalAnrTracer.onStartTrace();
+    }
 
+    private ResourcePlugin configureResourcePlugin(DynamicConfigImplDemo dynamicConfig) {
+        Intent intent = new Intent();
+        ResourceConfig.DumpMode mode = ResourceConfig.DumpMode.MANUAL_DUMP;
+        MatrixLog.i(TAG, "Dump Activity Leak Mode=%s", mode);
+        intent.setClassName(this.getPackageName(), "com.tencent.mm.ui.matrix.ManualDumpActivity");
+        ResourceConfig resourceConfig = new ResourceConfig.Builder()
+                .dynamicConfig(dynamicConfig)
+                .setAutoDumpHprofMode(mode)
+                .setManualDumpTargetActivity(ManualDumpActivity.class.getName())
+                .build();
+        ResourcePlugin.activityLeakFixer(this);
 
-            ThreadMonitor threadMonitor = new ThreadMonitor(new ThreadMonitorConfig.Builder().build());
-            builder.plugin(threadMonitor);
+        return new ResourcePlugin(resourceConfig);
+    }
 
+    private IOCanaryPlugin configureIOCanaryPlugin(DynamicConfigImplDemo dynamicConfig) {
+        return new IOCanaryPlugin(new IOConfig.Builder()
+                .dynamicConfig(dynamicConfig)
+                .build());
+    }
 
-            BatteryMonitorPlugin batteryMonitorPlugin = BatteryCanaryInitHelper.createMonitor();
-            builder.plugin(batteryMonitorPlugin);
-        }
+    private SQLiteLintPlugin configureSQLiteLintPlugin() {
+        SQLiteLintConfig sqlLiteConfig;
 
-        Matrix.init(builder.build());
+        /*
+         * HOOK模式下，SQLiteLint会自己去获取所有已执行的sql语句及其耗时(by hooking sqlite3_profile)
+         * @see 而另一个模式：SQLiteLint.SqlExecutionCallbackMode.CUSTOM_NOTIFY , 则需要调用 {@link SQLiteLint#notifySqlExecution(String, String, int)}来通知
+         * SQLiteLint 需要分析的、已执行的sql语句及其耗时
+         * @see TestSQLiteLintActivity#doTest()
+         */
+        // sqlLiteConfig = new SQLiteLintConfig(SQLiteLint.SqlExecutionCallbackMode.HOOK);
 
-        //start only startup tracer, close other tracer.
-        tracePlugin.start();
-        Matrix.with().getPluginByClass(ThreadMonitor.class).start();
-//        Matrix.with().getPluginByClass(BatteryMonitor.class).start();
-        MatrixLog.i("Matrix.HackCallback", "end:%s", System.currentTimeMillis());
+        sqlLiteConfig = new SQLiteLintConfig(SQLiteLint.SqlExecutionCallbackMode.CUSTOM_NOTIFY);
+        return new SQLiteLintPlugin(sqlLiteConfig);
+    }
 
-
+    private BatteryMonitorPlugin configureBatteryCanary() {
+        // Configuration of battery plugin is really complicated.
+        // See it in BatteryCanaryInitHelper.
+        return BatteryCanaryInitHelper.createMonitor();
     }
 
     public static Context getContext() {

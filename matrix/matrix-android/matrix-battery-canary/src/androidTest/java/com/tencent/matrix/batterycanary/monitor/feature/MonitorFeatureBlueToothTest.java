@@ -31,6 +31,8 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import static com.tencent.matrix.batterycanary.monitor.BatteryMonitorConfig.AMS_HOOK_FLAG_BT;
+
 
 @RunWith(AndroidJUnit4.class)
 public class MonitorFeatureBlueToothTest {
@@ -135,5 +137,11 @@ public class MonitorFeatureBlueToothTest {
         Assert.assertEquals(0, (int) snapshot.regsCount.get());
         Assert.assertEquals(0, (int) snapshot.discCount.get());
         Assert.assertEquals(0, (int) snapshot.scanCount.get());
+    }
+
+    @Test
+    public void testEnableFlag() {
+        Assert.assertEquals(0, (new BatteryMonitorConfig.Builder().build().amsHookEnableFlag & AMS_HOOK_FLAG_BT));
+        Assert.assertEquals(AMS_HOOK_FLAG_BT, (new BatteryMonitorConfig.Builder().setAmsHookEnableFlag(0b1111).build().amsHookEnableFlag & AMS_HOOK_FLAG_BT));
     }
 }
