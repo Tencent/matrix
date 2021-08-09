@@ -203,6 +203,11 @@ Java_com_tencent_matrix_hook_memory_MemoryHook_installHooksNative(JNIEnv* env, j
     memory_hook_init();
 
     NOTIFY_COMMON_IGNORE_LIBS(HOOK_REQUEST_GROUPID_MEMORY);
+
+    // log@memoryhook -> log_impl@liblog -> __emutls_get_address@libandroid_runtime
+    // -> calloc@memoryhook -> log@memoryhook
+    // dead loop !!
+    xhook_ignore(".*/libandroid_runtime\\.so$", nullptr);
 }
 
 #ifdef __cplusplus
