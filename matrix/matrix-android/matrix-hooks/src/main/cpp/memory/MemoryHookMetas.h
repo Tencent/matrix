@@ -24,6 +24,7 @@
 #include <map>
 #include <vector>
 #include <set>
+#include <common/Macros.h>
 #include "unwindstack/Unwinder.h"
 #include "Utils.h"
 #include "common/tree/splay_map.h"
@@ -31,6 +32,8 @@
 #define TAG "Matrix.MemoryHook.Container"
 
 #define USE_MEMORY_MESSAGE_QUEUE true
+#define USE_SPLAY_MAP_SAVE_STACK true
+#define USE_FAKE_BACKTRACE_DATA true
 
 #define MEMHOOK_BACKTRACE_MAX_FRAMES MAX_FRAME_SHORT
 
@@ -61,7 +64,8 @@ struct stack_meta_t {
 typedef splay_map<const void *, ptr_meta_t> memory_map_t;
 typedef splay_map<uint64_t, stack_meta_t> stack_map_t;
 
-#define USE_SPLAY_MAP_SAVE_STACK
+static const unsigned int MAX_PTR_SLOT = 1 << 8;
+static const unsigned int PTR_MASK = MAX_PTR_SLOT - 1;
 
 #if USE_MEMORY_MESSAGE_QUEUE == false
 
@@ -73,7 +77,7 @@ class memory_meta_container {
     } ptr_meta_container_wrapper_t;
 
     typedef struct {
-#ifdef USE_SPLAY_MAP_SAVE_STACK
+#if USE_SPLAY_MAP_SAVE_STACK == true
         stack_map_t container  = stack_map_t(8);
 #else
         std::map<uint64_t, stack_meta_t> container;
@@ -120,7 +124,7 @@ public:
         if (__stack_hash) {
             stack_meta_t *stack_meta;
             TARGET_STACK_CONTAINER_LOCKED(stack_meta_container, __stack_hash);
-#ifdef USE_SPLAY_MAP_SAVE_STACK
+#if USE_SPLAY_MAP_SAVE_STACK == true
             if (LIKELY(stack_meta_container->container.exist(__stack_hash))) {
                 stack_meta = &stack_meta_container->container.find();
             } else {
@@ -162,7 +166,7 @@ public:
 
         if (LIKELY(ptr_meta.stack_hash)) {
             TARGET_STACK_CONTAINER_LOCKED(stack_meta_container, ptr_meta.stack_hash);
-#ifdef USE_SPLAY_MAP_SAVE_STACK
+#if USE_SPLAY_MAP_SAVE_STACK == true
             if (LIKELY(stack_meta_container->container.exist(ptr_meta.stack_hash))) {
                 auto &stack_meta = stack_meta_container->container.find();
                 if (stack_meta.size > ptr_meta.size) { // 减去同堆栈的 size
@@ -199,7 +203,7 @@ public:
                 if (ptr_meta.stack_hash) {
                     TARGET_STACK_CONTAINER_LOCKED(stack_meta_container, ptr_meta.stack_hash);
                     stack_meta_t *stack_meta = nullptr;
-#ifdef USE_SPLAY_MAP_SAVE_STACK
+#if USE_SPLAY_MAP_SAVE_STACK == true
                     if (stack_meta_container->container.exist(ptr_meta.stack_hash)) {
                         stack_meta = &stack_meta_container->container.find();
                     }
@@ -246,16 +250,16 @@ private:
 
 #else
 
-class memory_meta_container_2 {
+class memory_meta_container {
 
     typedef struct {
-        memory_map_t container = memory_map_t(32);
+        memory_map_t container = memory_map_t(10240);
         std::mutex                         mutex;
     } ptr_meta_container_wrapper_t;
 
     typedef struct {
-#ifdef USE_SPLAY_MAP_SAVE_STACK
-        stack_map_t container  = stack_map_t(4);
+#if USE_SPLAY_MAP_SAVE_STACK == true
+        stack_map_t container  = stack_map_t(1024);
 #else
         std::map<uint64_t, stack_meta_t> container;
 #endif
@@ -272,7 +276,7 @@ class memory_meta_container_2 {
 
 public:
 
-    memory_meta_container_2() {
+    memory_meta_container() {
         size_t cap = ptr_meta_capacity();
         ptr_meta_containers.reserve(cap);
         for (int i = 0; i < cap; ++i) {
@@ -301,7 +305,7 @@ public:
         if (__stack_hash) {
             stack_meta_t *stack_meta;
             TARGET_STACK_CONTAINER_LOCKED(stack_meta_container, __stack_hash);
-#ifdef USE_SPLAY_MAP_SAVE_STACK
+#if USE_SPLAY_MAP_SAVE_STACK == true
             if (LIKELY(stack_meta_container->container.exist(__stack_hash))) {
                 stack_meta = &stack_meta_container->container.find();
             } else {
@@ -343,7 +347,7 @@ public:
 
         if (LIKELY(ptr_meta.stack_hash)) {
             TARGET_STACK_CONTAINER_LOCKED(stack_meta_container, ptr_meta.stack_hash);
-#ifdef USE_SPLAY_MAP_SAVE_STACK
+#if USE_SPLAY_MAP_SAVE_STACK == true
             if (LIKELY(stack_meta_container->container.exist(ptr_meta.stack_hash))) {
                 auto &stack_meta = stack_meta_container->container.find();
                 if (stack_meta.size > ptr_meta.size) { // 减去同堆栈的 size
@@ -380,7 +384,7 @@ public:
                 if (ptr_meta.stack_hash) {
                     TARGET_STACK_CONTAINER_LOCKED(stack_meta_container, ptr_meta.stack_hash);
                     stack_meta_t *stack_meta = nullptr;
-#ifdef USE_SPLAY_MAP_SAVE_STACK
+#if USE_SPLAY_MAP_SAVE_STACK == true
                     if (stack_meta_container->container.exist(ptr_meta.stack_hash)) {
                         stack_meta = &stack_meta_container->container.find();
                     }
@@ -419,9 +423,9 @@ private:
     std::vector<ptr_meta_container_wrapper_t *> ptr_meta_containers;
     std::vector<stack_container_wrapper_t *>    stack_meta_containers;
 
-    static const unsigned int MAX_PTR_META_SLOT   = 1 << 10;
+    static const unsigned int MAX_PTR_META_SLOT   = 1 << 0;
     static const unsigned int PTR_META_MASK       = MAX_PTR_META_SLOT - 1;
-    static const unsigned int MAX_STACK_META_SLOT = 1 << 9;
+    static const unsigned int MAX_STACK_META_SLOT = 1 << 0;
     static const unsigned int STACK_META_MASK     = MAX_STACK_META_SLOT - 1;
 };
 

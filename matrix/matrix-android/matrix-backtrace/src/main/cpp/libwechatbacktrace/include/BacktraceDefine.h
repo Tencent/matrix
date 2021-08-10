@@ -86,10 +86,23 @@ namespace wechat_backtrace {
 #define frame_attr_is_dex_pc    ((unsigned) 0x1)
 #define frame_attr_maybe_java   ((unsigned) 0x2)
 
+#define set_frame_attr_is_dex_pc(frame) (frame.attr |= frame_attr_is_dex_pc)
+#define set_frame_attr_maybe_java(frame) (frame.attr |= frame_attr_maybe_java)
+#define set_frame_attr_all(frame) (frame.attr |= (frame_attr_is_dex_pc | frame_attr_maybe_java))
+#define is_frame_attr_is_dex_pc(frame) (frame.attr & frame_attr_is_dex_pc)
+#define is_frame_attr_maybe_java(frame) (frame.attr & frame_attr_maybe_java)
+
+#if defined(__aarch64__)
     struct Frame {
-        uptr pc = 0;
-        unsigned char attr = 0;
+        unsigned char attr : 8;
+        uptr pc : 56;
     };
+#else
+    struct Frame {
+        unsigned char attr;
+        uptr pc;
+    };
+#endif
 
     struct FrameDetail {
         const uptr rel_pc;
@@ -105,9 +118,8 @@ namespace wechat_backtrace {
 
     template <size_t _Max>
     struct BacktraceFixed {
-        size_t max_frames = _Max;
-        size_t frame_size = 0;
         Frame frames[_Max];
+        uint8_t frame_size = 0;
     };
 
     enum BacktraceMode {

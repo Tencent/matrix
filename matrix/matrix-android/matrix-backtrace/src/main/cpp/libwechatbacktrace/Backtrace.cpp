@@ -133,7 +133,7 @@ namespace wechat_backtrace {
                              bool fill_map_info, bool fill_build_id,
                              FrameElement &frame_element) {
 
-        frame_element.maybe_java = (frame.attr & frame_attr_maybe_java);
+        frame_element.maybe_java = is_frame_attr_maybe_java(frame);
 
         if (fill_map_info) {
             if (map_info == nullptr) {
@@ -185,10 +185,10 @@ namespace wechat_backtrace {
              num < frame_size && elements_size < max_elements; num++) {
 
             if (shrunk_java_stacktrace) {
-                if (found_java_frame && !(frames[num].attr & frame_attr_maybe_java)) {
+                if (found_java_frame && !is_frame_attr_maybe_java(frames[num])) {
                     continue;
                 }
-                found_java_frame = (frames[num].attr & frame_attr_maybe_java);
+                found_java_frame = is_frame_attr_maybe_java(frames[num]);
             }
             wechat_backtrace::QuickenMapInfo *map_info;
             if (last_map_info != nullptr && frames[num].pc >= last_map_info->start &&
@@ -206,7 +206,7 @@ namespace wechat_backtrace {
 
             // Compute relative pc.
             if (map_info != nullptr) {
-                if (frames[num].attr & frame_attr_is_dex_pc) {
+                if (is_frame_attr_is_dex_pc(frames[num])) {
                     frame_element->rel_pc = frames[num].pc - map_info->start;
                 } else {
                     frame_element->rel_pc = map_info->GetRelPc(frames[num].pc);
@@ -217,7 +217,7 @@ namespace wechat_backtrace {
 
             if (map_info != nullptr) {
 
-                if (frames[num].attr & frame_attr_is_dex_pc) {
+                if (is_frame_attr_is_dex_pc(frames[num])) {
                     dex_debug->GetMethodInformation(quicken_maps.get(), map_info, frames[num].pc,
                                                     function_name,
                                                     function_offset);
@@ -245,7 +245,7 @@ namespace wechat_backtrace {
 
             to_quicken_frame_element(
                     frames[num], map_info, elf_wrapper,
-                    /* fill_map_info */ !shrunk_java_stacktrace || !(frames[num].attr & frame_attr_maybe_java),
+                    /* fill_map_info */ !shrunk_java_stacktrace || !is_frame_attr_maybe_java(frames[num]),
                     /* fill_build_id */ false,
                     *frame_element);
         }
@@ -306,7 +306,7 @@ namespace wechat_backtrace {
         while (it != dst.end()) {
             frames[i].pc = it->pc;
             if (it->is_dex_pc) {
-                frames[i].attr |= frame_attr_is_dex_pc;
+                set_frame_attr_is_dex_pc(frames[i]);
             }
             i++;
             it++;

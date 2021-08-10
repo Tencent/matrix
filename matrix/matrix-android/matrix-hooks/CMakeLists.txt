@@ -63,6 +63,7 @@ add_library(
         ${SOURCE_DIR}/memory/GCSemiSpaceTrimmerJNI.cpp
         ${SOURCE_DIR}/memory/MemoryHookJNI.cpp
         ${SOURCE_DIR}/memory/MemoryHook.cpp
+        ${SOURCE_DIR}/memory/MemoryBufferQueue.cpp
         ${SOURCE_DIR}/memory/MemoryHookFunctions.cpp
         ${SOURCE_DIR}/memory/WVPreAllocTrimmer.cpp
         ${SOURCE_DIR}/memory/WVPreAllocHookJNI.cpp

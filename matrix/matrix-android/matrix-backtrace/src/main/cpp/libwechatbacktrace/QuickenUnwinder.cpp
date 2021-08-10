@@ -400,8 +400,7 @@ namespace wechat_backtrace {
             step_context.pc -= pc_adjustment;
 
             if (step_context.dex_pc != 0) {
-                backtrace[step_context.frame_index].attr |=
-                        (frame_attr_is_dex_pc | frame_attr_maybe_java);
+                set_frame_attr_all(backtrace[step_context.frame_index]);
                 backtrace[step_context.frame_index].pc = step_context.dex_pc;
                 step_context.dex_pc = 0;
 
@@ -415,7 +414,7 @@ namespace wechat_backtrace {
             backtrace[step_context.frame_index].pc = PC(regs) - pc_adjustment;
 //            backtrace[step_context.frame_index].rel_pc = step_context.pc;
             if (map_info->maybe_java) {
-                backtrace[step_context.frame_index].attr |= frame_attr_maybe_java;
+                set_frame_attr_maybe_java(backtrace[step_context.frame_index]);
             }
 
             adjust_pc = true;

@@ -173,6 +173,11 @@ public class MemoryHookActivity extends AppCompatActivity {
             e.printStackTrace();
         }
 
+        try {
+            Thread.sleep(500);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
 
         warpFunction(-1);
     }

@@ -50,17 +50,25 @@ public:
 
     virtual bool init_fail() { return false; }
 
+    static std::atomic<size_t> g_realloc_counter;
+    static std::atomic<size_t> g_realloc_memory_counter;
+
     virtual void *realloc(size_t new_size) {
+        if (_buffer) g_realloc_counter.fetch_add(1);
         void *ptr = ::realloc(_buffer, new_size);
         if (ptr != NULL) {
+            g_realloc_memory_counter.fetch_sub(_buffer_size);
+            g_realloc_memory_counter.fetch_add(new_size);
             _buffer = ptr;
             _buffer_size = new_size;
         }
+
         return ptr;
     }
 
     virtual void free() {
         if (_buffer) {
+            g_realloc_memory_counter.fetch_sub(_buffer_size);
             ::free(_buffer);
             _buffer = NULL;
             _buffer_size = 0;
