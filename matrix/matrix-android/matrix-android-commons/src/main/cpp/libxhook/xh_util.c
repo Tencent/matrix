@@ -123,3 +123,34 @@ void xh_util_flush_instruction_cache(uintptr_t addr)
 {
     __builtin___clear_cache((void *)PAGE_START(addr), (void *)PAGE_END(addr));
 }
+
+#if __ANDROID_API__ >= 23
+#define xh_util_process_vm_writev process_vm_writev
+#else
+static ssize_t xh_util_process_vm_writev(pid_t __pid,
+                                         const struct iovec* __local_iov,
+                                         unsigned long __local_iov_count,
+                                         const struct iovec* __remote_iov,
+                                         unsigned long __remote_iov_count,
+                                         unsigned long __flags)
+{
+    return syscall(__NR_process_vm_writev, __pid, __local_iov, __local_iov_count,
+                   __remote_iov, __remote_iov_count, __flags);
+}
+#endif
+
+ssize_t xh_util_write_memory_safely(void* dest, uint8_t* buf, size_t size)
+{
+    pid_t pid = getpid();
+    struct iovec src_vec[] = {
+            { .iov_base = buf, .iov_len = size }
+    };
+    struct iovec dest_vec[] = {
+            { .iov_base = dest, .iov_len = size }
+    };
+    // return bytes written on success, -1 on failure.
+    return xh_util_process_vm_writev(pid,
+                                     src_vec, sizeof(src_vec) / sizeof(struct iovec),
+                                     dest_vec, sizeof(dest_vec) / sizeof(struct iovec),
+                                     0);
+}
