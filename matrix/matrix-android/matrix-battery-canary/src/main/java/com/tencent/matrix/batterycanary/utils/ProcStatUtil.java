@@ -64,7 +64,9 @@ public final class ProcStatUtil {
         try {
             ProcStat procStatInfo = null;
             try {
-                procStatInfo = parseWithBufferForPath(path, getLocalBuffers());
+                // procStatInfo = parseWithBufferForPath(path, getLocalBuffers());
+                // For bettery perf: 30% dec
+                procStatInfo = BetterProcStatParser.parse(path);
             } catch (ParseException e) {
                 if (sParseError != null) {
                     sParseError.onError(1, e.content);
