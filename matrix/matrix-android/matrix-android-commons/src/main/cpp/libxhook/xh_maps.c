@@ -111,18 +111,25 @@ void xh_maps_update()
 
         if (s_xh_maps_maps_items.items == NULL || map_item_idx >= curr_map_item_count)
         {
-            curr_map_item_count += 32;
-            s_xh_maps_maps_items.items = realloc(s_xh_maps_maps_items.items, sizeof(maps_item_t) * curr_map_item_count);
+            size_t new_map_item_count = curr_map_item_count + 32;
+            s_xh_maps_maps_items.items = realloc(s_xh_maps_maps_items.items, sizeof(maps_item_t) * new_map_item_count);
             if (s_xh_maps_maps_items.items == NULL)
             {
-                XH_LOG_ABORT("Fail to expand memory space to store maps items.");
+                XH_LOG_ABORT("Fail to expand memory space to store maps items, exp_item_cnt: %u, exp_size: %u",
+                             new_map_item_count, sizeof(maps_item_t) * new_map_item_count);
             }
+            memset(s_xh_maps_maps_items.items + curr_map_item_count, 0,
+                   sizeof(maps_item_t) * (new_map_item_count - curr_map_item_count));
+            curr_map_item_count = new_map_item_count;
         }
         maps_item_t* new_maps_item = s_xh_maps_maps_items.items + map_item_idx;
         new_maps_item->start = start;
         new_maps_item->end = end;
         strncpy(new_maps_item->perms, perms, 4);
         new_maps_item->offset = offset;
+        if (new_maps_item->pathname != NULL) {
+            free(new_maps_item->pathname);
+        }
         new_maps_item->pathname = pathname;
         ++map_item_idx;
     }
