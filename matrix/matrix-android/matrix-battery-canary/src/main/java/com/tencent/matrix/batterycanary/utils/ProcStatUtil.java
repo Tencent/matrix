@@ -1,8 +1,6 @@
 package com.tencent.matrix.batterycanary.utils;
 
 import android.os.Process;
-import androidx.annotation.Nullable;
-import androidx.annotation.VisibleForTesting;
 import android.text.TextUtils;
 
 import com.tencent.matrix.util.MatrixLog;
@@ -14,6 +12,9 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.charset.StandardCharsets;
+
+import androidx.annotation.Nullable;
+import androidx.annotation.VisibleForTesting;
 
 /**
  * see {@linkplain com.android.internal.os.ProcessCpuTracker}
@@ -177,7 +178,6 @@ public final class ProcStatUtil {
                 case 1: { // read comm (thread name)
                     int readIdx = i, window = 0;
                     // seek end symobl of comm: ')'
-                    // noinspection StatementWithEmptyBody
                     while (i < statBytes && ')' != statBuffer[i]) {
                         i++;
                         window++;
@@ -199,7 +199,6 @@ public final class ProcStatUtil {
                 case 3: { // thread state
                     int readIdx = i, window = 0;
                     // seek next space
-                    // noinspection StatementWithEmptyBody
                     while (i < statBytes && !Character.isSpaceChar(statBuffer[i])) {
                         i++;
                         window++;
@@ -211,7 +210,6 @@ public final class ProcStatUtil {
                 case 14: { // utime
                     int readIdx = i, window = 0;
                     // seek next space
-                    // noinspection StatementWithEmptyBody
                     while (i < statBytes && !Character.isSpaceChar(statBuffer[i])) {
                         i++;
                         window++;
@@ -226,7 +224,6 @@ public final class ProcStatUtil {
                 case 15: { // stime
                     int readIdx = i, window = 0;
                     // seek next space
-                    // noinspection StatementWithEmptyBody
                     while (i < statBytes && !Character.isSpaceChar(statBuffer[i])) {
                         i++;
                         window++;
@@ -241,7 +238,6 @@ public final class ProcStatUtil {
                 case 16: { // cutime
                     int readIdx = i, window = 0;
                     // seek next space
-                    // noinspection StatementWithEmptyBody
                     while (i < statBytes && !Character.isSpaceChar(statBuffer[i])) {
                         i++;
                         window++;
@@ -256,7 +252,6 @@ public final class ProcStatUtil {
                 case 17: { // cstime
                     int readIdx = i, window = 0;
                     // seek next space
-                    // noinspection StatementWithEmptyBody
                     while (i < statBytes && !Character.isSpaceChar(statBuffer[i])) {
                         i++;
                         window++;
@@ -321,6 +316,7 @@ public final class ProcStatUtil {
         }
     }
 
+    @SuppressWarnings("BooleanMethodIsAlwaysInverted")
     static boolean isNumeric(String text) {
         if (TextUtils.isEmpty(text)) return false;
         if (text.startsWith("-")) {
@@ -332,6 +328,55 @@ public final class ProcStatUtil {
 
     public static void setParseErrorListener(OnParseError parseError) {
         sParseError = parseError;
+    }
+
+    static final class BetterProcStatParser {
+        private static final int PROC_USER_TIME_FIELD = 13;
+        private static final ThreadLocal<ProcStatReader> sLocalReaders = new InheritableThreadLocal<>();
+
+        static ProcStat parse(String path) throws ParseException {
+            ProcStatReader reader = sLocalReaders.get();
+            if (reader == null) {
+                reader = new ProcStatReader(getLocalBuffers());
+                sLocalReaders.set(reader);
+            }
+            try {
+                reader.reset(path);
+                if (!reader.isValid()) {
+                    throw new IOException("");
+                }
+                reader.skipLeftBrace();
+                CharBuffer comm = reader.readToSymbol(')', CharBuffer.allocate(16));
+                reader.skipSpaces();
+                CharBuffer state = reader.readWord(CharBuffer.allocate(1));
+
+                int index = 0;
+                while (index < PROC_USER_TIME_FIELD - 2) {
+                    reader.skipSpaces();
+                    index++;
+                }
+
+                ProcStat stat = new ProcStat();
+                stat.comm = String.valueOf(comm);
+                stat.stat = String.valueOf(state);
+                stat.utime = readJiffy(reader);
+                stat.stime = readJiffy(reader);
+                stat.cutime = readJiffy(reader);
+                stat.cstime = readJiffy(reader);
+                return stat;
+
+            } catch (Exception e) {
+                throw new ParseException("ProcStatReader error: " + e.getMessage());
+            } finally {
+                reader.close();
+            }
+        }
+
+        private static long readJiffy(ProcStatReader reader) {
+            long jiffies = reader.readNumber();
+            reader.skipSpaces();
+            return jiffies;
+        }
     }
 
     @SuppressWarnings("SpellCheckingInspection")

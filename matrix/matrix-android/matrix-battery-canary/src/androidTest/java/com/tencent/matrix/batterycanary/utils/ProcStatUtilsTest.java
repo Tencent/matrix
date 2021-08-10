@@ -560,6 +560,12 @@ public class ProcStatUtilsTest {
         return stat;
     }
 
+    @Test
+    public void testGetProcStatR3() throws ProcStatUtil.ParseException {
+        ProcStatUtil.ProcStat procStat = ProcStatUtil.BetterProcStatParser.parse("/proc/" + Process.myPid() + "/stat");
+        Assert.assertNotNull(procStat);
+    }
+
 
     @RunWith(AndroidJUnit4.class)
     public static class Benchmark {
