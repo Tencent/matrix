@@ -337,15 +337,11 @@ public final class ProcStatUtil {
         private static final ThreadLocal<ProcStatReader> sLocalReaders = new InheritableThreadLocal<>();
 
         static ProcStat parse(String path) throws ParseException {
-            ProcStatReader reader = sLocalReaders.get();
-            if (reader == null) {
-                reader = new ProcStatReader(getLocalBuffers());
-                sLocalReaders.set(reader);
-            }
+            ProcStatReader reader =  new ProcStatReader(path, getLocalBuffers());
             try {
-                reader.reset(path);
+                reader.reset();
                 if (!reader.isValid()) {
-                    throw new IOException("");
+                    throw new IOException("ProcStatReader is invalid");
                 }
                 reader.skipLeftBrace();
                 CharBuffer comm = reader.readToSymbol(')', CharBuffer.allocate(16));
@@ -368,9 +364,12 @@ public final class ProcStatUtil {
                 return stat;
 
             } catch (Exception e) {
-                throw new ParseException("ProcStatReader error: " + e.getMessage());
+                throw new ParseException("ProcStatReader error: " + e.getClass().getName() + ", " + e.getMessage());
             } finally {
-                reader.close();
+                try {
+                    reader.close();
+                } catch (Exception ignored) {
+                }
             }
         }
 

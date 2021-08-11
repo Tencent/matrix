@@ -16,7 +16,7 @@ import java.util.NoSuchElementException;
 final class ProcStatReader {
 
     private final byte[] mBuffer;
-    private String mPath;
+    private final String mPath;
     private RandomAccessFile mFile;
 
     private int mPosition = -1;
@@ -28,16 +28,16 @@ final class ProcStatReader {
     private boolean mIsValid = true;
     private boolean mRewound = false;
 
-    ProcStatReader() {
-        this(new byte[512]);
+    ProcStatReader(String path) {
+        this(path, new byte[512]);
     }
 
-    ProcStatReader(byte[] buffer) {
+    ProcStatReader(String path, byte[] buffer) {
+        mPath = path;
         mBuffer = buffer;
     }
 
-    public ProcStatReader reset(String path) {
-        mPath = path;
+    public ProcStatReader reset() {
         // Be optimistic
         mIsValid = true;
 
