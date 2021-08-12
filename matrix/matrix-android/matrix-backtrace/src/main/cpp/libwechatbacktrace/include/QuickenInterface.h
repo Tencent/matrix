@@ -48,12 +48,9 @@ namespace wechat_backtrace {
 
         bool FindEntry(QutSections *qut_sections, uptr pc, size_t *entry_offset);
 
-        bool StepJIT(uptr pc, uptr *regs, wechat_backtrace::Maps *maps,
-                     uptr stack_top, uptr stack_bottom, uptr frame_size,
-                /* out */ uint64_t *dex_pc, /* out */ bool *finished);
+        bool StepJIT(StepContext *step_context, wechat_backtrace::Maps *maps);
 
-        bool Step(uptr pc, uptr *regs, uptr stack_top,
-                  uptr stack_bottom, uptr frame_size, uint64_t *dex_pc, bool *finished);
+        bool Step(StepContext *step_context);
 
         template<typename AddressType>
         bool GenerateQuickenTable(unwindstack::Memory *memory,
@@ -155,10 +152,9 @@ namespace wechat_backtrace {
         bool jit_cache_ = false;
         std::shared_ptr<DebugJit> debug_jit_;
 
-//        std::shared_ptr<unwindstack::Memory> process_memory_;
         std::shared_ptr<QuickenInMemory<addr_t>> quicken_in_memory_;
 
-        std::mutex lock_quicken_in_memory_;
+        std::shared_mutex lock_quicken_in_memory_;
 
         std::unique_ptr<ElfWrapper> elf_wrapper_;
 
@@ -185,12 +181,11 @@ namespace wechat_backtrace {
         FrameInfo gnu_eh_frame_info_ = {0};
         FrameInfo gnu_debug_frame_info_ = {0};
 
-        volatile QutSections *qut_sections_ = nullptr;
+        QutSections *qut_sections_ = nullptr;
 
         std::mutex lock_;
 
-        bool StepInternal(uptr pc, uptr *regs, QutSections *sections, uptr stack_top,
-                          uptr stack_bottom, uptr frame_size, uint64_t *dex_pc, bool *finished);
+        bool StepInternal(StepContext *step_context, QutSections *sections);
 
         // TODO Should remove.
         size_t try_load_qut_failed_count_ = 0;

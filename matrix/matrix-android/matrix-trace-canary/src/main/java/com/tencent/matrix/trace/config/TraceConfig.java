@@ -24,7 +24,6 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
-
 /**
  * Created by caichongyang on 17/5/18.
  * <p>
@@ -40,10 +39,15 @@ public class TraceConfig implements IDefaultConfig {
     public boolean defaultStartupEnable;
     public boolean defaultAppMethodBeatEnable = true;
     public boolean defaultAnrEnable;
+    public boolean defualtIdleHandlerEnable;
     public boolean isDebug;
     public boolean isDevEnv;
+    public boolean defaultSignalAnrEnable;
+    public boolean defaultMainThreadPriorityTraceEnable;
     public String splashActivities;
     public Set<String> splashActivitiesSet;
+    public String anrTraceFilePath = "";
+    public String printTraceFilePath = "";
     public boolean isHasActivity;
 
     private TraceConfig() {
@@ -102,6 +106,31 @@ public class TraceConfig implements IDefaultConfig {
     @Override
     public boolean isAnrTraceEnable() {
         return defaultAnrEnable;
+    }
+
+    @Override
+    public boolean isIdleHandlerEnable() {
+        return defualtIdleHandlerEnable;
+    }
+
+    @Override
+    public boolean isSignalAnrTraceEnable() {
+        return defaultSignalAnrEnable;
+    }
+
+    @Override
+    public boolean isMainThreadPriorityTraceEnable() {
+        return defaultMainThreadPriorityTraceEnable;
+    }
+
+    @Override
+    public String getAnrTraceFilePath() {
+        return anrTraceFilePath;
+    }
+
+    @Override
+    public String getPrintTraceFilePath() {
+        return printTraceFilePath;
     }
 
 
@@ -208,6 +237,11 @@ public class TraceConfig implements IDefaultConfig {
             return this;
         }
 
+        public Builder enableSignalAnrTrace(boolean enable) {
+            config.defaultSignalAnrEnable = enable;
+            return this;
+        }
+
         public Builder enableStartup(boolean enable) {
             config.defaultStartupEnable = enable;
             return this;
@@ -230,6 +264,26 @@ public class TraceConfig implements IDefaultConfig {
 
         public Builder splashActivities(String activities) {
             config.splashActivities = activities;
+            return this;
+        }
+
+        public Builder anrTracePath(String anrTraceFilePath) {
+            config.anrTraceFilePath = anrTraceFilePath;
+            return this;
+        }
+
+        public Builder printTracePath(String anrTraceFilePath) {
+            config.printTraceFilePath = anrTraceFilePath;
+            return this;
+        }
+
+        public Builder enableIdleHandlerTrace(boolean enable) {
+            config.defualtIdleHandlerEnable = enable;
+            return this;
+        }
+
+        public Builder enableMainThreadPriorityTrace(boolean enable) {
+            config.defaultMainThreadPriorityTraceEnable = enable;
             return this;
         }
 

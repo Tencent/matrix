@@ -24,6 +24,8 @@
 #ifndef XH_UTILS_H
 #define XH_UTILS_H 1
 
+#include <sys/uio.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -43,6 +45,7 @@ int xh_util_get_mem_protect(uintptr_t addr, size_t len, const char *pathname, un
 int xh_util_get_addr_protect(uintptr_t addr, const char *pathname, unsigned int *prot);
 int xh_util_set_addr_protect(uintptr_t addr, unsigned int prot);
 void xh_util_flush_instruction_cache(uintptr_t addr);
+ssize_t xh_util_write_memory_safely(void* dest, uint8_t* buf, size_t size);
 
 #ifdef __cplusplus
 }

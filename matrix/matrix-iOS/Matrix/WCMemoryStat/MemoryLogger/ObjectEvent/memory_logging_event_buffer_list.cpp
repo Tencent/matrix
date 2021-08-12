@@ -21,6 +21,7 @@
 
 struct memory_logging_event_buffer_list {
     malloc_lock_s lock;
+
     memory_logging_event_buffer *curr_buffer;
     memory_logging_event_buffer *tail_buffer;
 };
@@ -62,20 +63,7 @@ void memory_logging_event_buffer_list_push_back(memory_logging_event_buffer_list
     __malloc_lock_unlock(&buffer_list->lock);
 }
 
-memory_logging_event_buffer *memory_logging_event_buffer_list_pop_front(memory_logging_event_buffer_list *buffer_list) {
-    __malloc_lock_lock(&buffer_list->lock);
-
-    memory_logging_event_buffer *curr_buffer = buffer_list->curr_buffer;
-    if (curr_buffer) {
-        buffer_list->curr_buffer = curr_buffer->next_event_buffer;
-    }
-
-    __malloc_lock_unlock(&buffer_list->lock);
-
-    return curr_buffer;
-}
-
-memory_logging_event_buffer *memory_logging_event_buffer_list_reset(memory_logging_event_buffer_list *buffer_list) {
+memory_logging_event_buffer *memory_logging_event_buffer_list_pop_all(memory_logging_event_buffer_list *buffer_list) {
     __malloc_lock_lock(&buffer_list->lock);
 
     memory_logging_event_buffer *curr_buffer = buffer_list->curr_buffer;

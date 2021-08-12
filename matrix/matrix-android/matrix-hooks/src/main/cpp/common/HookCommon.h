@@ -1,3 +1,19 @@
+/*
+ * Tencent is pleased to support the open source community by making wechat-matrix available.
+ * Copyright (C) 2021 THL A29 Limited, a Tencent company. All rights reserved.
+ * Licensed under the BSD 3-Clause License (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      https://opensource.org/licenses/BSD-3-Clause
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 //
 // Created by Yves on 2019-12-16.
 //
@@ -8,8 +24,14 @@
 #define LIBMATRIX_JNI_HOOKCOMMON_H
 
 #include <dlfcn.h>
+#include <xhook_ext.h>
 #include "JNICommon.h"
 #include "Macros.h"
+
+// 0x01 was occupied by thread priority trace hook in MatrixTracer.cc.
+#define HOOK_REQUEST_GROUPID_DLOPEN_MON 0x02
+#define HOOK_REQUEST_GROUPID_MEMORY 0x03
+#define HOOK_REQUEST_GROUPID_PTHREAD 0x04
 
 #define GET_CALLER_ADDR(__caller_addr) \
     void * __caller_addr = __builtin_return_address(0)
@@ -55,24 +77,25 @@
     } \
     ORIGINAL_FUNC_NAME(sym)(params)
 
-#define NOTIFY_COMMON_IGNORE_LIBS() \
+#define NOTIFY_COMMON_IGNORE_LIBS(group_id) \
     do { \
-      xhook_ignore(".*libwechatbacktrace\\.so$", NULL); \
-      xhook_ignore(".*librabbiteye\\.so$", NULL); \
-      xhook_ignore(".*libwechatcrash\\.so$", NULL); \
-      xhook_ignore(".*libmemguard\\.so$", NULL); \
-      xhook_ignore(".*libmemmisc\\.so$", NULL); \
-      xhook_ignore(".*liblog\\.so$", NULL); \
-      xhook_ignore(".*libc\\.so$", NULL); \
-      xhook_ignore(".*libm\\.so$", NULL); \
-      xhook_ignore(".*libc\\+\\+\\.so$", NULL); \
-      xhook_ignore(".*libc\\+\\+_shared\\.so$", NULL); \
-      xhook_ignore(".*libstdc\\+\\+.so\\.so$", NULL); \
-      xhook_ignore(".*libstlport_shared\\.so$", NULL); \
-      xhook_ignore(".*/libwebviewchromium_loader\\.so$", NULL); \
-      xhook_ignore(".*/libmatrix-hookcommon\\.so$", nullptr); \
-      xhook_ignore(".*/libmatrix-memoryhook\\.so$", nullptr); \
-      xhook_ignore(".*/libmatrix-pthreadhook\\.so$", nullptr); \
+      xhook_grouped_ignore(group_id, ".*libwechatbacktrace\\.so$", NULL); \
+      xhook_grouped_ignore(group_id, ".*libtrace-canary\\.so$", NULL); \
+      xhook_grouped_ignore(group_id, ".*libwechatcrash\\.so$", NULL); \
+      xhook_grouped_ignore(group_id, ".*libmemguard\\.so$", NULL); \
+      xhook_grouped_ignore(group_id, ".*libmemmisc\\.so$", NULL); \
+      xhook_grouped_ignore(group_id, ".*liblog\\.so$", NULL); \
+      xhook_grouped_ignore(group_id, ".*libc\\.so$", NULL); \
+      xhook_grouped_ignore(group_id, ".*libm\\.so$", NULL); \
+      xhook_grouped_ignore(group_id, ".*libc\\+\\+\\.so$", NULL); \
+      xhook_grouped_ignore(group_id, ".*libc\\+\\+_shared\\.so$", NULL); \
+      xhook_grouped_ignore(group_id, ".*libstdc\\+\\+.so\\.so$", NULL); \
+      xhook_grouped_ignore(group_id, ".*libstlport_shared\\.so$", NULL); \
+      xhook_grouped_ignore(group_id, ".*/libwebviewchromium_loader\\.so$", NULL); \
+      xhook_grouped_ignore(group_id, ".*/libmatrix-hookcommon\\.so$", NULL); \
+      xhook_grouped_ignore(group_id, ".*/libmatrix-memoryhook\\.so$", NULL); \
+      xhook_grouped_ignore(group_id, ".*/libmatrix-pthreadhook\\.so$", NULL); \
+      xhook_grouped_ignore(group_id, ".*/libmatrix-opengl-leak\\.so$", NULL); \
     } while (0)
 
 #include <vector>
@@ -87,22 +110,7 @@ typedef struct {
     void       **origin_ptr;
 } HookFunction;
 
-typedef void (*dlopen_callback_t)(const char *__file_name, bool *maps_refreshed);
-
-EXPORT void add_dlopen_hook_callback(dlopen_callback_t callback);
-
-EXPORT void pause_dlopen();
-
-EXPORT void resume_dlopen();
-
-typedef void (*hook_init_callback_t)();
-
 EXPORT bool get_java_stacktrace(char *stack_dst, size_t size);
-
-DECLARE_HOOK_ORIG(void *, __loader_android_dlopen_ext, const char *filename,
-                  int                                             flag,
-                  const void                                      *extinfo,
-                  const void                                      *caller_addr) ;
 
 #ifdef __cplusplus
 }

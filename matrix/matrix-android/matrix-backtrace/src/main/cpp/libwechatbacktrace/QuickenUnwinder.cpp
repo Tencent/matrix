@@ -30,6 +30,7 @@
 #include <jni.h>
 #include <QuickenUtility.h>
 #include <QuickenMemory.h>
+#include <deps/android-base/include/android-base/logging.h>
 #include "QuickenUnwinder.h"
 #include "QuickenMaps.h"
 
@@ -233,6 +234,8 @@ namespace wechat_backtrace {
             std::unique_ptr<QutSections> qut_sections = make_unique<QutSections>();
             QutSectionsPtr qut_sections_ptr = qut_sections.get();
 
+            qut_sections->native_only = true;
+
             Memory *gnu_debug_data_memory = nullptr;
             if (elf->gnu_debugdata_interface()) {
                 gnu_debug_data_memory = elf->gnu_debugdata_interface()->memory();
@@ -300,10 +303,26 @@ namespace wechat_backtrace {
         return 4;
     }
 
+    static inline MapInfoPtr GetMapInfo(std::shared_ptr<Maps> &maps, uptr pc) {
+        auto map_info = maps->Find(pc);
+        if (map_info == nullptr) {
+            uint16_t tmp = 0;
+            if (process_memory_->Read(pc, &tmp, sizeof(tmp))) {
+                Maps::Parse(maps.get());
+                map_info = maps->Find(pc);
+                maps = Maps::current();
+            }
+        }
+
+        return map_info;
+    }
 
     QutErrorCode
-    WeChatQuickenUnwind(const ArchEnum arch, uptr *regs, const size_t frame_max_size,
-                        Frame *backtrace, uptr &frame_size) {
+    WeChatQuickenUnwind(QuickenContext *context) {
+
+        if (UNLIKELY(context == nullptr)) {
+            return QUT_ERROR_CONTEXT_IS_NULL;
+        }
 
         std::shared_ptr<Maps> maps = Maps::current();
         if (!maps) {
@@ -312,23 +331,31 @@ namespace wechat_backtrace {
         }
 
         bool adjust_pc = false;
-        bool finished = false;
 
         MapInfoPtr last_map_info = nullptr;
         QuickenInterface *last_interface = nullptr;
         uint64_t last_load_bias = 0;
-        uint64_t dex_pc = 0;
 
         QutErrorCode ret = QUT_ERROR_NONE;
 
-        pthread_attr_t attr;
-        BACKTRACE_FUNC_WRAPPER(pthread_getattr_ext)(pthread_self(), &attr);
-        uptr stack_bottom = reinterpret_cast<uptr>(attr.stack_base);
-        uptr stack_top = reinterpret_cast<uptr>(attr.stack_base) + attr.stack_size;
+        const size_t frame_max_size = context->frame_max_size;
+        Frame *backtrace = context->backtrace;
 
-        for (; frame_size < frame_max_size;) {
-            uint64_t cur_pc = PC(regs);
-            uint64_t cur_sp = SP(regs);
+        StepContext step_context = {
+                .stack_bottom = context->stack_bottom,
+                .stack_top = context->stack_top,
+                .regs = context->regs,
+                .pc = 0,
+                .dex_pc = 0,
+                .frame_index = 0,
+                .finished = false,
+        };
+
+        uptr *regs = step_context.regs;
+
+        for (; step_context.frame_index < frame_max_size;) {
+            uptr cur_pc = PC(regs);
+            uptr cur_sp = SP(regs);
             MapInfoPtr map_info;
             QuickenInterface *interface;
 
@@ -336,16 +363,21 @@ namespace wechat_backtrace {
                 map_info = last_map_info;
                 interface = last_interface;
             } else {
-                map_info = maps->Find(cur_pc);
 
-                if (map_info == nullptr) {
-                    backtrace[frame_size++].pc = PC(regs) - 2;
+                if (context->update_maps_as_need) {
+                    map_info = GetMapInfo(maps, cur_pc);
+                } else {
+                    map_info = maps->Find(cur_pc);
+                }
+
+                if (UNLIKELY(map_info == nullptr)) {
+                    backtrace[step_context.frame_index++].pc = PC(regs) - 2;
                     ret = QUT_ERROR_INVALID_MAP;
                     break;
                 }
-                interface = map_info->GetQuickenInterface(process_memory_, arch);
-                if (!interface) {
-                    backtrace[frame_size++].pc = PC(regs) - 2;
+                interface = map_info->GetQuickenInterface(process_memory_);
+                if (UNLIKELY(!interface)) {
+                    backtrace[step_context.frame_index++].pc = PC(regs) - 2;
                     ret = QUT_ERROR_INVALID_ELF;
                     break;
                 }
@@ -356,51 +388,49 @@ namespace wechat_backtrace {
             }
 
             uint64_t pc_adjustment = 0;
-            uint64_t rel_pc = map_info->GetRelPc(PC(regs));;
-            uint64_t step_pc = rel_pc;
+            uint64_t rel_pc = map_info->GetRelPc(PC(regs));
+            step_context.pc = rel_pc;
 
-            if (adjust_pc) {
+            if (LIKELY(adjust_pc)) {
                 pc_adjustment = GetPcAdjustment(map_info, PC(regs), rel_pc,
                                                 last_load_bias);
             } else {
                 pc_adjustment = 0;
             }
 
-            step_pc -= pc_adjustment;
+            step_context.pc -= pc_adjustment;
 
-            if (dex_pc != 0) {
-                backtrace[frame_size].is_dex_pc = true;
-                backtrace[frame_size].maybe_java = true;
-                backtrace[frame_size].pc = dex_pc;
-                dex_pc = 0;
+            if (step_context.dex_pc != 0) {
+                backtrace[step_context.frame_index].is_dex_pc = true;
+                backtrace[step_context.frame_index].maybe_java = true;
+                backtrace[step_context.frame_index].pc = step_context.dex_pc;
+                step_context.dex_pc = 0;
 
-                frame_size++;
-                if (frame_size >= frame_max_size) {
+                step_context.frame_index++;
+                if (step_context.frame_index >= frame_max_size) {
                     ret = QUT_ERROR_MAX_FRAMES_EXCEEDED;
                     break;
                 }
             }
 
-            backtrace[frame_size].pc = PC(regs) - pc_adjustment;
-            backtrace[frame_size].rel_pc = step_pc;
-            backtrace[frame_size].maybe_java = map_info->maybe_java;
+            backtrace[step_context.frame_index].pc = PC(regs) - pc_adjustment;
+            backtrace[step_context.frame_index].rel_pc = step_context.pc;
+            backtrace[step_context.frame_index].maybe_java = map_info->maybe_java;
 
             adjust_pc = true;
 
-            frame_size++;
-            if (frame_size >= frame_max_size) {
+            step_context.frame_index++;
+            if (UNLIKELY(step_context.frame_index >= frame_max_size)) {
                 ret = QUT_ERROR_MAX_FRAMES_EXCEEDED;
                 break;
             }
 
             bool step_ret;
             if (UNLIKELY(interface->jit_cache_)) {
-                uptr adjust_jit_pc = PC(regs) - pc_adjustment;
-                step_ret = interface->StepJIT(adjust_jit_pc, regs, maps.get(), stack_top,
-                                              stack_bottom, frame_size, &dex_pc, &finished);
+                step_context.pc = PC(regs) - pc_adjustment;
+                step_ret = interface->StepJIT(&step_context, maps.get());
             } else {
-                step_ret = interface->Step(step_pc, regs, stack_top, stack_bottom,
-                                           frame_size, &dex_pc, &finished);
+                step_ret = interface->Step(&step_context);
             }
 
             if (UNLIKELY(!step_ret)) {
@@ -408,16 +438,18 @@ namespace wechat_backtrace {
                 break;
             }
 
-            if (finished) { // finished.
+            if (UNLIKELY(step_context.finished)) { // finished.
                 break;
             }
 
             // If the pc and sp didn't change, then consider everything stopped.
-            if (cur_pc == PC(regs) && cur_sp == SP(regs)) {
+            if (UNLIKELY(cur_pc == PC(regs) && cur_sp == SP(regs))) {
                 ret = QUT_ERROR_REPEATED_FRAME;
                 break;
             }
         }
+
+        context->frame_size = step_context.frame_index;
 
         return ret;
     }

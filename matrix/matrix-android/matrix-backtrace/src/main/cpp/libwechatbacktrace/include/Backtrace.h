@@ -47,8 +47,7 @@ namespace wechat_backtrace {
     void BACKTRACE_FUNC_WRAPPER(fp_unwind)(
             uptr *regs, Frame *frames, const size_t frameMaxSize, size_t &frameSize);
 
-    void BACKTRACE_FUNC_WRAPPER(quicken_unwind)(
-            uptr *regs, Frame *frames, const size_t frame_max_size, uptr &frame_size);
+    void BACKTRACE_FUNC_WRAPPER(quicken_unwind)(QuickenContext *context);
 
     void BACKTRACE_FUNC_WRAPPER(quicken_based_unwind)(
             Frame *frames, const size_t max_frames, size_t &frame_size);

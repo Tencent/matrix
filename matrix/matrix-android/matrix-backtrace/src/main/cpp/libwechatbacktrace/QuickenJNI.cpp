@@ -33,7 +33,6 @@
 
 #include "PthreadExt.h"
 #include "QuickenUnwinder.h"
-#include "QuickenJNI.h"
 #include "Log.h"
 
 #include "android-base/macros.h"
@@ -67,7 +66,7 @@ namespace wechat_backtrace {
         (void) env;
         (void) clazz;
 
-        QuickenTableManager::getInstance().WarmUp(warmed_up == JNI_TRUE);
+        QuickenTableManager::WarmUp(warmed_up == JNI_TRUE);
     }
 
     static jobjectArray JNI_ConsumeRequestedQut(JNIEnv *env, jclass clazz) {
@@ -76,7 +75,7 @@ namespace wechat_backtrace {
 
         vector<string> consumed = ConsumeRequestingQut();
 
-        jobjectArray result = (jobjectArray)
+        auto result = (jobjectArray)
                 env->NewObjectArray(consumed.size(), env->FindClass("java/lang/String"),
                                     env->NewStringUTF(""));
 
