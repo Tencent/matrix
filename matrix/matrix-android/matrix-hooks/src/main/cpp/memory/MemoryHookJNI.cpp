@@ -19,6 +19,7 @@
 //
 #include <jni.h>
 #include <xhook.h>
+#include <xhook_ext.h>
 #include <xh_errno.h>
 #include <common/HookCommon.h>
 #include <common/SoLoadMonitor.h>
@@ -97,19 +98,19 @@ bool enable_mmap_hook = false;
 static void hook(const char *regex) {
 
     for (auto f : HOOK_MALL_FUNCTIONS) {
-        int ret = xhook_register(regex, f.name, f.handler_ptr, f.origin_ptr);
+        int ret = xhook_grouped_register(HOOK_REQUEST_GROUPID_MEMORY, regex, f.name, f.handler_ptr, f.origin_ptr);
         LOGD(TAG, "hook fn, regex: %s, sym: %s, ret: %d", regex, f.name, ret);
     }
     LOGD(TAG, "mmap enabled ? %d", enable_mmap_hook);
     if (enable_mmap_hook) {
         for (auto f: HOOK_MMAP_FUNCTIONS) {
-            xhook_register(regex, f.name, f.handler_ptr, f.origin_ptr);
+            xhook_grouped_register(HOOK_REQUEST_GROUPID_MEMORY, regex, f.name, f.handler_ptr, f.origin_ptr);
         }
     }
 }
 
 static void ignore(const char *regex) {
-    xhook_ignore(regex, nullptr);
+    xhook_grouped_ignore(HOOK_REQUEST_GROUPID_MEMORY, regex, nullptr);
 }
 
 JNIEXPORT void JNICALL
@@ -199,17 +200,14 @@ Java_com_tencent_matrix_hook_memory_MemoryHook_setStacktraceLogThresholdNative(J
 
 JNIEXPORT void JNICALL
 Java_com_tencent_matrix_hook_memory_MemoryHook_installHooksNative(JNIEnv* env, jobject thiz, jboolean enable_debug) {
-    matrix::AddOnSoLoadCallback(memory_hook_on_dlopen);
-
     memory_hook_init();
 
-    NOTIFY_COMMON_IGNORE_LIBS();
+    NOTIFY_COMMON_IGNORE_LIBS(HOOK_REQUEST_GROUPID_MEMORY);
 
-    xhook_enable_debug(enable_debug ? 1 : 0);
-    xhook_enable_sigsegv_protection(enable_debug ? 0 : 1);
-
-    // This line only refreshes xhook in matrix-memoryhook library now.
-    xhook_refresh(0);
+    // log@memoryhook -> log_impl@liblog -> __emutls_get_address@libandroid_runtime
+    // -> calloc@memoryhook -> log@memoryhook
+    // dead loop !!
+    xhook_ignore(".*/libandroid_runtime\\.so$", nullptr);
 }
 
 #ifdef __cplusplus

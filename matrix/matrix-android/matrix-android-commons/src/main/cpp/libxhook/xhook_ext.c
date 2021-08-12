@@ -9,6 +9,8 @@
 #include <string.h>
 #include <limits.h>
 #include <asm/mman.h>
+#include <regex.h>
+#include <malloc.h>
 #include "xhook_ext.h"
 #include "xh_core.h"
 #include "xh_elf.h"
@@ -16,11 +18,39 @@
 
 #include "xh_log.h"
 #include "xh_util.h"
+#include "queue.h"
+#include "tree.h"
 
 #ifdef XH_LOG_TAG
   #undef XH_LOG_TAG
   #define XH_LOG_TAG "xhook_ext"
 #endif
+
+int xhook_grouped_register(int group_id, const char *pathname_regex_str, const char *symbol, void *new_func,
+        void **old_func)
+{
+    return xh_core_grouped_register(group_id, pathname_regex_str, symbol, new_func, old_func);
+}
+
+int xhook_grouped_ignore(int group_id, const char *pathname_regex_str, const char *symbol)
+{
+    return xh_core_grouped_ignore(group_id, pathname_regex_str, symbol);
+}
+
+void* xhook_elf_open(const char *path)
+{
+    return xh_core_elf_open(path);
+}
+
+int xhook_got_hook_symbol(void* h_lib, const char* symbol, void* new_func, void** old_func)
+{
+    return xh_core_got_hook_symbol(h_lib, symbol, new_func, old_func);
+}
+
+void xhook_elf_close(void *h_lib)
+{
+    xh_core_elf_close(h_lib);
+}
 
 static int xh_export_symtable_hook(const char* pathname, const void* base_addr, const char* symbol_name, void* handler,
                                    void** original_address) {

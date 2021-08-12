@@ -1,5 +1,5 @@
 {
     local:
         xh_*;
-        xhook_*;
+        semi_*;
 };

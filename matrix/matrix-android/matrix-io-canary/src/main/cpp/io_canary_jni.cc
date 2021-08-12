@@ -25,7 +25,7 @@
 #include <cstring>
 #include <android/log.h>
 #include <assert.h>
-#include <xhook.h>
+#include <xhook_ext.h>
 #include <string>
 #include <algorithm>
 #include "comm/io_canary_utils.h"
@@ -353,23 +353,23 @@ namespace iocanary {
                     continue;
                 }
 
-                xhook_hook_symbol(soinfo, "open", (void*)ProxyOpen, (void**)&original_open);
-                xhook_hook_symbol(soinfo, "open64", (void*)ProxyOpen64, (void**)&original_open64);
+                xhook_got_hook_symbol(soinfo, "open", (void*)ProxyOpen, (void**)&original_open);
+                xhook_got_hook_symbol(soinfo, "open64", (void*)ProxyOpen64, (void**)&original_open64);
 
                 bool is_libjavacore = (strstr(so_name, "libjavacore.so") != nullptr);
                 if (is_libjavacore) {
-                    if (xhook_hook_symbol(soinfo, "read", (void*)ProxyRead, (void**)&original_read) != 0) {
+                    if (xhook_got_hook_symbol(soinfo, "read", (void*)ProxyRead, (void**)&original_read) != 0) {
                         __android_log_print(ANDROID_LOG_WARN, kTag, "doHook hook read failed, try __read_chk");
-                        if (xhook_hook_symbol(soinfo, "__read_chk", (void*)ProxyReadChk, (void**)&original_read_chk) != 0) {
+                        if (xhook_got_hook_symbol(soinfo, "__read_chk", (void*)ProxyReadChk, (void**)&original_read_chk) != 0) {
                             __android_log_print(ANDROID_LOG_WARN, kTag, "doHook hook failed: __read_chk");
                             xhook_elf_close(soinfo);
                             return JNI_FALSE;
                         }
                     }
 
-                    if (xhook_hook_symbol(soinfo, "write", (void*)ProxyWrite, (void**)&original_write) != 0) {
+                    if (xhook_got_hook_symbol(soinfo, "write", (void*)ProxyWrite, (void**)&original_write) != 0) {
                         __android_log_print(ANDROID_LOG_WARN, kTag, "doHook hook write failed, try __write_chk");
-                        if (xhook_hook_symbol(soinfo, "__write_chk", (void*)ProxyWriteChk, (void**)&original_write_chk) != 0) {
+                        if (xhook_got_hook_symbol(soinfo, "__write_chk", (void*)ProxyWriteChk, (void**)&original_write_chk) != 0) {
                             __android_log_print(ANDROID_LOG_WARN, kTag, "doHook hook failed: __write_chk");
                             xhook_elf_close(soinfo);
                             return JNI_FALSE;
@@ -377,8 +377,8 @@ namespace iocanary {
                     }
                 }
 
-                xhook_hook_symbol(soinfo, "close", (void*)ProxyClose, (void**)&original_close);
-                xhook_hook_symbol(soinfo,"android_fdsan_close_with_tag",(void *)Proxy_android_fdsan_close_with_tag,(void**)&original_android_fdsan_close_with_tag);
+                xhook_got_hook_symbol(soinfo, "close", (void*)ProxyClose, (void**)&original_close);
+                xhook_got_hook_symbol(soinfo,"android_fdsan_close_with_tag",(void *)Proxy_android_fdsan_close_with_tag,(void**)&original_android_fdsan_close_with_tag);
 
                 xhook_elf_close(soinfo);
             }
@@ -396,13 +396,13 @@ namespace iocanary {
                 if (!soinfo) {
                     continue;
                 }
-                xhook_hook_symbol(soinfo, "open", (void*) original_open, nullptr);
-                xhook_hook_symbol(soinfo, "open64", (void*) original_open64, nullptr);
-                xhook_hook_symbol(soinfo, "read", (void*) original_read, nullptr);
-                xhook_hook_symbol(soinfo, "write", (void*) original_write, nullptr);
-                xhook_hook_symbol(soinfo, "__read_chk", (void*) original_read_chk, nullptr);
-                xhook_hook_symbol(soinfo, "__write_chk", (void*) original_write_chk, nullptr);
-                xhook_hook_symbol(soinfo, "close", (void*) original_close, nullptr);
+                xhook_got_hook_symbol(soinfo, "open", (void*) original_open, nullptr);
+                xhook_got_hook_symbol(soinfo, "open64", (void*) original_open64, nullptr);
+                xhook_got_hook_symbol(soinfo, "read", (void*) original_read, nullptr);
+                xhook_got_hook_symbol(soinfo, "write", (void*) original_write, nullptr);
+                xhook_got_hook_symbol(soinfo, "__read_chk", (void*) original_read_chk, nullptr);
+                xhook_got_hook_symbol(soinfo, "__write_chk", (void*) original_write_chk, nullptr);
+                xhook_got_hook_symbol(soinfo, "close", (void*) original_close, nullptr);
 
                 xhook_elf_close(soinfo);
             }
