@@ -64,12 +64,18 @@ public final class ProcStatUtil {
         try {
             ProcStat procStatInfo = null;
             try {
-                // procStatInfo = parseWithBufferForPath(path, getLocalBuffers());
-                // For bettery perf: 30% dec
-                procStatInfo = BetterProcStatParser.parse(path);
+                // For bettery perf: 30% millis dec
+                procStatInfo = BetterProcStatParser.parse(path, getLocalBuffers());
             } catch (ParseException e) {
                 if (sParseError != null) {
-                    sParseError.onError(1, e.content);
+                    sParseError.onError(3, e.content);
+                }
+                try {
+                    procStatInfo = parseWithBufferForPath(path, getLocalBuffers());
+                } catch (ParseException e2) {
+                    if (sParseError != null) {
+                        sParseError.onError(1, e2.content);
+                    }
                 }
             }
 
@@ -336,8 +342,8 @@ public final class ProcStatUtil {
         private static final int PROC_USER_TIME_FIELD = 13;
         private static final ThreadLocal<ProcStatReader> sLocalReaders = new InheritableThreadLocal<>();
 
-        static ProcStat parse(String path) throws ParseException {
-            ProcStatReader reader =  new ProcStatReader(path, getLocalBuffers());
+        static ProcStat parse(String path, byte[] buffer) throws ParseException {
+            ProcStatReader reader =  new ProcStatReader(path, buffer);
             try {
                 reader.reset();
                 if (!reader.isValid()) {

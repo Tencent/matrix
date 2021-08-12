@@ -473,7 +473,7 @@ public class ProcStatUtilsTest {
         File tempFile = File.createTempFile("temp_", "_test_parse_proc_stat_" + System.currentTimeMillis());
         IOUtil.writeText(sample, tempFile);
         ProcStatUtil.ProcStat parse = ProcStatUtil.parse(tempFile.getPath());
-        Assert.assertEquals(2, inc.get());
+        Assert.assertEquals(3, inc.get());
         Assert.assertNull(parse);
     }
 
@@ -582,7 +582,13 @@ public class ProcStatUtilsTest {
 
     @Test
     public void testGetProcStatR3() throws ProcStatUtil.ParseException {
-        ProcStatUtil.ProcStat stat = ProcStatUtil.BetterProcStatParser.parse("/proc/" + Process.myPid() + "/stat");
+        ProcStatUtil.setParseErrorListener(new ProcStatUtil.OnParseError() {
+            @Override
+            public void onError(int mode, String input) {
+                Assert.fail(input);
+            }
+        });
+        ProcStatUtil.ProcStat stat = ProcStatUtil.BetterProcStatParser.parse("/proc/" + Process.myPid() + "/stat", ProcStatUtil.getLocalBuffers());
         Assert.assertNotNull(stat);
         Assert.assertNotNull(stat.comm);
         Assert.assertTrue(stat.utime >= 0);
@@ -591,11 +597,19 @@ public class ProcStatUtilsTest {
         Assert.assertTrue(stat.cstime >= 0);
         long jiffies = stat.utime + stat.stime + stat.cutime + stat.cstime;
         Assert.assertTrue(jiffies >= 0);
+
+        ProcStatUtil.setParseErrorListener(null);
     }
 
     @Test
     public void testGetThreadProcStatR3() throws ProcStatUtil.ParseException {
-        ProcStatUtil.ProcStat stat = ProcStatUtil.BetterProcStatParser.parse("/proc/" + Process.myPid() + "/task/" + Process.myTid() +  "/stat");
+        ProcStatUtil.setParseErrorListener(new ProcStatUtil.OnParseError() {
+            @Override
+            public void onError(int mode, String input) {
+                Assert.fail(input);
+            }
+        });
+        ProcStatUtil.ProcStat stat = ProcStatUtil.BetterProcStatParser.parse("/proc/" + Process.myPid() + "/task/" + Process.myTid() +  "/stat", ProcStatUtil.getLocalBuffers());
         Assert.assertNotNull(stat);
         Assert.assertNotNull(stat.comm);
         Assert.assertTrue(stat.utime >= 0);
@@ -604,10 +618,18 @@ public class ProcStatUtilsTest {
         Assert.assertTrue(stat.cstime >= 0);
         long jiffies = stat.utime + stat.stime + stat.cutime + stat.cstime;
         Assert.assertTrue(jiffies >= 0);
+
+        ProcStatUtil.setParseErrorListener(null);
     }
 
     @Test
     public void testGetMyProcThreadStatAndCompare3() throws ProcStatUtil.ParseException, IOException {
+        ProcStatUtil.setParseErrorListener(new ProcStatUtil.OnParseError() {
+            @Override
+            public void onError(int mode, String input) {
+                Assert.fail(input);
+            }
+        });
         String dirPath = "/proc/" + Process.myPid() + "/task";
         for (File item : new File(dirPath).listFiles()) {
             if (item.isDirectory()) {
@@ -620,7 +642,7 @@ public class ProcStatUtilsTest {
                 String cat = BatteryCanaryUtil.cat(catPath);
                 Assert.assertFalse(TextUtils.isEmpty(cat));
                 ProcStatUtil.ProcStat statInfo1 = ProcStatUtil.parseWithSplits(cat);
-                ProcStatUtil.ProcStat statInfo2 = ProcStatUtil.BetterProcStatParser.parse(catPath);
+                ProcStatUtil.ProcStat statInfo2 = ProcStatUtil.BetterProcStatParser.parse(catPath, ProcStatUtil.getLocalBuffers());
                 Assert.assertEquals(statInfo1.comm, statInfo2.comm);
                 Assert.assertEquals(statInfo1.stat, statInfo2.stat);
                 Assert.assertEquals(statInfo1.utime, statInfo2.utime);
@@ -629,6 +651,8 @@ public class ProcStatUtilsTest {
                 Assert.assertEquals(statInfo1.cstime, statInfo2.cstime);
             }
         }
+
+        ProcStatUtil.setParseErrorListener(null);
     }
 
 
@@ -772,7 +796,7 @@ public class ProcStatUtilsTest {
                 for (File item : new File(dirPath).listFiles()) {
                     if (item.isDirectory()) {
                         String catPath = new File(item, "stat").getAbsolutePath();
-                        ProcStatUtil.ProcStat stat = ProcStatUtil.BetterProcStatParser.parse(catPath);
+                        ProcStatUtil.ProcStat stat = ProcStatUtil.BetterProcStatParser.parse(catPath, ProcStatUtil.getLocalBuffers());
                         Assert.assertNotNull(stat.comm);
                         Assert.assertTrue(stat.utime >= 0);
                         Assert.assertTrue(stat.stime >= 0);
