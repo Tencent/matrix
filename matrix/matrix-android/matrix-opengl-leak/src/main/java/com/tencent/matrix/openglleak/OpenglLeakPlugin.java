@@ -7,7 +7,6 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.os.IBinder;
 import android.os.RemoteException;
-import android.util.Log;
 
 import com.tencent.matrix.openglleak.comm.FuncNameString;
 import com.tencent.matrix.openglleak.detector.IOpenglIndexDetector;
@@ -136,7 +135,7 @@ public class OpenglLeakPlugin extends Plugin {
             }
         }, context.BIND_AUTO_CREATE);
 
-        Log.e(TAG, "bindService result = " + result);
+        MatrixLog.d(TAG, "bindService result = " + result);
         if (result) {
             if (OpenglLeakPlugin.sCallback != null) {
                 OpenglLeakPlugin.sCallback.onExpProcessSuccess();

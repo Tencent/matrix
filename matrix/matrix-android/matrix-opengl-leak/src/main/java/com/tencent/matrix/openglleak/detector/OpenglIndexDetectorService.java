@@ -79,7 +79,6 @@ public class OpenglIndexDetectorService extends Service {
         out.put(FuncNameString.GL_DELETE_RENDERBUFFERS, glDeleteRenderbuffersIndex);
 
         MatrixLog.i(TAG, "seek func index succ!");
-
         return out;
     }
 

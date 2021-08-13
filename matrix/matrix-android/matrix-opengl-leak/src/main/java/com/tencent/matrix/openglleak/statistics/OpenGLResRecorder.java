@@ -4,8 +4,6 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.text.TextUtils;
 
-import com.tencent.matrix.openglleak.OpenglLeakPlugin;
-
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -72,13 +70,11 @@ public class OpenGLResRecorder {
                                 if (gen.getEglContextNativeHandle() == del.getEglContextNativeHandle()) {
                                     gen.release();
                                     iterator.remove();
-
                                     break;
                                 }
                             } else if (gen.getThreadId().equals(del.getThreadId())) {
                                 gen.release();
                                 iterator.remove();
-
                                 break;
                             }
                         }

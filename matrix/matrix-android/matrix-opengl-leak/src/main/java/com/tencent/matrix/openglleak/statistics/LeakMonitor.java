@@ -7,7 +7,6 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
 
-import com.tencent.matrix.openglleak.OpenglLeakPlugin;
 import com.tencent.matrix.util.MatrixLog;
 
 import java.lang.ref.WeakReference;
