@@ -225,7 +225,7 @@ public class LeakMonitor implements Application.ActivityLifecycleCallbacks {
 
                 if (item.getMaybeLeak()) {
                     if ((now - item.getMaybeLeakTime()) > mDoubleCheckTime) {
-                        if(OpenglLeakPlugin.sCallback != null) {
+                        if (OpenglLeakPlugin.sCallback != null) {
                             OpenglLeakPlugin.sCallback.onBeforeIgnore(item);
                         }
                         OpenGLResRecorder.getInstance().setLeak(item);
