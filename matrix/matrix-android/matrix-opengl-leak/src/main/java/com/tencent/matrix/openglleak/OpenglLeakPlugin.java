@@ -82,9 +82,13 @@ public class OpenglLeakPlugin extends Plugin {
                     * map.get(FuncNameString.GL_GEN_RENDERBUFFERS) * map.get(FuncNameString.GL_DELETE_RENDERBUFFERS);
             MatrixLog.e(TAG, "hookResult = " + hookResult);
             if (hookResult == 0) {
-                OpenglLeakPlugin.sCallback.onHookFail();
+                if (OpenglLeakPlugin.sCallback != null) {
+                    OpenglLeakPlugin.sCallback.onHookFail();
+                }
             } else {
-                OpenglLeakPlugin.sCallback.onHookSuccess();
+                if (OpenglLeakPlugin.sCallback != null) {
+                    OpenglLeakPlugin.sCallback.onHookSuccess();
+                }
             }
 
             // hook
@@ -134,9 +138,13 @@ public class OpenglLeakPlugin extends Plugin {
 
         Log.e(TAG, "bindService result = " + result);
         if (result) {
-            OpenglLeakPlugin.sCallback.onExpProcessSuccess();
+            if (OpenglLeakPlugin.sCallback != null) {
+                OpenglLeakPlugin.sCallback.onExpProcessSuccess();
+            }
         } else {
-            OpenglLeakPlugin.sCallback.onExpProcessFail();
+            if (OpenglLeakPlugin.sCallback != null) {
+                OpenglLeakPlugin.sCallback.onExpProcessFail();
+            }
         }
 
     }

@@ -44,7 +44,9 @@ public class OpenGLResRecorder {
                     return;
                 }
 
-                OpenglLeakPlugin.sCallback.onGenOpenGLResource(oinfo);
+                if (OpenglLeakPlugin.sCallback != null) {
+                    OpenglLeakPlugin.sCallback.onGenOpenGLResource(oinfo);
+                }
 
                 synchronized (infoList) {
                     infoList.add(oinfo);
@@ -75,16 +77,18 @@ public class OpenGLResRecorder {
                                     gen.release();
                                     iterator.remove();
 
-                                    OpenglLeakPlugin.sCallback.onDeleteOpenGLResource(del);
-
+                                    if (OpenglLeakPlugin.sCallback != null) {
+                                        OpenglLeakPlugin.sCallback.onDeleteOpenGLResource(del);
+                                    }
                                     break;
                                 }
                             } else if (gen.getThreadId().equals(del.getThreadId())) {
                                 gen.release();
                                 iterator.remove();
 
-                                OpenglLeakPlugin.sCallback.onDeleteOpenGLResource(del);
-
+                                if (OpenglLeakPlugin.sCallback != null) {
+                                    OpenglLeakPlugin.sCallback.onDeleteOpenGLResource(del);
+                                }
                                 break;
                             }
                         }
@@ -175,7 +179,9 @@ public class OpenGLResRecorder {
                 if ((item.getType() == info.getType()) && (item.getThreadId().equals(info.getThreadId())) && (item.getId() == info.getId())) {
                     if (mListener != null) {
                         mListener.onLeak(item);
-                        OpenglLeakPlugin.sCallback.onLeakTrigger(item);
+                        if (OpenglLeakPlugin.sCallback != null) {
+                            OpenglLeakPlugin.sCallback.onLeakTrigger(item);
+                        }
                     }
 
                     item.release();
@@ -207,7 +213,9 @@ public class OpenGLResRecorder {
 
                     if (mListener != null) {
                         mListener.onMaybeLeak(item);
-                        OpenglLeakPlugin.sCallback.onMaybeLeakTrigger(item);
+                        if (OpenglLeakPlugin.sCallback != null) {
+                            OpenglLeakPlugin.sCallback.onMaybeLeakTrigger(item);
+                        }
                     }
 
                     return;
@@ -244,7 +252,9 @@ public class OpenGLResRecorder {
             if (originInfo != null) {
                 if (isIgnore && !originInfo.hasIgnored()) {
                     originInfo.registerIgnore();
-                    OpenglLeakPlugin.sCallback.onIgnoreGLResource(originInfo);
+                    if (OpenglLeakPlugin.sCallback != null) {
+                        OpenglLeakPlugin.sCallback.onIgnoreGLResource(originInfo);
+                    }
                 }
             }
 
