@@ -53,7 +53,7 @@ struct RecordMemoryBacktrace {
     uint64_t duration;
 };
 
-#define THREAD_MAX_COUNT 0x7fff
+#define THREAD_MAX_COUNT 0x8000
 
 static std::vector<RecordMemoryChunk>* thread_vectors[THREAD_MAX_COUNT] {};
 static std::vector<RecordMemoryBacktrace>* thread_backtrace_vectors[THREAD_MAX_COUNT] {};
@@ -67,14 +67,14 @@ static uint64_t fake_backtrace_idx[THREAD_MAX_COUNT] {};
 
 void set_fake_backtrace_vectors(std::vector<FakeRecordMemoryBacktrace>* v) {
     size_t tid = gettid();
-    if (!LIKELY(tid <= THREAD_MAX_COUNT)) { abort(); }
+    if (UNLIKELY(tid >= THREAD_MAX_COUNT)) { abort(); }
     fake_backtrace_vectors[tid] = v;
     fake_backtrace_idx[tid] = 0;
 }
 
 void fake_unwind(wechat_backtrace::Frame *frames, const size_t max_frames, size_t &frame_size) {
     size_t tid = gettid();
-    if (!LIKELY(tid <= THREAD_MAX_COUNT)) { abort(); }
+    if (UNLIKELY(tid >= THREAD_MAX_COUNT)) { abort(); }
     auto v = fake_backtrace_vectors[tid];
     if (!v) return;
     if (fake_backtrace_idx[tid] >= v->size()) return;
@@ -139,7 +139,7 @@ void record_on_memory_backtrace(uint64_t ptr, wechat_backtrace::Backtrace *backt
     std::shared_lock<std::shared_mutex> lock(thread_vectors_mutex_);
 
     size_t tid = gettid();
-    if (!LIKELY(tid <= THREAD_MAX_COUNT)) { abort(); }
+    if (UNLIKELY(tid >= THREAD_MAX_COUNT)) { abort(); }
     auto vector = thread_backtrace_vectors[tid];
     if (!vector) {
         vector = new std::vector<RecordMemoryBacktrace>();
@@ -166,7 +166,7 @@ void record_on_memory_allocated(uint64_t ptr, uint64_t size) {
     std::shared_lock<std::shared_mutex> lock(thread_vectors_mutex_);
 
     size_t tid = gettid();
-    if (!LIKELY(tid <= THREAD_MAX_COUNT)) { abort(); }
+    if (UNLIKELY(tid >= THREAD_MAX_COUNT)) { abort(); }
     auto vector = thread_vectors[tid];
     if (!vector) {
         vector = new std::vector<RecordMemoryChunk>();
@@ -190,7 +190,7 @@ void record_on_memory_released(uint64_t ptr) {
     std::shared_lock<std::shared_mutex> lock(thread_vectors_mutex_);
 
     size_t tid = gettid();
-    if (!LIKELY(tid <= THREAD_MAX_COUNT)) { abort(); }
+    if (UNLIKELY(tid >= THREAD_MAX_COUNT)) { abort(); }
     auto vector = thread_vectors[tid];
     if (!vector) {
         vector = new std::vector<RecordMemoryChunk>();
