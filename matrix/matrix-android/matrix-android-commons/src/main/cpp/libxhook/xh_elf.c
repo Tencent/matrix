@@ -466,25 +466,32 @@ static int xh_elf_replace_function(xh_elf_t *self, const char *symbol, ElfW(Addr
         return r;
     }
 
-    if(old_prot != need_prot)
-    {
+    // if(old_prot != need_prot)
+    // {
         //set new prot
         if(0 != (r = xh_util_set_addr_protect(addr, need_prot)))
         {
             XH_LOG_ERROR("set addr prot failed. ret: %d", r);
             return r;
         }
-    }
+    // }
 
     //save old func
     old_addr = *(void **)addr;
     if(NULL != old_func) *old_func = old_addr;
 
     //replace func
-    *(void **)addr = new_func; //segmentation fault sometimes
-
-    if(old_prot != need_prot)
+    // *(void **)addr = new_func; //segmentation fault sometimes
+    void* new_func_addr = (void*) new_func;
+    ssize_t got_write_ret = xh_util_write_memory_safely((void*) addr, (uint8_t*) &new_func_addr, sizeof(void*));
+    if (got_write_ret != sizeof(void*))
     {
+        XH_LOG_ERROR("Fail to write new address into GOT/Data item, dest_address: %p", addr);
+        return XH_ERRNO_SEGVERR;
+    }
+
+    // if(old_prot != need_prot)
+    // {
         if ((old_prot & PROT_READ) == 0) {
             XH_LOG_WARN("old addr has no read permission, it's not usual and may cause segment fault.");
             old_prot |= PROT_READ;
@@ -494,7 +501,7 @@ static int xh_elf_replace_function(xh_elf_t *self, const char *symbol, ElfW(Addr
         {
             XH_LOG_WARN("restore addr prot failed. ret: %d", r);
         }
-    }
+    // }
 
     //clear cache
     xh_util_flush_instruction_cache(addr);

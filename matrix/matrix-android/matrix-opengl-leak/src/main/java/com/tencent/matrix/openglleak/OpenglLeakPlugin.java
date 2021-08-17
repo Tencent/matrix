@@ -24,11 +24,21 @@ public class OpenglLeakPlugin extends Plugin {
 
     private static final String TAG = "matrix.OpenglLeakPlugin";
 
+    public static OpenglReportCallback sCallback;
+
     private Context context;
 
     public OpenglLeakPlugin(Context c) {
         context = c;
     }
+
+    public void registerReportCallback(OpenglReportCallback callback) {
+        if (sCallback != null) {
+            MatrixLog.e(TAG, "OpenglReportCallback register again, May be overwrite !!!");
+        }
+        sCallback = callback;
+    }
+
 
     @Override
     public void init(Application app, PluginListener listener) {
@@ -48,7 +58,7 @@ public class OpenglLeakPlugin extends Plugin {
     }
 
     private void executeHook(IBinder iBinder) {
-        MatrixLog.i(TAG, "onServiceConnected");
+        MatrixLog.e(TAG, "onServiceConnected");
         IOpenglIndexDetector ipc = IOpenglIndexDetector.Stub.asInterface(iBinder);
 
         try {
@@ -58,12 +68,27 @@ public class OpenglLeakPlugin extends Plugin {
                 MatrixLog.e(TAG, "indexMap null");
                 return;
             }
-            MatrixLog.i(TAG, "indexMap:" + map);
+            MatrixLog.e(TAG, "indexMap:" + map);
 
             // 初始化
             EGLHelper.initOpenGL();
             OpenGLHook.getInstance().init();
-            MatrixLog.i(TAG, "init env");
+            MatrixLog.e(TAG, "init env");
+
+            int hookResult = map.get(FuncNameString.GL_GEN_TEXTURES) * map.get(FuncNameString.GL_DELETE_TEXTURES)
+                    * map.get(FuncNameString.GL_GEN_BUFFERS) * map.get(FuncNameString.GL_DELETE_BUFFERS)
+                    * map.get(FuncNameString.GL_GEN_FRAMEBUFFERS) * map.get(FuncNameString.GL_DELETE_FRAMEBUFFERS)
+                    * map.get(FuncNameString.GL_GEN_RENDERBUFFERS) * map.get(FuncNameString.GL_DELETE_RENDERBUFFERS);
+            MatrixLog.e(TAG, "hookResult = " + hookResult);
+            if (hookResult == 0) {
+                if (OpenglLeakPlugin.sCallback != null) {
+                    OpenglLeakPlugin.sCallback.onHookFail();
+                }
+            } else {
+                if (OpenglLeakPlugin.sCallback != null) {
+                    OpenglLeakPlugin.sCallback.onHookSuccess();
+                }
+            }
 
             // hook
             OpenGLHook.getInstance().hook(FuncNameString.GL_GEN_TEXTURES, map.get(FuncNameString.GL_GEN_TEXTURES));
@@ -74,7 +99,7 @@ public class OpenglLeakPlugin extends Plugin {
             OpenGLHook.getInstance().hook(FuncNameString.GL_DELETE_FRAMEBUFFERS, map.get(FuncNameString.GL_DELETE_FRAMEBUFFERS));
             OpenGLHook.getInstance().hook(FuncNameString.GL_GEN_RENDERBUFFERS, map.get(FuncNameString.GL_GEN_RENDERBUFFERS));
             OpenGLHook.getInstance().hook(FuncNameString.GL_DELETE_RENDERBUFFERS, map.get(FuncNameString.GL_DELETE_RENDERBUFFERS));
-            MatrixLog.i(TAG, "hook finish");
+            MatrixLog.e(TAG, "hook finish");
 
             // 泄漏监控
             LeakMonitor.getInstance().start((Application) context.getApplicationContext());
@@ -93,7 +118,7 @@ public class OpenglLeakPlugin extends Plugin {
 
     private void startImpl() {
         Intent service = new Intent(context, OpenglIndexDetectorService.class);
-        context.bindService(service, new ServiceConnection() {
+        boolean result = context.bindService(service, new ServiceConnection() {
             @Override
             public void onServiceConnected(ComponentName componentName, final IBinder iBinder) {
                 new Thread(new Runnable() {
@@ -109,6 +134,18 @@ public class OpenglLeakPlugin extends Plugin {
                 context.unbindService(this);
             }
         }, context.BIND_AUTO_CREATE);
+
+        MatrixLog.d(TAG, "bindService result = " + result);
+        if (result) {
+            if (OpenglLeakPlugin.sCallback != null) {
+                OpenglLeakPlugin.sCallback.onExpProcessSuccess();
+            }
+        } else {
+            if (OpenglLeakPlugin.sCallback != null) {
+                OpenglLeakPlugin.sCallback.onExpProcessFail();
+            }
+        }
+
     }
 
     @Override

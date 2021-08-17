@@ -35,8 +35,6 @@ void on_mmap_memory(void *caller, void *ptr, size_t byte_count);
 
 void on_munmap_memory(void *ptr);
 
-void memory_hook_on_dlopen(const char *file_name);
-
 void dump(bool enable_mmap = false,
           const char *log_path = nullptr,
           const char *json_path = nullptr);

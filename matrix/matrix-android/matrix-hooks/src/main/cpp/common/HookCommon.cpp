@@ -32,12 +32,6 @@ extern "C" {
 
 #define TAG "Matrix.HookCommon"
 
-std::vector<hook_init_callback_t> m_init_callbacks;
-
-void add_hook_init_callback(hook_init_callback_t callback) {
-    m_init_callbacks.push_back(callback);
-}
-
 void test_log_to_file(const char *ch) {
     const char *dir = "/sdcard/Android/data/com.tencent.mm/MicroMsg/Diagnostic";
     const char *path = "/sdcard/Android/data/com.tencent.mm/MicroMsg/Diagnostic/log";
