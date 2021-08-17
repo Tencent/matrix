@@ -23,6 +23,12 @@
 
 #include "buffer_source.h"
 
+#define SPLAY_CHECK(assertion)                                   \
+  if (__builtin_expect(!(assertion), false)) {             \
+    abort();                                               \
+  }
+
+
 template<typename TKey, typename TVal> class splay_map {
 private:
     typedef uint32_t node_ptr;
@@ -62,6 +68,8 @@ private:
 
 #define get_node_key(ptr) k_buff[ptr].key
 
+#define check_overflow(ptr) SPLAY_CHECK(ptr < t_info->b_size)
+
     bool splay(TKey key, node_ptr &root) {
         /* Simple top down splay, not requiring i to be in the tree t.  */
         /* What it does is described above.                             */
@@ -73,12 +81,14 @@ private:
         bool ret = false;
 
         for (;;) {
+            check_overflow(t);
             TKey tkey = get_node_key(t);
             if (tkey > key) {
                 node_ptr tlc = get_node_lc(t);
                 if (tlc == 0) {
                     break;
                 }
+                check_overflow(tlc);
                 if (get_node_key(tlc) > key) {
                     get_node_lc(t) = get_node_rc(tlc); /* rotate right */
                     get_node_rc(tlc) = t;
@@ -87,6 +97,7 @@ private:
                         break;
                     }
                 }
+                check_overflow(r);
                 get_node_lc(r) = t; /* link right */
                 r = t;
                 t = get_node_lc(t);
@@ -95,6 +106,7 @@ private:
                 if (trc == 0) {
                     break;
                 }
+                check_overflow(trc);
                 if (get_node_key(trc) < key) {
                     get_node_rc(t) = get_node_lc(trc); /* rotate left */
                     get_node_lc(trc) = t;
@@ -103,6 +115,7 @@ private:
                         break;
                     }
                 }
+                check_overflow(l);
                 get_node_rc(l) = t; /* link left */
                 l = t;
                 t = get_node_rc(t);
@@ -111,6 +124,9 @@ private:
                 break;
             }
         }
+        check_overflow(t);
+        check_overflow(r);
+        check_overflow(l);
         get_node_rc(l) = get_node_lc(t); /* assemble */
         get_node_lc(r) = get_node_rc(t);
         get_node_lc(t) = get_node_rc(0);
@@ -142,11 +158,13 @@ private:
                 if (s.size() > t_info->t_size) {
                     return;
                 }
+                check_overflow(root);
                 root = get_node_lc(root);
             }
 
             if (!s.empty()) {
                 root = s.top();
+                check_overflow(root);
                 callback(get_node_key(root), get_val(root));
                 if (++count > t_info->t_size) {
                     return;
@@ -161,6 +179,7 @@ private:
         if (ptr == 0) {
             return;
         }
+        check_overflow(ptr);
         get_node(ptr).left = t_info->free_ptr; // ticky
         t_info->free_ptr = ptr;
     }
@@ -170,6 +189,7 @@ private:
         if (next_ptr == 0) {
             next_ptr = t_info->t_size;
         } else {
+            check_overflow(t_info->free_ptr);
             t_info->free_ptr = get_node(t_info->free_ptr).left; // ticky
         }
         return next_ptr;
@@ -185,6 +205,7 @@ private:
                 t_info = (tree_info *)new_buff;
                 k_buff = (node *)((char *)new_buff + sizeof(tree_info));
             } else {
+                SPLAY_CHECK(false);
                 return false;
             }
 
@@ -197,6 +218,7 @@ private:
                 v_buff = (TVal *)new_buff;
                 return true;
             } else {
+                SPLAY_CHECK(false);
                 return false;
             }
         } else {
@@ -210,6 +232,7 @@ private:
                 *t_info = t_empty;
                 k_buff = (node *)((char *)new_buff + sizeof(tree_info));
             } else {
+                SPLAY_CHECK(false);
                 return false;
             }
 
@@ -222,20 +245,10 @@ private:
                 v_buff = (TVal *)new_buff;
                 return true;
             } else {
+                SPLAY_CHECK(false);
                 return false;
             }
         }
-    }
-
-public:
-    splay_map(uint32_t _is) {
-        self_key_buffer_source_ = new buffer_source_memory;
-        self_val_buffer_source_ = new buffer_source_memory;
-        _init(_is, self_key_buffer_source_, self_val_buffer_source_);
-    }
-
-    splay_map(uint32_t _is, buffer_source *_kb, buffer_source *_vb) {
-        _init(_is, _kb, _vb);
     }
 
     void _init(uint32_t _is, buffer_source *_kb, buffer_source *_vb) {
@@ -262,6 +275,17 @@ public:
         }
     }
 
+public:
+    splay_map(uint32_t _is) {
+        self_key_buffer_source_ = new buffer_source_memory;
+        self_val_buffer_source_ = new buffer_source_memory;
+        _init(_is, self_key_buffer_source_, self_val_buffer_source_);
+    }
+
+//    splay_map(uint32_t _is, buffer_source *_kb, buffer_source *_vb) {
+//        _init(_is, _kb, _vb);
+//    }
+
     ~splay_map() {
         if (self_key_buffer_source_) delete self_key_buffer_source_;
         if (self_val_buffer_source_) delete self_val_buffer_source_;
@@ -276,6 +300,7 @@ public:
             t_info->t_size = 1;
 
             node_ptr n = next_free_node();
+            check_overflow(n);
             get_node_key(n) = key;
             get_node_lc(n) = 0;
             get_node_rc(n) = 0;
@@ -287,15 +312,18 @@ public:
         if (splay(key, t_info->root_ptr)) {
             /* We get here if it's already in the tree */
             /* Don't add it again                      */
+            check_overflow(t_info->root_ptr);
             get_val(t_info->root_ptr) = val;
             return &get_val(t_info->root_ptr);
         }
 
         node_ptr root_ptr = t_info->root_ptr;
+        check_overflow(root_ptr);
         if (get_node_key(root_ptr) > key) {
             ++t_info->t_size;
 
             node_ptr n = next_free_node();
+            check_overflow(n);
             get_node_key(n) = key;
             get_node_lc(n) = get_node_lc(root_ptr);
             get_node_rc(n) = root_ptr;
@@ -309,6 +337,7 @@ public:
             ++t_info->t_size;
 
             node_ptr n = next_free_node();
+            check_overflow(n);
             get_node_key(n) = key;
             get_node_rc(n) = get_node_rc(root_ptr);
             get_node_lc(n) = root_ptr;
@@ -326,6 +355,7 @@ public:
         /* Return a pointer to the resulting tree.              */
         if (splay(key, t_info->root_ptr)) { /* found it */
             node_ptr x;
+            check_overflow(t_info->root_ptr);
 
             if (get_node_lc(t_info->root_ptr) == 0) {
                 x = get_node_rc(t_info->root_ptr);
@@ -338,6 +368,7 @@ public:
             free_node(t_info->root_ptr);
             --t_info->t_size;
             t_info->root_ptr = x;
+            check_overflow(r);
             return &get_val(r);
         }
 
@@ -347,7 +378,9 @@ public:
     bool exist(TKey key) { return (last_ptr = inter_find(key)) != 0; }
 
     // should check exist() first
-    TVal &find() { return get_val(last_ptr); }
+    TVal &find() {
+        check_overflow(last_ptr);
+        return get_val(last_ptr); }
 
     uint32_t size() { return t_info->t_size; }
 

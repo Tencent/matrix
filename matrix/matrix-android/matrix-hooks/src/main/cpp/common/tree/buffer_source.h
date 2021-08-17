@@ -56,6 +56,8 @@ public:
             _buffer = ptr;
             _buffer_size = new_size;
         }
+
+        // TODO add assert here.
         return ptr;
     }
 
