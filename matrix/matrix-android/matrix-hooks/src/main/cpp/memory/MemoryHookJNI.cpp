@@ -122,39 +122,6 @@ Java_com_tencent_matrix_hook_memory_MemoryHook_enableStacktraceNative(JNIEnv *en
 }
 
 JNIEXPORT void JNICALL
-Java_com_tencent_matrix_hook_memory_MemoryHook_addHookSoNative(JNIEnv *env, jobject instance,
-                                                              jobjectArray hookSoList) {
-
-    jsize size = env->GetArrayLength(hookSoList);
-
-    for (int i = 0; i < size; ++i) {
-        auto       jregex = (jstring) env->GetObjectArrayElement(hookSoList, i);
-        const char *regex = env->GetStringUTFChars(jregex, NULL);
-        hook(regex);
-        env->ReleaseStringUTFChars(jregex, regex);
-    }
-}
-
-JNIEXPORT void JNICALL
-Java_com_tencent_matrix_hook_memory_MemoryHook_addIgnoreSoNative(JNIEnv *env,
-                                                                jobject instance,
-                                                                jobjectArray ignoreSoList) {
-
-    if (!ignoreSoList) {
-        return;
-    }
-
-    jsize size = env->GetArrayLength(ignoreSoList);
-
-    for (int i = 0; i < size; ++i) {
-        auto       jregex = (jstring) env->GetObjectArrayElement(ignoreSoList, i);
-        const char *regex = env->GetStringUTFChars(jregex, NULL);
-        ignore(regex);
-        env->ReleaseStringUTFChars(jregex, regex);
-    }
-}
-
-JNIEXPORT void JNICALL
 Java_com_tencent_matrix_hook_memory_MemoryHook_setTracingAllocSizeRangeNative(JNIEnv *env,
                                                                               jobject instance,
                                                                               jint minSize,
@@ -199,15 +166,42 @@ Java_com_tencent_matrix_hook_memory_MemoryHook_setStacktraceLogThresholdNative(J
 }
 
 JNIEXPORT void JNICALL
-Java_com_tencent_matrix_hook_memory_MemoryHook_installHooksNative(JNIEnv* env, jobject thiz, jboolean enable_debug) {
+Java_com_tencent_matrix_hook_memory_MemoryHook_installHooksNative(JNIEnv* env, jobject thiz,
+                                                                  jobjectArray hook_so_patterns,
+                                                                  jobjectArray ignore_so_patterns,
+                                                                  jboolean enable_debug) {
     memory_hook_init();
+
+    xhook_block_refresh();
+
+    {
+        jsize size = env->GetArrayLength(hook_so_patterns);
+        for (int i = 0; i < size; ++i) {
+            auto jregex = (jstring) env->GetObjectArrayElement(hook_so_patterns, i);
+            const char* regex = env->GetStringUTFChars(jregex, nullptr);
+            hook(regex);
+            env->ReleaseStringUTFChars(jregex, regex);
+        }
+    }
+
+    if (ignore_so_patterns != nullptr) {
+        jsize size = env->GetArrayLength(ignore_so_patterns);
+        for (int i = 0; i < size; ++i) {
+            auto jregex = (jstring) env->GetObjectArrayElement(ignore_so_patterns, i);
+            const char* regex = env->GetStringUTFChars(jregex, nullptr);
+            ignore(regex);
+            env->ReleaseStringUTFChars(jregex, regex);
+        }
+    }
 
     NOTIFY_COMMON_IGNORE_LIBS(HOOK_REQUEST_GROUPID_MEMORY);
 
     // log@memoryhook -> log_impl@liblog -> __emutls_get_address@libandroid_runtime
     // -> calloc@memoryhook -> log@memoryhook
     // dead loop !!
-    xhook_ignore(".*/libandroid_runtime\\.so$", nullptr);
+    xhook_grouped_ignore(HOOK_REQUEST_GROUPID_MEMORY, ".*/libandroid_runtime\\.so$", nullptr);
+
+    xhook_unblock_refresh();
 }
 
 #ifdef __cplusplus

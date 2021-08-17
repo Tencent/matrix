@@ -156,10 +156,36 @@ static volatile int                 xh_core_init_ok = 0;
 static volatile int                 xh_core_async_inited = 0;
 static volatile int                 xh_core_async_init_ok = 0;
 static pthread_mutex_t              xh_core_refresh_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_rwlock_t             xh_core_refresh_blocker = PTHREAD_RWLOCK_INITIALIZER;
+static pthread_key_t                xh_core_refresh_blocker_tls_key;
 static pthread_t                    xh_core_refresh_thread_tid;
 static volatile int                 xh_core_refresh_thread_running = 0;
 static volatile int                 xh_core_refresh_thread_do = 0;
 
+
+void xh_core_block_refresh()
+{
+    int reenter_count = (int) pthread_getspecific(xh_core_refresh_blocker_tls_key);
+    pthread_setspecific(xh_core_refresh_blocker_tls_key, (const void*) (reenter_count + 1));
+    if (reenter_count == 0)
+    {
+        pthread_rwlock_wrlock(&xh_core_refresh_blocker);
+    }
+}
+
+void xh_core_unblock_refresh()
+{
+    int reenter_count = (int) pthread_getspecific(xh_core_refresh_blocker_tls_key);
+    if (reenter_count >= 1)
+    {
+        --reenter_count;
+        pthread_setspecific(xh_core_refresh_blocker_tls_key, (const void*) reenter_count);
+    }
+    if (reenter_count == 0)
+    {
+        pthread_rwlock_unlock(&xh_core_refresh_blocker);
+    }
+}
 
 static int xh_core_register_impl(xh_core_hook_info_queue_t *info_queue,
                                  const char *pathname_regex_str, const char *symbol,
@@ -540,6 +566,8 @@ static int xh_core_maps_iterate_cb(void* data, uintptr_t start, uintptr_t end, c
 
 static void xh_core_refresh_impl()
 {
+    pthread_rwlock_rdlock(&xh_core_refresh_blocker);
+
     xh_maps_invalidate();
 
     xh_core_map_info_tree_t map_info_refreshed = RB_INITIALIZER(&map_info_refreshed);
@@ -563,6 +591,8 @@ static void xh_core_refresh_impl()
     xh_core_map_info = map_info_refreshed;
 
     XH_LOG_INFO("map refreshed");
+
+    pthread_rwlock_unlock(&xh_core_refresh_blocker);
 
 #if XH_CORE_DEBUG
     RB_FOREACH(mi, xh_core_map_info_tree, &xh_core_map_info)
@@ -626,6 +656,14 @@ static void xh_core_init_once()
 
     //register signal handler
     if(0 != xh_core_add_sigsegv_handler()) goto end;
+
+    //initialize refresh blocker tls
+    if (0 != pthread_key_create(&xh_core_refresh_blocker_tls_key, NULL)) goto end;
+    if (0 != pthread_setspecific(xh_core_refresh_blocker_tls_key, (const void*) 0))
+    {
+        pthread_key_delete(xh_core_refresh_blocker_tls_key);
+        goto end;
+    }
 
     //OK
     xh_core_init_ok = 1;
