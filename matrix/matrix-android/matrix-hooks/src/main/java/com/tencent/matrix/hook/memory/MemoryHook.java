@@ -143,10 +143,8 @@ public class MemoryHook extends AbsHook {
 
     @Override
     protected boolean onHook(boolean enableDebug) {
-        addHookSoNative(mHookSoSet.toArray(new String[0]));
-        addIgnoreSoNative(mIgnoreSoSet.toArray(new String[0]));
         if (!mHookInstalled) {
-            installHooksNative(enableDebug);
+            installHooksNative(mHookSoSet.toArray(new String[0]), mIgnoreSoSet.toArray(new String[0]), enableDebug);
             mHookInstalled = true;
         }
         return true;
@@ -171,15 +169,9 @@ public class MemoryHook extends AbsHook {
     private native void enableMmapHookNative(boolean enable);
 
     @Keep
-    private native void addHookSoNative(String[] hookSoList);
-
-    @Keep
-    private native void addIgnoreSoNative(String[] ignoreSoList);
-
-    @Keep
     private native void setStacktraceLogThresholdNative(int threshold);
 
     @Keep
-    private native void installHooksNative(boolean enableDebug);
+    private native void installHooksNative(String[] hookSoPatterns, String[] ignoreSoPatterns, boolean enableDebug);
 }
 

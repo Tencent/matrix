@@ -177,6 +177,9 @@ namespace matrix {
             }
         });
 
+        xhook_block_refresh();
+        auto refreshUnblock = MakeScopedCleaner([]() { xhook_unblock_refresh(); });
+
         if (sdkVer >= 24 /* N */) {
             orig_dlopen_N = reinterpret_cast<decltype(orig_dlopen_N)>(
                     semi_dlsym(hLinker, "__dl___loader_dlopen"));
