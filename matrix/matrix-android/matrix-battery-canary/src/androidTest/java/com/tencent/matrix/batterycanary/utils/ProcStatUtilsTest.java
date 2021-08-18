@@ -18,12 +18,11 @@ package com.tencent.matrix.batterycanary.utils;
 
 import android.app.ActivityManager;
 import android.content.Context;
+import android.os.FileUtils;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Process;
 import android.os.SystemClock;
-import androidx.test.platform.app.InstrumentationRegistry;
-import androidx.test.ext.junit.runners.AndroidJUnit4;
 import android.text.TextUtils;
 
 import com.tencent.matrix.batterycanary.TestUtils;
@@ -39,14 +38,21 @@ import org.mockito.internal.util.io.IOUtil;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import androidx.test.ext.junit.runners.AndroidJUnit4;
+import androidx.test.platform.app.InstrumentationRegistry;
 
 /**
  * Instrumented test, which will execute on an Android device.
@@ -273,6 +279,9 @@ public class ProcStatUtilsTest {
 
     @Test
     public void testProcStatShouldAlwaysInc() throws InterruptedException, ProcStatUtil.ParseException {
+        if (TestUtils.isAssembleTest()) {
+            return;
+        }
         final ProcStatUtil.ProcStat procStat = parseJiffiesInfoWithBufferForPathR2("/proc/" + Process.myPid() + "/stat");
         Assert.assertNotNull(procStat);
 
@@ -362,11 +371,17 @@ public class ProcStatUtilsTest {
 
     @SuppressWarnings("ConstantConditions")
     @Test
-    public void testGetMyProcThreadStatAndCompare() throws ProcStatUtil.ParseException {
+    public void testGetMyProcThreadStatAndCompare() throws ProcStatUtil.ParseException, IOException {
         String dirPath = "/proc/" + Process.myPid() + "/task";
         for (File item : new File(dirPath).listFiles()) {
             if (item.isDirectory()) {
-                String catPath = new File(item, "stat").getAbsolutePath();
+                String catPath = new File(mContext.getCacheDir(), "temp_" + System.currentTimeMillis()).getAbsolutePath();
+                try(InputStream is  = new FileInputStream(new File(item, "stat").getAbsolutePath())) {
+                    try(OutputStream os = new FileOutputStream(new File(catPath))) {
+                        FileUtils.copy(is, os);
+                    }
+                }
+
                 String cat = BatteryCanaryUtil.cat(catPath);
                 Assert.assertFalse(TextUtils.isEmpty(cat));
                 ProcStatUtil.ProcStat statInfo1 = ProcStatUtil.parseWithSplits(cat);
@@ -458,17 +473,22 @@ public class ProcStatUtilsTest {
         File tempFile = File.createTempFile("temp_", "_test_parse_proc_stat_" + System.currentTimeMillis());
         IOUtil.writeText(sample, tempFile);
         ProcStatUtil.ProcStat parse = ProcStatUtil.parse(tempFile.getPath());
-        Assert.assertEquals(2, inc.get());
+        Assert.assertEquals(3, inc.get());
         Assert.assertNull(parse);
     }
 
     @SuppressWarnings("ConstantConditions")
     @Test
-    public void testGetMyProcThreadStatAndCompare2() throws ProcStatUtil.ParseException {
+    public void testGetMyProcThreadStatAndCompare2() throws ProcStatUtil.ParseException, IOException {
         String dirPath = "/proc/" + Process.myPid() + "/task";
         for (File item : new File(dirPath).listFiles()) {
             if (item.isDirectory()) {
-                String catPath = new File(item, "stat").getAbsolutePath();
+                String catPath = new File(mContext.getCacheDir(), "temp_" + System.currentTimeMillis()).getAbsolutePath();
+                try(InputStream is  = new FileInputStream(new File(item, "stat").getAbsolutePath())) {
+                    try(OutputStream os = new FileOutputStream(new File(catPath))) {
+                        FileUtils.copy(is, os);
+                    }
+                }
                 String cat = BatteryCanaryUtil.cat(catPath);
                 Assert.assertFalse(TextUtils.isEmpty(cat));
                 ProcStatUtil.ProcStat statInfo1 = parseJiffiesInfoWithBuffer(cat.getBytes());
@@ -558,6 +578,81 @@ public class ProcStatUtilsTest {
         long jiffies = stat.utime + stat.stime + stat.cutime + stat.cstime;
         Assert.assertTrue(jiffies >= 0);
         return stat;
+    }
+
+    @Test
+    public void testGetProcStatR3() throws ProcStatUtil.ParseException {
+        ProcStatUtil.setParseErrorListener(new ProcStatUtil.OnParseError() {
+            @Override
+            public void onError(int mode, String input) {
+                Assert.fail(input);
+            }
+        });
+        ProcStatUtil.ProcStat stat = ProcStatUtil.BetterProcStatParser.parse("/proc/" + Process.myPid() + "/stat", ProcStatUtil.getLocalBuffers());
+        Assert.assertNotNull(stat);
+        Assert.assertNotNull(stat.comm);
+        Assert.assertTrue(stat.utime >= 0);
+        Assert.assertTrue(stat.stime >= 0);
+        Assert.assertTrue(stat.cutime >= 0);
+        Assert.assertTrue(stat.cstime >= 0);
+        long jiffies = stat.utime + stat.stime + stat.cutime + stat.cstime;
+        Assert.assertTrue(jiffies >= 0);
+
+        ProcStatUtil.setParseErrorListener(null);
+    }
+
+    @Test
+    public void testGetThreadProcStatR3() throws ProcStatUtil.ParseException {
+        ProcStatUtil.setParseErrorListener(new ProcStatUtil.OnParseError() {
+            @Override
+            public void onError(int mode, String input) {
+                Assert.fail(input);
+            }
+        });
+        ProcStatUtil.ProcStat stat = ProcStatUtil.BetterProcStatParser.parse("/proc/" + Process.myPid() + "/task/" + Process.myTid() +  "/stat", ProcStatUtil.getLocalBuffers());
+        Assert.assertNotNull(stat);
+        Assert.assertNotNull(stat.comm);
+        Assert.assertTrue(stat.utime >= 0);
+        Assert.assertTrue(stat.stime >= 0);
+        Assert.assertTrue(stat.cutime >= 0);
+        Assert.assertTrue(stat.cstime >= 0);
+        long jiffies = stat.utime + stat.stime + stat.cutime + stat.cstime;
+        Assert.assertTrue(jiffies >= 0);
+
+        ProcStatUtil.setParseErrorListener(null);
+    }
+
+    @Test
+    public void testGetMyProcThreadStatAndCompare3() throws ProcStatUtil.ParseException, IOException {
+        ProcStatUtil.setParseErrorListener(new ProcStatUtil.OnParseError() {
+            @Override
+            public void onError(int mode, String input) {
+                Assert.fail(input);
+            }
+        });
+        String dirPath = "/proc/" + Process.myPid() + "/task";
+        for (File item : new File(dirPath).listFiles()) {
+            if (item.isDirectory()) {
+                String catPath = new File(mContext.getCacheDir(), "temp_" + System.currentTimeMillis()).getAbsolutePath();
+                try(InputStream is  = new FileInputStream(new File(item, "stat").getAbsolutePath())) {
+                    try(OutputStream os = new FileOutputStream(new File(catPath))) {
+                        FileUtils.copy(is, os);
+                    }
+                }
+                String cat = BatteryCanaryUtil.cat(catPath);
+                Assert.assertFalse(TextUtils.isEmpty(cat));
+                ProcStatUtil.ProcStat statInfo1 = ProcStatUtil.parseWithSplits(cat);
+                ProcStatUtil.ProcStat statInfo2 = ProcStatUtil.BetterProcStatParser.parse(catPath, ProcStatUtil.getLocalBuffers());
+                Assert.assertEquals(statInfo1.comm, statInfo2.comm);
+                Assert.assertEquals(statInfo1.stat, statInfo2.stat);
+                Assert.assertEquals(statInfo1.utime, statInfo2.utime);
+                Assert.assertEquals(statInfo1.stime, statInfo2.stime);
+                Assert.assertEquals(statInfo1.cutime, statInfo2.cutime);
+                Assert.assertEquals(statInfo1.cstime, statInfo2.cstime);
+            }
+        }
+
+        ProcStatUtil.setParseErrorListener(null);
     }
 
 
@@ -688,6 +783,52 @@ public class ProcStatUtilsTest {
             long timeConsumed2 = SystemClock.uptimeMillis() - current;
 
             Assert.fail("TIME CONSUMED: " + timeConsumed1 + " vs " + timeConsumed2);
+        }
+
+        @Test
+        public void testGetMyProcThreadStatWithBetterProcStatReaderBenchmark() throws ProcStatUtil.ParseException {
+            if (TestUtils.isAssembleTest()) return;
+
+            int times = 100;
+            long current = SystemClock.uptimeMillis();
+            for (int i = 0; i < times; i++) {
+                String dirPath = "/proc/" + Process.myPid() + "/task";
+                for (File item : new File(dirPath).listFiles()) {
+                    if (item.isDirectory()) {
+                        String catPath = new File(item, "stat").getAbsolutePath();
+                        ProcStatUtil.ProcStat stat = ProcStatUtil.BetterProcStatParser.parse(catPath, ProcStatUtil.getLocalBuffers());
+                        Assert.assertNotNull(stat.comm);
+                        Assert.assertTrue(stat.utime >= 0);
+                        Assert.assertTrue(stat.stime >= 0);
+                        Assert.assertTrue(stat.cutime >= 0);
+                        Assert.assertTrue(stat.cstime >= 0);
+                        long jiffies = stat.utime + stat.stime + stat.cutime + stat.cstime;
+                        Assert.assertTrue(jiffies >= 0);
+                    }
+                }
+            }
+            long timeConsumed1 = SystemClock.uptimeMillis() - current;
+
+            current = SystemClock.uptimeMillis();
+            for (int i = 0; i < times; i++) {
+                String dirPath = "/proc/" + Process.myPid() + "/task";
+                for (File item : new File(dirPath).listFiles()) {
+                    if (item.isDirectory()) {
+                        String catPath = new File(item, "stat").getAbsolutePath();
+                        ProcStatUtil.ProcStat stat = parseJiffiesInfoWithBufferForPath(catPath, new byte[128]);
+                        Assert.assertNotNull(stat.comm);
+                        Assert.assertTrue(stat.utime >= 0);
+                        Assert.assertTrue(stat.stime >= 0);
+                        Assert.assertTrue(stat.cutime >= 0);
+                        Assert.assertTrue(stat.cstime >= 0);
+                        long jiffies = stat.utime + stat.stime + stat.cutime + stat.cstime;
+                        Assert.assertTrue(jiffies >= 0);
+                    }
+                }
+            }
+            long timeConsumed2 = SystemClock.uptimeMillis() - current;
+
+            Assert.fail("TIME CONSUMED: " + timeConsumed1 + " vs " + timeConsumed2 + ", deltaRatio = " + ((timeConsumed1 - timeConsumed2) / (float) timeConsumed2));
         }
 
     }

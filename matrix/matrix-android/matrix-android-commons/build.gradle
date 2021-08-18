@@ -18,10 +18,13 @@ android {
 
         externalNativeBuild {
             cmake {
-                targets = ['xhook']
+                targets = ['xhook', 'semi_dlfcn']
             }
             exportHeaders {
                 from('src/main/cpp/libxhook') {
+                    include '**/*.h'
+                }
+                from('src/main/cpp/libsemi_dlfcn') {
                     include '**/*.h'
                 }
             }

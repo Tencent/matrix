@@ -23,6 +23,7 @@
 
 #include <jni.h>
 #include <xhook.h>
+#include <xhook_ext.h>
 #include "sqlite_lint.h"
 #include "lemon/sqlite3.h"
 #include "com_tencent_sqlitelint_util_SLog.h"
@@ -95,7 +96,19 @@ namespace sqlitelint {
             LOGW("SQLiteLintHooker_nativeDoHook kInitSuc failed");
             return false;
         }
-        xhook_register(".*/libandroid_runtime\\.so$", "sqlite3_profile", (void*)hooked_sqlite3_profile, (void**)&original_sqlite3_profile);
+
+        void* target_elf = xhook_elf_open("libandroid_runtime.so");
+        if (target_elf == nullptr) {
+            LOGE("SQLiteLintHooker_nativeDoHook fail to open libandroid_runtime.so");
+            return false;
+        }
+        if (xhook_got_hook_symbol(target_elf, "sqlite3_profile",
+                (void*)hooked_sqlite3_profile, (void**)&original_sqlite3_profile) != 0) {
+            LOGE("SQLiteLintHooker_nativeDoHook fail to hook sqlite3_profile");
+            xhook_elf_close(target_elf);
+            return false;
+        }
+        xhook_elf_close(target_elf);
 
         #ifndef NDEBUG
         xhook_enable_sigsegv_protection(0);

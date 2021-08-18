@@ -23,7 +23,6 @@ add_library(
       ${SOURCE_DIR}/common/Log.cpp
       ${SOURCE_DIR}/common/Maps.cpp
       ${SOURCE_DIR}/common/SoLoadMonitor.cpp
-      ${SOURCE_DIR}/common/SemiDlfcn.cpp
       ${SOURCE_DIR}/common/ProfileRecord.cpp
 )
 
@@ -48,7 +47,8 @@ target_link_libraries(
       PUBLIC cJSON
       PUBLIC ${log-lib}
       PUBLIC ${EXT_DEP}/lib/${ANDROID_ABI}/libwechatbacktrace.so
-      PRIVATE ${EXT_DEP}/lib/${ANDROID_ABI}/libxhook.a
+      PRIVATE -Wl,--whole-archive ${EXT_DEP}/lib/${ANDROID_ABI}/libxhook.a -Wl,--no-whole-archive
+      PRIVATE -Wl,--whole-archive ${EXT_DEP}/lib/${ANDROID_ABI}/libsemi_dlfcn.a -Wl,--no-whole-archive
       PRIVATE -Wl,--version-script=${SOURCE_DIR}/common/common.ver
 )
 #################################################################################
@@ -72,7 +72,6 @@ add_library(
 target_link_libraries(
       ${TARGET}
       PRIVATE matrix-hookcommon
-      PRIVATE ${EXT_DEP}/lib/${ANDROID_ABI}/libxhook.a
       PRIVATE -Wl,--version-script=${SOURCE_DIR}/memory/memory.ver
 )
 #################################################################################
@@ -92,7 +91,6 @@ add_library(
 target_link_libraries(
       ${TARGET}
       PRIVATE matrix-hookcommon
-      PRIVATE ${EXT_DEP}/lib/${ANDROID_ABI}/libxhook.a
       PRIVATE -Wl,--version-script=${SOURCE_DIR}/pthread/pthread.ver
 )
 #################################################################################

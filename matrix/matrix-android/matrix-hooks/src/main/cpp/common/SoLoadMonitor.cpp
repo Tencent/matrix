@@ -10,11 +10,11 @@
 #include <android/log.h>
 #include <sys/resource.h>
 #include <set>
+#include <semi_dlfcn.h>
 #include "ScopedCleaner.h"
 #include "Log.h"
 #include "HookCommon.h"
 #include "SoLoadMonitor.h"
-#include "SemiDlfcn.h"
 
 #define LOG_TAG "Matrix.SoLoadMonitor"
 
@@ -50,13 +50,13 @@ namespace matrix {
         }
     }
 
-    #define MARK_REENTERED(mask_tlsvar) \
+#define MARK_REENTERED(mask_tlsvar) \
         mask_tlsvar = true; \
         auto reenterCleaner = MakeScopedCleaner([]() { \
             mask_tlsvar = false; \
         })
 
-    #define WAIT_ON_COND(mutex, cond_var, cond) \
+#define WAIT_ON_COND(mutex, cond_var, cond) \
         do { \
             std::unique_lock lock_##cond_var(mutex); \
             if ((cond)) { \
@@ -71,7 +71,7 @@ namespace matrix {
         const void* caller_addr;
     };
 
-    static void* HandleDlOpenCommon(const std::function<void* (const DlOpenArgs*)> dlopen_fn, const DlOpenArgs* args) {
+    static void* HandleDlOpenCommon(void* (*dlopen_fn)(const DlOpenArgs*), const DlOpenArgs* args) {
         std::lock_guard lock(sDlOpenHandlerMutex);
         void* hLib = dlopen_fn(args);
         if (hLib != nullptr && (args->flags & RTLD_NOLOAD) == 0) {
@@ -80,79 +80,78 @@ namespace matrix {
         return hLib;
     }
 
-    static TLSVAR bool __loader_dlopen_handler_reentered = false;
-    static void* (*orig__loader_dlopen)(const char* filename, int flags, const void* caller_addr) = nullptr;
-    static void* __loader_dlopen_handler(const char* filename, int flags, const void* caller_addr) {
-        auto implFn = [](const DlOpenArgs* args) {
-            return orig__loader_dlopen(args->filename, args->flags, args->caller_addr);
-        };
-        DlOpenArgs args = { .filename = filename, .flags = flags, .caller_addr = caller_addr };
-        if (UNLIKELY(__loader_dlopen_handler_reentered)) {
-            return HandleDlOpenCommon(implFn, &args);
-        } else {
-            MARK_REENTERED(__loader_dlopen_handler_reentered);
-            WAIT_ON_COND(sDlOpenBlockerMutex, sDlOpenBlocker, sDlOpenPaused);
-            return HandleDlOpenCommon(implFn, &args);
-        }
-    }
-
-    static TLSVAR bool __loader_android_dlopen_ext_handler_reentered = false;
-    static void* (*orig__loader_android_dlopen_ext)(const char* filename,
-            int flags, const void* extinfo, const void* caller_addr) = nullptr;
-    static void* __loader_android_dlopen_ext_handler(const char* filename,
-                                                     int flags, const void* extinfo, const void* caller_addr) {
-        auto implFn = [](const DlOpenArgs* args) {
-            return orig__loader_android_dlopen_ext(args->filename, args->flags, args->extinfo, args->caller_addr);
-        };
-        DlOpenArgs args = { .filename = filename, .flags = flags, .extinfo = extinfo, .caller_addr = caller_addr };
-        if (UNLIKELY(__loader_android_dlopen_ext_handler_reentered)) {
-            return HandleDlOpenCommon(implFn, &args);
-        } else {
-            MARK_REENTERED(__loader_android_dlopen_ext_handler_reentered);
-            WAIT_ON_COND(sDlOpenBlockerMutex, sDlOpenBlocker, sDlOpenPaused);
-            return HandleDlOpenCommon(implFn, &args);
-        }
-    }
-
     static TLSVAR bool dlopen_handler_reentered = false;
-    static void* (*orig_dlopen)(const char* filename, int flags) = nullptr;
-    static void* dlopen_handler(const char* filename, int flags) {
-        auto implFn = [](const DlOpenArgs* args) {
-            return orig_dlopen(args->filename, args->flags);
-        };
-        DlOpenArgs args = { .filename = filename, .flags = flags };
+    static void* (*orig_dlopen_N)(const char* filename, int flags, const void* caller_addr) = nullptr;
+    static void* (*orig_dlopen_M)(const char* filename, int flags) = nullptr;
+
+    static void* dlopen_handler_common(void* (*orig_caller)(const DlOpenArgs*), const DlOpenArgs* args) {
         if (UNLIKELY(dlopen_handler_reentered)) {
-            return HandleDlOpenCommon(implFn, &args);
+            return HandleDlOpenCommon(orig_caller, args);
         } else {
             MARK_REENTERED(dlopen_handler_reentered);
             WAIT_ON_COND(sDlOpenBlockerMutex, sDlOpenBlocker, sDlOpenPaused);
-            return HandleDlOpenCommon(implFn, &args);
+            return HandleDlOpenCommon(orig_caller, args);
         }
+    }
+
+    static void* dlopen_handler_N(const char* filename, int flags) {
+        const void* caller = __builtin_return_address(0);
+        DlOpenArgs args = { .filename = filename, .flags = flags, .caller_addr = caller };
+        return dlopen_handler_common([](const DlOpenArgs* args) {
+            return orig_dlopen_N(args->filename, args->flags, args->caller_addr);
+        }, &args);
+    }
+
+    static void* dlopen_handler_M(const char* filename, int flags) {
+        DlOpenArgs args = { .filename = filename, .flags = flags };
+        return dlopen_handler_common([](const DlOpenArgs* args) {
+            return orig_dlopen_M(args->filename, args->flags);
+        }, &args);
     }
 
     static TLSVAR bool android_dlopen_ext_handler_reentered = false;
-    static void* (*orig_android_dlopen_ext)(const char* filename, int flag, const void* extinfo) = nullptr;
-    static void* android_dlopen_ext_handler(const char* filename, int flags, const void* extinfo) {
-        auto implFn = [](const DlOpenArgs* args) {
-            return orig_android_dlopen_ext(args->filename, args->flags, args->extinfo);
-        };
-        DlOpenArgs args = { .filename = filename, .flags = flags, .extinfo = extinfo };
+    static void* (*orig_android_dlopen_ext_N)(const char* filename, int flag, const void* extinfo,
+                                              const void* caller_addr) = nullptr;
+    static void* (*orig_android_dlopen_ext_M)(const char* filename, int flag, const void* extinfo) = nullptr;
+
+    static void* android_dlopen_ext_handler_common(void* (*orig_caller)(const DlOpenArgs*), const DlOpenArgs* args) {
         if (UNLIKELY(android_dlopen_ext_handler_reentered)) {
-            return HandleDlOpenCommon(implFn, &args);
+            return HandleDlOpenCommon(orig_caller, args);
         } else {
             MARK_REENTERED(android_dlopen_ext_handler_reentered);
             WAIT_ON_COND(sDlOpenBlockerMutex, sDlOpenBlocker, sDlOpenPaused);
-            return HandleDlOpenCommon(implFn, &args);
+            return HandleDlOpenCommon(orig_caller, args);
         }
     }
 
-    #ifdef __LP64__
-    #define LINKER_NAME "linker64"
-    #define LINKER_NAME_PATTERN ".*/linker64$"
-    #else
+    static void* android_dlopen_ext_handler_N(const char* filename, int flags, const void* extinfo) {
+        const void* caller = __builtin_return_address(0);
+        DlOpenArgs args = { .filename = filename, .flags = flags, .extinfo = extinfo, .caller_addr = caller };
+        return android_dlopen_ext_handler_common([](const DlOpenArgs* args) {
+            return orig_android_dlopen_ext_N(args->filename, args->flags, args->extinfo, args->caller_addr);
+        }, &args);
+    }
+
+    static void* android_dlopen_ext_handler_M(const char* filename, int flags, const void* extinfo) {
+        DlOpenArgs args = { .filename = filename, .flags = flags, .extinfo = extinfo };
+        return android_dlopen_ext_handler_common([](const DlOpenArgs* args) {
+            return orig_android_dlopen_ext_M(args->filename, args->flags, args->extinfo);
+        }, &args);
+    }
+
+    static int (*orig_dlclose)(void* handle) = nullptr;
+    static int dlclose_handler(void* handle) {
+        std::lock_guard lock(sDlOpenHandlerMutex);
+        return orig_dlclose(handle);
+    }
+
+#ifdef __LP64__
+#define LINKER_NAME "linker64"
+#define LINKER_NAME_PATTERN ".*/linker64$"
+#else
     #define LINKER_NAME "linker"
     #define LINKER_NAME_PATTERN ".*/linker$"
-    #endif
+#endif
 
     bool InstallSoLoadMonitor() {
         std::lock_guard lock(sInstalledMaskMutex);
@@ -167,76 +166,106 @@ namespace matrix {
             return false;
         }
 
-        void *hLinker = matrix::SemiDlOpen(LINKER_NAME);
+        void *hLinker = semi_dlopen(LINKER_NAME);
         if (hLinker == nullptr) {
             LOGE(LOG_TAG, "Fail to open %s.", LINKER_NAME);
             return false;
         }
         auto hLinkerCloser = MakeScopedCleaner([&hLinker]() {
             if (hLinker != nullptr) {
-                matrix::SemiDlClose(hLinker);
+                semi_dlclose(hLinker);
             }
         });
 
-        if (sdkVer >= 26 /* O */) {
-            orig__loader_dlopen = reinterpret_cast<decltype(orig__loader_dlopen)>(
-                    matrix::SemiDlSym(hLinker, "__dl___loader_dlopen"));
-            if (UNLIKELY(orig__loader_dlopen == nullptr)) {
-                orig__loader_dlopen = reinterpret_cast<decltype(orig__loader_dlopen)>(
-                        matrix::SemiDlSym(hLinker, "__dl__Z8__dlopenPKciPKv"));
+        if (sdkVer >= 24 /* N */) {
+            orig_dlopen_N = reinterpret_cast<decltype(orig_dlopen_N)>(
+                    semi_dlsym(hLinker, "__dl___loader_dlopen"));
+            if (UNLIKELY(orig_dlopen_N == nullptr)) {
+                orig_dlopen_N = reinterpret_cast<decltype(orig_dlopen_N)>(
+                        semi_dlsym(hLinker, "__dl__Z8__dlopenPKciPKv"));
+                if (UNLIKELY(orig_dlopen_N == nullptr)) {
+                    LOGE(LOG_TAG, "Fail to find original dlopen.");
+                    return false;
+                }
             }
-            if (UNLIKELY(orig__loader_dlopen == nullptr)) {
-                LOGE(LOG_TAG, "Fail to find original __loader_dlopen.");
-                return false;
-            }
-            if (UNLIKELY(xhook_register(".*\\.so$", "__loader_dlopen",
-                    reinterpret_cast<void*>(__loader_dlopen_handler), nullptr) != 0)) {
-                LOGE(LOG_TAG, "Fail to register __loader_dlopen hook handler.");
-                return false;
-            }
-
-            orig__loader_android_dlopen_ext = reinterpret_cast<decltype(orig__loader_android_dlopen_ext)>(
-                    matrix::SemiDlSym(hLinker, "__dl___loader_android_dlopen_ext"));
-            if (UNLIKELY(orig__loader_android_dlopen_ext == nullptr)) {
-                orig__loader_android_dlopen_ext = reinterpret_cast<decltype(orig__loader_android_dlopen_ext)>(
-                        matrix::SemiDlSym(hLinker, "__dl__Z20__android_dlopen_extPKciPK17android_dlextinfoPKv"));
-            }
-            if (UNLIKELY(orig__loader_android_dlopen_ext == nullptr)) {
-                LOGE(LOG_TAG, "Fail to find original __loader_android_dlopen_ext.");
-                return false;
-            }
-            if (UNLIKELY(xhook_register(".*\\.so$", "__loader_android_dlopen_ext",
-                    reinterpret_cast<void*>(__loader_android_dlopen_ext_handler), nullptr) != 0)) {
-                LOGE(LOG_TAG, "Fail to register __loader_android_dlopen_ext hook handler.");
-                return false;
-            }
-        } else {
-            orig_dlopen = reinterpret_cast<decltype(orig_dlopen)>(matrix::SemiDlSym(hLinker, "__dl_dlopen"));
-            if (UNLIKELY(orig_dlopen == nullptr)) {
-                LOGE(LOG_TAG, "Fail to find original dlopen.");
-                return false;
-            }
-            if (UNLIKELY(xhook_register(".*\\.so$", "dlopen",
-                    reinterpret_cast<void*>(dlopen_handler), nullptr) != 0)) {
+            if (UNLIKELY(xhook_grouped_register(HOOK_REQUEST_GROUPID_DLOPEN_MON, ".*\\.so$", "dlopen",
+                                        reinterpret_cast<void*>(dlopen_handler_N), nullptr) != 0)) {
                 LOGE(LOG_TAG, "Fail to register dlopen hook handler.");
                 return false;
             }
 
-            orig_android_dlopen_ext = reinterpret_cast<decltype(orig_android_dlopen_ext)>(
-                    matrix::SemiDlSym(hLinker, "__dl_android_dlopen_ext"));
-            if (UNLIKELY(orig_android_dlopen_ext == nullptr)) {
-                LOGE(LOG_TAG, "Fail to find original android_dlopen_ext.");
-                return false;
+            orig_android_dlopen_ext_N = reinterpret_cast<decltype(orig_android_dlopen_ext_N)>(
+                    semi_dlsym(hLinker, "__dl___loader_android_dlopen_ext"));
+            if (UNLIKELY(orig_android_dlopen_ext_N == nullptr)) {
+                orig_android_dlopen_ext_N = reinterpret_cast<decltype(orig_android_dlopen_ext_N)>(
+                        semi_dlsym(hLinker, "__dl__Z20__android_dlopen_extPKciPK17android_dlextinfoPKv"));
+                if (UNLIKELY(orig_android_dlopen_ext_N == nullptr)) {
+                    LOGE(LOG_TAG, "Fail to find original android_dlopen_ext.");
+                    return false;
+                }
             }
-            if (UNLIKELY(xhook_register(".*\\.so$", "android_dlopen_ext",
-                    reinterpret_cast<void*>(android_dlopen_ext_handler), nullptr) != 0)) {
+            if (UNLIKELY(xhook_grouped_register(HOOK_REQUEST_GROUPID_DLOPEN_MON, ".*\\.so$", "android_dlopen_ext",
+                                        reinterpret_cast<void*>(android_dlopen_ext_handler_N), nullptr) != 0)) {
                 LOGE(LOG_TAG, "Fail to register android_dlopen_ext hook handler.");
                 return false;
             }
+
+            orig_dlclose = reinterpret_cast<decltype(orig_dlclose)>(semi_dlsym(hLinker, "__dl___loader_dlclose"));
+            if (UNLIKELY(orig_dlclose == nullptr)) {
+                orig_dlclose = reinterpret_cast<decltype(orig_dlclose)>(semi_dlsym(hLinker, "__dl__Z9__dlclosePv"));
+                if (UNLIKELY(orig_dlclose == nullptr)) {
+                    LOGE(LOG_TAG, "Fail to find original dlclose.");
+                    return false;
+                }
+            }
+            if (UNLIKELY(xhook_grouped_register(HOOK_REQUEST_GROUPID_DLOPEN_MON, ".*\\.so$", "dlclose",
+                                        reinterpret_cast<void*>(dlclose_handler), nullptr) != 0)) {
+                LOGE(LOG_TAG, "Fail to register dlclose hook handler.");
+                return false;
+            }
+        } else {
+            orig_dlopen_M = reinterpret_cast<decltype(orig_dlopen_M)>(semi_dlsym(hLinker, "__dl_dlopen"));
+            if (UNLIKELY(orig_dlopen_M == nullptr)) {
+                LOGE(LOG_TAG, "Fail to find original dlopen.");
+                return false;
+            }
+            if (UNLIKELY(xhook_grouped_register(HOOK_REQUEST_GROUPID_DLOPEN_MON, ".*\\.so$", "dlopen",
+                                        reinterpret_cast<void*>(dlopen_handler_M), nullptr) != 0)) {
+                LOGE(LOG_TAG, "Fail to register dlopen hook handler.");
+                return false;
+            }
+
+            orig_android_dlopen_ext_M = reinterpret_cast<decltype(orig_android_dlopen_ext_M)>(
+                    semi_dlsym(hLinker, "__dl_android_dlopen_ext"));
+            if (UNLIKELY(orig_android_dlopen_ext_M == nullptr)) {
+                LOGE(LOG_TAG, "Fail to find original android_dlopen_ext.");
+                return false;
+            }
+            if (UNLIKELY(xhook_grouped_register(HOOK_REQUEST_GROUPID_DLOPEN_MON, ".*\\.so$", "android_dlopen_ext",
+                                        reinterpret_cast<void*>(android_dlopen_ext_handler_M), nullptr) != 0)) {
+                LOGE(LOG_TAG, "Fail to register android_dlopen_ext hook handler.");
+                return false;
+            }
+
+            orig_dlclose = reinterpret_cast<decltype(orig_dlclose)>(
+                    semi_dlsym(hLinker, "__dl_dlclose"));
+            if (UNLIKELY(orig_dlclose == nullptr)) {
+                LOGE(LOG_TAG, "Fail to find original dlclose.");
+                return false;
+            }
+            if (UNLIKELY(xhook_grouped_register(HOOK_REQUEST_GROUPID_DLOPEN_MON, ".*\\.so$", "dlclose",
+                                        reinterpret_cast<void*>(dlclose_handler), nullptr) != 0)) {
+                LOGE(LOG_TAG, "Fail to register dlclose hook handler.");
+                return false;
+            }
         }
-        xhook_ignore(LINKER_NAME_PATTERN, nullptr);
-        xhook_ignore(".*/libpatrons\\.so$", nullptr);
-        xhook_ignore(".*/libwebviewchromium_loader\\.so$", nullptr);
+
+        NOTIFY_COMMON_IGNORE_LIBS(HOOK_REQUEST_GROUPID_DLOPEN_MON);
+
+        xhook_grouped_ignore(HOOK_REQUEST_GROUPID_DLOPEN_MON, LINKER_NAME_PATTERN, nullptr);
+        xhook_grouped_ignore(HOOK_REQUEST_GROUPID_DLOPEN_MON, ".*/libdl\\.so$", nullptr);
+        xhook_grouped_ignore(HOOK_REQUEST_GROUPID_DLOPEN_MON, ".*/libpatrons\\.so$", nullptr);
+
         sInstalled = true;
         return true;
     }

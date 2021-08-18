@@ -43,12 +43,6 @@ void xhook_enable_debug(int flag) XHOOK_EXPORT;
 
 void xhook_enable_sigsegv_protection(int flag) XHOOK_EXPORT;
 
-void* xhook_elf_open(const char *path);
-
-int xhook_hook_symbol(void* h_lib, const char* symbol, void* new_func, void** old_func);
-
-void xhook_elf_close(void *h_lib);
-
 #ifdef __cplusplus
 }
 #endif
