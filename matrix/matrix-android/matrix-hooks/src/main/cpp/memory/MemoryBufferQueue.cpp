@@ -44,17 +44,21 @@ namespace matrix {
     std::atomic<size_t> BufferQueue::g_queue_realloc_memory_2_counter = 0;
     std::atomic<size_t> BufferQueue::g_queue_realloc_reason_1 = 0;
     std::atomic<size_t> BufferQueue::g_queue_realloc_reason_2 = 0;
+    std::atomic<size_t> BufferQueue::g_queue_realloc_failure_counter = 0;
+    std::atomic<size_t> BufferQueue::g_queue_realloc_over_limit_counter = 0;
 
     // ---------- BufferManagement ----------
     BufferManagement::BufferManagement(memory_meta_container * memory_meta_container) {
         containers_.reserve(MAX_PTR_SLOT);
         for (int i = 0; i < MAX_PTR_SLOT; ++i) {
-            containers_.emplace_back(new BufferQueueContainer());
+            auto container = new BufferQueueContainer();
+            containers_.emplace_back(container);
         }
         memory_meta_container_ = memory_meta_container;
     }
 
     BufferManagement::~BufferManagement() {
+
         for (auto container : containers_) {
             delete container;
         }
@@ -67,6 +71,7 @@ namespace matrix {
 //        TEST_LOG_WARN("Process routine outside ... this_->containers_ %zu", this_->containers_.size());
             if (!this_->queue_swapped_) this_->queue_swapped_ = new BufferQueue(SIZE_AUGMENT);
 
+            size_t busy_queue = 0;
             for (auto container : this_->containers_) {
 //            TEST_LOG_WARN("Process routine ... ");
                 BufferQueue *swapped = nullptr;
@@ -78,6 +83,11 @@ namespace matrix {
                         container->queue = this_->queue_swapped_;
                     }
                 }
+
+                if (swapped && swapped->size() >= 5) {
+                    busy_queue++;
+                }
+
                 if (swapped) {
 //                TEST_LOG_WARN("Swapped ... ");
                     swapped->process([&](message_t *message, allocation_message_t *allocation_message) {
@@ -121,15 +131,26 @@ namespace matrix {
                 }
             }
 
-            usleep(PROCESS_INTERVAL);
+            float busy_ratio = ((float) busy_queue) / this_->containers_.size();
+
+            if (busy_ratio > 0.9f) { // Super busy
+                continue;
+            } else if (busy_ratio > 0.6f) { // Busy
+                usleep(PROCESS_BUSY_INTERVAL);
+            } else if (busy_ratio > 0.3f) {
+                usleep(PROCESS_NORMAL_INTERVAL);
+            } else if (busy_ratio > 0.1f) {
+                usleep(PROCESS_LESS_NORMAL_INTERVAL);
+            } else {
+                usleep(PROCESS_IDLE_INTERVAL);
+            }
         }
     }
 
     void BufferManagement::start_process() {
         if (processing_) return;
         processing_ = true;
-        pthread_t thread;
-        pthread_create(&thread, nullptr, reinterpret_cast<void *(*)(void *)>(&BufferManagement::process_routine), this);
-//    pthread_detach(thread);   // TODO
+        pthread_create(&thread_, nullptr, reinterpret_cast<void *(*)(void *)>(&BufferManagement::process_routine), this);
+        pthread_detach(thread_);
     }
 }

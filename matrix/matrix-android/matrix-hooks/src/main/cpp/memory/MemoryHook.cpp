@@ -391,6 +391,9 @@ static inline void dump_callers(FILE *log_file,
              BufferQueue::g_queue_realloc_memory_2_counter.load(std::memory_order_relaxed));
     flogger0(log_file, "| lock collision = %zu.\n",
              m_locker_collision_counter.load(std::memory_order_relaxed));
+    flogger0(log_file, "| realloc failure = %zu, memory over limit failure = %zu.\n",
+             BufferQueue::g_queue_realloc_failure_counter.load(std::memory_order_relaxed),
+             BufferQueue::g_queue_realloc_over_limit_counter.load(std::memory_order_relaxed));
     LOGD(TAG, "---------------------------------------------------\n");
     flogger0(log_file, "---------------------------------------------------\n\n");
 }

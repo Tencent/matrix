@@ -69,7 +69,7 @@ namespace wechat_backtrace {
 
     typedef uintptr_t uptr;
 
-    constexpr auto FILE_SEPERATOR = "/";
+    constexpr auto FILE_SEPARATOR = "/";
 
 #ifdef __arm__
     typedef uint32_t addr_t;
@@ -93,12 +93,12 @@ namespace wechat_backtrace {
 #define is_frame_attr_maybe_java(frame) (frame.attr & frame_attr_maybe_java)
 
 #if defined(__aarch64__)
-    struct Frame {
+    struct __attribute__((__packed__)) Frame {
         unsigned char attr : 8;
         uptr pc : 56;
     };
 #else
-    struct Frame {
+    struct __attribute__((__packed__)) Frame {
         unsigned char attr;
         uptr pc;
     };

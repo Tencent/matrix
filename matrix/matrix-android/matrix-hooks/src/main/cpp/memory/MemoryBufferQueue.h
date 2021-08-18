@@ -22,8 +22,13 @@
 #include <memory>
 #include "MemoryHookMetas.h"
 
-#define SIZE_AUGMENT 64
-#define PROCESS_INTERVAL 200 * 1000L
+#define SIZE_AUGMENT 192
+#define PROCESS_BUSY_INTERVAL 40 * 1000L
+#define PROCESS_NORMAL_INTERVAL 150 * 1000L
+#define PROCESS_LESS_NORMAL_INTERVAL 300 * 1000L
+#define PROCESS_IDLE_INTERVAL 800 * 1000L
+
+#define MEMORY_OVER_LIMIT 1024 * 1024 * 200L    // 100M
 
 #define POINTER_MASK 48
 
@@ -46,13 +51,23 @@ namespace matrix {
         memory_backtrace_t backtrace{};
     } allocation_message_t;
 
+#if defined(__aarch64__)
     typedef struct {
-        message_type type : 8;
+        message_type type: 8;
         union {
-            uintptr_t index : 56;
-            uintptr_t ptr : 56;
+            uintptr_t index: 56;
+            uintptr_t ptr: 56;
         };
     } message_t;
+#else
+    typedef struct __attribute__((__packed__)) {
+        message_type type;
+        union {
+            uintptr_t index;
+            uintptr_t ptr;
+        };
+    } message_t;
+#endif
 
     static inline size_t memory_ptr_hash(uintptr_t _key) {
         return static_cast<size_t>((_key ^ (_key >> 16)) & PTR_MASK);
@@ -63,8 +78,8 @@ namespace matrix {
     public:
         BufferQueue(size_t size_augment) {
             size_augment_ = size_augment;
-            buffer_realloc_message_queue();
-            buffer_realloc_alloc_queue();
+            buffer_realloc_message_queue(true);
+            buffer_realloc_alloc_queue(true);
         };
 
         ~BufferQueue() {
@@ -80,10 +95,14 @@ namespace matrix {
 
         inline allocation_message_t *enqueue_allocation_message(bool is_mmap) {
             if (msg_queue_idx >= msg_queue_size_) {
-                buffer_realloc_message_queue();
+                if (UNLIKELY(!buffer_realloc_message_queue(false))) {
+                    return nullptr;
+                }
             }
             if (alloc_msg_queue_idx >= alloc_queue_size_) {
-                buffer_realloc_alloc_queue();
+                if (UNLIKELY(!buffer_realloc_alloc_queue(false))) {
+                    return nullptr;
+                }
             }
 
             message_t *msg_idx = &message_queue_[msg_queue_idx++];
@@ -111,7 +130,9 @@ namespace matrix {
             }
 
             if (msg_queue_idx >= msg_queue_size_) {
-                buffer_realloc_message_queue();
+                if (UNLIKELY(!buffer_realloc_message_queue(false))) {
+                    return;
+                }
             }
 
             message_t *msg_idx = &message_queue_[msg_queue_idx++];
@@ -127,13 +148,15 @@ namespace matrix {
             msg_queue_idx = 0;
             alloc_msg_queue_idx = 0;
             if (msg_queue_size_ > size_augment_ * 2) {
-                msg_queue_size_ = 0;
-                buffer_realloc_message_queue();
+                buffer_realloc_message_queue(true);
             }
             if (alloc_queue_size_ > size_augment_) {
-                alloc_queue_size_ = 0;
-                buffer_realloc_alloc_queue();
+                buffer_realloc_alloc_queue(true);
             }
+        }
+
+        inline size_t size() {
+            return msg_queue_idx;
         }
 
         inline void process(std::function<void(message_t *, allocation_message_t *)> callback) {
@@ -148,47 +171,87 @@ namespace matrix {
             }
         }
 
+        // stat
         static std::atomic<size_t> g_queue_realloc_memory_1_counter;
         static std::atomic<size_t> g_queue_realloc_memory_2_counter;
         static std::atomic<size_t> g_queue_realloc_reason_1;
         static std::atomic<size_t> g_queue_realloc_reason_2;
+        static std::atomic<size_t> g_queue_realloc_failure_counter;
+        static std::atomic<size_t> g_queue_realloc_over_limit_counter;
 
     private:
 
-        void buffer_realloc_message_queue() {
-            if (msg_queue_size_ != 0) {
+        bool buffer_realloc_message_queue(bool init) {
+            if (!init && msg_queue_size_ != 0) {
                 g_queue_realloc_reason_1.fetch_add(1);
             }
 
-            g_queue_realloc_memory_1_counter.fetch_sub(sizeof(message_t) * msg_queue_size_);
+            if (UNLIKELY(!init && g_queue_realloc_memory_1_counter.load() +
+                                  g_queue_realloc_memory_2_counter.load() >= MEMORY_OVER_LIMIT)) {
+                g_queue_realloc_over_limit_counter.fetch_add(1);
+                return false;
+            }
 
-            msg_queue_size_ += size_augment_;
+            size_t resize = msg_queue_size_;
+            if (init) {
+                resize = size_augment_ * 2;
+            } else {
+                resize += size_augment_ * 2; // TODO add __builtin_add_overflow check here
+            }
 
-            g_queue_realloc_memory_1_counter.fetch_add(sizeof(message_t) * msg_queue_size_);
+            void *buffer = realloc(message_queue_, sizeof(message_t) * resize);
 
-            void * buffer = realloc(message_queue_, sizeof(message_t) * msg_queue_size_);
-//            buffer = message_buffer_source_.realloc(sizeof(message_t) * msg_queue_size_);
-            message_queue_ = static_cast<message_t *>(buffer);
+            if (buffer) {
+                message_queue_ = static_cast<message_t *>(buffer);
+
+                g_queue_realloc_memory_1_counter.fetch_sub(sizeof(message_t) * msg_queue_size_);
+                msg_queue_size_ = resize;
+                g_queue_realloc_memory_1_counter.fetch_add(sizeof(message_t) * msg_queue_size_);
+
+                return true;
+            } else {
+                g_queue_realloc_failure_counter.fetch_add(1, std::memory_order_relaxed);
+
+                return false;
+            }
         }
-        void buffer_realloc_alloc_queue() {
-            if (alloc_queue_size_ != 0) {
+
+        bool buffer_realloc_alloc_queue(bool init) {
+            if (!init && alloc_queue_size_ != 0) {
                 g_queue_realloc_reason_2.fetch_add(1);
             }
 
-            g_queue_realloc_memory_2_counter.fetch_sub(sizeof(allocation_message_t) * alloc_queue_size_);
+            if (UNLIKELY(!init && g_queue_realloc_memory_1_counter.load() +
+                                  g_queue_realloc_memory_2_counter.load() >= MEMORY_OVER_LIMIT)) {
+                g_queue_realloc_over_limit_counter.fetch_add(1);
+                return false;
+            }
 
-            alloc_queue_size_ += size_augment_;
-
-            g_queue_realloc_memory_2_counter.fetch_add(sizeof(allocation_message_t) * alloc_queue_size_);
+            size_t resize = alloc_queue_size_;
+            if (init) {
+                resize = size_augment_;
+            } else {
+                resize += size_augment_; // TODO add __builtin_add_overflow check here
+            }
 
             void *buffer = realloc(alloc_message_queue_,
-                                   sizeof(allocation_message_t) * alloc_queue_size_);
-//            void *buffer = alloc_buffer_source_.realloc(sizeof(allocation_message_t) * alloc_queue_size_);
-            alloc_message_queue_ = static_cast<allocation_message_t *>(buffer);
-        }
+                                   sizeof(allocation_message_t) * resize);
+            if (buffer) {
+                alloc_message_queue_ = static_cast<allocation_message_t *>(buffer);
 
-//        buffer_source_memory message_buffer_source_;
-//        buffer_source_memory alloc_buffer_source_;
+                g_queue_realloc_memory_2_counter.fetch_sub(
+                        sizeof(allocation_message_t) * alloc_queue_size_);
+                alloc_queue_size_ = resize;
+                g_queue_realloc_memory_2_counter.fetch_add(
+                        sizeof(allocation_message_t) * alloc_queue_size_);
+
+                return true;
+            } else {
+                g_queue_realloc_failure_counter.fetch_add(1, std::memory_order_relaxed);
+
+                return false;
+            }
+        }
 
         size_t size_augment_ = 0;
 
@@ -233,6 +296,7 @@ namespace matrix {
         memory_meta_container *memory_meta_container_ = nullptr;
 
         bool processing_ = false;
+        pthread_t thread_;
     };
 }
 
