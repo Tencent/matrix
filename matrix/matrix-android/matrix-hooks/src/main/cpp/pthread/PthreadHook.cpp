@@ -125,6 +125,7 @@ namespace pthread_hook {
         }
 
         matrix::PauseLoadSo();
+        xhook_block_refresh();
         {
             int ret = xhook_export_symtable_hook("libc.so", "pthread_create",
                                                  (void *) HANDLER_FUNC_NAME(pthread_create), nullptr);
@@ -137,6 +138,7 @@ namespace pthread_hook {
             xhook_grouped_register(HOOK_REQUEST_GROUPID_PTHREAD, ".*/.*\\.so$", "pthread_setname_np",
                                    (void *) HANDLER_FUNC_NAME(pthread_setname_np), nullptr);
         }
+        xhook_unblock_refresh();
         matrix::ResumeLoadSo();
     }
 }
