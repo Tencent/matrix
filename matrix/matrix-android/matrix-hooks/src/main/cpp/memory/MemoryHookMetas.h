@@ -35,7 +35,7 @@
 #define USE_SPLAY_MAP_SAVE_STACK true
 
 /* For testing */
-#define USE_FAKE_BACKTRACE_DATA true
+#define USE_FAKE_BACKTRACE_DATA false
 
 #define MEMHOOK_BACKTRACE_MAX_FRAMES MAX_FRAME_SHORT
 
