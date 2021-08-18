@@ -188,7 +188,6 @@ DEFINE_HOOK_FUN(char*, strndup, const char *str, size_t n) {
 #ifndef __LP64__
 
 DEFINE_HOOK_FUN(void*, _Znwj, size_t size) {
-//    void * p = ORIGINAL_FUNC_NAME(_Znwj)(size);
     CALL_ORIGIN_FUNC_RET(void*, p, _Znwj, size);
     LOGI(TAG, "+ _Znwj %p", p);
     DO_HOOK_ACQUIRE(p, size);
@@ -196,7 +195,6 @@ DEFINE_HOOK_FUN(void*, _Znwj, size_t size) {
 }
 
 DEFINE_HOOK_FUN(void*, _ZnwjSt11align_val_t, size_t size, std::align_val_t align_val) {
-//    void * p = ORIGINAL_FUNC_NAME(_ZnwjSt11align_val_t)(size, align_val);
     CALL_ORIGIN_FUNC_RET(void*, p, _ZnwjSt11align_val_t, size, align_val);
     LOGI(TAG, "- _ZnwjSt11align_val_t %p", p);
     DO_HOOK_ACQUIRE(p, size);
@@ -205,7 +203,6 @@ DEFINE_HOOK_FUN(void*, _ZnwjSt11align_val_t, size_t size, std::align_val_t align
 
 DEFINE_HOOK_FUN(void*, _ZnwjSt11align_val_tRKSt9nothrow_t, size_t size,
                 std::align_val_t align_val, std::nothrow_t const& nothrow) {
-//    void * p = ORIGINAL_FUNC_NAME(_ZnwjSt11align_val_tRKSt9nothrow_t)(size, align_val, nothrow);
     CALL_ORIGIN_FUNC_RET(void*, p, _ZnwjSt11align_val_tRKSt9nothrow_t, size, align_val, nothrow);
     LOGI(TAG, "+ _ZnwjSt11align_val_tRKSt9nothrow_t %p", p);
     DO_HOOK_ACQUIRE(p, size);
@@ -213,7 +210,6 @@ DEFINE_HOOK_FUN(void*, _ZnwjSt11align_val_tRKSt9nothrow_t, size_t size,
 }
 
 DEFINE_HOOK_FUN(void*, _ZnwjRKSt9nothrow_t, size_t size, std::nothrow_t const& nothrow) {
-//    void * p = ORIGINAL_FUNC_NAME(_ZnwjRKSt9nothrow_t)(size, nothrow);
     CALL_ORIGIN_FUNC_RET(void*, p, _ZnwjRKSt9nothrow_t, size, nothrow);
     LOGI(TAG, "+ _ZnwjRKSt9nothrow_t %p", p);
     DO_HOOK_ACQUIRE(p, size);
@@ -221,7 +217,6 @@ DEFINE_HOOK_FUN(void*, _ZnwjRKSt9nothrow_t, size_t size, std::nothrow_t const& n
 }
 
 DEFINE_HOOK_FUN(void*, _Znaj, size_t size) {
-//    void * p = ORIGINAL_FUNC_NAME(_Znaj)(size);
     CALL_ORIGIN_FUNC_RET(void*, p, _Znaj, size);
     LOGI(TAG, "+ _Znaj %p", p);
     DO_HOOK_ACQUIRE(p, size);
@@ -229,7 +224,6 @@ DEFINE_HOOK_FUN(void*, _Znaj, size_t size) {
 }
 
 DEFINE_HOOK_FUN(void*, _ZnajSt11align_val_t, size_t size, std::align_val_t align_val) {
-//    void * p = ORIGINAL_FUNC_NAME(_ZnajSt11align_val_t)(size, align_val);
     CALL_ORIGIN_FUNC_RET(void*, p, _ZnajSt11align_val_t, size, align_val);
     LOGI(TAG, "+ _ZnajSt11align_val_t %p", p);
     DO_HOOK_ACQUIRE(p, size);
@@ -238,7 +232,6 @@ DEFINE_HOOK_FUN(void*, _ZnajSt11align_val_t, size_t size, std::align_val_t align
 
 DEFINE_HOOK_FUN(void*, _ZnajSt11align_val_tRKSt9nothrow_t, size_t size,
                 std::align_val_t align_val, std::nothrow_t const& nothrow) {
-//    void * p = ORIGINAL_FUNC_NAME(_ZnajSt11align_val_tRKSt9nothrow_t)(size, align_val, nothrow);
     CALL_ORIGIN_FUNC_RET(void*, p, _ZnajSt11align_val_tRKSt9nothrow_t, size, align_val, nothrow);
     LOGI(TAG, "+ _ZnajSt11align_val_tRKSt9nothrow_t %p", p);
     DO_HOOK_ACQUIRE(p, size);
@@ -246,7 +239,6 @@ DEFINE_HOOK_FUN(void*, _ZnajSt11align_val_tRKSt9nothrow_t, size_t size,
 }
 
 DEFINE_HOOK_FUN(void*, _ZnajRKSt9nothrow_t, size_t size, std::nothrow_t const& nothrow) {
-//    void * p = ORIGINAL_FUNC_NAME(_ZnajRKSt9nothrow_t)(size, nothrow);
     CALL_ORIGIN_FUNC_RET(void*, p, _ZnajRKSt9nothrow_t, size, nothrow);
     LOGI(TAG, "+ _ZnajRKSt9nothrow_t %p", p);
     DO_HOOK_ACQUIRE(p, size);
@@ -256,7 +248,6 @@ DEFINE_HOOK_FUN(void*, _ZnajRKSt9nothrow_t, size_t size, std::nothrow_t const& n
 DEFINE_HOOK_FUN(void, _ZdaPvj, void* ptr, size_t size) {
     LOGI(TAG, "- _ZdaPvj %p", ptr);
     DO_HOOK_RELEASE(ptr);
-//    ORIGINAL_FUNC_NAME(_ZdaPvj)(ptr, size);
     CALL_ORIGIN_FUNC_VOID(_ZdaPvj, ptr, size);
 }
 
@@ -264,14 +255,12 @@ DEFINE_HOOK_FUN(void, _ZdaPvjSt11align_val_t, void* ptr, size_t size,
                 std::align_val_t align_val) {
     LOGI(TAG, "- _ZdaPvjSt11align_val_t %p", ptr);
     DO_HOOK_RELEASE(ptr);
-//    ORIGINAL_FUNC_NAME(_ZdaPvjSt11align_val_t)(ptr, size, align_val);
     CALL_ORIGIN_FUNC_VOID(_ZdaPvjSt11align_val_t, ptr, size, align_val);
 }
 
 DEFINE_HOOK_FUN(void, _ZdlPvj, void* ptr, size_t size) {
     LOGI(TAG, "- _ZdlPvj %p", ptr);
     DO_HOOK_RELEASE(ptr);
-//    ORIGINAL_FUNC_NAME(_ZdlPvj)(ptr, size);
     CALL_ORIGIN_FUNC_VOID(_ZdlPvj, ptr, size);
 }
 
@@ -279,7 +268,6 @@ DEFINE_HOOK_FUN(void, _ZdlPvjSt11align_val_t, void* ptr, size_t size,
                 std::align_val_t align_val) {
     LOGI(TAG, "- _ZdlPvjSt11align_val_t %p", ptr);
     DO_HOOK_RELEASE(ptr);
-//    ORIGINAL_FUNC_NAME(_ZdlPvjSt11align_val_t)(ptr, size, align_val);
     CALL_ORIGIN_FUNC_VOID(_ZdlPvjSt11align_val_t, ptr, size, align_val);
 }
 
