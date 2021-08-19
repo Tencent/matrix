@@ -13,6 +13,10 @@
 extern "C" {
 #endif
 
+extern void xhook_block_refresh();
+
+extern void xhook_unblock_refresh();
+
 extern int xhook_grouped_register(int group_id, const char *pathname_regex_str, const char *symbol,
                                   void *new_func, void **old_func) XHOOK_EXPORT;
 

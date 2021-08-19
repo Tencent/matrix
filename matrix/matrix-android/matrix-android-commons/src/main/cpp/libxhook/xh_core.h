@@ -28,6 +28,10 @@
 extern "C" {
 #endif
 
+void xh_core_block_refresh();
+
+void xh_core_unblock_refresh();
+
 int xh_core_register(const char *pathname_regex_str, const char *symbol,
                      void *new_func, void **old_func);
 
