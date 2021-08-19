@@ -32,5 +32,10 @@
 
 #define NELEM(...) ((sizeof(__VA_ARGS__)) / (sizeof(__VA_ARGS__[0])))
 
+#define HOOK_CHECK(assertion)                              \
+  if (__builtin_expect(!(assertion), false)) {             \
+    abort();                                               \
+  }
+
 
 #endif //LIBMATRIX_JNI_MACROS_H

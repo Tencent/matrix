@@ -28,46 +28,47 @@
 #include "unwindstack/Unwinder.h"
 #include "Utils.h"
 #include "common/tree/splay_map.h"
+#include "MemoryBufferQueue.h"
 
 #define TAG "Matrix.MemoryHook.Container"
 
 #define USE_MEMORY_MESSAGE_QUEUE true
 #define USE_SPLAY_MAP_SAVE_STACK true
+#define USE_STACK_HASH_NO_COLLISION true
 
 /* For testing */
-#define USE_FAKE_BACKTRACE_DATA false
-
-#define MEMHOOK_BACKTRACE_MAX_FRAMES MAX_FRAME_SHORT
+#define USE_FAKE_BACKTRACE_DATA true
 
 struct ptr_meta_t {
-    void     *ptr;
-    size_t   size;
-    void     *caller;
+    void *ptr;
+    size_t size;
+    void *caller;
     uint64_t stack_hash;
-    bool     is_mmap;
+#if USE_STACK_HASH_NO_COLLISION == true
+    void *stack_idx;
+#endif
+    bool is_mmap;
 };
 
 struct caller_meta_t {
-    size_t                 total_size;
+    size_t total_size;
     std::set<const void *> pointers;
 };
-
-typedef wechat_backtrace::BacktraceFixed<MEMHOOK_BACKTRACE_MAX_FRAMES> MemoryHookBacktrace;
 
 struct stack_meta_t {
     /**
      * size 在分配释放阶段仅起引用计数作用, 因为在 dump 时会重新以 ptr_meta 的 size 进行统计
      */
-    size_t                              size;
-    void                                *caller;
-    MemoryHookBacktrace                 backtrace;
+    size_t size;
+    uintptr_t caller;
+    matrix::memory_backtrace_t backtrace;
+#if USE_STACK_HASH_NO_COLLISION == true
+    void *ext;
+#endif
 };
 
 typedef splay_map<const void *, ptr_meta_t> memory_map_t;
 typedef splay_map<uint64_t, stack_meta_t> stack_map_t;
-
-static const unsigned int MAX_PTR_SLOT = 1 << 8;
-static const unsigned int PTR_MASK = MAX_PTR_SLOT - 1;
 
 #if USE_MEMORY_MESSAGE_QUEUE == false
 
@@ -256,16 +257,16 @@ class memory_meta_container {
 
     typedef struct {
         memory_map_t container = memory_map_t(10240);
-        std::mutex                         mutex;
+        std::mutex mutex;
     } ptr_meta_container_wrapper_t;
 
     typedef struct {
 #if USE_SPLAY_MAP_SAVE_STACK == true
-        stack_map_t container  = stack_map_t(1024);
+        stack_map_t container = stack_map_t(1024);
 #else
         std::map<uint64_t, stack_meta_t> container;
 #endif
-        std::mutex                       mutex;
+        std::mutex mutex;
     } stack_container_wrapper_t;
 
 #define TARGET_PTR_CONTAINER_LOCKED(target, key) \
@@ -292,11 +293,67 @@ public:
         }
     }
 
-    inline void insert(const void *__ptr,
-                       uint64_t __stack_hash,
-                       std::function<void(ptr_meta_t *, stack_meta_t *)> __callback) {
+    inline bool
+    stacktrace_compare_64(matrix::memory_backtrace_t &a, matrix::memory_backtrace_t &b) {
+        if (a.frame_size != b.frame_size) {
+            return false;
+        }
+
+        HOOK_CHECK(MEMHOOK_BACKTRACE_MAX_FRAMES % 4 == 0)
+
+        uint64_t *a_frames_ptr = reinterpret_cast<uint64_t *>(&a.frames);
+        uint64_t *b_frames_ptr = reinterpret_cast<uint64_t *>(&b.frames);
+        bool same = true;
+        for (size_t i = 0; i < a.frame_size; i += 4) {
+            uint64_t a1 = a_frames_ptr[i];
+            uint64_t a2 = a_frames_ptr[i + 1];
+            uint64_t a3 = a_frames_ptr[i + 2];
+            uint64_t a4 = a_frames_ptr[i + 3];
+
+            uint64_t b1 = b_frames_ptr[i];
+            uint64_t b2 = b_frames_ptr[i + 1];
+            uint64_t b3 = b_frames_ptr[i + 2];
+            uint64_t b4 = b_frames_ptr[i + 3];
+
+            if (a1 == b1 && a2 == b2 && a3 == b3 && a4 == b4) {
+                continue;
+            } else {
+                same = false;
+                break;
+            }
+        }
+
+        return same;
+    }
+
+    inline bool
+    stacktrace_compare_common(matrix::memory_backtrace_t &a, matrix::memory_backtrace_t &b) {
+        if (a.frame_size != b.frame_size) {
+            return false;
+        }
+
+        bool same = true;
+        for (size_t i = 0; i < a.frame_size; i++) {
+            if (a.frames[i].pc == b.frames[i].pc) {
+                continue;
+            } else {
+                same = false;
+                break;
+            }
+        }
+
+        return same;
+    }
+
+    inline void insert(
+            const void *__ptr,
+            uint64_t __stack_hash,
+#if USE_SPLAY_MAP_SAVE_STACK == true
+            matrix::allocation_message_t *allocation_message,
+#endif
+            std::function<void(ptr_meta_t *, stack_meta_t *)> __callback) {
         TARGET_PTR_CONTAINER_LOCKED(ptr_meta_container, __ptr);
-        auto ptr_meta = ptr_meta_container->container.insert(__ptr, { 0 });
+        auto ptr_meta = ptr_meta_container->container.insert(__ptr, {0});
 
         if (UNLIKELY(ptr_meta == nullptr)) {
             return;
@@ -310,8 +367,37 @@ public:
 #if USE_SPLAY_MAP_SAVE_STACK == true
             if (LIKELY(stack_meta_container->container.exist(__stack_hash))) {
                 stack_meta = &stack_meta_container->container.find();
+#if USE_STACK_HASH_NO_COLLISION == true
+                bool same = false;
+                stack_meta_t *target;
+                stack_meta_t *target_ext = stack_meta;
+                while (target_ext) {
+                    if (allocation_message->caller == target_ext->caller) {
+                        same = stacktrace_compare_common(allocation_message->backtrace,
+                                                         target_ext->backtrace);
+                    }
+                    target = target_ext;
+                    if (same) break;
+                    target_ext = static_cast<stack_meta_t *>(target->ext);
+                }
+
+                if (UNLIKELY(!same)) {
+                    if (stack_meta->size == 0 && stack_meta->caller == 0 &&
+                        stack_meta->backtrace.frame_size == 0) {
+                        target = stack_meta;    // Reuse first stack_meta.
+                    } else {
+                        target->ext = malloc(sizeof(stack_meta_t));
+//                        *static_cast<stack_meta_t *>(target->ext) = {0};
+                        memset(target->ext, 0, sizeof(stack_meta_t));
+                        target = static_cast<stack_meta_t *>(target->ext);
+                    }
+                }
+
+                ptr_meta->stack_idx = target;
+#endif
             } else {
                 stack_meta = stack_meta_container->container.insert(__stack_hash, {0});
+                ptr_meta->stack_idx = stack_meta;
             }
 #else
             auto it = stack_meta_container->container.find(__stack_hash);
@@ -351,12 +437,56 @@ public:
             TARGET_STACK_CONTAINER_LOCKED(stack_meta_container, ptr_meta.stack_hash);
 #if USE_SPLAY_MAP_SAVE_STACK == true
             if (LIKELY(stack_meta_container->container.exist(ptr_meta.stack_hash))) {
+#if USE_STACK_HASH_NO_COLLISION == true
+                auto &top_stack_meta = stack_meta_container->container.find();
+                stack_meta_t *stack_meta = static_cast<stack_meta_t *>(ptr_meta.stack_idx);
+                if (stack_meta->size > ptr_meta.size) { // 减去同堆栈的 size
+                    stack_meta->size -= ptr_meta.size;
+                } else { // 删除 size 为 0 的堆栈
+                    if (stack_meta == &top_stack_meta) {
+                        if (!top_stack_meta.ext) {
+                            stack_meta_container->container.remove(ptr_meta.stack_hash);
+                        } else {
+                            void *ext = top_stack_meta.ext;
+                            top_stack_meta = {
+                                    .size = 0,
+                                    .caller = 0,
+                                    .backtrace = {0},
+                                    .ext = ext
+                            };
+                        }
+                    } else {
+                        stack_meta_t *prev = &top_stack_meta;
+                        stack_meta_t *ext = static_cast<stack_meta_t *>(prev->ext);
+                        HOOK_CHECK(prev)
+                        if (!prev->ext) {
+
+                        }
+                        HOOK_CHECK(prev->ext)
+                        while (ext) {
+                            if (ext == stack_meta) {
+                                break;
+                            }
+                            prev = ext;
+                            ext = static_cast<stack_meta_t *>(prev->ext);
+                        }
+
+                        HOOK_CHECK(ext)
+
+                        if (ext) {
+                            prev->ext = ext->ext;
+                            free(ext);
+                        }
+                    }
+                }
+#else
                 auto &stack_meta = stack_meta_container->container.find();
                 if (stack_meta.size > ptr_meta.size) { // 减去同堆栈的 size
                     stack_meta.size -= ptr_meta.size;
                 } else { // 删除 size 为 0 的堆栈
                     stack_meta_container->container.remove(ptr_meta.stack_hash);
                 }
+#endif
             }
 #else
             auto it = stack_meta_container->container.find(ptr_meta.stack_hash);
@@ -382,13 +512,17 @@ public:
     void for_each(std::function<void(const void *, ptr_meta_t *, stack_meta_t *)> __callback) {
         for (const auto cw : ptr_meta_containers) {
             std::lock_guard<std::mutex> container_lock(cw->mutex);
-            cw->container.enumerate([&](const void * ptr, ptr_meta_t &ptr_meta) {
+            cw->container.enumerate([&](const void *ptr, ptr_meta_t &ptr_meta) {
                 if (ptr_meta.stack_hash) {
                     TARGET_STACK_CONTAINER_LOCKED(stack_meta_container, ptr_meta.stack_hash);
                     stack_meta_t *stack_meta = nullptr;
 #if USE_SPLAY_MAP_SAVE_STACK == true
-                    if (stack_meta_container->container.exist(ptr_meta.stack_hash)) {
+                    if (LIKELY(stack_meta_container->container.exist(ptr_meta.stack_hash))) {
+#if USE_STACK_HASH_NO_COLLISION == true
+                        stack_meta = static_cast<stack_meta_t *>(ptr_meta.stack_idx);
+#else
                         stack_meta = &stack_meta_container->container.find();
+#endif
                     }
 #else
                     auto it = stack_meta_container->container.find(ptr_meta.stack_hash);
@@ -423,12 +557,12 @@ private:
     }
 
     std::vector<ptr_meta_container_wrapper_t *> ptr_meta_containers;
-    std::vector<stack_container_wrapper_t *>    stack_meta_containers;
+    std::vector<stack_container_wrapper_t *> stack_meta_containers;
 
-    static const unsigned int MAX_PTR_META_SLOT   = 1 << 0;
-    static const unsigned int PTR_META_MASK       = MAX_PTR_META_SLOT - 1;
+    static const unsigned int MAX_PTR_META_SLOT = 1 << 0;
+    static const unsigned int PTR_META_MASK = MAX_PTR_META_SLOT - 1;
     static const unsigned int MAX_STACK_META_SLOT = 1 << 0;
-    static const unsigned int STACK_META_MASK     = MAX_STACK_META_SLOT - 1;
+    static const unsigned int STACK_META_MASK = MAX_STACK_META_SLOT - 1;
 };
 
 #endif

@@ -34,21 +34,21 @@
 #include <cJSON.h>
 #include <Log.h>
 #include "MemoryBufferQueue.h"
+#include "MemoryHookMetas.h"
 #include "common/Macros.h"
 
-#define TEST_LOG_WARN(fmt, ...) __android_log_print(ANDROID_LOG_WARN,  "TestHook", fmt, ##__VA_ARGS__)
+#define TEST_LOG_WARN(fmt, ...) //__android_log_print(ANDROID_LOG_WARN,  "TestHook", fmt, ##__VA_ARGS__)
 
 namespace matrix {
 
     std::atomic<size_t> BufferQueue::g_queue_realloc_memory_1_counter = 0;
     std::atomic<size_t> BufferQueue::g_queue_realloc_memory_2_counter = 0;
-    std::atomic<size_t> BufferQueue::g_queue_realloc_reason_1 = 0;
-    std::atomic<size_t> BufferQueue::g_queue_realloc_reason_2 = 0;
+    std::atomic<size_t> BufferQueue::g_queue_realloc_reason_1_counter = 0;
+    std::atomic<size_t> BufferQueue::g_queue_realloc_reason_2_counter = 0;
     std::atomic<size_t> BufferQueue::g_queue_realloc_failure_counter = 0;
     std::atomic<size_t> BufferQueue::g_queue_realloc_over_limit_counter = 0;
 
-    // ---------- BufferManagement ----------
-    BufferManagement::BufferManagement(memory_meta_container * memory_meta_container) {
+    BufferManagement::BufferManagement(memory_meta_container *memory_meta_container) {
         containers_.reserve(MAX_PTR_SLOT);
         for (int i = 0; i < MAX_PTR_SLOT; ++i) {
             auto container = new BufferQueueContainer();
@@ -68,19 +68,20 @@ namespace matrix {
 
     [[noreturn]] void BufferManagement::process_routine(BufferManagement *this_) {
         while (true) {
-//        TEST_LOG_WARN("Process routine outside ... this_->containers_ %zu", this_->containers_.size());
+            TEST_LOG_WARN("Process routine outside ... this_->containers_ %zu",
+                          this_->containers_.size());
             if (!this_->queue_swapped_) this_->queue_swapped_ = new BufferQueue(SIZE_AUGMENT);
 
             size_t busy_queue = 0;
             for (auto container : this_->containers_) {
-//            TEST_LOG_WARN("Process routine ... ");
+                TEST_LOG_WARN("Process routine ... ");
                 BufferQueue *swapped = nullptr;
                 {
-                    std::lock_guard<std::mutex> lock(container->mutex);
-                    if (container->queue && !container->queue->empty()) {
-//                    TEST_LOG_WARN("Swap queue ... ");
-                        swapped = container->queue;
-                        container->queue = this_->queue_swapped_;
+                    std::lock_guard<std::mutex> lock(container->mutex_);
+                    if (container->queue_ && !container->queue_->empty()) {
+                        TEST_LOG_WARN("Swap queue ... ");
+                        swapped = container->queue_;
+                        container->queue_ = this_->queue_swapped_;
                     }
                 }
 
@@ -89,42 +90,48 @@ namespace matrix {
                 }
 
                 if (swapped) {
-//                TEST_LOG_WARN("Swapped ... ");
-                    swapped->process([&](message_t *message, allocation_message_t *allocation_message) {
-                        if (message->type == message_type_allocation ||
-                            message->type == message_type_mmap) {
-                            if (UNLIKELY(allocation_message == nullptr)) return;
-                            uint64_t stack_hash = 0;
-                            if (allocation_message->backtrace.frame_size != 0) {
-                                stack_hash = hash_frames(allocation_message->backtrace.frames,
-                                                         allocation_message->backtrace.frame_size);
-                            }
-                            this_->memory_meta_container_->insert(
-                                    reinterpret_cast<const void *>(allocation_message->ptr),
-                                    stack_hash,
-                                    [&](ptr_meta_t *ptr_meta, stack_meta_t *stack_meta) {
-                                        ptr_meta->ptr = reinterpret_cast<void *>(allocation_message->ptr);
-                                        ptr_meta->size = allocation_message->size;
-                                        ptr_meta->caller = reinterpret_cast<void *>(allocation_message->caller);
-                                        ptr_meta->is_mmap = message->type == message_type_mmap;
+                    TEST_LOG_WARN("Swapped ... ");
+                    swapped->process(
+                            [&](message_t *message, allocation_message_t *allocation_message) {
+                                if (message->type == message_type_allocation ||
+                                    message->type == message_type_mmap) {
+                                    if (UNLIKELY(allocation_message == nullptr)) return;
+                                    uint64_t stack_hash = 0;
+                                    if (allocation_message->backtrace.frame_size != 0) {
+                                        stack_hash = hash_frames(
+                                                allocation_message->backtrace.frames,
+                                                allocation_message->backtrace.frame_size);
+                                    }
+                                    this_->memory_meta_container_->insert(
+                                            reinterpret_cast<const void *>(allocation_message->ptr),
+                                            stack_hash,
+#if USE_SPLAY_MAP_SAVE_STACK == true
+                                            allocation_message,
+#endif
+                                            [&](ptr_meta_t *ptr_meta, stack_meta_t *stack_meta) {
+                                                ptr_meta->ptr = reinterpret_cast<void *>(allocation_message->ptr);
+                                                ptr_meta->size = allocation_message->size;
+                                                ptr_meta->caller = reinterpret_cast<void *>(allocation_message->caller);
+                                                ptr_meta->is_mmap =
+                                                        message->type == message_type_mmap;
 
-                                        if (UNLIKELY(!stack_meta)) {
-                                            return;
-                                        }
+                                                if (UNLIKELY(!stack_meta)) {
+                                                    return;
+                                                }
 
-                                        stack_meta->size += allocation_message->size;
-                                        if (stack_meta->backtrace.frame_size == 0 &&
-                                            allocation_message->backtrace.frame_size != 0) {
-                                            stack_meta->backtrace = allocation_message->backtrace;
-                                            stack_meta->caller = reinterpret_cast<void *>(allocation_message->caller);
-                                        }
-                                    });
-                        } else if (message->type == message_type_deletion ||
-                                   message->type == message_type_munmap) {
-                            this_->memory_meta_container_->erase(
-                                    reinterpret_cast<const void *>(message->ptr));
-                        }
-                    });
+                                                stack_meta->size += allocation_message->size;
+                                                if (stack_meta->backtrace.frame_size == 0 &&
+                                                    allocation_message->backtrace.frame_size != 0) {
+                                                    stack_meta->backtrace = allocation_message->backtrace;
+                                                    stack_meta->caller = allocation_message->caller;
+                                                }
+                                            });
+                                } else if (message->type == message_type_deletion ||
+                                           message->type == message_type_munmap) {
+                                    this_->memory_meta_container_->erase(
+                                            reinterpret_cast<const void *>(message->ptr));
+                                }
+                            });
 
                     swapped->reset();
                     this_->queue_swapped_ = swapped;
@@ -150,7 +157,9 @@ namespace matrix {
     void BufferManagement::start_process() {
         if (processing_) return;
         processing_ = true;
-        pthread_create(&thread_, nullptr, reinterpret_cast<void *(*)(void *)>(&BufferManagement::process_routine), this);
+        pthread_create(&thread_, nullptr,
+                       reinterpret_cast<void *(*)(void *)>(&BufferManagement::process_routine),
+                       this);
         pthread_detach(thread_);
     }
 }

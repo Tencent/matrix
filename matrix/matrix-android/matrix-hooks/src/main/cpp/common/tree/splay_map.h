@@ -68,7 +68,13 @@ private:
 
 #define get_node_key(ptr) k_buff[ptr].key
 
+#ifdef ENABLE_SPLAY_CHECK
 #define check_overflow(ptr) SPLAY_CHECK(ptr < t_info->b_size)
+#define check(assertion) SPLAY_CHECK(assertion)
+#else
+#define check_overflow(ptr)
+#define check(assertion)
+#endif
 
     bool splay(TKey key, node_ptr &root) {
         /* Simple top down splay, not requiring i to be in the tree t.  */
@@ -205,7 +211,7 @@ private:
                 t_info = (tree_info *)new_buff;
                 k_buff = (node *)((char *)new_buff + sizeof(tree_info));
             } else {
-                SPLAY_CHECK(false);
+                check(false);
                 return false;
             }
 
@@ -218,7 +224,7 @@ private:
                 v_buff = (TVal *)new_buff;
                 return true;
             } else {
-                SPLAY_CHECK(false);
+                check(false);
                 return false;
             }
         } else {
@@ -232,7 +238,7 @@ private:
                 *t_info = t_empty;
                 k_buff = (node *)((char *)new_buff + sizeof(tree_info));
             } else {
-                SPLAY_CHECK(false);
+                check(false);
                 return false;
             }
 
@@ -245,7 +251,7 @@ private:
                 v_buff = (TVal *)new_buff;
                 return true;
             } else {
-                SPLAY_CHECK(false);
+                check(false);
                 return false;
             }
         }

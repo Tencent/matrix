@@ -128,30 +128,32 @@ static inline void on_acquire_memory(
     BufferQueueContainer *container = m_memory_messages_containers_.containers_[memory_ptr_hash(
             (uintptr_t) ptr)];
     {
-        if (!container->mutex.try_lock()) {
+        if (!container->mutex_.try_lock()) {
             m_locker_collision_counter.fetch_add(1, std::memory_order_relaxed);
-            container->mutex.lock();
+            container->mutex_.lock();
         }
 
-        if (!container->queue) {
-            container->queue = new BufferQueue(SIZE_AUGMENT);
+        if (!container->queue_) {
+            container->queue_ = new BufferQueue(SIZE_AUGMENT);
         }
-        auto message = container->queue->enqueue_allocation_message(is_mmap);
-        message->ptr = reinterpret_cast<uintptr_t>(ptr);
-        message->size = byte_count;
-        message->caller = reinterpret_cast<uintptr_t>(caller);
-        if (LIKELY(is_stacktrace_enabled && should_do_unwind(byte_count))) {
-            size_t frame_size = 0;
-            do_unwind(message->backtrace.frames, MEMHOOK_BACKTRACE_MAX_FRAMES,
-                      frame_size);
-            message->backtrace.frame_size = frame_size;
+        auto message = container->queue_->enqueue_allocation_message(is_mmap);
+        if (LIKELY(message)) {
+            message->ptr = reinterpret_cast<uintptr_t>(ptr);
+            message->size = byte_count;
+            message->caller = reinterpret_cast<uintptr_t>(caller);
+            if (LIKELY(is_stacktrace_enabled && should_do_unwind(byte_count))) {
+                size_t frame_size = 0;
+                do_unwind(message->backtrace.frames, MEMHOOK_BACKTRACE_MAX_FRAMES,
+                          frame_size);
+                message->backtrace.frame_size = frame_size;
+            }
         }
 
-        container->mutex.unlock();
+        container->mutex_.unlock();
     }
 #else
-    MemoryHookBacktrace backtrace;
-    uint64_t            stack_hash = 0;
+    matrix::memory_backtrace_t  backtrace;
+    uint64_t                    stack_hash = 0;
     if (LIKELY(is_stacktrace_enabled && should_do_unwind(byte_count))) {
         size_t frame_size = 0;
         do_unwind(backtrace.frames, MEMHOOK_BACKTRACE_MAX_FRAMES, frame_size);
@@ -197,16 +199,16 @@ static inline void on_release_memory(void *ptr, bool is_mmap) {
     BufferQueueContainer *container = m_memory_messages_containers_.containers_[memory_ptr_hash(
             (uintptr_t) ptr)];
 
-    if (!container->mutex.try_lock()) {
+    if (!container->mutex_.try_lock()) {
         m_locker_collision_counter.fetch_add(1, std::memory_order_relaxed);
-        container->mutex.lock();
+        container->mutex_.lock();
     }
 
-    if (!container->queue) {
-        container->queue = new BufferQueue(SIZE_AUGMENT);
+    if (!container->queue_) {
+        container->queue_ = new BufferQueue(SIZE_AUGMENT);
     }
-    container->queue->enqueue_deletion_message(reinterpret_cast<uintptr_t>(ptr), is_mmap);
-    container->mutex.unlock();
+    container->queue_->enqueue_deletion_message(reinterpret_cast<uintptr_t>(ptr), is_mmap);
+    container->mutex_.unlock();
 #else
     m_memory_meta_container.erase(ptr);
 #endif
@@ -265,7 +267,11 @@ static inline size_t collect_metas(std::map<void *, caller_meta_t> &heap_caller_
                 }
 
                 if (stack_meta) {
+#if USE_STACK_HASH_NO_COLLISION == true
+                    auto &dest_stack_meta = dest_stack_metas[(uint64_t)stack_meta];
+#else
                     auto &dest_stack_meta = dest_stack_metas[meta->stack_hash];
+#endif
                     dest_stack_meta.backtrace = stack_meta->backtrace;
                     // 没错, 这里的确使用 ptr_meta 的 size, 因为是在遍历 ptr_meta, 因此原来 stack_meta 的 size 仅起引用计数作用
                     dest_stack_meta.size += meta->size;
@@ -382,8 +388,8 @@ static inline void dump_callers(FILE *log_file,
     flogger0(log_file,
              "| maps realloc count = %zu, queue reallloc reason 1 = %zu. reason 2 = %zu.\n",
              buffer_source_memory::g_realloc_counter.load(std::memory_order_relaxed),
-             BufferQueue::g_queue_realloc_reason_1.load(std::memory_order_relaxed),
-             BufferQueue::g_queue_realloc_reason_2.load(std::memory_order_relaxed));
+             BufferQueue::g_queue_realloc_reason_1_counter.load(std::memory_order_relaxed),
+             BufferQueue::g_queue_realloc_reason_2_counter.load(std::memory_order_relaxed));
     flogger0(log_file,
              "| maps realloc size = %zu, queue 1 realloc size = %zu, queue 2 realloc size = %zu.\n",
              buffer_source_memory::g_realloc_memory_counter.load(std::memory_order_relaxed),
@@ -424,7 +430,7 @@ static inline void dump_stacks(FILE *log_file,
         auto hash = stack_meta_it.first;
         auto size = stack_meta_it.second.size;
         auto backtrace = stack_meta_it.second.backtrace;
-        auto caller = stack_meta_it.second.caller;
+        void* caller = reinterpret_cast<void *>(stack_meta_it.second.caller);
 
         std::string caller_so_name;
         std::stringstream full_stack_builder;
