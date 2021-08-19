@@ -161,6 +161,7 @@ Java_com_tencent_matrix_test_memoryhook_MemoryHookTestNative_nativePrepareData(J
 
     vector<thread*> threads;
 
+    // Unzip and push data/memory-record.1.zip to this folder.
     const char * dir_path = "/data/local/tmp/simulate-malloc/memory-record.1/";
     DIR *dr;
     struct dirent *en;

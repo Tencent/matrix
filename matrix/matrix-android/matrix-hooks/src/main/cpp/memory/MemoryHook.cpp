@@ -649,7 +649,9 @@ void dump(bool enable_mmap, const char *log_path, const char *json_path) {
 
     dump_impl(log_file, json_file, enable_mmap);
 
-//    DUMP_RECORD("/sdcard/Android/data/com.tencent.mm/memory-record.dump");
+#ifdef RECORD_MEMORY_OP
+    DUMP_RECORD("/sdcard/Android/data/com.tencent.mm/memory-record.dump");
+#endif
 
     if (log_file) {
         fflush(log_file);
