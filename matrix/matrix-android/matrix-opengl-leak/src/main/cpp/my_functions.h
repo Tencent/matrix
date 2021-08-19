@@ -68,18 +68,15 @@ JNIEnv *GET_ENV() {
     JNIEnv *env;
     int ret = m_java_vm->GetEnv(reinterpret_cast<void **>(&env), JNI_VERSION_1_6);
     if (ret != JNI_OK) {
-        __android_log_print(ANDROID_LOG_ERROR, "Cc1over-test", "ret != JNI_OK");
         pthread_once(&g_onceInitTls, []() {
             pthread_key_create(&g_tlsJavaEnv, [](void *d) {
                 if (d && m_java_vm)
                     m_java_vm->DetachCurrentThread();
-                __android_log_print(ANDROID_LOG_ERROR, "Cc1over-test", "detach call");
             });
         });
 
         if (m_java_vm->AttachCurrentThread(&env, nullptr) == JNI_OK) {
             pthread_setspecific(g_tlsJavaEnv, reinterpret_cast<const void *>(1));
-            __android_log_print(ANDROID_LOG_ERROR, "Cc1over-test", "pthread_setspecific call");
         } else {
             env = nullptr;
         }
