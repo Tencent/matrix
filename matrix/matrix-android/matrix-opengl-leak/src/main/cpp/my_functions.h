@@ -44,6 +44,9 @@ static jmethodID method_onGetError;
 
 const size_t BUF_SIZE = 1024;
 
+static pthread_once_t g_onceInitTls = PTHREAD_ONCE_INIT;
+static pthread_key_t g_tlsJavaEnv;
+
 static bool is_stacktrace_enabled = true;
 void enable_stacktrace(bool enable) {
     is_stacktrace_enabled = enable;
@@ -62,14 +65,22 @@ void thread_id_to_string(thread::id thread_id, char *&result) {
 }
 
 JNIEnv *GET_ENV() {
-    JNIEnv *env = NULL;
-    if (m_java_vm->GetEnv((void **) &env, JNI_VERSION_1_6) != JNI_OK) {
-        if (m_java_vm->AttachCurrentThread(&env, NULL) == JNI_OK) {
+    JNIEnv *env;
+    int ret = m_java_vm->GetEnv(reinterpret_cast<void **>(&env), JNI_VERSION_1_6);
+    if (ret != JNI_OK) {
+        pthread_once(&g_onceInitTls, []() {
+            pthread_key_create(&g_tlsJavaEnv, [](void *d) {
+                if (d && m_java_vm)
+                    m_java_vm->DetachCurrentThread();
+            });
+        });
+
+        if (m_java_vm->AttachCurrentThread(&env, nullptr) == JNI_OK) {
+            pthread_setspecific(g_tlsJavaEnv, reinterpret_cast<const void *>(1));
         } else {
-            return nullptr;
+            env = nullptr;
         }
     }
-
     return env;
 }
 
