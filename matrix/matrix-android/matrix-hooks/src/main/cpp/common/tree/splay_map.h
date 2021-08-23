@@ -337,7 +337,6 @@ public:
 
             get_node_lc(root_ptr) = 0;
             t_info->root_ptr = n;
-
             return &get_val(n);
         } else {
             ++t_info->t_size;
@@ -351,7 +350,6 @@ public:
 
             get_node_rc(root_ptr) = 0;
             t_info->root_ptr = n;
-
             return &get_val(n);
         }
     }
@@ -387,6 +385,14 @@ public:
     TVal &find() {
         check_overflow(last_ptr);
         return get_val(last_ptr); }
+
+    uint32_t root_ptr() {
+        return t_info->root_ptr;
+    }
+
+    TVal &get(uint32_t ptr) {
+        return get_val(ptr);
+    }
 
     uint32_t size() { return t_info->t_size; }
 

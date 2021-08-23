@@ -188,6 +188,8 @@ namespace matrix {
         static std::atomic<size_t> g_queue_realloc_reason_2_counter;
         static std::atomic<size_t> g_queue_realloc_failure_counter;
         static std::atomic<size_t> g_queue_realloc_over_limit_counter;
+        static std::atomic<size_t> g_queue_extra_stack_meta_allocated;
+        static std::atomic<size_t> g_queue_extra_stack_meta_kept;
 
     private:
 

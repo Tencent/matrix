@@ -47,6 +47,8 @@ namespace matrix {
     std::atomic<size_t> BufferQueue::g_queue_realloc_reason_2_counter = 0;
     std::atomic<size_t> BufferQueue::g_queue_realloc_failure_counter = 0;
     std::atomic<size_t> BufferQueue::g_queue_realloc_over_limit_counter = 0;
+    std::atomic<size_t> BufferQueue::g_queue_extra_stack_meta_allocated = 0;
+    std::atomic<size_t> BufferQueue::g_queue_extra_stack_meta_kept = 0;
 
     BufferManagement::BufferManagement(memory_meta_container *memory_meta_container) {
         containers_.reserve(MAX_PTR_SLOT);
@@ -95,13 +97,20 @@ namespace matrix {
                             [&](message_t *message, allocation_message_t *allocation_message) {
                                 if (message->type == message_type_allocation ||
                                     message->type == message_type_mmap) {
+
+#if USE_CRITICAL_CHECK == true
+                                    HOOK_CHECK(allocation_message);
+#else
                                     if (UNLIKELY(allocation_message == nullptr)) return;
+#endif
+
                                     uint64_t stack_hash = 0;
                                     if (allocation_message->backtrace.frame_size != 0) {
                                         stack_hash = hash_frames(
                                                 allocation_message->backtrace.frames,
                                                 allocation_message->backtrace.frame_size);
                                     }
+
                                     this_->memory_meta_container_->insert(
                                             reinterpret_cast<const void *>(allocation_message->ptr),
                                             stack_hash,
@@ -111,13 +120,20 @@ namespace matrix {
                                             [&](ptr_meta_t *ptr_meta, stack_meta_t *stack_meta) {
                                                 ptr_meta->ptr = reinterpret_cast<void *>(allocation_message->ptr);
                                                 ptr_meta->size = allocation_message->size;
-                                                ptr_meta->caller = reinterpret_cast<void *>(allocation_message->caller);
-                                                ptr_meta->is_mmap =
+                                                ptr_meta->attr.is_mmap =
                                                         message->type == message_type_mmap;
 
+#if USE_STACK_HASH_NO_COLLISION == true
+                                                if (UNLIKELY(!stack_meta)) {
+                                                    ptr_meta->caller = allocation_message->caller;
+                                                    return;
+                                                }
+#else
+                                                ptr_meta->caller = allocation_message->caller;
                                                 if (UNLIKELY(!stack_meta)) {
                                                     return;
                                                 }
+#endif
 
                                                 stack_meta->size += allocation_message->size;
                                                 if (stack_meta->backtrace.frame_size == 0 &&

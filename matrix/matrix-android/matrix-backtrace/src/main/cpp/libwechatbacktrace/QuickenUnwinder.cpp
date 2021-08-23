@@ -292,7 +292,7 @@ namespace wechat_backtrace {
             // This is a thumb instruction, it could be 2 or 4 bytes.
             uint32_t value;
             uint64_t adjusted_pc = pc - 5;
-            if (!(map_info->flags & PROT_READ || map_info->flags & PROT_EXEC) ||
+            if (!(map_info->flags & PROT_READ) ||
                 adjusted_pc < map_info->start ||
                 (adjusted_pc + sizeof(value)) >= map_info->end ||
                 !process_memory_unsafe_->ReadFully(adjusted_pc, &value, sizeof(value)) ||

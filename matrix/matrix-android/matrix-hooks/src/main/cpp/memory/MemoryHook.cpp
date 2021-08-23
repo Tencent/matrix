@@ -62,7 +62,7 @@ static size_t m_tracing_alloc_size_max = 0;
 
 static size_t m_stacktrace_log_threshold;
 
-#define TEST_LOG_WARN(fmt, ...) __android_log_print(ANDROID_LOG_WARN,  "TestHook", fmt, ##__VA_ARGS__)
+#define TEST_LOG_WARN(fmt, ...) //__android_log_print(ANDROID_LOG_WARN,  "TestHook", fmt, ##__VA_ARGS__)
 
 #if USE_MEMORY_MESSAGE_QUEUE == true
 static BufferManagement m_memory_messages_containers_(&m_memory_meta_container);
@@ -94,17 +94,17 @@ static inline bool should_do_unwind(size_t byte_count) {
             && (m_tracing_alloc_size_max == 0 || byte_count <= m_tracing_alloc_size_max));
 }
 
-static inline void do_unwind(wechat_backtrace::Frame *frames, const size_t max_frames,
-                             size_t &frame_size) {
 #if USE_FAKE_BACKTRACE_DATA == true
-    fake_unwind(frames, max_frames, frame_size);
+#define do_unwind(frames, max_frames, frame_size) fake_unwind(frames, max_frames, frame_size);
 #else
-    ON_RECORD_START(durations);
-    wechat_backtrace::unwind_adapter(frames, max_frames, frame_size);
-    ON_RECORD_END(durations);
-    ON_MEMORY_BACKTRACE((uint64_t) ptr, &backtrace, (uint64_t) durations);
-#endif
+#define do_unwind(frames, max_frames, frame_size) \
+{ \
+    ON_RECORD_START(durations); \
+    wechat_backtrace::unwind_adapter(frames, max_frames, frame_size);   \
+    ON_RECORD_END(durations);   \
+    ON_MEMORY_BACKTRACE((uint64_t) ptr, &backtrace, (uint64_t) durations);  \
 }
+#endif
 
 static std::atomic<size_t> allocate_counter = 0;
 static std::atomic<size_t> release_counter = 0;
@@ -257,14 +257,26 @@ static inline size_t collect_metas(std::map<void *, caller_meta_t> &heap_caller_
             [&](const void *ptr, ptr_meta_t *meta, stack_meta_t *stack_meta) {
 
                 auto &dest_caller_metes =
-                        meta->is_mmap ? mmap_caller_metas : heap_caller_metas;
-                auto &dest_stack_metas = meta->is_mmap ? mmap_stack_metas : heap_stack_metas;
+                        meta->attr.is_mmap ? mmap_caller_metas : heap_caller_metas;
+                auto &dest_stack_metas = meta->attr.is_mmap ? mmap_stack_metas : heap_stack_metas;
 
-                if (meta->caller) {
-                    caller_meta_t &caller_meta = dest_caller_metes[meta->caller];
+                void * caller;
+#if USE_STACK_HASH_NO_COLLISION == true
+                if (stack_meta) {
+                    caller = reinterpret_cast<void *>(stack_meta->caller);
+                } else {
+                    caller = reinterpret_cast<void *>(meta->caller);
+                }
+#else
+                caller = reinterpret_cast<void *>(meta->caller);
+#endif
+                if (caller) {
+                    caller_meta_t &caller_meta = dest_caller_metes[caller];
                     caller_meta.pointers.insert(ptr);
                     caller_meta.total_size += meta->size;
                 }
+
+                CRITICAL_CHECK(!is_stacktrace_enabled || stack_meta);
 
                 if (stack_meta) {
 #if USE_STACK_HASH_NO_COLLISION == true
@@ -287,7 +299,6 @@ static inline size_t collect_metas(std::map<void *, caller_meta_t> &heap_caller_
 
 static inline void dump_callers(FILE *log_file,
                                 cJSON *json_size_arr,
-//                                const std::multimap<void *, ptr_meta_t> &ptr_metas,
                                 std::map<void *, caller_meta_t> &caller_metas) {
 
     if (caller_metas.empty()) {
@@ -314,16 +325,17 @@ static inline void dump_callers(FILE *log_file,
         Dl_info dl_info;
         dladdr(caller, &dl_info);
 
-        if (!dl_info.dli_fname) {
-            continue;
+        const char* fname = "<unknown>";
+        if (dl_info.dli_fname) {
+            fname = dl_info.dli_fname;
         }
-        caller_alloc_size_of_so[dl_info.dli_fname] += caller_meta.total_size;
+        caller_alloc_size_of_so[fname] += caller_meta.total_size;
 
         // 按 size 聚类
         for (auto pointer : caller_meta.pointers) {
             m_memory_meta_container.get(pointer,
-                                        [&same_size_count_of_so, &dl_info](ptr_meta_t &meta) {
-                                            same_size_count_of_so[dl_info.dli_fname][meta.size]++;
+                                        [&same_size_count_of_so, &fname](ptr_meta_t &meta) {
+                                            same_size_count_of_so[fname][meta.size]++;
                                         });
         }
     }
@@ -400,6 +412,10 @@ static inline void dump_callers(FILE *log_file,
     flogger0(log_file, "| realloc failure = %zu, memory over limit failure = %zu.\n",
              BufferQueue::g_queue_realloc_failure_counter.load(std::memory_order_relaxed),
              BufferQueue::g_queue_realloc_over_limit_counter.load(std::memory_order_relaxed));
+    flogger0(log_file, "| hash extra allocated = %zu, kept = %zu, kept size = %zu.\n",
+             BufferQueue::g_queue_extra_stack_meta_allocated.load(std::memory_order_relaxed),
+             BufferQueue::g_queue_extra_stack_meta_kept.load(std::memory_order_relaxed),
+             BufferQueue::g_queue_extra_stack_meta_kept.load(std::memory_order_relaxed) * sizeof(stack_meta_t));
     LOGD(TAG, "---------------------------------------------------\n");
     flogger0(log_file, "---------------------------------------------------\n\n");
 }
@@ -427,7 +443,6 @@ static inline void dump_stacks(FILE *log_file,
     size_t backtrace_counter = 0;
 
     for (auto &stack_meta_it : stack_metas) {
-        auto hash = stack_meta_it.first;
         auto size = stack_meta_it.second.size;
         auto backtrace = stack_meta_it.second.backtrace;
         void* caller = reinterpret_cast<void *>(stack_meta_it.second.caller);
@@ -443,6 +458,8 @@ static inline void dump_stacks(FILE *log_file,
 
         if (caller_info.dli_fname != nullptr) {
             caller_so_name = caller_info.dli_fname;
+        } else {
+            caller_so_name = "<unknown>";
         }
 
         std::string last_so_name; // 上一帧所属 so 名字
