@@ -2,8 +2,6 @@ package com.tencent.matrix.openglleak.statistics;
 
 import android.text.TextUtils;
 
-import com.tencent.matrix.util.MatrixLog;
-
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class OpenGLInfo {
