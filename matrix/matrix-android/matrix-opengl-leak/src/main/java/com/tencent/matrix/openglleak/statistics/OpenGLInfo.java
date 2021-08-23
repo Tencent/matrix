@@ -158,7 +158,6 @@ public class OpenGLInfo {
         synchronized (counter) {
             int count = counter.get();
             if (count == 1) {
-                MatrixLog.i(TAG, "release:" + nativeStackPtr);
                 releaseNative(nativeStackPtr);
             }
 
