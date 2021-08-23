@@ -230,11 +230,11 @@ void on_munmap_memory(void *ptr) {
     on_release_memory(ptr, true);
 }
 
-void memory_hook_on_dlopen(const char *file_name) {
-    LOGD(TAG, "memory_hook_on_dlopen: file %s", file_name);
-    // This line only refresh xhook in matrix-memoryhook library now.
-    xhook_refresh(0);
-}
+//void memory_hook_on_dlopen(const char *file_name) {
+//    LOGD(TAG, "memory_hook_on_dlopen: file %s", file_name);
+//    // This line only refresh xhook in matrix-memoryhook library now.
+//    xhook_refresh(0);
+//}
 
 // -------------------- Dump --------------------
 

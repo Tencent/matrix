@@ -21,7 +21,6 @@
 #include <map>
 #include <memory>
 #include <common/Macros.h>
-//#include "MemoryHookMetas.h"
 #include <Backtrace.h>
 
 
@@ -31,7 +30,7 @@
 #define PROCESS_LESS_NORMAL_INTERVAL 300 * 1000L
 #define PROCESS_IDLE_INTERVAL 800 * 1000L
 
-#define MEMORY_OVER_LIMIT 1024 * 1024 * 200L    // 100M
+#define MEMORY_OVER_LIMIT 1024 * 1024 * 200L    // 200M
 
 #define MEMHOOK_BACKTRACE_MAX_FRAMES MAX_FRAME_SHORT
 
