@@ -115,7 +115,7 @@ void xh_maps_update()
             s_xh_maps_maps_items.items = realloc(s_xh_maps_maps_items.items, sizeof(maps_item_t) * new_map_item_count);
             if (s_xh_maps_maps_items.items == NULL)
             {
-                XH_LOG_ABORT("Fail to expand memory space to store maps items, exp_item_cnt: %u, exp_size: %u",
+                XH_LOG_ABORT("Fail to expand memory space to store maps items, exp_item_cnt: %zu, exp_size: %zu",
                              new_map_item_count, sizeof(maps_item_t) * new_map_item_count);
             }
             memset(s_xh_maps_maps_items.items + curr_map_item_count, 0,
@@ -154,9 +154,9 @@ int xh_maps_query(const void* addr_in, uintptr_t* start_out, uintptr_t* end_out,
     while (left <= right) {
         int mid = ((right - left) >> 1) + left;
         maps_item_t* item = s_xh_maps_maps_items.items + mid;
-        if (addr_in < item->start) {
+        if (addr_in < (const void*) item->start) {
             right = mid - 1;
-        } else if (addr_in >= item->end) {
+        } else if (addr_in >= (const void*) item->end) {
             left = mid;
         } else {
             if (start_out != NULL) *start_out = item->start;
