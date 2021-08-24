@@ -57,7 +57,7 @@ namespace matrix {
         uintptr_t ptr;
         uintptr_t caller;
         size_t size;
-        memory_backtrace_t backtrace{};
+        memory_backtrace_t backtrace{0};
     } allocation_message_t;
 
 #if defined(__aarch64__)
@@ -180,7 +180,7 @@ namespace matrix {
             }
         }
 
-        // stat
+        // Statistic
         static std::atomic<size_t> g_queue_realloc_memory_1_counter;
         static std::atomic<size_t> g_queue_realloc_memory_2_counter;
         static std::atomic<size_t> g_queue_realloc_reason_1_counter;

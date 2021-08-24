@@ -41,9 +41,9 @@
 #define USE_FAKE_BACKTRACE_DATA false
 
 #if USE_CRITICAL_CHECK == true
-#define CRITICAL_CHECK(assertion) HOOK_CHECK(assertion)
+    #define CRITICAL_CHECK(assertion) HOOK_CHECK(assertion)
 #else
-#define CRITICAL_CHECK(assertion)
+    #define CRITICAL_CHECK(assertion)
 #endif
 
 #define TEST_HOOK_LOG_ERR(fmt, ...) //__android_log_print(ANDROID_LOG_ERROR,  "TestHook", fmt, ##__VA_ARGS__)
@@ -313,6 +313,7 @@ public:
         }
     }
 
+    // TODO need test.
     inline bool
     stacktrace_compare_64(matrix::memory_backtrace_t &a, matrix::memory_backtrace_t &b) {
         if (a.frame_size != b.frame_size) {
@@ -374,10 +375,6 @@ public:
             std::function<void(ptr_meta_t *, stack_meta_t *)> __callback) {
         TARGET_PTR_CONTAINER_LOCKED(ptr_meta_container, __ptr);
 
-//#if USE_CRITICAL_CHECK == true
-//        HOOK_CHECK(!ptr_meta_container->container.exist(__ptr));
-//#endif
-
         auto ptr_meta = ptr_meta_container->container.insert(__ptr, {0});
 
         if (UNLIKELY(ptr_meta == nullptr)) {    // Commonly no memory
@@ -393,7 +390,7 @@ public:
             if (LIKELY(stack_meta_container->container.exist(__stack_hash))) {
                 stack_meta = &stack_meta_container->container.find();
                 uint32_t last_ptr = stack_meta_container->container.root_ptr();
-#if USE_STACK_HASH_NO_COLLISION == true
+    #if USE_STACK_HASH_NO_COLLISION == true
                 bool same = false;
 
                 HOOK_CHECK(stack_meta);
@@ -419,10 +416,12 @@ public:
                         is_top = true;
                     } else {
                         target->ext = malloc(sizeof(stack_meta_t));
-                        matrix::BufferQueue::g_queue_extra_stack_meta_allocated.fetch_add(1, std::memory_order_relaxed);
-                        matrix::BufferQueue::g_queue_extra_stack_meta_kept.fetch_add(1, std::memory_order_relaxed);
                         *static_cast<stack_meta_t *>(target->ext) = {0};
                         target = static_cast<stack_meta_t *>(target->ext);
+
+                        // Statistic
+                        matrix::BufferQueue::g_queue_extra_stack_meta_allocated.fetch_add(1, std::memory_order_relaxed);
+                        matrix::BufferQueue::g_queue_extra_stack_meta_kept.fetch_add(1, std::memory_order_relaxed);
                     }
                 }
 
@@ -433,13 +432,13 @@ public:
                     ptr_meta->ext_stack_ptr = reinterpret_cast<uint64_t>(target);
                 }
                 stack_meta = target;
-#endif
+    #endif
             } else {
                 stack_meta = stack_meta_container->container.insert(__stack_hash, {0});
-#if USE_STACK_HASH_NO_COLLISION == true
+    #if USE_STACK_HASH_NO_COLLISION == true
                 ptr_meta->stack_idx = stack_meta_container->container.root_ptr();
                 ptr_meta->attr.is_stack_idx = true;
-#endif
+    #endif
             }
 #else
             auto it = stack_meta_container->container.find(__stack_hash);
@@ -481,7 +480,7 @@ public:
             TARGET_STACK_CONTAINER_LOCKED(stack_meta_container, ptr_meta.stack_hash);
 #if USE_SPLAY_MAP_SAVE_STACK == true
             if (LIKELY(stack_meta_container->container.exist(ptr_meta.stack_hash))) {
-#if USE_STACK_HASH_NO_COLLISION == true
+    #if USE_STACK_HASH_NO_COLLISION == true
                 auto &top_stack_meta = stack_meta_container->container.find();
                 stack_meta_t *stack_meta;
                 if (ptr_meta.attr.is_stack_idx) {
@@ -520,18 +519,20 @@ public:
                         if (ext) {
                             prev->ext = ext->ext;
                             free(ext);
+
+                            // Statistic
                             matrix::BufferQueue::g_queue_extra_stack_meta_kept.fetch_sub(1, std::memory_order_relaxed);
                         }
                     }
                 }
-#else
+    #else
                 auto &stack_meta = stack_meta_container->container.find();
                 if (stack_meta.size > ptr_meta.size) { // 减去同堆栈的 size
                     stack_meta.size -= ptr_meta.size;
                 } else { // 删除 size 为 0 的堆栈
                     stack_meta_container->container.remove(ptr_meta.stack_hash);
                 }
-#endif
+    #endif
             }
 #else
             auto it = stack_meta_container->container.find(ptr_meta.stack_hash);
@@ -563,15 +564,15 @@ public:
                     stack_meta_t *stack_meta = nullptr;
 #if USE_SPLAY_MAP_SAVE_STACK == true
                     if (LIKELY(stack_meta_container->container.exist(ptr_meta.stack_hash))) {
-#if USE_STACK_HASH_NO_COLLISION == true
+    #if USE_STACK_HASH_NO_COLLISION == true
                         if (ptr_meta.attr.is_stack_idx) {
                             stack_meta = &stack_meta_container->container.get(ptr_meta.stack_idx);
                         } else {
                             stack_meta = reinterpret_cast<stack_meta_t *>(ptr_meta.ext_stack_ptr);
                         }
-#else
+    #else
                         stack_meta = &stack_meta_container->container.find();
-#endif
+    #endif
                     }
 #else
                     auto it = stack_meta_container->container.find(ptr_meta.stack_hash);
