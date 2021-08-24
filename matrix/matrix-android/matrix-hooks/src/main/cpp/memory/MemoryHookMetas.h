@@ -313,40 +313,6 @@ public:
         }
     }
 
-    // TODO need test.
-    inline bool
-    stacktrace_compare_64(matrix::memory_backtrace_t &a, matrix::memory_backtrace_t &b) {
-        if (a.frame_size != b.frame_size) {
-            return false;
-        }
-
-        HOOK_CHECK(MEMHOOK_BACKTRACE_MAX_FRAMES % 4 == 0)
-
-        uint64_t *a_frames_ptr = reinterpret_cast<uint64_t *>(&a.frames);
-        uint64_t *b_frames_ptr = reinterpret_cast<uint64_t *>(&b.frames);
-        bool same = true;
-        for (size_t i = 0; i < a.frame_size; i += 4) {
-            uint64_t a1 = a_frames_ptr[i];
-            uint64_t a2 = a_frames_ptr[i + 1];
-            uint64_t a3 = a_frames_ptr[i + 2];
-            uint64_t a4 = a_frames_ptr[i + 3];
-
-            uint64_t b1 = b_frames_ptr[i];
-            uint64_t b2 = b_frames_ptr[i + 1];
-            uint64_t b3 = b_frames_ptr[i + 2];
-            uint64_t b4 = b_frames_ptr[i + 3];
-
-            if (a1 == b1 && a2 == b2 && a3 == b3 && a4 == b4) {
-                continue;
-            } else {
-                same = false;
-                break;
-            }
-        }
-
-        return same;
-    }
-
     inline bool
     stacktrace_compare_common(matrix::memory_backtrace_t &a, matrix::memory_backtrace_t &b) {
         if (a.frame_size != b.frame_size) {

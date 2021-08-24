@@ -230,12 +230,6 @@ void on_munmap_memory(void *ptr) {
     on_release_memory(ptr, true);
 }
 
-//void memory_hook_on_dlopen(const char *file_name) {
-//    LOGD(TAG, "memory_hook_on_dlopen: file %s", file_name);
-//    // This line only refresh xhook in matrix-memoryhook library now.
-//    xhook_refresh(0);
-//}
-
 // -------------------- Dump --------------------
 
 /**
@@ -389,28 +383,28 @@ static inline void dump_callers(FILE *log_file,
 
     LOGD(TAG, "\n---------------------------------------------------");
     flogger0(log_file, "\n---------------------------------------------------\n");
-    LOGD(TAG, "| caller total size = %zu b", caller_total_size);
-    flogger0(log_file, "| caller total size = %zu b, ptr totals counts = %zu.\n", caller_total_size,
+    LOGD(TAG, "| Caller total size = %zu bytes", caller_total_size);
+    flogger0(log_file, "| Caller total size = %zu bytes, ptr total counts = %zu.\n", caller_total_size,
              ptr_counter);
-    flogger0(log_file, "| allocate counter = %zu, release counter = %zu.\n",
+    flogger0(log_file, "| Allocation times = %zu, release times = %zu.\n",
              allocate_counter.load(std::memory_order_relaxed),
              release_counter.load(std::memory_order_relaxed));
     flogger0(log_file,
-             "| maps realloc count = %zu, queue reallloc reason 1 = %zu. reason 2 = %zu.\n",
+             "| Container realloc times = %zu, queue realloc reason-1 = %zu, reason-2 = %zu.\n",
              buffer_source_memory::g_realloc_counter.load(std::memory_order_relaxed),
              BufferQueue::g_queue_realloc_reason_1_counter.load(std::memory_order_relaxed),
              BufferQueue::g_queue_realloc_reason_2_counter.load(std::memory_order_relaxed));
     flogger0(log_file,
-             "| maps realloc size = %zu, queue 1 realloc size = %zu, queue 2 realloc size = %zu.\n",
+             "| Container realloc = %zu bytes, queue realloc reason-1 = %zu bytes, reason-2 = %zu bytes.\n",
              buffer_source_memory::g_realloc_memory_counter.load(std::memory_order_relaxed),
              BufferQueue::g_queue_realloc_memory_1_counter.load(std::memory_order_relaxed),
              BufferQueue::g_queue_realloc_memory_2_counter.load(std::memory_order_relaxed));
-    flogger0(log_file, "| lock collision = %zu.\n",
+    flogger0(log_file, "| Queue lock collision = %zu.\n",
              m_locker_collision_counter.load(std::memory_order_relaxed));
-    flogger0(log_file, "| realloc failure = %zu, memory over limit failure = %zu.\n",
+    flogger0(log_file, "| Realloc failure = %zu, memory over limit failure = %zu.\n",
              BufferQueue::g_queue_realloc_failure_counter.load(std::memory_order_relaxed),
              BufferQueue::g_queue_realloc_over_limit_counter.load(std::memory_order_relaxed));
-    flogger0(log_file, "| hash extra allocated = %zu, kept = %zu, kept size = %zu.\n",
+    flogger0(log_file, "| Hash extra allocated = %zu, kept = %zu, kept size = %zu byte.\n",
              BufferQueue::g_queue_extra_stack_meta_allocated.load(std::memory_order_relaxed),
              BufferQueue::g_queue_extra_stack_meta_kept.load(std::memory_order_relaxed),
              BufferQueue::g_queue_extra_stack_meta_kept.load(std::memory_order_relaxed) * sizeof(stack_meta_t));
@@ -465,9 +459,8 @@ static inline void dump_stacks(FILE *log_file,
         auto _callback = [&](wechat_backtrace::FrameDetail it) {
             std::string so_name = it.map_name;
 
-            char *demangled_name = nullptr;
             int status = 0;
-            demangled_name = abi::__cxa_demangle(it.function_name, nullptr, 0, &status);
+            char *demangled_name = abi::__cxa_demangle(it.function_name, nullptr, 0, &status);
 
             full_stack_builder << "      | "
                                << "#pc " << std::hex << it.rel_pc << " "
@@ -670,9 +663,7 @@ void dump(bool enable_mmap, const char *log_path, const char *json_path) {
 
     dump_impl(log_file, json_file, enable_mmap);
 
-#ifdef RECORD_MEMORY_OP
     DUMP_RECORD("/sdcard/Android/data/com.tencent.mm/memory-record.dump");
-#endif
 
     if (log_file) {
         fflush(log_file);
