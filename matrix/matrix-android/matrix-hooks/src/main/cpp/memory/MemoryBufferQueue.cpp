@@ -41,6 +41,10 @@
 
 namespace matrix {
 
+    void __hook_check(bool assertion) {
+        HOOK_CHECK(assertion)
+    }
+
     std::atomic<size_t> BufferQueue::g_queue_realloc_memory_1_counter = 0;
     std::atomic<size_t> BufferQueue::g_queue_realloc_memory_2_counter = 0;
     std::atomic<size_t> BufferQueue::g_queue_realloc_reason_1_counter = 0;

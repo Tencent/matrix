@@ -41,7 +41,7 @@
 #define USE_FAKE_BACKTRACE_DATA false
 
 #if USE_CRITICAL_CHECK == true
-    #define CRITICAL_CHECK(assertion) HOOK_CHECK(assertion)
+    #define CRITICAL_CHECK(assertion) matrix::__hook_check(assertion)
 #else
     #define CRITICAL_CHECK(assertion)
 #endif
@@ -449,7 +449,7 @@ public:
             }
 #endif
 
-            CRITICAL_CHECK(stack_meta)
+            CRITICAL_CHECK(stack_meta);
             __callback(ptr_meta, stack_meta);
         } else {
             __callback(ptr_meta, nullptr);
@@ -482,6 +482,7 @@ public:
             if (LIKELY(stack_meta_container->container.exist(ptr_meta.stack_hash))) {
     #if USE_STACK_HASH_NO_COLLISION == true
                 auto &top_stack_meta = stack_meta_container->container.find();
+                auto top_stack_idx = stack_meta_container->container.root_ptr();
                 stack_meta_t *stack_meta;
                 if (ptr_meta.attr.is_stack_idx) {
                     stack_meta = &stack_meta_container->container.get(ptr_meta.stack_idx);
@@ -491,7 +492,10 @@ public:
                 if (stack_meta->size > ptr_meta.size) { // 减去同堆栈的 size
                     stack_meta->size -= ptr_meta.size;
                 } else { // 删除 size 为 0 的堆栈
-                    if (stack_meta == &top_stack_meta) {
+                    if (ptr_meta.attr.is_stack_idx) {
+
+                        CRITICAL_CHECK(ptr_meta.stack_idx == top_stack_idx);
+
                         if (!top_stack_meta.ext) {
                             stack_meta_container->container.remove(ptr_meta.stack_hash);
                         } else {
@@ -503,8 +507,8 @@ public:
                         stack_meta_t *prev = &top_stack_meta;
                         stack_meta_t *ext = static_cast<stack_meta_t *>(prev->ext);
 
-                        CRITICAL_CHECK(prev)
-                        CRITICAL_CHECK(prev->ext)
+                        CRITICAL_CHECK(prev);
+                        CRITICAL_CHECK(prev->ext);
 
                         while (ext) {
                             if (ext == stack_meta) {
@@ -514,7 +518,7 @@ public:
                             ext = static_cast<stack_meta_t *>(prev->ext);
                         }
 
-                        CRITICAL_CHECK(ext)
+                        CRITICAL_CHECK(ext);
 
                         if (ext) {
                             prev->ext = ext->ext;

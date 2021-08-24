@@ -40,6 +40,8 @@ class memory_meta_container;
 
 namespace matrix {
 
+    __attribute__((noinline)) void __hook_check(bool assertion);
+
     static const unsigned int MAX_PTR_SLOT = 1 << 8;
     static const unsigned int PTR_MASK = MAX_PTR_SLOT - 1;
 

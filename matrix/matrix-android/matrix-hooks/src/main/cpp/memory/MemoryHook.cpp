@@ -276,8 +276,6 @@ static inline size_t collect_metas(std::map<void *, caller_meta_t> &heap_caller_
                     caller_meta.total_size += meta->size;
                 }
 
-                CRITICAL_CHECK(!is_stacktrace_enabled || stack_meta);
-
                 if (stack_meta) {
 #if USE_STACK_HASH_NO_COLLISION == true
                     auto &dest_stack_meta = dest_stack_metas[(uint64_t)stack_meta];
