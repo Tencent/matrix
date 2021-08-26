@@ -51,8 +51,6 @@ static memory_meta_container m_memory_meta_container;
 std::atomic<size_t> buffer_source_memory::g_realloc_counter = 0;
 std::atomic<size_t> buffer_source_memory::g_realloc_memory_counter = 0;
 
-static std::atomic<size_t> m_locker_collision_counter = 0;
-
 using namespace matrix;
 
 static bool is_stacktrace_enabled = false;
@@ -128,28 +126,56 @@ static inline void on_acquire_memory(
     BufferQueueContainer *container = m_memory_messages_containers_.containers_[memory_ptr_hash(
             (uintptr_t) ptr)];
     {
-        if (!container->mutex_.try_lock()) {
-            m_locker_collision_counter.fetch_add(1, std::memory_order_relaxed);
-            container->mutex_.lock();
+    #if USE_MEMORY_MESSAGE_QUEUE_LOCK_FREE == true
+
+        auto message_node = m_memory_messages_containers_.message_allocator_->acquire();
+        auto allocation_message_node = m_memory_messages_containers_.alloc_message_allocator_->acquire();
+
+        if (UNLIKELY(!message_node || !allocation_message_node)) {
+            m_memory_messages_containers_.message_allocator_->release(message_node);
+            m_memory_messages_containers_.alloc_message_allocator_->release(allocation_message_node);
+            return;
         }
 
-        if (!container->queue_) {
-            container->queue_ = new BufferQueue(SIZE_AUGMENT);
+        message_node->t_.type = is_mmap ? message_type_mmap : message_type_allocation;
+        message_node->t_.index = reinterpret_cast<uintptr_t>(allocation_message_node);
+
+        allocation_message_node->t_.ptr = reinterpret_cast<uintptr_t>(ptr);
+        allocation_message_node->t_.size = byte_count;
+        allocation_message_node->t_.caller = reinterpret_cast<uintptr_t>(caller);
+
+        if (LIKELY(is_stacktrace_enabled && should_do_unwind(byte_count))) {
+            size_t frame_size = 0;
+            do_unwind(allocation_message_node->t_.backtrace.frames, MEMHOOK_BACKTRACE_MAX_FRAMES,
+                      frame_size);
+            allocation_message_node->t_.backtrace.frame_size = frame_size;
         }
+
+        container->queue_->message_queue_->offer(message_node);
+
+    #else
+        memory_backtrace_t backtrace {0};
+        if (LIKELY(byte_count > 0 && is_stacktrace_enabled && should_do_unwind(byte_count))) {
+            size_t frame_size = 0;
+            do_unwind(backtrace.frames, MEMHOOK_BACKTRACE_MAX_FRAMES,
+                      frame_size);
+            backtrace.frame_size = frame_size;
+        }
+
+        container->lock();
+
         auto message = container->queue_->enqueue_allocation_message(is_mmap);
         if (LIKELY(message)) {
             message->ptr = reinterpret_cast<uintptr_t>(ptr);
             message->size = byte_count;
             message->caller = reinterpret_cast<uintptr_t>(caller);
-            if (LIKELY(is_stacktrace_enabled && should_do_unwind(byte_count))) {
-                size_t frame_size = 0;
-                do_unwind(message->backtrace.frames, MEMHOOK_BACKTRACE_MAX_FRAMES,
-                          frame_size);
-                message->backtrace.frame_size = frame_size;
+            if (backtrace.frame_size) {
+                message->backtrace = backtrace;
             }
         }
 
-        container->mutex_.unlock();
+        container->unlock();
+    #endif
     }
 #else
     matrix::memory_backtrace_t  backtrace;
@@ -184,7 +210,7 @@ static inline void on_acquire_memory(
 
 }
 
-static inline void on_release_memory(void *ptr, bool is_mmap) {
+static inline void on_release_memory(void *ptr, bool is_munmap) {
 
     if (UNLIKELY(!ptr)) {
         LOGE(TAG, "on_release_memory: invalid pointer");
@@ -199,8 +225,24 @@ static inline void on_release_memory(void *ptr, bool is_mmap) {
     BufferQueueContainer *container = m_memory_messages_containers_.containers_[memory_ptr_hash(
             (uintptr_t) ptr)];
 
+    #if USE_MEMORY_MESSAGE_QUEUE_LOCK_FREE == true
+
+    auto message_node = m_memory_messages_containers_.message_allocator_->acquire();
+
+    message_node = container->queue_->message_queue_->do_stage(message_node);
+
+    if (UNLIKELY(!message_node)) {
+        return;
+    }
+
+    message_node->t_.type = is_munmap ? message_type_munmap : message_type_deletion;
+    message_node->t_.ptr = reinterpret_cast<uintptr_t>(ptr);
+
+    container->queue_->message_queue_->offer(message_node);
+
+    #else
     if (!container->mutex_.try_lock()) {
-        m_locker_collision_counter.fetch_add(1, std::memory_order_relaxed);
+        BufferQueueContainer::g_locker_collision_counter.fetch_add(1, std::memory_order_relaxed);
         container->mutex_.lock();
     }
 
@@ -209,6 +251,7 @@ static inline void on_release_memory(void *ptr, bool is_mmap) {
     }
     container->queue_->enqueue_deletion_message(reinterpret_cast<uintptr_t>(ptr), is_mmap);
     container->mutex_.unlock();
+    #endif
 #else
     m_memory_meta_container.erase(ptr);
 #endif
@@ -389,6 +432,24 @@ static inline void dump_callers(FILE *log_file,
     flogger0(log_file, "| Allocation times = %zu, release times = %zu.\n",
              allocate_counter.load(std::memory_order_relaxed),
              release_counter.load(std::memory_order_relaxed));
+
+#if USE_MEMORY_MESSAGE_QUEUE_LOCK_FREE == true
+    flogger0(log_file,
+             "| Container realloc times = %zu, queue realloc = %zu.\n",
+             buffer_source_memory::g_realloc_counter.load(std::memory_order_relaxed),
+             g_queue_realloc_counter.load(std::memory_order_relaxed));
+    flogger0(log_file,
+             "| Container realloc = %zu bytes, queue realloc = %zu bytes.\n",
+             buffer_source_memory::g_realloc_memory_counter.load(std::memory_order_relaxed),
+             g_queue_realloc_size_counter.load(std::memory_order_relaxed));
+    flogger0(log_file, "| Realloc failure = %zu, memory over limit failure = %zu.\n",
+             g_queue_realloc_failure_counter.load(std::memory_order_relaxed),
+             g_queue_realloc_over_limit_counter.load(std::memory_order_relaxed));
+    flogger0(log_file, "| Hash extra allocated = %zu, kept = %zu, kept size = %zu byte.\n",
+             g_queue_extra_stack_meta_allocated.load(std::memory_order_relaxed),
+             g_queue_extra_stack_meta_kept.load(std::memory_order_relaxed),
+             g_queue_extra_stack_meta_kept.load(std::memory_order_relaxed) * sizeof(stack_meta_t));
+#else
     flogger0(log_file,
              "| Container realloc times = %zu, queue realloc reason-1 = %zu, reason-2 = %zu.\n",
              buffer_source_memory::g_realloc_counter.load(std::memory_order_relaxed),
@@ -400,7 +461,7 @@ static inline void dump_callers(FILE *log_file,
              BufferQueue::g_queue_realloc_memory_1_counter.load(std::memory_order_relaxed),
              BufferQueue::g_queue_realloc_memory_2_counter.load(std::memory_order_relaxed));
     flogger0(log_file, "| Queue lock collision = %zu.\n",
-             m_locker_collision_counter.load(std::memory_order_relaxed));
+             BufferQueueContainer::g_locker_collision_counter.load(std::memory_order_relaxed));
     flogger0(log_file, "| Realloc failure = %zu, memory over limit failure = %zu.\n",
              BufferQueue::g_queue_realloc_failure_counter.load(std::memory_order_relaxed),
              BufferQueue::g_queue_realloc_over_limit_counter.load(std::memory_order_relaxed));
@@ -408,6 +469,7 @@ static inline void dump_callers(FILE *log_file,
              BufferQueue::g_queue_extra_stack_meta_allocated.load(std::memory_order_relaxed),
              BufferQueue::g_queue_extra_stack_meta_kept.load(std::memory_order_relaxed),
              BufferQueue::g_queue_extra_stack_meta_kept.load(std::memory_order_relaxed) * sizeof(stack_meta_t));
+#endif
     LOGD(TAG, "---------------------------------------------------\n");
     flogger0(log_file, "---------------------------------------------------\n\n");
 }

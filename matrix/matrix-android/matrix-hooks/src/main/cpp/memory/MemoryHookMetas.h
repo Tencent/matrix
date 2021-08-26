@@ -27,24 +27,10 @@
 #include <common/Macros.h>
 #include "unwindstack/Unwinder.h"
 #include "Utils.h"
-#include "common/tree/splay_map.h"
+#include "common/struct/splay_map.h"
 #include "MemoryBufferQueue.h"
 
 #define TAG "Matrix.MemoryHook.Container"
-
-#define USE_CRITICAL_CHECK true
-#define USE_MEMORY_MESSAGE_QUEUE true
-#define USE_SPLAY_MAP_SAVE_STACK true
-#define USE_STACK_HASH_NO_COLLISION true
-
-/* For testing */
-#define USE_FAKE_BACKTRACE_DATA false
-
-#if USE_CRITICAL_CHECK == true
-    #define CRITICAL_CHECK(assertion) matrix::__hook_check(assertion)
-#else
-    #define CRITICAL_CHECK(assertion)
-#endif
 
 #define TEST_HOOK_LOG_ERR(fmt, ...) //__android_log_print(ANDROID_LOG_ERROR,  "TestHook", fmt, ##__VA_ARGS__)
 
@@ -385,9 +371,15 @@ public:
                         *static_cast<stack_meta_t *>(target->ext) = {0};
                         target = static_cast<stack_meta_t *>(target->ext);
 
+    #if USE_MEMORY_MESSAGE_QUEUE_LOCK_FREE == true
+                        // Statistic
+                        matrix::g_queue_extra_stack_meta_allocated.fetch_add(1, std::memory_order_relaxed);
+                        matrix::g_queue_extra_stack_meta_kept.fetch_add(1, std::memory_order_relaxed);
+    #else
                         // Statistic
                         matrix::BufferQueue::g_queue_extra_stack_meta_allocated.fetch_add(1, std::memory_order_relaxed);
                         matrix::BufferQueue::g_queue_extra_stack_meta_kept.fetch_add(1, std::memory_order_relaxed);
+    #endif
                     }
                 }
 
@@ -489,9 +481,12 @@ public:
                         if (ext) {
                             prev->ext = ext->ext;
                             free(ext);
-
+    #if USE_MEMORY_MESSAGE_QUEUE_LOCK_FREE == true
+                            matrix::g_queue_extra_stack_meta_kept.fetch_sub(1, std::memory_order_relaxed);
+    #else
                             // Statistic
                             matrix::BufferQueue::g_queue_extra_stack_meta_kept.fetch_sub(1, std::memory_order_relaxed);
+    #endif
                         }
                     }
                 }

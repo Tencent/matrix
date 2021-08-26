@@ -41,9 +41,20 @@
 
 namespace matrix {
 
-    void __hook_check(bool assertion) {
+    void _hook_check(bool assertion) {
         HOOK_CHECK(assertion)
     }
+
+#if USE_MEMORY_MESSAGE_QUEUE_LOCK_FREE == true
+    std::atomic<size_t> g_queue_realloc_counter = 0;
+    std::atomic<size_t> g_queue_realloc_size_counter = 0;
+    std::atomic<size_t> g_queue_realloc_failure_counter = 0;
+    std::atomic<size_t> g_queue_realloc_over_limit_counter = 0;
+    std::atomic<size_t> g_queue_extra_stack_meta_allocated = 0;
+    std::atomic<size_t> g_queue_extra_stack_meta_kept = 0;
+
+#else
+    std::atomic<size_t> BufferQueueContainer::g_locker_collision_counter = 0;
 
     std::atomic<size_t> BufferQueue::g_queue_realloc_memory_1_counter = 0;
     std::atomic<size_t> BufferQueue::g_queue_realloc_memory_2_counter = 0;
@@ -53,6 +64,7 @@ namespace matrix {
     std::atomic<size_t> BufferQueue::g_queue_realloc_over_limit_counter = 0;
     std::atomic<size_t> BufferQueue::g_queue_extra_stack_meta_allocated = 0;
     std::atomic<size_t> BufferQueue::g_queue_extra_stack_meta_kept = 0;
+#endif
 
     BufferManagement::BufferManagement(memory_meta_container *memory_meta_container) {
         containers_.reserve(MAX_PTR_SLOT);
@@ -61,6 +73,15 @@ namespace matrix {
             containers_.emplace_back(container);
         }
         memory_meta_container_ = memory_meta_container;
+
+#if USE_MEMORY_MESSAGE_QUEUE_LOCK_FREE == true
+        size_t size_augment = 1 << 9;
+        size_t max_fold_ = 512;
+        message_allocator_ = new BufferAllocator<message_t>(max_fold_, size_augment);
+
+        size_augment = 1 << 8;
+        alloc_message_allocator_ = new BufferAllocator<allocation_message_t>(max_fold_, size_augment);
+#endif
     }
 
     BufferManagement::~BufferManagement() {
@@ -69,18 +90,27 @@ namespace matrix {
             delete container;
         }
 
+#if USE_MEMORY_MESSAGE_QUEUE_LOCK_FREE == true
+        delete message_allocator_;
+        delete alloc_message_allocator_;
+#else
         delete queue_swapped_;
+#endif
     }
 
     [[noreturn]] void BufferManagement::process_routine(BufferManagement *this_) {
         while (true) {
             TEST_LOG_WARN("Process routine outside ... this_->containers_ %zu",
                           this_->containers_.size());
+
+#if USE_MEMORY_MESSAGE_QUEUE_LOCK_FREE != true
             if (!this_->queue_swapped_) this_->queue_swapped_ = new BufferQueue(SIZE_AUGMENT);
+#endif
 
             size_t busy_queue = 0;
             for (auto container : this_->containers_) {
                 TEST_LOG_WARN("Process routine ... ");
+#if USE_MEMORY_MESSAGE_QUEUE_LOCK_FREE != true
                 BufferQueue *swapped = nullptr;
                 {
                     std::lock_guard<std::mutex> lock(container->mutex_);
@@ -94,18 +124,29 @@ namespace matrix {
                 if (swapped && swapped->size() >= 5) {
                     busy_queue++;
                 }
-
                 if (swapped) {
                     TEST_LOG_WARN("Swapped ... ");
                     swapped->process(
+#else
+                size_t message_counter = 0;
+                if (container) {
+                    TEST_LOG_WARN("Swapped ... ");
+                    container->queue_->process(
+#endif
                             [&](message_t *message, allocation_message_t *allocation_message) {
                                 if (message->type == message_type_allocation ||
                                     message->type == message_type_mmap) {
-
 #if USE_CRITICAL_CHECK == true
                                     HOOK_CHECK(allocation_message);
 #else
                                     if (UNLIKELY(allocation_message == nullptr)) return;
+#endif
+
+#if USE_MEMORY_MESSAGE_QUEUE_LOCK_FREE == true
+                                    message_counter++;
+                                    if (message_counter >= 5) {
+                                        busy_queue++;
+                                    }
 #endif
 
                                     uint64_t stack_hash = 0;
@@ -152,9 +193,10 @@ namespace matrix {
                                             reinterpret_cast<const void *>(message->ptr));
                                 }
                             });
-
+#if USE_MEMORY_MESSAGE_QUEUE_LOCK_FREE != true
                     swapped->reset();
                     this_->queue_swapped_ = swapped;
+#endif
                 }
             }
 

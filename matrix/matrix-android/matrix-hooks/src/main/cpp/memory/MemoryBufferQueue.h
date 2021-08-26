@@ -22,7 +22,22 @@
 #include <memory>
 #include <common/Macros.h>
 #include <Backtrace.h>
+#include <common/struct/lock_free_queue.h>
 
+#define USE_CRITICAL_CHECK true
+#define USE_MEMORY_MESSAGE_QUEUE true
+#define USE_SPLAY_MAP_SAVE_STACK true
+#define USE_STACK_HASH_NO_COLLISION true
+#define USE_MEMORY_MESSAGE_QUEUE_LOCK_FREE true
+
+/* For testing */
+#define USE_FAKE_BACKTRACE_DATA true
+
+#if USE_CRITICAL_CHECK == true
+#define CRITICAL_CHECK(assertion) matrix::_hook_check(assertion)
+#else
+#define CRITICAL_CHECK(assertion)
+#endif
 
 #define SIZE_AUGMENT 192
 #define PROCESS_BUSY_INTERVAL 40 * 1000L
@@ -40,7 +55,7 @@ class memory_meta_container;
 
 namespace matrix {
 
-    __attribute__((noinline)) void __hook_check(bool assertion);
+    __attribute__((noinline)) void _hook_check(bool assertion);
 
     static const unsigned int MAX_PTR_SLOT = 1 << 8;
     static const unsigned int PTR_MASK = MAX_PTR_SLOT - 1;
@@ -84,6 +99,7 @@ namespace matrix {
         return static_cast<size_t>((_key ^ (_key >> 16)) & PTR_MASK);
     }
 
+#if USE_MEMORY_MESSAGE_QUEUE_LOCK_FREE != true
     class BufferQueue {
 
     public:
@@ -278,16 +294,200 @@ namespace matrix {
 
     };
 
+#else
+
+    // Statistic
+    extern std::atomic<size_t> g_queue_realloc_counter;
+    extern std::atomic<size_t> g_queue_realloc_size_counter;
+    extern std::atomic<size_t> g_queue_realloc_failure_counter;
+    extern std::atomic<size_t> g_queue_realloc_over_limit_counter;
+    extern std::atomic<size_t> g_queue_extra_stack_meta_allocated;
+    extern std::atomic<size_t> g_queue_extra_stack_meta_kept;
+
+    template<typename T>
+    class BufferAllocator {
+
+    public:
+
+        BufferAllocator(size_t max_fold, size_t size_augment) :
+                queue_max_fold_(max_fold),
+                queue_size_augment_(size_augment),
+                queue_mask_(queue_size_augment_ - 1) {
+
+            queue_ = static_cast<QueueNode<T> **>(calloc(queue_max_fold_, sizeof(void *)));
+
+            if (buffer_realloc(queue_size_)) {
+                free_node_queue_ = new LockFreeQueue<T>();
+            }
+        };
+
+        ~BufferAllocator() {
+
+            delete free_node_queue_;
+
+            for (size_t i = 0; i < queue_max_fold_; i++) {
+                if (queue_[i]) {
+                    free(queue_[i]);
+                }
+            }
+            free(queue_);
+        };
+
+        inline QueueNode<T> *acquire() {
+
+            QueueNode<T> *node = free_node_queue_->poll();
+
+            if (LIKELY(node)) return node;
+
+            for (;;) {
+                auto available_idx = queue_idx_.fetch_add(1);
+                auto size = queue_size_.load(std::memory_order_acquire);
+                if (available_idx < size) {
+                    return getByIdx(available_idx);
+                } else {
+                    queue_idx_.fetch_sub(1);
+
+                    if (buffer_realloc(size)) {
+                        continue;
+                    } else {
+                        return nullptr;
+                    }
+                }
+            }
+        }
+
+        inline void release(QueueNode<T> *node) {
+            if (LIKELY(node)) {
+                auto stage_node = free_node_queue_->do_stage(node);
+                memset(stage_node, 0, sizeof(QueueNode<T>));
+                free_node_queue_->offer(stage_node);
+            }
+        }
+
+    private:
+
+        inline QueueNode<T> *getByIdx(const size_t idx) {
+            size_t array = idx & ~queue_mask_;
+            size_t offset = idx & queue_mask_;
+            return &queue_[array][offset];
+        }
+
+        inline bool buffer_realloc(size_t from_size) {
+
+            if (queue_current_fold_ >= queue_max_fold_) {
+                g_queue_realloc_over_limit_counter.fetch_add(1);
+                return false;
+            }
+
+            if (from_size < queue_size_) return true;
+
+            std::lock_guard<std::mutex> guard(queue_resize_lock_);
+
+            if (queue_current_fold_ >= queue_max_fold_) {
+                g_queue_realloc_over_limit_counter.fetch_add(1);
+                return false;
+            }
+
+            if (from_size < queue_size_) return true;
+
+            auto buffer = static_cast<QueueNode<T> *>(calloc(queue_size_augment_,
+                                                             sizeof(QueueNode<T>)));
+
+            if (buffer) {
+                g_queue_realloc_counter.fetch_add(1);
+                g_queue_realloc_size_counter.fetch_add(queue_size_augment_ * sizeof(QueueNode<T>));
+
+                queue_[queue_current_fold_++] = buffer;
+                queue_size_ += queue_size_augment_;
+
+                return true;
+            } else {
+                g_queue_realloc_failure_counter.fetch_add(1, std::memory_order_relaxed);
+
+                return false;
+            }
+        }
+
+        const size_t queue_max_fold_;
+        const size_t queue_size_augment_;
+        const size_t queue_mask_;
+
+        std::mutex queue_resize_lock_;
+
+        std::atomic_size_t queue_current_fold_ = 0;
+
+        std::atomic_size_t queue_size_ = 0;
+        std::atomic_size_t queue_idx_ = 0;
+        QueueNode<T> **queue_ = nullptr;
+
+        LockFreeQueue<T> *free_node_queue_;
+    };
+
+    class BufferQueue {
+
+    public:
+        BufferQueue() {
+            message_queue_ = new LockFreeQueue<message_t>();
+        };
+
+        ~BufferQueue() {
+            delete message_queue_;
+        }
+
+        inline void process(std::function<void(message_t *, allocation_message_t *)> callback) {
+            QueueNode<message_t> * message_node;
+            while ((message_node = message_queue_->poll()) != nullptr) {
+
+                QueueNode<allocation_message_t> *allocation_message_node = nullptr;
+                if (message_node->t_.type == message_type_allocation ||
+                    message_node->t_.type == message_type_mmap) {
+                    allocation_message_node =
+                            reinterpret_cast<QueueNode<allocation_message_t> *>(message_node->t_.index);
+                }
+
+                callback(&message_node->t_, &allocation_message_node->t_);
+            }
+        }
+
+        LockFreeQueue<message_t> *message_queue_;
+
+    private:
+    };
+
+#endif
+
     class BufferQueueContainer {
     public:
+#if USE_MEMORY_MESSAGE_QUEUE_LOCK_FREE == true
+        BufferQueueContainer() : queue_(new BufferQueue()) {}
+#else
         BufferQueueContainer() : queue_(nullptr) {}
+#endif
 
         ~BufferQueueContainer() {
             delete queue_;
         }
 
         BufferQueue *queue_;
+#if USE_MEMORY_MESSAGE_QUEUE_LOCK_FREE != true
         std::mutex mutex_;
+
+        static std::atomic<size_t> g_locker_collision_counter;
+        inline void lock() {
+            if (!mutex_.try_lock()) {
+                g_locker_collision_counter.fetch_add(1, std::memory_order_relaxed);
+                mutex_.lock();
+            }
+
+            if (!queue_) {
+                queue_ = new BufferQueue(SIZE_AUGMENT);
+            }
+        }
+
+        inline void unlock() {
+            mutex_.unlock();
+        }
+#endif
     };
 
     class BufferManagement {
@@ -300,16 +500,24 @@ namespace matrix {
 
         std::vector<BufferQueueContainer *> containers_;
 
+#if USE_MEMORY_MESSAGE_QUEUE_LOCK_FREE == true
+        BufferAllocator<message_t> *message_allocator_;
+        BufferAllocator<allocation_message_t> *alloc_message_allocator_;
+#endif
+
     private:
 
         [[noreturn]] static void process_routine(BufferManagement *this_);
 
+#if USE_MEMORY_MESSAGE_QUEUE_LOCK_FREE == true
+#else
         BufferQueue *queue_swapped_ = nullptr;
+#endif
 
         memory_meta_container *memory_meta_container_ = nullptr;
 
         bool processing_ = false;
-        pthread_t thread_;
+        pthread_t thread_{};
     };
 }
 
