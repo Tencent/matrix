@@ -51,6 +51,8 @@
 
 #define POINTER_MASK 48
 
+#define TEST_LOG_ERROR(fmt, ...) __android_log_print(ANDROID_LOG_ERROR,  "TestHook", fmt, ##__VA_ARGS__)
+
 class memory_meta_container;
 
 namespace matrix {
@@ -304,152 +306,39 @@ namespace matrix {
     extern std::atomic<size_t> g_queue_extra_stack_meta_allocated;
     extern std::atomic<size_t> g_queue_extra_stack_meta_kept;
 
-    template<typename T>
-    class BufferAllocator {
-
-    public:
-
-        BufferAllocator(size_t max_fold, size_t size_augment) :
-                queue_max_fold_(max_fold),
-                queue_size_augment_(size_augment),
-                queue_mask_(queue_size_augment_ - 1) {
-
-            queue_ = static_cast<QueueNode<T> **>(calloc(queue_max_fold_, sizeof(void *)));
-
-            if (buffer_realloc(queue_size_)) {
-                free_node_queue_ = new LockFreeQueue<T>();
-            }
-        };
-
-        ~BufferAllocator() {
-
-            delete free_node_queue_;
-
-            for (size_t i = 0; i < queue_max_fold_; i++) {
-                if (queue_[i]) {
-                    free(queue_[i]);
-                }
-            }
-            free(queue_);
-        };
-
-        inline QueueNode<T> *acquire() {
-
-            QueueNode<T> *node = free_node_queue_->poll();
-
-            if (LIKELY(node)) return node;
-
-            for (;;) {
-                auto available_idx = queue_idx_.fetch_add(1);
-                auto size = queue_size_.load(std::memory_order_acquire);
-                if (available_idx < size) {
-                    return getByIdx(available_idx);
-                } else {
-                    queue_idx_.fetch_sub(1);
-
-                    if (buffer_realloc(size)) {
-                        continue;
-                    } else {
-                        return nullptr;
-                    }
-                }
-            }
-        }
-
-        inline void release(QueueNode<T> *node) {
-            if (LIKELY(node)) {
-                auto stage_node = free_node_queue_->do_stage(node);
-                memset(stage_node, 0, sizeof(QueueNode<T>));
-                free_node_queue_->offer(stage_node);
-            }
-        }
-
-    private:
-
-        inline QueueNode<T> *getByIdx(const size_t idx) {
-            size_t array = idx & ~queue_mask_;
-            size_t offset = idx & queue_mask_;
-            return &queue_[array][offset];
-        }
-
-        inline bool buffer_realloc(size_t from_size) {
-
-            if (queue_current_fold_ >= queue_max_fold_) {
-                g_queue_realloc_over_limit_counter.fetch_add(1);
-                return false;
-            }
-
-            if (from_size < queue_size_) return true;
-
-            std::lock_guard<std::mutex> guard(queue_resize_lock_);
-
-            if (queue_current_fold_ >= queue_max_fold_) {
-                g_queue_realloc_over_limit_counter.fetch_add(1);
-                return false;
-            }
-
-            if (from_size < queue_size_) return true;
-
-            auto buffer = static_cast<QueueNode<T> *>(calloc(queue_size_augment_,
-                                                             sizeof(QueueNode<T>)));
-
-            if (buffer) {
-                g_queue_realloc_counter.fetch_add(1);
-                g_queue_realloc_size_counter.fetch_add(queue_size_augment_ * sizeof(QueueNode<T>));
-
-                queue_[queue_current_fold_++] = buffer;
-                queue_size_ += queue_size_augment_;
-
-                return true;
-            } else {
-                g_queue_realloc_failure_counter.fetch_add(1, std::memory_order_relaxed);
-
-                return false;
-            }
-        }
-
-        const size_t queue_max_fold_;
-        const size_t queue_size_augment_;
-        const size_t queue_mask_;
-
-        std::mutex queue_resize_lock_;
-
-        std::atomic_size_t queue_current_fold_ = 0;
-
-        std::atomic_size_t queue_size_ = 0;
-        std::atomic_size_t queue_idx_ = 0;
-        QueueNode<T> **queue_ = nullptr;
-
-        LockFreeQueue<T> *free_node_queue_;
-    };
+    typedef Node<message_t> message_node_t;
 
     class BufferQueue {
 
     public:
-        BufferQueue() {
-            message_queue_ = new LockFreeQueue<message_t>();
+        BufferQueue(FreeList<message_node_t *> * free_list) {
+            message_queue_ = new LockFreeQueue<message_node_t *>(free_list);
         };
 
         ~BufferQueue() {
             delete message_queue_;
         }
 
-        inline void process(std::function<void(message_t *, allocation_message_t *)> callback) {
-            QueueNode<message_t> * message_node;
-            while ((message_node = message_queue_->poll()) != nullptr) {
+        inline void process(std::function<void(Node<message_t> *, Node<allocation_message_t> *)> callback) {
 
-                QueueNode<allocation_message_t> *allocation_message_node = nullptr;
+            message_node_t * message_node = nullptr;
+
+            while (message_queue_->poll(message_node)) {
+
+                CRITICAL_CHECK(message_node);
+
+                Node<allocation_message_t> * allocation_message_node = nullptr;
                 if (message_node->t_.type == message_type_allocation ||
-                    message_node->t_.type == message_type_mmap) {
+                        message_node->t_.type == message_type_mmap) {
                     allocation_message_node =
-                            reinterpret_cast<QueueNode<allocation_message_t> *>(message_node->t_.index);
+                            reinterpret_cast<Node<allocation_message_t> *>(message_node->t_.index);
                 }
 
-                callback(&message_node->t_, &allocation_message_node->t_);
+                callback(message_node, allocation_message_node);
             }
         }
 
-        LockFreeQueue<message_t> *message_queue_;
+        LockFreeQueue<message_node_t *> *message_queue_;
 
     private:
     };
@@ -458,11 +347,7 @@ namespace matrix {
 
     class BufferQueueContainer {
     public:
-#if USE_MEMORY_MESSAGE_QUEUE_LOCK_FREE == true
-        BufferQueueContainer() : queue_(new BufferQueue()) {}
-#else
         BufferQueueContainer() : queue_(nullptr) {}
-#endif
 
         ~BufferQueueContainer() {
             delete queue_;
@@ -501,8 +386,9 @@ namespace matrix {
         std::vector<BufferQueueContainer *> containers_;
 
 #if USE_MEMORY_MESSAGE_QUEUE_LOCK_FREE == true
-        BufferAllocator<message_t> *message_allocator_;
-        BufferAllocator<allocation_message_t> *alloc_message_allocator_;
+        FreeList<message_t> *message_allocator_;
+        FreeList<allocation_message_t> *alloc_message_allocator_;
+        FreeList<message_node_t *> *node_allocator_;
 #endif
 
     private:

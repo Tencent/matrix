@@ -16,7 +16,7 @@
 #include <sys/types.h>
 #include <android/log.h>
 
-#define TEST_LOG_WARN(fmt, ...) __android_log_print(ANDROID_LOG_WARN,  "TestHook", fmt, ##__VA_ARGS__)
+#define TEST_LOG_ERROR(fmt, ...) __android_log_print(ANDROID_LOG_WARN,  "TestHook", fmt, ##__VA_ARGS__)
 
 #define CHECK_NE(a, b) \
   if ((a) == (b)) abort();
@@ -295,7 +295,7 @@ Java_com_tencent_matrix_test_memoryhook_MemoryHookTestNative_nativeHashCollision
         c_count += hashtable[hash]->size();
     }
 
-    TEST_LOG_WARN("Found hash collision %zu, size collision %zu, in total %zu, backtrace count %zu", collision.size(), size_collision.size(), hashtable.size(), c_count);
+    TEST_LOG_ERROR("Found hash collision %zu, size collision %zu, in total %zu, backtrace count %zu", collision.size(), size_collision.size(), hashtable.size(), c_count);
 
 }
 

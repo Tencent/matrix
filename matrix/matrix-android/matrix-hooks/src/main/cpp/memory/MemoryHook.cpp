@@ -60,7 +60,7 @@ static size_t m_tracing_alloc_size_max = 0;
 
 static size_t m_stacktrace_log_threshold;
 
-#define TEST_LOG_WARN(fmt, ...) //__android_log_print(ANDROID_LOG_WARN,  "TestHook", fmt, ##__VA_ARGS__)
+#define TEST_LOG_ERROR(fmt, ...) __android_log_print(ANDROID_LOG_ERROR,  "TestHook", fmt, ##__VA_ARGS__)
 
 #if USE_MEMORY_MESSAGE_QUEUE == true
 static BufferManagement m_memory_messages_containers_(&m_memory_meta_container);
@@ -128,12 +128,12 @@ static inline void on_acquire_memory(
     {
     #if USE_MEMORY_MESSAGE_QUEUE_LOCK_FREE == true
 
-        auto message_node = m_memory_messages_containers_.message_allocator_->acquire();
-        auto allocation_message_node = m_memory_messages_containers_.alloc_message_allocator_->acquire();
+        auto message_node = m_memory_messages_containers_.message_allocator_->allocate();
+        auto allocation_message_node = m_memory_messages_containers_.alloc_message_allocator_->allocate();
 
         if (UNLIKELY(!message_node || !allocation_message_node)) {
-            m_memory_messages_containers_.message_allocator_->release(message_node);
-            m_memory_messages_containers_.alloc_message_allocator_->release(allocation_message_node);
+            m_memory_messages_containers_.message_allocator_->deallocate(message_node);
+            m_memory_messages_containers_.alloc_message_allocator_->deallocate(allocation_message_node);
             return;
         }
 
@@ -227,13 +227,9 @@ static inline void on_release_memory(void *ptr, bool is_munmap) {
 
     #if USE_MEMORY_MESSAGE_QUEUE_LOCK_FREE == true
 
-    auto message_node = m_memory_messages_containers_.message_allocator_->acquire();
+    auto message_node = m_memory_messages_containers_.message_allocator_->allocate();
 
-    message_node = container->queue_->message_queue_->do_stage(message_node);
-
-    if (UNLIKELY(!message_node)) {
-        return;
-    }
+    if (UNLIKELY(!message_node)) return;
 
     message_node->t_.type = is_munmap ? message_type_munmap : message_type_deletion;
     message_node->t_.ptr = reinterpret_cast<uintptr_t>(ptr);

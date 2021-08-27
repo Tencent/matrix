@@ -37,7 +37,7 @@
 #include "MemoryHookMetas.h"
 #include "common/Macros.h"
 
-#define TEST_LOG_WARN(fmt, ...) //__android_log_print(ANDROID_LOG_WARN,  "TestHook", fmt, ##__VA_ARGS__)
+#define TEST_LOG_ERROR(fmt, ...) __android_log_print(ANDROID_LOG_ERROR,  "TestHook", fmt, ##__VA_ARGS__)
 
 namespace matrix {
 
@@ -67,21 +67,22 @@ namespace matrix {
 #endif
 
     BufferManagement::BufferManagement(memory_meta_container *memory_meta_container) {
+
+#if USE_MEMORY_MESSAGE_QUEUE_LOCK_FREE == true
+        const size_t max_fold_ = 512;
+
+        message_allocator_ = new ResizableFreeList<message_t, 9, max_fold_>();
+        alloc_message_allocator_ = new ResizableFreeList<allocation_message_t, 8, max_fold_>();
+        node_allocator_ = new ResizableFreeList<message_node_t *, 10, max_fold_>();
+#endif
+
         containers_.reserve(MAX_PTR_SLOT);
         for (int i = 0; i < MAX_PTR_SLOT; ++i) {
             auto container = new BufferQueueContainer();
+            container->queue_ = new BufferQueue(node_allocator_);
             containers_.emplace_back(container);
         }
         memory_meta_container_ = memory_meta_container;
-
-#if USE_MEMORY_MESSAGE_QUEUE_LOCK_FREE == true
-        size_t size_augment = 1 << 9;
-        size_t max_fold_ = 512;
-        message_allocator_ = new BufferAllocator<message_t>(max_fold_, size_augment);
-
-        size_augment = 1 << 8;
-        alloc_message_allocator_ = new BufferAllocator<allocation_message_t>(max_fold_, size_augment);
-#endif
     }
 
     BufferManagement::~BufferManagement() {
@@ -93,6 +94,7 @@ namespace matrix {
 #if USE_MEMORY_MESSAGE_QUEUE_LOCK_FREE == true
         delete message_allocator_;
         delete alloc_message_allocator_;
+        delete node_allocator_;
 #else
         delete queue_swapped_;
 #endif
@@ -100,8 +102,8 @@ namespace matrix {
 
     [[noreturn]] void BufferManagement::process_routine(BufferManagement *this_) {
         while (true) {
-            TEST_LOG_WARN("Process routine outside ... this_->containers_ %zu",
-                          this_->containers_.size());
+            TEST_LOG_ERROR("Process routine outside ... this_->containers_ %zu",
+                           this_->containers_.size());
 
 #if USE_MEMORY_MESSAGE_QUEUE_LOCK_FREE != true
             if (!this_->queue_swapped_) this_->queue_swapped_ = new BufferQueue(SIZE_AUGMENT);
@@ -109,7 +111,7 @@ namespace matrix {
 
             size_t busy_queue = 0;
             for (auto container : this_->containers_) {
-                TEST_LOG_WARN("Process routine ... ");
+                TEST_LOG_ERROR("Process routine ... ");
 #if USE_MEMORY_MESSAGE_QUEUE_LOCK_FREE != true
                 BufferQueue *swapped = nullptr;
                 {
@@ -127,13 +129,19 @@ namespace matrix {
                 if (swapped) {
                     TEST_LOG_WARN("Swapped ... ");
                     swapped->process(
+                            [&](message_t *message, allocation_message_t *allocation_message) {
 #else
                 size_t message_counter = 0;
                 if (container) {
-                    TEST_LOG_WARN("Swapped ... ");
                     container->queue_->process(
+                            [&](Node<message_t> *message_node, Node<allocation_message_t> *allocation_message_node) {
+
+                                message_t *message = &message_node->t_;
+                                allocation_message_t *allocation_message = nullptr;
+                                if (allocation_message_node) {
+                                    allocation_message = &allocation_message_node->t_;
+                                }
 #endif
-                            [&](message_t *message, allocation_message_t *allocation_message) {
                                 if (message->type == message_type_allocation ||
                                     message->type == message_type_mmap) {
 #if USE_CRITICAL_CHECK == true
@@ -192,8 +200,19 @@ namespace matrix {
                                     this_->memory_meta_container_->erase(
                                             reinterpret_cast<const void *>(message->ptr));
                                 }
+#if USE_MEMORY_MESSAGE_QUEUE_LOCK_FREE == true
+                                if (message_node) {
+                                    this_->message_allocator_->deallocate(message_node);
+                                }
+                                if (allocation_message_node) {
+                                    this_->alloc_message_allocator_->deallocate(allocation_message_node);
+                                }
                             });
-#if USE_MEMORY_MESSAGE_QUEUE_LOCK_FREE != true
+                    if (message_counter > 0) {
+                        TEST_LOG_ERROR("Processed ... %zu messages ", message_counter);
+                    }
+#else
+                            });
                     swapped->reset();
                     this_->queue_swapped_ = swapped;
 #endif
