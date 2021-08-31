@@ -245,7 +245,7 @@ static inline void on_release_memory(void *ptr, bool is_munmap) {
     if (!container->queue_) {
         container->queue_ = new BufferQueue(SIZE_AUGMENT);
     }
-    container->queue_->enqueue_deletion_message(reinterpret_cast<uintptr_t>(ptr), is_mmap);
+    container->queue_->enqueue_deletion_message(reinterpret_cast<uintptr_t>(ptr), is_munmap);
     container->mutex_.unlock();
     #endif
 #else

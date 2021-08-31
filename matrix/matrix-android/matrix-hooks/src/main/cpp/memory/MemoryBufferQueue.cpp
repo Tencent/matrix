@@ -77,7 +77,9 @@ namespace matrix {
         containers_.reserve(MAX_PTR_SLOT);
         for (int i = 0; i < MAX_PTR_SLOT; ++i) {
             auto container = new BufferQueueContainer();
+#if USE_MEMORY_MESSAGE_QUEUE_LOCK_FREE == true
             container->queue_ = new BufferQueue(node_allocator_);
+#endif
             containers_.emplace_back(container);
         }
         memory_meta_container_ = memory_meta_container;
@@ -100,7 +102,7 @@ namespace matrix {
 
     [[noreturn]] void BufferManagement::process_routine(BufferManagement *this_) {
         while (true) {
-            TEST_LOG_ERROR("Process routine outside ... this_->containers_ %zu",
+            HOOK_LOG_ERROR("Process routine outside ... this_->containers_ %zu",
                            this_->containers_.size());
 
 #if USE_MEMORY_MESSAGE_QUEUE_LOCK_FREE != true
@@ -109,13 +111,13 @@ namespace matrix {
 
             size_t busy_queue = 0;
             for (auto container : this_->containers_) {
-                TEST_LOG_ERROR("Process routine ... ");
+                HOOK_LOG_ERROR("Process routine ... ");
 #if USE_MEMORY_MESSAGE_QUEUE_LOCK_FREE != true
                 BufferQueue *swapped = nullptr;
                 {
                     std::lock_guard<std::mutex> lock(container->mutex_);
                     if (container->queue_ && !container->queue_->empty()) {
-                        TEST_LOG_WARN("Swap queue ... ");
+                        HOOK_LOG_ERROR("Swap queue ... ");
                         swapped = container->queue_;
                         container->queue_ = this_->queue_swapped_;
                     }
@@ -125,7 +127,7 @@ namespace matrix {
                     busy_queue++;
                 }
                 if (swapped) {
-                    TEST_LOG_WARN("Swapped ... ");
+                    HOOK_LOG_ERROR("Swapped ... ");
                     swapped->process(
                             [&](message_t *message, allocation_message_t *allocation_message) {
 #else
