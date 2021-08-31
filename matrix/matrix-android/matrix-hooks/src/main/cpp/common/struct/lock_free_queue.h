@@ -19,17 +19,34 @@
 
 #include <cstdint>
 
-#include <android/log.h>
-
-#define TEST_LOG_ERROR(fmt, ...) __android_log_print(ANDROID_LOG_ERROR,  "TestHook", fmt, ##__VA_ARGS__)
+#include <common/Macros.h>
 
 namespace matrix {
+
+    template <typename T>
+    struct TaggedPointer {
+        T * ptr_ = nullptr;
+        size_t tag_ = 0;
+
+        TaggedPointer(void) {}
+
+        TaggedPointer(TaggedPointer const & p) = default;
+
+        explicit TaggedPointer(T * p = nullptr, size_t t = 0): ptr_(p), tag_(t) {}
+
+        bool operator== (volatile TaggedPointer const & p) const {
+            return (ptr_ == p.ptr_) && (tag_ == p.tag_);
+        }
+
+        bool operator!= (volatile TaggedPointer const & p) const {
+            return !operator==(p);
+        }
+    };
 
     template<typename T>
     struct Node {
         T t_;
-        std::atomic<Node<T> *> next_;
-        std::atomic<uint32_t> ref_;
+        std::atomic<TaggedPointer<Node<T>>> next_;
     };
 
     template<typename T>
@@ -176,23 +193,24 @@ namespace matrix {
                     return storage()->provide();
                 }
 
-                auto next_node = free_node->next_.load(std::memory_order_acquire);
+                auto next_tagged_ptr = free_node->next_.load(std::memory_order_acquire);
+                auto next_node = next_tagged_ptr.ptr_;
                 if (free_.compare_exchange_weak(free_node, next_node)) {
+                    memset(free_node, 0, sizeof(Node<T>));
                     return free_node;
                 }
             }
 
         }
 
-        void deallocate(Node<T> *node) {
+        void deallocate(Node<T> * node) {
 
             if (UNLIKELY(!node)) return;
 
-            memset(node, 0, sizeof(Node<T>) - sizeof(node->ref_));
-
             for (;;) {
                 auto free_node = free_.load(std::memory_order_acquire);
-                node->next_.store(free_node);
+                TaggedPointer<Node<T>> free_tagged_ptr(free_node, 0);
+                node->next_.store(free_tagged_ptr);
                 if (free_.compare_exchange_weak(free_node, node)) {
                     return;
                 }
@@ -248,7 +266,7 @@ namespace matrix {
             HOOK_CHECK(free_list);
 
             free_list_ = free_list;
-            auto dummy = free_list_->allocate();
+            TaggedPointer dummy(free_list_->allocate(), 1);
             head_.store(dummy);
             tail_.store(dummy);
         }
@@ -263,19 +281,27 @@ namespace matrix {
             if (UNLIKELY(!new_node)) return false;
             new_node->t_ = t;
 
-            for (;;) {
-                auto tail_node = tail_.load(std::memory_order_acquire);
-                auto next_node = tail_node->next_.load(std::memory_order_acquire);
+            HOOK_CHECK(!new_node->next_.load().ptr_)
+            HOOK_CHECK(!new_node->next_.load().tag_)
 
-                auto tail_node_2 = tail_.load(std::memory_order_acquire);
-                if (LIKELY(tail_node == tail_node_2)) {
+            for (;;) {
+                auto tail = tail_.load(std::memory_order_acquire);
+                auto tail_node = tail.ptr_;
+                auto next = tail_node->next_.load(std::memory_order_acquire);
+                auto next_node = next.ptr_;
+
+                auto tail_2 = tail_.load(std::memory_order_acquire);
+                if (LIKELY(tail == tail_2)) {
                     if (next_node == nullptr) {
-                        if (tail_node->next_.compare_exchange_weak(next_node, new_node)) {
-                            tail_.compare_exchange_strong(tail_node, new_node);
+                        TaggedPointer<Node<T>> new_tail_next(new_node, next.tag_ + 1);
+                        if (tail_node->next_.compare_exchange_weak(next, new_tail_next)) {
+                            TaggedPointer<Node<T>> new_tail(new_node, tail.tag_ + 1);
+                            tail_.compare_exchange_strong(tail, new_tail);
                             return true;
                         }
                     } else {
-                        tail_.compare_exchange_strong(tail_node, next_node);
+                        TaggedPointer<Node<T>> new_tail(next_node, tail.tag_ + 1);
+                        tail_.compare_exchange_strong(tail, new_tail);
                     }
                 }
             }
@@ -284,26 +310,30 @@ namespace matrix {
         bool poll(T & ret) {
 
             for (;;) {
-                auto head_node = head_.load(std::memory_order_acquire);
+                auto head = head_.load(std::memory_order_acquire);
+                auto head_node = head.ptr_;
 
-                auto tail_node = tail_.load(std::memory_order_acquire);
-                auto next_node = head_node->next_.load(std::memory_order_acquire);
+                auto tail = tail_.load(std::memory_order_acquire);
 
-                auto head_node_2 = head_.load(std::memory_order_acquire);
-                if (LIKELY(head_node == head_node_2)) {
-                    if (head_node == tail_node) {
+                auto next = head_node->next_.load(std::memory_order_acquire);
+                auto next_node = next.ptr_;
+
+                auto head_2 = head_.load(std::memory_order_acquire);
+                if (LIKELY(head == head_2)) {
+                    if (head == tail) {
                         if (next_node == nullptr)
                             return false;
-
-                        tail_.compare_exchange_strong(tail_node, next_node);
+                        TaggedPointer<Node<T>> new_tail(next_node, tail.tag_ + 1);
+                        tail_.compare_exchange_strong(tail, new_tail);
                     } else {
                         if (next_node == nullptr)
                             continue;
 
                         ret = next_node->t_;
-                        if (head_.compare_exchange_weak(head_node, next_node)) {
+                        TaggedPointer<Node<T>> new_head(next_node, head.tag_ + 1);
+                        if (head_.compare_exchange_weak(head, new_head)) {
                             free_list_->deallocate(head_node);
-                            HOOK_CHECK(next_node->t_)
+                            HOOK_CHECK(ret)
                             return true;
                         }
                     }
@@ -311,10 +341,40 @@ namespace matrix {
             }
         }
 
+        /*
+        bool poll_mpsc(T & ret) {
+
+            auto head = head_.load(std::memory_order_acquire);
+            auto head_node = head.ptr_;
+
+            for (;;) {
+
+                auto tail = tail_.load(std::memory_order_acquire);
+
+                auto next = head_node->next_.load(std::memory_order_acquire);
+                auto next_node = next.ptr_;
+
+                if (head == tail) {
+                    if (next_node == nullptr)
+                        return false;
+                    TaggedPointer<Node<T>> new_tail(next_node, tail.tag_ + 1);
+                    tail_.compare_exchange_strong(tail, new_tail);
+                } else {
+                    ret = next_node->t_;
+                    TaggedPointer<Node<T>> new_head(next_node, head.tag_ + 1);
+                    head_.store(new_head);
+                    free_list_->deallocate(head_node);
+                    return true;
+                }
+
+            }
+        }
+        */
+
     private:
 
-        std::atomic<Node<T> *> head_;
-        std::atomic<Node<T> *> tail_;
+        std::atomic<TaggedPointer<Node<T>>> head_;
+        std::atomic<TaggedPointer<Node<T>>> tail_;
 
         FreeList<T> *free_list_;
     };

@@ -60,8 +60,6 @@ static size_t m_tracing_alloc_size_max = 0;
 
 static size_t m_stacktrace_log_threshold;
 
-#define TEST_LOG_ERROR(fmt, ...) __android_log_print(ANDROID_LOG_ERROR,  "TestHook", fmt, ##__VA_ARGS__)
-
 #if USE_MEMORY_MESSAGE_QUEUE == true
 static BufferManagement m_memory_messages_containers_(&m_memory_meta_container);
 
@@ -139,6 +137,8 @@ static inline void on_acquire_memory(
 
         message_node->t_.type = is_mmap ? message_type_mmap : message_type_allocation;
         message_node->t_.index = reinterpret_cast<uintptr_t>(allocation_message_node);
+
+        CRITICAL_CHECK(message_node->t_.index);
 
         allocation_message_node->t_.ptr = reinterpret_cast<uintptr_t>(ptr);
         allocation_message_node->t_.size = byte_count;

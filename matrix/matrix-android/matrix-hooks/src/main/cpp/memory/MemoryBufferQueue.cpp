@@ -37,8 +37,6 @@
 #include "MemoryHookMetas.h"
 #include "common/Macros.h"
 
-#define TEST_LOG_ERROR(fmt, ...) __android_log_print(ANDROID_LOG_ERROR,  "TestHook", fmt, ##__VA_ARGS__)
-
 namespace matrix {
 
     void _hook_check(bool assertion) {

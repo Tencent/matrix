@@ -299,11 +299,31 @@ Java_com_tencent_matrix_test_memoryhook_MemoryHookTestNative_nativeHashCollision
 
 }
 
+struct TaggedPtr {
+    void * ptr = nullptr;
+    size_t size = 111;
+};
+
+void test_atomic() {
+
+    atomic<TaggedPtr> abc;
+    TaggedPtr ptr1;
+    abc.store(ptr1);
+    TaggedPtr ptr2;
+    ptr2.size = 222;
+    abc.compare_exchange_strong(ptr1, ptr2);
+
+    atomic<size_t> def;
+    size_t from = 1;
+    size_t to = 1;
+    def.compare_exchange_strong(from, to);
+}
+
 JNIEXPORT jint JNI_OnLoad(JavaVM *vm, void *reserved) {
     (void) reserved;
     JNIEnv *env;
     vm->GetEnv((void **) &env, JNI_VERSION_1_6);
-
+    test_atomic();
     return JNI_VERSION_1_6;
 }
 

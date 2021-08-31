@@ -21,6 +21,35 @@
 #ifndef LIBMATRIX_JNI_MACROS_H
 #define LIBMATRIX_JNI_MACROS_H
 
+#include <android/log.h>
+#define TEST_LOG_ERROR(fmt, ...) //__android_log_print(ANDROID_LOG_ERROR,  "TestHook", fmt, ##__VA_ARGS__)
+
+#define USE_CRITICAL_CHECK true
+#define USE_MEMORY_MESSAGE_QUEUE true
+#define USE_SPLAY_MAP_SAVE_STACK true
+#define USE_STACK_HASH_NO_COLLISION true
+#define USE_MEMORY_MESSAGE_QUEUE_LOCK_FREE true
+
+/* For testing */
+#define USE_FAKE_BACKTRACE_DATA true
+
+#if USE_CRITICAL_CHECK == true
+#define CRITICAL_CHECK(assertion) matrix::_hook_check(assertion)
+#else
+#define CRITICAL_CHECK(assertion)
+#endif
+
+#define SIZE_AUGMENT 192
+#define PROCESS_BUSY_INTERVAL 40 * 1000L
+#define PROCESS_NORMAL_INTERVAL 150 * 1000L
+#define PROCESS_LESS_NORMAL_INTERVAL 300 * 1000L
+#define PROCESS_IDLE_INTERVAL 800 * 1000L
+
+#define MEMORY_OVER_LIMIT 1024 * 1024 * 200L    // 200M
+
+#define MEMHOOK_BACKTRACE_MAX_FRAMES MAX_FRAME_SHORT
+
+#define POINTER_MASK 48
 
 #define LIKELY(cond) (__builtin_expect(!!(cond), 1))
 
