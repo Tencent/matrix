@@ -197,7 +197,7 @@ if (JavaVersion.current().isJava8Compatible()) {
     }
 }
 
-task buildAndPublishToLocalMaven(type: Copy, dependsOn: ['build', 'publishToMavenLocal']) {
+task buildAndPublishToLocalMaven(type: Copy, dependsOn: ['publishToMavenLocal']) {
     group = 'publishing'
 
     // save artifacts files to artifacts folder
@@ -212,7 +212,7 @@ task buildAndPublishToLocalMaven(type: Copy, dependsOn: ['build', 'publishToMave
     }
 }
 
-task buildAndPublishRepo(type: Copy, dependsOn: ['build', 'publish']) {
+task buildAndPublishRepo(type: Copy, dependsOn: ['publish']) {
     group = "publishing"
 
     // save artifacts files to artifacts folder
