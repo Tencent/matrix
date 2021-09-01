@@ -32,8 +32,6 @@
 
 #define TAG "Matrix.MemoryHook.Container"
 
-#define TEST_HOOK_LOG_ERR(fmt, ...) //__android_log_print(ANDROID_LOG_ERROR,  "TestHook", fmt, ##__VA_ARGS__)
-
 struct __attribute__((__packed__)) ptr_meta_t {
     void *ptr;
     size_t size;
@@ -262,13 +260,13 @@ private:
 class memory_meta_container {
 
     typedef struct {
-        memory_map_t container = memory_map_t(10240);
+        memory_map_t container = memory_map_t(PTR_SPLAY_MAP_CAPACITY);
         std::mutex mutex;
     } ptr_meta_container_wrapper_t;
 
     typedef struct {
 #if USE_SPLAY_MAP_SAVE_STACK == true
-        stack_map_t container = stack_map_t(1024);
+        stack_map_t container = stack_map_t(STACK_SPLAY_MAP_CAPACITY);
 #else
         std::map<uint64_t, stack_meta_t> container;
 #endif
@@ -372,16 +370,16 @@ public:
                         *static_cast<stack_meta_t *>(target->ext) = {0};
                         target = static_cast<stack_meta_t *>(target->ext);
 
-    #if USE_MEMORY_MESSAGE_QUEUE_LOCK_FREE == true
+        #if USE_MEMORY_MESSAGE_QUEUE_LOCK_FREE == true
                         // Statistic
                         matrix::g_queue_extra_stack_meta_allocated.fetch_add(1, std::memory_order_relaxed);
                         matrix::g_queue_extra_stack_meta_kept.fetch_add(1, std::memory_order_relaxed);
-    #else
+        #else
                         is_top = 0;
                         // Statistic
                         matrix::BufferQueue::g_queue_extra_stack_meta_allocated.fetch_add(1, std::memory_order_relaxed);
                         matrix::BufferQueue::g_queue_extra_stack_meta_kept.fetch_add(1, std::memory_order_relaxed);
-    #endif
+        #endif
                     }
                 }
 
@@ -393,11 +391,6 @@ public:
                 }
                 stack_meta = target;
 
-//                if (is_top) {
-//                    CRITICAL_CHECK(stack_meta_container->container.exist(__stack_hash));
-//                    CRITICAL_CHECK(
-//                            stack_meta_container->container.root_ptr() == ptr_meta->stack_idx);
-//                }
     #endif
             } else {
                 stack_meta = stack_meta_container->container.insert(__stack_hash, {0});
@@ -405,9 +398,6 @@ public:
                 if (stack_meta) {
                     ptr_meta->stack_idx = stack_meta_container->container.root_ptr();
                     ptr_meta->attr.is_stack_idx = 1;
-
-//                    CRITICAL_CHECK(stack_meta_container->container.exist(__stack_hash));
-//                    CRITICAL_CHECK(stack_meta_container->container.root_ptr() == ptr_meta->stack_idx);
                 }
     #endif
             }
@@ -495,12 +485,12 @@ public:
                         if (ext) {
                             prev->ext = ext->ext;
                             free(ext);
-    #if USE_MEMORY_MESSAGE_QUEUE_LOCK_FREE == true
+        #if USE_MEMORY_MESSAGE_QUEUE_LOCK_FREE == true
                             matrix::g_queue_extra_stack_meta_kept.fetch_sub(1, std::memory_order_relaxed);
-    #else
+        #else
                             // Statistic
                             matrix::BufferQueue::g_queue_extra_stack_meta_kept.fetch_sub(1, std::memory_order_relaxed);
-    #endif
+        #endif
                         }
                     }
                 }
