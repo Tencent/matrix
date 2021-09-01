@@ -158,7 +158,8 @@ namespace matrix {
 #endif
 
                                     uint64_t stack_hash = 0;
-                                    if (allocation_message->backtrace.frame_size != 0) {
+                                    if (allocation_message->size != 0 &&
+                                            allocation_message->backtrace.frame_size != 0) {
                                         stack_hash = hash_frames(
                                                 allocation_message->backtrace.frames,
                                                 allocation_message->backtrace.frame_size);

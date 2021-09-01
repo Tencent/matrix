@@ -341,15 +341,16 @@ public:
 #if USE_SPLAY_MAP_SAVE_STACK == true
             if (LIKELY(stack_meta_container->container.exist(__stack_hash))) {
                 stack_meta = &stack_meta_container->container.find();
-                uint32_t last_ptr = stack_meta_container->container.root_ptr();
     #if USE_STACK_HASH_NO_COLLISION == true
+                uint32_t last_ptr = stack_meta_container->container.root_ptr();
                 bool same = false;
 
-                HOOK_CHECK(stack_meta);
+                CRITICAL_CHECK(stack_meta);
+                CRITICAL_CHECK(last_ptr);
 
                 stack_meta_t *target = stack_meta;
                 stack_meta_t *target_ext = stack_meta;
-                bool is_top = true;
+                unsigned char is_top = 1;
                 while (target_ext) {
                     if (allocation_message->caller == target_ext->caller) {
                         same = stacktrace_compare_common(allocation_message->backtrace,
@@ -357,7 +358,7 @@ public:
                     }
                     target = target_ext;
                     if (same) break;
-                    is_top = false;
+                    is_top = 0;
                     target_ext = static_cast<stack_meta_t *>(target->ext);
                 }
 
@@ -365,7 +366,7 @@ public:
                     if (stack_meta->size == 0 && stack_meta->caller == 0 &&
                         stack_meta->backtrace.frame_size == 0) {
                         target = stack_meta;    // Reuse first stack_meta.
-                        is_top = true;
+                        is_top = 1;
                     } else {
                         target->ext = malloc(sizeof(stack_meta_t));
                         *static_cast<stack_meta_t *>(target->ext) = {0};
@@ -376,6 +377,7 @@ public:
                         matrix::g_queue_extra_stack_meta_allocated.fetch_add(1, std::memory_order_relaxed);
                         matrix::g_queue_extra_stack_meta_kept.fetch_add(1, std::memory_order_relaxed);
     #else
+                        is_top = 0;
                         // Statistic
                         matrix::BufferQueue::g_queue_extra_stack_meta_allocated.fetch_add(1, std::memory_order_relaxed);
                         matrix::BufferQueue::g_queue_extra_stack_meta_kept.fetch_add(1, std::memory_order_relaxed);
@@ -390,12 +392,23 @@ public:
                     ptr_meta->ext_stack_ptr = reinterpret_cast<uint64_t>(target);
                 }
                 stack_meta = target;
+
+//                if (is_top) {
+//                    CRITICAL_CHECK(stack_meta_container->container.exist(__stack_hash));
+//                    CRITICAL_CHECK(
+//                            stack_meta_container->container.root_ptr() == ptr_meta->stack_idx);
+//                }
     #endif
             } else {
                 stack_meta = stack_meta_container->container.insert(__stack_hash, {0});
     #if USE_STACK_HASH_NO_COLLISION == true
-                ptr_meta->stack_idx = stack_meta_container->container.root_ptr();
-                ptr_meta->attr.is_stack_idx = true;
+                if (stack_meta) {
+                    ptr_meta->stack_idx = stack_meta_container->container.root_ptr();
+                    ptr_meta->attr.is_stack_idx = 1;
+
+//                    CRITICAL_CHECK(stack_meta_container->container.exist(__stack_hash));
+//                    CRITICAL_CHECK(stack_meta_container->container.root_ptr() == ptr_meta->stack_idx);
+                }
     #endif
             }
 #else
@@ -443,6 +456,9 @@ public:
                 auto top_stack_idx = stack_meta_container->container.root_ptr();
                 stack_meta_t *stack_meta;
                 if (ptr_meta.attr.is_stack_idx) {
+
+                    CRITICAL_CHECK(ptr_meta.stack_idx == top_stack_idx);
+
                     stack_meta = &stack_meta_container->container.get(ptr_meta.stack_idx);
                 } else {
                     stack_meta = reinterpret_cast<stack_meta_t *>(ptr_meta.ext_stack_ptr);
@@ -451,8 +467,6 @@ public:
                     stack_meta->size -= ptr_meta.size;
                 } else { // 删除 size 为 0 的堆栈
                     if (ptr_meta.attr.is_stack_idx) {
-
-                        CRITICAL_CHECK(ptr_meta.stack_idx == top_stack_idx);
 
                         if (!top_stack_meta.ext) {
                             stack_meta_container->container.remove(ptr_meta.stack_hash);

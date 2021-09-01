@@ -29,7 +29,7 @@
 #define USE_SPLAY_MAP_SAVE_STACK true
 #define USE_STACK_HASH_NO_COLLISION true
 
-/* Incubating - no feasible performance */
+/* Incubating - currently no feasible performance(40% slower). */
 #define USE_MEMORY_MESSAGE_QUEUE_LOCK_FREE false
 
 /* For testing */
