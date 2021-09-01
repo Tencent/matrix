@@ -25,6 +25,7 @@ android {
             exportHeaders {
                 from('src/main/cpp/common') {
                     include '**/*.h'
+                    include '*.h'
                 }
             }
         }

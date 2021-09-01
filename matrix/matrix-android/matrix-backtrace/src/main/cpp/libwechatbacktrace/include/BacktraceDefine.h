@@ -69,7 +69,7 @@ namespace wechat_backtrace {
 
     typedef uintptr_t uptr;
 
-    constexpr auto FILE_SEPERATOR = "/";
+    constexpr auto FILE_SEPARATOR = "/";
 
 #ifdef __arm__
     typedef uint32_t addr_t;
@@ -83,12 +83,26 @@ namespace wechat_backtrace {
     typedef unsigned long int ulint_t;
     typedef long int lint_t;
 
-    struct Frame {
-        uptr pc = 0;
-        uptr rel_pc = 0;
-        bool is_dex_pc = false;
-        bool maybe_java = false;
+#define frame_attr_is_dex_pc    ((unsigned) 0x1)
+#define frame_attr_maybe_java   ((unsigned) 0x2)
+
+#define set_frame_attr_is_dex_pc(frame) (frame.attr |= frame_attr_is_dex_pc)
+#define set_frame_attr_maybe_java(frame) (frame.attr |= frame_attr_maybe_java)
+#define set_frame_attr_all(frame) (frame.attr |= (frame_attr_is_dex_pc | frame_attr_maybe_java))
+#define is_frame_attr_is_dex_pc(frame) (frame.attr & frame_attr_is_dex_pc)
+#define is_frame_attr_maybe_java(frame) (frame.attr & frame_attr_maybe_java)
+
+#if defined(__aarch64__)
+    struct __attribute__((__packed__)) Frame {
+        unsigned char attr : 8;
+        uptr pc : 56;
     };
+#else
+    struct __attribute__((__packed__)) Frame {
+        unsigned char attr;
+        uptr pc;
+    };
+#endif
 
     struct FrameDetail {
         const uptr rel_pc;
@@ -100,6 +114,12 @@ namespace wechat_backtrace {
         size_t max_frames = 0;
         size_t frame_size = 0;
         std::shared_ptr<Frame> frames;
+    };
+
+    template <size_t _Max>
+    struct BacktraceFixed {
+        Frame frames[_Max];
+        uint8_t frame_size = 0;
     };
 
     enum BacktraceMode {

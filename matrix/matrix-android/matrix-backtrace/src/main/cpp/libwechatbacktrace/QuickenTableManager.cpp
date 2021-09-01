@@ -44,19 +44,19 @@ namespace wechat_backtrace {
 
     inline string
     ToQutFileName(const string &saving_path, const string &soname, const string &build_id) {
-        return saving_path + FILE_SEPERATOR + soname + "." + build_id;
+        return saving_path + FILE_SEPARATOR + soname + "." + build_id;
     }
 
     inline string
     ToTempQutFileName(const string &saving_path, const string &soname, const string &build_id) {
         time_t seconds = time(nullptr);
-        return saving_path + FILE_SEPERATOR + soname + "." + build_id + "_temp_" +
+        return saving_path + FILE_SEPARATOR + soname + "." + build_id + "_temp_" +
                to_string(seconds);
     }
 
     inline string
     ToSymbolicQutFileName(const string &saving_path, const string &soname, const string &hash) {
-        return saving_path + FILE_SEPERATOR + soname + ".hash." + hash;
+        return saving_path + FILE_SEPARATOR + soname + ".hash." + hash;
     }
 
     inline void RenameToMalformed(const string &qut_file_name) {

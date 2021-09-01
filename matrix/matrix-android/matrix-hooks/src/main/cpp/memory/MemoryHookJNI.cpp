@@ -171,6 +171,7 @@ Java_com_tencent_matrix_hook_memory_MemoryHook_installHooksNative(JNIEnv* env, j
                                                                   jobjectArray ignore_so_patterns,
                                                                   jboolean enable_debug) {
     memory_hook_init();
+    LOGI(TAG, "memory_hook_init");
 
     xhook_block_refresh();
 
