@@ -113,25 +113,30 @@ android.libraryVariants.all { variant ->
         classifier = 'sources'
         from sourceDirs
     }
-    def jniSymbolsJar = task("${variant.name}SymbolJar", type: Jar, dependsOn: 'build') {
-        classifier = "so-symbols"
-        boolean hasNativeBuildTask = false
-        tasks.each { task ->
-            if (task.getName().startsWith("externalNativeBuild")) {
-                hasNativeBuildTask = true
+    def externalNativeBuildTask = project.tasks.findByName(
+            "externalNativeBuild${variant.name.capitalize()}")
+    def jniSymbolsJar = null
+    if (externalNativeBuildTask != null) {
+        jniSymbolsJar = task("${variant.name}SymbolJar", type: Jar, dependsOn: externalNativeBuildTask) {
+            classifier = "so-symbols"
+            boolean hasNativeBuildTask = false
+            tasks.each { task ->
+                if (task.getName().startsWith("externalNativeBuild")) {
+                    hasNativeBuildTask = true
+                }
             }
-        }
 
-        if (!hasNativeBuildTask) {
-            return
-        }
-
-        if (hasFlavors) {
-            variant.productFlavors.each { flavor ->
-                from file("build/intermediates/cmake/${flavor.name}/release/obj/")
+            if (!hasNativeBuildTask) {
+                return
             }
-        } else {
-            from file("build/intermediates/cmake/release/obj/")
+
+            if (hasFlavors) {
+                variant.productFlavors.each { flavor ->
+                    from file("build/intermediates/cmake/${flavor.name}/release/obj/")
+                }
+            } else {
+                from file("build/intermediates/cmake/release/obj/")
+            }
         }
     }
 
@@ -148,7 +153,9 @@ android.libraryVariants.all { variant ->
 
             artifact sourcesJar
             artifact javadocJar
-            artifact jniSymbolsJar
+            if (jniSymbolsJar) {
+                artifact jniSymbolsJar
+            }
 
             // append additional configurations
             pom.withXml {
