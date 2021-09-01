@@ -588,9 +588,15 @@ private:
     std::vector<ptr_meta_container_wrapper_t *> ptr_meta_containers;
     std::vector<stack_container_wrapper_t *> stack_meta_containers;
 
+#if USE_MEMORY_MESSAGE_QUEUE == true
     static const unsigned int MAX_PTR_META_SLOT = 1 << 0;
-    static const unsigned int PTR_META_MASK = MAX_PTR_META_SLOT - 1;
     static const unsigned int MAX_STACK_META_SLOT = 1 << 0;
+#else
+    static const unsigned int MAX_PTR_META_SLOT = 1 << 10;
+    static const unsigned int MAX_STACK_META_SLOT = 1 << 9;
+#endif
+
+    static const unsigned int PTR_META_MASK = MAX_PTR_META_SLOT - 1;
     static const unsigned int STACK_META_MASK = MAX_STACK_META_SLOT - 1;
 };
 

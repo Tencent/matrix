@@ -210,7 +210,7 @@ namespace matrix {
                                 }
                             });
                     if (message_counter > 0) {
-                        TEST_LOG_ERROR("Processed ... %zu messages ", message_counter);
+                        HOOK_LOG_ERROR("Processed ... %zu messages ", message_counter);
                     }
 #else
                             });
