@@ -63,7 +63,10 @@ public class OpenglIndexDetectorService extends Service {
         int glDeleteRenderbuffersIndex = FuncSeeker.getFuncIndex(FuncNameString.GL_DELETE_RENDERBUFFERS);
         MatrixLog.i(TAG, "glDeleteRenderbuffers index:" + glDeleteRenderbuffersIndex);
 
-        if ((glGenTexturesIndex * glDeleteTexturesIndex * glGenBuffersIndex * glDeleteBuffersIndex * glGenFramebuffersIndex * glDeleteFramebuffersIndex * glGenRenderbuffersIndex * glDeleteRenderbuffersIndex) == 0) {
+        int glTexImage2DIndex = FuncSeeker.getFuncIndex(FuncNameString.GL_TEX_IMAGE_2D);
+        MatrixLog.i(TAG, "glTexImage2DIndex index:" + glTexImage2DIndex);
+
+        if ((glGenTexturesIndex * glDeleteTexturesIndex * glGenBuffersIndex * glDeleteBuffersIndex * glGenFramebuffersIndex * glDeleteFramebuffersIndex * glGenRenderbuffersIndex * glDeleteRenderbuffersIndex * glTexImage2DIndex) == 0) {
             MatrixLog.e(TAG, "seek func index fail!");
             return null;
         }
@@ -77,8 +80,11 @@ public class OpenglIndexDetectorService extends Service {
         out.put(FuncNameString.GL_DELETE_FRAMEBUFFERS, glDeleteFramebuffersIndex);
         out.put(FuncNameString.GL_GEN_RENDERBUFFERS, glGenRenderbuffersIndex);
         out.put(FuncNameString.GL_DELETE_RENDERBUFFERS, glDeleteRenderbuffersIndex);
+        out.put(FuncNameString.GL_TEX_IMAGE_2D, glTexImage2DIndex);
 
         MatrixLog.i(TAG, "seek func index succ!");
+
+        EGLHelper.release();
         return out;
     }
 

@@ -253,3 +253,20 @@ extern "C" JNIEXPORT jboolean JNICALL Java_com_tencent_matrix_openglleak_hook_Op
     return true;
 }
 
+extern "C"
+JNIEXPORT jboolean JNICALL
+Java_com_tencent_matrix_openglleak_hook_OpenGLHook_hookGlTexImage2D(JNIEnv *env, jclass clazz, jint index) {
+    gl_hooks_t *hooks = get_gl_hooks();
+    if (NULL == hooks) {
+        return false;
+    }
+
+    void **origFunPtr = NULL;
+
+    origFunPtr = (void **) (&hooks->gl.foo1 + index);
+    system_glTexImage2D = (System_GlTexImage2D) *origFunPtr;
+    *origFunPtr = (void *) my_glTexImage2D;
+
+    return true;
+}
+

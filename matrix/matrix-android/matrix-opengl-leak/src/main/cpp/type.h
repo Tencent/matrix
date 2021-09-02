@@ -20,6 +20,9 @@ typedef void (*System_GlDeleteTexture_TYPE)(GLsizei n, const GLuint *textures);
 
 typedef void (*System_GlNormal_TYPE)(GLsizei n, const GLuint *normal);
 
+typedef void (*System_GlTexImage2D)(GLenum target, GLint level, GLint internalformat, GLsizei width, GLsizei height,
+                                    GLint border, GLenum format, GLenum type, const void *pixels);
+
 System_GlNormal_TYPE get_target_func_ptr(const char *func_name);
 
 #endif //OPENGL_API_HOOK_TYPE_H

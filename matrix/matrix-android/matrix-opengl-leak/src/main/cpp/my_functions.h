@@ -30,6 +30,7 @@ static System_GlNormal_TYPE system_glDeleteFramebuffers = NULL;
 static System_GlNormal_TYPE system_glGenRenderbuffers = NULL;
 static System_GlNormal_TYPE system_glDeleteRenderbuffers = NULL;
 static System_GlGetError_TYPE system_glGetError = NULL;
+static System_GlTexImage2D system_glTexImage2D = NULL;
 
 static JavaVM *m_java_vm;
 
@@ -526,6 +527,21 @@ GL_APICALL int GL_APIENTRY my_glGetError() {
     }
 
     return 0;
+}
+
+GL_APICALL void GL_APIENTRY my_glTexImage2D(GLenum target, GLint level, GLint internalformat, GLsizei width, GLsizei height,
+                                            GLint border, GLenum format, GLenum type, const void *pixels) {
+    if(NULL != system_glTexImage2D) {
+        system_glTexImage2D(target, level, internalformat, width, height, border, format, type, pixels);
+
+        __android_log_print(ANDROID_LOG_ERROR, "matrix.OpenglIndexDetectorService", "my_glTexImage2D width = %d", width);
+        __android_log_print(ANDROID_LOG_ERROR, "matrix.OpenglIndexDetectorService", "my_glTexImage2D height = %d", height);
+        __android_log_print(ANDROID_LOG_ERROR, "matrix.OpenglIndexDetectorService", "my_glTexImage2D type = %d", type);
+
+        long size = width * height * 32;
+        __android_log_print(ANDROID_LOG_ERROR, "matrix.OpenglIndexDetectorService", "my_glTexImage2D size = %ld", size);
+
+    }
 }
 
 

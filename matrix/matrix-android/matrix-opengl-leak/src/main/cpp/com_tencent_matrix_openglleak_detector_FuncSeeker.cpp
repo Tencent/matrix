@@ -127,3 +127,63 @@ JNICALL Java_com_tencent_matrix_openglleak_detector_FuncSeeker_getGlGetErrorInde
 
     return result;
 }
+
+extern "C"
+JNIEXPORT jint JNICALL
+Java_com_tencent_matrix_openglleak_detector_FuncSeeker_getBindFuncIndex(JNIEnv *env, jclass clazz,
+                                                                        jstring bind_func_name) {
+    return 0;
+}
+
+static System_GlTexImage2D _system_glTexImage2D = NULL;
+static int i_glTexImage2D = 0;
+static bool has_hook_glTexImage2D = false;
+
+GL_APICALL void GL_APIENTRY _my_glTexImage2D(GLenum target, GLint level, GLint internalformat, GLsizei width, GLsizei height,
+                                            GLint border, GLenum format, GLenum type, const void *pixels) {
+    if (!has_hook_glTexImage2D) {
+        has_hook_glTexImage2D = true;
+    }
+
+    _system_glTexImage2D(target, level, internalformat, width, height, border, format, type, pixels);
+}
+
+
+extern "C"
+JNIEXPORT jint JNICALL
+Java_com_tencent_matrix_openglleak_detector_FuncSeeker_getGlTexImage2DIndex(JNIEnv *env, jclass clazz) {
+    gl_hooks_t *hooks = get_gl_hooks();
+    if (NULL == hooks) {
+        return -1;
+    }
+
+    for (i_glTexImage2D = 0; i_glTexImage2D < 1000; i_glTexImage2D++) {
+        if (has_hook_glTexImage2D) {
+            i_glTexImage2D = i_glTexImage2D - 1;
+
+            void **method = (void **) (&hooks->gl.foo1 + i_glTexImage2D);
+            *method = (void *) _system_glTexImage2D;
+            break;
+        }
+
+        if (_system_glTexImage2D != NULL) {
+            void **method = (void **) (&hooks->gl.foo1 + (i_glTexImage2D - 1));
+            *method = (void *) _system_glTexImage2D;
+        }
+
+        void **replaceMethod = (void **) (&hooks->gl.foo1 + i_glTexImage2D);
+        _system_glTexImage2D = (System_GlTexImage2D) *replaceMethod;
+
+        *replaceMethod = (void *) _my_glTexImage2D;
+
+        glTexImage2D(0,0,0,0,0,0,0,0,NULL);
+    }
+
+    // release
+    _system_glTexImage2D = NULL;
+    has_hook_glTexImage2D = false;
+    int result = i_glTexImage2D;
+    i_glTexImage2D = 0;
+
+    return result;
+}

@@ -78,7 +78,8 @@ public class OpenglLeakPlugin extends Plugin {
             int hookResult = map.get(FuncNameString.GL_GEN_TEXTURES) * map.get(FuncNameString.GL_DELETE_TEXTURES)
                     * map.get(FuncNameString.GL_GEN_BUFFERS) * map.get(FuncNameString.GL_DELETE_BUFFERS)
                     * map.get(FuncNameString.GL_GEN_FRAMEBUFFERS) * map.get(FuncNameString.GL_DELETE_FRAMEBUFFERS)
-                    * map.get(FuncNameString.GL_GEN_RENDERBUFFERS) * map.get(FuncNameString.GL_DELETE_RENDERBUFFERS);
+                    * map.get(FuncNameString.GL_GEN_RENDERBUFFERS) * map.get(FuncNameString.GL_DELETE_RENDERBUFFERS)
+                    * map.get(FuncNameString.GL_TEX_IMAGE_2D);
             MatrixLog.e(TAG, "hookResult = " + hookResult);
             if (hookResult == 0) {
                 if (OpenglLeakPlugin.sCallback != null) {
@@ -99,6 +100,7 @@ public class OpenglLeakPlugin extends Plugin {
             OpenGLHook.getInstance().hook(FuncNameString.GL_DELETE_FRAMEBUFFERS, map.get(FuncNameString.GL_DELETE_FRAMEBUFFERS));
             OpenGLHook.getInstance().hook(FuncNameString.GL_GEN_RENDERBUFFERS, map.get(FuncNameString.GL_GEN_RENDERBUFFERS));
             OpenGLHook.getInstance().hook(FuncNameString.GL_DELETE_RENDERBUFFERS, map.get(FuncNameString.GL_DELETE_RENDERBUFFERS));
+            OpenGLHook.getInstance().hook(FuncNameString.GL_TEX_IMAGE_2D, map.get(FuncNameString.GL_TEX_IMAGE_2D));
             MatrixLog.e(TAG, "hook finish");
 
             // 泄漏监控

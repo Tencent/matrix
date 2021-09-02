@@ -50,6 +50,8 @@ public class OpenGLHook {
             return hookGlGenRenderbuffers(index);
         } else if (targetFuncName.equals(FuncNameString.GL_DELETE_RENDERBUFFERS)) {
             return hookGlDeleteRenderbuffers(index);
+        } else if (targetFuncName.equals(FuncNameString.GL_TEX_IMAGE_2D)) {
+            return hookGlTexImage2D(index);
         }
 
         return false;
@@ -78,6 +80,8 @@ public class OpenGLHook {
     private static native boolean hookGlDeleteRenderbuffers(int index);
 
     private static native boolean hookGlGetError(int index);
+
+    private static native boolean hookGlTexImage2D(int index);
 
     public static void onGlGenTextures(int[] ids, String threadId, String javaStack, long nativeStackPtr) {
         if (ids.length > 0) {
