@@ -1,5 +1,4 @@
 gradle.ext.enableLog = {
-//    return true
     return gradle.startParameter.projectProperties.containsKey("EnableLog" as String)
 }
 

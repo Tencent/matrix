@@ -1,9 +1,1 @@
-<<<<<<< HEAD
-//include ':app'
-include ':matrix-hooks-sample'
-||||||| cd39f860
 include ':app'
-//include ':matrix-hooks-sample'
-=======
-include ':app'
->>>>>>> ed417da1eaa6df7743ffb7e2f38ba28391da2c2c

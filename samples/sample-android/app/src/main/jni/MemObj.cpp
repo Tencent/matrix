@@ -137,7 +137,7 @@ void *thread_test(void *) {
 #define PTHREAD_COUNT 10 //3000
 
 JNIEXPORT void JNICALL
-Java_com_tencent_matrix_hooks_sample_JNIObj_threadTest(JNIEnv *env, jclass clazz) {
+Java_sample_tencent_matrix_hooks_JNIObj_threadTest(JNIEnv *env, jclass clazz) {
 //    pthread_key_create(&exit_key, test_destructor);
 
     pthread_t pthreads[PTHREAD_COUNT];

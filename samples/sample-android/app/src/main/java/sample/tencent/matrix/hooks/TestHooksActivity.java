@@ -9,7 +9,6 @@ import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Debug;
-import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.IBinder;
 import android.os.Process;
@@ -101,7 +100,10 @@ public class TestHooksActivity extends Activity {
                 PthreadHook.INSTANCE
                         .addHookThread(".*")
                         .setThreadTraceEnabled(true)
-                        .enableQuicken(true);
+                        .enableTracePthreadRelease(true)
+                        .enableQuicken(false);
+
+                PthreadHook.INSTANCE.enableLogger(false);
 
                 HookManager.INSTANCE
 

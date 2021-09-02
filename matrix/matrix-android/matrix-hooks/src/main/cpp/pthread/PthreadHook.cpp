@@ -160,7 +160,12 @@ namespace pthread_hook {
                                    (void *) HANDLER_FUNC_NAME(pthread_create), nullptr);
             xhook_grouped_register(HOOK_REQUEST_GROUPID_PTHREAD, ".*/.*\\.so$", "pthread_setname_np",
                                    (void *) HANDLER_FUNC_NAME(pthread_setname_np), nullptr);
-// fixme
+
+            xhook_grouped_register(HOOK_REQUEST_GROUPID_PTHREAD, ".*/.*\\.so$", "pthread_detach",
+                           (void *) HANDLER_FUNC_NAME(pthread_detach),nullptr);
+            xhook_grouped_register(HOOK_REQUEST_GROUPID_PTHREAD, ".*/.*\\.so$", "pthread_join",
+                           (void *) HANDLER_FUNC_NAME(pthread_join), nullptr);
+
             ret = xhook_export_symtable_hook("libc.so", "pthread_detach",
                                              (void *) HANDLER_FUNC_NAME(pthread_detach), nullptr);
             LOGD(LOG_TAG, "export table hook sym: pthread_detach, ret: %d", ret);
@@ -169,14 +174,6 @@ namespace pthread_hook {
                                              (void *) HANDLER_FUNC_NAME(pthread_join), nullptr);
             LOGD(LOG_TAG, "export table hook sym: pthread_join, ret: %d", ret);
 
-            xhook_register(".*/.*\\.so$", "pthread_create",
-                           (void *) HANDLER_FUNC_NAME(pthread_create), nullptr);
-            xhook_register(".*/.*\\.so$", "pthread_setname_np",
-                           (void *) HANDLER_FUNC_NAME(pthread_setname_np), nullptr);
-            xhook_register(".*/.*\\.so$", "pthread_detach",
-                           (void *) HANDLER_FUNC_NAME(pthread_detach),nullptr);
-            xhook_register(".*/.*\\.so$", "pthread_join",
-                           (void *) HANDLER_FUNC_NAME(pthread_join), nullptr);
             xhook_enable_debug(enable_debug ? 1 : 0);
             xhook_enable_sigsegv_protection(0);
             xhook_refresh(0);
