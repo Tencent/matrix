@@ -74,7 +74,7 @@ namespace wechat_backtrace {
     }
 
     inline bool QuickenTable::ReadStack(const uptr addr, uptr *value) {
-        if (UNLIKELY(addr > stack_top_ || addr < stack_bottom_)) {
+        if (UNLIKELY(addr > step_context_->stack_top || addr < step_context_->stack_bottom)) {
             return false;
         }
 
@@ -116,7 +116,7 @@ namespace wechat_backtrace {
                     break;
                 case 1:
                     // 01nn nnnn : vsp = vsp - (nnnnnn << 2) ; # (nnnnnnn << 2) in [0, 0xfc]
-                    cfa_ -= (uint8_t)(byte << 2);
+                    cfa_ -= (uint8_t) (byte << 2);
                     break;
                 case 2:
                     switch (byte) {
@@ -330,7 +330,7 @@ namespace wechat_backtrace {
                     break;
                 case 1:
                     // 01nn nnnn : vsp = vsp - (nnnnnn << 2) ; # (nnnnnnn << 2) in [0, 0xfc]
-                    cfa_ -= (uint8_t)(byte << 2);
+                    cfa_ -= (uint8_t) (byte << 2);
                     break;
                 case 2:
                     switch (byte) {

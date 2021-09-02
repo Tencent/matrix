@@ -61,22 +61,22 @@ namespace wechat_backtrace {
 
         virtual uint64_t AdjustPcFromFde(uint64_t pc) = 0;
 
-        void IterateAllEntries(uint16_t regs_total, unwindstack::Memory *process_memory,
-                               QutInstructionsOfEntries *, uint64_t &estimate_memory_usage,
-                               bool &memory_overwhelmed);
+        void IterateAllEntries(
+                QuickenGenerationContext &context,
+                unwindstack::Memory *process_memory,
+                /* out */ QutInstructionsOfEntries *);
 
         bool ParseSingleFde(
+                QuickenGenerationContext &context,
                 const unwindstack::DwarfFde *fde,
                 const uint64_t pc,
                 const bool iterate_loc,
                 unwindstack::Memory *process_memory,
-                uint16_t regs_total,
-                /* out */ QutInstructionsOfEntries *all_instructions,
-                /* out */ uint64_t &estimate_memory_usage,
-                /* out */ bool &memory_overwhelmed);
+                /* out */ QutInstructionsOfEntries *all_instructions);
 
-        bool Eval(const unwindstack::DwarfCie *, unwindstack::Memory *,
-                  const unwindstack::dwarf_loc_regs_t &, uint16_t total_regs);
+        bool Eval(const QuickenGenerationContext &,
+                  const unwindstack::DwarfCie *, unwindstack::Memory *,
+                  const unwindstack::dwarf_loc_regs_t &);
 
         const unwindstack::DwarfCie *GetCieFromOffset(uint64_t offset);
 
@@ -120,7 +120,8 @@ namespace wechat_backtrace {
 
         void InsertFde(const unwindstack::DwarfFde *fde);
 
-        bool CfaOffsetInstruction(uint64_t reg, uint64_t value);
+        bool CfaOffsetInstruction(
+                const QuickenGenerationContext &context, const uint64_t reg, const uint64_t value);
 
         bool RegOffsetInstruction(uint64_t reg, uint64_t value);
 

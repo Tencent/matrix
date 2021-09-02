@@ -22,7 +22,6 @@
 #import "MatrixDeviceInfo.h"
 
 #import "memory_logging.h"
-#import "memory_report_generator.h"
 #import "logger_internal.h"
 #import "dyld_image_info.h"
 
@@ -35,6 +34,24 @@
 #import <objc/runtime.h>
 
 #define g_matrix_memory_stat_plguin_tag "MemoryStat"
+
+// ============================================================================
+#pragma mark - Memory dump callback
+// ============================================================================
+
+static void (^s_callback)(NSData *) = nil;
+
+void memory_dump_callback(const char *data, size_t len) {
+    @autoreleasepool {
+        NSData *reportData = [NSData dataWithBytes:(void *)data length:len];
+        s_callback(reportData);
+        s_callback = nil;
+    }
+}
+
+// ============================================================================
+#pragma mark - WCMemoryStatPlugin
+// ============================================================================
 
 @interface WCMemoryStatPlugin () {
     WCMemoryRecordManager *m_recordManager;
@@ -125,64 +142,28 @@
     return issue;
 }
 
-// ============================================================================
-#pragma mark - Current Thread
-// ============================================================================
-
-- (void)addTagToCurrentThread:(NSString *)tagString {
-    if (m_currRecord == nil) {
-        return;
-    }
-    MSThreadInfo *threadInfo = [[MSThreadInfo alloc] init];
-    threadInfo.threadName = tagString;
-    [m_currRecord.threadInfos setObject:threadInfo forKey:[NSString stringWithFormat:@"%u", current_thread_id()]];
-    [m_recordManager updateRecord:m_currRecord];
-}
-
-- (void)removeTagOfCurrentThread {
-    if (m_currRecord == nil) {
-        return;
-    }
-    [m_currRecord.threadInfos removeObjectForKey:[NSString stringWithFormat:@"%u", current_thread_id()]];
-    [m_recordManager updateRecord:m_currRecord];
-}
-
-- (uint32_t)getMemoryUsageOfCurrentThread {
-    return get_current_thread_memory_usage();
-}
-
-- (void)dumpMemoryAndGenerateReportData:(NSString *)issue customInfo:(NSDictionary *)customInfo callback:(void (^)(NSData *))callback {
+- (void)memoryDumpAndGenerateReportData:(NSString *)issue customInfo:(NSDictionary *)customInfo callback:(void (^)(NSData *))callback {
     if (m_currRecord == nil) {
         MatrixInfo(@"memstat is not running");
         return;
     }
 
-    __block IMP dump_memory_callback = imp_implementationWithBlock(^(void *self, void *p0, void *p1, void *p2, void *p3) {
-        @autoreleasepool {
-            summary_report_param param;
-            param.phone = [MatrixDeviceInfo platform].UTF8String;
-            param.os_ver = [MatrixDeviceInfo systemVersion].UTF8String;
-            param.launch_time = [MatrixAppRebootAnalyzer appLaunchTime] * 1000;
-            param.report_time = [[NSDate date] timeIntervalSince1970] * 1000;
-            param.app_uuid = app_uuid();
-            param.foom_scene = issue.UTF8String;
+    summary_report_param param;
+    param.phone = [MatrixDeviceInfo platform].UTF8String;
+    param.os_ver = [MatrixDeviceInfo systemVersion].UTF8String;
+    param.launch_time = [MatrixAppRebootAnalyzer appLaunchTime] * 1000;
+    param.report_time = [[NSDate date] timeIntervalSince1970] * 1000;
+    param.app_uuid = app_uuid();
+    param.foom_scene = issue.UTF8String;
 
-            for (id key in customInfo) {
-                std::string stdKey = [key UTF8String];
-                std::string stdVal = [[customInfo[key] description] UTF8String];
-                param.customInfo.insert(std::make_pair(stdKey, stdVal));
-            }
+    for (id key in customInfo) {
+        std::string stdKey = [key UTF8String];
+        std::string stdVal = [[customInfo[key] description] UTF8String];
+        param.customInfo.insert(std::make_pair(stdKey, stdVal));
+    }
 
-            auto content =
-            generate_summary_report_i((allocation_event_db *)p0, (stack_frames_db *)p1, (dyld_image_info_db *)p2, (object_type_db *)p3, param);
-            NSData *reportData = [NSData dataWithBytes:content->c_str() length:content->size()];
-            callback(reportData);
-            imp_removeBlock(dump_memory_callback);
-        }
-    });
-
-    if (dump_memory((void (*)(void *, void *, void *, void *, void *, void *))dump_memory_callback) == false) {
-        imp_removeBlock(dump_memory_callback);
+    if (memory_dump(memory_dump_callback, param)) {
+        s_callback = callback;
     }
 }
 
@@ -250,9 +231,11 @@
     if (self.pluginConfig == nil) {
         self.pluginConfig = [WCMemoryStatConfig defaultConfiguration];
     }
+
     if (self.pluginConfig) {
         skip_max_stack_depth = self.pluginConfig.skipMaxStackDepth;
         skip_min_malloc_size = self.pluginConfig.skipMinMallocSize;
+        dump_call_stacks = self.pluginConfig.dumpCallStacks;
     }
 
     m_currRecord = [[MemoryRecordInfo alloc] init];

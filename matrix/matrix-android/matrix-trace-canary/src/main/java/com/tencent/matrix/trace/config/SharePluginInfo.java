@@ -36,6 +36,7 @@ public class SharePluginInfo {
     public static final String ISSUE_TRACE_STACK = "stack";
     public static final String ISSUE_THREAD_STACK = "threadStack";
     public static final String ISSUE_PROCESS_PRIORITY = "processPriority";
+    public static final String ISSUE_PROCESS_TIMER_SLACK = "processTimerSlack";
     public static final String ISSUE_PROCESS_NICE = "processNice";
     public static final String ISSUE_PROCESS_FOREGROUND = "isProcessForeground";
     public static final String ISSUE_STACK_KEY = "stackKey";

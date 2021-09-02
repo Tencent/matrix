@@ -49,14 +49,14 @@ namespace wechat_backtrace {
         ~QuickenTableGenerator() {};
 
         bool GenerateUltraQUTSections(
-                FrameInfo eh_frame_hdr_info, FrameInfo eh_frame_info, FrameInfo debug_frame_info,
-                FrameInfo gnu_eh_frame_hdr_info, FrameInfo gnu_eh_frame_info,
-                FrameInfo gnu_debug_frame_info,
-                FrameInfo arm_exidx_info, QutSections *fut_sections
+                FrameInfo &eh_frame_hdr_info, FrameInfo &eh_frame_info, FrameInfo &debug_frame_info,
+                FrameInfo &gnu_eh_frame_hdr_info, FrameInfo &gnu_eh_frame_info,
+                FrameInfo &gnu_debug_frame_info,
+                FrameInfo &arm_exidx_info, QutSections *fut_sections
         );
 
         bool GenerateSingleQUTSectionsForJIT(
-                FrameInfo debug_frame_info,
+                FrameInfo &debug_frame_info,
                 const unwindstack::DwarfFde *fde,
                 const uint64_t pc,
                 /*out*/ uint64_t &range_start,
@@ -86,40 +86,47 @@ namespace wechat_backtrace {
 //        uptr log_addr = 0x14e350;
 
     protected:
-        void DecodeDebugFrameEntriesInstr(FrameInfo debug_frame_info,
-                                          QutInstructionsOfEntries *entries_instructions,
-                                          uint16_t regs_total,
-                                          bool gnu_debug_data = false);
+        void DecodeDebugFrameEntriesInstr(
+                QuickenGenerationContext &context,
+                FrameInfo &debug_frame_info,
+                QutInstructionsOfEntries *entries_instructions,
+                bool gnu_debug_data = false);
 
-        void DecodeEhFrameEntriesInstr(FrameInfo eh_frame_hdr_info,
-                                       FrameInfo eh_frame_info,
-                                       QutInstructionsOfEntries *entries_instructions,
-                                       uint16_t regs_total,
-                                       bool gnu_debug_data = false);
+        void DecodeEhFrameEntriesInstr(
 
-        void DecodeExidxEntriesInstr(FrameInfo arm_exidx_info,
-                                     QutInstructionsOfEntries *entries_instructions);
+                QuickenGenerationContext &context,
+                FrameInfo &eh_frame_hdr_info,
+                FrameInfo &eh_frame_info,
+                QutInstructionsOfEntries *entries_instructions,
+                bool gnu_debug_data = false);
+
+        void DecodeExidxEntriesInstr(
+                QuickenGenerationContext &context,
+                FrameInfo &arm_exidx_info,
+                QutInstructionsOfEntries *entries_instructions);
 
         std::shared_ptr<QutInstructionsOfEntries> MergeFrameEntries(
-                std::shared_ptr<QutInstructionsOfEntries> to,
-                std::shared_ptr<QutInstructionsOfEntries> from);
+                std::shared_ptr<QutInstructionsOfEntries> &to,
+                std::shared_ptr<QutInstructionsOfEntries> &from);
 
-        void DecodeDebugFrameSingleEntry(FrameInfo debug_frame_info,
-                                         const unwindstack::DwarfFde *fde,
-                                         const uint64_t pc,
-                                         QutInstructionsOfEntries *entries_instructions,
-                                         uint16_t regs_total, bool gnu_debug_data);
+        void DecodeDebugFrameSingleEntry(
+                QuickenGenerationContext &context,
+                FrameInfo &debug_frame_info,
+                const unwindstack::DwarfFde *fde,
+                const uint64_t pc,
+                QutInstructionsOfEntries *entries_instructions,
+                bool gnu_debug_data);
 
         bool GetPrel31Addr(unwindstack::Memory *memory_, uint32_t offset, uint32_t *addr);
 
-        bool AccumulateMemoryUsage(uint64_t increments);
+        bool AccumulateMemoryUsage(QuickenGenerationContext &context, uint64_t increments);
 
         unwindstack::Memory *memory_;
         unwindstack::Memory *gnu_debug_data_memory_;
         unwindstack::Memory *process_memory_;
 
-        uint64_t estimate_memory_usage_;
-        bool memory_overwhelmed_;
+//        uint64_t estimate_memory_usage_;
+//        bool memory_overwhelmed_;
     };
 
 }  // namespace wechat_backtrace

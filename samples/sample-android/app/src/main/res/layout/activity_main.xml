@@ -2,70 +2,87 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:gravity="center_horizontal"
-    android:orientation="vertical"
-    android:paddingLeft="10dp"
-    android:paddingTop="80dp"
-    android:paddingRight="10dp"
-    android:paddingBottom="80dp"
-    tools:context="com.tencent.matrix.hooks.sample.MainActivity">
+    android:layout_height="match_parent">
 
-    <Button
-        android:id="@+id/test_trace"
+    <ScrollView
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_below="@+id/test_leak"
-        android:layout_alignParentStart="true"
-        android:layout_alignParentLeft="true"
-        android:layout_weight="1"
-        android:text="trace_canary"
-        android:textSize="20dp" />
+        android:layout_height="match_parent">
 
-    <Button
-        android:id="@+id/test_io"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_below="@+id/test_trace"
-        android:layout_alignParentStart="true"
-        android:layout_alignParentLeft="true"
-        android:layout_weight="1"
-        android:text="io_canary"
-        android:textSize="20dp" />
+        <LinearLayout
+            style="@style/Container"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_horizontal"
+            tools:ignore="HardcodedText">
 
-    <Button
-        android:id="@+id/test_sqlite_lint"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_below="@+id/test_io"
-        android:layout_alignParentStart="true"
-        android:layout_alignParentLeft="true"
-        android:layout_weight="1"
-        android:text="sqlite_lint"
-        android:textSize="20dp" />
+            <Button
+                android:id="@+id/test_trace"
+                style="@style/EntryButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Trace Canary" />
 
-    <Button
-        android:id="@+id/test_leak"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:text="resource_canary"
-        android:textSize="20dp" />
+            <TextView
+                style="@style/DescText"
+                android:text="Provide multiple functions like FPS monitor/ANR Catch/Method Tracing and other gadgets to detect some specific problems." />
 
-    <Button
-        android:id="@+id/test_battery"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:text="battery"
-        android:textSize="20dp" />
+            <View style="@style/Divider" />
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:gravity="center"
-        android:padding="5dp"
-        android:text="Test Resource canary need Enter and exit the page a few seconds later to get the issue result\nPS:Will only be published once, if you need to publish again, you need to restart the app."
-        android:textSize="16sp" />
+            <Button
+                android:id="@+id/test_leak"
+                style="@style/EntryButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Resource Canary" />
 
+            <TextView
+                style="@style/DescText"
+                android:text="Test Resource canary need Enter and exit the page a few seconds later to get the issue result\nPS:Will only be published once, if you need to publish again, you need to restart the app." />
+
+            <View style="@style/Divider" />
+
+            <Button
+                android:id="@+id/test_hooks"
+                style="@style/EntryButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Matrix Hooks" />
+
+            <TextView
+                style="@style/DescText"
+                android:text="Include allocation hooks, pthread creation hooks and some other hack tools to mitigate 32 bit virtual memory address insufficiency." />
+
+            <View style="@style/Divider" />
+
+            <Button
+                android:id="@+id/test_battery"
+                style="@style/EntryButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Battery Canary" />
+
+            <TextView
+                style="@style/DescText"
+                android:text="Battery Canary detects abnormal usage of thread jiffies." />
+
+            <View style="@style/Divider" />
+
+            <Button
+                android:id="@+id/test_io"
+                style="@style/EntryButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="IO Canary" />
+
+            <Button
+                android:id="@+id/test_sqlite_lint"
+                style="@style/EntryButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="SQLite Lint" />
+
+        </LinearLayout>
+    </ScrollView>
 </LinearLayout>

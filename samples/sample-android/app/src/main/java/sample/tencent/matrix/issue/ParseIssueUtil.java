@@ -33,7 +33,7 @@ public class ParseIssueUtil {
             stringBuilder.append("key").append(" : ").append(issue.getKey()).append("\n");
         }
 
-        stringBuilder.append("content :").append("\n");
+        stringBuilder.append("ISSUE Content:").append("\n");
 
         return pauseJsonObj(stringBuilder, issue.getContent()).toString();
 
@@ -44,7 +44,7 @@ public class ParseIssueUtil {
         while (iterator.hasNext()) {
             String key = iterator.next();
             String val = object.optString(key);
-            builder.append("\t").append(key).append(" : ").append(val).append("\n");
+            builder.append("\t\t\t").append(key).append(" : ").append(val).append("\n");
         }
 
         return builder;

@@ -8,5 +8,20 @@ gradle.ext.enableStatistic = {
 }
 
 gradle.ext.forceArm32 = {
-    return gradle.startParameter.projectProperties.containsKey("forceArm32" as String)
+    if (gradle.startParameter.projectProperties.containsKey("forceArm32" as String) &&
+            gradle.startParameter.projectProperties.get("forceArm32").equalsIgnoreCase("false")) {
+        return false
+    }
+
+    return true
+}
+
+gradle.ext.gonnaPublish = {
+    for (String taskName : gradle.startParameter.taskNames) {
+        if (taskName.contains("publish")) {
+            return true
+        }
+    }
+
+    return false
 }

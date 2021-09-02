@@ -84,6 +84,10 @@ public class WeChatBacktrace {
         void load(String library);
     }
 
+    /**
+     * Warm-up Reporter. Will emit several statistic information.
+     * @param reporter
+     */
     public static void setReporter(WarmUpReporter reporter) {
         WarmUpDelegate.sReporter = reporter;
     }
@@ -265,11 +269,6 @@ public class WeChatBacktrace {
             // Set warmed up flag
             WeChatBacktraceNative.setWarmedUp(hasWarmedUp);
 
-            // Set if invoke generation immediately.
-            if (configuration.mImmediateGeneration) {
-                WeChatBacktraceNative.immediateGeneration(true);
-            }
-
             startScheduleQutGenerationRequests();
 
             // Register warmed up receiver for other processes.
@@ -338,7 +337,6 @@ public class WeChatBacktrace {
         boolean mQuickenAlwaysOn = false;
         boolean mCoolDownIfApkUpdated = true;   // Default true.
         boolean mIsWarmUpProcess = false;
-        boolean mImmediateGeneration = false;
         boolean mWarmUpInIsolateProcess = true;
         WarmUpTiming mWarmUpTiming = WarmUpTiming.WhileScreenOff;
         long mWarmUpDelay = DELAY_SHORTLY;
@@ -361,6 +359,11 @@ public class WeChatBacktrace {
             mIsWarmUpProcess = ProcessUtil.isMainProcess(mContext);
         }
 
+        /**
+         * Set path to save quicken unwind table data.
+         * @param savingPath
+         * @return
+         */
         public Configuration savingPath(String savingPath) {
             if (mCommitted) {
                 return this;
@@ -369,6 +372,11 @@ public class WeChatBacktrace {
             return this;
         }
 
+        /**
+         * Backtrace mode, default using Quicken.
+         * @param mode
+         * @return
+         */
         public Configuration setBacktraceMode(Mode mode) {
             if (mCommitted) {
                 return this;
@@ -379,6 +387,10 @@ public class WeChatBacktrace {
             return this;
         }
 
+        /**
+         * Always can use quicken unwind no matter which backtrace mode was set.
+         * @return
+         */
         public Configuration setQuickenAlwaysOn() {
             if (mCommitted) {
                 return this;
@@ -387,6 +399,11 @@ public class WeChatBacktrace {
             return this;
         }
 
+        /**
+         * Give a custom library loader.
+         * @param loader
+         * @return
+         */
         public Configuration setLibraryLoader(LibraryLoader loader) {
             if (mCommitted) {
                 return this;
@@ -395,14 +412,11 @@ public class WeChatBacktrace {
             return this;
         }
 
-        public Configuration immediateGeneration(boolean immedate) {
-            if (mCommitted) {
-                return this;
-            }
-            mImmediateGeneration = immedate;
-            return this;
-        }
-
+        /**
+         * Directory contains elf files which will be warmed up later.
+         * @param directory
+         * @return
+         */
         public Configuration directoryToWarmUp(String directory) {
             if (mCommitted) {
                 return this;
@@ -411,6 +425,10 @@ public class WeChatBacktrace {
             return this;
         }
 
+        /**
+         * Clear all warm-up dir set.
+         * @return
+         */
         public Configuration clearWarmUpDirectorySet() {
             if (mCommitted) {
                 return this;
@@ -419,6 +437,11 @@ public class WeChatBacktrace {
             return this;
         }
 
+        /**
+         * Need force remove warmed-up state.
+         * @param coolDown
+         * @return
+         */
         public Configuration coolDown(boolean coolDown) {
             if (mCommitted) {
                 return this;
@@ -427,6 +450,11 @@ public class WeChatBacktrace {
             return this;
         }
 
+        /**
+         * Set if should cool down while apk was updated. Default true.
+         * @param ifApkUpdated
+         * @return
+         */
         public Configuration coolDownIfApkUpdated(boolean ifApkUpdated) {
             if (mCommitted) {
                 return this;
@@ -435,6 +463,11 @@ public class WeChatBacktrace {
             return this;
         }
 
+        /**
+         * Tell current process is warm-up caller process. It's main process by default.
+         * @param isWarmUpProcess
+         * @return
+         */
         public Configuration isWarmUpProcess(boolean isWarmUpProcess) {
             if (mCommitted) {
                 return this;
@@ -443,6 +476,11 @@ public class WeChatBacktrace {
             return this;
         }
 
+        /**
+         * Should do real warm up process in isolate process. Default true.
+         * @param isolateProcess
+         * @return
+         */
         public Configuration warmUpInIsolateProcess(boolean isolateProcess) {
             if (mCommitted) {
                 return this;
@@ -451,6 +489,12 @@ public class WeChatBacktrace {
             return this;
         }
 
+        /**
+         * Warm-up timing.
+         * @param timing
+         * @param delayMs
+         * @return
+         */
         public Configuration warmUpSettings(WarmUpTiming timing, long delayMs) {
             if (mCommitted) {
                 return this;
@@ -462,6 +506,11 @@ public class WeChatBacktrace {
             return this;
         }
 
+        /**
+         * Path of XLogger so. So we can write xlog from native code.
+         * @param pathOfXLogSo
+         * @return
+         */
         public Configuration xLoggerPath(String pathOfXLogSo) {
             if (mCommitted) {
                 return this;
@@ -471,6 +520,11 @@ public class WeChatBacktrace {
             return this;
         }
 
+        /**
+         * Enable logger in processes other than the isolate process.
+         * @param enable
+         * @return
+         */
         public Configuration enableOtherProcessLogger(boolean enable) {
             if (mCommitted) {
                 return this;
@@ -481,6 +535,11 @@ public class WeChatBacktrace {
             return this;
         }
 
+        /**
+         * Enable logger in isolate process.
+         * @param enable
+         * @return
+         */
         public Configuration enableIsolateProcessLogger(boolean enable) {
             if (mCommitted) {
                 return this;
@@ -491,6 +550,9 @@ public class WeChatBacktrace {
             return this;
         }
 
+        /**
+         * Commit configurations.
+         */
         public void commit() {
             if (mCommitted) {
                 return;
@@ -513,7 +575,6 @@ public class WeChatBacktrace {
                     ">>> Warm-up Timing: " + mWarmUpTiming + "\n" +
                     ">>> Warm-up Delay: " + mWarmUpDelay + "ms\n" +
                     ">>> Warm-up in isolate process: " + mWarmUpInIsolateProcess + "\n" +
-                    ">>> Invoke quicken generation immediately: " + mImmediateGeneration + "\n" +
                     ">>> Enable logger: " + mEnableLog + "\n" +
                     ">>> Enable Isolate Process logger: " + mEnableIsolateProcessLog + "\n" +
                     ">>> Path of XLog: " + mPathOfXLogSo + "\n" +

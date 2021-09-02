@@ -149,7 +149,6 @@ public class DexData {
 
         mStrings = new String[count];
 
-        seek(stringOffsets[0]);
         for (int i = 0; i < count; i++) {
             seek(stringOffsets[i]);         // should be a no-op
             mStrings[i] = readString();
