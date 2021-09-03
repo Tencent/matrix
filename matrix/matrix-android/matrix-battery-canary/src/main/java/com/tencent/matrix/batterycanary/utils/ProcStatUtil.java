@@ -346,9 +346,6 @@ public final class ProcStatUtil {
             ProcStatReader reader =  new ProcStatReader(path, buffer);
             try {
                 reader.reset();
-                if (!reader.isValid()) {
-                    throw new IOException("ProcStatReader is invalid");
-                }
                 reader.skipLeftBrace();
                 CharBuffer comm = reader.readToSymbol(')', CharBuffer.allocate(16));
                 reader.skipSpaces();
@@ -368,9 +365,12 @@ public final class ProcStatUtil {
                 stat.cutime = readJiffy(reader);
                 stat.cstime = readJiffy(reader);
                 return stat;
-
             } catch (Exception e) {
-                throw new ParseException("ProcStatReader error: " + e.getClass().getName() + ", " + e.getMessage());
+                if (e instanceof ParseException) {
+                    throw e;
+                } else {
+                    throw new ParseException("ProcStatReader error: " + e.getClass().getName() + ", " + e.getMessage());
+                }
             } finally {
                 try {
                     reader.close();

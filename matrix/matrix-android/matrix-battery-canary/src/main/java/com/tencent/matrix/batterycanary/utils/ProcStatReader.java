@@ -37,7 +37,7 @@ final class ProcStatReader {
         mBuffer = buffer;
     }
 
-    public ProcStatReader reset() {
+    public ProcStatReader reset() throws ProcStatUtil.ParseException {
         // Be optimistic
         mIsValid = true;
 
@@ -57,6 +57,7 @@ final class ProcStatReader {
             } catch (IOException ioe) {
                 mIsValid = false;
                 close();
+                throw new ProcStatUtil.ParseException("RAF err: " + ioe.getMessage());
             }
         }
 
@@ -265,7 +266,7 @@ final class ProcStatReader {
         close();
     }
 
-    static class ParseException extends RuntimeException {
+    private static class ParseException extends RuntimeException {
         ParseException(String message) {
             super(message);
         }
