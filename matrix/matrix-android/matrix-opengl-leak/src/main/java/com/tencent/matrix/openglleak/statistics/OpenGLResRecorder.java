@@ -13,6 +13,8 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
+import com.tencent.matrix.openglleak.utils.ExecuteCenter;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -23,22 +25,16 @@ import java.util.Map;
 
 public class OpenGLResRecorder {
 
-    private List<OpenGLInfo> infoList = new ArrayList<>();
+    private final List<OpenGLInfo> infoList = new ArrayList<>();
 
-    private static OpenGLResRecorder mInstance = new OpenGLResRecorder();
+    private static final OpenGLResRecorder mInstance = new OpenGLResRecorder();
 
-    private HandlerThread mHandlerThread;
-    private Handler mH;
 
     private LeakMonitor.LeakListener mListener;
 
     private static final String TAG = "Matrix.OpenGLResRecorder";
 
     private OpenGLResRecorder() {
-        mHandlerThread = new HandlerThread("GpuResLeakMonitor");
-        mHandlerThread.start();
-
-        mH = new Handler(mHandlerThread.getLooper());
     }
 
     public static OpenGLResRecorder getInstance() {
@@ -50,7 +46,7 @@ public class OpenGLResRecorder {
     }
 
     public void gen(final OpenGLInfo oinfo) {
-        mH.post(new Runnable() {
+        ExecuteCenter.getInstance().post(new Runnable() {
             @Override
             public void run() {
                 if (oinfo == null) {
@@ -65,7 +61,7 @@ public class OpenGLResRecorder {
     }
 
     public void delete(final OpenGLInfo del) {
-        mH.post(new Runnable() {
+        ExecuteCenter.getInstance().post(new Runnable() {
             @Override
             public void run() {
                 if (del == null) {
@@ -116,13 +112,37 @@ public class OpenGLResRecorder {
         return ll;
     }
 
-    public void remove(OpenGLInfo info) {
-        if (infoList == null) {
-            return;
-        }
-        synchronized (infoList) {
-            infoList.remove(info);
-        }
+    public void remove(final OpenGLInfo info) {
+        ExecuteCenter.getInstance().post(new Runnable() {
+            @Override
+            public void run() {
+                if (infoList == null) {
+                    return;
+                }
+                synchronized (infoList) {
+                    infoList.remove(info);
+                }
+            }
+        });
+    }
+
+    public void replace(final OpenGLInfo info) {
+        ExecuteCenter.getInstance().post(new Runnable() {
+            @Override
+            public void run() {
+                if (infoList == null) {
+                    return;
+                }
+                synchronized (infoList) {
+                    for (int i = 0; i < infoList.size(); i++) {
+                        if (info == infoList.get(i)) {
+                            infoList.set(i, info);
+                            return;
+                        }
+                    }
+                }
+            }
+        });
     }
 
     public List<Integer> getAllHashCode() {
@@ -409,6 +429,22 @@ public class OpenGLResRecorder {
                 }
 
                 if (item.hashCode() == hashCode) {
+                    return item;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    public OpenGLInfo getItemByEGLContextAndId(OpenGLInfo.TYPE type, long eglContext, int id) {
+        synchronized (infoList) {
+            for (OpenGLInfo item : infoList) {
+                if (item == null) {
+                    break;
+                }
+
+                if (type == item.getType() && item.getEglContextNativeHandle() == eglContext && item.getId() == id) {
                     return item;
                 }
             }

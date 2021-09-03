@@ -31,6 +31,10 @@ static System_GlNormal_TYPE system_glGenRenderbuffers = NULL;
 static System_GlNormal_TYPE system_glDeleteRenderbuffers = NULL;
 static System_GlGetError_TYPE system_glGetError = NULL;
 static System_GlTexImage2D system_glTexImage2D = NULL;
+static System_GlBind_TYPE system_glBindTexture = NULL;
+static System_GlBind_TYPE system_glBindBuffer = NULL;
+static System_GlBind_TYPE system_glBindFramebuffer = NULL;
+static System_GlBind_TYPE system_glBindRenderbuffer = NULL;
 
 static JavaVM *m_java_vm;
 
@@ -45,6 +49,11 @@ static jmethodID method_onGlGenRenderbuffers;
 static jmethodID method_onGlDeleteRenderbuffers;
 static jmethodID method_getStack;
 static jmethodID method_onGetError;
+static jmethodID method_onGlBindTexture;
+static jmethodID method_onGlBindBuffer;
+static jmethodID method_onGlBindFramebuffer;
+static jmethodID method_onGlBindRenderbuffer;
+static jmethodID method_onGlTexImage2D;
 
 const size_t BUF_SIZE = 1024;
 
@@ -533,16 +542,51 @@ GL_APICALL void GL_APIENTRY my_glTexImage2D(GLenum target, GLint level, GLint in
                                             GLint border, GLenum format, GLenum type, const void *pixels) {
     if(NULL != system_glTexImage2D) {
         system_glTexImage2D(target, level, internalformat, width, height, border, format, type, pixels);
-
-        __android_log_print(ANDROID_LOG_ERROR, "matrix.OpenglIndexDetectorService", "my_glTexImage2D width = %d", width);
-        __android_log_print(ANDROID_LOG_ERROR, "matrix.OpenglIndexDetectorService", "my_glTexImage2D height = %d", height);
-        __android_log_print(ANDROID_LOG_ERROR, "matrix.OpenglIndexDetectorService", "my_glTexImage2D type = %d", type);
-
         long size = width * height * 32;
-        __android_log_print(ANDROID_LOG_ERROR, "matrix.OpenglIndexDetectorService", "my_glTexImage2D size = %ld", size);
+
+        JNIEnv *env = GET_ENV();
+        env->CallStaticVoidMethod(class_OpenGLHook, method_onGlTexImage2D, target, size);
 
     }
 }
+
+
+GL_APICALL void GL_APIENTRY my_glBindTexture(GLenum target, GLuint resourceId) {
+    if(NULL != system_glBindTexture) {
+        system_glBindTexture(target, resourceId);
+        JNIEnv *env = GET_ENV();
+
+        char* javaStack = get_java_stack();
+        env->CallStaticVoidMethod(class_OpenGLHook, method_onGlBindTexture, target, resourceId);
+    }
+}
+
+GL_APICALL void GL_APIENTRY my_glBindBuffer(GLenum target, GLuint resourceId) {
+    if(NULL != system_glBindTexture) {
+        system_glBindBuffer(target, resourceId);
+        JNIEnv *env = GET_ENV();
+        env->CallStaticVoidMethod(class_OpenGLHook, method_onGlBindBuffer, target, resourceId);
+
+    }
+}
+
+GL_APICALL void GL_APIENTRY my_glBindFramebuffer(GLenum target, GLuint resourceId) {
+    if(NULL != system_glBindTexture) {
+        system_glBindFramebuffer(target, resourceId);
+        JNIEnv *env = GET_ENV();
+        env->CallStaticVoidMethod(class_OpenGLHook, method_onGlBindFramebuffer, target, resourceId);
+
+    }
+}
+
+GL_APICALL void GL_APIENTRY my_glBindRenderbuffer(GLenum target, GLuint resourceId) {
+    if(NULL != system_glBindTexture) {
+        system_glBindRenderbuffer(target, resourceId);
+        JNIEnv *env = GET_ENV();
+        env->CallStaticVoidMethod(class_OpenGLHook, method_onGlBindRenderbuffer, target, resourceId);
+    }
+}
+
 
 
 #endif //OPENGL_API_HOOK_MY_FUNCTIONS_H

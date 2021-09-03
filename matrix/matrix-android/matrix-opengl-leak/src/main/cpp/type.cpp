@@ -26,3 +26,17 @@ System_GlNormal_TYPE get_target_func_ptr(const char *func_name) {
 
     return NULL;
 }
+
+System_GlBind_TYPE get_bind_func_ptr(const char *func_name) {
+    if (strcmp(func_name, "glBindTexture") == 0) {
+        return (System_GlBind_TYPE) glBindTexture;
+    } else if (strcmp(func_name, "glBindBuffer") == 0) {
+        return (System_GlBind_TYPE) glBindBuffer;
+    } else if (strcmp(func_name, "glBindFramebuffer") == 0) {
+        return (System_GlBind_TYPE) glBindFramebuffer;
+    } else if (strcmp(func_name, "glBindRenderbuffer") == 0) {
+        return (System_GlBind_TYPE) glBindRenderbuffer;
+    }
+
+    return NULL;
+}

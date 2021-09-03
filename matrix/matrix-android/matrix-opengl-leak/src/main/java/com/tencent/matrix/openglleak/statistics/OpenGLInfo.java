@@ -10,6 +10,10 @@ public class OpenGLInfo {
 
     private static final String TAG = "OpenGLInfo.TAG";
 
+    public static final int OP_GEN = 0x6565;
+    public static final int OP_DELETE = 0x6566;
+    public static final int OP_BIND = 0x6567;
+
     private int id;
     private int error;
     private String threadId = "";
@@ -17,7 +21,8 @@ public class OpenGLInfo {
     private String javaStack = "";
     private String nativeStack = "";
     private long nativeStackPtr;
-    private boolean genOrDelete;
+    private int operate;
+    private long size;
     private TYPE type;
     // use to dump
     private int allocCount = 1;
@@ -37,6 +42,7 @@ public class OpenGLInfo {
         TEXTURE, BUFFER, FRAME_BUFFERS, RENDER_BUFFERS
     }
 
+
     public OpenGLInfo(OpenGLInfo clone) {
         this.id = clone.id;
         this.error = clone.error;
@@ -45,7 +51,7 @@ public class OpenGLInfo {
         this.javaStack = clone.javaStack;
         this.nativeStack = clone.nativeStack;
         this.nativeStackPtr = clone.nativeStackPtr;
-        this.genOrDelete = clone.genOrDelete;
+        this.operate = clone.operate;
         this.type = clone.type;
         this.isRelease = clone.isRelease;
         this.maybeLeakCheckTime = clone.maybeLeakCheckTime;
@@ -59,21 +65,32 @@ public class OpenGLInfo {
         this.error = error;
     }
 
-    public OpenGLInfo(TYPE type, int id, String threadId, long eglContextNativeHandle, boolean genOrDelete) {
-        this.id = id;
-        this.threadId = threadId;
-        this.eglContextNativeHandle = eglContextNativeHandle;
-        this.genOrDelete = genOrDelete;
+    public OpenGLInfo(TYPE type) {
         this.type = type;
     }
 
-    public OpenGLInfo(TYPE type, int id, String threadId, long eglContextNativeHandle, String javaStack, long nativeStackPtr, boolean genOrDelete, String activityName, AtomicInteger counter) {
+    public OpenGLInfo(TYPE type, int id, long eglContextNativeHandle, int operate) {
+        this.id = id;
+        this.eglContextNativeHandle = eglContextNativeHandle;
+        this.operate = operate;
+        this.type = type;
+    }
+
+    public OpenGLInfo(TYPE type, int id, String threadId, long eglContextNativeHandle, int operate) {
+        this.id = id;
+        this.threadId = threadId;
+        this.eglContextNativeHandle = eglContextNativeHandle;
+        this.operate = operate;
+        this.type = type;
+    }
+
+    public OpenGLInfo(TYPE type, int id, String threadId, long eglContextNativeHandle, String javaStack, long nativeStackPtr, int operate, String activityName, AtomicInteger counter) {
         this.id = id;
         this.threadId = threadId;
         this.eglContextNativeHandle = eglContextNativeHandle;
         this.javaStack = javaStack;
         this.nativeStackPtr = nativeStackPtr;
-        this.genOrDelete = genOrDelete;
+        this.operate = operate;
         this.type = type;
         this.activityName = activityName;
         this.counter = counter;
@@ -124,6 +141,7 @@ public class OpenGLInfo {
         return nativeStack;
     }
 
+
     public int getAllocCount() {
         return allocCount;
     }
@@ -135,6 +153,27 @@ public class OpenGLInfo {
     public void incAllocRecord(int id) {
         this.allocCount++;
         this.idList.add(id);
+    }
+
+    public long getSize() {
+        return size;
+    }
+
+    public void setSize(long size) {
+        this.size = size;
+    }
+
+    private String getOpStr() {
+        if (operate == OP_GEN) {
+            return "gen";
+        }
+        if (operate == OP_DELETE) {
+            return "delete";
+        }
+        if (operate == OP_BIND) {
+            return "bind";
+        }
+        return "unkown";
     }
 
     public boolean getMaybeLeak() {
@@ -191,8 +230,7 @@ public class OpenGLInfo {
                 "id=" + id +
                 ", activityName=" + activityName +
                 ", type='" + type.toString() + '\'' +
-                ", error=" + error +
-                ", isGen=" + genOrDelete +
+                ", size='" + size + '\'' +
                 ", threadId='" + threadId + '\'' +
                 ", eglContextNativeHandle='" + eglContextNativeHandle + '\'' +
                 ", javaStack='" + javaStack + '\'' +

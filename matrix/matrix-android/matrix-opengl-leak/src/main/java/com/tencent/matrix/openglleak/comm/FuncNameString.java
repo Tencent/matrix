@@ -12,6 +12,9 @@ public class FuncNameString {
     public static final String GL_GEN_RENDERBUFFERS = "glGenRenderbuffers";
     public static final String GL_DELETE_RENDERBUFFERS = "glDeleteRenderbuffers";
     public static final String GL_TEX_IMAGE_2D = "glTexImage2D";
-    public static final String GL_BIND_TEXTURES = "glBindTextures";
+    public static final String GL_BIND_TEXTURE = "glBindTexture";
+    public static final String GL_BIND_FRAMEBUFFER = "glBindFramebuffer";
+    public static final String GL_BIND_BUFFER = "glBindBuffer";
+    public static final String GL_BIND_RENDERBUFFER = "glBindRenderbuffer";
 
 }

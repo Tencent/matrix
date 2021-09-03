@@ -21,16 +21,17 @@ static System_GlNormal_TYPE _system_glGenNormal = NULL;
 static int i_glGenNormal = 0;
 static bool has_hook_glGenNormal = false;
 
-GL_APICALL void GL_APIENTRY _my_glNormal(GLsizei n,GLuint *normal) {
-    if(!has_hook_glGenNormal) {
+GL_APICALL void GL_APIENTRY _my_glNormal(GLsizei n, GLuint *normal) {
+    if (!has_hook_glGenNormal) {
         has_hook_glGenNormal = true;
     }
 
     _system_glGenNormal(n, normal);
 }
 
-extern "C" JNIEXPORT jint JNICALL Java_com_tencent_matrix_openglleak_detector_FuncSeeker_getTargetFuncIndex(JNIEnv *env, jclass,
-                                                                        jstring target_func_name) {
+extern "C" JNIEXPORT jint JNICALL
+Java_com_tencent_matrix_openglleak_detector_FuncSeeker_getTargetFuncIndex(JNIEnv *env, jclass,
+                                                                          jstring target_func_name) {
     gl_hooks_t *hooks = get_gl_hooks();
     if (NULL == hooks) {
         return 0;
@@ -128,24 +129,81 @@ JNICALL Java_com_tencent_matrix_openglleak_detector_FuncSeeker_getGlGetErrorInde
     return result;
 }
 
+static System_GlBind_TYPE _system_glBind = NULL;
+static int i_glBind = 0;
+static bool has_hook_glBind = false;
+
+GL_APICALL void GL_APIENTRY _my_glBind(GLenum target, GLuint resourceId) {
+    if (!has_hook_glBind) {
+        has_hook_glBind = true;
+    }
+
+    _system_glBind(target, resourceId);
+}
+
 extern "C"
 JNIEXPORT jint JNICALL
 Java_com_tencent_matrix_openglleak_detector_FuncSeeker_getBindFuncIndex(JNIEnv *env, jclass clazz,
                                                                         jstring bind_func_name) {
-    return 0;
+    gl_hooks_t *hooks = get_gl_hooks();
+    if (NULL == hooks) {
+        return 0;
+    }
+
+    System_GlBind_TYPE bind_func = get_bind_func_ptr(env->GetStringUTFChars(bind_func_name, JNI_FALSE));
+    if (NULL == bind_func_name) {
+        return 0;
+    }
+
+    for (i_glBind = 0; i_glBind < 500; i_glBind++) {
+        if (has_hook_glBind) {
+            i_glBind = i_glBind - 1;
+
+            void **method = (void **) (&hooks->gl.foo1 + i_glBind);
+            *method = (void *) _system_glBind;
+            break;
+        }
+
+        if (_system_glBind != NULL) {
+            void **method = (void **) (&hooks->gl.foo1 + (i_glBind - 1));
+            *method = (void *) _system_glBind;
+        }
+
+        void **replaceMethod = (void **) (&hooks->gl.foo1 + i_glBind);
+        _system_glBind = (System_GlBind_TYPE) *replaceMethod;
+
+        *replaceMethod = (void *) _my_glBind;
+
+        // 验证是否已经拿到偏移值
+        HOOK_O_FUNC(bind_func, 0, NULL);
+    }
+
+    if (i_glBind == 500) {
+        i_glBind = 0;
+    }
+
+    // release
+    _system_glBind = NULL;
+    has_hook_glBind = false;
+    int result = i_glBind;
+    i_glBind = 0;
+
+    return result;
 }
 
 static System_GlTexImage2D _system_glTexImage2D = NULL;
 static int i_glTexImage2D = 0;
 static bool has_hook_glTexImage2D = false;
 
-GL_APICALL void GL_APIENTRY _my_glTexImage2D(GLenum target, GLint level, GLint internalformat, GLsizei width, GLsizei height,
-                                            GLint border, GLenum format, GLenum type, const void *pixels) {
+GL_APICALL void GL_APIENTRY
+_my_glTexImage2D(GLenum target, GLint level, GLint internalformat, GLsizei width, GLsizei height,
+                 GLint border, GLenum format, GLenum type, const void *pixels) {
     if (!has_hook_glTexImage2D) {
         has_hook_glTexImage2D = true;
     }
 
-    _system_glTexImage2D(target, level, internalformat, width, height, border, format, type, pixels);
+    _system_glTexImage2D(target, level, internalformat, width, height, border, format, type,
+                         pixels);
 }
 
 
@@ -176,7 +234,7 @@ Java_com_tencent_matrix_openglleak_detector_FuncSeeker_getGlTexImage2DIndex(JNIE
 
         *replaceMethod = (void *) _my_glTexImage2D;
 
-        glTexImage2D(0,0,0,0,0,0,0,0,NULL);
+        glTexImage2D(0, 0, 0, 0, 0, 0, 0, 0, NULL);
     }
 
     // release
