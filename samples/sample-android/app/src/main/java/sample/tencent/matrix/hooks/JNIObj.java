@@ -24,4 +24,6 @@ public class JNIObj {
     public native void doMmap();
 
     public native static void mallocTest();
+
+    public native static void threadTest();
 }

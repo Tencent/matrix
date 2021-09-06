@@ -47,7 +47,8 @@ public class PthreadHook extends AbsHook {
     private boolean mConfigured = false;
     private boolean mThreadTraceEnabled = false;
     private ThreadStackShrinkConfig mThreadStackShrinkConfig = null;
-    private boolean mHookInstalled = false;
+    private boolean mHookInstalled             = false;
+    private boolean mEnableTracePthreadRelease = false;
 
     public static class ThreadStackShrinkConfig {
         public boolean enabled = false;
@@ -97,6 +98,16 @@ public class PthreadHook extends AbsHook {
         return this;
     }
 
+    /**
+     * trace pthread_detach or pthread_join
+     * @param enabled
+     * @return
+     */
+    public PthreadHook enableTracePthreadRelease(boolean enabled) {
+        mEnableTracePthreadRelease = enabled;
+        return this;
+    }
+
     public PthreadHook setThreadStackShrinkConfig(@Nullable ThreadStackShrinkConfig config) {
         mThreadStackShrinkConfig = config;
         return this;
@@ -143,6 +154,8 @@ public class PthreadHook extends AbsHook {
         addHookThreadNameNative(mHookThreadName.toArray(new String[0]));
         enableQuickenNative(mEnableQuicken);
         enableLoggerNative(mEnableLog);
+        enableTracePthreadReleaseNative(mEnableTracePthreadRelease);
+
         if (mThreadStackShrinkConfig != null) {
             final String[] patterns = new String[mThreadStackShrinkConfig.ignoreCreatorSoPatterns.size()];
             if (setThreadStackShrinkIgnoredCreatorSoPatternsNative(
@@ -195,4 +208,7 @@ public class PthreadHook extends AbsHook {
 
     @Keep
     private native void installHooksNative(boolean enableDebug);
+
+    @Keep
+    private native void enableTracePthreadReleaseNative(boolean enable);
 }
