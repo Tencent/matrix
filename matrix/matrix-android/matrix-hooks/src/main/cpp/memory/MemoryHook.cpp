@@ -36,11 +36,11 @@
 #include <shared_mutex>
 #include <cJSON.h>
 #include <Log.h>
+#include <unwindstack/Unwinder.h>
+#include <common/ThreadPool.h>
+#include <backtrace/BacktraceDefine.h>
 #include "MemoryHookFunctions.h"
 #include "Utils.h"
-#include "unwindstack/Unwinder.h"
-#include "ThreadPool.h"
-#include "BacktraceDefine.h"
 #include "MemoryHookMetas.h"
 #include "MemoryHook.h"
 
@@ -212,7 +212,7 @@ static inline void dump_callers(FILE *log_file,
     }
 
     LOGD(TAG, "dump_callers: count = %zu", caller_metas.size());
-    flogger(log_file, "dump_callers: count = %zu\n", caller_metas.size());
+    flogger0(log_file, "dump_callers: count = %zu\n", caller_metas.size());
 
     std::unordered_map<std::string, size_t>                   caller_alloc_size_of_so;
     std::unordered_map<std::string, std::map<size_t, size_t>> same_size_count_of_so;
@@ -260,7 +260,7 @@ static inline void dump_callers(FILE *log_file,
         cJSON_AddStringToObject(so_size_obj, "so", so_name.c_str());
         cJSON_AddStringToObject(so_size_obj, "size", std::to_string(so_size).c_str());
         cJSON_AddItemToArray(json_size_arr, so_size_obj);
-        flogger(log_file, "caller alloc size = %10zu b, so = %s\n", so_size, so_name.c_str());
+        flogger0(log_file, "caller alloc size = %10zu b, so = %s\n", so_size, so_name.c_str());
 
         caller_total_size += so_size;
 
@@ -278,23 +278,23 @@ static inline void dump_callers(FILE *log_file,
 
         int lines = 20; // fixme hard coding
         LOGD(TAG, "top %d (size * count):", lines);
-        flogger(log_file, "top %d (size * count):\n", lines);
+        flogger0(log_file, "top %d (size * count):\n", lines);
 
         for (auto sc = result_sort_by_mul.rbegin();
              sc != result_sort_by_mul.rend() && lines; ++sc, --lines) {
             auto size  = sc->second.first;
             auto count = sc->second.second;
             LOGD(TAG, "   size = %10zu b, count = %zu", size, count);
-            flogger(log_file, "   size = %10zu b, count = %zu\n", size, count);
+            flogger0(log_file, "   size = %10zu b, count = %zu\n", size, count);
         }
     }
 
     LOGD(TAG, "\n---------------------------------------------------");
-    flogger(log_file, "\n---------------------------------------------------\n");
+    flogger0(log_file, "\n---------------------------------------------------\n");
     LOGD(TAG, "| caller total size = %zu b", caller_total_size);
-    flogger(log_file, "| caller total size = %zu b\n", caller_total_size);
+    flogger0(log_file, "| caller total size = %zu b\n", caller_total_size);
     LOGD(TAG, "---------------------------------------------------\n");
-    flogger(log_file, "---------------------------------------------------\n\n");
+    flogger0(log_file, "---------------------------------------------------\n\n");
 }
 
 //static inline void dump_debug_stacks() {
@@ -349,7 +349,7 @@ static inline void dump_stacks(FILE *log_file,
     }
 
     LOGD(TAG, "dump_stacks: hash count = %zu", stack_metas.size());
-    flogger(log_file, "dump_stacks: hash count = %zu\n", stack_metas.size());
+    flogger0(log_file, "dump_stacks: hash count = %zu\n", stack_metas.size());
 
     std::unordered_map<std::string, size_t>                         stack_alloc_size_of_so;
     std::unordered_map<std::string, std::vector<stack_dump_meta_t>> stacktrace_of_so;
@@ -483,11 +483,11 @@ static inline void dump_stacks(FILE *log_file,
 
         LOGD(TAG, "\nmalloc size of so (%s) : remaining size = %zu", so_name.c_str(),
              so_alloc_size);
-        flogger(log_file, "\nmalloc size of so (%s) : remaining size = %zu\n", so_name.c_str(),
+        flogger0(log_file, "\nmalloc size of so (%s) : remaining size = %zu\n", so_name.c_str(),
                 so_alloc_size);
 
         if (so_alloc_size < m_stacktrace_log_threshold) {
-            flogger(log_file, "skip printing stacktrace for size less than %zu\n",
+            flogger0(log_file, "skip printing stacktrace for size less than %zu\n",
                     m_stacktrace_log_threshold);
             continue;
         }
@@ -520,7 +520,7 @@ static inline void dump_stacks(FILE *log_file,
                  stack_dump_meta.size,
                  stack_dump_meta.full_stacktrace.c_str());
 
-            flogger(log_file, "malloc size of the same stack = %zu\n stacktrace : \n%s\n",
+            flogger0(log_file, "malloc size of the same stack = %zu\n stacktrace : \n%s\n",
                     stack_dump_meta.size,
                     stack_dump_meta.full_stacktrace.c_str());
 
@@ -564,7 +564,7 @@ static inline void dump_impl(FILE *log_file, FILE *json_file, bool mmap) {
     if (mmap) {
         // mmap allocation
         LOGD(TAG, "############################# mmap #############################\n\n");
-        flogger(log_file,
+        flogger0(log_file,
                 "############################# mmap #############################\n\n");
 
         cJSON *so_mmap_size_arr = cJSON_AddArrayToObject(json_obj, "SoMmapSize");
@@ -574,12 +574,12 @@ static inline void dump_impl(FILE *log_file, FILE *json_file, bool mmap) {
     }
 
     char *printed = cJSON_PrintUnformatted(json_obj);
-    flogger(json_file, "%s", printed);
+    flogger0(json_file, "%s", printed);
     LOGD(TAG, "===> %s", printed);
     cJSON_free(printed);
     cJSON_Delete(json_obj);
 
-    flogger(log_file,
+    flogger0(log_file,
             "\n\n---------------------------------------------------\n"
             "<void *, ptr_meta_t> ptr_meta [%zu * %zu = (%zu)]\n"
             "<uint64_t, stack_meta_t> stack_meta [%zu * %zu = (%zu)]\n"
@@ -628,16 +628,5 @@ void dump(bool enable_mmap, const char *log_path, const char *json_path) {
 
     LOGD(TAG,
          ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> memory dump end <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
-}
-
-void memory_hook_on_dlopen(const char *file_name, bool *maps_refreshed) {
-    LOGD(TAG, "memory_hook_on_dlopen: file %s, h_malloc %p, h_realloc %p, h_free %p", file_name,
-         h_malloc, h_realloc, h_free);
-    if (is_stacktrace_enabled) {
-        if (!*maps_refreshed) {
-            wechat_backtrace::notify_maps_changed();
-            *maps_refreshed = true;
-        }
-    }
 }
 

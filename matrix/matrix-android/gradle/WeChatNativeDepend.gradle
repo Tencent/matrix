@@ -81,6 +81,7 @@ class HeaderFilter {
     String dirPath
     Set<String> includePatterns = []
     Set<String> excludePatterns = []
+    String moveToDirPath = ''
 
     HeaderFilter(String dirPath) {
         this.dirPath = dirPath
@@ -92,6 +93,10 @@ class HeaderFilter {
 
     def exclude(String pattern) {
         excludePatterns.add(pattern)
+    }
+
+    def moveToDir(String path) {
+        moveToDirPath = Objects.requireNonNull(path)
     }
 }
 
@@ -231,7 +236,7 @@ def getExportedNativeArtifactsDir(targetVariant) {
 }
 
 def getExtractedNativeDependenciesDir() {
-    return new File(getNativeDependencyRoot(), EXTRACTED_NATIVE_DEPENDENCIES_DIR_NAME)
+    return new File(getNativeDependencyRoot(), "${EXTRACTED_NATIVE_DEPENDENCIES_DIR_NAME}")
 }
 
 def copyExportedHeaders(targetVariant) {
@@ -255,7 +260,7 @@ def copyExportedHeaders(targetVariant) {
             rename { name ->
                 return name.replace(filter.dirPath, '')
             }
-            into exportedHeadersDir
+            into new File(exportedHeadersDir, filter.moveToDirPath)
         }
     }
 }

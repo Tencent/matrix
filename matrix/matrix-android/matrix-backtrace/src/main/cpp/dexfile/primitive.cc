@@ -31,18 +31,18 @@ static const char* kTypeNames[] = {
   "PrimVoid",
 };
 
-static const char* kBoxedDescriptors[] = {
-  "Ljava/lang/Object;",
-  "Ljava/lang/Boolean;",
-  "Ljava/lang/Byte;",
-  "Ljava/lang/Character;",
-  "Ljava/lang/Short;",
-  "Ljava/lang/Integer;",
-  "Ljava/lang/Long;",
-  "Ljava/lang/Float;",
-  "Ljava/lang/Double;",
-  "Ljava/lang/Void;",
-};
+//static const char* kBoxedDescriptors[] = {
+//  "Ljava/lang/Object;",
+//  "Ljava/lang/Boolean;",
+//  "Ljava/lang/Byte;",
+//  "Ljava/lang/Character;",
+//  "Ljava/lang/Short;",
+//  "Ljava/lang/Integer;",
+//  "Ljava/lang/Long;",
+//  "Ljava/lang/Float;",
+//  "Ljava/lang/Double;",
+//  "Ljava/lang/Void;",
+//};
 
 #define COUNT_OF(x) (sizeof(x) / sizeof((x)[0]))
 

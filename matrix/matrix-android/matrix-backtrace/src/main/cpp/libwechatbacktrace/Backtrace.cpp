@@ -26,6 +26,7 @@
 #include <android-base/stringprintf.h>
 #include <cxxabi.h>
 #include <DebugDexFiles.h>
+#include <PthreadExt.h>
 
 #define WECHAT_BACKTRACE_TAG "Wechat.Backtrace"
 
@@ -126,9 +127,9 @@ namespace wechat_backtrace {
 
     BACKTRACE_EXPORT inline void
     to_quicken_frame_element(Frame &frame, unwindstack::MapInfo *map_info,
-                                  wechat_backtrace::ElfWrapper *elf_wrapper,
-                                  bool fill_map_info, bool fill_build_id,
-                                  FrameElement &frame_element) {
+                             wechat_backtrace::ElfWrapper *elf_wrapper,
+                             bool fill_map_info, bool fill_build_id,
+                             FrameElement &frame_element) {
 
         frame_element.rel_pc = frame.rel_pc;
         frame_element.maybe_java = frame.maybe_java;
@@ -212,7 +213,7 @@ namespace wechat_backtrace {
                                                     function_name,
                                                     function_offset);
                 } else {
-                    auto interface = map_info->GetQuickenInterface(process_memory, CURRENT_ARCH);
+                    auto interface = map_info->GetQuickenInterface(process_memory);
                     if (interface && interface->elf_wrapper_) {
                         elf_wrapper = interface->elf_wrapper_.get();
                         if (!elf_wrapper->IsJitCache()) {
@@ -241,17 +242,38 @@ namespace wechat_backtrace {
     }
 
     BACKTRACE_EXPORT void
-    BACKTRACE_FUNC_WRAPPER(quicken_unwind)(uptr *regs, Frame *frames, const size_t frame_max_size,
-                                           uptr &frame_size) {
-        WeChatQuickenUnwind(CURRENT_ARCH, regs, frame_max_size, frames, frame_size);
+    BACKTRACE_FUNC_WRAPPER(quicken_unwind)(QuickenContext *context) {
+
+        if (context->stack_top == 0 && context->stack_bottom == 0) {
+            pthread_attr_t attr;
+            pthread_getattr_ext(pthread_self(), &attr);
+            context->stack_bottom = reinterpret_cast<uptr>(attr.stack_base);
+            context->stack_top = reinterpret_cast<uptr>(attr.stack_base) + attr.stack_size;
+        }
+
+        WeChatQuickenUnwind(context);
     }
 
     inline void
     quicken_based_unwind_inlined(Frame *frames, const size_t max_frames,
-                                                 size_t &frame_size) {
+                                 size_t &frame_size) {
+
         uptr regs[QUT_MINIMAL_REG_SIZE];
         GetQuickenMinimalRegs(regs);
-        WeChatQuickenUnwind(CURRENT_ARCH, regs, max_frames, frames, frame_size);
+        pthread_attr_t attr;
+        pthread_getattr_ext(pthread_self(), &attr);
+        QuickenContext context = {
+                .stack_bottom = reinterpret_cast<uptr>(attr.stack_base),
+                .stack_top = reinterpret_cast<uptr>(attr.stack_base) + attr.stack_size,
+                .regs = regs,
+                .frame_max_size = max_frames,
+                .backtrace = frames,
+                .frame_size = 0,
+                .update_maps_as_need = false
+        };
+        WeChatQuickenUnwind(&context);
+
+        frame_size = context.frame_size;
     }
 
     inline void
@@ -264,7 +286,7 @@ namespace wechat_backtrace {
 
     inline void
     dwarf_based_unwind_inlined(Frame *frames, const size_t max_frames,
-                                               size_t &frame_size) {
+                               size_t &frame_size) {
         std::vector<unwindstack::FrameData> dst;
         unwindstack::RegsArm regs;
         RegsGetLocal(&regs);

@@ -78,6 +78,8 @@ int xh_elf_hook(xh_elf_t *self, const char *symbol, void *new_func, void **old_f
 
 int xh_elf_check_elfheader(uintptr_t base_addr);
 
+int xh_elf_find_symidx_by_name(xh_elf_t *self, const char *symbol, uint32_t *symidx);
+
 #ifdef __cplusplus
 }
 #endif

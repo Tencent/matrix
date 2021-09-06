@@ -16,8 +16,10 @@
 
 package com.tencent.matrix.hook;
 
+import android.text.TextUtils;
 
 import androidx.annotation.Keep;
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.tencent.matrix.util.MatrixLog;
@@ -33,56 +35,127 @@ public class HookManager {
 
     public static final HookManager INSTANCE = new HookManager();
 
-    private volatile boolean      hasHooked;
-    private          Set<AbsHook> mHooks = new HashSet<>();
+    private volatile boolean mHasNativeInitialized = false;
+    private byte[] mInitializeGuard = {};
+    private final Set<AbsHook> mPendingHooks = new HashSet<>();
+    private volatile boolean mEnableDebug = BuildConfig.DEBUG;
 
-    private HookManager() {
+    private NativeLibraryLoader mNativeLibLoader = null;
+
+    public interface NativeLibraryLoader {
+        void loadLibrary(@NonNull String libName);
     }
 
-    private void exclusiveHook() {
-        xhookEnableDebugNative(BuildConfig.DEBUG);
-        xhookEnableSigSegvProtectionNative(!BuildConfig.DEBUG);
-
-        xhookRefreshNative(false);
-
-        hasHooked = true;
+    private HookManager() {
+        // Do nothing.
     }
 
     public void commitHooks() throws HookFailedException {
-        if (hasHooked) {
-            throw new HookFailedException("this process has already been hooked!");
-        }
+        synchronized (mInitializeGuard) {
+            synchronized (mPendingHooks) {
+                if (mPendingHooks.isEmpty()) {
+                    return;
+                }
+            }
+            if (!mHasNativeInitialized) {
+                try {
+                    if (mNativeLibLoader != null) {
+                        mNativeLibLoader.loadLibrary("matrix-hookcommon");
+                    } else {
+                        System.loadLibrary("matrix-hookcommon");
+                    }
+                } catch (Throwable e) {
+                    MatrixLog.printErrStackTrace(TAG, e, "");
+                    return;
+                }
 
-        if (mHooks.isEmpty()) {
-            return;
-        }
+                if (!doPreHookInitializeNative(mEnableDebug)) {
+                    throw new HookFailedException("Fail to do hook common pre-hook initialize.");
+                }
 
-        try {
-            System.loadLibrary("matrix-hooks");
-        } catch (Throwable e) {
-            MatrixLog.printErrStackTrace(TAG, e, "");
-            return;
-        }
+                commitHooksLocked();
 
-        for (AbsHook hook : mHooks) {
-            hook.onConfigure();
+                doFinalInitializeNative(mEnableDebug);
+                mHasNativeInitialized = true;
+            } else {
+                commitHooksLocked();
+            }
         }
-        for (AbsHook hook : mHooks) {
-            hook.onHook();
+    }
+
+    private void commitHooksLocked() throws HookFailedException {
+        synchronized (mPendingHooks) {
+            for (AbsHook hook : mPendingHooks) {
+                final String nativeLibName = hook.getNativeLibraryName();
+                if (TextUtils.isEmpty(nativeLibName)) {
+                    continue;
+                }
+                try {
+                    if (mNativeLibLoader != null) {
+                        mNativeLibLoader.loadLibrary(nativeLibName);
+                    } else {
+                        System.loadLibrary(nativeLibName);
+                    }
+                } catch (Throwable e) {
+                    MatrixLog.printErrStackTrace(TAG, e, "");
+                    MatrixLog.e(TAG, "Fail to load native library for %s, skip next steps.",
+                            hook.getClass().getName());
+                    hook.setStatus(AbsHook.Status.COMMIT_FAIL_ON_LOAD_LIB);
+                }
+            }
+            for (AbsHook hook : mPendingHooks) {
+                if (hook.getStatus() != AbsHook.Status.UNCOMMIT) {
+                    MatrixLog.e(TAG, "%s has failed steps before, skip calling onConfigure on it.",
+                            hook.getClass().getName());
+                    continue;
+                }
+                if (!hook.onConfigure()) {
+                    MatrixLog.e(TAG, "Fail to configure %s, skip next steps", hook.getClass().getName());
+                    hook.setStatus(AbsHook.Status.COMMIT_FAIL_ON_CONFIGURE);
+                }
+            }
+            for (AbsHook hook : mPendingHooks) {
+                if (hook.getStatus() != AbsHook.Status.UNCOMMIT) {
+                    MatrixLog.e(TAG, "%s has failed steps before, skip calling onHook on it.",
+                            hook.getClass().getName());
+                    continue;
+                }
+                if (hook.onHook(mEnableDebug)) {
+                    MatrixLog.i(TAG, "%s is committed successfully.", hook.getClass().getName());
+                    hook.setStatus(AbsHook.Status.COMMIT_SUCCESS);
+                } else {
+                    MatrixLog.e(TAG, "Fail to do hook in %s.", hook.getClass().getName());
+                    hook.setStatus(AbsHook.Status.COMMIT_FAIL_ON_HOOK);
+                }
+            }
+            mPendingHooks.clear();
         }
-        exclusiveHook();
+    }
+
+    public HookManager setEnableDebug(boolean enabled) {
+        mEnableDebug = enabled;
+        return this;
+    }
+
+    public HookManager setNativeLibraryLoader(@Nullable NativeLibraryLoader loader) {
+        mNativeLibLoader = loader;
+        return this;
     }
 
     public HookManager addHook(@Nullable AbsHook hook) {
-        if (hook != null) {
-            mHooks.add(hook);
+        if (hook != null && hook.getStatus() != AbsHook.Status.COMMIT_SUCCESS) {
+            synchronized (mPendingHooks) {
+                mPendingHooks.add(hook);
+            }
         }
         return this;
     }
 
     public HookManager clearHooks() {
-        mHooks.clear();
-        return this;
+        synchronized (mPendingHooks) {
+            mPendingHooks.clear();
+            return this;
+        }
     }
 
     @Keep
@@ -109,20 +182,11 @@ public class HookManager {
         return sb.toString();
     }
 
-    public boolean hasHooked() {
-        return hasHooked;
-    }
+    private native boolean doPreHookInitializeNative(boolean debug);
 
-    private native int xhookRefreshNative(boolean async);
-
-    private native void xhookEnableDebugNative(boolean flag);
-
-    private native void xhookEnableSigSegvProtectionNative(boolean flag);
-
-    private native void xhookClearNative();
+    private native void doFinalInitializeNative(boolean debug);
 
     public static class HookFailedException extends Exception {
-
         public HookFailedException(String message) {
             super(message);
         }

@@ -19,64 +19,18 @@
 //
 
 #include <jni.h>
-#include <xhook.h>
 #include <sys/stat.h>
+#include <backtrace/Backtrace.h>
+#include <xhook.h>
 #include "HookCommon.h"
 #include "Log.h"
 #include "JNICommon.h"
-#include "PthreadExt.h"
-#include "Backtrace.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 #define TAG "Matrix.HookCommon"
-
-std::vector<dlopen_callback_t> m_dlopen_callbacks;
-std::vector<hook_init_callback_t> m_init_callbacks;
-
-static std::recursive_mutex dlopen_mutex;
-
-DEFINE_HOOK_FUN(void *, __loader_android_dlopen_ext, const char *file_name,
-                int                                             flag,
-                const void                                      *extinfo,
-                const void                                      *caller_addr) {
-    std::lock_guard<std::recursive_mutex> dlopen_lock(dlopen_mutex);
-
-    void *ret = (*ORIGINAL_FUNC_NAME(__loader_android_dlopen_ext))(file_name, flag, extinfo,
-                                                                   caller_addr);
-
-    LOGD(TAG, "call into dlopen hook");
-
-//    NanoSeconds_Start(TAG, begin);
-
-    bool map_refreshed = false;
-    for (auto &callback : m_dlopen_callbacks) {
-        callback(file_name, &map_refreshed);
-    }
-
-    xhook_refresh(false);
-//    NanoSeconds_End(TAG, begin, "refresh");
-
-//    LOGD(TAG, "xhook_refresh cost : %lld", cost);
-
-    return ret;
-}
-
-static void hook_common_init() {
-    for (auto &callback : m_init_callbacks) {
-        callback();
-    }
-}
-
-void add_dlopen_hook_callback(dlopen_callback_t callback) {
-    m_dlopen_callbacks.push_back(callback);
-}
-
-void add_hook_init_callback(hook_init_callback_t callback) {
-    m_init_callbacks.push_back(callback);
-}
 
 void test_log_to_file(const char *ch) {
     const char *dir = "/sdcard/Android/data/com.tencent.mm/MicroMsg/Diagnostic";
@@ -126,39 +80,6 @@ bool get_java_stacktrace(char *stack_dst, size_t size) {
 
     strncpy(stack_dst, "\tnull", size);
     return false;
-}
-
-JNIEXPORT jint JNICALL
-Java_com_tencent_matrix_hook_HookManager_xhookRefreshNative(JNIEnv *env, jobject thiz,
-                                                                  jboolean async) {
-    add_hook_init_callback(pthread_ext_init);
-    hook_common_init();
-//    unwindstack::update_maps();
-    wechat_backtrace::notify_maps_changed();
-//    NanoSeconds_Start(TAG, begin);
-    int ret = xhook_refresh(async);
-//    NanoSeconds_End(TAG, begin, "fist refresh");
-
-//    LOGD(TAG, "xhook_refresh in JNI cost %lld", cost);
-    return ret;
-}
-
-JNIEXPORT void JNICALL
-Java_com_tencent_matrix_hook_HookManager_xhookEnableDebugNative(JNIEnv *env, jobject thiz,
-                                                                      jboolean flag) {
-    xhook_enable_debug(flag);
-}
-
-JNIEXPORT void JNICALL
-Java_com_tencent_matrix_hook_HookManager_xhookEnableSigSegvProtectionNative(JNIEnv *env,
-                                                                                  jobject thiz,
-                                                                                  jboolean flag) {
-    xhook_enable_sigsegv_protection(flag);
-}
-
-JNIEXPORT void JNICALL
-Java_com_tencent_matrix_hook_HookManager_xhookClearNative(JNIEnv *env, jobject thiz) {
-    xhook_clear();
 }
 
 #ifdef __cplusplus

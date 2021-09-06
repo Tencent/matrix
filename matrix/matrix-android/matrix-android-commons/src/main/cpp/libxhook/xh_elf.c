@@ -437,7 +437,7 @@ static int xh_elf_gnu_hash_lookup(xh_elf_t *self, const char *symbol, uint32_t *
     return XH_ERRNO_NOTFND;
 }
 
-static int xh_elf_find_symidx_by_name(xh_elf_t *self, const char *symbol, uint32_t *symidx)
+int xh_elf_find_symidx_by_name(xh_elf_t *self, const char *symbol, uint32_t *symidx)
 {
     int ret = 0;
     if(self->is_use_gnu_hash)
@@ -466,25 +466,32 @@ static int xh_elf_replace_function(xh_elf_t *self, const char *symbol, ElfW(Addr
         return r;
     }
 
-    if(old_prot != need_prot)
-    {
+    // if(old_prot != need_prot)
+    // {
         //set new prot
         if(0 != (r = xh_util_set_addr_protect(addr, need_prot)))
         {
             XH_LOG_ERROR("set addr prot failed. ret: %d", r);
             return r;
         }
-    }
+    // }
 
     //save old func
     old_addr = *(void **)addr;
     if(NULL != old_func) *old_func = old_addr;
 
     //replace func
-    *(void **)addr = new_func; //segmentation fault sometimes
-
-    if(old_prot != need_prot)
+    // *(void **)addr = new_func; //segmentation fault sometimes
+    void* new_func_addr = (void*) new_func;
+    ssize_t got_write_ret = xh_util_write_memory_safely((void*) addr, (uint8_t*) &new_func_addr, sizeof(void*));
+    if (got_write_ret != sizeof(void*))
     {
+        XH_LOG_ERROR("Fail to write new address into GOT/Data item, dest_address: %p", addr);
+        return XH_ERRNO_SEGVERR;
+    }
+
+    // if(old_prot != need_prot)
+    // {
         if ((old_prot & PROT_READ) == 0) {
             XH_LOG_WARN("old addr has no read permission, it's not usual and may cause segment fault.");
             old_prot |= PROT_READ;
@@ -494,7 +501,7 @@ static int xh_elf_replace_function(xh_elf_t *self, const char *symbol, ElfW(Addr
         {
             XH_LOG_WARN("restore addr prot failed. ret: %d", r);
         }
-    }
+    // }
 
     //clear cache
     xh_util_flush_instruction_cache(addr);
@@ -966,13 +973,7 @@ static int xh_elf_find_and_replace_func(xh_elf_t *self, const char *section,
     r_sym = XH_ELF_R_SYM(r_info);
 
     // modified: fix
-    if(r_sym != symidx) {
-        const char* sym_name_in_tbl = self->strtab + self->symtab[r_sym].st_name;
-        if (strcmp(sym_name_in_tbl, symbol) != 0) {
-            return 0;
-        }
-    }
-//    if(r_sym != symidx) return 0;
+    if(r_sym != symidx) return 0;
 
     //check type
     r_type = XH_ELF_R_TYPE(r_info);
@@ -1015,22 +1016,20 @@ int xh_elf_hook(xh_elf_t *self, const char *symbol, void *new_func, void **old_f
     XH_LOG_INFO("hooking %s in %s\n", symbol, self->pathname);
 
     //find symbol index by symbol name
-    if(0 != (r = xh_elf_find_symidx_by_name(self, symbol, &symidx))) {
-        symidx = 0;
-    }
-//    if(0 != (r = xh_elf_find_symidx_by_name(self, symbol, &symidx))) return 0;
+    if(0 != (r = xh_elf_find_symidx_by_name(self, symbol, &symidx))) return r;
 
     //replace for .rel(a).plt
     if(0 != self->relplt)
     {
         xh_elf_plain_reloc_iterator_init(&plain_iter, self->relplt, self->relplt_sz, self->is_use_rela);
+        found = 0;
         while(NULL != (rel_common = xh_elf_plain_reloc_iterator_next(&plain_iter)))
         {
             if(0 != (r = xh_elf_find_and_replace_func(self,
                                                       (self->is_use_rela ? ".rela.plt" : ".rel.plt"), 1,
                                                       symbol, new_func, old_func,
                                                       symidx, rel_common, &found))) return r;
-            if(found) break;
+            if (found) break;
         }
     }
 
@@ -1043,7 +1042,7 @@ int xh_elf_hook(xh_elf_t *self, const char *symbol, void *new_func, void **old_f
             if(0 != (r = xh_elf_find_and_replace_func(self,
                                                       (self->is_use_rela ? ".rela.dyn" : ".rel.dyn"), 0,
                                                       symbol, new_func, old_func,
-                                                      symidx, rel_common, NULL))) return r;
+                                                      symidx, rel_common, &found))) return r;
         }
     }
 
@@ -1056,7 +1055,7 @@ int xh_elf_hook(xh_elf_t *self, const char *symbol, void *new_func, void **old_f
             if(0 != (r = xh_elf_find_and_replace_func(self,
                                                       (self->is_use_rela ? ".rela.android" : ".rel.android"), 0,
                                                       symbol, new_func, old_func,
-                                                      symidx, rel_common, NULL))) return r;
+                                                      symidx, rel_common, &found))) return r;
         }
     }
 

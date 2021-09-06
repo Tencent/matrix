@@ -23,8 +23,6 @@
 
 namespace wechat_backtrace {
 
-    QUT_EXTERN_C void InvokeJava_RequestQutGenerate();
-
 }  // namespace wechat_backtrace
 
 #endif  // _LIBWECHATBACKTRACE_QUICKEN_JNI_H

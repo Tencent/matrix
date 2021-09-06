@@ -17,16 +17,24 @@
 package sample.tencent.matrix;
 
 import android.content.Intent;
+import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
-import android.os.SystemClock;
+import android.provider.Settings;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
+
+import com.tencent.matrix.trace.view.FrameDecorator;
+import com.tencent.matrix.util.MatrixLog;
+
 import sample.tencent.matrix.battery.TestBatteryActivity;
+import sample.tencent.matrix.hooks.TestHooksActivity;
 import sample.tencent.matrix.io.TestIOActivity;
 import sample.tencent.matrix.issue.IssuesMap;
 import sample.tencent.matrix.resource.TestLeakActivity;
@@ -48,7 +56,7 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        Button testTrace = (Button) findViewById(R.id.test_trace);
+        Button testTrace = findViewById(R.id.test_trace);
         testTrace.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -57,7 +65,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        Button testIO = (Button) findViewById(R.id.test_io);
+        Button testIO = findViewById(R.id.test_io);
         testIO.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -66,7 +74,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        Button testLeak = (Button) findViewById(R.id.test_leak);
+        Button testLeak = findViewById(R.id.test_leak);
         testLeak.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -75,7 +83,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        Button testSQLiteLint = (Button) findViewById(R.id.test_sqlite_lint);
+        Button testSQLiteLint = findViewById(R.id.test_sqlite_lint);
         testSQLiteLint.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -84,7 +92,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        Button testBattery = (Button) findViewById(R.id.test_battery);
+        Button testBattery = findViewById(R.id.test_battery);
         testBattery.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -93,17 +101,14 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        for (int i = 0; i < 20; i++) {
-            HandlerThread handlerThread = new HandlerThread(TAG + i);
-            handlerThread.start();
-            new Handler(handlerThread.getLooper()).post(new Runnable() {
-                @Override
-                public void run() {
-                    Log.i(TAG, "run");
-//                    SystemClock.sleep(10000000);
-                }
-            });
-        }
+        Button testHooks = findViewById(R.id.test_hooks);
+        testHooks.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent(MainActivity.this, TestHooksActivity.class);
+                startActivity(intent);
+            }
+        });
 
     }
 

@@ -23,7 +23,7 @@
 
 #include <new>
 #include <cstddef>
-#include "HookCommon.h"
+#include <common/HookCommon.h>
 
 #ifndef __LP64__
 

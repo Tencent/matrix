@@ -17,6 +17,7 @@
 #import "WCMemoryRecordManager.h"
 #import "MatrixPathUtil.h"
 #import "MatrixLogDef.h"
+#import "dyld_image_info.h"
 
 @interface WCMemoryRecordManager () {
     NSMutableArray *m_recordList;
@@ -129,16 +130,34 @@
         }
     }
 
-    // just limit 3 record
-    if (m_recordList.count > 3) {
+    // delete records whose 'appUUID' not equal to curr uuid
+    NSString *appUUID = @(app_uuid());
+    NSMutableArray *removed = [NSMutableArray array];
+    for (int i = 0; i < m_recordList.count; ++i) {
+        MemoryRecordInfo *record = m_recordList[i];
+        if (appUUID && [appUUID isEqualToString:record.appUUID] == NO) {
+            NSString *eventPath = [record recordDataPath];
+            [[NSFileManager defaultManager] removeItemAtPath:eventPath error:NULL];
+            [removed addObject:record];
+        }
+    }
+    if (removed.count > 0) {
+        [m_recordList removeObjectsInArray:removed];
+        [self saveRecordList];
+    }
+
+#define RECORD_MAX_COUNT 2
+
+    // just limit N record
+    if (m_recordList.count > RECORD_MAX_COUNT) {
         [self sortRecordList];
 
-        for (int i = 3; i < m_recordList.count; ++i) {
+        for (int i = RECORD_MAX_COUNT; i < m_recordList.count; ++i) {
             MemoryRecordInfo *record = m_recordList[i];
             NSString *eventPath = [record recordDataPath];
             [[NSFileManager defaultManager] removeItemAtPath:eventPath error:NULL];
         }
-        [m_recordList removeObjectsInRange:NSMakeRange(3, m_recordList.count - 3)];
+        [m_recordList removeObjectsInRange:NSMakeRange(RECORD_MAX_COUNT, m_recordList.count - RECORD_MAX_COUNT)];
 
         [self saveRecordList];
     }

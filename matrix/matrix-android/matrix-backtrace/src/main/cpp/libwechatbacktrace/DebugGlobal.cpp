@@ -102,8 +102,7 @@ namespace wechat_backtrace {
                 }
                 if ((info->flags & (PROT_EXEC)) == (PROT_EXEC) &&
                     map_zero != nullptr && Searchable(info->name) && info->name == map_zero->name) {
-                    QuickenInterface *interface = info->GetQuickenInterface(memory_,
-                                                                            CURRENT_ARCH);
+                    QuickenInterface *interface = info->GetQuickenInterface(memory_);
                     if (!interface || !interface->elf_wrapper_) {
                         QUT_LOG("FindAndReadVariable failed for so %s, elf invalid", info->name.c_str());
                         continue;

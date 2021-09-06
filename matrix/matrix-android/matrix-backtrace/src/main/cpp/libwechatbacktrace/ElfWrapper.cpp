@@ -259,10 +259,6 @@ namespace wechat_backtrace {
                 QUT_LOG("CompleteSymbolsNoLock for so %s", soname_.c_str());
                 CompleteSymbolsNoLock(memory_ranges_end_, file_memory_offset_);
             }
-        }
-
-        {
-            lock_guard<mutex> guard(lock_);
 
             if (need_debug_data_ && !debug_data_handed_over_) {
 

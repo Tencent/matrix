@@ -23,8 +23,15 @@
 #ifndef LIBMATRIX_JNI_HOOKCOMMON_H
 #define LIBMATRIX_JNI_HOOKCOMMON_H
 
-#include "JNICommon.h"
 #include <dlfcn.h>
+#include <xhook_ext.h>
+#include "JNICommon.h"
+#include "Macros.h"
+
+// 0x01 was occupied by thread priority trace hook in MatrixTracer.cc.
+#define HOOK_REQUEST_GROUPID_DLOPEN_MON 0x02
+#define HOOK_REQUEST_GROUPID_MEMORY 0x03
+#define HOOK_REQUEST_GROUPID_PTHREAD 0x04
 
 #define GET_CALLER_ADDR(__caller_addr) \
     void * __caller_addr = __builtin_return_address(0)
@@ -44,13 +51,19 @@
     ORIGINAL_FUNC_PTR(sym); \
     ret HANDLER_FUNC_NAME(sym)(params)
 
+#define FETCH_ORIGIN_FUNC(sym) \
+    if (!ORIGINAL_FUNC_NAME(sym)) { \
+        void *handle = dlopen(ORIGINAL_LIB, RTLD_LAZY); \
+        if (handle) { \
+            ORIGINAL_FUNC_NAME(sym) = (FUNC_TYPE(sym))dlsym(handle, #sym); \
+        } \
+    }
 
 #define CALL_ORIGIN_FUNC_RET(retType, ret, sym, params...) \
     if (!ORIGINAL_FUNC_NAME(sym)) { \
         void *handle = dlopen(ORIGINAL_LIB, RTLD_LAZY); \
         if (handle) { \
             ORIGINAL_FUNC_NAME(sym) = (FUNC_TYPE(sym))dlsym(handle, #sym); \
-            dlclose(handle);                                                   \
         } \
     } \
     retType ret = ORIGINAL_FUNC_NAME(sym)(params)
@@ -60,10 +73,30 @@
         void *handle = dlopen(ORIGINAL_LIB, RTLD_LAZY); \
         if (handle) { \
             ORIGINAL_FUNC_NAME(sym) = (FUNC_TYPE(sym))dlsym(handle, #sym); \
-            dlclose(handle);                                              \
         } \
     } \
     ORIGINAL_FUNC_NAME(sym)(params)
+
+#define NOTIFY_COMMON_IGNORE_LIBS(group_id) \
+    do { \
+      xhook_grouped_ignore(group_id, ".*libwechatbacktrace\\.so$", NULL); \
+      xhook_grouped_ignore(group_id, ".*libtrace-canary\\.so$", NULL); \
+      xhook_grouped_ignore(group_id, ".*libwechatcrash\\.so$", NULL); \
+      xhook_grouped_ignore(group_id, ".*libmemguard\\.so$", NULL); \
+      xhook_grouped_ignore(group_id, ".*libmemmisc\\.so$", NULL); \
+      xhook_grouped_ignore(group_id, ".*liblog\\.so$", NULL); \
+      xhook_grouped_ignore(group_id, ".*libc\\.so$", NULL); \
+      xhook_grouped_ignore(group_id, ".*libm\\.so$", NULL); \
+      xhook_grouped_ignore(group_id, ".*libc\\+\\+\\.so$", NULL); \
+      xhook_grouped_ignore(group_id, ".*libc\\+\\+_shared\\.so$", NULL); \
+      xhook_grouped_ignore(group_id, ".*libstdc\\+\\+.so\\.so$", NULL); \
+      xhook_grouped_ignore(group_id, ".*libstlport_shared\\.so$", NULL); \
+      xhook_grouped_ignore(group_id, ".*/libwebviewchromium_loader\\.so$", NULL); \
+      xhook_grouped_ignore(group_id, ".*/libmatrix-hookcommon\\.so$", NULL); \
+      xhook_grouped_ignore(group_id, ".*/libmatrix-memoryhook\\.so$", NULL); \
+      xhook_grouped_ignore(group_id, ".*/libmatrix-pthreadhook\\.so$", NULL); \
+      xhook_grouped_ignore(group_id, ".*/libmatrix-opengl-leak\\.so$", NULL); \
+    } while (0)
 
 #include <vector>
 
@@ -77,20 +110,8 @@ typedef struct {
     void       **origin_ptr;
 } HookFunction;
 
-typedef void (*dlopen_callback_t)(const char *__file_name, bool *maps_refreshed);
+EXPORT bool get_java_stacktrace(char *stack_dst, size_t size);
 
-void add_dlopen_hook_callback(dlopen_callback_t callback);
-
-typedef void (*hook_init_callback_t)();
-
-void add_hook_init_callback(hook_init_callback_t callback);
-
-bool get_java_stacktrace(char *stack_dst, size_t size);
-
-DECLARE_HOOK_ORIG(void *, __loader_android_dlopen_ext, const char *filename,
-                  int                                             flag,
-                  const void                                      *extinfo,
-                  const void                                      *caller_addr) ;
 #ifdef __cplusplus
 }
 #endif

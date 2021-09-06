@@ -25,8 +25,16 @@ namespace wechat_backtrace {
 
     typedef int (*internal_logger_func)(int log_level, const char *tag, const char *format,
                                         va_list varargs);
+    /*
+    extern "C" char *get_xlog_logger_path();
+    extern "C" void set_xlog_logger_path(const char *xlog_so_path, const size_t len);
+    */
 
+    extern "C" void enable_backtrace_logger(bool enable);
+
+    extern "C" internal_logger_func logger_func();
     extern "C" void internal_init_logger(internal_logger_func logger_func);
+
     extern "C" void internal_logger(int log_level, const char *tag, const char *format, ...);
     extern "C" void
     internal_vlogger(int log_level, const char *tag, const char *format, va_list varargs);
@@ -53,9 +61,9 @@ namespace wechat_backtrace {
     }
 
 #define DWARF_CFA_LOG(FMT, args...) //wechat_backtrace::internal_logger(ANDROID_LOG_ERROR, "Matrix.Backtrace.DWARF-CFA", FMT, ##args)
-#define DWARF_OP_LOG(FMT, args...) wechat_backtrace::internal_logger(ANDROID_LOG_ERROR, "Matrix.Backtrace.DWARF-OP", FMT, ##args)
+#define DWARF_OP_LOG(FMT, args...) //wechat_backtrace::internal_logger(ANDROID_LOG_ERROR, "Matrix.Backtrace.DWARF-OP", FMT, ##args)
 #define QUT_TMP_LOG(FMT, args...) //wechat_backtrace::internal_logger(ANDROID_LOG_ERROR, "Matrix.Backtrace.TMP", FMT, ##args)
-#define QUT_STAT_LOG(FMT, args...) wechat_backtrace::internal_logger(ANDROID_LOG_ERROR, "Matrix.Backtrace.STAT", FMT, ##args)
+#define QUT_STAT_LOG(FMT, args...) //wechat_backtrace::internal_logger(ANDROID_LOG_ERROR, "Matrix.Backtrace.STAT", FMT, ##args)
 #define QUT_DEBUG_LOG(FMT, args...) wechat_backtrace::internal_logger(ANDROID_LOG_ERROR, "Matrix.Backtrace.DEBUG", FMT, ##args)
 #define QUT_LOG(FMT, args...) wechat_backtrace::internal_logger(ANDROID_LOG_ERROR, "Matrix.Backtrace.Native", FMT, ##args)
 #else
@@ -74,6 +82,34 @@ namespace wechat_backtrace {
 #define QUT_LOG(FMT, args...)
 #endif
 
+//#define LOG__(FMT, args...) { \
+//    __android_log_print(ANDROID_LOG_INFO, "Backtrace.DEBUG", FMT, ##args); \
+//}
+//#define TEST_NanoSeconds_Start__(timestamp) \
+//        long timestamp = 0; \
+//        { \
+//            struct timespec tms {}; \
+//            if (clock_gettime(CLOCK_MONOTONIC, &tms)) { \
+//                LOG__("Err: Get time failed."); \
+//            } else { \
+//                timestamp = tms.tv_nsec; \
+//            } \
+//        }
+//
+//#define TEST_NanoSeconds_End__(tag, timestamp, frames) \
+//        { \
+//            struct timespec tms {}; \
+//            if (clock_gettime(CLOCK_MONOTONIC, &tms)) { \
+//                LOG__("Err: Get time failed."); \
+//            } \
+//            long duration = (tms.tv_nsec - timestamp); \
+//            if (duration <= 0) { \
+//                LOG__("Err: duration is negative."); \
+//            } else { \
+//                LOG__(#tag" %ld(ns) - %ld(ns) = costs: %ld(ns), frames = %zu" \
+//                    , tms.tv_nsec, timestamp, duration, (size_t) frames); \
+//            } \
+//        }
 
 #define __FAKE_USE_VA_ARGS(...) ((void)(0))
 #define __android_second(dummy, second, ...) second

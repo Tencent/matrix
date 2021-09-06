@@ -43,7 +43,7 @@
     (memory_logging_type_generic | memory_logging_type_alloc | memory_logging_type_dealloc | memory_logging_type_vm_allocate \
      | memory_logging_type_vm_deallocate | memory_logging_type_mapped_file_or_shared_mem | VM_FLAGS_ALIAS_MASK)
 
-#define STACK_LOGGING_MAX_STACK_SIZE 60
+#define STACK_LOGGING_MAX_STACK_SIZE 48
 
 #ifndef __FILE_NAME__
 #define __FILE_NAME__ (strrchr(__FILE__, '/') + 1)
@@ -56,12 +56,10 @@
         log_internal(__FILE_NAME__, __LINE__, __FUNCTION__, msg); \
     } while (0)
 
-#define FORCE_INLINE __attribute__((always_inline))
-
 extern int err_code;
 
 // Lock Function
-//#define USE_SPIN_LOCK
+#define USE_SPIN_LOCK
 
 #ifdef USE_SPIN_LOCK
 
@@ -69,11 +67,21 @@ extern int err_code;
 
 typedef OSSpinLock malloc_lock_s;
 
-FORCE_INLINE malloc_lock_s __malloc_lock_init();
+__attribute__((always_inline)) inline malloc_lock_s __malloc_lock_init() {
+    return OS_SPINLOCK_INIT;
+}
 
-FORCE_INLINE void __malloc_lock_lock(malloc_lock_s *lock);
-FORCE_INLINE bool __malloc_lock_trylock(malloc_lock_s *lock);
-FORCE_INLINE void __malloc_lock_unlock(malloc_lock_s *lock);
+__attribute__((always_inline)) inline void __malloc_lock_lock(malloc_lock_s *lock) {
+    OSSpinLockLock(lock);
+}
+
+__attribute__((always_inline)) inline bool __malloc_lock_trylock(malloc_lock_s *lock) {
+    return OSSpinLockTry(lock);
+}
+
+__attribute__((always_inline)) inline void __malloc_lock_unlock(malloc_lock_s *lock) {
+    OSSpinLockUnlock(lock);
+}
 
 #else
 
@@ -81,22 +89,43 @@ FORCE_INLINE void __malloc_lock_unlock(malloc_lock_s *lock);
 
 typedef os_unfair_lock malloc_lock_s;
 
-FORCE_INLINE malloc_lock_s __malloc_lock_init();
+__attribute__((always_inline)) inline malloc_lock_s __malloc_lock_init() {
+    return OS_UNFAIR_LOCK_INIT;
+}
 
-FORCE_INLINE void __malloc_lock_lock(malloc_lock_s *lock);
-FORCE_INLINE bool __malloc_lock_trylock(malloc_lock_s *lock);
-FORCE_INLINE void __malloc_lock_unlock(malloc_lock_s *lock);
+__attribute__((always_inline)) inline void __malloc_lock_lock(malloc_lock_s *lock) {
+    os_unfair_lock_lock(lock);
+}
+
+__attribute__((always_inline)) inline bool __malloc_lock_trylock(malloc_lock_s *lock) {
+    return os_unfair_lock_trylock(lock);
+}
+
+__attribute__((always_inline)) inline void __malloc_lock_unlock(malloc_lock_s *lock) {
+    os_unfair_lock_unlock(lock);
+}
 
 #endif
 
-//
+// Thread Info for Logging
 typedef mach_port_t thread_id;
 
-void logger_internal_init(void);
+typedef union {
+    uint64_t value;
 
-FORCE_INLINE thread_id current_thread_id();
-FORCE_INLINE void set_curr_thread_ignore_logging(bool ignore);
-FORCE_INLINE bool is_thread_ignoring_logging();
+    struct {
+        uint32_t t_id;
+        bool is_ignore;
+    } detail;
+} thread_info_for_logging_t;
+
+bool logger_internal_init(void);
+
+uint64_t current_thread_info_for_logging();
+
+thread_id current_thread_id();
+void set_curr_thread_ignore_logging(bool ignore);
+bool is_thread_ignoring_logging();
 
 // Allocation/Deallocation Function without Logging
 void *inter_malloc(size_t size);
