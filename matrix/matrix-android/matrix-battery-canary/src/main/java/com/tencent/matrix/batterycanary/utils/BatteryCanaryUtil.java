@@ -251,8 +251,8 @@ public final class BatteryCanaryUtil {
     }
 
     public static int[] getCpuCurrentFreq() {
-        int[] output = new int[getNumCores()];
-        for (int i = 0; i < getNumCores(); i++) {
+        int[] output = new int[getCpuCoreNum()];
+        for (int i = 0; i < getCpuCoreNum(); i++) {
             output[i] = 0;
             String path = "/sys/devices/system/cpu/cpu" + i + "/cpufreq/scaling_cur_freq";
             String cat = cat(path);
@@ -267,7 +267,7 @@ public final class BatteryCanaryUtil {
         return output;
     }
 
-    private static int getNumCores() {
+    public static int getCpuCoreNum() {
         try {
             // Get directory containing CPU info
             File dir = new File("/sys/devices/system/cpu/");

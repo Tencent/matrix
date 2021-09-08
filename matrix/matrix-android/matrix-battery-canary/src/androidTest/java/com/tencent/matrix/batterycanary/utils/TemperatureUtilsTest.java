@@ -26,6 +26,8 @@ import android.hardware.SensorManager;
 import android.os.BatteryManager;
 import androidx.test.platform.app.InstrumentationRegistry;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
+
+import android.os.HardwarePropertiesManager;
 import android.util.Log;
 
 import com.tencent.matrix.batterycanary.TestUtils;
@@ -67,6 +69,15 @@ public class TemperatureUtilsTest {
     public void shutDown() {
     }
 
+    @Test
+    public void testGetCpuTemp() {
+        HardwarePropertiesManager manager = (HardwarePropertiesManager) mContext.getSystemService(Context.HARDWARE_PROPERTIES_SERVICE);
+        try {
+            manager.getDeviceTemperatures(HardwarePropertiesManager.DEVICE_TEMPERATURE_CPU, HardwarePropertiesManager.TEMPERATURE_CURRENT);
+            Assert.fail("Should be permission denied");
+        } catch (SecurityException ignored) {
+        }
+    }
 
     @Test
     public void testGetDeviceTemperature() throws InterruptedException {
