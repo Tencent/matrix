@@ -128,12 +128,13 @@ public class LooperAnrTracer extends Tracer {
                 }
 
                 StackTraceElement[] stackTrace = Looper.getMainLooper().getThread().getStackTrace();
+                String dumpStack = Utils.getWholeStack(stackTrace);
 
                 JSONObject jsonObject = new JSONObject();
                 jsonObject = DeviceUtil.getDeviceInfo(jsonObject, Matrix.with().getApplication());
                 jsonObject.put(SharePluginInfo.ISSUE_STACK_TYPE, Constants.Type.LAG);
                 jsonObject.put(SharePluginInfo.ISSUE_SCENE, scene);
-                jsonObject.put(SharePluginInfo.ISSUE_THREAD_STACK, Utils.getStack(stackTrace));
+                jsonObject.put(SharePluginInfo.ISSUE_THREAD_STACK, dumpStack);
                 jsonObject.put(SharePluginInfo.ISSUE_PROCESS_FOREGROUND, isForeground);
 
                 Issue issue = new Issue();
@@ -183,7 +184,13 @@ public class LooperAnrTracer extends Tracer {
             // Thread state
             Thread.State status = Looper.getMainLooper().getThread().getState();
             StackTraceElement[] stackTrace = Looper.getMainLooper().getThread().getStackTrace();
-            String dumpStack = Utils.getStack(stackTrace, "|*\t\t", 12);
+            String dumpStack;
+            if (traceConfig.getLooperPrinterStackStyle() == TraceConfig.STACK_STYLE_WHOLE) {
+                dumpStack = Utils.getWholeStack(stackTrace, "|*\t\t");
+            } else {
+                dumpStack = Utils.getStack(stackTrace, "|*\t\t", 12);
+            }
+
 
             // frame
             UIThreadMonitor monitor = UIThreadMonitor.getMonitor();
@@ -247,7 +254,11 @@ public class LooperAnrTracer extends Tracer {
                 jsonObject.put(SharePluginInfo.ISSUE_STACK_KEY, stackKey);
                 jsonObject.put(SharePluginInfo.ISSUE_SCENE, scene);
                 jsonObject.put(SharePluginInfo.ISSUE_TRACE_STACK, reportBuilder.toString());
-                jsonObject.put(SharePluginInfo.ISSUE_THREAD_STACK, Utils.getStack(stackTrace));
+                if (traceConfig.getLooperPrinterStackStyle() == TraceConfig.STACK_STYLE_WHOLE) {
+                    jsonObject.put(SharePluginInfo.ISSUE_THREAD_STACK, Utils.getWholeStack(stackTrace));
+                } else {
+                    jsonObject.put(SharePluginInfo.ISSUE_THREAD_STACK, Utils.getStack(stackTrace));
+                }
                 jsonObject.put(SharePluginInfo.ISSUE_PROCESS_PRIORITY, processStat[0]);
                 jsonObject.put(SharePluginInfo.ISSUE_PROCESS_NICE, processStat[1]);
                 jsonObject.put(SharePluginInfo.ISSUE_PROCESS_FOREGROUND, isForeground);
