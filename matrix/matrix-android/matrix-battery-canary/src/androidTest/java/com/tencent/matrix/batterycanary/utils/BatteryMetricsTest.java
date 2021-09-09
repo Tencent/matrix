@@ -86,6 +86,10 @@ public class BatteryMetricsTest {
                 parser.nextToken();
             }
         }
+
+        PowerProfile powerProfile = PowerProfile.init(mContext);
+        Assert.assertNotNull(powerProfile);
+        Assert.assertNotNull(PowerProfile.getInstance());
     }
 
     @Test
