@@ -14,6 +14,8 @@ import com.tencent.matrix.batterycanary.monitor.feature.AlarmMonitorFeature.Alar
 import com.tencent.matrix.batterycanary.monitor.feature.AppStatMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.BlueToothMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.BlueToothMonitorFeature.BlueToothSnapshot;
+import com.tencent.matrix.batterycanary.monitor.feature.CpuStatFeature;
+import com.tencent.matrix.batterycanary.monitor.feature.CpuStatFeature.CpuStateSnapshot;
 import com.tencent.matrix.batterycanary.monitor.feature.DeviceStatMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.DeviceStatMonitorFeature.BatteryTmpSnapshot;
 import com.tencent.matrix.batterycanary.monitor.feature.DeviceStatMonitorFeature.CpuFreqSnapshot;
@@ -25,6 +27,7 @@ import com.tencent.matrix.batterycanary.monitor.feature.LocationMonitorFeature.L
 import com.tencent.matrix.batterycanary.monitor.feature.LooperTaskMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Delta;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Entry.BeanEntry;
+import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Entry.DigitEntry;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Entry.ListEntry;
 import com.tencent.matrix.batterycanary.monitor.feature.NotificationMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.NotificationMonitorFeature.BadNotification;
@@ -94,6 +97,8 @@ public interface BatteryMonitorCallback extends
         protected WakeLockMonitorFeature mWakeLockFeat;
         @Nullable
         protected WifiMonitorFeature mWifiMonitorFeat;
+        @Nullable
+        protected CpuStatFeature mCpuStatFeat;
 
         @Nullable
         protected AlarmSnapshot mLastAlarmSnapshot;
@@ -113,6 +118,8 @@ public interface BatteryMonitorCallback extends
         protected WakeLockSnapshot mLastWakeWakeLockSnapshot;
         @Nullable
         protected WifiSnapshot mLastWifiSnapshot;
+        @Nullable
+        protected CpuStateSnapshot mLastCpuStateSnapshot;
 
         @SuppressWarnings("UnusedReturnValue")
         @VisibleForTesting
@@ -184,6 +191,11 @@ public interface BatteryMonitorCallback extends
             mWifiMonitorFeat = mMonitor.getMonitorFeature(WifiMonitorFeature.class);
             if (mWifiMonitorFeat != null) {
                 mLastWifiSnapshot = mWifiMonitorFeat.currentSnapshot();
+            }
+
+            mCpuStatFeat = mMonitor.getMonitorFeature(CpuStatFeature.class);
+            if (mCpuStatFeat != null && mCpuStatFeat.isSupported()) {
+                mLastCpuStateSnapshot = mCpuStatFeat.currentCpuStateSnapshot();
             }
         }
 
@@ -468,11 +480,18 @@ public interface BatteryMonitorCallback extends
             if (/**/(mAppStatFeat != null)
                     || (mDevStatFeat != null && mLastCpuFreqSnapshot != null)
                     || (mDevStatFeat != null && mLastBatteryTmpSnapshot != null)
+                    || (mCpuStatFeat != null && mCpuStatFeat.isSupported() && mLastCpuStateSnapshot != null)
             ) {
-                // Status
+                // Stats
                 createSection("dev_stats", new Consumer<Printer>() {
                     @Override
                     public void accept(Printer printer) {
+                        if (mCpuStatFeat != null && mCpuStatFeat.isSupported() && mLastCpuStateSnapshot != null) {
+                            CpuStateSnapshot snapshot = mCpuStatFeat.currentCpuStateSnapshot();
+                            Delta<CpuStateSnapshot> delta = snapshot.diff(mLastCpuStateSnapshot);
+                            onReportCpuStats(delta);
+                            onWritingSectionContent(delta, appStats, mPrinter);
+                        }
                         if (mDevStatFeat != null && mLastCpuFreqSnapshot != null) {
                             CpuFreqSnapshot cpuFreqSnapshot = mDevStatFeat.currentCpuFreq();
                             final Delta<CpuFreqSnapshot> delta = cpuFreqSnapshot.diff(mLastCpuFreqSnapshot);
@@ -617,6 +636,30 @@ public interface BatteryMonitorCallback extends
                 return true;
             }
 
+            // - Dump CpuStats
+            if (sessionDelta.dlt instanceof CpuStateSnapshot) {
+                //noinspection unchecked
+                Delta<CpuStateSnapshot> delta = (Delta<CpuStateSnapshot>) sessionDelta;
+                printer.createSubSection("cpu_load");
+                printer.writeLine(delta.during + "(mls)\t" + (delta.during / ONE_MIN) + "(min)");
+
+                if (mCpuStatFeat != null && mCpuStatFeat.isSupported()
+                        && null != mJiffiesFeat && null != mLastJiffiesSnapshot) {
+                    JiffiesSnapshot curr = mJiffiesFeat.currentJiffiesSnapshot();
+                    Delta<JiffiesSnapshot> jiffiesDelta = curr.diff(mLastJiffiesSnapshot);
+                    long cpuJiffiesDelta = delta.dlt.totalJiffies();
+                    long appJiffiesDelta = jiffiesDelta.dlt.totalJiffies.get();
+                    float cpuLoad = (float) appJiffiesDelta / cpuJiffiesDelta;
+                    float cpuLoadAvg = cpuLoad * mCpuStatFeat.getPowerProfile().getCpuCoreNum();
+                    printer.writeLine("usage", (int) (cpuLoadAvg * 100) + "%");
+                }
+                for (int i = 0; i < delta.dlt.cpuCoreStates.size(); i++) {
+                    ListEntry<DigitEntry<Long>> listEntry = delta.dlt.cpuCoreStates.get(i);
+                    printer.writeLine("cpu" + i, Arrays.toString(listEntry.getList().toArray()));
+                }
+                return true;
+            }
+
             // - Dump Battery Temperature
             if (sessionDelta.dlt instanceof BatteryTmpSnapshot) {
                 //noinspection unchecked
@@ -643,6 +686,9 @@ public interface BatteryMonitorCallback extends
         }
 
         protected void onReportCpuFreq(@NonNull Delta<CpuFreqSnapshot> delta) {
+        }
+
+        protected void onReportCpuStats(@NonNull Delta<CpuStateSnapshot> delta) {
         }
 
         protected void onReportJiffies(@NonNull Delta<JiffiesSnapshot> delta) {
