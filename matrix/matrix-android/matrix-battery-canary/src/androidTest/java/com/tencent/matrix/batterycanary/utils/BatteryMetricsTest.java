@@ -39,6 +39,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.lang.reflect.Constructor;
+import java.util.Arrays;
 import java.util.Stack;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -90,6 +91,7 @@ public class BatteryMetricsTest {
         PowerProfile powerProfile = PowerProfile.init(mContext);
         Assert.assertNotNull(powerProfile);
         Assert.assertNotNull(PowerProfile.getInstance());
+        Assert.assertTrue(PowerProfile.getInstance().isSupported());
     }
 
     @Test
@@ -231,6 +233,147 @@ public class BatteryMetricsTest {
                     Assert.assertTrue(TextUtils.isDigitsOnly(time));
                 }
             }
+        }
+
+        PowerProfile powerProfile = PowerProfile.init(mContext);
+        Assert.assertNotNull(powerProfile);
+        Assert.assertTrue(powerProfile.isSupported());
+
+        KernelCpuSpeedReader[] readers = new KernelCpuSpeedReader[powerProfile.getNumCpuClusters()];
+        int firstCpuOfCluster = 0;
+        for (int i = 0; i < powerProfile.getNumCpuClusters(); i++) {
+            final int numSpeedSteps = powerProfile.getNumSpeedStepsInCpuCluster(i);
+            readers[i] = new KernelCpuSpeedReader(firstCpuOfCluster, numSpeedSteps);
+            firstCpuOfCluster += powerProfile.getNumCoresInCpuCluster(i);
+        }
+
+        for (int i = 0; i < readers.length; i++) {
+            KernelCpuSpeedReader kernelCpuSpeedReader = readers[i];
+            Assert.assertNotNull(kernelCpuSpeedReader);
+            Assert.assertTrue(kernelCpuSpeedReader.readTotoal() > 0);
+            long[] cpuCoreJiffies = kernelCpuSpeedReader.readAbsolute();
+            Assert.assertEquals(powerProfile.getNumSpeedStepsInCpuCluster(i), cpuCoreJiffies.length);
+            for (int j = 0; j < cpuCoreJiffies.length; j++) {
+                Assert.assertTrue(cpuCoreJiffies[j] >= 0);
+            }
+        }
+    }
+
+    @Test
+    public void testConfigureCpuLoad() throws IOException {
+        PowerProfile powerProfile = PowerProfile.init(mContext);
+        Assert.assertNotNull(powerProfile);
+        Assert.assertTrue(powerProfile.isSupported());
+
+        int cpuCoreNum = BatteryCanaryUtil.getCpuCoreNum();
+        int cpuCoreNum2 = 0;
+        for (int i = 0; i < powerProfile.getNumCpuClusters(); i++) {
+            cpuCoreNum2 += powerProfile.getNumCoresInCpuCluster(i);
+        }
+        Assert.assertEquals(cpuCoreNum2, cpuCoreNum);
+
+        KernelCpuSpeedReader[] readers = new KernelCpuSpeedReader[cpuCoreNum];
+        for (int i = 0; i < cpuCoreNum; i++) {
+            final int numSpeedSteps = powerProfile.getNumSpeedStepsInCpuCluster(powerProfile.getClusterByCpuNum(i));
+            readers[i] = new KernelCpuSpeedReader(i, numSpeedSteps);
+        }
+
+        long cpuJiffiesBgn = 0;
+        for (int i = 0; i < readers.length; i++) {
+            KernelCpuSpeedReader kernelCpuSpeedReader = readers[i];
+            Assert.assertNotNull(kernelCpuSpeedReader);
+            long cpuCoreJiffies = kernelCpuSpeedReader.readTotoal();
+            Assert.assertTrue("idx = " + i + ",  read = " + Arrays.toString(kernelCpuSpeedReader.readAbsolute()), cpuCoreJiffies > 0);
+            cpuJiffiesBgn += cpuCoreJiffies;
+        }
+        long appJiffiesBgn = ProcStatUtil.of(Process.myPid()).getJiffies();
+
+        CpuConsumption.hanoi(20);
+
+        long cpuJiffiesEnd = 0;
+        for (int i = 0; i < readers.length; i++) {
+            KernelCpuSpeedReader kernelCpuSpeedReader = readers[i];
+            Assert.assertNotNull(kernelCpuSpeedReader);
+            long cpuCoreJiffies = kernelCpuSpeedReader.readTotoal();
+            Assert.assertTrue(cpuCoreJiffies > 0);
+            cpuJiffiesEnd += cpuCoreJiffies;
+        }
+        long appJiffiesEnd = ProcStatUtil.of(Process.myPid()).getJiffies();
+
+        long cpuJiffiesDelta = cpuJiffiesEnd - cpuJiffiesBgn;
+        long appJiffiesDelta = appJiffiesEnd - appJiffiesBgn;
+        Assert.assertTrue(cpuJiffiesDelta > 0);
+        Assert.assertTrue(appJiffiesDelta > 0);
+        Assert.assertTrue(appJiffiesDelta < cpuJiffiesDelta);
+
+        float cpuLoad = (float) appJiffiesDelta / cpuJiffiesDelta;
+        float cpuLoadAvg = cpuLoad * cpuCoreNum;
+
+        if (!TestUtils.isAssembleTest()) {
+            Assert.fail("CPU Load: " + (int) (cpuLoadAvg * 100) + "%");
+        }
+    }
+
+    @Test
+    public void testConfigureCpuLoadWithMultiThread() throws IOException {
+        PowerProfile powerProfile = PowerProfile.init(mContext);
+        Assert.assertNotNull(powerProfile);
+        Assert.assertTrue(powerProfile.isSupported());
+
+        int cpuCoreNum = BatteryCanaryUtil.getCpuCoreNum();
+        int cpuCoreNum2 = 0;
+        for (int i = 0; i < powerProfile.getNumCpuClusters(); i++) {
+            cpuCoreNum2 += powerProfile.getNumCoresInCpuCluster(i);
+        }
+        Assert.assertEquals(cpuCoreNum2, cpuCoreNum);
+
+        KernelCpuSpeedReader[] readers = new KernelCpuSpeedReader[cpuCoreNum];
+        for (int i = 0; i < cpuCoreNum; i++) {
+            final int numSpeedSteps = powerProfile.getNumSpeedStepsInCpuCluster(powerProfile.getClusterByCpuNum(i));
+            readers[i] = new KernelCpuSpeedReader(i, numSpeedSteps);
+        }
+
+        long cpuJiffiesBgn = 0;
+        for (int i = 0; i < readers.length; i++) {
+            KernelCpuSpeedReader kernelCpuSpeedReader = readers[i];
+            Assert.assertNotNull(kernelCpuSpeedReader);
+            long cpuCoreJiffies = kernelCpuSpeedReader.readTotoal();
+            Assert.assertTrue("idx = " + i + ",  read = " + Arrays.toString(kernelCpuSpeedReader.readAbsolute()), cpuCoreJiffies > 0);
+            cpuJiffiesBgn += cpuCoreJiffies;
+        }
+        long appJiffiesBgn = ProcStatUtil.of(Process.myPid()).getJiffies();
+
+        for (int i = 0; i < cpuCoreNum - 1; i++) {
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    while (true) {}
+                }
+            }).start();
+        }
+        CpuConsumption.hanoi(20);
+
+        long cpuJiffiesEnd = 0;
+        for (int i = 0; i < readers.length; i++) {
+            KernelCpuSpeedReader kernelCpuSpeedReader = readers[i];
+            Assert.assertNotNull(kernelCpuSpeedReader);
+            long cpuCoreJiffies = kernelCpuSpeedReader.readTotoal();
+            Assert.assertTrue(cpuCoreJiffies > 0);
+            cpuJiffiesEnd += cpuCoreJiffies;
+        }
+        long appJiffiesEnd = ProcStatUtil.of(Process.myPid()).getJiffies();
+
+        long cpuJiffiesDelta = cpuJiffiesEnd - cpuJiffiesBgn;
+        long appJiffiesDelta = appJiffiesEnd - appJiffiesBgn;
+        Assert.assertTrue(cpuJiffiesDelta > 0);
+        Assert.assertTrue(appJiffiesDelta > 0);
+        Assert.assertTrue(appJiffiesDelta < cpuJiffiesDelta);
+
+        float cpuLoad = (float) appJiffiesDelta / cpuJiffiesDelta;
+        float cpuLoadAvg = cpuLoad * cpuCoreNum;
+
+        if (!TestUtils.isAssembleTest()) {
+            Assert.fail("CPU Load: " + (int) (cpuLoadAvg * 100) + "%");
         }
     }
 

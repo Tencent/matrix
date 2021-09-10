@@ -36,6 +36,32 @@ public class PowerProfile {
         }
     }
 
+    public boolean isSupported() {
+        if (getNumCpuClusters() <= 0) {
+            return false;
+        }
+        if (getNumSpeedStepsInCpuCluster(0) <= 0) {
+            return false;
+        }
+        return true;
+    }
+
+    public int getClusterByCpuNum(int cpuCoreNum) {
+        int idx = -1;
+        if (cpuCoreNum < 0) {
+            return idx; // index out of bound
+        }
+        int delta = 0;
+        for (int i = 0; i < mCpuClusters.length; i++) {
+            CpuClusterKey cpuCluster = mCpuClusters[i];
+            if (cpuCluster.numCpus + delta >= cpuCoreNum + 1) {
+                return i;
+            }
+            delta += cpuCluster.numCpus;
+        }
+        return -2;
+    }
+
     public static final String POWER_CPU_SUSPEND = "cpu.suspend";
     public static final String POWER_CPU_IDLE = "cpu.idle";
     public static final String POWER_CPU_ACTIVE = "cpu.active";
