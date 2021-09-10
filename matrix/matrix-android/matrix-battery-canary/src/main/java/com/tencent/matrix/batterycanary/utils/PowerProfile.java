@@ -11,6 +11,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 
+import androidx.annotation.Nullable;
 import androidx.annotation.RestrictTo;
 
 /**
@@ -21,6 +22,7 @@ import androidx.annotation.RestrictTo;
 public class PowerProfile {
     private static PowerProfile sInstance = null;
 
+    @Nullable
     public static PowerProfile getInstance() {
         return sInstance;
     }
@@ -28,7 +30,7 @@ public class PowerProfile {
     public static PowerProfile init(Context context) throws IOException {
         synchronized (sLock) {
             try {
-                sInstance = new PowerProfile(context);
+                sInstance = new PowerProfile(context).smoke();
                 return sInstance;
             } catch (Throwable e) {
                 throw new IOException(e);
@@ -36,14 +38,35 @@ public class PowerProfile {
         }
     }
 
-    public boolean isSupported() {
+    public PowerProfile smoke() throws IOException {
         if (getNumCpuClusters() <= 0) {
+            throw new IOException("Invalid cpu clusters: " + getNumCpuClusters());
+        }
+        for (int i = 0; i < getNumCpuClusters(); i++) {
+            if (getNumSpeedStepsInCpuCluster(i) <= 0) {
+                throw new IOException("Invalid cpu cluster speed-steps: cluster = " + i
+                        +  ", steps = " + getNumSpeedStepsInCpuCluster(i));
+            }
+        }
+        int cpuCoreNum = BatteryCanaryUtil.getCpuCoreNum();
+        int cpuCoreNumInProfile = 0;
+        for (int i = 0; i < getNumCpuClusters(); i++) {
+            cpuCoreNumInProfile += getNumCoresInCpuCluster(i);
+        }
+        if (cpuCoreNum != cpuCoreNumInProfile) {
+            throw new IOException("Unmatched cpu core num, sys = " + cpuCoreNum
+                    +  ", profile = " + cpuCoreNumInProfile);
+        }
+        return this;
+    }
+
+    public boolean isSupported() {
+        try {
+            smoke();
+            return true;
+        } catch (IOException ignored) {
             return false;
         }
-        if (getNumSpeedStepsInCpuCluster(0) <= 0) {
-            return false;
-        }
-        return true;
     }
 
     public int getClusterByCpuNum(int cpuCoreNum) {
