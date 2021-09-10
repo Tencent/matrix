@@ -49,10 +49,7 @@ public class PowerProfile {
             }
         }
         int cpuCoreNum = BatteryCanaryUtil.getCpuCoreNum();
-        int cpuCoreNumInProfile = 0;
-        for (int i = 0; i < getNumCpuClusters(); i++) {
-            cpuCoreNumInProfile += getNumCoresInCpuCluster(i);
-        }
+        int cpuCoreNumInProfile = getCpuCoreNum();
         if (cpuCoreNum != cpuCoreNumInProfile) {
             throw new IOException("Unmatched cpu core num, sys = " + cpuCoreNum
                     +  ", profile = " + cpuCoreNumInProfile);
@@ -67,6 +64,14 @@ public class PowerProfile {
         } catch (IOException ignored) {
             return false;
         }
+    }
+
+    public int getCpuCoreNum() {
+        int cpuCoreNumInProfile = 0;
+        for (int i = 0; i < getNumCpuClusters(); i++) {
+            cpuCoreNumInProfile += getNumCoresInCpuCluster(i);
+        }
+        return cpuCoreNumInProfile;
     }
 
     public int getClusterByCpuNum(int cpuCoreNum) {
