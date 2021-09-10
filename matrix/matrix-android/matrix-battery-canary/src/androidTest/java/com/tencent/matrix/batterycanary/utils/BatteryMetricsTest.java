@@ -39,7 +39,9 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.lang.reflect.Constructor;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Stack;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -374,6 +376,168 @@ public class BatteryMetricsTest {
 
         if (!TestUtils.isAssembleTest()) {
             Assert.fail("CPU Load: " + (int) (cpuLoadAvg * 100) + "%");
+        }
+    }
+
+    @Test
+    public void testGetCpuPowers() throws IOException {
+        PowerProfile powerProfile = PowerProfile.init(mContext);
+        Assert.assertNotNull(powerProfile);
+        Assert.assertTrue(powerProfile.isSupported());
+
+        double[] clusterPowers = new double[powerProfile.getNumCpuClusters()];
+        for (int i = 0; i < powerProfile.getNumCpuClusters(); i++) {
+            double clusterPower = powerProfile.getAveragePowerForCpuCluster(i);
+            clusterPowers[i] = clusterPower;
+        }
+
+        List<double[]> cpuCoreStepPowers = new ArrayList<>();
+        for (int i = 0; i < powerProfile.getCpuCoreNum(); i++) {
+            int cluster = powerProfile.getClusterByCpuNum(i);
+            int steps = powerProfile.getNumSpeedStepsInCpuCluster(cluster);
+            double[] stepPowers = new double[steps];
+            for (int step = 0; step < steps; step++) {
+                stepPowers[step] = powerProfile.getAveragePowerForCpuCore(cluster, step);
+            }
+            cpuCoreStepPowers.add(stepPowers);
+        }
+
+        for (double[] stepPowers : cpuCoreStepPowers) {
+            for (double item : stepPowers) {
+                Assert.assertTrue(item > 0);
+            }
+        }
+    }
+
+    @Test
+    public void testConfigureCpuBatterySipping() throws IOException {
+        PowerProfile powerProfile = PowerProfile.init(mContext);
+        Assert.assertNotNull(powerProfile);
+        Assert.assertTrue(powerProfile.isSupported());
+
+        int cpuCoreNum = powerProfile.getCpuCoreNum();
+        List<double[]> cpuCoreStepPowers = new ArrayList<>();
+        for (int i = 0; i < cpuCoreNum; i++) {
+            int cluster = powerProfile.getClusterByCpuNum(i);
+            int steps = powerProfile.getNumSpeedStepsInCpuCluster(cluster);
+            double[] stepPowers = new double[steps];
+            for (int step = 0; step < steps; step++) {
+                stepPowers[step] = powerProfile.getAveragePowerForCpuCore(cluster, step);
+            }
+            cpuCoreStepPowers.add(stepPowers);
+        }
+
+        for (double[] stepPowers : cpuCoreStepPowers) {
+            for (double item : stepPowers) {
+                Assert.assertTrue(item > 0);
+            }
+        }
+
+        KernelCpuSpeedReader[] readers = new KernelCpuSpeedReader[cpuCoreNum];
+        for (int i = 0; i < cpuCoreNum; i++) {
+            final int numSpeedSteps = powerProfile.getNumSpeedStepsInCpuCluster(powerProfile.getClusterByCpuNum(i));
+            readers[i] = new KernelCpuSpeedReader(i, numSpeedSteps);
+        }
+
+        List<double[]> cpuCoreStepSips = new ArrayList<>();
+        Assert.assertEquals(cpuCoreStepPowers.size(), readers.length);
+        for (int i = 0; i < readers.length; i++) {
+            double[] stepPowers = cpuCoreStepPowers.get(i);
+            KernelCpuSpeedReader reader = readers[i];
+            long[] stepJiffies = reader.readAbsolute();
+            Assert.assertEquals(stepPowers.length, stepJiffies.length);
+            double[] stepSips = new double[stepJiffies.length];
+            for (int j = 0; j < stepJiffies.length; j++) {
+                long jiffies = stepJiffies[j];
+                double power = stepPowers[j];
+                double sip = power * (jiffies * 10d / (1000L * 60 * 60));
+                stepSips[j] = sip;
+            }
+            cpuCoreStepSips.add(stepSips);
+        }
+
+        for (double[] stepSips : cpuCoreStepSips) {
+            for (double item : stepSips) {
+                Assert.assertTrue(item > 0);
+            }
+        }
+    }
+
+    @Test
+    public void testConfigureCpuBatterySippingDelta() throws IOException {
+        PowerProfile powerProfile = PowerProfile.init(mContext);
+        Assert.assertNotNull(powerProfile);
+        Assert.assertTrue(powerProfile.isSupported());
+
+        int cpuCoreNum = powerProfile.getCpuCoreNum();
+        List<double[]> cpuCoreStepPowers = new ArrayList<>();
+        for (int i = 0; i < cpuCoreNum; i++) {
+            int cluster = powerProfile.getClusterByCpuNum(i);
+            int steps = powerProfile.getNumSpeedStepsInCpuCluster(cluster);
+            double[] stepPowers = new double[steps];
+            for (int step = 0; step < steps; step++) {
+                stepPowers[step] = powerProfile.getAveragePowerForCpuCore(cluster, step);
+            }
+            cpuCoreStepPowers.add(stepPowers);
+        }
+
+        for (double[] stepPowers : cpuCoreStepPowers) {
+            for (double item : stepPowers) {
+                Assert.assertTrue(item > 0);
+            }
+        }
+
+        KernelCpuSpeedReader[] readers = new KernelCpuSpeedReader[cpuCoreNum];
+        for (int i = 0; i < cpuCoreNum; i++) {
+            final int numSpeedSteps = powerProfile.getNumSpeedStepsInCpuCluster(powerProfile.getClusterByCpuNum(i));
+            readers[i] = new KernelCpuSpeedReader(i, numSpeedSteps);
+        }
+
+        List<long[]> cpuCoreStepJiffies = new ArrayList<>();
+        for (int i = 0; i < readers.length; i++) {
+            KernelCpuSpeedReader reader = readers[i];
+            long[] stepJiffies = reader.readAbsolute();
+            cpuCoreStepJiffies.add(stepJiffies);
+        }
+
+        CpuConsumption.hanoi(20);
+
+        List<long[]> cpuCoreStepJiffiesDeltas = new ArrayList<>();
+        for (int i = 0; i < readers.length; i++) {
+            long[] stepJiffiesBgns = cpuCoreStepJiffies.get(i);
+            KernelCpuSpeedReader reader = readers[i];
+            long[] stepJiffies = reader.readAbsolute();
+            Assert.assertEquals(stepJiffiesBgns.length, stepJiffies.length);
+            long[] stepJiffiesDeltas = new long[stepJiffies.length];
+            for (int step = 0; step < stepJiffies.length; step++) {
+                long jiffiesBgn = stepJiffiesBgns[step];
+                long jiffiesEnd = stepJiffies[step];
+                stepJiffiesDeltas[step] = jiffiesEnd - jiffiesBgn;
+            }
+            cpuCoreStepJiffiesDeltas.add(stepJiffiesDeltas);
+        }
+
+        Assert.assertEquals(cpuCoreStepJiffiesDeltas.size(), readers.length);
+
+        List<double[]> cpuCoreStepSips = new ArrayList<>();
+        for (int i = 0; i < readers.length; i++) {
+            double[] stepPowers = cpuCoreStepPowers.get(i);
+            long[] stepJiffies = cpuCoreStepJiffiesDeltas.get(i);
+            Assert.assertEquals(stepPowers.length, stepJiffies.length);
+            double[] stepSips = new double[stepJiffies.length];
+            for (int j = 0; j < stepJiffies.length; j++) {
+                long jiffies = stepJiffies[j];
+                double power = stepPowers[j];
+                double sip = power * (jiffies * 10d / (1000L * 60 * 60));
+                stepSips[j] = sip;
+            }
+            cpuCoreStepSips.add(stepSips);
+        }
+
+        for (double[] stepSips : cpuCoreStepSips) {
+            for (double item : stepSips) {
+                Assert.assertTrue(item > 0);
+            }
         }
     }
 
