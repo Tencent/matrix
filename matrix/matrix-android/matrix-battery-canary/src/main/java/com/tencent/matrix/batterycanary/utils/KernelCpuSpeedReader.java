@@ -10,6 +10,8 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.Arrays;
 
+import androidx.annotation.RestrictTo;
+
 /**
  * Reads CPU time of a specific core spent at various frequencies and provides a delta from the
  * last call to {@link #readDelta}. Each line in the proc file has the format:
@@ -20,6 +22,7 @@ import java.util.Arrays;
  *
  * @see com.android.internal.os.KernelCpuSpeedReader
  */
+@RestrictTo(RestrictTo.Scope.LIBRARY)
 @SuppressWarnings({"SpellCheckingInspection", "JavadocReference"})
 public class KernelCpuSpeedReader {
     private static final String TAG = "KernelCpuSpeedReader";

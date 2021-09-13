@@ -18,6 +18,7 @@ package com.tencent.matrix.batterycanary.utils;
 
 import android.content.Context;
 import android.content.res.XmlResourceParser;
+import android.os.FileObserver;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Process;
@@ -43,13 +44,16 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Stack;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import androidx.annotation.Nullable;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 
 import static com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil.JIFFY_MILLIS;
 import static com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil.ONE_HOR;
+import static com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil.ONE_MIN;
 
 
 @RunWith(AndroidJUnit4.class)
@@ -579,6 +583,169 @@ public class BatteryMetricsTest {
                     + "\nCPU Sipping: " + sipSum + " mAh");
         }
     }
+
+    @Test
+    public void testReadKernelPidCpuSpeedState() throws IOException {
+        PowerProfile powerProfile = PowerProfile.init(mContext);
+        Assert.assertNotNull(powerProfile);
+        Assert.assertTrue(powerProfile.isSupported());
+
+        List<long[]> clusterStepJiffies = new ArrayList<>();
+        String path = "/proc/" + Process.myPid() + "/time_in_state";
+        try (BufferedReader reader = new BufferedReader(new FileReader(new File(path)))) {
+            TextUtils.SimpleStringSplitter splitter = new TextUtils.SimpleStringSplitter(' ');
+            String line;
+            int cluster = -1;
+            int step = -1;
+            long[] stepJiffies = null;
+            while ((line = reader.readLine()) != null) {
+                if (line.startsWith("cpu")) {
+                    cluster++;
+                    step = -1;
+                    if (stepJiffies != null) {
+                        clusterStepJiffies.add(stepJiffies);
+                    }
+                    int stepNum = powerProfile.getNumSpeedStepsInCpuCluster(cluster);
+                    stepJiffies = new long[stepNum];
+                    continue;
+                }
+                step++;
+                splitter.setString(line);
+                String speed = splitter.next();
+                String time = splitter.next();
+                Assert.assertTrue(TextUtils.isDigitsOnly(speed));
+                Assert.assertTrue(TextUtils.isDigitsOnly(time));
+                stepJiffies[step] = Long.parseLong(time);
+            }
+            if (stepJiffies != null) {
+                clusterStepJiffies.add(stepJiffies);
+            }
+        }
+
+        Assert.assertEquals(powerProfile.getNumCpuClusters(), clusterStepJiffies.size());
+        for (int i = 0; i < clusterStepJiffies.size(); i++) {
+            long[] stepJiffies = clusterStepJiffies.get(i);
+            Assert.assertEquals(powerProfile.getNumSpeedStepsInCpuCluster(i), stepJiffies.length);
+        }
+    }
+
+    @Test
+    public void testReadKernelPidCpuSpeedStateAndProcStatJiffiesCompare() throws IOException, InterruptedException {
+        PowerProfile powerProfile = PowerProfile.init(mContext);
+        Assert.assertNotNull(powerProfile);
+        Assert.assertTrue(powerProfile.isSupported());
+
+        long kernelPidJiffiesBgn = readKernelPidJiffies(Process.myPid());
+        ProcStatUtil.ProcStat procStat = ProcStatUtil.of(Process.myPid());
+
+        for (int i = 0; i < powerProfile.getCpuCoreNum() - 1; i++) {
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    while (true) {}
+                }
+            }).start();
+        }
+        CpuConsumption.hanoi(20);
+
+        long kernelPidJiffiesEnd = readKernelPidJiffies(Process.myPid());
+        long procStatJiffies = ProcStatUtil.of(Process.myPid()).getJiffies() - procStat.getJiffies();
+
+        Assert.assertEquals(procStatJiffies, kernelPidJiffiesEnd - kernelPidJiffiesBgn);
+    }
+
+    private static long readKernelPidJiffies(int pid) throws IOException {
+        long kernelPidJiffies = 0;
+        String path = "/proc/" + pid + "/time_in_state";
+        try (BufferedReader reader = new BufferedReader(new FileReader(new File(path)))) {
+            TextUtils.SimpleStringSplitter splitter = new TextUtils.SimpleStringSplitter(' ');
+            String line;
+            while ((line = reader.readLine()) != null) {
+                if (line.startsWith("cpu")) {
+                    continue;
+                }
+                splitter.setString(line);
+                String speed = splitter.next();
+                String time = splitter.next();
+                Assert.assertTrue(TextUtils.isDigitsOnly(speed));
+                Assert.assertTrue(TextUtils.isDigitsOnly(time));
+                kernelPidJiffies += Long.parseLong(time);
+            }
+        }
+        return kernelPidJiffies;
+    }
+
+    @Test
+    public void testReadKernelPidCpuSpeedStateListener() throws IOException, InterruptedException {
+        long start = System.currentTimeMillis();
+        for (int i = 0; i < BatteryCanaryUtil.getCpuCoreNum() - 1; i++) {
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    while (true) {}
+                }
+            }).start();
+        }
+
+        final AtomicBoolean hasCallback = new AtomicBoolean();
+        String path = "/proc/" + Process.myPid() + "/time_in_state";
+        new FileObserver(path) {
+            @Override
+            public void onEvent(int event, @Nullable String path) {
+                synchronized (hasCallback) {
+                    hasCallback.notifyAll();
+                }
+            }
+        }.startWatching();
+        synchronized (hasCallback) {
+            hasCallback.wait();
+        }
+        Assert.fail("Time: " + (System.currentTimeMillis() - start));
+    }
+
+    @Test
+    public void testConfigureProcCpuBatterySipping() throws IOException {
+        PowerProfile powerProfile = PowerProfile.init(mContext);
+        Assert.assertNotNull(powerProfile);
+        Assert.assertTrue(powerProfile.isSupported());
+
+        CpuConsumption.hanoi(20);
+        ProcStatUtil.ProcStat procStat = ProcStatUtil.of(Process.myPid());
+        int[] clusterSteps = new int[powerProfile.getNumCpuClusters()];
+        for (int i = 0; i < clusterSteps.length; i++) {
+            clusterSteps[i] = powerProfile.getNumSpeedStepsInCpuCluster(i);
+        }
+        KernelCpuUidFreqTimeReader reader = new KernelCpuUidFreqTimeReader(Process.myPid(), clusterSteps);
+        List<long[]> cpuCoreStepJiffies = reader.readAbsolute();
+        long jiffySum = 0;
+        for (long[] stepJiffies : cpuCoreStepJiffies) {
+            for (long item : stepJiffies) {
+                jiffySum += item;
+            }
+        }
+        double sipSum = 0;
+        double figuredJiffiesSum = 0;
+        for (int i = 0; i < cpuCoreStepJiffies.size(); i++) {
+            long[] stepJiffies = cpuCoreStepJiffies.get(i);
+            for (int j = 0; j < stepJiffies.length; j++) {
+                long jiffy = stepJiffies[j];
+                double figuredJiffies = ((double) jiffy / jiffySum) * procStat.getJiffies();
+                double power = powerProfile.getAveragePowerForCpuCore(i, j);
+                double sip = power * (figuredJiffies * JIFFY_MILLIS / ONE_HOR);
+                sipSum += sip;
+                figuredJiffiesSum += figuredJiffies;
+            }
+        }
+
+        Assert.assertTrue(sipSum >= 0);
+        Assert.assertEquals(procStat.getJiffies(), figuredJiffiesSum, 1);
+
+        if (!TestUtils.isAssembleTest()) {
+            Assert.fail("Proc JiffyHour: " + ((float) (procStat.getJiffies()) * JIFFY_MILLIS) / ONE_HOR
+                    + "\nProc Sipping: " + sipSum + " mAh");
+        }
+    }
+
 
     @SuppressWarnings("SpellCheckingInspection")
     @Test
