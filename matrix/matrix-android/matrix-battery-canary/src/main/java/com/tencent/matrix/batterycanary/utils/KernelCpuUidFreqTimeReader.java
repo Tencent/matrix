@@ -41,6 +41,19 @@ public class KernelCpuUidFreqTimeReader {
         mClusterSteps = clusterSteps;
     }
 
+    public void smoke() throws IOException {
+        List<long[]> cpuCoreStepJiffies = readAbsolute();
+        if (mClusterSteps.length != cpuCoreStepJiffies.size()) {
+            throw new IOException("Cpu clusterNum unmatched, expect = " + mClusterSteps.length + ", actual = " + cpuCoreStepJiffies.size());
+        }
+        for (int i = 0; i < cpuCoreStepJiffies.size(); i++) {
+            long[] clusterStepJiffies = cpuCoreStepJiffies.get(i);
+            if (mClusterSteps[i] != clusterStepJiffies.length) {
+                throw new IOException("Cpu clusterStepNum unmatched, expect = " + mClusterSteps[i] + ", actual = " + clusterStepJiffies.length + ", cluster = " + i);
+            }
+        }
+    }
+
     public List<Long> readTotoal() throws IOException {
         List<long[]> cpuCoreStepJiffies = readAbsolute();
         List<Long> cpuCoreJiffies = new ArrayList<>(cpuCoreStepJiffies.size());

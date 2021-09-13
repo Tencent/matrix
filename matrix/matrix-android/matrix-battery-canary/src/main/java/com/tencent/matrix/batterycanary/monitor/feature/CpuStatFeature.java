@@ -40,9 +40,22 @@ public class CpuStatFeature extends  AbsTaskMonitorFeature {
     public void onTurnOn() {
         super.onTurnOn();
         try {
+            // Check PowerProfile compat
             mPowerProfile = PowerProfile.init(mCore.getContext());
+            // Check KernelCpuSpeedReader compat
+            for (int i = 0; i < mPowerProfile.getCpuCoreNum(); i++) {
+                final int numSpeedSteps = mPowerProfile.getNumSpeedStepsInCpuCluster(mPowerProfile.getClusterByCpuNum(i));
+                new KernelCpuSpeedReader(i, numSpeedSteps).smoke();
+            }
+            // Check KernelCpuUidFreqTimeReader compat
+            int[] clusterSteps = new int[mPowerProfile.getNumCpuClusters()];
+            for (int i = 0; i < clusterSteps.length; i++) {
+                clusterSteps[i] = mPowerProfile.getNumSpeedStepsInCpuCluster(i);
+            }
+            new KernelCpuUidFreqTimeReader(Process.myPid(), clusterSteps).smoke();
         } catch (IOException e) {
-            e.printStackTrace();
+            MatrixLog.w(TAG, "Init cpuStat failed: " + e.getMessage());
+            mPowerProfile = null;
         }
     }
 
