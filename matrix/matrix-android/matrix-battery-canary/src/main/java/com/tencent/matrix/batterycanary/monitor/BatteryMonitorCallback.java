@@ -44,6 +44,7 @@ import com.tencent.matrix.util.MatrixLog;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 import androidx.annotation.CallSuper;
@@ -640,14 +641,15 @@ public interface BatteryMonitorCallback extends
             if (sessionDelta.dlt instanceof CpuStateSnapshot) {
                 //noinspection unchecked
                 Delta<CpuStateSnapshot> delta = (Delta<CpuStateSnapshot>) sessionDelta;
+                Delta<JiffiesSnapshot> jiffiesDelta = null;
+                // Cpu Usage
                 printer.createSubSection("cpu_load");
                 printer.writeLine(delta.during + "(mls)\t" + (delta.during / ONE_MIN) + "(min)");
-
                 if (mCpuStatFeat != null && mCpuStatFeat.isSupported()
                         && null != mJiffiesFeat && null != mLastJiffiesSnapshot) {
                     JiffiesSnapshot curr = mJiffiesFeat.currentJiffiesSnapshot();
-                    Delta<JiffiesSnapshot> jiffiesDelta = curr.diff(mLastJiffiesSnapshot);
-                    long cpuJiffiesDelta = delta.dlt.totalJiffies();
+                    jiffiesDelta = curr.diff(mLastJiffiesSnapshot);
+                    long cpuJiffiesDelta = delta.dlt.totalCpuJiffies();
                     long appJiffiesDelta = jiffiesDelta.dlt.totalJiffies.get();
                     float cpuLoad = (float) appJiffiesDelta / cpuJiffiesDelta;
                     float cpuLoadAvg = cpuLoad * mCpuStatFeat.getPowerProfile().getCpuCoreNum();
@@ -656,6 +658,20 @@ public interface BatteryMonitorCallback extends
                 for (int i = 0; i < delta.dlt.cpuCoreStates.size(); i++) {
                     ListEntry<DigitEntry<Long>> listEntry = delta.dlt.cpuCoreStates.get(i);
                     printer.writeLine("cpu" + i, Arrays.toString(listEntry.getList().toArray()));
+                }
+                // Cpu battery sip - CPU State
+                printer.writeLine("inc_cpu_sip", String.format(Locale.US, "%.2f(mAh)", delta.dlt.configureCpuSip(mCpuStatFeat.getPowerProfile())));
+                printer.writeLine("cur_cpu_sip", String.format(Locale.US, "%.2f(mAh)", delta.end.configureCpuSip(mCpuStatFeat.getPowerProfile())));
+                // Cpu battery sip - Proc State
+                if (jiffiesDelta != null) {
+                    double procSipDelta = delta.dlt.configureProcSip(mCpuStatFeat.getPowerProfile(), jiffiesDelta.dlt.totalJiffies.get());
+                    double procSipEnd = delta.end.configureProcSip(mCpuStatFeat.getPowerProfile(), jiffiesDelta.end.totalJiffies.get());
+                    printer.writeLine("inc_prc_sip", String.format(Locale.US, "%.2f(mAh)", procSipDelta));
+                    printer.writeLine("cur_prc_sip", String.format(Locale.US, "%.2f(mAh)", procSipEnd));
+                    if (Double.isNaN(procSipDelta)) {
+                        double procSipBgn = delta.bgn.configureProcSip(mCpuStatFeat.getPowerProfile(), jiffiesDelta.bgn.totalJiffies.get());
+                        printer.writeLine("inc_prc_sipr", String.format(Locale.US, "%.2f(mAh)", procSipEnd - procSipBgn));
+                    }
                 }
                 return true;
             }
