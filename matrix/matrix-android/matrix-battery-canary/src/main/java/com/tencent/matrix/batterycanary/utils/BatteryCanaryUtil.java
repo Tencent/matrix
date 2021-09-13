@@ -62,7 +62,11 @@ public final class BatteryCanaryUtil {
     private static final String TAG = "Matrix.battery.Utils";
     private static final int DEFAULT_MAX_STACK_LAYER = 10;
     private static final int DEFAULT_AMS_CACHE_MILLIS = 5 * 1000;
-    public  static final int ONE_MIN = 60 * 1000;
+
+    public static final int ONE_MIN = 60 * 1000;
+    public static final int ONE_HOR = 60 * 60 * 1000;
+    public static final int JIFFY_HZ = 100; // @Os.sysconf(OsConstants._SC_CLK_TCK)
+    public static final int JIFFY_MILLIS = 1000 / JIFFY_HZ;
 
     public interface Proxy {
         String getProcessName();

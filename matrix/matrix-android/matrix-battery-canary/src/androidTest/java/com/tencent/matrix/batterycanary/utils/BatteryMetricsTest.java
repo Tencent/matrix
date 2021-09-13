@@ -48,6 +48,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 
+import static com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil.JIFFY_MILLIS;
+import static com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil.ONE_HOR;
+
 
 @RunWith(AndroidJUnit4.class)
 public class BatteryMetricsTest {
@@ -439,6 +442,7 @@ public class BatteryMetricsTest {
             readers[i] = new KernelCpuSpeedReader(i, numSpeedSteps);
         }
 
+        long jiffiesSum = 0;
         List<double[]> cpuCoreStepSips = new ArrayList<>();
         Assert.assertEquals(cpuCoreStepPowers.size(), readers.length);
         for (int i = 0; i < readers.length; i++) {
@@ -449,17 +453,25 @@ public class BatteryMetricsTest {
             double[] stepSips = new double[stepJiffies.length];
             for (int j = 0; j < stepJiffies.length; j++) {
                 long jiffies = stepJiffies[j];
+                jiffiesSum += jiffies;
                 double power = stepPowers[j];
-                double sip = power * (jiffies * 10d / (1000L * 60 * 60));
+                double sip = power * ((double) jiffies * JIFFY_MILLIS / ONE_HOR);
                 stepSips[j] = sip;
             }
             cpuCoreStepSips.add(stepSips);
         }
 
+        double sipSum = 0;
         for (double[] stepSips : cpuCoreStepSips) {
             for (double item : stepSips) {
-                Assert.assertTrue(item > 0);
+                Assert.assertTrue(item >= 0);
+                sipSum += item;
             }
+        }
+        Assert.assertTrue(sipSum >= 0);
+        if (!TestUtils.isAssembleTest()) {
+            Assert.fail("CPU JiffyHour: " + ((float) (jiffiesSum) * JIFFY_MILLIS) / ONE_HOR
+                    + "\nCPU Sipping: " + sipSum + " mAh");
         }
     }
 
@@ -493,6 +505,16 @@ public class BatteryMetricsTest {
             readers[i] = new KernelCpuSpeedReader(i, numSpeedSteps);
         }
 
+        long cpuJiffiesBgn = 0;
+        for (int i = 0; i < readers.length; i++) {
+            KernelCpuSpeedReader kernelCpuSpeedReader = readers[i];
+            Assert.assertNotNull(kernelCpuSpeedReader);
+            long cpuCoreJiffies = kernelCpuSpeedReader.readTotoal();
+            Assert.assertTrue("idx = " + i + ",  read = " + Arrays.toString(kernelCpuSpeedReader.readAbsolute()), cpuCoreJiffies > 0);
+            cpuJiffiesBgn += cpuCoreJiffies;
+        }
+        long appJiffiesBgn = ProcStatUtil.of(Process.myPid()).getJiffies();
+
         List<long[]> cpuCoreStepJiffies = new ArrayList<>();
         for (int i = 0; i < readers.length; i++) {
             KernelCpuSpeedReader reader = readers[i];
@@ -501,6 +523,16 @@ public class BatteryMetricsTest {
         }
 
         CpuConsumption.hanoi(20);
+
+        long cpuJiffiesEnd = 0;
+        for (int i = 0; i < readers.length; i++) {
+            KernelCpuSpeedReader kernelCpuSpeedReader = readers[i];
+            Assert.assertNotNull(kernelCpuSpeedReader);
+            long cpuCoreJiffies = kernelCpuSpeedReader.readTotoal();
+            Assert.assertTrue(cpuCoreJiffies > 0);
+            cpuJiffiesEnd += cpuCoreJiffies;
+        }
+        Assert.assertTrue(cpuJiffiesEnd > cpuJiffiesBgn);
 
         List<long[]> cpuCoreStepJiffiesDeltas = new ArrayList<>();
         for (int i = 0; i < readers.length; i++) {
@@ -528,16 +560,23 @@ public class BatteryMetricsTest {
             for (int j = 0; j < stepJiffies.length; j++) {
                 long jiffies = stepJiffies[j];
                 double power = stepPowers[j];
-                double sip = power * (jiffies * 10d / (1000L * 60 * 60));
+                double sip = power * ((double) jiffies * JIFFY_MILLIS / ONE_HOR);
                 stepSips[j] = sip;
             }
             cpuCoreStepSips.add(stepSips);
         }
 
+        double sipSum = 0;
         for (double[] stepSips : cpuCoreStepSips) {
             for (double item : stepSips) {
-                Assert.assertTrue(item > 0);
+                Assert.assertTrue(item >= 0);
+                sipSum += item;
             }
+        }
+        Assert.assertTrue(sipSum >= 0);
+        if (!TestUtils.isAssembleTest()) {
+            Assert.fail("CPU JiffyHour: " + ((float) (cpuJiffiesEnd - cpuJiffiesBgn) * JIFFY_MILLIS) / ONE_HOR
+                    + "\nCPU Sipping: " + sipSum + " mAh");
         }
     }
 
