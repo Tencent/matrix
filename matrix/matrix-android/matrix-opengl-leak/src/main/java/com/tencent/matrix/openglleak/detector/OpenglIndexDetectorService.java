@@ -17,7 +17,7 @@ public class OpenglIndexDetectorService extends Service {
 
     private final static String TAG = "matrix.OpenglIndexDetectorService";
 
-    private IOpenglIndexDetector.Stub stub = new IOpenglIndexDetector.Stub() {
+    private final IOpenglIndexDetector.Stub stub = new IOpenglIndexDetector.Stub() {
         @Override
         public Map<String, Integer> seekIndex() throws RemoteException {
             return seekOpenglFuncIndex();
@@ -65,6 +65,8 @@ public class OpenglIndexDetectorService extends Service {
 
         int glTexImage2DIndex = FuncSeeker.getFuncIndex(FuncNameString.GL_TEX_IMAGE_2D);
         MatrixLog.i(TAG, "glTexImage2DIndex index:" + glTexImage2DIndex);
+        int glTexImage3DIndex = FuncSeeker.getFuncIndex(FuncNameString.GL_TEX_IMAGE_3D);
+        MatrixLog.i(TAG, "glTexImage3DIndex index:" + glTexImage3DIndex);
 
         int glBindTextureIndex = FuncSeeker.getFuncIndex(FuncNameString.GL_BIND_TEXTURE);
         MatrixLog.i(TAG, "glBindTextureIndex index:" + glBindTextureIndex);
@@ -76,7 +78,7 @@ public class OpenglIndexDetectorService extends Service {
         MatrixLog.i(TAG, "glBindRenderbufferIndex index:" + glBindRenderbufferIndex);
 
         if ((glGenTexturesIndex * glDeleteTexturesIndex * glGenBuffersIndex * glDeleteBuffersIndex * glGenFramebuffersIndex
-                * glDeleteFramebuffersIndex * glGenRenderbuffersIndex * glDeleteRenderbuffersIndex * glTexImage2DIndex
+                * glDeleteFramebuffersIndex * glGenRenderbuffersIndex * glDeleteRenderbuffersIndex * glTexImage2DIndex * glTexImage3DIndex
                 * glBindTextureIndex * glBindBufferIndex * glBindFramebufferIndex * glBindRenderbufferIndex) == 0) {
             MatrixLog.e(TAG, "seek func index fail!");
             return null;
@@ -92,6 +94,7 @@ public class OpenglIndexDetectorService extends Service {
         out.put(FuncNameString.GL_GEN_RENDERBUFFERS, glGenRenderbuffersIndex);
         out.put(FuncNameString.GL_DELETE_RENDERBUFFERS, glDeleteRenderbuffersIndex);
         out.put(FuncNameString.GL_TEX_IMAGE_2D, glTexImage2DIndex);
+        out.put(FuncNameString.GL_TEX_IMAGE_3D, glTexImage3DIndex);
         out.put(FuncNameString.GL_BIND_TEXTURE, glBindTextureIndex);
         out.put(FuncNameString.GL_BIND_BUFFER, glBindBufferIndex);
         out.put(FuncNameString.GL_BIND_FRAMEBUFFER, glBindFramebufferIndex);

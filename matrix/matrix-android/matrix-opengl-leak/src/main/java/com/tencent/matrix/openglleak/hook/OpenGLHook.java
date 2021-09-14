@@ -1,7 +1,6 @@
 package com.tencent.matrix.openglleak.hook;
 
 import android.opengl.EGL14;
-import android.util.Log;
 
 import com.tencent.matrix.openglleak.comm.FuncNameString;
 import com.tencent.matrix.openglleak.statistics.BindCenter;
@@ -24,8 +23,11 @@ public class OpenGLHook {
 
     private static final String TAG = "MicroMsg.OpenGLHook";
 
-    private static OpenGLHook mInstance = new OpenGLHook();
-    private Listener mListener;
+    private static final OpenGLHook mInstance = new OpenGLHook();
+    private ResourceListener mResourceListener;
+    private ErrorListener mErrorListener;
+    private BindListener mBindListener;
+    private MemoryListener mMemoryListener;
 
     private OpenGLHook() {
     }
@@ -34,39 +36,54 @@ public class OpenGLHook {
         return mInstance;
     }
 
-    public void setListener(Listener l) {
-        mListener = l;
+    public void setResourceListener(ResourceListener listener) {
+        mResourceListener = listener;
+    }
+
+    public void setErrorListener(ErrorListener listener) {
+        mErrorListener = listener;
+    }
+
+    public void setBindListener(BindListener listener) {
+        mBindListener = listener;
+    }
+
+    public void setMemoryListener(MemoryListener listener) {
+        mMemoryListener = listener;
     }
 
     public boolean hook(String targetFuncName, int index) {
-        if (targetFuncName.equals(FuncNameString.GL_GET_ERROR)) {
-            return hookGlGetError(index);
-        } else if (targetFuncName.equals(FuncNameString.GL_GEN_TEXTURES)) {
-            return hookGlGenTextures(index);
-        } else if (targetFuncName.equals(FuncNameString.GL_DELETE_TEXTURES)) {
-            return hookGlDeleteTextures(index);
-        } else if (targetFuncName.equals(FuncNameString.GL_GEN_BUFFERS)) {
-            return hookGlGenBuffers(index);
-        } else if (targetFuncName.equals(FuncNameString.GL_DELETE_BUFFERS)) {
-            return hookGlDeleteBuffers(index);
-        } else if (targetFuncName.equals(FuncNameString.GL_GEN_FRAMEBUFFERS)) {
-            return hookGlGenFramebuffers(index);
-        } else if (targetFuncName.equals(FuncNameString.GL_DELETE_FRAMEBUFFERS)) {
-            return hookGlDeleteFramebuffers(index);
-        } else if (targetFuncName.equals(FuncNameString.GL_GEN_RENDERBUFFERS)) {
-            return hookGlGenRenderbuffers(index);
-        } else if (targetFuncName.equals(FuncNameString.GL_DELETE_RENDERBUFFERS)) {
-            return hookGlDeleteRenderbuffers(index);
-        } else if (targetFuncName.equals(FuncNameString.GL_TEX_IMAGE_2D)) {
-            return hookGlTexImage2D(index);
-        } else if (targetFuncName.equals(FuncNameString.GL_BIND_TEXTURE)) {
-            return hookGlBindTexture(index);
-        } else if (targetFuncName.equals(FuncNameString.GL_BIND_BUFFER)) {
-            return hookGlBindBuffer(index);
-        } else if (targetFuncName.equals(FuncNameString.GL_BIND_FRAMEBUFFER)) {
-            return hookGlBindFramebuffer(index);
-        } else if (targetFuncName.equals(FuncNameString.GL_BIND_RENDERBUFFER)) {
-            return hookGlBindRenderbuffer(index);
+        switch (targetFuncName) {
+            case FuncNameString.GL_GET_ERROR:
+                return hookGlGetError(index);
+            case FuncNameString.GL_GEN_TEXTURES:
+                return hookGlGenTextures(index);
+            case FuncNameString.GL_DELETE_TEXTURES:
+                return hookGlDeleteTextures(index);
+            case FuncNameString.GL_GEN_BUFFERS:
+                return hookGlGenBuffers(index);
+            case FuncNameString.GL_DELETE_BUFFERS:
+                return hookGlDeleteBuffers(index);
+            case FuncNameString.GL_GEN_FRAMEBUFFERS:
+                return hookGlGenFramebuffers(index);
+            case FuncNameString.GL_DELETE_FRAMEBUFFERS:
+                return hookGlDeleteFramebuffers(index);
+            case FuncNameString.GL_GEN_RENDERBUFFERS:
+                return hookGlGenRenderbuffers(index);
+            case FuncNameString.GL_DELETE_RENDERBUFFERS:
+                return hookGlDeleteRenderbuffers(index);
+            case FuncNameString.GL_TEX_IMAGE_2D:
+                return hookGlTexImage2D(index);
+            case FuncNameString.GL_TEX_IMAGE_3D:
+                return hookGlTexImage3D(index);
+            case FuncNameString.GL_BIND_TEXTURE:
+                return hookGlBindTexture(index);
+            case FuncNameString.GL_BIND_BUFFER:
+                return hookGlBindBuffer(index);
+            case FuncNameString.GL_BIND_FRAMEBUFFER:
+                return hookGlBindFramebuffer(index);
+            case FuncNameString.GL_BIND_RENDERBUFFER:
+                return hookGlBindRenderbuffer(index);
         }
 
         return false;
@@ -98,6 +115,8 @@ public class OpenGLHook {
 
     private static native boolean hookGlTexImage2D(int index);
 
+    private static native boolean hookGlTexImage3D(int index);
+
     private static native boolean hookGlBindTexture(int index);
 
     private static native boolean hookGlBindBuffer(int index);
@@ -118,8 +137,8 @@ public class OpenGLHook {
             for (int id : ids) {
                 OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.TEXTURE, id, threadId, eglContextId, javaStack, nativeStackPtr, OP_GEN, LeakMonitor.getInstance().getCurrentActivityName(), counter);
                 OpenGLResRecorder.getInstance().gen(openGLInfo);
-                if (getInstance().mListener != null) {
-                    getInstance().mListener.onGlGenTextures(openGLInfo);
+                if (getInstance().mResourceListener != null) {
+                    getInstance().mResourceListener.onGlGenTextures(openGLInfo);
                 }
             }
         }
@@ -137,8 +156,8 @@ public class OpenGLHook {
                 OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.TEXTURE, id, threadId, eglContextId, OP_GEN);
                 OpenGLResRecorder.getInstance().delete(openGLInfo);
 
-                if (getInstance().mListener != null) {
-                    getInstance().mListener.onGlDeleteTextures(openGLInfo);
+                if (getInstance().mResourceListener != null) {
+                    getInstance().mResourceListener.onGlDeleteTextures(openGLInfo);
                 }
             }
         }
@@ -157,8 +176,8 @@ public class OpenGLHook {
                 OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.BUFFER, id, threadId, eglContextId, javaStack, nativeStackPtr, OP_GEN, LeakMonitor.getInstance().getCurrentActivityName(), counter);
                 OpenGLResRecorder.getInstance().gen(openGLInfo);
 
-                if (getInstance().mListener != null) {
-                    getInstance().mListener.onGlGenBuffers(openGLInfo);
+                if (getInstance().mResourceListener != null) {
+                    getInstance().mResourceListener.onGlGenBuffers(openGLInfo);
                 }
             }
         }
@@ -176,8 +195,8 @@ public class OpenGLHook {
                 OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.BUFFER, id, threadId, eglContextId, OP_DELETE);
                 OpenGLResRecorder.getInstance().delete(openGLInfo);
 
-                if (getInstance().mListener != null) {
-                    getInstance().mListener.onGlDeleteBuffers(openGLInfo);
+                if (getInstance().mResourceListener != null) {
+                    getInstance().mResourceListener.onGlDeleteBuffers(openGLInfo);
                 }
             }
         }
@@ -196,8 +215,8 @@ public class OpenGLHook {
                 OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.FRAME_BUFFERS, id, threadId, eglContextId, javaStack, nativeStackPtr, OP_GEN, LeakMonitor.getInstance().getCurrentActivityName(), counter);
                 OpenGLResRecorder.getInstance().gen(openGLInfo);
 
-                if (getInstance().mListener != null) {
-                    getInstance().mListener.onGlGenFramebuffers(openGLInfo);
+                if (getInstance().mResourceListener != null) {
+                    getInstance().mResourceListener.onGlGenFramebuffers(openGLInfo);
                 }
             }
         }
@@ -215,8 +234,8 @@ public class OpenGLHook {
                 OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.FRAME_BUFFERS, id, threadId, eglContextId, OP_DELETE);
                 OpenGLResRecorder.getInstance().delete(openGLInfo);
 
-                if (getInstance().mListener != null) {
-                    getInstance().mListener.onGlDeleteFramebuffers(openGLInfo);
+                if (getInstance().mResourceListener != null) {
+                    getInstance().mResourceListener.onGlDeleteFramebuffers(openGLInfo);
                 }
             }
         }
@@ -235,8 +254,8 @@ public class OpenGLHook {
                 OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.RENDER_BUFFERS, id, threadId, eglContextId, javaStack, nativeStackPtr, OP_GEN, LeakMonitor.getInstance().getCurrentActivityName(), counter);
                 OpenGLResRecorder.getInstance().gen(openGLInfo);
 
-                if (getInstance().mListener != null) {
-                    getInstance().mListener.onGlGenRenderbuffers(openGLInfo);
+                if (getInstance().mResourceListener != null) {
+                    getInstance().mResourceListener.onGlGenRenderbuffers(openGLInfo);
                 }
             }
         }
@@ -254,8 +273,8 @@ public class OpenGLHook {
                 OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.RENDER_BUFFERS, id, threadId, eglContextId, OP_DELETE);
                 OpenGLResRecorder.getInstance().delete(openGLInfo);
 
-                if (getInstance().mListener != null) {
-                    getInstance().mListener.onGlDeleteRenderbuffers(openGLInfo);
+                if (getInstance().mResourceListener != null) {
+                    getInstance().mResourceListener.onGlDeleteRenderbuffers(openGLInfo);
                 }
             }
         }
@@ -268,6 +287,10 @@ public class OpenGLHook {
         }
         OpenGLInfo info = new OpenGLInfo(OpenGLInfo.TYPE.TEXTURE, id, eglContextId, OP_BIND);
         BindCenter.getInstance().glBindResource(OpenGLInfo.TYPE.TEXTURE, target, eglContextId, info);
+
+        if (getInstance().mBindListener != null) {
+            getInstance().mBindListener.onGlBindTexture(target, id);
+        }
     }
 
     public static void onGlBindBuffer(int target, int id) {
@@ -277,6 +300,10 @@ public class OpenGLHook {
         }
         OpenGLInfo info = new OpenGLInfo(OpenGLInfo.TYPE.BUFFER, id, eglContextId, OP_BIND);
         BindCenter.getInstance().glBindResource(OpenGLInfo.TYPE.BUFFER, target, eglContextId, info);
+
+        if (getInstance().mBindListener != null) {
+            getInstance().mBindListener.onGlBindBuffer(target, id);
+        }
     }
 
     public static void onGlBindFramebuffer(int target, int id) {
@@ -286,6 +313,10 @@ public class OpenGLHook {
         }
         OpenGLInfo info = new OpenGLInfo(OpenGLInfo.TYPE.FRAME_BUFFERS, id, eglContextId, OP_BIND);
         BindCenter.getInstance().glBindResource(OpenGLInfo.TYPE.FRAME_BUFFERS, target, eglContextId, info);
+
+        if (getInstance().mBindListener != null) {
+            getInstance().mBindListener.onGlBindFramebuffer(target, id);
+        }
     }
 
     public static void onGlBindRenderbuffer(int target, int id) {
@@ -295,16 +326,20 @@ public class OpenGLHook {
         }
         OpenGLInfo info = new OpenGLInfo(OpenGLInfo.TYPE.RENDER_BUFFERS, id, eglContextId, OP_BIND);
         BindCenter.getInstance().glBindResource(OpenGLInfo.TYPE.RENDER_BUFFERS, target, eglContextId, info);
+
+        if (getInstance().mBindListener != null) {
+            getInstance().mBindListener.onGlBindRenderbuffer(target, id);
+        }
     }
 
-    public static void onGlTexImage2D(int target, long size) {
+    public static void onGlTexImage2D(int target, long size, int internalFormat, int format, int type) {
         long eglContextId = 0L;
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
             eglContextId = EGL14.eglGetCurrentContext().getNativeHandle();
         }
         OpenGLInfo info = BindCenter.getInstance().getCurrentResourceIdByTarget(OpenGLInfo.TYPE.TEXTURE, eglContextId, target);
         if (info == null) {
-            MatrixLog.e(TAG, "getCurrentResourceIdByTarget result == null");
+            MatrixLog.e(TAG, "onGlTexImage2D: getCurrentResourceIdByTarget result == null");
             return;
         }
         OpenGLInfo openGLInfo = OpenGLResRecorder.getInstance().getItemByEGLContextAndId(info.getType(), info.getEglContextNativeHandle(), info.getId());
@@ -312,17 +347,69 @@ public class OpenGLHook {
             openGLInfo.setSize(size);
             OpenGLResRecorder.getInstance().replace(openGLInfo);
         }
-        Log.e("Backtrace.Benchmark", "onGlTexImage2D egl context = " + eglContextId);
+
+        if (getInstance().mMemoryListener != null) {
+            getInstance().mMemoryListener.onGlTexImage2D(target, size, internalFormat, format, type);
+        }
+
+    }
+
+    public static void onGlTexImage3D(int target, long size, int internalFormat, int format, int type) {
+        long eglContextId = 0L;
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+            eglContextId = EGL14.eglGetCurrentContext().getNativeHandle();
+        }
+        OpenGLInfo info = BindCenter.getInstance().getCurrentResourceIdByTarget(OpenGLInfo.TYPE.TEXTURE, eglContextId, target);
+        if (info == null) {
+            MatrixLog.e(TAG, "onGlTexImage3D: getCurrentResourceIdByTarget result == null");
+            return;
+        }
+        OpenGLInfo openGLInfo = OpenGLResRecorder.getInstance().getItemByEGLContextAndId(info.getType(), info.getEglContextNativeHandle(), info.getId());
+        if (openGLInfo != null) {
+            openGLInfo.setSize(size);
+            OpenGLResRecorder.getInstance().replace(openGLInfo);
+        }
+
+        if (getInstance().mMemoryListener != null) {
+            getInstance().mMemoryListener.onGlTexImage3D(target, size, internalFormat, format, type);
+        }
+
     }
 
     public static void onGetError(int eid) {
-        if (getInstance().mListener != null) {
-            getInstance().mListener.onGetError(new OpenGLInfo(eid));
+        if (getInstance().mErrorListener != null) {
+            getInstance().mErrorListener.onGlError(eid);
         }
     }
 
-    public interface Listener {
-        void onGetError(OpenGLInfo info);
+
+    public interface ErrorListener {
+
+        void onGlError(int eid);
+
+    }
+
+    public interface BindListener {
+
+        void onGlBindTexture(int target, int id);
+
+        void onGlBindBuffer(int target, int id);
+
+        void onGlBindRenderbuffer(int target, int id);
+
+        void onGlBindFramebuffer(int target, int id);
+
+    }
+
+    public interface MemoryListener {
+
+        void onGlTexImage2D(int target, long size, int internalFormat, int format, int type);
+
+        void onGlTexImage3D(int target, long size, int internalFormat, int format, int type);
+
+    }
+
+    public interface ResourceListener {
 
         void onGlGenTextures(OpenGLInfo info);
 

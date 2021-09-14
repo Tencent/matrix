@@ -13,6 +13,8 @@ class FuncSeeker {
             return getBindFuncIndex(targetFuncName);
         } else if (targetFuncName.equals("glTexImage2D")) {
             return getGlTexImage2DIndex();
+        } else if (targetFuncName.equals("glTexImage3D")) {
+            return getGlTexImage3DIndex();
         }
 
         return 0;
@@ -25,5 +27,7 @@ class FuncSeeker {
     private static native int getBindFuncIndex(String bindFuncName);
 
     private static native int getGlTexImage2DIndex();
+
+    private static native int getGlTexImage3DIndex();
 
 }

@@ -4,7 +4,6 @@
 
 #include <jni.h>
 #include <android/log.h>
-#include <GLES2/gl2.h>
 #include <EGL/egl.h>
 #include <string>
 #include <sys/system_properties.h>
@@ -15,7 +14,6 @@
 #define HOOK_O_FUNC(func, params...) func(params)
 
 #define LOG_TAG "matrix.opengl"
-#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 
 static System_GlNormal_TYPE _system_glGenNormal = NULL;
 static int i_glGenNormal = 0;
@@ -37,7 +35,8 @@ Java_com_tencent_matrix_openglleak_detector_FuncSeeker_getTargetFuncIndex(JNIEnv
         return 0;
     }
 
-    System_GlNormal_TYPE target_func = get_target_func_ptr(env->GetStringUTFChars(target_func_name, JNI_FALSE));
+    System_GlNormal_TYPE target_func = get_target_func_ptr(
+            env->GetStringUTFChars(target_func_name, JNI_FALSE));
     if (NULL == target_func) {
         return 0;
     }
@@ -242,6 +241,60 @@ Java_com_tencent_matrix_openglleak_detector_FuncSeeker_getGlTexImage2DIndex(JNIE
     has_hook_glTexImage2D = false;
     int result = i_glTexImage2D;
     i_glTexImage2D = 0;
+
+    return result;
+}
+
+
+static System_GlTexImage3D _system_glTexImage3D = NULL;
+static int i_glTexImage3D = 0;
+static bool has_hook_glTexImage3D = false;
+
+GL_APICALL void GL_APIENTRY
+_my_glTexImage3D(GLenum target, GLint level, GLint internalformat, GLsizei width, GLsizei height, GLsizei depth, GLint border, GLenum format, GLenum type, const void *pixels) {
+    if (!has_hook_glTexImage3D) {
+        has_hook_glTexImage3D = true;
+    }
+
+    _system_glTexImage3D(target, level, internalformat, width, height, depth, border, format, type, pixels);
+}
+
+
+extern "C"
+JNIEXPORT jint JNICALL
+Java_com_tencent_matrix_openglleak_detector_FuncSeeker_getGlTexImage3DIndex(JNIEnv *env, jclass clazz) {
+    gl_hooks_t *hooks = get_gl_hooks();
+    if (NULL == hooks) {
+        return -1;
+    }
+
+    for (i_glTexImage3D = 0; i_glTexImage3D < 1000; i_glTexImage3D++) {
+        if (has_hook_glTexImage3D) {
+            i_glTexImage3D = i_glTexImage3D - 1;
+
+            void **method = (void **) (&hooks->gl.foo1 + i_glTexImage3D);
+            *method = (void *) _system_glTexImage3D;
+            break;
+        }
+
+        if (_system_glTexImage3D != NULL) {
+            void **method = (void **) (&hooks->gl.foo1 + (i_glTexImage3D - 1));
+            *method = (void *) _system_glTexImage3D;
+        }
+
+        void **replaceMethod = (void **) (&hooks->gl.foo1 + i_glTexImage3D);
+        _system_glTexImage3D = (System_GlTexImage3D) *replaceMethod;
+
+        *replaceMethod = (void *) _my_glTexImage3D;
+
+        glTexImage3D(0, 0, 0, 0,0, 0, 0, 0, 0, NULL);
+    }
+
+    // release
+    _system_glTexImage3D = NULL;
+    has_hook_glTexImage3D = false;
+    int result = i_glTexImage3D;
+    i_glTexImage3D = 0;
 
     return result;
 }

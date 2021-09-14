@@ -31,6 +31,7 @@ static System_GlNormal_TYPE system_glGenRenderbuffers = NULL;
 static System_GlNormal_TYPE system_glDeleteRenderbuffers = NULL;
 static System_GlGetError_TYPE system_glGetError = NULL;
 static System_GlTexImage2D system_glTexImage2D = NULL;
+static System_GlTexImage3D system_glTexImage3D = NULL;
 static System_GlBind_TYPE system_glBindTexture = NULL;
 static System_GlBind_TYPE system_glBindBuffer = NULL;
 static System_GlBind_TYPE system_glBindFramebuffer = NULL;
@@ -54,6 +55,7 @@ static jmethodID method_onGlBindBuffer;
 static jmethodID method_onGlBindFramebuffer;
 static jmethodID method_onGlBindRenderbuffer;
 static jmethodID method_onGlTexImage2D;
+static jmethodID method_onGlTexImage3D;
 
 const size_t BUF_SIZE = 1024;
 
@@ -543,15 +545,21 @@ GL_APICALL void GL_APIENTRY my_glTexImage2D(GLenum target, GLint level, GLint in
     if(NULL != system_glTexImage2D) {
         system_glTexImage2D(target, level, internalformat, width, height, border, format, type, pixels);
         int pixel = Utils::getSizeOfPerPixel(internalformat, format, type);
-        long size = width * height * 32;
-        __android_log_print(ANDROID_LOG_ERROR, "Backtrace.Benchmark", "format == %d", format);
-        __android_log_print(ANDROID_LOG_ERROR, "Backtrace.Benchmark", "internalformat == %d", internalformat);
-        __android_log_print(ANDROID_LOG_ERROR, "Backtrace.Benchmark", "type == %d", type);
-        __android_log_print(ANDROID_LOG_ERROR, "Backtrace.Benchmark", "size == %ld", size);
-
+        long size = width * height * pixel;
         JNIEnv *env = GET_ENV();
-        env->CallStaticVoidMethod(class_OpenGLHook, method_onGlTexImage2D, target, size);
+        env->CallStaticVoidMethod(class_OpenGLHook, method_onGlTexImage2D, target, size, internalformat, format, type);
 
+    }
+}
+
+GL_APICALL void GL_APIENTRY my_glTexImage3D(GLenum target, GLint level, GLint internalformat, GLsizei width, GLsizei height,
+                                            GLsizei depth, GLint border, GLenum format, GLenum type, const void *pixels) {
+    if(NULL != system_glTexImage3D) {
+        system_glTexImage3D(target, level, internalformat, width, height, depth, border, format, type, pixels);
+        int pixel = Utils::getSizeOfPerPixel(internalformat, format, type);
+        long size = width * height * depth * pixel;
+        JNIEnv *env = GET_ENV();
+        env->CallStaticVoidMethod(class_OpenGLHook, method_onGlTexImage3D, target, size, internalformat, format, type);
     }
 }
 

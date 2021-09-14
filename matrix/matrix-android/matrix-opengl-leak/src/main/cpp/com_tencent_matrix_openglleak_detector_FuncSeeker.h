@@ -33,6 +33,10 @@ extern "C"
 JNIEXPORT jint JNICALL
 Java_com_tencent_matrix_openglleak_detector_FuncSeeker_getGlTexImage2DIndex(JNIEnv *env, jclass clazz);
 
+extern "C"
+JNIEXPORT jint JNICALL
+Java_com_tencent_matrix_openglleak_detector_FuncSeeker_getGlTexImage3DIndex(JNIEnv *env, jclass clazz);
+
 #ifdef __cplusplus
 }
 #endif

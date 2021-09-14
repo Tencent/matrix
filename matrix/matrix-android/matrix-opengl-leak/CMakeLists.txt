@@ -73,6 +73,7 @@ target_link_libraries( # Specifies the target library.
         # included in the NDK.
         PRIVATE ${log-lib}
         GLESv2
+        GLESv3
         PRIVATE ${EXT_DEP}/lib/${ANDROID_ABI}/libwechatbacktrace.so
 )
 
