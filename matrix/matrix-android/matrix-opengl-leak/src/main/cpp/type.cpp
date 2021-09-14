@@ -3,7 +3,10 @@
 //
 
 #include "type.h"
-#include <string.h>
+#include <cstring>
+#include <map>
+
+#define BIT 8
 
 System_GlNormal_TYPE get_target_func_ptr(const char *func_name) {
     if (strcmp(func_name, "glGenTextures") == 0) {
@@ -39,4 +42,54 @@ System_GlBind_TYPE get_bind_func_ptr(const char *func_name) {
     }
 
     return NULL;
+}
+
+int getPartByFormat(GLint internalformat, GLenum format, int bit) {
+    switch (format) {
+        case GL_RGB:
+        case GL_RGBA:
+        default:return 1;
+    }
+}
+
+int getSizeOfPerPixelByFormat(GLint internalformat, GLenum format) {
+
+    if (internalformat == GL_RGB565) {
+        return 2;
+    }
+
+    if (internalformat == GL_RGB5_A1) {
+        return 2;
+    }
+
+    if (internalformat == GL_RGBA4) {
+        return 2;
+    }
+
+
+    return 0;
+}
+
+
+namespace Utils {
+
+    int getSizeOfPerPixel(GLint internalformat, GLenum format, GLenum type) {
+        switch (type) {
+            case GL_UNSIGNED_BYTE:
+                return getSizeOfPerPixelByFormat(internalformat, format);
+            case GL_UNSIGNED_SHORT_5_6_5:
+                return 2;
+            case GL_UNSIGNED_SHORT_4_4_4_4:
+                return 2;
+            case GL_UNSIGNED_SHORT_5_5_5_1:
+                return 2;
+            case GL_BYTE:
+            case GL_UNSIGNED_INT:
+            case GL_INT:
+            case GL_FLOAT:
+            default:
+                return 0;
+        }
+    }
+
 }

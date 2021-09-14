@@ -1,6 +1,7 @@
 package com.tencent.matrix.openglleak.hook;
 
 import android.opengl.EGL14;
+import android.util.Log;
 
 import com.tencent.matrix.openglleak.comm.FuncNameString;
 import com.tencent.matrix.openglleak.statistics.BindCenter;
@@ -311,6 +312,7 @@ public class OpenGLHook {
             openGLInfo.setSize(size);
             OpenGLResRecorder.getInstance().replace(openGLInfo);
         }
+        Log.e("Backtrace.Benchmark", "onGlTexImage2D egl context = " + eglContextId);
     }
 
     public static void onGetError(int eid) {

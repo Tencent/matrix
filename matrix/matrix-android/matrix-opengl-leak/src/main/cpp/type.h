@@ -29,4 +29,10 @@ System_GlNormal_TYPE get_target_func_ptr(const char *func_name);
 
 System_GlBind_TYPE get_bind_func_ptr(const char *func_name);
 
+namespace Utils {
+
+    int getSizeOfPerPixel(GLint internalformat, GLenum format, GLenum type);
+
+}
+
 #endif //OPENGL_API_HOOK_TYPE_H

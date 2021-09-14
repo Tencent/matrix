@@ -542,7 +542,12 @@ GL_APICALL void GL_APIENTRY my_glTexImage2D(GLenum target, GLint level, GLint in
                                             GLint border, GLenum format, GLenum type, const void *pixels) {
     if(NULL != system_glTexImage2D) {
         system_glTexImage2D(target, level, internalformat, width, height, border, format, type, pixels);
+        int pixel = Utils::getSizeOfPerPixel(internalformat, format, type);
         long size = width * height * 32;
+        __android_log_print(ANDROID_LOG_ERROR, "Backtrace.Benchmark", "format == %d", format);
+        __android_log_print(ANDROID_LOG_ERROR, "Backtrace.Benchmark", "internalformat == %d", internalformat);
+        __android_log_print(ANDROID_LOG_ERROR, "Backtrace.Benchmark", "type == %d", type);
+        __android_log_print(ANDROID_LOG_ERROR, "Backtrace.Benchmark", "size == %ld", size);
 
         JNIEnv *env = GET_ENV();
         env->CallStaticVoidMethod(class_OpenGLHook, method_onGlTexImage2D, target, size);
@@ -555,8 +560,6 @@ GL_APICALL void GL_APIENTRY my_glBindTexture(GLenum target, GLuint resourceId) {
     if(NULL != system_glBindTexture) {
         system_glBindTexture(target, resourceId);
         JNIEnv *env = GET_ENV();
-
-        char* javaStack = get_java_stack();
         env->CallStaticVoidMethod(class_OpenGLHook, method_onGlBindTexture, target, resourceId);
     }
 }
