@@ -50,8 +50,13 @@ public final class MatrixUtil {
         return new java.text.SimpleDateFormat(format).format(new java.util.Date(timeMilliSecond));
     }
 
+    @Deprecated
     public static boolean isInMainThread(final long threadId) {
         return Looper.getMainLooper().getThread().getId() == threadId;
+    }
+
+    public static boolean isInMainThread() {
+        return Looper.myLooper() == Looper.getMainLooper();
     }
 
     public static boolean isInMainProcess(Context context) {

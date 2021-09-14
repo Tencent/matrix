@@ -20,10 +20,17 @@ import android.app.Application;
 import android.content.Context;
 import android.content.Intent;
 
+import androidx.lifecycle.Lifecycle;
+import androidx.lifecycle.LifecycleObserver;
+import androidx.lifecycle.OnLifecycleEvent;
+
+import com.tencent.matrix.AppActiveMatrixDelegate;
 import com.tencent.matrix.Matrix;
 import com.tencent.matrix.batterycanary.BatteryMonitorPlugin;
 import com.tencent.matrix.iocanary.IOCanaryPlugin;
 import com.tencent.matrix.iocanary.config.IOConfig;
+import com.tencent.matrix.listeners.IAppForeground;
+import com.tencent.matrix.lifecycle.MultiProcessLifecycleOwner;
 import com.tencent.matrix.resource.ResourcePlugin;
 import com.tencent.matrix.resource.config.ResourceConfig;
 import com.tencent.matrix.trace.TracePlugin;
@@ -87,6 +94,51 @@ public class MatrixApplication extends Application {
         builder.plugin(batteryMonitorPlugin);
 
         Matrix.init(builder.build());
+        MultiProcessLifecycleOwner.get().addListener(new IAppForeground() {
+            @Override
+            public void onForeground(boolean isForeground) {
+                MatrixLog.d(TAG, "isForeground %s", isForeground);
+                if (!isForeground) {
+                    // now change mode for transparent Activity
+                    MultiProcessLifecycleOwner.get().setPauseAsBgIntervalMs(1000);
+                }
+            }
+        });
+
+        MultiProcessLifecycleOwner.get().getLifecycle().addObserver(new LifecycleObserver() {
+
+            @OnLifecycleEvent(Lifecycle.Event.ON_CREATE)
+            private void onProcessCreatedCalledOnce() {
+                MatrixLog.d(TAG, "onCreatedCalledOnce");
+            }
+
+            @OnLifecycleEvent(Lifecycle.Event.ON_START)
+            private void onProcessStarted() {
+                MatrixLog.d(TAG, "onProcessStarted");
+            }
+
+            @OnLifecycleEvent(Lifecycle.Event.ON_RESUME)
+            private void onProcessResumed() {
+                MatrixLog.d(TAG, "onProcessResumed");
+            }
+
+            @OnLifecycleEvent(Lifecycle.Event.ON_PAUSE)
+            private void onProcessPaused() {
+                MatrixLog.d(TAG, "onProcessPaused");
+            }
+
+            @OnLifecycleEvent(Lifecycle.Event.ON_STOP)
+            private void onProcessStopped() {
+                MatrixLog.d(TAG, "onProcessStopped");
+            }
+        });
+
+        AppActiveMatrixDelegate.INSTANCE.addListener(new IAppForeground() {
+            @Override
+            public void onForeground(boolean isForeground) {
+                MatrixLog.d(TAG, "AppActiveMatrixDelegate foreground %s", isForeground);
+            }
+        });
 
         // Trace Plugin need call start() at the beginning.
         tracePlugin.start();

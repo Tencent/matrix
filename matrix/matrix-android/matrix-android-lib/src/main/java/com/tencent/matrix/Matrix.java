@@ -21,6 +21,7 @@ import android.app.Application;
 import com.tencent.matrix.plugin.DefaultPluginListener;
 import com.tencent.matrix.plugin.Plugin;
 import com.tencent.matrix.plugin.PluginListener;
+import com.tencent.matrix.lifecycle.MultiProcessLifecycleInitializer;
 import com.tencent.matrix.util.MatrixLog;
 
 import java.util.HashSet;
@@ -43,6 +44,7 @@ public class Matrix {
         this.application = app;
         this.pluginListener = listener;
         this.plugins = plugins;
+        MultiProcessLifecycleInitializer.initForOtherProcesses(app);
         AppActiveMatrixDelegate.INSTANCE.init(application);
         for (Plugin plugin : plugins) {
             plugin.init(application, pluginListener);
