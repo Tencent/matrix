@@ -75,8 +75,8 @@ public class WeChatBacktrace {
     private volatile boolean mInitialized;
     private volatile boolean mConfigured;
     private volatile Configuration mConfiguration;
-    private WarmUpDelegate mWarmUpDelegate = new WarmUpDelegate();
-    private Handler mHandler = new Handler(Looper.getMainLooper());
+    private final WarmUpDelegate mWarmUpDelegate = new WarmUpDelegate();
+    private final Handler mHandler = new Handler(Looper.getMainLooper());
 
     private static boolean sLibraryLoaded = false;
 
@@ -345,7 +345,7 @@ public class WeChatBacktrace {
         String mPathOfXLogSo = null;
 
         private boolean mCommitted = false;
-        private WeChatBacktrace mWeChatBacktrace;
+        private final WeChatBacktrace mWeChatBacktrace;
 
         Configuration(Context context, WeChatBacktrace backtrace) {
             mContext = context;
