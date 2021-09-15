@@ -166,7 +166,7 @@ class MultiProcessLifecycleOwner : LifecycleOwner {
          * must set after [Activity#onStart]
          */
         set(value) {
-            MatrixLog.i(TAG, "[setCurrentFragmentName] fragmentName: $field")
+            MatrixLog.i(TAG, "[setCurrentFragmentName] fragmentName: $value")
             field = value
             value?.let {
                 updateScene(it)
