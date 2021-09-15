@@ -27,7 +27,7 @@ class MultiProcessLifecycleOwner : LifecycleOwner {
 
         private var sProcessName: String? = null
 
-        private const val TIMEOUT_MS = 700L //mls
+        private const val TIMEOUT_MS = 500L //mls
 
         @JvmStatic
         internal fun init(context: Context) {
