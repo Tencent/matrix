@@ -141,7 +141,7 @@ public class LooperAnrTracer extends Tracer {
                 issue.setTag(SharePluginInfo.TAG_PLUGIN_EVIL_METHOD);
                 issue.setContent(jsonObject);
                 plugin.onDetectIssue(issue);
-                MatrixLog.e(TAG, "happens lag : %s ", jsonObject.toString());
+                MatrixLog.e(TAG, "happens lag : %s, scene : %s ", dumpStack, scene);
 
             } catch (JSONException e) {
                 MatrixLog.e(TAG, "[JSONException error: %s", e);
