@@ -15,6 +15,10 @@ class FuncSeeker {
             return getGlTexImage2DIndex();
         } else if (targetFuncName.equals("glTexImage3D")) {
             return getGlTexImage3DIndex();
+        } else if (targetFuncName.equals("glBufferData")) {
+            return getGlBufferDataIndex();
+        } else if (targetFuncName.equals("glRenderbufferStorage")) {
+            return getGlRenderbufferStorageIndex();
         }
 
         return 0;
@@ -29,5 +33,9 @@ class FuncSeeker {
     private static native int getGlTexImage2DIndex();
 
     private static native int getGlTexImage3DIndex();
+
+    private static native int getGlBufferDataIndex();
+
+    private static native int getGlRenderbufferStorageIndex();
 
 }

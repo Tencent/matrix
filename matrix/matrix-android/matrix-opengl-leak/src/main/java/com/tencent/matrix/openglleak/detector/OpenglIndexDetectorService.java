@@ -77,9 +77,15 @@ public class OpenglIndexDetectorService extends Service {
         int glBindRenderbufferIndex = FuncSeeker.getFuncIndex(FuncNameString.GL_BIND_RENDERBUFFER);
         MatrixLog.i(TAG, "glBindRenderbufferIndex index:" + glBindRenderbufferIndex);
 
+        int glBufferDataIndex = FuncSeeker.getFuncIndex(FuncNameString.GL_BUFFER_DATA);
+        MatrixLog.i(TAG, "glBufferData index:" + glBufferDataIndex);
+        int glRenderbufferStorageIndex = FuncSeeker.getFuncIndex(FuncNameString.GL_RENDER_BUFFER_STORAGE);
+        MatrixLog.i(TAG, "glRenderbufferStorage index:" + glRenderbufferStorageIndex);
+
         if ((glGenTexturesIndex * glDeleteTexturesIndex * glGenBuffersIndex * glDeleteBuffersIndex * glGenFramebuffersIndex
                 * glDeleteFramebuffersIndex * glGenRenderbuffersIndex * glDeleteRenderbuffersIndex * glTexImage2DIndex * glTexImage3DIndex
-                * glBindTextureIndex * glBindBufferIndex * glBindFramebufferIndex * glBindRenderbufferIndex) == 0) {
+                * glBindTextureIndex * glBindBufferIndex * glBindFramebufferIndex * glBindRenderbufferIndex
+                * glRenderbufferStorageIndex * glBufferDataIndex) == 0) {
             MatrixLog.e(TAG, "seek func index fail!");
             return null;
         }

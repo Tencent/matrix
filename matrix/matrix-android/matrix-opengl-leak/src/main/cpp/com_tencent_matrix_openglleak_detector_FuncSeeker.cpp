@@ -149,7 +149,8 @@ Java_com_tencent_matrix_openglleak_detector_FuncSeeker_getBindFuncIndex(JNIEnv *
         return 0;
     }
 
-    System_GlBind_TYPE bind_func = get_bind_func_ptr(env->GetStringUTFChars(bind_func_name, JNI_FALSE));
+    System_GlBind_TYPE bind_func = get_bind_func_ptr(
+            env->GetStringUTFChars(bind_func_name, JNI_FALSE));
     if (NULL == bind_func_name) {
         return 0;
     }
@@ -208,7 +209,8 @@ _my_glTexImage2D(GLenum target, GLint level, GLint internalformat, GLsizei width
 
 extern "C"
 JNIEXPORT jint JNICALL
-Java_com_tencent_matrix_openglleak_detector_FuncSeeker_getGlTexImage2DIndex(JNIEnv *env, jclass clazz) {
+Java_com_tencent_matrix_openglleak_detector_FuncSeeker_getGlTexImage2DIndex(JNIEnv *env,
+                                                                            jclass clazz) {
     gl_hooks_t *hooks = get_gl_hooks();
     if (NULL == hooks) {
         return -1;
@@ -251,18 +253,21 @@ static int i_glTexImage3D = 0;
 static bool has_hook_glTexImage3D = false;
 
 GL_APICALL void GL_APIENTRY
-_my_glTexImage3D(GLenum target, GLint level, GLint internalformat, GLsizei width, GLsizei height, GLsizei depth, GLint border, GLenum format, GLenum type, const void *pixels) {
+_my_glTexImage3D(GLenum target, GLint level, GLint internalformat, GLsizei width, GLsizei height,
+                 GLsizei depth, GLint border, GLenum format, GLenum type, const void *pixels) {
     if (!has_hook_glTexImage3D) {
         has_hook_glTexImage3D = true;
     }
 
-    _system_glTexImage3D(target, level, internalformat, width, height, depth, border, format, type, pixels);
+    _system_glTexImage3D(target, level, internalformat, width, height, depth, border, format, type,
+                         pixels);
 }
 
 
 extern "C"
 JNIEXPORT jint JNICALL
-Java_com_tencent_matrix_openglleak_detector_FuncSeeker_getGlTexImage3DIndex(JNIEnv *env, jclass clazz) {
+Java_com_tencent_matrix_openglleak_detector_FuncSeeker_getGlTexImage3DIndex(JNIEnv *env,
+                                                                            jclass clazz) {
     gl_hooks_t *hooks = get_gl_hooks();
     if (NULL == hooks) {
         return -1;
@@ -287,7 +292,7 @@ Java_com_tencent_matrix_openglleak_detector_FuncSeeker_getGlTexImage3DIndex(JNIE
 
         *replaceMethod = (void *) _my_glTexImage3D;
 
-        glTexImage3D(0, 0, 0, 0,0, 0, 0, 0, 0, NULL);
+        glTexImage3D(0, 0, 0, 0, 0, 0, 0, 0, 0, NULL);
     }
 
     // release
@@ -295,6 +300,114 @@ Java_com_tencent_matrix_openglleak_detector_FuncSeeker_getGlTexImage3DIndex(JNIE
     has_hook_glTexImage3D = false;
     int result = i_glTexImage3D;
     i_glTexImage3D = 0;
+
+    return result;
+}
+
+
+static System_GlBufferData _system_glBufferData = NULL;
+static int i_glBufferData = 0;
+static bool has_hook_glBufferData = false;
+
+GL_APICALL void GL_APIENTRY
+_my_glBufferData(GLenum target, GLsizeiptr size, const GLvoid *data, GLenum usage) {
+    if (!has_hook_glBufferData) {
+        has_hook_glBufferData = true;
+    }
+
+    _system_glBufferData(target, size, data, usage);
+}
+
+extern "C"
+JNIEXPORT jint JNICALL
+Java_com_tencent_matrix_openglleak_detector_FuncSeeker_getGlBufferDataIndex(JNIEnv *env,
+                                                                            jclass clazz) {
+    gl_hooks_t *hooks = get_gl_hooks();
+    if (NULL == hooks) {
+        return -1;
+    }
+
+    for (i_glBufferData = 0; i_glBufferData < 1000; i_glBufferData++) {
+        if (has_hook_glBufferData) {
+            i_glBufferData = i_glBufferData - 1;
+
+            void **method = (void **) (&hooks->gl.foo1 + i_glBufferData);
+            *method = (void *) _system_glBufferData;
+            break;
+        }
+
+        if (_system_glBufferData != NULL) {
+            void **method = (void **) (&hooks->gl.foo1 + (i_glBufferData - 1));
+            *method = (void *) _system_glBufferData;
+        }
+
+        void **replaceMethod = (void **) (&hooks->gl.foo1 + i_glBufferData);
+        _system_glBufferData = (System_GlBufferData) *replaceMethod;
+
+        *replaceMethod = (void *) _my_glBufferData;
+
+        glBufferData(0, 0, NULL, 0);
+    }
+
+    // release
+    _system_glBufferData = NULL;
+    has_hook_glBufferData = false;
+    int result = i_glBufferData;
+    i_glBufferData = 0;
+
+    return result;
+}
+
+static System_GlRenderbufferStorage _system_glRenderbufferStorage = NULL;
+static int i_glRenderbufferStorage = 0;
+static bool has_hook_glRenderbufferStorage = false;
+
+GL_APICALL void GL_APIENTRY
+_my_glRenderbufferStorage(GLenum target, GLenum internalformat, GLsizei width, GLsizei height) {
+    if (!has_hook_glRenderbufferStorage) {
+        has_hook_glRenderbufferStorage = true;
+    }
+
+    _system_glRenderbufferStorage(target, internalformat, width, height.);
+}
+
+extern "C"
+JNIEXPORT jint JNICALL
+Java_com_tencent_matrix_openglleak_detector_FuncSeeker_getGlRenderbufferStorageIndex(JNIEnv *env,
+                                                                                     jclass clazz) {
+
+    gl_hooks_t *hooks = get_gl_hooks();
+    if (NULL == hooks) {
+        return -1;
+    }
+
+    for (i_glRenderbufferStorage = 0; i_glRenderbufferStorage < 1000; i_glRenderbufferStorage++) {
+        if (has_hook_glRenderbufferStorage) {
+            i_glRenderbufferStorage = i_glRenderbufferStorage - 1;
+
+            void **method = (void **) (&hooks->gl.foo1 + i_glRenderbufferStorage);
+            *method = (void *) _system_glRenderbufferStorage;
+            break;
+        }
+
+        if (_system_glRenderbufferStorage != NULL) {
+            void **method = (void **) (&hooks->gl.foo1 + (i_glRenderbufferStorage - 1));
+            *method = (void *) _system_glRenderbufferStorage;
+        }
+
+        void **replaceMethod = (void **) (&hooks->gl.foo1 + i_glRenderbufferStorage);
+        _system_glRenderbufferStorage = (System_GlRenderbufferStorage) *replaceMethod;
+
+        *replaceMethod = (void *) _my_glRenderbufferStorage;
+
+        glRenderbufferStorage(0, 0, 0, 0);
+    }
+
+    // release
+    _system_glRenderbufferStorage = NULL;
+    has_hook_glRenderbufferStorage = false;
+    int result = i_glRenderbufferStorage;
+    i_glRenderbufferStorage = 0;
 
     return result;
 }

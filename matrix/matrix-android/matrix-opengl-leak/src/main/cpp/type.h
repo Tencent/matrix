@@ -51,6 +51,16 @@ typedef void (*System_GlTexImage3D)(GLenum target,
                                     GLenum type,
                                     const void *data);
 
+typedef void (*System_GlBufferData)(GLenum target,
+                                    GLsizeiptr size,
+                                    const GLvoid *data,
+                                    GLenum usage);
+
+typedef void (*System_GlRenderbufferStorage)(GLenum target,
+                                             GLenum internalformat,
+                                             GLsizei width,
+                                             GLsizei height);
+
 System_GlNormal_TYPE get_target_func_ptr(const char *func_name);
 
 System_GlBind_TYPE get_bind_func_ptr(const char *func_name);

@@ -17,5 +17,7 @@ public class FuncNameString {
     public static final String GL_BIND_FRAMEBUFFER = "glBindFramebuffer";
     public static final String GL_BIND_BUFFER = "glBindBuffer";
     public static final String GL_BIND_RENDERBUFFER = "glBindRenderbuffer";
+    public static final String GL_BUFFER_DATA = "glBufferData";
+    public static final String GL_RENDER_BUFFER_STORAGE = "glRenderbufferStorage";
 
 }

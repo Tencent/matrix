@@ -360,4 +360,3 @@ Java_com_tencent_matrix_openglleak_hook_OpenGLHook_hookGlBindRenderbuffer(JNIEnv
 
     return true;
 }
-
