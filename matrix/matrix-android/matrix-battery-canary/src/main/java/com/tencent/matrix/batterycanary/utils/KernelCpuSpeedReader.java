@@ -63,7 +63,7 @@ public class KernelCpuSpeedReader {
                 speedTimeJiffies[speedIndex] = Long.parseLong(splitter.next());
                 speedIndex++;
             }
-        } catch (IOException e) {
+        } catch (Throwable e) {
             throw new IOException("Failed to read cpu-freq: " + e.getMessage(), e);
         }
         return speedTimeJiffies;

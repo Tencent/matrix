@@ -94,7 +94,7 @@ public class KernelCpuUidFreqTimeReader {
                 }
             }
             cpuCoreJiffies.add(speedJiffies);
-        } catch (IOException e) {
+        } catch (Throwable e) {
             throw new IOException("Failed to read cpu-freq: " + e.getMessage(), e);
         }
         return cpuCoreJiffies;
