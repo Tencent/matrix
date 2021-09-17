@@ -247,9 +247,6 @@ namespace Utils {
         }
 
         // GL_RGBA
-        if (internalformat == GL_RGBA && format == GL_RGBA) {
-            return 4;
-        }
         if (internalformat == GL_RGBA8 && format == GL_RGBA && type == GL_UNSIGNED_BYTE) {
             return 4;
         }
@@ -335,6 +332,30 @@ namespace Utils {
             return 1;
         }
 
+        // Unsized Internal Formats
+        if (internalformat == GL_RGB && format == GL_RGB && type == GL_UNSIGNED_BYTE) {
+            return 3;
+        }
+        if (internalformat == GL_RGB && format == GL_RGB && type == GL_UNSIGNED_SHORT_5_6_5) {
+            return 2;
+        }
+        if (internalformat == GL_RGBA && format == GL_RGBA && type == GL_UNSIGNED_BYTE) {
+            return 4;
+        }
+        if (internalformat == GL_RGBA && format == GL_RGBA && type == GL_UNSIGNED_SHORT_4_4_4_4) {
+            return 2;
+        }
+        if (internalformat == GL_LUMINANCE_ALPHA && format == GL_LUMINANCE_ALPHA &&
+            type == GL_UNSIGNED_BYTE) {
+            return 2;
+        }
+        if (internalformat == GL_LUMINANCE && format == GL_LUMINANCE && type == GL_UNSIGNED_BYTE) {
+            return 1;
+        }
+        if (internalformat == GL_ALPHA && format == GL_ALPHA && type == GL_UNSIGNED_BYTE) {
+            return 1;
+        }
+
         return 0;
     }
 
@@ -373,7 +394,8 @@ namespace Utils {
             return 0;
         }
         long graphics_alloc_size = 0;
-        int calculate_size = (width * height) / (Utils::getSizeByInternalFormat(internalformat) * 8);
+        int calculate_size =
+                (width * height) / (Utils::getSizeByInternalFormat(internalformat) * 8);
         for (int i = 0; i < interval_count; ++i) {
             int val = interval_all[i];
             if (calculate_size <= val) {
