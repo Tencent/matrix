@@ -1,15 +1,29 @@
 package com.tencent.matrix.openglleak.statistics;
 
 import com.tencent.matrix.openglleak.utils.ExecuteCenter;
-import com.tencent.matrix.util.MatrixLog;
 
 import java.util.HashMap;
 import java.util.Map;
 
+import static android.opengl.GLES20.GL_ARRAY_BUFFER;
+import static android.opengl.GLES20.GL_ELEMENT_ARRAY_BUFFER;
+import static android.opengl.GLES20.GL_RENDERBUFFER;
 import static android.opengl.GLES20.GL_TEXTURE_2D;
+import static android.opengl.GLES20.GL_TEXTURE_CUBE_MAP_NEGATIVE_X;
+import static android.opengl.GLES20.GL_TEXTURE_CUBE_MAP_NEGATIVE_Z;
+import static android.opengl.GLES20.GL_TEXTURE_CUBE_MAP_POSITIVE_X;
+import static android.opengl.GLES20.GL_TEXTURE_CUBE_MAP_POSITIVE_Z;
+import static android.opengl.GLES30.GL_COPY_READ_BUFFER;
+import static android.opengl.GLES30.GL_COPY_WRITE_BUFFER;
+import static android.opengl.GLES30.GL_PIXEL_PACK_BUFFER;
+import static android.opengl.GLES30.GL_PIXEL_UNPACK_BUFFER;
 import static android.opengl.GLES30.GL_TEXTURE_2D_ARRAY;
 import static android.opengl.GLES30.GL_TEXTURE_3D;
+import static android.opengl.GLES30.GL_TRANSFORM_FEEDBACK_BUFFER;
+import static android.opengl.GLES30.GL_UNIFORM_BUFFER;
 import static javax.microedition.khronos.opengles.GL11ExtensionPack.GL_TEXTURE_CUBE_MAP;
+import static javax.microedition.khronos.opengles.GL11ExtensionPack.GL_TEXTURE_CUBE_MAP_NEGATIVE_Y;
+import static javax.microedition.khronos.opengles.GL11ExtensionPack.GL_TEXTURE_CUBE_MAP_POSITIVE_Y;
 
 public class BindMap {
 
@@ -19,7 +33,6 @@ public class BindMap {
 
     private final Map<Long, Map<Integer, OpenGLInfo>> bindTextureMap;
     private final Map<Long, Map<Integer, OpenGLInfo>> bindBufferMap;
-    private final Map<Long, Map<Integer, OpenGLInfo>> bindFramebufferMap;
     private final Map<Long, Map<Integer, OpenGLInfo>> bindRenderbufferMap;
 
     static BindMap getInstance() {
@@ -29,61 +42,29 @@ public class BindMap {
     private BindMap() {
         bindTextureMap = new HashMap<>();
         bindBufferMap = new HashMap<>();
-        bindFramebufferMap = new HashMap<>();
         bindRenderbufferMap = new HashMap<>();
     }
 
-    private OpenGLInfo getBindTextureInfo(long eglContextId, int target) {
-        synchronized (bindTextureMap) {
-            Map<Integer, OpenGLInfo> subTextureMap = bindTextureMap.get(eglContextId);
+    private OpenGLInfo getBindMapInfo(final Map<Long, Map<Integer, OpenGLInfo>> bindMap, long eglContextId, int target) {
+        synchronized (bindMap) {
+            Map<Integer, OpenGLInfo> subTextureMap = bindMap.get(eglContextId);
             if (subTextureMap == null) {
                 subTextureMap = new HashMap<>();
-                bindTextureMap.put(eglContextId, subTextureMap);
+                bindMap.put(eglContextId, subTextureMap);
             }
             return subTextureMap.get(target);
         }
     }
 
-    private OpenGLInfo getBindBufferInfo(long eglContextId, int target) {
-        synchronized (bindBufferMap) {
-            Map<Integer, OpenGLInfo> subBufferMap = bindBufferMap.get(eglContextId);
-            if (subBufferMap == null) {
-                subBufferMap = new HashMap<>();
-            }
-            return subBufferMap.get(target);
-        }
-    }
-
-    private OpenGLInfo getBindFramebufferInfo(long eglContextId, int target) {
-        synchronized (bindFramebufferMap) {
-            Map<Integer, OpenGLInfo> subFramebufferMap = bindFramebufferMap.get(eglContextId);
-            if (subFramebufferMap == null) {
-                subFramebufferMap = new HashMap<>();
-            }
-            return subFramebufferMap.get(target);
-        }
-    }
-
-    private OpenGLInfo getBindRenderbufferInfo(long eglContextId, int target) {
-        synchronized (bindRenderbufferMap) {
-            Map<Integer, OpenGLInfo> subRenderbufferMap = bindRenderbufferMap.get(eglContextId);
-            if (subRenderbufferMap == null) {
-                subRenderbufferMap = new HashMap<>();
-            }
-            return subRenderbufferMap.get(target);
-        }
-    }
-
-    private void putInBindTextureMap(final long eglContext, final int target, final OpenGLInfo info) {
-        if (!isSupportTargetOfTexture(target)) {
-            MatrixLog.e(TAG, "putInBindTextureMap input un support target = %d", target);
+    private void putInBindMap(final Map<Long, Map<Integer, OpenGLInfo>> bindMap, final long eglContext, final int target, final OpenGLInfo info, OpenGLInfo.TYPE type) {
+        if (!isSupportTarget(type, target)) {
             return;
         }
-        synchronized (bindTextureMap) {
-            Map<Integer, OpenGLInfo> subTextureMap = bindTextureMap.get(eglContext);
+        synchronized (bindMap) {
+            Map<Integer, OpenGLInfo> subTextureMap = bindMap.get(eglContext);
             if (subTextureMap == null) {
                 subTextureMap = new HashMap<>();
-                bindTextureMap.put(eglContext, subTextureMap);
+                bindMap.put(eglContext, subTextureMap);
             }
             subTextureMap.put(target, info);
         }
@@ -96,9 +77,6 @@ public class BindMap {
         if (type == OpenGLInfo.TYPE.BUFFER) {
             return isSupportTargetOfBuffer(target);
         }
-        if (type == OpenGLInfo.TYPE.FRAME_BUFFERS) {
-            return isSupportTargetOfFramebuffer(target);
-        }
         if (type == OpenGLInfo.TYPE.RENDER_BUFFERS) {
             return isSupportTargetOfRenderbuffer(target);
         }
@@ -106,32 +84,30 @@ public class BindMap {
     }
 
     private boolean isSupportTargetOfTexture(int target) {
-        return target == GL_TEXTURE_2D || target == GL_TEXTURE_3D
-                || target == GL_TEXTURE_2D_ARRAY || target == GL_TEXTURE_CUBE_MAP;
+        return target == GL_TEXTURE_2D || target == GL_TEXTURE_3D || target == GL_TEXTURE_CUBE_MAP_POSITIVE_X
+                || target == GL_TEXTURE_CUBE_MAP_NEGATIVE_X || target == GL_TEXTURE_CUBE_MAP_POSITIVE_Y
+                || target == GL_TEXTURE_CUBE_MAP_NEGATIVE_Y || target == GL_TEXTURE_CUBE_MAP_POSITIVE_Z
+                || target == GL_TEXTURE_CUBE_MAP_NEGATIVE_Z || target == GL_TEXTURE_2D_ARRAY || target == GL_TEXTURE_CUBE_MAP;
     }
 
     private boolean isSupportTargetOfBuffer(int target) {
-        return false;
-    }
-
-    private boolean isSupportTargetOfFramebuffer(int target) {
-        return false;
+        return target == GL_ARRAY_BUFFER || target == GL_COPY_WRITE_BUFFER || target == GL_COPY_READ_BUFFER
+                || target == GL_ELEMENT_ARRAY_BUFFER || target == GL_PIXEL_PACK_BUFFER || target == GL_PIXEL_UNPACK_BUFFER
+                || target == GL_TRANSFORM_FEEDBACK_BUFFER || target == GL_UNIFORM_BUFFER;
     }
 
     private boolean isSupportTargetOfRenderbuffer(int target) {
-        return false;
+        return target == GL_RENDERBUFFER;
     }
 
     public OpenGLInfo getBindInfo(OpenGLInfo.TYPE type, long eglContextId, int target) {
         switch (type) {
             case BUFFER:
-                return getBindBufferInfo(eglContextId, target);
+                return getBindMapInfo(bindBufferMap, eglContextId, target);
             case TEXTURE:
-                return getBindTextureInfo(eglContextId, target);
-            case FRAME_BUFFERS:
-                return getBindFramebufferInfo(eglContextId, target);
+                return getBindMapInfo(bindTextureMap, eglContextId, target);
             case RENDER_BUFFERS:
-                return getBindRenderbufferInfo(eglContextId, target);
+                return getBindMapInfo(bindRenderbufferMap, eglContextId, target);
         }
         return null;
     }
@@ -143,32 +119,17 @@ public class BindMap {
             public void run() {
                 switch (type) {
                     case BUFFER:
-                        putInBindBufferMap(eglContextId, target, info);
+                        putInBindMap(bindBufferMap, eglContextId, target, info, OpenGLInfo.TYPE.BUFFER);
                         break;
                     case TEXTURE:
-                        putInBindTextureMap(eglContextId, target, info);
-                        break;
-                    case FRAME_BUFFERS:
-                        putInBindFramebufferMap(eglContextId, target, info);
+                        putInBindMap(bindTextureMap, eglContextId, target, info, OpenGLInfo.TYPE.TEXTURE);
                         break;
                     case RENDER_BUFFERS:
-                        putInBindRenderbufferMap(eglContextId, target, info);
+                        putInBindMap(bindRenderbufferMap, eglContextId, target, info, OpenGLInfo.TYPE.RENDER_BUFFERS);
                         break;
                 }
             }
         });
-    }
-
-    private void putInBindRenderbufferMap(long eglContextId, int target, OpenGLInfo info) {
-        //todo
-    }
-
-    private void putInBindFramebufferMap(long eglContextId, int target, OpenGLInfo info) {
-        //todo
-    }
-
-    private void putInBindBufferMap(long eglContextId, int target, OpenGLInfo info) {
-        //todo
     }
 
 }

@@ -266,8 +266,7 @@ _my_glTexImage3D(GLenum target, GLint level, GLint internalformat, GLsizei width
 
 extern "C"
 JNIEXPORT jint JNICALL
-Java_com_tencent_matrix_openglleak_detector_FuncSeeker_getGlTexImage3DIndex(JNIEnv *env,
-                                                                            jclass clazz) {
+Java_com_tencent_matrix_openglleak_detector_FuncSeeker_getGlTexImage3DIndex(JNIEnv *env, jclass clazz) {
     gl_hooks_t *hooks = get_gl_hooks();
     if (NULL == hooks) {
         return -1;
@@ -320,8 +319,7 @@ _my_glBufferData(GLenum target, GLsizeiptr size, const GLvoid *data, GLenum usag
 
 extern "C"
 JNIEXPORT jint JNICALL
-Java_com_tencent_matrix_openglleak_detector_FuncSeeker_getGlBufferDataIndex(JNIEnv *env,
-                                                                            jclass clazz) {
+Java_com_tencent_matrix_openglleak_detector_FuncSeeker_getGlBufferDataIndex(JNIEnv *env, jclass clazz) {
     gl_hooks_t *hooks = get_gl_hooks();
     if (NULL == hooks) {
         return -1;
@@ -368,7 +366,7 @@ _my_glRenderbufferStorage(GLenum target, GLenum internalformat, GLsizei width, G
         has_hook_glRenderbufferStorage = true;
     }
 
-    _system_glRenderbufferStorage(target, internalformat, width, height.);
+    _system_glRenderbufferStorage(target, internalformat, width, height);
 }
 
 extern "C"

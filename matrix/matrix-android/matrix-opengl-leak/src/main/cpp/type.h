@@ -69,6 +69,8 @@ namespace Utils {
 
     int getSizeOfPerPixel(GLint internalformat, GLenum format, GLenum type);
 
+    int getSizeByInternalFormat(GLint internalformat);
+
 }
 
 #endif //OPENGL_API_HOOK_TYPE_H

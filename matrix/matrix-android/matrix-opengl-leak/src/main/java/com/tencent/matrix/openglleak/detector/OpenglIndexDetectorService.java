@@ -105,6 +105,8 @@ public class OpenglIndexDetectorService extends Service {
         out.put(FuncNameString.GL_BIND_BUFFER, glBindBufferIndex);
         out.put(FuncNameString.GL_BIND_FRAMEBUFFER, glBindFramebufferIndex);
         out.put(FuncNameString.GL_BIND_RENDERBUFFER, glBindRenderbufferIndex);
+        out.put(FuncNameString.GL_BUFFER_DATA, glBufferDataIndex);
+        out.put(FuncNameString.GL_RENDER_BUFFER_STORAGE, glRenderbufferStorageIndex);
 
         MatrixLog.i(TAG, "seek func index succ!");
 

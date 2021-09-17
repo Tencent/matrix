@@ -59,6 +59,7 @@ public class OpenGLInfo {
         this.maybeLeak = clone.maybeLeak;
         this.activityName = clone.activityName;
         this.counter = clone.counter;
+        this.size = clone.size;
     }
 
     public OpenGLInfo(int error) {

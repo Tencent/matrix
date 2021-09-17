@@ -46,6 +46,50 @@ namespace Utils {
     /*
      *  support by OpenGL ES Software Development Kit
      */
+
+    int getSizeByInternalFormat(GLint internalformat) {
+
+        switch (internalformat) {
+            case GL_R8: return 1;
+            case GL_R8UI: return 1;
+            case GL_R8I: return 1;
+            case GL_R16UI: return 2;
+            case GL_R16I: return 2;
+            case GL_R32UI: return 4;
+            case GL_R32I: return 4;
+            case GL_RG8: return 1;
+            case GL_RG8UI: return 1;
+            case GL_RG8I: return 1;
+            case GL_RG16UI: return 2;
+            case GL_RG16I: return 2;
+            case GL_RG32UI: return 4;
+            case GL_RG32I: return 4;
+            case GL_RGB8: return 3;
+            case GL_RGB565: return 2;
+            case GL_RGBA8: return 4;
+            case GL_SRGB8_ALPHA8: return 4;
+            case GL_RGB5_A1: return 2;
+            case GL_RGBA4: return 2;
+            case GL_RGB10_A2: return 4;
+            case GL_RGBA8UI: return 4;
+            case GL_RGBA8I: return 4;
+            case GL_RGB10_A2UI: return 4;
+            case GL_RGBA16UI: return 8;
+            case GL_RGBA16I: return 8;
+            case GL_RGBA32I: return 16;
+            case GL_RGBA32UI: return 16;
+            case GL_DEPTH_COMPONENT16: return 2;
+            case GL_DEPTH_COMPONENT24: return 3;
+            case GL_DEPTH_COMPONENT32F: return 4;
+            case GL_DEPTH24_STENCIL8: return 4;
+            case GL_DEPTH32F_STENCIL8: return 5;
+            case GL_STENCIL_INDEX8: return 1;
+            default:return 0;
+        }
+    }
+
+
+
     int getSizeOfPerPixel(GLint internalformat, GLenum format, GLenum type) {
 
         // GL_RED
