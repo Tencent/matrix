@@ -71,6 +71,7 @@ namespace Utils {
 
     int getSizeByInternalFormat(GLint internalformat);
 
+    long getRenderbufferSizeByFormula(GLenum internalformat, GLsizei width, GLsizei height);
 }
 
 #endif //OPENGL_API_HOOK_TYPE_H

@@ -634,8 +634,9 @@ my_glRenderbufferStorage(GLenum target, GLenum internalformat, GLsizei width, GL
     if (NULL != system_glBindTexture) {
         system_glRenderbufferStorage(target, internalformat, width, height);
         JNIEnv *env = GET_ENV();
-        long size = Utils::getSizeByInternalFormat(internalformat) * max(width, height);
-        env->CallStaticVoidMethod(class_OpenGLHook, method_onGlRenderbufferStorage, target, size,
+        long size = Utils::getRenderbufferSizeByFormula(internalformat, width, height);
+        env->CallStaticVoidMethod(class_OpenGLHook, method_onGlRenderbufferStorage, target,
+                                  size,
                                   internalformat);
     }
 }

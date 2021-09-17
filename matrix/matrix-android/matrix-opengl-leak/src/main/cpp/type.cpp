@@ -46,48 +46,81 @@ namespace Utils {
     /*
      *  support by OpenGL ES Software Development Kit
      */
-
     int getSizeByInternalFormat(GLint internalformat) {
 
         switch (internalformat) {
-            case GL_R8: return 1;
-            case GL_R8UI: return 1;
-            case GL_R8I: return 1;
-            case GL_R16UI: return 2;
-            case GL_R16I: return 2;
-            case GL_R32UI: return 4;
-            case GL_R32I: return 4;
-            case GL_RG8: return 1;
-            case GL_RG8UI: return 1;
-            case GL_RG8I: return 1;
-            case GL_RG16UI: return 2;
-            case GL_RG16I: return 2;
-            case GL_RG32UI: return 4;
-            case GL_RG32I: return 4;
-            case GL_RGB8: return 3;
-            case GL_RGB565: return 2;
-            case GL_RGBA8: return 4;
-            case GL_SRGB8_ALPHA8: return 4;
-            case GL_RGB5_A1: return 2;
-            case GL_RGBA4: return 2;
-            case GL_RGB10_A2: return 4;
-            case GL_RGBA8UI: return 4;
-            case GL_RGBA8I: return 4;
-            case GL_RGB10_A2UI: return 4;
-            case GL_RGBA16UI: return 8;
-            case GL_RGBA16I: return 8;
-            case GL_RGBA32I: return 16;
-            case GL_RGBA32UI: return 16;
-            case GL_DEPTH_COMPONENT16: return 2;
-            case GL_DEPTH_COMPONENT24: return 3;
-            case GL_DEPTH_COMPONENT32F: return 4;
-            case GL_DEPTH24_STENCIL8: return 4;
-            case GL_DEPTH32F_STENCIL8: return 5;
-            case GL_STENCIL_INDEX8: return 1;
-            default:return 0;
+            case GL_R8:
+                return 1;
+            case GL_R8UI:
+                return 1;
+            case GL_R8I:
+                return 1;
+            case GL_R16UI:
+                return 2;
+            case GL_R16I:
+                return 2;
+            case GL_R32UI:
+                return 4;
+            case GL_R32I:
+                return 4;
+            case GL_RG8:
+                return 1;
+            case GL_RG8UI:
+                return 1;
+            case GL_RG8I:
+                return 1;
+            case GL_RG16UI:
+                return 2;
+            case GL_RG16I:
+                return 2;
+            case GL_RG32UI:
+                return 4;
+            case GL_RG32I:
+                return 4;
+            case GL_RGB8:
+                return 3;
+            case GL_RGB565:
+                return 2;
+            case GL_RGBA8:
+                return 4;
+            case GL_SRGB8_ALPHA8:
+                return 4;
+            case GL_RGB5_A1:
+                return 2;
+            case GL_RGBA4:
+                return 2;
+            case GL_RGB10_A2:
+                return 4;
+            case GL_RGBA8UI:
+                return 4;
+            case GL_RGBA8I:
+                return 4;
+            case GL_RGB10_A2UI:
+                return 4;
+            case GL_RGBA16UI:
+                return 8;
+            case GL_RGBA16I:
+                return 8;
+            case GL_RGBA32I:
+                return 16;
+            case GL_RGBA32UI:
+                return 16;
+            case GL_DEPTH_COMPONENT16:
+                return 2;
+            case GL_DEPTH_COMPONENT24:
+                return 3;
+            case GL_DEPTH_COMPONENT32F:
+                return 4;
+            case GL_DEPTH24_STENCIL8:
+                return 4;
+            case GL_DEPTH32F_STENCIL8:
+                return 5;
+            case GL_STENCIL_INDEX8:
+                return 1;
+            default:
+                return 0;
         }
     }
-
 
 
     int getSizeOfPerPixel(GLint internalformat, GLenum format, GLenum type) {
@@ -303,6 +336,52 @@ namespace Utils {
         }
 
         return 0;
+    }
+
+
+    /*
+     *  support by Local Experiment
+     */
+
+    long *interval_all = nullptr;
+    int interval_count = -1;
+
+    void initRenderbufferSizeFormula(GLenum internalformat) {
+        int format_byte = Utils::getSizeByInternalFormat(internalformat);
+        int interval_double[] = {65536, 131072, 262144, 524288};
+        const int biggest_size =
+                (GL_MAX_RENDERBUFFER_SIZE * GL_MAX_RENDERBUFFER_SIZE) / format_byte;
+        int double_count = sizeof(interval_double) / sizeof(interval_double[0]);
+        interval_count = double_count +
+                         (biggest_size - interval_double[double_count - 1]) / interval_double[0] +
+                         1;
+
+        interval_all = new long[interval_count];
+        for (int i = 0; i < double_count; ++i) {
+            interval_all[i] = interval_double[i];
+        }
+        for (int i = double_count - 1; i < interval_count; ++i) {
+            interval_all[i] = interval_all[i - 1] + interval_double[0];
+        }
+    }
+
+    long getRenderbufferSizeByFormula(GLenum internalformat, GLsizei width, GLsizei height) {
+        if (interval_all == nullptr) {
+            initRenderbufferSizeFormula(internalformat);
+        }
+        if (interval_all == nullptr || interval_count == -1) {
+            return 0;
+        }
+        long graphics_alloc_size = 0;
+        int calculate_size = (width * height) / (Utils::getSizeByInternalFormat(internalformat) * 8);
+        for (int i = 0; i < interval_count; ++i) {
+            int val = interval_all[i];
+            if (calculate_size <= val) {
+                graphics_alloc_size = val;
+                break;
+            }
+        }
+        return graphics_alloc_size;
     }
 
 }
