@@ -11,15 +11,18 @@ import com.tencent.matrix.batterycanary.monitor.feature.AbsTaskMonitorFeature.Ta
 import com.tencent.matrix.batterycanary.monitor.feature.AlarmMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.AlarmMonitorFeature.AlarmSnapshot;
 import com.tencent.matrix.batterycanary.monitor.feature.AppStatMonitorFeature;
+import com.tencent.matrix.batterycanary.monitor.feature.BlueToothMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.BlueToothMonitorFeature.BlueToothSnapshot;
 import com.tencent.matrix.batterycanary.monitor.feature.CompositeMonitors;
 import com.tencent.matrix.batterycanary.monitor.feature.CpuStatFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.CpuStatFeature.CpuStateSnapshot;
+import com.tencent.matrix.batterycanary.monitor.feature.DeviceStatMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.DeviceStatMonitorFeature.BatteryTmpSnapshot;
 import com.tencent.matrix.batterycanary.monitor.feature.DeviceStatMonitorFeature.CpuFreqSnapshot;
 import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature.JiffiesSnapshot;
 import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature.JiffiesSnapshot.ThreadJiffiesEntry;
+import com.tencent.matrix.batterycanary.monitor.feature.LocationMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.LocationMonitorFeature.LocationSnapshot;
 import com.tencent.matrix.batterycanary.monitor.feature.LooperTaskMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Delta;
@@ -28,9 +31,12 @@ import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Entry.ListEntry;
 import com.tencent.matrix.batterycanary.monitor.feature.NotificationMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.NotificationMonitorFeature.BadNotification;
+import com.tencent.matrix.batterycanary.monitor.feature.TrafficMonitorFeature;
+import com.tencent.matrix.batterycanary.monitor.feature.TrafficMonitorFeature.RadioStatSnapshot;
 import com.tencent.matrix.batterycanary.monitor.feature.WakeLockMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.WakeLockMonitorFeature.WakeLockSnapshot;
 import com.tencent.matrix.batterycanary.monitor.feature.WakeLockMonitorFeature.WakeLockTrace.WakeLockRecord;
+import com.tencent.matrix.batterycanary.monitor.feature.WifiMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.WifiMonitorFeature.WifiSnapshot;
 import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
 import com.tencent.matrix.batterycanary.utils.Consumer;
@@ -76,48 +82,49 @@ public interface BatteryMonitorCallback extends
         @Nullable
         AppStats mAppStats;
         private final LongSparseArray<List<LooperTaskMonitorFeature.TaskTraceInfo>> tasks = new LongSparseArray<>();
-        //
-        // @Nullable
-        // protected AlarmMonitorFeature mAlarmFeat;
-        // @Nullable
-        // protected AppStatMonitorFeature mAppStatFeat;
-        // @Nullable
-        // protected BlueToothMonitorFeature mBlueToothFeat;
-        // @Nullable
-        // protected DeviceStatMonitorFeature mDevStatFeat;
-        // @Nullable
-        // protected JiffiesMonitorFeature mJiffiesFeat;
-        // @Nullable
-        // protected LocationMonitorFeature mLocationFeat;
-        // @Nullable
-        // protected TrafficMonitorFeature mTrafficFeat;
-        // @Nullable
-        // protected WakeLockMonitorFeature mWakeLockFeat;
-        // @Nullable
-        // protected WifiMonitorFeature mWifiMonitorFeat;
-        // @Nullable
-        // protected CpuStatFeature mCpuStatFeat;
-        //
-        // @Nullable
-        // protected AlarmSnapshot mLastAlarmSnapshot;
-        // @Nullable
-        // protected BlueToothSnapshot mLastBlueToothSnapshot;
-        // @Nullable
-        // protected BatteryTmpSnapshot mLastBatteryTmpSnapshot;
-        // @Nullable
-        // protected CpuFreqSnapshot mLastCpuFreqSnapshot;
-        // @Nullable
-        // protected JiffiesSnapshot mLastJiffiesSnapshot;
-        // @Nullable
-        // protected LocationSnapshot mLastLocationSnapshot;
-        // @Nullable
-        // protected RadioStatSnapshot mLastTrafficSnapshot;
-        // @Nullable
-        // protected WakeLockSnapshot mLastWakeWakeLockSnapshot;
-        // @Nullable
-        // protected WifiSnapshot mLastWifiSnapshot;
-        // @Nullable
-        // protected CpuStateSnapshot mLastCpuStateSnapshot;
+
+        // TODO: Remove deprecated fields
+        @Deprecated
+        protected AlarmMonitorFeature mAlarmFeat;
+        @Deprecated
+        protected AppStatMonitorFeature mAppStatFeat;
+        @Deprecated
+        protected BlueToothMonitorFeature mBlueToothFeat;
+        @Deprecated
+        protected DeviceStatMonitorFeature mDevStatFeat;
+        @Deprecated
+        protected JiffiesMonitorFeature mJiffiesFeat;
+        @Deprecated
+        protected LocationMonitorFeature mLocationFeat;
+        @Deprecated
+        protected TrafficMonitorFeature mTrafficFeat;
+        @Deprecated
+        protected WakeLockMonitorFeature mWakeLockFeat;
+        @Deprecated
+        protected WifiMonitorFeature mWifiMonitorFeat;
+        @Deprecated
+        protected CpuStatFeature mCpuStatFeat;
+
+        @Deprecated
+        protected AlarmSnapshot mLastAlarmSnapshot;
+        @Deprecated
+        protected BlueToothSnapshot mLastBlueToothSnapshot;
+        @Deprecated
+        protected BatteryTmpSnapshot mLastBatteryTmpSnapshot;
+        @Deprecated
+        protected CpuFreqSnapshot mLastCpuFreqSnapshot;
+        @Deprecated
+        protected JiffiesSnapshot mLastJiffiesSnapshot;
+        @Deprecated
+        protected LocationSnapshot mLastLocationSnapshot;
+        @Deprecated
+        protected RadioStatSnapshot mLastTrafficSnapshot;
+        @Deprecated
+        protected WakeLockSnapshot mLastWakeWakeLockSnapshot;
+        @Deprecated
+        protected WifiSnapshot mLastWifiSnapshot;
+        @Deprecated
+        protected CpuStateSnapshot mLastCpuStateSnapshot;
 
         @SuppressWarnings("UnusedReturnValue")
         @VisibleForTesting
@@ -150,54 +157,55 @@ public interface BatteryMonitorCallback extends
             mCompositeMonitors.clear();
             mCompositeMonitors.configureAllSnapshot();
 
+            // TODO: Remove deprecated statements
             // Configure begin snapshots
-            // mAlarmFeat = mMonitor.getMonitorFeature(AlarmMonitorFeature.class);
-            // if (mAlarmFeat != null) {
-            //     mLastAlarmSnapshot = mAlarmFeat.currentAlarms();
-            // }
-            //
-            // mAppStatFeat = mMonitor.getMonitorFeature(AppStatMonitorFeature.class);
-            //
-            // mBlueToothFeat = mMonitor.getMonitorFeature(BlueToothMonitorFeature.class);
-            // if (mBlueToothFeat != null) {
-            //     mLastBlueToothSnapshot = mBlueToothFeat.currentSnapshot();
-            // }
-            //
-            // mDevStatFeat = mMonitor.getMonitorFeature(DeviceStatMonitorFeature.class);
-            // if (mDevStatFeat != null) {
-            //     mLastCpuFreqSnapshot = mDevStatFeat.currentCpuFreq();
-            //     mLastBatteryTmpSnapshot = mDevStatFeat.currentBatteryTemperature(mMonitor.getContext());
-            // }
-            //
-            // mJiffiesFeat = mMonitor.getMonitorFeature(JiffiesMonitorFeature.class);
-            // if (mJiffiesFeat != null) {
-            //     mLastJiffiesSnapshot = mJiffiesFeat.currentJiffiesSnapshot();
-            // }
-            //
-            // mLocationFeat = mMonitor.getMonitorFeature(LocationMonitorFeature.class);
-            // if (mLocationFeat != null) {
-            //     mLastLocationSnapshot = mLocationFeat.currentSnapshot();
-            // }
-            //
-            // mTrafficFeat = mMonitor.getMonitorFeature(TrafficMonitorFeature.class);
-            // if (mTrafficFeat != null) {
-            //     mLastTrafficSnapshot = mTrafficFeat.currentRadioSnapshot(mMonitor.getContext());
-            // }
-            //
-            // mWakeLockFeat = mMonitor.getMonitorFeature(WakeLockMonitorFeature.class);
-            // if (mWakeLockFeat != null) {
-            //     mLastWakeWakeLockSnapshot = mWakeLockFeat.currentWakeLocks();
-            // }
-            //
-            // mWifiMonitorFeat = mMonitor.getMonitorFeature(WifiMonitorFeature.class);
-            // if (mWifiMonitorFeat != null) {
-            //     mLastWifiSnapshot = mWifiMonitorFeat.currentSnapshot();
-            // }
-            //
-            // mCpuStatFeat = mMonitor.getMonitorFeature(CpuStatFeature.class);
-            // if (mCpuStatFeat != null && mCpuStatFeat.isSupported()) {
-            //     mLastCpuStateSnapshot = mCpuStatFeat.currentCpuStateSnapshot();
-            // }
+            mAlarmFeat = mMonitor.getMonitorFeature(AlarmMonitorFeature.class);
+            if (mAlarmFeat != null) {
+                mLastAlarmSnapshot = mAlarmFeat.currentAlarms();
+            }
+
+            mAppStatFeat = mMonitor.getMonitorFeature(AppStatMonitorFeature.class);
+
+            mBlueToothFeat = mMonitor.getMonitorFeature(BlueToothMonitorFeature.class);
+            if (mBlueToothFeat != null) {
+                mLastBlueToothSnapshot = mBlueToothFeat.currentSnapshot();
+            }
+
+            mDevStatFeat = mMonitor.getMonitorFeature(DeviceStatMonitorFeature.class);
+            if (mDevStatFeat != null) {
+                mLastCpuFreqSnapshot = mDevStatFeat.currentCpuFreq();
+                mLastBatteryTmpSnapshot = mDevStatFeat.currentBatteryTemperature(mMonitor.getContext());
+            }
+
+            mJiffiesFeat = mMonitor.getMonitorFeature(JiffiesMonitorFeature.class);
+            if (mJiffiesFeat != null) {
+                mLastJiffiesSnapshot = mJiffiesFeat.currentJiffiesSnapshot();
+            }
+
+            mLocationFeat = mMonitor.getMonitorFeature(LocationMonitorFeature.class);
+            if (mLocationFeat != null) {
+                mLastLocationSnapshot = mLocationFeat.currentSnapshot();
+            }
+
+            mTrafficFeat = mMonitor.getMonitorFeature(TrafficMonitorFeature.class);
+            if (mTrafficFeat != null) {
+                mLastTrafficSnapshot = mTrafficFeat.currentRadioSnapshot(mMonitor.getContext());
+            }
+
+            mWakeLockFeat = mMonitor.getMonitorFeature(WakeLockMonitorFeature.class);
+            if (mWakeLockFeat != null) {
+                mLastWakeWakeLockSnapshot = mWakeLockFeat.currentWakeLocks();
+            }
+
+            mWifiMonitorFeat = mMonitor.getMonitorFeature(WifiMonitorFeature.class);
+            if (mWifiMonitorFeat != null) {
+                mLastWifiSnapshot = mWifiMonitorFeat.currentSnapshot();
+            }
+
+            mCpuStatFeat = mMonitor.getMonitorFeature(CpuStatFeature.class);
+            if (mCpuStatFeat != null && mCpuStatFeat.isSupported()) {
+                mLastCpuStateSnapshot = mCpuStatFeat.currentCpuStateSnapshot();
+            }
         }
 
         @Override
