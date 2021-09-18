@@ -13,7 +13,6 @@ import com.tencent.matrix.util.MatrixUtil
 /**
  * Created by Yves on 2021/9/14
  */
-// TODO: 2021/9/18 不暴露 lifecycle，允许异步 addObserver，但需要保证线程安全，using handler ?
 @RestrictTo(RestrictTo.Scope.LIBRARY_GROUP_PREFIX)
 class MultiProcessLifecycleInitializer: ContentProvider() {
 

@@ -1,11 +1,11 @@
 package com.tencent.matrix.lifecycle
 
+import android.annotation.SuppressLint
 import android.app.Activity
 import android.app.Application
 import android.content.Context
 import android.os.Bundle
 import android.os.Handler
-import android.os.Looper
 import androidx.lifecycle.*
 import com.tencent.matrix.listeners.IAppForeground
 import com.tencent.matrix.util.MatrixHandlerThread
@@ -50,19 +50,25 @@ class MultiProcessLifecycleOwner : LifecycleOwner {
     private var mPauseSent = true
     private var mStopSent = true
 
-    private val mMainHandler = Handler(Looper.getMainLooper())
+    private val mRunningHandler = Handler(MatrixHandlerThread.getDefaultHandlerThread().looper)
 
-    private val mRegistry = LifecycleRegistry(this)
+    //    private val mMainHandler = Handler(Looper.getMainLooper())
+    @SuppressLint("VisibleForTests")
+    private val mRegistry = SafeLifecycleRegistry(this)
 
     private val mDelayedPauseRunnable = Runnable {
         dispatchPauseIfNeeded()
         dispatchStopIfNeeded()
     }
 
+    private fun SafeLifecycleRegistry.handleLifecycleEventAsync(event: Lifecycle.Event) = mRunningHandler.post {
+        this.handleLifecycleEvent(event)
+    }
+
     private fun activityStarted() {
         mStartedCounter++
         if (mStartedCounter == 1 && mStopSent) {
-            mRegistry.handleLifecycleEvent(Lifecycle.Event.ON_START)
+            mRegistry.handleLifecycleEventAsync(Lifecycle.Event.ON_START)
             mStopSent = false
         }
     }
@@ -71,10 +77,10 @@ class MultiProcessLifecycleOwner : LifecycleOwner {
         mResumedCounter++
         if (mResumedCounter == 1) {
             if (mPauseSent) {
-                mRegistry.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
+                mRegistry.handleLifecycleEventAsync(Lifecycle.Event.ON_RESUME)
                 mPauseSent = false
             } else {
-                mMainHandler.removeCallbacks(mDelayedPauseRunnable)
+                mRunningHandler.removeCallbacks(mDelayedPauseRunnable)
             }
         }
     }
@@ -82,7 +88,7 @@ class MultiProcessLifecycleOwner : LifecycleOwner {
     private fun activityPaused() {
         mResumedCounter--
         if (mResumedCounter == 0) {
-            mMainHandler.postDelayed(mDelayedPauseRunnable, TIMEOUT_MS)
+            mRunningHandler.postDelayed(mDelayedPauseRunnable, TIMEOUT_MS)
         }
     }
 
@@ -94,52 +100,50 @@ class MultiProcessLifecycleOwner : LifecycleOwner {
     private fun dispatchPauseIfNeeded() {
         if (mResumedCounter == 0) {
             mPauseSent = true
-            mRegistry.handleLifecycleEvent(Lifecycle.Event.ON_PAUSE)
+            mRegistry.handleLifecycleEventAsync(Lifecycle.Event.ON_PAUSE)
         }
     }
 
     private fun dispatchStopIfNeeded() {
         if (mStartedCounter == 0 && mPauseSent) {
-            mRegistry.handleLifecycleEvent(Lifecycle.Event.ON_STOP)
+            mRegistry.handleLifecycleEventAsync(Lifecycle.Event.ON_STOP)
             mStopSent = true
         }
     }
 
     private fun attach(context: Context) {
-        mMainHandler.postAtFrontOfQueue {
-            mRegistry.addObserver(DefaultLifecycleObserver())
-            mRegistry.handleLifecycleEvent(Lifecycle.Event.ON_CREATE)
+        mRegistry.addObserver(DefaultLifecycleObserver())
+        mRegistry.handleLifecycleEventAsync(Lifecycle.Event.ON_CREATE)
 
-            val app = context.applicationContext as Application
-            app.registerActivityLifecycleCallbacks(object : Application.ActivityLifecycleCallbacks {
+        val app = context.applicationContext as Application
+        app.registerActivityLifecycleCallbacks(object : Application.ActivityLifecycleCallbacks {
 
-                override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {
-                }
+            override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {
+            }
 
-                override fun onActivityStarted(activity: Activity) {
-                    updateScene(activity)
-                    activityStarted()
-                }
+            override fun onActivityStarted(activity: Activity) {
+                updateScene(activity)
+                activityStarted()
+            }
 
-                override fun onActivityResumed(activity: Activity) {
-                    activityResumed()
-                }
+            override fun onActivityResumed(activity: Activity) {
+                activityResumed()
+            }
 
-                override fun onActivityPaused(activity: Activity) {
-                    activityPaused()
-                }
+            override fun onActivityPaused(activity: Activity) {
+                activityPaused()
+            }
 
-                override fun onActivityStopped(activity: Activity) {
-                    activityStopped()
-                }
+            override fun onActivityStopped(activity: Activity) {
+                activityStopped()
+            }
 
-                override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) {
-                }
+            override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) {
+            }
 
-                override fun onActivityDestroyed(activity: Activity) {
-                }
-            })
-        }
+            override fun onActivityDestroyed(activity: Activity) {
+            }
+        })
     }
 
     override fun getLifecycle(): Lifecycle {
@@ -149,15 +153,14 @@ class MultiProcessLifecycleOwner : LifecycleOwner {
     // ========================== extension ========================== //
 
     private val mListeners = HashSet<IAppForeground>()
-    private val mRunningHandler = Handler(MatrixHandlerThread.getDefaultHandlerThread().looper)
 
     @get:JvmName("isAppForeground")
     var mAppForegrounded = false
-    private set
+        private set
 
     @get:JvmName("getVisibleScene")
     var mVisibleScene = "default"
-    private set
+        private set
 
     @set:JvmName("setCurrentFragmentName")
     @get:JvmName("getCurrentFragmentName")
