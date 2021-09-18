@@ -233,7 +233,7 @@ class MultiProcessLifecycleOwner : LifecycleOwner {
         }
     }
 
-    private inner class DefaultLifecycleObserver : LifecycleObserver {
+    inner class DefaultLifecycleObserver : LifecycleObserver {
         private var mPauseConsumed = false
 
         private val mDelayedBgRunnable = Runnable {
@@ -242,7 +242,7 @@ class MultiProcessLifecycleOwner : LifecycleOwner {
         }
 
         @OnLifecycleEvent(Lifecycle.Event.ON_START)
-        private fun onProcessStarted() {
+        fun onProcessStarted() {
             MatrixLog.i(TAG, "process [$sProcessName] onStarted")
             if (mPauseAsBgTimeoutMs < 0) {
                 onDispatchForeground(mVisibleScene)
@@ -254,7 +254,7 @@ class MultiProcessLifecycleOwner : LifecycleOwner {
         }
 
         @OnLifecycleEvent(Lifecycle.Event.ON_RESUME)
-        private fun onProcessResumed() {
+        fun onProcessResumed() {
             MatrixLog.i(TAG, "process [$sProcessName] onResumed")
             if (mPauseAsBgTimeoutMs >= 0) {
                 onDispatchForeground(mVisibleScene)
@@ -266,7 +266,7 @@ class MultiProcessLifecycleOwner : LifecycleOwner {
         }
 
         @OnLifecycleEvent(Lifecycle.Event.ON_PAUSE)
-        private fun onProcessPaused() {
+        fun onProcessPaused() {
             MatrixLog.i(TAG, "process [$sProcessName] onPaused")
             if (mPauseAsBgTimeoutMs >= 0) {
                 mRunningHandler.postDelayed(mDelayedBgRunnable, mPauseAsBgTimeoutMs)
@@ -274,7 +274,7 @@ class MultiProcessLifecycleOwner : LifecycleOwner {
         }
 
         @OnLifecycleEvent(Lifecycle.Event.ON_STOP)
-        private fun onProcessStopped() {
+        fun onProcessStopped() {
             MatrixLog.i(TAG, "process [$sProcessName] onStopped")
             if (mPauseConsumed && mPauseAsBgTimeoutMs >= 0) {
                 mPauseConsumed = false

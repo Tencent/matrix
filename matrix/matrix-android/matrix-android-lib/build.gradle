@@ -1,5 +1,6 @@
 apply plugin: 'com.android.library'
 apply plugin: 'kotlin-android'
+apply plugin: 'kotlin-kapt'
 
 android {
     compileSdkVersion rootProject.ext.compileSdkVersion
@@ -29,6 +30,8 @@ dependencies {
     androidTestImplementation 'androidx.annotation:annotation:1.0.0'
     api 'androidx.annotation:annotation:1.0.0'
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:${gradle.KOTLIN_VERSION}"
+    annotationProcessor "androidx.lifecycle:lifecycle-compiler:2.3.1"
+    kapt "androidx.lifecycle:lifecycle-compiler:2.3.1" // TODO version
 }
 
 version = rootProject.ext.VERSION_NAME
