@@ -72,16 +72,16 @@ public interface BatteryMonitorCallback extends
         private static final int ONE_MIN = 60 * 1000;
 
         @NonNull
-        private BatteryMonitorCore mMonitor;
+        protected BatteryMonitorCore mMonitor;
         @NonNull
-        private CompositeMonitors mCompositeMonitors;
-        private final Printer mPrinter = new Printer();
+        protected CompositeMonitors mCompositeMonitors;
+        protected final Printer mPrinter = new Printer();
 
-        private long mTraceBgnMillis;
-        private boolean mIsForeground;
+        protected long mTraceBgnMillis;
+        protected boolean mIsForeground;
         @Nullable
         AppStats mAppStats;
-        private final LongSparseArray<List<LooperTaskMonitorFeature.TaskTraceInfo>> tasks = new LongSparseArray<>();
+        protected final LongSparseArray<List<LooperTaskMonitorFeature.TaskTraceInfo>> tasks = new LongSparseArray<>();
 
         // TODO: Remove deprecated fields
         @Deprecated
@@ -128,7 +128,7 @@ public interface BatteryMonitorCallback extends
 
         @SuppressWarnings("UnusedReturnValue")
         @VisibleForTesting
-        public final BatteryPrinter attach(BatteryMonitorCore monitorCore) {
+        public BatteryPrinter attach(BatteryMonitorCore monitorCore) {
             mMonitor = monitorCore;
             mCompositeMonitors = new CompositeMonitors(monitorCore);
             return this;

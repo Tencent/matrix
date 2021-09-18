@@ -8,6 +8,7 @@ import com.tencent.matrix.batterycanary.utils.Consumer;
 import java.util.HashMap;
 import java.util.Map;
 
+import androidx.annotation.CallSuper;
 import androidx.annotation.Nullable;
 
 /**
@@ -15,10 +16,10 @@ import androidx.annotation.Nullable;
  * @since 2021/9/18
  */
 public class CompositeMonitors {
-    private final Map<Class<? extends Snapshot<?>>, Snapshot<?>> mBgnSnapshots = new HashMap<>();
-    private final Map<Class<? extends Snapshot<?>>, Delta<?>> mDeltas = new HashMap<>();
+    protected final Map<Class<? extends Snapshot<?>>, Snapshot<?>> mBgnSnapshots = new HashMap<>();
+    protected final Map<Class<? extends Snapshot<?>>, Delta<?>> mDeltas = new HashMap<>();
 
-    private final BatteryMonitorCore mMonitor;
+    protected final BatteryMonitorCore mMonitor;
 
     public CompositeMonitors(BatteryMonitorCore core) {
         mMonitor = core;
@@ -41,10 +42,9 @@ public class CompositeMonitors {
     }
 
     public <T extends MonitorFeature> void getFeature(Class<T> clazz, Consumer<T> block) {
-        MonitorFeature feature = getFeature(clazz);
+        T feature = getFeature(clazz);
         if (feature != null) {
-            //noinspection unchecked
-            block.accept((T) feature);
+            block.accept(feature);
         }
     }
 
@@ -61,6 +61,7 @@ public class CompositeMonitors {
         }
     }
 
+    @CallSuper
     public void configureAllSnapshot() {
         statCurrSnapshot(AlarmMonitorFeature.AlarmSnapshot.class);
         statCurrSnapshot(BlueToothMonitorFeature.BlueToothSnapshot.class);
@@ -88,7 +89,8 @@ public class CompositeMonitors {
         }
     }
 
-    private Snapshot<?> statCurrSnapshot(Class<? extends Snapshot<?>> snapshotClass) {
+    @CallSuper
+    protected Snapshot<?> statCurrSnapshot(Class<? extends Snapshot<?>> snapshotClass) {
         Snapshot<?> snapshot = null;
         if (snapshotClass == AlarmMonitorFeature.AlarmSnapshot.class) {
             AlarmMonitorFeature feature = mMonitor.getMonitorFeature(AlarmMonitorFeature.class);
