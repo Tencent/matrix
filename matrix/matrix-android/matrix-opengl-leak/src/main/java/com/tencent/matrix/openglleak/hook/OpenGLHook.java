@@ -360,7 +360,7 @@ public class OpenGLHook {
         }
 
         if (getInstance().mMemoryListener != null) {
-            getInstance().mMemoryListener.onGlTexImage2D(target, size, internalFormat, format, type);
+            getInstance().mMemoryListener.onGlTexImage2D(target, size, internalFormat, format, type, info.getId(), eglContextId);
         }
 
     }
@@ -382,7 +382,7 @@ public class OpenGLHook {
         }
 
         if (getInstance().mMemoryListener != null) {
-            getInstance().mMemoryListener.onGlTexImage3D(target, size, internalFormat, format, type);
+            getInstance().mMemoryListener.onGlTexImage3D(target, size, internalFormat, format, type, info.getId(), eglContextId);
         }
 
     }
@@ -408,7 +408,7 @@ public class OpenGLHook {
         }
 
         if (getInstance().mMemoryListener != null) {
-            getInstance().mMemoryListener.onGlBufferData(target, size, usage);
+            getInstance().mMemoryListener.onGlBufferData(target, size, usage, info.getId(), eglContextId);
         }
 
     }
@@ -431,7 +431,7 @@ public class OpenGLHook {
         }
 
         if (getInstance().mMemoryListener != null) {
-            getInstance().mMemoryListener.onGlRenderbufferStorage(target, size, internalformat);
+            getInstance().mMemoryListener.onGlRenderbufferStorage(target, size, internalformat, info.getId(), eglContextId);
         }
     }
 
@@ -462,13 +462,13 @@ public class OpenGLHook {
 
     public interface MemoryListener {
 
-        void onGlTexImage2D(int target, long size, int internalFormat, int format, int type);
+        void onGlTexImage2D(int target, long size, int internalFormat, int format, int type, int id, long eglContextId);
 
-        void onGlTexImage3D(int target, long size, int internalFormat, int format, int type);
+        void onGlTexImage3D(int target, long size, int internalFormat, int format, int type, int id, long eglContextId);
 
-        void onGlBufferData(int target, long size, int usage);
+        void onGlBufferData(int target, long size, int usage, int id, long eglContextId);
 
-        void onGlRenderbufferStorage(int target, long size, int internalFormat);
+        void onGlRenderbufferStorage(int target, long size, int internalFormat, int id, long eglContextId);
 
     }
 
