@@ -31,13 +31,15 @@ namespace thread_trace {
     //void add_hook_parent_thread_name(const char *__regex_str);
     void thread_trace_init();
 
-    void add_hook_thread_name(const char *__regex_str);
+    void add_hook_thread_name(const char *regex_str);
 
     void pthread_dump(const char *path = "/sdcard/pthread_hook.log");
 
     void pthread_dump_json(const char *path = "/sdcard/pthread_hook.log");
 
     void enable_quicken_unwind(const bool enable);
+
+    void enable_trace_pthread_release(const bool enable);
 
     typedef struct {
         pthread_hook::pthread_routine_t wrapped_func;
@@ -47,9 +49,11 @@ namespace thread_trace {
 
     routine_wrapper_t* wrap_pthread_routine(pthread_hook::pthread_routine_t start_routine, void* args);
 
-    void on_pthread_create(const pthread_t __pthread);
+    void handle_pthread_create(const pthread_t pthread);
 
     void handle_pthread_setname_np(pthread_t pthread, const char* name);
+
+    void handle_pthread_release(pthread_t pthread);
 }
 
 

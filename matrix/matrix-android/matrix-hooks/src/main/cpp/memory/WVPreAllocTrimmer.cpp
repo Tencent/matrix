@@ -324,9 +324,9 @@ namespace matrix {
             }
         });
 
-        int ret = xhook_hook_symbol(hLib, "android_dlopen_ext",
-                                    reinterpret_cast<void *>(HandleAndroidDlOpenExt),
-                                    reinterpret_cast<void **>(&sOriginalAndroidDlOpenExt));
+        int ret = xhook_got_hook_symbol(hLib, "android_dlopen_ext",
+                                        reinterpret_cast<void*>(HandleAndroidDlOpenExt),
+                                        reinterpret_cast<void**>(&sOriginalAndroidDlOpenExt));
         if (ret != 0) {
             LOGE(LOG_TAG, "Fail to hook android_dlopen_ext, ret: %d", ret);
             return false;
@@ -365,8 +365,8 @@ namespace matrix {
             sInstalled.store(true);
         } else {
             LOGE(LOG_TAG, "Failed, unhook android_dlopen_ext.");
-            xhook_hook_symbol(hLib, "android_dlopen_ext",
-                              reinterpret_cast<void *>(sOriginalAndroidDlOpenExt), nullptr);
+            xhook_got_hook_symbol(hLib, "android_dlopen_ext",
+                                  reinterpret_cast<void*>(sOriginalAndroidDlOpenExt), nullptr);
         }
 
         return result;

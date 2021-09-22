@@ -70,12 +70,6 @@ namespace wechat_backtrace {
                          std::string &data);
 
     void
-    to_quicken_frame_element(wechat_backtrace::Frame &frame, unwindstack::MapInfo *map_info,
-                             wechat_backtrace::ElfWrapper *elf_wrapper,
-                             bool fill_map_info, bool fill_build_id,
-            /* out */ FrameElement &frame_element);
-
-    void
     get_stacktrace_elements(wechat_backtrace::Frame *frames, const size_t frame_size,
                             bool shrunk_java_stacktrace,
             /* out */ FrameElement *stacktrace_elements, const size_t max_elements,

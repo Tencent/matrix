@@ -1,5 +1,7 @@
 {
+    global:
+        set_fake_backtrace_vectors*;
     local:
         xh_*;
-        xhook_*;
+        semi_*;
 };

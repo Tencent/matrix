@@ -30,7 +30,7 @@
 #include <sys/socket.h>
 #include <time.h>
 #include <signal.h>
-#include <xhook.h>
+#include <xhook_ext.h>
 #include <linux/prctl.h>
 #include <sys/prctl.h>
 
@@ -51,6 +51,8 @@
 #define PROP_SDK_NAME "ro.build.version.sdk"
 #define HOOK_CONNECT_PATH "/dev/socket/tombstoned_java_trace"
 #define HOOK_OPEN_PATH "/data/anr/traces.txt"
+
+#define HOOK_REQUEST_GROUPID_THREAD_PRIO_TRACE 0x01
 
 using namespace MatrixTracer;
 
@@ -219,25 +221,25 @@ void hookAnrTraceWrite(bool isSiUser) {
         if(!libcutils_info) {
             libcutils_info = xhook_elf_open("/system/lib/libcutils.so");
         }
-        xhook_hook_symbol(libcutils_info, "connect", (void *) my_connect, (void **) (&original_connect));
+        xhook_got_hook_symbol(libcutils_info, "connect", (void*) my_connect, (void**) (&original_connect));
     } else {
         void* libart_info = xhook_elf_open("libart.so");
-        xhook_hook_symbol(libart_info, "open", (void *) my_open, (void **) (&original_open));
+        xhook_got_hook_symbol(libart_info, "open", (void*) my_open, (void**) (&original_open));
     }
 
     if (apiLevel >= 30 || apiLevel == 25 || apiLevel == 24) {
         void* libc_info = xhook_elf_open("libc.so");
-        xhook_hook_symbol(libc_info, "write", (void *) my_write, (void **) (&original_write));
+        xhook_got_hook_symbol(libc_info, "write", (void*) my_write, (void**) (&original_write));
     } else if (apiLevel == 29) {
         void* libbase_info = xhook_elf_open("/system/lib64/libbase.so");
         if(!libbase_info) {
             libbase_info = xhook_elf_open("/system/lib/libbase.so");
         }
-        xhook_hook_symbol(libbase_info, "write", (void *) my_write, (void **) (&original_write));
+        xhook_got_hook_symbol(libbase_info, "write", (void*) my_write, (void**) (&original_write));
         xhook_elf_close(libbase_info);
     } else {
         void* libart_info = xhook_elf_open("libart.so");
-        xhook_hook_symbol(libart_info, "write", (void *) my_write, (void **) (&original_write));
+        xhook_got_hook_symbol(libart_info, "write", (void*) my_write, (void**) (&original_write));
     }
 }
 
@@ -245,21 +247,21 @@ void unHookAnrTraceWrite() {
     int apiLevel = getApiLevel();
     if (apiLevel >= 27) {
         void *libcutils_info = xhook_elf_open("/system/lib64/libcutils.so");
-        xhook_hook_symbol(libcutils_info, "connect", (void *) original_connect, nullptr);
+        xhook_got_hook_symbol(libcutils_info, "connect", (void*) original_connect, nullptr);
     } else {
         void* libart_info = xhook_elf_open("libart.so");
-        xhook_hook_symbol(libart_info, "open", (void *) original_connect, nullptr);
+        xhook_got_hook_symbol(libart_info, "open", (void*) original_connect, nullptr);
     }
 
     if (apiLevel >= 30 || apiLevel == 25 || apiLevel ==24) {
         void* libc_info = xhook_elf_open("libc.so");
-        xhook_hook_symbol(libc_info, "write", (void *) original_write, nullptr);
+        xhook_got_hook_symbol(libc_info, "write", (void*) original_write, nullptr);
     } else if (apiLevel == 29) {
         void* libbase_info = xhook_elf_open("/system/lib64/libbase.so");
-        xhook_hook_symbol(libbase_info, "write", (void *) original_write, nullptr);
+        xhook_got_hook_symbol(libbase_info, "write", (void*) original_write, nullptr);
     } else {
         void* libart_info = xhook_elf_open("libart.so");
-        xhook_hook_symbol(libart_info, "write", (void *) original_write, nullptr);
+        xhook_got_hook_symbol(libart_info, "write", (void*) original_write, nullptr);
     }
     isHooking = false;
 }
@@ -277,8 +279,10 @@ static void nativeFreeSignalAnrDetective(JNIEnv *env, jclass) {
 }
 
 static void nativeInitMainThreadPriorityDetective(JNIEnv *env, jclass) {
-    xhook_register(".*\\.so$", "setpriority", (void *) my_setpriority, (void **) (&original_setpriority));
-    xhook_register(".*\\.so$", "prctl", (void *) my_prctl, (void **) (&original_prctl));
+    xhook_grouped_register(HOOK_REQUEST_GROUPID_THREAD_PRIO_TRACE, ".*\\.so$", "setpriority",
+            (void *) my_setpriority, (void **) (&original_setpriority));
+    xhook_grouped_register(HOOK_REQUEST_GROUPID_THREAD_PRIO_TRACE, ".*\\.so$", "prctl",
+            (void *) my_prctl, (void **) (&original_prctl));
     xhook_refresh(true);
 }
 
