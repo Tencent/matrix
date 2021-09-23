@@ -27,6 +27,7 @@ public class OpenGLInfo {
     // use to dump
     private int allocCount = 1;
     private List<Integer> idList = new ArrayList<>();
+    private List<Long> sizeList;
 
     private boolean isRelease;
 
@@ -60,6 +61,7 @@ public class OpenGLInfo {
         this.activityName = clone.activityName;
         this.counter = clone.counter;
         this.size = clone.size;
+        this.sizeList = clone.sizeList;
     }
 
     public OpenGLInfo(int error) {
@@ -75,6 +77,7 @@ public class OpenGLInfo {
         this.eglContextNativeHandle = eglContextNativeHandle;
         this.operate = operate;
         this.type = type;
+        this.sizeList = new ArrayList<>();
     }
 
     public OpenGLInfo(TYPE type, int id, String threadId, long eglContextNativeHandle, int operate) {
@@ -83,6 +86,7 @@ public class OpenGLInfo {
         this.eglContextNativeHandle = eglContextNativeHandle;
         this.operate = operate;
         this.type = type;
+        this.sizeList = new ArrayList<>();
     }
 
     public OpenGLInfo(TYPE type, int id, String threadId, long eglContextNativeHandle, String javaStack, long nativeStackPtr, int operate, String activityName, AtomicInteger counter) {
@@ -95,6 +99,7 @@ public class OpenGLInfo {
         this.type = type;
         this.activityName = activityName;
         this.counter = counter;
+        this.sizeList = new ArrayList<>();
     }
 
     public int getId() {
@@ -161,7 +166,14 @@ public class OpenGLInfo {
     }
 
     public void setSize(long size) {
-        this.size = size;
+        if (sizeList == null) {
+            this.sizeList = new ArrayList<>();
+        }
+        if (sizeList.contains(size)) {
+            return;
+        }
+        sizeList.add(size);
+        this.size += size;
     }
 
     private String getOpStr() {

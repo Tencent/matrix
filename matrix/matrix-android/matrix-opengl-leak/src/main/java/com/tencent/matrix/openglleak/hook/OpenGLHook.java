@@ -355,7 +355,7 @@ public class OpenGLHook {
         }
         OpenGLInfo openGLInfo = OpenGLResRecorder.getInstance().getItemByEGLContextAndId(info.getType(), info.getEglContextNativeHandle(), info.getId());
         if (openGLInfo != null) {
-            openGLInfo.setSize(openGLInfo.getSize() + size);
+            openGLInfo.setSize(size);
             OpenGLResRecorder.getInstance().replace(openGLInfo);
         }
 
@@ -377,7 +377,7 @@ public class OpenGLHook {
         }
         OpenGLInfo openGLInfo = OpenGLResRecorder.getInstance().getItemByEGLContextAndId(info.getType(), info.getEglContextNativeHandle(), info.getId());
         if (openGLInfo != null) {
-            openGLInfo.setSize(openGLInfo.getSize() + size);
+            openGLInfo.setSize(size);
             OpenGLResRecorder.getInstance().replace(openGLInfo);
         }
 
@@ -403,7 +403,7 @@ public class OpenGLHook {
         }
         OpenGLInfo openGLInfo = OpenGLResRecorder.getInstance().getItemByEGLContextAndId(info.getType(), info.getEglContextNativeHandle(), info.getId());
         if (openGLInfo != null) {
-            openGLInfo.setSize(openGLInfo.getSize() + size);
+            openGLInfo.setSize(size);
             OpenGLResRecorder.getInstance().replace(openGLInfo);
         }
 
@@ -426,7 +426,7 @@ public class OpenGLHook {
         }
         OpenGLInfo openGLInfo = OpenGLResRecorder.getInstance().getItemByEGLContextAndId(info.getType(), info.getEglContextNativeHandle(), info.getId());
         if (openGLInfo != null) {
-            openGLInfo.setSize(openGLInfo.getSize() + size);
+            openGLInfo.setSize(size);
             OpenGLResRecorder.getInstance().replace(openGLInfo);
         }
 
