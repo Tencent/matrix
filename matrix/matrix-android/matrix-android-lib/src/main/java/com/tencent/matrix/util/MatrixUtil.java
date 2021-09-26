@@ -42,6 +42,7 @@ import java.util.List;
 public final class MatrixUtil {
     private static final String TAG = "Matrix.MatrixUtil";
     private static String processName = null;
+    private static String packageName = null;
 
     private MatrixUtil() {
     }
@@ -67,6 +68,14 @@ public final class MatrixUtil {
         }
 
         return pkgName.equals(processName);
+    }
+
+    public static String getPackageName(final Context context) {
+        if (packageName != null) {
+            return packageName;
+        }
+        packageName = context.getPackageName();
+        return packageName;
     }
 
     /**
