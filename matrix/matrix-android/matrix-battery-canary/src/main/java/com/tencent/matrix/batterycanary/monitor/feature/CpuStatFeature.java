@@ -39,6 +39,21 @@ public class CpuStatFeature extends  AbsTaskMonitorFeature {
     @Override
     public void onTurnOn() {
         super.onTurnOn();
+        tryInitPowerProfile();
+    }
+
+    @Override
+    public void onForeground(boolean isForeground) {
+        super.onForeground(isForeground);
+        if (!isForeground) {
+            tryInitPowerProfile();
+        }
+    }
+
+    private void tryInitPowerProfile() {
+        if (mPowerProfile != null) {
+            return;
+        }
         try {
             // Check PowerProfile compat
             mPowerProfile = PowerProfile.init(mCore.getContext());
