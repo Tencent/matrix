@@ -37,6 +37,8 @@ namespace wechat_backtrace {
     static BacktraceMode backtrace_mode = FramePointer;
     static bool quicken_unwind_always_enabled = false;
 
+#define UPDATE_MAPS_AS_NEED true
+
 #ifdef __aarch64__
     static const bool m_is_arm32 = false;
 #else
@@ -126,13 +128,12 @@ namespace wechat_backtrace {
     }
 
     BACKTRACE_EXPORT inline void
-    to_quicken_frame_element(Frame &frame, unwindstack::MapInfo *map_info,
+    to_quicken_frame_element(Frame &frame, QuickenMapInfo *map_info,
                              wechat_backtrace::ElfWrapper *elf_wrapper,
                              bool fill_map_info, bool fill_build_id,
                              FrameElement &frame_element) {
 
-        frame_element.rel_pc = frame.rel_pc;
-        frame_element.maybe_java = frame.maybe_java;
+        frame_element.maybe_java = is_frame_attr_maybe_java(frame);
 
         if (fill_map_info) {
             if (map_info == nullptr) {
@@ -149,7 +150,7 @@ namespace wechat_backtrace {
         }
 
         if (!frame_element.function_name.empty()) {
-            if (!frame.maybe_java) {
+            if (!frame_element.maybe_java) {
                 char *demangled_name = abi::__cxa_demangle(frame_element.function_name.c_str(),
                                                            nullptr, nullptr,
                                                            nullptr);
@@ -161,7 +162,7 @@ namespace wechat_backtrace {
         }
 
         if (fill_build_id && map_info != nullptr) {
-            std::string build_id = elf_wrapper->GetBuildId();
+            const std::string& build_id = elf_wrapper->GetBuildId();
             if (!build_id.empty()) {
                 frame_element.build_id = build_id;
             }
@@ -184,12 +185,10 @@ namespace wechat_backtrace {
              num < frame_size && elements_size < max_elements; num++) {
 
             if (shrunk_java_stacktrace) {
-                if (found_java_frame && !frames[num].maybe_java) {
+                if (found_java_frame && !is_frame_attr_maybe_java(frames[num])) {
                     continue;
                 }
-                if (found_java_frame != frames[num].maybe_java) {
-                    found_java_frame = frames[num].maybe_java;
-                }
+                found_java_frame = is_frame_attr_maybe_java(frames[num]);
             }
             wechat_backtrace::QuickenMapInfo *map_info;
             if (last_map_info != nullptr && frames[num].pc >= last_map_info->start &&
@@ -204,11 +203,21 @@ namespace wechat_backtrace {
             std::string *function_name = &frame_element->function_name;
             uint64_t *function_offset = &frame_element->function_offset;
             wechat_backtrace::ElfWrapper *elf_wrapper = nullptr;
+
+            // Compute relative pc.
+            if (map_info != nullptr) {
+                if (is_frame_attr_is_dex_pc(frames[num])) {
+                    frame_element->rel_pc = frames[num].pc - map_info->start;
+                } else {
+                    frame_element->rel_pc = map_info->GetRelPc(frames[num].pc);
+                }
+            } else {
+                frame_element->rel_pc = frames[num].pc;
+            }
+
             if (map_info != nullptr) {
 
-                if (frames[num].is_dex_pc) {
-                    frames[num].rel_pc = frames[num].pc - map_info->start;
-
+                if (is_frame_attr_is_dex_pc(frames[num])) {
                     dex_debug->GetMethodInformation(quicken_maps.get(), map_info, frames[num].pc,
                                                     function_name,
                                                     function_offset);
@@ -217,7 +226,8 @@ namespace wechat_backtrace {
                     if (interface && interface->elf_wrapper_) {
                         elf_wrapper = interface->elf_wrapper_.get();
                         if (!elf_wrapper->IsJitCache()) {
-                            interface->elf_wrapper_->GetFunctionName(frames[num].rel_pc,
+
+                            interface->elf_wrapper_->GetFunctionName(frame_element->rel_pc,
                                                                      function_name,
                                                                      function_offset);
                         } else {
@@ -235,7 +245,7 @@ namespace wechat_backtrace {
 
             to_quicken_frame_element(
                     frames[num], map_info, elf_wrapper,
-                    /* fill_map_info */ !shrunk_java_stacktrace || !frames[num].maybe_java,
+                    /* fill_map_info */ !shrunk_java_stacktrace || !is_frame_attr_maybe_java(frames[num]),
                     /* fill_build_id */ false,
                     *frame_element);
         }
@@ -254,7 +264,7 @@ namespace wechat_backtrace {
         WeChatQuickenUnwind(context);
     }
 
-    inline void
+    static inline void
     quicken_based_unwind_inlined(Frame *frames, const size_t max_frames,
                                  size_t &frame_size) {
 
@@ -269,14 +279,14 @@ namespace wechat_backtrace {
                 .frame_max_size = max_frames,
                 .backtrace = frames,
                 .frame_size = 0,
-                .update_maps_as_need = false
+                .update_maps_as_need = UPDATE_MAPS_AS_NEED
         };
         WeChatQuickenUnwind(&context);
 
         frame_size = context.frame_size;
     }
 
-    inline void
+    static inline void
     fp_based_unwind_inlined(Frame *frames, const size_t max_frames,
                             size_t &frame_size) {
         uptr regs[FP_MINIMAL_REG_SIZE];
@@ -284,7 +294,7 @@ namespace wechat_backtrace {
         FpUnwind(regs, frames, max_frames, frame_size);
     }
 
-    inline void
+    static inline void
     dwarf_based_unwind_inlined(Frame *frames, const size_t max_frames,
                                size_t &frame_size) {
         std::vector<unwindstack::FrameData> dst;
@@ -295,7 +305,9 @@ namespace wechat_backtrace {
         auto it = dst.begin();
         while (it != dst.end()) {
             frames[i].pc = it->pc;
-            frames[i].is_dex_pc = it->is_dex_pc;
+            if (it->is_dex_pc) {
+                set_frame_attr_is_dex_pc(frames[i]);
+            }
             i++;
             it++;
         }
@@ -341,9 +353,12 @@ namespace wechat_backtrace {
         if (backtrace_mode == DwarfBased) {
             wechat_backtrace::UpdateLocalMaps();
         }
-        if (quicken_unwind_always_enabled || backtrace_mode == Quicken) {
-            // Parse quicken maps
-            wechat_backtrace::Maps::Parse();
+
+        if (!UPDATE_MAPS_AS_NEED) {
+            if (quicken_unwind_always_enabled || backtrace_mode == Quicken) {
+                // Parse quicken maps
+                wechat_backtrace::Maps::Parse();
+            }
         }
     }
 

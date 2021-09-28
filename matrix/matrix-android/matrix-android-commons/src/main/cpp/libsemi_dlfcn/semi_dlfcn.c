@@ -311,7 +311,7 @@ static int dlopen_iter_cb(struct dl_phdr_info* info, size_t info_size, void* dat
         return 0;
     }
 
-    LOGD(LOG_TAG, "dlopen_iter_cb, pathname: %s, name_suffix: %s, suffix_len: %d", pathname, name_suffix, name_suffix_len);
+    LOGD(LOG_TAG, "dlopen_iter_cb, pathname: %s, name_suffix: %s, suffix_len: %zu", pathname, name_suffix, name_suffix_len);
 
     if (strncmp(pathname + pathname_len - name_suffix_len, name_suffix, name_suffix_len) == 0) {
         semi_dlinfo->pathname = pathname;

@@ -292,7 +292,7 @@ namespace wechat_backtrace {
             // This is a thumb instruction, it could be 2 or 4 bytes.
             uint32_t value;
             uint64_t adjusted_pc = pc - 5;
-            if (!(map_info->flags & PROT_READ || map_info->flags & PROT_EXEC) ||
+            if (!(map_info->flags & PROT_READ) ||
                 adjusted_pc < map_info->start ||
                 (adjusted_pc + sizeof(value)) >= map_info->end ||
                 !process_memory_unsafe_->ReadFully(adjusted_pc, &value, sizeof(value)) ||
@@ -392,8 +392,7 @@ namespace wechat_backtrace {
             step_context.pc = rel_pc;
 
             if (LIKELY(adjust_pc)) {
-                pc_adjustment = GetPcAdjustment(map_info, PC(regs), rel_pc,
-                                                last_load_bias);
+                pc_adjustment = GetPcAdjustment(map_info, PC(regs), rel_pc, last_load_bias);
             } else {
                 pc_adjustment = 0;
             }
@@ -401,8 +400,7 @@ namespace wechat_backtrace {
             step_context.pc -= pc_adjustment;
 
             if (step_context.dex_pc != 0) {
-                backtrace[step_context.frame_index].is_dex_pc = true;
-                backtrace[step_context.frame_index].maybe_java = true;
+                set_frame_attr_all(backtrace[step_context.frame_index]);
                 backtrace[step_context.frame_index].pc = step_context.dex_pc;
                 step_context.dex_pc = 0;
 
@@ -414,8 +412,10 @@ namespace wechat_backtrace {
             }
 
             backtrace[step_context.frame_index].pc = PC(regs) - pc_adjustment;
-            backtrace[step_context.frame_index].rel_pc = step_context.pc;
-            backtrace[step_context.frame_index].maybe_java = map_info->maybe_java;
+//            backtrace[step_context.frame_index].rel_pc = step_context.pc;
+            if (map_info->maybe_java) {
+                set_frame_attr_maybe_java(backtrace[step_context.frame_index]);
+            }
 
             adjust_pc = true;
 

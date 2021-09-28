@@ -486,7 +486,7 @@ static int xh_elf_replace_function(xh_elf_t *self, const char *symbol, ElfW(Addr
     ssize_t got_write_ret = xh_util_write_memory_safely((void*) addr, (uint8_t*) &new_func_addr, sizeof(void*));
     if (got_write_ret != sizeof(void*))
     {
-        XH_LOG_ERROR("Fail to write new address into GOT/Data item, dest_address: %p", addr);
+        XH_LOG_ERROR("Fail to write new address into GOT/Data item, dest_address: %p", (const void*) addr);
         return XH_ERRNO_SEGVERR;
     }
 

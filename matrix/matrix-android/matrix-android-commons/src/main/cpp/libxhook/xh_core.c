@@ -166,7 +166,7 @@ static volatile int                 xh_core_refresh_thread_do = 0;
 void xh_core_block_refresh()
 {
     int reenter_count = (int) pthread_getspecific(xh_core_refresh_blocker_tls_key);
-    pthread_setspecific(xh_core_refresh_blocker_tls_key, (const void*) (reenter_count + 1));
+    pthread_setspecific(xh_core_refresh_blocker_tls_key, (const void*) (long) (reenter_count + 1));
     if (reenter_count == 0)
     {
         pthread_rwlock_wrlock(&xh_core_refresh_blocker);
@@ -179,7 +179,7 @@ void xh_core_unblock_refresh()
     if (reenter_count >= 1)
     {
         --reenter_count;
-        pthread_setspecific(xh_core_refresh_blocker_tls_key, (const void*) reenter_count);
+        pthread_setspecific(xh_core_refresh_blocker_tls_key, (const void*) (long) reenter_count);
     }
     if (reenter_count == 0)
     {

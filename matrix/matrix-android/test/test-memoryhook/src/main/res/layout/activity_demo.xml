@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:paddingTop="16dp"
+    android:paddingLeft="32dp"
+    android:paddingRight="32dp">
+
+    <TextView
+        android:id="@+id/textview_usage"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingTop="16dp"
+        android:paddingBottom="16dp"
+        android:text=""
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <Button
+        android:id="@+id/btn_wechat_prepare_data"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:onClick="prepareData"
+        android:text="Prepare Data"
+        android:textAllCaps="false"
+        app:layout_constraintStart_toStartOf="@+id/textview_usage"
+        app:layout_constraintTop_toBottomOf="@+id/textview_usage"
+        tools:ignore="HardcodedText" />
+
+    <Button
+        android:id="@+id/btn_wechat_run_test"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:onClick="runTest"
+        android:text="Start Run Test"
+        android:textAllCaps="false"
+        app:layout_constraintStart_toStartOf="@+id/btn_wechat_prepare_data"
+        app:layout_constraintTop_toBottomOf="@+id/btn_wechat_prepare_data"
+        tools:ignore="HardcodedText" />
+
+    <Button
+        android:id="@+id/btn_wechat_estimate_hash"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:onClick="estimateHash"
+        android:text="Estimate Hash"
+        android:textAllCaps="false"
+        app:layout_constraintStart_toStartOf="@+id/btn_wechat_run_test"
+        app:layout_constraintTop_toBottomOf="@+id/btn_wechat_run_test"
+        tools:ignore="HardcodedText" />
+
+    <Button
+        android:id="@+id/btn_wechat_dump"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:onClick="dump"
+        android:text="Dump"
+        android:textAllCaps="false"
+        app:layout_constraintStart_toStartOf="@+id/btn_wechat_estimate_hash"
+        app:layout_constraintTop_toBottomOf="@+id/btn_wechat_estimate_hash"
+        tools:ignore="HardcodedText" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>
