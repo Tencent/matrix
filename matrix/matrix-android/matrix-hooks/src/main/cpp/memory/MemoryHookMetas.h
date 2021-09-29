@@ -371,14 +371,18 @@ public:
                         target = static_cast<stack_meta_t *>(target->ext);
 
         #if USE_MEMORY_MESSAGE_QUEUE_LOCK_FREE == true
+            #if USE_CACHE_LINE_FRIENDLY != true
                         // Statistic
                         matrix::g_queue_extra_stack_meta_allocated.fetch_add(1, std::memory_order_relaxed);
                         matrix::g_queue_extra_stack_meta_kept.fetch_add(1, std::memory_order_relaxed);
+            #endif
         #else
                         is_top = 0;
+            #if USE_CACHE_LINE_FRIENDLY != true
                         // Statistic
                         matrix::BufferQueue::g_queue_extra_stack_meta_allocated.fetch_add(1, std::memory_order_relaxed);
                         matrix::BufferQueue::g_queue_extra_stack_meta_kept.fetch_add(1, std::memory_order_relaxed);
+            #endif
         #endif
                     }
                 }
@@ -486,10 +490,14 @@ public:
                             prev->ext = ext->ext;
                             free(ext);
         #if USE_MEMORY_MESSAGE_QUEUE_LOCK_FREE == true
+            #if USE_CACHE_LINE_FRIENDLY != true
                             matrix::g_queue_extra_stack_meta_kept.fetch_sub(1, std::memory_order_relaxed);
+            #endif
         #else
+            #if USE_CACHE_LINE_FRIENDLY != true
                             // Statistic
                             matrix::BufferQueue::g_queue_extra_stack_meta_kept.fetch_sub(1, std::memory_order_relaxed);
+            #endif
         #endif
                         }
                     }

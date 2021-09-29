@@ -43,6 +43,7 @@ namespace matrix {
         HOOK_CHECK(assertion)
     }
 
+    std::atomic<size_t> BufferQueueContainer::g_message_overflow_counter = 0;
 #if USE_MEMORY_MESSAGE_QUEUE_LOCK_FREE == true
     std::atomic<size_t> g_queue_realloc_counter = 0;
     std::atomic<size_t> g_queue_realloc_size_counter = 0;
@@ -50,7 +51,6 @@ namespace matrix {
     std::atomic<size_t> g_queue_realloc_over_limit_counter = 0;
     std::atomic<size_t> g_queue_extra_stack_meta_allocated = 0;
     std::atomic<size_t> g_queue_extra_stack_meta_kept = 0;
-
 #else
     std::atomic<size_t> BufferQueueContainer::g_locker_collision_counter = 0;
 
@@ -67,18 +67,27 @@ namespace matrix {
     BufferManagement::BufferManagement(memory_meta_container *memory_meta_container) {
 
 #if USE_MEMORY_MESSAGE_QUEUE_LOCK_FREE == true
+    #if USE_MEMORY_MESSAGE_QUEUE_LOCK_FREE_ARRAY != true
         const size_t max_fold_ = 512;
 
         message_allocator_ = new ResizableFreeList<message_t, 9, max_fold_>();
         alloc_message_allocator_ = new ResizableFreeList<allocation_message_t, 8, max_fold_>();
         node_allocator_ = new ResizableFreeList<message_node_t *, 10, max_fold_>();
+    #else
+        message_allocator_ = new message_allocator_t();
+        alloc_message_allocator_ = new alloc_message_allocator_t();
+    #endif
 #endif
 
         containers_.reserve(MAX_PTR_SLOT);
         for (int i = 0; i < MAX_PTR_SLOT; ++i) {
             auto container = new BufferQueueContainer();
 #if USE_MEMORY_MESSAGE_QUEUE_LOCK_FREE == true
+    #if USE_MEMORY_MESSAGE_QUEUE_LOCK_FREE_ARRAY != true
             container->queue_ = new BufferQueue(node_allocator_);
+    #else
+            container->queue_ = new BufferQueue(message_allocator_, alloc_message_allocator_);
+    #endif
 #endif
             containers_.emplace_back(container);
         }
@@ -94,16 +103,20 @@ namespace matrix {
 #if USE_MEMORY_MESSAGE_QUEUE_LOCK_FREE == true
         delete message_allocator_;
         delete alloc_message_allocator_;
+    #if USE_MEMORY_MESSAGE_QUEUE_LOCK_FREE_ARRAY != true
         delete node_allocator_;
+    #endif
 #else
         delete queue_swapped_;
 #endif
     }
 
     [[noreturn]] void BufferManagement::process_routine(BufferManagement *this_) {
+        size_t last_total_message_counter = 0;
+        size_t total_message_counter = 0;
         while (true) {
-            HOOK_LOG_ERROR("Process routine outside ... this_->containers_ %zu",
-                           this_->containers_.size());
+//            HOOK_LOG_ERROR("Process routine outside ... this_->containers_ %zu",
+//                           this_->containers_.size());
 
 #if USE_MEMORY_MESSAGE_QUEUE_LOCK_FREE != true
             if (!this_->queue_swapped_) this_->queue_swapped_ = new BufferQueue(SIZE_AUGMENT);
@@ -111,7 +124,7 @@ namespace matrix {
 
             size_t busy_queue = 0;
             for (auto container : this_->containers_) {
-                HOOK_LOG_ERROR("Process routine ... ");
+//                HOOK_LOG_ERROR("Process routine ... ");
 #if USE_MEMORY_MESSAGE_QUEUE_LOCK_FREE != true
                 BufferQueue *swapped = nullptr;
                 {
@@ -132,6 +145,7 @@ namespace matrix {
                             [&](message_t *message, allocation_message_t *allocation_message) {
 #else
                 size_t message_counter = 0;
+    #if USE_MEMORY_MESSAGE_QUEUE_LOCK_FREE_ARRAY != true
                 if (container) {
                     container->queue_->process(
                             [&](Node<message_t> *message_node, Node<allocation_message_t> *allocation_message_node) {
@@ -141,7 +155,24 @@ namespace matrix {
                                 if (allocation_message_node) {
                                     allocation_message = &allocation_message_node->t_;
                                 }
+    #else
+                if (container) {
+                    container->queue_->process(
+                            [&](uint32_t message_idx) {
+                                auto message = this_->message_allocator_->get(message_idx);
+                                uint32_t allocation_message_idx = INT32_MAX;
+                                allocation_message_t *allocation_message = nullptr;
+                                if (message->type == message_type_allocation ||
+                                        message->type == message_type_mmap) {
+                                    allocation_message_idx = message->index;
+                                    allocation_message = this_->alloc_message_allocator_->get(allocation_message_idx);
+                                    CRITICAL_CHECK(allocation_message_idx != INT32_MAX);
+                                    CRITICAL_CHECK(allocation_message);
+                                }
+                                if (true) {
+    #endif
 #endif
+                                total_message_counter++;
                                 if (message->type == message_type_allocation ||
                                     message->type == message_type_mmap) {
 #if USE_CRITICAL_CHECK == true
@@ -202,37 +233,60 @@ namespace matrix {
                                             reinterpret_cast<const void *>(message->ptr));
                                 }
 #if USE_MEMORY_MESSAGE_QUEUE_LOCK_FREE == true
+    #if USE_MEMORY_MESSAGE_QUEUE_LOCK_FREE_ARRAY != true
                                 if (message_node) {
                                     this_->message_allocator_->deallocate(message_node);
                                 }
                                 if (allocation_message_node) {
                                     this_->alloc_message_allocator_->deallocate(allocation_message_node);
                                 }
+    #else
+                                }
+                                if (message_idx != INT32_MAX) {
+                                    this_->message_allocator_->deallocate_spmc(message_idx);
+                                }
+                                if (allocation_message_idx != INT32_MAX) {
+                                    this_->alloc_message_allocator_->deallocate_spmc(allocation_message_idx);
+                                }
+    #endif
                             });
-                    if (message_counter > 0) {
-                        HOOK_LOG_ERROR("Processed ... %zu messages ", message_counter);
-                    }
 #else
                             });
                     swapped->reset();
                     this_->queue_swapped_ = swapped;
 #endif
+
+                    if (total_message_counter - last_total_message_counter > 100000) {
+                        HOOK_LOG_ERROR("Total Processed ... %zu messages, offer overflow counter %zu", total_message_counter, BufferQueueContainer::g_message_overflow_counter.load());
+                        last_total_message_counter = total_message_counter;
+                    }
                 }
             }
 
             float busy_ratio = ((float) busy_queue) / this_->containers_.size();
 
+#if USE_MEMORY_MESSAGE_QUEUE_LOCK_FREE == true
+            if (busy_ratio > 0.3f) { // Super busy
+                continue;
+            } else {
+                usleep(5 * 1000);
+            }
+#else
             if (busy_ratio > 0.9f) { // Super busy
                 continue;
-            } else if (busy_ratio > 0.6f) { // Busy
+            }
+            else if (busy_ratio > 0.6f) { // Busy
                 usleep(PROCESS_BUSY_INTERVAL);
-            } else if (busy_ratio > 0.3f) {
+            }
+            else if (busy_ratio > 0.3f) {
                 usleep(PROCESS_NORMAL_INTERVAL);
-            } else if (busy_ratio > 0.1f) {
+            }
+            else if (busy_ratio > 0.1f) {
                 usleep(PROCESS_LESS_NORMAL_INTERVAL);
             } else {
                 usleep(PROCESS_IDLE_INTERVAL);
             }
+#endif
         }
     }
 

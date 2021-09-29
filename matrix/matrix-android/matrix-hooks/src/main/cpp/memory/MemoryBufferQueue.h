@@ -22,7 +22,13 @@
 #include <memory>
 #include <common/Macros.h>
 #include <Backtrace.h>
-#include <common/struct/lock_free_queue.h>
+#if USE_MEMORY_MESSAGE_QUEUE_LOCK_FREE == true
+    #if USE_MEMORY_MESSAGE_QUEUE_LOCK_FREE_ARRAY == true
+        #include <common/struct/lock_free_array_queue.h>
+    #else
+        #include <common/struct/lock_free_queue.h>
+    #endif
+#endif
 
 class memory_meta_container;
 
@@ -114,7 +120,7 @@ namespace matrix {
             return buffer;
         }
 
-        inline void enqueue_deletion_message(uintptr_t ptr, bool is_munmap) {
+        inline bool enqueue_deletion_message(uintptr_t ptr, bool is_munmap) {
 
             // Fast path.
             if (msg_queue_idx_ > 0) {
@@ -125,19 +131,21 @@ namespace matrix {
                     msg_idx->type = message_type_nil;
                     msg_queue_idx_--;
                     alloc_msg_queue_idx_--;
-                    return;
+                    return true;
                 }
             }
 
             if (UNLIKELY(msg_queue_idx_ >= msg_queue_size_)) {
                 if (UNLIKELY(!buffer_realloc_message_queue(false))) {
-                    return;
+                    return false;
                 }
             }
 
             message_t *msg_idx = &message_queue_[msg_queue_idx_++];
             msg_idx->type = is_munmap ? message_type_munmap : message_type_deletion;
             msg_idx->ptr = ptr;
+
+            return true;
         }
 
         inline bool empty() const {
@@ -184,13 +192,16 @@ namespace matrix {
     private:
 
         bool buffer_realloc_message_queue(bool init) {
+#if USE_CACHE_LINE_FRIENDLY != true
             if (!init && msg_queue_size_ != 0) {
-                g_queue_realloc_reason_1_counter.fetch_add(1);
+                g_queue_realloc_reason_1_counter.fetch_add(1, std::memory_order_relaxed);
             }
-
-            if (UNLIKELY(!init && g_queue_realloc_memory_1_counter.load() +
-                                  g_queue_realloc_memory_2_counter.load() >= MEMORY_OVER_LIMIT)) {
-                g_queue_realloc_over_limit_counter.fetch_add(1);
+#endif
+            if (UNLIKELY(!init && g_queue_realloc_memory_1_counter.load(std::memory_order_relaxed) +
+                                  g_queue_realloc_memory_2_counter.load(std::memory_order_relaxed) >= MEMORY_OVER_LIMIT)) {
+#if USE_CACHE_LINE_FRIENDLY != true
+                g_queue_realloc_over_limit_counter.fetch_add(1, std::memory_order_relaxed);
+#endif
                 return false;
             }
 
@@ -212,20 +223,23 @@ namespace matrix {
 
                 return true;
             } else {
+#if USE_CACHE_LINE_FRIENDLY != true
                 g_queue_realloc_failure_counter.fetch_add(1, std::memory_order_relaxed);
-
+#endif
                 return false;
             }
         }
 
         bool buffer_realloc_alloc_queue(bool init) {
+#if USE_CACHE_LINE_FRIENDLY != true
             if (!init && alloc_queue_size_ != 0) {
-                g_queue_realloc_reason_2_counter.fetch_add(1);
+                g_queue_realloc_reason_2_counter.fetch_add(1, std::memory_order_relaxed);
             }
+#endif
 
-            if (UNLIKELY(!init && g_queue_realloc_memory_1_counter.load() +
-                                  g_queue_realloc_memory_2_counter.load() >= MEMORY_OVER_LIMIT)) {
-                g_queue_realloc_over_limit_counter.fetch_add(1);
+            if (UNLIKELY(!init && g_queue_realloc_memory_1_counter.load(std::memory_order_relaxed) +
+                                  g_queue_realloc_memory_2_counter.load(std::memory_order_relaxed) >= MEMORY_OVER_LIMIT)) {
+                g_queue_realloc_over_limit_counter.fetch_add(1, std::memory_order_relaxed);
                 return false;
             }
 
@@ -249,8 +263,9 @@ namespace matrix {
 
                 return true;
             } else {
+#if USE_CACHE_LINE_FRIENDLY != true
                 g_queue_realloc_failure_counter.fetch_add(1, std::memory_order_relaxed);
-
+#endif
                 return false;
             }
         }
@@ -268,7 +283,7 @@ namespace matrix {
     };
 
 #else
-
+    #if USE_MEMORY_MESSAGE_QUEUE_LOCK_FREE_ARRAY != true
     // Statistic
     extern std::atomic<size_t> g_queue_realloc_counter;
     extern std::atomic<size_t> g_queue_realloc_size_counter;
@@ -315,7 +330,51 @@ namespace matrix {
 
     private:
     };
+    #else
 
+    // Statistic
+    extern std::atomic<size_t> g_queue_realloc_counter;
+    extern std::atomic<size_t> g_queue_realloc_size_counter;
+    extern std::atomic<size_t> g_queue_realloc_failure_counter;
+    extern std::atomic<size_t> g_queue_realloc_over_limit_counter;
+    extern std::atomic<size_t> g_queue_extra_stack_meta_allocated;
+    extern std::atomic<size_t> g_queue_extra_stack_meta_kept;
+
+    typedef SPMC_FixedFreeList<message_t, ReservedSize(22)> message_allocator_t;
+    typedef SPMC_FixedFreeList<allocation_message_t, ReservedSize(22)> alloc_message_allocator_t;
+    typedef LockFreeArrayQueue<uint32_t, 8192 << 7> message_queue_t;
+
+    class BufferQueue {
+
+    public:
+        BufferQueue(message_allocator_t * allocator, alloc_message_allocator_t * allocator_2)
+            : message_allocator_(allocator), alloc_message_allocator_(allocator_2) {
+            message_queue_ = new message_queue_t();
+        };
+
+        ~BufferQueue() {
+            delete message_queue_;
+        }
+
+        inline void process(std::function<void(uint32_t)> callback) {
+
+            uint32_t message_idx;
+            while (message_queue_->poll_mpsc(message_idx)) {
+                callback(message_idx);
+            }
+        }
+
+        inline bool offer(const uint32_t message_idx) {
+            message_queue_->offer_mpsc(message_idx);
+        }
+
+        message_queue_t *message_queue_;
+        message_allocator_t * message_allocator_;
+        alloc_message_allocator_t *alloc_message_allocator_;
+
+    private:
+    };
+    #endif
 #endif
 
     class BufferQueueContainer {
@@ -332,12 +391,14 @@ namespace matrix {
 
         static std::atomic<size_t> g_locker_collision_counter;
         inline void lock() {
-            if (!mutex_.try_lock()) {
+            if (UNLIKELY(!mutex_.try_lock())) {
+                #if USE_CACHE_LINE_FRIENDLY != true
                 g_locker_collision_counter.fetch_add(1, std::memory_order_relaxed);
+                #endif
                 mutex_.lock();
             }
 
-            if (!queue_) {
+            if (UNLIKELY(!queue_)) {
                 queue_ = new BufferQueue(SIZE_AUGMENT);
             }
         }
@@ -346,6 +407,7 @@ namespace matrix {
             mutex_.unlock();
         }
 #endif
+        static std::atomic<size_t> g_message_overflow_counter;
     };
 
     class BufferManagement {
@@ -359,17 +421,21 @@ namespace matrix {
         std::vector<BufferQueueContainer *> containers_;
 
 #if USE_MEMORY_MESSAGE_QUEUE_LOCK_FREE == true
+    #if USE_MEMORY_MESSAGE_QUEUE_LOCK_FREE_ARRAY != true
         FreeList<message_t> *message_allocator_;
         FreeList<allocation_message_t> *alloc_message_allocator_;
         FreeList<message_node_t *> *node_allocator_;
+    #else
+        message_allocator_t *message_allocator_;
+        alloc_message_allocator_t *alloc_message_allocator_;
+    #endif
 #endif
 
     private:
 
         [[noreturn]] static void process_routine(BufferManagement *this_);
 
-#if USE_MEMORY_MESSAGE_QUEUE_LOCK_FREE == true
-#else
+#if USE_MEMORY_MESSAGE_QUEUE_LOCK_FREE != true
         BufferQueue *queue_swapped_ = nullptr;
 #endif
 

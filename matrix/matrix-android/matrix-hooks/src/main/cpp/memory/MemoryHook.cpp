@@ -90,7 +90,7 @@ static inline bool should_do_unwind(size_t byte_count) {
             && (m_tracing_alloc_size_max == 0 || byte_count <= m_tracing_alloc_size_max));
 }
 
-#if USE_FAKE_BACKTRACE_DATA == true
+#if ENABLE_FAKE_BACKTRACE_DATA == true
 #define do_unwind(frames, max_frames, frame_size) fake_unwind(frames, max_frames, frame_size);
 #else
 #define do_unwind(frames, max_frames, frame_size) \
@@ -118,7 +118,9 @@ static inline void on_acquire_memory(
 
     ON_MEMORY_ALLOCATED((uint64_t) ptr, byte_count);
 
+#if USE_CACHE_LINE_FRIENDLY != true
     allocate_counter.fetch_add(1, std::memory_order::memory_order_relaxed);
+#endif
 
 #if USE_MEMORY_MESSAGE_QUEUE == true
     BufferQueueContainer *container = m_memory_messages_containers_.containers_[memory_ptr_hash(
@@ -126,12 +128,20 @@ static inline void on_acquire_memory(
     {
     #if USE_MEMORY_MESSAGE_QUEUE_LOCK_FREE == true
 
+        #if USE_MEMORY_MESSAGE_QUEUE_LOCK_FREE_ARRAY != true
         auto message_node = m_memory_messages_containers_.message_allocator_->allocate();
         auto allocation_message_node = m_memory_messages_containers_.alloc_message_allocator_->allocate();
 
-        if (UNLIKELY(!message_node || !allocation_message_node)) {
+        if (UNLIKELY(!message_node)) {
+            BufferQueueContainer::g_message_overflow_counter.fetch_add(1);
+            CHECK_MESSAGE_OVERFLOW(!message_node);
+            return;
+        }
+
+        if (UNLIKELY(!allocation_message_node)) {
             m_memory_messages_containers_.message_allocator_->deallocate(message_node);
-            m_memory_messages_containers_.alloc_message_allocator_->deallocate(allocation_message_node);
+            BufferQueueContainer::g_message_overflow_counter.fetch_add(1);
+            CHECK_MESSAGE_OVERFLOW(!allocation_message_node);
             return;
         }
 
@@ -151,8 +161,51 @@ static inline void on_acquire_memory(
             allocation_message_node->t_.backtrace.frame_size = frame_size;
         }
 
-        container->queue_->message_queue_->offer(message_node);
+        bool ret = container->queue_->message_queue_->offer(message_node);
+        if (UNLIKELY(!ret)) {
+            BufferQueueContainer::g_message_overflow_counter.fetch_add(1);
+            CHECK_MESSAGE_OVERFLOW(!ret);
+            return;
+        }
+        #else
+        auto message_idx = m_memory_messages_containers_.message_allocator_->allocate_spmc();
+        auto allocation_message_idx = m_memory_messages_containers_.alloc_message_allocator_->allocate_spmc();
 
+        if (UNLIKELY(message_idx == INT_MAX)) {
+            BufferQueueContainer::g_message_overflow_counter.fetch_add(1);
+            CHECK_MESSAGE_OVERFLOW(message_idx == INT_MAX);
+            return;
+        }
+
+        if (UNLIKELY(allocation_message_idx == INT_MAX)) {
+            BufferQueueContainer::g_message_overflow_counter.fetch_add(1);
+            CHECK_MESSAGE_OVERFLOW(allocation_message_idx == INT_MAX);
+            return;
+        }
+
+        auto message_node = m_memory_messages_containers_.message_allocator_->get(message_idx);
+        auto allocation_message_node = m_memory_messages_containers_.alloc_message_allocator_->get(allocation_message_idx);
+
+        message_node->type = is_mmap ? message_type_mmap : message_type_allocation;
+        message_node->index = allocation_message_idx;
+
+        allocation_message_node->ptr = reinterpret_cast<uintptr_t>(ptr);
+        allocation_message_node->size = byte_count;
+        allocation_message_node->caller = reinterpret_cast<uintptr_t>(caller);
+
+        if (LIKELY(is_stacktrace_enabled && should_do_unwind(byte_count))) {
+            size_t frame_size = 0;
+            do_unwind(allocation_message_node->backtrace.frames, MEMHOOK_BACKTRACE_MAX_FRAMES,
+                      frame_size);
+            allocation_message_node->backtrace.frame_size = frame_size;
+        }
+
+        bool ret = container->queue_->offer(message_idx);
+        if (UNLIKELY(!ret)) {
+            BufferQueueContainer::g_message_overflow_counter.fetch_add(1);
+            CHECK_MESSAGE_OVERFLOW(!ret);
+        }
+        #endif
     #else
         memory_backtrace_t backtrace {0};
         if (LIKELY(byte_count > 0 && is_stacktrace_enabled && should_do_unwind(byte_count))) {
@@ -165,7 +218,10 @@ static inline void on_acquire_memory(
         container->lock();
 
         auto message = container->queue_->enqueue_allocation_message(is_mmap);
-        if (LIKELY(message)) {
+        if (UNLIKELY(!message)) {
+            BufferQueueContainer::g_message_overflow_counter.fetch_add(1);
+            CHECK_MESSAGE_OVERFLOW(!message);
+        } else {
             message->ptr = reinterpret_cast<uintptr_t>(ptr);
             message->size = byte_count;
             message->caller = reinterpret_cast<uintptr_t>(caller);
@@ -219,7 +275,9 @@ static inline void on_release_memory(void *ptr, bool is_munmap) {
 
     ON_MEMORY_RELEASED((uint64_t) ptr);
 
+#if USE_CACHE_LINE_FRIENDLY != true
     release_counter.fetch_add(1, std::memory_order::memory_order_relaxed);
+#endif
 
 #if USE_MEMORY_MESSAGE_QUEUE == true
     BufferQueueContainer *container = m_memory_messages_containers_.containers_[memory_ptr_hash(
@@ -227,26 +285,51 @@ static inline void on_release_memory(void *ptr, bool is_munmap) {
 
     #if USE_MEMORY_MESSAGE_QUEUE_LOCK_FREE == true
 
+        #if USE_MEMORY_MESSAGE_QUEUE_LOCK_FREE_ARRAY != true
     auto message_node = m_memory_messages_containers_.message_allocator_->allocate();
 
-    if (UNLIKELY(!message_node)) return;
+    if (UNLIKELY(!message_node)) {
+        BufferQueueContainer::g_message_overflow_counter.fetch_add(1);
+        CHECK_MESSAGE_OVERFLOW(!message_node);
+        return;
+    }
 
     message_node->t_.type = is_munmap ? message_type_munmap : message_type_deletion;
     message_node->t_.ptr = reinterpret_cast<uintptr_t>(ptr);
 
-    container->queue_->message_queue_->offer(message_node);
+    bool ret = container->queue_->message_queue_->offer(message_node);
+    if (UNLIKELY(!ret)) {
+        BufferQueueContainer::g_message_overflow_counter.fetch_add(1);
+        CHECK_MESSAGE_OVERFLOW(!ret);
+        return;
+    }
+        #else
+    auto message_idx = m_memory_messages_containers_.message_allocator_->allocate_spmc();
+    if (UNLIKELY(message_idx == INT_MAX)) return;
+    auto message_node = m_memory_messages_containers_.message_allocator_->get(message_idx);
+
+    message_node->type = is_munmap ? message_type_munmap : message_type_deletion;
+    message_node->ptr = reinterpret_cast<uintptr_t>(ptr);
+
+    bool ret = container->queue_->offer(message_idx);
+    if (UNLIKELY(!ret)) {
+        BufferQueueContainer::g_message_overflow_counter.fetch_add(1);
+        CHECK_MESSAGE_OVERFLOW(!ret);
+    }
+        #endif
 
     #else
-    if (!container->mutex_.try_lock()) {
-        BufferQueueContainer::g_locker_collision_counter.fetch_add(1, std::memory_order_relaxed);
-        container->mutex_.lock();
-    }
 
-    if (!container->queue_) {
-        container->queue_ = new BufferQueue(SIZE_AUGMENT);
+    container->lock();
+
+    bool ret = container->queue_->enqueue_deletion_message(reinterpret_cast<uintptr_t>(ptr), is_munmap);
+
+    container->unlock();
+
+    if (UNLIKELY(!ret)) {
+        BufferQueueContainer::g_message_overflow_counter.fetch_add(1);
+        CHECK_MESSAGE_OVERFLOW(!ret);
     }
-    container->queue_->enqueue_deletion_message(reinterpret_cast<uintptr_t>(ptr), is_munmap);
-    container->mutex_.unlock();
     #endif
 #else
     m_memory_meta_container.erase(ptr);
@@ -456,8 +539,9 @@ static inline void dump_callers(FILE *log_file,
              buffer_source_memory::g_realloc_memory_counter.load(std::memory_order_relaxed),
              BufferQueue::g_queue_realloc_memory_1_counter.load(std::memory_order_relaxed),
              BufferQueue::g_queue_realloc_memory_2_counter.load(std::memory_order_relaxed));
-    flogger0(log_file, "| Queue lock collision = %zu.\n",
-             BufferQueueContainer::g_locker_collision_counter.load(std::memory_order_relaxed));
+    flogger0(log_file, "| Queue lock collision = %zu, message overflow = %zu.\n",
+             BufferQueueContainer::g_locker_collision_counter.load(std::memory_order_relaxed),
+             BufferQueueContainer::g_message_overflow_counter.load(std::memory_order_relaxed));
     flogger0(log_file, "| Realloc failure = %zu, memory over limit failure = %zu.\n",
              BufferQueue::g_queue_realloc_failure_counter.load(std::memory_order_relaxed),
              BufferQueue::g_queue_realloc_over_limit_counter.load(std::memory_order_relaxed));
