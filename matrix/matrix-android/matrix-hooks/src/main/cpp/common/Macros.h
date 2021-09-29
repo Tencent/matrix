@@ -22,17 +22,13 @@
 #define LIBMATRIX_JNI_MACROS_H
 
 #include <android/log.h>
-#define HOOK_LOG_ERROR(fmt, ...) __android_log_print(ANDROID_LOG_ERROR,  "TestHook", fmt, ##__VA_ARGS__)
+#define HOOK_LOG_ERROR(fmt, ...) //__android_log_print(ANDROID_LOG_ERROR,  "TestHook", fmt, ##__VA_ARGS__)
 
 #define USE_CRITICAL_CHECK true
 #define USE_MEMORY_MESSAGE_QUEUE true
 #define USE_SPLAY_MAP_SAVE_STACK true
 #define USE_STACK_HASH_NO_COLLISION true
 #define USE_CACHE_LINE_FRIENDLY false
-
-/* Incubating - no feasible performance. */
-#define USE_MEMORY_MESSAGE_QUEUE_LOCK_FREE false
-#define USE_MEMORY_MESSAGE_QUEUE_LOCK_FREE_ARRAY true
 
 /* For testing */
 #define ENABLE_FAKE_BACKTRACE_DATA false
