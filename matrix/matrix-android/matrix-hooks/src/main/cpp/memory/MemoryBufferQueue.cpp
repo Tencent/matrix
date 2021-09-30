@@ -46,8 +46,8 @@ namespace matrix {
     std::atomic<size_t> BufferQueueContainer::g_message_overflow_counter = 0;
     std::atomic<size_t> BufferQueueContainer::g_locker_collision_counter = 0;
 
-    message_queue_counter_t BufferQueue::g_message_queue_counter_ {};
-    message_queue_counter_t BufferQueue::g_allocation_queue_counter_ {};
+    message_queue_counter_t BufferQueue::g_message_queue_counter_{};
+    message_queue_counter_t BufferQueue::g_allocation_queue_counter_{};
 
     std::atomic<size_t> BufferQueue::g_queue_extra_stack_meta_allocated = 0;
     std::atomic<size_t> BufferQueue::g_queue_extra_stack_meta_kept = 0;
@@ -104,15 +104,15 @@ namespace matrix {
                                 total_message_counter++;
                                 if (message->type == message_type_allocation ||
                                     message->type == message_type_mmap) {
-#if USE_CRITICAL_CHECK == true
-                                    HOOK_CHECK(allocation_message);
-#else
-                                    if (UNLIKELY(allocation_message == nullptr)) return;
-#endif
+
+                                    if (UNLIKELY(allocation_message == nullptr)) {
+                                        CRITICAL_CHECK(allocation_message);
+                                        return;
+                                    }
 
                                     uint64_t stack_hash = 0;
                                     if (allocation_message->size != 0 &&
-                                            allocation_message->backtrace.frame_size != 0) {
+                                        allocation_message->backtrace.frame_size != 0) {
                                         stack_hash = hash_frames(
                                                 allocation_message->backtrace.frames,
                                                 allocation_message->backtrace.frame_size);
@@ -121,26 +121,17 @@ namespace matrix {
                                     this_->memory_meta_container_->insert(
                                             reinterpret_cast<const void *>(allocation_message->ptr),
                                             stack_hash,
-#if USE_SPLAY_MAP_SAVE_STACK == true
                                             allocation_message,
-#endif
                                             [&](ptr_meta_t *ptr_meta, stack_meta_t *stack_meta) {
                                                 ptr_meta->ptr = reinterpret_cast<void *>(allocation_message->ptr);
                                                 ptr_meta->size = allocation_message->size;
                                                 ptr_meta->attr.is_mmap =
                                                         message->type == message_type_mmap;
 
-#if USE_STACK_HASH_NO_COLLISION == true
                                                 if (UNLIKELY(!stack_meta)) {
                                                     ptr_meta->caller = allocation_message->caller;
                                                     return;
                                                 }
-#else
-                                                ptr_meta->caller = allocation_message->caller;
-                                                if (UNLIKELY(!stack_meta)) {
-                                                    return;
-                                                }
-#endif
 
                                                 stack_meta->size += allocation_message->size;
                                                 if (stack_meta->backtrace.frame_size == 0 &&
@@ -159,7 +150,10 @@ namespace matrix {
                     this_->queue_swapped_ = swapped;
 
                     if (total_message_counter - last_total_message_counter > 100000) {
-                        HOOK_LOG_ERROR("Total Processed ... %zu messages, offer overflow counter %zu", total_message_counter, BufferQueueContainer::g_message_overflow_counter.load());
+                        HOOK_LOG_ERROR(
+                                "Total Processed ... %zu messages, offer overflow counter %zu",
+                                total_message_counter,
+                                BufferQueueContainer::g_message_overflow_counter.load());
                         last_total_message_counter = total_message_counter;
                     }
                 }

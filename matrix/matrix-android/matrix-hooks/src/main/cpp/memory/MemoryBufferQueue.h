@@ -270,12 +270,11 @@ namespace matrix {
         std::mutex mutex_;
 
         static std::atomic<size_t> g_locker_collision_counter;
+        static std::atomic<size_t> g_message_overflow_counter;
 
         inline void lock() {
             if (UNLIKELY(!mutex_.try_lock())) {
-#if USE_CACHE_LINE_FRIENDLY != true
                 g_locker_collision_counter.fetch_add(1, std::memory_order_relaxed);
-#endif
                 mutex_.lock();
             }
 
@@ -287,8 +286,6 @@ namespace matrix {
         inline void unlock() {
             mutex_.unlock();
         }
-
-        static std::atomic<size_t> g_message_overflow_counter;
     };
 
     class BufferManagement {

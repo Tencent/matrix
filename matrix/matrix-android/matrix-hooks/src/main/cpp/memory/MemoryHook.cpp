@@ -60,17 +60,11 @@ static size_t m_tracing_alloc_size_max = 0;
 
 static size_t m_stacktrace_log_threshold;
 
-#if USE_MEMORY_MESSAGE_QUEUE == true
 static BufferManagement m_memory_messages_containers_(&m_memory_meta_container);
 
 void memory_hook_init() {
     m_memory_messages_containers_.start_process();
 }
-
-#else
-void memory_hook_init() {
-}
-#endif
 
 void enable_stacktrace(bool enable) {
     is_stacktrace_enabled = enable;
@@ -118,11 +112,10 @@ static inline void on_acquire_memory(
 
     ON_MEMORY_ALLOCATED((uint64_t) ptr, byte_count);
 
-#if USE_CACHE_LINE_FRIENDLY != true
+#if USE_ALLOC_COUNTER != true
     allocate_counter.fetch_add(1, std::memory_order::memory_order_relaxed);
 #endif
 
-#if USE_MEMORY_MESSAGE_QUEUE == true
     BufferQueueContainer *container = m_memory_messages_containers_.containers_[memory_ptr_hash(
             (uintptr_t) ptr)];
     {
@@ -153,36 +146,6 @@ static inline void on_acquire_memory(
         container->unlock();
 
     }
-#else
-    matrix::memory_backtrace_t  backtrace;
-    uint64_t                    stack_hash = 0;
-    if (LIKELY(is_stacktrace_enabled && should_do_unwind(byte_count))) {
-        size_t frame_size = 0;
-        do_unwind(backtrace.frames, MEMHOOK_BACKTRACE_MAX_FRAMES, frame_size);
-        backtrace.frame_size = frame_size;
-        stack_hash = hash_frames(backtrace.frames, backtrace.frame_size);
-    }
-
-    m_memory_meta_container.insert(
-            ptr,
-            stack_hash,
-            [&](ptr_meta_t *ptr_meta, stack_meta_t *stack_meta) {
-               ptr_meta->ptr     = ptr;
-               ptr_meta->size    = byte_count;
-               ptr_meta->caller  = caller;
-               ptr_meta->is_mmap = is_mmap;
-
-               if (UNLIKELY(!stack_meta)) {
-                   return;
-               }
-
-               stack_meta->size += byte_count;
-               if (stack_meta->backtrace.frame_size == 0 && backtrace.frame_size != 0) {
-                   stack_meta->backtrace = backtrace;
-                   stack_meta->caller    = caller;
-               }
-            });
-#endif
 
 }
 
@@ -195,11 +158,10 @@ static inline void on_release_memory(void *ptr, bool is_munmap) {
 
     ON_MEMORY_RELEASED((uint64_t) ptr);
 
-#if USE_CACHE_LINE_FRIENDLY != true
+#if USE_ALLOC_COUNTER != true
     release_counter.fetch_add(1, std::memory_order::memory_order_relaxed);
 #endif
 
-#if USE_MEMORY_MESSAGE_QUEUE == true
     BufferQueueContainer *container = m_memory_messages_containers_.containers_[memory_ptr_hash(
             (uintptr_t) ptr)];
 
@@ -214,9 +176,6 @@ static inline void on_release_memory(void *ptr, bool is_munmap) {
         BufferQueueContainer::g_message_overflow_counter.fetch_add(1, std::memory_order_relaxed);
         CHECK_MESSAGE_OVERFLOW(!ret);
     }
-#else
-    m_memory_meta_container.erase(ptr);
-#endif
 }
 
 void on_alloc_memory(void *caller, void *ptr, size_t byte_count) {
@@ -260,15 +219,13 @@ static inline size_t collect_metas(std::map<void *, caller_meta_t> &heap_caller_
                 auto &dest_stack_metas = meta->attr.is_mmap ? mmap_stack_metas : heap_stack_metas;
 
                 void *caller;
-#if USE_STACK_HASH_NO_COLLISION == true
+
                 if (stack_meta) {
                     caller = reinterpret_cast<void *>(stack_meta->caller);
                 } else {
                     caller = reinterpret_cast<void *>(meta->caller);
                 }
-#else
-                caller = reinterpret_cast<void *>(meta->caller);
-#endif
+
                 if (caller) {
                     caller_meta_t &caller_meta = dest_caller_metes[caller];
                     caller_meta.pointers.insert(ptr);
@@ -276,11 +233,9 @@ static inline size_t collect_metas(std::map<void *, caller_meta_t> &heap_caller_
                 }
 
                 if (stack_meta) {
-#if USE_STACK_HASH_NO_COLLISION == true
+
                     auto &dest_stack_meta = dest_stack_metas[(uint64_t) stack_meta];
-#else
-                    auto &dest_stack_meta = dest_stack_metas[meta->stack_hash];
-#endif
+
                     dest_stack_meta.backtrace = stack_meta->backtrace;
                     // 没错, 这里的确使用 ptr_meta 的 size, 因为是在遍历 ptr_meta, 因此原来 stack_meta 的 size 仅起引用计数作用
                     dest_stack_meta.size += meta->size;
