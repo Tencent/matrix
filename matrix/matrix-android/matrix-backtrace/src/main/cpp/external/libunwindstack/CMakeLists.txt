@@ -17,6 +17,7 @@ SET(
         ${CMAKE_CURRENT_SOURCE_DIR}/ElfInterfaceArm.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/JitDebug.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/Log.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/LocalUnwinder.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/MapInfo.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/Maps.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/Memory.cpp

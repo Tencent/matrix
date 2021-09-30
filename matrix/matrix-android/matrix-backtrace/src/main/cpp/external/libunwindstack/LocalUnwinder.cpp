@@ -31,7 +31,9 @@
 
 #include <memory>
 #include <string>
+#include <sstream>
 #include <vector>
+#include <iomanip>
 
 #include <unwindstack/Elf.h>
 #include <unwindstack/LocalUnwinder.h>
@@ -140,6 +142,107 @@ bool LocalUnwinder::Unwind(std::vector<LocalFrameData>* frame_info, size_t max_f
     adjust_pc = true;
   }
   return num_frames != 0;
+}
+
+size_t LocalUnwinder::UnwindImpl(std::unique_ptr<unwindstack::Regs>& regs, void** pcs, size_t max_frames) {
+  ArchEnum arch = regs->Arch();
+
+  size_t num_frames = 0;
+  bool adjust_pc = false;
+  while (true) {
+    uint64_t cur_pc = regs->pc();
+    uint64_t cur_sp = regs->sp();
+
+    MapInfo* map_info = GetMapInfo(cur_pc);
+    if (map_info == nullptr) {
+      break;
+    }
+
+    Elf* elf = map_info->GetElf(process_memory_, arch);
+    uint64_t rel_pc = elf->GetRelPc(cur_pc, map_info);
+    uint64_t step_pc = rel_pc;
+    uint64_t pc_adjustment;
+    if (adjust_pc) {
+      pc_adjustment = GetPcAdjustment(rel_pc, elf, arch);
+    } else {
+      pc_adjustment = 0;
+    }
+    step_pc -= pc_adjustment;
+
+    bool finished = false;
+    if (elf->StepIfSignalHandler(rel_pc, regs.get(), process_memory_.get())) {
+      step_pc = rel_pc;
+    } else if (!elf->Step(step_pc, regs.get(), process_memory_.get(), &finished)) {
+      finished = true;
+    }
+
+    // Skip any locations that are within this library.
+    if (num_frames != 0 || !ShouldSkipLibrary(map_info->name)) {
+      pcs[num_frames++] = (void*) cur_pc;
+      if (num_frames >= max_frames) {
+        break;
+      }
+    }
+
+    if (finished || num_frames == max_frames ||
+        (cur_pc == regs->pc() && cur_sp == regs->sp())) {
+      break;
+    }
+    adjust_pc = true;
+  }
+  return num_frames;
+}
+
+size_t LocalUnwinder::Unwind(void** pcs, size_t max_frames) {
+  std::unique_ptr<unwindstack::Regs> regs(unwindstack::Regs::CreateFromLocal());
+  unwindstack::RegsGetLocal(regs.get());
+  return UnwindImpl(regs, pcs, max_frames);
+}
+
+size_t LocalUnwinder::Unwind(void* ucontext, void** pcs, size_t max_frames) {
+  std::unique_ptr<unwindstack::Regs> regs(unwindstack::Regs::CreateFromUcontext(Regs::CurrentArch(), ucontext));
+  return UnwindImpl(regs, pcs, max_frames);
+}
+
+extern "C" char* __cxa_demangle(const char*, char*, size_t*, int* status);
+
+bool LocalUnwinder::GetStackElementString(uint64_t pc, std::string* string_out) {
+  MapInfo* map_info = GetMapInfo(pc);
+  if (map_info == nullptr) {
+    return false;
+  }
+  auto elf = map_info->GetElf(process_memory_, Regs::CurrentArch());
+  uint64_t rel_pc = elf->GetRelPc(pc, map_info);
+
+  std::stringstream ss;
+  std::ios fmt(nullptr);
+  fmt.copyfmt(ss);
+  ss << "pc " << std::hex << std::setw(sizeof(void*) * 2) << std::setfill('0') << rel_pc << std::dec << ' ';
+  ss.copyfmt(fmt);
+
+  std::string funcName;
+  uint64_t funcOffset = 0;
+  bool isFuncNameGot = map_info->GetFunctionName(rel_pc, &funcName, &funcOffset);
+  if (isFuncNameGot) {
+    char* demangledFuncName = nullptr;
+    if (!funcName.empty()) {
+      demangledFuncName = __cxa_demangle(funcName.c_str(), nullptr, nullptr, nullptr);
+    }
+    if (demangledFuncName != nullptr) {
+      ss << map_info->name << " (" << demangledFuncName << ")";
+      free(demangledFuncName);
+    } else {
+      ss << map_info->name << " (" << funcName << ")";
+    }
+  } else {
+    ss << map_info->name << " (?\?\?)";
+  }
+  auto buildID = map_info->GetPrintableBuildID();
+  if (!buildID.empty()) {
+    ss << " (BuildID: " << map_info->GetPrintableBuildID() << ")";
+  }
+  *string_out = ss.str();
+  return true;
 }
 
 }  // namespace unwindstack

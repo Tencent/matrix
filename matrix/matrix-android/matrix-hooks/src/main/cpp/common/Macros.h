@@ -53,9 +53,13 @@
 
 #define POINTER_MASK 48
 
+#ifndef LIKELY
 #define LIKELY(cond) (__builtin_expect(!!(cond), 1))
+#endif
 
+#ifndef UNLIKELY
 #define UNLIKELY(cond) (__builtin_expect(!!(cond), 0))
+#endif
 
 #define EXPORT extern __attribute__ ((visibility ("default")))
 
