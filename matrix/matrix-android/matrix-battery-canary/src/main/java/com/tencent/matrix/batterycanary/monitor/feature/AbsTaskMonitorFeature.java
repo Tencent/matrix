@@ -445,7 +445,7 @@ public abstract class AbsTaskMonitorFeature extends AbsMonitorFeature {
         }
 
         if (mCore.getConfig().isUseThreadClock) {
-            snapshot.jiffies = DigitEntry.of(SystemClock.currentThreadTimeMillis() / 10);
+            snapshot.jiffies = DigitEntry.of(SystemClock.currentThreadTimeMillis() / BatteryCanaryUtil.JIFFY_MILLIS);
         } else {
             int pid = Process.myPid();
             ProcStatUtil.ProcStat stat = ProcStatUtil.of(pid, tid);
