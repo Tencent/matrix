@@ -197,10 +197,10 @@ public class WarmUpScheduler implements Handler.Callback {
         Handler mIdleHandler;
 
         Context mContext;
-        private WeChatBacktrace.WarmUpTiming mTiming;
-        private long mWarmUpDelay;
+        private final WeChatBacktrace.WarmUpTiming mTiming;
+        private final long mWarmUpDelay;
 
-        private Set<TaskType> mTasks = new HashSet<>();
+        private final Set<TaskType> mTasks = new HashSet<>();
 
         IdleReceiver(Context context, Handler idleHandler, WeChatBacktrace.WarmUpTiming timing,
                             long delay) {
