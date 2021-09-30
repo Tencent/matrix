@@ -46,12 +46,9 @@ namespace matrix {
     std::atomic<size_t> BufferQueueContainer::g_message_overflow_counter = 0;
     std::atomic<size_t> BufferQueueContainer::g_locker_collision_counter = 0;
 
-    std::atomic<size_t> BufferQueue::g_queue_realloc_memory_1_counter = 0;
-    std::atomic<size_t> BufferQueue::g_queue_realloc_memory_2_counter = 0;
-    std::atomic<size_t> BufferQueue::g_queue_realloc_reason_1_counter = 0;
-    std::atomic<size_t> BufferQueue::g_queue_realloc_reason_2_counter = 0;
-    std::atomic<size_t> BufferQueue::g_queue_realloc_failure_counter = 0;
-    std::atomic<size_t> BufferQueue::g_queue_realloc_over_limit_counter = 0;
+    message_queue_counter_t BufferQueue::g_message_queue_counter_ {};
+    message_queue_counter_t BufferQueue::g_allocation_queue_counter_ {};
+
     std::atomic<size_t> BufferQueue::g_queue_extra_stack_meta_allocated = 0;
     std::atomic<size_t> BufferQueue::g_queue_extra_stack_meta_kept = 0;
 
