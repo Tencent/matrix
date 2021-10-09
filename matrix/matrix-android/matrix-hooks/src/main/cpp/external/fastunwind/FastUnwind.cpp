@@ -19,7 +19,7 @@ using namespace fastunwind;
 #define UNLIKELY(cond) __builtin_expect(!!(cond), 0)
 #define TLSVAR __thread __attribute__((tls_model("initial-exec")))
 
-#if defined(__aarch64__)
+#if 0 // defined(__aarch64__) arm 8.1a feature, disable so far to avoid compatibility issues in ndk r21.
 #define HWCAP2_MTE (1 << 18)
 
 struct ScopedDisableMTE {
