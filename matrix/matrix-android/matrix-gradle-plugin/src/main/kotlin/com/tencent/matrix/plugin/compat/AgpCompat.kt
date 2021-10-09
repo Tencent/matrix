@@ -17,6 +17,7 @@
 package com.tencent.matrix.plugin.compat
 
 import com.android.build.gradle.api.BaseVariant
+import com.android.build.gradle.internal.api.ReadOnlyBuildType
 import com.android.builder.model.SigningConfig
 
 class AgpCompat {
@@ -32,7 +33,7 @@ class AgpCompat {
         }
 
         fun getSigningConfig(variant: BaseVariant): SigningConfig? {
-            return variant.buildType.signingConfig
+            return (variant.buildType as ReadOnlyBuildType).signingConfig
         }
     }
 
