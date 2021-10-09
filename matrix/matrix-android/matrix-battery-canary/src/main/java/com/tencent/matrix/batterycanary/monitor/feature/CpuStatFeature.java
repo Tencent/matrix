@@ -54,23 +54,28 @@ public class CpuStatFeature extends  AbsTaskMonitorFeature {
         if (mPowerProfile != null) {
             return;
         }
-        try {
-            // Check PowerProfile compat
-            mPowerProfile = PowerProfile.init(mCore.getContext());
-            // Check KernelCpuSpeedReader compat
-            for (int i = 0; i < mPowerProfile.getCpuCoreNum(); i++) {
-                final int numSpeedSteps = mPowerProfile.getNumSpeedStepsInCpuCluster(mPowerProfile.getClusterByCpuNum(i));
-                new KernelCpuSpeedReader(i, numSpeedSteps).smoke();
+        synchronized (this) {
+            if (mPowerProfile != null) {
+                return;
             }
-            // Check KernelCpuUidFreqTimeReader compat
-            int[] clusterSteps = new int[mPowerProfile.getNumCpuClusters()];
-            for (int i = 0; i < clusterSteps.length; i++) {
-                clusterSteps[i] = mPowerProfile.getNumSpeedStepsInCpuCluster(i);
+            try {
+                // Check PowerProfile compat
+                mPowerProfile = PowerProfile.init(mCore.getContext());
+                // Check KernelCpuSpeedReader compat
+                for (int i = 0; i < mPowerProfile.getCpuCoreNum(); i++) {
+                    final int numSpeedSteps = mPowerProfile.getNumSpeedStepsInCpuCluster(mPowerProfile.getClusterByCpuNum(i));
+                    new KernelCpuSpeedReader(i, numSpeedSteps).smoke();
+                }
+                // Check KernelCpuUidFreqTimeReader compat
+                int[] clusterSteps = new int[mPowerProfile.getNumCpuClusters()];
+                for (int i = 0; i < clusterSteps.length; i++) {
+                    clusterSteps[i] = mPowerProfile.getNumSpeedStepsInCpuCluster(i);
+                }
+                new KernelCpuUidFreqTimeReader(Process.myPid(), clusterSteps).smoke();
+            } catch (IOException e) {
+                MatrixLog.w(TAG, "Init cpuStat failed: " + e.getMessage());
+                mPowerProfile = null;
             }
-            new KernelCpuUidFreqTimeReader(Process.myPid(), clusterSteps).smoke();
-        } catch (IOException e) {
-            MatrixLog.w(TAG, "Init cpuStat failed: " + e.getMessage());
-            mPowerProfile = null;
         }
     }
 
