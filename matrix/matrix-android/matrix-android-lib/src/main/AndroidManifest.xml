@@ -3,11 +3,11 @@
     >
 
     <application>
-        <provider
-            android:name=".lifecycle.MultiProcessLifecycleInitializer"
-            android:authorities="${applicationId}.matrix-process"
-            android:exported="false"
-            android:multiprocess="true" />
+<!--        <provider-->
+<!--            android:name=".lifecycle.MultiProcessLifecycleInitializer"-->
+<!--            android:authorities="${applicationId}.matrix-process"-->
+<!--            android:exported="false"-->
+<!--            android:multiprocess="true" />-->
     </application>
 
 </manifest>

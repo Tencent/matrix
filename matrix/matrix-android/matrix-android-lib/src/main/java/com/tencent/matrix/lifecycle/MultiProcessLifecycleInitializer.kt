@@ -13,25 +13,33 @@ import com.tencent.matrix.util.MatrixUtil
 /**
  * Created by Yves on 2021/9/14
  */
-@RestrictTo(RestrictTo.Scope.LIBRARY_GROUP_PREFIX)
 class MultiProcessLifecycleInitializer: ContentProvider() {
 
     companion object {
+
+        @Volatile
+        private var inited= false
+
         @JvmStatic
         fun initForOtherProcesses(@NonNull context: Context) {
-            if (MatrixUtil.isInMainProcess(context)) {
-                MatrixLog.i(
-                    TAG,
-                    "main process lifecycle owner was initialized by onCreate"
-                )
+//            if (MatrixUtil.isInMainProcess(context)) {
+//                MatrixLog.i(
+//                    TAG,
+//                    "main process lifecycle owner was initialized by onCreate"
+//                )
+//                return
+//            }
+            if (inited) {
                 return
             }
+            inited = true
             MultiProcessLifecycleOwner.init(context)
         }
     }
 
     override fun onCreate(): Boolean {
         context?.let {
+            inited = true
             MultiProcessLifecycleOwner.init(it)
         } ?: run {
             throw IllegalStateException("context is null !!!")
