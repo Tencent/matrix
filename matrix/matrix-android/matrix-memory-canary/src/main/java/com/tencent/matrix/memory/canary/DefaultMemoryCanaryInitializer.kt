@@ -26,7 +26,7 @@ open class DefaultMemoryCanaryInitializer(app: Application) {
         init(app)
     }
 
-    fun init(app: Application) {
+    private fun init(app: Application) {
         if (inited) {
             return
         }

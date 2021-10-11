@@ -5,16 +5,18 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.os.Process
 import com.tencent.matrix.util.MatrixUtil
 import com.tencent.matrix.memory.canary.killer.LRUProcessKiller
 import com.tencent.matrix.memory.canary.lifecycle.StatefulOwner
 import com.tencent.matrix.memory.canary.lifecycle.MultiSourceStatefulOwner
 import com.tencent.matrix.memory.canary.lifecycle.ReduceOperators
 import com.tencent.matrix.memory.canary.lifecycle.IStateObserver
-import com.tencent.matrix.memory.canary.monitor.SumPssMonitor
 import com.tencent.matrix.util.MatrixHandlerThread
 import com.tencent.matrix.util.MatrixLog
 import java.util.*
+import java.util.concurrent.TimeUnit
+import kotlin.NoSuchElementException
 import kotlin.collections.ArrayList
 import kotlin.collections.HashMap
 
@@ -106,14 +108,15 @@ object ProcessSupervisor :
 //        })
     }
 
-    // TODO: 2021/9/28
-    private fun getLastProcess(): String? {
-        return SupervisorReceiver.backgroundProcessLru?.last?.also {
-            MatrixLog.i(
-                tag,
-                "next kill candidate [$it]"
-            )
+    fun backgroundLruKill(): Boolean {
+        try {
+            SupervisorReceiver.backgroundProcessLru?.last?.let {
+                DispatchReceiver.dispatchKill(application, it)
+            }
+        } catch (ignore: NoSuchElementException) {
+            return false
         }
+        return false
     }
 
     val isAppForeground: Boolean
@@ -131,6 +134,8 @@ object ProcessSupervisor :
     }
 }
 
+private const val KEY_PROCESS_NAME = "KEY_PROCESS_NAME"
+
 /**
  * running in supervisor process
  */
@@ -139,10 +144,10 @@ private object SupervisorReceiver : BroadcastReceiver() {
     private const val TAG = "MicroMsg.lifecycle.SupervisorReceiver"
 
     private enum class ProcessEvent {
-        PROCESS_CREATED, // if the supervisor process were not main process, the create event would be lost
-        PROCESS_FOREGROUNDED,
-        PROCESS_BACKGROUNDED,
-        PROCESS_DESTROYED,
+        SUPERVISOR_PROCESS_CREATED, // if the supervisor process were not main process, the create event would be lost
+        SUPERVISOR_PROCESS_FOREGROUNDED,
+        SUPERVISOR_PROCESS_BACKGROUNDED,
+        SUPERVISOR_PROCESS_DESTROYED,
         CHECK_SUPERVISOR_REGISTER,
         CHECK_ERROR_DAMAGE;
     }
@@ -158,8 +163,6 @@ private object SupervisorReceiver : BroadcastReceiver() {
             return "OwnerProxy_${processName}"
         }
     }
-
-    private const val KEY_PROCESS_NAME = "KEY_PROCESS_NAME"
 
     private val pendingEvents = ArrayList<ProcessEvent>()
 
@@ -201,15 +204,19 @@ private object SupervisorReceiver : BroadcastReceiver() {
     }
 
     fun sendOnProcessInit(context: Context?) {
-        send(context, ProcessEvent.PROCESS_CREATED)
+        send(context, ProcessEvent.SUPERVISOR_PROCESS_CREATED)
     }
 
     fun sendOnProcessForeground(context: Context?) {
-        send(context, ProcessEvent.PROCESS_FOREGROUNDED)
+        send(context, ProcessEvent.SUPERVISOR_PROCESS_FOREGROUNDED)
     }
 
     fun sendOnProcessBackground(context: Context?) {
-        send(context, ProcessEvent.PROCESS_BACKGROUNDED)
+        send(context, ProcessEvent.SUPERVISOR_PROCESS_BACKGROUNDED)
+    }
+
+    fun sendOnProcessDestroying(context: Context?) {
+        send(context, ProcessEvent.SUPERVISOR_PROCESS_DESTROYED)
     }
 
     private fun checkUnique(context: Context?) {
@@ -217,7 +224,7 @@ private object SupervisorReceiver : BroadcastReceiver() {
     }
 
     private fun send(context: Context?, event: ProcessEvent) {
-        if (isSupervisorInstalled || event == ProcessEvent.PROCESS_CREATED) {
+        if (isSupervisorInstalled || event == ProcessEvent.SUPERVISOR_PROCESS_CREATED) {
             sendImpl(context, event)
         } else {
             pendingSend(event)
@@ -271,7 +278,7 @@ private object SupervisorReceiver : BroadcastReceiver() {
             }
 
         when (intent?.action) {
-            ProcessEvent.PROCESS_CREATED.name -> {
+            ProcessEvent.SUPERVISOR_PROCESS_CREATED.name -> {
                 processName?.let {
                     backgroundProcessLru?.moveOrAddFirst(it)
                     DispatchReceiver.dispatchSuperVisorInstalled(context)
@@ -290,7 +297,7 @@ private object SupervisorReceiver : BroadcastReceiver() {
                     )
                 }
             }
-            ProcessEvent.PROCESS_BACKGROUNDED.name -> {
+            ProcessEvent.SUPERVISOR_PROCESS_BACKGROUNDED.name -> {
                 processName?.let {
                     backgroundProcessLru?.moveOrAddFirst(it)
                     proxy?.onRemoteProcessBackground()
@@ -300,7 +307,7 @@ private object SupervisorReceiver : BroadcastReceiver() {
                     )
                 }
             }
-            ProcessEvent.PROCESS_FOREGROUNDED.name -> {
+            ProcessEvent.SUPERVISOR_PROCESS_FOREGROUNDED.name -> {
                 processName?.let {
                     backgroundProcessLru?.remove(it)
                     proxy?.onRemoteProcessForeground()
@@ -310,7 +317,7 @@ private object SupervisorReceiver : BroadcastReceiver() {
                     )
                 }
             }
-            ProcessEvent.PROCESS_DESTROYED.name -> {
+            ProcessEvent.SUPERVISOR_PROCESS_DESTROYED.name -> {
                 processName?.let { name ->
                     backgroundProcessLru?.remove(name)
                     processFgObservers.remove(name)?.let { statefulOwner ->
@@ -345,7 +352,8 @@ private object DispatchReceiver : BroadcastReceiver() {
     private enum class SupervisorEvent {
         SUPERVISOR_INSTALLED,
         SUPERVISOR_DISPATCH_APP_FOREGROUND,
-        SUPERVISOR_DISPATCH_APP_BACKGROUND;
+        SUPERVISOR_DISPATCH_APP_BACKGROUND,
+        SUPERVISOR_DISPATCH_KILL;
     }
 
     fun install(context: Context?) {
@@ -375,10 +383,17 @@ private object DispatchReceiver : BroadcastReceiver() {
         dispatch(context, SupervisorEvent.SUPERVISOR_DISPATCH_APP_BACKGROUND)
     }
 
+    fun dispatchKill(context: Context?, targetProcessName: String) {
+        dispatch(context, SupervisorEvent.SUPERVISOR_DISPATCH_KILL, Pair(KEY_PROCESS_NAME, targetProcessName))
+    }
+
     // call from supervisor process
-    private fun dispatch(context: Context?, event: SupervisorEvent) {
+    private fun dispatch(context: Context?, event: SupervisorEvent, vararg params: Pair<String, String>) {
 //        MatrixLog.d(SupervisorLifecycle.tag, "dispatch [${event.name}]")
         val intent = Intent(event.name)
+        params.forEach {
+            intent.putExtra(it.first, it.second)
+        }
         context?.sendBroadcast(intent, SUPERVISOR_PERMISSION)
     }
 
@@ -393,6 +408,16 @@ private object DispatchReceiver : BroadcastReceiver() {
             }
             SupervisorEvent.SUPERVISOR_DISPATCH_APP_BACKGROUND.name -> {
                 ProcessSupervisor.syncAppBackground()
+            }
+            SupervisorEvent.SUPERVISOR_DISPATCH_KILL.name -> {
+                val target = intent.getStringExtra(KEY_PROCESS_NAME)
+                MatrixLog.d(ProcessSupervisor.tag, "receive kill target: $target")
+                if (target == MatrixUtil.getProcessName(context)) {
+                    SupervisorReceiver.sendOnProcessDestroying(context)
+                    MatrixHandlerThread.getDefaultHandler().postDelayed({
+                        Process.killProcess(Process.myPid())
+                    }, TimeUnit.SECONDS.toMillis(10))
+                }
             }
         }
     }

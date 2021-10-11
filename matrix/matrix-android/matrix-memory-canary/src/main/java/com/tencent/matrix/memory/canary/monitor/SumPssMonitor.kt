@@ -1,5 +1,6 @@
 package com.tencent.matrix.memory.canary.monitor
 
+import com.tencent.matrix.memory.canary.lifecycle.owners.ProcessSupervisor
 import com.tencent.matrix.util.MatrixHandlerThread
 import com.tencent.matrix.util.MatrixLog
 import java.util.concurrent.TimeUnit
@@ -11,6 +12,7 @@ open class SumPssMonitor : Runnable {
 
     companion object {
         private const val TAG = "MicroMsg.monitor.SumPssMonitor"
+        private const val DEFAULT_OVER_MEM_THRESHOLD = 2 * 1024 * 1024 // 2G
         private val CHECK_TIME = TimeUnit.MINUTES.toMillis(5)
     }
 
@@ -21,6 +23,9 @@ open class SumPssMonitor : Runnable {
     }
 
     protected open fun reportSumPss(sumPss: Int) {
+        if (sumPss > DEFAULT_OVER_MEM_THRESHOLD) {
+            ProcessSupervisor.backgroundLruKill()
+        }
     }
 
     override fun run() {
