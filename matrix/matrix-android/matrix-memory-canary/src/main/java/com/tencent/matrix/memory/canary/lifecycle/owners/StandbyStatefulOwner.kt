@@ -11,6 +11,7 @@ import java.util.concurrent.TimeUnit
  * 「待机」定义：进入深后台 1min
  * Created by Yves on 2021/9/27
  */
+// TODO: 2021/10/11 move
 object StandbyStatefulOwner : StatefulOwner(), IStateObserver {
 
     private const val TAG = "MicroMsg.lifecycle.StandbyLifecycleOwner"

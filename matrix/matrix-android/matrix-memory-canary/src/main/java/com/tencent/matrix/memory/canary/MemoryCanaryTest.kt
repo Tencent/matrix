@@ -2,51 +2,24 @@ package com.tencent.matrix.memory.canary
 
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
-import com.tencent.matrix.Matrix
 import com.tencent.matrix.lifecycle.SafeLifecycleRegistry
 import com.tencent.matrix.memory.canary.lifecycle.IStateObserver
 import com.tencent.matrix.memory.canary.lifecycle.owners.CombinedProcessForegroundStatefulOwner
 import com.tencent.matrix.memory.canary.lifecycle.owners.DeepBackgroundStatefulOwner
 import com.tencent.matrix.memory.canary.lifecycle.owners.ProcessSupervisor
 import com.tencent.matrix.memory.canary.lifecycle.owners.StandbyStatefulOwner
-import com.tencent.matrix.memory.canary.monitor.SumPssReportMonitor
 import com.tencent.matrix.util.MatrixLog
 import com.tencent.matrix.util.MatrixUtil
 
 /**
  * Created by Yves on 2021/9/18
  */
-object DefaultLifecycleBoot : MemoryCanaryInitializer() {
+object MemoryCanaryTest {
 
     private val TAG =
-        "MicroMsg.lifecycle.MMAppLifecycleMonitor>>>>>> ${MatrixUtil.getProcessName(application)} >>>>>>>>>"
+        "Matrix.MemoryCanaryTest >>>>>> ${MatrixUtil.getProcessName(DefaultMemoryCanaryInitializer.application)} >>>>>>>>>"
 
-    override fun onInit() {
-        super.onInit()
-
-        CombinedProcessForegroundStatefulOwner.apply {
-//                addSourceOwner(ForegroundServiceMonitor.instance.lifecycleOwner.toStateOwner())
-            // TODO: 2021/10/11
-        }
-        DeepBackgroundStatefulOwner
-        StandbyStatefulOwner
-
-        val app = Matrix.with().application
-
-        if (MatrixUtil.isInMainProcess(app)) {
-            ProcessSupervisor.initSupervisor(
-                MatrixUtil.getProcessName(app),
-                app
-            )
-            SumPssReportMonitor.init()
-        }
-        ProcessSupervisor.inCharge(app)
-
-        test()
-        testLifecycle()
-    }
-
-    private fun test() {
+    internal fun test() {
 
         CombinedProcessForegroundStatefulOwner.observeForever(object : IStateObserver {
 
@@ -113,7 +86,7 @@ object DefaultLifecycleBoot : MemoryCanaryInitializer() {
 
     }
 
-    private fun testLifecycle() {
+    internal fun testLifecycle() {
         CombinedProcessForegroundStatefulOwner.observeWithLifecycle(TestLifecycleOwner, object :
             IStateObserver {
             override fun on() {

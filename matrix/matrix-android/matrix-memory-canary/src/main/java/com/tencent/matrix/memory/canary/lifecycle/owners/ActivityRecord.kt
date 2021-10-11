@@ -2,8 +2,7 @@ package com.tencent.matrix.memory.canary.lifecycle.owners
 
 import android.app.Activity
 import android.os.Bundle
-import com.tencent.matrix.Matrix
-import com.tencent.matrix.memory.canary.MemoryCanaryInitializer
+import com.tencent.matrix.memory.canary.DefaultMemoryCanaryInitializer
 import com.tencent.matrix.memory.canary.lifecycle.StatefulOwner
 import com.tencent.matrix.memory.canary.monitor.EmptyActivityLifecycleCallbacks
 import com.tencent.matrix.util.MatrixLog
@@ -34,7 +33,7 @@ object ActivityRecord : StatefulOwner() {
         private set
 
     init {
-        val app = MemoryCanaryInitializer.application!!
+        val app = DefaultMemoryCanaryInitializer.application!!
         app.registerActivityLifecycleCallbacks(callbacks)
     }
 

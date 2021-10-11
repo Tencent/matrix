@@ -2,8 +2,6 @@ package com.tencent.matrix.memory.canary.lifecycle.owners
 
 import com.tencent.matrix.memory.canary.lifecycle.ImmutableMultiSourceStatefulOwner
 import com.tencent.matrix.memory.canary.lifecycle.ReduceOperators
-import com.tencent.matrix.memory.canary.lifecycle.owners.ActivityRecord
-import com.tencent.matrix.memory.canary.lifecycle.owners.CombinedProcessForegroundStatefulOwner
 
 /**
  * 「深后台」定义：进程出于后台并且没有 Activity
@@ -14,6 +12,7 @@ import com.tencent.matrix.memory.canary.lifecycle.owners.CombinedProcessForegrou
  *
  * Created by Yves on 2021/9/24
  */
+// TODO: 2021/10/11 move
 object DeepBackgroundStatefulOwner : ImmutableMultiSourceStatefulOwner(
     ReduceOperators.NONE,
     ActivityRecord,
