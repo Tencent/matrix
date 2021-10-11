@@ -90,6 +90,9 @@ class MultiProcessLifecycleOwner : LifecycleOwner {
         if (mResumedCounter == 0) {
             mRunningHandler.postDelayed(mDelayedPauseRunnable, TIMEOUT_MS)
         }
+        if (mResumedCounter < 0) {
+            throw IllegalStateException("mResumedCounter = $mResumedCounter, you must init LifecycleOwner before starting any activity")
+        }
     }
 
     private fun activityStopped() {
@@ -108,6 +111,9 @@ class MultiProcessLifecycleOwner : LifecycleOwner {
         if (mStartedCounter == 0 && mPauseSent) {
             mRegistry.handleLifecycleEventAsync(Lifecycle.Event.ON_STOP)
             mStopSent = true
+        }
+        if (mStartedCounter < 0) {
+            throw IllegalStateException("mStartedCounter = $mStartedCounter, you must init LifecycleOwner before starting any activity")
         }
     }
 

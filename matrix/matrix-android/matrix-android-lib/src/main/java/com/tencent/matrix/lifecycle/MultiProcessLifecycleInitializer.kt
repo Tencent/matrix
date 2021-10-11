@@ -21,14 +21,7 @@ class MultiProcessLifecycleInitializer: ContentProvider() {
         private var inited= false
 
         @JvmStatic
-        fun initForOtherProcesses(@NonNull context: Context) {
-//            if (MatrixUtil.isInMainProcess(context)) {
-//                MatrixLog.i(
-//                    TAG,
-//                    "main process lifecycle owner was initialized by onCreate"
-//                )
-//                return
-//            }
+        fun init(@NonNull context: Context) {
             if (inited) {
                 return
             }

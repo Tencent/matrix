@@ -31,3 +31,4 @@ include ':test:matrix-backtrace-benchmark'
 // TEST
 include ':test:test-backtrace'
 include ':test:test-memoryhook'
+include ':matrix-memory-canary'
