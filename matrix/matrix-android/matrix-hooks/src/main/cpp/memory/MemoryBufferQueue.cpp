@@ -102,7 +102,7 @@ namespace matrix {
                             [&](message_t *message, allocation_message_t *allocation_message) {
 
                                 total_message_counter++;
-                                if (message->type == message_type_allocation ||
+                                if (message->type == message_type_allocation || message->type == message_type_reallocation ||
                                     message->type == message_type_mmap) {
 
                                     if (UNLIKELY(allocation_message == nullptr)) {

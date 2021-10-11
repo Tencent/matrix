@@ -35,9 +35,10 @@ namespace matrix {
     typedef enum : uint8_t {
         message_type_nil = 0,
         message_type_allocation = 1,
-        message_type_deletion = 2,
-        message_type_mmap = 3,
-        message_type_munmap = 4
+        message_type_reallocation = 2,
+        message_type_deletion = 3,
+        message_type_mmap = 4,
+        message_type_munmap = 5
     } message_type;
 
     typedef wechat_backtrace::BacktraceFixed<MEMHOOK_BACKTRACE_MAX_FRAMES> memory_backtrace_t;
@@ -158,7 +159,8 @@ namespace matrix {
 
     public:
         BufferQueue(size_t size_augment) {
-            const size_t limit_size = (MEMORY_OVER_LIMIT / (sizeof(message_t) * 2 + sizeof(allocation_message_t)));
+            const size_t limit_size = (MEMORY_OVER_LIMIT /
+                                       (sizeof(message_t) * 2 + sizeof(allocation_message_t)));
 
             messages_ = new MessageAllocator<message_t>(
                     size_augment * 2,
@@ -177,15 +179,18 @@ namespace matrix {
             delete allocations_;
         };
 
-        inline allocation_message_t *enqueue_allocation_message(bool is_mmap) {
+        inline allocation_message_t *enqueue_allocation_message(message_type type) {
 
             if (UNLIKELY(!messages_->check_realloc()) ||
                 UNLIKELY(!allocations_->check_realloc())) {
                 return nullptr;
             }
 
+            CRITICAL_CHECK(type == message_type_mmap || type == message_type_reallocation ||
+                           type == message_type_allocation);
+
             message_t *msg_idx = &messages_->queue_[messages_->idx_++];
-            msg_idx->type = is_mmap ? message_type_mmap : message_type_allocation;
+            msg_idx->type = type;
             msg_idx->index = allocations_->idx_;
 
             allocation_message_t *buffer = &allocations_->queue_[allocations_->idx_++];
@@ -237,6 +242,7 @@ namespace matrix {
                 message_t *message = &messages_->queue_[i];
                 allocation_message_t *allocation_message = nullptr;
                 if (message->type == message_type_allocation ||
+                    message->type == message_type_reallocation ||
                     message->type == message_type_mmap) {
                     allocation_message = &allocations_->queue_[message->index];
                 }

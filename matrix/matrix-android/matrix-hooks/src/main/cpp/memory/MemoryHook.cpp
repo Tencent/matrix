@@ -103,7 +103,7 @@ static inline void on_acquire_memory(
         void *caller,
         void *ptr,
         size_t byte_count,
-        bool is_mmap) {
+        message_type type) {
 
     if (UNLIKELY(!ptr)) {
         LOGE(TAG, "on_acquire_memory: invalid pointer");
@@ -129,7 +129,7 @@ static inline void on_acquire_memory(
 
         container->lock();
 
-        auto message = container->queue_->enqueue_allocation_message(is_mmap);
+        auto message = container->queue_->enqueue_allocation_message(type);
         if (UNLIKELY(!message)) {
             BufferQueueContainer::g_message_overflow_counter.fetch_add(1,
                                                                        std::memory_order_relaxed);
@@ -179,7 +179,11 @@ static inline void on_release_memory(void *ptr, bool is_munmap) {
 }
 
 void on_alloc_memory(void *caller, void *ptr, size_t byte_count) {
-    on_acquire_memory(caller, ptr, byte_count, false);
+    on_acquire_memory(caller, ptr, byte_count, message_type_allocation);
+}
+
+void on_realloc_memory(void *caller, void *ptr, size_t byte_count) {
+    on_acquire_memory(caller, ptr, byte_count, message_type_reallocation);
 }
 
 void on_free_memory(void *ptr) {
@@ -187,7 +191,7 @@ void on_free_memory(void *ptr) {
 }
 
 void on_mmap_memory(void *caller, void *ptr, size_t byte_count) {
-    on_acquire_memory(caller, ptr, byte_count, true);
+    on_acquire_memory(caller, ptr, byte_count, message_type_mmap);
 }
 
 void on_munmap_memory(void *ptr) {
@@ -364,10 +368,10 @@ static inline void dump_callers(FILE *log_file,
                      std::memory_order_relaxed),
              BufferQueue::g_allocation_queue_counter_.realloc_memory_counter_.load(
                      std::memory_order_relaxed));
-    flogger0(log_file, "| Queue lock collision = %zu, message overflow = %zu.\n",
+    flogger0(log_file, "| Queue lock collisions = %zu, messages overflow = %zu.\n",
              BufferQueueContainer::g_locker_collision_counter.load(std::memory_order_relaxed),
              BufferQueueContainer::g_message_overflow_counter.load(std::memory_order_relaxed));
-    flogger0(log_file, "| Realloc failure = %zu, memory over limit failure = %zu.\n",
+    flogger0(log_file, "| Realloc failures = %zu, memory over limit failures = %zu.\n",
              BufferQueue::g_message_queue_counter_.realloc_failure_counter_.load(
                      std::memory_order_relaxed) +
              BufferQueue::g_allocation_queue_counter_.realloc_failure_counter_.load(
@@ -376,7 +380,7 @@ static inline void dump_callers(FILE *log_file,
                      std::memory_order_relaxed) +
              BufferQueue::g_allocation_queue_counter_.realloc_reach_limit_counter_.load(
                      std::memory_order_relaxed));
-    flogger0(log_file, "| Hash extra allocated = %zu, kept = %zu, kept size = %zu byte.\n",
+    flogger0(log_file, "| Hash extra allocated = %zu, kept = %zu, kept size = %zu bytes.\n",
              BufferQueue::g_queue_extra_stack_meta_allocated.load(std::memory_order_relaxed),
              BufferQueue::g_queue_extra_stack_meta_kept.load(std::memory_order_relaxed),
              BufferQueue::g_queue_extra_stack_meta_kept.load(std::memory_order_relaxed) *

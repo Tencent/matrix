@@ -168,15 +168,16 @@ public:
                         target = stack_meta;    // Reuse first stack_meta.
                         is_top = 1;
                     } else {
-                        target->ext = malloc(sizeof(stack_meta_t));
-                        *static_cast<stack_meta_t *>(target->ext) = {0};
+                        target->ext = calloc(1, sizeof(stack_meta_t));
                         target = static_cast<stack_meta_t *>(target->ext);
 
                         is_top = 0;
 
                         // Statistic
-                        matrix::BufferQueue::g_queue_extra_stack_meta_allocated.fetch_add(1, std::memory_order_relaxed);
-                        matrix::BufferQueue::g_queue_extra_stack_meta_kept.fetch_add(1, std::memory_order_relaxed);
+                        matrix::BufferQueue::g_queue_extra_stack_meta_allocated.fetch_add(
+                                1, std::memory_order_relaxed);
+                        matrix::BufferQueue::g_queue_extra_stack_meta_kept.fetch_add(
+                                1, std::memory_order_relaxed);
                     }
                 }
 
