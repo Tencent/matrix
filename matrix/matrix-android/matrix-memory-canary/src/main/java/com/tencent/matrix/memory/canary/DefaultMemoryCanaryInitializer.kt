@@ -2,9 +2,7 @@ package com.tencent.matrix.memory.canary
 
 import android.app.Application
 import com.tencent.matrix.memory.canary.lifecycle.owners.CombinedProcessForegroundStatefulOwner
-import com.tencent.matrix.memory.canary.lifecycle.owners.DeepBackgroundStatefulOwner
 import com.tencent.matrix.memory.canary.lifecycle.owners.ProcessSupervisor
-import com.tencent.matrix.memory.canary.lifecycle.owners.StandbyStatefulOwner
 import com.tencent.matrix.memory.canary.monitor.SumPssReportMonitor
 import com.tencent.matrix.util.MatrixLog
 import com.tencent.matrix.util.MatrixUtil
@@ -40,16 +38,10 @@ open class DefaultMemoryCanaryInitializer(app: Application) {
     }
 
     protected open fun onInit(app: Application) {
-        listOf(
-            CombinedProcessForegroundStatefulOwner.also {
+        CombinedProcessForegroundStatefulOwner.also {
 //                addSourceOwner(ForegroundServiceMonitor)
 //                addSourceOwner(FloatingWindowMonitor)
 //                addSourceOwner(AnyOtherForegroundWidgetMonitor)
-            },
-            DeepBackgroundStatefulOwner,
-            StandbyStatefulOwner
-        ).forEach {
-            MatrixLog.i(TAG, "Initial Owner ${it.javaClass.simpleName}")
         }
 
         if (MatrixUtil.isInMainProcess(app)) {

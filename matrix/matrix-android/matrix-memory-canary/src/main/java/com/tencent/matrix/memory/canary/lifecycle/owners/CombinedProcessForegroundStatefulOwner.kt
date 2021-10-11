@@ -11,7 +11,6 @@ import com.tencent.matrix.memory.canary.lifecycle.ReduceOperators
  *
  * Created by Yves on 2021/9/18
  */
-// TODO: 2021/10/11 move
 object CombinedProcessForegroundStatefulOwner : MultiSourceStatefulOwner(
     ReduceOperators.OR,
     MultiProcessLifecycleOwner.get().toStateOwner()

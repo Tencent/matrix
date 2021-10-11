@@ -5,9 +5,7 @@ import androidx.lifecycle.LifecycleOwner
 import com.tencent.matrix.lifecycle.SafeLifecycleRegistry
 import com.tencent.matrix.memory.canary.lifecycle.IStateObserver
 import com.tencent.matrix.memory.canary.lifecycle.owners.CombinedProcessForegroundStatefulOwner
-import com.tencent.matrix.memory.canary.lifecycle.owners.DeepBackgroundStatefulOwner
 import com.tencent.matrix.memory.canary.lifecycle.owners.ProcessSupervisor
-import com.tencent.matrix.memory.canary.lifecycle.owners.StandbyStatefulOwner
 import com.tencent.matrix.util.MatrixLog
 import com.tencent.matrix.util.MatrixUtil
 
@@ -29,28 +27,6 @@ object MemoryCanaryTest {
 
             override fun off() {
                 MatrixLog.d(TAG, "[test] process backgrounded")
-            }
-        })
-
-        DeepBackgroundStatefulOwner.observeForever(object : IStateObserver {
-
-            override fun on() {
-                MatrixLog.d(TAG, "[test] deep backgrounded")
-            }
-
-            override fun off() {
-                MatrixLog.d(TAG, "[test] exit deep backgrounded")
-            }
-        })
-
-        StandbyStatefulOwner.observeForever(object : IStateObserver {
-
-            override fun on() {
-                MatrixLog.d(TAG, "[test] standby ")
-            }
-
-            override fun off() {
-                MatrixLog.d(TAG, "[test] exit standby ")
             }
         })
 
