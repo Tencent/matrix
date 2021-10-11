@@ -11,7 +11,7 @@ import java.util.concurrent.TimeUnit
 open class SumPssMonitor : Runnable {
 
     companion object {
-        private const val TAG = "MicroMsg.monitor.SumPssMonitor"
+        private const val TAG = "Matrix.monitor.SumPssMonitor"
         private const val DEFAULT_OVER_MEM_THRESHOLD = 2 * 1024 * 1024 // 2G
         private val CHECK_TIME = TimeUnit.MINUTES.toMillis(5)
     }

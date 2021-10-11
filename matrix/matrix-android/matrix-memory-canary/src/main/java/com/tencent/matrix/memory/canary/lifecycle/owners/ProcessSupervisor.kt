@@ -7,7 +7,6 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.os.Process
 import com.tencent.matrix.util.MatrixUtil
-import com.tencent.matrix.memory.canary.killer.LRUProcessKiller
 import com.tencent.matrix.memory.canary.lifecycle.StatefulOwner
 import com.tencent.matrix.memory.canary.lifecycle.MultiSourceStatefulOwner
 import com.tencent.matrix.memory.canary.lifecycle.ReduceOperators
@@ -20,11 +19,10 @@ import kotlin.NoSuchElementException
 import kotlin.collections.ArrayList
 import kotlin.collections.HashMap
 
-private const val SUPERVISOR_PERMISSION = "com.tencent.mm.permission.MM_MESSAGE"
-
 /**
  * Created by Yves on 2021/9/26
  */
+// TODO: 2021/10/11 代码抽离
 object ProcessSupervisor :
     MultiSourceStatefulOwner(ReduceOperators.OR) {
 
@@ -77,8 +75,6 @@ object ProcessSupervisor :
 
         SupervisorReceiver.sendOnProcessInit(application)
 
-        LRUProcessKiller.init() // todo
-
         CombinedProcessForegroundStatefulOwner.observeForever(object : IStateObserver {
 
             override fun on() {
@@ -110,8 +106,11 @@ object ProcessSupervisor :
 
     fun backgroundLruKill(): Boolean {
         try {
-            SupervisorReceiver.backgroundProcessLru?.last?.let {
+            SupervisorReceiver.backgroundProcessLru?.last {
+                it != MatrixUtil.getProcessName(application)
+            }?.let {
                 DispatchReceiver.dispatchKill(application, it)
+                return true
             }
         } catch (ignore: NoSuchElementException) {
             return false
@@ -134,6 +133,7 @@ object ProcessSupervisor :
     }
 }
 
+private const val SUPERVISOR_PERMISSION = "com.tencent.matrix.permission.MEMORY_CANARY"
 private const val KEY_PROCESS_NAME = "KEY_PROCESS_NAME"
 
 /**
@@ -141,7 +141,7 @@ private const val KEY_PROCESS_NAME = "KEY_PROCESS_NAME"
  */
 private object SupervisorReceiver : BroadcastReceiver() {
 
-    private const val TAG = "MicroMsg.lifecycle.SupervisorReceiver"
+    private const val TAG = "MicroMsg.memory.SupervisorReceiver"
 
     private enum class ProcessEvent {
         SUPERVISOR_PROCESS_CREATED, // if the supervisor process were not main process, the create event would be lost
@@ -384,11 +384,19 @@ private object DispatchReceiver : BroadcastReceiver() {
     }
 
     fun dispatchKill(context: Context?, targetProcessName: String) {
-        dispatch(context, SupervisorEvent.SUPERVISOR_DISPATCH_KILL, Pair(KEY_PROCESS_NAME, targetProcessName))
+        dispatch(
+            context,
+            SupervisorEvent.SUPERVISOR_DISPATCH_KILL,
+            Pair(KEY_PROCESS_NAME, targetProcessName)
+        )
     }
 
     // call from supervisor process
-    private fun dispatch(context: Context?, event: SupervisorEvent, vararg params: Pair<String, String>) {
+    private fun dispatch(
+        context: Context?,
+        event: SupervisorEvent,
+        vararg params: Pair<String, String>
+    ) {
 //        MatrixLog.d(SupervisorLifecycle.tag, "dispatch [${event.name}]")
         val intent = Intent(event.name)
         params.forEach {
@@ -415,7 +423,12 @@ private object DispatchReceiver : BroadcastReceiver() {
                 if (target == MatrixUtil.getProcessName(context)) {
                     SupervisorReceiver.sendOnProcessDestroying(context)
                     MatrixHandlerThread.getDefaultHandler().postDelayed({
-                        Process.killProcess(Process.myPid())
+                        if (!CombinedProcessForegroundStatefulOwner.active()) {
+                            MatrixLog.e(ProcessSupervisor.tag, "actual kill !!!")
+                            Process.killProcess(Process.myPid())
+                        } else {
+                            MatrixLog.i(ProcessSupervisor.tag, "recheck: process is on foreground")
+                        }
                     }, TimeUnit.SECONDS.toMillis(10))
                 }
             }

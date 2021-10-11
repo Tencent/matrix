@@ -21,16 +21,6 @@ class MemoryBackgroundMonitor private constructor(): IStateObserver {
         CombinedProcessForegroundStatefulOwner.observeForever(this)
     }
 
-    @OnLifecycleEvent(Lifecycle.Event.ON_START)
-    internal fun onProcessForeground() {
-
-    }
-
-    @OnLifecycleEvent(Lifecycle.Event.ON_STOP)
-    internal fun onProcessBackground() {
-
-    }
-
     override fun on() {
         TODO("Not yet implemented")
     }

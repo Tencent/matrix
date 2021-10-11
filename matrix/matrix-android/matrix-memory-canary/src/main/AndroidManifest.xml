@@ -2,4 +2,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.tencent.matrix.memory.canary">
 
+    <permission
+        android:name="com.tencent.matrix.permission.MEMORY_CANARY"
+        android:protectionLevel="signature" />
+
+    <uses-permission android:name="com.tencent.matrix.permission.MEMORY_CANARY" />
+
 </manifest>

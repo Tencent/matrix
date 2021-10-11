@@ -52,8 +52,5 @@ open class DefaultMemoryCanaryInitializer(app: Application) {
             SumPssReportMonitor.init()
         }
         ProcessSupervisor.inCharge(app)
-
-        MemoryCanaryTest.test()
-//        MemoryCanaryTest.testLifecycle()
     }
 }

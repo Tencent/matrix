@@ -28,7 +28,7 @@ import junit.framework.Assert
 // fixme remove Matrix dependency
 object MemoryInfoFactory {
 
-    private const val TAG = "MicroMsg.MemoryInfoFactory"
+    private const val TAG = "Matrix.MemoryInfoFactory"
 
     init {
         if (!Matrix.isInstalled()) {
