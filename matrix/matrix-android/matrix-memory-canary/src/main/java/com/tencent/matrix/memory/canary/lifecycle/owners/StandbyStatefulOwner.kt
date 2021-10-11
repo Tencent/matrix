@@ -14,7 +14,7 @@ import java.util.concurrent.TimeUnit
 // TODO: 2021/10/11 move
 object StandbyStatefulOwner : StatefulOwner(), IStateObserver {
 
-    private const val TAG = "MicroMsg.lifecycle.StandbyLifecycleOwner"
+    private const val TAG = "Matrix.memory.StandbyLifecycleOwner"
 
     private val mainHandler = Handler(Looper.getMainLooper())
 

@@ -13,7 +13,7 @@ import java.util.*
  */
 object ActivityRecord : StatefulOwner() {
 
-    private const val TAG = "MicroMsg.lifecycle.ActivityRecordOwner"
+    private const val TAG = "Matrix.memory.ActivityRecordOwner"
 
     private val callbacks = ActivityCallbacks()
 

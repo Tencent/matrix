@@ -26,7 +26,7 @@ private const val SUPERVISOR_PERMISSION = "com.tencent.mm.permission.MM_MESSAGE"
 object ProcessSupervisor :
     MultiSourceStatefulOwner(ReduceOperators.OR) {
 
-    internal val tag by lazy { "MicroMsg.lifecycle.Supervisor_${suffix()}" }
+    internal val tag by lazy { "Matrix.memory.Supervisor_${suffix()}" }
 
     private fun suffix(): String {
         return if (MatrixUtil.isInMainProcess(application)) {

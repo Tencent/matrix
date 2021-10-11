@@ -14,7 +14,7 @@ import com.tencent.matrix.util.MatrixUtil
  */
 open class DefaultMemoryCanaryInitializer(app: Application) {
     companion object {
-        private const val TAG = "MicroMsg.DefaultMemoryCanaryInit"
+        private const val TAG = "Matrix.DefaultMemoryCanaryInit"
 
         @Volatile
         private var inited: Boolean = false
