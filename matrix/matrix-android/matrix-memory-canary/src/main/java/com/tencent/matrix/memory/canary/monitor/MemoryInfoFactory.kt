@@ -9,19 +9,18 @@ import android.text.TextUtils
 import androidx.annotation.WorkerThread
 import com.tencent.matrix.Matrix
 import com.tencent.matrix.util.MatrixUtil
-import com.tencent.mm.plugin.performance.BuildConfig
 import com.tencent.matrix.memory.canary.lifecycle.owners.ActivityRecord
 import com.tencent.matrix.memory.canary.lifecycle.owners.CombinedProcessForegroundStatefulOwner
 import com.tencent.matrix.memory.canary.lifecycle.owners.ProcessSupervisor
-import com.tencent.mm.sdk.platformtools.BuildInfo
-import com.tencent.mm.sdk.platformtools.Log
-import junit.framework.Assert
+import com.tencent.matrix.util.MatrixLog
 import java.io.File
 import java.lang.IllegalStateException
 import java.util.*
 import java.util.regex.Pattern
 import kotlin.collections.ArrayList
 import kotlin.collections.HashMap
+import com.tencent.matrix.memory.canary.BuildConfig
+import junit.framework.Assert
 
 /**
  * Created by Yves on 2021/9/22
@@ -99,7 +98,7 @@ object MemoryInfoFactory {
 
     private fun procStatusStartsWith(status: String): Long {
 
-        val begin = if (BuildInfo.DEBUG) {
+        val begin = if (BuildConfig.DEBUG) {
             System.currentTimeMillis()
         } else {
             0L
@@ -124,7 +123,7 @@ object MemoryInfoFactory {
         }
 
         return res.also {
-            if (BuildInfo.DEBUG) Log.d(
+            if (BuildConfig.DEBUG) MatrixLog.d(
                 TAG,
                 "$status: $it | cost: ${System.currentTimeMillis() - begin}"
             )
@@ -208,7 +207,7 @@ object MemoryInfoFactory {
                 || TextUtils.isEmpty(processInfo.processName)
                 || !processInfo.processName.startsWith(pkgName)
             ) {
-                Log.e(
+                MatrixLog.e(
                     TAG,
                     "info with uid [%s] & process name [%s] is not current app [%s][%s]",
                     processInfoList[i].uid,

@@ -49,7 +49,3 @@ if (rootProject.file('gradle/WeChatPublish.gradle').exists()) {
         }
     }
 }
-repositories {
-    mavenCentral()
-}
-

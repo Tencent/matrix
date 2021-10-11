@@ -4,14 +4,16 @@ plugins {
 }
 
 android {
-    compileSdkVersion 31
-    buildToolsVersion "30.0.3"
+    compileSdkVersion rootProject.ext.compileSdkVersion
+    buildToolsVersion rootProject.ext.buildToolsVersion
+
+    useLibrary 'android.test.base'
 
     defaultConfig {
-        minSdkVersion 21
-        targetSdkVersion 31
+        minSdkVersion rootProject.ext.minSdkVersion
+        targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
-        versionName "1.0"
+        versionName rootProject.ext.VERSION_NAME
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles "consumer-rules.pro"
@@ -43,4 +45,20 @@ dependencies {
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.4.0'
 
     implementation project(":matrix-android-lib")
+}
+
+version = rootProject.ext.VERSION_NAME
+group = rootProject.ext.GROUP
+
+if (rootProject.file('gradle/WeChatPublish.gradle').exists()) {
+    if("External" == rootProject.ext.PUBLISH_CHANNEL){
+        apply from: rootProject.file('gradle/android-publish.gradle')
+    }else {
+        //uploading to WeChat maven repo
+        apply from: rootProject.file('gradle/WeChatPublish.gradle')
+        apply from: rootProject.file('gradle/WeChatNativeDepend.gradle')
+        wechatPublish {
+            artifactId=POM_ARTIFACT_ID
+        }
+    }
 }

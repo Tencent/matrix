@@ -2,7 +2,6 @@ package com.tencent.matrix.memory.canary.monitor
 
 import com.tencent.matrix.util.MatrixHandlerThread
 import com.tencent.matrix.util.MatrixLog
-import com.tencent.mm.sdk.platformtools.Log
 import java.util.concurrent.TimeUnit
 
 /**
