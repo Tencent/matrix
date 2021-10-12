@@ -52,6 +52,8 @@ public class TraceConfig implements IDefaultConfig {
     public String anrTraceFilePath = "";
     public String printTraceFilePath = "";
     public boolean isHasActivity;
+    public boolean historyMsgRecorder;
+    public boolean denseMsgTracer;
 
     private TraceConfig() {
         this.isHasActivity = true;
@@ -69,6 +71,8 @@ public class TraceConfig implements IDefaultConfig {
         ss.append("* defaultStartupEnable:\t").append(defaultStartupEnable).append("\n");
         ss.append("* defaultAnrEnable:\t").append(defaultAnrEnable).append("\n");
         ss.append("* splashActivities:\t").append(splashActivities).append("\n");
+        ss.append("* historyMsgRecorder:\t").append(historyMsgRecorder).append("\n");
+        ss.append("* denseMsgTracer:\t").append(denseMsgTracer).append("\n");
         return ss.toString();
     }
 
@@ -141,6 +145,15 @@ public class TraceConfig implements IDefaultConfig {
         return printTraceFilePath;
     }
 
+    @Override
+    public boolean isHistoryMsgRecorderEnable() {
+        return historyMsgRecorder;
+    }
+
+    @Override
+    public boolean isDenseMsgTracerEnable() {
+        return denseMsgTracer;
+    }
 
     public Set<String> getSplashActivities() {
         if (null == splashActivitiesSet) {
@@ -300,7 +313,15 @@ public class TraceConfig implements IDefaultConfig {
             return this;
         }
 
+        public Builder enableHistoryMsgRecorder(boolean enable) {
+            config.historyMsgRecorder = enable;
+            return this;
+        }
 
+        public Builder enableDenseMsgTracer(boolean enable) {
+            config.denseMsgTracer = enable;
+            return this;
+        }
         public TraceConfig build() {
             return config;
         }
