@@ -46,4 +46,8 @@ public interface IDefaultConfig {
 
     String getPrintTraceFilePath();
 
+    boolean isHistoryMsgRecorderEnable();
+
+    boolean isDenseMsgTracerEnable();
+
 }

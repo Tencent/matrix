@@ -117,8 +117,10 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
         }
         vsyncReceiver = ReflectUtils.reflectObject(choreographer, "mDisplayEventReceiver", null);
         frameIntervalNanos = ReflectUtils.reflectObject(choreographer, "mFrameIntervalNanos", Constants.DEFAULT_FRAME_DURATION);
+        boolean historyMsgRecorder = config.historyMsgRecorder;
+        boolean denseMsgTracer = config.denseMsgTracer;
 
-        LooperMonitor.register(new LooperMonitor.LooperDispatchListener() {
+        LooperMonitor.register(new LooperMonitor.LooperDispatchListener(historyMsgRecorder, denseMsgTracer) {
             @Override
             public boolean isValid() {
                 return isAlive;
