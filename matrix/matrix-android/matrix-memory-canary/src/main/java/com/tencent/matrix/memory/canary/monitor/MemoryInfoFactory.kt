@@ -9,9 +9,9 @@ import android.text.TextUtils
 import androidx.annotation.WorkerThread
 import com.tencent.matrix.Matrix
 import com.tencent.matrix.util.MatrixUtil
-import com.tencent.matrix.memory.canary.lifecycle.owners.ActivityRecord
+import com.tencent.matrix.memory.canary.lifecycle.owners.ActivityRecorder
 import com.tencent.matrix.memory.canary.lifecycle.owners.CombinedProcessForegroundStatefulOwner
-import com.tencent.matrix.memory.canary.lifecycle.owners.ProcessSupervisor
+import com.tencent.matrix.memory.canary.lifecycle.supervisor.ProcessSupervisor
 import com.tencent.matrix.util.MatrixLog
 import java.io.File
 import java.lang.IllegalStateException
@@ -42,6 +42,7 @@ object MemoryInfoFactory {
     private val memClass = activityManager.memoryClass
     private val memLargeClass = activityManager.largeMemoryClass
 
+    // TODO: 2021/10/13
     @WorkerThread
     fun dumpMemory(withStats: Boolean = false, withAllProcess: Boolean = ProcessSupervisor.isSupervisor) : MemInfo {
         val memInfo = MemInfo()
@@ -107,7 +108,7 @@ object MemoryInfoFactory {
         var res = -1L
 
         try {
-            File("/proc/${Process.myPid()}/$status").useLines { seq ->
+            File("/proc/${Process.myPid()}/status").useLines { seq ->
                 seq.first { str ->
                     str.startsWith(status)
                 }.run {
@@ -262,7 +263,7 @@ object MemoryInfoFactory {
 data class ProcessInfo(
     val pid: Int = Process.myPid(),
     val processName: String = MatrixUtil.getProcessName(Matrix.with().application),
-    val activity: String = ActivityRecord.currentActivity,
+    val activity: String = ActivityRecorder.currentActivity,
     val isProcessFg: Boolean = CombinedProcessForegroundStatefulOwner.active(),
     val isAppFg: Boolean = ProcessSupervisor.isAppForeground
 ) {
@@ -270,6 +271,8 @@ data class ProcessInfo(
         return "ProcessInfo: $processName    Activity: $activity    AppForeground: $isAppFg    ProcessForeground: $isProcessFg"
     }
 }
+
+fun Map<String, String>.getTotalPss() = get("summary.total-pss")
 
 data class MemInfo(
     var processInfo: ProcessInfo = ProcessInfo(),
@@ -280,6 +283,7 @@ data class MemInfo(
     var debugPss: Int = -1
     // TODO
 ) {
+
     override fun toString(): String {
         // TODO: 2021/9/26
         return """

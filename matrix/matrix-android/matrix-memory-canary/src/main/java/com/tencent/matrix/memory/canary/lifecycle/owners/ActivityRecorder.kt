@@ -1,6 +1,7 @@
 package com.tencent.matrix.memory.canary.lifecycle.owners
 
 import android.app.Activity
+import android.app.Application
 import android.os.Bundle
 import com.tencent.matrix.memory.canary.DefaultMemoryCanaryInitializer
 import com.tencent.matrix.memory.canary.lifecycle.StatefulOwner
@@ -11,7 +12,7 @@ import java.util.*
 /**
  * Created by Yves on 2021/9/24
  */
-object ActivityRecord : StatefulOwner() {
+object ActivityRecorder : StatefulOwner() {
 
     private const val TAG = "Matrix.memory.ActivityRecordOwner"
 
@@ -32,8 +33,14 @@ object ActivityRecord : StatefulOwner() {
     var currentActivity: String = "default"
         private set
 
-    init {
-        val app = DefaultMemoryCanaryInitializer.application!!
+    @Volatile
+    private var inited = false
+
+    fun init(app: Application) {
+        if (inited) {
+            return
+        }
+        inited = true
         app.registerActivityLifecycleCallbacks(callbacks)
     }
 

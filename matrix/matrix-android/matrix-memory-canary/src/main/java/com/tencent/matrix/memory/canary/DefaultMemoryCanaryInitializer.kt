@@ -1,43 +1,25 @@
 package com.tencent.matrix.memory.canary
 
 import android.app.Application
+import com.tencent.matrix.memory.canary.lifecycle.owners.ActivityRecorder
 import com.tencent.matrix.memory.canary.lifecycle.owners.CombinedProcessForegroundStatefulOwner
-import com.tencent.matrix.memory.canary.lifecycle.owners.ProcessSupervisor
-import com.tencent.matrix.memory.canary.monitor.SumPssReportMonitor
-import com.tencent.matrix.util.MatrixLog
+import com.tencent.matrix.memory.canary.lifecycle.supervisor.ProcessSupervisor
 import com.tencent.matrix.util.MatrixUtil
 
 /**
  * Created by Yves on 2021/9/28
  */
-open class DefaultMemoryCanaryInitializer(app: Application) {
-    companion object {
-        private const val TAG = "Matrix.DefaultMemoryCanaryInit"
+object DefaultMemoryCanaryInitializer {
+    private const val TAG = "Matrix.DefaultMemoryCanaryInit"
 
-        @Volatile
-        private var inited: Boolean = false
+    @Volatile
+    private var inited: Boolean = false
 
-        var application: Application? = null
-            private set
-    }
-
-    init {
-        application = app
-        init(app)
-    }
-
-    private fun init(app: Application) {
+    fun init(app: Application) {
         if (inited) {
             return
         }
-        application = app
-
-        onInit(app)
-
-        inited = true
-    }
-
-    protected open fun onInit(app: Application) {
+        ActivityRecorder.init(app)
         CombinedProcessForegroundStatefulOwner.also {
 //                addSourceOwner(ForegroundServiceMonitor)
 //                addSourceOwner(FloatingWindowMonitor)
@@ -49,8 +31,9 @@ open class DefaultMemoryCanaryInitializer(app: Application) {
                 MatrixUtil.getProcessName(app),
                 app
             )
-            SumPssReportMonitor.init()
         }
         ProcessSupervisor.inCharge(app)
+
+        inited = true
     }
 }
