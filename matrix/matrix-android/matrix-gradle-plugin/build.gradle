@@ -5,8 +5,8 @@ dependencies {
     implementation fileTree(include: ['*.jar'], dir: 'libs')
     implementation gradleApi()
     implementation project(':matrix-commons')
-    implementation group: 'org.ow2.asm', name: 'asm', version: '5.1'
-    implementation group: 'org.ow2.asm', name: 'asm-commons', version: '5.1'
+    implementation group: 'org.ow2.asm', name: 'asm', version: '7.0'
+    implementation group: 'org.ow2.asm', name: 'asm-commons', version: '7.0'
     implementation 'com.android.tools.build:gradle:4.0.0'
     implementation project(':matrix-arscutil')
     implementation "org.jetbrains.kotlin:kotlin-stdlib:${gradle.KOTLIN_VERSION}"
