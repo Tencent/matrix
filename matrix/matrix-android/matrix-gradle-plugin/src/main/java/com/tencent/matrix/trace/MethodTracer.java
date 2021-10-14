@@ -140,12 +140,16 @@ public class MethodTracer {
                     classReader.accept(classVisitor, ClassReader.EXPAND_FRAMES);
                     is.close();
 
+                    ClassReader cr = new ClassReader(classWriter.toByteArray());
+                    ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS);
+                    cr.accept(classWriter, ClassReader.EXPAND_FRAMES);
+
                     if (output.isDirectory()) {
                         os = new FileOutputStream(changedFileOutput);
                     } else {
                         os = new FileOutputStream(output);
                     }
-                    os.write(classWriter.toByteArray());
+                    os.write(cw.toByteArray());
                     os.close();
                 } else {
                     FileUtil.copyFileUsingStream(classFile, changedFileOutput);
@@ -185,6 +189,12 @@ public class MethodTracer {
                     ClassVisitor classVisitor = new TraceClassAdapter(Opcodes.ASM5, classWriter);
                     classReader.accept(classVisitor, ClassReader.EXPAND_FRAMES);
                     byte[] data = classWriter.toByteArray();
+
+                    ClassReader cr = new ClassReader(data);
+                    ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS);
+                    cr.accept(cw, ClassReader.EXPAND_FRAMES);
+                    data = cw.toByteArray();
+
                     InputStream byteArrayInputStream = new ByteArrayInputStream(data);
                     ZipEntry newZipEntry = new ZipEntry(zipEntryName);
                     FileUtil.addZipEntry(zipOutputStream, newZipEntry, byteArrayInputStream);
