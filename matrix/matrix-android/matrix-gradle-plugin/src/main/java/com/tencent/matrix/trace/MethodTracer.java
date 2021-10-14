@@ -134,6 +134,17 @@ public class MethodTracer {
                 changedFileOutput.createNewFile();
 
                 if (MethodCollector.isNeedTraceFile(classFile.getName())) {
+                    try (InputStream i = new FileInputStream(classFile)) {
+                        ClassReader r = new ClassReader(i);
+                        ClassWriter w = new ClassWriter(ClassWriter.COMPUTE_MAXS);
+                        ClassVisitor v = new CheckClassAdapter(w);
+                        r.accept(v, ClassReader.EXPAND_FRAMES);
+                    } catch (Throwable e) {
+                        System.err.println("trace input ERROR: " + classFile);
+                        e.printStackTrace();
+                        throw new IllegalArgumentException("INPUT ERROR");
+                    }
+
                     is = new FileInputStream(classFile);
                     ClassReader classReader = new ClassReader(is);
                     ClassWriter classWriter = new ClassWriter(ClassWriter.COMPUTE_MAXS);
@@ -141,17 +152,27 @@ public class MethodTracer {
                     classReader.accept(classVisitor, ClassReader.EXPAND_FRAMES);
                     is.close();
 
-                    ClassReader cr = new ClassReader(classWriter.toByteArray());
-                    ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS);
-                    ClassVisitor check = new CheckClassAdapter(cw);
-                    cr.accept(check, ClassReader.EXPAND_FRAMES);
+                    byte[] data = classWriter.toByteArray();
+
+                    try {
+                        ClassReader cr = new ClassReader(data);
+                        ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS);
+                        ClassVisitor check = new CheckClassAdapter(cw);
+                        cr.accept(check, ClassReader.EXPAND_FRAMES);
+                    } catch (Throwable e) {
+                        System.err.println("OUTPUT ERROR : " + classFile);
+                        ClassReader r = new ClassReader(data);
+                        ClassWriter w = new ClassWriter(ClassWriter.COMPUTE_MAXS);
+                        r.accept(w, ClassReader.EXPAND_FRAMES);
+                        data = w.toByteArray();
+                    }
 
                     if (output.isDirectory()) {
                         os = new FileOutputStream(changedFileOutput);
                     } else {
                         os = new FileOutputStream(output);
                     }
-                    os.write(cw.toByteArray());
+                    os.write(data);
                     os.close();
                 } else {
                     FileUtil.copyFileUsingStream(classFile, changedFileOutput);
@@ -185,6 +206,18 @@ public class MethodTracer {
                 ZipEntry zipEntry = enumeration.nextElement();
                 String zipEntryName = zipEntry.getName();
                 if (MethodCollector.isNeedTraceFile(zipEntryName)) {
+                    try {
+                        ClassReader r = new ClassReader(zipFile.getInputStream(zipEntry));
+                        ClassWriter w = new ClassWriter(ClassWriter.COMPUTE_MAXS);
+                        ClassVisitor v = new CheckClassAdapter(w);
+                        r.accept(v, ClassReader.EXPAND_FRAMES);
+                    } catch (Throwable e) {
+                        System.err.println("trace jar input ERROR: " + zipEntryName);
+                        e.printStackTrace();
+                        throw new IllegalArgumentException("INPUT ERROR");
+                    }
+
+
                     InputStream inputStream = zipFile.getInputStream(zipEntry);
                     ClassReader classReader = new ClassReader(inputStream);
                     ClassWriter classWriter = new ClassWriter(ClassWriter.COMPUTE_MAXS);
@@ -192,11 +225,20 @@ public class MethodTracer {
                     classReader.accept(classVisitor, ClassReader.EXPAND_FRAMES);
                     byte[] data = classWriter.toByteArray();
 
-                    ClassReader cr = new ClassReader(data);
-                    ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS);
-                    ClassVisitor check = new CheckClassAdapter(cw);
-                    cr.accept(check, ClassReader.EXPAND_FRAMES);
-                    data = cw.toByteArray();
+                    try {
+                        ClassReader r = new ClassReader(data);
+                        ClassWriter w = new ClassWriter(ClassWriter.COMPUTE_MAXS);
+                        ClassVisitor v = new CheckClassAdapter(w);
+                        r.accept(v, ClassReader.EXPAND_FRAMES);
+                    } catch (Throwable e) {
+                        System.err.println("trace jar output ERROR: " + zipEntryName);
+//                        e.printStackTrace();
+                        // try to fix frame
+                        ClassReader r = new ClassReader(data);
+                        ClassWriter w = new ClassWriter(ClassWriter.COMPUTE_MAXS);
+                        r.accept(w, ClassReader.EXPAND_FRAMES);
+                        data = w.toByteArray();
+                    }
 
                     InputStream byteArrayInputStream = new ByteArrayInputStream(data);
                     ZipEntry newZipEntry = new ZipEntry(zipEntryName);
