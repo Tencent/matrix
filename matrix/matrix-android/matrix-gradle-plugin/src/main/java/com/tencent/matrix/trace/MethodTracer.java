@@ -27,6 +27,7 @@ import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.commons.AdviceAdapter;
+import org.objectweb.asm.util.CheckClassAdapter;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
@@ -142,7 +143,8 @@ public class MethodTracer {
 
                     ClassReader cr = new ClassReader(classWriter.toByteArray());
                     ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS);
-                    cr.accept(classWriter, ClassReader.EXPAND_FRAMES);
+                    ClassVisitor check = new CheckClassAdapter(cw);
+                    cr.accept(check, ClassReader.EXPAND_FRAMES);
 
                     if (output.isDirectory()) {
                         os = new FileOutputStream(changedFileOutput);
@@ -192,7 +194,8 @@ public class MethodTracer {
 
                     ClassReader cr = new ClassReader(data);
                     ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS);
-                    cr.accept(cw, ClassReader.EXPAND_FRAMES);
+                    ClassVisitor check = new CheckClassAdapter(cw);
+                    cr.accept(check, ClassReader.EXPAND_FRAMES);
                     data = cw.toByteArray();
 
                     InputStream byteArrayInputStream = new ByteArrayInputStream(data);
