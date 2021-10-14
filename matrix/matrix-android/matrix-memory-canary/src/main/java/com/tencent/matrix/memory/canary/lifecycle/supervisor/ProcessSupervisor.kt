@@ -96,6 +96,9 @@ object ProcessSupervisor :
     }
 
     fun backgroundLruKill(): Boolean {
+        if (!isSupervisor) {
+            return false
+        }
         try {
             SupervisorReceiver.backgroundProcessLru?.last {
                 it != MatrixUtil.getProcessName(application)

@@ -241,7 +241,7 @@ object MemoryInfoFactory {
                 if (BuildConfig.DEBUG) {
                     Assert.assertEquals(memInfoArray.size, pidMemInfoArray.size)
                 }
-                for (i in 0..memInfoArray.size) {
+                for (i in memInfoArray.indices) {
                     pidMemInfoArray[i].totalPss
                     memInfoArray[i].apply {
                         pidMemInfoArray[i].apply {

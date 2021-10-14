@@ -34,6 +34,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * Created by zhangshaowen on 17/6/1.
@@ -68,6 +69,11 @@ public final class MatrixUtil {
         }
 
         return pkgName.equals(processName);
+    }
+
+    public static boolean isMainProcessName(String processName, Context context) {
+        String pkgName = context.getPackageName();
+        return Objects.equals(pkgName, processName);
     }
 
     public static String getPackageName(final Context context) {

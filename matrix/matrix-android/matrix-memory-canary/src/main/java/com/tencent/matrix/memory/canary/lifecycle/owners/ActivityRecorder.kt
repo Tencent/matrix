@@ -14,7 +14,7 @@ import java.util.*
  */
 object ActivityRecorder : StatefulOwner() {
 
-    private const val TAG = "Matrix.memory.ActivityRecordOwner"
+    private const val TAG = "Matrix.memory.ActivityRecorder"
 
     private val callbacks = ActivityCallbacks()
 

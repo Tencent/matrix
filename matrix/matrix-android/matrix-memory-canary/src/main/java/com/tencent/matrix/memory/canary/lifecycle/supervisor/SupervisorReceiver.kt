@@ -20,7 +20,7 @@ import kotlin.collections.HashMap
  */
 internal object SupervisorReceiver : BroadcastReceiver() {
 
-    private const val TAG = "MicroMsg.memory.SupervisorReceiver"
+    private const val TAG = "Matrix.memory.SupervisorReceiver"
 
     private enum class ProcessEvent {
         SUPERVISOR_PROCESS_CREATED, // if the supervisor process were not main process, the create event would be lost
@@ -36,6 +36,22 @@ internal object SupervisorReceiver : BroadcastReceiver() {
             ProcessSupervisor.addSourceOwner(this)
         }
 
+        companion object {
+            private val processFgObservers by lazy { HashMap<String, RemoteProcessLifecycleProxy>() }
+
+            fun getProxy(processName: String?) : RemoteProcessLifecycleProxy? {
+                return processName?.run {
+                    processFgObservers.getOrPut(this, { RemoteProcessLifecycleProxy(this) })
+                }
+            }
+
+            fun removeProxy(processName: String) {
+                processFgObservers.remove(processName)?.let { statefulOwner ->
+                    ProcessSupervisor.removeSourceOwner(statefulOwner)
+                }
+            }
+        }
+
         fun onRemoteProcessForeground() = turnOn()
         fun onRemoteProcessBackground() = turnOff()
         override fun toString(): String {
@@ -45,10 +61,14 @@ internal object SupervisorReceiver : BroadcastReceiver() {
 
     private val pendingEvents = ArrayList<ProcessEvent>()
 
-    private val processFgObservers by lazy { HashMap<String, RemoteProcessLifecycleProxy>() }
-
     internal var backgroundProcessLru: LinkedList<String>? = null
         private set
+        get() {
+            if (!isSupervisor) {
+                throw UnsupportedOperationException("NOT support for other processes")
+            }
+            return field
+        }
 
     private fun LinkedList<String>.moveOrAddFirst(str: String) {
         remove(str)
@@ -151,10 +171,7 @@ internal object SupervisorReceiver : BroadcastReceiver() {
         val processName = intent?.getStringExtra(KEY_PROCESS_NAME)
 //        MatrixLog.d(SupervisorLifecycleOwner.tag, "Action [${intent?.action}] [$processName]")
 
-        val proxy =
-            processName?.run {
-                processFgObservers.getOrPut(this, { RemoteProcessLifecycleProxy(processName) })
-            }
+        val proxy = RemoteProcessLifecycleProxy.getProxy(processName)
 
         when (intent?.action) {
             ProcessEvent.SUPERVISOR_PROCESS_CREATED.name -> {
@@ -199,9 +216,7 @@ internal object SupervisorReceiver : BroadcastReceiver() {
             ProcessEvent.SUPERVISOR_PROCESS_DESTROYED.name -> {
                 processName?.let { name ->
                     backgroundProcessLru?.remove(name)
-                    processFgObservers.remove(name)?.let { statefulOwner ->
-                        ProcessSupervisor.removeSourceOwner(statefulOwner)
-                    }
+                    RemoteProcessLifecycleProxy.removeProxy(name)
                     asyncLog(
                         TAG,
                         "[$name] X [${backgroundProcessLru?.size}]${backgroundProcessLru.toString()}"
