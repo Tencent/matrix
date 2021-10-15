@@ -273,6 +273,10 @@ public class SignalAnrTracer extends Tracer {
         nativePrintTrace();
     }
 
+    public static void setPrintTraceFilePath(String printTraceFilePath) {
+        sPrintTraceFilePath = printTraceFilePath;
+    }
+
     private static native void nativeInitSignalAnrDetective(String anrPrintTraceFilePath, String printTraceFilePath);
 
     private static native void nativeFreeSignalAnrDetective();
