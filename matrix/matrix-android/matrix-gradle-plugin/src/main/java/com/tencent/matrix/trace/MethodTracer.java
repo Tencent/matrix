@@ -156,15 +156,25 @@ public class MethodTracer {
 
                     try {
                         ClassReader cr = new ClassReader(data);
-                        ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS);
+                        ClassWriter cw = new ClassWriter(0);
                         ClassVisitor check = new CheckClassAdapter(cw);
                         cr.accept(check, ClassReader.EXPAND_FRAMES);
                     } catch (Throwable e) {
-                        System.err.println("OUTPUT ERROR : " + classFile);
+                        System.err.println("OUTPUT ERROR : " + e.getMessage() + classFile);
                         ClassReader r = new ClassReader(data);
                         ClassWriter w = new ClassWriter(ClassWriter.COMPUTE_MAXS);
                         r.accept(w, ClassReader.EXPAND_FRAMES);
                         data = w.toByteArray();
+                    }
+
+                    try {
+                        ClassReader r = new ClassReader(data);
+                        ClassWriter w = new ClassWriter(0);
+                        ClassVisitor v = new CheckClassAdapter(w);
+                        r.accept(v, ClassReader.EXPAND_FRAMES);
+                    } catch (Throwable e) {
+                        System.err.println("check again failed !!!");
+                        throw new IllegalStateException("check again failed: " + e.getMessage() + ", " + classFile);
                     }
 
                     if (output.isDirectory()) {
@@ -212,7 +222,7 @@ public class MethodTracer {
                         ClassVisitor v = new CheckClassAdapter(w);
                         r.accept(v, ClassReader.EXPAND_FRAMES);
                     } catch (Throwable e) {
-                        System.err.println("trace jar input ERROR: " + zipEntryName);
+                        System.err.println("trace jar input ERROR: " + e.getMessage() + ", " + zipEntryName);
                         e.printStackTrace();
                         throw new IllegalArgumentException("INPUT ERROR");
                     }
@@ -227,17 +237,27 @@ public class MethodTracer {
 
                     try {
                         ClassReader r = new ClassReader(data);
-                        ClassWriter w = new ClassWriter(ClassWriter.COMPUTE_MAXS);
+                        ClassWriter w = new ClassWriter(0);
                         ClassVisitor v = new CheckClassAdapter(w);
                         r.accept(v, ClassReader.EXPAND_FRAMES);
                     } catch (Throwable e) {
-                        System.err.println("trace jar output ERROR: " + zipEntryName);
+                        System.err.println("trace jar output ERROR: " + e.getMessage() + ", "+ zipEntryName);
 //                        e.printStackTrace();
                         // try to fix frame
                         ClassReader r = new ClassReader(data);
                         ClassWriter w = new ClassWriter(ClassWriter.COMPUTE_MAXS);
                         r.accept(w, ClassReader.EXPAND_FRAMES);
                         data = w.toByteArray();
+                    }
+
+                    try {
+                        ClassReader r = new ClassReader(data);
+                        ClassWriter w = new ClassWriter(0);
+                        ClassVisitor v = new CheckClassAdapter(w);
+                        r.accept(v, ClassReader.EXPAND_FRAMES);
+                    } catch (Throwable e) {
+                        System.err.println("check again failed !!!");
+                        throw new IllegalStateException("check again failed: " + e.getMessage() + ", " + zipEntryName);
                     }
 
                     InputStream byteArrayInputStream = new ByteArrayInputStream(data);
