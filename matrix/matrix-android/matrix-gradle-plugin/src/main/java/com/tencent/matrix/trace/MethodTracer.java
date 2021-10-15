@@ -136,7 +136,7 @@ public class MethodTracer {
                 if (MethodCollector.isNeedTraceFile(classFile.getName())) {
                     try (InputStream i = new FileInputStream(classFile)) {
                         ClassReader r = new ClassReader(i);
-                        ClassWriter w = new ClassWriter(ClassWriter.COMPUTE_MAXS);
+                        ClassWriter w = new ClassWriter(ClassWriter.COMPUTE_FRAMES);
                         ClassVisitor v = new CheckClassAdapter(w);
                         r.accept(v, ClassReader.EXPAND_FRAMES);
                     } catch (Throwable e) {
@@ -147,7 +147,7 @@ public class MethodTracer {
 
                     is = new FileInputStream(classFile);
                     ClassReader classReader = new ClassReader(is);
-                    ClassWriter classWriter = new ClassWriter(ClassWriter.COMPUTE_MAXS);
+                    ClassWriter classWriter = new ClassWriter(ClassWriter.COMPUTE_FRAMES);
                     ClassVisitor classVisitor = new TraceClassAdapter(Opcodes.ASM5, classWriter);
                     classReader.accept(classVisitor, ClassReader.EXPAND_FRAMES);
                     is.close();
@@ -162,7 +162,7 @@ public class MethodTracer {
                     } catch (Throwable e) {
                         System.err.println("OUTPUT ERROR : " + e.getMessage() + classFile);
                         ClassReader r = new ClassReader(data);
-                        ClassWriter w = new ClassWriter(ClassWriter.COMPUTE_MAXS);
+                        ClassWriter w = new ClassWriter(ClassWriter.COMPUTE_FRAMES);
                         r.accept(w, ClassReader.EXPAND_FRAMES);
                         data = w.toByteArray();
                     }
@@ -218,7 +218,7 @@ public class MethodTracer {
                 if (MethodCollector.isNeedTraceFile(zipEntryName)) {
                     try {
                         ClassReader r = new ClassReader(zipFile.getInputStream(zipEntry));
-                        ClassWriter w = new ClassWriter(ClassWriter.COMPUTE_MAXS);
+                        ClassWriter w = new ClassWriter(ClassWriter.COMPUTE_FRAMES);
                         ClassVisitor v = new CheckClassAdapter(w);
                         r.accept(v, ClassReader.EXPAND_FRAMES);
                     } catch (Throwable e) {
@@ -230,7 +230,7 @@ public class MethodTracer {
 
                     InputStream inputStream = zipFile.getInputStream(zipEntry);
                     ClassReader classReader = new ClassReader(inputStream);
-                    ClassWriter classWriter = new ClassWriter(ClassWriter.COMPUTE_MAXS);
+                    ClassWriter classWriter = new ClassWriter(ClassWriter.COMPUTE_FRAMES);
                     ClassVisitor classVisitor = new TraceClassAdapter(Opcodes.ASM5, classWriter);
                     classReader.accept(classVisitor, ClassReader.EXPAND_FRAMES);
                     byte[] data = classWriter.toByteArray();
@@ -245,7 +245,7 @@ public class MethodTracer {
 //                        e.printStackTrace();
                         // try to fix frame
                         ClassReader r = new ClassReader(data);
-                        ClassWriter w = new ClassWriter(ClassWriter.COMPUTE_MAXS);
+                        ClassWriter w = new ClassWriter(ClassWriter.COMPUTE_FRAMES);
                         r.accept(w, ClassReader.EXPAND_FRAMES);
                         data = w.toByteArray();
                     }
