@@ -76,44 +76,43 @@ public class MethodTracer {
         this.collectedMethodMap = collectedMap;
     }
 
-
-    public void trace(Map<File, File> srcFolderList, Map<File, File> dependencyJarList) throws ExecutionException, InterruptedException {
+    public void trace(Map<File, File> srcFolderList, Map<File, File> dependencyJarList, ClassLoader classLoader) throws ExecutionException, InterruptedException {
         List<Future> futures = new LinkedList<>();
-        traceMethodFromSrc(srcFolderList, futures);
-        traceMethodFromJar(dependencyJarList, futures);
+        traceMethodFromSrc(srcFolderList, futures, classLoader);
+        traceMethodFromJar(dependencyJarList, futures, classLoader);
         for (Future future : futures) {
             future.get();
         }
         futures.clear();
     }
 
-    private void traceMethodFromSrc(Map<File, File> srcMap, List<Future> futures) {
+    private void traceMethodFromSrc(Map<File, File> srcMap, List<Future> futures, final ClassLoader classLoader) {
         if (null != srcMap) {
             for (Map.Entry<File, File> entry : srcMap.entrySet()) {
                 futures.add(executor.submit(new Runnable() {
                     @Override
                     public void run() {
-                        innerTraceMethodFromSrc(entry.getKey(), entry.getValue());
+                        innerTraceMethodFromSrc(entry.getKey(), entry.getValue(), classLoader);
                     }
                 }));
             }
         }
     }
 
-    private void traceMethodFromJar(Map<File, File> dependencyMap, List<Future> futures) {
+    private void traceMethodFromJar(Map<File, File> dependencyMap, List<Future> futures, final ClassLoader classLoader) {
         if (null != dependencyMap) {
             for (Map.Entry<File, File> entry : dependencyMap.entrySet()) {
                 futures.add(executor.submit(new Runnable() {
                     @Override
                     public void run() {
-                        innerTraceMethodFromJar(entry.getKey(), entry.getValue());
+                        innerTraceMethodFromJar(entry.getKey(), entry.getValue(), classLoader);
                     }
                 }));
             }
         }
     }
 
-    private void innerTraceMethodFromSrc(File input, File output) {
+    private void innerTraceMethodFromSrc(File input, File output, ClassLoader classLoader) {
 
         ArrayList<File> classFileList = new ArrayList<>();
         if (input.isDirectory()) {
@@ -134,21 +133,21 @@ public class MethodTracer {
                 changedFileOutput.createNewFile();
 
                 if (MethodCollector.isNeedTraceFile(classFile.getName())) {
-                    try (InputStream i = new FileInputStream(classFile)) {
-                        ClassReader r = new ClassReader(i);
-                        ClassWriter w = new ClassWriter(ClassWriter.COMPUTE_FRAMES);
-                        ClassVisitor v = new CheckClassAdapter(w);
-                        r.accept(v, ClassReader.EXPAND_FRAMES);
-                    } catch (Throwable e) {
-                        System.err.println("trace input ERROR: " + classFile);
-                        e.printStackTrace();
-                        throw new IllegalArgumentException("INPUT ERROR");
-                    }
+//                    try (InputStream i = new FileInputStream(classFile)) {
+//                        ClassReader r = new ClassReader(i);
+//                        ClassWriter w = new ClassWriter(0);
+//                        ClassVisitor v = new CheckClassAdapter(w);
+//                        r.accept(v, ClassReader.EXPAND_FRAMES);
+//                    } catch (Throwable e) {
+//                        System.err.println("trace input ERROR: " + classFile);
+//                        e.printStackTrace();
+//                        throw new IllegalArgumentException("INPUT ERROR");
+//                    }
 
                     is = new FileInputStream(classFile);
                     ClassReader classReader = new ClassReader(is);
-                    ClassWriter classWriter = new ClassWriter(ClassWriter.COMPUTE_FRAMES);
-                    ClassVisitor classVisitor = new TraceClassAdapter(Opcodes.ASM5, classWriter);
+                    ClassWriter classWriter = new TraceClassWriter(ClassWriter.COMPUTE_FRAMES, classLoader);
+                    ClassVisitor classVisitor = new TraceClassAdapter(Opcodes.ASM6, classWriter);
                     classReader.accept(classVisitor, ClassReader.EXPAND_FRAMES);
                     is.close();
 
@@ -161,20 +160,6 @@ public class MethodTracer {
                         cr.accept(check, ClassReader.EXPAND_FRAMES);
                     } catch (Throwable e) {
                         System.err.println("OUTPUT ERROR : " + e.getMessage() + classFile);
-                        ClassReader r = new ClassReader(data);
-                        ClassWriter w = new ClassWriter(ClassWriter.COMPUTE_FRAMES);
-                        r.accept(w, ClassReader.EXPAND_FRAMES);
-                        data = w.toByteArray();
-                    }
-
-                    try {
-                        ClassReader r = new ClassReader(data);
-                        ClassWriter w = new ClassWriter(0);
-                        ClassVisitor v = new CheckClassAdapter(w);
-                        r.accept(v, ClassReader.EXPAND_FRAMES);
-                    } catch (Throwable e) {
-                        System.err.println("check again failed !!!");
-                        throw new IllegalStateException("check again failed: " + e.getMessage() + ", " + classFile);
                     }
 
                     if (output.isDirectory()) {
@@ -205,7 +190,7 @@ public class MethodTracer {
         }
     }
 
-    private void innerTraceMethodFromJar(File input, File output) {
+    private void innerTraceMethodFromJar(File input, File output, final ClassLoader classLoader) {
         ZipOutputStream zipOutputStream = null;
         ZipFile zipFile = null;
         try {
@@ -216,25 +201,24 @@ public class MethodTracer {
                 ZipEntry zipEntry = enumeration.nextElement();
                 String zipEntryName = zipEntry.getName();
                 if (MethodCollector.isNeedTraceFile(zipEntryName)) {
-                    try {
-                        ClassReader r = new ClassReader(zipFile.getInputStream(zipEntry));
-                        ClassWriter w = new ClassWriter(ClassWriter.COMPUTE_FRAMES);
-                        ClassVisitor v = new CheckClassAdapter(w);
-                        r.accept(v, ClassReader.EXPAND_FRAMES);
-                    } catch (Throwable e) {
-                        System.err.println("trace jar input ERROR: " + e.getMessage() + ", " + zipEntryName);
-                        e.printStackTrace();
-                        throw new IllegalArgumentException("INPUT ERROR");
-                    }
-
+//                    try {
+//                        ClassReader r = new ClassReader(zipFile.getInputStream(zipEntry));
+//                        ClassWriter w = new ClassWriter(0);
+//                        ClassVisitor v = new CheckClassAdapter(w);
+//                        r.accept(v, ClassReader.EXPAND_FRAMES);
+//                    } catch (Throwable e) {
+//                        System.err.println("trace jar input ERROR: " + e.getMessage() + ", " + zipEntryName);
+//                        e.printStackTrace();
+//                        throw new IllegalArgumentException("INPUT ERROR");
+//                    }
 
                     InputStream inputStream = zipFile.getInputStream(zipEntry);
                     ClassReader classReader = new ClassReader(inputStream);
-                    ClassWriter classWriter = new ClassWriter(ClassWriter.COMPUTE_FRAMES);
-                    ClassVisitor classVisitor = new TraceClassAdapter(Opcodes.ASM5, classWriter);
+                    ClassWriter classWriter = new TraceClassWriter(ClassWriter.COMPUTE_FRAMES, classLoader);
+                    ClassVisitor classVisitor = new TraceClassAdapter(Opcodes.ASM6, classWriter);
                     classReader.accept(classVisitor, ClassReader.EXPAND_FRAMES);
                     byte[] data = classWriter.toByteArray();
-
+//
                     try {
                         ClassReader r = new ClassReader(data);
                         ClassWriter w = new ClassWriter(0);
@@ -244,20 +228,6 @@ public class MethodTracer {
                         System.err.println("trace jar output ERROR: " + e.getMessage() + ", "+ zipEntryName);
 //                        e.printStackTrace();
                         // try to fix frame
-                        ClassReader r = new ClassReader(data);
-                        ClassWriter w = new ClassWriter(ClassWriter.COMPUTE_FRAMES);
-                        r.accept(w, ClassReader.EXPAND_FRAMES);
-                        data = w.toByteArray();
-                    }
-
-                    try {
-                        ClassReader r = new ClassReader(data);
-                        ClassWriter w = new ClassWriter(0);
-                        ClassVisitor v = new CheckClassAdapter(w);
-                        r.accept(v, ClassReader.EXPAND_FRAMES);
-                    } catch (Throwable e) {
-                        System.err.println("check again failed !!!");
-                        throw new IllegalStateException("check again failed: " + e.getMessage() + ", " + zipEntryName);
                     }
 
                     InputStream byteArrayInputStream = new ByteArrayInputStream(data);
