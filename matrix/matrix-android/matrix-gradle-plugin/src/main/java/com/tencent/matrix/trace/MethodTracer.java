@@ -133,16 +133,16 @@ public class MethodTracer {
                 changedFileOutput.createNewFile();
 
                 if (MethodCollector.isNeedTraceFile(classFile.getName())) {
-//                    try (InputStream i = new FileInputStream(classFile)) {
-//                        ClassReader r = new ClassReader(i);
-//                        ClassWriter w = new ClassWriter(0);
-//                        ClassVisitor v = new CheckClassAdapter(w);
-//                        r.accept(v, ClassReader.EXPAND_FRAMES);
-//                    } catch (Throwable e) {
-//                        System.err.println("trace input ERROR: " + classFile);
+                    try (InputStream i = new FileInputStream(classFile)) {
+                        ClassReader r = new ClassReader(i);
+                        ClassWriter w = new ClassWriter(0);
+                        ClassVisitor v = new CheckClassAdapter(w);
+                        r.accept(v, ClassReader.EXPAND_FRAMES);
+                    } catch (Throwable e) {
+                        System.err.println("trace input ERROR: " + e.getMessage() + ", " + classFile);
 //                        e.printStackTrace();
 //                        throw new IllegalArgumentException("INPUT ERROR");
-//                    }
+                    }
 
                     is = new FileInputStream(classFile);
                     ClassReader classReader = new ClassReader(is);
@@ -159,7 +159,7 @@ public class MethodTracer {
                         ClassVisitor check = new CheckClassAdapter(cw);
                         cr.accept(check, ClassReader.EXPAND_FRAMES);
                     } catch (Throwable e) {
-                        System.err.println("OUTPUT ERROR : " + e.getMessage() + classFile);
+                        System.err.println("trace output ERROR : " + e.getMessage() + ", " + classFile);
                     }
 
                     if (output.isDirectory()) {
@@ -201,16 +201,14 @@ public class MethodTracer {
                 ZipEntry zipEntry = enumeration.nextElement();
                 String zipEntryName = zipEntry.getName();
                 if (MethodCollector.isNeedTraceFile(zipEntryName)) {
-//                    try {
-//                        ClassReader r = new ClassReader(zipFile.getInputStream(zipEntry));
-//                        ClassWriter w = new ClassWriter(0);
-//                        ClassVisitor v = new CheckClassAdapter(w);
-//                        r.accept(v, ClassReader.EXPAND_FRAMES);
-//                    } catch (Throwable e) {
-//                        System.err.println("trace jar input ERROR: " + e.getMessage() + ", " + zipEntryName);
-//                        e.printStackTrace();
-//                        throw new IllegalArgumentException("INPUT ERROR");
-//                    }
+                    try {
+                        ClassReader r = new ClassReader(zipFile.getInputStream(zipEntry));
+                        ClassWriter w = new ClassWriter(0);
+                        ClassVisitor v = new CheckClassAdapter(w);
+                        r.accept(v, ClassReader.EXPAND_FRAMES);
+                    } catch (Throwable e) {
+                        System.err.println("trace jar input ERROR: " + e.getMessage() + ", " + zipEntryName);
+                    }
 
                     InputStream inputStream = zipFile.getInputStream(zipEntry);
                     ClassReader classReader = new ClassReader(inputStream);
@@ -227,7 +225,6 @@ public class MethodTracer {
                     } catch (Throwable e) {
                         System.err.println("trace jar output ERROR: " + e.getMessage() + ", "+ zipEntryName);
 //                        e.printStackTrace();
-                        // try to fix frame
                     }
 
                     InputStream byteArrayInputStream = new ByteArrayInputStream(data);
