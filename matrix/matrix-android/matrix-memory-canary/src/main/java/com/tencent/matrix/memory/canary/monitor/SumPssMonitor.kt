@@ -18,7 +18,6 @@ class SumPssMonitor(
 
     private var overTimes = 0
 
-
     override fun action() {
         MatrixLog.d(TAG, "check begin")
 
@@ -36,7 +35,7 @@ class SumPssMonitor(
         if (sumPss > threshold) {
             overTimes++
         }
-        if (overTimes > checkTimes) {
+        if (overTimes >= checkTimes) {
             overTimes = 0
             callback(sumPss)
         }
