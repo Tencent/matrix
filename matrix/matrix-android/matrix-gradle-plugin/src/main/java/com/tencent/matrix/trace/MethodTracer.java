@@ -68,6 +68,8 @@ public class MethodTracer {
     private final ExecutorService executor;
     private MappingCollector mappingCollector;
 
+    private volatile boolean traceError = false;
+
     public MethodTracer(ExecutorService executor, MappingCollector mappingCollector, Configuration config, ConcurrentHashMap<String, TraceMethod> collectedMap, ConcurrentHashMap<String, String> collectedClassExtendMap) {
         this.configuration = config;
         this.mappingCollector = mappingCollector;
@@ -82,6 +84,9 @@ public class MethodTracer {
         traceMethodFromJar(dependencyJarList, futures, classLoader);
         for (Future future : futures) {
             future.get();
+        }
+        if (traceError) {
+            throw new IllegalArgumentException("something wrong with trace, see detail log before");
         }
         futures.clear();
     }
@@ -133,16 +138,6 @@ public class MethodTracer {
                 changedFileOutput.createNewFile();
 
                 if (MethodCollector.isNeedTraceFile(classFile.getName())) {
-                    try (InputStream i = new FileInputStream(classFile)) {
-                        ClassReader r = new ClassReader(i);
-                        ClassWriter w = new ClassWriter(0);
-                        ClassVisitor v = new CheckClassAdapter(w);
-                        r.accept(v, ClassReader.EXPAND_FRAMES);
-                    } catch (Throwable e) {
-                        System.err.println("trace input ERROR: " + e.getMessage() + ", " + classFile);
-//                        e.printStackTrace();
-//                        throw new IllegalArgumentException("INPUT ERROR");
-                    }
 
                     is = new FileInputStream(classFile);
                     ClassReader classReader = new ClassReader(is);
@@ -160,6 +155,7 @@ public class MethodTracer {
                         cr.accept(check, ClassReader.EXPAND_FRAMES);
                     } catch (Throwable e) {
                         System.err.println("trace output ERROR : " + e.getMessage() + ", " + classFile);
+                        traceError = true;
                     }
 
                     if (output.isDirectory()) {
@@ -201,14 +197,6 @@ public class MethodTracer {
                 ZipEntry zipEntry = enumeration.nextElement();
                 String zipEntryName = zipEntry.getName();
                 if (MethodCollector.isNeedTraceFile(zipEntryName)) {
-                    try {
-                        ClassReader r = new ClassReader(zipFile.getInputStream(zipEntry));
-                        ClassWriter w = new ClassWriter(0);
-                        ClassVisitor v = new CheckClassAdapter(w);
-                        r.accept(v, ClassReader.EXPAND_FRAMES);
-                    } catch (Throwable e) {
-                        System.err.println("trace jar input ERROR: " + e.getMessage() + ", " + zipEntryName);
-                    }
 
                     InputStream inputStream = zipFile.getInputStream(zipEntry);
                     ClassReader classReader = new ClassReader(inputStream);
@@ -225,6 +213,7 @@ public class MethodTracer {
                     } catch (Throwable e) {
                         System.err.println("trace jar output ERROR: " + e.getMessage() + ", "+ zipEntryName);
 //                        e.printStackTrace();
+                        traceError = true;
                     }
 
                     InputStream byteArrayInputStream = new ByteArrayInputStream(data);
