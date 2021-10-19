@@ -19,6 +19,7 @@ package sample.tencent.matrix;
 import android.app.Application;
 import android.content.Context;
 import android.content.Intent;
+import android.os.Build;
 
 import androidx.lifecycle.Lifecycle;
 import androidx.lifecycle.LifecycleObserver;
@@ -27,6 +28,8 @@ import androidx.lifecycle.OnLifecycleEvent;
 import com.tencent.matrix.AppActiveMatrixDelegate;
 import com.tencent.matrix.Matrix;
 import com.tencent.matrix.batterycanary.BatteryMonitorPlugin;
+import com.tencent.matrix.hook.HookManager;
+import com.tencent.matrix.hook.pthread.PthreadHook;
 import com.tencent.matrix.iocanary.IOCanaryPlugin;
 import com.tencent.matrix.iocanary.config.IOConfig;
 import com.tencent.matrix.listeners.IAppForeground;
@@ -57,9 +60,28 @@ public class MatrixApplication extends Application {
 
     private static Context sContext;
 
+    public static boolean is64BitRuntime() {
+        final String currRuntimeABI = Build.CPU_ABI;
+        return "arm64-v8a".equalsIgnoreCase(currRuntimeABI)
+                || "x86_64".equalsIgnoreCase(currRuntimeABI)
+                || "mips64".equalsIgnoreCase(currRuntimeABI);
+    }
+
     @Override
     public void onCreate() {
         super.onCreate();
+
+        if (!is64BitRuntime()) {
+            try {
+                final PthreadHook.ThreadStackShrinkConfig config = new PthreadHook.ThreadStackShrinkConfig()
+                        .setEnabled(true)
+                        .addIgnoreCreatorSoPatterns(".*/app_tbs/.*")
+                        .addIgnoreCreatorSoPatterns(".*/libany\\.so$");
+                HookManager.INSTANCE.addHook(PthreadHook.INSTANCE.setThreadStackShrinkConfig(config)).commitHooks();
+            } catch (HookManager.HookFailedException e) {
+                e.printStackTrace();
+            }
+        }
 
         // Switch.
         DynamicConfigImplDemo dynamicConfig = new DynamicConfigImplDemo();
