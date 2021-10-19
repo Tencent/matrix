@@ -107,7 +107,8 @@ abstract class MatrixTraceTask : DefaultTask() {
                     methodMapFilePath = methodMapFileOutput.asFile.get().absolutePath,
                     baseMethodMapPath = baseMethodMapFile.asFile.orNull?.absolutePath,
                     blockListFilePath = blockListFile.asFile.orNull?.absolutePath,
-                    mappingDir = mappingDir.get()
+                    mappingDir = mappingDir.get(),
+                    project = project
             ).doTransform(
                     classInputs = classInputs.files,
                     changedFiles = changedFiles,
