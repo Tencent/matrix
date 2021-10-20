@@ -19,6 +19,9 @@ import java.util.concurrent.TimeUnit
  */
 internal object DispatchReceiver : BroadcastReceiver() {
 
+    private var rescued: Boolean = false
+    internal var killedListener: (() -> Boolean)? = null
+
     private enum class SupervisorEvent {
         SUPERVISOR_INSTALLED,
         SUPERVISOR_DISPATCH_APP_FOREGROUND,
@@ -90,12 +93,21 @@ internal object DispatchReceiver : BroadcastReceiver() {
                 val target = intent.getStringExtra(KEY_PROCESS_NAME)
                 MatrixLog.d(ProcessSupervisor.tag, "receive kill target: $target")
                 if (target == MatrixUtil.getProcessName(context)) {
-                    SupervisorReceiver.sendOnProcessDestroying(context)
+
+                    if (killedListener?.invoke() == true && !rescued) {
+                        rescued = true
+                        SupervisorReceiver.sendOnProcessKillCanceled(context)
+                        MatrixLog.e(ProcessSupervisor.tag, "rescued once !!!")
+                        return
+                    }
+
                     MatrixHandlerThread.getDefaultHandler().postDelayed({
                         if (!CombinedProcessForegroundStatefulOwner.active()) {
+                            SupervisorReceiver.sendOnProcessKilled(context)
                             MatrixLog.e(ProcessSupervisor.tag, "actual kill !!!")
                             Process.killProcess(Process.myPid())
                         } else {
+                            SupervisorReceiver.sendOnProcessKillCanceled(context)
                             MatrixLog.i(ProcessSupervisor.tag, "recheck: process is on foreground")
                         }
                     }, TimeUnit.SECONDS.toMillis(10))

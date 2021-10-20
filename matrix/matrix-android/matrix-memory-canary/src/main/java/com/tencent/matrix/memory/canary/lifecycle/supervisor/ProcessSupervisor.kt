@@ -95,22 +95,13 @@ object ProcessSupervisor :
 //        })
     }
 
-    fun backgroundLruKill(): Boolean {
-        if (!isSupervisor) {
-            return false
-        }
-        try {
-            SupervisorReceiver.backgroundProcessLru?.last {
-                it != MatrixUtil.getProcessName(application)
-            }?.let {
-                DispatchReceiver.dispatchKill(application, it)
-                return true
-            }
-        } catch (ignore: NoSuchElementException) {
-            return false
-        }
-        return false
+    fun inCharge(app: Application, killedListener: () -> Boolean) {
+        inCharge(app)
+        DispatchReceiver.killedListener = killedListener
     }
+
+    fun backgroundLruKill(killedCallback: (process: String?) -> Unit) : Boolean =
+        SupervisorReceiver.backgroundLruKill(application, killedCallback)
 
     val isAppForeground: Boolean
         get() = active()
@@ -118,11 +109,7 @@ object ProcessSupervisor :
     val isSupervisor: Boolean
         get() = SupervisorReceiver.isSupervisor
 
-    internal fun syncAppForeground() {
-        turnOn()
-    }
+    internal fun syncAppForeground() = turnOn()
 
-    internal fun syncAppBackground() {
-        turnOff()
-    }
+    internal fun syncAppBackground() = turnOff()
 }

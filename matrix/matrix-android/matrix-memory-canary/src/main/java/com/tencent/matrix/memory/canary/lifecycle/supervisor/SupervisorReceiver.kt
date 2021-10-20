@@ -26,7 +26,8 @@ internal object SupervisorReceiver : BroadcastReceiver() {
         SUPERVISOR_PROCESS_CREATED, // if the supervisor process were not main process, the create event would be lost
         SUPERVISOR_PROCESS_FOREGROUNDED,
         SUPERVISOR_PROCESS_BACKGROUNDED,
-        SUPERVISOR_PROCESS_DESTROYED,
+        SUPERVISOR_PROCESS_KILLED,
+        SUPERVISOR_PROCESS_KILL_CANCELED,
         CHECK_SUPERVISOR_REGISTER,
         CHECK_ERROR_DAMAGE;
     }
@@ -80,6 +81,8 @@ internal object SupervisorReceiver : BroadcastReceiver() {
     internal val isSupervisor: Boolean
         get() = supervisorProcessName != null
 
+    private var targetKilledCallback: ((target: String?) -> Unit)? = null
+
     @Volatile
     private var isSupervisorInstalled: Boolean = false
 
@@ -114,8 +117,30 @@ internal object SupervisorReceiver : BroadcastReceiver() {
         send(context, ProcessEvent.SUPERVISOR_PROCESS_BACKGROUNDED)
     }
 
-    internal fun sendOnProcessDestroying(context: Context?) {
-        send(context, ProcessEvent.SUPERVISOR_PROCESS_DESTROYED)
+    internal fun sendOnProcessKilled(context: Context?) {
+        send(context, ProcessEvent.SUPERVISOR_PROCESS_KILLED)
+    }
+
+    internal fun sendOnProcessKillCanceled(context: Context?) {
+        send(context, ProcessEvent.SUPERVISOR_PROCESS_KILL_CANCELED)
+    }
+
+    internal fun backgroundLruKill(context: Context?, killedCallback: (process: String?) -> Unit) : Boolean {
+        if (!isSupervisor) {
+            return false
+        }
+        targetKilledCallback = killedCallback
+        try {
+            backgroundProcessLru?.last {
+                it != MatrixUtil.getProcessName(context)
+            }?.let {
+                DispatchReceiver.dispatchKill(context, it)
+                return true
+            }
+        } catch (ignore: NoSuchElementException) {
+            return false
+        }
+        return false
     }
 
     private fun checkUnique(context: Context?) {
@@ -213,8 +238,11 @@ internal object SupervisorReceiver : BroadcastReceiver() {
                     )
                 }
             }
-            ProcessEvent.SUPERVISOR_PROCESS_DESTROYED.name -> {
+            ProcessEvent.SUPERVISOR_PROCESS_KILLED.name -> {
                 processName?.let { name ->
+                    try {
+                        targetKilledCallback?.invoke(name)
+                    } catch (ignore: Throwable) {}
                     backgroundProcessLru?.remove(name)
                     RemoteProcessLifecycleProxy.removeProxy(name)
                     asyncLog(
@@ -222,6 +250,11 @@ internal object SupervisorReceiver : BroadcastReceiver() {
                         "[$name] X [${backgroundProcessLru?.size}]${backgroundProcessLru.toString()}"
                     )
                 }
+            }
+            ProcessEvent.SUPERVISOR_PROCESS_KILL_CANCELED.name -> {
+                try {
+                    targetKilledCallback?.invoke(null)
+                } catch (ignore: Throwable) {}
             }
             ProcessEvent.CHECK_SUPERVISOR_REGISTER.name -> {
                 if (processName == MatrixUtil.getProcessName(context)) {
