@@ -14,6 +14,11 @@ import com.tencent.matrix.util.MatrixUtil
 internal const val SUPERVISOR_PERMISSION = "com.tencent.matrix.permission.MEMORY_CANARY"
 internal const val KEY_PROCESS_NAME = "KEY_PROCESS_NAME"
 
+const val LRU_KILL_SUCCESS = 1
+const val LRU_KILL_RESCUED = 2
+const val LRU_KILL_CANCELED = 3
+const val LRU_KILL_NOT_FOUND = 4
+
 object ProcessSupervisor :
     MultiSourceStatefulOwner(ReduceOperators.OR) {
 
@@ -100,7 +105,7 @@ object ProcessSupervisor :
         DispatchReceiver.killedListener = killedListener
     }
 
-    fun backgroundLruKill(killedCallback: (process: String?) -> Unit) : Boolean =
+    fun backgroundLruKill(killedCallback: (result: Int, process: String?) -> Unit) =
         SupervisorReceiver.backgroundLruKill(application, killedCallback)
 
     val isAppForeground: Boolean

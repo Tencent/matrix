@@ -96,7 +96,7 @@ internal object DispatchReceiver : BroadcastReceiver() {
 
                     if (killedListener?.invoke() == true && !rescued) {
                         rescued = true
-                        SupervisorReceiver.sendOnProcessKillCanceled(context)
+                        SupervisorReceiver.sendOnProcessKillRescued(context)
                         MatrixLog.e(ProcessSupervisor.tag, "rescued once !!!")
                         return
                     }

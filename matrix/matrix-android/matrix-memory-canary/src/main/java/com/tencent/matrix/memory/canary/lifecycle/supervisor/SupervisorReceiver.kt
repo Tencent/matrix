@@ -27,6 +27,7 @@ internal object SupervisorReceiver : BroadcastReceiver() {
         SUPERVISOR_PROCESS_FOREGROUNDED,
         SUPERVISOR_PROCESS_BACKGROUNDED,
         SUPERVISOR_PROCESS_KILLED,
+        SUPERVISOR_PROCESS_KILL_RESCUED,
         SUPERVISOR_PROCESS_KILL_CANCELED,
         CHECK_SUPERVISOR_REGISTER,
         CHECK_ERROR_DAMAGE;
@@ -40,7 +41,7 @@ internal object SupervisorReceiver : BroadcastReceiver() {
         companion object {
             private val processFgObservers by lazy { HashMap<String, RemoteProcessLifecycleProxy>() }
 
-            fun getProxy(processName: String?) : RemoteProcessLifecycleProxy? {
+            fun getProxy(processName: String?): RemoteProcessLifecycleProxy? {
                 return processName?.run {
                     processFgObservers.getOrPut(this, { RemoteProcessLifecycleProxy(this) })
                 }
@@ -81,7 +82,7 @@ internal object SupervisorReceiver : BroadcastReceiver() {
     internal val isSupervisor: Boolean
         get() = supervisorProcessName != null
 
-    private var targetKilledCallback: ((target: String?) -> Unit)? = null
+    private var targetKilledCallback: ((result: Int, target: String?) -> Unit)? = null
 
     @Volatile
     private var isSupervisorInstalled: Boolean = false
@@ -121,26 +122,29 @@ internal object SupervisorReceiver : BroadcastReceiver() {
         send(context, ProcessEvent.SUPERVISOR_PROCESS_KILLED)
     }
 
+    internal fun sendOnProcessKillRescued(context: Context?) {
+        send(context, ProcessEvent.SUPERVISOR_PROCESS_KILL_RESCUED)
+    }
+
     internal fun sendOnProcessKillCanceled(context: Context?) {
         send(context, ProcessEvent.SUPERVISOR_PROCESS_KILL_CANCELED)
     }
 
-    internal fun backgroundLruKill(context: Context?, killedCallback: (process: String?) -> Unit) : Boolean {
+    internal fun backgroundLruKill(
+        context: Context?,
+        killedCallback: (result: Int, process: String?) -> Unit
+    ) {
         if (!isSupervisor) {
-            return false
+            throw IllegalStateException("backgroundLruKill should only be called in supervisor")
         }
         targetKilledCallback = killedCallback
-        try {
-            backgroundProcessLru?.last {
-                it != MatrixUtil.getProcessName(context)
-            }?.let {
-                DispatchReceiver.dispatchKill(context, it)
-                return true
-            }
-        } catch (ignore: NoSuchElementException) {
-            return false
+        backgroundProcessLru?.lastOrNull {
+            it != MatrixUtil.getProcessName(context)
+        }?.let {
+            DispatchReceiver.dispatchKill(context, it)
+        } ?: let {
+            killedCallback.invoke(LRU_KILL_NOT_FOUND, null)
         }
-        return false
     }
 
     private fun checkUnique(context: Context?) {
@@ -241,8 +245,9 @@ internal object SupervisorReceiver : BroadcastReceiver() {
             ProcessEvent.SUPERVISOR_PROCESS_KILLED.name -> {
                 processName?.let { name ->
                     try {
-                        targetKilledCallback?.invoke(name)
-                    } catch (ignore: Throwable) {}
+                        targetKilledCallback?.invoke(LRU_KILL_SUCCESS, name)
+                    } catch (ignore: Throwable) {
+                    }
                     backgroundProcessLru?.remove(name)
                     RemoteProcessLifecycleProxy.removeProxy(name)
                     asyncLog(
@@ -251,10 +256,17 @@ internal object SupervisorReceiver : BroadcastReceiver() {
                     )
                 }
             }
+            ProcessEvent.SUPERVISOR_PROCESS_KILL_RESCUED.name -> {
+                try {
+                    targetKilledCallback?.invoke(LRU_KILL_RESCUED, null)
+                } catch (ignore: Throwable) {
+                }
+            }
             ProcessEvent.SUPERVISOR_PROCESS_KILL_CANCELED.name -> {
                 try {
-                    targetKilledCallback?.invoke(null)
-                } catch (ignore: Throwable) {}
+                    targetKilledCallback?.invoke(LRU_KILL_CANCELED, null)
+                } catch (ignore: Throwable) {
+                }
             }
             ProcessEvent.CHECK_SUPERVISOR_REGISTER.name -> {
                 if (processName == MatrixUtil.getProcessName(context)) {

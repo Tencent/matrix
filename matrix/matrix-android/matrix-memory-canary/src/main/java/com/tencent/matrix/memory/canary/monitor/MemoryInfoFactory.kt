@@ -25,7 +25,7 @@ import junit.framework.Assert
 /**
  * Created by Yves on 2021/9/22
  */
-// fixme remove Matrix dependency
+// FIXME: 2021/10/20 代码整理
 object MemoryInfoFactory {
 
     private const val TAG = "Matrix.MemoryInfoFactory"
@@ -137,21 +137,7 @@ object MemoryInfoFactory {
         get() {
             val mi = Debug.MemoryInfo()
             Debug.getMemoryInfo(mi)
-            return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                mi.memoryStats
-            } else {
-                mapOf(
-                    "summary.java-heap" to mi.dalvikPrivateDirty.toString(),
-                    "summary.native-heap" to mi.nativePrivateDirty.toString(),
-                    "summary.code" to "-1",
-                    "summary.stack" to "-1",
-                    "summary.graphics" to "-1",
-                    "summary.private-other" to "-1",
-                    "summary.system" to (mi.totalPss - mi.totalPrivateClean - mi.totalPrivateDirty).toString(),
-                    "summary.total-pss" to mi.totalPss.toString(),
-                    "summary.total-swap" to "-1"
-                )
-            }
+            return mi.memoryStatToMap()
         }
 
     private fun Debug.MemoryInfo.memoryStatToMap(): Map<String, String> {

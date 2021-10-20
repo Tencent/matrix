@@ -3,9 +3,8 @@ package com.tencent.matrix.memory.canary.lifecycle.owners
 import android.app.Activity
 import android.app.Application
 import android.os.Bundle
-import com.tencent.matrix.memory.canary.DefaultMemoryCanaryInitializer
 import com.tencent.matrix.memory.canary.lifecycle.StatefulOwner
-import com.tencent.matrix.memory.canary.monitor.EmptyActivityLifecycleCallbacks
+import com.tencent.matrix.memory.canary.lifecycle.EmptyActivityLifecycleCallbacks
 import com.tencent.matrix.util.MatrixLog
 import java.util.*
 
