@@ -63,8 +63,7 @@ internal object SupervisorReceiver : BroadcastReceiver() {
 
     private val pendingEvents = ArrayList<ProcessEvent>()
 
-    internal var backgroundProcessLru: LinkedList<String>? = null
-        private set
+    private var backgroundProcessLru: LinkedList<String>? = null
         get() {
             if (!isSupervisor) {
                 throw UnsupportedOperationException("NOT support for other processes")
