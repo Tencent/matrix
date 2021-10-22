@@ -156,11 +156,11 @@ public class OpenGLResRecorder {
                     break;
                 }
 
-                if (isNeedIgnore(info)) {
-                    item.release();
-                    iterator.remove();
-                    continue;
-                }
+//                if (isNeedIgnore(info)) {
+//                    item.release();
+//                    iterator.remove();
+//                    continue;
+//                }
 
                 if ((item.getType() == info.getType()) && (item.getThreadId().equals(info.getThreadId())) && (item.getId() == info.getId())) {
                     if (mListener != null) {
@@ -182,9 +182,9 @@ public class OpenGLResRecorder {
                     break;
                 }
 
-                if (isNeedIgnore(info)) {
-                    continue;
-                }
+//                if (isNeedIgnore(info)) {
+//                    continue;
+//                }
 
                 if ((item.getType() == info.getType()) && (item.getThreadId().equals(info.getThreadId())) && (item.getId() == info.getId())) {
                     item.setMaybeLeak(true);

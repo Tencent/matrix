@@ -14,6 +14,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import androidx.annotation.WorkerThread;
+
 import static com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil.JIFFY_MILLIS;
 import static com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil.ONE_HOR;
 
@@ -46,10 +48,18 @@ public class CpuStatFeature extends  AbsTaskMonitorFeature {
     public void onForeground(boolean isForeground) {
         super.onForeground(isForeground);
         if (!isForeground) {
-            tryInitPowerProfile();
+            if (mPowerProfile == null) {
+                mCore.getHandler().post(new Runnable() {
+                    @Override
+                    public void run() {
+                        tryInitPowerProfile();
+                    }
+                });
+            }
         }
     }
 
+    @WorkerThread
     private void tryInitPowerProfile() {
         if (mPowerProfile != null) {
             return;
@@ -93,27 +103,32 @@ public class CpuStatFeature extends  AbsTaskMonitorFeature {
             if (!isSupported()) {
                 throw new IOException("PowerProfile not supported");
             }
-            // Cpu core steps jiffies
-            snapshot.cpuCoreStates = new ArrayList<>();
-            for (int i = 0; i < mPowerProfile.getCpuCoreNum(); i++) {
-                final int numSpeedSteps = mPowerProfile.getNumSpeedStepsInCpuCluster(mPowerProfile.getClusterByCpuNum(i));
-                KernelCpuSpeedReader cpuStepJiffiesReader = new KernelCpuSpeedReader(i, numSpeedSteps);
-                long[] cpuCoreStepJiffies = cpuStepJiffiesReader.readAbsolute();
-                ListEntry<DigitEntry<Long>> cpuCoreState = ListEntry.ofDigits(cpuCoreStepJiffies);
-                snapshot.cpuCoreStates.add(cpuCoreState);
-            }
+            synchronized (this) {
+                if (!isSupported()) {
+                    throw new IOException("PowerProfile not supported");
+                }
+                // Cpu core steps jiffies
+                snapshot.cpuCoreStates = new ArrayList<>();
+                for (int i = 0; i < mPowerProfile.getCpuCoreNum(); i++) {
+                    final int numSpeedSteps = mPowerProfile.getNumSpeedStepsInCpuCluster(mPowerProfile.getClusterByCpuNum(i));
+                    KernelCpuSpeedReader cpuStepJiffiesReader = new KernelCpuSpeedReader(i, numSpeedSteps);
+                    long[] cpuCoreStepJiffies = cpuStepJiffiesReader.readAbsolute();
+                    ListEntry<DigitEntry<Long>> cpuCoreState = ListEntry.ofDigits(cpuCoreStepJiffies);
+                    snapshot.cpuCoreStates.add(cpuCoreState);
+                }
 
-            // Proc cluster steps jiffies
-            int[] clusterSteps = new int[mPowerProfile.getNumCpuClusters()];
-            for (int i = 0; i < clusterSteps.length; i++) {
-                clusterSteps[i] = mPowerProfile.getNumSpeedStepsInCpuCluster(i);
-            }
-            KernelCpuUidFreqTimeReader procStepJiffiesReader = new KernelCpuUidFreqTimeReader(Process.myPid(), clusterSteps);
-            List<long[]> procStepJiffies = procStepJiffiesReader.readAbsolute();
-            snapshot.procCpuCoreStates = new ArrayList<>();
-            for (long[] item : procStepJiffies) {
-                ListEntry<DigitEntry<Long>> procCpuCoreState = ListEntry.ofDigits(item);
-                snapshot.procCpuCoreStates.add(procCpuCoreState);
+                // Proc cluster steps jiffies
+                int[] clusterSteps = new int[mPowerProfile.getNumCpuClusters()];
+                for (int i = 0; i < clusterSteps.length; i++) {
+                    clusterSteps[i] = mPowerProfile.getNumSpeedStepsInCpuCluster(i);
+                }
+                KernelCpuUidFreqTimeReader procStepJiffiesReader = new KernelCpuUidFreqTimeReader(Process.myPid(), clusterSteps);
+                List<long[]> procStepJiffies = procStepJiffiesReader.readAbsolute();
+                snapshot.procCpuCoreStates = new ArrayList<>();
+                for (long[] item : procStepJiffies) {
+                    ListEntry<DigitEntry<Long>> procCpuCoreState = ListEntry.ofDigits(item);
+                    snapshot.procCpuCoreStates.add(procCpuCoreState);
+                }
             }
         } catch (Exception e) {
             MatrixLog.w(TAG, "Read cpu core state fail: " + e.getMessage());
