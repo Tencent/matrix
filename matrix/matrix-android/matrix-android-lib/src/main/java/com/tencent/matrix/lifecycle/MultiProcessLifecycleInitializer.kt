@@ -6,19 +6,18 @@ import android.content.Context
 import android.database.Cursor
 import android.net.Uri
 import androidx.annotation.NonNull
-import androidx.annotation.RestrictTo
-import com.tencent.matrix.util.MatrixLog
-import com.tencent.matrix.util.MatrixUtil
+import com.tencent.matrix.lifecycle.MultiProcessLifecycleInitializer.Companion.init
 
 /**
+ * You should init [com.tencent.matrix.Matrix] or call [init] manually before creating any Activity
  * Created by Yves on 2021/9/14
  */
-class MultiProcessLifecycleInitializer: ContentProvider() {
+class MultiProcessLifecycleInitializer : ContentProvider() {
 
     companion object {
 
         @Volatile
-        private var inited= false
+        private var inited = false
 
         @JvmStatic
         fun init(@NonNull context: Context) {

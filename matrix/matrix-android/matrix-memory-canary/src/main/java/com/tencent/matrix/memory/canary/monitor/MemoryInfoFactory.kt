@@ -187,6 +187,13 @@ object MemoryInfoFactory {
         val processInfoList = activityManager.runningAppProcesses
         val memoryInfoList: MutableList<MemInfo> = ArrayList()
 
+        if (processInfoList == null) {
+            MatrixLog.e(TAG, "ERROR: activityManager.runningAppProcesses - no running process")
+            return emptyArray()
+        }
+
+        MatrixLog.d(TAG, "processInfoList[$processInfoList]")
+
         for (i in processInfoList.indices) {
             val processInfo = processInfoList[i]
             val pkgName = Matrix.with().application.packageName
