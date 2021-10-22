@@ -169,7 +169,7 @@ public class MethodTracer {
                     FileUtil.copyFileUsingStream(classFile, changedFileOutput);
                 }
             } catch (Exception e) {
-                Log.e(TAG, "[innerTraceMethodFromSrc] input:%s e:%s", input.getName(), e);
+                Log.e(TAG, "[innerTraceMethodFromSrc] input:%s e:%s", input.getName(), e.getMessage());
                 try {
                     Files.copy(input.toPath(), output.toPath(), StandardCopyOption.REPLACE_EXISTING);
                 } catch (Exception e1) {
@@ -226,7 +226,7 @@ public class MethodTracer {
                 }
             }
         } catch (Exception e) {
-            Log.e(TAG, "[innerTraceMethodFromJar] input:%s output:%s e:%s", input, output, e);
+            Log.e(TAG, "[innerTraceMethodFromJar] input:%s output:%s e:%s", input, output, e.getMessage());
             if (e instanceof ZipException) {
                 e.printStackTrace();
             }
