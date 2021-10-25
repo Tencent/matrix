@@ -5,7 +5,7 @@ import com.tencent.matrix.memory.canary.lifecycle.owners.ActivityRecorder
 import com.tencent.matrix.memory.canary.lifecycle.owners.CombinedProcessForegroundStatefulOwner
 import com.tencent.matrix.memory.canary.lifecycle.supervisor.ProcessSupervisor
 import com.tencent.matrix.plugin.Plugin
-import com.tencent.matrix.plugin.PluginListener
+import com.tencent.matrix.util.MatrixLog
 import com.tencent.matrix.util.MatrixUtil
 
 private typealias Initializer = (app: Application) -> Unit
@@ -34,12 +34,13 @@ class MemoryCanaryPlugin(private val initializer: Initializer = defaultInitializ
         }
     }
 
-    override fun init(app: Application?, listener: PluginListener?) {
-        super.init(app, listener)
-        if (status == PLUGIN_INITED) {
+    override fun start() {
+        if (status == PLUGIN_STARTED) {
+            MatrixLog.e(tag, "already started")
             return
         }
-        initializer.invoke(app!!)
+        super.start()
+        initializer.invoke(application)
     }
 
     override fun getTag(): String {

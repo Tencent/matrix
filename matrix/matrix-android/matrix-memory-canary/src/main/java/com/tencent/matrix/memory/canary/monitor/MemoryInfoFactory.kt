@@ -247,7 +247,7 @@ object MemoryInfoFactory {
             return memInfoArray
         }
 
-    val sumPss: Int
+    val allProcessPssSum: Int
         get() {
             return allProcessMemInfo.sumBy { it.amsPss }
         }

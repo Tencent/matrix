@@ -34,6 +34,7 @@ import com.tencent.matrix.iocanary.IOCanaryPlugin;
 import com.tencent.matrix.iocanary.config.IOConfig;
 import com.tencent.matrix.listeners.IAppForeground;
 import com.tencent.matrix.lifecycle.MultiProcessLifecycleOwner;
+import com.tencent.matrix.memory.canary.MemoryCanaryPlugin;
 import com.tencent.matrix.resource.ResourcePlugin;
 import com.tencent.matrix.resource.config.ResourceConfig;
 import com.tencent.matrix.trace.TracePlugin;
@@ -94,6 +95,8 @@ public class MatrixApplication extends Application {
 
         // Reporter. Matrix will callback this listener when found issue then emitting it.
         builder.pluginListener(new TestPluginListener(this));
+
+        builder.plugin(new MemoryCanaryPlugin());
 
         // Configure trace canary.
         TracePlugin tracePlugin = configureTracePlugin(dynamicConfig);
