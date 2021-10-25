@@ -68,6 +68,7 @@ class MatrixTrace(
                     changedFiles: Map<File, Status>,
                     inputToOutput: Map<File, File>,
                     isIncremental: Boolean,
+                    skipCheckClass: Boolean,
                     traceClassDirectoryOutput: File,
                     legacyReplaceChangedFile: ((File, Map<File, Status>) -> Object)?,
                     legacyReplaceFile: ((File, File) -> (Object))?
@@ -81,6 +82,7 @@ class MatrixTrace(
                 .setBaseMethodMap(baseMethodMapPath)
                 .setBlockListFile(blockListFilePath)
                 .setMappingPath(mappingDir)
+                .setSkipCheckClass(skipCheckClass)
                 .build()
 
         /**
@@ -157,7 +159,8 @@ class MatrixTrace(
             it.addAll(jarInputOutMap.keys)
         }
         val traceClassLoader = TraceClassLoader.getClassLoader(project, allInputs)
-        methodTracer.trace(dirInputOutMap, jarInputOutMap, traceClassLoader)
+        methodTracer.trace(dirInputOutMap, jarInputOutMap, traceClassLoader, skipCheckClass)
+
         Log.i(TAG, "[doTransform] Step(3)[Trace]... cost:%sms", System.currentTimeMillis() - start)
 
     }
