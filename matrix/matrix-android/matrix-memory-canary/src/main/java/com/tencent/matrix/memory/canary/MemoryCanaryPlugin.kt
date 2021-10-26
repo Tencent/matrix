@@ -7,11 +7,27 @@ import com.tencent.matrix.util.MatrixLog
 import com.tencent.matrix.util.MatrixUtil
 
 /**
- * supervisorProcess: you should parse a process name provided by [MatrixUtil.getProcessName]
+ * supervisorProcess:
+ * By default, MemoryCanaryPlugin treats main process as supervisor.
+ * If you want to specify ONE process as supervisor,
+ * you could set this param with the full process name.
+ *
+ * for example:
+ *  MemoryCanaryPlugin(application.packageName + ":push")
+ *
+ * Notice: pls avoid setting different names by different process.
+ * Only ONE process can be chosen as supervisor, otherwise it would lead to crash
+ *
+ * BAD example:
+ *  // code in [android.app.Application.onCreate] so each process would run it
+ *  override fun onCreate() {
+ *      MemoryCanaryPlugin(getCurrentProcessName())
+ *  }
+ *
  * Created by Yves on 2021/10/22
  */
 class MemoryCanaryPlugin(private val supervisorProcess: String = DEFAULT_PROCESS) : Plugin() {
-
+    // TODO do we need a config builder ?
     companion object {
         private const val DEFAULT_PROCESS = "main"
     }
