@@ -36,6 +36,7 @@ import com.tencent.matrix.listeners.IAppForeground;
 import com.tencent.matrix.lifecycle.MultiProcessLifecycleOwner;
 import com.tencent.matrix.memory.canary.MemoryCanaryPlugin;
 import com.tencent.matrix.memory.canary.lifecycle.IStateObserver;
+import com.tencent.matrix.memory.canary.lifecycle.owners.CombinedProcessForegroundStatefulOwner;
 import com.tencent.matrix.memory.canary.lifecycle.supervisor.ProcessSupervisor;
 import com.tencent.matrix.resource.ResourcePlugin;
 import com.tencent.matrix.resource.config.ResourceConfig;
@@ -158,6 +159,18 @@ public class MatrixApplication extends Application {
             @OnLifecycleEvent(Lifecycle.Event.ON_STOP)
             private void onProcessStopped() {
                 MatrixLog.d(TAG, "MultiProcessLifecycleOwner: onProcessStopped");
+            }
+        });
+
+        CombinedProcessForegroundStatefulOwner.INSTANCE.observeForever(new IStateObserver() {
+            @Override
+            public void on() {
+                MatrixLog.d(TAG, "CombinedProcessForegroundStatefulOwner: ON");
+            }
+
+            @Override
+            public void off() {
+                MatrixLog.d(TAG, "CombinedProcessForegroundStatefulOwner: OFF");
             }
         });
 

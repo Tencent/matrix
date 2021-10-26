@@ -24,6 +24,9 @@ import android.os.Looper;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.tencent.matrix.memory.canary.monitor.MemInfo;
+import com.tencent.matrix.util.MatrixLog;
+
 
 public class SplashActivity extends AppCompatActivity {
     private static String TAG = "Matrix.SplashActivity";
@@ -45,6 +48,10 @@ public class SplashActivity extends AppCompatActivity {
         sHandlerThread = new HandlerThread("SplashActivity");
         sHandlerThread.start();
 
+        long begin = System.currentTimeMillis();
+        MemInfo info = MemInfo.getCurrentProcessFullMemInfo();
+        MatrixLog.d(TAG, "mem cost %s", System.currentTimeMillis() - begin);
+        MatrixLog.d(TAG, "%s", info);
     }
 
 }

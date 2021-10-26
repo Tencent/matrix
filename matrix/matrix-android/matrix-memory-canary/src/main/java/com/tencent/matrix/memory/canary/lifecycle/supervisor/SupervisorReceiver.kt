@@ -100,6 +100,7 @@ internal object SupervisorReceiver : BroadcastReceiver() {
 
         checkUnique(context)
 
+        flushPending(context)
         DispatchReceiver.dispatchSuperVisorInstalled(context)
 
 //        MatrixLog.i(TAG, "RegisterReceiver installed")
@@ -168,6 +169,7 @@ internal object SupervisorReceiver : BroadcastReceiver() {
         if (isSupervisor) {
 //            MatrixLog.d(TAG, "send direct")
             onReceive(context, intent)
+            return
         }
 
         context?.sendBroadcast(

@@ -73,7 +73,7 @@ data class PssInfo(
     var pssPrivateOther: Int = -1
 ) {
     override fun toString(): String {
-        return "totalPss=$totalPss K, Java=$pssJava K, Native=$pssNative K, Graphic=$pssGraphic K, System=$pssSystem K, Swap=$pssSwap K, Code=$pssCode K, Stack=$pssStack K, PrivateOther=$pssPrivateOther K"
+        return "totalPss=$totalPss K,\tJava=$pssJava K,\tNative=$pssNative K,\tGraphic=$pssGraphic K,\tSystem=$pssSystem K,\tSwap=$pssSwap K,\tCode=$pssCode K,\tStack=$pssStack K,\tPrivateOther=$pssPrivateOther K"
     }
 
     companion object {
@@ -206,7 +206,7 @@ data class JavaMemInfo(
     val javaLargeMemClass: Int = MemoryInfoFactory.largeMemClass
 ) {
     override fun toString(): String {
-        return "Used=$javaHeapUsedSize B, Recycled=$javaHeapRecycledSize B, Max=$javaHeapMaxSize B, MemClass:$javaMemClass M, LargeMemClass=$javaLargeMemClass M"
+        return "Used=$javaHeapUsedSize B,\tRecycled=$javaHeapRecycledSize B,\tMax=$javaHeapMaxSize B,\tMemClass:$javaMemClass M, LargeMemClass=$javaLargeMemClass M"
     }
 }
 
@@ -216,7 +216,7 @@ data class NativeMemInfo(
     val nativeRecycledSize: Long = Debug.getNativeHeapFreeSize()
 ) {
     override fun toString(): String {
-        return "Used=$nativeAllocatedSize B, Recycled=$nativeRecycledSize B, HeapSize=$nativeHeapSize B"
+        return "Used=$nativeAllocatedSize B,\tRecycled=$nativeRecycledSize B,\tHeapSize=$nativeHeapSize B"
     }
 }
 
@@ -227,7 +227,7 @@ data class SystemInfo(
     var threshold: Long = -1
 ) {
     override fun toString(): String {
-        return "totalMem=$totalMem B, availMem=$availMem B, lowMemory=$lowMemory B, threshold=$threshold B"
+        return "totalMem=$totalMem B,\tavailMem=$availMem B,\tlowMemory=$lowMemory B,\tthreshold=$threshold B"
     }
 }
 
@@ -244,15 +244,15 @@ data class MemInfo(
     override fun toString(): String {
         return """
                 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> MemInfo <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-                | Process: $processInfo
-                | Status: $statusInfo
+                | Process   : $processInfo
+                | Status    : $statusInfo
                 | SystemInfo: $systemInfo
-                | Java: $javaMemInfo
-                | Native: $nativeMemInfo
-                | Dbg-Pss: $debugPssInfo
-                | AMS-Pss: $amsPssInfo
-                | FgService: todo
-                >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> MemInfo <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+                | Java      : $javaMemInfo
+                | Native    : $nativeMemInfo
+                | Dbg-Pss   : $debugPssInfo
+                | AMS-Pss   : $amsPssInfo
+                | FgService : todo
+                >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>><<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
             """.trimIndent()
     }
 

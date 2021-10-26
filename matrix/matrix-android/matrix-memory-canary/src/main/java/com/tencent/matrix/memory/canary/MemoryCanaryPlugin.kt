@@ -18,7 +18,7 @@ class MemoryCanaryPlugin(private val initializer: Initializer = defaultInitializ
     companion object {
         private val defaultInitializer: Initializer = { app ->
             ActivityRecorder.init(app)
-            CombinedProcessForegroundStatefulOwner.also {
+            CombinedProcessForegroundStatefulOwner.apply {
 //                addSourceOwner(ForegroundServiceMonitor)
 //                addSourceOwner(FloatingWindowMonitor)
 //                addSourceOwner(AnyOtherForegroundWidgetMonitor)
