@@ -35,6 +35,8 @@ import com.tencent.matrix.iocanary.config.IOConfig;
 import com.tencent.matrix.listeners.IAppForeground;
 import com.tencent.matrix.lifecycle.MultiProcessLifecycleOwner;
 import com.tencent.matrix.memory.canary.MemoryCanaryPlugin;
+import com.tencent.matrix.memory.canary.lifecycle.IStateObserver;
+import com.tencent.matrix.memory.canary.lifecycle.supervisor.ProcessSupervisor;
 import com.tencent.matrix.resource.ResourcePlugin;
 import com.tencent.matrix.resource.config.ResourceConfig;
 import com.tencent.matrix.trace.TracePlugin;
@@ -96,7 +98,8 @@ public class MatrixApplication extends Application {
         // Reporter. Matrix will callback this listener when found issue then emitting it.
         builder.pluginListener(new TestPluginListener(this));
 
-        builder.plugin(new MemoryCanaryPlugin());
+        MemoryCanaryPlugin memoryCanaryPlugin = new MemoryCanaryPlugin();
+        builder.plugin(memoryCanaryPlugin);
 
         // Configure trace canary.
         TracePlugin tracePlugin = configureTracePlugin(dynamicConfig);
@@ -134,27 +137,39 @@ public class MatrixApplication extends Application {
 
             @OnLifecycleEvent(Lifecycle.Event.ON_CREATE)
             private void onProcessCreatedCalledOnce() {
-                MatrixLog.d(TAG, "onCreatedCalledOnce");
+                MatrixLog.d(TAG, "MultiProcessLifecycleOwner: onCreatedCalledOnce");
             }
 
             @OnLifecycleEvent(Lifecycle.Event.ON_START)
             private void onProcessStarted() {
-                MatrixLog.d(TAG, "onProcessStarted");
+                MatrixLog.d(TAG, "MultiProcessLifecycleOwner: onProcessStarted");
             }
 
             @OnLifecycleEvent(Lifecycle.Event.ON_RESUME)
             private void onProcessResumed() {
-                MatrixLog.d(TAG, "onProcessResumed");
+                MatrixLog.d(TAG, "MultiProcessLifecycleOwner: onProcessResumed");
             }
 
             @OnLifecycleEvent(Lifecycle.Event.ON_PAUSE)
             private void onProcessPaused() {
-                MatrixLog.d(TAG, "onProcessPaused");
+                MatrixLog.d(TAG, "MultiProcessLifecycleOwner: onProcessPaused");
             }
 
             @OnLifecycleEvent(Lifecycle.Event.ON_STOP)
             private void onProcessStopped() {
-                MatrixLog.d(TAG, "onProcessStopped");
+                MatrixLog.d(TAG, "MultiProcessLifecycleOwner: onProcessStopped");
+            }
+        });
+
+        ProcessSupervisor.INSTANCE.observeForever(new IStateObserver() {
+            @Override
+            public void on() {
+                MatrixLog.d(TAG, "ProcessSupervisor: on");
+            }
+
+            @Override
+            public void off() {
+                MatrixLog.d(TAG, "ProcessSupervisor: off");
             }
         });
 
@@ -167,6 +182,7 @@ public class MatrixApplication extends Application {
 
         // Trace Plugin need call start() at the beginning.
         tracePlugin.start();
+        memoryCanaryPlugin.start();
 
         MatrixLog.i(TAG, "Matrix configurations done.");
 

@@ -17,20 +17,13 @@
 package sample.tencent.matrix;
 
 import android.content.Intent;
-import android.net.Uri;
-import android.os.Build;
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.HandlerThread;
-import android.provider.Settings;
-import android.util.Log;
 import android.view.View;
 import android.widget.Button;
-import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
-import com.tencent.matrix.trace.view.FrameDecorator;
+import com.tencent.matrix.memory.canary.monitor.MemInfo;
 import com.tencent.matrix.util.MatrixLog;
 
 import sample.tencent.matrix.battery.TestBatteryActivity;
@@ -110,6 +103,10 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        long begin = System.currentTimeMillis();
+        MemInfo info = MemInfo.getCurrentProcessFullMemInfo();
+        MatrixLog.d(TAG, "mem cost %s", System.currentTimeMillis() - begin);
+        MatrixLog.d(TAG, "%s", info);
     }
 
 

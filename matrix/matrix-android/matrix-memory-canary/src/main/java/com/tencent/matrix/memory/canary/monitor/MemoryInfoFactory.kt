@@ -6,251 +6,47 @@ import android.os.Build
 import android.os.Debug
 import android.os.Process
 import android.text.TextUtils
-import androidx.annotation.WorkerThread
 import com.tencent.matrix.Matrix
-import com.tencent.matrix.util.MatrixUtil
+import com.tencent.matrix.memory.canary.BuildConfig
 import com.tencent.matrix.memory.canary.lifecycle.owners.ActivityRecorder
 import com.tencent.matrix.memory.canary.lifecycle.owners.CombinedProcessForegroundStatefulOwner
 import com.tencent.matrix.memory.canary.lifecycle.supervisor.ProcessSupervisor
 import com.tencent.matrix.util.MatrixLog
+import com.tencent.matrix.util.MatrixUtil
+import junit.framework.Assert
 import java.io.File
-import java.lang.IllegalStateException
 import java.util.*
 import java.util.regex.Pattern
 import kotlin.collections.ArrayList
-import kotlin.collections.HashMap
-import com.tencent.matrix.memory.canary.BuildConfig
-import junit.framework.Assert
+
+private const val TAG = "Matrix.MemoryInfoFactory"
 
 /**
  * Created by Yves on 2021/9/22
  */
-// FIXME: 2021/10/20 代码整理
 object MemoryInfoFactory {
-
-    private const val TAG = "Matrix.MemoryInfoFactory"
-
     init {
         if (!Matrix.isInstalled()) {
             throw IllegalStateException("Matrix NOT installed yet!!!")
         }
     }
 
-    private val activityManager =
+    internal val activityManager =
         Matrix.with().application.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
 
-    private val memClass = activityManager.memoryClass
-    private val memLargeClass = activityManager.largeMemoryClass
-
-    // TODO: 2021/10/13
-    @WorkerThread
-    fun dumpMemory(withStats: Boolean = false, withAllProcess: Boolean = ProcessSupervisor.isSupervisor) : MemInfo {
-        val memInfo = MemInfo()
-
-        if (withStats) {
-
-        }
-
-        // TODO: 2021/10/9
-
-        return memInfo
-    }
-
-    private fun dumpDebugPss(memInfo: MemInfo) {
-        val mi = Debug.MemoryInfo()
-        Debug.getMemoryInfo(mi)
-        memInfo.amsPss = mi.totalPss
-    }
-
-    @get:WorkerThread
-    @get:JvmStatic
-    val VmSize: Long
-        get() {
-            return procStatusStartsWith("VmSize")
-        }
-
-    @get:WorkerThread
-    @get:JvmStatic
-    val VmRSS: Long
-        get() {
-            return procStatusStartsWith("VmRSS")
-        }
-
-    @get:WorkerThread
-    @get:JvmStatic
-    val RssAnon: Long
-        get() {
-            return procStatusStartsWith("RssAnon")
-        }
-
-    @get:WorkerThread
-    @get:JvmStatic
-    val RssFile: Long
-        get() {
-            return procStatusStartsWith("RssFile")
-        }
-
-    @get:WorkerThread
-    @get:JvmStatic
-    val RssShmem: Long
-        get() {
-            return procStatusStartsWith("RssShmem")
-        }
-
-    private fun procStatusStartsWith(status: String): Long {
-
-        val begin = if (BuildConfig.DEBUG) {
-            System.currentTimeMillis()
-        } else {
-            0L
-        }
-
-        var res = -1L
-
-        try {
-            File("/proc/${Process.myPid()}/status").useLines { seq ->
-                seq.first { str ->
-                    str.startsWith(status)
-                }.run {
-                    val pattern = Pattern.compile("\\d+")
-                    val matcher = pattern.matcher(this)
-                    while (matcher.find()) {
-                        res = matcher.group().toLong()
-                        return@useLines
-                    }
-                }
-            }
-        } catch (ignore: Throwable) {
-        }
-
-        return res.also {
-            if (BuildConfig.DEBUG) MatrixLog.d(
-                TAG,
-                "$status: $it | cost: ${System.currentTimeMillis() - begin}"
-            )
-        }
-    }
-
-    @get:WorkerThread
-    @get:JvmStatic
-    val memoryStat: Map<String, String>
-        get() {
-            val mi = Debug.MemoryInfo()
-            Debug.getMemoryInfo(mi)
-            return mi.memoryStatToMap()
-        }
-
-    private fun Debug.MemoryInfo.memoryStatToMap(): Map<String, String> {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            this.memoryStats
-        } else {
-            mapOf(
-                "summary.java-heap" to this.dalvikPrivateDirty.toString(),
-                "summary.native-heap" to this.nativePrivateDirty.toString(),
-                "summary.code" to "-1",
-                "summary.stack" to "-1",
-                "summary.graphics" to "-1",
-                "summary.private-other" to "-1",
-                "summary.system" to ((this.totalPss - this.totalPrivateClean - this.totalPrivateDirty)).toString(),
-                "summary.total-pss" to this.totalPss.toString(),
-                "summary.total-swap" to "-1"
-            )
-        }
-    }
-
-    @get:WorkerThread
-    @get:JvmStatic
-    val memoryStatFromAMS: Map<String, String>
-        get() {
-            val pidMemInfoArray: Array<Debug.MemoryInfo>? = activityManager.getProcessMemoryInfo(
-                intArrayOf(
-                    Process.myPid()
-                )
-            )
-
-            return pidMemInfoArray
-                ?.takeIf { it.size == 1 }
-                ?.first()?.memoryStatToMap()
-                ?: emptyMap()
-
-        }
-
-    private fun Array<MemInfo>.toPidArray(): IntArray {
-        val pidArray = IntArray(size)
-        forEachIndexed { i, info ->
-            pidArray[i] = info.processInfo.pid
-        }
-        return pidArray
-    }
-
-    private fun prepareAllProcessInfo(): Array<MemInfo> {
-        val processInfoList = activityManager.runningAppProcesses
-        val memoryInfoList: MutableList<MemInfo> = ArrayList()
-
-        if (processInfoList == null) {
-            MatrixLog.e(TAG, "ERROR: activityManager.runningAppProcesses - no running process")
-            return emptyArray()
-        }
-
-        MatrixLog.d(TAG, "processInfoList[$processInfoList]")
-
-        for (i in processInfoList.indices) {
-            val processInfo = processInfoList[i]
-            val pkgName = Matrix.with().application.packageName
-            if (Process.myUid() != processInfo.uid
-                || TextUtils.isEmpty(processInfo.processName)
-                || !processInfo.processName.startsWith(pkgName)
-            ) {
-                MatrixLog.e(
-                    TAG,
-                    "info with uid [%s] & process name [%s] is not current app [%s][%s]",
-                    processInfoList[i].uid,
-                    processInfoList[i].processName,
-                    Process.myUid(),
-                    pkgName
-                )
-                continue
-            }
-
-            memoryInfoList.add(
-                MemInfo(
-                    ProcessInfo(
-                        processInfo.pid,
-                        processInfo.processName,
-                    )
-                )
-            )
-        }
-        return memoryInfoList.toTypedArray()
-    }
-
+    internal val memClass = activityManager.memoryClass
+    internal val largeMemClass = activityManager.largeMemoryClass
 
     val allProcessMemInfo: Array<MemInfo>
-        get() {
-            val memInfoArray = prepareAllProcessInfo()
-            val pidMemInfoArray = activityManager.getProcessMemoryInfo(memInfoArray.toPidArray())
-
-            if (pidMemInfoArray != null) {
-                if (BuildConfig.DEBUG) {
-                    Assert.assertEquals(memInfoArray.size, pidMemInfoArray.size)
-                }
-                for (i in memInfoArray.indices) {
-                    pidMemInfoArray[i].totalPss
-                    memInfoArray[i].apply {
-                        pidMemInfoArray[i].apply {
-                            amsPss = totalPss
-                            memoryStatsFromAms = memoryStatToMap()
-                        }
-                    }
-                }
-            }
-            return memInfoArray
-        }
+        get() = MemInfo.getAllProcessPss()
 
     val allProcessPssSum: Int
         get() {
-            return allProcessMemInfo.sumBy { it.amsPss }
+            return allProcessMemInfo.sumBy { it.amsPssInfo?.totalPss ?: 0 }
         }
+
+    val currentMemInfo: MemInfo
+        get() = MemInfo.getCurrentProcessMemInfo()
 }
 
 data class ProcessInfo(
@@ -261,34 +57,299 @@ data class ProcessInfo(
     val isAppFg: Boolean = ProcessSupervisor.isAppForeground
 ) {
     override fun toString(): String {
-        return "ProcessInfo: $processName    Activity: $activity    AppForeground: $isAppFg    ProcessForeground: $isProcessFg"
+        return "Name=$processName, Activity=$activity, AppForeground=$isAppFg, ProcessForeground=$isProcessFg"
     }
 }
 
-fun Map<String, String>.getTotalPss() = get("summary.total-pss")
-
-data class MemInfo(
-    var processInfo: ProcessInfo = ProcessInfo(),
-    var memoryStats: Map<String, String> = HashMap(),
-    var memoryStatsFromAms: Map<String, String> = HashMap(),
-    var vmSize: Int = -1,
-    var amsPss: Int = -1,
-    var debugPss: Int = -1
-    // TODO
+data class PssInfo(
+    var totalPss: Int = -1,
+    var pssJava: Int = -1,
+    var pssNative: Int = -1,
+    var pssGraphic: Int = -1,
+    var pssSystem: Int = -1,
+    var pssSwap: Int = -1,
+    var pssCode: Int = -1,
+    var pssStack: Int = -1,
+    var pssPrivateOther: Int = -1
 ) {
-
     override fun toString(): String {
-        // TODO: 2021/9/26
+        return "totalPss=$totalPss K, Java=$pssJava K, Native=$pssNative K, Graphic=$pssGraphic K, System=$pssSystem K, Swap=$pssSwap K, Code=$pssCode K, Stack=$pssStack K, PrivateOther=$pssPrivateOther K"
+    }
+
+    companion object {
+
+        fun getFromDebug(): PssInfo {
+            val dbgInfo = Debug.MemoryInfo()
+            Debug.getMemoryInfo(dbgInfo)
+            return get(dbgInfo)
+        }
+
+        fun getFromAms(): PssInfo {
+            val amsInfo =
+                MemoryInfoFactory.activityManager.getProcessMemoryInfo(arrayOf(Process.myPid()).toIntArray())
+            return amsInfo.firstOrNull()?.run {
+                get(this)
+            }?: run {
+                PssInfo()
+            }
+        }
+
+        @JvmStatic
+        fun get(memoryInfo: Debug.MemoryInfo): PssInfo {
+            return PssInfo().also {
+                it.totalPss = memoryInfo.totalPss
+
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    memoryInfo.memoryStats.apply {
+
+                        fun Map<String, String>.getInt(key: String) = get(key)?.toInt() ?: -1
+
+                        it.pssJava = getInt("summary.java-heap")
+                        it.pssNative = getInt("summary.native-heap")
+                        it.pssCode = getInt("summary.code")
+                        it.pssStack = getInt("summary.stack")
+                        it.pssGraphic = getInt("summary.graphics")
+                        it.pssPrivateOther = getInt("summary.private-other")
+                        it.pssSystem = getInt("summary.system")
+                        it.pssSwap = getInt("summary.total-swap")
+                    }
+                } else {
+                    memoryInfo.apply {
+                        it.pssJava = dalvikPrivateDirty
+                        it.pssNative = nativePrivateDirty
+                        it.pssSystem = totalPss - totalPrivateClean - totalPrivateDirty
+                    }
+                }
+            }
+        }
+    }
+}
+
+data class StatusInfo(
+    var state: String = "default",
+    var fdSize: Int = -1,
+    var vmSize: Int = -1,
+    var vmRss: Int = -1,
+    var vmSwap: Int = -1,
+    var threads: Int = -1
+) {
+    override fun toString(): String {
+        return "State=$state, FDSize=$fdSize, VmSize=$vmSize K, VmRss=$vmRss K, VmSwap=$vmSwap K, Threads=$threads"
+    }
+
+    companion object {
+        @JvmStatic
+        fun get(): StatusInfo {
+            return StatusInfo().also {
+                convertProcStatus().apply {
+                    fun Map<String, String>.getString(key: String) = get(key) ?: "unknown"
+
+                    fun Map<String, String>.getInt(key: String): Int {
+                        getString(key).let {
+                            val matcher = Pattern.compile("\\d+").matcher(it)
+                            while (matcher.find()) {
+                                return matcher.group().toInt()
+                            }
+                        }
+                        return -2
+                    }
+
+                    it.state = getString("State")
+                    it.fdSize = getInt("FDSize")
+                    it.vmSize = getInt("VmSize")
+                    it.vmRss = getInt("VmRSS")
+                    it.vmSwap = getInt("VmSwap")
+                    it.threads = getInt("Threads")
+                }
+            }
+        }
+
+        private fun convertProcStatus(): Map<String, String> {
+            val begin = if (BuildConfig.DEBUG) {
+                System.currentTimeMillis()
+            } else {
+                0L
+            }
+
+            try {
+                File("/proc/${Process.myPid()}/status").useLines { seq ->
+                    return seq.flatMap {
+                        val split = it.split(":")
+                        if (split.size == 2) {
+                            return@flatMap sequenceOf(split[0] to split[1])
+                        } else {
+                            MatrixLog.e(TAG, "ERROR : $it")
+                            return@flatMap emptySequence()
+                        }
+                    }.toMap().also {
+                        if (BuildConfig.DEBUG) {
+                            MatrixLog.d(
+                                TAG,
+                                "convertProcStatus cost ${System.currentTimeMillis() - begin}"
+                            )
+                        }
+                    }
+                }
+            } catch (ignore: Throwable) {
+            }
+
+            return emptyMap()
+        }
+    }
+}
+
+data class JavaMemInfo(
+    val javaHeapUsedSize: Long = Runtime.getRuntime().totalMemory(),
+    val javaHeapRecycledSize: Long = Runtime.getRuntime().freeMemory(),
+    val javaHeapMaxSize: Long = Runtime.getRuntime().maxMemory(),
+    val javaMemClass: Int = MemoryInfoFactory.memClass,
+    val javaLargeMemClass: Int = MemoryInfoFactory.largeMemClass
+) {
+    override fun toString(): String {
+        return "Used=$javaHeapUsedSize B, Recycled=$javaHeapRecycledSize B, Max=$javaHeapMaxSize B, MemClass:$javaMemClass M, LargeMemClass=$javaLargeMemClass M"
+    }
+}
+
+data class NativeMemInfo(
+    val nativeHeapSize: Long = Debug.getNativeHeapSize(),
+    val nativeAllocatedSize: Long = Debug.getNativeHeapAllocatedSize(),
+    val nativeRecycledSize: Long = Debug.getNativeHeapFreeSize()
+) {
+    override fun toString(): String {
+        return "Used=$nativeAllocatedSize B, Recycled=$nativeRecycledSize B, HeapSize=$nativeHeapSize B"
+    }
+}
+
+data class SystemInfo(
+    var totalMem: Long = -1,
+    var availMem: Long = -1,
+    var lowMemory: Boolean = false,
+    var threshold: Long = -1
+) {
+    override fun toString(): String {
+        return "totalMem=$totalMem B, availMem=$availMem B, lowMemory=$lowMemory B, threshold=$threshold B"
+    }
+}
+
+// todo make all fields nullable ?
+data class MemInfo(
+    var processInfo: ProcessInfo? = ProcessInfo(),
+    var statusInfo: StatusInfo? = StatusInfo(),
+    var javaMemInfo: JavaMemInfo? = JavaMemInfo(),
+    var nativeMemInfo: NativeMemInfo? = NativeMemInfo(),
+    var systemInfo: SystemInfo? = SystemInfo(),
+    var amsPssInfo: PssInfo? = null,
+    var debugPssInfo: PssInfo? = null
+) {
+    override fun toString(): String {
         return """
                 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> MemInfo <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-                | $processInfo
-                | VmSize:
-                | SystemMemoryInfo:
-                | Java:
-                | Native:
-                | Stats:
-                | AMSStats:
-                | FgService:
+                | Process: $processInfo
+                | Status: $statusInfo
+                | SystemInfo: $systemInfo
+                | Java: $javaMemInfo
+                | Native: $nativeMemInfo
+                | Dbg-Pss: $debugPssInfo
+                | AMS-Pss: $amsPssInfo
+                | FgService: todo
+                >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> MemInfo <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
             """.trimIndent()
+    }
+
+    companion object {
+        @JvmStatic
+        fun getAllProcessPss(): Array<MemInfo> {
+            val memInfoArray = prepareAllProcessInfo()
+            val pidMemInfoArray =
+                MemoryInfoFactory.activityManager.getProcessMemoryInfo(memInfoArray.toPidArray())
+
+            if (pidMemInfoArray != null) {
+                if (BuildConfig.DEBUG) {
+                    Assert.assertEquals(memInfoArray.size, pidMemInfoArray.size)
+                }
+                for (i in memInfoArray.indices) {
+                    pidMemInfoArray[i].totalPss
+                    memInfoArray[i].apply {
+                        pidMemInfoArray[i].apply {
+                            amsPssInfo = PssInfo.get(this)
+                        }
+                    }
+                }
+            }
+            return memInfoArray
+        }
+
+        @JvmStatic
+        fun getCurrentProcessMemInfo(): MemInfo {
+            return MemInfo()
+        }
+
+        @JvmStatic
+        fun getCurrentProcessMemInfoWithPss() : MemInfo {
+            return MemInfo(debugPssInfo = PssInfo.getFromDebug())
+        }
+
+        @JvmStatic
+        fun getCurrentProcessMemInfoWithPssAms(): MemInfo {
+            return MemInfo(amsPssInfo = PssInfo.getFromAms())
+        }
+
+        @JvmStatic
+        fun getCurrentProcessFullMemInfo(): MemInfo {
+            return MemInfo(amsPssInfo = PssInfo.getFromAms(), debugPssInfo = PssInfo.getFromDebug())
+        }
+
+        private fun Array<MemInfo>.toPidArray(): IntArray {
+            val pidArray = IntArray(size)
+            forEachIndexed { i, info ->
+                pidArray[i] = info.processInfo!!.pid // processInfo must be not null
+            }
+            return pidArray
+        }
+
+        private fun prepareAllProcessInfo(): Array<MemInfo> {
+            val processInfoList = MemoryInfoFactory.activityManager.runningAppProcesses
+            val memoryInfoList: MutableList<MemInfo> = ArrayList()
+
+            if (processInfoList == null) {
+                MatrixLog.e(TAG, "ERROR: activityManager.runningAppProcesses - no running process")
+                return emptyArray()
+            }
+
+            MatrixLog.d(TAG, "processInfoList[$processInfoList]")
+
+            for (i in processInfoList.indices) {
+                val processInfo = processInfoList[i]
+                val pkgName = Matrix.with().application.packageName
+                if (Process.myUid() != processInfo.uid
+                    || TextUtils.isEmpty(processInfo.processName)
+                    || !processInfo.processName.startsWith(pkgName)
+                ) {
+                    MatrixLog.e(
+                        TAG,
+                        "info with uid [%s] & process name [%s] is not current app [%s][%s]",
+                        processInfoList[i].uid,
+                        processInfoList[i].processName,
+                        Process.myUid(),
+                        pkgName
+                    )
+                    continue
+                }
+
+                memoryInfoList.add(
+                    MemInfo(
+                        processInfo = ProcessInfo(
+                            processInfo.pid,
+                            processInfo.processName,
+                        ),
+                        statusInfo = null,
+                        javaMemInfo = null,
+                        nativeMemInfo = null,
+                        systemInfo = null,
+                    )
+                )
+            }
+            return memoryInfoList.toTypedArray()
+        }
     }
 }

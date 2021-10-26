@@ -20,7 +20,7 @@ import kotlin.collections.HashMap
  */
 internal object SupervisorReceiver : BroadcastReceiver() {
 
-    private const val TAG = "Matrix.memory.SupervisorReceiver"
+    private const val TAG = "Matrix.Supervisor.SupervisorReceiver"
 
     private enum class ProcessEvent {
         SUPERVISOR_PROCESS_CREATED, // if the supervisor process were not main process, the create event would be lost
@@ -217,7 +217,7 @@ internal object SupervisorReceiver : BroadcastReceiver() {
 
                     asyncLog(
                         TAG,
-                        "[$it] -> [${backgroundProcessLru?.size}]${backgroundProcessLru.toString()}"
+                        "CREATED: [$it] -> [${backgroundProcessLru?.size}]${backgroundProcessLru.toString()}"
                     )
                 }
             }
@@ -227,7 +227,7 @@ internal object SupervisorReceiver : BroadcastReceiver() {
                     proxy?.onRemoteProcessBackground()
                     asyncLog(
                         TAG,
-                        "[$it] -> [${backgroundProcessLru?.size}]${backgroundProcessLru.toString()}"
+                        "BACKGROUND: [$it] -> [${backgroundProcessLru?.size}]${backgroundProcessLru.toString()}"
                     )
                 }
             }
@@ -237,7 +237,7 @@ internal object SupervisorReceiver : BroadcastReceiver() {
                     proxy?.onRemoteProcessForeground()
                     asyncLog(
                         TAG,
-                        "[$it] <- [${backgroundProcessLru?.size}]${backgroundProcessLru.toString()}"
+                        "FOREGROUND: [$it] <- [${backgroundProcessLru?.size}]${backgroundProcessLru.toString()}"
                     )
                 }
             }
@@ -251,7 +251,7 @@ internal object SupervisorReceiver : BroadcastReceiver() {
                     RemoteProcessLifecycleProxy.removeProxy(name)
                     asyncLog(
                         TAG,
-                        "[$name] X [${backgroundProcessLru?.size}]${backgroundProcessLru.toString()}"
+                        "KILL: [$name] X [${backgroundProcessLru?.size}]${backgroundProcessLru.toString()}"
                     )
                 }
             }

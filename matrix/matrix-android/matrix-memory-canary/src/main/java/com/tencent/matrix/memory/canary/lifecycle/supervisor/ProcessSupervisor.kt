@@ -21,7 +21,7 @@ const val LRU_KILL_NOT_FOUND = 4
 object ProcessSupervisor :
     MultiSourceStatefulOwner(ReduceOperators.OR) {
 
-    internal val tag by lazy { "Matrix.memory.Supervisor_${suffix()}" }
+    internal val tag by lazy { "Matrix.Supervisor.Supervisor_${suffix()}" }
 
     private fun suffix(): String {
         return if (MatrixUtil.isInMainProcess(application)) {
