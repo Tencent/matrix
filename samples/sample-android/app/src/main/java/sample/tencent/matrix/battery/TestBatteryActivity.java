@@ -73,16 +73,6 @@ public class TestBatteryActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.test_battery);
 
-       Plugin plugin = Matrix.with().getPluginByClass(BatteryMonitorPlugin.class);
-       if (!plugin.isPluginStarted()) {
-           if (!BatteryEventDelegate.isInit()) {
-               BatteryEventDelegate.init(this.getApplication());
-           }
-
-           MatrixLog.i(TAG, "plugin-battery start");
-           plugin.start();
-       }
-
         benchmark();
 
 //

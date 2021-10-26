@@ -21,23 +21,14 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
 
-import androidx.lifecycle.Lifecycle;
-import androidx.lifecycle.LifecycleObserver;
-import androidx.lifecycle.OnLifecycleEvent;
-
-import com.tencent.matrix.AppActiveMatrixDelegate;
 import com.tencent.matrix.Matrix;
+import com.tencent.matrix.batterycanary.BatteryEventDelegate;
 import com.tencent.matrix.batterycanary.BatteryMonitorPlugin;
 import com.tencent.matrix.hook.HookManager;
 import com.tencent.matrix.hook.pthread.PthreadHook;
 import com.tencent.matrix.iocanary.IOCanaryPlugin;
 import com.tencent.matrix.iocanary.config.IOConfig;
-import com.tencent.matrix.listeners.IAppForeground;
-import com.tencent.matrix.lifecycle.MultiProcessLifecycleOwner;
 import com.tencent.matrix.memory.canary.MemoryCanaryPlugin;
-import com.tencent.matrix.memory.canary.lifecycle.IStateObserver;
-import com.tencent.matrix.memory.canary.lifecycle.owners.CombinedProcessForegroundStatefulOwner;
-import com.tencent.matrix.memory.canary.lifecycle.supervisor.ProcessSupervisor;
 import com.tencent.matrix.resource.ResourcePlugin;
 import com.tencent.matrix.resource.config.ResourceConfig;
 import com.tencent.matrix.trace.TracePlugin;
@@ -52,6 +43,7 @@ import java.io.File;
 
 import sample.tencent.matrix.battery.BatteryCanaryInitHelper;
 import sample.tencent.matrix.config.DynamicConfigImplDemo;
+import sample.tencent.matrix.lifecycle.LifecycleTest;
 import sample.tencent.matrix.listener.TestPluginListener;
 import sample.tencent.matrix.resource.ManualDumpActivity;
 
@@ -123,82 +115,16 @@ public class MatrixApplication extends Application {
         builder.plugin(batteryMonitorPlugin);
 
         Matrix.init(builder.build());
-        MultiProcessLifecycleOwner.get().addListener(new IAppForeground() {
-            @Override
-            public void onForeground(boolean isForeground) {
-                MatrixLog.d(TAG, "isForeground %s", isForeground);
-                if (!isForeground) {
-                    // now change mode for transparent Activity
-                    MultiProcessLifecycleOwner.get().setPauseAsBgIntervalMs(1000);
-                }
-            }
-        });
-
-        MultiProcessLifecycleOwner.get().getLifecycle().addObserver(new LifecycleObserver() {
-
-            @OnLifecycleEvent(Lifecycle.Event.ON_CREATE)
-            private void onProcessCreatedCalledOnce() {
-                MatrixLog.d(TAG, "MultiProcessLifecycleOwner: onCreatedCalledOnce");
-            }
-
-            @OnLifecycleEvent(Lifecycle.Event.ON_START)
-            private void onProcessStarted() {
-                MatrixLog.d(TAG, "MultiProcessLifecycleOwner: onProcessStarted");
-            }
-
-            @OnLifecycleEvent(Lifecycle.Event.ON_RESUME)
-            private void onProcessResumed() {
-                MatrixLog.d(TAG, "MultiProcessLifecycleOwner: onProcessResumed");
-            }
-
-            @OnLifecycleEvent(Lifecycle.Event.ON_PAUSE)
-            private void onProcessPaused() {
-                MatrixLog.d(TAG, "MultiProcessLifecycleOwner: onProcessPaused");
-            }
-
-            @OnLifecycleEvent(Lifecycle.Event.ON_STOP)
-            private void onProcessStopped() {
-                MatrixLog.d(TAG, "MultiProcessLifecycleOwner: onProcessStopped");
-            }
-        });
-
-        CombinedProcessForegroundStatefulOwner.INSTANCE.observeForever(new IStateObserver() {
-            @Override
-            public void on() {
-                MatrixLog.d(TAG, "CombinedProcessForegroundStatefulOwner: ON");
-            }
-
-            @Override
-            public void off() {
-                MatrixLog.d(TAG, "CombinedProcessForegroundStatefulOwner: OFF");
-            }
-        });
-
-        ProcessSupervisor.INSTANCE.observeForever(new IStateObserver() {
-            @Override
-            public void on() {
-                MatrixLog.d(TAG, "ProcessSupervisor: on");
-            }
-
-            @Override
-            public void off() {
-                MatrixLog.d(TAG, "ProcessSupervisor: off");
-            }
-        });
-
-        AppActiveMatrixDelegate.INSTANCE.addListener(new IAppForeground() {
-            @Override
-            public void onForeground(boolean isForeground) {
-                MatrixLog.d(TAG, "AppActiveMatrixDelegate foreground %s", isForeground);
-            }
-        });
 
         // Trace Plugin need call start() at the beginning.
-        tracePlugin.start();
-        memoryCanaryPlugin.start();
+//        tracePlugin.start();
+//        memoryCanaryPlugin.start();
+
+        Matrix.with().startAllPlugins();
+
+        LifecycleTest.test1();
 
         MatrixLog.i(TAG, "Matrix configurations done.");
-
     }
 
     private TracePlugin configureTracePlugin(DynamicConfigImplDemo dynamicConfig) {
@@ -289,6 +215,9 @@ public class MatrixApplication extends Application {
     private BatteryMonitorPlugin configureBatteryCanary() {
         // Configuration of battery plugin is really complicated.
         // See it in BatteryCanaryInitHelper.
+        if (!BatteryEventDelegate.isInit()) {
+            BatteryEventDelegate.init(this);
+        }
         return BatteryCanaryInitHelper.createMonitor();
     }
 

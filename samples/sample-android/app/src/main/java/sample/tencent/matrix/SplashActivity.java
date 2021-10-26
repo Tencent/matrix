@@ -27,6 +27,8 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.tencent.matrix.memory.canary.monitor.MemInfo;
 import com.tencent.matrix.util.MatrixLog;
 
+import sample.tencent.matrix.lifecycle.LifecycleTest;
+
 
 public class SplashActivity extends AppCompatActivity {
     private static String TAG = "Matrix.SplashActivity";
@@ -52,6 +54,8 @@ public class SplashActivity extends AppCompatActivity {
         MemInfo info = MemInfo.getCurrentProcessFullMemInfo();
         MatrixLog.d(TAG, "mem cost %s", System.currentTimeMillis() - begin);
         MatrixLog.d(TAG, "%s", info);
+
+        LifecycleTest.test2(this);
     }
 
 }

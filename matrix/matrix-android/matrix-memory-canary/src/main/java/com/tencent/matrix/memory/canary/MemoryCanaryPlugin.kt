@@ -1,36 +1,26 @@
 package com.tencent.matrix.memory.canary
 
-import android.app.Application
 import com.tencent.matrix.memory.canary.lifecycle.owners.ActivityRecorder
-import com.tencent.matrix.memory.canary.lifecycle.owners.CombinedProcessForegroundStatefulOwner
 import com.tencent.matrix.memory.canary.lifecycle.supervisor.ProcessSupervisor
 import com.tencent.matrix.plugin.Plugin
 import com.tencent.matrix.util.MatrixLog
 import com.tencent.matrix.util.MatrixUtil
 
-private typealias Initializer = (app: Application) -> Unit
-
 /**
+ * supervisorProcess: you should parse a process name provided by [MatrixUtil.getProcessName]
  * Created by Yves on 2021/10/22
  */
-class MemoryCanaryPlugin(private val initializer: Initializer = defaultInitializer) : Plugin() {
+class MemoryCanaryPlugin(private val supervisorProcess: String = DEFAULT_PROCESS) : Plugin() {
 
     companion object {
-        private val defaultInitializer: Initializer = { app ->
-            ActivityRecorder.init(app)
-            CombinedProcessForegroundStatefulOwner.apply {
-//                addSourceOwner(ForegroundServiceMonitor)
-//                addSourceOwner(FloatingWindowMonitor)
-//                addSourceOwner(AnyOtherForegroundWidgetMonitor)
-            }
+        private const val DEFAULT_PROCESS = "main"
+    }
 
-            if (MatrixUtil.isInMainProcess(app)) {
-                ProcessSupervisor.initSupervisor(
-                    MatrixUtil.getProcessName(app),
-                    app
-                )
-            }
-            ProcessSupervisor.inCharge(app)
+    private fun isTheChosenOne(): Boolean {
+        return if (supervisorProcess == DEFAULT_PROCESS) {
+            MatrixUtil.isInMainProcess(application)
+        } else {
+            MatrixUtil.getProcessName(application) == supervisorProcess
         }
     }
 
@@ -40,7 +30,12 @@ class MemoryCanaryPlugin(private val initializer: Initializer = defaultInitializ
             return
         }
         super.start()
-        initializer.invoke(application)
+        ActivityRecorder.init(application) // fixme move to [MultiProcessLifecycleInitializer]
+
+        if (isTheChosenOne()) {
+            ProcessSupervisor.initSupervisor(MatrixUtil.getProcessName(application), application)
+        }
+        ProcessSupervisor.inCharge(application)
     }
 
     override fun getTag(): String {
