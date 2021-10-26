@@ -39,7 +39,7 @@ internal object DispatchReceiver : BroadcastReceiver() {
         }
         context?.registerReceiver(
             this, filter,
-            SUPERVISOR_PERMISSION, null
+            ProcessSupervisor.permission, null
         )
 //        MatrixLog.i(SupervisorLifecycleOwner.tag, "DispatchReceiver installed")
     }
@@ -75,7 +75,7 @@ internal object DispatchReceiver : BroadcastReceiver() {
         params.forEach {
             intent.putExtra(it.first, it.second)
         }
-        context?.sendBroadcast(intent, SUPERVISOR_PERMISSION)
+        context?.sendBroadcast(intent, ProcessSupervisor.permission)
     }
 
     override fun onReceive(context: Context?, intent: Intent?) {

@@ -3,9 +3,9 @@
     package="com.tencent.matrix.memory.canary">
 
     <permission
-        android:name="com.tencent.matrix.permission.MEMORY_CANARY"
+        android:name="${applicationId}.matrix.permission.MEMORY_CANARY"
         android:protectionLevel="signature" />
 
-    <uses-permission android:name="com.tencent.matrix.permission.MEMORY_CANARY" />
+    <uses-permission android:name="${applicationId}.matrix.permission.MEMORY_CANARY" />
 
 </manifest>

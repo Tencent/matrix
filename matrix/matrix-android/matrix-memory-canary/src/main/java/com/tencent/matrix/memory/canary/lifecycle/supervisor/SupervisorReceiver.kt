@@ -95,7 +95,7 @@ internal object SupervisorReceiver : BroadcastReceiver() {
         }
         context?.registerReceiver(
             this, filter,
-            SUPERVISOR_PERMISSION, null
+            ProcessSupervisor.permission, null
         )
 
         checkUnique(context)
@@ -171,7 +171,7 @@ internal object SupervisorReceiver : BroadcastReceiver() {
         }
 
         context?.sendBroadcast(
-            intent, SUPERVISOR_PERMISSION
+            intent, ProcessSupervisor.permission
         )
     }
 

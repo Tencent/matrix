@@ -11,7 +11,6 @@ import com.tencent.matrix.util.MatrixUtil
 /**
  * Created by Yves on 2021/9/26
  */
-internal const val SUPERVISOR_PERMISSION = "com.tencent.matrix.permission.MEMORY_CANARY"
 internal const val KEY_PROCESS_NAME = "KEY_PROCESS_NAME"
 
 const val LRU_KILL_SUCCESS = 1
@@ -38,6 +37,8 @@ object ProcessSupervisor :
     }
 
     private var application: Application? = null
+
+    internal val permission by lazy { "${application?.packageName}.matrix.permission.MEMORY_CANARY" }
 
     /**
      * should be call only once in process with the maximum life span
