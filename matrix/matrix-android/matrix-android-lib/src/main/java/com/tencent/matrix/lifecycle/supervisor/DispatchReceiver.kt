@@ -20,7 +20,19 @@ import java.util.concurrent.TimeUnit
 internal object DispatchReceiver : BroadcastReceiver() {
 
     private var rescued: Boolean = false
-    internal var killedListener: (() -> Boolean)? = null
+    private val killedListeners = ArrayList<() -> Boolean>()
+
+    private fun ArrayList<() -> Boolean>.invokeAll(): Boolean {
+        var rescue = false
+        forEach {
+            val r = it.invoke()
+            if (r) {
+                MatrixLog.e(ProcessSupervisor.tag, "${it.javaClass} try to rescue process")
+            }
+            rescue = rescue || r
+        }
+        return rescue
+    }
 
     private enum class SupervisorEvent {
         SUPERVISOR_INSTALLED,
@@ -43,6 +55,15 @@ internal object DispatchReceiver : BroadcastReceiver() {
         )
 //        MatrixLog.i(SupervisorLifecycleOwner.tag, "DispatchReceiver installed")
     }
+
+    fun addKilledListener(listener: ()->Boolean) {
+        killedListeners.add(listener)
+    }
+
+    fun removeKilledListener(listener: () -> Boolean) {
+        killedListeners.remove(listener)
+    }
+
 
     internal fun dispatchSuperVisorInstalled(context: Context?) {
         dispatch(context, SupervisorEvent.SUPERVISOR_INSTALLED)
@@ -94,7 +115,7 @@ internal object DispatchReceiver : BroadcastReceiver() {
                 MatrixLog.d(ProcessSupervisor.tag, "receive kill target: $target")
                 if (target == MatrixUtil.getProcessName(context)) {
 
-                    if (killedListener?.invoke() == true && !rescued) {
+                    if (killedListeners.invokeAll() && !rescued) {
                         rescued = true
                         SupervisorReceiver.sendOnProcessKillRescued(context)
                         MatrixLog.e(ProcessSupervisor.tag, "rescued once !!!")

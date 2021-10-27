@@ -22,12 +22,17 @@ class MemoryCanaryPlugin(
             return
         }
         super.start()
-        ProcessSupervisor.init(application, memoryCanaryConfig.supervisorConfig) {
-            SumPssMonitor(memoryCanaryConfig.sumPssMonitorConfig)
+
+        memoryCanaryConfig.apply {
+            if (ProcessSupervisor.init(application, supervisorConfig)) {
+                sumPssMonitorConfig.takeIf { it.enable }?.let {
+                    SumPssMonitor(it).start()
+                }
+            }
         }
     }
 
     override fun getTag(): String {
-        return "MemoryCanary"
+        return "MemoryCanaryPlugin"
     }
 }

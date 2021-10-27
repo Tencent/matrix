@@ -1,6 +1,7 @@
 package com.tencent.matrix.lifecycle.supervisor
 
 import android.app.Application
+import androidx.lifecycle.LifecycleOwner
 import com.tencent.matrix.lifecycle.IStateObserver
 import com.tencent.matrix.lifecycle.MultiSourceStatefulOwner
 import com.tencent.matrix.lifecycle.ReduceOperators
@@ -39,7 +40,9 @@ const val LRU_KILL_NOT_FOUND = 4
  *
  * Created by Yves on 2021/10/22
  */
-data class SupervisorConfig(val supervisorProcess: String = DEFAULT_PROCESS) {
+data class SupervisorConfig(
+    val supervisorProcess: String = DEFAULT_PROCESS,
+) {
     companion object {
         private const val DEFAULT_PROCESS = "main"
     }
@@ -53,9 +56,8 @@ data class SupervisorConfig(val supervisorProcess: String = DEFAULT_PROCESS) {
     }
 }
 
-
-object ProcessSupervisor :
-    MultiSourceStatefulOwner(ReduceOperators.OR) {
+// FIXME: 2021/10/27 设置其他进程为 Supervisor，启动 foreground 回调会有延迟
+object ProcessSupervisor : MultiSourceStatefulOwner(ReduceOperators.OR) {
 
     internal val tag by lazy { "Matrix.Supervisor.Supervisor_${suffix()}" }
 
@@ -76,18 +78,49 @@ object ProcessSupervisor :
 
     internal val permission by lazy { "${application?.packageName}.matrix.permission.MEMORY_CANARY" }
 
-    fun init(app: Application, config: SupervisorConfig, callback : (() -> Unit)? = null) {
+    fun init(app: Application, config: SupervisorConfig): Boolean {
         if (config.isTheChosenOne(app)) {
             initSupervisor(MatrixUtil.getProcessName(application), app)
-            callback?.invoke()
         }
         inCharge(app)
+        return isSupervisor
+    }
+
+    fun addKilledListener(listener: () -> Boolean) =
+        DispatchReceiver.addKilledListener(listener)
+
+    fun removeKilledListener(listener: () -> Boolean) =
+        DispatchReceiver.removeKilledListener(listener)
+
+    fun backgroundLruKill(killedResult: (result: Int, process: String?) -> Unit) =
+        SupervisorReceiver.backgroundLruKill(application, killedResult)
+
+    val isAppForeground: Boolean
+        get() = active()
+
+    val isSupervisor: Boolean
+        get() = SupervisorReceiver.isSupervisor
+
+    private fun checkInstall() {
+        if (application == null) {
+            MatrixLog.w(tag, "observer will NOT be notified util MemoryCanaryPlugin were started")
+        }
+    }
+
+    override fun observeForever(observer: IStateObserver) {
+        checkInstall()
+        super.observeForever(observer)
+    }
+
+    override fun observeWithLifecycle(lifecycleOwner: LifecycleOwner, observer: IStateObserver) {
+        checkInstall()
+        super.observeWithLifecycle(lifecycleOwner, observer)
     }
 
     /**
      * should be call only once in process with the maximum life span
      */
-    fun initSupervisor(process: String, app: Application) {
+    private fun initSupervisor(process: String, app: Application) {
         application = app
         SupervisorReceiver.supervisorProcessName = MatrixUtil.getProcessName(application)
         if (process == SupervisorReceiver.supervisorProcessName) { // ur the chosen one
@@ -109,7 +142,7 @@ object ProcessSupervisor :
     /**
      * call by all processes
      */
-    fun inCharge(app: Application) {
+    private fun inCharge(app: Application) {
         application = app
 
         DispatchReceiver.install(application)
@@ -128,36 +161,7 @@ object ProcessSupervisor :
                 SupervisorReceiver.sendOnProcessBackground(application)
             }
         })
-
-        // for Test
-//        MultiProcessLifecycleOwner.get().lifecycle.addObserver(object : LifecycleObserver {
-//            @OnLifecycleEvent(Lifecycle.Event.ON_START)
-//            fun onCurrentProcessForeground() {
-////                MatrixLog.d(tag, "onCurrentProcessForeground")
-//                SupervisorReceiver.sendOnProcessForeground(application)
-//            }
-//
-//            @OnLifecycleEvent(Lifecycle.Event.ON_STOP)
-//            fun onCurrentProcessBackground() {
-////                MatrixLog.d(tag, "onCurrentProcessBackground")
-//                SupervisorReceiver.sendOnProcessBackground(application)
-//            }
-//        })
     }
-
-    fun inCharge(app: Application, killedListener: () -> Boolean) {
-        inCharge(app)
-        DispatchReceiver.killedListener = killedListener
-    }
-
-    fun backgroundLruKill(killedCallback: (result: Int, process: String?) -> Unit) =
-        SupervisorReceiver.backgroundLruKill(application, killedCallback)
-
-    val isAppForeground: Boolean
-        get() = active()
-
-    val isSupervisor: Boolean
-        get() = SupervisorReceiver.isSupervisor
 
     internal fun syncAppForeground() = turnOn()
 

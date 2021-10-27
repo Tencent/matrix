@@ -9,11 +9,15 @@ private const val TAG = "Matrix.SumPssMonitor"
  * Created by Yves on 2021/10/27
  */
 data class SumPssMonitorConfig(
+    val enable: Boolean = true,
     val intervalMillis: Long = TimeUnit.MINUTES.toMillis(5) + 1000,
     val thresholdKB: Long = 2 * 1024 * 1024L + 500 * 1024L, // 2.5G
     val checkTimes: Long = 3,
-    val callback: (sumPssKB: Int, meminfos : Array<MemInfo>) -> Unit = { sumPssKB, memInfos ->
-        MatrixLog.e(TAG, "sum pss of all process over threshold: $sumPssKB KB, detail: ${memInfos.contentToString()}")
+    val callback: (Int, Array<MemInfo>) -> Unit = { sumPssKB, memInfos ->
+        MatrixLog.e(
+            TAG,
+            "sum pss of all process over threshold: $sumPssKB KB, detail: ${memInfos.contentToString()}"
+        )
     }
 )
 
@@ -43,7 +47,7 @@ class SumPssMonitor(
                 TAG,
                 "${info.processInfo?.pid}-${info.processInfo?.processName}"
             )
-        }.sumBy { it.amsPssInfo!!.totalPss }.also { MatrixLog.i(TAG, "sumPss = $it KB")}
+        }.sumBy { it.amsPssInfo!!.totalPss }.also { MatrixLog.i(TAG, "sumPss = $it KB") }
 
         MatrixLog.d(TAG, "check end sum = $sum")
 

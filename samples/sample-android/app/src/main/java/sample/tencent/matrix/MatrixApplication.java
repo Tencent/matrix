@@ -28,7 +28,10 @@ import com.tencent.matrix.hook.HookManager;
 import com.tencent.matrix.hook.pthread.PthreadHook;
 import com.tencent.matrix.iocanary.IOCanaryPlugin;
 import com.tencent.matrix.iocanary.config.IOConfig;
+import com.tencent.matrix.memory.canary.MemoryCanaryConfig;
 import com.tencent.matrix.memory.canary.MemoryCanaryPlugin;
+import com.tencent.matrix.memory.canary.monitor.MemInfo;
+import com.tencent.matrix.memory.canary.monitor.SumPssMonitorConfig;
 import com.tencent.matrix.resource.ResourcePlugin;
 import com.tencent.matrix.resource.config.ResourceConfig;
 import com.tencent.matrix.trace.TracePlugin;
@@ -41,6 +44,8 @@ import com.tencent.sqlitelint.config.SQLiteLintConfig;
 
 import java.io.File;
 
+import kotlin.Unit;
+import kotlin.jvm.functions.Function2;
 import sample.tencent.matrix.battery.BatteryCanaryInitHelper;
 import sample.tencent.matrix.config.DynamicConfigImplDemo;
 import sample.tencent.matrix.lifecycle.LifecycleTest;
