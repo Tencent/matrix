@@ -41,10 +41,10 @@ class WarmUpUtility {
     private final static String FILE_BLOCKED_LIST = "blocked-list";
     private final static String FILE_UNFINISHED = "unfinished";
 
-    final static long DURATION_LAST_ACCESS_FAR_FUTURE = 30L * 24 * 3600 * 1000; // milliseconds
-    final static long DURATION_LAST_ACCESS_EXPIRED = 60L * 24 * 3600 * 1000; // milliseconds
-    final static long DURATION_CLEAN_UP_EXPIRED = 3L * 24 * 3600 * 1000; // milliseconds
-    final static long DURATION_CLEAN_UP = 3L * 24 * 3600 * 1000; // milliseconds
+    final static long DURATION_LAST_ACCESS_FAR_FUTURE = 7L * 24 * 3600 * 1000; // milliseconds
+    final static long DURATION_LAST_ACCESS_EXPIRED = 3L * 24 * 3600 * 1000; // milliseconds
+    final static long DURATION_CLEAN_UP_EXPIRED = 2L * 24 * 3600 * 1000; // milliseconds
+    final static long DURATION_CLEAN_UP = 2L * 24 * 3600 * 1000; // milliseconds
     final static long DURATION_DISK_USAGE_COMPUTATION = 3L * 24 * 3600 * 1000; // milliseconds
 
     final static int WARM_UP_FILE_MAX_RETRY = 3;
@@ -61,8 +61,7 @@ class WarmUpUtility {
                 mUnfinishedWarmUp = WarmUpUtility.readUnfinishedMaps(context);
             }
             Integer value = mUnfinishedWarmUp.get(key);
-            int retryCount = value != null ? value : 0;
-            return retryCount;
+            return value != null ? value : 0;
         }
 
         public static boolean check(Context context, String pathOfElf, int offset) {

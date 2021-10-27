@@ -341,36 +341,6 @@ namespace matrix {
             }
         }
 
-        /*
-        bool poll_mpsc(T & ret) {
-
-            auto head = head_.load(std::memory_order_acquire);
-            auto head_node = head.ptr_;
-
-            for (;;) {
-
-                auto tail = tail_.load(std::memory_order_acquire);
-
-                auto next = head_node->next_.load(std::memory_order_acquire);
-                auto next_node = next.ptr_;
-
-                if (head == tail) {
-                    if (next_node == nullptr)
-                        return false;
-                    TaggedPointer<Node<T>> new_tail(next_node, tail.tag_ + 1);
-                    tail_.compare_exchange_strong(tail, new_tail);
-                } else {
-                    ret = next_node->t_;
-                    TaggedPointer<Node<T>> new_head(next_node, head.tag_ + 1);
-                    head_.store(new_head);
-                    free_list_->deallocate(head_node);
-                    return true;
-                }
-
-            }
-        }
-        */
-
     private:
 
         std::atomic<TaggedPointer<Node<T>>> head_;

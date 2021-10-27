@@ -17,6 +17,7 @@
 package com.tencent.matrix.batterycanary.utils;
 
 import android.app.ActivityManager;
+import android.app.ActivityManager.RunningAppProcessInfo;
 import android.app.Application;
 import android.app.Notification;
 import android.app.PendingIntent;
@@ -47,6 +48,8 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import java.lang.reflect.InvocationTargetException;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -300,6 +303,29 @@ public class CanaryUtilsTest {
             return true;
         }
         return false;
+    }
+
+    @Test
+    public void testReadAppForegroundStat() throws NoSuchMethodException, InvocationTargetException, IllegalAccessException, NoSuchFieldException {
+        ActivityManager am = (ActivityManager) mContext.getSystemService(Context.ACTIVITY_SERVICE);
+        if (am == null) {
+            return;
+        }
+        List<RunningAppProcessInfo> runningAppProcesses = am.getRunningAppProcesses();
+        if (runningAppProcesses == null) {
+            return;
+        }
+        List<RunningAppProcessInfo> myRunningApp = new LinkedList<>();
+        for (RunningAppProcessInfo item : runningAppProcesses) {
+            if (!TextUtils.isEmpty(item.processName) && item.processName.startsWith(mContext.getPackageName())) {
+                myRunningApp.add(item);
+            }
+        }
+
+        Assert.assertEquals(1, myRunningApp.size());
+        Assert.assertTrue(myRunningApp.get(0).importance >= RunningAppProcessInfo.IMPORTANCE_FOREGROUND_SERVICE); // 125
+        int procState = (int) myRunningApp.get(0).getClass().getDeclaredField("processState").get(myRunningApp.get(0));
+        Assert.assertTrue(procState >= 4); // ActivityManager#PROCESS_STATE_BOUND_FOREGROUND_SERVICE, PROCESS_STATE_IMPORTANT_FOREGROUND
     }
 
     public static class SpyService extends Service {

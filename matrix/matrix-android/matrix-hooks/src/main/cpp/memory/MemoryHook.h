@@ -29,6 +29,8 @@ extern "C" void fake_free(void * ptr);
 
 void on_alloc_memory(void *caller, void *ptr, size_t byte_count);
 
+void on_realloc_memory(void *caller, void *ptr, size_t byte_count);
+
 void on_free_memory(void *ptr);
 
 void on_mmap_memory(void *caller, void *ptr, size_t byte_count);

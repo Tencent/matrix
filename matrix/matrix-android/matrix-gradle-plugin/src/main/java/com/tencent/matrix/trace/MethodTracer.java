@@ -18,6 +18,7 @@ package com.tencent.matrix.trace;
 
 import com.tencent.matrix.javalib.util.FileUtil;
 import com.tencent.matrix.javalib.util.Log;
+import com.tencent.matrix.plugin.compat.AgpCompat;
 import com.tencent.matrix.trace.item.TraceMethod;
 import com.tencent.matrix.trace.retrace.MappingCollector;
 
@@ -27,6 +28,7 @@ import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.commons.AdviceAdapter;
+import org.objectweb.asm.util.CheckClassAdapter;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
@@ -67,6 +69,8 @@ public class MethodTracer {
     private final ExecutorService executor;
     private MappingCollector mappingCollector;
 
+    private volatile boolean traceError = false;
+
     public MethodTracer(ExecutorService executor, MappingCollector mappingCollector, Configuration config, ConcurrentHashMap<String, TraceMethod> collectedMap, ConcurrentHashMap<String, String> collectedClassExtendMap) {
         this.configuration = config;
         this.mappingCollector = mappingCollector;
@@ -75,44 +79,46 @@ public class MethodTracer {
         this.collectedMethodMap = collectedMap;
     }
 
-
-    public void trace(Map<File, File> srcFolderList, Map<File, File> dependencyJarList) throws ExecutionException, InterruptedException {
+    public void trace(Map<File, File> srcFolderList, Map<File, File> dependencyJarList, ClassLoader classLoader) throws ExecutionException, InterruptedException {
         List<Future> futures = new LinkedList<>();
-        traceMethodFromSrc(srcFolderList, futures);
-        traceMethodFromJar(dependencyJarList, futures);
+        traceMethodFromSrc(srcFolderList, futures, classLoader);
+        traceMethodFromJar(dependencyJarList, futures, classLoader);
         for (Future future : futures) {
             future.get();
+        }
+        if (traceError) {
+            throw new IllegalArgumentException("something wrong with trace, see detail log before");
         }
         futures.clear();
     }
 
-    private void traceMethodFromSrc(Map<File, File> srcMap, List<Future> futures) {
+    private void traceMethodFromSrc(Map<File, File> srcMap, List<Future> futures, final ClassLoader classLoader) {
         if (null != srcMap) {
             for (Map.Entry<File, File> entry : srcMap.entrySet()) {
                 futures.add(executor.submit(new Runnable() {
                     @Override
                     public void run() {
-                        innerTraceMethodFromSrc(entry.getKey(), entry.getValue());
+                        innerTraceMethodFromSrc(entry.getKey(), entry.getValue(), classLoader);
                     }
                 }));
             }
         }
     }
 
-    private void traceMethodFromJar(Map<File, File> dependencyMap, List<Future> futures) {
+    private void traceMethodFromJar(Map<File, File> dependencyMap, List<Future> futures, final ClassLoader classLoader) {
         if (null != dependencyMap) {
             for (Map.Entry<File, File> entry : dependencyMap.entrySet()) {
                 futures.add(executor.submit(new Runnable() {
                     @Override
                     public void run() {
-                        innerTraceMethodFromJar(entry.getKey(), entry.getValue());
+                        innerTraceMethodFromJar(entry.getKey(), entry.getValue(), classLoader);
                     }
                 }));
             }
         }
     }
 
-    private void innerTraceMethodFromSrc(File input, File output) {
+    private void innerTraceMethodFromSrc(File input, File output, ClassLoader classLoader) {
 
         ArrayList<File> classFileList = new ArrayList<>();
         if (input.isDirectory()) {
@@ -133,25 +139,38 @@ public class MethodTracer {
                 changedFileOutput.createNewFile();
 
                 if (MethodCollector.isNeedTraceFile(classFile.getName())) {
+
                     is = new FileInputStream(classFile);
                     ClassReader classReader = new ClassReader(is);
-                    ClassWriter classWriter = new ClassWriter(ClassWriter.COMPUTE_MAXS);
-                    ClassVisitor classVisitor = new TraceClassAdapter(Opcodes.ASM5, classWriter);
+                    ClassWriter classWriter = new TraceClassWriter(ClassWriter.COMPUTE_FRAMES, classLoader);
+                    ClassVisitor classVisitor = new TraceClassAdapter(AgpCompat.getAsmApi(), classWriter);
                     classReader.accept(classVisitor, ClassReader.EXPAND_FRAMES);
                     is.close();
+
+                    byte[] data = classWriter.toByteArray();
+
+                    try {
+                        ClassReader cr = new ClassReader(data);
+                        ClassWriter cw = new ClassWriter(0);
+                        ClassVisitor check = new CheckClassAdapter(cw);
+                        cr.accept(check, ClassReader.EXPAND_FRAMES);
+                    } catch (Throwable e) {
+                        System.err.println("trace output ERROR : " + e.getMessage() + ", " + classFile);
+                        traceError = true;
+                    }
 
                     if (output.isDirectory()) {
                         os = new FileOutputStream(changedFileOutput);
                     } else {
                         os = new FileOutputStream(output);
                     }
-                    os.write(classWriter.toByteArray());
+                    os.write(data);
                     os.close();
                 } else {
                     FileUtil.copyFileUsingStream(classFile, changedFileOutput);
                 }
             } catch (Exception e) {
-                Log.e(TAG, "[innerTraceMethodFromSrc] input:%s e:%s", input.getName(), e);
+                Log.e(TAG, "[innerTraceMethodFromSrc] input:%s e:%s", input.getName(), e.getMessage());
                 try {
                     Files.copy(input.toPath(), output.toPath(), StandardCopyOption.REPLACE_EXISTING);
                 } catch (Exception e1) {
@@ -168,7 +187,7 @@ public class MethodTracer {
         }
     }
 
-    private void innerTraceMethodFromJar(File input, File output) {
+    private void innerTraceMethodFromJar(File input, File output, final ClassLoader classLoader) {
         ZipOutputStream zipOutputStream = null;
         ZipFile zipFile = null;
         try {
@@ -179,12 +198,25 @@ public class MethodTracer {
                 ZipEntry zipEntry = enumeration.nextElement();
                 String zipEntryName = zipEntry.getName();
                 if (MethodCollector.isNeedTraceFile(zipEntryName)) {
+
                     InputStream inputStream = zipFile.getInputStream(zipEntry);
                     ClassReader classReader = new ClassReader(inputStream);
-                    ClassWriter classWriter = new ClassWriter(ClassWriter.COMPUTE_MAXS);
-                    ClassVisitor classVisitor = new TraceClassAdapter(Opcodes.ASM5, classWriter);
+                    ClassWriter classWriter = new TraceClassWriter(ClassWriter.COMPUTE_FRAMES, classLoader);
+                    ClassVisitor classVisitor = new TraceClassAdapter(AgpCompat.getAsmApi(), classWriter);
                     classReader.accept(classVisitor, ClassReader.EXPAND_FRAMES);
                     byte[] data = classWriter.toByteArray();
+//
+                    try {
+                        ClassReader r = new ClassReader(data);
+                        ClassWriter w = new ClassWriter(0);
+                        ClassVisitor v = new CheckClassAdapter(w);
+                        r.accept(v, ClassReader.EXPAND_FRAMES);
+                    } catch (Throwable e) {
+                        System.err.println("trace jar output ERROR: " + e.getMessage() + ", "+ zipEntryName);
+//                        e.printStackTrace();
+                        traceError = true;
+                    }
+
                     InputStream byteArrayInputStream = new ByteArrayInputStream(data);
                     ZipEntry newZipEntry = new ZipEntry(zipEntryName);
                     FileUtil.addZipEntry(zipOutputStream, newZipEntry, byteArrayInputStream);
@@ -195,7 +227,7 @@ public class MethodTracer {
                 }
             }
         } catch (Exception e) {
-            Log.e(TAG, "[innerTraceMethodFromJar] input:%s output:%s e:%s", input, output, e);
+            Log.e(TAG, "[innerTraceMethodFromJar] input:%s output:%s e:%s", input, output, e.getMessage());
             if (e instanceof ZipException) {
                 e.printStackTrace();
             }

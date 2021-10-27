@@ -43,43 +43,20 @@ namespace matrix {
         HOOK_CHECK(assertion)
     }
 
-#if USE_MEMORY_MESSAGE_QUEUE_LOCK_FREE == true
-    std::atomic<size_t> g_queue_realloc_counter = 0;
-    std::atomic<size_t> g_queue_realloc_size_counter = 0;
-    std::atomic<size_t> g_queue_realloc_failure_counter = 0;
-    std::atomic<size_t> g_queue_realloc_over_limit_counter = 0;
-    std::atomic<size_t> g_queue_extra_stack_meta_allocated = 0;
-    std::atomic<size_t> g_queue_extra_stack_meta_kept = 0;
-
-#else
+    std::atomic<size_t> BufferQueueContainer::g_message_overflow_counter = 0;
     std::atomic<size_t> BufferQueueContainer::g_locker_collision_counter = 0;
 
-    std::atomic<size_t> BufferQueue::g_queue_realloc_memory_1_counter = 0;
-    std::atomic<size_t> BufferQueue::g_queue_realloc_memory_2_counter = 0;
-    std::atomic<size_t> BufferQueue::g_queue_realloc_reason_1_counter = 0;
-    std::atomic<size_t> BufferQueue::g_queue_realloc_reason_2_counter = 0;
-    std::atomic<size_t> BufferQueue::g_queue_realloc_failure_counter = 0;
-    std::atomic<size_t> BufferQueue::g_queue_realloc_over_limit_counter = 0;
+    message_queue_counter_t BufferQueue::g_message_queue_counter_{};
+    message_queue_counter_t BufferQueue::g_allocation_queue_counter_{};
+
     std::atomic<size_t> BufferQueue::g_queue_extra_stack_meta_allocated = 0;
     std::atomic<size_t> BufferQueue::g_queue_extra_stack_meta_kept = 0;
-#endif
 
     BufferManagement::BufferManagement(memory_meta_container *memory_meta_container) {
-
-#if USE_MEMORY_MESSAGE_QUEUE_LOCK_FREE == true
-        const size_t max_fold_ = 512;
-
-        message_allocator_ = new ResizableFreeList<message_t, 9, max_fold_>();
-        alloc_message_allocator_ = new ResizableFreeList<allocation_message_t, 8, max_fold_>();
-        node_allocator_ = new ResizableFreeList<message_node_t *, 10, max_fold_>();
-#endif
 
         containers_.reserve(MAX_PTR_SLOT);
         for (int i = 0; i < MAX_PTR_SLOT; ++i) {
             auto container = new BufferQueueContainer();
-#if USE_MEMORY_MESSAGE_QUEUE_LOCK_FREE == true
-            container->queue_ = new BufferQueue(node_allocator_);
-#endif
             containers_.emplace_back(container);
         }
         memory_meta_container_ = memory_meta_container;
@@ -91,28 +68,21 @@ namespace matrix {
             delete container;
         }
 
-#if USE_MEMORY_MESSAGE_QUEUE_LOCK_FREE == true
-        delete message_allocator_;
-        delete alloc_message_allocator_;
-        delete node_allocator_;
-#else
         delete queue_swapped_;
-#endif
     }
 
     [[noreturn]] void BufferManagement::process_routine(BufferManagement *this_) {
+        size_t last_total_message_counter = 0;
+        size_t total_message_counter = 0;
         while (true) {
             HOOK_LOG_ERROR("Process routine outside ... this_->containers_ %zu",
                            this_->containers_.size());
 
-#if USE_MEMORY_MESSAGE_QUEUE_LOCK_FREE != true
             if (!this_->queue_swapped_) this_->queue_swapped_ = new BufferQueue(SIZE_AUGMENT);
-#endif
 
             size_t busy_queue = 0;
             for (auto container : this_->containers_) {
                 HOOK_LOG_ERROR("Process routine ... ");
-#if USE_MEMORY_MESSAGE_QUEUE_LOCK_FREE != true
                 BufferQueue *swapped = nullptr;
                 {
                     std::lock_guard<std::mutex> lock(container->mutex_);
@@ -130,36 +100,19 @@ namespace matrix {
                     HOOK_LOG_ERROR("Swapped ... ");
                     swapped->process(
                             [&](message_t *message, allocation_message_t *allocation_message) {
-#else
-                size_t message_counter = 0;
-                if (container) {
-                    container->queue_->process(
-                            [&](Node<message_t> *message_node, Node<allocation_message_t> *allocation_message_node) {
 
-                                message_t *message = &message_node->t_;
-                                allocation_message_t *allocation_message = nullptr;
-                                if (allocation_message_node) {
-                                    allocation_message = &allocation_message_node->t_;
-                                }
-#endif
-                                if (message->type == message_type_allocation ||
+                                total_message_counter++;
+                                if (message->type == message_type_allocation || message->type == message_type_reallocation ||
                                     message->type == message_type_mmap) {
-#if USE_CRITICAL_CHECK == true
-                                    HOOK_CHECK(allocation_message);
-#else
-                                    if (UNLIKELY(allocation_message == nullptr)) return;
-#endif
 
-#if USE_MEMORY_MESSAGE_QUEUE_LOCK_FREE == true
-                                    message_counter++;
-                                    if (message_counter >= 5) {
-                                        busy_queue++;
+                                    if (UNLIKELY(allocation_message == nullptr)) {
+                                        CRITICAL_CHECK(allocation_message);
+                                        return;
                                     }
-#endif
 
                                     uint64_t stack_hash = 0;
                                     if (allocation_message->size != 0 &&
-                                            allocation_message->backtrace.frame_size != 0) {
+                                        allocation_message->backtrace.frame_size != 0) {
                                         stack_hash = hash_frames(
                                                 allocation_message->backtrace.frames,
                                                 allocation_message->backtrace.frame_size);
@@ -168,26 +121,17 @@ namespace matrix {
                                     this_->memory_meta_container_->insert(
                                             reinterpret_cast<const void *>(allocation_message->ptr),
                                             stack_hash,
-#if USE_SPLAY_MAP_SAVE_STACK == true
                                             allocation_message,
-#endif
                                             [&](ptr_meta_t *ptr_meta, stack_meta_t *stack_meta) {
                                                 ptr_meta->ptr = reinterpret_cast<void *>(allocation_message->ptr);
                                                 ptr_meta->size = allocation_message->size;
                                                 ptr_meta->attr.is_mmap =
                                                         message->type == message_type_mmap;
 
-#if USE_STACK_HASH_NO_COLLISION == true
                                                 if (UNLIKELY(!stack_meta)) {
                                                     ptr_meta->caller = allocation_message->caller;
                                                     return;
                                                 }
-#else
-                                                ptr_meta->caller = allocation_message->caller;
-                                                if (UNLIKELY(!stack_meta)) {
-                                                    return;
-                                                }
-#endif
 
                                                 stack_meta->size += allocation_message->size;
                                                 if (stack_meta->backtrace.frame_size == 0 &&
@@ -201,22 +145,17 @@ namespace matrix {
                                     this_->memory_meta_container_->erase(
                                             reinterpret_cast<const void *>(message->ptr));
                                 }
-#if USE_MEMORY_MESSAGE_QUEUE_LOCK_FREE == true
-                                if (message_node) {
-                                    this_->message_allocator_->deallocate(message_node);
-                                }
-                                if (allocation_message_node) {
-                                    this_->alloc_message_allocator_->deallocate(allocation_message_node);
-                                }
-                            });
-                    if (message_counter > 0) {
-                        HOOK_LOG_ERROR("Processed ... %zu messages ", message_counter);
-                    }
-#else
                             });
                     swapped->reset();
                     this_->queue_swapped_ = swapped;
-#endif
+
+                    if (total_message_counter - last_total_message_counter > 100000) {
+                        HOOK_LOG_ERROR(
+                                "Total Processed ... %zu messages, offer overflow counter %zu",
+                                total_message_counter,
+                                BufferQueueContainer::g_message_overflow_counter.load());
+                        last_total_message_counter = total_message_counter;
+                    }
                 }
             }
 
@@ -233,6 +172,7 @@ namespace matrix {
             } else {
                 usleep(PROCESS_IDLE_INTERVAL);
             }
+
         }
     }
 
