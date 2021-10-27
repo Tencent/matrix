@@ -6,7 +6,7 @@ import android.os.Build;
 import android.util.ArrayMap;
 
 import com.tencent.matrix.listeners.IAppForeground;
-import com.tencent.matrix.lifecycle.MultiProcessLifecycleOwner;
+import com.tencent.matrix.lifecycle.owners.MultiProcessLifecycleOwner;
 import com.tencent.matrix.util.MatrixLog;
 
 import java.lang.reflect.Field;

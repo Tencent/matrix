@@ -1,12 +1,13 @@
-package com.tencent.matrix.lifecycle
+package com.tencent.matrix.lifecycle.owners
 
+import android.app.Application
 import android.content.ContentProvider
 import android.content.ContentValues
 import android.content.Context
 import android.database.Cursor
 import android.net.Uri
 import androidx.annotation.NonNull
-import com.tencent.matrix.lifecycle.MultiProcessLifecycleInitializer.Companion.init
+import com.tencent.matrix.lifecycle.owners.MultiProcessLifecycleInitializer.Companion.init
 
 /**
  * You should init [com.tencent.matrix.Matrix] or call [init] manually before creating any Activity
@@ -26,6 +27,7 @@ class MultiProcessLifecycleInitializer : ContentProvider() {
             }
             inited = true
             MultiProcessLifecycleOwner.init(context)
+            ActivityRecorder.init(context.applicationContext as Application)
         }
     }
 
@@ -33,6 +35,7 @@ class MultiProcessLifecycleInitializer : ContentProvider() {
         context?.let {
             inited = true
             MultiProcessLifecycleOwner.init(it)
+            ActivityRecorder.init(it.applicationContext as Application)
         } ?: run {
             throw IllegalStateException("context is null !!!")
         }

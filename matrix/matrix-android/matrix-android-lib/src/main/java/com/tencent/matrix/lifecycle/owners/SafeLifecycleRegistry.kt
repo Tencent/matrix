@@ -1,4 +1,4 @@
-package com.tencent.matrix.lifecycle
+package com.tencent.matrix.lifecycle.owners
 
 import android.annotation.SuppressLint
 import androidx.lifecycle.Lifecycle

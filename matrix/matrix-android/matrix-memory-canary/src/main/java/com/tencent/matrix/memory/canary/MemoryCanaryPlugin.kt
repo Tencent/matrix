@@ -1,7 +1,6 @@
 package com.tencent.matrix.memory.canary
 
-import com.tencent.matrix.memory.canary.lifecycle.owners.ActivityRecorder
-import com.tencent.matrix.memory.canary.lifecycle.supervisor.ProcessSupervisor
+import com.tencent.matrix.lifecycle.supervisor.ProcessSupervisor
 import com.tencent.matrix.plugin.Plugin
 import com.tencent.matrix.util.MatrixLog
 import com.tencent.matrix.util.MatrixUtil
@@ -19,7 +18,7 @@ import com.tencent.matrix.util.MatrixUtil
  * Only ONE process can be chosen as supervisor, otherwise it would lead to crash
  *
  * BAD example:
- *  // code in [android.app.Application.onCreate] so each process would run it
+ *  // code in [android.app.Application.onCreate] so each process would execute it
  *  override fun onCreate() {
  *      MemoryCanaryPlugin(getCurrentProcessName())
  *  }
@@ -46,7 +45,6 @@ class MemoryCanaryPlugin(private val supervisorProcess: String = DEFAULT_PROCESS
             return
         }
         super.start()
-        ActivityRecorder.init(application) // fixme move to [MultiProcessLifecycleInitializer]
 
         if (isTheChosenOne()) {
             ProcessSupervisor.initSupervisor(MatrixUtil.getProcessName(application), application)

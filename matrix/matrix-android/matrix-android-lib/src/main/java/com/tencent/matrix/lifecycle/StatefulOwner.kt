@@ -1,10 +1,10 @@
-package com.tencent.matrix.memory.canary.lifecycle
+package com.tencent.matrix.lifecycle
 
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.OnLifecycleEvent
-import com.tencent.matrix.memory.canary.lifecycle.LifecycleDelegateStatefulOwner.Companion.toStateOwner
+import com.tencent.matrix.lifecycle.LifecycleDelegateStatefulOwner.Companion.toStateOwner
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentLinkedQueue
 
@@ -75,6 +75,10 @@ open class StatefulOwner : IStateful, IStateObservable {
 
     override fun active() = state == State.ON
 
+    /**
+     * Observe the [StatefulOwner] forever util you remove the observer.
+     * You can add observer at any time, even before the initialization of Matrix
+     */
     @Synchronized
     override fun observeForever(observer: IStateObserver) {
         observerMap[observer]
@@ -85,6 +89,14 @@ open class StatefulOwner : IStateful, IStateObservable {
             }
     }
 
+    /**
+     * Observer the [StatefulOwner] with lifecycle. It is useful for observers from Activities
+     *
+     * When lifecycle owner destroyed, the [StatefulOwner] would remove the observer automatically
+     * thus avoid leaking the lifecycle owner
+     *
+     * You can add observer at any time, even before the initialization of Matrix
+     */
     @Synchronized
     override fun observeWithLifecycle(lifecycleOwner: LifecycleOwner, observer: IStateObserver) {
         observerMap[observer]
@@ -141,6 +153,9 @@ class LifecycleDelegateStatefulOwner private constructor(
     init {
         source.lifecycle.addObserver(this)
     }
+
+    @OnLifecycleEvent(Lifecycle.Event.ON_CREATE)
+    fun onCreate() = turnOff()
 
     @OnLifecycleEvent(Lifecycle.Event.ON_START)
     fun onReceiveStart() = turnOn()

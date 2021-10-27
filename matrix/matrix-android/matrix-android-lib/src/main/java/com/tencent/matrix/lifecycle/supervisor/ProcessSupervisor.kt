@@ -1,10 +1,10 @@
-package com.tencent.matrix.memory.canary.lifecycle.supervisor
+package com.tencent.matrix.lifecycle.supervisor
 
 import android.app.Application
-import com.tencent.matrix.memory.canary.lifecycle.IStateObserver
-import com.tencent.matrix.memory.canary.lifecycle.MultiSourceStatefulOwner
-import com.tencent.matrix.memory.canary.lifecycle.ReduceOperators
-import com.tencent.matrix.memory.canary.lifecycle.owners.CombinedProcessForegroundStatefulOwner
+import com.tencent.matrix.lifecycle.IStateObserver
+import com.tencent.matrix.lifecycle.MultiSourceStatefulOwner
+import com.tencent.matrix.lifecycle.ReduceOperators
+import com.tencent.matrix.lifecycle.owners.CombinedProcessForegroundOwner
 import com.tencent.matrix.util.MatrixLog
 import com.tencent.matrix.util.MatrixUtil
 
@@ -72,7 +72,7 @@ object ProcessSupervisor :
 
         SupervisorReceiver.sendOnProcessInit(application)
 
-        CombinedProcessForegroundStatefulOwner.observeForever(object : IStateObserver {
+        CombinedProcessForegroundOwner.observeForever(object : IStateObserver {
 
             override fun on() {
                 MatrixLog.d(tag, "CombinedForegroundProcessLifecycle: ON")

@@ -6,11 +6,11 @@ import androidx.lifecycle.LifecycleOwner;
 import androidx.lifecycle.OnLifecycleEvent;
 
 import com.tencent.matrix.AppActiveMatrixDelegate;
-import com.tencent.matrix.lifecycle.MultiProcessLifecycleOwner;
+import com.tencent.matrix.lifecycle.IStateObserver;
+import com.tencent.matrix.lifecycle.owners.CombinedProcessForegroundStatefulOwner;
+import com.tencent.matrix.lifecycle.owners.MultiProcessLifecycleOwner;
+import com.tencent.matrix.lifecycle.supervisor.ProcessSupervisor;
 import com.tencent.matrix.listeners.IAppForeground;
-import com.tencent.matrix.memory.canary.lifecycle.IStateObserver;
-import com.tencent.matrix.memory.canary.lifecycle.owners.CombinedProcessForegroundStatefulOwner;
-import com.tencent.matrix.memory.canary.lifecycle.supervisor.ProcessSupervisor;
 import com.tencent.matrix.util.MatrixLog;
 
 /**

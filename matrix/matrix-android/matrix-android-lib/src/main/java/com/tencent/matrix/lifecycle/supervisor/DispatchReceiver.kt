@@ -1,11 +1,11 @@
-package com.tencent.matrix.memory.canary.lifecycle.supervisor
+package com.tencent.matrix.lifecycle.supervisor
 
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.Process
-import com.tencent.matrix.memory.canary.lifecycle.owners.CombinedProcessForegroundStatefulOwner
+import com.tencent.matrix.lifecycle.owners.CombinedProcessForegroundOwner
 import com.tencent.matrix.util.MatrixHandlerThread
 import com.tencent.matrix.util.MatrixLog
 import com.tencent.matrix.util.MatrixUtil
@@ -102,7 +102,7 @@ internal object DispatchReceiver : BroadcastReceiver() {
                     }
 
                     MatrixHandlerThread.getDefaultHandler().postDelayed({
-                        if (!CombinedProcessForegroundStatefulOwner.active()) {
+                        if (!CombinedProcessForegroundOwner.active()) {
                             SupervisorReceiver.sendOnProcessKilled(context)
                             MatrixLog.e(ProcessSupervisor.tag, "actual kill !!!")
                             Process.killProcess(Process.myPid())

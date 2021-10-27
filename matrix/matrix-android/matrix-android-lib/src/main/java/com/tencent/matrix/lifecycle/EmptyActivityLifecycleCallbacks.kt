@@ -1,4 +1,4 @@
-package com.tencent.matrix.memory.canary.lifecycle
+package com.tencent.matrix.lifecycle
 
 import android.app.Activity
 import android.app.Application

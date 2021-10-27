@@ -1,4 +1,4 @@
-package com.tencent.matrix.lifecycle
+package com.tencent.matrix.lifecycle.owners
 
 import android.annotation.SuppressLint
 import android.app.Activity
@@ -13,8 +13,6 @@ import com.tencent.matrix.util.MatrixLog
 import com.tencent.matrix.util.MatrixUtil
 import java.util.*
 
-internal const val TAG = "Matrix.MultiProcessLifecycle"
-
 /**
  * multi process version of [androidx.lifecycle.ProcessLifecycleOwner]
  *
@@ -23,6 +21,8 @@ internal const val TAG = "Matrix.MultiProcessLifecycle"
 class MultiProcessLifecycleOwner : LifecycleOwner {
 
     companion object {
+        private const val TAG = "Matrix.MultiProcessLifecycle"
+
         private val sInstance = MultiProcessLifecycleOwner()
 
         private var sProcessName: String? = null

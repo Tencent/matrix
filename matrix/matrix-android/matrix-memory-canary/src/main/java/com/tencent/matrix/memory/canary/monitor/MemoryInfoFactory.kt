@@ -8,9 +8,9 @@ import android.os.Process
 import android.text.TextUtils
 import com.tencent.matrix.Matrix
 import com.tencent.matrix.memory.canary.BuildConfig
-import com.tencent.matrix.memory.canary.lifecycle.owners.ActivityRecorder
-import com.tencent.matrix.memory.canary.lifecycle.owners.CombinedProcessForegroundStatefulOwner
-import com.tencent.matrix.memory.canary.lifecycle.supervisor.ProcessSupervisor
+import com.tencent.matrix.lifecycle.owners.ActivityRecorder
+import com.tencent.matrix.lifecycle.owners.CombinedProcessForegroundOwner
+import com.tencent.matrix.lifecycle.supervisor.ProcessSupervisor
 import com.tencent.matrix.util.MatrixLog
 import com.tencent.matrix.util.MatrixUtil
 import junit.framework.Assert
@@ -53,7 +53,7 @@ data class ProcessInfo(
     val pid: Int = Process.myPid(),
     val processName: String = MatrixUtil.getProcessName(Matrix.with().application),
     val activity: String = ActivityRecorder.currentActivity,
-    val isProcessFg: Boolean = CombinedProcessForegroundStatefulOwner.active(),
+    val isProcessFg: Boolean = CombinedProcessForegroundOwner.active(),
     val isAppFg: Boolean = ProcessSupervisor.isAppForeground
 ) {
     override fun toString(): String {

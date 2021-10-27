@@ -1,9 +1,7 @@
 package com.tencent.matrix.memory.canary.monitor
 
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.OnLifecycleEvent
-import com.tencent.matrix.memory.canary.lifecycle.IStateObserver
-import com.tencent.matrix.memory.canary.lifecycle.owners.CombinedProcessForegroundStatefulOwner
+import com.tencent.matrix.lifecycle.IStateObserver
+import com.tencent.matrix.lifecycle.owners.CombinedProcessForegroundOwner
 
 /**
  * Created by Yves on 2021/9/22
@@ -18,7 +16,7 @@ class MemoryBackgroundMonitor private constructor(): IStateObserver {
     }
 
     init {
-        CombinedProcessForegroundStatefulOwner.observeForever(this)
+        CombinedProcessForegroundOwner.observeForever(this)
     }
 
     override fun on() {

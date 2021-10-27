@@ -1,10 +1,10 @@
-package com.tencent.matrix.memory.canary.lifecycle.supervisor
+package com.tencent.matrix.lifecycle.supervisor
 
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import com.tencent.matrix.memory.canary.lifecycle.StatefulOwner
+import com.tencent.matrix.lifecycle.StatefulOwner
 import com.tencent.matrix.util.MatrixHandlerThread
 import com.tencent.matrix.util.MatrixLog
 import com.tencent.matrix.util.MatrixUtil

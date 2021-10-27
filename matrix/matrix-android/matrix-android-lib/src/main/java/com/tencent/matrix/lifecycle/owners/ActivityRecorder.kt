@@ -1,10 +1,10 @@
-package com.tencent.matrix.memory.canary.lifecycle.owners
+package com.tencent.matrix.lifecycle.owners
 
 import android.app.Activity
 import android.app.Application
 import android.os.Bundle
-import com.tencent.matrix.memory.canary.lifecycle.StatefulOwner
-import com.tencent.matrix.memory.canary.lifecycle.EmptyActivityLifecycleCallbacks
+import com.tencent.matrix.lifecycle.StatefulOwner
+import com.tencent.matrix.lifecycle.EmptyActivityLifecycleCallbacks
 import com.tencent.matrix.util.MatrixLog
 import java.util.*
 
