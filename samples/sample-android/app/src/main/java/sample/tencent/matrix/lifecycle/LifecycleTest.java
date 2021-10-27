@@ -7,7 +7,7 @@ import androidx.lifecycle.OnLifecycleEvent;
 
 import com.tencent.matrix.AppActiveMatrixDelegate;
 import com.tencent.matrix.lifecycle.IStateObserver;
-import com.tencent.matrix.lifecycle.owners.CombinedProcessForegroundStatefulOwner;
+import com.tencent.matrix.lifecycle.owners.CombinedProcessForegroundOwner;
 import com.tencent.matrix.lifecycle.owners.MultiProcessLifecycleOwner;
 import com.tencent.matrix.lifecycle.supervisor.ProcessSupervisor;
 import com.tencent.matrix.listeners.IAppForeground;
@@ -58,7 +58,7 @@ public class LifecycleTest {
             }
         });
 
-        CombinedProcessForegroundStatefulOwner.INSTANCE.observeForever(new IStateObserver() {
+        CombinedProcessForegroundOwner.INSTANCE.observeForever(new IStateObserver() {
             @Override
             public void on() {
                 MatrixLog.d(TAG, "CombinedProcessForegroundStatefulOwner: ON");
@@ -92,7 +92,7 @@ public class LifecycleTest {
 
     public static void test2(LifecycleOwner owner) {
         // auto remove when LifecycleOwner is destroyed
-        CombinedProcessForegroundStatefulOwner.INSTANCE.observeWithLifecycle(owner, new IStateObserver() {
+        CombinedProcessForegroundOwner.INSTANCE.observeWithLifecycle(owner, new IStateObserver() {
             @Override
             public void on() {
 
