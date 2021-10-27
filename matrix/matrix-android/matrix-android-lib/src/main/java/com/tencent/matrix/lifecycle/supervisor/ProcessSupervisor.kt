@@ -18,6 +18,42 @@ const val LRU_KILL_RESCUED = 2
 const val LRU_KILL_CANCELED = 3
 const val LRU_KILL_NOT_FOUND = 4
 
+/**
+ * supervisorProcess:
+ * By default, we treats main process as supervisor.
+ * If you want to specify ONE process as supervisor,
+ * you could set this param with the full process name.
+ *
+ * for example:
+ *  SupervisorConfig(application.packageName + ":push")
+ *
+ * Notice: pls avoid setting different names by different process.
+ * Only ONE process can be chosen as supervisor, otherwise it would lead to crash
+ *
+ * BAD example:
+ *  // code in [android.app.Application.onCreate] so each process would execute it
+ *  override fun onCreate() {
+ *      SupervisorConfig(getCurrentProcessName())
+ *      //...
+ *  }
+ *
+ * Created by Yves on 2021/10/22
+ */
+data class SupervisorConfig(val supervisorProcess: String = DEFAULT_PROCESS) {
+    companion object {
+        private const val DEFAULT_PROCESS = "main"
+    }
+
+    internal fun isTheChosenOne(application: Application): Boolean {
+        return if (supervisorProcess == DEFAULT_PROCESS) {
+            MatrixUtil.isInMainProcess(application)
+        } else {
+            MatrixUtil.getProcessName(application) == supervisorProcess
+        }
+    }
+}
+
+
 object ProcessSupervisor :
     MultiSourceStatefulOwner(ReduceOperators.OR) {
 
@@ -39,6 +75,14 @@ object ProcessSupervisor :
     private var application: Application? = null
 
     internal val permission by lazy { "${application?.packageName}.matrix.permission.MEMORY_CANARY" }
+
+    fun init(app: Application, config: SupervisorConfig, callback : (() -> Unit)? = null) {
+        if (config.isTheChosenOne(app)) {
+            initSupervisor(MatrixUtil.getProcessName(application), app)
+            callback?.invoke()
+        }
+        inCharge(app)
+    }
 
     /**
      * should be call only once in process with the maximum life span
