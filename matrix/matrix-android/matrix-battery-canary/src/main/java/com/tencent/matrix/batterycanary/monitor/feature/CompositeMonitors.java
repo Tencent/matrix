@@ -1,11 +1,16 @@
 package com.tencent.matrix.batterycanary.monitor.feature;
 
+import android.os.SystemClock;
+
+import com.tencent.matrix.batterycanary.monitor.AppStats;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Delta;
 import com.tencent.matrix.batterycanary.utils.Consumer;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import androidx.annotation.CallSuper;
@@ -16,12 +21,17 @@ import androidx.annotation.Nullable;
  * @since 2021/9/18
  */
 public class CompositeMonitors {
+    protected final List<Class<? extends Snapshot<?>>> mMetrics = new ArrayList<>();
     protected final Map<Class<? extends Snapshot<?>>, Snapshot<?>> mBgnSnapshots = new HashMap<>();
     protected final Map<Class<? extends Snapshot<?>>, Delta<?>> mDeltas = new HashMap<>();
 
-    protected final BatteryMonitorCore mMonitor;
+    @Nullable
+    protected BatteryMonitorCore mMonitor;
+    @Nullable
+    protected AppStats mAppStats;
+    private long mBgnMillis = SystemClock.uptimeMillis();
 
-    public CompositeMonitors(BatteryMonitorCore core) {
+    public CompositeMonitors(@Nullable BatteryMonitorCore core) {
         mMonitor = core;
     }
 
@@ -31,7 +41,15 @@ public class CompositeMonitors {
     }
 
     @Nullable
+    public BatteryMonitorCore getMonitor() {
+        return mMonitor;
+    }
+
+    @Nullable
     public <T extends MonitorFeature> T getFeature(Class<T> clazz) {
+        if (mMonitor == null) {
+            return null;
+        }
         for (MonitorFeature plugin : mMonitor.getConfig().features) {
             if (clazz.isAssignableFrom(plugin.getClass())) {
                 //noinspection unchecked
@@ -61,18 +79,50 @@ public class CompositeMonitors {
         }
     }
 
+    @Nullable
+    public AppStats getAppStats() {
+        return mAppStats;
+    }
+
+
+    public void getAppStats(Consumer<AppStats> block) {
+        AppStats appStats = getAppStats();
+        if (appStats != null) {
+            block.accept(appStats);
+        }
+    }
+
     @CallSuper
-    public void configureAllSnapshot() {
-        statCurrSnapshot(AlarmMonitorFeature.AlarmSnapshot.class);
-        statCurrSnapshot(BlueToothMonitorFeature.BlueToothSnapshot.class);
-        statCurrSnapshot(DeviceStatMonitorFeature.CpuFreqSnapshot.class);
-        statCurrSnapshot(DeviceStatMonitorFeature.BatteryTmpSnapshot.class);
-        statCurrSnapshot(JiffiesMonitorFeature.JiffiesSnapshot.class);
-        statCurrSnapshot(LocationMonitorFeature.LocationSnapshot.class);
-        statCurrSnapshot(TrafficMonitorFeature.RadioStatSnapshot.class);
-        statCurrSnapshot(WakeLockMonitorFeature.WakeLockSnapshot.class);
-        statCurrSnapshot(WifiMonitorFeature.WifiSnapshot.class);
-        statCurrSnapshot(CpuStatFeature.CpuStateSnapshot.class);
+    public CompositeMonitors metricAll() {
+        metric(JiffiesMonitorFeature.JiffiesSnapshot.class);
+        metric(AlarmMonitorFeature.AlarmSnapshot.class);
+        metric(WakeLockMonitorFeature.WakeLockSnapshot.class);
+        metric(CpuStatFeature.CpuStateSnapshot.class);
+
+        metric(AppStatMonitorFeature.AppStatSnapshot.class);
+        metric(DeviceStatMonitorFeature.CpuFreqSnapshot.class);
+        metric(DeviceStatMonitorFeature.BatteryTmpSnapshot.class);
+
+        metric(TrafficMonitorFeature.RadioStatSnapshot.class);
+        metric(BlueToothMonitorFeature.BlueToothSnapshot.class);
+        metric(WifiMonitorFeature.WifiSnapshot.class);
+        metric(LocationMonitorFeature.LocationSnapshot.class);
+        return this;
+    }
+
+    public CompositeMonitors metric(Class<? extends Snapshot<?>> snapshotClass) {
+        if (!mMetrics.contains(snapshotClass)) {
+            mMetrics.add(snapshotClass);
+        }
+        return this;
+    }
+
+    public void configureSnapshots() {
+        mAppStats = null;
+        mBgnMillis = SystemClock.uptimeMillis();
+        for (Class<? extends Snapshot<?>> item : mMetrics) {
+            statCurrSnapshot(item);
+        }
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
@@ -87,13 +137,14 @@ public class CompositeMonitors {
                 }
             }
         }
+        mAppStats = AppStats.current(SystemClock.uptimeMillis() - mBgnMillis);
     }
 
     @CallSuper
     protected Snapshot<?> statCurrSnapshot(Class<? extends Snapshot<?>> snapshotClass) {
         Snapshot<?> snapshot = null;
         if (snapshotClass == AlarmMonitorFeature.AlarmSnapshot.class) {
-            AlarmMonitorFeature feature = mMonitor.getMonitorFeature(AlarmMonitorFeature.class);
+            AlarmMonitorFeature feature = getFeature(AlarmMonitorFeature.class);
             if (feature != null) {
                 snapshot = feature.currentAlarms();
                 mBgnSnapshots.put(snapshotClass, snapshot);
@@ -101,7 +152,7 @@ public class CompositeMonitors {
             return snapshot;
         }
         if (snapshotClass == BlueToothMonitorFeature.BlueToothSnapshot.class) {
-            BlueToothMonitorFeature feature = mMonitor.getMonitorFeature(BlueToothMonitorFeature.class);
+            BlueToothMonitorFeature feature = getFeature(BlueToothMonitorFeature.class);
             if (feature != null) {
                 snapshot = feature.currentSnapshot();
                 mBgnSnapshots.put(snapshotClass, snapshot);
@@ -109,7 +160,7 @@ public class CompositeMonitors {
             return snapshot;
         }
         if (snapshotClass == DeviceStatMonitorFeature.CpuFreqSnapshot.class) {
-            DeviceStatMonitorFeature feature = mMonitor.getMonitorFeature(DeviceStatMonitorFeature.class);
+            DeviceStatMonitorFeature feature = getFeature(DeviceStatMonitorFeature.class);
             if (feature != null) {
                 snapshot = feature.currentCpuFreq();
                 mBgnSnapshots.put(snapshotClass, snapshot);
@@ -117,15 +168,15 @@ public class CompositeMonitors {
             return snapshot;
         }
         if (snapshotClass == DeviceStatMonitorFeature.BatteryTmpSnapshot.class) {
-            DeviceStatMonitorFeature feature = mMonitor.getMonitorFeature(DeviceStatMonitorFeature.class);
-            if (feature != null) {
+            DeviceStatMonitorFeature feature = getFeature(DeviceStatMonitorFeature.class);
+            if (feature != null && mMonitor != null) {
                 snapshot = feature.currentBatteryTemperature(mMonitor.getContext());
                 mBgnSnapshots.put(snapshotClass, snapshot);
             }
             return snapshot;
         }
         if (snapshotClass == JiffiesMonitorFeature.JiffiesSnapshot.class) {
-            JiffiesMonitorFeature feature = mMonitor.getMonitorFeature(JiffiesMonitorFeature.class);
+            JiffiesMonitorFeature feature = getFeature(JiffiesMonitorFeature.class);
             if (feature != null) {
                 snapshot = feature.currentJiffiesSnapshot();
                 mBgnSnapshots.put(snapshotClass, snapshot);
@@ -133,7 +184,7 @@ public class CompositeMonitors {
             return snapshot;
         }
         if (snapshotClass == LocationMonitorFeature.LocationSnapshot.class) {
-            LocationMonitorFeature feature = mMonitor.getMonitorFeature(LocationMonitorFeature.class);
+            LocationMonitorFeature feature = getFeature(LocationMonitorFeature.class);
             if (feature != null) {
                 snapshot = feature.currentSnapshot();
                 mBgnSnapshots.put(snapshotClass, snapshot);
@@ -141,15 +192,15 @@ public class CompositeMonitors {
             return snapshot;
         }
         if (snapshotClass == TrafficMonitorFeature.RadioStatSnapshot.class) {
-            TrafficMonitorFeature feature = mMonitor.getMonitorFeature(TrafficMonitorFeature.class);
-            if (feature != null) {
+            TrafficMonitorFeature feature = getFeature(TrafficMonitorFeature.class);
+            if (feature != null && mMonitor != null) {
                 snapshot = feature.currentRadioSnapshot(mMonitor.getContext());
                 mBgnSnapshots.put(snapshotClass, snapshot);
             }
             return snapshot;
         }
         if (snapshotClass == WakeLockMonitorFeature.WakeLockSnapshot.class) {
-            WakeLockMonitorFeature feature = mMonitor.getMonitorFeature(WakeLockMonitorFeature.class);
+            WakeLockMonitorFeature feature = getFeature(WakeLockMonitorFeature.class);
             if (feature != null) {
                 snapshot = feature.currentWakeLocks();
                 mBgnSnapshots.put(snapshotClass, snapshot);
@@ -157,7 +208,7 @@ public class CompositeMonitors {
             return snapshot;
         }
         if (snapshotClass == WifiMonitorFeature.WifiSnapshot.class) {
-            WifiMonitorFeature feature = mMonitor.getMonitorFeature(WifiMonitorFeature.class);
+            WifiMonitorFeature feature = getFeature(WifiMonitorFeature.class);
             if (feature != null) {
                 snapshot = feature.currentSnapshot();
                 mBgnSnapshots.put(snapshotClass, snapshot);
@@ -165,13 +216,30 @@ public class CompositeMonitors {
             return snapshot;
         }
         if (snapshotClass == CpuStatFeature.CpuStateSnapshot.class) {
-            CpuStatFeature feature = mMonitor.getMonitorFeature(CpuStatFeature.class);
+            CpuStatFeature feature = getFeature(CpuStatFeature.class);
             if (feature != null && feature.isSupported()) {
                 snapshot = feature.currentCpuStateSnapshot();
                 mBgnSnapshots.put(snapshotClass, snapshot);
             }
             return snapshot;
         }
+        if (snapshotClass == AppStatMonitorFeature.AppStatSnapshot.class) {
+            AppStatMonitorFeature feature = getFeature(AppStatMonitorFeature.class);
+            if (feature != null) {
+                snapshot = feature.currentAppStatSnapshot();
+                mBgnSnapshots.put(snapshotClass, snapshot);
+            }
+            return snapshot;
+        }
         return null;
+    }
+
+    @Override
+    public String toString() {
+        return "CompositeMonitors{" +
+                "Metrics=" + mBgnSnapshots +
+                ", BgnSnapshots=" + mMetrics +
+                ", Deltas=" + mDeltas +
+                '}';
     }
 }
