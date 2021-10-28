@@ -64,6 +64,7 @@ class MatrixTraceLegacyTransform(
                     .setIgnoreMethodMapFilePath("$mappingOut/ignoreMethodMapping.txt")
                     .setMappingPath(mappingOut)
                     .setTraceClassOut(traceClassOut)
+                    .setSkipCheckClass(extension.isSkipCheckClass)
                     .build()
 
             val hardTask = getTransformTaskName(extension.customDexTransformName, variant.name)
@@ -177,6 +178,7 @@ class MatrixTraceLegacyTransform(
                 classInputs = inputFiles,
                 changedFiles = changedFiles,
                 isIncremental = isIncremental,
+                skipCheckClass = config.skipCheckClass,
                 traceClassDirectoryOutput = File(config.traceClassOut),
                 inputToOutput = ConcurrentHashMap(),
                 legacyReplaceChangedFile = legacyReplaceChangedFile,
