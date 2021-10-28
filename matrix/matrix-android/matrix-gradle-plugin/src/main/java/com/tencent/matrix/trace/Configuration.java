@@ -15,13 +15,14 @@ public class Configuration {
     public String ignoreMethodMapFilePath;
     public String blockListFilePath;
     public String traceClassOut;
+    public boolean skipCheckClass;
     public HashSet<String> blockSet = new HashSet<>();
 
     public Configuration() {
     }
 
     Configuration(String packageName, String mappingDir, String baseMethodMapPath, String methodMapFilePath,
-                  String ignoreMethodMapFilePath, String blockListFilePath, String traceClassOut) {
+                  String ignoreMethodMapFilePath, String blockListFilePath, String traceClassOut, boolean skipCheckClass) {
         this.packageName = packageName;
         this.mappingDir = Util.nullAsNil(mappingDir);
         this.baseMethodMapPath = Util.nullAsNil(baseMethodMapPath);
@@ -29,6 +30,7 @@ public class Configuration {
         this.ignoreMethodMapFilePath = Util.nullAsNil(ignoreMethodMapFilePath);
         this.blockListFilePath = Util.nullAsNil(blockListFilePath);
         this.traceClassOut = Util.nullAsNil(traceClassOut);
+        this.skipCheckClass = skipCheckClass;
     }
 
     public int parseBlockFile(MappingCollector processor) {
@@ -82,6 +84,7 @@ public class Configuration {
         public String ignoreMethodMapFile;
         public String blockListFile;
         public String traceClassOut;
+        public boolean skipCheckClass = false;
 
         public Builder setPackageName(String packageName) {
             this.packageName = packageName;
@@ -118,8 +121,13 @@ public class Configuration {
             return this;
         }
 
+        public Builder setSkipCheckClass(boolean skipCheckClass) {
+            this.skipCheckClass = skipCheckClass;
+            return this;
+        }
+
         public Configuration build() {
-            return new Configuration(packageName, mappingPath, baseMethodMap, methodMapFile, ignoreMethodMapFile, blockListFile, traceClassOut);
+            return new Configuration(packageName, mappingPath, baseMethodMap, methodMapFile, ignoreMethodMapFile, blockListFile, traceClassOut, skipCheckClass);
         }
 
     }
