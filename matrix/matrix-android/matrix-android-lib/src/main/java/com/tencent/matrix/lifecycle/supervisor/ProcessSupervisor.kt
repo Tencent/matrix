@@ -59,7 +59,9 @@ data class SupervisorConfig(
 // FIXME: 2021/10/27 设置其他进程为 Supervisor，启动 foreground 回调会有延迟
 object ProcessSupervisor : MultiSourceStatefulOwner(ReduceOperators.OR) {
 
-    internal val tag by lazy { "Matrix.Supervisor.Supervisor_${suffix()}" }
+    private const val TAG = "Matrix.ProcessSupervisor"
+
+    internal val tag by lazy { "${TAG}_${suffix()}" }
 
     private fun suffix(): String {
         return if (MatrixUtil.isInMainProcess(application)) {
@@ -103,7 +105,7 @@ object ProcessSupervisor : MultiSourceStatefulOwner(ReduceOperators.OR) {
 
     private fun checkInstall() {
         if (application == null) {
-            MatrixLog.w(tag, "observer will NOT be notified util MemoryCanaryPlugin were started")
+            MatrixLog.w(TAG, "observer will NOT be notified util MemoryCanaryPlugin were started")
         }
     }
 
