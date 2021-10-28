@@ -18,13 +18,10 @@ package com.tencent.matrix.batterycanary.monitor.feature;
 
 import android.app.Application;
 import android.content.Context;
-import android.os.Handler;
-import android.os.Looper;
 
 import com.tencent.matrix.Matrix;
 import com.tencent.matrix.batterycanary.BatteryEventDelegate;
 import com.tencent.matrix.batterycanary.BatteryMonitorPlugin;
-import com.tencent.matrix.batterycanary.TestUtils;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorConfig;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
 
@@ -94,7 +91,7 @@ public class MonitorCompositeTest {
         Assert.assertNull(compositeMonitor.mBgnSnapshots.get(JiffiesMonitorFeature.JiffiesSnapshot.class));
         Assert.assertNull(compositeMonitor.mBgnSnapshots.get(CpuStatFeature.CpuStateSnapshot.class));
         compositeMonitor.metric(JiffiesMonitorFeature.JiffiesSnapshot.class);
-        compositeMonitor.configureSnapshots();
+        compositeMonitor.configureAllSnapshot();
         Assert.assertNotNull(compositeMonitor.mBgnSnapshots.get(JiffiesMonitorFeature.JiffiesSnapshot.class));
         Assert.assertNull(compositeMonitor.mBgnSnapshots.get(CpuStatFeature.CpuStateSnapshot.class));
         Assert.assertNull(compositeMonitor.mDeltas.get(JiffiesMonitorFeature.JiffiesSnapshot.class));
@@ -107,7 +104,7 @@ public class MonitorCompositeTest {
         compositeMonitor
                 .metric(JiffiesMonitorFeature.JiffiesSnapshot.class)
                 .metric(CpuStatFeature.CpuStateSnapshot.class);
-        compositeMonitor.configureSnapshots();
+        compositeMonitor.configureAllSnapshot();
         Assert.assertNotNull(compositeMonitor.mBgnSnapshots.get(JiffiesMonitorFeature.JiffiesSnapshot.class));
         Assert.assertNotNull(compositeMonitor.mBgnSnapshots.get(CpuStatFeature.CpuStateSnapshot.class));
         Assert.assertNull(compositeMonitor.mDeltas.get(JiffiesMonitorFeature.JiffiesSnapshot.class));
@@ -132,7 +129,7 @@ public class MonitorCompositeTest {
             Assert.assertNull(compositeMonitor.mBgnSnapshots.get(item));
         }
 
-        compositeMonitor.configureSnapshots();
+        compositeMonitor.configureAllSnapshot();
 
         for (Class<? extends MonitorFeature.Snapshot<?>> item : compositeMonitor.mMetrics) {
             Assert.assertNotNull(compositeMonitor.mBgnSnapshots.get(item));

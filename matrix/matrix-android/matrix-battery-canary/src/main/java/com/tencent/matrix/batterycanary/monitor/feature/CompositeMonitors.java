@@ -117,7 +117,7 @@ public class CompositeMonitors {
         return this;
     }
 
-    public void configureSnapshots() {
+    public void configureAllSnapshot() {
         mAppStats = null;
         mBgnMillis = SystemClock.uptimeMillis();
         for (Class<? extends Snapshot<?>> item : mMetrics) {

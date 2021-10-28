@@ -156,7 +156,7 @@ public interface BatteryMonitorCallback extends
         public void onTraceBegin() {
             mTraceBgnMillis = SystemClock.uptimeMillis();
             mCompositeMonitors.clear();
-            mCompositeMonitors.configureSnapshots();
+            mCompositeMonitors.configureAllSnapshot();
 
             // TODO: Remove deprecated statements
             // Configure begin snapshots
