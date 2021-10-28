@@ -78,7 +78,8 @@ object ProcessSupervisor : MultiSourceStatefulOwner(ReduceOperators.OR) {
 
     private var application: Application? = null
 
-    internal val permission by lazy { "${application?.packageName}.matrix.permission.PROCESS_SUPERVISOR" }
+//    internal val permission by lazy { "${application?.packageName}.matrix.permission.PROCESS_SUPERVISOR" }
+    internal val permission by lazy { "${application?.packageName}.manual.dump" }
 
     fun init(app: Application, config: SupervisorConfig): Boolean {
         if (config.isTheChosenOne(app)) {

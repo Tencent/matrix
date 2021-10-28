@@ -2,11 +2,13 @@
           xmlns:android="http://schemas.android.com/apk/res/android"
     >
 
-    <permission
-        android:name="${applicationId}.matrix.permission.PROCESS_SUPERVISOR"
-        android:protectionLevel="signature" />
+    <uses-permission android:name="${applicationId}.manual.dump" />
 
-    <uses-permission android:name="${applicationId}.matrix.permission.PROCESS_SUPERVISOR" />
+<!--    <permission-->
+<!--        android:name="${applicationId}.matrix.permission.PROCESS_SUPERVISOR"-->
+<!--        android:protectionLevel="signature" />-->
+
+<!--    <uses-permission android:name="${applicationId}.matrix.permission.PROCESS_SUPERVISOR" />-->
 
     <application>
 <!--        <provider-->
