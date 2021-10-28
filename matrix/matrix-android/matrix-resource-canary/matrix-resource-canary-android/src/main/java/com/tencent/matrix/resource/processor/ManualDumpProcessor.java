@@ -10,7 +10,6 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.Build;
 
-import com.tencent.matrix.Matrix;
 import com.tencent.matrix.resource.R;
 import com.tencent.matrix.resource.analyzer.model.ActivityLeakResult;
 import com.tencent.matrix.resource.analyzer.model.DestroyedActivityInfo;
@@ -189,7 +188,7 @@ public class ManualDumpProcessor extends BaseLeakProcessor {
 
         private static final String DUMP_PERMISSION_SUFFIX = ".manual.dump";
 
-        private static final String ACTION_DUMP = Matrix.with().getApplication().getPackageName() + ".manual.dump";
+        private static final String ACTION_DUMP = "com.tencent.matrix.manual.dump";
         private static final String ACTION_RESULT = "com.tencent.matrix.manual.result";
 
         private static final String KEY_RESULT_PROCESS = "result_process";
