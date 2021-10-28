@@ -3,7 +3,7 @@ package com.tencent.matrix.memory.canary.monitor
 import com.tencent.matrix.util.MatrixLog
 import java.util.concurrent.TimeUnit
 
-private const val TAG = "Matrix.SumPssMonitor"
+private const val TAG = "Matrix.monitor.SumPssMonitor"
 
 /**
  * Created by Yves on 2021/10/27
@@ -24,10 +24,6 @@ data class SumPssMonitorConfig(
 class SumPssMonitor(
     private val config: SumPssMonitorConfig
 ) : TimerMonitor(config.intervalMillis) {
-
-    companion object {
-        private const val TAG = "Matrix.monitor.SumPssMonitor"
-    }
 
     private var overTimes = 0
 

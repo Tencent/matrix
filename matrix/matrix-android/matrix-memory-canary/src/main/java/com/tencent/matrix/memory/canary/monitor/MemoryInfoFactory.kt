@@ -89,7 +89,7 @@ data class PssInfo(
                 MemoryInfoFactory.activityManager.getProcessMemoryInfo(arrayOf(Process.myPid()).toIntArray())
             return amsInfo.firstOrNull()?.run {
                 get(this)
-            }?: run {
+            } ?: run {
                 PssInfo()
             }
         }
@@ -242,7 +242,7 @@ data class MemInfo(
     var debugPssInfo: PssInfo? = null
 ) {
     override fun toString(): String {
-        return """
+        return "\n" + """
                 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> MemInfo <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
                 | Process   : $processInfo
                 | Status    : $statusInfo
@@ -253,7 +253,7 @@ data class MemInfo(
                 | AMS-Pss   : $amsPssInfo
                 | FgService : todo
                 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>><<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-            """.trimIndent()
+            """.trimIndent() + "\n"
     }
 
     companion object {
@@ -285,7 +285,7 @@ data class MemInfo(
         }
 
         @JvmStatic
-        fun getCurrentProcessMemInfoWithPss() : MemInfo {
+        fun getCurrentProcessMemInfoWithPss(): MemInfo {
             return MemInfo(debugPssInfo = PssInfo.getFromDebug())
         }
 
