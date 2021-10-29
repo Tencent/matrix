@@ -139,9 +139,9 @@ data class StatusInfo(
 
     companion object {
         @JvmStatic
-        fun get(): StatusInfo {
+        fun get(pid: Int = Process.myPid()): StatusInfo {
             return StatusInfo().also {
-                convertProcStatus().apply {
+                convertProcStatus(pid).apply {
                     fun Map<String, String>.getString(key: String) = get(key) ?: "unknown"
 
                     fun Map<String, String>.getInt(key: String): Int {
@@ -164,7 +164,7 @@ data class StatusInfo(
             }
         }
 
-        private fun convertProcStatus(): Map<String, String> {
+        private fun convertProcStatus(pid: Int): Map<String, String> {
             val begin = if (BuildConfig.DEBUG) {
                 System.currentTimeMillis()
             } else {
@@ -172,7 +172,7 @@ data class StatusInfo(
             }
 
             try {
-                File("/proc/${Process.myPid()}/status").useLines { seq ->
+                File("/proc/${pid}/status").useLines { seq ->
                     return seq.flatMap {
                         val split = it.split(":")
                         if (split.size == 2) {
@@ -231,7 +231,34 @@ data class SystemInfo(
     }
 }
 
-// todo make all fields nullable ?
+data class FgServiceInfo(val fgServices: List<String> = getRunningForegroundServices()) {
+    override fun toString(): String {
+        return fgServices.toTypedArray().contentToString()
+    }
+
+    companion object {
+        private fun getRunningForegroundServices(): List<String> {
+            val fgServices = ArrayList<String>()
+            val runningServiceInfoList: List<ActivityManager.RunningServiceInfo> =
+                MemoryInfoFactory.activityManager.getRunningServices(
+                    Int.MAX_VALUE
+                )
+            for (serviceInfo in runningServiceInfoList) {
+                if (serviceInfo.uid != Process.myUid()) {
+                    continue
+                }
+                if (serviceInfo.pid != Process.myPid()) {
+                    continue
+                }
+                if (serviceInfo.foreground) {
+                    fgServices.add(serviceInfo.service.className)
+                }
+            }
+            return fgServices
+        }
+    }
+}
+
 data class MemInfo(
     var processInfo: ProcessInfo? = ProcessInfo(),
     var statusInfo: StatusInfo? = StatusInfo.get(),
@@ -239,7 +266,8 @@ data class MemInfo(
     var nativeMemInfo: NativeMemInfo? = NativeMemInfo(),
     var systemInfo: SystemInfo? = SystemInfo(),
     var amsPssInfo: PssInfo? = null,
-    var debugPssInfo: PssInfo? = null
+    var debugPssInfo: PssInfo? = null,
+    var fgServiceInfo: FgServiceInfo? = FgServiceInfo()
 ) {
     override fun toString(): String {
         return "\n" + """
@@ -251,7 +279,7 @@ data class MemInfo(
                 | Native    : $nativeMemInfo
                 | Dbg-Pss   : $debugPssInfo
                 | AMS-Pss   : $amsPssInfo
-                | FgService : todo
+                | FgService : $fgServiceInfo
                 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>><<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
             """.trimIndent() + "\n"
     }
@@ -318,6 +346,7 @@ data class MemInfo(
 
             MatrixLog.d(TAG, "processInfoList[$processInfoList]")
 
+            val systemInfo = SystemInfo()
             for (i in processInfoList.indices) {
                 val processInfo = processInfoList[i]
                 val pkgName = Matrix.with().application.packageName
@@ -327,11 +356,7 @@ data class MemInfo(
                 ) {
                     MatrixLog.e(
                         TAG,
-                        "info with uid [%s] & process name [%s] is not current app [%s][%s]",
-                        processInfoList[i].uid,
-                        processInfoList[i].processName,
-                        Process.myUid(),
-                        pkgName
+                        "info with uid [${processInfo.uid}] & process name [${processInfo.processName}] is not current app [${Process.myUid()}][${pkgName}]",
                     )
                     continue
                 }
@@ -342,10 +367,10 @@ data class MemInfo(
                             processInfo.pid,
                             processInfo.processName,
                         ),
-                        statusInfo = null,
+                        statusInfo = StatusInfo.get(processInfo.pid),
                         javaMemInfo = null,
                         nativeMemInfo = null,
-                        systemInfo = null,
+                        systemInfo = systemInfo,
                     )
                 )
             }
