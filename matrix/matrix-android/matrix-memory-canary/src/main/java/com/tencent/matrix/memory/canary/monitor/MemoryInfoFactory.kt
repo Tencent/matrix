@@ -134,7 +134,7 @@ data class StatusInfo(
     var threads: Int = -1
 ) {
     override fun toString(): String {
-        return "State=$state, FDSize=$fdSize, VmSize=$vmSize K, VmRss=$vmRss K, VmSwap=$vmSwap K, Threads=$threads"
+        return "State=$state,\tFDSize=$fdSize,\tVmSize=$vmSize K,\tVmRss=$vmRss K,\tVmSwap=$vmSwap K,\tThreads=$threads"
     }
 
     companion object {
@@ -154,7 +154,7 @@ data class StatusInfo(
                         return -2
                     }
 
-                    it.state = getString("State")
+                    it.state = getString("State").trimIndent()
                     it.fdSize = getInt("FDSize")
                     it.vmSize = getInt("VmSize")
                     it.vmRss = getInt("VmRSS")
@@ -234,7 +234,7 @@ data class SystemInfo(
 // todo make all fields nullable ?
 data class MemInfo(
     var processInfo: ProcessInfo? = ProcessInfo(),
-    var statusInfo: StatusInfo? = StatusInfo(),
+    var statusInfo: StatusInfo? = StatusInfo.get(),
     var javaMemInfo: JavaMemInfo? = JavaMemInfo(),
     var nativeMemInfo: NativeMemInfo? = NativeMemInfo(),
     var systemInfo: SystemInfo? = SystemInfo(),
@@ -290,7 +290,7 @@ data class MemInfo(
         }
 
         @JvmStatic
-        fun getCurrentProcessMemInfoWithPssAms(): MemInfo {
+        fun getCurrentProcessMemInfoWithAmsPss(): MemInfo {
             return MemInfo(amsPssInfo = PssInfo.getFromAms())
         }
 

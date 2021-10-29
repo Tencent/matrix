@@ -30,6 +30,7 @@ import sample.tencent.matrix.battery.TestBatteryActivity;
 import sample.tencent.matrix.hooks.TestHooksActivity;
 import sample.tencent.matrix.io.TestIOActivity;
 import sample.tencent.matrix.issue.IssuesMap;
+import sample.tencent.matrix.memory.MemInfoTest;
 import sample.tencent.matrix.resource.TestLeakActivity;
 import sample.tencent.matrix.sqlitelint.TestSQLiteLintActivity;
 import sample.tencent.matrix.trace.TestTraceMainActivity;
@@ -107,6 +108,13 @@ public class MainActivity extends AppCompatActivity {
         MemInfo info = MemInfo.getCurrentProcessFullMemInfo();
         MatrixLog.d(TAG, "mem cost %s", System.currentTimeMillis() - begin);
         MatrixLog.d(TAG, "%s", info);
+
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                MemInfoTest.test();
+            }
+        }).start();
     }
 
 
