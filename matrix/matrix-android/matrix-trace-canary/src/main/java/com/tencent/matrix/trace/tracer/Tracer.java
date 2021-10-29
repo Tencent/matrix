@@ -18,7 +18,7 @@ package com.tencent.matrix.trace.tracer;
 
 import androidx.annotation.CallSuper;
 
-import com.tencent.matrix.AppActiveMatrixDelegate;
+import com.tencent.matrix.lifecycle.owners.MultiProcessLifecycleOwner;
 import com.tencent.matrix.trace.listeners.LooperObserver;
 import com.tencent.matrix.util.MatrixLog;
 
@@ -65,6 +65,6 @@ public abstract class Tracer extends LooperObserver implements ITracer {
     }
 
     public boolean isForeground() {
-        return AppActiveMatrixDelegate.INSTANCE.isAppForeground();
+        return MultiProcessLifecycleOwner.INSTANCE.isProcessForeground();
     }
 }

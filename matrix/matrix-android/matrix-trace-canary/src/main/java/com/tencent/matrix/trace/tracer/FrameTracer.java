@@ -22,7 +22,6 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.SystemClock;
 
-import com.tencent.matrix.AppActiveMatrixDelegate;
 import com.tencent.matrix.Matrix;
 import com.tencent.matrix.report.Issue;
 import com.tencent.matrix.trace.TracePlugin;
@@ -35,6 +34,7 @@ import com.tencent.matrix.trace.util.Utils;
 import com.tencent.matrix.util.DeviceUtil;
 import com.tencent.matrix.util.MatrixHandlerThread;
 import com.tencent.matrix.util.MatrixLog;
+import com.tencent.matrix.util.MatrixUtil;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -135,9 +135,9 @@ public class FrameTracer extends Tracer implements Application.ActivityLifecycle
             if (dropFrameListener != null) {
                 if (dropFrame > dropFrameListenerThreshold) {
                     try {
-                        if (AppActiveMatrixDelegate.getTopActivityName() != null) {
-                            long lastResumeTime = lastResumeTimeMap.get(AppActiveMatrixDelegate.getTopActivityName());
-                            dropFrameListener.dropFrame(dropFrame, AppActiveMatrixDelegate.getTopActivityName(), lastResumeTime);
+                        if (MatrixUtil.getTopActivityName() != null) {
+                            long lastResumeTime = lastResumeTimeMap.get(MatrixUtil.getTopActivityName());
+                            dropFrameListener.dropFrame(dropFrame, MatrixUtil.getTopActivityName(), lastResumeTime);
                         }
                     } catch (Exception e) {
                         MatrixLog.e(TAG, "dropFrameListener error e:" + e.getMessage());

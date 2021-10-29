@@ -20,7 +20,7 @@ import kotlin.collections.HashMap
  */
 internal object SupervisorReceiver : BroadcastReceiver() {
 
-    private const val TAG = "Matrix.Supervisor.SupervisorReceiver"
+    private const val TAG = "Matrix.ProcessSupervisor.SupervisorReceiver"
 
     private enum class ProcessEvent {
         SUPERVISOR_PROCESS_CREATED, // if the supervisor process were not main process, the create event would be lost

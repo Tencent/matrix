@@ -45,7 +45,6 @@ public class Matrix {
         this.pluginListener = listener;
         this.plugins = plugins;
         MultiProcessLifecycleInitializer.init(app);
-        AppActiveMatrixDelegate.INSTANCE.init(application);
         for (Plugin plugin : plugins) {
             plugin.init(application, pluginListener);
             pluginListener.onInit(plugin);

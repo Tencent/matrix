@@ -19,18 +19,14 @@ import com.tencent.matrix.util.MatrixLog;
 public class LifecycleTest {
     private static final String TAG = "Matrix.sample.LifecycleTest";
     public static void test1() {
-        MultiProcessLifecycleOwner.get().addListener(new IAppForeground() {
+        MultiProcessLifecycleOwner.INSTANCE.addListener(new IAppForeground() {
             @Override
             public void onForeground(boolean isForeground) {
                 MatrixLog.d(TAG, "isForeground %s", isForeground);
-                if (!isForeground) {
-                    // now change mode for transparent Activity
-                    MultiProcessLifecycleOwner.get().setPauseAsBgIntervalMs(1000);
-                }
             }
         });
 
-        MultiProcessLifecycleOwner.get().getLifecycle().addObserver(new LifecycleObserver() {
+        MultiProcessLifecycleOwner.INSTANCE.getLifecycle().addObserver(new LifecycleObserver() {
 
             @OnLifecycleEvent(Lifecycle.Event.ON_CREATE)
             private void onProcessCreatedCalledOnce() {

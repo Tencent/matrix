@@ -78,6 +78,7 @@ object ProcessSupervisor : MultiSourceStatefulOwner(ReduceOperators.OR) {
 
     private var application: Application? = null
 
+    // FIXME: 2021/10/28
 //    internal val permission by lazy { "${application?.packageName}.matrix.permission.PROCESS_SUPERVISOR" }
     internal val permission by lazy { "${application?.packageName}.manual.dump" }
 

@@ -7,12 +7,12 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
 import android.os.Process;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.VisibleForTesting;
 import androidx.annotation.WorkerThread;
 
-import com.tencent.matrix.AppActiveMatrixDelegate;
 import com.tencent.matrix.Matrix;
 import com.tencent.matrix.batterycanary.BatteryEventDelegate;
 import com.tencent.matrix.batterycanary.monitor.feature.AbsTaskMonitorFeature.TaskJiffiesSnapshot;
@@ -31,6 +31,7 @@ import com.tencent.matrix.batterycanary.monitor.feature.WakeLockMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.WakeLockMonitorFeature.WakeLockTrace.WakeLockRecord;
 import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
 import com.tencent.matrix.batterycanary.utils.ProcStatUtil;
+import com.tencent.matrix.lifecycle.owners.MultiProcessLifecycleOwner;
 import com.tencent.matrix.util.MatrixHandlerThread;
 import com.tencent.matrix.util.MatrixLog;
 
@@ -111,7 +112,7 @@ public class BatteryMonitorCore implements
     };
 
     private volatile boolean mTurnOn = false;
-    private boolean mAppForeground = AppActiveMatrixDelegate.INSTANCE.isAppForeground();
+    private boolean mAppForeground = MultiProcessLifecycleOwner.INSTANCE.isProcessForeground();
     private boolean mForegroundModeEnabled;
     private boolean mBackgroundModeEnabled;
     private final long mMonitorDelayMillis;

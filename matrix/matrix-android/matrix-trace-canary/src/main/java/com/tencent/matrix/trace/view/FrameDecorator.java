@@ -33,9 +33,12 @@ import android.view.WindowManager;
 import android.view.animation.AccelerateInterpolator;
 import android.widget.TextView;
 
-import com.tencent.matrix.AppActiveMatrixDelegate;
+import androidx.lifecycle.Lifecycle;
+import androidx.lifecycle.LifecycleObserver;
+import androidx.lifecycle.OnLifecycleEvent;
+
 import com.tencent.matrix.Matrix;
-import com.tencent.matrix.listeners.IAppForeground;
+import com.tencent.matrix.lifecycle.owners.MultiProcessLifecycleOwner;
 import com.tencent.matrix.trace.R;
 import com.tencent.matrix.trace.TracePlugin;
 import com.tencent.matrix.trace.constants.Constants;
@@ -48,7 +51,7 @@ import com.tencent.matrix.util.MatrixLog;
 import java.util.Objects;
 import java.util.concurrent.Executor;
 
-public class FrameDecorator extends IDoFrameListener implements IAppForeground {
+public class FrameDecorator extends IDoFrameListener implements LifecycleObserver {
     private static final String TAG = "Matrix.FrameDecorator";
     private WindowManager windowManager;
     private WindowManager.LayoutParams layoutParam;
@@ -84,7 +87,8 @@ public class FrameDecorator extends IDoFrameListener implements IAppForeground {
         this.highColor = context.getResources().getColor(R.color.level_high_color);
         this.frozenColor = context.getResources().getColor(R.color.level_frozen_color);
 
-        AppActiveMatrixDelegate.INSTANCE.addListener(this);
+//        AppActiveMatrixDelegate.INSTANCE.addListener(this);
+        MultiProcessLifecycleOwner.INSTANCE.getLifecycle().addObserver(this);
         view.addOnAttachStateChangeListener(new View.OnAttachStateChangeListener() {
             @Override
             public void onViewAttachedToWindow(View v) {
@@ -452,8 +456,17 @@ public class FrameDecorator extends IDoFrameListener implements IAppForeground {
         return isShowing;
     }
 
-    @Override
-    public void onForeground(final boolean isForeground) {
+    @OnLifecycleEvent(Lifecycle.Event.ON_RESUME)
+    public void onProcessResumed() {
+        onForeground(true);
+    }
+
+    @OnLifecycleEvent(Lifecycle.Event.ON_PAUSE)
+    public void onProcessPaused() {
+        onForeground(false);
+    }
+
+    private void onForeground(final boolean isForeground) {
         MatrixLog.i(TAG, "[onForeground] isForeground:%s", isForeground);
         if (!isEnable) {
             return;
