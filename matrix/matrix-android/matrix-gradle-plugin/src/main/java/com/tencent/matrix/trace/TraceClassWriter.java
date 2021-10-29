@@ -24,12 +24,12 @@ import org.objectweb.asm.ClassWriter;
  */
 class TraceClassWriter extends ClassWriter {
     private ClassLoader mClassLoader;
-    public TraceClassWriter(int flags, ClassLoader classLoader) {
+    TraceClassWriter(int flags, ClassLoader classLoader) {
         super(flags);
         mClassLoader = classLoader;
     }
 
-    public TraceClassWriter(ClassReader classReader, int flags, ClassLoader classLoader) {
+    TraceClassWriter(ClassReader classReader, int flags, ClassLoader classLoader) {
         super(classReader, flags);
         mClassLoader = classLoader;
     }
