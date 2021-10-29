@@ -79,6 +79,10 @@ public class CompositeMonitors {
         }
     }
 
+    public void putDelta(Class<? extends Snapshot<?>> snapshotClass, Delta<? extends Snapshot<?>> delta) {
+        mDeltas.put(snapshotClass, delta);
+    }
+
     @Nullable
     public AppStats getAppStats() {
         return mAppStats;
@@ -133,7 +137,7 @@ public class CompositeMonitors {
                 Class<? extends Snapshot<?>> snapshotClass = item.getKey();
                 Snapshot currSnapshot = statCurrSnapshot(snapshotClass);
                 if (currSnapshot != null && currSnapshot.getClass() == lastSnapshot.getClass()) {
-                    mDeltas.put(snapshotClass, currSnapshot.diff(lastSnapshot));
+                    putDelta(snapshotClass, currSnapshot.diff(lastSnapshot));
                 }
             }
         }
