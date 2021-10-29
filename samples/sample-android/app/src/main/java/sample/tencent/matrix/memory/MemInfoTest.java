@@ -24,7 +24,7 @@ public class MemInfoTest {
         MatrixLog.d(TAG, "getCurrentProcessMemInfoWithPss %s", info);
 
         info = MemInfo.getCurrentProcessMemInfoWithAmsPss();
-        MatrixLog.d(TAG, "getCurrentProcessMemInfoWithPssAms %s", info);
+        MatrixLog.d(TAG, "getCurrentProcessMemInfoWithAmsPss %s", info);
 
         MemInfo[] infos = MemInfo.getAllProcessPss();
         MatrixLog.d(TAG, "getAllProcessPss %s", Arrays.toString(infos));
