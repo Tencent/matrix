@@ -49,7 +49,25 @@ public final class StreamUtil {
         }
     }
 
+    public static boolean preventZipSlip(java.io.File output, String zipEntryName) {
+
+        try {
+            if (zipEntryName.contains("..") && new File(output, zipEntryName).getCanonicalPath().startsWith(output.getCanonicalPath() + File.separator)) {
+                return true;
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+            return true;
+        }
+        return false;
+    }
+
     public static void extractZipEntry(ZipFile zipFile, ZipEntry targetEntry, File output) throws IOException {
+
+        if (preventZipSlip(output, targetEntry.getName())) {
+            throw new IllegalStateException("extractZipEntry entry " + targetEntry.getName() + " failed!");
+        }
+
         InputStream is = null;
         OutputStream os = null;
         try {

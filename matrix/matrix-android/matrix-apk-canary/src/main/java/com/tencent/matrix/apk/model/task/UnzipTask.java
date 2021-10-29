@@ -227,11 +227,16 @@ public class UnzipTask extends ApkTask {
 
     private String writeEntry(ZipFile zipFile, ZipEntry entry) throws IOException {
 
+        String entryName = entry.getName();
+        if (Util.preventZipSlip(outputFile, entryName)) {
+            Log.e(TAG, "writeEntry entry %s failed!", entryName);
+            return null;
+        }
+
         int readSize;
         byte[] readBuffer = new byte[4096];
         BufferedOutputStream bufferedOutput = null;
         InputStream zipInputStream = null;
-        String entryName = entry.getName();
         String outEntryName = null;
         String filename;
         File dir;

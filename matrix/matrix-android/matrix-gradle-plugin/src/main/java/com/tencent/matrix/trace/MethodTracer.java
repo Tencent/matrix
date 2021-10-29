@@ -18,6 +18,7 @@ package com.tencent.matrix.trace;
 
 import com.tencent.matrix.javalib.util.FileUtil;
 import com.tencent.matrix.javalib.util.Log;
+import com.tencent.matrix.javalib.util.Util;
 import com.tencent.matrix.plugin.compat.AgpCompat;
 import com.tencent.matrix.trace.item.TraceMethod;
 import com.tencent.matrix.trace.retrace.MappingCollector;
@@ -199,6 +200,12 @@ public class MethodTracer {
             while (enumeration.hasMoreElements()) {
                 ZipEntry zipEntry = enumeration.nextElement();
                 String zipEntryName = zipEntry.getName();
+
+                if (Util.preventZipSlip(output, zipEntryName)) {
+                    Log.e(TAG, "Unzip entry %s failed!", zipEntryName);
+                    continue;
+                }
+
                 if (MethodCollector.isNeedTraceFile(zipEntryName)) {
 
                     InputStream inputStream = zipFile.getInputStream(zipEntry);
