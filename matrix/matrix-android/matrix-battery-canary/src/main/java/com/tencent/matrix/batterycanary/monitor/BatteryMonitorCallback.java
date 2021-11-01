@@ -19,6 +19,7 @@ import com.tencent.matrix.batterycanary.monitor.feature.CpuStatFeature.CpuStateS
 import com.tencent.matrix.batterycanary.monitor.feature.DeviceStatMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.DeviceStatMonitorFeature.BatteryTmpSnapshot;
 import com.tencent.matrix.batterycanary.monitor.feature.DeviceStatMonitorFeature.CpuFreqSnapshot;
+import com.tencent.matrix.batterycanary.monitor.feature.InternalMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature.JiffiesSnapshot;
 import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature.JiffiesSnapshot.ThreadJiffiesEntry;
@@ -58,6 +59,7 @@ import androidx.annotation.VisibleForTesting;
  */
 public interface BatteryMonitorCallback extends
         BatteryMonitorCore.JiffiesListener,
+        InternalMonitorFeature.InternalListener,
         LooperTaskMonitorFeature.LooperTaskListener,
         WakeLockMonitorFeature.WakeLockListener,
         AlarmMonitorFeature.AlarmListener,
@@ -223,6 +225,10 @@ public interface BatteryMonitorCallback extends
 
         @Override
         public void onReportInternalJiffies(Delta<TaskJiffiesSnapshot> delta) {
+            CompositeMonitors monitors = new CompositeMonitors(mMonitor);
+            monitors.setAppStats(AppStats.current(delta.during));
+            monitors.putDelta(InternalMonitorFeature.InternalSnapshot.class, delta);
+            onCanaryReport(monitors);
         }
 
         @Override

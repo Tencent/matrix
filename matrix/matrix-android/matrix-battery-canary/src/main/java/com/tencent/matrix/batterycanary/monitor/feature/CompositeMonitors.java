@@ -96,6 +96,10 @@ public class CompositeMonitors {
         }
     }
 
+    public void setAppStats(@Nullable AppStats appStats) {
+        mAppStats = appStats;
+    }
+
     @CallSuper
     public CompositeMonitors metricAll() {
         metric(JiffiesMonitorFeature.JiffiesSnapshot.class);
