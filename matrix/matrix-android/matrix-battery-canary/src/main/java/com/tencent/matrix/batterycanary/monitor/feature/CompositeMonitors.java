@@ -79,6 +79,18 @@ public class CompositeMonitors {
         }
     }
 
+    @Nullable
+    public Delta<?> getDeltaRaw(Class<? extends Snapshot<?>> snapshotClass) {
+        return mDeltas.get(snapshotClass);
+    }
+
+    public void getDeltaRaw(Class<? extends Snapshot<?>> snapshotClass, Consumer<Delta<?>> block) {
+        Delta<?> delta = getDeltaRaw(snapshotClass);
+        if (delta != null) {
+            block.accept(delta);
+        }
+    }
+
     public void putDelta(Class<? extends Snapshot<?>> snapshotClass, Delta<? extends Snapshot<?>> delta) {
         mDeltas.put(snapshotClass, delta);
     }

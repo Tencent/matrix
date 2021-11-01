@@ -30,7 +30,9 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.Mockito;
 
+import androidx.test.core.app.ApplicationProvider;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 
@@ -43,6 +45,7 @@ public class MonitorCompositeTest {
 
     @Before
     public void setUp() {
+        System.setProperty("org.mockito.android.target", ApplicationProvider.getApplicationContext().getCacheDir().getPath());
         mContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
         if (!Matrix.isInstalled()) {
             Matrix.init(new Matrix.Builder(((Application) mContext.getApplicationContext())).build());
@@ -141,5 +144,20 @@ public class MonitorCompositeTest {
         for (Class<? extends MonitorFeature.Snapshot<?>> item : compositeMonitor.mMetrics) {
             Assert.assertNotNull(compositeMonitor.mDeltas.get(item));
         }
+    }
+
+    @Test
+    public void testPutDelta() {
+        final BatteryMonitorCore monitor = mockMonitor();
+        BatteryMonitorPlugin plugin = new BatteryMonitorPlugin(monitor.getConfig());
+        Matrix.with().getPlugins().add(plugin);
+        monitor.enableForegroundLoopCheck(true);
+        monitor.start();
+
+        CompositeMonitors compositeMonitor = new CompositeMonitors(monitor);
+        compositeMonitor.putDelta(AbsTaskMonitorFeature.TaskJiffiesSnapshot.class, Mockito.mock(MonitorFeature.Snapshot.Delta.class));
+        Assert.assertNotNull(compositeMonitor.getDelta(AbsTaskMonitorFeature.TaskJiffiesSnapshot.class));
+        compositeMonitor.putDelta(InternalMonitorFeature.InternalSnapshot.class, Mockito.mock(MonitorFeature.Snapshot.Delta.class));
+        Assert.assertNotNull(compositeMonitor.getDeltaRaw(InternalMonitorFeature.InternalSnapshot.class));
     }
 }
