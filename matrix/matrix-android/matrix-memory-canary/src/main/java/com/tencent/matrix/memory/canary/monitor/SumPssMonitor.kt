@@ -41,7 +41,7 @@ class SumPssMonitor(
         val sum = memInfos.onEach { info ->
             MatrixLog.i(
                 TAG,
-                "${info.processInfo?.pid}-${info.processInfo?.processName}"
+                "${info.processInfo?.pid}-${info.processInfo?.processName}: ${info.amsPssInfo!!.totalPss} KB"
             )
         }.sumBy { it.amsPssInfo!!.totalPss }.also { MatrixLog.i(TAG, "sumPss = $it KB") }
 

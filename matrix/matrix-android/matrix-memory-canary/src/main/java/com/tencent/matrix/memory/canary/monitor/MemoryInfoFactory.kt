@@ -7,10 +7,10 @@ import android.os.Debug
 import android.os.Process
 import android.text.TextUtils
 import com.tencent.matrix.Matrix
-import com.tencent.matrix.memory.canary.BuildConfig
 import com.tencent.matrix.lifecycle.owners.ActivityRecorder
 import com.tencent.matrix.lifecycle.owners.CombinedProcessForegroundOwner
 import com.tencent.matrix.lifecycle.supervisor.ProcessSupervisor
+import com.tencent.matrix.memory.canary.BuildConfig
 import com.tencent.matrix.util.MatrixLog
 import com.tencent.matrix.util.MatrixUtil
 import junit.framework.Assert
@@ -269,6 +269,7 @@ data class MemInfo(
     var debugPssInfo: PssInfo? = null,
     var fgServiceInfo: FgServiceInfo? = FgServiceInfo()
 ) {
+    var cost = 0L
     override fun toString(): String {
         return "\n" + """
                 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> MemInfo <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
@@ -281,12 +282,13 @@ data class MemInfo(
                 | AMS-Pss   : $amsPssInfo
                 | FgService : $fgServiceInfo
                 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>><<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-            """.trimIndent() + "\n"
+            """.trimIndent() + "\n".run { if (cost <= 0) this else "$this| cost : $cost" }
     }
 
     companion object {
         @JvmStatic
         fun getAllProcessPss(): Array<MemInfo> {
+            val begin = System.currentTimeMillis()
             val memInfoArray = prepareAllProcessInfo()
             val pidMemInfoArray =
                 MemoryInfoFactory.activityManager.getProcessMemoryInfo(memInfoArray.toPidArray())
@@ -304,27 +306,32 @@ data class MemInfo(
                     }
                 }
             }
+            MatrixLog.i(TAG, "getAllProcessPss cost: ${System.currentTimeMillis() - begin}")
             return memInfoArray
         }
 
         @JvmStatic
         fun getCurrentProcessMemInfo(): MemInfo {
-            return MemInfo()
+            val begin = System.currentTimeMillis()
+            return MemInfo().also { it.cost = System.currentTimeMillis() - begin }
         }
 
         @JvmStatic
         fun getCurrentProcessMemInfoWithPss(): MemInfo {
-            return MemInfo(debugPssInfo = PssInfo.getFromDebug())
+            val begin = System.currentTimeMillis()
+            return MemInfo(debugPssInfo = PssInfo.getFromDebug()).also { it.cost = System.currentTimeMillis() - begin }
         }
 
         @JvmStatic
         fun getCurrentProcessMemInfoWithAmsPss(): MemInfo {
-            return MemInfo(amsPssInfo = PssInfo.getFromAms())
+            val begin = System.currentTimeMillis()
+            return MemInfo(amsPssInfo = PssInfo.getFromAms()).also { it.cost = System.currentTimeMillis() - begin }
         }
 
         @JvmStatic
         fun getCurrentProcessFullMemInfo(): MemInfo {
-            return MemInfo(amsPssInfo = PssInfo.getFromAms(), debugPssInfo = PssInfo.getFromDebug())
+            val begin = System.currentTimeMillis()
+            return MemInfo(amsPssInfo = PssInfo.getFromAms(), debugPssInfo = PssInfo.getFromDebug()).also { it.cost = System.currentTimeMillis() - begin }
         }
 
         private fun Array<MemInfo>.toPidArray(): IntArray {

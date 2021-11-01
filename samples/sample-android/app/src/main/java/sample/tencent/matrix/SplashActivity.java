@@ -31,7 +31,7 @@ import sample.tencent.matrix.lifecycle.LifecycleTest;
 
 
 public class SplashActivity extends AppCompatActivity {
-    private static String TAG = "Matrix.SplashActivity";
+    private static String TAG = "Matrix.sample.SplashActivity";
     private static HandlerThread sHandlerThread;
 
     @Override

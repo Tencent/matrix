@@ -37,7 +37,7 @@ import sample.tencent.matrix.trace.TestTraceMainActivity;
 
 
 public class MainActivity extends AppCompatActivity {
-    private static final String TAG = "Matrix.MainActivity";
+    private static final String TAG = "Matrix.sample.MainActivity";
 
     @Override
     protected void onResume() {
