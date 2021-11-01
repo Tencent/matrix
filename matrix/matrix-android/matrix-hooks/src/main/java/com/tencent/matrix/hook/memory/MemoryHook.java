@@ -23,6 +23,7 @@ import androidx.annotation.Nullable;
 
 import com.tencent.matrix.hook.AbsHook;
 import com.tencent.matrix.hook.HookManager;
+import com.tencent.matrix.memguard.MemGuard;
 import com.tencent.matrix.util.MatrixLog;
 
 import java.util.HashSet;
@@ -126,6 +127,11 @@ public class MemoryHook extends AbsHook {
 
     @Override
     public boolean onConfigure() {
+        if (MemGuard.isInstalled()) {
+            MatrixLog.w(TAG, "MemGuard has been installed, skip MemoryHook install logic.");
+            return false;
+        }
+
         if (mMinTraceSize < 0 || (mMaxTraceSize != 0 && mMaxTraceSize < mMinTraceSize)) {
             throw new IllegalArgumentException("sizes should not be negative and maxSize should be " +
                     "0 or greater than minSize: min = " + mMinTraceSize + ", max = " + mMaxTraceSize);

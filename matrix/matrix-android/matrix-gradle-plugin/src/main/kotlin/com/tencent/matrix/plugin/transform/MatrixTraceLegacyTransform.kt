@@ -34,6 +34,7 @@ import java.util.concurrent.ConcurrentHashMap
 
 // For Android Gradle Plugin 3.5.0
 class MatrixTraceLegacyTransform(
+        private val project: Project,
         private val config: Configuration,
         private val origTransform: Transform
 ) : Transform() {
@@ -63,6 +64,7 @@ class MatrixTraceLegacyTransform(
                     .setIgnoreMethodMapFilePath("$mappingOut/ignoreMethodMapping.txt")
                     .setMappingPath(mappingOut)
                     .setTraceClassOut(traceClassOut)
+                    .setSkipCheckClass(extension.isSkipCheckClass)
                     .build()
 
             val hardTask = getTransformTaskName(extension.customDexTransformName, variant.name)
@@ -72,7 +74,7 @@ class MatrixTraceLegacyTransform(
                         Log.i(TAG, "successfully inject task:" + task.name)
                         val field = TransformTask::class.java.getDeclaredField("transform")
                         field.isAccessible = true
-                        field.set(task, MatrixTraceLegacyTransform(config, task.transform))
+                        field.set(task, MatrixTraceLegacyTransform(project, config, task.transform))
                         break
                     }
                 }
@@ -170,11 +172,13 @@ class MatrixTraceLegacyTransform(
                 methodMapFilePath = config.methodMapFilePath,
                 baseMethodMapPath = config.baseMethodMapPath,
                 blockListFilePath = config.blockListFilePath,
-                mappingDir = config.mappingDir
+                mappingDir = config.mappingDir,
+                project = project
         ).doTransform(
                 classInputs = inputFiles,
                 changedFiles = changedFiles,
                 isIncremental = isIncremental,
+                skipCheckClass = config.skipCheckClass,
                 traceClassDirectoryOutput = File(config.traceClassOut),
                 inputToOutput = ConcurrentHashMap(),
                 legacyReplaceChangedFile = legacyReplaceChangedFile,

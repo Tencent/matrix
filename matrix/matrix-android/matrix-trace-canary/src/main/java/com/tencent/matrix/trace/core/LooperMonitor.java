@@ -17,6 +17,8 @@
 package com.tencent.matrix.trace.core;
 
 import android.os.Build;
+import android.os.Handler;
+import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.MessageQueue;
 import android.os.SystemClock;
@@ -26,22 +28,49 @@ import androidx.annotation.NonNull;
 import android.util.Log;
 import android.util.Printer;
 
+import com.tencent.matrix.util.MatrixHandlerThread;
 import com.tencent.matrix.util.MatrixLog;
 import com.tencent.matrix.util.ReflectUtils;
 
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class LooperMonitor implements MessageQueue.IdleHandler {
     private static final String TAG = "Matrix.LooperMonitor";
     private static final Map<Looper, LooperMonitor> sLooperMonitorMap = new ConcurrentHashMap<>();
     private static final LooperMonitor sMainMonitor = LooperMonitor.of(Looper.getMainLooper());
 
+    private static final HandlerThread historyMsgHandlerThread = MatrixHandlerThread.getNewHandlerThread("historyMsgHandlerThread", HandlerThread.NORM_PRIORITY);
+    private static final Handler historyMsgHandler = new Handler(historyMsgHandlerThread.getLooper());
+    private static long messageStartTime = 0;
+    private static final int HISTORY_QUEUE_MAX_SIZE = 200;
+    private static final int RECENT_QUEUE_MAX_SIZE = 5000;
+
+    private static final Queue<M> anrHistoryMQ = new ConcurrentLinkedQueue<>();
+    private static final Queue<M> recentMsgQ = new ConcurrentLinkedQueue<>();
+
+    private static String latestMsgLog = "";
+    private static long recentMCount = 0;
+    private static long recentMDuration = 0;
+
     public abstract static class LooperDispatchListener {
 
         boolean isHasDispatchStart = false;
+        boolean historyMsgRecorder = false;
+        boolean denseMsgTracer = false;
+
+        public LooperDispatchListener(boolean historyMsgRecorder, boolean denseMsgTracer) {
+            this.historyMsgRecorder = historyMsgRecorder;
+            this.denseMsgTracer = denseMsgTracer;
+        }
+
+        public LooperDispatchListener() {
+
+        }
 
         public boolean isValid() {
             return false;
@@ -241,16 +270,81 @@ public class LooperMonitor implements MessageQueue.IdleHandler {
         }
     }
 
+    private static void recordMsg(final String log, final long duration, boolean denseMsgTracer) {
+        historyMsgHandler.post(new Runnable() {
+            @Override
+            public void run() {
+                enqueueHistoryMQ(new M(log, duration));
+            }
+        });
+
+        if (denseMsgTracer) {
+            historyMsgHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    enqueueRecentMQ(new M(log, duration));
+                }
+            });
+        }
+    }
+
+    private static void enqueueRecentMQ(M m) {
+        if (recentMsgQ.size() == RECENT_QUEUE_MAX_SIZE) {
+            recentMsgQ.poll();
+        }
+        recentMsgQ.offer(m);
+
+        recentMDuration += m.d;
+    }
+
+    private static void enqueueHistoryMQ(M m) {
+        if (anrHistoryMQ.size() == HISTORY_QUEUE_MAX_SIZE) {
+            anrHistoryMQ.poll();
+        }
+        anrHistoryMQ.offer(m);
+    }
+
+    public static Queue<M> getHistoryMQ() {
+        enqueueHistoryMQ(new M(latestMsgLog, System.currentTimeMillis() - messageStartTime));
+        return anrHistoryMQ;
+    }
+
+    public static Queue<M> getRecentMsgQ() {
+        return recentMsgQ;
+    }
+
+    public static void cleanRecentMQ() {
+        recentMsgQ.clear();
+        recentMCount = 0;
+        recentMDuration = 0;
+    }
+
+    public static long getRecentMCount() {
+        return recentMCount;
+    }
+
+    public static long getRecentMDuration() {
+        return recentMDuration;
+    }
+
     private void dispatch(boolean isBegin, String log) {
         synchronized (listeners) {
             for (LooperDispatchListener listener : listeners) {
                 if (listener.isValid()) {
                     if (isBegin) {
                         if (!listener.isHasDispatchStart) {
+                            if (listener.historyMsgRecorder) {
+                                messageStartTime = System.currentTimeMillis();
+                                latestMsgLog = log;
+                                recentMCount++;
+                            }
                             listener.onDispatchStart(log);
                         }
                     } else {
                         if (listener.isHasDispatchStart) {
+                            if (listener.historyMsgRecorder) {
+                                recordMsg(log, System.currentTimeMillis() - messageStartTime, listener.denseMsgTracer);
+                            }
                             listener.onDispatchEnd(log);
                         }
                     }
@@ -258,6 +352,20 @@ public class LooperMonitor implements MessageQueue.IdleHandler {
                     listener.dispatchEnd();
                 }
             }
+        }
+    }
+
+    public static class M {
+        public String l;
+        public long d;
+        M(String l, long d) {
+            this.l = l;
+            this.d = d;
+        }
+
+        @Override
+        public String toString() {
+            return "{" + l + " -> " + d + '}';
         }
     }
 }

@@ -16,6 +16,8 @@
 
 package com.tencent.matrix.javalib.util;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.regex.Pattern;
 
 /**
@@ -33,6 +35,19 @@ public final class Util {
 
     public static String nullAsNil(String str) {
         return str == null ? "" : str;
+    }
+
+    public static boolean preventZipSlip(java.io.File output, String zipEntryName) {
+
+        try {
+            if (zipEntryName.contains("..") && new File(output, zipEntryName).getCanonicalPath().startsWith(output.getCanonicalPath() + File.separator)) {
+                return true;
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+            return true;
+        }
+        return false;
     }
 
     public static boolean isNumber(String str) {

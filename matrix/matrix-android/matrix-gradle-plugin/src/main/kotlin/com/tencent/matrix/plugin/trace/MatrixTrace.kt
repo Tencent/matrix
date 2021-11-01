@@ -22,13 +22,11 @@ import com.google.common.hash.Hashing
 import com.tencent.matrix.javalib.util.IOUtil
 import com.tencent.matrix.javalib.util.Log
 import com.tencent.matrix.javalib.util.Util
-import com.tencent.matrix.trace.Configuration
-import com.tencent.matrix.trace.MethodCollector
-import com.tencent.matrix.trace.MethodTracer
-import com.tencent.matrix.trace.TraceBuildConstants
+import com.tencent.matrix.trace.*
 import com.tencent.matrix.trace.item.TraceMethod
 import com.tencent.matrix.trace.retrace.MappingCollector
 import com.tencent.matrix.trace.retrace.MappingReader
+import org.gradle.api.Project
 import java.io.File
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
@@ -36,6 +34,7 @@ import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.Future
 import java.util.concurrent.atomic.AtomicInteger
+import kotlin.collections.ArrayList
 import kotlin.collections.HashMap
 
 class MatrixTrace(
@@ -43,7 +42,8 @@ class MatrixTrace(
         private val methodMapFilePath: String,
         private val baseMethodMapPath: String?,
         private val blockListFilePath: String?,
-        private val mappingDir: String
+        private val mappingDir: String,
+        private val project: Project
 ) {
     companion object {
         private const val TAG: String = "Matrix.Trace"
@@ -68,6 +68,7 @@ class MatrixTrace(
                     changedFiles: Map<File, Status>,
                     inputToOutput: Map<File, File>,
                     isIncremental: Boolean,
+                    skipCheckClass: Boolean,
                     traceClassDirectoryOutput: File,
                     legacyReplaceChangedFile: ((File, Map<File, Status>) -> Object)?,
                     legacyReplaceFile: ((File, File) -> (Object))?
@@ -81,6 +82,7 @@ class MatrixTrace(
                 .setBaseMethodMap(baseMethodMapPath)
                 .setBlockListFile(blockListFilePath)
                 .setMappingPath(mappingDir)
+                .setSkipCheckClass(skipCheckClass)
                 .build()
 
         /**
@@ -152,7 +154,13 @@ class MatrixTrace(
          */
         start = System.currentTimeMillis()
         val methodTracer = MethodTracer(executor, mappingCollector, config, methodCollector.collectedMethodMap, methodCollector.collectedClassExtendMap)
-        methodTracer.trace(dirInputOutMap, jarInputOutMap)
+        val allInputs = ArrayList<File>().also {
+            it.addAll(dirInputOutMap.keys)
+            it.addAll(jarInputOutMap.keys)
+        }
+        val traceClassLoader = TraceClassLoader.getClassLoader(project, allInputs)
+        methodTracer.trace(dirInputOutMap, jarInputOutMap, traceClassLoader, skipCheckClass)
+
         Log.i(TAG, "[doTransform] Step(3)[Trace]... cost:%sms", System.currentTimeMillis() - start)
 
     }

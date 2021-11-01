@@ -5,6 +5,7 @@ public class MatrixTraceExtension {
     String baseMethodMapFile;
     String blackListFile;
     String customDexTransformName;
+    boolean skipCheckClass = true; // skip by default
 
     boolean enable;
 
@@ -31,5 +32,9 @@ public class MatrixTraceExtension {
 
     public boolean isEnable() {
         return enable;
+    }
+
+    public boolean isSkipCheckClass() {
+        return skipCheckClass;
     }
 }

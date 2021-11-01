@@ -66,12 +66,10 @@ DEFINE_HOOK_FUN(void *, realloc, void *__ptr, size_t __byte_count) {
         return p;
     }
 
-    // whatever has been moved or not, record anyway, because using realloc to shrink an allocation is allowed.
-    // wtf whatever. if p == __ptr , just override meta
-    if (p != __ptr) {
-        on_free_memory(__ptr);
-    }
     LOGI(TAG, "+ realloc2 %p", p);
+
+    // whatever has been moved or not, record anyway, because using realloc to shrink an allocation is allowed.
+    on_free_memory(__ptr);
     on_alloc_memory(caller, p, __byte_count);
 
     return p;

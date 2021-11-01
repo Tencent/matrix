@@ -62,7 +62,11 @@ public final class BatteryCanaryUtil {
     private static final String TAG = "Matrix.battery.Utils";
     private static final int DEFAULT_MAX_STACK_LAYER = 10;
     private static final int DEFAULT_AMS_CACHE_MILLIS = 5 * 1000;
-    public  static final int ONE_MIN = 60 * 1000;
+
+    public static final int ONE_MIN = 60 * 1000;
+    public static final int ONE_HOR = 60 * 60 * 1000;
+    public static final int JIFFY_HZ = 100; // @Os.sysconf(OsConstants._SC_CLK_TCK)
+    public static final int JIFFY_MILLIS = 1000 / JIFFY_HZ;
 
     public interface Proxy {
         String getProcessName();
@@ -251,8 +255,8 @@ public final class BatteryCanaryUtil {
     }
 
     public static int[] getCpuCurrentFreq() {
-        int[] output = new int[getNumCores()];
-        for (int i = 0; i < getNumCores(); i++) {
+        int[] output = new int[getCpuCoreNum()];
+        for (int i = 0; i < getCpuCoreNum(); i++) {
             output[i] = 0;
             String path = "/sys/devices/system/cpu/cpu" + i + "/cpufreq/scaling_cur_freq";
             String cat = cat(path);
@@ -267,7 +271,7 @@ public final class BatteryCanaryUtil {
         return output;
     }
 
-    private static int getNumCores() {
+    public static int getCpuCoreNum() {
         try {
             // Get directory containing CPU info
             File dir = new File("/sys/devices/system/cpu/");

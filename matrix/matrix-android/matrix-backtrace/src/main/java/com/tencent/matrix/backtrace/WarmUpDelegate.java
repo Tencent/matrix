@@ -27,6 +27,7 @@ import android.os.Looper;
 import android.os.Message;
 import android.os.OperationCanceledException;
 import android.os.Process;
+import android.system.ErrnoException;
 import android.system.Os;
 import android.system.StructStat;
 import android.util.Pair;
@@ -518,8 +519,13 @@ class WarmUpDelegate {
                     iterateTargetDirectory(file, cs, new FileFilter() {
                         @Override
                         public boolean accept(File pathname) {
-                            count[0] += 1;
-                            count[1] += pathname.isFile() ? pathname.length() : 0;
+                            try {
+                                StructStat stat = Os.lstat(pathname.getAbsolutePath());
+                                count[0] += 1;
+                                count[1] += stat.st_blocks * stat.st_blksize;
+                            } catch (ErrnoException e) {
+                                MatrixLog.printErrStackTrace(TAG, e, "");
+                            }
                             return false;
                         }
                     });

@@ -54,11 +54,15 @@ public:
     static std::atomic<size_t> g_realloc_memory_counter;
 
     virtual void *realloc(size_t new_size) {
-        if (_buffer) g_realloc_counter.fetch_add(1);
+
+        if (_buffer) g_realloc_counter.fetch_add(1, std::memory_order_relaxed);
+
         void *ptr = ::realloc(_buffer, new_size);
         if (ptr != NULL) {
-            g_realloc_memory_counter.fetch_sub(_buffer_size);
-            g_realloc_memory_counter.fetch_add(new_size);
+
+            g_realloc_memory_counter.fetch_sub(_buffer_size, std::memory_order_relaxed);
+            g_realloc_memory_counter.fetch_add(new_size, std::memory_order_relaxed);
+
             _buffer = ptr;
             _buffer_size = new_size;
         }
@@ -68,7 +72,9 @@ public:
 
     virtual void free() {
         if (_buffer) {
-            g_realloc_memory_counter.fetch_sub(_buffer_size);
+
+            g_realloc_memory_counter.fetch_sub(_buffer_size, std::memory_order_relaxed);
+
             ::free(_buffer);
             _buffer = NULL;
             _buffer_size = 0;

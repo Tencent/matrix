@@ -32,6 +32,7 @@
 #define HOOK_REQUEST_GROUPID_DLOPEN_MON 0x02
 #define HOOK_REQUEST_GROUPID_MEMORY 0x03
 #define HOOK_REQUEST_GROUPID_PTHREAD 0x04
+#define HOOK_REQUEST_GROUPID_MEMGUARD 0x05
 
 #define GET_CALLER_ADDR(__caller_addr) \
     void * __caller_addr = __builtin_return_address(0)
@@ -96,6 +97,7 @@
       xhook_grouped_ignore(group_id, ".*/libmatrix-memoryhook\\.so$", NULL); \
       xhook_grouped_ignore(group_id, ".*/libmatrix-pthreadhook\\.so$", NULL); \
       xhook_grouped_ignore(group_id, ".*/libmatrix-opengl-leak\\.so$", NULL); \
+      xhook_grouped_ignore(group_id, ".*/libmatrix-memguard\\.so$", NULL); \
     } while (0)
 
 #include <vector>
