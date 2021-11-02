@@ -113,7 +113,7 @@ open class StatefulOwner : IStateful, IStateObservable {
     }
 
     @Synchronized
-    protected fun turnOn() {
+    fun turnOn() {
         if (state == State.ON) {
             return
         }
@@ -124,7 +124,7 @@ open class StatefulOwner : IStateful, IStateObservable {
     }
 
     @Synchronized
-    protected fun turnOff() {
+    fun turnOff() {
         if (state == State.OFF) {
             return
         }

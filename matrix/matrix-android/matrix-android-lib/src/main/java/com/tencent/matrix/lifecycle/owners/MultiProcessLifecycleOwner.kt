@@ -1,6 +1,5 @@
 package com.tencent.matrix.lifecycle.owners
 
-import android.annotation.SuppressLint
 import android.app.Activity
 import android.app.Application
 import android.content.ContentProvider
@@ -12,6 +11,9 @@ import android.os.Bundle
 import android.os.Handler
 import androidx.annotation.NonNull
 import androidx.lifecycle.*
+import com.tencent.matrix.lifecycle.IStateObserver
+import com.tencent.matrix.lifecycle.StatefulOwner
+import com.tencent.matrix.lifecycle.owners.MultiProcessLifecycleInitializer.Companion.init
 import com.tencent.matrix.listeners.IAppForeground
 import com.tencent.matrix.util.MatrixHandlerThread
 import com.tencent.matrix.util.MatrixLog
@@ -23,7 +25,7 @@ import java.util.*
  *
  * Created by Yves on 2021/9/14
  */
-object MultiProcessLifecycleOwner : LifecycleOwner {
+object MultiProcessLifecycleOwner {
 
     private const val TAG = "Matrix.MultiProcessLifecycle"
 
@@ -44,25 +46,23 @@ object MultiProcessLifecycleOwner : LifecycleOwner {
     private var mPauseSent = true
     private var mStopSent = true
 
-    private val mRunningHandler = Handler(MatrixHandlerThread.getDefaultHandlerThread().looper)
+    private val runningHandler = Handler(MatrixHandlerThread.getDefaultHandlerThread().looper)
 
-    //    private val mMainHandler = Handler(Looper.getMainLooper())
-    @SuppressLint("VisibleForTests")
-    private val mRegistry = SafeLifecycleRegistry(this)
+    val resumedStateOwner = StatefulOwner()
+    val startedStateOwner = StatefulOwner()
 
     private val mDelayedPauseRunnable = Runnable {
         dispatchPauseIfNeeded()
         dispatchStopIfNeeded()
     }
 
-    private fun SafeLifecycleRegistry.handleLifecycleEventAsync(event: Lifecycle.Event) = mRunningHandler.post {
-        this.handleLifecycleEvent(event)
-    }
+    private fun StatefulOwner.turnOnAsync() = runningHandler.post { turnOn() }
+    private fun StatefulOwner.turnOffAsync() = runningHandler.post { turnOff() }
 
     private fun activityStarted() {
         mStartedCounter++
         if (mStartedCounter == 1 && mStopSent) {
-            mRegistry.handleLifecycleEventAsync(Lifecycle.Event.ON_START)
+            startedStateOwner.turnOnAsync()
             mStopSent = false
         }
     }
@@ -71,10 +71,10 @@ object MultiProcessLifecycleOwner : LifecycleOwner {
         mResumedCounter++
         if (mResumedCounter == 1) {
             if (mPauseSent) {
-                mRegistry.handleLifecycleEventAsync(Lifecycle.Event.ON_RESUME)
+                resumedStateOwner.turnOnAsync()
                 mPauseSent = false
             } else {
-                mRunningHandler.removeCallbacks(mDelayedPauseRunnable)
+                runningHandler.removeCallbacks(mDelayedPauseRunnable)
             }
         }
     }
@@ -82,7 +82,7 @@ object MultiProcessLifecycleOwner : LifecycleOwner {
     private fun activityPaused() {
         mResumedCounter--
         if (mResumedCounter == 0) {
-            mRunningHandler.postDelayed(mDelayedPauseRunnable, TIMEOUT_MS)
+            runningHandler.postDelayed(mDelayedPauseRunnable, TIMEOUT_MS)
         }
         if (mResumedCounter < 0) {
             throw IllegalStateException("mResumedCounter = $mResumedCounter, you must init LifecycleOwner before starting any activity")
@@ -97,13 +97,13 @@ object MultiProcessLifecycleOwner : LifecycleOwner {
     private fun dispatchPauseIfNeeded() {
         if (mResumedCounter == 0) {
             mPauseSent = true
-            mRegistry.handleLifecycleEventAsync(Lifecycle.Event.ON_PAUSE)
+            resumedStateOwner.turnOffAsync()
         }
     }
 
     private fun dispatchStopIfNeeded() {
         if (mStartedCounter == 0 && mPauseSent) {
-            mRegistry.handleLifecycleEventAsync(Lifecycle.Event.ON_STOP)
+            startedStateOwner.turnOffAsync()
             mStopSent = true
         }
         if (mStartedCounter < 0) {
@@ -112,8 +112,7 @@ object MultiProcessLifecycleOwner : LifecycleOwner {
     }
 
     private fun attach(context: Context) {
-        mRegistry.addObserver(DefaultLifecycleObserver())
-        mRegistry.handleLifecycleEventAsync(Lifecycle.Event.ON_CREATE)
+        startedStateOwner.observeForever(DefaultLifecycleObserver())
 
         val app = context.applicationContext as Application
         app.registerActivityLifecycleCallbacks(object : Application.ActivityLifecycleCallbacks {
@@ -145,8 +144,6 @@ object MultiProcessLifecycleOwner : LifecycleOwner {
             }
         })
     }
-
-    override fun getLifecycle() = mRegistry
 
     // ========================== extension ========================== //
 
@@ -194,14 +191,13 @@ object MultiProcessLifecycleOwner : LifecycleOwner {
         visibleScene = scene
     }
 
-    class DefaultLifecycleObserver : LifecycleObserver {
-        @OnLifecycleEvent(Lifecycle.Event.ON_START)
-        fun onDispatchForeground() {
+    class DefaultLifecycleObserver : IStateObserver {
+        private fun onDispatchForeground() {
             if (isProcessForeground) {
                 return
             }
             MatrixLog.i(TAG, "onForeground... visibleScene[$visibleScene@$sProcessName]")
-            mRunningHandler.post {
+            runningHandler.post {
                 isProcessForeground = true
                 synchronized(mListeners) {
                     for (listener in mListeners) {
@@ -211,13 +207,12 @@ object MultiProcessLifecycleOwner : LifecycleOwner {
             }
         }
 
-        @OnLifecycleEvent(Lifecycle.Event.ON_STOP)
-        fun onDispatchBackground() {
+        private fun onDispatchBackground() {
             if (!isProcessForeground) {
                 return
             }
             MatrixLog.i(TAG, "onBackground... visibleScene[$visibleScene@$sProcessName]")
-            mRunningHandler.post {
+            runningHandler.post {
                 isProcessForeground = false
                 synchronized(mListeners) {
                     for (listener in mListeners) {
@@ -226,6 +221,10 @@ object MultiProcessLifecycleOwner : LifecycleOwner {
                 }
             }
         }
+
+        override fun on() = onDispatchForeground()
+
+        override fun off() = onDispatchBackground()
     }
 }
 

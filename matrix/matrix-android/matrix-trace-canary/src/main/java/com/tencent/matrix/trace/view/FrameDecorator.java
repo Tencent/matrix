@@ -33,11 +33,8 @@ import android.view.WindowManager;
 import android.view.animation.AccelerateInterpolator;
 import android.widget.TextView;
 
-import androidx.lifecycle.Lifecycle;
-import androidx.lifecycle.LifecycleObserver;
-import androidx.lifecycle.OnLifecycleEvent;
-
 import com.tencent.matrix.Matrix;
+import com.tencent.matrix.lifecycle.IStateObserver;
 import com.tencent.matrix.lifecycle.owners.MultiProcessLifecycleOwner;
 import com.tencent.matrix.trace.R;
 import com.tencent.matrix.trace.TracePlugin;
@@ -51,7 +48,7 @@ import com.tencent.matrix.util.MatrixLog;
 import java.util.Objects;
 import java.util.concurrent.Executor;
 
-public class FrameDecorator extends IDoFrameListener implements LifecycleObserver {
+public class FrameDecorator extends IDoFrameListener {
     private static final String TAG = "Matrix.FrameDecorator";
     private WindowManager windowManager;
     private WindowManager.LayoutParams layoutParam;
@@ -74,6 +71,17 @@ public class FrameDecorator extends IDoFrameListener implements LifecycleObserve
     private int highColor;
     private int frozenColor;
 
+    private IStateObserver mProcessForegroundListener = new IStateObserver() {
+        @Override
+        public void on() {
+            onProcessResumed();
+        }
+
+        @Override
+        public void off() {
+            onProcessPaused();
+        }
+    };
 
     @SuppressLint("ClickableViewAccessibility")
     private FrameDecorator(Context context, final FloatFrameView view) {
@@ -87,8 +95,8 @@ public class FrameDecorator extends IDoFrameListener implements LifecycleObserve
         this.highColor = context.getResources().getColor(R.color.level_high_color);
         this.frozenColor = context.getResources().getColor(R.color.level_frozen_color);
 
-//        AppActiveMatrixDelegate.INSTANCE.addListener(this);
-        MultiProcessLifecycleOwner.INSTANCE.getLifecycle().addObserver(this);
+        MultiProcessLifecycleOwner.INSTANCE.getResumedStateOwner().observeForever(mProcessForegroundListener);
+
         view.addOnAttachStateChangeListener(new View.OnAttachStateChangeListener() {
             @Override
             public void onViewAttachedToWindow(View v) {
@@ -422,7 +430,6 @@ public class FrameDecorator extends IDoFrameListener implements LifecycleObserve
                 if (!isShowing) {
                     isShowing = true;
                     windowManager.addView(view, layoutParam);
-
                 }
             }
         });
@@ -456,12 +463,10 @@ public class FrameDecorator extends IDoFrameListener implements LifecycleObserve
         return isShowing;
     }
 
-    @OnLifecycleEvent(Lifecycle.Event.ON_RESUME)
     public void onProcessResumed() {
         onForeground(true);
     }
 
-    @OnLifecycleEvent(Lifecycle.Event.ON_PAUSE)
     public void onProcessPaused() {
         onForeground(false);
     }

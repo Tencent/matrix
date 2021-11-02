@@ -13,5 +13,5 @@ import com.tencent.matrix.lifecycle.ReduceOperators
  */
 object CombinedProcessForegroundOwner : MultiSourceStatefulOwner(
     ReduceOperators.OR,
-    MultiProcessLifecycleOwner.toStateOwner()
+    MultiProcessLifecycleOwner.startedStateOwner
 )
