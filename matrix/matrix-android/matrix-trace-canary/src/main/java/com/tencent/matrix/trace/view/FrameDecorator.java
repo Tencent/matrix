@@ -60,7 +60,7 @@ public class FrameDecorator extends IDoFrameListener {
     private static final Object lock = new Object();
     private View.OnClickListener clickListener;
     private DisplayMetrics displayMetrics = new DisplayMetrics();
-    private boolean isEnable = false;
+    private boolean isEnable = true;
     private float frameIntervalMs;
     private float maxFps;
 
