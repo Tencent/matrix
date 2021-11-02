@@ -23,6 +23,9 @@ import java.util.*
 /**
  * multi process version of [androidx.lifecycle.ProcessLifecycleOwner]
  *
+ * for preloaded processes(never resumed or started), observer wouldn't be notified.
+ * otherwise, adding observer would trigger callback immediately
+ *
  * Created by Yves on 2021/9/14
  */
 object MultiProcessLifecycleOwner {
