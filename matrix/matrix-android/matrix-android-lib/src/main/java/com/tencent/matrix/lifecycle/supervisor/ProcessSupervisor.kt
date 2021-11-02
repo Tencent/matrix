@@ -13,6 +13,7 @@ import com.tencent.matrix.util.MatrixUtil
  * Created by Yves on 2021/9/26
  */
 internal const val KEY_PROCESS_NAME = "KEY_PROCESS_NAME"
+internal const val KEY_PROCESS_PID = "KEY_PROCESS_PID"
 
 const val LRU_KILL_SUCCESS = 1
 const val LRU_KILL_RESCUED = 2
@@ -141,6 +142,7 @@ object ProcessSupervisor : MultiSourceStatefulOwner(ReduceOperators.OR) {
                 }
             })
         }
+        MatrixLog.i(tag, "initSupervisor")
     }
 
     /**
@@ -165,6 +167,7 @@ object ProcessSupervisor : MultiSourceStatefulOwner(ReduceOperators.OR) {
                 SupervisorReceiver.sendOnProcessBackground(application)
             }
         })
+        MatrixLog.i(tag, "inCharge")
     }
 
     internal fun syncAppForeground() = turnOn()

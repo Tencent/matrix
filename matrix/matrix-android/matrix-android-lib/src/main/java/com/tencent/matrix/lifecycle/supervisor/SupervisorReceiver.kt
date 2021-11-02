@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.os.Process
 import com.tencent.matrix.lifecycle.StatefulOwner
 import com.tencent.matrix.util.MatrixHandlerThread
 import com.tencent.matrix.util.MatrixLog
@@ -61,9 +62,30 @@ internal object SupervisorReceiver : BroadcastReceiver() {
         }
     }
 
+    data class ProcessInfo(val name: String, val pid: Int) {
+        override fun toString(): String {
+            return "$pid-$name"
+        }
+
+        override fun equals(other: Any?): Boolean {
+            if (other == null) {
+                return false
+            }
+            if (other !is ProcessInfo) {
+                return false
+            }
+
+            return name == other.name
+        }
+
+        override fun hashCode(): Int {
+            return name.hashCode()
+        }
+    }
+
     private val pendingEvents = ArrayList<ProcessEvent>()
 
-    private var backgroundProcessLru: LinkedList<String>? = null
+    private var backgroundProcessLru: LinkedList<ProcessInfo>? = null
         get() {
             if (!isSupervisor) {
                 throw UnsupportedOperationException("NOT support for other processes")
@@ -71,9 +93,9 @@ internal object SupervisorReceiver : BroadcastReceiver() {
             return field
         }
 
-    private fun LinkedList<String>.moveOrAddFirst(str: String) {
-        remove(str)
-        addFirst(str)
+    private fun LinkedList<ProcessInfo>.moveOrAddFirst(info: ProcessInfo) {
+        remove(info)
+        addFirst(info)
     }
 
     internal var supervisorProcessName: String? = null
@@ -87,7 +109,7 @@ internal object SupervisorReceiver : BroadcastReceiver() {
     private var isSupervisorInstalled: Boolean = false
 
     internal fun install(context: Context?) {
-        backgroundProcessLru = LinkedList<String>()
+        backgroundProcessLru = LinkedList<ProcessInfo>()
 
         val filter = IntentFilter()
         ProcessEvent.values().forEach {
@@ -139,9 +161,9 @@ internal object SupervisorReceiver : BroadcastReceiver() {
         }
         targetKilledCallback = killedCallback
         backgroundProcessLru?.lastOrNull {
-            it != MatrixUtil.getProcessName(context)
+            it.name != MatrixUtil.getProcessName(context)
         }?.let {
-            DispatchReceiver.dispatchKill(context, it)
+            DispatchReceiver.dispatchKill(context, it.name, it.pid)
         } ?: let {
             killedCallback.invoke(LRU_KILL_NOT_FOUND, null)
         }
@@ -165,6 +187,7 @@ internal object SupervisorReceiver : BroadcastReceiver() {
 //        MatrixLog.d(SupervisorLifecycle.tag, "send [${event.name}] from [$processName]")
         val intent = Intent(event.name)
         intent.putExtra(KEY_PROCESS_NAME, processName)
+        intent.putExtra(KEY_PROCESS_PID, Process.myPid())
 
         if (isSupervisor) {
 //            MatrixLog.d(TAG, "send direct")
@@ -198,15 +221,19 @@ internal object SupervisorReceiver : BroadcastReceiver() {
     }
 
     override fun onReceive(context: Context?, intent: Intent?) {
-        val processName = intent?.getStringExtra(KEY_PROCESS_NAME)
+        if (intent == null) {
+            return
+        }
+        val processName = intent.getStringExtra(KEY_PROCESS_NAME)
+        val pid = intent.getIntExtra(KEY_PROCESS_PID, 0)
 //        MatrixLog.d(SupervisorLifecycleOwner.tag, "Action [${intent?.action}] [$processName]")
 
         val proxy = RemoteProcessLifecycleProxy.getProxy(processName)
 
-        when (intent?.action) {
+        when (intent.action) {
             ProcessEvent.SUPERVISOR_PROCESS_CREATED.name -> {
                 processName?.let {
-                    backgroundProcessLru?.moveOrAddFirst(it)
+                    backgroundProcessLru?.moveOrAddFirst(ProcessInfo(it, pid ?: 0))
                     DispatchReceiver.dispatchSuperVisorInstalled(context)
                     // dispatch again for new process
                     if (processName != supervisorProcessName) {
@@ -219,27 +246,27 @@ internal object SupervisorReceiver : BroadcastReceiver() {
 
                     asyncLog(
                         TAG,
-                        "CREATED: [$it] -> [${backgroundProcessLru?.size}]${backgroundProcessLru.toString()}"
+                        "CREATED: [$pid-$it] -> [${backgroundProcessLru?.size}]${backgroundProcessLru.toString()}"
                     )
                 }
             }
             ProcessEvent.SUPERVISOR_PROCESS_BACKGROUNDED.name -> {
                 processName?.let {
-                    backgroundProcessLru?.moveOrAddFirst(it)
+                    backgroundProcessLru?.moveOrAddFirst(ProcessInfo(it, pid))
                     proxy?.onRemoteProcessBackground()
                     asyncLog(
                         TAG,
-                        "BACKGROUND: [$it] -> [${backgroundProcessLru?.size}]${backgroundProcessLru.toString()}"
+                        "BACKGROUND: [$pid-$it] -> [${backgroundProcessLru?.size}]${backgroundProcessLru.toString()}"
                     )
                 }
             }
             ProcessEvent.SUPERVISOR_PROCESS_FOREGROUNDED.name -> {
                 processName?.let {
-                    backgroundProcessLru?.remove(it)
+                    backgroundProcessLru?.remove(ProcessInfo(it, pid))
                     proxy?.onRemoteProcessForeground()
                     asyncLog(
                         TAG,
-                        "FOREGROUND: [$it] <- [${backgroundProcessLru?.size}]${backgroundProcessLru.toString()}"
+                        "FOREGROUND: [$pid-$it] <- [${backgroundProcessLru?.size}]${backgroundProcessLru.toString()}"
                     )
                 }
             }
@@ -249,11 +276,11 @@ internal object SupervisorReceiver : BroadcastReceiver() {
                         targetKilledCallback?.invoke(LRU_KILL_SUCCESS, name)
                     } catch (ignore: Throwable) {
                     }
-                    backgroundProcessLru?.remove(name)
+                    backgroundProcessLru?.remove(ProcessInfo(name, pid))
                     RemoteProcessLifecycleProxy.removeProxy(name)
                     asyncLog(
                         TAG,
-                        "KILL: [$name] X [${backgroundProcessLru?.size}]${backgroundProcessLru.toString()}"
+                        "KILL: [$pid-$name] X [${backgroundProcessLru?.size}]${backgroundProcessLru.toString()}"
                     )
                 }
             }

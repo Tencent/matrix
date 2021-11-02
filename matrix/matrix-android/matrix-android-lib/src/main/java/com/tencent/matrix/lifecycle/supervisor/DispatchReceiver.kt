@@ -56,7 +56,7 @@ internal object DispatchReceiver : BroadcastReceiver() {
 //        MatrixLog.i(SupervisorLifecycleOwner.tag, "DispatchReceiver installed")
     }
 
-    fun addKilledListener(listener: ()->Boolean) {
+    fun addKilledListener(listener: () -> Boolean) {
         killedListeners.add(listener)
     }
 
@@ -77,11 +77,12 @@ internal object DispatchReceiver : BroadcastReceiver() {
         dispatch(context, SupervisorEvent.SUPERVISOR_DISPATCH_APP_BACKGROUND)
     }
 
-    internal fun dispatchKill(context: Context?, targetProcessName: String) {
+    internal fun dispatchKill(context: Context?, targetProcessName: String, targetPid: Int) {
         dispatch(
             context,
             SupervisorEvent.SUPERVISOR_DISPATCH_KILL,
-            Pair(KEY_PROCESS_NAME, targetProcessName)
+            KEY_PROCESS_NAME to targetProcessName,
+            KEY_PROCESS_PID to targetPid.toString()
         )
     }
 
@@ -111,9 +112,15 @@ internal object DispatchReceiver : BroadcastReceiver() {
                 ProcessSupervisor.syncAppBackground()
             }
             SupervisorEvent.SUPERVISOR_DISPATCH_KILL.name -> {
-                val target = intent.getStringExtra(KEY_PROCESS_NAME)
-                MatrixLog.d(ProcessSupervisor.tag, "receive kill target: $target")
-                if (target == MatrixUtil.getProcessName(context)) {
+                val targetProcessName = intent.getStringExtra(KEY_PROCESS_NAME)
+                val targetPid = intent.getStringExtra(KEY_PROCESS_PID)
+                MatrixLog.d(
+                    ProcessSupervisor.tag,
+                    "receive kill target: $targetPid-$targetProcessName"
+                )
+                if (targetProcessName == MatrixUtil.getProcessName(context) && Process.myPid()
+                        .toString() == targetPid
+                ) {
 
                     if (killedListeners.invokeAll() && !rescued) {
                         rescued = true
