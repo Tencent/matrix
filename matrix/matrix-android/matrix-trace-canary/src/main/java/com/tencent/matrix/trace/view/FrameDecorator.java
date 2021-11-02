@@ -60,7 +60,7 @@ public class FrameDecorator extends IDoFrameListener {
     private static final Object lock = new Object();
     private View.OnClickListener clickListener;
     private DisplayMetrics displayMetrics = new DisplayMetrics();
-    private boolean isEnable = true;
+    private boolean isEnable = false;
     private float frameIntervalMs;
     private float maxFps;
 
@@ -74,12 +74,12 @@ public class FrameDecorator extends IDoFrameListener {
     private IStateObserver mProcessForegroundListener = new IStateObserver() {
         @Override
         public void on() {
-            onProcessResumed();
+            onForeground(true);
         }
 
         @Override
         public void off() {
-            onProcessPaused();
+            onForeground(false);
         }
     };
 
@@ -461,14 +461,6 @@ public class FrameDecorator extends IDoFrameListener {
 
     public boolean isShowing() {
         return isShowing;
-    }
-
-    public void onProcessResumed() {
-        onForeground(true);
-    }
-
-    public void onProcessPaused() {
-        onForeground(false);
     }
 
     private void onForeground(final boolean isForeground) {
