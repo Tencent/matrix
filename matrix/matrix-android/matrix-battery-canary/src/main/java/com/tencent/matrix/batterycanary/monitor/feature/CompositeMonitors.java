@@ -6,7 +6,9 @@ import com.tencent.matrix.batterycanary.monitor.AppStats;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Delta;
+import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
 import com.tencent.matrix.batterycanary.utils.Consumer;
+import com.tencent.matrix.util.MatrixLog;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -21,6 +23,8 @@ import androidx.annotation.Nullable;
  * @since 2021/9/18
  */
 public class CompositeMonitors {
+    private static final String TAG = "Matrix.battery.CompositeMonitors";
+
     protected final List<Class<? extends Snapshot<?>>> mMetrics = new ArrayList<>();
     protected final Map<Class<? extends Snapshot<?>>, Snapshot<?>> mBgnSnapshots = new HashMap<>();
     protected final Map<Class<? extends Snapshot<?>>, Delta<?>> mDeltas = new HashMap<>();
@@ -110,6 +114,29 @@ public class CompositeMonitors {
 
     public void setAppStats(@Nullable AppStats appStats) {
         mAppStats = appStats;
+    }
+
+    public int getCpuLoad() {
+        if (mAppStats == null) {
+            MatrixLog.w(TAG, "AppStats should not be null to get CpuLoad");
+            return -1;
+        }
+
+        Delta<JiffiesMonitorFeature.JiffiesSnapshot> appJiffies = getDelta(JiffiesMonitorFeature.JiffiesSnapshot.class);
+        Delta<CpuStatFeature.CpuStateSnapshot> cpuJiffies = getDelta(CpuStatFeature.CpuStateSnapshot.class);
+        if (appJiffies == null) {
+            MatrixLog.w(TAG, JiffiesMonitorFeature.JiffiesSnapshot.class + " should be metrics to get CpuLoad");
+            return -1;
+        }
+        if (cpuJiffies == null) {
+            MatrixLog.w(TAG, CpuStatFeature.CpuStateSnapshot.class + "should be metrics to get CpuLoad");
+            return -1;
+        }
+
+        final long appJiffiesDelta = appJiffies.dlt.totalJiffies.get();
+        final long cpuJiffiesDelta = cpuJiffies.dlt.totalCpuJiffies();
+        final float cpuLoad = cpuJiffiesDelta > 0 ? (float) appJiffiesDelta / cpuJiffiesDelta : 0;
+        return (int) (cpuLoad * BatteryCanaryUtil.getCpuCoreNum() * 100);
     }
 
     @CallSuper

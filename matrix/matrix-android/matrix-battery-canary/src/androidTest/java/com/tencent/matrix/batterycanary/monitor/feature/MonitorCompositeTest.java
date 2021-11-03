@@ -24,6 +24,7 @@ import com.tencent.matrix.batterycanary.BatteryEventDelegate;
 import com.tencent.matrix.batterycanary.BatteryMonitorPlugin;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorConfig;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
+import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -159,5 +160,26 @@ public class MonitorCompositeTest {
         Assert.assertNotNull(compositeMonitor.getDelta(AbsTaskMonitorFeature.TaskJiffiesSnapshot.class));
         compositeMonitor.putDelta(InternalMonitorFeature.InternalSnapshot.class, Mockito.mock(MonitorFeature.Snapshot.Delta.class));
         Assert.assertNotNull(compositeMonitor.getDeltaRaw(InternalMonitorFeature.InternalSnapshot.class));
+    }
+
+    @Test
+    public void testGetCpuLoad() {
+        final BatteryMonitorCore monitor = mockMonitor();
+        BatteryMonitorPlugin plugin = new BatteryMonitorPlugin(monitor.getConfig());
+        Matrix.with().getPlugins().add(plugin);
+        monitor.enableForegroundLoopCheck(true);
+        monitor.start();
+
+        CompositeMonitors compositeMonitor = new CompositeMonitors(monitor);
+        Assert.assertEquals(-1, compositeMonitor.getCpuLoad());
+        compositeMonitor.metric(JiffiesMonitorFeature.JiffiesSnapshot.class);
+        compositeMonitor.configureAllSnapshot();
+        compositeMonitor.configureDeltas();
+        Assert.assertEquals(-1, compositeMonitor.getCpuLoad());
+
+        compositeMonitor.metric(CpuStatFeature.CpuStateSnapshot.class);
+        compositeMonitor.configureAllSnapshot();
+        compositeMonitor.configureDeltas();
+        Assert.assertTrue(compositeMonitor.getCpuLoad() >= 0 && compositeMonitor.getCpuLoad() <= BatteryCanaryUtil.getCpuCoreNum() * 100);
     }
 }
