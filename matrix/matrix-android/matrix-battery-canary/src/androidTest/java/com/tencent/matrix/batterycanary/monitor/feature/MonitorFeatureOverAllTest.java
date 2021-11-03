@@ -27,6 +27,7 @@ import com.tencent.matrix.Matrix;
 import com.tencent.matrix.batterycanary.BatteryEventDelegate;
 import com.tencent.matrix.batterycanary.BatteryMonitorPlugin;
 import com.tencent.matrix.batterycanary.TestUtils;
+import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCallback;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorConfig;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
 
@@ -74,6 +75,15 @@ public class MonitorFeatureOverAllTest {
                 .wakelockTimeout(1000)
                 .greyJiffiesTime(100)
                 .foregroundLoopCheckTime(1000)
+                .setCallback(new BatteryMonitorCallback.BatteryPrinter() {
+                    @Override
+                    public BatteryPrinter attach(BatteryMonitorCore monitorCore) {
+                        BatteryPrinter core = super.attach(monitorCore);
+                        mCompositeMonitors.sample(DeviceStatMonitorFeature.BatteryTmpSnapshot.class, 100L);
+                        mCompositeMonitors.sample(DeviceStatMonitorFeature.CpuFreqSnapshot.class, 100L);
+                        return core;
+                    }
+                })
                 .build();
         return new BatteryMonitorCore(config);
     }

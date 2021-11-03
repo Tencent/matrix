@@ -3,8 +3,6 @@ package com.tencent.matrix.batterycanary.monitor.feature;
 
 import android.os.Handler;
 import android.os.SystemClock;
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
 import com.tencent.matrix.util.MatrixLog;
@@ -14,6 +12,9 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.Callable;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import static com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil.ONE_MIN;
 

@@ -30,6 +30,7 @@ import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Entry.BeanEntry;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Entry.DigitEntry;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Entry.ListEntry;
+import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Sampler;
 import com.tencent.matrix.batterycanary.monitor.feature.NotificationMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.NotificationMonitorFeature.BadNotification;
 import com.tencent.matrix.batterycanary.monitor.feature.TrafficMonitorFeature;
@@ -880,6 +881,17 @@ public interface BatteryMonitorCallback extends
                     printer.writeLine(delta.during + "(mls)\t" + (delta.during / ONE_MIN) + "(min)");
                     printer.writeLine("inc", Arrays.toString(delta.dlt.cpuFreqs.getList().toArray()));
                     printer.writeLine("cur", Arrays.toString(delta.end.cpuFreqs.getList().toArray()));
+                    monitors.getSamplingResult(CpuFreqSnapshot.class, new Consumer<Sampler.Result>() {
+                        @Override
+                        public void accept(Sampler.Result result) {
+                            printer.createSubSection("cpufreq_sampling");
+                            printer.writeLine(result.duringMillis + "(mls)\t" + (result.interval) + "(itv)");
+                            printer.writeLine("max", String.valueOf(result.sampleMax));
+                            printer.writeLine("min", String.valueOf(result.sampleMin));
+                            printer.writeLine("avg", String.valueOf(result.sampleAvg));
+                            printer.writeLine("cnt", String.valueOf(result.count));
+                        }
+                    });
                     return true;
                 }
 
@@ -909,6 +921,7 @@ public interface BatteryMonitorCallback extends
                     }
                     // BatterySip
                     if (cpuStatFeature != null) {
+                        printer.createSubSection("cpu_sip");
                         // Cpu battery sip - CPU State
                         final PowerProfile powerProfile = cpuStatFeature.getPowerProfile();
                         printer.writeLine("inc_cpu_sip", String.format(Locale.US, "%.2f(mAh)", delta.dlt.configureCpuSip(powerProfile)));
@@ -939,6 +952,17 @@ public interface BatteryMonitorCallback extends
                     printer.writeLine(delta.during + "(mls)\t" + (delta.during / ONE_MIN) + "(min)");
                     printer.writeLine("inc", String.valueOf(delta.dlt.temp.get()));
                     printer.writeLine("cur", String.valueOf(delta.end.temp.get()));
+                    monitors.getSamplingResult(BatteryTmpSnapshot.class, new Consumer<Sampler.Result>() {
+                        @Override
+                        public void accept(Sampler.Result result) {
+                            printer.createSubSection("batt_temp_sampling");
+                            printer.writeLine(result.duringMillis + "(mls)\t" + (result.interval) + "(itv)");
+                            printer.writeLine("max", String.valueOf(result.sampleMax));
+                            printer.writeLine("min", String.valueOf(result.sampleMin));
+                            printer.writeLine("avg", String.valueOf(result.sampleAvg));
+                            printer.writeLine("cnt", String.valueOf(result.count));
+                        }
+                    });
                     return true;
                 }
 

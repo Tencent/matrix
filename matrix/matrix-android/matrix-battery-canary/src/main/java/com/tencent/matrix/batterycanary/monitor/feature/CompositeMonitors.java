@@ -155,6 +155,13 @@ public class CompositeMonitors {
         return mSampleResults.get(snapshotClass);
     }
 
+    public void getSamplingResult(Class<? extends Snapshot<?>> snapshotClass, Consumer<Snapshot.Sampler.Result> block) {
+        Snapshot.Sampler.Result result = getSamplingResult(snapshotClass);
+        if (result != null) {
+            block.accept(result);
+        }
+    }
+
     @CallSuper
     public CompositeMonitors metricAll() {
         metric(JiffiesMonitorFeature.JiffiesSnapshot.class);
@@ -363,7 +370,7 @@ public class CompositeMonitors {
                                 return o1.get().compareTo(o2.get());
                             }
                         });
-                        return list.isEmpty() ? 0 : list.get(0).get();
+                        return list.isEmpty() ? 0 : list.get(list.size() - 1).get();
                     }
                 });
                 mSamplers.put(snapshotClass, sampler);
