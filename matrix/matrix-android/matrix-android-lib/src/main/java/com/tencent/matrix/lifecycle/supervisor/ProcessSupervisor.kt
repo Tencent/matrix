@@ -41,6 +41,7 @@ const val LRU_KILL_NOT_FOUND = 4
  *
  * Created by Yves on 2021/10/22
  */
+// TODO: 2021/11/3 check and clean exited processes
 data class SupervisorConfig(
     val supervisorProcess: String = DEFAULT_PROCESS,
 ) {
@@ -97,6 +98,7 @@ object ProcessSupervisor : MultiSourceStatefulOwner(ReduceOperators.OR) {
     fun removeKilledListener(listener: () -> Boolean) =
         DispatchReceiver.removeKilledListener(listener)
 
+    // TODO: 2021/11/2 force kill for processes not responding
     fun backgroundLruKill(killedResult: (result: Int, process: String?) -> Unit) =
         SupervisorReceiver.backgroundLruKill(application, killedResult)
 

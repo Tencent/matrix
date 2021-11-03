@@ -26,6 +26,10 @@ import java.util.*
  * for preloaded processes(never resumed or started), observer wouldn't be notified.
  * otherwise, adding observer would trigger callback immediately
  *
+ * Activity's lifecycle callback is not always reliable and compatible. onStop might be called
+ * without calling onStart or onResume, or onResume might be called more than once but stop once
+ * only. For these wired cases we don't use simple counter here.
+ *
  * Created by Yves on 2021/9/14
  */
 object MultiProcessLifecycleOwner {
@@ -43,8 +47,13 @@ object MultiProcessLifecycleOwner {
 
     // ========================== base ========================== //
 
-    private var mStartedCounter = 0
-    private var mResumedCounter = 0
+    private val stub = Any()
+    private val resumedActivities = WeakHashMap<Activity, Any>()
+    private val startedActivities = WeakHashMap<Activity, Any>()
+
+    private fun WeakHashMap<Activity, Any>.put(activity: Activity) {
+        put(activity, stub)
+    }
 
     private var mPauseSent = true
     private var mStopSent = true
@@ -62,17 +71,19 @@ object MultiProcessLifecycleOwner {
     private fun StatefulOwner.turnOnAsync() = runningHandler.post { turnOn() }
     private fun StatefulOwner.turnOffAsync() = runningHandler.post { turnOff() }
 
-    private fun activityStarted() {
-        mStartedCounter++
-        if (mStartedCounter == 1 && mStopSent) {
+    private fun activityStarted(activity: Activity) {
+        val isEmptyBefore = startedActivities.isEmpty()
+        startedActivities.put(activity)
+
+        if (isEmptyBefore && mStopSent) {
             startedStateOwner.turnOnAsync()
-            mStopSent = false
         }
     }
 
-    private fun activityResumed() {
-        mResumedCounter++
-        if (mResumedCounter == 1) {
+    private fun activityResumed(activity: Activity) {
+        val isEmptyBefore = resumedActivities.isEmpty()
+        resumedActivities.put(activity)
+        if (isEmptyBefore) {
             if (mPauseSent) {
                 resumedStateOwner.turnOnAsync()
                 mPauseSent = false
@@ -82,35 +93,40 @@ object MultiProcessLifecycleOwner {
         }
     }
 
-    private fun activityPaused() {
-        mResumedCounter--
-        if (mResumedCounter == 0) {
+    private fun activityPaused(activity: Activity) {
+        resumedActivities.remove(activity)
+
+        if (resumedActivities.isEmpty()) {
             runningHandler.postDelayed(mDelayedPauseRunnable, TIMEOUT_MS)
-        }
-        if (mResumedCounter < 0) {
-            throw IllegalStateException("mResumedCounter = $mResumedCounter, you must init LifecycleOwner before starting any activity")
         }
     }
 
-    private fun activityStopped() {
-        mStartedCounter--
+    private fun activityStopped(activity: Activity) {
+        startedActivities.remove(activity)
         dispatchStopIfNeeded()
     }
 
+    // fallback remove
+    private fun activityDestroyed(activity: Activity) {
+        startedActivities.remove(activity)?.let {
+            MatrixLog.w(TAG, "removed [$activity] when destroy, maybe something wrong with onStart/onStop callback")
+        }
+        resumedActivities.remove(activity)?.let {
+            MatrixLog.w(TAG, "removed [$activity] when destroy, maybe something wrong with onResume/onPause callback")
+        }
+    }
+
     private fun dispatchPauseIfNeeded() {
-        if (mResumedCounter == 0) {
+        if (resumedActivities.isEmpty()) {
             mPauseSent = true
             resumedStateOwner.turnOffAsync()
         }
     }
 
     private fun dispatchStopIfNeeded() {
-        if (mStartedCounter == 0 && mPauseSent) {
-            startedStateOwner.turnOffAsync()
+        if (startedActivities.isEmpty() && mPauseSent) {
             mStopSent = true
-        }
-        if (mStartedCounter < 0) {
-            throw IllegalStateException("mStartedCounter = $mStartedCounter, you must init LifecycleOwner before starting any activity")
+            startedStateOwner.turnOffAsync()
         }
     }
 
@@ -125,25 +141,26 @@ object MultiProcessLifecycleOwner {
 
             override fun onActivityStarted(activity: Activity) {
                 updateScene(activity)
-                activityStarted()
+                activityStarted(activity)
             }
 
             override fun onActivityResumed(activity: Activity) {
-                activityResumed()
+                activityResumed(activity)
             }
 
             override fun onActivityPaused(activity: Activity) {
-                activityPaused()
+                activityPaused(activity)
             }
 
             override fun onActivityStopped(activity: Activity) {
-                activityStopped()
+                activityStopped(activity)
             }
 
             override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) {
             }
 
             override fun onActivityDestroyed(activity: Activity) {
+                activityDestroyed(activity)
             }
         })
     }

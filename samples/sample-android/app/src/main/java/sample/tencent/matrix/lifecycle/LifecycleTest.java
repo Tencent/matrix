@@ -1,9 +1,6 @@
 package sample.tencent.matrix.lifecycle;
 
-import androidx.lifecycle.Lifecycle;
-import androidx.lifecycle.LifecycleObserver;
 import androidx.lifecycle.LifecycleOwner;
-import androidx.lifecycle.OnLifecycleEvent;
 
 import com.tencent.matrix.AppActiveMatrixDelegate;
 import com.tencent.matrix.lifecycle.IStateObserver;
@@ -26,33 +23,28 @@ public class LifecycleTest {
             }
         });
 
-        MultiProcessLifecycleOwner.INSTANCE.getLifecycle().addObserver(new LifecycleObserver() {
-
-            @OnLifecycleEvent(Lifecycle.Event.ON_CREATE)
-            private void onProcessCreatedCalledOnce() {
-                MatrixLog.d(TAG, "MultiProcessLifecycleOwner: onCreatedCalledOnce");
+        MultiProcessLifecycleOwner.INSTANCE.getResumedStateOwner().observeForever(new  IStateObserver() {
+            @Override
+            public void on() {
+                MatrixLog.d(TAG, "MultiProcessLifecycleOwner: ON_RESUME");
             }
-
-            @OnLifecycleEvent(Lifecycle.Event.ON_START)
-            private void onProcessStarted() {
-                MatrixLog.d(TAG, "MultiProcessLifecycleOwner: onProcessStarted");
-            }
-
-            @OnLifecycleEvent(Lifecycle.Event.ON_RESUME)
-            private void onProcessResumed() {
-                MatrixLog.d(TAG, "MultiProcessLifecycleOwner: onProcessResumed");
-            }
-
-            @OnLifecycleEvent(Lifecycle.Event.ON_PAUSE)
-            private void onProcessPaused() {
-                MatrixLog.d(TAG, "MultiProcessLifecycleOwner: onProcessPaused");
-            }
-
-            @OnLifecycleEvent(Lifecycle.Event.ON_STOP)
-            private void onProcessStopped() {
-                MatrixLog.d(TAG, "MultiProcessLifecycleOwner: onProcessStopped");
+            @Override
+            public void off() {
+                MatrixLog.d(TAG, "MultiProcessLifecycleOwner: ON_PAUSE");
             }
         });
+
+        MultiProcessLifecycleOwner.INSTANCE.getStartedStateOwner().observeForever(new  IStateObserver() {
+            @Override
+            public void on() {
+                MatrixLog.d(TAG, "MultiProcessLifecycleOwner: ON_START");
+            }
+            @Override
+            public void off() {
+                MatrixLog.d(TAG, "MultiProcessLifecycleOwner: ON_STOP");
+            }
+        });
+
 
         CombinedProcessForegroundOwner.INSTANCE.observeForever(new IStateObserver() {
             @Override
