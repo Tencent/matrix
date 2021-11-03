@@ -158,7 +158,7 @@ public interface BatteryMonitorCallback extends
         public void onTraceBegin() {
             mTraceBgnMillis = SystemClock.uptimeMillis();
             mCompositeMonitors.clear();
-            mCompositeMonitors.configureAllSnapshot();
+            mCompositeMonitors.start();
 
             // TODO: Remove deprecated statements
             // Configure begin snapshots
@@ -219,7 +219,7 @@ public interface BatteryMonitorCallback extends
                 MatrixLog.w(TAG, "skip invalid battery tracing, bgn = " + mTraceBgnMillis + ", during = " + duringMillis);
                 return;
             }
-            mCompositeMonitors.configureDeltas();
+            mCompositeMonitors.finish();
             onCanaryDump(mCompositeMonitors);
         }
 

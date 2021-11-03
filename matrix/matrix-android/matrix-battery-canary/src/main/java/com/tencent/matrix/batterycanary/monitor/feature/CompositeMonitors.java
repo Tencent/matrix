@@ -6,14 +6,18 @@ import com.tencent.matrix.batterycanary.monitor.AppStats;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Delta;
+import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Entry.DigitEntry;
 import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
 import com.tencent.matrix.batterycanary.utils.Consumer;
 import com.tencent.matrix.util.MatrixLog;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Callable;
 
 import androidx.annotation.CallSuper;
 import androidx.annotation.Nullable;
@@ -25,9 +29,15 @@ import androidx.annotation.Nullable;
 public class CompositeMonitors {
     private static final String TAG = "Matrix.battery.CompositeMonitors";
 
+    // Differing
     protected final List<Class<? extends Snapshot<?>>> mMetrics = new ArrayList<>();
     protected final Map<Class<? extends Snapshot<?>>, Snapshot<?>> mBgnSnapshots = new HashMap<>();
     protected final Map<Class<? extends Snapshot<?>>, Delta<?>> mDeltas = new HashMap<>();
+
+    // Sampling
+    protected final Map<Class<? extends Snapshot<?>>, Long> mSampleRegs = new HashMap<>();
+    protected final Map<Class<? extends Snapshot<?>>, Sampler> mSamplers = new HashMap<>();
+    protected final Map<Class<? extends Snapshot<?>>, Sampler.Result> mSampleResults = new HashMap<>();
 
     @Nullable
     protected BatteryMonitorCore mMonitor;
@@ -42,6 +52,8 @@ public class CompositeMonitors {
     public void clear() {
         mBgnSnapshots.clear();
         mDeltas.clear();
+        mSamplers.clear();
+        mSampleResults.clear();
     }
 
     @Nullable
@@ -68,35 +80,6 @@ public class CompositeMonitors {
         if (feature != null) {
             block.accept(feature);
         }
-    }
-
-    @Nullable
-    public <T extends Snapshot<T>> Delta<T> getDelta(Class<T> snapshotClass) {
-        //noinspection unchecked
-        return (Delta<T>) mDeltas.get(snapshotClass);
-    }
-
-    public <T extends Snapshot<T>> void getDelta(Class<T> snapshotClass, Consumer<Delta<T>> block) {
-        Delta<T> delta = getDelta(snapshotClass);
-        if (delta != null) {
-            block.accept(delta);
-        }
-    }
-
-    @Nullable
-    public Delta<?> getDeltaRaw(Class<? extends Snapshot<?>> snapshotClass) {
-        return mDeltas.get(snapshotClass);
-    }
-
-    public void getDeltaRaw(Class<? extends Snapshot<?>> snapshotClass, Consumer<Delta<?>> block) {
-        Delta<?> delta = getDeltaRaw(snapshotClass);
-        if (delta != null) {
-            block.accept(delta);
-        }
-    }
-
-    public void putDelta(Class<? extends Snapshot<?>> snapshotClass, Delta<? extends Snapshot<?>> delta) {
-        mDeltas.put(snapshotClass, delta);
     }
 
     @Nullable
@@ -139,6 +122,39 @@ public class CompositeMonitors {
         return (int) (cpuLoad * BatteryCanaryUtil.getCpuCoreNum() * 100);
     }
 
+    @Nullable
+    public <T extends Snapshot<T>> Delta<T> getDelta(Class<T> snapshotClass) {
+        //noinspection unchecked
+        return (Delta<T>) mDeltas.get(snapshotClass);
+    }
+
+    public <T extends Snapshot<T>> void getDelta(Class<T> snapshotClass, Consumer<Delta<T>> block) {
+        Delta<T> delta = getDelta(snapshotClass);
+        if (delta != null) {
+            block.accept(delta);
+        }
+    }
+
+    @Nullable
+    public Delta<?> getDeltaRaw(Class<? extends Snapshot<?>> snapshotClass) {
+        return mDeltas.get(snapshotClass);
+    }
+
+    public void getDeltaRaw(Class<? extends Snapshot<?>> snapshotClass, Consumer<Delta<?>> block) {
+        Delta<?> delta = getDeltaRaw(snapshotClass);
+        if (delta != null) {
+            block.accept(delta);
+        }
+    }
+
+    public void putDelta(Class<? extends Snapshot<?>> snapshotClass, Delta<? extends Snapshot<?>> delta) {
+        mDeltas.put(snapshotClass, delta);
+    }
+
+    public Sampler.Result getSamplingResult(Class<? extends Snapshot<?>> snapshotClass) {
+        return mSampleResults.get(snapshotClass);
+    }
+
     @CallSuper
     public CompositeMonitors metricAll() {
         metric(JiffiesMonitorFeature.JiffiesSnapshot.class);
@@ -164,16 +180,45 @@ public class CompositeMonitors {
         return this;
     }
 
+    public CompositeMonitors sample(Class<? extends Snapshot<?>> snapshotClass) {
+        return sample(snapshotClass, BatteryCanaryUtil.ONE_MIN);
+    }
+
+    public CompositeMonitors sample(Class<? extends Snapshot<?>> snapshotClass, long interval) {
+        mSampleRegs.put(snapshotClass, interval);
+        return this;
+    }
+
+    @Deprecated
     public void configureAllSnapshot() {
+        start();
+    }
+    @Deprecated
+    public void configureDeltas() {
+        finish();
+    }
+
+    public void start() {
         mAppStats = null;
         mBgnMillis = SystemClock.uptimeMillis();
+        configureBgnSnapshots();
+        configureSamplers();
+    }
+
+    public void finish() {
+        configureEndDeltas();
+        configureSampleResults();
+        mAppStats = AppStats.current(SystemClock.uptimeMillis() - mBgnMillis);
+    }
+
+    protected void configureBgnSnapshots() {
         for (Class<? extends Snapshot<?>> item : mMetrics) {
             statCurrSnapshot(item);
         }
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
-    public void configureDeltas() {
+    protected void configureEndDeltas() {
         for (Map.Entry<Class<? extends Snapshot<?>>, Snapshot<?>> item : mBgnSnapshots.entrySet()) {
             Snapshot lastSnapshot = item.getValue();
             if (lastSnapshot != null) {
@@ -277,6 +322,67 @@ public class CompositeMonitors {
                 mBgnSnapshots.put(snapshotClass, snapshot);
             }
             return snapshot;
+        }
+        return null;
+    }
+
+    protected void configureSamplers() {
+        for (Map.Entry<Class<? extends Snapshot<?>>, Long> item : mSampleRegs.entrySet()) {
+            Sampler sampler = statSampler(item.getKey());
+            if (sampler != null) {
+                sampler.setInterval(item.getValue());
+                sampler.start();
+            }
+        }
+    }
+
+    protected void configureSampleResults() {
+        for (Map.Entry<Class<? extends Snapshot<?>>, Sampler> item : mSamplers.entrySet()) {
+            item.getValue().pause();
+            Sampler.Result result = item.getValue().getResult();
+            if (result != null) {
+                mSampleResults.put(item.getKey(), result);
+            }
+        }
+    }
+
+    @CallSuper
+    protected Sampler statSampler(Class<? extends Snapshot<?>> snapshotClass) {
+        Sampler sampler = null;
+        if (snapshotClass == DeviceStatMonitorFeature.CpuFreqSnapshot.class) {
+            final DeviceStatMonitorFeature feature = getFeature(DeviceStatMonitorFeature.class);
+            if (feature != null && mMonitor != null) {
+                sampler = new Sampler(mMonitor.getHandler(), new Callable<Number>() {
+                    @Override
+                    public Number call() {
+                        DeviceStatMonitorFeature.CpuFreqSnapshot snapshot = feature.currentCpuFreq();
+                        List<DigitEntry<Integer>> list = snapshot.cpuFreqs.getList();
+                        Collections.sort(list, new Comparator<DigitEntry<Integer>>() {
+                            @Override
+                            public int compare(DigitEntry<Integer> o1, DigitEntry<Integer> o2) {
+                                return o1.get().compareTo(o2.get());
+                            }
+                        });
+                        return list.isEmpty() ? 0 : list.get(0).get();
+                    }
+                });
+                mSamplers.put(snapshotClass, sampler);
+            }
+            return sampler;
+        }
+        if (snapshotClass == DeviceStatMonitorFeature.BatteryTmpSnapshot.class) {
+            final DeviceStatMonitorFeature feature = getFeature(DeviceStatMonitorFeature.class);
+            if (feature != null && mMonitor != null) {
+                sampler = new Sampler(mMonitor.getHandler(), new Callable<Number>() {
+                    @Override
+                    public Number call() {
+                        DeviceStatMonitorFeature.BatteryTmpSnapshot snapshot = feature.currentBatteryTemperature(mMonitor.getContext());
+                        return snapshot.temp.get();
+                    }
+                });
+                mSamplers.put(snapshotClass, sampler);
+            }
+            return sampler;
         }
         return null;
     }
