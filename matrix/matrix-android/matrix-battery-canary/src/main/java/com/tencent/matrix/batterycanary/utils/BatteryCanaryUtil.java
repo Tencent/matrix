@@ -211,11 +211,11 @@ public final class BatteryCanaryUtil {
                 }
             }
         }
-        StringBuilder sb = new StringBuilder(stacks.size());
-        for (StackTraceElement stackTraceElement : stacks) {
-            sb.append(stackTraceElement).append('\n');
+        StringBuilder sb = new StringBuilder();
+        for (StackTraceElement traceElement : stacks) {
+            sb.append("\n").append("at ").append(traceElement);
         }
-        return sb.toString();
+        return sb.length() > 0 ? "Matrix" + sb.toString() : "";
     }
 
     public static String getThrowableStack(Throwable throwable) {
