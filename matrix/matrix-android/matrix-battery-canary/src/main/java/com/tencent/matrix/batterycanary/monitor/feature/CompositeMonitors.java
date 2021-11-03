@@ -36,8 +36,8 @@ public class CompositeMonitors {
 
     // Sampling
     protected final Map<Class<? extends Snapshot<?>>, Long> mSampleRegs = new HashMap<>();
-    protected final Map<Class<? extends Snapshot<?>>, Sampler> mSamplers = new HashMap<>();
-    protected final Map<Class<? extends Snapshot<?>>, Sampler.Result> mSampleResults = new HashMap<>();
+    protected final Map<Class<? extends Snapshot<?>>, Snapshot.Sampler> mSamplers = new HashMap<>();
+    protected final Map<Class<? extends Snapshot<?>>, Snapshot.Sampler.Result> mSampleResults = new HashMap<>();
 
     @Nullable
     protected BatteryMonitorCore mMonitor;
@@ -151,7 +151,7 @@ public class CompositeMonitors {
         mDeltas.put(snapshotClass, delta);
     }
 
-    public Sampler.Result getSamplingResult(Class<? extends Snapshot<?>> snapshotClass) {
+    public Snapshot.Sampler.Result getSamplingResult(Class<? extends Snapshot<?>> snapshotClass) {
         return mSampleResults.get(snapshotClass);
     }
 
@@ -328,7 +328,7 @@ public class CompositeMonitors {
 
     protected void configureSamplers() {
         for (Map.Entry<Class<? extends Snapshot<?>>, Long> item : mSampleRegs.entrySet()) {
-            Sampler sampler = statSampler(item.getKey());
+            Snapshot.Sampler sampler = statSampler(item.getKey());
             if (sampler != null) {
                 sampler.setInterval(item.getValue());
                 sampler.start();
@@ -337,9 +337,9 @@ public class CompositeMonitors {
     }
 
     protected void configureSampleResults() {
-        for (Map.Entry<Class<? extends Snapshot<?>>, Sampler> item : mSamplers.entrySet()) {
+        for (Map.Entry<Class<? extends Snapshot<?>>, Snapshot.Sampler> item : mSamplers.entrySet()) {
             item.getValue().pause();
-            Sampler.Result result = item.getValue().getResult();
+            Snapshot.Sampler.Result result = item.getValue().getResult();
             if (result != null) {
                 mSampleResults.put(item.getKey(), result);
             }
@@ -347,12 +347,12 @@ public class CompositeMonitors {
     }
 
     @CallSuper
-    protected Sampler statSampler(Class<? extends Snapshot<?>> snapshotClass) {
-        Sampler sampler = null;
+    protected Snapshot.Sampler statSampler(Class<? extends Snapshot<?>> snapshotClass) {
+        Snapshot.Sampler sampler = null;
         if (snapshotClass == DeviceStatMonitorFeature.CpuFreqSnapshot.class) {
             final DeviceStatMonitorFeature feature = getFeature(DeviceStatMonitorFeature.class);
             if (feature != null && mMonitor != null) {
-                sampler = new Sampler(mMonitor.getHandler(), new Callable<Number>() {
+                sampler = new Snapshot.Sampler(mMonitor.getHandler(), new Callable<Number>() {
                     @Override
                     public Number call() {
                         DeviceStatMonitorFeature.CpuFreqSnapshot snapshot = feature.currentCpuFreq();
@@ -373,7 +373,7 @@ public class CompositeMonitors {
         if (snapshotClass == DeviceStatMonitorFeature.BatteryTmpSnapshot.class) {
             final DeviceStatMonitorFeature feature = getFeature(DeviceStatMonitorFeature.class);
             if (feature != null && mMonitor != null) {
-                sampler = new Sampler(mMonitor.getHandler(), new Callable<Number>() {
+                sampler = new Snapshot.Sampler(mMonitor.getHandler(), new Callable<Number>() {
                     @Override
                     public Number call() {
                         DeviceStatMonitorFeature.BatteryTmpSnapshot snapshot = feature.currentBatteryTemperature(mMonitor.getContext());

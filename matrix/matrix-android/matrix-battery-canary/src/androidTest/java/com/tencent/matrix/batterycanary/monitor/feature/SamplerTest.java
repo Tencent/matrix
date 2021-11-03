@@ -95,7 +95,7 @@ public class SamplerTest {
         final int samplingCount = 10;
 
         final AtomicInteger counter = new AtomicInteger(0);
-        final Sampler sampler = new Sampler(monitor.getHandler(), new Callable<Integer>() {
+        final MonitorFeature.Snapshot.Sampler sampler = new MonitorFeature.Snapshot.Sampler(monitor.getHandler(), new Callable<Integer>() {
             @Override
             public Integer call() throws InterruptedException {
                 int count = counter.incrementAndGet();
@@ -117,7 +117,7 @@ public class SamplerTest {
             }
         }
         sampler.pause();
-        Sampler.Result result = sampler.getResult();
+        MonitorFeature.Snapshot.Sampler.Result result = sampler.getResult();
         Assert.assertNotNull(result);
         Assert.assertEquals(samplingCount, result.count);
         Assert.assertEquals(1d, result.sampleFst, 0.1);
@@ -128,7 +128,7 @@ public class SamplerTest {
         Assert.assertEquals(55d / samplingCount, result.sampleAvg, 0.1);
 
         final AtomicInteger counterDec = new AtomicInteger(0);
-        final Sampler samplerDec = new Sampler(monitor.getHandler(), new Callable<Integer>() {
+        final MonitorFeature.Snapshot.Sampler samplerDec = new MonitorFeature.Snapshot.Sampler(monitor.getHandler(), new Callable<Integer>() {
             @Override
             public Integer call() throws InterruptedException {
                 int count = counterDec.incrementAndGet();
