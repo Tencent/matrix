@@ -396,10 +396,14 @@ public class CompositeMonitors {
 
     @Override
     public String toString() {
-        return "CompositeMonitors{" +
-                "Metrics=" + mBgnSnapshots +
-                ", BgnSnapshots=" + mMetrics +
-                ", Deltas=" + mDeltas +
+        return "CompositeMonitors{" + "\n" +
+                "Metrics=" + mMetrics + "\n" +
+                ", BgnSnapshots=" + mBgnSnapshots + "\n" +
+                ", Deltas=" + mDeltas + "\n" +
+                ", SampleRegs=" + mSampleRegs + "\n" +
+                ", Samplers=" + mSamplers + "\n" +
+                ", SampleResults=" + mSampleResults + "\n" +
+                ", AppStats=" + mAppStats + "\n" +
                 '}';
     }
 }
