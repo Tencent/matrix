@@ -169,7 +169,7 @@ public class CanaryUtilsTest {
     @Test
     public void testGetBatteryTemps() throws InterruptedException {
         for (int i = 0; i < 5; i++) {
-            int temperature = BatteryCanaryUtil.getBatteryTemperature(mContext);
+            int temperature = BatteryCanaryUtil.getBatteryTemperatureImmediately(mContext);
             Assert.assertTrue(temperature > 0);
             Thread.sleep(100L);
         }

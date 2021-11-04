@@ -299,7 +299,9 @@ public class BatteryMonitorCore implements
 
     public int getCurrentBatteryTemperature(Context context) {
         try {
-            return BatteryCanaryUtil.getBatteryTemperature(context);
+            int tmp = BatteryCanaryUtil.getBatteryTemperature(context);
+            MatrixLog.i(TAG, "onGetTemperature, battery = " + tmp);
+            return tmp;
         } catch (Throwable e) {
             MatrixLog.printErrStackTrace(TAG, e, "#currentBatteryTemperature error");
             return 0;
