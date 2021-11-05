@@ -1,5 +1,6 @@
 package com.tencent.matrix.memory.canary.monitor
 
+import com.tencent.matrix.memory.canary.MemInfo
 import com.tencent.matrix.util.MatrixLog
 import java.util.concurrent.TimeUnit
 
@@ -41,9 +42,9 @@ class SumPssMonitor(
         val sum = memInfos.onEach { info ->
             MatrixLog.i(
                 TAG,
-                "${info.processInfo?.pid}-${info.processInfo?.processName}: ${info.amsPssInfo!!.totalPss} KB"
+                "${info.processInfo?.pid}-${info.processInfo?.processName}: ${info.amsPssInfo!!.totalPssK} KB"
             )
-        }.sumBy { it.amsPssInfo!!.totalPss }.also { MatrixLog.i(TAG, "sumPss = $it KB") }
+        }.sumBy { it.amsPssInfo!!.totalPssK }.also { MatrixLog.i(TAG, "sumPss = $it KB") }
 
         MatrixLog.d(TAG, "check end sum = $sum")
 

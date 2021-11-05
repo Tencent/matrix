@@ -19,6 +19,24 @@ object ActivityRecorder : StatefulOwner() {
 
     private val activityRecord = WeakHashMap<Activity, Any>()
 
+    private fun WeakHashMap<Activity, Any>.contains(clazz: Class<*>) : Boolean {
+        entries.forEach { e ->
+            if (clazz == e.key?.javaClass) {
+                return true
+            }
+        }
+        return false
+    }
+
+    private fun WeakHashMap<Activity, Any>.contains(clazz: String) : Boolean {
+        entries.forEach { e ->
+            if (clazz == e.key?.javaClass?.name) {
+                return true
+            }
+        }
+        return false
+    }
+
     private fun Set<Activity>.contentToString(): String {
 
         val linkedList = LinkedList<String>()
@@ -41,6 +59,16 @@ object ActivityRecorder : StatefulOwner() {
         }
         inited = true
         app.registerActivityLifecycleCallbacks(callbacks)
+    }
+
+    fun sizeExcept(activityNames: Array<String>?) : Int {
+        var size = activityRecord.size
+        activityNames?.forEach {
+            if (activityRecord.contains(it)) {
+                size--
+            }
+        }
+        return size
     }
 
     private fun onStateChanged() {

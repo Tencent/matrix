@@ -1,4 +1,4 @@
-package com.tencent.matrix.memory.canary.monitor
+package com.tencent.matrix.memory.canary
 
 import android.app.ActivityManager
 import android.content.Context
@@ -10,7 +10,6 @@ import com.tencent.matrix.Matrix
 import com.tencent.matrix.lifecycle.owners.ActivityRecorder
 import com.tencent.matrix.lifecycle.owners.CombinedProcessForegroundOwner
 import com.tencent.matrix.lifecycle.supervisor.ProcessSupervisor
-import com.tencent.matrix.memory.canary.BuildConfig
 import com.tencent.matrix.util.MatrixLog
 import com.tencent.matrix.util.MatrixUtil
 import junit.framework.Assert
@@ -24,29 +23,18 @@ private const val TAG = "Matrix.MemoryInfoFactory"
 /**
  * Created by Yves on 2021/9/22
  */
-object MemoryInfoFactory {
+private object MemoryInfoFactory {
     init {
         if (!Matrix.isInstalled()) {
             throw IllegalStateException("Matrix NOT installed yet!!!")
         }
     }
 
-    internal val activityManager =
+    val activityManager =
         Matrix.with().application.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
 
-    internal val memClass = activityManager.memoryClass
-    internal val largeMemClass = activityManager.largeMemoryClass
-
-    val allProcessMemInfo: Array<MemInfo>
-        get() = MemInfo.getAllProcessPss()
-
-    val allProcessPssSum: Int
-        get() {
-            return allProcessMemInfo.sumBy { it.amsPssInfo?.totalPss ?: 0 }
-        }
-
-    val currentMemInfo: MemInfo
-        get() = MemInfo.getCurrentProcessMemInfo()
+    val memClass = activityManager.memoryClass
+    val largeMemClass = activityManager.largeMemoryClass
 }
 
 data class ProcessInfo(
@@ -62,18 +50,18 @@ data class ProcessInfo(
 }
 
 data class PssInfo(
-    var totalPss: Int = -1,
-    var pssJava: Int = -1,
-    var pssNative: Int = -1,
-    var pssGraphic: Int = -1,
-    var pssSystem: Int = -1,
-    var pssSwap: Int = -1,
-    var pssCode: Int = -1,
-    var pssStack: Int = -1,
-    var pssPrivateOther: Int = -1
+    var totalPssK: Int = -1,
+    var pssJavaK: Int = -1,
+    var pssNativeK: Int = -1,
+    var pssGraphicK: Int = -1,
+    var pssSystemK: Int = -1,
+    var pssSwapK: Int = -1,
+    var pssCodeK: Int = -1,
+    var pssStackK: Int = -1,
+    var pssPrivateOtherK: Int = -1
 ) {
     override fun toString(): String {
-        return "totalPss=$totalPss K,\tJava=$pssJava K,\tNative=$pssNative K,\tGraphic=$pssGraphic K,\tSystem=$pssSystem K,\tSwap=$pssSwap K,\tCode=$pssCode K,\tStack=$pssStack K,\tPrivateOther=$pssPrivateOther K"
+        return "totalPss=$totalPssK K,\tJava=$pssJavaK K,\tNative=$pssNativeK K,\tGraphic=$pssGraphicK K,\tSystem=$pssSystemK K,\tSwap=$pssSwapK K,\tCode=$pssCodeK K,\tStack=$pssStackK K,\tPrivateOther=$pssPrivateOtherK K"
     }
 
     companion object {
@@ -97,27 +85,27 @@ data class PssInfo(
         @JvmStatic
         fun get(memoryInfo: Debug.MemoryInfo): PssInfo {
             return PssInfo().also {
-                it.totalPss = memoryInfo.totalPss
+                it.totalPssK = memoryInfo.totalPss
 
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                     memoryInfo.memoryStats.apply {
 
                         fun Map<String, String>.getInt(key: String) = get(key)?.toInt() ?: -1
 
-                        it.pssJava = getInt("summary.java-heap")
-                        it.pssNative = getInt("summary.native-heap")
-                        it.pssCode = getInt("summary.code")
-                        it.pssStack = getInt("summary.stack")
-                        it.pssGraphic = getInt("summary.graphics")
-                        it.pssPrivateOther = getInt("summary.private-other")
-                        it.pssSystem = getInt("summary.system")
-                        it.pssSwap = getInt("summary.total-swap")
+                        it.pssJavaK = getInt("summary.java-heap")
+                        it.pssNativeK = getInt("summary.native-heap")
+                        it.pssCodeK = getInt("summary.code")
+                        it.pssStackK = getInt("summary.stack")
+                        it.pssGraphicK = getInt("summary.graphics")
+                        it.pssPrivateOtherK = getInt("summary.private-other")
+                        it.pssSystemK = getInt("summary.system")
+                        it.pssSwapK = getInt("summary.total-swap")
                     }
                 } else {
                     memoryInfo.apply {
-                        it.pssJava = dalvikPrivateDirty
-                        it.pssNative = nativePrivateDirty
-                        it.pssSystem = totalPss - totalPrivateClean - totalPrivateDirty
+                        it.pssJavaK = dalvikPrivateDirty
+                        it.pssNativeK = nativePrivateDirty
+                        it.pssSystemK = totalPss - totalPrivateClean - totalPrivateDirty
                     }
                 }
             }
@@ -128,13 +116,13 @@ data class PssInfo(
 data class StatusInfo(
     var state: String = "default",
     var fdSize: Int = -1,
-    var vmSize: Int = -1,
-    var vmRss: Int = -1,
-    var vmSwap: Int = -1,
+    var vmSizeK: Int = -1,
+    var vmRssK: Int = -1,
+    var vmSwapK: Int = -1,
     var threads: Int = -1
 ) {
     override fun toString(): String {
-        return "State=$state,\tFDSize=$fdSize,\tVmSize=$vmSize K,\tVmRss=$vmRss K,\tVmSwap=$vmSwap K,\tThreads=$threads"
+        return "State=$state,\tFDSize=$fdSize,\tVmSize=$vmSizeK K,\tVmRss=$vmRssK K,\tVmSwap=$vmSwapK K,\tThreads=$threads"
     }
 
     companion object {
@@ -156,9 +144,9 @@ data class StatusInfo(
 
                     it.state = getString("State").trimIndent()
                     it.fdSize = getInt("FDSize")
-                    it.vmSize = getInt("VmSize")
-                    it.vmRss = getInt("VmRSS")
-                    it.vmSwap = getInt("VmSwap")
+                    it.vmSizeK = getInt("VmSize")
+                    it.vmRssK = getInt("VmRSS")
+                    it.vmSwapK = getInt("VmSwap")
                     it.threads = getInt("Threads")
                 }
             }
@@ -199,35 +187,49 @@ data class StatusInfo(
 }
 
 data class JavaMemInfo(
-    val javaHeapUsedSize: Long = Runtime.getRuntime().totalMemory(),
-    val javaHeapRecycledSize: Long = Runtime.getRuntime().freeMemory(),
-    val javaHeapMaxSize: Long = Runtime.getRuntime().maxMemory(),
+    val javaHeapRecycledByte: Long = Runtime.getRuntime().freeMemory(),
+    val javaHeapTotalByte: Long = Runtime.getRuntime().totalMemory(),
+    val javaHeapUsedByte: Long = javaHeapTotalByte - javaHeapRecycledByte,
+    val javaHeapMaxByte: Long = Runtime.getRuntime().maxMemory(),
     val javaMemClass: Int = MemoryInfoFactory.memClass,
     val javaLargeMemClass: Int = MemoryInfoFactory.largeMemClass
 ) {
     override fun toString(): String {
-        return "Used=$javaHeapUsedSize B,\tRecycled=$javaHeapRecycledSize B,\tMax=$javaHeapMaxSize B,\tMemClass:$javaMemClass M, LargeMemClass=$javaLargeMemClass M"
+        return "Used=$javaHeapUsedByte B,\tRecycled=$javaHeapRecycledByte B,\tHeapSize=$javaHeapTotalByte B,\tMax=$javaHeapMaxByte B,\tMemClass:$javaMemClass M, LargeMemClass=$javaLargeMemClass M"
     }
 }
 
 data class NativeMemInfo(
-    val nativeHeapSize: Long = Debug.getNativeHeapSize(),
-    val nativeAllocatedSize: Long = Debug.getNativeHeapAllocatedSize(),
-    val nativeRecycledSize: Long = Debug.getNativeHeapFreeSize()
+    val nativeHeapByte: Long = Debug.getNativeHeapSize(),
+    val nativeAllocatedByte: Long = Debug.getNativeHeapAllocatedSize(),
+    val nativeRecycledByte: Long = Debug.getNativeHeapFreeSize()
 ) {
     override fun toString(): String {
-        return "Used=$nativeAllocatedSize B,\tRecycled=$nativeRecycledSize B,\tHeapSize=$nativeHeapSize B"
+        return "Used=$nativeAllocatedByte B,\tRecycled=$nativeRecycledByte B,\tHeapSize=$nativeHeapByte B"
     }
 }
 
 data class SystemInfo(
-    var totalMem: Long = -1,
-    var availMem: Long = -1,
+    var totalMemByte: Long = -1,
+    var availMemByte: Long = -1,
     var lowMemory: Boolean = false,
-    var threshold: Long = -1
+    var thresholdByte: Long = -1
 ) {
+    companion object {
+        fun get(): SystemInfo {
+            val info = ActivityManager.MemoryInfo()
+            MemoryInfoFactory.activityManager.getMemoryInfo(info)
+            return SystemInfo(
+                totalMemByte = info.totalMem,
+                availMemByte = info.availMem,
+                lowMemory = info.lowMemory,
+                thresholdByte = info.threshold
+            )
+        }
+    }
+
     override fun toString(): String {
-        return "totalMem=$totalMem B,\tavailMem=$availMem B,\tlowMemory=$lowMemory B,\tthreshold=$threshold B"
+        return "totalMem=$totalMemByte B,\tavailMem=$availMemByte B,\tlowMemory=$lowMemory,\tthreshold=$thresholdByte B"
     }
 }
 
@@ -264,7 +266,7 @@ data class MemInfo(
     var statusInfo: StatusInfo? = StatusInfo.get(),
     var javaMemInfo: JavaMemInfo? = JavaMemInfo(),
     var nativeMemInfo: NativeMemInfo? = NativeMemInfo(),
-    var systemInfo: SystemInfo? = SystemInfo(),
+    var systemInfo: SystemInfo? = SystemInfo.get(),
     var amsPssInfo: PssInfo? = null,
     var debugPssInfo: PssInfo? = null,
     var fgServiceInfo: FgServiceInfo? = FgServiceInfo()
@@ -319,19 +321,26 @@ data class MemInfo(
         @JvmStatic
         fun getCurrentProcessMemInfoWithPss(): MemInfo {
             val begin = System.currentTimeMillis()
-            return MemInfo(debugPssInfo = PssInfo.getFromDebug()).also { it.cost = System.currentTimeMillis() - begin }
+            return MemInfo(debugPssInfo = PssInfo.getFromDebug()).also {
+                it.cost = System.currentTimeMillis() - begin
+            }
         }
 
         @JvmStatic
         fun getCurrentProcessMemInfoWithAmsPss(): MemInfo {
             val begin = System.currentTimeMillis()
-            return MemInfo(amsPssInfo = PssInfo.getFromAms()).also { it.cost = System.currentTimeMillis() - begin }
+            return MemInfo(amsPssInfo = PssInfo.getFromAms()).also {
+                it.cost = System.currentTimeMillis() - begin
+            }
         }
 
         @JvmStatic
         fun getCurrentProcessFullMemInfo(): MemInfo {
             val begin = System.currentTimeMillis()
-            return MemInfo(amsPssInfo = PssInfo.getFromAms(), debugPssInfo = PssInfo.getFromDebug()).also { it.cost = System.currentTimeMillis() - begin }
+            return MemInfo(
+                amsPssInfo = PssInfo.getFromAms(),
+                debugPssInfo = PssInfo.getFromDebug()
+            ).also { it.cost = System.currentTimeMillis() - begin }
         }
 
         private fun Array<MemInfo>.toPidArray(): IntArray {
@@ -353,7 +362,7 @@ data class MemInfo(
 
             MatrixLog.d(TAG, "processInfoList[$processInfoList]")
 
-            val systemInfo = SystemInfo()
+            val systemInfo = SystemInfo.get()
             for (i in processInfoList.indices) {
                 val processInfo = processInfoList[i]
                 val pkgName = Matrix.with().application.packageName
