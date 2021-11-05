@@ -1,6 +1,6 @@
 package sample.tencent.matrix.memory;
 
-import com.tencent.matrix.memory.canary.monitor.MemInfo;
+import com.tencent.matrix.memory.canary.MemInfo;
 import com.tencent.matrix.util.MatrixLog;
 
 import java.util.Arrays;

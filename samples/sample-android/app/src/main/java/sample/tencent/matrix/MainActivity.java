@@ -23,7 +23,7 @@ import android.widget.Button;
 
 import androidx.appcompat.app.AppCompatActivity;
 
-import com.tencent.matrix.memory.canary.monitor.MemInfo;
+import com.tencent.matrix.memory.canary.MemInfo;
 import com.tencent.matrix.util.MatrixLog;
 
 import sample.tencent.matrix.battery.TestBatteryActivity;

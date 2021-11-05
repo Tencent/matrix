@@ -46,6 +46,7 @@ buildscript {
             changing = true
             exclude group: 'com.android.tools.build', module: 'gradle'
         }
+        classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:1.5.20'
     }
 }
 

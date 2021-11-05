@@ -43,6 +43,7 @@ import java.io.File;
 
 import sample.tencent.matrix.battery.BatteryCanaryInitHelper;
 import sample.tencent.matrix.config.DynamicConfigImplDemo;
+import sample.tencent.matrix.kt.memory.canary.MemoryCanaryBoot;
 import sample.tencent.matrix.lifecycle.LifecycleTest;
 import sample.tencent.matrix.listener.TestPluginListener;
 import sample.tencent.matrix.resource.ManualDumpActivity;
@@ -91,7 +92,7 @@ public class MatrixApplication extends Application {
         // Reporter. Matrix will callback this listener when found issue then emitting it.
         builder.pluginListener(new TestPluginListener(this));
 
-        MemoryCanaryPlugin memoryCanaryPlugin = new MemoryCanaryPlugin();
+        MemoryCanaryPlugin memoryCanaryPlugin = new MemoryCanaryPlugin(MemoryCanaryBoot.configure(this));
         builder.plugin(memoryCanaryPlugin);
 
         // Configure trace canary.
