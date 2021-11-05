@@ -112,11 +112,11 @@ class BackgroundMemoryMonitor(private val config: BackgroundMemoryMonitorConfig)
         val overThreshold = config.run {
             // @formatter:off
             arrayOf(
-                javaThresholdByte.check(memInfo.javaMemInfo!!.usedByte, busy, cb),
-                nativeThresholdByte.check(memInfo.nativeMemInfo!!.usedByte, busy, cb),
-                debugPssThresholdK.check(memInfo.debugPssInfo!!.totalPssK.toLong(), busy, cb),
-                (amsPssThresholdK.check(memInfo.amsPssInfo!!.totalPssK.toLong(), busy, cb) && lastCheckToNow > TimeUnit.MINUTES.toMillis(5))
-            ).any { it }
+                "java" to javaThresholdByte.check(memInfo.javaMemInfo!!.usedByte, busy, cb),
+                "native" to nativeThresholdByte.check(memInfo.nativeMemInfo!!.usedByte, busy, cb),
+                "debugPss" to debugPssThresholdK.check(memInfo.debugPssInfo!!.totalPssK.toLong(), busy, cb),
+                "amsPss" to (amsPssThresholdK.check(memInfo.amsPssInfo!!.totalPssK.toLong(), busy, cb) && lastCheckToNow > TimeUnit.MINUTES.toMillis(5))
+            ).onEach { MatrixLog.i(TAG, "$it") }.any { it.second }
             // @formatter:on
         }
 
