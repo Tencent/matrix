@@ -80,10 +80,12 @@ class BackgroundMemoryMonitor(private val config: BackgroundMemoryMonitorConfig)
         MatrixLog.i(TAG, "config memory threshold: $config")
         CombinedProcessForegroundOwner.observeForever(object : IStateObserver {
             override fun on() { // foreground
+                MatrixLog.d(TAG, "foreground: remove delay run")
                 runningHandler.removeCallbacks(delayCheckTask)
             }
 
             override fun off() { // background
+                MatrixLog.d(TAG, "background: post delay run")
                 runningHandler.postDelayed(delayCheckTask, config.delayMillis)
             }
         })
