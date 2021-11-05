@@ -32,7 +32,9 @@ class MemoryCanaryPlugin(
                     SumPssMonitor(it).start()
                 }
             }
-            BackgroundMemoryMonitor(backgroundMemoryMonitorConfig).init()
+            backgroundMemoryMonitorConfig.takeIf { it.enable }?.let {
+                BackgroundMemoryMonitor(it).init()
+            }
         }
     }
 

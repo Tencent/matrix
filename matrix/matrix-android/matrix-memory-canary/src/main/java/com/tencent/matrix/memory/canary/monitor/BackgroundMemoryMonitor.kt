@@ -48,6 +48,7 @@ private fun Long.asThreshold(checkTimes: Int = 3): Threshold {
 }
 
 class BackgroundMemoryMonitorConfig(
+    val enable: Boolean = true,
     val delayMillis: Long = TimeUnit.MINUTES.toMillis(1) + 500,
     javaThresholdByte: Long = 250 * 1024 * 1024L,
     nativeThresholdByte: Long = 500 * 1024 * 1024L,
