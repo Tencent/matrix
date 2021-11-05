@@ -1,6 +1,7 @@
 package com.tencent.matrix.memory.canary
 
 import android.app.ActivityManager
+import android.app.Application
 import android.content.Context
 import android.os.Build
 import android.os.Debug
@@ -23,15 +24,29 @@ private const val TAG = "Matrix.MemoryInfoFactory"
 /**
  * Created by Yves on 2021/9/22
  */
-private object MemoryInfoFactory {
+object MemInfoFactory {
+    @Volatile
+    @JvmStatic
+    private var manualInitialized = false
+
+    @Volatile
+    @JvmStatic
+    private var application: Application? = null
+
+    @JvmStatic
+    fun init(app: Application) {
+        application = app
+        manualInitialized = true
+    }
+
     init {
-        if (!Matrix.isInstalled()) {
-            throw IllegalStateException("Matrix NOT installed yet!!!")
+        if (!manualInitialized && !Matrix.isInstalled()) {
+            throw IllegalStateException("Matrix is NOT installed or MemoryInfoFactory is not initialized!!!")
         }
     }
 
-    val activityManager =
-        Matrix.with().application.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+    val activityManager = (if (manualInitialized) application else Matrix.with().application)
+        ?.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
 
     val memClass = activityManager.memoryClass
     val largeMemClass = activityManager.largeMemoryClass
@@ -74,7 +89,7 @@ data class PssInfo(
 
         fun getFromAms(): PssInfo {
             val amsInfo =
-                MemoryInfoFactory.activityManager.getProcessMemoryInfo(arrayOf(Process.myPid()).toIntArray())
+                MemInfoFactory.activityManager.getProcessMemoryInfo(arrayOf(Process.myPid()).toIntArray())
             return amsInfo.firstOrNull()?.run {
                 get(this)
             } ?: run {
@@ -191,8 +206,8 @@ data class JavaMemInfo(
     val recycledByte: Long = Runtime.getRuntime().freeMemory(),
     val usedByte: Long = heapSizeByte - recycledByte,
     val maxByte: Long = Runtime.getRuntime().maxMemory(),
-    val memClass: Int = MemoryInfoFactory.memClass,
-    val largeMemClass: Int = MemoryInfoFactory.largeMemClass
+    val memClass: Int = MemInfoFactory.memClass,
+    val largeMemClass: Int = MemInfoFactory.largeMemClass
 ) {
     override fun toString(): String {
         return "Used=$usedByte B,\tRecycled=$recycledByte B,\tHeapSize=$heapSizeByte B,\tMax=$maxByte B,\tMemClass:$memClass M, LargeMemClass=$largeMemClass M"
@@ -218,7 +233,7 @@ data class SystemInfo(
     companion object {
         fun get(): SystemInfo {
             val info = ActivityManager.MemoryInfo()
-            MemoryInfoFactory.activityManager.getMemoryInfo(info)
+            MemInfoFactory.activityManager.getMemoryInfo(info)
             return SystemInfo(
                 totalMemByte = info.totalMem,
                 availMemByte = info.availMem,
@@ -242,7 +257,7 @@ data class FgServiceInfo(val fgServices: List<String> = getRunningForegroundServ
         private fun getRunningForegroundServices(): List<String> {
             val fgServices = ArrayList<String>()
             val runningServiceInfoList: List<ActivityManager.RunningServiceInfo> =
-                MemoryInfoFactory.activityManager.getRunningServices(
+                MemInfoFactory.activityManager.getRunningServices(
                     Int.MAX_VALUE
                 )
             for (serviceInfo in runningServiceInfoList) {
@@ -293,7 +308,7 @@ data class MemInfo(
             val begin = System.currentTimeMillis()
             val memInfoArray = prepareAllProcessInfo()
             val pidMemInfoArray =
-                MemoryInfoFactory.activityManager.getProcessMemoryInfo(memInfoArray.toPidArray())
+                MemInfoFactory.activityManager.getProcessMemoryInfo(memInfoArray.toPidArray())
 
             if (pidMemInfoArray != null) {
                 if (BuildConfig.DEBUG) {
@@ -352,7 +367,7 @@ data class MemInfo(
         }
 
         private fun prepareAllProcessInfo(): Array<MemInfo> {
-            val processInfoList = MemoryInfoFactory.activityManager.runningAppProcesses
+            val processInfoList = MemInfoFactory.activityManager.runningAppProcesses
             val memoryInfoList: MutableList<MemInfo> = ArrayList()
 
             if (processInfoList == null) {
