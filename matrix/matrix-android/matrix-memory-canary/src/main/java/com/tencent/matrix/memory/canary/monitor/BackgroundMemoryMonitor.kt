@@ -111,8 +111,8 @@ class BackgroundMemoryMonitor(private val config: BackgroundMemoryMonitorConfig)
         val overThreshold = config.run {
             // @formatter:off
             arrayOf(
-                javaThresholdByte.check(memInfo.javaMemInfo!!.javaHeapUsedByte, busy, cb),
-                nativeThresholdByte.check(memInfo.nativeMemInfo!!.nativeAllocatedByte, busy, cb),
+                javaThresholdByte.check(memInfo.javaMemInfo!!.usedByte, busy, cb),
+                nativeThresholdByte.check(memInfo.nativeMemInfo!!.usedByte, busy, cb),
                 debugPssThresholdK.check(memInfo.debugPssInfo!!.totalPssK.toLong(), busy, cb),
                 (amsPssThresholdK.check(memInfo.amsPssInfo!!.totalPssK.toLong(), busy, cb) && lastCheckToNow > TimeUnit.MINUTES.toMillis(5))
             ).any { it }

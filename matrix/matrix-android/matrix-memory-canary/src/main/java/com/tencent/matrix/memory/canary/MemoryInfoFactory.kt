@@ -187,25 +187,25 @@ data class StatusInfo(
 }
 
 data class JavaMemInfo(
-    val javaHeapRecycledByte: Long = Runtime.getRuntime().freeMemory(),
-    val javaHeapTotalByte: Long = Runtime.getRuntime().totalMemory(),
-    val javaHeapUsedByte: Long = javaHeapTotalByte - javaHeapRecycledByte,
-    val javaHeapMaxByte: Long = Runtime.getRuntime().maxMemory(),
-    val javaMemClass: Int = MemoryInfoFactory.memClass,
-    val javaLargeMemClass: Int = MemoryInfoFactory.largeMemClass
+    val heapSizeByte: Long = Runtime.getRuntime().totalMemory(),
+    val recycledByte: Long = Runtime.getRuntime().freeMemory(),
+    val usedByte: Long = heapSizeByte - recycledByte,
+    val maxByte: Long = Runtime.getRuntime().maxMemory(),
+    val memClass: Int = MemoryInfoFactory.memClass,
+    val largeMemClass: Int = MemoryInfoFactory.largeMemClass
 ) {
     override fun toString(): String {
-        return "Used=$javaHeapUsedByte B,\tRecycled=$javaHeapRecycledByte B,\tHeapSize=$javaHeapTotalByte B,\tMax=$javaHeapMaxByte B,\tMemClass:$javaMemClass M, LargeMemClass=$javaLargeMemClass M"
+        return "Used=$usedByte B,\tRecycled=$recycledByte B,\tHeapSize=$heapSizeByte B,\tMax=$maxByte B,\tMemClass:$memClass M, LargeMemClass=$largeMemClass M"
     }
 }
 
 data class NativeMemInfo(
-    val nativeHeapByte: Long = Debug.getNativeHeapSize(),
-    val nativeAllocatedByte: Long = Debug.getNativeHeapAllocatedSize(),
-    val nativeRecycledByte: Long = Debug.getNativeHeapFreeSize()
+    val heapSizeByte: Long = Debug.getNativeHeapSize(),
+    val recycledByte: Long = Debug.getNativeHeapFreeSize(),
+    val usedByte: Long = Debug.getNativeHeapAllocatedSize()
 ) {
     override fun toString(): String {
-        return "Used=$nativeAllocatedByte B,\tRecycled=$nativeRecycledByte B,\tHeapSize=$nativeHeapByte B"
+        return "Used=$usedByte B,\tRecycled=$recycledByte B,\tHeapSize=$heapSizeByte B"
     }
 }
 
