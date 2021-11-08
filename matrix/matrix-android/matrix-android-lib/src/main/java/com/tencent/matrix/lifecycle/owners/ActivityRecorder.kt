@@ -3,8 +3,8 @@ package com.tencent.matrix.lifecycle.owners
 import android.app.Activity
 import android.app.Application
 import android.os.Bundle
-import com.tencent.matrix.lifecycle.StatefulOwner
 import com.tencent.matrix.lifecycle.EmptyActivityLifecycleCallbacks
+import com.tencent.matrix.lifecycle.StatefulOwner
 import com.tencent.matrix.util.MatrixLog
 import java.util.*
 
@@ -29,7 +29,7 @@ object ActivityRecorder : StatefulOwner() {
     }
 
     private fun WeakHashMap<Activity, Any>.contains(clazz: String) : Boolean {
-        entries.forEach { e ->
+        entries.toTypedArray().forEach { e ->
             if (clazz == e.key?.javaClass?.name) {
                 return true
             }
