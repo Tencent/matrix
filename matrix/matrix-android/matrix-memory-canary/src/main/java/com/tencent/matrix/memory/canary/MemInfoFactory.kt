@@ -14,6 +14,7 @@ import com.tencent.matrix.lifecycle.supervisor.ProcessSupervisor
 import com.tencent.matrix.util.MatrixLog
 import com.tencent.matrix.util.MatrixUtil
 import junit.framework.Assert
+import org.json.JSONObject
 import java.io.File
 import java.util.*
 import java.util.regex.Pattern
@@ -54,13 +55,26 @@ object MemInfoFactory {
 
 data class ProcessInfo(
     val pid: Int = Process.myPid(),
-    val processName: String = MatrixUtil.getProcessName(Matrix.with().application),
+    val name: String = MatrixUtil.getProcessName(Matrix.with().application),
     val activity: String = ActivityRecorder.currentActivity,
     val isProcessFg: Boolean = CombinedProcessForegroundOwner.active(),
     val isAppFg: Boolean = ProcessSupervisor.isAppForeground
 ) {
     override fun toString(): String {
-        return "Name=$processName, Activity=$activity, AppForeground=$isAppFg, ProcessForeground=$isProcessFg"
+        return "Name=$name, Activity=$activity, AppForeground=$isAppFg, ProcessForeground=$isProcessFg"
+    }
+
+    fun toJson()  = try {
+        JSONObject().apply {
+            put("pid", pid)
+            put("name", name)
+            put("activity", activity)
+            put("isProcessFg", isProcessFg)
+            put("isAppFg", isAppFg)
+        }
+    } catch (e: Throwable) {
+        MatrixLog.printErrStackTrace(TAG, e, "")
+        JSONObject()
     }
 }
 
@@ -77,6 +91,23 @@ data class PssInfo(
 ) {
     override fun toString(): String {
         return "totalPss=$totalPssK K,\tJava=$pssJavaK K,\tNative=$pssNativeK K,\tGraphic=$pssGraphicK K,\tSystem=$pssSystemK K,\tSwap=$pssSwapK K,\tCode=$pssCodeK K,\tStack=$pssStackK K,\tPrivateOther=$pssPrivateOtherK K"
+    }
+
+    fun toJson() = try {
+        JSONObject().apply {
+            put("total", totalPssK)
+            put("java", pssJavaK)
+            put("native", pssNativeK)
+            put("graphic", pssGraphicK)
+            put("system", pssSystemK)
+            put("swap", pssSwapK)
+            put("code", pssCodeK)
+            put("stack", pssStackK)
+            put("other", pssPrivateOtherK)
+        }
+    } catch (e: Throwable) {
+        MatrixLog.printErrStackTrace(TAG, e, "")
+        JSONObject()
     }
 
     companion object {
@@ -138,6 +169,20 @@ data class StatusInfo(
 ) {
     override fun toString(): String {
         return "State=$state,\tFDSize=$fdSize,\tVmSize=$vmSizeK K,\tVmRss=$vmRssK K,\tVmSwap=$vmSwapK K,\tThreads=$threads"
+    }
+
+    fun toJson() = try {
+        JSONObject().apply {
+            put("state", state)
+            put("vmSize", vmSizeK)
+            put("vmRss", vmRssK)
+            put("vmSwap", vmSwapK)
+            put("threads", threads)
+            put("fdSize", fdSize)
+        }
+    } catch (e: Throwable) {
+        MatrixLog.printErrStackTrace(TAG, e, "")
+        JSONObject()
     }
 
     companion object {
@@ -212,6 +257,20 @@ data class JavaMemInfo(
     override fun toString(): String {
         return "Used=$usedByte B,\tRecycled=$recycledByte B,\tHeapSize=$heapSizeByte B,\tMax=$maxByte B,\tMemClass:$memClass M, LargeMemClass=$largeMemClass M"
     }
+
+    fun toJson() = try {
+        JSONObject().apply {
+            put("used", usedByte)
+            put("recycled", recycledByte)
+            put("heapSize", heapSizeByte)
+            put("max", maxByte)
+            put("memClass", memClass)
+            put("largeMemClass", largeMemClass)
+        }
+    } catch (e: Throwable) {
+        MatrixLog.printErrStackTrace(TAG, e, "")
+        JSONObject()
+    }
 }
 
 data class NativeMemInfo(
@@ -221,6 +280,17 @@ data class NativeMemInfo(
 ) {
     override fun toString(): String {
         return "Used=$usedByte B,\tRecycled=$recycledByte B,\tHeapSize=$heapSizeByte B"
+    }
+
+    fun toJson() = try {
+        JSONObject().apply {
+            put("used", usedByte)
+            put("recycled", recycledByte)
+            put("heapSize", heapSizeByte)
+        }
+    } catch (e: Throwable) {
+        MatrixLog.printErrStackTrace(TAG, e, "")
+        JSONObject()
     }
 }
 
@@ -245,6 +315,18 @@ data class SystemInfo(
 
     override fun toString(): String {
         return "totalMem=$totalMemByte B,\tavailMem=$availMemByte B,\tlowMemory=$lowMemory,\tthreshold=$thresholdByte B"
+    }
+
+    fun toJson() = try {
+        JSONObject().apply {
+            put("totalMemByte", totalMemByte)
+            put("availMemByte", availMemByte)
+            put("lowMem", lowMemory)
+            put("threshold", thresholdByte)
+        }
+    } catch (e: Throwable) {
+        MatrixLog.printErrStackTrace(TAG, e, "")
+        JSONObject()
     }
 }
 
@@ -300,6 +382,21 @@ data class MemInfo(
                 | FgService : $fgServiceInfo
                 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>><<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
             """.trimIndent() + "\n".run { if (cost <= 0) this else "$this| cost : $cost" }
+    }
+
+    fun toJson() = try {
+        JSONObject().apply {
+            processInfo?.let { put("processInfo", it.toJson()) }
+            statusInfo?.let { put("statusInfo", it.toJson()) }
+            javaMemInfo?.let { put("javaMemInfo", it.toJson()) }
+            nativeMemInfo?.let { put("nativeMemInfo", it.toJson()) }
+            systemInfo?.let { put("systemInfo", it.toJson()) }
+            amsPssInfo?.let { put("amsPssInfo", it.toJson()) }
+            debugPssInfo?.let { put("debugPssInfo", it.toJson()) }
+        }
+    } catch (e: Throwable) {
+        MatrixLog.printErrStackTrace(TAG, e, "")
+        JSONObject()
     }
 
     companion object {
