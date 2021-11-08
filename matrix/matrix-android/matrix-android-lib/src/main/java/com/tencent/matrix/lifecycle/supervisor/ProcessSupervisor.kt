@@ -99,6 +99,7 @@ object ProcessSupervisor : MultiSourceStatefulOwner(ReduceOperators.OR) {
         DispatchReceiver.removeKilledListener(listener)
 
     // TODO: 2021/11/2 force kill for processes not responding
+    // TODO: 2021/11/8 todo remove zombie records
     fun backgroundLruKill(killedResult: (result: Int, process: String?) -> Unit) =
         SupervisorReceiver.backgroundLruKill(application, killedResult)
 
