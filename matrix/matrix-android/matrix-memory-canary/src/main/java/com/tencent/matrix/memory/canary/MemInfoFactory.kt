@@ -315,12 +315,10 @@ data class MemInfo(
                     Assert.assertEquals(memInfoArray.size, pidMemInfoArray.size)
                 }
                 for (i in memInfoArray.indices) {
-                    pidMemInfoArray[i].totalPss
-                    memInfoArray[i].apply {
-                        pidMemInfoArray[i].apply {
-                            amsPssInfo = PssInfo.get(this)
-                        }
+                    if (pidMemInfoArray[i] == null) {
+                        memInfoArray[i].amsPssInfo = PssInfo(0, 0, 0, 0, 0, 0, 0, 0, 0)
                     }
+                    memInfoArray[i].amsPssInfo = PssInfo.get(pidMemInfoArray[i])
                 }
             }
             MatrixLog.i(TAG, "getAllProcessPss cost: ${System.currentTimeMillis() - begin}")
