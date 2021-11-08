@@ -7,6 +7,7 @@ import com.tencent.matrix.lifecycle.EmptyActivityLifecycleCallbacks
 import com.tencent.matrix.lifecycle.StatefulOwner
 import com.tencent.matrix.util.MatrixLog
 import java.util.*
+import kotlin.collections.HashMap
 
 /**
  * Created by Yves on 2021/9/24
@@ -17,18 +18,12 @@ object ActivityRecorder : StatefulOwner() {
 
     private val callbacks = ActivityCallbacks()
 
+    private val stub = Any()
+
     private val activityRecord = WeakHashMap<Activity, Any>()
+    private val destroyedActivities = WeakHashMap<Activity, Any>()
 
-    private fun WeakHashMap<Activity, Any>.contains(clazz: Class<*>) : Boolean {
-        entries.forEach { e ->
-            if (clazz == e.key?.javaClass) {
-                return true
-            }
-        }
-        return false
-    }
-
-    private fun WeakHashMap<Activity, Any>.contains(clazz: String) : Boolean {
+    private fun WeakHashMap<Activity, Any>.contains(clazz: String): Boolean {
         entries.toTypedArray().forEach { e ->
             if (clazz == e.key?.javaClass?.name) {
                 return true
@@ -61,7 +56,7 @@ object ActivityRecorder : StatefulOwner() {
         app.registerActivityLifecycleCallbacks(callbacks)
     }
 
-    fun sizeExcept(activityNames: Array<String>?) : Int {
+    fun sizeExcept(activityNames: Array<String>?): Int {
         var size = activityRecord.size
         activityNames?.forEach {
             if (activityRecord.contains(it)) {
@@ -69,6 +64,23 @@ object ActivityRecorder : StatefulOwner() {
             }
         }
         return size
+    }
+
+    fun retainedActivities(): Map<String, Int> {
+        val map = HashMap<String, Int>()
+        Runtime.getRuntime().gc()
+
+        destroyedActivities.entries.toTypedArray()
+            .filter {
+                it.key != null
+            }.forEach {
+                it.key.javaClass.simpleName.let { name ->
+                    var count = map.getOrPut(name, { 0 })
+                    map[name] = ++count
+                }
+            }
+
+        return map
     }
 
     private fun onStateChanged() {
@@ -82,7 +94,7 @@ object ActivityRecorder : StatefulOwner() {
     private class ActivityCallbacks : EmptyActivityLifecycleCallbacks() {
 
         override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {
-            activityRecord[activity] = Any()
+            activityRecord[activity] = stub
             onStateChanged()
             MatrixLog.d(
                 TAG, "[${activity.javaClass.simpleName}] -> ${
@@ -103,6 +115,7 @@ object ActivityRecorder : StatefulOwner() {
                     activityRecord.keys.contentToString()
                 }"
             )
+            destroyedActivities[activity] = stub
         }
     }
 }
