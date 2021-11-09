@@ -134,6 +134,11 @@ public class MethodTracer {
             try {
                 final String changedFileInputFullPath = classFile.getAbsolutePath();
                 final File changedFileOutput = new File(changedFileInputFullPath.replace(input.getAbsolutePath(), output.getAbsolutePath()));
+
+                if (changedFileOutput.getCanonicalPath().equals(classFile.getCanonicalPath())) {
+                    throw new RuntimeException("Input file(" + classFile.getCanonicalPath() + ") should not be same with output!");
+                }
+
                 if (!changedFileOutput.exists()) {
                     changedFileOutput.getParentFile().mkdirs();
                 }
