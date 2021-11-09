@@ -284,14 +284,16 @@ class MatrixTrace(
 
             if (isIncremental) {
                 val outChangedFiles = HashMap<File, Status>()
+
                 for ((changedFileInput, status) in mapOfChangedFiles) {
                     val changedFileInputFullPath = changedFileInput.absolutePath
 
-                    val changedFileOutput = if (changedFileInputFullPath.contains(inputFullPath)){
-                        File(changedFileInputFullPath.replace(inputFullPath, outputFullPath))
-                    } else { // if not contains, changedFileOutput should be modify, else when we read and write the same file, the jar would be empty
-                        File(outputFullPath, changedFileInput.name)
+                    // mapOfChangedFiles is contains all. each collectDirectoryInputTask should handle itself, should not handle other file
+                    if (!changedFileInputFullPath.contains(inputFullPath)) {
+                        continue
                     }
+
+                    val changedFileOutput = File(changedFileInputFullPath.replace(inputFullPath, outputFullPath))
 
                     if (status == Status.ADDED || status == Status.CHANGED) {
                         resultOfDirInputToOut[changedFileInput] = changedFileOutput
