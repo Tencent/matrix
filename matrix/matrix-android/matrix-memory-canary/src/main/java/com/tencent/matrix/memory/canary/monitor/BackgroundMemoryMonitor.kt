@@ -114,18 +114,14 @@ class BackgroundMemoryMonitor(private val config: BackgroundMemoryMonitorConfig)
                 "native" to nativeThresholdByte.check(memInfo.nativeMemInfo!!.usedByte, busy, cb),
                 "debugPss" to debugPssThresholdK.check(memInfo.debugPssInfo!!.totalPssK.toLong(), busy, cb),
                 "amsPss" to (amsPssThresholdK.check(memInfo.amsPssInfo!!.totalPssK.toLong(), busy, cb) && lastCheckToNow > TimeUnit.MINUTES.toMillis(5))
-            ).onEach { MatrixLog.i(TAG, "$it") }.any { it.second }
+            ).onEach { MatrixLog.i(TAG, "is over threshold ? $it") }.any { it.second }
             // @formatter:on
         }
 
         MatrixLog.i(
             TAG,
-            "check: is busy background: $busy, interval: $lastCheckToNow, overThreshold: $overThreshold, shouldCallback: $shouldCallback"
+            "check: overThreshold: $overThreshold,  is busy: $busy, interval: $lastCheckToNow, shouldCallback: $shouldCallback $memInfo"
         )
-
-        if (overThreshold) {
-            MatrixLog.e(TAG, "memory over threshold: $memInfo")
-        }
 
         if (overThreshold && shouldCallback) {
             MatrixLog.i(TAG, "report over threshold")
