@@ -54,18 +54,3 @@ void xhook_enable_sigsegv_protection(int flag)
 {
     return xh_core_enable_sigsegv_protection(flag);
 }
-
-void* xhook_elf_open(const char *path)
-{
-    return xh_core_elf_open(path);
-}
-
-int xhook_hook_symbol(void* h_lib, const char* symbol, void* new_func, void** old_func)
-{
-    return xh_core_hook_symbol(h_lib, symbol, new_func, old_func);
-}
-
-void xhook_elf_close(void *h_lib)
-{
-    xh_core_elf_close(h_lib);
-}

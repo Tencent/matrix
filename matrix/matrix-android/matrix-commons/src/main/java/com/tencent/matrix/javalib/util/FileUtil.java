@@ -252,6 +252,13 @@ public class FileUtil {
             Enumeration emu = zipFile.entries();
             while (emu.hasMoreElements()) {
                 ZipEntry entry = (ZipEntry) emu.nextElement();
+                String entryName = entry.getName();
+
+                if (Util.preventZipSlip(new File(destFolder), entryName)) {
+                    Log.e(TAG, "writeEntry entry %s failed!", entryName);
+                    continue;
+                }
+
                 if (entry.isDirectory()) {
                     new File(destFolder, entry.getName()).mkdirs();
                     continue;

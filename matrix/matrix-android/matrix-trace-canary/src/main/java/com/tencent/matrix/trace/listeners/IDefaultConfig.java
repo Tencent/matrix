@@ -40,8 +40,14 @@ public interface IDefaultConfig {
 
     boolean isDevEnv();
 
+    int getLooperPrinterStackStyle();
+
     String getAnrTraceFilePath();
 
     String getPrintTraceFilePath();
+
+    boolean isHistoryMsgRecorderEnable();
+
+    boolean isDenseMsgTracerEnable();
 
 }

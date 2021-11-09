@@ -66,14 +66,22 @@ class LocalUnwinder {
 
   bool Unwind(std::vector<LocalFrameData>* frame_info, size_t max_frames);
 
+  size_t Unwind(void** pcs, size_t max_frames);
+
+  size_t Unwind(void* ucontext, void** pcs, size_t max_frames);
+
   bool ShouldSkipLibrary(const std::string& map_name);
 
   MapInfo* GetMapInfo(uint64_t pc);
+
+  bool GetStackElementString(uint64_t pc, std::string* string_out);
 
   ErrorCode LastErrorCode() { return last_error_.code; }
   uint64_t LastErrorAddress() { return last_error_.address; }
 
  private:
+  size_t UnwindImpl(std::unique_ptr<unwindstack::Regs>& regs, void** pcs, size_t max_frames);
+
   pthread_rwlock_t maps_rwlock_;
   std::unique_ptr<LocalUpdatableMaps> maps_ = nullptr;
   std::shared_ptr<Memory> process_memory_;

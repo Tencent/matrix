@@ -65,6 +65,7 @@ public class MonitorFeatureOverAllTest {
                 .enable(AlarmMonitorFeature.class)
                 .enable(AppStatMonitorFeature.class)
                 .enable(BlueToothMonitorFeature.class)
+                .enable(CpuStatFeature.class)
                 .enableBuiltinForegroundNotify(false)
                 .enableForegroundMode(true)
                 .wakelockTimeout(1000)

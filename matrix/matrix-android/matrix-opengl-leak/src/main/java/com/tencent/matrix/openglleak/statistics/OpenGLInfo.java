@@ -2,8 +2,6 @@ package com.tencent.matrix.openglleak.statistics;
 
 import android.text.TextUtils;
 
-import com.tencent.matrix.util.MatrixLog;
-
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class OpenGLInfo {
@@ -158,7 +156,6 @@ public class OpenGLInfo {
         synchronized (counter) {
             int count = counter.get();
             if (count == 1) {
-                MatrixLog.i(TAG, "release:" + nativeStackPtr);
                 releaseNative(nativeStackPtr);
             }
 

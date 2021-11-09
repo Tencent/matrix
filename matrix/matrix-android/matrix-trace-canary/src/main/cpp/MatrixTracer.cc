@@ -30,7 +30,7 @@
 #include <sys/socket.h>
 #include <time.h>
 #include <signal.h>
-#include <xhook.h>
+#include <xhook_ext.h>
 #include <linux/prctl.h>
 #include <sys/prctl.h>
 
@@ -47,14 +47,19 @@
 #include "nativehelper/scoped_local_ref.h"
 #include "AnrDumper.h"
 
-#define voidp void*
 #define PROP_VALUE_MAX  92
+#define PROP_SDK_NAME "ro.build.version.sdk"
+#define HOOK_CONNECT_PATH "/dev/socket/tombstoned_java_trace"
+#define HOOK_OPEN_PATH "/data/anr/traces.txt"
+
+#define HOOK_REQUEST_GROUPID_THREAD_PRIO_TRACE 0x01
 
 using namespace MatrixTracer;
 
 static std::optional<AnrDumper> sAnrDumper;
 static bool isTraceWrite = false;
 static bool fromMyPrintTrace = false;
+static bool isHooking = false;
 static std::string anrTracePathstring;
 static std::string printTracePathstring;
 static int signalCatcherTid;
@@ -106,18 +111,18 @@ int my_prctl(int option, unsigned long arg2, unsigned long arg3,
 
 
 void writeAnr(const std::string& content, const std::string &filePath) {
+    unHookAnrTraceWrite();
     std::stringstream stringStream(content);
     std::string to;
     std::ofstream outfile;
     outfile.open(filePath);
     outfile << content;
-    unHookAnrTraceWrite();
 }
 
 int (*original_connect)(int __fd, const struct sockaddr* __addr, socklen_t __addr_length);
 int my_connect(int __fd, const struct sockaddr* __addr, socklen_t __addr_length) {
     if (__addr!= nullptr) {
-        if (strcmp(__addr->sa_data, "/dev/socket/tombstoned_java_trace") == 0) {
+        if (strcmp(__addr->sa_data, HOOK_CONNECT_PATH) == 0) {
             signalCatcherTid = gettid();
             isTraceWrite = true;
         }
@@ -129,7 +134,7 @@ int (*original_open)(const char *pathname, int flags, mode_t mode);
 
 int my_open(const char *pathname, int flags, mode_t mode) {
     if (pathname!= nullptr) {
-        if (strcmp(pathname, "/data/anr/traces.txt") == 0) {
+        if (strcmp(pathname, HOOK_OPEN_PATH) == 0) {
             signalCatcherTid = gettid();
             isTraceWrite = true;
         }
@@ -187,7 +192,7 @@ bool printTraceCallback() {
 
 int getApiLevel() {
     char buf[PROP_VALUE_MAX];
-    int len = __system_property_get("ro.build.version.sdk", buf);
+    int len = __system_property_get(PROP_SDK_NAME, buf);
     if (len <= 0)
         return 0;
 
@@ -196,39 +201,45 @@ int getApiLevel() {
 
 
 void hookAnrTraceWrite(bool isSiUser) {
-    if (!fromMyPrintTrace && isSiUser) {
-        return;
-    }
-
     int apiLevel = getApiLevel();
     if (apiLevel < 19) {
         return;
     }
+
+    if (!fromMyPrintTrace && isSiUser) {
+        return;
+    }
+
+    if (isHooking) {
+        return;
+    }
+
+    isHooking = true;
 
     if (apiLevel >= 27) {
         void *libcutils_info = xhook_elf_open("/system/lib64/libcutils.so");
         if(!libcutils_info) {
             libcutils_info = xhook_elf_open("/system/lib/libcutils.so");
         }
-        xhook_hook_symbol(libcutils_info, "connect", (void *) my_connect, (void **) (&original_connect));
+        xhook_got_hook_symbol(libcutils_info, "connect", (void*) my_connect, (void**) (&original_connect));
     } else {
         void* libart_info = xhook_elf_open("libart.so");
-        xhook_hook_symbol(libart_info, "open", (void *) my_open, (void **) (&original_open));
+        xhook_got_hook_symbol(libart_info, "open", (void*) my_open, (void**) (&original_open));
     }
 
     if (apiLevel >= 30 || apiLevel == 25 || apiLevel == 24) {
         void* libc_info = xhook_elf_open("libc.so");
-        xhook_hook_symbol(libc_info, "write", (void *) my_write, (void **) (&original_write));
+        xhook_got_hook_symbol(libc_info, "write", (void*) my_write, (void**) (&original_write));
     } else if (apiLevel == 29) {
         void* libbase_info = xhook_elf_open("/system/lib64/libbase.so");
         if(!libbase_info) {
             libbase_info = xhook_elf_open("/system/lib/libbase.so");
         }
-        xhook_hook_symbol(libbase_info, "write", (void *) my_write, (void **) (&original_write));
+        xhook_got_hook_symbol(libbase_info, "write", (void*) my_write, (void**) (&original_write));
         xhook_elf_close(libbase_info);
     } else {
         void* libart_info = xhook_elf_open("libart.so");
-        xhook_hook_symbol(libart_info, "write", (void *) my_write, (void **) (&original_write));
+        xhook_got_hook_symbol(libart_info, "write", (void*) my_write, (void**) (&original_write));
     }
 }
 
@@ -236,22 +247,23 @@ void unHookAnrTraceWrite() {
     int apiLevel = getApiLevel();
     if (apiLevel >= 27) {
         void *libcutils_info = xhook_elf_open("/system/lib64/libcutils.so");
-        xhook_hook_symbol(libcutils_info, "connect", (void *) original_connect, nullptr);
+        xhook_got_hook_symbol(libcutils_info, "connect", (void*) original_connect, nullptr);
     } else {
         void* libart_info = xhook_elf_open("libart.so");
-        xhook_hook_symbol(libart_info, "open", (void *) original_connect, nullptr);
+        xhook_got_hook_symbol(libart_info, "open", (void*) original_connect, nullptr);
     }
 
     if (apiLevel >= 30 || apiLevel == 25 || apiLevel ==24) {
         void* libc_info = xhook_elf_open("libc.so");
-        xhook_hook_symbol(libc_info, "write", (void *) original_write, nullptr);
+        xhook_got_hook_symbol(libc_info, "write", (void*) original_write, nullptr);
     } else if (apiLevel == 29) {
         void* libbase_info = xhook_elf_open("/system/lib64/libbase.so");
-        xhook_hook_symbol(libbase_info, "write", (void *) original_write, nullptr);
+        xhook_got_hook_symbol(libbase_info, "write", (void*) original_write, nullptr);
     } else {
         void* libart_info = xhook_elf_open("libart.so");
-        xhook_hook_symbol(libart_info, "write", (void *) original_write, nullptr);
+        xhook_got_hook_symbol(libart_info, "write", (void*) original_write, nullptr);
     }
+    isHooking = false;
 }
 
 static void nativeInitSignalAnrDetective(JNIEnv *env, jclass, jstring anrTracePath, jstring printTracePath) {
@@ -267,8 +279,10 @@ static void nativeFreeSignalAnrDetective(JNIEnv *env, jclass) {
 }
 
 static void nativeInitMainThreadPriorityDetective(JNIEnv *env, jclass) {
-    xhook_register(".*\\.so$", "setpriority", (void *) my_setpriority, (void **) (&original_setpriority));
-    xhook_register(".*\\.so$", "prctl", (void *) my_prctl, (void **) (&original_prctl));
+    xhook_grouped_register(HOOK_REQUEST_GROUPID_THREAD_PRIO_TRACE, ".*\\.so$", "setpriority",
+            (void *) my_setpriority, (void **) (&original_setpriority));
+    xhook_grouped_register(HOOK_REQUEST_GROUPID_THREAD_PRIO_TRACE, ".*\\.so$", "prctl",
+            (void *) my_prctl, (void **) (&original_prctl));
     xhook_refresh(true);
 }
 
@@ -281,13 +295,13 @@ template <typename T, std::size_t sz>
 static inline constexpr std::size_t NELEM(const T(&)[sz]) { return sz; }
 
 static const JNINativeMethod ANR_METHODS[] = {
-    {"nativeInitSignalAnrDetective", "(Ljava/lang/String;Ljava/lang/String;)V", (voidp) nativeInitSignalAnrDetective},
-    {"nativeFreeSignalAnrDetective", "()V", (voidp) nativeFreeSignalAnrDetective},
-    {"nativePrintTrace", "()V", (voidp) nativePrintTrace},
+    {"nativeInitSignalAnrDetective", "(Ljava/lang/String;Ljava/lang/String;)V", (void *) nativeInitSignalAnrDetective},
+    {"nativeFreeSignalAnrDetective", "()V", (void *) nativeFreeSignalAnrDetective},
+    {"nativePrintTrace", "()V", (void *) nativePrintTrace},
 };
 
 static const JNINativeMethod THREAD_PRIORITY_METHODS[] = {
-        {"nativeInitMainThreadPriorityDetective", "()V", (voidp) nativeInitMainThreadPriorityDetective},
+        {"nativeInitMainThreadPriorityDetective", "()V", (void *) nativeInitMainThreadPriorityDetective},
 };
 
 JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *) {

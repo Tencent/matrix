@@ -78,6 +78,9 @@ abstract class MatrixTraceTask : DefaultTask() {
     @get:Optional
     abstract val methodMapFileOutput: RegularFileProperty
 
+    @get:Optional
+    abstract val skipCheckClass: Property<Boolean>
+
     @TaskAction
     fun execute(inputChanges: InputChanges) {
 
@@ -107,11 +110,13 @@ abstract class MatrixTraceTask : DefaultTask() {
                     methodMapFilePath = methodMapFileOutput.asFile.get().absolutePath,
                     baseMethodMapPath = baseMethodMapFile.asFile.orNull?.absolutePath,
                     blockListFilePath = blockListFile.asFile.orNull?.absolutePath,
-                    mappingDir = mappingDir.get()
+                    mappingDir = mappingDir.get(),
+                    project = project
             ).doTransform(
                     classInputs = classInputs.files,
                     changedFiles = changedFiles,
                     isIncremental = incremental,
+                    skipCheckClass = this.skipCheckClass.get(),
                     traceClassDirectoryOutput = outputDirectory,
                     inputToOutput = ConcurrentHashMap(),
                     legacyReplaceChangedFile = null,
@@ -173,6 +178,7 @@ abstract class MatrixTraceTask : DefaultTask() {
             }
             task.mappingDir.set(mappingOut)
             task.traceClassOutputDirectory.set(traceClassOut)
+            task.skipCheckClass.set(extension.isSkipCheckClass)
 
             task.classOutputs.from(project.files(Callable<Collection<File>> {
                 val outputDirectory = File(task.traceClassOutputDirectory.get())

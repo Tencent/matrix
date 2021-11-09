@@ -30,3 +30,4 @@ include ':test:matrix-backtrace-benchmark'
 
 // TEST
 include ':test:test-backtrace'
+include ':test:test-memoryhook'

@@ -7,13 +7,15 @@ import android.os.SystemClock;
 import android.text.TextUtils;
 import android.util.LongSparseArray;
 
-import com.tencent.matrix.Matrix;
 import com.tencent.matrix.batterycanary.monitor.feature.AbsTaskMonitorFeature.TaskJiffiesSnapshot;
 import com.tencent.matrix.batterycanary.monitor.feature.AlarmMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.AlarmMonitorFeature.AlarmSnapshot;
 import com.tencent.matrix.batterycanary.monitor.feature.AppStatMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.BlueToothMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.BlueToothMonitorFeature.BlueToothSnapshot;
+import com.tencent.matrix.batterycanary.monitor.feature.CompositeMonitors;
+import com.tencent.matrix.batterycanary.monitor.feature.CpuStatFeature;
+import com.tencent.matrix.batterycanary.monitor.feature.CpuStatFeature.CpuStateSnapshot;
 import com.tencent.matrix.batterycanary.monitor.feature.DeviceStatMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.DeviceStatMonitorFeature.BatteryTmpSnapshot;
 import com.tencent.matrix.batterycanary.monitor.feature.DeviceStatMonitorFeature.CpuFreqSnapshot;
@@ -25,6 +27,7 @@ import com.tencent.matrix.batterycanary.monitor.feature.LocationMonitorFeature.L
 import com.tencent.matrix.batterycanary.monitor.feature.LooperTaskMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Delta;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Entry.BeanEntry;
+import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Entry.DigitEntry;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Entry.ListEntry;
 import com.tencent.matrix.batterycanary.monitor.feature.NotificationMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.NotificationMonitorFeature.BadNotification;
@@ -37,10 +40,12 @@ import com.tencent.matrix.batterycanary.monitor.feature.WifiMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.WifiMonitorFeature.WifiSnapshot;
 import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
 import com.tencent.matrix.batterycanary.utils.Consumer;
+import com.tencent.matrix.batterycanary.utils.PowerProfile;
 import com.tencent.matrix.util.MatrixLog;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 import androidx.annotation.CallSuper;
@@ -67,57 +72,65 @@ public interface BatteryMonitorCallback extends
         private static final int ONE_MIN = 60 * 1000;
 
         @NonNull
-        private BatteryMonitorCore mMonitor;
-        private final Printer mPrinter = new Printer();
+        protected BatteryMonitorCore mMonitor;
+        @NonNull
+        protected CompositeMonitors mCompositeMonitors;
+        protected final Printer mPrinter = new Printer();
 
-        private long mTraceBgnMillis;
-        private boolean mIsForeground;
+        protected long mTraceBgnMillis;
+        protected boolean mIsForeground;
         @Nullable
         AppStats mAppStats;
-        private final LongSparseArray<List<LooperTaskMonitorFeature.TaskTraceInfo>> tasks = new LongSparseArray<>();
+        protected final LongSparseArray<List<LooperTaskMonitorFeature.TaskTraceInfo>> tasks = new LongSparseArray<>();
 
-        @Nullable
+        // TODO: Remove deprecated fields
+        @Deprecated
         protected AlarmMonitorFeature mAlarmFeat;
-        @Nullable
+        @Deprecated
         protected AppStatMonitorFeature mAppStatFeat;
-        @Nullable
+        @Deprecated
         protected BlueToothMonitorFeature mBlueToothFeat;
-        @Nullable
+        @Deprecated
         protected DeviceStatMonitorFeature mDevStatFeat;
-        @Nullable
+        @Deprecated
         protected JiffiesMonitorFeature mJiffiesFeat;
-        @Nullable
+        @Deprecated
         protected LocationMonitorFeature mLocationFeat;
-        @Nullable
+        @Deprecated
         protected TrafficMonitorFeature mTrafficFeat;
-        @Nullable
+        @Deprecated
         protected WakeLockMonitorFeature mWakeLockFeat;
-        @Nullable
+        @Deprecated
         protected WifiMonitorFeature mWifiMonitorFeat;
+        @Deprecated
+        protected CpuStatFeature mCpuStatFeat;
 
-        @Nullable
+        @Deprecated
         protected AlarmSnapshot mLastAlarmSnapshot;
-        @Nullable
+        @Deprecated
         protected BlueToothSnapshot mLastBlueToothSnapshot;
-        @Nullable
+        @Deprecated
         protected BatteryTmpSnapshot mLastBatteryTmpSnapshot;
-        @Nullable
+        @Deprecated
         protected CpuFreqSnapshot mLastCpuFreqSnapshot;
-        @Nullable
+        @Deprecated
         protected JiffiesSnapshot mLastJiffiesSnapshot;
-        @Nullable
+        @Deprecated
         protected LocationSnapshot mLastLocationSnapshot;
-        @Nullable
+        @Deprecated
         protected RadioStatSnapshot mLastTrafficSnapshot;
-        @Nullable
+        @Deprecated
         protected WakeLockSnapshot mLastWakeWakeLockSnapshot;
-        @Nullable
+        @Deprecated
         protected WifiSnapshot mLastWifiSnapshot;
+        @Deprecated
+        protected CpuStateSnapshot mLastCpuStateSnapshot;
 
         @SuppressWarnings("UnusedReturnValue")
         @VisibleForTesting
-        public final BatteryPrinter attach(BatteryMonitorCore monitorCore) {
+        public BatteryPrinter attach(BatteryMonitorCore monitorCore) {
             mMonitor = monitorCore;
+            mCompositeMonitors = new CompositeMonitors(monitorCore);
             return this;
         }
 
@@ -141,7 +154,10 @@ public interface BatteryMonitorCallback extends
         @Override
         public void onTraceBegin() {
             mTraceBgnMillis = SystemClock.uptimeMillis();
+            mCompositeMonitors.clear();
+            mCompositeMonitors.configureAllSnapshot();
 
+            // TODO: Remove deprecated statements
             // Configure begin snapshots
             mAlarmFeat = mMonitor.getMonitorFeature(AlarmMonitorFeature.class);
             if (mAlarmFeat != null) {
@@ -185,6 +201,11 @@ public interface BatteryMonitorCallback extends
             if (mWifiMonitorFeat != null) {
                 mLastWifiSnapshot = mWifiMonitorFeat.currentSnapshot();
             }
+
+            mCpuStatFeat = mMonitor.getMonitorFeature(CpuStatFeature.class);
+            if (mCpuStatFeat != null && mCpuStatFeat.isSupported()) {
+                mLastCpuStateSnapshot = mCpuStatFeat.currentCpuStateSnapshot();
+            }
         }
 
         @Override
@@ -197,6 +218,7 @@ public interface BatteryMonitorCallback extends
             }
 
             mAppStats = AppStats.current(duringMillis).setForeground(isForeground);
+            mCompositeMonitors.configureDeltas();
             onCanaryDump(mAppStats);
             mAppStats = null;
         }
@@ -340,47 +362,52 @@ public interface BatteryMonitorCallback extends
         }
 
         @CallSuper
-        protected void onWritingJiffiesSection(AppStats appStats) {
-            if (null != mJiffiesFeat && null != mLastJiffiesSnapshot) {
-                JiffiesSnapshot curr = mJiffiesFeat.currentJiffiesSnapshot();
-                Delta<JiffiesSnapshot> delta = curr.diff(mLastJiffiesSnapshot);
-
-                long minute = appStats.getMinute();
-                for (ThreadJiffiesEntry threadJiffies : delta.dlt.threadEntries.getList()) {
-                    if (!threadJiffies.stat.toUpperCase().contains("R")) {
-                        continue;
-                    }
-                    // Watching thread state when thread is:
-                    // 1. still running (status 'R')
-                    // 2. runing time > 10min
-                    // 3. avgJiffies > THRESHOLD
-                    long avgJiffies = threadJiffies.get() / minute;
-                    if (appStats.isForeground()) {
-                        if (minute > 10 && avgJiffies > getMonitor().getConfig().fgThreadWatchingLimit) {
-                            MatrixLog.i(TAG, "threadWatchDog fg set, name = " + delta.dlt.name
-                                    + ", pid = " + delta.dlt.pid
-                                    + ", tid = " + threadJiffies.tid);
-                            mJiffiesFeat.watchBackThreadSate(true, delta.dlt.pid, threadJiffies.tid);
+        protected void onWritingJiffiesSection(final AppStats appStats) {
+            mCompositeMonitors.getDelta(JiffiesSnapshot.class, new Consumer<Delta<JiffiesSnapshot>>() {
+                @Override
+                public void accept(final Delta<JiffiesSnapshot> delta) {
+                    final long minute = appStats.getMinute();
+                    for (final ThreadJiffiesEntry threadJiffies : delta.dlt.threadEntries.getList()) {
+                        if (!threadJiffies.stat.toUpperCase().contains("R")) {
+                            continue;
                         }
-                    } else {
-                        if (minute > 10 && avgJiffies > getMonitor().getConfig().bgThreadWatchingLimit) {
-                            MatrixLog.i(TAG, "threadWatchDog bg set, name = " + delta.dlt.name
-                                    + ", pid = " + delta.dlt.pid
-                                    + ", tid = " + threadJiffies.tid);
-                            mJiffiesFeat.watchBackThreadSate(false, delta.dlt.pid, threadJiffies.tid);
-                        }
+                        mCompositeMonitors.getFeature(JiffiesMonitorFeature.class, new Consumer<JiffiesMonitorFeature>() {
+                            @Override
+                            public void accept(JiffiesMonitorFeature feature) {
+                                // Watching thread state when thread is:
+                                // 1. still running (status 'R')
+                                // 2. runing time > 10min
+                                // 3. avgJiffies > THRESHOLD
+                                long avgJiffies = threadJiffies.get() / minute;
+                                if (appStats.isForeground()) {
+                                    if (minute > 10 && avgJiffies > getMonitor().getConfig().fgThreadWatchingLimit) {
+                                        MatrixLog.i(TAG, "threadWatchDog fg set, name = " + delta.dlt.name
+                                                + ", pid = " + delta.dlt.pid
+                                                + ", tid = " + threadJiffies.tid);
+                                        feature.watchBackThreadSate(true, delta.dlt.pid, threadJiffies.tid);
+                                    }
+                                } else {
+                                    if (minute > 10 && avgJiffies > getMonitor().getConfig().bgThreadWatchingLimit) {
+                                        MatrixLog.i(TAG, "threadWatchDog bg set, name = " + delta.dlt.name
+                                                + ", pid = " + delta.dlt.pid
+                                                + ", tid = " + threadJiffies.tid);
+                                        feature.watchBackThreadSate(false, delta.dlt.pid, threadJiffies.tid);
+                                    }
+                                }
+                            }
+                        });
                     }
+                    onReportJiffies(delta);
+                    onWritingSectionContent(delta, appStats, mPrinter);
                 }
-                onReportJiffies(delta);
-                onWritingSectionContent(delta, appStats, mPrinter);
-            }
+            });
         }
 
         @CallSuper
         protected void onWritingAppStatSection(final AppStats appStats) {
             createSection("app_stats", new Consumer<Printer>() {
                 @Override
-                public void accept(Printer printer) {
+                public void accept(final Printer printer) {
                     printer.createSubSection("stat_time");
                     printer.writeLine("time", appStats.getMinute() + "(min)");
                     printer.writeLine("fg", String.valueOf(appStats.appFgRatio));
@@ -394,97 +421,114 @@ public interface BatteryMonitorCallback extends
                     if (!TextUtils.isEmpty(appStats.sceneTop2)) {
                         printer.writeLine("sceneTop2", appStats.sceneTop2 + "/" + appStats.sceneTop2Ratio);
                     }
-
-                    if (mAppStatFeat != null) {
-                        AppStatMonitorFeature.AppStatSnapshot currSnapshot = mAppStatFeat.currentAppStatSnapshot();
-                        printer.createSubSection("run_time");
-                        printer.writeLine("time", currSnapshot.uptime.get() / ONE_MIN + "(min)");
-                        printer.writeLine("fg", String.valueOf(currSnapshot.fgRatio.get()));
-                        printer.writeLine("bg", String.valueOf(currSnapshot.bgRatio.get()));
-                        printer.writeLine("fgSrv", String.valueOf(currSnapshot.fgSrvRatio.get()));
-                    }
+                    mCompositeMonitors.getFeature(AppStatMonitorFeature.class, new Consumer<AppStatMonitorFeature>() {
+                        @Override
+                        public void accept(AppStatMonitorFeature feature) {
+                            AppStatMonitorFeature.AppStatSnapshot currSnapshot = feature.currentAppStatSnapshot();
+                            printer.createSubSection("run_time");
+                            printer.writeLine("time", currSnapshot.uptime.get() / ONE_MIN + "(min)");
+                            printer.writeLine("fg", String.valueOf(currSnapshot.fgRatio.get()));
+                            printer.writeLine("bg", String.valueOf(currSnapshot.bgRatio.get()));
+                            printer.writeLine("fgSrv", String.valueOf(currSnapshot.fgSrvRatio.get()));
+                        }
+                    });
                 }
             });
         }
 
         @CallSuper
         protected void onWritingSections(final AppStats appStats) {
-            if (/**/(mAlarmFeat != null && mLastAlarmSnapshot != null)
-                    || (mWakeLockFeat != null && mLastWakeWakeLockSnapshot != null)
+            if (/**/(mCompositeMonitors.getDelta(AlarmSnapshot.class) != null)
+                    || (mCompositeMonitors.getDelta(WakeLockSnapshot.class) != null)
             ) {
                 // Alarm, WakeLock
                 createSection("awake", new Consumer<Printer>() {
                     @Override
                     public void accept(Printer printer) {
-                        if (mAlarmFeat != null && mLastAlarmSnapshot != null) {
-                            AlarmSnapshot alarmSnapshot = mAlarmFeat.currentAlarms();
-                            Delta<AlarmSnapshot> delta = alarmSnapshot.diff(mLastAlarmSnapshot);
-                            onReportAlarm(delta);
-                            onWritingSectionContent(delta, appStats, mPrinter);
-                        }
-                        if (mWakeLockFeat != null && mLastWakeWakeLockSnapshot != null) {
-                            WakeLockSnapshot wakeLockSnapshot = mWakeLockFeat.currentWakeLocks();
-                            Delta<WakeLockSnapshot> delta = wakeLockSnapshot.diff(mLastWakeWakeLockSnapshot);
-                            onReportWakeLock(delta);
-                            onWritingSectionContent(delta, appStats, mPrinter);
-                        }
+                        mCompositeMonitors.getDelta(AlarmSnapshot.class, new Consumer<Delta<AlarmSnapshot>>() {
+                            @Override
+                            public void accept(Delta<AlarmSnapshot> delta) {
+                                onReportAlarm(delta);
+                                onWritingSectionContent(delta, appStats, mPrinter);
+                            }
+                        });
+                        mCompositeMonitors.getDelta(WakeLockSnapshot.class, new Consumer<Delta<WakeLockSnapshot>>() {
+                            @Override
+                            public void accept(Delta<WakeLockSnapshot> delta) {
+                                onReportWakeLock(delta);
+                                onWritingSectionContent(delta, appStats, mPrinter);
+                            }
+                        });
                     }
                 });
             }
 
-            if (/**/(mBlueToothFeat != null && mLastBlueToothSnapshot != null)
-                    || (mWifiMonitorFeat != null && mLastWifiSnapshot != null)
-                    || (mLocationFeat != null && mLastLocationSnapshot != null)
+            if (/**/(mCompositeMonitors.getDelta(BlueToothSnapshot.class) != null)
+                    || (mCompositeMonitors.getDelta(WifiSnapshot.class) != null)
+                    || (mCompositeMonitors.getDelta(LocationSnapshot.class) != null)
             ) {
-                // Scanning
+                // Scanning: BL, WIFI, GPS
                 createSection("scanning", new Consumer<Printer>() {
                     @Override
                     public void accept(Printer printer) {
-                        if (mBlueToothFeat != null && mLastBlueToothSnapshot != null) {
-                            // BlueTooth
-                            BlueToothSnapshot currSnapshot = mBlueToothFeat.currentSnapshot();
-                            Delta<BlueToothSnapshot> delta = currSnapshot.diff(mLastBlueToothSnapshot);
-                            onReportBlueTooth(delta);
-                            onWritingSectionContent(delta, appStats, mPrinter);
-                        }
-                        if (mWifiMonitorFeat != null && mLastWifiSnapshot != null) {
-                            // Wifi
-                            WifiSnapshot currSnapshot = mWifiMonitorFeat.currentSnapshot();
-                            Delta<WifiSnapshot> delta = currSnapshot.diff(mLastWifiSnapshot);
-                            onReportWifi(delta);
-                            onWritingSectionContent(delta, appStats, mPrinter);
-                        }
-                        if (mLocationFeat != null && mLastLocationSnapshot != null) {
-                            // Location
-                            LocationSnapshot currSnapshot = mLocationFeat.currentSnapshot();
-                            Delta<LocationSnapshot> delta = currSnapshot.diff(mLastLocationSnapshot);
-                            onReportLocation(delta);
-                            onWritingSectionContent(delta, appStats, mPrinter);
-                        }
+                        // BlueTooth
+                        mCompositeMonitors.getDelta(BlueToothSnapshot.class, new Consumer<Delta<BlueToothSnapshot>>() {
+                            @Override
+                            public void accept(Delta<BlueToothSnapshot> delta) {
+                                onReportBlueTooth(delta);
+                                onWritingSectionContent(delta, appStats, mPrinter);
+                            }
+                        });
+                        // Wifi
+                        mCompositeMonitors.getDelta(WifiSnapshot.class, new Consumer<Delta<WifiSnapshot>>() {
+                            @Override
+                            public void accept(Delta<WifiSnapshot> delta) {
+                                onReportWifi(delta);
+                                onWritingSectionContent(delta, appStats, mPrinter);
+                            }
+                        });
+                        // Location
+                        mCompositeMonitors.getDelta(LocationSnapshot.class, new Consumer<Delta<LocationSnapshot>>() {
+                            @Override
+                            public void accept(Delta<LocationSnapshot> delta) {
+                                onReportLocation(delta);
+                                onWritingSectionContent(delta, appStats, mPrinter);
+                            }
+                        });
                     }
                 });
             }
 
-            if (/**/(mAppStatFeat != null)
-                    || (mDevStatFeat != null && mLastCpuFreqSnapshot != null)
-                    || (mDevStatFeat != null && mLastBatteryTmpSnapshot != null)
+            if (/**/(mCompositeMonitors.getFeature(AppStatMonitorFeature.class) != null)
+                    || (mCompositeMonitors.getDelta(CpuStateSnapshot.class) != null)
+                    || (mCompositeMonitors.getDelta(CpuFreqSnapshot.class) != null)
+                    || (mCompositeMonitors.getDelta(BatteryTmpSnapshot.class) != null)
             ) {
-                // Status
+                // Stats: Cpu Usage, Device Status
                 createSection("dev_stats", new Consumer<Printer>() {
                     @Override
                     public void accept(Printer printer) {
-                        if (mDevStatFeat != null && mLastCpuFreqSnapshot != null) {
-                            CpuFreqSnapshot cpuFreqSnapshot = mDevStatFeat.currentCpuFreq();
-                            final Delta<CpuFreqSnapshot> delta = cpuFreqSnapshot.diff(mLastCpuFreqSnapshot);
-                            onReportCpuFreq(delta);
-                            onWritingSectionContent(delta, appStats, mPrinter);
-                        }
-                        if (mDevStatFeat != null && mLastBatteryTmpSnapshot != null) {
-                            BatteryTmpSnapshot batteryTmpSnapshot = mDevStatFeat.currentBatteryTemperature(Matrix.with().getApplication());
-                            Delta<BatteryTmpSnapshot> delta = batteryTmpSnapshot.diff(mLastBatteryTmpSnapshot);
-                            onReportTemperature(delta);
-                            onWritingSectionContent(delta, appStats, mPrinter);
-                        }
+                        mCompositeMonitors.getDelta(CpuStateSnapshot.class, new Consumer<Delta<CpuStateSnapshot>>() {
+                            @Override
+                            public void accept(Delta<CpuStateSnapshot> delta) {
+                                onReportCpuStats(delta);
+                                onWritingSectionContent(delta, appStats, mPrinter);
+                            }
+                        });
+                        mCompositeMonitors.getDelta(CpuFreqSnapshot.class, new Consumer<Delta<CpuFreqSnapshot>>() {
+                            @Override
+                            public void accept(Delta<CpuFreqSnapshot> delta) {
+                                onReportCpuFreq(delta);
+                                onWritingSectionContent(delta, appStats, mPrinter);
+                            }
+                        });
+                        mCompositeMonitors.getDelta(BatteryTmpSnapshot.class, new Consumer<Delta<BatteryTmpSnapshot>>() {
+                            @Override
+                            public void accept(Delta<BatteryTmpSnapshot> delta) {
+                                onReportTemperature(delta);
+                                onWritingSectionContent(delta, appStats, mPrinter);
+                            }
+                        });
                     }
                 });
             }
@@ -498,7 +542,7 @@ public interface BatteryMonitorCallback extends
         }
 
         @CallSuper
-        protected boolean onWritingSectionContent(@NonNull Delta<?> sessionDelta, AppStats appStats, Printer printer) {
+        protected boolean onWritingSectionContent(@NonNull Delta<?> sessionDelta, AppStats appStats, final Printer printer) {
             // - Dump Jiffies
             if (sessionDelta.dlt instanceof JiffiesSnapshot) {
                 //noinspection unchecked
@@ -617,6 +661,54 @@ public interface BatteryMonitorCallback extends
                 return true;
             }
 
+            // - Dump CpuStats
+            if (sessionDelta.dlt instanceof CpuStateSnapshot) {
+                //noinspection unchecked
+                final Delta<CpuStateSnapshot> delta = (Delta<CpuStateSnapshot>) sessionDelta;
+                // Cpu Usage
+                printer.createSubSection("cpu_load");
+                printer.writeLine(delta.during + "(mls)\t" + (delta.during / ONE_MIN) + "(min)");
+                final CpuStatFeature cpuStatFeature = mCompositeMonitors.getFeature(CpuStatFeature.class);
+                if (cpuStatFeature != null) {
+                    mCompositeMonitors.getDelta(JiffiesSnapshot.class, new Consumer<Delta<JiffiesSnapshot>>() {
+                        @Override
+                        public void accept(Delta<JiffiesSnapshot> jiffiesDelta) {
+                            long appJiffiesDelta = jiffiesDelta.dlt.totalJiffies.get();
+                            long cpuJiffiesDelta = delta.dlt.totalCpuJiffies();
+                            float cpuLoad = (float) appJiffiesDelta / cpuJiffiesDelta;
+                            float cpuLoadAvg = cpuLoad * cpuStatFeature.getPowerProfile().getCpuCoreNum();
+                            printer.writeLine("usage", (int) (cpuLoadAvg * 100) + "%");
+                        }
+                    });
+                }
+                for (int i = 0; i < delta.dlt.cpuCoreStates.size(); i++) {
+                    ListEntry<DigitEntry<Long>> listEntry = delta.dlt.cpuCoreStates.get(i);
+                    printer.writeLine("cpu" + i, Arrays.toString(listEntry.getList().toArray()));
+                }
+                // BatterySip
+                if (cpuStatFeature != null) {
+                    // Cpu battery sip - CPU State
+                    final PowerProfile powerProfile = cpuStatFeature.getPowerProfile();
+                    printer.writeLine("inc_cpu_sip", String.format(Locale.US, "%.2f(mAh)", delta.dlt.configureCpuSip(powerProfile)));
+                    printer.writeLine("cur_cpu_sip", String.format(Locale.US, "%.2f(mAh)", delta.end.configureCpuSip(powerProfile)));
+                    // Cpu battery sip - Proc State
+                    mCompositeMonitors.getDelta(JiffiesSnapshot.class, new Consumer<Delta<JiffiesSnapshot>>() {
+                        @Override
+                        public void accept(Delta<JiffiesSnapshot> jiffiesDelta) {
+                            double procSipDelta = delta.dlt.configureProcSip(powerProfile, jiffiesDelta.dlt.totalJiffies.get());
+                            double procSipEnd = delta.end.configureProcSip(powerProfile, jiffiesDelta.end.totalJiffies.get());
+                            printer.writeLine("inc_prc_sip", String.format(Locale.US, "%.2f(mAh)", procSipDelta));
+                            printer.writeLine("cur_prc_sip", String.format(Locale.US, "%.2f(mAh)", procSipEnd));
+                            if (Double.isNaN(procSipDelta)) {
+                                double procSipBgn = delta.bgn.configureProcSip(powerProfile, jiffiesDelta.bgn.totalJiffies.get());
+                                printer.writeLine("inc_prc_sipr", String.format(Locale.US, "%.2f(mAh)", procSipEnd - procSipBgn));
+                            }
+                        }
+                    });
+                }
+                return true;
+            }
+
             // - Dump Battery Temperature
             if (sessionDelta.dlt instanceof BatteryTmpSnapshot) {
                 //noinspection unchecked
@@ -643,6 +735,9 @@ public interface BatteryMonitorCallback extends
         }
 
         protected void onReportCpuFreq(@NonNull Delta<CpuFreqSnapshot> delta) {
+        }
+
+        protected void onReportCpuStats(@NonNull Delta<CpuStateSnapshot> delta) {
         }
 
         protected void onReportJiffies(@NonNull Delta<JiffiesSnapshot> delta) {

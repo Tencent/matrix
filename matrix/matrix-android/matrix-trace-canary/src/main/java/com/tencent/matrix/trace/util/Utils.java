@@ -52,6 +52,33 @@ public class Utils {
         return t.toString();
     }
 
+    public static String getWholeStack(StackTraceElement[] trace, String preFixStr) {
+        if ((trace == null) || (trace.length < 3)) {
+            return "";
+        }
+
+        StringBuilder t = new StringBuilder(" \n");
+        for (int i = 0; i < trace.length; i++) {
+            t.append(preFixStr);
+            t.append("at ");
+            t.append(trace[i].getClassName());
+            t.append(":");
+            t.append(trace[i].getMethodName());
+            t.append("(" + trace[i].getLineNumber() + ")");
+            t.append("\n");
+
+        }
+        return t.toString();
+    }
+
+    public static String getWholeStack(StackTraceElement[] trace) {
+        StringBuilder stackTrace = new StringBuilder();
+        for (StackTraceElement stackTraceElement : trace) {
+            stackTrace.append(stackTraceElement.toString()).append("\n");
+        }
+        return stackTrace.toString();
+    }
+
     public static String getMainThreadJavaStackTrace() {
         StringBuilder stackTrace = new StringBuilder();
         for (StackTraceElement stackTraceElement : Looper.getMainLooper().getThread().getStackTrace()) {

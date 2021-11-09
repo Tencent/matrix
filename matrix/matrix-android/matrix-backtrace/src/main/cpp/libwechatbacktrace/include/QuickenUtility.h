@@ -31,7 +31,7 @@ namespace wechat_backtrace {
     }
 
     inline static std::string SplitSonameFromPath(const std::string &sopath) {
-        size_t pos = sopath.find_last_of(FILE_SEPERATOR);
+        size_t pos = sopath.find_last_of(FILE_SEPARATOR);
         return sopath.substr(pos + 1);
     }
 

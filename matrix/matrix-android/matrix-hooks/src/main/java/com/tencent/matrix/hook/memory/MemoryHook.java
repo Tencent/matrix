@@ -23,6 +23,7 @@ import androidx.annotation.Nullable;
 
 import com.tencent.matrix.hook.AbsHook;
 import com.tencent.matrix.hook.HookManager;
+import com.tencent.matrix.memguard.MemGuard;
 import com.tencent.matrix.util.MatrixLog;
 
 import java.util.HashSet;
@@ -126,6 +127,11 @@ public class MemoryHook extends AbsHook {
 
     @Override
     public boolean onConfigure() {
+        if (MemGuard.isInstalled()) {
+            MatrixLog.w(TAG, "MemGuard has been installed, skip MemoryHook install logic.");
+            return false;
+        }
+
         if (mMinTraceSize < 0 || (mMaxTraceSize != 0 && mMaxTraceSize < mMinTraceSize)) {
             throw new IllegalArgumentException("sizes should not be negative and maxSize should be " +
                     "0 or greater than minSize: min = " + mMinTraceSize + ", max = " + mMaxTraceSize);
@@ -143,10 +149,8 @@ public class MemoryHook extends AbsHook {
 
     @Override
     protected boolean onHook(boolean enableDebug) {
-        addHookSoNative(mHookSoSet.toArray(new String[0]));
-        addIgnoreSoNative(mIgnoreSoSet.toArray(new String[0]));
         if (!mHookInstalled) {
-            installHooksNative(enableDebug);
+            installHooksNative(mHookSoSet.toArray(new String[0]), mIgnoreSoSet.toArray(new String[0]), enableDebug);
             mHookInstalled = true;
         }
         return true;
@@ -171,15 +175,9 @@ public class MemoryHook extends AbsHook {
     private native void enableMmapHookNative(boolean enable);
 
     @Keep
-    private native void addHookSoNative(String[] hookSoList);
-
-    @Keep
-    private native void addIgnoreSoNative(String[] ignoreSoList);
-
-    @Keep
     private native void setStacktraceLogThresholdNative(int threshold);
 
     @Keep
-    private native void installHooksNative(boolean enableDebug);
+    private native void installHooksNative(String[] hookSoPatterns, String[] ignoreSoPatterns, boolean enableDebug);
 }
 

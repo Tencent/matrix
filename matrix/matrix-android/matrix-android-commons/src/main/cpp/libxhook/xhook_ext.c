@@ -9,6 +9,8 @@
 #include <string.h>
 #include <limits.h>
 #include <asm/mman.h>
+#include <regex.h>
+#include <malloc.h>
 #include "xhook_ext.h"
 #include "xh_core.h"
 #include "xh_elf.h"
@@ -16,11 +18,49 @@
 
 #include "xh_log.h"
 #include "xh_util.h"
+#include "queue.h"
+#include "tree.h"
 
 #ifdef XH_LOG_TAG
   #undef XH_LOG_TAG
   #define XH_LOG_TAG "xhook_ext"
 #endif
+
+void xhook_block_refresh()
+{
+    xh_core_block_refresh();
+}
+
+void xhook_unblock_refresh()
+{
+    xh_core_unblock_refresh();
+}
+
+int xhook_grouped_register(int group_id, const char *pathname_regex_str, const char *symbol, void *new_func,
+        void **old_func)
+{
+    return xh_core_grouped_register(group_id, pathname_regex_str, symbol, new_func, old_func);
+}
+
+int xhook_grouped_ignore(int group_id, const char *pathname_regex_str, const char *symbol)
+{
+    return xh_core_grouped_ignore(group_id, pathname_regex_str, symbol);
+}
+
+void* xhook_elf_open(const char *path)
+{
+    return xh_core_elf_open(path);
+}
+
+int xhook_got_hook_symbol(void* h_lib, const char* symbol, void* new_func, void** old_func)
+{
+    return xh_core_got_hook_symbol(h_lib, symbol, new_func, old_func);
+}
+
+void xhook_elf_close(void *h_lib)
+{
+    xh_core_elf_close(h_lib);
+}
 
 static int xh_export_symtable_hook(const char* pathname, const void* base_addr, const char* symbol_name, void* handler,
                                    void** original_address) {
@@ -159,29 +199,5 @@ int xhook_export_symtable_hook(const char* owner_lib_name, const char* symbol_na
         return xh_export_symtable_hook(path_name, base_addr, symbol_name, handler, original_address);
     } else {
         return XH_ERRNO_NOTFND;
-    }
-}
-
-void* xhook_find_symbol(const char* owner_lib_name, const char* symbol_name) {
-    char path_name[PATH_MAX + 1] = {};
-    const void* base_addr = NULL;
-    if (xhook_find_library_base_addr(owner_lib_name, path_name, &base_addr) == 0) {
-        xh_elf_t self = {};
-        {
-            int error = xh_elf_init(&self, (uintptr_t) base_addr, path_name);
-            if (error != 0) return NULL;
-        }
-
-        //find symbol index by symbol name
-        uint32_t symidx = 0;
-        {
-            int error = xh_elf_find_symidx_by_name(&self, symbol_name, &symidx);
-            if (error != 0) return NULL;
-        }
-
-        ElfW(Sym)* target_sym = self.symtab + symidx;
-        return (void*) (self.bias_addr + target_sym->st_value);
-    } else {
-        return NULL;
     }
 }

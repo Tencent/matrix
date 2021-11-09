@@ -70,7 +70,9 @@ public class DexData {
     private static boolean verifyMagic(byte[] magic) {
         return Arrays.equals(magic, HeaderItem.DEX_FILE_MAGIC_v035)
                 || Arrays.equals(magic, HeaderItem.DEX_FILE_MAGIC_v037)
-                || Arrays.equals(magic, HeaderItem.DEX_FILE_MAGIC_v038);
+                || Arrays.equals(magic, HeaderItem.DEX_FILE_MAGIC_v038)
+                || Arrays.equals(magic, HeaderItem.DEX_FILE_MAGIC_v039)
+                || Arrays.equals(magic, HeaderItem.DEX_FILE_MAGIC_v040);
     }
 
     /**
@@ -149,7 +151,6 @@ public class DexData {
 
         mStrings = new String[count];
 
-        seek(stringOffsets[0]);
         for (int i = 0; i < count; i++) {
             seek(stringOffsets[i]);         // should be a no-op
             mStrings[i] = readString();
@@ -663,6 +664,14 @@ public class DexData {
         // V038 was introduced in API LEVEL 26
         public static final byte[] DEX_FILE_MAGIC_v038 =
             "dex\n038\0".getBytes(StandardCharsets.US_ASCII);
+
+        // Dex version 039: Android "P" and beyond.
+        public static final byte[] DEX_FILE_MAGIC_v039 =
+                "dex\n039\0".getBytes(StandardCharsets.US_ASCII);
+
+        // Dex version 040: beyond Android "10" (previously known as Android "Q").
+        public static final byte[] DEX_FILE_MAGIC_v040 =
+                "dex\n040\0".getBytes(StandardCharsets.US_ASCII);
 
         public static final int ENDIAN_CONSTANT = 0x12345678;
         public static final int REVERSE_ENDIAN_CONSTANT = 0x78563412;

@@ -10,6 +10,8 @@
 #include <thread>
 #include "BacktraceDefine.h"
 #include "Backtrace.h"
+#include <linux/prctl.h>
+#include <sys/prctl.h>
 
 #ifndef OPENGL_API_HOOK_MY_FUNCTIONS_H
 #define OPENGL_API_HOOK_MY_FUNCTIONS_H
@@ -17,6 +19,7 @@
 using namespace std;
 
 #define MEMHOOK_BACKTRACE_MAX_FRAMES MAX_FRAME_SHORT
+#define RENDER_THREAD_NAME "RenderThread"
 
 static System_GlNormal_TYPE system_glGenTextures = NULL;
 static System_GlNormal_TYPE system_glDeleteTextures = NULL;
@@ -44,6 +47,9 @@ static jmethodID method_onGetError;
 
 const size_t BUF_SIZE = 1024;
 
+static pthread_once_t g_onceInitTls = PTHREAD_ONCE_INIT;
+static pthread_key_t g_tlsJavaEnv;
+
 static bool is_stacktrace_enabled = true;
 void enable_stacktrace(bool enable) {
     is_stacktrace_enabled = enable;
@@ -61,15 +67,40 @@ void thread_id_to_string(thread::id thread_id, char *&result) {
     strcpy(result, stream.str().c_str());
 }
 
+inline void get_thread_name(char * thread_name) {
+    prctl(PR_GET_NAME, (char *) (thread_name));
+}
+
+inline bool is_render_thread() {
+    bool result = false;
+    char* thread_name = static_cast<char *>(malloc(BUF_SIZE));
+    get_thread_name(thread_name);
+    if(strcmp(RENDER_THREAD_NAME, thread_name) == 0) {
+        result = true;
+    }
+    if(thread_name != nullptr) {
+        free(thread_name);
+    }
+    return result;
+}
+
 JNIEnv *GET_ENV() {
-    JNIEnv *env = NULL;
-    if (m_java_vm->GetEnv((void **) &env, JNI_VERSION_1_6) != JNI_OK) {
-        if (m_java_vm->AttachCurrentThread(&env, NULL) == JNI_OK) {
+    JNIEnv *env;
+    int ret = m_java_vm->GetEnv(reinterpret_cast<void **>(&env), JNI_VERSION_1_6);
+    if (ret != JNI_OK) {
+        pthread_once(&g_onceInitTls, []() {
+            pthread_key_create(&g_tlsJavaEnv, [](void *d) {
+                if (d && m_java_vm)
+                    m_java_vm->DetachCurrentThread();
+            });
+        });
+
+        if (m_java_vm->AttachCurrentThread(&env, nullptr) == JNI_OK) {
+            pthread_setspecific(g_tlsJavaEnv, reinterpret_cast<const void *>(1));
         } else {
-            return nullptr;
+            env = nullptr;
         }
     }
-
     return env;
 }
 
@@ -114,6 +145,10 @@ void get_thread_id_string(char *&result) {
 GL_APICALL void GL_APIENTRY my_glGenTextures(GLsizei n, GLuint *textures) {
     if (NULL != system_glGenTextures) {
         system_glGenTextures(n, textures);
+
+        if (is_render_thread()) {
+            return;
+        }
 
         JNIEnv *env = GET_ENV();
 
@@ -172,6 +207,10 @@ GL_APICALL void GL_APIENTRY my_glDeleteTextures(GLsizei n, GLuint *textures) {
     if (NULL != system_glDeleteTextures) {
         system_glDeleteTextures(n, textures);
 
+        if (is_render_thread()) {
+            return;
+        }
+
         JNIEnv *env = GET_ENV();
 
         int *result = new int[n];
@@ -199,6 +238,10 @@ GL_APICALL void GL_APIENTRY my_glDeleteTextures(GLsizei n, GLuint *textures) {
 GL_APICALL void GL_APIENTRY my_glGenBuffers(GLsizei n, GLuint *buffers) {
     if (NULL != system_glGenBuffers) {
         system_glGenBuffers(n, buffers);
+
+        if (is_render_thread()) {
+            return;
+        }
 
         JNIEnv *env = GET_ENV();
 
@@ -256,6 +299,10 @@ GL_APICALL void GL_APIENTRY my_glDeleteBuffers(GLsizei n, GLuint *buffers) {
     if (NULL != system_glDeleteBuffers) {
         system_glDeleteBuffers(n, buffers);
 
+        if (is_render_thread()) {
+            return;
+        }
+
         JNIEnv *env = GET_ENV();
 
         int *result = new int[n];
@@ -283,6 +330,10 @@ GL_APICALL void GL_APIENTRY my_glDeleteBuffers(GLsizei n, GLuint *buffers) {
 GL_APICALL void GL_APIENTRY my_glGenFramebuffers(GLsizei n, GLuint *buffers) {
     if (NULL != system_glGenFramebuffers) {
         system_glGenFramebuffers(n, buffers);
+
+        if (is_render_thread()) {
+            return;
+        }
 
         JNIEnv *env = GET_ENV();
 
@@ -340,6 +391,10 @@ GL_APICALL void GL_APIENTRY my_glDeleteFramebuffers(GLsizei n, GLuint *buffers) 
     if (NULL != system_glDeleteFramebuffers) {
         system_glDeleteFramebuffers(n, buffers);
 
+        if (is_render_thread()) {
+            return;
+        }
+
         JNIEnv *env = GET_ENV();
 
         int *result = new int[n];
@@ -368,6 +423,10 @@ GL_APICALL void GL_APIENTRY my_glDeleteFramebuffers(GLsizei n, GLuint *buffers) 
 GL_APICALL void GL_APIENTRY my_glGenRenderbuffers(GLsizei n, GLuint *buffers) {
     if (NULL != system_glGenRenderbuffers) {
         system_glGenRenderbuffers(n, buffers);
+
+        if (is_render_thread()) {
+            return;
+        }
 
         JNIEnv *env = GET_ENV();
 
@@ -424,6 +483,10 @@ GL_APICALL void GL_APIENTRY my_glGenRenderbuffers(GLsizei n, GLuint *buffers) {
 GL_APICALL void GL_APIENTRY my_glDeleteRenderbuffers(GLsizei n, GLuint *buffers) {
     if (NULL != system_glDeleteRenderbuffers) {
         system_glDeleteRenderbuffers(n, buffers);
+
+        if (is_render_thread()) {
+            return;
+        }
 
         JNIEnv *env = GET_ENV();
 

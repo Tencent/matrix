@@ -19,7 +19,7 @@ import java.util.Set;
 public class LeakMonitor implements Application.ActivityLifecycleCallbacks {
 
     private static final String TAG = "matrix.GPU_LeakMonitor";
-    private static LeakMonitor mInstance;
+    private static LeakMonitor mInstance = new LeakMonitor();
 
     private HandlerThread mHT;
     private Handler mH;
@@ -41,9 +41,6 @@ public class LeakMonitor implements Application.ActivityLifecycleCallbacks {
     }
 
     public static LeakMonitor getInstance() {
-        if (mInstance == null) {
-            mInstance = new LeakMonitor();
-        }
         return mInstance;
     }
 

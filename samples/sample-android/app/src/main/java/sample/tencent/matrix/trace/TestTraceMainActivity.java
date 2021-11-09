@@ -36,6 +36,7 @@ import com.tencent.matrix.listeners.IAppForeground;
 import com.tencent.matrix.plugin.Plugin;
 import com.tencent.matrix.trace.TracePlugin;
 import com.tencent.matrix.trace.core.AppMethodBeat;
+import com.tencent.matrix.trace.tracer.SignalAnrTracer;
 import com.tencent.matrix.trace.view.FrameDecorator;
 import com.tencent.matrix.util.MatrixLog;
 
@@ -131,9 +132,13 @@ public class TestTraceMainActivity extends Activity implements IAppForeground {
         A();
     }
 
+    public void testPrintTrace(final View view) {
+        SignalAnrTracer.printTrace();
+    }
+
     public void testSignalANR(final View view) {
         try {
-            Thread.sleep(10000);
+            Thread.sleep(20000);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }

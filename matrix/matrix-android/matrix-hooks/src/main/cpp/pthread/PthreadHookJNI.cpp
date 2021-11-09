@@ -120,9 +120,16 @@ Java_com_tencent_matrix_hook_pthread_PthreadHook_enableLoggerNative(JNIEnv *, jc
 
 JNIEXPORT void JNICALL
 Java_com_tencent_matrix_hook_pthread_PthreadHook_installHooksNative(JNIEnv *env, jobject thiz, jboolean enable_debug) {
-    NOTIFY_COMMON_IGNORE_LIBS();
+    NOTIFY_COMMON_IGNORE_LIBS(HOOK_REQUEST_GROUPID_PTHREAD);
 
     pthread_hook::InstallHooks(enable_debug);
+}
+
+JNIEXPORT void JNICALL
+Java_com_tencent_matrix_hook_pthread_PthreadHook_enableTracePthreadReleaseNative(JNIEnv *env,
+                                                                           jobject thiz,
+                                                                           jboolean enable) {
+    enable_trace_pthread_release(enable);
 }
 
 #ifdef __cplusplus

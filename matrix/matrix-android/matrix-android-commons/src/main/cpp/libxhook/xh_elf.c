@@ -466,25 +466,32 @@ static int xh_elf_replace_function(xh_elf_t *self, const char *symbol, ElfW(Addr
         return r;
     }
 
-    if(old_prot != need_prot)
-    {
+    // if(old_prot != need_prot)
+    // {
         //set new prot
         if(0 != (r = xh_util_set_addr_protect(addr, need_prot)))
         {
             XH_LOG_ERROR("set addr prot failed. ret: %d", r);
             return r;
         }
-    }
+    // }
 
     //save old func
     old_addr = *(void **)addr;
     if(NULL != old_func) *old_func = old_addr;
 
     //replace func
-    *(void **)addr = new_func; //segmentation fault sometimes
-
-    if(old_prot != need_prot)
+    // *(void **)addr = new_func; //segmentation fault sometimes
+    void* new_func_addr = (void*) new_func;
+    ssize_t got_write_ret = xh_util_write_memory_safely((void*) addr, (uint8_t*) &new_func_addr, sizeof(void*));
+    if (got_write_ret != sizeof(void*))
     {
+        XH_LOG_ERROR("Fail to write new address into GOT/Data item, dest_address: %p", (const void*) addr);
+        return XH_ERRNO_SEGVERR;
+    }
+
+    // if(old_prot != need_prot)
+    // {
         if ((old_prot & PROT_READ) == 0) {
             XH_LOG_WARN("old addr has no read permission, it's not usual and may cause segment fault.");
             old_prot |= PROT_READ;
@@ -494,7 +501,7 @@ static int xh_elf_replace_function(xh_elf_t *self, const char *symbol, ElfW(Addr
         {
             XH_LOG_WARN("restore addr prot failed. ret: %d", r);
         }
-    }
+    // }
 
     //clear cache
     xh_util_flush_instruction_cache(addr);
@@ -1030,14 +1037,12 @@ int xh_elf_hook(xh_elf_t *self, const char *symbol, void *new_func, void **old_f
     if(0 != self->reldyn)
     {
         xh_elf_plain_reloc_iterator_init(&plain_iter, self->reldyn, self->reldyn_sz, self->is_use_rela);
-        found = 0;
         while(NULL != (rel_common = xh_elf_plain_reloc_iterator_next(&plain_iter)))
         {
             if(0 != (r = xh_elf_find_and_replace_func(self,
                                                       (self->is_use_rela ? ".rela.dyn" : ".rel.dyn"), 0,
                                                       symbol, new_func, old_func,
                                                       symidx, rel_common, &found))) return r;
-            if (found) break;
         }
     }
 
@@ -1045,14 +1050,12 @@ int xh_elf_hook(xh_elf_t *self, const char *symbol, void *new_func, void **old_f
     if(0 != self->relandroid)
     {
         xh_elf_packed_reloc_iterator_init(&packed_iter, self->relandroid, self->relandroid_sz, self->is_use_rela);
-        found = 0;
         while(NULL != (rel_common = xh_elf_packed_reloc_iterator_next(&packed_iter)))
         {
             if(0 != (r = xh_elf_find_and_replace_func(self,
                                                       (self->is_use_rela ? ".rela.android" : ".rel.android"), 0,
                                                       symbol, new_func, old_func,
                                                       symidx, rel_common, &found))) return r;
-            if (found) break;
         }
     }
 

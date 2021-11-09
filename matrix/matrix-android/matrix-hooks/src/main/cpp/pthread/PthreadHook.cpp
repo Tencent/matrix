@@ -38,6 +38,8 @@ static volatile bool sThreadStackShrinkEnabled = false;
 
 DECLARE_HOOK_ORIG(int, pthread_create, pthread_t*, pthread_attr_t const*, pthread_hook::pthread_routine_t, void*);
 DECLARE_HOOK_ORIG(int, pthread_setname_np, pthread_t, const char*);
+DECLARE_HOOK_ORIG(int, pthread_detach, pthread_t);
+DECLARE_HOOK_ORIG(int, pthread_join, pthread_t, void**);
 
 DEFINE_HOOK_FUN(int, pthread_create,
         pthread_t* pthread, pthread_attr_t const* attr, pthread_hook::pthread_routine_t start_routine, void* args) {
@@ -74,7 +76,7 @@ DEFINE_HOOK_FUN(int, pthread_create,
     }
 
     if (LIKELY(ret == 0) && sThreadTraceEnabled) {
-        thread_trace::on_pthread_create(*pthread);
+        thread_trace::handle_pthread_create(*pthread);
     }
 
     if (LIKELY(attr == nullptr)) {
@@ -88,6 +90,24 @@ DEFINE_HOOK_FUN(int, pthread_setname_np, pthread_t pthread, const char* name) {
     CALL_ORIGIN_FUNC_RET(int, ret, pthread_setname_np, pthread, name);
     if (LIKELY(ret == 0) && sThreadTraceEnabled) {
         thread_trace::handle_pthread_setname_np(pthread, name);
+    }
+    return ret;
+}
+
+DEFINE_HOOK_FUN(int, pthread_detach, pthread_t pthread) {
+    CALL_ORIGIN_FUNC_RET(int, ret, pthread_detach, pthread);
+    LOGD(LOG_TAG, "pthread_detach : %d", ret);
+    if (LIKELY(ret == 0) && sThreadTraceEnabled) {
+        thread_trace::handle_pthread_release(pthread);
+    }
+    return ret;
+}
+
+DEFINE_HOOK_FUN(int, pthread_join, pthread_t pthread, void** return_value_ptr) {
+    CALL_ORIGIN_FUNC_RET(int, ret, pthread_join, pthread, return_value_ptr);
+    LOGD(LOG_TAG, "pthread_join : %d", ret);
+    if (LIKELY(ret == 0) && sThreadTraceEnabled) {
+        thread_trace::handle_pthread_release(pthread);
     }
     return ret;
 }
@@ -119,27 +139,46 @@ namespace pthread_hook {
 
         FETCH_ORIGIN_FUNC(pthread_create)
         FETCH_ORIGIN_FUNC(pthread_setname_np)
+        FETCH_ORIGIN_FUNC(pthread_detach)
+        FETCH_ORIGIN_FUNC(pthread_join)
 
         if (sThreadTraceEnabled) {
             thread_trace::thread_trace_init();
         }
 
         matrix::PauseLoadSo();
+        xhook_block_refresh();
         {
             int ret = xhook_export_symtable_hook("libc.so", "pthread_create",
                                                  (void *) HANDLER_FUNC_NAME(pthread_create), nullptr);
             LOGD(LOG_TAG, "export table hook sym: pthread_create, ret: %d", ret);
+
             ret = xhook_export_symtable_hook("libc.so", "pthread_setname_np",
                                              (void *) HANDLER_FUNC_NAME(pthread_setname_np), nullptr);
             LOGD(LOG_TAG, "export table hook sym: pthread_setname_np, ret: %d", ret);
-            xhook_register(".*/.*\\.so$", "pthread_create",
-                           (void *) HANDLER_FUNC_NAME(pthread_create), nullptr);
-            xhook_register(".*/.*\\.so$", "pthread_setname_np",
-                           (void *) HANDLER_FUNC_NAME(pthread_setname_np), nullptr);
+            xhook_grouped_register(HOOK_REQUEST_GROUPID_PTHREAD, ".*/.*\\.so$", "pthread_create",
+                                   (void *) HANDLER_FUNC_NAME(pthread_create), nullptr);
+            xhook_grouped_register(HOOK_REQUEST_GROUPID_PTHREAD, ".*/.*\\.so$", "pthread_setname_np",
+                                   (void *) HANDLER_FUNC_NAME(pthread_setname_np), nullptr);
+
+            xhook_grouped_register(HOOK_REQUEST_GROUPID_PTHREAD, ".*/.*\\.so$", "pthread_detach",
+                           (void *) HANDLER_FUNC_NAME(pthread_detach),nullptr);
+            xhook_grouped_register(HOOK_REQUEST_GROUPID_PTHREAD, ".*/.*\\.so$", "pthread_join",
+                           (void *) HANDLER_FUNC_NAME(pthread_join), nullptr);
+
+            ret = xhook_export_symtable_hook("libc.so", "pthread_detach",
+                                             (void *) HANDLER_FUNC_NAME(pthread_detach), nullptr);
+            LOGD(LOG_TAG, "export table hook sym: pthread_detach, ret: %d", ret);
+
+            ret = xhook_export_symtable_hook("libc.so", "pthread_join",
+                                             (void *) HANDLER_FUNC_NAME(pthread_join), nullptr);
+            LOGD(LOG_TAG, "export table hook sym: pthread_join, ret: %d", ret);
+
             xhook_enable_debug(enable_debug ? 1 : 0);
             xhook_enable_sigsegv_protection(0);
             xhook_refresh(0);
         }
+        xhook_unblock_refresh();
         matrix::ResumeLoadSo();
     }
 }

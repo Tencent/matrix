@@ -22,7 +22,7 @@
 namespace wechat_backtrace {
 
     void
-    FpUnwind(uptr *regs, Frame *backtrace, const size_t frame_max_size, size_t &frame_size);
+    FpUnwind(const uptr *regs, Frame *backtrace, const size_t frame_max_size, size_t &frame_size);
 
 }  // namespace wechat_backtrace
 
