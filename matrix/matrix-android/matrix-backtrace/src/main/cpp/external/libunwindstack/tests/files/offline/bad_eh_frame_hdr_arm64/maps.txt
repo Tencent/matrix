@@ -1,0 +1,2 @@
+60a9fdf000-60a9fe0000 r-xp 0 00:00 0   waiter64
+7542cc0000-7542d8e000 r-xp 0 00:00 0   libc.so

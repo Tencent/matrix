@@ -184,7 +184,7 @@ namespace sqlitelint {
             return;
         }
 
-        LOGV("OnIssuePublish issue size %d", published_issues.size());
+        LOGV("OnIssuePublish issue size %zu", published_issues.size());
 
         jclass listCls = env->FindClass("java/util/ArrayList");
 

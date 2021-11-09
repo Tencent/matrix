@@ -26,9 +26,10 @@ import android.content.Intent;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
+
+import androidx.core.app.NotificationCompat;
 import androidx.test.platform.app.InstrumentationRegistry;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
-import androidx.core.app.NotificationCompat;
 import android.text.TextUtils;
 import android.util.Log;
 import android.widget.Toast;
@@ -279,6 +280,17 @@ public class CanaryUtilsTest {
         Assert.assertEquals(0B00001000, flag & 0B00001000);
         Assert.assertEquals(0B00000000, flag & 0B10000000);
         // Assert.fail(flag + " vs " + Integer.toBinaryString(flag) ); // 127
+    }
+
+    @Test
+    public void testExpireRef() throws InterruptedException {
+        for (int i = 0; i < 10; i++) {
+            BatteryCanaryUtil.Proxy.ExpireRef ref = new BatteryCanaryUtil.Proxy.ExpireRef(22, 100);
+            Assert.assertEquals(22, ref.value);
+            Assert.assertFalse(ref.isExpired());
+            Thread.sleep(100);
+            Assert.assertTrue(ref.isExpired());
+        }
     }
 
     private static boolean diceWithBase(int base) {

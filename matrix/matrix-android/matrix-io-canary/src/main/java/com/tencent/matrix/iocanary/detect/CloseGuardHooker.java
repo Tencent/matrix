@@ -17,6 +17,8 @@
 package com.tencent.matrix.iocanary.detect;
 
 
+import android.annotation.SuppressLint;
+
 import com.tencent.matrix.report.IssuePublisher;
 import com.tencent.matrix.util.MatrixLog;
 
@@ -75,6 +77,7 @@ public final class CloseGuardHooker {
         try {
             Class<?> closeGuardCls = Class.forName("dalvik.system.CloseGuard");
             Class<?> closeGuardReporterCls = Class.forName("dalvik.system.CloseGuard$Reporter");
+            @SuppressLint("SoonBlockedPrivateApi") // FIXME
             Method methodGetReporter = closeGuardCls.getDeclaredMethod("getReporter");
             Method methodSetReporter = closeGuardCls.getDeclaredMethod("setReporter", closeGuardReporterCls);
             Method methodSetEnabled = closeGuardCls.getDeclaredMethod("setEnabled", boolean.class);

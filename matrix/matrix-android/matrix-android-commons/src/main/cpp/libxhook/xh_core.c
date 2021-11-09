@@ -31,6 +31,7 @@
 #include <regex.h>
 #include <setjmp.h>
 #include <errno.h>
+#include <dlfcn.h>
 #include "queue.h"
 #include "tree.h"
 #include "xh_errno.h"
@@ -91,7 +92,7 @@ static sigjmp_buf       xh_core_sigsegv_env;
 static void xh_core_sigsegv_handler(int sig)
 {
     (void)sig;
-    
+
     if(xh_core_sigsegv_flag)
         siglongjmp(xh_core_sigsegv_env, 1);
     else
@@ -102,10 +103,10 @@ static int xh_core_add_sigsegv_handler()
     struct sigaction act;
 
     if(!xh_core_sigsegv_enable) return 0;
-    
+
     if(0 != sigemptyset(&act.sa_mask)) return (0 == errno ? XH_ERRNO_UNKNOWN : errno);
     act.sa_handler = xh_core_sigsegv_handler;
-    
+
     if(0 != sigaction(SIGSEGV, &act, &xh_core_sigsegv_act_old))
         return (0 == errno ? XH_ERRNO_UNKNOWN : errno);
 
@@ -114,7 +115,7 @@ static int xh_core_add_sigsegv_handler()
 static void xh_core_del_sigsegv_handler()
 {
     if(!xh_core_sigsegv_enable) return;
-    
+
     sigaction(SIGSEGV, &xh_core_sigsegv_act_old, NULL);
 }
 
@@ -167,7 +168,7 @@ int xh_core_register(const char *pathname_regex_str, const char *symbol,
     hi->pathname_regex = regex;
     hi->new_func = new_func;
     hi->old_func = old_func;
-    
+
     pthread_mutex_lock(&xh_core_mutex);
     TAILQ_INSERT_TAIL(&xh_core_hook_info, hi, link);
     pthread_mutex_unlock(&xh_core_mutex);
@@ -229,7 +230,7 @@ static int xh_core_check_elf_header(uintptr_t base_addr, const char *pathname)
     else
     {
         int ret = XH_ERRNO_UNKNOWN;
-        
+
         xh_core_sigsegv_flag = 1;
         if(0 == sigsetjmp(xh_core_sigsegv_env, 1))
         {
@@ -249,7 +250,7 @@ static void xh_core_hook_impl(xh_core_map_info_t *mi)
 {
     //init
     if(0 != xh_elf_init(&(mi->elf), mi->base_addr, mi->pathname)) return;
-    
+
     //hook
     xh_core_hook_info_t   *hi;
     xh_core_ignore_info_t *ii;
@@ -287,7 +288,7 @@ static void xh_core_hook(xh_core_map_info_t *mi)
         xh_core_hook_impl(mi);
     }
     else
-    {    
+    {
         xh_core_sigsegv_flag = 1;
         if(0 == sigsetjmp(xh_core_sigsegv_env, 1))
         {
@@ -299,6 +300,16 @@ static void xh_core_hook(xh_core_map_info_t *mi)
         }
         xh_core_sigsegv_flag = 0;
     }
+}
+
+/**
+ *
+ * @param addr
+ * @return If the address specified in addr could not be matched to a shared object, then these functions return 0.
+ */
+static int xh_check_loaded_so(void *addr) {
+    Dl_info stack_info;
+    return dladdr(addr, &stack_info);
 }
 
 static void xh_core_refresh_impl()
@@ -375,23 +386,28 @@ static void xh_core_refresh_impl()
 
                 match = 1;
             check_continue:
-                break;
+                continue;
             }
         }
     check_finished:
         if(0 == match) continue;
 
+        if (0 == xh_check_loaded_so((void *)base_addr)) {
+            XH_LOG_ERROR("%p is not loaded by linker %s", (void *)base_addr, line + pathname_pos);
+            continue; // do not touch the so that not loaded by linker
+        }
+
         //check elf header format
         //We are trying to do ELF header checking as late as possible.
         if(0 != xh_core_check_elf_header(base_addr, pathname)) continue;
-        
+
         //check existed map item
         mi_key.pathname = pathname;
         if(NULL != (mi = RB_FIND(xh_core_map_info_tree, &xh_core_map_info, &mi_key)))
         {
             //exist
             RB_REMOVE(xh_core_map_info_tree, &xh_core_map_info, mi);
-            
+
             //repeated?
             //We only keep the first one, that is the real base address
             if(NULL != RB_INSERT(xh_core_map_info_tree, &map_info_refreshed, mi))
@@ -455,7 +471,7 @@ static void xh_core_refresh_impl()
     xh_core_map_info = map_info_refreshed;
 
     XH_LOG_INFO("map refreshed");
-    
+
 #if XH_CORE_DEBUG
     RB_FOREACH(mi, xh_core_map_info_tree, &xh_core_map_info)
         XH_LOG_DEBUG("  %"PRIxPTR" %s\n", mi->base_addr, mi->pathname);
@@ -465,7 +481,7 @@ static void xh_core_refresh_impl()
 static void *xh_core_refresh_thread_func(void *arg)
 {
     (void)arg;
-    
+
     pthread_setname_np(pthread_self(), "xh_refresh_loop");
 
     while(xh_core_refresh_thread_running)
@@ -502,7 +518,7 @@ static void xh_core_init_once()
     if(xh_core_inited) goto end;
 
     xh_core_inited = 1;
-    
+
     //dump debug info
     XH_LOG_INFO("%s\n", xh_version_str_full());
 #if XH_CORE_DEBUG
@@ -515,7 +531,7 @@ static void xh_core_init_once()
         XH_LOG_INFO("  ignore: %s @ %s\n", ii->symbol ? ii->symbol : "ALL ",
                     ii->pathname_regex_str);
 #endif
-    
+
     //register signal handler
     if(0 != xh_core_add_sigsegv_handler()) goto end;
 
@@ -529,13 +545,13 @@ static void xh_core_init_once()
 static void xh_core_init_async_once()
 {
     if(xh_core_async_inited) return;
-    
+
     pthread_mutex_lock(&xh_core_mutex);
-    
+
     if(xh_core_async_inited) goto end;
 
     xh_core_async_inited = 1;
-    
+
     //create async refresh thread
     xh_core_refresh_thread_running = 1;
     if(0 != pthread_create(&xh_core_refresh_thread_tid, NULL, &xh_core_refresh_thread_func, NULL))
@@ -546,7 +562,7 @@ static void xh_core_init_async_once()
 
     //OK
     xh_core_async_init_ok = 1;
-    
+
  end:
     pthread_mutex_unlock(&xh_core_mutex);
 }
@@ -562,7 +578,7 @@ int xh_core_refresh(int async)
         //init for async
         xh_core_init_async_once();
         if(!xh_core_async_init_ok) return XH_ERRNO_UNKNOWN;
-    
+
         //refresh async
         pthread_mutex_lock(&xh_core_mutex);
         xh_core_refresh_thread_do = 1;
@@ -576,7 +592,7 @@ int xh_core_refresh(int async)
         xh_core_refresh_impl();
         pthread_mutex_unlock(&xh_core_refresh_mutex);
     }
-    
+
     return 0;
 }
 
@@ -589,7 +605,7 @@ void xh_core_clear()
         xh_core_refresh_thread_running = 0;
         pthread_cond_signal(&xh_core_cond);
         pthread_mutex_unlock(&xh_core_mutex);
-        
+
         pthread_join(xh_core_refresh_thread_tid, NULL);
         xh_core_async_init_ok = 0;
     }
@@ -605,7 +621,7 @@ void xh_core_clear()
 
     pthread_mutex_lock(&xh_core_mutex);
     pthread_mutex_lock(&xh_core_refresh_mutex);
-        
+
     //free all map info
     xh_core_map_info_t *mi, *mi_tmp;
     RB_FOREACH_SAFE(mi, xh_core_map_info_tree, &xh_core_map_info, mi_tmp)

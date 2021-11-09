@@ -21,11 +21,12 @@ class WeChatPublishExtension {
 
     boolean isSnapshot = true
     private String versionSuffix = ''
-    private boolean printModules = false
+    protected boolean printModules = false
 
     boolean withJavadoc = true
     boolean withSources = true
     boolean withNativeSymbols = true
+    boolean withDependencies = true
 
     boolean publishToBintray = false
 
@@ -49,6 +50,13 @@ class WeChatPublishExtension {
         proj.afterEvaluate { this.publish() }
     }
 
+    protected final String uncapitalize(String str) {
+        if (str == null || str.isEmpty()) {
+            return str
+        }
+        return "" + Character.toLowerCase(str.charAt(0)) + str.substring(1)
+    }
+
     protected void publish() {
         // Load local gradle script
         applyLocalScript()
@@ -56,16 +64,14 @@ class WeChatPublishExtension {
         // Verify configuration values
         verifyPublishConfiguration()
 
-        // Print module description if needed
-        if (printModules) {
-            println "@@@WeChatPublish@@@ ${artifactId}: ${fullVersion}"
-        }
-
         // Emit Maven and/or bintray DSL
         // Apply plugins if not done already
         if (!project.plugins.hasPlugin('maven-publish')) {
             project.plugins.apply('maven-publish')
         }
+
+        mountAdditionalLogic(project)
+
         emitPublicationDSL(project)
         emitRepositoryDSL(project)
     }
@@ -158,8 +164,10 @@ class WeChatPublishExtension {
     final protected String getPublicationName() {
         String result = ""
         artifactId.split("[-_]").each { result += it.capitalize() }
-        return result.uncapitalize()
+        return uncapitalize(result)
     }
+
+    protected void mountAdditionalLogic(project) {}
 
     protected void emitPublicationDSL(Project project) {}
 
@@ -257,6 +265,18 @@ class WeChatJavaLibraryPublishExtension extends WeChatPublishExtension {
     }
 
     @Override
+    protected void mountAdditionalLogic(project) {
+        // Print module description if needed
+        if (printModules) {
+            def anchorTask = project.tasks.findByName('compileJava')
+            def printTask = project.task('printPublishArtifactInfo').doFirst {
+                println "@@@WeChatPublish@@@ ${artifactId}: ${fullVersion}"
+            }
+            anchorTask.dependsOn printTask
+        }
+    }
+
+    @Override
     protected void emitPublicationDSL(Project project) {
 
         def sourcesJarTask = project.task('sourcesJar', type: Jar) {
@@ -276,7 +296,7 @@ class WeChatJavaLibraryPublishExtension extends WeChatPublishExtension {
             title = null
             options {
                 memberLevel = JavadocMemberLevel.PUBLIC
-                
+
                 def doclavaJar = project.rootProject.file('gradle/doclava-1.0.6.jar')
                 if (doclavaJar.exists()) {
                     doclet = 'com.google.doclava.Doclava'
@@ -322,6 +342,18 @@ class WeChatAndroidLibraryPublishExtension extends WeChatPublishExtension {
     }
 
     @Override
+    protected void mountAdditionalLogic(project) {
+        // Print module description if needed
+        if (printModules) {
+            def anchorTask = project.tasks.findByName('preBuild')
+            def printTask = project.task('printPublishArtifactInfo').doFirst {
+                println "@@@WeChatPublish@@@ ${artifactId}: ${fullVersion}"
+            }
+            anchorTask.dependsOn printTask
+        }
+    }
+
+    @Override
     protected void emitPublicationDSL(Project project) {
         HashSet<String> emittedFlavors = new HashSet<>()
         def android = project.android
@@ -332,8 +364,7 @@ class WeChatAndroidLibraryPublishExtension extends WeChatPublishExtension {
             def cVariantName = variantName.capitalize()
 
             def flavorName = variant.flavorName
-            def variantOnlyName = variantName.substring(flavorName.length(), variantName.length())
-                    .uncapitalize()
+            def variantOnlyName = uncapitalize(variantName.substring(flavorName.length(), variantName.length()))
             def hasFlavor = variant.flavorName != null && !variant.flavorName.isEmpty()
 
             if (flavorName == defaultFlavor)
@@ -477,7 +508,6 @@ class WeChatAndroidLibraryPublishExtension extends WeChatPublishExtension {
                             withXml {
                                 // Resolve dependencies
                                 final depsNode = asNode().appendNode('dependencies')
-                                def visitedDeps = [] as Set<Dependency>
                                 final addDep = { Dependency dep, String scope ->
                                     if (dep.group == null || dep.version == null || dep.name == null
                                             || dep.name == "unspecified")
@@ -507,27 +537,36 @@ class WeChatAndroidLibraryPublishExtension extends WeChatPublishExtension {
                                         exclusionNode.appendNode('artifactId', '*')
                                     } else if (!dep.properties.excludeRules.empty) {
                                         // Otherwise add specified exclude rules
-                                        final exclusionNode = node.appendNode('exclusions').appendNode('exclusion')
+                                        final exclusions = node.appendNode('exclusions')
                                         dep.properties.excludeRules.each { ExcludeRule rule ->
+                                            def exclusionNode = exclusions.appendNode('exclusion')
                                             exclusionNode.appendNode('groupId', rule.group ?: '*')
                                             exclusionNode.appendNode('artifactId', rule.module ?: '*')
                                         }
                                     }
                                 }
 
-                                [
-                                        'compile':          'compile',
-                                        'api':              'compile',
-                                        'implementation':   'runtime',
-                                        'runtimeOnly':      'runtime'
-                                ].each { conf, scope ->
-//                                    project.configurations[conf].allDependencies.each { addDep(it, scope) }
-                                    project.configurations[conf].allDependencies.each {
-                                        if (visitedDeps.contains(it)) {
-                                            return
+                                if (withDependencies) {
+                                    def visitedDeps = [] as Set<Dependency>
+
+                                    [
+                                            'compile':            'compile',
+                                            'api':                'compile',
+                                            'implementation':     'compile',
+                                            'runtimeOnly':        'runtime',
+                                            'provided':           'runtime'
+                                    ].each { conf, scope ->
+                                        if (project.configurations.find {
+                                            it.name.equals(conf)
+                                        }) {
+                                            project.configurations[conf].allDependencies.each {
+                                                if (visitedDeps.contains(it)) {
+                                                    return
+                                                }
+                                                addDep(it, scope)
+                                                visitedDeps.add(it)
+                                            }
                                         }
-                                        visitedDeps.add(it)
-                                        addDep(it, scope)
                                     }
                                 }
                             }
@@ -544,5 +583,4 @@ class WeChatAndroidLibraryPublishExtension extends WeChatPublishExtension {
         }
     }
 }
-
 apply from: rootProject.file('gradle/check.gradle')

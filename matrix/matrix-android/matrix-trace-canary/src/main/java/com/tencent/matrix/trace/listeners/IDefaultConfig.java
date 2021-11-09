@@ -22,14 +22,26 @@ package com.tencent.matrix.trace.listeners;
 
 public interface IDefaultConfig {
 
+    boolean isAppMethodBeatEnable();
+
     boolean isFPSEnable();
 
     boolean isEvilMethodTraceEnable();
 
     boolean isAnrTraceEnable();
 
+    boolean isIdleHandlerEnable();
+
+    boolean isSignalAnrTraceEnable();
+
+    boolean isMainThreadPriorityTraceEnable();
+
     boolean isDebug();
 
     boolean isDevEnv();
+
+    String getAnrTraceFilePath();
+
+    String getPrintTraceFilePath();
 
 }

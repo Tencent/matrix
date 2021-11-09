@@ -28,6 +28,8 @@ class MatrixTraceCompat : ITraceSwitchListener {
 
     companion object {
         const val TAG = "Matrix.TraceCompat"
+
+        const val LEGACY_FLAG = "matrix_trace_legacy"
     }
 
     var traceInjection: MatrixTraceInjection? = null
@@ -46,8 +48,14 @@ class MatrixTraceCompat : ITraceSwitchListener {
         when {
             VersionsCompat.lessThan(AGPVersion.AGP_3_6_0) ->
                 legacyInject(appExtension, project, extension)
-            VersionsCompat.greatThanOrEqual(AGPVersion.AGP_4_0_0) ->
-                traceInjection!!.inject(appExtension, project, extension)
+            VersionsCompat.greatThanOrEqual(AGPVersion.AGP_4_0_0) -> {
+                if (project.extensions.extraProperties.has(LEGACY_FLAG) &&
+                    (project.extensions.extraProperties.get(LEGACY_FLAG) as? String?) == "true") {
+                    legacyInject(appExtension, project, extension)
+                } else {
+                    traceInjection!!.inject(appExtension, project, extension)
+                }
+            }
             else -> Log.e(TAG, "Matrix does not support Android Gradle Plugin " +
                     "${VersionsCompat.androidGradlePluginVersion}!.")
         }
@@ -68,5 +76,4 @@ class MatrixTraceCompat : ITraceSwitchListener {
             }
         }
     }
-
 }

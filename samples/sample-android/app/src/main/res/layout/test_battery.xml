@@ -1,42 +1,66 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    style="@style/Container"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical">
+    android:orientation="vertical"
+    tools:ignore="HardcodedText">
 
     <Button
-        android:id="@+id/wake_lock_acquire"
-        android:layout_width="wrap_content"
+        android:id="@+id/dump_battery_stats"
+        style="@style/EntryButton"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:gravity="left"
-        android:onClick="onClick"
-        android:padding="16dp"
-        android:text="wake_lock_acquirer" />
+        android:onClick="onDumpBatteryStats"
+        android:text="Dump BatteryStats Report" />
+
+    <HorizontalScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+        <TextView
+            android:id="@+id/tv_battery_stats"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:scrollHorizontally="true"
+            android:singleLine="false"/>
+    </HorizontalScrollView>
 
     <Button
         android:id="@+id/wake_lock_release"
-        android:layout_width="wrap_content"
+        style="@style/EntryButton"
+        android:visibility="gone"
+        tools:visibility="visible"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:gravity="left"
-        android:onClick="onClick"
-        android:padding="16dp"
-        android:text="wake_lock_release" />
+        android:text="WakeLock Release" />
 
     <Button
         android:id="@+id/set_alarm"
-        android:layout_width="wrap_content"
+        style="@style/EntryButton"
+        android:visibility="gone"
+        tools:visibility="visible"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:gravity="left"
-        android:onClick="onClick"
-        android:padding="16dp"
-        android:text="set_alarm" />
+        android:text="Set Alarm" />
 
     <Button
         android:id="@+id/cancel_alarm"
-        android:layout_width="wrap_content"
+        style="@style/EntryButton"
+        android:visibility="gone"
+        tools:visibility="visible"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:gravity="left"
-        android:onClick="onClick"
-        android:padding="16dp"
-        android:text="cancel_alarm" />
+        android:text="Cancel Alarm" />
+
+    <Button
+        android:id="@+id/start_anim"
+        style="@style/EntryButton"
+        android:visibility="gone"
+        tools:visibility="visible"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:onClick="onStartAnim"
+        android:text="Start Anim" />
+
 </LinearLayout>

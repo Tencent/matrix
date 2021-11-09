@@ -26,9 +26,8 @@ typedef struct {
     uint64_t address;
     uint32_t size;
     uint32_t object_type;
-    uint32_t t_id;
     uint32_t type_flags;
-    uint32_t event_size;
+    uint16_t event_size;
     uint8_t event_type;
     uint8_t stack_size;
     uintptr_t stacks[STACK_LOGGING_MAX_STACK_SIZE];
@@ -36,6 +35,8 @@ typedef struct {
 
 #define MEMORY_LOGGING_EVENT_SIMPLE_SIZE offsetof(memory_logging_event, stacks)
 
-FORCE_INLINE size_t write_size_by_event(memory_logging_event *event);
+inline size_t write_size_by_event(memory_logging_event *event) {
+    return MEMORY_LOGGING_EVENT_SIMPLE_SIZE + (event->stack_size << 3); // event->stack_size * sizeof(uintptr_t);
+}
 
 #endif /* memory_logging_event_h */

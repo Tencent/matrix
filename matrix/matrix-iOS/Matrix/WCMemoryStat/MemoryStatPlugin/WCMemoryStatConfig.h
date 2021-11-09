@@ -35,6 +35,8 @@ typedef NS_ENUM(NSUInteger, EWCMemStatReportStrategy) {
 // the stack also be saved. Default to 8
 @property (nonatomic, assign) int skipMaxStackDepth;
 
+@property (nonatomic, assign) int dumpCallStacks; // 0 = not dump, 1 = dump all objects' call stacks, 2 = dump only objc objects'
+
 @property (nonatomic, assign) EWCMemStatReportStrategy reportStrategy;
 
 @end

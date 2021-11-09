@@ -4,7 +4,7 @@
 # Created by liyongjie on 2017/6/22
 #
 
-add_subdirectory(../matrix-android-commons/src/main/cpp/libxhook ${CMAKE_CURRENT_BINARY_DIR}/libxhook)
+#add_subdirectory(../matrix-android-commons/src/main/cpp/libxhook-deprecated ${CMAKE_CURRENT_BINARY_DIR}/libxhook)
 
 # collects jni srcs
 aux_source_directory(${PROJECT_SOURCE_DIR}/${ANDROID_SDK_DIR_NAME}/src/full/cpp/ SQLiteLint_Jni_SRCS)
@@ -17,6 +17,8 @@ add_library(SqliteLint-lib
              ${SQLiteLint_Library_SRCS}
             )
 
+TARGET_INCLUDE_DIRECTORIES(SqliteLint-lib PRIVATE ${EXT_DEP}/include)
+
 # link the log
 find_library( log-lib log )
-target_link_libraries(SqliteLint-lib ${log-lib} xhook)
+target_link_libraries(SqliteLint-lib ${log-lib} ${EXT_DEP}/lib/${ANDROID_ABI}/libxhook.a)

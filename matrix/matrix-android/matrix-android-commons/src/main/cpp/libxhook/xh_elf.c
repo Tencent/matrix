@@ -119,7 +119,7 @@ static int xh_elf_sleb128_decoder_next(xh_elf_sleb128_decoder_t *self, size_t *r
     {
         if(self->cur >= self->end)
             return XH_ERRNO_FORMAT;
-        
+
         byte = *(self->cur)++;
         value |= ((size_t)(byte & 127) << shift);
         shift += 7;
@@ -129,7 +129,7 @@ static int xh_elf_sleb128_decoder_next(xh_elf_sleb128_decoder_t *self, size_t *r
     {
         value |= -((size_t)(1) << shift);
     }
-    
+
     *ret = value;
     return 0;
 }
@@ -161,11 +161,11 @@ static int xh_elf_packed_reloc_iterator_init(xh_elf_packed_reloc_iterator_t *sel
                                              ElfW(Addr) rel, ElfW(Word) rel_sz, int is_use_rela)
 {
     int r;
-    
+
     memset(self, 0, sizeof(xh_elf_packed_reloc_iterator_t));
     xh_elf_sleb128_decoder_init(&(self->decoder), rel, rel_sz);
     self->is_use_rela = is_use_rela;
-    
+
     if(0 != (r = xh_elf_sleb128_decoder_next(&(self->decoder), &(self->relocation_count)))) return r;
     if(0 != (r = xh_elf_sleb128_decoder_next(&(self->decoder), (size_t *)&(self->r_offset)))) return r;
     return 0;
@@ -178,7 +178,7 @@ static int xh_elf_packed_reloc_iterator_read_group_fields(xh_elf_packed_reloc_it
 
     if(0 != (r = xh_elf_sleb128_decoder_next(&(self->decoder), &(self->group_size)))) return r;
     if(0 != (r = xh_elf_sleb128_decoder_next(&(self->decoder), &(self->group_flags)))) return r;
-    
+
     if(self->group_flags & RELOCATION_GROUPED_BY_OFFSET_DELTA_FLAG)
         if(0 != (r = xh_elf_sleb128_decoder_next(&(self->decoder), &(self->group_r_offset_delta)))) return r;
 
@@ -200,7 +200,7 @@ static int xh_elf_packed_reloc_iterator_read_group_fields(xh_elf_packed_reloc_it
     {
         self->r_addend = 0;
     }
-    
+
     self->relocation_group_index = 0;
     return 0;
 }
@@ -225,7 +225,7 @@ static void *xh_elf_packed_reloc_iterator_next(xh_elf_packed_reloc_iterator_t *s
         if(0 != xh_elf_sleb128_decoder_next(&(self->decoder), &val)) return NULL;
         self->r_offset += val;
     }
-    
+
     if(0 == (self->group_flags & RELOCATION_GROUPED_BY_INFO_FLAG))
         if(0 != xh_elf_sleb128_decoder_next(&(self->decoder), &(self->r_info))) return NULL;
 
@@ -236,7 +236,7 @@ static void *xh_elf_packed_reloc_iterator_next(xh_elf_packed_reloc_iterator_t *s
         if(0 != xh_elf_sleb128_decoder_next(&(self->decoder), &val)) return NULL;
         self->r_addend += (ssize_t)val;
     }
-    
+
     self->relocation_index++;
     self->relocation_group_index++;
 
@@ -328,7 +328,7 @@ static uint32_t xh_elf_gnu_hash(const uint8_t *name)
 static ElfW(Phdr) *xh_elf_get_first_segment_by_type(xh_elf_t *self, ElfW(Word) type)
 {
     ElfW(Phdr) *phdr;
-    
+
     for(phdr = self->phdr; phdr < self->phdr + self->ehdr->e_phnum; phdr++)
     {
         if(phdr->p_type == type)
@@ -342,7 +342,7 @@ static ElfW(Phdr) *xh_elf_get_first_segment_by_type(xh_elf_t *self, ElfW(Word) t
 static ElfW(Phdr) *xh_elf_get_first_segment_by_type_offset(xh_elf_t *self, ElfW(Word) type, ElfW(Off) offset)
 {
     ElfW(Phdr) *phdr;
-    
+
     for(phdr = self->phdr; phdr < self->phdr + self->ehdr->e_phnum; phdr++)
     {
         if(phdr->p_type == type && phdr->p_offset == offset)
@@ -358,11 +358,11 @@ static int xh_elf_hash_lookup(xh_elf_t *self, const char *symbol, uint32_t *symi
     uint32_t    hash = xh_elf_hash((uint8_t *)symbol);
     const char *symbol_cur;
     uint32_t    i;
-    
+
     for(i = self->bucket[hash % self->bucket_cnt]; 0 != i; i = self->chain[i])
     {
         symbol_cur = self->strtab + self->symtab[i].st_name;
-        
+
         if(0 == strcmp(symbol, symbol_cur))
         {
             *symidx = i;
@@ -370,53 +370,53 @@ static int xh_elf_hash_lookup(xh_elf_t *self, const char *symbol, uint32_t *symi
             return 0;
         }
     }
-    
+
     return XH_ERRNO_NOTFND;
 }
 
 static int xh_elf_gnu_hash_lookup_def(xh_elf_t *self, const char *symbol, uint32_t *symidx)
 {
     uint32_t hash = xh_elf_gnu_hash((uint8_t *)symbol);
-    
+
     static uint32_t elfclass_bits = sizeof(ElfW(Addr)) * 8;
     size_t word = self->bloom[(hash / elfclass_bits) % self->bloom_sz];
     size_t mask = 0
-        | (size_t)1 << (hash % elfclass_bits)
-        | (size_t)1 << ((hash >> self->bloom_shift) % elfclass_bits);
-    
+                  | (size_t)1 << (hash % elfclass_bits)
+                  | (size_t)1 << ((hash >> self->bloom_shift) % elfclass_bits);
+
     //if at least one bit is not set, this symbol is surely missing
     if((word & mask) != mask) return XH_ERRNO_NOTFND;
 
     //ignore STN_UNDEF
     uint32_t i = self->bucket[hash % self->bucket_cnt];
     if(i < self->symoffset) return XH_ERRNO_NOTFND;
-    
+
     //loop through the chain
     while(1)
     {
         const char     *symname = self->strtab + self->symtab[i].st_name;
         const uint32_t  symhash = self->chain[i - self->symoffset];
-        
+
         if((hash | (uint32_t)1) == (symhash | (uint32_t)1) && 0 == strcmp(symbol, symname))
         {
             *symidx = i;
             XH_LOG_INFO("found %s at symidx: %u (GNU_HASH DEF)\n", symbol, *symidx);
             return 0;
         }
-        
+
         //chain ends with an element with the lowest bit set to 1
         if(symhash & (uint32_t)1) break;
-        
+
         i++;
     }
-    
+
     return XH_ERRNO_NOTFND;
 }
 
 static int xh_elf_gnu_hash_lookup_undef(xh_elf_t *self, const char *symbol, uint32_t *symidx)
 {
     uint32_t i;
-    
+
     for(i = 0; i < self->symoffset; i++)
     {
         const char *symname = self->strtab + self->symtab[i].st_name;
@@ -437,12 +437,15 @@ static int xh_elf_gnu_hash_lookup(xh_elf_t *self, const char *symbol, uint32_t *
     return XH_ERRNO_NOTFND;
 }
 
-static int xh_elf_find_symidx_by_name(xh_elf_t *self, const char *symbol, uint32_t *symidx)
+int xh_elf_find_symidx_by_name(xh_elf_t *self, const char *symbol, uint32_t *symidx)
 {
+    int ret = 0;
     if(self->is_use_gnu_hash)
-        return xh_elf_gnu_hash_lookup(self, symbol, symidx);
+        ret = xh_elf_gnu_hash_lookup(self, symbol, symidx);
     else
-        return xh_elf_hash_lookup(self, symbol, symidx);
+        ret = xh_elf_hash_lookup(self, symbol, symidx);
+
+    return ret;
 }
 
 static int xh_elf_replace_function(xh_elf_t *self, const char *symbol, ElfW(Addr) addr, void *new_func, void **old_func)
@@ -462,7 +465,7 @@ static int xh_elf_replace_function(xh_elf_t *self, const char *symbol, ElfW(Addr
         XH_LOG_ERROR("get addr prot failed. ret: %d", r);
         return r;
     }
-    
+
     if(old_prot != need_prot)
     {
         //set new prot
@@ -472,7 +475,7 @@ static int xh_elf_replace_function(xh_elf_t *self, const char *symbol, ElfW(Addr
             return r;
         }
     }
-    
+
     //save old func
     old_addr = *(void **)addr;
     if(NULL != old_func) *old_func = old_addr;
@@ -492,7 +495,7 @@ static int xh_elf_replace_function(xh_elf_t *self, const char *symbol, ElfW(Addr
             XH_LOG_WARN("restore addr prot failed. ret: %d", r);
         }
     }
-    
+
     //clear cache
     xh_util_flush_instruction_cache(addr);
 
@@ -595,7 +598,7 @@ static void xh_elf_dump_programheader(xh_elf_t *self)
 {
     ElfW(Phdr) *phdr = self->phdr;
     size_t i;
-    
+
     XH_LOG_DEBUG("Program Headers:\n");
     XH_LOG_DEBUG("  %-8s " \
                  "%-"XH_UTIL_FMT_FIXED_S" " \
@@ -723,10 +726,10 @@ static void xh_elf_dump_rel(xh_elf_t *self, const char *type, ElfW(Addr) rel_add
 static void xh_elf_dump_symtab(xh_elf_t *self)
 {
     if(self->is_use_gnu_hash) return;
-    
+
     ElfW(Word)  symtab_cnt = self->chain_cnt;
     ElfW(Word)  i;
-    
+
     XH_LOG_DEBUG("Symbol table '.dynsym' contains %u entries:\n", symtab_cnt);
     XH_LOG_DEBUG("  %-8s " \
                  "%-"XH_UTIL_FMT_FIXED_S" " \
@@ -767,7 +770,7 @@ int xh_elf_init(xh_elf_t *self, uintptr_t base_addr, const char *pathname)
 
     //always reset
     memset(self, 0, sizeof(xh_elf_t));
-    
+
     self->pathname = pathname;
     self->base_addr = (ElfW(Addr))base_addr;
     self->ehdr = (ElfW(Ehdr) *)base_addr;
@@ -790,7 +793,7 @@ int xh_elf_init(xh_elf_t *self, uintptr_t base_addr, const char *pathname)
     //save load bias addr
     if(self->base_addr < phdr0->p_vaddr) return XH_ERRNO_FORMAT;
     self->bias_addr = self->base_addr - phdr0->p_vaddr;
-    
+
     //find dynamic-segment
     ElfW(Phdr) *dhdr = xh_elf_get_first_segment_by_type(self, PT_DYNAMIC);
     if(NULL == dhdr)
@@ -809,58 +812,58 @@ int xh_elf_init(xh_elf_t *self, uintptr_t base_addr, const char *pathname)
     {
         switch(dyn->d_tag) //segmentation fault sometimes
         {
-        case DT_NULL:
-            //the end of the dynamic-section
-            dyn = dyn_end;
-            break;
-        case DT_STRTAB:
+            case DT_NULL:
+                //the end of the dynamic-section
+                dyn = dyn_end;
+                break;
+            case DT_STRTAB:
             {
                 self->strtab = (const char *)(self->bias_addr + dyn->d_un.d_ptr);
                 if((ElfW(Addr))(self->strtab) < self->base_addr) return XH_ERRNO_FORMAT;
                 break;
             }
-        case DT_SYMTAB:
+            case DT_SYMTAB:
             {
                 self->symtab = (ElfW(Sym) *)(self->bias_addr + dyn->d_un.d_ptr);
                 if((ElfW(Addr))(self->symtab) < self->base_addr) return XH_ERRNO_FORMAT;
                 break;
             }
-        case DT_PLTREL:
-            //use rel or rela?
-            self->is_use_rela = (dyn->d_un.d_val == DT_RELA ? 1 : 0);
-            break;
-        case DT_JMPREL:
+            case DT_PLTREL:
+                //use rel or rela?
+                self->is_use_rela = (dyn->d_un.d_val == DT_RELA ? 1 : 0);
+                break;
+            case DT_JMPREL:
             {
                 self->relplt = (ElfW(Addr))(self->bias_addr + dyn->d_un.d_ptr);
                 if((ElfW(Addr))(self->relplt) < self->base_addr) return XH_ERRNO_FORMAT;
                 break;
             }
-        case DT_PLTRELSZ:
-            self->relplt_sz = dyn->d_un.d_val;
-            break;
-        case DT_REL:
-        case DT_RELA:
+            case DT_PLTRELSZ:
+                self->relplt_sz = dyn->d_un.d_val;
+                break;
+            case DT_REL:
+            case DT_RELA:
             {
                 self->reldyn = (ElfW(Addr))(self->bias_addr + dyn->d_un.d_ptr);
                 if((ElfW(Addr))(self->reldyn) < self->base_addr) return XH_ERRNO_FORMAT;
                 break;
             }
-        case DT_RELSZ:
-        case DT_RELASZ:
-            self->reldyn_sz = dyn->d_un.d_val;
-            break;
-        case DT_ANDROID_REL:
-        case DT_ANDROID_RELA:
+            case DT_RELSZ:
+            case DT_RELASZ:
+                self->reldyn_sz = dyn->d_un.d_val;
+                break;
+            case DT_ANDROID_REL:
+            case DT_ANDROID_RELA:
             {
                 self->relandroid = (ElfW(Addr))(self->bias_addr + dyn->d_un.d_ptr);
                 if((ElfW(Addr))(self->relandroid) < self->base_addr) return XH_ERRNO_FORMAT;
                 break;
             }
-        case DT_ANDROID_RELSZ:
-        case DT_ANDROID_RELASZ:
-            self->relandroid_sz = dyn->d_un.d_val;
-            break;
-        case DT_HASH:
+            case DT_ANDROID_RELSZ:
+            case DT_ANDROID_RELASZ:
+                self->relandroid_sz = dyn->d_un.d_val;
+                break;
+            case DT_HASH:
             {
                 //ignore DT_HASH when ELF contains DT_GNU_HASH hash table
                 if(1 == self->is_use_gnu_hash) continue;
@@ -873,7 +876,7 @@ int xh_elf_init(xh_elf_t *self, uintptr_t base_addr, const char *pathname)
                 self->chain       = &(self->bucket[self->bucket_cnt]);
                 break;
             }
-        case DT_GNU_HASH:
+            case DT_GNU_HASH:
             {
                 raw = (uint32_t *)(self->bias_addr + dyn->d_un.d_ptr);
                 if((ElfW(Addr))raw < self->base_addr) return XH_ERRNO_FORMAT;
@@ -887,8 +890,8 @@ int xh_elf_init(xh_elf_t *self, uintptr_t base_addr, const char *pathname)
                 self->is_use_gnu_hash = 1;
                 break;
             }
-        default:
-            break;
+            default:
+                break;
         }
     }
 
@@ -905,7 +908,7 @@ int xh_elf_init(xh_elf_t *self, uintptr_t base_addr, const char *pathname)
             XH_LOG_ERROR("android rel/rela format error\n");
             return XH_ERRNO_FORMAT;
         }
-        
+
         self->relandroid += 4;
         self->relandroid_sz -= 4;
     }
@@ -916,9 +919,9 @@ int xh_elf_init(xh_elf_t *self, uintptr_t base_addr, const char *pathname)
         XH_LOG_ERROR("elf init check failed. %s", pathname);
         return XH_ERRNO_FORMAT;
     }
-    
+
 #if XH_ELF_DEBUG
-    xh_elf_dump(self);
+        xh_elf_dump(self);
 #endif
 
     XH_LOG_INFO("init OK: %s (%s %s PLT:%u DYN:%u ANDROID:%u)\n", self->pathname,
@@ -945,7 +948,7 @@ static int xh_elf_find_and_replace_func(xh_elf_t *self, const char *section,
     int            r;
 
     if(NULL != found) *found = 0;
-    
+
     if(self->is_use_rela)
     {
         rela = (ElfW(Rela) *)rel_common;
@@ -961,6 +964,8 @@ static int xh_elf_find_and_replace_func(xh_elf_t *self, const char *section,
 
     //check sym
     r_sym = XH_ELF_R_SYM(r_info);
+
+    // modified: fix
     if(r_sym != symidx) return 0;
 
     //check type
@@ -1002,21 +1007,22 @@ int xh_elf_hook(xh_elf_t *self, const char *symbol, void *new_func, void **old_f
     if(NULL == symbol || NULL == new_func) return XH_ERRNO_INVAL;
 
     XH_LOG_INFO("hooking %s in %s\n", symbol, self->pathname);
-    
+
     //find symbol index by symbol name
-    if(0 != (r = xh_elf_find_symidx_by_name(self, symbol, &symidx))) return 0;
-    
+    if(0 != (r = xh_elf_find_symidx_by_name(self, symbol, &symidx))) return r;
+
     //replace for .rel(a).plt
     if(0 != self->relplt)
     {
         xh_elf_plain_reloc_iterator_init(&plain_iter, self->relplt, self->relplt_sz, self->is_use_rela);
+        found = 0;
         while(NULL != (rel_common = xh_elf_plain_reloc_iterator_next(&plain_iter)))
         {
             if(0 != (r = xh_elf_find_and_replace_func(self,
                                                       (self->is_use_rela ? ".rela.plt" : ".rel.plt"), 1,
                                                       symbol, new_func, old_func,
                                                       symidx, rel_common, &found))) return r;
-            if(found) break;
+            if (found) break;
         }
     }
 
@@ -1024,12 +1030,14 @@ int xh_elf_hook(xh_elf_t *self, const char *symbol, void *new_func, void **old_f
     if(0 != self->reldyn)
     {
         xh_elf_plain_reloc_iterator_init(&plain_iter, self->reldyn, self->reldyn_sz, self->is_use_rela);
+        found = 0;
         while(NULL != (rel_common = xh_elf_plain_reloc_iterator_next(&plain_iter)))
         {
             if(0 != (r = xh_elf_find_and_replace_func(self,
                                                       (self->is_use_rela ? ".rela.dyn" : ".rel.dyn"), 0,
                                                       symbol, new_func, old_func,
-                                                      symidx, rel_common, NULL))) return r;
+                                                      symidx, rel_common, &found))) return r;
+            if (found) break;
         }
     }
 
@@ -1037,14 +1045,16 @@ int xh_elf_hook(xh_elf_t *self, const char *symbol, void *new_func, void **old_f
     if(0 != self->relandroid)
     {
         xh_elf_packed_reloc_iterator_init(&packed_iter, self->relandroid, self->relandroid_sz, self->is_use_rela);
+        found = 0;
         while(NULL != (rel_common = xh_elf_packed_reloc_iterator_next(&packed_iter)))
         {
             if(0 != (r = xh_elf_find_and_replace_func(self,
                                                       (self->is_use_rela ? ".rela.android" : ".rel.android"), 0,
                                                       symbol, new_func, old_func,
-                                                      symidx, rel_common, NULL))) return r;
+                                                      symidx, rel_common, &found))) return r;
+            if (found) break;
         }
     }
-    
+
     return 0;
 }

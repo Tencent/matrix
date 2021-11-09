@@ -7,13 +7,17 @@ buildscript {
         buildToolsVersion = '29.0.2'
         javaVersion = JavaVersion.VERSION_1_8
 
-        MATRIX_VERSION = "0.9.0"
+        MATRIX_VERSION = "2.0.0-beta"
         GROUP = 'com.tencent.matrix'
         VERSION_NAME = "${MATRIX_VERSION}"
 
         /**
-         * Set 'compileMatrixWithSrc = true' or with compile args '-PcompileWithSrc=true'
-         * to compile Sample module with matrix source code for further debug.
+         * To compile Sample App with matrix source code for further debug:
+         *
+         * 1. Run `gradle publishToMavenLocal`
+         * 2. Set 'compileMatrixWithSrc = true' or with run gradle with args '-PcompileWithSrc=true'
+         *
+         # Or see `testBuildAndroid` in `.circleci/config.yaml`.
          */
         compileMatrixWithSrc = false
 
@@ -32,7 +36,6 @@ buildscript {
         mavenLocal()
         google()
         mavenCentral()
-        jcenter()
     }
     dependencies {
         classpath 'com.android.tools.build:gradle:4.1.0'
@@ -50,7 +53,6 @@ allprojects {
         mavenLocal()
         mavenCentral()
         google()
-        jcenter()
     }
 }
 

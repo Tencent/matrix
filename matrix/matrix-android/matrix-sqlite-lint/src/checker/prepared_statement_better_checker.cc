@@ -141,7 +141,7 @@ namespace sqlitelint {
         std::string desc = "The following sql executed continuously:\n";
         std::string identity_info = "";
 
-        sVerbose("PreparedStatementBetterChecker::PublishIssue %s,size %d", section[0]->wildcard_sql_.c_str(),section.size());
+        sVerbose("PreparedStatementBetterChecker::PublishIssue %s,size %zu", section[0]->wildcard_sql_.c_str(),section.size());
         for (SqlInfo* sql_info : section) {
             desc += FormatTime(sql_info->execution_time_/1000);
             desc += ":\n";

@@ -3,7 +3,6 @@ dependencies {
 
     def matrixModules = [
             "matrix-commons",
-            "matrix-thread-canary",
             "matrix-battery-canary",
             "matrix-android-lib",
             "matrix-android-commons",
@@ -12,6 +11,10 @@ dependencies {
             "matrix-resource-canary-common",
             "matrix-io-canary",
             "matrix-sqlite-lint-android-sdk",
+            "matrix-hooks",
+            "matrix-fd",
+            "matrix-jectl",
+            "matrix-backtrace",
     ]
 
     matrixModules.each { moduleName ->
@@ -34,7 +37,6 @@ dependencies {
     apkCheckerDependency("com.tencent.matrix:matrix-apk-canary:${MATRIX_VERSION}")
     sevenZipDependency('com.tencent.mm:SevenZip:1.2.17') {
         artifact {
-            classifier = project.osdetector.classifier
             name = "SevenZip"
             type = 'exe'
         }

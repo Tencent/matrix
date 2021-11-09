@@ -98,7 +98,8 @@ public final class AppStatMonitorFeature extends AbsMonitorFeature {
     @Override
     public void onForeground(boolean isForeground) {
         super.onForeground(isForeground);
-        int appStat = BatteryCanaryUtil.getAppStat(mCore.getContext(), isForeground);
+        int appStat = BatteryCanaryUtil.getAppStatImmediately(mCore.getContext(), isForeground);
+        BatteryCanaryUtil.getProxy().updateAppStat(appStat);
         synchronized (TAG) {
             if (mStampList != Collections.EMPTY_LIST) {
                 MatrixLog.i(BatteryEventDelegate.TAG, "onStat >> " + BatteryCanaryUtil.convertAppStat(appStat));
