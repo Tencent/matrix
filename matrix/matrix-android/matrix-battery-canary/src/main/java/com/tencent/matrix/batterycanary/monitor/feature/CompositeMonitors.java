@@ -43,7 +43,7 @@ public class CompositeMonitors {
     protected BatteryMonitorCore mMonitor;
     @Nullable
     protected AppStats mAppStats;
-    private long mBgnMillis = SystemClock.uptimeMillis();
+    protected long mBgnMillis = SystemClock.uptimeMillis();
 
     public CompositeMonitors(@Nullable BatteryMonitorCore core) {
         mMonitor = core;
@@ -54,6 +54,21 @@ public class CompositeMonitors {
         mDeltas.clear();
         mSamplers.clear();
         mSampleResults.clear();
+    }
+
+    public CompositeMonitors fork() {
+        CompositeMonitors that = new CompositeMonitors(mMonitor);
+        that.mBgnMillis = this.mBgnMillis;
+        that.mAppStats = this.mAppStats;
+
+        that.mMetrics.addAll(mMetrics);
+        that.mBgnSnapshots.putAll(mBgnSnapshots);
+        that.mDeltas.putAll(mDeltas);
+
+        that.mSampleRegs.putAll(mSampleRegs);
+        that.mSamplers.putAll(mSamplers);
+        that.mSampleResults.putAll(mSampleResults);
+        return that;
     }
 
     @Nullable
@@ -236,7 +251,6 @@ public class CompositeMonitors {
                 }
             }
         }
-        mAppStats = AppStats.current(SystemClock.uptimeMillis() - mBgnMillis);
     }
 
     @CallSuper
