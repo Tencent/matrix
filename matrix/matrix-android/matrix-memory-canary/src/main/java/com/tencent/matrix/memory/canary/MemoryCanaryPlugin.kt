@@ -1,18 +1,22 @@
 package com.tencent.matrix.memory.canary
 
+import com.tencent.matrix.lifecycle.owners.ActivityRecorder
 import com.tencent.matrix.lifecycle.supervisor.ProcessSupervisor
 import com.tencent.matrix.lifecycle.supervisor.SupervisorConfig
-import com.tencent.matrix.memory.canary.monitor.BackgroundMemoryMonitor
-import com.tencent.matrix.memory.canary.monitor.BackgroundMemoryMonitorConfig
-import com.tencent.matrix.memory.canary.monitor.SumPssMonitor
-import com.tencent.matrix.memory.canary.monitor.SumPssMonitorConfig
+import com.tencent.matrix.memory.canary.monitor.ProcessBgMemoryMonitor
+import com.tencent.matrix.memory.canary.monitor.ProcessBgMemoryMonitorConfig
+import com.tencent.matrix.memory.canary.monitor.AppBgSumPssMonitor
+import com.tencent.matrix.memory.canary.monitor.AppBgSumPssMonitorConfig
 import com.tencent.matrix.plugin.Plugin
 import com.tencent.matrix.util.MatrixLog
+import com.tencent.matrix.util.MatrixUtil
 
+@Suppress("ArrayInDataClass")
 data class MemoryCanaryConfig(
     val supervisorConfig: SupervisorConfig = SupervisorConfig(),
-    val sumPssMonitorConfig: SumPssMonitorConfig = SumPssMonitorConfig(),
-    val backgroundMemoryMonitorConfig: BackgroundMemoryMonitorConfig = BackgroundMemoryMonitorConfig()
+    val appBgSumPssMonitorConfig: AppBgSumPssMonitorConfig = AppBgSumPssMonitorConfig(),
+    val processBgMemoryMonitorConfig: ProcessBgMemoryMonitorConfig = ProcessBgMemoryMonitorConfig(),
+    val baseActivities: Array<String> = emptyArray()
 )
 
 class MemoryCanaryPlugin(
@@ -27,14 +31,12 @@ class MemoryCanaryPlugin(
         super.start()
 
         memoryCanaryConfig.apply {
+            ActivityRecorder.baseActivities = baseActivities
             if (ProcessSupervisor.init(application, supervisorConfig)) {
-                sumPssMonitorConfig.takeIf { it.enable }?.let {
-                    SumPssMonitor(it).start()
-                }
+                MatrixLog.d(tag, "supervisor is ${MatrixUtil.getProcessName(application)}")
+                AppBgSumPssMonitor(appBgSumPssMonitorConfig).init()
             }
-            backgroundMemoryMonitorConfig.takeIf { it.enable }?.let {
-                BackgroundMemoryMonitor(it).init()
-            }
+            ProcessBgMemoryMonitor(processBgMemoryMonitorConfig).init()
         }
     }
 

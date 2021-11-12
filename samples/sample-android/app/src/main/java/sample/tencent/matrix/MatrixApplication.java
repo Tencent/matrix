@@ -19,6 +19,8 @@ package sample.tencent.matrix;
 import android.app.Application;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.content.pm.ServiceInfo;
 import android.os.Build;
 
 import com.tencent.matrix.Matrix;
@@ -78,6 +80,15 @@ public class MatrixApplication extends Application {
             } catch (HookManager.HookFailedException e) {
                 e.printStackTrace();
             }
+        }
+
+        try {
+            ServiceInfo[] services = getPackageManager().getPackageInfo(getPackageName(), PackageManager.GET_SERVICES).services;
+            for (ServiceInfo service : services) {
+                MatrixLog.d(TAG, "name = %s, processName = %s", service.name, service.processName);
+            }
+        } catch (PackageManager.NameNotFoundException e) {
+            e.printStackTrace();
         }
 
         // Switch.

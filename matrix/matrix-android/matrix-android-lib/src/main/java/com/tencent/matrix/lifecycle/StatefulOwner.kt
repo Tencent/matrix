@@ -174,13 +174,13 @@ class LifecycleDelegateStatefulOwner private constructor(
  */
 open class MultiSourceStatefulOwner(
     private val reduceOperator: (statefuls: Collection<IStateful>) -> Boolean,
-    vararg switchVaOwner: StatefulOwner
+    vararg statefulOwners: StatefulOwner
 ) : StatefulOwner(), IStateObserver {
 
     private val sourceOwners = ConcurrentLinkedQueue<StatefulOwner>()
 
     init {
-        switchVaOwner.forEach {
+        statefulOwners.forEach {
             register(it)
         }
     }
@@ -196,6 +196,7 @@ open class MultiSourceStatefulOwner(
         owner.also {
             sourceOwners.remove(it)
             it.removeObserver(this)
+            onStateChanged()
         }
     }
 

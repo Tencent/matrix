@@ -1,6 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
 
-          package="sample.tencent.matrix">
+    xmlns:tools="http://schemas.android.com/tools"
+    package="sample.tencent.matrix">
 
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
@@ -42,6 +43,11 @@
         <activity android:name=".hooks.TestHooksActivity" />
 
         <service android:name=".hooks.OtherProcessService" android:process=":other"/>
+        <service android:name="com.tencent.matrix.lifecycle.supervisor.SupervisorService"
+            android:exported="false"
+            android:process=":supervisor"
+            />
+
     </application>
 
 </manifest>

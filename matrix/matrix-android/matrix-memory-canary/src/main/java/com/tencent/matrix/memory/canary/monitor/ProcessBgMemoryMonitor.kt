@@ -3,7 +3,7 @@ package com.tencent.matrix.memory.canary.monitor
 import com.tencent.matrix.lifecycle.IStateObserver
 import com.tencent.matrix.lifecycle.owners.ActivityRecorder
 import com.tencent.matrix.lifecycle.owners.CombinedProcessForegroundOwner
-import com.tencent.matrix.memory.canary.*
+import com.tencent.matrix.memory.canary.MemInfo
 import com.tencent.matrix.util.MatrixHandlerThread
 import com.tencent.matrix.util.MatrixLog
 import java.util.concurrent.TimeUnit
@@ -39,15 +39,7 @@ internal data class Threshold(
     }
 }
 
-private fun Int.asThreshold(checkTimes: Int = 3): Threshold {
-    return Threshold(this.toLong(), checkTimes)
-}
-
-private fun Long.asThreshold(checkTimes: Int = 3): Threshold {
-    return Threshold(this, checkTimes)
-}
-
-class BackgroundMemoryMonitorConfig(
+class ProcessBgMemoryMonitorConfig(
     val enable: Boolean = true,
     val delayMillis: Long = TimeUnit.MINUTES.toMillis(1) + 500,
     javaThresholdByte: Long = 250 * 1024 * 1024L,
@@ -59,6 +51,10 @@ class BackgroundMemoryMonitorConfig(
         // do report
     },
 ) {
+    private fun Long.asThreshold(checkTimes: Int = 3): Threshold {
+        return Threshold(this, checkTimes)
+    }
+
     internal val javaThresholdByte: Threshold = javaThresholdByte.asThreshold()
     internal val nativeThresholdByte: Threshold = nativeThresholdByte.asThreshold()
     internal val amsPssThresholdK: Threshold = amsPssThresholdK.asThreshold()
@@ -69,13 +65,16 @@ class BackgroundMemoryMonitorConfig(
     }
 }
 
-class BackgroundMemoryMonitor(private val config: BackgroundMemoryMonitorConfig) {
+class ProcessBgMemoryMonitor(private val config: ProcessBgMemoryMonitorConfig) {
     private val runningHandler = MatrixHandlerThread.getDefaultHandler()
 
     private val delayCheckTask = Runnable { checkWhenBackground() }
 
     fun init() {
-        MatrixLog.i(TAG, "config memory threshold: $config")
+        MatrixLog.i(TAG, "$config")
+        if (!config.enable) {
+            return
+        }
         CombinedProcessForegroundOwner.observeForever(object : IStateObserver {
             override fun on() { // foreground
                 runningHandler.removeCallbacks(delayCheckTask)

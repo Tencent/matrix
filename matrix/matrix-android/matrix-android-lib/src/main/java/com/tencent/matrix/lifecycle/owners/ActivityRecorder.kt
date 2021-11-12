@@ -23,6 +23,14 @@ object ActivityRecorder : StatefulOwner() {
     private val activityRecord = WeakHashMap<Activity, Any>()
     private val destroyedActivities = WeakHashMap<Activity, Any>()
 
+    var baseActivities: Array<String> = emptyArray()
+        set(value) {
+            if (field.isNotEmpty()) {
+                throw IllegalArgumentException("avoid resetting base Activities")
+            }
+            field = value
+        }
+
     private fun WeakHashMap<Activity, Any>.contains(clazz: String): Boolean {
         entries.toTypedArray().forEach { e ->
             if (clazz == e.key?.javaClass?.name) {
@@ -65,6 +73,8 @@ object ActivityRecorder : StatefulOwner() {
         }
         return size
     }
+
+    fun busy() = active() && sizeExcept(baseActivities) > 0
 
     fun retainedActivities(): Map<String, Int> {
         val map = HashMap<String, Int>()

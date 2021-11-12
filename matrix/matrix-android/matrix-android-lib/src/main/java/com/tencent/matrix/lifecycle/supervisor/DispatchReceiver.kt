@@ -35,14 +35,13 @@ internal object DispatchReceiver : BroadcastReceiver() {
     }
 
     private enum class SupervisorEvent {
-        SUPERVISOR_INSTALLED,
         SUPERVISOR_DISPATCH_APP_FOREGROUND,
         SUPERVISOR_DISPATCH_APP_BACKGROUND,
         SUPERVISOR_DISPATCH_KILL;
     }
 
     internal fun install(context: Context?) {
-        if (SupervisorReceiver.isSupervisor) {
+        if (ProcessSupervisor.isSupervisor) {
             return
         }
         val filter = IntentFilter()
@@ -62,11 +61,6 @@ internal object DispatchReceiver : BroadcastReceiver() {
 
     fun removeKilledListener(listener: () -> Boolean) {
         killedListeners.remove(listener)
-    }
-
-
-    internal fun dispatchSuperVisorInstalled(context: Context?) {
-        dispatch(context, SupervisorEvent.SUPERVISOR_INSTALLED)
     }
 
     internal fun dispatchAppForeground(context: Context?) {
@@ -100,11 +94,8 @@ internal object DispatchReceiver : BroadcastReceiver() {
         context?.sendBroadcast(intent, ProcessSupervisor.permission)
     }
 
-    override fun onReceive(context: Context?, intent: Intent?) {
+    override fun onReceive(context: Context, intent: Intent?) {
         when (intent?.action) {
-            SupervisorEvent.SUPERVISOR_INSTALLED.name -> {
-                SupervisorReceiver.flushPending(context)
-            }
             SupervisorEvent.SUPERVISOR_DISPATCH_APP_FOREGROUND.name -> {
                 ProcessSupervisor.syncAppForeground()
             }
@@ -121,21 +112,21 @@ internal object DispatchReceiver : BroadcastReceiver() {
                 if (targetProcessName == MatrixUtil.getProcessName(context) && Process.myPid()
                         .toString() == targetPid
                 ) {
-
+                    val token = ProcessToken.current(context)
                     if (killedListeners.invokeAll() && !rescued) {
                         rescued = true
-                        SupervisorReceiver.sendOnProcessKillRescued(context)
+                        ProcessSupervisor.supervisorProxy?.onProcessRescuedFromKill(token)
                         MatrixLog.e(ProcessSupervisor.tag, "rescued once !!!")
                         return
                     }
 
                     MatrixHandlerThread.getDefaultHandler().postDelayed({
                         if (!CombinedProcessForegroundOwner.active()) {
-                            SupervisorReceiver.sendOnProcessKilled(context)
+                            ProcessSupervisor.supervisorProxy?.onProcessKilled(token)
                             MatrixLog.e(ProcessSupervisor.tag, "actual kill !!!")
                             Process.killProcess(Process.myPid())
                         } else {
-                            SupervisorReceiver.sendOnProcessKillCanceled(context)
+                            ProcessSupervisor.supervisorProxy?.onProcessKillCanceled(token)
                             MatrixLog.i(ProcessSupervisor.tag, "recheck: process is on foreground")
                         }
                     }, TimeUnit.SECONDS.toMillis(10))

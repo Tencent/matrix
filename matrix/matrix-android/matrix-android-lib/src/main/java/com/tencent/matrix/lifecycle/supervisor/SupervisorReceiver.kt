@@ -1,5 +1,6 @@
 package com.tencent.matrix.lifecycle.supervisor
 
+import android.app.ActivityManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -10,8 +11,8 @@ import com.tencent.matrix.util.MatrixHandlerThread
 import com.tencent.matrix.util.MatrixLog
 import com.tencent.matrix.util.MatrixUtil
 import java.util.*
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.collections.ArrayList
-import kotlin.collections.HashMap
 
 /**
  * [SupervisorReceiver] should be installed in the supervisor process only
@@ -19,6 +20,7 @@ import kotlin.collections.HashMap
  *
  * Created by Yves on 2021/10/12
  */
+@Deprecated("")
 internal object SupervisorReceiver : BroadcastReceiver() {
 
     private const val TAG = "Matrix.ProcessSupervisor.SupervisorReceiver"
@@ -27,6 +29,7 @@ internal object SupervisorReceiver : BroadcastReceiver() {
         SUPERVISOR_PROCESS_CREATED, // if the supervisor process were not main process, the create event would be lost
         SUPERVISOR_PROCESS_FOREGROUNDED,
         SUPERVISOR_PROCESS_BACKGROUNDED,
+        SUPERVISOR_PROCESS_CHECK_VALID,
         SUPERVISOR_PROCESS_KILLED,
         SUPERVISOR_PROCESS_KILL_RESCUED,
         SUPERVISOR_PROCESS_KILL_CANCELED,
@@ -34,17 +37,19 @@ internal object SupervisorReceiver : BroadcastReceiver() {
         CHECK_ERROR_DAMAGE;
     }
 
-    private class RemoteProcessLifecycleProxy(val processName: String) : StatefulOwner() {
+    private class RemoteProcessLifecycleProxy(val processName: String, val pid: Int) :
+        StatefulOwner() {
+
         init {
             ProcessSupervisor.addSourceOwner(this)
         }
 
         companion object {
-            private val processFgObservers by lazy { HashMap<String, RemoteProcessLifecycleProxy>() }
+            private val processFgObservers by lazy { ConcurrentHashMap<String, RemoteProcessLifecycleProxy>() }
 
-            fun getProxy(processName: String?): RemoteProcessLifecycleProxy? {
+            fun getProxy(processName: String?, pid: Int?): RemoteProcessLifecycleProxy? {
                 return processName?.run {
-                    processFgObservers.getOrPut(this, { RemoteProcessLifecycleProxy(this) })
+                    processFgObservers.getOrPut(this, { RemoteProcessLifecycleProxy(this, pid!!) })
                 }
             }
 
@@ -53,16 +58,39 @@ internal object SupervisorReceiver : BroadcastReceiver() {
                     ProcessSupervisor.removeSourceOwner(statefulOwner)
                 }
             }
+
+            fun checkValid() {
+                val begin = System.currentTimeMillis()
+                val runningProcesses = ams?.runningAppProcesses
+
+                val got = System.currentTimeMillis()
+
+                MatrixLog.d(TAG, "get running processes cost ${System.currentTimeMillis() - begin}")
+
+                processFgObservers.values.forEach {
+                    it.checkValid(runningProcesses)
+                }
+
+                MatrixLog.d(TAG, "get running processes cost ${System.currentTimeMillis() - got} for each check cost ${System.currentTimeMillis() - got}")
+            }
+        }
+
+        private fun checkValid(runningProcesses : List<ActivityManager.RunningAppProcessInfo>?) = runningProcesses?.any {
+            pid == it.pid && processName == it.processName
+        } ?: false.also {
+            removeProxy(processName)
+            backgroundProcessLru?.remove(ProcessInfo(processName, pid))
+            MatrixLog.e(TAG, "$it is invalid")
         }
 
         fun onRemoteProcessForeground() = turnOn()
         fun onRemoteProcessBackground() = turnOff()
         override fun toString(): String {
-            return "OwnerProxy_${processName}"
+            return "OwnerProxy_${processName}_$pid"
         }
     }
 
-    data class ProcessInfo(val name: String, val pid: Int) {
+    data class ProcessInfo  (val name: String, val pid: Int) {
         override fun toString(): String {
             return "$pid-$name"
         }
@@ -108,6 +136,8 @@ internal object SupervisorReceiver : BroadcastReceiver() {
     @Volatile
     private var isSupervisorInstalled: Boolean = false
 
+    private var ams: ActivityManager? = null
+
     internal fun install(context: Context?) {
         backgroundProcessLru = LinkedList<ProcessInfo>()
 
@@ -119,11 +149,11 @@ internal object SupervisorReceiver : BroadcastReceiver() {
             this, filter,
             ProcessSupervisor.permission, null
         )
+        ams = context?.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
 
         checkUnique(context)
 
         flushPending(context)
-        DispatchReceiver.dispatchSuperVisorInstalled(context)
 
 //        MatrixLog.i(TAG, "RegisterReceiver installed")
     }
@@ -152,6 +182,10 @@ internal object SupervisorReceiver : BroadcastReceiver() {
         send(context, ProcessEvent.SUPERVISOR_PROCESS_KILL_CANCELED)
     }
 
+    internal fun triggerCheckValid(context: Context?) {
+        send(context, ProcessEvent.SUPERVISOR_PROCESS_CHECK_VALID)
+    }
+
     internal fun backgroundLruKill(
         context: Context?,
         killedCallback: (result: Int, process: String?) -> Unit
@@ -159,6 +193,9 @@ internal object SupervisorReceiver : BroadcastReceiver() {
         if (!isSupervisor) {
             throw IllegalStateException("backgroundLruKill should only be called in supervisor")
         }
+
+        RemoteProcessLifecycleProxy.checkValid()
+
         targetKilledCallback = killedCallback
         backgroundProcessLru?.lastOrNull {
             it.name != MatrixUtil.getProcessName(context)
@@ -188,6 +225,7 @@ internal object SupervisorReceiver : BroadcastReceiver() {
         val intent = Intent(event.name)
         intent.putExtra(KEY_PROCESS_NAME, processName)
         intent.putExtra(KEY_PROCESS_PID, Process.myPid())
+        intent.putExtra(KEY_PROCESS_BUSY, false)
 
         if (isSupervisor) {
 //            MatrixLog.d(TAG, "send direct")
@@ -228,13 +266,19 @@ internal object SupervisorReceiver : BroadcastReceiver() {
         val pid = intent.getIntExtra(KEY_PROCESS_PID, 0)
 //        MatrixLog.d(SupervisorLifecycleOwner.tag, "Action [${intent?.action}] [$processName]")
 
-        val proxy = RemoteProcessLifecycleProxy.getProxy(processName)
+        val proxy = RemoteProcessLifecycleProxy.getProxy(processName, pid)
 
         when (intent.action) {
+//            ProcessEvent.SUPERVISOR_PROCESS_CREATED.name,
+//            ProcessEvent.SUPERVISOR_PROCESS_FOREGROUNDED.name,
+//            ProcessEvent.SUPERVISOR_PROCESS_BACKGROUNDED.name,
+//            ProcessEvent.SUPERVISOR_PROCESS_CHECK_VALID.name -> {
+//                MatrixLog.d(TAG, "check valid onReceive ${intent.action}")
+//                RemoteProcessLifecycleProxy.checkValid()
+//            }
             ProcessEvent.SUPERVISOR_PROCESS_CREATED.name -> {
                 processName?.let {
-                    backgroundProcessLru?.moveOrAddFirst(ProcessInfo(it, pid ?: 0))
-                    DispatchReceiver.dispatchSuperVisorInstalled(context)
+                    backgroundProcessLru?.moveOrAddFirst(ProcessInfo(it, pid))
                     // dispatch again for new process
                     if (processName != supervisorProcessName) {
                         if (ProcessSupervisor.active()) {

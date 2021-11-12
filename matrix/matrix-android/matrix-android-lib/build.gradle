@@ -5,11 +5,14 @@ android {
     compileSdkVersion rootProject.ext.compileSdkVersion
     buildToolsVersion rootProject.ext.buildToolsVersion
 
+    useLibrary 'android.test.base'
+
     defaultConfig {
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
         versionName rootProject.ext.VERSION_NAME
+        testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
     }
     buildTypes {
         release {
@@ -24,8 +27,11 @@ dependencies {
     api 'androidx.lifecycle:lifecycle-common:2.3.1'
     testImplementation 'junit:junit:4.12'
 
-    androidTestImplementation 'androidx.test.ext:junit:1.1.1'
     androidTestImplementation 'androidx.annotation:annotation:1.0.0'
+    androidTestImplementation 'androidx.test.ext:junit:1.1.1'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.1.0'
+    androidTestImplementation "org.mockito:mockito-core:2.8.9"
+    androidTestImplementation "org.mockito:mockito-android:2.8.9"
 }
 
 version = rootProject.ext.VERSION_NAME
