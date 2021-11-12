@@ -32,7 +32,7 @@
 #include <dlfcn.h>
 #include <set>
 #include "EnhanceDlsym.h"
-#include "JeLog.h"
+#include "../../../../../matrix-jectl/src/main/cpp/jectl/JeLog.h"
 
 #define TAG "Matrix.EnhanceDl"
 
