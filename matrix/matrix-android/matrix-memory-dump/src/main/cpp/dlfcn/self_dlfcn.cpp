@@ -3,7 +3,7 @@
 //
 
 #include "self_dlfcn.h"
-#include "enhance/EnhanceDlsym.h"
+#include <EnhanceDlsym.h>
 #include <dlfcn.h>
 
 extern "C" {

@@ -6,8 +6,7 @@ add_library(
         matrix-memorydump
         SHARED
         src/main/cpp/mem_dump.cpp
-        src/main/cpp/dlfcn/self_dlfcn.cpp
-        src/main/cpp/dlfcn/enhance/EnhanceDlsym.cpp)
+        src/main/cpp/dlfcn/self_dlfcn.cpp)
 
 find_library(
         log-lib
@@ -21,6 +20,7 @@ target_include_directories(
 target_link_libraries(
         matrix-memorydump
         ${log-lib}
+        ${EXT_DEP}/lib/${ANDROID_ABI}/libenhance_dlsym.a
         ${EXT_DEP}/lib/${ANDROID_ABI}/libsemi_dlfcn.a)
 
 if(${ANDROID_ABI} MATCHES "armeabi-v7a" OR ${ANDROID_ABI} MATCHES "arm64-v8a")
