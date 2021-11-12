@@ -250,6 +250,10 @@ public final class ActivityLeakFixer {
             // Ignored.
         }
 
+        if (view instanceof SwipeRefreshLayout) {
+            return;
+        }
+
         if (view.getBackground() != null) {
             view.addOnAttachStateChangeListener(new View.OnAttachStateChangeListener() {
                 @Override
