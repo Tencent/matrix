@@ -208,6 +208,9 @@ public final class ActivityLeakFixer {
             return;
         }
 
+        boolean isClickable = view.isClickable();
+        boolean isLongClickable = view.isLongClickable();
+
         try {
             view.setOnClickListener(null);
         } catch (Throwable ignored) {
@@ -274,6 +277,9 @@ public final class ActivityLeakFixer {
                 }
             });
         }
+
+        view.setClickable(isClickable);
+        view.setLongClickable(isLongClickable);
     }
 
     private static void recycleImageView(ImageView iv) {
