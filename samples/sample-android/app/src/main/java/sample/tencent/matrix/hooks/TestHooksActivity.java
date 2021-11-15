@@ -211,7 +211,7 @@ public class TestHooksActivity extends Activity {
                         + Debug.getNativeHeapFreeSize());
 
         String output = getExternalCacheDir() + "/memory_hook.log";
-        MemoryHook.INSTANCE.dump(output, output);
+        MemoryHook.INSTANCE.dump(output, output + ".json");
     }
 
     public void threadTest(View view) {
