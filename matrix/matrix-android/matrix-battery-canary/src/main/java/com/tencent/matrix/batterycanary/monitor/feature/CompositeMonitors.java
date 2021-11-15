@@ -211,15 +211,6 @@ public class CompositeMonitors {
         return this;
     }
 
-    @Deprecated
-    public void configureAllSnapshot() {
-        start();
-    }
-    @Deprecated
-    public void configureDeltas() {
-        finish();
-    }
-
     public void start() {
         mAppStats = null;
         mBgnMillis = SystemClock.uptimeMillis();
