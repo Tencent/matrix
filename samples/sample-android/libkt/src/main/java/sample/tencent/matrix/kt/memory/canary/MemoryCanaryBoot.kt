@@ -17,14 +17,10 @@ class MemoryCanaryBoot {
         @JvmStatic
         fun configure(app: Application): MemoryCanaryConfig {
             return MemoryCanaryConfig(
-                supervisorConfig = getSupervisorConfig(app),
-                sumPssMonitorConfig = SumPssMonitorBoot.config,
-                backgroundMemoryMonitorConfig = BackgroundMemoryMonitorBoot.config
+                supervisorConfig = SupervisorConfig(true),
+                appBgSumPssMonitorConfig = SumPssMonitorBoot.config,
+                processBgMemoryMonitorConfig = BackgroundMemoryMonitorBoot.config
             )
-        }
-
-        private fun getSupervisorConfig(app: Application): SupervisorConfig {
-            return SupervisorConfig(MatrixUtil.getPackageName(app))
         }
     }
 }

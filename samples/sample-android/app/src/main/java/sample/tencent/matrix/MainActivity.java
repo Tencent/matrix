@@ -16,13 +16,17 @@
 
 package sample.tencent.matrix;
 
+import android.app.Service;
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.IBinder;
 import android.view.View;
 import android.widget.Button;
 
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.tencent.matrix.lifecycle.supervisor.SupervisorService;
 import com.tencent.matrix.memory.canary.MemInfo;
 import com.tencent.matrix.util.MatrixLog;
 
@@ -115,6 +119,19 @@ public class MainActivity extends AppCompatActivity {
                 MemInfoTest.test();
             }
         }).start();
+    }
+
+    public static class StubService extends Service {
+        @Nullable
+        @Override
+        public IBinder onBind(Intent intent) {
+            return null;
+        }
+    }
+
+    public void testSupervisor(View view) {
+        Intent intent = new Intent(this, StubService.class);
+        startService(intent);
     }
 
 

@@ -1,6 +1,7 @@
 package com.tencent.matrix.lifecycle.supervisor
 
 import android.app.Service
+import android.content.Context
 import android.content.Intent
 import android.os.Binder
 import android.os.IBinder
@@ -20,8 +21,13 @@ class SupervisorService : Service() {
 
     companion object {
         private const val TAG = "Matrix.ProcessSupervisor.SupervisorService"
-        var isSupervisor = false
-            private set
+        private var isSupervisor = false
+
+        internal fun start(context: Context) {
+            isSupervisor = true
+            val intent = Intent(context, SupervisorService::class.java)
+            context.startService(intent)
+        }
     }
 
     private class TokenRecord {
@@ -117,7 +123,7 @@ class SupervisorService : Service() {
                 MatrixLog.i(TAG, "$pid-$dead was dead")
             }
             tokenRecord.addToken(token)
-            RemoteProcessLifecycleProxy.getProxy(token)
+//            RemoteProcessLifecycleProxy.getProxy(token)
             backgroundProcessLru.moveOrAddFirst(token)
             asyncLog(
                 "CREATED: [$pid-${token.name}] -> [${backgroundProcessLru.size}]${backgroundProcessLru.contentToString()}"

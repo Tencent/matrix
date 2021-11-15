@@ -83,6 +83,17 @@
                 android:layout_weight="1"
                 android:text="SQLite Lint" />
 
+            <Button
+                android:id="@+id/test_supervisor"
+                style="@style/EntryButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:textAllCaps="false"
+                android:onClick="testSupervisor"
+                android:text="Start Supervisor"
+                tools:ignore="UsingOnClickInXml" />
+
         </LinearLayout>
     </ScrollView>
 </LinearLayout>

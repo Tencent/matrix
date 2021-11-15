@@ -32,7 +32,7 @@ class MemoryCanaryPlugin(
 
         memoryCanaryConfig.apply {
             ActivityRecorder.baseActivities = baseActivities
-            if (ProcessSupervisor.init(application, supervisorConfig)) {
+            if (ProcessSupervisor.init(supervisorConfig)) { // TODO: 2021/11/15 init in Matrix constructor ?
                 MatrixLog.d(tag, "supervisor is ${MatrixUtil.getProcessName(application)}")
                 AppBgSumPssMonitor(appBgSumPssMonitorConfig).init()
             }

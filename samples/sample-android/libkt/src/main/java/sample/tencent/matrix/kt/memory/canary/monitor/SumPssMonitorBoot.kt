@@ -1,7 +1,7 @@
 package sample.tencent.matrix.kt.memory.canary.monitor
 
 import com.tencent.matrix.memory.canary.MemInfo
-import com.tencent.matrix.memory.canary.monitor.SumPssMonitorConfig
+import com.tencent.matrix.memory.canary.monitor.AppBgSumPssMonitorConfig
 import com.tencent.matrix.util.MatrixLog
 
 /**
@@ -14,5 +14,5 @@ object SumPssMonitorBoot {
         MatrixLog.i(TAG, "report : $sumPssKB, $memInfos")
     }
 
-    internal val config = SumPssMonitorConfig(callback = callback, thresholdKB = 2 * 1024 * 1024L)
+    internal val config = AppBgSumPssMonitorConfig(callback = callback, thresholdKB = 2 * 1024 * 1024L)
 }

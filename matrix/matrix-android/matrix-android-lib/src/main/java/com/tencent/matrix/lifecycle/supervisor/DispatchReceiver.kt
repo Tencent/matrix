@@ -35,6 +35,7 @@ internal object DispatchReceiver : BroadcastReceiver() {
     }
 
     private enum class SupervisorEvent {
+//        SUPERVISOR_INSTALLED,
         SUPERVISOR_DISPATCH_APP_FOREGROUND,
         SUPERVISOR_DISPATCH_APP_BACKGROUND,
         SUPERVISOR_DISPATCH_KILL;

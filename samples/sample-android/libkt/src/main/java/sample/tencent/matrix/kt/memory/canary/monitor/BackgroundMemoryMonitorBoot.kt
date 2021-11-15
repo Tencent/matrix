@@ -2,7 +2,7 @@ package sample.tencent.matrix.kt.memory.canary.monitor
 
 import com.tencent.matrix.memory.canary.BuildConfig
 import com.tencent.matrix.memory.canary.MemInfo
-import com.tencent.matrix.memory.canary.monitor.BackgroundMemoryMonitorConfig
+import com.tencent.matrix.memory.canary.monitor.ProcessBgMemoryMonitorConfig
 import com.tencent.matrix.util.MatrixLog
 
 /**
@@ -31,7 +31,7 @@ object BackgroundMemoryMonitorBoot {
         }
     }
 
-    internal val config = BackgroundMemoryMonitorConfig(
+    internal val config = ProcessBgMemoryMonitorConfig(
         reportCallback = reporter,
         baseActivities = baseActivities,
         javaThresholdByte = 10 * 1000L,

@@ -48,6 +48,10 @@
             android:process=":supervisor"
             />
 
+        <service android:name=".MainActivity$StubService"
+            android:exported="false"
+            android:process=":supervisor"/>
+
     </application>
 
 </manifest>
