@@ -2,13 +2,13 @@ package com.tencent.matrix.lifecycle.supervisor
 
 import android.app.Application
 import android.content.ComponentName
-import android.content.Context
+import android.content.Context.BIND_ABOVE_CLIENT
+import android.content.Context.BIND_AUTO_CREATE
 import android.content.Intent
 import android.content.ServiceConnection
 import android.content.pm.PackageManager
 import android.os.IBinder
 import android.util.Log
-import com.tencent.matrix.Matrix
 import com.tencent.matrix.lifecycle.IStateObserver
 import com.tencent.matrix.lifecycle.MultiSourceStatefulOwner
 import com.tencent.matrix.lifecycle.ReduceOperators
@@ -50,12 +50,16 @@ const val LRU_KILL_NOT_FOUND = 4
  *
  * Created by Yves on 2021/10/22
  */
+@Deprecated("TODO: 2021/11/16 we're going to move the config to Manifest next version by configuring matrix extension")
 data class SupervisorConfig(
+    @Deprecated("")
+    val enable: Boolean = true,
     /**
      * If you specify an existing process as Supervisor but don't want to modify the boot order
      * pls set [autoCreate] to false and than it would be init manually by startService when
      * Matrix init within Supervisor process
      */
+    @Deprecated("")
     val autoCreate: Boolean = false
 )
 
@@ -78,18 +82,24 @@ object ProcessSupervisor : MultiSourceStatefulOwner(ReduceOperators.OR) {
         }
     }
 
-    private var application: Application = Matrix.with().application
+    private var application: Application? = null
 
     val isAppForeground: Boolean
         get() = active()
 
     val isSupervisor: Boolean by lazy {
-        application.packageManager.getPackageInfo(
-            application.packageName,
+        if (application == null) {
+            throw IllegalStateException("Matrix NOT initialized yet !!!")
+        }
+
+        application!!.packageManager.getPackageInfo(
+            application!!.packageName,
             PackageManager.GET_SERVICES
         ).services.find {
             it.name == SupervisorService::class.java.name
-        }?.let { it.processName == MatrixUtil.getProcessName(application) } ?: false
+        }?.let {
+            it.processName == MatrixUtil.getProcessName(application!!)
+        } ?: false
     }
 
     @Volatile
@@ -97,13 +107,18 @@ object ProcessSupervisor : MultiSourceStatefulOwner(ReduceOperators.OR) {
 
     // FIXME: 2021/10/28
 //    internal val permission by lazy { "${application?.packageName}.matrix.permission.PROCESS_SUPERVISOR" }
-    internal val permission by lazy { "${application.packageName}.manual.dump" }
+    internal val permission by lazy { "${application?.packageName}.manual.dump" }
 
-    fun init(config: SupervisorConfig): Boolean {
-        if (isSupervisor) {
-            initSupervisor()
+    fun init(app: Application, config: SupervisorConfig): Boolean {
+        if (!config.enable) {
+            MatrixLog.i(TAG, "Supervisor is disabled")
+            return false
         }
-        inCharge(config.autoCreate)
+        application = app
+        if (isSupervisor) {
+            initSupervisor(app)
+        }
+        inCharge(config.autoCreate, app)
         return isSupervisor
     }
 
@@ -117,21 +132,21 @@ object ProcessSupervisor : MultiSourceStatefulOwner(ReduceOperators.OR) {
         // TODO: 2021/11/12
     }
 
-    private fun initSupervisor() {
-        SupervisorService.start(application)
+    private fun initSupervisor(app: Application) {
+        SupervisorService.start(app)
         MatrixLog.i(tag, "initSupervisor")
     }
 
     /**
      * call by all processes
      */
-    private fun inCharge(autoCreate: Boolean) {
+    private fun inCharge(autoCreate: Boolean, app: Application) {
 
-        val intent = Intent(application, SupervisorService::class.java)
+        val intent = Intent(app, SupervisorService::class.java)
 
         Log.i(tag, "bind to Supervisor") // todo report for test
 
-        application.bindService(intent, object : ServiceConnection {
+        app.bindService(intent, object : ServiceConnection {
             override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
                 MatrixLog.i(TAG, "on Supervisor Connected")
 
@@ -139,18 +154,18 @@ object ProcessSupervisor : MultiSourceStatefulOwner(ReduceOperators.OR) {
 
                 supervisorProxy?.apply {
 
-                    safeApply(tag) { onProcessCreate(ProcessToken.current(application)) }
+                    safeApply(tag) { onProcessCreate(ProcessToken.current(app)) }
 
                     CombinedProcessForegroundOwner.observeForever(object : IStateObserver {
 
                         override fun on() {
                             MatrixLog.d(tag, "in charge process: foreground")
-                            safeApply(tag) { onProcessForeground(ProcessToken.current(application)) }
+                            safeApply(tag) { onProcessForeground(ProcessToken.current(app)) }
                         }
 
                         override fun off() {
                             MatrixLog.d(tag, "in charge process: background")
-                            safeApply(tag) { onProcessBackground(ProcessToken.current(application)) }
+                            safeApply(tag) { onProcessBackground(ProcessToken.current(app)) }
                         }
                     })
                 }
@@ -159,9 +174,11 @@ object ProcessSupervisor : MultiSourceStatefulOwner(ReduceOperators.OR) {
             override fun onServiceDisconnected(name: ComponentName?) {
                 MatrixLog.e(tag, "onServiceDisconnected $name")
             }
-        }, if (autoCreate) Context.BIND_AUTO_CREATE else Context.BIND_ABOVE_CLIENT)
+        }, if (autoCreate) (BIND_AUTO_CREATE.or(BIND_ABOVE_CLIENT)) else BIND_ABOVE_CLIENT)
 
-        DispatchReceiver.install(application)
+        MatrixLog.d(tag, "bind finish")
+
+        DispatchReceiver.install(app)
 
         MatrixLog.i(tag, "inCharge")
     }

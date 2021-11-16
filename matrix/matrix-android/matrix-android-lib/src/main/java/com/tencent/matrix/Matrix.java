@@ -18,6 +18,8 @@ package com.tencent.matrix;
 
 import android.app.Application;
 
+import com.tencent.matrix.lifecycle.supervisor.ProcessSupervisor;
+import com.tencent.matrix.lifecycle.supervisor.SupervisorConfig;
 import com.tencent.matrix.plugin.DefaultPluginListener;
 import com.tencent.matrix.plugin.Plugin;
 import com.tencent.matrix.plugin.PluginListener;
@@ -45,6 +47,7 @@ public class Matrix {
         this.pluginListener = listener;
         this.plugins = plugins;
         MultiProcessLifecycleInitializer.init(app);
+        ProcessSupervisor.INSTANCE.init(app, new SupervisorConfig());
         for (Plugin plugin : plugins) {
             plugin.init(application, pluginListener);
             pluginListener.onInit(plugin);

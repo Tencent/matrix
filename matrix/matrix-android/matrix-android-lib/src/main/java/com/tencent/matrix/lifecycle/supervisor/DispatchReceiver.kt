@@ -53,7 +53,7 @@ internal object DispatchReceiver : BroadcastReceiver() {
             this, filter,
             ProcessSupervisor.permission, null
         )
-//        MatrixLog.i(SupervisorLifecycleOwner.tag, "DispatchReceiver installed")
+        MatrixLog.i(ProcessSupervisor.tag, "DispatchReceiver installed")
     }
 
     fun addKilledListener(listener: () -> Boolean) {
