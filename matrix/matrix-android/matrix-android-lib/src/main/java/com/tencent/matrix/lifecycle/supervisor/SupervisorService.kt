@@ -165,7 +165,7 @@ class SupervisorService : Service() {
         }
 
         targetKilledCallback = killedCallback
-        backgroundProcessLru.lastOrNull {
+        backgroundProcessLru.firstOrNull {
             it.name != MatrixUtil.getProcessName(this)
         }?.let {
             DispatchReceiver.dispatchKill(this, it.name, it.pid)
