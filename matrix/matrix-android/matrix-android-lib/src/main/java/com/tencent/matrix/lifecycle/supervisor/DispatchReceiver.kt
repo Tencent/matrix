@@ -17,15 +17,16 @@ import java.util.concurrent.TimeUnit
  *
  * Created by Yves on 2021/10/12
  */
+// TODO: 2021/11/16 add white list
 internal object DispatchReceiver : BroadcastReceiver() {
 
     private var rescued: Boolean = false
-    private val killedListeners = ArrayList<() -> Boolean>()
+    private val killedListeners = ArrayList<(isCurrent: Boolean) -> Boolean>()
 
-    private fun ArrayList<() -> Boolean>.invokeAll(): Boolean {
+    private fun ArrayList<(isCurrent: Boolean) -> Boolean>.invokeAll(isCurrent: Boolean): Boolean {
         var rescue = false
         forEach {
-            val r = it.invoke()
+            val r = it.invoke(isCurrent)
             if (r) {
                 MatrixLog.e(ProcessSupervisor.tag, "${it.javaClass} try to rescue process")
             }
@@ -56,11 +57,11 @@ internal object DispatchReceiver : BroadcastReceiver() {
         MatrixLog.i(ProcessSupervisor.tag, "DispatchReceiver installed")
     }
 
-    fun addKilledListener(listener: () -> Boolean) {
+    fun addKilledListener(listener: (isCurrent: Boolean) -> Boolean) {
         killedListeners.add(listener)
     }
 
-    fun removeKilledListener(listener: () -> Boolean) {
+    fun removeKilledListener(listener: (isCurrent: Boolean) -> Boolean) {
         killedListeners.remove(listener)
     }
 
@@ -114,7 +115,7 @@ internal object DispatchReceiver : BroadcastReceiver() {
                         .toString() == targetPid
                 ) {
                     val token = ProcessToken.current(context)
-                    if (killedListeners.invokeAll() && !rescued) {
+                    if (killedListeners.invokeAll(true) && !rescued) {
                         rescued = true
                         ProcessSupervisor.supervisorProxy?.onProcessRescuedFromKill(token)
                         MatrixLog.e(ProcessSupervisor.tag, "rescued once !!!")
@@ -131,6 +132,8 @@ internal object DispatchReceiver : BroadcastReceiver() {
                             MatrixLog.i(ProcessSupervisor.tag, "recheck: process is on foreground")
                         }
                     }, TimeUnit.SECONDS.toMillis(10))
+                } else {
+                    killedListeners.invokeAll(false)
                 }
             }
         }

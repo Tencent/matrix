@@ -110,15 +110,14 @@ object ProcessSupervisor : MultiSourceStatefulOwner(ReduceOperators.OR) {
         return isSupervisor
     }
 
-    fun addKilledListener(listener: () -> Boolean) =
+    fun addKilledListener(listener: (isCurrent: Boolean) -> Boolean) =
         DispatchReceiver.addKilledListener(listener)
 
-    fun removeKilledListener(listener: () -> Boolean) =
+    fun removeKilledListener(listener: (isCurrent: Boolean) -> Boolean) =
         DispatchReceiver.removeKilledListener(listener)
 
-    fun backgroundLruKill(killedResult: (result: Int, process: String?) -> Unit) {
-        // TODO: 2021/11/12
-    }
+    fun backgroundLruKill(killedResult: (result: Int, process: String?, pid: Int) -> Unit) =
+        SupervisorService.instance?.backgroundLruKill(killedResult)
 
     private fun initSupervisor(app: Application) {
         SupervisorService.start(app)

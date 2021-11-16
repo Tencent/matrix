@@ -18,12 +18,12 @@ package com.tencent.matrix;
 
 import android.app.Application;
 
+import com.tencent.matrix.lifecycle.owners.MultiProcessLifecycleInitializer;
 import com.tencent.matrix.lifecycle.supervisor.ProcessSupervisor;
 import com.tencent.matrix.lifecycle.supervisor.SupervisorConfig;
 import com.tencent.matrix.plugin.DefaultPluginListener;
 import com.tencent.matrix.plugin.Plugin;
 import com.tencent.matrix.plugin.PluginListener;
-import com.tencent.matrix.lifecycle.owners.MultiProcessLifecycleInitializer;
 import com.tencent.matrix.util.MatrixLog;
 
 import java.util.HashSet;
