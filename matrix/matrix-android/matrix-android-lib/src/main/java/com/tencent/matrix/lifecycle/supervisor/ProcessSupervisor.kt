@@ -31,33 +31,21 @@ const val LRU_KILL_NOT_FOUND = 4
 
 /**
  * supervisorProcess:
- * By default, we treats main process as supervisor.
- * If you want to specify ONE process as supervisor,
- * you could set this param with the full process name.
  *
- * for example:
- *  SupervisorConfig(application.packageName + ":push")
+ * Disabled by default.
  *
- * Notice: pls avoid setting different names by different process.
- * Only ONE process can be chosen as supervisor, otherwise it would lead to crash
- *
- * BAD example:
- *  // code in [android.app.Application.onCreate] so each process would execute it
- *  override fun onCreate() {
- *      SupervisorConfig(getCurrentProcessName())
- *      //...
- *  }
+ * usage: TODO
  *
  * Created by Yves on 2021/10/22
  */
 @Deprecated("TODO: 2021/11/16 we're going to move the config to Manifest next version by configuring matrix extension")
 data class SupervisorConfig(
     @Deprecated("")
-    val enable: Boolean = true,
+    val enable: Boolean = false,
     /**
      * If you specify an existing process as Supervisor but don't want to modify the boot order
      * pls set [autoCreate] to false and than it would be init manually by startService when
-     * Matrix init within Supervisor process
+     * Matrix init in the Supervisor process
      */
     @Deprecated("")
     val autoCreate: Boolean = false
@@ -109,8 +97,8 @@ object ProcessSupervisor : MultiSourceStatefulOwner(ReduceOperators.OR) {
 //    internal val permission by lazy { "${application?.packageName}.matrix.permission.PROCESS_SUPERVISOR" }
     internal val permission by lazy { "${application?.packageName}.manual.dump" }
 
-    fun init(app: Application, config: SupervisorConfig): Boolean {
-        if (!config.enable) {
+    fun init(app: Application, config: SupervisorConfig?): Boolean {
+        if (config == null || !config.enable) {
             MatrixLog.i(TAG, "Supervisor is disabled")
             return false
         }

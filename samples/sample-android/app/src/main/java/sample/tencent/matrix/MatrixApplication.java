@@ -30,6 +30,7 @@ import com.tencent.matrix.hook.HookManager;
 import com.tencent.matrix.hook.pthread.PthreadHook;
 import com.tencent.matrix.iocanary.IOCanaryPlugin;
 import com.tencent.matrix.iocanary.config.IOConfig;
+import com.tencent.matrix.lifecycle.supervisor.SupervisorConfig;
 import com.tencent.matrix.memory.canary.MemoryCanaryPlugin;
 import com.tencent.matrix.resource.ResourcePlugin;
 import com.tencent.matrix.resource.config.ResourceConfig;
@@ -126,6 +127,7 @@ public class MatrixApplication extends Application {
         BatteryMonitorPlugin batteryMonitorPlugin = configureBatteryCanary();
         builder.plugin(batteryMonitorPlugin);
 
+        builder.supervisorConfig(new SupervisorConfig(true, false));
         Matrix.init(builder.build());
 
         // Trace Plugin need call start() at the beginning.

@@ -42,12 +42,12 @@ public class Matrix {
     private final Application application;
     private final PluginListener pluginListener;
 
-    private Matrix(Application app, PluginListener listener, HashSet<Plugin> plugins) {
+    private Matrix(Application app, PluginListener listener, HashSet<Plugin> plugins, SupervisorConfig supervisorConfig) {
         this.application = app;
         this.pluginListener = listener;
         this.plugins = plugins;
         MultiProcessLifecycleInitializer.init(app);
-        ProcessSupervisor.INSTANCE.init(app, new SupervisorConfig());
+        ProcessSupervisor.INSTANCE.init(app, supervisorConfig);
         for (Plugin plugin : plugins) {
             plugin.init(application, pluginListener);
             pluginListener.onInit(plugin);
@@ -132,6 +132,7 @@ public class Matrix {
     public static class Builder {
         private final Application application;
         private PluginListener pluginListener;
+        private SupervisorConfig mSupervisorConfig;
 
         private HashSet<Plugin> plugins = new HashSet<>();
 
@@ -158,11 +159,22 @@ public class Matrix {
             return this;
         }
 
+        /**
+         * see {@link SupervisorConfig}
+         * @param config
+         * @return
+         */
+        @Deprecated
+        public Builder supervisorConfig(SupervisorConfig config) {
+            this.mSupervisorConfig = config;
+            return this;
+        }
+
         public Matrix build() {
             if (pluginListener == null) {
                 pluginListener = new DefaultPluginListener(application);
             }
-            return new Matrix(application, pluginListener, plugins);
+            return new Matrix(application, pluginListener, plugins, mSupervisorConfig);
         }
 
     }
