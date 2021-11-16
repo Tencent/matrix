@@ -296,7 +296,6 @@ public final class ActivityLeakFixer {
         }
 
         iv.setImageDrawable(null);
-        recycleBitmap(d);
     }
 
     private static void recycleTextView(TextView tv) {
@@ -304,7 +303,6 @@ public final class ActivityLeakFixer {
         for (Drawable d : ds) {
             if (d != null) {
                 d.setCallback(null);
-                recycleBitmap(d);
             }
         }
         tv.setCompoundDrawables(null, null, null, null);
@@ -341,13 +339,11 @@ public final class ActivityLeakFixer {
         if (pd != null) {
             pb.setProgressDrawable(null);
             pd.setCallback(null);
-            recycleBitmap(pd);
         }
         final Drawable id = pb.getIndeterminateDrawable();
         if (id != null) {
             pb.setIndeterminateDrawable(null);
             id.setCallback(null);
-            recycleBitmap(id);
         }
     }
 
@@ -397,7 +393,6 @@ public final class ActivityLeakFixer {
             if (fg != null) {
                 fg.setCallback(null);
                 fl.setForeground(null);
-                recycleBitmap(fg);
             }
         }
     }
@@ -425,7 +420,6 @@ public final class ActivityLeakFixer {
             if (dd != null) {
                 dd.setCallback(null);
                 ll.setDividerDrawable(null);
-                recycleBitmap(dd);
             }
         }
     }
@@ -437,13 +431,4 @@ public final class ActivityLeakFixer {
         }
     }
 
-    private static void recycleBitmap(Drawable drawable){
-        if(drawable instanceof BitmapDrawable){
-            Bitmap bitmap = ((BitmapDrawable) drawable).getBitmap();
-            if(!bitmap.isRecycled()){
-                bitmap.recycle();
-            }
-        }
-
-    }
 }
