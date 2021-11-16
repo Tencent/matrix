@@ -60,23 +60,25 @@ object MultiProcessLifecycleOwner {
 
     private val runningHandler = Handler(MatrixHandlerThread.getDefaultHandlerThread().looper)
 
-    val resumedStateOwner = StatefulOwner()
-    val startedStateOwner = StatefulOwner()
+    private class AsyncOwner : StatefulOwner() {
+        fun turnOnAsync() = runningHandler.post { turnOn() }
+        fun turnOffAsync() = runningHandler.post { turnOff() }
+    }
+
+    val resumedStateOwner: StatefulOwner = AsyncOwner()
+    val startedStateOwner: StatefulOwner = AsyncOwner()
 
     private val mDelayedPauseRunnable = Runnable {
         dispatchPauseIfNeeded()
         dispatchStopIfNeeded()
     }
 
-    private fun StatefulOwner.turnOnAsync() = runningHandler.post { turnOn() }
-    private fun StatefulOwner.turnOffAsync() = runningHandler.post { turnOff() }
-
     private fun activityStarted(activity: Activity) {
         val isEmptyBefore = startedActivities.isEmpty()
         startedActivities.put(activity)
 
         if (isEmptyBefore && mStopSent) {
-            startedStateOwner.turnOnAsync()
+            (startedStateOwner as AsyncOwner).turnOnAsync()
         }
     }
 
@@ -85,7 +87,7 @@ object MultiProcessLifecycleOwner {
         resumedActivities.put(activity)
         if (isEmptyBefore) {
             if (mPauseSent) {
-                resumedStateOwner.turnOnAsync()
+                (resumedStateOwner as AsyncOwner).turnOnAsync()
                 mPauseSent = false
             } else {
                 runningHandler.removeCallbacks(mDelayedPauseRunnable)
@@ -109,24 +111,30 @@ object MultiProcessLifecycleOwner {
     // fallback remove
     private fun activityDestroyed(activity: Activity) {
         startedActivities.remove(activity)?.let {
-            MatrixLog.w(TAG, "removed [$activity] when destroy, maybe something wrong with onStart/onStop callback")
+            MatrixLog.w(
+                TAG,
+                "removed [$activity] when destroy, maybe something wrong with onStart/onStop callback"
+            )
         }
         resumedActivities.remove(activity)?.let {
-            MatrixLog.w(TAG, "removed [$activity] when destroy, maybe something wrong with onResume/onPause callback")
+            MatrixLog.w(
+                TAG,
+                "removed [$activity] when destroy, maybe something wrong with onResume/onPause callback"
+            )
         }
     }
 
     private fun dispatchPauseIfNeeded() {
         if (resumedActivities.isEmpty()) {
             mPauseSent = true
-            resumedStateOwner.turnOffAsync()
+            (resumedStateOwner as AsyncOwner).turnOffAsync()
         }
     }
 
     private fun dispatchStopIfNeeded() {
         if (startedActivities.isEmpty() && mPauseSent) {
             mStopSent = true
-            startedStateOwner.turnOffAsync()
+            (startedStateOwner as AsyncOwner).turnOffAsync()
         }
     }
 
