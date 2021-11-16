@@ -6,7 +6,7 @@ package com.tencent.matrix.util
 
 const val DEFAULT_TAG = "Matrix.Safe"
 
-inline fun <T> T.safe(tag: String = DEFAULT_TAG, log: Boolean = true, unsafe: T.() -> Unit): T {
+inline fun <T> T.safeApply(tag: String = DEFAULT_TAG, log: Boolean = true, unsafe: T.() -> Unit): T {
     try {
         unsafe()
     } catch (e: Throwable) {
@@ -17,12 +17,12 @@ inline fun <T> T.safe(tag: String = DEFAULT_TAG, log: Boolean = true, unsafe: T.
     return this
 }
 
-inline fun <T, R> T.safe(
+inline fun <T, R> T.safeLet(
     tag: String = DEFAULT_TAG,
     log: Boolean = true,
-    defVal: R?,
+    defVal: R,
     unsafe: (T) -> R
-): R? {
+): R {
     return try {
         unsafe(this)
     } catch (e: Throwable) {
@@ -33,8 +33,17 @@ inline fun <T, R> T.safe(
     }
 }
 
-inline fun <T, R> T.safeOrNull(
+inline fun <T, R> T.safeLetOrNull(
     tag: String = DEFAULT_TAG,
     log: Boolean = true,
     unsafe: (T) -> R
-): R? = safe(tag, log, null, unsafe)
+): R? {
+    return try {
+        unsafe(this)
+    } catch (e: Throwable) {
+        if (log) {
+            MatrixLog.printErrStackTrace(tag, e, "")
+        }
+        null
+    }
+}

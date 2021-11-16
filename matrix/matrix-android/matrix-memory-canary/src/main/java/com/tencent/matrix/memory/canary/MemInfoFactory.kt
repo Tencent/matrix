@@ -13,7 +13,8 @@ import com.tencent.matrix.lifecycle.owners.CombinedProcessForegroundOwner
 import com.tencent.matrix.lifecycle.supervisor.ProcessSupervisor
 import com.tencent.matrix.util.MatrixLog
 import com.tencent.matrix.util.MatrixUtil
-import com.tencent.matrix.util.safe
+import com.tencent.matrix.util.safeLet
+import com.tencent.matrix.util.safeApply
 import junit.framework.Assert
 import org.json.JSONObject
 import java.io.File
@@ -65,7 +66,7 @@ data class ProcessInfo(
         return "Name=$name, Activity=$activity, AppForeground=$isAppFg, ProcessForeground=$isProcessFg"
     }
 
-    fun toJson()  = safe(tag = TAG, defVal = JSONObject()) {
+    fun toJson()  = safeLet(tag = TAG, defVal = JSONObject()) {
         JSONObject().apply {
             put("pid", pid)
             put("name", name)
@@ -91,7 +92,7 @@ data class PssInfo(
         return "totalPss=$totalPssK K,\tJava=$pssJavaK K,\tNative=$pssNativeK K,\tGraphic=$pssGraphicK K,\tSystem=$pssSystemK K,\tSwap=$pssSwapK K,\tCode=$pssCodeK K,\tStack=$pssStackK K,\tPrivateOther=$pssPrivateOtherK K"
     }
 
-    fun toJson() = safe(tag = TAG, defVal = JSONObject()) {
+    fun toJson() = safeLet(tag = TAG, defVal = JSONObject()) {
         JSONObject().apply {
             put("total", totalPssK)
             put("java", pssJavaK)
@@ -166,7 +167,7 @@ data class StatusInfo(
         return "State=$state,\tFDSize=$fdSize,\tVmSize=$vmSizeK K,\tVmRss=$vmRssK K,\tVmSwap=$vmSwapK K,\tThreads=$threads"
     }
 
-    fun toJson() = safe(tag = TAG, defVal = JSONObject()) {
+    fun toJson() = safeLet(tag = TAG, defVal = JSONObject()) {
         JSONObject().apply {
             put("state", state)
             put("vmSize", vmSizeK)
@@ -211,7 +212,7 @@ data class StatusInfo(
                 0L
             }
 
-            safe {
+            safeApply {
                 File("/proc/${pid}/status").useLines { seq ->
                     return seq.flatMap {
                         val split = it.split(":")
@@ -249,7 +250,7 @@ data class JavaMemInfo(
         return "Used=$usedByte B,\tRecycled=$recycledByte B,\tHeapSize=$heapSizeByte B,\tMax=$maxByte B,\tMemClass:$memClass M, LargeMemClass=$largeMemClass M"
     }
 
-    fun toJson() = safe(tag = TAG, defVal = JSONObject()) {
+    fun toJson() = safeLet(tag = TAG, defVal = JSONObject()) {
         JSONObject().apply {
             put("used", usedByte)
             put("recycled", recycledByte)
@@ -270,7 +271,7 @@ data class NativeMemInfo(
         return "Used=$usedByte B,\tRecycled=$recycledByte B,\tHeapSize=$heapSizeByte B"
     }
 
-    fun toJson() = safe(tag = TAG, defVal = JSONObject()) {
+    fun toJson() = safeLet(tag = TAG, defVal = JSONObject()) {
         JSONObject().apply {
             put("used", usedByte)
             put("recycled", recycledByte)
@@ -302,7 +303,7 @@ data class SystemInfo(
         return "totalMem=$totalMemByte B,\tavailMem=$availMemByte B,\tlowMemory=$lowMemory,\tthreshold=$thresholdByte B"
     }
 
-    fun toJson() = safe(tag = TAG, defVal = JSONObject()) {
+    fun toJson() = safeLet(tag = TAG, defVal = JSONObject()) {
         JSONObject().apply {
             put("totalMemByte", totalMemByte)
             put("availMemByte", availMemByte)
@@ -366,7 +367,7 @@ data class MemInfo(
             """.trimIndent() + "\n".run { if (cost <= 0) this else "$this| cost : $cost" }
     }
 
-    fun toJson() = safe(tag = TAG, defVal = JSONObject()) {
+    fun toJson() = safeLet(tag = TAG, defVal = JSONObject()) {
         JSONObject().apply {
             processInfo?.let { put("processInfo", it.toJson()) }
             statusInfo?.let { put("statusInfo", it.toJson()) }

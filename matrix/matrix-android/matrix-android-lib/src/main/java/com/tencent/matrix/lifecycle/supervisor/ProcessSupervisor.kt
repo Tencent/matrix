@@ -15,7 +15,7 @@ import com.tencent.matrix.lifecycle.ReduceOperators
 import com.tencent.matrix.lifecycle.owners.CombinedProcessForegroundOwner
 import com.tencent.matrix.util.MatrixLog
 import com.tencent.matrix.util.MatrixUtil
-import com.tencent.matrix.util.safe
+import com.tencent.matrix.util.safeApply
 
 /**
  * Created by Yves on 2021/9/26
@@ -139,18 +139,18 @@ object ProcessSupervisor : MultiSourceStatefulOwner(ReduceOperators.OR) {
 
                 supervisorProxy?.apply {
 
-                    safe(tag) { onProcessCreate(ProcessToken.current(application)) }
+                    safeApply(tag) { onProcessCreate(ProcessToken.current(application)) }
 
                     CombinedProcessForegroundOwner.observeForever(object : IStateObserver {
 
                         override fun on() {
                             MatrixLog.d(tag, "in charge process: foreground")
-                            safe(tag) { onProcessForeground(ProcessToken.current(application)) }
+                            safeApply(tag) { onProcessForeground(ProcessToken.current(application)) }
                         }
 
                         override fun off() {
                             MatrixLog.d(tag, "in charge process: background")
-                            safe(tag) { onProcessBackground(ProcessToken.current(application)) }
+                            safeApply(tag) { onProcessBackground(ProcessToken.current(application)) }
                         }
                     })
                 }
