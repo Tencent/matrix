@@ -112,19 +112,19 @@ class MatrixTraceLegacyTransform(
     }
 
     override fun transform(transformInvocation: TransformInvocation) {
-        super.transform(transformInvocation);
-        val start = System.currentTimeMillis();
+        super.transform(transformInvocation)
+        val start = System.currentTimeMillis()
         try {
-            doTransform(transformInvocation); // hack
+            doTransform(transformInvocation) // hack
         } catch (e: Throwable) {
             e.printStackTrace()
         }
-        val cost = System.currentTimeMillis() - start;
-        val begin = System.currentTimeMillis();
-        origTransform.transform(transformInvocation);
-        val origTransformCost = System.currentTimeMillis() - begin;
+        val cost = System.currentTimeMillis() - start
+        val begin = System.currentTimeMillis()
+        origTransform.transform(transformInvocation)
+        val origTransformCost = System.currentTimeMillis() - begin
         Log.i("Matrix.$name", "[transform] cost time: %dms %s:%sms MatrixTraceTransform:%sms",
-                System.currentTimeMillis() - start, origTransform.javaClass.simpleName, origTransformCost, cost);
+                System.currentTimeMillis() - start, origTransform.javaClass.simpleName, origTransformCost, cost)
     }
 
     private fun doTransform(invocation: TransformInvocation) {
@@ -190,8 +190,8 @@ class MatrixTraceLegacyTransform(
     }
 
     private fun replaceFile(input: QualifiedContent, newFile: File) {
-        val fileField = ReflectUtil.getDeclaredFieldRecursive(input.javaClass, "file");
-        fileField.set(input, newFile);
+        val fileField = ReflectUtil.getDeclaredFieldRecursive(input.javaClass, "file")
+        fileField.set(input, newFile)
     }
 
     private fun replaceChangedFile(dirInput: DirectoryInput, changedFiles: Map<File, Status>) {
