@@ -66,7 +66,7 @@ data class ProcessInfo(
         return "Name=$name, Activity=$activity, AppForeground=$isAppFg, ProcessForeground=$isProcessFg"
     }
 
-    fun toJson()  = safeLet(tag = TAG, defVal = JSONObject()) {
+    fun toJson() = safeLet(tag = TAG, defVal = JSONObject()) {
         JSONObject().apply {
             put("pid", pid)
             put("name", name)
@@ -115,11 +115,13 @@ data class PssInfo(
         }
 
         fun getFromAms(): PssInfo {
-            val amsInfo =
-                MemInfoFactory.activityManager.getProcessMemoryInfo(arrayOf(Process.myPid()).toIntArray())
-            return amsInfo.firstOrNull()?.run {
-                get(this)
-            } ?: run {
+            val mi =
+                MemInfoFactory.activityManager
+                    .getProcessMemoryInfo(arrayOf(Process.myPid()).toIntArray())
+                    .firstOrNull()
+            return if (mi != null) {
+                get(mi)
+            } else {
                 PssInfo()
             }
         }

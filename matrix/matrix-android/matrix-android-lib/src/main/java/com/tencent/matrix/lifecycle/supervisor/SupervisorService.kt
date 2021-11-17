@@ -165,11 +165,13 @@ class SupervisorService : Service() {
         }
 
         targetKilledCallback = killedCallback
-        backgroundProcessLru.firstOrNull {
+        val candidate = backgroundProcessLru.firstOrNull {
             it.name != MatrixUtil.getProcessName(this)
-        }?.let {
-            DispatchReceiver.dispatchKill(this, it.name, it.pid)
-        } ?: let {
+        }
+
+        if (candidate != null) {
+            DispatchReceiver.dispatchKill(this, candidate.name, candidate.pid)
+        } else {
             killedCallback.invoke(LRU_KILL_NOT_FOUND, null, -1)
         }
     }
@@ -193,7 +195,8 @@ class SupervisorService : Service() {
             rm?.let {
                 nameToToken.remove(rm.name)
                 return rm
-            } ?: throw IllegalStateException("token with pid=$pid not found")
+            }
+            throw IllegalStateException("token with pid=$pid not found")
         }
 
         fun removeToken(name: String): ProcessToken {
@@ -201,7 +204,8 @@ class SupervisorService : Service() {
             rm?.let {
                 pidToToken.remove(rm.pid)
                 return rm
-            } ?: throw IllegalStateException("token with name=$name not found")
+            }
+            throw IllegalStateException("token with name=$name not found")
         }
     }
 

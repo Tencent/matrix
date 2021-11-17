@@ -20,10 +20,6 @@ import com.tencent.matrix.util.safeApply
 /**
  * Created by Yves on 2021/9/26
  */
-internal const val KEY_PROCESS_NAME = "KEY_PROCESS_NAME"
-internal const val KEY_PROCESS_PID = "KEY_PROCESS_PID"
-internal const val KEY_PROCESS_BUSY = "KEY_PROCESS_BUSY"
-
 const val LRU_KILL_SUCCESS = 1
 const val LRU_KILL_RESCUED = 2
 const val LRU_KILL_CANCELED = 3
@@ -80,14 +76,14 @@ object ProcessSupervisor : MultiSourceStatefulOwner(ReduceOperators.OR) {
             throw IllegalStateException("Matrix NOT initialized yet !!!")
         }
 
-        application!!.packageManager.getPackageInfo(
-            application!!.packageName,
-            PackageManager.GET_SERVICES
-        ).services.find {
-            it.name == SupervisorService::class.java.name
-        }?.let {
-            it.processName == MatrixUtil.getProcessName(application!!)
-        } ?: false
+        val serviceInfo =
+            application!!.packageManager.getPackageInfo(
+                application!!.packageName, PackageManager.GET_SERVICES
+            ).services.find {
+                it.name == SupervisorService::class.java.name
+            }
+
+        return@lazy MatrixUtil.getProcessName(application!!) == serviceInfo?.processName
     }
 
     @Volatile
@@ -131,7 +127,7 @@ object ProcessSupervisor : MultiSourceStatefulOwner(ReduceOperators.OR) {
 
         val intent = Intent(app, SupervisorService::class.java)
 
-        Log.i(tag, "bind to Supervisor") // todo report for test
+        Log.i(tag, "bind to Supervisor")
 
         app.bindService(intent, object : ServiceConnection {
             override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
@@ -162,8 +158,6 @@ object ProcessSupervisor : MultiSourceStatefulOwner(ReduceOperators.OR) {
                 MatrixLog.e(tag, "onServiceDisconnected $name")
             }
         }, if (autoCreate) (BIND_AUTO_CREATE.or(BIND_ABOVE_CLIENT)) else BIND_ABOVE_CLIENT)
-
-        MatrixLog.d(tag, "bind finish")
 
         DispatchReceiver.install(app)
 

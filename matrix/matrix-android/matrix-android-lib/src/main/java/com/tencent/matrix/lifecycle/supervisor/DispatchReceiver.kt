@@ -20,6 +20,9 @@ import java.util.concurrent.TimeUnit
 // TODO: 2021/11/16 add white list
 internal object DispatchReceiver : BroadcastReceiver() {
 
+    private const val KEY_PROCESS_NAME = "KEY_PROCESS_NAME"
+    private const val KEY_PROCESS_PID = "KEY_PROCESS_PID"
+
     private var rescued: Boolean = false
     private val killedListeners = ArrayList<(isCurrent: Boolean) -> Boolean>()
 
@@ -36,7 +39,6 @@ internal object DispatchReceiver : BroadcastReceiver() {
     }
 
     private enum class SupervisorEvent {
-//        SUPERVISOR_INSTALLED,
         SUPERVISOR_DISPATCH_APP_FOREGROUND,
         SUPERVISOR_DISPATCH_APP_BACKGROUND,
         SUPERVISOR_DISPATCH_KILL;

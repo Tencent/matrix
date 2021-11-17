@@ -192,9 +192,10 @@ object MultiProcessLifecycleOwner {
         set(value) {
             MatrixLog.i(TAG, "[setCurrentFragmentName] fragmentName: $value")
             field = value
-            value?.let {
-                updateScene(it)
-            } ?: run {
+
+            if (value != null) {
+                updateScene(value)
+            } else {
                 updateScene("?")
             }
         }
@@ -279,11 +280,12 @@ class MultiProcessLifecycleInitializer : ContentProvider() {
     }
 
     override fun onCreate(): Boolean {
-        context?.let {
-            init(it)
-        } ?: run {
-            throw IllegalStateException("context is null !!!")
+        if (context == null) {
+            throw java.lang.IllegalStateException("context is null !!!")
         }
+
+        init(context!!)
+
         return true
     }
 
