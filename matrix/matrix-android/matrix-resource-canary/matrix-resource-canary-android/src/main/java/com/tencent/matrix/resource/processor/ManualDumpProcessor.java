@@ -4,12 +4,13 @@ import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
-import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
 import android.os.Build;
+import android.os.Parcel;
+import android.os.Parcelable;
 
+import com.tencent.matrix.memorydump.MemoryDumpManager;
 import com.tencent.matrix.resource.R;
 import com.tencent.matrix.resource.analyzer.model.ActivityLeakResult;
 import com.tencent.matrix.resource.analyzer.model.DestroyedActivityInfo;
@@ -27,6 +28,8 @@ import java.util.Locale;
 import java.util.concurrent.TimeUnit;
 
 import static android.os.Build.VERSION.SDK_INT;
+
+import androidx.annotation.Nullable;
 
 /**
  * X process leaked -> send notification -> main process activity -> dump and analyse in X process -> show result in main process activity
@@ -50,13 +53,10 @@ public class ManualDumpProcessor extends BaseLeakProcessor {
         super(watcher);
         mTargetActivity = targetActivity;
         mNotificationManager = (NotificationManager) watcher.getContext().getSystemService(Context.NOTIFICATION_SERVICE);
-
-        ManualDumpProcessorHelper.install(watcher.getContext(), this);
     }
 
     @Override
-    public boolean process(DestroyedActivityInfo destroyedActivityInfo) {
-        final Context context = getWatcher().getContext();
+    public boolean process(final DestroyedActivityInfo destroyedActivityInfo) {
         getWatcher().triggerGc();
 
         if (destroyedActivityInfo.mActivityRef.get() == null) {
@@ -73,12 +73,28 @@ public class ManualDumpProcessor extends BaseLeakProcessor {
             return true;
         }
 
+        dumpAndAnalyzeAsync(destroyedActivityInfo.mActivityName, destroyedActivityInfo.mKey, new ManualDumpCallback() {
+            @Override
+            public void onDumpComplete(@Nullable ManualDumpData data) {
+                if (data != null) {
+                    MatrixLog.i(TAG, "shown notification!!!3");
+                    publishResult(destroyedActivityInfo, data);
+                }
+            }
+        });
+
+        return true;
+    }
+
+    private void publishResult(DestroyedActivityInfo activityInfo, ManualDumpData data) {
+        final Context context = getWatcher().getContext();
+
         Intent targetIntent = new Intent();
         targetIntent.setClassName(getWatcher().getContext(), mTargetActivity);
-        targetIntent.putExtra(SharePluginInfo.ISSUE_ACTIVITY_NAME, destroyedActivityInfo.mActivityName);
-        targetIntent.putExtra(SharePluginInfo.ISSUE_REF_KEY, destroyedActivityInfo.mKey);
+        targetIntent.putExtra(SharePluginInfo.ISSUE_ACTIVITY_NAME, activityInfo.mActivityName);
+        targetIntent.putExtra(SharePluginInfo.ISSUE_REF_KEY, activityInfo.mKey);
         targetIntent.putExtra(SharePluginInfo.ISSUE_LEAK_PROCESS, MatrixUtil.getProcessName(context));
-
+        targetIntent.putExtra(SharePluginInfo.ISSUE_DUMP_DATA, data);
 
         PendingIntent pIntent = PendingIntent.getActivity(context, 0, targetIntent, PendingIntent.FLAG_UPDATE_CURRENT);
 
@@ -86,32 +102,28 @@ public class ManualDumpProcessor extends BaseLeakProcessor {
         ResourceConfig config = getWatcher().getResourcePlugin().getConfig();
         String dumpingHeapContent =
                 String.format(Locale.getDefault(), "[%s] has leaked for [%s]min!!!",
-                        destroyedActivityInfo.mActivityName,
+                        activityInfo.mActivityName,
                         TimeUnit.MILLISECONDS.toMinutes(
                                 config.getScanIntervalMillis() * config.getMaxRedetectTimes()));
 
-        Notification.Builder builder = null;
+        Notification.Builder builder;
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
             builder = new Notification.Builder(context, getNotificationChannelIdCompat(context));
         } else {
             builder = new Notification.Builder(context);
         }
+
         builder.setContentTitle(dumpingHeapTitle)
                 .setPriority(Notification.PRIORITY_DEFAULT)
                 .setStyle(new Notification.BigTextStyle().bigText(dumpingHeapContent))
-                .setContentIntent(pIntent)
                 .setAutoCancel(true)
+                .setContentIntent(pIntent)
                 .setSmallIcon(R.drawable.ic_launcher)
                 .setWhen(System.currentTimeMillis());
 
         Notification notification = builder.build();
 
-        mNotificationManager.notify(
-                NOTIFICATION_ID + destroyedActivityInfo.mKey.hashCode(), notification);
-
-        publishIssue(destroyedActivityInfo.mActivityName, destroyedActivityInfo.mKey);
-        MatrixLog.i(TAG, "shown notification!!!3");
-        return true;
+        mNotificationManager.notify(NOTIFICATION_ID + activityInfo.mKey.hashCode(), notification);
     }
 
     private String getNotificationChannelIdCompat(Context context) {
@@ -133,184 +145,76 @@ public class ManualDumpProcessor extends BaseLeakProcessor {
         isMuted = mute;
     }
 
+    private void dumpAndAnalyzeAsync(final String activity, final String refString, final ManualDumpCallback callback) {
+        MatrixHandlerThread.getDefaultHandler().postAtFrontOfQueue(new Runnable() {
+            @Override
+            public void run() {
+                callback.onDumpComplete(dumpAndAnalyse(activity, refString));
+            }
+        });
+    }
+
+    private interface ManualDumpCallback {
+        void onDumpComplete(@Nullable ManualDumpData data);
+    }
+
     /**
      * run in leaked process
      *
      * @param activity
-     * @param refString
+     * @param key
      * @return
      */
-    private ManualDumpData dumpAndAnalyse(String activity, String refString) {
-        long dumpBegin = System.currentTimeMillis();
+    private ManualDumpData dumpAndAnalyse(String activity, String key) {
+        long dumpStart = System.currentTimeMillis();
 
         getWatcher().triggerGc();
 
-        File file = getHeapDumper().dumpHeap(false);
+        File file = getDumpStorageManager().newHprofFile();
+        if (file != null) {
+            MemoryDumpManager.dumpBlock(file.getPath());
+        }
         if (file == null || file.length() <= 0) {
-//            publishIssue(SharePluginInfo.IssueType.ERR_FILE_NOT_FOUND, activity, refString, "file is null", "0");
+            publishIssue(
+                    SharePluginInfo.IssueType.ERR_FILE_NOT_FOUND,
+                    ResourceConfig.DumpMode.MANUAL_DUMP,
+                    activity, key, "FileNull", "0");
             MatrixLog.e(TAG, "file is null!");
             return null;
         }
 
         MatrixLog.i(TAG, String.format("dump cost=%sms refString=%s path=%s",
-                System.currentTimeMillis() - dumpBegin, refString, file.getAbsolutePath()));
+                System.currentTimeMillis() - dumpStart, key, file.getAbsolutePath()));
 
         long analyseBegin = System.currentTimeMillis();
         try {
-            final ActivityLeakResult result = analyze(file, refString);
+            final ActivityLeakResult result = analyze(file, key);
             MatrixLog.i(TAG, String.format("analyze cost=%sms refString=%s",
-                    System.currentTimeMillis() - analyseBegin, refString));
-
-            String refChain = result.toString();
+                    System.currentTimeMillis() - analyseBegin, key));
+            String leakChain = result.toString();
             if (result.mLeakFound) {
-//                publishIssue(SharePluginInfo.IssueType.LEAK_FOUND, activity, refString, refChain, String.valueOf(System.currentTimeMillis() - dumpBegin));
-                MatrixLog.i(TAG, "leakFound,refcChain = %s", refChain);
-                return new ManualDumpData(file.getAbsolutePath(), refChain);
+                MatrixLog.i(TAG, "leakFound,refcChain = %s", leakChain);
+                publishIssue(
+                        SharePluginInfo.IssueType.LEAK_FOUND,
+                        ResourceConfig.DumpMode.MANUAL_DUMP,
+                        activity, key, leakChain,
+                        String.valueOf(System.currentTimeMillis() - dumpStart));
+                return new ManualDumpData(file.getAbsolutePath(), leakChain);
             } else {
                 MatrixLog.i(TAG, "leak not found");
                 return new ManualDumpData(file.getAbsolutePath(), null);
             }
         } catch (OutOfMemoryError error) {
-//            publishIssue(SharePluginInfo.IssueType.ERR_ANALYSE_OOM, activity, refString, "OutOfMemoryError", "0");
+            publishIssue(
+                    SharePluginInfo.IssueType.ERR_ANALYSE_OOM,
+                    ResourceConfig.DumpMode.MANUAL_DUMP,
+                    activity, key, "OutOfMemoryError", "0");
             MatrixLog.printErrStackTrace(TAG, error.getCause(), "");
         }
         return null;
     }
 
-    private void publishIssue(String activity, String refKey) {
-        publishIssue(SharePluginInfo.IssueType.LEAK_FOUND, ResourceConfig.DumpMode.MANUAL_DUMP, activity, refKey, "manual_dump", "0");
-    }
-
-    /**
-     * multi process dump helper.
-     */
-    public static class ManualDumpProcessorHelper extends BroadcastReceiver {
-
-        private static final String DUMP_PERMISSION_SUFFIX = ".manual.dump";
-
-        private static final String ACTION_DUMP = "com.tencent.matrix.manual.dump";
-        private static final String ACTION_RESULT = "com.tencent.matrix.manual.result";
-
-        private static final String KEY_RESULT_PROCESS = "result_process";
-        private static final String KEY_LEAK_ACTIVITY = "leak_activity";
-        private static final String KEY_LEAK_PROCESS = "leak_process";
-        private static final String KEY_LEAK_REFKEY = "leak_refkey";
-        private static final String KEY_HPROF_PATH = "hprof_path";
-        private static final String KEY_REF_CHAIN = "ref_chain";
-
-        private static boolean hasInstalled;
-
-        private static ManualDumpProcessor sProcessor;
-        private static IResultListener sListener; // only not null in process who called dumpAndAnalyse
-
-        @Override
-        public void onReceive(final Context context, final Intent intent) {
-            if (intent == null) {
-                MatrixLog.e(TAG, "intent is null");
-                return;
-            }
-
-            MatrixHandlerThread.getDefaultHandler().postAtFrontOfQueue(new Runnable() {
-                @Override
-                public void run() {
-                    if (ACTION_DUMP.equals(intent.getAction())) {
-                        String leakProcess = intent.getStringExtra(KEY_LEAK_PROCESS);
-                        String currentProcess = MatrixUtil.getProcessName(context);
-                        if (!currentProcess.equals(leakProcess)) {
-                            MatrixLog.v(TAG, "ACTION_DUMP: current process [%s] is NOT leaked process [%s]", currentProcess, leakProcess);
-                            return;
-                        }
-
-                        // leaked process
-                        MatrixLog.v(TAG, "ACTION_DUMP: current process [%s] is leaked process [%s]", currentProcess, leakProcess);
-
-                        String leakActivity = intent.getStringExtra(KEY_LEAK_ACTIVITY);
-                        String refKey = intent.getStringExtra(KEY_LEAK_REFKEY);
-
-                        ManualDumpData data = sProcessor.dumpAndAnalyse(leakActivity, refKey);
-                        Intent resultIntent = new Intent(ACTION_RESULT);
-                        if (data != null) {
-                            resultIntent.putExtra(KEY_HPROF_PATH, data.hprofPath);
-                            resultIntent.putExtra(KEY_REF_CHAIN, data.refChain);
-                        }
-                        String resultProcess = intent.getStringExtra(KEY_RESULT_PROCESS);
-                        resultIntent.putExtra(KEY_RESULT_PROCESS, resultProcess);
-                        context.sendBroadcast(resultIntent,
-                                context.getPackageName() + DUMP_PERMISSION_SUFFIX);
-                    } else if (ACTION_RESULT.equals(intent.getAction())) {
-                        // result process
-                        final String resultProcess = intent.getStringExtra(KEY_RESULT_PROCESS);
-                        final String currentProcess = MatrixUtil.getProcessName(context);
-                        if (!currentProcess.equals(resultProcess)) {
-                            MatrixLog.v(TAG, "ACTION_RESULT: current process [%s] is NOT result process [%s]", currentProcess, resultProcess);
-                            return;
-                        }
-
-                        MatrixLog.v(TAG, "ACTION_RESULT: current process [%s] is result process [%s]", currentProcess, resultProcess);
-
-                        // generally, sListener must be NOT null
-                        if (sListener == null) {
-                            throw new NullPointerException("result listener is null!!!");
-                        }
-
-                        final String hprofPath = intent.getStringExtra(KEY_HPROF_PATH);
-                        if (hprofPath == null) {
-                            sListener.onFailed();
-                            return;
-                        }
-                        final String refChain = intent.getStringExtra(KEY_REF_CHAIN);
-                        sListener.onSuccess(hprofPath, refChain);
-                        sListener = null;
-                    }
-                }
-            });
-        }
-
-        private static void install(Context context, ManualDumpProcessor processor) {
-            IntentFilter filter = new IntentFilter();
-            filter.addAction(ACTION_DUMP);
-            filter.addAction(ACTION_RESULT);
-            final String dumpPermission = context.getPackageName() + DUMP_PERMISSION_SUFFIX;
-            context.registerReceiver(new ManualDumpProcessorHelper(), filter, dumpPermission, null);
-            MatrixLog.d(TAG, "[%s] DUMP_PERMISSION is %s", MatrixUtil.getProcessName(context), dumpPermission);
-            hasInstalled = true;
-            sProcessor = processor;
-        }
-
-        public static void dumpAndAnalyse(Context context, String leakProcess, String activity, String refKey, IResultListener resultListener) {
-            if (!hasInstalled) {
-                throw new IllegalStateException("ManualDumpProcessorHelper was not installed yet!!! maybe your target activity is not running in right process.");
-            }
-            final String currentProcess = MatrixUtil.getProcessName(context);
-            if (currentProcess.equalsIgnoreCase(leakProcess)) {
-                // dump and analyze for current process
-                ManualDumpData data = sProcessor.dumpAndAnalyse(activity, refKey);
-                if (data == null) {
-                    resultListener.onFailed();
-                } else {
-                    resultListener.onSuccess(data.hprofPath, data.refChain);
-                }
-            } else {
-                sListener = resultListener;
-                MatrixLog.v(TAG, "[%s] send broadcast with permission: %s", currentProcess,
-                        context.getPackageName() + DUMP_PERMISSION_SUFFIX);
-                Intent intent = new Intent(ACTION_DUMP);
-                intent.putExtra(KEY_LEAK_PROCESS, leakProcess);
-                intent.putExtra(KEY_LEAK_ACTIVITY, activity);
-                intent.putExtra(KEY_LEAK_REFKEY, refKey);
-                intent.putExtra(KEY_RESULT_PROCESS, currentProcess);
-                context.sendBroadcast(intent, context.getPackageName() + DUMP_PERMISSION_SUFFIX);
-            }
-        }
-    }
-
-    public interface IResultListener {
-        void onSuccess(String hprof, String leakReference);
-
-        void onFailed();
-    }
-
-    public static class ManualDumpData {
+    public static class ManualDumpData implements Parcelable {
         public final String hprofPath;
         public final String refChain;
 
@@ -318,5 +222,33 @@ public class ManualDumpProcessor extends BaseLeakProcessor {
             this.hprofPath = hprofPath;
             this.refChain = refChain;
         }
+
+        protected ManualDumpData(Parcel in) {
+            hprofPath = in.readString();
+            refChain = in.readString();
+        }
+
+        @Override
+        public void writeToParcel(Parcel dest, int flags) {
+            dest.writeString(hprofPath);
+            dest.writeString(refChain);
+        }
+
+        @Override
+        public int describeContents() {
+            return 0;
+        }
+
+        public static final Creator<ManualDumpData> CREATOR = new Creator<ManualDumpData>() {
+            @Override
+            public ManualDumpData createFromParcel(Parcel in) {
+                return new ManualDumpData(in);
+            }
+
+            @Override
+            public ManualDumpData[] newArray(int size) {
+                return new ManualDumpData[size];
+            }
+        };
     }
 }
