@@ -46,7 +46,6 @@ class ProcessBgMemoryMonitorConfig(
     nativeThresholdByte: Long = 500 * 1024 * 1024L,
     amsPssThresholdK: Long = 700 * 1024,
     debugPssThresholdK: Long = 700 * 1024,
-    val baseActivities: Array<String> = emptyArray(),
     val reportCallback: (memInfo: MemInfo, isBusy: Boolean) -> Unit = { _, _ ->
         // do report
     },
