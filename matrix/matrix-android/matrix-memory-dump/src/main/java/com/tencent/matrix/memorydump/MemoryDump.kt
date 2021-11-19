@@ -242,13 +242,7 @@ class DumpHandler internal constructor(
     Native Function Handlers.
  */
 
-private const val SUPPORTED_API_GUARD = 31 // Now is Android 12 (S).
-
 private fun initialize(): Boolean {
-    if (Build.VERSION.SDK_INT > SUPPORTED_API_GUARD) {
-        MatrixLog.e(TAG, "Unsupported API version. Stop initialization.")
-        return false
-    }
     System.loadLibrary("matrix-memorydump")
     val success = initializeNative()
     if (!success) {
