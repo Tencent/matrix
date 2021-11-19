@@ -26,7 +26,9 @@ import com.tencent.matrix.plugin.Plugin;
 import com.tencent.matrix.plugin.PluginListener;
 import com.tencent.matrix.util.MatrixLog;
 
+import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 
 /**
  * Created by zhangshaowen on 17/5/17.
@@ -42,11 +44,11 @@ public class Matrix {
     private final Application application;
     private final PluginListener pluginListener;
 
-    private Matrix(Application app, PluginListener listener, HashSet<Plugin> plugins, SupervisorConfig supervisorConfig) {
+    private Matrix(Application app, PluginListener listener, HashSet<Plugin> plugins, SupervisorConfig supervisorConfig, List<String> baseActivities) {
         this.application = app;
         this.pluginListener = listener;
         this.plugins = plugins;
-        MultiProcessLifecycleInitializer.init(app);
+        MultiProcessLifecycleInitializer.init(app, baseActivities);
         ProcessSupervisor.INSTANCE.init(app, supervisorConfig);
         for (Plugin plugin : plugins) {
             plugin.init(application, pluginListener);
@@ -133,6 +135,7 @@ public class Matrix {
         private final Application application;
         private PluginListener pluginListener;
         private SupervisorConfig mSupervisorConfig;
+        private List<String> baseActivities = Collections.emptyList();
 
         private HashSet<Plugin> plugins = new HashSet<>();
 
@@ -170,11 +173,16 @@ public class Matrix {
             return this;
         }
 
+        public Builder baseActivities(List<String> baseActivities) {
+            this.baseActivities = baseActivities;
+            return this;
+        }
+
         public Matrix build() {
             if (pluginListener == null) {
                 pluginListener = new DefaultPluginListener(application);
             }
-            return new Matrix(application, pluginListener, plugins, mSupervisorConfig);
+            return new Matrix(application, pluginListener, plugins, mSupervisorConfig, baseActivities);
         }
 
     }

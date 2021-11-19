@@ -17,7 +17,6 @@ class MemoryCanaryBoot {
         @JvmStatic
         fun configure(app: Application): MemoryCanaryConfig {
             return MemoryCanaryConfig(
-                supervisorConfig = SupervisorConfig(true),
                 appBgSumPssMonitorConfig = SumPssMonitorBoot.config,
                 processBgMemoryMonitorConfig = BackgroundMemoryMonitorBoot.config
             )

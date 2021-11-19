@@ -22,7 +22,7 @@ import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.SystemClock;
 
-import com.tencent.matrix.lifecycle.owners.MultiProcessLifecycleOwner;
+import com.tencent.matrix.lifecycle.owners.MatrixProcessLifecycleOwner;
 import com.tencent.matrix.trace.constants.Constants;
 import com.tencent.matrix.trace.hacker.ActivityThreadHacker;
 import com.tencent.matrix.trace.listeners.IAppMethodBeatListener;
@@ -310,7 +310,7 @@ public class AppMethodBeat implements BeatLifecycle {
     }
 
     public static String getVisibleScene() {
-        return MultiProcessLifecycleOwner.INSTANCE.getVisibleScene();
+        return MatrixProcessLifecycleOwner.INSTANCE.getVisibleScene();
     }
 
     /**

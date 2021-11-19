@@ -4,11 +4,11 @@ import android.app.Activity;
 import android.app.Application;
 
 import com.tencent.matrix.listeners.IAppForeground;
-import com.tencent.matrix.lifecycle.owners.MultiProcessLifecycleOwner;
+import com.tencent.matrix.lifecycle.owners.MatrixProcessLifecycleOwner;
 import com.tencent.matrix.util.MatrixUtil;
 
 /**
- * use {@link MultiProcessLifecycleOwner} instead
+ * use {@link MatrixProcessLifecycleOwner} instead
  */
 @Deprecated
 public enum AppActiveMatrixDelegate {
@@ -21,7 +21,7 @@ public enum AppActiveMatrixDelegate {
     }
 
     public String getCurrentFragmentName() {
-        return MultiProcessLifecycleOwner.INSTANCE.getCurrentFragmentName();
+        return MatrixProcessLifecycleOwner.INSTANCE.getCurrentFragmentName();
     }
 
     /**
@@ -30,34 +30,34 @@ public enum AppActiveMatrixDelegate {
      * @param fragmentName
      */
     public void setCurrentFragmentName(String fragmentName) {
-        MultiProcessLifecycleOwner.INSTANCE.setCurrentFragmentName(fragmentName);
+        MatrixProcessLifecycleOwner.INSTANCE.setCurrentFragmentName(fragmentName);
     }
 
     public String getVisibleScene() {
-        return MultiProcessLifecycleOwner.INSTANCE.getVisibleScene();
+        return MatrixProcessLifecycleOwner.INSTANCE.getVisibleScene();
     }
 
     @Deprecated
     public boolean isAppForeground() {
-        return MultiProcessLifecycleOwner.INSTANCE.isProcessForeground();
+        return MatrixProcessLifecycleOwner.INSTANCE.isProcessForeground();
     }
 
     /**
-     * use {@link MultiProcessLifecycleOwner} instead:
+     * use {@link MatrixProcessLifecycleOwner} instead:
      * @param listener
      */
     @Deprecated
     public void addListener(IAppForeground listener) {
-        MultiProcessLifecycleOwner.INSTANCE.addListener(listener);
+        MatrixProcessLifecycleOwner.INSTANCE.addListener(listener);
     }
 
     /**
-     * use {@link MultiProcessLifecycleOwner} instead:
+     * use {@link MatrixProcessLifecycleOwner} instead:
      * @param listener
      */
     @Deprecated
     public void removeListener(IAppForeground listener) {
-        MultiProcessLifecycleOwner.INSTANCE.removeListener(listener);
+        MatrixProcessLifecycleOwner.INSTANCE.removeListener(listener);
     }
 
     @Deprecated

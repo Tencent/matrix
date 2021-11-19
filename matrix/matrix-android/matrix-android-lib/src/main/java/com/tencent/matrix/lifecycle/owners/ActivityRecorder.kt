@@ -12,6 +12,10 @@ import kotlin.collections.HashMap
 /**
  * Created by Yves on 2021/9/24
  */
+data class ActivityRecorderConfig(
+    val baseActivities: List<String> = emptyList()
+)
+
 object ActivityRecorder : StatefulOwner() {
 
     private const val TAG = "Matrix.memory.ActivityRecorder"
@@ -20,16 +24,10 @@ object ActivityRecorder : StatefulOwner() {
 
     private val stub = Any()
 
-    private val activityRecord = WeakHashMap<Activity, Any>()
+    private val createdActivities = WeakHashMap<Activity, Any>()
     private val destroyedActivities = WeakHashMap<Activity, Any>()
 
-    var baseActivities: Array<String> = emptyArray()
-        set(value) {
-            if (field.isNotEmpty()) {
-                throw IllegalArgumentException("avoid resetting base Activities")
-            }
-            field = value
-        }
+    private var baseActivities: List<String> = emptyList()
 
     private fun WeakHashMap<Activity, Any>.contains(clazz: String): Boolean {
         entries.toTypedArray().forEach { e ->
@@ -56,45 +54,66 @@ object ActivityRecorder : StatefulOwner() {
     @Volatile
     private var inited = false
 
-    fun init(app: Application) {
+    internal fun init(app: Application, baseActivities: List<String>) {
         if (inited) {
             return
         }
         inited = true
+        this.baseActivities = baseActivities
         app.registerActivityLifecycleCallbacks(callbacks)
     }
 
-    fun sizeExcept(activityNames: Array<String>?): Int {
-        var size = activityRecord.size
-        activityNames?.forEach {
-            if (activityRecord.contains(it)) {
+    private fun sizeExceptBase(): Int {
+        var size = createdActivities.size
+        baseActivities.forEach {
+            if (createdActivities.contains(it)) {
                 size--
             }
         }
         return size
     }
 
-    fun busy() = active() && sizeExcept(baseActivities) > 0
+    private fun WeakHashMap<Activity, Any>.anyNotFinishedExceptBase(): Boolean {
+        if (isEmpty()) return false
+
+        val cpy = createdActivities.entries.toMutableList()
+
+        cpy.removeAll {
+            baseActivities.contains(it.key?.javaClass?.name)
+        }
+
+        if (cpy.isEmpty()) return false
+        for (element in cpy) {
+            val k = element.key
+            if (k != null && !k.isFinishing) {
+                return true
+            }
+        }
+        return false
+    }
+
+    val busy: Boolean
+        get() = active() && (sizeExceptBase() > 0 || createdActivities.anyNotFinishedExceptBase())
 
     fun retainedActivities(): Map<String, Int> {
         val map = HashMap<String, Int>()
         Runtime.getRuntime().gc()
 
-        destroyedActivities.entries.toTypedArray()
-            .filter {
-                it.key != null
-            }.forEach {
-                it.key.javaClass.simpleName.let { name ->
-                    var count = map.getOrPut(name, { 0 })
-                    map[name] = ++count
-                }
+        val cpy = destroyedActivities.entries.toTypedArray()
+
+        for (e in cpy) {
+            val k = e.key ?: continue
+            k.javaClass.simpleName.let {
+                var count = map.getOrPut(it, { 0 })
+                map[it] = ++count
             }
+        }
 
         return map
     }
 
     private fun onStateChanged() {
-        if (activityRecord.isEmpty()) {
+        if (createdActivities.isEmpty()) {
             turnOff()
         } else {
             turnOn()
@@ -104,11 +123,11 @@ object ActivityRecorder : StatefulOwner() {
     private class ActivityCallbacks : EmptyActivityLifecycleCallbacks() {
 
         override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {
-            activityRecord[activity] = stub
+            createdActivities[activity] = stub
             onStateChanged()
             MatrixLog.d(
                 TAG, "[${activity.javaClass.simpleName}] -> ${
-                    activityRecord.keys.contentToString()
+                    createdActivities.keys.contentToString()
                 }"
             )
         }
@@ -118,11 +137,11 @@ object ActivityRecorder : StatefulOwner() {
         }
 
         override fun onActivityDestroyed(activity: Activity) {
-            activityRecord.remove(activity)
+            createdActivities.remove(activity)
             onStateChanged()
             MatrixLog.d(
                 TAG, "[${activity.javaClass.simpleName}] <- ${
-                    activityRecord.keys.contentToString()
+                    createdActivities.keys.contentToString()
                 }"
             )
             destroyedActivities[activity] = stub

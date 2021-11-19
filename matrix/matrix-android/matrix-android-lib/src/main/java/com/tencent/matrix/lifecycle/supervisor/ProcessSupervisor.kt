@@ -44,7 +44,9 @@ data class SupervisorConfig(
      * Matrix init in the Supervisor process
      */
     @Deprecated("")
-    val autoCreate: Boolean = false
+    val autoCreate: Boolean = false,
+    @Deprecated("")
+    val lruKillerWhiteList: List<String> = emptyList()
 )
 
 object ProcessSupervisor : MultiSourceStatefulOwner(ReduceOperators.OR) {
@@ -67,6 +69,7 @@ object ProcessSupervisor : MultiSourceStatefulOwner(ReduceOperators.OR) {
     }
 
     private var application: Application? = null
+    internal var config: SupervisorConfig? = null
 
     val isAppForeground: Boolean
         get() = active()
@@ -98,6 +101,7 @@ object ProcessSupervisor : MultiSourceStatefulOwner(ReduceOperators.OR) {
             MatrixLog.i(TAG, "Supervisor is disabled")
             return false
         }
+        this.config = config
         application = app
         if (isSupervisor) {
             initSupervisor(app)

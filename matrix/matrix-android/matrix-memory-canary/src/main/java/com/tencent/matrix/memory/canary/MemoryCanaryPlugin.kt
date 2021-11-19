@@ -1,6 +1,5 @@
 package com.tencent.matrix.memory.canary
 
-import com.tencent.matrix.lifecycle.owners.ActivityRecorder
 import com.tencent.matrix.lifecycle.supervisor.ProcessSupervisor
 import com.tencent.matrix.memory.canary.monitor.AppBgSumPssMonitor
 import com.tencent.matrix.memory.canary.monitor.AppBgSumPssMonitorConfig
@@ -29,7 +28,6 @@ class MemoryCanaryPlugin(
         super.start()
 
         memoryCanaryConfig.apply {
-            ActivityRecorder.baseActivities = baseActivities
             if (ProcessSupervisor.isSupervisor) {
                 MatrixLog.d(tag, "supervisor is ${MatrixUtil.getProcessName(application)}")
                 AppBgSumPssMonitor(appBgSumPssMonitorConfig).init()

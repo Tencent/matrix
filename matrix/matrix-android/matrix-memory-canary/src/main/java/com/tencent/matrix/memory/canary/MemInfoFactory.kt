@@ -390,9 +390,6 @@ data class MemInfo(
                 MemInfoFactory.activityManager.getProcessMemoryInfo(memInfoArray.toPidArray())
 
             if (pidMemInfoArray != null) {
-                if (BuildConfig.DEBUG) {
-                    Assert.assertEquals(memInfoArray.size, pidMemInfoArray.size)
-                }
                 for (i in memInfoArray.indices) {
                     if (pidMemInfoArray[i] == null) {
                         memInfoArray[i].amsPssInfo = PssInfo(0, 0, 0, 0, 0, 0, 0, 0, 0)

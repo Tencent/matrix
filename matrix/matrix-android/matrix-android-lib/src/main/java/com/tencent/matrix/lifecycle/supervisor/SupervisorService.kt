@@ -164,9 +164,14 @@ class SupervisorService : Service() {
             throw IllegalStateException("backgroundLruKill should only be called in supervisor")
         }
 
+        if (instance == null) {
+            throw IllegalStateException("not initialized yet !")
+        }
+
         targetKilledCallback = killedCallback
         val candidate = backgroundProcessLru.firstOrNull {
             it.name != MatrixUtil.getProcessName(this)
+                    && !ProcessSupervisor.config!!.lruKillerWhiteList.contains(it.name)
         }
 
         if (candidate != null) {

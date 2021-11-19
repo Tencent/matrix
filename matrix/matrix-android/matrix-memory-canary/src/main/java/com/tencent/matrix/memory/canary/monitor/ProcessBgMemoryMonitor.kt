@@ -87,7 +87,7 @@ class ProcessBgMemoryMonitor(private val config: ProcessBgMemoryMonitorConfig) {
     }
 
     private fun isBusy(): Boolean {
-        return ActivityRecorder.active() && ActivityRecorder.sizeExcept(config.baseActivities) > 0
+        return ActivityRecorder.busy
     }
 
     private var lastCheckTime = 0L

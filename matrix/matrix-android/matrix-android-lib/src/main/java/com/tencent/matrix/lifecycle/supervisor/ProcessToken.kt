@@ -21,7 +21,7 @@ class ProcessToken : Parcelable {
         fun current(context: Context) = ProcessToken(
             Process.myPid(),
             MatrixUtil.getProcessName(context),
-            ActivityRecorder.busy()
+            ActivityRecorder.busy
         )
 
         @JvmField

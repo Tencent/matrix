@@ -1,16 +1,16 @@
 package com.tencent.matrix.lifecycle.owners
 
+import android.annotation.SuppressLint
 import android.app.Activity
 import android.app.Application
-import android.content.ContentProvider
-import android.content.ContentValues
 import android.content.Context
-import android.database.Cursor
-import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
+import android.os.Looper
+import android.widget.Toast
 import androidx.annotation.NonNull
 import androidx.lifecycle.*
+import com.tencent.matrix.BuildConfig
 import com.tencent.matrix.lifecycle.IStateObserver
 import com.tencent.matrix.lifecycle.StatefulOwner
 import com.tencent.matrix.lifecycle.owners.MultiProcessLifecycleInitializer.Companion.init
@@ -18,6 +18,7 @@ import com.tencent.matrix.listeners.IAppForeground
 import com.tencent.matrix.util.MatrixHandlerThread
 import com.tencent.matrix.util.MatrixLog
 import com.tencent.matrix.util.MatrixUtil
+import com.tencent.matrix.util.safeLet
 import java.util.*
 
 /**
@@ -32,9 +33,9 @@ import java.util.*
  *
  * Created by Yves on 2021/9/14
  */
-object MultiProcessLifecycleOwner {
+object MatrixProcessLifecycleOwner {
 
-    private const val TAG = "Matrix.MultiProcessLifecycle"
+    private const val TAG = "Matrix.ProcessLifecycle"
 
     private var sProcessName: String? = null
     private const val TIMEOUT_MS = 500L //mls
@@ -261,63 +262,43 @@ object MultiProcessLifecycleOwner {
  * You should init [com.tencent.matrix.Matrix] or call [init] manually before creating any Activity
  * Created by Yves on 2021/9/14
  */
-class MultiProcessLifecycleInitializer : ContentProvider() {
+class MultiProcessLifecycleInitializer {
 
     companion object {
+        private const val TAG = "Matrix.ProcessLifecycleOwnerInit"
 
         @Volatile
         private var inited = false
 
         @JvmStatic
-        fun init(@NonNull context: Context) {
+        fun init(@NonNull context: Context, baseActivities: List<String>) {
             if (inited) {
                 return
             }
             inited = true
-            MultiProcessLifecycleOwner.init(context)
-            ActivityRecorder.init(context.applicationContext as Application)
+            if (hasCreatedActivities()) {
+                ("Matrix Warning: Matrix might be inited after launching first Activity, " +
+                        "which would disable some features like ProcessLifecycleOwner, " +
+                        "pls consider calling MultiProcessLifecycleInitializer#init manually " +
+                        "or initializing matrix at Application#onCreate").let {
+                    MatrixLog.e(TAG, it)
+                }
+                return
+            }
+            MatrixProcessLifecycleOwner.init(context)
+            ActivityRecorder.init(context.applicationContext as Application, baseActivities)
+        }
+
+        @SuppressLint("PrivateApi", "DiscouragedPrivateApi")
+        @JvmStatic
+        fun hasCreatedActivities() = safeLet(tag = TAG, defVal = false) {
+            val clazzActivityThread = Class.forName("android.app.ActivityThread")
+            val objectActivityThread =
+                clazzActivityThread.getMethod("currentActivityThread").invoke(null)
+            val fieldMActivities = clazzActivityThread.getDeclaredField("mActivities")
+            fieldMActivities.isAccessible = true
+            val mActivities = fieldMActivities.get(objectActivityThread) as Map<*, *>?
+            return mActivities != null && mActivities.isNotEmpty()
         }
     }
-
-    override fun onCreate(): Boolean {
-        if (context == null) {
-            throw java.lang.IllegalStateException("context is null !!!")
-        }
-
-        init(context!!)
-
-        return true
-    }
-
-    override fun query(
-        uri: Uri,
-        projection: Array<out String>?,
-        selection: String?,
-        selectionArgs: Array<out String>?,
-        sortOrder: String?
-    ): Cursor? {
-        return null
-    }
-
-    override fun getType(uri: Uri): String? {
-        return null
-    }
-
-    override fun insert(uri: Uri, values: ContentValues?): Uri? {
-        return null
-    }
-
-    override fun delete(uri: Uri, selection: String?, selectionArgs: Array<out String>?): Int {
-        return 0
-    }
-
-    override fun update(
-        uri: Uri,
-        values: ContentValues?,
-        selection: String?,
-        selectionArgs: Array<out String>?
-    ): Int {
-        return 0
-    }
-
 }
