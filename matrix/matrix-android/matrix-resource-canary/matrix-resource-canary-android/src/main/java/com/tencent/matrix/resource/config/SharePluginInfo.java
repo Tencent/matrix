@@ -35,8 +35,9 @@ public class SharePluginInfo {
     public static final String ISSUE_NOTIFICATION_ID     = "notification_id";
 
     public static final class IssueType {
-        public static final int LEAK_FOUND         = 0;
-        public static final int ERR_FILE_NOT_FOUND = 2;
-        public static final int ERR_ANALYSE_OOM    = 3;
+        public static final int LEAK_FOUND          = 0;
+        public static final int ERR_FILE_NOT_FOUND  = 2;
+        public static final int ERR_ANALYSE_OOM     = 3;
+        public static final int ERR_UNSUPPORTED_API = 4;
     }
 }

@@ -1,5 +1,7 @@
 package com.tencent.matrix.resource.processor;
 
+import android.os.Build;
+
 import com.tencent.matrix.memorydump.MemoryDumpManager;
 import com.tencent.matrix.resource.analyzer.model.ActivityLeakResult;
 import com.tencent.matrix.resource.analyzer.model.DestroyedActivityInfo;
@@ -26,6 +28,16 @@ public class ForkAnalyseProcessor extends BaseLeakProcessor {
 
     @Override
     public boolean process(DestroyedActivityInfo destroyedActivityInfo) {
+        if (Build.VERSION.SDK_INT > ResourceConfig.FORK_DUMP_SUPPORTED_API_GUARD) {
+            MatrixLog.e(TAG, "cannot fork-dump with unsupported API version " + Build.VERSION.SDK_INT);
+            publishIssue(
+                    SharePluginInfo.IssueType.ERR_UNSUPPORTED_API,
+                    ResourceConfig.DumpMode.FORK_ANALYSE,
+                    destroyedActivityInfo.mActivityName, destroyedActivityInfo.mKey,
+                    "Unsupported API", "0");
+            return false;
+        }
+
         getWatcher().triggerGc();
 
         if (dumpAndAnalyse(
