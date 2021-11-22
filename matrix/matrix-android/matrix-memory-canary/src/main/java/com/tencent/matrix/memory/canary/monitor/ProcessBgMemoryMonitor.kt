@@ -85,10 +85,6 @@ class ProcessBgMemoryMonitor(private val config: ProcessBgMemoryMonitorConfig) {
         })
     }
 
-    private fun isBusy(): Boolean {
-        return ActivityRecorder.busy
-    }
-
     private var lastCheckTime = 0L
 
     private fun checkWhenBackground() {
@@ -97,7 +93,7 @@ class ProcessBgMemoryMonitor(private val config: ProcessBgMemoryMonitorConfig) {
         lastCheckTime = current
         val memInfo = MemInfo.getCurrentProcessFullMemInfo()
 
-        val busy = isBusy()
+        val staged = ActivityRecorder.staged
 
         var shouldCallback = false
 
@@ -108,22 +104,22 @@ class ProcessBgMemoryMonitor(private val config: ProcessBgMemoryMonitorConfig) {
         val overThreshold = config.run {
             // @formatter:off
             arrayOf(
-                "java" to javaThresholdByte.check(memInfo.javaMemInfo!!.usedByte, busy, cb),
-                "native" to nativeThresholdByte.check(memInfo.nativeMemInfo!!.usedByte, busy, cb),
-                "debugPss" to debugPssThresholdK.check(memInfo.debugPssInfo!!.totalPssK.toLong(), busy, cb),
-                "amsPss" to (amsPssThresholdK.check(memInfo.amsPssInfo!!.totalPssK.toLong(), busy, cb) && lastCheckToNow > TimeUnit.MINUTES.toMillis(5))
+                "java" to javaThresholdByte.check(memInfo.javaMemInfo!!.usedByte, staged, cb),
+                "native" to nativeThresholdByte.check(memInfo.nativeMemInfo!!.usedByte, staged, cb),
+                "debugPss" to debugPssThresholdK.check(memInfo.debugPssInfo!!.totalPssK.toLong(), staged, cb),
+                "amsPss" to (amsPssThresholdK.check(memInfo.amsPssInfo!!.totalPssK.toLong(), staged, cb) && lastCheckToNow > TimeUnit.MINUTES.toMillis(5))
             ).onEach { MatrixLog.i(TAG, "is over threshold ? $it") }.any { it.second }
             // @formatter:on
         }
 
         MatrixLog.i(
             TAG,
-            "check: overThreshold: $overThreshold,  is busy: $busy, interval: $lastCheckToNow, shouldCallback: $shouldCallback $memInfo"
+            "check: overThreshold: $overThreshold,  is staged: $staged, interval: $lastCheckToNow, shouldCallback: $shouldCallback $memInfo"
         )
 
         if (overThreshold && shouldCallback) {
             MatrixLog.i(TAG, "report over threshold")
-            config.reportCallback.invoke(memInfo, busy)
+            config.reportCallback.invoke(memInfo, staged)
         }
     }
 

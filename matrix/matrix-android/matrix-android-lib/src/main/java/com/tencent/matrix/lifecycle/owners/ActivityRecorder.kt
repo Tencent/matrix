@@ -92,7 +92,7 @@ object ActivityRecorder : StatefulOwner() {
         return false
     }
 
-    val busy: Boolean
+    val staged: Boolean
         get() = active() && (sizeExceptBase() > 0 || createdActivities.anyNotFinishedExceptBase())
 
     fun retainedActivities(): Map<String, Int> {
