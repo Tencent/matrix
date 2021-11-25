@@ -30,7 +30,7 @@ import com.tencent.matrix.hook.HookManager;
 import com.tencent.matrix.hook.pthread.PthreadHook;
 import com.tencent.matrix.iocanary.IOCanaryPlugin;
 import com.tencent.matrix.iocanary.config.IOConfig;
-import com.tencent.matrix.lifecycle.owners.MultiProcessLifecycleInitializer;
+import com.tencent.matrix.lifecycle.owners.MatrixProcessLifecycleInitializer;
 import com.tencent.matrix.lifecycle.supervisor.SupervisorConfig;
 import com.tencent.matrix.memory.canary.MemoryCanaryPlugin;
 import com.tencent.matrix.resource.ResourcePlugin;
@@ -142,7 +142,7 @@ public class MatrixApplication extends Application {
 
         LifecycleTest.test1();
 
-        MatrixLog.d("Yves-test", "hasCreatedActivities %s", MultiProcessLifecycleInitializer.hasCreatedActivities());
+        MatrixLog.d("Yves-test", "hasCreatedActivities %s", MatrixProcessLifecycleInitializer.hasCreatedActivities());
 
         MatrixLog.i(TAG, "Matrix configurations done.");
     }

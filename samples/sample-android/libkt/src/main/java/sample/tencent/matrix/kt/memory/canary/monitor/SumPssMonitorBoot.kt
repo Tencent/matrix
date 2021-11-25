@@ -10,7 +10,7 @@ import com.tencent.matrix.util.MatrixLog
 object SumPssMonitorBoot {
     private const val TAG = "Matrix.sample.SumPssMonitorBoot"
 
-    private val callback: (Int, Array<MemInfo>) -> Unit = { sumPssKB, memInfos ->
+    private val callback: (Int, Int, Array<MemInfo>, Boolean) -> Unit = { sumPssKB, aInt, memInfos, aBool ->
         MatrixLog.i(TAG, "report : $sumPssKB, $memInfos")
     }
 

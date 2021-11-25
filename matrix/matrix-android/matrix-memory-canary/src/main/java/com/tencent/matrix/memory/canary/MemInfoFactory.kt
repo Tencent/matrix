@@ -8,14 +8,12 @@ import android.os.Debug
 import android.os.Process
 import android.text.TextUtils
 import com.tencent.matrix.Matrix
-import com.tencent.matrix.lifecycle.owners.ActivityRecorder
-import com.tencent.matrix.lifecycle.owners.CombinedProcessForegroundOwner
+import com.tencent.matrix.lifecycle.owners.MatrixProcessLifecycleOwner
 import com.tencent.matrix.lifecycle.supervisor.ProcessSupervisor
 import com.tencent.matrix.util.MatrixLog
 import com.tencent.matrix.util.MatrixUtil
-import com.tencent.matrix.util.safeLet
 import com.tencent.matrix.util.safeApply
-import junit.framework.Assert
+import com.tencent.matrix.util.safeLet
 import org.json.JSONObject
 import java.io.File
 import java.util.*
@@ -58,8 +56,8 @@ object MemInfoFactory {
 data class ProcessInfo(
     val pid: Int = Process.myPid(),
     val name: String = MatrixUtil.getProcessName(Matrix.with().application),
-    val activity: String = ActivityRecorder.currentActivity,
-    val isProcessFg: Boolean = CombinedProcessForegroundOwner.active(),
+    val activity: String = MatrixProcessLifecycleOwner.recentActivity,
+    val isProcessFg: Boolean = MatrixProcessLifecycleOwner.startedStateOwner.active(),
     val isAppFg: Boolean = ProcessSupervisor.isAppForeground
 ) {
     override fun toString(): String {
@@ -208,12 +206,6 @@ data class StatusInfo(
         }
 
         private fun convertProcStatus(pid: Int): Map<String, String> {
-            val begin = if (BuildConfig.DEBUG) {
-                System.currentTimeMillis()
-            } else {
-                0L
-            }
-
             safeApply {
                 File("/proc/${pid}/status").useLines { seq ->
                     return seq.flatMap {
@@ -224,14 +216,7 @@ data class StatusInfo(
                             MatrixLog.e(TAG, "ERROR : $it")
                             return@flatMap emptySequence()
                         }
-                    }.toMap().also {
-                        if (BuildConfig.DEBUG) {
-                            MatrixLog.d(
-                                TAG,
-                                "convertProcStatus cost ${System.currentTimeMillis() - begin}"
-                            )
-                        }
-                    }
+                    }.toMap()
                 }
             }
 

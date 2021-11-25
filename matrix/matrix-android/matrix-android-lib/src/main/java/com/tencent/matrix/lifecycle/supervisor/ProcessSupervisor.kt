@@ -12,7 +12,7 @@ import android.util.Log
 import com.tencent.matrix.lifecycle.IStateObserver
 import com.tencent.matrix.lifecycle.MultiSourceStatefulOwner
 import com.tencent.matrix.lifecycle.ReduceOperators
-import com.tencent.matrix.lifecycle.owners.CombinedProcessForegroundOwner
+import com.tencent.matrix.lifecycle.owners.MatrixProcessLifecycleOwner
 import com.tencent.matrix.util.MatrixLog
 import com.tencent.matrix.util.MatrixUtil
 import com.tencent.matrix.util.safeApply
@@ -48,7 +48,7 @@ data class SupervisorConfig(
     @Deprecated("")
     val lruKillerWhiteList: List<String> = emptyList()
 )
-
+// todo delegate mode
 object ProcessSupervisor : MultiSourceStatefulOwner(ReduceOperators.OR) {
 
     private const val TAG = "Matrix.ProcessSupervisor"
@@ -143,7 +143,8 @@ object ProcessSupervisor : MultiSourceStatefulOwner(ReduceOperators.OR) {
 
                     safeApply(tag) { onProcessCreate(ProcessToken.current(app)) }
 
-                    CombinedProcessForegroundOwner.observeForever(object : IStateObserver {
+                    MatrixProcessLifecycleOwner.startedStateOwner.observeForever(object :
+                        IStateObserver {
 
                         override fun on() {
                             MatrixLog.d(tag, "in charge process: foreground")

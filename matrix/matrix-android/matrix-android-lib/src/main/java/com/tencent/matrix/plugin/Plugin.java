@@ -56,6 +56,7 @@ public abstract class Plugin implements IPlugin, IssuePublisher.OnIssueDetectLis
         status = PLUGIN_INITED;
         this.application = app;
         this.pluginListener = listener;
+        listener.onInit(this);
         MatrixProcessLifecycleOwner.INSTANCE.addListener(this);
     }
 

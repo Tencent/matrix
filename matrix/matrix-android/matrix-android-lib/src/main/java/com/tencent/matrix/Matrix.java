@@ -18,7 +18,7 @@ package com.tencent.matrix;
 
 import android.app.Application;
 
-import com.tencent.matrix.lifecycle.owners.MultiProcessLifecycleInitializer;
+import com.tencent.matrix.lifecycle.owners.MatrixProcessLifecycleInitializer;
 import com.tencent.matrix.lifecycle.supervisor.ProcessSupervisor;
 import com.tencent.matrix.lifecycle.supervisor.SupervisorConfig;
 import com.tencent.matrix.plugin.DefaultPluginListener;
@@ -42,19 +42,15 @@ public class Matrix {
 
     private final HashSet<Plugin> plugins;
     private final Application application;
-    private final PluginListener pluginListener;
 
     private Matrix(Application app, PluginListener listener, HashSet<Plugin> plugins, SupervisorConfig supervisorConfig, List<String> baseActivities) {
         this.application = app;
-        this.pluginListener = listener;
         this.plugins = plugins;
-        MultiProcessLifecycleInitializer.init(app, baseActivities);
+        MatrixProcessLifecycleInitializer.init(app, baseActivities);
         ProcessSupervisor.INSTANCE.init(app, supervisorConfig);
         for (Plugin plugin : plugins) {
-            plugin.init(application, pluginListener);
-            pluginListener.onInit(plugin);
+            plugin.init(application, listener);
         }
-
     }
 
     public static void setLogIml(MatrixLog.MatrixLogImp imp) {

@@ -244,7 +244,7 @@ open class ImmutableMultiSourceStatefulOwner(
     }
 
     final override fun removeSourceOwner(owner: StatefulOwner) {
-        throw java.lang.UnsupportedOperationException()
+        throw UnsupportedOperationException()
     }
 }
 

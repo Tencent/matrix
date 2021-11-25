@@ -2,24 +2,22 @@ package com.tencent.matrix.lifecycle.owners
 
 import android.annotation.SuppressLint
 import android.app.Activity
+import android.app.ActivityManager
 import android.app.Application
 import android.content.Context
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
-import android.widget.Toast
 import androidx.annotation.NonNull
 import androidx.lifecycle.*
-import com.tencent.matrix.BuildConfig
 import com.tencent.matrix.lifecycle.IStateObserver
 import com.tencent.matrix.lifecycle.StatefulOwner
-import com.tencent.matrix.lifecycle.owners.MultiProcessLifecycleInitializer.Companion.init
+import com.tencent.matrix.lifecycle.owners.MatrixProcessLifecycleInitializer.Companion.init
 import com.tencent.matrix.listeners.IAppForeground
 import com.tencent.matrix.util.MatrixHandlerThread
 import com.tencent.matrix.util.MatrixLog
 import com.tencent.matrix.util.MatrixUtil
 import com.tencent.matrix.util.safeLet
 import java.util.*
+import kotlin.collections.HashMap
 
 /**
  * multi process version of [androidx.lifecycle.ProcessLifecycleOwner]
@@ -37,48 +35,91 @@ object MatrixProcessLifecycleOwner {
 
     private const val TAG = "Matrix.ProcessLifecycle"
 
-    private var sProcessName: String? = null
     private const val TIMEOUT_MS = 500L //mls
+    private var processName: String? = null
+    private var packageName: String? = null
+    private var activityManager: ActivityManager? = null
 
     internal fun init(context: Context) {
-        sProcessName = MatrixUtil.getProcessName(context)
+        activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+        processName = MatrixUtil.getProcessName(context)
+        packageName = MatrixUtil.getPackageName(context)
         attach(context)
-        MatrixLog.i(TAG, "init for [${sProcessName}]")
+        MatrixLog.i(TAG, "init for [${processName}]")
     }
 
     // ========================== base ========================== //
 
+    private val runningHandler = MatrixHandlerThread.getDefaultHandler()
+
     private val stub = Any()
+    private val createdActivities = WeakHashMap<Activity, Any>() // maybe useless
     private val resumedActivities = WeakHashMap<Activity, Any>()
     private val startedActivities = WeakHashMap<Activity, Any>()
+
+    private val destroyedActivities = WeakHashMap<Activity, Any>()
 
     private fun WeakHashMap<Activity, Any>.put(activity: Activity) {
         put(activity, stub)
     }
 
-    private var mPauseSent = true
-    private var mStopSent = true
+    private var pauseSent = true
+    private var stopSent = true
 
-    private val runningHandler = Handler(MatrixHandlerThread.getDefaultHandlerThread().looper)
-
-    private class AsyncOwner : StatefulOwner() {
-        fun turnOnAsync() = runningHandler.post { turnOn() }
-        fun turnOffAsync() = runningHandler.post { turnOff() }
+    private open class AsyncOwner : StatefulOwner() {
+        open fun turnOnAsync() { runningHandler.post { turnOn() } }
+        open fun turnOffAsync() { runningHandler.post { turnOff() } }
     }
 
+    private class CreatedStateOwner: AsyncOwner() {
+        override fun active(): Boolean {
+            return super.active() && createdActivities.all { false == it.key?.isFinishing }
+        }
+    }
+
+    val createdStateOwner: StatefulOwner = CreatedStateOwner()
     val resumedStateOwner: StatefulOwner = AsyncOwner()
     val startedStateOwner: StatefulOwner = AsyncOwner()
 
-    private val mDelayedPauseRunnable = Runnable {
+    var recentActivity = "default"
+        private set
+
+    private val delayedPauseRunnable = Runnable {
         dispatchPauseIfNeeded()
         dispatchStopIfNeeded()
+    }
+
+    fun retainedActivities(): Map<String, Int> {
+        val map = HashMap<String, Int>()
+        Runtime.getRuntime().gc()
+
+        val cpy = destroyedActivities.entries.toTypedArray()
+
+        for (e in cpy) {
+            val k = e.key ?: continue
+            k.javaClass.simpleName.let {
+                var count = map.getOrPut(it, { 0 })
+                map[it] = ++count
+            }
+        }
+
+        return map
+    }
+
+    private fun activityCreated(activity: Activity) {
+        val isEmptyBefore = createdActivities.isEmpty()
+        createdActivities.put(activity)
+
+        if (isEmptyBefore) {
+            (createdStateOwner as AsyncOwner).turnOnAsync()
+        }
     }
 
     private fun activityStarted(activity: Activity) {
         val isEmptyBefore = startedActivities.isEmpty()
         startedActivities.put(activity)
 
-        if (isEmptyBefore && mStopSent) {
+        if (isEmptyBefore && stopSent) {
             (startedStateOwner as AsyncOwner).turnOnAsync()
         }
     }
@@ -87,11 +128,11 @@ object MatrixProcessLifecycleOwner {
         val isEmptyBefore = resumedActivities.isEmpty()
         resumedActivities.put(activity)
         if (isEmptyBefore) {
-            if (mPauseSent) {
+            if (pauseSent) {
                 (resumedStateOwner as AsyncOwner).turnOnAsync()
-                mPauseSent = false
+                pauseSent = false
             } else {
-                runningHandler.removeCallbacks(mDelayedPauseRunnable)
+                runningHandler.removeCallbacks(delayedPauseRunnable)
             }
         }
     }
@@ -100,7 +141,7 @@ object MatrixProcessLifecycleOwner {
         resumedActivities.remove(activity)
 
         if (resumedActivities.isEmpty()) {
-            runningHandler.postDelayed(mDelayedPauseRunnable, TIMEOUT_MS)
+            runningHandler.postDelayed(delayedPauseRunnable, TIMEOUT_MS)
         }
     }
 
@@ -109,8 +150,13 @@ object MatrixProcessLifecycleOwner {
         dispatchStopIfNeeded()
     }
 
-    // fallback remove
     private fun activityDestroyed(activity: Activity) {
+        createdActivities.remove(activity)
+        destroyedActivities.put(activity)
+        if (createdActivities.isEmpty()) {
+            (createdStateOwner as AsyncOwner).turnOffAsync()
+        }
+        // fallback remove
         startedActivities.remove(activity)?.let {
             MatrixLog.w(
                 TAG,
@@ -127,14 +173,14 @@ object MatrixProcessLifecycleOwner {
 
     private fun dispatchPauseIfNeeded() {
         if (resumedActivities.isEmpty()) {
-            mPauseSent = true
+            pauseSent = true
             (resumedStateOwner as AsyncOwner).turnOffAsync()
         }
     }
 
     private fun dispatchStopIfNeeded() {
-        if (startedActivities.isEmpty() && mPauseSent) {
-            mStopSent = true
+        if (startedActivities.isEmpty() && pauseSent) {
+            stopSent = true
             (startedStateOwner as AsyncOwner).turnOffAsync()
         }
     }
@@ -146,6 +192,7 @@ object MatrixProcessLifecycleOwner {
         app.registerActivityLifecycleCallbacks(object : Application.ActivityLifecycleCallbacks {
 
             override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {
+                activityCreated(activity)
             }
 
             override fun onActivityStarted(activity: Activity) {
@@ -155,6 +202,7 @@ object MatrixProcessLifecycleOwner {
 
             override fun onActivityResumed(activity: Activity) {
                 activityResumed(activity)
+                recentActivity = activity.javaClass.simpleName
             }
 
             override fun onActivityPaused(activity: Activity) {
@@ -174,7 +222,7 @@ object MatrixProcessLifecycleOwner {
         })
     }
 
-    // ========================== extension ========================== //
+    // ========================== extension for compatibility ========================== //
 
     private val mListeners = HashSet<IAppForeground>()
 
@@ -183,9 +231,11 @@ object MatrixProcessLifecycleOwner {
     var isProcessForeground = false
         private set
 
+    // compat
     var visibleScene = "default"
         private set
 
+    // compat
     var currentFragmentName: String? = null
         /**
          * must set after [Activity#onStart]
@@ -226,7 +276,7 @@ object MatrixProcessLifecycleOwner {
             if (isProcessForeground) {
                 return
             }
-            MatrixLog.i(TAG, "onForeground... visibleScene[$visibleScene@$sProcessName]")
+            MatrixLog.i(TAG, "onForeground... visibleScene[$visibleScene@$processName]")
             runningHandler.post {
                 isProcessForeground = true
                 synchronized(mListeners) {
@@ -241,7 +291,7 @@ object MatrixProcessLifecycleOwner {
             if (!isProcessForeground) {
                 return
             }
-            MatrixLog.i(TAG, "onBackground... visibleScene[$visibleScene@$sProcessName]")
+            MatrixLog.i(TAG, "onBackground... visibleScene[$visibleScene@$processName]")
             runningHandler.post {
                 isProcessForeground = false
                 synchronized(mListeners) {
@@ -262,7 +312,7 @@ object MatrixProcessLifecycleOwner {
  * You should init [com.tencent.matrix.Matrix] or call [init] manually before creating any Activity
  * Created by Yves on 2021/9/14
  */
-class MultiProcessLifecycleInitializer {
+class MatrixProcessLifecycleInitializer {
 
     companion object {
         private const val TAG = "Matrix.ProcessLifecycleOwnerInit"
@@ -286,7 +336,7 @@ class MultiProcessLifecycleInitializer {
                 return
             }
             MatrixProcessLifecycleOwner.init(context)
-            ActivityRecorder.init(context.applicationContext as Application, baseActivities)
+//            ActivityRecorder.init(context.applicationContext as Application, baseActivities)
         }
 
         @SuppressLint("PrivateApi", "DiscouragedPrivateApi")

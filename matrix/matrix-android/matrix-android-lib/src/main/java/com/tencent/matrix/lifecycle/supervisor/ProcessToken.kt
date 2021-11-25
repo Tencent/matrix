@@ -2,7 +2,7 @@ package com.tencent.matrix.lifecycle.supervisor
 
 import android.content.Context
 import android.os.*
-import com.tencent.matrix.lifecycle.owners.ActivityRecorder
+import com.tencent.matrix.lifecycle.owners.StagedBackgroundOwner
 import com.tencent.matrix.util.MatrixUtil
 
 /**
@@ -21,7 +21,7 @@ class ProcessToken : Parcelable {
         fun current(context: Context) = ProcessToken(
             Process.myPid(),
             MatrixUtil.getProcessName(context),
-            ActivityRecorder.staged
+            StagedBackgroundOwner.active()
         )
 
         @JvmField
