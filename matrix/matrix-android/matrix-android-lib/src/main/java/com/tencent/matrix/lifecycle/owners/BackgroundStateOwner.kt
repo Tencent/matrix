@@ -68,6 +68,10 @@ object ExplicitBackgroundOwner : StatefulOwner() {
         }
     }
 
+    /**
+     * It is possible to trigger a manual check by calling this method after calling
+     * stopForeground/removeFloatingView for more accurate state callbacks.
+     */
     override fun active(): Boolean {
         return if (MatrixProcessLifecycleOwner.startedStateOwner.active()) {
             false
@@ -101,7 +105,7 @@ object StagedBackgroundOwner : StatefulOwner() {
         })
     }
 
-    private val checkTask = object : TimerChecker(TAG, MAX_CHECK_INTERVAL) {
+    private val checkTask = object : TimerChecker(TAG, MAX_CHECK_INTERVAL, 20) {
         override fun action(): Boolean {
             if (hasRunningAppTask().also { MatrixLog.i(TAG, "hasRunningAppTask? $it") }
                 || MatrixProcessLifecycleOwner.createdStateOwner.active()) {

@@ -7,7 +7,11 @@ import kotlin.math.min
 /**
  * Created by Yves on 2021/11/24
  */
-internal abstract class TimerChecker(private val tag: String, private val maxIntervalMillis: Long) {
+internal abstract class TimerChecker(
+    private val tag: String,
+    private val maxIntervalMillis: Long,
+    private val maxCheckTimes: Int = -1 // infinity by default
+) {
 
     private val runningHandler by lazy { MatrixHandlerThread.getDefaultHandler() }
 
@@ -44,7 +48,7 @@ internal abstract class TimerChecker(private val tag: String, private val maxInt
                 MatrixLog.i(tag, "run check task")
                 if (!action()) {
                     postTimes = 0 // reset so that check task can be resume by checkAndPostIfNeeded
-                } else if (postTimes++ < 20) {
+                } else if (maxCheckTimes == -1 || postTimes++ < maxCheckTimes) {
                     val interval = intervalFactory.next()
                     MatrixLog.i(tag, "need recheck: next $interval")
                     runningHandler.postDelayed(this, interval)
@@ -84,7 +88,7 @@ internal abstract class TimerChecker(private val tag: String, private val maxInt
     }
 
     fun post() {
-        intervalFactory.reset() // maybe we don't need reset here
+        intervalFactory.reset()
         val interval = intervalFactory.next()
         MatrixLog.i(tag, "post check: $interval")
         runningHandler.removeCallbacks(task)
