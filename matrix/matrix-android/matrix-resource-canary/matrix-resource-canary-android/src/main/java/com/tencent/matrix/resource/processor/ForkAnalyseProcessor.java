@@ -47,14 +47,20 @@ public class ForkAnalyseProcessor extends BaseLeakProcessor {
 
         final File hprof = getDumpStorageManager().newHprofFile();
 
-        if (hprof == null) {
-            MatrixLog.e(TAG, "cannot create hprof file");
-            return false;
+        if (hprof != null) {
+            if (!MemoryDumpManager.dumpBlock(hprof.getPath())) {
+                MatrixLog.e(TAG, String.format("heap dump for further analyzing activity with key [%s] was failed, just ignore.",
+                        key));
+                return false;
+            }
         }
 
-        if (!MemoryDumpManager.dumpBlock(hprof.getPath())) {
-            MatrixLog.e(TAG, String.format("heap dump for further analyzing activity with key [%s] was failed, just ignore.",
-                    key));
+        if (hprof == null || hprof.length() == 0) {
+            publishIssue(
+                    SharePluginInfo.IssueType.ERR_FILE_NOT_FOUND,
+                    ResourceConfig.DumpMode.FORK_ANALYSE,
+                    activity, key, "FileNull", "0");
+            MatrixLog.e(TAG, "cannot create hprof file");
             return false;
         }
 
