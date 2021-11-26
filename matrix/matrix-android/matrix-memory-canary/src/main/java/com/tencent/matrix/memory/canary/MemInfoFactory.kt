@@ -13,12 +13,14 @@ import com.tencent.matrix.lifecycle.owners.CombinedProcessForegroundOwner
 import com.tencent.matrix.lifecycle.supervisor.ProcessSupervisor
 import com.tencent.matrix.util.MatrixLog
 import com.tencent.matrix.util.MatrixUtil
-import com.tencent.matrix.util.safeLet
 import com.tencent.matrix.util.safeApply
+import com.tencent.matrix.util.safeLet
 import junit.framework.Assert
 import org.json.JSONObject
 import java.io.File
+import java.lang.StringBuilder
 import java.util.*
+import java.util.regex.Matcher
 import java.util.regex.Pattern
 import kotlin.collections.ArrayList
 
@@ -66,7 +68,7 @@ data class ProcessInfo(
         return "Name=$name, Activity=$activity, AppForeground=$isAppFg, ProcessForeground=$isProcessFg"
     }
 
-    fun toJson()  = safeLet(tag = TAG, defVal = JSONObject()) {
+    fun toJson() = safeLet(tag = TAG, defVal = JSONObject()) {
         JSONObject().apply {
             put("pid", pid)
             put("name", name)
@@ -481,6 +483,147 @@ data class MemInfo(
                 )
             }
             return memoryInfoList.toTypedArray()
+        }
+    }
+}
+
+data class SmapsItem(
+    var name: String? = null,
+    var permission: String? = null,
+    var count: Long = 0,
+    var vmSize: Long = 0,
+    var rss: Long = 0,
+    var pss: Long = 0,
+    var sharedClean: Long = 0,
+    var sharedDirty: Long = 0,
+    var privateClean: Long = 0,
+    var privateDirty: Long = 0,
+    var swapPss: Long = 0
+)
+
+data class MergedSmapsInfo(
+    var list: List<SmapsItem>? = null
+) {
+    override fun toString(): String {
+        val sb = StringBuilder()
+        sb.append("\n")
+        sb.append(String.format(FORMAT, "PSS", "RSS", "SIZE", "SWAP_PSS", "SH_C", "SH_D", "PRI_C", "PRI_D", "COUNT", "PERM", "NAME"))
+        sb.append(String.format(FORMAT, "----", "----", "----", "----", "----", "----", "----", "----", "----", "----", "----"))
+        for ((name, permission, count, vmSize, rss, pss, sharedClean, sharedDirty, privateClean, privateDirty, swapPss) in list!!) {
+            sb.append(FORMAT, pss, rss, vmSize, swapPss, sharedClean, sharedDirty, privateClean, privateDirty, count, permission, name)
+        }
+        sb.append(FORMAT, "----", "----", "----", "----", "----", "----", "----", "----", "----", "----", "----")
+        sb.append("\n")
+
+        return sb.toString()
+    }
+
+    companion object {
+
+        // PSS RSS SIZE SWAP_PSS SH_C SH_D PRI_C PRI_D COUNT PERM NAME
+        const val FORMAT = "%8s %8s %8s %8s %8s %8s %8s %8s %8s %8s     %s"
+
+        @JvmStatic
+        fun get(pid: Int = Process.myPid()): MergedSmapsInfo {
+            return MergedSmapsInfo().also {
+                it.list = mergeSmaps(pid)
+            }
+        }
+
+        private fun mergeSmaps(pid: Int): ArrayList<SmapsItem> {
+            val begin = if (BuildConfig.DEBUG) {
+                System.currentTimeMillis()
+            } else {
+                0L
+            }
+            val pattern =
+                Pattern.compile("^[0-9a-f]+-[0-9a-f]+\\s+([rwxps-]{4})\\s+\\d+\\s+\\d+:\\d+\\s+\\d+\\s+(.*)$")
+
+            val merged: HashMap<String, SmapsItem> = HashMap<String, SmapsItem>()
+            var currentInfo: SmapsItem? = null
+
+            safeApply {
+                File("/proc/${pid}/smaps").reader().forEachLine { line ->
+                    currentInfo?.let {
+                        var found = true
+                        when {
+                            line.startsWith("Size:") -> {
+                                val sizes = line.substring("Size:".length).trim { it <= ' ' }
+                                    .split(" ").toTypedArray()
+                                currentInfo!!.vmSize += sizes[0].toLong()
+                            }
+                            line.startsWith("Rss:") -> {
+                                val sizes = line.substring("Rss:".length).trim { it <= ' ' }.split(" ")
+                                    .toTypedArray()
+                                currentInfo!!.rss += sizes[0].toLong()
+                            }
+                            line.startsWith("Pss:") -> {
+                                val sizes = line.substring("Pss:".length).trim { it <= ' ' }.split(" ")
+                                    .toTypedArray()
+                                currentInfo!!.pss += sizes[0].toLong()
+                            }
+                            line.startsWith("Shared_Clean:") -> {
+                                val sizes = line.substring("Shared_Clean:".length).trim { it <= ' ' }
+                                    .split(" ").toTypedArray()
+                                currentInfo!!.sharedClean += sizes[0].toLong()
+                            }
+                            line.startsWith("Shared_Dirty:") -> {
+                                val sizes = line.substring("Shared_Dirty:".length).trim { it <= ' ' }
+                                    .split(" ").toTypedArray()
+                                currentInfo!!.sharedDirty += sizes[0].toLong()
+                            }
+                            line.startsWith("Private_Clean:") -> {
+                                val sizes = line.substring("Private_Clean:".length).trim { it <= ' ' }
+                                    .split(" ").toTypedArray()
+                                currentInfo!!.privateClean += sizes[0].toLong()
+                            }
+                            line.startsWith("Private_Dirty:") -> {
+                                val sizes = line.substring("Private_Dirty:".length).trim { it <= ' ' }
+                                    .split(" ").toTypedArray()
+                                currentInfo!!.privateDirty += sizes[0].toLong()
+                            }
+                            line.startsWith("SwapPss:") -> {
+                                val sizes = line.substring("SwapPss:".length).trim { it <= ' ' }
+                                    .split(" ").toTypedArray()
+                                currentInfo!!.swapPss += sizes[0].toLong()
+                            }
+                            else -> {
+                                found = false
+                            }
+                        }
+                        if (found) return@forEachLine
+                    }
+
+                    val matcher: Matcher = pattern.matcher(line)
+                    if (matcher.find()) {
+                        val permission = matcher.group(1)
+                        val name = matcher.group(2)
+                        currentInfo = merged["$permission|$name"]
+                        if (currentInfo == null) {
+                            currentInfo = SmapsItem()
+                            currentInfo!!.let {
+                                merged["$permission|$name"] = it
+                                it.permission = permission
+                                it.name = name
+                            }
+                        }
+                        currentInfo!!.count++
+                    }
+                }.also {
+                    if (BuildConfig.DEBUG) {
+                        MatrixLog.d(
+                            TAG,
+                            "mergeSmaps cost ${System.currentTimeMillis() - begin}"
+                        )
+                    }
+                }
+            }
+
+            val list: ArrayList<SmapsItem> = ArrayList(merged.values)
+
+            list.sortWith { o1, o2 -> ((o2.pss - o1.pss).toInt()) }
+
+            return list
         }
     }
 }
