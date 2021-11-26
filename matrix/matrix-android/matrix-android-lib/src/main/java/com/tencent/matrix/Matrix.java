@@ -18,13 +18,17 @@ package com.tencent.matrix;
 
 import android.app.Application;
 
+import com.tencent.matrix.lifecycle.owners.MatrixProcessLifecycleInitializer;
+import com.tencent.matrix.lifecycle.supervisor.ProcessSupervisor;
+import com.tencent.matrix.lifecycle.supervisor.SupervisorConfig;
 import com.tencent.matrix.plugin.DefaultPluginListener;
 import com.tencent.matrix.plugin.Plugin;
 import com.tencent.matrix.plugin.PluginListener;
-import com.tencent.matrix.lifecycle.owners.MultiProcessLifecycleInitializer;
 import com.tencent.matrix.util.MatrixLog;
 
+import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 
 /**
  * Created by zhangshaowen on 17/5/17.
@@ -38,18 +42,15 @@ public class Matrix {
 
     private final HashSet<Plugin> plugins;
     private final Application application;
-    private final PluginListener pluginListener;
 
-    private Matrix(Application app, PluginListener listener, HashSet<Plugin> plugins) {
+    private Matrix(Application app, PluginListener listener, HashSet<Plugin> plugins, SupervisorConfig supervisorConfig, List<String> baseActivities) {
         this.application = app;
-        this.pluginListener = listener;
         this.plugins = plugins;
-        MultiProcessLifecycleInitializer.init(app);
+        MatrixProcessLifecycleInitializer.init(app, baseActivities);
+        ProcessSupervisor.INSTANCE.init(app, supervisorConfig);
         for (Plugin plugin : plugins) {
-            plugin.init(application, pluginListener);
-            pluginListener.onInit(plugin);
+            plugin.init(application, listener);
         }
-
     }
 
     public static void setLogIml(MatrixLog.MatrixLogImp imp) {
@@ -129,6 +130,8 @@ public class Matrix {
     public static class Builder {
         private final Application application;
         private PluginListener pluginListener;
+        private SupervisorConfig mSupervisorConfig;
+        private List<String> baseActivities = Collections.emptyList();
 
         private HashSet<Plugin> plugins = new HashSet<>();
 
@@ -155,11 +158,27 @@ public class Matrix {
             return this;
         }
 
+        /**
+         * see {@link SupervisorConfig}
+         * @param config
+         * @return
+         */
+        @Deprecated
+        public Builder supervisorConfig(SupervisorConfig config) {
+            this.mSupervisorConfig = config;
+            return this;
+        }
+
+        public Builder baseActivities(List<String> baseActivities) {
+            this.baseActivities = baseActivities;
+            return this;
+        }
+
         public Matrix build() {
             if (pluginListener == null) {
                 pluginListener = new DefaultPluginListener(application);
             }
-            return new Matrix(application, pluginListener, plugins);
+            return new Matrix(application, pluginListener, plugins, mSupervisorConfig, baseActivities);
         }
 
     }

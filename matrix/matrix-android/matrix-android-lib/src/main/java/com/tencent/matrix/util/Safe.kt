@@ -6,7 +6,11 @@ package com.tencent.matrix.util
 
 const val DEFAULT_TAG = "Matrix.Safe"
 
-inline fun <T> T.safeApply(tag: String = DEFAULT_TAG, log: Boolean = true, unsafe: T.() -> Unit): T {
+inline fun <T> T.safeApply(
+    tag: String = DEFAULT_TAG,
+    log: Boolean = true,
+    unsafe: T.() -> Unit
+): T {
     try {
         unsafe()
     } catch (e: Throwable) {

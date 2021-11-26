@@ -41,7 +41,7 @@ class StatefulOwnerTest {
         assertEquals(msOwner.active(), false)
 
         val s1 = TestStatefulOwner().apply {
-            turnOn()
+//            turnOn()
             MatrixLog.d(TAG, "add s1")
             msOwner.addSourceOwner(this)
         }
@@ -62,7 +62,7 @@ class StatefulOwnerTest {
         assertEquals(msOwner.active(), false)
 
         MatrixLog.d(TAG, "turn off s2")
-        s2.turnOff()
+//        s2.turnOff()
 
     }
 

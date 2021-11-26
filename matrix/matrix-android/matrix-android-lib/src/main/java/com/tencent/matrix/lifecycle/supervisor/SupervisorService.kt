@@ -9,6 +9,8 @@ import com.tencent.matrix.lifecycle.IStateObserver
 import com.tencent.matrix.lifecycle.StatefulOwner
 import com.tencent.matrix.util.MatrixHandlerThread
 import com.tencent.matrix.util.MatrixLog
+import com.tencent.matrix.util.MatrixUtil
+import com.tencent.matrix.util.safeApply
 import junit.framework.Assert
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
@@ -28,37 +30,9 @@ class SupervisorService : Service() {
             val intent = Intent(context, SupervisorService::class.java)
             context.startService(intent)
         }
-    }
 
-    private class TokenRecord {
-        private val pidToToken: ConcurrentHashMap<Int, ProcessToken>
-                by lazy(LazyThreadSafetyMode.SYNCHRONIZED) { ConcurrentHashMap() }
-        private val nameToToken: ConcurrentHashMap<String, ProcessToken>
-                by lazy(LazyThreadSafetyMode.SYNCHRONIZED) { ConcurrentHashMap() }
-
-        fun addToken(token: ProcessToken) {
-            pidToToken[token.pid] = token
-            nameToToken[token.name] = token
-        }
-
-        fun getToken(pid: Int) = pidToToken[pid]
-        fun getToken(name: String) = nameToToken[name]
-
-        fun removeToken(pid: Int): ProcessToken {
-            val rm = pidToToken.remove(pid)
-            rm?.let {
-                nameToToken.remove(rm.name)
-                return rm
-            } ?: throw IllegalStateException("token with pid=$pid not found")
-        }
-
-        fun removeToken(name: String): ProcessToken {
-            val rm = nameToToken.remove(name)
-            rm?.let {
-                pidToToken.remove(rm.pid)
-                return rm
-            } ?: throw IllegalStateException("token with name=$name not found")
-        }
+        internal var instance: SupervisorService? = null
+            private set
     }
 
     private val tokenRecord: TokenRecord = TokenRecord()
@@ -85,26 +59,7 @@ class SupervisorService : Service() {
         add(token)
     }
 
-    override fun onCreate() {
-        super.onCreate()
-
-        MatrixLog.d(TAG, "onCreate")
-        isSupervisor = true
-        ProcessSupervisor.observeForever(object : IStateObserver {
-            override fun on() {
-                DispatchReceiver.dispatchAppForeground(this@SupervisorService)
-            }
-
-            override fun off() {
-                DispatchReceiver.dispatchAppBackground(this@SupervisorService)
-            }
-        })
-    }
-
-    override fun onBind(intent: Intent?): IBinder {
-        MatrixLog.d(TAG, "onBind")
-        return binder
-    }
+    private var targetKilledCallback: ((result: Int, target: String?, pid: Int) -> Unit)? = null
 
     private fun asyncLog(format: String?, vararg obj: Any?) {
         MatrixHandlerThread.getDefaultHandler().post {
@@ -112,7 +67,7 @@ class SupervisorService : Service() {
         }
     }
 
-    val binder = object : ISupervisorProxy.Stub() {
+    private val binder = object : ISupervisorProxy.Stub() {
         override fun onProcessCreate(token: ProcessToken) {
             val pid = Binder.getCallingPid()
             Assert.assertEquals(pid, token.pid)
@@ -157,24 +112,109 @@ class SupervisorService : Service() {
         override fun onProcessKilled(token: ProcessToken) {
             val pid = Binder.getCallingPid()
             Assert.assertEquals(pid, token.pid)
-            TODO("Not yet implemented")
+            safeApply { targetKilledCallback?.invoke(LRU_KILL_SUCCESS, token.name, token.pid) }
+            backgroundProcessLru.remove(token)
+            RemoteProcessLifecycleProxy.removeProxy(token)
+            asyncLog(
+                TAG,
+                "KILL: [$pid-${token.name}] X [${backgroundProcessLru.size}]${backgroundProcessLru.contentToString()}"
+            )
         }
 
         override fun onProcessRescuedFromKill(token: ProcessToken) {
             val pid = Binder.getCallingPid()
             Assert.assertEquals(pid, token.pid)
-            TODO("Not yet implemented")
+            safeApply { targetKilledCallback?.invoke(LRU_KILL_RESCUED, token.name, token.pid) }
         }
 
         override fun onProcessKillCanceled(token: ProcessToken) {
             val pid = Binder.getCallingPid()
             Assert.assertEquals(pid, token.pid)
-            TODO("Not yet implemented")
+            safeApply { targetKilledCallback?.invoke(LRU_KILL_CANCELED, token.name, token.pid) }
         }
     }
 
-    private class RemoteProcessLifecycleProxy(val token: ProcessToken) :
-        StatefulOwner() {
+    override fun onCreate() {
+        super.onCreate()
+
+        MatrixLog.d(TAG, "onCreate")
+        isSupervisor = true
+        instance = this
+
+        ProcessSupervisor.observeForever(object : IStateObserver {
+            override fun on() {
+                DispatchReceiver.dispatchAppForeground(this@SupervisorService)
+            }
+
+            override fun off() {
+                DispatchReceiver.dispatchAppBackground(this@SupervisorService)
+            }
+        })
+    }
+
+    override fun onBind(intent: Intent?): IBinder {
+        MatrixLog.d(TAG, "onBind")
+        return binder
+    }
+
+    internal fun backgroundLruKill(
+        killedCallback: (result: Int, process: String?, pid: Int) -> Unit
+    ) {
+        if (!isSupervisor) {
+            throw IllegalStateException("backgroundLruKill should only be called in supervisor")
+        }
+
+        if (instance == null) {
+            throw IllegalStateException("not initialized yet !")
+        }
+
+        targetKilledCallback = killedCallback
+        val candidate = backgroundProcessLru.firstOrNull {
+            it.name != MatrixUtil.getProcessName(this)
+                    && !ProcessSupervisor.config!!.lruKillerWhiteList.contains(it.name)
+        }
+
+        if (candidate != null) {
+            DispatchReceiver.dispatchKill(this, candidate.name, candidate.pid)
+        } else {
+            killedCallback.invoke(LRU_KILL_NOT_FOUND, null, -1)
+        }
+    }
+
+    private class TokenRecord {
+        private val pidToToken: ConcurrentHashMap<Int, ProcessToken>
+                by lazy(LazyThreadSafetyMode.SYNCHRONIZED) { ConcurrentHashMap() }
+        private val nameToToken: ConcurrentHashMap<String, ProcessToken>
+                by lazy(LazyThreadSafetyMode.SYNCHRONIZED) { ConcurrentHashMap() }
+
+        fun addToken(token: ProcessToken) {
+            pidToToken[token.pid] = token
+            nameToToken[token.name] = token
+        }
+
+        fun getToken(pid: Int) = pidToToken[pid]
+        fun getToken(name: String) = nameToToken[name]
+
+        fun removeToken(pid: Int): ProcessToken {
+            val rm = pidToToken.remove(pid)
+            rm?.let {
+                nameToToken.remove(rm.name)
+                return rm
+            }
+            throw IllegalStateException("token with pid=$pid not found")
+        }
+
+        fun removeToken(name: String): ProcessToken {
+            val rm = nameToToken.remove(name)
+            rm?.let {
+                pidToToken.remove(rm.pid)
+                return rm
+            }
+            throw IllegalStateException("token with name=$name not found")
+        }
+    }
+
+    private class RemoteProcessLifecycleProxy(val token: ProcessToken) : StatefulOwner() {
 
         init {
             ProcessSupervisor.addSourceOwner(this)

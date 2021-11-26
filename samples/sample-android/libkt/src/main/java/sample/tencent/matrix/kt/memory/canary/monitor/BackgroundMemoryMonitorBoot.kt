@@ -33,7 +33,7 @@ object BackgroundMemoryMonitorBoot {
 
     internal val config = ProcessBgMemoryMonitorConfig(
         reportCallback = reporter,
-        baseActivities = baseActivities,
+//        baseActivities = baseActivities,
         javaThresholdByte = 10 * 1000L,
         nativeThresholdByte = 10 * 1024L,
     )

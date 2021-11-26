@@ -5,7 +5,8 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.Process
-import com.tencent.matrix.lifecycle.owners.CombinedProcessForegroundOwner
+import com.tencent.matrix.lifecycle.owners.MatrixProcessLifecycleOwner
+import com.tencent.matrix.util.ForegroundWidgetDetector
 import com.tencent.matrix.util.MatrixHandlerThread
 import com.tencent.matrix.util.MatrixLog
 import com.tencent.matrix.util.MatrixUtil
@@ -17,15 +18,19 @@ import java.util.concurrent.TimeUnit
  *
  * Created by Yves on 2021/10/12
  */
+// TODO: 2021/11/16 add white list
 internal object DispatchReceiver : BroadcastReceiver() {
 
-    private var rescued: Boolean = false
-    private val killedListeners = ArrayList<() -> Boolean>()
+    private const val KEY_PROCESS_NAME = "KEY_PROCESS_NAME"
+    private const val KEY_PROCESS_PID = "KEY_PROCESS_PID"
 
-    private fun ArrayList<() -> Boolean>.invokeAll(): Boolean {
+    private var rescued: Boolean = false
+    private val killedListeners = ArrayList<(isCurrent: Boolean) -> Boolean>()
+
+    private fun ArrayList<(isCurrent: Boolean) -> Boolean>.invokeAll(isCurrent: Boolean): Boolean {
         var rescue = false
         forEach {
-            val r = it.invoke()
+            val r = it.invoke(isCurrent)
             if (r) {
                 MatrixLog.e(ProcessSupervisor.tag, "${it.javaClass} try to rescue process")
             }
@@ -35,7 +40,6 @@ internal object DispatchReceiver : BroadcastReceiver() {
     }
 
     private enum class SupervisorEvent {
-//        SUPERVISOR_INSTALLED,
         SUPERVISOR_DISPATCH_APP_FOREGROUND,
         SUPERVISOR_DISPATCH_APP_BACKGROUND,
         SUPERVISOR_DISPATCH_KILL;
@@ -53,14 +57,14 @@ internal object DispatchReceiver : BroadcastReceiver() {
             this, filter,
             ProcessSupervisor.permission, null
         )
-//        MatrixLog.i(SupervisorLifecycleOwner.tag, "DispatchReceiver installed")
+        MatrixLog.i(ProcessSupervisor.tag, "DispatchReceiver installed")
     }
 
-    fun addKilledListener(listener: () -> Boolean) {
+    fun addKilledListener(listener: (isCurrent: Boolean) -> Boolean) {
         killedListeners.add(listener)
     }
 
-    fun removeKilledListener(listener: () -> Boolean) {
+    fun removeKilledListener(listener: (isCurrent: Boolean) -> Boolean) {
         killedListeners.remove(listener)
     }
 
@@ -114,7 +118,7 @@ internal object DispatchReceiver : BroadcastReceiver() {
                         .toString() == targetPid
                 ) {
                     val token = ProcessToken.current(context)
-                    if (killedListeners.invokeAll() && !rescued) {
+                    if (killedListeners.invokeAll(true) && !rescued) {
                         rescued = true
                         ProcessSupervisor.supervisorProxy?.onProcessRescuedFromKill(token)
                         MatrixLog.e(ProcessSupervisor.tag, "rescued once !!!")
@@ -122,7 +126,10 @@ internal object DispatchReceiver : BroadcastReceiver() {
                     }
 
                     MatrixHandlerThread.getDefaultHandler().postDelayed({
-                        if (!CombinedProcessForegroundOwner.active()) {
+                        if (!MatrixProcessLifecycleOwner.startedStateOwner.active()
+                            && !ForegroundWidgetDetector.hasForegroundService()
+                            && !ForegroundWidgetDetector.hasFloatingView()
+                        ) {
                             ProcessSupervisor.supervisorProxy?.onProcessKilled(token)
                             MatrixLog.e(ProcessSupervisor.tag, "actual kill !!!")
                             Process.killProcess(Process.myPid())
@@ -131,6 +138,8 @@ internal object DispatchReceiver : BroadcastReceiver() {
                             MatrixLog.i(ProcessSupervisor.tag, "recheck: process is on foreground")
                         }
                     }, TimeUnit.SECONDS.toMillis(10))
+                } else {
+                    killedListeners.invokeAll(false)
                 }
             }
         }

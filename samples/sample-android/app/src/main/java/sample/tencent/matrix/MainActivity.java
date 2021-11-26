@@ -19,7 +19,9 @@ package sample.tencent.matrix;
 import android.app.Service;
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.Handler;
 import android.os.IBinder;
+import android.os.Looper;
 import android.view.View;
 import android.widget.Button;
 
@@ -28,6 +30,8 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.tencent.matrix.lifecycle.supervisor.SupervisorService;
 import com.tencent.matrix.memory.canary.MemInfo;
+import com.tencent.matrix.trace.view.FrameDecorator;
+import com.tencent.matrix.util.ForegroundWidgetDetector;
 import com.tencent.matrix.util.MatrixLog;
 
 import sample.tencent.matrix.battery.TestBatteryActivity;
@@ -47,6 +51,15 @@ public class MainActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         IssuesMap.clear();
+
+        MatrixLog.d(TAG, "has floating view %s", ForegroundWidgetDetector.hasFloatingView());
+
+        new Handler(Looper.getMainLooper()).post(new Runnable() {
+            @Override
+            public void run() {
+                MatrixLog.d(TAG, "has floating view %s", ForegroundWidgetDetector.hasFloatingView());
+            }
+        });
     }
 
     @Override
@@ -119,6 +132,9 @@ public class MainActivity extends AppCompatActivity {
                 MemInfoTest.test();
             }
         }).start();
+
+        FrameDecorator.getInstance(this).setEnable(true);
+        FrameDecorator.getInstance(this).show();
     }
 
     public static class StubService extends Service {

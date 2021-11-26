@@ -8,14 +8,13 @@ import android.os.Debug
 import android.os.Process
 import android.text.TextUtils
 import com.tencent.matrix.Matrix
-import com.tencent.matrix.lifecycle.owners.ActivityRecorder
-import com.tencent.matrix.lifecycle.owners.CombinedProcessForegroundOwner
+import com.tencent.matrix.lifecycle.owners.MatrixProcessLifecycleOwner
 import com.tencent.matrix.lifecycle.supervisor.ProcessSupervisor
 import com.tencent.matrix.util.MatrixLog
 import com.tencent.matrix.util.MatrixUtil
 import com.tencent.matrix.util.safeApply
 import com.tencent.matrix.util.safeLet
-import junit.framework.Assert
+
 import org.json.JSONObject
 import java.io.File
 import java.lang.StringBuilder
@@ -60,8 +59,8 @@ object MemInfoFactory {
 data class ProcessInfo(
     val pid: Int = Process.myPid(),
     val name: String = MatrixUtil.getProcessName(Matrix.with().application),
-    val activity: String = ActivityRecorder.currentActivity,
-    val isProcessFg: Boolean = CombinedProcessForegroundOwner.active(),
+    val activity: String = MatrixProcessLifecycleOwner.recentActivity,
+    val isProcessFg: Boolean = MatrixProcessLifecycleOwner.startedStateOwner.active(),
     val isAppFg: Boolean = ProcessSupervisor.isAppForeground
 ) {
     override fun toString(): String {
@@ -117,11 +116,13 @@ data class PssInfo(
         }
 
         fun getFromAms(): PssInfo {
-            val amsInfo =
-                MemInfoFactory.activityManager.getProcessMemoryInfo(arrayOf(Process.myPid()).toIntArray())
-            return amsInfo.firstOrNull()?.run {
-                get(this)
-            } ?: run {
+            val mi =
+                MemInfoFactory.activityManager
+                    .getProcessMemoryInfo(arrayOf(Process.myPid()).toIntArray())
+                    .firstOrNull()
+            return if (mi != null) {
+                get(mi)
+            } else {
                 PssInfo()
             }
         }
@@ -208,12 +209,6 @@ data class StatusInfo(
         }
 
         private fun convertProcStatus(pid: Int): Map<String, String> {
-            val begin = if (BuildConfig.DEBUG) {
-                System.currentTimeMillis()
-            } else {
-                0L
-            }
-
             safeApply {
                 File("/proc/${pid}/status").useLines { seq ->
                     return seq.flatMap {
@@ -224,14 +219,7 @@ data class StatusInfo(
                             MatrixLog.e(TAG, "ERROR : $it")
                             return@flatMap emptySequence()
                         }
-                    }.toMap().also {
-                        if (BuildConfig.DEBUG) {
-                            MatrixLog.d(
-                                TAG,
-                                "convertProcStatus cost ${System.currentTimeMillis() - begin}"
-                            )
-                        }
-                    }
+                    }.toMap()
                 }
             }
 
@@ -390,9 +378,6 @@ data class MemInfo(
                 MemInfoFactory.activityManager.getProcessMemoryInfo(memInfoArray.toPidArray())
 
             if (pidMemInfoArray != null) {
-                if (BuildConfig.DEBUG) {
-                    Assert.assertEquals(memInfoArray.size, pidMemInfoArray.size)
-                }
                 for (i in memInfoArray.indices) {
                     if (pidMemInfoArray[i] == null) {
                         memInfoArray[i].amsPssInfo = PssInfo(0, 0, 0, 0, 0, 0, 0, 0, 0)

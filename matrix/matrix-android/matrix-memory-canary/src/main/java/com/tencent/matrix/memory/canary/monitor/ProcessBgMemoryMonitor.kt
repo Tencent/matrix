@@ -1,8 +1,7 @@
 package com.tencent.matrix.memory.canary.monitor
 
 import com.tencent.matrix.lifecycle.IStateObserver
-import com.tencent.matrix.lifecycle.owners.ActivityRecorder
-import com.tencent.matrix.lifecycle.owners.CombinedProcessForegroundOwner
+import com.tencent.matrix.lifecycle.owners.StagedBackgroundOwner
 import com.tencent.matrix.memory.canary.MemInfo
 import com.tencent.matrix.util.MatrixHandlerThread
 import com.tencent.matrix.util.MatrixLog
@@ -18,17 +17,16 @@ internal data class Threshold(
     private val size: Long,
     private val checkTimes: Int = 3,
 ) {
-    private var busyCheck = 0
-    private var freeCheck = 0
+    private val check = arrayOf(0, 0)
 
-    internal fun check(size: Long, isBusy: Boolean, cb: () -> Unit): Boolean =
+    internal fun check(size: Long, staged: Boolean, cb: () -> Unit): Boolean =
         (size > this.size).also {
-            if (isBusy) {
-                if (it && busyCheck < checkTimes && ++busyCheck == checkTimes) {
+            if (staged) {
+                if (it && check[0] < checkTimes && ++check[0] == checkTimes) {
                     cb.invoke()
                 }
             } else {
-                if (it && freeCheck < checkTimes && ++freeCheck == checkTimes) {
+                if (it && check[1] < checkTimes && ++check[1] == checkTimes) {
                     cb.invoke()
                 }
             }
@@ -46,8 +44,7 @@ class ProcessBgMemoryMonitorConfig(
     nativeThresholdByte: Long = 500 * 1024 * 1024L,
     amsPssThresholdK: Long = 700 * 1024,
     debugPssThresholdK: Long = 700 * 1024,
-    val baseActivities: Array<String> = emptyArray(),
-    val reportCallback: (memInfo: MemInfo, isBusy: Boolean) -> Unit = { _, _ ->
+    val reportCallback: (memInfo: MemInfo, staged: Boolean) -> Unit = { _, _ ->
         // do report
     },
 ) {
@@ -75,7 +72,7 @@ class ProcessBgMemoryMonitor(private val config: ProcessBgMemoryMonitorConfig) {
         if (!config.enable) {
             return
         }
-        CombinedProcessForegroundOwner.observeForever(object : IStateObserver {
+        StagedBackgroundOwner.observeForever(object : IStateObserver {
             override fun on() { // foreground
                 runningHandler.removeCallbacks(delayCheckTask)
             }
@@ -86,10 +83,6 @@ class ProcessBgMemoryMonitor(private val config: ProcessBgMemoryMonitorConfig) {
         })
     }
 
-    private fun isBusy(): Boolean {
-        return ActivityRecorder.active() && ActivityRecorder.sizeExcept(config.baseActivities) > 0
-    }
-
     private var lastCheckTime = 0L
 
     private fun checkWhenBackground() {
@@ -98,7 +91,7 @@ class ProcessBgMemoryMonitor(private val config: ProcessBgMemoryMonitorConfig) {
         lastCheckTime = current
         val memInfo = MemInfo.getCurrentProcessFullMemInfo()
 
-        val busy = isBusy()
+        val staged = StagedBackgroundOwner.active()
 
         var shouldCallback = false
 
@@ -109,22 +102,22 @@ class ProcessBgMemoryMonitor(private val config: ProcessBgMemoryMonitorConfig) {
         val overThreshold = config.run {
             // @formatter:off
             arrayOf(
-                "java" to javaThresholdByte.check(memInfo.javaMemInfo!!.usedByte, busy, cb),
-                "native" to nativeThresholdByte.check(memInfo.nativeMemInfo!!.usedByte, busy, cb),
-                "debugPss" to debugPssThresholdK.check(memInfo.debugPssInfo!!.totalPssK.toLong(), busy, cb),
-                "amsPss" to (amsPssThresholdK.check(memInfo.amsPssInfo!!.totalPssK.toLong(), busy, cb) && lastCheckToNow > TimeUnit.MINUTES.toMillis(5))
+                "java" to javaThresholdByte.check(memInfo.javaMemInfo!!.usedByte, staged, cb),
+                "native" to nativeThresholdByte.check(memInfo.nativeMemInfo!!.usedByte, staged, cb),
+                "debugPss" to debugPssThresholdK.check(memInfo.debugPssInfo!!.totalPssK.toLong(), staged, cb),
+                "amsPss" to (amsPssThresholdK.check(memInfo.amsPssInfo!!.totalPssK.toLong(), staged, cb) && lastCheckToNow > TimeUnit.MINUTES.toMillis(5))
             ).onEach { MatrixLog.i(TAG, "is over threshold ? $it") }.any { it.second }
             // @formatter:on
         }
 
         MatrixLog.i(
             TAG,
-            "check: overThreshold: $overThreshold, is busy: $busy, interval: $lastCheckToNow, shouldCallback: $shouldCallback $memInfo"
+            "check: overThreshold: $overThreshold, is staged: $staged, interval: $lastCheckToNow, shouldCallback: $shouldCallback $memInfo"
         )
 
         if (overThreshold && shouldCallback) {
             MatrixLog.i(TAG, "report over threshold")
-            config.reportCallback.invoke(memInfo, busy)
+            config.reportCallback.invoke(memInfo, staged)
         }
     }
 

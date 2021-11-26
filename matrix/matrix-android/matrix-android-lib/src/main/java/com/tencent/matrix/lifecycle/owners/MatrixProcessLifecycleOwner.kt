@@ -1,24 +1,23 @@
 package com.tencent.matrix.lifecycle.owners
 
+import android.annotation.SuppressLint
 import android.app.Activity
+import android.app.ActivityManager
 import android.app.Application
-import android.content.ContentProvider
-import android.content.ContentValues
 import android.content.Context
-import android.database.Cursor
-import android.net.Uri
 import android.os.Bundle
-import android.os.Handler
 import androidx.annotation.NonNull
 import androidx.lifecycle.*
 import com.tencent.matrix.lifecycle.IStateObserver
 import com.tencent.matrix.lifecycle.StatefulOwner
-import com.tencent.matrix.lifecycle.owners.MultiProcessLifecycleInitializer.Companion.init
+import com.tencent.matrix.lifecycle.owners.MatrixProcessLifecycleInitializer.Companion.init
 import com.tencent.matrix.listeners.IAppForeground
 import com.tencent.matrix.util.MatrixHandlerThread
 import com.tencent.matrix.util.MatrixLog
 import com.tencent.matrix.util.MatrixUtil
+import com.tencent.matrix.util.safeLet
 import java.util.*
+import kotlin.collections.HashMap
 
 /**
  * multi process version of [androidx.lifecycle.ProcessLifecycleOwner]
@@ -32,51 +31,96 @@ import java.util.*
  *
  * Created by Yves on 2021/9/14
  */
-object MultiProcessLifecycleOwner {
+object MatrixProcessLifecycleOwner {
 
-    private const val TAG = "Matrix.MultiProcessLifecycle"
+    private const val TAG = "Matrix.ProcessLifecycle"
 
-    private var sProcessName: String? = null
     private const val TIMEOUT_MS = 500L //mls
+    private var processName: String? = null
+    private var packageName: String? = null
+    private var activityManager: ActivityManager? = null
 
     internal fun init(context: Context) {
-        sProcessName = MatrixUtil.getProcessName(context)
+        activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+        processName = MatrixUtil.getProcessName(context)
+        packageName = MatrixUtil.getPackageName(context)
         attach(context)
-        MatrixLog.i(TAG, "init for [${sProcessName}]")
+        MatrixLog.i(TAG, "init for [${processName}]")
     }
 
     // ========================== base ========================== //
 
+    private val runningHandler = MatrixHandlerThread.getDefaultHandler()
+
     private val stub = Any()
+    private val createdActivities = WeakHashMap<Activity, Any>() // maybe useless
     private val resumedActivities = WeakHashMap<Activity, Any>()
     private val startedActivities = WeakHashMap<Activity, Any>()
+
+    private val destroyedActivities = WeakHashMap<Activity, Any>()
 
     private fun WeakHashMap<Activity, Any>.put(activity: Activity) {
         put(activity, stub)
     }
 
-    private var mPauseSent = true
-    private var mStopSent = true
+    private var pauseSent = true
+    private var stopSent = true
 
-    private val runningHandler = Handler(MatrixHandlerThread.getDefaultHandlerThread().looper)
+    private open class AsyncOwner : StatefulOwner() {
+        open fun turnOnAsync() { runningHandler.post { turnOn() } }
+        open fun turnOffAsync() { runningHandler.post { turnOff() } }
+    }
 
-    val resumedStateOwner = StatefulOwner()
-    val startedStateOwner = StatefulOwner()
+    private class CreatedStateOwner: AsyncOwner() {
+        override fun active(): Boolean {
+            return super.active() && createdActivities.all { false == it.key?.isFinishing }
+        }
+    }
 
-    private val mDelayedPauseRunnable = Runnable {
+    val createdStateOwner: StatefulOwner = CreatedStateOwner()
+    val resumedStateOwner: StatefulOwner = AsyncOwner()
+    val startedStateOwner: StatefulOwner = AsyncOwner()
+
+    var recentActivity = "default"
+        private set
+
+    private val delayedPauseRunnable = Runnable {
         dispatchPauseIfNeeded()
         dispatchStopIfNeeded()
     }
 
-    private fun StatefulOwner.turnOnAsync() = runningHandler.post { turnOn() }
-    private fun StatefulOwner.turnOffAsync() = runningHandler.post { turnOff() }
+    fun retainedActivities(): Map<String, Int> {
+        val map = HashMap<String, Int>()
+        Runtime.getRuntime().gc()
+
+        val cpy = destroyedActivities.entries.toTypedArray()
+
+        for (e in cpy) {
+            val k = e.key ?: continue
+            k.javaClass.simpleName.let {
+                var count = map.getOrPut(it, { 0 })
+                map[it] = ++count
+            }
+        }
+
+        return map
+    }
+
+    private fun activityCreated(activity: Activity) {
+        val isEmptyBefore = createdActivities.isEmpty()
+        createdActivities.put(activity)
+
+        if (isEmptyBefore) {
+            (createdStateOwner as AsyncOwner).turnOnAsync()
+        }
+    }
 
     private fun activityStarted(activity: Activity) {
         val isEmptyBefore = startedActivities.isEmpty()
         startedActivities.put(activity)
 
-        if (isEmptyBefore && mStopSent) {
-            startedStateOwner.turnOnAsync()
+        if (isEmptyBefore && stopSent) {
+            (startedStateOwner as AsyncOwner).turnOnAsync()
         }
     }
 
@@ -84,11 +128,11 @@ object MultiProcessLifecycleOwner {
         val isEmptyBefore = resumedActivities.isEmpty()
         resumedActivities.put(activity)
         if (isEmptyBefore) {
-            if (mPauseSent) {
-                resumedStateOwner.turnOnAsync()
-                mPauseSent = false
+            if (pauseSent) {
+                (resumedStateOwner as AsyncOwner).turnOnAsync()
+                pauseSent = false
             } else {
-                runningHandler.removeCallbacks(mDelayedPauseRunnable)
+                runningHandler.removeCallbacks(delayedPauseRunnable)
             }
         }
     }
@@ -97,7 +141,7 @@ object MultiProcessLifecycleOwner {
         resumedActivities.remove(activity)
 
         if (resumedActivities.isEmpty()) {
-            runningHandler.postDelayed(mDelayedPauseRunnable, TIMEOUT_MS)
+            runningHandler.postDelayed(delayedPauseRunnable, TIMEOUT_MS)
         }
     }
 
@@ -106,27 +150,38 @@ object MultiProcessLifecycleOwner {
         dispatchStopIfNeeded()
     }
 
-    // fallback remove
     private fun activityDestroyed(activity: Activity) {
+        createdActivities.remove(activity)
+        destroyedActivities.put(activity)
+        if (createdActivities.isEmpty()) {
+            (createdStateOwner as AsyncOwner).turnOffAsync()
+        }
+        // fallback remove
         startedActivities.remove(activity)?.let {
-            MatrixLog.w(TAG, "removed [$activity] when destroy, maybe something wrong with onStart/onStop callback")
+            MatrixLog.w(
+                TAG,
+                "removed [$activity] when destroy, maybe something wrong with onStart/onStop callback"
+            )
         }
         resumedActivities.remove(activity)?.let {
-            MatrixLog.w(TAG, "removed [$activity] when destroy, maybe something wrong with onResume/onPause callback")
+            MatrixLog.w(
+                TAG,
+                "removed [$activity] when destroy, maybe something wrong with onResume/onPause callback"
+            )
         }
     }
 
     private fun dispatchPauseIfNeeded() {
         if (resumedActivities.isEmpty()) {
-            mPauseSent = true
-            resumedStateOwner.turnOffAsync()
+            pauseSent = true
+            (resumedStateOwner as AsyncOwner).turnOffAsync()
         }
     }
 
     private fun dispatchStopIfNeeded() {
-        if (startedActivities.isEmpty() && mPauseSent) {
-            mStopSent = true
-            startedStateOwner.turnOffAsync()
+        if (startedActivities.isEmpty() && pauseSent) {
+            stopSent = true
+            (startedStateOwner as AsyncOwner).turnOffAsync()
         }
     }
 
@@ -137,6 +192,7 @@ object MultiProcessLifecycleOwner {
         app.registerActivityLifecycleCallbacks(object : Application.ActivityLifecycleCallbacks {
 
             override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {
+                activityCreated(activity)
             }
 
             override fun onActivityStarted(activity: Activity) {
@@ -146,6 +202,7 @@ object MultiProcessLifecycleOwner {
 
             override fun onActivityResumed(activity: Activity) {
                 activityResumed(activity)
+                recentActivity = activity.javaClass.simpleName
             }
 
             override fun onActivityPaused(activity: Activity) {
@@ -165,7 +222,7 @@ object MultiProcessLifecycleOwner {
         })
     }
 
-    // ========================== extension ========================== //
+    // ========================== extension for compatibility ========================== //
 
     private val mListeners = HashSet<IAppForeground>()
 
@@ -174,9 +231,11 @@ object MultiProcessLifecycleOwner {
     var isProcessForeground = false
         private set
 
+    // compat
     var visibleScene = "default"
         private set
 
+    // compat
     var currentFragmentName: String? = null
         /**
          * must set after [Activity#onStart]
@@ -184,9 +243,10 @@ object MultiProcessLifecycleOwner {
         set(value) {
             MatrixLog.i(TAG, "[setCurrentFragmentName] fragmentName: $value")
             field = value
-            value?.let {
-                updateScene(it)
-            } ?: run {
+
+            if (value != null) {
+                updateScene(value)
+            } else {
                 updateScene("?")
             }
         }
@@ -216,7 +276,7 @@ object MultiProcessLifecycleOwner {
             if (isProcessForeground) {
                 return
             }
-            MatrixLog.i(TAG, "onForeground... visibleScene[$visibleScene@$sProcessName]")
+            MatrixLog.i(TAG, "onForeground... visibleScene[$visibleScene@$processName]")
             runningHandler.post {
                 isProcessForeground = true
                 synchronized(mListeners) {
@@ -231,7 +291,7 @@ object MultiProcessLifecycleOwner {
             if (!isProcessForeground) {
                 return
             }
-            MatrixLog.i(TAG, "onBackground... visibleScene[$visibleScene@$sProcessName]")
+            MatrixLog.i(TAG, "onBackground... visibleScene[$visibleScene@$processName]")
             runningHandler.post {
                 isProcessForeground = false
                 synchronized(mListeners) {
@@ -252,62 +312,43 @@ object MultiProcessLifecycleOwner {
  * You should init [com.tencent.matrix.Matrix] or call [init] manually before creating any Activity
  * Created by Yves on 2021/9/14
  */
-class MultiProcessLifecycleInitializer : ContentProvider() {
+class MatrixProcessLifecycleInitializer {
 
     companion object {
+        private const val TAG = "Matrix.ProcessLifecycleOwnerInit"
 
         @Volatile
         private var inited = false
 
         @JvmStatic
-        fun init(@NonNull context: Context) {
+        fun init(@NonNull context: Context, baseActivities: List<String>) {
             if (inited) {
                 return
             }
             inited = true
-            MultiProcessLifecycleOwner.init(context)
-            ActivityRecorder.init(context.applicationContext as Application)
+            if (hasCreatedActivities()) {
+                ("Matrix Warning: Matrix might be inited after launching first Activity, " +
+                        "which would disable some features like ProcessLifecycleOwner, " +
+                        "pls consider calling MultiProcessLifecycleInitializer#init manually " +
+                        "or initializing matrix at Application#onCreate").let {
+                    MatrixLog.e(TAG, it)
+                }
+                return
+            }
+            MatrixProcessLifecycleOwner.init(context)
+//            ActivityRecorder.init(context.applicationContext as Application, baseActivities)
+        }
+
+        @SuppressLint("PrivateApi", "DiscouragedPrivateApi")
+        @JvmStatic
+        fun hasCreatedActivities() = safeLet(tag = TAG, defVal = false) {
+            val clazzActivityThread = Class.forName("android.app.ActivityThread")
+            val objectActivityThread =
+                clazzActivityThread.getMethod("currentActivityThread").invoke(null)
+            val fieldMActivities = clazzActivityThread.getDeclaredField("mActivities")
+            fieldMActivities.isAccessible = true
+            val mActivities = fieldMActivities.get(objectActivityThread) as Map<*, *>?
+            return mActivities != null && mActivities.isNotEmpty()
         }
     }
-
-    override fun onCreate(): Boolean {
-        context?.let {
-            init(it)
-        } ?: run {
-            throw IllegalStateException("context is null !!!")
-        }
-        return true
-    }
-
-    override fun query(
-        uri: Uri,
-        projection: Array<out String>?,
-        selection: String?,
-        selectionArgs: Array<out String>?,
-        sortOrder: String?
-    ): Cursor? {
-        return null
-    }
-
-    override fun getType(uri: Uri): String? {
-        return null
-    }
-
-    override fun insert(uri: Uri, values: ContentValues?): Uri? {
-        return null
-    }
-
-    override fun delete(uri: Uri, selection: String?, selectionArgs: Array<out String>?): Int {
-        return 0
-    }
-
-    override fun update(
-        uri: Uri,
-        values: ContentValues?,
-        selection: String?,
-        selectionArgs: Array<out String>?
-    ): Int {
-        return 0
-    }
-
 }

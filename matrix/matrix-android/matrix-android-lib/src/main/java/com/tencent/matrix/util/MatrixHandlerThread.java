@@ -21,7 +21,7 @@ import android.os.HandlerThread;
 import android.os.Looper;
 import android.util.Printer;
 
-import com.tencent.matrix.lifecycle.owners.MultiProcessLifecycleOwner;
+import com.tencent.matrix.lifecycle.owners.MatrixProcessLifecycleOwner;
 import com.tencent.matrix.listeners.IAppForeground;
 
 import java.util.Collections;
@@ -97,8 +97,8 @@ public class MatrixHandlerThread {
         private boolean isForeground;
 
         LooperPrinter() {
-            MultiProcessLifecycleOwner.INSTANCE.addListener(this);
-            this.isForeground = MultiProcessLifecycleOwner.INSTANCE.isProcessForeground();
+            MatrixProcessLifecycleOwner.INSTANCE.addListener(this);
+            this.isForeground = MatrixProcessLifecycleOwner.INSTANCE.isProcessForeground();
         }
 
         @Override

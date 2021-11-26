@@ -30,6 +30,8 @@ import com.tencent.matrix.hook.HookManager;
 import com.tencent.matrix.hook.pthread.PthreadHook;
 import com.tencent.matrix.iocanary.IOCanaryPlugin;
 import com.tencent.matrix.iocanary.config.IOConfig;
+import com.tencent.matrix.lifecycle.owners.MatrixProcessLifecycleInitializer;
+import com.tencent.matrix.lifecycle.supervisor.SupervisorConfig;
 import com.tencent.matrix.memory.canary.MemoryCanaryPlugin;
 import com.tencent.matrix.resource.ResourcePlugin;
 import com.tencent.matrix.resource.config.ResourceConfig;
@@ -42,6 +44,8 @@ import com.tencent.sqlitelint.SQLiteLintPlugin;
 import com.tencent.sqlitelint.config.SQLiteLintConfig;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.Collections;
 
 import sample.tencent.matrix.battery.BatteryCanaryInitHelper;
 import sample.tencent.matrix.config.DynamicConfigImplDemo;
@@ -126,6 +130,8 @@ public class MatrixApplication extends Application {
         BatteryMonitorPlugin batteryMonitorPlugin = configureBatteryCanary();
         builder.plugin(batteryMonitorPlugin);
 
+        builder.supervisorConfig(new SupervisorConfig(true, false, new ArrayList<String>()));
+        builder.baseActivities(Collections.<String>emptyList());
         Matrix.init(builder.build());
 
         // Trace Plugin need call start() at the beginning.
@@ -135,6 +141,8 @@ public class MatrixApplication extends Application {
         Matrix.with().startAllPlugins();
 
         LifecycleTest.test1();
+
+        MatrixLog.d("Yves-test", "hasCreatedActivities %s", MatrixProcessLifecycleInitializer.hasCreatedActivities());
 
         MatrixLog.i(TAG, "Matrix configurations done.");
     }

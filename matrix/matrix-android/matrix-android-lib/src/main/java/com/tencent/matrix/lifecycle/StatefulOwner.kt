@@ -46,9 +46,9 @@ private class AutoReleaseObserverWrapper constructor(
 }
 
 private fun ObserverWrapper.checkLifecycle(lifecycleOwner: LifecycleOwner?): Boolean {
-    val broken = lifecycleOwner?.let {
-        !this.isAttachedTo(it)
-    } ?: let {
+    val broken = if (lifecycleOwner != null) {
+        isAttachedTo(lifecycleOwner)
+    } else {
         this is AutoReleaseObserverWrapper
     }
 
@@ -81,12 +81,13 @@ open class StatefulOwner : IStateful, IStateObservable {
      */
     @Synchronized
     override fun observeForever(observer: IStateObserver) {
-        observerMap[observer]
-            ?.checkLifecycle(null)
-            ?: let {
-                observerMap[observer] = ObserverWrapper(observer, this)
-                state.dispatch?.invoke(observer)
-            }
+        val wrapper = observerMap[observer]
+        if (wrapper != null) {
+            wrapper.checkLifecycle(null)
+        } else {
+            observerMap[observer] = ObserverWrapper(observer, this)
+            state.dispatch?.invoke(observer)
+        }
     }
 
     /**
@@ -99,12 +100,13 @@ open class StatefulOwner : IStateful, IStateObservable {
      */
     @Synchronized
     override fun observeWithLifecycle(lifecycleOwner: LifecycleOwner, observer: IStateObserver) {
-        observerMap[observer]
-            ?.checkLifecycle(lifecycleOwner)
-            ?: let {
-                observerMap[observer] = AutoReleaseObserverWrapper(lifecycleOwner, this, observer)
-                state.dispatch?.invoke(observer)
-            }
+        val wrapper = observerMap[observer]
+        if (wrapper != null) {
+            wrapper.checkLifecycle(lifecycleOwner)
+        } else {
+            observerMap[observer] = AutoReleaseObserverWrapper(lifecycleOwner, this, observer)
+            state.dispatch?.invoke(observer)
+        }
     }
 
     @Synchronized
@@ -113,7 +115,7 @@ open class StatefulOwner : IStateful, IStateObservable {
     }
 
     @Synchronized
-    fun turnOn() {
+    protected fun turnOn() {
         if (state == State.ON) {
             return
         }
@@ -124,7 +126,7 @@ open class StatefulOwner : IStateful, IStateObservable {
     }
 
     @Synchronized
-    fun turnOff() {
+    protected fun turnOff() {
         if (state == State.OFF) {
             return
         }
@@ -242,7 +244,7 @@ open class ImmutableMultiSourceStatefulOwner(
     }
 
     final override fun removeSourceOwner(owner: StatefulOwner) {
-        throw java.lang.UnsupportedOperationException()
+        throw UnsupportedOperationException()
     }
 }
 
