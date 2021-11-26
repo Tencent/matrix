@@ -2,7 +2,6 @@ package com.tencent.matrix.openglleak.statistics;
 
 import android.os.Handler;
 import android.os.HandlerThread;
-import android.text.TextUtils;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -17,7 +16,7 @@ public class OpenGLResRecorder {
     private HandlerThread mHandlerThread;
     private Handler mH;
 
-    private LeakMonitor.LeakListener mListener;
+    private LeakMonitorForActivityLifecycle.LeakListener mListener;
 
     private OpenGLResRecorder() {
         mHandlerThread = new HandlerThread("GpuResLeakMonitor");
@@ -30,7 +29,7 @@ public class OpenGLResRecorder {
         return mInstance;
     }
 
-    public void setLeakListener(LeakMonitor.LeakListener mListener) {
+    public void setLeakListener(LeakMonitorForActivityLifecycle.LeakListener mListener) {
         this.mListener = mListener;
     }
 
@@ -202,36 +201,6 @@ public class OpenGLResRecorder {
                 }
             }
         }
-    }
-
-    private boolean isNeedIgnore(OpenGLInfo info) {
-        if (TextUtils.isEmpty(info.getJavaStack())) {
-            boolean isIgnore = true;
-
-            String nativeStack = info.getNativeStack();
-            if (!TextUtils.isEmpty(nativeStack)) {
-                String[] lines = nativeStack.split("\n");
-                for (String line : lines) {
-                    if (!TextUtils.isEmpty(line)) {
-                        if (!line.contains("libmatrix-opengl-leak.so")
-                                && !line.contains("libwechatbacktrace.so")
-                                && !line.contains("libGLESv1_CM.so")
-                                && !line.contains("libhwui.so")
-                                && !line.contains("libutils.so")
-                                && !line.contains("libandroid_runtime.so")
-                                && !line.contains("libc.so")
-                                && line.contains(".so")) {
-                            isIgnore = false;
-                            break;
-                        }
-                    }
-                }
-            }
-
-            return isIgnore;
-        }
-
-        return false;
     }
 
     public OpenGLInfo getItemByHashCode(int hashCode) {
