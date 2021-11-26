@@ -5,8 +5,10 @@ import android.app.Application;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
-import android.os.HandlerThread;
 
+import com.tencent.matrix.openglleak.statistics.source.OpenGLInfo;
+import com.tencent.matrix.openglleak.statistics.source.ResRecorderForActivityLifecycle;
+import com.tencent.matrix.openglleak.utils.GlLeakHandlerThread;
 import com.tencent.matrix.util.MatrixLog;
 
 import java.lang.ref.WeakReference;
@@ -22,23 +24,19 @@ public class LeakMonitorForActivityLifecycle implements Application.ActivityLife
     private static final String TAG = "matrix.GPU_LeakMonitor";
     private static LeakMonitorForActivityLifecycle mInstance = new LeakMonitorForActivityLifecycle();
 
-    private HandlerThread mHT;
     private Handler mH;
 
-    private Map<WeakReference<Activity>, List<Integer>> maps;
+    private Map<WeakReference<Activity>, List<Integer>> maps = new HashMap<>();
     private String currentActivityName = "";
+
+    private ResRecorderForActivityLifecycle mResRecorder = new ResRecorderForActivityLifecycle();
 
     private long mDoubleCheckTime = 1000 * 60 * 30;
     private final long mDoubleCheckLooper = 1000 * 60 * 1;
 
     protected LeakMonitorForActivityLifecycle() {
-        mHT = new HandlerThread("LeakMonitor");
-        mHT.start();
-        mH = new Handler(mHT.getLooper());
-
+        mH = new Handler(GlLeakHandlerThread.getInstance().getLooper());
         mH.postDelayed(doubleCheckRunnable, mDoubleCheckLooper);
-
-        maps = new HashMap<>();
     }
 
     public static LeakMonitorForActivityLifecycle getInstance() {
@@ -50,7 +48,7 @@ public class LeakMonitorForActivityLifecycle implements Application.ActivityLife
     }
 
     public void setListener(LeakListener l) {
-        OpenGLResRecorder.getInstance().setLeakListener(l);
+        mResRecorder.setLeakListener(l);
     }
 
     public void start(Application context) {
@@ -72,7 +70,7 @@ public class LeakMonitorForActivityLifecycle implements Application.ActivityLife
         MatrixLog.i(TAG, "activity oncreate:" + currentActivityName + "  :" + activity.hashCode());
 
         WeakReference<Activity> weakReference = new WeakReference<>(activity);
-        List<Integer> actvityList = OpenGLResRecorder.getInstance().getAllHashCode();
+        List<Integer> actvityList = mResRecorder.getAllHashCode();
 
         maps.put(weakReference, actvityList);
     }
@@ -115,7 +113,7 @@ public class LeakMonitorForActivityLifecycle implements Application.ActivityLife
 
         final String activityStr = activityName;
         final List<Integer> createList = maps.get(target);
-        final List<Integer> destroyList = OpenGLResRecorder.getInstance().getAllHashCode();
+        final List<Integer> destroyList = mResRecorder.getAllHashCode();
 
         mH.post(new Runnable() {
             @Override
@@ -165,11 +163,11 @@ public class LeakMonitorForActivityLifecycle implements Application.ActivityLife
             }
 
             if (isLeak) {
-                OpenGLInfo leakInfo = OpenGLResRecorder.getInstance().getItemByHashCode(destroy);
+                OpenGLInfo leakInfo = mResRecorder.getItemByHashCode(destroy);
 
                 if ((leakInfo != null) && !leakInfo.getMaybeLeak()) {
-                    OpenGLResRecorder.getInstance().getNativeStack(leakInfo);
-                    OpenGLResRecorder.getInstance().setMaybeLeak(leakInfo);
+                    mResRecorder.getNativeStack(leakInfo);
+                    mResRecorder.setMaybeLeak(leakInfo);
 
                     hasLeak = true;
                 }
@@ -215,7 +213,7 @@ public class LeakMonitorForActivityLifecycle implements Application.ActivityLife
         public void run() {
             long now = System.currentTimeMillis();
 
-            List<OpenGLInfo> copyList = OpenGLResRecorder.getInstance().getCopyList();
+            List<OpenGLInfo> copyList = mResRecorder.getCopyList();
             MatrixLog.i(TAG, "double check list size:" + copyList.size());
 
             for (OpenGLInfo item : copyList) {
@@ -225,8 +223,8 @@ public class LeakMonitorForActivityLifecycle implements Application.ActivityLife
 
                 if (item.getMaybeLeak()) {
                     if ((now - item.getMaybeLeakTime()) > mDoubleCheckTime) {
-                        OpenGLResRecorder.getInstance().setLeak(item);
-                        OpenGLResRecorder.getInstance().remove(item);
+                        mResRecorder.setLeak(item);
+                        mResRecorder.remove(item);
                     }
                 }
             }

@@ -1,38 +1,33 @@
-package com.tencent.matrix.openglleak.statistics;
+package com.tencent.matrix.openglleak.statistics.source;
 
 import android.os.Handler;
-import android.os.HandlerThread;
+
+import com.tencent.matrix.openglleak.statistics.LeakMonitorForActivityLifecycle;
+import com.tencent.matrix.openglleak.utils.GlLeakHandlerThread;
 
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 
-public class OpenGLResRecorder {
+@Deprecated
+public class ResRecorderForActivityLifecycle implements ResRecordManager.Callback {
 
-    private List<OpenGLInfo> infoList = new ArrayList<>();
-
-    private static OpenGLResRecorder mInstance = new OpenGLResRecorder();
-
-    private HandlerThread mHandlerThread;
+    private List<OpenGLInfo> infoList = new LinkedList<>();
     private Handler mH;
 
     private LeakMonitorForActivityLifecycle.LeakListener mListener;
 
-    private OpenGLResRecorder() {
-        mHandlerThread = new HandlerThread("GpuResLeakMonitor");
-        mHandlerThread.start();
-
-        mH = new Handler(mHandlerThread.getLooper());
-    }
-
-    public static OpenGLResRecorder getInstance() {
-        return mInstance;
+    public ResRecorderForActivityLifecycle() {
+        mH = new Handler(GlLeakHandlerThread.getInstance().getLooper());
+        ResRecordManager.getInstance().registerCallback(this);
     }
 
     public void setLeakListener(LeakMonitorForActivityLifecycle.LeakListener mListener) {
         this.mListener = mListener;
     }
 
+    @Override
     public void gen(final OpenGLInfo oinfo) {
         mH.post(new Runnable() {
             @Override
@@ -48,6 +43,7 @@ public class OpenGLResRecorder {
         });
     }
 
+    @Override
     public void delete(final OpenGLInfo del) {
         mH.post(new Runnable() {
             @Override
@@ -57,27 +53,7 @@ public class OpenGLResRecorder {
                 }
 
                 synchronized (infoList) {
-                    Iterator<OpenGLInfo> iterator = infoList.iterator();
-                    while (iterator.hasNext()) {
-                        OpenGLInfo gen = iterator.next();
-                        if (gen == null) {
-                            continue;
-                        }
-
-                        if ((gen.getType() == del.getType()) && gen.getId() == del.getId()) {
-                            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
-                                if (gen.getEglContextNativeHandle() == del.getEglContextNativeHandle()) {
-                                    gen.release();
-                                    iterator.remove();
-                                    break;
-                                }
-                            } else if (gen.getThreadId().equals(del.getThreadId())) {
-                                gen.release();
-                                iterator.remove();
-                                break;
-                            }
-                        }
-                    }
+                    infoList.remove(del);
                 }
             }
         });
@@ -155,12 +131,6 @@ public class OpenGLResRecorder {
                     break;
                 }
 
-//                if (isNeedIgnore(info)) {
-//                    item.release();
-//                    iterator.remove();
-//                    continue;
-//                }
-
                 if ((item.getType() == info.getType()) && (item.getThreadId().equals(info.getThreadId())) && (item.getId() == info.getId())) {
                     if (mListener != null) {
                         mListener.onLeak(item);
@@ -180,10 +150,6 @@ public class OpenGLResRecorder {
                 if (item == null) {
                     break;
                 }
-
-//                if (isNeedIgnore(info)) {
-//                    continue;
-//                }
 
                 if ((item.getType() == info.getType()) && (item.getThreadId().equals(info.getThreadId())) && (item.getId() == info.getId())) {
                     item.setMaybeLeak(true);

@@ -1,6 +1,6 @@
 package com.tencent.matrix.openglleak.utils;
 
-public class OpenGLLeakMonitorLog {
+public class OpenGLLeakLog {
 
     private static LogStub stub = null;
 

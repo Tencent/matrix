@@ -4,8 +4,8 @@ import android.opengl.EGL14;
 
 import com.tencent.matrix.openglleak.comm.FuncNameString;
 import com.tencent.matrix.openglleak.statistics.LeakMonitorForActivityLifecycle;
-import com.tencent.matrix.openglleak.statistics.OpenGLInfo;
-import com.tencent.matrix.openglleak.statistics.OpenGLResRecorder;
+import com.tencent.matrix.openglleak.statistics.source.OpenGLInfo;
+import com.tencent.matrix.openglleak.statistics.source.ResRecordManager;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -90,7 +90,7 @@ public class OpenGLHook {
 
             for (int id : ids) {
                 OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.TEXTURE, id, threadId, eglContextId, javaStack, nativeStackPtr, true, LeakMonitorForActivityLifecycle.getInstance().getCurrentActivityName(), counter);
-                OpenGLResRecorder.getInstance().gen(openGLInfo);
+                ResRecordManager.getInstance().gen(openGLInfo);
 
                 if (getInstance().mListener != null) {
                     getInstance().mListener.onGlGenTextures(openGLInfo);
@@ -109,7 +109,7 @@ public class OpenGLHook {
 
             for (int id : ids) {
                 OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.TEXTURE, id, threadId, eglContextId, false);
-                OpenGLResRecorder.getInstance().delete(openGLInfo);
+                ResRecordManager.getInstance().delete(openGLInfo);
 
                 if (getInstance().mListener != null) {
                     getInstance().mListener.onGlDeleteTextures(openGLInfo);
@@ -129,7 +129,7 @@ public class OpenGLHook {
 
             for (int id : ids) {
                 OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.BUFFER, id, threadId, eglContextId, javaStack, nativeStackPtr, true, LeakMonitorForActivityLifecycle.getInstance().getCurrentActivityName(), counter);
-                OpenGLResRecorder.getInstance().gen(openGLInfo);
+                ResRecordManager.getInstance().gen(openGLInfo);
 
                 if (getInstance().mListener != null) {
                     getInstance().mListener.onGlGenBuffers(openGLInfo);
@@ -148,7 +148,7 @@ public class OpenGLHook {
 
             for (int id : ids) {
                 OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.BUFFER, id, threadId, eglContextId, false);
-                OpenGLResRecorder.getInstance().delete(openGLInfo);
+                ResRecordManager.getInstance().delete(openGLInfo);
 
                 if (getInstance().mListener != null) {
                     getInstance().mListener.onGlDeleteBuffers(openGLInfo);
@@ -168,7 +168,7 @@ public class OpenGLHook {
 
             for (int id : ids) {
                 OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.FRAME_BUFFERS, id, threadId, eglContextId, javaStack, nativeStackPtr, true, LeakMonitorForActivityLifecycle.getInstance().getCurrentActivityName(), counter);
-                OpenGLResRecorder.getInstance().gen(openGLInfo);
+                ResRecordManager.getInstance().gen(openGLInfo);
 
                 if (getInstance().mListener != null) {
                     getInstance().mListener.onGlGenFramebuffers(openGLInfo);
@@ -187,7 +187,7 @@ public class OpenGLHook {
 
             for (int id : ids) {
                 OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.FRAME_BUFFERS, id, threadId, eglContextId, false);
-                OpenGLResRecorder.getInstance().delete(openGLInfo);
+                ResRecordManager.getInstance().delete(openGLInfo);
 
                 if (getInstance().mListener != null) {
                     getInstance().mListener.onGlDeleteFramebuffers(openGLInfo);
@@ -207,7 +207,7 @@ public class OpenGLHook {
 
             for (int id : ids) {
                 OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.RENDER_BUFFERS, id, threadId, eglContextId, javaStack, nativeStackPtr, true, LeakMonitorForActivityLifecycle.getInstance().getCurrentActivityName(), counter);
-                OpenGLResRecorder.getInstance().gen(openGLInfo);
+                ResRecordManager.getInstance().gen(openGLInfo);
 
                 if (getInstance().mListener != null) {
                     getInstance().mListener.onGlGenRenderbuffers(openGLInfo);
@@ -226,7 +226,7 @@ public class OpenGLHook {
 
             for (int id : ids) {
                 OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.RENDER_BUFFERS, id, threadId, eglContextId, false);
-                OpenGLResRecorder.getInstance().delete(openGLInfo);
+                ResRecordManager.getInstance().delete(openGLInfo);
 
                 if (getInstance().mListener != null) {
                     getInstance().mListener.onGlDeleteRenderbuffers(openGLInfo);

@@ -1,7 +1,8 @@
-package com.tencent.matrix.openglleak.statistics;
+package com.tencent.matrix.openglleak.statistics.source;
 
 import android.text.TextUtils;
 
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class OpenGLInfo {
@@ -183,4 +184,25 @@ public class OpenGLInfo {
                 '}';
     }
 
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        OpenGLInfo that = (OpenGLInfo) o;
+        return id == that.id &&
+                eglContextNativeHandle == that.eglContextNativeHandle &&
+                threadId.equals(that.threadId) &&
+                type == that.type;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id, threadId, eglContextNativeHandle, type);
+    }
+
+    @Override
+    protected void finalize() throws Throwable {
+        release();
+        super.finalize();
+    }
 }

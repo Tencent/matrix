@@ -1,4 +1,4 @@
 package com.tencent.matrix.openglleak.statistics;
 
-public class LeakMonitorCustomize {
+public class LeakMonitorForCustomize {
 }
