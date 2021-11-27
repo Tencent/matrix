@@ -52,12 +52,12 @@ public class MainActivity extends AppCompatActivity {
         super.onResume();
         IssuesMap.clear();
 
-        MatrixLog.d(TAG, "has floating view %s", ForegroundWidgetDetector.hasFloatingView());
+        MatrixLog.d(TAG, "has floating view %s", ForegroundWidgetDetector.hasVisibleView());
 
         new Handler(Looper.getMainLooper()).post(new Runnable() {
             @Override
             public void run() {
-                MatrixLog.d(TAG, "has floating view %s", ForegroundWidgetDetector.hasFloatingView());
+                MatrixLog.d(TAG, "has floating view %s", ForegroundWidgetDetector.hasVisibleView());
             }
         });
     }

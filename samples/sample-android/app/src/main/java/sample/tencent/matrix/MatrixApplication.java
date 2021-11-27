@@ -130,7 +130,7 @@ public class MatrixApplication extends Application {
         BatteryMonitorPlugin batteryMonitorPlugin = configureBatteryCanary();
         builder.plugin(batteryMonitorPlugin);
 
-        builder.supervisorConfig(new SupervisorConfig(true, false, new ArrayList<String>()));
+        builder.supervisorConfig(new SupervisorConfig(true, true, new ArrayList<String>()));
         builder.baseActivities(Collections.<String>emptyList());
         Matrix.init(builder.build());
 

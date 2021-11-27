@@ -18,11 +18,14 @@ import java.util.concurrent.TimeUnit
  *
  * Created by Yves on 2021/10/12
  */
-// TODO: 2021/11/16 add white list
 internal object DispatchReceiver : BroadcastReceiver() {
 
     private const val KEY_PROCESS_NAME = "KEY_PROCESS_NAME"
     private const val KEY_PROCESS_PID = "KEY_PROCESS_PID"
+    private const val KEY_STATEFUL_NAME = "KEY_STATEFUL_NAME"
+
+    private var packageName: String? = null
+    private val permission by lazy { "${packageName!!}.matrix.permission.PROCESS_SUPERVISOR" }
 
     private var rescued: Boolean = false
     private val killedListeners = ArrayList<(isCurrent: Boolean) -> Boolean>()
@@ -40,12 +43,13 @@ internal object DispatchReceiver : BroadcastReceiver() {
     }
 
     private enum class SupervisorEvent {
-        SUPERVISOR_DISPATCH_APP_FOREGROUND,
-        SUPERVISOR_DISPATCH_APP_BACKGROUND,
+        SUPERVISOR_DISPATCH_APP_STATE_TURN_ON,
+        SUPERVISOR_DISPATCH_APP_STATE_TURN_OFF,
         SUPERVISOR_DISPATCH_KILL;
     }
 
     internal fun install(context: Context?) {
+        packageName = MatrixUtil.getPackageName(context)
         if (ProcessSupervisor.isSupervisor) {
             return
         }
@@ -55,7 +59,7 @@ internal object DispatchReceiver : BroadcastReceiver() {
         }
         context?.registerReceiver(
             this, filter,
-            ProcessSupervisor.permission, null
+            permission, null
         )
         MatrixLog.i(ProcessSupervisor.tag, "DispatchReceiver installed")
     }
@@ -68,12 +72,20 @@ internal object DispatchReceiver : BroadcastReceiver() {
         killedListeners.remove(listener)
     }
 
-    internal fun dispatchAppForeground(context: Context?) {
-        dispatch(context, SupervisorEvent.SUPERVISOR_DISPATCH_APP_FOREGROUND)
+    internal fun dispatchAppStateOn(context: Context?, statefulName: String) {
+        dispatch(
+            context,
+            SupervisorEvent.SUPERVISOR_DISPATCH_APP_STATE_TURN_ON,
+            KEY_STATEFUL_NAME to statefulName
+        )
     }
 
-    internal fun dispatchAppBackground(context: Context?) {
-        dispatch(context, SupervisorEvent.SUPERVISOR_DISPATCH_APP_BACKGROUND)
+    internal fun dispatchAppStateOff(context: Context?, statefulName: String) {
+        dispatch(
+            context,
+            SupervisorEvent.SUPERVISOR_DISPATCH_APP_STATE_TURN_OFF,
+            KEY_STATEFUL_NAME to statefulName
+        )
     }
 
     internal fun dispatchKill(context: Context?, targetProcessName: String, targetPid: Int) {
@@ -96,16 +108,24 @@ internal object DispatchReceiver : BroadcastReceiver() {
         params.forEach {
             intent.putExtra(it.first, it.second)
         }
-        context?.sendBroadcast(intent, ProcessSupervisor.permission)
+        context?.sendBroadcast(intent, permission)
     }
 
     override fun onReceive(context: Context, intent: Intent?) {
         when (intent?.action) {
-            SupervisorEvent.SUPERVISOR_DISPATCH_APP_FOREGROUND.name -> {
-                ProcessSupervisor.syncAppForeground()
+            SupervisorEvent.SUPERVISOR_DISPATCH_APP_STATE_TURN_ON.name -> {
+                val statefulName = intent.getStringExtra(KEY_STATEFUL_NAME)
+//                ProcessSupervisor.syncAppForeground()
+                statefulName?.let {
+                    ProcessSupervisor.DispatcherStateOwner.dispatchOn(it)
+                }
             }
-            SupervisorEvent.SUPERVISOR_DISPATCH_APP_BACKGROUND.name -> {
-                ProcessSupervisor.syncAppBackground()
+            SupervisorEvent.SUPERVISOR_DISPATCH_APP_STATE_TURN_OFF.name -> {
+                val statefulName = intent.getStringExtra(KEY_STATEFUL_NAME)
+//                ProcessSupervisor.syncAppForeground()
+                statefulName?.let {
+                    ProcessSupervisor.DispatcherStateOwner.dispatchOff(it)
+                }
             }
             SupervisorEvent.SUPERVISOR_DISPATCH_KILL.name -> {
                 val targetProcessName = intent.getStringExtra(KEY_PROCESS_NAME)
@@ -128,7 +148,7 @@ internal object DispatchReceiver : BroadcastReceiver() {
                     MatrixHandlerThread.getDefaultHandler().postDelayed({
                         if (!MatrixProcessLifecycleOwner.startedStateOwner.active()
                             && !ForegroundWidgetDetector.hasForegroundService()
-                            && !ForegroundWidgetDetector.hasFloatingView()
+                            && !ForegroundWidgetDetector.hasVisibleView()
                         ) {
                             ProcessSupervisor.supervisorProxy?.onProcessKilled(token)
                             MatrixLog.e(ProcessSupervisor.tag, "actual kill !!!")

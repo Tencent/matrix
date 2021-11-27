@@ -5,14 +5,12 @@ import android.content.Context
 import android.content.Intent
 import android.os.Binder
 import android.os.IBinder
-import com.tencent.matrix.lifecycle.IStateObserver
 import com.tencent.matrix.lifecycle.StatefulOwner
 import com.tencent.matrix.util.MatrixHandlerThread
 import com.tencent.matrix.util.MatrixLog
 import com.tencent.matrix.util.MatrixUtil
 import com.tencent.matrix.util.safeApply
 import junit.framework.Assert
-import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentLinkedQueue
 
@@ -68,7 +66,7 @@ class SupervisorService : Service() {
     }
 
     private val binder = object : ISupervisorProxy.Stub() {
-        override fun onProcessCreate(token: ProcessToken) {
+        override fun stateRegister(token: ProcessToken) {
             val pid = Binder.getCallingPid()
             Assert.assertEquals(pid, token.pid)
             token.linkToDeath {
@@ -79,30 +77,32 @@ class SupervisorService : Service() {
             }
             tokenRecord.addToken(token)
 //            RemoteProcessLifecycleProxy.getProxy(token)
-            backgroundProcessLru.moveOrAddFirst(token)
-            asyncLog(
-                "CREATED: [$pid-${token.name}] -> [${backgroundProcessLru.size}]${backgroundProcessLru.contentToString()}"
-            )
+//            backgroundProcessLru.moveOrAddFirst(token)
+//            asyncLog(
+//                "CREATED: [$pid-${token.name}] -> [${backgroundProcessLru.size}]${backgroundProcessLru.contentToString()}"
+//            )
         }
 
-        override fun onProcessForeground(token: ProcessToken) {
+        override fun stateTurnOn(token: ProcessToken) {
+            MatrixLog.d(TAG, "called state turn on")
             val pid = Binder.getCallingPid()
             Assert.assertEquals(pid, token.pid)
 
             backgroundProcessLru.remove(token)
-            RemoteProcessLifecycleProxy.getProxy(token).onRemoteProcessForeground()
+            RemoteProcessLifecycleProxy.getProxy(token).onRemoteStateTurnedOn()
 
             asyncLog(
                 "FOREGROUND: [$pid-${token.name}] <- [${backgroundProcessLru.size}]${backgroundProcessLru.contentToString()}"
             )
         }
 
-        override fun onProcessBackground(token: ProcessToken) {
+        override fun stateTurnOff(token: ProcessToken) {
+            MatrixLog.d(TAG, "called state turn off $token")
             val pid = Binder.getCallingPid()
             Assert.assertEquals(pid, token.pid)
 
-            backgroundProcessLru.add(token)
-            RemoteProcessLifecycleProxy.getProxy(token).onRemoteProcessBackground()
+            backgroundProcessLru.moveOrAddFirst(token)
+            RemoteProcessLifecycleProxy.getProxy(token).onRemoteStateTurnedOff()
 
             asyncLog(
                 "BACKGROUND: [$pid-${token.name}] -> [${backgroundProcessLru.size}]${backgroundProcessLru.contentToString()}"
@@ -141,15 +141,24 @@ class SupervisorService : Service() {
         isSupervisor = true
         instance = this
 
-        ProcessSupervisor.observeForever(object : IStateObserver {
-            override fun on() {
-                DispatchReceiver.dispatchAppForeground(this@SupervisorService)
-            }
 
-            override fun off() {
-                DispatchReceiver.dispatchAppBackground(this@SupervisorService)
+        ProcessSupervisor.DispatcherStateOwner.observe { stateName, state ->
+            if (state) {
+                DispatchReceiver.dispatchAppStateOn(applicationContext, stateName)
+            } else {
+                DispatchReceiver.dispatchAppStateOff(applicationContext, stateName)
             }
-        })
+        }
+
+//        ProcessSupervisor.observeForever(object : IStateObserver {
+//            override fun on() {
+//                DispatchReceiver.dispatchAppStateOn(this@SupervisorService)
+//            }
+//
+//            override fun off() {
+//                DispatchReceiver.dispatchAppStateOff(this@SupervisorService)
+//            }
+//        })
     }
 
     override fun onBind(intent: Intent?): IBinder {
@@ -217,25 +226,40 @@ class SupervisorService : Service() {
     private class RemoteProcessLifecycleProxy(val token: ProcessToken) : StatefulOwner() {
 
         init {
-            ProcessSupervisor.addSourceOwner(this)
+//            ProcessSupervisor.addSourceOwner(this)
+            ProcessSupervisor.DispatcherStateOwner.addSourceOwner(
+                token.statefulName,
+                this
+            )
         }
 
         companion object {
-            private val processFgObservers by lazy { ConcurrentHashMap<ProcessToken, RemoteProcessLifecycleProxy>() }
 
+            private val processProxies by lazy { ConcurrentHashMap<ProcessToken, ConcurrentHashMap<String, RemoteProcessLifecycleProxy>>() }
+
+//            private val processFgObservers by lazy { ConcurrentHashMap<ProcessToken, RemoteProcessLifecycleProxy>() }
             fun getProxy(token: ProcessToken) =
-                processFgObservers.getOrPut(token, { RemoteProcessLifecycleProxy(token) })!!
+                processProxies.getOrPut(token, { ConcurrentHashMap() }).getOrPut(token.statefulName, { RemoteProcessLifecycleProxy(token) })!!
+//                processFgObservers.getOrPut(token, { RemoteProcessLifecycleProxy(token) })!!
 
 
             fun removeProxy(token: ProcessToken) {
-                processFgObservers.remove(token)?.let { statefulOwner ->
-                    ProcessSupervisor.removeSourceOwner(statefulOwner)
+                processProxies.remove(token)?.forEach {
+                    ProcessSupervisor.DispatcherStateOwner.removeSourceOwner(it.key, it.value)
                 }
+
+//                processFgObservers.remove(token)?.let { statefulOwner ->
+////                    ProcessSupervisor.removeSourceOwner(statefulOwner)
+//                    ProcessSupervisor.SupervisorDispatcherStateOwner.removeSourceOwner(
+//                        token.name,
+//                        statefulOwner
+//                    )
+//                }
             }
         }
 
-        fun onRemoteProcessForeground() = turnOn()
-        fun onRemoteProcessBackground() = turnOff()
+        fun onRemoteStateTurnedOn() = turnOn()
+        fun onRemoteStateTurnedOff() = turnOff()
         override fun toString(): String {
             return "OwnerProxy_${token.name}_${token.pid}"
         }

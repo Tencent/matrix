@@ -58,7 +58,7 @@ data class ProcessInfo(
     val name: String = MatrixUtil.getProcessName(Matrix.with().application),
     val activity: String = MatrixProcessLifecycleOwner.recentActivity,
     val isProcessFg: Boolean = MatrixProcessLifecycleOwner.startedStateOwner.active(),
-    val isAppFg: Boolean = ProcessSupervisor.isAppForeground
+    val isAppFg: Boolean = ProcessSupervisor.isAppUIForeground
 ) {
     override fun toString(): String {
         return "Name=$name, Activity=$activity, AppForeground=$isAppFg, ProcessForeground=$isProcessFg"

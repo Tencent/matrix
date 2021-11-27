@@ -4,11 +4,11 @@
 
     <uses-permission android:name="${applicationId}.manual.dump" />
 
-<!--    <permission-->
-<!--        android:name="${applicationId}.matrix.permission.PROCESS_SUPERVISOR"-->
-<!--        android:protectionLevel="signature" />-->
+    <permission
+        android:name="${applicationId}.matrix.permission.PROCESS_SUPERVISOR"
+        android:protectionLevel="signature" />
 
-<!--    <uses-permission android:name="${applicationId}.matrix.permission.PROCESS_SUPERVISOR" />-->
+    <uses-permission android:name="${applicationId}.matrix.permission.PROCESS_SUPERVISOR" />
 
     <application>
 <!--        <provider-->

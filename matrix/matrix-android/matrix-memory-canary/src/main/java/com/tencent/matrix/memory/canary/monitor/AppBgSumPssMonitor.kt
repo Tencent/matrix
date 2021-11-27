@@ -42,7 +42,7 @@ class AppBgSumPssMonitor(
     private var overTimes = 0
 
     override fun run() {
-        if (ForegroundWidgetDetector.hasFloatingView() || ForegroundWidgetDetector.hasFloatingView()) {
+        if (ForegroundWidgetDetector.hasVisibleView() || ForegroundWidgetDetector.hasVisibleView()) {
             inaccurate = true
             runningHandler.postDelayed(this, config.checkInterval / 2)
             return
@@ -56,7 +56,7 @@ class AppBgSumPssMonitor(
         if (!config.enable) {
             return
         }
-        ProcessSupervisor.observeForever(object : IStateObserver {
+        ProcessSupervisor.appUIForegroundOwner.observeForever(object : IStateObserver {
             override fun on() { // app foreground
                 inaccurate = false
                 runningHandler.removeCallbacks(this@AppBgSumPssMonitor)

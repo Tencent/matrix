@@ -15,7 +15,6 @@ import com.tencent.matrix.lifecycle.owners.ExplicitBackgroundOwner.active
 import com.tencent.matrix.util.ForegroundWidgetDetector
 import com.tencent.matrix.util.MatrixLog
 import com.tencent.matrix.util.MatrixUtil
-import java.lang.IllegalStateException
 import java.util.concurrent.TimeUnit
 
 private val MAX_CHECK_INTERVAL = TimeUnit.MINUTES.toMillis(1)
@@ -56,7 +55,7 @@ object ExplicitBackgroundOwner : StatefulOwner() {
     private val checkTask = object : TimerChecker(TAG, MAX_CHECK_INTERVAL) {
         override fun action(): Boolean {
             val fgService = ForegroundWidgetDetector.hasForegroundService()
-            val floatingView = ForegroundWidgetDetector.hasFloatingView()
+            val floatingView = ForegroundWidgetDetector.hasVisibleView()
             if (!fgService && !floatingView) {
                 MatrixLog.i(TAG, "turn ON")
                 turnOn()
@@ -82,6 +81,7 @@ object ExplicitBackgroundOwner : StatefulOwner() {
     }
 }
 
+
 /**
  * State-ON:
  * Process is explicitly in background: [ExplicitBackgroundOwner] isNotActive
@@ -91,6 +91,10 @@ object ExplicitBackgroundOwner : StatefulOwner() {
  */
 object StagedBackgroundOwner : StatefulOwner() {
     private const val TAG = "Matrix.StagedBackgroundStateOwner"
+
+    @Volatile
+    var isGap = false
+        private set
 
     init {
         ExplicitBackgroundOwner.observeForever(object : IStateObserver {
@@ -202,7 +206,7 @@ object StagedBackgroundOwner : StatefulOwner() {
 
 /**
  * Might turn on after [MatrixProcessLifecycleOwner] turning off
- * and before [StagedBackgroundOwner] turning on cause [StagedBackgroundOwner] is in gap state
+ * and before [StagedBackgroundOwner] turning on when [StagedBackgroundOwner] is in gap state
  */
 object DeepBackgroundOwner : StatefulOwner() {
     private val delegate = ImmutableMultiSourceStatefulOwner(

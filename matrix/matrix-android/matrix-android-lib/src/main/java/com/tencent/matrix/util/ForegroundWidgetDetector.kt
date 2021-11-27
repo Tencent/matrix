@@ -47,7 +47,7 @@ object ForegroundWidgetDetector {
 
     @JvmStatic
     @SuppressLint("PrivateApi", "DiscouragedPrivateApi")
-    fun hasFloatingView() = safeLet(TAG, log = true, defVal = false) {
+    fun hasVisibleView() = safeLet(TAG, log = true, defVal = false) {
         if (WindowManagerGlobal_mRoots == null) {
             MatrixLog.e(TAG, "WindowManagerGlobal_mRoots not found")
             return@safeLet false

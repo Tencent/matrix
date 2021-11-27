@@ -15,7 +15,7 @@ inline fun <T> T.safeApply(
         unsafe()
     } catch (e: Throwable) {
         if (log) {
-            MatrixLog.printErrStackTrace(tag, e, "")
+            MatrixLog.printErrStackTrace(tag, e, e.message)
         }
     }
     return this
