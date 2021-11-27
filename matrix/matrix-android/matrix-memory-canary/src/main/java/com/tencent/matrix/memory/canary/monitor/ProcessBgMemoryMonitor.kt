@@ -112,7 +112,7 @@ class ProcessBgMemoryMonitor(private val config: ProcessBgMemoryMonitorConfig) {
 
         MatrixLog.i(
             TAG,
-            "check: overThreshold: $overThreshold,  is staged: $staged, interval: $lastCheckToNow, shouldCallback: $shouldCallback $memInfo"
+            "check: overThreshold: $overThreshold, is staged: $staged, interval: $lastCheckToNow, shouldCallback: $shouldCallback $memInfo"
         )
 
         if (overThreshold && shouldCallback) {
