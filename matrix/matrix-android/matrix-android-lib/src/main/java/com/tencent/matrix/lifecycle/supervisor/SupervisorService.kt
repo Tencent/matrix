@@ -77,35 +77,39 @@ class SupervisorService : Service() {
             }
             tokenRecord.addToken(token)
 //            RemoteProcessLifecycleProxy.getProxy(token)
-//            backgroundProcessLru.moveOrAddFirst(token)
-//            asyncLog(
-//                "CREATED: [$pid-${token.name}] -> [${backgroundProcessLru.size}]${backgroundProcessLru.contentToString()}"
-//            )
-        }
-
-        override fun stateTurnOn(token: ProcessToken) {
-            MatrixLog.d(TAG, "called state turn on")
-            val pid = Binder.getCallingPid()
-            Assert.assertEquals(pid, token.pid)
-
-            backgroundProcessLru.remove(token)
-            RemoteProcessLifecycleProxy.getProxy(token).onRemoteStateTurnedOn()
-
+            backgroundProcessLru.moveOrAddFirst(token)
             asyncLog(
-                "FOREGROUND: [$pid-${token.name}] <- [${backgroundProcessLru.size}]${backgroundProcessLru.contentToString()}"
+                "CREATED: [$pid-${token.name}] -> [${backgroundProcessLru.size}]${backgroundProcessLru.contentToString()}"
             )
         }
 
-        override fun stateTurnOff(token: ProcessToken) {
-            MatrixLog.d(TAG, "called state turn off $token")
+        override fun stateTurnOn(token: ProcessToken) {
             val pid = Binder.getCallingPid()
             Assert.assertEquals(pid, token.pid)
+            RemoteProcessLifecycleProxy.getProxy(token).onRemoteStateTurnedOn()
+        }
 
-            backgroundProcessLru.moveOrAddFirst(token)
+        override fun stateTurnOff(token: ProcessToken) {
+            val pid = Binder.getCallingPid()
+            Assert.assertEquals(pid, token.pid)
             RemoteProcessLifecycleProxy.getProxy(token).onRemoteStateTurnedOff()
+        }
 
+        override fun onProcessBackground(token: ProcessToken) {
+            val pid = Binder.getCallingPid()
+            Assert.assertEquals(pid, token.pid)
+            backgroundProcessLru.moveOrAddFirst(token)
             asyncLog(
                 "BACKGROUND: [$pid-${token.name}] -> [${backgroundProcessLru.size}]${backgroundProcessLru.contentToString()}"
+            )
+        }
+
+        override fun onProcessForeground(token: ProcessToken) {
+            val pid = Binder.getCallingPid()
+            Assert.assertEquals(pid, token.pid)
+            backgroundProcessLru.remove(token)
+            asyncLog(
+                "FOREGROUND: [$pid-${token.name}] <- [${backgroundProcessLru.size}]${backgroundProcessLru.contentToString()}"
             )
         }
 

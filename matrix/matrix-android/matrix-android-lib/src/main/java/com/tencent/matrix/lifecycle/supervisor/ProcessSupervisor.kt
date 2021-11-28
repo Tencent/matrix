@@ -185,7 +185,17 @@ object ProcessSupervisor /*MultiSourceStatefulOwner(ReduceOperators.OR)*/ {
         MatrixProcessLifecycleOwner.startedStateOwner
     )
     val appExplicitBackgroundOwner: StatefulOwner =
-        DispatcherStateOwner("appExplicitBackgroundOwner", ExplicitBackgroundOwner)
+        DispatcherStateOwner("appExplicitBackgroundOwner", ExplicitBackgroundOwner).also {
+            it.attachedSource.observeForever(object : IStateObserver {
+                override fun on() {
+                    supervisorProxy?.onProcessBackground(ProcessToken.current(application!!))
+                }
+
+                override fun off() {
+                    supervisorProxy?.onProcessForeground(ProcessToken.current(application!!))
+                }
+            })
+        }
     val appStagedBackgroundOwner: StatefulOwner =
         DispatcherStateOwner("appStagedBackgroundOwner", StagedBackgroundOwner)
     val appDeepBackgroundOwner: StatefulOwner =

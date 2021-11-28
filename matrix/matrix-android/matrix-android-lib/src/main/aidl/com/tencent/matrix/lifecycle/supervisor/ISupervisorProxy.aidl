@@ -10,6 +10,9 @@ interface ISupervisorProxy {
     void stateTurnOn(in ProcessToken token);
     void stateTurnOff(in ProcessToken token);
 
+    void onProcessBackground(in ProcessToken token);
+    void onProcessForeground(in ProcessToken token);
+
     void onProcessKilled(in ProcessToken token);
     void onProcessRescuedFromKill(in ProcessToken token);
     void onProcessKillCanceled(in ProcessToken token);
