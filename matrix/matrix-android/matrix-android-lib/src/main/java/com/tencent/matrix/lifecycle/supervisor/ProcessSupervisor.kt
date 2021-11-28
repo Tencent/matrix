@@ -188,11 +188,15 @@ object ProcessSupervisor /*MultiSourceStatefulOwner(ReduceOperators.OR)*/ {
         DispatcherStateOwner("appExplicitBackgroundOwner", ExplicitBackgroundOwner).also {
             it.attachedSource.observeForever(object : IStateObserver {
                 override fun on() {
-                    supervisorProxy?.onProcessBackground(ProcessToken.current(application!!))
+                    safeApply(TAG) {
+                        supervisorProxy?.onProcessBackground(ProcessToken.current(application!!))
+                    }
                 }
 
                 override fun off() {
-                    supervisorProxy?.onProcessForeground(ProcessToken.current(application!!))
+                    safeApply(TAG) {
+                        supervisorProxy?.onProcessForeground(ProcessToken.current(application!!))
+                    }
                 }
             })
         }
@@ -245,23 +249,6 @@ object ProcessSupervisor /*MultiSourceStatefulOwner(ReduceOperators.OR)*/ {
                 MatrixLog.i(TAG, "on Supervisor Connected $supervisorProxy")
                 supervisorProxy?.safeApply { stateRegister(ProcessToken.current(app)) }
                 DispatcherStateOwner.attach(supervisorProxy)
-
-//                supervisorProxy?.apply {
-//
-//                    safeApply(tag) { onProcessCreate(ProcessToken.current(app)) }
-//
-//                    ExplicitBackgroundOwner.observeForever(object : IStateObserver {
-//                        override fun off() {
-//                            MatrixLog.d(tag, "in charge process: foreground")
-//                            safeApply(tag) { onProcessForeground(ProcessToken.current(app)) }
-//                        }
-//
-//                        override fun on() {
-//                            MatrixLog.d(tag, "in charge process: background")
-//                            safeApply(tag) { onProcessBackground(ProcessToken.current(app)) }
-//                        }
-//                    })
-//                }
             }
 
             override fun onServiceDisconnected(name: ComponentName?) {
