@@ -204,15 +204,11 @@ object StagedBackgroundOwner : StatefulOwner() {
     }
 }
 
-/**
- * Might turn on after [MatrixProcessLifecycleOwner] turning off
- * and before [StagedBackgroundOwner] turning on when [StagedBackgroundOwner] is in gap state
- */
 object DeepBackgroundOwner : StatefulOwner() {
     private val delegate = ImmutableMultiSourceStatefulOwner(
-        ReduceOperators.NONE,
-        MatrixProcessLifecycleOwner.createdStateOwner,
-        StagedBackgroundOwner
+        ReduceOperators.AND,
+        ExplicitBackgroundOwner,
+        ImmutableMultiSourceStatefulOwner(ReduceOperators.NONE, StagedBackgroundOwner)
     )
 
     override fun active() = delegate.active()
