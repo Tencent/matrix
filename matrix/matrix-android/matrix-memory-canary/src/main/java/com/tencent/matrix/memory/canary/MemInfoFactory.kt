@@ -209,7 +209,7 @@ data class StatusInfo(
         }
 
         private fun convertProcStatus(pid: Int): Map<String, String> {
-            safeApply {
+            safeApply(TAG) {
                 File("/proc/${pid}/status").useLines { seq ->
                     return seq.flatMap {
                         val split = it.split(":")
@@ -527,7 +527,7 @@ data class MergedSmapsInfo(
             val merged: HashMap<String, SmapsItem> = HashMap<String, SmapsItem>()
             var currentInfo: SmapsItem? = null
 
-            safeApply {
+            safeApply(TAG) {
                 File("/proc/${pid}/smaps").reader().forEachLine { line ->
                     currentInfo?.let {
                         var found = true
