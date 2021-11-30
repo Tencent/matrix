@@ -23,6 +23,8 @@ interface IStateObservable {
     fun removeObserver(observer: IStateObserver)
 }
 
+interface IStatefulOwner : IStateful, IStateObservable
+
 private open class ObserverWrapper(val observer: IStateObserver, val switchOwner: StatefulOwner) {
     open fun isAttachedTo(owner: LifecycleOwner?) = false
 }
@@ -67,7 +69,7 @@ private enum class State(val dispatch: ((observer: IStateObserver) -> Unit)?) {
     OFF({ observer -> observer.off() });
 }
 
-open class StatefulOwner : IStateful, IStateObservable {
+open class StatefulOwner : IStatefulOwner {
 
     private var state = State.INIT
 
@@ -176,10 +178,10 @@ class LifecycleDelegateStatefulOwner private constructor(
  */
 open class MultiSourceStatefulOwner(
     private val reduceOperator: (statefuls: Collection<IStateful>) -> Boolean,
-    vararg statefulOwners: StatefulOwner
+    vararg statefulOwners: IStatefulOwner
 ) : StatefulOwner(), IStateObserver {
 
-    private val sourceOwners = ConcurrentLinkedQueue<StatefulOwner>()
+    private val sourceOwners = ConcurrentLinkedQueue<IStatefulOwner>()
 
     init {
         statefulOwners.forEach {
@@ -187,7 +189,7 @@ open class MultiSourceStatefulOwner(
         }
     }
 
-    private fun register(owner: StatefulOwner) {
+    private fun register(owner: IStatefulOwner) {
         owner.let {
             sourceOwners.add(it)
             it.observeForever(this)
@@ -233,7 +235,7 @@ open class MultiSourceStatefulOwner(
  */
 open class ImmutableMultiSourceStatefulOwner(
     reduceOperator: (statefuls: Collection<IStateful>) -> Boolean,
-    vararg args: StatefulOwner
+    vararg args: IStatefulOwner
 ) : MultiSourceStatefulOwner(reduceOperator, *args) {
     final override fun addSourceOwner(owner: StatefulOwner) {
         throw UnsupportedOperationException()

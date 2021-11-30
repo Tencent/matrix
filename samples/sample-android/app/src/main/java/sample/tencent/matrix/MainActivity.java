@@ -16,6 +16,7 @@
 
 package sample.tencent.matrix;
 
+import android.app.ActivityManager;
 import android.app.Service;
 import android.content.Intent;
 import android.os.Bundle;
@@ -150,5 +151,24 @@ public class MainActivity extends AppCompatActivity {
         startService(intent);
     }
 
+    @Override
+    protected void onStop() {
+        super.onStop();
+//        new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
+//            @Override
+//            public void run() {
+//                MatrixLog.d(TAG, "finishAndRemoveTask");
+//                ActivityManager am = (ActivityManager) getSystemService(ACTIVITY_SERVICE);
+//                for (ActivityManager.AppTask appTask : am.getAppTasks()) {
+//                    appTask.finishAndRemoveTask();
+//                }
+//            }
+//        }, 5 * 1000);
+    }
 
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        MatrixLog.d(TAG, "onDestroy");
+    }
 }

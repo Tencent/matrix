@@ -4,18 +4,21 @@ import android.annotation.SuppressLint
 import android.app.Activity
 import android.app.ActivityManager
 import android.app.Application
+import android.content.ComponentName
 import android.content.Context
+import android.content.pm.ActivityInfo
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
+import android.os.Process
+import android.view.View
 import androidx.annotation.NonNull
 import androidx.lifecycle.*
 import com.tencent.matrix.lifecycle.IStateObserver
 import com.tencent.matrix.lifecycle.StatefulOwner
 import com.tencent.matrix.lifecycle.owners.MatrixProcessLifecycleInitializer.Companion.init
 import com.tencent.matrix.listeners.IAppForeground
-import com.tencent.matrix.util.MatrixHandlerThread
-import com.tencent.matrix.util.MatrixLog
-import com.tencent.matrix.util.MatrixUtil
-import com.tencent.matrix.util.safeLet
+import com.tencent.matrix.util.*
 import java.util.*
 import kotlin.collections.HashMap
 
@@ -31,6 +34,7 @@ import kotlin.collections.HashMap
  *
  * Created by Yves on 2021/9/14
  */
+@SuppressLint("PrivateApi")
 object MatrixProcessLifecycleOwner {
 
     private const val TAG = "Matrix.ProcessLifecycle"
@@ -39,11 +43,17 @@ object MatrixProcessLifecycleOwner {
     private var processName: String? = null
     private var packageName: String? = null
     private var activityManager: ActivityManager? = null
+    private var activityInfoArray: Array<ActivityInfo>? = null
 
     internal fun init(context: Context) {
         activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
         processName = MatrixUtil.getProcessName(context)
         packageName = MatrixUtil.getPackageName(context)
+        activityInfoArray = context.packageManager
+            .getPackageInfo(
+                packageName!!,
+                PackageManager.GET_ACTIVITIES
+            ).activities
         attach(context)
         MatrixLog.i(TAG, "init for [${processName}]")
     }
@@ -220,6 +230,116 @@ object MatrixProcessLifecycleOwner {
                 activityDestroyed(activity)
             }
         })
+    }
+
+    @JvmStatic
+    fun hasForegroundService(): Boolean {
+        if (activityManager == null) {
+            throw IllegalStateException("NOT initialized yet")
+        }
+        return activityManager!!.getRunningServices(Int.MAX_VALUE)
+            .filter {
+                it.uid == Process.myUid() && it.pid == Process.myPid()
+            }.any {
+                it.foreground
+            }
+    }
+
+    private val WindowManagerGlobal_mRoots by lazy {
+        safeLetOrNull(TAG) {
+            Class.forName("android.view.WindowManagerGlobal").let {
+                val instance = ReflectUtils.invoke<Any>(it, "getInstance", null)
+                ReflectUtils.get<ArrayList<*>>(it, "mRoots", instance)
+            }
+        }
+    }
+
+    private val field_ViewRootImpl_mView by lazy {
+        safeLetOrNull(TAG) {
+            ReflectFiled<View>(Class.forName("android.view.ViewRootImpl"), "mView")
+        }
+    }
+
+    @JvmStatic
+    @SuppressLint("PrivateApi", "DiscouragedPrivateApi")
+    fun hasVisibleView() = safeLet(TAG, log = true, defVal = false) {
+        if (WindowManagerGlobal_mRoots == null) {
+            MatrixLog.e(TAG, "WindowManagerGlobal_mRoots not found")
+            return@safeLet false
+        }
+        if (field_ViewRootImpl_mView == null) {
+            MatrixLog.e(TAG, "field_ViewRootImpl_mView not found")
+            return@safeLet false
+        }
+        return@safeLet WindowManagerGlobal_mRoots!!.any {
+            View.VISIBLE == field_ViewRootImpl_mView!!.get(it)?.visibility
+        }
+    }
+
+    private val componentToProcess by lazy { HashMap<String, String>() }
+
+    private fun isCurrentProcessComponent(component: ComponentName?): Boolean {
+        if (component == null) {
+            return false
+        }
+
+        if (component.packageName != packageName) {
+            return false
+        }
+
+        return processName == componentToProcess.getOrPut(component.className, {
+            val info = activityInfoArray!!.find { it.name == component.className }
+            if (info == null) {
+                MatrixLog.e(TAG, "got task info not appeared in package manager $info")
+                packageName!!
+            } else {
+                info.processName
+            }
+        })
+    }
+
+    fun hasRunningAppTask(): Boolean {
+        if (activityManager == null) {
+            throw IllegalStateException("NOT initialized yet")
+        }
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            activityManager!!.appTasks
+                .filter {
+                    val i =
+                        isCurrentProcessComponent(it.taskInfo.baseIntent.component)
+                    val o =
+                        isCurrentProcessComponent(it.taskInfo.origActivity)
+                    val b = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                        isCurrentProcessComponent(it.taskInfo.baseActivity)
+                    } else {
+                        false
+                    }
+                    val t = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                        isCurrentProcessComponent(it.taskInfo.topActivity)
+                    } else {
+                        false
+                    }
+
+                    return@filter i || o || b || t
+                }.onEach {
+                    MatrixLog.i(TAG, "$processName task: ${it.taskInfo}")
+                }.any {
+                    MatrixLog.d(TAG, "hasRunningAppTask run any")
+                    when {
+                        Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q -> {
+                            it.taskInfo.isRunning
+                        }
+                        Build.VERSION.SDK_INT >= Build.VERSION_CODES.M -> {
+                            it.taskInfo.numActivities > 0
+                        }
+                        else -> {
+                            it.taskInfo.id == -1 // // If it is not running, this will be -1
+                        }
+                    }
+                }
+        } else {
+            false
+        }
     }
 
     // ========================== extension for compatibility ========================== //

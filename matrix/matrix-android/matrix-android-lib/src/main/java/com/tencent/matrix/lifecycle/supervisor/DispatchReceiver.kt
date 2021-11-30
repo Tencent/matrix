@@ -6,7 +6,6 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.os.Process
 import com.tencent.matrix.lifecycle.owners.MatrixProcessLifecycleOwner
-import com.tencent.matrix.util.ForegroundWidgetDetector
 import com.tencent.matrix.util.MatrixHandlerThread
 import com.tencent.matrix.util.MatrixLog
 import com.tencent.matrix.util.MatrixUtil
@@ -147,8 +146,8 @@ internal object DispatchReceiver : BroadcastReceiver() {
 
                     MatrixHandlerThread.getDefaultHandler().postDelayed({
                         if (!MatrixProcessLifecycleOwner.startedStateOwner.active()
-                            && !ForegroundWidgetDetector.hasForegroundService()
-                            && !ForegroundWidgetDetector.hasVisibleView()
+                            && !MatrixProcessLifecycleOwner.hasForegroundService()
+                            && !MatrixProcessLifecycleOwner.hasVisibleView()
                         ) {
                             ProcessSupervisor.supervisorProxy?.onProcessKilled(token)
                             MatrixLog.e(ProcessSupervisor.tag, "actual kill !!!")

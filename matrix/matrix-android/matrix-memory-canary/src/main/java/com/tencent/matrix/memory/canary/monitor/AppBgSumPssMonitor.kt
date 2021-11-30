@@ -1,9 +1,9 @@
 package com.tencent.matrix.memory.canary.monitor
 
 import com.tencent.matrix.lifecycle.IStateObserver
+import com.tencent.matrix.lifecycle.owners.MatrixProcessLifecycleOwner
 import com.tencent.matrix.lifecycle.supervisor.ProcessSupervisor
 import com.tencent.matrix.memory.canary.MemInfo
-import com.tencent.matrix.util.ForegroundWidgetDetector
 import com.tencent.matrix.util.MatrixHandlerThread
 import com.tencent.matrix.util.MatrixLog
 import java.util.concurrent.TimeUnit
@@ -42,7 +42,7 @@ class AppBgSumPssMonitor(
     private var overTimes = 0
 
     override fun run() {
-        if (ForegroundWidgetDetector.hasVisibleView() || ForegroundWidgetDetector.hasVisibleView()) {
+        if (MatrixProcessLifecycleOwner.hasVisibleView() || MatrixProcessLifecycleOwner.hasVisibleView()) {
             inaccurate = true
             runningHandler.postDelayed(this, config.checkInterval / 2)
             return

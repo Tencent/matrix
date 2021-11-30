@@ -44,7 +44,7 @@ internal abstract class TimerChecker(
     private val task by lazy {
         object : Runnable {
             override fun run() {
-                posted = true
+//                posted = true
                 MatrixLog.i(tag, "run check task")
                 if (!action()) {
                     postTimes = 0 // reset so that check task can be resume by checkAndPostIfNeeded
@@ -59,12 +59,6 @@ internal abstract class TimerChecker(
         }
     }
 
-    /**
-     * before the first task is scheduled, direct check should be ignored
-     */
-    @Volatile
-    private var posted = false
-
     @Volatile
     private var postTimes = 0
 
@@ -74,10 +68,6 @@ internal abstract class TimerChecker(
     protected abstract fun action(): Boolean
 
     fun checkAndPostIfNeeded(): Boolean {
-        if (!posted) {
-            MatrixLog.i(tag, "checkAndPostIfNeeded: not posted yet, during gap time")
-            return false
-        }
         MatrixLog.i(tag, "checkAndPostIfNeeded")
         runningHandler.removeCallbacks(task)
         if (action()) {
@@ -96,7 +86,6 @@ internal abstract class TimerChecker(
     }
 
     fun stop() {
-        posted = false
         postTimes = 0
         MatrixLog.i(tag, "stop")
         intervalFactory.reset()
