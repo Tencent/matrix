@@ -2,8 +2,10 @@ package com.tencent.matrix.resource.processor;
 
 import android.os.Build;
 
+import com.tencent.matrix.Matrix;
 import com.tencent.matrix.report.Issue;
 import com.tencent.matrix.resource.CanaryWorkerService;
+import com.tencent.matrix.resource.ResourcePlugin;
 import com.tencent.matrix.resource.analyzer.ActivityLeakAnalyzer;
 import com.tencent.matrix.resource.analyzer.model.ActivityLeakResult;
 import com.tencent.matrix.resource.analyzer.model.AndroidExcludedRefs;
@@ -13,9 +15,9 @@ import com.tencent.matrix.resource.analyzer.model.HeapDump;
 import com.tencent.matrix.resource.analyzer.model.HeapSnapshot;
 import com.tencent.matrix.resource.config.ResourceConfig;
 import com.tencent.matrix.resource.config.SharePluginInfo;
-import com.tencent.matrix.resource.watcher.ActivityRefWatcher;
 import com.tencent.matrix.resource.dumper.AndroidHeapDumper;
 import com.tencent.matrix.resource.dumper.DumpStorageManager;
+import com.tencent.matrix.resource.watcher.ActivityRefWatcher;
 import com.tencent.matrix.util.MatrixLog;
 
 import org.json.JSONException;
@@ -79,7 +81,8 @@ public abstract class BaseLeakProcessor {
     protected ActivityLeakResult analyze(File hprofFile, String referenceKey) {
         final HeapSnapshot heapSnapshot;
         ActivityLeakResult result;
-        final ExcludedRefs excludedRefs = AndroidExcludedRefs.createAppDefaults(Build.VERSION.SDK_INT, Build.MANUFACTURER).build();
+        String manufacture = Matrix.with().getPluginByClass(ResourcePlugin.class).getConfig().getManufacture();
+        final ExcludedRefs excludedRefs = AndroidExcludedRefs.createAppDefaults(Build.VERSION.SDK_INT, manufacture).build();
         try {
             heapSnapshot = new HeapSnapshot(hprofFile);
             result = new ActivityLeakAnalyzer(referenceKey, excludedRefs).analyze(heapSnapshot);
