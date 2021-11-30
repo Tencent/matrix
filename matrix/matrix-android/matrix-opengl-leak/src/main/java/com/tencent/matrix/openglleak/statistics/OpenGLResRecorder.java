@@ -4,9 +4,15 @@ import android.annotation.SuppressLint;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.text.TextUtils;
+import android.util.Log;
 
 import com.tencent.matrix.util.MatrixLog;
 
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -135,9 +141,28 @@ public class OpenGLResRecorder {
         return ll;
     }
 
+    @SuppressLint("LongLogTag")
     public void dumpToFile(String filePath) {
+        File targetFile = new File(filePath);
+
+        if (targetFile.exists()) {
+            targetFile.delete();
+        }
+
+        try {
+            targetFile.createNewFile();
+        } catch (IOException e) {
+            Log.e(TAG, "[OpenGLResRecorder]: createNewFile Fail, filePath = " + filePath);
+        }
+
+        try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(targetFile)))) {
+            writer.write(dumpToString());
+        } catch (IOException e) {
+            Log.e(TAG, "[OpenGLResRecorder]: Create Stream Fail");
+        }
 
     }
+
 
     @SuppressLint("DefaultLocale")
     public String dumpToString() {
