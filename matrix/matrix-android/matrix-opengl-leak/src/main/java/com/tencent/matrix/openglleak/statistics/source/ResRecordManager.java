@@ -14,6 +14,7 @@ public class ResRecordManager {
     private Handler mH;
 
     private List<Callback> mCallbackList = new LinkedList<>();
+    private List<OpenGLInfo> mInfoList = new LinkedList<>();
 
     private ResRecordManager() {
         mH = new Handler(GlLeakHandlerThread.getInstance().getLooper());
@@ -23,17 +24,21 @@ public class ResRecordManager {
         return mInstance;
     }
 
-    public void gen(final OpenGLInfo oinfo) {
+    public void gen(final OpenGLInfo gen) {
         mH.post(new Runnable() {
             @Override
             public void run() {
-                if (oinfo == null) {
+                if (gen == null) {
                     return;
+                }
+
+                synchronized (mInfoList) {
+                    mInfoList.add(gen);
                 }
 
                 for (Callback cb : mCallbackList) {
                     if (null != cb) {
-                        cb.gen(oinfo);
+                        cb.gen(gen);
                     }
                 }
             }
@@ -46,6 +51,22 @@ public class ResRecordManager {
             public void run() {
                 if (del == null) {
                     return;
+                }
+
+                synchronized (mInfoList) {
+                    // 之前可能释放过
+                    int index = mInfoList.indexOf(del);
+                    if (-1 == index) {
+                        return;
+                    }
+
+                    OpenGLInfo info = mInfoList.get(index);
+                    if (null == info) {
+                        return;
+                    }
+
+                    info.release();
+                    mInfoList.remove(del);
                 }
 
                 for (Callback cb : mCallbackList) {
@@ -61,6 +82,11 @@ public class ResRecordManager {
         if (null == callback) {
             return;
         }
+
+        if (mCallbackList.contains(callback)) {
+            return;
+        }
+
         mCallbackList.add(callback);
     }
 
@@ -69,6 +95,12 @@ public class ResRecordManager {
             return;
         }
         mCallbackList.remove(callback);
+    }
+
+    public boolean isGLInfoRelease(OpenGLInfo item) {
+        synchronized (mInfoList) {
+            return !mInfoList.contains(item);
+        }
     }
 
     interface Callback {

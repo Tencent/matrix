@@ -2,7 +2,7 @@ package com.tencent.matrix.openglleak.statistics.source;
 
 import android.os.Handler;
 
-import com.tencent.matrix.openglleak.statistics.LeakMonitorForActivityLifecycle;
+import com.tencent.matrix.openglleak.statistics.LeakMonitorForActivityLifecycle_Old;
 import com.tencent.matrix.openglleak.utils.GlLeakHandlerThread;
 
 import java.util.ArrayList;
@@ -16,14 +16,14 @@ public class ResRecorderForActivityLifecycle implements ResRecordManager.Callbac
     private List<OpenGLInfo> infoList = new LinkedList<>();
     private Handler mH;
 
-    private LeakMonitorForActivityLifecycle.LeakListener mListener;
+    private LeakMonitorForActivityLifecycle_Old.LeakListener mListener;
 
     public ResRecorderForActivityLifecycle() {
         mH = new Handler(GlLeakHandlerThread.getInstance().getLooper());
         ResRecordManager.getInstance().registerCallback(this);
     }
 
-    public void setLeakListener(LeakMonitorForActivityLifecycle.LeakListener mListener) {
+    public void setLeakListener(LeakMonitorForActivityLifecycle_Old.LeakListener mListener) {
         this.mListener = mListener;
     }
 

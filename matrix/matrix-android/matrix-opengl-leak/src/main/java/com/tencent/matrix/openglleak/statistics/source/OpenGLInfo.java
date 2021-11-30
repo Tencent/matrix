@@ -19,15 +19,11 @@ public class OpenGLInfo {
     private boolean genOrDelete;
     private TYPE type;
 
-    private boolean isRelease;
-
     private boolean maybeLeak = false;
     private long maybeLeakCheckTime = 0L;
     private boolean isReported = false;
 
     private String activityName;
-
-    private AtomicInteger counter;
 
     public enum TYPE {
         TEXTURE, BUFFER, FRAME_BUFFERS, RENDER_BUFFERS
@@ -43,12 +39,10 @@ public class OpenGLInfo {
         this.nativeStackPtr = clone.nativeStackPtr;
         this.genOrDelete = clone.genOrDelete;
         this.type = clone.type;
-        this.isRelease = clone.isRelease;
         this.maybeLeakCheckTime = clone.maybeLeakCheckTime;
         this.isReported = clone.isReported;
         this.maybeLeak = clone.maybeLeak;
         this.activityName = clone.activityName;
-        this.counter = clone.counter;
     }
 
     public OpenGLInfo(int error) {
@@ -72,7 +66,6 @@ public class OpenGLInfo {
         this.genOrDelete = genOrDelete;
         this.type = type;
         this.activityName = activityName;
-        this.counter = counter;
     }
 
     public int getId() {
@@ -105,16 +98,10 @@ public class OpenGLInfo {
 
     public String getNativeStack() {
         if (TextUtils.isEmpty(nativeStack)) {
-            if (!isRelease) {
-                synchronized (counter) {
-                    if (counter.get() > 0) {
-                        if (this.nativeStackPtr != 0) {
-                            nativeStack = dumpNativeStack(this.nativeStackPtr);
-                        } else {
-                            nativeStack = "";
-                        }
-                    }
-                }
+            if (this.nativeStackPtr != 0) {
+                nativeStack = dumpNativeStack(this.nativeStackPtr);
+            } else {
+                nativeStack = "";
             }
         }
         return nativeStack;
@@ -144,24 +131,12 @@ public class OpenGLInfo {
         this.maybeLeakCheckTime = time;
     }
 
-    public void release() {
-        if (isRelease) {
-            return;
-        }
-        isRelease = true;
-
+    protected void release() {
         if (nativeStackPtr == 0) {
             return;
         }
 
-        synchronized (counter) {
-            int count = counter.get();
-            if (count == 1) {
-                releaseNative(nativeStackPtr);
-            }
-
-            counter.set(count - 1);
-        }
+        releaseNative(nativeStackPtr);
     }
 
     private native void releaseNative(long nativeStackPtr);
@@ -200,9 +175,4 @@ public class OpenGLInfo {
         return Objects.hash(id, threadId, eglContextNativeHandle, type);
     }
 
-    @Override
-    protected void finalize() throws Throwable {
-        release();
-        super.finalize();
-    }
 }

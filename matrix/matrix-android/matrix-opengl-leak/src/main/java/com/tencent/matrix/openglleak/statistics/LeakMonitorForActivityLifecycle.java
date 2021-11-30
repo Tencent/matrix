@@ -2,204 +2,200 @@ package com.tencent.matrix.openglleak.statistics;
 
 import android.app.Activity;
 import android.app.Application;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
 import com.tencent.matrix.openglleak.statistics.source.OpenGLInfo;
-import com.tencent.matrix.openglleak.statistics.source.ResRecorderForActivityLifecycle;
+import com.tencent.matrix.openglleak.statistics.source.ResRecordManager;
 import com.tencent.matrix.openglleak.utils.GlLeakHandlerThread;
 import com.tencent.matrix.util.MatrixLog;
 
-import java.lang.ref.WeakReference;
-import java.util.HashMap;
+import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
-@Deprecated
 public class LeakMonitorForActivityLifecycle implements Application.ActivityLifecycleCallbacks {
 
-    private static final String TAG = "matrix.GPU_LeakMonitor";
-    private static LeakMonitorForActivityLifecycle mInstance = new LeakMonitorForActivityLifecycle();
+    private static final String TAG = "matrix.LeakMonitorForActivityLifecycle";
 
     private Handler mH;
+    private List<ActivityLeakMonitor> mActivityLeakMonitor;
+    private List<MaybeLeakOpenGLInfo> mMaybeLeakList;
+    private LeakListener mLeakListener;
 
-    private Map<WeakReference<Activity>, List<Integer>> maps = new HashMap<>();
-    private String currentActivityName = "";
+    private static final long DOUBLE_CHECK_TIME = 0L;
+    private static final long DOUBLE_CHECK_LOOPER = 1000L * 60 * 1;
 
-    private ResRecorderForActivityLifecycle mResRecorder = new ResRecorderForActivityLifecycle();
-
-    private long mDoubleCheckTime = 1000 * 60 * 30;
-    private final long mDoubleCheckLooper = 1000 * 60 * 1;
-
-    protected LeakMonitorForActivityLifecycle() {
+    public LeakMonitorForActivityLifecycle() {
         mH = new Handler(GlLeakHandlerThread.getInstance().getLooper());
-        mH.postDelayed(doubleCheckRunnable, mDoubleCheckLooper);
-    }
+        mActivityLeakMonitor = new LinkedList<>();
+        mMaybeLeakList = new LinkedList<>();
 
-    public static LeakMonitorForActivityLifecycle getInstance() {
-        return mInstance;
-    }
-
-    public void setDoubleCheckTime(long doubleCheckTime) {
-        mDoubleCheckTime = doubleCheckTime;
-    }
-
-    public void setListener(LeakListener l) {
-        mResRecorder.setLeakListener(l);
+        mH.postDelayed(mDoubleCheck, DOUBLE_CHECK_LOOPER);
     }
 
     public void start(Application context) {
         MatrixLog.i(TAG, "start");
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.ICE_CREAM_SANDWICH) {
-            (context).registerActivityLifecycleCallbacks(mInstance);
-        }
+        context.registerActivityLifecycleCallbacks(this);
     }
 
-    public String getCurrentActivityName() {
-        return currentActivityName;
+    public void stop(Application context) {
+        context.unregisterActivityLifecycleCallbacks(this);
     }
 
     @Override
-    public void onActivityCreated(Activity activity, Bundle savedInstanceState) {
-        currentActivityName = activity.getLocalClassName();
+    public void onActivityCreated(@NonNull Activity activity, @Nullable Bundle bundle) {
+        ActivityLeakMonitor activityLeakMonitor = new ActivityLeakMonitor(activity.hashCode(), new CustomizeLeakMonitor());
+        activityLeakMonitor.start();
 
-        MatrixLog.i(TAG, "activity oncreate:" + currentActivityName + "  :" + activity.hashCode());
-
-        WeakReference<Activity> weakReference = new WeakReference<>(activity);
-        List<Integer> actvityList = mResRecorder.getAllHashCode();
-
-        maps.put(weakReference, actvityList);
+        synchronized (mActivityLeakMonitor) {
+            mActivityLeakMonitor.add(activityLeakMonitor);
+        }
     }
 
     @Override
-    public void onActivityDestroyed(Activity activity) {
-        MatrixLog.i(TAG,
-                "activity ondestroy:" + activity.getLocalClassName() + "  :" + activity.hashCode());
+    public void onActivityDestroyed(@NonNull Activity activity) {
+        Integer activityHashCode = activity.hashCode();
 
-        WeakReference<Activity> target = null;
-
-        Set mapSet = maps.keySet();
-        Iterator it = mapSet.iterator();
-        while (it.hasNext()) {
-            WeakReference<Activity> weakReference = (WeakReference) it.next();
-
-            Activity a = (Activity) weakReference.get();
-            if (a == null) {
-                // 空的话移除
-                it.remove();
-                continue;
-            }
-
-            if ((a == activity)) {
-                target = weakReference;
-                break;
-            }
-        }
-
-        // 找不到，跳过不处理
-        if (target == null) {
-            return;
-        }
-
-        String activityName = "";
-        Activity aa = target.get();
-        if (aa != null) {
-            activityName = aa.getLocalClassName();
-        }
-
-        final String activityStr = activityName;
-        final List<Integer> createList = maps.get(target);
-        final List<Integer> destroyList = mResRecorder.getAllHashCode();
-
-        mH.post(new Runnable() {
-            @Override
-            public void run() {
-                boolean result = findLeak(createList, destroyList);
-                if (result) {
-                    MatrixLog.i(TAG, activityStr + " leak! ");
-                }
-            }
-        });
-
-        // clear
-        maps.remove(target);
-    }
-
-    private boolean findLeak(List<Integer> createList, List<Integer> destroyList) {
-        if ((createList == null) || (destroyList == null)) {
-            return false;
-        }
-
-        boolean hasLeak = false;
-
-        for (Integer destroy : destroyList) {
-            if (destroy == null) {
-                continue;
-            }
-
-            boolean isLeak;
-            int i = 0;
-            for (Integer create : createList) {
-                if (create == null) {
-                    i = i + 1;
+        synchronized (mActivityLeakMonitor) {
+            Iterator<ActivityLeakMonitor> it = mActivityLeakMonitor.iterator();
+            while (it.hasNext()) {
+                ActivityLeakMonitor item = it.next();
+                if (null == item) {
                     continue;
                 }
 
-                if (create.intValue() == destroy.intValue()) {
+                if (item.getActivityHashCode() == activityHashCode) {
+                    it.remove();
+
+                    List<OpenGLInfo> leaks = item.end();
+                    if (null != mLeakListener) {
+                        for (OpenGLInfo leakItem : leaks) {
+                            if (null != leakItem) {
+                                mLeakListener.onMaybeLeak(leakItem);
+
+                                synchronized (mMaybeLeakList) {
+                                    // 可能泄漏，需要做 double check
+                                    mMaybeLeakList.add(new MaybeLeakOpenGLInfo(leakItem));
+                                }
+                            }
+                        }
+                    }
+
                     break;
-                }
-
-                i = i + 1;
-            }
-
-            if (i == createList.size()) {
-                isLeak = true;
-            } else {
-                isLeak = false;
-            }
-
-            if (isLeak) {
-                OpenGLInfo leakInfo = mResRecorder.getItemByHashCode(destroy);
-
-                if ((leakInfo != null) && !leakInfo.getMaybeLeak()) {
-                    mResRecorder.getNativeStack(leakInfo);
-                    mResRecorder.setMaybeLeak(leakInfo);
-
-                    hasLeak = true;
                 }
             }
         }
+    }
 
-        return hasLeak;
+    public void setLeakListener(LeakMonitorForActivityLifecycle.LeakListener l) {
+        mLeakListener = l;
+    }
+
+    private Runnable mDoubleCheck = new Runnable() {
+        @Override
+        public void run() {
+            long now = System.currentTimeMillis();
+
+            synchronized (mMaybeLeakList) {
+                Iterator<MaybeLeakOpenGLInfo> it = mMaybeLeakList.iterator();
+                while (it.hasNext()) {
+                    MaybeLeakOpenGLInfo item = it.next();
+                    if (null == item) {
+                        continue;
+                    }
+
+                    if ((now - item.getMaybeLeakTime()) > DOUBLE_CHECK_TIME) {
+                        it.remove();
+
+                        if (null != mLeakListener) {
+                            if (ResRecordManager.getInstance().isGLInfoRelease(item)) {
+                                mLeakListener.onLeak(item);
+                            }
+                        }
+                    }
+                }
+            }
+
+            mH.postDelayed(mDoubleCheck, DOUBLE_CHECK_LOOPER);
+        }
+    };
+
+    @Override
+    public void onActivityStarted(@NonNull Activity activity) {
+
     }
 
     @Override
-    public void onActivityStarted(Activity activity) {
+    public void onActivityResumed(@NonNull Activity activity) {
 
     }
 
     @Override
-    public void onActivityResumed(Activity activity) {
-        currentActivityName = activity.getLocalClassName();
-    }
-
-    @Override
-    public void onActivityPaused(Activity activity) {
+    public void onActivityPaused(@NonNull Activity activity) {
 
     }
 
     @Override
-    public void onActivityStopped(Activity activity) {
+    public void onActivityStopped(@NonNull Activity activity) {
 
     }
 
     @Override
-    public void onActivitySaveInstanceState(Activity activity, Bundle outState) {
+    public void onActivitySaveInstanceState(@NonNull Activity activity, @NonNull Bundle bundle) {
 
+    }
+
+    class ActivityLeakMonitor {
+        private int mActivityHashCode;
+        private CustomizeLeakMonitor mMonitor;
+
+        ActivityLeakMonitor(int hashcode, CustomizeLeakMonitor m) {
+            mActivityHashCode = hashcode;
+            mMonitor = m;
+        }
+
+        void start() {
+            if (null != mMonitor) {
+                mMonitor.checkStart();
+            }
+        }
+
+        List<OpenGLInfo> end() {
+            List<OpenGLInfo> ret = new ArrayList<>();
+            if (null == mMonitor) {
+                return ret;
+            }
+
+            ret.addAll(mMonitor.checkEnd());
+
+            return ret;
+        }
+
+        int getActivityHashCode() {
+            return mActivityHashCode;
+        }
+    }
+
+    class MaybeLeakOpenGLInfo extends OpenGLInfo {
+
+        long mMaybeLeakTime;
+
+        MaybeLeakOpenGLInfo(OpenGLInfo clone) {
+            super(clone);
+        }
+
+        void setMaybeLeakTime(long t) {
+            mMaybeLeakTime = t;
+        }
+
+        long getMaybeLeakTime(long t) {
+            return mMaybeLeakTime;
+        }
     }
 
     public interface LeakListener {
@@ -208,28 +204,4 @@ public class LeakMonitorForActivityLifecycle implements Application.ActivityLife
         void onLeak(OpenGLInfo info);
     }
 
-    private Runnable doubleCheckRunnable = new Runnable() {
-        @Override
-        public void run() {
-            long now = System.currentTimeMillis();
-
-            List<OpenGLInfo> copyList = mResRecorder.getCopyList();
-            MatrixLog.i(TAG, "double check list size:" + copyList.size());
-
-            for (OpenGLInfo item : copyList) {
-                if (item == null) {
-                    continue;
-                }
-
-                if (item.getMaybeLeak()) {
-                    if ((now - item.getMaybeLeakTime()) > mDoubleCheckTime) {
-                        mResRecorder.setLeak(item);
-                        mResRecorder.remove(item);
-                    }
-                }
-            }
-
-            mH.postDelayed(doubleCheckRunnable, mDoubleCheckLooper);
-        }
-    };
 }

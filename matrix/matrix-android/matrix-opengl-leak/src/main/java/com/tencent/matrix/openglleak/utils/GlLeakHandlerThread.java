@@ -8,7 +8,6 @@ public class GlLeakHandlerThread extends HandlerThread {
 
     private GlLeakHandlerThread(String name) {
         super(name);
-        start();
     }
 
     public static GlLeakHandlerThread getInstance() {

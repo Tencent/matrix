@@ -59,7 +59,7 @@ void get_native_stack(wechat_backtrace::Backtrace* backtrace, char *&stack) {
 }
 
 
-extern "C" JNIEXPORT void JNICALL Java_com_tencent_matrix_openglleak_statistics_OpenGLInfo_releaseNative
+extern "C" JNIEXPORT void JNICALL Java_com_tencent_matrix_openglleak_statistics_source_OpenGLInfo_releaseNative
         (JNIEnv *env, jobject thiz, jlong jl) {
     int64_t addr = jl;
 
@@ -67,7 +67,7 @@ extern "C" JNIEXPORT void JNICALL Java_com_tencent_matrix_openglleak_statistics_
     delete ptr;
 }
 
-extern "C" JNIEXPORT jstring JNICALL Java_com_tencent_matrix_openglleak_statistics_OpenGLInfo_dumpNativeStack
+extern "C" JNIEXPORT jstring JNICALL Java_com_tencent_matrix_openglleak_statistics_source_OpenGLInfo_dumpNativeStack
         (JNIEnv *env, jobject thiz, jlong jl) {
     int64_t addr = jl;
     wechat_backtrace::Backtrace* ptr = (wechat_backtrace::Backtrace*)addr;
