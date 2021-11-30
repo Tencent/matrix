@@ -2,6 +2,8 @@ package com.tencent.matrix.openglleak.statistics;
 
 import android.text.TextUtils;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class OpenGLInfo {
@@ -17,6 +19,9 @@ public class OpenGLInfo {
     private long nativeStackPtr;
     private boolean genOrDelete;
     private TYPE type;
+    // use to dump
+    private int allocCount = 1;
+    private List<Integer> idList = new ArrayList<>();
 
     private boolean isRelease;
 
@@ -117,6 +122,19 @@ public class OpenGLInfo {
             }
         }
         return nativeStack;
+    }
+
+    public int getAllocCount() {
+        return allocCount;
+    }
+
+    public String getAllocIdList() {
+        return idList.toString();
+    }
+
+    public void incAllocRecord(int id) {
+        this.allocCount++;
+        this.idList.add(id);
     }
 
     public boolean getMaybeLeak() {

@@ -1,12 +1,19 @@
 package com.tencent.matrix.openglleak.statistics;
 
+import android.annotation.SuppressLint;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.text.TextUtils;
 
+import com.tencent.matrix.util.MatrixLog;
+
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 
 public class OpenGLResRecorder {
 
@@ -18,6 +25,8 @@ public class OpenGLResRecorder {
     private Handler mH;
 
     private LeakMonitor.LeakListener mListener;
+
+    private static final String TAG = "Matrix.OpenGLResRecorder";
 
     private OpenGLResRecorder() {
         mHandlerThread = new HandlerThread("GpuResLeakMonitor");
@@ -124,6 +133,139 @@ public class OpenGLResRecorder {
         }
 
         return ll;
+    }
+
+    public void dumpToFile(String filePath) {
+
+    }
+
+    @SuppressLint("DefaultLocale")
+    public String dumpToString() {
+        StringBuilder result = new StringBuilder();
+        List<OpenGLInfo> openGLInfos = getCopyList();
+        if (openGLInfos == null || openGLInfos.size() == 0) {
+            MatrixLog.e(TAG, "OpenGLResRecorder.getCopyList() is empty, break dump!!!");
+            return "";
+        }
+        Map<Long, OpenGLInfo> infoMap = new HashMap<>();
+        for (int i = 0; i < openGLInfos.size(); i++) {
+
+            OpenGLInfo info = openGLInfos.get(i);
+            int javaHash = info.getJavaStack().hashCode();
+            int nativeHash = info.getNativeStack().hashCode();
+
+            long infoHash = javaHash + nativeHash;
+
+            OpenGLInfo oldInfo = infoMap.get(infoHash);
+            if (oldInfo == null) {
+                infoMap.put(infoHash, info);
+            } else {
+                boolean isSameType = info.getType() == oldInfo.getType();
+                boolean isSameThread = info.getThreadId().equals(oldInfo.getThreadId());
+                boolean isSameEglContext = info.getEglContextNativeHandle() == oldInfo.getEglContextNativeHandle();
+                boolean isSameActivity = info.getActivityName().equals(oldInfo.getActivityName());
+
+                if (isSameType && isSameThread && isSameEglContext && isSameActivity) {
+                    oldInfo.incAllocRecord(info.getId());
+                    infoMap.put(infoHash, oldInfo);
+                }
+            }
+
+            List<OpenGLInfo> textureList = new ArrayList<>();
+            List<OpenGLInfo> bufferList = new ArrayList<>();
+            List<OpenGLInfo> framebufferList = new ArrayList<>();
+            List<OpenGLInfo> renderbufferList = new ArrayList<>();
+
+            for (OpenGLInfo openGLInfo : infoMap.values()) {
+                if (openGLInfo.getType() == OpenGLInfo.TYPE.TEXTURE) {
+                    textureList.add(openGLInfo);
+                }
+                if (openGLInfo.getType() == OpenGLInfo.TYPE.BUFFER) {
+                    bufferList.add(openGLInfo);
+                }
+                if (openGLInfo.getType() == OpenGLInfo.TYPE.FRAME_BUFFERS) {
+                    framebufferList.add(openGLInfo);
+                }
+                if (openGLInfo.getType() == OpenGLInfo.TYPE.RENDER_BUFFERS) {
+                    renderbufferList.add(openGLInfo);
+                }
+            }
+
+            Comparator<OpenGLInfo> comparator = new Comparator<OpenGLInfo>() {
+                @Override
+                public int compare(OpenGLInfo o1, OpenGLInfo o2) {
+                    return o1.getAllocCount() - o2.getAllocCount();
+                }
+            };
+
+            Collections.sort(textureList, comparator);
+            Collections.sort(bufferList, comparator);
+            Collections.sort(framebufferList, comparator);
+            Collections.sort(renderbufferList, comparator);
+
+            final String dottedLine = "-------------------------------------------------------------------------";
+            final String waveLine = "<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<";
+
+            result.append(dottedLine)
+                    .append(String.format("\t\t\ttextures Count = %d", textureList.size()))
+                    .append(String.format("\t\t\tbuffer Count = %d", bufferList.size()))
+                    .append(String.format("\t\t\tframebuffer Count = %d", framebufferList.size()))
+                    .append(String.format("\t\t\trenderbuffer Count = %d", renderbufferList.size()))
+                    .append(dottedLine)
+                    .append("\n")
+                    .append(waveLine)
+                    .append("\n")
+                    .append("\t\t\ttexture part :")
+                    .append(waveLine)
+                    .append("\n")
+                    .append(getResListString(textureList))
+                    .append('\n')
+                    .append(waveLine)
+                    .append("\t\t\tbuffers part :")
+                    .append(waveLine)
+                    .append("\n")
+                    .append(getResListString(bufferList))
+                    .append("\n")
+                    .append(waveLine)
+                    .append("\n")
+                    .append("\t\t\tframebuffers part :")
+                    .append(waveLine)
+                    .append("\n")
+                    .append(getResListString(framebufferList))
+                    .append("\n")
+                    .append(waveLine)
+                    .append("\n")
+                    .append("\t\t\trenderbuffer part :")
+                    .append(waveLine)
+                    .append("\n");
+        }
+        return result.toString();
+    }
+
+    @SuppressLint("DefaultLocale")
+    private String getResListString(List<OpenGLInfo> resList) {
+        if (resList == null || resList.size() == 0) {
+            return "";
+        }
+
+        StringBuilder result = new StringBuilder();
+        for (OpenGLInfo res : resList) {
+            result.append(String.format(" alloc count = %d", res.getAllocCount()))
+                    .append("\n")
+                    .append(String.format(" id = %s", res.getAllocIdList()))
+                    .append("\n")
+                    .append(String.format(" activity = %s", res.getActivityName()))
+                    .append("\n")
+                    .append(String.format(" type = %s", res.getType()))
+                    .append("\n")
+                    .append(String.format(" eglContext = %s", res.getEglContextNativeHandle()))
+                    .append("\n")
+                    .append(String.format(" java stack = %s", res.getJavaStack()))
+                    .append("\n")
+                    .append(String.format(" native stack = %s", res.getNativeStack()))
+                    .append("\n");
+        }
+        return result.toString();
     }
 
     public void getNativeStack(OpenGLInfo info) {
