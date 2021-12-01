@@ -1,9 +1,6 @@
 package sample.tencent.matrix.kt.lifecycle
 
-import android.app.Notification
-import android.app.NotificationChannel
-import android.app.NotificationManager
-import android.app.Service
+import android.app.*
 import android.content.Context
 import android.content.Intent
 import android.os.Build
@@ -11,6 +8,7 @@ import android.os.Build.VERSION
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
+import android.os.Process
 import com.tencent.matrix.util.MatrixLog
 import sample.tencent.matrix.kt.R
 import java.lang.reflect.InvocationHandler
@@ -86,7 +84,9 @@ class TestFgService : Service() {
         }
     }
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+    override fun onCreate() {
+
+        super.onCreate()
 
         var builder: Notification.Builder? = null
         builder = if (VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -103,12 +103,13 @@ class TestFgService : Service() {
             .setWhen(System.currentTimeMillis())
 
         val notification = builder.build()
-
+        startForeground(0x233, notification)
         MatrixLog.d(TAG, "onStartCommand: ")
-        Handler(Looper.getMainLooper()).postDelayed({
-            MatrixLog.d(TAG, "onStartCommand: start foreground")
-            startForeground(0x233, notification)
-        }, 5000)
+        MatrixLog.d(TAG, "onStartCommand: start foreground")
+        startForeground(0x233, notification)
+    }
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
 
         Handler(Looper.getMainLooper()).postDelayed({
             MatrixLog.d(TAG, "onStartCommand: stop foreground")

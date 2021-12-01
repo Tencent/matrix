@@ -457,7 +457,7 @@ class MatrixProcessLifecycleInitializer {
             }
             MatrixProcessLifecycleOwner.init(context)
             if (enableFgServiceMonitor) {
-                ForegroundServiceLifecycleOwner.init()
+                ForegroundServiceLifecycleOwner.init(context)
             }
 //            ActivityRecorder.init(context.applicationContext as Application, baseActivities)
         }

@@ -1,10 +1,14 @@
 package com.tencent.matrix.lifecycle.owners
 
 import android.annotation.SuppressLint
+import android.app.ActivityManager
+import android.app.Service
 import android.content.ComponentName
+import android.content.Context
 import android.os.Build
 import android.os.Handler
 import android.os.Message
+import android.os.Process
 import android.util.ArrayMap
 import com.tencent.matrix.lifecycle.StatefulOwner
 import com.tencent.matrix.util.MatrixLog
@@ -31,16 +35,18 @@ object ForegroundServiceLifecycleOwner : StatefulOwner() {
             .apply { isAccessible = true }
     }
 
+    private var activityManager: ActivityManager? = null
     private var ActivityThreadmServices: ArrayMap<*, *>? = null
     private var ActivityThreadmH: Handler? = null
 
     private var fgServiceHandler: FgServiceHandler? = null
 
-    fun init() {
+    fun init(context: Context) {
         if (Build.VERSION.SDK_INT > 31) { // for safety
             MatrixLog.e(TAG, "NOT support for api-level ${Build.VERSION.SDK_INT} yet!!!")
             return
         }
+        activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
         inject()
     }
 
@@ -96,7 +102,6 @@ object ForegroundServiceLifecycleOwner : StatefulOwner() {
                 }
             }
 
-
             reentrantFence = true
             val ret = mHCallback?.handleMessage(msg)
             reentrantFence = false
@@ -115,7 +120,21 @@ object ForegroundServiceLifecycleOwner : StatefulOwner() {
                     fgServiceHandler = FgServiceHandler(targetAm)
                 }
                 MatrixLog.i(TAG, "going to inject ${it.value}")
+                val s = it.value as Service
+                checkIfAlreadyForegrounded(ComponentName(s, s.javaClass.name))
                 fieldServicemActivityManager?.set(it.value, Proxy.newProxyInstance(targetAm.javaClass.classLoader, targetAm.javaClass.interfaces, fgServiceHandler!!))
+            }
+        }
+
+        private fun checkIfAlreadyForegrounded(componentName: ComponentName) {
+            activityManager?.getRunningServices(Int.MAX_VALUE)?.filter {
+                it.pid == Process.myPid()
+                        && it.uid == Process.myUid()
+                        && it.service == componentName
+                        && it.foreground
+            }?.forEach {
+                MatrixLog.i(TAG, "service turned fg when create: ${it.service}")
+                fgServiceHandler?.onStartForeground(it.service)
             }
         }
     }
