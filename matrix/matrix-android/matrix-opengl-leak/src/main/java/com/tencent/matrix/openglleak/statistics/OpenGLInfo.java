@@ -237,7 +237,7 @@ public class OpenGLInfo {
                 ", javaStack='" + javaStack + '\'' +
                 ", nativeStack='" + nativeStack + '\'' +
                 ", nativeStackPtr=" + nativeStackPtr +
-                ", memoryInfo=" + memoryInfo +
+                "\n memoryInfo=" + memoryInfo +
                 '}';
     }
 

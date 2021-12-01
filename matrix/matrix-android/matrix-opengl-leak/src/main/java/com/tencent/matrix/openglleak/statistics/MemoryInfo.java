@@ -84,9 +84,7 @@ public class MemoryInfo {
     public String toString() {
         if (resType == OpenGLInfo.TYPE.TEXTURE) {
             return "MemoryInfo{" +
-                    "id=" + id +
-                    ", eglContextId=" + eglContextId +
-                    ", target=" + target +
+                    "target=" + target +
                     ", level=" + level +
                     ", internalFormat=" + internalFormat +
                     ", width=" + width +
@@ -101,19 +99,15 @@ public class MemoryInfo {
                     '}';
         } else if (resType == OpenGLInfo.TYPE.BUFFER) {
             return "MemoryInfo{" +
-                    "id=" + id +
-                    ", eglContextId=" + eglContextId +
-                    ", size=" + size +
-                    ", target=" + target +
+                    "target=" + target +
                     ", usage=" + usage +
+                    ", size=" + size +
                     ", javaStack='" + javaStack + '\'' +
                     ", nativeStack='" + nativeStack + '\'' +
                     '}';
         } else if (resType == OpenGLInfo.TYPE.RENDER_BUFFERS) {
             return "MemoryInfo{" +
-                    "id=" + id +
-                    ", eglContextId=" + eglContextId +
-                    ", target=" + target +
+                    "target=" + target +
                     ", internalFormat=" + internalFormat +
                     ", width=" + width +
                     ", height=" + height +

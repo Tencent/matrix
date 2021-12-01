@@ -197,7 +197,10 @@ public class OpenGLResRecorder {
             int javaHash = info.getJavaStack().hashCode();
             int nativeHash = info.getNativeStack().hashCode();
 
-            long infoHash = javaHash + nativeHash;
+            int memoryJavaHash = info.getJavaStack().hashCode();
+            int memoryNativeHash = info.getNativeStack().hashCode();
+
+            long infoHash = javaHash + nativeHash + memoryNativeHash + memoryJavaHash;
 
             OpenGLInfo oldInfo = infoMap.get(infoHash);
             if (oldInfo == null) {
@@ -306,6 +309,8 @@ public class OpenGLResRecorder {
                     .append(String.format(" java stack = %s", res.getJavaStack()))
                     .append("\n")
                     .append(String.format(" native stack = %s", res.getNativeStack()))
+                    .append("\n")
+                    .append(String.format(" memory info = %s", res.getMemoryInfo().toString()))
                     .append("\n");
         }
         return result.toString();
