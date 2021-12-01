@@ -1,6 +1,7 @@
 package com.tencent.matrix.openglleak.statistics.resource;
 
 import com.tencent.matrix.openglleak.utils.ActivityRecorder;
+
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -97,7 +98,7 @@ public class OpenGLInfo {
         return nativeStackPtr;
     }
 
-    public ActivityRecorder.ActivityInfo getActivityInfo(){
+    public ActivityRecorder.ActivityInfo getActivityInfo() {
         return activityInfo;
     }
 
