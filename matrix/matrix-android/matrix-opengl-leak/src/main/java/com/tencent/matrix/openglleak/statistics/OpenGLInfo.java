@@ -223,7 +223,7 @@ public class OpenGLInfo {
 
     private native void releaseNative(long nativeStackPtr);
 
-    private native String dumpNativeStack(long nativeStackPtr);
+    public static native String dumpNativeStack(long nativeStackPtr);
 
     @Override
     public String toString() {

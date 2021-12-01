@@ -17,7 +17,7 @@ JNIEXPORT void JNICALL Java_com_tencent_matrix_openglleak_statistics_OpenGLInfo_
         (JNIEnv *, jobject thiz, jlong);
 
 JNIEXPORT jstring JNICALL Java_com_tencent_matrix_openglleak_statistics_OpenGLInfo_dumpNativeStack
-        (JNIEnv *, jobject thiz, jlong);
+        (JNIEnv *, jclass thiz, jlong);
 
 #ifdef __cplusplus
 }

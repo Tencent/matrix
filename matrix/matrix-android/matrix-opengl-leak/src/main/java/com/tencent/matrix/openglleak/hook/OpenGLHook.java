@@ -340,7 +340,7 @@ public class OpenGLHook {
         }
     }
 
-    public static void onGlTexImage2D(int target, int level, int internalFormat, int width, int height, int border, int format, int type, long size) {
+    public static void onGlTexImage2D(int target, int level, int internalFormat, int width, int height, int border, int format, int type, long size, String javaStack, long nativeStack) {
         long eglContextId = 0L;
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
             eglContextId = EGL14.eglGetCurrentContext().getNativeHandle();
@@ -357,12 +357,12 @@ public class OpenGLHook {
         }
 
         if (getInstance().mMemoryListener != null) {
-            getInstance().mMemoryListener.onGlTexImage2D(target, level, internalFormat, width, height, border, format, type, info.getId(), eglContextId, size);
+            getInstance().mMemoryListener.onGlTexImage2D(target, level, internalFormat, width, height, border, format, type, info.getId(), eglContextId, size, javaStack, OpenGLInfo.dumpNativeStack(nativeStack));
         }
 
     }
 
-    public static void onGlTexImage3D(int target, int level, int internalFormat, int width, int height, int depth, int border, int format, int type, long size) {
+    public static void onGlTexImage3D(int target, int level, int internalFormat, int width, int height, int depth, int border, int format, int type, long size, String javaStack, long nativeStack) {
         long eglContextId = 0L;
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
             eglContextId = EGL14.eglGetCurrentContext().getNativeHandle();
@@ -379,12 +379,12 @@ public class OpenGLHook {
         }
 
         if (getInstance().mMemoryListener != null) {
-            getInstance().mMemoryListener.onGlTexImage3D(target, level, internalFormat, width, height, depth, border, format, type, info.getId(), eglContextId, size);
+            getInstance().mMemoryListener.onGlTexImage3D(target, level, internalFormat, width, height, depth, border, format, type, info.getId(), eglContextId, size, javaStack, OpenGLInfo.dumpNativeStack(nativeStack));
         }
 
     }
 
-    public static void onGlBufferData(int target, long size, int usage) {
+    public static void onGlBufferData(int target, long size, int usage, String javaStack, long nativeStack) {
         if (Thread.currentThread().getName().equals("RenderThread")) {
             return;
         }
@@ -404,12 +404,12 @@ public class OpenGLHook {
         }
 
         if (getInstance().mMemoryListener != null) {
-            getInstance().mMemoryListener.onGlBufferData(target, usage, info.getId(), eglContextId, size);
+            getInstance().mMemoryListener.onGlBufferData(target, usage, info.getId(), eglContextId, size, javaStack, OpenGLInfo.dumpNativeStack(nativeStack));
         }
 
     }
 
-    public static void onGlRenderbufferStorage(int target, int internalformat, int width, int height, long size) {
+    public static void onGlRenderbufferStorage(int target, int internalformat, int width, int height, long size, String javaStack, long nativeStack) {
         long eglContextId = 0L;
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
             eglContextId = EGL14.eglGetCurrentContext().getNativeHandle();
@@ -426,7 +426,7 @@ public class OpenGLHook {
         }
 
         if (getInstance().mMemoryListener != null) {
-            getInstance().mMemoryListener.onGlRenderbufferStorage(target, width, height, internalformat, info.getId(), eglContextId, size);
+            getInstance().mMemoryListener.onGlRenderbufferStorage(target, width, height, internalformat, info.getId(), eglContextId, size, javaStack, OpenGLInfo.dumpNativeStack(nativeStack));
         }
     }
 
@@ -457,13 +457,13 @@ public class OpenGLHook {
 
     public interface MemoryListener {
 
-        void onGlTexImage2D(int target, int level, int internalFormat, int width, int height, int border, int format, int type, int id, long eglContextId, long size);
+        void onGlTexImage2D(int target, int level, int internalFormat, int width, int height, int border, int format, int type, int id, long eglContextId, long size, String javaStack, String nativeStack);
 
-        void onGlTexImage3D(int target, int level, int internalFormat, int width, int height, int depth, int border, int format, int type, int id, long eglContextId, long size);
+        void onGlTexImage3D(int target, int level, int internalFormat, int width, int height, int depth, int border, int format, int type, int id, long eglContextId, long size, String javaStack, String nativeStack);
 
-        void onGlBufferData(int target, int usage, int id, long eglContextId, long size);
+        void onGlBufferData(int target, int usage, int id, long eglContextId, long size, String javaStack, String nativeStack);
 
-        void onGlRenderbufferStorage(int target, int width, int height, int internalFormat, int id, long eglContextId, long size);
+        void onGlRenderbufferStorage(int target, int width, int height, int internalFormat, int id, long eglContextId, long size, String javaStack, String nativeStack);
 
     }
 
