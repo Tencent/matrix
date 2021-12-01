@@ -39,18 +39,34 @@ object ExplicitBackgroundOwner : StatefulOwner() {
                 checkTask.post()
             }
         })
+        // Foreground Service monitor is optional
+        ForegroundServiceLifecycleOwner.observeForever(object : IStateObserver {
+            override fun on() { // foreground service launched
+                checkTask.stop()
+                turnOff()
+            }
+
+            override fun off() { // foreground service stopped
+                // only post check task when Activity turned background
+                if (MatrixProcessLifecycleOwner.startedStateOwner.active()) {
+                    return
+                }
+                checkTask.post()
+            }
+        })
     }
 
     private val checkTask = object : TimerChecker(TAG, MAX_CHECK_INTERVAL) {
         override fun action(): Boolean {
-            val fgService = MatrixProcessLifecycleOwner.hasForegroundService()
-            val floatingView = MatrixProcessLifecycleOwner.hasVisibleView()
-            if (!fgService && !floatingView) {
+            val fgService by lazy { MatrixProcessLifecycleOwner.hasForegroundService() }
+            val visibleView by lazy { MatrixProcessLifecycleOwner.hasVisibleView() }
+
+            if (!fgService && !visibleView) {
                 MatrixLog.i(TAG, "turn ON")
                 turnOn()
                 return false
             }
-            MatrixLog.i(TAG, "turn OFF: fgService=$fgService, floatingView=$floatingView")
+            MatrixLog.i(TAG, "turn OFF: fgService=$fgService, visibleView=$visibleView")
             turnOff()
             return true
         }
@@ -94,10 +110,12 @@ object StagedBackgroundOwner : StatefulOwner() {
         })
     }
 
-    private val checkTask = object : TimerChecker(TAG, MAX_CHECK_INTERVAL, 20) {
+    private val checkTask = object : TimerChecker(TAG, MAX_CHECK_INTERVAL, 25) {
         override fun action(): Boolean {
-            if (MatrixProcessLifecycleOwner.hasRunningAppTask().also { MatrixLog.i(TAG, "hasRunningAppTask? $it") }
-                || MatrixProcessLifecycleOwner.createdStateOwner.active()) {
+            if (MatrixProcessLifecycleOwner.hasRunningAppTask()
+                    .also { MatrixLog.i(TAG, "hasRunningAppTask? $it") }
+                || MatrixProcessLifecycleOwner.createdStateOwner.active()
+            ) {
                 MatrixLog.i(TAG, "turn ON")
                 turnOn() // staged background
                 return true
@@ -122,8 +140,9 @@ object DeepBackgroundOwner : StatefulOwner() {
 
     private const val TAG = "Matrix.background.Deep"
 
-    private fun StatefulOwner.reverse(): IStatefulOwner = object: IStatefulOwner by this {
-        override fun active() = !this@reverse.active().also { MatrixLog.d(TAG, "${this@reverse.javaClass.name} is active? $it") }
+    private fun StatefulOwner.reverse(): IStatefulOwner = object : IStatefulOwner by this {
+        override fun active() = !this@reverse.active()
+            .also { MatrixLog.d(TAG, "${this@reverse.javaClass.name} is active? $it") }
     }
 
     private val delegate = ImmutableMultiSourceStatefulOwner(
