@@ -1,8 +1,6 @@
 package com.tencent.matrix.openglleak.statistics;
 
 import android.annotation.SuppressLint;
-import android.os.Handler;
-import android.os.HandlerThread;
 import android.text.TextUtils;
 import android.util.Log;
 
