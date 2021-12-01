@@ -236,8 +236,6 @@ public class OpenGLInfo {
                 ", threadId='" + threadId + '\'' +
                 ", javaStack='" + javaStack + '\'' +
                 ", nativeStack='" + nativeStack + '\'' +
-                ", nativeStackPtr=" + nativeStackPtr +
-                "\n memoryInfo=" + memoryInfo +
                 '}';
     }
 
