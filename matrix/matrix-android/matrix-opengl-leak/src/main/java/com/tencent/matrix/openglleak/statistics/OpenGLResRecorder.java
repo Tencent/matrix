@@ -279,9 +279,9 @@ public class OpenGLResRecorder {
                 .append(waveLine)
                 .append("\n")
                 .append("\t\t\trenderbuffer part :\n")
-                .append(getResListString(renderbufferList))
-                .append("\n")
                 .append(waveLine)
+                .append("\n")
+                .append(getResListString(renderbufferList))
                 .append("\n");
 
         return result.toString();
