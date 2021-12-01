@@ -11,6 +11,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
+
 import com.tencent.matrix.openglleak.utils.ExecuteCenter;
 
 import java.util.ArrayList;
@@ -310,7 +311,7 @@ public class OpenGLResRecorder {
                     .append("\n")
                     .append(String.format(" native stack = %s", res.getNativeStack()))
                     .append("\n")
-                    .append(String.format(" memory info = %s", res.getMemoryInfo().toString()))
+                    .append(String.format(" memory info = %s", res.getMemoryInfo() == null ? "" : res.getMemoryInfo().toString()))
                     .append("\n");
         }
         return result.toString();
