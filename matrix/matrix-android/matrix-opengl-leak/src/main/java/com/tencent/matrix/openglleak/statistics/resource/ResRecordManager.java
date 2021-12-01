@@ -133,8 +133,7 @@ public class ResRecordManager {
         }
     }
 
-    public void reset() {
-        mCallbackList.clear();
+    public void clear() {
         mInfoList.clear();
     }
 

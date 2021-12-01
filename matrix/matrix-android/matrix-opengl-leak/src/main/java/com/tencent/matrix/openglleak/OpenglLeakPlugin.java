@@ -173,8 +173,8 @@ public class OpenglLeakPlugin extends Plugin {
         OpenGLHook.getInstance().setJavaStackDump(true);
     }
 
-    public void reset() {
-        ResRecordManager.getInstance().reset();
+    public void clear() {
+        ResRecordManager.getInstance().clear();
     }
 
 }
