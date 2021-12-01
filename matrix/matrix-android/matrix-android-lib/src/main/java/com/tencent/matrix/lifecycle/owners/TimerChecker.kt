@@ -18,9 +18,8 @@ internal abstract class TimerChecker(
     /**
      * The initial delay interval is 12 + 31 = 34(ms)
      * Why 34? Removing foreground widgets like floating Views should be run in main thread
-     * and depend on Activity background event, which is dispatched in Matrix handler thread.
-     * And for most cases, the onDetach would be called within 10ms. It is just enough to
-     * cover the cases
+     * and might depend on Activity background event, which is dispatched in Matrix handler thread.
+     * And for most cases, the onDetach would be called within 10ms.
      *
      * valid intervals
      * 34,55,89,144,233,377,610,987,1597,2584,4181,6765,10946,17711,28657,46368,...,$max
@@ -44,7 +43,6 @@ internal abstract class TimerChecker(
     private val task by lazy {
         object : Runnable {
             override fun run() {
-//                posted = true
                 MatrixLog.i(tag, "run check task")
                 if (!action()) {
                     postTimes = 0 // reset so that check task can be resume by checkAndPostIfNeeded

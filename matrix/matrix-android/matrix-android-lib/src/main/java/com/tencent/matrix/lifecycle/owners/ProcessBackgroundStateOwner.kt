@@ -6,8 +6,7 @@ import com.tencent.matrix.util.MatrixLog
 import java.util.concurrent.TimeUnit
 
 private val MAX_CHECK_INTERVAL = TimeUnit.MINUTES.toMillis(1)
-
-data class BackgroundStateConfig(val checkInterval: Long = MAX_CHECK_INTERVAL) // TODO: 2021/11/24 configure
+private const val MAX_CHECK_TIMES = 20
 
 /**
  * State-ON:
@@ -15,13 +14,19 @@ data class BackgroundStateConfig(val checkInterval: Long = MAX_CHECK_INTERVAL) /
  * AND without foreground Service
  * AND without floating Views
  *
- * notice: Once this owner turned on, timer checker would be stop.
- * Therefore, the callback [IStateObserver.off] just means explicit background currently.
- * If foreground Service were launched after calling [IStateObserver.off],
- * the state wouldn't be turn on thus the [IStateObserver.on] wouldn't be call either
- * until we call the [active] or the state of upstream Owner changes.
+ * notice:
  *
- * The state change event is delayed for at least 89ms for removing foreground widgets
+ * ForegroundServiceLifecycleOwner is an optional StatefulOwner which is disabled by default and
+ * can be enable by configuring [Matrix.Builder.enableFgServiceMonitor]
+ *
+ * Once this owner turned on, timer checker would be stop.
+ * Therefore, the callback [IStateObserver.off] just means explicit background currently.
+
+ * If the ForegroundServiceLifecycle were disabled and there are foreground Service launched
+ * after calling [IStateObserver.off], the state wouldn't be turn on thus the [IStateObserver.on]
+ * wouldn't be call either until we call the [active] or the state of upstream Owner changes.
+ *
+ * The state change event is delayed for at least 34ms for removing foreground widgets
  * like floating view which depends on [MatrixProcessLifecycleOwner]. see [TimerChecker]
  */
 object ExplicitBackgroundOwner : StatefulOwner() {
@@ -44,7 +49,16 @@ object ExplicitBackgroundOwner : StatefulOwner() {
         })
     }
 
-    private val checkTask = object : TimerChecker(TAG, MAX_CHECK_INTERVAL) {
+    var maxCheckInterval = MAX_CHECK_INTERVAL
+        set(value) {
+            if (value < TimeUnit.SECONDS.toMillis(10)) {
+                throw IllegalArgumentException("interval should NOT be less than 10s")
+            }
+            field = value
+            MatrixLog.i(TAG, "set max check interval as $value")
+        }
+
+    private val checkTask = object : TimerChecker(TAG, maxCheckInterval) {
         override fun action(): Boolean {
             val uiForeground by lazy { MatrixProcessLifecycleOwner.startedStateOwner.active() }
             val fgService by lazy { MatrixProcessLifecycleOwner.hasForegroundService() }
@@ -105,7 +119,25 @@ object StagedBackgroundOwner : StatefulOwner() {
         })
     }
 
-    private val checkTask = object : TimerChecker(TAG, MAX_CHECK_INTERVAL, 25) {
+    var maxCheckInterval = MAX_CHECK_INTERVAL
+        set(value) {
+            if (value < TimeUnit.SECONDS.toMillis(10)) {
+                throw IllegalArgumentException("interval should NOT be less than 10s")
+            }
+            field = value
+            MatrixLog.i(TAG, "set max check interval as $value")
+        }
+
+    var maxCheckTimes = MAX_CHECK_TIMES
+        set(value) {
+            if (value <= 0) {
+                throw IllegalArgumentException("max check times should be greater than 0")
+            }
+            field = value
+            MatrixLog.i(TAG, "set max check interval as $value")
+        }
+
+    private val checkTask = object : TimerChecker(TAG, maxCheckInterval, maxCheckTimes) {
         override fun action(): Boolean {
             if (MatrixProcessLifecycleOwner.hasRunningAppTask()
                     .also { MatrixLog.i(TAG, "hasRunningAppTask? $it") }
