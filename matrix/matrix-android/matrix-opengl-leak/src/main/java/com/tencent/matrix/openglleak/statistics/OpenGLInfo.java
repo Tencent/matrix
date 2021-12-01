@@ -22,7 +22,6 @@ public class OpenGLInfo {
     private String nativeStack = "";
     private long nativeStackPtr;
     private int operate;
-    private long size;
     private TYPE type;
     // use to dump
     private int allocCount = 1;
@@ -35,6 +34,8 @@ public class OpenGLInfo {
     private boolean isReported = false;
 
     private String activityName;
+
+    private MemoryInfo memoryInfo;
 
     private AtomicInteger counter;
 
@@ -59,7 +60,7 @@ public class OpenGLInfo {
         this.maybeLeak = clone.maybeLeak;
         this.activityName = clone.activityName;
         this.counter = clone.counter;
-        this.size = clone.size;
+        this.memoryInfo = clone.memoryInfo;
     }
 
     public OpenGLInfo(int error) {
@@ -156,12 +157,12 @@ public class OpenGLInfo {
         this.idList.add(id);
     }
 
-    public long getSize() {
-        return size;
+    public MemoryInfo getMemoryInfo() {
+        return memoryInfo;
     }
 
-    public void setSize(long size) {
-        this.size = size;
+    public void setMemoryInfo(MemoryInfo memoryInfo) {
+        this.memoryInfo = memoryInfo;
     }
 
     private String getOpStr() {
@@ -232,11 +233,11 @@ public class OpenGLInfo {
                 ", eglContextNativeHandle='" + eglContextNativeHandle + '\'' +
                 ", activityName=" + activityName +
                 ", type='" + type.toString() + '\'' +
-                ", size='" + size + '\'' +
                 ", threadId='" + threadId + '\'' +
                 ", javaStack='" + javaStack + '\'' +
                 ", nativeStack='" + nativeStack + '\'' +
                 ", nativeStackPtr=" + nativeStackPtr +
+                ", memoryInfo=" + memoryInfo +
                 '}';
     }
 
