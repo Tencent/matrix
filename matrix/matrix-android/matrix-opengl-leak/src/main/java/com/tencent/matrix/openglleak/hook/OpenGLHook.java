@@ -340,10 +340,7 @@ public class OpenGLHook {
         }
     }
 
-    public static void onGlTexImage2D(int target, long size, int internalFormat, int format, int type) {
-        if (Thread.currentThread().getName().equals("RenderThread")) {
-            return;
-        }
+    public static void onGlTexImage2D(int target, int level, int internalFormat, int width, int height, int border, int format, int type, long size) {
         long eglContextId = 0L;
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
             eglContextId = EGL14.eglGetCurrentContext().getNativeHandle();
@@ -360,12 +357,12 @@ public class OpenGLHook {
         }
 
         if (getInstance().mMemoryListener != null) {
-            getInstance().mMemoryListener.onGlTexImage2D(target, size, internalFormat, format, type, info.getId(), eglContextId);
+            getInstance().mMemoryListener.onGlTexImage2D(target, level, internalFormat, width, height, border, format, type, info.getId(), eglContextId, size);
         }
 
     }
 
-    public static void onGlTexImage3D(int target, long size, int internalFormat, int format, int type) {
+    public static void onGlTexImage3D(int target, int level, int internalFormat, int width, int height, int depth, int border, int format, int type, long size) {
         long eglContextId = 0L;
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
             eglContextId = EGL14.eglGetCurrentContext().getNativeHandle();
@@ -382,7 +379,7 @@ public class OpenGLHook {
         }
 
         if (getInstance().mMemoryListener != null) {
-            getInstance().mMemoryListener.onGlTexImage3D(target, size, internalFormat, format, type, info.getId(), eglContextId);
+            getInstance().mMemoryListener.onGlTexImage3D(target, level, internalFormat, width, height, depth, border, format, type, info.getId(), eglContextId, size);
         }
 
     }
@@ -391,7 +388,6 @@ public class OpenGLHook {
         if (Thread.currentThread().getName().equals("RenderThread")) {
             return;
         }
-        MatrixLog.e("Backtrace.Benchmark", "onGlBufferData call, target = " + target + ", size = " + size + ", usage = " + usage);
         long eglContextId = 0L;
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
             eglContextId = EGL14.eglGetCurrentContext().getNativeHandle();
@@ -408,13 +404,12 @@ public class OpenGLHook {
         }
 
         if (getInstance().mMemoryListener != null) {
-            getInstance().mMemoryListener.onGlBufferData(target, size, usage, info.getId(), eglContextId);
+            getInstance().mMemoryListener.onGlBufferData(target, usage, info.getId(), eglContextId, size);
         }
 
     }
 
-    public static void onGlRenderbufferStorage(int target, long size, int internalformat) {
-        MatrixLog.e("Backtrace.Benchmark", "onGlRenderbufferStorage call, target = " + target + ", size = " + size + ", internalformat = " + internalformat);
+    public static void onGlRenderbufferStorage(int target, int internalformat, int width, int height, long size) {
         long eglContextId = 0L;
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
             eglContextId = EGL14.eglGetCurrentContext().getNativeHandle();
@@ -431,7 +426,7 @@ public class OpenGLHook {
         }
 
         if (getInstance().mMemoryListener != null) {
-            getInstance().mMemoryListener.onGlRenderbufferStorage(target, size, internalformat, info.getId(), eglContextId);
+            getInstance().mMemoryListener.onGlRenderbufferStorage(target, width, height, internalformat, info.getId(), eglContextId, size);
         }
     }
 
@@ -462,13 +457,13 @@ public class OpenGLHook {
 
     public interface MemoryListener {
 
-        void onGlTexImage2D(int target, long size, int internalFormat, int format, int type, int id, long eglContextId);
+        void onGlTexImage2D(int target, int level, int internalFormat, int width, int height, int border, int format, int type, int id, long eglContextId, long size);
 
-        void onGlTexImage3D(int target, long size, int internalFormat, int format, int type, int id, long eglContextId);
+        void onGlTexImage3D(int target, int level, int internalFormat, int width, int height, int depth, int border, int format, int type, int id, long eglContextId, long size);
 
-        void onGlBufferData(int target, long size, int usage, int id, long eglContextId);
+        void onGlBufferData(int target, int usage, int id, long eglContextId, long size);
 
-        void onGlRenderbufferStorage(int target, long size, int internalFormat, int id, long eglContextId);
+        void onGlRenderbufferStorage(int target, int width, int height, int internalFormat, int id, long eglContextId, long size);
 
     }
 

@@ -86,18 +86,18 @@ void thread_id_to_string(thread::id thread_id, char *&result) {
     strcpy(result, stream.str().c_str());
 }
 
-inline void get_thread_name(char * thread_name) {
+inline void get_thread_name(char *thread_name) {
     prctl(PR_GET_NAME, (char *) (thread_name));
 }
 
 inline bool is_render_thread() {
     bool result = false;
-    char* thread_name = static_cast<char *>(malloc(BUF_SIZE));
+    char *thread_name = static_cast<char *>(malloc(BUF_SIZE));
     get_thread_name(thread_name);
-    if(strcmp(RENDER_THREAD_NAME, thread_name) == 0) {
+    if (strcmp(RENDER_THREAD_NAME, thread_name) == 0) {
         result = true;
     }
-    if(thread_name != nullptr) {
+    if (thread_name != nullptr) {
         free(thread_name);
     }
     return result;
@@ -561,11 +561,15 @@ my_glTexImage2D(GLenum target, GLint level, GLint internalformat, GLsizei width,
     if (NULL != system_glTexImage2D) {
         system_glTexImage2D(target, level, internalformat, width, height, border, format, type,
                             pixels);
+
+        if (is_render_thread()) {
+            return;
+        }
         int pixel = Utils::getSizeOfPerPixel(internalformat, format, type);
         long size = width * height * pixel;
         JNIEnv *env = GET_ENV();
-        env->CallStaticVoidMethod(class_OpenGLHook, method_onGlTexImage2D, target, size,
-                                  internalformat, format, type);
+        env->CallStaticVoidMethod(class_OpenGLHook, method_onGlTexImage2D, target, level,
+                                  internalformat, width, height, border, format, type, size);
 
     }
 }
@@ -576,11 +580,15 @@ my_glTexImage3D(GLenum target, GLint level, GLint internalformat, GLsizei width,
     if (NULL != system_glTexImage3D) {
         system_glTexImage3D(target, level, internalformat, width, height, depth, border, format,
                             type, pixels);
+
+        if (is_render_thread()) {
+            return;
+        }
         int pixel = Utils::getSizeOfPerPixel(internalformat, format, type);
         long size = width * height * depth * pixel;
         JNIEnv *env = GET_ENV();
-        env->CallStaticVoidMethod(class_OpenGLHook, method_onGlTexImage3D, target, size,
-                                  internalformat, format, type);
+        env->CallStaticVoidMethod(class_OpenGLHook, method_onGlTexImage3D, target, level,
+                                  internalformat, width, height, depth, border, format, type, size);
     }
 }
 
@@ -588,6 +596,10 @@ my_glTexImage3D(GLenum target, GLint level, GLint internalformat, GLsizei width,
 GL_APICALL void GL_APIENTRY my_glBindTexture(GLenum target, GLuint resourceId) {
     if (NULL != system_glBindTexture) {
         system_glBindTexture(target, resourceId);
+
+        if (is_render_thread()) {
+            return;
+        }
         JNIEnv *env = GET_ENV();
         env->CallStaticVoidMethod(class_OpenGLHook, method_onGlBindTexture, target, resourceId);
     }
@@ -596,6 +608,10 @@ GL_APICALL void GL_APIENTRY my_glBindTexture(GLenum target, GLuint resourceId) {
 GL_APICALL void GL_APIENTRY my_glBindBuffer(GLenum target, GLuint resourceId) {
     if (NULL != system_glBindTexture) {
         system_glBindBuffer(target, resourceId);
+
+        if (is_render_thread()) {
+            return;
+        }
         JNIEnv *env = GET_ENV();
         env->CallStaticVoidMethod(class_OpenGLHook, method_onGlBindBuffer, target, resourceId);
 
@@ -605,6 +621,10 @@ GL_APICALL void GL_APIENTRY my_glBindBuffer(GLenum target, GLuint resourceId) {
 GL_APICALL void GL_APIENTRY my_glBindFramebuffer(GLenum target, GLuint resourceId) {
     if (NULL != system_glBindTexture) {
         system_glBindFramebuffer(target, resourceId);
+
+        if (is_render_thread()) {
+            return;
+        }
         JNIEnv *env = GET_ENV();
         env->CallStaticVoidMethod(class_OpenGLHook, method_onGlBindFramebuffer, target, resourceId);
 
@@ -614,6 +634,10 @@ GL_APICALL void GL_APIENTRY my_glBindFramebuffer(GLenum target, GLuint resourceI
 GL_APICALL void GL_APIENTRY my_glBindRenderbuffer(GLenum target, GLuint resourceId) {
     if (NULL != system_glBindTexture) {
         system_glBindRenderbuffer(target, resourceId);
+
+        if (is_render_thread()) {
+            return;
+        }
         JNIEnv *env = GET_ENV();
         env->CallStaticVoidMethod(class_OpenGLHook, method_onGlBindRenderbuffer, target,
                                   resourceId);
@@ -624,6 +648,10 @@ GL_APICALL void GL_APIENTRY
 my_glBufferData(GLenum target, GLsizeiptr size, const GLvoid *data, GLenum usage) {
     if (NULL != system_glBindTexture) {
         system_glBufferData(target, size, data, usage);
+
+        if (is_render_thread()) {
+            return;
+        }
         JNIEnv *env = GET_ENV();
         env->CallStaticVoidMethod(class_OpenGLHook, method_onGlBufferData, target, size, usage);
     }
@@ -633,11 +661,14 @@ GL_APICALL void GL_APIENTRY
 my_glRenderbufferStorage(GLenum target, GLenum internalformat, GLsizei width, GLsizei height) {
     if (NULL != system_glBindTexture) {
         system_glRenderbufferStorage(target, internalformat, width, height);
+
+        if (is_render_thread()) {
+            return;
+        }
         JNIEnv *env = GET_ENV();
         long size = Utils::getRenderbufferSizeByFormula(internalformat, width, height);
         env->CallStaticVoidMethod(class_OpenGLHook, method_onGlRenderbufferStorage, target,
-                                  size,
-                                  internalformat);
+                                  width, height, internalformat, size);
     }
 }
 

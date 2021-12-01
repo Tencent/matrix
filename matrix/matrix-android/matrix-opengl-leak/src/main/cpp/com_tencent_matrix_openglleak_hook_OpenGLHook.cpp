@@ -42,10 +42,10 @@ extern "C" JNIEXPORT jboolean JNICALL Java_com_tencent_matrix_openglleak_hook_Op
         method_onGlBindBuffer = env->GetStaticMethodID(class_OpenGLHook, "onGlBindBuffer", "(II)V");
         method_onGlBindFramebuffer = env->GetStaticMethodID(class_OpenGLHook, "onGlBindFramebuffer", "(II)V");
         method_onGlBindRenderbuffer = env->GetStaticMethodID(class_OpenGLHook, "onGlBindRenderbuffer", "(II)V");
-        method_onGlTexImage2D = env->GetStaticMethodID(class_OpenGLHook, "onGlTexImage2D", "(IJIII)V");
-        method_onGlTexImage3D = env->GetStaticMethodID(class_OpenGLHook, "onGlTexImage3D", "(IJIII)V");
+        method_onGlTexImage2D = env->GetStaticMethodID(class_OpenGLHook, "onGlTexImage2D", "(IIIIIIIIJ)V");
+        method_onGlTexImage3D = env->GetStaticMethodID(class_OpenGLHook, "onGlTexImage3D", "(IIIIIIIIIJ)V");
         method_onGlBufferData = env->GetStaticMethodID(class_OpenGLHook, "onGlBufferData", "(IJI)V");
-        method_onGlRenderbufferStorage = env->GetStaticMethodID(class_OpenGLHook, "onGlRenderbufferStorage", "(IJI)V");
+        method_onGlRenderbufferStorage = env->GetStaticMethodID(class_OpenGLHook, "onGlRenderbufferStorage", "(IIIJI)V");
         return true;
     }
 
