@@ -61,14 +61,7 @@ public class OpenGLInfo {
         this.activityName = clone.activityName;
         this.counter = clone.counter;
         this.memoryInfo = clone.memoryInfo;
-    }
-
-    public OpenGLInfo(int error) {
-        this.error = error;
-    }
-
-    public OpenGLInfo(TYPE type) {
-        this.type = type;
+        this.idList = clone.idList;
     }
 
     public OpenGLInfo(TYPE type, int id, long eglContextNativeHandle, int operate) {
@@ -76,6 +69,7 @@ public class OpenGLInfo {
         this.eglContextNativeHandle = eglContextNativeHandle;
         this.operate = operate;
         this.type = type;
+        idList.add(id);
     }
 
     public OpenGLInfo(TYPE type, int id, String threadId, long eglContextNativeHandle, int operate) {
@@ -84,6 +78,7 @@ public class OpenGLInfo {
         this.eglContextNativeHandle = eglContextNativeHandle;
         this.operate = operate;
         this.type = type;
+        idList.add(id);
     }
 
     public OpenGLInfo(TYPE type, int id, String threadId, long eglContextNativeHandle, String javaStack, long nativeStackPtr, int operate, String activityName, AtomicInteger counter) {
@@ -96,6 +91,7 @@ public class OpenGLInfo {
         this.type = type;
         this.activityName = activityName;
         this.counter = counter;
+        idList.add(id);
     }
 
     public int getId() {

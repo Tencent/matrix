@@ -28,9 +28,9 @@ public class MemoryInfo {
 
     private int usage;
 
-    private String javaStack;
+    private String javaStack = "";
 
-    private String nativeStack;
+    private String nativeStack = "";
 
     private OpenGLInfo.TYPE resType;
 
@@ -54,6 +54,14 @@ public class MemoryInfo {
         this.javaStack = javaStack;
         this.nativeStack = nativeStack;
         resType = OpenGLInfo.TYPE.TEXTURE;
+    }
+
+    public String getJavaStack() {
+        return javaStack;
+    }
+
+    public String getNativeStack() {
+        return nativeStack;
     }
 
     public void setBufferInfo(int target, int usage, int id, long eglContextId, long size, String javaStack, String nativeStack) {

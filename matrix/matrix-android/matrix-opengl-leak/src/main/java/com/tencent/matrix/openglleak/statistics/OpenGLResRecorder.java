@@ -198,8 +198,9 @@ public class OpenGLResRecorder {
             int javaHash = info.getJavaStack().hashCode();
             int nativeHash = info.getNativeStack().hashCode();
 
-            int memoryJavaHash = info.getJavaStack().hashCode();
-            int memoryNativeHash = info.getNativeStack().hashCode();
+            MemoryInfo memoryInfo = info.getMemoryInfo();
+            int memoryJavaHash = memoryInfo == null ? 0 : memoryInfo.getJavaStack().hashCode();
+            int memoryNativeHash = memoryInfo == null ? 0 : info.getNativeStack().hashCode();
 
             long infoHash = javaHash + nativeHash + memoryNativeHash + memoryJavaHash;
 
