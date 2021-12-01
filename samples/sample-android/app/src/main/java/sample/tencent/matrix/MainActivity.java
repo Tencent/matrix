@@ -16,7 +16,6 @@
 
 package sample.tencent.matrix;
 
-import android.app.ActivityManager;
 import android.app.Service;
 import android.content.Intent;
 import android.os.Bundle;
@@ -29,16 +28,16 @@ import android.widget.Button;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
-import com.tencent.matrix.lifecycle.supervisor.SupervisorService;
+import com.tencent.matrix.lifecycle.owners.MatrixProcessLifecycleOwner;
 import com.tencent.matrix.memory.canary.MemInfo;
 import com.tencent.matrix.trace.view.FrameDecorator;
-import com.tencent.matrix.util.ForegroundWidgetDetector;
 import com.tencent.matrix.util.MatrixLog;
 
 import sample.tencent.matrix.battery.TestBatteryActivity;
 import sample.tencent.matrix.hooks.TestHooksActivity;
 import sample.tencent.matrix.io.TestIOActivity;
 import sample.tencent.matrix.issue.IssuesMap;
+import sample.tencent.matrix.kt.lifecycle.TestFgService;
 import sample.tencent.matrix.memory.MemInfoTest;
 import sample.tencent.matrix.resource.TestLeakActivity;
 import sample.tencent.matrix.sqlitelint.TestSQLiteLintActivity;
@@ -53,12 +52,12 @@ public class MainActivity extends AppCompatActivity {
         super.onResume();
         IssuesMap.clear();
 
-        MatrixLog.d(TAG, "has floating view %s", ForegroundWidgetDetector.hasVisibleView());
+        MatrixLog.d(TAG, "has floating view %s", MatrixProcessLifecycleOwner.hasVisibleView());
 
         new Handler(Looper.getMainLooper()).post(new Runnable() {
             @Override
             public void run() {
-                MatrixLog.d(TAG, "has floating view %s", ForegroundWidgetDetector.hasVisibleView());
+                MatrixLog.d(TAG, "has floating view %s", MatrixProcessLifecycleOwner.hasVisibleView());
             }
         });
     }
@@ -149,6 +148,10 @@ public class MainActivity extends AppCompatActivity {
     public void testSupervisor(View view) {
         Intent intent = new Intent(this, StubService.class);
         startService(intent);
+    }
+
+    public void testFgService(View view) {
+        TestFgService.test(this);
     }
 
     @Override

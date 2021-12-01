@@ -441,7 +441,7 @@ class MatrixProcessLifecycleInitializer {
         private var inited = false
 
         @JvmStatic
-        fun init(@NonNull context: Context, baseActivities: List<String>) {
+        fun init(@NonNull context: Context, enableFgServiceMonitor: Boolean) {
             if (inited) {
                 return
             }
@@ -456,6 +456,9 @@ class MatrixProcessLifecycleInitializer {
                 return
             }
             MatrixProcessLifecycleOwner.init(context)
+            if (enableFgServiceMonitor) {
+                ForegroundServiceLifecycleOwner.init()
+            }
 //            ActivityRecorder.init(context.applicationContext as Application, baseActivities)
         }
 

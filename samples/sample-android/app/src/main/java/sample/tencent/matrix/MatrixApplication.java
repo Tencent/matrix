@@ -45,7 +45,6 @@ import com.tencent.sqlitelint.config.SQLiteLintConfig;
 
 import java.io.File;
 import java.util.ArrayList;
-import java.util.Collections;
 
 import sample.tencent.matrix.battery.BatteryCanaryInitHelper;
 import sample.tencent.matrix.config.DynamicConfigImplDemo;
@@ -131,7 +130,7 @@ public class MatrixApplication extends Application {
         builder.plugin(batteryMonitorPlugin);
 
         builder.supervisorConfig(new SupervisorConfig(true, true, new ArrayList<String>()));
-        builder.baseActivities(Collections.<String>emptyList());
+        builder.enableFgServiceMonitor(true);
         Matrix.init(builder.build());
 
         // Trace Plugin need call start() at the beginning.

@@ -26,9 +26,7 @@ import com.tencent.matrix.plugin.Plugin;
 import com.tencent.matrix.plugin.PluginListener;
 import com.tencent.matrix.util.MatrixLog;
 
-import java.util.Collections;
 import java.util.HashSet;
-import java.util.List;
 
 /**
  * Created by zhangshaowen on 17/5/17.
@@ -43,10 +41,10 @@ public class Matrix {
     private final HashSet<Plugin> plugins;
     private final Application application;
 
-    private Matrix(Application app, PluginListener listener, HashSet<Plugin> plugins, SupervisorConfig supervisorConfig, List<String> baseActivities) {
+    private Matrix(Application app, PluginListener listener, HashSet<Plugin> plugins, SupervisorConfig supervisorConfig, boolean enableFgServiceMonitor) {
         this.application = app;
         this.plugins = plugins;
-        MatrixProcessLifecycleInitializer.init(app, baseActivities);
+        MatrixProcessLifecycleInitializer.init(app, enableFgServiceMonitor);
         ProcessSupervisor.INSTANCE.init(app, supervisorConfig);
         for (Plugin plugin : plugins) {
             plugin.init(application, listener);
@@ -129,11 +127,11 @@ public class Matrix {
 
     public static class Builder {
         private final Application application;
-        private PluginListener pluginListener;
-        private SupervisorConfig mSupervisorConfig;
-        private List<String> baseActivities = Collections.emptyList();
+        private PluginListener   pluginListener;
+        private SupervisorConfig supervisorConfig;
+        private boolean          enableFgServiceMonitor;
 
-        private HashSet<Plugin> plugins = new HashSet<>();
+        private final HashSet<Plugin> plugins = new HashSet<>();
 
         public Builder(Application app) {
             if (app == null) {
@@ -165,12 +163,12 @@ public class Matrix {
          */
         @Deprecated
         public Builder supervisorConfig(SupervisorConfig config) {
-            this.mSupervisorConfig = config;
+            this.supervisorConfig = config;
             return this;
         }
 
-        public Builder baseActivities(List<String> baseActivities) {
-            this.baseActivities = baseActivities;
+        public Builder enableFgServiceMonitor(boolean enable) {
+            this.enableFgServiceMonitor = enable;
             return this;
         }
 
@@ -178,7 +176,7 @@ public class Matrix {
             if (pluginListener == null) {
                 pluginListener = new DefaultPluginListener(application);
             }
-            return new Matrix(application, pluginListener, plugins, mSupervisorConfig, baseActivities);
+            return new Matrix(application, pluginListener, plugins, supervisorConfig, enableFgServiceMonitor);
         }
 
     }

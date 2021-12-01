@@ -94,6 +94,17 @@
                 android:text="Start Supervisor"
                 tools:ignore="UsingOnClickInXml" />
 
+            <Button
+                android:id="@+id/test_fg_service"
+                style="@style/EntryButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:textAllCaps="false"
+                android:onClick="testFgService"
+                android:text="test FgService"
+                tools:ignore="UsingOnClickInXml" />
+
         </LinearLayout>
     </ScrollView>
 </LinearLayout>
