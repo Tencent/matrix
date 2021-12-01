@@ -74,8 +74,8 @@ public class ActivityRecorder implements Application.ActivityLifecycleCallbacks 
     }
 
     public class ActivityInfo {
-        int hashcode;
-        String name = "";
+        public int hashcode;
+        public String name;
 
         ActivityInfo(int code, String n) {
             hashcode = code;
