@@ -3,9 +3,9 @@ package com.tencent.matrix.openglleak.hook;
 import android.opengl.EGL14;
 
 import com.tencent.matrix.openglleak.comm.FuncNameString;
-import com.tencent.matrix.openglleak.statistics.LeakMonitorForActivityLifecycle_Old;
-import com.tencent.matrix.openglleak.statistics.source.OpenGLInfo;
-import com.tencent.matrix.openglleak.statistics.source.ResRecordManager;
+import com.tencent.matrix.openglleak.statistics.resource.OpenGLInfo;
+import com.tencent.matrix.openglleak.statistics.resource.ResRecordManager;
+import com.tencent.matrix.openglleak.utils.ActivityRecorder;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -89,7 +89,7 @@ public class OpenGLHook {
             }
 
             for (int id : ids) {
-                OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.TEXTURE, id, threadId, eglContextId, javaStack, nativeStackPtr, true, LeakMonitorForActivityLifecycle_Old.getInstance().getCurrentActivityName(), counter);
+                OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.TEXTURE, id, threadId, eglContextId, javaStack, nativeStackPtr, true, ActivityRecorder.getInstance().getCurrentActivityInfo(), counter);
                 ResRecordManager.getInstance().gen(openGLInfo);
 
                 if (getInstance().mListener != null) {
@@ -128,7 +128,7 @@ public class OpenGLHook {
             }
 
             for (int id : ids) {
-                OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.BUFFER, id, threadId, eglContextId, javaStack, nativeStackPtr, true, LeakMonitorForActivityLifecycle_Old.getInstance().getCurrentActivityName(), counter);
+                OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.BUFFER, id, threadId, eglContextId, javaStack, nativeStackPtr, true, ActivityRecorder.getInstance().getCurrentActivityInfo(), counter);
                 ResRecordManager.getInstance().gen(openGLInfo);
 
                 if (getInstance().mListener != null) {
@@ -167,7 +167,7 @@ public class OpenGLHook {
             }
 
             for (int id : ids) {
-                OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.FRAME_BUFFERS, id, threadId, eglContextId, javaStack, nativeStackPtr, true, LeakMonitorForActivityLifecycle_Old.getInstance().getCurrentActivityName(), counter);
+                OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.FRAME_BUFFERS, id, threadId, eglContextId, javaStack, nativeStackPtr, true, ActivityRecorder.getInstance().getCurrentActivityInfo(), counter);
                 ResRecordManager.getInstance().gen(openGLInfo);
 
                 if (getInstance().mListener != null) {
@@ -206,7 +206,7 @@ public class OpenGLHook {
             }
 
             for (int id : ids) {
-                OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.RENDER_BUFFERS, id, threadId, eglContextId, javaStack, nativeStackPtr, true, LeakMonitorForActivityLifecycle_Old.getInstance().getCurrentActivityName(), counter);
+                OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.RENDER_BUFFERS, id, threadId, eglContextId, javaStack, nativeStackPtr, true, ActivityRecorder.getInstance().getCurrentActivityInfo(), counter);
                 ResRecordManager.getInstance().gen(openGLInfo);
 
                 if (getInstance().mListener != null) {

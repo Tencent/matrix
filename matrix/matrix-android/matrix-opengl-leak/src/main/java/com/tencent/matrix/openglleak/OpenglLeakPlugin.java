@@ -12,7 +12,8 @@ import com.tencent.matrix.openglleak.comm.FuncNameString;
 import com.tencent.matrix.openglleak.detector.IOpenglIndexDetector;
 import com.tencent.matrix.openglleak.detector.OpenglIndexDetectorService;
 import com.tencent.matrix.openglleak.hook.OpenGLHook;
-import com.tencent.matrix.openglleak.statistics.LeakMonitorForActivityLifecycle_Old;
+import com.tencent.matrix.openglleak.statistics.resource.ResRecordManager;
+import com.tencent.matrix.openglleak.utils.ActivityRecorder;
 import com.tencent.matrix.openglleak.utils.EGLHelper;
 import com.tencent.matrix.openglleak.utils.GlLeakHandlerThread;
 import com.tencent.matrix.plugin.Plugin;
@@ -45,6 +46,7 @@ public class OpenglLeakPlugin extends Plugin {
     public void init(Application app, PluginListener listener) {
         super.init(app, listener);
 
+        ActivityRecorder.getInstance().start(app);
         GlLeakHandlerThread.getInstance().start();
     }
 
@@ -103,9 +105,6 @@ public class OpenglLeakPlugin extends Plugin {
             OpenGLHook.getInstance().hook(FuncNameString.GL_GEN_RENDERBUFFERS, map.get(FuncNameString.GL_GEN_RENDERBUFFERS));
             OpenGLHook.getInstance().hook(FuncNameString.GL_DELETE_RENDERBUFFERS, map.get(FuncNameString.GL_DELETE_RENDERBUFFERS));
             MatrixLog.e(TAG, "hook finish");
-
-            // 泄漏监控
-            LeakMonitorForActivityLifecycle_Old.getInstance().start((Application) context.getApplicationContext());
         } catch (Throwable e) {
             e.printStackTrace();
         } finally {
@@ -172,6 +171,10 @@ public class OpenglLeakPlugin extends Plugin {
 
     public void setJavaStackDump(boolean open) {
         OpenGLHook.getInstance().setJavaStackDump(true);
+    }
+
+    public void reset() {
+        ResRecordManager.getInstance().reset();
     }
 
 }

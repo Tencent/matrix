@@ -1,16 +1,16 @@
 package com.tencent.matrix.openglleak.statistics;
 
-import com.tencent.matrix.openglleak.statistics.source.OpenGLInfo;
-import com.tencent.matrix.openglleak.statistics.source.ResRecorderForCustomize;
+import com.tencent.matrix.openglleak.statistics.resource.OpenGLInfo;
+import com.tencent.matrix.openglleak.statistics.resource.ResRecorder;
 
 import java.util.List;
 
 public class CustomizeLeakMonitor {
 
-    private ResRecorderForCustomize mResRecorder;
+    private ResRecorder mResRecorder;
 
     public CustomizeLeakMonitor() {
-        mResRecorder = new ResRecorderForCustomize();
+        mResRecorder = new ResRecorder();
     }
 
     public void checkStart() {

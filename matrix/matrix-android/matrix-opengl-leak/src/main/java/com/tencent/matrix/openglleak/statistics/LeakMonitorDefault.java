@@ -1,71 +1,142 @@
 package com.tencent.matrix.openglleak.statistics;
 
-import android.os.Handler;
+import android.app.Activity;
+import android.app.Application;
+import android.os.Bundle;
 
-import com.tencent.matrix.AppActiveMatrixDelegate;
-import com.tencent.matrix.listeners.IAppForeground;
-import com.tencent.matrix.openglleak.statistics.source.OpenGLInfo;
-import com.tencent.matrix.openglleak.utils.GlLeakHandlerThread;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
+import com.tencent.matrix.openglleak.statistics.resource.OpenGLInfo;
+import com.tencent.matrix.util.MatrixLog;
+
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 
-public class LeakMonitorDefault extends CustomizeLeakMonitor implements IAppForeground {
+public abstract class LeakMonitorDefault implements Application.ActivityLifecycleCallbacks {
 
-    private static final long CHECK_TIME = 1000L * 30;
+    private static final String TAG = "matrix.LeakMonitorDefault";
+    private List<ActivityLeakMonitor> mActivityLeakMonitor;
 
-    private Handler mH;
-    private LeakListener mLeakListener;
-
-    private static LeakMonitorDefault mInstance = new LeakMonitorDefault();
-
-    private LeakMonitorDefault() {
-        mH = new Handler(GlLeakHandlerThread.getInstance().getLooper());
+    protected LeakMonitorDefault() {
+        mActivityLeakMonitor = new LinkedList<>();
     }
 
-    public void setLeakListener(LeakListener l) {
-        mLeakListener = l;
+    public void start(Application context) {
+        context.registerActivityLifecycleCallbacks(this);
+        MatrixLog.i(TAG, "start");
     }
 
-    public void start() {
-        AppActiveMatrixDelegate.INSTANCE.addListener(this);
+    public void stop(Application context) {
+        context.unregisterActivityLifecycleCallbacks(this);
+        MatrixLog.i(TAG, "stop");
+    }
+
+    public abstract void onLeak(OpenGLInfo leak);
+
+    @Override
+    public void onActivityCreated(@NonNull Activity activity, @Nullable Bundle bundle) {
+        ActivityLeakMonitor activityLeakMonitor = new ActivityLeakMonitor(activity.hashCode(), new CustomizeLeakMonitor());
+        activityLeakMonitor.start();
+
+        MatrixLog.i(TAG, "onActivityCreated " + activityLeakMonitor);
+
+        synchronized (mActivityLeakMonitor) {
+            mActivityLeakMonitor.add(activityLeakMonitor);
+        }
     }
 
     @Override
-    public void onForeground(boolean isForeground) {
-        if (isForeground) {
-            foreground();
-        } else {
-            background();
-        }
-    }
+    public void onActivityDestroyed(@NonNull Activity activity) {
+        Integer activityHashCode = activity.hashCode();
+        MatrixLog.i(TAG, "onActivityDestroyed " + activityHashCode);
 
-    private Runnable mRunnable = new Runnable() {
-        @Override
-        public void run() {
-            List<OpenGLInfo> leaks = checkEnd();
+        synchronized (mActivityLeakMonitor) {
+            Iterator<ActivityLeakMonitor> it = mActivityLeakMonitor.iterator();
+            while (it.hasNext()) {
+                ActivityLeakMonitor item = it.next();
+                if (null == item) {
+                    continue;
+                }
 
-            if (null == mLeakListener) {
-                return;
-            }
+                if (item.getActivityHashCode() == activityHashCode) {
+                    it.remove();
 
-            for (OpenGLInfo item : leaks) {
-                if (null != item) {
-                    mLeakListener.onLeak(item);
+                    List<OpenGLInfo> leaks = item.end();
+                    for (OpenGLInfo leakItem : leaks) {
+                        if (null != leakItem) {
+                            onLeak(leakItem);
+                        }
+                    }
+
+                    break;
                 }
             }
         }
-    };
-
-    public void foreground() {
-        checkStart();
-        mH.removeCallbacks(mRunnable);
     }
 
-    public void background() {
-        mH.postDelayed(mRunnable, CHECK_TIME);
+    @Override
+    public void onActivityStarted(@NonNull Activity activity) {
+        MatrixLog.i(TAG, "onActivityStarted " + activity.hashCode());
     }
 
-    public interface LeakListener {
-        void onLeak(OpenGLInfo info);
+    @Override
+    public void onActivityResumed(@NonNull Activity activity) {
+        MatrixLog.i(TAG, "onActivityResumed " + activity.hashCode());
     }
+
+    @Override
+    public void onActivityPaused(@NonNull Activity activity) {
+        MatrixLog.i(TAG, "onActivityPaused " + activity.hashCode());
+    }
+
+    @Override
+    public void onActivityStopped(@NonNull Activity activity) {
+        MatrixLog.i(TAG, "onActivityStopped " + activity.hashCode());
+    }
+
+    @Override
+    public void onActivitySaveInstanceState(@NonNull Activity activity, @NonNull Bundle bundle) {
+
+    }
+
+    class ActivityLeakMonitor {
+        private int mActivityHashCode;
+        private CustomizeLeakMonitor mMonitor;
+
+        ActivityLeakMonitor(int hashcode, CustomizeLeakMonitor m) {
+            mActivityHashCode = hashcode;
+            mMonitor = m;
+        }
+
+        void start() {
+            if (null != mMonitor) {
+                mMonitor.checkStart();
+            }
+        }
+
+        List<OpenGLInfo> end() {
+            List<OpenGLInfo> ret = new ArrayList<>();
+            if (null == mMonitor) {
+                return ret;
+            }
+
+            return mMonitor.checkEnd();
+        }
+
+        int getActivityHashCode() {
+            return mActivityHashCode;
+        }
+
+        @Override
+        public String toString() {
+            return "ActivityLeakMonitor{" +
+                    "mActivityHashCode=" + mActivityHashCode +
+                    ", mMonitor=" + mMonitor +
+                    '}';
+        }
+    }
+
 }

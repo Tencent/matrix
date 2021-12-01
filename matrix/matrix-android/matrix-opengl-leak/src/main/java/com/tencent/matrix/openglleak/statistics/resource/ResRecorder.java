@@ -1,16 +1,12 @@
-package com.tencent.matrix.openglleak.statistics.source;
-
-import android.os.Handler;
-
-import com.tencent.matrix.openglleak.utils.GlLeakHandlerThread;
+package com.tencent.matrix.openglleak.statistics.resource;
 
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 
-public class ResRecorderForCustomize implements ResRecordManager.Callback {
+public class ResRecorder implements ResRecordManager.Callback {
 
-    public ResRecorderForCustomize() {
+    public ResRecorder() {
     }
 
     private List<OpenGLInfo> mList = new LinkedList<>();

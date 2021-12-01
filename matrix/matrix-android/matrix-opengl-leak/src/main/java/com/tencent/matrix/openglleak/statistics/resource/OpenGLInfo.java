@@ -1,13 +1,10 @@
-package com.tencent.matrix.openglleak.statistics.source;
+package com.tencent.matrix.openglleak.statistics.resource;
 
-import android.text.TextUtils;
-
+import com.tencent.matrix.openglleak.utils.ActivityRecorder;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class OpenGLInfo {
-
-    private static final String TAG = "OpenGLInfo.TAG";
 
     private int id;
     private int error;
@@ -15,15 +12,13 @@ public class OpenGLInfo {
     private long eglContextNativeHandle;
     private String javaStack = "";
     private String nativeStack = "";
-    private long nativeStackPtr;
+    private long nativeStackPtr = 0L;
     private boolean genOrDelete;
     private TYPE type;
 
-    private boolean maybeLeak = false;
-    private long maybeLeakCheckTime = 0L;
-    private boolean isReported = false;
+    private ActivityRecorder.ActivityInfo activityInfo;
 
-    private String activityName;
+    private AtomicInteger counter;
 
     public enum TYPE {
         TEXTURE, BUFFER, FRAME_BUFFERS, RENDER_BUFFERS
@@ -39,10 +34,7 @@ public class OpenGLInfo {
         this.nativeStackPtr = clone.nativeStackPtr;
         this.genOrDelete = clone.genOrDelete;
         this.type = clone.type;
-        this.maybeLeakCheckTime = clone.maybeLeakCheckTime;
-        this.isReported = clone.isReported;
-        this.maybeLeak = clone.maybeLeak;
-        this.activityName = clone.activityName;
+        this.activityInfo = clone.activityInfo;
     }
 
     public OpenGLInfo(int error) {
@@ -57,7 +49,7 @@ public class OpenGLInfo {
         this.type = type;
     }
 
-    public OpenGLInfo(TYPE type, int id, String threadId, long eglContextNativeHandle, String javaStack, long nativeStackPtr, boolean genOrDelete, String activityName, AtomicInteger counter) {
+    public OpenGLInfo(TYPE type, int id, String threadId, long eglContextNativeHandle, String javaStack, long nativeStackPtr, boolean genOrDelete, ActivityRecorder.ActivityInfo activityInfo, AtomicInteger counter) {
         this.id = id;
         this.threadId = threadId;
         this.eglContextNativeHandle = eglContextNativeHandle;
@@ -65,7 +57,8 @@ public class OpenGLInfo {
         this.nativeStackPtr = nativeStackPtr;
         this.genOrDelete = genOrDelete;
         this.type = type;
-        this.activityName = activityName;
+        this.activityInfo = activityInfo;
+        this.counter = counter;
     }
 
     public int getId() {
@@ -74,10 +67,6 @@ public class OpenGLInfo {
 
     public int getError() {
         return error;
-    }
-
-    protected void setActivityName(String name) {
-        this.activityName = name;
     }
 
     public String getThreadId() {
@@ -97,64 +86,29 @@ public class OpenGLInfo {
     }
 
     public String getNativeStack() {
-        if (TextUtils.isEmpty(nativeStack)) {
-            if (this.nativeStackPtr != 0) {
-                nativeStack = dumpNativeStack(this.nativeStackPtr);
-            } else {
-                nativeStack = "";
-            }
-        }
-        return nativeStack;
+        return ResRecordManager.getInstance().getNativeStack(this);
     }
 
-    public boolean getMaybeLeak() {
-        return maybeLeak;
+    public AtomicInteger getCounter() {
+        return counter;
     }
 
-    public String getActivityName() {
-        return activityName;
+    public long getNativeStackPtr() {
+        return nativeStackPtr;
     }
-
-    public long getMaybeLeakTime() {
-        return maybeLeakCheckTime;
-    }
-
-    public void setNativeStack(String nativeStack) {
-        this.nativeStack = nativeStack;
-    }
-
-    public void setMaybeLeak(boolean b) {
-        this.maybeLeak = b;
-    }
-
-    public void setMaybeLeakCheckTime(long time) {
-        this.maybeLeakCheckTime = time;
-    }
-
-    protected void release() {
-        if (nativeStackPtr == 0) {
-            return;
-        }
-
-        releaseNative(nativeStackPtr);
-    }
-
-    private native void releaseNative(long nativeStackPtr);
-
-    private native String dumpNativeStack(long nativeStackPtr);
 
     @Override
     public String toString() {
         return "OpenGLInfo{" +
                 "id=" + id +
-                ", activityName=" + activityName +
+                ", activityName=" + activityInfo +
                 ", type='" + type.toString() + '\'' +
                 ", error=" + error +
                 ", isGen=" + genOrDelete +
                 ", threadId='" + threadId + '\'' +
                 ", eglContextNativeHandle='" + eglContextNativeHandle + '\'' +
                 ", javaStack='" + javaStack + '\'' +
-                ", nativeStack='" + nativeStack + '\'' +
+                ", nativeStack='" + getNativeStack() + '\'' +
                 ", nativeStackPtr=" + nativeStackPtr +
                 '}';
     }
@@ -162,7 +116,7 @@ public class OpenGLInfo {
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (o == null || !(o instanceof OpenGLInfo)) return false;
         OpenGLInfo that = (OpenGLInfo) o;
         return id == that.id &&
                 eglContextNativeHandle == that.eglContextNativeHandle &&

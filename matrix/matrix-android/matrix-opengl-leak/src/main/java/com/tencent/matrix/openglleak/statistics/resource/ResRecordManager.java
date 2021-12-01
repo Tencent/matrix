@@ -1,4 +1,4 @@
-package com.tencent.matrix.openglleak.statistics.source;
+package com.tencent.matrix.openglleak.statistics.resource;
 
 import android.os.Handler;
 
@@ -6,6 +6,7 @@ import com.tencent.matrix.openglleak.utils.GlLeakHandlerThread;
 
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class ResRecordManager {
 
@@ -65,7 +66,12 @@ public class ResRecordManager {
                         return;
                     }
 
-                    info.release();
+                    AtomicInteger counter = info.getCounter();
+                    counter.set(counter.get() - 1);
+                    if (counter.get() == 0) {
+                        releaseNative(info.getNativeStackPtr());
+                    }
+
                     mInfoList.remove(del);
                 }
 
@@ -77,6 +83,30 @@ public class ResRecordManager {
             }
         });
     }
+
+    public String getNativeStack(OpenGLInfo item) {
+        synchronized (mInfoList) {
+            // 之前可能释放过
+            int index = mInfoList.indexOf(item);
+            if (-1 == index) {
+                return "res already released, can not get native stack";
+            }
+
+            String ret = "";
+
+            OpenGLInfo info = mInfoList.get(index);
+            long nativeStackPtr = info.getNativeStackPtr();
+            if ((null != info) && (nativeStackPtr != 0L)) {
+                ret = dumpNativeStack(nativeStackPtr);
+            }
+
+            return ret;
+        }
+    }
+
+    private native String dumpNativeStack(long nativeStackPtr);
+
+    private native void releaseNative(long nativeStackPtr);
 
     protected void registerCallback(Callback callback) {
         if (null == callback) {
@@ -101,6 +131,11 @@ public class ResRecordManager {
         synchronized (mInfoList) {
             return !mInfoList.contains(item);
         }
+    }
+
+    public void reset() {
+        mCallbackList.clear();
+        mInfoList.clear();
     }
 
     interface Callback {
