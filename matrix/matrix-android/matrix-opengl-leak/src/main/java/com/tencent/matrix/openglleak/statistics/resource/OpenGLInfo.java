@@ -97,6 +97,10 @@ public class OpenGLInfo {
         return nativeStackPtr;
     }
 
+    public ActivityRecorder.ActivityInfo getActivityInfo(){
+        return activityInfo;
+    }
+
     @Override
     public String toString() {
         return "OpenGLInfo{" +
