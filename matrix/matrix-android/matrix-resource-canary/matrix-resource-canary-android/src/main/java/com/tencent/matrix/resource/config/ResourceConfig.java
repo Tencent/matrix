@@ -45,12 +45,14 @@ public final class ResourceConfig {
     private final DumpMode mDumpHprofMode;
     private final boolean mDetectDebugger;
     private final String mTargetActivity;
+    private final String mManufacture;
 
-    private ResourceConfig(IDynamicConfig dynamicConfig, DumpMode dumpHprofMode, boolean detectDebuger, String targetActivity) {
+    private ResourceConfig(IDynamicConfig dynamicConfig, DumpMode dumpHprofMode, boolean detectDebuger, String targetActivity, String manufacture) {
         this.mDynamicConfig = dynamicConfig;
         this.mDumpHprofMode = dumpHprofMode;
         this.mDetectDebugger = detectDebuger;
         this.mTargetActivity = targetActivity;
+        this.mManufacture = manufacture;
     }
 
     public long getScanIntervalMillis() {
@@ -77,12 +79,17 @@ public final class ResourceConfig {
         return mDetectDebugger;
     }
 
+    public String getManufacture() {
+        return mManufacture;
+    }
+
     public static final class Builder {
 
         private DumpMode mDefaultDumpHprofMode = DEFAULT_DUMP_HPROF_MODE;
         private IDynamicConfig dynamicConfig;
         private String mTargetActivity;
         private boolean mDetectDebugger = false;
+        private String mManufacture;
 
         public Builder dynamicConfig(IDynamicConfig dynamicConfig) {
             this.dynamicConfig = dynamicConfig;
@@ -104,8 +111,13 @@ public final class ResourceConfig {
             return this;
         }
 
+        public Builder setManufacture(String manufacture) {
+            mManufacture = manufacture;
+            return this;
+        }
+
         public ResourceConfig build() {
-            return new ResourceConfig(dynamicConfig, mDefaultDumpHprofMode, mDetectDebugger, mTargetActivity);
+            return new ResourceConfig(dynamicConfig, mDefaultDumpHprofMode, mDetectDebugger, mTargetActivity, mManufacture);
         }
     }
 }
