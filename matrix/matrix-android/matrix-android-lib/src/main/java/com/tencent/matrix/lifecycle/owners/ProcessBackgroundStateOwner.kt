@@ -2,7 +2,6 @@ package com.tencent.matrix.lifecycle.owners
 
 import androidx.lifecycle.LifecycleOwner
 import com.tencent.matrix.lifecycle.*
-import com.tencent.matrix.lifecycle.owners.ExplicitBackgroundOwner.active
 import com.tencent.matrix.util.MatrixLog
 import java.util.concurrent.TimeUnit
 
@@ -29,7 +28,11 @@ object ExplicitBackgroundOwner : StatefulOwner() {
     private const val TAG = "Matrix.background.Explicit"
 
     init {
-        MatrixProcessLifecycleOwner.startedStateOwner.observeForever(object : IStateObserver {
+        ImmutableMultiSourceStatefulOwner(
+            ReduceOperators.OR,
+            MatrixProcessLifecycleOwner.startedStateOwner,
+            ForegroundServiceLifecycleOwner
+        ).observeForever(object : IStateObserver {
             override fun on() { // Activity foreground
                 checkTask.stop()
                 turnOff()
@@ -39,27 +42,19 @@ object ExplicitBackgroundOwner : StatefulOwner() {
                 checkTask.post()
             }
         })
-        // Foreground Service monitor is optional
-        ForegroundServiceLifecycleOwner.observeForever(object : IStateObserver {
-            override fun on() { // foreground service launched
-                checkTask.stop()
-                turnOff()
-            }
-
-            override fun off() { // foreground service stopped
-                // only post check task when Activity turned background
-                if (MatrixProcessLifecycleOwner.startedStateOwner.active()) {
-                    return
-                }
-                checkTask.post()
-            }
-        })
     }
 
     private val checkTask = object : TimerChecker(TAG, MAX_CHECK_INTERVAL) {
         override fun action(): Boolean {
+            val uiForeground by lazy { MatrixProcessLifecycleOwner.startedStateOwner.active() }
             val fgService by lazy { MatrixProcessLifecycleOwner.hasForegroundService() }
             val visibleView by lazy { MatrixProcessLifecycleOwner.hasVisibleView() }
+
+            if (uiForeground) {
+                MatrixLog.i(TAG, "turn OFF for UI foreground")
+                turnOff() // must be NOT in explicit background and do NOT need polling checker
+                return false
+            }
 
             if (!fgService && !visibleView) {
                 MatrixLog.i(TAG, "turn ON")
@@ -147,9 +142,9 @@ object DeepBackgroundOwner : StatefulOwner() {
 
     private val delegate = ImmutableMultiSourceStatefulOwner(
         ReduceOperators.AND,
+        MatrixProcessLifecycleOwner.createdStateOwner.reverse(), // move to first to avoid useless checks
         ExplicitBackgroundOwner,
-        StagedBackgroundOwner.reverse(),
-        MatrixProcessLifecycleOwner.createdStateOwner.reverse()
+        StagedBackgroundOwner.reverse()
     )
 
     override fun active() = delegate.active()
