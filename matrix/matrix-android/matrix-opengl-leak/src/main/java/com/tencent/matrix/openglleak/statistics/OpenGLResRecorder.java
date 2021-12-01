@@ -270,6 +270,7 @@ public class OpenGLResRecorder {
                 .append(getResListString(textureList))
                 .append('\n')
                 .append(waveLine)
+                .append("\n")
                 .append("\t\t\tbuffers part :\n")
                 .append(waveLine)
                 .append("\n")
@@ -277,14 +278,9 @@ public class OpenGLResRecorder {
                 .append("\n")
                 .append(waveLine)
                 .append("\n")
-                .append("\t\t\tframebuffers part :\n")
-                .append(waveLine)
-                .append("\n")
-                .append(getResListString(framebufferList))
-                .append("\n")
-                .append(waveLine)
-                .append("\n")
                 .append("\t\t\trenderbuffer part :\n")
+                .append(getResListString(renderbufferList))
+                .append("\n")
                 .append(waveLine)
                 .append("\n");
 
@@ -314,7 +310,7 @@ public class OpenGLResRecorder {
                     .append(String.format(" native stack = %s", res.getNativeStack()))
                     .append("\n")
                     .append(String.format(" memory info = %s", res.getMemoryInfo() == null ? "" : res.getMemoryInfo().toString()))
-                    .append("\n");
+                    .append("\n\n\n");
         }
         return result.toString();
     }
