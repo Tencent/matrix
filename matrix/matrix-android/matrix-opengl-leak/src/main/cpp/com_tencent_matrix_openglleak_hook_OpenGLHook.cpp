@@ -45,7 +45,7 @@ extern "C" JNIEXPORT jboolean JNICALL Java_com_tencent_matrix_openglleak_hook_Op
         method_onGlTexImage2D = env->GetStaticMethodID(class_OpenGLHook, "onGlTexImage2D", "(IIIIIIIIJ)V");
         method_onGlTexImage3D = env->GetStaticMethodID(class_OpenGLHook, "onGlTexImage3D", "(IIIIIIIIIJ)V");
         method_onGlBufferData = env->GetStaticMethodID(class_OpenGLHook, "onGlBufferData", "(IJI)V");
-        method_onGlRenderbufferStorage = env->GetStaticMethodID(class_OpenGLHook, "onGlRenderbufferStorage", "(IIIJI)V");
+        method_onGlRenderbufferStorage = env->GetStaticMethodID(class_OpenGLHook, "onGlRenderbufferStorage", "(IIIIJ)V");
         return true;
     }
 
