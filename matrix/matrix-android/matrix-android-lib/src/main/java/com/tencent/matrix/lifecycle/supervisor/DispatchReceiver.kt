@@ -11,8 +11,8 @@ import com.tencent.matrix.util.*
 import java.util.concurrent.TimeUnit
 
 internal interface IProcessListener {
-    fun addDyingListener(listener: (isCurrent: Boolean) -> Boolean)
-    fun removeDyingListener(listener: (isCurrent: Boolean) -> Boolean)
+    fun addDyingListener(listener: (processName: String?, pid: Int?) -> Boolean)
+    fun removeDyingListener(listener: (processName: String?, pid: Int?) -> Boolean)
     fun addDeathListener(listener: (processName: String?, pid: Int?, isLruKill: Boolean?) -> Unit)
     fun removeDeathListener(listener: (processName: String?, pid: Int?, isLruKill: Boolean?) -> Unit)
 }
@@ -34,15 +34,18 @@ internal object DispatchReceiver : BroadcastReceiver(), IProcessListener {
     private val permission by lazy { "${packageName!!}.matrix.permission.PROCESS_SUPERVISOR" }
 
     private var rescued: Boolean = false
-    private val dyingListeners = ArrayList<(isCurrent: Boolean) -> Boolean>()
+    private val dyingListeners = ArrayList<(processName: String?, pid: Int?) -> Boolean>()
     private val deathListeners =
         ArrayList<(processName: String?, pid: Int?, isLruKill: Boolean?) -> Unit>()
 
-    private fun ArrayList<(isCurrent: Boolean) -> Boolean>.invokeAll(isCurrent: Boolean): Boolean {
+    private fun ArrayList<(processName: String?, pid: Int?) -> Boolean>.invokeAll(
+        processName: String?,
+        pid: Int?
+    ): Boolean {
         var rescue = false
         forEach {
             safeApply {
-                val r = it.invoke(isCurrent)
+                val r = it.invoke(processName, pid)
                 if (r) {
                     MatrixLog.e(ProcessSupervisor.tag, "${it.javaClass} try to rescue process")
                 }
@@ -87,11 +90,11 @@ internal object DispatchReceiver : BroadcastReceiver(), IProcessListener {
         MatrixLog.i(ProcessSupervisor.tag, "DispatchReceiver installed")
     }
 
-    override fun addDyingListener(listener: (isCurrent: Boolean) -> Boolean) {
+    override fun addDyingListener(listener: (processName: String?, pid: Int?) -> Boolean) {
         dyingListeners.add(listener)
     }
 
-    override fun removeDyingListener(listener: (isCurrent: Boolean) -> Boolean) {
+    override fun removeDyingListener(listener: (processName: String?, pid: Int?) -> Boolean) {
         dyingListeners.remove(listener)
     }
 
@@ -149,7 +152,6 @@ internal object DispatchReceiver : BroadcastReceiver(), IProcessListener {
         event: SupervisorEvent,
         vararg params: Pair<String, String>
     ) {
-//        MatrixLog.d(SupervisorLifecycle.tag, "dispatch [${event.name}]")
         val intent = Intent(event.name)
         params.forEach {
             intent.putExtra(it.first, it.second)
@@ -178,11 +180,14 @@ internal object DispatchReceiver : BroadcastReceiver(), IProcessListener {
                     ProcessSupervisor.tag,
                     "receive kill target: $targetPid-$targetProcessName"
                 )
-                if (targetProcessName == MatrixUtil.getProcessName(context) && Process.myPid()
-                        .toString() == targetPid
+
+                val toRescue = dyingListeners.invokeAll(targetProcessName, targetPid?.toInt())
+
+                if (targetProcessName == MatrixUtil.getProcessName(context)
+                    && Process.myPid().toString() == targetPid
                 ) {
                     val token = ProcessToken.current(context)
-                    if (dyingListeners.invokeAll(true) && !rescued) {
+                    if (toRescue && !rescued) {
                         rescued = true
                         ProcessSupervisor.supervisorProxy?.onProcessRescuedFromKill(token)
                         MatrixLog.e(ProcessSupervisor.tag, "rescued once !!!")
@@ -218,8 +223,6 @@ internal object DispatchReceiver : BroadcastReceiver(), IProcessListener {
                             MatrixLog.i(ProcessSupervisor.tag, "recheck: process is on foreground")
                         }
                     }, TimeUnit.SECONDS.toMillis(10))
-                } else {
-                    dyingListeners.invokeAll(false)
                 }
             }
             SupervisorEvent.SUPERVISOR_DISPATCH_DEATH.name -> {
