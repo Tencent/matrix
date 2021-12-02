@@ -69,11 +69,13 @@ class SupervisorService : Service() {
         override fun stateRegister(token: ProcessToken) {
             val pid = Binder.getCallingPid()
             token.linkToDeath {
-                val dead = tokenRecord.removeToken(pid)
-                val lruRemoveSuccess = backgroundProcessLru.remove(dead)
-                val proxyRemoveSuccess = RemoteProcessLifecycleProxy.removeProxy(dead)
-                MatrixLog.i(TAG, "$pid-$dead was dead. is LRU kill? ${!lruRemoveSuccess && !proxyRemoveSuccess}")
-                DispatchReceiver.dispatchDeath(applicationContext, dead.name, dead.pid, !lruRemoveSuccess && !proxyRemoveSuccess)
+                safeApply(TAG) {
+                    val dead = tokenRecord.removeToken(pid)
+                    val lruRemoveSuccess = backgroundProcessLru.remove(dead)
+                    val proxyRemoveSuccess = RemoteProcessLifecycleProxy.removeProxy(dead)
+                    MatrixLog.i(TAG, "$pid-$dead was dead. is LRU kill? ${!lruRemoveSuccess && !proxyRemoveSuccess}")
+                    DispatchReceiver.dispatchDeath(applicationContext, dead.name, dead.pid, !lruRemoveSuccess && !proxyRemoveSuccess)
+                }
             }
             tokenRecord.addToken(token)
             backgroundProcessLru.moveOrAddFirst(token)
@@ -111,7 +113,7 @@ class SupervisorService : Service() {
         override fun onProcessKilled(token: ProcessToken) {
             val pid = Binder.getCallingPid()
             Assert.assertEquals(pid, token.pid)
-            safeApply { targetKilledCallback?.invoke(LRU_KILL_SUCCESS, token.name, token.pid) }
+            safeApply(TAG) { targetKilledCallback?.invoke(LRU_KILL_SUCCESS, token.name, token.pid) }
             backgroundProcessLru.remove(token)
             RemoteProcessLifecycleProxy.removeProxy(token)
             asyncLog("KILL: [$pid-${token.name}] X [${backgroundProcessLru.size}]${backgroundProcessLru.contentToString()}")
@@ -120,13 +122,13 @@ class SupervisorService : Service() {
         override fun onProcessRescuedFromKill(token: ProcessToken) {
             val pid = Binder.getCallingPid()
             Assert.assertEquals(pid, token.pid)
-            safeApply { targetKilledCallback?.invoke(LRU_KILL_RESCUED, token.name, token.pid) }
+            safeApply(TAG) { targetKilledCallback?.invoke(LRU_KILL_RESCUED, token.name, token.pid) }
         }
 
         override fun onProcessKillCanceled(token: ProcessToken) {
             val pid = Binder.getCallingPid()
             Assert.assertEquals(pid, token.pid)
-            safeApply { targetKilledCallback?.invoke(LRU_KILL_CANCELED, token.name, token.pid) }
+            safeApply(TAG) { targetKilledCallback?.invoke(LRU_KILL_CANCELED, token.name, token.pid) }
         }
     }
 

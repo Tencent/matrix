@@ -44,7 +44,7 @@ internal object DispatchReceiver : BroadcastReceiver(), IProcessListener {
     ): Boolean {
         var rescue = false
         forEach {
-            safeApply {
+            safeApply(ProcessSupervisor.tag) {
                 val r = it.invoke(processName, pid)
                 if (r) {
                     MatrixLog.e(ProcessSupervisor.tag, "${it.javaClass} try to rescue process")

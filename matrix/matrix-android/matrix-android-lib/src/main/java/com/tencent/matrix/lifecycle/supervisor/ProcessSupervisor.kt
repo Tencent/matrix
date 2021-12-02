@@ -150,7 +150,7 @@ object ProcessSupervisor : IProcessListener by DispatchReceiver {
 
                 supervisorProxy = ISupervisorProxy.Stub.asInterface(service)
                 MatrixLog.i(TAG, "on Supervisor Connected $supervisorProxy")
-                supervisorProxy?.safeApply { stateRegister(ProcessToken.current(app)) }
+                supervisorProxy?.safeApply(tag) { stateRegister(ProcessToken.current(app)) }
                 DispatcherStateOwner.attach(supervisorProxy, application!!)
             }
 
