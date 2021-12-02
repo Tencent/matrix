@@ -37,9 +37,11 @@ public class ResRecordManager {
                     mInfoList.add(gen);
                 }
 
-                for (Callback cb : mCallbackList) {
-                    if (null != cb) {
-                        cb.gen(gen);
+                synchronized (mCallbackList) {
+                    for (Callback cb : mCallbackList) {
+                        if (null != cb) {
+                            cb.gen(gen);
+                        }
                     }
                 }
             }
@@ -75,9 +77,11 @@ public class ResRecordManager {
                     mInfoList.remove(del);
                 }
 
-                for (Callback cb : mCallbackList) {
-                    if (null != cb) {
-                        cb.delete(del);
+                synchronized (mCallbackList) {
+                    for (Callback cb : mCallbackList) {
+                        if (null != cb) {
+                            cb.delete(del);
+                        }
                     }
                 }
             }
@@ -113,18 +117,22 @@ public class ResRecordManager {
             return;
         }
 
-        if (mCallbackList.contains(callback)) {
-            return;
-        }
+        synchronized (mCallbackList) {
+            if (mCallbackList.contains(callback)) {
+                return;
+            }
 
-        mCallbackList.add(callback);
+            mCallbackList.add(callback);
+        }
     }
 
     protected void unregisterCallback(Callback callback) {
         if (null == callback) {
             return;
         }
-        mCallbackList.remove(callback);
+        synchronized (mCallbackList) {
+            mCallbackList.remove(callback);
+        }
     }
 
     public boolean isGLInfoRelease(OpenGLInfo item) {
@@ -134,7 +142,9 @@ public class ResRecordManager {
     }
 
     public void clear() {
-        mInfoList.clear();
+        synchronized (mInfoList) {
+            mInfoList.clear();
+        }
     }
 
     interface Callback {
