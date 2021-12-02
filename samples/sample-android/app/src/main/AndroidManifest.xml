@@ -40,6 +40,9 @@
         <activity android:name=".sqlitelint.TestSQLiteLintActivity" />
         <activity android:name=".battery.TestBatteryActivity" />
         <activity android:name=".hooks.TestHooksActivity" />
+        <activity
+            android:name=".battery.viewer.BatteryStatsActivity"
+            android:exported="true" />
 
         <service android:name=".hooks.OtherProcessService" android:process=":other"/>
     </application>

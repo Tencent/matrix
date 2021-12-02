@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    tools:context=".battery.viewer.BatteryStatsActivity">
+
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rv_battery_stats"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+        </androidx.recyclerview.widget.RecyclerView>
+
+        <LinearLayout
+            android:visibility="gone"
+            tools:visibility="visible"
+            android:orientation="vertical"
+            android:id="@+id/header_pinned"
+            android:layout_width="match_parent"
+            android:layout_height="35dp">
+        </LinearLayout>
+    </RelativeLayout>
+</LinearLayout>
