@@ -17,7 +17,7 @@ public class OpenglIndexDetectorService extends Service {
 
     private final static String TAG = "matrix.OpenglIndexDetectorService";
 
-    private IOpenglIndexDetector.Stub stub = new IOpenglIndexDetector.Stub() {
+    private final IOpenglIndexDetector.Stub stub = new IOpenglIndexDetector.Stub() {
         @Override
         public Map<String, Integer> seekIndex() throws RemoteException {
             return seekOpenglFuncIndex();
@@ -63,7 +63,29 @@ public class OpenglIndexDetectorService extends Service {
         int glDeleteRenderbuffersIndex = FuncSeeker.getFuncIndex(FuncNameString.GL_DELETE_RENDERBUFFERS);
         MatrixLog.i(TAG, "glDeleteRenderbuffers index:" + glDeleteRenderbuffersIndex);
 
-        if ((glGenTexturesIndex * glDeleteTexturesIndex * glGenBuffersIndex * glDeleteBuffersIndex * glGenFramebuffersIndex * glDeleteFramebuffersIndex * glGenRenderbuffersIndex * glDeleteRenderbuffersIndex) == 0) {
+        int glTexImage2DIndex = FuncSeeker.getFuncIndex(FuncNameString.GL_TEX_IMAGE_2D);
+        MatrixLog.i(TAG, "glTexImage2DIndex index:" + glTexImage2DIndex);
+        int glTexImage3DIndex = FuncSeeker.getFuncIndex(FuncNameString.GL_TEX_IMAGE_3D);
+        MatrixLog.i(TAG, "glTexImage3DIndex index:" + glTexImage3DIndex);
+
+        int glBindTextureIndex = FuncSeeker.getFuncIndex(FuncNameString.GL_BIND_TEXTURE);
+        MatrixLog.i(TAG, "glBindTextureIndex index:" + glBindTextureIndex);
+        int glBindBufferIndex = FuncSeeker.getFuncIndex(FuncNameString.GL_BIND_BUFFER);
+        MatrixLog.i(TAG, "glBindBufferIndex index:" + glBindBufferIndex);
+        int glBindFramebufferIndex = FuncSeeker.getFuncIndex(FuncNameString.GL_BIND_FRAMEBUFFER);
+        MatrixLog.i(TAG, "glBindFramebufferIndex index:" + glBindFramebufferIndex);
+        int glBindRenderbufferIndex = FuncSeeker.getFuncIndex(FuncNameString.GL_BIND_RENDERBUFFER);
+        MatrixLog.i(TAG, "glBindRenderbufferIndex index:" + glBindRenderbufferIndex);
+
+        int glBufferDataIndex = FuncSeeker.getFuncIndex(FuncNameString.GL_BUFFER_DATA);
+        MatrixLog.i(TAG, "glBufferData index:" + glBufferDataIndex);
+        int glRenderbufferStorageIndex = FuncSeeker.getFuncIndex(FuncNameString.GL_RENDER_BUFFER_STORAGE);
+        MatrixLog.i(TAG, "glRenderbufferStorage index:" + glRenderbufferStorageIndex);
+
+        if ((glGenTexturesIndex * glDeleteTexturesIndex * glGenBuffersIndex * glDeleteBuffersIndex * glGenFramebuffersIndex
+                * glDeleteFramebuffersIndex * glGenRenderbuffersIndex * glDeleteRenderbuffersIndex * glTexImage2DIndex * glTexImage3DIndex
+                * glBindTextureIndex * glBindBufferIndex * glBindFramebufferIndex * glBindRenderbufferIndex
+                * glRenderbufferStorageIndex * glBufferDataIndex) == 0) {
             MatrixLog.e(TAG, "seek func index fail!");
             return null;
         }
@@ -77,8 +99,18 @@ public class OpenglIndexDetectorService extends Service {
         out.put(FuncNameString.GL_DELETE_FRAMEBUFFERS, glDeleteFramebuffersIndex);
         out.put(FuncNameString.GL_GEN_RENDERBUFFERS, glGenRenderbuffersIndex);
         out.put(FuncNameString.GL_DELETE_RENDERBUFFERS, glDeleteRenderbuffersIndex);
+        out.put(FuncNameString.GL_TEX_IMAGE_2D, glTexImage2DIndex);
+        out.put(FuncNameString.GL_TEX_IMAGE_3D, glTexImage3DIndex);
+        out.put(FuncNameString.GL_BIND_TEXTURE, glBindTextureIndex);
+        out.put(FuncNameString.GL_BIND_BUFFER, glBindBufferIndex);
+        out.put(FuncNameString.GL_BIND_FRAMEBUFFER, glBindFramebufferIndex);
+        out.put(FuncNameString.GL_BIND_RENDERBUFFER, glBindRenderbufferIndex);
+        out.put(FuncNameString.GL_BUFFER_DATA, glBufferDataIndex);
+        out.put(FuncNameString.GL_RENDER_BUFFER_STORAGE, glRenderbufferStorageIndex);
 
         MatrixLog.i(TAG, "seek func index succ!");
+
+        EGLHelper.release();
         return out;
     }
 

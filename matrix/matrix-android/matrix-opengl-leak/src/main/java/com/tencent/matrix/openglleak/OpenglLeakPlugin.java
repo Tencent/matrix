@@ -83,7 +83,11 @@ public class OpenglLeakPlugin extends Plugin {
             int hookResult = map.get(FuncNameString.GL_GEN_TEXTURES) * map.get(FuncNameString.GL_DELETE_TEXTURES)
                     * map.get(FuncNameString.GL_GEN_BUFFERS) * map.get(FuncNameString.GL_DELETE_BUFFERS)
                     * map.get(FuncNameString.GL_GEN_FRAMEBUFFERS) * map.get(FuncNameString.GL_DELETE_FRAMEBUFFERS)
-                    * map.get(FuncNameString.GL_GEN_RENDERBUFFERS) * map.get(FuncNameString.GL_DELETE_RENDERBUFFERS);
+                    * map.get(FuncNameString.GL_GEN_RENDERBUFFERS) * map.get(FuncNameString.GL_DELETE_RENDERBUFFERS)
+                    * map.get(FuncNameString.GL_TEX_IMAGE_2D) * map.get(FuncNameString.GL_BIND_TEXTURE)
+                    * map.get(FuncNameString.GL_BIND_BUFFER) * map.get(FuncNameString.GL_BIND_FRAMEBUFFER)
+                    * map.get(FuncNameString.GL_BIND_RENDERBUFFER) * map.get(FuncNameString.GL_TEX_IMAGE_3D)
+                    * map.get(FuncNameString.GL_RENDER_BUFFER_STORAGE) * map.get(FuncNameString.GL_BUFFER_DATA);
             MatrixLog.e(TAG, "hookResult = " + hookResult);
             if (hookResult == 0) {
                 if (OpenglLeakPlugin.sCallback != null) {
@@ -104,6 +108,17 @@ public class OpenglLeakPlugin extends Plugin {
             OpenGLHook.getInstance().hook(FuncNameString.GL_DELETE_FRAMEBUFFERS, map.get(FuncNameString.GL_DELETE_FRAMEBUFFERS));
             OpenGLHook.getInstance().hook(FuncNameString.GL_GEN_RENDERBUFFERS, map.get(FuncNameString.GL_GEN_RENDERBUFFERS));
             OpenGLHook.getInstance().hook(FuncNameString.GL_DELETE_RENDERBUFFERS, map.get(FuncNameString.GL_DELETE_RENDERBUFFERS));
+            OpenGLHook.getInstance().hook(FuncNameString.GL_TEX_IMAGE_2D, map.get(FuncNameString.GL_TEX_IMAGE_2D));
+            OpenGLHook.getInstance().hook(FuncNameString.GL_TEX_IMAGE_3D, map.get(FuncNameString.GL_TEX_IMAGE_3D));
+            OpenGLHook.getInstance().hook(FuncNameString.GL_BIND_TEXTURE, map.get(FuncNameString.GL_BIND_TEXTURE));
+            OpenGLHook.getInstance().hook(FuncNameString.GL_BIND_BUFFER, map.get(FuncNameString.GL_BIND_BUFFER));
+//            OpenGLHook.getInstance().hook(FuncNameString.GL_BIND_FRAMEBUFFER, map.get(FuncNameString.GL_BIND_FRAMEBUFFER));
+            OpenGLHook.getInstance().hook(FuncNameString.GL_BIND_RENDERBUFFER, map.get(FuncNameString.GL_BIND_RENDERBUFFER));
+            OpenGLHook.getInstance().hook(FuncNameString.GL_BUFFER_DATA, map.get(FuncNameString.GL_BUFFER_DATA));
+            OpenGLHook.getInstance().hook(FuncNameString.GL_RENDER_BUFFER_STORAGE, map.get(FuncNameString.GL_RENDER_BUFFER_STORAGE));
+
+            EGLHelper.release();
+
             MatrixLog.e(TAG, "hook finish");
         } catch (Throwable e) {
             e.printStackTrace();

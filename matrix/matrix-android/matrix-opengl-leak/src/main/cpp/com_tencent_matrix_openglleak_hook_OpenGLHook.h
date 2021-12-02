@@ -105,6 +105,14 @@ JNIEXPORT jboolean JNICALL Java_com_tencent_matrix_openglleak_hook_OpenGLHook_ho
         (JNIEnv *, jclass, jint);
 
 
+extern "C"
+JNIEXPORT jboolean JNICALL
+Java_com_tencent_matrix_openglleak_hook_OpenGLHook_hookGlTexImage2D(JNIEnv *env, jclass clazz, jint index);
+
+extern "C"
+JNIEXPORT jboolean JNICALL
+Java_com_tencent_matrix_openglleak_hook_OpenGLHook_hookGlTexImage3D(JNIEnv *env, jclass clazz, jint index);
+
 #ifdef __cplusplus
 }
 #endif
