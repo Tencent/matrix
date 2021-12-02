@@ -50,7 +50,7 @@ data class SupervisorConfig(
     val lruKillerWhiteList: List<String> = emptyList()
 )
 
-object ProcessSupervisor {
+object ProcessSupervisor : IProcessListener by DispatchReceiver {
 
     private const val TAG = "Matrix.ProcessSupervisor"
 
@@ -127,12 +127,6 @@ object ProcessSupervisor {
         inCharge(config.autoCreate, app)
         return isSupervisor
     }
-
-    fun addKilledListener(listener: (isCurrent: Boolean) -> Boolean) =
-        DispatchReceiver.addKilledListener(listener)
-
-    fun removeKilledListener(listener: (isCurrent: Boolean) -> Boolean) =
-        DispatchReceiver.removeKilledListener(listener)
 
     fun backgroundLruKill(killedResult: (result: Int, process: String?, pid: Int) -> Unit) =
         SupervisorService.instance?.backgroundLruKill(killedResult)

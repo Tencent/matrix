@@ -7,11 +7,15 @@ import android.content.IntentFilter
 import android.os.Build
 import android.os.Process
 import com.tencent.matrix.lifecycle.owners.MatrixProcessLifecycleOwner
-import com.tencent.matrix.util.MatrixHandlerThread
-import com.tencent.matrix.util.MatrixLog
-import com.tencent.matrix.util.MatrixUtil
-import com.tencent.matrix.util.contentToString
+import com.tencent.matrix.util.*
 import java.util.concurrent.TimeUnit
+
+internal interface IProcessListener {
+    fun addDyingListener(listener: (isCurrent: Boolean) -> Boolean)
+    fun removeDyingListener(listener: (isCurrent: Boolean) -> Boolean)
+    fun addDeathListener(listener: (processName: String?, pid: Int?, isLruKill: Boolean?) -> Unit)
+    fun removeDeathListener(listener: (processName: String?, pid: Int?, isLruKill: Boolean?) -> Unit)
+}
 
 /**
  * [DispatchReceiver] should be installed in all processes
@@ -19,34 +23,52 @@ import java.util.concurrent.TimeUnit
  *
  * Created by Yves on 2021/10/12
  */
-internal object DispatchReceiver : BroadcastReceiver() {
+internal object DispatchReceiver : BroadcastReceiver(), IProcessListener {
 
     private const val KEY_PROCESS_NAME = "KEY_PROCESS_NAME"
     private const val KEY_PROCESS_PID = "KEY_PROCESS_PID"
     private const val KEY_STATEFUL_NAME = "KEY_STATEFUL_NAME"
+    private const val KEY_DEAD_FROM_LRU_KILL = "KEY_DEAD_FROM_LRU_KILL"
 
     private var packageName: String? = null
     private val permission by lazy { "${packageName!!}.matrix.permission.PROCESS_SUPERVISOR" }
 
     private var rescued: Boolean = false
-    private val killedListeners = ArrayList<(isCurrent: Boolean) -> Boolean>()
+    private val dyingListeners = ArrayList<(isCurrent: Boolean) -> Boolean>()
+    private val deathListeners =
+        ArrayList<(processName: String?, pid: Int?, isLruKill: Boolean?) -> Unit>()
 
     private fun ArrayList<(isCurrent: Boolean) -> Boolean>.invokeAll(isCurrent: Boolean): Boolean {
         var rescue = false
         forEach {
-            val r = it.invoke(isCurrent)
-            if (r) {
-                MatrixLog.e(ProcessSupervisor.tag, "${it.javaClass} try to rescue process")
+            safeApply {
+                val r = it.invoke(isCurrent)
+                if (r) {
+                    MatrixLog.e(ProcessSupervisor.tag, "${it.javaClass} try to rescue process")
+                }
+                rescue = rescue || r
             }
-            rescue = rescue || r
         }
         return rescue
     }
 
+    private fun ArrayList<(processName: String?, pid: Int?, isLruKill: Boolean?) -> Unit>.invokeAll(
+        processName: String?,
+        pid: Int?,
+        isLruKill: Boolean?
+    ) =
+        forEach {
+            safeApply(ProcessSupervisor.tag) {
+                it.invoke(processName, pid, isLruKill)
+            }
+        }
+
+
     private enum class SupervisorEvent {
         SUPERVISOR_DISPATCH_APP_STATE_TURN_ON,
         SUPERVISOR_DISPATCH_APP_STATE_TURN_OFF,
-        SUPERVISOR_DISPATCH_KILL;
+        SUPERVISOR_DISPATCH_KILL,
+        SUPERVISOR_DISPATCH_DEATH;
     }
 
     internal fun install(context: Context?) {
@@ -65,12 +87,20 @@ internal object DispatchReceiver : BroadcastReceiver() {
         MatrixLog.i(ProcessSupervisor.tag, "DispatchReceiver installed")
     }
 
-    fun addKilledListener(listener: (isCurrent: Boolean) -> Boolean) {
-        killedListeners.add(listener)
+    override fun addDyingListener(listener: (isCurrent: Boolean) -> Boolean) {
+        dyingListeners.add(listener)
     }
 
-    fun removeKilledListener(listener: (isCurrent: Boolean) -> Boolean) {
-        killedListeners.remove(listener)
+    override fun removeDyingListener(listener: (isCurrent: Boolean) -> Boolean) {
+        dyingListeners.remove(listener)
+    }
+
+    override fun addDeathListener(listener: (processName: String?, pid: Int?, isLruKill: Boolean?) -> Unit) {
+        deathListeners.add(listener)
+    }
+
+    override fun removeDeathListener(listener: (processName: String?, pid: Int?, isLruKill: Boolean?) -> Unit) {
+        deathListeners.remove(listener)
     }
 
     internal fun dispatchAppStateOn(context: Context?, statefulName: String) {
@@ -95,6 +125,21 @@ internal object DispatchReceiver : BroadcastReceiver() {
             SupervisorEvent.SUPERVISOR_DISPATCH_KILL,
             KEY_PROCESS_NAME to targetProcessName,
             KEY_PROCESS_PID to targetPid.toString()
+        )
+    }
+
+    internal fun dispatchDeath(
+        context: Context?,
+        processName: String,
+        pid: Int,
+        deadFromLruKill: Boolean
+    ) {
+        dispatch(
+            context,
+            SupervisorEvent.SUPERVISOR_DISPATCH_DEATH,
+            KEY_PROCESS_NAME to processName,
+            KEY_PROCESS_PID to pid.toString(),
+            KEY_DEAD_FROM_LRU_KILL to deadFromLruKill.toString()
         )
     }
 
@@ -137,7 +182,7 @@ internal object DispatchReceiver : BroadcastReceiver() {
                         .toString() == targetPid
                 ) {
                     val token = ProcessToken.current(context)
-                    if (killedListeners.invokeAll(true) && !rescued) {
+                    if (dyingListeners.invokeAll(true) && !rescued) {
                         rescued = true
                         ProcessSupervisor.supervisorProxy?.onProcessRescuedFromKill(token)
                         MatrixLog.e(ProcessSupervisor.tag, "rescued once !!!")
@@ -150,10 +195,20 @@ internal object DispatchReceiver : BroadcastReceiver() {
                             && !MatrixProcessLifecycleOwner.hasVisibleView()
                         ) {
                             ProcessSupervisor.supervisorProxy?.onProcessKilled(token)
-                            MatrixLog.e(ProcessSupervisor.tag, "actual kill !!! supervisor = ${ProcessSupervisor.supervisorProxy}")
+                            MatrixLog.e(
+                                ProcessSupervisor.tag,
+                                "actual kill !!! supervisor = ${ProcessSupervisor.supervisorProxy}"
+                            )
                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                                MatrixProcessLifecycleOwner.getRunningAppTasksOf(MatrixUtil.getProcessName(context)).forEach {
-                                    MatrixLog.e(ProcessSupervisor.tag, "removed task ${it.taskInfo.contentToString()}")
+                                MatrixProcessLifecycleOwner.getRunningAppTasksOf(
+                                    MatrixUtil.getProcessName(
+                                        context
+                                    )
+                                ).forEach {
+                                    MatrixLog.e(
+                                        ProcessSupervisor.tag,
+                                        "removed task ${it.taskInfo.contentToString()}"
+                                    )
                                     it.finishAndRemoveTask()
                                 }
                             }
@@ -164,8 +219,14 @@ internal object DispatchReceiver : BroadcastReceiver() {
                         }
                     }, TimeUnit.SECONDS.toMillis(10))
                 } else {
-                    killedListeners.invokeAll(false)
+                    dyingListeners.invokeAll(false)
                 }
+            }
+            SupervisorEvent.SUPERVISOR_DISPATCH_DEATH.name -> {
+                val processName = intent.getStringExtra(KEY_PROCESS_NAME)
+                val pid = intent.getStringExtra(KEY_PROCESS_PID)?.toInt()
+                val deadFromLruKill = intent.getStringExtra(KEY_DEAD_FROM_LRU_KILL).toBoolean()
+                deathListeners.invokeAll(processName, pid, deadFromLruKill)
             }
         }
     }

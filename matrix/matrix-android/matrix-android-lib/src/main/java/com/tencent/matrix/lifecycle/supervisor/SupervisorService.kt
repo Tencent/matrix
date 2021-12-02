@@ -68,15 +68,14 @@ class SupervisorService : Service() {
     private val binder = object : ISupervisorProxy.Stub() {
         override fun stateRegister(token: ProcessToken) {
             val pid = Binder.getCallingPid()
-            Assert.assertEquals(pid, token.pid)
             token.linkToDeath {
                 val dead = tokenRecord.removeToken(pid)
-                backgroundProcessLru.remove(dead)
-                RemoteProcessLifecycleProxy.removeProxy(dead)
-                MatrixLog.i(TAG, "$pid-$dead was dead")
+                val lruRemoveSuccess = backgroundProcessLru.remove(dead)
+                val proxyRemoveSuccess = RemoteProcessLifecycleProxy.removeProxy(dead)
+                MatrixLog.i(TAG, "$pid-$dead was dead. is LRU kill? ${!lruRemoveSuccess && !proxyRemoveSuccess}")
+                DispatchReceiver.dispatchDeath(applicationContext, dead.name, dead.pid, !lruRemoveSuccess && !proxyRemoveSuccess)
             }
             tokenRecord.addToken(token)
-//            RemoteProcessLifecycleProxy.getProxy(token)
             backgroundProcessLru.moveOrAddFirst(token)
             asyncLog("CREATED: [$pid-${token.name}] -> [${backgroundProcessLru.size}]${backgroundProcessLru.contentToString()}")
         }
@@ -228,10 +227,15 @@ class SupervisorService : Service() {
                     .getOrPut(token.statefulName, { RemoteProcessLifecycleProxy(token) })!!
 
 
-            fun removeProxy(token: ProcessToken) {
-                processProxies.remove(token)?.forEach {
+            fun removeProxy(token: ProcessToken): Boolean {
+                val proxies = processProxies.remove(token)
+                if (proxies == null || proxies.isEmpty()) {
+                    return false
+                }
+                proxies.forEach {
                     DispatcherStateOwner.removeSourceOwner(it.key, it.value)
                 }
+                return true
             }
         }
 
