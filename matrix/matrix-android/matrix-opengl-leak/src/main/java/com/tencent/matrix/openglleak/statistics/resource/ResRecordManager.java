@@ -2,12 +2,10 @@ package com.tencent.matrix.openglleak.statistics.resource;
 
 import android.annotation.SuppressLint;
 import android.os.Handler;
-import android.util.Log;
 
 import com.tencent.matrix.openglleak.statistics.MemoryInfo;
 import com.tencent.matrix.openglleak.utils.AutoWrapBuilder;
 import com.tencent.matrix.openglleak.utils.GlLeakHandlerThread;
-import com.tencent.matrix.util.MatrixLog;
 
 import java.io.BufferedWriter;
 import java.io.File;
