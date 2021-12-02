@@ -92,6 +92,7 @@
 
         <!--  Expand  -->
         <RelativeLayout
+            android:id="@+id/layout_expand"
             android:visibility="gone"
             tools:visibility="visible"
             android:layout_width="match_parent"
@@ -114,8 +115,7 @@
             </RelativeLayout>
 
             <LinearLayout
-                android:visibility="gone"
-                tools:visibility="visible"
+                android:visibility="visible"
                 android:id="@+id/layout_expand_entry_header"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
