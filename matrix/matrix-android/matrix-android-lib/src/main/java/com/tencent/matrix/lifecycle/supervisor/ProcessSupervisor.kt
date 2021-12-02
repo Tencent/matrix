@@ -145,6 +145,26 @@ object ProcessSupervisor /*MultiSourceStatefulOwner(ReduceOperators.OR)*/ {
                             }
                         }
                     })
+
+                    if (it.value.attachedSource is ExplicitBackgroundOwner) {
+                        it.value.attachedSource.observeForever(object : IStateObserver {
+                            override fun on() {
+                                safeApply(TAG) {
+                                    ProcessSupervisor.supervisorProxy?.onProcessBackground(
+                                        ProcessToken.current(application!!)
+                                    )
+                                }
+                            }
+
+                            override fun off() {
+                                safeApply(TAG) {
+                                    ProcessSupervisor.supervisorProxy?.onProcessForeground(
+                                        ProcessToken.current(application!!)
+                                    )
+                                }
+                            }
+                        })
+                    }
                 }
             }
 
@@ -185,21 +205,7 @@ object ProcessSupervisor /*MultiSourceStatefulOwner(ReduceOperators.OR)*/ {
         MatrixProcessLifecycleOwner.startedStateOwner
     )
     val appExplicitBackgroundOwner: StatefulOwner =
-        DispatcherStateOwner("appExplicitBackgroundOwner", ExplicitBackgroundOwner).also {
-            it.attachedSource.observeForever(object : IStateObserver {
-                override fun on() {
-                    safeApply(TAG) {
-                        supervisorProxy?.onProcessBackground(ProcessToken.current(application!!))
-                    }
-                }
-
-                override fun off() {
-                    safeApply(TAG) {
-                        supervisorProxy?.onProcessForeground(ProcessToken.current(application!!))
-                    }
-                }
-            })
-        }
+        DispatcherStateOwner("appExplicitBackgroundOwner", ExplicitBackgroundOwner)
     val appStagedBackgroundOwner: StatefulOwner =
         DispatcherStateOwner("appStagedBackgroundOwner", StagedBackgroundOwner)
     val appDeepBackgroundOwner: StatefulOwner =

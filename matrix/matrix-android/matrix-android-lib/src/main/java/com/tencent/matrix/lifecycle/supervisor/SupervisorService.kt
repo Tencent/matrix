@@ -78,18 +78,18 @@ class SupervisorService : Service() {
             tokenRecord.addToken(token)
 //            RemoteProcessLifecycleProxy.getProxy(token)
             backgroundProcessLru.moveOrAddFirst(token)
-            asyncLog(
-                "CREATED: [$pid-${token.name}] -> [${backgroundProcessLru.size}]${backgroundProcessLru.contentToString()}"
-            )
+            asyncLog("CREATED: [$pid-${token.name}] -> [${backgroundProcessLru.size}]${backgroundProcessLru.contentToString()}")
         }
 
         override fun stateTurnOn(token: ProcessToken) {
+            MatrixLog.d(TAG, "stateTurnOn: $token")
             val pid = Binder.getCallingPid()
             Assert.assertEquals(pid, token.pid)
             RemoteProcessLifecycleProxy.getProxy(token).onRemoteStateTurnedOn()
         }
 
         override fun stateTurnOff(token: ProcessToken) {
+            MatrixLog.d(TAG, "stateTurnOff: $token")
             val pid = Binder.getCallingPid()
             Assert.assertEquals(pid, token.pid)
             RemoteProcessLifecycleProxy.getProxy(token).onRemoteStateTurnedOff()
@@ -99,18 +99,14 @@ class SupervisorService : Service() {
             val pid = Binder.getCallingPid()
             Assert.assertEquals(pid, token.pid)
             backgroundProcessLru.moveOrAddFirst(token)
-            asyncLog(
-                "BACKGROUND: [$pid-${token.name}] -> [${backgroundProcessLru.size}]${backgroundProcessLru.contentToString()}"
-            )
+            asyncLog("BACKGROUND: [$pid-${token.name}] -> [${backgroundProcessLru.size}]${backgroundProcessLru.contentToString()}")
         }
 
         override fun onProcessForeground(token: ProcessToken) {
             val pid = Binder.getCallingPid()
             Assert.assertEquals(pid, token.pid)
             backgroundProcessLru.remove(token)
-            asyncLog(
-                "FOREGROUND: [$pid-${token.name}] <- [${backgroundProcessLru.size}]${backgroundProcessLru.contentToString()}"
-            )
+            asyncLog("FOREGROUND: [$pid-${token.name}] <- [${backgroundProcessLru.size}]${backgroundProcessLru.contentToString()}")
         }
 
         override fun onProcessKilled(token: ProcessToken) {
@@ -119,10 +115,7 @@ class SupervisorService : Service() {
             safeApply { targetKilledCallback?.invoke(LRU_KILL_SUCCESS, token.name, token.pid) }
             backgroundProcessLru.remove(token)
             RemoteProcessLifecycleProxy.removeProxy(token)
-            asyncLog(
-                TAG,
-                "KILL: [$pid-${token.name}] X [${backgroundProcessLru.size}]${backgroundProcessLru.contentToString()}"
-            )
+            asyncLog("KILL: [$pid-${token.name}] X [${backgroundProcessLru.size}]${backgroundProcessLru.contentToString()}")
         }
 
         override fun onProcessRescuedFromKill(token: ProcessToken) {
@@ -153,16 +146,6 @@ class SupervisorService : Service() {
                 DispatchReceiver.dispatchAppStateOff(applicationContext, stateName)
             }
         }
-
-//        ProcessSupervisor.observeForever(object : IStateObserver {
-//            override fun on() {
-//                DispatchReceiver.dispatchAppStateOn(this@SupervisorService)
-//            }
-//
-//            override fun off() {
-//                DispatchReceiver.dispatchAppStateOff(this@SupervisorService)
-//            }
-//        })
     }
 
     override fun onBind(intent: Intent?): IBinder {
@@ -230,7 +213,6 @@ class SupervisorService : Service() {
     private class RemoteProcessLifecycleProxy(val token: ProcessToken) : StatefulOwner() {
 
         init {
-//            ProcessSupervisor.addSourceOwner(this)
             ProcessSupervisor.DispatcherStateOwner.addSourceOwner(
                 token.statefulName,
                 this
@@ -241,24 +223,15 @@ class SupervisorService : Service() {
 
             private val processProxies by lazy { ConcurrentHashMap<ProcessToken, ConcurrentHashMap<String, RemoteProcessLifecycleProxy>>() }
 
-//            private val processFgObservers by lazy { ConcurrentHashMap<ProcessToken, RemoteProcessLifecycleProxy>() }
             fun getProxy(token: ProcessToken) =
-                processProxies.getOrPut(token, { ConcurrentHashMap() }).getOrPut(token.statefulName, { RemoteProcessLifecycleProxy(token) })!!
-//                processFgObservers.getOrPut(token, { RemoteProcessLifecycleProxy(token) })!!
+                processProxies.getOrPut(token, { ConcurrentHashMap() })
+                    .getOrPut(token.statefulName, { RemoteProcessLifecycleProxy(token) })!!
 
 
             fun removeProxy(token: ProcessToken) {
                 processProxies.remove(token)?.forEach {
                     ProcessSupervisor.DispatcherStateOwner.removeSourceOwner(it.key, it.value)
                 }
-
-//                processFgObservers.remove(token)?.let { statefulOwner ->
-////                    ProcessSupervisor.removeSourceOwner(statefulOwner)
-//                    ProcessSupervisor.SupervisorDispatcherStateOwner.removeSourceOwner(
-//                        token.name,
-//                        statefulOwner
-//                    )
-//                }
             }
         }
 
