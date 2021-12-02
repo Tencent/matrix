@@ -1,5 +1,6 @@
 package com.tencent.matrix.openglleak.statistics.resource;
 
+import com.tencent.matrix.openglleak.statistics.MemoryInfo;
 import com.tencent.matrix.openglleak.utils.ActivityRecorder;
 
 import java.util.Objects;
@@ -7,15 +8,13 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class OpenGLInfo {
 
-    private int id;
-    private int error;
     private String threadId = "";
-    private long eglContextNativeHandle;
+    private final OpenGLID openGLID;
     private String javaStack = "";
     private String nativeStack = "";
     private long nativeStackPtr = 0L;
-    private boolean genOrDelete;
-    private TYPE type;
+    private final TYPE type;
+    private MemoryInfo memoryInfo;
 
     private ActivityRecorder.ActivityInfo activityInfo;
 
@@ -26,56 +25,54 @@ public class OpenGLInfo {
     }
 
     public OpenGLInfo(OpenGLInfo clone) {
-        this.id = clone.id;
-        this.error = clone.error;
         this.threadId = clone.threadId;
-        this.eglContextNativeHandle = clone.eglContextNativeHandle;
+        this.openGLID = clone.openGLID;
         this.javaStack = clone.javaStack;
         this.nativeStack = clone.nativeStack;
         this.nativeStackPtr = clone.nativeStackPtr;
-        this.genOrDelete = clone.genOrDelete;
         this.type = clone.type;
         this.activityInfo = clone.activityInfo;
     }
 
-    public OpenGLInfo(int error) {
-        this.error = error;
-    }
 
     public OpenGLInfo(TYPE type, int id, String threadId, long eglContextNativeHandle, boolean genOrDelete) {
-        this.id = id;
         this.threadId = threadId;
-        this.eglContextNativeHandle = eglContextNativeHandle;
-        this.genOrDelete = genOrDelete;
+        this.openGLID = new OpenGLID(eglContextNativeHandle, id);
         this.type = type;
     }
 
     public OpenGLInfo(TYPE type, int id, String threadId, long eglContextNativeHandle, String javaStack, long nativeStackPtr, boolean genOrDelete, ActivityRecorder.ActivityInfo activityInfo, AtomicInteger counter) {
-        this.id = id;
         this.threadId = threadId;
-        this.eglContextNativeHandle = eglContextNativeHandle;
         this.javaStack = javaStack;
         this.nativeStackPtr = nativeStackPtr;
-        this.genOrDelete = genOrDelete;
         this.type = type;
         this.activityInfo = activityInfo;
         this.counter = counter;
+        this.openGLID = new OpenGLID(eglContextNativeHandle, id);
+    }
+
+    public OpenGLID getOpenGLID() {
+        return openGLID;
+    }
+
+    public MemoryInfo getMemoryInfo() {
+        return memoryInfo;
+    }
+
+    public long getEglContextNativeHandle() {
+        return openGLID.getEglContextNativeHandle();
+    }
+
+    public void setMemoryInfo(MemoryInfo memoryInfo) {
+        this.memoryInfo = memoryInfo;
     }
 
     public int getId() {
-        return id;
-    }
-
-    public int getError() {
-        return error;
+        return openGLID.getId();
     }
 
     public String getThreadId() {
         return threadId;
-    }
-
-    public long getEglContextNativeHandle() {
-        return eglContextNativeHandle;
     }
 
     public TYPE getType() {
@@ -105,13 +102,11 @@ public class OpenGLInfo {
     @Override
     public String toString() {
         return "OpenGLInfo{" +
-                "id=" + id +
+                "id=" + openGLID.getId() +
                 ", activityName=" + activityInfo +
                 ", type='" + type.toString() + '\'' +
-                ", error=" + error +
-                ", isGen=" + genOrDelete +
                 ", threadId='" + threadId + '\'' +
-                ", eglContextNativeHandle='" + eglContextNativeHandle + '\'' +
+                ", eglContextNativeHandle='" + openGLID.getEglContextNativeHandle() + '\'' +
                 ", javaStack='" + javaStack + '\'' +
                 ", nativeStack='" + getNativeStack() + '\'' +
                 ", nativeStackPtr=" + nativeStackPtr +
@@ -123,15 +118,14 @@ public class OpenGLInfo {
         if (this == o) return true;
         if (o == null || !(o instanceof OpenGLInfo)) return false;
         OpenGLInfo that = (OpenGLInfo) o;
-        return id == that.id &&
-                eglContextNativeHandle == that.eglContextNativeHandle &&
+        return  openGLID.equals(that.openGLID) &&
                 threadId.equals(that.threadId) &&
                 type == that.type;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, threadId, eglContextNativeHandle, type);
+        return Objects.hash(openGLID.hashCode(), threadId, type);
     }
 
 }
