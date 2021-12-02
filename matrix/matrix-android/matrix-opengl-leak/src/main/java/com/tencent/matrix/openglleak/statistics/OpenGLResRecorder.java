@@ -322,7 +322,7 @@ public class OpenGLResRecorder {
     }
 
     private String getMemoryInfoStr(MemoryInfo memory) {
-        return " " + memory.getParamsInfos() +
+        return  memory.getParamsInfos() +
                 "\n" +
                 String.format(" memory java stack = %s", memory.getJavaStack()) +
                 "\n" +
