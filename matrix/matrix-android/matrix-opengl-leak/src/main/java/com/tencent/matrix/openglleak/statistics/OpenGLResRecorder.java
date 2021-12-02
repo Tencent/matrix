@@ -208,6 +208,7 @@ public class OpenGLResRecorder {
             if (oldInfo == null) {
                 infoMap.put(infoHash, info);
             } else {
+                // resource part
                 boolean isSameType = info.getType() == oldInfo.getType();
                 boolean isSameThread = info.getThreadId().equals(oldInfo.getThreadId());
                 boolean isSameEglContext = info.getEglContextNativeHandle() == oldInfo.getEglContextNativeHandle();
@@ -215,6 +216,8 @@ public class OpenGLResRecorder {
 
                 if (isSameType && isSameThread && isSameEglContext && isSameActivity) {
                     oldInfo.incAllocRecord(info.getId());
+                    MemoryInfo oldMemory = oldInfo.getMemoryInfo();
+                    oldMemory.appendParamsInfos(info.getMemoryInfo());
                     infoMap.put(infoHash, oldInfo);
                 }
             }
@@ -310,10 +313,18 @@ public class OpenGLResRecorder {
                     .append("\n")
                     .append(String.format(" native stack = %s", res.getNativeStack()))
                     .append("\n")
-                    .append(String.format(" memory info = %s", res.getMemoryInfo() == null ? "" : res.getMemoryInfo().toString()))
+                    .append(String.format(" memory info = %s", res.getMemoryInfo() == null ? "" : getMemoryInfoStr(res.getMemoryInfo())))
                     .append("\n\n\n");
         }
         return result.toString();
+    }
+
+    private String getMemoryInfoStr(MemoryInfo memory) {
+        return memory.getParamsInfos() +
+                "\n" +
+                String.format(" memory java stack = %s", memory.getJavaStack()) +
+                "\n" +
+                String.format(" memory native stack = %s", memory.getNativeStack());
     }
 
     public void getNativeStack(OpenGLInfo info) {

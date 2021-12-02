@@ -352,16 +352,15 @@ public class OpenGLHook {
             return;
         }
         OpenGLInfo openGLInfo = OpenGLResRecorder.getInstance().getItemByEGLContextAndId(info.getType(), info.getEglContextNativeHandle(), info.getId());
-        String nativeStackString = OpenGLInfo.dumpNativeStack(nativeStack);
         if (openGLInfo != null) {
             MemoryInfo memoryInfo = new MemoryInfo();
-            memoryInfo.setTexturesInfo(target, level, internalFormat, width, height, 0, border, format, type, info.getId(), eglContextId, size, javaStack, nativeStackString);
+            memoryInfo.setTexturesInfo(target, level, internalFormat, width, height, 0, border, format, type, info.getId(), eglContextId, size, javaStack, nativeStack);
             openGLInfo.setMemoryInfo(memoryInfo);
             OpenGLResRecorder.getInstance().replace(openGLInfo);
         }
 
         if (getInstance().mMemoryListener != null) {
-            getInstance().mMemoryListener.onGlTexImage2D(target, level, internalFormat, width, height, border, format, type, info.getId(), eglContextId, size, javaStack, nativeStackString);
+            getInstance().mMemoryListener.onGlTexImage2D(target, level, internalFormat, width, height, border, format, type, info.getId(), eglContextId, size);
         }
 
     }
@@ -377,16 +376,15 @@ public class OpenGLHook {
             return;
         }
         OpenGLInfo openGLInfo = OpenGLResRecorder.getInstance().getItemByEGLContextAndId(info.getType(), info.getEglContextNativeHandle(), info.getId());
-        String nativeStackString = OpenGLInfo.dumpNativeStack(nativeStack);
         if (openGLInfo != null) {
             MemoryInfo memoryInfo = new MemoryInfo();
-            memoryInfo.setTexturesInfo(target, level, internalFormat, width, height, depth, border, format, type, info.getId(), eglContextId, size, javaStack, nativeStackString);
+            memoryInfo.setTexturesInfo(target, level, internalFormat, width, height, depth, border, format, type, info.getId(), eglContextId, size, javaStack, nativeStack);
             openGLInfo.setMemoryInfo(memoryInfo);
             OpenGLResRecorder.getInstance().replace(openGLInfo);
         }
 
         if (getInstance().mMemoryListener != null) {
-            getInstance().mMemoryListener.onGlTexImage3D(target, level, internalFormat, width, height, depth, border, format, type, info.getId(), eglContextId, size, javaStack, nativeStackString);
+            getInstance().mMemoryListener.onGlTexImage3D(target, level, internalFormat, width, height, depth, border, format, type, info.getId(), eglContextId, size);
         }
 
     }
@@ -405,16 +403,15 @@ public class OpenGLHook {
             return;
         }
         OpenGLInfo openGLInfo = OpenGLResRecorder.getInstance().getItemByEGLContextAndId(info.getType(), info.getEglContextNativeHandle(), info.getId());
-        String nativeStackString = OpenGLInfo.dumpNativeStack(nativeStack);
         if (openGLInfo != null) {
             MemoryInfo memoryInfo = new MemoryInfo();
-            memoryInfo.setBufferInfo(target, usage, info.getId(), eglContextId, size, javaStack, nativeStackString);
+            memoryInfo.setBufferInfo(target, usage, info.getId(), eglContextId, size, javaStack, nativeStack);
             openGLInfo.setMemoryInfo(memoryInfo);
             OpenGLResRecorder.getInstance().replace(openGLInfo);
         }
 
         if (getInstance().mMemoryListener != null) {
-            getInstance().mMemoryListener.onGlBufferData(target, usage, info.getId(), eglContextId, size, javaStack, nativeStackString);
+            getInstance().mMemoryListener.onGlBufferData(target, usage, info.getId(), eglContextId, size);
         }
 
     }
@@ -430,16 +427,15 @@ public class OpenGLHook {
             return;
         }
         OpenGLInfo openGLInfo = OpenGLResRecorder.getInstance().getItemByEGLContextAndId(info.getType(), info.getEglContextNativeHandle(), info.getId());
-        String nativeStackString = OpenGLInfo.dumpNativeStack(nativeStack);
         if (openGLInfo != null) {
             MemoryInfo memoryInfo = new MemoryInfo();
-            memoryInfo.setRenderbufferInfo(target, width, height, internalformat, info.getId(), eglContextId, size, javaStack, nativeStackString);
+            memoryInfo.setRenderbufferInfo(target, width, height, internalformat, info.getId(), eglContextId, size, javaStack, nativeStack);
             openGLInfo.setMemoryInfo(memoryInfo);
             OpenGLResRecorder.getInstance().replace(openGLInfo);
         }
 
         if (getInstance().mMemoryListener != null) {
-            getInstance().mMemoryListener.onGlRenderbufferStorage(target, width, height, internalformat, info.getId(), eglContextId, size, javaStack, nativeStackString);
+            getInstance().mMemoryListener.onGlRenderbufferStorage(target, width, height, internalformat, info.getId(), eglContextId, size);
         }
     }
 
@@ -470,13 +466,13 @@ public class OpenGLHook {
 
     public interface MemoryListener {
 
-        void onGlTexImage2D(int target, int level, int internalFormat, int width, int height, int border, int format, int type, int id, long eglContextId, long size, String javaStack, String nativeStack);
+        void onGlTexImage2D(int target, int level, int internalFormat, int width, int height, int border, int format, int type, int id, long eglContextId, long size);
 
-        void onGlTexImage3D(int target, int level, int internalFormat, int width, int height, int depth, int border, int format, int type, int id, long eglContextId, long size, String javaStack, String nativeStack);
+        void onGlTexImage3D(int target, int level, int internalFormat, int width, int height, int depth, int border, int format, int type, int id, long eglContextId, long size);
 
-        void onGlBufferData(int target, int usage, int id, long eglContextId, long size, String javaStack, String nativeStack);
+        void onGlBufferData(int target, int usage, int id, long eglContextId, long size);
 
-        void onGlRenderbufferStorage(int target, int width, int height, int internalFormat, int id, long eglContextId, long size, String javaStack, String nativeStack);
+        void onGlRenderbufferStorage(int target, int width, int height, int internalFormat, int id, long eglContextId, long size);
 
     }
 
