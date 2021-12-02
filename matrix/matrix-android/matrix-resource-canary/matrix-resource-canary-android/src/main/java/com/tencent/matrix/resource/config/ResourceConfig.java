@@ -27,6 +27,8 @@ import java.util.concurrent.TimeUnit;
 public final class ResourceConfig {
     public static final String TAG = "Matrix.ResourceConfig";
 
+    public static final int FORK_DUMP_SUPPORTED_API_GUARD = 31; // Now is Android 12 (S).
+
     public enum DumpMode {
         NO_DUMP, // report only
         AUTO_DUMP, // auto dump hprof
