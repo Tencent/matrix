@@ -248,7 +248,7 @@ public class OpenGLResRecorder {
         Comparator<OpenGLInfo> comparator = new Comparator<OpenGLInfo>() {
             @Override
             public int compare(OpenGLInfo o1, OpenGLInfo o2) {
-                return o1.getAllocCount() - o2.getAllocCount();
+                return o2.getAllocCount() - o1.getAllocCount();
             }
         };
 
