@@ -217,7 +217,9 @@ public class OpenGLResRecorder {
                 if (isSameType && isSameThread && isSameEglContext && isSameActivity) {
                     oldInfo.incAllocRecord(info.getId());
                     MemoryInfo oldMemory = oldInfo.getMemoryInfo();
-                    oldMemory.appendParamsInfos(info.getMemoryInfo());
+                    if (oldMemory != null) {
+                        oldMemory.appendParamsInfos(info.getMemoryInfo());
+                    }
                     infoMap.put(infoHash, oldInfo);
                 }
             }
