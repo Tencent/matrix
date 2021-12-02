@@ -9,10 +9,7 @@ import android.content.ServiceConnection
 import android.content.pm.PackageManager
 import android.os.IBinder
 import android.util.Log
-import com.tencent.matrix.lifecycle.IStateObserver
-import com.tencent.matrix.lifecycle.MultiSourceStatefulOwner
-import com.tencent.matrix.lifecycle.ReduceOperators
-import com.tencent.matrix.lifecycle.StatefulOwner
+import com.tencent.matrix.lifecycle.*
 import com.tencent.matrix.lifecycle.owners.DeepBackgroundOwner
 import com.tencent.matrix.lifecycle.owners.ExplicitBackgroundOwner
 import com.tencent.matrix.lifecycle.owners.MatrixProcessLifecycleOwner
@@ -109,9 +106,10 @@ object ProcessSupervisor /*MultiSourceStatefulOwner(ReduceOperators.OR)*/ {
 
     // TODO: 2021/11/26  move to single file?
     internal class DispatcherStateOwner(
-        val name: String,
-        val attachedSource: StatefulOwner
-    ) : MultiSourceStatefulOwner(ReduceOperators.OR) {
+        reduceOperator: (stateful: Collection<IStateful>) -> Boolean,
+        val attachedSource: StatefulOwner,
+        val name: String = attachedSource.javaClass.simpleName
+    ) : MultiSourceStatefulOwner(reduceOperator) {
 
         companion object {
             private val dispatchOwners = HashMap<String, DispatcherStateOwner>()
@@ -201,15 +199,16 @@ object ProcessSupervisor /*MultiSourceStatefulOwner(ReduceOperators.OR)*/ {
     }
 
     val appUIForegroundOwner: StatefulOwner = DispatcherStateOwner(
-        "appUIForegroundOwner",
-        MatrixProcessLifecycleOwner.startedStateOwner
+        ReduceOperators.OR,
+        MatrixProcessLifecycleOwner.startedStateOwner,
+        "startedStateOwner"
     )
     val appExplicitBackgroundOwner: StatefulOwner =
-        DispatcherStateOwner("appExplicitBackgroundOwner", ExplicitBackgroundOwner)
+        DispatcherStateOwner(ReduceOperators.AND, ExplicitBackgroundOwner)
     val appStagedBackgroundOwner: StatefulOwner =
-        DispatcherStateOwner("appStagedBackgroundOwner", StagedBackgroundOwner)
+        DispatcherStateOwner(ReduceOperators.AND, StagedBackgroundOwner)
     val appDeepBackgroundOwner: StatefulOwner =
-        DispatcherStateOwner("appDeepBackgroundOwner", DeepBackgroundOwner)
+        DispatcherStateOwner(ReduceOperators.AND, DeepBackgroundOwner)
 
     fun init(app: Application, config: SupervisorConfig?): Boolean {
         if (config == null || !config.enable) {
