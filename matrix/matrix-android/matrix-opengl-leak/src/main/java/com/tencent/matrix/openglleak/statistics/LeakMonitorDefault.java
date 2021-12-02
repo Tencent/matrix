@@ -10,10 +10,12 @@ import androidx.annotation.Nullable;
 import com.tencent.matrix.openglleak.statistics.resource.OpenGLInfo;
 import com.tencent.matrix.util.MatrixLog;
 
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
 public abstract class LeakMonitorDefault implements Application.ActivityLifecycleCallbacks {
 
@@ -27,6 +29,16 @@ public abstract class LeakMonitorDefault implements Application.ActivityLifecycl
     public void start(Application context) {
         context.registerActivityLifecycleCallbacks(this);
         MatrixLog.i(TAG, "start");
+
+        Activity currentActivity = getActivity();
+        if (null != currentActivity) {
+            ActivityLeakMonitor activityLeakMonitor = new ActivityLeakMonitor(currentActivity.hashCode(), new CustomizeLeakMonitor());
+            activityLeakMonitor.start();
+
+            synchronized (mActivityLeakMonitor) {
+                mActivityLeakMonitor.add(activityLeakMonitor);
+            }
+        }
     }
 
     public void stop(Application context) {
@@ -100,6 +112,31 @@ public abstract class LeakMonitorDefault implements Application.ActivityLifecycl
     @Override
     public void onActivitySaveInstanceState(@NonNull Activity activity, @NonNull Bundle bundle) {
 
+    }
+
+    public static Activity getActivity() {
+        Class activityThreadClass = null;
+        try {
+            activityThreadClass = Class.forName("android.app.ActivityThread");
+            Object activityThread = activityThreadClass.getMethod("currentActivityThread").invoke(null);
+            Field activitiesField = activityThreadClass.getDeclaredField("mActivities");
+            activitiesField.setAccessible(true);
+            Map activities = (Map) activitiesField.get(activityThread);
+            for (Object activityRecord : activities.values()) {
+                Class activityRecordClass = activityRecord.getClass();
+                Field pausedField = activityRecordClass.getDeclaredField("paused");
+                pausedField.setAccessible(true);
+                if (!pausedField.getBoolean(activityRecord)) {
+                    Field activityField = activityRecordClass.getDeclaredField("activity");
+                    activityField.setAccessible(true);
+                    Activity activity = (Activity) activityField.get(activityRecord);
+                    return activity;
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 
     class ActivityLeakMonitor {
