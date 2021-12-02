@@ -1,5 +1,8 @@
 package com.tencent.matrix.openglleak.statistics;
 
+import com.tencent.matrix.openglleak.statistics.resource.OpenGLInfo;
+import com.tencent.matrix.openglleak.statistics.resource.ResRecordManager;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -74,7 +77,7 @@ public class MemoryInfo {
 
     public String getNativeStack() {
         if (nativeStack.isEmpty() && nativeStackPtr != 0) {
-            nativeStack = OpenGLInfo.dumpNativeStack(nativeStackPtr);
+            nativeStack = ResRecordManager.dumpNativeStack(nativeStackPtr);
         }
         return nativeStack;
     }

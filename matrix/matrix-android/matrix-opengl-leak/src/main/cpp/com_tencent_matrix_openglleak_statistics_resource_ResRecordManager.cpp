@@ -68,7 +68,7 @@ extern "C" JNIEXPORT void JNICALL Java_com_tencent_matrix_openglleak_statistics_
 }
 
 extern "C" JNIEXPORT jstring JNICALL Java_com_tencent_matrix_openglleak_statistics_resource_ResRecordManager_dumpNativeStack
-        (JNIEnv *env, jobject thiz, jlong jl) {
+        (JNIEnv *env, jclass thiz, jlong jl) {
     int64_t addr = jl;
     wechat_backtrace::Backtrace* ptr = (wechat_backtrace::Backtrace*)addr;
 

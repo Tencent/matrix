@@ -139,7 +139,7 @@ public class ResRecordManager {
         }
     }
 
-    private native String dumpNativeStack(long nativeStackPtr);
+    public static native String dumpNativeStack(long nativeStackPtr);
 
     private native void releaseNative(long nativeStackPtr);
 

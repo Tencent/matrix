@@ -17,7 +17,7 @@ JNIEXPORT void JNICALL Java_com_tencent_matrix_openglleak_statistics_resource_Re
         (JNIEnv *, jobject thiz, jlong);
 
 JNIEXPORT jstring JNICALL Java_com_tencent_matrix_openglleak_statistics_resource_ResRecordManager_dumpNativeStack
-        (JNIEnv *, jobject thiz, jlong);
+        (JNIEnv *, jclass thiz, jlong);
 
 #ifdef __cplusplus
 }
