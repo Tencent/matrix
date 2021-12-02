@@ -4,11 +4,13 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.os.Build
 import android.os.Process
 import com.tencent.matrix.lifecycle.owners.MatrixProcessLifecycleOwner
 import com.tencent.matrix.util.MatrixHandlerThread
 import com.tencent.matrix.util.MatrixLog
 import com.tencent.matrix.util.MatrixUtil
+import com.tencent.matrix.util.contentToString
 import java.util.concurrent.TimeUnit
 
 /**
@@ -150,7 +152,13 @@ internal object DispatchReceiver : BroadcastReceiver() {
                             && !MatrixProcessLifecycleOwner.hasVisibleView()
                         ) {
                             ProcessSupervisor.supervisorProxy?.onProcessKilled(token)
-                            MatrixLog.e(ProcessSupervisor.tag, "actual kill !!!")
+                            MatrixLog.e(ProcessSupervisor.tag, "actual kill !!! supervisor = ${ProcessSupervisor.supervisorProxy}")
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                                MatrixProcessLifecycleOwner.getRunningAppTasksOf(MatrixUtil.getProcessName(context)).forEach {
+                                    it.finishAndRemoveTask()
+                                    MatrixLog.e(ProcessSupervisor.tag, "removed task ${it.taskInfo.contentToString()}")
+                                }
+                            }
                             Process.killProcess(Process.myPid())
                         } else {
                             ProcessSupervisor.supervisorProxy?.onProcessKillCanceled(token)

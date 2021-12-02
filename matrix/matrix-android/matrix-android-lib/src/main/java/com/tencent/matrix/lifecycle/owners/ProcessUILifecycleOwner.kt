@@ -81,7 +81,7 @@ object MatrixProcessLifecycleOwner {
         open fun turnOffAsync() { runningHandler.post { turnOff() } }
     }
 
-    private class CreatedStateOwner: AsyncOwner() {
+    private class CreatedStateOwner : AsyncOwner() {
         override fun active(): Boolean {
             return super.active() && createdActivities.all { false == it.key?.isFinishing }
         }
@@ -278,7 +278,7 @@ object MatrixProcessLifecycleOwner {
 
     private val componentToProcess by lazy { HashMap<String, String>() }
 
-    private fun isCurrentProcessComponent(component: ComponentName?): Boolean {
+    private fun isComponentOfProcess(component: ComponentName?, process: String?): Boolean {
         if (component == null) {
             return false
         }
@@ -287,7 +287,7 @@ object MatrixProcessLifecycleOwner {
             return false
         }
 
-        return processName == componentToProcess.getOrPut(component.className, {
+        return process == componentToProcess.getOrPut(component.className, {
             val info = activityInfoArray!!.find { it.name == component.className }
             if (info == null) {
                 MatrixLog.e(TAG, "got task info not appeared in package manager $info")
@@ -298,6 +298,28 @@ object MatrixProcessLifecycleOwner {
         })
     }
 
+    private fun ActivityManager.RecentTaskInfo.belongsTo(processName: String?): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            val i = isComponentOfProcess(this.baseIntent.component, processName)
+            val o = isComponentOfProcess(this.origActivity, processName)
+            val b = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                isComponentOfProcess(this.baseActivity, processName)
+            } else {
+                false
+            }
+            val t = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                isComponentOfProcess(this.topActivity, processName)
+            } else {
+                false
+            }
+
+            i || o || b || t
+        } else {
+            false
+        }
+    }
+
+    @JvmStatic
     fun hasRunningAppTask(): Boolean {
         if (activityManager == null) {
             throw IllegalStateException("NOT initialized yet")
@@ -305,24 +327,9 @@ object MatrixProcessLifecycleOwner {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             activityManager!!.appTasks
                 .filter {
-                    val i =
-                        isCurrentProcessComponent(it.taskInfo.baseIntent.component)
-                    val o =
-                        isCurrentProcessComponent(it.taskInfo.origActivity)
-                    val b = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                        isCurrentProcessComponent(it.taskInfo.baseActivity)
-                    } else {
-                        false
-                    }
-                    val t = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                        isCurrentProcessComponent(it.taskInfo.topActivity)
-                    } else {
-                        false
-                    }
-
-                    return@filter i || o || b || t
+                    it.taskInfo.belongsTo(processName)
                 }.onEach {
-                    MatrixLog.i(TAG, "$processName task: ${it.taskInfo}")
+                    MatrixLog.i(TAG, "$processName task: ${it.taskInfo.contentToString()}")
                 }.any {
                     MatrixLog.d(TAG, "hasRunningAppTask run any")
                     when {
@@ -339,6 +346,21 @@ object MatrixProcessLifecycleOwner {
                 }
         } else {
             false
+        }
+    }
+
+    @JvmStatic
+    fun getRunningAppTasksOf(processName: String): Array<ActivityManager.AppTask> {
+        if (activityManager == null) {
+            throw IllegalStateException("NOT initialized yet")
+        }
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            activityManager!!.appTasks
+                .filter {
+                    it.taskInfo.belongsTo(processName)
+                }.toTypedArray()
+        } else {
+            emptyArray()
         }
     }
 
