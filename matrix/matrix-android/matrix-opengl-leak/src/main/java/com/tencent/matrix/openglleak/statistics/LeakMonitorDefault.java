@@ -66,20 +66,24 @@ public abstract class LeakMonitorDefault implements Application.ActivityLifecycl
         MatrixLog.i(TAG, "onActivityDestroyed " + activityHashCode);
 
         synchronized (mActivityLeakMonitor) {
+            List<OpenGLInfo> leaks = null;
+
             Iterator<ActivityLeakMonitor> it = mActivityLeakMonitor.iterator();
             while (it.hasNext()) {
-                ActivityLeakMonitor item = it.next();
-                if (null == item) {
+                ActivityLeakMonitor activityLeakMonitor = it.next();
+                if (null == activityLeakMonitor) {
                     continue;
                 }
 
-                if (item.getActivityHashCode() == activityHashCode) {
+                if (activityLeakMonitor.getActivityHashCode() == activityHashCode) {
                     it.remove();
 
-                    List<OpenGLInfo> leaks = item.end();
+                    leaks = activityLeakMonitor.end();
                     for (OpenGLInfo leakItem : leaks) {
                         if (null != leakItem) {
-                            onLeak(leakItem);
+                            if (leakItem.getActivityInfo().activityHashcode == activityLeakMonitor.mActivityHashCode) {
+                                onLeak(leakItem);
+                            }
                         }
                     }
 

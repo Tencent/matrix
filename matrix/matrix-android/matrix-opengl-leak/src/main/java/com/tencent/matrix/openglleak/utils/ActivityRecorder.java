@@ -74,11 +74,11 @@ public class ActivityRecorder implements Application.ActivityLifecycleCallbacks 
     }
 
     public class ActivityInfo {
-        public int hashcode;
+        public int activityHashcode;
         public String name;
 
         ActivityInfo(int code, String n) {
-            hashcode = code;
+            activityHashcode = code;
             name = n;
         }
 
@@ -87,19 +87,19 @@ public class ActivityRecorder implements Application.ActivityLifecycleCallbacks 
             if (this == o) return true;
             if (o == null || getClass() != o.getClass()) return false;
             ActivityInfo that = (ActivityInfo) o;
-            return hashcode == that.hashcode &&
+            return activityHashcode == that.activityHashcode &&
                     Objects.equals(name, that.name);
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(hashcode, name);
+            return Objects.hash(activityHashcode, name);
         }
 
         @Override
         public String toString() {
             return "ActivityInfo{" +
-                    "hashcode=" + hashcode +
+                    "activityHashcode=" + activityHashcode +
                     ", name='" + name + '\'' +
                     '}';
         }
