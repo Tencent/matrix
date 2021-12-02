@@ -315,14 +315,14 @@ public class OpenGLResRecorder {
                     .append("\n")
                     .append(String.format(" native stack = %s", res.getNativeStack()))
                     .append("\n")
-                    .append(String.format(" memory info = %s", res.getMemoryInfo() == null ? "" : getMemoryInfoStr(res.getMemoryInfo())))
+                    .append(res.getMemoryInfo() == null ? "" : getMemoryInfoStr(res.getMemoryInfo()))
                     .append("\n\n\n");
         }
         return result.toString();
     }
 
     private String getMemoryInfoStr(MemoryInfo memory) {
-        return memory.getParamsInfos() +
+        return " " + memory.getParamsInfos() +
                 "\n" +
                 String.format(" memory java stack = %s", memory.getJavaStack()) +
                 "\n" +

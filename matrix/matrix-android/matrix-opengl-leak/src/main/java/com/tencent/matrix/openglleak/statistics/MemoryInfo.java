@@ -176,7 +176,8 @@ public class MemoryInfo {
     public String getParamsInfos() {
         StringBuilder result = new StringBuilder();
         for (int i = 0; i < paramsList.size(); i++) {
-            result.append(paramsList.get(i))
+            result.append(" ")
+                    .append(paramsList.get(i))
                     .append("\n");
         }
         return result.toString();
