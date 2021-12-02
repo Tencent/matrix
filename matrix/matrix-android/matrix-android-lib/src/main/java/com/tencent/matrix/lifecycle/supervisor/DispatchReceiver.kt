@@ -153,8 +153,8 @@ internal object DispatchReceiver : BroadcastReceiver() {
                             MatrixLog.e(ProcessSupervisor.tag, "actual kill !!! supervisor = ${ProcessSupervisor.supervisorProxy}")
                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
                                 MatrixProcessLifecycleOwner.getRunningAppTasksOf(MatrixUtil.getProcessName(context)).forEach {
-                                    it.finishAndRemoveTask()
                                     MatrixLog.e(ProcessSupervisor.tag, "removed task ${it.taskInfo.contentToString()}")
+                                    it.finishAndRemoveTask()
                                 }
                             }
                             Process.killProcess(Process.myPid())
