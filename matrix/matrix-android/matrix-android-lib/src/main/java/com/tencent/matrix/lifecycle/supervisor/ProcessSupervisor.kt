@@ -14,7 +14,6 @@ import com.tencent.matrix.lifecycle.owners.DeepBackgroundOwner
 import com.tencent.matrix.lifecycle.owners.ExplicitBackgroundOwner
 import com.tencent.matrix.lifecycle.owners.MatrixProcessLifecycleOwner
 import com.tencent.matrix.lifecycle.owners.StagedBackgroundOwner
-import com.tencent.matrix.util.MatrixHandlerThread
 import com.tencent.matrix.util.MatrixLog
 import com.tencent.matrix.util.MatrixUtil
 import com.tencent.matrix.util.safeApply
@@ -51,8 +50,7 @@ data class SupervisorConfig(
     val lruKillerWhiteList: List<String> = emptyList()
 )
 
-// todo delegate mode
-object ProcessSupervisor /*MultiSourceStatefulOwner(ReduceOperators.OR)*/ {
+object ProcessSupervisor {
 
     private const val TAG = "Matrix.ProcessSupervisor"
 
@@ -103,100 +101,6 @@ object ProcessSupervisor /*MultiSourceStatefulOwner(ReduceOperators.OR)*/ {
 
     @Volatile
     internal var supervisorProxy: ISupervisorProxy? = null
-
-    // TODO: 2021/11/26  move to single file?
-    internal class DispatcherStateOwner(
-        reduceOperator: (stateful: Collection<IStateful>) -> Boolean,
-        val attachedSource: StatefulOwner,
-        val name: String = attachedSource.javaClass.simpleName
-    ) : MultiSourceStatefulOwner(reduceOperator) {
-
-        companion object {
-            private val dispatchOwners = HashMap<String, DispatcherStateOwner>()
-            fun dispatchOn(name: String) {
-                dispatchOwners[name]?.dispatchOn()
-            }
-
-            fun dispatchOff(name: String) {
-                dispatchOwners[name]?.dispatchOff()
-            }
-
-            fun attach(supervisorProxy: ISupervisorProxy?) {
-                dispatchOwners.forEach {
-                    it.value.attachedSource.observeForever(object : IStateObserver {
-
-                        override fun on() {
-                            MatrixLog.d(tag, "${it.key} turned ON")
-                            safeApply("$tag.${it.key}") {
-                                supervisorProxy?.stateTurnOn(
-                                    ProcessToken.current(application!!, it.key)
-                                )
-                            }
-                        }
-
-                        override fun off() {
-                            MatrixLog.d(tag, "${it.key} turned OFF")
-                            safeApply("$tag.${it.key}") {
-                                supervisorProxy?.stateTurnOff(
-                                    ProcessToken.current(application!!, it.key)
-                                )
-                            }
-                        }
-                    })
-
-                    if (it.value.attachedSource is ExplicitBackgroundOwner) {
-                        it.value.attachedSource.observeForever(object : IStateObserver {
-                            override fun on() {
-                                safeApply(TAG) {
-                                    ProcessSupervisor.supervisorProxy?.onProcessBackground(
-                                        ProcessToken.current(application!!)
-                                    )
-                                }
-                            }
-
-                            override fun off() {
-                                safeApply(TAG) {
-                                    ProcessSupervisor.supervisorProxy?.onProcessForeground(
-                                        ProcessToken.current(application!!)
-                                    )
-                                }
-                            }
-                        })
-                    }
-                }
-            }
-
-            fun observe(observer: (stateName: String, state: Boolean) -> Unit) {
-                dispatchOwners.forEach {
-                    it.value.observeForever(object : IStateObserver {
-                        override fun on() {
-                            observer.invoke(it.key, true)
-                        }
-
-                        override fun off() {
-                            observer.invoke(it.key, false)
-                        }
-                    })
-                }
-            }
-
-            fun addSourceOwner(name: String, source: StatefulOwner) {
-                dispatchOwners[name]?.addSourceOwner(source)
-            }
-
-            fun removeSourceOwner(name: String, source: StatefulOwner) {
-                dispatchOwners[name]?.removeSourceOwner(source)
-            }
-        }
-
-        init {
-            dispatchOwners[name] = this
-        }
-
-        private val h = MatrixHandlerThread.getDefaultHandler()
-        private fun dispatchOn() = h.post { turnOn() }
-        private fun dispatchOff() = h.post { turnOff() }
-    }
 
     val appUIForegroundOwner: StatefulOwner = DispatcherStateOwner(
         ReduceOperators.OR,
@@ -253,7 +157,7 @@ object ProcessSupervisor /*MultiSourceStatefulOwner(ReduceOperators.OR)*/ {
                 supervisorProxy = ISupervisorProxy.Stub.asInterface(service)
                 MatrixLog.i(TAG, "on Supervisor Connected $supervisorProxy")
                 supervisorProxy?.safeApply { stateRegister(ProcessToken.current(app)) }
-                DispatcherStateOwner.attach(supervisorProxy)
+                DispatcherStateOwner.attach(supervisorProxy, application!!)
             }
 
             override fun onServiceDisconnected(name: ComponentName?) {

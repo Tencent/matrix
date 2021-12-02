@@ -139,7 +139,7 @@ class SupervisorService : Service() {
         instance = this
 
 
-        ProcessSupervisor.DispatcherStateOwner.observe { stateName, state ->
+        DispatcherStateOwner.observe { stateName, state ->
             if (state) {
                 DispatchReceiver.dispatchAppStateOn(applicationContext, stateName)
             } else {
@@ -213,7 +213,7 @@ class SupervisorService : Service() {
     private class RemoteProcessLifecycleProxy(val token: ProcessToken) : StatefulOwner() {
 
         init {
-            ProcessSupervisor.DispatcherStateOwner.addSourceOwner(
+            DispatcherStateOwner.addSourceOwner(
                 token.statefulName,
                 this
             )
@@ -230,7 +230,7 @@ class SupervisorService : Service() {
 
             fun removeProxy(token: ProcessToken) {
                 processProxies.remove(token)?.forEach {
-                    ProcessSupervisor.DispatcherStateOwner.removeSourceOwner(it.key, it.value)
+                    DispatcherStateOwner.removeSourceOwner(it.key, it.value)
                 }
             }
         }

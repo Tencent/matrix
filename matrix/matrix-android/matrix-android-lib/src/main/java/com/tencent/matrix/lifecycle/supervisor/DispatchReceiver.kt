@@ -116,16 +116,14 @@ internal object DispatchReceiver : BroadcastReceiver() {
         when (intent?.action) {
             SupervisorEvent.SUPERVISOR_DISPATCH_APP_STATE_TURN_ON.name -> {
                 val statefulName = intent.getStringExtra(KEY_STATEFUL_NAME)
-//                ProcessSupervisor.syncAppForeground()
                 statefulName?.let {
-                    ProcessSupervisor.DispatcherStateOwner.dispatchOn(it)
+                    DispatcherStateOwner.dispatchOn(it)
                 }
             }
             SupervisorEvent.SUPERVISOR_DISPATCH_APP_STATE_TURN_OFF.name -> {
                 val statefulName = intent.getStringExtra(KEY_STATEFUL_NAME)
-//                ProcessSupervisor.syncAppForeground()
                 statefulName?.let {
-                    ProcessSupervisor.DispatcherStateOwner.dispatchOff(it)
+                    DispatcherStateOwner.dispatchOff(it)
                 }
             }
             SupervisorEvent.SUPERVISOR_DISPATCH_KILL.name -> {
