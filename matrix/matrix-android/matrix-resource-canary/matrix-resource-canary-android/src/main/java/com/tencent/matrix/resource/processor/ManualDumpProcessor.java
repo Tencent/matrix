@@ -77,8 +77,12 @@ public class ManualDumpProcessor extends BaseLeakProcessor {
             @Override
             public void onDumpComplete(@Nullable ManualDumpData data) {
                 if (data != null) {
-                    MatrixLog.i(TAG, "shown notification!!!3");
-                    publishResult(destroyedActivityInfo, data);
+                    if (!isMuted) {
+                        MatrixLog.i(TAG, "shown notification!!!3");
+                        publishResult(destroyedActivityInfo, data);
+                    } else {
+                        MatrixLog.i(TAG, "mute mode, notification will not be shown.");
+                    }
                 }
             }
         });
