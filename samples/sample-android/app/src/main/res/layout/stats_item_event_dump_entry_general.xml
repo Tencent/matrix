@@ -14,14 +14,14 @@
         android:textSize="12sp" />
 
     <TextView
-        android:visibility="gone"
         android:id="@+id/tv_header_right"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_alignParentRight="true"
         android:gravity="right"
         android:text="DESC"
-        android:textSize="12sp" />
+        android:textSize="12sp"
+        android:visibility="gone" />
 
     <RelativeLayout
         android:id="@+id/layout_entry_1"
@@ -30,27 +30,7 @@
         android:layout_below="@+id/tv_header_left"
         android:layout_marginTop="4dp">
 
-        <TextView
-            android:id="@+id/tv_key_1"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-
-            android:layout_alignParentLeft="true"
-            android:ellipsize="end"
-            android:maxLines="1"
-            android:text="Entry Key"
-            android:textSize="10sp" />
-
-        <TextView
-            android:id="@+id/tv_value_1"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-
-            android:layout_alignParentRight="true"
-            android:ellipsize="end"
-            android:maxLines="1"
-            android:text="Value"
-            android:textSize="10sp" />
+        <include layout="@layout/stats_item_event_dump_entry_subentry" />
 
 
     </RelativeLayout>
@@ -62,27 +42,7 @@
         android:layout_below="@+id/layout_entry_1"
         android:layout_marginTop="0dp">
 
-        <TextView
-            android:id="@+id/tv_key_2"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-
-            android:layout_alignParentLeft="true"
-            android:ellipsize="end"
-            android:maxLines="1"
-            android:text="Entry Key"
-            android:textSize="10sp" />
-
-        <TextView
-            android:id="@+id/tv_value_2"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-
-            android:layout_alignParentRight="true"
-            android:ellipsize="end"
-            android:maxLines="1"
-            android:text="Value"
-            android:textSize="10sp" />
+        <include layout="@layout/stats_item_event_dump_entry_subentry" />
     </RelativeLayout>
 
     <RelativeLayout
@@ -92,27 +52,7 @@
         android:layout_below="@+id/layout_entry_2"
         android:layout_marginTop="0dp">
 
-        <TextView
-            android:id="@+id/tv_key_3"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-
-            android:layout_alignParentLeft="true"
-            android:ellipsize="end"
-            android:maxLines="1"
-            android:text="Entry Key"
-            android:textSize="10sp" />
-
-        <TextView
-            android:id="@+id/tv_value_3"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-
-            android:layout_alignParentRight="true"
-            android:ellipsize="end"
-            android:maxLines="1"
-            android:text="Value"
-            android:textSize="10sp" />
+        <include layout="@layout/stats_item_event_dump_entry_subentry" />
 
 
     </RelativeLayout>
@@ -124,27 +64,7 @@
         android:layout_below="@+id/layout_entry_3"
         android:layout_marginTop="0dp">
 
-        <TextView
-            android:id="@+id/tv_key_4"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-
-            android:layout_alignParentLeft="true"
-            android:ellipsize="end"
-            android:maxLines="1"
-            android:text="Entry Key"
-            android:textSize="10sp" />
-
-        <TextView
-            android:id="@+id/tv_value_4"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-
-            android:layout_alignParentRight="true"
-            android:ellipsize="end"
-            android:maxLines="1"
-            android:text="Value"
-            android:textSize="10sp" />
+        <include layout="@layout/stats_item_event_dump_entry_subentry" />
 
 
     </RelativeLayout>
@@ -156,30 +76,11 @@
         android:layout_below="@+id/layout_entry_4"
         android:layout_marginTop="0dp">
 
-        <TextView
-            android:id="@+id/tv_key_5"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-
-            android:layout_alignParentLeft="true"
-            android:ellipsize="end"
-            android:maxLines="1"
-            android:text="Entry Key"
-            android:textSize="10sp" />
-
-        <TextView
-            android:id="@+id/tv_value_5"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-
-            android:layout_alignParentRight="true"
-            android:ellipsize="end"
-            android:maxLines="1"
-            android:text="Value"
-            android:textSize="10sp" />
+        <include layout="@layout/stats_item_event_dump_entry_subentry" />
 
 
     </RelativeLayout>
+
 
     <RelativeLayout
         android:id="@+id/layout_entry_6"
@@ -188,29 +89,7 @@
         android:layout_below="@+id/layout_entry_5"
         android:layout_marginTop="0dp">
 
-        <TextView
-            android:id="@+id/tv_key_6"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-
-            android:layout_alignParentLeft="true"
-            android:ellipsize="end"
-            android:maxLines="1"
-            android:text="Entry Key"
-            android:textSize="10sp" />
-
-        <TextView
-            android:id="@+id/tv_value_6"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-
-            android:layout_alignParentRight="true"
-            android:ellipsize="end"
-            android:maxLines="1"
-            android:text="Value"
-            android:textSize="10sp" />
-
-
+        <include layout="@layout/stats_item_event_dump_entry_subentry" />
     </RelativeLayout>
 
 

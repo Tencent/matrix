@@ -3,6 +3,7 @@ package sample.tencent.matrix.battery.viewer;
 import android.annotation.SuppressLint;
 import android.os.Bundle;
 import android.os.SystemClock;
+import android.util.ArrayMap;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -15,6 +16,7 @@ import java.util.Map;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.arch.core.util.Function;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import sample.tencent.matrix.R;
@@ -47,6 +49,16 @@ public class BatteryStatsActivity extends AppCompatActivity {
             threadInfo.name = "ThreadName_" + i;
             threadInfo.jiffies = SystemClock.currentThreadTimeMillis() / 10;
             dumpItem.threadInfoList.add(0, threadInfo);
+        }
+        dumpItem.entryList = new ArrayList<>();
+        for (int i = 0; i < 4; i++) {
+            BatteryStatsAdapter.EventDumpItem.EntryInfo entryInfo = new BatteryStatsAdapter.EventDumpItem.EntryInfo();
+            entryInfo.name = "Entry Name " + i;
+            entryInfo.entries = new ArrayMap<>();
+            entryInfo.entries.put("Key 1", "Value 1");
+            entryInfo.entries.put("Key 2", "Value 2");
+            entryInfo.entries.put("Key 3", "Value 3");
+            dumpItem.entryList.add(entryInfo);
         }
         dataList.add(dumpItem);
 
@@ -177,6 +189,7 @@ public class BatteryStatsActivity extends AppCompatActivity {
 
 
         public abstract static class ViewHolder<ITEM extends Item> extends  RecyclerView.ViewHolder {
+            @NonNull ITEM mItem;
             public ViewHolder(@NonNull View itemView) {
                 super(itemView);
             }
@@ -213,63 +226,19 @@ public class BatteryStatsActivity extends AppCompatActivity {
 
                     private final View mAEntryView;
                 private final TextView mAEntryLeftTv;
-                private final TextView mAEntryKey1;
-                private final TextView mAEntryVal1;
-                private final TextView mAEntryKey2;
-                private final TextView mAEntryVal2;
-                private final TextView mAEntryKey3;
-                private final TextView mAEntryVal3;
-                private final TextView mAEntryKey4;
-                private final TextView mAEntryVal4;
-                private final TextView mAEntryKey5;
-                private final TextView mAEntryVal5;
-                private final TextView mAEntryKey6;
-                private final TextView mAEntryVal6;
+
 
                     private final View mBEntryView;
                 private final TextView mBEntryLeftTv;
-                private final TextView mBEntryKey1;
-                private final TextView mBEntryVal1;
-                private final TextView mBEntryKey2;
-                private final TextView mBEntryVal2;
-                private final TextView mBEntryKey3;
-                private final TextView mBEntryVal3;
-                private final TextView mBEntryKey4;
-                private final TextView mBEntryVal4;
-                private final TextView mBEntryKey5;
-                private final TextView mBEntryVal5;
-                private final TextView mBEntryKey6;
-                private final TextView mBEntryVal6;
+
 
                     private final View mCEntryView;
                 private final TextView mCEntryLeftTv;
-                private final TextView mCEntryKey1;
-                private final TextView mCEntryVal1;
-                private final TextView mCEntryKey2;
-                private final TextView mCEntryVal2;
-                private final TextView mCEntryKey3;
-                private final TextView mCEntryVal3;
-                private final TextView mCEntryKey4;
-                private final TextView mCEntryVal4;
-                private final TextView mCEntryKey5;
-                private final TextView mCEntryVal5;
-                private final TextView mCEntryKey6;
-                private final TextView mCEntryVal6;
+
 
                     private final View mDEntryView;
                 private final TextView mDEntryLeftTv;
-                private final TextView mDEntryKey1;
-                private final TextView mDEntryVal1;
-                private final TextView mDEntryKey2;
-                private final TextView mDEntryVal2;
-                private final TextView mDEntryKey3;
-                private final TextView mDEntryVal3;
-                private final TextView mDEntryKey4;
-                private final TextView mDEntryVal4;
-                private final TextView mDEntryKey5;
-                private final TextView mDEntryVal5;
-                private final TextView mDEntryKey6;
-                private final TextView mDEntryVal6;
+
 
 
                 public EventDumpHolder(@NonNull View itemView) {
@@ -297,76 +266,32 @@ public class BatteryStatsActivity extends AppCompatActivity {
 
                     mAEntryView = itemView.findViewById(R.id.layout_expand_entry_1);
                     mAEntryLeftTv =    mAEntryView.findViewById(R.id.tv_header_left);
-                    mAEntryKey1 = mAEntryView.findViewById(R.id.tv_key_1);
-                    mAEntryVal1 = mAEntryView.findViewById(R.id.tv_value_1);
-                    mAEntryKey2 = mAEntryView.findViewById(R.id.tv_key_2);
-                    mAEntryVal2 = mAEntryView.findViewById(R.id.tv_value_2);
-                    mAEntryKey3 = mAEntryView.findViewById(R.id.tv_key_3);
-                    mAEntryVal3 = mAEntryView.findViewById(R.id.tv_value_3);
-                    mAEntryKey4 = mAEntryView.findViewById(R.id.tv_key_4);
-                    mAEntryVal4 = mAEntryView.findViewById(R.id.tv_value_4);
-                    mAEntryKey5 = mAEntryView.findViewById(R.id.tv_key_5);
-                    mAEntryVal5 = mAEntryView.findViewById(R.id.tv_value_5);
-                    mAEntryKey6 = mAEntryView.findViewById(R.id.tv_key_6);
-                    mAEntryVal6 = mAEntryView.findViewById(R.id.tv_value_6);
 
                     mBEntryView = itemView.findViewById(R.id.layout_expand_entry_2);
                     mBEntryLeftTv = mBEntryView.findViewById(R.id.tv_header_left);
-                    mBEntryKey1   = mBEntryView.findViewById(R.id.tv_key_1);
-                    mBEntryVal1   = mBEntryView.findViewById(R.id.tv_value_1);
-                    mBEntryKey2   = mBEntryView.findViewById(R.id.tv_key_2);
-                    mBEntryVal2   = mBEntryView.findViewById(R.id.tv_value_2);
-                    mBEntryKey3   = mBEntryView.findViewById(R.id.tv_key_3);
-                    mBEntryVal3   = mBEntryView.findViewById(R.id.tv_value_3);
-                    mBEntryKey4   = mBEntryView.findViewById(R.id.tv_key_4);
-                    mBEntryVal4   = mBEntryView.findViewById(R.id.tv_value_4);
-                    mBEntryKey5   = mBEntryView.findViewById(R.id.tv_key_5);
-                    mBEntryVal5   = mBEntryView.findViewById(R.id.tv_value_5);
-                    mBEntryKey6   = mBEntryView.findViewById(R.id.tv_key_6);
-                    mBEntryVal6   = mBEntryView.findViewById(R.id.tv_value_6);
+
 
                     mCEntryView = itemView.findViewById(R.id.layout_expand_entry_3);
                     mCEntryLeftTv = mCEntryView.findViewById(R.id.tv_header_left);
-                    mCEntryKey1   = mCEntryView.findViewById(R.id.tv_key_1);
-                    mCEntryVal1   = mCEntryView.findViewById(R.id.tv_value_1);
-                    mCEntryKey2   = mCEntryView.findViewById(R.id.tv_key_2);
-                    mCEntryVal2   = mCEntryView.findViewById(R.id.tv_value_2);
-                    mCEntryKey3   = mCEntryView.findViewById(R.id.tv_key_3);
-                    mCEntryVal3   = mCEntryView.findViewById(R.id.tv_value_3);
-                    mCEntryKey4   = mCEntryView.findViewById(R.id.tv_key_4);
-                    mCEntryVal4   = mCEntryView.findViewById(R.id.tv_value_4);
-                    mCEntryKey5   = mCEntryView.findViewById(R.id.tv_key_5);
-                    mCEntryVal5   = mCEntryView.findViewById(R.id.tv_value_5);
-                    mCEntryKey6   = mCEntryView.findViewById(R.id.tv_key_6);
-                    mCEntryVal6   = mCEntryView.findViewById(R.id.tv_value_6);
+
 
                     mDEntryView = itemView.findViewById(R.id.layout_expand_entry_4);
                     mDEntryLeftTv = mDEntryView.findViewById(R.id.tv_header_left);
-                    mDEntryKey1   = mDEntryView.findViewById(R.id.tv_key_1);
-                    mDEntryVal1   = mDEntryView.findViewById(R.id.tv_value_1);
-                    mDEntryKey2   = mDEntryView.findViewById(R.id.tv_key_2);
-                    mDEntryVal2   = mDEntryView.findViewById(R.id.tv_value_2);
-                    mDEntryKey3   = mDEntryView.findViewById(R.id.tv_key_3);
-                    mDEntryVal3   = mDEntryView.findViewById(R.id.tv_value_3);
-                    mDEntryKey4   = mDEntryView.findViewById(R.id.tv_key_4);
-                    mDEntryVal4   = mDEntryView.findViewById(R.id.tv_value_4);
-                    mDEntryKey5   = mDEntryView.findViewById(R.id.tv_key_5);
-                    mDEntryVal5   = mDEntryView.findViewById(R.id.tv_value_5);
-                    mDEntryKey6   = mDEntryView.findViewById(R.id.tv_key_6);
-                    mDEntryVal6   = mDEntryView.findViewById(R.id.tv_value_6);
+
+                    itemView.setOnClickListener(new View.OnClickListener() {
+                        @Override
+                        public void onClick(View v) {
+                            mItem.expand = !mItem.expand;
+                            updateView(mItem);
+                        }
+                    });
                 }
 
                 @Override
                 public void bind(final EventDumpItem item) {
+                    mItem = item;
                     resetView();
                     updateView(item);
-                    itemView.setOnClickListener(new View.OnClickListener() {
-                        @Override
-                        public void onClick(View v) {
-                            item.expand = !item.expand;
-                            updateView(item);
-                        }
-                    });
                 }
 
                 private void resetView() {
@@ -391,10 +316,15 @@ public class BatteryStatsActivity extends AppCompatActivity {
                         return;
                     }
 
+                    // Header
+                    mHeaderLeftTv.setText("模式: " + item.mode);
+                    mHeaderRightTv.setText("时长: " + Math.max(1, (item.windowMillis * 10) / (60 * 1000L)) + "min");
+                    mHeaderDescTv.setText(item.desc);
+
                     // Thread Entry
                     mThreadEntryView.setVisibility(!item.threadInfoList.isEmpty() ? View.VISIBLE : View.GONE);
                     if (!item.threadInfoList.isEmpty()) {
-                        for (int i = 1; i < 6; i++) {
+                        for (int i = 1; i <= 5; i++) {
                             TextView left, right;
                             switch (i) {
                                 case 1:
@@ -431,12 +361,79 @@ public class BatteryStatsActivity extends AppCompatActivity {
                         }
                     }
 
-                    mAEntryView.setVisibility(item.expand ? View.VISIBLE : View.GONE);
-                    mBEntryView.setVisibility(item.expand ? View.VISIBLE : View.GONE);
-                    mCEntryView.setVisibility(item.expand ? View.VISIBLE : View.GONE);
-                    mDEntryView.setVisibility(item.expand ? View.VISIBLE : View.GONE);
+                    // Entry A - D:
+                    // 1. entry section
+                    for (int i = 1; i <= 4; i++) {
+                        final View entryView;
+                        switch (i) {
+                            case 1:
+                                entryView = mAEntryView;
+                                break;
+                            case 2:
+                                entryView = mBEntryView;
+                                break;
+                            case 3:
+                                entryView = mCEntryView;
+                                break;
+                            case 4:
+                                entryView = mDEntryView;
+                                break;
+                            default:
+                                throw new IndexOutOfBoundsException("entryList section out of bound: " + i);
+                        }
+
+                        EventDumpItem.EntryInfo entryInfo = i <= item.entryList.size() ?  item.entryList.get(i - 1) : null;
+                        entryView.setVisibility(entryInfo != null ? View.VISIBLE : View.GONE);
+                        if (entryInfo != null) {
+                            TextView left = entryView.findViewById(R.id.tv_header_left);
+                            left.setText(entryInfo.name);
+
+                            // 2. entry list
+                            Function<Integer, View> findEntryItemView = new Function<Integer, View>() {
+                                @Override
+                                public View apply(Integer idx) {
+                                    switch (idx) {
+                                        case 1:
+                                            return entryView.findViewById(R.id.layout_entry_1);
+                                        case 2:
+                                            return entryView.findViewById(R.id.layout_entry_2);
+                                        case 3:
+                                            return entryView.findViewById(R.id.layout_entry_3);
+                                        case 4:
+                                            return entryView.findViewById(R.id.layout_entry_4);
+                                        case 5:
+                                            return entryView.findViewById(R.id.layout_entry_5);
+                                        case 6:
+                                            return entryView.findViewById(R.id.layout_entry_6);
+                                        default:
+                                            throw new IndexOutOfBoundsException("entryList key-value out of bound: " + idx);
+                                    }
+                                }
+                            };
+
+                            int entryIdx = 0, entryLimit = 6;
+                            for (Map.Entry<String, String> entry : entryInfo.entries.entrySet()) {
+                                entryIdx++;
+                                if (entryIdx > entryLimit) {
+                                    break;
+                                }
+                                View entryItemView = findEntryItemView.apply(entryIdx);
+                                entryItemView.setVisibility(View.VISIBLE);
+                                TextView keyTv = entryItemView.findViewById(R.id.tv_key);
+                                TextView valTv = entryItemView.findViewById(R.id.tv_value);
+                                keyTv.setText(entry.getKey());
+                                valTv.setText(entry.getValue());
+                            }
+
+                            for (int j = entryIdx + 1; j <= entryLimit; j++) {
+                                View entryItemView = findEntryItemView.apply(j);
+                                entryItemView.setVisibility(View.GONE);
+                            }
+                        }
+                    }
                 }
             }
+
             public static class EventLevel1Holder extends ViewHolder {
                 public EventLevel1Holder(@NonNull View itemView) {
                     super(itemView);
