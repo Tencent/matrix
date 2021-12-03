@@ -77,8 +77,12 @@ public class ManualDumpProcessor extends BaseLeakProcessor {
             @Override
             public void onDumpComplete(@Nullable ManualDumpData data) {
                 if (data != null) {
-                    MatrixLog.i(TAG, "shown notification!!!3");
-                    publishResult(destroyedActivityInfo, data);
+                    if (!isMuted) {
+                        MatrixLog.i(TAG, "shown notification!!!3");
+                        sendResultNotification(destroyedActivityInfo, data);
+                    } else {
+                        MatrixLog.i(TAG, "mute mode, notification will not be shown.");
+                    }
                 }
             }
         });
@@ -86,7 +90,7 @@ public class ManualDumpProcessor extends BaseLeakProcessor {
         return true;
     }
 
-    private void publishResult(DestroyedActivityInfo activityInfo, ManualDumpData data) {
+    private void sendResultNotification(DestroyedActivityInfo activityInfo, ManualDumpData data) {
         final Context context = getWatcher().getContext();
 
         Intent targetIntent = new Intent();
