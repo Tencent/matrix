@@ -1,10 +1,8 @@
 package com.tencent.matrix.openglleak.statistics.resource;
 
 import android.annotation.SuppressLint;
-import android.os.Handler;
 
 import com.tencent.matrix.openglleak.utils.AutoWrapBuilder;
-import com.tencent.matrix.openglleak.utils.GlLeakHandlerThread;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -24,13 +22,11 @@ public class ResRecordManager {
 
     private static final ResRecordManager mInstance = new ResRecordManager();
 
-    private final Handler mH;
-
     private final List<Callback> mCallbackList = new LinkedList<>();
     private final List<OpenGLInfo> mInfoList = new LinkedList<>();
 
     private ResRecordManager() {
-        mH = new Handler(GlLeakHandlerThread.getInstance().getLooper());
+
     }
 
     public static ResRecordManager getInstance() {
@@ -38,75 +34,65 @@ public class ResRecordManager {
     }
 
     public void gen(final OpenGLInfo gen) {
-        mH.post(new Runnable() {
-            @Override
-            public void run() {
-                if (gen == null) {
-                    return;
-                }
+        if (gen == null) {
+            return;
+        }
 
-                synchronized (mInfoList) {
-                    mInfoList.add(gen);
-                }
+        synchronized (mInfoList) {
+            mInfoList.add(gen);
+        }
 
-                synchronized (mCallbackList) {
-                    for (Callback cb : mCallbackList) {
-                        if (null != cb) {
-                            cb.gen(gen);
-                        }
-                    }
+        synchronized (mCallbackList) {
+            for (Callback cb : mCallbackList) {
+                if (null != cb) {
+                    cb.gen(gen);
                 }
             }
-        });
+        }
     }
 
     public void delete(final OpenGLInfo del) {
-        mH.post(new Runnable() {
-            @Override
-            public void run() {
-                if (del == null) {
-                    return;
-                }
+        if (del == null) {
+            return;
+        }
 
-                synchronized (mInfoList) {
-                    // 之前可能释放过
-                    int index = mInfoList.indexOf(del);
-                    if (-1 == index) {
-                        return;
-                    }
+        synchronized (mInfoList) {
+            // 之前可能释放过
+            int index = mInfoList.indexOf(del);
+            if (-1 == index) {
+                return;
+            }
 
-                    OpenGLInfo info = mInfoList.get(index);
-                    if (null == info) {
-                        return;
-                    }
+            OpenGLInfo info = mInfoList.get(index);
+            if (null == info) {
+                return;
+            }
 
-                    AtomicInteger counter = info.getCounter();
-                    counter.set(counter.get() - 1);
-                    if (counter.get() == 0) {
-                        releaseNative(info.getNativeStackPtr());
+            AtomicInteger counter = info.getCounter();
+            counter.set(counter.get() - 1);
+            if (counter.get() == 0) {
+                releaseNative(info.getNativeStackPtr());
 
-                        // 释放 memory info
-                        MemoryInfo memoryInfo = info.getMemoryInfo();
-                        if (null != memoryInfo) {
-                            long memNativePtr = memoryInfo.getNativeStackPtr();
-                            if (memNativePtr != 0) {
-                                releaseNative(memNativePtr);
-                            }
-                        }
-                    }
-
-                    mInfoList.remove(del);
-                }
-
-                synchronized (mCallbackList) {
-                    for (Callback cb : mCallbackList) {
-                        if (null != cb) {
-                            cb.delete(del);
-                        }
+                // 释放 memory info
+                MemoryInfo memoryInfo = info.getMemoryInfo();
+                if (null != memoryInfo) {
+                    long memNativePtr = memoryInfo.getNativeStackPtr();
+                    if (memNativePtr != 0) {
+                        releaseNative(memNativePtr);
                     }
                 }
             }
-        });
+
+            mInfoList.remove(del);
+        }
+
+        synchronized (mCallbackList) {
+            for (Callback cb : mCallbackList) {
+                if (null != cb) {
+                    cb.delete(del);
+                }
+            }
+        }
     }
 
     public OpenGLInfo findOpenGLInfo(OpenGLInfo.TYPE type, long eglContextId, int openGLInfoId) {

@@ -4,7 +4,7 @@ import android.os.HandlerThread;
 
 public class GlLeakHandlerThread extends HandlerThread {
 
-    private static GlLeakHandlerThread mInstance = new GlLeakHandlerThread("GpuResLeakMonitor");
+    private static final GlLeakHandlerThread mInstance = new GlLeakHandlerThread("GpuResLeakMonitor");
 
     private GlLeakHandlerThread(String name) {
         super(name);

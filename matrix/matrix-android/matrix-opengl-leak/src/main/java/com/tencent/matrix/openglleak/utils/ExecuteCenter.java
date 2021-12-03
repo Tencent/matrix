@@ -1,5 +1,7 @@
 package com.tencent.matrix.openglleak.utils;
 
+import android.opengl.GLES20;
+import android.opengl.GLES30;
 import android.os.Handler;
 import android.os.HandlerThread;
 
@@ -14,9 +16,7 @@ public class ExecuteCenter {
     }
 
     private ExecuteCenter() {
-        HandlerThread mHandlerThread = new HandlerThread("matrix.GpuResLeakMonitor");
-        mHandlerThread.start();
-        mHandler = new Handler(mHandlerThread.getLooper());
+        mHandler = new Handler(GlLeakHandlerThread.getInstance().getLooper());
     }
 
     public void post(Runnable runnable) {
