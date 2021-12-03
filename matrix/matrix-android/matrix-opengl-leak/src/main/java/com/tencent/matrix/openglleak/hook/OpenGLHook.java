@@ -5,7 +5,6 @@ import android.opengl.EGL14;
 import com.tencent.matrix.openglleak.comm.FuncNameString;
 import com.tencent.matrix.openglleak.statistics.BindCenter;
 import com.tencent.matrix.openglleak.statistics.resource.MemoryInfo;
-import com.tencent.matrix.openglleak.statistics.resource.OpenGLID;
 import com.tencent.matrix.openglleak.statistics.resource.OpenGLInfo;
 import com.tencent.matrix.openglleak.statistics.resource.ResRecordManager;
 import com.tencent.matrix.openglleak.utils.ActivityRecorder;
@@ -141,7 +140,7 @@ public class OpenGLHook {
             }
 
             for (int id : ids) {
-                OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.TEXTURE, id, threadId, eglContextId, javaStack, nativeStackPtr, true, ActivityRecorder.getInstance().getCurrentActivityInfo(), counter);
+                OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.TEXTURE, id, threadId, eglContextId, javaStack, nativeStackPtr, ActivityRecorder.getInstance().getCurrentActivityInfo(), counter);
                 ResRecordManager.getInstance().gen(openGLInfo);
 
                 if (getInstance().mResourceListener != null) {
@@ -160,7 +159,7 @@ public class OpenGLHook {
             }
 
             for (int id : ids) {
-                OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.TEXTURE, id, threadId, eglContextId, false);
+                OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.TEXTURE, id, threadId, eglContextId);
                 ResRecordManager.getInstance().delete(openGLInfo);
 
                 if (getInstance().mResourceListener != null) {
@@ -180,7 +179,7 @@ public class OpenGLHook {
             }
 
             for (int id : ids) {
-                OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.BUFFER, id, threadId, eglContextId, javaStack, nativeStackPtr, true, ActivityRecorder.getInstance().getCurrentActivityInfo(), counter);
+                OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.BUFFER, id, threadId, eglContextId, javaStack, nativeStackPtr, ActivityRecorder.getInstance().getCurrentActivityInfo(), counter);
                 ResRecordManager.getInstance().gen(openGLInfo);
 
                 if (getInstance().mResourceListener != null) {
@@ -199,7 +198,7 @@ public class OpenGLHook {
             }
 
             for (int id : ids) {
-                OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.BUFFER, id, threadId, eglContextId, false);
+                OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.BUFFER, id, threadId, eglContextId);
                 ResRecordManager.getInstance().delete(openGLInfo);
 
                 if (getInstance().mResourceListener != null) {
@@ -219,7 +218,7 @@ public class OpenGLHook {
             }
 
             for (int id : ids) {
-                OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.FRAME_BUFFERS, id, threadId, eglContextId, javaStack, nativeStackPtr, true, ActivityRecorder.getInstance().getCurrentActivityInfo(), counter);
+                OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.FRAME_BUFFERS, id, threadId, eglContextId, javaStack, nativeStackPtr, ActivityRecorder.getInstance().getCurrentActivityInfo(), counter);
                 ResRecordManager.getInstance().gen(openGLInfo);
 
                 if (getInstance().mResourceListener != null) {
@@ -238,7 +237,7 @@ public class OpenGLHook {
             }
 
             for (int id : ids) {
-                OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.FRAME_BUFFERS, id, threadId, eglContextId, false);
+                OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.FRAME_BUFFERS, id, threadId, eglContextId);
                 ResRecordManager.getInstance().delete(openGLInfo);
 
                 if (getInstance().mResourceListener != null) {
@@ -258,7 +257,7 @@ public class OpenGLHook {
             }
 
             for (int id : ids) {
-                OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.RENDER_BUFFERS, id, threadId, eglContextId, javaStack, nativeStackPtr, true, ActivityRecorder.getInstance().getCurrentActivityInfo(), counter);
+                OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.RENDER_BUFFERS, id, threadId, eglContextId, javaStack, nativeStackPtr, ActivityRecorder.getInstance().getCurrentActivityInfo(), counter);
                 ResRecordManager.getInstance().gen(openGLInfo);
 
                 if (getInstance().mResourceListener != null) {
@@ -277,7 +276,7 @@ public class OpenGLHook {
             }
 
             for (int id : ids) {
-                OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.RENDER_BUFFERS, id, threadId, eglContextId, false);
+                OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.RENDER_BUFFERS, id, threadId, eglContextId);
                 ResRecordManager.getInstance().delete(openGLInfo);
 
                 if (getInstance().mResourceListener != null) {
@@ -299,8 +298,12 @@ public class OpenGLHook {
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
             eglContextId = EGL14.eglGetCurrentContext().getNativeHandle();
         }
-        OpenGLID openGLID = new OpenGLID(eglContextId, id);
-        BindCenter.getInstance().glBindResource(OpenGLInfo.TYPE.TEXTURE, target, openGLID);
+
+        OpenGLInfo info = null;
+        if (id != 0) {
+            info = ResRecordManager.getInstance().findOpenGLInfo(OpenGLInfo.TYPE.TEXTURE, eglContextId, id);
+        }
+        BindCenter.getInstance().glBindResource(OpenGLInfo.TYPE.TEXTURE, target, eglContextId, info);
 
         if (getInstance().mBindListener != null) {
             getInstance().mBindListener.onGlBindTexture(target, eglContextId, id);
@@ -312,8 +315,12 @@ public class OpenGLHook {
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
             eglContextId = EGL14.eglGetCurrentContext().getNativeHandle();
         }
-        OpenGLID openGLID = new OpenGLID(eglContextId, id);
-        BindCenter.getInstance().glBindResource(OpenGLInfo.TYPE.BUFFER, target, openGLID);
+
+        OpenGLInfo info = null;
+        if (id != 0) {
+            info = ResRecordManager.getInstance().findOpenGLInfo(OpenGLInfo.TYPE.BUFFER, eglContextId, id);
+        }
+        BindCenter.getInstance().glBindResource(OpenGLInfo.TYPE.BUFFER, target, eglContextId, info);
 
         if (getInstance().mBindListener != null) {
             getInstance().mBindListener.onGlBindBuffer(target, eglContextId, id);
@@ -325,8 +332,12 @@ public class OpenGLHook {
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
             eglContextId = EGL14.eglGetCurrentContext().getNativeHandle();
         }
-        OpenGLID openGLID = new OpenGLID(eglContextId, id);
-        BindCenter.getInstance().glBindResource(OpenGLInfo.TYPE.FRAME_BUFFERS, target, openGLID);
+
+        OpenGLInfo info = null;
+        if (id != 0) {
+            info = ResRecordManager.getInstance().findOpenGLInfo(OpenGLInfo.TYPE.FRAME_BUFFERS, eglContextId, id);
+        }
+        BindCenter.getInstance().glBindResource(OpenGLInfo.TYPE.FRAME_BUFFERS, target, eglContextId, info);
 
         if (getInstance().mBindListener != null) {
             getInstance().mBindListener.onGlBindFramebuffer(target, eglContextId, id);
@@ -338,8 +349,12 @@ public class OpenGLHook {
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
             eglContextId = EGL14.eglGetCurrentContext().getNativeHandle();
         }
-        OpenGLID openGLID = new OpenGLID(eglContextId, id);
-        BindCenter.getInstance().glBindResource(OpenGLInfo.TYPE.RENDER_BUFFERS, target, openGLID);
+
+        OpenGLInfo info = null;
+        if (id != 0) {
+            info = ResRecordManager.getInstance().findOpenGLInfo(OpenGLInfo.TYPE.RENDER_BUFFERS, eglContextId, id);
+        }
+        BindCenter.getInstance().glBindResource(OpenGLInfo.TYPE.RENDER_BUFFERS, target, eglContextId, info);
 
         if (getInstance().mBindListener != null) {
             getInstance().mBindListener.onGlBindRenderbuffer(target, eglContextId, id);
@@ -351,20 +366,17 @@ public class OpenGLHook {
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
             eglContextId = EGL14.eglGetCurrentContext().getNativeHandle();
         }
-        OpenGLID openGLID = BindCenter.getInstance().findCurrentResourceIdByTarget(OpenGLInfo.TYPE.TEXTURE, eglContextId, target);
-        if (openGLID == null) {
-            MatrixLog.e(TAG, "onGlTexImage2D: getCurrentResourceIdByTarget openGLID == null");
+        OpenGLInfo openGLInfo = BindCenter.getInstance().findCurrentResourceIdByTarget(OpenGLInfo.TYPE.TEXTURE, eglContextId, target);
+        if (openGLInfo == null) {
+            MatrixLog.e(TAG, "onGlTexImage2D: getCurrentResourceIdByTarget openGLID == null, maybe undo glBindTextures()");
             return;
         }
-        OpenGLInfo openGLInfo = ResRecordManager.getInstance().findOpenGLInfo(OpenGLInfo.TYPE.TEXTURE, openGLID.getEglContextNativeHandle(), openGLID.getId());
-        if (openGLInfo != null) {
-            MemoryInfo memoryInfo = new MemoryInfo();
-            memoryInfo.setTexturesInfo(target, level, internalFormat, width, height, 0, border, format, type, openGLID.getId(), openGLID.getEglContextNativeHandle(), size, javaStack, nativeStack);
-            openGLInfo.setMemoryInfo(memoryInfo);
-        }
+        MemoryInfo memoryInfo = new MemoryInfo();
+        memoryInfo.setTexturesInfo(target, level, internalFormat, width, height, 0, border, format, type, openGLInfo.getId(), openGLInfo.getEglContextNativeHandle(), size, javaStack, nativeStack);
+        openGLInfo.setMemoryInfo(memoryInfo);
 
         if (getInstance().mMemoryListener != null) {
-            getInstance().mMemoryListener.onGlTexImage2D(target, level, internalFormat, width, height, border, format, type, openGLID.getId(), openGLID.getEglContextNativeHandle(), size);
+            getInstance().mMemoryListener.onGlTexImage2D(target, level, internalFormat, width, height, border, format, type, openGLInfo.getId(), openGLInfo.getEglContextNativeHandle(), size);
         }
 
     }
@@ -374,20 +386,17 @@ public class OpenGLHook {
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
             eglContextId = EGL14.eglGetCurrentContext().getNativeHandle();
         }
-        OpenGLID openGLID = BindCenter.getInstance().findCurrentResourceIdByTarget(OpenGLInfo.TYPE.TEXTURE, eglContextId, target);
-        if (openGLID == null) {
-            MatrixLog.e(TAG, "onGlTexImage3D: getCurrentResourceIdByTarget result == null");
+        OpenGLInfo openGLInfo = BindCenter.getInstance().findCurrentResourceIdByTarget(OpenGLInfo.TYPE.TEXTURE, eglContextId, target);
+        if (openGLInfo == null) {
+            MatrixLog.e(TAG, "onGlTexImage3D: getCurrentResourceIdByTarget result == null, maybe undo glBindTextures()");
             return;
         }
-        OpenGLInfo openGLInfo = ResRecordManager.getInstance().findOpenGLInfo(OpenGLInfo.TYPE.TEXTURE, openGLID.getEglContextNativeHandle(), openGLID.getId());
-        if (openGLInfo != null) {
-            MemoryInfo memoryInfo = new MemoryInfo();
-            memoryInfo.setTexturesInfo(target, level, internalFormat, width, height, depth, border, format, type, openGLID.getId(), openGLID.getEglContextNativeHandle(), size, javaStack, nativeStack);
-            openGLInfo.setMemoryInfo(memoryInfo);
-        }
+        MemoryInfo memoryInfo = new MemoryInfo();
+        memoryInfo.setTexturesInfo(target, level, internalFormat, width, height, depth, border, format, type, openGLInfo.getId(), openGLInfo.getEglContextNativeHandle(), size, javaStack, nativeStack);
+        openGLInfo.setMemoryInfo(memoryInfo);
 
         if (getInstance().mMemoryListener != null) {
-            getInstance().mMemoryListener.onGlTexImage3D(target, level, internalFormat, width, height, depth, border, format, type, openGLID.getId(), openGLID.getEglContextNativeHandle(), size);
+            getInstance().mMemoryListener.onGlTexImage3D(target, level, internalFormat, width, height, depth, border, format, type, openGLInfo.getId(), openGLInfo.getEglContextNativeHandle(), size);
         }
 
     }
@@ -400,20 +409,17 @@ public class OpenGLHook {
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
             eglContextId = EGL14.eglGetCurrentContext().getNativeHandle();
         }
-        OpenGLID openGLID = BindCenter.getInstance().findCurrentResourceIdByTarget(OpenGLInfo.TYPE.BUFFER, eglContextId, target);
-        if (openGLID == null) {
-            MatrixLog.e(TAG, "onGlBufferData: getCurrentResourceIdByTarget result == null");
+        OpenGLInfo openGLInfo = BindCenter.getInstance().findCurrentResourceIdByTarget(OpenGLInfo.TYPE.BUFFER, eglContextId, target);
+        if (openGLInfo == null) {
+            MatrixLog.e(TAG, "onGlBufferData: getCurrentResourceIdByTarget result == null, maybe undo glBindBuffer()");
             return;
         }
-        OpenGLInfo openGLInfo = ResRecordManager.getInstance().findOpenGLInfo(OpenGLInfo.TYPE.BUFFER, openGLID.getEglContextNativeHandle(), openGLID.getId());
-        if (openGLInfo != null) {
-            MemoryInfo memoryInfo = new MemoryInfo();
-            memoryInfo.setBufferInfo(target, usage, openGLID.getId(), openGLID.getEglContextNativeHandle(), size, javaStack, nativeStack);
-            openGLInfo.setMemoryInfo(memoryInfo);
-        }
+        MemoryInfo memoryInfo = new MemoryInfo();
+        memoryInfo.setBufferInfo(target, usage, openGLInfo.getId(), openGLInfo.getEglContextNativeHandle(), size, javaStack, nativeStack);
+        openGLInfo.setMemoryInfo(memoryInfo);
 
         if (getInstance().mMemoryListener != null) {
-            getInstance().mMemoryListener.onGlBufferData(target, usage, openGLID.getId(), openGLID.getEglContextNativeHandle(), size);
+            getInstance().mMemoryListener.onGlBufferData(target, usage, openGLInfo.getId(), openGLInfo.getEglContextNativeHandle(), size);
         }
 
     }
@@ -423,20 +429,19 @@ public class OpenGLHook {
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
             eglContextId = EGL14.eglGetCurrentContext().getNativeHandle();
         }
-        OpenGLID openGLID = BindCenter.getInstance().findCurrentResourceIdByTarget(OpenGLInfo.TYPE.RENDER_BUFFERS, eglContextId, target);
-        if (openGLID == null) {
-            MatrixLog.e(TAG, "onGlRenderbufferStorage: getCurrentResourceIdByTarget result == null");
+        OpenGLInfo openGLInfo = BindCenter.getInstance().findCurrentResourceIdByTarget(OpenGLInfo.TYPE.RENDER_BUFFERS, eglContextId, target);
+        if (openGLInfo == null) {
+            MatrixLog.e(TAG, "onGlRenderbufferStorage: getCurrentResourceIdByTarget result == null, maybe undo glBindRenderbuffer()");
             return;
         }
-        OpenGLInfo openGLInfo = ResRecordManager.getInstance().findOpenGLInfo(OpenGLInfo.TYPE.RENDER_BUFFERS, openGLID.getEglContextNativeHandle(), openGLID.getId());
         if (openGLInfo != null) {
             MemoryInfo memoryInfo = new MemoryInfo();
-            memoryInfo.setRenderbufferInfo(target, width, height, internalformat, openGLID.getId(), openGLID.getEglContextNativeHandle(), size, javaStack, nativeStack);
+            memoryInfo.setRenderbufferInfo(target, width, height, internalformat, openGLInfo.getId(), openGLInfo.getEglContextNativeHandle(), size, javaStack, nativeStack);
             openGLInfo.setMemoryInfo(memoryInfo);
         }
 
         if (getInstance().mMemoryListener != null) {
-            getInstance().mMemoryListener.onGlRenderbufferStorage(target, width, height, internalformat, openGLID.getId(), openGLID.getEglContextNativeHandle(), size);
+            getInstance().mMemoryListener.onGlRenderbufferStorage(target, width, height, internalformat, openGLInfo.getId(), openGLInfo.getEglContextNativeHandle(), size);
         }
     }
 

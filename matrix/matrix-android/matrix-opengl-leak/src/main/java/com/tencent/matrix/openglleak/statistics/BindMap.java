@@ -1,6 +1,5 @@
 package com.tencent.matrix.openglleak.statistics;
 
-import com.tencent.matrix.openglleak.statistics.resource.OpenGLID;
 import com.tencent.matrix.openglleak.statistics.resource.OpenGLInfo;
 import com.tencent.matrix.openglleak.utils.ExecuteCenter;
 
@@ -31,9 +30,9 @@ public class BindMap {
 
     private static final BindMap mInstance = new BindMap();
 
-    private final Map<Long, Map<Integer, OpenGLID>> bindTextureMap;
-    private final Map<Long, Map<Integer, OpenGLID>> bindBufferMap;
-    private final Map<Long, Map<Integer, OpenGLID>> bindRenderbufferMap;
+    private final Map<Long, Map<Integer, OpenGLInfo>> bindTextureMap;
+    private final Map<Long, Map<Integer, OpenGLInfo>> bindBufferMap;
+    private final Map<Long, Map<Integer, OpenGLInfo>> bindRenderbufferMap;
 
     static BindMap getInstance() {
         return mInstance;
@@ -45,28 +44,28 @@ public class BindMap {
         bindRenderbufferMap = new HashMap<>();
     }
 
-    private OpenGLID getBindMapInfo(final Map<Long, Map<Integer, OpenGLID>> bindMap, long eglContextId, int target) {
+    private OpenGLInfo getBindMapInfo(final Map<Long, Map<Integer, OpenGLInfo>> bindMap, long eglContextNativeHandle, int target) {
         synchronized (bindMap) {
-            Map<Integer, OpenGLID> subTextureMap = bindMap.get(eglContextId);
+            Map<Integer, OpenGLInfo> subTextureMap = bindMap.get(eglContextNativeHandle);
             if (subTextureMap == null) {
                 subTextureMap = new HashMap<>();
-                bindMap.put(eglContextId, subTextureMap);
+                bindMap.put(eglContextNativeHandle, subTextureMap);
             }
             return subTextureMap.get(target);
         }
     }
 
-    private void putInBindMap(final Map<Long, Map<Integer, OpenGLID>> bindMap, final int target, final OpenGLID openGLID, OpenGLInfo.TYPE type) {
+    private void putInBindMap(final Map<Long, Map<Integer, OpenGLInfo>> bindMap, final int target, final long eglContextNativeHandle, final OpenGLInfo openGLInfo, OpenGLInfo.TYPE type) {
         if (!isSupportTarget(type, target)) {
             return;
         }
         synchronized (bindMap) {
-            Map<Integer, OpenGLID> subTextureMap = bindMap.get(openGLID.getEglContextNativeHandle());
+            Map<Integer, OpenGLInfo> subTextureMap = bindMap.get(eglContextNativeHandle);
             if (subTextureMap == null) {
                 subTextureMap = new HashMap<>();
-                bindMap.put(openGLID.getEglContextNativeHandle(), subTextureMap);
+                bindMap.put(eglContextNativeHandle, subTextureMap);
             }
-            subTextureMap.put(target, openGLID);
+            subTextureMap.put(target, openGLInfo);
         }
     }
 
@@ -100,7 +99,7 @@ public class BindMap {
         return target == GL_RENDERBUFFER;
     }
 
-    public OpenGLID getBindInfo(OpenGLInfo.TYPE type, long eglContextId, int target) {
+    public OpenGLInfo getBindInfo(OpenGLInfo.TYPE type, long eglContextId, int target) {
         switch (type) {
             case BUFFER:
                 return getBindMapInfo(bindBufferMap, eglContextId, target);
@@ -113,19 +112,19 @@ public class BindMap {
     }
 
 
-    public void putBindInfo(final OpenGLInfo.TYPE type,  final int target, final OpenGLID openGLID) {
+    public void putBindInfo(final OpenGLInfo.TYPE type, final int target, final long eglContextId, final OpenGLInfo info) {
         ExecuteCenter.getInstance().post(new Runnable() {
             @Override
             public void run() {
                 switch (type) {
                     case BUFFER:
-                        putInBindMap(bindBufferMap, target, openGLID, OpenGLInfo.TYPE.BUFFER);
+                        putInBindMap(bindBufferMap, target, eglContextId, info, OpenGLInfo.TYPE.BUFFER);
                         break;
                     case TEXTURE:
-                        putInBindMap(bindTextureMap, target, openGLID, OpenGLInfo.TYPE.TEXTURE);
+                        putInBindMap(bindTextureMap, target, eglContextId, info, OpenGLInfo.TYPE.TEXTURE);
                         break;
                     case RENDER_BUFFERS:
-                        putInBindMap(bindRenderbufferMap, target, openGLID, OpenGLInfo.TYPE.RENDER_BUFFERS);
+                        putInBindMap(bindRenderbufferMap, target, eglContextId, info, OpenGLInfo.TYPE.RENDER_BUFFERS);
                         break;
                 }
             }

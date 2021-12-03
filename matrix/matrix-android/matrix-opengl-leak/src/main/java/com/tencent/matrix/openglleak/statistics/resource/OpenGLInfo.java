@@ -8,7 +8,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class OpenGLInfo {
 
     private String threadId = "";
-    private final OpenGLID openGLID;
+    private final int id;
+    private final long eglContextNativeHandle;
     private String javaStack = "";
     private String nativeStack = "";
     private long nativeStackPtr = 0L;
@@ -25,7 +26,8 @@ public class OpenGLInfo {
 
     public OpenGLInfo(OpenGLInfo clone) {
         this.threadId = clone.threadId;
-        this.openGLID = clone.openGLID;
+        this.id = clone.id;
+        this.eglContextNativeHandle = clone.eglContextNativeHandle;
         this.javaStack = clone.javaStack;
         this.nativeStack = clone.nativeStack;
         this.nativeStackPtr = clone.nativeStackPtr;
@@ -34,24 +36,22 @@ public class OpenGLInfo {
     }
 
 
-    public OpenGLInfo(TYPE type, int id, String threadId, long eglContextNativeHandle, boolean genOrDelete) {
+    public OpenGLInfo(TYPE type, int id, String threadId, long eglContextNativeHandle) {
         this.threadId = threadId;
-        this.openGLID = new OpenGLID(eglContextNativeHandle, id);
+        this.id = id;
+        this.eglContextNativeHandle = eglContextNativeHandle;
         this.type = type;
     }
 
-    public OpenGLInfo(TYPE type, int id, String threadId, long eglContextNativeHandle, String javaStack, long nativeStackPtr, boolean genOrDelete, ActivityRecorder.ActivityInfo activityInfo, AtomicInteger counter) {
+    public OpenGLInfo(TYPE type, int id, String threadId, long eglContextNativeHandle, String javaStack, long nativeStackPtr, ActivityRecorder.ActivityInfo activityInfo, AtomicInteger counter) {
         this.threadId = threadId;
         this.javaStack = javaStack;
         this.nativeStackPtr = nativeStackPtr;
         this.type = type;
         this.activityInfo = activityInfo;
         this.counter = counter;
-        this.openGLID = new OpenGLID(eglContextNativeHandle, id);
-    }
-
-    public OpenGLID getOpenGLID() {
-        return openGLID;
+        this.id = id;
+        this.eglContextNativeHandle = eglContextNativeHandle;
     }
 
     public MemoryInfo getMemoryInfo() {
@@ -59,7 +59,7 @@ public class OpenGLInfo {
     }
 
     public long getEglContextNativeHandle() {
-        return openGLID.getEglContextNativeHandle();
+        return eglContextNativeHandle;
     }
 
     public void setMemoryInfo(MemoryInfo memoryInfo) {
@@ -67,7 +67,7 @@ public class OpenGLInfo {
     }
 
     public int getId() {
-        return openGLID.getId();
+        return id;
     }
 
     public String getThreadId() {
@@ -101,11 +101,11 @@ public class OpenGLInfo {
     @Override
     public String toString() {
         return "OpenGLInfo{" +
-                "id=" + openGLID.getId() +
+                "id=" + id +
                 ", activityName=" + activityInfo +
                 ", type='" + type.toString() + '\'' +
                 ", threadId='" + threadId + '\'' +
-                ", eglContextNativeHandle='" + openGLID.getEglContextNativeHandle() + '\'' +
+                ", eglContextNativeHandle='" + eglContextNativeHandle + '\'' +
                 ", javaStack='" + javaStack + '\'' +
                 ", nativeStack='" + getNativeStack() + '\'' +
                 ", nativeStackPtr=" + nativeStackPtr +
@@ -117,14 +117,15 @@ public class OpenGLInfo {
         if (this == o) return true;
         if (o == null || !(o instanceof OpenGLInfo)) return false;
         OpenGLInfo that = (OpenGLInfo) o;
-        return  openGLID.equals(that.openGLID) &&
+        return  id == that.id &&
+                eglContextNativeHandle == that.eglContextNativeHandle &&
                 threadId.equals(that.threadId) &&
                 type == that.type;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(openGLID.hashCode(), threadId, type);
+        return Objects.hash(id, eglContextNativeHandle, threadId, type);
     }
 
 }
