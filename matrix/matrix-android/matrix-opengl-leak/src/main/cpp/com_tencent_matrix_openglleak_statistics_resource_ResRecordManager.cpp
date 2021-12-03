@@ -60,7 +60,7 @@ void get_native_stack(wechat_backtrace::Backtrace* backtrace, char *&stack) {
 
 
 extern "C" JNIEXPORT void JNICALL Java_com_tencent_matrix_openglleak_statistics_resource_ResRecordManager_releaseNative
-        (JNIEnv *env, jobject thiz, jlong jl) {
+        (JNIEnv *env, jclass thiz, jlong jl) {
     int64_t addr = jl;
 
     wechat_backtrace::Backtrace* ptr = (wechat_backtrace::Backtrace*) addr;

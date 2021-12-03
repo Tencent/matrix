@@ -13,8 +13,8 @@ import java.util.Objects;
 
 public class ActivityRecorder implements Application.ActivityLifecycleCallbacks {
 
-    private static ActivityRecorder mInstance = new ActivityRecorder();
-    private List<ActivityInfo> mList = new LinkedList<>();
+    private static final ActivityRecorder mInstance = new ActivityRecorder();
+    private final List<ActivityInfo> mList = new LinkedList<>();
 
     private ActivityRecorder() {
     }
@@ -73,7 +73,7 @@ public class ActivityRecorder implements Application.ActivityLifecycleCallbacks 
         mList.remove(new ActivityInfo(activity.hashCode(), activity.getLocalClassName()));
     }
 
-    public class ActivityInfo {
+    public static class ActivityInfo {
         public int activityHashcode;
         public String name;
 

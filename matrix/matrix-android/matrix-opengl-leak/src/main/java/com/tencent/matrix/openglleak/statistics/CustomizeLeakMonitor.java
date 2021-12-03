@@ -7,7 +7,7 @@ import java.util.List;
 
 public class CustomizeLeakMonitor {
 
-    private ResRecorder mResRecorder;
+    private final ResRecorder mResRecorder;
 
     public CustomizeLeakMonitor() {
         mResRecorder = new ResRecorder();

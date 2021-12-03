@@ -72,14 +72,14 @@ public class ResRecordManager {
             counter.set(counter.get() - 1);
             if (counter.get() == 0) {
                 releaseNative(info.getNativeStackPtr());
+            }
 
-                // 释放 memory info
-                MemoryInfo memoryInfo = info.getMemoryInfo();
-                if (null != memoryInfo) {
-                    long memNativePtr = memoryInfo.getNativeStackPtr();
-                    if (memNativePtr != 0) {
-                        releaseNative(memNativePtr);
-                    }
+            // 释放 memory info
+            MemoryInfo memoryInfo = info.getMemoryInfo();
+            if (null != memoryInfo) {
+                long memNativePtr = memoryInfo.getNativeStackPtr();
+                if (memNativePtr != 0) {
+                    releaseNative(memNativePtr);
                 }
             }
 
@@ -135,7 +135,7 @@ public class ResRecordManager {
 
     public static native String dumpNativeStack(long nativeStackPtr);
 
-    private native void releaseNative(long nativeStackPtr);
+    public static native void releaseNative(long nativeStackPtr);
 
     protected void registerCallback(Callback callback) {
         if (null == callback) {

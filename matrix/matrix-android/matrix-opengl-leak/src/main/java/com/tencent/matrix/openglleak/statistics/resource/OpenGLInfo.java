@@ -63,6 +63,11 @@ public class OpenGLInfo {
     }
 
     public void setMemoryInfo(MemoryInfo memoryInfo) {
+        if (this.memoryInfo != null) {
+            if (memoryInfo.getNativeStackPtr() != 0) {
+                ResRecordManager.releaseNative(memoryInfo.getNativeStackPtr());
+            }
+        }
         this.memoryInfo = memoryInfo;
     }
 
@@ -117,7 +122,7 @@ public class OpenGLInfo {
         if (this == o) return true;
         if (o == null || !(o instanceof OpenGLInfo)) return false;
         OpenGLInfo that = (OpenGLInfo) o;
-        return  id == that.id &&
+        return id == that.id &&
                 eglContextNativeHandle == that.eglContextNativeHandle &&
                 threadId.equals(that.threadId) &&
                 type == that.type;

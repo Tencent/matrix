@@ -9,7 +9,7 @@ public class ResRecorder implements ResRecordManager.Callback {
     public ResRecorder() {
     }
 
-    private List<OpenGLInfo> mList = new LinkedList<>();
+    private final List<OpenGLInfo> mList = new LinkedList<>();
 
     public void start() {
         ResRecordManager.getInstance().registerCallback(this);
