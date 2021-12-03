@@ -3,7 +3,6 @@ package com.tencent.matrix.openglleak.statistics.resource;
 import android.annotation.SuppressLint;
 import android.os.Handler;
 
-import com.tencent.matrix.openglleak.statistics.MemoryInfo;
 import com.tencent.matrix.openglleak.utils.AutoWrapBuilder;
 import com.tencent.matrix.openglleak.utils.GlLeakHandlerThread;
 
@@ -85,6 +84,15 @@ public class ResRecordManager {
                     counter.set(counter.get() - 1);
                     if (counter.get() == 0) {
                         releaseNative(info.getNativeStackPtr());
+
+                        // 释放 memory info
+                        MemoryInfo memoryInfo = info.getMemoryInfo();
+                        if (null != memoryInfo) {
+                            long memNativePtr = memoryInfo.getNativeStackPtr();
+                            if (memNativePtr != 0) {
+                                releaseNative(memNativePtr);
+                            }
+                        }
                     }
 
                     mInfoList.remove(del);

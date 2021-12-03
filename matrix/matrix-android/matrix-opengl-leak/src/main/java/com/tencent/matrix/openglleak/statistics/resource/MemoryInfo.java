@@ -1,7 +1,4 @@
-package com.tencent.matrix.openglleak.statistics;
-
-import com.tencent.matrix.openglleak.statistics.resource.OpenGLInfo;
-import com.tencent.matrix.openglleak.statistics.resource.ResRecordManager;
+package com.tencent.matrix.openglleak.statistics.resource;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -80,6 +77,10 @@ public class MemoryInfo {
             nativeStack = ResRecordManager.dumpNativeStack(nativeStackPtr);
         }
         return nativeStack;
+    }
+
+    public long getNativeStackPtr() {
+        return nativeStackPtr;
     }
 
     public int getTarget() {

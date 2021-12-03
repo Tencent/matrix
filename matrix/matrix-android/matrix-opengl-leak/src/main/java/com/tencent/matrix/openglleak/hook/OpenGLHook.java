@@ -4,7 +4,7 @@ import android.opengl.EGL14;
 
 import com.tencent.matrix.openglleak.comm.FuncNameString;
 import com.tencent.matrix.openglleak.statistics.BindCenter;
-import com.tencent.matrix.openglleak.statistics.MemoryInfo;
+import com.tencent.matrix.openglleak.statistics.resource.MemoryInfo;
 import com.tencent.matrix.openglleak.statistics.resource.OpenGLID;
 import com.tencent.matrix.openglleak.statistics.resource.OpenGLInfo;
 import com.tencent.matrix.openglleak.statistics.resource.ResRecordManager;
