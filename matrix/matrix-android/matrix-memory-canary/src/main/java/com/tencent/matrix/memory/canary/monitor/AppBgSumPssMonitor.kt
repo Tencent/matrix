@@ -27,7 +27,7 @@ data class AppBgSumPssMonitorConfig(
     }
 ) {
     override fun toString(): String {
-        return "AppBgSumPssMonitorConfig(enable=$enable, delayMillis=$checkInterval, thresholdKB=$thresholdKB, checkTimes=$checkTimes, callback=$callback)"
+        return "AppBgSumPssMonitorConfig(enable=$enable, delayMillis=$checkInterval, thresholdKB=$thresholdKB, checkTimes=$checkTimes, callback=${callback.javaClass.name})"
     }
 }
 
