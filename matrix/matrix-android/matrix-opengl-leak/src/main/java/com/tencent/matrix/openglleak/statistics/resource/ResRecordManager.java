@@ -3,7 +3,6 @@ package com.tencent.matrix.openglleak.statistics.resource;
 import android.annotation.SuppressLint;
 import android.os.Handler;
 
-import com.tencent.matrix.openglleak.statistics.MemoryInfo;
 import com.tencent.matrix.openglleak.utils.AutoWrapBuilder;
 import com.tencent.matrix.openglleak.utils.GlLeakHandlerThread;
 
@@ -207,18 +206,18 @@ public class ResRecordManager {
                     .append(String.format(" eglContext = %s", report.innerInfo.getEglContextNativeHandle()))
                     .append(String.format(" java stack = %s", report.innerInfo.getJavaStack()))
                     .append(String.format(" native stack = %s", report.innerInfo.getNativeStack()))
-                    .append(report.innerInfo.getMemoryInfo() == null ? "" : getMemoryInfoStr(report.innerInfo.getMemoryInfo()))
+                    .append(report.innerInfo.getMemoryInfo() == null ? "" : getMemoryInfoStr(report))
                     .wrap();
         }
         return result.toString();
     }
 
-    private String getMemoryInfoStr(MemoryInfo memory) {
-        return memory.getParamsInfos() +
+    private String getMemoryInfoStr(OpenGLReportInfo reportInfo) {
+        return reportInfo.getParamsInfos() +
                 "\n" +
-                String.format(" memory java stack = %s", memory.getJavaStack()) +
+                String.format(" memory java stack = %s", reportInfo.innerInfo.getMemoryInfo().getJavaStack()) +
                 "\n" +
-                String.format(" memory native stack = %s", memory.getNativeStack());
+                String.format(" memory native stack = %s", reportInfo.innerInfo.getMemoryInfo().getNativeStack());
     }
 
     @SuppressLint("DefaultLocale")
@@ -232,7 +231,7 @@ public class ResRecordManager {
 
             MemoryInfo memoryInfo = info.getMemoryInfo();
             int memoryJavaHash = memoryInfo == null ? 0 : memoryInfo.getJavaStack().hashCode();
-            int memoryNativeHash = memoryInfo == null ? 0 : info.getNativeStack().hashCode();
+            int memoryNativeHash = memoryInfo == null ? 0 : memoryInfo.getNativeStack().hashCode();
 
             long infoHash = javaHash + nativeHash + memoryNativeHash + memoryJavaHash;
 
@@ -249,9 +248,8 @@ public class ResRecordManager {
 
                 if (isSameType && isSameThread && isSameEglContext && isSameActivity) {
                     oldInfo.incAllocRecord(info.getId());
-                    MemoryInfo oldMemoryInfo = oldInfo.innerInfo.getMemoryInfo();
-                    if (oldMemoryInfo != null) {
-                        oldMemoryInfo.appendParamsInfos(info.getMemoryInfo());
+                    if (oldInfo.innerInfo.getMemoryInfo() != null) {
+                        oldInfo.appendParamsInfos(info.getMemoryInfo());
                     }
                     infoMap.put(infoHash, oldInfo);
                 }

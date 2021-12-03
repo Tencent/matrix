@@ -1,10 +1,4 @@
-package com.tencent.matrix.openglleak.statistics;
-
-import com.tencent.matrix.openglleak.statistics.resource.OpenGLInfo;
-import com.tencent.matrix.openglleak.statistics.resource.ResRecordManager;
-
-import java.util.ArrayList;
-import java.util.List;
+package com.tencent.matrix.openglleak.statistics.resource;
 
 public class MemoryInfo {
 
@@ -42,8 +36,6 @@ public class MemoryInfo {
 
     private OpenGLInfo.TYPE resType;
 
-    private final List<String> paramsList = new ArrayList<>();
-
     public MemoryInfo() {
 
     }
@@ -64,7 +56,6 @@ public class MemoryInfo {
         this.javaStack = javaStack;
         this.nativeStackPtr = nativeStackPtr;
         resType = OpenGLInfo.TYPE.TEXTURE;
-        appendParamsInfos(this);
     }
 
     public OpenGLInfo.TYPE getResType() {
@@ -134,57 +125,7 @@ public class MemoryInfo {
         return usage;
     }
 
-    public void appendParamsInfos(MemoryInfo memoryInfo) {
-        if (memoryInfo == null) {
-            return;
-        }
-        OpenGLInfo.TYPE resType = memoryInfo.getResType();
-        if (resType == OpenGLInfo.TYPE.TEXTURE) {
-            paramsList.add("MemoryInfo{" +
-                    "target=" + memoryInfo.getTarget() +
-                    ", id=" + memoryInfo.getId() +
-                    ", eglContextNativeHandle='" + memoryInfo.getEglContextId() +  '\'' +
-                    ", level=" + memoryInfo.getLevel() +
-                    ", internalFormat=" + memoryInfo.getInternalFormat() +
-                    ", width=" + memoryInfo.getWidth() +
-                    ", height=" + memoryInfo.getHeight() +
-                    ", depth=" + memoryInfo.getDepth() +
-                    ", border=" + memoryInfo.getBorder() +
-                    ", format=" + memoryInfo.getFormat() +
-                    ", type=" + memoryInfo.getType() +
-                    ", size=" + memoryInfo.getSize() +
-                    '}');
-        } else if (resType == OpenGLInfo.TYPE.BUFFER) {
-            paramsList.add("MemoryInfo{" +
-                    "target=" + memoryInfo.getTarget() +
-                    ", id=" + memoryInfo.getId() +
-                    ", eglContextNativeHandle='" + memoryInfo.getEglContextId() +  '\'' +
-                    ", usage=" + memoryInfo.getUsage() +
-                    ", size=" + memoryInfo.getSize() +
-                    '}');
-        } else if (resType == OpenGLInfo.TYPE.RENDER_BUFFERS) {
-            paramsList.add("MemoryInfo{" +
-                    "target=" + memoryInfo.getTarget() +
-                    ", id=" + memoryInfo.getId() +
-                    ", eglContextNativeHandle='" + memoryInfo.getEglContextId() +  '\'' +
-                    ", internalFormat=" + memoryInfo.getInternalFormat() +
-                    ", width=" + memoryInfo.getWidth() +
-                    ", height=" + memoryInfo.getHeight() +
-                    ", size=" + memoryInfo.getSize() +
-                    '}');
-        }
 
-    }
-
-    public String getParamsInfos() {
-        StringBuilder result = new StringBuilder();
-        for (int i = 0; i < paramsList.size(); i++) {
-            result.append(" ")
-                    .append(paramsList.get(i))
-                    .append("\n");
-        }
-        return result.toString();
-    }
 
     public void setBufferInfo(int target, int usage, int id, long eglContextId, long size, String javaStack, long nativeStackPtr) {
         this.target = target;
@@ -195,7 +136,6 @@ public class MemoryInfo {
         this.javaStack = javaStack;
         this.nativeStackPtr = nativeStackPtr;
         resType = OpenGLInfo.TYPE.BUFFER;
-        appendParamsInfos(this);
     }
 
     public void setRenderbufferInfo(int target, int width, int height, int internalFormat, int id, long eglContextId, long size, String javaStack, long nativeStackPtr) {
@@ -209,7 +149,6 @@ public class MemoryInfo {
         this.javaStack = javaStack;
         this.nativeStackPtr = nativeStackPtr;
         resType = OpenGLInfo.TYPE.RENDER_BUFFERS;
-        appendParamsInfos(this);
     }
 
 

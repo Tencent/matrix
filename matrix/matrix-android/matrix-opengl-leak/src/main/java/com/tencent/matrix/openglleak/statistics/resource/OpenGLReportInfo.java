@@ -9,11 +9,66 @@ public class OpenGLReportInfo {
 
     private final List<Integer> idList = new ArrayList<>();
 
+    private final List<String> paramsList = new ArrayList<>();
+
     private int allocCount;
 
     public OpenGLReportInfo(OpenGLInfo innerInfo) {
         this.innerInfo = innerInfo;
         idList.add(innerInfo.getId());
+        appendParamsInfos(innerInfo.getMemoryInfo());
+    }
+
+    public void appendParamsInfos(MemoryInfo memoryInfo) {
+        if (memoryInfo == null) {
+            return;
+        }
+        OpenGLInfo.TYPE resType = memoryInfo.getResType();
+        if (resType == OpenGLInfo.TYPE.TEXTURE) {
+            paramsList.add("MemoryInfo{" +
+                    "target=" + memoryInfo.getTarget() +
+                    ", id=" + memoryInfo.getId() +
+                    ", eglContextNativeHandle='" + memoryInfo.getEglContextId() +  '\'' +
+                    ", level=" + memoryInfo.getLevel() +
+                    ", internalFormat=" + memoryInfo.getInternalFormat() +
+                    ", width=" + memoryInfo.getWidth() +
+                    ", height=" + memoryInfo.getHeight() +
+                    ", depth=" + memoryInfo.getDepth() +
+                    ", border=" + memoryInfo.getBorder() +
+                    ", format=" + memoryInfo.getFormat() +
+                    ", type=" + memoryInfo.getType() +
+                    ", size=" + memoryInfo.getSize() +
+                    '}');
+        } else if (resType == OpenGLInfo.TYPE.BUFFER) {
+            paramsList.add("MemoryInfo{" +
+                    "target=" + memoryInfo.getTarget() +
+                    ", id=" + memoryInfo.getId() +
+                    ", eglContextNativeHandle='" + memoryInfo.getEglContextId() +  '\'' +
+                    ", usage=" + memoryInfo.getUsage() +
+                    ", size=" + memoryInfo.getSize() +
+                    '}');
+        } else if (resType == OpenGLInfo.TYPE.RENDER_BUFFERS) {
+            paramsList.add("MemoryInfo{" +
+                    "target=" + memoryInfo.getTarget() +
+                    ", id=" + memoryInfo.getId() +
+                    ", eglContextNativeHandle='" + memoryInfo.getEglContextId() +  '\'' +
+                    ", internalFormat=" + memoryInfo.getInternalFormat() +
+                    ", width=" + memoryInfo.getWidth() +
+                    ", height=" + memoryInfo.getHeight() +
+                    ", size=" + memoryInfo.getSize() +
+                    '}');
+        }
+
+    }
+
+    public String getParamsInfos() {
+        StringBuilder result = new StringBuilder();
+        for (int i = 0; i < paramsList.size(); i++) {
+            result.append(" ")
+                    .append(paramsList.get(i))
+                    .append("\n");
+        }
+        return result.toString();
     }
 
     public void incAllocRecord(int id) {

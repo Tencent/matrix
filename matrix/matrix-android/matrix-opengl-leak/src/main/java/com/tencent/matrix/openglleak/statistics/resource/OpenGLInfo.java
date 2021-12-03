@@ -1,6 +1,5 @@
 package com.tencent.matrix.openglleak.statistics.resource;
 
-import com.tencent.matrix.openglleak.statistics.MemoryInfo;
 import com.tencent.matrix.openglleak.utils.ActivityRecorder;
 
 import java.util.Objects;
