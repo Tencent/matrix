@@ -84,6 +84,15 @@ public class ResRecordManager {
                     counter.set(counter.get() - 1);
                     if (counter.get() == 0) {
                         releaseNative(info.getNativeStackPtr());
+
+                        // 释放 memory info
+                        MemoryInfo memoryInfo = info.getMemoryInfo();
+                        if (null != memoryInfo) {
+                            long memNativePtr = memoryInfo.getNativeStackPtr();
+                            if (memNativePtr != 0) {
+                                releaseNative(memNativePtr);
+                            }
+                        }
                     }
 
                     mInfoList.remove(del);

@@ -73,6 +73,10 @@ public class MemoryInfo {
         return nativeStack;
     }
 
+    public long getNativeStackPtr() {
+        return nativeStackPtr;
+    }
+
     public int getTarget() {
         return target;
     }
