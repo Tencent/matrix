@@ -147,7 +147,7 @@ public class BatteryStatsActivity extends AppCompatActivity {
         public static class EventDumpItem extends Item {
             public long id;
             public boolean expand = false;
-            public String mode;
+            public String scope;
             public String desc;
             public long windowMillis;
             public List<ThreadInfo> threadInfoList = Collections.emptyList();
@@ -189,6 +189,7 @@ public class BatteryStatsActivity extends AppCompatActivity {
 
 
         public abstract static class ViewHolder<ITEM extends Item> extends  RecyclerView.ViewHolder {
+            @SuppressWarnings("NotNullFieldNotInitialized")
             @NonNull ITEM mItem;
             public ViewHolder(@NonNull View itemView) {
                 super(itemView);
@@ -203,6 +204,7 @@ public class BatteryStatsActivity extends AppCompatActivity {
 
             public static class EventDumpHolder extends ViewHolder<EventDumpItem> {
 
+                private final TextView mMoreTv;
                 private final View mExpandView;
 
                 private final View mHeaderEntryView;
@@ -210,39 +212,17 @@ public class BatteryStatsActivity extends AppCompatActivity {
                 private final TextView mHeaderRightTv;
                 private final TextView mHeaderDescTv;
 
-                private final View mThreadEntryView;
-                private final TextView mThreadEntryLeftTv;
-                private final TextView mThreadRightTv;
-                private final TextView mThreadEntryKey1;
-                private final TextView mThreadEntryVal1;
-                private final TextView mThreadEntryKey2;
-                private final TextView mThreadEntryVal2;
-                private final TextView mThreadEntryKey3;
-                private final TextView mThreadEntryVal3;
-                private final TextView mThreadEntryKey4;
-                private final TextView mThreadEntryVal4;
-                private final TextView mThreadEntryKey5;
-                private final TextView mThreadEntryVal5;
-
-                    private final View mAEntryView;
-                private final TextView mAEntryLeftTv;
-
-
-                    private final View mBEntryView;
-                private final TextView mBEntryLeftTv;
-
-
-                    private final View mCEntryView;
-                private final TextView mCEntryLeftTv;
-
-
-                    private final View mDEntryView;
-                private final TextView mDEntryLeftTv;
+                private final View mEntryViewThread;
+                private final View mEntryView1;
+                private final View mEntryView2;
+                private final View mEntryView3;
+                private final View mEntryView4;
 
 
 
                 public EventDumpHolder(@NonNull View itemView) {
                     super(itemView);
+                    mMoreTv = itemView.findViewById(R.id.tv_more);
                     mExpandView = itemView.findViewById(R.id.layout_expand);
 
                     mHeaderEntryView = itemView.findViewById(R.id.layout_expand_entry_header);
@@ -250,41 +230,21 @@ public class BatteryStatsActivity extends AppCompatActivity {
                     mHeaderRightTv = mHeaderEntryView.findViewById(R.id.tv_header_right);
                     mHeaderDescTv = mHeaderEntryView.findViewById(R.id.tv_desc);
 
-                    mThreadEntryView = itemView.findViewById(R.id.layout_expand_entry_thread);
-                    mThreadEntryLeftTv = mThreadEntryView.findViewById(R.id.tv_header_left);
-                    mThreadRightTv = mThreadEntryView.findViewById(R.id.tv_header_right);
-                    mThreadEntryKey1 = mThreadEntryView.findViewById(R.id.tv_key_1);
-                    mThreadEntryVal1 = mThreadEntryView.findViewById(R.id.tv_value_1);
-                    mThreadEntryKey2 = mThreadEntryView.findViewById(R.id.tv_key_2);
-                    mThreadEntryVal2 = mThreadEntryView.findViewById(R.id.tv_value_2);
-                    mThreadEntryKey3 = mThreadEntryView.findViewById(R.id.tv_key_3);
-                    mThreadEntryVal3 = mThreadEntryView.findViewById(R.id.tv_value_3);
-                    mThreadEntryKey4 = mThreadEntryView.findViewById(R.id.tv_key_4);
-                    mThreadEntryVal4 = mThreadEntryView.findViewById(R.id.tv_value_4);
-                    mThreadEntryKey5 = mThreadEntryView.findViewById(R.id.tv_key_5);
-                    mThreadEntryVal5 = mThreadEntryView.findViewById(R.id.tv_value_5);
+                    mEntryViewThread = itemView.findViewById(R.id.layout_expand_entry_thread);
+                    mEntryView1 = itemView.findViewById(R.id.layout_expand_entry_1);
+                    mEntryView2 = itemView.findViewById(R.id.layout_expand_entry_2);
+                    mEntryView3 = itemView.findViewById(R.id.layout_expand_entry_3);
+                    mEntryView4 = itemView.findViewById(R.id.layout_expand_entry_4);
 
-                    mAEntryView = itemView.findViewById(R.id.layout_expand_entry_1);
-                    mAEntryLeftTv =    mAEntryView.findViewById(R.id.tv_header_left);
-
-                    mBEntryView = itemView.findViewById(R.id.layout_expand_entry_2);
-                    mBEntryLeftTv = mBEntryView.findViewById(R.id.tv_header_left);
-
-
-                    mCEntryView = itemView.findViewById(R.id.layout_expand_entry_3);
-                    mCEntryLeftTv = mCEntryView.findViewById(R.id.tv_header_left);
-
-
-                    mDEntryView = itemView.findViewById(R.id.layout_expand_entry_4);
-                    mDEntryLeftTv = mDEntryView.findViewById(R.id.tv_header_left);
-
-                    itemView.setOnClickListener(new View.OnClickListener() {
+                    View.OnClickListener onClickListener = new View.OnClickListener() {
                         @Override
                         public void onClick(View v) {
                             mItem.expand = !mItem.expand;
                             updateView(mItem);
                         }
-                    });
+                    };
+                    itemView.findViewById(R.id.layout_title).setOnClickListener(onClickListener);
+                    itemView.findViewById(R.id.layout_right).setOnClickListener(onClickListener);
                 }
 
                 @Override
@@ -297,60 +257,52 @@ public class BatteryStatsActivity extends AppCompatActivity {
                 private void resetView() {
                     mExpandView.setVisibility(View.GONE);
                     mHeaderEntryView.setVisibility(View.VISIBLE);
-                    mThreadEntryView.setVisibility(View.GONE);
-
-                    mAEntryView.setVisibility(View.GONE);
-                    mAEntryLeftTv.setText("设备状态");
-
-                    mBEntryView.setVisibility(View.GONE);
-                    mBEntryLeftTv.setText("应用状态");
-
-                    mCEntryView.setVisibility(View.GONE);
-                    mCEntryLeftTv.setText("服务调用");
+                    mEntryViewThread.setVisibility(View.GONE);
+                    mEntryView1.setVisibility(View.GONE);
+                    mEntryView2.setVisibility(View.GONE);
+                    mEntryView3.setVisibility(View.GONE);
+                    mEntryView4.setVisibility(View.GONE);
                 }
 
-                @SuppressLint("SetTextI18n")
+                @SuppressLint({"SetTextI18n", "CutPasteId"})
                 private void updateView(EventDumpItem item) {
+                    mMoreTv.setText(item.expand ? "▼" : "▲");
                     mExpandView.setVisibility(item.expand ? View.VISIBLE : View.GONE);
                     if (!item.expand) {
                         return;
                     }
 
                     // Header
-                    mHeaderLeftTv.setText("模式: " + item.mode);
+                    mHeaderLeftTv.setText("模式: " + item.scope);
                     mHeaderRightTv.setText("时长: " + Math.max(1, (item.windowMillis * 10) / (60 * 1000L)) + "min");
                     mHeaderDescTv.setText(item.desc);
 
                     // Thread Entry
-                    mThreadEntryView.setVisibility(!item.threadInfoList.isEmpty() ? View.VISIBLE : View.GONE);
+                    mEntryViewThread.setVisibility(!item.threadInfoList.isEmpty() ? View.VISIBLE : View.GONE);
                     if (!item.threadInfoList.isEmpty()) {
-                        for (int i = 1; i <= 5; i++) {
-                            TextView left, right;
-                            switch (i) {
-                                case 1:
-                                    left = mThreadEntryKey1;
-                                    right = mThreadEntryVal1;
-                                    break;
-                                case 2:
-                                    left = mThreadEntryKey2;
-                                    right = mThreadEntryVal2;
-                                    break;
-                                case 3:
-                                    left = mThreadEntryKey3;
-                                    right = mThreadEntryVal3;
-                                    break;
-                                case 4:
-                                    left = mThreadEntryKey4;
-                                    right = mThreadEntryVal4;
-                                    break;
-                                case 5:
-                                    left = mThreadEntryKey5;
-                                    right = mThreadEntryVal5;
-                                    break;
-                                default:
-                                    throw new IndexOutOfBoundsException("threadInfo out of bound: " + i);
+                        Function<Integer, View> findEntryItemView = new Function<Integer, View>() {
+                            @Override
+                            public View apply(Integer idx) {
+                                switch (idx) {
+                                    case 1:
+                                        return mEntryViewThread.findViewById(R.id.layout_entry_1);
+                                    case 2:
+                                        return mEntryViewThread.findViewById(R.id.layout_entry_2);
+                                    case 3:
+                                        return mEntryViewThread.findViewById(R.id.layout_entry_3);
+                                    case 4:
+                                        return mEntryViewThread.findViewById(R.id.layout_entry_4);
+                                    case 5:
+                                        return mEntryViewThread.findViewById(R.id.layout_entry_5);
+                                    default:
+                                        throw new IndexOutOfBoundsException("threadInfo out of bound: " + idx);
+                                }
                             }
-
+                        };
+                        for (int i = 1; i <= 5; i++) {
+                            View entryItemView = findEntryItemView.apply(i);
+                            TextView left = entryItemView.findViewById(R.id.tv_key);
+                            TextView right = entryItemView.findViewById(R.id.tv_value);
                             EventDumpItem.ThreadInfo threadInfo = i <= item.threadInfoList.size() ?  item.threadInfoList.get(i - 1) : null;
                             left.setVisibility(threadInfo != null ? View.VISIBLE : View.GONE);
                             right.setVisibility(threadInfo != null ? View.VISIBLE : View.GONE);
@@ -361,22 +313,22 @@ public class BatteryStatsActivity extends AppCompatActivity {
                         }
                     }
 
-                    // Entry A - D:
+                    // Entry 1 - Entry 4:
                     // 1. entry section
                     for (int i = 1; i <= 4; i++) {
                         final View entryView;
                         switch (i) {
                             case 1:
-                                entryView = mAEntryView;
+                                entryView = mEntryView1;
                                 break;
                             case 2:
-                                entryView = mBEntryView;
+                                entryView = mEntryView2;
                                 break;
                             case 3:
-                                entryView = mCEntryView;
+                                entryView = mEntryView3;
                                 break;
                             case 4:
-                                entryView = mDEntryView;
+                                entryView = mEntryView4;
                                 break;
                             default:
                                 throw new IndexOutOfBoundsException("entryList section out of bound: " + i);
