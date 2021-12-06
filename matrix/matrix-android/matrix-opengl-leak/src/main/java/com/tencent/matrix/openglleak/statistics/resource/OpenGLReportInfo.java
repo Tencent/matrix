@@ -19,6 +19,7 @@ public class OpenGLReportInfo {
         this.innerInfo = innerInfo;
         idList.add(innerInfo.getId());
         appendParamsInfos(innerInfo.getMemoryInfo());
+        totalSize += innerInfo.getMemoryInfo().getSize();
     }
 
     public void appendParamsInfos(MemoryInfo memoryInfo) {
