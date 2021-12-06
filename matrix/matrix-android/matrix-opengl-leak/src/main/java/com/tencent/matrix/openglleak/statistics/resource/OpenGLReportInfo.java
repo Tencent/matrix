@@ -19,6 +19,9 @@ public class OpenGLReportInfo {
         this.innerInfo = innerInfo;
         idList.add(innerInfo.getId());
         appendParamsInfos(innerInfo.getMemoryInfo());
+        if (innerInfo.getMemoryInfo() != null) {
+            totalSize += innerInfo.getMemoryInfo().getSize();
+        }
     }
 
     public void appendParamsInfos(MemoryInfo memoryInfo) {
@@ -26,7 +29,7 @@ public class OpenGLReportInfo {
             return;
         }
         OpenGLInfo.TYPE resType = memoryInfo.getResType();
-        totalSize += innerInfo.getMemoryInfo().getSize();
+
         if (resType == OpenGLInfo.TYPE.TEXTURE) {
             FaceInfo[] faces = memoryInfo.getFaces();
             for (FaceInfo faceInfo : faces) {
