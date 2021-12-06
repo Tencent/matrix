@@ -25,25 +25,17 @@ public class OpenGLReportInfo {
         }
         OpenGLInfo.TYPE resType = memoryInfo.getResType();
         if (resType == OpenGLInfo.TYPE.TEXTURE) {
-            paramsList.add("MemoryInfo{" +
-                    "target=" + memoryInfo.getTarget() +
-                    ", id=" + memoryInfo.getId() +
-                    ", eglContextNativeHandle='" + memoryInfo.getEglContextId() +  '\'' +
-                    ", level=" + memoryInfo.getLevel() +
-                    ", internalFormat=" + memoryInfo.getInternalFormat() +
-                    ", width=" + memoryInfo.getWidth() +
-                    ", height=" + memoryInfo.getHeight() +
-                    ", depth=" + memoryInfo.getDepth() +
-                    ", border=" + memoryInfo.getBorder() +
-                    ", format=" + memoryInfo.getFormat() +
-                    ", type=" + memoryInfo.getType() +
-                    ", size=" + memoryInfo.getSize() +
-                    '}');
+            FaceInfo[] faces = memoryInfo.getFaces();
+            for (FaceInfo faceInfo : faces) {
+                if (faceInfo != null) {
+                    paramsList.add(faceInfo.getParams());
+                }
+            }
         } else if (resType == OpenGLInfo.TYPE.BUFFER) {
             paramsList.add("MemoryInfo{" +
                     "target=" + memoryInfo.getTarget() +
                     ", id=" + memoryInfo.getId() +
-                    ", eglContextNativeHandle='" + memoryInfo.getEglContextId() +  '\'' +
+                    ", eglContextNativeHandle='" + memoryInfo.getEglContextId() + '\'' +
                     ", usage=" + memoryInfo.getUsage() +
                     ", size=" + memoryInfo.getSize() +
                     '}');
@@ -51,7 +43,7 @@ public class OpenGLReportInfo {
             paramsList.add("MemoryInfo{" +
                     "target=" + memoryInfo.getTarget() +
                     ", id=" + memoryInfo.getId() +
-                    ", eglContextNativeHandle='" + memoryInfo.getEglContextId() +  '\'' +
+                    ", eglContextNativeHandle='" + memoryInfo.getEglContextId() + '\'' +
                     ", internalFormat=" + memoryInfo.getInternalFormat() +
                     ", width=" + memoryInfo.getWidth() +
                     ", height=" + memoryInfo.getHeight() +

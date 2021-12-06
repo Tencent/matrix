@@ -445,7 +445,7 @@ public class OpenGLHook {
                     MatrixLog.e(TAG, "onGlTexImage2D: getCurrentResourceIdByTarget openGLID == null, maybe undo glBindTextures()");
                     return;
                 }
-                MemoryInfo memoryInfo = new MemoryInfo();
+                MemoryInfo memoryInfo = new MemoryInfo(OpenGLInfo.TYPE.TEXTURE);
                 memoryInfo.setTexturesInfo(target, level, internalFormat, width, height, 0, border, format, type, openGLInfo.getId(), openGLInfo.getEglContextNativeHandle(), size, javaStack, nativeStack);
                 openGLInfo.setMemoryInfo(memoryInfo);
 
@@ -472,7 +472,7 @@ public class OpenGLHook {
                     MatrixLog.e(TAG, "onGlTexImage3D: getCurrentResourceIdByTarget result == null, maybe undo glBindTextures()");
                     return;
                 }
-                MemoryInfo memoryInfo = new MemoryInfo();
+                MemoryInfo memoryInfo = new MemoryInfo(OpenGLInfo.TYPE.TEXTURE);
                 memoryInfo.setTexturesInfo(target, level, internalFormat, width, height, depth, border, format, type, openGLInfo.getId(), openGLInfo.getEglContextNativeHandle(), size, javaStack, nativeStack);
                 openGLInfo.setMemoryInfo(memoryInfo);
             }
@@ -507,7 +507,7 @@ public class OpenGLHook {
                 } else {
                     actualSize = size;
                 }
-                MemoryInfo memoryInfo = new MemoryInfo();
+                MemoryInfo memoryInfo = new MemoryInfo(OpenGLInfo.TYPE.BUFFER);
                 memoryInfo.setBufferInfo(target, usage, openGLInfo.getId(), openGLInfo.getEglContextNativeHandle(), actualSize, javaStack, nativeStack);
                 openGLInfo.setMemoryInfo(memoryInfo);
             }
@@ -533,7 +533,7 @@ public class OpenGLHook {
                     MatrixLog.e(TAG, "onGlRenderbufferStorage: getCurrentResourceIdByTarget result == null, maybe undo glBindRenderbuffer()");
                     return;
                 }
-                MemoryInfo memoryInfo = new MemoryInfo();
+                MemoryInfo memoryInfo = new MemoryInfo(OpenGLInfo.TYPE.RENDER_BUFFERS);
                 memoryInfo.setRenderbufferInfo(target, width, height, internalformat, openGLInfo.getId(), openGLInfo.getEglContextNativeHandle(), size, javaStack, nativeStack);
                 openGLInfo.setMemoryInfo(memoryInfo);
             }
