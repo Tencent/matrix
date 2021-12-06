@@ -22,9 +22,19 @@ import static android.opengl.GLES30.GL_TEXTURE_2D_ARRAY;
 import static android.opengl.GLES30.GL_TEXTURE_3D;
 import static android.opengl.GLES30.GL_TRANSFORM_FEEDBACK_BUFFER;
 import static android.opengl.GLES30.GL_UNIFORM_BUFFER;
+import static android.opengl.GLES31.GL_ATOMIC_COUNTER_BUFFER;
+import static android.opengl.GLES31.GL_DISPATCH_INDIRECT_BUFFER;
+import static android.opengl.GLES31.GL_DRAW_INDIRECT_BUFFER;
+import static android.opengl.GLES31.GL_SHADER_STORAGE_BUFFER;
+import static android.opengl.GLES31.GL_TEXTURE_2D_MULTISAMPLE;
+import static android.opengl.GLES32.GL_TEXTURE_2D_MULTISAMPLE_ARRAY;
+import static android.opengl.GLES32.GL_TEXTURE_BUFFER;
+import static android.opengl.GLES32.GL_TEXTURE_CUBE_MAP_ARRAY;
 import static javax.microedition.khronos.opengles.GL11ExtensionPack.GL_TEXTURE_CUBE_MAP;
 import static javax.microedition.khronos.opengles.GL11ExtensionPack.GL_TEXTURE_CUBE_MAP_NEGATIVE_Y;
 import static javax.microedition.khronos.opengles.GL11ExtensionPack.GL_TEXTURE_CUBE_MAP_POSITIVE_Y;
+
+import android.opengl.GLES20;
 
 public class BindMap {
 
@@ -32,7 +42,8 @@ public class BindMap {
 
     private final Map<Long, Map<Integer, OpenGLInfo>> bindTextureMap;
     private final Map<Long, Map<Integer, OpenGLInfo>> bindBufferMap;
-    private final Map<Long, Map<Integer, OpenGLInfo>> bindRenderbufferMap;
+    // glRenderbufferStorage target only support GL_RENDERBUFFER
+    private final Map<Long, OpenGLInfo> bindRenderbufferMap;
 
     static BindMap getInstance() {
         return mInstance;
@@ -56,9 +67,6 @@ public class BindMap {
     }
 
     private void putInBindMap(final Map<Long, Map<Integer, OpenGLInfo>> bindMap, final int target, final long eglContextNativeHandle, final OpenGLInfo openGLInfo, OpenGLInfo.TYPE type) {
-        if (!isSupportTarget(type, target)) {
-            return;
-        }
         synchronized (bindMap) {
             Map<Integer, OpenGLInfo> subTextureMap = bindMap.get(eglContextNativeHandle);
             if (subTextureMap == null) {
@@ -83,16 +91,34 @@ public class BindMap {
     }
 
     private boolean isSupportTargetOfTexture(int target) {
-        return target == GL_TEXTURE_2D || target == GL_TEXTURE_3D || target == GL_TEXTURE_CUBE_MAP_POSITIVE_X
-                || target == GL_TEXTURE_CUBE_MAP_NEGATIVE_X || target == GL_TEXTURE_CUBE_MAP_POSITIVE_Y
-                || target == GL_TEXTURE_CUBE_MAP_NEGATIVE_Y || target == GL_TEXTURE_CUBE_MAP_POSITIVE_Z
-                || target == GL_TEXTURE_CUBE_MAP_NEGATIVE_Z || target == GL_TEXTURE_2D_ARRAY || target == GL_TEXTURE_CUBE_MAP;
+        boolean targetOnUnder31 = target == GL_TEXTURE_2D || target == GL_TEXTURE_3D || target == GL_TEXTURE_2D_ARRAY || target == GL_TEXTURE_CUBE_MAP;
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+            boolean targetOn31 = target == GL_TEXTURE_2D_MULTISAMPLE;
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+                boolean targetOn32 = target == GL_TEXTURE_2D_MULTISAMPLE_ARRAY || target == GL_TEXTURE_CUBE_MAP_ARRAY || target == GL_TEXTURE_BUFFER;
+                return targetOnUnder31 || targetOn32 || targetOn31;
+            } else {
+                return targetOnUnder31 || targetOn31;
+            }
+        }
+        return targetOnUnder31;
     }
 
     private boolean isSupportTargetOfBuffer(int target) {
-        return target == GL_ARRAY_BUFFER || target == GL_COPY_WRITE_BUFFER || target == GL_COPY_READ_BUFFER
+        boolean targetOnUnder31 = target == GL_ARRAY_BUFFER || target == GL_COPY_READ_BUFFER || target == GL_COPY_WRITE_BUFFER
                 || target == GL_ELEMENT_ARRAY_BUFFER || target == GL_PIXEL_PACK_BUFFER || target == GL_PIXEL_UNPACK_BUFFER
                 || target == GL_TRANSFORM_FEEDBACK_BUFFER || target == GL_UNIFORM_BUFFER;
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+            boolean targetOn31 = target == GL_ATOMIC_COUNTER_BUFFER || target == GL_DISPATCH_INDIRECT_BUFFER || target == GL_DRAW_INDIRECT_BUFFER
+                    || target == GL_SHADER_STORAGE_BUFFER;
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+                boolean targetOn32 = target == GL_TEXTURE_BUFFER;
+                return targetOnUnder31 || targetOn31 || targetOn32;
+            } else {
+                return targetOnUnder31 || targetOn31;
+            }
+        }
+        return targetOnUnder31;
     }
 
     private boolean isSupportTargetOfRenderbuffer(int target) {
@@ -106,13 +132,16 @@ public class BindMap {
             case TEXTURE:
                 return getBindMapInfo(bindTextureMap, eglContextId, target);
             case RENDER_BUFFERS:
-                return getBindMapInfo(bindRenderbufferMap, eglContextId, target);
+                return bindRenderbufferMap.get(eglContextId);
         }
         return null;
     }
 
 
     public void putBindInfo(final OpenGLInfo.TYPE type, final int target, final long eglContextId, final OpenGLInfo info) {
+        if (!isSupportTarget(type, target)) {
+            return;
+        }
         ExecuteCenter.getInstance().post(new Runnable() {
             @Override
             public void run() {
@@ -124,7 +153,7 @@ public class BindMap {
                         putInBindMap(bindTextureMap, target, eglContextId, info, OpenGLInfo.TYPE.TEXTURE);
                         break;
                     case RENDER_BUFFERS:
-                        putInBindMap(bindRenderbufferMap, target, eglContextId, info, OpenGLInfo.TYPE.RENDER_BUFFERS);
+                        bindRenderbufferMap.put(eglContextId, info);
                         break;
                 }
             }
