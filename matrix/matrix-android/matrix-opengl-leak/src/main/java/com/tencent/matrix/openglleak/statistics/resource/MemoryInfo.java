@@ -79,6 +79,9 @@ public class MemoryInfo {
             return;
         }
 
+        this.javaStack = javaStack;
+        this.nativeStackPtr = nativeStackPtr;
+
         FaceInfo faceInfo = faces[faceId];
         if (faceInfo == null) {
             faceInfo = new FaceInfo();

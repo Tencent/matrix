@@ -442,7 +442,10 @@ public class OpenGLHook {
         ExecuteCenter.getInstance().post(new Runnable() {
             @Override
             public void run() {
-                MemoryInfo memoryInfo = new MemoryInfo(OpenGLInfo.TYPE.TEXTURE);
+                MemoryInfo memoryInfo = openGLInfo.getMemoryInfo() ;
+                if (memoryInfo == null) {
+                    memoryInfo = new MemoryInfo(OpenGLInfo.TYPE.TEXTURE);
+                }
                 memoryInfo.setTexturesInfo(target, level, internalFormat, width, height, 0, border, format, type, openGLInfo.getId(), openGLInfo.getEglContextNativeHandle(), size, javaStack, nativeStack);
                 openGLInfo.setMemoryInfo(memoryInfo);
 
@@ -469,7 +472,10 @@ public class OpenGLHook {
         ExecuteCenter.getInstance().post(new Runnable() {
             @Override
             public void run() {
-                MemoryInfo memoryInfo = new MemoryInfo(OpenGLInfo.TYPE.TEXTURE);
+                MemoryInfo memoryInfo = openGLInfo.getMemoryInfo() ;
+                if (memoryInfo == null) {
+                    memoryInfo = new MemoryInfo(OpenGLInfo.TYPE.TEXTURE);
+                }
                 memoryInfo.setTexturesInfo(target, level, internalFormat, width, height, depth, border, format, type, openGLInfo.getId(), openGLInfo.getEglContextNativeHandle(), size, javaStack, nativeStack);
                 openGLInfo.setMemoryInfo(memoryInfo);
             }
@@ -504,7 +510,10 @@ public class OpenGLHook {
                 } else {
                     actualSize = size;
                 }
-                MemoryInfo memoryInfo = new MemoryInfo(OpenGLInfo.TYPE.BUFFER);
+                MemoryInfo memoryInfo = openGLInfo.getMemoryInfo() ;
+                if (memoryInfo == null) {
+                    memoryInfo = new MemoryInfo(OpenGLInfo.TYPE.BUFFER);
+                }
                 memoryInfo.setBufferInfo(target, usage, openGLInfo.getId(), openGLInfo.getEglContextNativeHandle(), actualSize, javaStack, nativeStack);
                 openGLInfo.setMemoryInfo(memoryInfo);
             }
@@ -530,7 +539,10 @@ public class OpenGLHook {
         ExecuteCenter.getInstance().post(new Runnable() {
             @Override
             public void run() {
-                MemoryInfo memoryInfo = new MemoryInfo(OpenGLInfo.TYPE.RENDER_BUFFERS);
+                MemoryInfo memoryInfo = openGLInfo.getMemoryInfo() ;
+                if (memoryInfo == null) {
+                    memoryInfo = new MemoryInfo(OpenGLInfo.TYPE.RENDER_BUFFERS);
+                }
                 memoryInfo.setRenderbufferInfo(target, width, height, internalformat, openGLInfo.getId(), openGLInfo.getEglContextNativeHandle(), size, javaStack, nativeStack);
                 openGLInfo.setMemoryInfo(memoryInfo);
             }
