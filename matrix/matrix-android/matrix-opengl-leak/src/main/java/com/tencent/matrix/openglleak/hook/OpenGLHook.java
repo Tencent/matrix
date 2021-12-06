@@ -435,14 +435,13 @@ public class OpenGLHook {
         }
 
         final OpenGLInfo openGLInfo = BindCenter.getInstance().findCurrentResourceIdByTarget(OpenGLInfo.TYPE.TEXTURE, eglContextId, target);
+        if (openGLInfo == null) {
+            MatrixLog.e(TAG, "onGlTexImage2D: getCurrentResourceIdByTarget openGLID == null, maybe undo glBindTextures()");
+            return;
+        }
         ExecuteCenter.getInstance().post(new Runnable() {
             @Override
             public void run() {
-
-                if (openGLInfo == null) {
-                    MatrixLog.e(TAG, "onGlTexImage2D: getCurrentResourceIdByTarget openGLID == null, maybe undo glBindTextures()");
-                    return;
-                }
                 MemoryInfo memoryInfo = new MemoryInfo(OpenGLInfo.TYPE.TEXTURE);
                 memoryInfo.setTexturesInfo(target, level, internalFormat, width, height, 0, border, format, type, openGLInfo.getId(), openGLInfo.getEglContextNativeHandle(), size, javaStack, nativeStack);
                 openGLInfo.setMemoryInfo(memoryInfo);
@@ -463,13 +462,13 @@ public class OpenGLHook {
         }
 
         final OpenGLInfo openGLInfo = BindCenter.getInstance().findCurrentResourceIdByTarget(OpenGLInfo.TYPE.TEXTURE, eglContextId, target);
+        if (openGLInfo == null) {
+            MatrixLog.e(TAG, "onGlTexImage3D: getCurrentResourceIdByTarget result == null, maybe undo glBindTextures()");
+            return;
+        }
         ExecuteCenter.getInstance().post(new Runnable() {
             @Override
             public void run() {
-                if (openGLInfo == null) {
-                    MatrixLog.e(TAG, "onGlTexImage3D: getCurrentResourceIdByTarget result == null, maybe undo glBindTextures()");
-                    return;
-                }
                 MemoryInfo memoryInfo = new MemoryInfo(OpenGLInfo.TYPE.TEXTURE);
                 memoryInfo.setTexturesInfo(target, level, internalFormat, width, height, depth, border, format, type, openGLInfo.getId(), openGLInfo.getEglContextNativeHandle(), size, javaStack, nativeStack);
                 openGLInfo.setMemoryInfo(memoryInfo);
@@ -492,13 +491,13 @@ public class OpenGLHook {
         }
 
         final OpenGLInfo openGLInfo = BindCenter.getInstance().findCurrentResourceIdByTarget(OpenGLInfo.TYPE.BUFFER, eglContextId, target);
+        if (openGLInfo == null) {
+            MatrixLog.e(TAG, "onGlBufferData: getCurrentResourceIdByTarget result == null, maybe undo glBindBuffer()");
+            return;
+        }
         ExecuteCenter.getInstance().post(new Runnable() {
             @Override
             public void run() {
-                if (openGLInfo == null) {
-                    MatrixLog.e(TAG, "onGlBufferData: getCurrentResourceIdByTarget result == null, maybe undo glBindBuffer()");
-                    return;
-                }
                 long actualSize = -1;
                 if (target == GL_PIXEL_UNPACK_BUFFER) {
                     actualSize = size * 2;
@@ -524,13 +523,13 @@ public class OpenGLHook {
         }
 
         final OpenGLInfo openGLInfo = BindCenter.getInstance().findCurrentResourceIdByTarget(OpenGLInfo.TYPE.RENDER_BUFFERS, eglContextId, target);
+        if (openGLInfo == null) {
+            MatrixLog.e(TAG, "onGlRenderbufferStorage: getCurrentResourceIdByTarget result == null, maybe undo glBindRenderbuffer()");
+            return;
+        }
         ExecuteCenter.getInstance().post(new Runnable() {
             @Override
             public void run() {
-                if (openGLInfo == null) {
-                    MatrixLog.e(TAG, "onGlRenderbufferStorage: getCurrentResourceIdByTarget result == null, maybe undo glBindRenderbuffer()");
-                    return;
-                }
                 MemoryInfo memoryInfo = new MemoryInfo(OpenGLInfo.TYPE.RENDER_BUFFERS);
                 memoryInfo.setRenderbufferInfo(target, width, height, internalformat, openGLInfo.getId(), openGLInfo.getEglContextNativeHandle(), size, javaStack, nativeStack);
                 openGLInfo.setMemoryInfo(memoryInfo);

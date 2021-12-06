@@ -11,7 +11,7 @@ public class OpenGLReportInfo {
 
     private final List<String> paramsList = new ArrayList<>();
 
-    private int allocCount;
+    private int allocCount = 1;
 
     public OpenGLReportInfo(OpenGLInfo innerInfo) {
         this.innerInfo = innerInfo;

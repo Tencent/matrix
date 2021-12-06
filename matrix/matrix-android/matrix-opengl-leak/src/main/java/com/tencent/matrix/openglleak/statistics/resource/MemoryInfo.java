@@ -10,6 +10,8 @@ import static android.opengl.GLES20.GL_TEXTURE_CUBE_MAP_POSITIVE_Z;
 import static android.opengl.GLES30.GL_TEXTURE_2D_ARRAY;
 import static android.opengl.GLES30.GL_TEXTURE_3D;
 
+import com.tencent.matrix.util.MatrixLog;
+
 public class MemoryInfo {
 
     private int target;
@@ -83,6 +85,7 @@ public class MemoryInfo {
     public void setTexturesInfo(int target, int level, int internalFormat, int width, int height, int depth, int border, int format, int type, int id, long eglContextId, long size, String javaStack, long nativeStackPtr) {
         int faceId = getFaceId(target);
         if (faceId == -1) {
+            MatrixLog.e("MicroMsg.OpenGLHook", "setTexturesInfo faceId = -1, target = " + target);
             return;
         }
 
@@ -117,7 +120,7 @@ public class MemoryInfo {
                 ", border=" + this.getBorder() +
                 ", format=" + this.getFormat() +
                 ", type=" + this.getType() +
-                ", size=" + this.getSize() +
+                ", size=" + size +
                 '}');
         faces[faceId] = faceInfo;
     }

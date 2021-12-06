@@ -52,9 +52,7 @@ public class ResRecorder implements ResRecordManager.Callback {
 
     public void clear() {
         synchronized (mList) {
-            if (null != mList) {
-                mList.clear();
-            }
+            mList.clear();
         }
     }
 }
