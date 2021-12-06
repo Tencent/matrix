@@ -1,19 +1,9 @@
 package com.tencent.matrix.openglleak.statistics;
 
-import com.tencent.matrix.openglleak.statistics.resource.OpenGLInfo;
-import com.tencent.matrix.openglleak.utils.ExecuteCenter;
-
-import java.util.HashMap;
-import java.util.Map;
-
 import static android.opengl.GLES20.GL_ARRAY_BUFFER;
 import static android.opengl.GLES20.GL_ELEMENT_ARRAY_BUFFER;
 import static android.opengl.GLES20.GL_RENDERBUFFER;
 import static android.opengl.GLES20.GL_TEXTURE_2D;
-import static android.opengl.GLES20.GL_TEXTURE_CUBE_MAP_NEGATIVE_X;
-import static android.opengl.GLES20.GL_TEXTURE_CUBE_MAP_NEGATIVE_Z;
-import static android.opengl.GLES20.GL_TEXTURE_CUBE_MAP_POSITIVE_X;
-import static android.opengl.GLES20.GL_TEXTURE_CUBE_MAP_POSITIVE_Z;
 import static android.opengl.GLES30.GL_COPY_READ_BUFFER;
 import static android.opengl.GLES30.GL_COPY_WRITE_BUFFER;
 import static android.opengl.GLES30.GL_PIXEL_PACK_BUFFER;
@@ -31,10 +21,12 @@ import static android.opengl.GLES32.GL_TEXTURE_2D_MULTISAMPLE_ARRAY;
 import static android.opengl.GLES32.GL_TEXTURE_BUFFER;
 import static android.opengl.GLES32.GL_TEXTURE_CUBE_MAP_ARRAY;
 import static javax.microedition.khronos.opengles.GL11ExtensionPack.GL_TEXTURE_CUBE_MAP;
-import static javax.microedition.khronos.opengles.GL11ExtensionPack.GL_TEXTURE_CUBE_MAP_NEGATIVE_Y;
-import static javax.microedition.khronos.opengles.GL11ExtensionPack.GL_TEXTURE_CUBE_MAP_POSITIVE_Y;
 
-import android.opengl.GLES20;
+import com.tencent.matrix.openglleak.statistics.resource.OpenGLInfo;
+import com.tencent.matrix.openglleak.utils.ExecuteCenter;
+
+import java.util.HashMap;
+import java.util.Map;
 
 public class BindMap {
 

@@ -1,5 +1,7 @@
 package com.tencent.matrix.openglleak.hook;
 
+import static android.opengl.GLES30.GL_PIXEL_UNPACK_BUFFER;
+
 import android.opengl.EGL14;
 
 import com.tencent.matrix.openglleak.R;
@@ -499,8 +501,14 @@ public class OpenGLHook {
                     MatrixLog.e(TAG, "onGlBufferData: getCurrentResourceIdByTarget result == null, maybe undo glBindBuffer()");
                     return;
                 }
+                long actualSize = -1;
+                if (target == GL_PIXEL_UNPACK_BUFFER) {
+                    actualSize = size * 2;
+                } else {
+                    actualSize = size;
+                }
                 MemoryInfo memoryInfo = new MemoryInfo();
-                memoryInfo.setBufferInfo(target, usage, openGLInfo.getId(), openGLInfo.getEglContextNativeHandle(), size, javaStack, nativeStack);
+                memoryInfo.setBufferInfo(target, usage, openGLInfo.getId(), openGLInfo.getEglContextNativeHandle(), actualSize, javaStack, nativeStack);
                 openGLInfo.setMemoryInfo(memoryInfo);
             }
         });
