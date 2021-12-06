@@ -10,9 +10,6 @@ import static android.opengl.GLES20.GL_TEXTURE_CUBE_MAP_POSITIVE_Z;
 import static android.opengl.GLES30.GL_TEXTURE_2D_ARRAY;
 import static android.opengl.GLES30.GL_TEXTURE_3D;
 
-import android.media.FaceDetector;
-
-
 public class MemoryInfo {
 
     private int target;

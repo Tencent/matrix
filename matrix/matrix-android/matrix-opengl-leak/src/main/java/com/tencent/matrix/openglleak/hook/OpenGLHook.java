@@ -4,7 +4,6 @@ import static android.opengl.GLES30.GL_PIXEL_UNPACK_BUFFER;
 
 import android.opengl.EGL14;
 
-import com.tencent.matrix.openglleak.R;
 import com.tencent.matrix.openglleak.comm.FuncNameString;
 import com.tencent.matrix.openglleak.statistics.BindCenter;
 import com.tencent.matrix.openglleak.statistics.resource.MemoryInfo;
@@ -14,7 +13,6 @@ import com.tencent.matrix.openglleak.utils.ActivityRecorder;
 import com.tencent.matrix.openglleak.utils.ExecuteCenter;
 import com.tencent.matrix.util.MatrixLog;
 
-import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class OpenGLHook {

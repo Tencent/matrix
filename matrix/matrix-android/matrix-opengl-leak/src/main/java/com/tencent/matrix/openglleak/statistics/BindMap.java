@@ -21,10 +21,7 @@ import static android.opengl.GLES31.GL_ATOMIC_COUNTER_BUFFER;
 import static android.opengl.GLES31.GL_DISPATCH_INDIRECT_BUFFER;
 import static android.opengl.GLES31.GL_DRAW_INDIRECT_BUFFER;
 import static android.opengl.GLES31.GL_SHADER_STORAGE_BUFFER;
-import static android.opengl.GLES31.GL_TEXTURE_2D_MULTISAMPLE;
-import static android.opengl.GLES32.GL_TEXTURE_2D_MULTISAMPLE_ARRAY;
 import static android.opengl.GLES32.GL_TEXTURE_BUFFER;
-import static android.opengl.GLES32.GL_TEXTURE_CUBE_MAP_ARRAY;
 import static javax.microedition.khronos.opengles.GL11ExtensionPack.GL_TEXTURE_CUBE_MAP;
 import static javax.microedition.khronos.opengles.GL11ExtensionPack.GL_TEXTURE_CUBE_MAP_NEGATIVE_X;
 
@@ -119,7 +116,7 @@ public class BindMap {
                 return getBindMapInfo(bindBufferMap, eglContextId, target);
             case TEXTURE:
                 int actualTarget = target;
-                if(is2DCubeMapTarget(target)) {
+                if (is2DCubeMapTarget(target)) {
                     actualTarget = GL_TEXTURE_CUBE_MAP;
                 }
                 return getBindMapInfo(bindTextureMap, eglContextId, actualTarget);
@@ -131,7 +128,7 @@ public class BindMap {
 
     private boolean is2DCubeMapTarget(int target) {
         return target == GL_TEXTURE_CUBE_MAP_POSITIVE_X || target == GL_TEXTURE_CUBE_MAP_NEGATIVE_X ||
-                target == GL_TEXTURE_CUBE_MAP_POSITIVE_Y ||target == GL_TEXTURE_CUBE_MAP_NEGATIVE_Y ||
+                target == GL_TEXTURE_CUBE_MAP_POSITIVE_Y || target == GL_TEXTURE_CUBE_MAP_NEGATIVE_Y ||
                 target == GL_TEXTURE_CUBE_MAP_POSITIVE_Z || target == GL_TEXTURE_CUBE_MAP_NEGATIVE_Z;
     }
 
