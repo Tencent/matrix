@@ -195,6 +195,7 @@ public class ResRecordManager {
         AutoWrapBuilder result = new AutoWrapBuilder();
         for (OpenGLReportInfo report : resList) {
             result.append(String.format(" alloc count = %d", report.getAllocCount()))
+                    .append(String.format(" total size = %s", report.getTotalSize()))
                     .append(String.format(" id = %s", report.getAllocIdList()))
                     .append(String.format(" activity = %s", report.innerInfo.getActivityInfo().name))
                     .append(String.format(" type = %s", report.innerInfo.getType()))
@@ -245,6 +246,7 @@ public class ResRecordManager {
                     oldInfo.incAllocRecord(info.getId());
                     if (oldInfo.innerInfo.getMemoryInfo() != null) {
                         oldInfo.appendParamsInfos(info.getMemoryInfo());
+                        oldInfo.appendSize(info.getMemoryInfo().getSize());
                     }
                     infoMap.put(infoHash, oldInfo);
                 }
@@ -274,7 +276,13 @@ public class ResRecordManager {
         Comparator<OpenGLReportInfo> comparator = new Comparator<OpenGLReportInfo>() {
             @Override
             public int compare(OpenGLReportInfo o1, OpenGLReportInfo o2) {
-                return o2.getAllocCount() - o1.getAllocCount();
+                if (o2.getTotalSize() - o1.getTotalSize() > 0) {
+                    return 1;
+                } else if (o2.getTotalSize() - o1.getTotalSize() == 0) {
+                    return 0;
+                } else {
+                    return -1;
+                }
             }
         };
 

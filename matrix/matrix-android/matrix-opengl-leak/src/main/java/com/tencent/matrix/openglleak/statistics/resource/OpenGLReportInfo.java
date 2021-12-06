@@ -11,6 +11,8 @@ public class OpenGLReportInfo {
 
     private final List<String> paramsList = new ArrayList<>();
 
+    private long totalSize;
+
     private int allocCount = 1;
 
     public OpenGLReportInfo(OpenGLInfo innerInfo) {
@@ -66,6 +68,14 @@ public class OpenGLReportInfo {
     public void incAllocRecord(int id) {
         this.allocCount++;
         idList.add(id);
+    }
+
+    public void appendSize(long size) {
+        this.totalSize += size;
+    }
+
+    public long getTotalSize() {
+        return totalSize;
     }
 
     public String getAllocIdList() {

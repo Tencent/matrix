@@ -16,21 +16,11 @@ public class MemoryInfo {
 
     private int target;
 
-    private int level;
-
     private int internalFormat;
 
     private int width;
 
     private int height;
-
-    private int depth;
-
-    private int border;
-
-    private int format;
-
-    private int type;
 
     private int id;
 
@@ -89,37 +79,23 @@ public class MemoryInfo {
             return;
         }
 
-        this.target = target;
-        this.level = level;
-        this.internalFormat = internalFormat;
-        this.width = width;
-        this.height = height;
-        this.depth = depth;
-        this.border = border;
-        this.format = format;
-        this.type = type;
-        this.id = id;
-        this.eglContextId = eglContextId;
-        this.javaStack = javaStack;
-        this.nativeStackPtr = nativeStackPtr;
-
         FaceInfo faceInfo = faces[faceId];
         if (faceInfo == null) {
             faceInfo = new FaceInfo();
         }
         faceInfo.setSize(size);
         faceInfo.setParams("MemoryInfo{" +
-                "target=" + this.getTarget() +
-                ", id=" + this.getId() +
-                ", eglContextNativeHandle='" + this.getEglContextId() + '\'' +
-                ", level=" + this.getLevel() +
-                ", internalFormat=" + this.getInternalFormat() +
-                ", width=" + this.getWidth() +
-                ", height=" + this.getHeight() +
-                ", depth=" + this.getDepth() +
-                ", border=" + this.getBorder() +
-                ", format=" + this.getFormat() +
-                ", type=" + this.getType() +
+                "target=" + target +
+                ", id=" + id +
+                ", eglContextNativeHandle='" + eglContextId + '\'' +
+                ", level=" + level +
+                ", internalFormat=" + internalFormat +
+                ", width=" + width +
+                ", height=" + height +
+                ", depth=" + depth +
+                ", border=" + border +
+                ", format=" + format +
+                ", type=" + type +
                 ", size=" + size +
                 '}');
         faces[faceId] = faceInfo;
@@ -148,10 +124,6 @@ public class MemoryInfo {
         return target;
     }
 
-    public int getLevel() {
-        return level;
-    }
-
     public int getInternalFormat() {
         return internalFormat;
     }
@@ -162,22 +134,6 @@ public class MemoryInfo {
 
     public int getHeight() {
         return height;
-    }
-
-    public int getDepth() {
-        return depth;
-    }
-
-    public int getBorder() {
-        return border;
-    }
-
-    public int getFormat() {
-        return format;
-    }
-
-    public int getType() {
-        return type;
     }
 
     public int getId() {
