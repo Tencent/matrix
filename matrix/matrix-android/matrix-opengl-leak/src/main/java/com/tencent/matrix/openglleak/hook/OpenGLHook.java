@@ -442,7 +442,7 @@ public class OpenGLHook {
         ExecuteCenter.getInstance().post(new Runnable() {
             @Override
             public void run() {
-                MemoryInfo memoryInfo = openGLInfo.getMemoryInfo() ;
+                MemoryInfo memoryInfo = openGLInfo.getMemoryInfo();
                 if (memoryInfo == null) {
                     memoryInfo = new MemoryInfo(OpenGLInfo.TYPE.TEXTURE);
                 }
@@ -472,7 +472,7 @@ public class OpenGLHook {
         ExecuteCenter.getInstance().post(new Runnable() {
             @Override
             public void run() {
-                MemoryInfo memoryInfo = openGLInfo.getMemoryInfo() ;
+                MemoryInfo memoryInfo = openGLInfo.getMemoryInfo();
                 if (memoryInfo == null) {
                     memoryInfo = new MemoryInfo(OpenGLInfo.TYPE.TEXTURE);
                 }
@@ -510,7 +510,7 @@ public class OpenGLHook {
                 } else {
                     actualSize = size;
                 }
-                MemoryInfo memoryInfo = openGLInfo.getMemoryInfo() ;
+                MemoryInfo memoryInfo = openGLInfo.getMemoryInfo();
                 if (memoryInfo == null) {
                     memoryInfo = new MemoryInfo(OpenGLInfo.TYPE.BUFFER);
                 }
@@ -539,7 +539,7 @@ public class OpenGLHook {
         ExecuteCenter.getInstance().post(new Runnable() {
             @Override
             public void run() {
-                MemoryInfo memoryInfo = openGLInfo.getMemoryInfo() ;
+                MemoryInfo memoryInfo = openGLInfo.getMemoryInfo();
                 if (memoryInfo == null) {
                     memoryInfo = new MemoryInfo(OpenGLInfo.TYPE.RENDER_BUFFERS);
                 }
