@@ -3,7 +3,7 @@ package com.tencent.matrix.openglleak.statistics.resource;
 import java.util.ArrayList;
 import java.util.List;
 
-public class OpenGLReportInfo {
+public class OpenGLDumpInfo {
 
     public final OpenGLInfo innerInfo;
 
@@ -15,7 +15,7 @@ public class OpenGLReportInfo {
 
     private int allocCount = 1;
 
-    public OpenGLReportInfo(OpenGLInfo innerInfo) {
+    public OpenGLDumpInfo(OpenGLInfo innerInfo) {
         this.innerInfo = innerInfo;
         idList.add(innerInfo.getId());
         appendParamsInfos(innerInfo.getMemoryInfo());

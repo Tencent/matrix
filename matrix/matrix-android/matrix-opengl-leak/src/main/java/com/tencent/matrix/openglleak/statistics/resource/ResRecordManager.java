@@ -191,9 +191,9 @@ public class ResRecordManager {
     }
 
     @SuppressLint("DefaultLocale")
-    private String getResListString(List<OpenGLReportInfo> resList) {
+    private String getResListString(List<OpenGLDumpInfo> resList) {
         AutoWrapBuilder result = new AutoWrapBuilder();
-        for (OpenGLReportInfo report : resList) {
+        for (OpenGLDumpInfo report : resList) {
             result.append(String.format(" alloc count = %d", report.getAllocCount()))
                     .append(String.format(" total size = %s", report.getTotalSize()))
                     .append(String.format(" id = %s", report.getAllocIdList()))
@@ -208,7 +208,7 @@ public class ResRecordManager {
         return result.toString();
     }
 
-    private String getMemoryInfoStr(OpenGLReportInfo reportInfo) {
+    private String getMemoryInfoStr(OpenGLDumpInfo reportInfo) {
         return reportInfo.getParamsInfos() +
                 "\n" +
                 String.format(" memory java stack = %s", reportInfo.innerInfo.getMemoryInfo().getJavaStack()) +
@@ -218,7 +218,7 @@ public class ResRecordManager {
 
     @SuppressLint("DefaultLocale")
     public String dumpGLToString() {
-        Map<Long, OpenGLReportInfo> infoMap = new HashMap<>();
+        Map<Long, OpenGLDumpInfo> infoMap = new HashMap<>();
         for (int i = 0; i < mInfoList.size(); i++) {
 
             OpenGLInfo info = mInfoList.get(i);
@@ -231,10 +231,10 @@ public class ResRecordManager {
 
             long infoHash = javaHash + nativeHash + memoryNativeHash + memoryJavaHash;
 
-            OpenGLReportInfo oldInfo = infoMap.get(infoHash);
+            OpenGLDumpInfo oldInfo = infoMap.get(infoHash);
             if (oldInfo == null) {
-                OpenGLReportInfo openGLReportInfo = new OpenGLReportInfo(info);
-                infoMap.put(infoHash, openGLReportInfo);
+                OpenGLDumpInfo openGLDumpInfo = new OpenGLDumpInfo(info);
+                infoMap.put(infoHash, openGLDumpInfo);
             } else {
                 // resource part
                 boolean isSameType = info.getType() == oldInfo.innerInfo.getType();
@@ -253,12 +253,12 @@ public class ResRecordManager {
             }
         }
 
-        List<OpenGLReportInfo> textureList = new ArrayList<>();
-        List<OpenGLReportInfo> bufferList = new ArrayList<>();
-        List<OpenGLReportInfo> framebufferList = new ArrayList<>();
-        List<OpenGLReportInfo> renderbufferList = new ArrayList<>();
+        List<OpenGLDumpInfo> textureList = new ArrayList<>();
+        List<OpenGLDumpInfo> bufferList = new ArrayList<>();
+        List<OpenGLDumpInfo> framebufferList = new ArrayList<>();
+        List<OpenGLDumpInfo> renderbufferList = new ArrayList<>();
 
-        for (OpenGLReportInfo reportInfo : infoMap.values()) {
+        for (OpenGLDumpInfo reportInfo : infoMap.values()) {
             if (reportInfo.innerInfo.getType() == OpenGLInfo.TYPE.TEXTURE) {
                 textureList.add(reportInfo);
             }
@@ -273,9 +273,9 @@ public class ResRecordManager {
             }
         }
 
-        Comparator<OpenGLReportInfo> comparator = new Comparator<OpenGLReportInfo>() {
+        Comparator<OpenGLDumpInfo> comparator = new Comparator<OpenGLDumpInfo>() {
             @Override
-            public int compare(OpenGLReportInfo o1, OpenGLReportInfo o2) {
+            public int compare(OpenGLDumpInfo o1, OpenGLDumpInfo o2) {
                 if (o2.getTotalSize() - o1.getTotalSize() > 0) {
                     return 1;
                 } else if (o2.getTotalSize() - o1.getTotalSize() == 0) {
