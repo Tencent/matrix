@@ -49,11 +49,13 @@ object MatrixProcessLifecycleOwner {
         activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
         processName = MatrixUtil.getProcessName(context)
         packageName = MatrixUtil.getPackageName(context)
-        activityInfoArray = context.packageManager
-            .getPackageInfo(
-                packageName!!,
-                PackageManager.GET_ACTIVITIES
-            ).activities
+        activityInfoArray = safeLetOrNull(TAG) {
+            context.packageManager
+                .getPackageInfo(
+                    packageName!!,
+                    PackageManager.GET_ACTIVITIES
+                ).activities
+        }
         attach(context)
         MatrixLog.i(TAG, "init for [${processName}]")
     }
@@ -77,8 +79,13 @@ object MatrixProcessLifecycleOwner {
     private var stopSent = true
 
     private open class AsyncOwner : StatefulOwner() {
-        open fun turnOnAsync() { runningHandler.post { turnOn() } }
-        open fun turnOffAsync() { runningHandler.post { turnOff() } }
+        open fun turnOnAsync() {
+            runningHandler.post { turnOn() }
+        }
+
+        open fun turnOffAsync() {
+            runningHandler.post { turnOff() }
+        }
     }
 
     private class CreatedStateOwner : AsyncOwner() {
@@ -285,6 +292,11 @@ object MatrixProcessLifecycleOwner {
 
         if (component.packageName != packageName) {
             return false
+        }
+
+        if (activityInfoArray == null) {
+            // init failed
+            return true
         }
 
         return process == componentToProcess.getOrPut(component.className, {
