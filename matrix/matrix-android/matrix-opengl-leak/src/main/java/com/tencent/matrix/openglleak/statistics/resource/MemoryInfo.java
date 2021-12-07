@@ -204,7 +204,7 @@ public class MemoryInfo {
                 ", nativeStack='" + nativeStack + '\'' +
                 ", nativeStackPtr=" + nativeStackPtr +
                 ", resType=" + resType +
-                ", size=" + size +
+                ", size=" + getSize() +
                 ", faces=" + Arrays.toString(faces) +
                 '}';
     }
