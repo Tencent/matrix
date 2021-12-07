@@ -1,6 +1,5 @@
 package com.tencent.matrix.openglleak.statistics.resource;
 
-import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -33,21 +32,8 @@ public class ResRecorder implements ResRecordManager.Callback {
         }
     }
 
-    public List<OpenGLInfo> getCopyList() {
-        List<OpenGLInfo> ll = new ArrayList<>();
-
-        synchronized (mList) {
-            for (OpenGLInfo item : mList) {
-                if (item == null) {
-                    break;
-                }
-
-                OpenGLInfo clone = new OpenGLInfo(item);
-                ll.add(clone);
-            }
-        }
-
-        return ll;
+    public List<OpenGLInfo> getCurList() {
+        return mList;
     }
 
     public void clear() {

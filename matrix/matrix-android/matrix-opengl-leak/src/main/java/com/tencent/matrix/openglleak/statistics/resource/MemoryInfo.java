@@ -12,6 +12,8 @@ import static android.opengl.GLES30.GL_TEXTURE_3D;
 
 import com.tencent.matrix.util.MatrixLog;
 
+import java.util.Arrays;
+
 public class MemoryInfo {
 
     private int target;
@@ -188,5 +190,22 @@ public class MemoryInfo {
         this.nativeStackPtr = nativeStackPtr;
     }
 
-
+    @Override
+    public String toString() {
+        return "MemoryInfo{" +
+                "target=" + target +
+                ", internalFormat=" + internalFormat +
+                ", width=" + width +
+                ", height=" + height +
+                ", id=" + id +
+                ", eglContextId=" + eglContextId +
+                ", usage=" + usage +
+                ", javaStack='" + javaStack + '\'' +
+                ", nativeStack='" + nativeStack + '\'' +
+                ", nativeStackPtr=" + nativeStackPtr +
+                ", resType=" + resType +
+                ", size=" + size +
+                ", faces=" + Arrays.toString(faces) +
+                '}';
+    }
 }

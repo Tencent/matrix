@@ -7,8 +7,10 @@ import android.os.Bundle;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import java.lang.reflect.Field;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 public class ActivityRecorder implements Application.ActivityLifecycleCallbacks {
@@ -24,6 +26,10 @@ public class ActivityRecorder implements Application.ActivityLifecycleCallbacks 
     }
 
     public void start(Application context) {
+        Activity activity = getActivity();
+        if (null != activity) {
+            currentActivityInfo = new ActivityInfo(activity.hashCode(), activity.getLocalClassName());
+        }
         context.registerActivityLifecycleCallbacks(this);
     }
 
@@ -71,6 +77,31 @@ public class ActivityRecorder implements Application.ActivityLifecycleCallbacks 
     @Override
     public void onActivityDestroyed(@NonNull Activity activity) {
         mList.remove(new ActivityInfo(activity.hashCode(), activity.getLocalClassName()));
+    }
+
+    public static Activity getActivity() {
+        Class activityThreadClass = null;
+        try {
+            activityThreadClass = Class.forName("android.app.ActivityThread");
+            Object activityThread = activityThreadClass.getMethod("currentActivityThread").invoke(null);
+            Field activitiesField = activityThreadClass.getDeclaredField("mActivities");
+            activitiesField.setAccessible(true);
+            Map activities = (Map) activitiesField.get(activityThread);
+            for (Object activityRecord : activities.values()) {
+                Class activityRecordClass = activityRecord.getClass();
+                Field pausedField = activityRecordClass.getDeclaredField("paused");
+                pausedField.setAccessible(true);
+                if (!pausedField.getBoolean(activityRecord)) {
+                    Field activityField = activityRecordClass.getDeclaredField("activity");
+                    activityField.setAccessible(true);
+                    Activity activity = (Activity) activityField.get(activityRecord);
+                    return activity;
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 
     public static class ActivityInfo {

@@ -20,7 +20,7 @@ public class CustomizeLeakMonitor {
 
     public List<OpenGLInfo> checkEnd() {
         mResRecorder.end();
-        return mResRecorder.getCopyList();
+        return mResRecorder.getCurList();
     }
 
 }
