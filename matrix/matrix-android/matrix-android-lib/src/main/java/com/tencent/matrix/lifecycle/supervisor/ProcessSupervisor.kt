@@ -105,14 +105,14 @@ object ProcessSupervisor : IProcessListener by DispatchReceiver {
     val appUIForegroundOwner: StatefulOwner = DispatcherStateOwner(
         ReduceOperators.OR,
         MatrixProcessLifecycleOwner.startedStateOwner,
-        "startedStateOwner"
+        "StartedStateOwner"
     )
     val appExplicitBackgroundOwner: StatefulOwner =
-        DispatcherStateOwner(ReduceOperators.AND, ExplicitBackgroundOwner)
+        DispatcherStateOwner(ReduceOperators.AND, ExplicitBackgroundOwner, "ExplicitBackgroundOwner")
     val appStagedBackgroundOwner: StatefulOwner =
-        DispatcherStateOwner(ReduceOperators.AND, StagedBackgroundOwner)
+        DispatcherStateOwner(ReduceOperators.AND, StagedBackgroundOwner, "StagedBackgroundOwner")
     val appDeepBackgroundOwner: StatefulOwner =
-        DispatcherStateOwner(ReduceOperators.AND, DeepBackgroundOwner)
+        DispatcherStateOwner(ReduceOperators.AND, DeepBackgroundOwner, "DeepBackgroundOwner")
 
     fun init(app: Application, config: SupervisorConfig?): Boolean {
         if (config == null || !config.enable) {

@@ -21,7 +21,7 @@ import com.tencent.matrix.util.safeApply
 internal class DispatcherStateOwner(
     reduceOperator: (stateful: Collection<IStateful>) -> Boolean,
     val attachedSource: StatefulOwner,
-    val name: String = attachedSource.javaClass.simpleName
+    val name: String
 ) : MultiSourceStatefulOwner(reduceOperator) {
 
     companion object {
