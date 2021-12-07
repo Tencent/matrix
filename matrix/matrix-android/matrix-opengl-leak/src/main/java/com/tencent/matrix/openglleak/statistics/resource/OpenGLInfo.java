@@ -66,6 +66,7 @@ public class OpenGLInfo {
         if (this.memoryInfo != null) {
             if (memoryInfo.getNativeStackPtr() != 0) {
                 ResRecordManager.releaseNative(memoryInfo.getNativeStackPtr());
+                memoryInfo.releaseNativeStackPtr();
             }
         }
         this.memoryInfo = memoryInfo;

@@ -67,6 +67,8 @@ const size_t BUF_SIZE = 1024;
 static pthread_once_t g_onceInitTls = PTHREAD_ONCE_INIT;
 static pthread_key_t g_tlsJavaEnv;
 
+map<thread::id, bool> jni_env_status;
+
 static bool is_stacktrace_enabled = true;
 
 void enable_stacktrace(bool enable) {
@@ -106,11 +108,18 @@ inline bool is_render_thread() {
 JNIEnv *GET_ENV() {
     JNIEnv *env;
     int ret = m_java_vm->GetEnv(reinterpret_cast<void **>(&env), JNI_VERSION_1_6);
+    thread::id thread_id = this_thread::get_id();
+    map<thread::id, bool>::iterator it = jni_env_status.find(thread_id);
+    if (it == jni_env_status.end()) {
+        jni_env_status.insert(map<thread::id, bool>::value_type(thread_id, ret));
+    }
     if (ret != JNI_OK) {
         pthread_once(&g_onceInitTls, []() {
             pthread_key_create(&g_tlsJavaEnv, [](void *d) {
                 if (d && m_java_vm)
                     m_java_vm->DetachCurrentThread();
+                thread::id thread_id = this_thread::get_id();
+                jni_env_status.erase(thread_id);
             });
         });
 
@@ -161,6 +170,12 @@ void get_thread_id_string(char *&result) {
     thread_id_to_string(thread_id, result);
 }
 
+bool is_need_get_java_stack() {
+    thread::id thread_id = this_thread::get_id();
+    map<thread::id, bool>::iterator it = jni_env_status.find(thread_id);
+    return it->second;
+}
+
 GL_APICALL void GL_APIENTRY my_glGenTextures(GLsizei n, GLuint *textures) {
     if (NULL != system_glGenTextures) {
         system_glGenTextures(n, textures);
@@ -197,8 +212,8 @@ GL_APICALL void GL_APIENTRY my_glGenTextures(GLsizei n, GLuint *textures) {
         }
 
         jstring java_stack;
-        char *javaStack;
-        if (is_javastack_enabled) {
+        char *javaStack = nullptr;
+        if (is_javastack_enabled && is_need_get_java_stack()) {
             javaStack = get_java_stack();
             java_stack = env->NewStringUTF(javaStack);
         } else {
@@ -209,7 +224,7 @@ GL_APICALL void GL_APIENTRY my_glGenTextures(GLsizei n, GLuint *textures) {
                                   java_stack, (int64_t) backtracePrt);
 
         delete[] result;
-        if (is_javastack_enabled) {
+        if (is_javastack_enabled && javaStack != nullptr) {
             free(javaStack);
         }
 
@@ -292,8 +307,8 @@ GL_APICALL void GL_APIENTRY my_glGenBuffers(GLsizei n, GLuint *buffers) {
         }
 
         jstring java_stack;
-        char *javaStack;
-        if (is_javastack_enabled) {
+        char *javaStack = nullptr;
+        if (is_javastack_enabled && is_need_get_java_stack()) {
             javaStack = get_java_stack();
             java_stack = env->NewStringUTF(javaStack);
         } else {
@@ -304,7 +319,7 @@ GL_APICALL void GL_APIENTRY my_glGenBuffers(GLsizei n, GLuint *buffers) {
                                   java_stack, (int64_t) backtracePrt);
 
         delete[] result;
-        if (is_javastack_enabled) {
+        if (is_javastack_enabled && javaStack != nullptr) {
             free(javaStack);
         }
 
@@ -386,8 +401,8 @@ GL_APICALL void GL_APIENTRY my_glGenFramebuffers(GLsizei n, GLuint *buffers) {
         }
 
         jstring java_stack;
-        char *javaStack;
-        if (is_javastack_enabled) {
+        char *javaStack = nullptr;
+        if (is_javastack_enabled && is_need_get_java_stack()) {
             javaStack = get_java_stack();
             java_stack = env->NewStringUTF(javaStack);
         } else {
@@ -398,7 +413,7 @@ GL_APICALL void GL_APIENTRY my_glGenFramebuffers(GLsizei n, GLuint *buffers) {
                                   j_thread_id, java_stack, (int64_t) backtracePrt);
 
         delete[] result;
-        if (is_javastack_enabled) {
+        if (is_javastack_enabled && javaStack != nullptr) {
             free(javaStack);
         }
 
@@ -481,8 +496,8 @@ GL_APICALL void GL_APIENTRY my_glGenRenderbuffers(GLsizei n, GLuint *buffers) {
         }
 
         jstring java_stack;
-        char *javaStack;
-        if (is_javastack_enabled) {
+        char *javaStack = nullptr;
+        if (is_javastack_enabled && is_need_get_java_stack()) {
             javaStack = get_java_stack();
             java_stack = env->NewStringUTF(javaStack);
         } else {
@@ -493,7 +508,7 @@ GL_APICALL void GL_APIENTRY my_glGenRenderbuffers(GLsizei n, GLuint *buffers) {
                                   j_thread_id, java_stack, (int64_t) backtracePrt);
 
         delete[] result;
-        if (is_javastack_enabled) {
+        if (is_javastack_enabled && javaStack != nullptr) {
             free(javaStack);
         }
 
@@ -584,8 +599,8 @@ my_glTexImage2D(GLenum target, GLint level, GLint internalformat, GLsizei width,
         }
 
         jstring java_stack;
-        char *javaStack;
-        if (is_javastack_enabled) {
+        char *javaStack = nullptr;
+        if (is_javastack_enabled && is_need_get_java_stack()) {
             javaStack = get_java_stack();
             java_stack = env->NewStringUTF(javaStack);
         } else {
@@ -593,8 +608,13 @@ my_glTexImage2D(GLenum target, GLint level, GLint internalformat, GLsizei width,
         }
 
         env->CallStaticVoidMethod(class_OpenGLHook, method_onGlTexImage2D, target, level,
-                                  internalformat, width, height, border, format, type, size, java_stack, (int64_t) backtracePrt);
+                                  internalformat, width, height, border, format, type, size,
+                                  java_stack, (int64_t) backtracePrt);
 
+        if (is_javastack_enabled && javaStack != nullptr) {
+            free(javaStack);
+        }
+        env->DeleteLocalRef(java_stack);
     }
 }
 
@@ -627,8 +647,8 @@ my_glTexImage3D(GLenum target, GLint level, GLint internalformat, GLsizei width,
         }
 
         jstring java_stack;
-        char *javaStack;
-        if (is_javastack_enabled) {
+        char *javaStack = nullptr;
+        if (is_javastack_enabled && is_need_get_java_stack()) {
             javaStack = get_java_stack();
             java_stack = env->NewStringUTF(javaStack);
         } else {
@@ -636,7 +656,13 @@ my_glTexImage3D(GLenum target, GLint level, GLint internalformat, GLsizei width,
         }
 
         env->CallStaticVoidMethod(class_OpenGLHook, method_onGlTexImage3D, target, level,
-                                  internalformat, width, height, depth, border, format, type, size, java_stack, (int64_t) backtracePrt);
+                                  internalformat, width, height, depth, border, format, type, size,
+                                  java_stack, (int64_t) backtracePrt);
+
+        if (is_javastack_enabled && javaStack != nullptr) {
+            free(javaStack);
+        }
+        env->DeleteLocalRef(java_stack);
     }
 }
 
@@ -717,15 +743,21 @@ my_glBufferData(GLenum target, GLsizeiptr size, const GLvoid *data, GLenum usage
         }
 
         jstring java_stack;
-        char *javaStack;
-        if (is_javastack_enabled) {
+        char *javaStack = nullptr;
+        if (is_javastack_enabled && is_need_get_java_stack()) {
             javaStack = get_java_stack();
             java_stack = env->NewStringUTF(javaStack);
         } else {
             java_stack = env->NewStringUTF("");
         }
 
-        env->CallStaticVoidMethod(class_OpenGLHook, method_onGlBufferData, target, size, usage, java_stack, (int64_t) backtracePrt);
+        env->CallStaticVoidMethod(class_OpenGLHook, method_onGlBufferData, target, size, usage,
+                                  java_stack, (int64_t) backtracePrt);
+
+        if (is_javastack_enabled && javaStack != nullptr) {
+            free(javaStack);
+        }
+        env->DeleteLocalRef(java_stack);
     }
 }
 
@@ -754,8 +786,8 @@ my_glRenderbufferStorage(GLenum target, GLenum internalformat, GLsizei width, GL
         }
 
         jstring java_stack;
-        char *javaStack;
-        if (is_javastack_enabled) {
+        char *javaStack = nullptr;
+        if (is_javastack_enabled && is_need_get_java_stack()) {
             javaStack = get_java_stack();
             java_stack = env->NewStringUTF(javaStack);
         } else {
@@ -764,7 +796,13 @@ my_glRenderbufferStorage(GLenum target, GLenum internalformat, GLsizei width, GL
 
         long size = Utils::getRenderbufferSizeByFormula(internalformat, width, height);
         env->CallStaticVoidMethod(class_OpenGLHook, method_onGlRenderbufferStorage, target,
-                                  width, height, internalformat, size, java_stack, (int64_t) backtracePrt);
+                                  width, height, internalformat, size, java_stack,
+                                  (int64_t) backtracePrt);
+
+        if (is_javastack_enabled && javaStack != nullptr) {
+            free(javaStack);
+        }
+        env->DeleteLocalRef(java_stack);
     }
 }
 

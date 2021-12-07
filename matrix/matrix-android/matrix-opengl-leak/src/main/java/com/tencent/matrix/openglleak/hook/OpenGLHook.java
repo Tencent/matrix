@@ -433,15 +433,16 @@ public class OpenGLHook {
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
             eglContextId = EGL14.eglGetCurrentContext().getNativeHandle();
         }
-
-        final OpenGLInfo openGLInfo = BindCenter.getInstance().findCurrentResourceIdByTarget(OpenGLInfo.TYPE.TEXTURE, eglContextId, target);
-        if (openGLInfo == null) {
-            MatrixLog.e(TAG, "onGlTexImage2D: getCurrentResourceIdByTarget openGLID == null, maybe undo glBindTextures()");
-            return;
-        }
+        final long finalEglContextId = eglContextId;
         ExecuteCenter.getInstance().post(new Runnable() {
             @Override
             public void run() {
+                final OpenGLInfo openGLInfo = BindCenter.getInstance().findCurrentResourceIdByTarget(OpenGLInfo.TYPE.TEXTURE, finalEglContextId, target);
+                if (openGLInfo == null) {
+                    MatrixLog.e(TAG, "onGlTexImage2D: getCurrentResourceIdByTarget openGLID == null, maybe undo glBindTextures()");
+                    return;
+                }
+
                 MemoryInfo memoryInfo = openGLInfo.getMemoryInfo();
                 if (memoryInfo == null) {
                     memoryInfo = new MemoryInfo(OpenGLInfo.TYPE.TEXTURE);
@@ -449,12 +450,11 @@ public class OpenGLHook {
                 memoryInfo.setTexturesInfo(target, level, internalFormat, width, height, 0, border, format, type, openGLInfo.getId(), openGLInfo.getEglContextNativeHandle(), size, javaStack, nativeStack);
                 openGLInfo.setMemoryInfo(memoryInfo);
 
+                if (getInstance().mMemoryListener != null) {
+                    getInstance().mMemoryListener.onGlTexImage2D(target, level, internalFormat, width, height, border, format, type, openGLInfo.getId(), openGLInfo.getEglContextNativeHandle(), size);
+                }
             }
         });
-
-        if (getInstance().mMemoryListener != null) {
-            getInstance().mMemoryListener.onGlTexImage2D(target, level, internalFormat, width, height, border, format, type, openGLInfo.getId(), openGLInfo.getEglContextNativeHandle(), size);
-        }
 
     }
 
@@ -463,27 +463,28 @@ public class OpenGLHook {
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
             eglContextId = EGL14.eglGetCurrentContext().getNativeHandle();
         }
-
-        final OpenGLInfo openGLInfo = BindCenter.getInstance().findCurrentResourceIdByTarget(OpenGLInfo.TYPE.TEXTURE, eglContextId, target);
-        if (openGLInfo == null) {
-            MatrixLog.e(TAG, "onGlTexImage3D: getCurrentResourceIdByTarget result == null, maybe undo glBindTextures()");
-            return;
-        }
+        final long finalEglContextId = eglContextId;
         ExecuteCenter.getInstance().post(new Runnable() {
             @Override
             public void run() {
+                final OpenGLInfo openGLInfo = BindCenter.getInstance().findCurrentResourceIdByTarget(OpenGLInfo.TYPE.TEXTURE, finalEglContextId, target);
+                if (openGLInfo == null) {
+                    MatrixLog.e(TAG, "onGlTexImage3D: getCurrentResourceIdByTarget result == null, maybe undo glBindTextures()");
+                    return;
+                }
+
                 MemoryInfo memoryInfo = openGLInfo.getMemoryInfo();
                 if (memoryInfo == null) {
                     memoryInfo = new MemoryInfo(OpenGLInfo.TYPE.TEXTURE);
                 }
                 memoryInfo.setTexturesInfo(target, level, internalFormat, width, height, depth, border, format, type, openGLInfo.getId(), openGLInfo.getEglContextNativeHandle(), size, javaStack, nativeStack);
                 openGLInfo.setMemoryInfo(memoryInfo);
+
+                if (getInstance().mMemoryListener != null) {
+                    getInstance().mMemoryListener.onGlTexImage3D(target, level, internalFormat, width, height, depth, border, format, type, openGLInfo.getId(), openGLInfo.getEglContextNativeHandle(), size);
+                }
             }
         });
-
-        if (getInstance().mMemoryListener != null) {
-            getInstance().mMemoryListener.onGlTexImage3D(target, level, internalFormat, width, height, depth, border, format, type, openGLInfo.getId(), openGLInfo.getEglContextNativeHandle(), size);
-        }
 
     }
 
@@ -496,14 +497,16 @@ public class OpenGLHook {
             eglContextId = EGL14.eglGetCurrentContext().getNativeHandle();
         }
 
-        final OpenGLInfo openGLInfo = BindCenter.getInstance().findCurrentResourceIdByTarget(OpenGLInfo.TYPE.BUFFER, eglContextId, target);
-        if (openGLInfo == null) {
-            MatrixLog.e(TAG, "onGlBufferData: getCurrentResourceIdByTarget result == null, maybe undo glBindBuffer()");
-            return;
-        }
+        final long finalEglContextId = eglContextId;
         ExecuteCenter.getInstance().post(new Runnable() {
             @Override
             public void run() {
+                final OpenGLInfo openGLInfo = BindCenter.getInstance().findCurrentResourceIdByTarget(OpenGLInfo.TYPE.BUFFER, finalEglContextId, target);
+                if (openGLInfo == null) {
+                    MatrixLog.e(TAG, "onGlBufferData: getCurrentResourceIdByTarget result == null, maybe undo glBindBuffer()");
+                    return;
+                }
+
                 long actualSize = -1;
                 if (target == GL_PIXEL_UNPACK_BUFFER) {
                     actualSize = size * 2;
@@ -516,12 +519,12 @@ public class OpenGLHook {
                 }
                 memoryInfo.setBufferInfo(target, usage, openGLInfo.getId(), openGLInfo.getEglContextNativeHandle(), actualSize, javaStack, nativeStack);
                 openGLInfo.setMemoryInfo(memoryInfo);
+
+                if (getInstance().mMemoryListener != null) {
+                    getInstance().mMemoryListener.onGlBufferData(target, usage, openGLInfo.getId(), openGLInfo.getEglContextNativeHandle(), size);
+                }
             }
         });
-
-        if (getInstance().mMemoryListener != null) {
-            getInstance().mMemoryListener.onGlBufferData(target, usage, openGLInfo.getId(), openGLInfo.getEglContextNativeHandle(), size);
-        }
 
     }
 
@@ -531,26 +534,28 @@ public class OpenGLHook {
             eglContextId = EGL14.eglGetCurrentContext().getNativeHandle();
         }
 
-        final OpenGLInfo openGLInfo = BindCenter.getInstance().findCurrentResourceIdByTarget(OpenGLInfo.TYPE.RENDER_BUFFERS, eglContextId, target);
-        if (openGLInfo == null) {
-            MatrixLog.e(TAG, "onGlRenderbufferStorage: getCurrentResourceIdByTarget result == null, maybe undo glBindRenderbuffer()");
-            return;
-        }
+        final long finalEglContextId = eglContextId;
         ExecuteCenter.getInstance().post(new Runnable() {
             @Override
             public void run() {
+                final OpenGLInfo openGLInfo = BindCenter.getInstance().findCurrentResourceIdByTarget(OpenGLInfo.TYPE.RENDER_BUFFERS, finalEglContextId, target);
+                if (openGLInfo == null) {
+                    MatrixLog.e(TAG, "onGlRenderbufferStorage: getCurrentResourceIdByTarget result == null, maybe undo glBindRenderbuffer()");
+                    return;
+                }
+
                 MemoryInfo memoryInfo = openGLInfo.getMemoryInfo();
                 if (memoryInfo == null) {
                     memoryInfo = new MemoryInfo(OpenGLInfo.TYPE.RENDER_BUFFERS);
                 }
                 memoryInfo.setRenderbufferInfo(target, width, height, internalformat, openGLInfo.getId(), openGLInfo.getEglContextNativeHandle(), size, javaStack, nativeStack);
                 openGLInfo.setMemoryInfo(memoryInfo);
+
+                if (getInstance().mMemoryListener != null) {
+                    getInstance().mMemoryListener.onGlRenderbufferStorage(target, width, height, internalformat, openGLInfo.getId(), openGLInfo.getEglContextNativeHandle(), size);
+                }
             }
         });
-
-        if (getInstance().mMemoryListener != null) {
-            getInstance().mMemoryListener.onGlRenderbufferStorage(target, width, height, internalformat, openGLInfo.getId(), openGLInfo.getEglContextNativeHandle(), size);
-        }
     }
 
     public interface ErrorListener {

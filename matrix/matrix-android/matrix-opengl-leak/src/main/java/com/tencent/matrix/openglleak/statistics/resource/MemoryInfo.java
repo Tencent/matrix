@@ -32,8 +32,6 @@ public class MemoryInfo {
 
     private String javaStack = "";
 
-    private String nativeStack = "";
-
     private long nativeStackPtr;
 
     private final OpenGLInfo.TYPE resType;
@@ -72,6 +70,10 @@ public class MemoryInfo {
             default:
                 return -1;
         }
+    }
+
+    public void releaseNativeStackPtr() {
+        nativeStackPtr = 0;
     }
 
     public void setTexturesInfo(int target, int level, int internalFormat, int width, int height, int depth, int border, int format, int type, int id, long eglContextId, long size, String javaStack, long nativeStackPtr) {
@@ -114,10 +116,7 @@ public class MemoryInfo {
     }
 
     public String getNativeStack() {
-        if (nativeStack.isEmpty() && nativeStackPtr != 0) {
-            nativeStack = ResRecordManager.dumpNativeStack(nativeStackPtr);
-        }
-        return nativeStack;
+        return nativeStackPtr != 0 ? ResRecordManager.dumpNativeStack(nativeStackPtr) : "";
     }
 
     public long getNativeStackPtr() {
@@ -201,8 +200,7 @@ public class MemoryInfo {
                 ", eglContextId=" + eglContextId +
                 ", usage=" + usage +
                 ", javaStack='" + javaStack + '\'' +
-                ", nativeStack='" + nativeStack + '\'' +
-                ", nativeStackPtr=" + nativeStackPtr +
+                ", nativeStack='" + getNativeStack() + '\'' +
                 ", resType=" + resType +
                 ", size=" + getSize() +
                 ", faces=" + Arrays.toString(faces) +

@@ -39,7 +39,6 @@ public class OpenglIndexDetectorService extends Service {
     private Map<String, Integer> seekOpenglFuncIndex() {
         // 初始化 egl 环境，目的为了初始化 gl 表
         EGLHelper.initOpenGL();
-
         OpenGLHook.getInstance().init();
         MatrixLog.i(TAG, "init env succ");
 

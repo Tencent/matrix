@@ -80,6 +80,7 @@ public class ResRecordManager {
                 long memNativePtr = memoryInfo.getNativeStackPtr();
                 if (memNativePtr != 0) {
                     releaseNative(memNativePtr);
+                    memoryInfo.releaseNativeStackPtr();
                 }
             }
 
