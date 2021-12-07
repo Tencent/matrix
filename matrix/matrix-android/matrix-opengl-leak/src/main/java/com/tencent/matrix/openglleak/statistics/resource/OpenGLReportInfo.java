@@ -34,7 +34,7 @@ public class OpenGLReportInfo {
             FaceInfo[] faces = memoryInfo.getFaces();
             for (FaceInfo faceInfo : faces) {
                 if (faceInfo != null) {
-                    paramsList.add(faceInfo.getParams());
+                    paramsList.add(faceInfo.toString());
                 }
             }
         } else if (resType == OpenGLInfo.TYPE.BUFFER) {

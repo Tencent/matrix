@@ -86,21 +86,20 @@ public class MemoryInfo {
         if (faceInfo == null) {
             faceInfo = new FaceInfo();
         }
+
+        faceInfo.setTarget(target);
+        faceInfo.setId(id);
+        faceInfo.setEglContextNativeHandle(eglContextId);
+        faceInfo.setLevel(level);
+        faceInfo.setInternalFormat(internalFormat);
+        faceInfo.setWidth(width);
+        faceInfo.setHeight(height);
+        faceInfo.setDepth(depth);
+        faceInfo.setBorder(border);
+        faceInfo.setFormat(format);
+        faceInfo.setType(type);
         faceInfo.setSize(size);
-        faceInfo.setParams("MemoryInfo{" +
-                "target=" + target +
-                ", id=" + id +
-                ", eglContextNativeHandle='" + eglContextId + '\'' +
-                ", level=" + level +
-                ", internalFormat=" + internalFormat +
-                ", width=" + width +
-                ", height=" + height +
-                ", depth=" + depth +
-                ", border=" + border +
-                ", format=" + format +
-                ", type=" + type +
-                ", size=" + size +
-                '}');
+
         faces[faceId] = faceInfo;
     }
 
