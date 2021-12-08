@@ -185,7 +185,7 @@ public class OpenglLeakPlugin extends Plugin {
     }
 
     public void setJavaStackDump(boolean open) {
-        OpenGLHook.getInstance().setJavaStackDump(true);
+        OpenGLHook.getInstance().setJavaStackDump(open);
     }
 
     public void clear() {

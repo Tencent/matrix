@@ -173,7 +173,7 @@ void get_thread_id_string(char *&result) {
 bool is_need_get_java_stack() {
     thread::id thread_id = this_thread::get_id();
     map<thread::id, bool>::iterator it = jni_env_status.find(thread_id);
-    return it->second;
+    return it->second == JNI_OK;
 }
 
 GL_APICALL void GL_APIENTRY my_glGenTextures(GLsizei n, GLuint *textures) {
