@@ -62,7 +62,7 @@ public final class BatteryStatsFeature extends AbsMonitorFeature {
         }
     }
 
-    String getDateString(int dayOffset) {
+    static String getDateString(int dayOffset) {
         DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
         Calendar cal = Calendar.getInstance();
         cal.add(Calendar.DATE, dayOffset);
@@ -131,6 +131,18 @@ public final class BatteryStatsFeature extends AbsMonitorFeature {
         }
         records.add(reportRecord);
         return records;
+    }
+
+    public static BatteryRecords loadBatteryRecords(int dayOffset) {
+        BatteryRecords batteryRecords = new BatteryRecords();
+        batteryRecords.date = getDateString(dayOffset);
+        batteryRecords.records = loadRecords(dayOffset);
+        return batteryRecords;
+    }
+
+    public static class BatteryRecords {
+        public String date;
+        public List<Record> records;
     }
 
     public static class Record {

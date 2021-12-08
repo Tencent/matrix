@@ -2,16 +2,21 @@ package sample.tencent.matrix.battery.viewer;
 
 import android.annotation.SuppressLint;
 import android.os.Bundle;
-import android.os.SystemClock;
-import android.util.ArrayMap;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
+import com.tencent.matrix.batterycanary.monitor.AppStats;
+import com.tencent.matrix.batterycanary.stats.BatteryStatsFeature;
+import com.tencent.matrix.batterycanary.stats.BatteryStatsFeature.Record;
+
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 import androidx.annotation.NonNull;
@@ -38,44 +43,80 @@ public class BatteryStatsActivity extends AppCompatActivity {
 
         // mocking
         List<BatteryStatsAdapter.Item> dataList = adapter.getDataList();
-        dataList.add(new BatteryStatsAdapter.HeaderItem());
+        BatteryStatsFeature.BatteryRecords batteryRecords = BatteryStatsFeature.loadBatteryRecords(0);
 
-        BatteryStatsAdapter.EventDumpItem dumpItem = new BatteryStatsAdapter.EventDumpItem();
-        dumpItem.threadInfoList = new ArrayList<>();
-        for (int i = 0; i < 5; i++) {
-            BatteryStatsAdapter.EventDumpItem.ThreadInfo threadInfo = new BatteryStatsAdapter.EventDumpItem.ThreadInfo();
-            threadInfo.stat = "R" + i;
-            threadInfo.tid = 10000 + i;
-            threadInfo.name = "ThreadName_" + i;
-            threadInfo.jiffies = SystemClock.currentThreadTimeMillis() / 10;
-            dumpItem.threadInfoList.add(0, threadInfo);
-        }
-        dumpItem.entryList = new ArrayList<>();
-        for (int i = 0; i < 4; i++) {
-            BatteryStatsAdapter.EventDumpItem.EntryInfo entryInfo = new BatteryStatsAdapter.EventDumpItem.EntryInfo();
-            entryInfo.name = "Entry Name " + i;
-            entryInfo.entries = new ArrayMap<>();
-            entryInfo.entries.put("Key 1", "Value 1");
-            entryInfo.entries.put("Key 2", "Value 2");
-            entryInfo.entries.put("Key 3", "Value 3");
-            dumpItem.entryList.add(entryInfo);
-        }
-        dataList.add(dumpItem);
+        for (Record item : batteryRecords.records) {
+            if (item instanceof Record.ProcStatRecord) {
+                BatteryStatsAdapter.EventLevel1Item eventItem = new BatteryStatsAdapter.EventLevel1Item(item);
+                eventItem.text = (((Record.ProcStatRecord) item).procStat == Record.ProcStatRecord.STAT_PROC_LAUNCH ? "PROCESS INIT" : "PROCESS_ID_" + ((Record.ProcStatRecord) item).procStat)
+                        + " (pid " + ((Record.ProcStatRecord) item).pid + "）";
+                dataList.add(0, eventItem);
+                continue;
+            }
 
-        dataList.add(new BatteryStatsAdapter.EventLevel1Item());
-        for (int i = 0; i < 10; i++) {
-            dataList.add(new BatteryStatsAdapter.EventLevel2Item());
-        }
-        dataList.add(new BatteryStatsAdapter.EventLevel1Item());
-        dataList.add(new BatteryStatsAdapter.EventDumpItem());
+            if (item instanceof Record.AppStatRecord) {
+                BatteryStatsAdapter.EventLevel1Item eventItem = new BatteryStatsAdapter.EventLevel1Item(item);
+                switch (((Record.AppStatRecord) item).appStat) {
+                    case AppStats.APP_STAT_FOREGROUND:
+                        eventItem.text = "App 切换到前台";
+                        break;
+                    case AppStats.APP_STAT_BACKGROUND:
+                        eventItem.text = "App 切换到后台";
+                        break;
+                    case AppStats.APP_STAT_FOREGROUND_SERVICE:
+                        eventItem.text = "App 切换到后台 (有前台服务)";
+                        break;
+                    default:
+                        eventItem.text = "App 状态变化: " + ((Record.AppStatRecord) item).appStat;
+                        break;
+                }
+                dataList.add(0, eventItem);
+                continue;
+            }
 
-        dataList.add(new BatteryStatsAdapter.HeaderItem());
-        dataList.add(new BatteryStatsAdapter.EventLevel1Item());
-        for (int i = 0; i < 50; i++) {
-            dataList.add(new BatteryStatsAdapter.EventLevel2Item());
+            if (item instanceof Record.DevStatRecord) {
+                BatteryStatsAdapter.EventLevel2Item eventItem = new BatteryStatsAdapter.EventLevel2Item(item);
+                switch (((Record.DevStatRecord) item).devStat) {
+                    case AppStats.DEV_STAT_CHARGING:
+                        eventItem.text = "CHARGE ON";
+                        break;
+                    case AppStats.DEV_STAT_UN_CHARGING:
+                        eventItem.text = "CHARGE OFF";
+                        break;
+                    case AppStats.DEV_STAT_SAVE_POWER_MODE:
+                        eventItem.text = "PowerSave ON";
+                        break;
+                    case AppStats.DEV_STAT_SCREEN_OFF:
+                        eventItem.text = "SCREEN OFF";
+                        break;
+                    default:
+                        eventItem.text = "设备状态变化: " + ((Record.DevStatRecord) item).devStat;
+                        break;
+                }
+                dataList.add(0, eventItem);
+                continue;
+            }
+
+            if (item instanceof Record.SceneStatRecord) {
+                BatteryStatsAdapter.EventLevel2Item eventItem = new BatteryStatsAdapter.EventLevel2Item(item);
+                eventItem.text = "UI: " + ((Record.SceneStatRecord) item).scene;
+                dataList.add(0, eventItem);
+                continue;
+            }
+
+            if (item instanceof Record.ReportRecord) {
+                BatteryStatsAdapter.EventDumpItem dumpItem = new BatteryStatsAdapter.EventDumpItem((Record.ReportRecord) item);
+                dataList.add(0, dumpItem);
+                continue;
+            }
+
+            if (item instanceof Record.EventStatRecord ) {
+            }
         }
-        dataList.add(new BatteryStatsAdapter.EventLevel1Item());
-        dataList.add(new BatteryStatsAdapter.EventDumpItem());
+        BatteryStatsAdapter.HeaderItem headerItem = new BatteryStatsAdapter.HeaderItem();
+        headerItem.date = batteryRecords.date;
+        dataList.add(0, headerItem);
+
         adapter.notifyItemRangeChanged(0, dataList.size());
     }
 
@@ -132,55 +173,57 @@ public class BatteryStatsActivity extends AppCompatActivity {
             // }
         }
 
-        public static abstract class Item {
-            public long millis;
-            public abstract int viewType();
+        public interface Item {
+            int viewType();
         }
 
-        public static class HeaderItem extends Item {
+        public static class HeaderItem implements Item {
+            public String date;
             @Override
             public int viewType() {
                 return VIEW_TYPE_HEADER;
             }
         }
 
-        public static class EventDumpItem extends Item {
-            public long id;
+        public static class EventDumpItem extends Record.ReportRecord implements Item {
             public boolean expand = false;
-            public String scope;
             public String desc;
-            public long windowMillis;
-            public List<ThreadInfo> threadInfoList = Collections.emptyList();
-            public List<EntryInfo> entryList = Collections.emptyList();
+
+            public EventDumpItem(Record.ReportRecord record) {
+                this.id  = record.id;
+                this.event  = record.event;
+                this.scope  = record.scope;
+                this.windowMillis  = record.windowMillis;
+                this.threadInfoList  = record.threadInfoList;
+                this.entryList  = record.entryList;
+            }
 
             @Override
             public int viewType() {
                 return VIEW_TYPE_EVENT_DUMP;
             }
-
-            public static class ThreadInfo {
-                public int tid;
-                public String name;
-                public String stat;
-                public long jiffies;
-            }
-
-            public static class EntryInfo {
-                public String name;
-                public String desc;
-                public String stat;
-                public Map<String, String> entries = Collections.emptyMap();
-            }
         }
 
-        public static class EventLevel1Item extends Item {
+        public static class EventLevel1Item extends Record implements Item {
+            public String text;
+
+            public EventLevel1Item(Record record) {
+                this.millis = record.millis;
+            }
+
             @Override
             public int viewType() {
                 return VIEW_TYPE_EVENT_LEVEL_1;
             }
         }
 
-        public static class EventLevel2Item extends Item {
+        public static class EventLevel2Item extends Record implements Item {
+            public String text;
+
+            public EventLevel2Item(Record record) {
+                this.millis = record.millis;
+            }
+
             @Override
             public int viewType() {
                 return VIEW_TYPE_EVENT_LEVEL_2;
@@ -189,6 +232,8 @@ public class BatteryStatsActivity extends AppCompatActivity {
 
 
         public abstract static class ViewHolder<ITEM extends Item> extends  RecyclerView.ViewHolder {
+            static DateFormat sTimeFormat = new SimpleDateFormat("HH:mm", Locale.getDefault());
+
             @SuppressWarnings("NotNullFieldNotInitialized")
             @NonNull ITEM mItem;
             public ViewHolder(@NonNull View itemView) {
@@ -196,14 +241,25 @@ public class BatteryStatsActivity extends AppCompatActivity {
             }
             public void bind(ITEM item) {}
 
+
             public static class HeaderHolder extends ViewHolder<HeaderItem> {
+                private final TextView mTitleTv;
+
                 public HeaderHolder(@NonNull View itemView) {
                     super(itemView);
+                    mTitleTv = itemView.findViewById(R.id.tv_title);
+                }
+
+                @Override
+                public void bind(HeaderItem item) {
+                    mItem = item;
+                    mTitleTv.setText(item.date);
                 }
             }
 
             public static class EventDumpHolder extends ViewHolder<EventDumpItem> {
 
+                private final TextView mTimeTv;
                 private final TextView mMoreTv;
                 private final View mExpandView;
 
@@ -218,10 +274,9 @@ public class BatteryStatsActivity extends AppCompatActivity {
                 private final View mEntryView3;
                 private final View mEntryView4;
 
-
-
                 public EventDumpHolder(@NonNull View itemView) {
                     super(itemView);
+                    mTimeTv = itemView.findViewById(R.id.tv_time);
                     mMoreTv = itemView.findViewById(R.id.tv_more);
                     mExpandView = itemView.findViewById(R.id.layout_expand);
 
@@ -266,6 +321,7 @@ public class BatteryStatsActivity extends AppCompatActivity {
 
                 @SuppressLint({"SetTextI18n", "CutPasteId"})
                 private void updateView(EventDumpItem item) {
+                    mTimeTv.setText(sTimeFormat.format(new Date(item.millis)));
                     mMoreTv.setText(item.expand ? "▼" : "▲");
                     mExpandView.setVisibility(item.expand ? View.VISIBLE : View.GONE);
                     if (!item.expand) {
@@ -386,14 +442,41 @@ public class BatteryStatsActivity extends AppCompatActivity {
                 }
             }
 
-            public static class EventLevel1Holder extends ViewHolder {
+            public static class EventLevel1Holder extends ViewHolder<EventLevel1Item> {
+
+                private final TextView mTimeTv;
+                private final TextView mTitleTv;
+
                 public EventLevel1Holder(@NonNull View itemView) {
                     super(itemView);
+                    mTimeTv = itemView.findViewById(R.id.tv_time);
+                    mTitleTv = itemView.findViewById(R.id.tv_title);
+                }
+
+                @Override
+                public void bind(EventLevel1Item item) {
+                    mItem = item;
+                    mTimeTv.setText(sTimeFormat.format(new Date(item.millis)));
+                    mTitleTv.setText(item.text);
                 }
             }
-            public static class EventLevel2Holder extends ViewHolder {
+
+            public static class EventLevel2Holder extends ViewHolder<EventLevel2Item> {
+
+                private final TextView mTimeTv;
+                private final TextView mTitleTv;
+
                 public EventLevel2Holder(@NonNull View itemView) {
                     super(itemView);
+                    mTimeTv = itemView.findViewById(R.id.tv_time);
+                    mTitleTv = itemView.findViewById(R.id.tv_title);
+                }
+
+                @Override
+                public void bind(EventLevel2Item item) {
+                    mItem = item;
+                    mTimeTv.setText(sTimeFormat.format(new Date(item.millis)));
+                    mTitleTv.setText(item.text);
                 }
             }
         }

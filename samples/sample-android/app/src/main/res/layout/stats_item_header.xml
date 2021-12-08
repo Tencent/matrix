@@ -13,13 +13,14 @@
         android:background="@android:color/white">
 
         <TextView
-            android:text="2021-11-30"
-            android:layout_marginLeft="60dp"
+            android:id="@+id/tv_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
             android:layout_centerVertical="true"
             android:layout_gravity="center"
-            android:textSize="14sp"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"/>
+            android:layout_marginLeft="60dp"
+            android:text="2021-11-30"
+            android:textSize="14sp" />
 
     </RelativeLayout>
 
