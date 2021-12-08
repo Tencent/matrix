@@ -124,19 +124,6 @@ object StagedBackgroundOwner : StatefulOwner() {
             MatrixLog.i(TAG, "set max check interval as $value")
         }
 
-    init {
-        ExplicitBackgroundOwner.observeForever(object : IStateObserver {
-            override fun on() { // explicit background
-                checkTask.post()
-            }
-
-            override fun off() { // foreground
-                checkTask.stop()
-                turnOff()
-            }
-        })
-    }
-
     private val checkTask = object : TimerChecker(TAG, maxCheckInterval, maxCheckTimes) {
         override fun action(): Boolean {
             if (ExplicitBackgroundOwner.active()
@@ -152,6 +139,19 @@ object StagedBackgroundOwner : StatefulOwner() {
             turnOff() // means deep background
             return false
         }
+    }
+
+    init {
+        ExplicitBackgroundOwner.observeForever(object : IStateObserver {
+            override fun on() { // explicit background
+                checkTask.post()
+            }
+
+            override fun off() { // foreground
+                checkTask.stop()
+                turnOff()
+            }
+        })
     }
 
     override fun active(): Boolean {
