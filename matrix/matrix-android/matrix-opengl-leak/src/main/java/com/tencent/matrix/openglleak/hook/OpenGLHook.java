@@ -488,7 +488,7 @@ public class OpenGLHook {
 
     }
 
-    public static void onGlBufferData(final int target, final long size, final int usage, final String javaStack, final long nativeStack) {
+    public static void onGlBufferData(final int target, final int usage, final long size, final String javaStack, final long nativeStack) {
         if (Thread.currentThread().getName().equals("RenderThread")) {
             return;
         }
