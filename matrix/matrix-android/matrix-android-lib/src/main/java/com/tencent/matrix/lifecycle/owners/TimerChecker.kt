@@ -26,7 +26,7 @@ internal abstract class TimerChecker(
      *
      */
     class IntervalFactory(private val maxVal: Long) {
-        private val initialInterval = arrayOf(13L, 21L) // 10th and 11th Fibonacci sequence
+        private val initialInterval = arrayOf(13L, 21L)
         private var fibo = initialInterval.copyOf()
 
         fun next(): Long {

@@ -139,9 +139,10 @@ object StagedBackgroundOwner : StatefulOwner() {
 
     private val checkTask = object : TimerChecker(TAG, maxCheckInterval, maxCheckTimes) {
         override fun action(): Boolean {
-            if (MatrixProcessLifecycleOwner.hasRunningAppTask()
+            if (ExplicitBackgroundOwner.active()
+                && (MatrixProcessLifecycleOwner.hasRunningAppTask()
                     .also { MatrixLog.i(TAG, "hasRunningAppTask? $it") }
-                || MatrixProcessLifecycleOwner.createdStateOwner.active()
+                        || MatrixProcessLifecycleOwner.createdStateOwner.active())
             ) {
                 MatrixLog.i(TAG, "turn ON")
                 turnOn() // staged background
