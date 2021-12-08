@@ -74,10 +74,4 @@ public class EGLHelper {
 
         GLES20.glFlush();
     }
-
-    public static void release() {
-        EGL14.eglDestroySurface(mEGLDisplay, mEglSurface);
-        EGL14.eglDestroyContext(mEGLDisplay, mEglContext);
-    }
-
 }

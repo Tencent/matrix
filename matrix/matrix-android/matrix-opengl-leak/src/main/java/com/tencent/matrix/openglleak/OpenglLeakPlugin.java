@@ -116,9 +116,6 @@ public class OpenglLeakPlugin extends Plugin {
             OpenGLHook.getInstance().hook(FuncNameString.GL_BIND_RENDERBUFFER, map.get(FuncNameString.GL_BIND_RENDERBUFFER));
             OpenGLHook.getInstance().hook(FuncNameString.GL_BUFFER_DATA, map.get(FuncNameString.GL_BUFFER_DATA));
             OpenGLHook.getInstance().hook(FuncNameString.GL_RENDER_BUFFER_STORAGE, map.get(FuncNameString.GL_RENDER_BUFFER_STORAGE));
-
-            EGLHelper.release();
-
             MatrixLog.e(TAG, "hook finish");
         } catch (Throwable e) {
             e.printStackTrace();
