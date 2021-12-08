@@ -4,7 +4,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    tools:context=".battery.viewer.BatteryStatsActivity">
+    tools:context="com.tencent.matrix.batterycanary.viewer.BatteryStatsActivity">
 
     <RelativeLayout
         android:layout_width="match_parent"

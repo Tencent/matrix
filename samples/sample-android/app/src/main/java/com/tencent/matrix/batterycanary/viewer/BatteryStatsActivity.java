@@ -1,4 +1,4 @@
-package sample.tencent.matrix.battery.viewer;
+package com.tencent.matrix.batterycanary.viewer;
 
 import android.annotation.SuppressLint;
 import android.os.Bundle;
