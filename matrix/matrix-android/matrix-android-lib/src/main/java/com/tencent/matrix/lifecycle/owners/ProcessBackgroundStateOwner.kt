@@ -32,23 +32,6 @@ private const val MAX_CHECK_TIMES = 20
 object ExplicitBackgroundOwner : StatefulOwner() {
     private const val TAG = "Matrix.background.Explicit"
 
-    init {
-        ImmutableMultiSourceStatefulOwner(
-            ReduceOperators.OR,
-            MatrixProcessLifecycleOwner.startedStateOwner,
-            ForegroundServiceLifecycleOwner
-        ).observeForever(object : IStateObserver {
-            override fun on() { // Activity foreground
-                checkTask.stop()
-                turnOff()
-            }
-
-            override fun off() { // Activity background
-                checkTask.post()
-            }
-        })
-    }
-
     var maxCheckInterval = MAX_CHECK_INTERVAL
         set(value) {
             if (value < TimeUnit.SECONDS.toMillis(10)) {
@@ -81,6 +64,23 @@ object ExplicitBackgroundOwner : StatefulOwner() {
         }
     }
 
+    init {
+        ImmutableMultiSourceStatefulOwner(
+            ReduceOperators.OR,
+            MatrixProcessLifecycleOwner.startedStateOwner,
+            ForegroundServiceLifecycleOwner
+        ).observeForever(object : IStateObserver {
+            override fun on() { // Activity foreground
+                checkTask.stop()
+                turnOff()
+            }
+
+            override fun off() { // Activity background
+                checkTask.post()
+            }
+        })
+    }
+
     /**
      * It is possible to trigger a manual check by calling this method after calling
      * stopForeground/removeFloatingView for more accurate state callbacks.
@@ -106,19 +106,6 @@ object ExplicitBackgroundOwner : StatefulOwner() {
 object StagedBackgroundOwner : StatefulOwner() {
     private const val TAG = "Matrix.background.Staged"
 
-    init {
-        ExplicitBackgroundOwner.observeForever(object : IStateObserver {
-            override fun on() { // explicit background
-                checkTask.post()
-            }
-
-            override fun off() { // foreground
-                checkTask.stop()
-                turnOff()
-            }
-        })
-    }
-
     var maxCheckInterval = MAX_CHECK_INTERVAL
         set(value) {
             if (value < TimeUnit.SECONDS.toMillis(10)) {
@@ -136,6 +123,19 @@ object StagedBackgroundOwner : StatefulOwner() {
             field = value
             MatrixLog.i(TAG, "set max check interval as $value")
         }
+
+    init {
+        ExplicitBackgroundOwner.observeForever(object : IStateObserver {
+            override fun on() { // explicit background
+                checkTask.post()
+            }
+
+            override fun off() { // foreground
+                checkTask.stop()
+                turnOff()
+            }
+        })
+    }
 
     private val checkTask = object : TimerChecker(TAG, maxCheckInterval, maxCheckTimes) {
         override fun action(): Boolean {
