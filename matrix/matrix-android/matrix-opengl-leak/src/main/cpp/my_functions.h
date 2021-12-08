@@ -598,7 +598,7 @@ my_glTexImage2D(GLenum target, GLint level, GLint internalformat, GLsizei width,
         }
 
         jstring java_stack;
-        const char *javaStack = nullptr;
+        char *javaStack = nullptr;
         if (is_javastack_enabled && is_need_get_java_stack()) {
             javaStack = get_java_stack();
             java_stack = env->NewStringUTF(javaStack);
@@ -611,7 +611,7 @@ my_glTexImage2D(GLenum target, GLint level, GLint internalformat, GLsizei width,
                                   java_stack, (jlong) backtracePrt);
 
         if (is_javastack_enabled && javaStack != nullptr) {
-            free((void *) javaStack);
+            free(javaStack);
         }
         env->DeleteLocalRef(java_stack);
     }
