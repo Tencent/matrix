@@ -16,19 +16,17 @@ internal abstract class TimerChecker(
     private val runningHandler by lazy { MatrixHandlerThread.getDefaultHandler() }
 
     /**
-     * The initial delay interval is 34 + 55 = 89(ms)
-     * Why 89? Removing foreground widgets like floating Views should run in main thread
+     * The initial delay interval is 21 + 34 = 55(ms)
+     * Why 34? Removing foreground widgets like floating Views should run in main thread
      * and might depend on Activity background event, which is dispatched in Matrix handler thread.
      * And for most cases, the onDetach would be called within 10ms.
-     * And floating Views might be added when Activity/Process paused. The onAttach would be called
-     * in 50ms or more for some devices.
      *
      * valid intervals
-     * 89,144,233,377,610,987,1597,2584,4181,6765,10946,17711,28657,46368,...,$max
+     * 55,89,144,233,377,610,987,1597,2584,4181,6765,10946,17711,28657,46368,...,$max
      *
      */
     class IntervalFactory(private val maxVal: Long) {
-        private val initialInterval = arrayOf(34L, 55L)
+        private val initialInterval = arrayOf(21L, 34L)
         private var fibo = initialInterval.copyOf()
 
         fun next(): Long {
