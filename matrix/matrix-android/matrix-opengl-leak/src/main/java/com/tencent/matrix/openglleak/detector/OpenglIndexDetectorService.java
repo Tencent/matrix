@@ -108,8 +108,6 @@ public class OpenglIndexDetectorService extends Service {
         out.put(FuncNameString.GL_RENDER_BUFFER_STORAGE, glRenderbufferStorageIndex);
 
         MatrixLog.i(TAG, "seek func index succ!");
-
-        EGLHelper.release();
         return out;
     }
 
