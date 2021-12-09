@@ -127,14 +127,16 @@ object ForegroundServiceLifecycleOwner : StatefulOwner() {
         }
 
         private fun checkIfAlreadyForegrounded(componentName: ComponentName) {
-            activityManager?.getRunningServices(Int.MAX_VALUE)?.filter {
-                it.pid == Process.myPid()
-                        && it.uid == Process.myUid()
-                        && it.service == componentName
-                        && it.foreground
-            }?.forEach {
-                MatrixLog.i(TAG, "service turned fg when create: ${it.service}")
-                fgServiceHandler?.onStartForeground(it.service)
+            safeApply(TAG) {
+                activityManager?.getRunningServices(Int.MAX_VALUE)?.filter {
+                    it.pid == Process.myPid()
+                            && it.uid == Process.myUid()
+                            && it.service == componentName
+                            && it.foreground
+                }?.forEach {
+                    MatrixLog.i(TAG, "service turned fg when create: ${it.service}")
+                    fgServiceHandler?.onStartForeground(it.service)
+                }
             }
         }
     }

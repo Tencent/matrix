@@ -244,12 +244,14 @@ object MatrixProcessLifecycleOwner {
         if (activityManager == null) {
             throw IllegalStateException("NOT initialized yet")
         }
-        return activityManager!!.getRunningServices(Int.MAX_VALUE)
-            .filter {
-                it.uid == Process.myUid() && it.pid == Process.myPid()
-            }.any {
-                it.foreground
-            }
+        return safeLet(TAG, defVal = false) {
+            activityManager!!.getRunningServices(Int.MAX_VALUE)
+                .filter {
+                    it.uid == Process.myUid() && it.pid == Process.myPid()
+                }.any {
+                    it.foreground
+                }
+        }
     }
 
     private val WindowManagerGlobal_mRoots by lazy {
@@ -336,28 +338,30 @@ object MatrixProcessLifecycleOwner {
         if (activityManager == null) {
             throw IllegalStateException("NOT initialized yet")
         }
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            activityManager!!.appTasks
-                .filter {
-                    it.taskInfo.belongsTo(processName)
-                }.onEach {
-                    MatrixLog.i(TAG, "$processName task: ${it.taskInfo.contentToString()}")
-                }.any {
-                    MatrixLog.d(TAG, "hasRunningAppTask run any")
-                    when {
-                        Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q -> {
-                            it.taskInfo.isRunning
-                        }
-                        Build.VERSION.SDK_INT >= Build.VERSION_CODES.M -> {
-                            it.taskInfo.numActivities > 0
-                        }
-                        else -> {
-                            it.taskInfo.id == -1 // // If it is not running, this will be -1
+        return safeLet(TAG, defVal = true) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                activityManager!!.appTasks
+                    .filter {
+                        it.taskInfo.belongsTo(processName)
+                    }.onEach {
+                        MatrixLog.i(TAG, "$processName task: ${it.taskInfo.contentToString()}")
+                    }.any {
+                        MatrixLog.d(TAG, "hasRunningAppTask run any")
+                        when {
+                            Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q -> {
+                                it.taskInfo.isRunning
+                            }
+                            Build.VERSION.SDK_INT >= Build.VERSION_CODES.M -> {
+                                it.taskInfo.numActivities > 0
+                            }
+                            else -> {
+                                it.taskInfo.id == -1 // // If it is not running, this will be -1
+                            }
                         }
                     }
-                }
-        } else {
-            false
+            } else {
+                false
+            }
         }
     }
 
@@ -366,13 +370,15 @@ object MatrixProcessLifecycleOwner {
         if (activityManager == null) {
             throw IllegalStateException("NOT initialized yet")
         }
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            activityManager!!.appTasks
-                .filter {
-                    it.taskInfo.belongsTo(processName)
-                }.toTypedArray()
-        } else {
-            emptyArray()
+        return safeLet(TAG, defVal = emptyArray()) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                activityManager!!.appTasks
+                    .filter {
+                        it.taskInfo.belongsTo(processName)
+                    }.toTypedArray()
+            } else {
+                emptyArray()
+            }
         }
     }
 
