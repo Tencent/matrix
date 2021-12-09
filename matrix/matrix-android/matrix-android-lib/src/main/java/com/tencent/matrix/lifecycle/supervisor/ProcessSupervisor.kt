@@ -10,10 +10,7 @@ import android.content.pm.PackageManager
 import android.os.IBinder
 import android.util.Log
 import com.tencent.matrix.lifecycle.*
-import com.tencent.matrix.lifecycle.owners.DeepBackgroundOwner
-import com.tencent.matrix.lifecycle.owners.ExplicitBackgroundOwner
-import com.tencent.matrix.lifecycle.owners.MatrixProcessLifecycleOwner
-import com.tencent.matrix.lifecycle.owners.StagedBackgroundOwner
+import com.tencent.matrix.lifecycle.owners.*
 import com.tencent.matrix.util.MatrixLog
 import com.tencent.matrix.util.MatrixUtil
 import com.tencent.matrix.util.safeApply
@@ -102,17 +99,12 @@ object ProcessSupervisor : IProcessListener by DispatchReceiver {
     @Volatile
     internal var supervisorProxy: ISupervisorProxy? = null
 
-    val appUIForegroundOwner: StatefulOwner = DispatcherStateOwner(
-        ReduceOperators.OR,
-        MatrixProcessLifecycleOwner.startedStateOwner,
-        "StartedStateOwner"
-    )
-    val appExplicitBackgroundOwner: StatefulOwner =
-        DispatcherStateOwner(ReduceOperators.AND, ExplicitBackgroundOwner, "ExplicitBackgroundOwner")
-    val appStagedBackgroundOwner: StatefulOwner =
-        DispatcherStateOwner(ReduceOperators.AND, StagedBackgroundOwner, "StagedBackgroundOwner")
-    val appDeepBackgroundOwner: StatefulOwner =
-        DispatcherStateOwner(ReduceOperators.AND, DeepBackgroundOwner, "DeepBackgroundOwner")
+    // @formatter:off
+    val appUIForegroundOwner: StatefulOwner = DispatcherStateOwner(ReduceOperators.OR, MatrixProcessLifecycleOwner.startedStateOwner, "StartedStateOwner")
+    val appExplicitBackgroundOwner: IBackgroundStatefulOwner = object : DispatcherStateOwner(ReduceOperators.AND, ExplicitBackgroundOwner, "ExplicitBackgroundOwner"), IBackgroundStatefulOwner {}
+    val appStagedBackgroundOwner: IBackgroundStatefulOwner = object : DispatcherStateOwner(ReduceOperators.AND, StagedBackgroundOwner, "StagedBackgroundOwner"), IBackgroundStatefulOwner {}
+    val appDeepBackgroundOwner: IBackgroundStatefulOwner = object : DispatcherStateOwner(ReduceOperators.AND, DeepBackgroundOwner, "DeepBackgroundOwner"), IBackgroundStatefulOwner {}
+    // @formatter:on
 
     fun init(app: Application, config: SupervisorConfig?): Boolean {
         if (config == null || !config.enable) {

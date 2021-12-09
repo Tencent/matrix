@@ -1,76 +1,61 @@
 package com.tencent.matrix.memory.canary.monitor
 
 import com.tencent.matrix.lifecycle.IStateObserver
-import com.tencent.matrix.lifecycle.owners.MatrixProcessLifecycleOwner
+import com.tencent.matrix.lifecycle.owners.IBackgroundStatefulOwner
 import com.tencent.matrix.lifecycle.supervisor.ProcessSupervisor
 import com.tencent.matrix.memory.canary.MemInfo
 import com.tencent.matrix.util.MatrixHandlerThread
 import com.tencent.matrix.util.MatrixLog
 import java.util.concurrent.TimeUnit
 
-private const val TAG = "Matrix.monitor.SumPssMonitor"
+private const val TAG = "Matrix.monitor.AppBgSumPssMonitor"
 
 /**
  * Created by Yves on 2021/10/27
  */
-data class AppBgSumPssMonitorConfig(
+class AppBgSumPssMonitorConfig(
     val enable: Boolean = true,
-    val checkInterval: Long = TimeUnit.MINUTES.toMillis(1),
-    val thresholdKB: Long = 2 * 1024 * 1024L + 500 * 1024L, // 2.5G
-    val thresholdIncStepKB: Long = 100 * 1024L, // 100M
-    val checkTimes: Long = 3,
-    val callback: (sumPssKB: Int, Int, Array<MemInfo>, Boolean) -> Unit = { sumPssKB, overTimes, memInfos, inaccurate ->
+    val bgStatefulOwner: IBackgroundStatefulOwner = ProcessSupervisor.appStagedBackgroundOwner,
+    val checkInterval: Long = TimeUnit.MINUTES.toMillis(3),
+    thresholdKB: Long = 2 * 1024 * 1024L + 500 * 1024L, // 2.5G
+    checkTimes: Int = 3,
+    val callback: (sumPssKB: Int, Array<MemInfo>) -> Unit = { sumPssKB, memInfos ->
         MatrixLog.e(
             TAG,
-            "sum pss of all process over threshold: $sumPssKB KB, over times: $overTimes, detail: ${memInfos.contentToString()}: inaccurate: $inaccurate"
+            "sum pss of all process over threshold: $sumPssKB KB, detail: ${memInfos.contentToString()}"
         )
     }
 ) {
+    internal val thresholdKB = thresholdKB.asThreshold(checkTimes, TimeUnit.MINUTES.toMillis(5))
     override fun toString(): String {
-        return "AppBgSumPssMonitorConfig(enable=$enable, delayMillis=$checkInterval, thresholdKB=$thresholdKB, checkTimes=$checkTimes, callback=${callback.javaClass.name})"
+        return "AppBgSumPssMonitorConfig(enable=$enable, bgStatefulOwner=$bgStatefulOwner, checkInterval=$checkInterval, callback=${callback.javaClass.name}, thresholdKB=$thresholdKB)"
     }
 }
 
-class AppBgSumPssMonitor(
+internal class AppBgSumPssMonitor(
     private val config: AppBgSumPssMonitorConfig
-) : Runnable {
+) {
 
+    private val checkTask = Runnable { check() }
     private val runningHandler = MatrixHandlerThread.getDefaultHandler()
-    @Volatile
-    private var inaccurate = false
-    private var currentThresholdKB = config.thresholdKB
-    private var overTimes = 0
-
-    override fun run() {
-        if (MatrixProcessLifecycleOwner.hasVisibleView() || MatrixProcessLifecycleOwner.hasVisibleView()) {
-            inaccurate = true
-            runningHandler.postDelayed(this, config.checkInterval / 2)
-            return
-        }
-
-        action()
-    }
 
     fun init() {
         MatrixLog.i(TAG, "$config")
         if (!config.enable) {
             return
         }
-        ProcessSupervisor.appUIForegroundOwner.observeForever(object : IStateObserver {
-            override fun on() { // app foreground
-                inaccurate = false
-                runningHandler.removeCallbacks(this@AppBgSumPssMonitor)
+        config.bgStatefulOwner.observeForever(object : IStateObserver {
+            override fun off() { // app foreground
+                runningHandler.removeCallbacks(checkTask)
             }
 
-            override fun off() { // app background
-                runningHandler.postDelayed(this@AppBgSumPssMonitor, config.checkInterval)
+            override fun on() { // app background
+                runningHandler.postDelayed(checkTask, config.checkInterval)
             }
         })
     }
 
-    private fun action() {
-        MatrixLog.d(TAG, "check begin")
-
+    private fun check() {
         val memInfos = MemInfo.getAllProcessPss()
 
         val sum = memInfos.onEach { info ->
@@ -80,11 +65,10 @@ class AppBgSumPssMonitor(
             )
         }.sumBy { it.amsPssInfo!!.totalPssK }.also { MatrixLog.i(TAG, "sumPss = $it KB") }
 
-        MatrixLog.d(TAG, "check end sum = $sum")
+        MatrixLog.i(TAG, "check end sum = $sum ${memInfos.contentToString()}")
 
-        if (sum > currentThresholdKB) {
-            currentThresholdKB = sum + config.thresholdIncStepKB
-            config.callback.invoke(sum, ++overTimes, memInfos, inaccurate)
+        config.thresholdKB.check(sum.toLong()) {
+            config.callback.invoke(sum, memInfos)
         }
     }
 }

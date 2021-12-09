@@ -1,5 +1,7 @@
 package com.tencent.matrix.memory.canary
 
+import com.tencent.matrix.lifecycle.owners.DeepBackgroundOwner
+import com.tencent.matrix.lifecycle.owners.StagedBackgroundOwner
 import com.tencent.matrix.lifecycle.supervisor.ProcessSupervisor
 import com.tencent.matrix.memory.canary.monitor.AppBgSumPssMonitor
 import com.tencent.matrix.memory.canary.monitor.AppBgSumPssMonitorConfig
@@ -11,8 +13,14 @@ import com.tencent.matrix.util.MatrixUtil
 
 @Suppress("ArrayInDataClass")
 data class MemoryCanaryConfig(
-    val appBgSumPssMonitorConfig: AppBgSumPssMonitorConfig = AppBgSumPssMonitorConfig(),
-    val processBgMemoryMonitorConfig: ProcessBgMemoryMonitorConfig = ProcessBgMemoryMonitorConfig(),
+    val appStagedBgSumPssMonitorConfig: AppBgSumPssMonitorConfig =
+        AppBgSumPssMonitorConfig(bgStatefulOwner = ProcessSupervisor.appStagedBackgroundOwner),
+    val appDeepBgSumPssMonitorConfig: AppBgSumPssMonitorConfig =
+        AppBgSumPssMonitorConfig(bgStatefulOwner = ProcessSupervisor.appDeepBackgroundOwner),
+    val procStagedBgMemoryMonitorConfig: ProcessBgMemoryMonitorConfig =
+        ProcessBgMemoryMonitorConfig(bgStatefulOwner = StagedBackgroundOwner),
+    val procDeepBgMemoryMonitorConfig: ProcessBgMemoryMonitorConfig =
+        ProcessBgMemoryMonitorConfig(bgStatefulOwner = DeepBackgroundOwner),
     val baseActivities: Array<String> = emptyArray()
 )
 
@@ -30,9 +38,11 @@ class MemoryCanaryPlugin(
         memoryCanaryConfig.apply {
             if (ProcessSupervisor.isSupervisor) {
                 MatrixLog.d(tag, "supervisor is ${MatrixUtil.getProcessName(application)}")
-                AppBgSumPssMonitor(appBgSumPssMonitorConfig).init()
+                AppBgSumPssMonitor(appStagedBgSumPssMonitorConfig).init()
+                AppBgSumPssMonitor(appDeepBgSumPssMonitorConfig).init()
             }
-            ProcessBgMemoryMonitor(processBgMemoryMonitorConfig).init()
+            ProcessBgMemoryMonitor(procStagedBgMemoryMonitorConfig).init()
+            ProcessBgMemoryMonitor(procDeepBgMemoryMonitorConfig).init()
         }
     }
 

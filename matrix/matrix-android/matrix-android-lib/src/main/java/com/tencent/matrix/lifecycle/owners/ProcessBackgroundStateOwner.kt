@@ -8,6 +8,8 @@ import java.util.concurrent.TimeUnit
 private val MAX_CHECK_INTERVAL = TimeUnit.MINUTES.toMillis(1)
 private const val MAX_CHECK_TIMES = 20
 
+interface IBackgroundStatefulOwner: IStatefulOwner
+
 /**
  * State-ON:
  * Activity is NOT in foreground
@@ -29,7 +31,7 @@ private const val MAX_CHECK_TIMES = 20
  * The state change event is delayed for at least 34ms for removing foreground widgets
  * like floating view which depends on [MatrixProcessLifecycleOwner]. see [TimerChecker]
  */
-object ExplicitBackgroundOwner : StatefulOwner() {
+object ExplicitBackgroundOwner : StatefulOwner(), IBackgroundStatefulOwner {
     private const val TAG = "Matrix.background.Explicit"
 
     var maxCheckInterval = MAX_CHECK_INTERVAL
@@ -103,7 +105,7 @@ object ExplicitBackgroundOwner : StatefulOwner() {
  *
  * notice: same as [ExplicitBackgroundOwner]
  */
-object StagedBackgroundOwner : StatefulOwner() {
+object StagedBackgroundOwner : StatefulOwner(), IBackgroundStatefulOwner {
     private const val TAG = "Matrix.background.Staged"
 
     var maxCheckInterval = MAX_CHECK_INTERVAL
@@ -164,7 +166,7 @@ object StagedBackgroundOwner : StatefulOwner() {
     }
 }
 
-object DeepBackgroundOwner : StatefulOwner() {
+object DeepBackgroundOwner : StatefulOwner(), IBackgroundStatefulOwner {
 
     private const val TAG = "Matrix.background.Deep"
 

@@ -18,7 +18,7 @@ import com.tencent.matrix.util.safeApply
  *
  * Created by Yves on 2021/12/2
  */
-internal class DispatcherStateOwner(
+internal open class DispatcherStateOwner(
     reduceOperator: (stateful: Collection<IStateful>) -> Boolean,
     val attachedSource: StatefulOwner,
     val name: String

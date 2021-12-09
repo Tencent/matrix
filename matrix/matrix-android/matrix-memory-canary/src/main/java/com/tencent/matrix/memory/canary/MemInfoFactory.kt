@@ -487,7 +487,7 @@ data class SmapsItem(
 )
 
 data class MergedSmapsInfo(
-    var list: List<SmapsItem>? = null
+    val list: List<SmapsItem>? = null
 ) {
     override fun toString(): String {
         val sb = StringBuilder()
@@ -510,17 +510,10 @@ data class MergedSmapsInfo(
 
         @JvmStatic
         fun get(pid: Int = Process.myPid()): MergedSmapsInfo {
-            return MergedSmapsInfo().also {
-                it.list = mergeSmaps(pid)
-            }
+            return MergedSmapsInfo(mergeSmaps(pid))
         }
 
         private fun mergeSmaps(pid: Int): ArrayList<SmapsItem> {
-            val begin = if (BuildConfig.DEBUG) {
-                System.currentTimeMillis()
-            } else {
-                0L
-            }
             val pattern =
                 Pattern.compile("^[0-9a-f]+-[0-9a-f]+\\s+([rwxps-]{4})\\s+\\d+\\s+\\d+:\\d+\\s+\\d+\\s+(.*)$")
 
@@ -593,13 +586,6 @@ data class MergedSmapsInfo(
                             }
                         }
                         currentInfo!!.count++
-                    }
-                }.also {
-                    if (BuildConfig.DEBUG) {
-                        MatrixLog.d(
-                            TAG,
-                            "mergeSmaps cost ${System.currentTimeMillis() - begin}"
-                        )
                     }
                 }
             }
