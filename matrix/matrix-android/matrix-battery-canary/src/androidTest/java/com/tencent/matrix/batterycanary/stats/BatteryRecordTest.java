@@ -42,8 +42,8 @@ import androidx.test.platform.app.InstrumentationRegistry;
  * @see <a href="http://d.android.com/tools/testing">Testing documentation</a>
  */
 @RunWith(AndroidJUnit4.class)
-public class BatteryStatsTest {
-    static final String TAG = "Matrix.test.stats";
+public class BatteryRecordTest {
+    static final String TAG = "Matrix.test.BatteryRecordTest";
 
     Context mContext;
 

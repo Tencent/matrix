@@ -4,12 +4,11 @@ import android.app.ActivityManager;
 import android.content.ComponentName;
 import android.content.Context;
 import android.os.Looper;
-import androidx.annotation.NonNull;
-import androidx.annotation.WorkerThread;
 import android.text.TextUtils;
 
 import com.tencent.matrix.batterycanary.BatteryEventDelegate;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
+import com.tencent.matrix.batterycanary.stats.BatteryStatsFeature;
 import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
 import com.tencent.matrix.batterycanary.utils.TimeBreaker;
 import com.tencent.matrix.util.MatrixLog;
@@ -17,6 +16,9 @@ import com.tencent.matrix.util.MatrixLog;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.WorkerThread;
 
 /**
  * @author Kaede
@@ -100,6 +102,14 @@ public final class AppStatMonitorFeature extends AbsMonitorFeature {
         super.onForeground(isForeground);
         int appStat = BatteryCanaryUtil.getAppStatImmediately(mCore.getContext(), isForeground);
         BatteryCanaryUtil.getProxy().updateAppStat(appStat);
+
+        BatteryStatsFeature statsFeature = mCore.getMonitorFeature(BatteryStatsFeature.class);
+        if (statsFeature != null) {
+            BatteryStatsFeature.Record.AppStatRecord appStatRecord = new BatteryStatsFeature.Record.AppStatRecord();
+            appStatRecord.appStat = appStat;
+            statsFeature.writeRecord(appStatRecord);
+        }
+
         synchronized (TAG) {
             if (mStampList != Collections.EMPTY_LIST) {
                 MatrixLog.i(BatteryEventDelegate.TAG, "onStat >> " + BatteryCanaryUtil.convertAppStat(appStat));
@@ -164,6 +174,13 @@ public final class AppStatMonitorFeature extends AbsMonitorFeature {
     }
 
     public void onStatScene(@NonNull String scene) {
+        BatteryStatsFeature statsFeature = mCore.getMonitorFeature(BatteryStatsFeature.class);
+        if (statsFeature != null) {
+            BatteryStatsFeature.Record.SceneStatRecord statRecord = new BatteryStatsFeature.Record.SceneStatRecord();
+            statRecord.scene = scene;
+            statsFeature.writeRecord(statRecord);
+        }
+
         synchronized (TAG) {
             if (mSceneStampList != Collections.EMPTY_LIST) {
                 mSceneStampList.add(0, new TimeBreaker.Stamp(scene));

@@ -59,25 +59,55 @@ public final class BatteryStatsFeature extends AbsMonitorFeature {
             mStatsThread = MatrixHandlerThread.getNewHandlerThread("matrix-stats", Thread.NORM_PRIORITY);
             mStatsHandler = new Handler(mStatsThread.getLooper());
         }
+
+        Record.ProcStatRecord procStatRecord = new Record.ProcStatRecord();
+        procStatRecord.pid = Process.myPid();
+        procStatRecord.procStat = Record.ProcStatRecord.STAT_PROC_LAUNCH;
+        writeRecord(procStatRecord);
     }
+
 
     @Override
     public void onTurnOff() {
         super.onTurnOff();
-        mBatteryRecorder = null;
-        mStatsHandler = null;
-        if (mStatsThread != null) {
-            mStatsThread.quit();
-            mStatsThread = null;
+        Record.ProcStatRecord procStatRecord = new Record.ProcStatRecord();
+        procStatRecord.pid = Process.myPid();
+        procStatRecord.procStat = Record.ProcStatRecord.STAT_PROC_OFF;
+        writeRecord(procStatRecord);
+
+        if (mStatsHandler != null) {
+            mStatsHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    if (mStatsThread != null) {
+                        mStatsThread.quit();
+                    }
+                }
+            });
         }
     }
 
-    @VisibleForTesting
-    static String getDateString(int dayOffset) {
-        DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
-        Calendar cal = Calendar.getInstance();
-        cal.add(Calendar.DATE, dayOffset);
-        return dateFormat.format(cal.getTime());
+    public void writeRecord(final Record record) {
+        if (mBatteryRecorder != null) {
+            if (mStatsHandler != null) {
+                final String date = getDateString(0);
+                mStatsHandler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        writeRecord(date, record);
+                    }
+                });
+            }
+        }
+    }
+
+    @WorkerThread
+    public List<Record> readRecords(int dayOffset) {
+        if (mBatteryRecorder != null) {
+            final String date = getDateString(dayOffset);
+            return mBatteryRecorder.read(date);
+        }
+        return Collections.emptyList();
     }
 
     @WorkerThread
@@ -88,9 +118,9 @@ public final class BatteryStatsFeature extends AbsMonitorFeature {
     }
 
     @WorkerThread
-    public List<Record> readRecords(String date) {
+    List<Record> readRecords(String date) {
         if (mBatteryRecorder != null) {
-            mBatteryRecorder.read(date);
+            return mBatteryRecorder.read(date);
         }
         return Collections.emptyList();
     }
@@ -100,6 +130,14 @@ public final class BatteryStatsFeature extends AbsMonitorFeature {
         if (mBatteryRecorder != null) {
             mBatteryRecorder.clean(date);
         }
+    }
+
+    @VisibleForTesting
+    static String getDateString(int dayOffset) {
+        DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
+        Calendar cal = Calendar.getInstance();
+        cal.add(Calendar.DATE, dayOffset);
+        return dateFormat.format(cal.getTime());
     }
 
     public static List<Record> loadRecords(int dayOffset) {
@@ -257,6 +295,7 @@ public final class BatteryStatsFeature extends AbsMonitorFeature {
         public static class ProcStatRecord extends Record implements Parcelable {
             public static final int VERSION = 0;
             public static final int STAT_PROC_LAUNCH = 1;
+            public static final int STAT_PROC_OFF = 2;
 
             public int procStat = STAT_PROC_LAUNCH;
             public int pid;

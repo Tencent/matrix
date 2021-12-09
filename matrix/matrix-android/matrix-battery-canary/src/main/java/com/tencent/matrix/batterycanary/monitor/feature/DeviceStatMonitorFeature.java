@@ -5,9 +5,11 @@ import android.content.Context;
 import android.content.Intent;
 
 import com.tencent.matrix.batterycanary.BatteryEventDelegate;
+import com.tencent.matrix.batterycanary.monitor.AppStats;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Differ.DigitDiffer;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Differ.ListDiffer;
+import com.tencent.matrix.batterycanary.stats.BatteryStatsFeature;
 import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
 import com.tencent.matrix.batterycanary.utils.Consumer;
 import com.tencent.matrix.batterycanary.utils.TimeBreaker;
@@ -74,19 +76,29 @@ public final class DeviceStatMonitorFeature extends AbsMonitorFeature {
             @SuppressLint("VisibleForTests")
             @Override
             public void accept(Integer integer) {
-                BatteryCanaryUtil.getProxy().updateDevStat(integer);
-                synchronized (TAG) {
-                    if (mStampList != Collections.EMPTY_LIST) {
-                        MatrixLog.i(BatteryEventDelegate.TAG, "onStat >> " + BatteryCanaryUtil.convertDevStat(integer));
-                        mStampList.add(0, new TimeBreaker.Stamp(String.valueOf(integer)));
-                        checkOverHeat();
-                    }
-                }
+                onStatDevStat(integer);
             }
         });
 
         if (!mDevStatListener.isListening()) {
             mDevStatListener.startListen(mCore.getContext());
+        }
+    }
+
+    public void onStatDevStat(int devStat) {
+        BatteryCanaryUtil.getProxy().updateDevStat(devStat);
+        BatteryStatsFeature statsFeature = mCore.getMonitorFeature(BatteryStatsFeature.class);
+        if (statsFeature != null) {
+            BatteryStatsFeature.Record.DevStatRecord statRecord = new BatteryStatsFeature.Record.DevStatRecord();
+            statRecord.devStat = devStat;
+            statsFeature.writeRecord(statRecord);
+        }
+        synchronized (TAG) {
+            if (mStampList != Collections.EMPTY_LIST) {
+                MatrixLog.i(BatteryEventDelegate.TAG, "onStat >> " + BatteryCanaryUtil.convertDevStat(devStat));
+                mStampList.add(0, new TimeBreaker.Stamp(String.valueOf(devStat)));
+                checkOverHeat();
+            }
         }
     }
 
@@ -197,20 +209,20 @@ public final class DeviceStatMonitorFeature extends AbsMonitorFeature {
                         switch (event) {
                             case Intent.ACTION_POWER_CONNECTED:
                                 mIsCharging = true;
-                                mListener.accept(1);
+                                mListener.accept(AppStats.DEV_STAT_CHARGING);
                                 break;
                             case Intent.ACTION_POWER_DISCONNECTED:
                                 mIsCharging = false;
-                                mListener.accept(2);
+                                mListener.accept(AppStats.DEV_STAT_UN_CHARGING);
                                 break;
                             case Intent.ACTION_SCREEN_ON:
                                 if (!mIsCharging) {
-                                    mListener.accept(2);
+                                    mListener.accept(AppStats.DEV_STAT_CHARGING);
                                 }
                                 break;
                             case Intent.ACTION_SCREEN_OFF:
                                 if (!mIsCharging) {
-                                    mListener.accept(3);
+                                    mListener.accept(AppStats.DEV_STAT_SCREEN_OFF);
                                 }
                                 break;
                             default:

@@ -43,7 +43,7 @@ import androidx.test.platform.app.InstrumentationRegistry;
  */
 @RunWith(AndroidJUnit4.class)
 public class BatteryRecorderTest {
-    static final String TAG = "Matrix.test.recorder";
+    static final String TAG = "Matrix.test.BatteryRecorderTest";
 
     Context mContext;
 
