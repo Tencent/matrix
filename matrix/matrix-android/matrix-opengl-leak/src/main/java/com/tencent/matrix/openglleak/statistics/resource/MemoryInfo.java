@@ -83,6 +83,10 @@ public class MemoryInfo {
             return;
         }
 
+        if (this.nativeStackPtr != 0) {
+            ResRecordManager.releaseNative(this.nativeStackPtr);
+        }
+
         this.javaStack = javaStack;
         this.nativeStackPtr = nativeStackPtr;
 
