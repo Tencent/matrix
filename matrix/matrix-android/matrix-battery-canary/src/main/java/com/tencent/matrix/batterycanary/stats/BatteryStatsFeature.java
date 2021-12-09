@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
+import androidx.annotation.VisibleForTesting;
 import androidx.annotation.WorkerThread;
 
 /**
@@ -31,7 +32,9 @@ public final class BatteryStatsFeature extends AbsMonitorFeature {
     private static final String TAG = "Matrix.battery.BatteryStats";
 
     public interface BatteryRecorder {
-        void write(Record record);
+        void write(String date, Record record);
+        List<Record> read(String date);
+        void clean(String date);
     }
 
     private HandlerThread mStatsThread;
@@ -51,13 +54,17 @@ public final class BatteryStatsFeature extends AbsMonitorFeature {
     @Override
     public void onTurnOn() {
         super.onTurnOn();
-        mStatsThread = MatrixHandlerThread.getNewHandlerThread("matrix-stats", Thread.NORM_PRIORITY);
-        mStatsHandler = new Handler(mStatsThread.getLooper());
+        mBatteryRecorder = mCore.getConfig().batteryRecorder;
+        if (mBatteryRecorder != null) {
+            mStatsThread = MatrixHandlerThread.getNewHandlerThread("matrix-stats", Thread.NORM_PRIORITY);
+            mStatsHandler = new Handler(mStatsThread.getLooper());
+        }
     }
 
     @Override
     public void onTurnOff() {
         super.onTurnOff();
+        mBatteryRecorder = null;
         mStatsHandler = null;
         if (mStatsThread != null) {
             mStatsThread.quit();
@@ -65,6 +72,7 @@ public final class BatteryStatsFeature extends AbsMonitorFeature {
         }
     }
 
+    @VisibleForTesting
     static String getDateString(int dayOffset) {
         DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
         Calendar cal = Calendar.getInstance();
@@ -73,11 +81,25 @@ public final class BatteryStatsFeature extends AbsMonitorFeature {
     }
 
     @WorkerThread
-    void onWrite(Record record, String date) {
+    void writeRecord(String date, Record record) {
+        if (mBatteryRecorder != null) {
+            mBatteryRecorder.write(date, record);
+        }
     }
 
+    @WorkerThread
+    public List<Record> readRecords(String date) {
+        if (mBatteryRecorder != null) {
+            mBatteryRecorder.read(date);
+        }
+        return Collections.emptyList();
+    }
 
+    @WorkerThread
     void cleanRecords(String date) {
+        if (mBatteryRecorder != null) {
+            mBatteryRecorder.clean(date);
+        }
     }
 
     public static List<Record> loadRecords(int dayOffset) {
@@ -151,37 +173,266 @@ public final class BatteryStatsFeature extends AbsMonitorFeature {
         public List<Record> records;
     }
 
-    public static class Record {
+    public static abstract class Record implements Parcelable {
+        public static final int RECORD_TYPE_PROC_STAT = 1;
+        public static final int RECORD_TYPE_DEV_STAT = 2;
+        public static final int RECORD_TYPE_APP_STAT = 3;
+        public static final int RECORD_TYPE_SCENE_STAT = 4;
+        public static final int RECORD_TYPE_EVENT_STAT = 5;
+        public static final int RECORD_TYPE_REPORT = 6;
+
+        public int version;
         public long millis = System.currentTimeMillis();
 
-        public static class ProcStatRecord extends Record {
+        public static byte[] encode(Record record) {
+            int type;
+            Class<? extends Record> recordClass = record.getClass();
+            if (recordClass == ProcStatRecord.class) {
+                type = RECORD_TYPE_PROC_STAT;
+            } else if (recordClass == DevStatRecord.class) {
+                type = RECORD_TYPE_DEV_STAT;
+            } else if (recordClass == AppStatRecord.class) {
+                type = RECORD_TYPE_APP_STAT;
+            } else if (recordClass == SceneStatRecord.class) {
+                type = RECORD_TYPE_SCENE_STAT;
+            } else if (recordClass == EventStatRecord.class) {
+                type = RECORD_TYPE_EVENT_STAT;
+            } else if (recordClass == ReportRecord.class) {
+                type = RECORD_TYPE_REPORT;
+            } else {
+                throw new UnsupportedOperationException("Unknown record type: " + record);
+            }
+
+            Parcel parcel = null;
+            try {
+                parcel = Parcel.obtain();
+                parcel.writeInt(type);
+                record.writeToParcel(parcel, 0);
+                return parcel.marshall();
+            } finally {
+                if (parcel != null) {
+                    parcel.recycle();
+                }
+            }
+        }
+
+        @SuppressWarnings("ConstantConditions")
+        public static Record decode(byte[] bytes) {
+            Parcel parcel = null;
+            try {
+                parcel = Parcel.obtain();
+                parcel.unmarshall(bytes, 0, bytes.length);
+                parcel.setDataPosition(0);
+                int type = parcel.readInt();
+
+                Creator<?> creator;
+                switch (type) {
+                    case RECORD_TYPE_PROC_STAT:
+                        creator = ProcStatRecord.CREATOR;
+                        break;
+                    case RECORD_TYPE_DEV_STAT:
+                        creator = DevStatRecord.CREATOR;
+                        break;
+                    case RECORD_TYPE_APP_STAT:
+                        creator = AppStatRecord.CREATOR;
+                        break;
+                    case RECORD_TYPE_SCENE_STAT:
+                        creator = SceneStatRecord.CREATOR;
+                        break;
+                    case RECORD_TYPE_EVENT_STAT:
+                        creator = EventStatRecord.CREATOR;
+                        break;
+                    case RECORD_TYPE_REPORT:
+                        creator = ReportRecord.CREATOR;
+                        break;
+                    default:
+                        throw new UnsupportedOperationException("Unknown record type: " + type);
+                }
+                return (Record) creator.createFromParcel(parcel);
+            } finally {
+                parcel.recycle();
+            }
+        }
+
+        public static class ProcStatRecord extends Record implements Parcelable {
+            public static final int VERSION = 0;
             public static final int STAT_PROC_LAUNCH = 1;
+
             public int procStat = STAT_PROC_LAUNCH;
             public int pid;
+
+            public ProcStatRecord() {
+                version = VERSION;
+            }
+
+            protected ProcStatRecord(Parcel in) {
+                version = in.readInt();
+                millis = in.readLong();
+                procStat = in.readInt();
+                pid = in.readInt();
+            }
+
+            public static final Creator<ProcStatRecord> CREATOR = new Creator<ProcStatRecord>() {
+                @Override
+                public ProcStatRecord createFromParcel(Parcel in) {
+                    return new ProcStatRecord(in);
+                }
+
+                @Override
+                public ProcStatRecord[] newArray(int size) {
+                    return new ProcStatRecord[size];
+                }
+            };
+
+            @Override
+            public int describeContents() {
+                return 0;
+            }
+
+            @Override
+            public void writeToParcel(Parcel dest, int flags) {
+                dest.writeInt(version);
+                dest.writeLong(millis);
+                dest.writeInt(procStat);
+                dest.writeInt(pid);
+            }
         }
 
-        public static class DevStatRecord extends Record {
+        public static class DevStatRecord extends Record implements Parcelable {
+            public static final int VERSION = 0;
+
             @AppStats.DevStatusDef
             public int devStat;
+
+            public DevStatRecord() {
+                version = VERSION;
+            }
+
+            protected DevStatRecord(Parcel in) {
+                version = in.readInt();
+                millis = in.readLong();
+                devStat = in.readInt();
+            }
+
+            public static final Creator<DevStatRecord> CREATOR = new Creator<DevStatRecord>() {
+                @Override
+                public DevStatRecord createFromParcel(Parcel in) {
+                    return new DevStatRecord(in);
+                }
+
+                @Override
+                public DevStatRecord[] newArray(int size) {
+                    return new DevStatRecord[size];
+                }
+            };
+
+            @Override
+            public int describeContents() {
+                return 0;
+            }
+
+            @Override
+            public void writeToParcel(Parcel dest, int flags) {
+                dest.writeInt(version);
+                dest.writeLong(millis);
+                dest.writeInt(devStat);
+            }
         }
 
-        public static class AppStatRecord extends Record {
+        public static class AppStatRecord extends Record implements Parcelable {
+            public static final int VERSION = 0;
+
             @AppStats.AppStatusDef
             public int appStat;
+
+            public AppStatRecord() {
+                version = VERSION;
+            }
+
+            protected AppStatRecord(Parcel in) {
+                version = in.readInt();
+                millis = in.readLong();
+                appStat = in.readInt();
+            }
+
+            public static final Creator<AppStatRecord> CREATOR = new Creator<AppStatRecord>() {
+                @Override
+                public AppStatRecord createFromParcel(Parcel in) {
+                    return new AppStatRecord(in);
+                }
+
+                @Override
+                public AppStatRecord[] newArray(int size) {
+                    return new AppStatRecord[size];
+                }
+            };
+
+            @Override
+            public int describeContents() {
+                return 0;
+            }
+
+            @Override
+            public void writeToParcel(Parcel dest, int flags) {
+                dest.writeInt(version);
+                dest.writeLong(millis);
+                dest.writeInt(appStat);
+            }
         }
 
-        public static class SceneStatRecord extends Record {
+        public static class SceneStatRecord extends Record implements Parcelable {
+            public static final int VERSION = 0;
+
             public String scene;
+
+            public SceneStatRecord() {
+                version = VERSION;
+            }
+
+            protected SceneStatRecord(Parcel in) {
+                version = in.readInt();
+                millis = in.readLong();
+                scene = in.readString();
+            }
+
+            public static final Creator<SceneStatRecord> CREATOR = new Creator<SceneStatRecord>() {
+                @Override
+                public SceneStatRecord createFromParcel(Parcel in) {
+                    return new SceneStatRecord(in);
+                }
+
+                @Override
+                public SceneStatRecord[] newArray(int size) {
+                    return new SceneStatRecord[size];
+                }
+            };
+
+            @Override
+            public int describeContents() {
+                return 0;
+            }
+
+            @Override
+            public void writeToParcel(Parcel dest, int flags) {
+                dest.writeInt(version);
+                dest.writeLong(millis);
+                dest.writeString(scene);
+            }
         }
+
 
         public static class EventStatRecord extends Record implements Parcelable {
+            public static final int VERSION = 0;
+
             public long id;
             public String event;
 
             public EventStatRecord() {
+                version = VERSION;
             }
 
             protected EventStatRecord(Parcel in) {
+                version = in.readInt();
                 millis = in.readLong();
                 id = in.readLong();
                 event = in.readString();
@@ -206,6 +457,7 @@ public final class BatteryStatsFeature extends AbsMonitorFeature {
 
             @Override
             public void writeToParcel(Parcel dest, int flags) {
+                dest.writeInt(version);
                 dest.writeLong(millis);
                 dest.writeLong(id);
                 dest.writeString(event);
@@ -214,12 +466,15 @@ public final class BatteryStatsFeature extends AbsMonitorFeature {
 
 
         public static class ReportRecord extends EventStatRecord implements Parcelable {
+            public static final int VERSION = 0;
+
             public String scope;
             public long windowMillis;
             public List<ThreadInfo> threadInfoList = Collections.emptyList();
             public List<EntryInfo> entryList = Collections.emptyList();
 
             public ReportRecord() {
+                version = VERSION;
             }
 
             protected ReportRecord(Parcel in) {

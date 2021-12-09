@@ -6,6 +6,7 @@ import androidx.annotation.Nullable;
 
 import com.tencent.matrix.batterycanary.BuildConfig;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature;
+import com.tencent.matrix.batterycanary.stats.BatteryStatsFeature;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -57,6 +58,7 @@ public class BatteryMonitorConfig {
     public List<String> looperWatchList = Collections.emptyList();
     public List<String> threadWatchList = Collections.emptyList();
     public final List<MonitorFeature> features = new ArrayList<>(3);
+    public BatteryStatsFeature.BatteryRecorder batteryRecorder;
 
     private BatteryMonitorConfig() {
     }
@@ -88,6 +90,7 @@ public class BatteryMonitorConfig {
                 + ", looperWatchList=" + looperWatchList
                 + ", threadWatchList=" + threadWatchList
                 + ", features=" + features
+                + ", batteryRecorder=" + batteryRecorder
                 + '}';
     }
 
@@ -257,6 +260,11 @@ public class BatteryMonitorConfig {
             if (count >= 10) {
                 config.overHeatCount = count;
             }
+            return this;
+        }
+
+        public Builder setRecorder(BatteryStatsFeature.BatteryRecorder recorder) {
+            config.batteryRecorder = recorder;
             return this;
         }
 
