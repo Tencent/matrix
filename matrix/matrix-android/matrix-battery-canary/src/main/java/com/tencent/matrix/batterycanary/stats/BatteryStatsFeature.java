@@ -2,6 +2,8 @@ package com.tencent.matrix.batterycanary.stats;
 
 import android.os.Handler;
 import android.os.HandlerThread;
+import android.os.Parcel;
+import android.os.Parcelable;
 import android.os.Process;
 import android.os.SystemClock;
 import android.util.ArrayMap;
@@ -34,6 +36,7 @@ public final class BatteryStatsFeature extends AbsMonitorFeature {
 
     private HandlerThread mStatsThread;
     private Handler mStatsHandler;
+    private BatteryRecorder mBatteryRecorder;
 
     @Override
     public int weight() {
@@ -70,8 +73,11 @@ public final class BatteryStatsFeature extends AbsMonitorFeature {
     }
 
     @WorkerThread
-    void onWrite(Record record) {
+    void onWrite(Record record, String date) {
+    }
 
+
+    void cleanRecords(String date) {
     }
 
     public static List<Record> loadRecords(int dayOffset) {
@@ -168,31 +174,181 @@ public final class BatteryStatsFeature extends AbsMonitorFeature {
             public String scene;
         }
 
-        public static class EventStatRecord extends Record {
+        public static class EventStatRecord extends Record implements Parcelable {
             public long id;
             public String event;
+
+            public EventStatRecord() {
+            }
+
+            protected EventStatRecord(Parcel in) {
+                millis = in.readLong();
+                id = in.readLong();
+                event = in.readString();
+            }
+
+            public static final Creator<EventStatRecord> CREATOR = new Creator<EventStatRecord>() {
+                @Override
+                public EventStatRecord createFromParcel(Parcel in) {
+                    return new EventStatRecord(in);
+                }
+
+                @Override
+                public EventStatRecord[] newArray(int size) {
+                    return new EventStatRecord[size];
+                }
+            };
+
+            @Override
+            public int describeContents() {
+                return 0;
+            }
+
+            @Override
+            public void writeToParcel(Parcel dest, int flags) {
+                dest.writeLong(millis);
+                dest.writeLong(id);
+                dest.writeString(event);
+            }
         }
 
-        public static class ReportRecord extends EventStatRecord {
+
+        public static class ReportRecord extends EventStatRecord implements Parcelable {
             public String scope;
             public long windowMillis;
             public List<ThreadInfo> threadInfoList = Collections.emptyList();
             public List<EntryInfo> entryList = Collections.emptyList();
 
+            public ReportRecord() {
+            }
 
-            public static class ThreadInfo {
+            protected ReportRecord(Parcel in) {
+                millis = in.readLong();
+                id = in.readLong();
+                event = in.readString();
+                scope = in.readString();
+                windowMillis = in.readLong();
+                threadInfoList = in.createTypedArrayList(ThreadInfo.CREATOR);
+                entryList = in.createTypedArrayList(EntryInfo.CREATOR);
+            }
+
+            public static final Creator<ReportRecord> CREATOR = new Creator<ReportRecord>() {
+                @Override
+                public ReportRecord createFromParcel(Parcel in) {
+                    return new ReportRecord(in);
+                }
+
+                @Override
+                public ReportRecord[] newArray(int size) {
+                    return new ReportRecord[size];
+                }
+            };
+
+            @Override
+            public int describeContents() {
+                return 0;
+            }
+
+            @Override
+            public void writeToParcel(Parcel dest, int flags) {
+                dest.writeLong(millis);
+                dest.writeLong(id);
+                dest.writeString(event);
+                dest.writeString(scope);
+                dest.writeLong(windowMillis);
+                dest.writeTypedList(threadInfoList);
+                dest.writeTypedList(entryList);
+            }
+
+
+            public static class ThreadInfo implements Parcelable {
                 public int tid;
                 public String name;
                 public String stat;
                 public long jiffies;
                 public Map<String, String> extraInfo = Collections.emptyMap();
+
+                public ThreadInfo() {
+                }
+
+                protected ThreadInfo(Parcel in) {
+                    tid = in.readInt();
+                    name = in.readString();
+                    stat = in.readString();
+                    jiffies = in.readLong();
+                    extraInfo = new ArrayMap<>();
+                    in.readMap(extraInfo, getClass().getClassLoader());
+                }
+
+                public static final Creator<ThreadInfo> CREATOR = new Creator<ThreadInfo>() {
+                    @Override
+                    public ThreadInfo createFromParcel(Parcel in) {
+                        return new ThreadInfo(in);
+                    }
+
+                    @Override
+                    public ThreadInfo[] newArray(int size) {
+                        return new ThreadInfo[size];
+                    }
+                };
+
+                @Override
+                public int describeContents() {
+                    return 0;
+                }
+
+                @Override
+                public void writeToParcel(Parcel dest, int flags) {
+                    dest.writeInt(tid);
+                    dest.writeString(name);
+                    dest.writeString(stat);
+                    dest.writeLong(jiffies);
+                    dest.writeMap(extraInfo);
+                }
             }
 
-            public static class EntryInfo {
+            public static class EntryInfo implements Parcelable {
                 public String name;
                 public String stat;
                 public Map<String, String> entries = Collections.emptyMap();
                 public Map<String, String> extraInfo = Collections.emptyMap();
+
+                public EntryInfo() {
+                }
+
+                protected EntryInfo(Parcel in) {
+                    name = in.readString();
+                    stat = in.readString();
+                    entries  = new ArrayMap<>();
+                    in.readMap(entries, getClass().getClassLoader());
+                    extraInfo  = new ArrayMap<>();
+                    in.readMap(extraInfo, getClass().getClassLoader());
+                }
+
+                public static final Creator<EntryInfo> CREATOR = new Creator<EntryInfo>() {
+                    @Override
+                    public EntryInfo createFromParcel(Parcel in) {
+                        return new EntryInfo(in);
+                    }
+
+                    @Override
+                    public EntryInfo[] newArray(int size) {
+                        return new EntryInfo[size];
+                    }
+                };
+
+                @Override
+                public int describeContents() {
+                    return 0;
+                }
+
+                @Override
+                public void writeToParcel(Parcel dest, int flags) {
+                    dest.writeString(name);
+                    dest.writeString(stat);
+                    dest.writeMap(entries);
+                    dest.writeMap(extraInfo);
+                }
             }
         }
     }
