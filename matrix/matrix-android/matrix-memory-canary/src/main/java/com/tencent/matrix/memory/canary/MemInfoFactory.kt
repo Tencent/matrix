@@ -64,7 +64,13 @@ data class ProcessInfo(
     val isAppFg: Boolean = ProcessSupervisor.isAppUIForeground
 ) {
     override fun toString(): String {
-        return "Name=$name, Activity=$activity, AppForeground=$isAppFg, ProcessForeground=$isProcessFg"
+        return String.format(
+            "%-21s\t%-21s %-21s %-21s",
+            name,
+            "Activity=$activity",
+            "AppForeground=$isAppFg",
+            "ProcessForeground=$isProcessFg"
+        )
     }
 
     fun toJson() = safeLet(tag = TAG, defVal = JSONObject()) {
@@ -90,7 +96,18 @@ data class PssInfo(
     var pssPrivateOtherK: Int = -1
 ) {
     override fun toString(): String {
-        return "totalPss=$totalPssK K,\tJava=$pssJavaK K,\tNative=$pssNativeK K,\tGraphic=$pssGraphicK K,\tSystem=$pssSystemK K,\tSwap=$pssSwapK K,\tCode=$pssCodeK K,\tStack=$pssStackK K,\tPrivateOther=$pssPrivateOtherK K"
+        return String.format(
+            "%-21s %-21s %-21s %-21s %-21s %-21s %-21s %-21s %-21s",
+            "totalPss=$totalPssK K",
+            "Java=$pssJavaK K",
+            "Native=$pssNativeK K",
+            "Graphic=$pssGraphicK K",
+            "System=$pssSystemK K",
+            "Swap=$pssSwapK K",
+            "Code=$pssCodeK K",
+            "Stack=$pssStackK K",
+            "PrivateOther=$pssPrivateOtherK K"
+        )
     }
 
     fun toJson() = safeLet(tag = TAG, defVal = JSONObject()) {
@@ -167,7 +184,15 @@ data class StatusInfo(
     var threads: Int = -1
 ) {
     override fun toString(): String {
-        return "State=$state,\tFDSize=$fdSize,\tVmSize=$vmSizeK K,\tVmRss=$vmRssK K,\tVmSwap=$vmSwapK K,\tThreads=$threads"
+        return String.format(
+            "%-21s %-21s %-21s %-21s %-21s %-21s",
+            "State=$state",
+            "FDSize=$fdSize",
+            "VmSize=$vmSizeK K",
+            "VmRss=$vmRssK K",
+            "VmSwap=$vmSwapK K",
+            "Threads=$threads"
+        )
     }
 
     fun toJson() = safeLet(tag = TAG, defVal = JSONObject()) {
@@ -237,7 +262,15 @@ data class JavaMemInfo(
     val largeMemClass: Int = MemInfoFactory.largeMemClass
 ) {
     override fun toString(): String {
-        return "Used=$usedByte B,\tRecycled=$recycledByte B,\tHeapSize=$heapSizeByte B,\tMax=$maxByte B,\tMemClass:$memClass M, LargeMemClass=$largeMemClass M"
+        return String.format(
+            "%-21s %-21s %-21s %-21s %-21s %-21s",
+            "Used=$usedByte B",
+            "Recycled=$recycledByte B",
+            "HeapSize=$heapSizeByte B",
+            "Max=$maxByte B",
+            "MemClass:$memClass M",
+            "LargeMemClass=$largeMemClass M"
+        )
     }
 
     fun toJson() = safeLet(tag = TAG, defVal = JSONObject()) {
@@ -258,7 +291,12 @@ data class NativeMemInfo(
     val usedByte: Long = Debug.getNativeHeapAllocatedSize()
 ) {
     override fun toString(): String {
-        return "Used=$usedByte B,\tRecycled=$recycledByte B,\tHeapSize=$heapSizeByte B"
+        return String.format(
+            "%-21s %-21s %-21s",
+            "Used=$usedByte B",
+            "Recycled=$recycledByte B",
+            "HeapSize=$heapSizeByte B"
+        )
     }
 
     fun toJson() = safeLet(tag = TAG, defVal = JSONObject()) {
@@ -290,7 +328,13 @@ data class SystemInfo(
     }
 
     override fun toString(): String {
-        return "totalMem=$totalMemByte B,\tavailMem=$availMemByte B,\tlowMemory=$lowMemory,\tthreshold=$thresholdByte B"
+        return String.format(
+            "%-21s %-21s %-21s %-21s",
+            "totalMem=$totalMemByte B",
+            "availMem=$availMemByte B",
+            "lowMemory=$lowMemory",
+            "threshold=$thresholdByte B"
+        )
     }
 
     fun toJson() = safeLet(tag = TAG, defVal = JSONObject()) {
@@ -492,12 +536,68 @@ data class MergedSmapsInfo(
     override fun toString(): String {
         val sb = StringBuilder()
         sb.append("\n")
-        sb.append(String.format(FORMAT, "PSS", "RSS", "SIZE", "SWAP_PSS", "SH_C", "SH_D", "PRI_C", "PRI_D", "COUNT", "PERM", "NAME"))
-        sb.append(String.format(FORMAT, "----", "----", "----", "----", "----", "----", "----", "----", "----", "----", "----"))
+        sb.append(
+            String.format(
+                FORMAT,
+                "PSS",
+                "RSS",
+                "SIZE",
+                "SWAP_PSS",
+                "SH_C",
+                "SH_D",
+                "PRI_C",
+                "PRI_D",
+                "COUNT",
+                "PERM",
+                "NAME"
+            )
+        )
+        sb.append(
+            String.format(
+                FORMAT,
+                "----",
+                "----",
+                "----",
+                "----",
+                "----",
+                "----",
+                "----",
+                "----",
+                "----",
+                "----",
+                "----"
+            )
+        )
         for ((name, permission, count, vmSize, rss, pss, sharedClean, sharedDirty, privateClean, privateDirty, swapPss) in list!!) {
-            sb.append(FORMAT, pss, rss, vmSize, swapPss, sharedClean, sharedDirty, privateClean, privateDirty, count, permission, name)
+            sb.append(
+                FORMAT,
+                pss,
+                rss,
+                vmSize,
+                swapPss,
+                sharedClean,
+                sharedDirty,
+                privateClean,
+                privateDirty,
+                count,
+                permission,
+                name
+            )
         }
-        sb.append(FORMAT, "----", "----", "----", "----", "----", "----", "----", "----", "----", "----", "----")
+        sb.append(
+            FORMAT,
+            "----",
+            "----",
+            "----",
+            "----",
+            "----",
+            "----",
+            "----",
+            "----",
+            "----",
+            "----",
+            "----"
+        )
         sb.append("\n")
 
         return sb.toString()
@@ -531,33 +631,39 @@ data class MergedSmapsInfo(
                                 currentInfo!!.vmSize += sizes[0].toLong()
                             }
                             line.startsWith("Rss:") -> {
-                                val sizes = line.substring("Rss:".length).trim { it <= ' ' }.split(" ")
-                                    .toTypedArray()
+                                val sizes =
+                                    line.substring("Rss:".length).trim { it <= ' ' }.split(" ")
+                                        .toTypedArray()
                                 currentInfo!!.rss += sizes[0].toLong()
                             }
                             line.startsWith("Pss:") -> {
-                                val sizes = line.substring("Pss:".length).trim { it <= ' ' }.split(" ")
-                                    .toTypedArray()
+                                val sizes =
+                                    line.substring("Pss:".length).trim { it <= ' ' }.split(" ")
+                                        .toTypedArray()
                                 currentInfo!!.pss += sizes[0].toLong()
                             }
                             line.startsWith("Shared_Clean:") -> {
-                                val sizes = line.substring("Shared_Clean:".length).trim { it <= ' ' }
-                                    .split(" ").toTypedArray()
+                                val sizes =
+                                    line.substring("Shared_Clean:".length).trim { it <= ' ' }
+                                        .split(" ").toTypedArray()
                                 currentInfo!!.sharedClean += sizes[0].toLong()
                             }
                             line.startsWith("Shared_Dirty:") -> {
-                                val sizes = line.substring("Shared_Dirty:".length).trim { it <= ' ' }
-                                    .split(" ").toTypedArray()
+                                val sizes =
+                                    line.substring("Shared_Dirty:".length).trim { it <= ' ' }
+                                        .split(" ").toTypedArray()
                                 currentInfo!!.sharedDirty += sizes[0].toLong()
                             }
                             line.startsWith("Private_Clean:") -> {
-                                val sizes = line.substring("Private_Clean:".length).trim { it <= ' ' }
-                                    .split(" ").toTypedArray()
+                                val sizes =
+                                    line.substring("Private_Clean:".length).trim { it <= ' ' }
+                                        .split(" ").toTypedArray()
                                 currentInfo!!.privateClean += sizes[0].toLong()
                             }
                             line.startsWith("Private_Dirty:") -> {
-                                val sizes = line.substring("Private_Dirty:".length).trim { it <= ' ' }
-                                    .split(" ").toTypedArray()
+                                val sizes =
+                                    line.substring("Private_Dirty:".length).trim { it <= ' ' }
+                                        .split(" ").toTypedArray()
                                 currentInfo!!.privateDirty += sizes[0].toLong()
                             }
                             line.startsWith("SwapPss:") -> {
