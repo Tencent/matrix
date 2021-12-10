@@ -41,7 +41,7 @@
         <activity android:name=".battery.TestBatteryActivity" />
         <activity android:name=".hooks.TestHooksActivity" />
         <activity
-            android:name="com.tencent.matrix.batterycanary.viewer.BatteryStatsActivity"
+            android:name="com.tencent.matrix.batterycanary.stats.ui.BatteryStatsActivity"
             android:exported="true" />
 
         <service android:name=".hooks.OtherProcessService" android:process=":other"/>
