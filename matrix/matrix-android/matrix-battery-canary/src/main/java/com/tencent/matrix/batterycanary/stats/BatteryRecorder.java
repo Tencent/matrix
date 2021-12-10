@@ -8,6 +8,7 @@ import com.tencent.mmkv.MMKV;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -46,12 +47,12 @@ public interface BatteryRecorder {
                     sProcNameSuffix = "main";
                 }
             }
-            return MAGIC + "-" + date + "-" + sProcNameSuffix + "-"  + pid;
+            return MAGIC + "-" + date + "-" + sProcNameSuffix;
         }
 
         @Override
         public void write(String date, BatteryRecord record) {
-            String key = getKeyPrefix(date) + "-" + inc.getAndIncrement();
+            String key = getKeyPrefix(date) + "-" + pid + "-" + inc.getAndIncrement();
             try {
                 byte[] bytes = BatteryRecord.encode(record);
                 mmkv.encode(key, bytes);
@@ -67,8 +68,9 @@ public interface BatteryRecorder {
                 return Collections.emptyList();
             }
             List<BatteryRecord> records = new ArrayList<>(Math.min(16, keys.length));
+            String keyPrefix = getKeyPrefix(date);
             for (String item : keys) {
-                if (item.startsWith(getKeyPrefix(date))) {
+                if (item.startsWith(keyPrefix)) {
                     try {
                         byte[] bytes = mmkv.decodeBytes(item);
                         if (bytes != null) {
@@ -80,6 +82,12 @@ public interface BatteryRecorder {
                     }
                 }
             }
+            Collections.sort(records, new Comparator<BatteryRecord>() {
+                @Override
+                public int compare(BatteryRecord left, BatteryRecord right) {
+                    return Long.compare(left.millis, right.millis);
+                }
+            });
             return records;
         }
 
@@ -89,8 +97,9 @@ public interface BatteryRecorder {
             if (keys == null || keys.length == 0) {
                 return;
             }
+            String keyPrefix = getKeyPrefix(date);
             for (String item : keys) {
-                if (item.startsWith(getKeyPrefix(date))) {
+                if (item.startsWith(keyPrefix)) {
                     try {
                         mmkv.remove(item);
                     } catch (Exception e) {
