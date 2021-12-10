@@ -21,6 +21,7 @@ import android.os.Looper;
 import android.os.Process;
 import android.os.SystemClock;
 
+import com.tencent.matrix.AppActiveMatrixDelegate;
 import com.tencent.matrix.Matrix;
 import com.tencent.matrix.report.Issue;
 import com.tencent.matrix.trace.TracePlugin;
@@ -119,7 +120,7 @@ public class LooperAnrTracer extends Tracer {
 
         @Override
         public void run() {
-            String scene = AppMethodBeat.getVisibleScene();
+            String scene = AppActiveMatrixDelegate.INSTANCE.getVisibleScene();
             boolean isForeground = isForeground();
             try {
                 TracePlugin plugin = Matrix.with().getPluginByClass(TracePlugin.class);
@@ -176,7 +177,7 @@ public class LooperAnrTracer extends Tracer {
             int[] processStat = Utils.getProcessPriority(Process.myPid());
             long[] data = AppMethodBeat.getInstance().copyData(beginRecord);
             beginRecord.release();
-            String scene = AppMethodBeat.getVisibleScene();
+            String scene = AppActiveMatrixDelegate.INSTANCE.getVisibleScene();
 
             // memory
             long[] memoryInfo = dumpMemory();
@@ -315,7 +316,7 @@ public class LooperAnrTracer extends Tracer {
 
     private String printInputExpired(long inputCost) {
         StringBuilder print = new StringBuilder();
-        String scene = AppMethodBeat.getVisibleScene();
+        String scene = AppActiveMatrixDelegate.INSTANCE.getVisibleScene();
         boolean isForeground = isForeground();
         // memory
         long[] memoryInfo = dumpMemory();

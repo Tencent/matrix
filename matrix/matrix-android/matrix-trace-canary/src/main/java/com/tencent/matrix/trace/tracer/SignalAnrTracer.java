@@ -28,13 +28,13 @@ import android.os.SystemClock;
 import androidx.annotation.Keep;
 import androidx.annotation.RequiresApi;
 
+import com.tencent.matrix.AppActiveMatrixDelegate;
 import com.tencent.matrix.Matrix;
 import com.tencent.matrix.report.Issue;
 import com.tencent.matrix.trace.TracePlugin;
 import com.tencent.matrix.trace.config.SharePluginInfo;
 import com.tencent.matrix.trace.config.TraceConfig;
 import com.tencent.matrix.trace.constants.Constants;
-import com.tencent.matrix.trace.core.AppMethodBeat;
 import com.tencent.matrix.trace.util.AppForegroundUtil;
 import com.tencent.matrix.trace.util.Utils;
 import com.tencent.matrix.util.DeviceUtil;
@@ -160,7 +160,7 @@ public class SignalAnrTracer extends Tracer {
                 return;
             }
 
-            String scene = AppMethodBeat.getVisibleScene();
+            String scene = AppActiveMatrixDelegate.INSTANCE.getVisibleScene();
 
             JSONObject jsonObject = new JSONObject();
             jsonObject = DeviceUtil.getDeviceInfo(jsonObject, Matrix.with().getApplication());
