@@ -84,6 +84,8 @@ class SupervisorService : Service() {
             }
             tokenRecord.addToken(token)
             backgroundProcessLru.moveOrAddFirst(token)
+            RemoteProcessLifecycleProxy.getProxy(token) // register proxy
+            DispatcherStateOwner.syncStates(applicationContext) // sync state for new process
             asyncLog("CREATED: [$pid-${token.name}] -> [${backgroundProcessLru.size}]${backgroundProcessLru.contentToString()}")
         }
 

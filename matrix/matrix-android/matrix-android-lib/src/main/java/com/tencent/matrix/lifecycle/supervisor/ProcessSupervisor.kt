@@ -137,6 +137,8 @@ object ProcessSupervisor : IProcessListener by DispatchReceiver {
 
         Log.i(tag, "bind to Supervisor")
 
+        DispatchReceiver.install(app)
+
         app.bindService(intent, object : ServiceConnection {
             override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
                 DispatchReceiver.uninstallPacemaker()
@@ -150,8 +152,6 @@ object ProcessSupervisor : IProcessListener by DispatchReceiver {
                 MatrixLog.e(tag, "onServiceDisconnected $name")
             }
         }, if (autoCreate) (BIND_AUTO_CREATE.or(BIND_ABOVE_CLIENT)) else BIND_ABOVE_CLIENT)
-
-        DispatchReceiver.install(app)
 
         MatrixLog.i(tag, "inCharge")
     }
