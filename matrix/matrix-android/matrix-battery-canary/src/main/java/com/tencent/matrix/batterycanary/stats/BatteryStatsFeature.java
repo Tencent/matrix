@@ -51,9 +51,9 @@ public final class BatteryStatsFeature extends AbsMonitorFeature {
             mStatsHandler = new Handler(mStatsThread.getLooper());
         }
 
-        BatteryRecorder.Record.ProcStatRecord procStatRecord = new BatteryRecorder.Record.ProcStatRecord();
+        BatteryRecord.ProcStatRecord procStatRecord = new BatteryRecord.ProcStatRecord();
         procStatRecord.pid = Process.myPid();
-        procStatRecord.procStat = BatteryRecorder.Record.ProcStatRecord.STAT_PROC_LAUNCH;
+        procStatRecord.procStat = BatteryRecord.ProcStatRecord.STAT_PROC_LAUNCH;
         writeRecord(procStatRecord);
     }
 
@@ -61,9 +61,9 @@ public final class BatteryStatsFeature extends AbsMonitorFeature {
     @Override
     public void onTurnOff() {
         super.onTurnOff();
-        BatteryRecorder.Record.ProcStatRecord procStatRecord = new BatteryRecorder.Record.ProcStatRecord();
+        BatteryRecord.ProcStatRecord procStatRecord = new BatteryRecord.ProcStatRecord();
         procStatRecord.pid = Process.myPid();
-        procStatRecord.procStat = BatteryRecorder.Record.ProcStatRecord.STAT_PROC_OFF;
+        procStatRecord.procStat = BatteryRecord.ProcStatRecord.STAT_PROC_OFF;
         writeRecord(procStatRecord);
 
         if (mStatsHandler != null) {
@@ -78,7 +78,7 @@ public final class BatteryStatsFeature extends AbsMonitorFeature {
         }
     }
 
-    public void writeRecord(final BatteryRecorder.Record record) {
+    public void writeRecord(final BatteryRecord record) {
         if (mBatteryRecorder != null) {
             if (mStatsHandler != null) {
                 final String date = getDateString(0);
@@ -93,7 +93,7 @@ public final class BatteryStatsFeature extends AbsMonitorFeature {
     }
 
     @WorkerThread
-    public List<BatteryRecorder.Record> readRecords(int dayOffset) {
+    public List<BatteryRecord> readRecords(int dayOffset) {
         if (mBatteryRecorder != null) {
             final String date = getDateString(dayOffset);
             return mBatteryRecorder.read(date);
@@ -102,14 +102,14 @@ public final class BatteryStatsFeature extends AbsMonitorFeature {
     }
 
     @WorkerThread
-    void writeRecord(String date, BatteryRecorder.Record record) {
+    void writeRecord(String date, BatteryRecord record) {
         if (mBatteryRecorder != null) {
             mBatteryRecorder.write(date, record);
         }
     }
 
     @WorkerThread
-    List<BatteryRecorder.Record> readRecords(String date) {
+    List<BatteryRecord> readRecords(String date) {
         if (mBatteryRecorder != null) {
             return mBatteryRecorder.read(date);
         }
@@ -131,45 +131,45 @@ public final class BatteryStatsFeature extends AbsMonitorFeature {
         return dateFormat.format(cal.getTime());
     }
 
-    public static List<BatteryRecorder.Record> loadRecords(int dayOffset) {
-        List<BatteryRecorder.Record> records = new ArrayList<>();
-        BatteryRecorder.Record.ProcStatRecord procStatRecord = new BatteryRecorder.Record.ProcStatRecord();
+    public static List<BatteryRecord> loadRecords(int dayOffset) {
+        List<BatteryRecord> records = new ArrayList<>();
+        BatteryRecord.ProcStatRecord procStatRecord = new BatteryRecord.ProcStatRecord();
         procStatRecord.pid = Process.myPid();
         records.add(procStatRecord);
 
-        BatteryRecorder.Record.AppStatRecord appStat = new BatteryRecorder.Record.AppStatRecord();
+        BatteryRecord.AppStatRecord appStat = new BatteryRecord.AppStatRecord();
         appStat.appStat = AppStats.APP_STAT_FOREGROUND;
         records.add(appStat);
 
-        BatteryRecorder.Record.SceneStatRecord sceneStatRecord = new BatteryRecorder.Record.SceneStatRecord();
+        BatteryRecord.SceneStatRecord sceneStatRecord = new BatteryRecord.SceneStatRecord();
         sceneStatRecord.scene = "Activity 1";
         records.add(sceneStatRecord);
-        sceneStatRecord = new BatteryRecorder.Record.SceneStatRecord();
+        sceneStatRecord = new BatteryRecord.SceneStatRecord();
         sceneStatRecord.scene = "Activity 2";
         records.add(sceneStatRecord);
-        sceneStatRecord = new BatteryRecorder.Record.SceneStatRecord();
+        sceneStatRecord = new BatteryRecord.SceneStatRecord();
         sceneStatRecord.scene = "Activity 3";
         records.add(sceneStatRecord);
 
-        appStat = new BatteryRecorder.Record.AppStatRecord();
+        appStat = new BatteryRecord.AppStatRecord();
         appStat.appStat = AppStats.APP_STAT_BACKGROUND;
         records.add(appStat);
 
-        BatteryRecorder.Record.DevStatRecord devStatRecord = new BatteryRecorder.Record.DevStatRecord();
+        BatteryRecord.DevStatRecord devStatRecord = new BatteryRecord.DevStatRecord();
         devStatRecord.devStat = AppStats.DEV_STAT_CHARGING;
         records.add(devStatRecord);
-        devStatRecord = new BatteryRecorder.Record.DevStatRecord();
+        devStatRecord = new BatteryRecord.DevStatRecord();
         devStatRecord.devStat = AppStats.DEV_STAT_UN_CHARGING;
         records.add(devStatRecord);
 
-        appStat = new BatteryRecorder.Record.AppStatRecord();
+        appStat = new BatteryRecord.AppStatRecord();
         appStat.appStat = AppStats.APP_STAT_FOREGROUND;
         records.add(appStat);
 
-        BatteryRecorder.Record.ReportRecord reportRecord = new BatteryRecorder.Record.ReportRecord();
+        BatteryRecord.ReportRecord reportRecord = new BatteryRecord.ReportRecord();
         reportRecord.threadInfoList = new ArrayList<>();
         for (int i = 0; i < 5; i++) {
-           BatteryRecorder.Record.ReportRecord.ThreadInfo threadInfo = new BatteryRecorder.Record.ReportRecord.ThreadInfo();
+           BatteryRecord.ReportRecord.ThreadInfo threadInfo = new BatteryRecord.ReportRecord.ThreadInfo();
             threadInfo.stat = "R" + i;
             threadInfo.tid = 10000 + i;
             threadInfo.name = "ThreadName_" + i;
@@ -178,7 +178,7 @@ public final class BatteryStatsFeature extends AbsMonitorFeature {
         }
         reportRecord.entryList = new ArrayList<>();
         for (int i = 0; i < 4; i++) {
-            BatteryRecorder.Record.ReportRecord.EntryInfo entryInfo = new BatteryRecorder.Record.ReportRecord.EntryInfo();
+            BatteryRecord.ReportRecord.EntryInfo entryInfo = new BatteryRecord.ReportRecord.EntryInfo();
             entryInfo.name = "Entry Name " + i;
             entryInfo.entries = new ArrayMap<>();
             entryInfo.entries.put("Key 1", "Value 1");
@@ -199,7 +199,7 @@ public final class BatteryStatsFeature extends AbsMonitorFeature {
 
     public static class BatteryRecords {
         public String date;
-        public List<BatteryRecorder.Record> records;
+        public List<BatteryRecord> records;
     }
 
 }

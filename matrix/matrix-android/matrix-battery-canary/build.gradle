@@ -43,10 +43,10 @@ dependencies {
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.1.0'
     androidTestImplementation "org.mockito:mockito-core:2.8.9"
     androidTestImplementation "org.mockito:mockito-android:2.8.9"
-    androidTestImplementation 'com.tencent:mmkv:1.2.11'
 
     implementation project(':matrix-android-lib')
     api project(path: ':matrix-trace-canary')
+    implementation 'com.tencent:mmkv:1.2.11'
 }
 
 version = rootProject.ext.VERSION_NAME

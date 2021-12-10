@@ -8,7 +8,7 @@ import android.text.TextUtils;
 
 import com.tencent.matrix.batterycanary.BatteryEventDelegate;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
-import com.tencent.matrix.batterycanary.stats.BatteryRecorder;
+import com.tencent.matrix.batterycanary.stats.BatteryRecord;
 import com.tencent.matrix.batterycanary.stats.BatteryStatsFeature;
 import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
 import com.tencent.matrix.batterycanary.utils.TimeBreaker;
@@ -106,7 +106,7 @@ public final class AppStatMonitorFeature extends AbsMonitorFeature {
 
         BatteryStatsFeature statsFeature = mCore.getMonitorFeature(BatteryStatsFeature.class);
         if (statsFeature != null) {
-            BatteryRecorder.Record.AppStatRecord appStatRecord = new BatteryRecorder.Record.AppStatRecord();
+            BatteryRecord.AppStatRecord appStatRecord = new BatteryRecord.AppStatRecord();
             appStatRecord.appStat = appStat;
             statsFeature.writeRecord(appStatRecord);
         }
@@ -177,7 +177,7 @@ public final class AppStatMonitorFeature extends AbsMonitorFeature {
     public void onStatScene(@NonNull String scene) {
         BatteryStatsFeature statsFeature = mCore.getMonitorFeature(BatteryStatsFeature.class);
         if (statsFeature != null) {
-            BatteryRecorder.Record.SceneStatRecord statRecord = new BatteryRecorder.Record.SceneStatRecord();
+            BatteryRecord.SceneStatRecord statRecord = new BatteryRecord.SceneStatRecord();
             statRecord.scene = scene;
             statsFeature.writeRecord(statRecord);
         }

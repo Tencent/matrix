@@ -1,459 +1,85 @@
 package com.tencent.matrix.batterycanary.stats;
 
-import android.os.Parcel;
-import android.os.Parcelable;
-import android.util.ArrayMap;
+import android.os.Process;
 
-import com.tencent.matrix.batterycanary.monitor.AppStats;
+import com.tencent.matrix.util.MatrixLog;
+import com.tencent.mmkv.MMKV;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * @author Kaede
  * @since 2021/12/10
  */
 public interface BatteryRecorder {
+    String TAG = "Matrix.battery.recorder";
 
-    void write(String date, Record record);
+    void write(String date, BatteryRecord record);
 
-    List<Record> read(String date);
+    List<BatteryRecord> read(String date);
 
     void clean(String date);
 
 
-    abstract class Record implements Parcelable {
-        public static final int RECORD_TYPE_PROC_STAT = 1;
-        public static final int RECORD_TYPE_DEV_STAT = 2;
-        public static final int RECORD_TYPE_APP_STAT = 3;
-        public static final int RECORD_TYPE_SCENE_STAT = 4;
-        public static final int RECORD_TYPE_EVENT_STAT = 5;
-        public static final int RECORD_TYPE_REPORT = 6;
+    class MMKVRecorder implements BatteryRecorder {
+        final int pid = Process.myPid();
+        AtomicInteger inc = new AtomicInteger(0);
+        final MMKV mmkv;
 
-        public int version;
-        public long millis = System.currentTimeMillis();
+        public MMKVRecorder(MMKV mmkv) {
+            this.mmkv = mmkv;
+        }
 
-        public static byte[] encode(Record record) {
-            int type;
-            Class<? extends Record> recordClass = record.getClass();
-            if (recordClass == ProcStatRecord.class) {
-                type = RECORD_TYPE_PROC_STAT;
-            } else if (recordClass == DevStatRecord.class) {
-                type = RECORD_TYPE_DEV_STAT;
-            } else if (recordClass == AppStatRecord.class) {
-                type = RECORD_TYPE_APP_STAT;
-            } else if (recordClass == SceneStatRecord.class) {
-                type = RECORD_TYPE_SCENE_STAT;
-            } else if (recordClass == EventStatRecord.class) {
-                type = RECORD_TYPE_EVENT_STAT;
-            } else if (recordClass == ReportRecord.class) {
-                type = RECORD_TYPE_REPORT;
-            } else {
-                throw new UnsupportedOperationException("Unknown record type: " + record);
-            }
-
-            Parcel parcel = null;
+        @Override
+        public void write(String date, BatteryRecord record) {
+            String key = "bs-" + date + "-"  + pid +  "-" + inc.getAndIncrement();
             try {
-                parcel = Parcel.obtain();
-                parcel.writeInt(type);
-                record.writeToParcel(parcel, 0);
-                return parcel.marshall();
-            } finally {
-                if (parcel != null) {
-                    parcel.recycle();
-                }
+                byte[] bytes = BatteryRecord.encode(record);
+                mmkv.encode(key, bytes);
+            } catch (Exception e) {
+                MatrixLog.w(TAG, "record encode failed: " + e.getMessage());
             }
         }
 
-        @SuppressWarnings("ConstantConditions")
-        public static Record decode(byte[] bytes) {
-            Parcel parcel = null;
-            try {
-                parcel = Parcel.obtain();
-                parcel.unmarshall(bytes, 0, bytes.length);
-                parcel.setDataPosition(0);
-                int type = parcel.readInt();
-
-                Creator<?> creator;
-                switch (type) {
-                    case RECORD_TYPE_PROC_STAT:
-                        creator = ProcStatRecord.CREATOR;
-                        break;
-                    case RECORD_TYPE_DEV_STAT:
-                        creator = DevStatRecord.CREATOR;
-                        break;
-                    case RECORD_TYPE_APP_STAT:
-                        creator = AppStatRecord.CREATOR;
-                        break;
-                    case RECORD_TYPE_SCENE_STAT:
-                        creator = SceneStatRecord.CREATOR;
-                        break;
-                    case RECORD_TYPE_EVENT_STAT:
-                        creator = EventStatRecord.CREATOR;
-                        break;
-                    case RECORD_TYPE_REPORT:
-                        creator = ReportRecord.CREATOR;
-                        break;
-                    default:
-                        throw new UnsupportedOperationException("Unknown record type: " + type);
-                }
-                return (Record) creator.createFromParcel(parcel);
-            } finally {
-                parcel.recycle();
+        @Override
+        public List<BatteryRecord> read(String date) {
+            String[] keys = mmkv.allKeys();
+            if (keys == null || keys.length == 0) {
+                return Collections.emptyList();
             }
-        }
-
-        public static class ProcStatRecord extends Record implements Parcelable {
-            public static final int VERSION = 0;
-            public static final int STAT_PROC_LAUNCH = 1;
-            public static final int STAT_PROC_OFF = 2;
-
-            public int procStat = STAT_PROC_LAUNCH;
-            public int pid;
-
-            public ProcStatRecord() {
-                version = VERSION;
-            }
-
-            protected ProcStatRecord(Parcel in) {
-                version = in.readInt();
-                millis = in.readLong();
-                procStat = in.readInt();
-                pid = in.readInt();
-            }
-
-            public static final Creator<ProcStatRecord> CREATOR = new Creator<ProcStatRecord>() {
-                @Override
-                public ProcStatRecord createFromParcel(Parcel in) {
-                    return new ProcStatRecord(in);
-                }
-
-                @Override
-                public ProcStatRecord[] newArray(int size) {
-                    return new ProcStatRecord[size];
-                }
-            };
-
-            @Override
-            public int describeContents() {
-                return 0;
-            }
-
-            @Override
-            public void writeToParcel(Parcel dest, int flags) {
-                dest.writeInt(version);
-                dest.writeLong(millis);
-                dest.writeInt(procStat);
-                dest.writeInt(pid);
-            }
-        }
-
-        public static class DevStatRecord extends Record implements Parcelable {
-            public static final int VERSION = 0;
-
-            @AppStats.DevStatusDef
-            public int devStat;
-
-            public DevStatRecord() {
-                version = VERSION;
-            }
-
-            protected DevStatRecord(Parcel in) {
-                version = in.readInt();
-                millis = in.readLong();
-                devStat = in.readInt();
-            }
-
-            public static final Creator<DevStatRecord> CREATOR = new Creator<DevStatRecord>() {
-                @Override
-                public DevStatRecord createFromParcel(Parcel in) {
-                    return new DevStatRecord(in);
-                }
-
-                @Override
-                public DevStatRecord[] newArray(int size) {
-                    return new DevStatRecord[size];
-                }
-            };
-
-            @Override
-            public int describeContents() {
-                return 0;
-            }
-
-            @Override
-            public void writeToParcel(Parcel dest, int flags) {
-                dest.writeInt(version);
-                dest.writeLong(millis);
-                dest.writeInt(devStat);
-            }
-        }
-
-        public static class AppStatRecord extends Record implements Parcelable {
-            public static final int VERSION = 0;
-
-            @AppStats.AppStatusDef
-            public int appStat;
-
-            public AppStatRecord() {
-                version = VERSION;
-            }
-
-            protected AppStatRecord(Parcel in) {
-                version = in.readInt();
-                millis = in.readLong();
-                appStat = in.readInt();
-            }
-
-            public static final Creator<AppStatRecord> CREATOR = new Creator<AppStatRecord>() {
-                @Override
-                public AppStatRecord createFromParcel(Parcel in) {
-                    return new AppStatRecord(in);
-                }
-
-                @Override
-                public AppStatRecord[] newArray(int size) {
-                    return new AppStatRecord[size];
-                }
-            };
-
-            @Override
-            public int describeContents() {
-                return 0;
-            }
-
-            @Override
-            public void writeToParcel(Parcel dest, int flags) {
-                dest.writeInt(version);
-                dest.writeLong(millis);
-                dest.writeInt(appStat);
-            }
-        }
-
-        public static class SceneStatRecord extends Record implements Parcelable {
-            public static final int VERSION = 0;
-
-            public String scene;
-
-            public SceneStatRecord() {
-                version = VERSION;
-            }
-
-            protected SceneStatRecord(Parcel in) {
-                version = in.readInt();
-                millis = in.readLong();
-                scene = in.readString();
-            }
-
-            public static final Creator<SceneStatRecord> CREATOR = new Creator<SceneStatRecord>() {
-                @Override
-                public SceneStatRecord createFromParcel(Parcel in) {
-                    return new SceneStatRecord(in);
-                }
-
-                @Override
-                public SceneStatRecord[] newArray(int size) {
-                    return new SceneStatRecord[size];
-                }
-            };
-
-            @Override
-            public int describeContents() {
-                return 0;
-            }
-
-            @Override
-            public void writeToParcel(Parcel dest, int flags) {
-                dest.writeInt(version);
-                dest.writeLong(millis);
-                dest.writeString(scene);
-            }
-        }
-
-
-        public static class EventStatRecord extends Record implements Parcelable {
-            public static final int VERSION = 0;
-
-            public long id;
-            public String event;
-
-            public EventStatRecord() {
-                version = VERSION;
-            }
-
-            protected EventStatRecord(Parcel in) {
-                version = in.readInt();
-                millis = in.readLong();
-                id = in.readLong();
-                event = in.readString();
-            }
-
-            public static final Creator<EventStatRecord> CREATOR = new Creator<EventStatRecord>() {
-                @Override
-                public EventStatRecord createFromParcel(Parcel in) {
-                    return new EventStatRecord(in);
-                }
-
-                @Override
-                public EventStatRecord[] newArray(int size) {
-                    return new EventStatRecord[size];
-                }
-            };
-
-            @Override
-            public int describeContents() {
-                return 0;
-            }
-
-            @Override
-            public void writeToParcel(Parcel dest, int flags) {
-                dest.writeInt(version);
-                dest.writeLong(millis);
-                dest.writeLong(id);
-                dest.writeString(event);
-            }
-        }
-
-
-        public static class ReportRecord extends EventStatRecord implements Parcelable {
-            public static final int VERSION = 0;
-
-            public String scope;
-            public long windowMillis;
-            public List<ThreadInfo> threadInfoList = Collections.emptyList();
-            public List<EntryInfo> entryList = Collections.emptyList();
-
-            public ReportRecord() {
-                version = VERSION;
-            }
-
-            protected ReportRecord(Parcel in) {
-                millis = in.readLong();
-                id = in.readLong();
-                event = in.readString();
-                scope = in.readString();
-                windowMillis = in.readLong();
-                threadInfoList = in.createTypedArrayList(ThreadInfo.CREATOR);
-                entryList = in.createTypedArrayList(EntryInfo.CREATOR);
-            }
-
-            public static final Creator<ReportRecord> CREATOR = new Creator<ReportRecord>() {
-                @Override
-                public ReportRecord createFromParcel(Parcel in) {
-                    return new ReportRecord(in);
-                }
-
-                @Override
-                public ReportRecord[] newArray(int size) {
-                    return new ReportRecord[size];
-                }
-            };
-
-            @Override
-            public int describeContents() {
-                return 0;
-            }
-
-            @Override
-            public void writeToParcel(Parcel dest, int flags) {
-                dest.writeLong(millis);
-                dest.writeLong(id);
-                dest.writeString(event);
-                dest.writeString(scope);
-                dest.writeLong(windowMillis);
-                dest.writeTypedList(threadInfoList);
-                dest.writeTypedList(entryList);
-            }
-
-
-            public static class ThreadInfo implements Parcelable {
-                public int tid;
-                public String name;
-                public String stat;
-                public long jiffies;
-                public Map<String, String> extraInfo = Collections.emptyMap();
-
-                public ThreadInfo() {
-                }
-
-                protected ThreadInfo(Parcel in) {
-                    tid = in.readInt();
-                    name = in.readString();
-                    stat = in.readString();
-                    jiffies = in.readLong();
-                    extraInfo = new ArrayMap<>();
-                    in.readMap(extraInfo, getClass().getClassLoader());
-                }
-
-                public static final Creator<ThreadInfo> CREATOR = new Creator<ThreadInfo>() {
-                    @Override
-                    public ThreadInfo createFromParcel(Parcel in) {
-                        return new ThreadInfo(in);
+            List<BatteryRecord> records = new ArrayList<>(Math.min(16, keys.length));
+            for (String item : keys) {
+                if (item.startsWith("bs-" + date + "-")) {
+                    try {
+                        byte[] bytes = mmkv.decodeBytes(item);
+                        if (bytes != null) {
+                            BatteryRecord record = BatteryRecord.decode(bytes);
+                            records.add(record);
+                        }
+                    } catch (Exception e) {
+                        MatrixLog.w(TAG, "record decode failed: " + e.getMessage());
                     }
-
-                    @Override
-                    public ThreadInfo[] newArray(int size) {
-                        return new ThreadInfo[size];
-                    }
-                };
-
-                @Override
-                public int describeContents() {
-                    return 0;
-                }
-
-                @Override
-                public void writeToParcel(Parcel dest, int flags) {
-                    dest.writeInt(tid);
-                    dest.writeString(name);
-                    dest.writeString(stat);
-                    dest.writeLong(jiffies);
-                    dest.writeMap(extraInfo);
                 }
             }
+            return records;
+        }
 
-            public static class EntryInfo implements Parcelable {
-                public String name;
-                public String stat;
-                public Map<String, String> entries = Collections.emptyMap();
-                public Map<String, String> extraInfo = Collections.emptyMap();
-
-                public EntryInfo() {
-                }
-
-                protected EntryInfo(Parcel in) {
-                    name = in.readString();
-                    stat = in.readString();
-                    entries  = new ArrayMap<>();
-                    in.readMap(entries, getClass().getClassLoader());
-                    extraInfo  = new ArrayMap<>();
-                    in.readMap(extraInfo, getClass().getClassLoader());
-                }
-
-                public static final Creator<EntryInfo> CREATOR = new Creator<EntryInfo>() {
-                    @Override
-                    public EntryInfo createFromParcel(Parcel in) {
-                        return new EntryInfo(in);
+        @Override
+        public void clean(String date) {
+            String[] keys = mmkv.allKeys();
+            if (keys == null || keys.length == 0) {
+                return;
+            }
+            for (String item : keys) {
+                if (item.startsWith("bs-" + date + "-")) {
+                    try {
+                        mmkv.remove(item);
+                    } catch (Exception e) {
+                        MatrixLog.w(TAG, "record clean failed: " + e.getMessage());
                     }
-
-                    @Override
-                    public EntryInfo[] newArray(int size) {
-                        return new EntryInfo[size];
-                    }
-                };
-
-                @Override
-                public int describeContents() {
-                    return 0;
-                }
-
-                @Override
-                public void writeToParcel(Parcel dest, int flags) {
-                    dest.writeString(name);
-                    dest.writeString(stat);
-                    dest.writeMap(entries);
-                    dest.writeMap(extraInfo);
                 }
             }
         }

@@ -9,7 +9,7 @@ import com.tencent.matrix.batterycanary.monitor.AppStats;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Differ.DigitDiffer;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Differ.ListDiffer;
-import com.tencent.matrix.batterycanary.stats.BatteryRecorder;
+import com.tencent.matrix.batterycanary.stats.BatteryRecord;
 import com.tencent.matrix.batterycanary.stats.BatteryStatsFeature;
 import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
 import com.tencent.matrix.batterycanary.utils.Consumer;
@@ -90,7 +90,7 @@ public final class DeviceStatMonitorFeature extends AbsMonitorFeature {
         BatteryCanaryUtil.getProxy().updateDevStat(devStat);
         BatteryStatsFeature statsFeature = mCore.getMonitorFeature(BatteryStatsFeature.class);
         if (statsFeature != null) {
-            BatteryRecorder.Record.DevStatRecord statRecord = new BatteryRecorder.Record.DevStatRecord();
+            BatteryRecord.DevStatRecord statRecord = new BatteryRecord.DevStatRecord();
             statRecord.devStat = devStat;
             statsFeature.writeRecord(statRecord);
         }

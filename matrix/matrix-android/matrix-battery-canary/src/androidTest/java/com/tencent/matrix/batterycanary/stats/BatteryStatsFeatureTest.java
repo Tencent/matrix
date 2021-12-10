@@ -75,9 +75,9 @@ public class BatteryStatsFeatureTest {
 
         MMKV mmkv = MMKV.defaultMMKV();
         mmkv.clearAll();
-        BatteryRecorderTest.MMKVRecorder recorder = new BatteryRecorderTest.MMKVRecorder(mmkv) {
+        BatteryRecorder.MMKVRecorder recorder = new BatteryRecorder.MMKVRecorder(mmkv) {
             @Override
-            public void write(String date, Record record) {
+            public void write(String date, BatteryRecord record) {
                 super.write(date, record);
                 latch.countDown();
             }
@@ -104,7 +104,7 @@ public class BatteryStatsFeatureTest {
         BatteryCanary.getMonitorFeature(BatteryStatsFeature.class, new Consumer<BatteryStatsFeature>() {
             @Override
             public void accept(BatteryStatsFeature batteryStatsFeature) {
-                List<BatteryRecorder.Record> records = batteryStatsFeature.readRecords(0);
+                List<BatteryRecord> records = batteryStatsFeature.readRecords(0);
                 Assert.assertTrue(records.isEmpty());
             }
         });
@@ -138,7 +138,7 @@ public class BatteryStatsFeatureTest {
         BatteryCanary.getMonitorFeature(BatteryStatsFeature.class, new Consumer<BatteryStatsFeature>() {
             @Override
             public void accept(BatteryStatsFeature batteryStatsFeature) {
-                List<BatteryRecorder.Record> records = batteryStatsFeature.readRecords(0);
+                List<BatteryRecord> records = batteryStatsFeature.readRecords(0);
                 Assert.assertEquals("Records list: " + records,11, records.size());
             }
         });
