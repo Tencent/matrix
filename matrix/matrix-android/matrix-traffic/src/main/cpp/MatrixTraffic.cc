@@ -34,6 +34,12 @@ using namespace std;
 using namespace MatrixTraffic;
 static bool HOOKED = false;
 
+static struct StacktraceJNI {
+    jclass TrafficPlugin;
+    jmethodID TrafficPlugin_setFdStackTrace;
+} gJ;
+
+
 int (*original_connect)(int fd, const struct sockaddr* addr, socklen_t addr_length);
 int my_connect(int fd, sockaddr *addr, socklen_t addr_length) {
     TrafficCollector::enQueueConnect(fd, addr, addr_length);
@@ -95,6 +101,12 @@ ssize_t my_sendmsg(int sockfd, const struct msghdr *msg, int flags) {
     return original_sendmsg(sockfd, msg, flags);
 }
 
+int (*original_close)(int fd);
+int my_close(int fd) {
+    TrafficCollector::enQueueClose(fd);
+    return original_close(fd);
+}
+
 static jobject nativeGetTrafficInfoMap(JNIEnv *env, jclass, jint type) {
     return TrafficCollector::getTrafficInfoMap(type);
 }
@@ -110,6 +122,14 @@ static void nativeClearTrafficInfo(JNIEnv *env, jclass) {
     TrafficCollector::clearTrafficInfo();
 }
 
+void setStackTrace(char* threadName) {
+    JNIEnv *env = JniInvocation::getEnv();
+    if (!env) return;
+    jstring jThreadName = env->NewStringUTF(threadName);
+    env->CallStaticVoidMethod(gJ.TrafficPlugin, gJ.TrafficPlugin_setFdStackTrace, jThreadName);
+    env->DeleteLocalRef(jThreadName);
+}
+
 static void hookSocket(bool rxHook, bool txHook) {
     if (HOOKED) {
         return;
@@ -117,6 +137,9 @@ static void hookSocket(bool rxHook, bool txHook) {
 
     xhook_grouped_register(HOOK_REQUEST_GROUPID_TRAFFIC, ".*\\.so$", "connect",
                            (void *) my_connect, (void **) (&original_connect));
+
+    xhook_grouped_register(HOOK_REQUEST_GROUPID_TRAFFIC, ".*\\.so$", "close",
+                           (void *) my_close, (void **) (&original_close));
 
     if (rxHook) {
         xhook_grouped_register(HOOK_REQUEST_GROUPID_TRAFFIC, ".*\\.so$", "read",
@@ -154,14 +177,23 @@ static void hookSocket(bool rxHook, bool txHook) {
     xhook_grouped_ignore(HOOK_REQUEST_GROUPID_TRAFFIC, ".*libstatssocket\\.so$", nullptr);
     xhook_grouped_ignore(HOOK_REQUEST_GROUPID_TRAFFIC, ".*libc\\.so$", nullptr);
     xhook_grouped_ignore(HOOK_REQUEST_GROUPID_TRAFFIC, ".*libprofile\\.so$", nullptr);
-    xhook_grouped_ignore(HOOK_REQUEST_GROUPID_TRAFFIC, ".*libtraffic-collector\\.so$", nullptr);
+    xhook_grouped_ignore(HOOK_REQUEST_GROUPID_TRAFFIC, ".*libbinder\\.so$", nullptr);
+    xhook_grouped_ignore(HOOK_REQUEST_GROUPID_TRAFFIC, ".*libGLES_mali\\.so$", nullptr);
+    xhook_grouped_ignore(HOOK_REQUEST_GROUPID_TRAFFIC, ".*libhwui\\.so$", nullptr);
+    xhook_grouped_ignore(HOOK_REQUEST_GROUPID_TRAFFIC, ".*libEGL\\.so$", nullptr);
+    xhook_grouped_ignore(HOOK_REQUEST_GROUPID_TRAFFIC, ".*libwcdb\\.so$", nullptr);
+    xhook_grouped_ignore(HOOK_REQUEST_GROUPID_TRAFFIC, ".*libsqlite\\.so$", nullptr);
+    xhook_grouped_ignore(HOOK_REQUEST_GROUPID_TRAFFIC, ".*libbase\\.so$", nullptr);
+    xhook_grouped_ignore(HOOK_REQUEST_GROUPID_TRAFFIC, ".*libartbase\\.so$", nullptr);
+    xhook_grouped_ignore(HOOK_REQUEST_GROUPID_TRAFFIC, ".*libwechatxlog\\.so$", nullptr);
+    xhook_grouped_ignore(HOOK_REQUEST_GROUPID_TRAFFIC, ".*libmmkv\\.so$", nullptr);
 
     xhook_refresh(true);
     HOOKED = true;
 }
 
-static void nativeInitMatrixTraffic(JNIEnv *env, jclass, jboolean rxEnable, jboolean txEnable) {
-    TrafficCollector::startLoop();
+static void nativeInitMatrixTraffic(JNIEnv *env, jclass, jboolean rxEnable, jboolean txEnable, jboolean dumpStackTrace) {
+    TrafficCollector::startLoop(dumpStackTrace == JNI_TRUE);
     hookSocket(rxEnable == JNI_TRUE, txEnable == JNI_TRUE);
 }
 
@@ -169,7 +201,7 @@ template <typename T, std::size_t sz>
 static inline constexpr std::size_t NELEM(const T(&)[sz]) { return sz; }
 
 static const JNINativeMethod TRAFFIC_METHODS[] = {
-        {"nativeInitMatrixTraffic", "(ZZ)V", (void *) nativeInitMatrixTraffic},
+        {"nativeInitMatrixTraffic", "(ZZZ)V", (void *) nativeInitMatrixTraffic},
         {"nativeGetTrafficInfoMap", "(I)Ljava/util/HashMap;", (void *) nativeGetTrafficInfoMap},
         {"nativeClearTrafficInfo", "()V", (void *) nativeClearTrafficInfo},
         {"nativeReleaseMatrixTraffic", "()V", (void *) nativeReleaseMatrixTraffic},
@@ -185,6 +217,9 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *) {
     jclass trafficCollectorCls = env->FindClass("com/tencent/matrix/traffic/TrafficPlugin");
     if (!trafficCollectorCls)
         return -1;
+    gJ.TrafficPlugin = static_cast<jclass>(env->NewGlobalRef(trafficCollectorCls));
+    gJ.TrafficPlugin_setFdStackTrace =
+            env->GetStaticMethodID(trafficCollectorCls, "setStackTrace", "(Ljava/lang/String;)V");
 
     if (env->RegisterNatives(
             trafficCollectorCls, TRAFFIC_METHODS, static_cast<jint>(NELEM(TRAFFIC_METHODS))) != 0)

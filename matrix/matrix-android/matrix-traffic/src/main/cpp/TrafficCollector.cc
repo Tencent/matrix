@@ -25,6 +25,7 @@
 #include <sys/socket.h>
 #include <sys/prctl.h>
 #include <unistd.h>
+#include "MatrixTraffic.h"
 
 #include <queue>
 #include <thread>
@@ -36,6 +37,7 @@ namespace MatrixTraffic {
 static mutex queueMutex;
 static lock_guard<mutex> lock(queueMutex);
 static bool loopRunning = false;
+static bool sDumpStackTrace = false;
 static map<int, int> fdFamilyMap;
 static blocking_queue<shared_ptr<TrafficMsg>> msgQueue;
 static map<string, long> rxTrafficInfoMap;
@@ -46,13 +48,16 @@ static mutex txTrafficInfoMapLock;
 static map<int, string> fdThreadNameMap;
 static mutex fdThreadNameMapLock;
 
-string getThreadName(int fd) {
+string getThreadNameAndSaveStack(int fd) {
     fdThreadNameMapLock.lock();
     if (fdThreadNameMap.count(fd) == 0) {
         auto threadName = new char[15];
         prctl(PR_GET_NAME, threadName);
         fdThreadNameMap[fd] = threadName;
         fdThreadNameMapLock.unlock();
+        if (sDumpStackTrace) {
+            setStackTrace(threadName);
+        }
         return threadName;
     } else {
         auto threadName = fdThreadNameMap[fd];
@@ -65,7 +70,17 @@ void TrafficCollector::enQueueConnect(int fd, sockaddr *addr, socklen_t addr_len
     if (!loopRunning) {
         return;
     }
-    shared_ptr<TrafficMsg> msg = make_shared<TrafficMsg>(MSG_TYPE_CONNECT, fd, addr->sa_family, getThreadName(fd), 0);
+
+    shared_ptr<TrafficMsg> msg = make_shared<TrafficMsg>(MSG_TYPE_CONNECT, fd, addr->sa_family, getThreadNameAndSaveStack(fd), 0);
+    msgQueue.push(msg);
+    queueMutex.unlock();
+}
+
+void TrafficCollector::enQueueClose(int fd) {
+    if (!loopRunning) {
+        return;
+    }
+    shared_ptr<TrafficMsg> msg = make_shared<TrafficMsg>(MSG_TYPE_CLOSE, fd, 0, "", 0);
     msgQueue.push(msg);
     queueMutex.unlock();
 }
@@ -74,7 +89,8 @@ void enQueueMsg(int type, int fd, size_t len) {
     if (!loopRunning) {
         return;
     }
-    shared_ptr<TrafficMsg> msg = make_shared<TrafficMsg>(type, fd, 0, getThreadName(fd), len);
+
+    shared_ptr<TrafficMsg> msg = make_shared<TrafficMsg>(type, fd, 0, getThreadNameAndSaveStack(fd), len);
     msgQueue.push(msg);
     queueMutex.unlock();
 }
@@ -129,6 +145,11 @@ void loop() {
                 if (fdFamilyMap[msg->fd] != AF_LOCAL) {
                     appendTxTraffic(msg->threadName, msg->len);
                 }
+            } else if (msg->type == MSG_TYPE_CLOSE) {
+                fdThreadNameMapLock.lock();
+                fdThreadNameMap.erase(msg->fd);
+                fdThreadNameMapLock.unlock();
+                fdFamilyMap.erase(msg->fd);
             }
             msgQueue.pop();
         }
@@ -136,7 +157,8 @@ void loop() {
 }
 
 
-void TrafficCollector::startLoop() {
+void TrafficCollector::startLoop(bool dumpStackTrace) {
+    sDumpStackTrace = dumpStackTrace;
     loopRunning = true;
     thread loopThread(loop);
     loopThread.detach();

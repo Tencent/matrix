@@ -43,6 +43,7 @@
 #define MSG_TYPE_SENDTO 22
 #define MSG_TYPE_SENDMSG 23
 
+#define MSG_TYPE_CLOSE 30
 
 #define TYPE_GET_TRAFFIC_RX 0
 #define TYPE_GET_TRAFFIC_TX 1
@@ -65,11 +66,13 @@ public:
 class TrafficCollector {
 
 public :
-    static void startLoop();
+    static void startLoop(bool dumpStackTrace);
 
     static void stopLoop();
 
     static void enQueueConnect(int fd, sockaddr *addr, socklen_t __addr_length);
+
+    static void enQueueClose(int fd);
 
     static void enQueueTx(int type, int fd, size_t len);
 
