@@ -196,7 +196,7 @@ public final class BatteryStatsFeature extends AbsMonitorFeature {
                                     final PowerProfile powerProfile = cpuStatFeature.getPowerProfile();
                                     double procSipBgn = delta.bgn.configureProcSip(powerProfile, jiffiesDelta.bgn.totalJiffies.get());
                                     double procSipEnd = delta.end.configureProcSip(powerProfile, jiffiesDelta.end.totalJiffies.get());
-                                    entryInfo.entries.put("Cpu Load", String.format(Locale.US, "%.2f mAh", procSipEnd - procSipBgn));
+                                    entryInfo.entries.put("Cpu Power", String.format(Locale.US, "%.2f mAh", procSipEnd - procSipBgn));
                                 }
                             }
                         });
