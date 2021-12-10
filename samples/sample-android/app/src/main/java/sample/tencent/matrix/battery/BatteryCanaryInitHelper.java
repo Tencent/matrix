@@ -1,6 +1,7 @@
 package sample.tencent.matrix.battery;
 
 import android.annotation.SuppressLint;
+import android.content.Context;
 import android.util.Log;
 
 import com.tencent.matrix.batterycanary.BatteryMonitorPlugin;
@@ -14,6 +15,7 @@ import com.tencent.matrix.batterycanary.monitor.feature.AlarmMonitorFeature.Alar
 import com.tencent.matrix.batterycanary.monitor.feature.AppStatMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.BlueToothMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.BlueToothMonitorFeature.BlueToothSnapshot;
+import com.tencent.matrix.batterycanary.monitor.feature.CompositeMonitors;
 import com.tencent.matrix.batterycanary.monitor.feature.DeviceStatMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature.JiffiesSnapshot;
@@ -28,6 +30,10 @@ import com.tencent.matrix.batterycanary.monitor.feature.WakeLockMonitorFeature.W
 import com.tencent.matrix.batterycanary.monitor.feature.WakeLockMonitorFeature.WakeLockTrace.WakeLockRecord;
 import com.tencent.matrix.batterycanary.monitor.feature.WifiMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.WifiMonitorFeature.WifiSnapshot;
+import com.tencent.matrix.batterycanary.stats.BatteryRecorder;
+import com.tencent.matrix.batterycanary.stats.BatteryStatsFeature;
+import com.tencent.matrix.batterycanary.utils.Consumer;
+import com.tencent.mmkv.MMKV;
 
 import java.util.concurrent.Callable;
 
@@ -43,10 +49,13 @@ public final class BatteryCanaryInitHelper {
 
     static BatteryMonitorConfig sBatteryConfig;
 
-    public static BatteryMonitorPlugin createMonitor() {
+    public static BatteryMonitorPlugin createMonitor(Context context) {
         if (sBatteryConfig != null) {
             throw new IllegalStateException("Duplicated init!");
         }
+
+        // Init MMKV only when BatteryStatsFeature is & MMKVRecorder is enabled.
+        MMKV.initialize(context);
 
         sBatteryConfig = new BatteryMonitorConfig.Builder()
                 // Thread Activities Monitor
@@ -86,6 +95,10 @@ public final class BatteryCanaryInitHelper {
                 .enable(BlueToothMonitorFeature.class)
                 // .enable(NotificationMonitorFeature.class)
 
+                // BatteryStats
+                .enable(BatteryStatsFeature.class)
+                .setRecorder(new BatteryRecorder.MMKVRecorder(MMKV.defaultMMKV()))
+
                 // Lab Feature:
                 // network monitor
                 // looper task monitor
@@ -102,75 +115,28 @@ public final class BatteryCanaryInitHelper {
         return new BatteryMonitorPlugin(sBatteryConfig);
     }
 
-    public static BatteryMonitorConfig getConfig() {
-        if (sBatteryConfig == null) {
-            throw new IllegalStateException("BatteryCanary has not yet init!");
-        }
-        return sBatteryConfig;
-    }
-
-    public static String convertStatsToReadFriendlyText(Delta<?> sessionDelta) {
-        return new BatteryStatsListener().convertStatsToReadFriendlyText(sessionDelta);
-    }
-
 
     public static class BatteryStatsListener extends BatteryPrinter {
-
-        /**
-         * Just for test, you should handle the battery stats yourself within {@link BatteryMonitorCallback}
-         */
-        public String convertStatsToReadFriendlyText(Delta<?> delta) {
-            Printer printer = new Printer();
-            printer.writeTitle();
-            printer.append("| Read Friendly Battery Stats").append("\n");
-            onWritingSectionContent(delta, AppStats.current(delta.dlt.time), printer);
-            printer.writeEnding();
-            return printer.toString();
-        }
-
         @Override
-        public void onWakeLockTimeout(WakeLockRecord record, long backgroundMillis) {
-            // WakeLock acquired too long
-        }
-        @Override
-        protected void onCanaryDump(AppStats appStats) {
-            // Dump battery stats data periodically
-            long statMinute = appStats.getMinute();
-            boolean foreground = appStats.isForeground();
-            boolean charging = appStats.isCharging();
-            Log.w(TAG, "onDumpBatteryStatsReport, statMinute " + appStats.getMinute()
-                    + ", foreground = " + foreground
-                    + ", charging = " + charging);
-            super.onCanaryDump(appStats);
-        }
-        @Override
-        protected void onReportJiffies(@NonNull Delta<JiffiesSnapshot> delta) {
-            // Report all threads jiffies consumed during the statMinute time
-        }
-        @Override
-        protected void onReportAlarm(@NonNull Delta<AlarmSnapshot> delta) {
-            // Report all alarm set during the statMinute time
-        }
-        @Override
-        protected void onReportWakeLock(@NonNull Delta<WakeLockSnapshot> delta) {
-            // Report all wakelock acquired during the statMinute time
-        }
-        @Override
-        protected void onReportBlueTooth(@NonNull Delta<BlueToothSnapshot> delta) {
-            // Report all bluetooth scanned during the statMinute time
-        }
-        @Override
-        protected void onReportWifi(@NonNull Delta<WifiSnapshot> delta) {
-            // Report all wifi scanned during the statMinute time
-        }
-        @Override
-        protected void onReportLocation(@NonNull Delta<LocationSnapshot> delta) {
-            // Report all gps scanned during the statMinute time
+        protected void onCanaryDump(CompositeMonitors monitors) {
+            monitors.getAppStats(new Consumer<AppStats>() {
+                @Override
+                public void accept(AppStats appStats) {
+                    // Dump battery stats data periodically
+                    long statMinute = appStats.getMinute();
+                    boolean foreground = appStats.isForeground();
+                    boolean charging = appStats.isCharging();
+                    Log.w(TAG, "onDumpBatteryStatsReport, statMinute " + appStats.getMinute()
+                            + ", foreground = " + foreground
+                            + ", charging = " + charging);
+                }
+            });
+            super.onCanaryDump(monitors);
         }
 
-        // @Override
-        // public void onNotify(String text, long bgMillis) {
-        //     Log.w("BatteryCanaryInitHelper", "Notification with illegal text found: " + text);
-        // }
+        @Override
+        protected void onCanaryReport(CompositeMonitors monitors) {
+            // Report all enabled battery canary monitors' data here
+        }
     }
 }

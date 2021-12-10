@@ -83,7 +83,7 @@ public class MatrixApplication extends Application {
         builder.plugin(sqLiteLintPlugin);
 
         // Configure battery canary.
-        BatteryMonitorPlugin batteryMonitorPlugin = configureBatteryCanary();
+        BatteryMonitorPlugin batteryMonitorPlugin = configureBatteryCanary(this);
         builder.plugin(batteryMonitorPlugin);
 
         Matrix.init(builder.build());
@@ -180,10 +180,10 @@ public class MatrixApplication extends Application {
         return new SQLiteLintPlugin(sqlLiteConfig);
     }
 
-    private BatteryMonitorPlugin configureBatteryCanary() {
+    private BatteryMonitorPlugin configureBatteryCanary(Context context) {
         // Configuration of battery plugin is really complicated.
         // See it in BatteryCanaryInitHelper.
-        return BatteryCanaryInitHelper.createMonitor();
+        return BatteryCanaryInitHelper.createMonitor(context);
     }
 
     public static Context getContext() {

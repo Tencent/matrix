@@ -7,60 +7,86 @@
     android:orientation="vertical"
     tools:ignore="HardcodedText">
 
-    <Button
-        android:id="@+id/dump_battery_stats"
-        style="@style/EntryButton"
+    <ScrollView
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:onClick="onDumpBatteryStats"
-        android:text="Dump BatteryStats Report" />
+        android:layout_height="match_parent">
 
-    <HorizontalScrollView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content">
-        <TextView
-            android:id="@+id/tv_battery_stats"
-            android:layout_width="wrap_content"
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:scrollHorizontally="true"
-            android:singleLine="false"/>
-    </HorizontalScrollView>
+            android:orientation="vertical">
 
-    <Button
-        android:id="@+id/wake_lock_release"
-        style="@style/EntryButton"
-        android:visibility="gone"
-        tools:visibility="visible"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="WakeLock Release" />
+            <Button
+                android:id="@+id/dump_battery_stats"
+                style="@style/EntryButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:onClick="onDumpBatteryStats"
+                android:text="Dump BatteryStats Report" />
 
-    <Button
-        android:id="@+id/set_alarm"
-        style="@style/EntryButton"
-        android:visibility="gone"
-        tools:visibility="visible"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Set Alarm" />
+            <HorizontalScrollView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                tools:background="#5000"
+                tools:layout_height="200dp">
 
-    <Button
-        android:id="@+id/cancel_alarm"
-        style="@style/EntryButton"
-        android:visibility="gone"
-        tools:visibility="visible"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Cancel Alarm" />
+                <TextView
+                    android:id="@+id/tv_battery_stats"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:scrollHorizontally="false"
+                    android:singleLine="false"
+                    android:textSize="12sp"
+                    android:visibility="gone"
+                    tools:visibility="visible" />
+            </HorizontalScrollView>
 
-    <Button
-        android:id="@+id/start_anim"
-        style="@style/EntryButton"
-        android:visibility="gone"
-        tools:visibility="visible"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:onClick="onStartAnim"
-        android:text="Start Anim" />
+            <Button
+                android:id="@+id/check_battery_stats"
+                style="@style/EntryButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:onClick="onCheckoutBatteryStats"
+                android:text="Checkout BatteryStats Report" />
+
+            <Button
+                android:id="@+id/wake_lock_release"
+                style="@style/EntryButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="WakeLock Release"
+                android:visibility="gone"
+                tools:visibility="visible" />
+
+            <Button
+                android:id="@+id/set_alarm"
+                style="@style/EntryButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Set Alarm"
+                android:visibility="gone"
+                tools:visibility="visible" />
+
+            <Button
+                android:id="@+id/cancel_alarm"
+                style="@style/EntryButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Cancel Alarm"
+                android:visibility="gone"
+                tools:visibility="visible" />
+
+            <Button
+                android:id="@+id/start_anim"
+                style="@style/EntryButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:onClick="onStartAnim"
+                android:text="Start Anim"
+                android:visibility="gone"
+                tools:visibility="visible" />
+
+        </LinearLayout>
+    </ScrollView>
 
 </LinearLayout>
