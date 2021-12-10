@@ -16,8 +16,14 @@
 
 package com.tencent.matrix.batterycanary.stats;
 
+import android.app.Application;
 import android.content.Context;
 
+import com.tencent.matrix.Matrix;
+import com.tencent.matrix.batterycanary.BatteryMonitorPlugin;
+import com.tencent.matrix.batterycanary.monitor.BatteryMonitorConfig;
+import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
+import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature;
 import com.tencent.mmkv.MMKV;
 
 import org.junit.After;
@@ -45,6 +51,9 @@ public class BatteryRecorderTest {
     @Before
     public void setUp() {
         mContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        if (!Matrix.isInstalled()) {
+            Matrix.init(new Matrix.Builder(((Application) mContext.getApplicationContext())).build());
+        }
         String rootDir = MMKV.initialize(mContext);
         System.out.println("mmkv root: " + rootDir);
     }
@@ -55,6 +64,12 @@ public class BatteryRecorderTest {
 
     @Test
     public void testRecorderWithEventRecord() {
+        BatteryMonitorConfig config = new BatteryMonitorConfig.Builder().enable(JiffiesMonitorFeature.class).build();
+        BatteryMonitorCore core = new BatteryMonitorCore(config);
+        core.start();
+        BatteryMonitorPlugin plugin = new BatteryMonitorPlugin(config);
+        Matrix.with().getPlugins().add(plugin);
+
         BatteryRecord.EventStatRecord record = new BatteryRecord.EventStatRecord();
         record.id = 22;
         record.event = "EVENT";

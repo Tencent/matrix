@@ -2,6 +2,7 @@ package com.tencent.matrix.batterycanary.stats;
 
 import android.os.Process;
 
+import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
 import com.tencent.matrix.util.MatrixLog;
 import com.tencent.mmkv.MMKV;
 
@@ -25,6 +26,9 @@ public interface BatteryRecorder {
 
 
     class MMKVRecorder implements BatteryRecorder {
+        private static final String MAGIC = "bs";
+        private static String sProcNameSuffix = null;
+
         final int pid = Process.myPid();
         AtomicInteger inc = new AtomicInteger(0);
         final MMKV mmkv;
@@ -33,9 +37,21 @@ public interface BatteryRecorder {
             this.mmkv = mmkv;
         }
 
+        protected String getKeyPrefix(String date) {
+            if (sProcNameSuffix == null) {
+                String processName = BatteryCanaryUtil.getProcessName();
+                if (processName.contains(":")) {
+                    sProcNameSuffix = processName.substring(processName.lastIndexOf(":") + 1);
+                } else {
+                    sProcNameSuffix = "main";
+                }
+            }
+            return MAGIC + "-" + date + "-" + sProcNameSuffix + "-"  + pid;
+        }
+
         @Override
         public void write(String date, BatteryRecord record) {
-            String key = "bs-" + date + "-"  + pid +  "-" + inc.getAndIncrement();
+            String key = getKeyPrefix(date) + "-" + inc.getAndIncrement();
             try {
                 byte[] bytes = BatteryRecord.encode(record);
                 mmkv.encode(key, bytes);
@@ -52,7 +68,7 @@ public interface BatteryRecorder {
             }
             List<BatteryRecord> records = new ArrayList<>(Math.min(16, keys.length));
             for (String item : keys) {
-                if (item.startsWith("bs-" + date + "-")) {
+                if (item.startsWith(getKeyPrefix(date))) {
                     try {
                         byte[] bytes = mmkv.decodeBytes(item);
                         if (bytes != null) {
@@ -74,7 +90,7 @@ public interface BatteryRecorder {
                 return;
             }
             for (String item : keys) {
-                if (item.startsWith("bs-" + date + "-")) {
+                if (item.startsWith(getKeyPrefix(date))) {
                     try {
                         mmkv.remove(item);
                     } catch (Exception e) {
