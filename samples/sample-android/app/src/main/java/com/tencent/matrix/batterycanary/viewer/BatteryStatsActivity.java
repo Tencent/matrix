@@ -8,8 +8,8 @@ import android.view.ViewGroup;
 import android.widget.TextView;
 
 import com.tencent.matrix.batterycanary.monitor.AppStats;
+import com.tencent.matrix.batterycanary.stats.BatteryRecord;
 import com.tencent.matrix.batterycanary.stats.BatteryStatsFeature;
-import com.tencent.matrix.batterycanary.stats.BatteryStatsFeature.Record;
 
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
@@ -28,6 +28,9 @@ import sample.tencent.matrix.R;
 
 public class BatteryStatsActivity extends AppCompatActivity {
 
+    @NonNull
+    private BatteryStatsLoader mStatsLoader;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -39,85 +42,98 @@ public class BatteryStatsActivity extends AppCompatActivity {
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
         BatteryStatsAdapter adapter = new BatteryStatsAdapter();
         recyclerView.setAdapter(adapter);
+        mStatsLoader = new BatteryStatsLoader(adapter);
 
-
-        // mocking
-        List<BatteryStatsAdapter.Item> dataList = adapter.getDataList();
+        // load mocking data
         BatteryStatsFeature.BatteryRecords batteryRecords = BatteryStatsFeature.loadBatteryRecords(0);
+        mStatsLoader.add(batteryRecords);
+    }
 
-        for (Record item : batteryRecords.records) {
-            if (item instanceof Record.ProcStatRecord) {
-                BatteryStatsAdapter.EventLevel1Item eventItem = new BatteryStatsAdapter.EventLevel1Item(item);
-                eventItem.text = (((Record.ProcStatRecord) item).procStat == Record.ProcStatRecord.STAT_PROC_LAUNCH ? "PROCESS INIT" : "PROCESS_ID_" + ((Record.ProcStatRecord) item).procStat)
-                        + " (pid " + ((Record.ProcStatRecord) item).pid + "）";
-                dataList.add(0, eventItem);
-                continue;
-            }
 
-            if (item instanceof Record.AppStatRecord) {
-                BatteryStatsAdapter.EventLevel1Item eventItem = new BatteryStatsAdapter.EventLevel1Item(item);
-                switch (((Record.AppStatRecord) item).appStat) {
-                    case AppStats.APP_STAT_FOREGROUND:
-                        eventItem.text = "App 切换到前台";
-                        break;
-                    case AppStats.APP_STAT_BACKGROUND:
-                        eventItem.text = "App 切换到后台";
-                        break;
-                    case AppStats.APP_STAT_FOREGROUND_SERVICE:
-                        eventItem.text = "App 切换到后台 (有前台服务)";
-                        break;
-                    default:
-                        eventItem.text = "App 状态变化: " + ((Record.AppStatRecord) item).appStat;
-                        break;
-                }
-                dataList.add(0, eventItem);
-                continue;
-            }
+    public static class BatteryStatsLoader {
+        final BatteryStatsAdapter mStatsAdapter;
 
-            if (item instanceof Record.DevStatRecord) {
-                BatteryStatsAdapter.EventLevel2Item eventItem = new BatteryStatsAdapter.EventLevel2Item(item);
-                switch (((Record.DevStatRecord) item).devStat) {
-                    case AppStats.DEV_STAT_CHARGING:
-                        eventItem.text = "CHARGE ON";
-                        break;
-                    case AppStats.DEV_STAT_UN_CHARGING:
-                        eventItem.text = "CHARGE OFF";
-                        break;
-                    case AppStats.DEV_STAT_SAVE_POWER_MODE:
-                        eventItem.text = "PowerSave ON";
-                        break;
-                    case AppStats.DEV_STAT_SCREEN_OFF:
-                        eventItem.text = "SCREEN OFF";
-                        break;
-                    default:
-                        eventItem.text = "设备状态变化: " + ((Record.DevStatRecord) item).devStat;
-                        break;
-                }
-                dataList.add(0, eventItem);
-                continue;
-            }
-
-            if (item instanceof Record.SceneStatRecord) {
-                BatteryStatsAdapter.EventLevel2Item eventItem = new BatteryStatsAdapter.EventLevel2Item(item);
-                eventItem.text = "UI: " + ((Record.SceneStatRecord) item).scene;
-                dataList.add(0, eventItem);
-                continue;
-            }
-
-            if (item instanceof Record.ReportRecord) {
-                BatteryStatsAdapter.EventDumpItem dumpItem = new BatteryStatsAdapter.EventDumpItem((Record.ReportRecord) item);
-                dataList.add(0, dumpItem);
-                continue;
-            }
-
-            if (item instanceof Record.EventStatRecord ) {
-            }
+        public BatteryStatsLoader(BatteryStatsAdapter statsAdapter) {
+            mStatsAdapter = statsAdapter;
         }
-        BatteryStatsAdapter.HeaderItem headerItem = new BatteryStatsAdapter.HeaderItem();
-        headerItem.date = batteryRecords.date;
-        dataList.add(0, headerItem);
 
-        adapter.notifyItemRangeChanged(0, dataList.size());
+        public void add(BatteryStatsFeature.BatteryRecords batteryRecords) {
+            List<BatteryStatsAdapter.Item> dataList = mStatsAdapter.getDataList();
+
+            for (BatteryRecord item : batteryRecords.records) {
+                if (item instanceof BatteryRecord.ProcStatRecord) {
+                    BatteryStatsAdapter.EventLevel1Item eventItem = new BatteryStatsAdapter.EventLevel1Item(item);
+                    eventItem.text = (((BatteryRecord.ProcStatRecord) item).procStat == BatteryRecord.ProcStatRecord.STAT_PROC_LAUNCH ? "PROCESS INIT" : "PROCESS_ID_" + ((BatteryRecord.ProcStatRecord) item).procStat)
+                            + " (pid " + ((BatteryRecord.ProcStatRecord) item).pid + "）";
+                    dataList.add(0, eventItem);
+                    continue;
+                }
+
+                if (item instanceof BatteryRecord.AppStatRecord) {
+                    BatteryStatsAdapter.EventLevel1Item eventItem = new BatteryStatsAdapter.EventLevel1Item(item);
+                    switch (((BatteryRecord.AppStatRecord) item).appStat) {
+                        case AppStats.APP_STAT_FOREGROUND:
+                            eventItem.text = "App 切换到前台";
+                            break;
+                        case AppStats.APP_STAT_BACKGROUND:
+                            eventItem.text = "App 切换到后台";
+                            break;
+                        case AppStats.APP_STAT_FOREGROUND_SERVICE:
+                            eventItem.text = "App 切换到后台 (有前台服务)";
+                            break;
+                        default:
+                            eventItem.text = "App 状态变化: " + ((BatteryRecord.AppStatRecord) item).appStat;
+                            break;
+                    }
+                    dataList.add(0, eventItem);
+                    continue;
+                }
+
+                if (item instanceof BatteryRecord.DevStatRecord) {
+                    BatteryStatsAdapter.EventLevel2Item eventItem = new BatteryStatsAdapter.EventLevel2Item(item);
+                    switch (((BatteryRecord.DevStatRecord) item).devStat) {
+                        case AppStats.DEV_STAT_CHARGING:
+                            eventItem.text = "CHARGE ON";
+                            break;
+                        case AppStats.DEV_STAT_UN_CHARGING:
+                            eventItem.text = "CHARGE OFF";
+                            break;
+                        case AppStats.DEV_STAT_SAVE_POWER_MODE:
+                            eventItem.text = "PowerSave ON";
+                            break;
+                        case AppStats.DEV_STAT_SCREEN_OFF:
+                            eventItem.text = "SCREEN OFF";
+                            break;
+                        default:
+                            eventItem.text = "设备状态变化: " + ((BatteryRecord.DevStatRecord) item).devStat;
+                            break;
+                    }
+                    dataList.add(0, eventItem);
+                    continue;
+                }
+
+                if (item instanceof BatteryRecord.SceneStatRecord) {
+                    BatteryStatsAdapter.EventLevel2Item eventItem = new BatteryStatsAdapter.EventLevel2Item(item);
+                    eventItem.text = "UI: " + ((BatteryRecord.SceneStatRecord) item).scene;
+                    dataList.add(0, eventItem);
+                    continue;
+                }
+
+                if (item instanceof BatteryRecord.ReportRecord) {
+                    BatteryStatsAdapter.EventDumpItem dumpItem = new BatteryStatsAdapter.EventDumpItem((BatteryRecord.ReportRecord) item);
+                    dataList.add(0, dumpItem);
+                    continue;
+                }
+
+                if (item instanceof BatteryRecord.EventStatRecord ) {
+                }
+            }
+            BatteryStatsAdapter.HeaderItem headerItem = new BatteryStatsAdapter.HeaderItem();
+            headerItem.date = batteryRecords.date;
+            dataList.add(0, headerItem);
+
+            mStatsAdapter.notifyItemRangeChanged(0, dataList.size());
+        }
     }
 
 
@@ -185,11 +201,11 @@ public class BatteryStatsActivity extends AppCompatActivity {
             }
         }
 
-        public static class EventDumpItem extends Record.ReportRecord implements Item {
+        public static class EventDumpItem extends BatteryRecord.ReportRecord implements Item {
             public boolean expand = false;
             public String desc;
 
-            public EventDumpItem(Record.ReportRecord record) {
+            public EventDumpItem(BatteryRecord.ReportRecord record) {
                 this.id  = record.id;
                 this.event  = record.event;
                 this.scope  = record.scope;
@@ -204,10 +220,11 @@ public class BatteryStatsActivity extends AppCompatActivity {
             }
         }
 
-        public static class EventLevel1Item extends Record implements Item {
+        @SuppressLint("ParcelCreator")
+        public static class EventLevel1Item extends BatteryRecord implements Item {
             public String text;
 
-            public EventLevel1Item(Record record) {
+            public EventLevel1Item(BatteryRecord record) {
                 this.millis = record.millis;
             }
 
@@ -217,10 +234,11 @@ public class BatteryStatsActivity extends AppCompatActivity {
             }
         }
 
-        public static class EventLevel2Item extends Record implements Item {
+        @SuppressLint("ParcelCreator")
+        public static class EventLevel2Item extends BatteryRecord implements Item {
             public String text;
 
-            public EventLevel2Item(Record record) {
+            public EventLevel2Item(BatteryRecord record) {
                 this.millis = record.millis;
             }
 
