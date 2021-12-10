@@ -35,6 +35,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.tencent.matrix.Matrix;
+import com.tencent.matrix.batterycanary.BatteryCanary;
 import com.tencent.matrix.batterycanary.BatteryEventDelegate;
 import com.tencent.matrix.batterycanary.BatteryMonitorPlugin;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCallback;
@@ -44,6 +45,7 @@ import com.tencent.matrix.batterycanary.monitor.feature.DeviceStatMonitorFeature
 import com.tencent.matrix.batterycanary.monitor.feature.DeviceStatMonitorFeature.CpuFreqSnapshot;
 import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature.JiffiesSnapshot.ThreadJiffiesEntry;
+import com.tencent.matrix.batterycanary.stats.BatteryStatsFeature;
 import com.tencent.matrix.batterycanary.utils.Consumer;
 import com.tencent.matrix.batterycanary.stats.ui.BatteryStatsActivity;
 import com.tencent.matrix.util.MatrixLog;
@@ -89,7 +91,7 @@ public class TestBatteryActivity extends Activity {
             plugin.start();
         }
 
-        mCompositeMonitors = new CompositeMonitors(plugin.core())
+        mCompositeMonitors = new CompositeMonitors(plugin.core(), "manual_dump")
                 .metricAll()
                 .sample(CpuFreqSnapshot.class, 1000L)
                 .sample(BatteryTmpSnapshot.class, 1000L);
@@ -175,6 +177,11 @@ public class TestBatteryActivity extends Activity {
         printer.writeTitle();
         new BatteryMonitorCallback.BatteryPrinter.Dumper().dump(compositeMonitors, printer);
         printer.writeEnding();
+
+        BatteryStatsFeature statsFeat = BatteryCanary.getMonitorFeature(BatteryStatsFeature.class);
+        if (statsFeat != null) {
+            statsFeat.statsMonitors(compositeMonitors);
+        }
 
         findViewById(R.id.tv_battery_stats).post(new Runnable() {
             @Override

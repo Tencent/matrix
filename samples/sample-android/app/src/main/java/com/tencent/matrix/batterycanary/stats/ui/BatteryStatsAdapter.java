@@ -241,7 +241,7 @@ public class BatteryStatsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
 
                 // Header
                 mHeaderLeftTv.setText("模式: " + item.scope);
-                mHeaderRightTv.setText("时长: " + Math.max(1, (item.windowMillis * 10) / (60 * 1000L)) + "min");
+                mHeaderRightTv.setText("时长: " + Math.max(1, (item.windowMillis) / (60 * 1000L)) + "min");
                 mHeaderDescTv.setText(item.desc);
 
                 // Thread Entry

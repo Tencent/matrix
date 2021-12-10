@@ -16,6 +16,7 @@ import com.tencent.matrix.batterycanary.monitor.feature.AppStatMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.BlueToothMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.BlueToothMonitorFeature.BlueToothSnapshot;
 import com.tencent.matrix.batterycanary.monitor.feature.CompositeMonitors;
+import com.tencent.matrix.batterycanary.monitor.feature.CpuStatFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.DeviceStatMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature.JiffiesSnapshot;
@@ -68,6 +69,9 @@ public final class BatteryCanaryInitHelper {
                 .foregroundLoopCheckTime(20 * 60 * 1000L)
                 .setBgThreadWatchingLimit(5000)
                 .setBgThreadWatchingLimit(8000)
+
+                // CPU Stats
+                .enable(CpuStatFeature.class)
 
                 // App & Device Status Monitor For Better Invalid Battery Activities Configure
                 .setOverHeatCount(1024)
@@ -136,6 +140,7 @@ public final class BatteryCanaryInitHelper {
 
         @Override
         protected void onCanaryReport(CompositeMonitors monitors) {
+            super.onCanaryReport(monitors);
             // Report all enabled battery canary monitors' data here
         }
     }
