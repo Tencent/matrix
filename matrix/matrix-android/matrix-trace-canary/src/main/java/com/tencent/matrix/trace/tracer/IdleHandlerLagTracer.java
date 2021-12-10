@@ -119,7 +119,7 @@ public class IdleHandlerLagTracer extends Tracer {
             idleHandlerLagHandlerThread.start();
             idleHandlerLagHandler = new Handler(idleHandlerLagHandlerThread.getLooper());
         } catch (Throwable t) {
-            t.printStackTrace();
+            MatrixLog.e(TAG, "reflect idle handler error = " + t.getMessage());
         }
     }
 

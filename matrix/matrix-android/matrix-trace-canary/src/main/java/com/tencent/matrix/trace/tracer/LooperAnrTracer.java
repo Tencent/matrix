@@ -50,8 +50,8 @@ public class LooperAnrTracer extends Tracer {
     private Handler anrHandler;
     private Handler lagHandler;
     private final TraceConfig traceConfig;
-    private volatile AnrHandleTask anrTask = new AnrHandleTask();
-    private volatile LagHandleTask lagTask = new LagHandleTask();
+    private final AnrHandleTask anrTask = new AnrHandleTask();
+    private final LagHandleTask lagTask = new LagHandleTask();
     private boolean isAnrTraceEnable;
 
     public LooperAnrTracer(TraceConfig traceConfig) {
@@ -74,9 +74,7 @@ public class LooperAnrTracer extends Tracer {
         super.onDead();
         if (isAnrTraceEnable) {
             UIThreadMonitor.getMonitor().removeObserver(this);
-            if (null != anrTask) {
-                anrTask.getBeginRecord().release();
-            }
+            anrTask.getBeginRecord().release();
             anrHandler.removeCallbacksAndMessages(null);
             lagHandler.removeCallbacksAndMessages(null);
         }
@@ -107,13 +105,9 @@ public class LooperAnrTracer extends Tracer {
                     token, cost,
                     cpuEndMs - cpuBeginMs, Utils.calculateCpuUsage(cpuEndMs - cpuBeginMs, cost));
         }
-        if (null != anrTask) {
-            anrTask.getBeginRecord().release();
-            anrHandler.removeCallbacks(anrTask);
-        }
-        if (null != lagTask) {
-            lagHandler.removeCallbacks(lagTask);
-        }
+        anrTask.getBeginRecord().release();
+        anrHandler.removeCallbacks(anrTask);
+        lagHandler.removeCallbacks(lagTask);
     }
 
     class LagHandleTask implements Runnable {

@@ -362,7 +362,7 @@ public class FrameTracer extends Tracer implements Application.ActivityLifecycle
     }
 
     public interface DropFrameListener {
-        void dropFrame(int droppedFrame, long jitter, String scene, long lastResume);
+        void dropFrame(int droppedFrame, long jitter, String scene, long lastResumeTime);
     }
 
     @RequiresApi(api = Build.VERSION_CODES.N)
