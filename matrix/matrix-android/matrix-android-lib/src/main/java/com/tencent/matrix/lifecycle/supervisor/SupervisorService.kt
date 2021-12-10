@@ -23,12 +23,17 @@ class SupervisorService : Service() {
         private const val TAG = "Matrix.ProcessSupervisor.SupervisorService"
         private var isSupervisor = false
 
-        internal fun start(context: Context) {
+        internal fun start(context: Context) = safeApply(TAG) {
             isSupervisor = true
+            if (instance != null) {
+                MatrixLog.e(TAG, "duplicated start")
+                return@safeApply
+            }
             val intent = Intent(context, SupervisorService::class.java)
             context.startService(intent)
         }
 
+        @Volatile
         internal var instance: SupervisorService? = null
             private set
     }
@@ -134,6 +139,8 @@ class SupervisorService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+
+//        DispatchReceiver.dispatchSupervisorInstallation(applicationContext)
 
         MatrixLog.d(TAG, "onCreate")
         isSupervisor = true

@@ -6,6 +6,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.os.Build
 import android.os.Process
+import com.tencent.matrix.lifecycle.IStateObserver
 import com.tencent.matrix.lifecycle.owners.MatrixProcessLifecycleOwner
 import com.tencent.matrix.util.*
 import java.util.concurrent.TimeUnit
@@ -37,6 +38,12 @@ internal object DispatchReceiver : BroadcastReceiver(), IProcessListener {
     private val dyingListeners = ArrayList<(processName: String?, pid: Int?) -> Boolean>()
     private val deathListeners =
         ArrayList<(processName: String?, pid: Int?, isLruKill: Boolean?) -> Unit>()
+
+    @Volatile
+    private var supervisorInstalled = false
+
+    @Volatile
+    private var pacemaker: IStateObserver? = null
 
     private fun ArrayList<(processName: String?, pid: Int?) -> Boolean>.invokeAll(
         processName: String?,
@@ -71,17 +78,51 @@ internal object DispatchReceiver : BroadcastReceiver(), IProcessListener {
         SUPERVISOR_DISPATCH_APP_STATE_TURN_ON,
         SUPERVISOR_DISPATCH_APP_STATE_TURN_OFF,
         SUPERVISOR_DISPATCH_KILL,
-        SUPERVISOR_DISPATCH_DEATH;
+        SUPERVISOR_DISPATCH_DEATH,
+        TELL_SUPERVISOR_FOREGROUND;
+    }
+
+    private fun installPacemaker(context: Context?) {
+        if (pacemaker == null && !supervisorInstalled) {
+            pacemaker = object : IStateObserver {
+                override fun on() {
+                    if (!supervisorInstalled) {
+                        MatrixLog.i(ProcessSupervisor.tag, "pacemaker: call supervisor")
+                        if (ProcessSupervisor.config!!.autoCreate) {
+                            SupervisorService.start(context!!)
+                        } else {
+                            tellSupervisorForeground(context)
+                        }
+                    }
+                }
+
+                override fun off() {
+                }
+            }
+        }
+        MatrixProcessLifecycleOwner.startedStateOwner.observeForever(pacemaker!!)
+        MatrixLog.i(ProcessSupervisor.tag, "pacemaker: install pacemaker")
+    }
+
+    internal fun uninstallPacemaker() {
+        supervisorInstalled = true
+        if (pacemaker != null) {
+            MatrixProcessLifecycleOwner.startedStateOwner.removeObserver(pacemaker!!)
+            pacemaker = null
+            MatrixLog.i(ProcessSupervisor.tag, "pacemaker: uninstall pacemaker")
+        }
     }
 
     internal fun install(context: Context?) {
         packageName = MatrixUtil.getPackageName(context)
-        if (ProcessSupervisor.isSupervisor) {
-            return
-        }
         val filter = IntentFilter()
-        SupervisorEvent.values().forEach {
-            filter.addAction(it.name)
+        if (ProcessSupervisor.isSupervisor) {
+            filter.addAction(SupervisorEvent.TELL_SUPERVISOR_FOREGROUND.name)
+        } else {
+            SupervisorEvent.values()
+                .filter { it != SupervisorEvent.TELL_SUPERVISOR_FOREGROUND }
+                .forEach { filter.addAction(it.name) }
+            installPacemaker(context)
         }
         context?.registerReceiver(
             this, filter,
@@ -143,6 +184,14 @@ internal object DispatchReceiver : BroadcastReceiver(), IProcessListener {
             KEY_PROCESS_NAME to processName,
             KEY_PROCESS_PID to pid.toString(),
             KEY_DEAD_FROM_LRU_KILL to deadFromLruKill.toString()
+        )
+    }
+
+    private fun tellSupervisorForeground(context: Context?) {
+        dispatch(
+            context, SupervisorEvent.TELL_SUPERVISOR_FOREGROUND,
+            KEY_PROCESS_NAME to MatrixUtil.getProcessName(context),
+            KEY_PROCESS_PID to Process.myPid().toString()
         )
     }
 
@@ -230,6 +279,19 @@ internal object DispatchReceiver : BroadcastReceiver(), IProcessListener {
                 val pid = intent.getStringExtra(KEY_PROCESS_PID)?.toInt()
                 val deadFromLruKill = intent.getStringExtra(KEY_DEAD_FROM_LRU_KILL).toBoolean()
                 deathListeners.invokeAll(processName, pid, deadFromLruKill)
+            }
+            SupervisorEvent.TELL_SUPERVISOR_FOREGROUND.name -> {
+                if (!ProcessSupervisor.isSupervisor) {
+                    MatrixLog.e(ProcessSupervisor.tag, "ERROR: this is NOT supervisor process")
+                    return
+                }
+                val processName = intent.getStringExtra(KEY_PROCESS_NAME)
+                val pid = intent.getStringExtra(KEY_PROCESS_PID)?.toInt()
+                MatrixLog.i(
+                    ProcessSupervisor.tag,
+                    "pacemaker: receive TELL_SUPERVISOR_FOREGROUND from $pid-$processName"
+                )
+                SupervisorService.start(context.applicationContext)
             }
         }
     }

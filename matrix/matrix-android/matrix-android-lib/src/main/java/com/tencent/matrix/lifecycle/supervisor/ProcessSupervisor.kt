@@ -139,7 +139,7 @@ object ProcessSupervisor : IProcessListener by DispatchReceiver {
 
         app.bindService(intent, object : ServiceConnection {
             override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
-
+                DispatchReceiver.uninstallPacemaker()
                 supervisorProxy = ISupervisorProxy.Stub.asInterface(service)
                 MatrixLog.i(TAG, "on Supervisor Connected $supervisorProxy")
                 supervisorProxy?.safeApply(tag) { stateRegister(ProcessToken.current(app)) }
