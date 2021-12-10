@@ -18,28 +18,18 @@ package com.tencent.matrix.batterycanary.stats;
 
 import android.app.Application;
 import android.content.Context;
-import android.os.Handler;
-import android.os.Looper;
 
 import com.tencent.matrix.Matrix;
 import com.tencent.matrix.batterycanary.BatteryCanary;
 import com.tencent.matrix.batterycanary.BatteryEventDelegate;
 import com.tencent.matrix.batterycanary.BatteryMonitorPlugin;
-import com.tencent.matrix.batterycanary.TestUtils;
 import com.tencent.matrix.batterycanary.monitor.AppStats;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCallback;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorConfig;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
-import com.tencent.matrix.batterycanary.monitor.feature.AlarmMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.AppStatMonitorFeature;
-import com.tencent.matrix.batterycanary.monitor.feature.BlueToothMonitorFeature;
-import com.tencent.matrix.batterycanary.monitor.feature.CpuStatFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.DeviceStatMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature;
-import com.tencent.matrix.batterycanary.monitor.feature.LocationMonitorFeature;
-import com.tencent.matrix.batterycanary.monitor.feature.TrafficMonitorFeature;
-import com.tencent.matrix.batterycanary.monitor.feature.WakeLockMonitorFeature;
-import com.tencent.matrix.batterycanary.monitor.feature.WifiMonitorFeature;
 import com.tencent.matrix.batterycanary.utils.Consumer;
 import com.tencent.mmkv.MMKV;
 
@@ -83,9 +73,11 @@ public class BatteryStatsFeatureTest {
     public void testBatteryStatsWithMonitors() throws InterruptedException {
         final CountDownLatch latch = new CountDownLatch(11);
 
-        BatteryRecorderTest.MMKVRecorder recorder = new BatteryRecorderTest.MMKVRecorder(MMKV.defaultMMKV()) {
+        MMKV mmkv = MMKV.defaultMMKV();
+        mmkv.clearAll();
+        BatteryRecorderTest.MMKVRecorder recorder = new BatteryRecorderTest.MMKVRecorder(mmkv) {
             @Override
-            public void write(String date, BatteryStatsFeature.Record record) {
+            public void write(String date, Record record) {
                 super.write(date, record);
                 latch.countDown();
             }
@@ -112,7 +104,7 @@ public class BatteryStatsFeatureTest {
         BatteryCanary.getMonitorFeature(BatteryStatsFeature.class, new Consumer<BatteryStatsFeature>() {
             @Override
             public void accept(BatteryStatsFeature batteryStatsFeature) {
-                List<BatteryStatsFeature.Record> records = batteryStatsFeature.readRecords(0);
+                List<BatteryRecorder.Record> records = batteryStatsFeature.readRecords(0);
                 Assert.assertTrue(records.isEmpty());
             }
         });
@@ -146,8 +138,8 @@ public class BatteryStatsFeatureTest {
         BatteryCanary.getMonitorFeature(BatteryStatsFeature.class, new Consumer<BatteryStatsFeature>() {
             @Override
             public void accept(BatteryStatsFeature batteryStatsFeature) {
-                List<BatteryStatsFeature.Record> records = batteryStatsFeature.readRecords(0);
-                Assert.assertEquals(11, records.size());
+                List<BatteryRecorder.Record> records = batteryStatsFeature.readRecords(0);
+                Assert.assertEquals("Records list: " + records,11, records.size());
             }
         });
     }

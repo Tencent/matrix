@@ -6,7 +6,7 @@ import androidx.annotation.Nullable;
 
 import com.tencent.matrix.batterycanary.BuildConfig;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature;
-import com.tencent.matrix.batterycanary.stats.BatteryStatsFeature;
+import com.tencent.matrix.batterycanary.stats.BatteryRecorder;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -58,7 +58,7 @@ public class BatteryMonitorConfig {
     public List<String> looperWatchList = Collections.emptyList();
     public List<String> threadWatchList = Collections.emptyList();
     public final List<MonitorFeature> features = new ArrayList<>(3);
-    public BatteryStatsFeature.BatteryRecorder batteryRecorder;
+    public BatteryRecorder batteryRecorder;
 
     private BatteryMonitorConfig() {
     }
@@ -263,7 +263,7 @@ public class BatteryMonitorConfig {
             return this;
         }
 
-        public Builder setRecorder(BatteryStatsFeature.BatteryRecorder recorder) {
+        public Builder setRecorder(BatteryRecorder recorder) {
             config.batteryRecorder = recorder;
             return this;
         }

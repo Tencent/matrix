@@ -17,8 +17,6 @@
 package com.tencent.matrix.batterycanary.stats;
 
 import android.content.Context;
-import android.content.SharedPreferences;
-import android.os.Bundle;
 import android.os.Parcel;
 import android.os.SystemClock;
 import android.util.ArrayMap;
@@ -60,7 +58,7 @@ public class BatteryRecordTest {
 
     @Test
     public void testEventRecordIOManipulation() {
-        BatteryStatsFeature.Record.EventStatRecord record = new BatteryStatsFeature.Record.EventStatRecord();
+        BatteryRecorder.Record.EventStatRecord record = new BatteryRecorder.Record.EventStatRecord();
         record.id = 22;
         record.event = "EVENT";
 
@@ -85,7 +83,7 @@ public class BatteryRecordTest {
             parcel = Parcel.obtain();
             parcel.unmarshall(bytes, 0, bytes.length);
             parcel.setDataPosition(0);
-            BatteryStatsFeature.Record.EventStatRecord recordLoaded = BatteryStatsFeature.Record.EventStatRecord.CREATOR.createFromParcel(parcel);
+            BatteryRecorder.Record.EventStatRecord recordLoaded = BatteryRecorder.Record.EventStatRecord.CREATOR.createFromParcel(parcel);
             Assert.assertNotNull(recordLoaded);
 
         } finally {
@@ -96,11 +94,11 @@ public class BatteryRecordTest {
 
     @Test
     public void testReportRecordIOManipulation() {
-        BatteryStatsFeature.Record.ReportRecord record = new BatteryStatsFeature.Record.ReportRecord();
+        BatteryRecorder.Record.ReportRecord record = new BatteryRecorder.Record.ReportRecord();
         record.id = record.hashCode();
         record.threadInfoList = new ArrayList<>();
         for (int i = 0; i < 5; i++) {
-            BatteryStatsFeature.Record.ReportRecord.ThreadInfo threadInfo = new BatteryStatsFeature.Record.ReportRecord.ThreadInfo();
+            BatteryRecorder.Record.ReportRecord.ThreadInfo threadInfo = new BatteryRecorder.Record.ReportRecord.ThreadInfo();
             threadInfo.stat = "R" + i;
             threadInfo.tid = 10000 + i;
             threadInfo.name = "ThreadName_" + i;
@@ -109,7 +107,7 @@ public class BatteryRecordTest {
         }
         record.entryList = new ArrayList<>();
         for (int i = 0; i < 4; i++) {
-            BatteryStatsFeature.Record.ReportRecord.EntryInfo entryInfo = new BatteryStatsFeature.Record.ReportRecord.EntryInfo();
+            BatteryRecorder.Record.ReportRecord.EntryInfo entryInfo = new BatteryRecorder.Record.ReportRecord.EntryInfo();
             entryInfo.name = "Entry Name " + i;
             entryInfo.entries = new ArrayMap<>();
             entryInfo.entries.put("Key 1", "Value 1");
@@ -139,7 +137,7 @@ public class BatteryRecordTest {
             parcel = Parcel.obtain();
             parcel.unmarshall(bytes, 0, bytes.length);
             parcel.setDataPosition(0);
-            BatteryStatsFeature.Record.ReportRecord recordLoaded = BatteryStatsFeature.Record.ReportRecord.CREATOR.createFromParcel(parcel);
+            BatteryRecorder.Record.ReportRecord recordLoaded = BatteryRecorder.Record.ReportRecord.CREATOR.createFromParcel(parcel);
             Assert.assertNotNull(recordLoaded);
 
         } finally {
@@ -152,7 +150,7 @@ public class BatteryRecordTest {
     public void testUniversalRecordIOManipulation() {
         MMKV mmkv = MMKV.defaultMMKV();
 
-        BatteryStatsFeature.Record.EventStatRecord eventRecord = new BatteryStatsFeature.Record.EventStatRecord();
+        BatteryRecorder.Record.EventStatRecord eventRecord = new BatteryRecorder.Record.EventStatRecord();
         eventRecord.id = 22;
         eventRecord.event = "EVENT";
 
@@ -169,11 +167,11 @@ public class BatteryRecordTest {
             }
         }
 
-        BatteryStatsFeature.Record.ReportRecord reportRecord = new BatteryStatsFeature.Record.ReportRecord();
+        BatteryRecorder.Record.ReportRecord reportRecord = new BatteryRecorder.Record.ReportRecord();
         reportRecord.id = 33;
         reportRecord.threadInfoList = new ArrayList<>();
         for (int i = 0; i < 5; i++) {
-            BatteryStatsFeature.Record.ReportRecord.ThreadInfo threadInfo = new BatteryStatsFeature.Record.ReportRecord.ThreadInfo();
+            BatteryRecorder.Record.ReportRecord.ThreadInfo threadInfo = new BatteryRecorder.Record.ReportRecord.ThreadInfo();
             threadInfo.stat = "R" + i;
             threadInfo.tid = 10000 + i;
             threadInfo.name = "ThreadName_" + i;
@@ -182,7 +180,7 @@ public class BatteryRecordTest {
         }
         reportRecord.entryList = new ArrayList<>();
         for (int i = 0; i < 4; i++) {
-            BatteryStatsFeature.Record.ReportRecord.EntryInfo entryInfo = new BatteryStatsFeature.Record.ReportRecord.EntryInfo();
+            BatteryRecorder.Record.ReportRecord.EntryInfo entryInfo = new BatteryRecorder.Record.ReportRecord.EntryInfo();
             entryInfo.name = "Entry Name " + i;
             entryInfo.entries = new ArrayMap<>();
             entryInfo.entries.put("Key 1", "Value 1");
@@ -209,7 +207,7 @@ public class BatteryRecordTest {
             parcel.setDataPosition(0);
             int type = parcel.readInt();
             Assert.assertEquals(1, type);
-            BatteryStatsFeature.Record.EventStatRecord recordLoaded = BatteryStatsFeature.Record.EventStatRecord.CREATOR.createFromParcel(parcel);
+            BatteryRecorder.Record.EventStatRecord recordLoaded = BatteryRecorder.Record.EventStatRecord.CREATOR.createFromParcel(parcel);
             Assert.assertNotNull(recordLoaded);
 
         } finally {
@@ -225,7 +223,7 @@ public class BatteryRecordTest {
             parcel.setDataPosition(0);
             int type = parcel.readInt();
             Assert.assertEquals(2, type);
-            BatteryStatsFeature.Record.ReportRecord recordLoaded = BatteryStatsFeature.Record.ReportRecord.CREATOR.createFromParcel(parcel);
+            BatteryRecorder.Record.ReportRecord recordLoaded = BatteryRecorder.Record.ReportRecord.CREATOR.createFromParcel(parcel);
             Assert.assertNotNull(recordLoaded);
 
         } finally {
@@ -241,7 +239,7 @@ public class BatteryRecordTest {
 
         for (int i = 0; i < count; i++) {
             String key = "stats_event_" + i;
-            BatteryStatsFeature.Record.EventStatRecord record = new BatteryStatsFeature.Record.EventStatRecord();
+            BatteryRecorder.Record.EventStatRecord record = new BatteryRecorder.Record.EventStatRecord();
             record.id = i;
             record.event = "EVENT_" + i;
 
@@ -267,7 +265,7 @@ public class BatteryRecordTest {
                 parcel = Parcel.obtain();
                 parcel.unmarshall(bytes, 0, bytes.length);
                 parcel.setDataPosition(0);
-                BatteryStatsFeature.Record.EventStatRecord recordLoaded = BatteryStatsFeature.Record.EventStatRecord.CREATOR.createFromParcel(parcel);
+                BatteryRecorder.Record.EventStatRecord recordLoaded = BatteryRecorder.Record.EventStatRecord.CREATOR.createFromParcel(parcel);
                 Assert.assertNotNull(recordLoaded);
 
             } finally {

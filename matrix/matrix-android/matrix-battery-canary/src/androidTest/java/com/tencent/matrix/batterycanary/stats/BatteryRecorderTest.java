@@ -60,23 +60,25 @@ public class BatteryRecorderTest {
 
     @Test
     public void testRecorderWithEventRecord() {
-        BatteryStatsFeature.Record.EventStatRecord record = new BatteryStatsFeature.Record.EventStatRecord();
+        BatteryRecorder.Record.EventStatRecord record = new BatteryRecorder.Record.EventStatRecord();
         record.id = 22;
         record.event = "EVENT";
 
         String date = BatteryStatsFeature.getDateString(0);
-        MMKVRecorder recorder = new MMKVRecorder(MMKV.defaultMMKV());
+        MMKV mmkv = MMKV.defaultMMKV();
+        mmkv.clearAll();
+        MMKVRecorder recorder = new MMKVRecorder(mmkv);
         recorder.clean(date);
         Assert.assertTrue(recorder.read(date).isEmpty());
 
         recorder.write(date, record);
         Assert.assertTrue(recorder.read(BatteryStatsFeature.getDateString(-1)).isEmpty());
 
-        List<BatteryStatsFeature.Record> records = recorder.read(date);
+        List<BatteryRecorder.Record> records = recorder.read(date);
         Assert.assertEquals(1, records.size());
-        Assert.assertTrue(records.get(0) instanceof BatteryStatsFeature.Record.EventStatRecord);
-        Assert.assertEquals(record.id, ((BatteryStatsFeature.Record.EventStatRecord) records.get(0)).id);
-        Assert.assertEquals(record.event, ((BatteryStatsFeature.Record.EventStatRecord) records.get(0)).event);
+        Assert.assertTrue(records.get(0) instanceof BatteryRecorder.Record.EventStatRecord);
+        Assert.assertEquals(record.id, ((BatteryRecorder.Record.EventStatRecord) records.get(0)).id);
+        Assert.assertEquals(record.event, ((BatteryRecorder.Record.EventStatRecord) records.get(0)).event);
 
         recorder.clean(BatteryStatsFeature.getDateString(-1));
         Assert.assertFalse(recorder.read(date).isEmpty());
@@ -84,7 +86,7 @@ public class BatteryRecorderTest {
         Assert.assertTrue(recorder.read(date).isEmpty());
     }
 
-    public static class MMKVRecorder implements BatteryStatsFeature.BatteryRecorder {
+    public static class MMKVRecorder implements BatteryRecorder {
         static final String TAG = "Matrix.battery.recorder";
 
         final int pid = Process.myPid();
@@ -96,10 +98,10 @@ public class BatteryRecorderTest {
         }
 
         @Override
-        public void write(String date, BatteryStatsFeature.Record record) {
+        public void write(String date, Record record) {
             String key = "bs-" + date + "-"  + pid +  "-" + inc.getAndIncrement();
             try {
-                byte[] bytes = BatteryStatsFeature.Record.encode(record);
+                byte[] bytes = BatteryRecorder.Record.encode(record);
                 mmkv.encode(key, bytes);
             } catch (Exception e) {
                 MatrixLog.w(TAG, "record encode failed: " + e.getMessage());
@@ -107,18 +109,18 @@ public class BatteryRecorderTest {
         }
 
         @Override
-        public List<BatteryStatsFeature.Record> read(String date) {
+        public List<Record> read(String date) {
             String[] keys = mmkv.allKeys();
             if (keys == null || keys.length == 0) {
                 return Collections.emptyList();
             }
-            List<BatteryStatsFeature.Record> records = new ArrayList<>(Math.min(16, keys.length));
+            List<Record> records = new ArrayList<>(Math.min(16, keys.length));
             for (String item : keys) {
                 if (item.startsWith("bs-" + date + "-")) {
                     try {
                         byte[] bytes = mmkv.decodeBytes(item);
                         if (bytes != null) {
-                            BatteryStatsFeature.Record record = BatteryStatsFeature.Record.decode(bytes);
+                            Record record = BatteryRecorder.Record.decode(bytes);
                             records.add(record);
                         }
                     } catch (Exception e) {
