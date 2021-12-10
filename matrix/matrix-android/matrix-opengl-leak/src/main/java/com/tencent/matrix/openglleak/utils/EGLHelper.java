@@ -74,5 +74,4 @@ public class EGLHelper {
 
         GLES20.glFlush();
     }
-
 }
