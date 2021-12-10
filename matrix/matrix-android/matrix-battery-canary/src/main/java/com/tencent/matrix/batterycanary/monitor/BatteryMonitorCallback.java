@@ -32,6 +32,7 @@ import com.tencent.matrix.batterycanary.monitor.feature.WakeLockMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.WakeLockMonitorFeature.WakeLockSnapshot;
 import com.tencent.matrix.batterycanary.monitor.feature.WakeLockMonitorFeature.WakeLockTrace.WakeLockRecord;
 import com.tencent.matrix.batterycanary.monitor.feature.WifiMonitorFeature.WifiSnapshot;
+import com.tencent.matrix.batterycanary.stats.BatteryStatsFeature;
 import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
 import com.tencent.matrix.batterycanary.utils.Consumer;
 import com.tencent.matrix.batterycanary.utils.PowerProfile;
@@ -293,7 +294,14 @@ public interface BatteryMonitorCallback extends
             onCanaryReport(monitors);
         }
 
-        protected void onCanaryReport(CompositeMonitors monitors) {
+        @CallSuper
+        protected void onCanaryReport(final CompositeMonitors monitors) {
+            monitors.getFeature(BatteryStatsFeature.class, new Consumer<BatteryStatsFeature>() {
+                @Override
+                public void accept(BatteryStatsFeature batteryStatsFeature) {
+                    batteryStatsFeature.statsMonitors(monitors);
+                }
+            });
         }
 
 
@@ -485,7 +493,7 @@ public interface BatteryMonitorCallback extends
                     return true;
                 }
 
-                // - Dump BlueTooth
+                // - Dump Wifi
                 if (sessionDelta.dlt instanceof WifiSnapshot) {
                     //noinspection unchecked
                     Delta<WifiSnapshot> delta = (Delta<WifiSnapshot>) sessionDelta;
@@ -496,7 +504,7 @@ public interface BatteryMonitorCallback extends
                     return true;
                 }
 
-                // - Dump BlueTooth
+                // - Dump GPS
                 if (sessionDelta.dlt instanceof LocationSnapshot) {
                     //noinspection unchecked
                     Delta<LocationSnapshot> delta = (Delta<LocationSnapshot>) sessionDelta;
