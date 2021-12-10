@@ -187,6 +187,7 @@ static void hookSocket(bool rxHook, bool txHook) {
     xhook_grouped_ignore(HOOK_REQUEST_GROUPID_TRAFFIC, ".*libartbase\\.so$", nullptr);
     xhook_grouped_ignore(HOOK_REQUEST_GROUPID_TRAFFIC, ".*libwechatxlog\\.so$", nullptr);
     xhook_grouped_ignore(HOOK_REQUEST_GROUPID_TRAFFIC, ".*libmmkv\\.so$", nullptr);
+    xhook_grouped_ignore(HOOK_REQUEST_GROUPID_TRAFFIC, ".*liblog\\.so$", nullptr);
 
     xhook_refresh(true);
     HOOKED = true;
