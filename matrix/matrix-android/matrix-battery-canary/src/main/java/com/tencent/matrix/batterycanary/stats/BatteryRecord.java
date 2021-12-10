@@ -7,6 +7,7 @@ import android.util.ArrayMap;
 import com.tencent.matrix.batterycanary.monitor.AppStats;
 
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -419,7 +420,6 @@ public abstract class BatteryRecord implements Parcelable {
             public String name;
             public String stat;
             public Map<String, String> entries = Collections.emptyMap();
-            public Map<String, String> extraInfo = Collections.emptyMap();
 
             public EntryInfo() {
             }
@@ -427,10 +427,8 @@ public abstract class BatteryRecord implements Parcelable {
             protected EntryInfo(Parcel in) {
                 name = in.readString();
                 stat = in.readString();
-                entries = new ArrayMap<>();
+                entries = new LinkedHashMap<>();
                 in.readMap(entries, getClass().getClassLoader());
-                extraInfo = new ArrayMap<>();
-                in.readMap(extraInfo, getClass().getClassLoader());
             }
 
             public static final Creator<ReportRecord.EntryInfo> CREATOR = new Creator<ReportRecord.EntryInfo>() {
@@ -455,7 +453,6 @@ public abstract class BatteryRecord implements Parcelable {
                 dest.writeString(name);
                 dest.writeString(stat);
                 dest.writeMap(entries);
-                dest.writeMap(extraInfo);
             }
         }
     }
