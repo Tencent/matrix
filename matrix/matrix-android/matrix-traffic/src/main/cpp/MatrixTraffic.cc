@@ -70,6 +70,7 @@ ssize_t my_recvfrom(int sockfd, void *buf, size_t len, int flags,
 
 ssize_t (*original_recvmsg)(int sockfd, struct msghdr *msg, int flags);
 ssize_t my_recvmsg(int sockfd, struct msghdr *msg, int flags) {
+
     TrafficCollector::enQueueRx(MSG_TYPE_RECVMSG, sockfd, msg->msg_iovlen);
     return original_recvmsg(sockfd, msg, flags);
 }
@@ -173,7 +174,6 @@ static void hookSocket(bool rxHook, bool txHook) {
     xhook_grouped_ignore(HOOK_REQUEST_GROUPID_TRAFFIC, ".*libadbconnection\\.so$", nullptr);
     xhook_grouped_ignore(HOOK_REQUEST_GROUPID_TRAFFIC, ".*libandroid_runtime\\.so$", nullptr);
     xhook_grouped_ignore(HOOK_REQUEST_GROUPID_TRAFFIC, ".*libnetd_client\\.so$", nullptr);
-    xhook_grouped_ignore(HOOK_REQUEST_GROUPID_TRAFFIC, ".*libhardcoder\\.so$", nullptr);
     xhook_grouped_ignore(HOOK_REQUEST_GROUPID_TRAFFIC, ".*libstatssocket\\.so$", nullptr);
     xhook_grouped_ignore(HOOK_REQUEST_GROUPID_TRAFFIC, ".*libc\\.so$", nullptr);
     xhook_grouped_ignore(HOOK_REQUEST_GROUPID_TRAFFIC, ".*libprofile\\.so$", nullptr);
@@ -181,20 +181,26 @@ static void hookSocket(bool rxHook, bool txHook) {
     xhook_grouped_ignore(HOOK_REQUEST_GROUPID_TRAFFIC, ".*libGLES_mali\\.so$", nullptr);
     xhook_grouped_ignore(HOOK_REQUEST_GROUPID_TRAFFIC, ".*libhwui\\.so$", nullptr);
     xhook_grouped_ignore(HOOK_REQUEST_GROUPID_TRAFFIC, ".*libEGL\\.so$", nullptr);
-    xhook_grouped_ignore(HOOK_REQUEST_GROUPID_TRAFFIC, ".*libwcdb\\.so$", nullptr);
     xhook_grouped_ignore(HOOK_REQUEST_GROUPID_TRAFFIC, ".*libsqlite\\.so$", nullptr);
     xhook_grouped_ignore(HOOK_REQUEST_GROUPID_TRAFFIC, ".*libbase\\.so$", nullptr);
     xhook_grouped_ignore(HOOK_REQUEST_GROUPID_TRAFFIC, ".*libartbase\\.so$", nullptr);
-    xhook_grouped_ignore(HOOK_REQUEST_GROUPID_TRAFFIC, ".*libwechatxlog\\.so$", nullptr);
-    xhook_grouped_ignore(HOOK_REQUEST_GROUPID_TRAFFIC, ".*libmmkv\\.so$", nullptr);
     xhook_grouped_ignore(HOOK_REQUEST_GROUPID_TRAFFIC, ".*liblog\\.so$", nullptr);
 
     xhook_refresh(true);
     HOOKED = true;
 }
 
-static void nativeInitMatrixTraffic(JNIEnv *env, jclass, jboolean rxEnable, jboolean txEnable, jboolean dumpStackTrace) {
+static void ignoreSo(JNIEnv *env, jobjectArray ignoreSoFiles) {
+    for (int i=0; i < env->GetArrayLength(ignoreSoFiles); i++) {
+        auto ignoreSoFile = (jstring) (env->GetObjectArrayElement(ignoreSoFiles, i));
+        const char *ignoreSoFileChars = env->GetStringUTFChars(ignoreSoFile, 0);
+        xhook_grouped_ignore(HOOK_REQUEST_GROUPID_TRAFFIC, ignoreSoFileChars, nullptr);
+    }
+}
+
+static void nativeInitMatrixTraffic(JNIEnv *env, jclass, jboolean rxEnable, jboolean txEnable, jboolean dumpStackTrace, jobjectArray ignoreSoFiles) {
     TrafficCollector::startLoop(dumpStackTrace == JNI_TRUE);
+    ignoreSo(env, ignoreSoFiles);
     hookSocket(rxEnable == JNI_TRUE, txEnable == JNI_TRUE);
 }
 
@@ -202,7 +208,7 @@ template <typename T, std::size_t sz>
 static inline constexpr std::size_t NELEM(const T(&)[sz]) { return sz; }
 
 static const JNINativeMethod TRAFFIC_METHODS[] = {
-        {"nativeInitMatrixTraffic", "(ZZZ)V", (void *) nativeInitMatrixTraffic},
+        {"nativeInitMatrixTraffic", "(ZZZ[Ljava/lang/String;)V", (void *) nativeInitMatrixTraffic},
         {"nativeGetTrafficInfoMap", "(I)Ljava/util/HashMap;", (void *) nativeGetTrafficInfoMap},
         {"nativeClearTrafficInfo", "()V", (void *) nativeClearTrafficInfo},
         {"nativeReleaseMatrixTraffic", "()V", (void *) nativeReleaseMatrixTraffic},
