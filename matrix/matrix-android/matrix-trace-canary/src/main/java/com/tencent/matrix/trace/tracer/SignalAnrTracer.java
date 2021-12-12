@@ -282,6 +282,6 @@ public class SignalAnrTracer extends Tracer {
     private static native void nativePrintTrace();
 
     public interface SignalAnrDetectedListener {
-        void onAnrDetected(String stackTrace, String mMessageString, long mMessageWhen, boolean fromProcessErrorState) throws InterruptedException;
+        void onAnrDetected(String stackTrace, String mMessageString, long mMessageWhen, boolean fromProcessErrorState);
     }
 }
