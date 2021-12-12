@@ -252,6 +252,8 @@ public class SignalAnrTracer extends Tracer {
                     continue;
                 }
 
+                MatrixLog.i(TAG, "error sate longMsg = %s", proc.longMsg);
+
                 return true;
             }
             return false;

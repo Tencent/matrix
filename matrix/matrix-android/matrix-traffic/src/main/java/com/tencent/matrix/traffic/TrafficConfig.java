@@ -1,9 +1,13 @@
 package com.tencent.matrix.traffic;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class TrafficConfig {
     private boolean rxCollectorEnable;
     private boolean txCollectorEnable;
     private boolean dumpStackTrace;
+    private List<String> ignoreSoList = new ArrayList<>();
 
     public  TrafficConfig() {
 
@@ -34,5 +38,13 @@ public class TrafficConfig {
 
     public void setDumpStackTrace(boolean dumpStackTrace) {
         this.dumpStackTrace = dumpStackTrace;
+    }
+
+    public void addIgnoreSoFile(String soName) {
+        ignoreSoList.add(soName);
+    }
+
+    public String[] getIgnoreSoFiles() {
+        return ignoreSoList.toArray(new String[ignoreSoList.size()]);
     }
 }

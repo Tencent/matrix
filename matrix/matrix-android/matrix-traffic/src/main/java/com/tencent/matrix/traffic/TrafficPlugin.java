@@ -35,7 +35,8 @@ public class TrafficPlugin extends Plugin {
         }
         super.start();
         MatrixLog.i(TAG, "start");
-        nativeInitMatrixTraffic(trafficConfig.isRxCollectorEnable(), trafficConfig.isTxCollectorEnable(), trafficConfig.willDumpStackTrace());
+        String[] ignoreSoFiles = trafficConfig.getIgnoreSoFiles();
+        nativeInitMatrixTraffic(trafficConfig.isRxCollectorEnable(), trafficConfig.isTxCollectorEnable(), trafficConfig.willDumpStackTrace(), ignoreSoFiles);
     }
 
 
@@ -62,7 +63,7 @@ public class TrafficPlugin extends Plugin {
         nativeClearTrafficInfo();
     }
 
-    private static native void nativeInitMatrixTraffic(boolean rxEnable, boolean txEnable, boolean dumpStackTrace);
+    private static native void nativeInitMatrixTraffic(boolean rxEnable, boolean txEnable, boolean dumpStackTrace, String[] ignoreSoFiles);
     private static native String nativeGetTrafficInfo();
     private static native String nativeGetAllStackTraceTrafficInfo();
     private static native void nativeReleaseMatrixTraffic();
