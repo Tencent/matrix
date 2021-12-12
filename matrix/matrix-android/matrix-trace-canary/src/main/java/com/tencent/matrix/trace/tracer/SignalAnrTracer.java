@@ -252,6 +252,8 @@ public class SignalAnrTracer extends Tracer {
                     continue;
                 }
 
+                MatrixLog.i(TAG, "error sate longMsg = %s", proc.longMsg);
+
                 return true;
             }
             return false;
@@ -280,6 +282,6 @@ public class SignalAnrTracer extends Tracer {
     private static native void nativePrintTrace();
 
     public interface SignalAnrDetectedListener {
-        void onAnrDetected(String stackTrace, String mMessageString, long mMessageWhen, boolean fromProcessErrorState);
+        void onAnrDetected(String stackTrace, String mMessageString, long mMessageWhen, boolean fromProcessErrorState) throws InterruptedException;
     }
 }
