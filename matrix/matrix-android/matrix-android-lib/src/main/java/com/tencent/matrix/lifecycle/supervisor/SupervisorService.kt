@@ -118,6 +118,7 @@ class SupervisorService : Service() {
             val pid = Binder.getCallingPid()
             Assert.assertEquals(pid, token.pid)
             RemoteProcessLifecycleProxy.getProxy(token).onStateChanged(token.state)
+//            RemoteProcessLifecycleProxy.profile()
         }
 
         override fun onProcessBackground(token: ProcessToken) {
@@ -279,6 +280,14 @@ class SupervisorService : Service() {
                 }
                 return true
             }
+
+            fun profile() {
+                processProxies.forEach {
+                    it.value.forEach { p ->
+                        MatrixLog.d(TAG, "===> ${p.value}")
+                    }
+                }
+            }
         }
 
         fun onStateChanged(state: Boolean) = if (state) {
@@ -288,7 +297,7 @@ class SupervisorService : Service() {
         }
 
         override fun toString(): String {
-            return "OwnerProxy_${token.name}_${token.pid}_${token.statefulName}"
+            return "OwnerProxy_${token.name}_${token.pid}_${token.statefulName}_${active()}"
         }
     }
 }
