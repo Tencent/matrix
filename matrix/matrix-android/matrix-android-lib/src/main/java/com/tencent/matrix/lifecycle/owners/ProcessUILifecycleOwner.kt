@@ -65,15 +65,25 @@ object MatrixProcessLifecycleOwner {
     private val runningHandler = MatrixHandlerThread.getDefaultHandler()
 
     private val stub = Any()
-    private val createdActivities = WeakHashMap<Activity, Any>() // maybe useless
+    private val createdActivities = WeakHashMap<Activity, Any>()
     private val resumedActivities = WeakHashMap<Activity, Any>()
     private val startedActivities = WeakHashMap<Activity, Any>()
 
     private val destroyedActivities = WeakHashMap<Activity, Any>()
 
-    private fun WeakHashMap<Activity, Any>.put(activity: Activity) {
-        put(activity, stub)
-    }
+    private fun WeakHashMap<Activity, Any>.async(action: WeakHashMap<Activity, Any>.() -> Unit) =
+        runningHandler.post {
+            synchronized(this) {
+                action()
+            }
+        }
+
+    private fun WeakHashMap<Activity, Any>.safeAll(predicate: (Map.Entry<Activity?, Any>) -> Boolean) =
+        synchronized(this) {
+            all(predicate)
+        }
+
+    private fun WeakHashMap<Activity, Any>.put(activity: Activity) = put(activity, stub)
 
     private var pauseSent = true
     private var stopSent = true
@@ -90,7 +100,7 @@ object MatrixProcessLifecycleOwner {
 
     private class CreatedStateOwner : AsyncOwner() {
         override fun active(): Boolean {
-            return super.active() && createdActivities.all { false == it.key?.isFinishing }
+            return super.active() && createdActivities.safeAll { false == it.key?.isFinishing }
         }
     }
 
@@ -125,7 +135,9 @@ object MatrixProcessLifecycleOwner {
 
     private fun activityCreated(activity: Activity) {
         val isEmptyBefore = createdActivities.isEmpty()
-        createdActivities.put(activity)
+        createdActivities.async {
+            put(activity)
+        }
 
         if (isEmptyBefore) {
             (createdStateOwner as AsyncOwner).turnOnAsync()
@@ -168,11 +180,13 @@ object MatrixProcessLifecycleOwner {
     }
 
     private fun activityDestroyed(activity: Activity) {
-        createdActivities.remove(activity)
-        destroyedActivities.put(activity)
-        if (createdActivities.isEmpty()) {
-            (createdStateOwner as AsyncOwner).turnOffAsync()
+        createdActivities.async {
+            remove(activity)
+            if (this.isEmpty()) {
+                (createdStateOwner as AsyncOwner).turnOffAsync()
+            }
         }
+        destroyedActivities.put(activity)
         // fallback remove
         startedActivities.remove(activity)?.let {
             MatrixLog.w(
