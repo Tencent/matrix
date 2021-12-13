@@ -104,13 +104,6 @@ public final class AppStatMonitorFeature extends AbsMonitorFeature {
         int appStat = BatteryCanaryUtil.getAppStatImmediately(mCore.getContext(), isForeground);
         BatteryCanaryUtil.getProxy().updateAppStat(appStat);
 
-        BatteryStatsFeature statsFeature = mCore.getMonitorFeature(BatteryStatsFeature.class);
-        if (statsFeature != null) {
-            BatteryRecord.AppStatRecord appStatRecord = new BatteryRecord.AppStatRecord();
-            appStatRecord.appStat = appStat;
-            statsFeature.writeRecord(appStatRecord);
-        }
-
         synchronized (TAG) {
             if (mStampList != Collections.EMPTY_LIST) {
                 MatrixLog.i(BatteryEventDelegate.TAG, "onStat >> " + BatteryCanaryUtil.convertAppStat(appStat));

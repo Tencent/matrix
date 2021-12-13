@@ -48,6 +48,7 @@ public class AppStats {
     public static final int DEV_STAT_UN_CHARGING = 2;
     public static final int DEV_STAT_SCREEN_OFF = 3;
     public static final int DEV_STAT_SAVE_POWER_MODE = 4;
+    public static final int DEV_STAT_SCREEN_ON = 5;
 
     public int appFgRatio;
     public int appBgRatio;

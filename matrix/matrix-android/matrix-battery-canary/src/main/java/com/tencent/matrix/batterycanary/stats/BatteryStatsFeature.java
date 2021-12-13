@@ -69,6 +69,11 @@ public final class BatteryStatsFeature extends AbsMonitorFeature {
         writeRecord(procStatRecord);
     }
 
+    @Override
+    public void onForeground(boolean isForeground) {
+        super.onForeground(isForeground);
+        statsAppStat(isForeground ? AppStats.APP_STAT_FOREGROUND : AppStats.APP_STAT_BACKGROUND);
+    }
 
     @Override
     public void onTurnOff() {
@@ -141,6 +146,30 @@ public final class BatteryStatsFeature extends AbsMonitorFeature {
         if (mBatteryRecorder != null) {
             mBatteryRecorder.clean(date);
         }
+    }
+
+    public void statsAppStat(int appStat) {
+        BatteryRecord.AppStatRecord statRecord = new BatteryRecord.AppStatRecord();
+        statRecord.appStat = appStat;
+        writeRecord(statRecord);
+    }
+
+    public void statsDevStat(int devStat) {
+        BatteryRecord.DevStatRecord statRecord = new BatteryRecord.DevStatRecord();
+        statRecord.devStat = devStat;
+        writeRecord(statRecord);
+    }
+
+    public void statsScene(String scene) {
+        BatteryRecord.SceneStatRecord statRecord = new BatteryRecord.SceneStatRecord();
+        statRecord.scene = scene;
+        writeRecord(statRecord);
+    }
+
+    public void statsEvent(String event) {
+        BatteryRecord.EventStatRecord statRecord = new BatteryRecord.EventStatRecord();
+        statRecord.event = event;
+        writeRecord(statRecord);
     }
 
     public void statsMonitors(final CompositeMonitors monitors) {
