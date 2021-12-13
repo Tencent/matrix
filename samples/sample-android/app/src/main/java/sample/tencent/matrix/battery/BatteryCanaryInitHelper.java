@@ -1,9 +1,14 @@
 package sample.tencent.matrix.battery;
 
 import android.annotation.SuppressLint;
+import android.app.Activity;
+import android.app.Application;
 import android.content.Context;
+import android.os.Bundle;
+import android.telephony.SubscriptionInfo;
 import android.util.Log;
 
+import com.tencent.matrix.batterycanary.BatteryCanary;
 import com.tencent.matrix.batterycanary.BatteryMonitorPlugin;
 import com.tencent.matrix.batterycanary.monitor.AppStats;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCallback;
@@ -39,6 +44,7 @@ import com.tencent.mmkv.MMKV;
 import java.util.concurrent.Callable;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 /**
  * @author Kaede
@@ -57,6 +63,7 @@ public final class BatteryCanaryInitHelper {
 
         // Init MMKV only when BatteryStatsFeature is & MMKVRecorder is enabled.
         MMKV.initialize(context);
+        registerUIStat((Application) context.getApplicationContext());
 
         sBatteryConfig = new BatteryMonitorConfig.Builder()
                 // Thread Activities Monitor
@@ -117,6 +124,49 @@ public final class BatteryCanaryInitHelper {
                 .build();
 
         return new BatteryMonitorPlugin(sBatteryConfig);
+    }
+
+    public static void registerUIStat(final Application app) {
+        app.registerActivityLifecycleCallbacks(new Application.ActivityLifecycleCallbacks() {
+            @Override
+            public void onActivityCreated(@NonNull Activity activity, @Nullable Bundle savedInstanceState) {
+            }
+
+            @Override
+            public void onActivityStarted(@NonNull final Activity activity) {
+                BatteryCanary.getMonitorFeature(BatteryStatsFeature.class, new Consumer<BatteryStatsFeature>() {
+                    @Override
+                    public void accept(BatteryStatsFeature batteryStatsFeature) {
+                        String uiName = activity.getClass().getName();
+                        String pkg = app.getPackageName();
+                        if (uiName.startsWith(pkg)) {
+                            uiName = uiName.substring(uiName.lastIndexOf(pkg) + pkg.length());
+                        }
+                        batteryStatsFeature.statsScene(uiName);
+                    }
+                });
+            }
+
+            @Override
+            public void onActivityResumed(@NonNull Activity activity) {
+            }
+
+            @Override
+            public void onActivityPaused(@NonNull Activity activity) {
+            }
+
+            @Override
+            public void onActivityStopped(@NonNull Activity activity) {
+            }
+
+            @Override
+            public void onActivitySaveInstanceState(@NonNull Activity activity, @NonNull Bundle outState) {
+            }
+
+            @Override
+            public void onActivityDestroyed(@NonNull Activity activity) {
+            }
+        });
     }
 
 

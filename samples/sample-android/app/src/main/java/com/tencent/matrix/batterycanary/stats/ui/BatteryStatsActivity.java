@@ -4,7 +4,9 @@ import android.os.Bundle;
 import android.os.Process;
 import android.os.SystemClock;
 import android.util.ArrayMap;
+import android.view.LayoutInflater;
 import android.view.View;
+import android.widget.TextView;
 
 import com.tencent.matrix.batterycanary.monitor.AppStats;
 import com.tencent.matrix.batterycanary.stats.BatteryRecord;
@@ -19,10 +21,14 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import sample.tencent.matrix.R;
 
+import static sample.tencent.matrix.MatrixApplication.getContext;
+
 public class BatteryStatsActivity extends AppCompatActivity {
 
     @NonNull
     private BatteryStatsLoader mStatsLoader;
+    private BatteryStatsAdapter.HeaderItem mCurrHeader;
+    private boolean mEnd;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -30,18 +36,49 @@ public class BatteryStatsActivity extends AppCompatActivity {
         setContentView(R.layout.activity_battery_stats);
 
         RecyclerView recyclerView = findViewById(R.id.rv_battery_stats);
-        View pinnedHeader = findViewById(R.id.header_pinned);
-
-        recyclerView.setLayoutManager(new LinearLayoutManager(this));
+        final LinearLayoutManager layoutManager = new LinearLayoutManager(this);
+        recyclerView.setLayoutManager(layoutManager);
         BatteryStatsAdapter adapter = new BatteryStatsAdapter();
         recyclerView.setAdapter(adapter);
         mStatsLoader = new BatteryStatsLoader(adapter);
+        recyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
+            @Override
+            public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
+                super.onScrolled(recyclerView, dx, dy);
+                // update header
+                int topPosition = layoutManager.findFirstVisibleItemPosition();
+                updateHeader(topPosition);
+
+                // load more
+                if (layoutManager.findLastVisibleItemPosition() == mStatsLoader.mStatsAdapter.getDataList().size() - 1) {
+                    if (!mStatsLoader.loadMore()) {
+                        if (!mEnd) {
+                            mEnd = true;
+                        }
+                    }
+                }
+            }
+        });
 
         // load today's data
-        mStatsLoader.load(0);
+        mStatsLoader.load();
+        updateHeader(0);
 
         // load mocking data
-        loadMockingData();
+        // loadMockingData();
+    }
+
+    private void updateHeader(final int topPosition) {
+        BatteryStatsAdapter.HeaderItem currHeader = mStatsLoader.getFirstHeader(topPosition);
+        if (currHeader != null) {
+            if (mCurrHeader == null || mCurrHeader != currHeader) {
+                mCurrHeader = currHeader;
+                View headerView = findViewById(R.id.header_pinned);
+                headerView.setVisibility(View.VISIBLE);
+                TextView tv = headerView.findViewById(R.id.tv_title);
+                tv.setText(currHeader.date);
+            }
+        }
     }
 
     private void loadMockingData() {

@@ -1,6 +1,7 @@
 package com.tencent.matrix.batterycanary.stats.ui;
 
 import android.annotation.SuppressLint;
+import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -31,6 +32,7 @@ public class BatteryStatsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
     public static final int VIEW_TYPE_EVENT_DUMP = 1;
     public static final int VIEW_TYPE_EVENT_LEVEL_1 = 2;
     public static final int VIEW_TYPE_EVENT_LEVEL_2 = 3;
+    public static final int VIEW_TYPE_NO_DATA = 4;
 
     final List<Item> dataList = new ArrayList<>();
 
@@ -44,6 +46,8 @@ public class BatteryStatsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
         switch (viewType) {
             case VIEW_TYPE_HEADER:
                 return new ViewHolder.HeaderHolder(LayoutInflater.from(parent.getContext()).inflate(R.layout.stats_item_header, parent, false));
+            case VIEW_TYPE_NO_DATA:
+                return new ViewHolder.NoDataHolder(LayoutInflater.from(parent.getContext()).inflate(R.layout.stats_item_no_data, parent, false));
             case VIEW_TYPE_EVENT_DUMP:
                 return new ViewHolder.EventDumpHolder(LayoutInflater.from(parent.getContext()).inflate(R.layout.stats_item_event_dump, parent, false));
             case VIEW_TYPE_EVENT_LEVEL_1:
@@ -87,6 +91,15 @@ public class BatteryStatsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
         @Override
         public int viewType() {
             return VIEW_TYPE_HEADER;
+        }
+    }
+
+    public static class NoDataItem implements Item {
+        public String text;
+
+        @Override
+        public int viewType() {
+            return VIEW_TYPE_NO_DATA;
         }
     }
 
@@ -165,6 +178,23 @@ public class BatteryStatsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
             public void bind(HeaderItem item) {
                 mItem = item;
                 mTitleTv.setText(item.date);
+            }
+        }
+
+        public static class NoDataHolder extends ViewHolder<NoDataItem> {
+            private final TextView mTitleTv;
+
+            public NoDataHolder(@NonNull View itemView) {
+                super(itemView);
+                mTitleTv = itemView.findViewById(R.id.tv_title);
+            }
+
+            @Override
+            public void bind(NoDataItem item) {
+                mItem = item;
+                if (!TextUtils.isEmpty(item.text)) {
+                    mTitleTv.setText(item.text);
+                }
             }
         }
 

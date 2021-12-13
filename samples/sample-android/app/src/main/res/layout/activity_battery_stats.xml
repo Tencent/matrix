@@ -13,9 +13,11 @@
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/rv_battery_stats"
             android:layout_width="match_parent"
-            android:layout_height="match_parent"/>
+            android:layout_height="match_parent" />
 
         <LinearLayout
+            android:elevation="3dp"
+            android:background="#fff"
             android:id="@+id/header_pinned"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

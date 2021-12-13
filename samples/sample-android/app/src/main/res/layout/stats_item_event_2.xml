@@ -85,6 +85,7 @@
 
 
             <TextView
+                android:textSize="12sp"
                 android:id="@+id/tv_title"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -97,7 +98,7 @@
 
         <!--  Right  -->
         <RelativeLayout
-            android:visibility="gone"
+            android:visibility="invisible"
             android:id="@+id/layout_right"
             android:layout_width="50dp"
             android:layout_height="45dp"

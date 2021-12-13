@@ -9,19 +9,6 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
 
-        <!-- BG TimeLine  -->
-        <RelativeLayout
-            android:layout_marginLeft="60dp"
-            android:layout_width="40dp"
-            android:layout_height="match_parent"
-            android:layout_centerVertical="true">
-
-            <View
-                android:layout_width="1px"
-                android:layout_height="match_parent"
-                android:layout_centerInParent="true"
-                android:background="#000" />
-        </RelativeLayout>
 
         <!--  Left  -->
         <RelativeLayout
@@ -36,7 +23,7 @@
                 android:layout_height="wrap_content"
                 android:layout_centerVertical="true"
                 android:gravity="right"
-                android:text="20:00" />
+                android:text="" />
 
             <RelativeLayout
                 android:id="@+id/layout_timeline"
@@ -45,20 +32,6 @@
                 android:layout_centerVertical="true"
                 android:layout_toRightOf="@+id/tv_time">
 
-                <View
-                    android:id="@+id/timeline_y"
-                    android:layout_width="1px"
-                    android:layout_height="match_parent"
-                    android:layout_centerInParent="true"
-                    android:background="#000" />
-
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="1px"
-                    android:layout_alignParentRight="true"
-                    android:layout_centerInParent="true"
-                    android:layout_toRightOf="@+id/timeline_y"
-                    android:background="#000" />
             </RelativeLayout>
 
         </RelativeLayout>
@@ -68,7 +41,7 @@
         <RelativeLayout
             android:id="@+id/layout_title"
             android:layout_width="match_parent"
-            android:layout_height="45dp"
+            android:layout_height="90dp"
             android:layout_toLeftOf="@+id/layout_right"
             android:layout_toRightOf="@+id/layout_left"
             android:gravity="center_vertical"
@@ -81,7 +54,7 @@
                 android:layout_height="1px"
                 android:layout_centerVertical="true"
                 android:layout_marginRight="10dp"
-                android:background="#000" />
+                android:background="#0000" />
 
 
             <TextView
@@ -90,14 +63,14 @@
                 android:layout_height="wrap_content"
                 android:layout_centerVertical="true"
                 android:layout_toRightOf="@+id/padding"
-                android:text="前台" />
+                android:text="NO DATA" />
         </RelativeLayout>
 
 
 
         <!--  Right  -->
         <RelativeLayout
-            android:visibility="invisible"
+            android:visibility="gone"
             android:id="@+id/layout_right"
             android:layout_width="50dp"
             android:layout_height="45dp"

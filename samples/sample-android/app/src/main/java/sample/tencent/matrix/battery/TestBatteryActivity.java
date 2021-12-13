@@ -166,6 +166,12 @@ public class TestBatteryActivity extends Activity {
     }
 
     public void onDumpBatteryStats(View view) {
+        BatteryCanary.getMonitorFeature(BatteryStatsFeature.class, new Consumer<BatteryStatsFeature>() {
+            @Override
+            public void accept(BatteryStatsFeature batteryStatsFeature) {
+                batteryStatsFeature.statsEvent("Manual Dump BatteryStats");
+            }
+        });
         tryDumpBatteryStats();
     }
 
