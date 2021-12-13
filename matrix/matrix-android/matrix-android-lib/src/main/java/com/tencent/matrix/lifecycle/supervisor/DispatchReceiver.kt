@@ -99,9 +99,9 @@ internal object DispatchReceiver : BroadcastReceiver(), IProcessListener {
                 override fun off() {
                 }
             }
+            MatrixProcessLifecycleOwner.startedStateOwner.observeForever(pacemaker!!)
+            MatrixLog.i(ProcessSupervisor.tag, "pacemaker: install pacemaker")
         }
-        MatrixProcessLifecycleOwner.startedStateOwner.observeForever(pacemaker!!)
-        MatrixLog.i(ProcessSupervisor.tag, "pacemaker: install pacemaker")
     }
 
     internal fun uninstallPacemaker() {
