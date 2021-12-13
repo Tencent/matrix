@@ -44,6 +44,9 @@ import com.tencent.matrix.util.MatrixUtil;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.BufferedReader;
+import java.io.FileInputStream;
+import java.io.InputStreamReader;
 import java.lang.reflect.Field;
 import java.util.List;
 
@@ -66,6 +69,7 @@ public class SignalAnrTracer extends Tracer {
     public static boolean hasInstance = false;
     private static long anrMessageWhen = 0L;
     private static String anrMessageString = "";
+    private static String cpuset = "";
 
     static {
         System.loadLibrary("trace-canary");
@@ -110,10 +114,24 @@ public class SignalAnrTracer extends Tracer {
         sSignalAnrDetectedListener = listener;
     }
 
+    public static String readCpuSet() {
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream("/proc/self/cgroup")))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                if (line.contains("cpuset") || line.contains("cpu")) {
+                    return line;
+                }
+            }
+        } catch (Throwable t) {
+            t.printStackTrace();
+        }
+        return "";
+    }
 
     @RequiresApi(api = Build.VERSION_CODES.M)
     @Keep
     private static void onANRDumped() {
+        cpuset = readCpuSet();
         currentForeground = AppForegroundUtil.isInterestingToUser();
         boolean needReport = isMainThreadBlocked();
 
@@ -151,7 +169,7 @@ public class SignalAnrTracer extends Tracer {
         try {
             String stackTrace = Utils.getMainThreadJavaStackTrace();
             if (sSignalAnrDetectedListener != null) {
-                sSignalAnrDetectedListener.onAnrDetected(stackTrace, anrMessageString, anrMessageWhen, fromProcessErrorState);
+                sSignalAnrDetectedListener.onAnrDetected(stackTrace, anrMessageString, anrMessageWhen, fromProcessErrorState, cpuset);
                 return;
             }
 
@@ -282,6 +300,6 @@ public class SignalAnrTracer extends Tracer {
     private static native void nativePrintTrace();
 
     public interface SignalAnrDetectedListener {
-        void onAnrDetected(String stackTrace, String mMessageString, long mMessageWhen, boolean fromProcessErrorState);
+        void onAnrDetected(String stackTrace, String mMessageString, long mMessageWhen, boolean fromProcessErrorState, String cpuset);
     }
 }
