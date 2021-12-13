@@ -71,17 +71,11 @@ object MatrixProcessLifecycleOwner {
 
     private val destroyedActivities = WeakHashMap<Activity, Any>()
 
-    private fun WeakHashMap<Activity, Any>.async(action: WeakHashMap<Activity, Any>.() -> Unit) =
-        runningHandler.post {
-            synchronized(this) {
-                action()
-            }
-        }
-
-    private fun WeakHashMap<Activity, Any>.safeAll(predicate: (Map.Entry<Activity?, Any>) -> Boolean) =
+    private fun <R> WeakHashMap<Activity, Any>.synchronized(action: WeakHashMap<Activity, Any>.() -> R): R {
         synchronized(this) {
-            all(predicate)
+            return action()
         }
+    }
 
     private fun WeakHashMap<Activity, Any>.put(activity: Activity) = put(activity, stub)
 
@@ -100,7 +94,7 @@ object MatrixProcessLifecycleOwner {
 
     private class CreatedStateOwner : AsyncOwner() {
         override fun active(): Boolean {
-            return super.active() && createdActivities.safeAll { false == it.key?.isFinishing }
+            return super.active() && createdActivities.synchronized { all { false == it.key?.isFinishing } }
         }
     }
 
@@ -135,7 +129,7 @@ object MatrixProcessLifecycleOwner {
 
     private fun activityCreated(activity: Activity) {
         val isEmptyBefore = createdActivities.isEmpty()
-        createdActivities.async {
+        createdActivities.synchronized {
             put(activity)
         }
 
@@ -180,7 +174,7 @@ object MatrixProcessLifecycleOwner {
     }
 
     private fun activityDestroyed(activity: Activity) {
-        createdActivities.async {
+        createdActivities.synchronized {
             remove(activity)
             if (this.isEmpty()) {
                 (createdStateOwner as AsyncOwner).turnOffAsync()
