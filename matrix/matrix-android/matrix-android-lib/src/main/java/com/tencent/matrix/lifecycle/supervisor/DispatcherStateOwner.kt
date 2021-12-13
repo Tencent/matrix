@@ -49,7 +49,7 @@ internal open class DispatcherStateOwner(
                 if (it.value.active()) {
                     DispatchReceiver.dispatchAppStateOn(context, it.key)
                 } else {
-                    DispatchReceiver.dispatchAppStateOn(context, it.key)
+                    DispatchReceiver.dispatchAppStateOff(context, it.key)
                 }
             }
         }

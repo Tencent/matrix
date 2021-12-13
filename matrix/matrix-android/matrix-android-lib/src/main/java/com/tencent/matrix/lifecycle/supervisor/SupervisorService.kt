@@ -253,7 +253,7 @@ class SupervisorService : Service() {
         fun onRemoteStateTurnedOn() = turnOn()
         fun onRemoteStateTurnedOff() = turnOff()
         override fun toString(): String {
-            return "OwnerProxy_${token.name}_${token.pid}"
+            return "OwnerProxy_${token.name}_${token.pid}_${token.statefulName}"
         }
     }
 }
